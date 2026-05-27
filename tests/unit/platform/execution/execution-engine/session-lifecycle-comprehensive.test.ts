@@ -19,31 +19,31 @@ import type { SessionRecord, TaskRecord } from "../../../../../src/platform/cont
 // isSessionTerminalStatus
 // ---------------------------------------------------------------------------
 
-test("isSessionTerminalStatus returns true for completed", () => {
+test("isSessionTerminalStatus returns true for completed [session-lifecycle-comprehensive]", () => {
   assert.equal(isSessionTerminalStatus("completed"), true);
 });
 
-test("isSessionTerminalStatus returns true for failed", () => {
+test("isSessionTerminalStatus returns true for failed [session-lifecycle-comprehensive]", () => {
   assert.equal(isSessionTerminalStatus("failed"), true);
 });
 
-test("isSessionTerminalStatus returns true for cancelled", () => {
+test("isSessionTerminalStatus returns true for cancelled [session-lifecycle-comprehensive]", () => {
   assert.equal(isSessionTerminalStatus("cancelled"), true);
 });
 
-test("isSessionTerminalStatus returns false for open", () => {
+test("isSessionTerminalStatus returns false for open [session-lifecycle-comprehensive]", () => {
   assert.equal(isSessionTerminalStatus("open"), false);
 });
 
-test("isSessionTerminalStatus returns false for in_progress", () => {
+test("isSessionTerminalStatus returns false for in_progress [session-lifecycle-comprehensive]", () => {
   assert.equal(isSessionTerminalStatus("in_progress"), false);
 });
 
-test("isSessionTerminalStatus returns false for pending", () => {
+test("isSessionTerminalStatus returns false for pending [session-lifecycle-comprehensive]", () => {
   assert.equal(isSessionTerminalStatus("pending"), false);
 });
 
-test("isSessionTerminalStatus narrows type correctly", () => {
+test("isSessionTerminalStatus narrows type correctly [session-lifecycle-comprehensive]", () => {
   const status = "completed" as const;
   if (isSessionTerminalStatus(status)) {
     // TypeScript should narrow status to SessionTerminalStatus here
@@ -56,35 +56,35 @@ test("isSessionTerminalStatus narrows type correctly", () => {
 // isTaskActiveStatus
 // ---------------------------------------------------------------------------
 
-test("isTaskActiveStatus returns true for queued", () => {
+test("isTaskActiveStatus returns true for queued [session-lifecycle-comprehensive]", () => {
   assert.equal(isTaskActiveStatus("queued"), true);
 });
 
-test("isTaskActiveStatus returns true for pending", () => {
+test("isTaskActiveStatus returns true for pending [session-lifecycle-comprehensive]", () => {
   assert.equal(isTaskActiveStatus("pending"), true);
 });
 
-test("isTaskActiveStatus returns true for in_progress", () => {
+test("isTaskActiveStatus returns true for in_progress [session-lifecycle-comprehensive]", () => {
   assert.equal(isTaskActiveStatus("in_progress"), true);
 });
 
-test("isTaskActiveStatus returns true for awaiting_decision", () => {
+test("isTaskActiveStatus returns true for awaiting_decision [session-lifecycle-comprehensive]", () => {
   assert.equal(isTaskActiveStatus("awaiting_decision"), true);
 });
 
-test("isTaskActiveStatus returns false for completed", () => {
+test("isTaskActiveStatus returns false for completed [session-lifecycle-comprehensive]", () => {
   assert.equal(isTaskActiveStatus("completed"), false);
 });
 
-test("isTaskActiveStatus returns false for failed", () => {
+test("isTaskActiveStatus returns false for failed [session-lifecycle-comprehensive]", () => {
   assert.equal(isTaskActiveStatus("failed"), false);
 });
 
-test("isTaskActiveStatus returns false for cancelled", () => {
+test("isTaskActiveStatus returns false for cancelled [session-lifecycle-comprehensive]", () => {
   assert.equal(isTaskActiveStatus("cancelled"), false);
 });
 
-test("isTaskActiveStatus narrows type correctly", () => {
+test("isTaskActiveStatus narrows type correctly [session-lifecycle-comprehensive]", () => {
   const status = "in_progress" as const;
   if (isTaskActiveStatus(status)) {
     // TypeScript should narrow status to TaskActiveStatus here
@@ -93,7 +93,7 @@ test("isTaskActiveStatus narrows type correctly", () => {
   }
 });
 
-test("isTaskActiveStatus works with TaskRecord status field", () => {
+test("isTaskActiveStatus works with TaskRecord status field [session-lifecycle-comprehensive]", () => {
   const task: TaskRecord = {
     id: "task-1",
     title: "Test",
@@ -117,7 +117,7 @@ test("isTaskActiveStatus works with TaskRecord status field", () => {
   assert.equal(isTaskActiveStatus(task.status), true);
 });
 
-test("isTaskActiveStatus returns false for completed task", () => {
+test("isTaskActiveStatus returns false for completed task [session-lifecycle-comprehensive]", () => {
   const task: TaskRecord = {
     id: "task-1",
     title: "Test",
@@ -145,7 +145,7 @@ test("isTaskActiveStatus returns false for completed task", () => {
 // createRecoverySession
 // ---------------------------------------------------------------------------
 
-test("createRecoverySession creates new session with new id", () => {
+test("createRecoverySession creates new session with new id [session-lifecycle-comprehensive]", () => {
   const original: SessionRecord = {
     id: "session-original",
     taskId: "task-1",
@@ -165,7 +165,7 @@ test("createRecoverySession creates new session with new id", () => {
   assert.equal(recovery.externalSessionId, original.externalSessionId);
 });
 
-test("createRecoverySession sets status to open", () => {
+test("createRecoverySession sets status to open [session-lifecycle-comprehensive]", () => {
   const original: SessionRecord = {
     id: "session-original",
     taskId: "task-1",
@@ -181,7 +181,7 @@ test("createRecoverySession sets status to open", () => {
   assert.equal(recovery.status, "open");
 });
 
-test("createRecoverySession uses provided occurredAt for timestamps", () => {
+test("createRecoverySession uses provided occurredAt for timestamps [session-lifecycle-comprehensive]", () => {
   const original: SessionRecord = {
     id: "session-original",
     taskId: "task-1",
@@ -199,7 +199,7 @@ test("createRecoverySession uses provided occurredAt for timestamps", () => {
   assert.equal(recovery.updatedAt, occurredAt);
 });
 
-test("createRecoverySession preserves externalSessionId from original", () => {
+test("createRecoverySession preserves externalSessionId from original [session-lifecycle-comprehensive]", () => {
   const original: SessionRecord = {
     id: "session-original",
     taskId: "task-1",
@@ -215,7 +215,7 @@ test("createRecoverySession preserves externalSessionId from original", () => {
   assert.equal(recovery.externalSessionId, "external-session-id-xyz");
 });
 
-test("createRecoverySession preserves taskId from original", () => {
+test("createRecoverySession preserves taskId from original [session-lifecycle-comprehensive]", () => {
   const original: SessionRecord = {
     id: "session-original",
     taskId: "task-specific-123",
@@ -231,7 +231,7 @@ test("createRecoverySession preserves taskId from original", () => {
   assert.equal(recovery.taskId, "task-specific-123");
 });
 
-test("createRecoverySession preserves channel from original", () => {
+test("createRecoverySession preserves channel from original [session-lifecycle-comprehensive]", () => {
   const original: SessionRecord = {
     id: "session-original",
     taskId: "task-1",
@@ -247,7 +247,7 @@ test("createRecoverySession preserves channel from original", () => {
   assert.equal(recovery.channel, "chatbot");
 });
 
-test("createRecoverySession works with different original statuses", () => {
+test("createRecoverySession works with different original statuses [session-lifecycle-comprehensive]", () => {
   const statuses: SessionRecord["status"][] = ["open", "in_progress", "completed", "failed", "cancelled"];
 
   for (const status of statuses) {
@@ -268,7 +268,7 @@ test("createRecoverySession works with different original statuses", () => {
   }
 });
 
-test("createRecoverySession generates unique IDs for multiple recoveries", () => {
+test("createRecoverySession generates unique IDs for multiple recoveries [session-lifecycle-comprehensive]", () => {
   const original: SessionRecord = {
     id: "session-original",
     taskId: "task-1",
@@ -285,7 +285,7 @@ test("createRecoverySession generates unique IDs for multiple recoveries", () =>
   assert.notEqual(recovery1.id, recovery2.id);
 });
 
-test("createRecoverySession returns valid SessionRecord structure", () => {
+test("createRecoverySession returns valid SessionRecord structure [session-lifecycle-comprehensive]", () => {
   const original: SessionRecord = {
     id: "session-original",
     taskId: "task-1",
@@ -308,7 +308,7 @@ test("createRecoverySession returns valid SessionRecord structure", () => {
   assert.ok(recovery.updatedAt);
 });
 
-test("createRecoverySession works with various externalSessionId formats", () => {
+test("createRecoverySession works with various externalSessionId formats [session-lifecycle-comprehensive]", () => {
   const externalIds = ["simple", "with-dashes", "with_underscores", "123456", "a/b/c"];
 
   for (const externalId of externalIds) {
@@ -332,13 +332,13 @@ test("createRecoverySession works with various externalSessionId formats", () =>
 // Type exports
 // ---------------------------------------------------------------------------
 
-test("SessionTerminalStatus type is exported and usable", () => {
+test("SessionTerminalStatus type is exported and usable [session-lifecycle-comprehensive]", () => {
   // Type-level test - if this compiles, the type is correct
   const status: SessionTerminalStatus = "completed";
   assert.ok(status);
 });
 
-test("TaskActiveStatus type is exported and usable", () => {
+test("TaskActiveStatus type is exported and usable [session-lifecycle-comprehensive]", () => {
   // Type-level test
   const status: TaskActiveStatus = "in_progress";
   assert.ok(status);

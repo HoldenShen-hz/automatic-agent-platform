@@ -135,7 +135,7 @@ function createService(
 // Tests: Lifecycle (start/stop/dispose)
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("StuckRunSweeperService - creation with defaults", () => {
+test("StuckRunSweeperService - creation with defaults [stuck-run-sweeper-service]", () => {
   const { service } = createService();
 
   assert.equal(service.isRunning(), false);
@@ -145,7 +145,7 @@ test("StuckRunSweeperService - creation with defaults", () => {
   service.dispose();
 });
 
-test("StuckRunSweeperService - start() sets running state", () => {
+test("StuckRunSweeperService - start() sets running state [stuck-run-sweeper-service]", () => {
   const { service } = createService();
 
   assert.equal(service.isRunning(), false);
@@ -156,7 +156,7 @@ test("StuckRunSweeperService - start() sets running state", () => {
   service.dispose();
 });
 
-test("StuckRunSweeperService - start() when disposed throws", () => {
+test("StuckRunSweeperService - start() when disposed throws [stuck-run-sweeper-service]", () => {
   const { service } = createService();
 
   service.dispose();
@@ -167,7 +167,7 @@ test("StuckRunSweeperService - start() when disposed throws", () => {
   );
 });
 
-test("StuckRunSweeperService - start() is idempotent (already running)", () => {
+test("StuckRunSweeperService - start() is idempotent (already running) [stuck-run-sweeper-service]", () => {
   const { service } = createService();
 
   service.start();
@@ -179,7 +179,7 @@ test("StuckRunSweeperService - start() is idempotent (already running)", () => {
   service.dispose();
 });
 
-test("StuckRunSweeperService - start() with disabled sweep (interval=0) does not start", () => {
+test("StuckRunSweeperService - start() with disabled sweep (interval=0) does not start [stuck-run-sweeper-service]", () => {
   const { service } = createService({
     config: { sweepIntervalMs: 0 },
   });
@@ -190,7 +190,7 @@ test("StuckRunSweeperService - start() with disabled sweep (interval=0) does not
   service.dispose();
 });
 
-test("StuckRunSweeperService - stop() clears running state", () => {
+test("StuckRunSweeperService - stop() clears running state [stuck-run-sweeper-service]", () => {
   const { service } = createService();
 
   service.start();
@@ -202,7 +202,7 @@ test("StuckRunSweeperService - stop() clears running state", () => {
   service.dispose();
 });
 
-test("StuckRunSweeperService - stop() is idempotent", () => {
+test("StuckRunSweeperService - stop() is idempotent [stuck-run-sweeper-service]", () => {
   const { service } = createService();
 
   service.start();
@@ -214,7 +214,7 @@ test("StuckRunSweeperService - stop() is idempotent", () => {
   service.dispose();
 });
 
-test("StuckRunSweeperService - dispose() marks disposed and clears state", () => {
+test("StuckRunSweeperService - dispose() marks disposed and clears state [stuck-run-sweeper-service]", () => {
   const { service } = createService();
 
   service.start();
@@ -229,7 +229,7 @@ test("StuckRunSweeperService - dispose() marks disposed and clears state", () =>
   );
 });
 
-test("StuckRunSweeperService - dispose() after stop is safe", () => {
+test("StuckRunSweeperService - dispose() after stop is safe [stuck-run-sweeper-service]", () => {
   const { service } = createService();
 
   service.start();
@@ -242,7 +242,7 @@ test("StuckRunSweeperService - dispose() after stop is safe", () => {
   );
 });
 
-test("StuckRunSweeperService - isRunning() returns false when disposed", () => {
+test("StuckRunSweeperService - isRunning() returns false when disposed [stuck-run-sweeper-service]", () => {
   const { service } = createService();
 
   service.start();
@@ -252,7 +252,7 @@ test("StuckRunSweeperService - isRunning() returns false when disposed", () => {
   assert.equal(service.isRunning(), false);
 });
 
-test("StuckRunSweeperService - isRunning() returns false after stop", () => {
+test("StuckRunSweeperService - isRunning() returns false after stop [stuck-run-sweeper-service]", () => {
   const { service } = createService();
 
   service.start();
@@ -268,7 +268,7 @@ test("StuckRunSweeperService - isRunning() returns false after stop", () => {
 // Tests: Configuration
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("StuckRunSweeperService - getConfig() returns config copy", () => {
+test("StuckRunSweeperService - getConfig() returns config copy [stuck-run-sweeper-service]", () => {
   const { service } = createService();
 
   const config = service.getConfig();
@@ -287,7 +287,7 @@ test("StuckRunSweeperService - getConfig() returns config copy", () => {
   service.dispose();
 });
 
-test("StuckRunSweeperService - custom config overrides", () => {
+test("StuckRunSweeperService - custom config overrides [stuck-run-sweeper-service]", () => {
   const { service } = createService({
     config: {
       sweepIntervalMs: 30_000,
@@ -308,7 +308,7 @@ test("StuckRunSweeperService - custom config overrides", () => {
   service.dispose();
 });
 
-test("StuckRunSweeperService - HA_1 level has longer thresholds than HA_2", () => {
+test("StuckRunSweeperService - HA_1 level has longer thresholds than HA_2 [stuck-run-sweeper-service]", () => {
   const ha2Service = createService({ haLevel: "HA_2" });
   const ha1Service = createService({ haLevel: "HA_1" });
 
@@ -319,7 +319,7 @@ test("StuckRunSweeperService - HA_1 level has longer thresholds than HA_2", () =
   ha1Service.service.dispose();
 });
 
-test("StuckRunSweeperService - HA_3 level has shorter thresholds", () => {
+test("StuckRunSweeperService - HA_3 level has shorter thresholds [stuck-run-sweeper-service]", () => {
   const ha2Service = createService({ haLevel: "HA_2" });
   const ha3Service = createService({ haLevel: "HA_3" });
 
@@ -334,7 +334,7 @@ test("StuckRunSweeperService - HA_3 level has shorter thresholds", () => {
 // Tests: Run Tracking
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("StuckRunSweeperService - trackRun() adds run to tracking", () => {
+test("StuckRunSweeperService - trackRun() adds run to tracking [stuck-run-sweeper-service]", () => {
   const { service } = createService();
 
   service.trackRun("exec-1", "task-1", "session-1");
@@ -351,7 +351,7 @@ test("StuckRunSweeperService - trackRun() adds run to tracking", () => {
   service.dispose();
 });
 
-test("StuckRunSweeperService - trackRun() is idempotent for same executionId", () => {
+test("StuckRunSweeperService - trackRun() is idempotent for same executionId [stuck-run-sweeper-service]", () => {
   const { service } = createService();
 
   service.trackRun("exec-1", "task-1", null);
@@ -362,7 +362,7 @@ test("StuckRunSweeperService - trackRun() is idempotent for same executionId", (
   service.dispose();
 });
 
-test("StuckRunSweeperService - markRunComplete() removes run and increments resolved", () => {
+test("StuckRunSweeperService - markRunComplete() removes run and increments resolved [stuck-run-sweeper-service]", () => {
   const { service } = createService();
 
   service.trackRun("exec-1", "task-1", null);
@@ -377,7 +377,7 @@ test("StuckRunSweeperService - markRunComplete() removes run and increments reso
   service.dispose();
 });
 
-test("StuckRunSweeperService - markRunComplete() on unknown run is no-op", () => {
+test("StuckRunSweeperService - markRunComplete() on unknown run is no-op [stuck-run-sweeper-service]", () => {
   const { service } = createService();
 
   service.markRunComplete("unknown-exec");
@@ -388,7 +388,7 @@ test("StuckRunSweeperService - markRunComplete() on unknown run is no-op", () =>
   service.dispose();
 });
 
-test("StuckRunSweeperService - getTrackedRuns() returns array copy", () => {
+test("StuckRunSweeperService - getTrackedRuns() returns array copy [stuck-run-sweeper-service]", () => {
   const { service } = createService();
 
   service.trackRun("exec-1", "task-1", null);
@@ -401,7 +401,7 @@ test("StuckRunSweeperService - getTrackedRuns() returns array copy", () => {
   service.dispose();
 });
 
-test("StuckRunSweeperService - getMetrics() returns metrics copy", () => {
+test("StuckRunSweeperService - getMetrics() returns metrics copy [stuck-run-sweeper-service]", () => {
   const { service } = createService();
 
   const metrics = service.getMetrics();
@@ -414,7 +414,7 @@ test("StuckRunSweeperService - getMetrics() returns metrics copy", () => {
   service.dispose();
 });
 
-test("StuckRunSweeperService - dispose() clears all tracked runs", () => {
+test("StuckRunSweeperService - dispose() clears all tracked runs [stuck-run-sweeper-service]", () => {
   const { service } = createService();
 
   service.start();
@@ -430,7 +430,7 @@ test("StuckRunSweeperService - dispose() clears all tracked runs", () => {
 // Tests: Sweep Cycle
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("StuckRunSweeperService - sweepOnce() returns empty when not running", async () => {
+test("StuckRunSweeperService - sweepOnce() returns empty when not running [stuck-run-sweeper-service]", async () => {
   const { service } = createService();
 
   service.trackRun("exec-1", "task-1", null);
@@ -442,7 +442,7 @@ test("StuckRunSweeperService - sweepOnce() returns empty when not running", asyn
   service.dispose();
 });
 
-test("StuckRunSweeperService - sweepOnce() processes runs within threshold", async () => {
+test("StuckRunSweeperService - sweepOnce() processes runs within threshold [stuck-run-sweeper-service]", async () => {
   const { service } = createService();
 
   service.start();
@@ -461,7 +461,7 @@ test("StuckRunSweeperService - sweepOnce() processes runs within threshold", asy
   service.dispose();
 });
 
-test("StuckRunSweeperService - sweepOnce() marks run as stuck after threshold", async () => {
+test("StuckRunSweeperService - sweepOnce() marks run as stuck after threshold [stuck-run-sweeper-service]", async () => {
   const { service, clock, events } = createService({
     config: {
       stuckThresholdMs: 60_000, // 1 minute
@@ -492,7 +492,7 @@ test("StuckRunSweeperService - sweepOnce() marks run as stuck after threshold", 
   service.dispose();
 });
 
-test("StuckRunSweeperService - sweepOnce() kills run after warning threshold", async () => {
+test("StuckRunSweeperService - sweepOnce() kills run after warning threshold [stuck-run-sweeper-service]", async () => {
   const { service, clock, events } = createService({
     config: {
       stuckThresholdMs: 60_000,
@@ -531,7 +531,7 @@ test("StuckRunSweeperService - sweepOnce() kills run after warning threshold", a
   service.dispose();
 });
 
-test("StuckRunSweeperService - sweepOnce() cleans up run after cleanup threshold", async () => {
+test("StuckRunSweeperService - sweepOnce() cleans up run after cleanup threshold [stuck-run-sweeper-service]", async () => {
   const { service, clock, events } = createService({
     config: {
       stuckThresholdMs: 60_000,
@@ -568,7 +568,7 @@ test("StuckRunSweeperService - sweepOnce() cleans up run after cleanup threshold
   service.dispose();
 });
 
-test("StuckRunSweeperService - sweepOnce() respects maxRunsPerSweep limit", async () => {
+test("StuckRunSweeperService - sweepOnce() respects maxRunsPerSweep limit [stuck-run-sweeper-service]", async () => {
   const { service, clock } = createService({
     config: {
       stuckThresholdMs: 60_000,
@@ -598,7 +598,7 @@ test("StuckRunSweeperService - sweepOnce() respects maxRunsPerSweep limit", asyn
   service.dispose();
 });
 
-test("StuckRunSweeperService - sweepOnce() skips resolved and cleaned_up runs", async () => {
+test("StuckRunSweeperService - sweepOnce() skips resolved and cleaned_up runs [stuck-run-sweeper-service]", async () => {
   const { service } = createService({
     config: {
       sweepIntervalMs: 3_600_000,
@@ -620,7 +620,7 @@ test("StuckRunSweeperService - sweepOnce() skips resolved and cleaned_up runs", 
   service.dispose();
 });
 
-test("StuckRunSweeperService - sweepOnce() calls onKillExecution callback", async () => {
+test("StuckRunSweeperService - sweepOnce() calls onKillExecution callback [stuck-run-sweeper-service]", async () => {
   const { service, clock, killResults } = createService({
     config: {
       stuckThresholdMs: 60_000,
@@ -649,7 +649,7 @@ test("StuckRunSweeperService - sweepOnce() calls onKillExecution callback", asyn
   service.dispose();
 });
 
-test("StuckRunSweeperService - sweepOnce() calls onCleanupExecution callback", async () => {
+test("StuckRunSweeperService - sweepOnce() calls onCleanupExecution callback [stuck-run-sweeper-service]", async () => {
   const { service, clock } = createService({
     config: {
       stuckThresholdMs: 60_000,
@@ -681,7 +681,7 @@ test("StuckRunSweeperService - sweepOnce() calls onCleanupExecution callback", a
   service.dispose();
 });
 
-test("StuckRunSweeperService - sweepOnce() increments sweepCount on each run", async () => {
+test("StuckRunSweeperService - sweepOnce() increments sweepCount on each run [stuck-run-sweeper-service]", async () => {
   const { service, clock } = createService({
     config: {
       stuckThresholdMs: 60_000,
@@ -705,7 +705,7 @@ test("StuckRunSweeperService - sweepOnce() increments sweepCount on each run", a
   service.dispose();
 });
 
-test("StuckRunSweeperService - metrics tracking through full lifecycle", async () => {
+test("StuckRunSweeperService - metrics tracking through full lifecycle [stuck-run-sweeper-service]", async () => {
   const { service, clock } = createService({
     config: {
       stuckThresholdMs: 60_000,
@@ -748,7 +748,7 @@ test("StuckRunSweeperService - metrics tracking through full lifecycle", async (
 // Tests: Edge Cases
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("StuckRunSweeperService - sweepOnce() with no tracked runs", async () => {
+test("StuckRunSweeperService - sweepOnce() with no tracked runs [stuck-run-sweeper-service]", async () => {
   const { service } = createService();
 
   service.start();
@@ -759,7 +759,7 @@ test("StuckRunSweeperService - sweepOnce() with no tracked runs", async () => {
   service.dispose();
 });
 
-test("StuckRunSweeperService - kill callback returning false logs warning but continues", async () => {
+test("StuckRunSweeperService - kill callback returning false logs warning but continues [stuck-run-sweeper-service]", async () => {
   const { service, clock, killResults } = createService({
     config: {
       stuckThresholdMs: 60_000,
@@ -791,7 +791,7 @@ test("StuckRunSweeperService - kill callback returning false logs warning but co
   service.dispose();
 });
 
-test("StuckRunSweeperService - cleanup callback returning false logs warning but continues", async () => {
+test("StuckRunSweeperService - cleanup callback returning false logs warning but continues [stuck-run-sweeper-service]", async () => {
   const { service, clock, cleanupResults } = createService({
     config: {
       stuckThresholdMs: 60_000,
@@ -830,7 +830,7 @@ test("StuckRunSweeperService - cleanup callback returning false logs warning but
 // Tests: reportProgress
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("StuckRunSweeperService - reportProgress() updates lastProgressAt", () => {
+test("StuckRunSweeperService - reportProgress() updates lastProgressAt [stuck-run-sweeper-service]", () => {
   const { service, clock } = createService({
     config: { sweepIntervalMs: 3_600_000 },
   });
@@ -852,7 +852,7 @@ test("StuckRunSweeperService - reportProgress() updates lastProgressAt", () => {
   service.dispose();
 });
 
-test("StuckRunSweeperService - reportProgress() on unknown run is no-op", () => {
+test("StuckRunSweeperService - reportProgress() on unknown run is no-op [stuck-run-sweeper-service]", () => {
   const { service } = createService();
 
   // Should not throw
@@ -865,7 +865,7 @@ test("StuckRunSweeperService - reportProgress() on unknown run is no-op", () => 
 // Tests: Factory
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("StuckRunSweeperService - createStuckRunSweeperService factory works", () => {
+test("StuckRunSweeperService - createStuckRunSweeperService factory works [stuck-run-sweeper-service]", () => {
   const service = createStuckRunSweeperService({
     haLevel: "HA_2",
   });
@@ -876,7 +876,7 @@ test("StuckRunSweeperService - createStuckRunSweeperService factory works", () =
   service.dispose();
 });
 
-test("StuckRunSweeperService - factory with all options", () => {
+test("StuckRunSweeperService - factory with all options [stuck-run-sweeper-service]", () => {
   const detectedRuns: StuckRun[] = [];
   const service = createStuckRunSweeperService({
     haLevel: "HA_1",
@@ -905,7 +905,7 @@ test("StuckRunSweeperService - factory with all options", () => {
 // Tests: Concurrent Operations
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("StuckRunSweeperService - concurrent sweepOnce() calls are handled", async () => {
+test("StuckRunSweeperService - concurrent sweepOnce() calls are handled [stuck-run-sweeper-service]", async () => {
   const { service, clock } = createService({
     config: {
       stuckThresholdMs: 60_000,
@@ -934,7 +934,7 @@ test("StuckRunSweeperService - concurrent sweepOnce() calls are handled", async 
   service.dispose();
 });
 
-test("StuckRunSweeperService - concurrent trackRun() calls are handled", () => {
+test("StuckRunSweeperService - concurrent trackRun() calls are handled [stuck-run-sweeper-service]", () => {
   const { service } = createService();
 
   service.start();
@@ -950,7 +950,7 @@ test("StuckRunSweeperService - concurrent trackRun() calls are handled", () => {
   service.dispose();
 });
 
-test("StuckRunSweeperService - concurrent markRunComplete() calls are handled", () => {
+test("StuckRunSweeperService - concurrent markRunComplete() calls are handled [stuck-run-sweeper-service]", () => {
   const { service } = createService();
 
   service.start();
@@ -972,7 +972,7 @@ test("StuckRunSweeperService - concurrent markRunComplete() calls are handled", 
 // Tests: State Transitions
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("StuckRunSweeperService - run transitions from pending to warning to killed to cleaned_up", async () => {
+test("StuckRunSweeperService - run transitions from pending to warning to killed to cleaned_up [stuck-run-sweeper-service]", async () => {
   const { service, clock } = createService({
     config: {
       stuckThresholdMs: 60_000,
@@ -1019,7 +1019,7 @@ test("StuckRunSweeperService - run transitions from pending to warning to killed
   service.dispose();
 });
 
-test("StuckRunSweeperService - stuck threshold checks both timeSinceProgress and timeSinceStart", async () => {
+test("StuckRunSweeperService - stuck threshold checks both timeSinceProgress and timeSinceStart [stuck-run-sweeper-service]", async () => {
   const { service, clock } = createService({
     config: {
       stuckThresholdMs: 60_000,
@@ -1041,7 +1041,7 @@ test("StuckRunSweeperService - stuck threshold checks both timeSinceProgress and
   service.dispose();
 });
 
-test("StuckRunSweeperService - run in warning state does not get re-detected", async () => {
+test("StuckRunSweeperService - run in warning state does not get re-detected [stuck-run-sweeper-service]", async () => {
   const { service, clock } = createService({
     config: {
       stuckThresholdMs: 60_000,
@@ -1074,7 +1074,7 @@ test("StuckRunSweeperService - run in warning state does not get re-detected", a
   service.dispose();
 });
 
-test("StuckRunSweeperService - run in killed state does not get re-killed", async () => {
+test("StuckRunSweeperService - run in killed state does not get re-killed [stuck-run-sweeper-service]", async () => {
   const { service, clock } = createService({
     config: {
       stuckThresholdMs: 60_000,
@@ -1116,7 +1116,7 @@ test("StuckRunSweeperService - run in killed state does not get re-killed", asyn
 // Tests: Sweep Interval Edge Cases
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("StuckRunSweeperService - sweepOnce returns empty when disposed mid-sweep", async () => {
+test("StuckRunSweeperService - sweepOnce returns empty when disposed mid-sweep [stuck-run-sweeper-service]", async () => {
   const { service, clock } = createService({
     config: {
       stuckThresholdMs: 60_000,
@@ -1136,7 +1136,7 @@ test("StuckRunSweeperService - sweepOnce returns empty when disposed mid-sweep",
   assert.deepEqual(result, []);
 });
 
-test("StuckRunSweeperService - sweepOnce returns empty after stop", async () => {
+test("StuckRunSweeperService - sweepOnce returns empty after stop [stuck-run-sweeper-service]", async () => {
   const { service, clock } = createService({
     config: {
       stuckThresholdMs: 60_000,

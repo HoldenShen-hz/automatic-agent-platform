@@ -90,13 +90,13 @@ function createMockAsyncDb() {
   };
 }
 
-test("PostgresHotUpgradeRepository is instantiable", () => {
+test("PostgresHotUpgradeRepository is instantiable [hot-upgrade-repository-postgres]", () => {
   const mockDb = createMockAsyncDb() as any;
   const repo = new PostgresHotUpgradeRepository(mockDb);
   assert.ok(repo instanceof PostgresHotUpgradeRepository);
 });
 
-test("PostgresHotUpgradeRepository implements HotUpgradeRepository interface", () => {
+test("PostgresHotUpgradeRepository implements HotUpgradeRepository interface [hot-upgrade-repository-postgres]", () => {
   const mockDb = createMockAsyncDb() as any;
   const repo = new PostgresHotUpgradeRepository(mockDb);
 
@@ -125,7 +125,7 @@ test("PostgresHotUpgradeRepository implements HotUpgradeRepository interface", (
   assert.equal(typeof repo.listUpgradeAudits, "function");
 });
 
-test("PostgresHotUpgradeRepository.upsertVersionCompatibility inserts compatibility record with ON CONFLICT", async () => {
+test("PostgresHotUpgradeRepository.upsertVersionCompatibility inserts compatibility record with ON CONFLICT [hot-upgrade-repository-postgres]", async () => {
   const mockDb = createMockAsyncDb() as any;
   const repo = new PostgresHotUpgradeRepository(mockDb);
 
@@ -148,7 +148,7 @@ test("PostgresHotUpgradeRepository.upsertVersionCompatibility inserts compatibil
   assert.equal(saved.rollback_supported, 1);
 });
 
-test("PostgresHotUpgradeRepository.insertUpgradePlan inserts plan record", async () => {
+test("PostgresHotUpgradeRepository.insertUpgradePlan inserts plan record [hot-upgrade-repository-postgres]", async () => {
   const mockDb = createMockAsyncDb() as any;
   const repo = new PostgresHotUpgradeRepository(mockDb);
 
@@ -184,7 +184,7 @@ test("PostgresHotUpgradeRepository.insertUpgradePlan inserts plan record", async
   assert.equal(saved.status, "pending");
 });
 
-test("PostgresHotUpgradeRepository.insertUpgradeBatch inserts batch record", async () => {
+test("PostgresHotUpgradeRepository.insertUpgradeBatch inserts batch record [hot-upgrade-repository-postgres]", async () => {
   const mockDb = createMockAsyncDb() as any;
   const repo = new PostgresHotUpgradeRepository(mockDb);
 
@@ -209,7 +209,7 @@ test("PostgresHotUpgradeRepository.insertUpgradeBatch inserts batch record", asy
   assert.equal(saved.batch_number, 1);
 });
 
-test("PostgresHotUpgradeRepository.insertRollbackTrigger inserts trigger record", async () => {
+test("PostgresHotUpgradeRepository.insertRollbackTrigger inserts trigger record [hot-upgrade-repository-postgres]", async () => {
   const mockDb = createMockAsyncDb() as any;
   const repo = new PostgresHotUpgradeRepository(mockDb);
 
@@ -231,7 +231,7 @@ test("PostgresHotUpgradeRepository.insertRollbackTrigger inserts trigger record"
   assert.equal(saved.reason_code, "health_check_failed");
 });
 
-test("PostgresHotUpgradeRepository.insertUpgradeAudit inserts audit record", async () => {
+test("PostgresHotUpgradeRepository.insertUpgradeAudit inserts audit record [hot-upgrade-repository-postgres]", async () => {
   const mockDb = createMockAsyncDb() as any;
   const repo = new PostgresHotUpgradeRepository(mockDb);
 
@@ -254,7 +254,7 @@ test("PostgresHotUpgradeRepository.insertUpgradeAudit inserts audit record", asy
   assert.equal(saved.event_type, "upgrade_started");
 });
 
-test("PostgresHotUpgradeRepository.updateUpgradePlanStatus updates plan status", async () => {
+test("PostgresHotUpgradeRepository.updateUpgradePlanStatus updates plan status [hot-upgrade-repository-postgres]", async () => {
   const mockDb = createMockAsyncDb() as any;
   const repo = new PostgresHotUpgradeRepository(mockDb);
 
@@ -266,7 +266,7 @@ test("PostgresHotUpgradeRepository.updateUpgradePlanStatus updates plan status",
   assert.ok(true);
 });
 
-test("PostgresHotUpgradeRepository.updateUpgradeBatch updates batch status", async () => {
+test("PostgresHotUpgradeRepository.updateUpgradeBatch updates batch status [hot-upgrade-repository-postgres]", async () => {
   const mockDb = createMockAsyncDb() as any;
   const repo = new PostgresHotUpgradeRepository(mockDb);
 

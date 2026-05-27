@@ -343,7 +343,7 @@ export class ComplianceReportPipelineService {
   private readonly accessLog = new Map<string, ComplianceReportAccessReceipt[]>();
   private readonly evidenceMapper = new EvidenceMapperService();
   private readonly renderer = new ComplianceReportRendererService();
-  private readonly registry: ComplianceTemplateRegistryService<ComplianceReportTemplateDefinition>;
+  private readonly registry: ComplianceTemplateRegistryService;
   private readonly schedulePolicy = new ComplianceFrequencySchedulerService();
   private readonly auditorAccess = new ComplianceAuditorAccessService();
 
@@ -353,7 +353,7 @@ export class ComplianceReportPipelineService {
   }
 
   public generate(request: ComplianceReportRequest): ComplianceReportArtifact {
-    const template = this.registry.find(request.templateId) ?? findComplianceTemplate(this.templates, request.templateId);
+    const template = this.registry.find(request.templateId);
     if (template == null) {
       throw new Error(`compliance_report.template_not_found:${request.templateId}`);
     }
@@ -472,7 +472,7 @@ export class ComplianceReportPipelineService {
   }
 
   private buildSections(
-    template: ComplianceReportTemplateDefinition,
+    template: import("./template-registry/index.js").ComplianceReportTemplate,
     evidenceMap: Readonly<Record<string, readonly string[]>>,
     missingEvidenceTypes: readonly string[],
     quality: {

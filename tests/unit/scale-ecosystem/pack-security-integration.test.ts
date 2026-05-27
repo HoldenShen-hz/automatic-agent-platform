@@ -28,7 +28,7 @@ function sha256(value: string): string {
 // PackSecurityService Integration
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("PackSecurityService.runSecurityScan produces scan result compatible with pack security types", async () => {
+test("PackSecurityService.runSecurityScan produces scan result compatible with pack security types [pack-security-integration]", async () => {
   const service = new PackSecurityService();
   const sourceCode = "console.log('hello');";
 
@@ -51,7 +51,7 @@ test("PackSecurityService.runSecurityScan produces scan result compatible with p
   assert.ok(typeof result.scanDurationMs === "number");
 });
 
-test("PackSecurityService detects dangerous patterns and produces security issues", async () => {
+test("PackSecurityService detects dangerous patterns and produces security issues [pack-security-integration]", async () => {
   const service = new PackSecurityService();
   const maliciousCode = "exec(userInput); eval(userData);";
 
@@ -72,7 +72,7 @@ test("PackSecurityService detects dangerous patterns and produces security issue
   assert.ok(codes.includes("SAND001") || codes.includes("SAND010"));
 });
 
-test("PackSecurityService with custom fetch returns vulnerability results", async () => {
+test("PackSecurityService with custom fetch returns vulnerability results [pack-security-integration]", async () => {
   const service = new PackSecurityService({
     fetchImpl: (async () => ({
       ok: true,
@@ -99,7 +99,7 @@ test("PackSecurityService with custom fetch returns vulnerability results", asyn
   assert.equal(vulnerabilities[0]!.vulnerabilities.length, 1);
 });
 
-test("PackSecurityService detectDependencyConflicts returns proper structure", () => {
+test("PackSecurityService detectDependencyConflicts returns proper structure [pack-security-integration]", () => {
   const service = new PackSecurityService();
 
   const result = service.detectDependencyConflicts(
@@ -125,7 +125,7 @@ test("PackSecurityService detectDependencyConflicts returns proper structure", (
 // PluginTrustStore Integration
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("PluginTrustStore works with security evaluation", () => {
+test("PluginTrustStore works with security evaluation [pack-security-integration]", () => {
   const store = new PluginTrustStore();
 
   // Register a trust root
@@ -168,7 +168,7 @@ test("PluginTrustStore works with security evaluation", () => {
   assert.equal(decision.requiredIsolationMode, "dedicated_pool");
 });
 
-test("PluginTrustStore blocks unverified artifacts", () => {
+test("PluginTrustStore blocks unverified artifacts [pack-security-integration]", () => {
   const store = new PluginTrustStore();
 
   // Register trust root
@@ -197,7 +197,7 @@ test("PluginTrustStore blocks unverified artifacts", () => {
   assert.ok(decision.blockedBy.length > 0);
 });
 
-test("PluginTrustStore revocation blocks artifacts", () => {
+test("PluginTrustStore revocation blocks artifacts [pack-security-integration]", () => {
   const store = new PluginTrustStore();
 
   store.registerTrustRoot({
@@ -245,7 +245,7 @@ test("PluginTrustStore revocation blocks artifacts", () => {
 // End-to-End Security Workflow
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("End-to-end: Security scan + policy evaluation workflow", async () => {
+test("End-to-end: Security scan + policy evaluation workflow [pack-security-integration]", async () => {
   const securityService = new PackSecurityService();
   const trustStore = new PluginTrustStore();
 
@@ -303,7 +303,7 @@ test("End-to-end: Security scan + policy evaluation workflow", async () => {
   assert.equal(report.trustEvaluation.trusted, true);
 });
 
-test("End-to-end: Malicious pack blocked by scan and policy", async () => {
+test("End-to-end: Malicious pack blocked by scan and policy [pack-security-integration]", async () => {
   const securityService = new PackSecurityService();
 
   // Malicious code
@@ -340,7 +340,7 @@ test("End-to-end: Malicious pack blocked by scan and policy", async () => {
   assert.ok(report.trustEvaluation.blockingReasons.length > 0);
 });
 
-test("End-to-end: Trusted pack with vulnerabilities but allowed by moderate policy", async () => {
+test("End-to-end: Trusted pack with vulnerabilities but allowed by moderate policy [pack-security-integration]", async () => {
   const securityService = new PackSecurityService();
 
   // Safe code but with dependency vulnerability
@@ -387,7 +387,7 @@ test("End-to-end: Trusted pack with vulnerabilities but allowed by moderate poli
 // Policy Selection Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("Default strict policy is appropriate for production", () => {
+test("Default strict policy is appropriate for production [pack-security-integration]", () => {
   const strictPolicy = DEFAULT_SECURITY_POLICIES.find((p) => p.policyId === "default-strict")!;
 
   assert.equal(strictPolicy.enabled, true);
@@ -396,7 +396,7 @@ test("Default strict policy is appropriate for production", () => {
   assert.equal(strictPolicy.criticalVulnerabilitiesBlockInstall, true);
 });
 
-test("Moderate policy balances security and usability", () => {
+test("Moderate policy balances security and usability [pack-security-integration]", () => {
   const moderatePolicy = DEFAULT_SECURITY_POLICIES.find((p) => p.policyId === "default-moderate")!;
 
   // Moderate policy should allow more flexibility
@@ -408,13 +408,13 @@ test("Moderate policy balances security and usability", () => {
   assert.ok(moderatePolicy.maxDependencyVulnerabilities >= 5);
 });
 
-test("All policies have unique IDs", () => {
+test("All policies have unique IDs [pack-security-integration]", () => {
   const policyIds = DEFAULT_SECURITY_POLICIES.map((p) => p.policyId);
   const uniqueIds = new Set(policyIds);
   assert.equal(uniqueIds.size, policyIds.length);
 });
 
-test("All policies have required fields", () => {
+test("All policies have required fields [pack-security-integration]", () => {
   for (const policy of DEFAULT_SECURITY_POLICIES) {
     assert.ok(policy.policyId);
     assert.ok(policy.name);

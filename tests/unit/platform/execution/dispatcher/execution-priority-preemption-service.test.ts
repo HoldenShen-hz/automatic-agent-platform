@@ -101,7 +101,7 @@ function createPreemptionRequest(ticket: ExecutionTicketRecord): PriorityPreempt
 // ExecutionPriorityPreemptionService construction
 // ---------------------------------------------------------------------------
 
-test("ExecutionPriorityPreemptionService can be instantiated", () => {
+test("ExecutionPriorityPreemptionService can be instantiated [execution-priority-preemption-service]", () => {
   const db = createMockDb();
   const store = createMockStore();
   const service = new ExecutionPriorityPreemptionService(db, store);
@@ -112,7 +112,7 @@ test("ExecutionPriorityPreemptionService can be instantiated", () => {
 // preemptForUrgentTicket returns not_preempted for non-urgent ticket
 // ---------------------------------------------------------------------------
 
-test("preemptForUrgentTicket returns not_preempted for normal priority ticket", () => {
+test("preemptForUrgentTicket returns not_preempted for normal priority ticket [execution-priority-preemption-service]", () => {
   const db = createMockDb();
   const store = createMockStore();
   const service = new ExecutionPriorityPreemptionService(db, store);
@@ -125,7 +125,7 @@ test("preemptForUrgentTicket returns not_preempted for normal priority ticket", 
   assert.equal(decision.trace.reasonCode, "ticket_not_urgent");
 });
 
-test("preemptForUrgentTicket returns not_preempted for high priority ticket", () => {
+test("preemptForUrgentTicket returns not_preempted for high priority ticket [execution-priority-preemption-service]", () => {
   const db = createMockDb();
   const store = createMockStore();
   const service = new ExecutionPriorityPreemptionService(db, store);
@@ -138,7 +138,7 @@ test("preemptForUrgentTicket returns not_preempted for high priority ticket", ()
   assert.equal(decision.trace.reasonCode, "ticket_not_urgent");
 });
 
-test("preemptForUrgentTicket returns not_preempted for low priority ticket", () => {
+test("preemptForUrgentTicket returns not_preempted for low priority ticket [execution-priority-preemption-service]", () => {
   const db = createMockDb();
   const store = createMockStore();
   const service = new ExecutionPriorityPreemptionService(db, store);
@@ -155,7 +155,7 @@ test("preemptForUrgentTicket returns not_preempted for low priority ticket", () 
 // preemptForUrgentTicket returns not_preempted when no safe candidate
 // ---------------------------------------------------------------------------
 
-test("preemptForUrgentTicket returns not_preempted with no_safe_preemption_candidate for urgent ticket", () => {
+test("preemptForUrgentTicket returns not_preempted with no_safe_preemption_candidate for urgent ticket [execution-priority-preemption-service]", () => {
   const db = createMockDb();
   const store = createMockStore();
   const service = new ExecutionPriorityPreemptionService(db, store);
@@ -172,7 +172,7 @@ test("preemptForUrgentTicket returns not_preempted with no_safe_preemption_candi
 // preemptForUrgentTicket trace properties
 // ---------------------------------------------------------------------------
 
-test("preemptForUrgentTicket trace has correct triggerPriority for urgent ticket", () => {
+test("preemptForUrgentTicket trace has correct triggerPriority for urgent ticket [execution-priority-preemption-service]", () => {
   const db = createMockDb();
   const store = createMockStore();
   const service = new ExecutionPriorityPreemptionService(db, store);
@@ -184,7 +184,7 @@ test("preemptForUrgentTicket trace has correct triggerPriority for urgent ticket
   assert.equal(decision.trace.triggerPriority, "urgent");
 });
 
-test("preemptForUrgentTicket trace has null preempted fields when not preempted", () => {
+test("preemptForUrgentTicket trace has null preempted fields when not preempted [execution-priority-preemption-service]", () => {
   const db = createMockDb();
   const store = createMockStore();
   const service = new ExecutionPriorityPreemptionService(db, store);
@@ -206,7 +206,7 @@ test("preemptForUrgentTicket trace has null preempted fields when not preempted"
 // preemptForUrgentTicket with different dispatch targets
 // ---------------------------------------------------------------------------
 
-test("preemptForUrgentTicket handles local_only dispatch target", () => {
+test("preemptForUrgentTicket handles local_only dispatch target [execution-priority-preemption-service]", () => {
   const db = createMockDb();
   const store = createMockStore();
   const service = new ExecutionPriorityPreemptionService(db, store);
@@ -221,7 +221,7 @@ test("preemptForUrgentTicket handles local_only dispatch target", () => {
   assert.equal(decision.outcome, "not_preempted");
 });
 
-test("preemptForUrgentTicket handles require_remote dispatch target", () => {
+test("preemptForUrgentTicket handles require_remote dispatch target [execution-priority-preemption-service]", () => {
   const db = createMockDb();
   const store = createMockStore();
   const service = new ExecutionPriorityPreemptionService(db, store);
@@ -236,7 +236,7 @@ test("preemptForUrgentTicket handles require_remote dispatch target", () => {
   assert.equal(decision.outcome, "not_preempted");
 });
 
-test("preemptForUrgentTicket handles prefer_remote dispatch target", () => {
+test("preemptForUrgentTicket handles prefer_remote dispatch target [execution-priority-preemption-service]", () => {
   const db = createMockDb();
   const store = createMockStore();
   const service = new ExecutionPriorityPreemptionService(db, store);
@@ -255,7 +255,7 @@ test("preemptForUrgentTicket handles prefer_remote dispatch target", () => {
 // preemptForUrgentTicket with different isolation levels
 // ---------------------------------------------------------------------------
 
-test("preemptForUrgentTicket handles hardened isolation requirement", () => {
+test("preemptForUrgentTicket handles hardened isolation requirement [execution-priority-preemption-service]", () => {
   const db = createMockDb();
   const store = createMockStore();
   const service = new ExecutionPriorityPreemptionService(db, store);
@@ -270,7 +270,7 @@ test("preemptForUrgentTicket handles hardened isolation requirement", () => {
   assert.equal(decision.outcome, "not_preempted");
 });
 
-test("preemptForUrgentTicket handles strict isolation requirement", () => {
+test("preemptForUrgentTicket handles strict isolation requirement [execution-priority-preemption-service]", () => {
   const db = createMockDb();
   const store = createMockStore();
   const service = new ExecutionPriorityPreemptionService(db, store);
@@ -289,7 +289,7 @@ test("preemptForUrgentTicket handles strict isolation requirement", () => {
 // preemptForUrgentTicket with required capabilities
 // ---------------------------------------------------------------------------
 
-test("preemptForUrgentTicket handles empty required capabilities", () => {
+test("preemptForUrgentTicket handles empty required capabilities [execution-priority-preemption-service]", () => {
   const db = createMockDb();
   const store = createMockStore();
   const service = new ExecutionPriorityPreemptionService(db, store);
@@ -302,7 +302,7 @@ test("preemptForUrgentTicket handles empty required capabilities", () => {
   assert.equal(decision.outcome, "not_preempted");
 });
 
-test("preemptForUrgentTicket handles non-empty required capabilities", () => {
+test("preemptForUrgentTicket handles non-empty required capabilities [execution-priority-preemption-service]", () => {
   const db = createMockDb();
   const store = createMockStore();
   const service = new ExecutionPriorityPreemptionService(db, store);
@@ -321,7 +321,7 @@ test("preemptForUrgentTicket handles non-empty required capabilities", () => {
 // preemptForUrgentTicket with includeDegraded option
 // ---------------------------------------------------------------------------
 
-test("preemptForUrgentTicket handles includeDegraded true", () => {
+test("preemptForUrgentTicket handles includeDegraded true [execution-priority-preemption-service]", () => {
   const db = createMockDb();
   const store = createMockStore();
   const service = new ExecutionPriorityPreemptionService(db, store);
@@ -336,7 +336,7 @@ test("preemptForUrgentTicket handles includeDegraded true", () => {
   assert.equal(decision.outcome, "not_preempted");
 });
 
-test("preemptForUrgentTicket handles preferredWorkerId", () => {
+test("preemptForUrgentTicket handles preferredWorkerId [execution-priority-preemption-service]", () => {
   const db = createMockDb();
   const store = createMockStore();
   const service = new ExecutionPriorityPreemptionService(db, store);
@@ -356,7 +356,7 @@ test("preemptForUrgentTicket handles preferredWorkerId", () => {
 // preemptForUrgentTicket with requiredRepoVersion
 // ---------------------------------------------------------------------------
 
-test("preemptForUrgentTicket handles null requiredRepoVersion", () => {
+test("preemptForUrgentTicket handles null requiredRepoVersion [execution-priority-preemption-service]", () => {
   const db = createMockDb();
   const store = createMockStore();
   const service = new ExecutionPriorityPreemptionService(db, store);
@@ -371,7 +371,7 @@ test("preemptForUrgentTicket handles null requiredRepoVersion", () => {
   assert.equal(decision.outcome, "not_preempted");
 });
 
-test("preemptForUrgentTicket handles non-null requiredRepoVersion", () => {
+test("preemptForUrgentTicket handles non-null requiredRepoVersion [execution-priority-preemption-service]", () => {
   const db = createMockDb();
   const store = createMockStore();
   const service = new ExecutionPriorityPreemptionService(db, store);

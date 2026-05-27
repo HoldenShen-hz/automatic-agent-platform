@@ -10,7 +10,7 @@ import type {
 } from "../../../../src/scale-ecosystem/marketplace/ha-program-service.js";
 import type { EnvironmentName } from "../../../../src/platform/contracts/types/domain.js";
 
-test("HaProgramInput structure is correct", () => {
+test("HaProgramInput structure is correct [ha-program-service-types]", () => {
   const input: HaProgramInput = {
     environment: "prod",
     generatedAt: "2026-04-14T00:00:00.000Z",
@@ -20,7 +20,7 @@ test("HaProgramInput structure is correct", () => {
   assert.equal(input.generatedAt, "2026-04-14T00:00:00.000Z");
 });
 
-test("HaProgramInput allows minimal definition", () => {
+test("HaProgramInput allows minimal definition [ha-program-service-types]", () => {
   const input: HaProgramInput = {
     environment: "staging",
   };
@@ -29,7 +29,7 @@ test("HaProgramInput allows minimal definition", () => {
   assert.equal(input.generatedAt, undefined);
 });
 
-test("HaProgramComponent structure is correct", () => {
+test("HaProgramComponent structure is correct [ha-program-service-types]", () => {
   const component: HaProgramComponent = {
     componentId: "postgres",
     currentMode: "single_node",
@@ -45,7 +45,7 @@ test("HaProgramComponent structure is correct", () => {
   assert.equal(component.blockers.length, 0);
 });
 
-test("HaProgramComponent allows componentId values", () => {
+test("HaProgramComponent allows componentId values [ha-program-service-types]", () => {
   const componentIds: HaProgramComponent["componentId"][] = [
     "coordinator",
     "postgres",
@@ -65,7 +65,7 @@ test("HaProgramComponent allows componentId values", () => {
   }
 });
 
-test("HaProgramComponent allows blockers when not ready", () => {
+test("HaProgramComponent allows blockers when not ready [ha-program-service-types]", () => {
   const component: HaProgramComponent = {
     componentId: "redis_queue",
     currentMode: "standalone",
@@ -79,7 +79,7 @@ test("HaProgramComponent allows blockers when not ready", () => {
   assert.ok(component.blockers.includes("missing_failover_config"));
 });
 
-test("HaProgramReport structure is correct", () => {
+test("HaProgramReport structure is correct [ha-program-service-types]", () => {
   const report: HaProgramReport = {
     reportId: "ha_report_123",
     generatedAt: "2026-04-14T00:00:00.000Z",
@@ -98,7 +98,7 @@ test("HaProgramReport structure is correct", () => {
   assert.equal(report.rolloutPhases.length, 3);
 });
 
-test("HaProgramReport overallStatus accepts all valid values", () => {
+test("HaProgramReport overallStatus accepts all valid values [ha-program-service-types]", () => {
   const statuses: HaProgramReport["overallStatus"][] = ["warning", "fail", "pass"];
 
   for (const status of statuses) {
@@ -116,7 +116,7 @@ test("HaProgramReport overallStatus accepts all valid values", () => {
   }
 });
 
-test("HaProgramExportResult structure is correct", () => {
+test("HaProgramExportResult structure is correct [ha-program-service-types]", () => {
   const result: HaProgramExportResult = {
     report: {
       reportId: "ha_export",
@@ -151,7 +151,7 @@ test("HaProgramExportResult structure is correct", () => {
   assert.equal(result.markdownArtifact.artifactId, "art_ha_md");
 });
 
-test("HaProgramServiceOptions structure is correct", () => {
+test("HaProgramServiceOptions structure is correct [ha-program-service-types]", () => {
   const options: HaProgramServiceOptions = {
     artifactStoreOptions: {
       rootDir: "/var/ha/artifacts",
@@ -162,7 +162,7 @@ test("HaProgramServiceOptions structure is correct", () => {
   assert.equal(options.artifactStoreOptions?.rootDir, "/var/ha/artifacts");
 });
 
-test("HaProgramServiceOptions allows empty options", () => {
+test("HaProgramServiceOptions allows empty options [ha-program-service-types]", () => {
   const options: HaProgramServiceOptions = {};
   assert.equal(options.artifactStoreOptions, undefined);
 });

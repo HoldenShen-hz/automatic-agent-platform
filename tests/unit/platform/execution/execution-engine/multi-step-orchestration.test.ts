@@ -14,7 +14,7 @@ import {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-test("runMultiStepOrchestration basic execution", async () => {
+test("runMultiStepOrchestration basic execution [multi-step-orchestration]", async () => {
   const dbPath = join(__dirname, "test-multi-step.db");
 
   if (existsSync(dbPath)) {
@@ -41,7 +41,7 @@ test("runMultiStepOrchestration basic execution", async () => {
   }
 });
 
-test("runMultiStepOrchestration with oapeflir plan request", async () => {
+test("runMultiStepOrchestration with oapeflir plan request [multi-step-orchestration]", async () => {
   const dbPath = join(__dirname, "test-oapeflir.db");
 
   if (existsSync(dbPath)) {
@@ -76,7 +76,7 @@ test("runMultiStepOrchestration with oapeflir plan request", async () => {
   }
 });
 
-test("runMultiStepOrchestration creates task snapshot", async () => {
+test("runMultiStepOrchestration creates task snapshot [multi-step-orchestration]", async () => {
   const dbPath = join(__dirname, "test-snapshot.db");
 
   if (existsSync(dbPath)) {
@@ -102,7 +102,7 @@ test("runMultiStepOrchestration creates task snapshot", async () => {
   }
 });
 
-test("runMultiStepOrchestration workflow planning", async () => {
+test("runMultiStepOrchestration workflow planning [multi-step-orchestration]", async () => {
   const dbPath = join(__dirname, "test-planning.db");
 
   if (existsSync(dbPath)) {
@@ -129,7 +129,7 @@ test("runMultiStepOrchestration workflow planning", async () => {
   }
 });
 
-test("runMultiStepOrchestration routing", async () => {
+test("runMultiStepOrchestration routing [multi-step-orchestration]", async () => {
   const dbPath = join(__dirname, "test-routing.db");
 
   if (existsSync(dbPath)) {
@@ -155,15 +155,15 @@ test("runMultiStepOrchestration routing", async () => {
   }
 });
 
-test("executeMultiStepToolCallForTests is exported", () => {
+test("executeMultiStepToolCallForTests is exported [multi-step-orchestration]", () => {
   assert.ok(typeof executeMultiStepToolCallForTests === "function", "executeMultiStepToolCallForTests should be a function");
 });
 
-test("resetMultiStepToolRegistryForTests is exported", () => {
+test("resetMultiStepToolRegistryForTests is exported [multi-step-orchestration]", () => {
   assert.ok(typeof resetMultiStepToolRegistryForTests === "function", "resetMultiStepToolRegistryForTests should be a function");
 });
 
-test("runMultiStepOrchestration streamFrames property", async () => {
+test("runMultiStepOrchestration streamFrames property [multi-step-orchestration]", async () => {
   const dbPath = join(__dirname, "test-frames.db");
 
   if (existsSync(dbPath)) {
@@ -188,7 +188,7 @@ test("runMultiStepOrchestration streamFrames property", async () => {
   }
 });
 
-test("runMultiStepOrchestration with admission backpressure snapshot", async () => {
+test("runMultiStepOrchestration with admission backpressure snapshot [multi-step-orchestration]", async () => {
   const dbPath = join(__dirname, "test-backpressure.db");
 
   if (existsSync(dbPath)) {
@@ -225,7 +225,7 @@ test("runMultiStepOrchestration with admission backpressure snapshot", async () 
   }
 });
 
-test("runMultiStepOrchestration task status transitions", async () => {
+test("runMultiStepOrchestration task status transitions [multi-step-orchestration]", async () => {
   const dbPath = join(__dirname, "test-transitions.db");
 
   if (existsSync(dbPath)) {
@@ -255,7 +255,7 @@ test("runMultiStepOrchestration task status transitions", async () => {
   }
 });
 
-test("runMultiStepOrchestration compaction result", async () => {
+test("runMultiStepOrchestration compaction result [multi-step-orchestration]", async () => {
   const dbPath = join(__dirname, "test-compaction.db");
 
   if (existsSync(dbPath)) {
@@ -281,7 +281,7 @@ test("runMultiStepOrchestration compaction result", async () => {
   }
 });
 
-test("runMultiStepOrchestration handles workflowId in result", async () => {
+test("runMultiStepOrchestration handles workflowId in result [multi-step-orchestration]", async () => {
   const dbPath = join(__dirname, "test-workflow-id.db");
 
   if (existsSync(dbPath)) {
@@ -306,7 +306,7 @@ test("runMultiStepOrchestration handles workflowId in result", async () => {
   }
 });
 
-test("runMultiStepOrchestration with custom admission policy", async () => {
+test("runMultiStepOrchestration with custom admission policy [multi-step-orchestration]", async () => {
   const dbPath = join(__dirname, "test-custom-policy.db");
 
   if (existsSync(dbPath)) {
@@ -335,7 +335,7 @@ test("runMultiStepOrchestration with custom admission policy", async () => {
   }
 });
 
-test("runMultiStepOrchestration dependency edges in planned workflow", async () => {
+test("runMultiStepOrchestration dependency edges in planned workflow [multi-step-orchestration]", async () => {
   const dbPath = join(__dirname, "test-edges.db");
 
   if (existsSync(dbPath)) {
@@ -364,7 +364,7 @@ test("runMultiStepOrchestration dependency edges in planned workflow", async () 
 // OAPEFLIR Plan Parsing Tests
 // =============================================================================
 
-test("runMultiStepOrchestration with empty oapeflir plan steps", async () => {
+test("runMultiStepOrchestration with empty oapeflir plan steps [multi-step-orchestration]", async () => {
   const dbPath = join(__dirname, "test-empty-plan.db");
 
   if (existsSync(dbPath)) {
@@ -388,7 +388,7 @@ test("runMultiStepOrchestration with empty oapeflir plan steps", async () => {
   }
 });
 
-test("runMultiStepOrchestration oapeflir plan with multiple steps and dependencies", async () => {
+test("runMultiStepOrchestration oapeflir plan with multiple steps and dependencies [multi-step-orchestration]", async () => {
   const dbPath = join(__dirname, "test-multi-step-plan.db");
 
   if (existsSync(dbPath)) {
@@ -418,7 +418,7 @@ test("runMultiStepOrchestration oapeflir plan with multiple steps and dependenci
   }
 });
 
-test("runMultiStepOrchestration oapeflir plan with step retry policy", async () => {
+test("runMultiStepOrchestration oapeflir plan with step retry policy [multi-step-orchestration]", async () => {
   const dbPath = join(__dirname, "test-retry-plan.db");
 
   if (existsSync(dbPath)) {
@@ -451,7 +451,7 @@ test("runMultiStepOrchestration oapeflir plan with step retry policy", async () 
 // Admission Decision Tests
 // =============================================================================
 
-test("runMultiStepOrchestration with queuing admission decision", async () => {
+test("runMultiStepOrchestration with queuing admission decision [multi-step-orchestration]", async () => {
   const dbPath = join(__dirname, "test-queue-admission.db");
 
   if (existsSync(dbPath)) {
@@ -490,7 +490,7 @@ test("runMultiStepOrchestration with queuing admission decision", async () => {
   }
 });
 
-test("runMultiStepOrchestration with read-only mode rejection", async () => {
+test("runMultiStepOrchestration with read-only mode rejection [multi-step-orchestration]", async () => {
   const dbPath = join(__dirname, "test-readonly-admission.db");
 
   if (existsSync(dbPath)) {
@@ -529,7 +529,7 @@ test("runMultiStepOrchestration with read-only mode rejection", async () => {
   }
 });
 
-test("runMultiStepOrchestration with high priority task", async () => {
+test("runMultiStepOrchestration with high priority task [multi-step-orchestration]", async () => {
   const dbPath = join(__dirname, "test-high-priority.db");
 
   if (existsSync(dbPath)) {
@@ -554,7 +554,7 @@ test("runMultiStepOrchestration with high priority task", async () => {
   }
 });
 
-test("runMultiStepOrchestration with low priority task", async () => {
+test("runMultiStepOrchestration with low priority task [multi-step-orchestration]", async () => {
   const dbPath = join(__dirname, "test-low-priority.db");
 
   if (existsSync(dbPath)) {
@@ -582,7 +582,7 @@ test("runMultiStepOrchestration with low priority task", async () => {
 // Step Output Override Tests
 // =============================================================================
 
-test("runMultiStepOrchestration with stepOutputOverrides", async () => {
+test("runMultiStepOrchestration with stepOutputOverrides [multi-step-orchestration]", async () => {
   const dbPath = join(__dirname, "test-output-overrides.db");
 
   if (existsSync(dbPath)) {
@@ -612,7 +612,7 @@ test("runMultiStepOrchestration with stepOutputOverrides", async () => {
   }
 });
 
-test("runMultiStepOrchestration with multiple stepOutputOverrides", async () => {
+test("runMultiStepOrchestration with multiple stepOutputOverrides [multi-step-orchestration]", async () => {
   const dbPath = join(__dirname, "test-multi-overrides.db");
 
   if (existsSync(dbPath)) {
@@ -648,7 +648,7 @@ test("runMultiStepOrchestration with multiple stepOutputOverrides", async () => 
 // Context Budget Tokens Tests
 // =============================================================================
 
-test("runMultiStepOrchestration with custom contextBudgetTokens", async () => {
+test("runMultiStepOrchestration with custom contextBudgetTokens [multi-step-orchestration]", async () => {
   const dbPath = join(__dirname, "test-context-budget.db");
 
   if (existsSync(dbPath)) {
@@ -673,7 +673,7 @@ test("runMultiStepOrchestration with custom contextBudgetTokens", async () => {
   }
 });
 
-test("runMultiStepOrchestration with high contextBudgetTokens", async () => {
+test("runMultiStepOrchestration with high contextBudgetTokens [multi-step-orchestration]", async () => {
   const dbPath = join(__dirname, "test-high-context.db");
 
   if (existsSync(dbPath)) {
@@ -697,7 +697,7 @@ test("runMultiStepOrchestration with high contextBudgetTokens", async () => {
   }
 });
 
-test("runMultiStepOrchestration with low contextBudgetTokens", async () => {
+test("runMultiStepOrchestration with low contextBudgetTokens [multi-step-orchestration]", async () => {
   const dbPath = join(__dirname, "test-low-context.db");
 
   if (existsSync(dbPath)) {
@@ -725,7 +725,7 @@ test("runMultiStepOrchestration with low contextBudgetTokens", async () => {
 // Step Failure Injection Tests
 // =============================================================================
 
-test("runMultiStepOrchestration with stepFailureInjection", async () => {
+test("runMultiStepOrchestration with stepFailureInjection [multi-step-orchestration]", async () => {
   const dbPath = join(__dirname, "test-failure-injection.db");
 
   if (existsSync(dbPath)) {
@@ -753,7 +753,7 @@ test("runMultiStepOrchestration with stepFailureInjection", async () => {
 // Step Failure Plans Tests
 // =============================================================================
 
-test("runMultiStepOrchestration with stepFailurePlans - single failure", async () => {
+test("runMultiStepOrchestration with stepFailurePlans - single failure [multi-step-orchestration]", async () => {
   const dbPath = join(__dirname, "test-failure-plan-single.db");
 
   if (existsSync(dbPath)) {
@@ -783,7 +783,7 @@ test("runMultiStepOrchestration with stepFailurePlans - single failure", async (
   }
 });
 
-test("runMultiStepOrchestration with stepFailurePlans - multiple attempts", async () => {
+test("runMultiStepOrchestration with stepFailurePlans - multiple attempts [multi-step-orchestration]", async () => {
   const dbPath = join(__dirname, "test-failure-plan-multi.db");
 
   if (existsSync(dbPath)) {
@@ -817,7 +817,7 @@ test("runMultiStepOrchestration with stepFailurePlans - multiple attempts", asyn
   }
 });
 
-test("runMultiStepOrchestration with stepFailurePlans - string error codes", async () => {
+test("runMultiStepOrchestration with stepFailurePlans - string error codes [multi-step-orchestration]", async () => {
   const dbPath = join(__dirname, "test-failure-plan-string.db");
 
   if (existsSync(dbPath)) {
@@ -851,7 +851,7 @@ test("runMultiStepOrchestration with stepFailurePlans - string error codes", asy
 // Workflow Output Structure Tests
 // =============================================================================
 
-test("runMultiStepOrchestration workflow output contains taskId", async () => {
+test("runMultiStepOrchestration workflow output contains taskId [multi-step-orchestration]", async () => {
   const dbPath = join(__dirname, "test-output-taskid.db");
 
   if (existsSync(dbPath)) {
@@ -876,7 +876,7 @@ test("runMultiStepOrchestration workflow output contains taskId", async () => {
   }
 });
 
-test("runMultiStepOrchestration workflow output contains createdAt timestamp", async () => {
+test("runMultiStepOrchestration workflow output contains createdAt timestamp [multi-step-orchestration]", async () => {
   const dbPath = join(__dirname, "test-output-timestamp.db");
 
   if (existsSync(dbPath)) {
@@ -901,7 +901,7 @@ test("runMultiStepOrchestration workflow output contains createdAt timestamp", a
   }
 });
 
-test("runMultiStepOrchestration workflow has divisionId", async () => {
+test("runMultiStepOrchestration workflow has divisionId [multi-step-orchestration]", async () => {
   const dbPath = join(__dirname, "test-division-id.db");
 
   if (existsSync(dbPath)) {
@@ -925,7 +925,7 @@ test("runMultiStepOrchestration workflow has divisionId", async () => {
   }
 });
 
-test("runMultiStepOrchestration planned workflow has steps array", async () => {
+test("runMultiStepOrchestration planned workflow has steps array [multi-step-orchestration]", async () => {
   const dbPath = join(__dirname, "test-steps-array.db");
 
   if (existsSync(dbPath)) {
@@ -948,7 +948,7 @@ test("runMultiStepOrchestration planned workflow has steps array", async () => {
   }
 });
 
-test("runMultiStepOrchestration execution steps have required fields", async () => {
+test("runMultiStepOrchestration execution steps have required fields [multi-step-orchestration]", async () => {
   const dbPath = join(__dirname, "test-step-fields.db");
 
   if (existsSync(dbPath)) {
@@ -983,7 +983,7 @@ test("runMultiStepOrchestration execution steps have required fields", async () 
 // Request Title and Content Tests
 // =============================================================================
 
-test("runMultiStepOrchestration handles long request text", async () => {
+test("runMultiStepOrchestration handles long request text [multi-step-orchestration]", async () => {
   const dbPath = join(__dirname, "test-long-request.db");
 
   if (existsSync(dbPath)) {
@@ -1008,7 +1008,7 @@ test("runMultiStepOrchestration handles long request text", async () => {
   }
 });
 
-test("runMultiStepOrchestration handles special characters in request", async () => {
+test("runMultiStepOrchestration handles special characters in request [multi-step-orchestration]", async () => {
   const dbPath = join(__dirname, "test-special-chars.db");
 
   if (existsSync(dbPath)) {
@@ -1031,7 +1031,7 @@ test("runMultiStepOrchestration handles special characters in request", async ()
   }
 });
 
-test("runMultiStepOrchestration handles unicode in request", async () => {
+test("runMultiStepOrchestration handles unicode in request [multi-step-orchestration]", async () => {
   const dbPath = join(__dirname, "test-unicode.db");
 
   if (existsSync(dbPath)) {
@@ -1054,7 +1054,7 @@ test("runMultiStepOrchestration handles unicode in request", async () => {
   }
 });
 
-test("runMultiStepOrchestration handles empty title", async () => {
+test("runMultiStepOrchestration handles empty title [multi-step-orchestration]", async () => {
   const dbPath = join(__dirname, "test-empty-title.db");
 
   if (existsSync(dbPath)) {
@@ -1081,7 +1081,7 @@ test("runMultiStepOrchestration handles empty title", async () => {
 // Error Handling Tests
 // =============================================================================
 
-test("runMultiStepOrchestration handles empty request string", async () => {
+test("runMultiStepOrchestration handles empty request string [multi-step-orchestration]", async () => {
   const dbPath = join(__dirname, "test-empty-request.db");
 
   if (existsSync(dbPath)) {
@@ -1104,7 +1104,7 @@ test("runMultiStepOrchestration handles empty request string", async () => {
   }
 });
 
-test("runMultiStepOrchestration cleans up database on error", async () => {
+test("runMultiStepOrchestration cleans up database on error [multi-step-orchestration]", async () => {
   const dbPath = join(__dirname, "test-db-cleanup.db");
 
   if (existsSync(dbPath)) {
@@ -1134,7 +1134,7 @@ test("runMultiStepOrchestration cleans up database on error", async () => {
 // Routing Classification Tests
 // =============================================================================
 
-test("runMultiStepOrchestration routing contains classification", async () => {
+test("runMultiStepOrchestration routing contains classification [multi-step-orchestration]", async () => {
   const dbPath = join(__dirname, "test-classification.db");
 
   if (existsSync(dbPath)) {
@@ -1161,7 +1161,7 @@ test("runMultiStepOrchestration routing contains classification", async () => {
   }
 });
 
-test("runMultiStepOrchestration routing requires orchestration flag", async () => {
+test("runMultiStepOrchestration routing requires orchestration flag [multi-step-orchestration]", async () => {
   const dbPath = join(__dirname, "test-requires-orchestration.db");
 
   if (existsSync(dbPath)) {
@@ -1184,7 +1184,7 @@ test("runMultiStepOrchestration routing requires orchestration flag", async () =
   }
 });
 
-test("runMultiStepOrchestration routing has route reason", async () => {
+test("runMultiStepOrchestration routing has route reason [multi-step-orchestration]", async () => {
   const dbPath = join(__dirname, "test-route-reason.db");
 
   if (existsSync(dbPath)) {
@@ -1208,7 +1208,7 @@ test("runMultiStepOrchestration routing has route reason", async () => {
   }
 });
 
-test("runMultiStepOrchestration routing has route trace", async () => {
+test("runMultiStepOrchestration routing has route trace [multi-step-orchestration]", async () => {
   const dbPath = join(__dirname, "test-route-trace.db");
 
   if (existsSync(dbPath)) {
@@ -1235,7 +1235,7 @@ test("runMultiStepOrchestration routing has route trace", async () => {
 // OAPEFLIR Plan Edge Cases
 // =============================================================================
 
-test("runMultiStepOrchestration oapeflir plan without outputs uses default outputKey", async () => {
+test("runMultiStepOrchestration oapeflir plan without outputs uses default outputKey [multi-step-orchestration]", async () => {
   const dbPath = join(__dirname, "test-default-output.db");
 
   if (existsSync(dbPath)) {
@@ -1264,7 +1264,7 @@ test("runMultiStepOrchestration oapeflir plan without outputs uses default outpu
   }
 });
 
-test("runMultiStepOrchestration oapeflir plan uses first output as outputKey", async () => {
+test("runMultiStepOrchestration oapeflir plan uses first output as outputKey [multi-step-orchestration]", async () => {
   const dbPath = join(__dirname, "test-first-output.db");
 
   if (existsSync(dbPath)) {
@@ -1297,7 +1297,7 @@ test("runMultiStepOrchestration oapeflir plan uses first output as outputKey", a
 // Session and Task Record Tests
 // =============================================================================
 
-test("runMultiStepOrchestration creates session in result snapshot", async () => {
+test("runMultiStepOrchestration creates session in result snapshot [multi-step-orchestration]", async () => {
   const dbPath = join(__dirname, "test-session-snapshot.db");
 
   if (existsSync(dbPath)) {
@@ -1320,7 +1320,7 @@ test("runMultiStepOrchestration creates session in result snapshot", async () =>
   }
 });
 
-test("runMultiStepOrchestration creates workflow state in result snapshot", async () => {
+test("runMultiStepOrchestration creates workflow state in result snapshot [multi-step-orchestration]", async () => {
   const dbPath = join(__dirname, "test-workflow-snapshot.db");
 
   if (existsSync(dbPath)) {
@@ -1343,7 +1343,7 @@ test("runMultiStepOrchestration creates workflow state in result snapshot", asyn
   }
 });
 
-test("runMultiStepOrchestration task has correct source field", async () => {
+test("runMultiStepOrchestration task has correct source field [multi-step-orchestration]", async () => {
   const dbPath = join(__dirname, "test-task-source.db");
 
   if (existsSync(dbPath)) {
@@ -1367,7 +1367,7 @@ test("runMultiStepOrchestration task has correct source field", async () => {
   }
 });
 
-test("runMultiStepOrchestration task has estimated cost", async () => {
+test("runMultiStepOrchestration task has estimated cost [multi-step-orchestration]", async () => {
   const dbPath = join(__dirname, "test-task-cost.db");
 
   if (existsSync(dbPath)) {
@@ -1395,7 +1395,7 @@ test("runMultiStepOrchestration task has estimated cost", async () => {
 // Stream Bridge Tests
 // =============================================================================
 
-test("runMultiStepOrchestration returns streamFrames array", async () => {
+test("runMultiStepOrchestration returns streamFrames array [multi-step-orchestration]", async () => {
   const dbPath = join(__dirname, "test-stream-frames-result.db");
 
   if (existsSync(dbPath)) {

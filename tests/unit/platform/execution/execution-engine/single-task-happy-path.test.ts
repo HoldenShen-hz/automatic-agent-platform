@@ -18,11 +18,11 @@ import { runSingleTaskExecution, runPhase1AHappyPath, type HappyPathInput } from
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-test("runPhase1AHappyPath is an alias for runSingleTaskExecution", () => {
+test("runPhase1AHappyPath is an alias for runSingleTaskExecution [single-task-happy-path]", () => {
   assert.equal(runPhase1AHappyPath, runSingleTaskExecution);
 });
 
-test("runSingleTaskExecution requires dbPath", async () => {
+test("runSingleTaskExecution requires dbPath [single-task-happy-path]", async () => {
   const input: HappyPathInput = {
     dbPath: "",
     title: "Test",
@@ -37,7 +37,7 @@ test("runSingleTaskExecution requires dbPath", async () => {
   }
 });
 
-test("runSingleTaskExecution with stepOutputOverride bypasses LLM call", async () => {
+test("runSingleTaskExecution with stepOutputOverride bypasses LLM call [single-task-happy-path]", async () => {
   const tempDir = await mkdtemp(join(tmpdir(), "phase1a-test-"));
   const dbPath = join(tempDir, "test.db");
 
@@ -65,7 +65,7 @@ test("runSingleTaskExecution with stepOutputOverride bypasses LLM call", async (
   }
 });
 
-test("runSingleTaskExecution creates task with correct initial status", async () => {
+test("runSingleTaskExecution creates task with correct initial status [single-task-happy-path]", async () => {
   const tempDir = await mkdtemp(join(tmpdir(), "phase1a-task-test-"));
   const dbPath = join(tempDir, "test.db");
 
@@ -88,7 +88,7 @@ test("runSingleTaskExecution creates task with correct initial status", async ()
   }
 });
 
-test("runSingleTaskExecution with tenantId sets tenant on task", async () => {
+test("runSingleTaskExecution with tenantId sets tenant on task [single-task-happy-path]", async () => {
   const tempDir = await mkdtemp(join(tmpdir(), "phase1a-tenant-test-"));
   const dbPath = join(tempDir, "test.db");
 
@@ -110,7 +110,7 @@ test("runSingleTaskExecution with tenantId sets tenant on task", async () => {
   }
 });
 
-test("runSingleTaskExecution handles empty title", async () => {
+test("runSingleTaskExecution handles empty title [single-task-happy-path]", async () => {
   const tempDir = await mkdtemp(join(tmpdir(), "phase1a-empty-title-"));
   const dbPath = join(tempDir, "test.db");
 
@@ -131,7 +131,7 @@ test("runSingleTaskExecution handles empty title", async () => {
   }
 });
 
-test("runSingleTaskExecution sets workflow and execution records", async () => {
+test("runSingleTaskExecution sets workflow and execution records [single-task-happy-path]", async () => {
   const tempDir = await mkdtemp(join(tmpdir(), "phase1a-workflow-test-"));
   const dbPath = join(tempDir, "test.db");
 
@@ -155,7 +155,7 @@ test("runSingleTaskExecution sets workflow and execution records", async () => {
   }
 });
 
-test("runSingleTaskExecution admission rejection handled", async () => {
+test("runSingleTaskExecution admission rejection handled [single-task-happy-path]", async () => {
   const tempDir = await mkdtemp(join(tmpdir(), "phase1a-admission-test-"));
   const dbPath = join(tempDir, "test.db");
 
@@ -189,7 +189,7 @@ test("runSingleTaskExecution admission rejection handled", async () => {
   }
 });
 
-test("runSingleTaskExecution creates session record", async () => {
+test("runSingleTaskExecution creates session record [single-task-happy-path]", async () => {
   const tempDir = await mkdtemp(join(tmpdir(), "phase1a-session-test-"));
   const dbPath = join(tempDir, "test.db");
 
@@ -210,7 +210,7 @@ test("runSingleTaskExecution creates session record", async () => {
   }
 });
 
-test("HappyPathInput type accepts all required fields", () => {
+test("HappyPathInput type accepts all required fields [single-task-happy-path]", () => {
   const input: HappyPathInput = {
     dbPath: "/tmp/test.db",
     title: "Type test",
@@ -232,7 +232,7 @@ test("HappyPathInput type accepts all required fields", () => {
   assert.ok(input.stepOutputOverride !== undefined);
 });
 
-test("runSingleTaskExecution stepOutputOverride rejects additional fields outside schema", async () => {
+test("runSingleTaskExecution stepOutputOverride rejects additional fields outside schema [single-task-happy-path]", async () => {
   const tempDir = await mkdtemp(join(tmpdir(), "phase1a-override-test-"));
   const dbPath = join(tempDir, "test.db");
 

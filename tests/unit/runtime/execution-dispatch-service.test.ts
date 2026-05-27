@@ -174,7 +174,7 @@ function registerWorker(
 // createTicket Tests
 // ============================================================================
 
-test("createTicket creates a new ticket for execution", () => {
+test("createTicket creates a new ticket for execution [execution-dispatch-service]", () => {
   const harness = createDispatchServiceHarness();
   try {
     const taskId = newId("task");
@@ -202,7 +202,7 @@ test("createTicket creates a new ticket for execution", () => {
   }
 });
 
-test("createTicket reuses existing active ticket", () => {
+test("createTicket reuses existing active ticket [execution-dispatch-service]", () => {
   const harness = createDispatchServiceHarness();
   try {
     const taskId = newId("task");
@@ -221,7 +221,7 @@ test("createTicket reuses existing active ticket", () => {
   }
 });
 
-test("createTicket throws when execution not found", () => {
+test("createTicket throws when execution not found [execution-dispatch-service]", () => {
   const harness = createDispatchServiceHarness();
   try {
     assert.throws(() => {
@@ -232,7 +232,7 @@ test("createTicket throws when execution not found", () => {
   }
 });
 
-test("createTicket applies dispatchTarget defaults correctly", () => {
+test("createTicket applies dispatchTarget defaults correctly [execution-dispatch-service]", () => {
   const harness = createDispatchServiceHarness();
   try {
     const taskId1 = newId("task");
@@ -264,7 +264,7 @@ test("createTicket applies dispatchTarget defaults correctly", () => {
   }
 });
 
-test("createTicket normalizes and deduplicates capabilities", () => {
+test("createTicket normalizes and deduplicates capabilities [execution-dispatch-service]", () => {
   const harness = createDispatchServiceHarness();
   try {
     const taskId = newId("task");
@@ -284,7 +284,7 @@ test("createTicket normalizes and deduplicates capabilities", () => {
   }
 });
 
-test("createTicket sets isolation level correctly", () => {
+test("createTicket sets isolation level correctly [execution-dispatch-service]", () => {
   const harness = createDispatchServiceHarness();
   try {
     const taskId1 = newId("task");
@@ -316,7 +316,7 @@ test("createTicket sets isolation level correctly", () => {
   }
 });
 
-test("createTicket handles dispatchAfter timestamp", () => {
+test("createTicket handles dispatchAfter timestamp [execution-dispatch-service]", () => {
   const harness = createDispatchServiceHarness();
   try {
     const taskId = newId("task");
@@ -339,7 +339,7 @@ test("createTicket handles dispatchAfter timestamp", () => {
 // dispatchNext Tests
 // ============================================================================
 
-test("dispatchNext returns no_ticket when no dispatchable tickets exist", () => {
+test("dispatchNext returns no_ticket when no dispatchable tickets exist [execution-dispatch-service]", () => {
   const harness = createDispatchServiceHarness();
   try {
     const decision = harness.service.dispatchNext({ leaseTtlMs: 30000 });
@@ -352,7 +352,7 @@ test("dispatchNext returns no_ticket when no dispatchable tickets exist", () => 
   }
 });
 
-test("dispatchNext dispatches ticket to eligible worker", () => {
+test("dispatchNext dispatches ticket to eligible worker [execution-dispatch-service]", () => {
   const harness = createDispatchServiceHarness();
   try {
     const taskId = newId("task");
@@ -375,13 +375,13 @@ test("dispatchNext dispatches ticket to eligible worker", () => {
   }
 });
 
-test("dispatchNext selects worker based on load balancing score", () => {
+test("dispatchNext selects worker based on load balancing score [execution-dispatch-service]", () => {
   // NOTE: This test has known issues with multiple worker registration
   // where the internal WorkerRegistryService doesn't properly see all workers.
   // Skipping for now - core single-worker dispatch is tested by other tests.
 });
 
-test("dispatchNext applies queue affinity bonus", () => {
+test("dispatchNext applies queue affinity bonus [execution-dispatch-service]", () => {
   const harness = createDispatchServiceHarness();
   try {
     const taskId = newId("task");
@@ -416,7 +416,7 @@ test("dispatchNext applies queue affinity bonus", () => {
   }
 });
 
-test("dispatchNext filters workers by required capabilities", () => {
+test("dispatchNext filters workers by required capabilities [execution-dispatch-service]", () => {
   const harness = createDispatchServiceHarness();
   try {
     const taskId = newId("task");
@@ -445,7 +445,7 @@ test("dispatchNext filters workers by required capabilities", () => {
   }
 });
 
-test("dispatchNext blocks when no worker meets required capabilities", () => {
+test("dispatchNext blocks when no worker meets required capabilities [execution-dispatch-service]", () => {
   const harness = createDispatchServiceHarness();
   try {
     const taskId = newId("task");
@@ -473,7 +473,7 @@ test("dispatchNext blocks when no worker meets required capabilities", () => {
   }
 });
 
-test("dispatchNext rejects unavailable workers", () => {
+test("dispatchNext rejects unavailable workers [execution-dispatch-service]", () => {
   const harness = createDispatchServiceHarness();
   try {
     const taskId = newId("task");
@@ -497,7 +497,7 @@ test("dispatchNext rejects unavailable workers", () => {
   }
 });
 
-test("dispatchNext filters degraded workers by default", () => {
+test("dispatchNext filters degraded workers by default [execution-dispatch-service]", () => {
   const harness = createDispatchServiceHarness();
   try {
     const taskId = newId("task");
@@ -521,7 +521,7 @@ test("dispatchNext filters degraded workers by default", () => {
   }
 });
 
-test("dispatchNext includes degraded workers when includeDegraded is true", () => {
+test("dispatchNext includes degraded workers when includeDegraded is true [execution-dispatch-service]", () => {
   const harness = createDispatchServiceHarness();
   try {
     const taskId = newId("task");
@@ -546,7 +546,7 @@ test("dispatchNext includes degraded workers when includeDegraded is true", () =
   }
 });
 
-test("dispatchNext rejects workers at capacity", () => {
+test("dispatchNext rejects workers at capacity [execution-dispatch-service]", () => {
   const harness = createDispatchServiceHarness();
   try {
     const taskId = newId("task");
@@ -572,7 +572,7 @@ test("dispatchNext rejects workers at capacity", () => {
   }
 });
 
-test("dispatchNext enforces isolation level requirements", () => {
+test("dispatchNext enforces isolation level requirements [execution-dispatch-service]", () => {
   const harness = createDispatchServiceHarness();
   try {
     const taskId = newId("task");
@@ -601,7 +601,7 @@ test("dispatchNext enforces isolation level requirements", () => {
   }
 });
 
-test("dispatchNext blocks on backpressure with read_only_operations_only", () => {
+test("dispatchNext blocks on backpressure with read_only_operations_only [execution-dispatch-service]", () => {
   const harness = createDispatchServiceHarness();
   try {
     const taskId = newId("task");
@@ -639,7 +639,7 @@ test("dispatchNext blocks on backpressure with read_only_operations_only", () =>
   }
 });
 
-test("dispatchNext blocks non-critical priority on pause_non_critical backpressure", () => {
+test("dispatchNext blocks non-critical priority on pause_non_critical backpressure [execution-dispatch-service]", () => {
   const harness = createDispatchServiceHarness();
   try {
     const taskId = newId("task");
@@ -681,7 +681,7 @@ test("dispatchNext blocks non-critical priority on pause_non_critical backpressu
   }
 });
 
-test("dispatchNext allows high priority on pause_non_critical backpressure", () => {
+test("dispatchNext allows high priority on pause_non_critical backpressure [execution-dispatch-service]", () => {
   const harness = createDispatchServiceHarness();
   try {
     const taskId = newId("task");
@@ -718,7 +718,7 @@ test("dispatchNext allows high priority on pause_non_critical backpressure", () 
   }
 });
 
-test("dispatchNext blocks on queue unavailability", () => {
+test("dispatchNext blocks on queue unavailability [execution-dispatch-service]", () => {
   const harness = createDispatchServiceHarness();
   try {
     const taskId = newId("task");
@@ -744,7 +744,7 @@ test("dispatchNext blocks on queue unavailability", () => {
   }
 });
 
-test("dispatchNext prefers specified worker when preferredWorkerId is set", () => {
+test("dispatchNext prefers specified worker when preferredWorkerId is set [execution-dispatch-service]", () => {
   const harness = createDispatchServiceHarness();
   try {
     const taskId = newId("task");
@@ -773,7 +773,7 @@ test("dispatchNext prefers specified worker when preferredWorkerId is set", () =
   }
 });
 
-test("dispatchNext blocks when preferred worker is not eligible", () => {
+test("dispatchNext blocks when preferred worker is not eligible [execution-dispatch-service]", () => {
   const harness = createDispatchServiceHarness();
   try {
     const taskId = newId("task");
@@ -801,7 +801,7 @@ test("dispatchNext blocks when preferred worker is not eligible", () => {
 // Dispatch Target Tests
 // ============================================================================
 
-test("dispatchNext enforces local_only placement", () => {
+test("dispatchNext enforces local_only placement [execution-dispatch-service]", () => {
   const harness = createDispatchServiceHarness();
   try {
     const taskId = newId("task");
@@ -832,7 +832,7 @@ test("dispatchNext enforces local_only placement", () => {
   }
 });
 
-test("dispatchNext blocks for require_remote when no remote workers exist", () => {
+test("dispatchNext blocks for require_remote when no remote workers exist [execution-dispatch-service]", () => {
   const harness = createDispatchServiceHarness();
   try {
     const taskId = newId("task");
@@ -857,11 +857,11 @@ test("dispatchNext blocks for require_remote when no remote workers exist", () =
   }
 });
 
-test("dispatchNext prefer_remote selects remote worker when available", () => {
+test("dispatchNext prefer_remote selects remote worker when available [execution-dispatch-service]", () => {
   // NOTE: Skipped - requires further investigation of multi-worker registration issue
 });
 
-test("dispatchNext prefer_remote falls back to local when no remote workers", () => {
+test("dispatchNext prefer_remote falls back to local when no remote workers [execution-dispatch-service]", () => {
   // NOTE: Skipped - requires further investigation of multi-worker registration issue
 });
 
@@ -869,23 +869,23 @@ test("dispatchNext prefer_remote falls back to local when no remote workers", ()
 // Remote Worker Trust/Session Tests
 // ============================================================================
 
-test("dispatchNext rejects untrusted remote workers", () => {
+test("dispatchNext rejects untrusted remote workers [execution-dispatch-service]", () => {
   // NOTE: Skipped - requires further investigation of multi-worker registration issue
 });
 
-test("dispatchNext rejects remote worker with viewer_only session", () => {
+test("dispatchNext rejects remote worker with viewer_only session [execution-dispatch-service]", () => {
   // NOTE: Skipped - requires further investigation of multi-worker registration issue
 });
 
-test("dispatchNext rejects remote worker with session consistency mismatch", () => {
+test("dispatchNext rejects remote worker with session consistency mismatch [execution-dispatch-service]", () => {
   // NOTE: Skipped - requires further investigation of multi-worker registration issue
 });
 
-test("dispatchNext rejects remote worker with workspace sync conflict", () => {
+test("dispatchNext rejects remote worker with workspace sync conflict [execution-dispatch-service]", () => {
   // NOTE: Skipped - requires further investigation of multi-worker registration issue
 });
 
-test("dispatchNext rejects remote worker missing lastAcknowledgedStreamOffset", () => {
+test("dispatchNext rejects remote worker missing lastAcknowledgedStreamOffset [execution-dispatch-service]", () => {
   // NOTE: Skipped - requires further investigation of multi-worker registration issue
 });
 
@@ -893,7 +893,7 @@ test("dispatchNext rejects remote worker missing lastAcknowledgedStreamOffset", 
 // Repository Version Mismatch Tests
 // ============================================================================
 
-test("dispatchNext blocks on repo version mismatch", () => {
+test("dispatchNext blocks on repo version mismatch [execution-dispatch-service]", () => {
   const harness = createDispatchServiceHarness();
   try {
     const taskId = newId("task");
@@ -922,7 +922,7 @@ test("dispatchNext blocks on repo version mismatch", () => {
   }
 });
 
-test("dispatchNext require_remote blocks on repo version mismatch with all remotes", () => {
+test("dispatchNext require_remote blocks on repo version mismatch with all remotes [execution-dispatch-service]", () => {
   const harness = createDispatchServiceHarness();
   try {
     const taskId = newId("task");
@@ -954,7 +954,7 @@ test("dispatchNext require_remote blocks on repo version mismatch with all remot
 // Worker Status Filtering Tests
 // ============================================================================
 
-test("dispatchNext filters out quarantined workers", () => {
+test("dispatchNext filters out quarantined workers [execution-dispatch-service]", () => {
   const harness = createDispatchServiceHarness();
   try {
     const taskId = newId("task");
@@ -978,7 +978,7 @@ test("dispatchNext filters out quarantined workers", () => {
   }
 });
 
-test("dispatchNext filters out draining workers", () => {
+test("dispatchNext filters out draining workers [execution-dispatch-service]", () => {
   const harness = createDispatchServiceHarness();
   try {
     const taskId = newId("task");
@@ -1002,7 +1002,7 @@ test("dispatchNext filters out draining workers", () => {
   }
 });
 
-test("dispatchNext picks idle worker over busy worker with same capacity", () => {
+test("dispatchNext picks idle worker over busy worker with same capacity [execution-dispatch-service]", () => {
   const harness = createDispatchServiceHarness();
   try {
     const taskId = newId("task");
@@ -1036,7 +1036,7 @@ test("dispatchNext picks idle worker over busy worker with same capacity", () =>
 // Queue Affinity Tests
 // ============================================================================
 
-test("dispatchNext rejects workers with mismatched queue affinity", () => {
+test("dispatchNext rejects workers with mismatched queue affinity [execution-dispatch-service]", () => {
   const harness = createDispatchServiceHarness();
   try {
     const taskId = newId("task");
@@ -1063,7 +1063,7 @@ test("dispatchNext rejects workers with mismatched queue affinity", () => {
   }
 });
 
-test("dispatchNext ignores queue affinity when ticket has no queue", () => {
+test("dispatchNext ignores queue affinity when ticket has no queue [execution-dispatch-service]", () => {
   const harness = createDispatchServiceHarness();
   try {
     const taskId = newId("task");
@@ -1090,11 +1090,11 @@ test("dispatchNext ignores queue affinity when ticket has no queue", () => {
 // Lease Acquisition Failure Tests
 // ============================================================================
 
-test("dispatchNext retries next ticket when lease acquisition fails", () => {
+test("dispatchNext retries next ticket when lease acquisition fails [execution-dispatch-service]", () => {
   // NOTE: Skipped - requires further investigation of multi-worker registration issue
 });
 
-test("dispatchNext blocks when active lease already exists for execution", () => {
+test("dispatchNext blocks when active lease already exists for execution [execution-dispatch-service]", () => {
   // NOTE: Skipped - requires further investigation of multi-worker registration issue
 });
 
@@ -1102,7 +1102,7 @@ test("dispatchNext blocks when active lease already exists for execution", () =>
 // Multiple Ticket Priority Ordering Tests
 // ============================================================================
 
-test("dispatchNext processes tickets in priority order", () => {
+test("dispatchNext processes tickets in priority order [execution-dispatch-service]", () => {
   const harness = createDispatchServiceHarness();
   try {
     const taskIdLow = newId("task");
@@ -1138,7 +1138,7 @@ test("dispatchNext processes tickets in priority order", () => {
   }
 });
 
-test("dispatchNext skips blocked tickets and processes next", () => {
+test("dispatchNext skips blocked tickets and processes next [execution-dispatch-service]", () => {
   // NOTE: Skipped - requires further investigation of multi-worker registration issue
 });
 
@@ -1146,11 +1146,11 @@ test("dispatchNext skips blocked tickets and processes next", () => {
 // Remote Availability Resolution Tests
 // ============================================================================
 
-test("dispatchNext reports remote availability as degraded when workers filtered", () => {
+test("dispatchNext reports remote availability as degraded when workers filtered [execution-dispatch-service]", () => {
   // NOTE: Skipped - requires further investigation of multi-worker registration issue
 });
 
-test("dispatchNext reports remote availability as unavailable when all remote workers unavailable", () => {
+test("dispatchNext reports remote availability as unavailable when all remote workers unavailable [execution-dispatch-service]", () => {
   // NOTE: Skipped - requires further investigation of multi-worker registration issue
 });
 
@@ -1158,7 +1158,7 @@ test("dispatchNext reports remote availability as unavailable when all remote wo
 // Decision Trace Tests
 // ============================================================================
 
-test("dispatchNext records evaluation traces with correct acceptance status", () => {
+test("dispatchNext records evaluation traces with correct acceptance status [execution-dispatch-service]", () => {
   const harness = createDispatchServiceHarness();
   try {
     const taskId = newId("task");
@@ -1194,7 +1194,7 @@ test("dispatchNext records evaluation traces with correct acceptance status", ()
   }
 });
 
-test("dispatchNext records dispatch_claimed event on successful dispatch", () => {
+test("dispatchNext records dispatch_claimed event on successful dispatch [execution-dispatch-service]", () => {
   const harness = createDispatchServiceHarness();
   try {
     const taskId = newId("task");
@@ -1217,7 +1217,7 @@ test("dispatchNext records dispatch_claimed event on successful dispatch", () =>
   }
 });
 
-test("dispatchNext records ticket_created event when ticket is created", () => {
+test("dispatchNext records ticket_created event when ticket is created [execution-dispatch-service]", () => {
   const harness = createDispatchServiceHarness();
   try {
     const taskId = newId("task");
@@ -1238,11 +1238,11 @@ test("dispatchNext records ticket_created event when ticket is created", () => {
 // Load Skew Penalty Tests
 // ============================================================================
 
-test("dispatchNext applies load skew penalty to heavily loaded workers", () => {
+test("dispatchNext applies load skew penalty to heavily loaded workers [execution-dispatch-service]", () => {
   // NOTE: Skipped - requires further investigation of multi-worker registration issue
 });
 
-test("dispatchNext does not apply load skew penalty when no alternative capacity exists", () => {
+test("dispatchNext does not apply load skew penalty when no alternative capacity exists [execution-dispatch-service]", () => {
   const harness = createDispatchServiceHarness();
   try {
     const taskId = newId("task");
@@ -1274,7 +1274,7 @@ test("dispatchNext does not apply load skew penalty when no alternative capacity
 // dispatchAfter Time-based Filtering Tests
 // ============================================================================
 
-test("dispatchNext does not dispatch tickets with future dispatchAfter time", () => {
+test("dispatchNext does not dispatch tickets with future dispatchAfter time [execution-dispatch-service]", () => {
   const harness = createDispatchServiceHarness();
   try {
     const taskId = newId("task");
@@ -1299,7 +1299,7 @@ test("dispatchNext does not dispatch tickets with future dispatchAfter time", ()
   }
 });
 
-test("dispatchNext dispatches tickets when dispatchAfter time has passed", () => {
+test("dispatchNext dispatches tickets when dispatchAfter time has passed [execution-dispatch-service]", () => {
   const harness = createDispatchServiceHarness();
   try {
     const taskId = newId("task");
@@ -1327,7 +1327,7 @@ test("dispatchNext dispatches tickets when dispatchAfter time has passed", () =>
 // Execution Ticket Status Transition Tests
 // ============================================================================
 
-test("dispatchNext updates ticket status to claimed after successful dispatch", () => {
+test("dispatchNext updates ticket status to claimed after successful dispatch [execution-dispatch-service]", () => {
   const harness = createDispatchServiceHarness();
   try {
     const taskId = newId("task");
@@ -1350,7 +1350,7 @@ test("dispatchNext updates ticket status to claimed after successful dispatch", 
   }
 });
 
-test("createTicket preserves existing ticket status when reusing", () => {
+test("createTicket preserves existing ticket status when reusing [execution-dispatch-service]", () => {
   const harness = createDispatchServiceHarness();
   try {
     const taskId = newId("task");

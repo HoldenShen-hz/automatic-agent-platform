@@ -146,7 +146,7 @@ function createHarness(): {
   };
 }
 
-test("PerceptionServiceAsync registerSource returns a promise and normalizes persisted source fields", async () => {
+test("PerceptionServiceAsync registerSource returns a promise and normalizes persisted source fields [perception-service-async]", async () => {
   const { service } = createHarness();
 
   const pending = service.registerSource({
@@ -166,7 +166,7 @@ test("PerceptionServiceAsync registerSource returns a promise and normalizes per
   assert.equal(source.priority, 7);
 });
 
-test("PerceptionServiceAsync ingestIntel deduplicates items and normalizes metadata", async () => {
+test("PerceptionServiceAsync ingestIntel deduplicates items and normalizes metadata [perception-service-async]", async () => {
   const { service } = createHarness();
   const source = await service.registerSource({
     sourceId: "source.async.ingest",
@@ -210,7 +210,7 @@ test("PerceptionServiceAsync ingestIntel deduplicates items and normalizes metad
   assert.equal(second.skippedDuplicateCount, 1);
 });
 
-test("PerceptionServiceAsync buildBrief returns current items and derived recommended actions", async () => {
+test("PerceptionServiceAsync buildBrief returns current items and derived recommended actions [perception-service-async]", async () => {
   const { service } = createHarness();
   const source = await service.registerSource({
     sourceId: "source.async.brief",
@@ -249,7 +249,7 @@ test("PerceptionServiceAsync buildBrief returns current items and derived recomm
   assert.equal(result.brief.overallSummary.includes("2 intel items"), true);
 });
 
-test("PerceptionServiceAsync proposeActions is async and idempotent for the same brief", async () => {
+test("PerceptionServiceAsync proposeActions is async and idempotent for the same brief [perception-service-async]", async () => {
   const { service } = createHarness();
   const source = await service.registerSource({
     sourceId: "source.async.actions",

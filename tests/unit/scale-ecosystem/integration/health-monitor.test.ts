@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { summarizeConnectorHealth, ConnectorHealthReport } from "../../../../src/scale-ecosystem/integration/health-monitor/index.js";
 
-test("summarizeConnectorHealth returns healthy when all reports healthy", () => {
+test("summarizeConnectorHealth returns healthy when all reports healthy [health-monitor]", () => {
   const reports: ConnectorHealthReport[] = [
     { connectorId: "c1", status: "healthy", latencyMs: 10, checkedAt: "2026-04-20T00:00:00.000Z" },
     { connectorId: "c2", status: "healthy", latencyMs: 20, checkedAt: "2026-04-20T00:00:00.000Z" },
@@ -14,7 +14,7 @@ test("summarizeConnectorHealth returns healthy when all reports healthy", () => 
   assert.equal(summary, "healthy");
 });
 
-test("summarizeConnectorHealth returns failed when any report failed", () => {
+test("summarizeConnectorHealth returns failed when any report failed [health-monitor]", () => {
   const reports: ConnectorHealthReport[] = [
     { connectorId: "c1", status: "healthy", latencyMs: 10, checkedAt: "2026-04-20T00:00:00.000Z" },
     { connectorId: "c2", status: "failed", latencyMs: 5000, checkedAt: "2026-04-20T00:00:00.000Z" },
@@ -26,7 +26,7 @@ test("summarizeConnectorHealth returns failed when any report failed", () => {
   assert.equal(summary, "failed");
 });
 
-test("summarizeConnectorHealth returns degraded when no failures but some degraded", () => {
+test("summarizeConnectorHealth returns degraded when no failures but some degraded [health-monitor]", () => {
   const reports: ConnectorHealthReport[] = [
     { connectorId: "c1", status: "healthy", latencyMs: 10, checkedAt: "2026-04-20T00:00:00.000Z" },
     { connectorId: "c2", status: "degraded", latencyMs: 500, checkedAt: "2026-04-20T00:00:00.000Z" },
@@ -37,12 +37,12 @@ test("summarizeConnectorHealth returns degraded when no failures but some degrad
   assert.equal(summary, "degraded");
 });
 
-test("summarizeConnectorHealth returns healthy for empty array", () => {
+test("summarizeConnectorHealth returns healthy for empty array [health-monitor]", () => {
   const summary = summarizeConnectorHealth([]);
   assert.equal(summary, "healthy");
 });
 
-test("summarizeConnectorHealth returns failed for single failed report", () => {
+test("summarizeConnectorHealth returns failed for single failed report [health-monitor]", () => {
   const reports: ConnectorHealthReport[] = [
     { connectorId: "c1", status: "failed", latencyMs: 10000, checkedAt: "2026-04-20T00:00:00.000Z" },
   ];
@@ -52,7 +52,7 @@ test("summarizeConnectorHealth returns failed for single failed report", () => {
   assert.equal(summary, "failed");
 });
 
-test("summarizeConnectorHealth degraded takes precedence over healthy", () => {
+test("summarizeConnectorHealth degraded takes precedence over healthy [health-monitor]", () => {
   const reports: ConnectorHealthReport[] = [
     { connectorId: "c1", status: "healthy", latencyMs: 5, checkedAt: "2026-04-20T00:00:00.000Z" },
     { connectorId: "c2", status: "degraded", latencyMs: 300, checkedAt: "2026-04-20T00:00:00.000Z" },
@@ -64,7 +64,7 @@ test("summarizeConnectorHealth degraded takes precedence over healthy", () => {
   assert.equal(summary, "degraded");
 });
 
-test("ConnectorHealthReportSchema validates status enum", () => {
+test("ConnectorHealthReportSchema validates status enum [health-monitor]", () => {
   const report: ConnectorHealthReport = {
     connectorId: "test",
     status: "healthy",

@@ -15,12 +15,12 @@ import {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-test("phase1b-orchestration exports runPhase1BOrchestration function", () => {
+test("phase1b-orchestration exports runPhase1BOrchestration function [orchestration]", () => {
   assert.equal(typeof runPhase1BOrchestration, "function");
   assert.equal(runPhase1BOrchestration, runMultiStepOrchestration);
 });
 
-test("phase1b-orchestration runs basic multi-step workflow", async () => {
+test("phase1b-orchestration runs basic multi-step workflow [orchestration]", async () => {
   const tempDir = await mkdtemp(join(tmpdir(), "phase1b-test-"));
   const dbPath = join(tempDir, "test.db");
 
@@ -42,7 +42,7 @@ test("phase1b-orchestration runs basic multi-step workflow", async () => {
   }
 });
 
-test("phase1b-orchestration planned workflow contains steps", async () => {
+test("phase1b-orchestration planned workflow contains steps [orchestration]", async () => {
   const tempDir = await mkdtemp(join(tmpdir(), "phase1b-test-"));
   const dbPath = join(tempDir, "test.db");
 
@@ -64,7 +64,7 @@ test("phase1b-orchestration planned workflow contains steps", async () => {
   }
 });
 
-test("phase1b-orchestration routing is computed", async () => {
+test("phase1b-orchestration routing is computed [orchestration]", async () => {
   const tempDir = await mkdtemp(join(tmpdir(), "phase1b-test-"));
   const dbPath = join(tempDir, "test.db");
 
@@ -85,7 +85,7 @@ test("phase1b-orchestration routing is computed", async () => {
   }
 });
 
-test("phase1b-orchestration admission rejected handled", async () => {
+test("phase1b-orchestration admission rejected handled [orchestration]", async () => {
   const tempDir = await mkdtemp(join(tmpdir(), "phase1b-test-"));
   const dbPath = join(tempDir, "test.db");
 
@@ -112,7 +112,7 @@ test("phase1b-orchestration admission rejected handled", async () => {
   }
 });
 
-test("phase1b-orchestration task snapshot has required fields", async () => {
+test("phase1b-orchestration task snapshot has required fields [orchestration]", async () => {
   const tempDir = await mkdtemp(join(tmpdir(), "phase1b-test-"));
   const dbPath = join(tempDir, "test.db");
 

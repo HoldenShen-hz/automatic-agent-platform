@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { resolveRegionFailover, type RegionFailoverInput } from "../../../../src/scale-ecosystem/multi-region/failover-controller/index.js";
 
-test("resolveRegionFailover returns no failover when primary is healthy", () => {
+test("resolveRegionFailover returns no failover when primary is healthy [failover-controller]", () => {
   const input: RegionFailoverInput = {
     primaryHealthy: true,
     candidateRegionIds: ["eu-west", "ap-south"],
@@ -14,7 +14,7 @@ test("resolveRegionFailover returns no failover when primary is healthy", () => 
   assert.equal(decision.rationale, "multi_region.primary_within_threshold");
 });
 
-test("resolveRegionFailover returns failover when primary is unhealthy", () => {
+test("resolveRegionFailover returns failover when primary is unhealthy [failover-controller]", () => {
   const input: RegionFailoverInput = {
     primaryHealthy: false,
     candidateRegionIds: ["eu-west", "ap-south"],
@@ -25,7 +25,7 @@ test("resolveRegionFailover returns failover when primary is unhealthy", () => {
   assert.equal(decision.rationale, "multi_region.primary_unhealthy");
 });
 
-test("resolveRegionFailover returns no failover when no candidates", () => {
+test("resolveRegionFailover returns no failover when no candidates [failover-controller]", () => {
   const input: RegionFailoverInput = {
     primaryHealthy: false,
     candidateRegionIds: [],
@@ -35,7 +35,7 @@ test("resolveRegionFailover returns no failover when no candidates", () => {
   assert.equal(decision.targetRegionId, null);
 });
 
-test("resolveRegionFailover selects preferred region when available", () => {
+test("resolveRegionFailover selects preferred region when available [failover-controller]", () => {
   const input: RegionFailoverInput = {
     primaryHealthy: false,
     candidateRegionIds: ["eu-west", "ap-south"],
@@ -46,7 +46,7 @@ test("resolveRegionFailover selects preferred region when available", () => {
   assert.equal(decision.targetRegionId, "ap-south");
 });
 
-test("resolveRegionFailover ignores preferred region when not in candidates", () => {
+test("resolveRegionFailover ignores preferred region when not in candidates [failover-controller]", () => {
   const input: RegionFailoverInput = {
     primaryHealthy: false,
     candidateRegionIds: ["eu-west", "ap-south"],
@@ -57,7 +57,7 @@ test("resolveRegionFailover ignores preferred region when not in candidates", ()
   assert.equal(decision.targetRegionId, "eu-west"); // First candidate
 });
 
-test("resolveRegionFailover triggers failover on latency breach", () => {
+test("resolveRegionFailover triggers failover on latency breach [failover-controller]", () => {
   const input: RegionFailoverInput = {
     primaryHealthy: true,
     candidateRegionIds: ["eu-west"],
@@ -69,7 +69,7 @@ test("resolveRegionFailover triggers failover on latency breach", () => {
   assert.equal(decision.rationale, "multi_region.primary_latency_breached");
 });
 
-test("resolveRegionFailover triggers failover on error rate breach", () => {
+test("resolveRegionFailover triggers failover on error rate breach [failover-controller]", () => {
   const input: RegionFailoverInput = {
     primaryHealthy: true,
     candidateRegionIds: ["eu-west"],
@@ -81,7 +81,7 @@ test("resolveRegionFailover triggers failover on error rate breach", () => {
   assert.equal(decision.rationale, "multi_region.primary_error_rate_breached");
 });
 
-test("resolveRegionFailover uses first candidate when preferred not available", () => {
+test("resolveRegionFailover uses first candidate when preferred not available [failover-controller]", () => {
   const input: RegionFailoverInput = {
     primaryHealthy: false,
     candidateRegionIds: ["region-a", "region-b", "region-c"],
@@ -90,7 +90,7 @@ test("resolveRegionFailover uses first candidate when preferred not available", 
   assert.equal(decision.targetRegionId, "region-a");
 });
 
-test("resolveRegionFailover handles degraded primary", () => {
+test("resolveRegionFailover handles degraded primary [failover-controller]", () => {
   const input: RegionFailoverInput = {
     primaryHealthy: false,
     candidateRegionIds: ["region-a"],
@@ -102,7 +102,7 @@ test("resolveRegionFailover handles degraded primary", () => {
   assert.equal(decision.rationale, "multi_region.primary_unhealthy");
 });
 
-test("resolveRegionFailover returns rationale for healthy primary with no breach", () => {
+test("resolveRegionFailover returns rationale for healthy primary with no breach [failover-controller]", () => {
   const input: RegionFailoverInput = {
     primaryHealthy: true,
     candidateRegionIds: [],
@@ -112,7 +112,7 @@ test("resolveRegionFailover returns rationale for healthy primary with no breach
   assert.equal(decision.rationale, "multi_region.primary_within_threshold");
 });
 
-test("resolveRegionFailover handles null latency and error inputs", () => {
+test("resolveRegionFailover handles null latency and error inputs [failover-controller]", () => {
   const input: RegionFailoverInput = {
     primaryHealthy: true,
     candidateRegionIds: ["eu-west"],
@@ -122,7 +122,7 @@ test("resolveRegionFailover handles null latency and error inputs", () => {
   assert.equal(decision.rationale, "multi_region.primary_within_threshold");
 });
 
-test("resolveRegionFailover handles partial threshold inputs - only latency", () => {
+test("resolveRegionFailover handles partial threshold inputs - only latency [failover-controller]", () => {
   const input: RegionFailoverInput = {
     primaryHealthy: true,
     candidateRegionIds: ["eu-west"],
@@ -134,7 +134,7 @@ test("resolveRegionFailover handles partial threshold inputs - only latency", ()
   assert.equal(decision.rationale, "multi_region.primary_within_threshold");
 });
 
-test("resolveRegionFailover handles partial threshold inputs - only error rate", () => {
+test("resolveRegionFailover handles partial threshold inputs - only error rate [failover-controller]", () => {
   const input: RegionFailoverInput = {
     primaryHealthy: true,
     candidateRegionIds: ["eu-west"],
@@ -146,7 +146,7 @@ test("resolveRegionFailover handles partial threshold inputs - only error rate",
   assert.equal(decision.rationale, "multi_region.primary_within_threshold");
 });
 
-test("resolveRegionFailover handles exact threshold boundary for latency", () => {
+test("resolveRegionFailover handles exact threshold boundary for latency [failover-controller]", () => {
   const input: RegionFailoverInput = {
     primaryHealthy: true,
     candidateRegionIds: ["eu-west"],
@@ -157,7 +157,7 @@ test("resolveRegionFailover handles exact threshold boundary for latency", () =>
   assert.equal(decision.shouldFailover, false);
 });
 
-test("resolveRegionFailover handles exact threshold boundary for error rate", () => {
+test("resolveRegionFailover handles exact threshold boundary for error rate [failover-controller]", () => {
   const input: RegionFailoverInput = {
     primaryHealthy: true,
     candidateRegionIds: ["eu-west"],
@@ -168,7 +168,7 @@ test("resolveRegionFailover handles exact threshold boundary for error rate", ()
   assert.equal(decision.shouldFailover, false);
 });
 
-test("resolveRegionFailover prefers preferredRegionId over first candidate when both valid", () => {
+test("resolveRegionFailover prefers preferredRegionId over first candidate when both valid [failover-controller]", () => {
   const input: RegionFailoverInput = {
     primaryHealthy: false,
     candidateRegionIds: ["region-a", "region-b", "region-c"],
@@ -178,7 +178,7 @@ test("resolveRegionFailover prefers preferredRegionId over first candidate when 
   assert.equal(decision.targetRegionId, "region-b");
 });
 
-test("resolveRegionFailover prefers preferredRegionId when only one candidate", () => {
+test("resolveRegionFailover prefers preferredRegionId when only one candidate [failover-controller]", () => {
   const input: RegionFailoverInput = {
     primaryHealthy: false,
     candidateRegionIds: ["region-a"],
@@ -188,7 +188,7 @@ test("resolveRegionFailover prefers preferredRegionId when only one candidate", 
   assert.equal(decision.targetRegionId, "region-a");
 });
 
-test("resolveRegionFailover handles zero latency as valid", () => {
+test("resolveRegionFailover handles zero latency as valid [failover-controller]", () => {
   const input: RegionFailoverInput = {
     primaryHealthy: true,
     candidateRegionIds: ["eu-west"],
@@ -199,7 +199,7 @@ test("resolveRegionFailover handles zero latency as valid", () => {
   assert.equal(decision.shouldFailover, false);
 });
 
-test("resolveRegionFailover handles zero error rate as valid", () => {
+test("resolveRegionFailover handles zero error rate as valid [failover-controller]", () => {
   const input: RegionFailoverInput = {
     primaryHealthy: true,
     candidateRegionIds: ["eu-west"],
@@ -210,7 +210,7 @@ test("resolveRegionFailover handles zero error rate as valid", () => {
   assert.equal(decision.shouldFailover, false);
 });
 
-test("resolveRegionFailover empty candidates with healthy primary returns no failover", () => {
+test("resolveRegionFailover empty candidates with healthy primary returns no failover [failover-controller]", () => {
   const input: RegionFailoverInput = {
     primaryHealthy: true,
     candidateRegionIds: [],
@@ -222,7 +222,7 @@ test("resolveRegionFailover empty candidates with healthy primary returns no fai
   assert.equal(decision.rationale, "multi_region.no_candidate_available");
 });
 
-test("resolveRegionFailover empty candidates with unhealthy primary returns no failover", () => {
+test("resolveRegionFailover empty candidates with unhealthy primary returns no failover [failover-controller]", () => {
   const input: RegionFailoverInput = {
     primaryHealthy: false,
     candidateRegionIds: [],
@@ -232,7 +232,7 @@ test("resolveRegionFailover empty candidates with unhealthy primary returns no f
   assert.equal(decision.rationale, "multi_region.no_candidate_available");
 });
 
-test("resolveRegionFailover returns correct rationale for latency breach vs error rate breach", () => {
+test("resolveRegionFailover returns correct rationale for latency breach vs error rate breach [failover-controller]", () => {
   const input1: RegionFailoverInput = {
     primaryHealthy: true,
     candidateRegionIds: ["eu-west"],
@@ -252,7 +252,7 @@ test("resolveRegionFailover returns correct rationale for latency breach vs erro
   assert.equal(decision2.rationale, "multi_region.primary_error_rate_breached");
 });
 
-test("resolveRegionFailover with only error rate breach returns error rate rationale", () => {
+test("resolveRegionFailover with only error rate breach returns error rate rationale [failover-controller]", () => {
   const input: RegionFailoverInput = {
     primaryHealthy: true,
     candidateRegionIds: ["eu-west"],
@@ -264,7 +264,7 @@ test("resolveRegionFailover with only error rate breach returns error rate ratio
   assert.equal(decision.rationale, "multi_region.primary_error_rate_breached");
 });
 
-test("resolveRegionFailover with only latency breach returns latency rationale", () => {
+test("resolveRegionFailover with only latency breach returns latency rationale [failover-controller]", () => {
   const input: RegionFailoverInput = {
     primaryHealthy: true,
     candidateRegionIds: ["eu-west"],
@@ -276,7 +276,7 @@ test("resolveRegionFailover with only latency breach returns latency rationale",
   assert.equal(decision.rationale, "multi_region.primary_latency_breached");
 });
 
-test("resolveRegionFailover multiple breaches prioritizes unhealthy primary rationale", () => {
+test("resolveRegionFailover multiple breaches prioritizes unhealthy primary rationale [failover-controller]", () => {
   const input: RegionFailoverInput = {
     primaryHealthy: false,
     candidateRegionIds: ["eu-west"],
@@ -290,7 +290,7 @@ test("resolveRegionFailover multiple breaches prioritizes unhealthy primary rati
   assert.equal(decision.rationale, "multi_region.primary_unhealthy");
 });
 
-test("resolveRegionFailover preferredRegionId is null does not select preferred", () => {
+test("resolveRegionFailover preferredRegionId is null does not select preferred [failover-controller]", () => {
   const input: RegionFailoverInput = {
     primaryHealthy: false,
     candidateRegionIds: ["eu-west", "ap-south"],
@@ -301,7 +301,7 @@ test("resolveRegionFailover preferredRegionId is null does not select preferred"
   assert.equal(decision.targetRegionId, "eu-west"); // Falls back to first candidate
 });
 
-test("resolveRegionFailover result structure is correct", () => {
+test("resolveRegionFailover result structure is correct [failover-controller]", () => {
   const input: RegionFailoverInput = {
     primaryHealthy: false,
     candidateRegionIds: ["eu-west"],

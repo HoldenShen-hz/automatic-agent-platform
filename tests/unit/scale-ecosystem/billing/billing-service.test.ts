@@ -160,7 +160,7 @@ function createMockArtifactStore() {
   };
 }
 
-test("BillingService createAccount generates auto-id when not provided", () => {
+test("BillingService createAccount generates auto-id when not provided [billing-service]", () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new BillingService(db, store, { planCatalog: mockPlanCatalog });
@@ -172,7 +172,7 @@ test("BillingService createAccount generates auto-id when not provided", () => {
   assert.notEqual(account.accountId, "undefined");
 });
 
-test("BillingService createAccount accepts workspaceId", () => {
+test("BillingService createAccount accepts workspaceId [billing-service]", () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new BillingService(db, store, { planCatalog: mockPlanCatalog });
@@ -186,7 +186,7 @@ test("BillingService createAccount accepts workspaceId", () => {
   assert.equal(account.workspaceId, "ws_abc123");
 });
 
-test("BillingService createAccount defaults status to active", () => {
+test("BillingService createAccount defaults status to active [billing-service]", () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new BillingService(db, store, { planCatalog: mockPlanCatalog });
@@ -196,7 +196,7 @@ test("BillingService createAccount defaults status to active", () => {
   assert.equal(account.status, "active");
 });
 
-test("BillingService createAccount respects explicit status", () => {
+test("BillingService createAccount respects explicit status [billing-service]", () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new BillingService(db, store, { planCatalog: mockPlanCatalog });
@@ -210,7 +210,7 @@ test("BillingService createAccount respects explicit status", () => {
   assert.equal(account.status, "suspended");
 });
 
-test("BillingService createAccount sets timestamps", () => {
+test("BillingService createAccount sets timestamps [billing-service]", () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new BillingService(db, store, { planCatalog: mockPlanCatalog });
@@ -222,7 +222,7 @@ test("BillingService createAccount sets timestamps", () => {
   assert.equal(account.createdAt, account.updatedAt);
 });
 
-test("BillingService createAccount uses custom createdAt", () => {
+test("BillingService createAccount uses custom createdAt [billing-service]", () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new BillingService(db, store, { planCatalog: mockPlanCatalog });
@@ -236,7 +236,7 @@ test("BillingService createAccount uses custom createdAt", () => {
   assert.equal(account.createdAt, "2024-01-15T10:00:00.000Z");
 });
 
-test("BillingService evaluateEntitlement returns account in result", () => {
+test("BillingService evaluateEntitlement returns account in result [billing-service]", () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new BillingService(db, store, { planCatalog: mockPlanCatalog });
@@ -249,7 +249,7 @@ test("BillingService evaluateEntitlement returns account in result", () => {
   assert.equal(result.account.accountId, "acct_ent");
 });
 
-test("BillingService evaluateEntitlement stores decision record", () => {
+test("BillingService evaluateEntitlement stores decision record [billing-service]", () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new BillingService(db, store, { planCatalog: mockPlanCatalog });
@@ -262,7 +262,7 @@ test("BillingService evaluateEntitlement stores decision record", () => {
   assert.equal(result.decision.accountId, "acct_stored");
 });
 
-test("BillingService evaluateEntitlement for warn returns remaining quota", () => {
+test("BillingService evaluateEntitlement for warn returns remaining quota [billing-service]", () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new BillingService(db, store, { planCatalog: mockPlanCatalog });
@@ -282,7 +282,7 @@ test("BillingService evaluateEntitlement for warn returns remaining quota", () =
   assert.equal(result.remainingQuantity, 0);
 });
 
-test("BillingService recordUsage creates ledger entry with correct amount", async () => {
+test("BillingService recordUsage creates ledger entry with correct amount [billing-service]", async () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new BillingService(db, store, { planCatalog: mockPlanCatalog });
@@ -300,7 +300,7 @@ test("BillingService recordUsage creates ledger entry with correct amount", asyn
   assert.equal(result.ledgerEntry.amountUsd, 0.1);
 });
 
-test("BillingService recordUsage sets ledger entry type to usage_charge", async () => {
+test("BillingService recordUsage sets ledger entry type to usage_charge [billing-service]", async () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new BillingService(db, store, { planCatalog: mockPlanCatalog });
@@ -317,7 +317,7 @@ test("BillingService recordUsage sets ledger entry type to usage_charge", async 
   assert.equal(result.ledgerEntry.entryType, "usage_charge");
 });
 
-test("BillingService recordUsage sets correct periodId", async () => {
+test("BillingService recordUsage sets correct periodId [billing-service]", async () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new BillingService(db, store, { planCatalog: mockPlanCatalog });
@@ -334,7 +334,7 @@ test("BillingService recordUsage sets correct periodId", async () => {
   assert.ok(result.ledgerEntry.periodId.match(/^\d{4}-\d{2}$/));
 });
 
-test("BillingService recordUsage with no quota returns null quotaCounter", async () => {
+test("BillingService recordUsage with no quota returns null quotaCounter [billing-service]", async () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new BillingService(db, store, { planCatalog: mockPlanCatalog });
@@ -352,7 +352,7 @@ test("BillingService recordUsage with no quota returns null quotaCounter", async
   assert.notEqual(result.quotaCounter, null);
 });
 
-test("BillingService recordUsage with null metricType quota returns null counter", async () => {
+test("BillingService recordUsage with null metricType quota returns null counter [billing-service]", async () => {
   const localCatalog = {
     plan_nonmetric: {
       planId: "plan_nonmetric",
@@ -379,7 +379,7 @@ test("BillingService recordUsage with null metricType quota returns null counter
   assert.equal(result.quotaCounter, null);
 });
 
-test("BillingService recordUsage increments existing quota counter", async () => {
+test("BillingService recordUsage increments existing quota counter [billing-service]", async () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new BillingService(db, store, { planCatalog: mockPlanCatalog });
@@ -403,7 +403,7 @@ test("BillingService recordUsage increments existing quota counter", async () =>
   assert.equal(result.quotaCounter?.usedQuantity, 30);
 });
 
-test("BillingService recordUsage creates buffered budget ledgers for auto-created reservations", async () => {
+test("BillingService recordUsage creates buffered budget ledgers for auto-created reservations [billing-service]", async () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new BillingService(db, store, { planCatalog: mockPlanCatalog });
@@ -442,7 +442,7 @@ test("BillingService recordUsage creates buffered budget ledgers for auto-create
   assert.deepEqual(capturedHardCaps, [0.15]);
 });
 
-test("BillingService recordUsage compensates persisted charge when budget settlement fails", async () => {
+test("BillingService recordUsage compensates persisted charge when budget settlement fails [billing-service]", async () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new BillingService(db, store, { planCatalog: mockPlanCatalog });
@@ -500,7 +500,7 @@ test("BillingService recordUsage compensates persisted charge when budget settle
   assert.equal(releaseCalls, 1);
 });
 
-test("BillingService recordUsage settles against actual pricing and writes adjustment delta", async () => {
+test("BillingService recordUsage settles against actual pricing and writes adjustment delta [billing-service]", async () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new BillingService(db, store, { planCatalog: mockPlanCatalog });
@@ -551,7 +551,7 @@ test("BillingService recordUsage settles against actual pricing and writes adjus
   assert.deepEqual(settleCalls, [0.2]);
 });
 
-test("BillingService reads existing quota counter inside transaction during recordUsage", async () => {
+test("BillingService reads existing quota counter inside transaction during recordUsage [billing-service]", async () => {
   const trackedDb = createTrackedMockDb();
   const store = createMockStore();
   let observedTransactionState = false;
@@ -573,7 +573,7 @@ test("BillingService reads existing quota counter inside transaction during reco
   assert.equal(observedTransactionState, true);
 });
 
-test("BillingService uses repository atomic quota increment when available", async () => {
+test("BillingService uses repository atomic quota increment when available [billing-service]", async () => {
   const trackedDb = createTrackedMockDb();
   const store = createMockStore();
   let incrementCalls = 0;
@@ -610,7 +610,7 @@ test("BillingService uses repository atomic quota increment when available", asy
   assert.equal(store.billing.listQuotaCounters("acct_atomic")[0]?.usedQuantity, 5);
 });
 
-test("BillingService buildAccountSummary returns correct plan", () => {
+test("BillingService buildAccountSummary returns correct plan [billing-service]", () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new BillingService(db, store, { planCatalog: mockPlanCatalog });
@@ -622,7 +622,7 @@ test("BillingService buildAccountSummary returns correct plan", () => {
   assert.equal(summary.plan.planId, "plan_pro");
 });
 
-test("BillingService buildAccountSummary calculates totalBilledUsd", () => {
+test("BillingService buildAccountSummary calculates totalBilledUsd [billing-service]", () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new BillingService(db, store, { planCatalog: mockPlanCatalog });
@@ -642,7 +642,7 @@ test("BillingService buildAccountSummary calculates totalBilledUsd", () => {
   assert.equal(summary.totals.totalBilledUsd, 1.0);
 });
 
-test("BillingService buildAccountSummary returns quotas array", () => {
+test("BillingService buildAccountSummary returns quotas array [billing-service]", () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new BillingService(db, store, { planCatalog: mockPlanCatalog });
@@ -662,7 +662,7 @@ test("BillingService buildAccountSummary returns quotas array", () => {
   assert.ok(summary.quotas.length >= 0);
 });
 
-test("BillingService buildAccountSummary returns recentUsage", () => {
+test("BillingService buildAccountSummary returns recentUsage [billing-service]", () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new BillingService(db, store, { planCatalog: mockPlanCatalog });
@@ -682,7 +682,7 @@ test("BillingService buildAccountSummary returns recentUsage", () => {
   assert.ok(summary.recentUsage.length >= 1);
 });
 
-test("BillingService buildAccountSummary sets generatedAt timestamp", () => {
+test("BillingService buildAccountSummary sets generatedAt timestamp [billing-service]", () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new BillingService(db, store, { planCatalog: mockPlanCatalog });
@@ -695,7 +695,7 @@ test("BillingService buildAccountSummary sets generatedAt timestamp", () => {
   assert.ok(new Date(summary.generatedAt).getTime() > 0);
 });
 
-test("BillingService createInvoice calculates correct total with tax", () => {
+test("BillingService createInvoice calculates correct total with tax [billing-service]", () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new BillingService(db, store, { planCatalog: mockPlanCatalog });
@@ -717,7 +717,7 @@ test("BillingService createInvoice calculates correct total with tax", () => {
   assert.equal(invoice.totalUsd, 2.5);
 });
 
-test("BillingService createInvoice without tax has zero tax", () => {
+test("BillingService createInvoice without tax has zero tax [billing-service]", () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new BillingService(db, store, { planCatalog: mockPlanCatalog });
@@ -736,7 +736,7 @@ test("BillingService createInvoice without tax has zero tax", () => {
   assert.equal(invoice.taxUsd, 0);
 });
 
-test("BillingService createInvoice sets status to open", () => {
+test("BillingService createInvoice sets status to open [billing-service]", () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new BillingService(db, store, { planCatalog: mockPlanCatalog });
@@ -755,7 +755,7 @@ test("BillingService createInvoice sets status to open", () => {
   assert.equal(invoice.status, "open");
 });
 
-test("BillingService createInvoice sets currency to USD", () => {
+test("BillingService createInvoice sets currency to USD [billing-service]", () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new BillingService(db, store, { planCatalog: mockPlanCatalog });
@@ -774,7 +774,7 @@ test("BillingService createInvoice sets currency to USD", () => {
   assert.equal(invoice.currency, "USD");
 });
 
-test("BillingService createInvoice with dueAt sets due date", () => {
+test("BillingService createInvoice with dueAt sets due date [billing-service]", () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new BillingService(db, store, { planCatalog: mockPlanCatalog });
@@ -796,7 +796,7 @@ test("BillingService createInvoice with dueAt sets due date", () => {
   assert.equal(invoice.dueAt, "2024-12-31T23:59:59.999Z");
 });
 
-test("BillingService createInvoice with externalInvoiceRef stores reference", () => {
+test("BillingService createInvoice with externalInvoiceRef stores reference [billing-service]", () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new BillingService(db, store, { planCatalog: mockPlanCatalog });
@@ -818,7 +818,7 @@ test("BillingService createInvoice with externalInvoiceRef stores reference", ()
   assert.equal(invoice.externalInvoiceRef, "EXT-REF-123");
 });
 
-test("BillingService listInvoices returns empty for account with no invoices", () => {
+test("BillingService listInvoices returns empty for account with no invoices [billing-service]", () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new BillingService(db, store, { planCatalog: mockPlanCatalog });
@@ -830,7 +830,7 @@ test("BillingService listInvoices returns empty for account with no invoices", (
   assert.equal(invoices.length, 0);
 });
 
-test("BillingService listInvoices respects limit parameter", () => {
+test("BillingService listInvoices respects limit parameter [billing-service]", () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new BillingService(db, store, { planCatalog: mockPlanCatalog });
@@ -847,7 +847,7 @@ test("BillingService listInvoices respects limit parameter", () => {
   assert.equal(invoices.length, 2);
 });
 
-test("BillingService settlePaymentSession updates session to paid", async () => {
+test("BillingService settlePaymentSession updates session to paid [billing-service]", async () => {
   const store = createMockStore();
   const db = createMockDb();
   const mockGateway = {
@@ -870,7 +870,7 @@ test("BillingService settlePaymentSession updates session to paid", async () => 
   assert.equal(result.session.status, "paid");
 });
 
-test("BillingService settlePaymentSession updates invoice to paid", async () => {
+test("BillingService settlePaymentSession updates invoice to paid [billing-service]", async () => {
   const store = createMockStore();
   const db = createMockDb();
   const mockGateway = {
@@ -893,7 +893,7 @@ test("BillingService settlePaymentSession updates invoice to paid", async () => 
   assert.equal(invoice.status, "paid");
 });
 
-test("BillingService settlePaymentSession creates credit ledger entry", async () => {
+test("BillingService settlePaymentSession creates credit ledger entry [billing-service]", async () => {
   const store = createMockStore();
   const db = createMockDb();
   const mockGateway = {
@@ -919,7 +919,7 @@ test("BillingService settlePaymentSession creates credit ledger entry", async ()
   assert.equal(credits[credits.length - 1].amountUsd, -result.invoice.totalUsd);
 });
 
-test("BillingService reconcilePaymentSession handles cancelled status", async () => {
+test("BillingService reconcilePaymentSession handles cancelled status [billing-service]", async () => {
   const store = createMockStore();
   const db = createMockDb();
   const mockGateway = {
@@ -946,7 +946,7 @@ test("BillingService reconcilePaymentSession handles cancelled status", async ()
   assert.equal(result.session.status, "cancelled");
 });
 
-test("BillingService reconcilePaymentSession throws for unknown gateway ref", () => {
+test("BillingService reconcilePaymentSession throws for unknown gateway ref [billing-service]", () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new BillingService(db, store, { planCatalog: mockPlanCatalog });
@@ -960,7 +960,7 @@ test("BillingService reconcilePaymentSession throws for unknown gateway ref", ()
   }, /not found/);
 });
 
-test("BillingService reconcilePaymentSession with paid status settles session", async () => {
+test("BillingService reconcilePaymentSession with paid status settles session [billing-service]", async () => {
   const store = createMockStore();
   const db = createMockDb();
   const mockGateway = {
@@ -988,7 +988,7 @@ test("BillingService reconcilePaymentSession with paid status settles session", 
   assert.equal(result.invoice.status, "paid");
 });
 
-test("BillingService listPaymentSessions returns empty for invoice without sessions", () => {
+test("BillingService listPaymentSessions returns empty for invoice without sessions [billing-service]", () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new BillingService(db, store, { planCatalog: mockPlanCatalog });
@@ -1001,7 +1001,7 @@ test("BillingService listPaymentSessions returns empty for invoice without sessi
   assert.equal(sessions.length, 0);
 });
 
-test("BillingService throws for account with invalid identifier characters", () => {
+test("BillingService throws for account with invalid identifier characters [billing-service]", () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new BillingService(db, store, { planCatalog: mockPlanCatalog });
@@ -1011,7 +1011,7 @@ test("BillingService throws for account with invalid identifier characters", () 
   }, /Invalid identifier/);
 });
 
-test("BillingService throws for empty ownerId", () => {
+test("BillingService throws for empty ownerId [billing-service]", () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new BillingService(db, store, { planCatalog: mockPlanCatalog });
@@ -1021,7 +1021,7 @@ test("BillingService throws for empty ownerId", () => {
   }, /Invalid identifier/);
 });
 
-test("BillingService throws for feature key with invalid characters", () => {
+test("BillingService throws for feature key with invalid characters [billing-service]", () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new BillingService(db, store, { planCatalog: mockPlanCatalog });
@@ -1033,7 +1033,7 @@ test("BillingService throws for feature key with invalid characters", () => {
   }, /Invalid identifier/);
 });
 
-test("BillingService throws for negative requestedQuantity", () => {
+test("BillingService throws for negative requestedQuantity [billing-service]", () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new BillingService(db, store, { planCatalog: mockPlanCatalog });
@@ -1050,7 +1050,7 @@ test("BillingService throws for negative requestedQuantity", () => {
   }, /positive number/);
 });
 
-test("BillingService throws for zero quantity in recordUsage", async () => {
+test("BillingService throws for zero quantity in recordUsage [billing-service]", async () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new BillingService(db, store, { planCatalog: mockPlanCatalog });
@@ -1067,7 +1067,7 @@ test("BillingService throws for zero quantity in recordUsage", async () => {
   }, /positive number/);
 });
 
-test("BillingService throws for negative quantity in recordUsage", async () => {
+test("BillingService throws for negative quantity in recordUsage [billing-service]", async () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new BillingService(db, store, { planCatalog: mockPlanCatalog });
@@ -1084,7 +1084,7 @@ test("BillingService throws for negative quantity in recordUsage", async () => {
   }, /positive number/);
 });
 
-test("BillingService throws for non-finite quantity in recordUsage", async () => {
+test("BillingService throws for non-finite quantity in recordUsage [billing-service]", async () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new BillingService(db, store, { planCatalog: mockPlanCatalog });
@@ -1101,7 +1101,7 @@ test("BillingService throws for non-finite quantity in recordUsage", async () =>
   }, /positive number/);
 });
 
-test("BillingService evaluateEntitlement with metricType but no quota in plan", () => {
+test("BillingService evaluateEntitlement with metricType but no quota in plan [billing-service]", () => {
   const localCatalog = {
     plan_noquota: {
       planId: "plan_noquota",
@@ -1130,7 +1130,7 @@ test("BillingService evaluateEntitlement with metricType but no quota in plan", 
   assert.equal(result.remainingQuantity, null);
 });
 
-test("BillingService evaluateEntitlement degrade decision type", () => {
+test("BillingService evaluateEntitlement degrade decision type [billing-service]", () => {
   const localCatalog = {
     plan_degrade: {
       planId: "plan_degrade",
@@ -1159,7 +1159,7 @@ test("BillingService evaluateEntitlement degrade decision type", () => {
   assert.equal(result.decision.decisionType, "degrade");
 });
 
-test("BillingService buildAccountSummary for account with no usage", () => {
+test("BillingService buildAccountSummary for account with no usage [billing-service]", () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new BillingService(db, store, { planCatalog: mockPlanCatalog });
@@ -1174,7 +1174,7 @@ test("BillingService buildAccountSummary for account with no usage", () => {
   assert.equal(summary.recentUsage.length, 0);
 });
 
-test("BillingService buildAccountSummary for inactive account throws", () => {
+test("BillingService buildAccountSummary for inactive account throws [billing-service]", () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new BillingService(db, store, { planCatalog: mockPlanCatalog });
@@ -1191,7 +1191,7 @@ test("BillingService buildAccountSummary for inactive account throws", () => {
   }, /not active/);
 });
 
-test("BillingService createCheckoutSession throws for non-open invoice", async () => {
+test("BillingService createCheckoutSession throws for non-open invoice [billing-service]", async () => {
   const store = createMockStore();
   const db = createMockDb();
   const mockGateway = {
@@ -1217,7 +1217,7 @@ test("BillingService createCheckoutSession throws for non-open invoice", async (
   );
 });
 
-test("BillingService listInvoices for non-existent account throws", () => {
+test("BillingService listInvoices for non-existent account throws [billing-service]", () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new BillingService(db, store, { planCatalog: mockPlanCatalog });
@@ -1227,7 +1227,7 @@ test("BillingService listInvoices for non-existent account throws", () => {
   }, /not found/);
 });
 
-test("BillingService listPaymentSessions for non-existent invoice throws", () => {
+test("BillingService listPaymentSessions for non-existent invoice throws [billing-service]", () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new BillingService(db, store, { planCatalog: mockPlanCatalog });
@@ -1237,7 +1237,7 @@ test("BillingService listPaymentSessions for non-existent invoice throws", () =>
   }, /not found/);
 });
 
-test("BillingService settlePaymentSession for non-existent session throws", () => {
+test("BillingService settlePaymentSession for non-existent session throws [billing-service]", () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new BillingService(db, store, { planCatalog: mockPlanCatalog });
@@ -1247,7 +1247,7 @@ test("BillingService settlePaymentSession for non-existent session throws", () =
   }, /not found/);
 });
 
-test("BillingService createCheckoutSession accepts custom createdAt", async () => {
+test("BillingService createCheckoutSession accepts custom createdAt [billing-service]", async () => {
   const store = createMockStore();
   const db = createMockDb();
   const mockGateway = {
@@ -1272,7 +1272,7 @@ test("BillingService createCheckoutSession accepts custom createdAt", async () =
   assert.equal(session.createdAt, "2024-06-15T12:00:00.000Z");
 });
 
-test("BillingService createCheckoutSession stores correct amount", async () => {
+test("BillingService createCheckoutSession stores correct amount [billing-service]", async () => {
   const store = createMockStore();
   const db = createMockDb();
   const mockGateway = {

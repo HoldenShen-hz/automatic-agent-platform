@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { resolveHighestPriorityTier, SlaTier, SlaTierSchema } from "../../../../src/scale-ecosystem/sla-engine/tier-resolver/index.js";
 
-test("resolveHighestPriorityTier returns highest priority tier", () => {
+test("resolveHighestPriorityTier returns highest priority tier [tier-resolver]", () => {
   const tiers: SlaTier[] = [
     { tierId: "tier-1", displayName: "Bronze", priority: 1, targetLatencyMs: 2000, targetSuccessRate: 0.95, maxQueueWaitMs: 5000, preemptionPriority: 0, reservedCapacityPercent: 0 },
     { tierId: "tier-2", displayName: "Silver", priority: 2, targetLatencyMs: 1000, targetSuccessRate: 0.99, maxQueueWaitMs: 3000, preemptionPriority: 1, reservedCapacityPercent: 10 },
@@ -17,12 +17,12 @@ test("resolveHighestPriorityTier returns highest priority tier", () => {
   assert.equal(result?.priority, 3);
 });
 
-test("resolveHighestPriorityTier returns null for empty array", () => {
+test("resolveHighestPriorityTier returns null for empty array [tier-resolver]", () => {
   const result = resolveHighestPriorityTier([]);
   assert.equal(result, null);
 });
 
-test("resolveHighestPriorityTier handles single tier", () => {
+test("resolveHighestPriorityTier handles single tier [tier-resolver]", () => {
   const tiers: SlaTier[] = [
     { tierId: "only", displayName: "Only", priority: 1, targetLatencyMs: 1000, targetSuccessRate: 0.99, maxQueueWaitMs: 3000, preemptionPriority: 0, reservedCapacityPercent: 0 },
   ];
@@ -32,7 +32,7 @@ test("resolveHighestPriorityTier handles single tier", () => {
   assert.equal(result?.tierId, "only");
 });
 
-test("resolveHighestPriorityTier handles equal priorities (first wins)", () => {
+test("resolveHighestPriorityTier handles equal priorities (first wins) [tier-resolver]", () => {
   const tiers: SlaTier[] = [
     { tierId: "first", displayName: "First", priority: 5, targetLatencyMs: 1000, targetSuccessRate: 0.99, maxQueueWaitMs: 3000, preemptionPriority: 0, reservedCapacityPercent: 0 },
     { tierId: "second", displayName: "Second", priority: 5, targetLatencyMs: 500, targetSuccessRate: 0.999, maxQueueWaitMs: 1000, preemptionPriority: 1, reservedCapacityPercent: 20 },
@@ -43,7 +43,7 @@ test("resolveHighestPriorityTier handles equal priorities (first wins)", () => {
   assert.equal(result?.tierId, "first");
 });
 
-test("SlaTierSchema parses valid tier", () => {
+test("SlaTierSchema parses valid tier [tier-resolver]", () => {
   const result = SlaTierSchema.safeParse({
     tierId: "gold",
     displayName: "Gold Tier",
@@ -58,7 +58,7 @@ test("SlaTierSchema parses valid tier", () => {
   assert.equal(result.success, true);
 });
 
-test("SlaTierSchema applies defaults", () => {
+test("SlaTierSchema applies defaults [tier-resolver]", () => {
   const result = SlaTierSchema.safeParse({
     tierId: "basic",
     displayName: "Basic",
@@ -73,7 +73,7 @@ test("SlaTierSchema applies defaults", () => {
   }
 });
 
-test("SlaTierSchema rejects invalid tierId", () => {
+test("SlaTierSchema rejects invalid tierId [tier-resolver]", () => {
   const result = SlaTierSchema.safeParse({
     tierId: "",
     displayName: "Invalid",
@@ -83,7 +83,7 @@ test("SlaTierSchema rejects invalid tierId", () => {
   assert.equal(result.success, false);
 });
 
-test("SlaTierSchema rejects negative priority", () => {
+test("SlaTierSchema rejects negative priority [tier-resolver]", () => {
   const result = SlaTierSchema.safeParse({
     tierId: "test",
     displayName: "Test",
@@ -93,7 +93,7 @@ test("SlaTierSchema rejects negative priority", () => {
   assert.equal(result.success, false);
 });
 
-test("SlaTierSchema rejects success rate > 1", () => {
+test("SlaTierSchema rejects success rate > 1 [tier-resolver]", () => {
   const result = SlaTierSchema.safeParse({
     tierId: "test",
     displayName: "Test",

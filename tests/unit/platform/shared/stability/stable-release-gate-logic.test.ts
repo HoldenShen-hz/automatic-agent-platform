@@ -166,7 +166,7 @@ function createProfileDir(baseDir: string, profile: string): string {
   return profileDir;
 }
 
-test("buildStableReleaseGateReport with missing evidence returns promote_blocked for canary", () => {
+test("buildStableReleaseGateReport with missing evidence returns promote_blocked for canary [stable-release-gate-logic]", () => {
   const dir = createTempEvidenceDir();
   try {
     const report = buildStableReleaseGateReport({
@@ -183,7 +183,7 @@ test("buildStableReleaseGateReport with missing evidence returns promote_blocked
   }
 });
 
-test("buildStableReleaseGateReport with passing smoke evidence returns promote_approved for canary", () => {
+test("buildStableReleaseGateReport with passing smoke evidence returns promote_approved for canary [stable-release-gate-logic]", () => {
   const dir = createTempEvidenceDir();
   try {
     // Write a passing smoke evidence bundle
@@ -204,7 +204,7 @@ test("buildStableReleaseGateReport with passing smoke evidence returns promote_a
   }
 });
 
-test("buildStableReleaseGateReport with partial evidence returns conditional", () => {
+test("buildStableReleaseGateReport with partial evidence returns conditional [stable-release-gate-logic]", () => {
   const dir = createTempEvidenceDir();
   try {
     // Write a passing smoke evidence
@@ -225,7 +225,7 @@ test("buildStableReleaseGateReport with partial evidence returns conditional", (
   }
 });
 
-test("buildStableReleaseGateReport with failing evidence returns promote_blocked", () => {
+test("buildStableReleaseGateReport with failing evidence returns promote_blocked [stable-release-gate-logic]", () => {
   const dir = createTempEvidenceDir();
   try {
     const smokeDir = createProfileDir(dir, "smoke");
@@ -244,7 +244,7 @@ test("buildStableReleaseGateReport with failing evidence returns promote_blocked
   }
 });
 
-test("buildStableReleaseGateReport for tenant_gray requires gray release evidence", () => {
+test("buildStableReleaseGateReport for tenant_gray requires gray release evidence [stable-release-gate-logic]", () => {
   const dir = createTempEvidenceDir();
   try {
     const smokeDir = createProfileDir(dir, "smoke");
@@ -266,7 +266,7 @@ test("buildStableReleaseGateReport for tenant_gray requires gray release evidenc
   }
 });
 
-test("buildStableReleaseGateReport for production_ready requires 24h and 72h profiles", () => {
+test("buildStableReleaseGateReport for production_ready requires 24h and 72h profiles [stable-release-gate-logic]", () => {
   const dir = createTempEvidenceDir();
   try {
     const smokeDir = createProfileDir(dir, "smoke");
@@ -286,7 +286,7 @@ test("buildStableReleaseGateReport for production_ready requires 24h and 72h pro
   }
 });
 
-test("buildStableReleaseGateReport includes required criteria for canary", () => {
+test("buildStableReleaseGateReport includes required criteria for canary [stable-release-gate-logic]", () => {
   const dir = createTempEvidenceDir();
   try {
     const gateReport = buildStableReleaseGateReport({
@@ -312,7 +312,7 @@ test("buildStableReleaseGateReport includes required criteria for canary", () =>
   }
 });
 
-test("buildStableReleaseGateReport includes tenant_gray_rollout_tested for tenant_gray target", () => {
+test("buildStableReleaseGateReport includes tenant_gray_rollout_tested for tenant_gray target [stable-release-gate-logic]", () => {
   const dir = createTempEvidenceDir();
   try {
     const gateReport = buildStableReleaseGateReport({
@@ -327,7 +327,7 @@ test("buildStableReleaseGateReport includes tenant_gray_rollout_tested for tenan
   }
 });
 
-test("buildStableReleaseGateReport includes db/queue criteria for production_ready", () => {
+test("buildStableReleaseGateReport includes db/queue criteria for production_ready [stable-release-gate-logic]", () => {
   const dir = createTempEvidenceDir();
   try {
     const gateReport = buildStableReleaseGateReport({
@@ -345,7 +345,7 @@ test("buildStableReleaseGateReport includes db/queue criteria for production_rea
   }
 });
 
-test("buildStableReleaseGateReport defaults targetStatus to canary", () => {
+test("buildStableReleaseGateReport defaults targetStatus to canary [stable-release-gate-logic]", () => {
   const dir = createTempEvidenceDir();
   try {
     const smokeDir = createProfileDir(dir, "smoke");
@@ -362,7 +362,7 @@ test("buildStableReleaseGateReport defaults targetStatus to canary", () => {
   }
 });
 
-test("buildStableReleaseGateReport with multiple profiles marks availableProfiles correctly", () => {
+test("buildStableReleaseGateReport with multiple profiles marks availableProfiles correctly [stable-release-gate-logic]", () => {
   const dir = createTempEvidenceDir();
   try {
     // Write smoke and 24h evidence
@@ -385,7 +385,7 @@ test("buildStableReleaseGateReport with multiple profiles marks availableProfile
   }
 });
 
-test("buildStableReleaseGateReport with partial criteria produces conditional verdict", () => {
+test("buildStableReleaseGateReport with partial criteria produces conditional verdict [stable-release-gate-logic]", () => {
   const dir = createTempEvidenceDir();
   try {
     const smokeDir = createProfileDir(dir, "smoke");
@@ -410,7 +410,7 @@ test("buildStableReleaseGateReport with partial criteria produces conditional ve
   }
 });
 
-test("writeStableReleaseGateReport writes valid JSON", () => {
+test("writeStableReleaseGateReport writes valid JSON [stable-release-gate-logic]", () => {
   const dir = createTempEvidenceDir();
   try {
     const smokeDir = createProfileDir(dir, "smoke");
@@ -436,7 +436,7 @@ test("writeStableReleaseGateReport writes valid JSON", () => {
   }
 });
 
-test("buildStableReleaseGateReport computes artifactRefs from available reports", () => {
+test("buildStableReleaseGateReport computes artifactRefs from available reports [stable-release-gate-logic]", () => {
   const dir = createTempEvidenceDir();
   try {
     const smokeDir = createProfileDir(dir, "smoke");
@@ -455,7 +455,7 @@ test("buildStableReleaseGateReport computes artifactRefs from available reports"
   }
 });
 
-test("buildStableReleaseGateReport includes all criteria (required + optional)", () => {
+test("buildStableReleaseGateReport includes all criteria (required + optional) [stable-release-gate-logic]", () => {
   const dir = createTempEvidenceDir();
   try {
     const smokeDir = createProfileDir(dir, "smoke");

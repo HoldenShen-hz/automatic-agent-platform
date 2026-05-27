@@ -7,7 +7,7 @@ import {
   type RegionDescriptor,
 } from "../../../../../src/scale-ecosystem/multi-region/region-router/index.js";
 
-test("RegionDescriptorSchema parses valid region descriptor", () => {
+test("RegionDescriptorSchema parses valid region descriptor [index]", () => {
   const valid = {
     regionId: "us-east-1",
     provider: "aws",
@@ -31,7 +31,7 @@ test("RegionDescriptorSchema parses valid region descriptor", () => {
   assert.equal(result.residencyAllowed, true);
 });
 
-test("RegionDescriptorSchema applies defaults", () => {
+test("RegionDescriptorSchema applies defaults [index]", () => {
   // Note: Schema does NOT have defaults for required fields (provider, endpoints, dataResidencyPolicy)
   // So we need to provide complete valid input to test defaults that do exist
   const withPartialDefaults = {
@@ -51,7 +51,7 @@ test("RegionDescriptorSchema applies defaults", () => {
   assert.equal(result.residencyAllowed, true);
 });
 
-test("RegionDescriptorSchema rejects invalid status", () => {
+test("RegionDescriptorSchema rejects invalid status [index]", () => {
   const invalid = {
     regionId: "ap-south-1",
     jurisdiction: "AP-South",
@@ -61,7 +61,7 @@ test("RegionDescriptorSchema rejects invalid status", () => {
   assert.throws(() => RegionDescriptorSchema.parse(invalid), /invalid/i);
 });
 
-test("RegionDescriptorSchema rejects latencyScore below zero", () => {
+test("RegionDescriptorSchema rejects latencyScore below zero [index]", () => {
   const invalid = {
     regionId: "us-west-2",
     jurisdiction: "US-West",
@@ -74,12 +74,12 @@ test("RegionDescriptorSchema rejects latencyScore below zero", () => {
   assert.throws(() => RegionDescriptorSchema.parse(invalid), /greater than or equal to 0/i);
 });
 
-test("selectPreferredRegion returns null for empty array", () => {
+test("selectPreferredRegion returns null for empty array [index]", () => {
   const result = selectPreferredRegion([]);
   assert.equal(result, null);
 });
 
-test("selectPreferredRegion returns null when all regions are disabled", () => {
+test("selectPreferredRegion returns null when all regions are disabled [index]", () => {
   const regions: readonly RegionDescriptor[] = [
     { regionId: "us-east-1", jurisdiction: "US", status: "disabled" },
     { regionId: "eu-west-1", jurisdiction: "EU", status: "disabled" },
@@ -89,7 +89,7 @@ test("selectPreferredRegion returns null when all regions are disabled", () => {
   assert.equal(result, null);
 });
 
-test("selectPreferredRegion returns null when no residency allowed", () => {
+test("selectPreferredRegion returns null when no residency allowed [index]", () => {
   const regions: readonly RegionDescriptor[] = [
     { regionId: "us-east-1", jurisdiction: "US", residencyAllowed: false },
     { regionId: "eu-west-1", jurisdiction: "EU", residencyAllowed: false },
@@ -99,7 +99,7 @@ test("selectPreferredRegion returns null when no residency allowed", () => {
   assert.equal(result, null);
 });
 
-test("selectPreferredRegion selects lowest latencyScore region", () => {
+test("selectPreferredRegion selects lowest latencyScore region [index]", () => {
   const regions: readonly RegionDescriptor[] = [
     { regionId: "us-east-1", jurisdiction: "US", latencyScore: 50 },
     { regionId: "eu-west-1", jurisdiction: "EU", latencyScore: 20 },
@@ -111,7 +111,7 @@ test("selectPreferredRegion selects lowest latencyScore region", () => {
   assert.equal(result.regionId, "ap-south-1");
 });
 
-test("selectPreferredRegion skips disabled regions", () => {
+test("selectPreferredRegion skips disabled regions [index]", () => {
   const regions: readonly RegionDescriptor[] = [
     { regionId: "us-east-1", jurisdiction: "US", latencyScore: 5, status: "disabled" },
     { regionId: "eu-west-1", jurisdiction: "EU", latencyScore: 20 },
@@ -122,7 +122,7 @@ test("selectPreferredRegion skips disabled regions", () => {
   assert.equal(result.regionId, "eu-west-1");
 });
 
-test("selectPreferredRegion skips regions without residency", () => {
+test("selectPreferredRegion skips regions without residency [index]", () => {
   const regions: readonly RegionDescriptor[] = [
     { regionId: "us-east-1", jurisdiction: "US", residencyAllowed: true },
     { regionId: "eu-west-1", jurisdiction: "EU", residencyAllowed: false },
@@ -133,7 +133,7 @@ test("selectPreferredRegion skips regions without residency", () => {
   assert.equal(result.regionId, "us-east-1");
 });
 
-test("selectPreferredRegion handles degraded status", () => {
+test("selectPreferredRegion handles degraded status [index]", () => {
   const regions: readonly RegionDescriptor[] = [
     { regionId: "us-east-1", jurisdiction: "US", status: "degraded", latencyScore: 5 },
     { regionId: "eu-west-1", jurisdiction: "EU", status: "active", latencyScore: 20 },
@@ -145,7 +145,7 @@ test("selectPreferredRegion handles degraded status", () => {
   assert.equal(result.regionId, "us-east-1");
 });
 
-test("selectPreferredRegion handles undefined optional fields with defaults", () => {
+test("selectPreferredRegion handles undefined optional fields with defaults [index]", () => {
   const regions: readonly RegionDescriptor[] = [
     { regionId: "us-east-1", jurisdiction: "US" }, // no status, no latencyScore, no residencyAllowed
     { regionId: "eu-west-1", jurisdiction: "EU", latencyScore: 100 },
@@ -156,7 +156,7 @@ test("selectPreferredRegion handles undefined optional fields with defaults", ()
   assert.equal(result.regionId, "us-east-1");
 });
 
-test("selectPreferredRegion returns first when latency scores are equal", () => {
+test("selectPreferredRegion returns first when latency scores are equal [index]", () => {
   const regions: readonly RegionDescriptor[] = [
     { regionId: "us-east-1", jurisdiction: "US", latencyScore: 10 },
     { regionId: "eu-west-1", jurisdiction: "EU", latencyScore: 10 },

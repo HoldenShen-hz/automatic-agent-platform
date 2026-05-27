@@ -40,7 +40,7 @@ function createReport(overrides: Partial<MarketplaceCatalogReport> = {}): Market
   };
 }
 
-test("RegisterExtensionPackageInput accepts valid input", () => {
+test("RegisterExtensionPackageInput accepts valid input [marketplace-governance-types]", () => {
   const input: RegisterExtensionPackageInput = {
     extensionId: "ext-123",
     packageType: "plugin",
@@ -67,7 +67,7 @@ test("RegisterExtensionPackageInput accepts valid input", () => {
   assert.ok(!input.sbomVerified);
 });
 
-test("SubmitMarketplaceReviewInput accepts valid input", () => {
+test("SubmitMarketplaceReviewInput accepts valid input [marketplace-governance-types]", () => {
   const input: SubmitMarketplaceReviewInput = {
     packageId: "pkg-123",
     submitter: "test-user",
@@ -79,7 +79,7 @@ test("SubmitMarketplaceReviewInput accepts valid input", () => {
   assert.equal(input.findings?.length, 1);
 });
 
-test("DecideMarketplaceReviewInput accepts approved status", () => {
+test("DecideMarketplaceReviewInput accepts approved status [marketplace-governance-types]", () => {
   const input: DecideMarketplaceReviewInput = {
     reviewId: "review-123",
     status: "approved",
@@ -91,7 +91,7 @@ test("DecideMarketplaceReviewInput accepts approved status", () => {
   assert.equal(input.decisionReasonCode, "marketplace.approved");
 });
 
-test("DecideMarketplaceReviewInput accepts rejected status", () => {
+test("DecideMarketplaceReviewInput accepts rejected status [marketplace-governance-types]", () => {
   const input: DecideMarketplaceReviewInput = {
     reviewId: "review-123",
     status: "rejected",
@@ -104,7 +104,7 @@ test("DecideMarketplaceReviewInput accepts rejected status", () => {
   assert.equal(input.findings?.length, 1);
 });
 
-test("PublishExtensionInput accepts valid input", () => {
+test("PublishExtensionInput accepts valid input [marketplace-governance-types]", () => {
   const input: PublishExtensionInput = {
     packageId: "pkg-123",
     reviewId: "review-123",
@@ -116,7 +116,7 @@ test("PublishExtensionInput accepts valid input", () => {
   assert.equal(input.channel, "stable");
 });
 
-test("RevokeExtensionInput accepts valid input", () => {
+test("RevokeExtensionInput accepts valid input [marketplace-governance-types]", () => {
   const input: RevokeExtensionInput = {
     publicationId: "pub-123",
     reasonCode: "marketplace.critical_security",
@@ -126,7 +126,7 @@ test("RevokeExtensionInput accepts valid input", () => {
   assert.equal(input.reasonCode, "marketplace.critical_security");
 });
 
-test("DeprecateExtensionInput accepts valid input with migration target", () => {
+test("DeprecateExtensionInput accepts valid input with migration target [marketplace-governance-types]", () => {
   const input: DeprecateExtensionInput = {
     packageId: "pkg-123",
     reasonCode: "marketplace.superseded",
@@ -138,7 +138,7 @@ test("DeprecateExtensionInput accepts valid input with migration target", () => 
   assert.equal(input.replacementSuggestions?.length, 2);
 });
 
-test("SunsetExtensionInput accepts threshold conditions", () => {
+test("SunsetExtensionInput accepts threshold conditions [marketplace-governance-types]", () => {
   const input: SunsetExtensionInput = {
     packageId: "pkg-123",
     reasonCode: "marketplace.end_of_life",
@@ -158,7 +158,7 @@ test("SunsetExtensionInput accepts threshold conditions", () => {
   assert.equal(input.thresholdConditions?.[0]?.severityThreshold, "critical");
 });
 
-test("RetireExtensionInput accepts migration completion ratio", () => {
+test("RetireExtensionInput accepts migration completion ratio [marketplace-governance-types]", () => {
   const input: RetireExtensionInput = {
     packageId: "pkg-123",
     reasonCode: "marketplace.retired",
@@ -168,7 +168,7 @@ test("RetireExtensionInput accepts migration completion ratio", () => {
   assert.equal(input.migrationCompletionRatio, 0.95);
 });
 
-test("MarketplaceCatalogEntry captures full marketplace state", () => {
+test("MarketplaceCatalogEntry captures full marketplace state [marketplace-governance-types]", () => {
   const entry: MarketplaceCatalogEntry = {
     packageId: "pkg-123",
     tenantId: "tenant-456",
@@ -198,7 +198,7 @@ test("MarketplaceCatalogEntry captures full marketplace state", () => {
   assert.equal(entry.publicationStatus, "published");
 });
 
-test("MarketplaceCatalogSummary calculates correct totals", () => {
+test("MarketplaceCatalogSummary calculates correct totals [marketplace-governance-types]", () => {
   const summary = createSummary({
     packagesReady: 10,
     reviewPending: 3,
@@ -213,7 +213,7 @@ test("MarketplaceCatalogSummary calculates correct totals", () => {
   assert.equal(summary.overallVerdict, "partial");
 });
 
-test("MarketplaceCatalogSummary overallVerdict can be ready", () => {
+test("MarketplaceCatalogSummary overallVerdict can be ready [marketplace-governance-types]", () => {
   const summary = createSummary({
     packagesReady: 20,
     reviewPending: 0,
@@ -226,14 +226,14 @@ test("MarketplaceCatalogSummary overallVerdict can be ready", () => {
   assert.equal(summary.overallVerdict, "ready");
 });
 
-test("MarketplaceCatalogReport contains summary and entries", () => {
+test("MarketplaceCatalogReport contains summary and entries [marketplace-governance-types]", () => {
   const report = createReport();
 
   assert.equal(report.reportId, "rpt-123");
   assert.equal(report.entries.length, 0);
 });
 
-test("MarketplaceGovernanceRunResult contains report and record", () => {
+test("MarketplaceGovernanceRunResult contains report and record [marketplace-governance-types]", () => {
   const report = createReport();
   const result: MarketplaceGovernanceRunResult = {
     report,
@@ -251,7 +251,7 @@ test("MarketplaceGovernanceRunResult contains report and record", () => {
   assert.equal(result.record.reportId, "rpt-123");
 });
 
-test("MarketplaceGovernanceExportResult adds artifact references", () => {
+test("MarketplaceGovernanceExportResult adds artifact references [marketplace-governance-types]", () => {
   const report = createReport();
   const result: MarketplaceGovernanceExportResult = {
     report,
@@ -283,7 +283,7 @@ test("MarketplaceGovernanceExportResult adds artifact references", () => {
   assert.equal(result.jsonArtifact.mimeType, "application/json");
 });
 
-test("MarketplaceGovernanceServiceOptions accepts optional artifact store options", () => {
+test("MarketplaceGovernanceServiceOptions accepts optional artifact store options [marketplace-governance-types]", () => {
   const options: MarketplaceGovernanceServiceOptions = {
     artifactStoreOptions: {
       rootDir: "/tmp/artifacts",

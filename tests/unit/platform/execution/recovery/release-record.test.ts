@@ -12,7 +12,7 @@ import {
   type ApprovalRecord,
 } from "../../../../../src/platform/five-plane-execution/recovery/release-record.js";
 
-test("createReleaseRecord creates approved record with environment", () => {
+test("createReleaseRecord creates approved record with environment [release-record]", () => {
   const record = createReleaseRecord({
     recordId: "rel_1",
     taskId: "task_1",
@@ -30,7 +30,7 @@ test("createReleaseRecord creates approved record with environment", () => {
   assert.ok(record.createdAt !== undefined);
 });
 
-test("createReleaseRecord creates rejected record without deployedAt", () => {
+test("createReleaseRecord creates rejected record without deployedAt [release-record]", () => {
   const record = createReleaseRecord({
     recordId: "rel_1",
     taskId: "task_1",
@@ -42,7 +42,7 @@ test("createReleaseRecord creates rejected record without deployedAt", () => {
   assert.equal(record.deployedAt, undefined);
 });
 
-test("createReleaseRecord creates record with approvals", () => {
+test("createReleaseRecord creates record with approvals [release-record]", () => {
   const approvals: readonly ApprovalRecord[] = [
     { approverId: "agent_1", approverType: "agent", decision: "approved", approvedAt: "2024-01-01T00:00:00.000Z" },
     { approverId: "human_1", approverType: "human", decision: "approved", reason: "Looks good", approvedAt: "2024-01-02T00:00:00.000Z" },
@@ -62,7 +62,7 @@ test("createReleaseRecord creates record with approvals", () => {
   assert.equal(record.approvals[1]!.approverType, "human");
 });
 
-test("createReleaseRecord creates record with releaseNotes", () => {
+test("createReleaseRecord creates record with releaseNotes [release-record]", () => {
   const record = createReleaseRecord({
     recordId: "rel_1",
     taskId: "task_1",
@@ -74,7 +74,7 @@ test("createReleaseRecord creates record with releaseNotes", () => {
   assert.equal(record.releaseNotes, "Bug fixes and performance improvements");
 });
 
-test("createRollbackRecord updates decision to rolled_back", () => {
+test("createRollbackRecord updates decision to rolled_back [release-record]", () => {
   const original = createReleaseRecord({
     recordId: "rel_1",
     taskId: "task_1",
@@ -92,7 +92,7 @@ test("createRollbackRecord updates decision to rolled_back", () => {
   assert.ok(rollback.rollbackInfo!.rolledBackAt !== undefined);
 });
 
-test("createRollbackRecord marks automatic rollback correctly", () => {
+test("createRollbackRecord marks automatic rollback correctly [release-record]", () => {
   const original = createReleaseRecord({
     recordId: "rel_1",
     taskId: "task_1",
@@ -105,7 +105,7 @@ test("createRollbackRecord marks automatic rollback correctly", () => {
   assert.equal(rollback.rollbackInfo!.automatic, true);
 });
 
-test("isReleaseApproved returns true for approved decision", () => {
+test("isReleaseApproved returns true for approved decision [release-record]", () => {
   const record = createReleaseRecord({
     recordId: "rel_1",
     taskId: "task_1",
@@ -116,7 +116,7 @@ test("isReleaseApproved returns true for approved decision", () => {
   assert.equal(isReleaseApproved(record), true);
 });
 
-test("isReleaseApproved returns false for rejected decision", () => {
+test("isReleaseApproved returns false for rejected decision [release-record]", () => {
   const record = createReleaseRecord({
     recordId: "rel_1",
     taskId: "task_1",
@@ -127,7 +127,7 @@ test("isReleaseApproved returns false for rejected decision", () => {
   assert.equal(isReleaseApproved(record), false);
 });
 
-test("isReleaseApproved returns false for rolled_back decision", () => {
+test("isReleaseApproved returns false for rolled_back decision [release-record]", () => {
   const original = createReleaseRecord({
     recordId: "rel_1",
     taskId: "task_1",
@@ -140,7 +140,7 @@ test("isReleaseApproved returns false for rolled_back decision", () => {
   assert.equal(isReleaseApproved(rollback), false);
 });
 
-test("requiresHumanApproval returns true when any approval is from human", () => {
+test("requiresHumanApproval returns true when any approval is from human [release-record]", () => {
   const approvals: readonly ApprovalRecord[] = [
     { approverId: "agent_1", approverType: "agent", decision: "approved", approvedAt: "2024-01-01T00:00:00.000Z" },
   ];
@@ -156,7 +156,7 @@ test("requiresHumanApproval returns true when any approval is from human", () =>
   assert.equal(requiresHumanApproval(record), false);
 });
 
-test("requiresHumanApproval returns false when all approvals are from agents", () => {
+test("requiresHumanApproval returns false when all approvals are from agents [release-record]", () => {
   const approvals: readonly ApprovalRecord[] = [
     { approverId: "agent_1", approverType: "agent", decision: "approved", approvedAt: "2024-01-01T00:00:00.000Z" },
     { approverId: "agent_2", approverType: "agent", decision: "approved", approvedAt: "2024-01-02T00:00:00.000Z" },
@@ -173,12 +173,12 @@ test("requiresHumanApproval returns false when all approvals are from agents", (
   assert.equal(requiresHumanApproval(record), false);
 });
 
-test("ReleaseDecision type accepts all valid values", () => {
+test("ReleaseDecision type accepts all valid values [release-record]", () => {
   const decisions: ReleaseDecision[] = ["approved", "rejected", "rolled_back"];
   assert.equal(decisions.length, 3);
 });
 
-test("ReleaseEnvironment type accepts all valid values", () => {
+test("ReleaseEnvironment type accepts all valid values [release-record]", () => {
   const environments: ReleaseEnvironment[] = ["development", "staging", "production"];
   assert.equal(environments.length, 3);
 });

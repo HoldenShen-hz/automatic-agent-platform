@@ -13,7 +13,7 @@ function createMachine() {
   return new RuntimeStateMachine({ persistEvent: () => {} });
 }
 
-test("RuntimeStateMachine validates a canonical HarnessRun transition", () => {
+test("RuntimeStateMachine validates a canonical HarnessRun transition [runtime-state-machine]", () => {
   const machine = createMachine();
   const run = createHarnessRun({
     harnessRunId: "run-state-transition",
@@ -48,7 +48,7 @@ test("RuntimeStateMachine validates a canonical HarnessRun transition", () => {
   assert.equal(result.aggregate.status, "admitted");
 });
 
-test("RuntimeStateMachine requires lease, fencing, and audit for NodeRun execution transitions", () => {
+test("RuntimeStateMachine requires lease, fencing, and audit for NodeRun execution transitions [runtime-state-machine]", () => {
   const machine = createMachine();
   const nodeRun = createNodeRun({
     harnessRunId: "run-1",
@@ -77,7 +77,7 @@ test("RuntimeStateMachine requires lease, fencing, and audit for NodeRun executi
   );
 });
 
-test("RuntimeStateMachine rejects budget transitions when hard-cap preconditions are not satisfied", () => {
+test("RuntimeStateMachine rejects budget transitions when hard-cap preconditions are not satisfied [runtime-state-machine]", () => {
   const machine = createMachine();
   const ledger = createBudgetLedger({
     budgetLedgerId: "ledger-state",
@@ -116,7 +116,7 @@ test("RuntimeStateMachine rejects budget transitions when hard-cap preconditions
   );
 });
 
-test("RuntimeStateMachine requires pre-commit policy proof refs for commit-affecting side effects", () => {
+test("RuntimeStateMachine requires pre-commit policy proof refs for commit-affecting side effects [runtime-state-machine]", () => {
   const machine = createMachine();
   const sideEffect = createSideEffectRecord({
     sideEffectId: "se-state-proof",
@@ -155,7 +155,7 @@ test("RuntimeStateMachine requires pre-commit policy proof refs for commit-affec
   );
 });
 
-test("RuntimeStateMachine requires human approval refs for high-risk side effects", () => {
+test("RuntimeStateMachine requires human approval refs for high-risk side effects [runtime-state-machine]", () => {
   const machine = createMachine();
   const sideEffect = createSideEffectRecord({
     sideEffectId: "se-state-human",

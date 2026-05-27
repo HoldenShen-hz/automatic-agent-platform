@@ -6,7 +6,7 @@ import test from "node:test";
 import { ShadowSnapshotService } from "../../../../../src/platform/five-plane-execution/tool-executor/shadow-snapshot-service.js";
 import { cleanupPath, createFile, createTempWorkspace } from "../../../../helpers/fs.js";
 
-test("ShadowSnapshotService creates an external snapshot and keeps workspace git metadata clean", () => {
+test("ShadowSnapshotService creates an external snapshot and keeps workspace git metadata clean [shadow-snapshot-service]", () => {
   const workspace = createTempWorkspace("aa-shadow-workspace-");
   const shadowRoot = createTempWorkspace("aa-shadow-root-");
 
@@ -40,7 +40,7 @@ test("ShadowSnapshotService creates an external snapshot and keeps workspace git
   }
 });
 
-test("ShadowSnapshotService restores tracked files and removes untracked files", () => {
+test("ShadowSnapshotService restores tracked files and removes untracked files [shadow-snapshot-service]", () => {
   const workspace = createTempWorkspace("aa-shadow-workspace-");
   const shadowRoot = createTempWorkspace("aa-shadow-root-");
 
@@ -74,7 +74,7 @@ test("ShadowSnapshotService restores tracked files and removes untracked files",
   }
 });
 
-test("ShadowSnapshotService excludes common generated directories from tracked content", () => {
+test("ShadowSnapshotService excludes common generated directories from tracked content [shadow-snapshot-service]", () => {
   const workspace = createTempWorkspace("aa-shadow-workspace-");
   const shadowRoot = createTempWorkspace("aa-shadow-root-");
 
@@ -100,7 +100,7 @@ test("ShadowSnapshotService excludes common generated directories from tracked c
   }
 });
 
-test("ShadowSnapshotService fail-closes when a non-ignored entry exceeds the configured size budget", () => {
+test("ShadowSnapshotService fail-closes when a non-ignored entry exceeds the configured size budget [shadow-snapshot-service]", () => {
   const workspace = createTempWorkspace("aa-shadow-workspace-");
   const shadowRoot = createTempWorkspace("aa-shadow-root-");
 
@@ -120,7 +120,7 @@ test("ShadowSnapshotService fail-closes when a non-ignored entry exceeds the con
   }
 });
 
-test("ShadowSnapshotService generates normalized snapshot ids when one is not provided", () => {
+test("ShadowSnapshotService generates normalized snapshot ids when one is not provided [shadow-snapshot-service]", () => {
   const workspace = createTempWorkspace("aa-shadow-workspace-");
   const shadowRoot = createTempWorkspace("aa-shadow-root-");
 

@@ -183,7 +183,6 @@ export class HarnessDecisionManager {
     });
 
     void inputBundle;
-    // @ts-expect-error - appendEvidenceRecord is available on repository implementations used here
     this.runtimeTruthRepository.appendEvidenceRecord(evidenceRecord);
   }
 

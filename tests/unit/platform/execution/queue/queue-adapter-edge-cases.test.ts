@@ -28,7 +28,7 @@ import type {
 // Queue Partitioner Edge Cases
 // =============================================================================
 
-test("QueuePartitioner extractPartitionKey uses default when aggregateType and domain are missing", () => {
+test("QueuePartitioner extractPartitionKey uses default when aggregateType and domain are missing [queue-adapter-edge-cases]", () => {
   const partitioner = new QueuePartitioner();
 
   // Empty payload falls back to 'default'
@@ -37,20 +37,20 @@ test("QueuePartitioner extractPartitionKey uses default when aggregateType and d
   assert.equal(key1.tenantId, "default");
 });
 
-test("QueuePartitioner extractPartitionKey uses tenant_id fallback", () => {
+test("QueuePartitioner extractPartitionKey uses tenant_id fallback [queue-adapter-edge-cases]", () => {
   const partitioner = new QueuePartitioner();
   const key = partitioner.extractPartitionKey({ aggregateType: "task", tenant_id: "tenant-456" });
   assert.equal(key.tenantId, "tenant-456");
 });
 
-test("QueuePartitioner computePartitionName handles empty strings", () => {
+test("QueuePartitioner computePartitionName handles empty strings [queue-adapter-edge-cases]", () => {
   const partitioner = new QueuePartitioner();
   assert.equal(partitioner.computePartitionName("", "", "byTenant"), "queue:");
   assert.equal(partitioner.computePartitionName("", "", "byAggregateType"), "queue:");
   assert.equal(partitioner.computePartitionName("", "", "byTenantAndAggregate"), "queue::");
 });
 
-test("QueuePartitioner route with priority and maxAttempts options", () => {
+test("QueuePartitioner route with priority and maxAttempts options [queue-adapter-edge-cases]", () => {
   const partitioner = new QueuePartitioner();
   const mockAdapter = createMockQueueAdapter();
   const partition: QueuePartition = {
@@ -70,7 +70,7 @@ test("QueuePartitioner route with priority and maxAttempts options", () => {
   assert.equal(job?.maxAttempts, 10);
 });
 
-test("QueuePartitioner route without options uses defaults", () => {
+test("QueuePartitioner route without options uses defaults [queue-adapter-edge-cases]", () => {
   const partitioner = new QueuePartitioner();
   const mockAdapter = createMockQueueAdapter();
   const partition: QueuePartition = {
@@ -90,7 +90,7 @@ test("QueuePartitioner route without options uses defaults", () => {
   assert.equal(job?.maxAttempts, 3);
 });
 
-test("QueuePartitioner detectOverload with zero maxDepth", () => {
+test("QueuePartitioner detectOverload with zero maxDepth [queue-adapter-edge-cases]", () => {
   const partitioner = new QueuePartitioner();
   const mockAdapter = createMockQueueAdapter();
   const partition: QueuePartition = {
@@ -107,7 +107,7 @@ test("QueuePartitioner detectOverload with zero maxDepth", () => {
   assert.equal(overloads.length, 1);
 });
 
-test("QueuePartitioner getPartitionStats with no jobs", () => {
+test("QueuePartitioner getPartitionStats with no jobs [queue-adapter-edge-cases]", () => {
   const partitioner = new QueuePartitioner();
   const mockAdapter = createMockQueueAdapter();
   const partition: QueuePartition = {
@@ -128,7 +128,7 @@ test("QueuePartitioner getPartitionStats with no jobs", () => {
 // Queue Adapter Factory Edge Cases
 // =============================================================================
 
-test("createQueueAdapter with redis config having all optional fields", () => {
+test("createQueueAdapter with redis config having all optional fields [queue-adapter-edge-cases]", () => {
   const adapter = createQueueAdapter({
     kind: "redis",
     redis: {
@@ -145,7 +145,7 @@ test("createQueueAdapter with redis config having all optional fields", () => {
   assert.equal(adapter.backendKind, "redis");
 });
 
-test("createQueueAdapter sqlite kind returns SqliteQueueAdapter", () => {
+test("createQueueAdapter sqlite kind returns SqliteQueueAdapter [queue-adapter-edge-cases]", () => {
   const workspace = createTempWorkspace("aa-factory-sqlite-edge-");
   const db = new SqliteDatabase(join(workspace, "queue.db"), { migrationPlan: [] });
   db.connection.exec(QUEUE_JOBS_DDL);
@@ -158,7 +158,7 @@ test("createQueueAdapter sqlite kind returns SqliteQueueAdapter", () => {
   }
 });
 
-test("createQueueAdapter redis kind returns RedisQueueAdapter", () => {
+test("createQueueAdapter redis kind returns RedisQueueAdapter [queue-adapter-edge-cases]", () => {
   const adapter = createQueueAdapter({
     kind: "redis",
     redis: { host: "localhost", port: 6379 },
@@ -166,7 +166,7 @@ test("createQueueAdapter redis kind returns RedisQueueAdapter", () => {
   assert.equal(adapter.backendKind, "redis");
 });
 
-test("createQueueAdapter throws ValidationError with correct code for missing redis", () => {
+test("createQueueAdapter throws ValidationError with correct code for missing redis [queue-adapter-edge-cases]", () => {
   try {
     createQueueAdapter({ kind: "redis" });
     assert.fail("Expected ValidationError");
@@ -176,7 +176,7 @@ test("createQueueAdapter throws ValidationError with correct code for missing re
   }
 });
 
-test("createQueueAdapter throws ValidationError with correct code for missing sqlite db", () => {
+test("createQueueAdapter throws ValidationError with correct code for missing sqlite db [queue-adapter-edge-cases]", () => {
   try {
     createQueueAdapter({ kind: "sqlite" });
     assert.fail("Expected ValidationError");
@@ -190,7 +190,7 @@ test("createQueueAdapter throws ValidationError with correct code for missing sq
 // Redis Queue Adapter Edge Cases
 // =============================================================================
 
-test("RedisQueueAdapter enqueue with empty payload is stringified", () => {
+test("RedisQueueAdapter enqueue with empty payload is stringified [queue-adapter-edge-cases]", () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
   const job = adapter.enqueue({ queueName: "q", payload: "" });
   // Empty string becomes '""' after JSON.stringify
@@ -198,7 +198,7 @@ test("RedisQueueAdapter enqueue with empty payload is stringified", () => {
   assert.equal(job.status, "waiting");
 });
 
-test("RedisQueueAdapter enqueue with complex nested payload", () => {
+test("RedisQueueAdapter enqueue with complex nested payload [queue-adapter-edge-cases]", () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
   const complexPayload = {
     nested: { deep: { value: 123 } },
@@ -212,25 +212,25 @@ test("RedisQueueAdapter enqueue with complex nested payload", () => {
   assert.deepEqual(parsed.array, [1, 2, 3]);
 });
 
-test("RedisQueueAdapter enqueue with negative priority", () => {
+test("RedisQueueAdapter enqueue with negative priority [queue-adapter-edge-cases]", () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
   const job = adapter.enqueue({ queueName: "q", payload: "test", priority: -10 });
   assert.equal(job.priority, -10);
 });
 
-test("RedisQueueAdapter enqueue with zero maxAttempts", () => {
+test("RedisQueueAdapter enqueue with zero maxAttempts [queue-adapter-edge-cases]", () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
   const job = adapter.enqueue({ queueName: "q", payload: "test", maxAttempts: 0 });
   assert.equal(job.maxAttempts, 0);
 });
 
-test("RedisQueueAdapter enqueue with very large maxAttempts", () => {
+test("RedisQueueAdapter enqueue with very large maxAttempts [queue-adapter-edge-cases]", () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
   const job = adapter.enqueue({ queueName: "q", payload: "test", maxAttempts: 1000 });
   assert.equal(job.maxAttempts, 1000);
 });
 
-test("RedisQueueAdapter sync enqueue generates unique ids", () => {
+test("RedisQueueAdapter sync enqueue generates unique ids [queue-adapter-edge-cases]", () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
   const job1 = adapter.enqueue({ queueName: "q", payload: "test1" });
   const job2 = adapter.enqueue({ queueName: "q", payload: "test2" });
@@ -240,7 +240,7 @@ test("RedisQueueAdapter sync enqueue generates unique ids", () => {
   assert.notEqual(job1.id, job3.id);
 });
 
-test("RedisQueueAdapter enqueue stores correct idempotencyKey", () => {
+test("RedisQueueAdapter enqueue stores correct idempotencyKey [queue-adapter-edge-cases]", () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
   const job = adapter.enqueue({
     queueName: "q",
@@ -250,7 +250,7 @@ test("RedisQueueAdapter enqueue stores correct idempotencyKey", () => {
   assert.equal(job.idempotencyKey, "my-unique-key");
 });
 
-test("RedisQueueAdapter enqueue with null idempotencyKey", () => {
+test("RedisQueueAdapter enqueue with null idempotencyKey [queue-adapter-edge-cases]", () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
   const job = adapter.enqueue({
     queueName: "q",
@@ -260,7 +260,7 @@ test("RedisQueueAdapter enqueue with null idempotencyKey", () => {
   assert.equal(job.idempotencyKey, null);
 });
 
-test("RedisQueueAdapter enqueue with delayUntil in the past becomes waiting", () => {
+test("RedisQueueAdapter enqueue with delayUntil in the past becomes waiting [queue-adapter-edge-cases]", () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
   const pastDate = new Date(Date.now() - 10000).toISOString();
   const job = adapter.enqueue({ queueName: "q", payload: "test", delayUntil: pastDate });
@@ -268,7 +268,7 @@ test("RedisQueueAdapter enqueue with delayUntil in the past becomes waiting", ()
   assert.ok(job.delayUntil !== null);
 });
 
-test("RedisQueueAdapter enqueue with delayUntil far in the future becomes delayed", () => {
+test("RedisQueueAdapter enqueue with delayUntil far in the future becomes delayed [queue-adapter-edge-cases]", () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
   const futureDate = new Date(Date.now() + 86400000).toISOString(); // 1 day
   const job = adapter.enqueue({ queueName: "q", payload: "test", delayUntil: futureDate });
@@ -276,7 +276,7 @@ test("RedisQueueAdapter enqueue with delayUntil far in the future becomes delaye
   assert.equal(job.delayUntil, futureDate);
 });
 
-test("RedisQueueAdapter enqueue createdAt and updatedAt are set", () => {
+test("RedisQueueAdapter enqueue createdAt and updatedAt are set [queue-adapter-edge-cases]", () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
   const job = adapter.enqueue({ queueName: "q", payload: "test" });
   assert.ok(job.createdAt);
@@ -284,25 +284,25 @@ test("RedisQueueAdapter enqueue createdAt and updatedAt are set", () => {
   assert.equal(job.createdAt, job.updatedAt);
 });
 
-test("RedisQueueAdapter enqueue completedAt is null initially", () => {
+test("RedisQueueAdapter enqueue completedAt is null initially [queue-adapter-edge-cases]", () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
   const job = adapter.enqueue({ queueName: "q", payload: "test" });
   assert.equal(job.completedAt, null);
 });
 
-test("RedisQueueAdapter enqueue lastError is null initially", () => {
+test("RedisQueueAdapter enqueue lastError is null initially [queue-adapter-edge-cases]", () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
   const job = adapter.enqueue({ queueName: "q", payload: "test" });
   assert.equal(job.lastError, null);
 });
 
-test("RedisQueueAdapter enqueue attempts is 0 initially", () => {
+test("RedisQueueAdapter enqueue attempts is 0 initially [queue-adapter-edge-cases]", () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
   const job = adapter.enqueue({ queueName: "q", payload: "test" });
   assert.equal(job.attempts, 0);
 });
 
-test("RedisQueueAdapter close with status ready calls quit", async () => {
+test("RedisQueueAdapter close with status ready calls quit [queue-adapter-edge-cases]", async () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 }) as any;
   let quitCalled = false;
   adapter.client = {
@@ -316,7 +316,7 @@ test("RedisQueueAdapter close with status ready calls quit", async () => {
   assert.ok(quitCalled);
 });
 
-test("RedisQueueAdapter close with status wait calls disconnect", async () => {
+test("RedisQueueAdapter close with status wait calls disconnect [queue-adapter-edge-cases]", async () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 }) as any;
   let disconnectCalled = false;
   adapter.client = {
@@ -330,7 +330,7 @@ test("RedisQueueAdapter close with status wait calls disconnect", async () => {
   assert.ok(disconnectCalled);
 });
 
-test("RedisQueueAdapter close with status end calls disconnect", async () => {
+test("RedisQueueAdapter close with status end calls disconnect [queue-adapter-edge-cases]", async () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 }) as any;
   let disconnectCalled = false;
   adapter.client = {
@@ -360,7 +360,7 @@ function createSqliteHarness(prefix: string) {
   };
 }
 
-test("SqliteQueueAdapter listJobs with limit parameter", () => {
+test("SqliteQueueAdapter listJobs with limit parameter [queue-adapter-edge-cases]", () => {
   const harness = createSqliteHarness("aa-sqlite-list-limit-");
   try {
     const { adapter } = harness;
@@ -376,7 +376,7 @@ test("SqliteQueueAdapter listJobs with limit parameter", () => {
   }
 });
 
-test("SqliteQueueAdapter listJobs returns empty for nonexistent queue", () => {
+test("SqliteQueueAdapter listJobs returns empty for nonexistent queue [queue-adapter-edge-cases]", () => {
   const harness = createSqliteHarness("aa-sqlite-list-none-");
   try {
     const { adapter } = harness;
@@ -388,7 +388,7 @@ test("SqliteQueueAdapter listJobs returns empty for nonexistent queue", () => {
   }
 });
 
-test("SqliteQueueAdapter listJobs with status filter for empty results", () => {
+test("SqliteQueueAdapter listJobs with status filter for empty results [queue-adapter-edge-cases]", () => {
   const harness = createSqliteHarness("aa-sqlite-list-status-empty-");
   try {
     const { adapter } = harness;
@@ -402,7 +402,7 @@ test("SqliteQueueAdapter listJobs with status filter for empty results", () => {
   }
 });
 
-test("SqliteQueueAdapter getJob returns null for nonexistent job", () => {
+test("SqliteQueueAdapter getJob returns null for nonexistent job [queue-adapter-edge-cases]", () => {
   const harness = createSqliteHarness("aa-sqlite-getnone-");
   try {
     const { adapter } = harness;
@@ -414,7 +414,7 @@ test("SqliteQueueAdapter getJob returns null for nonexistent job", () => {
   }
 });
 
-test("SqliteQueueAdapter dequeue activates waiting job", () => {
+test("SqliteQueueAdapter dequeue activates waiting job [queue-adapter-edge-cases]", () => {
   const harness = createSqliteHarness("aa-sqlite-dequeue-active-");
   try {
     const { adapter } = harness;
@@ -431,7 +431,7 @@ test("SqliteQueueAdapter dequeue activates waiting job", () => {
   }
 });
 
-test("SqliteQueueAdapter retryJob returns job for waiting job (no-op since not failed/dl)", () => {
+test("SqliteQueueAdapter retryJob returns job for waiting job (no-op since not failed/dl) [queue-adapter-edge-cases]", () => {
   const harness = createSqliteHarness("aa-sqlite-retry-waiting-");
   try {
     const { adapter } = harness;
@@ -447,7 +447,7 @@ test("SqliteQueueAdapter retryJob returns job for waiting job (no-op since not f
   }
 });
 
-test("SqliteQueueAdapter retryJob returns job for active job (no-op since not failed/dl)", () => {
+test("SqliteQueueAdapter retryJob returns job for active job (no-op since not failed/dl) [queue-adapter-edge-cases]", () => {
   const harness = createSqliteHarness("aa-sqlite-retry-active-");
   try {
     const { adapter } = harness;
@@ -465,7 +465,7 @@ test("SqliteQueueAdapter retryJob returns job for active job (no-op since not fa
   }
 });
 
-test("SqliteQueueAdapter moveToDeadLetter handles nonexistent job gracefully", () => {
+test("SqliteQueueAdapter moveToDeadLetter handles nonexistent job gracefully [queue-adapter-edge-cases]", () => {
   const harness = createSqliteHarness("aa-sqlite-move-dl-none-");
   try {
     const { adapter } = harness;
@@ -477,7 +477,7 @@ test("SqliteQueueAdapter moveToDeadLetter handles nonexistent job gracefully", (
   }
 });
 
-test("SqliteQueueAdapter stats for multiple queues", () => {
+test("SqliteQueueAdapter stats for multiple queues [queue-adapter-edge-cases]", () => {
   const harness = createSqliteHarness("aa-sqlite-stats-multi-");
   try {
     const { adapter } = harness;
@@ -498,7 +498,7 @@ test("SqliteQueueAdapter stats for multiple queues", () => {
   }
 });
 
-test("SqliteQueueAdapter stats tracks all status types", () => {
+test("SqliteQueueAdapter stats tracks all status types [queue-adapter-edge-cases]", () => {
   const harness = createSqliteHarness("aa-sqlite-stats-all-");
   try {
     const { adapter } = harness;
@@ -531,7 +531,7 @@ test("SqliteQueueAdapter stats tracks all status types", () => {
   }
 });
 
-test("SqliteQueueAdapter purge returns 0 for empty queue", () => {
+test("SqliteQueueAdapter purge returns 0 for empty queue [queue-adapter-edge-cases]", () => {
   const harness = createSqliteHarness("aa-sqlite-purge-empty-");
   try {
     const { adapter } = harness;
@@ -543,7 +543,7 @@ test("SqliteQueueAdapter purge returns 0 for empty queue", () => {
   }
 });
 
-test("SqliteQueueAdapter purge does not remove waiting jobs", () => {
+test("SqliteQueueAdapter purge does not remove waiting jobs [queue-adapter-edge-cases]", () => {
   const harness = createSqliteHarness("aa-sqlite-purge-waiting-");
   try {
     const { adapter } = harness;
@@ -562,7 +562,7 @@ test("SqliteQueueAdapter purge does not remove waiting jobs", () => {
   }
 });
 
-test("SqliteQueueAdapter listQueues returns sorted names", () => {
+test("SqliteQueueAdapter listQueues returns sorted names [queue-adapter-edge-cases]", () => {
   const harness = createSqliteHarness("aa-sqlite-list-sorted-");
   try {
     const { adapter } = harness;

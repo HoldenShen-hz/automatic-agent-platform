@@ -28,7 +28,7 @@ function createTestDb(): DatabaseSync {
 // acquire - INSERT failure (constraint violation) returns acquired: false
 // ---------------------------------------------------------------------------
 
-test("acquire - INSERT failure (constraint violation) returns acquired: false", () => {
+test("acquire - INSERT failure (constraint violation) returns acquired: false [sqlite-lock-adapter-robustness]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -49,7 +49,7 @@ test("acquire - INSERT failure (constraint violation) returns acquired: false", 
   db.close();
 });
 
-test("acquire - stale lock eviction logs correctly", () => {
+test("acquire - stale lock eviction logs correctly [sqlite-lock-adapter-robustness]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -69,7 +69,7 @@ test("acquire - stale lock eviction logs correctly", () => {
   db.close();
 });
 
-test("acquire - expired lock at TTL boundary can be reacquired", () => {
+test("acquire - expired lock at TTL boundary can be reacquired [sqlite-lock-adapter-robustness]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -87,7 +87,7 @@ test("acquire - expired lock at TTL boundary can be reacquired", () => {
   db.close();
 });
 
-test("acquire - INSERT constraint violation is caught and returns false", () => {
+test("acquire - INSERT constraint violation is caught and returns false [sqlite-lock-adapter-robustness]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -118,7 +118,7 @@ test("acquire - INSERT constraint violation is caught and returns false", () => 
 // release - owner mismatch returns false
 // ---------------------------------------------------------------------------
 
-test("release - owner mismatch returns false", () => {
+test("release - owner mismatch returns false [sqlite-lock-adapter-robustness]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -137,7 +137,7 @@ test("release - owner mismatch returns false", () => {
   db.close();
 });
 
-test("release - non-existent lock returns false", () => {
+test("release - non-existent lock returns false [sqlite-lock-adapter-robustness]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -151,7 +151,7 @@ test("release - non-existent lock returns false", () => {
 // extend - wrong owner returns null
 // ---------------------------------------------------------------------------
 
-test("extend - wrong owner returns null", () => {
+test("extend - wrong owner returns null [sqlite-lock-adapter-robustness]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -165,7 +165,7 @@ test("extend - wrong owner returns null", () => {
   db.close();
 });
 
-test("extend - fencing token increments on successful extension", () => {
+test("extend - fencing token increments on successful extension [sqlite-lock-adapter-robustness]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -183,7 +183,7 @@ test("extend - fencing token increments on successful extension", () => {
   db.close();
 });
 
-test("extend - non-existent lock returns null", () => {
+test("extend - non-existent lock returns null [sqlite-lock-adapter-robustness]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -197,7 +197,7 @@ test("extend - non-existent lock returns null", () => {
 // forceSteal - metadata contains forceStealReason as JSON
 // ---------------------------------------------------------------------------
 
-test("forceSteal - metadata contains forceStealReason as JSON", () => {
+test("forceSteal - metadata contains forceStealReason as JSON [sqlite-lock-adapter-robustness]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -210,7 +210,7 @@ test("forceSteal - metadata contains forceStealReason as JSON", () => {
   db.close();
 });
 
-test("forceSteal - idempotent when stealing already-owned lock", () => {
+test("forceSteal - idempotent when stealing already-owned lock [sqlite-lock-adapter-robustness]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -235,7 +235,7 @@ test("forceSteal - idempotent when stealing already-owned lock", () => {
 // inspect - returns null on error
 // ---------------------------------------------------------------------------
 
-test("inspect - returns null on error", () => {
+test("inspect - returns null on error [sqlite-lock-adapter-robustness]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -246,7 +246,7 @@ test("inspect - returns null on error", () => {
   db.close();
 });
 
-test("inspect - returns correct lock record", () => {
+test("inspect - returns correct lock record [sqlite-lock-adapter-robustness]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -266,7 +266,7 @@ test("inspect - returns correct lock record", () => {
 // Multiple sequential lock acquisitions - fencing tokens monotonically increase
 // ---------------------------------------------------------------------------
 
-test("Multiple sequential lock acquisitions - fencing tokens monotonically increase", () => {
+test("Multiple sequential lock acquisitions - fencing tokens monotonically increase [sqlite-lock-adapter-robustness]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -287,7 +287,7 @@ test("Multiple sequential lock acquisitions - fencing tokens monotonically incre
   db.close();
 });
 
-test("Fencing tokens increase across forceSteal operations", () => {
+test("Fencing tokens increase across forceSteal operations [sqlite-lock-adapter-robustness]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -306,7 +306,7 @@ test("Fencing tokens increase across forceSteal operations", () => {
   db.close();
 });
 
-test("Fencing tokens increase when re-acquiring same lock after expiration", () => {
+test("Fencing tokens increase when re-acquiring same lock after expiration [sqlite-lock-adapter-robustness]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 

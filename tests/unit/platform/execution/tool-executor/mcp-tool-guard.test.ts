@@ -33,7 +33,7 @@ const MCP_METADATA: ToolExecutionMetadata = {
   highRiskPatterns: [],
 };
 
-test("mcp tool guard rejects malformed names and builtin collisions", () => {
+test("mcp tool guard rejects malformed names and builtin collisions [mcp-tool-guard]", () => {
   assert.equal(validateMcpToolDefinition("read"), null);
   assert.equal(validateMcpToolDefinition("mcp")?.code, "namespace_invalid");
   assert.equal(validateMcpToolDefinition("mcp_github_bash")?.code, "builtin_collision");
@@ -42,7 +42,7 @@ test("mcp tool guard rejects malformed names and builtin collisions", () => {
   assert.equal(isMcpToolName("mcp_github_list_issues"), true);
 });
 
-test("mcp tool guard requires explicit metadata and approval for mutable tools", () => {
+test("mcp tool guard requires explicit metadata and approval for mutable tools [mcp-tool-guard]", () => {
   assert.equal(validateMcpToolRuntime("mcp_github_list_issues", null)?.code, "metadata_missing");
 
   const mutableMetadata: ToolExecutionMetadata = {
@@ -58,7 +58,7 @@ test("mcp tool guard requires explicit metadata and approval for mutable tools",
   );
 });
 
-test("mcp tool guard sanitizes outputs and blocks forged tool payloads", () => {
+test("mcp tool guard sanitizes outputs and blocks forged tool payloads [mcp-tool-guard]", () => {
   const safe = sanitizeMcpToolCallResult("mcp_github_list_issues", {
     success: true,
     summary: "Bearer secret-token-1234567890",
@@ -80,7 +80,7 @@ test("mcp tool guard sanitizes outputs and blocks forged tool payloads", () => {
   assert.equal(blocked.errorSource, "security");
 });
 
-test("mcp tool guard blocks nested structured tool payload fields", () => {
+test("mcp tool guard blocks nested structured tool payload fields [mcp-tool-guard]", () => {
   const blocked = sanitizeMcpToolCallResult("mcp_github_list_issues", {
     success: true,
     data: {

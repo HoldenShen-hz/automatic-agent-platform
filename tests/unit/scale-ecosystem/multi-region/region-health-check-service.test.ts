@@ -6,7 +6,7 @@ import {
   type RegionHealthCheckConfig,
 } from "../../../../src/scale-ecosystem/multi-region/region-health-check-service.js";
 
-test("RegionHealthCheckService registers and unregisters regions", () => {
+test("RegionHealthCheckService registers and unregisters regions [region-health-check-service]", () => {
   const service = new RegionHealthCheckService();
 
   const config: RegionHealthCheckConfig = {
@@ -32,7 +32,7 @@ test("RegionHealthCheckService registers and unregisters regions", () => {
   assert.equal(service.getHealthStatus("us-east"), "unknown");
 });
 
-test("RegionHealthCheckService performs health check", async () => {
+test("RegionHealthCheckService performs health check [region-health-check-service]", async () => {
   const service = new RegionHealthCheckService();
 
   const config: RegionHealthCheckConfig = {
@@ -58,7 +58,7 @@ test("RegionHealthCheckService performs health check", async () => {
   assert.ok(result.latencyMs >= 0);
 });
 
-test("RegionHealthCheckService honors caller abort signal during network health checks", async () => {
+test("RegionHealthCheckService honors caller abort signal during network health checks [region-health-check-service]", async () => {
   const service = new RegionHealthCheckService();
   const originalFetch = globalThis.fetch;
   const controller = new AbortController();
@@ -99,7 +99,7 @@ test("RegionHealthCheckService honors caller abort signal during network health 
   }
 });
 
-test("RegionHealthCheckService returns unknown for unregistered region", async () => {
+test("RegionHealthCheckService returns unknown for unregistered region [region-health-check-service]", async () => {
   const service = new RegionHealthCheckService();
 
   const result = await service.checkRegion("unknown-region");
@@ -109,7 +109,7 @@ test("RegionHealthCheckService returns unknown for unregistered region", async (
   assert.equal(result.errorMessage, "Region not registered");
 });
 
-test("RegionHealthCheckService tracks consecutive failures", async () => {
+test("RegionHealthCheckService tracks consecutive failures [region-health-check-service]", async () => {
   const service = new RegionHealthCheckService();
 
   const config: RegionHealthCheckConfig = {
@@ -138,7 +138,7 @@ test("RegionHealthCheckService tracks consecutive failures", async () => {
   assert.ok(summary!.consecutiveFailures >= 0);
 });
 
-test("RegionHealthCheckService getHealthSummary returns null for unregistered", () => {
+test("RegionHealthCheckService getHealthSummary returns null for unregistered [region-health-check-service]", () => {
   const service = new RegionHealthCheckService();
 
   const summary = service.getHealthSummary("unknown");
@@ -146,7 +146,7 @@ test("RegionHealthCheckService getHealthSummary returns null for unregistered", 
   assert.equal(summary, null);
 });
 
-test("RegionHealthCheckService getRegionsNeedingFailover", async () => {
+test("RegionHealthCheckService getRegionsNeedingFailover [region-health-check-service]", async () => {
   const service = new RegionHealthCheckService();
 
   const config: RegionHealthCheckConfig = {
@@ -170,7 +170,7 @@ test("RegionHealthCheckService getRegionsNeedingFailover", async () => {
   assert.ok(Array.isArray(regions));
 });
 
-test("RegionHealthCheckService checkAllRegions", async () => {
+test("RegionHealthCheckService checkAllRegions [region-health-check-service]", async () => {
   const service = new RegionHealthCheckService();
 
   service.registerRegion({
@@ -208,7 +208,7 @@ test("RegionHealthCheckService checkAllRegions", async () => {
   assert.ok(results.some((r) => r.regionId === "eu-west"));
 });
 
-test("RegionHealthCheckService getAllHealthStatuses", async () => {
+test("RegionHealthCheckService getAllHealthStatuses [region-health-check-service]", async () => {
   const service = new RegionHealthCheckService();
 
   service.registerRegion({
@@ -233,7 +233,7 @@ test("RegionHealthCheckService getAllHealthStatuses", async () => {
   assert.ok(statuses.has("us-east"));
 });
 
-test("RegionHealthCheckService resetHealthState", async () => {
+test("RegionHealthCheckService resetHealthState [region-health-check-service]", async () => {
   const service = new RegionHealthCheckService();
 
   service.registerRegion({
@@ -258,7 +258,7 @@ test("RegionHealthCheckService resetHealthState", async () => {
   assert.equal(summary!.consecutiveFailures, 0);
 });
 
-test("RegionFailoverOrchestrator selects best failover target", async () => {
+test("RegionFailoverOrchestrator selects best failover target [region-health-check-service]", async () => {
   const orchestrator = new RegionFailoverOrchestrator();
 
   orchestrator.registerRegion({
@@ -309,7 +309,7 @@ test("RegionFailoverOrchestrator selects best failover target", async () => {
   assert.ok(target === "eu-west" || target === "ap-south" || target === null);
 });
 
-test("RegionFailoverOrchestrator returns null when no healthy target", () => {
+test("RegionFailoverOrchestrator returns null when no healthy target [region-health-check-service]", () => {
   const orchestrator = new RegionFailoverOrchestrator();
 
   // Don't register any regions as healthy
@@ -318,7 +318,7 @@ test("RegionFailoverOrchestrator returns null when no healthy target", () => {
   assert.equal(target, null);
 });
 
-test("RegionFailoverOrchestrator addFailoverListener", () => {
+test("RegionFailoverOrchestrator addFailoverListener [region-health-check-service]", () => {
   const orchestrator = new RegionFailoverOrchestrator();
 
   let listenerCalled = false;
@@ -335,7 +335,7 @@ test("RegionFailoverOrchestrator addFailoverListener", () => {
   assert.equal(listenerCalled, false);
 });
 
-test("RegionFailoverOrchestrator getHealthCheckService", () => {
+test("RegionFailoverOrchestrator getHealthCheckService [region-health-check-service]", () => {
   const orchestrator = new RegionFailoverOrchestrator();
 
   const service = orchestrator.getHealthCheckService();
@@ -343,7 +343,7 @@ test("RegionFailoverOrchestrator getHealthCheckService", () => {
   assert.ok(service instanceof RegionHealthCheckService);
 });
 
-test("RegionFailoverOrchestrator checkAndFailover returns didFailover false when healthy", async () => {
+test("RegionFailoverOrchestrator checkAndFailover returns didFailover false when healthy [region-health-check-service]", async () => {
   const orchestrator = new RegionFailoverOrchestrator();
 
   orchestrator.registerRegion({

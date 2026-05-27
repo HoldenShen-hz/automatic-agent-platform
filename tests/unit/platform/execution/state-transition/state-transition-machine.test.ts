@@ -8,13 +8,13 @@ import { WorkflowStateError } from "../../../../../src/platform/contracts/errors
 // StateTransitionMachine - basic construction
 // ---------------------------------------------------------------------------
 
-test("StateTransitionMachine accepts valid entity kind and transitions map", () => {
+test("StateTransitionMachine accepts valid entity kind and transitions map [state-transition-machine]", () => {
   const transitions: Record<string, readonly string[]> = { a: ["b"], b: [] };
   const machine = new StateTransitionMachine("test", transitions);
   assert.ok(machine);
 });
 
-test("StateTransitionMachine works with empty transitions map", () => {
+test("StateTransitionMachine works with empty transitions map [state-transition-machine]", () => {
   const transitions: Record<string, readonly string[]> = { a: [], b: [] };
   const machine = new StateTransitionMachine("test", transitions);
   machine.assertTransition("a", "a");
@@ -26,19 +26,19 @@ test("StateTransitionMachine works with empty transitions map", () => {
 // StateTransitionMachine - assertTransition validation
 // ---------------------------------------------------------------------------
 
-test("assertTransition allows valid transition", () => {
+test("assertTransition allows valid transition [state-transition-machine]", () => {
   const transitions: Record<string, readonly string[]> = { queued: ["pending", "failed"], pending: [], failed: [] };
   const machine = new StateTransitionMachine("task", transitions);
   machine.assertTransition("queued", "pending"); // should not throw
 });
 
-test("assertTransition allows no-op transition (same state)", () => {
+test("assertTransition allows no-op transition (same state) [state-transition-machine]", () => {
   const transitions: Record<string, readonly string[]> = { a: ["b"], b: [] };
   const machine = new StateTransitionMachine("test", transitions);
   machine.assertTransition("a", "a");
 });
 
-test("assertTransition rejects invalid transition", () => {
+test("assertTransition rejects invalid transition [state-transition-machine]", () => {
   const transitions: Record<string, readonly string[]> = { a: ["c"], b: [] };
   const machine = new StateTransitionMachine("test", transitions);
   assert.throws(
@@ -47,13 +47,13 @@ test("assertTransition rejects invalid transition", () => {
   );
 });
 
-test("assertTransition rejects transition from terminal state", () => {
+test("assertTransition rejects transition from terminal state [state-transition-machine]", () => {
   const transitions: Record<string, readonly string[]> = { active: ["done"], done: [] };
   const machine = new StateTransitionMachine("execution", transitions);
   assert.throws(() => machine.assertTransition("done", "active"), WorkflowStateError);
 });
 
-test("assertTransition rejects unknown source state", () => {
+test("assertTransition rejects unknown source state [state-transition-machine]", () => {
   const transitions: Record<string, readonly string[]> = { a: ["b"], b: [] };
   const machine = new StateTransitionMachine("test", transitions);
   assert.throws(() => machine.assertTransition("unknown", "a"), WorkflowStateError);
@@ -63,7 +63,7 @@ test("assertTransition rejects unknown source state", () => {
 // StateTransitionMachine - WorkflowStateError details
 // ---------------------------------------------------------------------------
 
-test("WorkflowStateError contains entityKind in details", () => {
+test("WorkflowStateError contains entityKind in details [state-transition-machine]", () => {
   const transitions: Record<string, readonly string[]> = { a: ["b"], b: [] };
   const machine = new StateTransitionMachine("my_entity", transitions);
 
@@ -79,7 +79,7 @@ test("WorkflowStateError contains entityKind in details", () => {
   }
 });
 
-test("WorkflowStateError has correct error code format", () => {
+test("WorkflowStateError has correct error code format [state-transition-machine]", () => {
   const transitions: Record<string, readonly string[]> = { a: ["b"], b: [] };
   const machine = new StateTransitionMachine("workflow", transitions);
 
@@ -96,7 +96,7 @@ test("WorkflowStateError has correct error code format", () => {
 // StateTransitionMachine - generic type handling
 // ---------------------------------------------------------------------------
 
-test("StateTransitionMachine works with string literal types", () => {
+test("StateTransitionMachine works with string literal types [state-transition-machine]", () => {
   type Status = "idle" | "running" | "stopped";
   const transitions: Record<Status, readonly Status[]> = {
     idle: ["running"],
@@ -108,7 +108,7 @@ test("StateTransitionMachine works with string literal types", () => {
   machine.assertTransition("running", "stopped");
 });
 
-test("StateTransitionMachine works with union string types", () => {
+test("StateTransitionMachine works with union string types [state-transition-machine]", () => {
   // Biome/biome states
   const transitions: Record<string, readonly string[]> = {
     pending: ["running", "cancelled"],
@@ -128,7 +128,7 @@ test("StateTransitionMachine works with union string types", () => {
 // StateTransitionMachine - complex transition maps
 // ---------------------------------------------------------------------------
 
-test("StateTransitionMachine handles branching transitions", () => {
+test("StateTransitionMachine handles branching transitions [state-transition-machine]", () => {
   // Simulating execution states with multiple possible next states
   const transitions: Record<string, readonly string[]> = {
     created: ["running", "failed", "cancelled"],
@@ -151,7 +151,7 @@ test("StateTransitionMachine handles branching transitions", () => {
   assert.throws(() => machine.assertTransition("waiting", "completed"), WorkflowStateError);
 });
 
-test("StateTransitionMachine handles cyclical transitions", () => {
+test("StateTransitionMachine handles cyclical transitions [state-transition-machine]", () => {
   // Session states with streaming/awaiting cycle
   const transitions: Record<string, readonly string[]> = {
     open: ["streaming"],
@@ -171,7 +171,7 @@ test("StateTransitionMachine handles cyclical transitions", () => {
   assert.throws(() => machine.assertTransition("awaiting_user", "open"), WorkflowStateError);
 });
 
-test("StateTransitionMachine handles self-loops via no-op", () => {
+test("StateTransitionMachine handles self-loops via no-op [state-transition-machine]", () => {
   const transitions: Record<string, readonly string[]> = {
     active: ["active", "idle", "stopped"], // active can transition to itself per old behavior
     idle: ["active"],
@@ -189,7 +189,7 @@ test("StateTransitionMachine handles self-loops via no-op", () => {
 // StateTransitionMachine - error properties
 // ---------------------------------------------------------------------------
 
-test("WorkflowStateError is retryable: false by default", () => {
+test("WorkflowStateError is retryable: false by default [state-transition-machine]", () => {
   const transitions: Record<string, readonly string[]> = { a: ["b"], b: [] };
   const machine = new StateTransitionMachine("test", transitions);
 
@@ -203,7 +203,7 @@ test("WorkflowStateError is retryable: false by default", () => {
   }
 });
 
-test("WorkflowStateError has statusCode 409 (Conflict)", () => {
+test("WorkflowStateError has statusCode 409 (Conflict) [state-transition-machine]", () => {
   const transitions: Record<string, readonly string[]> = { a: ["b"], b: [] };
   const machine = new StateTransitionMachine("test", transitions);
 
@@ -221,7 +221,7 @@ test("WorkflowStateError has statusCode 409 (Conflict)", () => {
 // StateTransitionMachine - performance edge case
 // ---------------------------------------------------------------------------
 
-test("assertTransition handles transitions with large number of allowed next states", () => {
+test("assertTransition handles transitions with large number of allowed next states [state-transition-machine]", () => {
   // Create a transition map with many possible next states
   const transitions: Record<string, readonly string[]> = {};
   const allowedTargets = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"];
@@ -241,7 +241,7 @@ test("assertTransition handles transitions with large number of allowed next sta
   assert.throws(() => machine.assertTransition("start", "unknown"), WorkflowStateError);
 });
 
-test("assertTransition handles deeply nested transition chains", () => {
+test("assertTransition handles deeply nested transition chains [state-transition-machine]", () => {
   // Create a long chain: 0 -> 1 -> 2 -> ... -> 99 -> terminal
   const transitions: Record<string, readonly string[]> = {};
   for (let i = 0; i < 99; i++) {

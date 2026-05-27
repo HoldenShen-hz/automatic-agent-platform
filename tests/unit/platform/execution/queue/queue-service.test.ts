@@ -18,7 +18,7 @@ function createHarness(prefix: string) {
   };
 }
 
-test("queue-service: enqueue adds job to waiting state", () => {
+test("queue-service: enqueue adds job to waiting state [queue-service]", () => {
   const harness = createHarness("aa-queue-service-enqueue-");
   try {
     const { adapter } = harness;
@@ -36,7 +36,7 @@ test("queue-service: enqueue adds job to waiting state", () => {
   }
 });
 
-test("queue-service: dequeue retrieves and marks job as active", () => {
+test("queue-service: dequeue retrieves and marks job as active [queue-service]", () => {
   const harness = createHarness("aa-queue-service-dequeue-");
   try {
     const { adapter } = harness;
@@ -53,7 +53,7 @@ test("queue-service: dequeue retrieves and marks job as active", () => {
   }
 });
 
-test("queue-service: dequeue returns null when queue is empty", () => {
+test("queue-service: dequeue returns null when queue is empty [queue-service]", () => {
   const harness = createHarness("aa-queue-service-dequeue-empty-");
   try {
     const { adapter } = harness;
@@ -67,7 +67,7 @@ test("queue-service: dequeue returns null when queue is empty", () => {
   }
 });
 
-test("queue-service: ack completes the job", () => {
+test("queue-service: ack completes the job [queue-service]", () => {
   const harness = createHarness("aa-queue-service-ack-");
   try {
     const { adapter } = harness;
@@ -86,7 +86,7 @@ test("queue-service: ack completes the job", () => {
   }
 });
 
-test("queue-service: nack requeues job when attempts remain", () => {
+test("queue-service: nack requeues job when attempts remain [queue-service]", () => {
   const harness = createHarness("aa-queue-service-nack-");
   try {
     const { adapter } = harness;
@@ -106,7 +106,7 @@ test("queue-service: nack requeues job when attempts remain", () => {
   }
 });
 
-test("queue-service: nack moves to dead letter when max attempts exceeded", () => {
+test("queue-service: nack moves to dead letter when max attempts exceeded [queue-service]", () => {
   const harness = createHarness("aa-queue-service-nack-dl-");
   try {
     const { adapter } = harness;
@@ -125,7 +125,7 @@ test("queue-service: nack moves to dead letter when max attempts exceeded", () =
   }
 });
 
-test("queue-service: enqueue with delayUntil creates delayed job", () => {
+test("queue-service: enqueue with delayUntil creates delayed job [queue-service]", () => {
   const harness = createHarness("aa-queue-service-delay-");
   try {
     const { adapter } = harness;
@@ -149,7 +149,7 @@ test("queue-service: enqueue with delayUntil creates delayed job", () => {
   }
 });
 
-test("queue-service: delayed job becomes available after delay expires", () => {
+test("queue-service: delayed job becomes available after delay expires [queue-service]", () => {
   const harness = createHarness("aa-queue-service-delay-expire-");
   try {
     const { adapter } = harness;
@@ -172,7 +172,7 @@ test("queue-service: delayed job becomes available after delay expires", () => {
   }
 });
 
-test("queue-service: multiple dequeues return jobs in order", () => {
+test("queue-service: multiple dequeues return jobs in order [queue-service]", () => {
   const harness = createHarness("aa-queue-service-multi-dequeue-");
   try {
     const { adapter } = harness;
@@ -196,7 +196,7 @@ test("queue-service: multiple dequeues return jobs in order", () => {
   }
 });
 
-test("queue-service: listJobs returns all jobs for a queue", () => {
+test("queue-service: listJobs returns all jobs for a queue [queue-service]", () => {
   const harness = createHarness("aa-queue-service-list-");
   try {
     const { adapter } = harness;
@@ -213,7 +213,7 @@ test("queue-service: listJobs returns all jobs for a queue", () => {
   }
 });
 
-test("queue-service: listJobs filters by status", () => {
+test("queue-service: listJobs filters by status [queue-service]", () => {
   const harness = createHarness("aa-queue-service-list-status-");
   try {
     const { adapter } = harness;
@@ -233,7 +233,7 @@ test("queue-service: listJobs filters by status", () => {
   }
 });
 
-test("queue-service: stats returns correct counts", () => {
+test("queue-service: stats returns correct counts [queue-service]", () => {
   const harness = createHarness("aa-queue-service-stats-");
   try {
     const { adapter } = harness;
@@ -258,7 +258,7 @@ test("queue-service: stats returns correct counts", () => {
   }
 });
 
-test("queue-service: moveToDeadLetter moves job directly", () => {
+test("queue-service: moveToDeadLetter moves job directly [queue-service]", () => {
   const harness = createHarness("aa-queue-service-move-dl-");
   try {
     const { adapter } = harness;
@@ -275,7 +275,7 @@ test("queue-service: moveToDeadLetter moves job directly", () => {
   }
 });
 
-test("queue-service: retryJob resets failed job to waiting", () => {
+test("queue-service: retryJob resets failed job to waiting [queue-service]", () => {
   const harness = createHarness("aa-queue-service-retry-");
   try {
     const { adapter } = harness;
@@ -296,7 +296,7 @@ test("queue-service: retryJob resets failed job to waiting", () => {
   }
 });
 
-test("queue-service: purge removes old completed and dead letter jobs", () => {
+test("queue-service: purge removes old completed and dead letter jobs [queue-service]", () => {
   const harness = createHarness("aa-queue-service-purge-");
   try {
     const { adapter } = harness;
@@ -320,7 +320,7 @@ test("queue-service: purge removes old completed and dead letter jobs", () => {
   }
 });
 
-test("queue-service: enqueue with idempotency key returns same job", () => {
+test("queue-service: enqueue with idempotency key returns same job [queue-service]", () => {
   const harness = createHarness("aa-queue-service-idempotent-");
   try {
     const { adapter } = harness;
@@ -345,7 +345,7 @@ test("queue-service: enqueue with idempotency key returns same job", () => {
   }
 });
 
-test("queue-service: listQueues returns distinct queue names", () => {
+test("queue-service: listQueues returns distinct queue names [queue-service]", () => {
   const harness = createHarness("aa-queue-service-list-queues-");
   try {
     const { adapter } = harness;

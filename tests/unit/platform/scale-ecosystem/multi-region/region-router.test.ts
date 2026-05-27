@@ -18,7 +18,7 @@ function mockRegion(overrides: Partial<RegionDescriptor> = {}): RegionDescriptor
   };
 }
 
-test("selectPreferredRegion returns lowest latency region", () => {
+test("selectPreferredRegion returns lowest latency region [region-router]", () => {
   const regions = [
     mockRegion({ regionId: "high-latency", latencyScore: 200 }),
     mockRegion({ regionId: "low-latency", latencyScore: 50 }),
@@ -30,7 +30,7 @@ test("selectPreferredRegion returns lowest latency region", () => {
   assert.strictEqual(result?.regionId, "low-latency");
 });
 
-test("selectPreferredRegion ignores disabled regions", () => {
+test("selectPreferredRegion ignores disabled regions [region-router]", () => {
   const regions = [
     mockRegion({ regionId: "disabled", status: "disabled", latencyScore: 10 }),
     mockRegion({ regionId: "enabled", latencyScore: 100 }),
@@ -41,7 +41,7 @@ test("selectPreferredRegion ignores disabled regions", () => {
   assert.strictEqual(result?.regionId, "enabled");
 });
 
-test("selectPreferredRegion ignores regions with residency not allowed", () => {
+test("selectPreferredRegion ignores regions with residency not allowed [region-router]", () => {
   const regions = [
     mockRegion({ regionId: "not-allowed", residencyAllowed: false, latencyScore: 10 }),
     mockRegion({ regionId: "allowed", latencyScore: 100 }),
@@ -52,13 +52,13 @@ test("selectPreferredRegion ignores regions with residency not allowed", () => {
   assert.strictEqual(result?.regionId, "allowed");
 });
 
-test("selectPreferredRegion returns null for empty array", () => {
+test("selectPreferredRegion returns null for empty array [region-router]", () => {
   const result = selectPreferredRegion([]);
 
   assert.strictEqual(result, null);
 });
 
-test("selectPreferredRegion returns null when all regions disabled", () => {
+test("selectPreferredRegion returns null when all regions disabled [region-router]", () => {
   const regions = [
     mockRegion({ status: "disabled" }),
     mockRegion({ status: "disabled" }),
@@ -69,7 +69,7 @@ test("selectPreferredRegion returns null when all regions disabled", () => {
   assert.strictEqual(result, null);
 });
 
-test("selectPreferredRegion handles degraded status as not disabled", () => {
+test("selectPreferredRegion handles degraded status as not disabled [region-router]", () => {
   const regions = [
     mockRegion({ regionId: "degraded", status: "degraded", latencyScore: 50 }),
     mockRegion({ regionId: "active", status: "active", latencyScore: 100 }),
@@ -80,7 +80,7 @@ test("selectPreferredRegion handles degraded status as not disabled", () => {
   assert.strictEqual(result?.regionId, "degraded");
 });
 
-test("selectPreferredRegion uses default latency of 0 when not specified", () => {
+test("selectPreferredRegion uses default latency of 0 when not specified [region-router]", () => {
   const regions = [
     mockRegion({ regionId: "no-latency", latencyScore: undefined }),
     mockRegion({ regionId: "with-latency", latencyScore: 100 }),
@@ -91,7 +91,7 @@ test("selectPreferredRegion uses default latency of 0 when not specified", () =>
   assert.strictEqual(result?.regionId, "no-latency");
 });
 
-test("selectPreferredRegion returns first when multiple have same latency", () => {
+test("selectPreferredRegion returns first when multiple have same latency [region-router]", () => {
   const regions = [
     mockRegion({ regionId: "first", latencyScore: 50 }),
     mockRegion({ regionId: "second", latencyScore: 50 }),
@@ -102,7 +102,7 @@ test("selectPreferredRegion returns first when multiple have same latency", () =
   assert.strictEqual(result?.regionId, "first");
 });
 
-test("selectPreferredRegion ignores regions with residency not allowed even if lowest latency", () => {
+test("selectPreferredRegion ignores regions with residency not allowed even if lowest latency [region-router]", () => {
   const regions = [
     mockRegion({ regionId: "eu-not-allowed", jurisdiction: "EU", residencyAllowed: false, latencyScore: 10 }),
     mockRegion({ regionId: "us-allowed", jurisdiction: "US", latencyScore: 100 }),

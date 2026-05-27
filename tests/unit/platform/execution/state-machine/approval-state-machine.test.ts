@@ -33,22 +33,22 @@ function createApprovalStateMachine(): StateTransitionMachine<string> {
 // Valid transitions from requested
 // ---------------------------------------------------------------------------
 
-test("ApprovalStateMachine: allows requested -> approved", () => {
+test("ApprovalStateMachine: allows requested -> approved [approval-state-machine]", () => {
   const machine = createApprovalStateMachine();
   machine.assertTransition("requested", "approved");
 });
 
-test("ApprovalStateMachine: allows requested -> rejected", () => {
+test("ApprovalStateMachine: allows requested -> rejected [approval-state-machine]", () => {
   const machine = createApprovalStateMachine();
   machine.assertTransition("requested", "rejected");
 });
 
-test("ApprovalStateMachine: allows requested -> expired", () => {
+test("ApprovalStateMachine: allows requested -> expired [approval-state-machine]", () => {
   const machine = createApprovalStateMachine();
   machine.assertTransition("requested", "expired");
 });
 
-test("ApprovalStateMachine: allows requested -> cancelled", () => {
+test("ApprovalStateMachine: allows requested -> cancelled [approval-state-machine]", () => {
   const machine = createApprovalStateMachine();
   machine.assertTransition("requested", "cancelled");
 });
@@ -57,7 +57,7 @@ test("ApprovalStateMachine: allows requested -> cancelled", () => {
 // Invalid transitions from approved (terminal)
 // ---------------------------------------------------------------------------
 
-test("ApprovalStateMachine: rejects approved -> rejected", () => {
+test("ApprovalStateMachine: rejects approved -> rejected [approval-state-machine]", () => {
   const machine = createApprovalStateMachine();
   assert.throws(
     () => machine.assertTransition("approved", "rejected"),
@@ -65,7 +65,7 @@ test("ApprovalStateMachine: rejects approved -> rejected", () => {
   );
 });
 
-test("ApprovalStateMachine: rejects approved -> expired", () => {
+test("ApprovalStateMachine: rejects approved -> expired [approval-state-machine]", () => {
   const machine = createApprovalStateMachine();
   assert.throws(
     () => machine.assertTransition("approved", "expired"),
@@ -73,7 +73,7 @@ test("ApprovalStateMachine: rejects approved -> expired", () => {
   );
 });
 
-test("ApprovalStateMachine: rejects approved -> cancelled", () => {
+test("ApprovalStateMachine: rejects approved -> cancelled [approval-state-machine]", () => {
   const machine = createApprovalStateMachine();
   assert.throws(
     () => machine.assertTransition("approved", "cancelled"),
@@ -81,7 +81,7 @@ test("ApprovalStateMachine: rejects approved -> cancelled", () => {
   );
 });
 
-test("ApprovalStateMachine: rejects approved -> requested", () => {
+test("ApprovalStateMachine: rejects approved -> requested [approval-state-machine]", () => {
   const machine = createApprovalStateMachine();
   assert.throws(
     () => machine.assertTransition("approved", "requested"),
@@ -93,7 +93,7 @@ test("ApprovalStateMachine: rejects approved -> requested", () => {
 // Invalid transitions from rejected (terminal)
 // ---------------------------------------------------------------------------
 
-test("ApprovalStateMachine: rejects rejected -> approved", () => {
+test("ApprovalStateMachine: rejects rejected -> approved [approval-state-machine]", () => {
   const machine = createApprovalStateMachine();
   assert.throws(
     () => machine.assertTransition("rejected", "approved"),
@@ -101,7 +101,7 @@ test("ApprovalStateMachine: rejects rejected -> approved", () => {
   );
 });
 
-test("ApprovalStateMachine: rejects rejected -> expired", () => {
+test("ApprovalStateMachine: rejects rejected -> expired [approval-state-machine]", () => {
   const machine = createApprovalStateMachine();
   assert.throws(
     () => machine.assertTransition("rejected", "expired"),
@@ -109,7 +109,7 @@ test("ApprovalStateMachine: rejects rejected -> expired", () => {
   );
 });
 
-test("ApprovalStateMachine: rejects rejected -> cancelled", () => {
+test("ApprovalStateMachine: rejects rejected -> cancelled [approval-state-machine]", () => {
   const machine = createApprovalStateMachine();
   assert.throws(
     () => machine.assertTransition("rejected", "cancelled"),
@@ -117,7 +117,7 @@ test("ApprovalStateMachine: rejects rejected -> cancelled", () => {
   );
 });
 
-test("ApprovalStateMachine: rejects rejected -> requested", () => {
+test("ApprovalStateMachine: rejects rejected -> requested [approval-state-machine]", () => {
   const machine = createApprovalStateMachine();
   assert.throws(
     () => machine.assertTransition("rejected", "requested"),
@@ -129,7 +129,7 @@ test("ApprovalStateMachine: rejects rejected -> requested", () => {
 // Invalid transitions from expired (terminal)
 // ---------------------------------------------------------------------------
 
-test("ApprovalStateMachine: rejects expired -> approved", () => {
+test("ApprovalStateMachine: rejects expired -> approved [approval-state-machine]", () => {
   const machine = createApprovalStateMachine();
   assert.throws(
     () => machine.assertTransition("expired", "approved"),
@@ -137,7 +137,7 @@ test("ApprovalStateMachine: rejects expired -> approved", () => {
   );
 });
 
-test("ApprovalStateMachine: rejects expired -> rejected", () => {
+test("ApprovalStateMachine: rejects expired -> rejected [approval-state-machine]", () => {
   const machine = createApprovalStateMachine();
   assert.throws(
     () => machine.assertTransition("expired", "rejected"),
@@ -145,7 +145,7 @@ test("ApprovalStateMachine: rejects expired -> rejected", () => {
   );
 });
 
-test("ApprovalStateMachine: rejects expired -> cancelled", () => {
+test("ApprovalStateMachine: rejects expired -> cancelled [approval-state-machine]", () => {
   const machine = createApprovalStateMachine();
   assert.throws(
     () => machine.assertTransition("expired", "cancelled"),
@@ -153,7 +153,7 @@ test("ApprovalStateMachine: rejects expired -> cancelled", () => {
   );
 });
 
-test("ApprovalStateMachine: rejects expired -> requested", () => {
+test("ApprovalStateMachine: rejects expired -> requested [approval-state-machine]", () => {
   const machine = createApprovalStateMachine();
   assert.throws(
     () => machine.assertTransition("expired", "requested"),
@@ -165,7 +165,7 @@ test("ApprovalStateMachine: rejects expired -> requested", () => {
 // Invalid transitions from cancelled (terminal)
 // ---------------------------------------------------------------------------
 
-test("ApprovalStateMachine: rejects cancelled -> approved", () => {
+test("ApprovalStateMachine: rejects cancelled -> approved [approval-state-machine]", () => {
   const machine = createApprovalStateMachine();
   assert.throws(
     () => machine.assertTransition("cancelled", "approved"),
@@ -173,7 +173,7 @@ test("ApprovalStateMachine: rejects cancelled -> approved", () => {
   );
 });
 
-test("ApprovalStateMachine: rejects cancelled -> rejected", () => {
+test("ApprovalStateMachine: rejects cancelled -> rejected [approval-state-machine]", () => {
   const machine = createApprovalStateMachine();
   assert.throws(
     () => machine.assertTransition("cancelled", "rejected"),
@@ -181,7 +181,7 @@ test("ApprovalStateMachine: rejects cancelled -> rejected", () => {
   );
 });
 
-test("ApprovalStateMachine: rejects cancelled -> expired", () => {
+test("ApprovalStateMachine: rejects cancelled -> expired [approval-state-machine]", () => {
   const machine = createApprovalStateMachine();
   assert.throws(
     () => machine.assertTransition("cancelled", "expired"),
@@ -189,7 +189,7 @@ test("ApprovalStateMachine: rejects cancelled -> expired", () => {
   );
 });
 
-test("ApprovalStateMachine: rejects cancelled -> requested", () => {
+test("ApprovalStateMachine: rejects cancelled -> requested [approval-state-machine]", () => {
   const machine = createApprovalStateMachine();
   assert.throws(
     () => machine.assertTransition("cancelled", "requested"),
@@ -201,7 +201,7 @@ test("ApprovalStateMachine: rejects cancelled -> requested", () => {
 // All terminal states
 // ---------------------------------------------------------------------------
 
-test("ApprovalStateMachine: all terminal states cannot transition to any other state", () => {
+test("ApprovalStateMachine: all terminal states cannot transition to any other state [approval-state-machine]", () => {
   const machine = createApprovalStateMachine();
   const terminalStates = ["approved", "rejected", "expired", "cancelled"];
   const allStates = ["requested", "approved", "rejected", "expired", "cancelled"];
@@ -223,27 +223,27 @@ test("ApprovalStateMachine: all terminal states cannot transition to any other s
 // No-op transitions
 // ---------------------------------------------------------------------------
 
-test("ApprovalStateMachine: allows no-op transition on same state for requested", () => {
+test("ApprovalStateMachine: allows no-op transition on same state for requested [approval-state-machine]", () => {
   const machine = createApprovalStateMachine();
   machine.assertTransition("requested", "requested");
 });
 
-test("ApprovalStateMachine: allows no-op transition on same state for approved", () => {
+test("ApprovalStateMachine: allows no-op transition on same state for approved [approval-state-machine]", () => {
   const machine = createApprovalStateMachine();
   machine.assertTransition("approved", "approved");
 });
 
-test("ApprovalStateMachine: allows no-op transition on same state for rejected", () => {
+test("ApprovalStateMachine: allows no-op transition on same state for rejected [approval-state-machine]", () => {
   const machine = createApprovalStateMachine();
   machine.assertTransition("rejected", "rejected");
 });
 
-test("ApprovalStateMachine: allows no-op transition on same state for expired", () => {
+test("ApprovalStateMachine: allows no-op transition on same state for expired [approval-state-machine]", () => {
   const machine = createApprovalStateMachine();
   machine.assertTransition("expired", "expired");
 });
 
-test("ApprovalStateMachine: allows no-op transition on same state for cancelled", () => {
+test("ApprovalStateMachine: allows no-op transition on same state for cancelled [approval-state-machine]", () => {
   const machine = createApprovalStateMachine();
   machine.assertTransition("cancelled", "cancelled");
 });
@@ -252,7 +252,7 @@ test("ApprovalStateMachine: allows no-op transition on same state for cancelled"
 // Error details
 // ---------------------------------------------------------------------------
 
-test("ApprovalStateMachine: WorkflowStateError contains correct entityKind", () => {
+test("ApprovalStateMachine: WorkflowStateError contains correct entityKind [approval-state-machine]", () => {
   const machine = createApprovalStateMachine();
 
   try {
@@ -267,7 +267,7 @@ test("ApprovalStateMachine: WorkflowStateError contains correct entityKind", () 
   }
 });
 
-test("ApprovalStateMachine: WorkflowStateError has statusCode 409", () => {
+test("ApprovalStateMachine: WorkflowStateError has statusCode 409 [approval-state-machine]", () => {
   const machine = createApprovalStateMachine();
 
   try {
@@ -280,7 +280,7 @@ test("ApprovalStateMachine: WorkflowStateError has statusCode 409", () => {
   }
 });
 
-test("ApprovalStateMachine: WorkflowStateError is not retryable", () => {
+test("ApprovalStateMachine: WorkflowStateError is not retryable [approval-state-machine]", () => {
   const machine = createApprovalStateMachine();
 
   try {
@@ -297,7 +297,7 @@ test("ApprovalStateMachine: WorkflowStateError is not retryable", () => {
 // Error message format
 // ---------------------------------------------------------------------------
 
-test("ApprovalStateMachine: error message contains invalid_transition code", () => {
+test("ApprovalStateMachine: error message contains invalid_transition code [approval-state-machine]", () => {
   const machine = createApprovalStateMachine();
 
   try {
@@ -313,7 +313,7 @@ test("ApprovalStateMachine: error message contains invalid_transition code", () 
 // Unknown source state
 // ---------------------------------------------------------------------------
 
-test("ApprovalStateMachine: rejects unknown source state", () => {
+test("ApprovalStateMachine: rejects unknown source state [approval-state-machine]", () => {
   const machine = createApprovalStateMachine();
 
   assert.throws(
@@ -322,7 +322,7 @@ test("ApprovalStateMachine: rejects unknown source state", () => {
   );
 });
 
-test("ApprovalStateMachine: rejects unknown target state from requested", () => {
+test("ApprovalStateMachine: rejects unknown target state from requested [approval-state-machine]", () => {
   const machine = createApprovalStateMachine();
 
   assert.throws(

@@ -14,7 +14,7 @@ import {
   type BenchmarkInventoryRecord,
 } from "../../../../../src/platform/shared/stability/benchmark-inventory-service.js";
 
-test("BenchmarkInventoryService lists all benchmarks", () => {
+test("BenchmarkInventoryService lists all benchmarks [benchmark-inventory-service-additional]", () => {
   const service = new BenchmarkInventoryService();
   const benchmarks = service.listBenchmarks();
 
@@ -22,14 +22,14 @@ test("BenchmarkInventoryService lists all benchmarks", () => {
   assert.ok(benchmarks.every((b) => b.benchmarkId.length > 0));
 });
 
-test("BenchmarkInventoryService benchmarks have valid architecture sections", () => {
+test("BenchmarkInventoryService benchmarks have valid architecture sections [benchmark-inventory-service-additional]", () => {
   const service = new BenchmarkInventoryService();
   const benchmarks = service.listBenchmarks();
 
   assert.ok(benchmarks.every((b) => b.architectureSection.startsWith("§")));
 });
 
-test("BenchmarkInventoryService buildSummary computes correct totals", () => {
+test("BenchmarkInventoryService buildSummary computes correct totals [benchmark-inventory-service-additional]", () => {
   const service = new BenchmarkInventoryService();
   const summary = service.buildSummary();
 
@@ -38,7 +38,7 @@ test("BenchmarkInventoryService buildSummary computes correct totals", () => {
   assert.ok(Object.keys(summary.byTargetScale).length > 0);
 });
 
-test("BenchmarkInventoryService buildSummary groups by section correctly", () => {
+test("BenchmarkInventoryService buildSummary groups by section correctly [benchmark-inventory-service-additional]", () => {
   const service = new BenchmarkInventoryService();
   const summary = service.buildSummary();
 
@@ -50,7 +50,7 @@ test("BenchmarkInventoryService buildSummary groups by section correctly", () =>
   assert.ok(section27 !== undefined || section28 !== undefined);
 });
 
-test("BenchmarkInventoryService buildSummary groups by targetScale correctly", () => {
+test("BenchmarkInventoryService buildSummary groups by targetScale correctly [benchmark-inventory-service-additional]", () => {
   const service = new BenchmarkInventoryService();
   const summary = service.buildSummary();
 
@@ -60,7 +60,7 @@ test("BenchmarkInventoryService buildSummary groups by targetScale correctly", (
   assert.ok(summary.byTargetScale["S4_contract_only"] !== undefined);
 });
 
-test("BenchmarkInventoryService benchmarks have valid categories", () => {
+test("BenchmarkInventoryService benchmarks have valid categories [benchmark-inventory-service-additional]", () => {
   const service = new BenchmarkInventoryService();
   const benchmarks = service.listBenchmarks();
 
@@ -68,7 +68,7 @@ test("BenchmarkInventoryService benchmarks have valid categories", () => {
   assert.ok(benchmarks.every((b) => validCategories.includes(b.category)));
 });
 
-test("BenchmarkInventoryService benchmarks have valid evidence artifacts", () => {
+test("BenchmarkInventoryService benchmarks have valid evidence artifacts [benchmark-inventory-service-additional]", () => {
   const service = new BenchmarkInventoryService();
   const benchmarks = service.listBenchmarks();
 
@@ -76,21 +76,21 @@ test("BenchmarkInventoryService benchmarks have valid evidence artifacts", () =>
   assert.ok(benchmarks.every((b) => b.evidenceArtifact.startsWith("stable-")));
 });
 
-test("BenchmarkInventoryService benchmarks have valid readiness surfaces", () => {
+test("BenchmarkInventoryService benchmarks have valid readiness surfaces [benchmark-inventory-service-additional]", () => {
   const service = new BenchmarkInventoryService();
   const benchmarks = service.listBenchmarks();
 
   assert.ok(benchmarks.every((b) => b.readinessSurface.length > 0));
 });
 
-test("BenchmarkInventoryService benchmarks have npm run commands", () => {
+test("BenchmarkInventoryService benchmarks have npm run commands [benchmark-inventory-service-additional]", () => {
   const service = new BenchmarkInventoryService();
   const benchmarks = service.listBenchmarks();
 
   assert.ok(benchmarks.every((b) => b.command.startsWith("npm run ")));
 });
 
-test("BenchmarkInventoryService returns defensive copy of benchmarks", () => {
+test("BenchmarkInventoryService returns defensive copy of benchmarks [benchmark-inventory-service-additional]", () => {
   const service = new BenchmarkInventoryService();
   const benchmarks1 = service.listBenchmarks();
   const benchmarks2 = service.listBenchmarks();
@@ -103,7 +103,7 @@ test("BenchmarkInventoryService returns defensive copy of benchmarks", () => {
   assert.equal(service.listBenchmarks().length, benchmarks2.length);
 });
 
-test("BenchmarkInventoryRecord structure validation", () => {
+test("BenchmarkInventoryRecord structure validation [benchmark-inventory-service-additional]", () => {
   const record: BenchmarkInventoryRecord = {
     benchmarkId: "bench.test",
     architectureSection: "§1",
@@ -120,14 +120,14 @@ test("BenchmarkInventoryRecord structure validation", () => {
   assert.ok(["S1", "S2", "S3", "S4_contract_only"].includes(record.targetScale));
 });
 
-test("BenchmarkInventoryService buildSummary S4_contract_only count is 1", () => {
+test("BenchmarkInventoryService buildSummary S4_contract_only count is 1 [benchmark-inventory-service-additional]", () => {
   const service = new BenchmarkInventoryService();
   const summary = service.buildSummary();
 
   assert.equal(summary.byTargetScale.S4_contract_only, 1);
 });
 
-test("BenchmarkInventoryService S2 scale is most common", () => {
+test("BenchmarkInventoryService S2 scale is most common [benchmark-inventory-service-additional]", () => {
   const service = new BenchmarkInventoryService();
   const summary = service.buildSummary();
 
@@ -135,7 +135,7 @@ test("BenchmarkInventoryService S2 scale is most common", () => {
   assert.ok(summary.byTargetScale.S2 >= summary.byTargetScale.S3);
 });
 
-test("BenchmarkInventoryService buildSummary all scale counts are non-negative", () => {
+test("BenchmarkInventoryService buildSummary all scale counts are non-negative [benchmark-inventory-service-additional]", () => {
   const service = new BenchmarkInventoryService();
   const summary = service.buildSummary();
 
@@ -145,7 +145,7 @@ test("BenchmarkInventoryService buildSummary all scale counts are non-negative",
   assert.ok(summary.byTargetScale.S4_contract_only >= 0);
 });
 
-test("BenchmarkInventoryService section counts are non-negative", () => {
+test("BenchmarkInventoryService section counts are non-negative [benchmark-inventory-service-additional]", () => {
   const service = new BenchmarkInventoryService();
   const summary = service.buildSummary();
 
@@ -154,7 +154,7 @@ test("BenchmarkInventoryService section counts are non-negative", () => {
   }
 });
 
-test("BenchmarkInventoryService sum of section counts equals total", () => {
+test("BenchmarkInventoryService sum of section counts equals total [benchmark-inventory-service-additional]", () => {
   const service = new BenchmarkInventoryService();
   const summary = service.buildSummary();
 
@@ -162,7 +162,7 @@ test("BenchmarkInventoryService sum of section counts equals total", () => {
   assert.equal(sectionSum, summary.total);
 });
 
-test("BenchmarkInventoryService sum of scale counts equals total", () => {
+test("BenchmarkInventoryService sum of scale counts equals total [benchmark-inventory-service-additional]", () => {
   const service = new BenchmarkInventoryService();
   const summary = service.buildSummary();
 
@@ -170,7 +170,7 @@ test("BenchmarkInventoryService sum of scale counts equals total", () => {
   assert.equal(scaleSum, summary.total);
 });
 
-test("BenchmarkInventoryService each benchmark has unique ID", () => {
+test("BenchmarkInventoryService each benchmark has unique ID [benchmark-inventory-service-additional]", () => {
   const service = new BenchmarkInventoryService();
   const benchmarks = service.listBenchmarks();
 
@@ -179,7 +179,7 @@ test("BenchmarkInventoryService each benchmark has unique ID", () => {
   assert.equal(uniqueIds.size, benchmarks.length);
 });
 
-test("BenchmarkInventoryService architecture sections match format", () => {
+test("BenchmarkInventoryService architecture sections match format [benchmark-inventory-service-additional]", () => {
   const service = new BenchmarkInventoryService();
   const benchmarks = service.listBenchmarks();
 

@@ -13,11 +13,11 @@ import {
   type ContinueRequest,
 } from "../../../../../src/platform/five-plane-execution/execution-engine/output-continuation-service.js";
 
-test("OutputContinuationService exports parseFinishReason function", () => {
+test("OutputContinuationService exports parseFinishReason function [output-continuation]", () => {
   assert.equal(typeof parseFinishReason, "function");
 });
 
-test("parseFinishReason handles max_tokens variants", () => {
+test("parseFinishReason handles max_tokens variants [output-continuation]", () => {
   assert.equal(parseFinishReason("length"), "max_tokens_exceeded");
   assert.equal(parseFinishReason("max_tokens"), "max_tokens_exceeded");
   assert.equal(parseFinishReason("token_limit"), "max_tokens_exceeded");
@@ -25,29 +25,29 @@ test("parseFinishReason handles max_tokens variants", () => {
   assert.equal(parseFinishReason("Max_Tokens"), "max_tokens_exceeded");
 });
 
-test("parseFinishReason handles content_filter variants", () => {
+test("parseFinishReason handles content_filter variants [output-continuation]", () => {
   assert.equal(parseFinishReason("content_filter"), "content_filtered");
   assert.equal(parseFinishReason("content_filtered"), "content_filtered");
   assert.equal(parseFinishReason("CONTENT_FILTER"), "content_filtered");
 });
 
-test("parseFinishReason handles stop_sequence variants", () => {
+test("parseFinishReason handles stop_sequence variants [output-continuation]", () => {
   assert.equal(parseFinishReason("stop"), "stop_sequence");
   assert.equal(parseFinishReason("stop_sequence"), "stop_sequence");
 });
 
-test("parseFinishReason handles normal variants", () => {
+test("parseFinishReason handles normal variants [output-continuation]", () => {
   assert.equal(parseFinishReason("normal"), "normal");
   assert.equal(parseFinishReason("completed"), "normal");
 });
 
-test("parseFinishReason returns unknown for unrecognized", () => {
+test("parseFinishReason returns unknown for unrecognized [output-continuation]", () => {
   assert.equal(parseFinishReason("unknown"), "unknown");
   assert.equal(parseFinishReason("random_value"), "unknown");
   assert.equal(parseFinishReason(""), "unknown");
 });
 
-test("canContinueResponse returns true only for max_tokens", () => {
+test("canContinueResponse returns true only for max_tokens [output-continuation]", () => {
   assert.equal(canContinueResponse("length"), true);
   assert.equal(canContinueResponse("max_tokens"), true);
   assert.equal(canContinueResponse("stop"), false);
@@ -55,29 +55,29 @@ test("canContinueResponse returns true only for max_tokens", () => {
   assert.equal(canContinueResponse("content_filter"), false);
 });
 
-test("buildContinuationPrompt constructs proper prompt", () => {
+test("buildContinuationPrompt constructs proper prompt [output-continuation]", () => {
   const prompt = buildContinuationPrompt("partial output", "original prompt", 1000);
   assert.ok(prompt.includes("partial output"));
   assert.ok(prompt.includes("original prompt"));
   assert.ok(prompt.includes("1000"));
 });
 
-test("buildContinuationPrompt uses default token budget", () => {
+test("buildContinuationPrompt uses default token budget [output-continuation]", () => {
   const prompt = buildContinuationPrompt("partial", "original");
   assert.ok(prompt.includes("2000")); // default
 });
 
-test("extractContinuationPoint returns null for empty input", () => {
+test("extractContinuationPoint returns null for empty input [output-continuation]", () => {
   assert.equal(extractContinuationPoint(""), null);
   assert.equal(extractContinuationPoint("   "), null);
 });
 
-test("extractContinuationPoint returns full content for short output", () => {
+test("extractContinuationPoint returns full content for short output [output-continuation]", () => {
   const result = extractContinuationPoint("short");
   assert.equal(result, "short");
 });
 
-test("extractContinuationPoint handles truncation indicators", () => {
+test("extractContinuationPoint handles truncation indicators [output-continuation]", () => {
   // Last line with truncation indicator - should cut before it
   const result = extractContinuationPoint("line1\nline2\n...");
   assert.ok(result);
@@ -88,53 +88,53 @@ test("extractContinuationPoint handles truncation indicators", () => {
   assert.ok(!result2!.endsWith("[truncated]"));
 });
 
-test("extractContinuationPoint handles Chinese truncation markers", () => {
+test("extractContinuationPoint handles Chinese truncation markers [output-continuation]", () => {
   const result = extractContinuationPoint("内容1\n内容2\n【未完】");
   assert.ok(result);
   assert.ok(!result!.endsWith("【未完】"));
 });
 
-test("extractContinuationPoint returns full if ends with punctuation", () => {
+test("extractContinuationPoint returns full if ends with punctuation [output-continuation]", () => {
   const result = extractContinuationPoint("This is a complete sentence.");
   assert.equal(result, "This is a complete sentence.");
 });
 
-test("extractContinuationPoint handles incomplete patterns", () => {
+test("extractContinuationPoint handles incomplete patterns [output-continuation]", () => {
   assert.equal(extractContinuationPoint("{ incomplete object"), "{ incomplete object");
   assert.equal(extractContinuationPoint("[ incomplete array"), "[ incomplete array");
   assert.equal(extractContinuationPoint("( incomplete parens"), "( incomplete parens");
 });
 
-test("extractContinuationPoint handles incomplete HTML tag pattern", () => {
+test("extractContinuationPoint handles incomplete HTML tag pattern [output-continuation]", () => {
   assert.equal(extractContinuationPoint("<div"), "<div");
   assert.equal(extractContinuationPoint("<span class"), "<span class");
   assert.equal(extractContinuationPoint("<input "), "<input ");
 });
 
-test("extractContinuationPoint returns input for output ending with comma", () => {
+test("extractContinuationPoint returns input for output ending with comma [output-continuation]", () => {
   assert.equal(extractContinuationPoint("Hello, world,"), "Hello, world,");
 });
 
-test("extractContinuationPoint returns input for output ending with Chinese comma", () => {
+test("extractContinuationPoint returns input for output ending with Chinese comma [output-continuation]", () => {
   assert.equal(extractContinuationPoint("你好，世界，"), "你好，世界，");
 });
 
-test("extractContinuationPoint returns input for output ending with English period", () => {
+test("extractContinuationPoint returns input for output ending with English period [output-continuation]", () => {
   assert.equal(extractContinuationPoint("Complete sentence."), "Complete sentence.");
 });
 
-test("extractContinuationPoint returns input for output ending with Chinese period", () => {
+test("extractContinuationPoint returns input for output ending with Chinese period [output-continuation]", () => {
   assert.equal(extractContinuationPoint("完整的句子。"), "完整的句子。");
 });
 
-test("extractContinuationPoint finds sentence boundary near end", () => {
+test("extractContinuationPoint finds sentence boundary near end [output-continuation]", () => {
   const longText = "This is a long text. ".repeat(20) + "Incomplete last sentence";
   const result = extractContinuationPoint(longText);
   assert.ok(result);
   // Should cut at sentence boundary if it's near the end
 });
 
-test("OutputContinuationService creates continuation record", () => {
+test("OutputContinuationService creates continuation record [output-continuation]", () => {
   const service = new OutputContinuationService();
 
   const request: ContinueRequest = {
@@ -158,7 +158,7 @@ test("OutputContinuationService creates continuation record", () => {
   assert.ok(record.createdAt);
 });
 
-test("OutputContinuationService getRecord retrieves record", () => {
+test("OutputContinuationService getRecord retrieves record [output-continuation]", () => {
   const service = new OutputContinuationService();
 
   const request: ContinueRequest = {
@@ -178,7 +178,7 @@ test("OutputContinuationService getRecord retrieves record", () => {
   assert.equal(retrieved!.partialOutput, "partial");
 });
 
-test("OutputContinuationService getRecordsByExecution filters correctly", () => {
+test("OutputContinuationService getRecordsByExecution filters correctly [output-continuation]", () => {
   const service = new OutputContinuationService();
 
   service.createContinuationRecord({
@@ -203,7 +203,7 @@ test("OutputContinuationService getRecordsByExecution filters correctly", () => 
   assert.equal(records.length, 2);
 });
 
-test("OutputContinuationService getRecordsBySession filters correctly", () => {
+test("OutputContinuationService getRecordsBySession filters correctly [output-continuation]", () => {
   const service = new OutputContinuationService();
 
   service.createContinuationRecord({
@@ -228,7 +228,7 @@ test("OutputContinuationService getRecordsBySession filters correctly", () => {
   assert.equal(records.length, 2);
 });
 
-test("OutputContinuationService getRecordsByTask filters correctly", () => {
+test("OutputContinuationService getRecordsByTask filters correctly [output-continuation]", () => {
   const service = new OutputContinuationService();
 
   service.createContinuationRecord({
@@ -253,7 +253,7 @@ test("OutputContinuationService getRecordsByTask filters correctly", () => {
   assert.equal(records.length, 2);
 });
 
-test("OutputContinuationService incrementContinuationCount updates record", () => {
+test("OutputContinuationService incrementContinuationCount updates record [output-continuation]", () => {
   const service = new OutputContinuationService();
 
   const record = service.createContinuationRecord({
@@ -274,7 +274,7 @@ test("OutputContinuationService incrementContinuationCount updates record", () =
   assert.ok(updated!.lastContinuationAt);
 });
 
-test("OutputContinuationService checkContinuationStatus returns correct status", () => {
+test("OutputContinuationService checkContinuationStatus returns correct status [output-continuation]", () => {
   const service = new OutputContinuationService();
 
   const status = service.checkContinuationStatus("length", "partial output...");
@@ -286,7 +286,7 @@ test("OutputContinuationService checkContinuationStatus returns correct status",
   assert.ok(status.nextInputContent);
 });
 
-test("OutputContinuationService checkContinuationStatus returns false for non-continuable", () => {
+test("OutputContinuationService checkContinuationStatus returns false for non-continuable [output-continuation]", () => {
   const service = new OutputContinuationService();
 
   const status = service.checkContinuationStatus("stop", "complete output");
@@ -297,7 +297,7 @@ test("OutputContinuationService checkContinuationStatus returns false for non-co
   assert.equal(status.nextInputContent, null);
 });
 
-test("OutputContinuationService clearRecords removes all", () => {
+test("OutputContinuationService clearRecords removes all [output-continuation]", () => {
   const service = new OutputContinuationService();
 
   service.createContinuationRecord({
@@ -316,7 +316,7 @@ test("OutputContinuationService clearRecords removes all", () => {
   assert.equal(service.getRecordCount(), 0);
 });
 
-test("OutputContinuationService getRecordCount returns correct count", () => {
+test("OutputContinuationService getRecordCount returns correct count [output-continuation]", () => {
   const service = new OutputContinuationService();
 
   assert.equal(service.getRecordCount(), 0);
@@ -344,14 +344,14 @@ test("OutputContinuationService getRecordCount returns correct count", () => {
   assert.equal(service.getRecordCount(), 2);
 });
 
-test("getGlobalContinuationService returns singleton", () => {
+test("getGlobalContinuationService returns singleton [output-continuation]", () => {
   const service1 = getGlobalContinuationService();
   const service2 = getGlobalContinuationService();
 
   assert.equal(service1, service2);
 });
 
-test("OutputContinuationService handles non-max_tokens finish reason", () => {
+test("OutputContinuationService handles non-max_tokens finish reason [output-continuation]", () => {
   const service = new OutputContinuationService();
 
   // Use output with truncation indicator to get a continuation point
@@ -373,52 +373,52 @@ test("OutputContinuationService handles non-max_tokens finish reason", () => {
 // NEW TESTS - Additional Coverage
 // ============================================
 
-test("extractContinuationPoint returns null for null-like input", () => {
+test("extractContinuationPoint returns null for null-like input [output-continuation]", () => {
   assert.equal(extractContinuationPoint(null as unknown as string), null);
 });
 
-test("extractContinuationPoint handles single line content", () => {
+test("extractContinuationPoint handles single line content [output-continuation]", () => {
   const result = extractContinuationPoint("single line content");
   assert.equal(result, "single line content");
 });
 
-test("extractContinuationPoint handles two line content", () => {
+test("extractContinuationPoint handles two line content [output-continuation]", () => {
   const result = extractContinuationPoint("line1\nline2");
   assert.equal(result, "line1\nline2");
 });
 
-test("extractContinuationPoint handles [continued] marker", () => {
+test("extractContinuationPoint handles [continued] marker [output-continuation]", () => {
   // Need more than 2 lines for truncation indicator check to trigger
   const result = extractContinuationPoint("line1\nline2\n[continued]");
   assert.ok(result);
   assert.ok(!result!.endsWith("[continued]"));
 });
 
-test("extractContinuationPoint handles [未完成] marker", () => {
+test("extractContinuationPoint handles [未完成] marker [output-continuation]", () => {
   // Need more than 2 lines for truncation indicator check to trigger
   const result = extractContinuationPoint("内容1\n内容2\n[未完成]");
   assert.ok(result);
   assert.ok(!result!.endsWith("[未完成]"));
 });
 
-test("extractContinuationPoint handles output ending with semicolon", () => {
+test("extractContinuationPoint handles output ending with semicolon [output-continuation]", () => {
   const result = extractContinuationPoint("incomplete statement;");
   assert.equal(result, "incomplete statement;");
 });
 
-test("extractContinuationPoint handles output ending with colon", () => {
+test("extractContinuationPoint handles output ending with colon [output-continuation]", () => {
   const result = extractContinuationPoint("label:");
   assert.equal(result, "label:");
 });
 
-test("extractContinuationPoint returns null for sentence boundary at start", () => {
+test("extractContinuationPoint returns null for sentence boundary at start [output-continuation]", () => {
   // Multi-line with no punctuation at end and sentence boundary not past 70%
   const text = "line1\nline2\nline3\nline4\nline5\nline6\nline7";
   const result = extractContinuationPoint(text);
   assert.equal(result, null);
 });
 
-test("extractContinuationPoint handles sentence boundary past 70% of content", () => {
+test("extractContinuationPoint handles sentence boundary past 70% of content [output-continuation]", () => {
   const text = "This is a long text. ".repeat(20) + "Complete sentence.";
   const result = extractContinuationPoint(text);
   // Should find the sentence boundary
@@ -426,64 +426,64 @@ test("extractContinuationPoint handles sentence boundary past 70% of content", (
   assert.ok(result!.endsWith("Complete sentence."));
 });
 
-test("extractContinuationPoint handles multiple truncation indicators", () => {
+test("extractContinuationPoint handles multiple truncation indicators [output-continuation]", () => {
   const result = extractContinuationPoint("line1\nline2\n...\nline3\n [truncated]");
   assert.ok(result);
   assert.ok(!result!.endsWith("[truncated]"));
 });
 
-test("buildContinuationPrompt handles empty partial output", () => {
+test("buildContinuationPrompt handles empty partial output [output-continuation]", () => {
   const prompt = buildContinuationPrompt("", "original prompt", 500);
   assert.ok(prompt.includes("original prompt"));
   assert.ok(prompt.includes("500"));
 });
 
-test("buildContinuationPrompt handles empty original prompt", () => {
+test("buildContinuationPrompt handles empty original prompt [output-continuation]", () => {
   const prompt = buildContinuationPrompt("partial output", "", 500);
   assert.ok(prompt.includes("partial output"));
   assert.ok(prompt.includes("500"));
 });
 
-test("buildContinuationPrompt handles very large token budget", () => {
+test("buildContinuationPrompt handles very large token budget [output-continuation]", () => {
   const prompt = buildContinuationPrompt("partial", "original", 100000);
   assert.ok(prompt.includes("100000"));
 });
 
-test("checkContinuationStatus returns correct budget for max_tokens", () => {
+test("checkContinuationStatus returns correct budget for max_tokens [output-continuation]", () => {
   const service = new OutputContinuationService();
   const status = service.checkContinuationStatus("length", "partial...");
   assert.equal(status.continuationTokenBudget, 2000);
 });
 
-test("checkContinuationStatus returns null budget for content_filter", () => {
+test("checkContinuationStatus returns null budget for content_filter [output-continuation]", () => {
   const service = new OutputContinuationService();
   const status = service.checkContinuationStatus("content_filter", "partial output");
   assert.equal(status.continuationTokenBudget, null);
   assert.equal(status.canContinue, false);
 });
 
-test("checkContinuationStatus returns null budget for normal completion", () => {
+test("checkContinuationStatus returns null budget for normal completion [output-continuation]", () => {
   const service = new OutputContinuationService();
   const status = service.checkContinuationStatus("normal", "complete output");
   assert.equal(status.continuationTokenBudget, null);
   assert.equal(status.canContinue, false);
 });
 
-test("checkContinuationStatus returns null budget for stop_sequence", () => {
+test("checkContinuationStatus returns null budget for stop_sequence [output-continuation]", () => {
   const service = new OutputContinuationService();
   const status = service.checkContinuationStatus("stop", "output");
   assert.equal(status.continuationTokenBudget, null);
   assert.equal(status.canContinue, false);
 });
 
-test("checkContinuationStatus nextInputContent format for continuable", () => {
+test("checkContinuationStatus nextInputContent format for continuable [output-continuation]", () => {
   const service = new OutputContinuationService();
   const status = service.checkContinuationStatus("length", "partial output...");
   assert.ok(status.nextInputContent);
   assert.ok(status.nextInputContent!.includes("partial output"));
 });
 
-test("OutputContinuationService increments continuation count multiple times", () => {
+test("OutputContinuationService increments continuation count multiple times [output-continuation]", () => {
   const service = new OutputContinuationService();
 
   const record = service.createContinuationRecord({
@@ -503,7 +503,7 @@ test("OutputContinuationService increments continuation count multiple times", (
   assert.equal(updated!.continuationCount, 3);
 });
 
-test("OutputContinuationService originalResponseId is preserved in record", () => {
+test("OutputContinuationService originalResponseId is preserved in record [output-continuation]", () => {
   const service = new OutputContinuationService();
 
   const record = service.createContinuationRecord({
@@ -518,7 +518,7 @@ test("OutputContinuationService originalResponseId is preserved in record", () =
   assert.equal(record.originalResponseId, "original_resp_123");
 });
 
-test("OutputContinuationService continuationPoint is extracted correctly", () => {
+test("OutputContinuationService continuationPoint is extracted correctly [output-continuation]", () => {
   const service = new OutputContinuationService();
 
   const record = service.createContinuationRecord({
@@ -534,7 +534,7 @@ test("OutputContinuationService continuationPoint is extracted correctly", () =>
   assert.ok(!record.continuationPoint!.endsWith("..."));
 });
 
-test("OutputContinuationService lastContinuationAt is set after increment", () => {
+test("OutputContinuationService lastContinuationAt is set after increment [output-continuation]", () => {
   const service = new OutputContinuationService();
 
   const record = service.createContinuationRecord({
@@ -554,7 +554,7 @@ test("OutputContinuationService lastContinuationAt is set after increment", () =
   assert.ok(updated!.lastContinuationAt);
 });
 
-test("OutputContinuationService getRecordsByExecution returns empty for unknown execution", () => {
+test("OutputContinuationService getRecordsByExecution returns empty for unknown execution [output-continuation]", () => {
   const service = new OutputContinuationService();
 
   service.createContinuationRecord({
@@ -570,7 +570,7 @@ test("OutputContinuationService getRecordsByExecution returns empty for unknown 
   assert.equal(records.length, 0);
 });
 
-test("OutputContinuationService getRecordsBySession returns empty for unknown session", () => {
+test("OutputContinuationService getRecordsBySession returns empty for unknown session [output-continuation]", () => {
   const service = new OutputContinuationService();
 
   service.createContinuationRecord({
@@ -586,7 +586,7 @@ test("OutputContinuationService getRecordsBySession returns empty for unknown se
   assert.equal(records.length, 0);
 });
 
-test("OutputContinuationService getRecordsByTask returns empty for unknown task", () => {
+test("OutputContinuationService getRecordsByTask returns empty for unknown task [output-continuation]", () => {
   const service = new OutputContinuationService();
 
   service.createContinuationRecord({
@@ -602,25 +602,25 @@ test("OutputContinuationService getRecordsByTask returns empty for unknown task"
   assert.equal(records.length, 0);
 });
 
-test("OutputContinuationService getRecord returns undefined for unknown id", () => {
+test("OutputContinuationService getRecord returns undefined for unknown id [output-continuation]", () => {
   const service = new OutputContinuationService();
   const record = service.getRecord("unknown_id");
   assert.equal(record, undefined);
 });
 
-test("parseFinishReason is case insensitive", () => {
+test("parseFinishReason is case insensitive [output-continuation]", () => {
   assert.equal(parseFinishReason("LENGTH"), "max_tokens_exceeded");
   assert.equal(parseFinishReason("Content_Filter"), "content_filtered");
   assert.equal(parseFinishReason("STOP"), "stop_sequence");
   assert.equal(parseFinishReason("NORMAL"), "normal");
 });
 
-test("canContinueResponse returns false for unknown reason", () => {
+test("canContinueResponse returns false for unknown reason [output-continuation]", () => {
   assert.equal(canContinueResponse("unknown"), false);
   assert.equal(canContinueResponse(""), false);
 });
 
-test("getGlobalContinuationService returns singleton across multiple calls", () => {
+test("getGlobalContinuationService returns singleton across multiple calls [output-continuation]", () => {
   const service1 = getGlobalContinuationService();
   const service2 = getGlobalContinuationService();
   const service3 = getGlobalContinuationService();
@@ -629,24 +629,24 @@ test("getGlobalContinuationService returns singleton across multiple calls", () 
   assert.equal(service2, service3);
 });
 
-test("extractContinuationPoint handles output with tab characters", () => {
+test("extractContinuationPoint handles output with tab characters [output-continuation]", () => {
   // With 2 lines, function returns content directly without truncation check
   const result = extractContinuationPoint("line1\tline2");
   assert.ok(result);
   assert.equal(result, "line1\tline2");
 });
 
-test("extractContinuationPoint handles HTML tag with attributes", () => {
+test("extractContinuationPoint handles HTML tag with attributes [output-continuation]", () => {
   const result = extractContinuationPoint("<div class=\"test\"");
   assert.equal(result, "<div class=\"test\"");
 });
 
-test("extractContinuationPoint handles multiple incomplete patterns", () => {
+test("extractContinuationPoint handles multiple incomplete patterns [output-continuation]", () => {
   const result = extractContinuationPoint("{ [ ( < ,");
   assert.equal(result, "{ [ ( < ,");
 });
 
-test("checkContinuationStatus with max_tokens but no continuation point", () => {
+test("checkContinuationStatus with max_tokens but no continuation point [output-continuation]", () => {
   const service = new OutputContinuationService();
   // Multi-line output without punctuation or truncation markers
   // This will result in null continuationPoint
@@ -659,7 +659,7 @@ test("checkContinuationStatus with max_tokens but no continuation point", () => 
   assert.equal(status.nextInputContent, null);
 });
 
-test("OutputContinuationService records can be filtered by multiple criteria", () => {
+test("OutputContinuationService records can be filtered by multiple criteria [output-continuation]", () => {
   const service = new OutputContinuationService();
 
   service.createContinuationRecord({

@@ -13,7 +13,7 @@ import {
   parseFeedbackSignal,
 } from "../../../../../src/platform/five-plane-orchestration/oapeflir/types/feedback-signal.js";
 
-test("FeedbackBatchSchema parses valid feedback batch", () => {
+test("FeedbackBatchSchema parses valid feedback batch [feedback-model]", () => {
   const input = {
     feedbackId: "feedback_1",
     taskId: "task_1",
@@ -30,7 +30,7 @@ test("FeedbackBatchSchema parses valid feedback batch", () => {
   assert.equal(result.outcome, "completed");
 });
 
-test("FeedbackBatchSchema applies defaults for optional fields", () => {
+test("FeedbackBatchSchema applies defaults for optional fields [feedback-model]", () => {
   const input = {
     feedbackId: "feedback_2",
     taskId: "task_2",
@@ -44,20 +44,20 @@ test("FeedbackBatchSchema applies defaults for optional fields", () => {
   assert.deepEqual(result.signals, []);
 });
 
-test("FeedbackBatchOutcomeSchema accepts valid outcomes", () => {
+test("FeedbackBatchOutcomeSchema accepts valid outcomes [feedback-model]", () => {
   const outcomes = ["completed", "failed", "repairable", "escalated", "partial"] as const;
   for (const outcome of outcomes) {
     assert.equal(FeedbackBatchOutcomeSchema.parse(outcome), outcome);
   }
 });
 
-test("FeedbackBatchOutcomeSchema rejects invalid outcomes", () => {
+test("FeedbackBatchOutcomeSchema rejects invalid outcomes [feedback-model]", () => {
   assert.throws(() => {
     FeedbackBatchOutcomeSchema.parse("invalid");
   });
 });
 
-test("LearningSignalSchema parses valid learning signal", () => {
+test("LearningSignalSchema parses valid learning signal [feedback-model]", () => {
   const input = {
     learningSignalId: "learning_1",
     taskId: "task_1",
@@ -78,7 +78,7 @@ test("LearningSignalSchema parses valid learning signal", () => {
   assert.equal(result.confidence, 0.85);
 });
 
-test("LearningSignalSchema applies defaults for optional fields", () => {
+test("LearningSignalSchema applies defaults for optional fields [feedback-model]", () => {
   const input = {
     learningSignalId: "learning_2",
     taskId: "task_2",
@@ -96,13 +96,13 @@ test("LearningSignalSchema applies defaults for optional fields", () => {
   assert.deepEqual(result.evidence, {});
 });
 
-test("parseFeedbackBatch throws on invalid input", () => {
+test("parseFeedbackBatch throws on invalid input [feedback-model]", () => {
   assert.throws(() => {
     parseFeedbackBatch({ feedbackId: "", taskId: "task_1", outcome: "invalid", emittedAt: 0 });
   });
 });
 
-test("parseLearningSignal throws on invalid input", () => {
+test("parseLearningSignal throws on invalid input [feedback-model]", () => {
   assert.throws(() => {
     parseLearningSignal({
       learningSignalId: "",
@@ -116,7 +116,7 @@ test("parseLearningSignal throws on invalid input", () => {
   });
 });
 
-test("LearningSignalSchema rejects confidence outside [0, 1]", () => {
+test("LearningSignalSchema rejects confidence outside [0, 1] [feedback-model]", () => {
   assert.throws(() => {
     LearningSignalSchema.parse({
       learningSignalId: "learning_3",
@@ -142,7 +142,7 @@ test("LearningSignalSchema rejects confidence outside [0, 1]", () => {
   });
 });
 
-test("LearningSignalSchema accepts all valid learning types", () => {
+test("LearningSignalSchema accepts all valid learning types [feedback-model]", () => {
   const learningTypes = ["failure_pattern", "user_correction", "recovery_playbook"] as const;
   for (const learningType of learningTypes) {
     const input = {
@@ -158,7 +158,7 @@ test("LearningSignalSchema accepts all valid learning types", () => {
   }
 });
 
-test("FeedbackSignalSchema parses valid signal", () => {
+test("FeedbackSignalSchema parses valid signal [feedback-model]", () => {
   const input = {
     signalId: "sig_test",
     taskId: "task_1",
@@ -177,7 +177,7 @@ test("FeedbackSignalSchema parses valid signal", () => {
   assert.equal(result.severity, "error");
 });
 
-test("FeedbackSignalSchema rejects invalid source", () => {
+test("FeedbackSignalSchema rejects invalid source [feedback-model]", () => {
   assert.throws(() => {
     FeedbackSignalSchema.parse({
       signalId: "sig_test",
@@ -192,7 +192,7 @@ test("FeedbackSignalSchema rejects invalid source", () => {
   });
 });
 
-test("FeedbackSignalSchema rejects invalid category", () => {
+test("FeedbackSignalSchema rejects invalid category [feedback-model]", () => {
   assert.throws(() => {
     FeedbackSignalSchema.parse({
       signalId: "sig_test",
@@ -207,7 +207,7 @@ test("FeedbackSignalSchema rejects invalid category", () => {
   });
 });
 
-test("FeedbackSignalSchema rejects invalid severity", () => {
+test("FeedbackSignalSchema rejects invalid severity [feedback-model]", () => {
   assert.throws(() => {
     FeedbackSignalSchema.parse({
       signalId: "sig_test",
@@ -222,7 +222,7 @@ test("FeedbackSignalSchema rejects invalid severity", () => {
   });
 });
 
-test("FeedbackSignalSchema applies defaults for optional fields", () => {
+test("FeedbackSignalSchema applies defaults for optional fields [feedback-model]", () => {
   const result = FeedbackSignalSchema.parse({
     signalId: "sig_test",
     taskId: "task_1",

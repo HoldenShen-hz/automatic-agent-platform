@@ -128,7 +128,7 @@ function createResourcePool(overrides: Partial<ResourcePool> = {}): ResourcePool
 // FairSchedulingService Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("FairSchedulingService.schedule orders queue by priority and age", () => {
+test("FairSchedulingService.schedule orders queue by priority and age [fair-scheduling]", () => {
   const service = new FairSchedulingService();
   const queueItems = [
     createQueueItem({ itemId: "low", priority: 1, ageMs: 0 }),
@@ -144,7 +144,7 @@ test("FairSchedulingService.schedule orders queue by priority and age", () => {
   assert.equal(decision.queue.orderedItemIds[2], "high");
 });
 
-test("FairSchedulingService.schedule identifies starved items at 15 minutes", () => {
+test("FairSchedulingService.schedule identifies starved items at 15 minutes [fair-scheduling]", () => {
   const service = new FairSchedulingService();
   const queueItems = [
     createQueueItem({ itemId: "fresh", ageMs: 5 * 60_000 }),
@@ -161,7 +161,7 @@ test("FairSchedulingService.schedule identifies starved items at 15 minutes", ()
   assert.ok(decision.queue.starvedItemIds.includes("exactly-15min"));
 });
 
-test("FairSchedulingService.schedule does not preempt when within quota", () => {
+test("FairSchedulingService.schedule does not preempt when within quota [fair-scheduling]", () => {
   const service = new FairSchedulingService();
   const request = createScheduleRequest({
     quotaPolicy: createQuotaPolicy({ currentUsage: 50, hardLimit: 100 }),
@@ -176,7 +176,7 @@ test("FairSchedulingService.schedule does not preempt when within quota", () => 
   assert.equal(decision.preemption.reason, null);
 });
 
-test("FairSchedulingService.schedule preempts when quota exceeded and victim exists", () => {
+test("FairSchedulingService.schedule preempts when quota exceeded and victim exists [fair-scheduling]", () => {
   const service = new FairSchedulingService();
   const candidates = [
     createPreemptionCandidate({ executionId: "high-prio", priority: 10 }),
@@ -196,7 +196,7 @@ test("FairSchedulingService.schedule preempts when quota exceeded and victim exi
   assert.equal(decision.preemption.reason, "resource_manager.quota_exceeded_preempt_low_priority");
 });
 
-test("FairSchedulingService.schedule reports quota exceeded without victim", () => {
+test("FairSchedulingService.schedule reports quota exceeded without victim [fair-scheduling]", () => {
   const service = new FairSchedulingService();
   const request = createScheduleRequest({
     quotaPolicy: createQuotaPolicy({ currentUsage: 100, hardLimit: 80, burstLimit: 100 }),
@@ -210,7 +210,7 @@ test("FairSchedulingService.schedule reports quota exceeded without victim", () 
   assert.equal(decision.preemption.reason, "resource_manager.quota_exceeded_without_victim");
 });
 
-test("FairSchedulingService.schedule returns empty queue snapshot for empty input", () => {
+test("FairSchedulingService.schedule returns empty queue snapshot for empty input [fair-scheduling]", () => {
   const service = new FairSchedulingService();
   const request = createScheduleRequest({ queueItems: [], preemptionCandidates: [] });
 
@@ -221,7 +221,7 @@ test("FairSchedulingService.schedule returns empty queue snapshot for empty inpu
   assert.equal(decision.queue.quotaExceeded, false);
 });
 
-test("FairSchedulingService.schedule identifies all items starved when all over 15 min", () => {
+test("FairSchedulingService.schedule identifies all items starved when all over 15 min [fair-scheduling]", () => {
   const service = new FairSchedulingService();
   const queueItems = [
     createQueueItem({ itemId: "item-1", ageMs: 20 * 60_000 }),
@@ -239,7 +239,7 @@ test("FairSchedulingService.schedule identifies all items starved when all over 
 // orderFairQueue Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("orderFairQueue sorts by effective priority score", () => {
+test("orderFairQueue sorts by effective priority score [fair-scheduling]", () => {
   const items = [
     createQueueItem({ itemId: "low", priority: 1 }),
     createQueueItem({ itemId: "high", priority: 10 }),
@@ -253,7 +253,7 @@ test("orderFairQueue sorts by effective priority score", () => {
   assert.equal(ordered[2]!.itemId, "high");
 });
 
-test("orderFairQueue considers age in scoring with cap at 9", () => {
+test("orderFairQueue considers age in scoring with cap at 9 [fair-scheduling]", () => {
   const items = [
     createQueueItem({ itemId: "new-high", priority: 5, ageMs: 0 }),
     createQueueItem({ itemId: "old-medium", priority: 4, ageMs: 10 * 60_000 }),
@@ -266,7 +266,7 @@ test("orderFairQueue considers age in scoring with cap at 9", () => {
   assert.equal(ordered[1]!.itemId, "new-high");
 });
 
-test("orderFairQueue does not modify original array", () => {
+test("orderFairQueue does not modify original array [fair-scheduling]", () => {
   const items = [
     createQueueItem({ itemId: "first", priority: 1 }),
     createQueueItem({ itemId: "second", priority: 2 }),
@@ -279,19 +279,19 @@ test("orderFairQueue does not modify original array", () => {
   assert.equal(items[1]!.itemId, original[1]!.itemId);
 });
 
-test("orderFairQueue handles single item", () => {
+test("orderFairQueue handles single item [fair-scheduling]", () => {
   const items = [createQueueItem({ itemId: "only" })];
   const ordered = orderFairQueue(items);
   assert.equal(ordered.length, 1);
   assert.equal(ordered[0]!.itemId, "only");
 });
 
-test("orderFairQueue handles empty array", () => {
+test("orderFairQueue handles empty array [fair-scheduling]", () => {
   const ordered = orderFairQueue([]);
   assert.deepEqual(ordered, []);
 });
 
-test("orderFairQueue age penalty continues accumulating until the 99-minute cap", () => {
+test("orderFairQueue age penalty continues accumulating until the 99-minute cap [fair-scheduling]", () => {
   const items = [
     createQueueItem({ itemId: "old", priority: 5, ageMs: 15 * 60_000 }),
     createQueueItem({ itemId: "very-old", priority: 5, ageMs: 60 * 60_000 }),
@@ -308,7 +308,7 @@ test("orderFairQueue age penalty continues accumulating until the 99-minute cap"
 // choosePreemptionVictim Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("choosePreemptionVictim selects lowest priority", () => {
+test("choosePreemptionVictim selects lowest priority [fair-scheduling]", () => {
   const candidates = [
     createPreemptionCandidate({ executionId: "high", priority: 10 }),
     createPreemptionCandidate({ executionId: "low", priority: 1 }),
@@ -320,7 +320,7 @@ test("choosePreemptionVictim selects lowest priority", () => {
   assert.equal(victim?.executionId, "low");
 });
 
-test("choosePreemptionVictim breaks tie by higher progressPercent", () => {
+test("choosePreemptionVictim breaks tie by higher progressPercent [fair-scheduling]", () => {
   const candidates = [
     createPreemptionCandidate({ executionId: "more-progress", priority: 5, progressPercent: 80 }),
     createPreemptionCandidate({ executionId: "less-progress", priority: 5, progressPercent: 20 }),
@@ -331,12 +331,12 @@ test("choosePreemptionVictim breaks tie by higher progressPercent", () => {
   assert.equal(victim?.executionId, "more-progress");
 });
 
-test("choosePreemptionVictim returns null for empty array", () => {
+test("choosePreemptionVictim returns null for empty array [fair-scheduling]", () => {
   const victim = choosePreemptionVictim([]);
   assert.equal(victim, null);
 });
 
-test("choosePreemptionVictim selects more progressed when same priority", () => {
+test("choosePreemptionVictim selects more progressed when same priority [fair-scheduling]", () => {
   const candidates = [
     createPreemptionCandidate({ executionId: "fast", priority: 5, progressPercent: 90 }),
     createPreemptionCandidate({ executionId: "slow", priority: 5, progressPercent: 10 }),
@@ -351,7 +351,7 @@ test("choosePreemptionVictim selects more progressed when same priority", () => 
 // isQuotaExceeded Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("isQuotaExceeded returns false when within burst limit", () => {
+test("isQuotaExceeded returns false when within burst limit [fair-scheduling]", () => {
   const policy = createQuotaPolicy({ currentUsage: 50, hardLimit: 100, burstLimit: 120 });
 
   const exceeded = isQuotaExceeded(policy, 10);
@@ -359,7 +359,7 @@ test("isQuotaExceeded returns false when within burst limit", () => {
   assert.equal(exceeded, false);
 });
 
-test("isQuotaExceeded returns true when exceeds burst limit", () => {
+test("isQuotaExceeded returns true when exceeds burst limit [fair-scheduling]", () => {
   const policy = createQuotaPolicy({ currentUsage: 100, hardLimit: 80, burstLimit: 100 });
 
   const exceeded = isQuotaExceeded(policy, 10);
@@ -367,7 +367,7 @@ test("isQuotaExceeded returns true when exceeds burst limit", () => {
   assert.equal(exceeded, true);
 });
 
-test("isQuotaExceeded returns false when exactly at burst limit", () => {
+test("isQuotaExceeded returns false when exactly at burst limit [fair-scheduling]", () => {
   const policy = createQuotaPolicy({ currentUsage: 90, hardLimit: 80, burstLimit: 100 });
 
   const exceeded = isQuotaExceeded(policy, 10);
@@ -375,7 +375,7 @@ test("isQuotaExceeded returns false when exactly at burst limit", () => {
   assert.equal(exceeded, false);
 });
 
-test("isQuotaExceeded returns false when currentUsage is zero", () => {
+test("isQuotaExceeded returns false when currentUsage is zero [fair-scheduling]", () => {
   const policy = createQuotaPolicy({ currentUsage: 0, hardLimit: 100 });
 
   const exceeded = isQuotaExceeded(policy, 50);
@@ -383,7 +383,7 @@ test("isQuotaExceeded returns false when currentUsage is zero", () => {
   assert.equal(exceeded, false);
 });
 
-test("isQuotaExceeded returns false when requesting zero with high usage", () => {
+test("isQuotaExceeded returns false when requesting zero with high usage [fair-scheduling]", () => {
   const policy = createQuotaPolicy({ currentUsage: 100, hardLimit: 50, burstLimit: 100 });
 
   const exceeded = isQuotaExceeded(policy, 0);
@@ -395,7 +395,7 @@ test("isQuotaExceeded returns false when requesting zero with high usage", () =>
 // evaluateQuota Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("evaluateQuota returns not exceeded when projected below burst", () => {
+test("evaluateQuota returns not exceeded when projected below burst [fair-scheduling]", () => {
   const policy = createQuotaPolicy({ currentUsage: 50, hardLimit: 80, burstLimit: 100 });
 
   const decision = evaluateQuota(policy, 30);
@@ -406,7 +406,7 @@ test("evaluateQuota returns not exceeded when projected below burst", () => {
   assert.equal(decision.remainingUnits, 20);
 });
 
-test("evaluateQuota returns exceeded when projected above burst", () => {
+test("evaluateQuota returns exceeded when projected above burst [fair-scheduling]", () => {
   const policy = createQuotaPolicy({ currentUsage: 90, hardLimit: 80, burstLimit: 100 });
 
   const decision = evaluateQuota(policy, 20);
@@ -417,7 +417,7 @@ test("evaluateQuota returns exceeded when projected above burst", () => {
   assert.equal(decision.remainingUnits, 0);
 });
 
-test("evaluateQuota usesBurst true when between hard and burst", () => {
+test("evaluateQuota usesBurst true when between hard and burst [fair-scheduling]", () => {
   const policy = createQuotaPolicy({ currentUsage: 70, softLimit: 60, hardLimit: 80, burstLimit: 100 });
 
   const decision = evaluateQuota(policy, 20);
@@ -429,7 +429,7 @@ test("evaluateQuota usesBurst true when between hard and burst", () => {
   assert.equal(decision.remainingUnits, 10);
 });
 
-test("evaluateQuota uses hardLimit as softLimit when undefined", () => {
+test("evaluateQuota uses hardLimit as softLimit when undefined [fair-scheduling]", () => {
   const policy = createQuotaPolicy({ currentUsage: 85, softLimit: undefined, hardLimit: 80, burstLimit: 100 });
 
   const decision = evaluateQuota(policy, 10);
@@ -438,7 +438,7 @@ test("evaluateQuota uses hardLimit as softLimit when undefined", () => {
   assert.equal(decision.warning, true);
 });
 
-test("evaluateQuota remainingUnits never negative", () => {
+test("evaluateQuota remainingUnits never negative [fair-scheduling]", () => {
   const policy = createQuotaPolicy({ currentUsage: 100, hardLimit: 80, burstLimit: 100 });
 
   const decision = evaluateQuota(policy, 50);
@@ -447,7 +447,7 @@ test("evaluateQuota remainingUnits never negative", () => {
   assert.equal(decision.remainingUnits, 0);
 });
 
-test("evaluateQuota with zero currentUsage", () => {
+test("evaluateQuota with zero currentUsage [fair-scheduling]", () => {
   const policy = createQuotaPolicy({ currentUsage: 0, hardLimit: 100, burstLimit: 150 });
 
   const decision = evaluateQuota(policy, 30);
@@ -461,7 +461,7 @@ test("evaluateQuota with zero currentUsage", () => {
 // QuotaPolicySchema Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("QuotaPolicySchema parses valid minimal input", () => {
+test("QuotaPolicySchema parses valid minimal input [fair-scheduling]", () => {
   const result = QuotaPolicySchema.safeParse({
     scopeId: "tenant-1",
     hardLimit: 100,
@@ -475,7 +475,7 @@ test("QuotaPolicySchema parses valid minimal input", () => {
   }
 });
 
-test("QuotaPolicySchema accepts valid full input", () => {
+test("QuotaPolicySchema accepts valid full input [fair-scheduling]", () => {
   const result = QuotaPolicySchema.safeParse({
     scopeId: "tenant-1",
     resourceType: "compute_units",
@@ -493,7 +493,7 @@ test("QuotaPolicySchema accepts valid full input", () => {
   }
 });
 
-test("QuotaPolicySchema rejects empty scopeId", () => {
+test("QuotaPolicySchema rejects empty scopeId [fair-scheduling]", () => {
   const result = QuotaPolicySchema.safeParse({
     scopeId: "",
     hardLimit: 100,
@@ -503,7 +503,7 @@ test("QuotaPolicySchema rejects empty scopeId", () => {
   assert.equal(result.success, false);
 });
 
-test("QuotaPolicySchema rejects negative hardLimit", () => {
+test("QuotaPolicySchema rejects negative hardLimit [fair-scheduling]", () => {
   const result = QuotaPolicySchema.safeParse({
     scopeId: "tenant-1",
     hardLimit: -10,
@@ -513,7 +513,7 @@ test("QuotaPolicySchema rejects negative hardLimit", () => {
   assert.equal(result.success, false);
 });
 
-test("QuotaPolicySchema rejects negative currentUsage", () => {
+test("QuotaPolicySchema rejects negative currentUsage [fair-scheduling]", () => {
   const result = QuotaPolicySchema.safeParse({
     scopeId: "tenant-1",
     hardLimit: 100,
@@ -523,7 +523,7 @@ test("QuotaPolicySchema rejects negative currentUsage", () => {
   assert.equal(result.success, false);
 });
 
-test("QuotaPolicySchema accepts zero values", () => {
+test("QuotaPolicySchema accepts zero values [fair-scheduling]", () => {
   const result = QuotaPolicySchema.safeParse({
     scopeId: "tenant-1",
     hardLimit: 0,
@@ -537,7 +537,7 @@ test("QuotaPolicySchema accepts zero values", () => {
 // ResourcePoolService Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("ResourcePoolService.registerPool adds pool and returns parsed result", () => {
+test("ResourcePoolService.registerPool adds pool and returns parsed result [fair-scheduling]", () => {
   const service = new ResourcePoolService();
   const pool = createResourcePool({ poolId: "pool-1", capacityUnits: 100 });
 
@@ -547,7 +547,7 @@ test("ResourcePoolService.registerPool adds pool and returns parsed result", () 
   assert.equal(registered.capacityUnits, 100);
 });
 
-test("ResourcePoolService.allocate grants when capacity available", () => {
+test("ResourcePoolService.allocate grants when capacity available [fair-scheduling]", () => {
   const service = new ResourcePoolService();
   service.registerPool(createResourcePool({ poolId: "pool-1", capacityUnits: 100, allocatedUnits: 0 }));
 
@@ -559,7 +559,7 @@ test("ResourcePoolService.allocate grants when capacity available", () => {
   assert.ok(!allocation.reasonCodes.includes("resource_pool.capacity_exceeded"));
 });
 
-test("ResourcePoolService.allocate denies when capacity exceeded", () => {
+test("ResourcePoolService.allocate denies when capacity exceeded [fair-scheduling]", () => {
   const service = new ResourcePoolService();
   service.registerPool(createResourcePool({ poolId: "pool-1", capacityUnits: 100, allocatedUnits: 90 }));
 
@@ -569,7 +569,7 @@ test("ResourcePoolService.allocate denies when capacity exceeded", () => {
   assert.equal(allocation.reasonCodes[0], "resource_pool.capacity_exceeded");
 });
 
-test("ResourcePoolService.allocate uses burst capacity", () => {
+test("ResourcePoolService.allocate uses burst capacity [fair-scheduling]", () => {
   const service = new ResourcePoolService();
   service.registerPool(createResourcePool({
     poolId: "pool-1",
@@ -583,7 +583,7 @@ test("ResourcePoolService.allocate uses burst capacity", () => {
   assert.equal(allocation.granted, true);
 });
 
-test("ResourcePoolService.allocate exceeds total capacity", () => {
+test("ResourcePoolService.allocate exceeds total capacity [fair-scheduling]", () => {
   const service = new ResourcePoolService();
   service.registerPool(createResourcePool({
     poolId: "pool-1",
@@ -597,7 +597,7 @@ test("ResourcePoolService.allocate exceeds total capacity", () => {
   assert.equal(allocation.granted, false);
 });
 
-test("ResourcePoolService.release reduces allocated units", () => {
+test("ResourcePoolService.release reduces allocated units [fair-scheduling]", () => {
   const service = new ResourcePoolService();
   service.registerPool(createResourcePool({ poolId: "pool-1", capacityUnits: 100, allocatedUnits: 50 }));
 
@@ -606,7 +606,7 @@ test("ResourcePoolService.release reduces allocated units", () => {
   assert.equal(updated.allocatedUnits, 30);
 });
 
-test("ResourcePoolService.release does not go below zero", () => {
+test("ResourcePoolService.release does not go below zero [fair-scheduling]", () => {
   const service = new ResourcePoolService();
   service.registerPool(createResourcePool({ poolId: "pool-1", capacityUnits: 100, allocatedUnits: 10 }));
 
@@ -615,7 +615,7 @@ test("ResourcePoolService.release does not go below zero", () => {
   assert.equal(updated.allocatedUnits, 0);
 });
 
-test("ResourcePoolService.release throws for unknown pool", () => {
+test("ResourcePoolService.release throws for unknown pool [fair-scheduling]", () => {
   const service = new ResourcePoolService();
 
   assert.throws(() => {
@@ -623,7 +623,7 @@ test("ResourcePoolService.release throws for unknown pool", () => {
   }, /resource_pool.not_found/);
 });
 
-test("ResourcePoolService.getPool returns pool when registered", () => {
+test("ResourcePoolService.getPool returns pool when registered [fair-scheduling]", () => {
   const service = new ResourcePoolService();
   service.registerPool(createResourcePool({ poolId: "pool-1" }));
 
@@ -633,7 +633,7 @@ test("ResourcePoolService.getPool returns pool when registered", () => {
   assert.equal(pool!.poolId, "pool-1");
 });
 
-test("ResourcePoolService.getPool returns null for unknown pool", () => {
+test("ResourcePoolService.getPool returns null for unknown pool [fair-scheduling]", () => {
   const service = new ResourcePoolService();
 
   const pool = service.getPool("unknown");
@@ -641,7 +641,7 @@ test("ResourcePoolService.getPool returns null for unknown pool", () => {
   assert.equal(pool, null);
 });
 
-test("ResourcePoolService.allocate throws for unknown pool", () => {
+test("ResourcePoolService.allocate throws for unknown pool [fair-scheduling]", () => {
   const service = new ResourcePoolService();
 
   assert.throws(() => {

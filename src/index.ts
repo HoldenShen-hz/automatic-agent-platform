@@ -6,12 +6,14 @@ import { buildDomainsRuntimeCatalog } from "./domains-runtime-catalog.js";
 import { buildDomainsStartupPlan } from "./domains-startup-plan.js";
 import { buildInteractionGovernanceRuntimeCatalog } from "./interaction-governance-runtime-catalog.js";
 import { buildInteractionGovernanceStartupPlan } from "./interaction-governance-startup-plan.js";
-import { buildAiOperationsRuntimeCatalog } from "./platform/ai-operations-runtime-catalog.js";
-import { buildAiOperationsStartupPlan } from "./platform/ai-operations-startup-plan.js";
-import { requireValidStartupEnv } from "./platform/five-plane-control-plane/config-center/index.js";
-import { runSingleTaskExecution } from "./platform/five-plane-execution/execution-engine/index.js";
-import { buildFivePlaneRuntimeCatalog } from "./platform/five-plane-runtime-bootstrap.js";
-import { buildFivePlaneStartupPlan } from "./platform/five-plane-startup-plan.js";
+import {
+  buildAiOperationsRuntimeCatalog,
+  buildAiOperationsStartupPlan,
+  buildFivePlaneRuntimeCatalog,
+  buildFivePlaneStartupPlan,
+  requireValidStartupEnv,
+  runSingleTaskExecution,
+} from "./platform/index.js";
 import { buildPlatformArchitectureBootstrapSummary } from "./platform-architecture-bootstrap.js";
 import { getPlatformApplicationKernel } from "./platform-application-kernel.js";
 import type { PlatformAppKind, PlatformStartupTargetKind } from "./platform-architecture-types.js";

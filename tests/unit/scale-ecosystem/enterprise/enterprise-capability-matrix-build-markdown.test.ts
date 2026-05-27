@@ -96,7 +96,7 @@ function createReport(overrides: Partial<EnterpriseCapabilityMatrixReport> = {})
 }
 
 describe("EnterpriseCapabilityMatrixService buildMarkdownReport (via exportMatrix)", () => {
-  test("exportMatrix produces markdown artifact with report structure", () => {
+  test("exportMatrix produces markdown artifact with report structure [enterprise-capability-matrix-build-markdown]", () => {
     const service = new EnterpriseCapabilityMatrixService(createMockDb() as any, createMockStore() as any);
 
     const result = service.exportMatrix({
@@ -109,7 +109,7 @@ describe("EnterpriseCapabilityMatrixService buildMarkdownReport (via exportMatri
     assert.equal(result.markdownArtifact.kind, "enterprise_capability_report_markdown");
   });
 
-  test("exportMatrix produces markdown containing report header fields", () => {
+  test("exportMatrix produces markdown containing report header fields [enterprise-capability-matrix-build-markdown]", () => {
     const service = new EnterpriseCapabilityMatrixService(createMockDb() as any, createMockStore() as any);
 
     const result = service.exportMatrix({
@@ -123,7 +123,7 @@ describe("EnterpriseCapabilityMatrixService buildMarkdownReport (via exportMatri
     assert.equal(result.markdownArtifact.kind, "enterprise_capability_report_markdown");
   });
 
-  test("exportMatrix json artifact contains full report data", () => {
+  test("exportMatrix json artifact contains full report data [enterprise-capability-matrix-build-markdown]", () => {
     const service = new EnterpriseCapabilityMatrixService(createMockDb() as any, createMockStore() as any);
 
     const result = service.exportMatrix({
@@ -136,7 +136,7 @@ describe("EnterpriseCapabilityMatrixService buildMarkdownReport (via exportMatri
     assert.equal(result.jsonArtifact.kind, "enterprise_capability_report");
   });
 
-  test("exportMatrix uses correct scope when tenantId is present", () => {
+  test("exportMatrix uses correct scope when tenantId is present [enterprise-capability-matrix-build-markdown]", () => {
     const mockStore = createMockStore();
     mockStore.billing.getBillingAccount = () => ({ accountId: "acct_123", workspaceId: "ws_123", planId: "enterprise" } as any);
 
@@ -154,7 +154,7 @@ describe("EnterpriseCapabilityMatrixService buildMarkdownReport (via exportMatri
     assert.ok(result.report.tenantId === null || result.report.workspaceId !== null);
   });
 
-  test("exportMatrix uses correct scope when workspaceId is present without tenantId", () => {
+  test("exportMatrix uses correct scope when workspaceId is present without tenantId [enterprise-capability-matrix-build-markdown]", () => {
     const mockStore = createMockStore();
     mockStore.billing.getBillingAccount = () => ({ accountId: "acct_456", workspaceId: "ws_456", planId: "enterprise" } as any);
 
@@ -170,7 +170,7 @@ describe("EnterpriseCapabilityMatrixService buildMarkdownReport (via exportMatri
     assert.ok(result.report.workspaceId === "ws_456");
   });
 
-  test("exportMatrix uses global scope when no accountId", () => {
+  test("exportMatrix uses global scope when no accountId [enterprise-capability-matrix-build-markdown]", () => {
     const service = new EnterpriseCapabilityMatrixService(createMockDb() as any, createMockStore() as any);
 
     const result = service.exportMatrix({
@@ -182,7 +182,7 @@ describe("EnterpriseCapabilityMatrixService buildMarkdownReport (via exportMatri
     assert.ok(result.markdownArtifact);
   });
 
-  test("exportMatrix report contains all entries", () => {
+  test("exportMatrix report contains all entries [enterprise-capability-matrix-build-markdown]", () => {
     const service = new EnterpriseCapabilityMatrixService(createMockDb() as any, createMockStore() as any);
 
     const result = service.exportMatrix({
@@ -196,7 +196,7 @@ describe("EnterpriseCapabilityMatrixService buildMarkdownReport (via exportMatri
     assert.equal(result.report.entries.length, result.report.summary.total);
   });
 
-  test("exportMatrix report summary counts match entries", () => {
+  test("exportMatrix report summary counts match entries [enterprise-capability-matrix-build-markdown]", () => {
     const service = new EnterpriseCapabilityMatrixService(createMockDb() as any, createMockStore() as any);
 
     const result = service.exportMatrix({
@@ -217,7 +217,7 @@ describe("EnterpriseCapabilityMatrixService buildMarkdownReport (via exportMatri
     );
   });
 
-  test("exportMatrix sets correct overallVerdict based on entry statuses", () => {
+  test("exportMatrix sets correct overallVerdict based on entry statuses [enterprise-capability-matrix-build-markdown]", () => {
     const service = new EnterpriseCapabilityMatrixService(createMockDb() as any, createMockStore() as any);
 
     const result = service.exportMatrix({
@@ -234,7 +234,7 @@ describe("EnterpriseCapabilityMatrixService buildMarkdownReport (via exportMatri
     }
   });
 
-  test("exportMatrix with enterprise tier allows enterprise features", () => {
+  test("exportMatrix with enterprise tier allows enterprise features [enterprise-capability-matrix-build-markdown]", () => {
     const mockStore = createMockStore();
     mockStore.billing.getBillingAccount = () => ({ accountId: "acct_ent", planId: "enterprise" } as any);
 
@@ -253,7 +253,7 @@ describe("EnterpriseCapabilityMatrixService buildMarkdownReport (via exportMatri
     assert.ok(ssoEntry.status === "blocked" || ssoEntry.status === "degraded");
   });
 
-  test("exportMatrix with private_cloud deployment allows private_model", () => {
+  test("exportMatrix with private_cloud deployment allows private_model [enterprise-capability-matrix-build-markdown]", () => {
     const mockStore = createMockStore();
     mockStore.billing.getBillingAccount = () => ({ accountId: "acct_ent", planId: "enterprise" } as any);
 
@@ -272,7 +272,7 @@ describe("EnterpriseCapabilityMatrixService buildMarkdownReport (via exportMatri
     assert.ok(!privateModelEntry.reasonCodes.some(r => r.startsWith("deployment_mode_not_supported")));
   });
 
-  test("exportMatrix stores report record via store", () => {
+  test("exportMatrix stores report record via store [enterprise-capability-matrix-build-markdown]", () => {
     const mockStore = createMockStore();
     let insertCallCount = 0;
     mockStore.release.insertEnterpriseCapabilityReport = () => { insertCallCount++; };

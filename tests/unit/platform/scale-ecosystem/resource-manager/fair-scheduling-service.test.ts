@@ -11,7 +11,7 @@ import { orderFairQueue, type FairQueueItem } from "../../../../../src/scale-eco
 import { choosePreemptionVictim, type PreemptionCandidate } from "../../../../../src/scale-ecosystem/resource-manager/preemption/index.js";
 import { isQuotaExceeded, evaluateQuota, type QuotaPolicy } from "../../../../../src/scale-ecosystem/resource-manager/quota-enforcer/index.js";
 
-test("FairSchedulingService schedules request with no preemption needed", () => {
+test("FairSchedulingService schedules request with no preemption needed [fair-scheduling-service]", () => {
   const service = new FairSchedulingService();
   const schedulingClass: SchedulingClass = {
     tenantId: "tenant-1",
@@ -57,7 +57,7 @@ test("FairSchedulingService schedules request with no preemption needed", () => 
   assert.strictEqual(decision.preemption.reason, null);
 });
 
-test("FairSchedulingService detects quota exceeded and selects victim", () => {
+test("FairSchedulingService detects quota exceeded and selects victim [fair-scheduling-service]", () => {
   const service = new FairSchedulingService();
   const schedulingClass: SchedulingClass = {
     tenantId: "tenant-1",
@@ -105,7 +105,7 @@ test("FairSchedulingService detects quota exceeded and selects victim", () => {
   assert.strictEqual(decision.preemption.reason, "resource_manager.quota_exceeded_preempt_low_priority");
 });
 
-test("FairSchedulingService identifies starved items by age", () => {
+test("FairSchedulingService identifies starved items by age [fair-scheduling-service]", () => {
   const service = new FairSchedulingService();
   const schedulingClass: SchedulingClass = {
     tenantId: "tenant-1",
@@ -144,7 +144,7 @@ test("FairSchedulingService identifies starved items by age", () => {
   assert.deepStrictEqual(decision.queue.starvedItemIds, ["item-starved"]);
 });
 
-test("orderFairQueue sorts items by priority and age score", () => {
+test("orderFairQueue sorts items by priority and age score [fair-scheduling-service]", () => {
   const items: FairQueueItem[] = [
     { itemId: "low-priority", tenantId: "t1", priority: 1, ageMs: 0 },
     { itemId: "high-priority", tenantId: "t1", priority: 10, ageMs: 0 },
@@ -158,7 +158,7 @@ test("orderFairQueue sorts items by priority and age score", () => {
   assert.strictEqual(ordered[2]!.itemId, "high-priority");
 });
 
-test("orderFairQueue prioritizes older items within same priority", () => {
+test("orderFairQueue prioritizes older items within same priority [fair-scheduling-service]", () => {
   const items: FairQueueItem[] = [
     { itemId: "newer", tenantId: "t1", priority: 5, ageMs: 60_000 },
     { itemId: "older", tenantId: "t1", priority: 5, ageMs: 300_000 },
@@ -170,7 +170,7 @@ test("orderFairQueue prioritizes older items within same priority", () => {
   assert.strictEqual(ordered[1]!.itemId, "older");
 });
 
-test("orderFairQueue caps age score at 9 to prevent overflow", () => {
+test("orderFairQueue caps age score at 9 to prevent overflow [fair-scheduling-service]", () => {
   const items: FairQueueItem[] = [
     { itemId: "very-old", tenantId: "t1", priority: 5, ageMs: 600_000 },
     { itemId: "max-age", tenantId: "t1", priority: 5, ageMs: 600_000 },
@@ -181,7 +181,7 @@ test("orderFairQueue caps age score at 9 to prevent overflow", () => {
   assert.strictEqual(ordered.length, 2);
 });
 
-test("choosePreemptionVictim selects lowest priority candidate", () => {
+test("choosePreemptionVictim selects lowest priority candidate [fair-scheduling-service]", () => {
   const checkpointAt = Date.now();
   const candidates: PreemptionCandidate[] = [
     { executionId: "high-priority", priority: 10, progressPercent: 50, lastCheckpointTimestampMs: checkpointAt },
@@ -194,7 +194,7 @@ test("choosePreemptionVictim selects lowest priority candidate", () => {
   assert.strictEqual(victim?.executionId, "low-priority");
 });
 
-test("choosePreemptionVictim breaks tie by progress percent", () => {
+test("choosePreemptionVictim breaks tie by progress percent [fair-scheduling-service]", () => {
   const checkpointAt = Date.now();
   const candidates: PreemptionCandidate[] = [
     { executionId: "less-progress", priority: 3, progressPercent: 20, lastCheckpointTimestampMs: checkpointAt },
@@ -206,7 +206,7 @@ test("choosePreemptionVictim breaks tie by progress percent", () => {
   assert.strictEqual(victim?.executionId, "more-progress");
 });
 
-test("choosePreemptionVictim returns null for empty array", () => {
+test("choosePreemptionVictim returns null for empty array [fair-scheduling-service]", () => {
   const victims: PreemptionCandidate[] = [];
 
   const victim = choosePreemptionVictim(victims);
@@ -214,7 +214,7 @@ test("choosePreemptionVictim returns null for empty array", () => {
   assert.strictEqual(victim, null);
 });
 
-test("isQuotaExceeded returns true when projected usage exceeds limit", () => {
+test("isQuotaExceeded returns true when projected usage exceeds limit [fair-scheduling-service]", () => {
   const policy: QuotaPolicy = {
     scopeId: "tenant-1",
     resourceType: "runtime_units",
@@ -227,7 +227,7 @@ test("isQuotaExceeded returns true when projected usage exceeds limit", () => {
   assert.strictEqual(exceeded, true);
 });
 
-test("isQuotaExceeded returns false when within limit", () => {
+test("isQuotaExceeded returns false when within limit [fair-scheduling-service]", () => {
   const policy: QuotaPolicy = {
     scopeId: "tenant-1",
     resourceType: "runtime_units",
@@ -240,7 +240,7 @@ test("isQuotaExceeded returns false when within limit", () => {
   assert.strictEqual(exceeded, false);
 });
 
-test("evaluateQuota calculates correct warning state", () => {
+test("evaluateQuota calculates correct warning state [fair-scheduling-service]", () => {
   const policy: QuotaPolicy = {
     scopeId: "tenant-1",
     resourceType: "runtime_units",
@@ -255,7 +255,7 @@ test("evaluateQuota calculates correct warning state", () => {
   assert.strictEqual(decision.exceeded, false);
 });
 
-test("evaluateQuota calculates usesBurst correctly", () => {
+test("evaluateQuota calculates usesBurst correctly [fair-scheduling-service]", () => {
   const policy: QuotaPolicy = {
     scopeId: "tenant-1",
     resourceType: "runtime_units",
@@ -271,7 +271,7 @@ test("evaluateQuota calculates usesBurst correctly", () => {
   assert.strictEqual(decision.exceeded, false);
 });
 
-test("evaluateQuota calculates remaining units correctly", () => {
+test("evaluateQuota calculates remaining units correctly [fair-scheduling-service]", () => {
   const policy: QuotaPolicy = {
     scopeId: "tenant-1",
     resourceType: "runtime_units",
@@ -285,7 +285,7 @@ test("evaluateQuota calculates remaining units correctly", () => {
   assert.strictEqual(decision.remainingUnits, 70);
 });
 
-test("FairSchedulingService returns ordered item IDs in queue snapshot", () => {
+test("FairSchedulingService returns ordered item IDs in queue snapshot [fair-scheduling-service]", () => {
   const service = new FairSchedulingService();
   const schedulingClass: SchedulingClass = {
     tenantId: "tenant-1",
@@ -324,7 +324,7 @@ test("FairSchedulingService returns ordered item IDs in queue snapshot", () => {
   assert.deepStrictEqual(decision.queue.orderedItemIds, ["item-a", "item-b"]);
 });
 
-test("FairSchedulingService handles empty queue items", () => {
+test("FairSchedulingService handles empty queue items [fair-scheduling-service]", () => {
   const service = new FairSchedulingService();
   const schedulingClass: SchedulingClass = {
     tenantId: "tenant-1",

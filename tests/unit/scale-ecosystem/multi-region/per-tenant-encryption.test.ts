@@ -28,7 +28,7 @@ function createEncryptionConfig(
   };
 }
 
-test("PerTenantEncryptionService initializes tenant encryption", () => {
+test("PerTenantEncryptionService initializes tenant encryption [per-tenant-encryption]", () => {
   const service = new PerTenantEncryptionService();
   const config = createEncryptionConfig("tenant-1");
 
@@ -40,7 +40,7 @@ test("PerTenantEncryptionService initializes tenant encryption", () => {
   assert.equal(key.isActive, true);
 });
 
-test("PerTenantEncryptionService encrypts and decrypts data with aes-256-gcm", () => {
+test("PerTenantEncryptionService encrypts and decrypts data with aes-256-gcm [per-tenant-encryption]", () => {
   const service = new PerTenantEncryptionService();
   const config = createEncryptionConfig("tenant-1", "aes-256-gcm");
   service.initializeTenant(config);
@@ -58,7 +58,7 @@ test("PerTenantEncryptionService encrypts and decrypts data with aes-256-gcm", (
   assert.equal(decrypted, plaintext);
 });
 
-test("PerTenantEncryptionService encrypts and decrypts data with aes-256-cbc", () => {
+test("PerTenantEncryptionService encrypts and decrypts data with aes-256-cbc [per-tenant-encryption]", () => {
   const service = new PerTenantEncryptionService();
   const config = createEncryptionConfig("tenant-1", "aes-256-cbc");
   service.initializeTenant(config);
@@ -75,7 +75,7 @@ test("PerTenantEncryptionService encrypts and decrypts data with aes-256-cbc", (
   assert.equal(decrypted, plaintext);
 });
 
-test("PerTenantEncryptionService encrypts binary data", () => {
+test("PerTenantEncryptionService encrypts binary data [per-tenant-encryption]", () => {
   const service = new PerTenantEncryptionService();
   const config = createEncryptionConfig("tenant-1");
   service.initializeTenant(config);
@@ -87,7 +87,7 @@ test("PerTenantEncryptionService encrypts binary data", () => {
   assert.deepEqual(decrypted, binaryData);
 });
 
-test("PerTenantEncryptionService rotates keys correctly", () => {
+test("PerTenantEncryptionService rotates keys correctly [per-tenant-encryption]", () => {
   const service = new PerTenantEncryptionService();
   const config = createEncryptionConfig("tenant-1");
   service.initializeTenant(config);
@@ -103,7 +103,7 @@ test("PerTenantEncryptionService rotates keys correctly", () => {
   assert.equal(oldKey?.isActive, false);
 });
 
-test("PerTenantEncryptionService throws when encrypting uninitialized tenant", () => {
+test("PerTenantEncryptionService throws when encrypting uninitialized tenant [per-tenant-encryption]", () => {
   const service = new PerTenantEncryptionService();
 
   assert.throws(
@@ -112,7 +112,7 @@ test("PerTenantEncryptionService throws when encrypting uninitialized tenant", (
   );
 });
 
-test("PerTenantEncryptionService throws when decrypting with wrong key", () => {
+test("PerTenantEncryptionService throws when decrypting with wrong key [per-tenant-encryption]", () => {
   const service = new PerTenantEncryptionService();
   const config1 = createEncryptionConfig("tenant-1");
   const config2 = createEncryptionConfig("tenant-2");
@@ -128,7 +128,7 @@ test("PerTenantEncryptionService throws when decrypting with wrong key", () => {
   );
 });
 
-test("PerTenantEncryptionService isInitialized returns correct state", () => {
+test("PerTenantEncryptionService isInitialized returns correct state [per-tenant-encryption]", () => {
   const service = new PerTenantEncryptionService();
   const config = createEncryptionConfig("tenant-1");
 
@@ -140,7 +140,7 @@ test("PerTenantEncryptionService isInitialized returns correct state", () => {
   assert.equal(service.isInitialized("tenant-2"), false);
 });
 
-test("PerTenantEncryptionService removeTenantKeys cleans up properly", () => {
+test("PerTenantEncryptionService removeTenantKeys cleans up properly [per-tenant-encryption]", () => {
   const service = new PerTenantEncryptionService();
   const config = createEncryptionConfig("tenant-1");
   service.initializeTenant(config);
@@ -153,7 +153,7 @@ test("PerTenantEncryptionService removeTenantKeys cleans up properly", () => {
   assert.deepEqual(service.getTenantKeys("tenant-1"), []);
 });
 
-test("deriveTenantKey produces consistent derived keys", () => {
+test("deriveTenantKey produces consistent derived keys [per-tenant-encryption]", () => {
   const masterKey = Buffer.alloc(32, 0x42);
   const tenantId = "tenant-123";
 
@@ -164,7 +164,7 @@ test("deriveTenantKey produces consistent derived keys", () => {
   assert.equal(derived1.length, 32);
 });
 
-test("deriveTenantKey produces different keys for different tenants", () => {
+test("deriveTenantKey produces different keys for different tenants [per-tenant-encryption]", () => {
   const masterKey = Buffer.alloc(32, 0x42);
 
   const derived1 = deriveTenantKey(masterKey, "tenant-1", "aes-256-gcm");
@@ -173,7 +173,7 @@ test("deriveTenantKey produces different keys for different tenants", () => {
   assert.notDeepEqual(derived1, derived2);
 });
 
-test("PerTenantEncryptionService getConfig returns tenant config", () => {
+test("PerTenantEncryptionService getConfig returns tenant config [per-tenant-encryption]", () => {
   const service = new PerTenantEncryptionService();
   const config = createEncryptionConfig("tenant-1");
 

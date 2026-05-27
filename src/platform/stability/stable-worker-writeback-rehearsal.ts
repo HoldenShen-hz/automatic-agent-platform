@@ -20,14 +20,14 @@
  * the execution plane contract.
  *
  * **Design contract:**
- * - {@link https://github.com/anomalyco/automatic-agent/blob/main/docs_zh/contracts/task_lease_and_fencing_contract.md | task_lease_and_fencing_contract.md}
- * - {@link https://github.com/anomalyco/automatic-agent/blob/main/docs_zh/contracts/execution_plane_contract.md | execution_plane_contract.md}
- * - {@link https://github.com/anomalyco/automatic-agent/blob/main/docs_zh/contracts/runtime_execution_contract.md | runtime_execution_contract.md}
+ * - {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/contracts/task_lease_and_fencing_contract.md | task_lease_and_fencing_contract.md}
+ * - {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/contracts/execution_plane_contract.md | execution_plane_contract.md}
+ * - {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/contracts/runtime_execution_contract.md | runtime_execution_contract.md}
  *
  * **Glossary terms:** `lease`, `fencing token`, `writeback`, `stale fencing token`, `lease reclaim`,
  * `lease reacquisition`, `worker`, `execution ticket`, `terminal status`
  *
- * **Architecture:** {@link https://github.com/anomalyco/automatic-agent/blob/main/docs_zh/architecture/00-platform-architecture.md | 01_architecture_and_technical_design.md}
+ * **Architecture:** {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/architecture/00-platform-architecture.md | 01_architecture_and_technical_design.md}
  */
 
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";

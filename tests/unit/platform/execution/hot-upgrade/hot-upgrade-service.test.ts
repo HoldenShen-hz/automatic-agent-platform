@@ -81,7 +81,7 @@ function makePolicy(overrides: Partial<UpgradePolicy> = {}): UpgradePolicy {
 // HotUpgradeService: Version Compatibility
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("HotUpgradeService registers and retrieves version compatibility", () => {
+test("HotUpgradeService registers and retrieves version compatibility [hot-upgrade-service]", () => {
   const db = createInMemoryDb();
   const service = new HotUpgradeService(db);
 
@@ -103,7 +103,7 @@ test("HotUpgradeService registers and retrieves version compatibility", () => {
   assert.equal(compat!.rollbackSupported, true);
 });
 
-test("HotUpgradeService getVersionCompatibility returns null for non-existent pair", () => {
+test("HotUpgradeService getVersionCompatibility returns null for non-existent pair [hot-upgrade-service]", () => {
   const db = createInMemoryDb();
   const service = new HotUpgradeService(db);
 
@@ -112,7 +112,7 @@ test("HotUpgradeService getVersionCompatibility returns null for non-existent pa
   assert.equal(compat, null);
 });
 
-test("HotUpgradeService isUpgradeSafe returns incompatible when no record exists", () => {
+test("HotUpgradeService isUpgradeSafe returns incompatible when no record exists [hot-upgrade-service]", () => {
   const db = createInMemoryDb();
   const service = new HotUpgradeService(db);
 
@@ -125,7 +125,7 @@ test("HotUpgradeService isUpgradeSafe returns incompatible when no record exists
   assert.equal(result.reasonCode, "no_compatibility_record");
 });
 
-test("HotUpgradeService isUpgradeSafe returns safe for full compatibility", () => {
+test("HotUpgradeService isUpgradeSafe returns safe for full compatibility [hot-upgrade-service]", () => {
   const db = createInMemoryDb();
   const service = new HotUpgradeService(db);
 
@@ -146,7 +146,7 @@ test("HotUpgradeService isUpgradeSafe returns safe for full compatibility", () =
   assert.equal(result.reasonCode, "compatibility_level_full");
 });
 
-test("HotUpgradeService isUpgradeSafe returns safe for n_minus_1 compatibility", () => {
+test("HotUpgradeService isUpgradeSafe returns safe for n_minus_1 compatibility [hot-upgrade-service]", () => {
   const db = createInMemoryDb();
   const service = new HotUpgradeService(db);
 
@@ -166,7 +166,7 @@ test("HotUpgradeService isUpgradeSafe returns safe for n_minus_1 compatibility",
   assert.equal(result.supportsRollback, true);
 });
 
-test("HotUpgradeService isUpgradeSafe returns unsafe for incompatible", () => {
+test("HotUpgradeService isUpgradeSafe returns unsafe for incompatible [hot-upgrade-service]", () => {
   const db = createInMemoryDb();
   const service = new HotUpgradeService(db);
 
@@ -190,7 +190,7 @@ test("HotUpgradeService isUpgradeSafe returns unsafe for incompatible", () => {
 // HotUpgradeService: Upgrade Planning
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("HotUpgradeService createUpgradePlan creates plan with batches", () => {
+test("HotUpgradeService createUpgradePlan creates plan with batches [hot-upgrade-service]", () => {
   const db = createInMemoryDb();
   const service = new HotUpgradeService(db);
 
@@ -214,7 +214,7 @@ test("HotUpgradeService createUpgradePlan creates plan with batches", () => {
   assert.equal(plan.rollbackReason, null);
 });
 
-test("HotUpgradeService createUpgradePlan uses default policy values", () => {
+test("HotUpgradeService createUpgradePlan uses default policy values [hot-upgrade-service]", () => {
   const db = createInMemoryDb();
   const service = new HotUpgradeService(db);
 
@@ -230,7 +230,7 @@ test("HotUpgradeService createUpgradePlan uses default policy values", () => {
   assert.ok(plan.policy.healthGates.length > 0);
 });
 
-test("HotUpgradeService createUpgradePlan uses custom policy overrides", () => {
+test("HotUpgradeService createUpgradePlan uses custom policy overrides [hot-upgrade-service]", () => {
   const db = createInMemoryDb();
   const service = new HotUpgradeService(db);
 
@@ -251,7 +251,7 @@ test("HotUpgradeService createUpgradePlan uses custom policy overrides", () => {
   assert.equal(plan.policy.batchSize, 5);
 });
 
-test("HotUpgradeService createUpgradePlan computes canary batches correctly", () => {
+test("HotUpgradeService createUpgradePlan computes canary batches correctly [hot-upgrade-service]", () => {
   const db = createInMemoryDb();
   const service = new HotUpgradeService(db);
 
@@ -267,7 +267,7 @@ test("HotUpgradeService createUpgradePlan computes canary batches correctly", ()
   assert.equal(plan.batches[2]!.batchNumber, 3);
 });
 
-test("HotUpgradeService createUpgradePlan with single target creates single batch", () => {
+test("HotUpgradeService createUpgradePlan with single target creates single batch [hot-upgrade-service]", () => {
   const db = createInMemoryDb();
   const service = new HotUpgradeService(db);
 
@@ -281,7 +281,7 @@ test("HotUpgradeService createUpgradePlan with single target creates single batc
   assert.deepEqual(plan.batches[0]!.targetNodes, ["node1"]);
 });
 
-test("HotUpgradeService getUpgradePlan retrieves existing plan", () => {
+test("HotUpgradeService getUpgradePlan retrieves existing plan [hot-upgrade-service]", () => {
   const db = createInMemoryDb();
   const service = new HotUpgradeService(db);
 
@@ -294,7 +294,7 @@ test("HotUpgradeService getUpgradePlan retrieves existing plan", () => {
   assert.equal(retrieved!.upgradeId, "upgrade-1");
 });
 
-test("HotUpgradeService getUpgradePlan returns null for non-existent plan", () => {
+test("HotUpgradeService getUpgradePlan returns null for non-existent plan [hot-upgrade-service]", () => {
   const db = createInMemoryDb();
   const service = new HotUpgradeService(db);
 
@@ -303,7 +303,7 @@ test("HotUpgradeService getUpgradePlan returns null for non-existent plan", () =
   assert.equal(result, null);
 });
 
-test("HotUpgradeService getUpgradePlansByStatus retrieves plans by status", () => {
+test("HotUpgradeService getUpgradePlansByStatus retrieves plans by status [hot-upgrade-service]", () => {
   const db = createInMemoryDb();
   const service = new HotUpgradeService(db);
 
@@ -319,7 +319,7 @@ test("HotUpgradeService getUpgradePlansByStatus retrieves plans by status", () =
   assert.equal(completedPlans.length, 0);
 });
 
-test("HotUpgradeService getUpgradePlansByStatus returns empty array for non-existent status", () => {
+test("HotUpgradeService getUpgradePlansByStatus returns empty array for non-existent status [hot-upgrade-service]", () => {
   const db = createInMemoryDb();
   const service = new HotUpgradeService(db);
 
@@ -335,7 +335,7 @@ test("HotUpgradeService getUpgradePlansByStatus returns empty array for non-exis
 // HotUpgradeService: Upgrade Execution
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("HotUpgradeService startUpgrade starts upgrade and first batch", () => {
+test("HotUpgradeService startUpgrade starts upgrade and first batch [hot-upgrade-service]", () => {
   const db = createInMemoryDb();
   const service = new HotUpgradeService(db);
 
@@ -354,7 +354,7 @@ test("HotUpgradeService startUpgrade starts upgrade and first batch", () => {
   assert.ok(updatedPlan!.startedAt !== null);
 });
 
-test("HotUpgradeService startUpgrade fails for non-existent plan", () => {
+test("HotUpgradeService startUpgrade fails for non-existent plan [hot-upgrade-service]", () => {
   const db = createInMemoryDb();
   const service = new HotUpgradeService(db);
 
@@ -366,7 +366,7 @@ test("HotUpgradeService startUpgrade fails for non-existent plan", () => {
   assert.equal(result.reasonCode, "plan_not_found");
 });
 
-test("HotUpgradeService startUpgrade fails for already started upgrade", () => {
+test("HotUpgradeService startUpgrade fails for already started upgrade [hot-upgrade-service]", () => {
   const db = createInMemoryDb();
   const service = new HotUpgradeService(db);
 
@@ -379,7 +379,7 @@ test("HotUpgradeService startUpgrade fails for already started upgrade", () => {
   assert.equal(secondStart.reasonCode, "upgrade_not_pending");
 });
 
-test("HotUpgradeService startUpgrade fails for completed upgrade", () => {
+test("HotUpgradeService startUpgrade fails for completed upgrade [hot-upgrade-service]", () => {
   const db = createInMemoryDb();
   const service = new HotUpgradeService(db);
 
@@ -399,7 +399,7 @@ test("HotUpgradeService startUpgrade fails for completed upgrade", () => {
   assert.equal(result.reasonCode, "upgrade_not_pending");
 });
 
-test("HotUpgradeService startBatch starts pending batch", () => {
+test("HotUpgradeService startBatch starts pending batch [hot-upgrade-service]", () => {
   const db = createInMemoryDb();
   const service = new HotUpgradeService(db);
 
@@ -416,7 +416,7 @@ test("HotUpgradeService startBatch starts pending batch", () => {
   assert.equal(result.reasonCode, null);
 });
 
-test("HotUpgradeService startBatch fails for non-existent batch", () => {
+test("HotUpgradeService startBatch fails for non-existent batch [hot-upgrade-service]", () => {
   const db = createInMemoryDb();
   const service = new HotUpgradeService(db);
 
@@ -427,7 +427,7 @@ test("HotUpgradeService startBatch fails for non-existent batch", () => {
   assert.equal(result.reasonCode, "batch_not_found");
 });
 
-test("HotUpgradeService startBatch fails for already started batch", () => {
+test("HotUpgradeService startBatch fails for already started batch [hot-upgrade-service]", () => {
   const db = createInMemoryDb();
   const service = new HotUpgradeService(db);
 
@@ -442,7 +442,7 @@ test("HotUpgradeService startBatch fails for already started batch", () => {
   assert.equal(secondStart.reasonCode, "batch_not_pending");
 });
 
-test("HotUpgradeService startBatch fails for completed batch", () => {
+test("HotUpgradeService startBatch fails for completed batch [hot-upgrade-service]", () => {
   const db = createInMemoryDb();
   const service = new HotUpgradeService(db);
 
@@ -463,7 +463,7 @@ test("HotUpgradeService startBatch fails for completed batch", () => {
 // HotUpgradeService: Batch Completion
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("HotUpgradeService completeBatch completes batch with passing health checks", () => {
+test("HotUpgradeService completeBatch completes batch with passing health checks [hot-upgrade-service]", () => {
   const db = createInMemoryDb();
   const service = new HotUpgradeService(db);
 
@@ -482,7 +482,7 @@ test("HotUpgradeService completeBatch completes batch with passing health checks
   assert.deepEqual(result.batch!.healthChecks, healthChecks);
 });
 
-test("HotUpgradeService completeBatch triggers rollback on failing health checks", () => {
+test("HotUpgradeService completeBatch triggers rollback on failing health checks [hot-upgrade-service]", () => {
   const db = createInMemoryDb();
   const service = new HotUpgradeService(db);
 
@@ -505,7 +505,7 @@ test("HotUpgradeService completeBatch triggers rollback on failing health checks
   assert.ok(updatedPlan!.rollbackTriggeredAt !== null);
 });
 
-test("HotUpgradeService completeBatch with rollback disabled does not trigger rollback", () => {
+test("HotUpgradeService completeBatch with rollback disabled does not trigger rollback [hot-upgrade-service]", () => {
   const db = createInMemoryDb();
   const service = new HotUpgradeService(db);
 
@@ -523,7 +523,7 @@ test("HotUpgradeService completeBatch with rollback disabled does not trigger ro
   assert.equal(result.batch!.status, "failed");
 });
 
-test("HotUpgradeService completeBatch fails for non-existent batch", () => {
+test("HotUpgradeService completeBatch fails for non-existent batch [hot-upgrade-service]", () => {
   const db = createInMemoryDb();
   const service = new HotUpgradeService(db);
 
@@ -535,7 +535,7 @@ test("HotUpgradeService completeBatch fails for non-existent batch", () => {
   assert.equal(result.triggerRollback, false);
 });
 
-test("HotUpgradeService completeBatch with all passing advances to next batch", () => {
+test("HotUpgradeService completeBatch with all passing advances to next batch [hot-upgrade-service]", () => {
   const db = createInMemoryDb();
   const service = new HotUpgradeService(db);
 
@@ -568,7 +568,7 @@ test("HotUpgradeService completeBatch with all passing advances to next batch", 
   assert.ok(result.nextBatch!.batchNumber >= 2);
 });
 
-test("HotUpgradeService completeBatch final batch marks upgrade as completed", () => {
+test("HotUpgradeService completeBatch final batch marks upgrade as completed [hot-upgrade-service]", () => {
   const db = createInMemoryDb();
   const service = new HotUpgradeService(db);
 
@@ -593,7 +593,7 @@ test("HotUpgradeService completeBatch final batch marks upgrade as completed", (
 // HotUpgradeService: Rollback
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("HotUpgradeService triggerRollback creates rollback trigger", () => {
+test("HotUpgradeService triggerRollback creates rollback trigger [hot-upgrade-service]", () => {
   const db = createInMemoryDb();
   const service = new HotUpgradeService(db);
 
@@ -613,7 +613,7 @@ test("HotUpgradeService triggerRollback creates rollback trigger", () => {
   assert.deepEqual(result.triggerRecord!.metadata, {});
 });
 
-test("HotUpgradeService triggerRollback updates plan status to failed", () => {
+test("HotUpgradeService triggerRollback updates plan status to failed [hot-upgrade-service]", () => {
   const db = createInMemoryDb();
   const service = new HotUpgradeService(db);
 
@@ -629,7 +629,7 @@ test("HotUpgradeService triggerRollback updates plan status to failed", () => {
   assert.equal(updatedPlan!.rollbackReason, "Upgrade timed out");
 });
 
-test("HotUpgradeService triggerRollback records audit entry", () => {
+test("HotUpgradeService triggerRollback records audit entry [hot-upgrade-service]", () => {
   const db = createInMemoryDb();
   const service = new HotUpgradeService(db);
 
@@ -648,7 +648,7 @@ test("HotUpgradeService triggerRollback records audit entry", () => {
 // HotUpgradeService: Progress Tracking
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("HotUpgradeService getUpgradeProgress returns progress for in-progress upgrade", () => {
+test("HotUpgradeService getUpgradeProgress returns progress for in-progress upgrade [hot-upgrade-service]", () => {
   const db = createInMemoryDb();
   const service = new HotUpgradeService(db);
 
@@ -668,7 +668,7 @@ test("HotUpgradeService getUpgradeProgress returns progress for in-progress upgr
   assert.ok(progress!.currentBatchNumber >= 0);
 });
 
-test("HotUpgradeService getUpgradeProgress returns null for non-existent upgrade", () => {
+test("HotUpgradeService getUpgradeProgress returns null for non-existent upgrade [hot-upgrade-service]", () => {
   const db = createInMemoryDb();
   const service = new HotUpgradeService(db);
 
@@ -677,7 +677,7 @@ test("HotUpgradeService getUpgradeProgress returns null for non-existent upgrade
   assert.equal(progress, null);
 });
 
-test("HotUpgradeService getUpgradeProgress calculates health check pass rate", () => {
+test("HotUpgradeService getUpgradeProgress calculates health check pass rate [hot-upgrade-service]", () => {
   const db = createInMemoryDb();
   const service = new HotUpgradeService(db);
 
@@ -697,7 +697,7 @@ test("HotUpgradeService getUpgradeProgress calculates health check pass rate", (
   assert.equal(progress!.healthCheckPassRate, 100);
 });
 
-test("HotUpgradeService getUpgradeProgress calculates error rate for failed batches", () => {
+test("HotUpgradeService getUpgradeProgress calculates error rate for failed batches [hot-upgrade-service]", () => {
   const db = createInMemoryDb();
   const service = new HotUpgradeService(db);
 
@@ -723,7 +723,7 @@ test("HotUpgradeService getUpgradeProgress calculates error rate for failed batc
 // HotUpgradeService: Audit Trail
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("HotUpgradeService recordAudit creates audit entry", () => {
+test("HotUpgradeService recordAudit creates audit entry [hot-upgrade-service]", () => {
   const db = createInMemoryDb();
   const service = new HotUpgradeService(db);
 
@@ -738,7 +738,7 @@ test("HotUpgradeService recordAudit creates audit entry", () => {
   assert.equal(entry.message, "Test message");
 });
 
-test("HotUpgradeService getUpgradeAuditLog returns entries in descending order by occurred_at", () => {
+test("HotUpgradeService getUpgradeAuditLog returns entries in descending order by occurred_at [hot-upgrade-service]", () => {
   const db = createInMemoryDb();
   const service = new HotUpgradeService(db);
 
@@ -759,7 +759,7 @@ test("HotUpgradeService getUpgradeAuditLog returns entries in descending order b
   assert.ok(firstEvent === "event2" || firstEvent === "event1");
 });
 
-test("HotUpgradeService getUpgradeAuditLog respects limit", () => {
+test("HotUpgradeService getUpgradeAuditLog respects limit [hot-upgrade-service]", () => {
   const db = createInMemoryDb();
   const service = new HotUpgradeService(db);
 
@@ -772,7 +772,7 @@ test("HotUpgradeService getUpgradeAuditLog respects limit", () => {
   assert.equal(log.length, 5);
 });
 
-test("HotUpgradeService startUpgrade records audit entries", () => {
+test("HotUpgradeService startUpgrade records audit entries [hot-upgrade-service]", () => {
   const db = createInMemoryDb();
   const service = new HotUpgradeService(db);
 
@@ -786,7 +786,7 @@ test("HotUpgradeService startUpgrade records audit entries", () => {
   assert.ok(eventTypes.includes("upgrade_started"));
 });
 
-test("HotUpgradeService startBatch records audit entry", () => {
+test("HotUpgradeService startBatch records audit entry [hot-upgrade-service]", () => {
   const db = createInMemoryDb();
   const service = new HotUpgradeService(db);
 
@@ -805,7 +805,7 @@ test("HotUpgradeService startBatch records audit entry", () => {
 // HotUpgradeService: Default Health Gates
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("HotUpgradeService default health gates are built correctly", () => {
+test("HotUpgradeService default health gates are built correctly [hot-upgrade-service]", () => {
   const db = createInMemoryDb();
   const service = new HotUpgradeService(db);
 
@@ -823,7 +823,7 @@ test("HotUpgradeService default health gates are built correctly", () => {
   assert.equal(workerGate!.operator, "gte");
 });
 
-test("HotUpgradeService default health gates include error_rate gate", () => {
+test("HotUpgradeService default health gates include error_rate gate [hot-upgrade-service]", () => {
   const db = createInMemoryDb();
   const service = new HotUpgradeService(db);
 
@@ -837,7 +837,7 @@ test("HotUpgradeService default health gates include error_rate gate", () => {
   assert.equal(errorGate!.operator, "lt"); // Error rate should be less than threshold
 });
 
-test("HotUpgradeService default health gates include latency_pct gate", () => {
+test("HotUpgradeService default health gates include latency_pct gate [hot-upgrade-service]", () => {
   const db = createInMemoryDb();
   const service = new HotUpgradeService(db);
 
@@ -855,7 +855,7 @@ test("HotUpgradeService default health gates include latency_pct gate", () => {
 // HotUpgradeService: Edge Cases
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("HotUpgradeService createUpgradePlan with empty targets array", () => {
+test("HotUpgradeService createUpgradePlan with empty targets array [hot-upgrade-service]", () => {
   const db = createInMemoryDb();
   const service = new HotUpgradeService(db);
 
@@ -866,7 +866,7 @@ test("HotUpgradeService createUpgradePlan with empty targets array", () => {
   assert.equal(plan.batches.length, 0);
 });
 
-test("HotUpgradeService createUpgradePlan with all target types", () => {
+test("HotUpgradeService createUpgradePlan with all target types [hot-upgrade-service]", () => {
   const db = createInMemoryDb();
   const service = new HotUpgradeService(db);
 
@@ -886,7 +886,7 @@ test("HotUpgradeService createUpgradePlan with all target types", () => {
   assert.equal(plan.targets.filter((t) => t.targetType === "config").length, 1);
 });
 
-test("HotUpgradeService handles concurrent batch operations via transactions", () => {
+test("HotUpgradeService handles concurrent batch operations via transactions [hot-upgrade-service]", () => {
   const db = createInMemoryDb();
   const service = new HotUpgradeService(db);
 
@@ -905,7 +905,7 @@ test("HotUpgradeService handles concurrent batch operations via transactions", (
   assert.equal(updatedPlan!.status, "completed");
 });
 
-test("HotUpgradeService upgrade with very long version strings", () => {
+test("HotUpgradeService upgrade with very long version strings [hot-upgrade-service]", () => {
   const db = createInMemoryDb();
   const service = new HotUpgradeService(db);
 
@@ -925,7 +925,7 @@ test("HotUpgradeService upgrade with very long version strings", () => {
   assert.equal(compat!.fromVersion, longVersion);
 });
 
-test("HotUpgradeService getUpgradeProgress with no health checks returns 100% pass rate", () => {
+test("HotUpgradeService getUpgradeProgress with no health checks returns 100% pass rate [hot-upgrade-service]", () => {
   const db = createInMemoryDb();
   const service = new HotUpgradeService(db);
 
@@ -939,7 +939,7 @@ test("HotUpgradeService getUpgradeProgress with no health checks returns 100% pa
   assert.equal(progress!.healthCheckPassRate, 100);
 });
 
-test("HotUpgradeService completeBatch updates batch health checks returned in result", () => {
+test("HotUpgradeService completeBatch updates batch health checks returned in result [hot-upgrade-service]", () => {
   const db = createInMemoryDb();
   const service = new HotUpgradeService(db);
 
@@ -963,7 +963,7 @@ test("HotUpgradeService completeBatch updates batch health checks returned in re
   assert.equal(result.batch!.healthChecks[1]!.checkId, "check2");
 });
 
-test("HotUpgradeService custom policy with empty health gates", () => {
+test("HotUpgradeService custom policy with empty health gates [hot-upgrade-service]", () => {
   const db = createInMemoryDb();
   const service = new HotUpgradeService(db);
 
@@ -975,7 +975,7 @@ test("HotUpgradeService custom policy with empty health gates", () => {
   assert.equal(plan.policy.healthGates.length, 0);
 });
 
-test("HotUpgradeService custom policy with all health gate types", () => {
+test("HotUpgradeService custom policy with all health gate types [hot-upgrade-service]", () => {
   const db = createInMemoryDb();
   const service = new HotUpgradeService(db);
 

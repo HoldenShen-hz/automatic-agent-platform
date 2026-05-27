@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { PluginExecutionService } from "../../../../../src/platform/five-plane-execution/plugin-executor/index.js";
 
-test("PluginExecutionService registers plugins and executes allowed actions", async () => {
+test("PluginExecutionService registers plugins and executes allowed actions [index]", async () => {
   const service = new PluginExecutionService();
   service.register({
     pluginId: "plugin-1",

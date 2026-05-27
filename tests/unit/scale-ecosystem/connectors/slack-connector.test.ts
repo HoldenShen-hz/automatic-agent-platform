@@ -21,31 +21,31 @@ function createRequest(overrides: Partial<ConnectorExecutionRequest> = {}): Conn
   };
 }
 
-test("SlackConnector.listCapabilities returns all supported capabilities", () => {
+test("SlackConnector.listCapabilities returns all supported capabilities [slack-connector]", () => {
   const connector = new SlackConnector();
   const capabilities = connector.listCapabilities();
 
   assert.deepStrictEqual(capabilities, ["send_message", "open_modal"]);
 });
 
-test("SlackConnector.supportsCapability returns true for send_message", () => {
+test("SlackConnector.supportsCapability returns true for send_message [slack-connector]", () => {
   const connector = new SlackConnector();
   assert.equal(connector.supportsCapability("send_message"), true);
 });
 
-test("SlackConnector.supportsCapability returns true for open_modal", () => {
+test("SlackConnector.supportsCapability returns true for open_modal [slack-connector]", () => {
   const connector = new SlackConnector();
   assert.equal(connector.supportsCapability("open_modal"), true);
 });
 
-test("SlackConnector.supportsCapability returns false for unsupported capabilities", () => {
+test("SlackConnector.supportsCapability returns false for unsupported capabilities [slack-connector]", () => {
   const connector = new SlackConnector();
   assert.equal(connector.supportsCapability("archive_channel"), false);
   assert.equal(connector.supportsCapability("kick_user"), false);
   assert.equal(connector.supportsCapability("SEND_MESSAGE"), false);
 });
 
-test("SlackConnector.execute returns success for send_message capability", () => {
+test("SlackConnector.execute returns success for send_message capability [slack-connector]", () => {
   const connector = new SlackConnector();
   const request = createRequest({ capability: "send_message" });
 
@@ -56,7 +56,7 @@ test("SlackConnector.execute returns success for send_message capability", () =>
   assert.equal(result.connectorId, "slack-test");
 });
 
-test("SlackConnector.execute returns success for open_modal capability", () => {
+test("SlackConnector.execute returns success for open_modal capability [slack-connector]", () => {
   const connector = new SlackConnector();
   const request = createRequest({ capability: "open_modal" });
 
@@ -66,7 +66,7 @@ test("SlackConnector.execute returns success for open_modal capability", () => {
   assert.equal(result.status, "succeeded");
 });
 
-test("SlackConnector.execute returns failure for unknown capability", () => {
+test("SlackConnector.execute returns failure for unknown capability [slack-connector]", () => {
   const connector = new SlackConnector();
   const request = createRequest({ capability: "unknown_action" });
 
@@ -76,7 +76,7 @@ test("SlackConnector.execute returns failure for unknown capability", () => {
   assert.equal(result.status, "failed");
 });
 
-test("SlackConnector.execute preserves connectorId from request", () => {
+test("SlackConnector.execute preserves connectorId from request [slack-connector]", () => {
   const connector = new SlackConnector();
   const request = createRequest({ connectorId: "slack-custom" });
 
@@ -85,7 +85,7 @@ test("SlackConnector.execute preserves connectorId from request", () => {
   assert.equal(result.connectorId, "slack-custom");
 });
 
-test("SlackConnector.execute fails when policyRef is missing", () => {
+test("SlackConnector.execute fails when policyRef is missing [slack-connector]", () => {
   const connector = new SlackConnector();
   const request = createRequest({ policyRef: undefined });
 
@@ -95,7 +95,7 @@ test("SlackConnector.execute fails when policyRef is missing", () => {
   assert.equal(result.status, "failed");
 });
 
-test("SlackConnector.execute fails when secretBindings are empty", () => {
+test("SlackConnector.execute fails when secretBindings are empty [slack-connector]", () => {
   const connector = new SlackConnector();
   const request = createRequest({ secretBindings: [] });
 
@@ -105,7 +105,7 @@ test("SlackConnector.execute fails when secretBindings are empty", () => {
   assert.equal(result.status, "failed");
 });
 
-test("SlackConnector.execute succeeds with valid policyRef and secretBindings", () => {
+test("SlackConnector.execute succeeds with valid policyRef and secretBindings [slack-connector]", () => {
   const connector = new SlackConnector();
   const request = createRequest({
     policyRef: "policy.connector.slack",
@@ -118,7 +118,7 @@ test("SlackConnector.execute succeeds with valid policyRef and secretBindings", 
   assert.equal(result.status, "succeeded");
 });
 
-test("SlackConnector.execute handles send_message with channel and text", () => {
+test("SlackConnector.execute handles send_message with channel and text [slack-connector]", () => {
   const connector = new SlackConnector();
   const request = createRequest({
     capability: "send_message",
@@ -131,7 +131,7 @@ test("SlackConnector.execute handles send_message with channel and text", () => 
   assert.equal(result.status, "succeeded");
 });
 
-test("SlackConnector.execute handles send_message with blocks", () => {
+test("SlackConnector.execute handles send_message with blocks [slack-connector]", () => {
   const connector = new SlackConnector();
   const request = createRequest({
     capability: "send_message",
@@ -159,7 +159,7 @@ test("SlackConnector.execute handles send_message with blocks", () => {
   assert.equal(result.status, "succeeded");
 });
 
-test("SlackConnector.execute handles send_message with attachments", () => {
+test("SlackConnector.execute handles send_message with attachments [slack-connector]", () => {
   const connector = new SlackConnector();
   const request = createRequest({
     capability: "send_message",
@@ -182,7 +182,7 @@ test("SlackConnector.execute handles send_message with attachments", () => {
   assert.equal(result.status, "succeeded");
 });
 
-test("SlackConnector.execute handles open_modal with trigger_id", () => {
+test("SlackConnector.execute handles open_modal with trigger_id [slack-connector]", () => {
   const connector = new SlackConnector();
   const request = createRequest({
     capability: "open_modal",
@@ -208,7 +208,7 @@ test("SlackConnector.execute handles open_modal with trigger_id", () => {
   assert.equal(result.status, "succeeded");
 });
 
-test("SlackConnector.execute handles open_modal with interactive components", () => {
+test("SlackConnector.execute handles open_modal with interactive components [slack-connector]", () => {
   const connector = new SlackConnector();
   const request = createRequest({
     capability: "open_modal",
@@ -240,7 +240,7 @@ test("SlackConnector.execute handles open_modal with interactive components", ()
   assert.equal(result.status, "succeeded");
 });
 
-test("SlackConnector.execute is case-sensitive for capability names", () => {
+test("SlackConnector.execute is case-sensitive for capability names [slack-connector]", () => {
   const connector = new SlackConnector();
 
   const upperRequest = createRequest({ capability: "SEND_MESSAGE" });
@@ -255,7 +255,7 @@ test("SlackConnector.execute is case-sensitive for capability names", () => {
   assert.equal(resultLower.status, "succeeded");
 });
 
-test("SlackConnector.execute rejects archive_channel capability", () => {
+test("SlackConnector.execute rejects archive_channel capability [slack-connector]", () => {
   const connector = new SlackConnector();
   const request = createRequest({ capability: "archive_channel" });
 
@@ -265,7 +265,7 @@ test("SlackConnector.execute rejects archive_channel capability", () => {
   assert.equal(result.status, "failed");
 });
 
-test("SlackConnector.execute rejects kick_user capability", () => {
+test("SlackConnector.execute rejects kick_user capability [slack-connector]", () => {
   const connector = new SlackConnector();
   const request = createRequest({ capability: "kick_user" });
 
@@ -275,7 +275,7 @@ test("SlackConnector.execute rejects kick_user capability", () => {
   assert.equal(result.status, "failed");
 });
 
-test("SlackConnector.execute handles empty payload", () => {
+test("SlackConnector.execute handles empty payload [slack-connector]", () => {
   const connector = new SlackConnector();
   const request = createRequest({ capability: "send_message", payload: {} });
 
@@ -285,7 +285,7 @@ test("SlackConnector.execute handles empty payload", () => {
   assert.equal(result.status, "succeeded");
 });
 
-test("SlackConnector.execute handles empty payload for open_modal", () => {
+test("SlackConnector.execute handles empty payload for open_modal [slack-connector]", () => {
   const connector = new SlackConnector();
   const request = createRequest({ capability: "open_modal", payload: {} });
 
@@ -295,7 +295,7 @@ test("SlackConnector.execute handles empty payload for open_modal", () => {
   assert.equal(result.status, "succeeded");
 });
 
-test("SlackConnector.is stateless - multiple executions produce same result", () => {
+test("SlackConnector.is stateless - multiple executions produce same result [slack-connector]", () => {
   const connector = new SlackConnector();
   const request = createRequest({ capability: "send_message" });
 
@@ -305,7 +305,7 @@ test("SlackConnector.is stateless - multiple executions produce same result", ()
   assert.deepStrictEqual(result1, result2);
 });
 
-test("SlackConnector.execute handles send_message to DM channel", () => {
+test("SlackConnector.execute handles send_message to DM channel [slack-connector]", () => {
   const connector = new SlackConnector();
   const request = createRequest({
     capability: "send_message",

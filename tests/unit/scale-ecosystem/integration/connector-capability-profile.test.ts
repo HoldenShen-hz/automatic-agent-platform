@@ -12,7 +12,7 @@ import {
   ConnectorManifestSchema,
 } from "../../../../src/scale-ecosystem/integration/connector-registry/index.ts";
 
-test("ConnectorCapabilityProfileSchema parses valid profile", () => {
+test("ConnectorCapabilityProfileSchema parses valid profile [connector-capability-profile]", () => {
   const result = ConnectorCapabilityProfileSchema.parse({
     actionRiskProfiles: {
       create_pr: "medium",
@@ -39,7 +39,7 @@ test("ConnectorCapabilityProfileSchema parses valid profile", () => {
   assert.equal(result.credentialRotationPolicy.rotationDays, 90);
 });
 
-test("ConnectorCapabilityProfileSchema accepts empty profile with defaults", () => {
+test("ConnectorCapabilityProfileSchema accepts empty profile with defaults [connector-capability-profile]", () => {
   const result = ConnectorCapabilityProfileSchema.parse({});
 
   assert.deepEqual(result.actionRiskProfiles, {});
@@ -50,7 +50,7 @@ test("ConnectorCapabilityProfileSchema accepts empty profile with defaults", () 
   assert.equal(result.credentialRotationPolicy.gracePeriodDays, 7);
 });
 
-test("ConnectorCapabilityProfileSchema validates risk levels", () => {
+test("ConnectorCapabilityProfileSchema validates risk levels [connector-capability-profile]", () => {
   const result = ConnectorCapabilityProfileSchema.parse({
     actionRiskProfiles: {
       low_risk_action: "low",
@@ -66,7 +66,7 @@ test("ConnectorCapabilityProfileSchema validates risk levels", () => {
   assert.equal(result.actionRiskProfiles.critical_action, "critical");
 });
 
-test("ConnectorCapabilityProfileSchema rejects invalid risk level", () => {
+test("ConnectorCapabilityProfileSchema rejects invalid risk level [connector-capability-profile]", () => {
   assert.throws(() => {
     ConnectorCapabilityProfileSchema.parse({
       actionRiskProfiles: { action: "invalid_risk" },
@@ -74,7 +74,7 @@ test("ConnectorCapabilityProfileSchema rejects invalid risk level", () => {
   });
 });
 
-test("ConnectorCapabilityProfileSchema validates permission probe types", () => {
+test("ConnectorCapabilityProfileSchema validates permission probe types [connector-capability-profile]", () => {
   const result = ConnectorCapabilityProfileSchema.parse({
     permissionProbes: [
       { permission: "read_perm", probeType: "read", required: false },
@@ -88,7 +88,7 @@ test("ConnectorCapabilityProfileSchema validates permission probe types", () => 
   assert.equal(result.permissionProbes[2]!.probeType, "admin");
 });
 
-test("ConnectorCapabilityProfileSchema rejects invalid probe type", () => {
+test("ConnectorCapabilityProfileSchema rejects invalid probe type [connector-capability-profile]", () => {
   assert.throws(() => {
     ConnectorCapabilityProfileSchema.parse({
       permissionProbes: [
@@ -98,7 +98,7 @@ test("ConnectorCapabilityProfileSchema rejects invalid probe type", () => {
   });
 });
 
-test("ConnectorCapabilityProfileSchema validates quota window enum", () => {
+test("ConnectorCapabilityProfileSchema validates quota window enum [connector-capability-profile]", () => {
   const result = ConnectorCapabilityProfileSchema.parse({
     quotaProbes: [
       { quotaKey: "per_second", limit: 100, window: "second" },
@@ -114,7 +114,7 @@ test("ConnectorCapabilityProfileSchema validates quota window enum", () => {
   assert.equal(result.quotaProbes[3]!.window, "day");
 });
 
-test("ConnectorCapabilityProfileSchema rejects invalid window", () => {
+test("ConnectorCapabilityProfileSchema rejects invalid window [connector-capability-profile]", () => {
   assert.throws(() => {
     ConnectorCapabilityProfileSchema.parse({
       quotaProbes: [
@@ -124,7 +124,7 @@ test("ConnectorCapabilityProfileSchema rejects invalid window", () => {
   });
 });
 
-test("ConnectorCapabilityProfileSchema requires positive rotation days", () => {
+test("ConnectorCapabilityProfileSchema requires positive rotation days [connector-capability-profile]", () => {
   assert.throws(() => {
     ConnectorCapabilityProfileSchema.parse({
       credentialRotationPolicy: { rotationDays: 0 },
@@ -132,7 +132,7 @@ test("ConnectorCapabilityProfileSchema requires positive rotation days", () => {
   });
 });
 
-test("ConnectorCapabilityProfileSchema requires positive rotation days (negative)", () => {
+test("ConnectorCapabilityProfileSchema requires positive rotation days (negative) [connector-capability-profile]", () => {
   assert.throws(() => {
     ConnectorCapabilityProfileSchema.parse({
       credentialRotationPolicy: { rotationDays: -30 },
@@ -140,7 +140,7 @@ test("ConnectorCapabilityProfileSchema requires positive rotation days (negative
   });
 });
 
-test("ConnectorCapabilityProfileSchema accepts zero grace period", () => {
+test("ConnectorCapabilityProfileSchema accepts zero grace period [connector-capability-profile]", () => {
   const result = ConnectorCapabilityProfileSchema.parse({
     credentialRotationPolicy: { gracePeriodDays: 0, rotationDays: 30 },
   });
@@ -148,7 +148,7 @@ test("ConnectorCapabilityProfileSchema accepts zero grace period", () => {
   assert.equal(result.credentialRotationPolicy.gracePeriodDays, 0);
 });
 
-test("ConnectorCapabilityProfileSchema rejects negative grace period", () => {
+test("ConnectorCapabilityProfileSchema rejects negative grace period [connector-capability-profile]", () => {
   assert.throws(() => {
     ConnectorCapabilityProfileSchema.parse({
       credentialRotationPolicy: { gracePeriodDays: -5 },
@@ -156,7 +156,7 @@ test("ConnectorCapabilityProfileSchema rejects negative grace period", () => {
   });
 });
 
-test("ConnectorManifestSchema accepts capabilityProfile", () => {
+test("ConnectorManifestSchema accepts capabilityProfile [connector-capability-profile]", () => {
   const result = ConnectorManifestSchema.parse({
     connectorId: "test-connector",
     provider: "TestProvider",
@@ -171,17 +171,17 @@ test("ConnectorManifestSchema accepts capabilityProfile", () => {
   assert.equal(result.capabilityProfile.credentialRotationPolicy.rotationDays, 60);
 });
 
-test("ConnectorCapabilityProfileSchema has correct default rotation days", () => {
+test("ConnectorCapabilityProfileSchema has correct default rotation days [connector-capability-profile]", () => {
   const result = ConnectorCapabilityProfileSchema.parse({});
   assert.equal(result.credentialRotationPolicy.rotationDays, 90);
 });
 
-test("ConnectorCapabilityProfileSchema has correct default autoRotate", () => {
+test("ConnectorCapabilityProfileSchema has correct default autoRotate [connector-capability-profile]", () => {
   const result = ConnectorCapabilityProfileSchema.parse({});
   assert.equal(result.credentialRotationPolicy.autoRotate, false);
 });
 
-test("ConnectorCapabilityProfileSchema has correct default grace period", () => {
+test("ConnectorCapabilityProfileSchema has correct default grace period [connector-capability-profile]", () => {
   const result = ConnectorCapabilityProfileSchema.parse({});
   assert.equal(result.credentialRotationPolicy.gracePeriodDays, 7);
 });

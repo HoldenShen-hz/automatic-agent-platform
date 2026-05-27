@@ -15,7 +15,7 @@ function createTempDir(): string {
   return join("/tmp", `evidence-bundle-test-${Date.now()}`);
 }
 
-test("createStableEvidenceBundle produces a valid report with smoke profile", async () => {
+test("createStableEvidenceBundle produces a valid report with smoke profile [stable-evidence-bundle]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await createStableEvidenceBundle({
@@ -43,7 +43,7 @@ test("createStableEvidenceBundle produces a valid report with smoke profile", as
   }
 });
 
-test("createStableEvidenceBundle report has all required artifacts paths", async () => {
+test("createStableEvidenceBundle report has all required artifacts paths [stable-evidence-bundle]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await createStableEvidenceBundle({
@@ -64,7 +64,7 @@ test("createStableEvidenceBundle report has all required artifacts paths", async
   }
 });
 
-test("createStableEvidenceBundle report has acceptanceLine", async () => {
+test("createStableEvidenceBundle report has acceptanceLine [stable-evidence-bundle]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await createStableEvidenceBundle({
@@ -83,7 +83,7 @@ test("createStableEvidenceBundle report has acceptanceLine", async () => {
   }
 });
 
-test("createStableEvidenceBundle report has summary", async () => {
+test("createStableEvidenceBundle report has summary [stable-evidence-bundle]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await createStableEvidenceBundle({
@@ -103,7 +103,7 @@ test("createStableEvidenceBundle report has summary", async () => {
   }
 });
 
-test("createStableEvidenceBundle creates bundle report JSON file", { timeout: 300_000 }, async () => {
+test("createStableEvidenceBundle creates bundle report JSON file [stable-evidence-bundle]", { timeout: 300_000 }, async () => {
   const outputDir = createTempDir();
   try {
     const report = await createStableEvidenceBundle({

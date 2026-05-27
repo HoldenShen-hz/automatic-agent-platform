@@ -7,7 +7,7 @@ import { RedisQueueAdapter } from "../../../../src/platform/five-plane-execution
 import { StructuredLogger } from "../../../../src/platform/shared/observability/structured-logger.js";
 import type { StructuredLogEntry } from "../../../../src/platform/shared/observability/structured-logger.js";
 
-test("[SYS-REL-2.1] Redis queue adapter error handler should not be empty function", () => {
+test("[SYS-REL-2.1] Redis queue adapter error handler should not be empty function [redis-queue-error]", () => {
   const client = new RedisQueueAdapter({
     host: "invalid-host",
     port: 9999,
@@ -22,7 +22,7 @@ test("[SYS-REL-2.1] Redis queue adapter error handler should not be empty functi
   assert.ok(true, "Error handler should log errors, not swallow them");
 });
 
-test("[SYS-REL-2.1] Redis queue adapter logs errors when they occur", () => {
+test("[SYS-REL-2.1] Redis queue adapter logs errors when they occur [redis-queue-error]", () => {
   const logEntries: StructuredLogEntry[] = [];
   const mockTransport = {
     name: "test-transport",

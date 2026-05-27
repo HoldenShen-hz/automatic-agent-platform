@@ -5,7 +5,7 @@ import test from "node:test";
  * R13-20 tests: Lease handover must validate new worker capabilities
  */
 
-test("R13-20: Lease handover blocked when new worker lacks required capabilities", () => {
+test("R13-20: Lease handover blocked when new worker lacks required capabilities [execution-lease-service-handover-r13]", () => {
   type WorkerIsolationLevel = "standard" | "hardened" | "strict";
 
   interface HandoverInput {
@@ -59,7 +59,7 @@ test("R13-20: Lease handover blocked when new worker lacks required capabilities
   assert.equal(result.reasonCode, "worker_capabilities_mismatch", "Should fail due to missing capabilities");
 });
 
-test("R13-20: Lease handover blocked when new worker has insufficient isolation level", () => {
+test("R13-20: Lease handover blocked when new worker has insufficient isolation level [execution-lease-service-handover-r13]", () => {
   type WorkerIsolationLevel = "standard" | "hardened" | "strict";
 
   interface WorkerSnapshot {
@@ -84,7 +84,7 @@ test("R13-20: Lease handover blocked when new worker has insufficient isolation 
   assert.equal(result.reasonCode, "worker_isolation_mismatch", "Should fail due to insufficient isolation");
 });
 
-test("R13-20: Lease handover allowed when new worker meets all requirements", () => {
+test("R13-20: Lease handover allowed when new worker meets all requirements [execution-lease-service-handover-r13]", () => {
   type WorkerIsolationLevel = "standard" | "hardened" | "strict";
 
   interface HandoverInput {
@@ -156,7 +156,7 @@ test("R13-20: Lease handover allowed when new worker meets all requirements", ()
   assert.equal(result.reasonCode, null, "No error reason");
 });
 
-test("R13-20: Lease handover blocked when new worker has wrong repo version", () => {
+test("R13-20: Lease handover blocked when new worker has wrong repo version [execution-lease-service-handover-r13]", () => {
   interface HandoverInput {
     newWorkerId: string;
     requiredRepoVersion: string | null;

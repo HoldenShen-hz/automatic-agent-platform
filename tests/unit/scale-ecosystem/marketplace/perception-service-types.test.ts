@@ -19,7 +19,7 @@ import type {
   IntelBriefRecord,
 } from "../../../../src/platform/contracts/types/domain.js";
 
-test("RegisterPerceptionSourceInput structure is correct", () => {
+test("RegisterPerceptionSourceInput structure is correct [perception-service-types]", () => {
   const input: RegisterPerceptionSourceInput = {
     sourceId: "src_123",
     tenantId: "tenant_abc",
@@ -41,7 +41,7 @@ test("RegisterPerceptionSourceInput structure is correct", () => {
   assert.equal(input.priority, 10);
 });
 
-test("RegisterPerceptionSourceInput allows minimal definition", () => {
+test("RegisterPerceptionSourceInput allows minimal definition [perception-service-types]", () => {
   const input: RegisterPerceptionSourceInput = {
     type: "github",
     name: "Minimal Source",
@@ -55,12 +55,12 @@ test("RegisterPerceptionSourceInput allows minimal definition", () => {
   assert.equal(input.priority, undefined);
 });
 
-test("PerceptionSourceType accepts all valid values", () => {
+test("PerceptionSourceType accepts all valid values [perception-service-types]", () => {
   const types: PerceptionSourceType[] = ["rss", "web", "github", "api", "custom"];
   assert.equal(types.length, 5);
 });
 
-test("IngestIntelCandidate structure is correct", () => {
+test("IngestIntelCandidate structure is correct [perception-service-types]", () => {
   const candidate: IngestIntelCandidate = {
     title: "Security Vulnerability Discovered",
     summary: "A critical vulnerability was found in the authentication system.",
@@ -80,7 +80,7 @@ test("IngestIntelCandidate structure is correct", () => {
   assert.equal(candidate.ttlHours, 72);
 });
 
-test("IngestIntelCandidate allows minimal definition", () => {
+test("IngestIntelCandidate allows minimal definition [perception-service-types]", () => {
   const candidate: IngestIntelCandidate = {
     title: "Simple Intel",
     summary: "This is a simple intel item for testing purposes here.",
@@ -95,7 +95,7 @@ test("IngestIntelCandidate allows minimal definition", () => {
   assert.equal(candidate.ttlHours, undefined);
 });
 
-test("IngestIntelInput structure is correct", () => {
+test("IngestIntelInput structure is correct [perception-service-types]", () => {
   const input: IngestIntelInput = {
     sourceId: "src_abc",
     tenantId: "tenant_123",
@@ -116,7 +116,7 @@ test("IngestIntelInput structure is correct", () => {
   assert.equal(input.accountId, "acc_xyz");
 });
 
-test("IngestIntelResult structure is correct", () => {
+test("IngestIntelResult structure is correct [perception-service-types]", () => {
   const result: IngestIntelResult = {
     source: {
       sourceId: "src_test",
@@ -138,7 +138,7 @@ test("IngestIntelResult structure is correct", () => {
   assert.equal(result.skippedDuplicateCount, 0);
 });
 
-test("BuildIntelBriefInput structure is correct", () => {
+test("BuildIntelBriefInput structure is correct [perception-service-types]", () => {
   const input: BuildIntelBriefInput = {
     tenantId: "tenant_brief",
     sourceIds: ["src_1", "src_2"],
@@ -154,14 +154,14 @@ test("BuildIntelBriefInput structure is correct", () => {
   assert.equal(input.limit, 50);
 });
 
-test("BuildIntelBriefInput allows minimal definition", () => {
+test("BuildIntelBriefInput allows minimal definition [perception-service-types]", () => {
   const input: BuildIntelBriefInput = {};
   assert.equal(input.tenantId, undefined);
   assert.equal(input.sourceIds, undefined);
   assert.equal(input.limit, undefined);
 });
 
-test("RecommendedPerceptionAction structure is correct", () => {
+test("RecommendedPerceptionAction structure is correct [perception-service-types]", () => {
   const action: RecommendedPerceptionAction = {
     title: "investigate:Critical Vulnerability",
     summary: "A critical vulnerability requires immediate investigation.",
@@ -174,7 +174,7 @@ test("RecommendedPerceptionAction structure is correct", () => {
   assert.equal(action.intelId, "intel_123");
 });
 
-test("RecommendedPerceptionAction actionType accepts all valid values", () => {
+test("RecommendedPerceptionAction actionType accepts all valid values [perception-service-types]", () => {
   const actionTypes: RecommendedPerceptionAction["actionType"][] = [
     "monitor",
     "investigate",
@@ -193,7 +193,7 @@ test("RecommendedPerceptionAction actionType accepts all valid values", () => {
   }
 });
 
-test("BuildIntelBriefResult structure is correct", () => {
+test("BuildIntelBriefResult structure is correct [perception-service-types]", () => {
   const result: BuildIntelBriefResult = {
     brief: {
       briefId: "brief_123",
@@ -215,7 +215,7 @@ test("BuildIntelBriefResult structure is correct", () => {
   assert.equal(result.recommendedActions.length, 0);
 });
 
-test("ProposePerceptionActionsInput structure is correct", () => {
+test("ProposePerceptionActionsInput structure is correct [perception-service-types]", () => {
   const input: ProposePerceptionActionsInput = {
     briefId: "brief_xyz",
     tenantId: "tenant_propose",
@@ -226,7 +226,7 @@ test("ProposePerceptionActionsInput structure is correct", () => {
   assert.equal(input.tenantId, "tenant_propose");
 });
 
-test("ExportIntelBriefResult structure is correct", () => {
+test("ExportIntelBriefResult structure is correct [perception-service-types]", () => {
   const result: ExportIntelBriefResult = {
     brief: {
       briefId: "brief_export",
@@ -265,7 +265,7 @@ test("ExportIntelBriefResult structure is correct", () => {
   assert.equal(result.markdownArtifact.artifactId, "art_md");
 });
 
-test("PerceptionServiceOptions structure is correct", () => {
+test("PerceptionServiceOptions structure is correct [perception-service-types]", () => {
   const options: PerceptionServiceOptions = {
     artifactStoreOptions: {
       rootDir: "/tmp/artifacts",
@@ -276,7 +276,7 @@ test("PerceptionServiceOptions structure is correct", () => {
   assert.equal(options.artifactStoreOptions?.rootDir, "/tmp/artifacts");
 });
 
-test("PerceptionServiceOptions allows empty options", () => {
+test("PerceptionServiceOptions allows empty options [perception-service-types]", () => {
   const options: PerceptionServiceOptions = {};
   assert.equal(options.artifactStoreOptions, undefined);
   assert.equal(options.billingService, undefined);

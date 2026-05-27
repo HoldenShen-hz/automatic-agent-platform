@@ -10,11 +10,11 @@ import { runPhase1AHappyPath, type HappyPathInput } from "../../../../../src/pla
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-test("phase1a-happy-path exports runPhase1AHappyPath function", () => {
+test("phase1a-happy-path exports runPhase1AHappyPath function [happy-path]", () => {
   assert.equal(typeof runPhase1AHappyPath, "function");
 });
 
-test("phase1a-happy-path happy path execution completes task lifecycle", async () => {
+test("phase1a-happy-path happy path execution completes task lifecycle [happy-path]", async () => {
   const tempDir = await mkdtemp(join(tmpdir(), "phase1a-test-"));
   const dbPath = join(tempDir, "test.db");
 
@@ -42,7 +42,7 @@ test("phase1a-happy-path happy path execution completes task lifecycle", async (
   }
 });
 
-test("phase1a-happy-path creates task and workflow records", async () => {
+test("phase1a-happy-path creates task and workflow records [happy-path]", async () => {
   const tempDir = await mkdtemp(join(tmpdir(), "phase1a-test-"));
   const dbPath = join(tempDir, "test.db");
 
@@ -70,7 +70,7 @@ test("phase1a-happy-path creates task and workflow records", async () => {
   }
 });
 
-test("phase1a-happy-path step output contains expected data", async () => {
+test("phase1a-happy-path step output contains expected data [happy-path]", async () => {
   const tempDir = await mkdtemp(join(tmpdir(), "phase1a-test-"));
   const dbPath = join(tempDir, "test.db");
 
@@ -100,7 +100,7 @@ test("phase1a-happy-path step output contains expected data", async () => {
   }
 });
 
-test("phase1a-happy-path uses synthetic output when no LLM provider", async () => {
+test("phase1a-happy-path uses synthetic output when no LLM provider [happy-path]", async () => {
   const tempDir = await mkdtemp(join(tmpdir(), "phase1a-test-"));
   const dbPath = join(tempDir, "test.db");
 

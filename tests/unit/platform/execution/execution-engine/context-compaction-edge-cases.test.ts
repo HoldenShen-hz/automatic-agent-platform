@@ -67,7 +67,7 @@ function createTestMessage(overrides: Partial<MessageRecord> = {}): MessageRecor
 // Excerpt function behavior (via stage2 summary)
 // ---------------------------------------------------------------------------
 
-test("excerpt function truncates content longer than 80 characters", () => {
+test("excerpt function truncates content longer than 80 characters [context-compaction-edge-cases]", () => {
   const db = createMockDb();
   const messages = [
     createTestMessage({
@@ -114,7 +114,7 @@ test("excerpt function truncates content longer than 80 characters", () => {
   }
 });
 
-test("excerpt function normalizes whitespace", () => {
+test("excerpt function normalizes whitespace [context-compaction-edge-cases]", () => {
   const db = createMockDb();
   const messages = [
     createTestMessage({
@@ -161,7 +161,7 @@ test("excerpt function normalizes whitespace", () => {
   }
 });
 
-test("excerpt function handles empty content", () => {
+test("excerpt function handles empty content [context-compaction-edge-cases]", () => {
   const db = createMockDb();
   const messages = [
     createTestMessage({
@@ -199,7 +199,7 @@ test("excerpt function handles empty content", () => {
 // isFixedPrefixMessage behavior (KV cache G9)
 // ---------------------------------------------------------------------------
 
-test("isFixedPrefixMessage returns true for system messages at start", () => {
+test("isFixedPrefixMessage returns true for system messages at start [context-compaction-edge-cases]", () => {
   const db = createMockDb();
   const messages = [
     createTestMessage({ id: "sys-1", direction: "system", content: "System 1" }),
@@ -227,7 +227,7 @@ test("isFixedPrefixMessage returns true for system messages at start", () => {
   assert.ok(sys2?.protected, "second system message should be protected");
 });
 
-test("isFixedPrefixMessage returns false for non-system messages", () => {
+test("isFixedPrefixMessage returns false for non-system messages [context-compaction-edge-cases]", () => {
   const db = createMockDb();
   const messages = [
     createTestMessage({ id: "sys-1", direction: "system", content: "System" }),
@@ -258,7 +258,7 @@ test("isFixedPrefixMessage returns false for non-system messages", () => {
 // Multi-session compaction isolation
 // ---------------------------------------------------------------------------
 
-test("compaction records are isolated by session", () => {
+test("compaction records are isolated by session [context-compaction-edge-cases]", () => {
   const db = createMockDb();
   const messagesSession1 = [
     createTestMessage({ id: "s1-msg-1", sessionId: "sess-1", direction: "inbound", messageType: "user_request", content: "Session 1 request" }),
@@ -307,7 +307,7 @@ test("compaction records are isolated by session", () => {
 // Token budget edge cases
 // ---------------------------------------------------------------------------
 
-test("compactContext handles extremely small usable budget", () => {
+test("compactContext handles extremely small usable budget [context-compaction-edge-cases]", () => {
   const db = createMockDb();
   const messages = [
     createTestMessage({
@@ -335,7 +335,7 @@ test("compactContext handles extremely small usable budget", () => {
   assert.ok(result.contextMessages.length >= 0);
 });
 
-test("compactContext handles reservedOutputBudgetTokens at maxContextTokens boundary", () => {
+test("compactContext handles reservedOutputBudgetTokens at maxContextTokens boundary [context-compaction-edge-cases]", () => {
   const db = createMockDb();
   const messages = [
     createTestMessage({
@@ -362,7 +362,7 @@ test("compactContext handles reservedOutputBudgetTokens at maxContextTokens boun
   assert.equal(result.errorCode, null);
 });
 
-test("compactContext handles default reservedOutputBudgetTokens when providerMaxOutputTokens is small", () => {
+test("compactContext handles default reservedOutputBudgetTokens when providerMaxOutputTokens is small [context-compaction-edge-cases]", () => {
   const db = createMockDb();
   const store = createMockStore();
   const service = new ContextCompactionService(db, store);
@@ -385,7 +385,7 @@ test("compactContext handles default reservedOutputBudgetTokens when providerMax
 // Protected message edge cases
 // ---------------------------------------------------------------------------
 
-test("compaction_summary message type is always protected", () => {
+test("compaction_summary message type is always protected [context-compaction-edge-cases]", () => {
   const db = createMockDb();
   const messages = [
     createTestMessage({
@@ -427,7 +427,7 @@ test("compaction_summary message type is always protected", () => {
   assert.equal(existingSummary.protected, true, "compaction_summary should always be protected");
 });
 
-test("latest user message protection with multiple inbound messages", () => {
+test("latest user message protection with multiple inbound messages [context-compaction-edge-cases]", () => {
   const db = createMockDb();
   const messages = [
     createTestMessage({
@@ -474,7 +474,7 @@ test("latest user message protection with multiple inbound messages", () => {
 // Stage2 summary creation edge cases
 // ---------------------------------------------------------------------------
 
-test("stage2 summary message has correct structure", () => {
+test("stage2 summary message has correct structure [context-compaction-edge-cases]", () => {
   const db = createMockDb();
   const messages = [
     createTestMessage({
@@ -522,7 +522,7 @@ test("stage2 summary message has correct structure", () => {
   }
 });
 
-test("stage2 summary includes up to 6 message excerpts", () => {
+test("stage2 summary includes up to 6 message excerpts [context-compaction-edge-cases]", () => {
   const db = createMockDb();
   const messages = [
     createTestMessage({ id: "m1", direction: "inbound", messageType: "user_request", content: "M1" }),
@@ -562,7 +562,7 @@ test("stage2 summary includes up to 6 message excerpts", () => {
   }
 });
 
-test("stage2 fallback when no summary candidates available", () => {
+test("stage2 fallback when no summary candidates available [context-compaction-edge-cases]", () => {
   const db = createMockDb();
   // Only protected messages - no candidates for summarization
   const messages = [
@@ -603,7 +603,7 @@ test("stage2 fallback when no summary candidates available", () => {
 // Context message ordering preservation
 // ---------------------------------------------------------------------------
 
-test("compactContext preserves original message order for non-trimmed messages", () => {
+test("compactContext preserves original message order for non-trimmed messages [context-compaction-edge-cases]", () => {
   const db = createMockDb();
   const messages = [
     createTestMessage({ id: "sys", direction: "system", content: "System" }),
@@ -640,7 +640,7 @@ test("compactContext preserves original message order for non-trimmed messages",
 // Result structure validation
 // ---------------------------------------------------------------------------
 
-test("ContextCompactionResult includes all required fields", () => {
+test("ContextCompactionResult includes all required fields [context-compaction-edge-cases]", () => {
   const db = createMockDb();
   const store = createMockStore();
   const service = new ContextCompactionService(db, store);
@@ -666,7 +666,7 @@ test("ContextCompactionResult includes all required fields", () => {
   );
 });
 
-test("CompactedContextMessage has correct type structure", () => {
+test("CompactedContextMessage has correct type structure [context-compaction-edge-cases]", () => {
   const msg: CompactedContextMessage = {
     messageId: "test",
     direction: "inbound",

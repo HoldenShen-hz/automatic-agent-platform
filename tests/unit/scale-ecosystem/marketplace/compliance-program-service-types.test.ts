@@ -10,7 +10,7 @@ import type {
 } from "../../../../src/scale-ecosystem/marketplace/compliance-program-service.js";
 import type { ArtifactRef, DataNamespaceRecord } from "../../../../src/platform/contracts/types/domain.js";
 
-test("ComplianceProgramInput structure is correct", () => {
+test("ComplianceProgramInput structure is correct [compliance-program-service-types]", () => {
   const input: ComplianceProgramInput = {
     generatedAt: "2026-04-14T12:00:00.000Z",
   };
@@ -18,12 +18,12 @@ test("ComplianceProgramInput structure is correct", () => {
   assert.equal(input.generatedAt, "2026-04-14T12:00:00.000Z");
 });
 
-test("ComplianceProgramInput allows empty input", () => {
+test("ComplianceProgramInput allows empty input [compliance-program-service-types]", () => {
   const input: ComplianceProgramInput = {};
   assert.equal(input.generatedAt, undefined);
 });
 
-test("ComplianceResidencySummary structure is correct", () => {
+test("ComplianceResidencySummary structure is correct [compliance-program-service-types]", () => {
   const summary: ComplianceResidencySummary = {
     residencyPolicy: "us-east",
     namespaceCount: 10,
@@ -33,7 +33,7 @@ test("ComplianceResidencySummary structure is correct", () => {
   assert.equal(summary.namespaceCount, 10);
 });
 
-test("ComplianceProgramReport structure is correct", () => {
+test("ComplianceProgramReport structure is correct [compliance-program-service-types]", () => {
   const report: ComplianceProgramReport = {
     reportId: "report_123",
     generatedAt: "2026-04-14T00:00:00.000Z",
@@ -56,7 +56,7 @@ test("ComplianceProgramReport structure is correct", () => {
   assert.equal(report.complianceControls.length, 3);
 });
 
-test("ComplianceProgramReport allows empty residency summary", () => {
+test("ComplianceProgramReport allows empty residency summary [compliance-program-service-types]", () => {
   const report: ComplianceProgramReport = {
     reportId: "report_empty",
     generatedAt: "2026-04-14T00:00:00.000Z",
@@ -73,7 +73,7 @@ test("ComplianceProgramReport allows empty residency summary", () => {
   assert.equal(report.auditExportReady, false);
 });
 
-test("ComplianceProgramExportResult structure is correct", () => {
+test("ComplianceProgramExportResult structure is correct [compliance-program-service-types]", () => {
   const result: ComplianceProgramExportResult = {
     report: {
       reportId: "report_export",
@@ -109,7 +109,7 @@ test("ComplianceProgramExportResult structure is correct", () => {
   assert.equal(result.markdownArtifact.artifactId, "art_md");
 });
 
-test("ComplianceProgramServiceOptions structure is correct", () => {
+test("ComplianceProgramServiceOptions structure is correct [compliance-program-service-types]", () => {
   const options: ComplianceProgramServiceOptions = {
     artifactStoreOptions: {
       rootDir: "/var/compliance/artifacts",
@@ -120,7 +120,7 @@ test("ComplianceProgramServiceOptions structure is correct", () => {
   assert.equal(options.artifactStoreOptions?.rootDir, "/var/compliance/artifacts");
 });
 
-test("ComplianceProgramServiceOptions allows empty options", () => {
+test("ComplianceProgramServiceOptions allows empty options [compliance-program-service-types]", () => {
   const options: ComplianceProgramServiceOptions = {};
   assert.equal(options.artifactStoreOptions, undefined);
 });

@@ -10,9 +10,9 @@
  * - Output truncation for large outputs
  * - Line ending normalization
  *
- * @see {@link https://github.com/anomalyco/automatic_agent/blob/main/docs_zh/contracts/sandbox_contract.md}
- * @see {@link https://github.com/anomalyco/automatic_agent/blob/main/docs_zh/governance/glossary_and_terminology.md}
- * @see {@link https://github.com/anomalyco/automatic_agent/blob/main/docs_zh/architecture/00-platform-architecture.md}
+ * @see {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/contracts/sandbox_contract.md}
+ * @see {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/governance/glossary_and_terminology.md}
+ * @see {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/architecture/00-platform-architecture.md}
  */
 
 // Matches ANSI/VT100 escape sequences including CSI cursor controls, OSC titles,

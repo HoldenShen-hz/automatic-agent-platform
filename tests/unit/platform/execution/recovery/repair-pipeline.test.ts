@@ -73,13 +73,13 @@ function makeMockReleaseRecord(): ReleaseRecord {
   };
 }
 
-test("DEFAULT_PIPELINE_OPTIONS has expected values", () => {
+test("DEFAULT_PIPELINE_OPTIONS has expected values [repair-pipeline]", () => {
   assert.equal(DEFAULT_PIPELINE_OPTIONS.maxRepairRounds, 2);
   assert.equal(DEFAULT_PIPELINE_OPTIONS.maxModelEscalations, 1);
   assert.equal(DEFAULT_PIPELINE_OPTIONS.enableAutomaticRepair, true);
 });
 
-test("RepairPipeline initializes with plan stage", () => {
+test("RepairPipeline initializes with plan stage [repair-pipeline]", () => {
   const card = createTestTaskCard();
   const pipeline = new RepairPipeline(card);
 
@@ -92,36 +92,36 @@ test("RepairPipeline initializes with plan stage", () => {
   assert.ok(state.updatedAt.length > 0);
 });
 
-test("RepairPipeline.getTaskCard returns the task card", () => {
+test("RepairPipeline.getTaskCard returns the task card [repair-pipeline]", () => {
   const card = createTestTaskCard();
   const pipeline = new RepairPipeline(card);
 
   assert.equal(pipeline.getTaskCard().taskId, "task-test-1");
 });
 
-test("RepairPipeline.isComplete returns false initially", () => {
+test("RepairPipeline.isComplete returns false initially [repair-pipeline]", () => {
   const pipeline = new RepairPipeline(createTestTaskCard());
   assert.equal(pipeline.isComplete(), false);
 });
 
-test("RepairPipeline.isComplete returns true when completed", () => {
+test("RepairPipeline.isComplete returns true when completed [repair-pipeline]", () => {
   const pipeline = new RepairPipeline(createTestTaskCard());
   pipeline.complete();
   assert.equal(pipeline.isComplete(), true);
 });
 
-test("RepairPipeline.isComplete returns true when failed", () => {
+test("RepairPipeline.isComplete returns true when failed [repair-pipeline]", () => {
   const pipeline = new RepairPipeline(createTestTaskCard());
   pipeline.fail("test failure");
   assert.equal(pipeline.isComplete(), true);
 });
 
-test("RepairPipeline.hasEscalated returns false initially", () => {
+test("RepairPipeline.hasEscalated returns false initially [repair-pipeline]", () => {
   const pipeline = new RepairPipeline(createTestTaskCard());
   assert.equal(pipeline.hasEscalated(), false);
 });
 
-test("RepairPipeline.transitionTo updates currentStage and stageHistory", () => {
+test("RepairPipeline.transitionTo updates currentStage and stageHistory [repair-pipeline]", () => {
   const pipeline = new RepairPipeline(createTestTaskCard());
   pipeline.transitionTo("build");
 
@@ -130,7 +130,7 @@ test("RepairPipeline.transitionTo updates currentStage and stageHistory", () => 
   assert.deepEqual(state.stageHistory, ["build"]);
 });
 
-test("RepairPipeline.transitionTo accumulates stageHistory", () => {
+test("RepairPipeline.transitionTo accumulates stageHistory [repair-pipeline]", () => {
   const pipeline = new RepairPipeline(createTestTaskCard());
   pipeline.transitionTo("build");
   pipeline.transitionTo("review");
@@ -140,7 +140,7 @@ test("RepairPipeline.transitionTo accumulates stageHistory", () => {
   assert.deepEqual(state.stageHistory, ["build", "review"]);
 });
 
-test("RepairPipeline.complete sets currentStage to completed", () => {
+test("RepairPipeline.complete sets currentStage to completed [repair-pipeline]", () => {
   const pipeline = new RepairPipeline(createTestTaskCard());
   pipeline.complete();
 
@@ -148,7 +148,7 @@ test("RepairPipeline.complete sets currentStage to completed", () => {
   assert.equal(state.currentStage, "completed");
 });
 
-test("RepairPipeline.fail sets currentStage to failed", () => {
+test("RepairPipeline.fail sets currentStage to failed [repair-pipeline]", () => {
   const pipeline = new RepairPipeline(createTestTaskCard());
   pipeline.fail("intentional failure");
 
@@ -156,7 +156,7 @@ test("RepairPipeline.fail sets currentStage to failed", () => {
   assert.equal(state.currentStage, "failed");
 });
 
-test("RepairPipeline.escalate sets escalated true and currentStage to escalated", () => {
+test("RepairPipeline.escalate sets escalated true and currentStage to escalated [repair-pipeline]", () => {
   const pipeline = new RepairPipeline(createTestTaskCard());
   pipeline.escalate("test escalation");
 
@@ -165,7 +165,7 @@ test("RepairPipeline.escalate sets escalated true and currentStage to escalated"
   assert.equal(state.currentStage, "escalated");
 });
 
-test("RepairPipeline.incrementRepairRound increments repairRound and sets stage to repair", () => {
+test("RepairPipeline.incrementRepairRound increments repairRound and sets stage to repair [repair-pipeline]", () => {
   const pipeline = new RepairPipeline(createTestTaskCard());
   pipeline.incrementRepairRound();
 
@@ -174,12 +174,12 @@ test("RepairPipeline.incrementRepairRound increments repairRound and sets stage 
   assert.equal(state.currentStage, "repair");
 });
 
-test("RepairPipeline.shouldRepair returns true when auto repair enabled and budget available", () => {
+test("RepairPipeline.shouldRepair returns true when auto repair enabled and budget available [repair-pipeline]", () => {
   const pipeline = new RepairPipeline(createTestTaskCard());
   assert.equal(pipeline.shouldRepair(), true);
 });
 
-test("RepairPipeline.shouldRepair returns false when repair budget exhausted", () => {
+test("RepairPipeline.shouldRepair returns false when repair budget exhausted [repair-pipeline]", () => {
   const card = createTaskCard({
     taskId: "task-test-2",
     title: "Test",
@@ -191,19 +191,19 @@ test("RepairPipeline.shouldRepair returns false when repair budget exhausted", (
   assert.equal(pipeline.shouldRepair(), false);
 });
 
-test("RepairPipeline.shouldRepair returns false when automatic repair disabled", () => {
+test("RepairPipeline.shouldRepair returns false when automatic repair disabled [repair-pipeline]", () => {
   const pipeline = new RepairPipeline(createTestTaskCard(), { enableAutomaticRepair: false });
   assert.equal(pipeline.shouldRepair(), false);
 });
 
-test("RepairPipeline.shouldRepair respects maxRepairRounds option", () => {
+test("RepairPipeline.shouldRepair respects maxRepairRounds option [repair-pipeline]", () => {
   const pipeline = new RepairPipeline(createTestTaskCard(), { maxRepairRounds: 1 });
   pipeline.incrementRepairRound(); // repairRound becomes 1
 
   assert.equal(pipeline.shouldRepair(), false);
 });
 
-test("RepairPipeline.handleValidationFailure escalates L3 failure immediately", () => {
+test("RepairPipeline.handleValidationFailure escalates L3 failure immediately [repair-pipeline]", () => {
   const pipeline = new RepairPipeline(createTestTaskCard());
   const mockReport = makeMockValidationReport();
 
@@ -213,7 +213,7 @@ test("RepairPipeline.handleValidationFailure escalates L3 failure immediately", 
   assert.ok(result.reason.includes("L3"));
 });
 
-test("RepairPipeline.handleValidationFailure repairs L1 failure within budget", () => {
+test("RepairPipeline.handleValidationFailure repairs L1 failure within budget [repair-pipeline]", () => {
   const pipeline = new RepairPipeline(createTestTaskCard());
   const mockReport = makeMockValidationReport();
 
@@ -223,7 +223,7 @@ test("RepairPipeline.handleValidationFailure repairs L1 failure within budget", 
   assert.ok(result.reason.includes("round 1"));
 });
 
-test("RepairPipeline.handleValidationFailure escalates when repair budget exhausted", () => {
+test("RepairPipeline.handleValidationFailure escalates when repair budget exhausted [repair-pipeline]", () => {
   const card = createTaskCard({
     taskId: "task-test-3",
     title: "Test",
@@ -243,7 +243,7 @@ test("RepairPipeline.handleValidationFailure escalates when repair budget exhaus
   assert.ok(result.reason.includes("L1") || result.reason.includes("schema_error"));
 });
 
-test("RepairPipeline.handleReviewFailure works similarly to handleValidationFailure", () => {
+test("RepairPipeline.handleReviewFailure works similarly to handleValidationFailure [repair-pipeline]", () => {
   const pipeline = new RepairPipeline(createTestTaskCard());
   const mockReport = makeMockReviewReport();
 
@@ -252,7 +252,7 @@ test("RepairPipeline.handleReviewFailure works similarly to handleValidationFail
   assert.equal(result.action, "repair");
 });
 
-test("RepairPipeline.setPatchBundle updates state", () => {
+test("RepairPipeline.setPatchBundle updates state [repair-pipeline]", () => {
   const pipeline = new RepairPipeline(createTestTaskCard());
   const bundle = makeMockPatchBundle();
 
@@ -262,7 +262,7 @@ test("RepairPipeline.setPatchBundle updates state", () => {
   assert.equal(state.patchBundle?.bundleId, "bundle-1");
 });
 
-test("RepairPipeline.setReviewReport updates state", () => {
+test("RepairPipeline.setReviewReport updates state [repair-pipeline]", () => {
   const pipeline = new RepairPipeline(createTestTaskCard());
   const report = makeMockReviewReport();
 
@@ -272,7 +272,7 @@ test("RepairPipeline.setReviewReport updates state", () => {
   assert.equal(state.reviewReport?.reportId, "r1");
 });
 
-test("RepairPipeline.setValidationReport updates state", () => {
+test("RepairPipeline.setValidationReport updates state [repair-pipeline]", () => {
   const pipeline = new RepairPipeline(createTestTaskCard());
   const report = makeMockValidationReport();
 
@@ -282,7 +282,7 @@ test("RepairPipeline.setValidationReport updates state", () => {
   assert.equal(state.validationReport?.reportId, "v1");
 });
 
-test("RepairPipeline.setReleaseRecord updates state", () => {
+test("RepairPipeline.setReleaseRecord updates state [repair-pipeline]", () => {
   const pipeline = new RepairPipeline(createTestTaskCard());
   const record = makeMockReleaseRecord();
 
@@ -292,12 +292,12 @@ test("RepairPipeline.setReleaseRecord updates state", () => {
   assert.equal(state.releaseRecord?.recordId, "rel-1");
 });
 
-test("PipelineStage type accepts all valid stages", () => {
+test("PipelineStage type accepts all valid stages [repair-pipeline]", () => {
   const stages: PipelineStage[] = ["plan", "build", "review", "validate", "repair", "re_validate", "release", "escalated", "completed", "failed"];
   assert.equal(stages.length, 10);
 });
 
-test("RepairPipeline options override defaults", () => {
+test("RepairPipeline options override defaults [repair-pipeline]", () => {
   const customOptions: Partial<PipelineOptions> = {
     maxRepairRounds: 5,
     maxModelEscalations: 3,
@@ -310,7 +310,7 @@ test("RepairPipeline options override defaults", () => {
   assert.equal(pipeline.shouldRepair(), false);
 });
 
-test("RepairPipeline handles non-autoRepairable L2 failure with escalation", () => {
+test("RepairPipeline handles non-autoRepairable L2 failure with escalation [repair-pipeline]", () => {
   const pipeline = new RepairPipeline(createTestTaskCard());
   const mockReport = makeMockValidationReport();
 

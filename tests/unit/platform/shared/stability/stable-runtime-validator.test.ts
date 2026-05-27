@@ -7,7 +7,7 @@ import {
   type StableValidationBaseline,
 } from "../../../../../src/platform/shared/stability/stable-runtime-validator.js";
 
-test("stable validation summarization aggregates runs by case", () => {
+test("stable validation summarization aggregates runs by case [stable-runtime-validator]", () => {
   const summaries = summarizeStableValidationRuns([
     {
       iteration: 1,
@@ -58,7 +58,7 @@ test("stable validation summarization aggregates runs by case", () => {
   ]);
 });
 
-test("stable validation baseline comparison marks the first run as baseline creation", () => {
+test("stable validation baseline comparison marks the first run as baseline creation [stable-runtime-validator]", () => {
   const comparison = compareStableValidationToBaseline(
     {
       failedRuns: 0,
@@ -97,7 +97,7 @@ test("stable validation baseline comparison marks the first run as baseline crea
   });
 });
 
-test("stable validation baseline comparison flags correctness regressions and timing drift", () => {
+test("stable validation baseline comparison flags correctness regressions and timing drift [stable-runtime-validator]", () => {
   const baseline: StableValidationBaseline = {
     createdAt: "2026-04-06T00:00:00.000Z",
     sourceStartedAt: "2026-04-06T00:00:00.000Z",

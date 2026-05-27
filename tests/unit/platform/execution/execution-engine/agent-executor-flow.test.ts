@@ -34,7 +34,7 @@ function createTestContext(overrides?: Partial<AgentExecutorContext>): AgentExec
 // AgentExecutor executeAgentRound - detailed behavior tests
 // ---------------------------------------------------------------------------
 
-test("AgentExecutor executeAgentRound returns response from model", async () => {
+test("AgentExecutor executeAgentRound returns response from model [agent-executor-flow]", async () => {
   const executor = new AgentExecutor();
   const input: AgentExecutorInput = {
     request: "test request",
@@ -51,7 +51,7 @@ test("AgentExecutor executeAgentRound returns response from model", async () => 
   assert.deepEqual(result.response, expectedResponse);
 });
 
-test("AgentExecutor executeAgentRound passes request through middleware", async () => {
+test("AgentExecutor executeAgentRound passes request through middleware [agent-executor-flow]", async () => {
   const executor = new AgentExecutor();
   const input: AgentExecutorInput = {
     request: "middleware test",
@@ -67,7 +67,7 @@ test("AgentExecutor executeAgentRound passes request through middleware", async 
   assert.ok(Array.isArray(result.beforeModelWarnings));
 });
 
-test("AgentExecutor executeAgentRound includes all warning arrays in result", async () => {
+test("AgentExecutor executeAgentRound includes all warning arrays in result [agent-executor-flow]", async () => {
   const executor = new AgentExecutor();
   const input: AgentExecutorInput = {
     request: "test",
@@ -87,7 +87,7 @@ test("AgentExecutor executeAgentRound includes all warning arrays in result", as
   assert.ok(Array.isArray(result.afterAgentWarnings));
 });
 
-test("AgentExecutor executeAgentRound handles model response with toolsUsed", async () => {
+test("AgentExecutor executeAgentRound handles model response with toolsUsed [agent-executor-flow]", async () => {
   const executor = new AgentExecutor();
   const input: AgentExecutorInput = {
     request: "use a tool",
@@ -105,7 +105,7 @@ test("AgentExecutor executeAgentRound handles model response with toolsUsed", as
   assert.ok("response" in result);
 });
 
-test("AgentExecutor executeAgentRound preserves history in middleware flow", async () => {
+test("AgentExecutor executeAgentRound preserves history in middleware flow [agent-executor-flow]", async () => {
   const executor = new AgentExecutor();
   const historyItem = { role: "assistant" as const, content: "previous response" };
   const input: AgentExecutorInput = {
@@ -127,7 +127,7 @@ test("AgentExecutor executeAgentRound preserves history in middleware flow", asy
 // AgentExecutor wrapToolCall - detailed behavior tests
 // ---------------------------------------------------------------------------
 
-test("AgentExecutor wrapToolCall wraps tool execution through chain", async () => {
+test("AgentExecutor wrapToolCall wraps tool execution through chain [agent-executor-flow]", async () => {
   const executor = new AgentExecutor();
   const toolName = "file_read";
   const args = { path: "/tmp/test.txt" };
@@ -145,7 +145,7 @@ test("AgentExecutor wrapToolCall wraps tool execution through chain", async () =
   assert.ok("success" in result.result);
 });
 
-test("AgentExecutor wrapToolCall returns tool result with warnings", async () => {
+test("AgentExecutor wrapToolCall returns tool result with warnings [agent-executor-flow]", async () => {
   const executor = new AgentExecutor();
   const toolName = "database_query";
   const args = { sql: "SELECT * FROM users" };
@@ -158,7 +158,7 @@ test("AgentExecutor wrapToolCall returns tool result with warnings", async () =>
   assert.ok(result.result);
 });
 
-test("AgentExecutor wrapToolCall handles complex tool arguments", async () => {
+test("AgentExecutor wrapToolCall handles complex tool arguments [agent-executor-flow]", async () => {
   const executor = new AgentExecutor();
   const toolName = "multi_param_tool";
   const args = {
@@ -175,7 +175,7 @@ test("AgentExecutor wrapToolCall handles complex tool arguments", async () => {
   assert.equal(result.result.result, "success");
 });
 
-test("AgentExecutor wrapToolCall passes through errors", async () => {
+test("AgentExecutor wrapToolCall passes through errors [agent-executor-flow]", async () => {
   const executor = new AgentExecutor();
   const toolName = "failing_tool";
   const args = { shouldFail: true };
@@ -195,7 +195,7 @@ test("AgentExecutor wrapToolCall passes through errors", async () => {
 // Middleware chain integration tests
 // ---------------------------------------------------------------------------
 
-test("AgentMiddlewareChain runAgentRound executes all middleware stages", async () => {
+test("AgentMiddlewareChain runAgentRound executes all middleware stages [agent-executor-flow]", async () => {
   const chain = new AgentMiddlewareChain();
   let stageOrder: string[] = [];
 
@@ -266,7 +266,7 @@ test("AgentMiddlewareChain runAgentRound executes all middleware stages", async 
   assert.ok(result.result);
 });
 
-test("AgentMiddlewareChain runAgentRound returns structured warnings from each stage", async () => {
+test("AgentMiddlewareChain runAgentRound returns structured warnings from each stage [agent-executor-flow]", async () => {
   const chain = new AgentMiddlewareChain({ failOpen: true });
 
   // Hooks that return success: false are what actually generate warnings in the chain
@@ -303,7 +303,7 @@ test("AgentMiddlewareChain runAgentRound returns structured warnings from each s
   assert.ok(result.beforeModelWarnings.some(w => w.includes("before model warning")), `Expected warning in beforeModelWarnings, got: ${JSON.stringify(result.beforeModelWarnings)}`);
 });
 
-test("AgentMiddlewareChain runAgentRound handles stepId in context", async () => {
+test("AgentMiddlewareChain runAgentRound handles stepId in context [agent-executor-flow]", async () => {
   const chain = new AgentMiddlewareChain();
   let capturedStepId: string | null = null;
 
@@ -328,7 +328,7 @@ test("AgentMiddlewareChain runAgentRound handles stepId in context", async () =>
   assert.equal(capturedStepId, "step-123");
 });
 
-test("AgentMiddlewareChain runAgentRound passes model option through stages", async () => {
+test("AgentMiddlewareChain runAgentRound passes model option through stages [agent-executor-flow]", async () => {
   const chain = new AgentMiddlewareChain();
   let capturedModel: string | undefined;
 
@@ -353,7 +353,7 @@ test("AgentMiddlewareChain runAgentRound passes model option through stages", as
   assert.equal(capturedModel, "claude-opus-4-20250514");
 });
 
-test("AgentMiddlewareChain runAgentRound handles model undefined", async () => {
+test("AgentMiddlewareChain runAgentRound handles model undefined [agent-executor-flow]", async () => {
   const chain = new AgentMiddlewareChain();
   let capturedInputModel: string | undefined;
 
@@ -378,7 +378,7 @@ test("AgentMiddlewareChain runAgentRound handles model undefined", async () => {
   assert.ok(result.result);
 });
 
-test("AgentMiddlewareChain runAgentRound continues after hook failure with failOpen", async () => {
+test("AgentMiddlewareChain runAgentRound continues after hook failure with failOpen [agent-executor-flow]", async () => {
   const chain = new AgentMiddlewareChain({ failOpen: true });
   let modelCalled = false;
 
@@ -405,7 +405,7 @@ test("AgentMiddlewareChain runAgentRound continues after hook failure with failO
   assert.ok(result.result);
 });
 
-test("AgentMiddlewareChain afterModel hook receives modified messages", async () => {
+test("AgentMiddlewareChain afterModel hook receives modified messages [agent-executor-flow]", async () => {
   const chain = new AgentMiddlewareChain();
   const modifiedMessages = [{ role: "user" as const, content: "modified message" }];
 
@@ -443,7 +443,7 @@ test("AgentMiddlewareChain afterModel hook receives modified messages", async ()
 // Loop detection integration tests
 // ---------------------------------------------------------------------------
 
-test("AgentExecutor with loop detection config creates loop state", () => {
+test("AgentExecutor with loop detection config creates loop state [agent-executor-flow]", () => {
   const loopConfig: LoopDetectionConfig = {
     warnThreshold: 3,
     escalateThreshold: 5,
@@ -455,7 +455,7 @@ test("AgentExecutor with loop detection config creates loop state", () => {
   assert.ok(Array.isArray(patterns));
 });
 
-test("AgentExecutor loop detection can be reset", () => {
+test("AgentExecutor loop detection can be reset [agent-executor-flow]", () => {
   const executor = new AgentExecutor({
     loopDetection: { warnThreshold: 1, escalateThreshold: 3 },
   });
@@ -464,7 +464,7 @@ test("AgentExecutor loop detection can be reset", () => {
   assert.doesNotThrow(() => executor.resetLoopDetection());
 });
 
-test("AgentExecutor executeAgentRound with loop detection includes loop info", async () => {
+test("AgentExecutor executeAgentRound with loop detection includes loop info [agent-executor-flow]", async () => {
   const executor = new AgentExecutor({
     loopDetection: { warnThreshold: 2, escalateThreshold: 5 },
   });
@@ -486,7 +486,7 @@ test("AgentExecutor executeAgentRound with loop detection includes loop info", a
   }
 });
 
-test("AgentExecutor with null loop detection has no loop state", () => {
+test("AgentExecutor with null loop detection has no loop state [agent-executor-flow]", () => {
   const executor = new AgentExecutor({ loopDetection: null });
   const patterns = executor.getLoopDetectionPatterns();
 
@@ -498,7 +498,7 @@ test("AgentExecutor with null loop detection has no loop state", () => {
 // initializeAgentExecutor tests
 // ---------------------------------------------------------------------------
 
-test("initializeAgentExecutor registers default middleware hooks", () => {
+test("initializeAgentExecutor registers default middleware hooks [agent-executor-flow]", () => {
   // This initializes the global chain with default hooks
   const ctx = initializeAgentExecutor({});
 
@@ -509,21 +509,21 @@ test("initializeAgentExecutor registers default middleware hooks", () => {
   assert.ok(Array.isArray(hooks.wrapToolCall));
 });
 
-test("initializeAgentExecutor is idempotent", () => {
+test("initializeAgentExecutor is idempotent [agent-executor-flow]", () => {
   const ctx1 = initializeAgentExecutor({});
   const ctx2 = initializeAgentExecutor({});
 
   assert.strictEqual(ctx1, ctx2, "Should return same context on repeated calls");
 });
 
-test("initializeAgentExecutor with failOpen false", () => {
+test("initializeAgentExecutor with failOpen false [agent-executor-flow]", () => {
   const ctx = initializeAgentExecutor({ failOpen: false });
 
   assert.ok(ctx.chain);
   assert.ok(ctx.loopDetection);
 });
 
-test("initializeAgentExecutor with logger captures logs", () => {
+test("initializeAgentExecutor with logger captures logs [agent-executor-flow]", () => {
   let loggerCalled = false;
   const logger = (code: string, msg: string, ctx: unknown) => {
     loggerCalled = true;
@@ -538,7 +538,7 @@ test("initializeAgentExecutor with logger captures logs", () => {
 // createAgentExecutor factory tests
 // ---------------------------------------------------------------------------
 
-test("createAgentExecutor accepts loop detection options", () => {
+test("createAgentExecutor accepts loop detection options [agent-executor-flow]", () => {
   const executor = createAgentExecutor({
     loopDetection: {
       warnThreshold: 2,
@@ -553,7 +553,7 @@ test("createAgentExecutor accepts loop detection options", () => {
   assert.ok(Array.isArray(patterns));
 });
 
-test("createAgentExecutor with custom logger", () => {
+test("createAgentExecutor with custom logger [agent-executor-flow]", () => {
   const logger = (code: string, msg: string) => {
     // logger implementation
   };
@@ -563,7 +563,7 @@ test("createAgentExecutor with custom logger", () => {
   assert.ok(executor instanceof AgentExecutor);
 });
 
-test("createAgentExecutor multiple calls create separate executors", () => {
+test("createAgentExecutor multiple calls create separate executors [agent-executor-flow]", () => {
   const executor1 = createAgentExecutor();
   const executor2 = createAgentExecutor();
 
@@ -581,14 +581,14 @@ test("createAgentExecutor multiple calls create separate executors", () => {
 // getGlobalAgentMiddlewareChain tests
 // ---------------------------------------------------------------------------
 
-test("getGlobalAgentMiddlewareChain returns singleton chain", () => {
+test("getGlobalAgentMiddlewareChain returns singleton chain [agent-executor-flow]", () => {
   const chain1 = getGlobalAgentMiddlewareChain();
   const chain2 = getGlobalAgentMiddlewareChain();
 
   assert.ok(chain1 === chain2, "Should return same singleton instance");
 });
 
-test("getGlobalAgentMiddlewareChain has expected hook types", () => {
+test("getGlobalAgentMiddlewareChain has expected hook types [agent-executor-flow]", () => {
   const chain = getGlobalAgentMiddlewareChain();
   const hooks = chain.getRegisteredHooks();
 
@@ -604,14 +604,14 @@ test("getGlobalAgentMiddlewareChain has expected hook types", () => {
 // getAgentExecutorContext tests
 // ---------------------------------------------------------------------------
 
-test("getAgentExecutorContext returns null before initialization", () => {
+test("getAgentExecutorContext returns null before initialization [agent-executor-flow]", () => {
   // Note: Due to module-level singleton pattern, this may return non-null
   // if other tests have already initialized. We just verify it doesn't throw.
   const ctx = getAgentExecutorContext();
   assert.ok(ctx === null || typeof ctx === "object");
 });
 
-test("getAgentExecutorContext after initialization returns context", () => {
+test("getAgentExecutorContext after initialization returns context [agent-executor-flow]", () => {
   initializeAgentExecutor({});
   const ctx = getAgentExecutorContext();
 
@@ -624,7 +624,7 @@ test("getAgentExecutorContext after initialization returns context", () => {
 // Edge cases and error handling
 // ---------------------------------------------------------------------------
 
-test("AgentExecutor executeAgentRound handles empty request string", async () => {
+test("AgentExecutor executeAgentRound handles empty request string [agent-executor-flow]", async () => {
   const executor = new AgentExecutor();
   const input: AgentExecutorInput = {
     request: "",
@@ -639,7 +639,7 @@ test("AgentExecutor executeAgentRound handles empty request string", async () =>
   assert.ok(result);
 });
 
-test("AgentExecutor executeAgentRound handles large history array", async () => {
+test("AgentExecutor executeAgentRound handles large history array [agent-executor-flow]", async () => {
   const executor = new AgentExecutor();
   const largeHistory = Array.from({ length: 50 }, (_, i) => ({
     role: i % 2 === 0 ? "user" : "assistant",
@@ -660,7 +660,7 @@ test("AgentExecutor executeAgentRound handles large history array", async () => 
   assert.ok(Array.isArray(result.beforeAgentWarnings));
 });
 
-test("AgentExecutor wrapToolCall with empty args", async () => {
+test("AgentExecutor wrapToolCall with empty args [agent-executor-flow]", async () => {
   const executor = new AgentExecutor();
   const toolName = "no_args_tool";
   const args = {};
@@ -672,7 +672,7 @@ test("AgentExecutor wrapToolCall with empty args", async () => {
   assert.ok(Array.isArray(result.warnings));
 });
 
-test("AgentMiddlewareChain runAgentRound passes all warnings to result", async () => {
+test("AgentMiddlewareChain runAgentRound passes all warnings to result [agent-executor-flow]", async () => {
   const chain = new AgentMiddlewareChain({ failOpen: true });
 
   // When success: false is returned with continueOnError, warnings are generated

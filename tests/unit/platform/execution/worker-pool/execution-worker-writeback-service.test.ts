@@ -220,7 +220,7 @@ function setActiveLease(store: AuthoritativeTaskStore, lease: ExecutionLeaseReco
 // recordWriteback - execution not found
 // ---------------------------------------------------------------------------
 
-test("recordWriteback returns execution_not_found when execution view is null", () => {
+test("recordWriteback returns execution_not_found when execution view is null [execution-worker-writeback-service]", () => {
   const store = createMockStore();
   store.operations.loadExecutionAuthoritativeView = () => null;
   const db = createMockDb();
@@ -242,7 +242,7 @@ test("recordWriteback returns execution_not_found when execution view is null", 
 // recordWriteback - task not found
 // ---------------------------------------------------------------------------
 
-test("recordWriteback returns task_not_found when task is null in view", () => {
+test("recordWriteback returns task_not_found when task is null in view [execution-worker-writeback-service]", () => {
   const store = createMockStore();
   store.operations.loadExecutionAuthoritativeView = () => makeExecutionView({ task: null });
   const db = createMockDb();
@@ -264,7 +264,7 @@ test("recordWriteback returns task_not_found when task is null in view", () => {
 // recordWriteback - workflow not found
 // ---------------------------------------------------------------------------
 
-test("recordWriteback returns workflow_not_found when workflow is null in view", () => {
+test("recordWriteback returns workflow_not_found when workflow is null in view [execution-worker-writeback-service]", () => {
   const store = createMockStore();
   store.operations.loadExecutionAuthoritativeView = () => makeExecutionView({ workflow: null });
   const db = createMockDb();
@@ -286,7 +286,7 @@ test("recordWriteback returns workflow_not_found when workflow is null in view",
 // recordWriteback - session not found
 // ---------------------------------------------------------------------------
 
-test("recordWriteback returns session_not_found when session is null in view", () => {
+test("recordWriteback returns session_not_found when session is null in view [execution-worker-writeback-service]", () => {
   const store = createMockStore();
   store.operations.loadExecutionAuthoritativeView = () => makeExecutionView({ session: null });
   const db = createMockDb();
@@ -308,7 +308,7 @@ test("recordWriteback returns session_not_found when session is null in view", (
 // recordWriteback - execution not executing
 // ---------------------------------------------------------------------------
 
-test("recordWriteback returns execution_not_executing when execution status is not executing", () => {
+test("recordWriteback returns execution_not_executing when execution status is not executing [execution-worker-writeback-service]", () => {
   const store = createMockStore();
   store.operations.loadExecutionAuthoritativeView = () => makeExecutionView({ execution: makeExecution({ status: "succeeded" }) });
   const db = createMockDb();
@@ -330,7 +330,7 @@ test("recordWriteback returns execution_not_executing when execution status is n
 // recordWriteback - lease not found
 // ---------------------------------------------------------------------------
 
-test("recordWriteback returns lease_not_found when lease does not exist", () => {
+test("recordWriteback returns lease_not_found when lease does not exist [execution-worker-writeback-service]", () => {
   const store = createMockStore();
   store.operations.loadExecutionAuthoritativeView = () => makeExecutionView();
   setActiveLease(store, undefined);
@@ -353,7 +353,7 @@ test("recordWriteback returns lease_not_found when lease does not exist", () => 
 // recordWriteback - worker_not_trusted for remote worker
 // ---------------------------------------------------------------------------
 
-test("recordWriteback returns worker_not_trusted for remote worker without registrationVerifiedAt", () => {
+test("recordWriteback returns worker_not_trusted for remote worker without registrationVerifiedAt [execution-worker-writeback-service]", () => {
   const store = createMockStore();
   store.operations.loadExecutionAuthoritativeView = () => makeExecutionView();
   store.worker.getWorkerSnapshot = () => makeWorkerSnapshot({ placement: "remote", registrationVerifiedAt: null });
@@ -377,7 +377,7 @@ test("recordWriteback returns worker_not_trusted for remote worker without regis
 // recordWriteback - remote_authority_block_reason
 // ---------------------------------------------------------------------------
 
-test("recordWriteback returns remote_authority_block_reason for remote worker with viewer_only session", () => {
+test("recordWriteback returns remote_authority_block_reason for remote worker with viewer_only session [execution-worker-writeback-service]", () => {
   const store = createMockStore();
   store.operations.loadExecutionAuthoritativeView = () => makeExecutionView();
   store.worker.getWorkerSnapshot = () =>
@@ -403,7 +403,7 @@ test("recordWriteback returns remote_authority_block_reason for remote worker wi
   assert.equal(result.reasonCode, "remote_session_viewer_only");
 });
 
-test("recordWriteback returns remote_authority_block_reason for remote worker with consistency mismatch", () => {
+test("recordWriteback returns remote_authority_block_reason for remote worker with consistency mismatch [execution-worker-writeback-service]", () => {
   const store = createMockStore();
   store.operations.loadExecutionAuthoritativeView = () => makeExecutionView();
   store.worker.getWorkerSnapshot = () =>
@@ -430,7 +430,7 @@ test("recordWriteback returns remote_authority_block_reason for remote worker wi
   assert.equal(result.reasonCode, "remote_session_consistency_mismatch");
 });
 
-test("recordWriteback returns remote_authority_block_reason for remote worker with workspace conflict", () => {
+test("recordWriteback returns remote_authority_block_reason for remote worker with workspace conflict [execution-worker-writeback-service]", () => {
   const store = createMockStore();
   store.operations.loadExecutionAuthoritativeView = () => makeExecutionView();
   store.worker.getWorkerSnapshot = () =>
@@ -461,7 +461,7 @@ test("recordWriteback returns remote_authority_block_reason for remote worker wi
 // recordWriteback - resource_limit_exceeded
 // ---------------------------------------------------------------------------
 
-test("recordWriteback returns resource_limit_exceeded when resource ceiling guard fails", () => {
+test("recordWriteback returns resource_limit_exceeded when resource ceiling guard fails [execution-worker-writeback-service]", () => {
   const store = createMockStore();
   store.operations.loadExecutionAuthoritativeView = () => makeExecutionView();
   store.worker.getWorkerSnapshot = () => makeWorkerSnapshot();
@@ -486,7 +486,7 @@ test("recordWriteback returns resource_limit_exceeded when resource ceiling guar
   assert.equal(result.reasonCode, "resource_limit_exceeded");
 });
 
-test("recordWriteback preserves null task output when neither input nor task row provides one", () => {
+test("recordWriteback preserves null task output when neither input nor task row provides one [execution-worker-writeback-service]", () => {
   const store = createMockStore();
   store.operations.loadExecutionAuthoritativeView = () => makeExecutionView({
     task: makeTask({ outputJson: null, status: "in_progress" }),

@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { mapNode, mapLease, mapEpoch, mapFailoverDecision } from "../../../../../src/platform/five-plane-execution/ha/mappers.js";
 
-test("mapNode converts raw row to CoordinatorNode", () => {
+test("mapNode converts raw row to CoordinatorNode [mappers]", () => {
   const row = {
     node_id: "node_1",
     region: "us-east-1",
@@ -25,7 +25,7 @@ test("mapNode converts raw row to CoordinatorNode", () => {
   assert.deepEqual(node.metadata, { tags: ["production"] });
 });
 
-test("mapNode handles null metadata", () => {
+test("mapNode handles null metadata [mappers]", () => {
   const row = {
     node_id: "node_1",
     region: "us-east-1",
@@ -42,7 +42,7 @@ test("mapNode handles null metadata", () => {
   assert.equal(node.isLeader, false);
 });
 
-test("mapNode converts numeric booleans correctly", () => {
+test("mapNode converts numeric booleans correctly [mappers]", () => {
   const leaderRow = {
     node_id: "node_leader",
     region: "us-west-2",
@@ -67,7 +67,7 @@ test("mapNode converts numeric booleans correctly", () => {
   assert.equal(mapNode(followerRow).isLeader, false);
 });
 
-test("mapLease converts raw row to LeaderLease", () => {
+test("mapLease converts raw row to LeaderLease [mappers]", () => {
   const row = {
     lease_id: "lease_1",
     node_id: "node_1",
@@ -89,7 +89,7 @@ test("mapLease converts raw row to LeaderLease", () => {
   assert.equal(lease.ttlMs, 30000);
 });
 
-test("mapLease handles expired status", () => {
+test("mapLease handles expired status [mappers]", () => {
   const row = {
     lease_id: "lease_expired",
     node_id: "node_1",
@@ -105,7 +105,7 @@ test("mapLease handles expired status", () => {
   assert.equal(lease.status, "expired");
 });
 
-test("mapLease handles released status", () => {
+test("mapLease handles released status [mappers]", () => {
   const row = {
     lease_id: "lease_released",
     node_id: "node_1",
@@ -121,7 +121,7 @@ test("mapLease handles released status", () => {
   assert.equal(lease.status, "released");
 });
 
-test("mapEpoch converts raw row to LeadershipEpoch", () => {
+test("mapEpoch converts raw row to LeadershipEpoch [mappers]", () => {
   const row = {
     epoch: 3,
     leader_node_id: "node_1",
@@ -141,7 +141,7 @@ test("mapEpoch converts raw row to LeadershipEpoch", () => {
   assert.equal(epoch.fencingToken, 7);
 });
 
-test("mapEpoch handles null leader_node_id", () => {
+test("mapEpoch handles null leader_node_id [mappers]", () => {
   const row = {
     epoch: 1,
     leader_node_id: null,
@@ -157,7 +157,7 @@ test("mapEpoch handles null leader_node_id", () => {
   assert.equal(epoch.endedAt, null);
 });
 
-test("mapEpoch handles various causes", () => {
+test("mapEpoch handles various causes [mappers]", () => {
   const causes = ["acquired", "renewed", "expired", "preempted", "voluntary"] as const;
 
   causes.forEach((cause) => {
@@ -175,7 +175,7 @@ test("mapEpoch handles various causes", () => {
   });
 });
 
-test("mapFailoverDecision converts raw row to FailoverDecision", () => {
+test("mapFailoverDecision converts raw row to FailoverDecision [mappers]", () => {
   const row = {
     decision_id: "decision_1",
     old_leader_node_id: "node_old",
@@ -199,7 +199,7 @@ test("mapFailoverDecision converts raw row to FailoverDecision", () => {
   assert.equal(decision.fencingToken, 12);
 });
 
-test("mapFailoverDecision handles null old leader", () => {
+test("mapFailoverDecision handles null old leader [mappers]", () => {
   const row = {
     decision_id: "decision_initial",
     old_leader_node_id: null,
@@ -217,7 +217,7 @@ test("mapFailoverDecision handles null old leader", () => {
   assert.equal(decision.newLeaderNodeId, "node_1");
 });
 
-test("mapFailoverDecision handles no_change outcome", () => {
+test("mapFailoverDecision handles no_change outcome [mappers]", () => {
   const row = {
     decision_id: "decision_no_change",
     old_leader_node_id: "node_1",
@@ -235,7 +235,7 @@ test("mapFailoverDecision handles no_change outcome", () => {
   assert.equal(decision.newLeaderNodeId, null);
 });
 
-test("mapFailoverDecision handles no_candidate outcome", () => {
+test("mapFailoverDecision handles no_candidate outcome [mappers]", () => {
   const row = {
     decision_id: "decision_no_candidate",
     old_leader_node_id: "node_1",
@@ -252,7 +252,7 @@ test("mapFailoverDecision handles no_candidate outcome", () => {
   assert.equal(decision.outcome, "no_candidate");
 });
 
-test("mapFailoverDecision handles various causes", () => {
+test("mapFailoverDecision handles various causes [mappers]", () => {
   const causes = [
     "heartbeat_missing",
     "node_unhealthy",
@@ -278,7 +278,7 @@ test("mapFailoverDecision handles various causes", () => {
   });
 });
 
-test("mapNode handles string numbers correctly", () => {
+test("mapNode handles string numbers correctly [mappers]", () => {
   const row = {
     node_id: "node_1",
     region: "us-east-1",
@@ -295,7 +295,7 @@ test("mapNode handles string numbers correctly", () => {
   assert.equal(node.isLeader, true);
 });
 
-test("mapLease handles string numeric values", () => {
+test("mapLease handles string numeric values [mappers]", () => {
   const row = {
     lease_id: "lease_1",
     node_id: "node_1",

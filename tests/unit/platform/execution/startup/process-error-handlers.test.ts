@@ -59,14 +59,14 @@ function createMockGracefulShutdown(): GracefulShutdown & MockGracefulShutdown {
 // Tests - createUncaughtExceptionHandler
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("createUncaughtExceptionHandler - returns a function", () => {
+test("createUncaughtExceptionHandler - returns a function [process-error-handlers]", () => {
   const shutdown = createMockGracefulShutdown();
   const handler = createUncaughtExceptionHandler(shutdown);
 
   assert.equal(typeof handler, "function");
 });
 
-test("createUncaughtExceptionHandler - calls initiateShutdown with reason", () => {
+test("createUncaughtExceptionHandler - calls initiateShutdown with reason [process-error-handlers]", () => {
   const shutdown = createMockGracefulShutdown();
   const handler = createUncaughtExceptionHandler(shutdown);
 
@@ -76,7 +76,7 @@ test("createUncaughtExceptionHandler - calls initiateShutdown with reason", () =
   assert.deepStrictEqual(shutdown.initiateShutdownCalls, ["uncaught_exception"]);
 });
 
-test("createUncaughtExceptionHandler - handles initiateShutdown error gracefully", () => {
+test("createUncaughtExceptionHandler - handles initiateShutdown error gracefully [process-error-handlers]", () => {
   const shutdown = createMockGracefulShutdown() as unknown as GracefulShutdown & MockGracefulShutdown & { initiateShutdownError: Error | null };
   (shutdown as any).initiateShutdownError = new Error("shutdown failed");
 
@@ -87,7 +87,7 @@ test("createUncaughtExceptionHandler - handles initiateShutdown error gracefully
   assert.deepStrictEqual(shutdown.initiateShutdownCalls, ["uncaught_exception"]);
 });
 
-test("createUncaughtExceptionHandler - multiple calls cancel previous timer", () => {
+test("createUncaughtExceptionHandler - multiple calls cancel previous timer [process-error-handlers]", () => {
   const shutdown = createMockGracefulShutdown();
   const handler = createUncaughtExceptionHandler(shutdown);
 
@@ -99,7 +99,7 @@ test("createUncaughtExceptionHandler - multiple calls cancel previous timer", ()
   assert.equal(shutdown.initiateShutdownCalls.length, 2);
 });
 
-test("createUncaughtExceptionHandler - logs error with stack trace", () => {
+test("createUncaughtExceptionHandler - logs error with stack trace [process-error-handlers]", () => {
   const shutdown = createMockGracefulShutdown();
   const handler = createUncaughtExceptionHandler(shutdown);
 
@@ -115,14 +115,14 @@ test("createUncaughtExceptionHandler - logs error with stack trace", () => {
 // Tests - createUnhandledRejectionHandler
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("createUnhandledRejectionHandler - returns a function", () => {
+test("createUnhandledRejectionHandler - returns a function [process-error-handlers]", () => {
   const shutdown = createMockGracefulShutdown();
   const handler = createUnhandledRejectionHandler(shutdown);
 
   assert.equal(typeof handler, "function");
 });
 
-test("createUnhandledRejectionHandler - calls initiateShutdown for non-recoverable errors", () => {
+test("createUnhandledRejectionHandler - calls initiateShutdown for non-recoverable errors [process-error-handlers]", () => {
   const shutdown = createMockGracefulShutdown();
   const handler = createUnhandledRejectionHandler(shutdown);
 
@@ -131,7 +131,7 @@ test("createUnhandledRejectionHandler - calls initiateShutdown for non-recoverab
   assert.deepStrictEqual(shutdown.initiateShutdownCalls, ["unhandled_rejection"]);
 });
 
-test("createUnhandledRejectionHandler - does NOT exit for structured recoverable storage/network codes", () => {
+test("createUnhandledRejectionHandler - does NOT exit for structured recoverable storage/network codes [process-error-handlers]", () => {
   const shutdown = createMockGracefulShutdown();
   const handler = createUnhandledRejectionHandler(shutdown);
 
@@ -146,7 +146,7 @@ test("createUnhandledRejectionHandler - does NOT exit for structured recoverable
   assert.deepStrictEqual(shutdown.initiateShutdownCalls, []);
 });
 
-test("createUnhandledRejectionHandler - does NOT exit for retryable recoverable errors", () => {
+test("createUnhandledRejectionHandler - does NOT exit for retryable recoverable errors [process-error-handlers]", () => {
   const shutdown = createMockGracefulShutdown();
   const handler = createUnhandledRejectionHandler(shutdown);
 
@@ -160,7 +160,7 @@ test("createUnhandledRejectionHandler - does NOT exit for retryable recoverable 
   assert.deepStrictEqual(shutdown.initiateShutdownCalls, []);
 });
 
-test("createUnhandledRejectionHandler - does NOT exit for ECONNREFUSED", () => {
+test("createUnhandledRejectionHandler - does NOT exit for ECONNREFUSED [process-error-handlers]", () => {
   const shutdown = createMockGracefulShutdown();
   const handler = createUnhandledRejectionHandler(shutdown);
 
@@ -171,7 +171,7 @@ test("createUnhandledRejectionHandler - does NOT exit for ECONNREFUSED", () => {
   assert.deepStrictEqual(shutdown.initiateShutdownCalls, []);
 });
 
-test("createUnhandledRejectionHandler - does NOT exit for ETIMEDOUT", () => {
+test("createUnhandledRejectionHandler - does NOT exit for ETIMEDOUT [process-error-handlers]", () => {
   const shutdown = createMockGracefulShutdown();
   const handler = createUnhandledRejectionHandler(shutdown);
 
@@ -182,7 +182,7 @@ test("createUnhandledRejectionHandler - does NOT exit for ETIMEDOUT", () => {
   assert.deepStrictEqual(shutdown.initiateShutdownCalls, []);
 });
 
-test("createUnhandledRejectionHandler - handles string reason", () => {
+test("createUnhandledRejectionHandler - handles string reason [process-error-handlers]", () => {
   const shutdown = createMockGracefulShutdown();
   const handler = createUnhandledRejectionHandler(shutdown);
 
@@ -192,7 +192,7 @@ test("createUnhandledRejectionHandler - handles string reason", () => {
   assert.deepStrictEqual(shutdown.initiateShutdownCalls, ["unhandled_rejection"]);
 });
 
-test("createUnhandledRejectionHandler - handles null reason", () => {
+test("createUnhandledRejectionHandler - handles null reason [process-error-handlers]", () => {
   const shutdown = createMockGracefulShutdown();
   const handler = createUnhandledRejectionHandler(shutdown);
 
@@ -202,7 +202,7 @@ test("createUnhandledRejectionHandler - handles null reason", () => {
   assert.deepStrictEqual(shutdown.initiateShutdownCalls, ["unhandled_rejection"]);
 });
 
-test("createUnhandledRejectionHandler - handles undefined reason", () => {
+test("createUnhandledRejectionHandler - handles undefined reason [process-error-handlers]", () => {
   const shutdown = createMockGracefulShutdown();
   const handler = createUnhandledRejectionHandler(shutdown);
 
@@ -212,7 +212,7 @@ test("createUnhandledRejectionHandler - handles undefined reason", () => {
   assert.deepStrictEqual(shutdown.initiateShutdownCalls, ["unhandled_rejection"]);
 });
 
-test("createUnhandledRejectionHandler - handles initiateShutdown error gracefully", () => {
+test("createUnhandledRejectionHandler - handles initiateShutdown error gracefully [process-error-handlers]", () => {
   const shutdown = createMockGracefulShutdown() as unknown as GracefulShutdown & MockGracefulShutdown & { initiateShutdownError: Error | null };
   (shutdown as any).initiateShutdownError = new Error("shutdown failed");
 
@@ -223,7 +223,7 @@ test("createUnhandledRejectionHandler - handles initiateShutdown error gracefull
   assert.deepStrictEqual(shutdown.initiateShutdownCalls, ["unhandled_rejection"]);
 });
 
-test("createUnhandledRejectionHandler - multiple recoverable calls don't accumulate timers", () => {
+test("createUnhandledRejectionHandler - multiple recoverable calls don't accumulate timers [process-error-handlers]", () => {
   const shutdown = createMockGracefulShutdown();
   const handler = createUnhandledRejectionHandler(shutdown);
 
@@ -238,7 +238,7 @@ test("createUnhandledRejectionHandler - multiple recoverable calls don't accumul
   assert.deepStrictEqual(shutdown.initiateShutdownCalls, []);
 });
 
-test("createUnhandledRejectionHandler - handles error with custom name that is not recoverable", () => {
+test("createUnhandledRejectionHandler - handles error with custom name that is not recoverable [process-error-handlers]", () => {
   const shutdown = createMockGracefulShutdown();
   const handler = createUnhandledRejectionHandler(shutdown);
 
@@ -250,7 +250,7 @@ test("createUnhandledRejectionHandler - handles error with custom name that is n
   assert.deepStrictEqual(shutdown.initiateShutdownCalls, ["unhandled_rejection"]);
 });
 
-test("createUnhandledRejectionHandler - Error instance with no name is non-recoverable", () => {
+test("createUnhandledRejectionHandler - Error instance with no name is non-recoverable [process-error-handlers]", () => {
   const shutdown = createMockGracefulShutdown();
   const handler = createUnhandledRejectionHandler(shutdown);
 
@@ -262,7 +262,7 @@ test("createUnhandledRejectionHandler - Error instance with no name is non-recov
   assert.deepStrictEqual(shutdown.initiateShutdownCalls, ["unhandled_rejection"]);
 });
 
-test("createUnhandledRejectionHandler - Promise rejection with object reason", () => {
+test("createUnhandledRejectionHandler - Promise rejection with object reason [process-error-handlers]", () => {
   const shutdown = createMockGracefulShutdown();
   const handler = createUnhandledRejectionHandler(shutdown);
 

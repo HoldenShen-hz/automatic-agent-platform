@@ -98,7 +98,7 @@ function createTerminalFixture() {
   return { workspace, db, store, now };
 }
 
-test("transition-service source keeps CAS updates for every runtime entity", () => {
+test("transition-service source keeps CAS updates for every runtime entity [transition-service]", () => {
   for (const fragment of [
     "updateTaskStatusCas(",
     "updateWorkflowStateCas(",
@@ -111,7 +111,7 @@ test("transition-service source keeps CAS updates for every runtime entity", () 
   }
 });
 
-test("TransitionService.transitionTaskTerminalState cascades failure across task, workflow, session, and execution", () => {
+test("TransitionService.transitionTaskTerminalState cascades failure across task, workflow, session, and execution [transition-service]", () => {
   const fixture = createTerminalFixture();
   try {
     new TransitionService(fixture.db, fixture.store).transitionTaskTerminalState({

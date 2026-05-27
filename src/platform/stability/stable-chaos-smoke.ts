@@ -18,16 +18,16 @@
  * - `missing_ack_rebuild_and_replay`: Detects event-consumer ack gaps and rebuilds the missing rows.
  *
  * **Design contract:**
- * - {@link https://github.com/anomalyco/automatic-agent/blob/main/docs_zh/contracts/quality_engineering_and_chaos_testing_contract.md | quality_engineering_and_chaos_testing_contract.md}
- * - {@link https://github.com/anomalyco/automatic-agent/blob/main/docs_zh/contracts/startup_consistency_and_recovery_drill_contract.md | startup_consistency_and_recovery_drill_contract.md}
- * - {@link https://github.com/anomalyco/automatic-agent/blob/main/docs_zh/contracts/runtime_execution_contract.md | runtime_execution_contract.md}
- * - {@link https://github.com/anomalyco/automatic-agent/blob/main/docs_zh/contracts/task_lease_and_fencing_contract.md | task_lease_and_fencing_contract.md}
- * - {@link https://github.com/anomalyco/automatic-agent/blob/main/docs_zh/contracts/approval_and_hitl_contract.md | approval_and_hitl_contract.md}
+ * - {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/contracts/quality_engineering_and_chaos_testing_contract.md | quality_engineering_and_chaos_testing_contract.md}
+ * - {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/contracts/startup_consistency_and_recovery_drill_contract.md | startup_consistency_and_recovery_drill_contract.md}
+ * - {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/contracts/runtime_execution_contract.md | runtime_execution_contract.md}
+ * - {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/contracts/task_lease_and_fencing_contract.md | task_lease_and_fencing_contract.md}
+ * - {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/contracts/approval_and_hitl_contract.md | approval_and_hitl_contract.md}
  *
  * **Glossary terms:** `task`, `execution`, `session`, `lease`, `fencing token`, `execution ticket`,
  * `orphan queue claim`, `stale execution`, `startup consistency checker`, `runtime repair service`
  *
- * **Architecture:** {@link https://github.com/anomalyco/automatic-agent/blob/main/docs_zh/architecture/00-platform-architecture.md | 01_architecture_and_technical_design.md}
+ * **Architecture:** {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/architecture/00-platform-architecture.md | 01_architecture_and_technical_design.md}
  */
 
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";

@@ -10,7 +10,7 @@ const policyFeature = createFeatureModule({
   group: "Governance",
   path: "/governance/policy",
   permission: "domain_admin+",
-  status: "Implemented/Contracted",
+  status: "Planned",
   summary: featureCopy.summary,
   render: PolicyWebView,
 });

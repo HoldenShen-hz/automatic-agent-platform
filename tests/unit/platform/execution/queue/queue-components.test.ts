@@ -4,7 +4,7 @@ import test from "node:test";
 import { TicketPriorityQueue } from "../../../../../src/platform/five-plane-execution/queue/ticket-priority-queue.js";
 import { BoundedDispatchQueueEventFactory, type BoundedDispatchQueueSnapshot } from "../../../../../src/platform/five-plane-execution/queue/bounded-dispatch-event.js";
 
-test("TicketPriorityQueue enqueue increases size", () => {
+test("TicketPriorityQueue enqueue increases size [queue-components]", () => {
   const queue = new TicketPriorityQueue();
   assert.equal(queue.size, 0);
 
@@ -15,12 +15,12 @@ test("TicketPriorityQueue enqueue increases size", () => {
   assert.equal(queue.size, 2);
 });
 
-test("TicketPriorityQueue dequeue returns null when empty", () => {
+test("TicketPriorityQueue dequeue returns null when empty [queue-components]", () => {
   const queue = new TicketPriorityQueue();
   assert.equal(queue.dequeue(), null);
 });
 
-test("TicketPriorityQueue dequeue returns ticket in priority order", () => {
+test("TicketPriorityQueue dequeue returns ticket in priority order [queue-components]", () => {
   const queue = new TicketPriorityQueue();
 
   queue.enqueue({ payload: { id: "low" }, priority: 1 });
@@ -40,7 +40,7 @@ test("TicketPriorityQueue dequeue returns ticket in priority order", () => {
   assert.equal(third.payload.id, "low");
 });
 
-test("TicketPriorityQueue dequeue returns FIFO for same priority", () => {
+test("TicketPriorityQueue dequeue returns FIFO for same priority [queue-components]", () => {
   const queue = new TicketPriorityQueue();
 
   // Add in reverse order but they should be dequeued by createdAt
@@ -54,7 +54,7 @@ test("TicketPriorityQueue dequeue returns FIFO for same priority", () => {
   assert.ok(first.id === t1.id || first.id === t2.id);
 });
 
-test("TicketPriorityQueue peek returns first without removing", () => {
+test("TicketPriorityQueue peek returns first without removing [queue-components]", () => {
   const queue = new TicketPriorityQueue();
 
   queue.enqueue({ payload: { id: 1 }, priority: 1 });
@@ -65,12 +65,12 @@ test("TicketPriorityQueue peek returns first without removing", () => {
   assert.equal(queue.size, 2);
 });
 
-test("TicketPriorityQueue peek returns null when empty", () => {
+test("TicketPriorityQueue peek returns null when empty [queue-components]", () => {
   const queue = new TicketPriorityQueue();
   assert.equal(queue.peek(), null);
 });
 
-test("TicketPriorityQueue clear removes all tickets", () => {
+test("TicketPriorityQueue clear removes all tickets [queue-components]", () => {
   const queue = new TicketPriorityQueue();
 
   queue.enqueue({ payload: { id: 1 } });
@@ -81,7 +81,7 @@ test("TicketPriorityQueue clear removes all tickets", () => {
   assert.equal(queue.size, 0);
 });
 
-test("TicketPriorityQueue dequeue respects dispatchAfter", () => {
+test("TicketPriorityQueue dequeue respects dispatchAfter [queue-components]", () => {
   const queue = new TicketPriorityQueue();
 
   // Future dispatch time
@@ -96,7 +96,7 @@ test("TicketPriorityQueue dequeue respects dispatchAfter", () => {
   assert.equal(dequeued.payload.id, "now");
 });
 
-test("TicketPriorityQueue dequeue returns null when all tickets are future", () => {
+test("TicketPriorityQueue dequeue returns null when all tickets are future [queue-components]", () => {
   const queue = new TicketPriorityQueue();
 
   const futureTime = new Date(Date.now() + 10000).toISOString();
@@ -106,7 +106,7 @@ test("TicketPriorityQueue dequeue returns null when all tickets are future", () 
   assert.equal(dequeued, null);
 });
 
-test("TicketPriorityQueue enqueue with default priority of 0", () => {
+test("TicketPriorityQueue enqueue with default priority of 0 [queue-components]", () => {
   const queue = new TicketPriorityQueue();
 
   queue.enqueue({ payload: { id: "default" } });
@@ -116,7 +116,7 @@ test("TicketPriorityQueue enqueue with default priority of 0", () => {
   assert.equal(ticket.priority, 0);
 });
 
-test("BoundedDispatchQueueEventFactory create returns accepted event", () => {
+test("BoundedDispatchQueueEventFactory create returns accepted event [queue-components]", () => {
   const factory = new BoundedDispatchQueueEventFactory();
   const snapshot: BoundedDispatchQueueSnapshot = {
     queueName: "dispatch-queue",
@@ -140,7 +140,7 @@ test("BoundedDispatchQueueEventFactory create returns accepted event", () => {
   assert.equal(event.queue_class, "dispatch-queue");
 });
 
-test("BoundedDispatchQueueEventFactory create returns rejected event when at max depth", () => {
+test("BoundedDispatchQueueEventFactory create returns rejected event when at max depth [queue-components]", () => {
   const factory = new BoundedDispatchQueueEventFactory();
   const snapshot: BoundedDispatchQueueSnapshot = {
     queueName: "dispatch-queue",
@@ -157,7 +157,7 @@ test("BoundedDispatchQueueEventFactory create returns rejected event when at max
   assert.equal(event.maxQueueDepth, 100);
 });
 
-test("BoundedDispatchQueueEventFactory create returns rejected event when over max depth", () => {
+test("BoundedDispatchQueueEventFactory create returns rejected event when over max depth [queue-components]", () => {
   const factory = new BoundedDispatchQueueEventFactory();
   const snapshot: BoundedDispatchQueueSnapshot = {
     queueName: "dispatch-queue",
@@ -172,7 +172,7 @@ test("BoundedDispatchQueueEventFactory create returns rejected event when over m
   assert.equal(event.reasonCode, "queue.max_depth_exceeded");
 });
 
-test("BoundedDispatchQueueEventFactory create includes optional fields when provided", () => {
+test("BoundedDispatchQueueEventFactory create includes optional fields when provided [queue-components]", () => {
   const factory = new BoundedDispatchQueueEventFactory();
   const snapshot: BoundedDispatchQueueSnapshot = {
     queueName: "dispatch-queue",
@@ -187,7 +187,7 @@ test("BoundedDispatchQueueEventFactory create includes optional fields when prov
   assert.equal(event.executionId, "exec-456");
 });
 
-test("BoundedDispatchQueueEventFactory create without optional fields", () => {
+test("BoundedDispatchQueueEventFactory create without optional fields [queue-components]", () => {
   const factory = new BoundedDispatchQueueEventFactory();
   const snapshot: BoundedDispatchQueueSnapshot = {
     queueName: "dispatch-queue",
@@ -202,7 +202,7 @@ test("BoundedDispatchQueueEventFactory create without optional fields", () => {
   assert.equal(event.executionId, undefined);
 });
 
-test("BoundedDispatchQueueSnapshot interface structure", () => {
+test("BoundedDispatchQueueSnapshot interface structure [queue-components]", () => {
   const snapshot: BoundedDispatchQueueSnapshot = {
     queueName: "test-queue",
     queueDepthBefore: 10,
@@ -216,7 +216,7 @@ test("BoundedDispatchQueueSnapshot interface structure", () => {
   assert.equal(snapshot.dlqName, "test-dlq");
 });
 
-test("TicketPriorityQueue ticket has correct structure", () => {
+test("TicketPriorityQueue ticket has correct structure [queue-components]", () => {
   const queue = new TicketPriorityQueue();
   const ticket = queue.enqueue({
     payload: { data: "test" },
@@ -231,7 +231,7 @@ test("TicketPriorityQueue ticket has correct structure", () => {
   assert.ok(ticket.createdAt);
 });
 
-test("TicketPriorityQueue enqueue returns ticket with generated id", () => {
+test("TicketPriorityQueue enqueue returns ticket with generated id [queue-components]", () => {
   const queue = new TicketPriorityQueue();
   const ticket = queue.enqueue({ payload: { id: 1 } });
 
@@ -239,7 +239,7 @@ test("TicketPriorityQueue enqueue returns ticket with generated id", () => {
   assert.ok(ticket.id.length > 0);
 });
 
-test("BoundedDispatchEvent has correct event types", () => {
+test("BoundedDispatchEvent has correct event types [queue-components]", () => {
   const factory = new BoundedDispatchQueueEventFactory();
   const snapshot: BoundedDispatchQueueSnapshot = {
     queueName: "test",

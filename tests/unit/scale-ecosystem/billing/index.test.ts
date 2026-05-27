@@ -14,43 +14,43 @@ import {
   type RecordUsageInput,
 } from "../../../../src/scale-ecosystem/billing/index.js";
 
-test("assertIdentifier returns value when valid", () => {
+test("assertIdentifier returns value when valid [index]", () => {
   const result = assertIdentifier("valid_id", "test.code");
   assert.equal(result, "valid_id");
 });
 
-test("assertIdentifier throws on empty string", () => {
+test("assertIdentifier throws on empty string [index]", () => {
   assert.throws(
     () => assertIdentifier("", "test.code"),
     /test.code/,
   );
 });
 
-test("assertPositiveNumber returns value when positive", () => {
+test("assertPositiveNumber returns value when positive [index]", () => {
   const result = assertPositiveNumber(42.5, "test.code");
   assert.equal(result, 42.5);
 });
 
-test("assertPositiveNumber throws on zero", () => {
+test("assertPositiveNumber throws on zero [index]", () => {
   assert.throws(
     () => assertPositiveNumber(0, "test.code"),
     /test.code/,
   );
 });
 
-test("assertPositiveNumber throws on negative", () => {
+test("assertPositiveNumber throws on negative [index]", () => {
   assert.throws(
     () => assertPositiveNumber(-1, "test.code"),
     /test.code/,
   );
 });
 
-test("roundCurrency rounds to 4 decimal places", () => {
+test("roundCurrency rounds to 4 decimal places [index]", () => {
   assert.equal(roundCurrency(10.45678), 10.4568);
   assert.equal(roundCurrency(10.45674), 10.4567);
 });
 
-test("monthWindow returns correct structure", () => {
+test("monthWindow returns correct structure [index]", () => {
   const window = monthWindow("2026-04-14T00:00:00.000Z");
   assert.ok(window.start);
   assert.ok(window.end);
@@ -58,13 +58,13 @@ test("monthWindow returns correct structure", () => {
   assert.ok(window.start < window.end);
 });
 
-test("monthWindow periodId contains year and month", () => {
+test("monthWindow periodId contains year and month [index]", () => {
   const window = monthWindow("2026-04-14T00:00:00.000Z");
   assert.ok(window.periodId.includes("2026"));
   assert.ok(window.periodId.includes("04"));
 });
 
-test("CreateBillingAccountInput structure is correct", () => {
+test("CreateBillingAccountInput structure is correct [index]", () => {
   const input: CreateBillingAccountInput = {
     accountId: "acct_123",
     ownerId: "owner_456",
@@ -78,7 +78,7 @@ test("CreateBillingAccountInput structure is correct", () => {
   assert.equal(input.planId, "plan_pro");
 });
 
-test("CreateBillingAccountInput with minimal fields", () => {
+test("CreateBillingAccountInput with minimal fields [index]", () => {
   const input: CreateBillingAccountInput = {
     ownerId: "owner_minimal",
     planId: "plan_basic",
@@ -87,7 +87,7 @@ test("CreateBillingAccountInput with minimal fields", () => {
   assert.equal(input.accountId, undefined);
 });
 
-test("EvaluateEntitlementInput structure is correct", () => {
+test("EvaluateEntitlementInput structure is correct [index]", () => {
   const input: EvaluateEntitlementInput = {
     accountId: "acct_eval",
     featureKey: "feature_ai",
@@ -100,7 +100,7 @@ test("EvaluateEntitlementInput structure is correct", () => {
   assert.equal(input.requestedQuantity, 100);
 });
 
-test("RecordUsageInput structure is correct", () => {
+test("RecordUsageInput structure is correct [index]", () => {
   const input: RecordUsageInput = {
     accountId: "acct_usage",
     workspaceId: "ws_usage",
@@ -117,7 +117,7 @@ test("RecordUsageInput structure is correct", () => {
   assert.equal(input.source, "runtime");
 });
 
-test("RecordUsageInput with api source", () => {
+test("RecordUsageInput with api source [index]", () => {
   const input: RecordUsageInput = {
     accountId: "acct_api",
     metricType: "token_usage",
@@ -128,7 +128,7 @@ test("RecordUsageInput with api source", () => {
   assert.equal(input.metricType, "token_usage");
 });
 
-test("CostEstimate type is exported from billing barrel", () => {
+test("CostEstimate type is exported from billing barrel [index]", () => {
   const estimate: CostEstimate = {
     estimatedCostUsd: 0.25,
     confidence: "medium",

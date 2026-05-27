@@ -21,7 +21,7 @@ function createOutboxRecord(overrides: Partial<OutboxRecord> = {}): OutboxRecord
   };
 }
 
-test("ToolGateway prepare and commit actions emit receipts and outbox records", () => {
+test("ToolGateway prepare and commit actions emit receipts and outbox records [index]", () => {
   const written: OutboxRecord[] = [];
   const gateway = new ToolGateway({
     outbox: {
@@ -60,7 +60,7 @@ test("ToolGateway prepare and commit actions emit receipts and outbox records", 
   assert.equal(written.length, 2);
 });
 
-test("ToolGateway verify action reports success or failure", () => {
+test("ToolGateway verify action reports success or failure [index]", () => {
   const gateway = new ToolGateway();
   const context = {
     toolName: "web_fetch",

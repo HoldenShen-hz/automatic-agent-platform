@@ -4,7 +4,7 @@ import test from "node:test";
 import { buildStableDisasterRecoveryPlaybook } from "../../../../../src/platform/shared/stability/stable-backup-restore-rehearsal.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 
-test("buildStableDisasterRecoveryPlaybook produces recovery ownership and validation targets", () => {
+test("buildStableDisasterRecoveryPlaybook produces recovery ownership and validation targets [stable-backup-restore-rehearsal]", () => {
   const workspace = createTempWorkspace("aa-dr-playbook-");
 
   try {
@@ -35,7 +35,7 @@ test("buildStableDisasterRecoveryPlaybook produces recovery ownership and valida
   }
 });
 
-test("buildStableDisasterRecoveryPlaybook generates playbook with complete target validation checks", () => {
+test("buildStableDisasterRecoveryPlaybook generates playbook with complete target validation checks [stable-backup-restore-rehearsal]", () => {
   const workspace = createTempWorkspace("aa-dr-playbook-validation-");
 
   try {
@@ -65,7 +65,7 @@ test("buildStableDisasterRecoveryPlaybook generates playbook with complete targe
   }
 });
 
-test("buildStableDisasterRecoveryPlaybook generates playbook with all required procedure steps", () => {
+test("buildStableDisasterRecoveryPlaybook generates playbook with all required procedure steps [stable-backup-restore-rehearsal]", () => {
   const workspace = createTempWorkspace("aa-dr-playbook-procedure-");
 
   try {

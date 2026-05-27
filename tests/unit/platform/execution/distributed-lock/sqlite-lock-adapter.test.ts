@@ -21,7 +21,7 @@ function createTestDb(): DatabaseSync {
   return db;
 }
 
-test("SqliteLockAdapter.acquire acquires lock successfully", () => {
+test("SqliteLockAdapter.acquire acquires lock successfully [sqlite-lock-adapter]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -37,7 +37,7 @@ test("SqliteLockAdapter.acquire acquires lock successfully", () => {
   db.close();
 });
 
-test("SqliteLockAdapter.acquire returns existing lock for same owner", () => {
+test("SqliteLockAdapter.acquire returns existing lock for same owner [sqlite-lock-adapter]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -53,7 +53,7 @@ test("SqliteLockAdapter.acquire returns existing lock for same owner", () => {
   db.close();
 });
 
-test("SqliteLockAdapter.acquire rejects different owner when lock held", () => {
+test("SqliteLockAdapter.acquire rejects different owner when lock held [sqlite-lock-adapter]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -65,7 +65,7 @@ test("SqliteLockAdapter.acquire rejects different owner when lock held", () => {
   db.close();
 });
 
-test("SqliteLockAdapter.release releases lock", () => {
+test("SqliteLockAdapter.release releases lock [sqlite-lock-adapter]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -81,7 +81,7 @@ test("SqliteLockAdapter.release releases lock", () => {
   db.close();
 });
 
-test("SqliteLockAdapter.release returns false for non-existent lock", () => {
+test("SqliteLockAdapter.release returns false for non-existent lock [sqlite-lock-adapter]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -91,7 +91,7 @@ test("SqliteLockAdapter.release returns false for non-existent lock", () => {
   db.close();
 });
 
-test("SqliteLockAdapter.release supports legacy lockName/ownerId shape", () => {
+test("SqliteLockAdapter.release supports legacy lockName/ownerId shape [sqlite-lock-adapter]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -103,7 +103,7 @@ test("SqliteLockAdapter.release supports legacy lockName/ownerId shape", () => {
   db.close();
 });
 
-test("SqliteLockAdapter.extend extends lock TTL", () => {
+test("SqliteLockAdapter.extend extends lock TTL [sqlite-lock-adapter]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -117,7 +117,7 @@ test("SqliteLockAdapter.extend extends lock TTL", () => {
   db.close();
 });
 
-test("SqliteLockAdapter.extend caps TTL growth and rotates fencing token", () => {
+test("SqliteLockAdapter.extend caps TTL growth and rotates fencing token [sqlite-lock-adapter]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -131,7 +131,7 @@ test("SqliteLockAdapter.extend caps TTL growth and rotates fencing token", () =>
   db.close();
 });
 
-test("SqliteLockAdapter.extend returns null for non-existent lock", () => {
+test("SqliteLockAdapter.extend returns null for non-existent lock [sqlite-lock-adapter]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -141,7 +141,7 @@ test("SqliteLockAdapter.extend returns null for non-existent lock", () => {
   db.close();
 });
 
-test("SqliteLockAdapter.inspect returns lock record", () => {
+test("SqliteLockAdapter.inspect returns lock record [sqlite-lock-adapter]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -156,7 +156,7 @@ test("SqliteLockAdapter.inspect returns lock record", () => {
   db.close();
 });
 
-test("SqliteLockAdapter.inspect returns null for non-existent lock", () => {
+test("SqliteLockAdapter.inspect returns null for non-existent lock [sqlite-lock-adapter]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -166,7 +166,7 @@ test("SqliteLockAdapter.inspect returns null for non-existent lock", () => {
   db.close();
 });
 
-test("SqliteLockAdapter.inspect supports legacy lockName shape", () => {
+test("SqliteLockAdapter.inspect supports legacy lockName shape [sqlite-lock-adapter]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -179,7 +179,7 @@ test("SqliteLockAdapter.inspect supports legacy lockName shape", () => {
   db.close();
 });
 
-test("SqliteLockAdapter.forceSteal takes over lock", () => {
+test("SqliteLockAdapter.forceSteal takes over lock [sqlite-lock-adapter]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -197,7 +197,7 @@ test("SqliteLockAdapter.forceSteal takes over lock", () => {
   db.close();
 });
 
-test("SqliteLockAdapter.acquire honors TTL on stale locks", () => {
+test("SqliteLockAdapter.acquire honors TTL on stale locks [sqlite-lock-adapter]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -216,7 +216,7 @@ test("SqliteLockAdapter.acquire honors TTL on stale locks", () => {
   db.close();
 });
 
-test("SqliteLockAdapter.backendKind is sqlite", () => {
+test("SqliteLockAdapter.backendKind is sqlite [sqlite-lock-adapter]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 

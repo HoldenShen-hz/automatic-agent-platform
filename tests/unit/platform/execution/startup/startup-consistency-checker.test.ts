@@ -185,7 +185,7 @@ function createChecker(
 // Tests: Construction
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("StartupConsistencyChecker constructor creates instance", () => {
+test("StartupConsistencyChecker constructor creates instance [startup-consistency-checker]", () => {
   const db = createMockDb();
   const store = createMockTaskStore();
   const checker = createChecker(db, store);
@@ -193,7 +193,7 @@ test("StartupConsistencyChecker constructor creates instance", () => {
   assert.ok(checker instanceof StartupConsistencyChecker);
 });
 
-test("StartupConsistencyChecker constructor accepts custom validators", () => {
+test("StartupConsistencyChecker constructor accepts custom validators [startup-consistency-checker]", () => {
   const db = createMockDb();
   const store = createMockTaskStore();
   const checker = createChecker(db, store, {
@@ -209,7 +209,7 @@ test("StartupConsistencyChecker constructor accepts custom validators", () => {
 // Tests: Empty Run (Pass Case)
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("StartupConsistencyChecker run returns pass status with no findings", () => {
+test("StartupConsistencyChecker run returns pass status with no findings [startup-consistency-checker]", () => {
   const db = createMockDb();
   const store = createMockTaskStore();
   const checker = createChecker(db, store);
@@ -221,7 +221,7 @@ test("StartupConsistencyChecker run returns pass status with no findings", () =>
   assert.equal(report.repairActions.length, 0);
 });
 
-test("StartupConsistencyChecker run records checkedAt timestamp", () => {
+test("StartupConsistencyChecker run records checkedAt timestamp [startup-consistency-checker]", () => {
   const db = createMockDb();
   const store = createMockTaskStore();
   const checker = createChecker(db, store);
@@ -232,7 +232,7 @@ test("StartupConsistencyChecker run records checkedAt timestamp", () => {
   assert.ok(new Date(report.checkedAt).getTime() > 0);
 });
 
-test("StartupConsistencyChecker run accepts custom now option", () => {
+test("StartupConsistencyChecker run accepts custom now option [startup-consistency-checker]", () => {
   const db = createMockDb();
   const store = createMockTaskStore();
   const checker = createChecker(db, store);
@@ -247,7 +247,7 @@ test("StartupConsistencyChecker run accepts custom now option", () => {
 // Tests: Config Validation Findings
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("StartupConsistencyChecker run reports config_load_failed when config validation fails", () => {
+test("StartupConsistencyChecker run reports config_load_failed when config validation fails [startup-consistency-checker]", () => {
   const db = createMockDb();
   const store = createMockTaskStore();
   const checker = createChecker(db, store, {
@@ -267,7 +267,7 @@ test("StartupConsistencyChecker run reports config_load_failed when config valid
   assert.equal(finding!.entityType, "config");
 });
 
-test("StartupConsistencyChecker run reports config_invalid when bundle exists but issues found", () => {
+test("StartupConsistencyChecker run reports config_invalid when bundle exists but issues found [startup-consistency-checker]", () => {
   const db = createMockDb();
   const store = createMockTaskStore();
   const checker = createChecker(db, store, {
@@ -284,7 +284,7 @@ test("StartupConsistencyChecker run reports config_invalid when bundle exists bu
   assert.ok(finding !== undefined);
 });
 
-test("StartupConsistencyChecker run reports config_load_failed when config validator throws", () => {
+test("StartupConsistencyChecker run reports config_load_failed when config validator throws [startup-consistency-checker]", () => {
   const db = createMockDb();
   const store = createMockTaskStore();
   const checker = new StartupConsistencyChecker(
@@ -308,7 +308,7 @@ test("StartupConsistencyChecker run reports config_load_failed when config valid
 // Tests: Provider Readiness Findings
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("StartupConsistencyChecker run reports provider_not_ready when probe returns not ready", () => {
+test("StartupConsistencyChecker run reports provider_not_ready when probe returns not ready [startup-consistency-checker]", () => {
   const db = createMockDb();
   const store = createMockTaskStore();
   const checker = createChecker(db, store, {
@@ -326,7 +326,7 @@ test("StartupConsistencyChecker run reports provider_not_ready when probe return
   assert.equal(finding!.entityId, "redis");
 });
 
-test("StartupConsistencyChecker run does not report ready providers", () => {
+test("StartupConsistencyChecker run does not report ready providers [startup-consistency-checker]", () => {
   const db = createMockDb();
   const store = createMockTaskStore();
   const checker = createChecker(db, store, {
@@ -345,7 +345,7 @@ test("StartupConsistencyChecker run does not report ready providers", () => {
 // Tests: Database Integrity Findings
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("StartupConsistencyChecker run reports integrity_check_failed when integrity check fails", () => {
+test("StartupConsistencyChecker run reports integrity_check_failed when integrity check fails [startup-consistency-checker]", () => {
   const db = createMockDb(["Table 'tasks' is corrupted"]);
   const store = createMockTaskStore();
   const checker = createChecker(db, store);
@@ -358,7 +358,7 @@ test("StartupConsistencyChecker run reports integrity_check_failed when integrit
   assert.equal(finding!.entityType, "database");
 });
 
-test("StartupConsistencyChecker run reports schema_outdated when pending migrations exist", () => {
+test("StartupConsistencyChecker run reports schema_outdated when pending migrations exist [startup-consistency-checker]", () => {
   const db = createMockDb([], {
     pendingVersions: ["0042", "0043"],
     checksumMismatches: [],
@@ -374,7 +374,7 @@ test("StartupConsistencyChecker run reports schema_outdated when pending migrati
   assert.ok(finding!.message.includes("0043"));
 });
 
-test("StartupConsistencyChecker run reports migration_checksum_mismatch when checksums don't match", () => {
+test("StartupConsistencyChecker run reports migration_checksum_mismatch when checksums don't match [startup-consistency-checker]", () => {
   const db = createMockDb([], {
     pendingVersions: [],
     checksumMismatches: [{ version: "0041", expected: "abc123", actual: "def456" }],
@@ -393,7 +393,7 @@ test("StartupConsistencyChecker run reports migration_checksum_mismatch when che
 // Tests: Tool Contract Validation
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("StartupConsistencyChecker run reports tool_contract_invalid when violations found", () => {
+test("StartupConsistencyChecker run reports tool_contract_invalid when violations found [startup-consistency-checker]", () => {
   const db = createMockDb();
   const store = createMockTaskStore();
   const checker = createChecker(db, store, {
@@ -411,7 +411,7 @@ test("StartupConsistencyChecker run reports tool_contract_invalid when violation
   assert.equal(finding!.entityId, "bash");
 });
 
-test("StartupConsistencyChecker run reports multiple tool violations", () => {
+test("StartupConsistencyChecker run reports multiple tool violations [startup-consistency-checker]", () => {
   const db = createMockDb();
   const store = createMockTaskStore();
   const checker = createChecker(db, store, {
@@ -431,7 +431,7 @@ test("StartupConsistencyChecker run reports multiple tool violations", () => {
 // Tests: Task and Workflow Findings
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("StartupConsistencyChecker run reports active_task_missing_workflow", () => {
+test("StartupConsistencyChecker run reports active_task_missing_workflow [startup-consistency-checker]", () => {
   const db = createMockDb();
   const store = createMockTaskStore({
     operations: {
@@ -455,7 +455,7 @@ test("StartupConsistencyChecker run reports active_task_missing_workflow", () =>
   assert.equal(finding!.entityId, "task-1");
 });
 
-test("StartupConsistencyChecker run reports invalid_step_index for workflow with bad index", () => {
+test("StartupConsistencyChecker run reports invalid_step_index for workflow with bad index [startup-consistency-checker]", () => {
   const db = createMockDb();
   const store = createMockTaskStore({
     workflow: {
@@ -473,7 +473,7 @@ test("StartupConsistencyChecker run reports invalid_step_index for workflow with
   assert.equal(finding!.severity, "p0");
 });
 
-test("StartupConsistencyChecker run reports stale_execution", () => {
+test("StartupConsistencyChecker run reports stale_execution [startup-consistency-checker]", () => {
   const db = createMockDb();
   const store = createMockTaskStore({
     operations: {
@@ -501,7 +501,7 @@ test("StartupConsistencyChecker run reports stale_execution", () => {
 // Tests: Dispatch Reconciliation Findings
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("StartupConsistencyChecker run reports orphan_queue_claim", () => {
+test("StartupConsistencyChecker run reports orphan_queue_claim [startup-consistency-checker]", () => {
   const db = createMockDb();
   const store = createMockTaskStore();
 
@@ -534,7 +534,7 @@ test("StartupConsistencyChecker run reports orphan_queue_claim", () => {
 // Tests: Session Findings
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("StartupConsistencyChecker run reports orphan_session", () => {
+test("StartupConsistencyChecker run reports orphan_session [startup-consistency-checker]", () => {
   const db = createMockDb();
   const store = createMockTaskStore({
     operations: {
@@ -558,7 +558,7 @@ test("StartupConsistencyChecker run reports orphan_session", () => {
   assert.equal(finding!.entityId, "sess-1");
 });
 
-test("StartupConsistencyChecker run reports active_task_terminal_session", () => {
+test("StartupConsistencyChecker run reports active_task_terminal_session [startup-consistency-checker]", () => {
   const db = createMockDb();
   const store = createMockTaskStore({
     operations: {
@@ -585,7 +585,7 @@ test("StartupConsistencyChecker run reports active_task_terminal_session", () =>
 // Tests: Lock Findings
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("StartupConsistencyChecker run reports expired_file_lock", () => {
+test("StartupConsistencyChecker run reports expired_file_lock [startup-consistency-checker]", () => {
   const db = createMockDb();
   const store = createMockTaskStore({
     lock: {
@@ -608,7 +608,7 @@ test("StartupConsistencyChecker run reports expired_file_lock", () => {
 // Tests: Event Findings
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("StartupConsistencyChecker run reports tier1_ack_backlog", () => {
+test("StartupConsistencyChecker run reports tier1_ack_backlog [startup-consistency-checker]", () => {
   const db = createMockDb();
   const store = createMockTaskStore({
     event: {
@@ -632,7 +632,7 @@ test("StartupConsistencyChecker run reports tier1_ack_backlog", () => {
 // Tests: Execution Conflict Findings
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("StartupConsistencyChecker run reports active_execution_conflict", () => {
+test("StartupConsistencyChecker run reports active_execution_conflict [startup-consistency-checker]", () => {
   const db = createMockDb();
   const store = createMockTaskStore({
     operations: {
@@ -661,7 +661,7 @@ test("StartupConsistencyChecker run reports active_execution_conflict", () => {
 // Tests: Report Status Determination
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("StartupConsistencyChecker run returns fail_closed when p0 findings exist", () => {
+test("StartupConsistencyChecker run returns fail_closed when p0 findings exist [startup-consistency-checker]", () => {
   const db = createMockDb(["Critical error"]);
   const store = createMockTaskStore();
   const checker = createChecker(db, store);
@@ -671,7 +671,7 @@ test("StartupConsistencyChecker run returns fail_closed when p0 findings exist",
   assert.equal(report.status, "fail_closed");
 });
 
-test("StartupConsistencyChecker run returns repairable when only p1 findings exist", () => {
+test("StartupConsistencyChecker run returns repairable when only p1 findings exist [startup-consistency-checker]", () => {
   const db = createMockDb();
   const store = createMockTaskStore({
     lock: {
@@ -685,7 +685,7 @@ test("StartupConsistencyChecker run returns repairable when only p1 findings exi
   assert.equal(report.status, "repairable");
 });
 
-test("StartupConsistencyChecker run returns pass when no findings", () => {
+test("StartupConsistencyChecker run returns pass when no findings [startup-consistency-checker]", () => {
   const db = createMockDb();
   const store = createMockTaskStore();
   const checker = createChecker(db, store);
@@ -699,7 +699,7 @@ test("StartupConsistencyChecker run returns pass when no findings", () => {
 // Tests: Repair Action Generation
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("StartupConsistencyChecker run generates repair actions for stale_execution", () => {
+test("StartupConsistencyChecker run generates repair actions for stale_execution [startup-consistency-checker]", () => {
   const db = createMockDb();
   const store = createMockTaskStore({
     operations: {
@@ -723,7 +723,7 @@ test("StartupConsistencyChecker run generates repair actions for stale_execution
   assert.equal(action!.reasonCode, "stale_execution");
 });
 
-test("StartupConsistencyChecker run generates manual_intervention_required for config issues", () => {
+test("StartupConsistencyChecker run generates manual_intervention_required for config issues [startup-consistency-checker]", () => {
   const db = createMockDb();
   const store = createMockTaskStore();
   const checker = createChecker(db, store, {
@@ -741,7 +741,7 @@ test("StartupConsistencyChecker run generates manual_intervention_required for c
   assert.equal(action!.action, "manual_intervention_required");
 });
 
-test("StartupConsistencyChecker run deduplicates repair actions", () => {
+test("StartupConsistencyChecker run deduplicates repair actions [startup-consistency-checker]", () => {
   const db = createMockDb();
   const store = createMockTaskStore({
     operations: {
@@ -771,7 +771,7 @@ test("StartupConsistencyChecker run deduplicates repair actions", () => {
 // Tests: Custom Options
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("StartupConsistencyChecker run accepts staleExecutionAfterMs option", () => {
+test("StartupConsistencyChecker run accepts staleExecutionAfterMs option [startup-consistency-checker]", () => {
   const db = createMockDb();
   const oldTimestamp = new Date(Date.now() - 10 * 60 * 1000).toISOString(); // 10 minutes ago
   const store = createMockTaskStore({
@@ -793,7 +793,7 @@ test("StartupConsistencyChecker run accepts staleExecutionAfterMs option", () =>
   assert.ok(report1.findings.some((f) => f.code === "stale_execution"));
 });
 
-test("StartupConsistencyChecker run accepts pendingAckOlderThanMs option", () => {
+test("StartupConsistencyChecker run accepts pendingAckOlderThanMs option [startup-consistency-checker]", () => {
   const db = createMockDb();
   const oldTimestamp = new Date(Date.now() - 5 * 60 * 1000).toISOString(); // 5 minutes ago
   const store = createMockTaskStore({
@@ -815,7 +815,7 @@ test("StartupConsistencyChecker run accepts pendingAckOlderThanMs option", () =>
 // Tests: Type Exports
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("StartupConsistencyChecker exports correct types", () => {
+test("StartupConsistencyChecker exports correct types [startup-consistency-checker]", () => {
   const severities: ConsistencySeverity[] = ["p0", "p1"];
   assert.equal(severities.length, 2);
 
@@ -839,7 +839,7 @@ test("StartupConsistencyChecker exports correct types", () => {
 // Tests: Traffic Blocking (fail_closed enforcement)
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("StartupConsistencyChecker canAcceptTraffic returns true when no p0 findings", () => {
+test("StartupConsistencyChecker canAcceptTraffic returns true when no p0 findings [startup-consistency-checker]", () => {
   const db = createMockDb();
   const store = createMockTaskStore();
   const checker = createChecker(db, store);
@@ -847,7 +847,7 @@ test("StartupConsistencyChecker canAcceptTraffic returns true when no p0 finding
   assert.equal(checker.canAcceptTraffic(), true);
 });
 
-test("StartupConsistencyChecker canAcceptTraffic returns false after p0 findings detected", () => {
+test("StartupConsistencyChecker canAcceptTraffic returns false after p0 findings detected [startup-consistency-checker]", () => {
   const db = createMockDb(["Critical error"]);
   const store = createMockTaskStore();
 
@@ -876,7 +876,7 @@ test("StartupConsistencyChecker canAcceptTraffic returns false after p0 findings
   assert.equal(checker.canAcceptTraffic(), false);
 });
 
-test("StartupConsistencyChecker canAcceptTraffic returns false when only p1 findings", () => {
+test("StartupConsistencyChecker canAcceptTraffic returns false when only p1 findings [startup-consistency-checker]", () => {
   const db = createMockDb();
   const store = createMockTaskStore({
     lock: {
@@ -891,7 +891,7 @@ test("StartupConsistencyChecker canAcceptTraffic returns false when only p1 find
   assert.equal(checker.canAcceptTraffic(), true);
 });
 
-test("StartupConsistencyChecker resetTrafficBlocked re-enables traffic", () => {
+test("StartupConsistencyChecker resetTrafficBlocked re-enables traffic [startup-consistency-checker]", () => {
   const db = createMockDb(["Critical error"]);
   const store = createMockTaskStore();
   const checker = createChecker(db, store);
@@ -905,7 +905,7 @@ test("StartupConsistencyChecker resetTrafficBlocked re-enables traffic", () => {
   assert.equal(checker.canAcceptTraffic(), true);
 });
 
-test("StartupConsistencyChecker onTrafficBlocked callback is invoked when fail_closed triggered", () => {
+test("StartupConsistencyChecker onTrafficBlocked callback is invoked when fail_closed triggered [startup-consistency-checker]", () => {
   const db = createMockDb(["Critical error"]);
   const store = createMockTaskStore();
   let callbackInvoked = false;
@@ -925,7 +925,7 @@ test("StartupConsistencyChecker onTrafficBlocked callback is invoked when fail_c
   assert.equal(callbackInvoked, true);
 });
 
-test("StartupConsistencyChecker canAcceptTraffic persists blocked state across multiple run calls", () => {
+test("StartupConsistencyChecker canAcceptTraffic persists blocked state across multiple run calls [startup-consistency-checker]", () => {
   const db = createMockDb(["Critical error"]);
   const store = createMockTaskStore();
   const checker = createChecker(db, store);

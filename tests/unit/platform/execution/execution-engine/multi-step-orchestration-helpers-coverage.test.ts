@@ -36,7 +36,7 @@ function cleanupDb(dbPath: string): void {
 // isOapeflirPlanRequest edge case tests (via runMultiStepOrchestration)
 // =============================================================================
 
-test("isOapeflirPlanRequest returns false for empty string", async () => {
+test("isOapeflirPlanRequest returns false for empty string [multi-step-orchestration-helpers-coverage]", async () => {
   const dbPath = createTestDbPath("empty-string");
   cleanupDb(dbPath);
 
@@ -55,7 +55,7 @@ test("isOapeflirPlanRequest returns false for empty string", async () => {
   }
 });
 
-test("isOapeflirPlanRequest returns false for whitespace only request", async () => {
+test("isOapeflirPlanRequest returns false for whitespace only request [multi-step-orchestration-helpers-coverage]", async () => {
   const dbPath = createTestDbPath("whitespace");
   cleanupDb(dbPath);
 
@@ -74,7 +74,7 @@ test("isOapeflirPlanRequest returns false for whitespace only request", async ()
   }
 });
 
-test("isOapeflirPlanRequest handles oapeflir://plan with only brackets", async () => {
+test("isOapeflirPlanRequest handles oapeflir://plan with only brackets [multi-step-orchestration-helpers-coverage]", async () => {
   const dbPath = createTestDbPath("empty-plan");
   cleanupDb(dbPath);
 
@@ -93,7 +93,7 @@ test("isOapeflirPlanRequest handles oapeflir://plan with only brackets", async (
   }
 });
 
-test("isOapeflirPlanRequest returns false for oapeflir://execute (wrong command)", async () => {
+test("isOapeflirPlanRequest returns false for oapeflir://execute (wrong command) [multi-step-orchestration-helpers-coverage]", async () => {
   const dbPath = createTestDbPath("wrong-command");
   cleanupDb(dbPath);
 
@@ -112,7 +112,7 @@ test("isOapeflirPlanRequest returns false for oapeflir://execute (wrong command)
   }
 });
 
-test("isOapeflirPlanRequest case sensitivity - lowercase oapeflir fails", async () => {
+test("isOapeflirPlanRequest case sensitivity - lowercase oapeflir fails [multi-step-orchestration-helpers-coverage]", async () => {
   const dbPath = createTestDbPath("case-sensitivity");
   cleanupDb(dbPath);
 
@@ -135,7 +135,7 @@ test("isOapeflirPlanRequest case sensitivity - lowercase oapeflir fails", async 
 // deserializeOapeflirPlan edge case tests
 // =============================================================================
 
-test("deserializeOapeflirPlan handles single step plan", async () => {
+test("deserializeOapeflirPlan handles single step plan [multi-step-orchestration-helpers-coverage]", async () => {
   const dbPath = createTestDbPath("single-step");
   cleanupDb(dbPath);
 
@@ -159,7 +159,7 @@ test("deserializeOapeflirPlan handles single step plan", async () => {
   }
 });
 
-test("deserializeOapeflirPlan handles step with no dependencies", async () => {
+test("deserializeOapeflirPlan handles step with no dependencies [multi-step-orchestration-helpers-coverage]", async () => {
   const dbPath = createTestDbPath("no-deps");
   cleanupDb(dbPath);
 
@@ -182,7 +182,7 @@ test("deserializeOapeflirPlan handles step with no dependencies", async () => {
   }
 });
 
-test("deserializeOapeflirPlan handles step with multiple dependencies", async () => {
+test("deserializeOapeflirPlan handles step with multiple dependencies [multi-step-orchestration-helpers-coverage]", async () => {
   const dbPath = createTestDbPath("multi-deps");
   cleanupDb(dbPath);
 
@@ -206,7 +206,7 @@ test("deserializeOapeflirPlan handles step with multiple dependencies", async ()
   }
 });
 
-test("deserializeOapeflirPlan handles plan with many steps", async () => {
+test("deserializeOapeflirPlan handles plan with many steps [multi-step-orchestration-helpers-coverage]", async () => {
   const dbPath = createTestDbPath("many-steps");
   cleanupDb(dbPath);
 
@@ -236,7 +236,7 @@ test("deserializeOapeflirPlan handles plan with many steps", async () => {
 // oapeflirStepToMinimalStep edge case tests
 // =============================================================================
 
-test("oapeflirStepToMinimalStep handles step with undefined outputs", async () => {
+test("oapeflirStepToMinimalStep handles step with undefined outputs [multi-step-orchestration-helpers-coverage]", async () => {
   const dbPath = createTestDbPath("undefined-outputs");
   cleanupDb(dbPath);
 
@@ -260,7 +260,7 @@ test("oapeflirStepToMinimalStep handles step with undefined outputs", async () =
   }
 });
 
-test("oapeflirStepToMinimalStep handles step with empty outputs array", async () => {
+test("oapeflirStepToMinimalStep handles step with empty outputs array [multi-step-orchestration-helpers-coverage]", async () => {
   const dbPath = createTestDbPath("empty-outputs");
   cleanupDb(dbPath);
 
@@ -284,7 +284,7 @@ test("oapeflirStepToMinimalStep handles step with empty outputs array", async ()
   }
 });
 
-test("oapeflirStepToMinimalStep handles maxAttempts calculation with zero retries", async () => {
+test("oapeflirStepToMinimalStep handles maxAttempts calculation with zero retries [multi-step-orchestration-helpers-coverage]", async () => {
   const dbPath = createTestDbPath("zero-retries");
   cleanupDb(dbPath);
 
@@ -307,7 +307,7 @@ test("oapeflirStepToMinimalStep handles maxAttempts calculation with zero retrie
   }
 });
 
-test("oapeflirStepToMinimalStep handles maxAttempts calculation with high retry count", async () => {
+test("oapeflirStepToMinimalStep handles maxAttempts calculation with high retry count [multi-step-orchestration-helpers-coverage]", async () => {
   const dbPath = createTestDbPath("high-retries");
   cleanupDb(dbPath);
 
@@ -330,7 +330,7 @@ test("oapeflirStepToMinimalStep handles maxAttempts calculation with high retry 
   }
 });
 
-test("oapeflirStepToMinimalStep maps timeout correctly", async () => {
+test("oapeflirStepToMinimalStep maps timeout correctly [multi-step-orchestration-helpers-coverage]", async () => {
   const dbPath = createTestDbPath("timeout-mapping");
   cleanupDb(dbPath);
 
@@ -357,7 +357,7 @@ test("oapeflirStepToMinimalStep maps timeout correctly", async () => {
 // buildOapeflirPlannedWorkflow edge case tests
 // =============================================================================
 
-test("buildOapeflirPlannedWorkflow generates correct agentId", async () => {
+test("buildOapeflirPlannedWorkflow generates correct agentId [multi-step-orchestration-helpers-coverage]", async () => {
   const dbPath = createTestDbPath("agent-id");
   cleanupDb(dbPath);
 
@@ -380,7 +380,7 @@ test("buildOapeflirPlannedWorkflow generates correct agentId", async () => {
   }
 });
 
-test("buildOapeflirPlannedWorkflow sets divisionId correctly", async () => {
+test("buildOapeflirPlannedWorkflow sets divisionId correctly [multi-step-orchestration-helpers-coverage]", async () => {
   const dbPath = createTestDbPath("division-id");
   cleanupDb(dbPath);
 
@@ -403,7 +403,7 @@ test("buildOapeflirPlannedWorkflow sets divisionId correctly", async () => {
   }
 });
 
-test("buildOapeflirPlannedWorkflow creates correct planReason", async () => {
+test("buildOapeflirPlannedWorkflow creates correct planReason [multi-step-orchestration-helpers-coverage]", async () => {
   const dbPath = createTestDbPath("plan-reason");
   cleanupDb(dbPath);
 
@@ -427,7 +427,7 @@ test("buildOapeflirPlannedWorkflow creates correct planReason", async () => {
   }
 });
 
-test("buildOapeflirPlannedWorkflow sets a default outputSchemaPath", async () => {
+test("buildOapeflirPlannedWorkflow sets a default outputSchemaPath [multi-step-orchestration-helpers-coverage]", async () => {
   const dbPath = createTestDbPath("output-schema-path");
   cleanupDb(dbPath);
 
@@ -450,7 +450,7 @@ test("buildOapeflirPlannedWorkflow sets a default outputSchemaPath", async () =>
   }
 });
 
-test("buildOapeflirPlannedWorkflow creates empty dependencyEdges", async () => {
+test("buildOapeflirPlannedWorkflow creates empty dependencyEdges [multi-step-orchestration-helpers-coverage]", async () => {
   const dbPath = createTestDbPath("dependency-edges");
   cleanupDb(dbPath);
 
@@ -473,7 +473,7 @@ test("buildOapeflirPlannedWorkflow creates empty dependencyEdges", async () => {
   }
 });
 
-test("buildOapeflirPlannedWorkflow with inputKeys mapping", async () => {
+test("buildOapeflirPlannedWorkflow with inputKeys mapping [multi-step-orchestration-helpers-coverage]", async () => {
   const dbPath = createTestDbPath("input-keys");
   cleanupDb(dbPath);
 
@@ -496,7 +496,7 @@ test("buildOapeflirPlannedWorkflow with inputKeys mapping", async () => {
   }
 });
 
-test("buildOapeflirPlannedWorkflow with dependencyTypes set to hard", async () => {
+test("buildOapeflirPlannedWorkflow with dependencyTypes set to hard [multi-step-orchestration-helpers-coverage]", async () => {
   const dbPath = createTestDbPath("dependency-types");
   cleanupDb(dbPath);
 
@@ -519,7 +519,7 @@ test("buildOapeflirPlannedWorkflow with dependencyTypes set to hard", async () =
   }
 });
 
-test("buildOapeflirPlannedWorkflow handles plan with unicode step IDs", async () => {
+test("buildOapeflirPlannedWorkflow handles plan with unicode step IDs [multi-step-orchestration-helpers-coverage]", async () => {
   const dbPath = createTestDbPath("unicode-steps");
   cleanupDb(dbPath);
 
@@ -542,7 +542,7 @@ test("buildOapeflirPlannedWorkflow handles plan with unicode step IDs", async ()
   }
 });
 
-test("buildOapeflirPlannedWorkflow handles plan with special characters in stepId", async () => {
+test("buildOapeflirPlannedWorkflow handles plan with special characters in stepId [multi-step-orchestration-helpers-coverage]", async () => {
   const dbPath = createTestDbPath("special-chars");
   cleanupDb(dbPath);
 
@@ -565,7 +565,7 @@ test("buildOapeflirPlannedWorkflow handles plan with special characters in stepI
   }
 });
 
-test("buildOapeflirPlannedWorkflow workflowId format", async () => {
+test("buildOapeflirPlannedWorkflow workflowId format [multi-step-orchestration-helpers-coverage]", async () => {
   const dbPath = createTestDbPath("workflow-id-format");
   cleanupDb(dbPath);
 

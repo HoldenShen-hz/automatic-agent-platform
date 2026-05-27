@@ -43,7 +43,7 @@ function createHeartbeat(overrides: Partial<WorkerRegistryHeartbeatInput> = {}):
 // Task Assignment tests
 // ---------------------------------------------------------------------------
 
-test("WorkerPool selects worker with highest availableSlots when load is equal", () => {
+test("WorkerPool selects worker with highest availableSlots when load is equal [worker-pool-service]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -57,7 +57,7 @@ test("WorkerPool selects worker with highest availableSlots when load is equal",
   assert.equal(selected.workerId, "worker-b");
 });
 
-test("WorkerPool assigns task to worker with matching queue affinity", () => {
+test("WorkerPool assigns task to worker with matching queue affinity [worker-pool-service]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -74,7 +74,7 @@ test("WorkerPool assigns task to worker with matching queue affinity", () => {
   assert.ok(ids.includes("worker-c"));
 });
 
-test("WorkerPool excludes workers at max capacity from task assignment", () => {
+test("WorkerPool excludes workers at max capacity from task assignment [worker-pool-service]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -94,7 +94,7 @@ test("WorkerPool excludes workers at max capacity from task assignment", () => {
   assert.equal(eligible[0]!.workerId, "worker-available");
 });
 
-test("WorkerPool assigns task based on required capabilities", () => {
+test("WorkerPool assigns task based on required capabilities [worker-pool-service]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -106,7 +106,7 @@ test("WorkerPool assigns task based on required capabilities", () => {
   assert.equal(eligible[0]!.workerId, "worker-2");
 });
 
-test("WorkerPool assigns to hardened isolation worker when required", () => {
+test("WorkerPool assigns to hardened isolation worker when required [worker-pool-service]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -118,7 +118,7 @@ test("WorkerPool assigns to hardened isolation worker when required", () => {
   assert.equal(eligible[0]!.workerId, "worker-hrd");
 });
 
-test("WorkerPool strict isolation satisfies hardened requirement", () => {
+test("WorkerPool strict isolation satisfies hardened requirement [worker-pool-service]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -130,7 +130,7 @@ test("WorkerPool strict isolation satisfies hardened requirement", () => {
   assert.equal(eligible[0]!.workerId, "worker-strict");
 });
 
-test("WorkerPool excludes unavailable, offline, quarantined, draining workers", () => {
+test("WorkerPool excludes unavailable, offline, quarantined, draining workers [worker-pool-service]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -156,7 +156,7 @@ test("WorkerPool excludes unavailable, offline, quarantined, draining workers", 
 // Worker Capacity tests
 // ---------------------------------------------------------------------------
 
-test("WorkerPool availableSlots is maxConcurrency minus running executions", () => {
+test("WorkerPool availableSlots is maxConcurrency minus running executions [worker-pool-service]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -170,7 +170,7 @@ test("WorkerPool availableSlots is maxConcurrency minus running executions", () 
   assert.equal(worker!.availableSlots, 5);
 });
 
-test("WorkerPool availableSlots cannot go negative", () => {
+test("WorkerPool availableSlots cannot go negative [worker-pool-service]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -184,7 +184,7 @@ test("WorkerPool availableSlots cannot go negative", () => {
   assert.equal(worker!.availableSlots, 0);
 });
 
-test("WorkerPool capacity reflects updated running execution count", () => {
+test("WorkerPool capacity reflects updated running execution count [worker-pool-service]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -205,7 +205,7 @@ test("WorkerPool capacity reflects updated running execution count", () => {
   assert.equal(service.getWorker("worker-1")!.availableSlots, 1);
 });
 
-test("WorkerPool zero maxConcurrency means zero capacity", () => {
+test("WorkerPool zero maxConcurrency means zero capacity [worker-pool-service]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -219,7 +219,7 @@ test("WorkerPool zero maxConcurrency means zero capacity", () => {
   assert.equal(worker!.availableSlots, 0);
 });
 
-test("WorkerPool worker with no running executions has full capacity", () => {
+test("WorkerPool worker with no running executions has full capacity [worker-pool-service]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -237,7 +237,7 @@ test("WorkerPool worker with no running executions has full capacity", () => {
 // Load Balancing tests
 // ---------------------------------------------------------------------------
 
-test("WorkerPool load score is higher for worker with more active leases", () => {
+test("WorkerPool load score is higher for worker with more active leases [worker-pool-service]", () => {
   const signal1: WorkerLoadSignal = {
     workerId: "worker-1",
     queueAffinity: null,
@@ -267,7 +267,7 @@ test("WorkerPool load score is higher for worker with more active leases", () =>
   assert.ok(score1 > score2, "Worker with more active leases should have higher load score");
 });
 
-test("WorkerPool load score increases with saturation", () => {
+test("WorkerPool load score increases with saturation [worker-pool-service]", () => {
   const noSaturation: WorkerLoadSignal = {
     workerId: "worker-1",
     queueAffinity: null,
@@ -297,7 +297,7 @@ test("WorkerPool load score increases with saturation", () => {
   assert.ok(scoreHigh > scoreLow, "Worker with higher saturation should have higher load score");
 });
 
-test("WorkerPool load score accounts for tool backlog", () => {
+test("WorkerPool load score accounts for tool backlog [worker-pool-service]", () => {
   const noBacklog: WorkerLoadSignal = {
     workerId: "worker-1",
     queueAffinity: null,
@@ -327,7 +327,7 @@ test("WorkerPool load score accounts for tool backlog", () => {
   assert.ok(scoreHighBacklog > scoreNoBacklog, "Worker with backlog should have higher load score");
 });
 
-test("WorkerPool load score accounts for CPU usage", () => {
+test("WorkerPool load score accounts for CPU usage [worker-pool-service]", () => {
   const noCpu: WorkerLoadSignal = {
     workerId: "worker-1",
     queueAffinity: null,
@@ -357,7 +357,7 @@ test("WorkerPool load score accounts for CPU usage", () => {
   assert.ok(scoreHighCpu > scoreNoCpu, "Worker with high CPU should have higher load score");
 });
 
-test("WorkerPool load skew not detected when load is balanced", () => {
+test("WorkerPool load skew not detected when load is balanced [worker-pool-service]", () => {
   const signals: WorkerLoadSignal[] = [
     {
       workerId: "worker-1",
@@ -388,7 +388,7 @@ test("WorkerPool load skew not detected when load is balanced", () => {
   assert.equal(summary.dominantWorkerId, null);
 });
 
-test("WorkerPool load skew detected when one worker has disproportionate load", () => {
+test("WorkerPool load skew detected when one worker has disproportionate load [worker-pool-service]", () => {
   const signals: WorkerLoadSignal[] = [
     {
       workerId: "worker-1",
@@ -421,7 +421,7 @@ test("WorkerPool load skew detected when one worker has disproportionate load", 
   assert.ok(summary.dominantWorkerShare! > 0.6);
 });
 
-test("WorkerPool load skew not detected when alternative worker also has load", () => {
+test("WorkerPool load skew not detected when alternative worker also has load [worker-pool-service]", () => {
   const signals: WorkerLoadSignal[] = [
     {
       workerId: "worker-1",
@@ -453,13 +453,13 @@ test("WorkerPool load skew not detected when alternative worker also has load", 
   assert.equal(summary.detected, false);
 });
 
-test("WorkerPool empty worker list returns no skew", () => {
+test("WorkerPool empty worker list returns no skew [worker-pool-service]", () => {
   const summary = summarizeWorkerLoadSkew([]);
   assert.equal(summary.detected, false);
   assert.equal(summary.totalActiveLeaseCount, 0);
 });
 
-test("WorkerPool single worker with high load does not trigger skew detection", () => {
+test("WorkerPool single worker with high load does not trigger skew detection [worker-pool-service]", () => {
   const signals: WorkerLoadSignal[] = [
     {
       workerId: "worker-1",
@@ -482,7 +482,7 @@ test("WorkerPool single worker with high load does not trigger skew detection", 
 // Combined Selection and Load Balancing
 // ---------------------------------------------------------------------------
 
-test("WorkerPool listEligibleWorkers returns eligible workers (order not guaranteed)", () => {
+test("WorkerPool listEligibleWorkers returns eligible workers (order not guaranteed) [worker-pool-service]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -508,7 +508,7 @@ test("WorkerPool listEligibleWorkers returns eligible workers (order not guarant
   assert.equal(highWorker!.availableSlots, 8);
 });
 
-test("WorkerPool untrusted remote workers excluded from eligible list", () => {
+test("WorkerPool untrusted remote workers excluded from eligible list [worker-pool-service]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 

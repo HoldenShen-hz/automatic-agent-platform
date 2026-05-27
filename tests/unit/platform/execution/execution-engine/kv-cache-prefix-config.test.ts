@@ -8,7 +8,7 @@ import {
   isWithinDomainBlockBudget,
 } from "../../../../../src/platform/five-plane-execution/execution-engine/kv-cache-prefix-config.js";
 
-test("createKvCachePrefixConfig returns default values", () => {
+test("createKvCachePrefixConfig returns default values [kv-cache-prefix-config]", () => {
   const config = createKvCachePrefixConfig();
 
   assert.equal(config.budget.fixedPrefixMaxTokens, 1000);
@@ -21,7 +21,7 @@ test("createKvCachePrefixConfig returns default values", () => {
   assert.ok(config.fixedPrefixTemplate.length > 0);
 });
 
-test("createKvCachePrefixConfig applies overrides", () => {
+test("createKvCachePrefixConfig applies overrides [kv-cache-prefix-config]", () => {
   const config = createKvCachePrefixConfig({
     budget: { fixedPrefixMaxTokens: 2000 },
     strategy: { kvCacheEnabled: false },
@@ -33,7 +33,7 @@ test("createKvCachePrefixConfig applies overrides", () => {
   assert.equal(config.strategy.cacheKeyStrategy, "hash_prefix");
 });
 
-test("createKvCachePrefixConfig merges domain block templates", () => {
+test("createKvCachePrefixConfig merges domain block templates [kv-cache-prefix-config]", () => {
   const config = createKvCachePrefixConfig({
     domainBlockTemplates: {
       "domain-a": "Domain A specific rules",
@@ -45,7 +45,7 @@ test("createKvCachePrefixConfig merges domain block templates", () => {
   assert.ok(config.domainBlockTemplates["domain-b"]);
 });
 
-test("estimateTokens calculates rough token count", () => {
+test("estimateTokens calculates rough token count [kv-cache-prefix-config]", () => {
   // 4 chars per token approximation
   assert.equal(estimateTokens("abcd"), 1);
   assert.equal(estimateTokens("abcdefgh"), 2);
@@ -53,14 +53,14 @@ test("estimateTokens calculates rough token count", () => {
   assert.equal(estimateTokens("a".repeat(100)), 25);
 });
 
-test("isWithinFixedPrefixBudget returns true when under budget", () => {
+test("isWithinFixedPrefixBudget returns true when under budget [kv-cache-prefix-config]", () => {
   const config = createKvCachePrefixConfig();
   const text = "A".repeat(1000);
 
   assert.equal(isWithinFixedPrefixBudget(text, config), true);
 });
 
-test("isWithinFixedPrefixBudget returns true when budget disabled", () => {
+test("isWithinFixedPrefixBudget returns true when budget disabled [kv-cache-prefix-config]", () => {
   const config = createKvCachePrefixConfig({
     budget: { enforceBudget: false },
   });
@@ -69,14 +69,14 @@ test("isWithinFixedPrefixBudget returns true when budget disabled", () => {
   assert.equal(isWithinFixedPrefixBudget(text, config), true);
 });
 
-test("isWithinFixedPrefixBudget returns false when over budget", () => {
+test("isWithinFixedPrefixBudget returns false when over budget [kv-cache-prefix-config]", () => {
   const config = createKvCachePrefixConfig();
   const text = "A".repeat(5000);
 
   assert.equal(isWithinFixedPrefixBudget(text, config), false);
 });
 
-test("isWithinFixedPrefixBudget returns true when KV cache disabled", () => {
+test("isWithinFixedPrefixBudget returns true when KV cache disabled [kv-cache-prefix-config]", () => {
   const config = createKvCachePrefixConfig({
     strategy: { kvCacheEnabled: false },
   });
@@ -85,21 +85,21 @@ test("isWithinFixedPrefixBudget returns true when KV cache disabled", () => {
   assert.equal(isWithinFixedPrefixBudget(text, config), true);
 });
 
-test("isWithinDomainBlockBudget returns true when under budget", () => {
+test("isWithinDomainBlockBudget returns true when under budget [kv-cache-prefix-config]", () => {
   const config = createKvCachePrefixConfig();
   const text = "A".repeat(400);
 
   assert.equal(isWithinDomainBlockBudget(text, "domain-a", config), true);
 });
 
-test("isWithinDomainBlockBudget returns false when over budget", () => {
+test("isWithinDomainBlockBudget returns false when over budget [kv-cache-prefix-config]", () => {
   const config = createKvCachePrefixConfig();
   const text = "A".repeat(2000);
 
   assert.equal(isWithinDomainBlockBudget(text, "domain-a", config), false);
 });
 
-test("isWithinDomainBlockBudget uses domainBlockMaxTokens", () => {
+test("isWithinDomainBlockBudget uses domainBlockMaxTokens [kv-cache-prefix-config]", () => {
   const config = createKvCachePrefixConfig({
     budget: { domainBlockMaxTokens: 100 },
   });
@@ -108,7 +108,7 @@ test("isWithinDomainBlockBudget uses domainBlockMaxTokens", () => {
   assert.equal(isWithinDomainBlockBudget(text, "domain-b", config), false);
 });
 
-test("isWithinDomainBlockBudget handles different domains independently", () => {
+test("isWithinDomainBlockBudget handles different domains independently [kv-cache-prefix-config]", () => {
   const config = createKvCachePrefixConfig({
     budget: { domainBlockMaxTokens: 100 },
     domainBlockTemplates: {
@@ -122,14 +122,14 @@ test("isWithinDomainBlockBudget handles different domains independently", () => 
   assert.equal(isWithinDomainBlockBudget(smallText, "domain-b", config), false);
 });
 
-test("createKvCachePrefixConfig handles empty overrides", () => {
+test("createKvCachePrefixConfig handles empty overrides [kv-cache-prefix-config]", () => {
   const config = createKvCachePrefixConfig({});
 
   assert.equal(config.budget.fixedPrefixMaxTokens, 1000);
   assert.equal(config.budget.domainBlockMaxTokens, 400);
 });
 
-test("estimateTokens handles edge cases", () => {
+test("estimateTokens handles edge cases [kv-cache-prefix-config]", () => {
   assert.equal(estimateTokens(""), 0);
   assert.equal(estimateTokens("a"), 1);
   assert.equal(estimateTokens("ab"), 1);
@@ -138,7 +138,7 @@ test("estimateTokens handles edge cases", () => {
   assert.equal(estimateTokens("abcde"), 2);
 });
 
-test("isWithinFixedPrefixBudget edge case - exact boundary", () => {
+test("isWithinFixedPrefixBudget edge case - exact boundary [kv-cache-prefix-config]", () => {
   const config = createKvCachePrefixConfig({
     budget: { fixedPrefixMaxTokens: 100 },
   });
@@ -147,7 +147,7 @@ test("isWithinFixedPrefixBudget edge case - exact boundary", () => {
   assert.equal(isWithinFixedPrefixBudget(text, config), true);
 });
 
-test("isWithinDomainBlockBudget edge case - exact boundary", () => {
+test("isWithinDomainBlockBudget edge case - exact boundary [kv-cache-prefix-config]", () => {
   const config = createKvCachePrefixConfig({
     budget: { domainBlockMaxTokens: 50 },
   });

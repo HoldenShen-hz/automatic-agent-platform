@@ -9,13 +9,13 @@
  * ## Key Concepts
  *
  * - **Stream**: Display-oriented incremental output for UI/channel
- *   * See: {@link https://github.com/automatic-agent/automatic_agent_platform/blob/main/docs_zh/governance/glossary_and_terminology.md | Glossary: stream}
+ *   * See: {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/governance/glossary_and_terminology.md | Glossary: stream}
  *
  * - **Replay Buffer**: Finite event window for short disconnection recovery
- *   * See: {@link https://github.com/automatic-agent/automatic_agent_platform/blob/main/docs_zh/governance/glossary_and_terminology.md | Glossary: replay buffer}
+ *   * See: {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/governance/glossary_and_terminology.md | Glossary: replay buffer}
  *
  * - **Last-Event-ID**: SSE client declaration for resume position
- *   * See: {@link https://github.com/automatic-agent/automatic_agent_platform/blob/main/docs_zh/governance/glossary_and_terminology.md | Glossary: Last-Event-ID}
+ *   * See: {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/governance/glossary_and_terminology.md | Glossary: Last-Event-ID}
  *
  * ## Event Types
  *

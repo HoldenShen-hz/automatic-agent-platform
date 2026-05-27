@@ -22,7 +22,7 @@ function createHarness(prefix: string) {
   return { workspace, db, adapter: new SqliteQueueAdapter(db) };
 }
 
-test("SqliteQueueAdapter backendKind is sqlite", () => {
+test("SqliteQueueAdapter backendKind is sqlite [sqlite-queue-adapter.unit]", () => {
   const h = createHarness("aa-backend-");
   try {
     assert.equal(h.adapter.backendKind, "sqlite");
@@ -32,7 +32,7 @@ test("SqliteQueueAdapter backendKind is sqlite", () => {
   }
 });
 
-test("SqliteQueueAdapter enqueue creates job with waiting status", () => {
+test("SqliteQueueAdapter enqueue creates job with waiting status [sqlite-queue-adapter.unit]", () => {
   const h = createHarness("aa-enqueue-");
   try {
     const job = h.adapter.enqueue({
@@ -51,7 +51,7 @@ test("SqliteQueueAdapter enqueue creates job with waiting status", () => {
   }
 });
 
-test("SqliteQueueAdapter enqueue with priority sets priority", () => {
+test("SqliteQueueAdapter enqueue with priority sets priority [sqlite-queue-adapter.unit]", () => {
   const h = createHarness("aa-priority-");
   try {
     const job = h.adapter.enqueue({
@@ -67,7 +67,7 @@ test("SqliteQueueAdapter enqueue with priority sets priority", () => {
   }
 });
 
-test("SqliteQueueAdapter enqueue with delayUntil sets delayed status", () => {
+test("SqliteQueueAdapter enqueue with delayUntil sets delayed status [sqlite-queue-adapter.unit]", () => {
   const h = createHarness("aa-delayed-");
   try {
     const futureTime = new Date(Date.now() + 60000).toISOString();
@@ -85,7 +85,7 @@ test("SqliteQueueAdapter enqueue with delayUntil sets delayed status", () => {
   }
 });
 
-test("SqliteQueueAdapter dequeue returns null for empty queue", () => {
+test("SqliteQueueAdapter dequeue returns null for empty queue [sqlite-queue-adapter.unit]", () => {
   const h = createHarness("aa-empty-");
   try {
     assert.equal(h.adapter.dequeue("nonexistent"), null);
@@ -95,7 +95,7 @@ test("SqliteQueueAdapter dequeue returns null for empty queue", () => {
   }
 });
 
-test("SqliteQueueAdapter dequeue returns job and increments attempts", () => {
+test("SqliteQueueAdapter dequeue returns job and increments attempts [sqlite-queue-adapter.unit]", () => {
   const h = createHarness("aa-dequeue-");
   try {
     const enqueued = h.adapter.enqueue({ queueName: "tasks", payload: { taskId: "t1" } });
@@ -112,7 +112,7 @@ test("SqliteQueueAdapter dequeue returns job and increments attempts", () => {
   }
 });
 
-test("SqliteQueueAdapter dequeue respects priority ordering", () => {
+test("SqliteQueueAdapter dequeue respects priority ordering [sqlite-queue-adapter.unit]", () => {
   const h = createHarness("aa-priority-order-");
   try {
     h.adapter.enqueue({ queueName: "q", payload: "low", priority: 1 });
@@ -139,7 +139,7 @@ test("SqliteQueueAdapter dequeue respects priority ordering", () => {
   }
 });
 
-test("SqliteQueueAdapter ack marks job completed", () => {
+test("SqliteQueueAdapter ack marks job completed [sqlite-queue-adapter.unit]", () => {
   const h = createHarness("aa-ack-");
   try {
     const job = h.adapter.enqueue({ queueName: "tasks", payload: {} });
@@ -157,7 +157,7 @@ test("SqliteQueueAdapter ack marks job completed", () => {
   }
 });
 
-test("SqliteQueueAdapter nack requeues job", () => {
+test("SqliteQueueAdapter nack requeues job [sqlite-queue-adapter.unit]", () => {
   const h = createHarness("aa-nack-");
   try {
     const job = h.adapter.enqueue({ queueName: "tasks", payload: {}, maxAttempts: 3 });
@@ -176,7 +176,7 @@ test("SqliteQueueAdapter nack requeues job", () => {
   }
 });
 
-test("SqliteQueueAdapter nack after max attempts moves to dead letter", () => {
+test("SqliteQueueAdapter nack after max attempts moves to dead letter [sqlite-queue-adapter.unit]", () => {
   const h = createHarness("aa-nack-dlq-");
   try {
     const job = h.adapter.enqueue({ queueName: "tasks", payload: {}, maxAttempts: 2 });
@@ -196,7 +196,7 @@ test("SqliteQueueAdapter nack after max attempts moves to dead letter", () => {
   }
 });
 
-test("SqliteQueueAdapter moveToDeadLetter manually", () => {
+test("SqliteQueueAdapter moveToDeadLetter manually [sqlite-queue-adapter.unit]", () => {
   const h = createHarness("aa-manual-dlq-");
   try {
     const job = h.adapter.enqueue({ queueName: "dlq-test", payload: {} });
@@ -211,7 +211,7 @@ test("SqliteQueueAdapter moveToDeadLetter manually", () => {
   }
 });
 
-test("SqliteQueueAdapter retryJob resets dead-letter job to waiting", () => {
+test("SqliteQueueAdapter retryJob resets dead-letter job to waiting [sqlite-queue-adapter.unit]", () => {
   const h = createHarness("aa-retry-");
   try {
     const job = h.adapter.enqueue({ queueName: "retry-test", payload: {}, maxAttempts: 1 });
@@ -227,7 +227,7 @@ test("SqliteQueueAdapter retryJob resets dead-letter job to waiting", () => {
   }
 });
 
-test("SqliteQueueAdapter getJob returns null for non-existent job", () => {
+test("SqliteQueueAdapter getJob returns null for non-existent job [sqlite-queue-adapter.unit]", () => {
   const h = createHarness("aa-get-none-");
   try {
     assert.equal(h.adapter.getJob("non-existent-id"), null);
@@ -237,7 +237,7 @@ test("SqliteQueueAdapter getJob returns null for non-existent job", () => {
   }
 });
 
-test("SqliteQueueAdapter listJobs returns jobs for queue", () => {
+test("SqliteQueueAdapter listJobs returns jobs for queue [sqlite-queue-adapter.unit]", () => {
   const h = createHarness("aa-list-");
   try {
     h.adapter.enqueue({ queueName: "list-test", payload: { n: 1 } });
@@ -251,7 +251,7 @@ test("SqliteQueueAdapter listJobs returns jobs for queue", () => {
   }
 });
 
-test("SqliteQueueAdapter listJobs filters by status", () => {
+test("SqliteQueueAdapter listJobs filters by status [sqlite-queue-adapter.unit]", () => {
   const h = createHarness("aa-list-status-");
   try {
     h.adapter.enqueue({ queueName: "q", payload: "a" });
@@ -268,7 +268,7 @@ test("SqliteQueueAdapter listJobs filters by status", () => {
   }
 });
 
-test("SqliteQueueAdapter stats returns correct counts", () => {
+test("SqliteQueueAdapter stats returns correct counts [sqlite-queue-adapter.unit]", () => {
   const h = createHarness("aa-stats-");
   try {
     h.adapter.enqueue({ queueName: "q", payload: {} });
@@ -285,7 +285,7 @@ test("SqliteQueueAdapter stats returns correct counts", () => {
   }
 });
 
-test("SqliteQueueAdapter listQueues returns distinct queue names", () => {
+test("SqliteQueueAdapter listQueues returns distinct queue names [sqlite-queue-adapter.unit]", () => {
   const h = createHarness("aa-listq-");
   try {
     h.adapter.enqueue({ queueName: "queue-alpha", payload: {} });
@@ -300,7 +300,7 @@ test("SqliteQueueAdapter listQueues returns distinct queue names", () => {
   }
 });
 
-test("SqliteQueueAdapter idempotency prevents duplicate enqueue", () => {
+test("SqliteQueueAdapter idempotency prevents duplicate enqueue [sqlite-queue-adapter.unit]", () => {
   const h = createHarness("aa-idempotent-");
   try {
     const j1 = h.adapter.enqueue({ queueName: "q", payload: "first", idempotencyKey: "key-1" });
@@ -314,7 +314,7 @@ test("SqliteQueueAdapter idempotency prevents duplicate enqueue", () => {
   }
 });
 
-test("SqliteQueueAdapter purge removes old completed jobs", () => {
+test("SqliteQueueAdapter purge removes old completed jobs [sqlite-queue-adapter.unit]", () => {
   const h = createHarness("aa-purge-");
   try {
     const job = h.adapter.enqueue({ queueName: "q", payload: {} });
@@ -333,7 +333,7 @@ test("SqliteQueueAdapter purge removes old completed jobs", () => {
 
 // §17.1 Concurrency Tests for SqliteQueueAdapter
 
-test("SqliteQueueAdapter concurrent enqueues maintain data integrity", async () => {
+test("SqliteQueueAdapter concurrent enqueues maintain data integrity [sqlite-queue-adapter.unit]", async () => {
   const h = createHarness("aa-conc-enqueue-");
   try {
     const result = await runConcurrentInvariant(async (workerId: number) => {
@@ -354,7 +354,7 @@ test("SqliteQueueAdapter concurrent enqueues maintain data integrity", async () 
   }
 });
 
-test("SqliteQueueAdapter concurrent enqueue idempotency", async () => {
+test("SqliteQueueAdapter concurrent enqueue idempotency [sqlite-queue-adapter.unit]", async () => {
   const h = createHarness("aa-conc-idempotent-");
   try {
     const result = await runConcurrentInvariant(async (workerId: number) => {
@@ -375,7 +375,7 @@ test("SqliteQueueAdapter concurrent enqueue idempotency", async () => {
   }
 });
 
-test("SqliteQueueAdapter concurrent dequeue race condition", async () => {
+test("SqliteQueueAdapter concurrent dequeue race condition [sqlite-queue-adapter.unit]", async () => {
   const h = createHarness("aa-conc-dequeue-");
   try {
     for (let i = 0; i < 20; i++) {
@@ -397,7 +397,7 @@ test("SqliteQueueAdapter concurrent dequeue race condition", async () => {
   }
 });
 
-test("SqliteQueueAdapter concurrent ack does not corrupt job state", async () => {
+test("SqliteQueueAdapter concurrent ack does not corrupt job state [sqlite-queue-adapter.unit]", async () => {
   const h = createHarness("aa-conc-ack-");
   try {
     const jobs = [];

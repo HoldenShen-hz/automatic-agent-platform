@@ -5,7 +5,7 @@ import test from "node:test";
 import { CodeDiagnosticEntry, CodeDiagnosticsService, CodeDiagnosticsSummary, formatDiagnosticsFeedback } from "../../../../../src/platform/five-plane-execution/tool-executor/code-diagnostics-service.js";
 import { cleanupPath, createFile, createTempWorkspace } from "../../../../helpers/fs.js";
 
-test("code diagnostics service reports TypeScript diagnostics for changed files", async () => {
+test("code diagnostics service reports TypeScript diagnostics for changed files [code-diagnostics-service]", async () => {
   const workspace = createTempWorkspace("aa-code-diagnostics-unit-");
   const filePath = join(workspace, "broken.ts");
 
@@ -25,7 +25,7 @@ test("code diagnostics service reports TypeScript diagnostics for changed files"
   }
 });
 
-test("code diagnostics service groups TypeScript and Python diagnostics and ignores unsupported files", async () => {
+test("code diagnostics service groups TypeScript and Python diagnostics and ignores unsupported files [code-diagnostics-service]", async () => {
   const workspace = createTempWorkspace("aa-code-diagnostics-unit-");
   const tsFile = join(workspace, "src", "demo.ts");
   const pyFile = join(workspace, "scripts", "demo.py");
@@ -87,7 +87,7 @@ test("code diagnostics service groups TypeScript and Python diagnostics and igno
   }
 });
 
-test("code diagnostics service defaults to MAX_DIAGNOSTICS of 20", async () => {
+test("code diagnostics service defaults to MAX_DIAGNOSTICS of 20 [code-diagnostics-service]", async () => {
   const workspace = createTempWorkspace("aa-code-diagnostics-default-");
   try {
     // Create a valid file to check
@@ -105,7 +105,7 @@ test("code diagnostics service defaults to MAX_DIAGNOSTICS of 20", async () => {
   }
 });
 
-test("code diagnostics service respects custom maxDiagnostics option", async () => {
+test("code diagnostics service respects custom maxDiagnostics option [code-diagnostics-service]", async () => {
   const workspace = createTempWorkspace("aa-code-diagnostics-max-");
   const filePath = join(workspace, "many.ts");
 
@@ -132,7 +132,7 @@ test("code diagnostics service respects custom maxDiagnostics option", async () 
   }
 });
 
-test("code diagnostics service truncates at DEFAULT_MAX_DIAGNOSTICS of 20", async () => {
+test("code diagnostics service truncates at DEFAULT_MAX_DIAGNOSTICS of 20 [code-diagnostics-service]", async () => {
   const workspace = createTempWorkspace("aa-code-diagnostics-truncate-");
   const filePath = join(workspace, "lots-of-errors.ts");
 
@@ -160,7 +160,7 @@ test("code diagnostics service truncates at DEFAULT_MAX_DIAGNOSTICS of 20", asyn
   }
 });
 
-test("code diagnostics service returns null for empty filePaths array", async () => {
+test("code diagnostics service returns null for empty filePaths array [code-diagnostics-service]", async () => {
   const workspace = createTempWorkspace("aa-code-diagnostics-empty-");
 
   try {
@@ -173,7 +173,7 @@ test("code diagnostics service returns null for empty filePaths array", async ()
   }
 });
 
-test("code diagnostics service returns null when all files are filtered by extension", async () => {
+test("code diagnostics service returns null when all files are filtered by extension [code-diagnostics-service]", async () => {
   const workspace = createTempWorkspace("aa-code-diagnostics-filtered-");
   const txtFile = join(workspace, "README.txt");
   const mdFile = join(workspace, "docs.md");
@@ -193,7 +193,7 @@ test("code diagnostics service returns null when all files are filtered by exten
   }
 });
 
-test("formatDiagnosticsFeedback returns null when errorCount and warningCount are both zero", () => {
+test("formatDiagnosticsFeedback returns null when errorCount and warningCount are both zero [code-diagnostics-service]", () => {
   const summaryWithZeroCounts: CodeDiagnosticsSummary = {
     checkedFileCount: 1,
     diagnosticFileCount: 0,
@@ -208,7 +208,7 @@ test("formatDiagnosticsFeedback returns null when errorCount and warningCount ar
   assert.equal(result, null);
 });
 
-test("code diagnostics service deduplicates diagnostics with identical keys", async () => {
+test("code diagnostics service deduplicates diagnostics with identical keys [code-diagnostics-service]", async () => {
   const workspace = createTempWorkspace("aa-code-diagnostics-dedup-");
   const filePath = join(workspace, "test.ts");
 
@@ -243,7 +243,7 @@ test("code diagnostics service deduplicates diagnostics with identical keys", as
   }
 });
 
-test("code diagnostics service filters out files outside workspace root", async () => {
+test("code diagnostics service filters out files outside workspace root [code-diagnostics-service]", async () => {
   const workspaceA = createTempWorkspace("aa-code-diagnostics-ws-a-");
   const workspaceB = createTempWorkspace("aa-code-diagnostics-ws-b-");
   const fileInA = join(workspaceA, "file-a.ts");

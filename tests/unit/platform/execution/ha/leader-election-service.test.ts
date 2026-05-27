@@ -217,7 +217,7 @@ function createMockCoordinator(): HaCoordinatorService & {
 // Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("LeaderElectionService - creation with defaults", () => {
+test("LeaderElectionService - creation with defaults [leader-election-service]", () => {
   const coordinator = createMockCoordinator();
   const service = new LeaderElectionService(coordinator, {
     nodeId: "node-1",
@@ -230,7 +230,7 @@ test("LeaderElectionService - creation with defaults", () => {
   service.dispose();
 });
 
-test("LeaderElectionService - HA-1 mode does not acquire leadership", async () => {
+test("LeaderElectionService - HA-1 mode does not acquire leadership [leader-election-service]", async () => {
   const coordinator = createMockCoordinator();
   const service = new LeaderElectionService(coordinator, {
     nodeId: "node-1",
@@ -247,7 +247,7 @@ test("LeaderElectionService - HA-1 mode does not acquire leadership", async () =
   service.dispose();
 });
 
-test("LeaderElectionService - start registers node and begins election", async () => {
+test("LeaderElectionService - start registers node and begins election [leader-election-service]", async () => {
   const coordinator = createMockCoordinator();
   const service = new LeaderElectionService(coordinator, {
     nodeId: "node-1",
@@ -267,7 +267,7 @@ test("LeaderElectionService - start registers node and begins election", async (
   service.dispose();
 });
 
-test("LeaderElectionService - queryLeadership returns correct state", async () => {
+test("LeaderElectionService - queryLeadership returns correct state [leader-election-service]", async () => {
   const coordinator = createMockCoordinator();
   const service = new LeaderElectionService(coordinator, {
     nodeId: "node-1",
@@ -284,7 +284,7 @@ test("LeaderElectionService - queryLeadership returns correct state", async () =
   service.dispose();
 });
 
-test("LeaderElectionService - getLeaderNodeId returns correct ID when leader", async () => {
+test("LeaderElectionService - getLeaderNodeId returns correct ID when leader [leader-election-service]", async () => {
   const coordinator = createMockCoordinator();
   const service = new LeaderElectionService(coordinator, {
     nodeId: "node-1",
@@ -298,7 +298,7 @@ test("LeaderElectionService - getLeaderNodeId returns correct ID when leader", a
   service.dispose();
 });
 
-test("LeaderElectionService - isCurrentLeader returns true when leader", async () => {
+test("LeaderElectionService - isCurrentLeader returns true when leader [leader-election-service]", async () => {
   const coordinator = createMockCoordinator();
   const service = new LeaderElectionService(coordinator, {
     nodeId: "node-1",
@@ -312,7 +312,7 @@ test("LeaderElectionService - isCurrentLeader returns true when leader", async (
   service.dispose();
 });
 
-test("LeaderElectionService - stop releases leadership", async () => {
+test("LeaderElectionService - stop releases leadership [leader-election-service]", async () => {
   const coordinator = createMockCoordinator();
   const service = new LeaderElectionService(coordinator, {
     nodeId: "node-1",
@@ -330,7 +330,7 @@ test("LeaderElectionService - stop releases leadership", async () => {
   service.dispose();
 });
 
-test("LeaderElectionService - getHaConfig returns configuration", async () => {
+test("LeaderElectionService - getHaConfig returns configuration [leader-election-service]", async () => {
   const coordinator = createMockCoordinator();
   const service = new LeaderElectionService(coordinator, {
     nodeId: "node-1",
@@ -346,7 +346,7 @@ test("LeaderElectionService - getHaConfig returns configuration", async () => {
   service.dispose();
 });
 
-test("LeaderElectionService - getCurrentLease returns lease when leader", async () => {
+test("LeaderElectionService - getCurrentLease returns lease when leader [leader-election-service]", async () => {
   const coordinator = createMockCoordinator();
   const service = new LeaderElectionService(coordinator, {
     nodeId: "node-1",
@@ -364,7 +364,7 @@ test("LeaderElectionService - getCurrentLease returns lease when leader", async 
   service.dispose();
 });
 
-test("LeaderElectionService - forceAcquireLeadership preempts existing leader", async () => {
+test("LeaderElectionService - forceAcquireLeadership preempts existing leader [leader-election-service]", async () => {
   const coordinator = createMockCoordinator();
 
   // First node becomes leader
@@ -394,7 +394,7 @@ test("LeaderElectionService - forceAcquireLeadership preempts existing leader", 
   service2.dispose();
 });
 
-test("LeaderElectionService - multiple nodes, follower sees leader", async () => {
+test("LeaderElectionService - multiple nodes, follower sees leader [leader-election-service]", async () => {
   const coordinator = createMockCoordinator();
 
   // First node becomes leader
@@ -424,7 +424,7 @@ test("LeaderElectionService - multiple nodes, follower sees leader", async () =>
   service2.dispose();
 });
 
-test("LeaderElectionService - stop on disposed service throws", async () => {
+test("LeaderElectionService - stop on disposed service throws [leader-election-service]", async () => {
   const coordinator = createMockCoordinator();
   const service = new LeaderElectionService(coordinator, {
     nodeId: "node-1",
@@ -439,7 +439,7 @@ test("LeaderElectionService - stop on disposed service throws", async () => {
   );
 });
 
-test("LeaderElectionService - stop is idempotent", async () => {
+test("LeaderElectionService - stop is idempotent [leader-election-service]", async () => {
   const coordinator = createMockCoordinator();
   const service = new LeaderElectionService(coordinator, {
     nodeId: "node-1",
@@ -453,7 +453,7 @@ test("LeaderElectionService - stop is idempotent", async () => {
   assert.equal(service.getState(), "stopped");
 });
 
-test("createLeaderElectionService factory works", () => {
+test("createLeaderElectionService factory works [leader-election-service]", () => {
   const coordinator = createMockCoordinator();
   const service = createLeaderElectionService(coordinator, "node-1", "us-east-1", {
     haLevel: "HA_2",
@@ -464,7 +464,7 @@ test("createLeaderElectionService factory works", () => {
   service.dispose();
 });
 
-test("LeaderElectionService - getLeaderNodeId returns null when no leader", async () => {
+test("LeaderElectionService - getLeaderNodeId returns null when no leader [leader-election-service]", async () => {
   const coordinator = createMockCoordinator();
   const service = new LeaderElectionService(coordinator, {
     nodeId: "node-1",
@@ -478,7 +478,7 @@ test("LeaderElectionService - getLeaderNodeId returns null when no leader", asyn
   service.dispose();
 });
 
-test("LeaderElectionService - custom config overrides HA level defaults", async () => {
+test("LeaderElectionService - custom config overrides HA level defaults [leader-election-service]", async () => {
   const coordinator = createMockCoordinator();
   const service = new LeaderElectionService(coordinator, {
     nodeId: "node-1",
@@ -495,7 +495,7 @@ test("LeaderElectionService - custom config overrides HA level defaults", async 
   service.dispose();
 });
 
-test("LeaderElectionService - stop releases heartbeat", async () => {
+test("LeaderElectionService - stop releases heartbeat [leader-election-service]", async () => {
   const coordinator = createMockCoordinator();
   const service = new LeaderElectionService(coordinator, {
     nodeId: "node-1",

@@ -61,6 +61,5 @@ Upper layers:
 ## Important Notes
 
 - `src/core/runtime/` is compatibility-only; do not add new canonical runtime logic there.
-- `src/runtime/agent-runtime/` is a legacy compat shim surface and must not become a new canonical entrypoint.
 - All imports use ESM `.js` extensions.
 - If you change an architectural boundary, update ADR / contract / tests together.

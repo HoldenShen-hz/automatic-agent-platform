@@ -14,7 +14,7 @@ const mockPostgresBackend = {
   asyncSql: {} as any,
 };
 
-test("createHotUpgradeRepository creates repository for SQLite backend", () => {
+test("createHotUpgradeRepository creates repository for SQLite backend [hot-upgrade-repository]", () => {
   const repo = createHotUpgradeRepository(mockSqliteBackend);
 
   assert.ok(repo);
@@ -25,21 +25,21 @@ test("createHotUpgradeRepository creates repository for SQLite backend", () => {
   assert.equal(typeof repo.insertUpgradeAudit, "function");
 });
 
-test("createHotUpgradeRepository creates repository for PostgreSQL backend", () => {
+test("createHotUpgradeRepository creates repository for PostgreSQL backend [hot-upgrade-repository]", () => {
   const repo = createHotUpgradeRepository(mockPostgresBackend);
 
   assert.ok(repo);
   assert.equal(typeof repo.upsertVersionCompatibility, "function");
 });
 
-test("HotUpgradeRepository interface has all required methods for version compatibility", () => {
+test("HotUpgradeRepository interface has all required methods for version compatibility [hot-upgrade-repository]", () => {
   const repo = createHotUpgradeRepository(mockSqliteBackend);
 
   assert.equal(typeof repo.upsertVersionCompatibility, "function");
   assert.equal(typeof repo.getVersionCompatibility, "function");
 });
 
-test("HotUpgradeRepository interface has all required methods for upgrade plans", () => {
+test("HotUpgradeRepository interface has all required methods for upgrade plans [hot-upgrade-repository]", () => {
   const repo = createHotUpgradeRepository(mockSqliteBackend);
 
   assert.equal(typeof repo.insertUpgradePlan, "function");
@@ -48,7 +48,7 @@ test("HotUpgradeRepository interface has all required methods for upgrade plans"
   assert.equal(typeof repo.listUpgradePlansByStatus, "function");
 });
 
-test("HotUpgradeRepository interface has all required methods for upgrade batches", () => {
+test("HotUpgradeRepository interface has all required methods for upgrade batches [hot-upgrade-repository]", () => {
   const repo = createHotUpgradeRepository(mockSqliteBackend);
 
   assert.equal(typeof repo.insertUpgradeBatch, "function");
@@ -57,21 +57,21 @@ test("HotUpgradeRepository interface has all required methods for upgrade batche
   assert.equal(typeof repo.listUpgradeBatchesByPlan, "function");
 });
 
-test("HotUpgradeRepository interface has all required methods for rollback triggers", () => {
+test("HotUpgradeRepository interface has all required methods for rollback triggers [hot-upgrade-repository]", () => {
   const repo = createHotUpgradeRepository(mockSqliteBackend);
 
   assert.equal(typeof repo.insertRollbackTrigger, "function");
   assert.equal(typeof repo.listRollbackTriggersByUpgrade, "function");
 });
 
-test("HotUpgradeRepository interface has all required methods for audit", () => {
+test("HotUpgradeRepository interface has all required methods for audit [hot-upgrade-repository]", () => {
   const repo = createHotUpgradeRepository(mockSqliteBackend);
 
   assert.equal(typeof repo.insertUpgradeAudit, "function");
   assert.equal(typeof repo.listUpgradeAudits, "function");
 });
 
-test("UpgradeAuditEntry interface structure", () => {
+test("UpgradeAuditEntry interface structure [hot-upgrade-repository]", () => {
   const entry: UpgradeAuditEntry = {
     id: "audit_1",
     upgradeId: "upgrade_1",
@@ -88,7 +88,7 @@ test("UpgradeAuditEntry interface structure", () => {
   assert.ok(entry.details);
 });
 
-test("UpgradeAuditEntry details can be null", () => {
+test("UpgradeAuditEntry details can be null [hot-upgrade-repository]", () => {
   const entry: UpgradeAuditEntry = {
     id: "audit_1",
     upgradeId: "upgrade_1",
@@ -102,7 +102,7 @@ test("UpgradeAuditEntry details can be null", () => {
   assert.equal(entry.details, null);
 });
 
-test("createHotUpgradeRepository returns same implementation type for same backend", () => {
+test("createHotUpgradeRepository returns same implementation type for same backend [hot-upgrade-repository]", () => {
   const sqliteRepo1 = createHotUpgradeRepository(mockSqliteBackend);
   const sqliteRepo2 = createHotUpgradeRepository(mockSqliteBackend);
 
@@ -110,7 +110,7 @@ test("createHotUpgradeRepository returns same implementation type for same backe
   assert.equal(sqliteRepo1.constructor.name, sqliteRepo2.constructor.name);
 });
 
-test("createHotUpgradeRepository returns different implementation types for different backends", () => {
+test("createHotUpgradeRepository returns different implementation types for different backends [hot-upgrade-repository]", () => {
   const sqliteRepo = createHotUpgradeRepository(mockSqliteBackend);
   const postgresRepo = createHotUpgradeRepository(mockPostgresBackend);
 

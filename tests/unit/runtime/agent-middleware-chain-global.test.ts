@@ -9,11 +9,11 @@ import {
   type MiddlewareContext,
 } from "../../../src/platform/five-plane-execution/execution-engine/agent-middleware-chain.js";
 
-test("globalMiddlewareChain is an AgentMiddlewareChain instance", () => {
+test("globalMiddlewareChain is an AgentMiddlewareChain instance [agent-middleware-chain-global]", () => {
   assert.ok(globalMiddlewareChain instanceof AgentMiddlewareChain);
 });
 
-test("globalMiddlewareChain has default failOpen behavior", async () => {
+test("globalMiddlewareChain has default failOpen behavior [agent-middleware-chain-global]", async () => {
   const failingHook: BeforeAgentHook = {
     name: "global_failing",
     priority: 0,
@@ -34,7 +34,7 @@ test("globalMiddlewareChain has default failOpen behavior", async () => {
   globalMiddlewareChain.reset();
 });
 
-test("AgentMiddlewareChain reset clears all hooks", () => {
+test("AgentMiddlewareChain reset clears all hooks [agent-middleware-chain-global]", () => {
   const chain = createMiddlewareChain();
 
   chain.registerBeforeAgent({
@@ -52,7 +52,7 @@ test("AgentMiddlewareChain reset clears all hooks", () => {
   assert.equal(hooksAfter.beforeAgent.length, 0);
 });
 
-test("AgentMiddlewareChain getRegisteredHooks returns all hook types", () => {
+test("AgentMiddlewareChain getRegisteredHooks returns all hook types [agent-middleware-chain-global]", () => {
   const chain = createMiddlewareChain();
 
   const hooks = chain.getRegisteredHooks();
@@ -65,7 +65,7 @@ test("AgentMiddlewareChain getRegisteredHooks returns all hook types", () => {
   assert.ok(Array.isArray(hooks.afterAgent));
 });
 
-test("AgentMiddlewareChain multiple hooks of same type are tracked", () => {
+test("AgentMiddlewareChain multiple hooks of same type are tracked [agent-middleware-chain-global]", () => {
   const chain = createMiddlewareChain();
 
   chain.registerBeforeAgent({
@@ -84,7 +84,7 @@ test("AgentMiddlewareChain multiple hooks of same type are tracked", () => {
   assert.equal(hooks.beforeAgent.length, 2);
 });
 
-test("AgentMiddlewareChain wrapToolCall hook can access args", async () => {
+test("AgentMiddlewareChain wrapToolCall hook can access args [agent-middleware-chain-global]", async () => {
   const chain = createMiddlewareChain();
   let capturedArgs: Record<string, unknown> = {};
 
@@ -108,7 +108,7 @@ test("AgentMiddlewareChain wrapToolCall hook can access args", async () => {
   assert.equal(capturedArgs.encoding, "utf8");
 });
 
-test("AgentMiddlewareChain beforeModel hooks receive model from input", async () => {
+test("AgentMiddlewareChain beforeModel hooks receive model from input [agent-middleware-chain-global]", async () => {
   const chain = createMiddlewareChain();
   let receivedModel: string | undefined = undefined;
 
@@ -126,7 +126,7 @@ test("AgentMiddlewareChain beforeModel hooks receive model from input", async ()
   assert.equal(receivedModel, "claude-3.5");
 });
 
-test("AgentMiddlewareChain beforeModel works without model in input", async () => {
+test("AgentMiddlewareChain beforeModel works without model in input [agent-middleware-chain-global]", async () => {
   const chain = createMiddlewareChain();
   let receivedModel: string | undefined = undefined;
 
@@ -144,7 +144,7 @@ test("AgentMiddlewareChain beforeModel works without model in input", async () =
   assert.equal(receivedModel, undefined);
 });
 
-test("AgentMiddlewareChain afterAgent hooks receive response", async () => {
+test("AgentMiddlewareChain afterAgent hooks receive response [agent-middleware-chain-global]", async () => {
   const chain = createMiddlewareChain();
   let receivedResponse: unknown = null;
 
@@ -162,7 +162,7 @@ test("AgentMiddlewareChain afterAgent hooks receive response", async () => {
   assert.deepEqual(receivedResponse, { answer: 42 });
 });
 
-test("AgentMiddlewareChain afterAgent hooks receive toolsUsed", async () => {
+test("AgentMiddlewareChain afterAgent hooks receive toolsUsed [agent-middleware-chain-global]", async () => {
   const chain = createMiddlewareChain();
   let receivedTools: string[] = [];
 
@@ -180,7 +180,7 @@ test("AgentMiddlewareChain afterAgent hooks receive toolsUsed", async () => {
   assert.deepEqual(receivedTools, ["read", "write", "execute"]);
 });
 
-test("AgentMiddlewareChain afterModel hooks receive both messages and response", async () => {
+test("AgentMiddlewareChain afterModel hooks receive both messages and response [agent-middleware-chain-global]", async () => {
   const chain = createMiddlewareChain();
   let receivedMessages: unknown[] = [];
   let receivedResponse: unknown = null;
@@ -201,7 +201,7 @@ test("AgentMiddlewareChain afterModel hooks receive both messages and response",
   assert.equal(receivedResponse, "model_output");
 });
 
-test("AgentMiddlewareChain sortedInsert maintains priority order", () => {
+test("AgentMiddlewareChain sortedInsert maintains priority order [agent-middleware-chain-global]", () => {
   const chain = createMiddlewareChain();
 
   chain.registerBeforeAgent({
@@ -230,7 +230,7 @@ test("AgentMiddlewareChain sortedInsert maintains priority order", () => {
   assert.equal(names[2], "high_priority");
 });
 
-test("AgentMiddlewareChain context buildContext uses provided agentRound and stepId", async () => {
+test("AgentMiddlewareChain context buildContext uses provided agentRound and stepId [agent-middleware-chain-global]", async () => {
   const chain = createMiddlewareChain();
   let contextRound = -1;
   let contextStepId: string | null = null;
@@ -254,7 +254,7 @@ test("AgentMiddlewareChain context buildContext uses provided agentRound and ste
   assert.equal(contextStepId, "step_abc");
 });
 
-test("AgentMiddlewareChain context inherits from provided ctx", async () => {
+test("AgentMiddlewareChain context inherits from provided ctx [agent-middleware-chain-global]", async () => {
   const chain = createMiddlewareChain();
   let taskIdReceived: string = "";
 

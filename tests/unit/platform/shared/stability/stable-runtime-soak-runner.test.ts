@@ -68,7 +68,7 @@ function makeMockSoakReport(overrides: Partial<StableSoakReport> & { cycles?: St
   return { ...defaultReport, ...overrides };
 }
 
-test("mergeStableSoakReports aggregates cycles correctly", () => {
+test("mergeStableSoakReports aggregates cycles correctly [stable-runtime-soak-runner]", () => {
   const report1 = makeMockSoakReport({
     startedAt: "2026-04-09T00:00:00.000Z",
     finishedAt: "2026-04-09T00:01:00.000Z",
@@ -118,7 +118,7 @@ test("mergeStableSoakReports aggregates cycles correctly", () => {
   assert.equal(merged.cycles![1]!.cycle, 2);
 });
 
-test("mergeStableSoakReports uses first report's start time", () => {
+test("mergeStableSoakReports uses first report's start time [stable-runtime-soak-runner]", () => {
   const report1 = makeMockSoakReport({ startedAt: "2026-04-09T00:00:00.000Z" });
   const report2 = makeMockSoakReport({ startedAt: "2026-04-09T01:00:00.000Z" });
 
@@ -126,7 +126,7 @@ test("mergeStableSoakReports uses first report's start time", () => {
   assert.equal(merged.startedAt, "2026-04-09T00:00:00.000Z");
 });
 
-test("mergeStableSoakReports uses last report's finish time", () => {
+test("mergeStableSoakReports uses last report's finish time [stable-runtime-soak-runner]", () => {
   const report1 = makeMockSoakReport({ finishedAt: "2026-04-09T00:00:00.000Z" });
   const report2 = makeMockSoakReport({ finishedAt: "2026-04-09T02:00:00.000Z" });
 
@@ -134,7 +134,7 @@ test("mergeStableSoakReports uses last report's finish time", () => {
   assert.equal(merged.finishedAt, "2026-04-09T02:00:00.000Z");
 });
 
-test("mergeStableSoakReports sums durationMs and wallClockDurationMs", () => {
+test("mergeStableSoakReports sums durationMs and wallClockDurationMs [stable-runtime-soak-runner]", () => {
   const report1 = makeMockSoakReport({ durationMs: 60_000, wallClockDurationMs: 60_000 });
   const report2 = makeMockSoakReport({ durationMs: 120_000, wallClockDurationMs: 120_000 });
 
@@ -143,7 +143,7 @@ test("mergeStableSoakReports sums durationMs and wallClockDurationMs", () => {
   assert.equal(merged.wallClockDurationMs, 180_000);
 });
 
-test("mergeStableSoakReports uses first report's intervalMs and iterationsPerCycle", () => {
+test("mergeStableSoakReports uses first report's intervalMs and iterationsPerCycle [stable-runtime-soak-runner]", () => {
   const report1 = makeMockSoakReport({ intervalMs: 5_000, iterationsPerCycle: 2 });
   const report2 = makeMockSoakReport({ intervalMs: 10_000, iterationsPerCycle: 4 });
 
@@ -152,7 +152,7 @@ test("mergeStableSoakReports uses first report's intervalMs and iterationsPerCyc
   assert.equal(merged.iterationsPerCycle, 2);
 });
 
-test("mergeStableSoakReports handles single report", () => {
+test("mergeStableSoakReports handles single report [stable-runtime-soak-runner]", () => {
   const report = makeMockSoakReport({
     cycles: [
       {
@@ -174,7 +174,7 @@ test("mergeStableSoakReports handles single report", () => {
   assert.equal(merged.cycles.length, 1);
 });
 
-test("mergeStableSoakReports handles empty array", () => {
+test("mergeStableSoakReports handles empty array [stable-runtime-soak-runner]", () => {
   const before = Date.now();
   const merged = mergeStableSoakReports([]);
   const after = Date.now();
@@ -190,7 +190,7 @@ test("mergeStableSoakReports handles empty array", () => {
   assert.equal(merged.cycles.length, 0);
 });
 
-test("mergeStableSoakReports renumbers cycles sequentially", () => {
+test("mergeStableSoakReports renumbers cycles sequentially [stable-runtime-soak-runner]", () => {
   const report1 = makeMockSoakReport({
     cycles: [
       {
@@ -224,7 +224,7 @@ test("mergeStableSoakReports renumbers cycles sequentially", () => {
   assert.equal(merged.cycles![2]!.cycle, 3);
 });
 
-test("writeStableSoakReport creates file with formatted JSON", () => {
+test("writeStableSoakReport creates file with formatted JSON [stable-runtime-soak-runner]", () => {
   const tmpDir = mkdtempSync(join(tmpdir(), "aa-soak-write-"));
   try {
     const report = makeMockSoakReport();
@@ -241,7 +241,7 @@ test("writeStableSoakReport creates file with formatted JSON", () => {
   }
 });
 
-test("writeStableSoakReport creates parent directories", () => {
+test("writeStableSoakReport creates parent directories [stable-runtime-soak-runner]", () => {
   const tmpDir = mkdtempSync(join(tmpdir(), "aa-soak-write-"));
   try {
     const report = makeMockSoakReport();
@@ -258,7 +258,7 @@ test("writeStableSoakReport creates parent directories", () => {
 
 // Memory sampling tests
 
-test("StableSoakCycle accepts memorySnapshot field", () => {
+test("StableSoakCycle accepts memorySnapshot field [stable-runtime-soak-runner]", () => {
   const snapshot: MemorySnapshot = {
     heapUsedBytes: 50_000_000,
     heapTotalBytes: 100_000_000,
@@ -280,7 +280,7 @@ test("StableSoakCycle accepts memorySnapshot field", () => {
   assert.equal(cycle.memorySnapshot!.takenAt, "2026-04-15T10:00:00.000Z");
 });
 
-test("mergeStableSoakReports propagates initialHeapUsedBytes from first report", () => {
+test("mergeStableSoakReports propagates initialHeapUsedBytes from first report [stable-runtime-soak-runner]", () => {
   const report1 = makeMockSoakReport({ initialHeapUsedBytes: 40_000_000, peakHeapUsedBytes: 60_000_000, memoryGrowthRatio: 1.5 });
   const report2 = makeMockSoakReport({ initialHeapUsedBytes: 55_000_000, peakHeapUsedBytes: 70_000_000, memoryGrowthRatio: 1.27 });
 
@@ -288,7 +288,7 @@ test("mergeStableSoakReports propagates initialHeapUsedBytes from first report",
   assert.equal(merged.initialHeapUsedBytes, 40_000_000, "Should use first report's initialHeapUsedBytes");
 });
 
-test("mergeStableSoakReports uses peak heapUsed across all reports", () => {
+test("mergeStableSoakReports uses peak heapUsed across all reports [stable-runtime-soak-runner]", () => {
   const report1 = makeMockSoakReport({ initialHeapUsedBytes: 40_000_000, peakHeapUsedBytes: 60_000_000 });
   const report2 = makeMockSoakReport({ initialHeapUsedBytes: 55_000_000, peakHeapUsedBytes: 80_000_000 });
 
@@ -296,7 +296,7 @@ test("mergeStableSoakReports uses peak heapUsed across all reports", () => {
   assert.equal(merged.peakHeapUsedBytes, 80_000_000, "Should use the higher peak across all reports");
 });
 
-test("mergeStableSoakReports computes memoryGrowthRatio correctly", () => {
+test("mergeStableSoakReports computes memoryGrowthRatio correctly [stable-runtime-soak-runner]", () => {
   const report1 = makeMockSoakReport({ initialHeapUsedBytes: 50_000_000, peakHeapUsedBytes: 80_000_000 });
   const report2 = makeMockSoakReport({ initialHeapUsedBytes: 60_000_000, peakHeapUsedBytes: 100_000_000 });
 
@@ -306,7 +306,7 @@ test("mergeStableSoakReports computes memoryGrowthRatio correctly", () => {
   assert.equal(merged.memoryGrowthRatio, 2.0);
 });
 
-test("mergeStableSoakReports handles missing memory metrics gracefully", () => {
+test("mergeStableSoakReports handles missing memory metrics gracefully [stable-runtime-soak-runner]", () => {
   const report1 = makeMockSoakReport(); // no memory fields
   const report2 = makeMockSoakReport(); // no memory fields
 
@@ -315,7 +315,7 @@ test("mergeStableSoakReports handles missing memory metrics gracefully", () => {
   assert.equal(merged.memoryGrowthRatio, undefined);
 });
 
-test("StableSoakReport memory growth ratio below 2x threshold indicates healthy run", () => {
+test("StableSoakReport memory growth ratio below 2x threshold indicates healthy run [stable-runtime-soak-runner]", () => {
   const report = makeMockSoakReport({
     initialHeapUsedBytes: 50_000_000,
     peakHeapUsedBytes: 90_000_000,
@@ -328,7 +328,7 @@ test("StableSoakReport memory growth ratio below 2x threshold indicates healthy 
   );
 });
 
-test("writeStableSoakReport persists memory metrics", () => {
+test("writeStableSoakReport persists memory metrics [stable-runtime-soak-runner]", () => {
   const tmpDir = mkdtempSync(join(tmpdir(), "aa-soak-mem-"));
   try {
     const report = makeMockSoakReport({

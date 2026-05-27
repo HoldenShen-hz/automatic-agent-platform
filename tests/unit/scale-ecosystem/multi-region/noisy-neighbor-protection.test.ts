@@ -13,7 +13,7 @@ import {
   resetNoisyNeighborProtectionService,
 } from "../../../../src/scale-ecosystem/multi-region/noisy-neighbor-protection.js";
 
-test("NoisyNeighborProtectionService: registers a quota for a tenant", () => {
+test("NoisyNeighborProtectionService: registers a quota for a tenant [noisy-neighbor-protection]", () => {
   const service = new NoisyNeighborProtectionService();
   const quota: TenantQuota = {
     quotaId: "quota-1",
@@ -32,7 +32,7 @@ test("NoisyNeighborProtectionService: registers a quota for a tenant", () => {
   assert.equal(quotas[0]!.resourceType, "api_requests");
 });
 
-test("NoisyNeighborProtectionService: registers multiple quotas for a tenant", () => {
+test("NoisyNeighborProtectionService: registers multiple quotas for a tenant [noisy-neighbor-protection]", () => {
   const service = new NoisyNeighborProtectionService();
   const quotas: readonly Omit<TenantQuota, "quotaId" | "tenantId">[] = [
     { resourceType: "cpu", limit: 100, windowSeconds: 60, burstLimit: 10, priority: 1 },
@@ -45,7 +45,7 @@ test("NoisyNeighborProtectionService: registers multiple quotas for a tenant", (
   assert.equal(tenantQuotas.length, 2);
 });
 
-test("NoisyNeighborProtectionService: assigns new quota IDs", () => {
+test("NoisyNeighborProtectionService: assigns new quota IDs [noisy-neighbor-protection]", () => {
   const service = new NoisyNeighborProtectionService();
   const quotas: readonly Omit<TenantQuota, "quotaId" | "tenantId">[] = [
     { resourceType: "cpu", limit: 100, windowSeconds: 60, burstLimit: 10, priority: 1 },
@@ -57,7 +57,7 @@ test("NoisyNeighborProtectionService: assigns new quota IDs", () => {
   assert.ok(tenantQuotas[0]!.quotaId.startsWith("quota_"));
 });
 
-test("NoisyNeighborProtectionService: allows request when no quota is set", () => {
+test("NoisyNeighborProtectionService: allows request when no quota is set [noisy-neighbor-protection]", () => {
   const service = new NoisyNeighborProtectionService();
   const decision = service.checkRateLimit("tenant-1", "api_requests");
 
@@ -66,7 +66,7 @@ test("NoisyNeighborProtectionService: allows request when no quota is set", () =
   assert.equal(decision.remaining, Infinity);
 });
 
-test("NoisyNeighborProtectionService: allows request within quota limits", () => {
+test("NoisyNeighborProtectionService: allows request within quota limits [noisy-neighbor-protection]", () => {
   const service = new NoisyNeighborProtectionService();
   const quota: TenantQuota = {
     quotaId: "quota-1",
@@ -85,7 +85,7 @@ test("NoisyNeighborProtectionService: allows request within quota limits", () =>
   assert.equal(decision.remaining, 999);
 });
 
-test("NoisyNeighborProtectionService: allows request within window limit", () => {
+test("NoisyNeighborProtectionService: allows request within window limit [noisy-neighbor-protection]", () => {
   const service = new NoisyNeighborProtectionService();
   const quota: TenantQuota = {
     quotaId: "quota-1",
@@ -107,7 +107,7 @@ test("NoisyNeighborProtectionService: allows request within window limit", () =>
   assert.equal(decision.remaining, 49);
 });
 
-test("NoisyNeighborProtectionService: blocks request when window limit exceeded", () => {
+test("NoisyNeighborProtectionService: blocks request when window limit exceeded [noisy-neighbor-protection]", () => {
   const service = new NoisyNeighborProtectionService();
   const quota: TenantQuota = {
     quotaId: "quota-1",
@@ -129,7 +129,7 @@ test("NoisyNeighborProtectionService: blocks request when window limit exceeded"
   assert.ok(decision.retryAfterMs !== null);
 });
 
-test("NoisyNeighborProtectionService: checks token bucket for burst handling", () => {
+test("NoisyNeighborProtectionService: checks token bucket for burst handling [noisy-neighbor-protection]", () => {
   const service = new NoisyNeighborProtectionService();
   const quota: TenantQuota = {
     quotaId: "quota-1",
@@ -152,7 +152,7 @@ test("NoisyNeighborProtectionService: checks token bucket for burst handling", (
   assert.equal(decision.allowed, false);
 });
 
-test("NoisyNeighborProtectionService: returns correct tenant and resource type in decision", () => {
+test("NoisyNeighborProtectionService: returns correct tenant and resource type in decision [noisy-neighbor-protection]", () => {
   const service = new NoisyNeighborProtectionService();
   const quota: TenantQuota = {
     quotaId: "quota-1",
@@ -171,7 +171,7 @@ test("NoisyNeighborProtectionService: returns correct tenant and resource type i
   assert.equal(decision.resourceType, "cpu");
 });
 
-test("NoisyNeighborProtectionService: records usage and returns ResourceUsage", () => {
+test("NoisyNeighborProtectionService: records usage and returns ResourceUsage [noisy-neighbor-protection]", () => {
   const service = new NoisyNeighborProtectionService();
   const quota: TenantQuota = {
     quotaId: "quota-1",
@@ -193,7 +193,7 @@ test("NoisyNeighborProtectionService: records usage and returns ResourceUsage", 
   assert.ok(usage.percentUsed > 0);
 });
 
-test("NoisyNeighborProtectionService: accumulates usage within same window", () => {
+test("NoisyNeighborProtectionService: accumulates usage within same window [noisy-neighbor-protection]", () => {
   const service = new NoisyNeighborProtectionService();
   const quota: TenantQuota = {
     quotaId: "quota-1",
@@ -214,7 +214,7 @@ test("NoisyNeighborProtectionService: accumulates usage within same window", () 
   assert.equal(usage!.used, 30);
 });
 
-test("NoisyNeighborProtectionService: tracks all resource types", () => {
+test("NoisyNeighborProtectionService: tracks all resource types [noisy-neighbor-protection]", () => {
   const service = new NoisyNeighborProtectionService();
   const resources: ResourceType[] = [
     "cpu",
@@ -234,13 +234,13 @@ test("NoisyNeighborProtectionService: tracks all resource types", () => {
   assert.equal(usages.length, resources.length);
 });
 
-test("NoisyNeighborProtectionService: returns null when no usage recorded", () => {
+test("NoisyNeighborProtectionService: returns null when no usage recorded [noisy-neighbor-protection]", () => {
   const service = new NoisyNeighborProtectionService();
   const usage = service.getCurrentUsage("tenant-1", "api_requests");
   assert.equal(usage, null);
 });
 
-test("NoisyNeighborProtectionService: returns current usage for tenant and resource type", () => {
+test("NoisyNeighborProtectionService: returns current usage for tenant and resource type [noisy-neighbor-protection]", () => {
   const service = new NoisyNeighborProtectionService();
   const quota: TenantQuota = {
     quotaId: "quota-1",
@@ -260,7 +260,7 @@ test("NoisyNeighborProtectionService: returns current usage for tenant and resou
   assert.equal(usage!.used, 50);
 });
 
-test("NoisyNeighborProtectionService: returns percent used", () => {
+test("NoisyNeighborProtectionService: returns percent used [noisy-neighbor-protection]", () => {
   const service = new NoisyNeighborProtectionService();
   const quota: TenantQuota = {
     quotaId: "quota-1",
@@ -280,13 +280,13 @@ test("NoisyNeighborProtectionService: returns percent used", () => {
   assert.equal(usage!.percentUsed, 50);
 });
 
-test("NoisyNeighborProtectionService: returns empty array when no quotas registered", () => {
+test("NoisyNeighborProtectionService: returns empty array when no quotas registered [noisy-neighbor-protection]", () => {
   const service = new NoisyNeighborProtectionService();
   const quotas = service.getTenantQuotas("tenant-1");
   assert.equal(quotas.length, 0);
 });
 
-test("NoisyNeighborProtectionService: returns all quotas for a tenant", () => {
+test("NoisyNeighborProtectionService: returns all quotas for a tenant [noisy-neighbor-protection]", () => {
   const service = new NoisyNeighborProtectionService();
   const quotas: TenantQuota[] = [
     {
@@ -317,7 +317,7 @@ test("NoisyNeighborProtectionService: returns all quotas for a tenant", () => {
   assert.equal(tenantQuotas.length, 2);
 });
 
-test("NoisyNeighborProtectionService: does not return quotas for other tenants", () => {
+test("NoisyNeighborProtectionService: does not return quotas for other tenants [noisy-neighbor-protection]", () => {
   const service = new NoisyNeighborProtectionService();
   const quota: TenantQuota = {
     quotaId: "quota-1",
@@ -334,7 +334,7 @@ test("NoisyNeighborProtectionService: does not return quotas for other tenants",
   assert.equal(otherQuotas.length, 0);
 });
 
-test("NoisyNeighborProtectionService: returns false when no quotas exceeded", () => {
+test("NoisyNeighborProtectionService: returns false when no quotas exceeded [noisy-neighbor-protection]", () => {
   const service = new NoisyNeighborProtectionService();
   const quota: TenantQuota = {
     quotaId: "quota-1",
@@ -353,7 +353,7 @@ test("NoisyNeighborProtectionService: returns false when no quotas exceeded", ()
   assert.equal(exceeding, false);
 });
 
-test("NoisyNeighborProtectionService: returns true when any quota exceeded", () => {
+test("NoisyNeighborProtectionService: returns true when any quota exceeded [noisy-neighbor-protection]", () => {
   const service = new NoisyNeighborProtectionService();
   const quota: TenantQuota = {
     quotaId: "quota-1",
@@ -372,19 +372,19 @@ test("NoisyNeighborProtectionService: returns true when any quota exceeded", () 
   assert.equal(exceeding, true);
 });
 
-test("NoisyNeighborProtectionService: returns false when tenant has no quotas", () => {
+test("NoisyNeighborProtectionService: returns false when tenant has no quotas [noisy-neighbor-protection]", () => {
   const service = new NoisyNeighborProtectionService();
   const exceeding = service.isExceedingQuotas("tenant-with-no-quotas");
   assert.equal(exceeding, false);
 });
 
-test("NoisyNeighborProtectionService: returns empty array when no quotas for utilization", () => {
+test("NoisyNeighborProtectionService: returns empty array when no quotas for utilization [noisy-neighbor-protection]", () => {
   const service = new NoisyNeighborProtectionService();
   const utilization = service.getQuotaUtilization("tenant-1");
   assert.equal(utilization.length, 0);
 });
 
-test("NoisyNeighborProtectionService: returns utilization for each quota", () => {
+test("NoisyNeighborProtectionService: returns utilization for each quota [noisy-neighbor-protection]", () => {
   const service = new NoisyNeighborProtectionService();
   const quota: TenantQuota = {
     quotaId: "quota-1",
@@ -405,7 +405,7 @@ test("NoisyNeighborProtectionService: returns utilization for each quota", () =>
   assert.equal(utilization[0]!.isNearLimit, true);
 });
 
-test("NoisyNeighborProtectionService: marks isNearLimit false when below 80%", () => {
+test("NoisyNeighborProtectionService: marks isNearLimit false when below 80% [noisy-neighbor-protection]", () => {
   const service = new NoisyNeighborProtectionService();
   const quota: TenantQuota = {
     quotaId: "quota-1",
@@ -424,7 +424,7 @@ test("NoisyNeighborProtectionService: marks isNearLimit false when below 80%", (
   assert.equal(utilization[0]!.isNearLimit, false);
 });
 
-test("NoisyNeighborProtectionService: resets usage for specific resource type", () => {
+test("NoisyNeighborProtectionService: resets usage for specific resource type [noisy-neighbor-protection]", () => {
   const service = new NoisyNeighborProtectionService();
   const quota: TenantQuota = {
     quotaId: "quota-1",
@@ -449,7 +449,7 @@ test("NoisyNeighborProtectionService: resets usage for specific resource type", 
   assert.ok(cpuUsage !== null);
 });
 
-test("NoisyNeighborProtectionService: resets all resources when no resource type specified", () => {
+test("NoisyNeighborProtectionService: resets all resources when no resource type specified [noisy-neighbor-protection]", () => {
   const service = new NoisyNeighborProtectionService();
   const quota: TenantQuota = {
     quotaId: "quota-1",
@@ -474,14 +474,14 @@ test("NoisyNeighborProtectionService: resets all resources when no resource type
   assert.equal(cpuUsage, null);
 });
 
-test("getNoisyNeighborProtectionService returns singleton instance", () => {
+test("getNoisyNeighborProtectionService returns singleton instance [noisy-neighbor-protection]", () => {
   resetNoisyNeighborProtectionService();
   const instance1 = getNoisyNeighborProtectionService();
   const instance2 = getNoisyNeighborProtectionService();
   assert.ok(instance1 === instance2);
 });
 
-test("resetNoisyNeighborProtectionService clears singleton", () => {
+test("resetNoisyNeighborProtectionService clears singleton [noisy-neighbor-protection]", () => {
   const instance1 = getNoisyNeighborProtectionService();
   resetNoisyNeighborProtectionService();
   const instance2 = getNoisyNeighborProtectionService();

@@ -21,7 +21,7 @@ function createRequest(overrides: Partial<ConnectorExecutionRequest> = {}): Conn
   };
 }
 
-test("GitHubConnector.execute returns success for create_pr capability", () => {
+test("GitHubConnector.execute returns success for create_pr capability [github-connector]", () => {
   const connector = new GitHubConnector();
   const request = createRequest({ capability: "create_pr" });
 
@@ -32,7 +32,7 @@ test("GitHubConnector.execute returns success for create_pr capability", () => {
   assert.equal(result.connectorId, "github-test");
 });
 
-test("GitHubConnector.execute returns success for create_issue capability", () => {
+test("GitHubConnector.execute returns success for create_issue capability [github-connector]", () => {
   const connector = new GitHubConnector();
   const request = createRequest({ capability: "create_issue" });
 
@@ -42,7 +42,7 @@ test("GitHubConnector.execute returns success for create_issue capability", () =
   assert.equal(result.status, "succeeded");
 });
 
-test("GitHubConnector.execute returns success for dispatch_workflow capability", () => {
+test("GitHubConnector.execute returns success for dispatch_workflow capability [github-connector]", () => {
   const connector = new GitHubConnector();
   const request = createRequest({ capability: "dispatch_workflow" });
 
@@ -52,7 +52,7 @@ test("GitHubConnector.execute returns success for dispatch_workflow capability",
   assert.equal(result.status, "succeeded");
 });
 
-test("GitHubConnector.execute returns failure for unknown capability", () => {
+test("GitHubConnector.execute returns failure for unknown capability [github-connector]", () => {
   const connector = new GitHubConnector();
   const request = createRequest({ capability: "merge_pr" });
 
@@ -62,7 +62,7 @@ test("GitHubConnector.execute returns failure for unknown capability", () => {
   assert.equal(result.status, "failed");
 });
 
-test("GitHubConnector.execute preserves connectorId from request", () => {
+test("GitHubConnector.execute preserves connectorId from request [github-connector]", () => {
   const connector = new GitHubConnector();
   const request = createRequest({ connectorId: "github-enterprise-connector" });
 
@@ -71,7 +71,7 @@ test("GitHubConnector.execute preserves connectorId from request", () => {
   assert.equal(result.connectorId, "github-enterprise-connector");
 });
 
-test("GitHubConnector.execute handles create_pr with full payload", () => {
+test("GitHubConnector.execute handles create_pr with full payload [github-connector]", () => {
   const connector = new GitHubConnector();
   const request = createRequest({
     capability: "create_pr",
@@ -90,7 +90,7 @@ test("GitHubConnector.execute handles create_pr with full payload", () => {
   assert.equal(result.status, "succeeded");
 });
 
-test("GitHubConnector.execute handles dispatch_workflow with workflow payload", () => {
+test("GitHubConnector.execute handles dispatch_workflow with workflow payload [github-connector]", () => {
   const connector = new GitHubConnector();
   const request = createRequest({
     capability: "dispatch_workflow",
@@ -109,7 +109,7 @@ test("GitHubConnector.execute handles dispatch_workflow with workflow payload", 
   assert.equal(result.status, "succeeded");
 });
 
-test("GitHubConnector.execute is case-sensitive for capability names", () => {
+test("GitHubConnector.execute is case-sensitive for capability names [github-connector]", () => {
   const connector = new GitHubConnector();
   const requestUpper = createRequest({ capability: "CREATE_PR" });
   const requestLower = createRequest({ capability: "create_pr" });
@@ -125,7 +125,7 @@ test("GitHubConnector.execute is case-sensitive for capability names", () => {
   assert.equal(resultLower.status, "succeeded");
 });
 
-test("GitHubConnector.execute rejects close_pr capability", () => {
+test("GitHubConnector.execute rejects close_pr capability [github-connector]", () => {
   const connector = new GitHubConnector();
   const request = createRequest({ capability: "close_pr" });
 
@@ -135,7 +135,7 @@ test("GitHubConnector.execute rejects close_pr capability", () => {
   assert.equal(result.status, "failed");
 });
 
-test("GitHubConnector.execute fails closed when policyRef is missing", () => {
+test("GitHubConnector.execute fails closed when policyRef is missing [github-connector]", () => {
   const connector = new GitHubConnector();
   const request = createRequest({ policyRef: undefined });
 
@@ -145,7 +145,7 @@ test("GitHubConnector.execute fails closed when policyRef is missing", () => {
   assert.equal(result.status, "failed");
 });
 
-test("GitHubConnector.execute fails closed when secretBindings are missing", () => {
+test("GitHubConnector.execute fails closed when secretBindings are missing [github-connector]", () => {
   const connector = new GitHubConnector();
   const request = createRequest({ secretBindings: [] });
 
@@ -155,7 +155,7 @@ test("GitHubConnector.execute fails closed when secretBindings are missing", () 
   assert.equal(result.status, "failed");
 });
 
-test("GitHubConnector.execute handles create_issue with issue payload", () => {
+test("GitHubConnector.execute handles create_issue with issue payload [github-connector]", () => {
   const connector = new GitHubConnector();
   const request = createRequest({
     capability: "create_issue",

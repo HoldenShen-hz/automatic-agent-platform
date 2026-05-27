@@ -12,7 +12,7 @@ import {
 } from "../../../../../src/platform/five-plane-execution/recovery/exception-recovery-config-loader.js";
 import type { ExceptionRecoveryConfig } from "../../../../../src/platform/five-plane-execution/recovery/exception-recovery-types.js";
 
-test("loadExceptionRecoveryConfig loads default config", () => {
+test("loadExceptionRecoveryConfig loads default config [exception-recovery-config-loader]", () => {
   // Clear cache first to ensure we load fresh
   clearExceptionRecoveryConfigCache();
 
@@ -24,7 +24,7 @@ test("loadExceptionRecoveryConfig loads default config", () => {
   assert.ok(config.recoveryStrategyTable.byAttemptThreshold, "Config has byAttemptThreshold");
 });
 
-test("loadExceptionRecoveryConfig caches result", () => {
+test("loadExceptionRecoveryConfig caches result [exception-recovery-config-loader]", () => {
   clearExceptionRecoveryConfigCache();
 
   const config1 = loadExceptionRecoveryConfig();
@@ -33,7 +33,7 @@ test("loadExceptionRecoveryConfig caches result", () => {
   assert.equal(config1, config2, "Same instance returned from cache");
 });
 
-test("clearExceptionRecoveryConfigCache clears cache", () => {
+test("clearExceptionRecoveryConfigCache clears cache [exception-recovery-config-loader]", () => {
   clearExceptionRecoveryConfigCache();
 
   const config1 = loadExceptionRecoveryConfig();
@@ -43,7 +43,7 @@ test("clearExceptionRecoveryConfigCache clears cache", () => {
   assert.notEqual(config1, config2, "Fresh instance after cache clear");
 });
 
-test("byExceptionType has all required exception types", () => {
+test("byExceptionType has all required exception types [exception-recovery-config-loader]", () => {
   clearExceptionRecoveryConfigCache();
   const config = loadExceptionRecoveryConfig();
 
@@ -75,7 +75,7 @@ test("byExceptionType has all required exception types", () => {
   }
 });
 
-test("transient_external_error is retryable with backoff", () => {
+test("transient_external_error is retryable with backoff [exception-recovery-config-loader]", () => {
   clearExceptionRecoveryConfigCache();
   const config = loadExceptionRecoveryConfig();
 
@@ -87,7 +87,7 @@ test("transient_external_error is retryable with backoff", () => {
   assert.equal(strategy.action, "retry_new_ticket");
 });
 
-test("permanent_external_error is NOT retryable", () => {
+test("permanent_external_error is NOT retryable [exception-recovery-config-loader]", () => {
   clearExceptionRecoveryConfigCache();
   const config = loadExceptionRecoveryConfig();
 
@@ -97,7 +97,7 @@ test("permanent_external_error is NOT retryable", () => {
   assert.equal(strategy.action, "move_dead_letter");
 });
 
-test("locking_error is retryable with short backoff", () => {
+test("locking_error is retryable with short backoff [exception-recovery-config-loader]", () => {
   clearExceptionRecoveryConfigCache();
   const config = loadExceptionRecoveryConfig();
 
@@ -109,7 +109,7 @@ test("locking_error is retryable with short backoff", () => {
   assert.equal(strategy.action, "resume_same_worker");
 });
 
-test("storage_error is retryable with moderate backoff", () => {
+test("storage_error is retryable with moderate backoff [exception-recovery-config-loader]", () => {
   clearExceptionRecoveryConfigCache();
   const config = loadExceptionRecoveryConfig();
 
@@ -121,7 +121,7 @@ test("storage_error is retryable with moderate backoff", () => {
   assert.equal(strategy.action, "retry_new_ticket");
 });
 
-test("validation_error is NOT retryable", () => {
+test("validation_error is NOT retryable [exception-recovery-config-loader]", () => {
   clearExceptionRecoveryConfigCache();
   const config = loadExceptionRecoveryConfig();
 
@@ -131,7 +131,7 @@ test("validation_error is NOT retryable", () => {
   assert.equal(strategy.action, "cancel");
 });
 
-test("tool_execution_error escalates for human review", () => {
+test("tool_execution_error escalates for human review [exception-recovery-config-loader]", () => {
   clearExceptionRecoveryConfigCache();
   const config = loadExceptionRecoveryConfig();
 
@@ -141,7 +141,7 @@ test("tool_execution_error escalates for human review", () => {
   assert.equal(strategy.action, "escalate_takeover");
 });
 
-test("byRiskLevel has all risk levels", () => {
+test("byRiskLevel has all risk levels [exception-recovery-config-loader]", () => {
   clearExceptionRecoveryConfigCache();
   const config = loadExceptionRecoveryConfig();
 
@@ -151,7 +151,7 @@ test("byRiskLevel has all risk levels", () => {
   assert.ok(config.recoveryStrategyTable.byRiskLevel.critical, "Has critical risk level");
 });
 
-test("low risk level allows auto-recovery without notification", () => {
+test("low risk level allows auto-recovery without notification [exception-recovery-config-loader]", () => {
   clearExceptionRecoveryConfigCache();
   const config = loadExceptionRecoveryConfig();
 
@@ -160,7 +160,7 @@ test("low risk level allows auto-recovery without notification", () => {
   assert.equal(strategy.notifyOnFailure, false);
 });
 
-test("critical risk level does NOT auto-recover but notifies", () => {
+test("critical risk level does NOT auto-recover but notifies [exception-recovery-config-loader]", () => {
   clearExceptionRecoveryConfigCache();
   const config = loadExceptionRecoveryConfig();
 
@@ -169,7 +169,7 @@ test("critical risk level does NOT auto-recover but notifies", () => {
   assert.equal(strategy.notifyOnFailure, true);
 });
 
-test("byAttemptThreshold has correct thresholds", () => {
+test("byAttemptThreshold has correct thresholds [exception-recovery-config-loader]", () => {
   clearExceptionRecoveryConfigCache();
   const config = loadExceptionRecoveryConfig();
 
@@ -180,28 +180,28 @@ test("byAttemptThreshold has correct thresholds", () => {
   assert.equal(thresholds.moveToDeadLetterMinAttempts, 2);
 });
 
-test("defaultAction is move_dead_letter", () => {
+test("defaultAction is move_dead_letter [exception-recovery-config-loader]", () => {
   clearExceptionRecoveryConfigCache();
   const config = loadExceptionRecoveryConfig();
 
   assert.equal(config.defaultAction, "move_dead_letter");
 });
 
-test("staleExecutionThresholdMs is 5 minutes (300000ms)", () => {
+test("staleExecutionThresholdMs is 5 minutes (300000ms) [exception-recovery-config-loader]", () => {
   clearExceptionRecoveryConfigCache();
   const config = loadExceptionRecoveryConfig();
 
   assert.equal(config.staleExecutionThresholdMs, 300000);
 });
 
-test("heartbeatTimeoutMs is 1 minute (60000ms)", () => {
+test("heartbeatTimeoutMs is 1 minute (60000ms) [exception-recovery-config-loader]", () => {
   clearExceptionRecoveryConfigCache();
   const config = loadExceptionRecoveryConfig();
 
   assert.equal(config.heartbeatTimeoutMs, 60000);
 });
 
-test("loadExceptionRecoveryConfig loads from custom path", () => {
+test("loadExceptionRecoveryConfig loads from custom path [exception-recovery-config-loader]", () => {
   // Create a temporary config file
   const tmpDir = mkdtempSync(resolve(tmpdir(), "exception-recovery-test-"));
   const customConfigPath = resolve(tmpDir, "custom-exception-recovery.json");
@@ -340,7 +340,7 @@ test("loadExceptionRecoveryConfig loads from custom path", () => {
   }
 });
 
-test("loadExceptionRecoveryConfig caches custom and default paths independently", () => {
+test("loadExceptionRecoveryConfig caches custom and default paths independently [exception-recovery-config-loader]", () => {
   clearExceptionRecoveryConfigCache();
 
   const tmpDir = mkdtempSync(resolve(tmpdir(), "exception-recovery-cache-test-"));
@@ -365,7 +365,7 @@ test("loadExceptionRecoveryConfig caches custom and default paths independently"
   }
 });
 
-test("provider_error has correct defaults", () => {
+test("provider_error has correct defaults [exception-recovery-config-loader]", () => {
   clearExceptionRecoveryConfigCache();
   const config = loadExceptionRecoveryConfig();
 
@@ -377,7 +377,7 @@ test("provider_error has correct defaults", () => {
   assert.equal(strategy.action, "retry_new_ticket");
 });
 
-test("runtime_error is retryable once with backoff", () => {
+test("runtime_error is retryable once with backoff [exception-recovery-config-loader]", () => {
   clearExceptionRecoveryConfigCache();
   const config = loadExceptionRecoveryConfig();
 
@@ -389,7 +389,7 @@ test("runtime_error is retryable once with backoff", () => {
   assert.equal(strategy.action, "retry_new_ticket");
 });
 
-test("loadExceptionRecoveryConfig throws when file is malformed JSON", () => {
+test("loadExceptionRecoveryConfig throws when file is malformed JSON [exception-recovery-config-loader]", () => {
   clearExceptionRecoveryConfigCache();
 
   const workspace = createTempWorkspace("exception-recovery-test-");
@@ -414,7 +414,7 @@ test("loadExceptionRecoveryConfig throws when file is malformed JSON", () => {
   }
 });
 
-test("loadExceptionRecoveryConfig throws when config file has missing fields", () => {
+test("loadExceptionRecoveryConfig throws when config file has missing fields [exception-recovery-config-loader]", () => {
   clearExceptionRecoveryConfigCache();
 
   const workspace = createTempWorkspace("exception-recovery-test-");

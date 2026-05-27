@@ -14,7 +14,7 @@ function createHarness(prefix: string) {
   return { workspace, db, adapter: new SqliteQueueAdapter(db) };
 }
 
-test("priority queue dequeues highest priority first", () => {
+test("priority queue dequeues highest priority first [priority]", () => {
   const h = createHarness("aa-pri-highest-");
   try {
     h.adapter.enqueue({ queueName: "tasks", payload: "low", priority: 1 });
@@ -43,7 +43,7 @@ test("priority queue dequeues highest priority first", () => {
   }
 });
 
-test("priority queue default priority is zero", () => {
+test("priority queue default priority is zero [priority]", () => {
   const h = createHarness("aa-pri-default-");
   try {
     const job = h.adapter.enqueue({ queueName: "tasks", payload: "test" });
@@ -57,7 +57,7 @@ test("priority queue default priority is zero", () => {
   }
 });
 
-test("priority queue negative priorities come after zero", () => {
+test("priority queue negative priorities come after zero [priority]", () => {
   const h = createHarness("aa-pri-negative-");
   try {
     h.adapter.enqueue({ queueName: "tasks", payload: "negative", priority: -10 });
@@ -84,7 +84,7 @@ test("priority queue negative priorities come after zero", () => {
   }
 });
 
-test("priority queue equal priority respects FIFO ordering", () => {
+test("priority queue equal priority respects FIFO ordering [priority]", () => {
   const h = createHarness("aa-pri-fifo-");
   try {
     h.adapter.enqueue({ queueName: "tasks", payload: "first", priority: 5 });
@@ -111,7 +111,7 @@ test("priority queue equal priority respects FIFO ordering", () => {
   }
 });
 
-test("priority queue preserves ordering across ack cycles", () => {
+test("priority queue preserves ordering across ack cycles [priority]", () => {
   const h = createHarness("aa-pri-cycle-");
   try {
     h.adapter.enqueue({ queueName: "tasks", payload: "low", priority: 1 });
@@ -139,7 +139,7 @@ test("priority queue preserves ordering across ack cycles", () => {
   }
 });
 
-test("priority queue works with delayed jobs", () => {
+test("priority queue works with delayed jobs [priority]", () => {
   const h = createHarness("aa-pri-delayed-");
   try {
     const pastDate = new Date(Date.now() - 1_000).toISOString();
@@ -161,7 +161,7 @@ test("priority queue works with delayed jobs", () => {
   }
 });
 
-test("priority queue nack respects max attempts then dead letters", () => {
+test("priority queue nack respects max attempts then dead letters [priority]", () => {
   const h = createHarness("aa-pri-nack-");
   try {
     h.adapter.enqueue({ queueName: "tasks", payload: "fail", priority: 10, maxAttempts: 1 });
@@ -179,7 +179,7 @@ test("priority queue nack respects max attempts then dead letters", () => {
   }
 });
 
-test("priority queue retryJob preserves priority", () => {
+test("priority queue retryJob preserves priority [priority]", () => {
   const h = createHarness("aa-pri-retry-");
   try {
     const job = h.adapter.enqueue({ queueName: "tasks", payload: "retry-test", priority: 7, maxAttempts: 1 });
@@ -206,7 +206,7 @@ test("priority queue retryJob preserves priority", () => {
   }
 });
 
-test("priority queue moveToDeadLetter preserves job data", () => {
+test("priority queue moveToDeadLetter preserves job data [priority]", () => {
   const h = createHarness("aa-pri-movetodl-");
   try {
     const job = h.adapter.enqueue({ queueName: "tasks", payload: "move-test", priority: 9 });
@@ -223,7 +223,7 @@ test("priority queue moveToDeadLetter preserves job data", () => {
   }
 });
 
-test("priority queue listJobs returns jobs in priority order", () => {
+test("priority queue listJobs returns jobs in priority order [priority]", () => {
   const h = createHarness("aa-pri-listjobs-");
   try {
     h.adapter.enqueue({ queueName: "tasks", payload: "low", priority: 1 });
@@ -241,7 +241,7 @@ test("priority queue listJobs returns jobs in priority order", () => {
   }
 });
 
-test("priority queue listJobs with status filter maintains priority order", () => {
+test("priority queue listJobs with status filter maintains priority order [priority]", () => {
   const h = createHarness("aa-pri-listjobs-filter-");
   try {
     h.adapter.enqueue({ queueName: "tasks", payload: "low", priority: 1 });
@@ -264,7 +264,7 @@ test("priority queue listJobs with status filter maintains priority order", () =
   }
 });
 
-test("priority queue stats reflect correct waiting count after dequeue", () => {
+test("priority queue stats reflect correct waiting count after dequeue [priority]", () => {
   const h = createHarness("aa-pri-stats-");
   try {
     h.adapter.enqueue({ queueName: "tasks", payload: "a", priority: 1 });
@@ -285,7 +285,7 @@ test("priority queue stats reflect correct waiting count after dequeue", () => {
   }
 });
 
-test("priority queue handles very high priority values", () => {
+test("priority queue handles very high priority values [priority]", () => {
   const h = createHarness("aa-pri-veryhigh-");
   try {
     h.adapter.enqueue({ queueName: "tasks", payload: "normal", priority: 0 });
@@ -306,7 +306,7 @@ test("priority queue handles very high priority values", () => {
   }
 });
 
-test("priority queue handles very low priority values", () => {
+test("priority queue handles very low priority values [priority]", () => {
   const h = createHarness("aa-pri-verylow-");
   try {
     h.adapter.enqueue({ queueName: "tasks", payload: "normal", priority: 0 });

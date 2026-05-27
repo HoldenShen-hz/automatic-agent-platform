@@ -26,7 +26,7 @@ function createRequest(overrides: Partial<ConnectorExecutionRequest> = {}): Conn
 
 // GitHubConnector tests
 
-test("GitHubConnector.execute returns success for create_pr capability", () => {
+test("GitHubConnector.execute returns success for create_pr capability [connectors]", () => {
   const connector = new GitHubConnector();
   const request = createRequest({ capability: "create_pr", connectorId: "github-test" });
 
@@ -37,7 +37,7 @@ test("GitHubConnector.execute returns success for create_pr capability", () => {
   assert.equal(result.connectorId, "github-test");
 });
 
-test("GitHubConnector.execute returns success for create_issue capability", () => {
+test("GitHubConnector.execute returns success for create_issue capability [connectors]", () => {
   const connector = new GitHubConnector();
   const request = createRequest({ capability: "create_issue" });
 
@@ -47,7 +47,7 @@ test("GitHubConnector.execute returns success for create_issue capability", () =
   assert.equal(result.status, "succeeded");
 });
 
-test("GitHubConnector.execute returns success for dispatch_workflow capability", () => {
+test("GitHubConnector.execute returns success for dispatch_workflow capability [connectors]", () => {
   const connector = new GitHubConnector();
   const request = createRequest({ capability: "dispatch_workflow" });
 
@@ -57,7 +57,7 @@ test("GitHubConnector.execute returns success for dispatch_workflow capability",
   assert.equal(result.status, "succeeded");
 });
 
-test("GitHubConnector.execute returns failure for unknown capability", () => {
+test("GitHubConnector.execute returns failure for unknown capability [connectors]", () => {
   const connector = new GitHubConnector();
   const request = createRequest({ capability: "merge_pr" });
 
@@ -67,7 +67,7 @@ test("GitHubConnector.execute returns failure for unknown capability", () => {
   assert.equal(result.status, "failed");
 });
 
-test("GitHubConnector.execute preserves connectorId from request", () => {
+test("GitHubConnector.execute preserves connectorId from request [connectors]", () => {
   const connector = new GitHubConnector();
   const request = createRequest({ connectorId: "github-enterprise" });
 
@@ -76,7 +76,7 @@ test("GitHubConnector.execute preserves connectorId from request", () => {
   assert.equal(result.connectorId, "github-enterprise");
 });
 
-test("GitHubConnector.execute handles create_pr with full payload", () => {
+test("GitHubConnector.execute handles create_pr with full payload [connectors]", () => {
   const connector = new GitHubConnector();
   const request = createRequest({
     capability: "create_pr",
@@ -89,7 +89,7 @@ test("GitHubConnector.execute handles create_pr with full payload", () => {
   assert.equal(result.status, "succeeded");
 });
 
-test("GitHubConnector.execute handles create_issue with labels payload", () => {
+test("GitHubConnector.execute handles create_issue with labels payload [connectors]", () => {
   const connector = new GitHubConnector();
   const request = createRequest({
     capability: "create_issue",
@@ -102,7 +102,7 @@ test("GitHubConnector.execute handles create_issue with labels payload", () => {
   assert.equal(result.status, "succeeded");
 });
 
-test("GitHubConnector.execute handles empty payload", () => {
+test("GitHubConnector.execute handles empty payload [connectors]", () => {
   const connector = new GitHubConnector();
   const request = createRequest({ capability: "create_pr", payload: {} });
 
@@ -112,7 +112,7 @@ test("GitHubConnector.execute handles empty payload", () => {
   assert.equal(result.status, "succeeded");
 });
 
-test("GitHubConnector.execute is case-sensitive", () => {
+test("GitHubConnector.execute is case-sensitive [connectors]", () => {
   const connector = new GitHubConnector();
   const upperRequest = createRequest({ capability: "CREATE_PR" });
   const lowerRequest = createRequest({ capability: "create_pr" });
@@ -126,7 +126,7 @@ test("GitHubConnector.execute is case-sensitive", () => {
   assert.equal(lowerResult.status, "succeeded");
 });
 
-test("GitHubConnector exposes supported capabilities", () => {
+test("GitHubConnector exposes supported capabilities [connectors]", () => {
   const connector = new GitHubConnector();
   assert.deepStrictEqual(connector.listCapabilities(), ["create_pr", "create_issue", "dispatch_workflow"]);
   assert.equal(connector.supportsCapability("create_pr"), true);
@@ -135,7 +135,7 @@ test("GitHubConnector exposes supported capabilities", () => {
 
 // JiraConnector tests
 
-test("JiraConnector.execute returns success for create_issue capability", () => {
+test("JiraConnector.execute returns success for create_issue capability [connectors]", () => {
   const connector = new JiraConnector();
   const request = createRequest({ capability: "create_issue", connectorId: "jira-test" });
 
@@ -146,7 +146,7 @@ test("JiraConnector.execute returns success for create_issue capability", () => 
   assert.equal(result.connectorId, "jira-test");
 });
 
-test("JiraConnector.execute returns success for search_issue capability", () => {
+test("JiraConnector.execute returns success for search_issue capability [connectors]", () => {
   const connector = new JiraConnector();
   const request = createRequest({ capability: "search_issue" });
 
@@ -156,7 +156,7 @@ test("JiraConnector.execute returns success for search_issue capability", () => 
   assert.equal(result.status, "succeeded");
 });
 
-test("JiraConnector.execute returns failure for unknown capability", () => {
+test("JiraConnector.execute returns failure for unknown capability [connectors]", () => {
   const connector = new JiraConnector();
   const request = createRequest({ capability: "update_issue" });
 
@@ -166,7 +166,7 @@ test("JiraConnector.execute returns failure for unknown capability", () => {
   assert.equal(result.status, "failed");
 });
 
-test("JiraConnector.execute preserves connectorId from request", () => {
+test("JiraConnector.execute preserves connectorId from request [connectors]", () => {
   const connector = new JiraConnector();
   const request = createRequest({ connectorId: "jira-prod" });
 
@@ -175,7 +175,7 @@ test("JiraConnector.execute preserves connectorId from request", () => {
   assert.equal(result.connectorId, "jira-prod");
 });
 
-test("JiraConnector.execute handles create_issue with project payload", () => {
+test("JiraConnector.execute handles create_issue with project payload [connectors]", () => {
   const connector = new JiraConnector();
   const request = createRequest({
     capability: "create_issue",
@@ -188,7 +188,7 @@ test("JiraConnector.execute handles create_issue with project payload", () => {
   assert.equal(result.status, "succeeded");
 });
 
-test("JiraConnector.execute handles search_issue with JQL", () => {
+test("JiraConnector.execute handles search_issue with JQL [connectors]", () => {
   const connector = new JiraConnector();
   const request = createRequest({
     capability: "search_issue",
@@ -201,7 +201,7 @@ test("JiraConnector.execute handles search_issue with JQL", () => {
   assert.equal(result.status, "succeeded");
 });
 
-test("JiraConnector.execute is case-sensitive", () => {
+test("JiraConnector.execute is case-sensitive [connectors]", () => {
   const connector = new JiraConnector();
   const upperRequest = createRequest({ capability: "CREATE_ISSUE" });
   const lowerRequest = createRequest({ capability: "create_issue" });
@@ -215,7 +215,7 @@ test("JiraConnector.execute is case-sensitive", () => {
   assert.equal(lowerResult.status, "succeeded");
 });
 
-test("JiraConnector.execute rejects delete_issue", () => {
+test("JiraConnector.execute rejects delete_issue [connectors]", () => {
   const connector = new JiraConnector();
   const request = createRequest({ capability: "delete_issue" });
 
@@ -225,7 +225,7 @@ test("JiraConnector.execute rejects delete_issue", () => {
   assert.equal(result.status, "failed");
 });
 
-test("JiraConnector exposes supported capabilities", () => {
+test("JiraConnector exposes supported capabilities [connectors]", () => {
   const connector = new JiraConnector();
   assert.deepStrictEqual(connector.listCapabilities(), ["create_issue", "search_issue"]);
   assert.equal(connector.supportsCapability("create_issue"), true);
@@ -234,7 +234,7 @@ test("JiraConnector exposes supported capabilities", () => {
 
 // ServiceNowConnector tests
 
-test("ServiceNowConnector.execute returns success for create_incident capability", () => {
+test("ServiceNowConnector.execute returns success for create_incident capability [connectors]", () => {
   const connector = new ServiceNowConnector();
   const request = createRequest({ capability: "create_incident", connectorId: "servicenow-test" });
 
@@ -245,7 +245,7 @@ test("ServiceNowConnector.execute returns success for create_incident capability
   assert.equal(result.connectorId, "servicenow-test");
 });
 
-test("ServiceNowConnector.execute returns success for update_ticket capability", () => {
+test("ServiceNowConnector.execute returns success for update_ticket capability [connectors]", () => {
   const connector = new ServiceNowConnector();
   const request = createRequest({ capability: "update_ticket" });
 
@@ -255,7 +255,7 @@ test("ServiceNowConnector.execute returns success for update_ticket capability",
   assert.equal(result.status, "succeeded");
 });
 
-test("ServiceNowConnector.execute returns failure for unknown capability", () => {
+test("ServiceNowConnector.execute returns failure for unknown capability [connectors]", () => {
   const connector = new ServiceNowConnector();
   const request = createRequest({ capability: "close_incident" });
 
@@ -265,7 +265,7 @@ test("ServiceNowConnector.execute returns failure for unknown capability", () =>
   assert.equal(result.status, "failed");
 });
 
-test("ServiceNowConnector.execute preserves connectorId from request", () => {
+test("ServiceNowConnector.execute preserves connectorId from request [connectors]", () => {
   const connector = new ServiceNowConnector();
   const request = createRequest({ connectorId: "servicenow-prod" });
 
@@ -274,7 +274,7 @@ test("ServiceNowConnector.execute preserves connectorId from request", () => {
   assert.equal(result.connectorId, "servicenow-prod");
 });
 
-test("ServiceNowConnector.execute handles create_incident with full payload", () => {
+test("ServiceNowConnector.execute handles create_incident with full payload [connectors]", () => {
   const connector = new ServiceNowConnector();
   const request = createRequest({
     capability: "create_incident",
@@ -287,7 +287,7 @@ test("ServiceNowConnector.execute handles create_incident with full payload", ()
   assert.equal(result.status, "succeeded");
 });
 
-test("ServiceNowConnector.execute handles update_ticket with ticket payload", () => {
+test("ServiceNowConnector.execute handles update_ticket with ticket payload [connectors]", () => {
   const connector = new ServiceNowConnector();
   const request = createRequest({
     capability: "update_ticket",
@@ -300,7 +300,7 @@ test("ServiceNowConnector.execute handles update_ticket with ticket payload", ()
   assert.equal(result.status, "succeeded");
 });
 
-test("ServiceNowConnector.execute is case-sensitive", () => {
+test("ServiceNowConnector.execute is case-sensitive [connectors]", () => {
   const connector = new ServiceNowConnector();
   const upperRequest = createRequest({ capability: "CREATE_INCIDENT" });
   const lowerRequest = createRequest({ capability: "create_incident" });
@@ -314,7 +314,7 @@ test("ServiceNowConnector.execute is case-sensitive", () => {
   assert.equal(lowerResult.status, "succeeded");
 });
 
-test("ServiceNowConnector.execute rejects get_incident", () => {
+test("ServiceNowConnector.execute rejects get_incident [connectors]", () => {
   const connector = new ServiceNowConnector();
   const request = createRequest({ capability: "get_incident" });
 
@@ -324,7 +324,7 @@ test("ServiceNowConnector.execute rejects get_incident", () => {
   assert.equal(result.status, "failed");
 });
 
-test("ServiceNowConnector.execute rejects delete_ticket", () => {
+test("ServiceNowConnector.execute rejects delete_ticket [connectors]", () => {
   const connector = new ServiceNowConnector();
   const request = createRequest({ capability: "delete_ticket" });
 
@@ -334,7 +334,7 @@ test("ServiceNowConnector.execute rejects delete_ticket", () => {
   assert.equal(result.status, "failed");
 });
 
-test("ServiceNowConnector.execute handles empty payload", () => {
+test("ServiceNowConnector.execute handles empty payload [connectors]", () => {
   const connector = new ServiceNowConnector();
   const request = createRequest({ capability: "create_incident", payload: {} });
 
@@ -346,7 +346,7 @@ test("ServiceNowConnector.execute handles empty payload", () => {
 
 // SlackConnector tests
 
-test("SlackConnector.execute returns success for send_message capability", () => {
+test("SlackConnector.execute returns success for send_message capability [connectors]", () => {
   const connector = new SlackConnector();
   const request = createRequest({ capability: "send_message", connectorId: "slack-test" });
 
@@ -357,7 +357,7 @@ test("SlackConnector.execute returns success for send_message capability", () =>
   assert.equal(result.connectorId, "slack-test");
 });
 
-test("SlackConnector.execute returns success for open_modal capability", () => {
+test("SlackConnector.execute returns success for open_modal capability [connectors]", () => {
   const connector = new SlackConnector();
   const request = createRequest({ capability: "open_modal" });
 
@@ -367,7 +367,7 @@ test("SlackConnector.execute returns success for open_modal capability", () => {
   assert.equal(result.status, "succeeded");
 });
 
-test("SlackConnector.execute returns failure for unknown capability", () => {
+test("SlackConnector.execute returns failure for unknown capability [connectors]", () => {
   const connector = new SlackConnector();
   const request = createRequest({ capability: "unknown_action" });
 
@@ -377,7 +377,7 @@ test("SlackConnector.execute returns failure for unknown capability", () => {
   assert.equal(result.status, "failed");
 });
 
-test("SlackConnector.execute preserves connectorId from request", () => {
+test("SlackConnector.execute preserves connectorId from request [connectors]", () => {
   const connector = new SlackConnector();
   const request = createRequest({ connectorId: "slack-custom" });
 
@@ -386,7 +386,7 @@ test("SlackConnector.execute preserves connectorId from request", () => {
   assert.equal(result.connectorId, "slack-custom");
 });
 
-test("SlackConnector.execute handles send_message with channel and text", () => {
+test("SlackConnector.execute handles send_message with channel and text [connectors]", () => {
   const connector = new SlackConnector();
   const request = createRequest({
     capability: "send_message",
@@ -399,7 +399,7 @@ test("SlackConnector.execute handles send_message with channel and text", () => 
   assert.equal(result.status, "succeeded");
 });
 
-test("SlackConnector.execute handles empty payload", () => {
+test("SlackConnector.execute handles empty payload [connectors]", () => {
   const connector = new SlackConnector();
   const request = createRequest({ capability: "send_message", payload: {} });
 
@@ -409,7 +409,7 @@ test("SlackConnector.execute handles empty payload", () => {
   assert.equal(result.status, "succeeded");
 });
 
-test("SlackConnector.execute is case-sensitive", () => {
+test("SlackConnector.execute is case-sensitive [connectors]", () => {
   const connector = new SlackConnector();
   const upperRequest = createRequest({ capability: "SEND_MESSAGE" });
   const lowerRequest = createRequest({ capability: "send_message" });
@@ -423,7 +423,7 @@ test("SlackConnector.execute is case-sensitive", () => {
   assert.equal(lowerResult.status, "succeeded");
 });
 
-test("SlackConnector.execute rejects archive_channel capability", () => {
+test("SlackConnector.execute rejects archive_channel capability [connectors]", () => {
   const connector = new SlackConnector();
   const request = createRequest({ capability: "archive_channel" });
 

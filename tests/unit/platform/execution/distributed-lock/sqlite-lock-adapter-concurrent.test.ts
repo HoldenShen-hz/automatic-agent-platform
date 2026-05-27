@@ -39,7 +39,7 @@ function createTestDb(): DatabaseSync {
 // Concurrent extend tests
 // =============================================================================
 
-test("[SYS-REL-2.2] concurrent extend on same lock - only owner can extend", async () => {
+test("[SYS-REL-2.2] concurrent extend on same lock - only owner can extend [sqlite-lock-adapter-concurrent]", async () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -57,7 +57,7 @@ test("[SYS-REL-2.2] concurrent extend on same lock - only owner can extend", asy
   db.close();
 });
 
-test("[SYS-REL-2.2] concurrent extend by multiple owners - only one succeeds", async () => {
+test("[SYS-REL-2.2] concurrent extend by multiple owners - only one succeeds [sqlite-lock-adapter-concurrent]", async () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -78,7 +78,7 @@ test("[SYS-REL-2.2] concurrent extend by multiple owners - only one succeeds", a
   assert.equal(failed.length, 2, "Other extends should fail");
 });
 
-test("[SYS-REL-2.2] concurrent extend using runConcurrentInvariant", async () => {
+test("[SYS-REL-2.2] concurrent extend using runConcurrentInvariant [sqlite-lock-adapter-concurrent]", async () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -102,7 +102,7 @@ test("[SYS-REL-2.2] concurrent extend using runConcurrentInvariant", async () =>
   db.close();
 });
 
-test("[SYS-REL-2.2] extend returns null for non-existent lock", async () => {
+test("[SYS-REL-2.2] extend returns null for non-existent lock [sqlite-lock-adapter-concurrent]", async () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -112,7 +112,7 @@ test("[SYS-REL-2.2] extend returns null for non-existent lock", async () => {
   db.close();
 });
 
-test("[SYS-REL-2.2] extend increments fencing token", async () => {
+test("[SYS-REL-2.2] extend increments fencing token [sqlite-lock-adapter-concurrent]", async () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -136,7 +136,7 @@ test("[SYS-REL-2.2] extend increments fencing token", async () => {
 // Concurrent forceSteal tests
 // =============================================================================
 
-test("[SYS-REL-2.2] concurrent forceSteal on same lock - all steal attempts complete", async () => {
+test("[SYS-REL-2.2] concurrent forceSteal on same lock - all steal attempts complete [sqlite-lock-adapter-concurrent]", async () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -161,7 +161,7 @@ test("[SYS-REL-2.2] concurrent forceSteal on same lock - all steal attempts comp
   db.close();
 });
 
-test("[SYS-REL-2.2] concurrent forceSteal - final state has exactly one owner", async () => {
+test("[SYS-REL-2.2] concurrent forceSteal - final state has exactly one owner [sqlite-lock-adapter-concurrent]", async () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -183,7 +183,7 @@ test("[SYS-REL-2.2] concurrent forceSteal - final state has exactly one owner", 
   db.close();
 });
 
-test("[SYS-REL-2.2] concurrent forceSteal - fencing token is monotonically increasing", async () => {
+test("[SYS-REL-2.2] concurrent forceSteal - fencing token is monotonically increasing [sqlite-lock-adapter-concurrent]", async () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -206,7 +206,7 @@ test("[SYS-REL-2.2] concurrent forceSteal - fencing token is monotonically incre
   db.close();
 });
 
-test("[SYS-REL-2.2] concurrent forceSteal using runConcurrentInvariant", async () => {
+test("[SYS-REL-2.2] concurrent forceSteal using runConcurrentInvariant [sqlite-lock-adapter-concurrent]", async () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -234,7 +234,7 @@ test("[SYS-REL-2.2] concurrent forceSteal using runConcurrentInvariant", async (
   db.close();
 });
 
-test("[SYS-REL-2.2] forceSteal can steal from any owner regardless of ownership", async () => {
+test("[SYS-REL-2.2] forceSteal can steal from any owner regardless of ownership [sqlite-lock-adapter-concurrent]", async () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -253,7 +253,7 @@ test("[SYS-REL-2.2] forceSteal can steal from any owner regardless of ownership"
   db.close();
 });
 
-test("[SYS-REL-2.2] concurrent steals followed by inspect shows consistent state", async () => {
+test("[SYS-REL-2.2] concurrent steals followed by inspect shows consistent state [sqlite-lock-adapter-concurrent]", async () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -274,7 +274,7 @@ test("[SYS-REL-2.2] concurrent steals followed by inspect shows consistent state
   db.close();
 });
 
-test("[SYS-REL-2.2] forceSteal on non-existent lock creates new lock", async () => {
+test("[SYS-REL-2.2] forceSteal on non-existent lock creates new lock [sqlite-lock-adapter-concurrent]", async () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 

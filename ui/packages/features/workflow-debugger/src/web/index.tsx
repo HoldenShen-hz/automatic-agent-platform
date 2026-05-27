@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import { FeatureScaffold, FeatureWorkbenchPanel } from "@aa/ui-core";
+import { buildWorkbenchActionHandler, FeatureScaffold, FeatureWorkbenchPanel } from "@aa/ui-core";
 import { useWorkflowDebuggerVm } from "../hooks";
 
 export function WorkflowDebuggerWebView(): ReactElement {
@@ -9,9 +9,9 @@ export function WorkflowDebuggerWebView(): ReactElement {
       <FeatureWorkbenchPanel
         items={vm.items}
         actions={[
-          { id: "debugger-replay", label: "回放时间线", tone: "accent" },
-          { id: "debugger-failure", label: "定位失败阶段", tone: "neutral" },
-          { id: "debugger-export", label: "导出调试快照", tone: "neutral" },
+          { id: "debugger-replay", label: "回放时间线", tone: "accent", onTrigger: buildWorkbenchActionHandler("workflow-debugger", "replay", { deepLinkPath: "/extended/workflow-debugger?mode=replay" }) },
+          { id: "debugger-failure", label: "定位失败阶段", tone: "neutral", onTrigger: buildWorkbenchActionHandler("workflow-debugger", "failure", { deepLinkPath: "/extended/workflow-debugger?view=failure" }) },
+          { id: "debugger-export", label: "导出调试快照", tone: "neutral", onTrigger: buildWorkbenchActionHandler("workflow-debugger", "export", { copySelection: true }) },
         ]}
       />
     </FeatureScaffold>

@@ -187,7 +187,7 @@ function createLease(overrides: Partial<ExecutionLeaseRecord> = {}): ExecutionLe
 // Tests: LeaseRepository Interface
 // ---------------------------------------------------------------------------
 
-test("createLeaseRepository returns a repository with all required methods", () => {
+test("createLeaseRepository returns a repository with all required methods [lease-manager]", () => {
   const state = { leases: new Map(), audits: [], insertResponses: new Map() };
   const db = createMockSqliteDb(state);
   const backend = {
@@ -213,7 +213,7 @@ test("createLeaseRepository returns a repository with all required methods", () 
 // Tests: LeaseRepository.insertLease
 // ---------------------------------------------------------------------------
 
-test("insertLease stores a lease record", async () => {
+test("insertLease stores a lease record [lease-manager]", async () => {
   const state = { leases: new Map(), audits: [], insertResponses: new Map() };
   const db = createMockSqliteDb(state);
   const backend = { driver: "sqlite" as const, sql: db };
@@ -232,7 +232,7 @@ test("insertLease stores a lease record", async () => {
 // Tests: LeaseRepository.getLease
 // ---------------------------------------------------------------------------
 
-test("getLease returns undefined for nonexistent lease", async () => {
+test("getLease returns undefined for nonexistent lease [lease-manager]", async () => {
   const state = { leases: new Map(), audits: [], insertResponses: new Map() };
   const db = createMockSqliteDb(state);
   const backend = { driver: "sqlite" as const, sql: db };
@@ -242,7 +242,7 @@ test("getLease returns undefined for nonexistent lease", async () => {
   assert.equal(result, undefined);
 });
 
-test("getLease returns stored lease", async () => {
+test("getLease returns stored lease [lease-manager]", async () => {
   const state = { leases: new Map(), audits: [], insertResponses: new Map() };
   const db = createMockSqliteDb(state);
   const backend = { driver: "sqlite" as const, sql: db };
@@ -260,7 +260,7 @@ test("getLease returns stored lease", async () => {
 // Tests: LeaseRepository.getActiveLeaseForExecution
 // ---------------------------------------------------------------------------
 
-test("getActiveLeaseForExecution returns undefined when no active lease", async () => {
+test("getActiveLeaseForExecution returns undefined when no active lease [lease-manager]", async () => {
   const state = { leases: new Map(), audits: [], insertResponses: new Map() };
   const db = createMockSqliteDb(state);
   const backend = { driver: "sqlite" as const, sql: db };
@@ -270,7 +270,7 @@ test("getActiveLeaseForExecution returns undefined when no active lease", async 
   assert.equal(result, undefined);
 });
 
-test("getActiveLeaseForExecution returns active lease", async () => {
+test("getActiveLeaseForExecution returns active lease [lease-manager]", async () => {
   const state = { leases: new Map(), audits: [], insertResponses: new Map() };
   const db = createMockSqliteDb(state);
   const backend = { driver: "sqlite" as const, sql: db };
@@ -289,7 +289,7 @@ test("getActiveLeaseForExecution returns active lease", async () => {
 // Tests: LeaseRepository.getLatestFencingToken
 // ---------------------------------------------------------------------------
 
-test("getLatestFencingToken returns 0 when no leases exist", async () => {
+test("getLatestFencingToken returns 0 when no leases exist [lease-manager]", async () => {
   const state = { leases: new Map(), audits: [], insertResponses: new Map() };
   const db = createMockSqliteDb(state);
   const backend = { driver: "sqlite" as const, sql: db };
@@ -299,7 +299,7 @@ test("getLatestFencingToken returns 0 when no leases exist", async () => {
   assert.equal(result, 0);
 });
 
-test("getLatestFencingToken returns token from existing lease", async () => {
+test("getLatestFencingToken returns token from existing lease [lease-manager]", async () => {
   const state = { leases: new Map(), audits: [], insertResponses: new Map() };
   const db = createMockSqliteDb(state);
   const backend = { driver: "sqlite" as const, sql: db };
@@ -316,7 +316,7 @@ test("getLatestFencingToken returns token from existing lease", async () => {
 // Tests: LeaseRepository.updateLeaseStatus
 // ---------------------------------------------------------------------------
 
-test("updateLeaseStatus changes lease status", async () => {
+test("updateLeaseStatus changes lease status [lease-manager]", async () => {
   const state = { leases: new Map(), audits: [], insertResponses: new Map() };
   const db = createMockSqliteDb(state);
   const backend = { driver: "sqlite" as const, sql: db };
@@ -336,7 +336,7 @@ test("updateLeaseStatus changes lease status", async () => {
 // Tests: LeaseRepository.updateLeaseHeartbeat
 // ---------------------------------------------------------------------------
 
-test("updateLeaseHeartbeat updates lastHeartbeatAt", async () => {
+test("updateLeaseHeartbeat updates lastHeartbeatAt [lease-manager]", async () => {
   const state = { leases: new Map(), audits: [], insertResponses: new Map() };
   const db = createMockSqliteDb(state);
   const backend = { driver: "sqlite" as const, sql: db };
@@ -357,7 +357,7 @@ test("updateLeaseHeartbeat updates lastHeartbeatAt", async () => {
 // Tests: LeaseRepository.updateLeaseRelease
 // ---------------------------------------------------------------------------
 
-test("updateLeaseRelease sets releasedAt and reasonCode", async () => {
+test("updateLeaseRelease sets releasedAt and reasonCode [lease-manager]", async () => {
   const state = { leases: new Map(), audits: [], insertResponses: new Map() };
   const db = createMockSqliteDb(state);
   const backend = { driver: "sqlite" as const, sql: db };
@@ -380,7 +380,7 @@ test("updateLeaseRelease sets releasedAt and reasonCode", async () => {
 // Tests: LeaseRepository.insertLeaseAudit
 // ---------------------------------------------------------------------------
 
-test("insertLeaseAudit stores an audit record", async () => {
+test("insertLeaseAudit stores an audit record [lease-manager]", async () => {
   const state = { leases: new Map(), audits: [], insertResponses: new Map() };
   const db = createMockSqliteDb(state);
   const backend = { driver: "sqlite" as const, sql: db };
@@ -408,7 +408,7 @@ test("insertLeaseAudit stores an audit record", async () => {
 // Tests: LeaseRepository.listLeaseAudits
 // ---------------------------------------------------------------------------
 
-test("listLeaseAudits returns audits for execution", async () => {
+test("listLeaseAudits returns audits for execution [lease-manager]", async () => {
   const state = { leases: new Map(), audits: [], insertResponses: new Map() };
   const db = createMockSqliteDb(state);
   const backend = { driver: "sqlite" as const, sql: db };
@@ -443,7 +443,7 @@ test("listLeaseAudits returns audits for execution", async () => {
   assert.equal(audits.length, 2);
 });
 
-test("listLeaseAudits returns empty array for execution with no audits", async () => {
+test("listLeaseAudits returns empty array for execution with no audits [lease-manager]", async () => {
   const state = { leases: new Map(), audits: [], insertResponses: new Map() };
   const db = createMockSqliteDb(state);
   const backend = { driver: "sqlite" as const, sql: db };
@@ -457,7 +457,7 @@ test("listLeaseAudits returns empty array for execution with no audits", async (
 // Tests: LeaseRepository.listExecutionLeases
 // ---------------------------------------------------------------------------
 
-test("listExecutionLeases returns all leases for execution", async () => {
+test("listExecutionLeases returns all leases for execution [lease-manager]", async () => {
   const state = { leases: new Map(), audits: [], insertResponses: new Map() };
   const db = createMockSqliteDb(state);
   const backend = { driver: "sqlite" as const, sql: db };
@@ -477,7 +477,7 @@ test("listExecutionLeases returns all leases for execution", async () => {
 // Integration-style Tests: Multi-operation workflows
 // ---------------------------------------------------------------------------
 
-test("lease lifecycle: insert, update heartbeat, release", async () => {
+test("lease lifecycle: insert, update heartbeat, release [lease-manager]", async () => {
   const state = { leases: new Map(), audits: [], insertResponses: new Map() };
   const db = createMockSqliteDb(state);
   const backend = { driver: "sqlite" as const, sql: db };
@@ -511,7 +511,7 @@ test("lease lifecycle: insert, update heartbeat, release", async () => {
   assert.equal(retrieved!.reasonCode, "work_complete");
 });
 
-test("audit trail: insert multiple audit records and retrieve in order", async () => {
+test("audit trail: insert multiple audit records and retrieve in order [lease-manager]", async () => {
   const state = { leases: new Map(), audits: [], insertResponses: new Map() };
   const db = createMockSqliteDb(state);
   const backend = { driver: "sqlite" as const, sql: db };
@@ -536,7 +536,7 @@ test("audit trail: insert multiple audit records and retrieve in order", async (
   assert.equal(audits.length, 4);
 });
 
-test("getLatestFencingToken increments with each new lease", async () => {
+test("getLatestFencingToken increments with each new lease [lease-manager]", async () => {
   const state = { leases: new Map(), audits: [], insertResponses: new Map() };
   const db = createMockSqliteDb(state);
   const backend = { driver: "sqlite" as const, sql: db };

@@ -9,13 +9,13 @@
  * ## Key Concepts
  *
  * - **Workflow**: Structured execution path for a task
- *   * See: {@link https://github.com/automatic-agent/automatic_agent_platform/blob/main/docs_zh/governance/glossary_and_terminology.md | Glossary: workflow}
+ *   * See: {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/governance/glossary_and_terminology.md | Glossary: workflow}
  *
  * - **Step**: Single execution unit within a workflow
- *   * See: {@link https://github.com/automatic-agent/automatic_agent_platform/blob/main/docs_zh/governance/glossary_and_terminology.md | Glossary: step}
+ *   * See: {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/governance/glossary_and_terminology.md | Glossary: step}
  *
  * - **Division**: Business capability domain or division boundary
- *   * See: {@link https://github.com/automatic-agent/automatic_agent_platform/blob/main/docs_zh/governance/glossary_and_terminology.md | Glossary: division}
+ *   * See: {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/governance/glossary_and_terminology.md | Glossary: division}
  *
  * ## Workflow Structure
  *

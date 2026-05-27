@@ -76,28 +76,28 @@ function makeContext(overrides?: Partial<TransitionAuditContext>): TransitionAud
 // Workflow transitions
 // ---------------------------------------------------------------------------
 
-test("transitionWorkflowStatus - valid transition: running -> paused", () => {
+test("transitionWorkflowStatus - valid transition: running -> paused [transition-service-comprehensive]", () => {
   const machine = new StateTransitionMachine("workflow", WORKFLOW_TRANSITIONS);
   machine.assertTransition("running", "paused"); // should not throw
 });
 
-test("transitionWorkflowStatus - valid transition: paused -> resuming -> running", () => {
+test("transitionWorkflowStatus - valid transition: paused -> resuming -> running [transition-service-comprehensive]", () => {
   const machine = new StateTransitionMachine("workflow", WORKFLOW_TRANSITIONS);
   machine.assertTransition("paused", "resuming");
   machine.assertTransition("resuming", "running");
 });
 
-test("transitionWorkflowStatus - valid transition: running -> completed", () => {
+test("transitionWorkflowStatus - valid transition: running -> completed [transition-service-comprehensive]", () => {
   const machine = new StateTransitionMachine("workflow", WORKFLOW_TRANSITIONS);
   machine.assertTransition("running", "completed"); // should not throw
 });
 
-test("transitionWorkflowStatus - valid transition: running -> failed", () => {
+test("transitionWorkflowStatus - valid transition: running -> failed [transition-service-comprehensive]", () => {
   const machine = new StateTransitionMachine("workflow", WORKFLOW_TRANSITIONS);
   machine.assertTransition("running", "failed"); // should not throw
 });
 
-test("transitionWorkflowStatus - invalid transition: completed -> running throws", () => {
+test("transitionWorkflowStatus - invalid transition: completed -> running throws [transition-service-comprehensive]", () => {
   const machine = new StateTransitionMachine("workflow", WORKFLOW_TRANSITIONS);
   assert.throws(
     () => machine.assertTransition("completed", "running"),
@@ -105,7 +105,7 @@ test("transitionWorkflowStatus - invalid transition: completed -> running throws
   );
 });
 
-test("transitionWorkflowStatus - no-op transition (same state) passes without error", () => {
+test("transitionWorkflowStatus - no-op transition (same state) passes without error [transition-service-comprehensive]", () => {
   const machine = new StateTransitionMachine("workflow", WORKFLOW_TRANSITIONS);
   machine.assertTransition("running", "running"); // should not throw
   machine.assertTransition("completed", "completed"); // should not throw
@@ -115,14 +115,14 @@ test("transitionWorkflowStatus - no-op transition (same state) passes without er
 // Execution transitions
 // ---------------------------------------------------------------------------
 
-test("transitionExecutionStatus - valid transition: created -> prechecking -> executing -> succeeded", () => {
+test("transitionExecutionStatus - valid transition: created -> prechecking -> executing -> succeeded [transition-service-comprehensive]", () => {
   const machine = new StateTransitionMachine("execution", EXECUTION_TRANSITIONS);
   machine.assertTransition("created", "prechecking");
   machine.assertTransition("prechecking", "executing");
   machine.assertTransition("executing", "succeeded");
 });
 
-test("transitionExecutionStatus - terminal states block re-transition", () => {
+test("transitionExecutionStatus - terminal states block re-transition [transition-service-comprehensive]", () => {
   const machine = new StateTransitionMachine("execution", EXECUTION_TRANSITIONS);
 
   // succeeded is terminal - cannot transition to anything
@@ -140,14 +140,14 @@ test("transitionExecutionStatus - terminal states block re-transition", () => {
   assert.throws(() => machine.assertTransition("superseded", "executing"), WorkflowStateError);
 });
 
-test("transitionExecutionStatus - no-op transitions pass without error", () => {
+test("transitionExecutionStatus - no-op transitions pass without error [transition-service-comprehensive]", () => {
   const machine = new StateTransitionMachine("execution", EXECUTION_TRANSITIONS);
   machine.assertTransition("created", "created");
   machine.assertTransition("executing", "executing");
   machine.assertTransition("succeeded", "succeeded");
 });
 
-test("transitionExecutionStatus - startedAt/finishedAt timestamps set correctly", () => {
+test("transitionExecutionStatus - startedAt/finishedAt timestamps set correctly [transition-service-comprehensive]", () => {
   // This tests the logic in ExecutionTransitionService.apply()
   // startedAt is set when toStatus is "prechecking" or "executing"
   // finishedAt is set when toStatus is "succeeded", "failed", or "cancelled"
@@ -188,7 +188,7 @@ test("transitionExecutionStatus - startedAt/finishedAt timestamps set correctly"
 // Task terminal state cascade
 // ---------------------------------------------------------------------------
 
-test("transitionTaskTerminalState - done task cascades to workflow=completed, session=completed, execution=succeeded", () => {
+test("transitionTaskTerminalState - done task cascades to workflow=completed, session=completed, execution=succeeded [transition-service-comprehensive]", () => {
   // Map: done -> { workflow: completed, session: completed, execution: succeeded }
   const workflowTerminal: WorkflowStatus = "completed";
   const sessionTerminal: SessionStatus = "completed";
@@ -206,7 +206,7 @@ test("transitionTaskTerminalState - done task cascades to workflow=completed, se
   executionMachine.assertTransition("executing", executionTerminal);
 });
 
-test("transitionTaskTerminalState - failed task cascades with reasonCode propagation", () => {
+test("transitionTaskTerminalState - failed task cascades with reasonCode propagation [transition-service-comprehensive]", () => {
   // Map: failed -> { workflow: failed, session: failed, execution: failed }
   const workflowTerminal: WorkflowStatus = "failed";
   const sessionTerminal: SessionStatus = "failed";
@@ -224,7 +224,7 @@ test("transitionTaskTerminalState - failed task cascades with reasonCode propaga
   executionMachine.assertTransition("executing", executionTerminal);
 });
 
-test("transitionTaskTerminalState - cancelled task cascades correctly", () => {
+test("transitionTaskTerminalState - cancelled task cascades correctly [transition-service-comprehensive]", () => {
   // Map: cancelled -> { workflow: cancelled, session: cancelled, execution: cancelled }
   const workflowTerminal: WorkflowStatus = "cancelled";
   const sessionTerminal: SessionStatus = "cancelled";
@@ -242,7 +242,7 @@ test("transitionTaskTerminalState - cancelled task cascades correctly", () => {
   executionMachine.assertTransition("executing", executionTerminal);
 });
 
-test("transitionTaskTerminalState - invalid cascade combination throws", () => {
+test("transitionTaskTerminalState - invalid cascade combination throws [transition-service-comprehensive]", () => {
   // Trying to cascade to invalid terminal states should throw
   const taskMachine = new StateTransitionMachine("task", TASK_TRANSITIONS);
   const workflowMachine = new StateTransitionMachine("workflow", WORKFLOW_TRANSITIONS);
@@ -266,7 +266,7 @@ test("transitionTaskTerminalState - invalid cascade combination throws", () => {
 // CAS failure - concurrent modification detection
 // ---------------------------------------------------------------------------
 
-test("CAS failure - concurrent modification detection via StateTransitionMachine", () => {
+test("CAS failure - concurrent modification detection via StateTransitionMachine [transition-service-comprehensive]", () => {
   // The StateTransitionMachine itself does not implement CAS.
   // CAS is implemented in repository.updateTaskStatusCas() which returns
   // affected row count. A CAS failure occurs when another writer modified
@@ -291,7 +291,7 @@ test("CAS failure - concurrent modification detection via StateTransitionMachine
 // Session transitions
 // ---------------------------------------------------------------------------
 
-test("transitionSessionStatus - session pausing/resuming", () => {
+test("transitionSessionStatus - session pausing/resuming [transition-service-comprehensive]", () => {
   const machine = new StateTransitionMachine("session", SESSION_TRANSITIONS);
 
   // The current session contract only allows resuming from "paused";
@@ -299,7 +299,7 @@ test("transitionSessionStatus - session pausing/resuming", () => {
   machine.assertTransition("paused", "streaming");
 });
 
-test("transitionSessionStatus - no-op transitions pass without error", () => {
+test("transitionSessionStatus - no-op transitions pass without error [transition-service-comprehensive]", () => {
   const machine = new StateTransitionMachine("session", SESSION_TRANSITIONS);
   machine.assertTransition("open", "open");
   machine.assertTransition("streaming", "streaming");
@@ -310,7 +310,7 @@ test("transitionSessionStatus - no-op transitions pass without error", () => {
 // No-op transitions
 // ---------------------------------------------------------------------------
 
-test("No-op transitions (same state) pass without error for all entity types", () => {
+test("No-op transitions (same state) pass without error for all entity types [transition-service-comprehensive]", () => {
   const taskMachine = new StateTransitionMachine("task", TASK_TRANSITIONS);
   const workflowMachine = new StateTransitionMachine("workflow", WORKFLOW_TRANSITIONS);
   const sessionMachine = new StateTransitionMachine("session", SESSION_TRANSITIONS);
@@ -336,7 +336,7 @@ test("No-op transitions (same state) pass without error for all entity types", (
 // Task transitions
 // ---------------------------------------------------------------------------
 
-test("task transitions - valid linear progression", () => {
+test("task transitions - valid linear progression [transition-service-comprehensive]", () => {
   const machine = new StateTransitionMachine("task", TASK_TRANSITIONS);
 
   machine.assertTransition("queued", "pending");
@@ -346,14 +346,14 @@ test("task transitions - valid linear progression", () => {
   machine.assertTransition("in_progress", "done");
 });
 
-test("task transitions - cancelled from queued and pending", () => {
+test("task transitions - cancelled from queued and pending [transition-service-comprehensive]", () => {
   const machine = new StateTransitionMachine("task", TASK_TRANSITIONS);
 
   machine.assertTransition("queued", "cancelled");
   machine.assertTransition("pending", "cancelled");
 });
 
-test("task transitions - invalid transitions blocked", () => {
+test("task transitions - invalid transitions blocked [transition-service-comprehensive]", () => {
   const machine = new StateTransitionMachine("task", TASK_TRANSITIONS);
 
   // Cannot skip directly to done from queued
@@ -371,14 +371,14 @@ test("task transitions - invalid transitions blocked", () => {
 // Workflow cancelling flow
 // ---------------------------------------------------------------------------
 
-test("workflow cancelling flow - running -> cancelling -> cancelled", () => {
+test("workflow cancelling flow - running -> cancelling -> cancelled [transition-service-comprehensive]", () => {
   const machine = new StateTransitionMachine("workflow", WORKFLOW_TRANSITIONS);
 
   machine.assertTransition("running", "cancelling");
   machine.assertTransition("cancelling", "cancelled");
 });
 
-test("workflow cancelling - cannot cancel already completed", () => {
+test("workflow cancelling - cannot cancel already completed [transition-service-comprehensive]", () => {
   const machine = new StateTransitionMachine("workflow", WORKFLOW_TRANSITIONS);
 
   assert.throws(() => machine.assertTransition("completed", "cancelling"), WorkflowStateError);

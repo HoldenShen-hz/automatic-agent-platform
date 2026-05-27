@@ -54,7 +54,7 @@ function isWrappedEnqueueFailure(err: unknown, expectedCauseFragment: string): b
     && causeMessage.includes(expectedCauseFragment);
 }
 
-test("[SYS-REL-2.4] enqueue pipeline failure - job returned despite pipeline failure", async () => {
+test("[SYS-REL-2.4] enqueue pipeline failure - job returned despite pipeline failure [enqueue-write-failure]", async () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
   const mockClient = getMockClient(adapter);
 
@@ -98,7 +98,7 @@ test("[SYS-REL-2.4] enqueue pipeline failure - job returned despite pipeline fai
   // The caller has no way to know the pipeline had errors
 });
 
-test("[SYS-REL-2.4] enqueue pipeline all commands fail - still returns job", async () => {
+test("[SYS-REL-2.4] enqueue pipeline all commands fail - still returns job [enqueue-write-failure]", async () => {
   runtimeMetricsRegistry.reset();
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
   const mockClient = getMockClient(adapter).client;
@@ -128,7 +128,7 @@ test("[SYS-REL-2.4] enqueue pipeline all commands fail - still returns job", asy
   );
 });
 
-test("[SYS-REL-2.4] enqueueAsync properly propagates errors - contrast with enqueue", async () => {
+test("[SYS-REL-2.4] enqueueAsync properly propagates errors - contrast with enqueue [enqueue-write-failure]", async () => {
   // This test shows the contrast: enqueueAsync properly awaits and throws
   // while enqueue swallows errors via detached promise
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
@@ -151,7 +151,7 @@ test("[SYS-REL-2.4] enqueueAsync properly propagates errors - contrast with enqu
   );
 });
 
-test("[SYS-REL-2.4] enqueueAsync expire error propagates", async () => {
+test("[SYS-REL-2.4] enqueueAsync expire error propagates [enqueue-write-failure]", async () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
   const mockClient = getMockClient(adapter).client;
 
@@ -171,7 +171,7 @@ test("[SYS-REL-2.4] enqueueAsync expire error propagates", async () => {
   );
 });
 
-test("[SYS-REL-2.4] enqueueAsync sadd error propagates", async () => {
+test("[SYS-REL-2.4] enqueueAsync sadd error propagates [enqueue-write-failure]", async () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
   const mockClient = getMockClient(adapter).client;
 
@@ -192,7 +192,7 @@ test("[SYS-REL-2.4] enqueueAsync sadd error propagates", async () => {
   );
 });
 
-test("[SYS-REL-2.4] enqueueAsync zadd error propagates", async () => {
+test("[SYS-REL-2.4] enqueueAsync zadd error propagates [enqueue-write-failure]", async () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
   const mockClient = getMockClient(adapter).client;
 
@@ -214,7 +214,7 @@ test("[SYS-REL-2.4] enqueueAsync zadd error propagates", async () => {
   );
 });
 
-test("[SYS-REL-2.4] enqueue success path - verify happy case still works", async () => {
+test("[SYS-REL-2.4] enqueue success path - verify happy case still works [enqueue-write-failure]", async () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
   const mockClient = getMockClient(adapter).client;
 
@@ -253,7 +253,7 @@ test("[SYS-REL-2.4] enqueue success path - verify happy case still works", async
   assert.equal(pipelineExecCalled, true, "Pipeline exec should be called");
 });
 
-test("[SYS-REL-2.4] enqueue with delay - delayed job still gets pipeline error swallowed", async () => {
+test("[SYS-REL-2.4] enqueue with delay - delayed job still gets pipeline error swallowed [enqueue-write-failure]", async () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
   const mockClient = getMockClient(adapter).client;
 
@@ -277,7 +277,7 @@ test("[SYS-REL-2.4] enqueue with delay - delayed job still gets pipeline error s
   assert.ok(result.delayUntil, "delayUntil should be set");
 });
 
-test("[SYS-REL-2.4] enqueue with priority - pipeline error swallowed", async () => {
+test("[SYS-REL-2.4] enqueue with priority - pipeline error swallowed [enqueue-write-failure]", async () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
   const mockClient = getMockClient(adapter).client;
 
@@ -299,7 +299,7 @@ test("[SYS-REL-2.4] enqueue with priority - pipeline error swallowed", async () 
   assert.equal(result.priority, 10);
 });
 
-test("[SYS-REL-2.4] enqueue with idempotency key - pipeline error swallowed", async () => {
+test("[SYS-REL-2.4] enqueue with idempotency key - pipeline error swallowed [enqueue-write-failure]", async () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
   const mockClient = getMockClient(adapter).client;
 
@@ -321,7 +321,7 @@ test("[SYS-REL-2.4] enqueue with idempotency key - pipeline error swallowed", as
   assert.equal(result.idempotencyKey, "unique-key-123");
 });
 
-test("[SYS-REL-2.4] enqueue with maxAttempts - pipeline error swallowed", async () => {
+test("[SYS-REL-2.4] enqueue with maxAttempts - pipeline error swallowed [enqueue-write-failure]", async () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
   const mockClient = getMockClient(adapter).client;
 
@@ -343,7 +343,7 @@ test("[SYS-REL-2.4] enqueue with maxAttempts - pipeline error swallowed", async 
   assert.equal(result.maxAttempts, 5);
 });
 
-test("[SYS-REL-2.4] contrast - enqueueAsync shows proper error handling", async () => {
+test("[SYS-REL-2.4] contrast - enqueueAsync shows proper error handling [enqueue-write-failure]", async () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
   const mockClient = getMockClient(adapter).client;
 

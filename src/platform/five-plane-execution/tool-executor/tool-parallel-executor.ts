@@ -10,7 +10,7 @@
  * - Read tools: can run in parallel with other read-only tools
  * - Side effect awareness: tools with side effects are handled carefully
  *
- * @see {@link https://github.com/anomalyco/automatic-agent/tree/main/docs_zh/contracts/tool_contract.md}
+ * @see {@link https://github.com/automatic-agent/automatic-agent-platform/tree/main/docs_zh/contracts/tool_contract.md}
  */
 
 import { ValidationError } from "../../contracts/errors.js";

@@ -19,7 +19,7 @@ import {
 // Issue #2202: Failover blindly picks candidates[0]
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("failover-controller-2202: uses candidate signals instead of blindly picking index 0", () => {
+test("failover-controller-2202: uses candidate signals instead of blindly picking index 0 [failover-controller-issues]", () => {
   const controller = new RegionFailoverController();
 
   const input: RegionFailoverInput = {
@@ -36,7 +36,7 @@ test("failover-controller-2202: uses candidate signals instead of blindly pickin
   assert.equal(decision.targetRegionId, "region-b");
 });
 
-test("failover-controller-2202: preferredRegionId overrides blind pick", () => {
+test("failover-controller-2202: preferredRegionId overrides blind pick [failover-controller-issues]", () => {
   const controller = new RegionFailoverController();
 
   const input: RegionFailoverInput = {
@@ -51,7 +51,7 @@ test("failover-controller-2202: preferredRegionId overrides blind pick", () => {
   assert.equal(decision.targetRegionId, "region-b");
 });
 
-test("failover-controller-2202: skips candidates whose circuit breaker is open", () => {
+test("failover-controller-2202: skips candidates whose circuit breaker is open [failover-controller-issues]", () => {
   const controller = new RegionFailoverController();
   controller.recordFailure("first");
   controller.recordFailure("first");
@@ -66,7 +66,7 @@ test("failover-controller-2202: skips candidates whose circuit breaker is open",
   assert.equal(decision.targetRegionId, "second");
 });
 
-test("failover-controller-2202: best practice is to select healthiest region", () => {
+test("failover-controller-2202: best practice is to select healthiest region [failover-controller-issues]", () => {
   const controller = new RegionFailoverController();
 
   // Issue #2202: Best practice is to select based on:
@@ -90,7 +90,7 @@ test("failover-controller-2202: best practice is to select healthiest region", (
   assert.equal(decision.targetRegionId, "healthy-region");
 });
 
-test("failover-controller-2202: latency information participates in ranking", () => {
+test("failover-controller-2202: latency information participates in ranking [failover-controller-issues]", () => {
   const controller = new RegionFailoverController();
 
   const input: RegionFailoverInput = {
@@ -108,7 +108,7 @@ test("failover-controller-2202: latency information participates in ranking", ()
   assert.equal(decision.targetRegionId, "low-latency");
 });
 
-test("failover-controller-2202: ordered candidates no longer affects outcome when signals differ", () => {
+test("failover-controller-2202: ordered candidates no longer affects outcome when signals differ [failover-controller-issues]", () => {
   const controller = new RegionFailoverController();
 
   // Same regions, different order
@@ -136,7 +136,7 @@ test("failover-controller-2202: ordered candidates no longer affects outcome whe
   assert.equal(decision2.targetRegionId, "best");
 });
 
-test("failover-controller-2202: with preferredRegionId not in candidates, falls back to best eligible candidate", () => {
+test("failover-controller-2202: with preferredRegionId not in candidates, falls back to best eligible candidate [failover-controller-issues]", () => {
   const controller = new RegionFailoverController();
 
   const input: RegionFailoverInput = {
@@ -153,7 +153,7 @@ test("failover-controller-2202: with preferredRegionId not in candidates, falls 
   assert.equal(decision.targetRegionId, "region-b");
 });
 
-test("failover-controller-2202: empty candidates returns null", () => {
+test("failover-controller-2202: empty candidates returns null [failover-controller-issues]", () => {
   const controller = new RegionFailoverController();
 
   const input: RegionFailoverInput = {
@@ -167,7 +167,7 @@ test("failover-controller-2202: empty candidates returns null", () => {
   assert.equal(decision.targetRegionId, null);
 });
 
-test("failover-controller-2202: healthy primary does not failover", () => {
+test("failover-controller-2202: healthy primary does not failover [failover-controller-issues]", () => {
   const controller = new RegionFailoverController();
 
   const input: RegionFailoverInput = {
@@ -181,7 +181,7 @@ test("failover-controller-2202: healthy primary does not failover", () => {
   assert.equal(decision.targetRegionId, null);
 });
 
-test("failover-controller-2202: generates proper fencing token on failover", () => {
+test("failover-controller-2202: generates proper fencing token on failover [failover-controller-issues]", () => {
   const controller = new RegionFailoverController();
 
   const input: RegionFailoverInput = {
@@ -197,7 +197,7 @@ test("failover-controller-2202: generates proper fencing token on failover", () 
   assert.equal(decision.fencingToken?.previousLeaderId, null); // First leader
 });
 
-test("failover-controller-2202: second failover increments epoch", () => {
+test("failover-controller-2202: second failover increments epoch [failover-controller-issues]", () => {
   const controller = new RegionFailoverController();
 
   // First failover
@@ -218,7 +218,7 @@ test("failover-controller-2202: second failover increments epoch", () => {
   assert.equal(decision2.fencingToken?.epoch, 2);
 });
 
-test("failover-controller-2202: demotion acknowledgment required for leader change", () => {
+test("failover-controller-2202: demotion acknowledgment required for leader change [failover-controller-issues]", () => {
   const controller = new RegionFailoverController();
 
   // First failover to region-b
@@ -243,7 +243,7 @@ test("failover-controller-2202: demotion acknowledgment required for leader chan
   assert.equal(decision2.oldLeaderId, "region-b");
 });
 
-test("failover-controller-2202: split-brain detection", () => {
+test("failover-controller-2202: split-brain detection [failover-controller-issues]", () => {
   const controller = new RegionFailoverController();
 
   // Set initial leader
@@ -259,7 +259,7 @@ test("failover-controller-2202: split-brain detection", () => {
   assert.equal(hasSplitBrain, true);
 });
 
-test("failover-controller-2202: stale leader is detected", () => {
+test("failover-controller-2202: stale leader is detected [failover-controller-issues]", () => {
   const controller = new RegionFailoverController();
 
   // Set initial leader with epoch 1
@@ -275,7 +275,7 @@ test("failover-controller-2202: stale leader is detected", () => {
   assert.equal(hasSplitBrain, true);
 });
 
-test("failover-controller-2202: valid leader is accepted", () => {
+test("failover-controller-2202: valid leader is accepted [failover-controller-issues]", () => {
   const controller = new RegionFailoverController();
 
   // Set initial leader with epoch 1

@@ -25,7 +25,7 @@ function createSlaTier(overrides: Partial<SlaTier> = {}): SlaTier {
 // resolveHighestPriorityTier Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("resolveHighestPriorityTier returns tier with highest priority number", () => {
+test("resolveHighestPriorityTier returns tier with highest priority number [sla-tier-resolver]", () => {
   const tiers = [
     createSlaTier({ tierId: "basic", priority: 0 }),
     createSlaTier({ tierId: "standard", priority: 2 }),
@@ -37,13 +37,13 @@ test("resolveHighestPriorityTier returns tier with highest priority number", () 
   assert.equal(result?.tierId, "premium");
 });
 
-test("resolveHighestPriorityTier returns null for empty array", () => {
+test("resolveHighestPriorityTier returns null for empty array [sla-tier-resolver]", () => {
   const result = resolveHighestPriorityTier([]);
 
   assert.equal(result, null);
 });
 
-test("resolveHighestPriorityTier handles single tier", () => {
+test("resolveHighestPriorityTier handles single tier [sla-tier-resolver]", () => {
   const tiers = [createSlaTier({ tierId: "only-tier" })];
 
   const result = resolveHighestPriorityTier(tiers);
@@ -51,7 +51,7 @@ test("resolveHighestPriorityTier handles single tier", () => {
   assert.equal(result?.tierId, "only-tier");
 });
 
-test("resolveHighestPriorityTier uses stable ordering for equal priority", () => {
+test("resolveHighestPriorityTier uses stable ordering for equal priority [sla-tier-resolver]", () => {
   const tiers = [
     createSlaTier({ tierId: "first", priority: 5 }),
     createSlaTier({ tierId: "second", priority: 5 }),
@@ -63,7 +63,7 @@ test("resolveHighestPriorityTier uses stable ordering for equal priority", () =>
   assert.equal(result?.tierId, "first");
 });
 
-test("resolveHighestPriorityTier handles negative priorities", () => {
+test("resolveHighestPriorityTier handles negative priorities [sla-tier-resolver]", () => {
   const tiers = [
     createSlaTier({ tierId: "negative", priority: -1 }),
     createSlaTier({ tierId: "positive", priority: 1 }),
@@ -74,7 +74,7 @@ test("resolveHighestPriorityTier handles negative priorities", () => {
   assert.equal(result?.tierId, "positive");
 });
 
-test("resolveHighestPriorityTier handles zero priority", () => {
+test("resolveHighestPriorityTier handles zero priority [sla-tier-resolver]", () => {
   const tiers = [
     createSlaTier({ tierId: "zero", priority: 0 }),
     createSlaTier({ tierId: "positive", priority: 1 }),
@@ -85,7 +85,7 @@ test("resolveHighestPriorityTier handles zero priority", () => {
   assert.equal(result?.tierId, "positive");
 });
 
-test("resolveHighestPriorityTier handles very large priorities", () => {
+test("resolveHighestPriorityTier handles very large priorities [sla-tier-resolver]", () => {
   const tiers = [
     createSlaTier({ tierId: "medium", priority: 100 }),
     createSlaTier({ tierId: "huge", priority: 999999 }),
@@ -96,7 +96,7 @@ test("resolveHighestPriorityTier handles very large priorities", () => {
   assert.equal(result?.tierId, "huge");
 });
 
-test("resolveHighestPriorityTier does not modify original array", () => {
+test("resolveHighestPriorityTier does not modify original array [sla-tier-resolver]", () => {
   const tiers = [
     createSlaTier({ tierId: "a", priority: 1 }),
     createSlaTier({ tierId: "b", priority: 2 }),
@@ -112,7 +112,7 @@ test("resolveHighestPriorityTier does not modify original array", () => {
 // SlaTierSchema Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("SlaTierSchema parses valid minimal tier", () => {
+test("SlaTierSchema parses valid minimal tier [sla-tier-resolver]", () => {
   const result = SlaTierSchema.safeParse({
     tierId: "gold",
     displayName: "Gold Tier",
@@ -128,7 +128,7 @@ test("SlaTierSchema parses valid minimal tier", () => {
   }
 });
 
-test("SlaTierSchema parses full tier with all fields", () => {
+test("SlaTierSchema parses full tier with all fields [sla-tier-resolver]", () => {
   const result = SlaTierSchema.safeParse({
     tierId: "platinum",
     displayName: "Platinum Tier",
@@ -148,7 +148,7 @@ test("SlaTierSchema parses full tier with all fields", () => {
   }
 });
 
-test("SlaTierSchema accepts valid priority values", () => {
+test("SlaTierSchema accepts valid priority values [sla-tier-resolver]", () => {
   const result = SlaTierSchema.safeParse({
     tierId: "test",
     displayName: "Test",
@@ -158,7 +158,7 @@ test("SlaTierSchema accepts valid priority values", () => {
   assert.equal(result.success, true);
 });
 
-test("SlaTierSchema rejects negative priority", () => {
+test("SlaTierSchema rejects negative priority [sla-tier-resolver]", () => {
   const result = SlaTierSchema.safeParse({
     tierId: "test",
     displayName: "Test",
@@ -168,7 +168,7 @@ test("SlaTierSchema rejects negative priority", () => {
   assert.equal(result.success, false);
 });
 
-test("SlaTierSchema rejects empty tierId", () => {
+test("SlaTierSchema rejects empty tierId [sla-tier-resolver]", () => {
   const result = SlaTierSchema.safeParse({
     tierId: "",
     displayName: "Test",
@@ -178,7 +178,7 @@ test("SlaTierSchema rejects empty tierId", () => {
   assert.equal(result.success, false);
 });
 
-test("SlaTierSchema rejects empty displayName", () => {
+test("SlaTierSchema rejects empty displayName [sla-tier-resolver]", () => {
   const result = SlaTierSchema.safeParse({
     tierId: "test",
     displayName: "",
@@ -188,7 +188,7 @@ test("SlaTierSchema rejects empty displayName", () => {
   assert.equal(result.success, false);
 });
 
-test("SlaTierSchema rejects targetSuccessRate below 0", () => {
+test("SlaTierSchema rejects targetSuccessRate below 0 [sla-tier-resolver]", () => {
   const result = SlaTierSchema.safeParse({
     tierId: "test",
     displayName: "Test",
@@ -199,7 +199,7 @@ test("SlaTierSchema rejects targetSuccessRate below 0", () => {
   assert.equal(result.success, false);
 });
 
-test("SlaTierSchema rejects targetSuccessRate above 1", () => {
+test("SlaTierSchema rejects targetSuccessRate above 1 [sla-tier-resolver]", () => {
   const result = SlaTierSchema.safeParse({
     tierId: "test",
     displayName: "Test",
@@ -210,7 +210,7 @@ test("SlaTierSchema rejects targetSuccessRate above 1", () => {
   assert.equal(result.success, false);
 });
 
-test("SlaTierSchema accepts targetSuccessRate at boundary 0", () => {
+test("SlaTierSchema accepts targetSuccessRate at boundary 0 [sla-tier-resolver]", () => {
   const result = SlaTierSchema.safeParse({
     tierId: "test",
     displayName: "Test",
@@ -221,7 +221,7 @@ test("SlaTierSchema accepts targetSuccessRate at boundary 0", () => {
   assert.equal(result.success, true);
 });
 
-test("SlaTierSchema accepts targetSuccessRate at boundary 1", () => {
+test("SlaTierSchema accepts targetSuccessRate at boundary 1 [sla-tier-resolver]", () => {
   const result = SlaTierSchema.safeParse({
     tierId: "test",
     displayName: "Test",
@@ -232,7 +232,7 @@ test("SlaTierSchema accepts targetSuccessRate at boundary 1", () => {
   assert.equal(result.success, true);
 });
 
-test("SlaTierSchema rejects negative maxQueueWaitMs", () => {
+test("SlaTierSchema rejects negative maxQueueWaitMs [sla-tier-resolver]", () => {
   const result = SlaTierSchema.safeParse({
     tierId: "test",
     displayName: "Test",
@@ -243,7 +243,7 @@ test("SlaTierSchema rejects negative maxQueueWaitMs", () => {
   assert.equal(result.success, false);
 });
 
-test("SlaTierSchema rejects negative reservedCapacityPercent", () => {
+test("SlaTierSchema rejects negative reservedCapacityPercent [sla-tier-resolver]", () => {
   const result = SlaTierSchema.safeParse({
     tierId: "test",
     displayName: "Test",
@@ -254,7 +254,7 @@ test("SlaTierSchema rejects negative reservedCapacityPercent", () => {
   assert.equal(result.success, false);
 });
 
-test("SlaTierSchema rejects reservedCapacityPercent above 100", () => {
+test("SlaTierSchema rejects reservedCapacityPercent above 100 [sla-tier-resolver]", () => {
   const result = SlaTierSchema.safeParse({
     tierId: "test",
     displayName: "Test",
@@ -265,7 +265,7 @@ test("SlaTierSchema rejects reservedCapacityPercent above 100", () => {
   assert.equal(result.success, false);
 });
 
-test("SlaTierSchema accepts reservedCapacityPercent at boundaries 0 and 100", () => {
+test("SlaTierSchema accepts reservedCapacityPercent at boundaries 0 and 100 [sla-tier-resolver]", () => {
   const result0 = SlaTierSchema.safeParse({
     tierId: "test",
     displayName: "Test",

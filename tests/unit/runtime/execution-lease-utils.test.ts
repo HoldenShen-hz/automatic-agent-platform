@@ -13,64 +13,64 @@ import { StructuredLogger } from "../../../src/platform/shared/observability/str
 
 // plusMs tests
 
-test("plusMs adds milliseconds to ISO timestamp", () => {
+test("plusMs adds milliseconds to ISO timestamp [execution-lease-utils]", () => {
   const result = plusMs("2026-04-14T00:00:00.000Z", 1000);
   assert.equal(result, "2026-04-14T00:00:01.000Z");
 });
 
-test("plusMs adds zero milliseconds returns same time", () => {
+test("plusMs adds zero milliseconds returns same time [execution-lease-utils]", () => {
   const result = plusMs("2026-04-14T12:30:00.000Z", 0);
   assert.equal(result, "2026-04-14T12:30:00.000Z");
 });
 
-test("plusMs adds large number of milliseconds crossing day boundary", () => {
+test("plusMs adds large number of milliseconds crossing day boundary [execution-lease-utils]", () => {
   const result = plusMs("2026-04-14T23:00:00.000Z", 3_600_000); // +1 hour
   assert.equal(result, "2026-04-15T00:00:00.000Z");
 });
 
-test("plusMs handles subtracting with negative ms", () => {
+test("plusMs handles subtracting with negative ms [execution-lease-utils]", () => {
   const result = plusMs("2026-04-14T01:00:00.000Z", -3_600_000); // -1 hour
   assert.equal(result, "2026-04-14T00:00:00.000Z");
 });
 
-test("plusMs adds 60 seconds (1 minute)", () => {
+test("plusMs adds 60 seconds (1 minute) [execution-lease-utils]", () => {
   const result = plusMs("2026-04-14T00:00:00.000Z", 60_000);
   assert.equal(result, "2026-04-14T00:01:00.000Z");
 });
 
 // parseJsonArray tests
 
-test("parseJsonArray parses valid JSON array of strings", () => {
+test("parseJsonArray parses valid JSON array of strings [execution-lease-utils]", () => {
   const logger = new StructuredLogger({ retentionLimit: 10 });
   const result = parseJsonArray('["a", "b", "c"]', logger);
   assert.deepEqual(result, ["a", "b", "c"]);
 });
 
-test("parseJsonArray returns empty array for empty JSON array", () => {
+test("parseJsonArray returns empty array for empty JSON array [execution-lease-utils]", () => {
   const logger = new StructuredLogger({ retentionLimit: 10 });
   const result = parseJsonArray("[]", logger);
   assert.deepEqual(result, []);
 });
 
-test("parseJsonArray filters out non-string values", () => {
+test("parseJsonArray filters out non-string values [execution-lease-utils]", () => {
   const logger = new StructuredLogger({ retentionLimit: 10 });
   const result = parseJsonArray('["a", 1, true, null, "b"]', logger);
   assert.deepEqual(result, ["a", "b"]);
 });
 
-test("parseJsonArray returns empty array for non-array JSON", () => {
+test("parseJsonArray returns empty array for non-array JSON [execution-lease-utils]", () => {
   const logger = new StructuredLogger({ retentionLimit: 10 });
   const result = parseJsonArray('{"key": "value"}', logger);
   assert.deepEqual(result, []);
 });
 
-test("parseJsonArray returns empty array for invalid JSON", () => {
+test("parseJsonArray returns empty array for invalid JSON [execution-lease-utils]", () => {
   const logger = new StructuredLogger({ retentionLimit: 10 });
   const result = parseJsonArray("not valid json", logger);
   assert.deepEqual(result, []);
 });
 
-test("parseJsonArray returns empty array for null JSON", () => {
+test("parseJsonArray returns empty array for null JSON [execution-lease-utils]", () => {
   const logger = new StructuredLogger({ retentionLimit: 10 });
   const result = parseJsonArray("null", logger);
   assert.deepEqual(result, []);
@@ -78,44 +78,44 @@ test("parseJsonArray returns empty array for null JSON", () => {
 
 // mergeExecutionIds tests
 
-test("mergeExecutionIds adds new execution ID", () => {
+test("mergeExecutionIds adds new execution ID [execution-lease-utils]", () => {
   const result = mergeExecutionIds(["exec_1", "exec_2"], "exec_3");
   assert.deepEqual(result, ["exec_1", "exec_2", "exec_3"]);
 });
 
-test("mergeExecutionIds deduplicates existing ID", () => {
+test("mergeExecutionIds deduplicates existing ID [execution-lease-utils]", () => {
   const result = mergeExecutionIds(["exec_1", "exec_2"], "exec_1");
   assert.deepEqual(result, ["exec_1", "exec_2"]);
 });
 
-test("mergeExecutionIds sorts the result", () => {
+test("mergeExecutionIds sorts the result [execution-lease-utils]", () => {
   const result = mergeExecutionIds(["exec_3", "exec_1"], "exec_2");
   assert.deepEqual(result, ["exec_1", "exec_2", "exec_3"]);
 });
 
-test("mergeExecutionIds handles empty existing array", () => {
+test("mergeExecutionIds handles empty existing array [execution-lease-utils]", () => {
   const result = mergeExecutionIds([], "exec_1");
   assert.deepEqual(result, ["exec_1"]);
 });
 
 // removeExecutionId tests
 
-test("removeExecutionId removes existing ID", () => {
+test("removeExecutionId removes existing ID [execution-lease-utils]", () => {
   const result = removeExecutionId(["exec_1", "exec_2", "exec_3"], "exec_2");
   assert.deepEqual(result, ["exec_1", "exec_3"]);
 });
 
-test("removeExecutionId handles non-existing ID gracefully", () => {
+test("removeExecutionId handles non-existing ID gracefully [execution-lease-utils]", () => {
   const result = removeExecutionId(["exec_1", "exec_2"], "exec_unknown");
   assert.deepEqual(result, ["exec_1", "exec_2"]);
 });
 
-test("removeExecutionId returns empty array when only ID is removed", () => {
+test("removeExecutionId returns empty array when only ID is removed [execution-lease-utils]", () => {
   const result = removeExecutionId(["exec_1"], "exec_1");
   assert.deepEqual(result, []);
 });
 
-test("removeExecutionId sorts result", () => {
+test("removeExecutionId sorts result [execution-lease-utils]", () => {
   const result = removeExecutionId(["exec_c", "exec_b", "exec_a"], "exec_b");
   assert.deepEqual(result, ["exec_a", "exec_c"]);
 });
@@ -146,43 +146,43 @@ function makeSnapshot(overrides: Partial<WorkerSnapshotRecord> = {}): WorkerSnap
   };
 }
 
-test("toWorkerStatus returns unavailable when status is unavailable", () => {
+test("toWorkerStatus returns unavailable when status is unavailable [execution-lease-utils]", () => {
   const snapshot = makeSnapshot({ status: "unavailable" });
   assert.equal(toWorkerStatus(snapshot, []), "unavailable");
   assert.equal(toWorkerStatus(snapshot, ["exec_1"]), "unavailable");
 });
 
-test("toWorkerStatus returns quarantined when status is quarantined", () => {
+test("toWorkerStatus returns quarantined when status is quarantined [execution-lease-utils]", () => {
   const snapshot = makeSnapshot({ status: "quarantined" });
   assert.equal(toWorkerStatus(snapshot, []), "quarantined");
 });
 
-test("toWorkerStatus returns offline when status is offline", () => {
+test("toWorkerStatus returns offline when status is offline [execution-lease-utils]", () => {
   const snapshot = makeSnapshot({ status: "offline" });
   assert.equal(toWorkerStatus(snapshot, []), "offline");
 });
 
-test("toWorkerStatus returns draining when status is draining", () => {
+test("toWorkerStatus returns draining when status is draining [execution-lease-utils]", () => {
   const snapshot = makeSnapshot({ status: "draining" });
   assert.equal(toWorkerStatus(snapshot, []), "draining");
 });
 
-test("toWorkerStatus returns degraded when status is degraded", () => {
+test("toWorkerStatus returns degraded when status is degraded [execution-lease-utils]", () => {
   const snapshot = makeSnapshot({ status: "degraded" });
   assert.equal(toWorkerStatus(snapshot, []), "degraded");
 });
 
-test("toWorkerStatus returns idle when active and no running executions", () => {
+test("toWorkerStatus returns idle when active and no running executions [execution-lease-utils]", () => {
   const snapshot = makeSnapshot({ status: "idle" });
   assert.equal(toWorkerStatus(snapshot, []), "idle");
 });
 
-test("toWorkerStatus returns busy when active and has running executions", () => {
+test("toWorkerStatus returns busy when active and has running executions [execution-lease-utils]", () => {
   const snapshot = makeSnapshot({ status: "idle" });
   assert.equal(toWorkerStatus(snapshot, ["exec_1"]), "busy");
 });
 
-test("toWorkerStatus returns busy when busy and has running executions", () => {
+test("toWorkerStatus returns busy when busy and has running executions [execution-lease-utils]", () => {
   const snapshot = makeSnapshot({ status: "busy" });
   assert.equal(toWorkerStatus(snapshot, ["exec_1", "exec_2"]), "busy");
 });

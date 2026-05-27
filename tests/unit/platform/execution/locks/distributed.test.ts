@@ -20,7 +20,7 @@ function createTestDb(): DatabaseSync {
 // Fencing token tests
 // =============================================================================
 
-test("Distributed: SqliteLockAdapter fencing token starts at 1", () => {
+test("Distributed: SqliteLockAdapter fencing token starts at 1 [distributed]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -32,7 +32,7 @@ test("Distributed: SqliteLockAdapter fencing token starts at 1", () => {
   db.close();
 });
 
-test("Distributed: SqliteLockAdapter fencing token increments on re-acquire after release", () => {
+test("Distributed: SqliteLockAdapter fencing token increments on re-acquire after release [distributed]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -49,7 +49,7 @@ test("Distributed: SqliteLockAdapter fencing token increments on re-acquire afte
   db.close();
 });
 
-test("Distributed: SqliteLockAdapter fencing token increments after forceSteal", () => {
+test("Distributed: SqliteLockAdapter fencing token increments after forceSteal [distributed]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -64,7 +64,7 @@ test("Distributed: SqliteLockAdapter fencing token increments after forceSteal",
   db.close();
 });
 
-test("Distributed: Different owners get different fencing tokens on same key sequence", () => {
+test("Distributed: Different owners get different fencing tokens on same key sequence [distributed]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -90,7 +90,7 @@ test("Distributed: Different owners get different fencing tokens on same key seq
 // Distributed lock acquisition semantics
 // =============================================================================
 
-test("Distributed: First acquirer wins for same lock key", () => {
+test("Distributed: First acquirer wins for same lock key [distributed]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -105,7 +105,7 @@ test("Distributed: First acquirer wins for same lock key", () => {
   db.close();
 });
 
-test("Distributed: After release, new owner can acquire", () => {
+test("Distributed: After release, new owner can acquire [distributed]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -121,7 +121,7 @@ test("Distributed: After release, new owner can acquire", () => {
   db.close();
 });
 
-test("Distributed: Force steal allows new owner to take lock immediately", () => {
+test("Distributed: Force steal allows new owner to take lock immediately [distributed]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -144,7 +144,7 @@ test("Distributed: Force steal allows new owner to take lock immediately", () =>
   db.close();
 });
 
-test("Distributed: Lock can be acquired after owner releases even if TTL not expired", () => {
+test("Distributed: Lock can be acquired after owner releases even if TTL not expired [distributed]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -166,7 +166,7 @@ test("Distributed: Lock can be acquired after owner releases even if TTL not exp
 // Concurrent acquire simulation
 // =============================================================================
 
-test("Distributed: Multiple adapters on same database - first write wins", () => {
+test("Distributed: Multiple adapters on same database - first write wins [distributed]", () => {
   const db = createTestDb();
   const adapter1 = new SqliteLockAdapter(db);
   const adapter2 = new SqliteLockAdapter(db);
@@ -181,7 +181,7 @@ test("Distributed: Multiple adapters on same database - first write wins", () =>
   db.close();
 });
 
-test("Distributed: Multiple locks can be held by same owner simultaneously", () => {
+test("Distributed: Multiple locks can be held by same owner simultaneously [distributed]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -196,7 +196,7 @@ test("Distributed: Multiple locks can be held by same owner simultaneously", () 
   db.close();
 });
 
-test("Distributed: Same owner can re-acquire released lock", () => {
+test("Distributed: Same owner can re-acquire released lock [distributed]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -215,7 +215,7 @@ test("Distributed: Same owner can re-acquire released lock", () => {
 // Lock lifecycle tests
 // =============================================================================
 
-test("Distributed: Full lock lifecycle - acquire, extend, release", () => {
+test("Distributed: Full lock lifecycle - acquire, extend, release [distributed]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -240,7 +240,7 @@ test("Distributed: Full lock lifecycle - acquire, extend, release", () => {
   db.close();
 });
 
-test("Distributed: Extend fails for non-existent lock", () => {
+test("Distributed: Extend fails for non-existent lock [distributed]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -250,7 +250,7 @@ test("Distributed: Extend fails for non-existent lock", () => {
   db.close();
 });
 
-test("Distributed: Release fails for non-existent lock", () => {
+test("Distributed: Release fails for non-existent lock [distributed]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -264,7 +264,7 @@ test("Distributed: Release fails for non-existent lock", () => {
 // Mock distributed adapter tests
 // =============================================================================
 
-test("Distributed: Mock adapter simulates distributed environment", () => {
+test("Distributed: Mock adapter simulates distributed environment [distributed]", () => {
   const lockState = new Map<string, LockRecord>();
   const fencingTokens = new Map<string, number>();
 
@@ -349,7 +349,7 @@ test("Distributed: Mock adapter simulates distributed environment", () => {
   assert.equal(r3.lock!.fencingToken, 2);
 });
 
-test("Distributed: Mock adapter with forceSteal transfers ownership", () => {
+test("Distributed: Mock adapter with forceSteal transfers ownership [distributed]", () => {
   const lockState = new Map<string, LockRecord>();
 
   const mockAdapter: DistributedLockAdapter = {
@@ -420,7 +420,7 @@ test("Distributed: Mock adapter with forceSteal transfers ownership", () => {
 // Inspect behavior tests
 // =============================================================================
 
-test("Distributed: Inspect returns correct lock state", () => {
+test("Distributed: Inspect returns correct lock state [distributed]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -437,7 +437,7 @@ test("Distributed: Inspect returns correct lock state", () => {
   db.close();
 });
 
-test("Distributed: Inspect after release returns null", () => {
+test("Distributed: Inspect after release returns null [distributed]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -450,7 +450,7 @@ test("Distributed: Inspect after release returns null", () => {
   db.close();
 });
 
-test("Distributed: Inspect after forceSteal returns new owner", () => {
+test("Distributed: Inspect after forceSteal returns new owner [distributed]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -469,7 +469,7 @@ test("Distributed: Inspect after forceSteal returns new owner", () => {
 // DDL structure verification
 // =============================================================================
 
-test("Distributed: DDL includes all required columns for distributed operation", () => {
+test("Distributed: DDL includes all required columns for distributed operation [distributed]", () => {
   assert.ok(DISTRIBUTED_LOCKS_DDL.includes("lock_key"));
   assert.ok(DISTRIBUTED_LOCKS_DDL.includes("owner"));
   assert.ok(DISTRIBUTED_LOCKS_DDL.includes("fencing_token"));
@@ -480,7 +480,7 @@ test("Distributed: DDL includes all required columns for distributed operation",
   assert.ok(DISTRIBUTED_LOCKS_DDL.includes("PRIMARY KEY"));
 });
 
-test("Distributed: DDL creates valid table that supports lock operations", () => {
+test("Distributed: DDL creates valid table that supports lock operations [distributed]", () => {
   const db = createTestDb();
 
   // Insert a lock record directly

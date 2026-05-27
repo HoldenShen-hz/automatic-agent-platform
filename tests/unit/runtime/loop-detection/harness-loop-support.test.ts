@@ -103,7 +103,7 @@ function createMockHarnessLoopInput(overrides: Partial<HarnessLoopInput> = {}): 
   };
 }
 
-test("getPreviousPlannerOutput returns outputs from last planner step", () => {
+test("getPreviousPlannerOutput returns outputs from last planner step [harness-loop-support]", () => {
   const run = createMockHarnessRunRuntimeState();
   const result = getPreviousPlannerOutput(run);
   assert.notEqual(result, null);
@@ -111,7 +111,7 @@ test("getPreviousPlannerOutput returns outputs from last planner step", () => {
   assert.equal(result!.summary, "Test plan");
 });
 
-test("getPreviousPlannerOutput returns null when no planner step exists", () => {
+test("getPreviousPlannerOutput returns null when no planner step exists [harness-loop-support]", () => {
   const run = createMockHarnessRunRuntimeState({
     steps: [
       {
@@ -132,7 +132,7 @@ test("getPreviousPlannerOutput returns null when no planner step exists", () => 
   assert.equal(result, null);
 });
 
-test("getPreviousPlannerOutput returns null when planner step has no outputs", () => {
+test("getPreviousPlannerOutput returns null when planner step has no outputs [harness-loop-support]", () => {
   const run = createMockHarnessRunRuntimeState({
     steps: [
       {
@@ -153,7 +153,7 @@ test("getPreviousPlannerOutput returns null when planner step has no outputs", (
   assert.equal(result, null);
 });
 
-test("getPreviousPlannerOutput returns null when outputs is not an object", () => {
+test("getPreviousPlannerOutput returns null when outputs is not an object [harness-loop-support]", () => {
   const run = createMockHarnessRunRuntimeState({
     steps: [
       {
@@ -174,7 +174,7 @@ test("getPreviousPlannerOutput returns null when outputs is not an object", () =
   assert.equal(result, null);
 });
 
-test("createDefaultPlannerOutput creates valid output", () => {
+test("createDefaultPlannerOutput creates valid output [harness-loop-support]", () => {
   const input = createMockHarnessLoopInput({ taskId: "task_123" });
   const result = createDefaultPlannerOutput(input, 1);
 
@@ -186,7 +186,7 @@ test("createDefaultPlannerOutput creates valid output", () => {
   assert.equal(result.checkpoints.length, 2);
 });
 
-test("createDefaultPlannerOutput increments cost with iteration", () => {
+test("createDefaultPlannerOutput increments cost with iteration [harness-loop-support]", () => {
   const input = createMockHarnessLoopInput({ taskId: "task_456" });
 
   const result0 = createDefaultPlannerOutput(input, 0);
@@ -198,7 +198,7 @@ test("createDefaultPlannerOutput increments cost with iteration", () => {
   assert.equal(result3.costUsd, 0.15);
 });
 
-test("createDefaultGeneratorOutput uses planner output planId", () => {
+test("createDefaultGeneratorOutput uses planner output planId [harness-loop-support]", () => {
   const input = createMockHarnessLoopInput({ taskId: "task_gen" });
   const plannerOutput = { planId: "custom_plan_123", summary: "Custom plan" };
 
@@ -209,7 +209,7 @@ test("createDefaultGeneratorOutput uses planner output planId", () => {
   assert.equal(result["costUsd"], 0.2);
 });
 
-test("createDefaultGeneratorOutput uses taskId when plannerOutput planId is undefined", () => {
+test("createDefaultGeneratorOutput uses taskId when plannerOutput planId is undefined [harness-loop-support]", () => {
   const input = createMockHarnessLoopInput({ taskId: "task_fallback" });
   const plannerOutput = { summary: "Some plan" };
 
@@ -218,7 +218,7 @@ test("createDefaultGeneratorOutput uses taskId when plannerOutput planId is unde
   assert.ok(String(result["summary"]).includes("task_fallback"));
 });
 
-test("createDefaultEvaluatorOutput creates pass verdict", () => {
+test("createDefaultEvaluatorOutput creates pass verdict [harness-loop-support]", () => {
   const input = createMockHarnessLoopInput({ taskId: "task_eval" });
   const generatorOutput = { artifact: "artifact_abc" };
 
@@ -230,7 +230,7 @@ test("createDefaultEvaluatorOutput creates pass verdict", () => {
   assert.ok(String(result["reasoning"]).includes("artifact_abc"));
 });
 
-test("createDefaultEvaluatorOutput uses generatorOutput artifact in reasoning", () => {
+test("createDefaultEvaluatorOutput uses generatorOutput artifact in reasoning [harness-loop-support]", () => {
   const input = createMockHarnessLoopInput({ taskId: "task_eval2" });
   const generatorOutput = { artifact: "my_artifact_xyz" };
 
@@ -240,7 +240,7 @@ test("createDefaultEvaluatorOutput uses generatorOutput artifact in reasoning", 
   assert.equal(result["costUsd"], 0.06);
 });
 
-test("estimateIterationCost sums costUsd from all outputs", () => {
+test("estimateIterationCost sums costUsd from all outputs [harness-loop-support]", () => {
   const plannerOutput = { costUsd: 0.05 };
   const generatorOutput = { costUsd: 0.1 };
   const evaluatorOutput = { costUsd: 0.02 };
@@ -250,7 +250,7 @@ test("estimateIterationCost sums costUsd from all outputs", () => {
   assert.equal(result, 0.17);
 });
 
-test("estimateIterationCost handles nested cost fields", () => {
+test("estimateIterationCost handles nested cost fields [harness-loop-support]", () => {
   const plannerOutput = { estimatedCostUsd: 0.05 };
   const generatorOutput = { totalCostUsd: 0.1 };
   const evaluatorOutput = { usage: 0.02 };
@@ -260,7 +260,7 @@ test("estimateIterationCost handles nested cost fields", () => {
   assert.equal(result, 0.17);
 });
 
-test("estimateIterationCost returns 0 when no costs specified", () => {
+test("estimateIterationCost returns 0 when no costs specified [harness-loop-support]", () => {
   const plannerOutput = {};
   const generatorOutput = {};
   const evaluatorOutput = {};
@@ -270,7 +270,7 @@ test("estimateIterationCost returns 0 when no costs specified", () => {
   assert.equal(result, 0);
 });
 
-test("estimateIterationCost handles non-finite values gracefully", () => {
+test("estimateIterationCost handles non-finite values gracefully [harness-loop-support]", () => {
   const plannerOutput = { costUsd: Infinity };
   const generatorOutput = { costUsd: NaN };
   const evaluatorOutput = { costUsd: 0.02 };
@@ -280,7 +280,7 @@ test("estimateIterationCost handles non-finite values gracefully", () => {
   assert.ok(Number.isFinite(result));
 });
 
-test("createDefaultPlannerOutput uses domainId in output field", () => {
+test("createDefaultPlannerOutput uses domainId in output field [harness-loop-support]", () => {
   const input = createMockHarnessLoopInput({
     taskId: "task_multi",
     domainId: "my_domain",

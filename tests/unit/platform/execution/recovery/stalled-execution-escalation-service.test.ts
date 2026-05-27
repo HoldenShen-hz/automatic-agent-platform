@@ -48,7 +48,7 @@ function createMockStalledDetector(findings: StalledExecutionFinding[] = []): St
   } as unknown as StalledExecutionDetector;
 }
 
-test("StalledExecutionEscalationService builds packages for detected stalled executions", () => {
+test("StalledExecutionEscalationService builds packages for detected stalled executions [stalled-execution-escalation-service]", () => {
   const findings: StalledExecutionFinding[] = [
     {
       executionId: "exec-1",
@@ -91,7 +91,7 @@ test("StalledExecutionEscalationService builds packages for detected stalled exe
   assert.equal(packages[0]!.suggestedOperatorAction, "reclaim_lease_and_requeue");
 });
 
-test("StalledExecutionEscalationService maps restart_or_escalate to restart_execution_or_takeover", () => {
+test("StalledExecutionEscalationService maps restart_or_escalate to restart_execution_or_takeover [stalled-execution-escalation-service]", () => {
   const findings: StalledExecutionFinding[] = [
     {
       executionId: "exec-1",
@@ -121,7 +121,7 @@ test("StalledExecutionEscalationService maps restart_or_escalate to restart_exec
   assert.equal(packages[0]!.suggestedOperatorAction, "restart_execution_or_takeover");
 });
 
-test("StalledExecutionEscalationService.buildPackages returns empty when no findings", () => {
+test("StalledExecutionEscalationService.buildPackages returns empty when no findings [stalled-execution-escalation-service]", () => {
   const detector = createMockStalledDetector([]);
   const diagnostics = createMockDiagnosticsService();
 
@@ -131,7 +131,7 @@ test("StalledExecutionEscalationService.buildPackages returns empty when no find
   assert.deepEqual(packages, []);
 });
 
-test("StalledExecutionEscalationPackage has correct structure", () => {
+test("StalledExecutionEscalationPackage has correct structure [stalled-execution-escalation-service]", () => {
   const findings: StalledExecutionFinding[] = [
     {
       executionId: "exec-1",
@@ -182,7 +182,7 @@ test("StalledExecutionEscalationPackage has correct structure", () => {
   assert.ok("incident" in pkg);
 });
 
-test("StalledExecutionEscalationService handles missing agent execution data", () => {
+test("StalledExecutionEscalationService handles missing agent execution data [stalled-execution-escalation-service]", () => {
   const findings: StalledExecutionFinding[] = [
     {
       executionId: "exec-1",
@@ -216,7 +216,7 @@ test("StalledExecutionEscalationService handles missing agent execution data", (
   assert.equal(packages[0]!.runtimeInstanceId, null);
 });
 
-test("StalledExecutionEscalationService handles no dispatch decisions", () => {
+test("StalledExecutionEscalationService handles no dispatch decisions [stalled-execution-escalation-service]", () => {
   const findings: StalledExecutionFinding[] = [
     {
       executionId: "exec-1",
@@ -249,7 +249,7 @@ test("StalledExecutionEscalationService handles no dispatch decisions", () => {
   assert.equal(packages[0]!.dispatchOutcome, null);
 });
 
-test("StalledExecutionEscalationService passes through incident data", () => {
+test("StalledExecutionEscalationService passes through incident data [stalled-execution-escalation-service]", () => {
   const findings: StalledExecutionFinding[] = [
     {
       executionId: "exec-1",
@@ -291,7 +291,7 @@ test("StalledExecutionEscalationService passes through incident data", () => {
   assert.equal(packages[0]!.incident.endedAt, "2025-01-01T00:05:00.000Z");
 });
 
-test("StalledExecutionEscalationService.buildPackage builds single package", () => {
+test("StalledExecutionEscalationService.buildPackage builds single package [stalled-execution-escalation-service]", () => {
   const finding: StalledExecutionFinding = {
     executionId: "exec-1",
     taskId: "task-1",
@@ -321,7 +321,7 @@ test("StalledExecutionEscalationService.buildPackage builds single package", () 
   assert.equal(pkg.staleKind, "missing_heartbeat");
 });
 
-test("StalledExecutionEscalationService.buildPackage uses custom generatedAt", () => {
+test("StalledExecutionEscalationService.buildPackage uses custom generatedAt [stalled-execution-escalation-service]", () => {
   const finding: StalledExecutionFinding = {
     executionId: "exec-1",
     taskId: "task-1",
@@ -350,7 +350,7 @@ test("StalledExecutionEscalationService.buildPackage uses custom generatedAt", (
   assert.equal(pkg.generatedAt, customTime);
 });
 
-test("StalledExecutionEscalationService.buildPackages uses default now when not provided", () => {
+test("StalledExecutionEscalationService.buildPackages uses default now when not provided [stalled-execution-escalation-service]", () => {
   const findings: StalledExecutionFinding[] = [
     {
       executionId: "exec-1",
@@ -381,7 +381,7 @@ test("StalledExecutionEscalationService.buildPackages uses default now when not 
   assert.ok(packages[0]!.generatedAt.length > 0);
 });
 
-test("StalledExecutionEscalationService maps missing_heartbeat to reclaim_lease_and_requeue", () => {
+test("StalledExecutionEscalationService maps missing_heartbeat to reclaim_lease_and_requeue [stalled-execution-escalation-service]", () => {
   const findings: StalledExecutionFinding[] = [
     {
       executionId: "exec-1",
@@ -412,7 +412,7 @@ test("StalledExecutionEscalationService maps missing_heartbeat to reclaim_lease_
   assert.equal(packages[0]!.suggestedOperatorAction, "reclaim_lease_and_requeue");
 });
 
-test("StalledExecutionEscalationService maps no_progress to restart_execution_or_takeover", () => {
+test("StalledExecutionEscalationService maps no_progress to restart_execution_or_takeover [stalled-execution-escalation-service]", () => {
   const findings: StalledExecutionFinding[] = [
     {
       executionId: "exec-1",
@@ -443,7 +443,7 @@ test("StalledExecutionEscalationService maps no_progress to restart_execution_or
   assert.equal(packages[0]!.suggestedOperatorAction, "restart_execution_or_takeover");
 });
 
-test("StalledExecutionEscalationService passes through trace and correlation IDs", () => {
+test("StalledExecutionEscalationService passes through trace and correlation IDs [stalled-execution-escalation-service]", () => {
   const findings: StalledExecutionFinding[] = [
     {
       executionId: "exec-1",
@@ -474,7 +474,7 @@ test("StalledExecutionEscalationService passes through trace and correlation IDs
   assert.equal(packages[0]!.correlationId, "corr-specific");
 });
 
-test("StalledExecutionEscalationService passes through lastProgressAt and lastHeartbeatAt", () => {
+test("StalledExecutionEscalationService passes through lastProgressAt and lastHeartbeatAt [stalled-execution-escalation-service]", () => {
   const findings: StalledExecutionFinding[] = [
     {
       executionId: "exec-1",
@@ -505,7 +505,7 @@ test("StalledExecutionEscalationService passes through lastProgressAt and lastHe
   assert.equal(packages[0]!.lastHeartbeatAt, "2025-01-15T10:31:00.000Z");
 });
 
-test("StalledExecutionEscalationService handles critical warnings in incident", () => {
+test("StalledExecutionEscalationService handles critical warnings in incident [stalled-execution-escalation-service]", () => {
   const findings: StalledExecutionFinding[] = [
     {
       executionId: "exec-1",
@@ -544,7 +544,7 @@ test("StalledExecutionEscalationService handles critical warnings in incident", 
   assert.deepEqual(packages[0]!.incident.candidateRootCauses, ["memory_leak"]);
 });
 
-test("StalledExecutionEscalationService copies candidateRootCauses array", () => {
+test("StalledExecutionEscalationService copies candidateRootCauses array [stalled-execution-escalation-service]", () => {
   const findings: StalledExecutionFinding[] = [
     {
       executionId: "exec-1",
@@ -585,7 +585,7 @@ test("StalledExecutionEscalationService copies candidateRootCauses array", () =>
   assert.deepEqual(diagnostics.buildIncidentTimelineReport("task-1").candidateRootCauses, ["root1", "root2"]);
 });
 
-test("StalledExecutionEscalationService passes through dispatchOutcome from last decision", () => {
+test("StalledExecutionEscalationService passes through dispatchOutcome from last decision [stalled-execution-escalation-service]", () => {
   const findings: StalledExecutionFinding[] = [
     {
       executionId: "exec-1",
@@ -621,7 +621,7 @@ test("StalledExecutionEscalationService passes through dispatchOutcome from last
   assert.equal(packages[0]!.dispatchOutcome, "dispatched");
 });
 
-test("StalledExecutionEscalationService handles null startedAt and endedAt in incident", () => {
+test("StalledExecutionEscalationService handles null startedAt and endedAt in incident [stalled-execution-escalation-service]", () => {
   const findings: StalledExecutionFinding[] = [
     {
       executionId: "exec-1",
@@ -660,7 +660,7 @@ test("StalledExecutionEscalationService handles null startedAt and endedAt in in
   assert.equal(packages[0]!.incident.endedAt, null);
 });
 
-test("StalledExecutionEscalationService preserves finding status", () => {
+test("StalledExecutionEscalationService preserves finding status [stalled-execution-escalation-service]", () => {
   const findings: StalledExecutionFinding[] = [
     {
       executionId: "exec-1",

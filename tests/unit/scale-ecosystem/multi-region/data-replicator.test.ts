@@ -23,7 +23,7 @@ import {
 // Replication Policy Schema Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("ReplicationPolicySchema parses valid input", () => {
+test("ReplicationPolicySchema parses valid input [data-replicator]", () => {
   const input = {
     sourceRegionId: "us-east",
     targetRegionIds: ["eu-west"],
@@ -38,7 +38,7 @@ test("ReplicationPolicySchema parses valid input", () => {
   }
 });
 
-test("ReplicationPolicySchema applies defaults", () => {
+test("ReplicationPolicySchema applies defaults [data-replicator]", () => {
   const input = {
     sourceRegionId: "us-east",
   };
@@ -51,7 +51,7 @@ test("ReplicationPolicySchema applies defaults", () => {
   }
 });
 
-test("ReplicationPolicySchema rejects empty sourceRegionId", () => {
+test("ReplicationPolicySchema rejects empty sourceRegionId [data-replicator]", () => {
   const input = {
     sourceRegionId: "",
     targetRegionIds: ["eu-west"],
@@ -61,7 +61,7 @@ test("ReplicationPolicySchema rejects empty sourceRegionId", () => {
   assert.equal(result.success, false);
 });
 
-test("ReplicationPolicySchema accepts allowed_cross_border residency mode", () => {
+test("ReplicationPolicySchema accepts allowed_cross_border residency mode [data-replicator]", () => {
   const input = {
     sourceRegionId: "us-east",
     targetRegionIds: ["eu-west"],
@@ -75,7 +75,7 @@ test("ReplicationPolicySchema accepts allowed_cross_border residency mode", () =
   }
 });
 
-test("ReplicationPolicySchema accepts blocked residency mode", () => {
+test("ReplicationPolicySchema accepts blocked residency mode [data-replicator]", () => {
   const input = {
     sourceRegionId: "us-east",
     targetRegionIds: ["eu-west"],
@@ -93,7 +93,7 @@ test("ReplicationPolicySchema accepts blocked residency mode", () => {
 // shouldReplicateToRegion Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("shouldReplicateToRegion returns true when target in policy and not blocked", () => {
+test("shouldReplicateToRegion returns true when target in policy and not blocked [data-replicator]", () => {
   const policy: ReplicationPolicy = {
     sourceRegionId: "us-east",
     targetRegionIds: ["eu-west", "ap-south"],
@@ -104,7 +104,7 @@ test("shouldReplicateToRegion returns true when target in policy and not blocked
   assert.equal(shouldReplicateToRegion(policy, "ap-south"), true);
 });
 
-test("shouldReplicateToRegion returns false when blocked", () => {
+test("shouldReplicateToRegion returns false when blocked [data-replicator]", () => {
   const policy: ReplicationPolicy = {
     sourceRegionId: "us-east",
     targetRegionIds: ["eu-west"],
@@ -114,7 +114,7 @@ test("shouldReplicateToRegion returns false when blocked", () => {
   assert.equal(shouldReplicateToRegion(policy, "eu-west"), false);
 });
 
-test("shouldReplicateToRegion returns false when target not in list", () => {
+test("shouldReplicateToRegion returns false when target not in list [data-replicator]", () => {
   const policy: ReplicationPolicy = {
     sourceRegionId: "us-east",
     targetRegionIds: ["eu-west"],
@@ -124,7 +124,7 @@ test("shouldReplicateToRegion returns false when target not in list", () => {
   assert.equal(shouldReplicateToRegion(policy, "ap-south"), false);
 });
 
-test("shouldReplicateToRegion works with allowed_cross_border mode", () => {
+test("shouldReplicateToRegion works with allowed_cross_border mode [data-replicator]", () => {
   const policy: ReplicationPolicy = {
     sourceRegionId: "us-east",
     targetRegionIds: ["eu-west", "ap-south"],
@@ -136,7 +136,7 @@ test("shouldReplicateToRegion works with allowed_cross_border mode", () => {
   assert.equal(shouldReplicateToRegion(policy, "unknown"), false);
 });
 
-test("shouldReplicateToRegion returns false for empty target list", () => {
+test("shouldReplicateToRegion returns false for empty target list [data-replicator]", () => {
   const policy: ReplicationPolicy = {
     sourceRegionId: "us-east",
     targetRegionIds: [],
@@ -150,7 +150,7 @@ test("shouldReplicateToRegion returns false for empty target list", () => {
 // ReplicationEventBuffer Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("ReplicationEventBuffer adds and flushes events", () => {
+test("ReplicationEventBuffer adds and flushes events [data-replicator]", () => {
   const buffer = new ReplicationEventBuffer(100, 60000);
 
   const event: ReplicationEvent = {
@@ -169,7 +169,7 @@ test("ReplicationEventBuffer adds and flushes events", () => {
   assert.equal(buffer.size(), 1);
 });
 
-test("ReplicationEventBuffer flushes when max size reached", () => {
+test("ReplicationEventBuffer flushes when max size reached [data-replicator]", () => {
   const buffer = new ReplicationEventBuffer(3, 60000);
 
   const events: ReplicationEvent[] = [
@@ -189,7 +189,7 @@ test("ReplicationEventBuffer flushes when max size reached", () => {
   assert.equal(flushed.length, 3);
 });
 
-test("ReplicationEventBuffer returns empty array after flush", () => {
+test("ReplicationEventBuffer returns empty array after flush [data-replicator]", () => {
   const buffer = new ReplicationEventBuffer(100, 60000);
 
   buffer.add({ eventId: "1", sourceRegionId: "us", targetRegionId: "eu", aggregateType: "t", aggregateId: "a", payload: {}, timestamp: "", checksum: "c" });
@@ -199,12 +199,12 @@ test("ReplicationEventBuffer returns empty array after flush", () => {
   assert.equal(buffer.size(), 0);
 });
 
-test("ReplicationEventBuffer shouldFlush returns false when empty", () => {
+test("ReplicationEventBuffer shouldFlush returns false when empty [data-replicator]", () => {
   const buffer = new ReplicationEventBuffer(100, 1);
   assert.equal(buffer.shouldFlush(), false);
 });
 
-test("ReplicationEventBuffer shouldFlush returns true when interval passed", async () => {
+test("ReplicationEventBuffer shouldFlush returns true when interval passed [data-replicator]", async () => {
   const buffer = new ReplicationEventBuffer(100, 10);
 
   buffer.add({ eventId: "1", sourceRegionId: "us", targetRegionId: "eu", aggregateType: "t", aggregateId: "a", payload: {}, timestamp: "", checksum: "c" });
@@ -216,7 +216,7 @@ test("ReplicationEventBuffer shouldFlush returns true when interval passed", asy
   assert.ok(buffer.size() >= 0);
 });
 
-test("ReplicationEventBuffer unrefs scheduled flush timer", () => {
+test("ReplicationEventBuffer unrefs scheduled flush timer [data-replicator]", () => {
   const buffer = new ReplicationEventBuffer(100, 1000);
 
   buffer.add({ eventId: "1", sourceRegionId: "us", targetRegionId: "eu", aggregateType: "t", aggregateId: "a", payload: {}, timestamp: "", checksum: "c" });
@@ -228,7 +228,7 @@ test("ReplicationEventBuffer unrefs scheduled flush timer", () => {
   }
 });
 
-test("ReplicationEventBuffer dispose clears pending timer and buffered events", () => {
+test("ReplicationEventBuffer dispose clears pending timer and buffered events [data-replicator]", () => {
   const buffer = new ReplicationEventBuffer(100, 1000);
 
   buffer.add({ eventId: "1", sourceRegionId: "us", targetRegionId: "eu", aggregateType: "t", aggregateId: "a", payload: {}, timestamp: "", checksum: "c" });
@@ -242,7 +242,7 @@ test("ReplicationEventBuffer dispose clears pending timer and buffered events", 
 // Checksum Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("computeChecksum generates consistent checksums", () => {
+test("computeChecksum generates consistent checksums [data-replicator]", () => {
   const payload = { key: "value", number: 42 };
 
   const checksum1 = computeChecksum(payload, "sha256");
@@ -252,7 +252,7 @@ test("computeChecksum generates consistent checksums", () => {
   assert.ok(checksum1.length === 64); // SHA256 hex is 64 chars
 });
 
-test("computeChecksum different for different payloads", () => {
+test("computeChecksum different for different payloads [data-replicator]", () => {
   const payload1 = { key: "value1" };
   const payload2 = { key: "value2" };
 
@@ -262,13 +262,13 @@ test("computeChecksum different for different payloads", () => {
   assert.notEqual(checksum1, checksum2);
 });
 
-test("computeChecksum rejects unsupported algorithms", () => {
+test("computeChecksum rejects unsupported algorithms [data-replicator]", () => {
   const payload = { data: "test" };
 
   assert.throws(() => computeChecksum(payload, "md5" as never), /data_replicator\.unsupported_checksum_algorithm:md5/);
 });
 
-test("computeChecksum remains deterministic for sha256", () => {
+test("computeChecksum remains deterministic for sha256 [data-replicator]", () => {
   const payload = { data: "same" };
 
   const sha256Checksum = computeChecksum(payload, "sha256");
@@ -278,7 +278,7 @@ test("computeChecksum remains deterministic for sha256", () => {
   assert.equal(sha256Checksum, repeatedChecksum);
 });
 
-test("computeChecksum handles nested objects", () => {
+test("computeChecksum handles nested objects [data-replicator]", () => {
   const payload = { outer: { inner: { deep: "value" } }, arr: [1, 2, 3] };
 
   const checksum1 = computeChecksum(payload);
@@ -287,7 +287,7 @@ test("computeChecksum handles nested objects", () => {
   assert.equal(checksum1, checksum2);
 });
 
-test("computeChecksum handles empty object", () => {
+test("computeChecksum handles empty object [data-replicator]", () => {
   const payload = {};
 
   const checksum = computeChecksum(payload);
@@ -299,7 +299,7 @@ test("computeChecksum handles empty object", () => {
 // DataReplicatorService Core Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("DataReplicatorService records events", () => {
+test("DataReplicatorService records events [data-replicator]", () => {
   const replicator = createDataReplicator("us-east", ["eu-west"], {
     sourceRegionId: "us-east",
     targetRegionIds: ["eu-west"],
@@ -317,7 +317,7 @@ test("DataReplicatorService records events", () => {
   assert.ok(event.checksum);
 });
 
-test("DataReplicatorService flushes to target region", async () => {
+test("DataReplicatorService flushes to target region [data-replicator]", async () => {
   const replicator = createDataReplicator("us-east", ["eu-west"], {
     sourceRegionId: "us-east",
     targetRegionIds: ["eu-west"],
@@ -333,7 +333,7 @@ test("DataReplicatorService flushes to target region", async () => {
   assert.equal(result.eventsReplicated, 2);
 });
 
-test("DataReplicatorService handles unknown target region", async () => {
+test("DataReplicatorService handles unknown target region [data-replicator]", async () => {
   const replicator = createDataReplicator("us-east", ["eu-west"], {
     sourceRegionId: "us-east",
     targetRegionIds: ["eu-west"],
@@ -346,7 +346,7 @@ test("DataReplicatorService handles unknown target region", async () => {
   assert.ok(result.errors.some((e: string) => e.includes("Unknown target region")));
 });
 
-test("DataReplicatorService flush empty buffer returns success with zero events", async () => {
+test("DataReplicatorService flush empty buffer returns success with zero events [data-replicator]", async () => {
   const replicator = createDataReplicator("us-east", ["eu-west"], {
     sourceRegionId: "us-east",
     targetRegionIds: ["eu-west"],
@@ -365,7 +365,7 @@ test("DataReplicatorService flush empty buffer returns success with zero events"
 // DataReplicatorService Buffer & Checkpoint Accessor Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("DataReplicatorService getBuffer returns buffer for configured region", () => {
+test("DataReplicatorService getBuffer returns buffer for configured region [data-replicator]", () => {
   const replicator = createDataReplicator("us-east", ["eu-west", "ap-south"], {
     sourceRegionId: "us-east",
     targetRegionIds: ["eu-west", "ap-south"],
@@ -378,7 +378,7 @@ test("DataReplicatorService getBuffer returns buffer for configured region", () 
   assert.equal(buffer instanceof ReplicationEventBuffer, true);
 });
 
-test("DataReplicatorService getBuffer returns null for unknown region", () => {
+test("DataReplicatorService getBuffer returns null for unknown region [data-replicator]", () => {
   const replicator = createDataReplicator("us-east", ["eu-west"], {
     sourceRegionId: "us-east",
     targetRegionIds: ["eu-west"],
@@ -390,7 +390,7 @@ test("DataReplicatorService getBuffer returns null for unknown region", () => {
   assert.equal(buffer, null);
 });
 
-test("DataReplicatorService getCheckpoint returns checkpoint after flush", async () => {
+test("DataReplicatorService getCheckpoint returns checkpoint after flush [data-replicator]", async () => {
   const replicator = createDataReplicator("us-east", ["eu-west"], {
     sourceRegionId: "us-east",
     targetRegionIds: ["eu-west"],
@@ -408,7 +408,7 @@ test("DataReplicatorService getCheckpoint returns checkpoint after flush", async
   assert.ok(checkpoint!.sequenceNumber > 0);
 });
 
-test("DataReplicatorService getCheckpoint returns null for unknown region", () => {
+test("DataReplicatorService getCheckpoint returns null for unknown region [data-replicator]", () => {
   const replicator = createDataReplicator("us-east", ["eu-west"], {
     sourceRegionId: "us-east",
     targetRegionIds: ["eu-west"],
@@ -420,7 +420,7 @@ test("DataReplicatorService getCheckpoint returns null for unknown region", () =
   assert.equal(checkpoint, null);
 });
 
-test("DataReplicatorService getCheckpoint returns null before any flush", () => {
+test("DataReplicatorService getCheckpoint returns null before any flush [data-replicator]", () => {
   const replicator = createDataReplicator("us-east", ["eu-west"], {
     sourceRegionId: "us-east",
     targetRegionIds: ["eu-west"],
@@ -438,7 +438,7 @@ test("DataReplicatorService getCheckpoint returns null before any flush", () => 
 // DataReplicatorService Checksum Validation Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("DataReplicatorService validates incoming event checksum", () => {
+test("DataReplicatorService validates incoming event checksum [data-replicator]", () => {
   const replicator = createDataReplicator("us-east", ["eu-west"], {
     sourceRegionId: "us-east",
     targetRegionIds: ["eu-west"],
@@ -460,7 +460,7 @@ test("DataReplicatorService validates incoming event checksum", () => {
   assert.equal(valid, false);
 });
 
-test("DataReplicatorService validates correct checksum", () => {
+test("DataReplicatorService validates correct checksum [data-replicator]", () => {
   const replicator = createDataReplicator("us-east", ["eu-west"], {
     sourceRegionId: "us-east",
     targetRegionIds: ["eu-west"],
@@ -489,7 +489,7 @@ test("DataReplicatorService validates correct checksum", () => {
 // DataReplicatorService Status Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("DataReplicatorService gets status for all regions", () => {
+test("DataReplicatorService gets status for all regions [data-replicator]", () => {
   const replicator = createDataReplicator("us-east", ["eu-west", "ap-south"], {
     sourceRegionId: "us-east",
     targetRegionIds: ["eu-west", "ap-south"],
@@ -508,7 +508,7 @@ test("DataReplicatorService gets status for all regions", () => {
   assert.equal(status.get("ap-south")?.bufferSize, 1);
 });
 
-test("DataReplicatorService status bufferSize updates after recording", () => {
+test("DataReplicatorService status bufferSize updates after recording [data-replicator]", () => {
   const replicator = createDataReplicator("us-east", ["eu-west"], {
     sourceRegionId: "us-east",
     targetRegionIds: ["eu-west"],
@@ -524,7 +524,7 @@ test("DataReplicatorService status bufferSize updates after recording", () => {
   assert.equal(status2.get("eu-west")?.bufferSize, 1);
 });
 
-test("DataReplicatorService status bufferSize updates after flush", async () => {
+test("DataReplicatorService status bufferSize updates after flush [data-replicator]", async () => {
   const replicator = createDataReplicator("us-east", ["eu-west"], {
     sourceRegionId: "us-east",
     targetRegionIds: ["eu-west"],
@@ -539,7 +539,7 @@ test("DataReplicatorService status bufferSize updates after flush", async () => 
   assert.equal(status.get("eu-west")?.bufferSize, 0);
 });
 
-test("DataReplicatorService status pendingCheckpoint populated after flush", async () => {
+test("DataReplicatorService status pendingCheckpoint populated after flush [data-replicator]", async () => {
   const replicator = createDataReplicator("us-east", ["eu-west"], {
     sourceRegionId: "us-east",
     targetRegionIds: ["eu-west"],
@@ -553,7 +553,7 @@ test("DataReplicatorService status pendingCheckpoint populated after flush", asy
   assert.ok(status.get("eu-west")?.pendingCheckpoint !== null);
 });
 
-test("DataReplicatorService requeues permanently failed events and exposes pending checkpoint count", async () => {
+test("DataReplicatorService requeues permanently failed events and exposes pending checkpoint count [data-replicator]", async () => {
   const replicator = createDataReplicator("us-east", ["eu-west"], {
     sourceRegionId: "us-east",
     targetRegionIds: ["eu-west"],
@@ -582,7 +582,7 @@ test("DataReplicatorService requeues permanently failed events and exposes pendi
   assert.equal(replicator.getCheckpoint("eu-west")?.pendingCount, 0);
 });
 
-test("DataReplicatorService records exhausted deliveries in the outbox and replays them before new buffered events", async () => {
+test("DataReplicatorService records exhausted deliveries in the outbox and replays them before new buffered events [data-replicator]", async () => {
   const replicator = createDataReplicator("us-east", ["eu-west"], {
     sourceRegionId: "us-east",
     targetRegionIds: ["eu-west"],
@@ -615,7 +615,7 @@ test("DataReplicatorService records exhausted deliveries in the outbox and repla
   assert.equal(replicator.getPendingOutboxEntries("eu-west").length, 0);
 });
 
-test("DataReplicatorService invokes failure compensation after retries are exhausted", async () => {
+test("DataReplicatorService invokes failure compensation after retries are exhausted [data-replicator]", async () => {
   const compensationRequests: Array<{ targetRegionId: string; aggregateId: string; error: string; attemptCount: number }> = [];
   const replicator = createDataReplicator("us-east", ["eu-west"], {
     sourceRegionId: "us-east",
@@ -652,7 +652,7 @@ test("DataReplicatorService invokes failure compensation after retries are exhau
 // DataReplicatorService Flush All Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("DataReplicatorService flushes all regions", async () => {
+test("DataReplicatorService flushes all regions [data-replicator]", async () => {
   const replicator = createDataReplicator("us-east", ["eu-west", "ap-south"], {
     sourceRegionId: "us-east",
     targetRegionIds: ["eu-west", "ap-south"],
@@ -669,7 +669,7 @@ test("DataReplicatorService flushes all regions", async () => {
   assert.equal(results.get("ap-south")?.eventsReplicated, 1);
 });
 
-test("DataReplicatorService flushAll returns Map with region keys", async () => {
+test("DataReplicatorService flushAll returns Map with region keys [data-replicator]", async () => {
   const replicator = createDataReplicator("us-east", ["eu-west"], {
     sourceRegionId: "us-east",
     targetRegionIds: ["eu-west"],
@@ -681,7 +681,7 @@ test("DataReplicatorService flushAll returns Map with region keys", async () => 
   assert.equal(results.has("eu-west"), true);
 });
 
-test("DataReplicatorService flushAll handles empty buffers", async () => {
+test("DataReplicatorService flushAll handles empty buffers [data-replicator]", async () => {
   const replicator = createDataReplicator("us-east", ["eu-west"], {
     sourceRegionId: "us-east",
     targetRegionIds: ["eu-west"],
@@ -698,7 +698,7 @@ test("DataReplicatorService flushAll handles empty buffers", async () => {
 // DataReplicatorService Event Handler Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("DataReplicatorService handles incoming events via handler", async () => {
+test("DataReplicatorService handles incoming events via handler [data-replicator]", async () => {
   const replicator = createDataReplicator("us-east", ["eu-west"], {
     sourceRegionId: "us-east",
     targetRegionIds: ["eu-west"],
@@ -730,7 +730,7 @@ test("DataReplicatorService handles incoming events via handler", async () => {
   assert.equal(capturedEvent.aggregateId, "task-456");
 });
 
-test("DataReplicatorService handleIncomingEvent does nothing without handler", async () => {
+test("DataReplicatorService handleIncomingEvent does nothing without handler [data-replicator]", async () => {
   const replicator = createDataReplicator("us-east", ["eu-west"], {
     sourceRegionId: "us-east",
     targetRegionIds: ["eu-west"],
@@ -752,7 +752,7 @@ test("DataReplicatorService handleIncomingEvent does nothing without handler", a
   await replicator.handleIncomingEvent(testEvent);
 });
 
-test("DataReplicatorService multiple handlers for different regions", async () => {
+test("DataReplicatorService multiple handlers for different regions [data-replicator]", async () => {
   const replicator = createDataReplicator("us-east", ["eu-west", "ap-south"], {
     sourceRegionId: "us-east",
     targetRegionIds: ["eu-west", "ap-south"],
@@ -805,7 +805,7 @@ test("DataReplicatorService multiple handlers for different regions", async () =
 // ReplicationCheckpoint Interface Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("ReplicationCheckpoint structure", () => {
+test("ReplicationCheckpoint structure [data-replicator]", () => {
   const checkpoint: ReplicationCheckpoint = {
     checkpointId: "cp_123",
     sourceRegionId: "us-east",
@@ -826,7 +826,7 @@ test("ReplicationCheckpoint structure", () => {
 // createDataReplicator Factory Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("createDataReplicator applies default options", () => {
+test("createDataReplicator applies default options [data-replicator]", () => {
   const replicator = createDataReplicator("us-east", ["eu-west"], {
     sourceRegionId: "us-east",
     targetRegionIds: ["eu-west"],
@@ -837,7 +837,7 @@ test("createDataReplicator applies default options", () => {
   assert.ok(buffer !== null);
 });
 
-test("createDataReplicator applies custom batchSize", () => {
+test("createDataReplicator applies custom batchSize [data-replicator]", () => {
   const replicator = createDataReplicator("us-east", ["eu-west"], {
     sourceRegionId: "us-east",
     targetRegionIds: ["eu-west"],
@@ -848,7 +848,7 @@ test("createDataReplicator applies custom batchSize", () => {
   assert.ok(buffer !== null);
 });
 
-test("createDataReplicator applies custom flushIntervalMs", () => {
+test("createDataReplicator applies custom flushIntervalMs [data-replicator]", () => {
   const replicator = createDataReplicator("us-east", ["eu-west"], {
     sourceRegionId: "us-east",
     targetRegionIds: ["eu-west"],
@@ -859,7 +859,7 @@ test("createDataReplicator applies custom flushIntervalMs", () => {
   assert.ok(replicator !== null);
 });
 
-test("createDataReplicator applies custom retryAttempts", () => {
+test("createDataReplicator applies custom retryAttempts [data-replicator]", () => {
   const replicator = createDataReplicator("us-east", ["eu-west"], {
     sourceRegionId: "us-east",
     targetRegionIds: ["eu-west"],
@@ -870,7 +870,7 @@ test("createDataReplicator applies custom retryAttempts", () => {
   assert.ok(replicator !== null);
 });
 
-test("createDataReplicator keeps sha256 checksum algorithm", () => {
+test("createDataReplicator keeps sha256 checksum algorithm [data-replicator]", () => {
   const replicator = createDataReplicator("us-east", ["eu-west"], {
     sourceRegionId: "us-east",
     targetRegionIds: ["eu-west"],

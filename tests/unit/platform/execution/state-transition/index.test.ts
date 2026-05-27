@@ -7,15 +7,15 @@ import {
   TransitionService,
 } from "../../../../../src/platform/five-plane-execution/state-transition/index.js";
 
-test("StateTransitionMachine is exported as function", () => {
+test("StateTransitionMachine is exported as function [index]", () => {
   assert.equal(typeof StateTransitionMachine, "function");
 });
 
-test("TransitionService is exported as function", () => {
+test("TransitionService is exported as function [index]", () => {
   assert.equal(typeof TransitionService, "function");
 });
 
-test("StateTransitionMachine can be instantiated", () => {
+test("StateTransitionMachine can be instantiated [index]", () => {
   const machine = new StateTransitionMachine("task", {
     queued: ["pending"],
     pending: [],
@@ -23,7 +23,7 @@ test("StateTransitionMachine can be instantiated", () => {
   assert.ok(machine !== undefined);
 });
 
-test("TransitionService can be instantiated", () => {
+test("TransitionService can be instantiated [index]", () => {
   const service = new TransitionService(
     { transaction: (work: () => void) => work() } as any,
     {} as any,
@@ -32,7 +32,7 @@ test("TransitionService can be instantiated", () => {
   assert.ok(service !== undefined);
 });
 
-test("StateTransitionMachine has required methods", () => {
+test("StateTransitionMachine has required methods [index]", () => {
   const machine = new StateTransitionMachine("task", {
     queued: ["pending"],
     pending: [],
@@ -40,7 +40,7 @@ test("StateTransitionMachine has required methods", () => {
   assert.equal(typeof machine.assertTransition, "function");
 });
 
-test("TransitionService has required methods", () => {
+test("TransitionService has required methods [index]", () => {
   const service = new TransitionService(
     { transaction: (work: () => void) => work() } as any,
     {} as any,

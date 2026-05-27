@@ -25,7 +25,7 @@ function createLifecycleConfig(tenantId: string): TenantLifecycleConfig {
   };
 }
 
-test("TenantLifecycleService registers tenant in provisioning stage", () => {
+test("TenantLifecycleService registers tenant in provisioning stage [tenant-lifecycle-service]", () => {
   resetTenantLifecycleService();
   const service = new TenantLifecycleService();
   const config = createLifecycleConfig("tenant-1");
@@ -37,7 +37,7 @@ test("TenantLifecycleService registers tenant in provisioning stage", () => {
   assert.ok(state.stageEnteredAt);
 });
 
-test("TenantLifecycleService transitions from provisioning to active", () => {
+test("TenantLifecycleService transitions from provisioning to active [tenant-lifecycle-service]", () => {
   const service = new TenantLifecycleService();
   const config = createLifecycleConfig("tenant-1");
   service.registerTenant(config);
@@ -49,7 +49,7 @@ test("TenantLifecycleService transitions from provisioning to active", () => {
   assert.equal(result.to, "active");
 });
 
-test("TenantLifecycleService rejects invalid transitions", () => {
+test("TenantLifecycleService rejects invalid transitions [tenant-lifecycle-service]", () => {
   const service = new TenantLifecycleService();
   const config = createLifecycleConfig("tenant-1");
   service.registerTenant(config);
@@ -60,7 +60,7 @@ test("TenantLifecycleService rejects invalid transitions", () => {
   assert.equal(result.allowed, false);
 });
 
-test("TenantLifecycleService suspends and reactivates tenant", () => {
+test("TenantLifecycleService suspends and reactivates tenant [tenant-lifecycle-service]", () => {
   const service = new TenantLifecycleService();
   const config = createLifecycleConfig("tenant-1");
   service.registerTenant(config);
@@ -75,7 +75,7 @@ test("TenantLifecycleService suspends and reactivates tenant", () => {
   assert.equal(reactivateResult.to, "active");
 });
 
-test("TenantLifecycleService handles migration workflow", () => {
+test("TenantLifecycleService handles migration workflow [tenant-lifecycle-service]", () => {
   const service = new TenantLifecycleService();
   const config = createLifecycleConfig("tenant-1");
   service.registerTenant(config);
@@ -90,7 +90,7 @@ test("TenantLifecycleService handles migration workflow", () => {
   assert.equal(completeResult.to, "active");
 });
 
-test("TenantLifecycleService deprovisions and terminates tenant", () => {
+test("TenantLifecycleService deprovisions and terminates tenant [tenant-lifecycle-service]", () => {
   const service = new TenantLifecycleService();
   const config = createLifecycleConfig("tenant-1");
   service.registerTenant(config);
@@ -105,7 +105,7 @@ test("TenantLifecycleService deprovisions and terminates tenant", () => {
   assert.equal(termResult.to, "terminated");
 });
 
-test("TenantLifecycleService rejects transitions from terminated state", () => {
+test("TenantLifecycleService rejects transitions from terminated state [tenant-lifecycle-service]", () => {
   const service = new TenantLifecycleService();
   const config = createLifecycleConfig("tenant-1");
   service.registerTenant(config);
@@ -117,7 +117,7 @@ test("TenantLifecycleService rejects transitions from terminated state", () => {
   assert.equal(result.allowed, false);
 });
 
-test("TenantLifecycleService isInStage returns correct state", () => {
+test("TenantLifecycleService isInStage returns correct state [tenant-lifecycle-service]", () => {
   const service = new TenantLifecycleService();
   const config = createLifecycleConfig("tenant-1");
   service.registerTenant(config);
@@ -131,7 +131,7 @@ test("TenantLifecycleService isInStage returns correct state", () => {
   assert.equal(service.isInStage("tenant-1", "active"), true);
 });
 
-test("TenantLifecycleService isActive, isSuspended, isTerminated helpers", () => {
+test("TenantLifecycleService isActive, isSuspended, isTerminated helpers [tenant-lifecycle-service]", () => {
   const service = new TenantLifecycleService();
   const config = createLifecycleConfig("tenant-1");
   service.registerTenant(config);
@@ -151,7 +151,7 @@ test("TenantLifecycleService isActive, isSuspended, isTerminated helpers", () =>
   assert.equal(service.isTerminated("tenant-1"), true);
 });
 
-test("TenantLifecycleService records event history", () => {
+test("TenantLifecycleService records event history [tenant-lifecycle-service]", () => {
   const service = new TenantLifecycleService();
   const config = createLifecycleConfig("tenant-1");
   service.registerTenant(config);
@@ -166,7 +166,7 @@ test("TenantLifecycleService records event history", () => {
   assert.equal(history[2]?.stage, "suspended");
 });
 
-test("TenantLifecycleService getConfig returns tenant config", () => {
+test("TenantLifecycleService getConfig returns tenant config [tenant-lifecycle-service]", () => {
   const service = new TenantLifecycleService();
   const config = createLifecycleConfig("tenant-1");
   service.registerTenant(config);
@@ -177,14 +177,14 @@ test("TenantLifecycleService getConfig returns tenant config", () => {
   assert.equal(retrievedConfig?.homeRegionId, "us-east-1");
 });
 
-test("TenantLifecycleService returns null for unknown tenant", () => {
+test("TenantLifecycleService returns null for unknown tenant [tenant-lifecycle-service]", () => {
   const service = new TenantLifecycleService();
 
   assert.equal(service.getState("unknown"), null);
   assert.equal(service.getConfig("unknown"), null);
 });
 
-test("TenantLifecycleService getState returns current state", () => {
+test("TenantLifecycleService getState returns current state [tenant-lifecycle-service]", () => {
   const service = new TenantLifecycleService();
   const config = createLifecycleConfig("tenant-1");
   service.registerTenant(config);
@@ -199,7 +199,7 @@ test("TenantLifecycleService getState returns current state", () => {
   assert.equal(updatedState?.previousStage, "provisioning");
 });
 
-test("TenantLifecycleService singleton getTenantLifecycleService", () => {
+test("TenantLifecycleService singleton getTenantLifecycleService [tenant-lifecycle-service]", () => {
   resetTenantLifecycleService();
   const service1 = getTenantLifecycleService();
   const service2 = getTenantLifecycleService();

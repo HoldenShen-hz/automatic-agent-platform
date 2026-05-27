@@ -34,7 +34,7 @@ function createTestObservation(overrides: Partial<SlaObservation> = {}): SlaObse
   };
 }
 
-test("SlaOperationsService.evaluate generates correct escalationActions for critical breach", () => {
+test("SlaOperationsService.evaluate generates correct escalationActions for critical breach [sla-operations-service-escalation]", () => {
   const service = new SlaOperationsService();
   const tiers: SlaTierProfile[] = [
     createTestTier({ tierId: "gold", priority: 1, targetSuccessRate: 0.999 }),
@@ -59,7 +59,7 @@ test("SlaOperationsService.evaluate generates correct escalationActions for crit
   assert.equal(escalationAction?.action, "page_sre", "Critical breach should trigger page_sre");
 });
 
-test("SlaOperationsService.evaluate generates correct escalationActions for warning breach", () => {
+test("SlaOperationsService.evaluate generates correct escalationActions for warning breach [sla-operations-service-escalation]", () => {
   const service = new SlaOperationsService();
   const tiers: SlaTierProfile[] = [
     createTestTier({ tierId: "gold", priority: 1, targetLatencyMs: 500 }),
@@ -84,7 +84,7 @@ test("SlaOperationsService.evaluate generates correct escalationActions for warn
   assert.equal(escalationAction?.action, "notify_owner", "Warning breach should trigger notify_owner");
 });
 
-test("SlaOperationsService.evaluate generates correct penaltyDecisions for critical breach", () => {
+test("SlaOperationsService.evaluate generates correct penaltyDecisions for critical breach [sla-operations-service-escalation]", () => {
   const service = new SlaOperationsService();
   const tiers: SlaTierProfile[] = [
     createTestTier({ tierId: "gold", priority: 1, targetSuccessRate: 0.999 }),
@@ -108,7 +108,7 @@ test("SlaOperationsService.evaluate generates correct penaltyDecisions for criti
   assert.equal(penaltyDecision?.severity, "critical");
 });
 
-test("SlaOperationsService.evaluate generates correct penaltyDecisions for warning breach", () => {
+test("SlaOperationsService.evaluate generates correct penaltyDecisions for warning breach [sla-operations-service-escalation]", () => {
   const service = new SlaOperationsService();
   const tiers: SlaTierProfile[] = [
     createTestTier({ tierId: "gold", priority: 1, targetLatencyMs: 500 }),
@@ -132,7 +132,7 @@ test("SlaOperationsService.evaluate generates correct penaltyDecisions for warni
   assert.equal(penaltyDecision?.severity, "warning");
 });
 
-test("SlaOperationsService.evaluate generates correct routingHint", () => {
+test("SlaOperationsService.evaluate generates correct routingHint [sla-operations-service-escalation]", () => {
   const service = new SlaOperationsService();
   const tiers: SlaTierProfile[] = [
     createTestTier({
@@ -163,7 +163,7 @@ test("SlaOperationsService.evaluate generates correct routingHint", () => {
   assert.equal(decision.routingHint?.reservedCapacityUnits, 20, "Reserved capacity should be 20% of 100 = 20");
 });
 
-test("SlaOperationsService.evaluate generates no escalationActions when no breach", () => {
+test("SlaOperationsService.evaluate generates no escalationActions when no breach [sla-operations-service-escalation]", () => {
   const service = new SlaOperationsService();
   const tiers: SlaTierProfile[] = [
     createTestTier({ tierId: "gold", priority: 1 }),
@@ -184,7 +184,7 @@ test("SlaOperationsService.evaluate generates no escalationActions when no breac
   assert.equal(decision.penaltyDecisions.length, 0, "Should have no penalty decisions");
 });
 
-test("SlaOperationsService.evaluate generates multiple escalationActions for multiple breach types", () => {
+test("SlaOperationsService.evaluate generates multiple escalationActions for multiple breach types [sla-operations-service-escalation]", () => {
   const service = new SlaOperationsService();
   const tiers: SlaTierProfile[] = [
     createTestTier({
@@ -223,7 +223,7 @@ test("SlaOperationsService.evaluate generates multiple escalationActions for mul
   assert.ok(escalationReason?.includes("sla.queue_wait_breach"));
 });
 
-test("SlaOperationsService.evaluate handles selectedTierId not found", () => {
+test("SlaOperationsService.evaluate handles selectedTierId not found [sla-operations-service-escalation]", () => {
   const service = new SlaOperationsService();
   const tiers: SlaTierProfile[] = [
     createTestTier({ tierId: "gold", priority: 1 }),
@@ -243,7 +243,7 @@ test("SlaOperationsService.evaluate handles selectedTierId not found", () => {
   assert.equal(decision.routingHint, null, "Should have no routing hint");
 });
 
-test("SlaOperationsService.evaluate uses tier defaults when optional fields missing", () => {
+test("SlaOperationsService.evaluate uses tier defaults when optional fields missing [sla-operations-service-escalation]", () => {
   const service = new SlaOperationsService();
   const tiers: SlaTierProfile[] = [
     createTestTier({ tierId: "minimal", priority: 1 }),

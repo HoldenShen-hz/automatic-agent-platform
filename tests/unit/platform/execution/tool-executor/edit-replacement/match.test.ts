@@ -17,22 +17,22 @@ import {
   type EditInstruction,
 } from "../../../../../../src/platform/five-plane-execution/tool-executor/edit-replacement/match.js";
 
-test("findAllOccurrences returns empty array for empty needle", () => {
+test("findAllOccurrences returns empty array for empty needle [match]", () => {
   assert.deepEqual(findAllOccurrences("content", ""), []);
 });
 
-test("findAllOccurrences returns empty array when not found", () => {
+test("findAllOccurrences returns empty array when not found [match]", () => {
   assert.deepEqual(findAllOccurrences("content", "missing"), []);
 });
 
-test("findAllOccurrences finds single occurrence", () => {
+test("findAllOccurrences finds single occurrence [match]", () => {
   const result = findAllOccurrences("hello world", "world");
   assert.equal(result.length, 1);
   assert.equal(result[0]!.startOffset, 6);
   assert.equal(result[0]!.endOffset, 11);
 });
 
-test("findAllOccurrences finds multiple occurrences", () => {
+test("findAllOccurrences finds multiple occurrences [match]", () => {
   const result = findAllOccurrences("foo bar foo", "foo");
   assert.equal(result.length, 2);
   assert.equal(result[0]!.startOffset, 0);
@@ -41,14 +41,14 @@ test("findAllOccurrences finds multiple occurrences", () => {
   assert.equal(result[1]!.endOffset, 11);
 });
 
-test("findAllOccurrences handles overlapping at boundaries", () => {
+test("findAllOccurrences handles overlapping at boundaries [match]", () => {
   const result = findAllOccurrences("aaa", "aa");
   assert.equal(result.length, 2);
   assert.equal(result[0]!.startOffset, 0);
   assert.equal(result[1]!.startOffset, 1);
 });
 
-test("toExactOutcome returns not_found for empty candidates", () => {
+test("toExactOutcome returns not_found for empty candidates [match]", () => {
   const outcome = toExactOutcome([]);
   assert.equal(outcome.matched, false);
   assert.equal(outcome.candidateCount, 0);
@@ -56,7 +56,7 @@ test("toExactOutcome returns not_found for empty candidates", () => {
   assert.equal(outcome.stopReason, "not_found");
 });
 
-test("toExactOutcome returns matched for single candidate", () => {
+test("toExactOutcome returns matched for single candidate [match]", () => {
   const candidate: MatchCandidate = { startOffset: 0, endOffset: 5, text: "hello" };
   const outcome = toExactOutcome([candidate]);
   assert.equal(outcome.matched, true);
@@ -65,7 +65,7 @@ test("toExactOutcome returns matched for single candidate", () => {
   assert.equal(outcome.stopReason, "matched");
 });
 
-test("toExactOutcome returns multiple_candidates for multiple candidates", () => {
+test("toExactOutcome returns multiple_candidates for multiple candidates [match]", () => {
   const candidates = [
     { startOffset: 0, endOffset: 5, text: "hello" },
     { startOffset: 10, endOffset: 15, text: "hello" },
@@ -77,28 +77,28 @@ test("toExactOutcome returns multiple_candidates for multiple candidates", () =>
   assert.equal(outcome.stopReason, "multiple_candidates");
 });
 
-test("matchExact returns not_found when no match", () => {
+test("matchExact returns not_found when no match [match]", () => {
   const outcome = matchExact("content", "missing");
   assert.equal(outcome.matched, false);
   assert.equal(outcome.candidateCount, 0);
   assert.equal(outcome.stopReason, "not_found");
 });
 
-test("matchExact returns matched for single occurrence", () => {
+test("matchExact returns matched for single occurrence [match]", () => {
   const outcome = matchExact("hello world", "world");
   assert.equal(outcome.matched, true);
   assert.equal(outcome.candidateCount, 1);
   assert.equal(outcome.candidate?.startOffset, 6);
 });
 
-test("matchExact returns multiple_candidates for multiple occurrences", () => {
+test("matchExact returns multiple_candidates for multiple occurrences [match]", () => {
   const outcome = matchExact("foo bar foo", "foo");
   assert.equal(outcome.matched, false);
   assert.equal(outcome.candidateCount, 2);
   assert.equal(outcome.stopReason, "multiple_candidates");
 });
 
-test("matchNormalizedWindows filters windows by normalized match", () => {
+test("matchNormalizedWindows filters windows by normalized match [match]", () => {
   const windows: MatchCandidate[] = [
     { startOffset: 0, endOffset: 5, text: "hello" },
     { startOffset: 10, endOffset: 15, text: "world" },
@@ -108,7 +108,7 @@ test("matchNormalizedWindows filters windows by normalized match", () => {
   assert.equal(outcome.candidateCount, 1);
 });
 
-test("matchNormalizedWindows returns not_found when no match", () => {
+test("matchNormalizedWindows returns not_found when no match [match]", () => {
   const windows: MatchCandidate[] = [
     { startOffset: 0, endOffset: 5, text: "hello" },
   ];
@@ -117,13 +117,13 @@ test("matchNormalizedWindows returns not_found when no match", () => {
   assert.equal(outcome.stopReason, "not_found");
 });
 
-test("matchFuzzyWindows returns not_found when no candidates", () => {
+test("matchFuzzyWindows returns not_found when no candidates [match]", () => {
   const outcome = matchFuzzyWindows([], "hello", 0.85);
   assert.equal(outcome.matched, false);
   assert.equal(outcome.stopReason, "not_found");
 });
 
-test("matchFuzzyWindows returns matched for high similarity", () => {
+test("matchFuzzyWindows returns matched for high similarity [match]", () => {
   const windows: MatchCandidate[] = [
     { startOffset: 0, endOffset: 5, text: "hello" },
   ];
@@ -132,7 +132,7 @@ test("matchFuzzyWindows returns matched for high similarity", () => {
   assert.equal(outcome.stopReason, "matched");
 });
 
-test("matchFuzzyWindows returns not_found when no similarity", () => {
+test("matchFuzzyWindows returns not_found when no similarity [match]", () => {
   const windows: MatchCandidate[] = [
     { startOffset: 0, endOffset: 3, text: "abc" },
   ];
@@ -141,7 +141,7 @@ test("matchFuzzyWindows returns not_found when no similarity", () => {
   assert.equal(outcome.stopReason, "not_found");
 });
 
-test("matchFuzzyWindows returns similarity_too_low when below threshold but non-zero", () => {
+test("matchFuzzyWindows returns similarity_too_low when below threshold but non-zero [match]", () => {
   // Use "a" vs "b" which have some similarity (both single chars)
   const windows: MatchCandidate[] = [
     { startOffset: 0, endOffset: 1, text: "a" },
@@ -152,7 +152,7 @@ test("matchFuzzyWindows returns similarity_too_low when below threshold but non-
   assert.ok(["not_found", "similarity_too_low"].includes(outcome.stopReason));
 });
 
-test("matchFuzzyWindows returns multiple_candidates when ambiguous", () => {
+test("matchFuzzyWindows returns multiple_candidates when ambiguous [match]", () => {
   const windows: MatchCandidate[] = [
     { startOffset: 0, endOffset: 5, text: "hello" },
     { startOffset: 10, endOffset: 15, text: "hello" },
@@ -163,7 +163,7 @@ test("matchFuzzyWindows returns multiple_candidates when ambiguous", () => {
   assert.equal(outcome.candidateCount, 2);
 });
 
-test("matchFuzzyWindows adds fuzzy_edit_applied warning on success", () => {
+test("matchFuzzyWindows adds fuzzy_edit_applied warning on success [match]", () => {
   const windows: MatchCandidate[] = [
     { startOffset: 0, endOffset: 5, text: "hello" },
   ];
@@ -171,21 +171,21 @@ test("matchFuzzyWindows adds fuzzy_edit_applied warning on success", () => {
   assert.ok(outcome.warningCodes.includes("fuzzy_edit_applied"));
 });
 
-test("matchAnchoredFuzzy returns not_found without anchors", () => {
+test("matchAnchoredFuzzy returns not_found without anchors [match]", () => {
   const request: EditInstruction = { oldString: "hello", newString: "world" };
   const outcome = matchAnchoredFuzzy("content", request, 0.85);
   assert.equal(outcome.matched, false);
   assert.equal(outcome.stopReason, "not_found");
 });
 
-test("matchAnchoredFuzzy returns not_found when anchor missing", () => {
+test("matchAnchoredFuzzy returns not_found when anchor missing [match]", () => {
   const request: EditInstruction = { oldString: "hello", newString: "world", beforeAnchor: "missing" };
   const outcome = matchAnchoredFuzzy("content", request, 0.85);
   assert.equal(outcome.matched, false);
   assert.equal(outcome.stopReason, "not_found");
 });
 
-test("matchAnchoredFuzzy returns multiple_candidates when anchors not unique", () => {
+test("matchAnchoredFuzzy returns multiple_candidates when anchors not unique [match]", () => {
   const request: EditInstruction = {
     oldString: "hello",
     newString: "world",
@@ -197,7 +197,7 @@ test("matchAnchoredFuzzy returns multiple_candidates when anchors not unique", (
   assert.equal(outcome.stopReason, "multiple_candidates");
 });
 
-test("matchAnchoredFuzzy returns not_found when anchors in wrong order", () => {
+test("matchAnchoredFuzzy returns not_found when anchors in wrong order [match]", () => {
   const request: EditInstruction = {
     oldString: "hello",
     newString: "world",
@@ -209,7 +209,7 @@ test("matchAnchoredFuzzy returns not_found when anchors in wrong order", () => {
   assert.equal(outcome.stopReason, "not_found");
 });
 
-test("matchAnchoredFuzzy matches within anchored region", () => {
+test("matchAnchoredFuzzy matches within anchored region [match]", () => {
   const request: EditInstruction = {
     oldString: "hello",
     newString: "world",
@@ -221,67 +221,67 @@ test("matchAnchoredFuzzy matches within anchored region", () => {
   assert.ok(outcome.warningCodes.includes("anchored_fuzzy_edit_applied"));
 });
 
-test("computeLineOffsets returns [0] for empty string", () => {
+test("computeLineOffsets returns [0] for empty string [match]", () => {
   assert.deepEqual(computeLineOffsets(""), [0]);
 });
 
-test("computeLineOffsets returns offsets for single line", () => {
+test("computeLineOffsets returns offsets for single line [match]", () => {
   assert.deepEqual(computeLineOffsets("hello"), [0]);
 });
 
-test("computeLineOffsets returns offsets for multiple lines", () => {
+test("computeLineOffsets returns offsets for multiple lines [match]", () => {
   const offsets = computeLineOffsets("a\nb\nc");
   assert.deepEqual(offsets, [0, 2, 4]);
 });
 
-test("computeLineOffsets handles Windows line endings", () => {
+test("computeLineOffsets handles Windows line endings [match]", () => {
   const offsets = computeLineOffsets("a\r\nb\r\nc");
   assert.deepEqual(offsets, [0, 3, 6]);
 });
 
-test("computeLineOffsets handles empty lines", () => {
+test("computeLineOffsets handles empty lines [match]", () => {
   const offsets = computeLineOffsets("\n\n");
   assert.deepEqual(offsets, [0, 1, 2]);
 });
 
-test("offsetToLineColumn returns line 1 column 1 for offset 0", () => {
+test("offsetToLineColumn returns line 1 column 1 for offset 0 [match]", () => {
   const result = offsetToLineColumn("hello", 0);
   assert.equal(result.line, 1);
   assert.equal(result.column, 1);
 });
 
-test("offsetToLineColumn returns correct position in single line", () => {
+test("offsetToLineColumn returns correct position in single line [match]", () => {
   const result = offsetToLineColumn("hello", 3);
   assert.equal(result.line, 1);
   assert.equal(result.column, 4);
 });
 
-test("offsetToLineColumn increments line on newline", () => {
+test("offsetToLineColumn increments line on newline [match]", () => {
   const result = offsetToLineColumn("a\nb", 2);
   assert.equal(result.line, 2);
   assert.equal(result.column, 1);
 });
 
-test("offsetToLineColumn handles multiple lines", () => {
+test("offsetToLineColumn handles multiple lines [match]", () => {
   const result = offsetToLineColumn("a\nb\nc", 4);
   assert.equal(result.line, 3);
   assert.equal(result.column, 1);
 });
 
-test("offsetToLineColumn handles offset beyond content length", () => {
+test("offsetToLineColumn handles offset beyond content length [match]", () => {
   const result = offsetToLineColumn("hello", 100);
   assert.equal(result.line, 1);
   assert.equal(result.column, 6);
 });
 
-test("buildCandidateWindows handles empty content", () => {
+test("buildCandidateWindows handles empty content [match]", () => {
   const result = buildCandidateWindows("", "hello");
   // For empty content, we still get one window with empty text
   assert.ok(result.length >= 1);
   assert.equal(result[0]!.text, "");
 });
 
-test("buildCandidateWindows generates windows spanning multiple lines", () => {
+test("buildCandidateWindows generates windows spanning multiple lines [match]", () => {
   const content = "line1\nline2\nline3";
   const result = buildCandidateWindows(content, "line1\nline2");
   assert.ok(result.length > 0);
@@ -290,7 +290,7 @@ test("buildCandidateWindows generates windows spanning multiple lines", () => {
   assert.ok(allText.includes("line1") || allText.includes("line2"));
 });
 
-test("buildCandidateWindows generates windows with varying spans", () => {
+test("buildCandidateWindows generates windows with varying spans [match]", () => {
   const content = "a\nb\nc\nd\ne";
   const result = buildCandidateWindows(content, "b\nc");
   // Should generate windows with different line counts
@@ -298,7 +298,7 @@ test("buildCandidateWindows generates windows with varying spans", () => {
   assert.ok(spans.some((s) => s >= 1));
 });
 
-test("buildCandidateWindows returns windows with sequential spans", () => {
+test("buildCandidateWindows returns windows with sequential spans [match]", () => {
   const content = "a\nb\nc\nd\ne";
   const result = buildCandidateWindows(content, "b\nc");
   const spans = result.map((w) => w.text.split("\n").length);
@@ -307,7 +307,7 @@ test("buildCandidateWindows returns windows with sequential spans", () => {
   assert.ok(spans.includes(3));
 });
 
-test("dedupeWindows removes exact duplicates", () => {
+test("dedupeWindows removes exact duplicates [match]", () => {
   const windows: MatchCandidate[] = [
     { startOffset: 0, endOffset: 5, text: "hello" },
     { startOffset: 0, endOffset: 5, text: "hello" },
@@ -317,7 +317,7 @@ test("dedupeWindows removes exact duplicates", () => {
   assert.equal(result.length, 1);
 });
 
-test("dedupeWindows keeps windows with different offsets", () => {
+test("dedupeWindows keeps windows with different offsets [match]", () => {
   const windows: MatchCandidate[] = [
     { startOffset: 0, endOffset: 5, text: "hello" },
     { startOffset: 5, endOffset: 10, text: "hello" },
@@ -326,7 +326,7 @@ test("dedupeWindows keeps windows with different offsets", () => {
   assert.equal(result.length, 2);
 });
 
-test("dedupeWindows handles mixed duplicates and unique", () => {
+test("dedupeWindows handles mixed duplicates and unique [match]", () => {
   const windows: MatchCandidate[] = [
     { startOffset: 0, endOffset: 5, text: "a" },
     { startOffset: 0, endOffset: 5, text: "a" },
@@ -336,7 +336,7 @@ test("dedupeWindows handles mixed duplicates and unique", () => {
   assert.equal(result.length, 2);
 });
 
-test("MatchOutcome type accepts valid structures", () => {
+test("MatchOutcome type accepts valid structures [match]", () => {
   const hitOutcome: MatchOutcome = {
     matched: true,
     candidateCount: 1,
@@ -357,7 +357,7 @@ test("MatchOutcome type accepts valid structures", () => {
   assert.equal(missOutcome.matched, false);
 });
 
-test("EditInstruction type accepts valid structure", () => {
+test("EditInstruction type accepts valid structure [match]", () => {
   const instruction: EditInstruction = {
     oldString: "hello",
     newString: "world",

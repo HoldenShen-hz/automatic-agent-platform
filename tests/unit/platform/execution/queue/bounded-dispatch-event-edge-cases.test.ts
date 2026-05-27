@@ -24,7 +24,7 @@ function makeSnapshot(overrides: Partial<BoundedDispatchQueueSnapshot> = {}): Bo
   };
 }
 
-test("BoundedDispatchQueueEventFactory rejects when queueDepthBefore exceeds maxQueueDepth", () => {
+test("BoundedDispatchQueueEventFactory rejects when queueDepthBefore exceeds maxQueueDepth [bounded-dispatch-event-edge-cases]", () => {
   const factory = new BoundedDispatchQueueEventFactory();
   const snapshot = makeSnapshot({ queueDepthBefore: 15, maxQueueDepth: 10 });
 
@@ -34,7 +34,7 @@ test("BoundedDispatchQueueEventFactory rejects when queueDepthBefore exceeds max
   assert.equal(event.reasonCode, "queue.max_depth_exceeded");
 });
 
-test("BoundedDispatchQueueEventFactory accepts when queueDepthBefore equals maxQueueDepth - 1", () => {
+test("BoundedDispatchQueueEventFactory accepts when queueDepthBefore equals maxQueueDepth - 1 [bounded-dispatch-event-edge-cases]", () => {
   const factory = new BoundedDispatchQueueEventFactory();
   const snapshot = makeSnapshot({ queueDepthBefore: 9, maxQueueDepth: 10 });
 
@@ -44,7 +44,7 @@ test("BoundedDispatchQueueEventFactory accepts when queueDepthBefore equals maxQ
   assert.equal(event.reasonCode, "queue.accepted");
 });
 
-test("BoundedDispatchQueueEventFactory rejects when queueDepthBefore equals maxQueueDepth", () => {
+test("BoundedDispatchQueueEventFactory rejects when queueDepthBefore equals maxQueueDepth [bounded-dispatch-event-edge-cases]", () => {
   const factory = new BoundedDispatchQueueEventFactory();
   const snapshot = makeSnapshot({ queueDepthBefore: 10, maxQueueDepth: 10 });
 
@@ -54,7 +54,7 @@ test("BoundedDispatchQueueEventFactory rejects when queueDepthBefore equals maxQ
   assert.equal(event.reasonCode, "queue.max_depth_exceeded");
 });
 
-test("BoundedDispatchQueueEventFactory accepts zero queue depth", () => {
+test("BoundedDispatchQueueEventFactory accepts zero queue depth [bounded-dispatch-event-edge-cases]", () => {
   const factory = new BoundedDispatchQueueEventFactory();
   const snapshot = makeSnapshot({ queueDepthBefore: 0, maxQueueDepth: 10 });
 
@@ -64,7 +64,7 @@ test("BoundedDispatchQueueEventFactory accepts zero queue depth", () => {
   assert.equal(event.queueDepthBefore, 0);
 });
 
-test("BoundedDispatchQueueEventFactory accepts very large maxQueueDepth", () => {
+test("BoundedDispatchQueueEventFactory accepts very large maxQueueDepth [bounded-dispatch-event-edge-cases]", () => {
   const factory = new BoundedDispatchQueueEventFactory();
   const snapshot = makeSnapshot({ queueDepthBefore: 1000, maxQueueDepth: 10000 });
 
@@ -73,7 +73,7 @@ test("BoundedDispatchQueueEventFactory accepts very large maxQueueDepth", () => 
   assert.equal(event.eventType, "platform.dispatch.queue.accepted");
 });
 
-test("BoundedDispatchQueueEventFactory handles very large queue depth values", () => {
+test("BoundedDispatchQueueEventFactory handles very large queue depth values [bounded-dispatch-event-edge-cases]", () => {
   const factory = new BoundedDispatchQueueEventFactory();
   const snapshot = makeSnapshot({ queueDepthBefore: 999999, maxQueueDepth: 1000000 });
 
@@ -83,7 +83,7 @@ test("BoundedDispatchQueueEventFactory handles very large queue depth values", (
   assert.equal(event.queueDepthBefore, 999999);
 });
 
-test("BoundedDispatchQueueEventFactory handles negative queue depth as accepted", () => {
+test("BoundedDispatchQueueEventFactory handles negative queue depth as accepted [bounded-dispatch-event-edge-cases]", () => {
   const factory = new BoundedDispatchQueueEventFactory();
   const snapshot = makeSnapshot({ queueDepthBefore: -1, maxQueueDepth: 10 });
 
@@ -94,7 +94,7 @@ test("BoundedDispatchQueueEventFactory handles negative queue depth as accepted"
   assert.equal(event.queueDepthBefore, -1);
 });
 
-test("BoundedDispatchQueueEventFactory creates event with full input object signature", () => {
+test("BoundedDispatchQueueEventFactory creates event with full input object signature [bounded-dispatch-event-edge-cases]", () => {
   const factory = new BoundedDispatchQueueEventFactory();
   const snapshot = makeSnapshot({ queueName: "custom-queue", dlqName: "custom-dlq" });
 
@@ -120,7 +120,7 @@ test("BoundedDispatchQueueEventFactory creates event with full input object sign
   assert.equal(event.executionId, "exec-custom");
 });
 
-test("BoundedDispatchQueueEventFactory omits harnessRunId when not provided", () => {
+test("BoundedDispatchQueueEventFactory omits harnessRunId when not provided [bounded-dispatch-event-edge-cases]", () => {
   const factory = new BoundedDispatchQueueEventFactory();
   const snapshot = makeSnapshot();
 
@@ -138,7 +138,7 @@ test("BoundedDispatchQueueEventFactory omits harnessRunId when not provided", ()
   assert.equal("harnessRunId" in event, false);
 });
 
-test("BoundedDispatchQueueEventFactory omits executionId when not provided", () => {
+test("BoundedDispatchQueueEventFactory omits executionId when not provided [bounded-dispatch-event-edge-cases]", () => {
   const factory = new BoundedDispatchQueueEventFactory();
   const snapshot = makeSnapshot();
 
@@ -156,7 +156,7 @@ test("BoundedDispatchQueueEventFactory omits executionId when not provided", () 
   assert.equal("executionId" in event, false);
 });
 
-test("BoundedDispatchQueueEventFactory includes harnessRunId when explicitly undefined", () => {
+test("BoundedDispatchQueueEventFactory includes harnessRunId when explicitly undefined [bounded-dispatch-event-edge-cases]", () => {
   const factory = new BoundedDispatchQueueEventFactory();
   const snapshot = makeSnapshot();
 
@@ -176,7 +176,7 @@ test("BoundedDispatchQueueEventFactory includes harnessRunId when explicitly und
   assert.equal(event.harnessRunId, undefined);
 });
 
-test("BoundedDispatchQueueEventFactory positional signature uses snapshot queueName as default queueClass", () => {
+test("BoundedDispatchQueueEventFactory positional signature uses snapshot queueName as default queueClass [bounded-dispatch-event-edge-cases]", () => {
   const factory = new BoundedDispatchQueueEventFactory();
   const snapshot = makeSnapshot({ queueName: "my-special-queue" });
 
@@ -186,7 +186,7 @@ test("BoundedDispatchQueueEventFactory positional signature uses snapshot queueN
   assert.equal(event.queue_class, "my-special-queue");
 });
 
-test("BoundedDispatchQueueEventFactory positional signature defaults orderingPolicyVersion to 1.0", () => {
+test("BoundedDispatchQueueEventFactory positional signature defaults orderingPolicyVersion to 1.0 [bounded-dispatch-event-edge-cases]", () => {
   const factory = new BoundedDispatchQueueEventFactory();
   const snapshot = makeSnapshot();
 
@@ -196,7 +196,7 @@ test("BoundedDispatchQueueEventFactory positional signature defaults orderingPol
   assert.equal(event.ordering_policy_version, "1.0");
 });
 
-test("BoundedDispatchQueueEventFactory input object signature preserves custom orderingPolicyVersion", () => {
+test("BoundedDispatchQueueEventFactory input object signature preserves custom orderingPolicyVersion [bounded-dispatch-event-edge-cases]", () => {
   const factory = new BoundedDispatchQueueEventFactory();
   const snapshot = makeSnapshot();
 
@@ -214,7 +214,7 @@ test("BoundedDispatchQueueEventFactory input object signature preserves custom o
   assert.equal(event.ordering_policy_version, "3.0");
 });
 
-test("BoundedDispatchQueueEventFactory both signatures produce same eventType for same snapshot", () => {
+test("BoundedDispatchQueueEventFactory both signatures produce same eventType for same snapshot [bounded-dispatch-event-edge-cases]", () => {
   const factory = new BoundedDispatchQueueEventFactory();
   const snapshot = makeSnapshot({ queueDepthBefore: 5, maxQueueDepth: 10 });
 
@@ -233,7 +233,7 @@ test("BoundedDispatchQueueEventFactory both signatures produce same eventType fo
   assert.equal(eventPositional.reasonCode, eventInputObject.reasonCode);
 });
 
-test("BoundedDispatchQueueEventFactory both signatures produce same eventType for full snapshot", () => {
+test("BoundedDispatchQueueEventFactory both signatures produce same eventType for full snapshot [bounded-dispatch-event-edge-cases]", () => {
   const factory = new BoundedDispatchQueueEventFactory();
   const snapshot = makeSnapshot({ queueDepthBefore: 10, maxQueueDepth: 10 });
 
@@ -252,7 +252,7 @@ test("BoundedDispatchQueueEventFactory both signatures produce same eventType fo
   assert.equal(eventPositional.reasonCode, eventInputObject.reasonCode);
 });
 
-test("BoundedDispatchEvent type accepts all valid eventType values", () => {
+test("BoundedDispatchEvent type accepts all valid eventType values [bounded-dispatch-event-edge-cases]", () => {
   const acceptedEvent: BoundedDispatchEvent = {
     eventType: "platform.dispatch.queue.accepted",
     queueName: "test",
@@ -289,7 +289,7 @@ test("BoundedDispatchEvent type accepts all valid eventType values", () => {
   assert.equal(rejectedEvent.eventType, "platform.dispatch.queue.rejected");
 });
 
-test("BoundedDispatchEvent type accepts all valid reasonCode values", () => {
+test("BoundedDispatchEvent type accepts all valid reasonCode values [bounded-dispatch-event-edge-cases]", () => {
   const acceptedEvent: BoundedDispatchEvent = {
     eventType: "platform.dispatch.queue.accepted",
     queueName: "test",
@@ -326,7 +326,7 @@ test("BoundedDispatchEvent type accepts all valid reasonCode values", () => {
   assert.equal(rejectedEvent.reasonCode, "queue.max_depth_exceeded");
 });
 
-test("BoundedDispatchQueueSnapshot type accepts all required fields", () => {
+test("BoundedDispatchQueueSnapshot type accepts all required fields [bounded-dispatch-event-edge-cases]", () => {
   const snapshot: BoundedDispatchQueueSnapshot = {
     queueName: "full-test-queue",
     queueDepthBefore: 50,
@@ -340,7 +340,7 @@ test("BoundedDispatchQueueSnapshot type accepts all required fields", () => {
   assert.equal(snapshot.dlqName, "full-test-dlq");
 });
 
-test("BoundedDispatchQueueEventFactory handles empty string nodeRunId", () => {
+test("BoundedDispatchQueueEventFactory handles empty string nodeRunId [bounded-dispatch-event-edge-cases]", () => {
   const factory = new BoundedDispatchQueueEventFactory();
   const snapshot = makeSnapshot();
 
@@ -349,7 +349,7 @@ test("BoundedDispatchQueueEventFactory handles empty string nodeRunId", () => {
   assert.equal(event.nodeRunId, "");
 });
 
-test("BoundedDispatchQueueEventFactory handles empty string tenantId", () => {
+test("BoundedDispatchQueueEventFactory handles empty string tenantId [bounded-dispatch-event-edge-cases]", () => {
   const factory = new BoundedDispatchQueueEventFactory();
   const snapshot = makeSnapshot();
 
@@ -358,7 +358,7 @@ test("BoundedDispatchQueueEventFactory handles empty string tenantId", () => {
   assert.equal(event.tenantId, "");
 });
 
-test("BoundedDispatchQueueEventFactory handles empty string traceId", () => {
+test("BoundedDispatchQueueEventFactory handles empty string traceId [bounded-dispatch-event-edge-cases]", () => {
   const factory = new BoundedDispatchQueueEventFactory();
   const snapshot = makeSnapshot();
 
@@ -367,7 +367,7 @@ test("BoundedDispatchQueueEventFactory handles empty string traceId", () => {
   assert.equal(event.traceId, "");
 });
 
-test("BoundedDispatchQueueEventFactory handles special characters in queueName", () => {
+test("BoundedDispatchQueueEventFactory handles special characters in queueName [bounded-dispatch-event-edge-cases]", () => {
   const factory = new BoundedDispatchQueueEventFactory();
   const snapshot = makeSnapshot({ queueName: "queue/with/slashes" });
 
@@ -376,7 +376,7 @@ test("BoundedDispatchQueueEventFactory handles special characters in queueName",
   assert.equal(event.queueName, "queue/with/slashes");
 });
 
-test("BoundedDispatchQueueEventFactory handles unicode in tenantId", () => {
+test("BoundedDispatchQueueEventFactory handles unicode in tenantId [bounded-dispatch-event-edge-cases]", () => {
   const factory = new BoundedDispatchQueueEventFactory();
   const snapshot = makeSnapshot();
 
@@ -385,7 +385,7 @@ test("BoundedDispatchQueueEventFactory handles unicode in tenantId", () => {
   assert.equal(event.tenantId, "tenant-中文");
 });
 
-test("BoundedDispatchQueueEventFactory handles very long queue class names", () => {
+test("BoundedDispatchQueueEventFactory handles very long queue class names [bounded-dispatch-event-edge-cases]", () => {
   const factory = new BoundedDispatchQueueEventFactory();
   const longClassName = "a".repeat(1000);
   const snapshot = makeSnapshot();
@@ -404,7 +404,7 @@ test("BoundedDispatchQueueEventFactory handles very long queue class names", () 
   assert.equal(event.queue_class, longClassName);
 });
 
-test("BoundedDispatchQueueEventFactory preserves all snapshot fields in output event", () => {
+test("BoundedDispatchQueueEventFactory preserves all snapshot fields in output event [bounded-dispatch-event-edge-cases]", () => {
   const factory = new BoundedDispatchQueueEventFactory();
   const snapshot = makeSnapshot({
     queueName: "preserve-test-queue",
@@ -421,7 +421,7 @@ test("BoundedDispatchQueueEventFactory preserves all snapshot fields in output e
   assert.equal(event.dlqName, snapshot.dlqName);
 });
 
-test("BoundedDispatchQueueEventFactory create method is chainable with multiple calls", () => {
+test("BoundedDispatchQueueEventFactory create method is chainable with multiple calls [bounded-dispatch-event-edge-cases]", () => {
   const factory = new BoundedDispatchQueueEventFactory();
   const snapshot1 = makeSnapshot({ queueDepthBefore: 5, maxQueueDepth: 10 });
   const snapshot2 = makeSnapshot({ queueDepthBefore: 10, maxQueueDepth: 10 });

@@ -38,7 +38,7 @@ function createHeartbeat(overrides: Partial<WorkerRegistryHeartbeatInput> = {}):
 // Constructor
 // ---------------------------------------------------------------------------
 
-test("WorkerRegistryService constructor accepts store", () => {
+test("WorkerRegistryService constructor accepts store [worker-registry-service]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
   assert.ok(service);
@@ -48,7 +48,7 @@ test("WorkerRegistryService constructor accepts store", () => {
 // recordHeartbeat - basic functionality
 // ---------------------------------------------------------------------------
 
-test("WorkerRegistryService recordHeartbeat creates new worker view", () => {
+test("WorkerRegistryService recordHeartbeat creates new worker view [worker-registry-service]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
   const heartbeat = createHeartbeat({ workerId: "worker-new" });
@@ -63,7 +63,7 @@ test("WorkerRegistryService recordHeartbeat creates new worker view", () => {
   assert.ok(view.lastHeartbeatAt != null);
 });
 
-test("WorkerRegistryService recordHeartbeat preserves existing state on update", () => {
+test("WorkerRegistryService recordHeartbeat preserves existing state on update [worker-registry-service]", () => {
   const existingRecord: WorkerSnapshotRecord = {
     workerId: "worker-1",
     status: "idle",
@@ -111,7 +111,7 @@ test("WorkerRegistryService recordHeartbeat preserves existing state on update",
   assert.deepEqual(view.capabilities, ["bash", "edit"]);
 });
 
-test("WorkerRegistryService recordHeartbeat updates running executions", () => {
+test("WorkerRegistryService recordHeartbeat updates running executions [worker-registry-service]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -125,7 +125,7 @@ test("WorkerRegistryService recordHeartbeat updates running executions", () => {
   assert.deepEqual(view.runningExecutionIds, ["exec-1", "exec-2"]);
 });
 
-test("WorkerRegistryService recordHeartbeat sets availableSlots to zero when over capacity", () => {
+test("WorkerRegistryService recordHeartbeat sets availableSlots to zero when over capacity [worker-registry-service]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -142,7 +142,7 @@ test("WorkerRegistryService recordHeartbeat sets availableSlots to zero when ove
 // recordHeartbeat - capability normalization
 // ---------------------------------------------------------------------------
 
-test("WorkerRegistryService recordHeartbeat normalizes capabilities with whitespace", () => {
+test("WorkerRegistryService recordHeartbeat normalizes capabilities with whitespace [worker-registry-service]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -153,7 +153,7 @@ test("WorkerRegistryService recordHeartbeat normalizes capabilities with whitesp
   assert.deepEqual(view.capabilities, ["EDIT", "bash", "edit"]);
 });
 
-test("WorkerRegistryService recordHeartbeat removes empty capabilities", () => {
+test("WorkerRegistryService recordHeartbeat removes empty capabilities [worker-registry-service]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -168,7 +168,7 @@ test("WorkerRegistryService recordHeartbeat removes empty capabilities", () => {
 // recordHeartbeat - placement handling
 // ---------------------------------------------------------------------------
 
-test("WorkerRegistryService recordHeartbeat defaults placement to local", () => {
+test("WorkerRegistryService recordHeartbeat defaults placement to local [worker-registry-service]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -177,7 +177,7 @@ test("WorkerRegistryService recordHeartbeat defaults placement to local", () => 
   assert.equal(view.placement, "local");
 });
 
-test("WorkerRegistryService recordHeartbeat preserves remote placement", () => {
+test("WorkerRegistryService recordHeartbeat preserves remote placement [worker-registry-service]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -186,7 +186,7 @@ test("WorkerRegistryService recordHeartbeat preserves remote placement", () => {
   assert.equal(view.placement, "remote");
 });
 
-test("WorkerRegistryService recordHeartbeat preserves existing placement", () => {
+test("WorkerRegistryService recordHeartbeat preserves existing placement [worker-registry-service]", () => {
   const existingRecord: WorkerSnapshotRecord = {
     workerId: "worker-1",
     status: "idle",
@@ -236,7 +236,7 @@ test("WorkerRegistryService recordHeartbeat preserves existing placement", () =>
 // recordHeartbeat - isolation level handling
 // ---------------------------------------------------------------------------
 
-test("WorkerRegistryService recordHeartbeat defaults isolationLevel to standard", () => {
+test("WorkerRegistryService recordHeartbeat defaults isolationLevel to standard [worker-registry-service]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -245,7 +245,7 @@ test("WorkerRegistryService recordHeartbeat defaults isolationLevel to standard"
   assert.equal(view.isolationLevel, "standard");
 });
 
-test("WorkerRegistryService recordHeartbeat accepts hardened isolationLevel", () => {
+test("WorkerRegistryService recordHeartbeat accepts hardened isolationLevel [worker-registry-service]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -254,7 +254,7 @@ test("WorkerRegistryService recordHeartbeat accepts hardened isolationLevel", ()
   assert.equal(view.isolationLevel, "hardened");
 });
 
-test("WorkerRegistryService recordHeartbeat accepts strict isolationLevel", () => {
+test("WorkerRegistryService recordHeartbeat accepts strict isolationLevel [worker-registry-service]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -263,7 +263,7 @@ test("WorkerRegistryService recordHeartbeat accepts strict isolationLevel", () =
   assert.equal(view.isolationLevel, "strict");
 });
 
-test("WorkerRegistryService recordHeartbeat normalizes invalid isolationLevel to standard", () => {
+test("WorkerRegistryService recordHeartbeat normalizes invalid isolationLevel to standard [worker-registry-service]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -276,7 +276,7 @@ test("WorkerRegistryService recordHeartbeat normalizes invalid isolationLevel to
 // recordHeartbeat - saturation normalization
 // ---------------------------------------------------------------------------
 
-test("WorkerRegistryService recordHeartbeat normalizes saturation above 1 to 1", () => {
+test("WorkerRegistryService recordHeartbeat normalizes saturation above 1 to 1 [worker-registry-service]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -285,7 +285,7 @@ test("WorkerRegistryService recordHeartbeat normalizes saturation above 1 to 1",
   assert.equal(view.saturation, 1);
 });
 
-test("WorkerRegistryService recordHeartbeat normalizes negative saturation to 0", () => {
+test("WorkerRegistryService recordHeartbeat normalizes negative saturation to 0 [worker-registry-service]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -294,7 +294,7 @@ test("WorkerRegistryService recordHeartbeat normalizes negative saturation to 0"
   assert.equal(view.saturation, 0);
 });
 
-test("WorkerRegistryService recordHeartbeat preserves null saturation", () => {
+test("WorkerRegistryService recordHeartbeat preserves null saturation [worker-registry-service]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -303,7 +303,7 @@ test("WorkerRegistryService recordHeartbeat preserves null saturation", () => {
   assert.equal(view.saturation, null);
 });
 
-test("WorkerRegistryService recordHeartbeat normalizes infinite saturation to null", () => {
+test("WorkerRegistryService recordHeartbeat normalizes infinite saturation to null [worker-registry-service]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -316,7 +316,7 @@ test("WorkerRegistryService recordHeartbeat normalizes infinite saturation to nu
 // recordHeartbeat - trusted status
 // ---------------------------------------------------------------------------
 
-test("WorkerRegistryService recordHeartbeat sets trusted true for local workers", () => {
+test("WorkerRegistryService recordHeartbeat sets trusted true for local workers [worker-registry-service]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -325,7 +325,7 @@ test("WorkerRegistryService recordHeartbeat sets trusted true for local workers"
   assert.equal(view.trusted, true);
 });
 
-test("WorkerRegistryService recordHeartbeat sets trusted false for remote without registration", () => {
+test("WorkerRegistryService recordHeartbeat sets trusted false for remote without registration [worker-registry-service]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -334,7 +334,7 @@ test("WorkerRegistryService recordHeartbeat sets trusted false for remote withou
   assert.equal(view.trusted, false);
 });
 
-test("WorkerRegistryService recordHeartbeat sets trusted true for remote with registration", () => {
+test("WorkerRegistryService recordHeartbeat sets trusted true for remote with registration [worker-registry-service]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -350,7 +350,7 @@ test("WorkerRegistryService recordHeartbeat sets trusted true for remote with re
 // recordHeartbeat - remote session status
 // ---------------------------------------------------------------------------
 
-test("WorkerRegistryService recordHeartbeat records remoteSessionStatus for remote workers", () => {
+test("WorkerRegistryService recordHeartbeat records remoteSessionStatus for remote workers [worker-registry-service]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -362,7 +362,7 @@ test("WorkerRegistryService recordHeartbeat records remoteSessionStatus for remo
   assert.equal(view.remoteSessionStatus, "connected");
 });
 
-test("WorkerRegistryService recordHeartbeat nullifies remoteSessionStatus for local workers", () => {
+test("WorkerRegistryService recordHeartbeat nullifies remoteSessionStatus for local workers [worker-registry-service]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -374,7 +374,7 @@ test("WorkerRegistryService recordHeartbeat nullifies remoteSessionStatus for lo
   assert.equal(view.remoteSessionStatus, null);
 });
 
-test("WorkerRegistryService recordHeartbeat accepts all valid remoteSessionStatus values", () => {
+test("WorkerRegistryService recordHeartbeat accepts all valid remoteSessionStatus values [worker-registry-service]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
   const statuses = ["connecting", "connected", "reconnecting", "degraded", "failed", "viewer_only"] as const;
@@ -385,7 +385,7 @@ test("WorkerRegistryService recordHeartbeat accepts all valid remoteSessionStatu
   }
 });
 
-test("WorkerRegistryService recordHeartbeat normalizes invalid remoteSessionStatus to null", () => {
+test("WorkerRegistryService recordHeartbeat normalizes invalid remoteSessionStatus to null [worker-registry-service]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -401,7 +401,7 @@ test("WorkerRegistryService recordHeartbeat normalizes invalid remoteSessionStat
 // recordHeartbeat - session consistency check status
 // ---------------------------------------------------------------------------
 
-test("WorkerRegistryService recordHeartbeat accepts valid sessionConsistencyCheckStatus", () => {
+test("WorkerRegistryService recordHeartbeat accepts valid sessionConsistencyCheckStatus [worker-registry-service]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -413,7 +413,7 @@ test("WorkerRegistryService recordHeartbeat accepts valid sessionConsistencyChec
   assert.equal(view.sessionConsistencyCheckStatus, "passed");
 });
 
-test("WorkerRegistryService recordHeartbeat normalizes invalid sessionConsistencyCheckStatus to null", () => {
+test("WorkerRegistryService recordHeartbeat normalizes invalid sessionConsistencyCheckStatus to null [worker-registry-service]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -429,7 +429,7 @@ test("WorkerRegistryService recordHeartbeat normalizes invalid sessionConsistenc
 // recordHeartbeat - workspace sync status
 // ---------------------------------------------------------------------------
 
-test("WorkerRegistryService recordHeartbeat accepts valid workspaceSyncStatus", () => {
+test("WorkerRegistryService recordHeartbeat accepts valid workspaceSyncStatus [worker-registry-service]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -441,7 +441,7 @@ test("WorkerRegistryService recordHeartbeat accepts valid workspaceSyncStatus", 
   assert.equal(view.workspaceSyncStatus, "aligned");
 });
 
-test("WorkerRegistryService recordHeartbeat normalizes invalid workspaceSyncStatus to null", () => {
+test("WorkerRegistryService recordHeartbeat normalizes invalid workspaceSyncStatus to null [worker-registry-service]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -457,7 +457,7 @@ test("WorkerRegistryService recordHeartbeat normalizes invalid workspaceSyncStat
 // recordHeartbeat - telemetry merging
 // ---------------------------------------------------------------------------
 
-test("WorkerRegistryService recordHeartbeat merges cpuPct when not provided", () => {
+test("WorkerRegistryService recordHeartbeat merges cpuPct when not provided [worker-registry-service]", () => {
   const existingRecord: WorkerSnapshotRecord = {
     workerId: "worker-1",
     status: "idle",
@@ -504,7 +504,7 @@ test("WorkerRegistryService recordHeartbeat merges cpuPct when not provided", ()
   assert.equal(view.memoryMb, 1024);
 });
 
-test("WorkerRegistryService recordHeartbeat updates cpuPct when provided", () => {
+test("WorkerRegistryService recordHeartbeat updates cpuPct when provided [worker-registry-service]", () => {
   const existingRecord: WorkerSnapshotRecord = {
     workerId: "worker-1",
     status: "idle",
@@ -555,7 +555,7 @@ test("WorkerRegistryService recordHeartbeat updates cpuPct when provided", () =>
 // recordHeartbeat - restart semantics
 // ---------------------------------------------------------------------------
 
-test("WorkerRegistryService recordHeartbeat increments restartGeneration on restart", () => {
+test("WorkerRegistryService recordHeartbeat increments restartGeneration on restart [worker-registry-service]", () => {
   const existingRecord: WorkerSnapshotRecord = {
     workerId: "worker-1",
     status: "idle",
@@ -606,7 +606,7 @@ test("WorkerRegistryService recordHeartbeat increments restartGeneration on rest
   assert.equal(view.restartedFromRuntimeInstanceId, "runtime-old");
 });
 
-test("WorkerRegistryService recordHeartbeat preserves restartGeneration when no restart detected", () => {
+test("WorkerRegistryService recordHeartbeat preserves restartGeneration when no restart detected [worker-registry-service]", () => {
   const existingRecord: WorkerSnapshotRecord = {
     workerId: "worker-1",
     status: "idle",
@@ -659,7 +659,7 @@ test("WorkerRegistryService recordHeartbeat preserves restartGeneration when no 
 // getWorker
 // ---------------------------------------------------------------------------
 
-test("WorkerRegistryService getWorker returns worker view for existing worker", () => {
+test("WorkerRegistryService getWorker returns worker view for existing worker [worker-registry-service]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
   service.recordHeartbeat(createHeartbeat({ workerId: "worker-1" }));
@@ -670,7 +670,7 @@ test("WorkerRegistryService getWorker returns worker view for existing worker", 
   assert.equal(view!.workerId, "worker-1");
 });
 
-test("WorkerRegistryService getWorker returns null for missing worker", () => {
+test("WorkerRegistryService getWorker returns null for missing worker [worker-registry-service]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -683,7 +683,7 @@ test("WorkerRegistryService getWorker returns null for missing worker", () => {
 // listWorkers
 // ---------------------------------------------------------------------------
 
-test("WorkerRegistryService listWorkers returns all registered workers", () => {
+test("WorkerRegistryService listWorkers returns all registered workers [worker-registry-service]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
   service.recordHeartbeat(createHeartbeat({ workerId: "worker-1" }));
@@ -695,7 +695,7 @@ test("WorkerRegistryService listWorkers returns all registered workers", () => {
   assert.equal(workers.length, 3);
 });
 
-test("WorkerRegistryService listWorkers returns empty array when no workers registered", () => {
+test("WorkerRegistryService listWorkers returns empty array when no workers registered [worker-registry-service]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -708,7 +708,7 @@ test("WorkerRegistryService listWorkers returns empty array when no workers regi
 // listEligibleWorkers - status filtering
 // ---------------------------------------------------------------------------
 
-test("WorkerRegistryService listEligibleWorkers excludes unavailable workers", () => {
+test("WorkerRegistryService listEligibleWorkers excludes unavailable workers [worker-registry-service]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
   service.recordHeartbeat(createHeartbeat({ workerId: "worker-1", status: "idle" }));
@@ -720,7 +720,7 @@ test("WorkerRegistryService listEligibleWorkers excludes unavailable workers", (
   assert.equal(eligible[0]!.workerId, "worker-1");
 });
 
-test("WorkerRegistryService listEligibleWorkers excludes offline workers", () => {
+test("WorkerRegistryService listEligibleWorkers excludes offline workers [worker-registry-service]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
   service.recordHeartbeat(createHeartbeat({ workerId: "worker-1", status: "idle" }));
@@ -731,7 +731,7 @@ test("WorkerRegistryService listEligibleWorkers excludes offline workers", () =>
   assert.equal(eligible.length, 1);
 });
 
-test("WorkerRegistryService listEligibleWorkers excludes draining workers", () => {
+test("WorkerRegistryService listEligibleWorkers excludes draining workers [worker-registry-service]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
   service.recordHeartbeat(createHeartbeat({ workerId: "worker-1", status: "idle" }));
@@ -742,7 +742,7 @@ test("WorkerRegistryService listEligibleWorkers excludes draining workers", () =
   assert.equal(eligible.length, 1);
 });
 
-test("WorkerRegistryService listEligibleWorkers excludes quarantined workers", () => {
+test("WorkerRegistryService listEligibleWorkers excludes quarantined workers [worker-registry-service]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
   service.recordHeartbeat(createHeartbeat({ workerId: "worker-1", status: "idle" }));
@@ -753,7 +753,7 @@ test("WorkerRegistryService listEligibleWorkers excludes quarantined workers", (
   assert.equal(eligible.length, 1);
 });
 
-test("WorkerRegistryService listEligibleWorkers excludes degraded workers by default", () => {
+test("WorkerRegistryService listEligibleWorkers excludes degraded workers by default [worker-registry-service]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
   service.recordHeartbeat(createHeartbeat({ workerId: "worker-1", status: "idle" }));
@@ -765,7 +765,7 @@ test("WorkerRegistryService listEligibleWorkers excludes degraded workers by def
   assert.equal(eligible[0]!.workerId, "worker-1");
 });
 
-test("WorkerRegistryService listEligibleWorkers includes degraded workers when includeDegraded is true", () => {
+test("WorkerRegistryService listEligibleWorkers includes degraded workers when includeDegraded is true [worker-registry-service]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
   service.recordHeartbeat(createHeartbeat({ workerId: "worker-1", status: "idle" }));
@@ -780,7 +780,7 @@ test("WorkerRegistryService listEligibleWorkers includes degraded workers when i
 // listEligibleWorkers - capacity filtering
 // ---------------------------------------------------------------------------
 
-test("WorkerRegistryService listEligibleWorkers excludes workers at capacity", () => {
+test("WorkerRegistryService listEligibleWorkers excludes workers at capacity [worker-registry-service]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
   service.recordHeartbeat(createHeartbeat({
@@ -794,7 +794,7 @@ test("WorkerRegistryService listEligibleWorkers excludes workers at capacity", (
   assert.equal(eligible.length, 0);
 });
 
-test("WorkerRegistryService listEligibleWorkers includes workers with available slots", () => {
+test("WorkerRegistryService listEligibleWorkers includes workers with available slots [worker-registry-service]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
   service.recordHeartbeat(createHeartbeat({
@@ -813,7 +813,7 @@ test("WorkerRegistryService listEligibleWorkers includes workers with available 
 // listEligibleWorkers - capability filtering
 // ---------------------------------------------------------------------------
 
-test("WorkerRegistryService listEligibleWorkers filters by required capabilities", () => {
+test("WorkerRegistryService listEligibleWorkers filters by required capabilities [worker-registry-service]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
   service.recordHeartbeat(createHeartbeat({ workerId: "worker-1", capabilities: ["bash"] }));
@@ -825,7 +825,7 @@ test("WorkerRegistryService listEligibleWorkers filters by required capabilities
   assert.equal(eligible[0]!.workerId, "worker-2");
 });
 
-test("WorkerRegistryService listEligibleWorkers excludes workers missing required capabilities", () => {
+test("WorkerRegistryService listEligibleWorkers excludes workers missing required capabilities [worker-registry-service]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
   service.recordHeartbeat(createHeartbeat({ workerId: "worker-1", capabilities: ["bash"] }));
@@ -840,7 +840,7 @@ test("WorkerRegistryService listEligibleWorkers excludes workers missing require
 // listEligibleWorkers - queue affinity filtering
 // ---------------------------------------------------------------------------
 
-test("WorkerRegistryService listEligibleWorkers filters by queue affinity", () => {
+test("WorkerRegistryService listEligibleWorkers filters by queue affinity [worker-registry-service]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
   service.recordHeartbeat(createHeartbeat({ workerId: "worker-1", queueAffinity: "queue-a" }));
@@ -852,7 +852,7 @@ test("WorkerRegistryService listEligibleWorkers filters by queue affinity", () =
   assert.equal(eligible[0]!.workerId, "worker-1");
 });
 
-test("WorkerRegistryService listEligibleWorkers allows workers without queue affinity", () => {
+test("WorkerRegistryService listEligibleWorkers allows workers without queue affinity [worker-registry-service]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
   service.recordHeartbeat(createHeartbeat({ workerId: "worker-1", queueAffinity: null }));
@@ -869,7 +869,7 @@ test("WorkerRegistryService listEligibleWorkers allows workers without queue aff
 // listEligibleWorkers - isolation level filtering
 // ---------------------------------------------------------------------------
 
-test("WorkerRegistryService listEligibleWorkers filters by required isolation level", () => {
+test("WorkerRegistryService listEligibleWorkers filters by required isolation level [worker-registry-service]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
   service.recordHeartbeat(createHeartbeat({ workerId: "worker-1", isolationLevel: "standard" }));
@@ -881,7 +881,7 @@ test("WorkerRegistryService listEligibleWorkers filters by required isolation le
   assert.equal(eligible[0]!.workerId, "worker-2");
 });
 
-test("WorkerRegistryService listEligibleWorkers hardened workers meet standard requirement", () => {
+test("WorkerRegistryService listEligibleWorkers hardened workers meet standard requirement [worker-registry-service]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
   service.recordHeartbeat(createHeartbeat({ workerId: "worker-1", isolationLevel: "hardened" }));
@@ -891,7 +891,7 @@ test("WorkerRegistryService listEligibleWorkers hardened workers meet standard r
   assert.equal(eligible.length, 1);
 });
 
-test("WorkerRegistryService listEligibleWorkers strict isolation satisfies hardened requirement", () => {
+test("WorkerRegistryService listEligibleWorkers strict isolation satisfies hardened requirement [worker-registry-service]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
   service.recordHeartbeat(createHeartbeat({ workerId: "worker-1", isolationLevel: "strict" }));
@@ -901,7 +901,7 @@ test("WorkerRegistryService listEligibleWorkers strict isolation satisfies harde
   assert.equal(eligible.length, 1);
 });
 
-test("WorkerRegistryService listEligibleWorkers standard isolation does not satisfy hardened requirement", () => {
+test("WorkerRegistryService listEligibleWorkers standard isolation does not satisfy hardened requirement [worker-registry-service]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
   service.recordHeartbeat(createHeartbeat({ workerId: "worker-1", isolationLevel: "standard" }));
@@ -915,7 +915,7 @@ test("WorkerRegistryService listEligibleWorkers standard isolation does not sati
 // listEligibleWorkers - remote worker trust filtering
 // ---------------------------------------------------------------------------
 
-test("WorkerRegistryService listEligibleWorkers excludes untrusted remote workers", () => {
+test("WorkerRegistryService listEligibleWorkers excludes untrusted remote workers [worker-registry-service]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
   service.recordHeartbeat(createHeartbeat({ workerId: "worker-1", placement: "remote" }));
@@ -925,7 +925,7 @@ test("WorkerRegistryService listEligibleWorkers excludes untrusted remote worker
   assert.equal(eligible.length, 0);
 });
 
-test("WorkerRegistryService listEligibleWorkers includes trusted remote workers", () => {
+test("WorkerRegistryService listEligibleWorkers includes trusted remote workers [worker-registry-service]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
   service.recordHeartbeat(createHeartbeat({
@@ -943,7 +943,7 @@ test("WorkerRegistryService listEligibleWorkers includes trusted remote workers"
 // listStaleWorkers
 // ---------------------------------------------------------------------------
 
-test("WorkerRegistryService listStaleWorkers returns stale workers", () => {
+test("WorkerRegistryService listStaleWorkers returns stale workers [worker-registry-service]", () => {
   const existingRecord: WorkerSnapshotRecord = {
     workerId: "worker-1",
     status: "idle",
@@ -994,7 +994,7 @@ test("WorkerRegistryService listStaleWorkers returns stale workers", () => {
   assert.equal(stale[0]!.workerId, "worker-1");
 });
 
-test("WorkerRegistryService listStaleWorkers returns empty when no stale workers", () => {
+test("WorkerRegistryService listStaleWorkers returns empty when no stale workers [worker-registry-service]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -1007,7 +1007,7 @@ test("WorkerRegistryService listStaleWorkers returns empty when no stale workers
 // verifyRemoteWorkerRegistration
 // ---------------------------------------------------------------------------
 
-test("WorkerRegistryService verifyRemoteWorkerRegistration creates worker with registration", () => {
+test("WorkerRegistryService verifyRemoteWorkerRegistration creates worker with registration [worker-registry-service]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -1025,7 +1025,7 @@ test("WorkerRegistryService verifyRemoteWorkerRegistration creates worker with r
   assert.equal(view.registrationChallengeId, "challenge-123");
 });
 
-test("WorkerRegistryService verifyRemoteWorkerRegistration updates existing worker", () => {
+test("WorkerRegistryService verifyRemoteWorkerRegistration updates existing worker [worker-registry-service]", () => {
   const existingRecord: WorkerSnapshotRecord = {
     workerId: "worker-remote",
     status: "idle",

@@ -357,6 +357,90 @@ function readRuntimeStateSnapshot(run: HarnessRun): Partial<HarnessRunRuntimeSta
   return run as Partial<HarnessRunRuntimeState>;
 }
 
+function patchFacadeRun(
+  run: HarnessRun,
+  patch: Partial<HarnessRunRuntimeState> & { readonly status: HarnessRun["status"] },
+): HarnessRun {
+  return {
+    ...run,
+    ...patch,
+  } as HarnessRun;
+}
+
+function buildNodeAttemptReceiptInput(
+  input: HarnessSdkAppendStepInput,
+  updatedRun: HarnessRun,
+  options: HarnessSdkReceiptOptions,
+): Parameters<typeof createNodeAttemptReceipt>[0] {
+  const receiptInput: Parameters<typeof createNodeAttemptReceipt>[0] = {
+    nodeAttemptId: input.nodeAttemptId ?? newId("nattempt"),
+    nodeRunId: input.nodeRunId,
+    harnessRunId: updatedRun.harnessRunId,
+    planGraphId: input.planGraphId,
+    graphVersion: input.graphVersion ?? 1,
+    receiptKind: input.receiptKind ?? "tool",
+    status: options.status ?? "succeeded",
+    duration: options.duration ?? 0,
+    errorDetail: options.error?.message ?? "",
+  };
+  if (options.outputRef != null && options.error != null) {
+    return {
+      ...receiptInput,
+      outputRef: options.outputRef,
+      error: options.error as NonNullable<NodeAttemptReceipt["error"]>,
+    };
+  }
+  if (options.outputRef != null) {
+    return {
+      ...receiptInput,
+      outputRef: options.outputRef,
+    };
+  }
+  if (options.error != null) {
+    return {
+      ...receiptInput,
+      error: options.error as NonNullable<NodeAttemptReceipt["error"]>,
+    };
+  }
+  return receiptInput;
+}
+
+function buildCompatSleepLease(
+  run: HarnessRun,
+  reason: string,
+  resumeAt: string,
+): NonNullable<HarnessRunRuntimeState["sleepLease"]> {
+  const runtimeSnapshot = readRuntimeStateSnapshot(run);
+  return {
+    leaseId: newId("sleep_lease"),
+    runId: String(runtimeSnapshot.runId ?? run.harnessRunId),
+    reason,
+    resumeAt,
+    createdAt: nowIso(),
+    retryAttempt: 0,
+  };
+}
+
+function buildCompatHitlRequest(
+  run: HarnessRun,
+  reason: string,
+  evidenceRefs: readonly string[],
+): NonNullable<HarnessRunRuntimeState["hitlRequest"]> {
+  const runtimeSnapshot = readRuntimeStateSnapshot(run);
+  return {
+    requestId: newId("hitl_request"),
+    runId: String(runtimeSnapshot.runId ?? run.harnessRunId),
+    domainId: run.domainId,
+    mode: "escalate",
+    reason,
+    evidenceRefs: [...evidenceRefs],
+    requestedAt: nowIso(),
+    status: "pending",
+    resolvedAt: null,
+    resolvedBy: null,
+  };
+}
+
 function toHarnessRunFacade(state: HarnessRunRuntimeState): HarnessRun {
   return {
     ...state,
@@ -498,21 +582,7 @@ export class HarnessSdk {
       } as HarnessRun;
     }
 
-    // R8-21 FIX: Always produce NodeAttemptReceipt for tracking
-    // @ts-expect-error - exactOptionalPropertyTypes mismatch on optional fields
-    const receipt = createNodeAttemptReceipt({
-      nodeAttemptId: input.nodeAttemptId ?? newId("nattempt"),
-      nodeRunId: input.nodeRunId,
-      harnessRunId: updatedRun.harnessRunId,
-      planGraphId: input.planGraphId,
-      graphVersion: input.graphVersion ?? 1,
-      receiptKind: input.receiptKind ?? "tool",
-      status: options.status ?? "succeeded",
-      duration: options.duration ?? 0,
-      ...(options.outputRef != null ? { outputRef: options.outputRef } : {}),
-      ...(options.error != null ? { error: options.error as NodeAttemptReceipt["error"] } : {}),
-      errorDetail: options.error?.message ?? "",
-    });
+    const receipt = createNodeAttemptReceipt(buildNodeAttemptReceiptInput(input, updatedRun, options));
     return { run: updatedRun, receipt };
   }
 
@@ -587,13 +657,11 @@ export class HarnessSdk {
     if (typeof runOrId !== "string") {
       const mutableRun = this.resolveMutableRun(runOrId);
       if (mutableRun == null) {
-        // @ts-expect-error - Partial<HarnessRun> doesn't have all required properties
-        return {
-          ...runOrId,
-          status: "sleeping",
-          pauseReason: reason,
-          sleepLease: { reason, resumeAt },
-        } as HarnessRun;
+        return patchFacadeRun(runOrId, {
+          status: "paused",
+          pauseReason: "sleep",
+          sleepLease: buildCompatSleepLease(runOrId, reason, resumeAt),
+        });
       }
     }
     const sleeping = this.runtime.sleep(this.requireRun(runOrId), reason, resumeAt);
@@ -607,13 +675,11 @@ export class HarnessSdk {
     if (typeof runOrId !== "string") {
       const mutableRun = this.resolveMutableRun(runOrId);
       if (mutableRun == null) {
-        // @ts-expect-error - Partial<HarnessRun> doesn't have all required properties
-        return {
-          ...runOrId,
-          status: "active",
+        return patchFacadeRun(runOrId, {
+          status: "running",
           pauseReason: null,
           sleepLease: null,
-        } as HarnessRun;
+        });
       }
     }
     const resumed = this.runtime.resume(this.requireRun(runOrId));
@@ -631,12 +697,11 @@ export class HarnessSdk {
     if (typeof runOrId !== "string") {
       const mutableRun = this.resolveMutableRun(runOrId);
       if (mutableRun == null) {
-        // @ts-expect-error - Partial<HarnessRun> doesn't have all required properties
-        return {
-          ...runOrId,
-          status: "awaiting_hitl",
-          hitlRequest: { reason, evidenceRefs: [...evidenceRefs] },
-        } as HarnessRun;
+        return patchFacadeRun(runOrId, {
+          status: "paused",
+          pauseReason: "hitl",
+          hitlRequest: buildCompatHitlRequest(runOrId, reason, evidenceRefs),
+        });
       }
     }
     const reviewRequested = this.runtime.openHitlReview(this.requireRun(runOrId), reason, evidenceRefs);
@@ -654,15 +719,21 @@ export class HarnessSdk {
     if (typeof runOrId !== "string") {
       const mutableRun = this.resolveMutableRun(runOrId);
       if (mutableRun == null) {
-        // @ts-expect-error - Partial<HarnessRun> doesn't have all required properties
-        return {
-          ...runOrId,
-          status: "active",
+        const compatRequest = buildCompatHitlRequest(
+          runOrId,
+          "hitl_review_resolved",
+          [],
+        );
+        return patchFacadeRun(runOrId, {
+          status: resolution === "rejected" ? "cancelled" : "running",
+          pauseReason: resolution === "approved" ? null : "hitl",
           hitlRequest: {
-            resolution,
-            actorId,
+            ...compatRequest,
+            status: resolution === "approved" ? "approved" : "rejected",
+            resolvedAt: nowIso(),
+            resolvedBy: actorId,
           },
-        } as HarnessRun;
+        });
       }
     }
     const resolved = this.runtime.resolveHitlReview(this.requireRun(runOrId), resolution, actorId);
@@ -670,10 +741,9 @@ export class HarnessSdk {
       this.runtime.persistRun(resolved);
     }
     const publicRun = toHarnessRunFacade(resolved);
-    return {
-      ...publicRun,
+    return patchFacadeRun(publicRun, {
       status: resolution === "rejected" ? "cancelled" : publicRun.status,
-    } as HarnessRun;
+    });
   }
 
   public getTimeline(runOrId: HarnessRun | string): readonly HarnessTimelineEvent[] {

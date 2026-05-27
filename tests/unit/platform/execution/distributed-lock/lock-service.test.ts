@@ -28,7 +28,7 @@ function createTestDb(): DatabaseSync {
 // Lock acquisition
 // ---------------------------------------------------------------------------
 
-test("SqliteLockAdapter: acquire locks a previously unlocked key", () => {
+test("SqliteLockAdapter: acquire locks a previously unlocked key [lock-service]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -43,7 +43,7 @@ test("SqliteLockAdapter: acquire locks a previously unlocked key", () => {
   db.close();
 });
 
-test("SqliteLockAdapter: acquire returns fencing token that increments", () => {
+test("SqliteLockAdapter: acquire returns fencing token that increments [lock-service]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -55,7 +55,7 @@ test("SqliteLockAdapter: acquire returns fencing token that increments", () => {
   db.close();
 });
 
-test("SqliteLockAdapter: acquire sets status to 'held'", () => {
+test("SqliteLockAdapter: acquire sets status to 'held' [lock-service]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -66,7 +66,7 @@ test("SqliteLockAdapter: acquire sets status to 'held'", () => {
   db.close();
 });
 
-test("SqliteLockAdapter: acquire stores correct ttlMs", () => {
+test("SqliteLockAdapter: acquire stores correct ttlMs [lock-service]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -77,7 +77,7 @@ test("SqliteLockAdapter: acquire stores correct ttlMs", () => {
   db.close();
 });
 
-test("SqliteLockAdapter: acquire uses default ttlMs of 30000 when not provided", () => {
+test("SqliteLockAdapter: acquire uses default ttlMs of 30000 when not provided [lock-service]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -88,7 +88,7 @@ test("SqliteLockAdapter: acquire uses default ttlMs of 30000 when not provided",
   db.close();
 });
 
-test("SqliteLockAdapter: acquire sets acquiredAt timestamp", () => {
+test("SqliteLockAdapter: acquire sets acquiredAt timestamp [lock-service]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -106,7 +106,7 @@ test("SqliteLockAdapter: acquire sets acquiredAt timestamp", () => {
 // Lock release
 // ---------------------------------------------------------------------------
 
-test("SqliteLockAdapter: release returns true when lock is released", () => {
+test("SqliteLockAdapter: release returns true when lock is released [lock-service]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -118,7 +118,7 @@ test("SqliteLockAdapter: release returns true when lock is released", () => {
   db.close();
 });
 
-test("SqliteLockAdapter: release returns false when lock does not exist", () => {
+test("SqliteLockAdapter: release returns false when lock does not exist [lock-service]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -129,7 +129,7 @@ test("SqliteLockAdapter: release returns false when lock does not exist", () => 
   db.close();
 });
 
-test("SqliteLockAdapter: release returns false when owner does not match", () => {
+test("SqliteLockAdapter: release returns false when owner does not match [lock-service]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -141,7 +141,7 @@ test("SqliteLockAdapter: release returns false when owner does not match", () =>
   db.close();
 });
 
-test("SqliteLockAdapter: after release, another owner can acquire lock", () => {
+test("SqliteLockAdapter: after release, another owner can acquire lock [lock-service]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -156,7 +156,7 @@ test("SqliteLockAdapter: after release, another owner can acquire lock", () => {
   db.close();
 });
 
-test("SqliteLockAdapter: release only deletes the matching lock key and owner", () => {
+test("SqliteLockAdapter: release only deletes the matching lock key and owner [lock-service]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -178,7 +178,7 @@ test("SqliteLockAdapter: release only deletes the matching lock key and owner", 
 // Same-owner re-acquisition (lock renewal)
 // ---------------------------------------------------------------------------
 
-test("SqliteLockAdapter: same owner re-acquiring extends the lock", () => {
+test("SqliteLockAdapter: same owner re-acquiring extends the lock [lock-service]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -191,7 +191,7 @@ test("SqliteLockAdapter: same owner re-acquiring extends the lock", () => {
   db.close();
 });
 
-test("SqliteLockAdapter: same owner re-acquisition refreshes fencing token", () => {
+test("SqliteLockAdapter: same owner re-acquisition refreshes fencing token [lock-service]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -207,7 +207,7 @@ test("SqliteLockAdapter: same owner re-acquisition refreshes fencing token", () 
 // Contention - different owner cannot acquire held lock
 // ---------------------------------------------------------------------------
 
-test("SqliteLockAdapter: different owner cannot acquire held lock", () => {
+test("SqliteLockAdapter: different owner cannot acquire held lock [lock-service]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -220,7 +220,7 @@ test("SqliteLockAdapter: different owner cannot acquire held lock", () => {
   db.close();
 });
 
-test("SqliteLockAdapter: inspect returns null for non-existent lock", () => {
+test("SqliteLockAdapter: inspect returns null for non-existent lock [lock-service]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -231,7 +231,7 @@ test("SqliteLockAdapter: inspect returns null for non-existent lock", () => {
   db.close();
 });
 
-test("SqliteLockAdapter: inspect returns lock details for held lock", () => {
+test("SqliteLockAdapter: inspect returns lock details for held lock [lock-service]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -250,7 +250,7 @@ test("SqliteLockAdapter: inspect returns lock details for held lock", () => {
 // Deadlock prevention - stale lock eviction
 // ---------------------------------------------------------------------------
 
-test("SqliteLockAdapter: expired lock can be acquired by new owner", () => {
+test("SqliteLockAdapter: expired lock can be acquired by new owner [lock-service]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -270,7 +270,7 @@ test("SqliteLockAdapter: expired lock can be acquired by new owner", () => {
   db.close();
 });
 
-test("SqliteLockAdapter: non-expired lock blocks new acquisition", () => {
+test("SqliteLockAdapter: non-expired lock blocks new acquisition [lock-service]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -288,7 +288,7 @@ test("SqliteLockAdapter: non-expired lock blocks new acquisition", () => {
   db.close();
 });
 
-test("SqliteLockAdapter: zero ttl means lock never expires", () => {
+test("SqliteLockAdapter: zero ttl means lock never expires [lock-service]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -307,7 +307,7 @@ test("SqliteLockAdapter: zero ttl means lock never expires", () => {
   db.close();
 });
 
-test("SqliteLockAdapter: forceSteal allows takeover regardless of expiry", () => {
+test("SqliteLockAdapter: forceSteal allows takeover regardless of expiry [lock-service]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -321,7 +321,7 @@ test("SqliteLockAdapter: forceSteal allows takeover regardless of expiry", () =>
   db.close();
 });
 
-test("SqliteLockAdapter: forceSteal stores reason in metadata", () => {
+test("SqliteLockAdapter: forceSteal stores reason in metadata [lock-service]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -336,7 +336,7 @@ test("SqliteLockAdapter: forceSteal stores reason in metadata", () => {
   db.close();
 });
 
-test("SqliteLockAdapter: forceSteal increments fencing token", () => {
+test("SqliteLockAdapter: forceSteal increments fencing token [lock-service]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -352,7 +352,7 @@ test("SqliteLockAdapter: forceSteal increments fencing token", () => {
 // Lock timeout / TTL
 // ---------------------------------------------------------------------------
 
-test("SqliteLockAdapter: extend returns null for non-existent lock", () => {
+test("SqliteLockAdapter: extend returns null for non-existent lock [lock-service]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -363,7 +363,7 @@ test("SqliteLockAdapter: extend returns null for non-existent lock", () => {
   db.close();
 });
 
-test("SqliteLockAdapter: extend updates ttl and increments fencing token", () => {
+test("SqliteLockAdapter: extend updates ttl and increments fencing token [lock-service]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -378,7 +378,7 @@ test("SqliteLockAdapter: extend updates ttl and increments fencing token", () =>
   db.close();
 });
 
-test("SqliteLockAdapter: extend returns null when owner does not match", () => {
+test("SqliteLockAdapter: extend returns null when owner does not match [lock-service]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -390,7 +390,7 @@ test("SqliteLockAdapter: extend returns null when owner does not match", () => {
   db.close();
 });
 
-test("SqliteLockAdapter: backendKind is sqlite", () => {
+test("SqliteLockAdapter: backendKind is sqlite [lock-service]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -399,7 +399,7 @@ test("SqliteLockAdapter: backendKind is sqlite", () => {
   db.close();
 });
 
-test("SqliteLockAdapter: concurrent acquire of same key by different owner fails for second", () => {
+test("SqliteLockAdapter: concurrent acquire of same key by different owner fails for second [lock-service]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -413,7 +413,7 @@ test("SqliteLockAdapter: concurrent acquire of same key by different owner fails
   db.close();
 });
 
-test("SqliteLockAdapter: multiple distinct keys can be held by different owners simultaneously", () => {
+test("SqliteLockAdapter: multiple distinct keys can be held by different owners simultaneously [lock-service]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 

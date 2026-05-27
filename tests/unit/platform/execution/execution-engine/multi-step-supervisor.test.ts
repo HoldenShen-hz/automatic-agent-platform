@@ -332,7 +332,7 @@ function createMockPlannedWorkflow(): PlannedWorkflow {
 // executeStepLoop tests
 // =============================================================================
 
-test("executeStepLoop returns empty result with no steps", async () => {
+test("executeStepLoop returns empty result with no steps [multi-step-supervisor]", async () => {
   const ctx = createMockStepSupervisorContext({
     plannedWorkflow: {
       workflow: { workflowId: "wf-1", divisionId: "div-1", steps: [] },
@@ -350,7 +350,7 @@ test("executeStepLoop returns empty result with no steps", async () => {
   assert.equal(result.outputs, ctx.outputs, "outputs should be preserved");
 });
 
-test("executeStepLoop skips step when hard dependency failed", async () => {
+test("executeStepLoop skips step when hard dependency failed [multi-step-supervisor]", async () => {
   const ctx = createMockStepSupervisorContext({
     failedStepIds: new Set(["step_1"]),
     plannedWorkflow: {
@@ -393,7 +393,7 @@ test("executeStepLoop skips step when hard dependency failed", async () => {
   assert.equal(result.stepOutputs.some(o => o.stepId === "step_2" && o.status === "skipped"), true, "step_2 output should be skipped");
 });
 
-test("executeStepLoop pauses before execution when a debugger pause breakpoint matches the next step", async () => {
+test("executeStepLoop pauses before execution when a debugger pause breakpoint matches the next step [multi-step-supervisor]", async () => {
   const debuggerService = new WorkflowDebuggerService();
   debuggerService.registerBreakpoint(
     { actorId: "debugger-1", allowedRuntime: "replay_sandbox" },
@@ -432,7 +432,7 @@ test("executeStepLoop pauses before execution when a debugger pause breakpoint m
   assert.equal(events.some((event) => event.eventType === "workflow:paused_for_breakpoint"), true);
 });
 
-test("executeStepLoop skips step when hard dependency was skipped", async () => {
+test("executeStepLoop skips step when hard dependency was skipped [multi-step-supervisor]", async () => {
   const ctx = createMockStepSupervisorContext({
     skippedStepIds: new Set(["step_1"]),
     plannedWorkflow: {
@@ -475,7 +475,7 @@ test("executeStepLoop skips step when hard dependency was skipped", async () => 
   assert.equal(result.stepOutputs.some(o => o.stepId === "step_2" && o.status === "skipped"), true, "step_2 output should be skipped");
 });
 
-test("executeStepLoop proceeds when soft dependency was skipped", async () => {
+test("executeStepLoop proceeds when soft dependency was skipped [multi-step-supervisor]", async () => {
   const ctx = createMockStepSupervisorContext({
     skippedStepIds: new Set(["step_1"]),
     plannedWorkflow: {
@@ -507,7 +507,7 @@ test("executeStepLoop proceeds when soft dependency was skipped", async () => {
   assert.equal(result.workflowLastErrorCode, "internal.unexpected_error");
 });
 
-test("executeStepLoop increments executionAttemptCounter", async () => {
+test("executeStepLoop increments executionAttemptCounter [multi-step-supervisor]", async () => {
   const ctx = createMockStepSupervisorContext({
     executionAttemptCounter: 5,
     plannedWorkflow: {
@@ -538,7 +538,7 @@ test("executeStepLoop increments executionAttemptCounter", async () => {
   assert.equal(result.workflowRetryCount >= 0, true, "should have valid retry count");
 });
 
-test("executeStepLoop preserves existing outputs", async () => {
+test("executeStepLoop preserves existing outputs [multi-step-supervisor]", async () => {
   const ctx = createMockStepSupervisorContext({
     outputs: { existing_key: "existing_value" },
     plannedWorkflow: {
@@ -555,7 +555,7 @@ test("executeStepLoop preserves existing outputs", async () => {
   assert.equal(result.outputs, ctx.outputs, "outputs should be preserved");
 });
 
-test("executeStepLoop preserves skippedStepIds from context", async () => {
+test("executeStepLoop preserves skippedStepIds from context [multi-step-supervisor]", async () => {
   const ctx = createMockStepSupervisorContext({
     skippedStepIds: new Set(["already_skipped"]),
     plannedWorkflow: {
@@ -572,7 +572,7 @@ test("executeStepLoop preserves skippedStepIds from context", async () => {
   assert.equal(result.skippedStepIds.has("already_skipped"), true, "pre-existing skipped should be preserved");
 });
 
-test("executeStepLoop preserves failedStepIds from context", async () => {
+test("executeStepLoop preserves failedStepIds from context [multi-step-supervisor]", async () => {
   const ctx = createMockStepSupervisorContext({
     failedStepIds: new Set(["already_failed"]),
     plannedWorkflow: {
@@ -589,7 +589,7 @@ test("executeStepLoop preserves failedStepIds from context", async () => {
   assert.equal(result.failedStepIds.has("already_failed"), true, "pre-existing failed should be preserved");
 });
 
-test("executeStepLoop returns latestCompaction from context", async () => {
+test("executeStepLoop returns latestCompaction from context [multi-step-supervisor]", async () => {
   const mockCompaction: ContextCompactionResult = {
     stage1Triggered: true,
     stage2Triggered: false,
@@ -618,7 +618,7 @@ test("executeStepLoop returns latestCompaction from context", async () => {
   assert.equal(result.latestCompaction, mockCompaction, "latestCompaction should be preserved");
 });
 
-test("executeStepLoop with soft dependency type does not skip when dependency succeeded", async () => {
+test("executeStepLoop with soft dependency type does not skip when dependency succeeded [multi-step-supervisor]", async () => {
   // This test requires actual step execution which needs real tooling setup
   const ctx = createMockStepSupervisorContext({
     stepOutputs: [
@@ -665,7 +665,7 @@ test("executeStepLoop with soft dependency type does not skip when dependency su
   assert.equal(result.stepOutputs.some(o => o.stepId === "step_2"), true, "step_2 should have output");
 });
 
-test("executeStepLoop does not blockForDecision when no steps blocked", async () => {
+test("executeStepLoop does not blockForDecision when no steps blocked [multi-step-supervisor]", async () => {
   const ctx = createMockStepSupervisorContext({
     plannedWorkflow: {
       workflow: { workflowId: "wf-1", divisionId: "div-1", steps: [] },
@@ -681,7 +681,7 @@ test("executeStepLoop does not blockForDecision when no steps blocked", async ()
   assert.equal(result.blockedForDecision, false, "blockedForDecision should be false");
 });
 
-test("executeStepLoop sets blockedForDecision when step escalates", async () => {
+test("executeStepLoop sets blockedForDecision when step escalates [multi-step-supervisor]", async () => {
   // This test requires actual step execution which needs real tooling setup
   const ctx = createMockStepSupervisorContext({
     input: createMockInput({
@@ -717,7 +717,7 @@ test("executeStepLoop sets blockedForDecision when step escalates", async () => 
   assert.equal(result.blockedForDecision === true || result.workflowLastErrorCode !== null, true, "should either block or have error");
 });
 
-test("executeStepLoop increments workflowRetryCount on retry", async () => {
+test("executeStepLoop increments workflowRetryCount on retry [multi-step-supervisor]", async () => {
   // This test requires actual step execution which needs real tooling setup
   const ctx = createMockStepSupervisorContext({
     input: createMockInput({
@@ -756,7 +756,7 @@ test("executeStepLoop increments workflowRetryCount on retry", async () => {
   assert.equal(result.workflowRetryCount >= 0, true, "workflowRetryCount should be tracked");
 });
 
-test("executeStepLoop workflowLastErrorCode set on failure", async () => {
+test("executeStepLoop workflowLastErrorCode set on failure [multi-step-supervisor]", async () => {
   // This test requires actual step execution which needs real tooling setup
   const ctx = createMockStepSupervisorContext({
     input: createMockInput({
@@ -793,7 +793,7 @@ test("executeStepLoop workflowLastErrorCode set on failure", async () => {
   }
 });
 
-test("executeStepLoop returns stepOutputs array", async () => {
+test("executeStepLoop returns stepOutputs array [multi-step-supervisor]", async () => {
   const ctx = createMockStepSupervisorContext({
     stepOutputs: [
       {
@@ -826,7 +826,7 @@ test("executeStepLoop returns stepOutputs array", async () => {
   assert.equal(result.stepOutputs.length, 1, "should preserve prior step outputs");
 });
 
-test("executeStepLoop handles empty dependsOnStepIds", async () => {
+test("executeStepLoop handles empty dependsOnStepIds [multi-step-supervisor]", async () => {
   // This test requires actual step execution which needs real tooling setup
   const ctx = createMockStepSupervisorContext({
     plannedWorkflow: {
@@ -856,7 +856,7 @@ test("executeStepLoop handles empty dependsOnStepIds", async () => {
   assert.equal(result.stepCompleted === true || result.failedStepIds.size >= 0, true, "should handle step with no dependencies");
 });
 
-test("executeStepLoop uses default maxAttempts of 1", async () => {
+test("executeStepLoop uses default maxAttempts of 1 [multi-step-supervisor]", async () => {
   // This test requires actual step execution which needs real tooling setup
   const ctx = createMockStepSupervisorContext({
     plannedWorkflow: {
@@ -886,7 +886,7 @@ test("executeStepLoop uses default maxAttempts of 1", async () => {
   assert.equal(result.stepCompleted === true || result.failedStepIds.size >= 0, true, "should handle default maxAttempts");
 });
 
-test("executeStepLoop stepOutputs include priorSummaries", async () => {
+test("executeStepLoop stepOutputs include priorSummaries [multi-step-supervisor]", async () => {
   // This test requires actual step execution which needs real tooling setup
   const priorStepOutput: StepOutputRecord = {
     id: newId("step"),

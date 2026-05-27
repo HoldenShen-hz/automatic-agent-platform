@@ -5,7 +5,7 @@ import { ToolExecutor } from "../../../../../src/platform/five-plane-execution/t
 import { createWorkspaceWritePolicy } from "../../../../../src/platform/five-plane-control-plane/iam/sandbox-policy.js";
 import { READ_TOOL_METADATA } from "../../../../../src/platform/five-plane-execution/tool-executor/tool-metadata.js";
 
-test("ToolExecutor delegates command execution to the command executor", async () => {
+test("ToolExecutor delegates command execution to the command executor [tool-executor]", async () => {
   let observedCommand = "";
   const executor = new ToolExecutor({
     execute: async (request: { command: string; toolName: string }) => {
@@ -42,7 +42,7 @@ test("ToolExecutor delegates command execution to the command executor", async (
   assert.equal(result.success, true);
 });
 
-test("ToolExecutor executes concurrent-safe tool items in parallel groups", async () => {
+test("ToolExecutor executes concurrent-safe tool items in parallel groups [tool-executor]", async () => {
   const executor = new ToolExecutor({ execute: async () => { throw new Error("unused"); } } as never);
   const result = await executor.executeParallel([
     {

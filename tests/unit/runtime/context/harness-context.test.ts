@@ -8,14 +8,14 @@ import { newId, nowIso } from "../../../../src/platform/contracts/types/ids.js";
  * Re-exports from context-assembler.js
  */
 
-test("ContextAssembler can be instantiated", () => {
+test("ContextAssembler can be instantiated [harness-context]", () => {
   const assembler = new ContextAssembler();
   assert.ok(assembler != null, "assembler should be created");
   assert.strictEqual(typeof assembler.assemble, "function", "assemble method should exist");
   assert.strictEqual(typeof assembler.snapshot, "function", "snapshot method should exist");
 });
 
-test("ContextAssembler.assemble creates context with empty sources", () => {
+test("ContextAssembler.assemble creates context with empty sources [harness-context]", () => {
   const assembler = new ContextAssembler();
   const sources: HarnessContextSourceSet = {};
 
@@ -29,7 +29,7 @@ test("ContextAssembler.assemble creates context with empty sources", () => {
   assert.deepEqual(context.knowledge, {});
 });
 
-test("ContextAssembler.assemble creates context with populated sources", () => {
+test("ContextAssembler.assemble creates context with populated sources [harness-context]", () => {
   const assembler = new ContextAssembler();
   const sources: HarnessContextSourceSet = {
     conversation: { "conv:message_1": "hello" },
@@ -45,7 +45,7 @@ test("ContextAssembler.assemble creates context with populated sources", () => {
   assert.strictEqual(typeof context.metadata, "object");
 });
 
-test("ContextAssembler.assemble handles different token budgets", () => {
+test("ContextAssembler.assemble handles different token budgets [harness-context]", () => {
   const assembler = new ContextAssembler();
   const sources: HarnessContextSourceSet = { task: { "task:test": "value" } };
 
@@ -58,7 +58,7 @@ test("ContextAssembler.assemble handles different token budgets", () => {
   assert.strictEqual(context3.tokenBudget, 8192);
 });
 
-test("ContextAssembler.assemble generates unique contextIds", () => {
+test("ContextAssembler.assemble generates unique contextIds [harness-context]", () => {
   const assembler = new ContextAssembler();
   const sources: HarnessContextSourceSet = { task: { "task:test": "value" } };
 
@@ -71,7 +71,7 @@ test("ContextAssembler.assemble generates unique contextIds", () => {
   assert.notStrictEqual(context1.contextId, context3.contextId);
 });
 
-test("ContextAssembler.assemble creates metadata with scores", () => {
+test("ContextAssembler.assemble creates metadata with scores [harness-context]", () => {
   const assembler = new ContextAssembler();
   const sources: HarnessContextSourceSet = {
     task: { "task:test": "value", "task:foo": "bar" },
@@ -86,7 +86,7 @@ test("ContextAssembler.assemble creates metadata with scores", () => {
   assert.ok(typeof context.metadata!.trimmedTokens === "number");
 });
 
-test("ContextAssembler.snapshot creates snapshot from run state", () => {
+test("ContextAssembler.snapshot creates snapshot from run state [harness-context]", () => {
   const assembler = new ContextAssembler();
   const sources: HarnessContextSourceSet = {};
 
@@ -130,7 +130,7 @@ test("ContextAssembler.snapshot creates snapshot from run state", () => {
   assert.strictEqual(snapshot.capturedAt, context.assembledAt);
 });
 
-test("ContextAssembler.snapshot captures decision ID when available", () => {
+test("ContextAssembler.snapshot captures decision ID when available [harness-context]", () => {
   const assembler = new ContextAssembler();
   const sources: HarnessContextSourceSet = {};
 
@@ -175,7 +175,7 @@ test("ContextAssembler.snapshot captures decision ID when available", () => {
   assert.strictEqual(snapshot.lastDecisionId, "decision_abc");
 });
 
-test("ContextAssembler.snapshot handles null decision", () => {
+test("ContextAssembler.snapshot handles null decision [harness-context]", () => {
   const assembler = new ContextAssembler();
   const sources: HarnessContextSourceSet = {};
 
@@ -214,7 +214,7 @@ test("ContextAssembler.snapshot handles null decision", () => {
   assert.strictEqual(snapshot.lastDecisionId, null);
 });
 
-test("ContextAssembler.assemble preserves readonly properties in context", () => {
+test("ContextAssembler.assemble preserves readonly properties in context [harness-context]", () => {
   const assembler = new ContextAssembler();
   const sources: HarnessContextSourceSet = { task: { "task:test": "some value" } };
 

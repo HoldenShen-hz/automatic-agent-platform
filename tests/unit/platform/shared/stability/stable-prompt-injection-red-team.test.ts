@@ -7,7 +7,7 @@ import {
 } from "../../../../../src/platform/shared/stability/stable-prompt-injection-red-team.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 
-test("stable prompt injection red-team suite covers the expected adversarial and control cases", async () => {
+test("stable prompt injection red-team suite covers the expected adversarial and control cases [stable-prompt-injection-red-team]", async () => {
   const workspace = createTempWorkspace("aa-prompt-red-team-unit-");
 
   try {
@@ -37,7 +37,7 @@ test("stable prompt injection red-team suite covers the expected adversarial and
   }
 });
 
-test("stable prompt injection red-team produces complete scenario result structure for all cases", async () => {
+test("stable prompt injection red-team produces complete scenario result structure for all cases [stable-prompt-injection-red-team]", async () => {
   const workspace = createTempWorkspace("aa-prompt-red-team-structure-");
 
   try {
@@ -61,7 +61,7 @@ test("stable prompt injection red-team produces complete scenario result structu
   }
 });
 
-test("stable prompt injection red-team verifies risk classification matches expected for each scenario", async () => {
+test("stable prompt injection red-team verifies risk classification matches expected for each scenario [stable-prompt-injection-red-team]", async () => {
   const workspace = createTempWorkspace("aa-prompt-red-team-risk-");
 
   try {

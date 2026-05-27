@@ -71,7 +71,7 @@ function createTestDb(): AuthoritativeSqlDatabase {
   };
 }
 
-test("CostEstimationService returns default estimate when no historical data exists", () => {
+test("CostEstimationService returns default estimate when no historical data exists [cost-estimation-service]", () => {
   const db = createTestDb();
   const service = new CostEstimationService(db);
 
@@ -84,7 +84,7 @@ test("CostEstimationService returns default estimate when no historical data exi
   assert.ok(result.estimatedCostUsd > 0, "Should return default cost");
 });
 
-test("CostEstimationService uses global average when no division data exists", () => {
+test("CostEstimationService uses global average when no division data exists [cost-estimation-service]", () => {
   const db = createTestDb();
 
   // Insert tasks with done status
@@ -116,7 +116,7 @@ test("CostEstimationService uses global average when no division data exists", (
 
 });
 
-test("CostEstimationService uses division average when division has sufficient data", () => {
+test("CostEstimationService uses division average when division has sufficient data [cost-estimation-service]", () => {
   const db = createTestDb();
 
   // Insert tasks with done status for division_a
@@ -160,7 +160,7 @@ test("CostEstimationService uses division average when division has sufficient d
 
 });
 
-test("CostEstimationService falls back to global when division has no data", () => {
+test("CostEstimationService falls back to global when division has no data [cost-estimation-service]", () => {
   const db = createTestDb();
 
   // Insert tasks for different division only
@@ -183,7 +183,7 @@ test("CostEstimationService falls back to global when division has no data", () 
 
 });
 
-test("CostEstimationService confidence is high with 20+ samples", () => {
+test("CostEstimationService confidence is high with 20+ samples [cost-estimation-service]", () => {
   const db = createTestDb();
 
   // Insert 25 tasks
@@ -205,7 +205,7 @@ test("CostEstimationService confidence is high with 20+ samples", () => {
 
 });
 
-test("CostEstimationService confidence is medium with 5-19 samples", () => {
+test("CostEstimationService confidence is medium with 5-19 samples [cost-estimation-service]", () => {
   const db = createTestDb();
 
   // Insert 10 tasks
@@ -227,7 +227,7 @@ test("CostEstimationService confidence is medium with 5-19 samples", () => {
 
 });
 
-test("CostEstimationService confidence is low with 1-4 samples", () => {
+test("CostEstimationService confidence is low with 1-4 samples [cost-estimation-service]", () => {
   const db = createTestDb();
 
   // Insert 3 tasks
@@ -249,7 +249,7 @@ test("CostEstimationService confidence is low with 1-4 samples", () => {
 
 });
 
-test("CostEstimationService respects custom config thresholds", () => {
+test("CostEstimationService respects custom config thresholds [cost-estimation-service]", () => {
   const db = createTestDb();
 
   // Insert 15 tasks (would be medium confidence with default config)
@@ -271,7 +271,7 @@ test("CostEstimationService respects custom config thresholds", () => {
 
 });
 
-test("CostEstimationService ignores zero-cost events", () => {
+test("CostEstimationService ignores zero-cost events [cost-estimation-service]", () => {
   const db = createTestDb();
 
   // Insert tasks
@@ -301,7 +301,7 @@ test("CostEstimationService ignores zero-cost events", () => {
 
 });
 
-test("CostEstimationService only includes done/failed tasks", () => {
+test("CostEstimationService only includes done/failed tasks [cost-estimation-service]", () => {
   const db = createTestDb();
 
   // Insert tasks with different statuses

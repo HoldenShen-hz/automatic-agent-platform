@@ -27,7 +27,7 @@ function createServiceHarness(prefix: string) {
   };
 }
 
-test("enterprise capability matrix reports available enterprise capabilities when readiness is complete", () => {
+test("enterprise capability matrix reports available enterprise capabilities when readiness is complete [enterprise-capability-matrix-service]", () => {
   const harness = createServiceHarness("aa-enterprise-unit-");
   try {
     harness.store.upsertBillingAccount({
@@ -86,7 +86,7 @@ test("enterprise capability matrix reports available enterprise capabilities whe
   }
 });
 
-test("enterprise capability matrix blocks enterprise-only capabilities for professional plans", () => {
+test("enterprise capability matrix blocks enterprise-only capabilities for professional plans [enterprise-capability-matrix-service]", () => {
   const harness = createServiceHarness("aa-enterprise-unit-");
   try {
     harness.store.upsertBillingAccount({
@@ -124,7 +124,7 @@ test("enterprise capability matrix blocks enterprise-only capabilities for profe
   }
 });
 
-test("enterprise readiness registration validates identifiers", () => {
+test("enterprise readiness registration validates identifiers [enterprise-capability-matrix-service]", () => {
   const harness = createServiceHarness("aa-enterprise-unit-");
   try {
     assert.throws(

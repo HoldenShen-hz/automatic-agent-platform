@@ -14,38 +14,38 @@ import type { ExecutionCapabilityId } from "../../../../../src/platform/five-pla
 // Tests - buildExecutionPlaneBootstrap
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("execution-plane-bootstrap - buildExecutionPlaneBootstrap returns correct planeId", () => {
+test("execution-plane-bootstrap - buildExecutionPlaneBootstrap returns correct planeId [execution-plane-bootstrap]", () => {
   const bootstrap = buildExecutionPlaneBootstrap();
   assert.equal(bootstrap.planeId, "execution");
 });
 
-test("execution-plane-bootstrap - buildExecutionPlaneBootstrap returns catalog", () => {
+test("execution-plane-bootstrap - buildExecutionPlaneBootstrap returns catalog [execution-plane-bootstrap]", () => {
   const bootstrap = buildExecutionPlaneBootstrap();
   assert.ok(Array.isArray(bootstrap.catalog));
   assert.ok(bootstrap.catalog.length > 0);
 });
 
-test("execution-plane-bootstrap - buildExecutionPlaneBootstrap returns registeredServiceIds", () => {
+test("execution-plane-bootstrap - buildExecutionPlaneBootstrap returns registeredServiceIds [execution-plane-bootstrap]", () => {
   const bootstrap = buildExecutionPlaneBootstrap();
   assert.ok(Array.isArray(bootstrap.registeredServiceIds));
   assert.equal(bootstrap.registeredServiceIds.length, 2);
 });
 
-test("execution-plane-bootstrap - buildExecutionPlaneBootstrap catalog contains dispatcher capability", () => {
+test("execution-plane-bootstrap - buildExecutionPlaneBootstrap catalog contains dispatcher capability [execution-plane-bootstrap]", () => {
   const bootstrap = buildExecutionPlaneBootstrap();
   const dispatcher = bootstrap.catalog.find((item) => item.capabilityId === "dispatcher");
   assert.ok(dispatcher !== undefined);
   assert.equal(dispatcher?.capabilityId, "dispatcher");
 });
 
-test("execution-plane-bootstrap - buildExecutionPlaneBootstrap catalog contains tool-executor capability", () => {
+test("execution-plane-bootstrap - buildExecutionPlaneBootstrap catalog contains tool-executor capability [execution-plane-bootstrap]", () => {
   const bootstrap = buildExecutionPlaneBootstrap();
   const toolExecutor = bootstrap.catalog.find((item) => item.capabilityId === "tool-executor");
   assert.ok(toolExecutor !== undefined);
   assert.equal(toolExecutor?.capabilityId, "tool-executor");
 });
 
-test("execution-plane-bootstrap - buildExecutionPlaneBootstrap catalog contains startup capability", () => {
+test("execution-plane-bootstrap - buildExecutionPlaneBootstrap catalog contains startup capability [execution-plane-bootstrap]", () => {
   const bootstrap = buildExecutionPlaneBootstrap();
   const startup = bootstrap.catalog.find((item) => item.capabilityId === "startup");
   assert.ok(startup !== undefined);
@@ -53,7 +53,7 @@ test("execution-plane-bootstrap - buildExecutionPlaneBootstrap catalog contains 
   assert.ok(startup?.entryModule.includes("startup"));
 });
 
-test("execution-plane-bootstrap - buildExecutionPlaneBootstrap catalog contains all 14 capabilities", () => {
+test("execution-plane-bootstrap - buildExecutionPlaneBootstrap catalog contains all 14 capabilities [execution-plane-bootstrap]", () => {
   const bootstrap = buildExecutionPlaneBootstrap();
   const capabilityIds = bootstrap.catalog.map((item) => item.capabilityId);
 
@@ -66,14 +66,14 @@ test("execution-plane-bootstrap - buildExecutionPlaneBootstrap catalog contains 
   assert.equal(bootstrap.catalog.length, 14);
 });
 
-test("execution-plane-bootstrap - registeredServiceIds contains correct service IDs", () => {
+test("execution-plane-bootstrap - registeredServiceIds contains correct service IDs [execution-plane-bootstrap]", () => {
   const bootstrap = buildExecutionPlaneBootstrap();
 
   assert.ok(bootstrap.registeredServiceIds.includes(EXECUTION_PLANE_CATALOG_SERVICE_ID));
   assert.ok(bootstrap.registeredServiceIds.includes(EXECUTION_PLANE_BOOTSTRAP_SERVICE_ID));
 });
 
-test("execution-plane-bootstrap - catalog items have required fields", () => {
+test("execution-plane-bootstrap - catalog items have required fields [execution-plane-bootstrap]", () => {
   const bootstrap = buildExecutionPlaneBootstrap();
 
   for (const item of bootstrap.catalog) {
@@ -84,7 +84,7 @@ test("execution-plane-bootstrap - catalog items have required fields", () => {
   }
 });
 
-test("execution-plane-bootstrap - catalog baselineServices are non-empty", () => {
+test("execution-plane-bootstrap - catalog baselineServices are non-empty [execution-plane-bootstrap]", () => {
   const bootstrap = buildExecutionPlaneBootstrap();
 
   for (const item of bootstrap.catalog) {
@@ -96,11 +96,11 @@ test("execution-plane-bootstrap - catalog baselineServices are non-empty", () =>
 // Tests - Service IDs
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("execution-plane-bootstrap - EXECUTION_PLANE_CATALOG_SERVICE_ID is correct", () => {
+test("execution-plane-bootstrap - EXECUTION_PLANE_CATALOG_SERVICE_ID is correct [execution-plane-bootstrap]", () => {
   assert.equal(EXECUTION_PLANE_CATALOG_SERVICE_ID, "plane.execution.catalog");
 });
 
-test("execution-plane-bootstrap - EXECUTION_PLANE_BOOTSTRAP_SERVICE_ID is correct", () => {
+test("execution-plane-bootstrap - EXECUTION_PLANE_BOOTSTRAP_SERVICE_ID is correct [execution-plane-bootstrap]", () => {
   assert.equal(EXECUTION_PLANE_BOOTSTRAP_SERVICE_ID, "plane.execution.bootstrap");
 });
 
@@ -108,7 +108,7 @@ test("execution-plane-bootstrap - EXECUTION_PLANE_BOOTSTRAP_SERVICE_ID is correc
 // Tests - registerExecutionPlaneBootstrap
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("execution-plane-bootstrap - registerExecutionPlaneBootstrap registers catalog service", async () => {
+test("execution-plane-bootstrap - registerExecutionPlaneBootstrap registers catalog service [execution-plane-bootstrap]", async () => {
   const registry = ServiceRegistry.getInstance();
   try {
     registerExecutionPlaneBootstrap(registry);
@@ -118,7 +118,7 @@ test("execution-plane-bootstrap - registerExecutionPlaneBootstrap registers cata
   }
 });
 
-test("execution-plane-bootstrap - registerExecutionPlaneBootstrap registers bootstrap service", async () => {
+test("execution-plane-bootstrap - registerExecutionPlaneBootstrap registers bootstrap service [execution-plane-bootstrap]", async () => {
   const registry = ServiceRegistry.getInstance();
   try {
     registerExecutionPlaneBootstrap(registry);
@@ -128,7 +128,7 @@ test("execution-plane-bootstrap - registerExecutionPlaneBootstrap registers boot
   }
 });
 
-test("execution-plane-bootstrap - registerExecutionPlaneBootstrap returns ExecutionPlaneBootstrap", async () => {
+test("execution-plane-bootstrap - registerExecutionPlaneBootstrap returns ExecutionPlaneBootstrap [execution-plane-bootstrap]", async () => {
   const registry = ServiceRegistry.getInstance();
   try {
     const bootstrap = registerExecutionPlaneBootstrap(registry);
@@ -140,7 +140,7 @@ test("execution-plane-bootstrap - registerExecutionPlaneBootstrap returns Execut
   }
 });
 
-test("execution-plane-bootstrap - registerExecutionPlaneBootstrap uses default registry", async () => {
+test("execution-plane-bootstrap - registerExecutionPlaneBootstrap uses default registry [execution-plane-bootstrap]", async () => {
   const registry = ServiceRegistry.getInstance();
   try {
     const bootstrap = registerExecutionPlaneBootstrap();
@@ -150,7 +150,7 @@ test("execution-plane-bootstrap - registerExecutionPlaneBootstrap uses default r
   }
 });
 
-test("execution-plane-bootstrap - registered bootstrap has 14 catalog items", async () => {
+test("execution-plane-bootstrap - registered bootstrap has 14 catalog items [execution-plane-bootstrap]", async () => {
   const registry = ServiceRegistry.getInstance();
   try {
     const bootstrap = registerExecutionPlaneBootstrap(registry);
@@ -160,7 +160,7 @@ test("execution-plane-bootstrap - registered bootstrap has 14 catalog items", as
   }
 });
 
-test("execution-plane-bootstrap - bootstrap catalog includes dispatcher", async () => {
+test("execution-plane-bootstrap - bootstrap catalog includes dispatcher [execution-plane-bootstrap]", async () => {
   const registry = ServiceRegistry.getInstance();
   try {
     const bootstrap = registerExecutionPlaneBootstrap(registry);
@@ -170,7 +170,7 @@ test("execution-plane-bootstrap - bootstrap catalog includes dispatcher", async 
   }
 });
 
-test("execution-plane-bootstrap - bootstrap catalog includes execution-engine", async () => {
+test("execution-plane-bootstrap - bootstrap catalog includes execution-engine [execution-plane-bootstrap]", async () => {
   const registry = ServiceRegistry.getInstance();
   try {
     const bootstrap = registerExecutionPlaneBootstrap(registry);
@@ -180,7 +180,7 @@ test("execution-plane-bootstrap - bootstrap catalog includes execution-engine", 
   }
 });
 
-test("execution-plane-bootstrap - bootstrap catalog includes tool-executor", async () => {
+test("execution-plane-bootstrap - bootstrap catalog includes tool-executor [execution-plane-bootstrap]", async () => {
   const registry = ServiceRegistry.getInstance();
   try {
     const bootstrap = registerExecutionPlaneBootstrap(registry);
@@ -190,7 +190,7 @@ test("execution-plane-bootstrap - bootstrap catalog includes tool-executor", asy
   }
 });
 
-test("execution-plane-bootstrap - bootstrap catalog includes startup", async () => {
+test("execution-plane-bootstrap - bootstrap catalog includes startup [execution-plane-bootstrap]", async () => {
   const registry = ServiceRegistry.getInstance();
   try {
     const bootstrap = registerExecutionPlaneBootstrap(registry);
@@ -202,7 +202,7 @@ test("execution-plane-bootstrap - bootstrap catalog includes startup", async () 
   }
 });
 
-test("execution-plane-bootstrap - bootstrap catalog includes all major capabilities", async () => {
+test("execution-plane-bootstrap - bootstrap catalog includes all major capabilities [execution-plane-bootstrap]", async () => {
   const registry = ServiceRegistry.getInstance();
   try {
     const bootstrap = registerExecutionPlaneBootstrap(registry);
@@ -237,7 +237,7 @@ test("execution-plane-bootstrap - bootstrap catalog includes all major capabilit
 // Tests - Bootstrap idempotency and isolation
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("execution-plane-bootstrap - calling register twice does not throw", async () => {
+test("execution-plane-bootstrap - calling register twice does not throw [execution-plane-bootstrap]", async () => {
   const registry = ServiceRegistry.getInstance();
   try {
     registerExecutionPlaneBootstrap(registry);
@@ -247,7 +247,7 @@ test("execution-plane-bootstrap - calling register twice does not throw", async 
   }
 });
 
-test("execution-plane-bootstrap - bootstrap is immutable", async () => {
+test("execution-plane-bootstrap - bootstrap is immutable [execution-plane-bootstrap]", async () => {
   const registry = ServiceRegistry.getInstance();
   try {
     const bootstrap = registerExecutionPlaneBootstrap(registry);

@@ -10,7 +10,7 @@ import {
   type ValidationDecision,
 } from "../../../../../src/platform/five-plane-execution/recovery/validation-report.js";
 
-test("createValidationReport returns pass decision when all checks pass", () => {
+test("createValidationReport returns pass decision when all checks pass [validation-report]", () => {
   const checks: readonly CheckResult[] = [
     {
       checkId: "check_1",
@@ -49,7 +49,7 @@ test("createValidationReport returns pass decision when all checks pass", () => 
   assert.ok(report.createdAt);
 });
 
-test("createValidationReport returns fail decision when required check fails", () => {
+test("createValidationReport returns fail decision when required check fails [validation-report]", () => {
   const checks: readonly CheckResult[] = [
     {
       checkId: "check_1",
@@ -74,7 +74,7 @@ test("createValidationReport returns fail decision when required check fails", (
   assert.equal(report.decision, "fail");
 });
 
-test("createValidationReport returns fail decision when any check fails", () => {
+test("createValidationReport returns fail decision when any check fails [validation-report]", () => {
   const checks: readonly CheckResult[] = [
     {
       checkId: "check_1",
@@ -110,7 +110,7 @@ test("createValidationReport returns fail decision when any check fails", () => 
   assert.equal(report.decision, "fail");
 });
 
-test("createValidationReport returns warning decision when no failures but has warnings", () => {
+test("createValidationReport returns warning decision when no failures but has warnings [validation-report]", () => {
   const checks: readonly CheckResult[] = [
     {
       checkId: "check_1",
@@ -146,7 +146,7 @@ test("createValidationReport returns warning decision when no failures but has w
   assert.equal(report.decision, "warning");
 });
 
-test("createValidationReport uses provided summary", () => {
+test("createValidationReport uses provided summary [validation-report]", () => {
   const report = createValidationReport({
     reportId: "report_1",
     taskId: "task_1",
@@ -158,7 +158,7 @@ test("createValidationReport uses provided summary", () => {
   assert.equal(report.summary, "Custom summary");
 });
 
-test("createValidationReport defaults summary to empty string", () => {
+test("createValidationReport defaults summary to empty string [validation-report]", () => {
   const report = createValidationReport({
     reportId: "report_1",
     taskId: "task_1",
@@ -169,7 +169,7 @@ test("createValidationReport defaults summary to empty string", () => {
   assert.equal(report.summary, "");
 });
 
-test("hasFailedRequiredChecks returns true when required check failed", () => {
+test("hasFailedRequiredChecks returns true when required check failed [validation-report]", () => {
   const checks: readonly CheckResult[] = [
     {
       checkId: "check_1",
@@ -194,7 +194,7 @@ test("hasFailedRequiredChecks returns true when required check failed", () => {
   assert.equal(hasFailedRequiredChecks(report), true);
 });
 
-test("hasFailedRequiredChecks returns false when only optional check failed", () => {
+test("hasFailedRequiredChecks returns false when only optional check failed [validation-report]", () => {
   const checks: readonly CheckResult[] = [
     {
       checkId: "check_1",
@@ -219,7 +219,7 @@ test("hasFailedRequiredChecks returns false when only optional check failed", ()
   assert.equal(hasFailedRequiredChecks(report), false);
 });
 
-test("hasFailedRequiredChecks returns false when all checks pass", () => {
+test("hasFailedRequiredChecks returns false when all checks pass [validation-report]", () => {
   const checks: readonly CheckResult[] = [
     {
       checkId: "check_1",
@@ -244,7 +244,7 @@ test("hasFailedRequiredChecks returns false when all checks pass", () => {
   assert.equal(hasFailedRequiredChecks(report), false);
 });
 
-test("getFailedCheckCount returns correct count", () => {
+test("getFailedCheckCount returns correct count [validation-report]", () => {
   const checks: readonly CheckResult[] = [
     {
       checkId: "check_1",
@@ -291,7 +291,7 @@ test("getFailedCheckCount returns correct count", () => {
   assert.equal(getFailedCheckCount(report), 2);
 });
 
-test("getFailedCheckCount returns 0 when all pass", () => {
+test("getFailedCheckCount returns 0 when all pass [validation-report]", () => {
   const checks: readonly CheckResult[] = [
     {
       checkId: "check_1",
@@ -316,17 +316,17 @@ test("getFailedCheckCount returns 0 when all pass", () => {
   assert.equal(getFailedCheckCount(report), 0);
 });
 
-test("ValidationDecision type accepts all valid values", () => {
+test("ValidationDecision type accepts all valid values [validation-report]", () => {
   const decisions: ValidationDecision[] = ["pass", "fail", "warning"];
   assert.equal(decisions.length, 3);
 });
 
-test("CheckResult type accepts all valid types", () => {
+test("CheckResult type accepts all valid types [validation-report]", () => {
   const types: CheckResult["type"][] = ["typecheck", "lint", "test", "security", "review", "custom"];
   assert.equal(types.length, 6);
 });
 
-test("CheckError severity accepts all valid values", () => {
+test("CheckError severity accepts all valid values [validation-report]", () => {
   const severities: ("error" | "warning")[] = ["error", "warning"];
   assert.equal(severities.length, 2);
 });

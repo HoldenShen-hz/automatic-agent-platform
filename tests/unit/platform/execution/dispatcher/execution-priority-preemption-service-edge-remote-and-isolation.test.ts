@@ -131,7 +131,7 @@ function createPreemptionRequest(ticket: ExecutionTicketRecord, overrides: Parti
   };
 }
 
-test("preemptForUrgentTicket rejects standard isolation when required is strict", () => {
+test("preemptForUrgentTicket rejects standard isolation when required is strict [execution-priority-preemption-service-edge-remote-and-isolation]", () => {
   const worker = createMockWorker({
     workerId: "worker-1",
     availableSlots: 0,
@@ -155,7 +155,7 @@ test("preemptForUrgentTicket rejects standard isolation when required is strict"
   assert.equal(decision.trace.reasonCode, "no_safe_preemption_candidate");
 });
 
-test("preemptForUrgentTicket rejects hardened isolation when required is strict", () => {
+test("preemptForUrgentTicket rejects hardened isolation when required is strict [execution-priority-preemption-service-edge-remote-and-isolation]", () => {
   const worker = createMockWorker({
     workerId: "worker-1",
     availableSlots: 0,
@@ -179,7 +179,7 @@ test("preemptForUrgentTicket rejects hardened isolation when required is strict"
   assert.equal(decision.trace.reasonCode, "no_safe_preemption_candidate");
 });
 
-test("preemptForUrgentTicket filters remote worker with viewer_only session", () => {
+test("preemptForUrgentTicket filters remote worker with viewer_only session [execution-priority-preemption-service-edge-remote-and-isolation]", () => {
   const worker = createMockWorker({
     workerId: "worker-1",
     availableSlots: 0,
@@ -207,7 +207,7 @@ test("preemptForUrgentTicket filters remote worker with viewer_only session", ()
   assert.equal(decision.trace.reasonCode, "no_safe_preemption_candidate");
 });
 
-test("preemptForUrgentTicket filters remote worker with disconnected session", () => {
+test("preemptForUrgentTicket filters remote worker with disconnected session [execution-priority-preemption-service-edge-remote-and-isolation]", () => {
   const worker = createMockWorker({
     workerId: "worker-1",
     availableSlots: 0,
@@ -235,7 +235,7 @@ test("preemptForUrgentTicket filters remote worker with disconnected session", (
   assert.equal(decision.trace.reasonCode, "no_safe_preemption_candidate");
 });
 
-test("preemptForUrgentTicket filters remote worker with consistency mismatch", () => {
+test("preemptForUrgentTicket filters remote worker with consistency mismatch [execution-priority-preemption-service-edge-remote-and-isolation]", () => {
   const worker = createMockWorker({
     workerId: "worker-1",
     availableSlots: 0,
@@ -263,7 +263,7 @@ test("preemptForUrgentTicket filters remote worker with consistency mismatch", (
   assert.equal(decision.trace.reasonCode, "no_safe_preemption_candidate");
 });
 
-test("preemptForUrgentTicket filters remote worker with workspace sync conflict", () => {
+test("preemptForUrgentTicket filters remote worker with workspace sync conflict [execution-priority-preemption-service-edge-remote-and-isolation]", () => {
   const worker = createMockWorker({
     workerId: "worker-1",
     availableSlots: 0,
@@ -291,7 +291,7 @@ test("preemptForUrgentTicket filters remote worker with workspace sync conflict"
   assert.equal(decision.trace.reasonCode, "no_safe_preemption_candidate");
 });
 
-test("preemptForUrgentTicket filters remote worker with null stream offset", () => {
+test("preemptForUrgentTicket filters remote worker with null stream offset [execution-priority-preemption-service-edge-remote-and-isolation]", () => {
   const worker = createMockWorker({
     workerId: "worker-1",
     availableSlots: 0,

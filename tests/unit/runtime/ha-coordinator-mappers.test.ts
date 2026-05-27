@@ -10,7 +10,7 @@ import {
 
 // mapNode tests
 
-test("mapNode maps a database row to CoordinatorNode", () => {
+test("mapNode maps a database row to CoordinatorNode [ha-coordinator-mappers]", () => {
   const row = {
     node_id: "node_abc",
     region: "us-east-1",
@@ -31,7 +31,7 @@ test("mapNode maps a database row to CoordinatorNode", () => {
   assert.equal(node.metadata, null);
 });
 
-test("mapNode parses metadata JSON when present", () => {
+test("mapNode parses metadata JSON when present [ha-coordinator-mappers]", () => {
   const row = {
     node_id: "node_abc",
     region: "us-east-1",
@@ -46,7 +46,7 @@ test("mapNode parses metadata JSON when present", () => {
   assert.deepEqual(node.metadata, { key: "value", num: 42 });
 });
 
-test("mapNode maps is_leader=0 to false", () => {
+test("mapNode maps is_leader=0 to false [ha-coordinator-mappers]", () => {
   const row = {
     node_id: "node_abc",
     region: "us-west-2",
@@ -63,7 +63,7 @@ test("mapNode maps is_leader=0 to false", () => {
 
 // mapLease tests
 
-test("mapLease maps a database row to LeaderLease", () => {
+test("mapLease maps a database row to LeaderLease [ha-coordinator-mappers]", () => {
   const row = {
     lease_id: "lease_123",
     node_id: "node_abc",
@@ -84,7 +84,7 @@ test("mapLease maps a database row to LeaderLease", () => {
   assert.equal(lease.ttlMs, 60_000);
 });
 
-test("mapLease coerces string ttl_ms to number", () => {
+test("mapLease coerces string ttl_ms to number [ha-coordinator-mappers]", () => {
   const row = {
     lease_id: "lease_123",
     node_id: "node_abc",
@@ -104,7 +104,7 @@ test("mapLease coerces string ttl_ms to number", () => {
 
 // mapEpoch tests
 
-test("mapEpoch maps a database row to LeadershipEpoch", () => {
+test("mapEpoch maps a database row to LeadershipEpoch [ha-coordinator-mappers]", () => {
   const row = {
     epoch: 3,
     leader_node_id: "node_abc",
@@ -123,7 +123,7 @@ test("mapEpoch maps a database row to LeadershipEpoch", () => {
   assert.equal(epoch.fencingToken, 12);
 });
 
-test("mapEpoch maps null leader_node_id to null", () => {
+test("mapEpoch maps null leader_node_id to null [ha-coordinator-mappers]", () => {
   const row = {
     epoch: 0,
     leader_node_id: null,
@@ -140,7 +140,7 @@ test("mapEpoch maps null leader_node_id to null", () => {
 
 // mapFailoverDecision tests
 
-test("mapFailoverDecision maps a database row to FailoverDecision", () => {
+test("mapFailoverDecision maps a database row to FailoverDecision [ha-coordinator-mappers]", () => {
   const row = {
     decision_id: "decision_123",
     old_leader_node_id: "node_old",
@@ -163,7 +163,7 @@ test("mapFailoverDecision maps a database row to FailoverDecision", () => {
   assert.equal(decision.fencingToken, 15);
 });
 
-test("mapFailoverDecision maps null node IDs to null", () => {
+test("mapFailoverDecision maps null node IDs to null [ha-coordinator-mappers]", () => {
   const row = {
     decision_id: "decision_456",
     old_leader_node_id: null,
@@ -180,7 +180,7 @@ test("mapFailoverDecision maps null node IDs to null", () => {
   assert.equal(decision.newLeaderNodeId, null);
 });
 
-test("mapFailoverDecision coerces string epoch and fencing_token to numbers", () => {
+test("mapFailoverDecision coerces string epoch and fencing_token to numbers [ha-coordinator-mappers]", () => {
   const row = {
     decision_id: "decision_789",
     old_leader_node_id: "node_a",

@@ -28,7 +28,7 @@ import { createTempWorkspace, cleanupPath } from "../../../helpers/fs.js";
 // Queue Adapter Concurrency Tests
 // ============================================================================
 
-test("[CONCURRENCY] multiple workers dequeue from same queue - only one gets each job", async () => {
+test("[CONCURRENCY] multiple workers dequeue from same queue - only one gets each job [concurrent-execution]", async () => {
   const workspace = createTempWorkspace("concurrent-dequeue-");
   const dbPath = join(workspace, "queue.db");
   const db = new SqliteDatabase(dbPath, { migrationPlan: [] });
@@ -77,7 +77,7 @@ test("[CONCURRENCY] multiple workers dequeue from same queue - only one gets eac
   }
 });
 
-test("[CONCURRENCY] concurrent enqueue to same queue maintains ordering", async () => {
+test("[CONCURRENCY] concurrent enqueue to same queue maintains ordering [concurrent-execution]", async () => {
   const workspace = createTempWorkspace("concurrent-enqueue-");
   const dbPath = join(workspace, "queue.db");
   const db = new SqliteDatabase(dbPath, { migrationPlan: [] });
@@ -111,7 +111,7 @@ test("[CONCURRENCY] concurrent enqueue to same queue maintains ordering", async 
   }
 });
 
-test("[CONCURRENCY] concurrent dequeues with idempotency keys - duplicate prevention", async () => {
+test("[CONCURRENCY] concurrent dequeues with idempotency keys - duplicate prevention [concurrent-execution]", async () => {
   const workspace = createTempWorkspace("concurrent-idempotent-");
   const dbPath = join(workspace, "queue.db");
   const db = new SqliteDatabase(dbPath, { migrationPlan: [] });
@@ -140,7 +140,7 @@ test("[CONCURRENCY] concurrent dequeues with idempotency keys - duplicate preven
   }
 });
 
-test("[CONCURRENCY] concurrent ack/nack on same job - only one succeeds", async () => {
+test("[CONCURRENCY] concurrent ack/nack on same job - only one succeeds [concurrent-execution]", async () => {
   const workspace = createTempWorkspace("concurrent-ack-");
   const dbPath = join(workspace, "queue.db");
   const db = new SqliteDatabase(dbPath, { migrationPlan: [] });
@@ -175,7 +175,7 @@ test("[CONCURRENCY] concurrent ack/nack on same job - only one succeeds", async 
   }
 });
 
-test("[CONCURRENCY] many concurrent workers competing for limited jobs", async () => {
+test("[CONCURRENCY] many concurrent workers competing for limited jobs [concurrent-execution]", async () => {
   const workspace = createTempWorkspace("concurrent-compete-");
   const dbPath = join(workspace, "queue.db");
   const db = new SqliteDatabase(dbPath, { migrationPlan: [] });
@@ -218,7 +218,7 @@ test("[CONCURRENCY] many concurrent workers competing for limited jobs", async (
 // Service Registry Concurrency Tests
 // ============================================================================
 
-test("[CONCURRENCY] service registry concurrent get on same service - single init", async () => {
+test("[CONCURRENCY] service registry concurrent get on same service - single init [concurrent-execution]", async () => {
   // Create a fresh registry
   const registry = new ServiceRegistry();
   let initCount = 0;
@@ -248,7 +248,7 @@ test("[CONCURRENCY] service registry concurrent get on same service - single ini
   assert.ok(values.every((v) => v === 1), "All workers should get the same initial value");
 });
 
-test("[CONCURRENCY] service registry concurrent register and get", async () => {
+test("[CONCURRENCY] service registry concurrent register and get [concurrent-execution]", async () => {
   const registry = new ServiceRegistry();
 
   // Concurrently register different services
@@ -274,7 +274,7 @@ test("[CONCURRENCY] service registry concurrent register and get", async () => {
   assert.equal(serviceC.name, "C");
 });
 
-test("[CONCURRENCY] service registry concurrent access with dependencies", async () => {
+test("[CONCURRENCY] service registry concurrent access with dependencies [concurrent-execution]", async () => {
   const registry = new ServiceRegistry();
   const initOrder: string[] = [];
 
@@ -307,7 +307,7 @@ test("[CONCURRENCY] service registry concurrent access with dependencies", async
   assert.ok(baseIndex < dependentIndex, "Base service should be initialized before dependent");
 });
 
-test("[CONCURRENCY] service registry isInitialized reflects concurrent state", async () => {
+test("[CONCURRENCY] service registry isInitialized reflects concurrent state [concurrent-execution]", async () => {
   const registry = new ServiceRegistry();
 
   registry.register("test-service", {
@@ -327,7 +327,7 @@ test("[CONCURRENCY] service registry isInitialized reflects concurrent state", a
   assert.equal(after, true, "Service should be initialized after get()");
 });
 
-test("[CONCURRENCY] service registry reset clears all instances", async () => {
+test("[CONCURRENCY] service registry reset clears all instances [concurrent-execution]", async () => {
   const registry = new ServiceRegistry();
   let getCount = 0;
 
@@ -359,7 +359,7 @@ test("[CONCURRENCY] service registry reset clears all instances", async () => {
 // SQLite Lock Adapter Concurrency Tests (using runCriticalSectionTest)
 // ============================================================================
 
-test("[CONCURRENCY] critical section test - lock acquisition mutual exclusion", async () => {
+test("[CONCURRENCY] critical section test - lock acquisition mutual exclusion [concurrent-execution]", async () => {
   const db = new DatabaseSync(":memory:");
   db.exec(`
     CREATE TABLE IF NOT EXISTS distributed_locks (
@@ -397,7 +397,7 @@ test("[CONCURRENCY] critical section test - lock acquisition mutual exclusion", 
   db.close();
 });
 
-test("[CONCURRENCY] critical section test - lock holder transfers atomically", async () => {
+test("[CONCURRENCY] critical section test - lock holder transfers atomically [concurrent-execution]", async () => {
   let currentHolder: number | null = null;
   const transferLog: Array<{ from: number | null; to: number }> = [];
 
@@ -424,7 +424,7 @@ test("[CONCURRENCY] critical section test - lock holder transfers atomically", a
 // State Modification Concurrency Tests
 // ============================================================================
 
-test("[CONCURRENCY] runConcurrentStateModification - counter increments", async () => {
+test("[CONCURRENCY] runConcurrentStateModification - counter increments [concurrent-execution]", async () => {
   let counter = 0;
 
   await runConcurrentStateModification(
@@ -441,7 +441,7 @@ test("[CONCURRENCY] runConcurrentStateModification - counter increments", async 
   assert.ok(counter > 0, "Counter should have been incremented");
 });
 
-test("[CONCURRENCY] concurrent map updates demonstrate race condition", async () => {
+test("[CONCURRENCY] concurrent map updates demonstrate race condition [concurrent-execution]", async () => {
   const sharedMap = new Map<string, number>();
   let counter = 0;
 
@@ -471,7 +471,7 @@ test("[CONCURRENCY] concurrent map updates demonstrate race condition", async ()
   assert.equal(sharedMap.size, 10, "All 10 keys should have some value");
 });
 
-test("[CONCURRENCY] concurrent set additions are all captured", async () => {
+test("[CONCURRENCY] concurrent set additions are all captured [concurrent-execution]", async () => {
   const sharedSet = new Set<number>();
   let counter = 0;
 
@@ -489,7 +489,7 @@ test("[CONCURRENCY] concurrent set additions are all captured", async () => {
 // Transition Service Concurrency Tests
 // ============================================================================
 
-test("[CONCURRENCY] concurrent task status queries return consistent state", async () => {
+test("[CONCURRENCY] concurrent task status queries return consistent state [concurrent-execution]", async () => {
   // Simulate concurrent status reads
   let taskStatus = "pending";
   const statusReads: string[] = [];
@@ -507,7 +507,7 @@ test("[CONCURRENCY] concurrent task status queries return consistent state", asy
   assert.ok(uniqueStatuses.size <= 2, "Should see at most 2 status values (initial + possibly changed)");
 });
 
-test("[CONCURRENCY] concurrent workflow status transitions are serialized", async () => {
+test("[CONCURRENCY] concurrent workflow status transitions are serialized [concurrent-execution]", async () => {
   const transitions: Array<{ from: string; to: string }> = [];
   let currentStatus = "running";
   let workerIndex = 0;
@@ -536,7 +536,7 @@ test("[CONCURRENCY] concurrent workflow status transitions are serialized", asyn
 // Lease Management Concurrency Tests
 // ============================================================================
 
-test("[CONCURRENCY] concurrent lease renewal - only latest holder valid", async () => {
+test("[CONCURRENCY] concurrent lease renewal - only latest holder valid [concurrent-execution]", async () => {
   let currentLeaseHolder: number | null = null;
   let leaseExpiration: number = 0;
   const leaseLog: Array<{ holder: number; action: string; time: number }> = [];
@@ -581,7 +581,7 @@ test("[CONCURRENCY] concurrent lease renewal - only latest holder valid", async 
   assert.equal(acquires.length, 1, "Only one worker should acquire the lease");
 });
 
-test("[CONCURRENCY] lease expiration handling under concurrent access", async () => {
+test("[CONCURRENCY] lease expiration handling under concurrent access [concurrent-execution]", async () => {
   let leaseHolder: number | null = null;
   let leaseExpiryTime: number = 0;
 
@@ -614,7 +614,7 @@ test("[CONCURRENCY] lease expiration handling under concurrent access", async ()
   assert.ok(acquired.length >= 1, "At least one worker should have acquired the expired lease");
 });
 
-test("[CONCURRENCY] multiple workers requesting same lease - winner becomes holder", async () => {
+test("[CONCURRENCY] multiple workers requesting same lease - winner becomes holder [concurrent-execution]", async () => {
   const leaseRequests: number[] = [];
   let finalHolder: number | null = null;
   let counter = 0;
@@ -638,7 +638,7 @@ test("[CONCURRENCY] multiple workers requesting same lease - winner becomes hold
 // Queue Priority Handling Under Concurrency
 // ============================================================================
 
-test("[CONCURRENCY] priority queue ordering maintained under concurrent load", async () => {
+test("[CONCURRENCY] priority queue ordering maintained under concurrent load [concurrent-execution]", async () => {
   const workspace = createTempWorkspace("concurrent-priority-");
   const dbPath = join(workspace, "queue.db");
   const db = new SqliteDatabase(dbPath, { migrationPlan: [] });
@@ -687,7 +687,7 @@ test("[CONCURRENCY] priority queue ordering maintained under concurrent load", a
 // Distributed Lock Pattern Tests
 // ============================================================================
 
-test("[CONCURRENCY] lock acquisition retry under contention", async () => {
+test("[CONCURRENCY] lock acquisition retry under contention [concurrent-execution]", async () => {
   let lockHeld = false;
   let contentionCount = 0;
 
@@ -726,7 +726,7 @@ test("[CONCURRENCY] lock acquisition retry under contention", async () => {
 // Edge Cases
 // ============================================================================
 
-test("[CONCURRENCY] rapid register/deregister cycles", async () => {
+test("[CONCURRENCY] rapid register/deregister cycles [concurrent-execution]", async () => {
   const registry = new ServiceRegistry();
   let counter = 0;
 
@@ -748,7 +748,7 @@ test("[CONCURRENCY] rapid register/deregister cycles", async () => {
   }
 });
 
-test("[CONCURRENCY] concurrent access to statistics aggregation", async () => {
+test("[CONCURRENCY] concurrent access to statistics aggregation [concurrent-execution]", async () => {
   const workspace = createTempWorkspace("concurrent-stats-");
   const dbPath = join(workspace, "queue.db");
   const db = new SqliteDatabase(dbPath, { migrationPlan: [] });
@@ -788,7 +788,7 @@ test("[CONCURRENCY] concurrent access to statistics aggregation", async () => {
   }
 });
 
-test("[CONCURRENCY] worker pool registration concurrent updates", async () => {
+test("[CONCURRENCY] worker pool registration concurrent updates [concurrent-execution]", async () => {
   // Simulate worker registry concurrent updates
   const workerRegistry = new Map<string, { status: string; updatedAt: number }>();
   let updateCount = 0;
@@ -812,7 +812,7 @@ test("[CONCURRENCY] worker pool registration concurrent updates", async () => {
   assert.equal(updateCount, 100, "All 100 updates should have been processed");
 });
 
-test("[CONCURRENCY] cleanup operations during concurrent access", async () => {
+test("[CONCURRENCY] cleanup operations during concurrent access [concurrent-execution]", async () => {
   const workspace = createTempWorkspace("concurrent-cleanup-");
   const dbPath = join(workspace, "queue.db");
   const db = new SqliteDatabase(dbPath, { migrationPlan: [] });

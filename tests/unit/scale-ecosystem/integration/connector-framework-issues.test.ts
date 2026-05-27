@@ -29,7 +29,7 @@ function execute(service: ConnectorFrameworkService, connectorId: string, execut
   );
 }
 
-test("connector-framework-2124: opens the circuit after repeated execution failures", async () => {
+test("connector-framework-2124: opens the circuit after repeated execution failures [connector-framework-issues]", async () => {
   const executions: string[] = [];
   const service = new ConnectorFrameworkService({
     executors: {
@@ -56,7 +56,7 @@ test("connector-framework-2124: opens the circuit after repeated execution failu
   assert.equal(executions.length, 5, "open circuit should fail fast without invoking executor again");
 });
 
-test("connector-framework-2124: transitions to half-open after timeout and closes on success", async () => {
+test("connector-framework-2124: transitions to half-open after timeout and closes on success [connector-framework-issues]", async () => {
   const executions: string[] = [];
   const originalNow = Date.now;
   let now = 0;
@@ -100,7 +100,7 @@ test("connector-framework-2124: transitions to half-open after timeout and close
   }
 });
 
-test("connector-framework-2124: failed health checks also contribute to opening the circuit", async () => {
+test("connector-framework-2124: failed health checks also contribute to opening the circuit [connector-framework-issues]", async () => {
   const executions: string[] = [];
   const service = new ConnectorFrameworkService({
     executors: {

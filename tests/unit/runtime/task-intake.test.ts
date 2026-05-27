@@ -28,12 +28,12 @@ function createRouteInput(overrides: Partial<IntakeRouteInput> = {}): IntakeRout
 // IntakeRouter Basic Tests
 // ---------------------------------------------------------------------------
 
-test("IntakeRouter can be instantiated without options", () => {
+test("IntakeRouter can be instantiated without options [task-intake]", () => {
   const router = new IntakeRouter();
   assert.ok(router instanceof IntakeRouter);
 });
 
-test("IntakeRouter can be instantiated with null divisionRegistry", () => {
+test("IntakeRouter can be instantiated with null divisionRegistry [task-intake]", () => {
   const router = new IntakeRouter({ divisionRegistry: null });
   assert.ok(router instanceof IntakeRouter);
 });
@@ -42,7 +42,7 @@ test("IntakeRouter can be instantiated with null divisionRegistry", () => {
 // Simple Query Routing Tests
 // ---------------------------------------------------------------------------
 
-test("route() routes simple query to single_agent_minimal workflow", async () => {
+test("route() routes simple query to single_agent_minimal workflow [task-intake]", async () => {
   const router = new IntakeRouter({ divisionRegistry: null });
   const input = createRouteInput({
     request: "what is the status of my tasks?",
@@ -56,7 +56,7 @@ test("route() routes simple query to single_agent_minimal workflow", async () =>
   assert.ok(!decision.requiresOrchestration);
 });
 
-test("route() routes simple question to single_agent_minimal workflow", async () => {
+test("route() routes simple question to single_agent_minimal workflow [task-intake]", async () => {
   const router = new IntakeRouter({ divisionRegistry: null });
   const input = createRouteInput({
     request: "how do I create a new project?",
@@ -72,7 +72,7 @@ test("route() routes simple question to single_agent_minimal workflow", async ()
 // Orchestration Hint Routing Tests
 // ---------------------------------------------------------------------------
 
-test("route() requires orchestration when request contains multiple orchestration hints", async () => {
+test("route() requires orchestration when request contains multiple orchestration hints [task-intake]", async () => {
   const router = new IntakeRouter({ divisionRegistry: null });
   const input = createRouteInput({
     request: "plan and analyze the research data for the project",
@@ -84,7 +84,7 @@ test("route() requires orchestration when request contains multiple orchestratio
   assert.ok(decision.workflowId.includes("orchestration") || decision.workflowId.includes("multi_step"));
 });
 
-test("route() requires orchestration for requests with 120+ characters", async () => {
+test("route() requires orchestration for requests with 120+ characters [task-intake]", async () => {
   const router = new IntakeRouter({ divisionRegistry: null });
   const longRequest = "Please analyze the current market trends, compare them with historical data, and summarize the findings along with recommendations for strategic planning purposes based on comprehensive research";
   const input = createRouteInput({
@@ -96,7 +96,7 @@ test("route() requires orchestration for requests with 120+ characters", async (
   assert.ok(decision.requiresOrchestration);
 });
 
-test("route() does not require orchestration for short requests without hints", async () => {
+test("route() does not require orchestration for short requests without hints [task-intake]", async () => {
   const router = new IntakeRouter({ divisionRegistry: null });
   const input = createRouteInput({
     request: "hello",
@@ -112,7 +112,7 @@ test("route() does not require orchestration for short requests without hints", 
 // Intent Classification Tests
 // ---------------------------------------------------------------------------
 
-test("route() classifies query intent correctly", async () => {
+test("route() classifies query intent correctly [task-intake]", async () => {
   const router = new IntakeRouter({ divisionRegistry: null });
   const input = createRouteInput({
     request: "what is the weather like today?",
@@ -124,7 +124,7 @@ test("route() classifies query intent correctly", async () => {
   assert.ok(decision.classification.confidence >= 0.45);
 });
 
-test("route() classifies create intent correctly", async () => {
+test("route() classifies create intent correctly [task-intake]", async () => {
   const router = new IntakeRouter({ divisionRegistry: null });
   const input = createRouteInput({
     request: "create a new document for the project proposal",
@@ -135,7 +135,7 @@ test("route() classifies create intent correctly", async () => {
   assert.equal(decision.classification.intent, "create");
 });
 
-test("route() classifies modify intent correctly", async () => {
+test("route() classifies modify intent correctly [task-intake]", async () => {
   const router = new IntakeRouter({ divisionRegistry: null });
   const input = createRouteInput({
     request: "update the status of the task to completed",
@@ -146,7 +146,7 @@ test("route() classifies modify intent correctly", async () => {
   assert.equal(decision.classification.intent, "modify");
 });
 
-test("route() classifies cancel intent correctly", async () => {
+test("route() classifies cancel intent correctly [task-intake]", async () => {
   const router = new IntakeRouter({ divisionRegistry: null });
   const input = createRouteInput({
     request: "cancel the current operation",
@@ -157,7 +157,7 @@ test("route() classifies cancel intent correctly", async () => {
   assert.equal(decision.classification.intent, "cancel");
 });
 
-test("route() classifies approve intent correctly", async () => {
+test("route() classifies approve intent correctly [task-intake]", async () => {
   const router = new IntakeRouter({ divisionRegistry: null });
   const input = createRouteInput({
     request: "approve the changes and merge the pull request",
@@ -168,7 +168,7 @@ test("route() classifies approve intent correctly", async () => {
   assert.equal(decision.classification.intent, "approve");
 });
 
-test("route() classifies clarify intent correctly", async () => {
+test("route() classifies clarify intent correctly [task-intake]", async () => {
   const router = new IntakeRouter({ divisionRegistry: null });
   const input = createRouteInput({
     request: "can you clarify what you meant by that?",
@@ -179,7 +179,7 @@ test("route() classifies clarify intent correctly", async () => {
   assert.equal(decision.classification.intent, "clarify");
 });
 
-test("route() classifies correction intent correctly", async () => {
+test("route() classifies correction intent correctly [task-intake]", async () => {
   const router = new IntakeRouter({ divisionRegistry: null });
   const input = createRouteInput({
     request: "actually, I meant to update the other file instead",
@@ -195,7 +195,7 @@ test("route() classifies correction intent correctly", async () => {
 // Continuation Classification Tests
 // ---------------------------------------------------------------------------
 
-test("route() detects follow_up continuation", async () => {
+test("route() detects follow_up continuation [task-intake]", async () => {
   const router = new IntakeRouter({ divisionRegistry: null });
   const input = createRouteInput({
     request: "continue with the next step of the analysis",
@@ -206,7 +206,7 @@ test("route() detects follow_up continuation", async () => {
   assert.equal(decision.classification.continuation, "follow_up");
 });
 
-test("route() detects new_task continuation for simple requests", async () => {
+test("route() detects new_task continuation for simple requests [task-intake]", async () => {
   const router = new IntakeRouter({ divisionRegistry: null });
   const input = createRouteInput({
     request: "list all available projects",
@@ -221,7 +221,7 @@ test("route() detects new_task continuation for simple requests", async () => {
 // Risk-Based Routing Tests
 // ---------------------------------------------------------------------------
 
-test("route() requires orchestration for high risk requests", async () => {
+test("route() requires orchestration for high risk requests [task-intake]", async () => {
   const router = new IntakeRouter({ divisionRegistry: null });
   const input = createRouteInput({
     request: "deploy to production",
@@ -237,7 +237,7 @@ test("route() requires orchestration for high risk requests", async () => {
   assert.ok(decision.routeTrace.some((t) => t.includes("risk_class")));
 });
 
-test("route() requires orchestration for critical risk requests", async () => {
+test("route() requires orchestration for critical risk requests [task-intake]", async () => {
   const router = new IntakeRouter({ divisionRegistry: null });
   const input = createRouteInput({
     request: "delete all records",
@@ -256,7 +256,7 @@ test("route() requires orchestration for critical risk requests", async () => {
 // Chinese Language Support Tests
 // ---------------------------------------------------------------------------
 
-test("route() handles Chinese query requests", async () => {
+test("route() handles Chinese query requests [task-intake]", async () => {
   const router = new IntakeRouter({ divisionRegistry: null });
   const input = createRouteInput({
     request: "查看当前项目的状态",
@@ -267,7 +267,7 @@ test("route() handles Chinese query requests", async () => {
   assert.equal(decision.classification.intent, "query");
 });
 
-test("route() handles Chinese create requests", async () => {
+test("route() handles Chinese create requests [task-intake]", async () => {
   const router = new IntakeRouter({ divisionRegistry: null });
   const input = createRouteInput({
     request: "创建一个新的文档",
@@ -278,7 +278,7 @@ test("route() handles Chinese create requests", async () => {
   assert.equal(decision.classification.intent, "create");
 });
 
-test("route() routes Chinese high-complexity requests to orchestration", async () => {
+test("route() routes Chinese high-complexity requests to orchestration [task-intake]", async () => {
   const router = new IntakeRouter({ divisionRegistry: null });
   const input = createRouteInput({
     request: "分析市场趋势并设计营销方案",
@@ -293,7 +293,7 @@ test("route() routes Chinese high-complexity requests to orchestration", async (
 // Route Trace Tests
 // ---------------------------------------------------------------------------
 
-test("route() includes trace information in decision", async () => {
+test("route() includes trace information in decision [task-intake]", async () => {
   const router = new IntakeRouter({ divisionRegistry: null });
   const input = createRouteInput({
     request: "what is the status?",
@@ -308,7 +308,7 @@ test("route() includes trace information in decision", async () => {
   assert.ok(decision.routeTrace.some((t) => t.includes("tenantId:")));
 });
 
-test("route() includes confirmedTaskSpecId in trace", async () => {
+test("route() includes confirmedTaskSpecId in trace [task-intake]", async () => {
   const router = new IntakeRouter({ divisionRegistry: null });
   const input = createRouteInput({
     request: "test request",
@@ -325,7 +325,7 @@ test("route() includes confirmedTaskSpecId in trace", async () => {
 // Preferred Intent Tests
 // ---------------------------------------------------------------------------
 
-test("route() uses preferred intent when confidence is high enough", async () => {
+test("route() uses preferred intent when confidence is high enough [task-intake]", async () => {
   const router = new IntakeRouter({ divisionRegistry: null });
   const input = createRouteInput({
     request: "some ambiguous text",
@@ -342,7 +342,7 @@ test("route() uses preferred intent when confidence is high enough", async () =>
   assert.ok(decision.routeTrace.some((t) => t.includes("preferred_intent:")));
 });
 
-test("route() ignores preferred intent when confidence is below threshold", async () => {
+test("route() ignores preferred intent when confidence is below threshold [task-intake]", async () => {
   const router = new IntakeRouter({ divisionRegistry: null });
   const input = createRouteInput({
     request: "show me the status",
@@ -363,7 +363,7 @@ test("route() ignores preferred intent when confidence is below threshold", asyn
 // Title and Request Combination Tests
 // ---------------------------------------------------------------------------
 
-test("route() combines title and request for analysis", async () => {
+test("route() combines title and request for analysis [task-intake]", async () => {
   const router = new IntakeRouter({ divisionRegistry: null });
   const input = createRouteInput({
     title: "Build new feature",
@@ -376,7 +376,7 @@ test("route() combines title and request for analysis", async () => {
   assert.ok(decision.classification.intent === "create" || decision.classification.intent === "modify");
 });
 
-test("route() handles empty title gracefully", async () => {
+test("route() handles empty title gracefully [task-intake]", async () => {
   const router = new IntakeRouter({ divisionRegistry: null });
   const input = createRouteInput({
     title: "",
@@ -392,7 +392,7 @@ test("route() handles empty title gracefully", async () => {
 // Edge Case Tests
 // ---------------------------------------------------------------------------
 
-test("route() handles very short requests", async () => {
+test("route() handles very short requests [task-intake]", async () => {
   const router = new IntakeRouter({ divisionRegistry: null });
   const input = createRouteInput({
     request: "hi",
@@ -404,7 +404,7 @@ test("route() handles very short requests", async () => {
   assert.ok(!decision.requiresOrchestration);
 });
 
-test("route() handles requests with only special characters", async () => {
+test("route() handles requests with only special characters [task-intake]", async () => {
   const router = new IntakeRouter({ divisionRegistry: null });
   const input = createRouteInput({
     request: "???",
@@ -415,7 +415,7 @@ test("route() handles requests with only special characters", async () => {
   assert.ok(decision.routeTrace.length > 0);
 });
 
-test("route() handles extremely long requests with orchestration hints", async () => {
+test("route() handles extremely long requests with orchestration hints [task-intake]", async () => {
   const router = new IntakeRouter({ divisionRegistry: null });
   const repeatedPhrase = "please analyze and review the data ";
   const longRequest = repeatedPhrase.repeat(10);
@@ -428,7 +428,7 @@ test("route() handles extremely long requests with orchestration hints", async (
   assert.ok(decision.requiresOrchestration);
 });
 
-test("route() sets agentId for simple requests", async () => {
+test("route() sets agentId for simple requests [task-intake]", async () => {
   const router = new IntakeRouter({ divisionRegistry: null });
   const input = createRouteInput({
     request: "show me the status",

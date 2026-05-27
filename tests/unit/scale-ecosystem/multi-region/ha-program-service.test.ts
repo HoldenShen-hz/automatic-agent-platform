@@ -34,7 +34,7 @@ function readinessRecord(componentId: string) {
  * - "fail": Critical components (coordinator, postgres) are NOT ready
  * - "warning": Critical components are ready but non-critical (redis_queue, distributed_lock) are NOT ready
  */
-test("ISSUE-1913: overallStatus returns 'warning' when only non-critical components are not ready", () => {
+test("ISSUE-1913: overallStatus returns 'warning' when only non-critical components are not ready [ha-program-service]", () => {
   const workspace = createTempWorkspace("aa-ha-program-warning-");
   const dbPath = join(workspace, "ha-warning.db");
   const db = new SqliteDatabase(dbPath);
@@ -72,7 +72,7 @@ test("ISSUE-1913: overallStatus returns 'warning' when only non-critical compone
   }
 });
 
-test("ISSUE-1913: overallStatus returns 'fail' when critical component (coordinator) is not ready", () => {
+test("ISSUE-1913: overallStatus returns 'fail' when critical component (coordinator) is not ready [ha-program-service]", () => {
   const workspace = createTempWorkspace("aa-ha-program-fail-");
   const dbPath = join(workspace, "ha-fail.db");
   const db = new SqliteDatabase(dbPath);
@@ -96,7 +96,7 @@ test("ISSUE-1913: overallStatus returns 'fail' when critical component (coordina
   }
 });
 
-test("ISSUE-1913: overallStatus returns 'fail' when critical component (postgres) is not ready", () => {
+test("ISSUE-1913: overallStatus returns 'fail' when critical component (postgres) is not ready [ha-program-service]", () => {
   const workspace = createTempWorkspace("aa-ha-program-fail-pg-");
   const dbPath = join(workspace, "ha-fail-pg.db");
   const db = new SqliteDatabase(dbPath);
@@ -120,7 +120,7 @@ test("ISSUE-1913: overallStatus returns 'fail' when critical component (postgres
   }
 });
 
-test("ISSUE-1913: overallStatus returns 'pass' when all components are ready", () => {
+test("ISSUE-1913: overallStatus returns 'pass' when all components are ready [ha-program-service]", () => {
   const workspace = createTempWorkspace("aa-ha-program-pass-");
   const dbPath = join(workspace, "ha-pass.db");
   const db = new SqliteDatabase(dbPath);
@@ -146,7 +146,7 @@ test("ISSUE-1913: overallStatus returns 'pass' when all components are ready", (
   }
 });
 
-test("HaProgramService in multi-region exports correct interfaces", () => {
+test("HaProgramService in multi-region exports correct interfaces [ha-program-service]", () => {
   const workspace = createTempWorkspace("aa-ha-program-interfaces-");
   const dbPath = join(workspace, "ha-interfaces.db");
   const db = new SqliteDatabase(dbPath);

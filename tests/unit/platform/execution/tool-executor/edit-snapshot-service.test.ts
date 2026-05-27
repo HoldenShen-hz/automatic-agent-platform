@@ -6,7 +6,7 @@ import {
   EditSnapshotManager,
 } from "../../../../../src/platform/five-plane-execution/tool-executor/edit-snapshot-service.js";
 
-test("EditSnapshotService records edits", () => {
+test("EditSnapshotService records edits [edit-snapshot-service]", () => {
   const service = new EditSnapshotService("session-1");
 
   service.recordEdit({
@@ -22,7 +22,7 @@ test("EditSnapshotService records edits", () => {
   assert.equal(history[0]!.newContent, "new content");
 });
 
-test("EditSnapshotService records multiple edits per step", () => {
+test("EditSnapshotService records multiple edits per step [edit-snapshot-service]", () => {
   const service = new EditSnapshotService("session-1");
 
   service.recordEdit({
@@ -43,7 +43,7 @@ test("EditSnapshotService records multiple edits per step", () => {
   assert.equal(history.length, 2);
 });
 
-test("EditSnapshotService.getPreviousContent returns correct content", () => {
+test("EditSnapshotService.getPreviousContent returns correct content [edit-snapshot-service]", () => {
   const service = new EditSnapshotService("session-1");
 
   service.recordEdit({
@@ -57,14 +57,14 @@ test("EditSnapshotService.getPreviousContent returns correct content", () => {
   assert.equal(previous, "old content");
 });
 
-test("EditSnapshotService.getPreviousContent returns null for non-existent step", () => {
+test("EditSnapshotService.getPreviousContent returns null for non-existent step [edit-snapshot-service]", () => {
   const service = new EditSnapshotService("session-1");
 
   const previous = service.getPreviousContent("non-existent", "/path/to/file.ts");
   assert.equal(previous, null);
 });
 
-test("EditSnapshotService.undo moves edit to redo stack", () => {
+test("EditSnapshotService.undo moves edit to redo stack [edit-snapshot-service]", () => {
   const service = new EditSnapshotService("session-1");
 
   service.recordEdit({
@@ -83,7 +83,7 @@ test("EditSnapshotService.undo moves edit to redo stack", () => {
   assert.equal(state.canRedo, true);
 });
 
-test("EditSnapshotService.redo restores edit from redo stack", () => {
+test("EditSnapshotService.redo restores edit from redo stack [edit-snapshot-service]", () => {
   const service = new EditSnapshotService("session-1");
 
   service.recordEdit({
@@ -104,21 +104,21 @@ test("EditSnapshotService.redo restores edit from redo stack", () => {
   assert.equal(state.canRedo, false);
 });
 
-test("EditSnapshotService.undo returns null when nothing to undo", () => {
+test("EditSnapshotService.undo returns null when nothing to undo [edit-snapshot-service]", () => {
   const service = new EditSnapshotService("session-1");
 
   const undone = service.undo("step-1");
   assert.equal(undone, null);
 });
 
-test("EditSnapshotService.redo returns null when nothing to redo", () => {
+test("EditSnapshotService.redo returns null when nothing to redo [edit-snapshot-service]", () => {
   const service = new EditSnapshotService("session-1");
 
   const redone = service.redo("step-1");
   assert.equal(redone, null);
 });
 
-test("EditSnapshotService.clearHistory removes all history for a step", () => {
+test("EditSnapshotService.clearHistory removes all history for a step [edit-snapshot-service]", () => {
   const service = new EditSnapshotService("session-1");
 
   service.recordEdit({
@@ -135,7 +135,7 @@ test("EditSnapshotService.clearHistory removes all history for a step", () => {
   assert.equal(state.canRedo, false);
 });
 
-test("EditSnapshotService.clearAll removes all history", () => {
+test("EditSnapshotService.clearAll removes all history [edit-snapshot-service]", () => {
   const service = new EditSnapshotService("session-1");
 
   service.recordEdit({
@@ -160,7 +160,7 @@ test("EditSnapshotService.clearAll removes all history", () => {
   assert.equal(state2.canUndo, false);
 });
 
-test("EditSnapshotService.getUndoContent returns content that would be restored", () => {
+test("EditSnapshotService.getUndoContent returns content that would be restored [edit-snapshot-service]", () => {
   const service = new EditSnapshotService("session-1");
 
   service.recordEdit({
@@ -174,7 +174,7 @@ test("EditSnapshotService.getUndoContent returns content that would be restored"
   assert.equal(undoContent, "old content");
 });
 
-test("EditSnapshotService.getRedoContent returns content that would be restored", () => {
+test("EditSnapshotService.getRedoContent returns content that would be restored [edit-snapshot-service]", () => {
   const service = new EditSnapshotService("session-1");
 
   service.recordEdit({
@@ -190,7 +190,7 @@ test("EditSnapshotService.getRedoContent returns content that would be restored"
   assert.equal(redoContent, "new content");
 });
 
-test("EditSnapshotManager.getService creates new service for new session", () => {
+test("EditSnapshotManager.getService creates new service for new session [edit-snapshot-service]", () => {
   const manager = new EditSnapshotManager();
 
   const service1 = manager.getService("session-1");
@@ -201,7 +201,7 @@ test("EditSnapshotManager.getService creates new service for new session", () =>
   assert.equal(service2.getSessionId(), "session-2");
 });
 
-test("EditSnapshotManager.getService returns same service for same session", () => {
+test("EditSnapshotManager.getService returns same service for same session [edit-snapshot-service]", () => {
   const manager = new EditSnapshotManager();
 
   const service1 = manager.getService("session-1");
@@ -210,7 +210,7 @@ test("EditSnapshotManager.getService returns same service for same session", () 
   assert.equal(service1, service2);
 });
 
-test("EditSnapshotManager.removeService removes service", () => {
+test("EditSnapshotManager.removeService removes service [edit-snapshot-service]", () => {
   const manager = new EditSnapshotManager();
 
   manager.getService("session-1");
@@ -222,7 +222,7 @@ test("EditSnapshotManager.removeService removes service", () => {
   assert.equal(state.canUndo, false);
 });
 
-test("EditSnapshotService records multiple edits to same file in step", () => {
+test("EditSnapshotService records multiple edits to same file in step [edit-snapshot-service]", () => {
   const service = new EditSnapshotService("session-1");
 
   service.recordEdit({

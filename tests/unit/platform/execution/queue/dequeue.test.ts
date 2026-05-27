@@ -116,13 +116,13 @@ function createMockDb(rows: RawRow[] = []): AuthoritativeSqlDatabase {
   } as unknown as AuthoritativeSqlDatabase;
 }
 
-test("dequeue returns null for empty queue", () => {
+test("dequeue returns null for empty queue [dequeue]", () => {
   const db = createMockDb();
   const adapter = new SqliteQueueAdapter(db);
   assert.equal(adapter.dequeue("nonexistent"), null);
 });
 
-test("dequeue returns job with ack and nack functions", () => {
+test("dequeue returns job with ack and nack functions [dequeue]", () => {
   const db = createMockDb([{
     id: "qjob_1",
     queue_name: "tasks",
@@ -147,7 +147,7 @@ test("dequeue returns job with ack and nack functions", () => {
   assert.equal(typeof result.nack, "function");
 });
 
-test("dequeue selects job by priority descending", () => {
+test("dequeue selects job by priority descending [dequeue]", () => {
   const db = createMockDb([
     { id: "qjob_1", queue_name: "q", payload: JSON.stringify("low"), status: "waiting", priority: 1, attempts: 0, max_attempts: 3, last_error: null, delay_until: null, idempotency_key: null, created_at: new Date().toISOString(), updated_at: new Date().toISOString(), completed_at: null },
     { id: "qjob_2", queue_name: "q", payload: JSON.stringify("high"), status: "waiting", priority: 10, attempts: 0, max_attempts: 3, last_error: null, delay_until: null, idempotency_key: null, created_at: new Date().toISOString(), updated_at: new Date().toISOString(), completed_at: null },
@@ -159,7 +159,7 @@ test("dequeue selects job by priority descending", () => {
   assert.equal(JSON.parse(result.job.payload), "high");
 });
 
-test("dequeue activates delayed jobs past their delayUntil", () => {
+test("dequeue activates delayed jobs past their delayUntil [dequeue]", () => {
   const now = new Date();
   const past = new Date(now.getTime() - 1000).toISOString();
   const future = new Date(now.getTime() + 60000).toISOString();
@@ -174,7 +174,7 @@ test("dequeue activates delayed jobs past their delayUntil", () => {
   assert.equal(JSON.parse(result.job.payload), "ready");
 });
 
-test("dequeue increments job attempts", () => {
+test("dequeue increments job attempts [dequeue]", () => {
   const db = createMockDb([{
     id: "qjob_1",
     queue_name: "q",
@@ -195,7 +195,7 @@ test("dequeue increments job attempts", () => {
   assert.equal(result!.job.attempts, 1);
 });
 
-test("ack marks job as completed", () => {
+test("ack marks job as completed [dequeue]", () => {
   const db = createMockDb([{
     id: "qjob_1",
     queue_name: "q",
@@ -220,7 +220,7 @@ test("ack marks job as completed", () => {
   assert.ok(job?.completedAt);
 });
 
-test("nack without error retries job when under maxAttempts", () => {
+test("nack without error retries job when under maxAttempts [dequeue]", () => {
   const db = createMockDb([{
     id: "qjob_1",
     queue_name: "q",
@@ -249,7 +249,7 @@ test("nack without error retries job when under maxAttempts", () => {
   assert.equal(result2.job.attempts, 2);
 });
 
-test("nack with error retries job with lastError set", () => {
+test("nack with error retries job with lastError set [dequeue]", () => {
   const db = createMockDb([{
     id: "qjob_1",
     queue_name: "q",
@@ -274,7 +274,7 @@ test("nack with error retries job with lastError set", () => {
   assert.equal(job?.lastError, "transient_error");
 });
 
-test("nack moves job to dead letter when maxAttempts exceeded", () => {
+test("nack moves job to dead letter when maxAttempts exceeded [dequeue]", () => {
   const db = createMockDb([{
     id: "qjob_1",
     queue_name: "q",
@@ -310,7 +310,7 @@ test("nack moves job to dead letter when maxAttempts exceeded", () => {
   assert.equal(job?.lastError, "final_failure");
 });
 
-test("dequeue returns null when all jobs are delayed", () => {
+test("dequeue returns null when all jobs are delayed [dequeue]", () => {
   const now = new Date();
   const future = new Date(now.getTime() + 60000).toISOString();
 
@@ -334,7 +334,7 @@ test("dequeue returns null when all jobs are delayed", () => {
   assert.equal(result, null);
 });
 
-test("ack returns void (no error thrown)", () => {
+test("ack returns void (no error thrown) [dequeue]", () => {
   const db = createMockDb([{
     id: "qjob_1",
     queue_name: "q",
@@ -356,7 +356,7 @@ test("ack returns void (no error thrown)", () => {
   assert.doesNotThrow(() => result.ack());
 });
 
-test("nack with default error uses max_attempts_exceeded", () => {
+test("nack with default error uses max_attempts_exceeded [dequeue]", () => {
   const db = createMockDb([{
     id: "qjob_1",
     queue_name: "q",

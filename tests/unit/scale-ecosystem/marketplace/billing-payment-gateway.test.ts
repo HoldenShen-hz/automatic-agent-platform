@@ -96,7 +96,7 @@ function createCheckoutInput(
 // ManualBillingPaymentGateway Tests
 // ============================================================================
 
-test("ManualBillingPaymentGateway.createCheckoutSession generates correct checkout URL", () => {
+test("ManualBillingPaymentGateway.createCheckoutSession generates correct checkout URL [billing-payment-gateway]", () => {
   const gateway = new ManualBillingPaymentGateway();
   const invoice = createTestInvoice({ invoiceId: "inv_manual_test" });
   const account = createTestAccount({ accountId: "acct_manual_test" });
@@ -112,7 +112,7 @@ test("ManualBillingPaymentGateway.createCheckoutSession generates correct checko
   assert.equal(session.expiresAt, null); // Manual payments don't expire
 });
 
-test("ManualBillingPaymentGateway.createCheckoutSession uses custom baseUrl when provided", () => {
+test("ManualBillingPaymentGateway.createCheckoutSession uses custom baseUrl when provided [billing-payment-gateway]", () => {
   const gateway = new ManualBillingPaymentGateway({ baseUrl: "https://billing.internal.example.com/pay" });
   const input = createCheckoutInput();
 
@@ -121,7 +121,7 @@ test("ManualBillingPaymentGateway.createCheckoutSession uses custom baseUrl when
   assert.match(session.checkoutUrl, /^https:\/\/billing\.internal\.example\.com\/pay\//);
 });
 
-test("ManualBillingPaymentGateway.createCheckoutSession handles empty baseUrl and normalizes slashes", () => {
+test("ManualBillingPaymentGateway.createCheckoutSession handles empty baseUrl and normalizes slashes [billing-payment-gateway]", () => {
   const gateway = new ManualBillingPaymentGateway({ baseUrl: "  https://billing.test.com///  " });
   const input = createCheckoutInput();
 
@@ -132,7 +132,7 @@ test("ManualBillingPaymentGateway.createCheckoutSession handles empty baseUrl an
   assert.ok(!session.checkoutUrl.endsWith("///"));
 });
 
-test("ManualBillingPaymentGateway.fetchPaymentSessionStatus always returns null", () => {
+test("ManualBillingPaymentGateway.fetchPaymentSessionStatus always returns null [billing-payment-gateway]", () => {
   const gateway = new ManualBillingPaymentGateway();
 
   // Manual gateway doesn't take any arguments - it always returns null
@@ -141,7 +141,7 @@ test("ManualBillingPaymentGateway.fetchPaymentSessionStatus always returns null"
   assert.equal(result, null);
 });
 
-test("ManualBillingPaymentGateway.kind returns 'manual'", () => {
+test("ManualBillingPaymentGateway.kind returns 'manual' [billing-payment-gateway]", () => {
   const gateway = new ManualBillingPaymentGateway();
   assert.equal(gateway.kind, "manual");
 });
@@ -150,7 +150,7 @@ test("ManualBillingPaymentGateway.kind returns 'manual'", () => {
 // StripeBillingPaymentGateway Tests
 // ============================================================================
 
-test("StripeBillingPaymentGateway.createCheckoutSession sends correct form data and returns session", async () => {
+test("StripeBillingPaymentGateway.createCheckoutSession sends correct form data and returns session [billing-payment-gateway]", async () => {
   let capturedBody: string | undefined;
   let capturedHeaders: Record<string, string> | undefined;
 
@@ -203,7 +203,7 @@ test("StripeBillingPaymentGateway.createCheckoutSession sends correct form data 
   assert.equal(session.expiresAt, new Date(1770000000 * 1000).toISOString());
 });
 
-test("StripeBillingPaymentGateway.createCheckoutSession converts USD to cents correctly", async () => {
+test("StripeBillingPaymentGateway.createCheckoutSession converts USD to cents correctly [billing-payment-gateway]", async () => {
   const gateway = new StripeBillingPaymentGateway({
     secretKey: "sk_test_12345",
     successUrl: "https://app.example.com/success",
@@ -260,7 +260,7 @@ test("StripeBillingPaymentGateway.createCheckoutSession converts USD to cents co
   }
 });
 
-test("StripeBillingPaymentGateway.createCheckoutSession handles API error response", async () => {
+test("StripeBillingPaymentGateway.createCheckoutSession handles API error response [billing-payment-gateway]", async () => {
   const gateway = new StripeBillingPaymentGateway({
     secretKey: "sk_test_invalid",
     successUrl: "https://app.example.com/success",
@@ -291,7 +291,7 @@ test("StripeBillingPaymentGateway.createCheckoutSession handles API error respon
   );
 });
 
-test("StripeBillingPaymentGateway.createCheckoutSession handles server error (retryable)", async () => {
+test("StripeBillingPaymentGateway.createCheckoutSession handles server error (retryable) [billing-payment-gateway]", async () => {
   const gateway = new StripeBillingPaymentGateway({
     secretKey: "sk_test_12345",
     successUrl: "https://app.example.com/success",
@@ -320,7 +320,7 @@ test("StripeBillingPaymentGateway.createCheckoutSession handles server error (re
   );
 });
 
-test("StripeBillingPaymentGateway.createCheckoutSession throws ValidationError on malformed response", async () => {
+test("StripeBillingPaymentGateway.createCheckoutSession throws ValidationError on malformed response [billing-payment-gateway]", async () => {
   const gateway = new StripeBillingPaymentGateway({
     secretKey: "sk_test_12345",
     successUrl: "https://app.example.com/success",
@@ -348,7 +348,7 @@ test("StripeBillingPaymentGateway.createCheckoutSession throws ValidationError o
   );
 });
 
-test("StripeBillingPaymentGateway.fetchPaymentSessionStatus returns paid status for paid session", async () => {
+test("StripeBillingPaymentGateway.fetchPaymentSessionStatus returns paid status for paid session [billing-payment-gateway]", async () => {
   const gateway = new StripeBillingPaymentGateway({
     secretKey: "sk_test_12345",
     successUrl: "https://app.example.com/success",
@@ -381,7 +381,7 @@ test("StripeBillingPaymentGateway.fetchPaymentSessionStatus returns paid status 
   assert.ok(result.occurredAt !== null);
 });
 
-test("StripeBillingPaymentGateway.fetchPaymentSessionStatus returns expired status for expired session", async () => {
+test("StripeBillingPaymentGateway.fetchPaymentSessionStatus returns expired status for expired session [billing-payment-gateway]", async () => {
   const gateway = new StripeBillingPaymentGateway({
     secretKey: "sk_test_12345",
     successUrl: "https://app.example.com/success",
@@ -408,7 +408,7 @@ test("StripeBillingPaymentGateway.fetchPaymentSessionStatus returns expired stat
   assert.equal(result.status, "expired");
 });
 
-test("StripeBillingPaymentGateway.fetchPaymentSessionStatus returns pending for other statuses", async () => {
+test("StripeBillingPaymentGateway.fetchPaymentSessionStatus returns pending for other statuses [billing-payment-gateway]", async () => {
   const gateway = new StripeBillingPaymentGateway({
     secretKey: "sk_test_12345",
     successUrl: "https://app.example.com/success",
@@ -435,7 +435,7 @@ test("StripeBillingPaymentGateway.fetchPaymentSessionStatus returns pending for 
   assert.equal(result.status, "pending");
 });
 
-test("StripeBillingPaymentGateway.fetchPaymentSessionStatus handles API errors with retryable flag", async () => {
+test("StripeBillingPaymentGateway.fetchPaymentSessionStatus handles API errors with retryable flag [billing-payment-gateway]", async () => {
   const gateway = new StripeBillingPaymentGateway({
     secretKey: "sk_test_12345",
     successUrl: "https://app.example.com/success",
@@ -466,7 +466,7 @@ test("StripeBillingPaymentGateway.fetchPaymentSessionStatus handles API errors w
   );
 });
 
-test("StripeBillingPaymentGateway.fetchPaymentSessionStatus throws ValidationError on mismatched session ID", async () => {
+test("StripeBillingPaymentGateway.fetchPaymentSessionStatus throws ValidationError on mismatched session ID [billing-payment-gateway]", async () => {
   const gateway = new StripeBillingPaymentGateway({
     secretKey: "sk_test_12345",
     successUrl: "https://app.example.com/success",
@@ -499,7 +499,7 @@ test("StripeBillingPaymentGateway.fetchPaymentSessionStatus throws ValidationErr
   );
 });
 
-test("StripeBillingPaymentGateway.fetchPaymentSessionStatus URL-encodes session reference (SSRF protection)", async () => {
+test("StripeBillingPaymentGateway.fetchPaymentSessionStatus URL-encodes session reference (SSRF protection) [billing-payment-gateway]", async () => {
   let capturedUrl: string | undefined;
 
   const gateway = new StripeBillingPaymentGateway({
@@ -535,7 +535,7 @@ test("StripeBillingPaymentGateway.fetchPaymentSessionStatus URL-encodes session 
   assert.match(capturedUrl!, /cs_test%2Fspecial%26query%3D123/);
 });
 
-test("StripeBillingPaymentGateway.kind returns 'stripe'", () => {
+test("StripeBillingPaymentGateway.kind returns 'stripe' [billing-payment-gateway]", () => {
   const gateway = new StripeBillingPaymentGateway({
     secretKey: "sk_test_12345",
     successUrl: "https://app.example.com/success",
@@ -544,7 +544,7 @@ test("StripeBillingPaymentGateway.kind returns 'stripe'", () => {
   assert.equal(gateway.kind, "stripe");
 });
 
-test("StripeBillingPaymentGateway uses custom apiBaseUrl when provided", async () => {
+test("StripeBillingPaymentGateway uses custom apiBaseUrl when provided [billing-payment-gateway]", async () => {
   let capturedUrl: string | undefined;
 
   const gateway = new StripeBillingPaymentGateway({
@@ -577,7 +577,7 @@ test("StripeBillingPaymentGateway uses custom apiBaseUrl when provided", async (
 // PaddleBillingPaymentGateway Tests
 // ============================================================================
 
-test("PaddleBillingPaymentGateway.createCheckoutSession sends correct JSON and returns session", async () => {
+test("PaddleBillingPaymentGateway.createCheckoutSession sends correct JSON and returns session [billing-payment-gateway]", async () => {
   let capturedBody: string | undefined;
   let capturedHeaders: Record<string, string> | undefined;
 
@@ -632,7 +632,7 @@ test("PaddleBillingPaymentGateway.createCheckoutSession sends correct JSON and r
   assert.equal(session.checkoutUrl, "https://checkout.paddle.com/test/txn_paddle_123");
 });
 
-test("PaddleBillingPaymentGateway.createCheckoutSession handles API error response", async () => {
+test("PaddleBillingPaymentGateway.createCheckoutSession handles API error response [billing-payment-gateway]", async () => {
   const gateway = new PaddleBillingPaymentGateway({
     apiKey: "pdl_test_invalid",
     successUrl: "https://app.example.com/success",
@@ -662,7 +662,7 @@ test("PaddleBillingPaymentGateway.createCheckoutSession handles API error respon
   );
 });
 
-test("PaddleBillingPaymentGateway.createCheckoutSession throws ValidationError on malformed response", async () => {
+test("PaddleBillingPaymentGateway.createCheckoutSession throws ValidationError on malformed response [billing-payment-gateway]", async () => {
   const gateway = new PaddleBillingPaymentGateway({
     apiKey: "pdl_test_12345",
     successUrl: "https://app.example.com/success",
@@ -690,7 +690,7 @@ test("PaddleBillingPaymentGateway.createCheckoutSession throws ValidationError o
   );
 });
 
-test("PaddleBillingPaymentGateway.fetchPaymentSessionStatus maps 'completed' to 'paid'", async () => {
+test("PaddleBillingPaymentGateway.fetchPaymentSessionStatus maps 'completed' to 'paid' [billing-payment-gateway]", async () => {
   const gateway = new PaddleBillingPaymentGateway({
     apiKey: "pdl_test_12345",
     successUrl: "https://app.example.com/success",
@@ -724,7 +724,7 @@ test("PaddleBillingPaymentGateway.fetchPaymentSessionStatus maps 'completed' to 
   assert.equal(result.status, "paid");
 });
 
-test("PaddleBillingPaymentGateway.fetchPaymentSessionStatus maps 'billed' to 'paid'", async () => {
+test("PaddleBillingPaymentGateway.fetchPaymentSessionStatus maps 'billed' to 'paid' [billing-payment-gateway]", async () => {
   const gateway = new PaddleBillingPaymentGateway({
     apiKey: "pdl_test_12345",
     successUrl: "https://app.example.com/success",
@@ -753,7 +753,7 @@ test("PaddleBillingPaymentGateway.fetchPaymentSessionStatus maps 'billed' to 'pa
   assert.equal(result.status, "paid");
 });
 
-test("PaddleBillingPaymentGateway.fetchPaymentSessionStatus maps 'cancelled' (and 'canceled') to 'cancelled'", async () => {
+test("PaddleBillingPaymentGateway.fetchPaymentSessionStatus maps 'cancelled' (and 'canceled') to 'cancelled' [billing-payment-gateway]", async () => {
   for (const status of ["canceled", "cancelled"]) {
     const gateway = new PaddleBillingPaymentGateway({
       apiKey: "pdl_test_12345",
@@ -784,7 +784,7 @@ test("PaddleBillingPaymentGateway.fetchPaymentSessionStatus maps 'cancelled' (an
   }
 });
 
-test("PaddleBillingPaymentGateway.fetchPaymentSessionStatus maps 'past_due' and 'failed' to 'failed'", async () => {
+test("PaddleBillingPaymentGateway.fetchPaymentSessionStatus maps 'past_due' and 'failed' to 'failed' [billing-payment-gateway]", async () => {
   for (const status of ["past_due", "failed"]) {
     const gateway = new PaddleBillingPaymentGateway({
       apiKey: "pdl_test_12345",
@@ -815,7 +815,7 @@ test("PaddleBillingPaymentGateway.fetchPaymentSessionStatus maps 'past_due' and 
   }
 });
 
-test("PaddleBillingPaymentGateway.fetchPaymentSessionStatus defaults to 'pending' for unknown statuses", async () => {
+test("PaddleBillingPaymentGateway.fetchPaymentSessionStatus defaults to 'pending' for unknown statuses [billing-payment-gateway]", async () => {
   const gateway = new PaddleBillingPaymentGateway({
     apiKey: "pdl_test_12345",
     successUrl: "https://app.example.com/success",
@@ -844,7 +844,7 @@ test("PaddleBillingPaymentGateway.fetchPaymentSessionStatus defaults to 'pending
   assert.equal(result.status, "pending");
 });
 
-test("PaddleBillingPaymentGateway.fetchPaymentSessionStatus handles API errors", async () => {
+test("PaddleBillingPaymentGateway.fetchPaymentSessionStatus handles API errors [billing-payment-gateway]", async () => {
   const gateway = new PaddleBillingPaymentGateway({
     apiKey: "pdl_test_12345",
     successUrl: "https://app.example.com/success",
@@ -875,7 +875,7 @@ test("PaddleBillingPaymentGateway.fetchPaymentSessionStatus handles API errors",
   );
 });
 
-test("PaddleBillingPaymentGateway.fetchPaymentSessionStatus throws ValidationError on mismatched transaction ID", async () => {
+test("PaddleBillingPaymentGateway.fetchPaymentSessionStatus throws ValidationError on mismatched transaction ID [billing-payment-gateway]", async () => {
   const gateway = new PaddleBillingPaymentGateway({
     apiKey: "pdl_test_12345",
     successUrl: "https://app.example.com/success",
@@ -909,7 +909,7 @@ test("PaddleBillingPaymentGateway.fetchPaymentSessionStatus throws ValidationErr
   );
 });
 
-test("PaddleBillingPaymentGateway.fetchPaymentSessionStatus URL-encodes transaction reference (SSRF protection)", async () => {
+test("PaddleBillingPaymentGateway.fetchPaymentSessionStatus URL-encodes transaction reference (SSRF protection) [billing-payment-gateway]", async () => {
   let capturedUrl: string | undefined;
 
   const gateway = new PaddleBillingPaymentGateway({
@@ -947,7 +947,7 @@ test("PaddleBillingPaymentGateway.fetchPaymentSessionStatus URL-encodes transact
   assert.match(capturedUrl!, /txn_test%2Fspecial%26query%3D123/);
 });
 
-test("PaddleBillingPaymentGateway.kind returns 'paddle'", () => {
+test("PaddleBillingPaymentGateway.kind returns 'paddle' [billing-payment-gateway]", () => {
   const gateway = new PaddleBillingPaymentGateway({
     apiKey: "pdl_test_12345",
     successUrl: "https://app.example.com/success",
@@ -956,7 +956,7 @@ test("PaddleBillingPaymentGateway.kind returns 'paddle'", () => {
   assert.equal(gateway.kind, "paddle");
 });
 
-test("PaddleBillingPaymentGateway uses custom apiBaseUrl when provided", async () => {
+test("PaddleBillingPaymentGateway uses custom apiBaseUrl when provided [billing-payment-gateway]", async () => {
   let capturedUrl: string | undefined;
 
   const gateway = new PaddleBillingPaymentGateway({
@@ -988,7 +988,7 @@ test("PaddleBillingPaymentGateway uses custom apiBaseUrl when provided", async (
   assert.match(capturedUrl!, /^https:\/\/paddle\.internal\.example\.com\/api\//);
 });
 
-test("PaddleBillingPaymentGateway handles rate limiting (429) as retryable", async () => {
+test("PaddleBillingPaymentGateway handles rate limiting (429) as retryable [billing-payment-gateway]", async () => {
   const gateway = new PaddleBillingPaymentGateway({
     apiKey: "pdl_test_12345",
     successUrl: "https://app.example.com/success",
@@ -1021,7 +1021,7 @@ test("PaddleBillingPaymentGateway handles rate limiting (429) as retryable", asy
 // Integration-style Tests: Gateway Interface Compliance
 // ============================================================================
 
-test("All gateways implement BillingPaymentGateway interface kind property", () => {
+test("All gateways implement BillingPaymentGateway interface kind property [billing-payment-gateway]", () => {
   const gateways = [
     new ManualBillingPaymentGateway(),
     new StripeBillingPaymentGateway({
@@ -1043,7 +1043,7 @@ test("All gateways implement BillingPaymentGateway interface kind property", () 
   }
 });
 
-test("All gateways return correct gatewayKind in checkout session response", async () => {
+test("All gateways return correct gatewayKind in checkout session response [billing-payment-gateway]", async () => {
   const invoice = createTestInvoice();
   const account = createTestAccount();
 
@@ -1092,7 +1092,7 @@ test("All gateways return correct gatewayKind in checkout session response", asy
   assert.equal(paddleSession.gatewayKind, "paddle");
 });
 
-test("All checkout sessions include gatewaySessionRef and checkoutUrl", async () => {
+test("All checkout sessions include gatewaySessionRef and checkoutUrl [billing-payment-gateway]", async () => {
   const invoice = createTestInvoice();
   const account = createTestAccount();
   const createdAt = new Date().toISOString();

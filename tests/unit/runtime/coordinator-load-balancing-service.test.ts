@@ -26,7 +26,7 @@ function createServiceHarness() {
   };
 }
 
-test("coordinator load balancing summarizes fleet status and selects an eligible coordinator", () => {
+test("coordinator load balancing summarizes fleet status and selects an eligible coordinator [coordinator-load-balancing-service]", () => {
   const harness = createServiceHarness();
   try {
     harness.service.registerHeartbeat({
@@ -98,7 +98,7 @@ test("coordinator load balancing summarizes fleet status and selects an eligible
   }
 });
 
-test("coordinator load balancing fail-closes when no active coordinator matches the requested queue", () => {
+test("coordinator load balancing fail-closes when no active coordinator matches the requested queue [coordinator-load-balancing-service]", () => {
   const harness = createServiceHarness();
   try {
     harness.service.registerHeartbeat({
@@ -129,7 +129,7 @@ test("coordinator load balancing fail-closes when no active coordinator matches 
   }
 });
 
-test("registerHeartbeat creates new coordinator if not exists", () => {
+test("registerHeartbeat creates new coordinator if not exists [coordinator-load-balancing-service]", () => {
   const harness = createServiceHarness();
   try {
     const record = harness.service.registerHeartbeat({
@@ -150,7 +150,7 @@ test("registerHeartbeat creates new coordinator if not exists", () => {
   }
 });
 
-test("registerHeartbeat updates existing coordinator", () => {
+test("registerHeartbeat updates existing coordinator [coordinator-load-balancing-service]", () => {
   const harness = createServiceHarness();
   try {
     harness.service.registerHeartbeat({
@@ -179,7 +179,7 @@ test("registerHeartbeat updates existing coordinator", () => {
   }
 });
 
-test("registerHeartbeat generates coordinatorId if not provided", () => {
+test("registerHeartbeat generates coordinatorId if not provided [coordinator-load-balancing-service]", () => {
   const harness = createServiceHarness();
   try {
     const record = harness.service.registerHeartbeat({
@@ -195,7 +195,7 @@ test("registerHeartbeat generates coordinatorId if not provided", () => {
   }
 });
 
-test("registerHeartbeat normalizes shards and deduplicates", () => {
+test("registerHeartbeat normalizes shards and deduplicates [coordinator-load-balancing-service]", () => {
   const harness = createServiceHarness();
   try {
     const record = harness.service.registerHeartbeat({
@@ -214,7 +214,7 @@ test("registerHeartbeat normalizes shards and deduplicates", () => {
   }
 });
 
-test("listSnapshots returns coordinator records", () => {
+test("listSnapshots returns coordinator records [coordinator-load-balancing-service]", () => {
   const harness = createServiceHarness();
   try {
     harness.service.registerHeartbeat({
@@ -239,7 +239,7 @@ test("listSnapshots returns coordinator records", () => {
   }
 });
 
-test("selectCoordinator prefers lower load when all are eligible", () => {
+test("selectCoordinator prefers lower load when all are eligible [coordinator-load-balancing-service]", () => {
   const harness = createServiceHarness();
   try {
     harness.service.registerHeartbeat({
@@ -274,7 +274,7 @@ test("selectCoordinator prefers lower load when all are eligible", () => {
   }
 });
 
-test("selectCoordinator considers queue affinity", () => {
+test("selectCoordinator considers queue affinity [coordinator-load-balancing-service]", () => {
   const harness = createServiceHarness();
   try {
     harness.service.registerHeartbeat({
@@ -308,7 +308,7 @@ test("selectCoordinator considers queue affinity", () => {
   }
 });
 
-test("selectCoordinator considers preferred region when loads are similar", () => {
+test("selectCoordinator considers preferred region when loads are similar [coordinator-load-balancing-service]", () => {
   const harness = createServiceHarness();
   try {
     harness.service.registerHeartbeat({
@@ -343,7 +343,7 @@ test("selectCoordinator considers preferred region when loads are similar", () =
   }
 });
 
-test("selectCoordinator filters by tenant shard", () => {
+test("selectCoordinator filters by tenant shard [coordinator-load-balancing-service]", () => {
   const harness = createServiceHarness();
   try {
     harness.service.registerHeartbeat({
@@ -373,7 +373,7 @@ test("selectCoordinator filters by tenant shard", () => {
   }
 });
 
-test("selectCoordinator rejects inactive coordinator", () => {
+test("selectCoordinator rejects inactive coordinator [coordinator-load-balancing-service]", () => {
   const harness = createServiceHarness();
   try {
     harness.service.registerHeartbeat({
@@ -397,7 +397,7 @@ test("selectCoordinator rejects inactive coordinator", () => {
   }
 });
 
-test("buildSummary calculates correct totals", () => {
+test("buildSummary calculates correct totals [coordinator-load-balancing-service]", () => {
   const harness = createServiceHarness();
   try {
     harness.service.registerHeartbeat({
@@ -444,7 +444,7 @@ test("buildSummary calculates correct totals", () => {
   }
 });
 
-test("buildSummary identifies hot coordinators", () => {
+test("buildSummary identifies hot coordinators [coordinator-load-balancing-service]", () => {
   const harness = createServiceHarness();
   try {
     harness.service.registerHeartbeat({
@@ -476,7 +476,7 @@ test("buildSummary identifies hot coordinators", () => {
   }
 });
 
-test("selectCoordinator returns all evaluations even when no candidate", () => {
+test("selectCoordinator returns all evaluations even when no candidate [coordinator-load-balancing-service]", () => {
   const harness = createServiceHarness();
   try {
     harness.service.registerHeartbeat({
@@ -497,7 +497,7 @@ test("selectCoordinator returns all evaluations even when no candidate", () => {
   }
 });
 
-test("registerHeartbeat uses default values for optional fields", () => {
+test("registerHeartbeat uses default values for optional fields [coordinator-load-balancing-service]", () => {
   const harness = createServiceHarness();
   try {
     const record = harness.service.registerHeartbeat({
@@ -518,7 +518,7 @@ test("registerHeartbeat uses default values for optional fields", () => {
   }
 });
 
-test("selectCoordinator uses request key for consistent hashing", () => {
+test("selectCoordinator uses request key for consistent hashing [coordinator-load-balancing-service]", () => {
   const harness = createServiceHarness();
   try {
     harness.service.registerHeartbeat({

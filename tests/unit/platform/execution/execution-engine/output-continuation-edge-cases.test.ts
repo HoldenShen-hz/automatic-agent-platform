@@ -27,7 +27,7 @@ import {
 // C-09: TTL-based eviction mechanism
 // ---------------------------------------------------------------------------
 
-test("eviction removes expired records based on TTL", () => {
+test("eviction removes expired records based on TTL [output-continuation-edge-cases]", () => {
   const service = new OutputContinuationService();
 
   // Create a record manually with old timestamp
@@ -63,7 +63,7 @@ test("eviction removes expired records based on TTL", () => {
   assert.ok(service.getRecord(freshRecord.id));
 });
 
-test("eviction removes oldest records when MAX_RECORDS exceeded", () => {
+test("eviction removes oldest records when MAX_RECORDS exceeded [output-continuation-edge-cases]", () => {
   const service = new OutputContinuationService();
 
   // Create records up to a point
@@ -85,7 +85,7 @@ test("eviction removes oldest records when MAX_RECORDS exceeded", () => {
   service.clearRecords();
 });
 
-test("eviction interval prevents frequent eviction checks", () => {
+test("eviction interval prevents frequent eviction checks [output-continuation-edge-cases]", () => {
   const service = new OutputContinuationService();
 
   // Create one record
@@ -118,39 +118,39 @@ test("eviction interval prevents frequent eviction checks", () => {
 // extractContinuationPoint boundary conditions
 // ---------------------------------------------------------------------------
 
-test("extractContinuationPoint handles single line", () => {
+test("extractContinuationPoint handles single line [output-continuation-edge-cases]", () => {
   const result = extractContinuationPoint("Hello world");
   assert.equal(result, "Hello world");
 });
 
-test("extractContinuationPoint handles exactly two lines", () => {
+test("extractContinuationPoint handles exactly two lines [output-continuation-edge-cases]", () => {
   const result = extractContinuationPoint("Line1\nLine2");
   assert.equal(result, "Line1\nLine2");
 });
 
-test("extractContinuationPoint handles three lines with ellipsis on last", () => {
+test("extractContinuationPoint handles three lines with ellipsis on last [output-continuation-edge-cases]", () => {
   const result = extractContinuationPoint("Line1\nLine2\n...");
   assert.equal(result, "Line1\nLine2");
 });
 
-test("extractContinuationPoint handles multiple cutoff indicators", () => {
+test("extractContinuationPoint handles multiple cutoff indicators [output-continuation-edge-cases]", () => {
   // Last line has multiple indicators
   const result = extractContinuationPoint("Line1\nLine2\n[truncated] [continued]...");
   // Should strip last line
   assert.equal(result, "Line1\nLine2");
 });
 
-test("extractContinuationPoint handles trailing comma followed by more text", () => {
+test("extractContinuationPoint handles trailing comma followed by more text [output-continuation-edge-cases]", () => {
   const result = extractContinuationPoint("item1, item2, item3,");
   assert.equal(result, "item1, item2, item3,");
 });
 
-test("extractContinuationPoint handles trailing Chinese comma", () => {
+test("extractContinuationPoint handles trailing Chinese comma [output-continuation-edge-cases]", () => {
   const result = extractContinuationPoint("第一项，第二项，");
   assert.equal(result, "第一项，第二项，");
 });
 
-test("extractContinuationPoint finds sentence boundary at 70% position", () => {
+test("extractContinuationPoint finds sentence boundary at 70% position [output-continuation-edge-cases]", () => {
   // A long text where a sentence ends after 70%
   const longText = "This is a long message. ".repeat(5) + "Final part without period";
   const result = extractContinuationPoint(longText);
@@ -158,39 +158,39 @@ test("extractContinuationPoint finds sentence boundary at 70% position", () => {
   assert.ok(result !== null);
 });
 
-test("extractContinuationPoint returns full content for short text", () => {
+test("extractContinuationPoint returns full content for short text [output-continuation-edge-cases]", () => {
   // Short outputs are still valid continuation anchors for resumable responses.
   const text = "Hello";
   const result = extractContinuationPoint(text);
   assert.equal(result, text);
 });
 
-test("extractContinuationPoint handles incomplete JSON-like structure", () => {
+test("extractContinuationPoint handles incomplete JSON-like structure [output-continuation-edge-cases]", () => {
   const result = extractContinuationPoint('{"key": "value", "nested": {');
   assert.equal(result, '{"key": "value", "nested": {');
 });
 
-test("extractContinuationPoint handles incomplete array of objects", () => {
+test("extractContinuationPoint handles incomplete array of objects [output-continuation-edge-cases]", () => {
   const result = extractContinuationPoint("[{id: 1}, {id: 2},");
   assert.equal(result, "[{id: 1}, {id: 2},");
 });
 
-test("extractContinuationPoint handles HTML-like incomplete tag", () => {
+test("extractContinuationPoint handles HTML-like incomplete tag [output-continuation-edge-cases]", () => {
   const result = extractContinuationPoint("<div class='test'><span");
   assert.equal(result, "<div class='test'><span");
 });
 
-test("extractContinuationPoint handles arrow function incomplete", () => {
+test("extractContinuationPoint handles arrow function incomplete [output-continuation-edge-cases]", () => {
   const result = extractContinuationPoint("const fn = (x, y) =>");
   assert.equal(result, "const fn = (x, y) =>");
 });
 
-test("extractContinuationPoint handles method chain incomplete", () => {
+test("extractContinuationPoint handles method chain incomplete [output-continuation-edge-cases]", () => {
   const result = extractContinuationPoint("obj.method().method().");
   assert.equal(result, "obj.method().method().");
 });
 
-test("extractContinuationPoint handles Python dict incomplete", () => {
+test("extractContinuationPoint handles Python dict incomplete [output-continuation-edge-cases]", () => {
   const result = extractContinuationPoint('{"name": "test", "value":');
   assert.equal(result, '{"name": "test", "value":');
 });
@@ -199,7 +199,7 @@ test("extractContinuationPoint handles Python dict incomplete", () => {
 // Continuation record management
 // ---------------------------------------------------------------------------
 
-test("createContinuationRecord parses all finish reason variants", () => {
+test("createContinuationRecord parses all finish reason variants [output-continuation-edge-cases]", () => {
   const service = new OutputContinuationService();
 
   const variants = [
@@ -233,25 +233,25 @@ test("createContinuationRecord parses all finish reason variants", () => {
   service.clearRecords();
 });
 
-test("getRecordsByExecution returns empty array for no matches", () => {
+test("getRecordsByExecution returns empty array for no matches [output-continuation-edge-cases]", () => {
   const service = new OutputContinuationService();
   const records = service.getRecordsByExecution("nonexistent-exec");
   assert.equal(records.length, 0);
 });
 
-test("getRecordsBySession returns empty array for no matches", () => {
+test("getRecordsBySession returns empty array for no matches [output-continuation-edge-cases]", () => {
   const service = new OutputContinuationService();
   const records = service.getRecordsBySession("nonexistent-sess");
   assert.equal(records.length, 0);
 });
 
-test("getRecordsByTask returns empty array for no matches", () => {
+test("getRecordsByTask returns empty array for no matches [output-continuation-edge-cases]", () => {
   const service = new OutputContinuationService();
   const records = service.getRecordsByTask("nonexistent-task");
   assert.equal(records.length, 0);
 });
 
-test("incrementContinuationCount updates lastContinuationAt timestamp", () => {
+test("incrementContinuationCount updates lastContinuationAt timestamp [output-continuation-edge-cases]", () => {
   const service = new OutputContinuationService();
   const record = service.createContinuationRecord({
     taskId: "task-1",
@@ -271,7 +271,7 @@ test("incrementContinuationCount updates lastContinuationAt timestamp", () => {
   assert.ok(updated?.lastContinuationAt !== undefined);
 });
 
-test("multiple increments accumulate correctly", () => {
+test("multiple increments accumulate correctly [output-continuation-edge-cases]", () => {
   const service = new OutputContinuationService();
   const record = service.createContinuationRecord({
     taskId: "task-1",
@@ -294,7 +294,7 @@ test("multiple increments accumulate correctly", () => {
 // Memory management
 // ---------------------------------------------------------------------------
 
-test("clearRecords empties all records", () => {
+test("clearRecords empties all records [output-continuation-edge-cases]", () => {
   const service = new OutputContinuationService();
 
   // Create multiple records
@@ -314,13 +314,13 @@ test("clearRecords empties all records", () => {
   assert.equal(service.getRecordCount(), 0);
 });
 
-test("clearRecords can be called when empty", () => {
+test("clearRecords can be called when empty [output-continuation-edge-cases]", () => {
   const service = new OutputContinuationService();
   service.clearRecords();
   assert.equal(service.getRecordCount(), 0);
 });
 
-test("getRecord returns undefined for cleared records", () => {
+test("getRecord returns undefined for cleared records [output-continuation-edge-cases]", () => {
   const service = new OutputContinuationService();
   const record = service.createContinuationRecord({
     taskId: "task-1",
@@ -340,7 +340,7 @@ test("getRecord returns undefined for cleared records", () => {
 // checkContinuationStatus edge cases
 // ---------------------------------------------------------------------------
 
-test("checkContinuationStatus returns correct structure for max_tokens", () => {
+test("checkContinuationStatus returns correct structure for max_tokens [output-continuation-edge-cases]", () => {
   const service = new OutputContinuationService();
   const status = service.checkContinuationStatus("max_tokens", "Partial output here...");
 
@@ -351,7 +351,7 @@ test("checkContinuationStatus returns correct structure for max_tokens", () => {
   assert.ok(status.nextInputContent !== null);
 });
 
-test("checkContinuationStatus returns null budget when cannot continue", () => {
+test("checkContinuationStatus returns null budget when cannot continue [output-continuation-edge-cases]", () => {
   const service = new OutputContinuationService();
   const status = service.checkContinuationStatus("stop", "Complete output");
 
@@ -360,7 +360,7 @@ test("checkContinuationStatus returns null budget when cannot continue", () => {
   assert.equal(status.nextInputContent, null);
 });
 
-test("checkContinuationStatus handles empty partial output", () => {
+test("checkContinuationStatus handles empty partial output [output-continuation-edge-cases]", () => {
   const service = new OutputContinuationService();
   const status = service.checkContinuationStatus("max_tokens", "");
 
@@ -368,7 +368,7 @@ test("checkContinuationStatus handles empty partial output", () => {
   assert.equal(status.canContinue, false);
 });
 
-test("checkContinuationStatus handles whitespace-only partial output", () => {
+test("checkContinuationStatus handles whitespace-only partial output [output-continuation-edge-cases]", () => {
   const service = new OutputContinuationService();
   const status = service.checkContinuationStatus("max_tokens", "   \n\t  ");
 
@@ -376,7 +376,7 @@ test("checkContinuationStatus handles whitespace-only partial output", () => {
   assert.equal(status.canContinue, false);
 });
 
-test("checkContinuationStatus nextInputContent format", () => {
+test("checkContinuationStatus nextInputContent format [output-continuation-edge-cases]", () => {
   const service = new OutputContinuationService();
   const partial = "Hello world, goodbye";
   const status = service.checkContinuationStatus("length", partial);
@@ -396,13 +396,13 @@ test("checkContinuationStatus nextInputContent format", () => {
 // buildContinuationPrompt edge cases
 // ---------------------------------------------------------------------------
 
-test("buildContinuationPrompt with empty original prompt", () => {
+test("buildContinuationPrompt with empty original prompt [output-continuation-edge-cases]", () => {
   const prompt = buildContinuationPrompt("partial", "");
   assert.ok(prompt.includes("partial"));
   assert.ok(prompt.includes("Original prompt"));
 });
 
-test("buildContinuationPrompt with special characters in partial", () => {
+test("buildContinuationPrompt with special characters in partial [output-continuation-edge-cases]", () => {
   const prompt = buildContinuationPrompt(
     "Output with <div class='test'> and 'quotes' and unicode: 你好",
     "Original",
@@ -412,12 +412,12 @@ test("buildContinuationPrompt with special characters in partial", () => {
   assert.ok(prompt.includes("unicode"));
 });
 
-test("buildContinuationPrompt with very long token budget", () => {
+test("buildContinuationPrompt with very long token budget [output-continuation-edge-cases]", () => {
   const prompt = buildContinuationPrompt("partial", "original", 100000);
   assert.ok(prompt.includes("100000"));
 });
 
-test("buildContinuationPrompt with zero token budget", () => {
+test("buildContinuationPrompt with zero token budget [output-continuation-edge-cases]", () => {
   const prompt = buildContinuationPrompt("partial", "original", 0);
   assert.ok(prompt.includes("Remaining budget: 0 tokens"));
 });
@@ -426,21 +426,21 @@ test("buildContinuationPrompt with zero token budget", () => {
 // parseFinishReason case handling
 // ---------------------------------------------------------------------------
 
-test("parseFinishReason handles mixed case", () => {
+test("parseFinishReason handles mixed case [output-continuation-edge-cases]", () => {
   assert.equal(parseFinishReason("Max_Tokens"), "max_tokens_exceeded");
   assert.equal(parseFinishReason("CONTENT_FILTER"), "content_filtered");
   assert.equal(parseFinishReason("Stop_Sequence"), "stop_sequence");
   assert.equal(parseFinishReason("Normal"), "normal");
 });
 
-test("parseFinishReason handles lowercase", () => {
+test("parseFinishReason handles lowercase [output-continuation-edge-cases]", () => {
   assert.equal(parseFinishReason("length"), "max_tokens_exceeded");
   assert.equal(parseFinishReason("content_filter"), "content_filtered");
   assert.equal(parseFinishReason("stop"), "stop_sequence");
   assert.equal(parseFinishReason("normal"), "normal");
 });
 
-test("parseFinishReason handles uppercase", () => {
+test("parseFinishReason handles uppercase [output-continuation-edge-cases]", () => {
   assert.equal(parseFinishReason("LENGTH"), "max_tokens_exceeded");
   assert.equal(parseFinishReason("CONTENT_FILTER"), "content_filtered");
   assert.equal(parseFinishReason("STOP"), "stop_sequence");
@@ -451,7 +451,7 @@ test("parseFinishReason handles uppercase", () => {
 // canContinueResponse edge cases
 // ---------------------------------------------------------------------------
 
-test("canContinueResponse only returns true for token limit reasons", () => {
+test("canContinueResponse only returns true for token limit reasons [output-continuation-edge-cases]", () => {
   // All these should return false
   const falseCases = [
     "stop",
@@ -477,7 +477,7 @@ test("canContinueResponse only returns true for token limit reasons", () => {
 // ContinuationRecord type validation
 // ---------------------------------------------------------------------------
 
-test("ContinuationRecord structure is complete", () => {
+test("ContinuationRecord structure is complete [output-continuation-edge-cases]", () => {
   const record: ContinuationRecord = {
     id: "test-id",
     taskId: "task-1",
@@ -498,7 +498,7 @@ test("ContinuationRecord structure is complete", () => {
   assert.ok(record.lastContinuationAt !== null);
 });
 
-test("ContinueRequest structure is complete", () => {
+test("ContinueRequest structure is complete [output-continuation-edge-cases]", () => {
   const request: ContinueRequest = {
     taskId: "task-1",
     sessionId: "sess-1",

@@ -11,7 +11,7 @@ import {
   type RepoFileNode,
 } from "../../../../../src/platform/five-plane-execution/tool-executor/semantic-repo-map-service.js";
 
-test("extractImports extracts ES6 imports", () => {
+test("extractImports extracts ES6 imports [semantic-repo-map-service]", () => {
   const content = `
     import { foo } from './foo';
     import bar from './bar';
@@ -23,7 +23,7 @@ test("extractImports extracts ES6 imports", () => {
   assert.ok(imports.includes("./baz"));
 });
 
-test("extractImports extracts CommonJS requires", () => {
+test("extractImports extracts CommonJS requires [semantic-repo-map-service]", () => {
   const content = `
     const foo = require('./foo');
     const bar = require('./bar');
@@ -33,7 +33,7 @@ test("extractImports extracts CommonJS requires", () => {
   assert.ok(imports.includes("./bar"));
 });
 
-test("extractImports extracts dynamic imports", () => {
+test("extractImports extracts dynamic imports [semantic-repo-map-service]", () => {
   const content = `
     const foo = import('./foo');
     const bar = import('./bar');
@@ -44,13 +44,13 @@ test("extractImports extracts dynamic imports", () => {
   assert.ok(dynamicImports.includes("./bar"));
 });
 
-test("extractImports handles empty content", () => {
+test("extractImports handles empty content [semantic-repo-map-service]", () => {
   const { imports, dynamicImports } = extractImports("");
   assert.equal(imports.length, 0);
   assert.equal(dynamicImports.length, 0);
 });
 
-test("extractSymbols extracts function declarations", () => {
+test("extractSymbols extracts function declarations [semantic-repo-map-service]", () => {
   const content = `
     function foo() {}
     export function bar() {}
@@ -63,7 +63,7 @@ test("extractSymbols extracts function declarations", () => {
   assert.ok(funcNames.includes("baz"));
 });
 
-test("extractSymbols extracts class declarations", () => {
+test("extractSymbols extracts class declarations [semantic-repo-map-service]", () => {
   const content = `
     class Foo {}
     export class Bar {}
@@ -74,7 +74,7 @@ test("extractSymbols extracts class declarations", () => {
   assert.ok(classNames.includes("Bar"));
 });
 
-test("extractSymbols extracts interface declarations", () => {
+test("extractSymbols extracts interface declarations [semantic-repo-map-service]", () => {
   const content = `
     interface Foo {}
     export interface Bar {}
@@ -85,7 +85,7 @@ test("extractSymbols extracts interface declarations", () => {
   assert.ok(interfaceNames.includes("Bar"));
 });
 
-test("extractSymbols extracts type declarations", () => {
+test("extractSymbols extracts type declarations [semantic-repo-map-service]", () => {
   const content = `
     type Foo = string;
     export type Bar = number;
@@ -96,7 +96,7 @@ test("extractSymbols extracts type declarations", () => {
   assert.ok(typeNames.includes("Bar"));
 });
 
-test("extractSymbols extracts const declarations", () => {
+test("extractSymbols extracts const declarations [semantic-repo-map-service]", () => {
   const content = `
     const FOO = 1;
     export const BAR = 2;
@@ -107,7 +107,7 @@ test("extractSymbols extracts const declarations", () => {
   assert.ok(constNames.includes("BAR"));
 });
 
-test("computeFileRelevance returns higher score for filename match", () => {
+test("computeFileRelevance returns higher score for filename match [semantic-repo-map-service]", () => {
   const file = {
     filePath: "/test/service.ts",
     fileName: "service.ts",
@@ -127,7 +127,7 @@ test("computeFileRelevance returns higher score for filename match", () => {
   assert.equal(score2, 0);
 });
 
-test("computeSymbolRelevance returns higher score for name match", () => {
+test("computeSymbolRelevance returns higher score for name match [semantic-repo-map-service]", () => {
   const symbol = {
     name: "Service",
     kind: "class" as const,
@@ -145,7 +145,7 @@ test("computeSymbolRelevance returns higher score for name match", () => {
   assert.equal(score2, 0);
 });
 
-test("computeSymbolRelevance boosts referenced symbols", () => {
+test("computeSymbolRelevance boosts referenced symbols [semantic-repo-map-service]", () => {
   const symbol1 = {
     name: "Service",
     kind: "class" as const,
@@ -170,7 +170,7 @@ test("computeSymbolRelevance boosts referenced symbols", () => {
   assert.ok(score1 >= score2);
 });
 
-test("SemanticRepoMapService.getStatistics returns correct stats", () => {
+test("SemanticRepoMapService.getStatistics returns correct stats [semantic-repo-map-service]", () => {
   const service = new SemanticRepoMapService("/test/root", 0);
   // With no files, stats should be zeros
   const stats = service.getStatistics();
@@ -179,7 +179,7 @@ test("SemanticRepoMapService.getStatistics returns correct stats", () => {
   assert.equal(stats.totalReferences, 0);
 });
 
-test("SemanticRepoMapService.invalidateCache forces rebuild", () => {
+test("SemanticRepoMapService.invalidateCache forces rebuild [semantic-repo-map-service]", () => {
   const service = new SemanticRepoMapService("/test/root", 60_000);
   service.buildMap();
   service.invalidateCache();
@@ -188,14 +188,14 @@ test("SemanticRepoMapService.invalidateCache forces rebuild", () => {
   assert.ok(true); // Just verify no error
 });
 
-test("SemanticRepoMapService handles invalid root path gracefully", () => {
+test("SemanticRepoMapService handles invalid root path gracefully [semantic-repo-map-service]", () => {
   const service = new SemanticRepoMapService("/nonexistent/path", 0);
   const stats = service.getStatistics();
   assert.equal(stats.totalFiles, 0);
   assert.equal(stats.totalSymbols, 0);
 });
 
-test("extractSymbols handles complex content without errors", () => {
+test("extractSymbols handles complex content without errors [semantic-repo-map-service]", () => {
   const content = `
     import { foo } from './foo';
     function bar() {}

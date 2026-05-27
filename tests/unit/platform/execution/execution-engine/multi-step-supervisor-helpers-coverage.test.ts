@@ -24,14 +24,14 @@ import type { WorkflowStepRetryDecision } from "../../../../../src/platform/five
 // normalizeStepFailurePlan edge case tests
 // =============================================================================
 
-test("normalizeStepFailurePlan returns errorCode for string input", () => {
+test("normalizeStepFailurePlan returns errorCode for string input [multi-step-supervisor-helpers-coverage]", () => {
   const result = normalizeStepFailurePlan("custom.error_code");
   assert.equal(result.errorCode, "custom.error_code");
   assert.equal(result.summary, undefined);
   assert.equal(result.message, undefined);
 });
 
-test("normalizeStepFailurePlan preserves full StepFailurePlan with all fields", () => {
+test("normalizeStepFailurePlan preserves full StepFailurePlan with all fields [multi-step-supervisor-helpers-coverage]", () => {
   const input: StepFailurePlan = {
     errorCode: "validation.failed",
     summary: "Validation failed summary",
@@ -45,23 +45,23 @@ test("normalizeStepFailurePlan preserves full StepFailurePlan with all fields", 
   assert.equal((result as StepFailurePlan & { retryable?: boolean }).retryable, true);
 });
 
-test("normalizeStepFailurePlan handles StepFailurePlan with only errorCode", () => {
+test("normalizeStepFailurePlan handles StepFailurePlan with only errorCode [multi-step-supervisor-helpers-coverage]", () => {
   const input: StepFailurePlan = { errorCode: "only_error_code" };
   const result = normalizeStepFailurePlan(input);
   assert.equal(result.errorCode, "only_error_code");
 });
 
-test("normalizeStepFailurePlan handles empty string", () => {
+test("normalizeStepFailurePlan handles empty string [multi-step-supervisor-helpers-coverage]", () => {
   const result = normalizeStepFailurePlan("");
   assert.equal(result.errorCode, "");
 });
 
-test("normalizeStepFailurePlan handles string with special characters", () => {
+test("normalizeStepFailurePlan handles string with special characters [multi-step-supervisor-helpers-coverage]", () => {
   const result = normalizeStepFailurePlan("error.with.dots.and_underscores");
   assert.equal(result.errorCode, "error.with.dots.and_underscores");
 });
 
-test("normalizeStepFailurePlan handles string resembling JSON", () => {
+test("normalizeStepFailurePlan handles string resembling JSON [multi-step-supervisor-helpers-coverage]", () => {
   const result = normalizeStepFailurePlan('{"key": "value"}');
   assert.equal(result.errorCode, '{"key": "value"}');
 });
@@ -82,19 +82,19 @@ function createMockInput(overrides: Partial<MultiStepToolExecutionInput> & {
   } as MultiStepToolExecutionInput;
 }
 
-test("resolveStepFailurePlan returns null when stepFailurePlans is undefined", () => {
+test("resolveStepFailurePlan returns null when stepFailurePlans is undefined [multi-step-supervisor-helpers-coverage]", () => {
   const input = createMockInput({ stepFailurePlans: undefined });
   const result = resolveStepFailurePlan(input, "step_1", 1);
   assert.equal(result, null);
 });
 
-test("resolveStepFailurePlan returns null when stepFailurePlans is empty object", () => {
+test("resolveStepFailurePlan returns null when stepFailurePlans is empty object [multi-step-supervisor-helpers-coverage]", () => {
   const input = createMockInput({ stepFailurePlans: {} });
   const result = resolveStepFailurePlan(input, "step_1", 1);
   assert.equal(result, null);
 });
 
-test("resolveStepFailurePlan returns null when step has no plans", () => {
+test("resolveStepFailurePlan returns null when step has no plans [multi-step-supervisor-helpers-coverage]", () => {
   const input = createMockInput({
     stepFailurePlans: { other_step: [{ errorCode: "other" }] },
   });
@@ -102,7 +102,7 @@ test("resolveStepFailurePlan returns null when step has no plans", () => {
   assert.equal(result, null);
 });
 
-test("resolveStepFailurePlan returns null for attempt 0", () => {
+test("resolveStepFailurePlan returns null for attempt 0 [multi-step-supervisor-helpers-coverage]", () => {
   const input = createMockInput({
     stepFailurePlans: { step_1: [{ errorCode: "attempt_1" }] },
   });
@@ -110,7 +110,7 @@ test("resolveStepFailurePlan returns null for attempt 0", () => {
   assert.equal(result, null);
 });
 
-test("resolveStepFailurePlan returns planned failure for attempt 1", () => {
+test("resolveStepFailurePlan returns planned failure for attempt 1 [multi-step-supervisor-helpers-coverage]", () => {
   const input = createMockInput({
     stepFailurePlans: { step_1: [{ errorCode: "first_attempt" }] },
   });
@@ -119,7 +119,7 @@ test("resolveStepFailurePlan returns planned failure for attempt 1", () => {
   assert.equal(result!.errorCode, "first_attempt");
 });
 
-test("resolveStepFailurePlan returns planned failure for second attempt", () => {
+test("resolveStepFailurePlan returns planned failure for second attempt [multi-step-supervisor-helpers-coverage]", () => {
   const input = createMockInput({
     stepFailurePlans: {
       step_1: [{ errorCode: "first" }, { errorCode: "second" }, { errorCode: "third" }],
@@ -130,7 +130,7 @@ test("resolveStepFailurePlan returns planned failure for second attempt", () => 
   assert.equal(result!.errorCode, "second");
 });
 
-test("resolveStepFailurePlan returns planned failure for last attempt", () => {
+test("resolveStepFailurePlan returns planned failure for last attempt [multi-step-supervisor-helpers-coverage]", () => {
   const input = createMockInput({
     stepFailurePlans: {
       step_1: [{ errorCode: "attempt_1" }, { errorCode: "attempt_2" }],
@@ -141,7 +141,7 @@ test("resolveStepFailurePlan returns planned failure for last attempt", () => {
   assert.equal(result!.errorCode, "attempt_2");
 });
 
-test("resolveStepFailurePlan mixes string and object plans", () => {
+test("resolveStepFailurePlan mixes string and object plans [multi-step-supervisor-helpers-coverage]", () => {
   const input = createMockInput({
     stepFailurePlans: {
       step_1: ["string_code", { errorCode: "object_code" }],
@@ -155,7 +155,7 @@ test("resolveStepFailurePlan mixes string and object plans", () => {
   assert.equal(result2!.errorCode, "object_code");
 });
 
-test("resolveStepFailurePlan injection takes precedence over no plan", () => {
+test("resolveStepFailurePlan injection takes precedence over no plan [multi-step-supervisor-helpers-coverage]", () => {
   const input = createMockInput({
     stepFailureInjection: new Set(["injected_step"]),
   });
@@ -165,7 +165,7 @@ test("resolveStepFailurePlan injection takes precedence over no plan", () => {
   assert.ok(result!.summary!.includes("injected"));
 });
 
-test("resolveStepFailurePlan planned failure takes precedence over injection", () => {
+test("resolveStepFailurePlan planned failure takes precedence over injection [multi-step-supervisor-helpers-coverage]", () => {
   const input = createMockInput({
     stepFailurePlans: { injected_step: [{ errorCode: "planned" }] },
     stepFailureInjection: new Set(["injected_step"]),
@@ -175,7 +175,7 @@ test("resolveStepFailurePlan planned failure takes precedence over injection", (
   assert.equal(result!.errorCode, "planned");
 });
 
-test("resolveStepFailurePlan injection does not apply on attempt 2", () => {
+test("resolveStepFailurePlan injection does not apply on attempt 2 [multi-step-supervisor-helpers-coverage]", () => {
   const input = createMockInput({
     stepFailureInjection: new Set(["step_to_inject"]),
   });
@@ -183,19 +183,19 @@ test("resolveStepFailurePlan injection does not apply on attempt 2", () => {
   assert.equal(result, null);
 });
 
-test("resolveStepFailurePlan handles undefined stepFailureInjection", () => {
+test("resolveStepFailurePlan handles undefined stepFailureInjection [multi-step-supervisor-helpers-coverage]", () => {
   const input = createMockInput({ stepFailureInjection: undefined });
   const result = resolveStepFailurePlan(input, "any_step", 1);
   assert.equal(result, null);
 });
 
-test("resolveStepFailurePlan handles empty stepFailureInjection set", () => {
+test("resolveStepFailurePlan handles empty stepFailureInjection set [multi-step-supervisor-helpers-coverage]", () => {
   const input = createMockInput({ stepFailureInjection: new Set() });
   const result = resolveStepFailurePlan(input, "any_step", 1);
   assert.equal(result, null);
 });
 
-test("resolveStepFailurePlan returns null for negative attempt", () => {
+test("resolveStepFailurePlan returns null for negative attempt [multi-step-supervisor-helpers-coverage]", () => {
   const input = createMockInput({
     stepFailurePlans: { step_1: [{ errorCode: "neg_attempt" }] },
   });
@@ -203,7 +203,7 @@ test("resolveStepFailurePlan returns null for negative attempt", () => {
   assert.equal(result, null);
 });
 
-test("resolveStepFailurePlan handles very large attempt number", () => {
+test("resolveStepFailurePlan handles very large attempt number [multi-step-supervisor-helpers-coverage]", () => {
   const input = createMockInput({
     stepFailurePlans: { step_1: [{ errorCode: "only_one" }] },
   });
@@ -211,7 +211,7 @@ test("resolveStepFailurePlan handles very large attempt number", () => {
   assert.equal(result, null);
 });
 
-test("resolveStepFailurePlan injection summary format", () => {
+test("resolveStepFailurePlan injection summary format [multi-step-supervisor-helpers-coverage]", () => {
   const input = createMockInput({
     stepFailureInjection: new Set(["my_step"]),
   });
@@ -226,86 +226,86 @@ test("resolveStepFailurePlan injection summary format", () => {
 // normalizeStepErrorCode edge case tests
 // =============================================================================
 
-test("normalizeStepErrorCode handles workflow.output_schema_invalid prefix", () => {
+test("normalizeStepErrorCode handles workflow.output_schema_invalid prefix [multi-step-supervisor-helpers-coverage]", () => {
   const error = new Error("workflow.output_schema_invalid: some field missing");
   const result = normalizeStepErrorCode(error);
   assert.equal(result, "validation.schema_mismatch");
 });
 
-test("normalizeStepErrorCode handles workflow.output_schema_missing prefix", () => {
+test("normalizeStepErrorCode handles workflow.output_schema_missing prefix [multi-step-supervisor-helpers-coverage]", () => {
   const error = new Error("workflow.output_schema_missing: output key not found");
   const result = normalizeStepErrorCode(error);
   assert.equal(result, "validation.invalid_input");
 });
 
-test("normalizeStepErrorCode returns internal.unexpected_error for generic Error", () => {
+test("normalizeStepErrorCode returns internal.unexpected_error for generic Error [multi-step-supervisor-helpers-coverage]", () => {
   const error = new Error("Something broke");
   const result = normalizeStepErrorCode(error);
   assert.equal(result, "internal.unexpected_error");
 });
 
-test("normalizeStepErrorCode handles Error with empty message", () => {
+test("normalizeStepErrorCode handles Error with empty message [multi-step-supervisor-helpers-coverage]", () => {
   const error = new Error("");
   const result = normalizeStepErrorCode(error);
   assert.equal(result, "internal.unexpected_error");
 });
 
-test("normalizeStepErrorCode handles non-Error string", () => {
+test("normalizeStepErrorCode handles non-Error string [multi-step-supervisor-helpers-coverage]", () => {
   const result = normalizeStepErrorCode("plain string error");
   assert.equal(result, "internal.unexpected_error");
 });
 
-test("normalizeStepErrorCode handles non-Error number", () => {
+test("normalizeStepErrorCode handles non-Error number [multi-step-supervisor-helpers-coverage]", () => {
   const result = normalizeStepErrorCode(12345);
   assert.equal(result, "internal.unexpected_error");
 });
 
-test("normalizeStepErrorCode handles non-Error object", () => {
+test("normalizeStepErrorCode handles non-Error object [multi-step-supervisor-helpers-coverage]", () => {
   const result = normalizeStepErrorCode({ message: "error object" });
   assert.equal(result, "internal.unexpected_error");
 });
 
-test("normalizeStepErrorCode handles null", () => {
+test("normalizeStepErrorCode handles null [multi-step-supervisor-helpers-coverage]", () => {
   const result = normalizeStepErrorCode(null);
   assert.equal(result, "internal.unexpected_error");
 });
 
-test("normalizeStepErrorCode handles undefined", () => {
+test("normalizeStepErrorCode handles undefined [multi-step-supervisor-helpers-coverage]", () => {
   const result = normalizeStepErrorCode(undefined);
   assert.equal(result, "internal.unexpected_error");
 });
 
-test("normalizeStepErrorCode handles Error with long message", () => {
+test("normalizeStepErrorCode handles Error with long message [multi-step-supervisor-helpers-coverage]", () => {
   const longMessage = "workflow.output_schema_invalid" + "x".repeat(1000);
   const error = new Error(longMessage);
   const result = normalizeStepErrorCode(error);
   assert.equal(result, "validation.schema_mismatch");
 });
 
-test("normalizeStepErrorCode handles message with multiple prefixes", () => {
+test("normalizeStepErrorCode handles message with multiple prefixes [multi-step-supervisor-helpers-coverage]", () => {
   // Should match first prefix (output_schema_invalid)
   const error = new Error("workflow.output_schema_invalid and then workflow.output_schema_missing");
   const result = normalizeStepErrorCode(error);
   assert.equal(result, "validation.schema_mismatch");
 });
 
-test("normalizeStepErrorCode handles empty Error message", () => {
+test("normalizeStepErrorCode handles empty Error message [multi-step-supervisor-helpers-coverage]", () => {
   const error = new Error();
   const result = normalizeStepErrorCode(error);
   assert.equal(result, "internal.unexpected_error");
 });
 
-test("normalizeStepErrorCode handles string that looks like error code", () => {
+test("normalizeStepErrorCode handles string that looks like error code [multi-step-supervisor-helpers-coverage]", () => {
   const result = normalizeStepErrorCode("validation.schema_mismatch");
   assert.equal(result, "internal.unexpected_error");
 });
 
-test("normalizeStepErrorCode handles Symbol", () => {
+test("normalizeStepErrorCode handles Symbol [multi-step-supervisor-helpers-coverage]", () => {
   const result = normalizeStepErrorCode(Symbol("error"));
   assert.equal(result, "internal.unexpected_error");
 });
 
-test("normalizeStepErrorCode handles function", () => {
+test("normalizeStepErrorCode handles function [multi-step-supervisor-helpers-coverage]", () => {
   const result = normalizeStepErrorCode(() => { throw new Error(); });
   assert.equal(result, "internal.unexpected_error");
 });
@@ -314,7 +314,7 @@ test("normalizeStepErrorCode handles function", () => {
 // buildStepFailureSummary edge case tests
 // =============================================================================
 
-test("buildStepFailureSummary retry action format", () => {
+test("buildStepFailureSummary retry action format [multi-step-supervisor-helpers-coverage]", () => {
   const decision: WorkflowStepRetryDecision = {
     action: "retry",
     errorCode: "timeout",
@@ -329,7 +329,7 @@ test("buildStepFailureSummary retry action format", () => {
   assert.ok(result.includes("timeout"));
 });
 
-test("buildStepFailureSummary escalate action format", () => {
+test("buildStepFailureSummary escalate action format [multi-step-supervisor-helpers-coverage]", () => {
   const decision: WorkflowStepRetryDecision = {
     action: "escalate",
     errorCode: "auth.failed",
@@ -344,7 +344,7 @@ test("buildStepFailureSummary escalate action format", () => {
   assert.ok(result.includes("auth.failed"));
 });
 
-test("buildStepFailureSummary fail action format", () => {
+test("buildStepFailureSummary fail action format [multi-step-supervisor-helpers-coverage]", () => {
   const decision: WorkflowStepRetryDecision = {
     action: "fail",
     errorCode: "unrecoverable",
@@ -359,7 +359,7 @@ test("buildStepFailureSummary fail action format", () => {
   assert.ok(result.includes("unrecoverable"));
 });
 
-test("buildStepFailureSummary handles unknown action (default)", () => {
+test("buildStepFailureSummary handles unknown action (default) [multi-step-supervisor-helpers-coverage]", () => {
   const decision: WorkflowStepRetryDecision = {
     action: "unknown_action" as "retry" | "escalate" | "fail",
     errorCode: "unknown",
@@ -374,7 +374,7 @@ test("buildStepFailureSummary handles unknown action (default)", () => {
   assert.ok(result.includes("unknown"));
 });
 
-test("buildStepFailureSummary includes stepId in all cases", () => {
+test("buildStepFailureSummary includes stepId in all cases [multi-step-supervisor-helpers-coverage]", () => {
   const stepIds = ["step_1", "my_step", "unicode_步骤", "step-with-chars_123"];
 
   for (const stepId of stepIds) {
@@ -391,7 +391,7 @@ test("buildStepFailureSummary includes stepId in all cases", () => {
   }
 });
 
-test("buildStepFailureSummary includes errorCode in all cases", () => {
+test("buildStepFailureSummary includes errorCode in all cases [multi-step-supervisor-helpers-coverage]", () => {
   const errorCodes = ["code1", "a.b.c", "validation.error", "123_error"];
 
   for (const errorCode of errorCodes) {
@@ -408,7 +408,7 @@ test("buildStepFailureSummary includes errorCode in all cases", () => {
   }
 });
 
-test("buildStepFailureSummary with exponential backoff", () => {
+test("buildStepFailureSummary with exponential backoff [multi-step-supervisor-helpers-coverage]", () => {
   const decision: WorkflowStepRetryDecision = {
     action: "retry",
     errorCode: "transient",
@@ -422,7 +422,7 @@ test("buildStepFailureSummary with exponential backoff", () => {
   assert.ok(result.includes("retry"));
 });
 
-test("buildStepFailureSummary with linear backoff", () => {
+test("buildStepFailureSummary with linear backoff [multi-step-supervisor-helpers-coverage]", () => {
   const decision: WorkflowStepRetryDecision = {
     action: "retry",
     errorCode: "transient",
@@ -435,7 +435,7 @@ test("buildStepFailureSummary with linear backoff", () => {
   assert.ok(result.includes("linear_step"));
 });
 
-test("buildStepFailureSummary with long error code", () => {
+test("buildStepFailureSummary with long error code [multi-step-supervisor-helpers-coverage]", () => {
   const longErrorCode = "validation." + "x".repeat(100);
   const decision: WorkflowStepRetryDecision = {
     action: "fail",
@@ -449,7 +449,7 @@ test("buildStepFailureSummary with long error code", () => {
   assert.ok(result.includes(longErrorCode));
 });
 
-test("buildStepFailureSummary with unicode stepId", () => {
+test("buildStepFailureSummary with unicode stepId [multi-step-supervisor-helpers-coverage]", () => {
   const decision: WorkflowStepRetryDecision = {
     action: "retry",
     errorCode: "unicode_error",

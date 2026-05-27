@@ -9,7 +9,7 @@ import {
   type EndpointClassAdmissionDecision,
 } from "../../../../../src/platform/five-plane-execution/dispatcher/endpoint-class-admission.js";
 
-test("EndpointClassAdmissionController evaluates and accepts read_query", () => {
+test("EndpointClassAdmissionController evaluates and accepts read_query [endpoint-class-admission]", () => {
   const policies: EndpointClassPolicy[] = [
     { endpointClass: "read_query", maxQueueDepth: 100, rateLimitPerMinute: 1000 },
     { endpointClass: "create_run", maxQueueDepth: 50, rateLimitPerMinute: 100 },
@@ -32,7 +32,7 @@ test("EndpointClassAdmissionController evaluates and accepts read_query", () => 
   assert.equal(decision.rateLimitPerMinute, 1000);
 });
 
-test("EndpointClassAdmissionController rejects when queue depth exceeded", () => {
+test("EndpointClassAdmissionController rejects when queue depth exceeded [endpoint-class-admission]", () => {
   const policies: EndpointClassPolicy[] = [
     { endpointClass: "read_query", maxQueueDepth: 100, rateLimitPerMinute: 1000 },
   ];
@@ -52,7 +52,7 @@ test("EndpointClassAdmissionController rejects when queue depth exceeded", () =>
   assert.equal(decision.maxQueueDepth, 100);
 });
 
-test("EndpointClassAdmissionController rejects when rate limit exceeded", () => {
+test("EndpointClassAdmissionController rejects when rate limit exceeded [endpoint-class-admission]", () => {
   const policies: EndpointClassPolicy[] = [
     { endpointClass: "create_run", maxQueueDepth: 50, rateLimitPerMinute: 100 },
   ];
@@ -72,7 +72,7 @@ test("EndpointClassAdmissionController rejects when rate limit exceeded", () => 
   assert.equal(decision.rateLimitPerMinute, 100);
 });
 
-test("EndpointClassAdmissionController throws for unknown endpoint class", () => {
+test("EndpointClassAdmissionController throws for unknown endpoint class [endpoint-class-admission]", () => {
   const policies: EndpointClassPolicy[] = [
     { endpointClass: "read_query", maxQueueDepth: 100, rateLimitPerMinute: 1000 },
   ];
@@ -90,12 +90,12 @@ test("EndpointClassAdmissionController throws for unknown endpoint class", () =>
   );
 });
 
-test("EndpointClass type has all expected values", () => {
+test("EndpointClass type has all expected values [endpoint-class-admission]", () => {
   const classes: EndpointClass[] = ["read_query", "create_run", "control_command", "event_ingest", "websocket_stream"];
   assert.equal(classes.length, 5);
 });
 
-test("EndpointClassPolicy type is usable", () => {
+test("EndpointClassPolicy type is usable [endpoint-class-admission]", () => {
   const policy: EndpointClassPolicy = {
     endpointClass: "read_query",
     maxQueueDepth: 100,
@@ -106,7 +106,7 @@ test("EndpointClassPolicy type is usable", () => {
   assert.equal(policy.rateLimitPerMinute, 1000);
 });
 
-test("EndpointClassSnapshot type is usable", () => {
+test("EndpointClassSnapshot type is usable [endpoint-class-admission]", () => {
   const snapshot: EndpointClassSnapshot = {
     endpointClass: "create_run",
     queueDepthBefore: 25,
@@ -117,7 +117,7 @@ test("EndpointClassSnapshot type is usable", () => {
   assert.equal(snapshot.requestsInCurrentMinute, 50);
 });
 
-test("EndpointClassAdmissionDecision type is usable with all reason codes", () => {
+test("EndpointClassAdmissionDecision type is usable with all reason codes [endpoint-class-admission]", () => {
   const decisions: EndpointClassAdmissionDecision[] = [
     {
       accepted: true,
@@ -152,7 +152,7 @@ test("EndpointClassAdmissionDecision type is usable with all reason codes", () =
   assert.ok(decisions.every((d) => d.accepted === true || d.accepted === false));
 });
 
-test("EndpointClassAdmissionController works with control_command", () => {
+test("EndpointClassAdmissionController works with control_command [endpoint-class-admission]", () => {
   const policies: EndpointClassPolicy[] = [
     { endpointClass: "control_command", maxQueueDepth: 20, rateLimitPerMinute: 50 },
   ];
@@ -168,7 +168,7 @@ test("EndpointClassAdmissionController works with control_command", () => {
   assert.equal(decision.accepted, true);
 });
 
-test("EndpointClassAdmissionController works with event_ingest", () => {
+test("EndpointClassAdmissionController works with event_ingest [endpoint-class-admission]", () => {
   const policies: EndpointClassPolicy[] = [
     { endpointClass: "event_ingest", maxQueueDepth: 500, rateLimitPerMinute: 5000 },
   ];
@@ -184,7 +184,7 @@ test("EndpointClassAdmissionController works with event_ingest", () => {
   assert.equal(decision.accepted, true);
 });
 
-test("EndpointClassAdmissionController works with websocket_stream", () => {
+test("EndpointClassAdmissionController works with websocket_stream [endpoint-class-admission]", () => {
   const policies: EndpointClassPolicy[] = [
     { endpointClass: "websocket_stream", maxQueueDepth: 1000, rateLimitPerMinute: 10000 },
   ];
@@ -200,7 +200,7 @@ test("EndpointClassAdmissionController works with websocket_stream", () => {
   assert.equal(decision.accepted, true);
 });
 
-test("EndpointClassAdmissionController boundary - queue depth exactly at max", () => {
+test("EndpointClassAdmissionController boundary - queue depth exactly at max [endpoint-class-admission]", () => {
   const policies: EndpointClassPolicy[] = [
     { endpointClass: "read_query", maxQueueDepth: 100, rateLimitPerMinute: 1000 },
   ];
@@ -216,7 +216,7 @@ test("EndpointClassAdmissionController boundary - queue depth exactly at max", (
   assert.equal(decision.accepted, true);
 });
 
-test("EndpointClassAdmissionController boundary - rate limit exactly at max", () => {
+test("EndpointClassAdmissionController boundary - rate limit exactly at max [endpoint-class-admission]", () => {
   const policies: EndpointClassPolicy[] = [
     { endpointClass: "create_run", maxQueueDepth: 50, rateLimitPerMinute: 100 },
   ];
@@ -232,7 +232,7 @@ test("EndpointClassAdmissionController boundary - rate limit exactly at max", ()
   assert.equal(decision.accepted, true);
 });
 
-test("EndpointClassAdmissionController queue depth check takes precedence over rate limit", () => {
+test("EndpointClassAdmissionController queue depth check takes precedence over rate limit [endpoint-class-admission]", () => {
   const policies: EndpointClassPolicy[] = [
     { endpointClass: "read_query", maxQueueDepth: 100, rateLimitPerMinute: 1000 },
   ];

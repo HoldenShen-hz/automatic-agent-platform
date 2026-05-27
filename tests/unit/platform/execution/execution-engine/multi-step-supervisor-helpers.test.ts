@@ -24,19 +24,19 @@ import type { WorkflowStepRetryDecision } from "../../../../../src/platform/five
 // normalizeStepFailurePlan tests
 // =============================================================================
 
-test("normalizeStepFailurePlan returns string as StepFailurePlan with errorCode", () => {
+test("normalizeStepFailurePlan returns string as StepFailurePlan with errorCode [multi-step-supervisor-helpers]", () => {
   const result = normalizeStepFailurePlan("tool.execution_failed");
   assert.equal(result.errorCode, "tool.execution_failed");
 });
 
-test("normalizeStepFailurePlan returns StepFailurePlan unchanged", () => {
+test("normalizeStepFailurePlan returns StepFailurePlan unchanged [multi-step-supervisor-helpers]", () => {
   const input: StepFailurePlan = { errorCode: "validation.schema_mismatch", summary: "Schema validation failed" };
   const result = normalizeStepFailurePlan(input);
   assert.equal(result.errorCode, "validation.schema_mismatch");
   assert.equal(result.summary, "Schema validation failed");
 });
 
-test("normalizeStepFailurePlan preserves message when present", () => {
+test("normalizeStepFailurePlan preserves message when present [multi-step-supervisor-helpers]", () => {
   const input: StepFailurePlan = { errorCode: "timeout", message: "Step timed out after 30s" };
   const result = normalizeStepFailurePlan(input);
   assert.equal(result.message, "Step timed out after 30s");
@@ -46,13 +46,13 @@ test("normalizeStepFailurePlan preserves message when present", () => {
 // resolveStepFailurePlan tests
 // =============================================================================
 
-test("resolveStepFailurePlan returns null when no failure plans configured", () => {
+test("resolveStepFailurePlan returns null when no failure plans configured [multi-step-supervisor-helpers]", () => {
   const input = createMockInput({});
   const result = resolveStepFailurePlan(input, "step_1", 1);
   assert.equal(result, null);
 });
 
-test("resolveStepFailurePlan returns planned failure from stepFailurePlans", () => {
+test("resolveStepFailurePlan returns planned failure from stepFailurePlans [multi-step-supervisor-helpers]", () => {
   const input = createMockInput({
     stepFailurePlans: {
       "step_1": [{ errorCode: "planned_failure" }],
@@ -63,7 +63,7 @@ test("resolveStepFailurePlan returns planned failure from stepFailurePlans", () 
   assert.equal(result!.errorCode, "planned_failure");
 });
 
-test("resolveStepFailurePlan returns null for step with no plan", () => {
+test("resolveStepFailurePlan returns null for step with no plan [multi-step-supervisor-helpers]", () => {
   const input = createMockInput({
     stepFailurePlans: {
       "step_1": [{ errorCode: "planned_failure" }],
@@ -73,7 +73,7 @@ test("resolveStepFailurePlan returns null for step with no plan", () => {
   assert.equal(result, null);
 });
 
-test("resolveStepFailurePlan returns null for attempt beyond planned count", () => {
+test("resolveStepFailurePlan returns null for attempt beyond planned count [multi-step-supervisor-helpers]", () => {
   const input = createMockInput({
     stepFailurePlans: {
       "step_1": [{ errorCode: "attempt_1" }, { errorCode: "attempt_2" }],
@@ -83,7 +83,7 @@ test("resolveStepFailurePlan returns null for attempt beyond planned count", () 
   assert.equal(result, null);
 });
 
-test("resolveStepFailurePlan handles string StepFailurePlan in plan array", () => {
+test("resolveStepFailurePlan handles string StepFailurePlan in plan array [multi-step-supervisor-helpers]", () => {
   const input = createMockInput({
     stepFailurePlans: {
       "step_1": ["string_failure_code"],
@@ -94,7 +94,7 @@ test("resolveStepFailurePlan handles string StepFailurePlan in plan array", () =
   assert.equal(result!.errorCode, "string_failure_code");
 });
 
-test("resolveStepFailurePlan returns injected failure from stepFailureInjection on first attempt", () => {
+test("resolveStepFailurePlan returns injected failure from stepFailureInjection on first attempt [multi-step-supervisor-helpers]", () => {
   const input = createMockInput({
     stepFailureInjection: new Set(["step_injected"]),
   });
@@ -104,7 +104,7 @@ test("resolveStepFailurePlan returns injected failure from stepFailureInjection 
   assert.ok(result!.summary!.includes("injected"));
 });
 
-test("resolveStepFailurePlan returns null from stepFailureInjection on second attempt", () => {
+test("resolveStepFailurePlan returns null from stepFailureInjection on second attempt [multi-step-supervisor-helpers]", () => {
   const input = createMockInput({
     stepFailureInjection: new Set(["step_injected"]),
   });
@@ -112,7 +112,7 @@ test("resolveStepFailurePlan returns null from stepFailureInjection on second at
   assert.equal(result, null);
 });
 
-test("resolveStepFailurePlan planned failure takes precedence over injection", () => {
+test("resolveStepFailurePlan planned failure takes precedence over injection [multi-step-supervisor-helpers]", () => {
   const input = createMockInput({
     stepFailurePlans: {
       "step_injected": [{ errorCode: "planned_priority" }],
@@ -128,37 +128,37 @@ test("resolveStepFailurePlan planned failure takes precedence over injection", (
 // normalizeStepErrorCode tests
 // =============================================================================
 
-test("normalizeStepErrorCode returns validation.schema_mismatch for workflow output schema invalid", () => {
+test("normalizeStepErrorCode returns validation.schema_mismatch for workflow output schema invalid [multi-step-supervisor-helpers]", () => {
   const error = new Error("workflow.output_schema_invalid: field X missing");
   const result = normalizeStepErrorCode(error);
   assert.equal(result, "validation.schema_mismatch");
 });
 
-test("normalizeStepErrorCode returns validation.invalid_input for workflow output schema missing", () => {
+test("normalizeStepErrorCode returns validation.invalid_input for workflow output schema missing [multi-step-supervisor-helpers]", () => {
   const error = new Error("workflow.output_schema_missing: output not found");
   const result = normalizeStepErrorCode(error);
   assert.equal(result, "validation.invalid_input");
 });
 
-test("normalizeStepErrorCode returns internal.unexpected_error for generic errors", () => {
+test("normalizeStepErrorCode returns internal.unexpected_error for generic errors [multi-step-supervisor-helpers]", () => {
   const error = new Error("Something went wrong");
   const result = normalizeStepErrorCode(error);
   assert.equal(result, "internal.unexpected_error");
 });
 
-test("normalizeStepErrorCode handles non-Error inputs", () => {
+test("normalizeStepErrorCode handles non-Error inputs [multi-step-supervisor-helpers]", () => {
   const result = normalizeStepErrorCode("string error");
   assert.equal(result, "internal.unexpected_error");
 });
 
-test("normalizeStepErrorCode handles null/undefined", () => {
+test("normalizeStepErrorCode handles null/undefined [multi-step-supervisor-helpers]", () => {
   const result1 = normalizeStepErrorCode(null);
   const result2 = normalizeStepErrorCode(undefined);
   assert.equal(result1, "internal.unexpected_error");
   assert.equal(result2, "internal.unexpected_error");
 });
 
-test("normalizeStepErrorCode uses startsWith for prefix matching", () => {
+test("normalizeStepErrorCode uses startsWith for prefix matching [multi-step-supervisor-helpers]", () => {
   const error = new Error("workflow.output_schema_invalid longer message here");
   const result = normalizeStepErrorCode(error);
   assert.equal(result, "validation.schema_mismatch");
@@ -168,7 +168,7 @@ test("normalizeStepErrorCode uses startsWith for prefix matching", () => {
 // buildStepFailureSummary tests
 // =============================================================================
 
-test("buildStepFailureSummary returns retry message when action is retry", () => {
+test("buildStepFailureSummary returns retry message when action is retry [multi-step-supervisor-helpers]", () => {
   const decision: WorkflowStepRetryDecision = { action: "retry", errorCode: "tool.timeout", failureClass: "transient", retryable: true, backoff: "none", retryDelayMs: 1000 };
   const result = buildStepFailureSummary("step_1", decision);
   assert.ok(result.includes("retry"));
@@ -176,7 +176,7 @@ test("buildStepFailureSummary returns retry message when action is retry", () =>
   assert.ok(result.includes("tool.timeout"));
 });
 
-test("buildStepFailureSummary returns escalate message when action is escalate", () => {
+test("buildStepFailureSummary returns escalate message when action is escalate [multi-step-supervisor-helpers]", () => {
   const decision: WorkflowStepRetryDecision = { action: "escalate", errorCode: "workflow.circuit_broken", failureClass: "destructive", retryable: false, backoff: "none", retryDelayMs: 0 };
   const result = buildStepFailureSummary("step_2", decision);
   assert.ok(result.includes("escalation"));
@@ -184,7 +184,7 @@ test("buildStepFailureSummary returns escalate message when action is escalate",
   assert.ok(result.includes("workflow.circuit_broken"));
 });
 
-test("buildStepFailureSummary returns step failed message for default action", () => {
+test("buildStepFailureSummary returns step failed message for default action [multi-step-supervisor-helpers]", () => {
   const decision: WorkflowStepRetryDecision = { action: "fail", errorCode: "internal.error", failureClass: "non_retryable", retryable: false, backoff: "none", retryDelayMs: 0 };
   const result = buildStepFailureSummary("step_3", decision);
   assert.ok(result.includes("failed"));
@@ -192,7 +192,7 @@ test("buildStepFailureSummary returns step failed message for default action", (
   assert.ok(result.includes("internal.error"));
 });
 
-test("buildStepFailureSummary includes error code in message", () => {
+test("buildStepFailureSummary includes error code in message [multi-step-supervisor-helpers]", () => {
   const decision: WorkflowStepRetryDecision = { action: "retry", errorCode: "validation.timeout", failureClass: "transient", retryable: true, backoff: "exponential", retryDelayMs: 2000 };
   const result = buildStepFailureSummary("validate_step", decision);
   assert.ok(result.includes("validation.timeout"));

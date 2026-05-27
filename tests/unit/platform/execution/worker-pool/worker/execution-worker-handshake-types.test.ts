@@ -15,7 +15,7 @@ import { ExecutionResourceCeilingGuard } from "../../../../../../src/platform/fi
 // WorkerClaimExecutionInput
 // ---------------------------------------------------------------------------
 
-test("WorkerClaimExecutionInput minimal construction", () => {
+test("WorkerClaimExecutionInput minimal construction [execution-worker-handshake-types]", () => {
   const input: WorkerClaimExecutionInput = {
     ticketId: "ticket_123",
     workerId: "worker_abc",
@@ -27,7 +27,7 @@ test("WorkerClaimExecutionInput minimal construction", () => {
   assert.equal(input.fencingToken, 1);
 });
 
-test("WorkerClaimExecutionInput with all optional fields", () => {
+test("WorkerClaimExecutionInput with all optional fields [execution-worker-handshake-types]", () => {
   const input: WorkerClaimExecutionInput = {
     ticketId: "ticket_full",
     workerId: "worker_full",
@@ -69,7 +69,7 @@ test("WorkerClaimExecutionInput with all optional fields", () => {
   assert.equal(input.remoteLogs.length, 1);
 });
 
-test("WorkerClaimExecutionInput remoteLogs can be empty", () => {
+test("WorkerClaimExecutionInput remoteLogs can be empty [execution-worker-handshake-types]", () => {
   const input: WorkerClaimExecutionInput = {
     ticketId: "ticket_1",
     workerId: "worker_1",
@@ -85,7 +85,7 @@ test("WorkerClaimExecutionInput remoteLogs can be empty", () => {
 // WorkerExecutionHeartbeatInput
 // ---------------------------------------------------------------------------
 
-test("WorkerExecutionHeartbeatInput minimal construction", () => {
+test("WorkerExecutionHeartbeatInput minimal construction [execution-worker-handshake-types]", () => {
   const input: WorkerExecutionHeartbeatInput = {
     executionId: "exec_123",
     workerId: "worker_abc",
@@ -97,7 +97,7 @@ test("WorkerExecutionHeartbeatInput minimal construction", () => {
   assert.equal(input.ttlMs, 30000);
 });
 
-test("WorkerExecutionHeartbeatInput with all optional fields", () => {
+test("WorkerExecutionHeartbeatInput with all optional fields [execution-worker-handshake-types]", () => {
   const input: WorkerExecutionHeartbeatInput = {
     executionId: "exec_full",
     workerId: "worker_full",
@@ -141,7 +141,7 @@ test("WorkerExecutionHeartbeatInput with all optional fields", () => {
 // WorkerRemoteLogInput
 // ---------------------------------------------------------------------------
 
-test("WorkerRemoteLogInput debug level", () => {
+test("WorkerRemoteLogInput debug level [execution-worker-handshake-types]", () => {
   const log: WorkerRemoteLogInput = {
     level: "debug",
     message: "debug message",
@@ -151,7 +151,7 @@ test("WorkerRemoteLogInput debug level", () => {
   assert.equal(log.message, "debug message");
 });
 
-test("WorkerRemoteLogInput info level", () => {
+test("WorkerRemoteLogInput info level [execution-worker-handshake-types]", () => {
   const log: WorkerRemoteLogInput = {
     level: "info",
     message: "info message",
@@ -160,7 +160,7 @@ test("WorkerRemoteLogInput info level", () => {
   assert.equal(log.context, undefined);
 });
 
-test("WorkerRemoteLogInput warn level with occurredAt", () => {
+test("WorkerRemoteLogInput warn level with occurredAt [execution-worker-handshake-types]", () => {
   const log: WorkerRemoteLogInput = {
     level: "warn",
     message: "warning message",
@@ -171,7 +171,7 @@ test("WorkerRemoteLogInput warn level with occurredAt", () => {
   assert.equal(log.occurredAt, "2026-04-25T00:00:00.000Z");
 });
 
-test("WorkerRemoteLogInput error level", () => {
+test("WorkerRemoteLogInput error level [execution-worker-handshake-types]", () => {
   const log: WorkerRemoteLogInput = {
     level: "error",
     message: "error occurred",
@@ -179,7 +179,7 @@ test("WorkerRemoteLogInput error level", () => {
   assert.equal(log.level, "error");
 });
 
-test("WorkerRemoteLogInput accepts all valid log levels", () => {
+test("WorkerRemoteLogInput accepts all valid log levels [execution-worker-handshake-types]", () => {
   const levels: WorkerRemoteLogInput["level"][] = ["debug", "info", "warn", "error"];
   assert.equal(levels.length, 4);
 });
@@ -188,7 +188,7 @@ test("WorkerRemoteLogInput accepts all valid log levels", () => {
 // WorkerHandshakeDecision
 // ---------------------------------------------------------------------------
 
-test("WorkerHandshakeDecision accepted decision", () => {
+test("WorkerHandshakeDecision accepted decision [execution-worker-handshake-types]", () => {
   const decision: WorkerHandshakeDecision = {
     accepted: true,
     reasonCode: null,
@@ -201,7 +201,7 @@ test("WorkerHandshakeDecision accepted decision", () => {
   assert.ok(decision.executionId != null);
 });
 
-test("WorkerHandshakeDecision rejected with ticket_not_found", () => {
+test("WorkerHandshakeDecision rejected with ticket_not_found [execution-worker-handshake-types]", () => {
   const decision: WorkerHandshakeDecision = {
     accepted: false,
     reasonCode: "ticket_not_found",
@@ -213,7 +213,7 @@ test("WorkerHandshakeDecision rejected with ticket_not_found", () => {
   assert.equal(decision.reasonCode, "ticket_not_found");
 });
 
-test("WorkerHandshakeDecision rejected with ticket_not_claimed", () => {
+test("WorkerHandshakeDecision rejected with ticket_not_claimed [execution-worker-handshake-types]", () => {
   const decision: WorkerHandshakeDecision = {
     accepted: false,
     reasonCode: "ticket_not_claimed",
@@ -224,7 +224,7 @@ test("WorkerHandshakeDecision rejected with ticket_not_claimed", () => {
   assert.equal(decision.reasonCode, "ticket_not_claimed");
 });
 
-test("WorkerHandshakeDecision rejected with worker_mismatch", () => {
+test("WorkerHandshakeDecision rejected with worker_mismatch [execution-worker-handshake-types]", () => {
   const decision: WorkerHandshakeDecision = {
     accepted: false,
     reasonCode: "worker_mismatch",
@@ -235,7 +235,7 @@ test("WorkerHandshakeDecision rejected with worker_mismatch", () => {
   assert.equal(decision.reasonCode, "worker_mismatch");
 });
 
-test("WorkerHandshakeDecision rejected with lease_mismatch", () => {
+test("WorkerHandshakeDecision rejected with lease_mismatch [execution-worker-handshake-types]", () => {
   const decision: WorkerHandshakeDecision = {
     accepted: false,
     reasonCode: "lease_mismatch",
@@ -246,7 +246,7 @@ test("WorkerHandshakeDecision rejected with lease_mismatch", () => {
   assert.equal(decision.reasonCode, "lease_mismatch");
 });
 
-test("WorkerHandshakeDecision rejected with worker_not_registered", () => {
+test("WorkerHandshakeDecision rejected with worker_not_registered [execution-worker-handshake-types]", () => {
   const decision: WorkerHandshakeDecision = {
     accepted: false,
     reasonCode: "worker_not_registered",
@@ -257,7 +257,7 @@ test("WorkerHandshakeDecision rejected with worker_not_registered", () => {
   assert.equal(decision.reasonCode, "worker_not_registered");
 });
 
-test("WorkerHandshakeDecision rejected with worker_not_trusted", () => {
+test("WorkerHandshakeDecision rejected with worker_not_trusted [execution-worker-handshake-types]", () => {
   const decision: WorkerHandshakeDecision = {
     accepted: false,
     reasonCode: "worker_not_trusted",
@@ -268,7 +268,7 @@ test("WorkerHandshakeDecision rejected with worker_not_trusted", () => {
   assert.equal(decision.reasonCode, "worker_not_trusted");
 });
 
-test("WorkerHandshakeDecision rejected with lease_not_found", () => {
+test("WorkerHandshakeDecision rejected with lease_not_found [execution-worker-handshake-types]", () => {
   const decision: WorkerHandshakeDecision = {
     accepted: false,
     reasonCode: "lease_not_found",
@@ -279,7 +279,7 @@ test("WorkerHandshakeDecision rejected with lease_not_found", () => {
   assert.equal(decision.reasonCode, "lease_not_found");
 });
 
-test("WorkerHandshakeDecision rejected with no_active_lease", () => {
+test("WorkerHandshakeDecision rejected with no_active_lease [execution-worker-handshake-types]", () => {
   const decision: WorkerHandshakeDecision = {
     accepted: false,
     reasonCode: "no_active_lease",
@@ -290,7 +290,7 @@ test("WorkerHandshakeDecision rejected with no_active_lease", () => {
   assert.equal(decision.reasonCode, "no_active_lease");
 });
 
-test("WorkerHandshakeDecision rejected with stale_fencing_token", () => {
+test("WorkerHandshakeDecision rejected with stale_fencing_token [execution-worker-handshake-types]", () => {
   const decision: WorkerHandshakeDecision = {
     accepted: false,
     reasonCode: "stale_fencing_token",
@@ -301,7 +301,7 @@ test("WorkerHandshakeDecision rejected with stale_fencing_token", () => {
   assert.equal(decision.reasonCode, "stale_fencing_token");
 });
 
-test("WorkerHandshakeDecision rejected with execution_not_found", () => {
+test("WorkerHandshakeDecision rejected with execution_not_found [execution-worker-handshake-types]", () => {
   const decision: WorkerHandshakeDecision = {
     accepted: false,
     reasonCode: "execution_not_found",
@@ -312,7 +312,7 @@ test("WorkerHandshakeDecision rejected with execution_not_found", () => {
   assert.equal(decision.reasonCode, "execution_not_found");
 });
 
-test("WorkerHandshakeDecision rejected with lease_not_active", () => {
+test("WorkerHandshakeDecision rejected with lease_not_active [execution-worker-handshake-types]", () => {
   const decision: WorkerHandshakeDecision = {
     accepted: false,
     reasonCode: "lease_not_active",
@@ -323,7 +323,7 @@ test("WorkerHandshakeDecision rejected with lease_not_active", () => {
   assert.equal(decision.reasonCode, "lease_not_active");
 });
 
-test("WorkerHandshakeDecision rejected with lease_expired", () => {
+test("WorkerHandshakeDecision rejected with lease_expired [execution-worker-handshake-types]", () => {
   const decision: WorkerHandshakeDecision = {
     accepted: false,
     reasonCode: "lease_expired",
@@ -334,7 +334,7 @@ test("WorkerHandshakeDecision rejected with lease_expired", () => {
   assert.equal(decision.reasonCode, "lease_expired");
 });
 
-test("WorkerHandshakeDecision rejected with remote_session_viewer_only", () => {
+test("WorkerHandshakeDecision rejected with remote_session_viewer_only [execution-worker-handshake-types]", () => {
   const decision: WorkerHandshakeDecision = {
     accepted: false,
     reasonCode: "remote_session_viewer_only",
@@ -345,7 +345,7 @@ test("WorkerHandshakeDecision rejected with remote_session_viewer_only", () => {
   assert.equal(decision.reasonCode, "remote_session_viewer_only");
 });
 
-test("WorkerHandshakeDecision rejected with remote_session_consistency_mismatch", () => {
+test("WorkerHandshakeDecision rejected with remote_session_consistency_mismatch [execution-worker-handshake-types]", () => {
   const decision: WorkerHandshakeDecision = {
     accepted: false,
     reasonCode: "remote_session_consistency_mismatch",
@@ -356,7 +356,7 @@ test("WorkerHandshakeDecision rejected with remote_session_consistency_mismatch"
   assert.equal(decision.reasonCode, "remote_session_consistency_mismatch");
 });
 
-test("WorkerHandshakeDecision rejected with remote_workspace_sync_conflict", () => {
+test("WorkerHandshakeDecision rejected with remote_workspace_sync_conflict [execution-worker-handshake-types]", () => {
   const decision: WorkerHandshakeDecision = {
     accepted: false,
     reasonCode: "remote_workspace_sync_conflict",
@@ -367,7 +367,7 @@ test("WorkerHandshakeDecision rejected with remote_workspace_sync_conflict", () 
   assert.equal(decision.reasonCode, "remote_workspace_sync_conflict");
 });
 
-test("WorkerHandshakeDecision rejected with remote_session_resume_offset_missing", () => {
+test("WorkerHandshakeDecision rejected with remote_session_resume_offset_missing [execution-worker-handshake-types]", () => {
   const decision: WorkerHandshakeDecision = {
     accepted: false,
     reasonCode: "remote_session_resume_offset_missing",
@@ -378,7 +378,7 @@ test("WorkerHandshakeDecision rejected with remote_session_resume_offset_missing
   assert.equal(decision.reasonCode, "remote_session_resume_offset_missing");
 });
 
-test("WorkerHandshakeDecision rejected with resource_limit_exceeded", () => {
+test("WorkerHandshakeDecision rejected with resource_limit_exceeded [execution-worker-handshake-types]", () => {
   const decision: WorkerHandshakeDecision = {
     accepted: false,
     reasonCode: "resource_limit_exceeded",
@@ -389,7 +389,7 @@ test("WorkerHandshakeDecision rejected with resource_limit_exceeded", () => {
   assert.equal(decision.reasonCode, "resource_limit_exceeded");
 });
 
-test("WorkerHandshakeDecision all reasonCode values are unique", () => {
+test("WorkerHandshakeDecision all reasonCode values are unique [execution-worker-handshake-types]", () => {
   const reasonCodes: WorkerHandshakeDecision["reasonCode"][] = [
     "ticket_not_found",
     "ticket_not_claimed",
@@ -418,12 +418,12 @@ test("WorkerHandshakeDecision all reasonCode values are unique", () => {
 // ExecutionWorkerHandshakeServiceOptions
 // ---------------------------------------------------------------------------
 
-test("ExecutionWorkerHandshakeServiceOptions empty object is valid", () => {
+test("ExecutionWorkerHandshakeServiceOptions empty object is valid [execution-worker-handshake-types]", () => {
   const options: ExecutionWorkerHandshakeServiceOptions = {};
   assert.ok(options != null);
 });
 
-test("ExecutionWorkerHandshakeServiceOptions with resourceCeilingGuard", () => {
+test("ExecutionWorkerHandshakeServiceOptions with resourceCeilingGuard [execution-worker-handshake-types]", () => {
   // Guard is a class instance, we just verify type accepts it
   const guard: ExecutionResourceCeilingGuard = new ExecutionResourceCeilingGuard({ maxToolCalls: 100 });
   const options: ExecutionWorkerHandshakeServiceOptions = {
@@ -432,7 +432,7 @@ test("ExecutionWorkerHandshakeServiceOptions with resourceCeilingGuard", () => {
   assert.ok(options.resourceCeilingGuard != null);
 });
 
-test("ExecutionWorkerHandshakeServiceOptions resourceCeilingGuard is optional", () => {
+test("ExecutionWorkerHandshakeServiceOptions resourceCeilingGuard is optional [execution-worker-handshake-types]", () => {
   const options: ExecutionWorkerHandshakeServiceOptions = {};
   assert.equal(options.resourceCeilingGuard, undefined);
 });

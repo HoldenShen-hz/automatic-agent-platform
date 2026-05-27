@@ -12,17 +12,17 @@ import type {
   LockData,
 } from "../../../../../src/platform/five-plane-execution/distributed-lock/distributed-lock-types.js";
 
-test("LockBackendKind type accepts valid values", () => {
+test("LockBackendKind type accepts valid values [distributed-lock-types]", () => {
   const kinds: LockBackendKind[] = ["sqlite", "pg_advisory", "redis"];
   assert.equal(kinds.length, 3);
 });
 
-test("LockStatus type accepts the supported lifecycle values", () => {
+test("LockStatus type accepts the supported lifecycle values [distributed-lock-types]", () => {
   const statuses: LockStatus[] = ["pending", "held", "extended", "released", "expired", "reclaimed", "stolen"];
   assert.deepEqual(statuses, ["pending", "held", "extended", "released", "expired", "reclaimed", "stolen"]);
 });
 
-test("LockRecord structure is correct", () => {
+test("LockRecord structure is correct [distributed-lock-types]", () => {
   const record: LockRecord = {
     lockKey: "resource_lock",
     owner: "worker_123",
@@ -40,7 +40,7 @@ test("LockRecord structure is correct", () => {
   assert.equal(record.metadata, null);
 });
 
-test("LockRecord allows metadata", () => {
+test("LockRecord allows metadata [distributed-lock-types]", () => {
   const record: LockRecord = {
     lockKey: "resource_lock",
     owner: "worker_123",
@@ -53,7 +53,7 @@ test("LockRecord allows metadata", () => {
   assert.equal(record.metadata, '{"priority": "high"}');
 });
 
-test("AcquireLockInput structure is correct", () => {
+test("AcquireLockInput structure is correct [distributed-lock-types]", () => {
   const input: AcquireLockInput = {
     lockKey: "task_lock",
     owner: "worker_456",
@@ -64,7 +64,7 @@ test("AcquireLockInput structure is correct", () => {
   assert.equal(input.ttlMs, 60000);
 });
 
-test("AcquireLockInput ttlMs is optional", () => {
+test("AcquireLockInput ttlMs is optional [distributed-lock-types]", () => {
   const input: AcquireLockInput = {
     lockKey: "task_lock",
     owner: "worker_456",
@@ -72,7 +72,7 @@ test("AcquireLockInput ttlMs is optional", () => {
   assert.equal(input.ttlMs, undefined);
 });
 
-test("AcquireLockResult structure when acquired", () => {
+test("AcquireLockResult structure when acquired [distributed-lock-types]", () => {
   const result: AcquireLockResult = {
     acquired: true,
     lock: {
@@ -90,7 +90,7 @@ test("AcquireLockResult structure when acquired", () => {
   assert.equal(result.lock!.lockKey, "task_lock");
 });
 
-test("AcquireLockResult structure when not acquired", () => {
+test("AcquireLockResult structure when not acquired [distributed-lock-types]", () => {
   const result: AcquireLockResult = {
     acquired: false,
   };
@@ -98,7 +98,7 @@ test("AcquireLockResult structure when not acquired", () => {
   assert.equal(result.lock, undefined);
 });
 
-test("PgAdvisoryLockConfig structure is correct", () => {
+test("PgAdvisoryLockConfig structure is correct [distributed-lock-types]", () => {
   const config: PgAdvisoryLockConfig = {
     dsn: "postgres://localhost:5432/mydb",
     poolMin: 2,
@@ -113,7 +113,7 @@ test("PgAdvisoryLockConfig structure is correct", () => {
   assert.deepEqual(config.ssl, { rejectUnauthorized: true });
 });
 
-test("PgAdvisoryLockConfig allows ssl false", () => {
+test("PgAdvisoryLockConfig allows ssl false [distributed-lock-types]", () => {
   const config: PgAdvisoryLockConfig = {
     dsn: "postgres://localhost:5432/mydb",
     ssl: false,
@@ -121,14 +121,14 @@ test("PgAdvisoryLockConfig allows ssl false", () => {
   assert.equal(config.ssl, false);
 });
 
-test("PgAdvisoryLockConfig env is optional", () => {
+test("PgAdvisoryLockConfig env is optional [distributed-lock-types]", () => {
   const config: PgAdvisoryLockConfig = {
     dsn: "postgres://localhost:5432/mydb",
   };
   assert.equal(config.env, undefined);
 });
 
-test("RedisLockConfig structure is correct", () => {
+test("RedisLockConfig structure is correct [distributed-lock-types]", () => {
   const config: RedisLockConfig = {
     host: "localhost",
     port: 6379,
@@ -137,7 +137,7 @@ test("RedisLockConfig structure is correct", () => {
   assert.equal(config.port, 6379);
 });
 
-test("RedisLockConfig allows optional fields", () => {
+test("RedisLockConfig allows optional fields [distributed-lock-types]", () => {
   const config: RedisLockConfig = {
     host: "redis.example.com",
     port: 6380,
@@ -148,7 +148,7 @@ test("RedisLockConfig allows optional fields", () => {
   assert.equal(config.connectTimeoutMs, 5000);
 });
 
-test("LockData structure is correct", () => {
+test("LockData structure is correct [distributed-lock-types]", () => {
   const data: LockData = {
     id: "lock_123",
     owner: "worker_789",
@@ -163,7 +163,7 @@ test("LockData structure is correct", () => {
   assert.equal(data.ttlMs, 45000);
 });
 
-test("LockData allows metadata", () => {
+test("LockData allows metadata [distributed-lock-types]", () => {
   const data: LockData = {
     id: "lock_456",
     owner: "worker_abc",

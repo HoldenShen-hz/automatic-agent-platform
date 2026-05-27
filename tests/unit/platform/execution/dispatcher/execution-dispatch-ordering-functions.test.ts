@@ -26,7 +26,7 @@ function makeTicket(overrides: Partial<ExecutionTicketRecord> = {}): ExecutionTi
   } as ExecutionTicketRecord;
 }
 
-test("sortTicketsForDeterministicDispatch sorts by priority descending", () => {
+test("sortTicketsForDeterministicDispatch sorts by priority descending [execution-dispatch-ordering-functions]", () => {
   const tickets = [
     makeTicket({ id: "1", priority: "low" }),
     makeTicket({ id: "2", priority: "critical" }),
@@ -44,7 +44,7 @@ test("sortTicketsForDeterministicDispatch sorts by priority descending", () => {
   assert.equal(sorted[4]!.priority, "low");
 });
 
-test("sortTicketsForDeterministicDispatch sorts by criticalPathRank within same priority", () => {
+test("sortTicketsForDeterministicDispatch sorts by criticalPathRank within same priority [execution-dispatch-ordering-functions]", () => {
   const tickets = [
     makeTicket({ id: "ticket_1", priority: "normal", criticalPathRank: 1 }),
     makeTicket({ id: "ticket_2", priority: "normal", criticalPathRank: 3 }),
@@ -58,7 +58,7 @@ test("sortTicketsForDeterministicDispatch sorts by criticalPathRank within same 
   assert.equal(sorted[2]!.id, "ticket_1");
 });
 
-test("sortTicketsForDeterministicDispatch sorts by riskClass within same priority and rank", () => {
+test("sortTicketsForDeterministicDispatch sorts by riskClass within same priority and rank [execution-dispatch-ordering-functions]", () => {
   const tickets = [
     makeTicket({ id: "ticket_1", priority: "normal", criticalPathRank: 0, riskClass: "low" }),
     makeTicket({ id: "ticket_2", priority: "normal", criticalPathRank: 0, riskClass: "critical" }),
@@ -72,7 +72,7 @@ test("sortTicketsForDeterministicDispatch sorts by riskClass within same priorit
   assert.equal(sorted[2]!.id, "ticket_1");
 });
 
-test("sortTicketsForDeterministicDispatch sorts by schedulerSeed as tiebreaker", () => {
+test("sortTicketsForDeterministicDispatch sorts by schedulerSeed as tiebreaker [execution-dispatch-ordering-functions]", () => {
   const tickets = [
     makeTicket({ id: "ticket_1", priority: "normal", criticalPathRank: 0, riskClass: "low", schedulerSeed: "z" }),
     makeTicket({ id: "ticket_2", priority: "normal", criticalPathRank: 0, riskClass: "low", schedulerSeed: "a" }),
@@ -86,7 +86,7 @@ test("sortTicketsForDeterministicDispatch sorts by schedulerSeed as tiebreaker",
   assert.equal(sorted[2]!.id, "ticket_1");
 });
 
-test("sortTicketsForDeterministicDispatch handles missing riskClass", () => {
+test("sortTicketsForDeterministicDispatch handles missing riskClass [execution-dispatch-ordering-functions]", () => {
   const tickets = [
     makeTicket({ id: "ticket_1", priority: "normal", criticalPathRank: 0, riskClass: undefined }),
     makeTicket({ id: "ticket_2", priority: "normal", criticalPathRank: 0, riskClass: "high" }),
@@ -98,7 +98,7 @@ test("sortTicketsForDeterministicDispatch handles missing riskClass", () => {
   assert.equal(sorted[1]!.id, "ticket_1");
 });
 
-test("sortTicketsForDeterministicDispatch handles missing schedulerSeed", () => {
+test("sortTicketsForDeterministicDispatch handles missing schedulerSeed [execution-dispatch-ordering-functions]", () => {
   const tickets = [
     makeTicket({ id: "ticket_1", priority: "normal", criticalPathRank: 0, schedulerSeed: undefined }),
     makeTicket({ id: "ticket_2", priority: "normal", criticalPathRank: 0, schedulerSeed: "abc" }),
@@ -110,7 +110,7 @@ test("sortTicketsForDeterministicDispatch handles missing schedulerSeed", () => 
   assert.equal(sorted[1]!.id, "ticket_2");
 });
 
-test("sortTicketsForDeterministicDispatch does not mutate original array", () => {
+test("sortTicketsForDeterministicDispatch does not mutate original array [execution-dispatch-ordering-functions]", () => {
   const tickets = [
     makeTicket({ id: "1", priority: "high" }),
     makeTicket({ id: "2", priority: "low" }),
@@ -122,7 +122,7 @@ test("sortTicketsForDeterministicDispatch does not mutate original array", () =>
   assert.deepEqual(tickets.map(t => t.id), original.map(t => t.id));
 });
 
-test("interleaveTicketsByTenant distributes tickets across tenants", () => {
+test("interleaveTicketsByTenant distributes tickets across tenants [execution-dispatch-ordering-functions]", () => {
   const tickets = [
     makeTicket({ id: "1", tenantId: "tenant_a" }),
     makeTicket({ id: "2", tenantId: "tenant_a" }),
@@ -143,7 +143,7 @@ test("interleaveTicketsByTenant distributes tickets across tenants", () => {
   assert.equal(tenantCIds.length, 1);
 });
 
-test("interleaveTicketsByTenant respects maxBurstPerTenant", () => {
+test("interleaveTicketsByTenant respects maxBurstPerTenant [execution-dispatch-ordering-functions]", () => {
   const tickets = [
     makeTicket({ id: "1", tenantId: "tenant_a" }),
     makeTicket({ id: "2", tenantId: "tenant_a" }),
@@ -156,7 +156,7 @@ test("interleaveTicketsByTenant respects maxBurstPerTenant", () => {
   assert.equal(interleaved.length, 4);
 });
 
-test("interleaveTicketsByTenant handles single ticket", () => {
+test("interleaveTicketsByTenant handles single ticket [execution-dispatch-ordering-functions]", () => {
   const tickets = [makeTicket({ id: "1" })];
 
   const interleaved = interleaveTicketsByTenant(tickets);
@@ -164,13 +164,13 @@ test("interleaveTicketsByTenant handles single ticket", () => {
   assert.deepEqual(interleaved, tickets);
 });
 
-test("interleaveTicketsByTenant handles empty array", () => {
+test("interleaveTicketsByTenant handles empty array [execution-dispatch-ordering-functions]", () => {
   const interleaved = interleaveTicketsByTenant([]);
 
   assert.deepEqual(interleaved, []);
 });
 
-test("interleaveTicketsByTenant uses default tenant when tenantId missing", () => {
+test("interleaveTicketsByTenant uses default tenant when tenantId missing [execution-dispatch-ordering-functions]", () => {
   const tickets = [
     makeTicket({ id: "1", tenantId: undefined }),
     makeTicket({ id: "2", tenantId: "tenant_a" }),
@@ -181,7 +181,7 @@ test("interleaveTicketsByTenant uses default tenant when tenantId missing", () =
   assert.equal(interleaved.length, 2);
 });
 
-test("hashDispatchSeed produces consistent hash for same input", () => {
+test("hashDispatchSeed produces consistent hash for same input [execution-dispatch-ordering-functions]", () => {
   const seed = "test_dispatch_seed";
 
   const hash1 = hashDispatchSeed(seed);
@@ -190,20 +190,20 @@ test("hashDispatchSeed produces consistent hash for same input", () => {
   assert.equal(hash1, hash2);
 });
 
-test("hashDispatchSeed produces different hashes for different seeds", () => {
+test("hashDispatchSeed produces different hashes for different seeds [execution-dispatch-ordering-functions]", () => {
   const hash1 = hashDispatchSeed("seed_one");
   const hash2 = hashDispatchSeed("seed_two");
 
   assert.notEqual(hash1, hash2);
 });
 
-test("hashDispatchSeed handles empty string", () => {
+test("hashDispatchSeed handles empty string [execution-dispatch-ordering-functions]", () => {
   const hash = hashDispatchSeed("");
 
   assert.equal(hash, 0);
 });
 
-test("hashDispatchSeed handles unicode characters", () => {
+test("hashDispatchSeed handles unicode characters [execution-dispatch-ordering-functions]", () => {
   const hash1 = hashDispatchSeed("test_seed");
   const hash2 = hashDispatchSeed("test_sééd");
 

@@ -36,7 +36,7 @@ function createHarness(prefix: string) {
   return { workspace, db, store, tenantPlatform, service };
 }
 
-test("data-plane-flow-2192: creating a global namespace without any explicit scope is fail-closed", () => {
+test("data-plane-flow-2192: creating a global namespace without any explicit scope is fail-closed [data-plane-flow-issues]", () => {
   const harness = createHarness("aa-data-plane-scope-");
 
   try {
@@ -56,7 +56,7 @@ test("data-plane-flow-2192: creating a global namespace without any explicit sco
   }
 });
 
-test("data-plane-flow-2192: tenant-scoped namespaces cannot target a namespace with a mismatched null scope", () => {
+test("data-plane-flow-2192: tenant-scoped namespaces cannot target a namespace with a mismatched null scope [data-plane-flow-issues]", () => {
   const harness = createHarness("aa-data-plane-scope-2-");
 
   try {
@@ -99,7 +99,7 @@ test("data-plane-flow-2192: tenant-scoped namespaces cannot target a namespace w
   }
 });
 
-test("data-plane-flow-2192: unscoped global-to-global namespaces are rejected before movement can start", () => {
+test("data-plane-flow-2192: unscoped global-to-global namespaces are rejected before movement can start [data-plane-flow-issues]", () => {
   const harness = createHarness("aa-data-plane-scope-3-");
 
   try {
@@ -119,7 +119,7 @@ test("data-plane-flow-2192: unscoped global-to-global namespaces are rejected be
   }
 });
 
-test("data-plane-flow-2192: same-tenant movement should be allowed", () => {
+test("data-plane-flow-2192: same-tenant movement should be allowed [data-plane-flow-issues]", () => {
   const harness = createHarness("aa-data-plane-scope-4-");
 
   try {
@@ -171,7 +171,7 @@ test("data-plane-flow-2192: same-tenant movement should be allowed", () => {
   }
 });
 
-test("data-plane-flow-2192: different-tenant movement should be blocked", () => {
+test("data-plane-flow-2192: different-tenant movement should be blocked [data-plane-flow-issues]", () => {
   const harness = createHarness("aa-data-plane-scope-5-");
 
   try {
@@ -242,6 +242,6 @@ test("data-plane-flow-2192: different-tenant movement should be blocked", () => 
   }
 });
 
-test("data-plane-flow-2192: assertScopeCompatibility fail-closed behavior is documented by explicit scope requirement", () => {
+test("data-plane-flow-2192: assertScopeCompatibility fail-closed behavior is documented by explicit scope requirement [data-plane-flow-issues]", () => {
   assert.ok(true);
 });

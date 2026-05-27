@@ -21,11 +21,11 @@ import {
 // runPhase1BOrchestration alias tests
 // =============================================================================
 
-test("runPhase1BOrchestration is identical to runMultiStepOrchestration", () => {
+test("runPhase1BOrchestration is identical to runMultiStepOrchestration [phase1b-orchestration]", () => {
   assert.strictEqual(runPhase1BOrchestration, runMultiStepOrchestration);
 });
 
-test("runPhase1BOrchestration is a function", () => {
+test("runPhase1BOrchestration is a function [phase1b-orchestration]", () => {
   assert.equal(typeof runPhase1BOrchestration, "function");
 });
 
@@ -33,7 +33,7 @@ test("runPhase1BOrchestration is a function", () => {
 // HappyPathInput type re-export tests
 // =============================================================================
 
-test("MultiStepToolExecutionInput type is exported from phase1b-orchestration compatibility surface", () => {
+test("MultiStepToolExecutionInput type is exported from phase1b-orchestration compatibility surface [phase1b-orchestration]", () => {
   // Verify the type can be used in type annotations
   const input: MultiStepToolExecutionInput = {
     taskId: "task-1",
@@ -48,7 +48,7 @@ test("MultiStepToolExecutionInput type is exported from phase1b-orchestration co
   assert.equal(input.toolName, "web_search");
 });
 
-test("MultiStepToolExecutionInput type structure is correct", () => {
+test("MultiStepToolExecutionInput type structure is correct [phase1b-orchestration]", () => {
   const input: MultiStepToolExecutionInput = {
     taskId: "task-2",
     planId: "plan-2",
@@ -62,7 +62,7 @@ test("MultiStepToolExecutionInput type structure is correct", () => {
   assert.deepEqual(input.args, { cwd: "/tmp/repo", args: ["status"] });
 });
 
-test("MultiStepToolExecutionInput has all required fields", () => {
+test("MultiStepToolExecutionInput has all required fields [phase1b-orchestration]", () => {
   const input: MultiStepToolExecutionInput = {
     taskId: "task-3",
     planId: "plan-3",

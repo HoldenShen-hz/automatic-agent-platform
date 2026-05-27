@@ -84,7 +84,7 @@ export function findComplianceTemplate<T extends { templateId: string }>(
   return templates.find((item) => item.templateId === templateId) ?? null;
 }
 
-type ComplianceTemplateLike = {
+export type ComplianceTemplateLike = {
   readonly templateId: string;
   readonly framework: string;
   readonly reportType: string;
@@ -98,24 +98,113 @@ type ComplianceTemplateLike = {
   readonly migrationRule?: string;
 };
 
-// @ts-expect-error - generic constraint issue with ComplianceTemplateLike
-export class ComplianceTemplateRegistryService<T extends ComplianceTemplateLike = ComplianceReportTemplate> {
-  private readonly templates: readonly T[];
+export interface ComplianceTemplateSource extends ComplianceTemplateLike {
+  readonly controls?: readonly {
+    readonly controlId: string;
+    readonly title?: string;
+    readonly description?: string;
+    readonly owner?: string;
+    readonly frequency?: "continuous" | "daily" | "weekly" | "monthly" | "quarterly" | "annually";
+    readonly evidenceRequirements?: readonly string[];
+  }[];
+  readonly controlEvidenceMapping?: Readonly<Record<string, readonly string[]>>;
+  readonly qualityThresholds?: {
+    readonly minCompleteness?: number;
+    readonly minFreshnessHours?: number;
+    readonly minTrustworthiness?: number;
+    readonly minTamperProof?: number;
+  };
+  readonly attestation?: {
+    readonly requireHumanSignoff?: boolean;
+    readonly signoffDueDays?: number;
+    readonly escalationOwner?: string;
+    readonly timeoutAction?: "escalate_owner" | "freeze_report" | "expire_report";
+  };
+  readonly auditorAccess?: {
+    readonly requiredPermissions?: readonly string[];
+    readonly allowPiiAccess?: boolean;
+    readonly redactionRequired?: boolean;
+  };
+  readonly frameworkMetadata?: Readonly<Record<string, unknown>>;
+}
 
-  public constructor(templates: readonly T[]) {
-    // @ts-expect-error - generic type conversion issue
-    this.templates = templates.map((item) => normalizeComplianceTemplate(item) as T);
+function toComplianceTemplateInput(template: ComplianceTemplateSource): ComplianceReportTemplateInput {
+  return {
+    templateId: template.templateId,
+    framework: template.framework,
+    reportType: template.reportType,
+    requiredEvidenceTypes: [...template.requiredEvidenceTypes],
+    renderSchema: [...template.renderSchema],
+    ...(template.version != null ? { version: template.version } : {}),
+    ...(template.lockedOnGeneration != null ? { lockedOnGeneration: template.lockedOnGeneration } : {}),
+    ...(template.reportVersionLock != null ? { reportVersionLock: template.reportVersionLock } : {}),
+    ...(template.legalVersion != null ? { legalVersion: template.legalVersion } : {}),
+    ...(template.effectiveDate != null ? { effectiveDate: template.effectiveDate } : {}),
+    ...(template.migrationRule != null ? { migrationRule: template.migrationRule } : {}),
+    ...(template.controls == null ? {} : {
+      controls: template.controls.map((control) => ({
+        controlId: control.controlId,
+        ...(control.title != null ? { title: control.title } : {}),
+        ...(control.description != null ? { description: control.description } : {}),
+        ...(control.owner != null ? { owner: control.owner } : {}),
+        ...(control.frequency != null ? { frequency: control.frequency } : {}),
+        ...(control.evidenceRequirements == null ? {} : { evidenceRequirements: [...control.evidenceRequirements] }),
+      })),
+    }),
+    ...(template.controlEvidenceMapping == null ? {} : {
+      controlEvidenceMapping: Object.fromEntries(
+        Object.entries(template.controlEvidenceMapping).map(([key, values]) => [key, [...values]]),
+      ),
+    }),
+    ...(template.attestation == null ? {} : {
+      attestation: {
+        ...(template.attestation.requireHumanSignoff != null
+          ? { requireHumanSignoff: template.attestation.requireHumanSignoff }
+          : {}),
+        ...(template.attestation.signoffDueDays != null
+          ? { signoffDueDays: template.attestation.signoffDueDays }
+          : {}),
+        ...(template.attestation.escalationOwner != null
+          ? { escalationOwner: template.attestation.escalationOwner }
+          : {}),
+        ...(template.attestation.timeoutAction != null
+          ? { timeoutAction: template.attestation.timeoutAction }
+          : {}),
+      },
+    }),
+    ...(template.auditorAccess == null ? {} : {
+      auditorAccess: {
+        ...(template.auditorAccess.allowPiiAccess != null
+          ? { allowPiiAccess: template.auditorAccess.allowPiiAccess }
+          : {}),
+        ...(template.auditorAccess.redactionRequired != null
+          ? { redactionRequired: template.auditorAccess.redactionRequired }
+          : {}),
+        ...(template.auditorAccess.requiredPermissions == null
+          ? {}
+          : { requiredPermissions: [...template.auditorAccess.requiredPermissions] }),
+      },
+    }),
+    ...(template.frameworkMetadata == null ? {} : { frameworkMetadata: { ...template.frameworkMetadata } }),
+  } as ComplianceReportTemplateInput;
+}
+
+export class ComplianceTemplateRegistryService {
+  private readonly templates: readonly ComplianceReportTemplate[];
+
+  public constructor(templates: readonly ComplianceTemplateSource[]) {
+    this.templates = templates.map((item) => normalizeComplianceTemplate(toComplianceTemplateInput(item)));
   }
 
-  public find(templateId: string): T | null {
+  public find(templateId: string): ComplianceReportTemplate | null {
     return findComplianceTemplate(this.templates, templateId);
   }
 
-  public listByFramework(framework: string): T[] {
+  public listByFramework(framework: string): ComplianceReportTemplate[] {
     return this.templates.filter((item) => item.framework === framework);
   }
 
-  public all(): readonly T[] {
+  public all(): readonly ComplianceReportTemplate[] {
     return this.templates;
   }
 }

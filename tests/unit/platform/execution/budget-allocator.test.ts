@@ -6,7 +6,7 @@ import { createBudgetLedger, type PlatformFactEvent } from "../../../../src/plat
 import { BudgetAllocator } from "../../../../src/platform/five-plane-execution/budget-allocator.js";
 import { RuntimeStateMachine } from "../../../../src/platform/five-plane-execution/runtime-state-machine.js";
 
-test("BudgetAllocator reserves against hard cap and settles reservation with ledger accounting", () => {
+test("BudgetAllocator reserves against hard cap and settles reservation with ledger accounting [budget-allocator]", () => {
   const allocator = new BudgetAllocator();
   const ledger = createBudgetLedger({
     tenantId: "tenant-1",
@@ -43,7 +43,7 @@ test("BudgetAllocator reserves against hard cap and settles reservation with led
   assert.equal(settled.ledger.releasedAmount, 10);
 });
 
-test("BudgetAllocator settles overspend when actual usage exceeds the reservation but remains under hard cap", () => {
+test("BudgetAllocator settles overspend when actual usage exceeds the reservation but remains under hard cap [budget-allocator]", () => {
   const allocator = new BudgetAllocator();
   const ledger = createBudgetLedger({
     tenantId: "tenant-1",
@@ -81,7 +81,7 @@ test("BudgetAllocator settles overspend when actual usage exceeds the reservatio
   assert.equal(settled.ledger.releasedAmount, 0);
 });
 
-test("BudgetAllocator can release a reservation when execution never starts", () => {
+test("BudgetAllocator can release a reservation when execution never starts [budget-allocator]", () => {
   const allocator = new BudgetAllocator();
   const ledger = createBudgetLedger({
     tenantId: "tenant-1",
@@ -115,7 +115,7 @@ test("BudgetAllocator can release a reservation when execution never starts", ()
   assert.equal(released.ledger.releasedAmount, 25);
 });
 
-test("BudgetAllocator rejects tier limit currency mismatches before reserving budget", () => {
+test("BudgetAllocator rejects tier limit currency mismatches before reserving budget [budget-allocator]", () => {
   const allocator = new BudgetAllocator();
   const ledger = createBudgetLedger({
     tenantId: "tenant-1",
@@ -148,7 +148,7 @@ test("BudgetAllocator rejects tier limit currency mismatches before reserving bu
   );
 });
 
-test("BudgetAllocator.settle emits fact events for both reservation and ledger via RSM", () => {
+test("BudgetAllocator.settle emits fact events for both reservation and ledger via RSM [budget-allocator]", () => {
   const emittedEvents: PlatformFactEvent[] = [];
   const stateMachine = new RuntimeStateMachine({
     persistEvent: (event) => emittedEvents.push(event),
@@ -197,7 +197,7 @@ test("BudgetAllocator.settle emits fact events for both reservation and ledger v
   assert.equal(settled.reservation.event.eventType, "platform.budget_reservation.status_changed");
 });
 
-test("BudgetAllocator.settle defers CAS enforcement to persistence instead of local prechecks", () => {
+test("BudgetAllocator.settle defers CAS enforcement to persistence instead of local prechecks [budget-allocator]", () => {
   const stateMachine = new RuntimeStateMachine({
     persistEvent: () => {}, // intentionally no-op
   });

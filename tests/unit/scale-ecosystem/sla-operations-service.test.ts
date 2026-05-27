@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { SlaOperationsService } from "../../../src/scale-ecosystem/sla-engine/sla-operations-service.js";
 
-test("SlaOperationsService resolves routing hint and records breaches", () => {
+test("SlaOperationsService resolves routing hint and records breaches [sla-operations-service]", () => {
   const service = new SlaOperationsService();
   const decision = service.evaluate({
     tiers: [

@@ -8,7 +8,7 @@ import type {
 } from "../../../../src/scale-ecosystem/marketplace/billing/types.js";
 import type { BillingMetricType } from "../../../../src/platform/five-plane-control-plane/config-center/billing-plan-catalog.js";
 
-test("CreateBillingAccountInput structure is correct", () => {
+test("CreateBillingAccountInput structure is correct [billing-types]", () => {
   const input: CreateBillingAccountInput = {
     accountId: "acct_123",
     ownerId: "owner_456",
@@ -22,7 +22,7 @@ test("CreateBillingAccountInput structure is correct", () => {
   assert.equal(input.planId, "plan_basic");
 });
 
-test("CreateBillingAccountInput allows minimal definition", () => {
+test("CreateBillingAccountInput allows minimal definition [billing-types]", () => {
   const input: CreateBillingAccountInput = {
     ownerId: "owner_abc",
     planId: "plan_pro",
@@ -32,7 +32,7 @@ test("CreateBillingAccountInput allows minimal definition", () => {
   assert.equal(input.status, undefined);
 });
 
-test("CreateBillingAccountInput allows null workspaceId", () => {
+test("CreateBillingAccountInput allows null workspaceId [billing-types]", () => {
   const input: CreateBillingAccountInput = {
     ownerId: "owner_def",
     workspaceId: null,
@@ -41,7 +41,7 @@ test("CreateBillingAccountInput allows null workspaceId", () => {
   assert.equal(input.workspaceId, null);
 });
 
-test("EvaluateEntitlementInput structure is correct", () => {
+test("EvaluateEntitlementInput structure is correct [billing-types]", () => {
   const input: EvaluateEntitlementInput = {
     accountId: "acct_123",
     featureKey: "feature_custom_models",
@@ -54,7 +54,7 @@ test("EvaluateEntitlementInput structure is correct", () => {
   assert.equal(input.requestedQuantity, 1000);
 });
 
-test("EvaluateEntitlementInput allows minimal definition", () => {
+test("EvaluateEntitlementInput allows minimal definition [billing-types]", () => {
   const input: EvaluateEntitlementInput = {
     accountId: "acct_456",
     featureKey: "feature_basic",
@@ -63,7 +63,7 @@ test("EvaluateEntitlementInput allows minimal definition", () => {
   assert.equal(input.requestedQuantity, undefined);
 });
 
-test("EvaluateEntitlementInput allows null metricType", () => {
+test("EvaluateEntitlementInput allows null metricType [billing-types]", () => {
   const input: EvaluateEntitlementInput = {
     accountId: "acct_789",
     featureKey: "feature_all",
@@ -72,7 +72,7 @@ test("EvaluateEntitlementInput allows null metricType", () => {
   assert.equal(input.metricType, null);
 });
 
-test("BillingMetricType accepts all valid values", () => {
+test("BillingMetricType accepts all valid values [billing-types]", () => {
   const types: BillingMetricType[] = [
     "task_execution",
     "token_usage",
@@ -82,7 +82,7 @@ test("BillingMetricType accepts all valid values", () => {
   assert.equal(types.length, 4);
 });
 
-test("RecordUsageInput structure is correct", () => {
+test("RecordUsageInput structure is correct [billing-types]", () => {
   const input: RecordUsageInput = {
     accountId: "acct_123",
     subjectId: "subject_456",
@@ -100,7 +100,7 @@ test("RecordUsageInput structure is correct", () => {
   assert.equal(input.source, "runtime");
 });
 
-test("RecordUsageInput allows minimal definition", () => {
+test("RecordUsageInput allows minimal definition [billing-types]", () => {
   const input: RecordUsageInput = {
     accountId: "acct_456",
     metricType: "token_usage",
@@ -111,7 +111,7 @@ test("RecordUsageInput allows minimal definition", () => {
   assert.equal(input.workspaceId, undefined);
 });
 
-test("RecordUsageInput allows null optional fields", () => {
+test("RecordUsageInput allows null optional fields [billing-types]", () => {
   const input: RecordUsageInput = {
     accountId: "acct_789",
     workspaceId: null,

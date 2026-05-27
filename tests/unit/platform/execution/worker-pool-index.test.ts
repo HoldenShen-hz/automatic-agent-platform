@@ -22,12 +22,12 @@ import type {
 import type { WorkerSchedulingStatus, WorkerStatus } from "../../../../src/platform/contracts/types/domain.js";
 
 // Verify worker-pool index exports worker-scheduling-status
-test("worker-pool index exports toWorkerSchedulingStatus", () => {
+test("worker-pool index exports toWorkerSchedulingStatus [worker-pool-index]", () => {
   assert.ok(typeof toWorkerSchedulingStatus === "function");
 });
 
 // Verify worker-scheduling-status functionality
-test("toWorkerSchedulingStatus returns correct scheduling status", () => {
+test("toWorkerSchedulingStatus returns correct scheduling status [worker-pool-index]", () => {
   assert.equal(toWorkerSchedulingStatus("idle"), "healthy");
   assert.equal(toWorkerSchedulingStatus("busy"), "healthy");
   assert.equal(toWorkerSchedulingStatus("degraded"), "degraded");
@@ -38,19 +38,19 @@ test("toWorkerSchedulingStatus returns correct scheduling status", () => {
 });
 
 // Verify worker-load-balancing exports
-test("worker-pool index exports computeWorkerLoadScore", () => {
+test("worker-pool index exports computeWorkerLoadScore [worker-pool-index]", () => {
   assert.ok(typeof computeWorkerLoadScore === "function");
 });
 
-test("worker-pool index exports computeEffectiveActiveLeaseCount", () => {
+test("worker-pool index exports computeEffectiveActiveLeaseCount [worker-pool-index]", () => {
   assert.ok(typeof computeEffectiveActiveLeaseCount === "function");
 });
 
-test("worker-pool index exports summarizeWorkerLoadSkew", () => {
+test("worker-pool index exports summarizeWorkerLoadSkew [worker-pool-index]", () => {
   assert.ok(typeof summarizeWorkerLoadSkew === "function");
 });
 
-test("worker-pool index exports MAX_RECOMMENDED_STICKY_SHARE", () => {
+test("worker-pool index exports MAX_RECOMMENDED_STICKY_SHARE [worker-pool-index]", () => {
   assert.equal(typeof MAX_RECOMMENDED_STICKY_SHARE, "number");
   assert.equal(MAX_RECOMMENDED_STICKY_SHARE, 0.6);
 });
@@ -68,7 +68,7 @@ interface TestWorkerLoadSignal {
   cpuPct: number | null;
 }
 
-test("computeEffectiveActiveLeaseCount returns max of activeLeaseCount and runningExecutionCount", () => {
+test("computeEffectiveActiveLeaseCount returns max of activeLeaseCount and runningExecutionCount [worker-pool-index]", () => {
   const signal: TestWorkerLoadSignal = {
     workerId: "worker-1",
     queueAffinity: null,
@@ -83,7 +83,7 @@ test("computeEffectiveActiveLeaseCount returns max of activeLeaseCount and runni
   assert.equal(computeEffectiveActiveLeaseCount(signal as never), 5);
 });
 
-test("computeEffectiveActiveLeaseCount returns activeLeaseCount when greater", () => {
+test("computeEffectiveActiveLeaseCount returns activeLeaseCount when greater [worker-pool-index]", () => {
   const signal: TestWorkerLoadSignal = {
     workerId: "worker-2",
     queueAffinity: null,
@@ -98,7 +98,7 @@ test("computeEffectiveActiveLeaseCount returns activeLeaseCount when greater", (
   assert.equal(computeEffectiveActiveLeaseCount(signal as never), 7);
 });
 
-test("computeWorkerLoadScore returns non-negative number", () => {
+test("computeWorkerLoadScore returns non-negative number [worker-pool-index]", () => {
   const signal: TestWorkerLoadSignal = {
     workerId: "worker-1",
     queueAffinity: null,
@@ -114,7 +114,7 @@ test("computeWorkerLoadScore returns non-negative number", () => {
   assert.ok(score >= 0);
 });
 
-test("computeWorkerLoadScore handles all saturation values", () => {
+test("computeWorkerLoadScore handles all saturation values [worker-pool-index]", () => {
   const signal1: TestWorkerLoadSignal = {
     workerId: "w1",
     queueAffinity: null,
@@ -143,13 +143,13 @@ test("computeWorkerLoadScore handles all saturation values", () => {
   assert.ok(score2 >= 0);
 });
 
-test("summarizeWorkerLoadSkew returns not detected for empty signals", () => {
+test("summarizeWorkerLoadSkew returns not detected for empty signals [worker-pool-index]", () => {
   const result = summarizeWorkerLoadSkew([]);
   assert.equal(result.detected, false);
   assert.equal(result.dominantWorkerId, null);
 });
 
-test("summarizeWorkerLoadSkew returns not detected for single worker", () => {
+test("summarizeWorkerLoadSkew returns not detected for single worker [worker-pool-index]", () => {
   const signals: TestWorkerLoadSignal[] = [{
     workerId: "solo-worker",
     queueAffinity: null,
@@ -165,7 +165,7 @@ test("summarizeWorkerLoadSkew returns not detected for single worker", () => {
   assert.equal(result.detected, false);
 });
 
-test("summarizeWorkerLoadSkew returns not detected for low total lease count", () => {
+test("summarizeWorkerLoadSkew returns not detected for low total lease count [worker-pool-index]", () => {
   const signals: TestWorkerLoadSignal[] = [
     {
       workerId: "worker-1",
@@ -195,7 +195,7 @@ test("summarizeWorkerLoadSkew returns not detected for low total lease count", (
   assert.equal(result.detected, false);
 });
 
-test("summarizeWorkerLoadSkew returns correct structure for valid signals", () => {
+test("summarizeWorkerLoadSkew returns correct structure for valid signals [worker-pool-index]", () => {
   const signals: TestWorkerLoadSignal[] = [
     {
       workerId: "worker-1",
@@ -230,7 +230,7 @@ test("summarizeWorkerLoadSkew returns correct structure for valid signals", () =
 });
 
 // Handshake types exports verification
-test("worker-pool exports WorkerClaimExecutionInput type", () => {
+test("worker-pool exports WorkerClaimExecutionInput type [worker-pool-index]", () => {
   const input: WorkerClaimExecutionInput = {
     ticketId: "ticket-1",
     workerId: "worker-1",
@@ -240,7 +240,7 @@ test("worker-pool exports WorkerClaimExecutionInput type", () => {
   assert.equal(input.ticketId, "ticket-1");
 });
 
-test("worker-pool exports WorkerExecutionHeartbeatInput type", () => {
+test("worker-pool exports WorkerExecutionHeartbeatInput type [worker-pool-index]", () => {
   const input: WorkerExecutionHeartbeatInput = {
     executionId: "exec-1",
     workerId: "worker-1",
@@ -251,7 +251,7 @@ test("worker-pool exports WorkerExecutionHeartbeatInput type", () => {
   assert.equal(input.executionId, "exec-1");
 });
 
-test("worker-pool exports WorkerRemoteLogInput type", () => {
+test("worker-pool exports WorkerRemoteLogInput type [worker-pool-index]", () => {
   const input: WorkerRemoteLogInput = {
     level: "info",
     message: "test message",
@@ -259,7 +259,7 @@ test("worker-pool exports WorkerRemoteLogInput type", () => {
   assert.equal(input.level, "info");
 });
 
-test("worker-pool exports WorkerHandshakeDecision type", () => {
+test("worker-pool exports WorkerHandshakeDecision type [worker-pool-index]", () => {
   const decision: WorkerHandshakeDecision = {
     accepted: true,
     reasonCode: null,
@@ -270,18 +270,18 @@ test("worker-pool exports WorkerHandshakeDecision type", () => {
   assert.equal(decision.accepted, true);
 });
 
-test("worker-pool exports ExecutionWorkerHandshakeServiceOptions type", () => {
+test("worker-pool exports ExecutionWorkerHandshakeServiceOptions type [worker-pool-index]", () => {
   const options: ExecutionWorkerHandshakeServiceOptions = {};
   assert.ok(options !== null);
 });
 
 // WorkerSchedulingStatus type verification
-test("WorkerSchedulingStatus type is usable", () => {
+test("WorkerSchedulingStatus type is usable [worker-pool-index]", () => {
   const statuses: WorkerSchedulingStatus[] = ["healthy", "degraded", "draining", "quarantined", "offline", "unavailable"];
   assert.equal(statuses.length, 6);
 });
 
-test("WorkerStatus type includes all expected values", () => {
+test("WorkerStatus type includes all expected values [worker-pool-index]", () => {
   const statuses: WorkerStatus[] = ["idle", "busy", "degraded", "draining", "quarantined", "offline", "unavailable"];
   assert.equal(statuses.length, 7);
 });

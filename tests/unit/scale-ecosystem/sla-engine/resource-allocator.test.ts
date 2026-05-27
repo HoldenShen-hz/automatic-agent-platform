@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { allocateReservedCapacity, type ReservedCapacityAllocation } from "../../../../src/scale-ecosystem/sla-engine/resource-allocator/index.js";
 
-test("allocateReservedCapacity calculates tier allocations", () => {
+test("allocateReservedCapacity calculates tier allocations [resource-allocator]", () => {
   const allocations: ReservedCapacityAllocation[] = [
     { tierId: "tier-1", reservedPercent: 10 },
     { tierId: "tier-2", reservedPercent: 20 },
@@ -13,7 +13,7 @@ test("allocateReservedCapacity calculates tier allocations", () => {
   assert.equal(result["tier-2"], 20);
 });
 
-test("allocateReservedCapacity handles zero total units", () => {
+test("allocateReservedCapacity handles zero total units [resource-allocator]", () => {
   const allocations: ReservedCapacityAllocation[] = [
     { tierId: "tier-1", reservedPercent: 50 },
   ];
@@ -21,12 +21,12 @@ test("allocateReservedCapacity handles zero total units", () => {
   assert.equal(result["tier-1"], 0);
 });
 
-test("allocateReservedCapacity handles empty allocations", () => {
+test("allocateReservedCapacity handles empty allocations [resource-allocator]", () => {
   const result = allocateReservedCapacity(100, []);
   assert.deepStrictEqual(result, {});
 });
 
-test("allocateReservedCapacity floors partial units", () => {
+test("allocateReservedCapacity floors partial units [resource-allocator]", () => {
   const allocations: ReservedCapacityAllocation[] = [
     { tierId: "tier-1", reservedPercent: 33 },
   ];
@@ -35,7 +35,7 @@ test("allocateReservedCapacity floors partial units", () => {
   assert.equal(result["tier-1"], 33);
 });
 
-test("allocateReservedCapacity handles 100 percent allocation", () => {
+test("allocateReservedCapacity handles 100 percent allocation [resource-allocator]", () => {
   const allocations: ReservedCapacityAllocation[] = [
     { tierId: "tier-1", reservedPercent: 100 },
   ];
@@ -43,7 +43,7 @@ test("allocateReservedCapacity handles 100 percent allocation", () => {
   assert.equal(result["tier-1"], 250);
 });
 
-test("allocateReservedCapacity handles multiple tiers", () => {
+test("allocateReservedCapacity handles multiple tiers [resource-allocator]", () => {
   const allocations: ReservedCapacityAllocation[] = [
     { tierId: "gold", reservedPercent: 25 },
     { tierId: "silver", reservedPercent: 15 },
@@ -55,7 +55,7 @@ test("allocateReservedCapacity handles multiple tiers", () => {
   assert.equal(result["bronze"], 20);
 });
 
-test("allocateReservedCapacity handles zero percent", () => {
+test("allocateReservedCapacity handles zero percent [resource-allocator]", () => {
   const allocations: ReservedCapacityAllocation[] = [
     { tierId: "tier-1", reservedPercent: 0 },
   ];

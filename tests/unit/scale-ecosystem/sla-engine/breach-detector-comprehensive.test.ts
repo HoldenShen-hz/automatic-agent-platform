@@ -57,7 +57,7 @@ function approxEqual(actual: number, expected: number, epsilon = 1e-9): boolean 
 // analyzeSlaBreach - budget analysis tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("analyzeSlaBreach returns SlaBreachAnalysis structure with all fields", () => {
+test("analyzeSlaBreach returns SlaBreachAnalysis structure with all fields [breach-detector-comprehensive]", () => {
   const observation = createObservation({ latencyMs: 100, successRate: 0.99, queueWaitMs: 500 });
   const commitment = createCommitment({ maxLatencyMs: 200, minSuccessRate: 0.98, maxQueueWaitMs: 1000 });
 
@@ -71,7 +71,7 @@ test("analyzeSlaBreach returns SlaBreachAnalysis structure with all fields", () 
   assert.ok(typeof result.budget === "object");
 });
 
-test("analyzeSlaBreach calculates allowedErrorRate from minSuccessRate when errorBudgetPercent not provided", () => {
+test("analyzeSlaBreach calculates allowedErrorRate from minSuccessRate when errorBudgetPercent not provided [breach-detector-comprehensive]", () => {
   const observation = createObservation({ successRate: 0.99, requestCount: 1000 });
   const commitment = createCommitment({ minSuccessRate: 0.99 });
 
@@ -81,7 +81,7 @@ test("analyzeSlaBreach calculates allowedErrorRate from minSuccessRate when erro
   assert.ok(approxEqual(result.budget.allowedErrorRate, 0.01), `expected 0.01, got ${result.budget.allowedErrorRate}`);
 });
 
-test("analyzeSlaBreach calculates allowedErrorRate from errorBudgetPercent when provided", () => {
+test("analyzeSlaBreach calculates allowedErrorRate from errorBudgetPercent when provided [breach-detector-comprehensive]", () => {
   const observation = createObservation({ successRate: 0.99, requestCount: 1000 });
   const commitment = createCommitment({ minSuccessRate: 0.99, errorBudgetPercent: 0.05 });
 
@@ -90,7 +90,7 @@ test("analyzeSlaBreach calculates allowedErrorRate from errorBudgetPercent when 
   assert.equal(result.budget.allowedErrorRate, 0.05);
 });
 
-test("analyzeSlaBreach calculates errorBudget correctly", () => {
+test("analyzeSlaBreach calculates errorBudget correctly [breach-detector-comprehensive]", () => {
   const observation = createObservation({ successRate: 0.99, requestCount: 1000 });
   const commitment = createCommitment({ errorBudgetPercent: 0.01 });
 
@@ -100,7 +100,7 @@ test("analyzeSlaBreach calculates errorBudget correctly", () => {
   assert.ok(approxEqual(result.budget.errorBudget, 10), `expected 10, got ${result.budget.errorBudget}`);
 });
 
-test("analyzeSlaBreach calculates errorBudgetConsumed correctly", () => {
+test("analyzeSlaBreach calculates errorBudgetConsumed correctly [breach-detector-comprehensive]", () => {
   const observation = createObservation({ successRate: 0.99, requestCount: 1000 });
   const commitment = createCommitment({ errorBudgetPercent: 0.01 });
 
@@ -111,7 +111,7 @@ test("analyzeSlaBreach calculates errorBudgetConsumed correctly", () => {
   assert.ok(approxEqual(result.budget.errorBudgetConsumed, 10), `expected 10, got ${result.budget.errorBudgetConsumed}`);
 });
 
-test("analyzeSlaBreach calculates errorBudgetRemaining correctly", () => {
+test("analyzeSlaBreach calculates errorBudgetRemaining correctly [breach-detector-comprehensive]", () => {
   const observation = createObservation({ successRate: 0.99, requestCount: 1000 });
   const commitment = createCommitment({ errorBudgetPercent: 0.01 });
 
@@ -121,7 +121,7 @@ test("analyzeSlaBreach calculates errorBudgetRemaining correctly", () => {
   assert.ok(approxEqual(result.budget.errorBudgetRemaining, 0), `expected 0, got ${result.budget.errorBudgetRemaining}`);
 });
 
-test("analyzeSlaBreach calculates burnRate correctly for healthy system", () => {
+test("analyzeSlaBreach calculates burnRate correctly for healthy system [breach-detector-comprehensive]", () => {
   const observation = createObservation({ successRate: 0.995, requestCount: 1000 });
   const commitment = createCommitment({ errorBudgetPercent: 0.01 }); // 1% allowed
 
@@ -132,7 +132,7 @@ test("analyzeSlaBreach calculates burnRate correctly for healthy system", () => 
   assert.ok(approxEqual(result.budget.burnRate, 0.5), `expected 0.5, got ${result.budget.burnRate}`);
 });
 
-test("analyzeSlaBreach calculates burnRate correctly for degraded system", () => {
+test("analyzeSlaBreach calculates burnRate correctly for degraded system [breach-detector-comprehensive]", () => {
   const observation = createObservation({ successRate: 0.95, requestCount: 1000 }); // 5% error rate
   const commitment = createCommitment({ errorBudgetPercent: 0.01 }); // 1% allowed
 
@@ -143,7 +143,7 @@ test("analyzeSlaBreach calculates burnRate correctly for degraded system", () =>
   assert.ok(approxEqual(result.budget.burnRate, 5), `expected 5, got ${result.budget.burnRate}`);
 });
 
-test("analyzeSlaBreach calculates timeToExhaustMs when budget depleting", () => {
+test("analyzeSlaBreach calculates timeToExhaustMs when budget depleting [breach-detector-comprehensive]", () => {
   const observation = createObservation({ successRate: 0.995, requestCount: 10000, windowMs: 60000 });
   const commitment = createCommitment({ errorBudgetPercent: 0.01, budgetWindowMs: 60000 });
 
@@ -155,7 +155,7 @@ test("analyzeSlaBreach calculates timeToExhaustMs when budget depleting", () => 
   assert.ok(result.budget.timeToExhaustMs > 0);
 });
 
-test("analyzeSlaBreach calculates timeToExhaustMs as 0 when budget exhausted", () => {
+test("analyzeSlaBreach calculates timeToExhaustMs as 0 when budget exhausted [breach-detector-comprehensive]", () => {
   const observation = createObservation({ successRate: 0.90, requestCount: 1000, windowMs: 60000 });
   const commitment = createCommitment({ errorBudgetPercent: 0.01, budgetWindowMs: 60000 });
 
@@ -165,7 +165,7 @@ test("analyzeSlaBreach calculates timeToExhaustMs as 0 when budget exhausted", (
   assert.equal(result.budget.timeToExhaustMs, 0);
 });
 
-test("analyzeSlaBreach calculates timeToExhaustMs as null when budget is recovered", () => {
+test("analyzeSlaBreach calculates timeToExhaustMs as null when budget is recovered [breach-detector-comprehensive]", () => {
   const observation = createObservation({ successRate: 1.0, requestCount: 1000, windowMs: 60000 });
   const commitment = createCommitment({ errorBudgetPercent: 0.01, budgetWindowMs: 60000 });
 
@@ -175,7 +175,7 @@ test("analyzeSlaBreach calculates timeToExhaustMs as null when budget is recover
   assert.equal(result.budget.timeToExhaustMs, null);
 });
 
-test("analyzeSlaBreach calculates latencyBurnRate correctly", () => {
+test("analyzeSlaBreach calculates latencyBurnRate correctly [breach-detector-comprehensive]", () => {
   const observation = createObservation({ latencyMs: 150 });
   const commitment = createCommitment({ maxLatencyMs: 100 });
 
@@ -185,7 +185,7 @@ test("analyzeSlaBreach calculates latencyBurnRate correctly", () => {
   assert.ok(approxEqual(result.budget.latencyBurnRate, 1.5), `expected 1.5, got ${result.budget.latencyBurnRate}`);
 });
 
-test("analyzeSlaBreach calculates latencyBurnRate as 0 when maxLatencyMs is 0", () => {
+test("analyzeSlaBreach calculates latencyBurnRate as 0 when maxLatencyMs is 0 [breach-detector-comprehensive]", () => {
   const observation = createObservation({ latencyMs: 100 });
   const commitment = createCommitment({ maxLatencyMs: 0 });
 
@@ -194,7 +194,7 @@ test("analyzeSlaBreach calculates latencyBurnRate as 0 when maxLatencyMs is 0", 
   assert.equal(result.budget.latencyBurnRate, 0);
 });
 
-test("analyzeSlaBreach calculates queueWaitBurnRate correctly", () => {
+test("analyzeSlaBreach calculates queueWaitBurnRate correctly [breach-detector-comprehensive]", () => {
   const observation = createObservation({ queueWaitMs: 750 });
   const commitment = createCommitment({ maxQueueWaitMs: 500 });
 
@@ -204,7 +204,7 @@ test("analyzeSlaBreach calculates queueWaitBurnRate correctly", () => {
   assert.ok(approxEqual(result.budget.queueWaitBurnRate, 1.5), `expected 1.5, got ${result.budget.queueWaitBurnRate}`);
 });
 
-test("analyzeSlaBreach calculates queueWaitBurnRate as 0 when maxQueueWaitMs is 0", () => {
+test("analyzeSlaBreach calculates queueWaitBurnRate as 0 when maxQueueWaitMs is 0 [breach-detector-comprehensive]", () => {
   const observation = createObservation({ queueWaitMs: 100 });
   const commitment = createCommitment({ maxQueueWaitMs: 0 });
 
@@ -217,7 +217,7 @@ test("analyzeSlaBreach calculates queueWaitBurnRate as 0 when maxQueueWaitMs is 
 // analyzeSlaBreach - alerts tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("analyzeSlaBreach generates warning alert when burnRate >= warningBurnRateThreshold", () => {
+test("analyzeSlaBreach generates warning alert when burnRate >= warningBurnRateThreshold [breach-detector-comprehensive]", () => {
   const observation = createObservation({ successRate: 0.985, requestCount: 1000 });
   const commitment = createCommitment({
     errorBudgetPercent: 0.01,
@@ -232,7 +232,7 @@ test("analyzeSlaBreach generates warning alert when burnRate >= warningBurnRateT
   assert.ok(!result.alerts.includes("sla.error_budget_burn_critical"), "Should not have critical alert");
 });
 
-test("analyzeSlaBreach generates critical alert when burnRate >= criticalBurnRateThreshold", () => {
+test("analyzeSlaBreach generates critical alert when burnRate >= criticalBurnRateThreshold [breach-detector-comprehensive]", () => {
   const observation = createObservation({ successRate: 0.95, requestCount: 1000 });
   const commitment = createCommitment({
     errorBudgetPercent: 0.01,
@@ -246,7 +246,7 @@ test("analyzeSlaBreach generates critical alert when burnRate >= criticalBurnRat
   assert.ok(result.alerts.includes("sla.error_budget_burn_critical"), "Expected critical alert");
 });
 
-test("analyzeSlaBreach generates exhausted alert when budget is depleted", () => {
+test("analyzeSlaBreach generates exhausted alert when budget is depleted [breach-detector-comprehensive]", () => {
   const observation = createObservation({ successRate: 0.90, requestCount: 1000, windowMs: 60000 });
   const commitment = createCommitment({ errorBudgetPercent: 0.01, budgetWindowMs: 60000 });
 
@@ -255,7 +255,7 @@ test("analyzeSlaBreach generates exhausted alert when budget is depleted", () =>
   assert.ok(result.alerts.includes("sla.error_budget_exhausted"), "Expected exhausted alert");
 });
 
-test("analyzeSlaBreach does not generate exhausted alert when budget is healthy", () => {
+test("analyzeSlaBreach does not generate exhausted alert when budget is healthy [breach-detector-comprehensive]", () => {
   const observation = createObservation({ successRate: 0.999, requestCount: 1000, windowMs: 60000 });
   const commitment = createCommitment({ errorBudgetPercent: 0.01, budgetWindowMs: 60000 });
 
@@ -264,7 +264,7 @@ test("analyzeSlaBreach does not generate exhausted alert when budget is healthy"
   assert.ok(!result.alerts.includes("sla.error_budget_exhausted"), "Should not have exhausted alert");
 });
 
-test("analyzeSlaBreach uses default thresholds when not provided", () => {
+test("analyzeSlaBreach uses default thresholds when not provided [breach-detector-comprehensive]", () => {
   const observation = createObservation({ successRate: 0.90, requestCount: 1000 }); // burnRate = 10
   const commitment = createCommitment({ errorBudgetPercent: 0.01 });
 
@@ -279,7 +279,7 @@ test("analyzeSlaBreach uses default thresholds when not provided", () => {
 // Execution timeout breach tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("detectSlaBreach detects execution timeout breach when rate exceeds max", () => {
+test("detectSlaBreach detects execution timeout breach when rate exceeds max [breach-detector-comprehensive]", () => {
   const observation = createObservation({ executionTimeoutRate: 0.15 });
   const commitment = createCommitment({ maxExecutionTimeoutRate: 0.10 });
 
@@ -288,7 +288,7 @@ test("detectSlaBreach detects execution timeout breach when rate exceeds max", (
   assert.ok(breaches.includes("sla.execution_timeout_breach"));
 });
 
-test("detectSlaBreach does not detect execution timeout breach when rate is at max", () => {
+test("detectSlaBreach does not detect execution timeout breach when rate is at max [breach-detector-comprehensive]", () => {
   const observation = createObservation({ executionTimeoutRate: 0.10 });
   const commitment = createCommitment({ maxExecutionTimeoutRate: 0.10 });
 
@@ -297,7 +297,7 @@ test("detectSlaBreach does not detect execution timeout breach when rate is at m
   assert.ok(!breaches.includes("sla.execution_timeout_breach"));
 });
 
-test("detectSlaBreach does not detect execution timeout breach when rate is below max", () => {
+test("detectSlaBreach does not detect execution timeout breach when rate is below max [breach-detector-comprehensive]", () => {
   const observation = createObservation({ executionTimeoutRate: 0.05 });
   const commitment = createCommitment({ maxExecutionTimeoutRate: 0.10 });
 
@@ -306,7 +306,7 @@ test("detectSlaBreach does not detect execution timeout breach when rate is belo
   assert.ok(!breaches.includes("sla.execution_timeout_breach"));
 });
 
-test("detectSlaBreach ignores execution timeout when observation field is undefined", () => {
+test("detectSlaBreach ignores execution timeout when observation field is undefined [breach-detector-comprehensive]", () => {
   const observation = createObservation({ executionTimeoutRate: undefined });
   const commitment = createCommitment({ maxExecutionTimeoutRate: 0.10 });
 
@@ -315,7 +315,7 @@ test("detectSlaBreach ignores execution timeout when observation field is undefi
   assert.ok(!breaches.includes("sla.execution_timeout_breach"));
 });
 
-test("detectSlaBreach ignores execution timeout when commitment field is undefined", () => {
+test("detectSlaBreach ignores execution timeout when commitment field is undefined [breach-detector-comprehensive]", () => {
   const observation = createObservation({ executionTimeoutRate: 0.50 });
   const commitment = createCommitment({ maxExecutionTimeoutRate: undefined });
 
@@ -328,7 +328,7 @@ test("detectSlaBreach ignores execution timeout when commitment field is undefin
 // Dependency availability breach tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("detectSlaBreach detects dependency unavailability breach when availability falls below min", () => {
+test("detectSlaBreach detects dependency unavailability breach when availability falls below min [breach-detector-comprehensive]", () => {
   const observation = createObservation({ dependencyAvailability: 0.80 });
   const commitment = createCommitment({ minDependencyAvailability: 0.90 });
 
@@ -337,7 +337,7 @@ test("detectSlaBreach detects dependency unavailability breach when availability
   assert.ok(breaches.includes("sla.dependency_unavailability_breach"));
 });
 
-test("detectSlaBreach does not detect dependency breach when availability is at min", () => {
+test("detectSlaBreach does not detect dependency breach when availability is at min [breach-detector-comprehensive]", () => {
   const observation = createObservation({ dependencyAvailability: 0.90 });
   const commitment = createCommitment({ minDependencyAvailability: 0.90 });
 
@@ -346,7 +346,7 @@ test("detectSlaBreach does not detect dependency breach when availability is at 
   assert.ok(!breaches.includes("sla.dependency_unavailability_breach"));
 });
 
-test("detectSlaBreach does not detect dependency breach when availability is above min", () => {
+test("detectSlaBreach does not detect dependency breach when availability is above min [breach-detector-comprehensive]", () => {
   const observation = createObservation({ dependencyAvailability: 0.95 });
   const commitment = createCommitment({ minDependencyAvailability: 0.90 });
 
@@ -355,7 +355,7 @@ test("detectSlaBreach does not detect dependency breach when availability is abo
   assert.ok(!breaches.includes("sla.dependency_unavailability_breach"));
 });
 
-test("detectSlaBreach ignores dependency availability when observation field is undefined (defaults to 1)", () => {
+test("detectSlaBreach ignores dependency availability when observation field is undefined (defaults to 1) [breach-detector-comprehensive]", () => {
   const observation = createObservation({ dependencyAvailability: undefined });
   const commitment = createCommitment({ minDependencyAvailability: 0.90 });
 
@@ -364,7 +364,7 @@ test("detectSlaBreach ignores dependency availability when observation field is 
   assert.ok(!breaches.includes("sla.dependency_unavailability_breach"));
 });
 
-test("detectSlaBreach ignores dependency availability when commitment field is undefined", () => {
+test("detectSlaBreach ignores dependency availability when commitment field is undefined [breach-detector-comprehensive]", () => {
   const observation = createObservation({ dependencyAvailability: 0.50 });
   const commitment = createCommitment({ minDependencyAvailability: undefined });
 
@@ -377,7 +377,7 @@ test("detectSlaBreach ignores dependency availability when commitment field is u
 // Multiple breach combination tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("analyzeSlaBreach returns all breach types when multiple metrics fail", () => {
+test("analyzeSlaBreach returns all breach types when multiple metrics fail [breach-detector-comprehensive]", () => {
   const observation = createObservation({
     latencyMs: 300, // exceeds 200
     successRate: 0.90, // below 0.98
@@ -403,7 +403,7 @@ test("analyzeSlaBreach returns all breach types when multiple metrics fail", () 
   assert.ok(result.breaches.includes("sla.dependency_unavailability_breach"));
 });
 
-test("analyzeSlaBreach calculates budget correctly when no breaches", () => {
+test("analyzeSlaBreach calculates budget correctly when no breaches [breach-detector-comprehensive]", () => {
   const observation = createObservation({
     latencyMs: 50,
     successRate: 0.995,
@@ -425,7 +425,7 @@ test("analyzeSlaBreach calculates budget correctly when no breaches", () => {
   assert.ok(result.budget.burnRate < 1); // Healthy burn rate
 });
 
-test("analyzeSlaBreach handles zero requestCount", () => {
+test("analyzeSlaBreach handles zero requestCount [breach-detector-comprehensive]", () => {
   const observation = createObservation({ requestCount: 0 });
   const commitment = createCommitment({ errorBudgetPercent: 0.01 });
 
@@ -435,7 +435,7 @@ test("analyzeSlaBreach handles zero requestCount", () => {
   assert.equal(result.budget.errorBudgetConsumed, 0);
 });
 
-test("analyzeSlaBreach handles zero budgetWindowMs", () => {
+test("analyzeSlaBreach handles zero budgetWindowMs [breach-detector-comprehensive]", () => {
   const observation = createObservation({ requestCount: 1000, windowMs: 0 });
   const commitment = createCommitment({ errorBudgetPercent: 0.01, budgetWindowMs: 0 });
 
@@ -445,7 +445,7 @@ test("analyzeSlaBreach handles zero budgetWindowMs", () => {
   assert.ok(result.budget.timeToExhaustMs !== null);
 });
 
-test("analyzeSlaBreach handles negative budgetWindowMs", () => {
+test("analyzeSlaBreach handles negative budgetWindowMs [breach-detector-comprehensive]", () => {
   const observation = createObservation({ requestCount: 1000, windowMs: -100 });
   const commitment = createCommitment({ errorBudgetPercent: 0.01, budgetWindowMs: -100 });
 
@@ -455,7 +455,7 @@ test("analyzeSlaBreach handles negative budgetWindowMs", () => {
   assert.ok(result.budget.timeToExhaustMs !== null);
 });
 
-test("analyzeSlaBreach handles burnRate with zero allowedErrorRate", () => {
+test("analyzeSlaBreach handles burnRate with zero allowedErrorRate [breach-detector-comprehensive]", () => {
   const observation = createObservation({ successRate: 0.90, requestCount: 1000 });
   const commitment = createCommitment({ minSuccessRate: 1.0, errorBudgetPercent: 0 });
 
@@ -466,7 +466,7 @@ test("analyzeSlaBreach handles burnRate with zero allowedErrorRate", () => {
   assert.ok(Number.isFinite(result.budget.burnRate) || !Number.isFinite(result.budget.burnRate));
 });
 
-test("analyzeSlaBreach handles burnRate with zero target error rate but no errors", () => {
+test("analyzeSlaBreach handles burnRate with zero target error rate but no errors [breach-detector-comprehensive]", () => {
   const observation = createObservation({ successRate: 1.0, requestCount: 1000 });
   const commitment = createCommitment({ minSuccessRate: 1.0, errorBudgetPercent: 0 });
 
@@ -476,7 +476,7 @@ test("analyzeSlaBreach handles burnRate with zero target error rate but no error
   assert.ok(approxEqual(result.budget.burnRate, 0), `expected 0, got ${result.budget.burnRate}`);
 });
 
-test("analyzeSlaBreach calculates budget with commitment budgetWindowMs as fallback", () => {
+test("analyzeSlaBreach calculates budget with commitment budgetWindowMs as fallback [breach-detector-comprehensive]", () => {
   const observation = createObservation({ requestCount: 1000 }); // no windowMs
   const commitment = createCommitment({ errorBudgetPercent: 0.01, budgetWindowMs: 60000 });
 
@@ -486,7 +486,7 @@ test("analyzeSlaBreach calculates budget with commitment budgetWindowMs as fallb
   assert.ok(result.budget.errorBudget >= 0);
 });
 
-test("analyzeSlaBreach uses observation windowMs over commitment budgetWindowMs", () => {
+test("analyzeSlaBreach uses observation windowMs over commitment budgetWindowMs [breach-detector-comprehensive]", () => {
   const observation = createObservation({ requestCount: 1000, windowMs: 30000 }); // 30s
   const commitment = createCommitment({ errorBudgetPercent: 0.01, budgetWindowMs: 60000 }); // 60s
 
@@ -500,7 +500,7 @@ test("analyzeSlaBreach uses observation windowMs over commitment budgetWindowMs"
 // SlaBudgetAnalysis interface completeness
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("SlaBudgetAnalysis contains all required fields", () => {
+test("SlaBudgetAnalysis contains all required fields [breach-detector-comprehensive]", () => {
   const observation = createObservation({ requestCount: 1000 });
   const commitment = createCommitment({ errorBudgetPercent: 0.01 });
   const result = analyzeSlaBreach(observation, commitment);
@@ -521,7 +521,7 @@ test("SlaBudgetAnalysis contains all required fields", () => {
 // Boundary and edge case tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("analyzeSlaBreach handles very high burn rate", () => {
+test("analyzeSlaBreach handles very high burn rate [breach-detector-comprehensive]", () => {
   const observation = createObservation({ successRate: 0.0, requestCount: 1000 }); // 100% error
   const commitment = createCommitment({ errorBudgetPercent: 0 }); // 0% allowed = Infinity burn rate
 
@@ -532,7 +532,7 @@ test("analyzeSlaBreach handles very high burn rate", () => {
     `Expected Infinity, got ${result.budget.burnRate}`);
 });
 
-test("analyzeSlaBreach handles negative success rate (invalid)", () => {
+test("analyzeSlaBreach handles negative success rate (invalid) [breach-detector-comprehensive]", () => {
   const observation = createObservation({ successRate: -0.5, requestCount: 1000 });
   const commitment = createCommitment({ errorBudgetPercent: 0.01 });
 
@@ -542,7 +542,7 @@ test("analyzeSlaBreach handles negative success rate (invalid)", () => {
   assert.ok(result.budget.currentErrorRate >= 0);
 });
 
-test("analyzeSlaBreach handles success rate above 1 (invalid)", () => {
+test("analyzeSlaBreach handles success rate above 1 (invalid) [breach-detector-comprehensive]", () => {
   const observation = createObservation({ successRate: 1.5, requestCount: 1000 });
   const commitment = createCommitment({ errorBudgetPercent: 0.01 });
 
@@ -552,7 +552,7 @@ test("analyzeSlaBreach handles success rate above 1 (invalid)", () => {
   assert.equal(result.budget.currentErrorRate, 0);
 });
 
-test("detectSlaBreach returns empty array for no observation fields set", () => {
+test("detectSlaBreach returns empty array for no observation fields set [breach-detector-comprehensive]", () => {
   const observation = createObservation({
     latencyMs: 50,
     successRate: 0.99,

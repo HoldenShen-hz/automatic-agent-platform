@@ -15,15 +15,15 @@ import {
 // Tests - deriveProviderApiKeyEnvName
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("deriveProviderApiKeyEnvName returns correct env name", () => {
+test("deriveProviderApiKeyEnvName returns correct env name [startup-preflight]", () => {
   assert.equal(deriveProviderApiKeyEnvName("anthropic"), "ANTHROPIC_API_KEY");
 });
 
-test("deriveProviderApiKeyEnvName handles camelCase", () => {
+test("deriveProviderApiKeyEnvName handles camelCase [startup-preflight]", () => {
   assert.equal(deriveProviderApiKeyEnvName("openAI"), "OPEN_AI_API_KEY");
 });
 
-test("deriveProviderApiKeyEnvName handles mixed case", () => {
+test("deriveProviderApiKeyEnvName handles mixed case [startup-preflight]", () => {
   assert.equal(deriveProviderApiKeyEnvName("MyProvider"), "MY_PROVIDER_API_KEY");
 });
 
@@ -31,11 +31,11 @@ test("deriveProviderApiKeyEnvName handles mixed case", () => {
 // Tests - deriveProviderApiKeysJsonEnvNameForStartup
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("deriveProviderApiKeysJsonEnvNameForStartup adds JSON suffix", () => {
+test("deriveProviderApiKeysJsonEnvNameForStartup adds JSON suffix [startup-preflight]", () => {
   assert.equal(deriveProviderApiKeysJsonEnvNameForStartup("anthropic"), "ANTHROPIC_API_KEYS_JSON");
 });
 
-test("deriveProviderApiKeysJsonEnvNameForStartup handles camelCase", () => {
+test("deriveProviderApiKeysJsonEnvNameForStartup handles camelCase [startup-preflight]", () => {
   assert.equal(deriveProviderApiKeysJsonEnvNameForStartup("openAI"), "OPEN_AI_API_KEYS_JSON");
 });
 
@@ -43,11 +43,11 @@ test("deriveProviderApiKeysJsonEnvNameForStartup handles camelCase", () => {
 // Tests - deriveProviderApiKeySecretRefEnvNameForStartup
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("deriveProviderApiKeySecretRefEnvNameForStartup adds secret ref suffix", () => {
+test("deriveProviderApiKeySecretRefEnvNameForStartup adds secret ref suffix [startup-preflight]", () => {
   assert.equal(deriveProviderApiKeySecretRefEnvNameForStartup("anthropic"), "ANTHROPIC_API_KEY_SECRET_REF");
 });
 
-test("deriveProviderApiKeySecretRefEnvNameForStartup handles camelCase", () => {
+test("deriveProviderApiKeySecretRefEnvNameForStartup handles camelCase [startup-preflight]", () => {
   assert.equal(deriveProviderApiKeySecretRefEnvNameForStartup("openAI"), "OPEN_AI_API_KEY_SECRET_REF");
 });
 
@@ -55,11 +55,11 @@ test("deriveProviderApiKeySecretRefEnvNameForStartup handles camelCase", () => {
 // Tests - deriveProviderApiKeySecretRefsJsonEnvNameForStartup
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("deriveProviderApiKeySecretRefsJsonEnvNameForStartup adds full suffix", () => {
+test("deriveProviderApiKeySecretRefsJsonEnvNameForStartup adds full suffix [startup-preflight]", () => {
   assert.equal(deriveProviderApiKeySecretRefsJsonEnvNameForStartup("anthropic"), "ANTHROPIC_API_KEY_SECRET_REFS_JSON");
 });
 
-test("deriveProviderApiKeySecretRefsJsonEnvNameForStartup handles camelCase", () => {
+test("deriveProviderApiKeySecretRefsJsonEnvNameForStartup handles camelCase [startup-preflight]", () => {
   assert.equal(deriveProviderApiKeySecretRefsJsonEnvNameForStartup("openAI"), "OPEN_AI_API_KEY_SECRET_REFS_JSON");
 });
 
@@ -67,7 +67,7 @@ test("deriveProviderApiKeySecretRefsJsonEnvNameForStartup handles camelCase", ()
 // Tests - createDefaultStartupConsistencyCheckerOptions
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("createDefaultStartupConsistencyCheckerOptions returns object with configValidator and providerReadinessProbe", () => {
+test("createDefaultStartupConsistencyCheckerOptions returns object with configValidator and providerReadinessProbe [startup-preflight]", () => {
   const options = createDefaultStartupConsistencyCheckerOptions();
 
   assert.ok(options.configValidator !== undefined);
@@ -76,13 +76,13 @@ test("createDefaultStartupConsistencyCheckerOptions returns object with configVa
   assert.equal(typeof options.providerReadinessProbe, "function");
 });
 
-test("createDefaultStartupConsistencyCheckerOptions accepts empty options", () => {
+test("createDefaultStartupConsistencyCheckerOptions accepts empty options [startup-preflight]", () => {
   const options = createDefaultStartupConsistencyCheckerOptions({});
   assert.ok(options.configValidator !== undefined);
   assert.ok(options.providerReadinessProbe !== undefined);
 });
 
-test("createDefaultStartupConsistencyCheckerOptions passes configRoot to factories", () => {
+test("createDefaultStartupConsistencyCheckerOptions passes configRoot to factories [startup-preflight]", () => {
   // Just verify it doesn't throw and returns valid structure
   const options = createDefaultStartupConsistencyCheckerOptions({
     configRoot: "/test/config",
@@ -91,7 +91,7 @@ test("createDefaultStartupConsistencyCheckerOptions passes configRoot to factori
   assert.ok(options.providerReadinessProbe !== undefined);
 });
 
-test("createDefaultStartupConsistencyCheckerOptions passes environment to factories", () => {
+test("createDefaultStartupConsistencyCheckerOptions passes environment to factories [startup-preflight]", () => {
   const options = createDefaultStartupConsistencyCheckerOptions({
     environment: "test",
   });
@@ -99,7 +99,7 @@ test("createDefaultStartupConsistencyCheckerOptions passes environment to factor
   assert.ok(options.providerReadinessProbe !== undefined);
 });
 
-test("createDefaultStartupConsistencyCheckerOptions passes providerEnv to factories", () => {
+test("createDefaultStartupConsistencyCheckerOptions passes providerEnv to factories [startup-preflight]", () => {
   const options = createDefaultStartupConsistencyCheckerOptions({
     providerEnv: { TEST_API_KEY: "test-key" },
   });
@@ -107,7 +107,7 @@ test("createDefaultStartupConsistencyCheckerOptions passes providerEnv to factor
   assert.ok(options.providerReadinessProbe !== undefined);
 });
 
-test("createDefaultStartupConsistencyCheckerOptions passes providerSecretResolver to factories", () => {
+test("createDefaultStartupConsistencyCheckerOptions passes providerSecretResolver to factories [startup-preflight]", () => {
   const secretResolver = (ref: string) => `resolved-${ref}`;
   const options = createDefaultStartupConsistencyCheckerOptions({
     providerSecretResolver: secretResolver,
@@ -120,18 +120,18 @@ test("createDefaultStartupConsistencyCheckerOptions passes providerSecretResolve
 // Tests - buildEnvironmentProviderReadinessProbe structure
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("buildEnvironmentProviderReadinessProbe returns a function", () => {
+test("buildEnvironmentProviderReadinessProbe returns a function [startup-preflight]", () => {
   const probe = buildEnvironmentProviderReadinessProbe({});
   assert.equal(typeof probe, "function");
 });
 
-test("buildEnvironmentProviderReadinessProbe returns empty array when configValidation is null", () => {
+test("buildEnvironmentProviderReadinessProbe returns empty array when configValidation is null [startup-preflight]", () => {
   const probe = buildEnvironmentProviderReadinessProbe({});
   const results = probe(null);
   assert.deepStrictEqual(results, []);
 });
 
-test("buildEnvironmentProviderReadinessProbe returns empty array when configValidation.ok is false", () => {
+test("buildEnvironmentProviderReadinessProbe returns empty array when configValidation.ok is false [startup-preflight]", () => {
   const probe = buildEnvironmentProviderReadinessProbe({});
   const results = probe({
     ok: false,
@@ -143,7 +143,7 @@ test("buildEnvironmentProviderReadinessProbe returns empty array when configVali
   assert.deepStrictEqual(results, []);
 });
 
-test("buildEnvironmentProviderReadinessProbe returns empty array when bundle is null", () => {
+test("buildEnvironmentProviderReadinessProbe returns empty array when bundle is null [startup-preflight]", () => {
   const probe = buildEnvironmentProviderReadinessProbe({});
   const results = probe({
     ok: true,
@@ -155,7 +155,7 @@ test("buildEnvironmentProviderReadinessProbe returns empty array when bundle is 
   assert.deepStrictEqual(results, []);
 });
 
-test("buildEnvironmentProviderReadinessProbe returns empty array when no defaultProvider", () => {
+test("buildEnvironmentProviderReadinessProbe returns empty array when no defaultProvider [startup-preflight]", () => {
   const probe = buildEnvironmentProviderReadinessProbe({});
   const results = probe({
     ok: true,
@@ -175,7 +175,7 @@ test("buildEnvironmentProviderReadinessProbe returns empty array when no default
   assert.deepStrictEqual(results, []);
 });
 
-test("buildEnvironmentProviderReadinessProbe returns empty array when defaultProvider is empty string", () => {
+test("buildEnvironmentProviderReadinessProbe returns empty array when defaultProvider is empty string [startup-preflight]", () => {
   const probe = buildEnvironmentProviderReadinessProbe({});
   const results = probe({
     ok: true,
@@ -197,7 +197,7 @@ test("buildEnvironmentProviderReadinessProbe returns empty array when defaultPro
   assert.deepStrictEqual(results, []);
 });
 
-test("buildEnvironmentProviderReadinessProbe returns empty array when defaultProvider is not a string", () => {
+test("buildEnvironmentProviderReadinessProbe returns empty array when defaultProvider is not a string [startup-preflight]", () => {
   const probe = buildEnvironmentProviderReadinessProbe({});
   const results = probe({
     ok: true,
@@ -223,12 +223,12 @@ test("buildEnvironmentProviderReadinessProbe returns empty array when defaultPro
 // Tests - buildDefaultStartupConfigValidator structure
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("buildDefaultStartupConfigValidator returns a function", () => {
+test("buildDefaultStartupConfigValidator returns a function [startup-preflight]", () => {
   const validator = buildDefaultStartupConfigValidator({});
   assert.equal(typeof validator, "function");
 });
 
-test("buildDefaultStartupConfigValidator returns an object with ok: false when config root is invalid", () => {
+test("buildDefaultStartupConfigValidator returns an object with ok: false when config root is invalid [startup-preflight]", () => {
   // This will try to load config from a non-existent location
   const validator = buildDefaultStartupConfigValidator({
     configRoot: "/non/existent/path",
@@ -242,7 +242,7 @@ test("buildDefaultStartupConfigValidator returns an object with ok: false when c
   assert.ok(result.issues.length > 0 || result.configRoot === "/non/existent/path");
 });
 
-test("buildDefaultStartupConfigValidator accepts providerEnv option", () => {
+test("buildDefaultStartupConfigValidator accepts providerEnv option [startup-preflight]", () => {
   const validator = buildDefaultStartupConfigValidator({
     providerEnv: { PATH: "/usr/bin" },
   });
@@ -253,7 +253,7 @@ test("buildDefaultStartupConfigValidator accepts providerEnv option", () => {
   assert.ok(Array.isArray(result.issues));
 });
 
-test("buildDefaultStartupConfigValidator accepts environment option", () => {
+test("buildDefaultStartupConfigValidator accepts environment option [startup-preflight]", () => {
   const validator = buildDefaultStartupConfigValidator({
     environment: "test",
   });
@@ -262,7 +262,7 @@ test("buildDefaultStartupConfigValidator accepts environment option", () => {
   assert.equal(result.environment, "test");
 });
 
-test("buildDefaultStartupConfigValidator returns structure with bundle", () => {
+test("buildDefaultStartupConfigValidator returns structure with bundle [startup-preflight]", () => {
   const validator = buildDefaultStartupConfigValidator({
     configRoot: "/non/existent/path",
     providerEnv: {},

@@ -48,40 +48,40 @@ import {
 // Index Export Tests - Types and Values
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("federation-index: exports FederationGateway class", () => {
+test("federation-index: exports FederationGateway class [index]", () => {
   assert.ok(typeof FederationGateway === "function");
 });
 
-test("federation-index: exports createFederationGateway factory function", () => {
+test("federation-index: exports createFederationGateway factory function [index]", () => {
   assert.ok(typeof createFederationGateway === "function");
 });
 
-test("federation-index: exports TrustLevel enum", () => {
+test("federation-index: exports TrustLevel enum [index]", () => {
   assert.ok(typeof TrustLevel === "object");
   assert.equal(TrustLevel.READ, "read");
 });
 
-test("federation-index: exports FederationAudit class", () => {
+test("federation-index: exports FederationAudit class [index]", () => {
   assert.ok(typeof FederationAudit === "function");
 });
 
-test("federation-index: exports createFederationAudit factory function", () => {
+test("federation-index: exports createFederationAudit factory function [index]", () => {
   assert.ok(typeof createFederationAudit === "function");
 });
 
-test("federation-index: exports TrustRelationshipManager class", () => {
+test("federation-index: exports TrustRelationshipManager class [index]", () => {
   assert.ok(typeof TrustRelationshipManager === "function");
 });
 
-test("federation-index: exports createTrustRelationshipManager factory function", () => {
+test("federation-index: exports createTrustRelationshipManager factory function [index]", () => {
   assert.ok(typeof createTrustRelationshipManager === "function");
 });
 
-test("federation-index: exports CapabilityDelegation class", () => {
+test("federation-index: exports CapabilityDelegation class [index]", () => {
   assert.ok(typeof CapabilityDelegation === "function");
 });
 
-test("federation-index: exports createCapabilityDelegation factory function", () => {
+test("federation-index: exports createCapabilityDelegation factory function [index]", () => {
   assert.ok(typeof createCapabilityDelegation === "function");
 });
 
@@ -89,7 +89,7 @@ test("federation-index: exports createCapabilityDelegation factory function", ()
 // Index Export Tests - Type Aliases
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("federation-index: exports FederationGatewayConfig type", () => {
+test("federation-index: exports FederationGatewayConfig type [index]", () => {
   const config: FederationGatewayConfig = {
     federationId: "test",
     enableAudit: true,
@@ -99,7 +99,7 @@ test("federation-index: exports FederationGatewayConfig type", () => {
   assert.ok(config != null);
 });
 
-test("federation-index: exports FederationOrg type", () => {
+test("federation-index: exports FederationOrg type [index]", () => {
   const org: FederationOrg = {
     id: "org-1",
     name: "Test Org",
@@ -112,13 +112,13 @@ test("federation-index: exports FederationOrg type", () => {
   assert.equal(org.tier, "standard");
 });
 
-test("federation-index: exports CapabilityPermission type", () => {
+test("federation-index: exports CapabilityPermission type [index]", () => {
   const permissions: CapabilityPermission[] = ["invoke", "configure", "delegate", "audit"];
   assert.ok(permissions.includes("invoke"));
   assert.ok(permissions.includes("delegate"));
 });
 
-test("federation-index: exports CapabilityConstraint type", () => {
+test("federation-index: exports CapabilityConstraint type [index]", () => {
   const constraint: CapabilityConstraint = {
     type: "rate_limit",
     value: 100,
@@ -128,7 +128,7 @@ test("federation-index: exports CapabilityConstraint type", () => {
   assert.equal(constraint.type, "rate_limit");
 });
 
-test("federation-index: exports DelegationResult type", () => {
+test("federation-index: exports DelegationResult type [index]", () => {
   const result: DelegationResult = {
     success: true,
   };
@@ -136,7 +136,7 @@ test("federation-index: exports DelegationResult type", () => {
   assert.equal(result.success, true);
 });
 
-test("federation-index: exports FederationEvent type", () => {
+test("federation-index: exports FederationEvent type [index]", () => {
   const event: FederationEvent = {
     type: "org.registered",
     sourceOrgId: "org-1",
@@ -147,7 +147,7 @@ test("federation-index: exports FederationEvent type", () => {
   assert.equal(event.type, "org.registered");
 });
 
-test("federation-index: exports FederationRegionPriority type", () => {
+test("federation-index: exports FederationRegionPriority type [index]", () => {
   const priority: FederationRegionPriority = {
     regionId: "us-east-1",
     federationId: "fed-1",
@@ -159,7 +159,7 @@ test("federation-index: exports FederationRegionPriority type", () => {
   assert.equal(priority.isPreferred, true);
 });
 
-test("federation-index: exports FederationTopologyDiff type", () => {
+test("federation-index: exports FederationTopologyDiff type [index]", () => {
   const diff: FederationTopologyDiff = {
     addedRegions: [],
     removedRegions: [],
@@ -171,7 +171,7 @@ test("federation-index: exports FederationTopologyDiff type", () => {
   assert.ok(Array.isArray(diff.addedRegions));
 });
 
-test("federation-index: exports FederationTopologyRegion type", () => {
+test("federation-index: exports FederationTopologyRegion type [index]", () => {
   const region: FederationTopologyRegion = {
     regionId: "us-east-1",
     endpoint: "https://us-east-1.example.com",
@@ -182,7 +182,7 @@ test("federation-index: exports FederationTopologyRegion type", () => {
   assert.equal(region.status, "active");
 });
 
-test("federation-index: exports FederationTopology type", () => {
+test("federation-index: exports FederationTopology type [index]", () => {
   const topology: FederationTopology = {
     federationId: "fed-1",
     regions: [],
@@ -193,7 +193,7 @@ test("federation-index: exports FederationTopology type", () => {
   assert.equal(topology.federationId, "fed-1");
 });
 
-test("federation-index: exports FederationCatalogEntry type", () => {
+test("federation-index: exports FederationCatalogEntry type [index]", () => {
   const entry: FederationCatalogEntry = {
     federationId: "fed-1",
     name: "Test Federation",
@@ -210,7 +210,7 @@ test("federation-index: exports FederationCatalogEntry type", () => {
   assert.equal(entry.status, "active");
 });
 
-test("federation-index: exports FederationCatalog type", () => {
+test("federation-index: exports FederationCatalog type [index]", () => {
   const catalog: FederationCatalog = {
     catalogId: "cat-1",
     entries: [],
@@ -221,7 +221,7 @@ test("federation-index: exports FederationCatalog type", () => {
   assert.equal(catalog.totalCount, 0);
 });
 
-test("federation-index: exports FederationAuditRecord type", () => {
+test("federation-index: exports FederationAuditRecord type [index]", () => {
   const record: FederationAuditRecord = {
     id: "rec-1",
     timestamp: new Date(),
@@ -235,7 +235,7 @@ test("federation-index: exports FederationAuditRecord type", () => {
   assert.equal(record.action, "org.registered");
 });
 
-test("federation-index: exports AuditAction type", () => {
+test("federation-index: exports AuditAction type [index]", () => {
   const actions: AuditAction[] = [
     "org.registered",
     "trust.established",
@@ -246,19 +246,19 @@ test("federation-index: exports AuditAction type", () => {
   assert.ok(actions.includes("trust.established"));
 });
 
-test("federation-index: exports ResourceType type", () => {
+test("federation-index: exports ResourceType type [index]", () => {
   const types: ResourceType[] = ["organization", "trust", "capability", "delegation", "audit"];
   assert.ok(types.includes("organization"));
   assert.ok(types.includes("trust"));
 });
 
-test("federation-index: exports AuditStatus type", () => {
+test("federation-index: exports AuditStatus type [index]", () => {
   const statuses: AuditStatus[] = ["success", "failure", "pending", "denied"];
   assert.ok(statuses.includes("success"));
   assert.ok(statuses.includes("pending"));
 });
 
-test("federation-index: exports AuditQuery type", () => {
+test("federation-index: exports AuditQuery type [index]", () => {
   const query: AuditQuery = {
     orgId: "org-1",
     limit: 100,
@@ -267,7 +267,7 @@ test("federation-index: exports AuditQuery type", () => {
   assert.equal(query.limit, 100);
 });
 
-test("federation-index: exports AuditSummary type", () => {
+test("federation-index: exports AuditSummary type [index]", () => {
   const summary: AuditSummary = {
     totalRecords: 10,
     byAction: { "org.registered": 5 },
@@ -279,7 +279,7 @@ test("federation-index: exports AuditSummary type", () => {
   assert.equal(summary.totalRecords, 10);
 });
 
-test("federation-index: exports AuditRetentionPolicy type", () => {
+test("federation-index: exports AuditRetentionPolicy type [index]", () => {
   const policy: AuditRetentionPolicy = {
     maxAgeDays: 2555,
     minRetentionDays: 2555,
@@ -294,11 +294,11 @@ test("federation-index: exports AuditRetentionPolicy type", () => {
 // Index Export Tests - computeFederationTopologyDiff Function
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("federation-index: exports computeFederationTopologyDiff function", () => {
+test("federation-index: exports computeFederationTopologyDiff function [index]", () => {
   assert.ok(typeof computeFederationTopologyDiff === "function");
 });
 
-test("federation-index: computeFederationTopologyDiff returns empty diff for identical topologies", () => {
+test("federation-index: computeFederationTopologyDiff returns empty diff for identical topologies [index]", () => {
   const topology: FederationTopology = {
     federationId: "fed-1",
     regions: [
@@ -322,7 +322,7 @@ test("federation-index: computeFederationTopologyDiff returns empty diff for ide
   assert.equal(diff.unchangedRegions.length, 1);
 });
 
-test("federation-index: computeFederationTopologyDiff detects added regions", () => {
+test("federation-index: computeFederationTopologyDiff detects added regions [index]", () => {
   const left: FederationTopology = {
     federationId: "fed-1",
     regions: [],
@@ -350,7 +350,7 @@ test("federation-index: computeFederationTopologyDiff detects added regions", ()
   assert.equal(diff.removedRegions.length, 0);
 });
 
-test("federation-index: computeFederationTopologyDiff detects removed regions", () => {
+test("federation-index: computeFederationTopologyDiff detects removed regions [index]", () => {
   const left: FederationTopology = {
     federationId: "fed-1",
     regions: [
@@ -378,7 +378,7 @@ test("federation-index: computeFederationTopologyDiff detects removed regions", 
   assert.equal(diff.addedRegions.length, 0);
 });
 
-test("federation-index: computeFederationTopologyDiff detects modified regions", () => {
+test("federation-index: computeFederationTopologyDiff detects modified regions [index]", () => {
   const left: FederationTopology = {
     federationId: "fed-1",
     regions: [
@@ -417,11 +417,11 @@ test("federation-index: computeFederationTopologyDiff detects modified regions",
 // Index Export Tests - buildFederationCatalog Function
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("federation-index: exports buildFederationCatalog function", () => {
+test("federation-index: exports buildFederationCatalog function [index]", () => {
   assert.ok(typeof buildFederationCatalog === "function");
 });
 
-test("federation-index: buildFederationCatalog builds catalog with no organizations", () => {
+test("federation-index: buildFederationCatalog builds catalog with no organizations [index]", () => {
   const gateway = createFederationGateway();
   const catalog = buildFederationCatalog(gateway);
 
@@ -430,7 +430,7 @@ test("federation-index: buildFederationCatalog builds catalog with no organizati
   assert.ok(Array.isArray(catalog.entries));
 });
 
-test("federation-index: buildFederationCatalog includes registered organizations", async () => {
+test("federation-index: buildFederationCatalog includes registered organizations [index]", async () => {
   const gateway = createFederationGateway();
   await gateway.registerOrganization({
     id: "org-1",
@@ -445,7 +445,7 @@ test("federation-index: buildFederationCatalog includes registered organizations
   assert.equal(catalog.entries[0]!.name, "Test Org");
 });
 
-test("federation-index: buildFederationCatalog filters by status", async () => {
+test("federation-index: buildFederationCatalog filters by status [index]", async () => {
   const gateway = createFederationGateway();
   await gateway.registerOrganization({
     id: "org-1",
@@ -474,7 +474,7 @@ test("federation-index: buildFederationCatalog filters by status", async () => {
 // Index Integration Tests - Factory Functions Create Working Instances
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("federation-index: createFederationGateway creates working gateway", async () => {
+test("federation-index: createFederationGateway creates working gateway [index]", async () => {
   const gateway = createFederationGateway({ federationId: "test-fed" });
   const org = await gateway.registerOrganization({
     id: "org-1",
@@ -487,7 +487,7 @@ test("federation-index: createFederationGateway creates working gateway", async 
   assert.equal(org.id, "org-1");
 });
 
-test("federation-index: createFederationAudit creates working audit", () => {
+test("federation-index: createFederationAudit creates working audit [index]", () => {
   const audit = createFederationAudit();
   const record = audit.record({
     orgId: "org-1",
@@ -501,7 +501,7 @@ test("federation-index: createFederationAudit creates working audit", () => {
   assert.ok(record.id != null);
 });
 
-test("federation-index: createTrustRelationshipManager creates working manager", async () => {
+test("federation-index: createTrustRelationshipManager creates working manager [index]", async () => {
   const manager = createTrustRelationshipManager();
   const trust = await manager.createTrustRelationship({
     sourceOrgId: "org-1",
@@ -514,7 +514,7 @@ test("federation-index: createTrustRelationshipManager creates working manager",
   assert.equal(trust.sourceOrgId, "org-1");
 });
 
-test("federation-index: createCapabilityDelegation creates working delegation", () => {
+test("federation-index: createCapabilityDelegation creates working delegation [index]", () => {
   const delegation = createCapabilityDelegation();
   const capability = delegation.registerCapability({
     name: "Test Capability",

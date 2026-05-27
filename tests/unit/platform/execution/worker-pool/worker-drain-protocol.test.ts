@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { WorkerDrainProtocol } from "../../../../../src/platform/five-plane-execution/worker-pool/worker-drain-protocol.js";
 
-test("WorkerDrainProtocol.createReceipt returns drained when no active leases", () => {
+test("WorkerDrainProtocol.createReceipt returns drained when no active leases [worker-drain-protocol]", () => {
   const protocol = new WorkerDrainProtocol();
   const request = {
     workerId: "worker-1",
@@ -19,7 +19,7 @@ test("WorkerDrainProtocol.createReceipt returns drained when no active leases", 
   assert.equal(receipt.runTerminationCleanupRequired, false);
 });
 
-test("WorkerDrainProtocol.createReceipt returns draining when active leases exist", () => {
+test("WorkerDrainProtocol.createReceipt returns draining when active leases exist [worker-drain-protocol]", () => {
   const protocol = new WorkerDrainProtocol();
   const request = {
     workerId: "worker-1",
@@ -35,7 +35,7 @@ test("WorkerDrainProtocol.createReceipt returns draining when active leases exis
   assert.equal(receipt.activeLeaseCount, 1);
 });
 
-test("WorkerDrainProtocol.createReceipt returns deadline_exceeded when past deadline", () => {
+test("WorkerDrainProtocol.createReceipt returns deadline_exceeded when past deadline [worker-drain-protocol]", () => {
   const protocol = new WorkerDrainProtocol();
   const request = {
     workerId: "worker-1",
@@ -48,7 +48,7 @@ test("WorkerDrainProtocol.createReceipt returns deadline_exceeded when past dead
   assert.equal(receipt.status, "deadline_exceeded");
 });
 
-test("WorkerDrainProtocol.createReceipt identifies handover leases", () => {
+test("WorkerDrainProtocol.createReceipt identifies handover leases [worker-drain-protocol]", () => {
   const protocol = new WorkerDrainProtocol();
   const request = {
     workerId: "worker-1",
@@ -66,7 +66,7 @@ test("WorkerDrainProtocol.createReceipt identifies handover leases", () => {
   assert.equal(receipt.runTerminationCleanupRequired, true);
 });
 
-test("WorkerDrainProtocol.createReceipt sets runTerminationCleanupRequired on deadline exceeded", () => {
+test("WorkerDrainProtocol.createReceipt sets runTerminationCleanupRequired on deadline exceeded [worker-drain-protocol]", () => {
   const protocol = new WorkerDrainProtocol();
   const request = {
     workerId: "worker-1",
@@ -79,7 +79,7 @@ test("WorkerDrainProtocol.createReceipt sets runTerminationCleanupRequired on de
   assert.equal(receipt.runTerminationCleanupRequired, true);
 });
 
-test("WorkerDrainProtocol.createReceipt preserves request metadata", () => {
+test("WorkerDrainProtocol.createReceipt preserves request metadata [worker-drain-protocol]", () => {
   const protocol = new WorkerDrainProtocol();
   const request = {
     workerId: "worker-1",

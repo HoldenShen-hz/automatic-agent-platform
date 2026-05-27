@@ -2,56 +2,56 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { routeComplexity } from "../../../../src/platform/five-plane-execution/execution-engine/complexity-router.js";
 
-test("routeComplexity returns passthrough for short input", () => {
+test("routeComplexity returns passthrough for short input [complexity-router]", () => {
   const result = routeComplexity("Hi");
   assert.equal(result.path, "passthrough");
   assert.equal(result.reason, "short_input");
   assert.ok(result.estimatedBudgetFactor < 1);
 });
 
-test("routeComplexity returns fast for lookup keywords", () => {
+test("routeComplexity returns fast for lookup keywords [complexity-router]", () => {
   const result = routeComplexity("What is the capital of France?", { stepCount: 1 });
   assert.equal(result.path, "fast");
   assert.ok(result.reason.includes("keyword_match"));
 });
 
-test("routeComplexity returns standard for normal tasks", () => {
+test("routeComplexity returns standard for normal tasks [complexity-router]", () => {
   const result = routeComplexity("Write a function to calculate fibonacci", { stepCount: 1 });
   assert.equal(result.path, "standard");
   assert.equal(result.reason, "default");
 });
 
-test("routeComplexity returns full for refactor keywords", () => {
+test("routeComplexity returns full for refactor keywords [complexity-router]", () => {
   const result = routeComplexity("Refactor the entire authentication module", { stepCount: 1 });
   assert.equal(result.path, "full");
   assert.ok(result.reason.includes("keyword_match:refactor"));
 });
 
-test("routeComplexity returns full for architecture keywords", () => {
+test("routeComplexity returns full for architecture keywords [complexity-router]", () => {
   const result = routeComplexity("Analyze the system architecture", { stepCount: 1 });
   assert.equal(result.path, "full");
   assert.ok(result.reason.includes("architecture"));
 });
 
-test("routeComplexity returns full in QA mode regardless of task", () => {
+test("routeComplexity returns full in QA mode regardless of task [complexity-router]", () => {
   const result = routeComplexity("Simple question", { qaMode: true });
   assert.equal(result.path, "full");
   assert.equal(result.reason, "qa_mode_active");
 });
 
-test("routeComplexity returns standard for multi-step workflows", () => {
+test("routeComplexity returns standard for multi-step workflows [complexity-router]", () => {
   const result = routeComplexity("Do several things", { stepCount: 5 });
   assert.equal(result.path, "standard");
   assert.equal(result.reason, "multi_step_workflow");
 });
 
-test("routeComplexity returns full for high token estimates", () => {
+test("routeComplexity returns full for high token estimates [complexity-router]", () => {
   const result = routeComplexity("Analyze this", { stepCount: 1, estimatedTokens: 60000 });
   assert.equal(result.path, "full");
   assert.equal(result.reason, "high_token_estimate");
 });
 
-test("routeComplexity uses custom config for full-path keywords", () => {
+test("routeComplexity uses custom config for full-path keywords [complexity-router]", () => {
   const result = routeComplexity("Analyze this special task", {
     config: {
       fullPathKeywords: ["special"],
@@ -64,7 +64,7 @@ test("routeComplexity uses custom config for full-path keywords", () => {
   assert.ok(result.reason.includes("special"));
 });
 
-test("routeComplexity uses custom config for fast-path keywords", () => {
+test("routeComplexity uses custom config for fast-path keywords [complexity-router]", () => {
   const result = routeComplexity("Show my dashboard", {
     config: {
       fullPathKeywords: [],
@@ -77,7 +77,7 @@ test("routeComplexity uses custom config for fast-path keywords", () => {
   assert.ok(result.reason.includes("show"));
 });
 
-test("routeComplexity returns result with correct structure", () => {
+test("routeComplexity returns result with correct structure [complexity-router]", () => {
   const result = routeComplexity("Test task");
   assert.ok(typeof result.path === "string");
   assert.ok(typeof result.reason === "string");

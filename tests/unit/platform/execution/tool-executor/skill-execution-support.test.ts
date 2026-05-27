@@ -7,7 +7,7 @@ import type {
   SkillDefinition,
 } from "../../../../../src/platform/five-plane-execution/tool-executor/skill-execution-support.js";
 
-test("SkillStepDefinition type accepts valid onFailure values", () => {
+test("SkillStepDefinition type accepts valid onFailure values [skill-execution-support]", () => {
   const step1: SkillStepDefinition = { stepId: "1", toolName: "read", onFailure: "fail" };
   const step2: SkillStepDefinition = { stepId: "2", toolName: "write", onFailure: "continue" };
   const step3: SkillStepDefinition = { stepId: "3", toolName: "edit", onFailure: "retry" };
@@ -17,7 +17,7 @@ test("SkillStepDefinition type accepts valid onFailure values", () => {
   assert.equal(step3.onFailure, "retry");
 });
 
-test("SkillStepDefinition allows optional fields", () => {
+test("SkillStepDefinition allows optional fields [skill-execution-support]", () => {
   const minimal: SkillStepDefinition = { stepId: "1", toolName: "read" };
   assert.equal(minimal.stepId, "1");
 
@@ -35,7 +35,7 @@ test("SkillStepDefinition allows optional fields", () => {
   assert.equal(withAll.maxAttempts, 3);
 });
 
-test("SkillStepModelOverride type structure", () => {
+test("SkillStepModelOverride type structure [skill-execution-support]", () => {
   const override: SkillStepModelOverride = {
     toolName: "edit",
     profileNames: ["claude-3-5-sonnet"],
@@ -49,12 +49,12 @@ test("SkillStepModelOverride type structure", () => {
   assert.ok(override.requiredCapabilities!.includes("code"));
 });
 
-test("SkillStepModelOverride allows minimal definition", () => {
+test("SkillStepModelOverride allows minimal definition [skill-execution-support]", () => {
   const override: SkillStepModelOverride = { toolName: "edit" };
   assert.equal(override.toolName, "edit");
 });
 
-test("SkillDefinition type structure", () => {
+test("SkillDefinition type structure [skill-execution-support]", () => {
   const skill: SkillDefinition = {
     skillId: "file-editor",
     version: "1.0.0",

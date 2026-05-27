@@ -4,7 +4,7 @@ import test from "node:test";
 import { buildStableRollingUpgradePlaybook } from "../../../../../src/platform/shared/stability/stable-rolling-upgrade-rehearsal.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 
-test("buildStableRollingUpgradePlaybook produces upgrade ownership, guardrails, and targets", () => {
+test("buildStableRollingUpgradePlaybook produces upgrade ownership, guardrails, and targets [stable-rolling-upgrade-rehearsal]", () => {
   const workspace = createTempWorkspace("aa-upgrade-playbook-");
 
   try {
@@ -53,7 +53,7 @@ test("buildStableRollingUpgradePlaybook produces upgrade ownership, guardrails, 
   }
 });
 
-test("buildStableRollingUpgradePlaybook handles failed scenario in evidence", () => {
+test("buildStableRollingUpgradePlaybook handles failed scenario in evidence [stable-rolling-upgrade-rehearsal]", () => {
   const workspace = createTempWorkspace("aa-upgrade-failed-");
 
   try {
@@ -96,7 +96,7 @@ test("buildStableRollingUpgradePlaybook handles failed scenario in evidence", ()
   }
 });
 
-test("buildStableRollingUpgradePlaybook handles all scenarios failing", () => {
+test("buildStableRollingUpgradePlaybook handles all scenarios failing [stable-rolling-upgrade-rehearsal]", () => {
   const workspace = createTempWorkspace("aa-upgrade-all-fail-");
 
   try {

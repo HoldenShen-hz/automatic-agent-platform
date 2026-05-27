@@ -21,7 +21,7 @@ function createHealthReport(overrides: Partial<ConnectorHealthReport> = {}): Con
 // summarizeConnectorHealth Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("summarizeConnectorHealth returns healthy when all reports are healthy", () => {
+test("summarizeConnectorHealth returns healthy when all reports are healthy [connector-health-monitor]", () => {
   const reports = [
     createHealthReport({ connectorId: "c1", status: "healthy" }),
     createHealthReport({ connectorId: "c2", status: "healthy" }),
@@ -32,7 +32,7 @@ test("summarizeConnectorHealth returns healthy when all reports are healthy", ()
   assert.equal(result, "healthy");
 });
 
-test("summarizeConnectorHealth returns degraded when any report is degraded", () => {
+test("summarizeConnectorHealth returns degraded when any report is degraded [connector-health-monitor]", () => {
   const reports = [
     createHealthReport({ connectorId: "c1", status: "healthy" }),
     createHealthReport({ connectorId: "c2", status: "degraded" }),
@@ -43,7 +43,7 @@ test("summarizeConnectorHealth returns degraded when any report is degraded", ()
   assert.equal(result, "degraded");
 });
 
-test("summarizeConnectorHealth returns failed when any report is failed", () => {
+test("summarizeConnectorHealth returns failed when any report is failed [connector-health-monitor]", () => {
   const reports = [
     createHealthReport({ connectorId: "c1", status: "healthy" }),
     createHealthReport({ connectorId: "c2", status: "failed" }),
@@ -54,7 +54,7 @@ test("summarizeConnectorHealth returns failed when any report is failed", () => 
   assert.equal(result, "failed");
 });
 
-test("summarizeConnectorHealth prioritizes failed over degraded", () => {
+test("summarizeConnectorHealth prioritizes failed over degraded [connector-health-monitor]", () => {
   const reports = [
     createHealthReport({ connectorId: "c1", status: "degraded" }),
     createHealthReport({ connectorId: "c2", status: "failed" }),
@@ -65,13 +65,13 @@ test("summarizeConnectorHealth prioritizes failed over degraded", () => {
   assert.equal(result, "failed");
 });
 
-test("summarizeConnectorHealth returns healthy for empty array", () => {
+test("summarizeConnectorHealth returns healthy for empty array [connector-health-monitor]", () => {
   const result = summarizeConnectorHealth([]);
 
   assert.equal(result, "healthy");
 });
 
-test("summarizeConnectorHealth handles single report", () => {
+test("summarizeConnectorHealth handles single report [connector-health-monitor]", () => {
   const result = summarizeConnectorHealth([createHealthReport({ status: "degraded" })]);
 
   assert.equal(result, "degraded");
@@ -81,7 +81,7 @@ test("summarizeConnectorHealth handles single report", () => {
 // ConnectorHealthReportSchema Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("ConnectorHealthReportSchema parses valid report", () => {
+test("ConnectorHealthReportSchema parses valid report [connector-health-monitor]", () => {
   const result = ConnectorHealthReportSchema.safeParse({
     connectorId: "slack",
     status: "healthy",
@@ -96,7 +96,7 @@ test("ConnectorHealthReportSchema parses valid report", () => {
   }
 });
 
-test("ConnectorHealthReportSchema accepts all valid statuses", () => {
+test("ConnectorHealthReportSchema accepts all valid statuses [connector-health-monitor]", () => {
   for (const status of ["healthy", "degraded", "failed"]) {
     const result = ConnectorHealthReportSchema.safeParse({
       connectorId: "test",
@@ -108,7 +108,7 @@ test("ConnectorHealthReportSchema accepts all valid statuses", () => {
   }
 });
 
-test("ConnectorHealthReportSchema rejects invalid status", () => {
+test("ConnectorHealthReportSchema rejects invalid status [connector-health-monitor]", () => {
   const result = ConnectorHealthReportSchema.safeParse({
     connectorId: "test",
     status: "unknown",
@@ -119,7 +119,7 @@ test("ConnectorHealthReportSchema rejects invalid status", () => {
   assert.equal(result.success, false);
 });
 
-test("ConnectorHealthReportSchema rejects negative latency", () => {
+test("ConnectorHealthReportSchema rejects negative latency [connector-health-monitor]", () => {
   const result = ConnectorHealthReportSchema.safeParse({
     connectorId: "test",
     status: "healthy",
@@ -130,7 +130,7 @@ test("ConnectorHealthReportSchema rejects negative latency", () => {
   assert.equal(result.success, false);
 });
 
-test("ConnectorHealthReportSchema rejects empty connectorId", () => {
+test("ConnectorHealthReportSchema rejects empty connectorId [connector-health-monitor]", () => {
   const result = ConnectorHealthReportSchema.safeParse({
     connectorId: "",
     status: "healthy",
@@ -141,7 +141,7 @@ test("ConnectorHealthReportSchema rejects empty connectorId", () => {
   assert.equal(result.success, false);
 });
 
-test("ConnectorHealthReportSchema rejects empty checkedAt", () => {
+test("ConnectorHealthReportSchema rejects empty checkedAt [connector-health-monitor]", () => {
   const result = ConnectorHealthReportSchema.safeParse({
     connectorId: "test",
     status: "healthy",
@@ -152,7 +152,7 @@ test("ConnectorHealthReportSchema rejects empty checkedAt", () => {
   assert.equal(result.success, false);
 });
 
-test("ConnectorHealthReportSchema accepts zero latency", () => {
+test("ConnectorHealthReportSchema accepts zero latency [connector-health-monitor]", () => {
   const result = ConnectorHealthReportSchema.safeParse({
     connectorId: "test",
     status: "healthy",

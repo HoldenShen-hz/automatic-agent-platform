@@ -18,7 +18,7 @@ function createAllocation(overrides: Partial<ReservedCapacityAllocation> = {}): 
 // allocateReservedCapacity Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("allocateReservedCapacity calculates correct allocation for single tier", () => {
+test("allocateReservedCapacity calculates correct allocation for single tier [sla-resource-allocator]", () => {
   const allocations = [createAllocation({ tierId: "enterprise", reservedPercent: 40 })];
   const totalUnits = 100;
 
@@ -27,7 +27,7 @@ test("allocateReservedCapacity calculates correct allocation for single tier", (
   assert.equal(result["enterprise"], 40);
 });
 
-test("allocateReservedCapacity calculates correct allocation for multiple tiers", () => {
+test("allocateReservedCapacity calculates correct allocation for multiple tiers [sla-resource-allocator]", () => {
   const allocations = [
     createAllocation({ tierId: "enterprise", reservedPercent: 40 }),
     createAllocation({ tierId: "standard", reservedPercent: 20 }),
@@ -40,7 +40,7 @@ test("allocateReservedCapacity calculates correct allocation for multiple tiers"
   assert.equal(result["standard"], 20);
 });
 
-test("allocateReservedCapacity handles zero total units", () => {
+test("allocateReservedCapacity handles zero total units [sla-resource-allocator]", () => {
   const allocations = [createAllocation({ tierId: "enterprise", reservedPercent: 40 })];
   const totalUnits = 0;
 
@@ -49,13 +49,13 @@ test("allocateReservedCapacity handles zero total units", () => {
   assert.equal(result["enterprise"], 0);
 });
 
-test("allocateReservedCapacity handles empty allocations array", () => {
+test("allocateReservedCapacity handles empty allocations array [sla-resource-allocator]", () => {
   const result = allocateReservedCapacity(100, []);
 
   assert.deepEqual(result, {});
 });
 
-test("allocateReservedCapacity floors fractional results", () => {
+test("allocateReservedCapacity floors fractional results [sla-resource-allocator]", () => {
   const allocations = [createAllocation({ tierId: "tier", reservedPercent: 33 })];
   const totalUnits = 100;
 
@@ -65,7 +65,7 @@ test("allocateReservedCapacity floors fractional results", () => {
   assert.equal(result["tier"], 33);
 });
 
-test("allocateReservedCapacity handles 100 percent allocation", () => {
+test("allocateReservedCapacity handles 100 percent allocation [sla-resource-allocator]", () => {
   const allocations = [createAllocation({ tierId: "full", reservedPercent: 100 })];
   const totalUnits = 50;
 
@@ -74,7 +74,7 @@ test("allocateReservedCapacity handles 100 percent allocation", () => {
   assert.equal(result["full"], 50);
 });
 
-test("allocateReservedCapacity handles small percentages with large units", () => {
+test("allocateReservedCapacity handles small percentages with large units [sla-resource-allocator]", () => {
   const allocations = [createAllocation({ tierId: "tiny", reservedPercent: 1 })];
   const totalUnits = 10000;
 
@@ -83,7 +83,7 @@ test("allocateReservedCapacity handles small percentages with large units", () =
   assert.equal(result["tiny"], 100);
 });
 
-test("allocateReservedCapacity handles many tiers", () => {
+test("allocateReservedCapacity handles many tiers [sla-resource-allocator]", () => {
   const allocations = [
     createAllocation({ tierId: "tier1", reservedPercent: 10 }),
     createAllocation({ tierId: "tier2", reservedPercent: 15 }),
@@ -100,7 +100,7 @@ test("allocateReservedCapacity handles many tiers", () => {
   assert.equal(result["tier4"], 250);
 });
 
-test("allocateReservedCapacity preserves tier order in result", () => {
+test("allocateReservedCapacity preserves tier order in result [sla-resource-allocator]", () => {
   const allocations = [
     createAllocation({ tierId: "alpha", reservedPercent: 10 }),
     createAllocation({ tierId: "beta", reservedPercent: 20 }),
@@ -116,7 +116,7 @@ test("allocateReservedCapacity preserves tier order in result", () => {
   assert.ok("gamma" in result);
 });
 
-test("allocateReservedCapacity handles 0 percent allocation", () => {
+test("allocateReservedCapacity handles 0 percent allocation [sla-resource-allocator]", () => {
   const allocations = [createAllocation({ tierId: "zero", reservedPercent: 0 })];
   const totalUnits = 100;
 
@@ -125,7 +125,7 @@ test("allocateReservedCapacity handles 0 percent allocation", () => {
   assert.equal(result["zero"], 0);
 });
 
-test("allocateReservedCapacity does not modify input allocations", () => {
+test("allocateReservedCapacity does not modify input allocations [sla-resource-allocator]", () => {
   const allocations = [createAllocation({ tierId: "test", reservedPercent: 50 })];
   const original = [...allocations];
   const totalUnits = 100;

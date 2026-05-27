@@ -4,7 +4,7 @@ import test from "node:test";
 import { StateTransitionMachine } from "../../../src/platform/five-plane-execution/state-transition/state-transition-machine.js";
 import { WorkflowStateError } from "../../../src/platform/contracts/errors.js";
 
-test("StateTransitionMachine constructor sets entity kind and transitions", () => {
+test("StateTransitionMachine constructor sets entity kind and transitions [state-transition-machine]", () => {
   const machine = new StateTransitionMachine<string>("task", {
     queued: ["pending", "in_progress"],
     pending: ["in_progress"],
@@ -13,7 +13,7 @@ test("StateTransitionMachine constructor sets entity kind and transitions", () =
   assert.equal((machine as any).entityKind, "task");
 });
 
-test("StateTransitionMachine assertTransition allows valid transitions", () => {
+test("StateTransitionMachine assertTransition allows valid transitions [state-transition-machine]", () => {
   const machine = new StateTransitionMachine<string>("task", {
     queued: ["pending", "in_progress"],
     pending: ["in_progress"],
@@ -28,7 +28,7 @@ test("StateTransitionMachine assertTransition allows valid transitions", () => {
   machine.assertTransition("in_progress", "failed");
 });
 
-test("StateTransitionMachine assertTransition throws on invalid transitions", () => {
+test("StateTransitionMachine assertTransition throws on invalid transitions [state-transition-machine]", () => {
   const machine = new StateTransitionMachine<string>("task", {
     queued: ["pending", "in_progress"],
     pending: ["in_progress"],
@@ -41,7 +41,7 @@ test("StateTransitionMachine assertTransition throws on invalid transitions", ()
   );
 });
 
-test("StateTransitionMachine assertTransition allows no-op transitions", () => {
+test("StateTransitionMachine assertTransition allows no-op transitions [state-transition-machine]", () => {
   const machine = new StateTransitionMachine<string>("task", {
     queued: ["pending", "in_progress"],
     pending: ["in_progress"],
@@ -51,7 +51,7 @@ test("StateTransitionMachine assertTransition allows no-op transitions", () => {
   machine.assertTransition("pending", "pending");
 });
 
-test("StateTransitionMachine assertTransition throws WorkflowStateError with details", () => {
+test("StateTransitionMachine assertTransition throws WorkflowStateError with details [state-transition-machine]", () => {
   const machine = new StateTransitionMachine<string>("execution", {
     pending: ["running"],
     running: ["completed", "failed"],
@@ -68,7 +68,7 @@ test("StateTransitionMachine assertTransition throws WorkflowStateError with det
   }
 });
 
-test("StateTransitionMachine works with different entity kinds", () => {
+test("StateTransitionMachine works with different entity kinds [state-transition-machine]", () => {
   const taskMachine = new StateTransitionMachine<string>("task", {
     created: ["running"],
     running: ["completed"],
@@ -95,7 +95,7 @@ test("StateTransitionMachine works with different entity kinds", () => {
   );
 });
 
-test("StateTransitionMachine handles empty transitions map", () => {
+test("StateTransitionMachine handles empty transitions map [state-transition-machine]", () => {
   const machine = new StateTransitionMachine<string>("empty", {});
 
   // No transitions allowed from any state
@@ -106,7 +106,7 @@ test("StateTransitionMachine handles empty transitions map", () => {
   );
 });
 
-test("StateTransitionMachine allows same-state transitions when configured", () => {
+test("StateTransitionMachine allows same-state transitions when configured [state-transition-machine]", () => {
   const machine = new StateTransitionMachine<string>("task", {
     running: ["running", "completed"], // includes self-transition
     completed: ["running"], // can restart

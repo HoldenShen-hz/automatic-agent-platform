@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { RedisLockAdapter } from "../../../../../src/platform/five-plane-execution/distributed-lock/redis-lock-adapter.js";
 
-test("RedisLockAdapter release() throws sync_release_not_supported", () => {
+test("RedisLockAdapter release() throws sync_release_not_supported [redis-lock-adapter]", () => {
   // Create adapter without connecting (sync methods throw regardless of connection state)
   const adapter = new RedisLockAdapter({ host: "localhost", port: 6379 });
 
@@ -15,7 +15,7 @@ test("RedisLockAdapter release() throws sync_release_not_supported", () => {
   );
 });
 
-test("RedisLockAdapter extend() throws sync_extend_not_supported", () => {
+test("RedisLockAdapter extend() throws sync_extend_not_supported [redis-lock-adapter]", () => {
   const adapter = new RedisLockAdapter({ host: "localhost", port: 6379 });
 
   assert.throws(
@@ -26,7 +26,7 @@ test("RedisLockAdapter extend() throws sync_extend_not_supported", () => {
   );
 });
 
-test("RedisLockAdapter forceSteal() throws sync_forceSteal_not_supported", () => {
+test("RedisLockAdapter forceSteal() throws sync_forceSteal_not_supported [redis-lock-adapter]", () => {
   const adapter = new RedisLockAdapter({ host: "localhost", port: 6379 });
 
   assert.throws(
@@ -37,7 +37,7 @@ test("RedisLockAdapter forceSteal() throws sync_forceSteal_not_supported", () =>
   );
 });
 
-test("RedisLockAdapter inspect() throws sync_inspect_not_supported", () => {
+test("RedisLockAdapter inspect() throws sync_inspect_not_supported [redis-lock-adapter]", () => {
   const adapter = new RedisLockAdapter({ host: "localhost", port: 6379 });
 
   assert.throws(
@@ -48,7 +48,7 @@ test("RedisLockAdapter inspect() throws sync_inspect_not_supported", () => {
   );
 });
 
-test("RedisLockAdapter backendKind is redis", () => {
+test("RedisLockAdapter backendKind is redis [redis-lock-adapter]", () => {
   const adapter = new RedisLockAdapter({ host: "localhost", port: 6379 });
 
   assert.equal(adapter.backendKind, "redis");
@@ -99,7 +99,7 @@ function createAdapterWithMockRedis(mockRedis: ReturnType<typeof createMockRedis
   return adapter;
 }
 
-test("RedisLockAdapter acquireAsync returns lock when successful", async () => {
+test("RedisLockAdapter acquireAsync returns lock when successful [redis-lock-adapter]", async () => {
   const mockRedis = createMockRedis({ status: "ready" });
   const adapter = createAdapterWithMockRedis(mockRedis);
 
@@ -113,7 +113,7 @@ test("RedisLockAdapter acquireAsync returns lock when successful", async () => {
   assert.ok(result.lock!.fencingToken > 0);
 });
 
-test("RedisLockAdapter acquireAsync returns false when lock exists", async () => {
+test("RedisLockAdapter acquireAsync returns false when lock exists [redis-lock-adapter]", async () => {
   const mockRedis = createMockRedis({
     status: "ready",
     set: async () => null, // NX fails, lock exists
@@ -126,7 +126,7 @@ test("RedisLockAdapter acquireAsync returns false when lock exists", async () =>
   assert.equal(result.lock, undefined);
 });
 
-test("RedisLockAdapter acquireAsync connects when status is wait", async () => {
+test("RedisLockAdapter acquireAsync connects when status is wait [redis-lock-adapter]", async () => {
   let connected = false;
   const mockRedis = createMockRedis({
     status: "wait",
@@ -139,7 +139,7 @@ test("RedisLockAdapter acquireAsync connects when status is wait", async () => {
   assert.equal(connected, true);
 });
 
-test("RedisLockAdapter acquireAsync reconnects when status is end", async () => {
+test("RedisLockAdapter acquireAsync reconnects when status is end [redis-lock-adapter]", async () => {
   const mockRedis = createMockRedis({
     status: "end",
     connect: async () => {},
@@ -152,7 +152,7 @@ test("RedisLockAdapter acquireAsync reconnects when status is end", async () => 
   assert.equal(mockRedis.status, "end");
 });
 
-test("RedisLockAdapter releaseAsync returns true when lock released", async () => {
+test("RedisLockAdapter releaseAsync returns true when lock released [redis-lock-adapter]", async () => {
   const mockRedis = createMockRedis({
     status: "ready",
     eval: async () => 1,
@@ -164,7 +164,7 @@ test("RedisLockAdapter releaseAsync returns true when lock released", async () =
   assert.equal(result, true);
 });
 
-test("RedisLockAdapter releaseAsync returns false when not owner", async () => {
+test("RedisLockAdapter releaseAsync returns false when not owner [redis-lock-adapter]", async () => {
   const mockRedis = createMockRedis({
     status: "ready",
     eval: async () => 0, // Owner mismatch
@@ -176,7 +176,7 @@ test("RedisLockAdapter releaseAsync returns false when not owner", async () => {
   assert.equal(result, false);
 });
 
-test("RedisLockAdapter releaseAsync returns false when lock not found", async () => {
+test("RedisLockAdapter releaseAsync returns false when lock not found [redis-lock-adapter]", async () => {
   const mockRedis = createMockRedis({
     status: "ready",
     eval: async () => -1, // Lock not found
@@ -188,7 +188,7 @@ test("RedisLockAdapter releaseAsync returns false when lock not found", async ()
   assert.equal(result, false);
 });
 
-test("RedisLockAdapter extendAsync returns extended lock when successful", async () => {
+test("RedisLockAdapter extendAsync returns extended lock when successful [redis-lock-adapter]", async () => {
   const mockRedis = createMockRedis({
     status: "ready",
     eval: async () => JSON.stringify({
@@ -209,7 +209,7 @@ test("RedisLockAdapter extendAsync returns extended lock when successful", async
   assert.equal(result!.fencingToken, 99);
 });
 
-test("RedisLockAdapter extendAsync returns null when lock not found", async () => {
+test("RedisLockAdapter extendAsync returns null when lock not found [redis-lock-adapter]", async () => {
   const mockRedis = createMockRedis({
     status: "ready",
     get: async () => null,
@@ -221,7 +221,7 @@ test("RedisLockAdapter extendAsync returns null when lock not found", async () =
   assert.equal(result, null);
 });
 
-test("RedisLockAdapter extendAsync returns null when owner mismatch", async () => {
+test("RedisLockAdapter extendAsync returns null when owner mismatch [redis-lock-adapter]", async () => {
   const mockRedis = createMockRedis({
     status: "ready",
     eval: async () => 0, // Owner mismatch
@@ -240,7 +240,7 @@ test("RedisLockAdapter extendAsync returns null when owner mismatch", async () =
   assert.equal(result, null);
 });
 
-test("RedisLockAdapter extendAsync caps additionalMs at 600000", async () => {
+test("RedisLockAdapter extendAsync caps additionalMs at 600000 [redis-lock-adapter]", async () => {
   let evalArgs: string[] = [];
   const mockRedis = createMockRedis({
     status: "ready",
@@ -264,7 +264,7 @@ test("RedisLockAdapter extendAsync caps additionalMs at 600000", async () => {
   assert.equal(evalArgs[2], "999999");
 });
 
-test("RedisLockAdapter forceStealAsync returns new lock record", async () => {
+test("RedisLockAdapter forceStealAsync returns new lock record [redis-lock-adapter]", async () => {
   const mockRedis = createMockRedis({
     status: "ready",
     eval: async () => 1,
@@ -279,7 +279,7 @@ test("RedisLockAdapter forceStealAsync returns new lock record", async () => {
   assert.equal(result.status, "held");
 });
 
-test("RedisLockAdapter acquireAsync uses PX TTL precision", async () => {
+test("RedisLockAdapter acquireAsync uses PX TTL precision [redis-lock-adapter]", async () => {
   let setArgs: Array<string | number> = [];
   const mockRedis = createMockRedis({
     set: async (_key: string, _value: string, ...args: Array<string | number>) => {
@@ -294,7 +294,7 @@ test("RedisLockAdapter acquireAsync uses PX TTL precision", async () => {
   assert.deepEqual(setArgs, ["PX", 250, "NX"]);
 });
 
-test("RedisLockAdapter forceStealAsync rejects when the lock is missing", async () => {
+test("RedisLockAdapter forceStealAsync rejects when the lock is missing [redis-lock-adapter]", async () => {
   const mockRedis = createMockRedis({
     eval: async () => -1,
   });
@@ -306,7 +306,7 @@ test("RedisLockAdapter forceStealAsync rejects when the lock is missing", async 
   );
 });
 
-test("RedisLockAdapter inspectAsync returns lock record when exists", async () => {
+test("RedisLockAdapter inspectAsync returns lock record when exists [redis-lock-adapter]", async () => {
   const mockRedis = createMockRedis({
     status: "ready",
     get: async () => JSON.stringify({
@@ -327,7 +327,7 @@ test("RedisLockAdapter inspectAsync returns lock record when exists", async () =
   assert.equal(result!.fencingToken, 42);
 });
 
-test("RedisLockAdapter inspectAsync returns null when lock not found", async () => {
+test("RedisLockAdapter inspectAsync returns null when lock not found [redis-lock-adapter]", async () => {
   const mockRedis = createMockRedis({
     status: "ready",
     get: async () => null,
@@ -339,7 +339,7 @@ test("RedisLockAdapter inspectAsync returns null when lock not found", async () 
   assert.equal(result, null);
 });
 
-test("RedisLockAdapter listHeldAsync returns all locks within limit", async () => {
+test("RedisLockAdapter listHeldAsync returns all locks within limit [redis-lock-adapter]", async () => {
   const mockRedis = createMockRedis({
     status: "ready",
     scan: async () => ["0", ["lock:key1", "lock:key2", "lock:key3"]],
@@ -356,7 +356,7 @@ test("RedisLockAdapter listHeldAsync returns all locks within limit", async () =
   assert.equal(result.length, 3);
 });
 
-test("RedisLockAdapter listHeldAsync respects limit parameter", async () => {
+test("RedisLockAdapter listHeldAsync respects limit parameter [redis-lock-adapter]", async () => {
   let mgetCalls = 0;
   const mockRedis = createMockRedis({
     status: "ready",
@@ -374,7 +374,7 @@ test("RedisLockAdapter listHeldAsync respects limit parameter", async () => {
   assert.ok(mgetCalls >= 1);
 });
 
-test("RedisLockAdapter listHeldAsync skips keys with no data", async () => {
+test("RedisLockAdapter listHeldAsync skips keys with no data [redis-lock-adapter]", async () => {
   let mgetCalls = 0;
   const mockRedis = createMockRedis({
     status: "ready",
@@ -392,7 +392,7 @@ test("RedisLockAdapter listHeldAsync skips keys with no data", async () => {
   assert.equal(result.length, 0);
 });
 
-test("RedisLockAdapter listHeldAsync returns empty array when no locks", async () => {
+test("RedisLockAdapter listHeldAsync returns empty array when no locks [redis-lock-adapter]", async () => {
   const mockRedis = createMockRedis({
     status: "ready",
     scan: async () => ["0", []],
@@ -404,7 +404,7 @@ test("RedisLockAdapter listHeldAsync returns empty array when no locks", async (
   assert.equal(result.length, 0);
 });
 
-test("RedisLockAdapter close disconnects when status is wait", async () => {
+test("RedisLockAdapter close disconnects when status is wait [redis-lock-adapter]", async () => {
   let disconnected = false;
   const mockRedis = createMockRedis({
     status: "wait",
@@ -417,7 +417,7 @@ test("RedisLockAdapter close disconnects when status is wait", async () => {
   assert.equal(disconnected, true);
 });
 
-test("RedisLockAdapter close disconnects when status is end", async () => {
+test("RedisLockAdapter close disconnects when status is end [redis-lock-adapter]", async () => {
   let disconnected = false;
   const mockRedis = createMockRedis({
     status: "end",
@@ -430,7 +430,7 @@ test("RedisLockAdapter close disconnects when status is end", async () => {
   assert.equal(disconnected, true);
 });
 
-test("RedisLockAdapter close calls quit when status is ready", async () => {
+test("RedisLockAdapter close calls quit when status is ready [redis-lock-adapter]", async () => {
   let quitCalled = false;
   const mockRedis = createMockRedis({
     status: "ready",
@@ -447,7 +447,7 @@ test("RedisLockAdapter close calls quit when status is ready", async () => {
 // Sync acquire() method tests (deprecated, throws)
 // =============================================================================
 
-test("RedisLockAdapter acquire() throws sync_acquire_deprecated", () => {
+test("RedisLockAdapter acquire() throws sync_acquire_deprecated [redis-lock-adapter]", () => {
   const adapter = new RedisLockAdapter({ host: "localhost", port: 6379 });
 
   assert.throws(
@@ -458,7 +458,7 @@ test("RedisLockAdapter acquire() throws sync_acquire_deprecated", () => {
   );
 });
 
-test("RedisLockAdapter acquire() throws even with invalid host", () => {
+test("RedisLockAdapter acquire() throws even with invalid host [redis-lock-adapter]", () => {
   const adapter = new RedisLockAdapter({ host: "invalid-host", port: 9999 });
 
   assert.throws(
@@ -467,7 +467,7 @@ test("RedisLockAdapter acquire() throws even with invalid host", () => {
   );
 });
 
-test("RedisLockAdapter acquire() throws with default TTL", () => {
+test("RedisLockAdapter acquire() throws with default TTL [redis-lock-adapter]", () => {
   const adapter = new RedisLockAdapter({ host: "localhost", port: 6379 });
 
   assert.throws(
@@ -476,7 +476,7 @@ test("RedisLockAdapter acquire() throws with default TTL", () => {
   );
 });
 
-test("RedisLockAdapter acquire() throws with provided TTL", () => {
+test("RedisLockAdapter acquire() throws with provided TTL [redis-lock-adapter]", () => {
   const adapter = new RedisLockAdapter({ host: "localhost", port: 6379 });
 
   assert.throws(
@@ -489,7 +489,7 @@ test("RedisLockAdapter acquire() throws with provided TTL", () => {
 // ensureConnected edge cases
 // =============================================================================
 
-test("RedisLockAdapter ensureConnected does nothing when status is ready", async () => {
+test("RedisLockAdapter ensureConnected does nothing when status is ready [redis-lock-adapter]", async () => {
   const mockRedis = createMockRedis({ status: "ready" });
   const adapter = createAdapterWithMockRedis(mockRedis);
 
@@ -503,7 +503,7 @@ test("RedisLockAdapter ensureConnected does nothing when status is ready", async
   assert.equal(connectCalled, false);
 });
 
-test("RedisLockAdapter ensureConnected throws when reconnect fails after status end", async () => {
+test("RedisLockAdapter ensureConnected throws when reconnect fails after status end [redis-lock-adapter]", async () => {
   const mockRedis = createMockRedis({
     status: "end",
     connect: async () => {
@@ -523,7 +523,7 @@ test("RedisLockAdapter ensureConnected throws when reconnect fails after status 
 // P0 Security Denial-Path Tests
 // =============================================================================
 
-test("RedisLockAdapter acquireAsync throws LockingError when Redis connection is closed during acquireAsync", async () => {
+test("RedisLockAdapter acquireAsync throws LockingError when Redis connection is closed during acquireAsync [redis-lock-adapter]", async () => {
   const adapter = new RedisLockAdapter({
     host: "localhost",
     port: 6379,
@@ -548,7 +548,7 @@ test("RedisLockAdapter acquireAsync throws LockingError when Redis connection is
   await adapter.close();
 });
 
-test("RedisLockAdapter ensureConnected throws on reconnection failure", async () => {
+test("RedisLockAdapter ensureConnected throws on reconnection failure [redis-lock-adapter]", async () => {
   const adapter = new RedisLockAdapter({
     host: "localhost",
     port: 6379,
@@ -570,7 +570,7 @@ test("RedisLockAdapter ensureConnected throws on reconnection failure", async ()
   await adapter.close();
 });
 
-test("RedisLockAdapter.releaseAsync throws when Lua script evaluation fails", async () => {
+test("RedisLockAdapter.releaseAsync throws when Lua script evaluation fails [redis-lock-adapter]", async () => {
   const mockRedis = createMockRedis({
     status: "ready",
     eval: async () => {
@@ -585,7 +585,7 @@ test("RedisLockAdapter.releaseAsync throws when Lua script evaluation fails", as
   );
 });
 
-test("RedisLockAdapter.extendAsync throws when Lua script evaluation fails", async () => {
+test("RedisLockAdapter.extendAsync throws when Lua script evaluation fails [redis-lock-adapter]", async () => {
   const mockRedis = createMockRedis({
     status: "ready",
     eval: async () => {
@@ -600,7 +600,7 @@ test("RedisLockAdapter.extendAsync throws when Lua script evaluation fails", asy
   );
 });
 
-test("RedisLockAdapter.fencingCounter increments per acquireAsync call", async () => {
+test("RedisLockAdapter.fencingCounter increments per acquireAsync call [redis-lock-adapter]", async () => {
   const adapter = new RedisLockAdapter({
     host: "localhost",
     port: 6379,
@@ -640,7 +640,7 @@ test("RedisLockAdapter.fencingCounter increments per acquireAsync call", async (
   await adapter.close();
 });
 
-test("RedisLockAdapter forceStealAsync increments fencing counter", async () => {
+test("RedisLockAdapter forceStealAsync increments fencing counter [redis-lock-adapter]", async () => {
   const adapter = new RedisLockAdapter({
     host: "localhost",
     port: 6379,
@@ -663,7 +663,7 @@ test("RedisLockAdapter forceStealAsync increments fencing counter", async () => 
   await adapter.close();
 });
 
-test("RedisLockAdapter inspectAsync handles malformed lock data", async () => {
+test("RedisLockAdapter inspectAsync handles malformed lock data [redis-lock-adapter]", async () => {
   const mockRedis = createMockRedis({
     status: "ready",
     get: async () => "not valid json {{{",
@@ -676,7 +676,7 @@ test("RedisLockAdapter inspectAsync handles malformed lock data", async () => {
   );
 });
 
-test("RedisLockAdapter listHeldAsync handles scan errors gracefully", async () => {
+test("RedisLockAdapter listHeldAsync handles scan errors gracefully [redis-lock-adapter]", async () => {
   const mockRedis = createMockRedis({
     status: "ready",
     scan: async () => {
@@ -691,7 +691,7 @@ test("RedisLockAdapter listHeldAsync handles scan errors gracefully", async () =
   );
 });
 
-test("RedisLockAdapter acquireAsync returns not acquired when lock already held", async () => {
+test("RedisLockAdapter acquireAsync returns not acquired when lock already held [redis-lock-adapter]", async () => {
   const mockRedis = createMockRedis({
     status: "ready",
     set: async () => null, // NX fails, lock exists
@@ -712,7 +712,7 @@ test("RedisLockAdapter acquireAsync returns not acquired when lock already held"
 // forceStealAsync error paths
 // =============================================================================
 
-test("RedisLockAdapter forceStealAsync throws when lock does not exist", async () => {
+test("RedisLockAdapter forceStealAsync throws when lock does not exist [redis-lock-adapter]", async () => {
   const mockRedis = createMockRedis({
     status: "ready",
     eval: async () => -1,
@@ -727,7 +727,7 @@ test("RedisLockAdapter forceStealAsync throws when lock does not exist", async (
   );
 });
 
-test("RedisLockAdapter forceStealAsync throws on connection error", async () => {
+test("RedisLockAdapter forceStealAsync throws on connection error [redis-lock-adapter]", async () => {
   const mockRedis = createMockRedis({
     status: "ready",
     eval: async () => {
@@ -742,7 +742,7 @@ test("RedisLockAdapter forceStealAsync throws on connection error", async () => 
   );
 });
 
-test("RedisLockAdapter forceStealAsync throws on redis set error", async () => {
+test("RedisLockAdapter forceStealAsync throws on redis set error [redis-lock-adapter]", async () => {
   const mockRedis = createMockRedis({
     status: "ready",
     eval: async () => {
@@ -757,7 +757,7 @@ test("RedisLockAdapter forceStealAsync throws on redis set error", async () => {
   );
 });
 
-test("RedisLockAdapter forceStealAsync includes forceStealReason in metadata", async () => {
+test("RedisLockAdapter forceStealAsync includes forceStealReason in metadata [redis-lock-adapter]", async () => {
   const mockRedis = createMockRedis({
     status: "ready",
     eval: async (_script: string, _numKeys: number, ...args: string[]) => {
@@ -782,7 +782,7 @@ test("RedisLockAdapter forceStealAsync includes forceStealReason in metadata", a
 // extendAsync race conditions and error paths
 // =============================================================================
 
-test("RedisLockAdapter extendAsync throws on connection error during eval", async () => {
+test("RedisLockAdapter extendAsync throws on connection error during eval [redis-lock-adapter]", async () => {
   const mockRedis = createMockRedis({
     status: "ready",
     eval: async () => {
@@ -797,7 +797,7 @@ test("RedisLockAdapter extendAsync throws on connection error during eval", asyn
   );
 });
 
-test("RedisLockAdapter extendAsync throws on connection error during get", async () => {
+test("RedisLockAdapter extendAsync throws on connection error during get [redis-lock-adapter]", async () => {
   let evalCalled = false;
   const mockRedis = createMockRedis({
     status: "ready",
@@ -818,7 +818,7 @@ test("RedisLockAdapter extendAsync throws on connection error during get", async
   );
 });
 
-test("RedisLockAdapter extendAsync returns null when eval returns unexpected value", async () => {
+test("RedisLockAdapter extendAsync returns null when eval returns unexpected value [redis-lock-adapter]", async () => {
   const mockRedis = createMockRedis({
     status: "ready",
     eval: async () => 99, // Unexpected return value (should be 0, 1, or -1)
@@ -830,7 +830,7 @@ test("RedisLockAdapter extendAsync returns null when eval returns unexpected val
   assert.equal(result, null);
 });
 
-test("RedisLockAdapter extendAsync handles partial JSON in lock data", async () => {
+test("RedisLockAdapter extendAsync handles partial JSON in lock data [redis-lock-adapter]", async () => {
   const mockRedis = createMockRedis({
     status: "ready",
     eval: async () => 1,
@@ -844,7 +844,7 @@ test("RedisLockAdapter extendAsync handles partial JSON in lock data", async () 
   );
 });
 
-test("RedisLockAdapter extendAsync race condition: lock deleted between eval and get", async () => {
+test("RedisLockAdapter extendAsync race condition: lock deleted between eval and get [redis-lock-adapter]", async () => {
   let evalCount = 0;
   const mockRedis = createMockRedis({
     status: "ready",
@@ -865,7 +865,7 @@ test("RedisLockAdapter extendAsync race condition: lock deleted between eval and
   assert.equal(result, null);
 });
 
-test("RedisLockAdapter extendAsync race condition: owner changed between eval and get", async () => {
+test("RedisLockAdapter extendAsync race condition: owner changed between eval and get [redis-lock-adapter]", async () => {
   let evalCount = 0;
   let getCount = 0;
   const mockRedis = createMockRedis({
@@ -900,7 +900,7 @@ test("RedisLockAdapter extendAsync race condition: owner changed between eval an
 // Connection error handling
 // =============================================================================
 
-test("RedisLockAdapter releaseAsync throws on connection error", async () => {
+test("RedisLockAdapter releaseAsync throws on connection error [redis-lock-adapter]", async () => {
   const mockRedis = createMockRedis({
     status: "ready",
     eval: async () => {
@@ -915,7 +915,7 @@ test("RedisLockAdapter releaseAsync throws on connection error", async () => {
   );
 });
 
-test("RedisLockAdapter inspectAsync throws on connection error", async () => {
+test("RedisLockAdapter inspectAsync throws on connection error [redis-lock-adapter]", async () => {
   const mockRedis = createMockRedis({
     status: "ready",
     get: async () => {
@@ -930,7 +930,7 @@ test("RedisLockAdapter inspectAsync throws on connection error", async () => {
   );
 });
 
-test("RedisLockAdapter listHeldAsync throws on mget error", async () => {
+test("RedisLockAdapter listHeldAsync throws on mget error [redis-lock-adapter]", async () => {
   const mockRedis = createMockRedis({
     status: "ready",
     scan: async () => ["0", ["lock:key1", "lock:key2"]],
@@ -946,7 +946,7 @@ test("RedisLockAdapter listHeldAsync throws on mget error", async () => {
   );
 });
 
-test("RedisLockAdapter acquireAsync throws on connection error", async () => {
+test("RedisLockAdapter acquireAsync throws on connection error [redis-lock-adapter]", async () => {
   const mockRedis = createMockRedis({
     status: "ready",
     set: async () => {
@@ -961,7 +961,7 @@ test("RedisLockAdapter acquireAsync throws on connection error", async () => {
   );
 });
 
-test("RedisLockAdapter acquireAsync uses default TTL of 30000ms", async () => {
+test("RedisLockAdapter acquireAsync uses default TTL of 30000ms [redis-lock-adapter]", async () => {
   let setArgs: any[] = [];
   const mockRedis = createMockRedis({
     status: "ready",
@@ -979,7 +979,7 @@ test("RedisLockAdapter acquireAsync uses default TTL of 30000ms", async () => {
   assert.equal(setArgs[pxIndex + 1], 30000);
 });
 
-test("RedisLockAdapter acquireAsync respects provided ttlMs", async () => {
+test("RedisLockAdapter acquireAsync respects provided ttlMs [redis-lock-adapter]", async () => {
   let setArgs: any[] = [];
   const mockRedis = createMockRedis({
     status: "ready",
@@ -997,7 +997,7 @@ test("RedisLockAdapter acquireAsync respects provided ttlMs", async () => {
   assert.equal(setArgs[pxIndex + 1], 60000);
 });
 
-test("RedisLockAdapter acquireAsync handles malformed lock data returned from redis", async () => {
+test("RedisLockAdapter acquireAsync handles malformed lock data returned from redis [redis-lock-adapter]", async () => {
   const mockRedis = createMockRedis({
     status: "ready",
     set: async () => "OK",
@@ -1013,7 +1013,7 @@ test("RedisLockAdapter acquireAsync handles malformed lock data returned from re
   assert.ok(result.lock);
 });
 
-test("RedisLockAdapter releaseAsync returns false when eval returns unexpected value", async () => {
+test("RedisLockAdapter releaseAsync returns false when eval returns unexpected value [redis-lock-adapter]", async () => {
   const mockRedis = createMockRedis({
     status: "ready",
     eval: async () => 999, // Unexpected return value
@@ -1031,7 +1031,7 @@ test("RedisLockAdapter releaseAsync returns false when eval returns unexpected v
 // Lock release error handling
 // =============================================================================
 
-test("RedisLockAdapter releaseAsync handles redis error during DEL", async () => {
+test("RedisLockAdapter releaseAsync handles redis error during DEL [redis-lock-adapter]", async () => {
   const mockRedis = createMockRedis({
     status: "ready",
     eval: async () => {
@@ -1046,7 +1046,7 @@ test("RedisLockAdapter releaseAsync handles redis error during DEL", async () =>
   );
 });
 
-test("RedisLockAdapter close logs quit error and disconnects", async () => {
+test("RedisLockAdapter close logs quit error and disconnects [redis-lock-adapter]", async () => {
   let disconnected = false;
   const mockRedis = createMockRedis({
     status: "ready",
@@ -1063,7 +1063,7 @@ test("RedisLockAdapter close logs quit error and disconnects", async () => {
   assert.equal(disconnected, true);
 });
 
-test("RedisLockAdapter close handles disconnect error gracefully", async () => {
+test("RedisLockAdapter close handles disconnect error gracefully [redis-lock-adapter]", async () => {
   const mockRedis = createMockRedis({
     status: "wait",
     disconnect: () => {
@@ -1087,7 +1087,7 @@ test("RedisLockAdapter close handles disconnect error gracefully", async () => {
 // ensureConnected edge cases
 // =============================================================================
 
-test("RedisLockAdapter ensureConnected reconnects when status is wait and connect succeeds", async () => {
+test("RedisLockAdapter ensureConnected reconnects when status is wait and connect succeeds [redis-lock-adapter]", async () => {
   let connectCalled = false;
   const mockRedis = createMockRedis({
     status: "wait",
@@ -1105,7 +1105,7 @@ test("RedisLockAdapter ensureConnected reconnects when status is wait and connec
   assert.equal(mockRedis.status, "ready");
 });
 
-test("RedisLockAdapter ensureConnected does not reconnect when status is ready", async () => {
+test("RedisLockAdapter ensureConnected does not reconnect when status is ready [redis-lock-adapter]", async () => {
   const mockRedis = createMockRedis({ status: "ready" });
   const adapter = createAdapterWithMockRedis(mockRedis);
 
@@ -1121,7 +1121,7 @@ test("RedisLockAdapter ensureConnected does not reconnect when status is ready",
 // Metadata handling
 // =============================================================================
 
-test("RedisLockAdapter forceStealAsync stores metadata as JSON string", async () => {
+test("RedisLockAdapter forceStealAsync stores metadata as JSON string [redis-lock-adapter]", async () => {
   let storedMetadata: string | null = null;
   const mockRedis = createMockRedis({
     status: "ready",
@@ -1140,7 +1140,7 @@ test("RedisLockAdapter forceStealAsync stores metadata as JSON string", async ()
   assert.equal(metadata.forceStealReason, "reason: testing");
 });
 
-test("RedisLockAdapter acquireAsync has null metadata by default", async () => {
+test("RedisLockAdapter acquireAsync has null metadata by default [redis-lock-adapter]", async () => {
   let storedMetadata: string | null = null;
   const mockRedis = createMockRedis({
     status: "ready",
@@ -1161,7 +1161,7 @@ test("RedisLockAdapter acquireAsync has null metadata by default", async () => {
 // Fencing token handling
 // =============================================================================
 
-test("RedisLockAdapter fencing token increments across acquire and forceSteal", async () => {
+test("RedisLockAdapter fencing token increments across acquire and forceSteal [redis-lock-adapter]", async () => {
   const adapter = new RedisLockAdapter({ host: "localhost", port: 6379 });
   const getFencingCounter = () => (adapter as unknown as { fencingCounter: number }).fencingCounter;
 
@@ -1196,7 +1196,7 @@ test("RedisLockAdapter fencing token increments across acquire and forceSteal", 
   await adapter.close();
 });
 
-test("RedisLockAdapter extendAsync does not increment fencing token", async () => {
+test("RedisLockAdapter extendAsync does not increment fencing token [redis-lock-adapter]", async () => {
   const adapter = new RedisLockAdapter({ host: "localhost", port: 6379 });
   const getFencingCounter = () => (adapter as unknown as { fencingCounter: number }).fencingCounter;
 
@@ -1231,7 +1231,7 @@ test("RedisLockAdapter extendAsync does not increment fencing token", async () =
 // listHeldAsync edge cases
 // =============================================================================
 
-test("RedisLockAdapter listHeldAsync handles empty scan result", async () => {
+test("RedisLockAdapter listHeldAsync handles empty scan result [redis-lock-adapter]", async () => {
   const mockRedis = createMockRedis({
     status: "ready",
     scan: async () => ["0", []], // Empty keys array
@@ -1243,7 +1243,7 @@ test("RedisLockAdapter listHeldAsync handles empty scan result", async () => {
   assert.equal(result.length, 0);
 });
 
-test("RedisLockAdapter listHeldAsync handles cursor not exhausted", async () => {
+test("RedisLockAdapter listHeldAsync handles cursor not exhausted [redis-lock-adapter]", async () => {
   let scanCount = 0;
   const mockRedis = createMockRedis({
     status: "ready",
@@ -1274,7 +1274,7 @@ test("RedisLockAdapter listHeldAsync handles cursor not exhausted", async () => 
   assert.ok(scanCount >= 1);
 });
 
-test("RedisLockAdapter listHeldAsync respects limit and stops early", async () => {
+test("RedisLockAdapter listHeldAsync respects limit and stops early [redis-lock-adapter]", async () => {
   let mgetCalls = 0;
   const mockRedis = createMockRedis({
     status: "ready",
@@ -1306,7 +1306,7 @@ test("RedisLockAdapter listHeldAsync respects limit and stops early", async () =
 // Lock key prefix handling
 // =============================================================================
 
-test("RedisLockAdapter operations use lock: prefix for keys", async () => {
+test("RedisLockAdapter operations use lock: prefix for keys [redis-lock-adapter]", async () => {
   let capturedKey: string | null = null;
   const mockRedis = createMockRedis({
     status: "ready",

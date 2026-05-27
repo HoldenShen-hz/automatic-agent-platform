@@ -19,7 +19,7 @@ function createTempDir(): string {
   return join("/tmp", `cross-division-test-${Date.now()}-${Math.random().toString(16).slice(2)}`);
 }
 
-test("runStableCrossDivisionRecoveryDrill executes all two scenarios successfully", async () => {
+test("runStableCrossDivisionRecoveryDrill executes all two scenarios successfully [stable-cross-division-recovery-drill]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableCrossDivisionRecoveryDrill({ outputDir });
@@ -38,7 +38,7 @@ test("runStableCrossDivisionRecoveryDrill executes all two scenarios successfull
   }
 });
 
-test("cross_division_overview scenario passes", async () => {
+test("cross_division_overview scenario passes [stable-cross-division-recovery-drill]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableCrossDivisionRecoveryDrill({ outputDir });
@@ -55,7 +55,7 @@ test("cross_division_overview scenario passes", async () => {
   }
 });
 
-test("cross_division_replay_matrix scenario passes", async () => {
+test("cross_division_replay_matrix scenario passes [stable-cross-division-recovery-drill]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableCrossDivisionRecoveryDrill({ outputDir });
@@ -72,7 +72,7 @@ test("cross_division_replay_matrix scenario passes", async () => {
   }
 });
 
-test("writeStableCrossDivisionRecoveryDrillReport writes valid JSON", async () => {
+test("writeStableCrossDivisionRecoveryDrillReport writes valid JSON [stable-cross-division-recovery-drill]", async () => {
   const outputDir = createTempDir();
   const reportPath = join(outputDir, "report.json");
   try {
@@ -94,7 +94,7 @@ test("writeStableCrossDivisionRecoveryDrillReport writes valid JSON", async () =
   }
 });
 
-test("report contains valid startedAt and finishedAt timestamps", async () => {
+test("report contains valid startedAt and finishedAt timestamps [stable-cross-division-recovery-drill]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableCrossDivisionRecoveryDrill({ outputDir });
@@ -113,7 +113,7 @@ test("report contains valid startedAt and finishedAt timestamps", async () => {
   }
 });
 
-test("report outputDir matches options", async () => {
+test("report outputDir matches options [stable-cross-division-recovery-drill]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableCrossDivisionRecoveryDrill({ outputDir });
@@ -126,7 +126,7 @@ test("report outputDir matches options", async () => {
   }
 });
 
-test("each scenario has durationMs greater than zero", async () => {
+test("each scenario has durationMs greater than zero [stable-cross-division-recovery-drill]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableCrossDivisionRecoveryDrill({ outputDir });

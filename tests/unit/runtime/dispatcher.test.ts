@@ -22,20 +22,20 @@ test.afterEach(() => {
   resetMultiStepToolRegistryForTests();
 });
 
-test("executeToolCall handles invalid JSON arguments gracefully", async () => {
+test("executeToolCall handles invalid JSON arguments gracefully [dispatcher]", async () => {
   const result = await executeMultiStepToolCallForTests("todo_write", "not valid json");
   const parsed = JSON.parse(result);
   assert.equal(parsed.success, true);
   assert.equal(parsed.operation, "create");
 });
 
-test("executeToolCall handles empty todo_write arguments", async () => {
+test("executeToolCall handles empty todo_write arguments [dispatcher]", async () => {
   const result = await executeMultiStepToolCallForTests("todo_write", "{}");
   const parsed = JSON.parse(result);
   assert.equal(parsed.success, true);
 });
 
-test("executeToolCall todo_write with create operation", async () => {
+test("executeToolCall todo_write with create operation [dispatcher]", async () => {
   const result = await executeMultiStepToolCallForTests(
     "todo_write",
     JSON.stringify({
@@ -49,34 +49,34 @@ test("executeToolCall todo_write with create operation", async () => {
   assert.equal(parsed.operation, "create");
 });
 
-test("executeToolCall question returns skipped", async () => {
+test("executeToolCall question returns skipped [dispatcher]", async () => {
   const result = await executeMultiStepToolCallForTests("question", JSON.stringify({}));
   const parsed = JSON.parse(result);
   assert.equal(parsed.success, true);
   assert.equal(parsed.status, "skipped");
 });
 
-test("executeToolCall web_search without query returns error", async () => {
+test("executeToolCall web_search without query returns error [dispatcher]", async () => {
   const result = await executeMultiStepToolCallForTests("web_search", JSON.stringify({}));
   assertErrorResult(result, "MISSING_QUERY");
 });
 
-test("executeToolCall web_fetch without url returns error", async () => {
+test("executeToolCall web_fetch without url returns error [dispatcher]", async () => {
   const result = await executeMultiStepToolCallForTests("web_fetch", JSON.stringify({}));
   assertErrorResult(result, "MISSING_URL");
 });
 
-test("executeToolCall git without args returns error", async () => {
+test("executeToolCall git without args returns error [dispatcher]", async () => {
   const result = await executeMultiStepToolCallForTests("git", JSON.stringify({}));
   assertErrorResult(result, "MISSING_GIT_ARGS");
 });
 
-test("executeToolCall repo-map without query returns error", async () => {
+test("executeToolCall repo-map without query returns error [dispatcher]", async () => {
   const result = await executeMultiStepToolCallForTests("repo-map", JSON.stringify({}));
   assertErrorResult(result, "MISSING_QUERY");
 });
 
-test("executeToolCall repo-map with empty query returns error", async () => {
+test("executeToolCall repo-map with empty query returns error [dispatcher]", async () => {
   const result = await executeMultiStepToolCallForTests(
     "repo-map",
     JSON.stringify({ query: "   " }),
@@ -84,7 +84,7 @@ test("executeToolCall repo-map with empty query returns error", async () => {
   assertErrorResult(result, "MISSING_QUERY");
 });
 
-test("executeToolCall wait-agent without agentId returns error", async () => {
+test("executeToolCall wait-agent without agentId returns error [dispatcher]", async () => {
   const result = await executeMultiStepToolCallForTests(
     "wait-agent",
     JSON.stringify({}),
@@ -92,7 +92,7 @@ test("executeToolCall wait-agent without agentId returns error", async () => {
   assertErrorResult(result, "MISSING_AGENT_ID");
 });
 
-test("executeToolCall wait-agent with unknown agent returns error", async () => {
+test("executeToolCall wait-agent with unknown agent returns error [dispatcher]", async () => {
   const result = await executeMultiStepToolCallForTests(
     "wait-agent",
     JSON.stringify({ agentId: "nonexistent-agent" }),
@@ -100,7 +100,7 @@ test("executeToolCall wait-agent with unknown agent returns error", async () => 
   assertErrorResult(result, "AGENT_NOT_FOUND");
 });
 
-test("executeToolCall send-message without agentId returns error", async () => {
+test("executeToolCall send-message without agentId returns error [dispatcher]", async () => {
   const result = await executeMultiStepToolCallForTests(
     "send-message",
     JSON.stringify({ message: "hello" }),
@@ -108,7 +108,7 @@ test("executeToolCall send-message without agentId returns error", async () => {
   assertErrorResult(result, "MISSING_ARGS");
 });
 
-test("executeToolCall send-message without message returns error", async () => {
+test("executeToolCall send-message without message returns error [dispatcher]", async () => {
   const result = await executeMultiStepToolCallForTests(
     "send-message",
     JSON.stringify({ agentId: "agent-1" }),
@@ -116,7 +116,7 @@ test("executeToolCall send-message without message returns error", async () => {
   assertErrorResult(result, "MISSING_ARGS");
 });
 
-test("executeToolCall batch-tool without toolCalls returns error", async () => {
+test("executeToolCall batch-tool without toolCalls returns error [dispatcher]", async () => {
   const result = await executeMultiStepToolCallForTests(
     "batch-tool",
     JSON.stringify({}),
@@ -124,7 +124,7 @@ test("executeToolCall batch-tool without toolCalls returns error", async () => {
   assertErrorResult(result, "MISSING_TOOL_CALLS");
 });
 
-test("executeToolCall batch-tool with empty toolCalls array returns error", async () => {
+test("executeToolCall batch-tool with empty toolCalls array returns error [dispatcher]", async () => {
   const result = await executeMultiStepToolCallForTests(
     "batch-tool",
     JSON.stringify({ toolCalls: [] }),
@@ -132,7 +132,7 @@ test("executeToolCall batch-tool with empty toolCalls array returns error", asyn
   assertErrorResult(result, "MISSING_TOOL_CALLS");
 });
 
-test("executeToolCall batch-tool serial execution", async () => {
+test("executeToolCall batch-tool serial execution [dispatcher]", async () => {
   const result = await executeMultiStepToolCallForTests(
     "batch-tool",
     JSON.stringify({
@@ -148,7 +148,7 @@ test("executeToolCall batch-tool serial execution", async () => {
   assert.equal(parsed.results.length, 1);
 });
 
-test("executeToolCall batch-tool parallel execution", async () => {
+test("executeToolCall batch-tool parallel execution [dispatcher]", async () => {
   const result = await executeMultiStepToolCallForTests(
     "batch-tool",
     JSON.stringify({
@@ -165,7 +165,7 @@ test("executeToolCall batch-tool parallel execution", async () => {
   assert.equal(parsed.results.length, 2);
 });
 
-test("executeToolCall unknown tool returns error", async () => {
+test("executeToolCall unknown tool returns error [dispatcher]", async () => {
   const result = await executeMultiStepToolCallForTests(
     "nonexistent-tool",
     JSON.stringify({}),
@@ -173,7 +173,7 @@ test("executeToolCall unknown tool returns error", async () => {
   assertErrorResult(result, "UNKNOWN_TOOL");
 });
 
-test("executeToolCall web_search with query formats result correctly", async () => {
+test("executeToolCall web_search with query formats result correctly [dispatcher]", async () => {
   const result = await executeMultiStepToolCallForTests(
     "web_search",
     JSON.stringify({ query: "test search" }),
@@ -183,7 +183,7 @@ test("executeToolCall web_search with query formats result correctly", async () 
   assert.ok(parsed.hasOwnProperty("results") || parsed.hasOwnProperty("error"));
 });
 
-test("executeToolCall web_fetch with valid url formats result correctly", async () => {
+test("executeToolCall web_fetch with valid url formats result correctly [dispatcher]", async () => {
   const result = await executeMultiStepToolCallForTests(
     "web_fetch",
     JSON.stringify({ url: "https://example.com" }),
@@ -192,7 +192,7 @@ test("executeToolCall web_fetch with valid url formats result correctly", async 
   assert.ok(parsed.hasOwnProperty("success"));
 });
 
-test("executeToolCall spawn-agent creates agent and returns response", async () => {
+test("executeToolCall spawn-agent creates agent and returns response [dispatcher]", async () => {
   const result = await executeMultiStepToolCallForTests(
     "spawn-agent",
     JSON.stringify({
@@ -208,7 +208,7 @@ test("executeToolCall spawn-agent creates agent and returns response", async () 
   assert.ok(parsed.hasOwnProperty("status"));
 });
 
-test("executeToolCall spawn-agent reuses existing agent", async () => {
+test("executeToolCall spawn-agent reuses existing agent [dispatcher]", async () => {
   const result1 = await executeMultiStepToolCallForTests(
     "spawn-agent",
     JSON.stringify({
@@ -234,7 +234,7 @@ test("executeToolCall spawn-agent reuses existing agent", async () => {
   assert.equal(parsed2.messageCount, 1);
 });
 
-test("executeToolCall wait-agent retrieves existing agent", async () => {
+test("executeToolCall wait-agent retrieves existing agent [dispatcher]", async () => {
   await executeMultiStepToolCallForTests(
     "spawn-agent",
     JSON.stringify({
@@ -253,7 +253,7 @@ test("executeToolCall wait-agent retrieves existing agent", async () => {
   assert.equal(parsed.agentId, "wait-test-agent");
 });
 
-test("executeToolCall send-message adds to history and executes", async () => {
+test("executeToolCall send-message adds to history and executes [dispatcher]", async () => {
   await executeMultiStepToolCallForTests(
     "spawn-agent",
     JSON.stringify({
@@ -275,7 +275,7 @@ test("executeToolCall send-message adds to history and executes", async () => {
   assert.equal(parsed.messageCount, 2);
 });
 
-test("executeToolCall git status command", async () => {
+test("executeToolCall git status command [dispatcher]", async () => {
   const result = await executeMultiStepToolCallForTests(
     "git",
     JSON.stringify({ args: ["status"] }),
@@ -285,7 +285,7 @@ test("executeToolCall git status command", async () => {
   assert.ok(parsed.hasOwnProperty("requestedToolName"));
 });
 
-test("executeToolCall git with cwd parameter", async () => {
+test("executeToolCall git with cwd parameter [dispatcher]", async () => {
   const result = await executeMultiStepToolCallForTests(
     "git",
     JSON.stringify({
@@ -297,7 +297,7 @@ test("executeToolCall git with cwd parameter", async () => {
   assert.ok(parsed.hasOwnProperty("success"));
 });
 
-test("executeToolCall repo-map with valid query", async () => {
+test("executeToolCall repo-map with valid query [dispatcher]", async () => {
   const result = await executeMultiStepToolCallForTests(
     "repo-map",
     JSON.stringify({
@@ -314,7 +314,7 @@ test("executeToolCall repo-map with valid query", async () => {
   }
 });
 
-test("executeToolCall git catches path_outside_workspace error from resolveMultiStepToolPath", async () => {
+test("executeToolCall git catches path_outside_workspace error from resolveMultiStepToolPath [dispatcher]", async () => {
   // When cwd is outside the repo workspace, resolveMultiStepToolPath throws.
   // The git case's try/catch (line 276) handles this and returns GIT_EXECUTION_FAILED.
   const result = await executeMultiStepToolCallForTests(
@@ -327,7 +327,7 @@ test("executeToolCall git catches path_outside_workspace error from resolveMulti
   assert.ok(parsed.error.includes("tool.path_outside_workspace"));
 });
 
-test("executeToolCall repo-map catches path_outside_workspace error from resolveMultiStepToolPath", async () => {
+test("executeToolCall repo-map catches path_outside_workspace error from resolveMultiStepToolPath [dispatcher]", async () => {
   // When rootPath is outside the repo workspace, resolveMultiStepToolPath throws.
   // The repo-map case's try/catch (line 304) handles this and returns REPO_MAP_ERROR.
   const result = await executeMultiStepToolCallForTests(
@@ -340,7 +340,7 @@ test("executeToolCall repo-map catches path_outside_workspace error from resolve
   assert.ok(parsed.error.includes("tool.path_outside_workspace"));
 });
 
-test("executeToolCall batch-tool parallel with mixed success and error results", async () => {
+test("executeToolCall batch-tool parallel with mixed success and error results [dispatcher]", async () => {
   // Tests the Promise.all path in batch-tool parallel execution with a tool that returns error.
   // The Promise.all itself doesn't reject (tools return error JSON, not throw).
   // The outer wrapper always has success:true; individual tool outcomes are in the result JSON.

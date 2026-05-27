@@ -7,7 +7,7 @@ import { AuthoritativeTaskStore } from "../../../../src/platform/five-plane-stat
 import { SqliteDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite-database.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 
-test("HaProgramService reports missing HA readiness as blockers by default", () => {
+test("HaProgramService reports missing HA readiness as blockers by default [ha-program-service]", () => {
   const workspace = createTempWorkspace("aa-ha-program-");
   const dbPath = join(workspace, "ha-program.db");
   const db = new SqliteDatabase(dbPath);
@@ -26,7 +26,7 @@ test("HaProgramService reports missing HA readiness as blockers by default", () 
   }
 });
 
-test("HaProgramService checks environment-specific HA requirements", () => {
+test("HaProgramService checks environment-specific HA requirements [ha-program-service]", () => {
   const workspace = createTempWorkspace("aa-ha-env-");
   const dbPath = join(workspace, "ha-env.db");
   const db = new SqliteDatabase(dbPath);
@@ -48,7 +48,7 @@ test("HaProgramService checks environment-specific HA requirements", () => {
   }
 });
 
-test("HaProgramService returns report with required fields", () => {
+test("HaProgramService returns report with required fields [ha-program-service]", () => {
   const workspace = createTempWorkspace("aa-ha-report-fields-");
   const dbPath = join(workspace, "ha-report-fields.db");
   const db = new SqliteDatabase(dbPath);
@@ -70,7 +70,7 @@ test("HaProgramService returns report with required fields", () => {
   }
 });
 
-test("HaProgramService handles dev environment without HA requirements", () => {
+test("HaProgramService handles dev environment without HA requirements [ha-program-service]", () => {
   const workspace = createTempWorkspace("aa-ha-dev-");
   const dbPath = join(workspace, "ha-dev.db");
   const db = new SqliteDatabase(dbPath);

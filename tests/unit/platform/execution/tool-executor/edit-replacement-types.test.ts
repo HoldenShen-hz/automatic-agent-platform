@@ -20,7 +20,7 @@ import type {
   PreparedEdit,
 } from "../../../../../src/platform/five-plane-execution/tool-executor/edit-replacement/edit-replacement-types.js";
 
-test("EditReplacementAttemptLevel type accepts valid values", () => {
+test("EditReplacementAttemptLevel type accepts valid values [edit-replacement-types]", () => {
   const levels: EditReplacementAttemptLevel[] = [
     "exact",
     "whitespace_normalized",
@@ -31,7 +31,7 @@ test("EditReplacementAttemptLevel type accepts valid values", () => {
   assert.equal(levels.length, 5);
 });
 
-test("EditReplacementAttempt structure is correct", () => {
+test("EditReplacementAttempt structure is correct [edit-replacement-types]", () => {
   const attempt: EditReplacementAttempt = {
     attemptLevel: "exact",
     matched: true,
@@ -46,7 +46,7 @@ test("EditReplacementAttempt structure is correct", () => {
   assert.equal(attempt.similarityScore, 1.0);
 });
 
-test("EditReplacementAttempt allows null similarityScore", () => {
+test("EditReplacementAttempt allows null similarityScore [edit-replacement-types]", () => {
   const attempt: EditReplacementAttempt = {
     attemptLevel: "fuzzy",
     matched: false,
@@ -59,7 +59,7 @@ test("EditReplacementAttempt allows null similarityScore", () => {
   assert.equal(attempt.matched, false);
 });
 
-test("EditInstruction structure is correct", () => {
+test("EditInstruction structure is correct [edit-replacement-types]", () => {
   const instruction: EditInstruction = {
     oldString: "hello",
     newString: "world",
@@ -68,7 +68,7 @@ test("EditInstruction structure is correct", () => {
   assert.equal(instruction.newString, "world");
 });
 
-test("EditInstruction allows optional anchors", () => {
+test("EditInstruction allows optional anchors [edit-replacement-types]", () => {
   const instruction: EditInstruction = {
     oldString: "hello",
     newString: "world",
@@ -79,7 +79,7 @@ test("EditInstruction allows optional anchors", () => {
   assert.equal(instruction.afterAnchor, "suffix");
 });
 
-test("EditReplacementData structure is correct", () => {
+test("EditReplacementData structure is correct [edit-replacement-types]", () => {
   const data: EditReplacementData = {
     attempts: [],
     matchLevel: "exact",
@@ -90,7 +90,7 @@ test("EditReplacementData structure is correct", () => {
   assert.equal(data.appliedRange, "0-10");
 });
 
-test("EditReplacementData allows null values", () => {
+test("EditReplacementData allows null values [edit-replacement-types]", () => {
   const data: EditReplacementData = {
     attempts: [],
     matchLevel: null,
@@ -101,12 +101,12 @@ test("EditReplacementData allows null values", () => {
   assert.equal(data.appliedRange, null);
 });
 
-test("EditBatchItemResult status accepts valid values", () => {
+test("EditBatchItemResult status accepts valid values [edit-replacement-types]", () => {
   const statuses: EditBatchItemResult["status"][] = ["applied", "already_applied", "failed"];
   assert.equal(statuses.length, 3);
 });
 
-test("EditBatchItemResult structure is correct", () => {
+test("EditBatchItemResult structure is correct [edit-replacement-types]", () => {
   const item: EditBatchItemResult = {
     index: 0,
     status: "applied",
@@ -122,7 +122,7 @@ test("EditBatchItemResult structure is correct", () => {
   assert.equal(item.errorCode, null);
 });
 
-test("EditBatchItemResult allows error code on failure", () => {
+test("EditBatchItemResult allows error code on failure [edit-replacement-types]", () => {
   const item: EditBatchItemResult = {
     index: 0,
     status: "failed",
@@ -137,7 +137,7 @@ test("EditBatchItemResult allows error code on failure", () => {
   assert.equal(item.errorCode, "edit.no_matching_content");
 });
 
-test("EditBatchData structure is correct", () => {
+test("EditBatchData structure is correct [edit-replacement-types]", () => {
   const data: EditBatchData = {
     edits: [],
     appliedEditCount: 0,
@@ -147,7 +147,7 @@ test("EditBatchData structure is correct", () => {
   assert.equal(data.rolledBack, false);
 });
 
-test("MatchCandidate structure is correct", () => {
+test("MatchCandidate structure is correct [edit-replacement-types]", () => {
   const candidate: MatchCandidate = {
     startOffset: 0,
     endOffset: 10,
@@ -158,7 +158,7 @@ test("MatchCandidate structure is correct", () => {
   assert.equal(candidate.text, "hello world");
 });
 
-test("MatchOutcome stopReason accepts valid values", () => {
+test("MatchOutcome stopReason accepts valid values [edit-replacement-types]", () => {
   const reasons: MatchOutcome["stopReason"][] = [
     "matched",
     "multiple_candidates",
@@ -168,7 +168,7 @@ test("MatchOutcome stopReason accepts valid values", () => {
   assert.equal(reasons.length, 4);
 });
 
-test("MatchOutcome structure is correct", () => {
+test("MatchOutcome structure is correct [edit-replacement-types]", () => {
   const outcome: MatchOutcome = {
     matched: true,
     candidateCount: 1,
@@ -182,7 +182,7 @@ test("MatchOutcome structure is correct", () => {
   assert.equal(outcome.stopReason, "matched");
 });
 
-test("MatchOutcome allows null candidate", () => {
+test("MatchOutcome allows null candidate [edit-replacement-types]", () => {
   const outcome: MatchOutcome = {
     matched: false,
     candidateCount: 0,
@@ -196,7 +196,7 @@ test("MatchOutcome allows null candidate", () => {
   assert.equal(outcome.stopReason, "not_found");
 });
 
-test("StageEvaluation structure is correct", () => {
+test("StageEvaluation structure is correct [edit-replacement-types]", () => {
   const evaluation: StageEvaluation = {
     attempts: [],
     matchedCandidate: null,
@@ -207,7 +207,7 @@ test("StageEvaluation structure is correct", () => {
   assert.equal(evaluation.errorCode, null);
 });
 
-test("PreparedEdit structure is correct", () => {
+test("PreparedEdit structure is correct [edit-replacement-types]", () => {
   const prepared: PreparedEdit = {
     updatedContent: "new content",
     item: {

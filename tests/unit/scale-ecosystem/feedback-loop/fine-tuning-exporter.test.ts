@@ -36,7 +36,7 @@ function createSignal(overrides: Partial<FeedbackSignal> = {}): FeedbackSignal {
   });
 }
 
-test("FineTuningExporter exports high-quality signals as JSONL", () => {
+test("FineTuningExporter exports high-quality signals as JSONL [fine-tuning-exporter]", () => {
   const exporter = new FineTuningExporter();
   const grader = new FeedbackQualityGrader();
   const signals = [
@@ -58,7 +58,7 @@ test("FineTuningExporter exports high-quality signals as JSONL", () => {
   assert.ok(dataset.exportedAt.length > 0);
 });
 
-test("FineTuningExporter exports to JSONL format correctly", () => {
+test("FineTuningExporter exports to JSONL format correctly [fine-tuning-exporter]", () => {
   const exporter = new FineTuningExporter();
   const grader = new FeedbackQualityGrader();
   const signals = [
@@ -81,7 +81,7 @@ test("FineTuningExporter exports to JSONL format correctly", () => {
   assert.ok(parsed.output);
 });
 
-test("FineTuningExporter respects maxExamples limit", () => {
+test("FineTuningExporter respects maxExamples limit [fine-tuning-exporter]", () => {
   const exporter = new FineTuningExporter();
   const grader = new FeedbackQualityGrader();
   const signals = [
@@ -95,7 +95,7 @@ test("FineTuningExporter respects maxExamples limit", () => {
   assert.ok(dataset.totalExamples <= 2);
 });
 
-test("FineTuningExporter exports from learning signals", () => {
+test("FineTuningExporter exports from learning signals [fine-tuning-exporter]", () => {
   const exporter = new FineTuningExporter();
   const grader = new FeedbackQualityGrader();
   const learningSignals = [
@@ -119,7 +119,7 @@ test("FineTuningExporter exports from learning signals", () => {
   assert.ok(dataset.totalExamples >= 1);
 });
 
-test("FineTuningExporter exportToJson produces valid JSON", () => {
+test("FineTuningExporter exportToJson produces valid JSON [fine-tuning-exporter]", () => {
   const exporter = new FineTuningExporter();
   const grader = new FeedbackQualityGrader();
   const signals = [
@@ -134,7 +134,7 @@ test("FineTuningExporter exportToJson produces valid JSON", () => {
   assert.ok(Array.isArray(parsed.examples));
 });
 
-test("FineTuningExporter reset allows reuse of exporter", () => {
+test("FineTuningExporter reset allows reuse of exporter [fine-tuning-exporter]", () => {
   const exporter = new FineTuningExporter();
   const grader = new FeedbackQualityGrader();
   const signals = [createSignal({ signalId: "sig_1", payload: { summary: "test" } })];
@@ -149,7 +149,7 @@ test("FineTuningExporter reset allows reuse of exporter", () => {
   assert.ok(typeof dataset2.examples[0]?.id === "string");
 });
 
-test("FineTuningExporter skips signals without input or output", () => {
+test("FineTuningExporter skips signals without input or output [fine-tuning-exporter]", () => {
   const exporter = new FineTuningExporter();
   const grader = new FeedbackQualityGrader();
   const signals = [
@@ -166,7 +166,7 @@ test("FineTuningExporter skips signals without input or output", () => {
   assert.ok(dataset.totalExamples === 0 || dataset.examples.every((ex) => ex.input === ex.output));
 });
 
-test("FineTuningExporter counts high and medium quality correctly", () => {
+test("FineTuningExporter counts high and medium quality correctly [fine-tuning-exporter]", () => {
   const exporter = new FineTuningExporter();
   const grader = new FeedbackQualityGrader();
   const signals = [
@@ -178,7 +178,7 @@ test("FineTuningExporter counts high and medium quality correctly", () => {
   assert.equal(dataset.highQualityCount + dataset.mediumQualityCount, dataset.totalExamples);
 });
 
-test("FineTuningExporter respects minQualityGrade option", () => {
+test("FineTuningExporter respects minQualityGrade option [fine-tuning-exporter]", () => {
   const exporter = new FineTuningExporter();
   const grader = new FeedbackQualityGrader();
   const signals = [

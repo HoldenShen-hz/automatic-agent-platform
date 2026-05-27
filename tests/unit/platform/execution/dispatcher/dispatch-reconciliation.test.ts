@@ -159,7 +159,7 @@ function isTerminalExecutionStatus(status: ExecutionStatus): boolean {
 
 // ── Terminal Execution Detection Tests ─────────────────────────────────────────
 
-test("DispatchReconciliation: detects terminal execution ticket (succeeded)", () => {
+test("DispatchReconciliation: detects terminal execution ticket (succeeded) [dispatch-reconciliation]", () => {
   const service = new MockDispatchReconciliationService();
 
   const tickets: MockTicket[] = [{
@@ -193,7 +193,7 @@ test("DispatchReconciliation: detects terminal execution ticket (succeeded)", ()
   assert.equal(issues[0].executionStatus, "succeeded");
 });
 
-test("DispatchReconciliation: detects terminal execution ticket (failed)", () => {
+test("DispatchReconciliation: detects terminal execution ticket (failed) [dispatch-reconciliation]", () => {
   const service = new MockDispatchReconciliationService();
 
   const tickets: MockTicket[] = [{
@@ -226,7 +226,7 @@ test("DispatchReconciliation: detects terminal execution ticket (failed)", () =>
   assert.equal(issues[0].reasonCode, "execution_terminal");
 });
 
-test("DispatchReconciliation: detects terminal execution ticket (cancelled)", () => {
+test("DispatchReconciliation: detects terminal execution ticket (cancelled) [dispatch-reconciliation]", () => {
   const service = new MockDispatchReconciliationService();
 
   const tickets: MockTicket[] = [{
@@ -258,7 +258,7 @@ test("DispatchReconciliation: detects terminal execution ticket (cancelled)", ()
   assert.equal(issues[0].issueType, "terminal_execution_ticket");
 });
 
-test("DispatchReconciliation: ignores non-terminal executions", () => {
+test("DispatchReconciliation: ignores non-terminal executions [dispatch-reconciliation]", () => {
   const service = new MockDispatchReconciliationService();
 
   const tickets: MockTicket[] = [{
@@ -291,7 +291,7 @@ test("DispatchReconciliation: ignores non-terminal executions", () => {
 
 // ── Orphan Queue Claim Detection Tests ─────────────────────────────────────────
 
-test("DispatchReconciliation: detects missing active lease", () => {
+test("DispatchReconciliation: detects missing active lease [dispatch-reconciliation]", () => {
   const service = new MockDispatchReconciliationService();
 
   const tickets: MockTicket[] = [{
@@ -319,7 +319,7 @@ test("DispatchReconciliation: detects missing active lease", () => {
   assert.equal(issues[0].reasonCode, "missing_active_lease");
 });
 
-test("DispatchReconciliation: detects expired lease unreclaimed", () => {
+test("DispatchReconciliation: detects expired lease unreclaimed [dispatch-reconciliation]", () => {
   const service = new MockDispatchReconciliationService();
 
   const tickets: MockTicket[] = [{
@@ -352,7 +352,7 @@ test("DispatchReconciliation: detects expired lease unreclaimed", () => {
   assert.equal(issues[0].reasonCode, "lease_expired_unreclaimed");
 });
 
-test("DispatchReconciliation: detects lease/ticket mismatch", () => {
+test("DispatchReconciliation: detects lease/ticket mismatch [dispatch-reconciliation]", () => {
   const service = new MockDispatchReconciliationService();
 
   const tickets: MockTicket[] = [{
@@ -385,7 +385,7 @@ test("DispatchReconciliation: detects lease/ticket mismatch", () => {
   assert.equal(issues[0].reasonCode, "lease_ticket_mismatch");
 });
 
-test("DispatchReconciliation: ignores pending tickets", () => {
+test("DispatchReconciliation: ignores pending tickets [dispatch-reconciliation]", () => {
   const service = new MockDispatchReconciliationService();
 
   const tickets: MockTicket[] = [{
@@ -413,7 +413,7 @@ test("DispatchReconciliation: ignores pending tickets", () => {
 
 // ── Repair Application Tests ────────────────────────────────────────────────────
 
-test("DispatchReconciliation: repair applies terminal execution fix", () => {
+test("DispatchReconciliation: repair applies terminal execution fix [dispatch-reconciliation]", () => {
   const service = new MockDispatchReconciliationService();
 
   const tickets: MockTicket[] = [{
@@ -448,7 +448,7 @@ test("DispatchReconciliation: repair applies terminal execution fix", () => {
   assert.equal(result.applied[0].replacementTicketId, null); // No replacement for terminal
 });
 
-test("DispatchReconciliation: repair applies orphan claim fix", () => {
+test("DispatchReconciliation: repair applies orphan claim fix [dispatch-reconciliation]", () => {
   const service = new MockDispatchReconciliationService();
 
   const tickets: MockTicket[] = [{
@@ -478,7 +478,7 @@ test("DispatchReconciliation: repair applies orphan claim fix", () => {
   assert.ok(result.applied[0].replacementTicketId); // Should have replacement
 });
 
-test("DispatchReconciliation: repair handles multiple issues", () => {
+test("DispatchReconciliation: repair handles multiple issues [dispatch-reconciliation]", () => {
   const service = new MockDispatchReconciliationService();
 
   const tickets: MockTicket[] = [
@@ -517,7 +517,7 @@ test("DispatchReconciliation: repair handles multiple issues", () => {
   assert.equal(result.applied.length, 2);
 });
 
-test("DispatchReconciliation: isTerminalExecutionStatus utility", () => {
+test("DispatchReconciliation: isTerminalExecutionStatus utility [dispatch-reconciliation]", () => {
   const terminalStatuses: ExecutionStatus[] = ["succeeded", "failed", "cancelled", "superseded"];
   const nonTerminalStatuses: ExecutionStatus[] = ["created", "queued", "dispatching", "prechecking", "executing", "paused", "recovering", "blocked", "timed_out"];
 

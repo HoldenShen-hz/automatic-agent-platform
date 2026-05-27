@@ -24,7 +24,7 @@ function createPublisherProfile(overrides: Partial<PublisherProfile> = {}): Publ
 // canPublisherReleaseArtifact Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("canPublisherReleaseArtifact returns true when artifact type allowed and reputation >= 0.4", () => {
+test("canPublisherReleaseArtifact returns true when artifact type allowed and reputation >= 0.4 [publisher-profile]", () => {
   const profile = createPublisherProfile({
     allowedArtifactTypes: ["plugin", "template"],
     reputationScore: 0.5,
@@ -35,7 +35,7 @@ test("canPublisherReleaseArtifact returns true when artifact type allowed and re
   assert.equal(result, true);
 });
 
-test("canPublisherReleaseArtifact returns false when artifact type not allowed", () => {
+test("canPublisherReleaseArtifact returns false when artifact type not allowed [publisher-profile]", () => {
   const profile = createPublisherProfile({
     allowedArtifactTypes: ["plugin"],
     reputationScore: 0.8,
@@ -46,7 +46,7 @@ test("canPublisherReleaseArtifact returns false when artifact type not allowed",
   assert.equal(result, false);
 });
 
-test("canPublisherReleaseArtifact returns false when reputation below 0.4", () => {
+test("canPublisherReleaseArtifact returns false when reputation below 0.4 [publisher-profile]", () => {
   const profile = createPublisherProfile({
     allowedArtifactTypes: ["plugin"],
     reputationScore: 0.3,
@@ -57,7 +57,7 @@ test("canPublisherReleaseArtifact returns false when reputation below 0.4", () =
   assert.equal(result, false);
 });
 
-test("canPublisherReleaseArtifact returns false when both conditions fail", () => {
+test("canPublisherReleaseArtifact returns false when both conditions fail [publisher-profile]", () => {
   const profile = createPublisherProfile({
     allowedArtifactTypes: [],
     reputationScore: 0.2,
@@ -68,7 +68,7 @@ test("canPublisherReleaseArtifact returns false when both conditions fail", () =
   assert.equal(result, false);
 });
 
-test("canPublisherReleaseArtifact returns true at exact reputation threshold 0.4", () => {
+test("canPublisherReleaseArtifact returns true at exact reputation threshold 0.4 [publisher-profile]", () => {
   const profile = createPublisherProfile({
     allowedArtifactTypes: ["plugin"],
     reputationScore: 0.4,
@@ -79,7 +79,7 @@ test("canPublisherReleaseArtifact returns true at exact reputation threshold 0.4
   assert.equal(result, true);
 });
 
-test("canPublisherReleaseArtifact returns true for verified trust level with high reputation", () => {
+test("canPublisherReleaseArtifact returns true for verified trust level with high reputation [publisher-profile]", () => {
   const profile = createPublisherProfile({
     trustLevel: "verified",
     allowedArtifactTypes: ["integration"],
@@ -91,7 +91,7 @@ test("canPublisherReleaseArtifact returns true for verified trust level with hig
   assert.equal(result, true);
 });
 
-test("canPublisherReleaseArtifact returns true for enterprise trust level", () => {
+test("canPublisherReleaseArtifact returns true for enterprise trust level [publisher-profile]", () => {
   const profile = createPublisherProfile({
     trustLevel: "enterprise",
     allowedArtifactTypes: ["custom"],
@@ -103,7 +103,7 @@ test("canPublisherReleaseArtifact returns true for enterprise trust level", () =
   assert.equal(result, true);
 });
 
-test("canPublisherReleaseArtifact returns false for empty allowedArtifactTypes", () => {
+test("canPublisherReleaseArtifact returns false for empty allowedArtifactTypes [publisher-profile]", () => {
   const profile = createPublisherProfile({
     allowedArtifactTypes: [],
     reputationScore: 1.0,
@@ -118,7 +118,7 @@ test("canPublisherReleaseArtifact returns false for empty allowedArtifactTypes",
 // PublisherProfileSchema Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("PublisherProfileSchema parses valid profile", () => {
+test("PublisherProfileSchema parses valid profile [publisher-profile]", () => {
   const result = PublisherProfileSchema.safeParse({
     publisherId: "pub-123",
     displayName: "Acme Publisher",
@@ -136,7 +136,7 @@ test("PublisherProfileSchema parses valid profile", () => {
   }
 });
 
-test("PublisherProfileSchema accepts all trust levels", () => {
+test("PublisherProfileSchema accepts all trust levels [publisher-profile]", () => {
   for (const trustLevel of ["sandboxed", "verified", "enterprise"]) {
     const result = PublisherProfileSchema.safeParse({
       publisherId: "test",
@@ -147,7 +147,7 @@ test("PublisherProfileSchema accepts all trust levels", () => {
   }
 });
 
-test("PublisherProfileSchema rejects invalid trust level", () => {
+test("PublisherProfileSchema rejects invalid trust level [publisher-profile]", () => {
   const result = PublisherProfileSchema.safeParse({
     publisherId: "test",
     displayName: "Test",
@@ -157,7 +157,7 @@ test("PublisherProfileSchema rejects invalid trust level", () => {
   assert.equal(result.success, false);
 });
 
-test("PublisherProfileSchema rejects empty publisherId", () => {
+test("PublisherProfileSchema rejects empty publisherId [publisher-profile]", () => {
   const result = PublisherProfileSchema.safeParse({
     publisherId: "",
     displayName: "Test",
@@ -167,7 +167,7 @@ test("PublisherProfileSchema rejects empty publisherId", () => {
   assert.equal(result.success, false);
 });
 
-test("PublisherProfileSchema rejects empty displayName", () => {
+test("PublisherProfileSchema rejects empty displayName [publisher-profile]", () => {
   const result = PublisherProfileSchema.safeParse({
     publisherId: "test",
     displayName: "",
@@ -177,7 +177,7 @@ test("PublisherProfileSchema rejects empty displayName", () => {
   assert.equal(result.success, false);
 });
 
-test("PublisherProfileSchema rejects invalid email format when provided", () => {
+test("PublisherProfileSchema rejects invalid email format when provided [publisher-profile]", () => {
   const result = PublisherProfileSchema.safeParse({
     publisherId: "test",
     displayName: "Test",
@@ -188,7 +188,7 @@ test("PublisherProfileSchema rejects invalid email format when provided", () => 
   assert.equal(result.success, false);
 });
 
-test("PublisherProfileSchema accepts valid email format", () => {
+test("PublisherProfileSchema accepts valid email format [publisher-profile]", () => {
   const result = PublisherProfileSchema.safeParse({
     publisherId: "test",
     displayName: "Test",
@@ -199,7 +199,7 @@ test("PublisherProfileSchema accepts valid email format", () => {
   assert.equal(result.success, true);
 });
 
-test("PublisherProfileSchema allows optional contactEmail to be omitted", () => {
+test("PublisherProfileSchema allows optional contactEmail to be omitted [publisher-profile]", () => {
   const result = PublisherProfileSchema.safeParse({
     publisherId: "test",
     displayName: "Test",
@@ -209,7 +209,7 @@ test("PublisherProfileSchema allows optional contactEmail to be omitted", () => 
   assert.equal(result.success, true);
 });
 
-test("PublisherProfileSchema rejects reputationScore below 0", () => {
+test("PublisherProfileSchema rejects reputationScore below 0 [publisher-profile]", () => {
   const result = PublisherProfileSchema.safeParse({
     publisherId: "test",
     displayName: "Test",
@@ -220,7 +220,7 @@ test("PublisherProfileSchema rejects reputationScore below 0", () => {
   assert.equal(result.success, false);
 });
 
-test("PublisherProfileSchema rejects reputationScore above 1", () => {
+test("PublisherProfileSchema rejects reputationScore above 1 [publisher-profile]", () => {
   const result = PublisherProfileSchema.safeParse({
     publisherId: "test",
     displayName: "Test",
@@ -231,7 +231,7 @@ test("PublisherProfileSchema rejects reputationScore above 1", () => {
   assert.equal(result.success, false);
 });
 
-test("PublisherProfileSchema accepts boundary reputation scores 0 and 1", () => {
+test("PublisherProfileSchema accepts boundary reputation scores 0 and 1 [publisher-profile]", () => {
   const result0 = PublisherProfileSchema.safeParse({
     publisherId: "test",
     displayName: "Test",
@@ -249,7 +249,7 @@ test("PublisherProfileSchema accepts boundary reputation scores 0 and 1", () => 
   assert.equal(result1.success, true);
 });
 
-test("PublisherProfileSchema rejects negative publishedArtifactCount", () => {
+test("PublisherProfileSchema rejects negative publishedArtifactCount [publisher-profile]", () => {
   const result = PublisherProfileSchema.safeParse({
     publisherId: "test",
     displayName: "Test",
@@ -260,7 +260,7 @@ test("PublisherProfileSchema rejects negative publishedArtifactCount", () => {
   assert.equal(result.success, false);
 });
 
-test("PublisherProfileSchema accepts zero publishedArtifactCount", () => {
+test("PublisherProfileSchema accepts zero publishedArtifactCount [publisher-profile]", () => {
   const result = PublisherProfileSchema.safeParse({
     publisherId: "test",
     displayName: "Test",
@@ -271,7 +271,7 @@ test("PublisherProfileSchema accepts zero publishedArtifactCount", () => {
   assert.equal(result.success, true);
 });
 
-test("PublisherProfileSchema defaults allowedArtifactTypes to empty array", () => {
+test("PublisherProfileSchema defaults allowedArtifactTypes to empty array [publisher-profile]", () => {
   const result = PublisherProfileSchema.safeParse({
     publisherId: "test",
     displayName: "Test",
@@ -284,7 +284,7 @@ test("PublisherProfileSchema defaults allowedArtifactTypes to empty array", () =
   }
 });
 
-test("PublisherProfileSchema defaults reputationScore to 0", () => {
+test("PublisherProfileSchema defaults reputationScore to 0 [publisher-profile]", () => {
   const result = PublisherProfileSchema.safeParse({
     publisherId: "test",
     displayName: "Test",
@@ -297,7 +297,7 @@ test("PublisherProfileSchema defaults reputationScore to 0", () => {
   }
 });
 
-test("PublisherProfileSchema defaults publishedArtifactCount to 0", () => {
+test("PublisherProfileSchema defaults publishedArtifactCount to 0 [publisher-profile]", () => {
   const result = PublisherProfileSchema.safeParse({
     publisherId: "test",
     displayName: "Test",

@@ -17,7 +17,7 @@ function createHarness(prefix: string) {
   return { workspace, db, store, service };
 }
 
-test("TenantPlatformService creates workspace, organization, tenant, binding, and namespace topology", () => {
+test("TenantPlatformService creates workspace, organization, tenant, binding, and namespace topology [tenant-platform-service]", () => {
   const harness = createHarness("aa-tenant-platform-unit-");
   try {
     const organization = harness.service.createOrganization({
@@ -86,7 +86,7 @@ test("TenantPlatformService creates workspace, organization, tenant, binding, an
   }
 });
 
-test("TenantPlatformService rejects namespace when workspace and tenant belong to different organizations", () => {
+test("TenantPlatformService rejects namespace when workspace and tenant belong to different organizations [tenant-platform-service]", () => {
   const harness = createHarness("aa-tenant-platform-unit-");
   try {
     const orgA = harness.service.createOrganization({
@@ -131,7 +131,7 @@ test("TenantPlatformService rejects namespace when workspace and tenant belong t
   }
 });
 
-test("TenantPlatformService rejects invalid workspace identifier", () => {
+test("TenantPlatformService rejects invalid workspace identifier [tenant-platform-service]", () => {
   const harness = createHarness("aa-tenant-platform-");
   try {
     assert.throws(
@@ -150,7 +150,7 @@ test("TenantPlatformService rejects invalid workspace identifier", () => {
   }
 });
 
-test("TenantPlatformService creates workspace without organization", () => {
+test("TenantPlatformService creates workspace without organization [tenant-platform-service]", () => {
   const harness = createHarness("aa-tenant-platform-");
   try {
     const workspace = harness.service.createWorkspace({
@@ -173,7 +173,7 @@ test("TenantPlatformService creates workspace without organization", () => {
   }
 });
 
-test("TenantPlatformService creates multiple tenants in same organization", () => {
+test("TenantPlatformService creates multiple tenants in same organization [tenant-platform-service]", () => {
   const harness = createHarness("aa-tenant-platform-");
   try {
     const org = harness.service.createOrganization({
@@ -208,7 +208,7 @@ test("TenantPlatformService creates multiple tenants in same organization", () =
   }
 });
 
-test("TenantPlatformService enforces tenant-organization consistency for namespace", () => {
+test("TenantPlatformService enforces tenant-organization consistency for namespace [tenant-platform-service]", () => {
   const harness = createHarness("aa-tenant-platform-");
   try {
     const orgA = harness.service.createOrganization({
@@ -247,7 +247,7 @@ test("TenantPlatformService enforces tenant-organization consistency for namespa
   }
 });
 
-test("TenantPlatformService requires at least one scope for namespace", () => {
+test("TenantPlatformService requires at least one scope for namespace [tenant-platform-service]", () => {
   const harness = createHarness("aa-tenant-platform-");
   try {
     assert.throws(

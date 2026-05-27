@@ -73,7 +73,7 @@ function createFixture(name: string) {
   return { workspace, db, store, service, now, taskId, executionId };
 }
 
-test("TransitionService transitionTaskStatus writes task status events and ack records", () => {
+test("TransitionService transitionTaskStatus writes task status events and ack records [transition-service]", () => {
   const fixture = createFixture("task");
   try {
     fixture.service.transitionTaskStatus({
@@ -105,7 +105,7 @@ test("TransitionService transitionTaskStatus writes task status events and ack r
   }
 });
 
-test("TransitionService rejects illegal task terminal reentry", () => {
+test("TransitionService rejects illegal task terminal reentry [transition-service]", () => {
   const fixture = createFixture("illegal");
   try {
     fixture.store.task.updateTaskStatus(
@@ -144,7 +144,7 @@ test("TransitionService rejects illegal task terminal reentry", () => {
   }
 });
 
-test("TransitionService source keeps unified approval and terminal transition entrypoints", () => {
+test("TransitionService source keeps unified approval and terminal transition entrypoints [transition-service]", () => {
   const source = fixtureSource();
 
   assert.equal(source.includes("transitionApprovalStatus("), true);

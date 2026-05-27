@@ -9,14 +9,14 @@ import {
   type LoopDetectionConfig,
 } from "../../../src/platform/five-plane-execution/execution-engine/loop-detection.js";
 
-test("normalizeToolInputForHash normalizes strings", () => {
+test("normalizeToolInputForHash normalizes strings [loop-detection]", () => {
   assert.equal(normalizeToolInputForHash("Hello World"), "hello world");
   assert.equal(normalizeToolInputForHash("  HELLO  "), "hello");
   assert.equal(normalizeToolInputForHash(null), "null");
   assert.equal(normalizeToolInputForHash(undefined), "null");
 });
 
-test("normalizeToolInputForHash normalizes objects", () => {
+test("normalizeToolInputForHash normalizes objects [loop-detection]", () => {
   const input1 = { b: 2, a: 1 };
   const input2 = { a: 1, b: 2 };
   const hash1 = normalizeToolInputForHash(input1);
@@ -24,7 +24,7 @@ test("normalizeToolInputForHash normalizes objects", () => {
   assert.equal(hash1, hash2);
 });
 
-test("hashToolCall creates consistent hashes", () => {
+test("hashToolCall creates consistent hashes [loop-detection]", () => {
   const hash1 = hashToolCall("read", { path: "/foo" });
   const hash2 = hashToolCall("read", { path: "/foo" });
   const hash3 = hashToolCall("read", { path: "/bar" });
@@ -35,7 +35,7 @@ test("hashToolCall creates consistent hashes", () => {
   assert.notEqual(hash1, hash4);
 });
 
-test("LoopDetectionState records tool calls and detects repeats", () => {
+test("LoopDetectionState records tool calls and detects repeats [loop-detection]", () => {
   const state = new LoopDetectionState();
 
   const result1 = state.recordToolCall("read", { path: "/foo" });
@@ -63,7 +63,7 @@ test("LoopDetectionState records tool calls and detects repeats", () => {
   assert.equal(result6.action, "escalate");
 });
 
-test("LoopDetectionState differentiates between tool calls", () => {
+test("LoopDetectionState differentiates between tool calls [loop-detection]", () => {
   const state = new LoopDetectionState();
 
   state.recordToolCall("read", { path: "/foo" });
@@ -74,7 +74,7 @@ test("LoopDetectionState differentiates between tool calls", () => {
   assert.equal(patterns.length, 3);
 });
 
-test("LoopDetectionState does not false-positive on different paths to same tool", () => {
+test("LoopDetectionState does not false-positive on different paths to same tool [loop-detection]", () => {
   const state = new LoopDetectionState();
 
   // Record many calls to the same tool with different paths
@@ -86,7 +86,7 @@ test("LoopDetectionState does not false-positive on different paths to same tool
   }
 });
 
-test("LoopDetectionState does not false-positive on different arguments", () => {
+test("LoopDetectionState does not false-positive on different arguments [loop-detection]", () => {
   const state = new LoopDetectionState({ escalateThreshold: 3 });
 
   // Same tool with varying arguments should each be tracked separately
@@ -101,7 +101,7 @@ test("LoopDetectionState does not false-positive on different arguments", () => 
   }
 });
 
-test("LoopDetectionState getRepeatCount returns correct count", () => {
+test("LoopDetectionState getRepeatCount returns correct count [loop-detection]", () => {
   const state = new LoopDetectionState();
 
   assert.equal(state.getRepeatCount("read", { path: "/foo" }), 0);
@@ -113,7 +113,7 @@ test("LoopDetectionState getRepeatCount returns correct count", () => {
   assert.equal(state.getRepeatCount("read", { path: "/foo" }), 2);
 });
 
-test("LoopDetectionState wouldEscalate checks threshold", () => {
+test("LoopDetectionState wouldEscalate checks threshold [loop-detection]", () => {
   const state = new LoopDetectionState();
 
   assert.equal(state.wouldEscalate("read", { path: "/foo" }), false);
@@ -127,7 +127,7 @@ test("LoopDetectionState wouldEscalate checks threshold", () => {
   assert.equal(state.wouldEscalate("read", { path: "/foo" }), true);
 });
 
-test("LoopDetectionState reset clears patterns", () => {
+test("LoopDetectionState reset clears patterns [loop-detection]", () => {
   const state = new LoopDetectionState();
 
   state.recordToolCall("read", { path: "/foo" });
@@ -140,7 +140,7 @@ test("LoopDetectionState reset clears patterns", () => {
   assert.equal(state.getRepeatCount("read", { path: "/foo" }), 0);
 });
 
-test("LoopDetectionState removePattern removes specific pattern", () => {
+test("LoopDetectionState removePattern removes specific pattern [loop-detection]", () => {
   const state = new LoopDetectionState();
 
   state.recordToolCall("read", { path: "/foo" });
@@ -155,7 +155,7 @@ test("LoopDetectionState removePattern removes specific pattern", () => {
   assert.equal(state.getRepeatCount("read", { path: "/bar" }), 1);
 });
 
-test("LoopDetectionState with custom config", () => {
+test("LoopDetectionState with custom config [loop-detection]", () => {
   const config: LoopDetectionConfig = {
     warnThreshold: 2,
     escalateThreshold: 4,
@@ -172,7 +172,7 @@ test("LoopDetectionState with custom config", () => {
   assert.equal(patterns[0]!.count, 2);
 });
 
-test("LoopDetectionState getEscalatedPatterns", () => {
+test("LoopDetectionState getEscalatedPatterns [loop-detection]", () => {
   const state = new LoopDetectionState({ escalateThreshold: 3 });
 
   state.recordToolCall("read", { path: "/foo" });
@@ -187,7 +187,7 @@ test("LoopDetectionState getEscalatedPatterns", () => {
   assert.equal(state.getEscalatedPatterns()[0]!.toolName, "read");
 });
 
-test("SequenceLoopDetector records actions and detects loops", () => {
+test("SequenceLoopDetector records actions and detects loops [loop-detection]", () => {
   const detector = new SequenceLoopDetector({ windowSize: 3, repeatThreshold: 2 });
 
   detector.recordAction("read /foo");
@@ -199,7 +199,7 @@ test("SequenceLoopDetector records actions and detects loops", () => {
   assert.equal(result4.count, 2);
 });
 
-test("SequenceLoopDetector respects window size", () => {
+test("SequenceLoopDetector respects window size [loop-detection]", () => {
   const detector = new SequenceLoopDetector({ windowSize: 2, repeatThreshold: 2 });
 
   detector.recordAction("action1");
@@ -211,7 +211,7 @@ test("SequenceLoopDetector respects window size", () => {
   assert.ok(history.length <= 4);
 });
 
-test("SequenceLoopDetector reset clears state", () => {
+test("SequenceLoopDetector reset clears state [loop-detection]", () => {
   const detector = new SequenceLoopDetector();
 
   detector.recordAction("read /foo");
@@ -224,7 +224,7 @@ test("SequenceLoopDetector reset clears state", () => {
   assert.equal(detector.getHistory().length, 0);
 });
 
-test("hashToolCall handles complex inputs", () => {
+test("hashToolCall handles complex inputs [loop-detection]", () => {
   const complexInput = {
     files: [
       { path: "/a/b.txt", content: "hello" },
@@ -240,7 +240,7 @@ test("hashToolCall handles complex inputs", () => {
   assert.equal(hash1.length, 16);
 });
 
-test("createLoopDetectionMiddleware returns middleware and state", () => {
+test("createLoopDetectionMiddleware returns middleware and state [loop-detection]", () => {
   const { middleware, state } = createLoopDetectionMiddleware();
 
   assert.equal(middleware.name, "loop_detection");
@@ -248,7 +248,7 @@ test("createLoopDetectionMiddleware returns middleware and state", () => {
   assert.ok(state instanceof LoopDetectionState);
 });
 
-test("createLoopDetectionMiddleware succeeds with no patterns", async () => {
+test("createLoopDetectionMiddleware succeeds with no patterns [loop-detection]", async () => {
   const { middleware } = createLoopDetectionMiddleware();
 
   const ctx = {
@@ -264,7 +264,7 @@ test("createLoopDetectionMiddleware succeeds with no patterns", async () => {
   assert.equal(result.success, true);
 });
 
-test("createLoopDetectionMiddleware warns on warning threshold", async () => {
+test("createLoopDetectionMiddleware warns on warning threshold [loop-detection]", async () => {
   const config: LoopDetectionConfig = { warnThreshold: 2, escalateThreshold: 4 };
   const { middleware, state } = createLoopDetectionMiddleware(config);
 
@@ -287,7 +287,7 @@ test("createLoopDetectionMiddleware warns on warning threshold", async () => {
   assert.equal(result.error?.warning, true);
 });
 
-test("createLoopDetectionMiddleware fails on escalated pattern", async () => {
+test("createLoopDetectionMiddleware fails on escalated pattern [loop-detection]", async () => {
   const config: LoopDetectionConfig = { warnThreshold: 1, escalateThreshold: 3 };
   const { middleware, state } = createLoopDetectionMiddleware(config);
 

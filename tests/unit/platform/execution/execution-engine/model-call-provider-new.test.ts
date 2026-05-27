@@ -33,7 +33,7 @@ import { globalMiddlewareChain } from "../../../../../src/platform/five-plane-ex
 // Helper function tests (via resolveCallRateLimit behavior)
 // ---------------------------------------------------------------------------
 
-test("resolveCallRateLimit uses config.callRateLimit when provided", () => {
+test("resolveCallRateLimit uses config.callRateLimit when provided [model-call-provider-new]", () => {
   const config: ModelCallProviderConfig = {
     callRateLimit: {
       maxCalls: 50,
@@ -49,7 +49,7 @@ test("resolveCallRateLimit uses config.callRateLimit when provided", () => {
   assert.equal(provider.hasAnyProvider(), false); // No actual provider, but rate limit is set
 });
 
-test("resolveCallRateLimit uses env vars when config.callRateLimit is null", () => {
+test("resolveCallRateLimit uses env vars when config.callRateLimit is null [model-call-provider-new]", () => {
   // This tests the path where AA_MODEL_CALL_RATE_LIMIT_MAX_CALLS and
   // AA_MODEL_CALL_RATE_LIMIT_WINDOW_MS env vars would be used
   const config: ModelCallProviderConfig = {
@@ -62,7 +62,7 @@ test("resolveCallRateLimit uses env vars when config.callRateLimit is null", () 
   assert.equal(provider.hasAnyProvider(), false);
 });
 
-test("resolveCallRateLimit returns defaults when only maxCalls env var is set", () => {
+test("resolveCallRateLimit returns defaults when only maxCalls env var is set [model-call-provider-new]", () => {
   const originalMaxCalls = process.env.AA_MODEL_CALL_RATE_LIMIT_MAX_CALLS;
   const originalWindowMs = process.env.AA_MODEL_CALL_RATE_LIMIT_WINDOW_MS;
 
@@ -90,7 +90,7 @@ test("resolveCallRateLimit returns defaults when only maxCalls env var is set", 
   }
 });
 
-test("resolveCallRateLimit returns defaults when only windowMs env var is set", () => {
+test("resolveCallRateLimit returns defaults when only windowMs env var is set [model-call-provider-new]", () => {
   const originalMaxCalls = process.env.AA_MODEL_CALL_RATE_LIMIT_MAX_CALLS;
   const originalWindowMs = process.env.AA_MODEL_CALL_RATE_LIMIT_WINDOW_MS;
 
@@ -118,7 +118,7 @@ test("resolveCallRateLimit returns defaults when only windowMs env var is set", 
   }
 });
 
-test("resolveCallRateLimit ignores negative env var values", () => {
+test("resolveCallRateLimit ignores negative env var values [model-call-provider-new]", () => {
   const originalMaxCalls = process.env.AA_MODEL_CALL_RATE_LIMIT_MAX_CALLS;
 
   process.env.AA_MODEL_CALL_RATE_LIMIT_MAX_CALLS = "-50";
@@ -139,7 +139,7 @@ test("resolveCallRateLimit ignores negative env var values", () => {
   }
 });
 
-test("resolveCallRateLimit ignores non-numeric env var values", () => {
+test("resolveCallRateLimit ignores non-numeric env var values [model-call-provider-new]", () => {
   const originalMaxCalls = process.env.AA_MODEL_CALL_RATE_LIMIT_MAX_CALLS;
 
   process.env.AA_MODEL_CALL_RATE_LIMIT_MAX_CALLS = "not-a-number";
@@ -164,7 +164,7 @@ test("resolveCallRateLimit ignores non-numeric env var values", () => {
 // parsePositiveInteger edge cases
 // ---------------------------------------------------------------------------
 
-test("parsePositiveInteger rejects zero", () => {
+test("parsePositiveInteger rejects zero [model-call-provider-new]", () => {
   const originalMaxCalls = process.env.AA_MODEL_CALL_RATE_LIMIT_MAX_CALLS;
 
   process.env.AA_MODEL_CALL_RATE_LIMIT_MAX_CALLS = "0";
@@ -185,7 +185,7 @@ test("parsePositiveInteger rejects zero", () => {
   }
 });
 
-test("parsePositiveInteger rejects float values", () => {
+test("parsePositiveInteger rejects float values [model-call-provider-new]", () => {
   const originalMaxCalls = process.env.AA_MODEL_CALL_RATE_LIMIT_MAX_CALLS;
 
   process.env.AA_MODEL_CALL_RATE_LIMIT_MAX_CALLS = "10.5";
@@ -206,7 +206,7 @@ test("parsePositiveInteger rejects float values", () => {
   }
 });
 
-test("parsePositiveInteger accepts whitespace-padded values", () => {
+test("parsePositiveInteger accepts whitespace-padded values [model-call-provider-new]", () => {
   const originalMaxCalls = process.env.AA_MODEL_CALL_RATE_LIMIT_MAX_CALLS;
 
   process.env.AA_MODEL_CALL_RATE_LIMIT_MAX_CALLS = "  50  ";
@@ -231,7 +231,7 @@ test("parsePositiveInteger accepts whitespace-padded values", () => {
 // parseBoolean edge cases
 // ---------------------------------------------------------------------------
 
-test("parseBoolean rejects empty string", () => {
+test("parseBoolean rejects empty string [model-call-provider-new]", () => {
   const config: ModelCallProviderConfig = {
     providerConfig: {
       minimax: {
@@ -245,7 +245,7 @@ test("parseBoolean rejects empty string", () => {
   assert.equal(provider.hasMinimax(), false);
 });
 
-test("parseBoolean is case insensitive for true values", () => {
+test("parseBoolean is case insensitive for true values [model-call-provider-new]", () => {
   const originalKey = process.env.ANTHROPIC_API_KEY;
 
   // These values should all be treated as truthy
@@ -265,7 +265,7 @@ test("parseBoolean is case insensitive for true values", () => {
   }
 });
 
-test("parseBoolean is case insensitive for boolean strings", () => {
+test("parseBoolean is case insensitive for boolean strings [model-call-provider-new]", () => {
   // Test that TRUE, True, YES, Yes, ON, On all work
   const originalKey = process.env.OPENAI_API_KEY;
 
@@ -288,7 +288,7 @@ test("parseBoolean is case insensitive for boolean strings", () => {
 // readTrimmedEnvValue edge cases
 // ---------------------------------------------------------------------------
 
-test("readTrimmedEnvValue returns null for empty string after trim - via MINIMAX_API_BASE", () => {
+test("readTrimmedEnvValue returns null for empty string after trim - via MINIMAX_API_BASE [model-call-provider-new]", () => {
   // readTrimmedEnvValue is used for MINIMAX_API_BASE, not for MINIMAX_API_KEY
   // This test verifies that whitespace-only MINIMAX_API_BASE is treated as null
   const originalApiKey = process.env.MINIMAX_API_KEY;
@@ -318,7 +318,7 @@ test("readTrimmedEnvValue returns null for empty string after trim - via MINIMAX
   }
 });
 
-test("readTrimmedEnvValue handles AA_MINIMAX_API_KEY fallback", () => {
+test("readTrimmedEnvValue handles AA_MINIMAX_API_KEY fallback [model-call-provider-new]", () => {
   const originalMinimax = process.env.MINIMAX_API_KEY;
   const originalAaMinimax = process.env.AA_MINIMAX_API_KEY;
 
@@ -347,7 +347,7 @@ test("readTrimmedEnvValue handles AA_MINIMAX_API_KEY fallback", () => {
 // createModelCallGovernance - returns null when no rate limit
 // ---------------------------------------------------------------------------
 
-test("createModelCallGovernance returns null when no rate limit configured", () => {
+test("createModelCallGovernance returns null when no rate limit configured [model-call-provider-new]", () => {
   const config: ModelCallProviderConfig = {};
 
   // When no callRateLimit is set and no env vars are set,
@@ -356,7 +356,7 @@ test("createModelCallGovernance returns null when no rate limit configured", () 
   assert.equal(provider.hasAnyProvider(), false);
 });
 
-test("createModelCallGovernance returns null when callRateLimit is explicitly null with no env vars", () => {
+test("createModelCallGovernance returns null when callRateLimit is explicitly null with no env vars [model-call-provider-new]", () => {
   const originalMaxCalls = process.env.AA_MODEL_CALL_RATE_LIMIT_MAX_CALLS;
   const originalWindowMs = process.env.AA_MODEL_CALL_RATE_LIMIT_WINDOW_MS;
 
@@ -385,7 +385,7 @@ test("createModelCallGovernance returns null when callRateLimit is explicitly nu
 // createCompletion with various parameters
 // ---------------------------------------------------------------------------
 
-test("createCompletion builds request with system parameter", async () => {
+test("createCompletion builds request with system parameter [model-call-provider-new]", async () => {
   const originalKey = process.env.ANTHROPIC_API_KEY;
   process.env.ANTHROPIC_API_KEY = "test-key";
 
@@ -420,7 +420,7 @@ test("createCompletion builds request with system parameter", async () => {
   }
 });
 
-test("createCompletion builds request with temperature parameter", async () => {
+test("createCompletion builds request with temperature parameter [model-call-provider-new]", async () => {
   const originalKey = process.env.OPENAI_API_KEY;
   process.env.OPENAI_API_KEY = "test-key";
 
@@ -452,7 +452,7 @@ test("createCompletion builds request with temperature parameter", async () => {
   }
 });
 
-test("createCompletion builds request with tools parameter", async () => {
+test("createCompletion builds request with tools parameter [model-call-provider-new]", async () => {
   const originalKey = process.env.ANTHROPIC_API_KEY;
   process.env.ANTHROPIC_API_KEY = "test-key";
 
@@ -493,7 +493,7 @@ test("createCompletion builds request with tools parameter", async () => {
   }
 });
 
-test("createCompletion builds request with all optional parameters", async () => {
+test("createCompletion builds request with all optional parameters [model-call-provider-new]", async () => {
   const originalKey = process.env.MINIMAX_API_KEY;
   process.env.MINIMAX_API_KEY = "test-key";
 
@@ -537,7 +537,7 @@ test("createCompletion builds request with all optional parameters", async () =>
 // createStreamingCompletion with various parameters
 // ---------------------------------------------------------------------------
 
-test("createStreamingCompletion throws when no provider configured", async () => {
+test("createStreamingCompletion throws when no provider configured [model-call-provider-new]", async () => {
   const config: ModelCallProviderConfig = {};
   const provider = new ModelCallProviderService(config);
 
@@ -560,7 +560,7 @@ test("createStreamingCompletion throws when no provider configured", async () =>
   );
 });
 
-test("createStreamingCompletion builds request with system parameter", async () => {
+test("createStreamingCompletion builds request with system parameter [model-call-provider-new]", async () => {
   const originalKey = process.env.ANTHROPIC_API_KEY;
   process.env.ANTHROPIC_API_KEY = "test-key";
 
@@ -594,7 +594,7 @@ test("createStreamingCompletion builds request with system parameter", async () 
   }
 });
 
-test("createStreamingCompletion builds request with temperature parameter", async () => {
+test("createStreamingCompletion builds request with temperature parameter [model-call-provider-new]", async () => {
   const originalKey = process.env.OPENAI_API_KEY;
   process.env.OPENAI_API_KEY = "test-key";
 
@@ -637,7 +637,7 @@ test("createStreamingCompletion builds request with temperature parameter", asyn
   }
 });
 
-test("createStreamingCompletion builds request with tools parameter", async () => {
+test("createStreamingCompletion builds request with tools parameter [model-call-provider-new]", async () => {
   const originalKey = process.env.MINIMAX_API_KEY;
   process.env.MINIMAX_API_KEY = "test-key";
 
@@ -695,7 +695,7 @@ test("createStreamingCompletion builds request with tools parameter", async () =
 // Middleware hook behavior tests
 // ---------------------------------------------------------------------------
 
-test("createMiddlewareHook falls through to next when no provider configured", async () => {
+test("createMiddlewareHook falls through to next when no provider configured [model-call-provider-new]", async () => {
   resetModelCallProvider();
 
   const config: ModelCallProviderConfig = {};
@@ -730,7 +730,7 @@ test("createMiddlewareHook falls through to next when no provider configured", a
   assert.deepEqual(result, { result: "fallback" });
 });
 
-test("createMiddlewareHook uses default model when model not specified", async () => {
+test("createMiddlewareHook uses default model when model not specified [model-call-provider-new]", async () => {
   resetModelCallProvider();
 
   const originalKey = process.env.ANTHROPIC_API_KEY;
@@ -782,7 +782,7 @@ test("createMiddlewareHook uses default model when model not specified", async (
   }
 });
 
-test("createMiddlewareHook uses provided model in input", async () => {
+test("createMiddlewareHook uses provided model in input [model-call-provider-new]", async () => {
   resetModelCallProvider();
 
   const originalKey = process.env.ANTHROPIC_API_KEY;
@@ -829,7 +829,7 @@ test("createMiddlewareHook uses provided model in input", async () => {
   }
 });
 
-test("createMiddlewareHook logs error on failure", async () => {
+test("createMiddlewareHook logs error on failure [model-call-provider-new]", async () => {
   resetModelCallProvider();
 
   const originalKey = process.env.ANTHROPIC_API_KEY;
@@ -877,7 +877,7 @@ test("createMiddlewareHook logs error on failure", async () => {
 // createModelCallMiddleware function tests
 // ---------------------------------------------------------------------------
 
-test("createModelCallMiddleware creates a new provider instance", () => {
+test("createModelCallMiddleware creates a new provider instance [model-call-provider-new]", () => {
   const config: ModelCallProviderConfig = {};
   const hook = createModelCallMiddleware(config);
 
@@ -886,7 +886,7 @@ test("createModelCallMiddleware creates a new provider instance", () => {
   assert.equal(typeof hook.run, "function");
 });
 
-test("createModelCallMiddleware hook is independent from singleton", () => {
+test("createModelCallMiddleware hook is independent from singleton [model-call-provider-new]", () => {
   resetModelCallProvider();
 
   // Initialize singleton with one config
@@ -906,7 +906,7 @@ test("createModelCallMiddleware hook is independent from singleton", () => {
 // Provider configuration tests
 // ---------------------------------------------------------------------------
 
-test("Provider configuration from env vars - ANTHROPIC_API_KEY", () => {
+test("Provider configuration from env vars - ANTHROPIC_API_KEY [model-call-provider-new]", () => {
   const originalKey = process.env.ANTHROPIC_API_KEY;
   process.env.ANTHROPIC_API_KEY = "test-anthropic-key";
 
@@ -927,7 +927,7 @@ test("Provider configuration from env vars - ANTHROPIC_API_KEY", () => {
   }
 });
 
-test("Provider configuration from env vars - OPENAI_API_KEY", () => {
+test("Provider configuration from env vars - OPENAI_API_KEY [model-call-provider-new]", () => {
   const originalKey = process.env.OPENAI_API_KEY;
   process.env.OPENAI_API_KEY = "test-openai-key";
 
@@ -948,7 +948,7 @@ test("Provider configuration from env vars - OPENAI_API_KEY", () => {
   }
 });
 
-test("Provider configuration from env vars - MINIMAX_API_KEY", () => {
+test("Provider configuration from env vars - MINIMAX_API_KEY [model-call-provider-new]", () => {
   const originalMinimax = process.env.MINIMAX_API_KEY;
   const originalAaMinimax = process.env.AA_MINIMAX_API_KEY;
 
@@ -977,7 +977,7 @@ test("Provider configuration from env vars - MINIMAX_API_KEY", () => {
   }
 });
 
-test("Provider configuration from providerConfig - anthropic", () => {
+test("Provider configuration from providerConfig - anthropic [model-call-provider-new]", () => {
   const config: ModelCallProviderConfig = {
     providerConfig: {
       anthropic: {
@@ -994,7 +994,7 @@ test("Provider configuration from providerConfig - anthropic", () => {
   assert.equal(provider.hasAnyProvider(), true);
 });
 
-test("Provider configuration from providerConfig - openai", () => {
+test("Provider configuration from providerConfig - openai [model-call-provider-new]", () => {
   const config: ModelCallProviderConfig = {
     providerConfig: {
       openai: {
@@ -1011,7 +1011,7 @@ test("Provider configuration from providerConfig - openai", () => {
   assert.equal(provider.hasAnyProvider(), true);
 });
 
-test("Provider configuration from providerConfig - minimax", () => {
+test("Provider configuration from providerConfig - minimax [model-call-provider-new]", () => {
   const config: ModelCallProviderConfig = {
     providerConfig: {
       minimax: {
@@ -1028,7 +1028,7 @@ test("Provider configuration from providerConfig - minimax", () => {
   assert.equal(provider.hasAnyProvider(), true);
 });
 
-test("Provider configuration - explicit config overrides env var", () => {
+test("Provider configuration - explicit config overrides env var [model-call-provider-new]", () => {
   const originalKey = process.env.ANTHROPIC_API_KEY;
   process.env.ANTHROPIC_API_KEY = "env-anthropic-key";
 
@@ -1058,7 +1058,7 @@ test("Provider configuration - explicit config overrides env var", () => {
 // Global middleware chain registration tests
 // ---------------------------------------------------------------------------
 
-test("initializeModelCallProvider registers hook in global middleware chain", () => {
+test("initializeModelCallProvider registers hook in global middleware chain [model-call-provider-new]", () => {
   resetModelCallProvider();
 
   const config: ModelCallProviderConfig = {};
@@ -1070,7 +1070,7 @@ test("initializeModelCallProvider registers hook in global middleware chain", ()
   resetModelCallProvider();
 });
 
-test("initializeModelCallProvider does not register duplicate hooks", () => {
+test("initializeModelCallProvider does not register duplicate hooks [model-call-provider-new]", () => {
   resetModelCallProvider();
 
   const config: ModelCallProviderConfig = {};
@@ -1085,7 +1085,7 @@ test("initializeModelCallProvider does not register duplicate hooks", () => {
   resetModelCallProvider();
 });
 
-test("getModelCallProvider returns same instance as initializeModelCallProvider", () => {
+test("getModelCallProvider returns same instance as initializeModelCallProvider [model-call-provider-new]", () => {
   resetModelCallProvider();
 
   const config: ModelCallProviderConfig = {};
@@ -1101,7 +1101,7 @@ test("getModelCallProvider returns same instance as initializeModelCallProvider"
 // buildModelGovernanceKey tests (indirectly via error messages)
 // ---------------------------------------------------------------------------
 
-test("buildModelGovernanceKey formats key correctly - tested via rate limit", async () => {
+test("buildModelGovernanceKey formats key correctly - tested via rate limit [model-call-provider-new]", async () => {
   // When rate limit is exceeded, the governance key is built using buildModelGovernanceKey
   // This tests the key format "model:${model}"
 
@@ -1146,7 +1146,7 @@ test("buildModelGovernanceKey formats key correctly - tested via rate limit", as
 // dispose behavior tests
 // ---------------------------------------------------------------------------
 
-test("dispose cleans up unified provider", () => {
+test("dispose cleans up unified provider [model-call-provider-new]", () => {
   const config: ModelCallProviderConfig = {};
   const provider = new ModelCallProviderService(config);
 
@@ -1160,7 +1160,7 @@ test("dispose cleans up unified provider", () => {
   assert.equal(provider.hasAnyProvider(), false);
 });
 
-test("dispose is idempotent", () => {
+test("dispose is idempotent [model-call-provider-new]", () => {
   const originalKey = process.env.ANTHROPIC_API_KEY;
   process.env.ANTHROPIC_API_KEY = "test-key";
 
@@ -1185,7 +1185,7 @@ test("dispose is idempotent", () => {
   }
 });
 
-test("hasAnthropic returns false after dispose even when configured", () => {
+test("hasAnthropic returns false after dispose even when configured [model-call-provider-new]", () => {
   const originalKey = process.env.ANTHROPIC_API_KEY;
   process.env.ANTHROPIC_API_KEY = "test-key";
 
@@ -1208,7 +1208,7 @@ test("hasAnthropic returns false after dispose even when configured", () => {
   }
 });
 
-test("hasOpenAI returns false after dispose even when configured", () => {
+test("hasOpenAI returns false after dispose even when configured [model-call-provider-new]", () => {
   const originalKey = process.env.OPENAI_API_KEY;
   process.env.OPENAI_API_KEY = "test-key";
 
@@ -1231,7 +1231,7 @@ test("hasOpenAI returns false after dispose even when configured", () => {
   }
 });
 
-test("hasMinimax returns false after dispose even when configured", () => {
+test("hasMinimax returns false after dispose even when configured [model-call-provider-new]", () => {
   const originalKey = process.env.MINIMAX_API_KEY;
   process.env.MINIMAX_API_KEY = "test-key";
 
@@ -1258,7 +1258,7 @@ test("hasMinimax returns false after dispose even when configured", () => {
 // MINIMAX_API_BASE environment variable tests
 // ---------------------------------------------------------------------------
 
-test("MINIMAX_API_BASE is used when set", () => {
+test("MINIMAX_API_BASE is used when set [model-call-provider-new]", () => {
   const originalMinimax = process.env.MINIMAX_API_KEY;
   const originalApiBase = process.env.MINIMAX_API_BASE;
 
@@ -1285,7 +1285,7 @@ test("MINIMAX_API_BASE is used when set", () => {
   }
 });
 
-test("MINIMAX_API_BASE whitespace is trimmed", () => {
+test("MINIMAX_API_BASE whitespace is trimmed [model-call-provider-new]", () => {
   const originalMinimax = process.env.MINIMAX_API_KEY;
   const originalApiBase = process.env.MINIMAX_API_BASE;
 
@@ -1316,7 +1316,7 @@ test("MINIMAX_API_BASE whitespace is trimmed", () => {
 // normalizeResult tests
 // ---------------------------------------------------------------------------
 
-test("normalizeResult preserves all fields from provider result", async () => {
+test("normalizeResult preserves all fields from provider result [model-call-provider-new]", async () => {
   const originalKey = process.env.MINIMAX_API_KEY;
   process.env.MINIMAX_API_KEY = "test-key";
 
@@ -1354,7 +1354,7 @@ test("normalizeResult preserves all fields from provider result", async () => {
 // Edge case tests
 // ---------------------------------------------------------------------------
 
-test("empty messages array is handled", async () => {
+test("empty messages array is handled [model-call-provider-new]", async () => {
   const originalKey = process.env.ANTHROPIC_API_KEY;
   process.env.ANTHROPIC_API_KEY = "test-key";
 
@@ -1381,7 +1381,7 @@ test("empty messages array is handled", async () => {
   }
 });
 
-test("model name with special characters", async () => {
+test("model name with special characters [model-call-provider-new]", async () => {
   const originalKey = process.env.ANTHROPIC_API_KEY;
   process.env.ANTHROPIC_API_KEY = "test-key";
 
@@ -1408,7 +1408,7 @@ test("model name with special characters", async () => {
   }
 });
 
-test("multiple providers configured simultaneously", () => {
+test("multiple providers configured simultaneously [model-call-provider-new]", () => {
   const originalAnthropic = process.env.ANTHROPIC_API_KEY;
   const originalOpenai = process.env.OPENAI_API_KEY;
   const originalMinimax = process.env.MINIMAX_API_KEY;

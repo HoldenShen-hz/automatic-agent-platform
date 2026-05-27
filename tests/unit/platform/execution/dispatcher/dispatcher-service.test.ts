@@ -374,7 +374,7 @@ function workerToSnapshot(worker: RegisteredWorkerView): WorkerSnapshotRecord {
 // Retry handling tests
 // ---------------------------------------------------------------------------
 
-test("createTicket preserves execution attempt in ticket", () => {
+test("createTicket preserves execution attempt in ticket [dispatcher-service]", () => {
   const mockExecution = createMockExecution("exec-1", "task-1", 3);
   const mockTask = createMockTask("task-1");
 
@@ -399,7 +399,7 @@ test("createTicket preserves execution attempt in ticket", () => {
   assert.equal(result.ticket.attempt, 3);
 });
 
-test("createTicket with dispatchAfter defers ticket", () => {
+test("createTicket with dispatchAfter defers ticket [dispatcher-service]", () => {
   const mockExecution = createMockExecution("exec-1", "task-1");
   const mockTask = createMockTask("task-1");
   const dispatchAfter = "2025-01-01T00:00:00.000Z";
@@ -430,7 +430,7 @@ test("createTicket with dispatchAfter defers ticket", () => {
 // Queue selection tests
 // ---------------------------------------------------------------------------
 
-test("dispatchNext selects worker based on queue affinity", () => {
+test("dispatchNext selects worker based on queue affinity [dispatcher-service]", () => {
   const mockTicket = createMockTicket("ticket-1", "exec-1", "task-1", "normal");
   mockTicket.queueName = "priority-queue";
   const worker1 = createMockWorker("worker-1", {
@@ -474,7 +474,7 @@ test("dispatchNext selects worker based on queue affinity", () => {
   assert.equal(result.worker?.workerId, "worker-2"); // affinity matched
 });
 
-test("dispatchNext filters workers by required capabilities", () => {
+test("dispatchNext filters workers by required capabilities [dispatcher-service]", () => {
   const mockTicket = createMockTicket("ticket-1", "exec-1", "task-1", "normal");
   mockTicket.requiredCapabilitiesJson = JSON.stringify(["gpu", "large_memory"]);
   const worker1 = createMockWorker("worker-1", { capabilities: ["cpu"], availableSlots: 5 });
@@ -511,7 +511,7 @@ test("dispatchNext filters workers by required capabilities", () => {
   assert.equal(result.worker?.workerId, "worker-2");
 });
 
-test("dispatchNext filters workers by required isolation level", () => {
+test("dispatchNext filters workers by required isolation level [dispatcher-service]", () => {
   const mockTicket = createMockTicket("ticket-1", "exec-1", "task-1", "normal");
   mockTicket.requiredIsolationLevel = "hardened";
   const worker1 = createMockWorker("worker-1", { isolationLevel: "standard", availableSlots: 5 });
@@ -548,7 +548,7 @@ test("dispatchNext filters workers by required isolation level", () => {
   assert.equal(result.worker?.workerId, "worker-2");
 });
 
-test("dispatchNext respects dispatchTarget local_only", () => {
+test("dispatchNext respects dispatchTarget local_only [dispatcher-service]", () => {
   const mockTicket = createMockTicket("ticket-1", "exec-1", "task-1", "normal");
   mockTicket.dispatchTarget = "local_only";
   const localWorker = createMockWorker("local-1", { placement: "local", availableSlots: 5 });
@@ -585,7 +585,7 @@ test("dispatchNext respects dispatchTarget local_only", () => {
   assert.equal(result.worker?.workerId, "local-1");
 });
 
-test("dispatchNext filters out workers with placement mismatch for local_only", () => {
+test("dispatchNext filters out workers with placement mismatch for local_only [dispatcher-service]", () => {
   const mockTicket = createMockTicket("ticket-1", "exec-1", "task-1", "normal");
   mockTicket.dispatchTarget = "local_only";
   const remoteWorker = createMockWorker("remote-1", { placement: "remote", availableSlots: 5 });
@@ -619,7 +619,7 @@ test("dispatchNext filters out workers with placement mismatch for local_only", 
   assert.equal(result.outcome, "no_worker");
 });
 
-test("dispatchNext filters out workers by repo version requirement", () => {
+test("dispatchNext filters out workers by repo version requirement [dispatcher-service]", () => {
   const mockTicket = createMockTicket("ticket-1", "exec-1", "task-1", "normal");
   mockTicket.requiredRepoVersion = "v2.0.0";
   const worker1 = createMockWorker("worker-1", { repoVersion: "v1.0.0", availableSlots: 5 });
@@ -660,7 +660,7 @@ test("dispatchNext filters out workers by repo version requirement", () => {
 // Preferred worker selection tests
 // ---------------------------------------------------------------------------
 
-test("dispatchNext prefers specified worker when available", () => {
+test("dispatchNext prefers specified worker when available [dispatcher-service]", () => {
   const mockTicket = createMockTicket("ticket-1", "exec-1", "task-1", "normal");
   const preferredWorker = createMockWorker("preferred-1", { availableSlots: 5 });
   const otherWorker = createMockWorker("other-1", { availableSlots: 5 });
@@ -696,7 +696,7 @@ test("dispatchNext prefers specified worker when available", () => {
   assert.equal(result.worker?.workerId, "preferred-1");
 });
 
-test("dispatchNext selects idle worker over busy worker", () => {
+test("dispatchNext selects idle worker over busy worker [dispatcher-service]", () => {
   const mockTicket = createMockTicket("ticket-1", "exec-1", "task-1", "normal");
   const idleWorker = createMockWorker("idle-1", { status: "idle", availableSlots: 5 });
   const busyWorker = createMockWorker("busy-1", { status: "busy", availableSlots: 2 });
@@ -732,7 +732,7 @@ test("dispatchNext selects idle worker over busy worker", () => {
   assert.equal(result.worker?.workerId, "idle-1");
 });
 
-test("dispatchNext selects worker with more available slots", () => {
+test("dispatchNext selects worker with more available slots [dispatcher-service]", () => {
   const mockTicket = createMockTicket("ticket-1", "exec-1", "task-1", "normal");
   const worker1 = createMockWorker("worker-1", { availableSlots: 2 });
   const worker2 = createMockWorker("worker-2", { availableSlots: 8 });
@@ -772,7 +772,7 @@ test("dispatchNext selects worker with more available slots", () => {
 // Worker status filtering tests
 // ---------------------------------------------------------------------------
 
-test("dispatchNext skips unavailable workers", () => {
+test("dispatchNext skips unavailable workers [dispatcher-service]", () => {
   const mockTicket = createMockTicket("ticket-1", "exec-1", "task-1", "normal");
   const unavailableWorker = createMockWorker("unavailable-1", { status: "unavailable", availableSlots: 5 });
   const healthyWorker = createMockWorker("healthy-1", { status: "idle", availableSlots: 5 });
@@ -808,7 +808,7 @@ test("dispatchNext skips unavailable workers", () => {
   assert.equal(result.worker?.workerId, "healthy-1");
 });
 
-test("dispatchNext skips quarantined workers", () => {
+test("dispatchNext skips quarantined workers [dispatcher-service]", () => {
   const mockTicket = createMockTicket("ticket-1", "exec-1", "task-1", "normal");
   const quarantinedWorker = createMockWorker("quarantined-1", { status: "quarantined", availableSlots: 5 });
   const healthyWorker = createMockWorker("healthy-1", { status: "idle", availableSlots: 5 });
@@ -844,7 +844,7 @@ test("dispatchNext skips quarantined workers", () => {
   assert.equal(result.worker?.workerId, "healthy-1");
 });
 
-test("dispatchNext skips draining workers", () => {
+test("dispatchNext skips draining workers [dispatcher-service]", () => {
   const mockTicket = createMockTicket("ticket-1", "exec-1", "task-1", "normal");
   const drainingWorker = createMockWorker("draining-1", { status: "draining", availableSlots: 5 });
   const healthyWorker = createMockWorker("healthy-1", { status: "idle", availableSlots: 5 });
@@ -880,7 +880,7 @@ test("dispatchNext skips draining workers", () => {
   assert.equal(result.worker?.workerId, "healthy-1");
 });
 
-test("dispatchNext skips workers at capacity", () => {
+test("dispatchNext skips workers at capacity [dispatcher-service]", () => {
   const mockTicket = createMockTicket("ticket-1", "exec-1", "task-1", "normal");
   const fullWorker = createMockWorker("full-1", { availableSlots: 0 });
   const availableWorker = createMockWorker("available-1", { availableSlots: 5 });
@@ -916,7 +916,7 @@ test("dispatchNext skips workers at capacity", () => {
   assert.equal(result.worker?.workerId, "available-1");
 });
 
-test("dispatchNext excludes degraded workers by default", () => {
+test("dispatchNext excludes degraded workers by default [dispatcher-service]", () => {
   const mockTicket = createMockTicket("ticket-1", "exec-1", "task-1", "normal");
   const degradedWorker = createMockWorker("degraded-1", { status: "degraded", availableSlots: 5 });
   const healthyWorker = createMockWorker("healthy-1", { status: "idle", availableSlots: 5 });
@@ -952,7 +952,7 @@ test("dispatchNext excludes degraded workers by default", () => {
   assert.equal(result.worker?.workerId, "healthy-1");
 });
 
-test("dispatchNext includes degraded workers when includeDegraded is true", () => {
+test("dispatchNext includes degraded workers when includeDegraded is true [dispatcher-service]", () => {
   const mockTicket = createMockTicket("ticket-1", "exec-1", "task-1", "normal");
   const degradedWorker = createMockWorker("degraded-1", { status: "degraded", availableSlots: 5 });
 
@@ -991,7 +991,7 @@ test("dispatchNext includes degraded workers when includeDegraded is true", () =
 // Remote worker dispatch tests
 // ---------------------------------------------------------------------------
 
-test("dispatchNext requires remote placement for require_remote target", () => {
+test("dispatchNext requires remote placement for require_remote target [dispatcher-service]", () => {
   const mockTicket = createMockTicket("ticket-1", "exec-1", "task-1", "normal");
   mockTicket.dispatchTarget = "require_remote";
   const localWorker = createMockWorker("local-1", { placement: "local", availableSlots: 5 });
@@ -1028,7 +1028,7 @@ test("dispatchNext requires remote placement for require_remote target", () => {
   assert.equal(result.worker?.workerId, "remote-1");
 });
 
-test("dispatchNext blocks require_remote when no remote workers available", () => {
+test("dispatchNext blocks require_remote when no remote workers available [dispatcher-service]", () => {
   const mockTicket = createMockTicket("ticket-1", "exec-1", "task-1", "normal");
   mockTicket.dispatchTarget = "require_remote";
   const localWorker = createMockWorker("local-1", { placement: "local", availableSlots: 5 });
@@ -1067,7 +1067,7 @@ test("dispatchNext blocks require_remote when no remote workers available", () =
 // Multiple tickets iteration tests
 // ---------------------------------------------------------------------------
 
-test("dispatchNext iterates through tickets when first worker unavailable", () => {
+test("dispatchNext iterates through tickets when first worker unavailable [dispatcher-service]", () => {
   const ticket1 = createMockTicket("ticket-1", "exec-1", "task-1", "normal");
   ticket1.requiredCapabilitiesJson = JSON.stringify(["nonexistent"]);
   const ticket2 = createMockTicket("ticket-2", "exec-2", "task-2", "normal");
@@ -1108,7 +1108,7 @@ test("dispatchNext iterates through tickets when first worker unavailable", () =
 // Priority preemption tests
 // ---------------------------------------------------------------------------
 
-test("dispatchNext triggers preemption for urgent ticket with no eligible workers", () => {
+test("dispatchNext triggers preemption for urgent ticket with no eligible workers [dispatcher-service]", () => {
   const urgentTicket = createMockTicket("ticket-1", "exec-1", "task-1", "urgent");
   const busyWorker = createMockWorker("busy-1", { availableSlots: 0, status: "busy" });
 
@@ -1153,7 +1153,7 @@ test("dispatchNext triggers preemption for urgent ticket with no eligible worker
 // Trace and decision event recording tests
 // ---------------------------------------------------------------------------
 
-test("dispatchNext records decision trace with correct outcome", () => {
+test("dispatchNext records decision trace with correct outcome [dispatcher-service]", () => {
   const mockTicket = createMockTicket("ticket-1", "exec-1", "task-1", "normal");
   const worker = createMockWorker("worker-1", { availableSlots: 5 });
 
@@ -1190,7 +1190,7 @@ test("dispatchNext records decision trace with correct outcome", () => {
   assert.equal(result.trace?.ticketId, "ticket-1");
 });
 
-test("dispatchNext returns no reasonCode when require_remote has no remote candidates", () => {
+test("dispatchNext returns no reasonCode when require_remote has no remote candidates [dispatcher-service]", () => {
   const mockTicket = createMockTicket("ticket-1", "exec-1", "task-1", "low");
   mockTicket.dispatchTarget = "require_remote"; // Will block since only local workers
 
@@ -1228,7 +1228,7 @@ test("dispatchNext returns no reasonCode when require_remote has no remote candi
 // Queue name filtering tests
 // ---------------------------------------------------------------------------
 
-test("dispatchNext filters tickets by queueName when specified", () => {
+test("dispatchNext filters tickets by queueName when specified [dispatcher-service]", () => {
   const queueTicket = createMockTicket("queue-ticket", "exec-1", "task-1", "normal");
   queueTicket.queueName = "priority-queue";
   const otherTicket = createMockTicket("other-ticket", "exec-2", "task-2", "normal");
@@ -1270,7 +1270,7 @@ test("dispatchNext filters tickets by queueName when specified", () => {
   assert.equal(result.ticket?.queueName, "priority-queue");
 });
 
-test("dispatchNext returns no_ticket when no tickets match queue filter", () => {
+test("dispatchNext returns no_ticket when no tickets match queue filter [dispatcher-service]", () => {
   const store = createMockStore();
   (store.worker as any).listDispatchableExecutionTickets = () => [];
   (store.dispatch as any).getExecution = () => null;

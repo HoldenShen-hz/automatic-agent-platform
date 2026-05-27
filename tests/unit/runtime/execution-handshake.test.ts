@@ -206,7 +206,7 @@ function createTaskAndExecution(
 
 // === Claim Execution Tests ===
 
-test("claimExecution accepts valid claim from registered local worker", () => {
+test("claimExecution accepts valid claim from registered local worker [execution-handshake]", () => {
   const workspace = createTempWorkspace("aa-handshake-");
   try {
     const { db, store, handshakeService, leaseService } = setupDatabase(workspace);
@@ -248,7 +248,7 @@ test("claimExecution accepts valid claim from registered local worker", () => {
   }
 });
 
-test("claimExecution rejects when ticket not found", () => {
+test("claimExecution rejects when ticket not found [execution-handshake]", () => {
   const workspace = createTempWorkspace("aa-handshake-");
   try {
     const { db, store, handshakeService } = setupDatabase(workspace);
@@ -278,7 +278,7 @@ test("claimExecution rejects when ticket not found", () => {
   }
 });
 
-test("claimExecution rejects when worker not registered", () => {
+test("claimExecution rejects when worker not registered [execution-handshake]", () => {
   const workspace = createTempWorkspace("aa-handshake-");
   try {
     const { db, store, handshakeService } = setupDatabase(workspace);
@@ -333,7 +333,7 @@ test("claimExecution rejects when worker not registered", () => {
   }
 });
 
-test("claimExecution rejects untrusted remote worker without registration verification", () => {
+test("claimExecution rejects untrusted remote worker without registration verification [execution-handshake]", () => {
   const workspace = createTempWorkspace("aa-handshake-");
   try {
     const { db, store, handshakeService } = setupDatabase(workspace);
@@ -367,7 +367,7 @@ test("claimExecution rejects untrusted remote worker without registration verifi
   }
 });
 
-test("claimExecution accepts trusted remote worker with verification", () => {
+test("claimExecution accepts trusted remote worker with verification [execution-handshake]", () => {
   const workspace = createTempWorkspace("aa-handshake-");
   try {
     const { db, store, handshakeService } = setupDatabase(workspace);
@@ -405,7 +405,7 @@ test("claimExecution accepts trusted remote worker with verification", () => {
   }
 });
 
-test("claimExecution rejects when ticket not in claimed status", () => {
+test("claimExecution rejects when ticket not in claimed status [execution-handshake]", () => {
   const workspace = createTempWorkspace("aa-handshake-");
   try {
     const { db, store, handshakeService } = setupDatabase(workspace);
@@ -437,7 +437,7 @@ test("claimExecution rejects when ticket not in claimed status", () => {
   }
 });
 
-test("claimExecution rejects when ticket assigned to different worker", () => {
+test("claimExecution rejects when ticket assigned to different worker [execution-handshake]", () => {
   const workspace = createTempWorkspace("aa-handshake-");
   try {
     const { db, store, handshakeService } = setupDatabase(workspace);
@@ -509,7 +509,7 @@ test("claimExecution rejects when ticket assigned to different worker", () => {
   }
 });
 
-test("claimExecution rejects when lease ID does not match", () => {
+test("claimExecution rejects when lease ID does not match [execution-handshake]", () => {
   const workspace = createTempWorkspace("aa-handshake-");
   try {
     const { db, store, handshakeService } = setupDatabase(workspace);
@@ -541,7 +541,7 @@ test("claimExecution rejects when lease ID does not match", () => {
   }
 });
 
-test("claimExecution rejects with stale fencing token", () => {
+test("claimExecution rejects with stale fencing token [execution-handshake]", () => {
   const workspace = createTempWorkspace("aa-handshake-");
   try {
     const { db, store, handshakeService } = setupDatabase(workspace);
@@ -575,7 +575,7 @@ test("claimExecution rejects with stale fencing token", () => {
   }
 });
 
-test("claimExecution rejects when no active lease exists", () => {
+test("claimExecution rejects when no active lease exists [execution-handshake]", () => {
   const workspace = createTempWorkspace("aa-handshake-");
   try {
     const { db, store, handshakeService } = setupDatabase(workspace);
@@ -608,7 +608,7 @@ test("claimExecution rejects when no active lease exists", () => {
   }
 });
 
-test("claimExecution rejects remote worker with viewer_only session status", () => {
+test("claimExecution rejects remote worker with viewer_only session status [execution-handshake]", () => {
   const workspace = createTempWorkspace("aa-handshake-");
   try {
     const { db, store, handshakeService } = setupDatabase(workspace);
@@ -647,7 +647,7 @@ test("claimExecution rejects remote worker with viewer_only session status", () 
   }
 });
 
-test("claimExecution rejects remote worker with session consistency mismatch", () => {
+test("claimExecution rejects remote worker with session consistency mismatch [execution-handshake]", () => {
   const workspace = createTempWorkspace("aa-handshake-");
   try {
     const { db, store, handshakeService } = setupDatabase(workspace);
@@ -686,7 +686,7 @@ test("claimExecution rejects remote worker with session consistency mismatch", (
   }
 });
 
-test("claimExecution rejects remote worker with workspace sync conflict", () => {
+test("claimExecution rejects remote worker with workspace sync conflict [execution-handshake]", () => {
   const workspace = createTempWorkspace("aa-handshake-");
   try {
     const { db, store, handshakeService } = setupDatabase(workspace);
@@ -725,7 +725,7 @@ test("claimExecution rejects remote worker with workspace sync conflict", () => 
   }
 });
 
-test("claimExecution rejects remote worker with missing resume offset during reconnect", () => {
+test("claimExecution rejects remote worker with missing resume offset during reconnect [execution-handshake]", () => {
   const workspace = createTempWorkspace("aa-handshake-");
   try {
     const { db, store, handshakeService } = setupDatabase(workspace);
@@ -766,7 +766,7 @@ test("claimExecution rejects remote worker with missing resume offset during rec
 
 // === Record Heartbeat Tests ===
 
-test("recordHeartbeat accepts valid heartbeat from worker with active lease", () => {
+test("recordHeartbeat accepts valid heartbeat from worker with active lease [execution-handshake]", () => {
   const workspace = createTempWorkspace("aa-handshake-");
   try {
     const { db, store, handshakeService, leaseService } = setupDatabase(workspace);
@@ -813,7 +813,7 @@ test("recordHeartbeat accepts valid heartbeat from worker with active lease", ()
   }
 });
 
-test("recordHeartbeat rejects when execution not found", () => {
+test("recordHeartbeat rejects when execution not found [execution-handshake]", () => {
   const workspace = createTempWorkspace("aa-handshake-");
   try {
     const { db, handshakeService } = setupDatabase(workspace);
@@ -837,7 +837,7 @@ test("recordHeartbeat rejects when execution not found", () => {
   }
 });
 
-test("recordHeartbeat rejects when worker not registered", () => {
+test("recordHeartbeat rejects when worker not registered [execution-handshake]", () => {
   const workspace = createTempWorkspace("aa-handshake-");
   try {
     const { db, store, handshakeService } = setupDatabase(workspace);
@@ -868,7 +868,7 @@ test("recordHeartbeat rejects when worker not registered", () => {
   }
 });
 
-test("recordHeartbeat rejects with stale fencing token", () => {
+test("recordHeartbeat rejects with stale fencing token [execution-handshake]", () => {
   const workspace = createTempWorkspace("aa-handshake-");
   try {
     const { db, store, handshakeService } = setupDatabase(workspace);
@@ -905,7 +905,7 @@ test("recordHeartbeat rejects with stale fencing token", () => {
   }
 });
 
-test("recordHeartbeat rejects when lease is expired", () => {
+test("recordHeartbeat rejects when lease is expired [execution-handshake]", () => {
   const workspace = createTempWorkspace("aa-handshake-");
   try {
     const { db, store, handshakeService } = setupDatabase(workspace);
@@ -947,7 +947,7 @@ test("recordHeartbeat rejects when lease is expired", () => {
   }
 });
 
-test("recordHeartbeat rejects when lease not found", () => {
+test("recordHeartbeat rejects when lease not found [execution-handshake]", () => {
   const workspace = createTempWorkspace("aa-handshake-");
   try {
     const { db, store, handshakeService } = setupDatabase(workspace);
@@ -1017,7 +1017,7 @@ test("recordHeartbeat rejects when lease not found", () => {
   }
 });
 
-test("recordHeartbeat rejects remote worker with viewer_only session", () => {
+test("recordHeartbeat rejects remote worker with viewer_only session [execution-handshake]", () => {
   const workspace = createTempWorkspace("aa-handshake-");
   try {
     const { db, store, handshakeService } = setupDatabase(workspace);
@@ -1060,7 +1060,7 @@ test("recordHeartbeat rejects remote worker with viewer_only session", () => {
   }
 });
 
-test("recordHeartbeat records telemetry data on successful heartbeat", () => {
+test("recordHeartbeat records telemetry data on successful heartbeat [execution-handshake]", () => {
   const workspace = createTempWorkspace("aa-handshake-");
   try {
     const { db, store, handshakeService } = setupDatabase(workspace);
@@ -1119,7 +1119,7 @@ test("recordHeartbeat records telemetry data on successful heartbeat", () => {
   }
 });
 
-test("recordHeartbeat renews lease TTL on success", () => {
+test("recordHeartbeat renews lease TTL on success [execution-handshake]", () => {
   const workspace = createTempWorkspace("aa-handshake-");
   try {
     const { db, store, handshakeService } = setupDatabase(workspace);
@@ -1166,7 +1166,7 @@ test("recordHeartbeat renews lease TTL on success", () => {
   }
 });
 
-test("recordHeartbeat rejects worker mismatch (different worker owns lease)", () => {
+test("recordHeartbeat rejects worker mismatch (different worker owns lease) [execution-handshake]", () => {
   const workspace = createTempWorkspace("aa-handshake-");
   try {
     const { db, store, handshakeService } = setupDatabase(workspace);
@@ -1245,7 +1245,7 @@ test("recordHeartbeat rejects worker mismatch (different worker owns lease)", ()
 
 // === Handshake Event Recording Tests ===
 
-test("claimExecution records claim_accepted event on success", () => {
+test("claimExecution records claim_accepted event on success [execution-handshake]", () => {
   const workspace = createTempWorkspace("aa-handshake-");
   try {
     const { db, store, handshakeService } = setupDatabase(workspace);
@@ -1289,7 +1289,7 @@ test("claimExecution records claim_accepted event on success", () => {
   }
 });
 
-test("claimExecution records claim_rejected event on failure", () => {
+test("claimExecution records claim_rejected event on failure [execution-handshake]", () => {
   const workspace = createTempWorkspace("aa-handshake-");
   try {
     const { db, store, handshakeService } = setupDatabase(workspace);
@@ -1348,7 +1348,7 @@ test("claimExecution records claim_rejected event on failure", () => {
   }
 });
 
-test("recordHeartbeat records heartbeat_recorded event on success", () => {
+test("recordHeartbeat records heartbeat_recorded event on success [execution-handshake]", () => {
   const workspace = createTempWorkspace("aa-handshake-");
   try {
     const { db, store, handshakeService } = setupDatabase(workspace);
@@ -1395,7 +1395,7 @@ test("recordHeartbeat records heartbeat_recorded event on success", () => {
 
 // === Ticket Status Transition Tests ===
 
-test("claimExecution transitions execution from created to executing", () => {
+test("claimExecution transitions execution from created to executing [execution-handshake]", () => {
   const workspace = createTempWorkspace("aa-handshake-");
   try {
     const { db, store, handshakeService } = setupDatabase(workspace);
@@ -1434,7 +1434,7 @@ test("claimExecution transitions execution from created to executing", () => {
   }
 });
 
-test("claimExecution does not re-transition execution that is already executing", () => {
+test("claimExecution does not re-transition execution that is already executing [execution-handshake]", () => {
   const workspace = createTempWorkspace("aa-handshake-");
   try {
     const { db, store, handshakeService } = setupDatabase(workspace);
@@ -1473,7 +1473,7 @@ test("claimExecution does not re-transition execution that is already executing"
   }
 });
 
-test("claimExecution marks ticket as consumed after successful claim", () => {
+test("claimExecution marks ticket as consumed after successful claim [execution-handshake]", () => {
   const workspace = createTempWorkspace("aa-handshake-");
   try {
     const { db, store, handshakeService } = setupDatabase(workspace);
@@ -1512,7 +1512,7 @@ test("claimExecution marks ticket as consumed after successful claim", () => {
 
 // === Remote Session Handling Tests ===
 
-test("claimExecution accepts healthy remote worker with all checks passing", () => {
+test("claimExecution accepts healthy remote worker with all checks passing [execution-handshake]", () => {
   const workspace = createTempWorkspace("aa-handshake-");
   try {
     const { db, store, handshakeService } = setupDatabase(workspace);
@@ -1555,7 +1555,7 @@ test("claimExecution accepts healthy remote worker with all checks passing", () 
   }
 });
 
-test("recordHeartbeat handles remote session degraded status gracefully", () => {
+test("recordHeartbeat handles remote session degraded status gracefully [execution-handshake]", () => {
   const workspace = createTempWorkspace("aa-handshake-");
   try {
     const { db, store, handshakeService } = setupDatabase(workspace);
@@ -1600,7 +1600,7 @@ test("recordHeartbeat handles remote session degraded status gracefully", () => 
 
 // === Worker Snapshot Update Tests ===
 
-test("claimExecution updates worker snapshot with running execution", () => {
+test("claimExecution updates worker snapshot with running execution [execution-handshake]", () => {
   const workspace = createTempWorkspace("aa-handshake-");
   try {
     const { db, store, handshakeService } = setupDatabase(workspace);
@@ -1642,7 +1642,7 @@ test("claimExecution updates worker snapshot with running execution", () => {
   }
 });
 
-test("recordHeartbeat updates worker telemetry", () => {
+test("recordHeartbeat updates worker telemetry [execution-handshake]", () => {
   const workspace = createTempWorkspace("aa-handshake-");
   try {
     const { db, store, handshakeService } = setupDatabase(workspace);
@@ -1690,7 +1690,7 @@ test("recordHeartbeat updates worker telemetry", () => {
 
 // === Remote Logs Tests ===
 
-test("claimExecution persists remote logs when provided", () => {
+test("claimExecution persists remote logs when provided [execution-handshake]", () => {
   const workspace = createTempWorkspace("aa-handshake-");
   try {
     const { db, store, handshakeService } = setupDatabase(workspace);
@@ -1731,7 +1731,7 @@ test("claimExecution persists remote logs when provided", () => {
   }
 });
 
-test("recordHeartbeat persists remote logs when provided", () => {
+test("recordHeartbeat persists remote logs when provided [execution-handshake]", () => {
   const workspace = createTempWorkspace("aa-handshake-");
   try {
     const { db, store, handshakeService } = setupDatabase(workspace);
@@ -1777,7 +1777,7 @@ test("recordHeartbeat persists remote logs when provided", () => {
 
 // === Agent Execution Record Tests ===
 
-test("claimExecution creates agent execution record on success", () => {
+test("claimExecution creates agent execution record on success [execution-handshake]", () => {
   const workspace = createTempWorkspace("aa-handshake-");
   try {
     const { db, store, handshakeService } = setupDatabase(workspace);
@@ -1823,7 +1823,7 @@ test("claimExecution creates agent execution record on success", () => {
   }
 });
 
-test("recordHeartbeat updates existing agent execution record", () => {
+test("recordHeartbeat updates existing agent execution record [execution-handshake]", () => {
   const workspace = createTempWorkspace("aa-handshake-");
   try {
     const { db, store, handshakeService } = setupDatabase(workspace);

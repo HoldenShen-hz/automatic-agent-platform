@@ -6,7 +6,7 @@ import type {
   CostEstimationConfig,
 } from "../../../../src/scale-ecosystem/marketplace/cost-estimation-service.js";
 
-test("CostEstimate structure is correct", () => {
+test("CostEstimate structure is correct [cost-estimation-service-types]", () => {
   const estimate: CostEstimate = {
     estimatedCostUsd: 0.25,
     confidence: "high",
@@ -22,7 +22,7 @@ test("CostEstimate structure is correct", () => {
   assert.equal(estimate.basedOn, "division_avg");
 });
 
-test("CostEstimate confidence accepts all valid values", () => {
+test("CostEstimate confidence accepts all valid values [cost-estimation-service-types]", () => {
   const confidences: CostEstimate["confidence"][] = ["high", "medium", "low", "default"];
 
   for (const confidence of confidences) {
@@ -37,7 +37,7 @@ test("CostEstimate confidence accepts all valid values", () => {
   }
 });
 
-test("CostEstimate basedOn accepts all valid values", () => {
+test("CostEstimate basedOn accepts all valid values [cost-estimation-service-types]", () => {
   const sources: CostEstimate["basedOn"][] = ["division_avg", "global_avg", "default"];
 
   for (const basedOn of sources) {
@@ -52,7 +52,7 @@ test("CostEstimate basedOn accepts all valid values", () => {
   }
 });
 
-test("CostEstimate allows null divisionId when based on global average", () => {
+test("CostEstimate allows null divisionId when based on global average [cost-estimation-service-types]", () => {
   const estimate: CostEstimate = {
     estimatedCostUsd: 0.10,
     confidence: "medium",
@@ -65,7 +65,7 @@ test("CostEstimate allows null divisionId when based on global average", () => {
   assert.equal(estimate.basedOn, "global_avg");
 });
 
-test("CostEstimate allows zero sampleCount with default confidence", () => {
+test("CostEstimate allows zero sampleCount with default confidence [cost-estimation-service-types]", () => {
   const estimate: CostEstimate = {
     estimatedCostUsd: 0.05,
     confidence: "default",
@@ -78,7 +78,7 @@ test("CostEstimate allows zero sampleCount with default confidence", () => {
   assert.equal(estimate.confidence, "default");
 });
 
-test("CostEstimationConfig structure is correct", () => {
+test("CostEstimationConfig structure is correct [cost-estimation-service-types]", () => {
   const config: CostEstimationConfig = {
     highConfidenceThreshold: 30,
     mediumConfidenceThreshold: 10,
@@ -90,14 +90,14 @@ test("CostEstimationConfig structure is correct", () => {
   assert.equal(config.defaultCostUsd, 0.10);
 });
 
-test("CostEstimationConfig allows minimal definition", () => {
+test("CostEstimationConfig allows minimal definition [cost-estimation-service-types]", () => {
   const config: CostEstimationConfig = {};
   assert.equal(config.highConfidenceThreshold, undefined);
   assert.equal(config.mediumConfidenceThreshold, undefined);
   assert.equal(config.defaultCostUsd, undefined);
 });
 
-test("CostEstimationConfig allows partial definition", () => {
+test("CostEstimationConfig allows partial definition [cost-estimation-service-types]", () => {
   const config: CostEstimationConfig = {
     highConfidenceThreshold: 25,
   };

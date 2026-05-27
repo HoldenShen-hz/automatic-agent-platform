@@ -19,7 +19,7 @@ function mockTier(overrides: Partial<SlaTier> = {}): SlaTier {
   };
 }
 
-test("resolveHighestPriorityTier returns highest priority tier", () => {
+test("resolveHighestPriorityTier returns highest priority tier [tier-resolver]", () => {
   const tiers = [
     mockTier({ tierId: "low", priority: 1 }),
     mockTier({ tierId: "medium", priority: 5 }),
@@ -31,13 +31,13 @@ test("resolveHighestPriorityTier returns highest priority tier", () => {
   assert.strictEqual(result?.tierId, "high");
 });
 
-test("resolveHighestPriorityTier returns null for empty array", () => {
+test("resolveHighestPriorityTier returns null for empty array [tier-resolver]", () => {
   const result = resolveHighestPriorityTier([]);
 
   assert.strictEqual(result, null);
 });
 
-test("resolveHighestPriorityTier handles single tier", () => {
+test("resolveHighestPriorityTier handles single tier [tier-resolver]", () => {
   const tiers = [mockTier({ tierId: "only" })];
 
   const result = resolveHighestPriorityTier(tiers);
@@ -45,7 +45,7 @@ test("resolveHighestPriorityTier handles single tier", () => {
   assert.strictEqual(result?.tierId, "only");
 });
 
-test("resolveHighestPriorityTier first highest when multiple have same priority", () => {
+test("resolveHighestPriorityTier first highest when multiple have same priority [tier-resolver]", () => {
   const tiers = [
     mockTier({ tierId: "first", priority: 10 }),
     mockTier({ tierId: "second", priority: 10 }),
@@ -56,7 +56,7 @@ test("resolveHighestPriorityTier first highest when multiple have same priority"
   assert.strictEqual(result?.tierId, "first");
 });
 
-test("resolveHighestPriorityTier returns tier with highest numeric priority", () => {
+test("resolveHighestPriorityTier returns tier with highest numeric priority [tier-resolver]", () => {
   const tiers = [
     mockTier({ tierId: "zero", priority: 0 }),
     mockTier({ tierId: "five", priority: 5 }),
@@ -68,7 +68,7 @@ test("resolveHighestPriorityTier returns tier with highest numeric priority", ()
   assert.strictEqual(result?.tierId, "ten");
 });
 
-test("resolveHighestPriorityTier negative priority is lowest", () => {
+test("resolveHighestPriorityTier negative priority is lowest [tier-resolver]", () => {
   const tiers = [
     mockTier({ tierId: "negative", priority: -5 }),
     mockTier({ tierId: "zero", priority: 0 }),
@@ -79,7 +79,7 @@ test("resolveHighestPriorityTier negative priority is lowest", () => {
   assert.strictEqual(result?.tierId, "zero");
 });
 
-test("resolveHighestPriorityTier priority of 100 is highest", () => {
+test("resolveHighestPriorityTier priority of 100 is highest [tier-resolver]", () => {
   const tiers = [
     mockTier({ tierId: "hundred", priority: 100 }),
     mockTier({ tierId: "fifty", priority: 50 }),

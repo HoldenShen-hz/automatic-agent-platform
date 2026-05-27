@@ -18,7 +18,7 @@ function createHarness(prefix: string) {
   return { workspace, db };
 }
 
-test("registerRegion creates a new region", () => {
+test("registerRegion creates a new region [cross-region-deployment-service]", () => {
   const h = createHarness("aa-reg-region-");
   try {
     const service = new CrossRegionDeploymentService(h.db);
@@ -45,7 +45,7 @@ test("registerRegion creates a new region", () => {
   }
 });
 
-test("getRegion retrieves registered region", () => {
+test("getRegion retrieves registered region [cross-region-deployment-service]", () => {
   const h = createHarness("aa-get-region-");
   try {
     const service = new CrossRegionDeploymentService(h.db);
@@ -72,7 +72,7 @@ test("getRegion retrieves registered region", () => {
   }
 });
 
-test("listRegions returns all registered regions", () => {
+test("listRegions returns all registered regions [cross-region-deployment-service]", () => {
   const h = createHarness("aa-list-regions-");
   try {
     const service = new CrossRegionDeploymentService(h.db);
@@ -111,7 +111,7 @@ test("listRegions returns all registered regions", () => {
   }
 });
 
-test("listRegions filters by status", () => {
+test("listRegions filters by status [cross-region-deployment-service]", () => {
   const h = createHarness("aa-filter-regions-");
   try {
     const service = new CrossRegionDeploymentService(h.db);
@@ -151,7 +151,7 @@ test("listRegions filters by status", () => {
   }
 });
 
-test("updateRegionStatus changes region status", () => {
+test("updateRegionStatus changes region status [cross-region-deployment-service]", () => {
   const h = createHarness("aa-status-region-");
   try {
     const service = new CrossRegionDeploymentService(h.db);
@@ -177,7 +177,7 @@ test("updateRegionStatus changes region status", () => {
   }
 });
 
-test("selectRegion returns best region", () => {
+test("selectRegion returns best region [cross-region-deployment-service]", () => {
   const h = createHarness("aa-select-region-");
   try {
     const service = new CrossRegionDeploymentService(h.db);
@@ -219,7 +219,7 @@ test("selectRegion returns best region", () => {
   }
 });
 
-test("selectRegion prefers preferred region", () => {
+test("selectRegion prefers preferred region [cross-region-deployment-service]", () => {
   const h = createHarness("aa-pref-region-");
   try {
     const service = new CrossRegionDeploymentService(h.db);
@@ -259,7 +259,7 @@ test("selectRegion prefers preferred region", () => {
   }
 });
 
-test("selectRegion excludes unhealthy regions", () => {
+test("selectRegion excludes unhealthy regions [cross-region-deployment-service]", () => {
   const h = createHarness("aa-unhealthy-region-");
   try {
     const service = new CrossRegionDeploymentService(h.db, { minHealthScoreForTraffic: 80 });
@@ -299,7 +299,7 @@ test("selectRegion excludes unhealthy regions", () => {
   }
 });
 
-test("createTopology creates region topology", () => {
+test("createTopology creates region topology [cross-region-deployment-service]", () => {
   const h = createHarness("aa-create-topo-");
   try {
     const service = new CrossRegionDeploymentService(h.db);
@@ -323,7 +323,7 @@ test("createTopology creates region topology", () => {
   }
 });
 
-test("setRegionWeight updates traffic weight", () => {
+test("setRegionWeight updates traffic weight [cross-region-deployment-service]", () => {
   const h = createHarness("aa-set-weight-");
   try {
     const service = new CrossRegionDeploymentService(h.db);
@@ -351,7 +351,7 @@ test("setRegionWeight updates traffic weight", () => {
   }
 });
 
-test("initiateFailover creates failover plan", () => {
+test("initiateFailover creates failover plan [cross-region-deployment-service]", () => {
   const h = createHarness("aa-init-failover-");
   try {
     const service = new CrossRegionDeploymentService(h.db);
@@ -395,7 +395,7 @@ test("initiateFailover creates failover plan", () => {
   }
 });
 
-test("completeFailoverStep advances failover plan", () => {
+test("completeFailoverStep advances failover plan [cross-region-deployment-service]", () => {
   const h = createHarness("aa-complete-step-");
   try {
     const service = new CrossRegionDeploymentService(h.db);
@@ -440,7 +440,7 @@ test("completeFailoverStep advances failover plan", () => {
   }
 });
 
-test("getActiveFailoverPlans returns pending plans", () => {
+test("getActiveFailoverPlans returns pending plans [cross-region-deployment-service]", () => {
   const h = createHarness("aa-active-failover-");
   try {
     const service = new CrossRegionDeploymentService(h.db);
@@ -481,7 +481,7 @@ test("getActiveFailoverPlans returns pending plans", () => {
   }
 });
 
-test("recordRegionHealth updates region health", () => {
+test("recordRegionHealth updates region health [cross-region-deployment-service]", () => {
   const h = createHarness("aa-record-health-");
   try {
     const service = new CrossRegionDeploymentService(h.db);
@@ -517,7 +517,7 @@ test("recordRegionHealth updates region health", () => {
   }
 });
 
-test("getRegion returns null for nonexistent region", () => {
+test("getRegion returns null for nonexistent region [cross-region-deployment-service]", () => {
   const h = createHarness("aa-get-nonexistent-");
   try {
     const service = new CrossRegionDeploymentService(h.db);
@@ -529,7 +529,7 @@ test("getRegion returns null for nonexistent region", () => {
   }
 });
 
-test("selectRegion returns no_active_regions reason when no regions registered", () => {
+test("selectRegion returns no_active_regions reason when no regions registered [cross-region-deployment-service]", () => {
   const h = createHarness("aa-select-empty-");
   try {
     const service = new CrossRegionDeploymentService(h.db);
@@ -544,7 +544,7 @@ test("selectRegion returns no_active_regions reason when no regions registered",
   }
 });
 
-test("selectRegion returns fallback_no_eligible when all regions are unhealthy", () => {
+test("selectRegion returns fallback_no_eligible when all regions are unhealthy [cross-region-deployment-service]", () => {
   const h = createHarness("aa-select-unhealthy-");
   try {
     const service = new CrossRegionDeploymentService(h.db, { minHealthScoreForTraffic: 80 });
@@ -575,7 +575,7 @@ test("selectRegion returns fallback_no_eligible when all regions are unhealthy",
   }
 });
 
-test("initiateFailover returns null when source region does not exist", () => {
+test("initiateFailover returns null when source region does not exist [cross-region-deployment-service]", () => {
   const h = createHarness("aa-failover-no-source-");
   try {
     const service = new CrossRegionDeploymentService(h.db);
@@ -587,7 +587,7 @@ test("initiateFailover returns null when source region does not exist", () => {
   }
 });
 
-test("completeFailoverStep returns false when plan does not exist", () => {
+test("completeFailoverStep returns false when plan does not exist [cross-region-deployment-service]", () => {
   const h = createHarness("aa-complete-invalid-");
   try {
     const service = new CrossRegionDeploymentService(h.db);
@@ -599,7 +599,7 @@ test("completeFailoverStep returns false when plan does not exist", () => {
   }
 });
 
-test("getFailoverPlan returns null for nonexistent plan", () => {
+test("getFailoverPlan returns null for nonexistent plan [cross-region-deployment-service]", () => {
   const h = createHarness("aa-get-plan-nonexistent-");
   try {
     const service = new CrossRegionDeploymentService(h.db);

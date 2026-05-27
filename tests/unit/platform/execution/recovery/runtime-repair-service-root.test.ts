@@ -82,7 +82,7 @@ function createMockStore(overrides: {
   } as unknown as AuthoritativeTaskStore;
 }
 
-test("RuntimeRepairService can be instantiated", () => {
+test("RuntimeRepairService can be instantiated [runtime-repair-service-root]", () => {
   const db = createMockDb();
   const store = createMockStore();
   const service = new RuntimeRepairService(db, store);
@@ -90,7 +90,7 @@ test("RuntimeRepairService can be instantiated", () => {
   assert.ok(service != null);
 });
 
-test("RuntimeRepairService.apply handles empty repair actions", async () => {
+test("RuntimeRepairService.apply handles empty repair actions [runtime-repair-service-root]", async () => {
   const db = createMockDb();
   const store = createMockStore();
   const service = new RuntimeRepairService(db, store);
@@ -106,7 +106,7 @@ test("RuntimeRepairService.apply handles empty repair actions", async () => {
   assert.deepEqual(results, []);
 });
 
-test("RepairExecutionResult has correct structure", () => {
+test("RepairExecutionResult has correct structure [runtime-repair-service-root]", () => {
   const result: RepairExecutionResult = {
     action: "requeue_execution",
     targetId: "exec-1",
@@ -120,7 +120,7 @@ test("RepairExecutionResult has correct structure", () => {
   assert.ok("detail" in result);
 });
 
-test("RuntimeRepairService.apply returns manual_intervention_required when action is manual_intervention", async () => {
+test("RuntimeRepairService.apply returns manual_intervention_required when action is manual_intervention [runtime-repair-service-root]", async () => {
   const db = createMockDb();
   const store = createMockStore();
   const service = new RuntimeRepairService(db, store);
@@ -145,7 +145,7 @@ test("RuntimeRepairService.apply returns manual_intervention_required when actio
   assert.equal(results[0]!.detail, "manual intervention required");
 });
 
-test("RuntimeRepairService.apply handles requeue_execution with pending ticket", async () => {
+test("RuntimeRepairService.apply handles requeue_execution with pending ticket [runtime-repair-service-root]", async () => {
   const db = createMockDb();
   let executionUpdated = false;
   let taskUpdated = false;
@@ -180,7 +180,7 @@ test("RuntimeRepairService.apply handles requeue_execution with pending ticket",
   assert.equal(taskUpdated, true);
 });
 
-test("RuntimeRepairService.apply handles reconcile_dispatch_ticket when ticket missing", async () => {
+test("RuntimeRepairService.apply handles reconcile_dispatch_ticket when ticket missing [runtime-repair-service-root]", async () => {
   const db = createMockDb();
   const store = createMockStore();
   const service = new RuntimeRepairService(db, store);
@@ -196,7 +196,7 @@ test("RuntimeRepairService.apply handles reconcile_dispatch_ticket when ticket m
   assert.equal(results[0]!.detail, "dispatch ticket already healthy or missing");
 });
 
-test("RuntimeRepairService.apply handles reconcile_terminal_state when workflow missing", async () => {
+test("RuntimeRepairService.apply handles reconcile_terminal_state when workflow missing [runtime-repair-service-root]", async () => {
   const db = createMockDb();
   const store = createMockStore({
     workflow: {
@@ -220,7 +220,7 @@ test("RuntimeRepairService.apply handles reconcile_terminal_state when workflow 
   assert.equal(results[0]!.detail, "workflow missing");
 });
 
-test("RuntimeRepairService.apply handles close_orphan_session", async () => {
+test("RuntimeRepairService.apply handles close_orphan_session [runtime-repair-service-root]", async () => {
   const db = createMockDb();
   let sessionUpdated = false;
   const store = createMockStore({
@@ -243,7 +243,7 @@ test("RuntimeRepairService.apply handles close_orphan_session", async () => {
   assert.equal(sessionUpdated, true);
 });
 
-test("RuntimeRepairService.apply handles replace_terminal_session", async () => {
+test("RuntimeRepairService.apply handles replace_terminal_session [runtime-repair-service-root]", async () => {
   const db = createMockDb();
   let inserted = false;
   const store = createMockStore({
@@ -275,7 +275,7 @@ test("RuntimeRepairService.apply handles replace_terminal_session", async () => 
   assert.equal(inserted, true);
 });
 
-test("RuntimeRepairService.apply handles release_stale_lock", async () => {
+test("RuntimeRepairService.apply handles release_stale_lock [runtime-repair-service-root]", async () => {
   const db = createMockDb();
   let lockDeleted = false;
   const store = createMockStore({
@@ -308,7 +308,7 @@ test("RuntimeRepairService.apply handles release_stale_lock", async () => {
   assert.equal(lockDeleted, true);
 });
 
-test("RuntimeRepairService.apply handles rebuild_ack for missing event without draining changes", async () => {
+test("RuntimeRepairService.apply handles rebuild_ack for missing event without draining changes [runtime-repair-service-root]", async () => {
   const db = createMockDb();
   const store = createMockStore({
     event: {
@@ -332,7 +332,7 @@ test("RuntimeRepairService.apply handles rebuild_ack for missing event without d
   assert.equal(results[0]!.detail, "pending acknowledgements drained from 0 to 0");
 });
 
-test("RuntimeRepairService applies multiple repair actions in sequence", async () => {
+test("RuntimeRepairService applies multiple repair actions in sequence [runtime-repair-service-root]", async () => {
   const db = createMockDb();
   const store = createMockStore({
     locks: {

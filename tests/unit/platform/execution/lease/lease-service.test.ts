@@ -172,7 +172,7 @@ function createExecution(id: string = "exec-1", attempt: number = 1): { id: stri
 // Tests: Constructor
 // ---------------------------------------------------------------------------
 
-test("ExecutionLeaseServiceAsync constructor creates instance", () => {
+test("ExecutionLeaseServiceAsync constructor creates instance [lease-service]", () => {
   const store = createMockStore();
   const db = createMockDb((work) => work());
   const repo = createMockRepo();
@@ -180,7 +180,7 @@ test("ExecutionLeaseServiceAsync constructor creates instance", () => {
   assert.ok(service != null);
 });
 
-test("ExecutionLeaseServiceAsync has all required methods", () => {
+test("ExecutionLeaseServiceAsync has all required methods [lease-service]", () => {
   const store = createMockStore();
   const db = createMockDb((work) => work());
   const repo = createMockRepo();
@@ -197,7 +197,7 @@ test("ExecutionLeaseServiceAsync has all required methods", () => {
 // Tests: acquireLease
 // ---------------------------------------------------------------------------
 
-test("acquireLease grants lease when no active lease exists", async () => {
+test("acquireLease grants lease when no active lease exists [lease-service]", async () => {
   const state: MockStoreState = {
     leases: new Map(),
     activeLeaseByExecution: new Map(),
@@ -225,7 +225,7 @@ test("acquireLease grants lease when no active lease exists", async () => {
   assert.equal(result.lease!.status, "active");
 });
 
-test("acquireLease blocks when active lease already exists", async () => {
+test("acquireLease blocks when active lease already exists [lease-service]", async () => {
   const existingLease = createLease({ id: "lease-existing", executionId: "exec-1" });
   const state: MockStoreState = {
     leases: new Map([[existingLease.id, existingLease]]),
@@ -253,7 +253,7 @@ test("acquireLease blocks when active lease already exists", async () => {
   assert.equal(result.lease!.id, "lease-existing");
 });
 
-test("acquireLease throws when execution not found", async () => {
+test("acquireLease throws when execution not found [lease-service]", async () => {
   const state: MockStoreState = {
     leases: new Map(),
     activeLeaseByExecution: new Map(),
@@ -274,7 +274,7 @@ test("acquireLease throws when execution not found", async () => {
   );
 });
 
-test("acquireLease increments fencing token", async () => {
+test("acquireLease increments fencing token [lease-service]", async () => {
   const state: MockStoreState = {
     leases: new Map(),
     activeLeaseByExecution: new Map(),
@@ -299,7 +299,7 @@ test("acquireLease increments fencing token", async () => {
   assert.equal(result.lease!.fencingToken, 1);
 });
 
-test("acquireLease creates audit record", async () => {
+test("acquireLease creates audit record [lease-service]", async () => {
   const state: MockStoreState = {
     leases: new Map(),
     activeLeaseByExecution: new Map(),
@@ -324,7 +324,7 @@ test("acquireLease creates audit record", async () => {
   assert.equal(state.audits[0]!.eventType, "lease_granted");
 });
 
-test("acquireLease with queueName sets queue on lease", async () => {
+test("acquireLease with queueName sets queue on lease [lease-service]", async () => {
   const state: MockStoreState = {
     leases: new Map(),
     activeLeaseByExecution: new Map(),
@@ -354,7 +354,7 @@ test("acquireLease with queueName sets queue on lease", async () => {
 // Tests: renewLease
 // ---------------------------------------------------------------------------
 
-test("renewLease renews lease when valid", async () => {
+test("renewLease renews lease when valid [lease-service]", async () => {
   const existingLease = createLease({ id: "lease-1", executionId: "exec-1", workerId: "worker-1" });
   const state: MockStoreState = {
     leases: new Map([[existingLease.id, existingLease]]),
@@ -380,7 +380,7 @@ test("renewLease renews lease when valid", async () => {
   assert.ok(result.lease != null);
 });
 
-test("renewLease blocks when lease not found", async () => {
+test("renewLease blocks when lease not found [lease-service]", async () => {
   const state: MockStoreState = {
     leases: new Map(),
     activeLeaseByExecution: new Map(),
@@ -405,7 +405,7 @@ test("renewLease blocks when lease not found", async () => {
   assert.equal(result.reasonCode, "lease_not_found");
 });
 
-test("renewLease blocks when worker mismatch", async () => {
+test("renewLease blocks when worker mismatch [lease-service]", async () => {
   const existingLease = createLease({ id: "lease-1", executionId: "exec-1", workerId: "worker-1" });
   const state: MockStoreState = {
     leases: new Map([[existingLease.id, existingLease]]),
@@ -431,7 +431,7 @@ test("renewLease blocks when worker mismatch", async () => {
   assert.equal(result.reasonCode, "worker_mismatch");
 });
 
-test("renewLease blocks when lease not active", async () => {
+test("renewLease blocks when lease not active [lease-service]", async () => {
   const existingLease = createLease({ id: "lease-1", executionId: "exec-1", workerId: "worker-1", status: "released" });
   const state: MockStoreState = {
     leases: new Map([[existingLease.id, existingLease]]),
@@ -457,7 +457,7 @@ test("renewLease blocks when lease not active", async () => {
   assert.equal(result.reasonCode, "lease_not_active");
 });
 
-test("renewLease blocks when lease expired", async () => {
+test("renewLease blocks when lease expired [lease-service]", async () => {
   const expiredTime = new Date(Date.now() - 5000).toISOString();
   const existingLease = createLease({
     id: "lease-1",
@@ -489,7 +489,7 @@ test("renewLease blocks when lease expired", async () => {
   assert.equal(result.reasonCode, "lease_expired");
 });
 
-test("renewLease creates audit record", async () => {
+test("renewLease creates audit record [lease-service]", async () => {
   const existingLease = createLease({ id: "lease-1", executionId: "exec-1", workerId: "worker-1" });
   const state: MockStoreState = {
     leases: new Map([[existingLease.id, existingLease]]),
@@ -519,7 +519,7 @@ test("renewLease creates audit record", async () => {
 // Tests: releaseLease
 // ---------------------------------------------------------------------------
 
-test("releaseLease releases lease when valid", async () => {
+test("releaseLease releases lease when valid [lease-service]", async () => {
   const existingLease = createLease({ id: "lease-1", executionId: "exec-1", workerId: "worker-1" });
   const state: MockStoreState = {
     leases: new Map([[existingLease.id, existingLease]]),
@@ -543,7 +543,7 @@ test("releaseLease releases lease when valid", async () => {
   assert.equal(result.outcome, "released");
 });
 
-test("releaseLease blocks when lease not found", async () => {
+test("releaseLease blocks when lease not found [lease-service]", async () => {
   const state: MockStoreState = {
     leases: new Map(),
     activeLeaseByExecution: new Map(),
@@ -567,7 +567,7 @@ test("releaseLease blocks when lease not found", async () => {
   assert.equal(result.reasonCode, "lease_not_found");
 });
 
-test("releaseLease blocks when worker mismatch", async () => {
+test("releaseLease blocks when worker mismatch [lease-service]", async () => {
   const existingLease = createLease({ id: "lease-1", executionId: "exec-1", workerId: "worker-1" });
   const state: MockStoreState = {
     leases: new Map([[existingLease.id, existingLease]]),
@@ -592,7 +592,7 @@ test("releaseLease blocks when worker mismatch", async () => {
   assert.equal(result.reasonCode, "worker_mismatch");
 });
 
-test("releaseLease blocks when lease is not active", async () => {
+test("releaseLease blocks when lease is not active [lease-service]", async () => {
   const existingLease = createLease({ id: "lease-1", executionId: "exec-1", workerId: "worker-1", status: "released" });
   const state: MockStoreState = {
     leases: new Map([[existingLease.id, existingLease]]),
@@ -617,7 +617,7 @@ test("releaseLease blocks when lease is not active", async () => {
   assert.equal(result.reasonCode, "lease_not_active");
 });
 
-test("releaseLease creates audit record with reasonCode", async () => {
+test("releaseLease creates audit record with reasonCode [lease-service]", async () => {
   const existingLease = createLease({ id: "lease-1", executionId: "exec-1", workerId: "worker-1" });
   const state: MockStoreState = {
     leases: new Map([[existingLease.id, existingLease]]),
@@ -648,7 +648,7 @@ test("releaseLease creates audit record with reasonCode", async () => {
 // Tests: validateWriteAccess
 // ---------------------------------------------------------------------------
 
-test("validateWriteAccess allows access with valid lease", () => {
+test("validateWriteAccess allows access with valid lease [lease-service]", () => {
   const existingLease = createLease({ id: "lease-1", executionId: "exec-1", workerId: "worker-1", fencingToken: 5 });
   const state: MockStoreState = {
     leases: new Map([[existingLease.id, existingLease]]),
@@ -675,7 +675,7 @@ test("validateWriteAccess allows access with valid lease", () => {
   assert.equal(result.authoritativeFencingToken, 5);
 });
 
-test("validateWriteAccess denies when no active lease", () => {
+test("validateWriteAccess denies when no active lease [lease-service]", () => {
   const state: MockStoreState = {
     leases: new Map(),
     activeLeaseByExecution: new Map(),
@@ -700,7 +700,7 @@ test("validateWriteAccess denies when no active lease", () => {
   assert.equal(result.reasonCode, "no_active_lease");
 });
 
-test("validateWriteAccess denies when fencing token mismatch", () => {
+test("validateWriteAccess denies when fencing token mismatch [lease-service]", () => {
   const existingLease = createLease({ id: "lease-1", executionId: "exec-1", workerId: "worker-1", fencingToken: 5 });
   const state: MockStoreState = {
     leases: new Map([[existingLease.id, existingLease]]),
@@ -727,7 +727,7 @@ test("validateWriteAccess denies when fencing token mismatch", () => {
   assert.equal(result.reasonCode, "stale_fencing_token");
 });
 
-test("validateWriteAccess denies when worker mismatch", () => {
+test("validateWriteAccess denies when worker mismatch [lease-service]", () => {
   const existingLease = createLease({ id: "lease-1", executionId: "exec-1", workerId: "worker-1", fencingToken: 5 });
   const state: MockStoreState = {
     leases: new Map([[existingLease.id, existingLease]]),
@@ -754,7 +754,7 @@ test("validateWriteAccess denies when worker mismatch", () => {
   assert.equal(result.reasonCode, "worker_mismatch");
 });
 
-test("validateWriteAccess denies when leaseId mismatch", () => {
+test("validateWriteAccess denies when leaseId mismatch [lease-service]", () => {
   const existingLease = createLease({ id: "lease-1", executionId: "exec-1", workerId: "worker-1", fencingToken: 5 });
   const state: MockStoreState = {
     leases: new Map([[existingLease.id, existingLease]]),
@@ -785,7 +785,7 @@ test("validateWriteAccess denies when leaseId mismatch", () => {
 // Tests: reclaimExpiredLeases
 // ---------------------------------------------------------------------------
 
-test("reclaimExpiredLeases returns empty when no expired leases", () => {
+test("reclaimExpiredLeases returns empty when no expired leases [lease-service]", () => {
   const existingLease = createLease({
     id: "lease-1",
     executionId: "exec-1",
@@ -812,7 +812,7 @@ test("reclaimExpiredLeases returns empty when no expired leases", () => {
   assert.equal(result.length, 0);
 });
 
-test("reclaimExpiredLeases reclaims expired leases", () => {
+test("reclaimExpiredLeases reclaims expired leases [lease-service]", () => {
   const expiredLease = createLease({
     id: "lease-1",
     executionId: "exec-1",
@@ -840,7 +840,7 @@ test("reclaimExpiredLeases reclaims expired leases", () => {
   assert.equal(result[0], "lease-1");
 });
 
-test("reclaimExpiredLeases creates audit records for reclaimed leases", () => {
+test("reclaimExpiredLeases creates audit records for reclaimed leases [lease-service]", () => {
   const expiredLease = createLease({
     id: "lease-1",
     executionId: "exec-1",

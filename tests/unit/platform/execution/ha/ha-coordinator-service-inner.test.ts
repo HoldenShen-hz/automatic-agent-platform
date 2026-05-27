@@ -299,7 +299,7 @@ function createService(): HaCoordinatorService {
 // Tests: Node Management
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("HaCoordinatorService - registerNode creates a new node", () => {
+test("HaCoordinatorService - registerNode creates a new node [ha-coordinator-service-inner]", () => {
   const service = createService();
 
   const node = service.registerNode("node-1", "us-east-1", { custom: "metadata" });
@@ -311,7 +311,7 @@ test("HaCoordinatorService - registerNode creates a new node", () => {
   assert.deepEqual(node.metadata, { custom: "metadata" });
 });
 
-test("HaCoordinatorService - registerNode updates existing node", () => {
+test("HaCoordinatorService - registerNode updates existing node [ha-coordinator-service-inner]", () => {
   const service = createService();
 
   const node1 = service.registerNode("node-1", "us-east-1");
@@ -321,7 +321,7 @@ test("HaCoordinatorService - registerNode updates existing node", () => {
   assert.equal(node2.region, "us-west-1");
 });
 
-test("HaCoordinatorService - getNode returns registered node", () => {
+test("HaCoordinatorService - getNode returns registered node [ha-coordinator-service-inner]", () => {
   const service = createService();
 
   service.registerNode("node-1", "us-east-1");
@@ -331,7 +331,7 @@ test("HaCoordinatorService - getNode returns registered node", () => {
   assert.equal(node!.nodeId, "node-1");
 });
 
-test("HaCoordinatorService - getNode returns null for unknown node", () => {
+test("HaCoordinatorService - getNode returns null for unknown node [ha-coordinator-service-inner]", () => {
   const service = createService();
 
   const node = service.getNode("unknown-node");
@@ -339,7 +339,7 @@ test("HaCoordinatorService - getNode returns null for unknown node", () => {
   assert.equal(node, null);
 });
 
-test("HaCoordinatorService - listNodes returns all registered nodes", () => {
+test("HaCoordinatorService - listNodes returns all registered nodes [ha-coordinator-service-inner]", () => {
   const service = createService();
 
   service.registerNode("node-1", "us-east-1");
@@ -350,7 +350,7 @@ test("HaCoordinatorService - listNodes returns all registered nodes", () => {
   assert.equal(nodes.length, 2);
 });
 
-test("HaCoordinatorService - listNodes filters by status", () => {
+test("HaCoordinatorService - listNodes filters by status [ha-coordinator-service-inner]", () => {
   const service = createService();
 
   service.registerNode("node-1", "us-east-1");
@@ -360,7 +360,7 @@ test("HaCoordinatorService - listNodes filters by status", () => {
   assert.ok(nodes.length >= 0);
 });
 
-test("HaCoordinatorService - updateNodeHeartbeat updates timestamp", () => {
+test("HaCoordinatorService - updateNodeHeartbeat updates timestamp [ha-coordinator-service-inner]", () => {
   const service = createService();
 
   service.registerNode("node-1", "us-east-1");
@@ -370,7 +370,7 @@ test("HaCoordinatorService - updateNodeHeartbeat updates timestamp", () => {
   assert.equal(updated!.status, "draining");
 });
 
-test("HaCoordinatorService - removeNode removes node", () => {
+test("HaCoordinatorService - removeNode removes node [ha-coordinator-service-inner]", () => {
   const service = createService();
 
   service.registerNode("node-1", "us-east-1");
@@ -384,7 +384,7 @@ test("HaCoordinatorService - removeNode removes node", () => {
 // Tests: Leadership Acquisition
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("HaCoordinatorService - acquireLeadership succeeds for registered node", () => {
+test("HaCoordinatorService - acquireLeadership succeeds for registered node [ha-coordinator-service-inner]", () => {
   const service = createService();
 
   service.registerNode("node-1", "us-east-1");
@@ -397,7 +397,7 @@ test("HaCoordinatorService - acquireLeadership succeeds for registered node", ()
   assert.ok(result.fencingToken > 0);
 });
 
-test("HaCoordinatorService - acquireLeadership fails for unregistered node", () => {
+test("HaCoordinatorService - acquireLeadership fails for unregistered node [ha-coordinator-service-inner]", () => {
   const service = createService();
 
   assert.throws(
@@ -406,7 +406,7 @@ test("HaCoordinatorService - acquireLeadership fails for unregistered node", () 
   );
 });
 
-test("HaCoordinatorService - acquireLeadership uses TTL bounds", () => {
+test("HaCoordinatorService - acquireLeadership uses TTL bounds [ha-coordinator-service-inner]", () => {
   const service = createService();
 
   service.registerNode("node-1", "us-east-1");
@@ -422,7 +422,7 @@ test("HaCoordinatorService - acquireLeadership uses TTL bounds", () => {
   assert.ok(result2.lease!.ttlMs <= MAX_LEASE_TTL_MS);
 });
 
-test("HaCoordinatorService - acquireLeadership increments epoch", () => {
+test("HaCoordinatorService - acquireLeadership increments epoch [ha-coordinator-service-inner]", () => {
   const service = createService();
 
   service.registerNode("node-1", "us-east-1");
@@ -434,7 +434,7 @@ test("HaCoordinatorService - acquireLeadership increments epoch", () => {
   assert.ok(result2.epoch > result1.epoch);
 });
 
-test("HaCoordinatorService - acquireLeadership with forceAcquire preempts existing leader", () => {
+test("HaCoordinatorService - acquireLeadership with forceAcquire preempts existing leader [ha-coordinator-service-inner]", () => {
   const service = createService();
 
   service.registerNode("node-1", "us-east-1");
@@ -446,7 +446,7 @@ test("HaCoordinatorService - acquireLeadership with forceAcquire preempts existi
   assert.equal(result.acquired, true);
 });
 
-test("HaCoordinatorService - getCurrentLeader returns current leader", () => {
+test("HaCoordinatorService - getCurrentLeader returns current leader [ha-coordinator-service-inner]", () => {
   const service = createService();
 
   service.registerNode("node-1", "us-east-1");
@@ -458,7 +458,7 @@ test("HaCoordinatorService - getCurrentLeader returns current leader", () => {
   assert.equal(leader!.nodeId, "node-1");
 });
 
-test("HaCoordinatorService - getCurrentLeader returns null when no leader", () => {
+test("HaCoordinatorService - getCurrentLeader returns null when no leader [ha-coordinator-service-inner]", () => {
   const service = createService();
 
   const leader = service.getCurrentLeader();
@@ -470,7 +470,7 @@ test("HaCoordinatorService - getCurrentLeader returns null when no leader", () =
 // Tests: Leadership Renewal
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("HaCoordinatorService - renewLeadership succeeds for leader", () => {
+test("HaCoordinatorService - renewLeadership succeeds for leader [ha-coordinator-service-inner]", () => {
   const service = createService();
 
   service.registerNode("node-1", "us-east-1");
@@ -482,7 +482,7 @@ test("HaCoordinatorService - renewLeadership succeeds for leader", () => {
   assert.ok(result.lease !== null);
 });
 
-test("HaCoordinatorService - renewLeadership fails for non-leader", () => {
+test("HaCoordinatorService - renewLeadership fails for non-leader [ha-coordinator-service-inner]", () => {
   const service = createService();
 
   service.registerNode("node-1", "us-east-1");
@@ -493,7 +493,7 @@ test("HaCoordinatorService - renewLeadership fails for non-leader", () => {
   assert.equal(result.lease, null);
 });
 
-test("HaCoordinatorService - renewLeadership updates expiration", () => {
+test("HaCoordinatorService - renewLeadership updates expiration [ha-coordinator-service-inner]", () => {
   const service = createService();
 
   service.registerNode("node-1", "us-east-1");
@@ -508,7 +508,7 @@ test("HaCoordinatorService - renewLeadership updates expiration", () => {
 // Tests: Leadership Release
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("HaCoordinatorService - releaseLeadership succeeds for leader", () => {
+test("HaCoordinatorService - releaseLeadership succeeds for leader [ha-coordinator-service-inner]", () => {
   const service = createService();
 
   service.registerNode("node-1", "us-east-1");
@@ -520,7 +520,7 @@ test("HaCoordinatorService - releaseLeadership succeeds for leader", () => {
   assert.equal(service.getCurrentLeader(), null);
 });
 
-test("HaCoordinatorService - releaseLeadership fails for non-leader", () => {
+test("HaCoordinatorService - releaseLeadership fails for non-leader [ha-coordinator-service-inner]", () => {
   const service = createService();
 
   service.registerNode("node-1", "us-east-1");
@@ -534,7 +534,7 @@ test("HaCoordinatorService - releaseLeadership fails for non-leader", () => {
 // Tests: Leadership Query
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("HaCoordinatorService - queryLeadership returns correct state when leader", () => {
+test("HaCoordinatorService - queryLeadership returns correct state when leader [ha-coordinator-service-inner]", () => {
   const service = createService();
 
   service.registerNode("node-1", "us-east-1");
@@ -550,7 +550,7 @@ test("HaCoordinatorService - queryLeadership returns correct state when leader",
   assert.equal(query.isExpired, false);
 });
 
-test("HaCoordinatorService - queryLeadership returns expired when lease is old", () => {
+test("HaCoordinatorService - queryLeadership returns expired when lease is old [ha-coordinator-service-inner]", () => {
   // This test verifies the queryLeadership logic works
   // Note: In real scenario, we would use a clock mock, but here we just verify
   // that the method returns expected structure when there is no leadership
@@ -567,7 +567,7 @@ test("HaCoordinatorService - queryLeadership returns expired when lease is old",
 // Tests: Leader Authority Verification
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("HaCoordinatorService - authorizeAction allows leader for leader_only action", () => {
+test("HaCoordinatorService - authorizeAction allows leader for leader_only action [ha-coordinator-service-inner]", () => {
   const service = createService();
 
   service.registerNode("node-1", "us-east-1");
@@ -579,7 +579,7 @@ test("HaCoordinatorService - authorizeAction allows leader for leader_only actio
   assert.equal(auth.reasonCode, "ok");
 });
 
-test("HaCoordinatorService - authorizeAction denies follower for leader_only action", () => {
+test("HaCoordinatorService - authorizeAction denies follower for leader_only action [ha-coordinator-service-inner]", () => {
   const service = createService();
 
   service.registerNode("node-1", "us-east-1");
@@ -592,7 +592,7 @@ test("HaCoordinatorService - authorizeAction denies follower for leader_only act
   assert.equal(auth.reasonCode, "not_current_leader");
 });
 
-test("HaCoordinatorService - authorizeAction denies leader_only action when no active lease exists", () => {
+test("HaCoordinatorService - authorizeAction denies leader_only action when no active lease exists [ha-coordinator-service-inner]", () => {
   const service = createService();
 
   service.registerNode("node-1", "us-east-1");
@@ -603,7 +603,7 @@ test("HaCoordinatorService - authorizeAction denies leader_only action when no a
   assert.equal(auth.reasonCode, "no_active_leader");
 });
 
-test("HaCoordinatorService - authorizeAction allows any node for any authority", () => {
+test("HaCoordinatorService - authorizeAction allows any node for any authority [ha-coordinator-service-inner]", () => {
   const service = createService();
 
   service.registerNode("node-1", "us-east-1");
@@ -613,7 +613,7 @@ test("HaCoordinatorService - authorizeAction allows any node for any authority",
   assert.equal(auth.authorized, true);
 });
 
-test("HaCoordinatorService - authorizeAction allows followers for follower_allowed action", () => {
+test("HaCoordinatorService - authorizeAction allows followers for follower_allowed action [ha-coordinator-service-inner]", () => {
   const service = createService();
 
   service.registerNode("node-1", "us-east-1");
@@ -626,7 +626,7 @@ test("HaCoordinatorService - authorizeAction allows followers for follower_allow
   assert.equal(auth.reasonCode, "follower_allowed");
 });
 
-test("HaCoordinatorService - authorizeAction denies unknown node", () => {
+test("HaCoordinatorService - authorizeAction denies unknown node [ha-coordinator-service-inner]", () => {
   const service = createService();
 
   const auth = service.authorizeAction("unknown-node", "test_action", "any");
@@ -639,7 +639,7 @@ test("HaCoordinatorService - authorizeAction denies unknown node", () => {
 // Tests: Epoch Management
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("HaCoordinatorService - getLatestEpoch returns epoch 0 when no leadership", () => {
+test("HaCoordinatorService - getLatestEpoch returns epoch 0 when no leadership [ha-coordinator-service-inner]", () => {
   const service = createService();
 
   const epoch = service.getLatestEpoch();
@@ -648,7 +648,7 @@ test("HaCoordinatorService - getLatestEpoch returns epoch 0 when no leadership",
   assert.equal(epoch.leaderNodeId, null);
 });
 
-test("HaCoordinatorService - getLatestEpoch returns current epoch after acquisition", () => {
+test("HaCoordinatorService - getLatestEpoch returns current epoch after acquisition [ha-coordinator-service-inner]", () => {
   const service = createService();
 
   service.registerNode("node-1", "us-east-1");
@@ -660,7 +660,7 @@ test("HaCoordinatorService - getLatestEpoch returns current epoch after acquisit
   assert.equal(epoch.leaderNodeId, "node-1");
 });
 
-test("HaCoordinatorService - listEpochs returns epoch history", () => {
+test("HaCoordinatorService - listEpochs returns epoch history [ha-coordinator-service-inner]", () => {
   const service = createService();
 
   service.registerNode("node-1", "us-east-1");
@@ -677,7 +677,7 @@ test("HaCoordinatorService - listEpochs returns epoch history", () => {
 // Tests: Failover
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("HaCoordinatorService - triggerFailover selects new leader", () => {
+test("HaCoordinatorService - triggerFailover selects new leader [ha-coordinator-service-inner]", () => {
   const service = createService();
 
   service.registerNode("node-1", "us-east-1");
@@ -691,7 +691,7 @@ test("HaCoordinatorService - triggerFailover selects new leader", () => {
   assert.ok(decision.newLeaderNodeId !== null);
 });
 
-test("HaCoordinatorService - triggerFailover returns no_candidate when no followers", () => {
+test("HaCoordinatorService - triggerFailover returns no_candidate when no followers [ha-coordinator-service-inner]", () => {
   const service = createService();
 
   service.registerNode("node-1", "us-east-1");
@@ -702,7 +702,7 @@ test("HaCoordinatorService - triggerFailover returns no_candidate when no follow
   assert.equal(decision.outcome, "no_candidate");
 });
 
-test("HaCoordinatorService - triggerFailover with forceNodeId promotes that node", () => {
+test("HaCoordinatorService - triggerFailover with forceNodeId promotes that node [ha-coordinator-service-inner]", () => {
   const service = createService();
 
   service.registerNode("node-1", "us-east-1");
@@ -715,7 +715,7 @@ test("HaCoordinatorService - triggerFailover with forceNodeId promotes that node
   assert.equal(decision.newLeaderNodeId, "node-2");
 });
 
-test("HaCoordinatorService - triggerFailover records the fencing token issued during acquisition", () => {
+test("HaCoordinatorService - triggerFailover records the fencing token issued during acquisition [ha-coordinator-service-inner]", () => {
   const service = createService();
 
   service.registerNode("node-1", "us-east-1");
@@ -729,7 +729,7 @@ test("HaCoordinatorService - triggerFailover records the fencing token issued du
   assert.equal(history[0]?.fencingToken, decision.fencingToken);
 });
 
-test("HaCoordinatorService - getFailoverHistory returns decisions", () => {
+test("HaCoordinatorService - getFailoverHistory returns decisions [ha-coordinator-service-inner]", () => {
   const service = createService();
 
   service.registerNode("node-1", "us-east-1");
@@ -746,7 +746,7 @@ test("HaCoordinatorService - getFailoverHistory returns decisions", () => {
 // Tests: Write Authority Verification
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("HaCoordinatorService - verifyWriteAuthority returns true for valid token", () => {
+test("HaCoordinatorService - verifyWriteAuthority returns true for valid token [ha-coordinator-service-inner]", () => {
   const service = createService();
 
   service.registerNode("node-1", "us-east-1");
@@ -757,7 +757,7 @@ test("HaCoordinatorService - verifyWriteAuthority returns true for valid token",
   assert.equal(valid, true);
 });
 
-test("HaCoordinatorService - verifyWriteAuthority returns false for stale token", () => {
+test("HaCoordinatorService - verifyWriteAuthority returns false for stale token [ha-coordinator-service-inner]", () => {
   const service = createService();
 
   // Without any leadership, the latest epoch has fencingToken 0
@@ -768,7 +768,7 @@ test("HaCoordinatorService - verifyWriteAuthority returns false for stale token"
   assert.equal(valid, false);
 });
 
-test("HaCoordinatorService - verifyWriteAuthority rejects mismatched future fencing tokens", () => {
+test("HaCoordinatorService - verifyWriteAuthority rejects mismatched future fencing tokens [ha-coordinator-service-inner]", () => {
   const service = createService();
 
   service.registerNode("node-1", "us-east-1");
@@ -783,7 +783,7 @@ test("HaCoordinatorService - verifyWriteAuthority rejects mismatched future fenc
 // Tests: Cleanup
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("HaCoordinatorService - purgeExpiredLeases marks expired leases", () => {
+test("HaCoordinatorService - purgeExpiredLeases marks expired leases [ha-coordinator-service-inner]", () => {
   const service = createService();
 
   service.registerNode("node-1", "us-east-1");
@@ -800,7 +800,7 @@ test("HaCoordinatorService - purgeExpiredLeases marks expired leases", () => {
   assert.ok(count >= 0);
 });
 
-test("HaCoordinatorService - purgeOldFailoverDecisions removes old decisions", () => {
+test("HaCoordinatorService - purgeOldFailoverDecisions removes old decisions [ha-coordinator-service-inner]", () => {
   const service = createService();
 
   service.registerNode("node-1", "us-east-1");
@@ -817,14 +817,14 @@ test("HaCoordinatorService - purgeOldFailoverDecisions removes old decisions", (
 // Tests: Constants
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("HaCoordinatorService - exports correct constants", () => {
+test("HaCoordinatorService - exports correct constants [ha-coordinator-service-inner]", () => {
   assert.equal(DEFAULT_LEASE_TTL_MS, 15_000);
   assert.equal(MIN_LEASE_TTL_MS, 5_000);
   assert.equal(MAX_LEASE_TTL_MS, 60_000);
   assert.ok(HA_COORDINATOR_DDL.includes("coordinator_nodes"));
 });
 
-test("HaCoordinatorService - getActiveLease returns null when no leadership", () => {
+test("HaCoordinatorService - getActiveLease returns null when no leadership [ha-coordinator-service-inner]", () => {
   const service = createService();
 
   const lease = service.getActiveLease();
@@ -832,7 +832,7 @@ test("HaCoordinatorService - getActiveLease returns null when no leadership", ()
   assert.equal(lease, null);
 });
 
-test("HaCoordinatorService - getActiveLease returns active lease when leader", () => {
+test("HaCoordinatorService - getActiveLease returns active lease when leader [ha-coordinator-service-inner]", () => {
   const service = createService();
 
   service.registerNode("node-1", "us-east-1");

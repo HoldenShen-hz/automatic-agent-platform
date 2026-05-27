@@ -79,7 +79,7 @@ function createWorkerSnapshot(overrides: Partial<WorkerSnapshotRecord> = {}): Wo
 // Worker Registration tests
 // ---------------------------------------------------------------------------
 
-test("WorkerRegistration new worker can register via heartbeat", () => {
+test("WorkerRegistration new worker can register via heartbeat [worker-registration]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -91,7 +91,7 @@ test("WorkerRegistration new worker can register via heartbeat", () => {
   assert.equal(view.trusted, true);
 });
 
-test("WorkerRegistration heartbeat creates snapshot if worker does not exist", () => {
+test("WorkerRegistration heartbeat creates snapshot if worker does not exist [worker-registration]", () => {
   const workers = new Map<string, WorkerSnapshotRecord>();
   const store = createMockStore(workers);
   const service = new WorkerRegistryService(store);
@@ -101,7 +101,7 @@ test("WorkerRegistration heartbeat creates snapshot if worker does not exist", (
   assert.equal(workers.has("brand-new-worker"), true);
 });
 
-test("WorkerRegistration remote worker without registration is untrusted", () => {
+test("WorkerRegistration remote worker without registration is untrusted [worker-registration]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -114,7 +114,7 @@ test("WorkerRegistration remote worker without registration is untrusted", () =>
   assert.equal(view.placement, "remote");
 });
 
-test("WorkerRegistration remote worker with registrationVerifiedAt is trusted", () => {
+test("WorkerRegistration remote worker with registrationVerifiedAt is trusted [worker-registration]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -127,7 +127,7 @@ test("WorkerRegistration remote worker with registrationVerifiedAt is trusted", 
   assert.equal(view.trusted, true);
 });
 
-test("WorkerRegistration verifyRemoteWorkerRegistration creates trusted remote worker", () => {
+test("WorkerRegistration verifyRemoteWorkerRegistration creates trusted remote worker [worker-registration]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -145,7 +145,7 @@ test("WorkerRegistration verifyRemoteWorkerRegistration creates trusted remote w
   assert.equal(view.registrationChallengeId, "challenge-abc");
 });
 
-test("WorkerRegistration verifyRemoteWorkerRegistration sets status to idle if new worker", () => {
+test("WorkerRegistration verifyRemoteWorkerRegistration sets status to idle if new worker [worker-registration]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -159,7 +159,7 @@ test("WorkerRegistration verifyRemoteWorkerRegistration sets status to idle if n
   assert.equal(view.status, "idle");
 });
 
-test("WorkerRegistration verifyRemoteWorkerRegistration preserves existing status", () => {
+test("WorkerRegistration verifyRemoteWorkerRegistration preserves existing status [worker-registration]", () => {
   const existing = createWorkerSnapshot({
     workerId: "remote-worker-existing",
     status: "busy",
@@ -178,7 +178,7 @@ test("WorkerRegistration verifyRemoteWorkerRegistration preserves existing statu
   assert.equal(view.status, "busy");
 });
 
-test("WorkerRegistration verifyRemoteWorkerRegistration preserves existing remote session state", () => {
+test("WorkerRegistration verifyRemoteWorkerRegistration preserves existing remote session state [worker-registration]", () => {
   const existing = createWorkerSnapshot({
     workerId: "remote-worker-1",
     remoteSessionStatus: "connected",
@@ -203,7 +203,7 @@ test("WorkerRegistration verifyRemoteWorkerRegistration preserves existing remot
 // Worker Heartbeat tests
 // ---------------------------------------------------------------------------
 
-test("WorkerHeartbeat updates worker status", () => {
+test("WorkerHeartbeat updates worker status [worker-registration]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -213,7 +213,7 @@ test("WorkerHeartbeat updates worker status", () => {
   assert.equal(service.getWorker("worker-1")!.status, "busy");
 });
 
-test("WorkerHeartbeat preserves existing telemetry when not provided", () => {
+test("WorkerHeartbeat preserves existing telemetry when not provided [worker-registration]", () => {
   const existing = createWorkerSnapshot({
     workerId: "worker-1",
     cpuPct: 45.5,
@@ -229,7 +229,7 @@ test("WorkerHeartbeat preserves existing telemetry when not provided", () => {
   assert.equal(view.memoryMb, 1024);
 });
 
-test("WorkerHeartbeat updates telemetry when provided", () => {
+test("WorkerHeartbeat updates telemetry when provided [worker-registration]", () => {
   const existing = createWorkerSnapshot({
     workerId: "worker-1",
     cpuPct: 45.5,
@@ -249,7 +249,7 @@ test("WorkerHeartbeat updates telemetry when provided", () => {
   assert.equal(view.memoryMb, 2048);
 });
 
-test("WorkerHeartbeat updates lastProgressAt when progressMessage is provided", () => {
+test("WorkerHeartbeat updates lastProgressAt when progressMessage is provided [worker-registration]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -265,7 +265,7 @@ test("WorkerHeartbeat updates lastProgressAt when progressMessage is provided", 
   assert.ok(view.lastProgressAt! >= beforeUpdate);
 });
 
-test("WorkerHeartbeat does not update lastProgressAt when no progressMessage", () => {
+test("WorkerHeartbeat does not update lastProgressAt when no progressMessage [worker-registration]", () => {
   const existing = createWorkerSnapshot({
     workerId: "worker-1",
     lastProgressAt: "2026-04-01T00:00:00.000Z",
@@ -279,7 +279,7 @@ test("WorkerHeartbeat does not update lastProgressAt when no progressMessage", (
   assert.equal(view.lastProgressAt, "2026-04-01T00:00:00.000Z");
 });
 
-test("WorkerHeartbeat normalizes saturation to valid range", () => {
+test("WorkerHeartbeat normalizes saturation to valid range [worker-registration]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -291,7 +291,7 @@ test("WorkerHeartbeat normalizes saturation to valid range", () => {
   assert.equal(view.saturation, 1);
 });
 
-test("WorkerHeartbeat normalizes negative saturation to 0", () => {
+test("WorkerHeartbeat normalizes negative saturation to 0 [worker-registration]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -303,7 +303,7 @@ test("WorkerHeartbeat normalizes negative saturation to 0", () => {
   assert.equal(view.saturation, 0);
 });
 
-test("WorkerHeartbeat normalizes activeLeaseCount to non-negative", () => {
+test("WorkerHeartbeat normalizes activeLeaseCount to non-negative [worker-registration]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -315,7 +315,7 @@ test("WorkerHeartbeat normalizes activeLeaseCount to non-negative", () => {
   assert.equal(view.activeLeaseCount, 0);
 });
 
-test("WorkerHeartbeat records currentStepId", () => {
+test("WorkerHeartbeat records currentStepId [worker-registration]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -327,7 +327,7 @@ test("WorkerHeartbeat records currentStepId", () => {
   assert.equal(view.currentStepId, "step-abc-123");
 });
 
-test("WorkerHeartbeat toolBacklogCount is tracked", () => {
+test("WorkerHeartbeat toolBacklogCount is tracked [worker-registration]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -339,7 +339,7 @@ test("WorkerHeartbeat toolBacklogCount is tracked", () => {
   assert.equal(view.toolBacklogCount, 15);
 });
 
-test("WorkerHeartbeat remote placement nullifies remote-specific fields for local workers", () => {
+test("WorkerHeartbeat remote placement nullifies remote-specific fields for local workers [worker-registration]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -353,7 +353,7 @@ test("WorkerHeartbeat remote placement nullifies remote-specific fields for loca
   assert.equal(view.remoteSessionStatus, null);
 });
 
-test("WorkerHeartbeat remote placement preserves remote-specific fields", () => {
+test("WorkerHeartbeat remote placement preserves remote-specific fields [worker-registration]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -369,7 +369,7 @@ test("WorkerHeartbeat remote placement preserves remote-specific fields", () => 
   assert.equal(view.lastAcknowledgedStreamOffset, "offset-xyz");
 });
 
-test("WorkerHeartbeat normalizes capabilities (deduplicates, trims, sorts)", () => {
+test("WorkerHeartbeat normalizes capabilities (deduplicates, trims, sorts) [worker-registration]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -386,7 +386,7 @@ test("WorkerHeartbeat normalizes capabilities (deduplicates, trims, sorts)", () 
 // Restart Semantics tests
 // ---------------------------------------------------------------------------
 
-test("WorkerRestart runtimeInstanceId change increments restartGeneration", () => {
+test("WorkerRestart runtimeInstanceId change increments restartGeneration [worker-registration]", () => {
   const existing = createWorkerSnapshot({
     workerId: "worker-1",
     runtimeInstanceId: "runtime-old",
@@ -406,7 +406,7 @@ test("WorkerRestart runtimeInstanceId change increments restartGeneration", () =
   assert.equal(view.restartedFromRuntimeInstanceId, "runtime-old");
 });
 
-test("WorkerRestart same runtimeInstanceId preserves restartGeneration", () => {
+test("WorkerRestart same runtimeInstanceId preserves restartGeneration [worker-registration]", () => {
   const existing = createWorkerSnapshot({
     workerId: "worker-1",
     runtimeInstanceId: "runtime-same",
@@ -425,7 +425,7 @@ test("WorkerRestart same runtimeInstanceId preserves restartGeneration", () => {
   assert.equal(view.restartedFromRuntimeInstanceId, null);
 });
 
-test("WorkerRestart explicit restartedFromRuntimeInstanceId is preserved", () => {
+test("WorkerRestart explicit restartedFromRuntimeInstanceId is preserved [worker-registration]", () => {
   const existing = createWorkerSnapshot({
     workerId: "worker-1",
     runtimeInstanceId: "runtime-old",
@@ -444,7 +444,7 @@ test("WorkerRestart explicit restartedFromRuntimeInstanceId is preserved", () =>
   assert.equal(view.restartedFromRuntimeInstanceId, "runtime-explicit-source");
 });
 
-test("WorkerRestart first registration has restartGeneration 0", () => {
+test("WorkerRestart first registration has restartGeneration 0 [worker-registration]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -453,7 +453,7 @@ test("WorkerRestart first registration has restartGeneration 0", () => {
   assert.equal(view.restartGeneration, 0);
 });
 
-test("WorkerRestart new runtimeId on existing worker with no prior runtimeId is not a restart", () => {
+test("WorkerRestart new runtimeId on existing worker with no prior runtimeId is not a restart [worker-registration]", () => {
   const existing = createWorkerSnapshot({
     workerId: "worker-1",
     runtimeInstanceId: null,
@@ -477,7 +477,7 @@ test("WorkerRestart new runtimeId on existing worker with no prior runtimeId is 
 // Stale Worker tests
 // ---------------------------------------------------------------------------
 
-test("WorkerStale listStaleWorkers returns workers with old heartbeats", () => {
+test("WorkerStale listStaleWorkers returns workers with old heartbeats [worker-registration]", () => {
   const staleTime = "2026-04-02T00:00:00.000Z";
   // Worker with heartbeat BEFORE the cutoff (2026-04-01T00:00:00.000Z < 2026-04-01T00:00:00.000Z cutoff)
   const staleWorker = createWorkerSnapshot({
@@ -505,7 +505,7 @@ test("WorkerStale listStaleWorkers returns workers with old heartbeats", () => {
   assert.equal(stale[0]!.workerId, "worker-stale");
 });
 
-test("WorkerStale threshold determines staleness", () => {
+test("WorkerStale threshold determines staleness [worker-registration]", () => {
   const now = "2026-04-02T12:00:00.000Z";
   const workerJustStale = createWorkerSnapshot({
     workerId: "worker-just-stale",
@@ -532,7 +532,7 @@ test("WorkerStale threshold determines staleness", () => {
 // List Workers tests
 // ---------------------------------------------------------------------------
 
-test("WorkerList listWorkers returns all registered workers", () => {
+test("WorkerList listWorkers returns all registered workers [worker-registration]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -544,7 +544,7 @@ test("WorkerList listWorkers returns all registered workers", () => {
   assert.equal(workers.length, 3);
 });
 
-test("WorkerList getWorker returns null for non-existent worker", () => {
+test("WorkerList getWorker returns null for non-existent worker [worker-registration]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -552,7 +552,7 @@ test("WorkerList getWorker returns null for non-existent worker", () => {
   assert.equal(view, null);
 });
 
-test("WorkerList multiple registrations of same worker returns single entry", () => {
+test("WorkerList multiple registrations of same worker returns single entry [worker-registration]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 

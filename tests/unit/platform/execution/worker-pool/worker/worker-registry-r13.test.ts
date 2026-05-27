@@ -13,7 +13,7 @@ interface ScaleSignal {
   targetLoad: number;
 }
 
-test("R13-18: Scale up signal emitted when saturation >= 0.85", () => {
+test("R13-18: Scale up signal emitted when saturation >= 0.85 [worker-registry-r13]", () => {
   const emittedSignals: ScaleSignal[] = [];
 
   function emitScaleSignal(
@@ -57,7 +57,7 @@ test("R13-18: Scale up signal emitted when saturation >= 0.85", () => {
   assert.equal(emittedSignals[0]!.signalType, "scale_up", "Should be scale_up signal");
 });
 
-test("R13-18: Scale up signal emitted when load >= maxConcurrency - 1", () => {
+test("R13-18: Scale up signal emitted when load >= maxConcurrency - 1 [worker-registry-r13]", () => {
   const emittedSignals: ScaleSignal[] = [];
 
   function emitScaleSignal(
@@ -86,7 +86,7 @@ test("R13-18: Scale up signal emitted when load >= maxConcurrency - 1", () => {
   assert.equal(emittedSignals[0]!.signalType, "scale_up", "Should be scale_up signal");
 });
 
-test("R13-18: Scale down signal emitted when saturation <= 0.3 and load <= 1", () => {
+test("R13-18: Scale down signal emitted when saturation <= 0.3 and load <= 1 [worker-registry-r13]", () => {
   const emittedSignals: ScaleSignal[] = [];
 
   function emitScaleSignal(
@@ -115,7 +115,7 @@ test("R13-18: Scale down signal emitted when saturation <= 0.3 and load <= 1", (
   assert.equal(emittedSignals[0]!.signalType, "scale_down", "Should be scale_down signal");
 });
 
-test("R13-18: No signal emitted when utilization is moderate", () => {
+test("R13-18: No signal emitted when utilization is moderate [worker-registry-r13]", () => {
   const emittedSignals: ScaleSignal[] = [];
 
   function emitScaleSignal(

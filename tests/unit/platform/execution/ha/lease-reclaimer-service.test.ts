@@ -245,7 +245,7 @@ function createReclaimer(
 // Tests: Lifecycle (start, stop, dispose)
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("LeaseReclaimerService - creation with defaults", () => {
+test("LeaseReclaimerService - creation with defaults [lease-reclaimer-service]", () => {
   const coordinator = createMockCoordinator();
   const service = createReclaimer(coordinator);
 
@@ -254,7 +254,7 @@ test("LeaseReclaimerService - creation with defaults", () => {
   service.dispose();
 });
 
-test("LeaseReclaimerService - start() transitions to running", () => {
+test("LeaseReclaimerService - start() transitions to running [lease-reclaimer-service]", () => {
   const coordinator = createMockCoordinator();
   const service = createReclaimer(coordinator, {
     config: { reclaimIntervalMs: 10_000, gracePeriodMs: 2_000, autoFailover: true },
@@ -267,7 +267,7 @@ test("LeaseReclaimerService - start() transitions to running", () => {
   service.dispose();
 });
 
-test("LeaseReclaimerService - start() is idempotent", () => {
+test("LeaseReclaimerService - start() is idempotent [lease-reclaimer-service]", () => {
   const coordinator = createMockCoordinator();
   const service = createReclaimer(coordinator, {
     config: { reclaimIntervalMs: 10_000, gracePeriodMs: 2_000, autoFailover: true },
@@ -280,7 +280,7 @@ test("LeaseReclaimerService - start() is idempotent", () => {
   service.dispose();
 });
 
-test("LeaseReclaimerService - start() throws if disposed", () => {
+test("LeaseReclaimerService - start() throws if disposed [lease-reclaimer-service]", () => {
   const coordinator = createMockCoordinator();
   const service = createReclaimer(coordinator);
   service.dispose();
@@ -291,7 +291,7 @@ test("LeaseReclaimerService - start() throws if disposed", () => {
   );
 });
 
-test("LeaseReclaimerService - start() does nothing if reclaimIntervalMs <= 0", () => {
+test("LeaseReclaimerService - start() does nothing if reclaimIntervalMs <= 0 [lease-reclaimer-service]", () => {
   const coordinator = createMockCoordinator();
   const service = createReclaimer(coordinator, {
     config: { reclaimIntervalMs: 0, gracePeriodMs: 2_000, autoFailover: true },
@@ -303,7 +303,7 @@ test("LeaseReclaimerService - start() does nothing if reclaimIntervalMs <= 0", (
   service.dispose();
 });
 
-test("LeaseReclaimerService - stop() transitions to not running", () => {
+test("LeaseReclaimerService - stop() transitions to not running [lease-reclaimer-service]", () => {
   const coordinator = createMockCoordinator();
   const service = createReclaimer(coordinator, {
     config: { reclaimIntervalMs: 10_000, gracePeriodMs: 2_000, autoFailover: true },
@@ -316,7 +316,7 @@ test("LeaseReclaimerService - stop() transitions to not running", () => {
   assert.equal(service.isRunning(), false);
 });
 
-test("LeaseReclaimerService - stop() is idempotent", () => {
+test("LeaseReclaimerService - stop() is idempotent [lease-reclaimer-service]", () => {
   const coordinator = createMockCoordinator();
   const service = createReclaimer(coordinator, {
     config: { reclaimIntervalMs: 10_000, gracePeriodMs: 2_000, autoFailover: true },
@@ -328,7 +328,7 @@ test("LeaseReclaimerService - stop() is idempotent", () => {
   assert.equal(service.isRunning(), false);
 });
 
-test("LeaseReclaimerService - dispose() sets disposed flag", () => {
+test("LeaseReclaimerService - dispose() sets disposed flag [lease-reclaimer-service]", () => {
   const coordinator = createMockCoordinator();
   const service = createReclaimer(coordinator);
 
@@ -342,7 +342,7 @@ test("LeaseReclaimerService - dispose() sets disposed flag", () => {
   );
 });
 
-test("LeaseReclaimerService - dispose() also stops", () => {
+test("LeaseReclaimerService - dispose() also stops [lease-reclaimer-service]", () => {
   const coordinator = createMockCoordinator();
   const service = createReclaimer(coordinator, {
     config: { reclaimIntervalMs: 10_000, gracePeriodMs: 2_000, autoFailover: true },
@@ -357,7 +357,7 @@ test("LeaseReclaimerService - dispose() also stops", () => {
 // Tests: Configuration
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("LeaseReclaimerService - getConfig() returns current config", () => {
+test("LeaseReclaimerService - getConfig() returns current config [lease-reclaimer-service]", () => {
   const coordinator = createMockCoordinator();
   const service = createReclaimer(coordinator, {
     haLevel: "HA_2",
@@ -372,7 +372,7 @@ test("LeaseReclaimerService - getConfig() returns current config", () => {
   service.dispose();
 });
 
-test("LeaseReclaimerService - default config uses HA level defaults", () => {
+test("LeaseReclaimerService - default config uses HA level defaults [lease-reclaimer-service]", () => {
   const coordinator = createMockCoordinator();
   const service = createReclaimer(coordinator, { haLevel: "HA_2" });
 
@@ -385,7 +385,7 @@ test("LeaseReclaimerService - default config uses HA level defaults", () => {
   service.dispose();
 });
 
-test("LeaseReclaimerService - isRunning() returns false when disposed", () => {
+test("LeaseReclaimerService - isRunning() returns false when disposed [lease-reclaimer-service]", () => {
   const coordinator = createMockCoordinator();
   const service = createReclaimer(coordinator, {
     config: { reclaimIntervalMs: 10_000, gracePeriodMs: 2_000, autoFailover: true },
@@ -398,7 +398,7 @@ test("LeaseReclaimerService - isRunning() returns false when disposed", () => {
   assert.equal(service.isRunning(), false);
 });
 
-test("LeaseReclaimerService - isRunning() returns false when stopped", () => {
+test("LeaseReclaimerService - isRunning() returns false when stopped [lease-reclaimer-service]", () => {
   const coordinator = createMockCoordinator();
   const service = createReclaimer(coordinator, {
     config: { reclaimIntervalMs: 10_000, gracePeriodMs: 2_000, autoFailover: true },
@@ -415,7 +415,7 @@ test("LeaseReclaimerService - isRunning() returns false when stopped", () => {
 // Tests: reclaimOnce()
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("LeaseReclaimerService - reclaimOnce() returns empty result when no leases", async () => {
+test("LeaseReclaimerService - reclaimOnce() returns empty result when no leases [lease-reclaimer-service]", async () => {
   const coordinator = createMockCoordinator();
   const service = createReclaimer(coordinator);
 
@@ -427,7 +427,7 @@ test("LeaseReclaimerService - reclaimOnce() returns empty result when no leases"
   service.dispose();
 });
 
-test("LeaseReclaimerService - reclaimOnce() returns empty result when not running", async () => {
+test("LeaseReclaimerService - reclaimOnce() returns empty result when not running [lease-reclaimer-service]", async () => {
   const coordinator = createMockCoordinator();
   const service = createReclaimer(coordinator);
 
@@ -438,7 +438,7 @@ test("LeaseReclaimerService - reclaimOnce() returns empty result when not runnin
   service.dispose();
 });
 
-test("LeaseReclaimerService - reclaimOnce() processes expired lease after grace period", async () => {
+test("LeaseReclaimerService - reclaimOnce() processes expired lease after grace period [lease-reclaimer-service]", async () => {
   const coordinator = createMockCoordinator();
 
   // Register and acquire leadership
@@ -471,7 +471,7 @@ test("LeaseReclaimerService - reclaimOnce() processes expired lease after grace 
   service.dispose();
 });
 
-test("LeaseReclaimerService - reclaimOnce() skips lease within grace period", async () => {
+test("LeaseReclaimerService - reclaimOnce() skips lease within grace period [lease-reclaimer-service]", async () => {
   const coordinator = createMockCoordinator();
 
   // Register and acquire leadership with short TTL
@@ -501,7 +501,7 @@ test("LeaseReclaimerService - reclaimOnce() skips lease within grace period", as
   service.dispose();
 });
 
-test("LeaseReclaimerService - reclaimOnce() triggers failover for leader lease", async () => {
+test("LeaseReclaimerService - reclaimOnce() triggers failover for leader lease [lease-reclaimer-service]", async () => {
   const coordinator = createMockCoordinator();
 
   // Register and acquire leadership
@@ -559,7 +559,7 @@ test("LeaseReclaimerService - reclaimOnce() triggers failover for leader lease",
   service.dispose();
 });
 
-test("LeaseReclaimerService - reclaimOnce() does not trigger failover when autoFailover is false", async () => {
+test("LeaseReclaimerService - reclaimOnce() does not trigger failover when autoFailover is false [lease-reclaimer-service]", async () => {
   const coordinator = createMockCoordinator();
 
   // Register and acquire leadership
@@ -599,7 +599,7 @@ test("LeaseReclaimerService - reclaimOnce() does not trigger failover when autoF
   service.dispose();
 });
 
-test("LeaseReclaimerService - reclaimOnce() calls onLeaseReclaimed callback", async () => {
+test("LeaseReclaimerService - reclaimOnce() calls onLeaseReclaimed callback [lease-reclaimer-service]", async () => {
   const coordinator = createMockCoordinator();
 
   // Register and acquire leadership
@@ -638,7 +638,7 @@ test("LeaseReclaimerService - reclaimOnce() calls onLeaseReclaimed callback", as
   service.dispose();
 });
 
-test("LeaseReclaimerService - reclaimOnce() handles coordinator errors gracefully", async () => {
+test("LeaseReclaimerService - reclaimOnce() handles coordinator errors gracefully [lease-reclaimer-service]", async () => {
   const coordinator = createMockCoordinator();
 
   // Register and acquire leadership
@@ -681,7 +681,7 @@ test("LeaseReclaimerService - reclaimOnce() handles coordinator errors gracefull
 // Tests: doReclaimCycle() behavior
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("LeaseReclaimerService - doReclaimCycle returns correct result structure", async () => {
+test("LeaseReclaimerService - doReclaimCycle returns correct result structure [lease-reclaimer-service]", async () => {
   const coordinator = createMockCoordinator();
   const service = createReclaimer(coordinator);
 
@@ -696,7 +696,7 @@ test("LeaseReclaimerService - doReclaimCycle returns correct result structure", 
   service.dispose();
 });
 
-test("LeaseReclaimerService - doReclaimCycle does nothing when disposed", async () => {
+test("LeaseReclaimerService - doReclaimCycle does nothing when disposed [lease-reclaimer-service]", async () => {
   const coordinator = createMockCoordinator();
   const service = createReclaimer(coordinator);
 
@@ -711,7 +711,7 @@ test("LeaseReclaimerService - doReclaimCycle does nothing when disposed", async 
 // Tests: getExpiredLeases() / getStaleNodes() integration
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("LeaseReclaimerService - expired lease detection", async () => {
+test("LeaseReclaimerService - expired lease detection [lease-reclaimer-service]", async () => {
   const coordinator = createMockCoordinator();
 
   // Register node and acquire leadership
@@ -742,7 +742,7 @@ test("LeaseReclaimerService - expired lease detection", async () => {
   service.dispose();
 });
 
-test("LeaseReclaimerService - stale node detection (empty in basic mock)", async () => {
+test("LeaseReclaimerService - stale node detection (empty in basic mock) [lease-reclaimer-service]", async () => {
   const coordinator = createMockCoordinator();
 
   // Register node without leadership
@@ -765,7 +765,7 @@ test("LeaseReclaimerService - stale node detection (empty in basic mock)", async
 // Tests: expireLease() / triggerFailover() integration
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("LeaseReclaimerService - triggerFailover calls coordinator.triggerFailover", async () => {
+test("LeaseReclaimerService - triggerFailover calls coordinator.triggerFailover [lease-reclaimer-service]", async () => {
   const coordinator = createMockCoordinator();
 
   // Register and acquire leadership
@@ -801,7 +801,7 @@ test("LeaseReclaimerService - triggerFailover calls coordinator.triggerFailover"
   service.dispose();
 });
 
-test("LeaseReclaimerService - failover decision outcome is tracked", async () => {
+test("LeaseReclaimerService - failover decision outcome is tracked [lease-reclaimer-service]", async () => {
   const coordinator = createMockCoordinator();
 
   // Register and acquire leadership
@@ -847,7 +847,7 @@ test("LeaseReclaimerService - failover decision outcome is tracked", async () =>
 // Tests: Concurrent scenarios
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("LeaseReclaimerService - concurrent reclaimOnce() calls", async () => {
+test("LeaseReclaimerService - concurrent reclaimOnce() calls [lease-reclaimer-service]", async () => {
   const coordinator = createMockCoordinator();
 
   // Register and acquire leadership
@@ -889,7 +889,7 @@ test("LeaseReclaimerService - concurrent reclaimOnce() calls", async () => {
   service.dispose();
 });
 
-test("LeaseReclaimerService - start/stop/reclaimOnce race condition", async () => {
+test("LeaseReclaimerService - start/stop/reclaimOnce race condition [lease-reclaimer-service]", async () => {
   const coordinator = createMockCoordinator();
 
   const service = createReclaimer(coordinator, {
@@ -908,7 +908,7 @@ test("LeaseReclaimerService - start/stop/reclaimOnce race condition", async () =
   service.dispose();
 });
 
-test("LeaseReclaimerService - dispose while reclaimOnce in progress", async () => {
+test("LeaseReclaimerService - dispose while reclaimOnce in progress [lease-reclaimer-service]", async () => {
   const coordinator = createMockCoordinator();
 
   const service = createReclaimer(coordinator, {
@@ -930,7 +930,7 @@ test("LeaseReclaimerService - dispose while reclaimOnce in progress", async () =
 // Tests: Edge cases
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("LeaseReclaimerService - handles null leadership.leaderNodeId", async () => {
+test("LeaseReclaimerService - handles null leadership.leaderNodeId [lease-reclaimer-service]", async () => {
   const coordinator = createMockCoordinator();
   // mockState.leaderNodeId is already null
 
@@ -947,7 +947,7 @@ test("LeaseReclaimerService - handles null leadership.leaderNodeId", async () =>
   service.dispose();
 });
 
-test("LeaseReclaimerService - handles missing active lease", async () => {
+test("LeaseReclaimerService - handles missing active lease [lease-reclaimer-service]", async () => {
   const coordinator = createMockCoordinator();
 
   // Set up leadership as expired but no active lease
@@ -967,7 +967,7 @@ test("LeaseReclaimerService - handles missing active lease", async () => {
   service.dispose();
 });
 
-test("LeaseReclaimerService - createLeaseReclaimerService factory works", () => {
+test("LeaseReclaimerService - createLeaseReclaimerService factory works [lease-reclaimer-service]", () => {
   const coordinator = createMockCoordinator();
   const service = createLeaseReclaimerService({ coordinator });
 
@@ -977,7 +977,7 @@ test("LeaseReclaimerService - createLeaseReclaimerService factory works", () => 
   service.dispose();
 });
 
-test("LeaseReclaimerService - multiple nodes with different lease states", async () => {
+test("LeaseReclaimerService - multiple nodes with different lease states [lease-reclaimer-service]", async () => {
   const coordinator = createMockCoordinator();
 
   // Register two nodes
@@ -1014,7 +1014,7 @@ test("LeaseReclaimerService - multiple nodes with different lease states", async
   service.dispose();
 });
 
-test("LeaseReclaimerService - HA level config influences defaults", () => {
+test("LeaseReclaimerService - HA level config influences defaults [lease-reclaimer-service]", () => {
   // Test HA_1
   const coordinator1 = createMockCoordinator();
   const service1 = createReclaimer(coordinator1, { haLevel: "HA_1" });
@@ -1034,7 +1034,7 @@ test("LeaseReclaimerService - HA level config influences defaults", () => {
   service3.dispose();
 });
 
-test("LeaseReclaimerService - partial config overrides are applied", () => {
+test("LeaseReclaimerService - partial config overrides are applied [lease-reclaimer-service]", () => {
   const coordinator = createMockCoordinator();
   const service = createReclaimer(coordinator, {
     haLevel: "HA_2",
@@ -1052,7 +1052,7 @@ test("LeaseReclaimerService - partial config overrides are applied", () => {
   service.dispose();
 });
 
-test("LeaseReclaimerService - negative reclaimIntervalMs logs warning and disables", () => {
+test("LeaseReclaimerService - negative reclaimIntervalMs logs warning and disables [lease-reclaimer-service]", () => {
   const coordinator = createMockCoordinator();
   const service = createReclaimer(coordinator, {
     config: { reclaimIntervalMs: -1, gracePeriodMs: 2_000, autoFailover: true },

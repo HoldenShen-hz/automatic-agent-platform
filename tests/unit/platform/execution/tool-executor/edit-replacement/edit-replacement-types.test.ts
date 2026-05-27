@@ -20,7 +20,7 @@ import type {
   PreparedEdit,
 } from "../../../../../../src/platform/five-plane-execution/tool-executor/edit-replacement/edit-replacement-types.js";
 
-test("EditReplacementAttemptLevel has correct values", () => {
+test("EditReplacementAttemptLevel has correct values [edit-replacement-types]", () => {
   const levels: EditReplacementAttemptLevel[] = [
     "exact",
     "whitespace_normalized",
@@ -32,7 +32,7 @@ test("EditReplacementAttemptLevel has correct values", () => {
   assert.equal(levels.length, 5);
 });
 
-test("EditReplacementAttempt structure", () => {
+test("EditReplacementAttempt structure [edit-replacement-types]", () => {
   const attempt: EditReplacementAttempt = {
     attemptLevel: "exact",
     matched: true,
@@ -50,7 +50,7 @@ test("EditReplacementAttempt structure", () => {
   assert.equal(attempt.appliedRange, "0-10");
 });
 
-test("EditReplacementRequest structure", () => {
+test("EditReplacementRequest structure [edit-replacement-types]", () => {
   const request: EditReplacementRequest = {
     callId: "call-123",
     taskId: "task-456",
@@ -77,7 +77,7 @@ test("EditReplacementRequest structure", () => {
   assert.equal(request.newString, "new content");
 });
 
-test("EditInstruction structure", () => {
+test("EditInstruction structure [edit-replacement-types]", () => {
   const instruction: EditInstruction = {
     oldString: "foo",
     newString: "bar",
@@ -89,7 +89,7 @@ test("EditInstruction structure", () => {
   assert.equal(instruction.newString, "bar");
 });
 
-test("EditBatchRequest extends EditReplacementRequest", () => {
+test("EditBatchRequest extends EditReplacementRequest [edit-replacement-types]", () => {
   const request: EditBatchRequest = {
     callId: "call-123",
     taskId: "task-456",
@@ -108,7 +108,7 @@ test("EditBatchRequest extends EditReplacementRequest", () => {
   assert.equal(request.edits.length, 2);
 });
 
-test("EditReplacementData structure", () => {
+test("EditReplacementData structure [edit-replacement-types]", () => {
   const data: EditReplacementData = {
     attempts: [],
     matchLevel: "exact",
@@ -120,7 +120,7 @@ test("EditReplacementData structure", () => {
   assert.equal(data.matchLevel, "exact");
 });
 
-test("EditBatchItemResult status values", () => {
+test("EditBatchItemResult status values [edit-replacement-types]", () => {
   const statuses: EditBatchItemResult["status"][] = ["applied", "already_applied", "failed"];
 
   assert.ok(statuses.includes("applied"));
@@ -128,7 +128,7 @@ test("EditBatchItemResult status values", () => {
   assert.ok(statuses.includes("failed"));
 });
 
-test("EditBatchItemResult structure", () => {
+test("EditBatchItemResult structure [edit-replacement-types]", () => {
   const item: EditBatchItemResult = {
     index: 0,
     status: "applied",
@@ -145,7 +145,7 @@ test("EditBatchItemResult structure", () => {
   assert.ok(item.attempts !== undefined);
 });
 
-test("EditBatchData structure", () => {
+test("EditBatchData structure [edit-replacement-types]", () => {
   const data: EditBatchData = {
     edits: [],
     appliedEditCount: 5,
@@ -156,7 +156,7 @@ test("EditBatchData structure", () => {
   assert.equal(data.rolledBack, false);
 });
 
-test("EditReplacementMetadata structure", () => {
+test("EditReplacementMetadata structure [edit-replacement-types]", () => {
   const metadata: EditReplacementMetadata = {
     filePath: "/src/test.ts",
     warnings: ["warning1"],
@@ -169,7 +169,7 @@ test("EditReplacementMetadata structure", () => {
   assert.equal(metadata.attemptCount, 3);
 });
 
-test("EditBatchMetadata structure", () => {
+test("EditBatchMetadata structure [edit-replacement-types]", () => {
   const metadata: EditBatchMetadata = {
     filePath: "/src/test.ts",
     warnings: [],
@@ -182,7 +182,7 @@ test("EditBatchMetadata structure", () => {
   assert.equal(metadata.editCount, 5);
 });
 
-test("MatchCandidate structure", () => {
+test("MatchCandidate structure [edit-replacement-types]", () => {
   const candidate: MatchCandidate = {
     startOffset: 0,
     endOffset: 10,
@@ -194,7 +194,7 @@ test("MatchCandidate structure", () => {
   assert.equal(candidate.text, "matched text");
 });
 
-test("MatchOutcome stop reasons", () => {
+test("MatchOutcome stop reasons [edit-replacement-types]", () => {
   const reasons: MatchOutcome["stopReason"][] = [
     "matched",
     "multiple_candidates",
@@ -206,7 +206,7 @@ test("MatchOutcome stop reasons", () => {
   assert.ok(reasons.includes("not_found"));
 });
 
-test("MatchOutcome structure", () => {
+test("MatchOutcome structure [edit-replacement-types]", () => {
   const outcome: MatchOutcome = {
     matched: true,
     candidateCount: 1,
@@ -220,7 +220,7 @@ test("MatchOutcome structure", () => {
   assert.equal(outcome.stopReason, "matched");
 });
 
-test("StageEvaluation structure", () => {
+test("StageEvaluation structure [edit-replacement-types]", () => {
   const evaluation: StageEvaluation = {
     attempts: [],
     matchedCandidate: null,
@@ -232,7 +232,7 @@ test("StageEvaluation structure", () => {
   assert.equal(evaluation.matchedCandidate, null);
 });
 
-test("PreparedEdit structure", () => {
+test("PreparedEdit structure [edit-replacement-types]", () => {
   const prepared: PreparedEdit = {
     updatedContent: "updated file content",
     item: {
@@ -251,7 +251,7 @@ test("PreparedEdit structure", () => {
   assert.equal(prepared.item.index, 0);
 });
 
-test("EditReplacementResult structure", () => {
+test("EditReplacementResult structure [edit-replacement-types]", () => {
   const result: EditReplacementResult = {
     success: true,
     value: "file content",
@@ -279,7 +279,7 @@ test("EditReplacementResult structure", () => {
   assert.equal(result.matchLevel, "exact");
 });
 
-test("EditBatchResult structure", () => {
+test("EditBatchResult structure [edit-replacement-types]", () => {
   const result: EditBatchResult = {
     success: true,
     value: "batch result",
@@ -304,7 +304,7 @@ test("EditBatchResult structure", () => {
   assert.ok(Array.isArray(result.edits));
 });
 
-test("EditBatchItemResult without optional fields", () => {
+test("EditBatchItemResult without optional fields [edit-replacement-types]", () => {
   const item: EditBatchItemResult = {
     index: 0,
     status: "failed",
@@ -321,7 +321,7 @@ test("EditBatchItemResult without optional fields", () => {
   assert.equal(item.matchLevel, null);
 });
 
-test("EditInstruction without optional anchor fields", () => {
+test("EditInstruction without optional anchor fields [edit-replacement-types]", () => {
   const instruction: EditInstruction = {
     oldString: "original",
     newString: "modified",
@@ -332,7 +332,7 @@ test("EditInstruction without optional anchor fields", () => {
   assert.equal(instruction.afterAnchor, undefined);
 });
 
-test("MatchOutcome with multiple candidates", () => {
+test("MatchOutcome with multiple candidates [edit-replacement-types]", () => {
   const outcome: MatchOutcome = {
     matched: false,
     candidateCount: 5,
@@ -347,7 +347,7 @@ test("MatchOutcome with multiple candidates", () => {
   assert.equal(outcome.stopReason, "multiple_candidates");
 });
 
-test("StageEvaluation with matched candidate", () => {
+test("StageEvaluation with matched candidate [edit-replacement-types]", () => {
   const candidate: MatchCandidate = {
     startOffset: 10,
     endOffset: 50,

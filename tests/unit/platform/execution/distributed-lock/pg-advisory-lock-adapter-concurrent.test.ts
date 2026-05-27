@@ -44,7 +44,7 @@ function createAdapterWithMockDriver(mockDriver: MockPostgresDriver): PgAdvisory
 // Concurrent acquire tests
 // =============================================================================
 
-test("[SYS-REL-2.2] concurrent acquireAsync - only one worker acquires the lock", async () => {
+test("[SYS-REL-2.2] concurrent acquireAsync - only one worker acquires the lock [pg-advisory-lock-adapter-concurrent]", async () => {
   // Track how many times pg_try_advisory_lock succeeds
   let acquireCount = 0;
 
@@ -75,7 +75,7 @@ test("[SYS-REL-2.2] concurrent acquireAsync - only one worker acquires the lock"
   assert.equal(results.errors.length, 0, "No errors should occur");
 });
 
-test("[SYS-REL-2.2] concurrent acquireAsync on same key - second acquire returns false", async () => {
+test("[SYS-REL-2.2] concurrent acquireAsync on same key - second acquire returns false [pg-advisory-lock-adapter-concurrent]", async () => {
   let callCount = 0;
 
   const mockDriver = createMockDriver({
@@ -101,7 +101,7 @@ test("[SYS-REL-2.2] concurrent acquireAsync on same key - second acquire returns
   assert.equal(failed.length, 1, "Expected exactly 1 failed acquire");
 });
 
-test("[SYS-REL-2.2] concurrent acquireAsync with many workers - only one gets the lock", async () => {
+test("[SYS-REL-2.2] concurrent acquireAsync with many workers - only one gets the lock [pg-advisory-lock-adapter-concurrent]", async () => {
   let acquireCount = 0;
   const workers = 10;
 
@@ -128,7 +128,7 @@ test("[SYS-REL-2.2] concurrent acquireAsync with many workers - only one gets th
 // Concurrent release tests
 // =============================================================================
 
-test("[SYS-REL-2.2] releaseAsync by non-owner returns false", async () => {
+test("[SYS-REL-2.2] releaseAsync by non-owner returns false [pg-advisory-lock-adapter-concurrent]", async () => {
   const mockDriver = createMockDriver({
     queryFn: async () => [{ pg_advisory_unlock: true }],
   });
@@ -141,7 +141,7 @@ test("[SYS-REL-2.2] releaseAsync by non-owner returns false", async () => {
   assert.equal(result, false, "releaseAsync rejects non-owner before hitting PostgreSQL");
 });
 
-test("[SYS-REL-2.2] concurrent releaseAsync - only owner can release", async () => {
+test("[SYS-REL-2.2] concurrent releaseAsync - only owner can release [pg-advisory-lock-adapter-concurrent]", async () => {
   let releaseCallCount = 0;
 
   const mockDriver = createMockDriver({
@@ -168,7 +168,7 @@ test("[SYS-REL-2.2] concurrent releaseAsync - only owner can release", async () 
   assert.equal(releaseCallCount, 1, "Only owner-matched release should reach pg_advisory_unlock");
 });
 
-test("[SYS-REL-2.2] releaseAsync by non-owner - release succeeds but lock may persist", async () => {
+test("[SYS-REL-2.2] releaseAsync by non-owner - release succeeds but lock may persist [pg-advisory-lock-adapter-concurrent]", async () => {
   // Track if release was actually called to distinguish test phases
   let releaseCalled = false;
 
@@ -197,7 +197,7 @@ test("[SYS-REL-2.2] releaseAsync by non-owner - release succeeds but lock may pe
   assert.equal(releaseCalled, false, "pg_advisory_unlock should not have been called");
 });
 
-test("[SYS-REL-2.2] concurrent acquireAsync followed by releaseAsync - clean handover", async () => {
+test("[SYS-REL-2.2] concurrent acquireAsync followed by releaseAsync - clean handover [pg-advisory-lock-adapter-concurrent]", async () => {
   // Track lock state: null = available, string = held by owner
   let lockState: { held: boolean; owner: string | null } = { held: false, owner: null };
   let queryCount = 0;
@@ -241,7 +241,7 @@ test("[SYS-REL-2.2] concurrent acquireAsync followed by releaseAsync - clean han
   assert.equal(acquireResult3.lock!.owner, "worker-2", "Owner should be worker-2");
 });
 
-test("[SYS-REL-2.2] runConcurrentInvariant for acquire concurrency", async () => {
+test("[SYS-REL-2.2] runConcurrentInvariant for acquire concurrency [pg-advisory-lock-adapter-concurrent]", async () => {
   let acquireCount = 0;
 
   const mockDriver = createMockDriver({

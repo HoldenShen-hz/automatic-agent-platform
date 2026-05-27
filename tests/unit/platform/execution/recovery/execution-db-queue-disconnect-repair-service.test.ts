@@ -5,35 +5,35 @@ import {
   parseDbQueueDisconnectRepairTemplate,
 } from "../../../../../src/platform/five-plane-execution/recovery/execution-db-queue-disconnect-repair-service.js";
 
-test("parseDbQueueDisconnectRepairTemplate returns empty template for null input", () => {
+test("parseDbQueueDisconnectRepairTemplate returns empty template for null input [execution-db-queue-disconnect-repair-service]", () => {
   const result = parseDbQueueDisconnectRepairTemplate(null);
 
   assert.deepEqual(result.template, {});
   assert.equal(result.recoveredFromPlan, false);
 });
 
-test("parseDbQueueDisconnectRepairTemplate returns empty template for undefined input", () => {
+test("parseDbQueueDisconnectRepairTemplate returns empty template for undefined input [execution-db-queue-disconnect-repair-service]", () => {
   const result = parseDbQueueDisconnectRepairTemplate(undefined);
 
   assert.deepEqual(result.template, {});
   assert.equal(result.recoveredFromPlan, false);
 });
 
-test("parseDbQueueDisconnectRepairTemplate returns empty template for empty string", () => {
+test("parseDbQueueDisconnectRepairTemplate returns empty template for empty string [execution-db-queue-disconnect-repair-service]", () => {
   const result = parseDbQueueDisconnectRepairTemplate("");
 
   assert.deepEqual(result.template, {});
   assert.equal(result.recoveredFromPlan, false);
 });
 
-test("parseDbQueueDisconnectRepairTemplate returns empty template for whitespace only", () => {
+test("parseDbQueueDisconnectRepairTemplate returns empty template for whitespace only [execution-db-queue-disconnect-repair-service]", () => {
   const result = parseDbQueueDisconnectRepairTemplate("   ");
 
   assert.deepEqual(result.template, {});
   assert.equal(result.recoveredFromPlan, false);
 });
 
-test("parseDbQueueDisconnectRepairTemplate parses valid JSON with priority", () => {
+test("parseDbQueueDisconnectRepairTemplate parses valid JSON with priority [execution-db-queue-disconnect-repair-service]", () => {
   const planJson = JSON.stringify({
     priority: "high",
     queueName: null,
@@ -47,7 +47,7 @@ test("parseDbQueueDisconnectRepairTemplate parses valid JSON with priority", () 
   assert.equal(result.recoveredFromPlan, true);
 });
 
-test("parseDbQueueDisconnectRepairTemplate parses queueName", () => {
+test("parseDbQueueDisconnectRepairTemplate parses queueName [execution-db-queue-disconnect-repair-service]", () => {
   const planJson = JSON.stringify({
     queueName: "critical-queue",
     dispatchTarget: "any",
@@ -59,7 +59,7 @@ test("parseDbQueueDisconnectRepairTemplate parses queueName", () => {
   assert.equal(result.recoveredFromPlan, true);
 });
 
-test("parseDbQueueDisconnectRepairTemplate parses queueName as null", () => {
+test("parseDbQueueDisconnectRepairTemplate parses queueName as null [execution-db-queue-disconnect-repair-service]", () => {
   const planJson = JSON.stringify({
     queueName: null,
   });
@@ -69,7 +69,7 @@ test("parseDbQueueDisconnectRepairTemplate parses queueName as null", () => {
   assert.equal(result.template.queueName, null);
 });
 
-test("parseDbQueueDisconnectRepairTemplate parses dispatchTarget values", () => {
+test("parseDbQueueDisconnectRepairTemplate parses dispatchTarget values [execution-db-queue-disconnect-repair-service]", () => {
   const targets = ["any", "local_only", "prefer_remote", "require_remote"];
 
   for (const target of targets) {
@@ -79,7 +79,7 @@ test("parseDbQueueDisconnectRepairTemplate parses dispatchTarget values", () => 
   }
 });
 
-test("parseDbQueueDisconnectRepairTemplate ignores invalid dispatchTarget", () => {
+test("parseDbQueueDisconnectRepairTemplate ignores invalid dispatchTarget [execution-db-queue-disconnect-repair-service]", () => {
   const planJson = JSON.stringify({
     dispatchTarget: "invalid_target",
   });
@@ -89,7 +89,7 @@ test("parseDbQueueDisconnectRepairTemplate ignores invalid dispatchTarget", () =
   assert.equal(result.template.dispatchTarget, undefined);
 });
 
-test("parseDbQueueDisconnectRepairTemplate parses requiredIsolationLevel values", () => {
+test("parseDbQueueDisconnectRepairTemplate parses requiredIsolationLevel values [execution-db-queue-disconnect-repair-service]", () => {
   const levels = ["standard", "hardened", "strict"];
 
   for (const level of levels) {
@@ -99,7 +99,7 @@ test("parseDbQueueDisconnectRepairTemplate parses requiredIsolationLevel values"
   }
 });
 
-test("parseDbQueueDisconnectRepairTemplate ignores invalid isolation level", () => {
+test("parseDbQueueDisconnectRepairTemplate ignores invalid isolation level [execution-db-queue-disconnect-repair-service]", () => {
   const planJson = JSON.stringify({
     requiredIsolationLevel: "invalid_level",
   });
@@ -109,7 +109,7 @@ test("parseDbQueueDisconnectRepairTemplate ignores invalid isolation level", () 
   assert.equal(result.template.requiredIsolationLevel, undefined);
 });
 
-test("parseDbQueueDisconnectRepairTemplate parses priority values", () => {
+test("parseDbQueueDisconnectRepairTemplate parses priority values [execution-db-queue-disconnect-repair-service]", () => {
   const priorities = ["low", "normal", "high", "urgent"];
 
   for (const priority of priorities) {
@@ -119,7 +119,7 @@ test("parseDbQueueDisconnectRepairTemplate parses priority values", () => {
   }
 });
 
-test("parseDbQueueDisconnectRepairTemplate ignores invalid priority", () => {
+test("parseDbQueueDisconnectRepairTemplate ignores invalid priority [execution-db-queue-disconnect-repair-service]", () => {
   const planJson = JSON.stringify({
     priority: "invalid_priority",
   });
@@ -129,7 +129,7 @@ test("parseDbQueueDisconnectRepairTemplate ignores invalid priority", () => {
   assert.equal(result.template.priority, undefined);
 });
 
-test("parseDbQueueDisconnectRepairTemplate parses requiredRepoVersion as string", () => {
+test("parseDbQueueDisconnectRepairTemplate parses requiredRepoVersion as string [execution-db-queue-disconnect-repair-service]", () => {
   const planJson = JSON.stringify({
     requiredRepoVersion: "v1.2.3",
   });
@@ -140,7 +140,7 @@ test("parseDbQueueDisconnectRepairTemplate parses requiredRepoVersion as string"
   assert.equal(result.recoveredFromPlan, true);
 });
 
-test("parseDbQueueDisconnectRepairTemplate parses requiredRepoVersion as null", () => {
+test("parseDbQueueDisconnectRepairTemplate parses requiredRepoVersion as null [execution-db-queue-disconnect-repair-service]", () => {
   const planJson = JSON.stringify({
     requiredRepoVersion: null,
   });
@@ -150,7 +150,7 @@ test("parseDbQueueDisconnectRepairTemplate parses requiredRepoVersion as null", 
   assert.equal(result.template.requiredRepoVersion, null);
 });
 
-test("parseDbQueueDisconnectRepairTemplate ignores requiredRepoVersion when not string or null", () => {
+test("parseDbQueueDisconnectRepairTemplate ignores requiredRepoVersion when not string or null [execution-db-queue-disconnect-repair-service]", () => {
   const planJson = JSON.stringify({
     requiredRepoVersion: 123,
   });
@@ -160,7 +160,7 @@ test("parseDbQueueDisconnectRepairTemplate ignores requiredRepoVersion when not 
   assert.equal(result.template.requiredRepoVersion, undefined);
 });
 
-test("parseDbQueueDisconnectRepairTemplate parses requiredCapabilities as string array", () => {
+test("parseDbQueueDisconnectRepairTemplate parses requiredCapabilities as string array [execution-db-queue-disconnect-repair-service]", () => {
   const planJson = JSON.stringify({
     requiredCapabilities: ["cap1", "cap2", "cap3"],
   });
@@ -170,7 +170,7 @@ test("parseDbQueueDisconnectRepairTemplate parses requiredCapabilities as string
   assert.deepEqual(result.template.requiredCapabilities, ["cap1", "cap2", "cap3"]);
 });
 
-test("parseDbQueueDisconnectRepairTemplate deduplicates and sorts requiredCapabilities", () => {
+test("parseDbQueueDisconnectRepairTemplate deduplicates and sorts requiredCapabilities [execution-db-queue-disconnect-repair-service]", () => {
   const planJson = JSON.stringify({
     requiredCapabilities: ["cap2", "cap1", "cap2", "cap1"],
   });
@@ -180,7 +180,7 @@ test("parseDbQueueDisconnectRepairTemplate deduplicates and sorts requiredCapabi
   assert.deepEqual(result.template.requiredCapabilities, ["cap1", "cap2"]);
 });
 
-test("parseDbQueueDisconnectRepairTemplate trims and filters empty strings from requiredCapabilities", () => {
+test("parseDbQueueDisconnectRepairTemplate trims and filters empty strings from requiredCapabilities [execution-db-queue-disconnect-repair-service]", () => {
   const planJson = JSON.stringify({
     requiredCapabilities: ["cap1", "", "  ", "cap2"],
   });
@@ -190,7 +190,7 @@ test("parseDbQueueDisconnectRepairTemplate trims and filters empty strings from 
   assert.deepEqual(result.template.requiredCapabilities, ["cap1", "cap2"]);
 });
 
-test("parseDbQueueDisconnectRepairTemplate returns empty array for non-array requiredCapabilities", () => {
+test("parseDbQueueDisconnectRepairTemplate returns empty array for non-array requiredCapabilities [execution-db-queue-disconnect-repair-service]", () => {
   const planJson = JSON.stringify({
     requiredCapabilities: "not-an-array",
   });
@@ -200,7 +200,7 @@ test("parseDbQueueDisconnectRepairTemplate returns empty array for non-array req
   assert.deepEqual(result.template.requiredCapabilities, []);
 });
 
-test("parseDbQueueDisconnectRepairTemplate parses dispatchAfter as ISO timestamp", () => {
+test("parseDbQueueDisconnectRepairTemplate parses dispatchAfter as ISO timestamp [execution-db-queue-disconnect-repair-service]", () => {
   const planJson = JSON.stringify({
     dispatchAfter: "2025-01-15T10:30:00.000Z",
   });
@@ -211,7 +211,7 @@ test("parseDbQueueDisconnectRepairTemplate parses dispatchAfter as ISO timestamp
   assert.equal(result.recoveredFromPlan, true);
 });
 
-test("parseDbQueueDisconnectRepairTemplate parses dispatchAfter as null", () => {
+test("parseDbQueueDisconnectRepairTemplate parses dispatchAfter as null [execution-db-queue-disconnect-repair-service]", () => {
   const planJson = JSON.stringify({
     dispatchAfter: null,
   });
@@ -221,7 +221,7 @@ test("parseDbQueueDisconnectRepairTemplate parses dispatchAfter as null", () => 
   assert.equal(result.template.dispatchAfter, null);
 });
 
-test("parseDbQueueDisconnectRepairTemplate ignores dispatchAfter when not string or null", () => {
+test("parseDbQueueDisconnectRepairTemplate ignores dispatchAfter when not string or null [execution-db-queue-disconnect-repair-service]", () => {
   const planJson = JSON.stringify({
     dispatchAfter: 12345,
   });
@@ -231,7 +231,7 @@ test("parseDbQueueDisconnectRepairTemplate ignores dispatchAfter when not string
   assert.equal(result.template.dispatchAfter, undefined);
 });
 
-test("parseDbQueueDisconnectRepairTemplate marks recoveredFromPlan false when JSON is malformed", () => {
+test("parseDbQueueDisconnectRepairTemplate marks recoveredFromPlan false when JSON is malformed [execution-db-queue-disconnect-repair-service]", () => {
   // Malformed JSON will be caught and recoveredFromPlan will be false
   const planJson = "{ this is not valid JSON }";
 
@@ -241,7 +241,7 @@ test("parseDbQueueDisconnectRepairTemplate marks recoveredFromPlan false when JS
   assert.equal(result.recoveredFromPlan, false);
 });
 
-test("parseDbQueueDisconnectRepairTemplate marks recoveredFromPlan true when any field recovered", () => {
+test("parseDbQueueDisconnectRepairTemplate marks recoveredFromPlan true when any field recovered [execution-db-queue-disconnect-repair-service]", () => {
   const planJson = JSON.stringify({
     priority: "high",
     unknownField: "value",
@@ -253,7 +253,7 @@ test("parseDbQueueDisconnectRepairTemplate marks recoveredFromPlan true when any
   assert.equal(result.recoveredFromPlan, true);
 });
 
-test("parseDbQueueDisconnectRepairTemplate handles full valid template", () => {
+test("parseDbQueueDisconnectRepairTemplate handles full valid template [execution-db-queue-disconnect-repair-service]", () => {
   const planJson = JSON.stringify({
     priority: "urgent",
     queueName: "fast-lane",
@@ -276,14 +276,14 @@ test("parseDbQueueDisconnectRepairTemplate handles full valid template", () => {
   assert.equal(result.recoveredFromPlan, true);
 });
 
-test("parseDbQueueDisconnectRepairTemplate handles malformed JSON", () => {
+test("parseDbQueueDisconnectRepairTemplate handles malformed JSON [execution-db-queue-disconnect-repair-service]", () => {
   const result = parseDbQueueDisconnectRepairTemplate("{ this is not valid JSON }");
 
   assert.deepEqual(result.template, {});
   assert.equal(result.recoveredFromPlan, false);
 });
 
-test("parseDbQueueDisconnectRepairTemplate handles incomplete JSON without crashing", () => {
+test("parseDbQueueDisconnectRepairTemplate handles incomplete JSON without crashing [execution-db-queue-disconnect-repair-service]", () => {
   const result = parseDbQueueDisconnectRepairTemplate('{"priority": "high", "incomplete"');
 
   // Should return empty template, not throw

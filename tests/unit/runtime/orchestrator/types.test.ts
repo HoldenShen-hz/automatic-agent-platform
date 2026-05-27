@@ -10,22 +10,22 @@ import type {
  * Tests for src/core/runtime/orchestrator/types.ts
  * Re-exports types from multi-step-orchestration-types.js
  */
-test("orchestrator types exports MultiStepOrchestrationResult", () => {
+test("orchestrator types exports MultiStepOrchestrationResult [types]", () => {
   const result = {} as MultiStepOrchestrationResult;
   assert.equal(typeof result, "object");
 });
 
-test("orchestrator types exports MultiStepToolExecutionInput", () => {
+test("orchestrator types exports MultiStepToolExecutionInput [types]", () => {
   const input = {} as MultiStepToolExecutionInput;
   assert.equal(typeof input, "object");
 });
 
-test("orchestrator types exports StepFailurePlan", () => {
+test("orchestrator types exports StepFailurePlan [types]", () => {
   const plan = {} as StepFailurePlan;
   assert.equal(typeof plan, "object");
 });
 
-test("StepFailurePlan has expected shape when object is constructed", () => {
+test("StepFailurePlan has expected shape when object is constructed [types]", () => {
   // StepFailurePlan should have errorCode as required and optional summary/message
   const plan: StepFailurePlan = {
     errorCode: "test_error",
@@ -37,12 +37,12 @@ test("StepFailurePlan has expected shape when object is constructed", () => {
   assert.equal(plan.message, "Test message");
 });
 
-test("MultiStepOrchestrationResult type can be referenced in type position", () => {
+test("MultiStepOrchestrationResult type can be referenced in type position [types]", () => {
   const result = {} as MultiStepOrchestrationResult;
   assert.equal(typeof result, "object");
 });
 
-test("MultiStepToolExecutionInput type can be referenced in type position", () => {
+test("MultiStepToolExecutionInput type can be referenced in type position [types]", () => {
   const input = {} as MultiStepToolExecutionInput;
   assert.equal(typeof input, "object");
 });

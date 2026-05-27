@@ -7,19 +7,19 @@ import {
   safeParseToolResult,
 } from "../../../../src/platform/five-plane-execution/execution-engine/multi-step-utils.js";
 
-test("parseOptionalPositiveInteger accepts positive finite numbers", () => {
+test("parseOptionalPositiveInteger accepts positive finite numbers [multi-step-utils]", () => {
   assert.equal(parseOptionalPositiveInteger(1), 1);
   assert.equal(parseOptionalPositiveInteger(100), 100);
   assert.equal(parseOptionalPositiveInteger(0.5), 0); // truncated
 });
 
-test("parseOptionalPositiveInteger returns undefined for non-positive", () => {
+test("parseOptionalPositiveInteger returns undefined for non-positive [multi-step-utils]", () => {
   assert.equal(parseOptionalPositiveInteger(0), undefined);
   assert.equal(parseOptionalPositiveInteger(-1), undefined);
   assert.equal(parseOptionalPositiveInteger(-100), undefined);
 });
 
-test("parseOptionalPositiveInteger returns undefined for non-numbers", () => {
+test("parseOptionalPositiveInteger returns undefined for non-numbers [multi-step-utils]", () => {
   assert.equal(parseOptionalPositiveInteger("100"), undefined);
   assert.equal(parseOptionalPositiveInteger(null), undefined);
   assert.equal(parseOptionalPositiveInteger(undefined), undefined);
@@ -27,31 +27,31 @@ test("parseOptionalPositiveInteger returns undefined for non-numbers", () => {
   assert.equal(parseOptionalPositiveInteger(Infinity), undefined);
 });
 
-test("parseOptionalStringArray filters valid strings", () => {
+test("parseOptionalStringArray filters valid strings [multi-step-utils]", () => {
   assert.deepEqual(parseOptionalStringArray(["a", "b", "c"]), ["a", "b", "c"]);
   assert.deepEqual(parseOptionalStringArray(["  hello  ", "world"]), ["hello", "world"]);
   assert.deepEqual(parseOptionalStringArray(["", "  ", "valid"]), ["valid"]);
 });
 
-test("parseOptionalStringArray returns empty array for non-array", () => {
+test("parseOptionalStringArray returns empty array for non-array [multi-step-utils]", () => {
   assert.deepEqual(parseOptionalStringArray(null), []);
   assert.deepEqual(parseOptionalStringArray(undefined), []);
   assert.deepEqual(parseOptionalStringArray("not an array"), []);
   assert.deepEqual(parseOptionalStringArray({}), []);
 });
 
-test("parseOptionalStringArray filters empty and whitespace-only strings", () => {
+test("parseOptionalStringArray filters empty and whitespace-only strings [multi-step-utils]", () => {
   assert.deepEqual(parseOptionalStringArray(["", "  "]), []);
   assert.deepEqual(parseOptionalStringArray(["a", "", "b"]), ["a", "b"]);
 });
 
-test("resolveMultiStepToolPath resolves within workspace", () => {
+test("resolveMultiStepToolPath resolves within workspace [multi-step-utils]", () => {
   const root = "/workspace/agent";
   assert.equal(resolveMultiStepToolPath(root, "file.txt"), "/workspace/agent/file.txt");
   assert.equal(resolveMultiStepToolPath(root, "./file.txt"), "/workspace/agent/file.txt");
 });
 
-test("resolveMultiStepToolPath rejects path outside workspace", () => {
+test("resolveMultiStepToolPath rejects path outside workspace [multi-step-utils]", () => {
   const root = "/workspace/agent";
   assert.throws(
     () => resolveMultiStepToolPath(root, "/etc/passwd"),
@@ -63,20 +63,20 @@ test("resolveMultiStepToolPath rejects path outside workspace", () => {
   );
 });
 
-test("resolveMultiStepToolPath handles null/undefined inputPath", () => {
+test("resolveMultiStepToolPath handles null/undefined inputPath [multi-step-utils]", () => {
   const root = "/workspace/agent";
   assert.equal(resolveMultiStepToolPath(root, null), "/workspace/agent");
   assert.equal(resolveMultiStepToolPath(root, undefined), "/workspace/agent");
 });
 
-test("safeParseToolResult parses valid JSON strings", () => {
+test("safeParseToolResult parses valid JSON strings [multi-step-utils]", () => {
   assert.deepEqual(safeParseToolResult('{"key":"value"}'), { key: "value" });
   assert.deepEqual(safeParseToolResult('["a","b"]'), ["a", "b"]);
   assert.deepEqual(safeParseToolResult("123"), 123);
   assert.deepEqual(safeParseToolResult("null"), null);
 });
 
-test("safeParseToolResult returns raw string on invalid JSON", () => {
+test("safeParseToolResult returns raw string on invalid JSON [multi-step-utils]", () => {
   assert.equal(safeParseToolResult("not json"), "not json");
   assert.equal(safeParseToolResult("{broken"), "{broken");
   assert.equal(safeParseToolResult(""), "");

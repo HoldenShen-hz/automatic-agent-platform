@@ -7,7 +7,7 @@ import {
   type PublisherProfile,
 } from "../../../../../src/scale-ecosystem/marketplace/publisher/index.js";
 
-test("PublisherProfileSchema parses valid profile", () => {
+test("PublisherProfileSchema parses valid profile [index]", () => {
   const profile = {
     publisherId: "pub-1",
     displayName: "Test Publisher",
@@ -27,7 +27,7 @@ test("PublisherProfileSchema parses valid profile", () => {
   assert.equal(result.reputationScore, 0.8);
 });
 
-test("PublisherProfileSchema accepts missing optional fields", () => {
+test("PublisherProfileSchema accepts missing optional fields [index]", () => {
   const profile = {
     publisherId: "pub-1",
     displayName: "Minimal Publisher",
@@ -44,7 +44,7 @@ test("PublisherProfileSchema accepts missing optional fields", () => {
   assert.equal(result.publishedArtifactCount, 0);
 });
 
-test("PublisherProfileSchema rejects trustLevel outside enum", () => {
+test("PublisherProfileSchema rejects trustLevel outside enum [index]", () => {
   assert.throws(() => {
     PublisherProfileSchema.parse({
       publisherId: "pub-1",
@@ -55,7 +55,7 @@ test("PublisherProfileSchema rejects trustLevel outside enum", () => {
   });
 });
 
-test("PublisherProfileSchema rejects reputationScore > 1", () => {
+test("PublisherProfileSchema rejects reputationScore > 1 [index]", () => {
   assert.throws(() => {
     PublisherProfileSchema.parse({
       publisherId: "pub-1",
@@ -67,7 +67,7 @@ test("PublisherProfileSchema rejects reputationScore > 1", () => {
   });
 });
 
-test("PublisherProfileSchema rejects reputationScore < 0", () => {
+test("PublisherProfileSchema rejects reputationScore < 0 [index]", () => {
   assert.throws(() => {
     PublisherProfileSchema.parse({
       publisherId: "pub-1",
@@ -79,7 +79,7 @@ test("PublisherProfileSchema rejects reputationScore < 0", () => {
   });
 });
 
-test("PublisherProfileSchema rejects empty publisherId", () => {
+test("PublisherProfileSchema rejects empty publisherId [index]", () => {
   assert.throws(() => {
     PublisherProfileSchema.parse({
       publisherId: "",
@@ -90,7 +90,7 @@ test("PublisherProfileSchema rejects empty publisherId", () => {
   });
 });
 
-test("PublisherProfileSchema rejects invalid email format", () => {
+test("PublisherProfileSchema rejects invalid email format [index]", () => {
   assert.throws(() => {
     PublisherProfileSchema.parse({
       publisherId: "pub-1",
@@ -102,7 +102,7 @@ test("PublisherProfileSchema rejects invalid email format", () => {
   });
 });
 
-test("canPublisherReleaseArtifact returns true when artifactType is allowed and reputation >= 0.4", () => {
+test("canPublisherReleaseArtifact returns true when artifactType is allowed and reputation >= 0.4 [index]", () => {
   const profile: PublisherProfile = {
     publisherId: "pub-1",
     displayName: "Good Publisher",
@@ -116,7 +116,7 @@ test("canPublisherReleaseArtifact returns true when artifactType is allowed and 
   assert.equal(canPublisherReleaseArtifact(profile, "workflow"), true);
 });
 
-test("canPublisherReleaseArtifact returns false when artifactType is not in allowedArtifactTypes", () => {
+test("canPublisherReleaseArtifact returns false when artifactType is not in allowedArtifactTypes [index]", () => {
   const profile: PublisherProfile = {
     publisherId: "pub-1",
     displayName: "Limited Publisher",
@@ -130,7 +130,7 @@ test("canPublisherReleaseArtifact returns false when artifactType is not in allo
   assert.equal(canPublisherReleaseArtifact(profile, "integration"), false);
 });
 
-test("canPublisherReleaseArtifact returns false when reputationScore < 0.4", () => {
+test("canPublisherReleaseArtifact returns false when reputationScore < 0.4 [index]", () => {
   const profile: PublisherProfile = {
     publisherId: "pub-1",
     displayName: "Low Reputation Publisher",
@@ -144,7 +144,7 @@ test("canPublisherReleaseArtifact returns false when reputationScore < 0.4", () 
   assert.equal(canPublisherReleaseArtifact(profile, "workflow"), false);
 });
 
-test("canPublisherReleaseArtifact returns true when reputationScore is exactly 0.4", () => {
+test("canPublisherReleaseArtifact returns true when reputationScore is exactly 0.4 [index]", () => {
   const profile: PublisherProfile = {
     publisherId: "pub-1",
     displayName: "Borderline Publisher",
@@ -157,7 +157,7 @@ test("canPublisherReleaseArtifact returns true when reputationScore is exactly 0
   assert.equal(canPublisherReleaseArtifact(profile, "tool"), true);
 });
 
-test("canPublisherReleaseArtifact returns true when reputationScore is 0.41", () => {
+test("canPublisherReleaseArtifact returns true when reputationScore is 0.41 [index]", () => {
   const profile: PublisherProfile = {
     publisherId: "pub-1",
     displayName: "Just Above Publisher",
@@ -170,7 +170,7 @@ test("canPublisherReleaseArtifact returns true when reputationScore is 0.41", ()
   assert.equal(canPublisherReleaseArtifact(profile, "tool"), true);
 });
 
-test("canPublisherReleaseArtifact works with empty allowedArtifactTypes", () => {
+test("canPublisherReleaseArtifact works with empty allowedArtifactTypes [index]", () => {
   const profile: PublisherProfile = {
     publisherId: "pub-1",
     displayName: "No Artifacts Publisher",
@@ -183,7 +183,7 @@ test("canPublisherReleaseArtifact works with empty allowedArtifactTypes", () => 
   assert.equal(canPublisherReleaseArtifact(profile, "tool"), false);
 });
 
-test("canPublisherReleaseArtifact works with enterprise trustLevel", () => {
+test("canPublisherReleaseArtifact works with enterprise trustLevel [index]", () => {
   const profile: PublisherProfile = {
     publisherId: "pub-1",
     displayName: "Enterprise Publisher",

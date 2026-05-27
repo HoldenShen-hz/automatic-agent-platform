@@ -34,7 +34,7 @@ import {
   type EventReplayResult,
 } from "../../../../../src/platform/five-plane-execution/ha/types.js";
 
-test("HA_COORDINATOR_DDL contains required tables", () => {
+test("HA_COORDINATOR_DDL contains required tables [types]", () => {
   assert.ok(HA_COORDINATOR_DDL.includes("CREATE TABLE IF NOT EXISTS coordinator_nodes"));
   assert.ok(HA_COORDINATOR_DDL.includes("CREATE TABLE IF NOT EXISTS leadership_leases"));
   assert.ok(HA_COORDINATOR_DDL.includes("CREATE TABLE IF NOT EXISTS leadership_epochs"));
@@ -42,7 +42,7 @@ test("HA_COORDINATOR_DDL contains required tables", () => {
   assert.ok(HA_COORDINATOR_DDL.includes("CREATE TABLE IF NOT EXISTS leader_action_audit"));
 });
 
-test("HA_COORDINATOR_DDL contains required indexes", () => {
+test("HA_COORDINATOR_DDL contains required indexes [types]", () => {
   assert.ok(HA_COORDINATOR_DDL.includes("CREATE INDEX IF NOT EXISTS idx_coordinator_nodes_status"));
   assert.ok(HA_COORDINATOR_DDL.includes("CREATE INDEX IF NOT EXISTS idx_coordinator_nodes_leader"));
   assert.ok(HA_COORDINATOR_DDL.includes("CREATE INDEX IF NOT EXISTS idx_leadership_leases_node"));
@@ -50,29 +50,29 @@ test("HA_COORDINATOR_DDL contains required indexes", () => {
   assert.ok(HA_COORDINATOR_DDL.includes("CREATE INDEX IF NOT EXISTS idx_leadership_leases_expires"));
 });
 
-test("DEFAULT_LEASE_TTL_MS is 15000", () => {
+test("DEFAULT_LEASE_TTL_MS is 15000 [types]", () => {
   assert.equal(DEFAULT_LEASE_TTL_MS, 15_000);
 });
 
-test("MIN_LEASE_TTL_MS is 5000", () => {
+test("MIN_LEASE_TTL_MS is 5000 [types]", () => {
   assert.equal(MIN_LEASE_TTL_MS, 5_000);
 });
 
-test("MAX_LEASE_TTL_MS is 60000", () => {
+test("MAX_LEASE_TTL_MS is 60000 [types]", () => {
   assert.equal(MAX_LEASE_TTL_MS, 60_000);
 });
 
-test("EPOCH_FENCING_TOKEN_START is 1", () => {
+test("EPOCH_FENCING_TOKEN_START is 1 [types]", () => {
   assert.equal(EPOCH_FENCING_TOKEN_START, 1);
 });
 
-test("HA_LEVEL_CONFIGS contains all three HA levels", () => {
+test("HA_LEVEL_CONFIGS contains all three HA levels [types]", () => {
   assert.ok(HA_LEVEL_CONFIGS["HA_1"]);
   assert.ok(HA_LEVEL_CONFIGS["HA_2"]);
   assert.ok(HA_LEVEL_CONFIGS["HA_3"]);
 });
 
-test("HA_LEVEL_CONFIGS.HA_1 is configured for single-node", () => {
+test("HA_LEVEL_CONFIGS.HA_1 is configured for single-node [types]", () => {
   const config = HA_LEVEL_CONFIGS["HA_1"];
   assert.equal(config.haLevel, "HA_1");
   assert.equal(config.leaseRenewalIntervalMs, 0); // Not needed for single-node
@@ -83,7 +83,7 @@ test("HA_LEVEL_CONFIGS.HA_1 is configured for single-node", () => {
   assert.equal(config.eventReplayEnabled, false);
 });
 
-test("HA_LEVEL_CONFIGS.HA_2 is configured for active-standby", () => {
+test("HA_LEVEL_CONFIGS.HA_2 is configured for active-standby [types]", () => {
   const config = HA_LEVEL_CONFIGS["HA_2"];
   assert.equal(config.haLevel, "HA_2");
   assert.equal(config.leaseRenewalIntervalMs, 5_000);
@@ -96,7 +96,7 @@ test("HA_LEVEL_CONFIGS.HA_2 is configured for active-standby", () => {
   assert.equal(config.eventReplayEnabled, true);
 });
 
-test("HA_LEVEL_CONFIGS.HA_3 is configured for multi-region", () => {
+test("HA_LEVEL_CONFIGS.HA_3 is configured for multi-region [types]", () => {
   const config = HA_LEVEL_CONFIGS["HA_3"];
   assert.equal(config.haLevel, "HA_3");
   assert.equal(config.leaseRenewalIntervalMs, 3_000);
@@ -109,37 +109,37 @@ test("HA_LEVEL_CONFIGS.HA_3 is configured for multi-region", () => {
   assert.equal(config.eventReplayEnabled, true);
 });
 
-test("CoordinatorNodeStatus type accepts valid values", () => {
+test("CoordinatorNodeStatus type accepts valid values [types]", () => {
   const statuses: CoordinatorNodeStatus[] = ["active", "draining", "offline"];
   assert.deepEqual(statuses, ["active", "draining", "offline"]);
 });
 
-test("LeaderActionAuthority type accepts valid values", () => {
+test("LeaderActionAuthority type accepts valid values [types]", () => {
   const authorities: LeaderActionAuthority[] = ["leader_only", "follower_allowed", "any"];
   assert.deepEqual(authorities, ["leader_only", "follower_allowed", "any"]);
 });
 
-test("LeaderLease status type accepts valid values", () => {
+test("LeaderLease status type accepts valid values [types]", () => {
   const statuses: LeaderLease["status"][] = ["active", "expired", "released", "transferred"];
   assert.deepEqual(statuses, ["active", "expired", "released", "transferred"]);
 });
 
-test("LeadershipEpoch cause type accepts valid values", () => {
+test("LeadershipEpoch cause type accepts valid values [types]", () => {
   const causes: LeadershipEpoch["cause"][] = ["acquired", "renewed", "expired", "preempted", "voluntary"];
   assert.deepEqual(causes, ["acquired", "renewed", "expired", "preempted", "voluntary"]);
 });
 
-test("FailoverDecision cause type accepts valid values", () => {
+test("FailoverDecision cause type accepts valid values [types]", () => {
   const causes: FailoverDecision["cause"][] = ["heartbeat_missing", "node_unhealthy", "voluntary", "operator_forced", "epoch_preempted"];
   assert.deepEqual(causes, ["heartbeat_missing", "node_unhealthy", "voluntary", "operator_forced", "epoch_preempted"]);
 });
 
-test("FailoverDecision outcome type accepts valid values", () => {
+test("FailoverDecision outcome type accepts valid values [types]", () => {
   const outcomes: FailoverDecision["outcome"][] = ["leader_changed", "no_change", "no_candidate"];
   assert.deepEqual(outcomes, ["leader_changed", "no_change", "no_candidate"]);
 });
 
-test("WalEntryType contains all expected entry types", () => {
+test("WalEntryType contains all expected entry types [types]", () => {
   const entryTypes: WalEntryType[] = [
     "execution_start",
     "execution_update",
@@ -154,17 +154,17 @@ test("WalEntryType contains all expected entry types", () => {
   assert.equal(entryTypes.length, 9);
 });
 
-test("StuckRunSweepStatus type accepts valid values", () => {
+test("StuckRunSweepStatus type accepts valid values [types]", () => {
   const statuses: StuckRunSweepStatus[] = ["pending", "warning", "killed", "cleaned_up", "resolved"];
   assert.deepEqual(statuses, ["pending", "warning", "killed", "cleaned_up", "resolved"]);
 });
 
-test("HaLevel type accepts valid values", () => {
+test("HaLevel type accepts valid values [types]", () => {
   const levels: HaLevel[] = ["HA_1", "HA_2", "HA_3"];
   assert.deepEqual(levels, ["HA_1", "HA_2", "HA_3"]);
 });
 
-test("HaLevelConfig interface structure", () => {
+test("HaLevelConfig interface structure [types]", () => {
   const config: HaLevelConfig = {
     haLevel: "HA_2",
     leaseRenewalIntervalMs: 5_000,
@@ -184,7 +184,7 @@ test("HaLevelConfig interface structure", () => {
   assert.equal(config.walEnabled, true);
 });
 
-test("CoordinatorNode interface structure", () => {
+test("CoordinatorNode interface structure [types]", () => {
   const node: CoordinatorNode = {
     nodeId: "node_1",
     region: "us-east-1",
@@ -200,7 +200,7 @@ test("CoordinatorNode interface structure", () => {
   assert.ok(node.metadata);
 });
 
-test("LeaderLease interface structure", () => {
+test("LeaderLease interface structure [types]", () => {
   const lease: LeaderLease = {
     leaseId: "lease_1",
     nodeId: "node_1",
@@ -216,7 +216,7 @@ test("LeaderLease interface structure", () => {
   assert.equal(lease.ttlMs, 30_000);
 });
 
-test("LeadershipEpoch interface structure", () => {
+test("LeadershipEpoch interface structure [types]", () => {
   const epoch: LeadershipEpoch = {
     epoch: 1,
     leaderNodeId: "node_1",
@@ -231,7 +231,7 @@ test("LeadershipEpoch interface structure", () => {
   assert.equal(epoch.fencingToken, 1);
 });
 
-test("FailoverDecision interface structure", () => {
+test("FailoverDecision interface structure [types]", () => {
   const decision: FailoverDecision = {
     decisionId: "decision_1",
     oldLeaderNodeId: "node_old",
@@ -247,7 +247,7 @@ test("FailoverDecision interface structure", () => {
   assert.equal(decision.outcome, "leader_changed");
 });
 
-test("LeadershipAcquisitionInput interface structure", () => {
+test("LeadershipAcquisitionInput interface structure [types]", () => {
   const input: LeadershipAcquisitionInput = {
     nodeId: "node_1",
     ttlMs: 15_000,
@@ -258,7 +258,7 @@ test("LeadershipAcquisitionInput interface structure", () => {
   assert.equal(input.forceAcquire, false);
 });
 
-test("LeadershipRenewalInput interface structure", () => {
+test("LeadershipRenewalInput interface structure [types]", () => {
   const input: LeadershipRenewalInput = {
     nodeId: "node_1",
     ttlMs: 10_000,
@@ -267,7 +267,7 @@ test("LeadershipRenewalInput interface structure", () => {
   assert.equal(input.nodeId, "node_1");
 });
 
-test("LeadershipQueryResult interface structure", () => {
+test("LeadershipQueryResult interface structure [types]", () => {
   const result: LeadershipQueryResult = {
     isLeader: true,
     leaderNodeId: "node_1",
@@ -281,7 +281,7 @@ test("LeadershipQueryResult interface structure", () => {
   assert.equal(result.isExpired, false);
 });
 
-test("LeaderActionAuthorization interface structure", () => {
+test("LeaderActionAuthorization interface structure [types]", () => {
   const auth: LeaderActionAuthorization = {
     authorized: true,
     authority: "leader_only",
@@ -295,7 +295,7 @@ test("LeaderActionAuthorization interface structure", () => {
   assert.equal(auth.authority, "leader_only");
 });
 
-test("HaCoordinatorServiceOptions interface structure", () => {
+test("HaCoordinatorServiceOptions interface structure [types]", () => {
   const options: HaCoordinatorServiceOptions = {
     defaultTtlMs: 30_000,
     strictLeaderAuthority: true,
@@ -305,7 +305,7 @@ test("HaCoordinatorServiceOptions interface structure", () => {
   assert.equal(options.strictLeaderAuthority, true);
 });
 
-test("WalEntry interface structure", () => {
+test("WalEntry interface structure [types]", () => {
   const entry: WalEntry = {
     id: "wal_1",
     entryType: "execution_start",
@@ -323,7 +323,7 @@ test("WalEntry interface structure", () => {
   assert.equal(entry.sequenceNumber, 1);
 });
 
-test("Checkpoint interface structure", () => {
+test("Checkpoint interface structure [types]", () => {
   const checkpoint: Checkpoint = {
     id: "cp_1",
     executionId: "exec_1",
@@ -337,7 +337,7 @@ test("Checkpoint interface structure", () => {
   assert.deepEqual(checkpoint.state, { counter: 42 });
 });
 
-test("CheckpointOptions interface structure", () => {
+test("CheckpointOptions interface structure [types]", () => {
   const options: CheckpointOptions = {
     executionId: "exec_1",
     state: { data: "test" },
@@ -348,7 +348,7 @@ test("CheckpointOptions interface structure", () => {
   assert.ok(options.metadata);
 });
 
-test("StuckRun interface structure", () => {
+test("StuckRun interface structure [types]", () => {
   const run: StuckRun = {
     executionId: "exec_1",
     taskId: "task_1",
@@ -365,7 +365,7 @@ test("StuckRun interface structure", () => {
   assert.equal(run.sweepCount, 0);
 });
 
-test("StuckRunSweeperConfig interface structure", () => {
+test("StuckRunSweeperConfig interface structure [types]", () => {
   const config: StuckRunSweeperConfig = {
     sweepIntervalMs: 60_000,
     stuckThresholdMs: 1_800_000,
@@ -377,7 +377,7 @@ test("StuckRunSweeperConfig interface structure", () => {
   assert.equal(config.maxRunsPerSweep, 100);
 });
 
-test("LeaseReclaimResult interface structure", () => {
+test("LeaseReclaimResult interface structure [types]", () => {
   const result: LeaseReclaimResult = {
     reclaimedCount: 5,
     failoverTriggered: true,
@@ -389,7 +389,7 @@ test("LeaseReclaimResult interface structure", () => {
   assert.equal(result.failedNodeIds.length, 2);
 });
 
-test("LeaseReclaimerConfig interface structure", () => {
+test("LeaseReclaimerConfig interface structure [types]", () => {
   const config: LeaseReclaimerConfig = {
     reclaimIntervalMs: 10_000,
     gracePeriodMs: 5_000,
@@ -399,7 +399,7 @@ test("LeaseReclaimerConfig interface structure", () => {
   assert.equal(config.autoFailover, true);
 });
 
-test("EventReplayPosition interface structure", () => {
+test("EventReplayPosition interface structure [types]", () => {
   const position: EventReplayPosition = {
     lastProcessedEventId: "event_100",
     lastProcessedSequence: 100,
@@ -409,7 +409,7 @@ test("EventReplayPosition interface structure", () => {
   assert.equal(position.lastProcessedSequence, 100);
 });
 
-test("EventReplayResult interface structure", () => {
+test("EventReplayResult interface structure [types]", () => {
   const result: EventReplayResult = {
     eventsReplayed: 50,
     projectionsRebuilt: 3,

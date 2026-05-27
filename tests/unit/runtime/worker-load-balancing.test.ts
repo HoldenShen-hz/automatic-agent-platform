@@ -8,7 +8,7 @@ import {
   MAX_RECOMMENDED_STICKY_SHARE,
 } from "../../../src/platform/five-plane-execution/worker-pool/worker-load-balancing.js";
 
-test("worker load balancing computes effective active leases from the stronger of active leases and running work", () => {
+test("worker load balancing computes effective active leases from the stronger of active leases and running work [worker-load-balancing]", () => {
   assert.equal(
     computeEffectiveActiveLeaseCount({
       workerId: "worker-a",
@@ -25,7 +25,7 @@ test("worker load balancing computes effective active leases from the stronger o
   );
 });
 
-test("summarizeWorkerLoadSkew does NOT detect skew when dominantWorkerShare equals exactly MAX_RECOMMENDED_STICKY_SHARE (0.6)", () => {
+test("summarizeWorkerLoadSkew does NOT detect skew when dominantWorkerShare equals exactly MAX_RECOMMENDED_STICKY_SHARE (0.6) [worker-load-balancing]", () => {
   // With 5 total leases (3 on worker-a, 2 on worker-b), share = 3/5 = 0.6
   // 0.6 is NOT > 0.6, so skew should not be detected even with alternative capacity
   const summary = summarizeWorkerLoadSkew([
@@ -59,7 +59,7 @@ test("summarizeWorkerLoadSkew does NOT detect skew when dominantWorkerShare equa
   assert.equal(summary.maxRecommendedStickyShare, MAX_RECOMMENDED_STICKY_SHARE);
 });
 
-test("summarizeWorkerLoadSkew detects skew when dominantWorkerShare exceeds MAX_RECOMMENDED_STICKY_SHARE (0.6)", () => {
+test("summarizeWorkerLoadSkew detects skew when dominantWorkerShare exceeds MAX_RECOMMENDED_STICKY_SHARE (0.6) [worker-load-balancing]", () => {
   // With 6 total leases (4 on worker-a, 2 on worker-b), share = 4/6 ≈ 0.667 > 0.6
   // Alternative capacity exists (worker-b has availableSlots and lower load score)
   const summary = summarizeWorkerLoadSkew([
@@ -94,7 +94,7 @@ test("summarizeWorkerLoadSkew detects skew when dominantWorkerShare exceeds MAX_
   assert.equal(summary.totalActiveLeaseCount, 6);
 });
 
-test("worker load balancing penalizes saturated workers and detects sticky load skew when alternative capacity exists", () => {
+test("worker load balancing penalizes saturated workers and detects sticky load skew when alternative capacity exists [worker-load-balancing]", () => {
   const dominantScore = computeWorkerLoadScore({
     workerId: "worker-hot",
     queueAffinity: "default",

@@ -66,18 +66,18 @@ function makeTicket(overrides: Partial<ExecutionTicketRecord> = {}): ExecutionTi
 // resolveRemoteAvailability
 // ---------------------------------------------------------------------------
 
-test("resolveRemoteAvailability returns null for any dispatch target", () => {
+test("resolveRemoteAvailability returns null for any dispatch target [dispatch-support-functions]", () => {
   const evaluations = [makeEvaluation({ placement: "remote" })];
   assert.equal(resolveRemoteAvailability("any", evaluations), null);
 });
 
-test("resolveRemoteAvailability returns unavailable when no remote workers", () => {
+test("resolveRemoteAvailability returns unavailable when no remote workers [dispatch-support-functions]", () => {
   const evaluations = [makeEvaluation({ placement: "local" })];
   assert.equal(resolveRemoteAvailability("prefer_remote", evaluations), "unavailable");
   assert.equal(resolveRemoteAvailability("require_remote", evaluations), "unavailable");
 });
 
-test("resolveRemoteAvailability returns healthy when all remote workers accepted", () => {
+test("resolveRemoteAvailability returns healthy when all remote workers accepted [dispatch-support-functions]", () => {
   const evaluations = [
     makeEvaluation({ placement: "remote", workerId: "r1", accepted: true }),
     makeEvaluation({ placement: "remote", workerId: "r2", accepted: true }),
@@ -85,7 +85,7 @@ test("resolveRemoteAvailability returns healthy when all remote workers accepted
   assert.equal(resolveRemoteAvailability("prefer_remote", evaluations), "healthy");
 });
 
-test("resolveRemoteAvailability returns partial_available when some remote workers rejected", () => {
+test("resolveRemoteAvailability returns partial_available when some remote workers rejected [dispatch-support-functions]", () => {
   const evaluations = [
     makeEvaluation({ placement: "remote", workerId: "r1", accepted: true }),
     makeEvaluation({ placement: "remote", workerId: "r2", accepted: false, rejectionReason: "worker_degraded_filtered" }),
@@ -93,7 +93,7 @@ test("resolveRemoteAvailability returns partial_available when some remote worke
   assert.equal(resolveRemoteAvailability("prefer_remote", evaluations), "partial_available");
 });
 
-test("resolveRemoteAvailability returns degraded when all rejected with degradation reasons", () => {
+test("resolveRemoteAvailability returns degraded when all rejected with degradation reasons [dispatch-support-functions]", () => {
   const evaluations = [
     makeEvaluation({ placement: "remote", workerId: "r1", accepted: false, rejectionReason: "worker_degraded_filtered" }),
     makeEvaluation({ placement: "remote", workerId: "r2", accepted: false, rejectionReason: "worker_untrusted" }),
@@ -101,7 +101,7 @@ test("resolveRemoteAvailability returns degraded when all rejected with degradat
   assert.equal(resolveRemoteAvailability("prefer_remote", evaluations), "degraded");
 });
 
-test("resolveRemoteAvailability returns unavailable when all workers are administrative non-ready states", () => {
+test("resolveRemoteAvailability returns unavailable when all workers are administrative non-ready states [dispatch-support-functions]", () => {
   const evaluations = [
     makeEvaluation({ placement: "remote", workerId: "r1", accepted: false, rejectionReason: "worker_unavailable" }),
     makeEvaluation({ placement: "remote", workerId: "r2", accepted: false, rejectionReason: "worker_draining" }),
@@ -110,7 +110,7 @@ test("resolveRemoteAvailability returns unavailable when all workers are adminis
   assert.equal(resolveRemoteAvailability("prefer_remote", evaluations), "unavailable");
 });
 
-test("resolveRemoteAvailability filters out placement_mismatch workers", () => {
+test("resolveRemoteAvailability filters out placement_mismatch workers [dispatch-support-functions]", () => {
   const evaluations = [
     makeEvaluation({ placement: "local", workerId: "l1", accepted: false, rejectionReason: "worker_placement_mismatch" }),
     makeEvaluation({ placement: "remote", workerId: "r1", accepted: true }),
@@ -122,12 +122,12 @@ test("resolveRemoteAvailability filters out placement_mismatch workers", () => {
 // resolveRemoteRepoVersionReason
 // ---------------------------------------------------------------------------
 
-test("resolveRemoteRepoVersionReason returns null when no required version", () => {
+test("resolveRemoteRepoVersionReason returns null when no required version [dispatch-support-functions]", () => {
   const evaluations = [makeEvaluation({ placement: "remote" })];
   assert.equal(resolveRemoteRepoVersionReason("prefer_remote", evaluations, null), null);
 });
 
-test("resolveRemoteRepoVersionReason returns null when some worker accepted", () => {
+test("resolveRemoteRepoVersionReason returns null when some worker accepted [dispatch-support-functions]", () => {
   const evaluations = [
     makeEvaluation({ placement: "remote", workerId: "r1", accepted: true }),
     makeEvaluation({ placement: "remote", workerId: "r2", accepted: false, rejectionReason: "worker_repo_version_mismatch" }),
@@ -135,12 +135,12 @@ test("resolveRemoteRepoVersionReason returns null when some worker accepted", ()
   assert.equal(resolveRemoteRepoVersionReason("prefer_remote", evaluations, "v2.0"), null);
 });
 
-test("resolveRemoteRepoVersionReason returns null when not prefer_remote/require_remote", () => {
+test("resolveRemoteRepoVersionReason returns null when not prefer_remote/require_remote [dispatch-support-functions]", () => {
   const evaluations = [makeEvaluation({ placement: "remote" })];
   assert.equal(resolveRemoteRepoVersionReason("any", evaluations, "v2.0"), null);
 });
 
-test("resolveRemoteRepoVersionReason returns repo_version_mismatch for prefer_remote", () => {
+test("resolveRemoteRepoVersionReason returns repo_version_mismatch for prefer_remote [dispatch-support-functions]", () => {
   const evaluations = [
     makeEvaluation({ placement: "remote", workerId: "r1", accepted: false, rejectionReason: "worker_repo_version_mismatch" }),
     makeEvaluation({ placement: "remote", workerId: "r2", accepted: false, rejectionReason: "worker_repo_version_mismatch" }),
@@ -148,7 +148,7 @@ test("resolveRemoteRepoVersionReason returns repo_version_mismatch for prefer_re
   assert.equal(resolveRemoteRepoVersionReason("prefer_remote", evaluations, "v2.0"), "remote.fallback_local.repo_version_mismatch");
 });
 
-test("resolveRemoteRepoVersionReason returns repo_version_mismatch for require_remote", () => {
+test("resolveRemoteRepoVersionReason returns repo_version_mismatch for require_remote [dispatch-support-functions]", () => {
   const evaluations = [
     makeEvaluation({ placement: "remote", workerId: "r1", accepted: false, rejectionReason: "worker_repo_version_mismatch" }),
   ];
@@ -159,12 +159,12 @@ test("resolveRemoteRepoVersionReason returns repo_version_mismatch for require_r
 // resolveRemoteSessionReason
 // ---------------------------------------------------------------------------
 
-test("resolveRemoteSessionReason returns null when not remote dispatch target", () => {
+test("resolveRemoteSessionReason returns null when not remote dispatch target [dispatch-support-functions]", () => {
   const evaluations = [makeEvaluation({ placement: "remote" })];
   assert.equal(resolveRemoteSessionReason("any", evaluations), null);
 });
 
-test("resolveRemoteSessionReason returns null when some worker accepted", () => {
+test("resolveRemoteSessionReason returns null when some worker accepted [dispatch-support-functions]", () => {
   const evaluations = [
     makeEvaluation({ placement: "remote", workerId: "r1", accepted: true }),
     makeEvaluation({ placement: "remote", workerId: "r2", accepted: false, rejectionReason: "worker_remote_session_unready" }),
@@ -172,14 +172,14 @@ test("resolveRemoteSessionReason returns null when some worker accepted", () => 
   assert.equal(resolveRemoteSessionReason("prefer_remote", evaluations), null);
 });
 
-test("resolveRemoteSessionReason returns session_unready for prefer_remote", () => {
+test("resolveRemoteSessionReason returns session_unready for prefer_remote [dispatch-support-functions]", () => {
   const evaluations = [
     makeEvaluation({ placement: "remote", workerId: "r1", accepted: false, rejectionReason: "worker_remote_session_unready" }),
   ];
   assert.equal(resolveRemoteSessionReason("prefer_remote", evaluations), "remote.fallback_local.session_unready");
 });
 
-test("resolveRemoteSessionReason returns session_unready for require_remote", () => {
+test("resolveRemoteSessionReason returns session_unready for require_remote [dispatch-support-functions]", () => {
   const evaluations = [
     makeEvaluation({ placement: "remote", workerId: "r1", accepted: false, rejectionReason: "worker_remote_session_unready" }),
   ];
@@ -190,12 +190,12 @@ test("resolveRemoteSessionReason returns session_unready for require_remote", ()
 // resolveRemoteTrustReason
 // ---------------------------------------------------------------------------
 
-test("resolveRemoteTrustReason returns null for any dispatch target", () => {
+test("resolveRemoteTrustReason returns null for any dispatch target [dispatch-support-functions]", () => {
   const evaluations = [makeEvaluation({ placement: "remote" })];
   assert.equal(resolveRemoteTrustReason("any", evaluations), null);
 });
 
-test("resolveRemoteTrustReason returns null when some worker accepted", () => {
+test("resolveRemoteTrustReason returns null when some worker accepted [dispatch-support-functions]", () => {
   const evaluations = [
     makeEvaluation({ placement: "remote", workerId: "r1", accepted: true }),
     makeEvaluation({ placement: "remote", workerId: "r2", accepted: false, rejectionReason: "worker_untrusted" }),
@@ -203,14 +203,14 @@ test("resolveRemoteTrustReason returns null when some worker accepted", () => {
   assert.equal(resolveRemoteTrustReason("prefer_remote", evaluations), null);
 });
 
-test("resolveRemoteTrustReason returns untrusted for prefer_remote", () => {
+test("resolveRemoteTrustReason returns untrusted for prefer_remote [dispatch-support-functions]", () => {
   const evaluations = [
     makeEvaluation({ placement: "remote", workerId: "r1", accepted: false, rejectionReason: "worker_untrusted" }),
   ];
   assert.equal(resolveRemoteTrustReason("prefer_remote", evaluations), "remote.fallback_local.untrusted");
 });
 
-test("resolveRemoteTrustReason returns untrusted for require_remote", () => {
+test("resolveRemoteTrustReason returns untrusted for require_remote [dispatch-support-functions]", () => {
   const evaluations = [
     makeEvaluation({ placement: "remote", workerId: "r1", accepted: false, rejectionReason: "worker_untrusted" }),
   ];
@@ -221,7 +221,7 @@ test("resolveRemoteTrustReason returns untrusted for require_remote", () => {
 // selectWorkersForDispatch
 // ---------------------------------------------------------------------------
 
-test("selectWorkersForDispatch returns eligible workers for non-prefer_remote target", () => {
+test("selectWorkersForDispatch returns eligible workers for non-prefer_remote target [dispatch-support-functions]", () => {
   const workers = [
     { workerId: "w1", placement: "local" as const, availableSlots: 5 },
     { workerId: "w2", placement: "remote" as const, availableSlots: 5 },
@@ -231,7 +231,7 @@ test("selectWorkersForDispatch returns eligible workers for non-prefer_remote ta
   assert.equal(result.fallbackApplied, false);
 });
 
-test("selectWorkersForDispatch filters to remote workers for prefer_remote", () => {
+test("selectWorkersForDispatch filters to remote workers for prefer_remote [dispatch-support-functions]", () => {
   const workers = [
     { workerId: "local-1", placement: "local" as const, availableSlots: 5 },
     { workerId: "remote-1", placement: "remote" as const, availableSlots: 5 },
@@ -242,7 +242,7 @@ test("selectWorkersForDispatch filters to remote workers for prefer_remote", () 
   assert.equal(result.fallbackApplied, false);
 });
 
-test("selectWorkersForDispatch falls back to local when no remote workers", () => {
+test("selectWorkersForDispatch falls back to local when no remote workers [dispatch-support-functions]", () => {
   const workers = [
     { workerId: "local-1", placement: "local" as const, availableSlots: 5 },
   ] as any[];
@@ -253,14 +253,14 @@ test("selectWorkersForDispatch falls back to local when no remote workers", () =
   assert.ok(result.reasonCode?.startsWith("remote.fallback_local."));
 });
 
-test("selectWorkersForDispatch returns empty when no local workers for fallback", () => {
+test("selectWorkersForDispatch returns empty when no local workers for fallback [dispatch-support-functions]", () => {
   const workers = [] as any[];
   const result = selectWorkersForDispatch("prefer_remote", workers, "unavailable", null, null, null);
   assert.equal(result.workers.length, 0);
   assert.equal(result.fallbackApplied, false);
 });
 
-test("selectWorkersForDispatch uses trust reason when provided", () => {
+test("selectWorkersForDispatch uses trust reason when provided [dispatch-support-functions]", () => {
   const workers = [{ workerId: "local-1", placement: "local" as const, availableSlots: 5 }] as any[];
   const result = selectWorkersForDispatch("prefer_remote", workers, "degraded", "remote.untrusted", null, null);
   assert.equal(result.reasonCode, "remote.untrusted");
@@ -270,7 +270,7 @@ test("selectWorkersForDispatch uses trust reason when provided", () => {
 // toWorkerEvaluation
 // ---------------------------------------------------------------------------
 
-test("toWorkerEvaluation creates evaluation from worker view", () => {
+test("toWorkerEvaluation creates evaluation from worker view [dispatch-support-functions]", () => {
   const worker = {
     workerId: "worker-1",
     status: "idle",
@@ -291,7 +291,7 @@ test("toWorkerEvaluation creates evaluation from worker view", () => {
   assert.equal(evaluation.placement, "local");
 });
 
-test("toWorkerEvaluation includes missing capabilities", () => {
+test("toWorkerEvaluation includes missing capabilities [dispatch-support-functions]", () => {
   const worker = {
     workerId: "worker-1",
     status: "idle",
@@ -315,42 +315,42 @@ test("toWorkerEvaluation includes missing capabilities", () => {
 // resolveDispatchBackpressureReason
 // ---------------------------------------------------------------------------
 
-test("resolveDispatchBackpressureReason returns null when no snapshot", () => {
+test("resolveDispatchBackpressureReason returns null when no snapshot [dispatch-support-functions]", () => {
   const ticket = makeTicket();
   assert.equal(resolveDispatchBackpressureReason(ticket, null), null);
 });
 
-test("resolveDispatchBackpressureReason returns read_only_mode reason", () => {
+test("resolveDispatchBackpressureReason returns read_only_mode reason [dispatch-support-functions]", () => {
   const ticket = makeTicket({ priority: "low" });
   const snapshot = { degradationMode: "read_only_operations_only", queueGovernance: { starvationDetected: false } };
   assert.equal(resolveDispatchBackpressureReason(ticket, snapshot), "backpressure.read_only_mode");
 });
 
-test("resolveDispatchBackpressureReason returns pause_non_critical for non-elevated priority", () => {
+test("resolveDispatchBackpressureReason returns pause_non_critical for non-elevated priority [dispatch-support-functions]", () => {
   const ticket = makeTicket({ priority: "low" });
   const snapshot = { degradationMode: "pause_non_critical", queueGovernance: { starvationDetected: false } };
   assert.equal(resolveDispatchBackpressureReason(ticket, snapshot), "backpressure.pause_non_critical");
 });
 
-test("resolveDispatchBackpressureReason returns null for elevated priority with pause_non_critical", () => {
+test("resolveDispatchBackpressureReason returns null for elevated priority with pause_non_critical [dispatch-support-functions]", () => {
   const ticket = makeTicket({ priority: "high" });
   const snapshot = { degradationMode: "pause_non_critical", queueGovernance: { starvationDetected: false } };
   assert.equal(resolveDispatchBackpressureReason(ticket, snapshot), null);
 });
 
-test("resolveDispatchBackpressureReason returns starvation_protection for low priority", () => {
+test("resolveDispatchBackpressureReason returns starvation_protection for low priority [dispatch-support-functions]", () => {
   const ticket = makeTicket({ priority: "low" });
   const snapshot = { degradationMode: "queue_only", queueGovernance: { starvationDetected: true } };
   assert.equal(resolveDispatchBackpressureReason(ticket, snapshot), "backpressure.starvation_protection");
 });
 
-test("resolveDispatchBackpressureReason returns queue_only for non-elevated priority", () => {
+test("resolveDispatchBackpressureReason returns queue_only for non-elevated priority [dispatch-support-functions]", () => {
   const ticket = makeTicket({ priority: "normal" });
   const snapshot = { degradationMode: "queue_only", queueGovernance: { starvationDetected: false } };
   assert.equal(resolveDispatchBackpressureReason(ticket, snapshot), "backpressure.queue_only");
 });
 
-test("resolveDispatchBackpressureReason returns null for elevated priority with queue_only", () => {
+test("resolveDispatchBackpressureReason returns null for elevated priority with queue_only [dispatch-support-functions]", () => {
   const ticket = makeTicket({ priority: "urgent" });
   const snapshot = { degradationMode: "queue_only", queueGovernance: { starvationDetected: false } };
   assert.equal(resolveDispatchBackpressureReason(ticket, snapshot), null);

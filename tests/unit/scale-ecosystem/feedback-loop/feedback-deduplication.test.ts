@@ -45,7 +45,7 @@ function createSignal(overrides: Partial<FeedbackSignal> = {}): FeedbackSignal {
 // deduplicate - basic functionality
 // =============================================================================
 
-test("deduplicate removes exact duplicate signals", () => {
+test("deduplicate removes exact duplicate signals [feedback-deduplication]", () => {
   const preprocessor = new SignalPreprocessor();
   const signals = [
     createSignal({ signalId: "sig_1", stepOutputRefs: ["step:1"] }),
@@ -58,7 +58,7 @@ test("deduplicate removes exact duplicate signals", () => {
   assert.equal(result[0]?.stepOutputRefs.length, 1);
 });
 
-test("deduplicate preserves non-duplicate signals", () => {
+test("deduplicate preserves non-duplicate signals [feedback-deduplication]", () => {
   const preprocessor = new SignalPreprocessor();
   const signals = [
     createSignal({ signalId: "sig_1", stepOutputRefs: ["step:1"], category: "failure" }),
@@ -70,7 +70,7 @@ test("deduplicate preserves non-duplicate signals", () => {
   assert.equal(result.length, 2);
 });
 
-test("deduplicate increments occurrenceCount on merge", () => {
+test("deduplicate increments occurrenceCount on merge [feedback-deduplication]", () => {
   const preprocessor = new SignalPreprocessor();
   const signals = [
     createSignal({ signalId: "sig_1", stepOutputRefs: ["step:1"], payload: { occurrenceCount: 1 } }),
@@ -83,13 +83,13 @@ test("deduplicate increments occurrenceCount on merge", () => {
   assert.equal(result[0]?.payload.occurrenceCount, 2);
 });
 
-test("deduplicate handles empty array", () => {
+test("deduplicate handles empty array [feedback-deduplication]", () => {
   const preprocessor = new SignalPreprocessor();
   const result = preprocessor.deduplicate([]);
   assert.equal(result.length, 0);
 });
 
-test("deduplicate filters empty stepOutputRefs in merge", () => {
+test("deduplicate filters empty stepOutputRefs in merge [feedback-deduplication]", () => {
   const preprocessor = new SignalPreprocessor();
   const signals = [
     createSignal({ signalId: "sig_1", stepOutputRefs: [] }),
@@ -101,7 +101,7 @@ test("deduplicate filters empty stepOutputRefs in merge", () => {
   assert.equal(result.length, 1);
 });
 
-test("deduplicate does not merge signals with different stepOutputRefs", () => {
+test("deduplicate does not merge signals with different stepOutputRefs [feedback-deduplication]", () => {
   const preprocessor = new SignalPreprocessor();
   const signals = [
     createSignal({ signalId: "sig_1", stepOutputRefs: ["step:1", "step:2"] }),
@@ -113,7 +113,7 @@ test("deduplicate does not merge signals with different stepOutputRefs", () => {
   assert.equal(result.length, 2);
 });
 
-test("deduplicate merges signals with identical keys including stepOutputRefs", () => {
+test("deduplicate merges signals with identical keys including stepOutputRefs [feedback-deduplication]", () => {
   const preprocessor = new SignalPreprocessor();
   const signals = [
     createSignal({ signalId: "sig_1", stepOutputRefs: ["step:1"] }),
@@ -126,7 +126,7 @@ test("deduplicate merges signals with identical keys including stepOutputRefs", 
   assert.deepEqual(result[0]?.stepOutputRefs.sort(), ["step:1"]);
 });
 
-test("deduplicate tracks mergedSignalIds on duplicate", () => {
+test("deduplicate tracks mergedSignalIds on duplicate [feedback-deduplication]", () => {
   const preprocessor = new SignalPreprocessor();
   const signals = [
     createSignal({ signalId: "sig_1", stepOutputRefs: ["step:1"] }),
@@ -144,7 +144,7 @@ test("deduplicate tracks mergedSignalIds on duplicate", () => {
   assert.ok(mergedIds.includes("sig_3"));
 });
 
-test("deduplicate handles undefined mergedSignalIds in existing payload", () => {
+test("deduplicate handles undefined mergedSignalIds in existing payload [feedback-deduplication]", () => {
   const preprocessor = new SignalPreprocessor();
   const signals = [
     createSignal({ signalId: "sig_1", stepOutputRefs: ["step:1"], payload: {} }),
@@ -158,7 +158,7 @@ test("deduplicate handles undefined mergedSignalIds in existing payload", () => 
   assert.ok(mergedIds);
 });
 
-test("deduplicate sorts results by timestamp ascending", () => {
+test("deduplicate sorts results by timestamp ascending [feedback-deduplication]", () => {
   const preprocessor = new SignalPreprocessor();
   const signals = [
     createSignal({ signalId: "sig_1", stepOutputRefs: ["step:1"], timestamp: 3000 }),
@@ -172,7 +172,7 @@ test("deduplicate sorts results by timestamp ascending", () => {
   assert.equal(result[0]?.timestamp, 1000);
 });
 
-test("deduplicate treats signals with different reasonCode as different", () => {
+test("deduplicate treats signals with different reasonCode as different [feedback-deduplication]", () => {
   const preprocessor = new SignalPreprocessor();
   const signals = [
     createSignal({ signalId: "sig_1", stepOutputRefs: ["step:1"], payload: { reasonCode: "ERR_A" } }),
@@ -184,7 +184,7 @@ test("deduplicate treats signals with different reasonCode as different", () => 
   assert.equal(result.length, 2);
 });
 
-test("deduplicate treats signals with different summary as different", () => {
+test("deduplicate treats signals with different summary as different [feedback-deduplication]", () => {
   const preprocessor = new SignalPreprocessor();
   const signals = [
     createSignal({ signalId: "sig_1", stepOutputRefs: ["step:1"], payload: { summary: "Issue A" } }),
@@ -196,7 +196,7 @@ test("deduplicate treats signals with different summary as different", () => {
   assert.equal(result.length, 2);
 });
 
-test("deduplicate filters whitespace-only strings from stepOutputRefs on merge", () => {
+test("deduplicate filters whitespace-only strings from stepOutputRefs on merge [feedback-deduplication]", () => {
   const preprocessor = new SignalPreprocessor();
   const signals = [
     createSignal({ signalId: "sig_1", stepOutputRefs: ["step:1"] }),

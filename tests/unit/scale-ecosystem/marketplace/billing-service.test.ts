@@ -11,7 +11,7 @@ import type {
   RecordUsageInput,
 } from "../../../../src/scale-ecosystem/marketplace/billing/types.js";
 
-test("BillingAccountSummary structure", () => {
+test("BillingAccountSummary structure [billing-service]", () => {
   const summary: BillingAccountSummary = {
     account: {
       accountId: "bill_acct_123",
@@ -45,7 +45,7 @@ test("BillingAccountSummary structure", () => {
   assert.equal(summary.totals.totalBilledUsd, 45.00);
 });
 
-test("CreateBillingAccountInput structure", () => {
+test("CreateBillingAccountInput structure [billing-service]", () => {
   const input: CreateBillingAccountInput = {
     ownerId: "user_abc",
     workspaceId: "ws_456",
@@ -57,7 +57,7 @@ test("CreateBillingAccountInput structure", () => {
   assert.equal(input.planId, "plan_pro");
 });
 
-test("EvaluateEntitlementInput structure", () => {
+test("EvaluateEntitlementInput structure [billing-service]", () => {
   const input: EvaluateEntitlementInput = {
     accountId: "bill_acct_123",
     featureKey: "advanced_analytics",
@@ -67,7 +67,7 @@ test("EvaluateEntitlementInput structure", () => {
   assert.equal(input.featureKey, "advanced_analytics");
 });
 
-test("EvaluateEntitlementResult structure - allowed", () => {
+test("EvaluateEntitlementResult structure - allowed [billing-service]", () => {
   const result: EvaluateEntitlementResult = {
     decision: {
       decisionId: "dec_123",
@@ -98,7 +98,7 @@ test("EvaluateEntitlementResult structure - allowed", () => {
   assert.equal(result.decision.featureKey, "advanced_analytics");
 });
 
-test("EvaluateEntitlementResult structure - denied", () => {
+test("EvaluateEntitlementResult structure - denied [billing-service]", () => {
   const result: EvaluateEntitlementResult = {
     decision: {
       decisionId: "dec_456",
@@ -128,7 +128,7 @@ test("EvaluateEntitlementResult structure - denied", () => {
   assert.equal(result.decision.decisionType, "deny");
 });
 
-test("EvaluateEntitlementResult structure - warn", () => {
+test("EvaluateEntitlementResult structure - warn [billing-service]", () => {
   const result: EvaluateEntitlementResult = {
     decision: {
       decisionId: "dec_789",
@@ -158,7 +158,7 @@ test("EvaluateEntitlementResult structure - warn", () => {
   assert.equal(result.decision.decisionType, "warn");
 });
 
-test("EvaluateEntitlementResult structure - degrade", () => {
+test("EvaluateEntitlementResult structure - degrade [billing-service]", () => {
   const result: EvaluateEntitlementResult = {
     decision: {
       decisionId: "dec_789",
@@ -188,7 +188,7 @@ test("EvaluateEntitlementResult structure - degrade", () => {
   assert.equal(result.decision.decisionType, "degrade");
 });
 
-test("RecordUsageInput structure", () => {
+test("RecordUsageInput structure [billing-service]", () => {
   const input: RecordUsageInput = {
     accountId: "bill_acct_123",
     metricType: "task_execution",
@@ -204,10 +204,10 @@ test("RecordUsageInput structure", () => {
   assert.equal(input.quantity, 100);
 });
 
-test("BillingService can be imported", () => {
+test("BillingService can be imported [billing-service]", () => {
   assert.ok(typeof BillingService === "function");
 });
 
-test("BillingPaymentGateway can be imported", () => {
+test("BillingPaymentGateway can be imported [billing-service]", () => {
   assert.ok(typeof ManualBillingPaymentGateway === "function");
 });

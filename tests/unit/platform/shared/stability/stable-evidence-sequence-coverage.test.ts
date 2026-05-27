@@ -17,7 +17,7 @@ import {
 } from "../../../../../src/platform/shared/stability/stable-evidence-sequence.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 
-test("runStableEvidenceSequenceUntilComplete exits when blocked", async () => {
+test("runStableEvidenceSequenceUntilComplete exits when blocked [stable-evidence-sequence-coverage]", async () => {
   const workspace = createTempWorkspace("aa-seq-until-blocked-");
   const evidenceRoot = `${workspace}/evidence`;
 
@@ -68,7 +68,7 @@ test("runStableEvidenceSequenceUntilComplete exits when blocked", async () => {
   }
 });
 
-test("runStableEvidenceSequenceUntilComplete respects maxPasses", async () => {
+test("runStableEvidenceSequenceUntilComplete respects maxPasses [stable-evidence-sequence-coverage]", async () => {
   const workspace = createTempWorkspace("aa-seq-until-max-");
   const evidenceRoot = `${workspace}/evidence`;
 
@@ -98,7 +98,7 @@ test("runStableEvidenceSequenceUntilComplete respects maxPasses", async () => {
   }
 });
 
-test("StableEvidenceSequenceState structure validation", () => {
+test("StableEvidenceSequenceState structure validation [stable-evidence-sequence-coverage]", () => {
   const state: StableEvidenceSequenceState = {
     sequenceId: "test-seq-123",
     evidenceRootDir: "/tmp/evidence",
@@ -151,7 +151,7 @@ test("StableEvidenceSequenceState structure validation", () => {
   assert.equal(state.profiles.length, 2);
 });
 
-test("StableEvidenceSequenceProfileState for completed profile", () => {
+test("StableEvidenceSequenceProfileState for completed profile [stable-evidence-sequence-coverage]", () => {
   const profile: StableEvidenceSequenceProfileState = {
     profileName: "24h",
     outputDir: "/tmp/evidence/24h",
@@ -174,7 +174,7 @@ test("StableEvidenceSequenceProfileState for completed profile", () => {
   assert.equal(profile.segmentCount, 5);
 });
 
-test("StableEvidenceSequenceProfileState for failed profile", () => {
+test("StableEvidenceSequenceProfileState for failed profile [stable-evidence-sequence-coverage]", () => {
   const profile: StableEvidenceSequenceProfileState = {
     profileName: "72h",
     outputDir: "/tmp/evidence/72h",
@@ -195,7 +195,7 @@ test("StableEvidenceSequenceProfileState for failed profile", () => {
   assert.equal(profile.passed, false);
 });
 
-test("StableEvidenceSequenceProfileState for incomplete profile", () => {
+test("StableEvidenceSequenceProfileState for incomplete profile [stable-evidence-sequence-coverage]", () => {
   const profile: StableEvidenceSequenceProfileState = {
     profileName: "72h",
     outputDir: "/tmp/evidence/72h",
@@ -217,7 +217,7 @@ test("StableEvidenceSequenceProfileState for incomplete profile", () => {
   assert.equal(profile.remainingDurationMs, 86400000);
 });
 
-test("runStableEvidenceSequence handles custom profile options", async () => {
+test("runStableEvidenceSequence handles custom profile options [stable-evidence-sequence-coverage]", async () => {
   const workspace = createTempWorkspace("aa-seq-custom-opts-");
   const evidenceRoot = `${workspace}/evidence`;
 
@@ -243,7 +243,7 @@ test("runStableEvidenceSequence handles custom profile options", async () => {
   }
 });
 
-test("runStableEvidenceSequence sequence persists state", async () => {
+test("runStableEvidenceSequence sequence persists state [stable-evidence-sequence-coverage]", async () => {
   const workspace = createTempWorkspace("aa-seq-persist-");
   const evidenceRoot = `${workspace}/evidence`;
 
@@ -270,7 +270,7 @@ test("runStableEvidenceSequence sequence persists state", async () => {
   }
 });
 
-test("runStableEvidenceSequence blocked profile has blockReason", async () => {
+test("runStableEvidenceSequence blocked profile has blockReason [stable-evidence-sequence-coverage]", async () => {
   const workspace = createTempWorkspace("aa-seq-block-reason-");
   const evidenceRoot = `${workspace}/evidence`;
 
@@ -319,7 +319,7 @@ test("runStableEvidenceSequence blocked profile has blockReason", async () => {
   }
 });
 
-test("StableEvidenceSequenceState completed when all profiles passed", async () => {
+test("StableEvidenceSequenceState completed when all profiles passed [stable-evidence-sequence-coverage]", async () => {
   const workspace = createTempWorkspace("aa-seq-all-passed-");
   const evidenceRoot = `${workspace}/evidence`;
 
@@ -370,7 +370,7 @@ test("StableEvidenceSequenceState completed when all profiles passed", async () 
   }
 });
 
-test("runStableEvidenceSequence activeProfileName tracks current profile", async () => {
+test("runStableEvidenceSequence activeProfileName tracks current profile [stable-evidence-sequence-coverage]", async () => {
   const workspace = createTempWorkspace("aa-seq-active-");
   const evidenceRoot = `${workspace}/evidence`;
 
@@ -397,7 +397,7 @@ test("runStableEvidenceSequence activeProfileName tracks current profile", async
   }
 });
 
-test("StableEvidenceSequenceState blockReason is null when not blocked", () => {
+test("StableEvidenceSequenceState blockReason is null when not blocked [stable-evidence-sequence-coverage]", () => {
   const state: StableEvidenceSequenceState = {
     sequenceId: "test-seq",
     evidenceRootDir: "/tmp/evidence",
@@ -415,7 +415,7 @@ test("StableEvidenceSequenceState blockReason is null when not blocked", () => {
   assert.equal(state.blockReason, null);
 });
 
-test("StableEvidenceSequenceState blockReason is set when blocked", () => {
+test("StableEvidenceSequenceState blockReason is set when blocked [stable-evidence-sequence-coverage]", () => {
   const state: StableEvidenceSequenceState = {
     sequenceId: "test-seq",
     evidenceRootDir: "/tmp/evidence",

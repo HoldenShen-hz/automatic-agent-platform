@@ -347,7 +347,7 @@ function createMockPlannedWorkflow(overrides: Partial<PlannedWorkflow> = {}): Pl
 // executeStepLoop Comprehensive Tests
 // =============================================================================
 
-test("executeStepLoop returns stepCompleted false when no steps complete", async () => {
+test("executeStepLoop returns stepCompleted false when no steps complete [multi-step-supervisor-comprehensive]", async () => {
   const ctx = createMockStepSupervisorContext({
     plannedWorkflow: createMockPlannedWorkflow({
       workflow: { workflowId: "wf-empty", divisionId: "div-1", steps: [] },
@@ -363,7 +363,7 @@ test("executeStepLoop returns stepCompleted false when no steps complete", async
   assert.equal(result.blockedForDecision, false);
 });
 
-test("executeStepLoop handles multiple steps with mixed outcomes", async () => {
+test("executeStepLoop handles multiple steps with mixed outcomes [multi-step-supervisor-comprehensive]", async () => {
   const ctx = createMockStepSupervisorContext({
     plannedWorkflow: createMockPlannedWorkflow({
       executionSteps: [
@@ -419,7 +419,7 @@ test("executeStepLoop handles multiple steps with mixed outcomes", async () => {
   assert.ok(Array.isArray(result.stepOutputs));
 });
 
-test("executeStepLoop preserves workflowRetryCount on success", async () => {
+test("executeStepLoop preserves workflowRetryCount on success [multi-step-supervisor-comprehensive]", async () => {
   const ctx = createMockStepSupervisorContext({
     workflowRetryCount: 5,
     plannedWorkflow: createMockPlannedWorkflow({
@@ -433,7 +433,7 @@ test("executeStepLoop preserves workflowRetryCount on success", async () => {
   assert.equal(result.workflowRetryCount, 5);
 });
 
-test("executeStepLoop does not modify blockedForDecision when already blocked", async () => {
+test("executeStepLoop does not modify blockedForDecision when already blocked [multi-step-supervisor-comprehensive]", async () => {
   const ctx = createMockStepSupervisorContext({
     blockedForDecision: true,
     plannedWorkflow: createMockPlannedWorkflow({
@@ -460,7 +460,7 @@ test("executeStepLoop does not modify blockedForDecision when already blocked", 
   assert.equal(result.blockedForDecision, true);
 });
 
-test("executeStepLoop handles step with very long stepId", async () => {
+test("executeStepLoop handles step with very long stepId [multi-step-supervisor-comprehensive]", async () => {
   const longStepId = "step_" + "x".repeat(500);
   const ctx = createMockStepSupervisorContext({
     plannedWorkflow: createMockPlannedWorkflow({
@@ -487,7 +487,7 @@ test("executeStepLoop handles step with very long stepId", async () => {
   assert.ok(Array.isArray(result.stepOutputs));
 });
 
-test("executeStepLoop handles step with unicode stepId", async () => {
+test("executeStepLoop handles step with unicode stepId [multi-step-supervisor-comprehensive]", async () => {
   const ctx = createMockStepSupervisorContext({
     plannedWorkflow: createMockPlannedWorkflow({
       executionSteps: [
@@ -513,7 +513,7 @@ test("executeStepLoop handles step with unicode stepId", async () => {
   assert.ok(Array.isArray(result.stepOutputs));
 });
 
-test("executeStepLoop handles empty dependencyTypes object", async () => {
+test("executeStepLoop handles empty dependencyTypes object [multi-step-supervisor-comprehensive]", async () => {
   const ctx = createMockStepSupervisorContext({
     plannedWorkflow: createMockPlannedWorkflow({
       executionSteps: [
@@ -540,7 +540,7 @@ test("executeStepLoop handles empty dependencyTypes object", async () => {
   assert.ok(Array.isArray(result.stepOutputs));
 });
 
-test("executeStepLoop handles step with zero timeoutMs", async () => {
+test("executeStepLoop handles step with zero timeoutMs [multi-step-supervisor-comprehensive]", async () => {
   const ctx = createMockStepSupervisorContext({
     plannedWorkflow: createMockPlannedWorkflow({
       executionSteps: [
@@ -566,7 +566,7 @@ test("executeStepLoop handles step with zero timeoutMs", async () => {
   assert.ok(Array.isArray(result.stepOutputs));
 });
 
-test("executeStepLoop handles step with very large maxAttempts", async () => {
+test("executeStepLoop handles step with very large maxAttempts [multi-step-supervisor-comprehensive]", async () => {
   const ctx = createMockStepSupervisorContext({
     plannedWorkflow: createMockPlannedWorkflow({
       executionSteps: [
@@ -596,13 +596,13 @@ test("executeStepLoop handles step with very large maxAttempts", async () => {
 // normalizeStepFailurePlan Comprehensive Tests
 // =============================================================================
 
-test("normalizeStepFailurePlan handles undefined when passed directly", () => {
+test("normalizeStepFailurePlan handles undefined when passed directly [multi-step-supervisor-comprehensive]", () => {
   // The function expects string | StepFailurePlan, but we can test the boundary
   const result = normalizeStepFailurePlan("undefined_test" as unknown as string);
   assert.equal(result.errorCode, "undefined_test");
 });
 
-test("normalizeStepFailurePlan handles object with extra properties", () => {
+test("normalizeStepFailurePlan handles object with extra properties [multi-step-supervisor-comprehensive]", () => {
   const result = normalizeStepFailurePlan({
     errorCode: "test.error",
     summary: "Test summary",
@@ -616,7 +616,7 @@ test("normalizeStepFailurePlan handles object with extra properties", () => {
 // resolveStepFailurePlan Comprehensive Tests
 // =============================================================================
 
-test("resolveStepFailurePlan returns null for empty step ID", () => {
+test("resolveStepFailurePlan returns null for empty step ID [multi-step-supervisor-comprehensive]", () => {
   const input = createMockInput({
     stepFailurePlans: {
       "": [{ errorCode: "empty_id_error" }],
@@ -627,7 +627,7 @@ test("resolveStepFailurePlan returns null for empty step ID", () => {
   // The function may return null because stepFailurePlans[""] is accessed
 });
 
-test("resolveStepFailurePlan handles very long step ID", () => {
+test("resolveStepFailurePlan handles very long step ID [multi-step-supervisor-comprehensive]", () => {
   const longStepId = "step_" + "x".repeat(1000);
   const input = createMockInput({
     stepFailurePlans: {
@@ -639,7 +639,7 @@ test("resolveStepFailurePlan handles very long step ID", () => {
   assert.equal(result!.errorCode, "long_step_error");
 });
 
-test("resolveStepFailurePlan handles step ID with special characters", () => {
+test("resolveStepFailurePlan handles step ID with special characters [multi-step-supervisor-comprehensive]", () => {
   const specialStepId = "step-with-special!@#$%^&*()";
   const input = createMockInput({
     stepFailurePlans: {
@@ -651,7 +651,7 @@ test("resolveStepFailurePlan handles step ID with special characters", () => {
   assert.equal(result!.errorCode, "special_char_error");
 });
 
-test("resolveStepFailurePlan with single step having multiple failure attempts", () => {
+test("resolveStepFailurePlan with single step having multiple failure attempts [multi-step-supervisor-comprehensive]", () => {
   const input = createMockInput({
     stepFailurePlans: {
       multi_attempt: [
@@ -679,13 +679,13 @@ test("resolveStepFailurePlan with single step having multiple failure attempts",
 // normalizeStepErrorCode Comprehensive Tests
 // =============================================================================
 
-test("normalizeStepErrorCode handles error with only prefix", () => {
+test("normalizeStepErrorCode handles error with only prefix [multi-step-supervisor-comprehensive]", () => {
   const error = new Error("workflow.output_schema_invalid");
   const result = normalizeStepErrorCode(error);
   assert.equal(result, "validation.schema_mismatch");
 });
 
-test("normalizeStepErrorCode handles error with missing prefix colon", () => {
+test("normalizeStepErrorCode handles error with missing prefix colon [multi-step-supervisor-comprehensive]", () => {
   const error = new Error("workflow.output_schema_invalidno colon");
   const result = normalizeStepErrorCode(error);
   // The prefix check uses startsWith, so "workflow.output_schema_invalidno colon" matches
@@ -693,49 +693,49 @@ test("normalizeStepErrorCode handles error with missing prefix colon", () => {
   assert.equal(result, "validation.schema_mismatch");
 });
 
-test("normalizeStepErrorCode handles error with multiple colons", () => {
+test("normalizeStepErrorCode handles error with multiple colons [multi-step-supervisor-comprehensive]", () => {
   const error = new Error("workflow.output_schema_invalid:extra:colons");
   const result = normalizeStepErrorCode(error);
   assert.equal(result, "validation.schema_mismatch");
 });
 
-test("normalizeStepErrorCode handles error starting with workflow.output_schema_missing", () => {
+test("normalizeStepErrorCode handles error starting with workflow.output_schema_missing [multi-step-supervisor-comprehensive]", () => {
   const error = new Error("workflow.output_schema_missing:field name is required");
   const result = normalizeStepErrorCode(error);
   assert.equal(result, "validation.invalid_input");
 });
 
-test("normalizeStepErrorCode handles workflow.output_schema_missing without colon", () => {
+test("normalizeStepErrorCode handles workflow.output_schema_missing without colon [multi-step-supervisor-comprehensive]", () => {
   const error = new Error("workflow.output_schema_missing no colon after");
   const result = normalizeStepErrorCode(error);
   // The prefix check uses startsWith, so this matches
   assert.equal(result, "validation.invalid_input");
 });
 
-test("normalizeStepErrorCode handles case sensitivity - uppercase WORKFLOW", () => {
+test("normalizeStepErrorCode handles case sensitivity - uppercase WORKFLOW [multi-step-supervisor-comprehensive]", () => {
   const error = new Error("WORKFLOW.output_schema_invalid:message");
   const result = normalizeStepErrorCode(error);
   // Should not match because of case sensitivity
   assert.equal(result, "internal.unexpected_error");
 });
 
-test("normalizeStepErrorCode handles partial prefix match", () => {
+test("normalizeStepErrorCode handles partial prefix match [multi-step-supervisor-comprehensive]", () => {
   const error = new Error("not_workflow.output_schema_invalid:message");
   const result = normalizeStepErrorCode(error);
   assert.equal(result, "internal.unexpected_error");
 });
 
-test("normalizeStepErrorCode handles number as error", () => {
+test("normalizeStepErrorCode handles number as error [multi-step-supervisor-comprehensive]", () => {
   const result = normalizeStepErrorCode(0);
   assert.equal(result, "internal.unexpected_error");
 });
 
-test("normalizeStepErrorCode handles boolean as error", () => {
+test("normalizeStepErrorCode handles boolean as error [multi-step-supervisor-comprehensive]", () => {
   const result = normalizeStepErrorCode(true);
   assert.equal(result, "internal.unexpected_error");
 });
 
-test("normalizeStepErrorCode handles array as error", () => {
+test("normalizeStepErrorCode handles array as error [multi-step-supervisor-comprehensive]", () => {
   const result = normalizeStepErrorCode(["error", "array"]);
   assert.equal(result, "internal.unexpected_error");
 });
@@ -744,7 +744,7 @@ test("normalizeStepErrorCode handles array as error", () => {
 // buildStepFailureSummary Comprehensive Tests
 // =============================================================================
 
-test("buildStepFailureSummary includes stepId and errorCode in all formats", () => {
+test("buildStepFailureSummary includes stepId and errorCode in all formats [multi-step-supervisor-comprehensive]", () => {
   const stepIds = ["a", "ab", "abc", "step", "multi_step_id", "123", "step-id"];
   const decisions: WorkflowStepRetryDecision[] = [
     { action: "retry" as const, errorCode: "e1", failureClass: "transient", retryable: true, backoff: "none" as const, retryDelayMs: 0 },
@@ -761,7 +761,7 @@ test("buildStepFailureSummary includes stepId and errorCode in all formats", () 
   }
 });
 
-test("buildStepFailureSummary formats retry message correctly", () => {
+test("buildStepFailureSummary formats retry message correctly [multi-step-supervisor-comprehensive]", () => {
   const decision: WorkflowStepRetryDecision = { action: "retry", errorCode: "timeout", failureClass: "transient", retryable: true, backoff: "exponential", retryDelayMs: 5000 };
   const result = buildStepFailureSummary("test_step", decision);
 
@@ -771,7 +771,7 @@ test("buildStepFailureSummary formats retry message correctly", () => {
   assert.ok(result.includes("will retry") || result.includes("retry"));
 });
 
-test("buildStepFailureSummary formats escalate message correctly", () => {
+test("buildStepFailureSummary formats escalate message correctly [multi-step-supervisor-comprehensive]", () => {
   const decision: WorkflowStepRetryDecision = { action: "escalate", errorCode: "auth_failure", failureClass: "destructive", retryable: false, backoff: "none", retryDelayMs: 0 };
   const result = buildStepFailureSummary("auth_step", decision);
 
@@ -780,7 +780,7 @@ test("buildStepFailureSummary formats escalate message correctly", () => {
   assert.ok(result.includes("auth_failure"));
 });
 
-test("buildStepFailureSummary formats fail message correctly", () => {
+test("buildStepFailureSummary formats fail message correctly [multi-step-supervisor-comprehensive]", () => {
   const decision: WorkflowStepRetryDecision = { action: "fail", errorCode: "permanent_error", failureClass: "non_retryable", retryable: false, backoff: "none", retryDelayMs: 0 };
   const result = buildStepFailureSummary("fail_step", decision);
 
@@ -793,7 +793,7 @@ test("buildStepFailureSummary formats fail message correctly", () => {
 // executeStepLoop with Various Dependency Configurations
 // =============================================================================
 
-test("executeStepLoop with single step having multiple hard dependencies", async () => {
+test("executeStepLoop with single step having multiple hard dependencies [multi-step-supervisor-comprehensive]", async () => {
   const ctx = createMockStepSupervisorContext({
     plannedWorkflow: createMockPlannedWorkflow({
       executionSteps: [
@@ -820,7 +820,7 @@ test("executeStepLoop with single step having multiple hard dependencies", async
   assert.equal(result.skippedStepIds.has("dependent_step"), true);
 });
 
-test("executeStepLoop with mixed hard and soft dependencies", async () => {
+test("executeStepLoop with mixed hard and soft dependencies [multi-step-supervisor-comprehensive]", async () => {
   const ctx = createMockStepSupervisorContext({
     skippedStepIds: new Set(["soft_dep"]),
     plannedWorkflow: createMockPlannedWorkflow({
@@ -849,7 +849,7 @@ test("executeStepLoop with mixed hard and soft dependencies", async () => {
   assert.equal(result.skippedStepIds.has("mixed_step"), true);
 });
 
-test("executeStepLoop with successful upstream and soft dependency", async () => {
+test("executeStepLoop with successful upstream and soft dependency [multi-step-supervisor-comprehensive]", async () => {
   const ctx = createMockStepSupervisorContext({
     skippedStepIds: new Set(["soft_dep"]),
     stepOutputs: [
@@ -898,7 +898,7 @@ test("executeStepLoop with successful upstream and soft dependency", async () =>
 // Context and Trace Propagation Tests
 // =============================================================================
 
-test("executeStepLoop preserves traceContext from context", async () => {
+test("executeStepLoop preserves traceContext from context [multi-step-supervisor-comprehensive]", async () => {
   const customTraceId = "custom-trace-" + newId("trace");
   const ctx = createMockStepSupervisorContext({
     traceId: customTraceId,
@@ -919,7 +919,7 @@ test("executeStepLoop preserves traceContext from context", async () => {
   assert.equal(result.workflowRetryCount, 0);
 });
 
-test("executeStepLoop passes admissionDecision through result", async () => {
+test("executeStepLoop passes admissionDecision through result [multi-step-supervisor-comprehensive]", async () => {
   const customAdmission: AdmissionDecision = {
     decision: "queue",
     reasonCode: "admission.queue_backpressure",
@@ -952,7 +952,7 @@ test("executeStepLoop passes admissionDecision through result", async () => {
 // Tool Exposure Service Resolution Tests
 // =============================================================================
 
-test("executeStepLoop resolves tool exposure for each step", async () => {
+test("executeStepLoop resolves tool exposure for each step [multi-step-supervisor-comprehensive]", async () => {
   const ctx = createMockStepSupervisorContext({
     toolExposureService: {
       resolve: (_params: { divisionId: string; roleId: string; taskContext: string }) => ({
@@ -999,7 +999,7 @@ test("executeStepLoop resolves tool exposure for each step", async () => {
 // Edge Case: Empty and Null Collections
 // =============================================================================
 
-test("executeStepLoop handles empty routing matchedRules", async () => {
+test("executeStepLoop handles empty routing matchedRules [multi-step-supervisor-comprehensive]", async () => {
   const ctx = createMockStepSupervisorContext({
     routing: {
       workflowId: "workflow-1",
@@ -1020,7 +1020,7 @@ test("executeStepLoop handles empty routing matchedRules", async () => {
   assert.equal(result.outputs, ctx.outputs);
 });
 
-test("executeStepLoop handles empty routeTrace", async () => {
+test("executeStepLoop handles empty routeTrace [multi-step-supervisor-comprehensive]", async () => {
   const ctx = createMockStepSupervisorContext({
     routing: {
       workflowId: "workflow-1",

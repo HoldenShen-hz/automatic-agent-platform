@@ -42,7 +42,7 @@ function createTestPolicy(overrides: Partial<ResidencyPolicy> = {}): ResidencyPo
   };
 }
 
-test("CrossRegionRoutingService.route selects primary when healthy", () => {
+test("CrossRegionRoutingService.route selects primary when healthy [cross-region-routing-comprehensive]", () => {
   const service = new CrossRegionRoutingService();
   const regions: RegionDescriptor[] = [
     createTestRegion({ regionId: "us-east-1", latencyScore: 10 }),
@@ -63,7 +63,7 @@ test("CrossRegionRoutingService.route selects primary when healthy", () => {
   assert.ok(decision.candidateRegions.includes("us-east-1"));
 });
 
-test("CrossRegionRoutingService.route selects lowest latency when no preference", () => {
+test("CrossRegionRoutingService.route selects lowest latency when no preference [cross-region-routing-comprehensive]", () => {
   const service = new CrossRegionRoutingService();
   const regions: RegionDescriptor[] = [
     createTestRegion({ regionId: "us-east-1", latencyScore: 100 }),
@@ -84,7 +84,7 @@ test("CrossRegionRoutingService.route selects lowest latency when no preference"
   assert.equal(decision.latencyScore, 50);
 });
 
-test("CrossRegionRoutingService.route respects preferred region", () => {
+test("CrossRegionRoutingService.route respects preferred region [cross-region-routing-comprehensive]", () => {
   const service = new CrossRegionRoutingService();
   const regions: RegionDescriptor[] = [
     createTestRegion({ regionId: "us-east-1", latencyScore: 10 }),
@@ -104,7 +104,7 @@ test("CrossRegionRoutingService.route respects preferred region", () => {
   assert.equal(decision.selectedRegionId, "eu-west-1");
 });
 
-test("CrossRegionRoutingService.route fails over when primary unhealthy", () => {
+test("CrossRegionRoutingService.route fails over when primary unhealthy [cross-region-routing-comprehensive]", () => {
   const service = new CrossRegionRoutingService();
   const regions: RegionDescriptor[] = [
     createTestRegion({ regionId: "us-east-1", latencyScore: 10 }),
@@ -127,7 +127,7 @@ test("CrossRegionRoutingService.route fails over when primary unhealthy", () => 
   // If only one candidate remains, failoverRegionId may be null
 });
 
-test("CrossRegionRoutingService.route blocks draining regions", () => {
+test("CrossRegionRoutingService.route blocks draining regions [cross-region-routing-comprehensive]", () => {
   const service = new CrossRegionRoutingService();
   const regions: RegionDescriptor[] = [
     createTestRegion({ regionId: "us-east-1", status: "draining" }),
@@ -148,7 +148,7 @@ test("CrossRegionRoutingService.route blocks draining regions", () => {
   assert.ok(decision.blockedRegions.includes("us-east-1") || decision.selectedRegionId === "us-east-1");
 });
 
-test("CrossRegionRoutingService.route blocks regions in disallowed jurisdictions", () => {
+test("CrossRegionRoutingService.route blocks regions in disallowed jurisdictions [cross-region-routing-comprehensive]", () => {
   const service = new CrossRegionRoutingService();
   const regions: RegionDescriptor[] = [
     createTestRegion({ regionId: "us-east-1", jurisdiction: "US" }),
@@ -168,7 +168,7 @@ test("CrossRegionRoutingService.route blocks regions in disallowed jurisdictions
   assert.ok(decision.blockedRegions.includes("cn-north-1"));
 });
 
-test("CrossRegionRoutingService.route blocks explicitly blocked regions", () => {
+test("CrossRegionRoutingService.route blocks explicitly blocked regions [cross-region-routing-comprehensive]", () => {
   const service = new CrossRegionRoutingService();
   const regions: RegionDescriptor[] = [
     createTestRegion({ regionId: "us-east-1" }),
@@ -188,7 +188,7 @@ test("CrossRegionRoutingService.route blocks explicitly blocked regions", () => 
   assert.ok(decision.blockedRegions.includes("us-west-2"));
 });
 
-test("CrossRegionRoutingService.route blocks regions missing required capabilities", () => {
+test("CrossRegionRoutingService.route blocks regions missing required capabilities [cross-region-routing-comprehensive]", () => {
   const service = new CrossRegionRoutingService();
   const regions: RegionDescriptor[] = [
     createTestRegion({ regionId: "us-east-1", capabilities: ["compute", "storage", "ml"] }),
@@ -210,7 +210,7 @@ test("CrossRegionRoutingService.route blocks regions missing required capabiliti
   assert.ok(decision.blockedRegions.includes("us-west-2"));
 });
 
-test("CrossRegionRoutingService.route blocks regions with residency not allowed", () => {
+test("CrossRegionRoutingService.route blocks regions with residency not allowed [cross-region-routing-comprehensive]", () => {
   const service = new CrossRegionRoutingService();
   const regions: RegionDescriptor[] = [
     createTestRegion({ regionId: "us-east-1", residencyAllowed: true }),
@@ -230,7 +230,7 @@ test("CrossRegionRoutingService.route blocks regions with residency not allowed"
   assert.ok(decision.blockedRegions.includes("eu-west-1"));
 });
 
-test("CrossRegionRoutingService.route returns blocked when no candidates", () => {
+test("CrossRegionRoutingService.route returns blocked when no candidates [cross-region-routing-comprehensive]", () => {
   const service = new CrossRegionRoutingService();
   const regions: RegionDescriptor[] = [
     createTestRegion({ regionId: "cn-north-1", jurisdiction: "CN" }),
@@ -249,7 +249,7 @@ test("CrossRegionRoutingService.route returns blocked when no candidates", () =>
   assert.equal(decision.residencyDecision, "blocked");
 });
 
-test("CrossRegionRoutingService.route allows read-only to any healthy replica", () => {
+test("CrossRegionRoutingService.route allows read-only to any healthy replica [cross-region-routing-comprehensive]", () => {
   const service = new CrossRegionRoutingService();
   const regions: RegionDescriptor[] = [
     createTestRegion({ regionId: "us-east-1", latencyScore: 10 }),
@@ -270,7 +270,7 @@ test("CrossRegionRoutingService.route allows read-only to any healthy replica", 
   assert.equal(decision.selectedRegionId, "us-east-1");
 });
 
-test("CrossRegionRoutingService.route blocks write to unhealthy primary", () => {
+test("CrossRegionRoutingService.route blocks write to unhealthy primary [cross-region-routing-comprehensive]", () => {
   const service = new CrossRegionRoutingService();
   const regions: RegionDescriptor[] = [
     createTestRegion({ regionId: "us-east-1" }),
@@ -290,7 +290,7 @@ test("CrossRegionRoutingService.route blocks write to unhealthy primary", () => 
   assert.equal(decision.selectedRegionId, "us-west-2");
 });
 
-test("CrossRegionRoutingService.route includes cross-border chain for different jurisdictions", () => {
+test("CrossRegionRoutingService.route includes cross-border chain for different jurisdictions [cross-region-routing-comprehensive]", () => {
   const service = new CrossRegionRoutingService();
   const regions: RegionDescriptor[] = [
     createTestRegion({ regionId: "us-east-1", jurisdiction: "US" }),
@@ -313,7 +313,7 @@ test("CrossRegionRoutingService.route includes cross-border chain for different 
   assert.equal(decision.crossBorderTransferChain?.chainStepResults.outputScan.passed, true);
 });
 
-test("CrossRegionRoutingService.route blocks cross-border when policy disallows", () => {
+test("CrossRegionRoutingService.route blocks cross-border when policy disallows [cross-region-routing-comprehensive]", () => {
   const service = new CrossRegionRoutingService();
   const regions: RegionDescriptor[] = [
     createTestRegion({ regionId: "us-east-1", jurisdiction: "US" }),
@@ -337,7 +337,7 @@ test("CrossRegionRoutingService.route blocks cross-border when policy disallows"
   assert.ok(decision.crossBorderTransferChain?.chainStepResults.outputScan.violations.includes("Cross-border transfer not allowed by policy"));
 });
 
-test("CrossRegionRoutingService.route builds correct audit trail", () => {
+test("CrossRegionRoutingService.route builds correct audit trail [cross-region-routing-comprehensive]", () => {
   const service = new CrossRegionRoutingService();
   const regions: RegionDescriptor[] = [
     createTestRegion({ regionId: "us-east-1" }),
@@ -355,7 +355,7 @@ test("CrossRegionRoutingService.route builds correct audit trail", () => {
   assert.ok(decision.auditTrail.some((entry) => entry.includes("policy:audit-test-policy")));
 });
 
-test("CrossRegionRoutingService.route returns correct recovery topology", () => {
+test("CrossRegionRoutingService.route returns correct recovery topology [cross-region-routing-comprehensive]", () => {
   const service = new CrossRegionRoutingService();
   const regions: RegionDescriptor[] = [
     createTestRegion({ regionId: "us-east-1" }),
@@ -377,7 +377,7 @@ test("CrossRegionRoutingService.route returns correct recovery topology", () => 
   assert.ok(Array.isArray(decision.recoveryTopology.replicationTargets));
 });
 
-test("CrossRegionRoutingService.route handles standby regions correctly", () => {
+test("CrossRegionRoutingService.route handles standby regions correctly [cross-region-routing-comprehensive]", () => {
   const service = new CrossRegionRoutingService();
   const regions: RegionDescriptor[] = [
     createTestRegion({ regionId: "us-east-1", status: "active" }),
@@ -397,7 +397,7 @@ test("CrossRegionRoutingService.route handles standby regions correctly", () => 
   assert.ok(decision.candidateRegions.includes("us-west-2") || decision.selectedRegionId === "us-east-1");
 });
 
-test("CrossRegionRoutingService.route handles empty regions array", () => {
+test("CrossRegionRoutingService.route handles empty regions array [cross-region-routing-comprehensive]", () => {
   const service = new CrossRegionRoutingService();
 
   const request: CrossRegionRouteRequest = {
@@ -413,7 +413,7 @@ test("CrossRegionRoutingService.route handles empty regions array", () => {
   assert.equal(decision.candidateRegions.length, 0);
 });
 
-test("CrossRegionRoutingService.route includes policy reference in decision", () => {
+test("CrossRegionRoutingService.route includes policy reference in decision [cross-region-routing-comprehensive]", () => {
   const service = new CrossRegionRoutingService();
   const regions: RegionDescriptor[] = [
     createTestRegion({ regionId: "us-east-1" }),
@@ -431,7 +431,7 @@ test("CrossRegionRoutingService.route includes policy reference in decision", ()
   assert.equal(decision.policyRef, "custom-policy-id");
 });
 
-test("CrossRegionRoutingService.route handles region with zero latency score", () => {
+test("CrossRegionRoutingService.route handles region with zero latency score [cross-region-routing-comprehensive]", () => {
   const service = new CrossRegionRoutingService();
   const regions: RegionDescriptor[] = [
     createTestRegion({ regionId: "us-east-1", latencyScore: 0 }),
@@ -451,7 +451,7 @@ test("CrossRegionRoutingService.route handles region with zero latency score", (
   assert.equal(decision.latencyScore, 0);
 });
 
-test("CrossRegionRoutingService.route handles cross-border chain with GDPR flags", () => {
+test("CrossRegionRoutingService.route handles cross-border chain with GDPR flags [cross-region-routing-comprehensive]", () => {
   const service = new CrossRegionRoutingService();
   const regions: RegionDescriptor[] = [
     createTestRegion({ regionId: "us-east-1", jurisdiction: "US" }),
@@ -472,7 +472,7 @@ test("CrossRegionRoutingService.route handles cross-border chain with GDPR flags
   assert.ok(decision.crossBorderTransferChain?.chainStepResults.impactAssessment.regulatoryFlags.includes("GDPR_ARTICLE_44"));
 });
 
-test("CrossRegionRoutingService.route handles same jurisdiction no cross-border needed", () => {
+test("CrossRegionRoutingService.route handles same jurisdiction no cross-border needed [cross-region-routing-comprehensive]", () => {
   const service = new CrossRegionRoutingService();
   const regions: RegionDescriptor[] = [
     createTestRegion({ regionId: "us-east-1", jurisdiction: "US" }),

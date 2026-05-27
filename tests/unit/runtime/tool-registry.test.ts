@@ -17,7 +17,7 @@ import {
   resetMultiStepToolRegistryForTests,
 } from "../../../src/platform/five-plane-execution/execution-engine/multi-step-orchestration.js";
 
-test("multi-step tool registry executes repo-map searches", async () => {
+test("multi-step tool registry executes repo-map searches [tool-registry]", async () => {
   resetMultiStepToolRegistryForTests();
   const raw = await executeMultiStepToolCallForTests("repo-map", JSON.stringify({
     query: "multi-step orchestration",
@@ -35,7 +35,7 @@ test("multi-step tool registry executes repo-map searches", async () => {
   assert.ok((result.symbols ?? []).length > 0);
 });
 
-test("multi-step tool registry executes sandboxed git commands", async () => {
+test("multi-step tool registry executes sandboxed git commands [tool-registry]", async () => {
   resetMultiStepToolRegistryForTests();
   const raw = await executeMultiStepToolCallForTests("git", JSON.stringify({
     args: ["rev-parse", "--is-inside-work-tree"],
@@ -56,7 +56,7 @@ test("multi-step tool registry executes sandboxed git commands", async () => {
   assert.match(result.error?.message ?? "", /git/i);
 });
 
-test("multi-step tool registry can batch parallel read-only tools", async () => {
+test("multi-step tool registry can batch parallel read-only tools [tool-registry]", async () => {
   resetMultiStepToolRegistryForTests();
   const raw = await executeMultiStepToolCallForTests("batch-tool", JSON.stringify({
     parallel: true,
@@ -76,7 +76,7 @@ test("multi-step tool registry can batch parallel read-only tools", async () => 
   assert.deepEqual(result.results.map((item) => item.toolName), ["question", "repo-map"]);
 });
 
-test("multi-step tool registry can spawn a delegated child loop without a configured model provider", async () => {
+test("multi-step tool registry can spawn a delegated child loop without a configured model provider [tool-registry]", async () => {
   resetModelCallProvider();
   resetMultiStepToolRegistryForTests();
   const raw = await executeMultiStepToolCallForTests("spawn-agent", JSON.stringify({
@@ -95,7 +95,7 @@ test("multi-step tool registry can spawn a delegated child loop without a config
   assert.match(result.summary, /delegated_review|completed/i);
 });
 
-test("multi-step tool registry can wait on a spawned child agent result", async () => {
+test("multi-step tool registry can wait on a spawned child agent result [tool-registry]", async () => {
   resetModelCallProvider();
   resetMultiStepToolRegistryForTests();
   const spawnRaw = await executeMultiStepToolCallForTests("spawn-agent", JSON.stringify({
@@ -128,7 +128,7 @@ test("multi-step tool registry can wait on a spawned child agent result", async 
   assert.match(waited.summary ?? "", /delegated_wait|completed/i);
 });
 
-test("multi-step tool registry can send follow-up messages to a spawned child agent", async () => {
+test("multi-step tool registry can send follow-up messages to a spawned child agent [tool-registry]", async () => {
   resetModelCallProvider();
   resetMultiStepToolRegistryForTests();
   const spawnRaw = await executeMultiStepToolCallForTests("spawn-agent", JSON.stringify({

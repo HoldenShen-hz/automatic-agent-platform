@@ -7,13 +7,13 @@ import {
   ConnectorExecutionResultSchema,
 } from "../../../src/scale-ecosystem/integration/connector-runtime/index.js";
 
-test("buildConnectorExecutionKey creates key with connectorId and capability", () => {
+test("buildConnectorExecutionKey creates key with connectorId and capability [connector-runtime]", () => {
   const key = buildConnectorExecutionKey({ connectorId: "slack", capability: "notify", payload: {}, secretBindings: [] });
 
   assert.equal(key, "slack:notify");
 });
 
-test("buildConnectorExecutionKey handles different connectors", () => {
+test("buildConnectorExecutionKey handles different connectors [connector-runtime]", () => {
   const key1 = buildConnectorExecutionKey({ connectorId: "jira", capability: "create_ticket", payload: {}, secretBindings: [] });
   const key2 = buildConnectorExecutionKey({ connectorId: "github", capability: "create_issue", payload: {}, secretBindings: [] });
 
@@ -25,7 +25,7 @@ test("buildConnectorExecutionKey handles different connectors", () => {
 // ConnectorExecutionRequestSchema Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("ConnectorExecutionRequestSchema parses valid minimal request", () => {
+test("ConnectorExecutionRequestSchema parses valid minimal request [connector-runtime]", () => {
   const result = ConnectorExecutionRequestSchema.safeParse({
     connectorId: "slack",
     capability: "notify",
@@ -39,7 +39,7 @@ test("ConnectorExecutionRequestSchema parses valid minimal request", () => {
   }
 });
 
-test("ConnectorExecutionRequestSchema parses request with payload", () => {
+test("ConnectorExecutionRequestSchema parses request with payload [connector-runtime]", () => {
   const result = ConnectorExecutionRequestSchema.safeParse({
     connectorId: "jira",
     capability: "create_ticket",
@@ -52,7 +52,7 @@ test("ConnectorExecutionRequestSchema parses request with payload", () => {
   }
 });
 
-test("ConnectorExecutionRequestSchema rejects empty connectorId", () => {
+test("ConnectorExecutionRequestSchema rejects empty connectorId [connector-runtime]", () => {
   const result = ConnectorExecutionRequestSchema.safeParse({
     connectorId: "",
     capability: "notify",
@@ -61,7 +61,7 @@ test("ConnectorExecutionRequestSchema rejects empty connectorId", () => {
   assert.equal(result.success, false);
 });
 
-test("ConnectorExecutionRequestSchema rejects empty capability", () => {
+test("ConnectorExecutionRequestSchema rejects empty capability [connector-runtime]", () => {
   const result = ConnectorExecutionRequestSchema.safeParse({
     connectorId: "slack",
     capability: "",
@@ -74,7 +74,7 @@ test("ConnectorExecutionRequestSchema rejects empty capability", () => {
 // ConnectorExecutionResultSchema Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("ConnectorExecutionResultSchema parses succeeded status", () => {
+test("ConnectorExecutionResultSchema parses succeeded status [connector-runtime]", () => {
   const result = ConnectorExecutionResultSchema.safeParse({
     connectorId: "slack",
     success: true,
@@ -87,7 +87,7 @@ test("ConnectorExecutionResultSchema parses succeeded status", () => {
   }
 });
 
-test("ConnectorExecutionResultSchema parses failed status", () => {
+test("ConnectorExecutionResultSchema parses failed status [connector-runtime]", () => {
   const result = ConnectorExecutionResultSchema.safeParse({
     connectorId: "slack",
     success: false,
@@ -100,7 +100,7 @@ test("ConnectorExecutionResultSchema parses failed status", () => {
   }
 });
 
-test("ConnectorExecutionResultSchema parses deferred status", () => {
+test("ConnectorExecutionResultSchema parses deferred status [connector-runtime]", () => {
   const result = ConnectorExecutionResultSchema.safeParse({
     connectorId: "slack",
     success: true,
@@ -113,7 +113,7 @@ test("ConnectorExecutionResultSchema parses deferred status", () => {
   }
 });
 
-test("ConnectorExecutionResultSchema rejects invalid status", () => {
+test("ConnectorExecutionResultSchema rejects invalid status [connector-runtime]", () => {
   const result = ConnectorExecutionResultSchema.safeParse({
     connectorId: "slack",
     success: true,
@@ -123,7 +123,7 @@ test("ConnectorExecutionResultSchema rejects invalid status", () => {
   assert.equal(result.success, false);
 });
 
-test("ConnectorExecutionResultSchema rejects missing fields", () => {
+test("ConnectorExecutionResultSchema rejects missing fields [connector-runtime]", () => {
   const result = ConnectorExecutionResultSchema.safeParse({
     connectorId: "slack",
   });

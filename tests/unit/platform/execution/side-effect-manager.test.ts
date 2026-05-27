@@ -24,7 +24,7 @@ const context = {
   fencingToken: "fence-side-effect-test",
 };
 
-test("SideEffectManager applies reconciliation mark_confirmed through RuntimeStateMachine", () => {
+test("SideEffectManager applies reconciliation mark_confirmed through RuntimeStateMachine [side-effect-manager]", () => {
   const manager = new SideEffectManager();
   const sideEffect = createSideEffectRecord({
     harnessRunId: "run-1",
@@ -53,7 +53,7 @@ test("SideEffectManager applies reconciliation mark_confirmed through RuntimeSta
   assert.equal(result.event.payload.reasonCode, "reconciliation.confirmed.mark_confirmed");
 });
 
-test("SideEffectManager routes ambiguous reconciliation to HITL-safe ambiguous state", () => {
+test("SideEffectManager routes ambiguous reconciliation to HITL-safe ambiguous state [side-effect-manager]", () => {
   const manager = new SideEffectManager();
   const sideEffect = createSideEffectRecord({
     harnessRunId: "run-1",
@@ -80,7 +80,7 @@ test("SideEffectManager routes ambiguous reconciliation to HITL-safe ambiguous s
   assert.equal(result.aggregate.status, "ambiguous");
 });
 
-test("SideEffectManager completes compensation without mutating original record", () => {
+test("SideEffectManager completes compensation without mutating original record [side-effect-manager]", () => {
   const manager = new SideEffectManager();
   const sideEffect = createSideEffectRecord({
     harnessRunId: "run-1",

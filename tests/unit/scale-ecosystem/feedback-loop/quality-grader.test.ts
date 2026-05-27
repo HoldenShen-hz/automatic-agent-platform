@@ -34,7 +34,7 @@ function makeSignal(overrides: Partial<FeedbackSignal> = {}): FeedbackSignal {
   });
 }
 
-test("FeedbackQualityGrader returns discard for empty signals", () => {
+test("FeedbackQualityGrader returns discard for empty signals [quality-grader]", () => {
   const grader = new FeedbackQualityGrader();
   const result = grader.gradeSignals([]);
 
@@ -42,7 +42,7 @@ test("FeedbackQualityGrader returns discard for empty signals", () => {
   assert.strictEqual(result.reasons[0], "No signals provided");
 });
 
-test("FeedbackQualityGrader grades user feedback higher", () => {
+test("FeedbackQualityGrader grades user feedback higher [quality-grader]", () => {
   const grader = new FeedbackQualityGrader();
   const userSignal = makeSignal({ source: "user", category: "correction" });
   const execSignal = makeSignal({ source: "execution", category: "correction" });
@@ -53,7 +53,7 @@ test("FeedbackQualityGrader grades user feedback higher", () => {
   assert.ok(userGrade.score.signalQuality > execGrade.score.signalQuality);
 });
 
-test("FeedbackQualityGrader grades corrections higher than success", () => {
+test("FeedbackQualityGrader grades corrections higher than success [quality-grader]", () => {
   const grader = new FeedbackQualityGrader();
   const correctionSignal = makeSignal({ category: "correction" });
   const successSignal = makeSignal({ category: "success" });
@@ -64,7 +64,7 @@ test("FeedbackQualityGrader grades corrections higher than success", () => {
   assert.ok(correctionGrade.score.signalQuality > successGrade.score.signalQuality);
 });
 
-test("FeedbackQualityGrader grades critical severity higher", () => {
+test("FeedbackQualityGrader grades critical severity higher [quality-grader]", () => {
   const grader = new FeedbackQualityGrader();
   const criticalSignal = makeSignal({ severity: "critical" });
   const infoSignal = makeSignal({ severity: "info" });
@@ -75,7 +75,7 @@ test("FeedbackQualityGrader grades critical severity higher", () => {
   assert.ok(criticalGrade.score.signalQuality > infoGrade.score.signalQuality);
 });
 
-test("FeedbackQualityGrader assesses diversity across signals", () => {
+test("FeedbackQualityGrader assesses diversity across signals [quality-grader]", () => {
   const grader = new FeedbackQualityGrader();
   const diverseSignals = [
     makeSignal({ category: "success", source: "user", severity: "info" }),
@@ -93,7 +93,7 @@ test("FeedbackQualityGrader assesses diversity across signals", () => {
   assert.ok(diverseGrade.score.diversityScore > sameGrade.score.diversityScore);
 });
 
-test("FeedbackQualityGrader filterByGrade returns empty for low quality", () => {
+test("FeedbackQualityGrader filterByGrade returns empty for low quality [quality-grader]", () => {
   const grader = new FeedbackQualityGrader();
   const lowQualitySignal = makeSignal({ category: "success", source: "execution" });
   const result = grader.filterByGrade([lowQualitySignal], "high");
@@ -101,7 +101,7 @@ test("FeedbackQualityGrader filterByGrade returns empty for low quality", () => 
   assert.deepStrictEqual(result, []);
 });
 
-test("FeedbackQualityGrader respects custom options", () => {
+test("FeedbackQualityGrader respects custom options [quality-grader]", () => {
   const grader = new FeedbackQualityGrader({ minOverallScore: 0.9 });
   const signal = makeSignal({ source: "user", category: "correction", severity: "critical" });
   const result = grader.gradeSignals([signal]);
@@ -110,7 +110,7 @@ test("FeedbackQualityGrader respects custom options", () => {
   assert.strictEqual(result.grade === "high" || result.grade === "medium" || result.grade === "low" || result.grade === "discard", true);
 });
 
-test("FeedbackQualityGrader gradeLearningSignals converts learning signals", () => {
+test("FeedbackQualityGrader gradeLearningSignals converts learning signals [quality-grader]", () => {
   const grader = new FeedbackQualityGrader();
   const learningSignal = {
     learningSignalId: "learn-001",
@@ -131,7 +131,7 @@ test("FeedbackQualityGrader gradeLearningSignals converts learning signals", () 
   assert.strictEqual(result.grade === "discard" || result.grade === "low" || result.grade === "medium" || result.grade === "high", true);
 });
 
-test("FeedbackQualityGrader calculates information density", () => {
+test("FeedbackQualityGrader calculates information density [quality-grader]", () => {
   const grader = new FeedbackQualityGrader();
   const richSignal = makeSignal({ payload: { summary: "This is a detailed summary of what happened", reasonCode: "ERR_123" } });
   const poorSignal = makeSignal({ payload: {} });
@@ -142,7 +142,7 @@ test("FeedbackQualityGrader calculates information density", () => {
   assert.ok(richGrade.score.informationDensity > poorGrade.score.informationDensity);
 });
 
-test("FeedbackQualityGrader requires human source when configured", () => {
+test("FeedbackQualityGrader requires human source when configured [quality-grader]", () => {
   const grader = new FeedbackQualityGrader({ requireHumanSource: true });
   const execSignal = makeSignal({ source: "execution" });
 

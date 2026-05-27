@@ -47,7 +47,7 @@ function createSignal(overrides: Partial<FeedbackSignal> & Pick<FeedbackSignal, 
   };
 }
 
-test("ExecutionDeviationDetector.detect returns empty array for successful outcome", () => {
+test("ExecutionDeviationDetector.detect returns empty array for successful outcome [execution-deviation-detector]", () => {
   const detector = new ExecutionDeviationDetector();
   const plan = createMockPlan();
   const feedback = createMockFeedback({ outcome: "completed" });
@@ -57,7 +57,7 @@ test("ExecutionDeviationDetector.detect returns empty array for successful outco
   assert.deepEqual(deviations, []);
 });
 
-test("ExecutionDeviationDetector.detect returns deviation for repairable outcome", () => {
+test("ExecutionDeviationDetector.detect returns deviation for repairable outcome [execution-deviation-detector]", () => {
   const detector = new ExecutionDeviationDetector();
   const plan = createMockPlan();
   const feedback = createMockFeedback({ outcome: "repairable" });
@@ -72,7 +72,7 @@ test("ExecutionDeviationDetector.detect returns deviation for repairable outcome
   assert.equal(deviations[0]!.summary, "Execution outcome drifted to repairable");
 });
 
-test("ExecutionDeviationDetector.detect returns deviation for failed outcome", () => {
+test("ExecutionDeviationDetector.detect returns deviation for failed outcome [execution-deviation-detector]", () => {
   const detector = new ExecutionDeviationDetector();
   const plan = createMockPlan();
   const feedback = createMockFeedback({ outcome: "failed" });
@@ -85,7 +85,7 @@ test("ExecutionDeviationDetector.detect returns deviation for failed outcome", (
   assert.equal(deviations[0]!.summary, "Execution outcome drifted to failed");
 });
 
-test("ExecutionDeviationDetector.detect returns deviation for escalated outcome", () => {
+test("ExecutionDeviationDetector.detect returns deviation for escalated outcome [execution-deviation-detector]", () => {
   const detector = new ExecutionDeviationDetector();
   const plan = createMockPlan();
   const feedback = createMockFeedback({ outcome: "escalated" });
@@ -97,7 +97,7 @@ test("ExecutionDeviationDetector.detect returns deviation for escalated outcome"
   assert.equal(deviations[0]!.reasonCode, "execution.escalated");
 });
 
-test("ExecutionDeviationDetector.detect returns deviation for timeout signal", () => {
+test("ExecutionDeviationDetector.detect returns deviation for timeout signal [execution-deviation-detector]", () => {
   const detector = new ExecutionDeviationDetector();
   const plan = createMockPlan();
   const feedback = createMockFeedback({
@@ -123,7 +123,7 @@ test("ExecutionDeviationDetector.detect returns deviation for timeout signal", (
   assert.equal(deviations[0]!.summary, "Execution exceeded expected timing budget.");
 });
 
-test("ExecutionDeviationDetector.detect returns multiple deviations for both outcome and timeout", () => {
+test("ExecutionDeviationDetector.detect returns multiple deviations for both outcome and timeout [execution-deviation-detector]", () => {
   const detector = new ExecutionDeviationDetector();
   const plan = createMockPlan();
   const feedback = createMockFeedback({
@@ -148,7 +148,7 @@ test("ExecutionDeviationDetector.detect returns multiple deviations for both out
   assert.ok(deviations.some(d => d.reasonCode === "execution.timeout"));
 });
 
-test("ExecutionDeviationDetector.detect does not return deviation for non-timeout signals", () => {
+test("ExecutionDeviationDetector.detect does not return deviation for non-timeout signals [execution-deviation-detector]", () => {
   const detector = new ExecutionDeviationDetector();
   const plan = createMockPlan();
   const feedback = createMockFeedback({
@@ -178,7 +178,7 @@ test("ExecutionDeviationDetector.detect does not return deviation for non-timeou
   assert.equal(deviations.length, 0);
 });
 
-test("ExecutionDeviationDetector.detect collapses multiple timeout signals into one deviation", () => {
+test("ExecutionDeviationDetector.detect collapses multiple timeout signals into one deviation [execution-deviation-detector]", () => {
   const detector = new ExecutionDeviationDetector();
   const plan = createMockPlan();
   const feedback = createMockFeedback({
@@ -209,7 +209,7 @@ test("ExecutionDeviationDetector.detect collapses multiple timeout signals into 
   assert.equal(deviations[0]!.reasonCode, "execution.timeout");
 });
 
-test("ExecutionDeviationDetector.detect includes correct detectedAt timestamp", () => {
+test("ExecutionDeviationDetector.detect includes correct detectedAt timestamp [execution-deviation-detector]", () => {
   const detector = new ExecutionDeviationDetector();
   const plan = createMockPlan();
   const feedback = createMockFeedback({ outcome: "failed" });

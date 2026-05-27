@@ -52,7 +52,7 @@ function createMockRedis(overrides: Partial<{
   };
 }
 
-test("[SYS-REL-2.2] concurrent forceStealAsync - only one owner ends up with lock", async () => {
+test("[SYS-REL-2.2] concurrent forceStealAsync - only one owner ends up with lock [concurrent-steal]", async () => {
   const lockKey = "contested-steal-lock";
   // Track what was actually stored via set()
   let storedOwner = "original-owner";
@@ -101,7 +101,7 @@ test("[SYS-REL-2.2] concurrent forceStealAsync - only one owner ends up with loc
   );
 });
 
-test("[SYS-REL-2.2] concurrent forceStealAsync race - verify fencing token monotonicity", async () => {
+test("[SYS-REL-2.2] concurrent forceStealAsync race - verify fencing token monotonicity [concurrent-steal]", async () => {
   // Track what was actually stored
   let storedFencingToken = 0;
   let storedOwner = "initial-owner";
@@ -152,7 +152,7 @@ test("[SYS-REL-2.2] concurrent forceStealAsync race - verify fencing token monot
     `Final owner should be one of the stealers, got: ${finalLock!.owner}`);
 });
 
-test("[SYS-REL-2.2] forceStealAsync increments fencing counter per call", async () => {
+test("[SYS-REL-2.2] forceStealAsync increments fencing counter per call [concurrent-steal]", async () => {
   const adapter = new RedisLockAdapter({ host: "localhost", port: 6379 });
 
   const getFencingCounter = () => (adapter as unknown as { fencingCounter: number }).fencingCounter;
@@ -182,7 +182,7 @@ test("[SYS-REL-2.2] forceStealAsync increments fencing counter per call", async 
   await adapter.close();
 });
 
-test("[SYS-REL-2.2] runConcurrentInvariant detects steal race violation", async () => {
+test("[SYS-REL-2.2] runConcurrentInvariant detects steal race violation [concurrent-steal]", async () => {
   let stealCallCount = 0;
 
   const mockRedis = createMockRedis({
@@ -218,7 +218,7 @@ test("[SYS-REL-2.2] runConcurrentInvariant detects steal race violation", async 
   assert.equal(result.values.length, 5, "All 5 workers should complete");
 });
 
-test("[SYS-REL-2.2] multiple concurrent steals on same key - final state consistency", async () => {
+test("[SYS-REL-2.2] multiple concurrent steals on same key - final state consistency [concurrent-steal]", async () => {
   const lockKey = "final-state-lock";
   // Track the actual stored data
   let storedData = {
@@ -264,7 +264,7 @@ test("[SYS-REL-2.2] multiple concurrent steals on same key - final state consist
   assert.ok(finalLock!.fencingToken >= 1, "Fencing token should be positive");
 });
 
-test("[SYS-REL-2.2] forceStealAsync with XX flag - returns record even when lock existed", async () => {
+test("[SYS-REL-2.2] forceStealAsync with XX flag - returns record even when lock existed [concurrent-steal]", async () => {
   // Track stored data to return in get()
   let storedData = {
     owner: "original-owner",
@@ -296,7 +296,7 @@ test("[SYS-REL-2.2] forceStealAsync with XX flag - returns record even when lock
   assert.ok(result.metadata !== null, "Metadata should be set for force steal");
 });
 
-test("[SYS-REL-2.2] concurrent steal followed by inspect shows consistent state", async () => {
+test("[SYS-REL-2.2] concurrent steal followed by inspect shows consistent state [concurrent-steal]", async () => {
   const lockKey = "inspect-after-steal";
   let currentOwner = "original-owner";
 

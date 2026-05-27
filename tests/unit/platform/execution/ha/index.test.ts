@@ -25,82 +25,82 @@ import {
   WAL_CHECKPOINT_DDL,
 } from "../../../../../src/platform/five-plane-execution/ha/index.js";
 
-test("CONTROL_PLANE_LOAD_BALANCING_DDL is exported", () => {
+test("CONTROL_PLANE_LOAD_BALANCING_DDL is exported [index]", () => {
   assert.ok(CONTROL_PLANE_LOAD_BALANCING_DDL !== undefined);
 });
 
-test("CoordinatorLoadBalancingService is exported as function", () => {
+test("CoordinatorLoadBalancingService is exported as function [index]", () => {
   assert.equal(typeof CoordinatorLoadBalancingService, "function");
 });
 
-test("CrossRegionDeploymentService is exported as function", () => {
+test("CrossRegionDeploymentService is exported as function [index]", () => {
   assert.equal(typeof CrossRegionDeploymentService, "function");
 });
 
-test("CrossRegionEventReplicationService is exported as function", () => {
+test("CrossRegionEventReplicationService is exported as function [index]", () => {
   assert.equal(typeof CrossRegionEventReplicationService, "function");
 });
 
-test("ExecutionRecoveryWorker is exported as function", () => {
+test("ExecutionRecoveryWorker is exported as function [index]", () => {
   assert.equal(typeof ExecutionRecoveryWorker, "function");
 });
 
-test("HaCoordinatorService is exported as function", () => {
+test("HaCoordinatorService is exported as function [index]", () => {
   assert.equal(typeof HaCoordinatorService, "function");
 });
 
-test("LeaderElectionService is exported as function", () => {
+test("LeaderElectionService is exported as function [index]", () => {
   assert.equal(typeof LeaderElectionService, "function");
 });
 
-test("LeaseReclaimerService is exported as function", () => {
+test("LeaseReclaimerService is exported as function [index]", () => {
   assert.equal(typeof LeaseReclaimerService, "function");
 });
 
-test("ProjectionRebuildWorker is exported as function", () => {
+test("ProjectionRebuildWorker is exported as function [index]", () => {
   assert.equal(typeof ProjectionRebuildWorker, "function");
 });
 
-test("RecoveryOrchestratorService is exported as function", () => {
+test("RecoveryOrchestratorService is exported as function [index]", () => {
   assert.equal(typeof RecoveryOrchestratorService, "function");
 });
 
-test("ReplayWorker is exported as function", () => {
+test("ReplayWorker is exported as function [index]", () => {
   assert.equal(typeof ReplayWorker, "function");
 });
 
-test("StuckRunSweeperService is exported as function", () => {
+test("StuckRunSweeperService is exported as function [index]", () => {
   assert.equal(typeof StuckRunSweeperService, "function");
 });
 
-test("WalCheckpointService is exported as function", () => {
+test("WalCheckpointService is exported as function [index]", () => {
   assert.equal(typeof WalCheckpointService, "function");
 });
 
-test("WorkflowRepairWorker is exported as function", () => {
+test("WorkflowRepairWorker is exported as function [index]", () => {
   assert.equal(typeof WorkflowRepairWorker, "function");
 });
 
-test("HA_COORDINATOR_DDL is exported", () => {
+test("HA_COORDINATOR_DDL is exported [index]", () => {
   assert.ok(HA_COORDINATOR_DDL !== undefined);
 });
 
-test("CROSS_REGION_DDL is exported", () => {
+test("CROSS_REGION_DDL is exported [index]", () => {
   assert.ok(CROSS_REGION_DDL !== undefined);
 });
 
-test("WAL_CHECKPOINT_DDL is exported", () => {
+test("WAL_CHECKPOINT_DDL is exported [index]", () => {
   assert.ok(WAL_CHECKPOINT_DDL !== undefined);
 });
 
-test("createHaCoordinatorService is exported as function", () => {
+test("createHaCoordinatorService is exported as function [index]", () => {
   assert.equal(typeof createHaCoordinatorService, "function");
 });
 
-test("createLeaderElectionService is exported as function", () => {
+test("createLeaderElectionService is exported as function [index]", () => {
   assert.equal(typeof createLeaderElectionService, "function");
 });
 
-test("createLeaseReclaimerService is exported as function", () => {
+test("createLeaseReclaimerService is exported as function [index]", () => {
   assert.equal(typeof createLeaseReclaimerService, "function");
 });

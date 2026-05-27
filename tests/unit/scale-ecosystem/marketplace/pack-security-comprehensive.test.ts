@@ -29,7 +29,7 @@ function createTestScanInput(overrides: Partial<SecurityScanInput> = {}): Securi
   };
 }
 
-test("PackSecurityService.runSecurityScan passes for clean pack", async () => {
+test("PackSecurityService.runSecurityScan passes for clean pack [pack-security-comprehensive]", async () => {
   const service = new PackSecurityService();
   const input = createTestScanInput();
 
@@ -41,7 +41,7 @@ test("PackSecurityService.runSecurityScan passes for clean pack", async () => {
   assert.ok(result.scanDurationMs >= 0);
 });
 
-test("PackSecurityService.runSecurityScan fails for malformed checksum format", async () => {
+test("PackSecurityService.runSecurityScan fails for malformed checksum format [pack-security-comprehensive]", async () => {
   const service = new PackSecurityService();
   const input = createTestScanInput({ manifestChecksum: "not-a-valid-sha256" });
 
@@ -51,7 +51,7 @@ test("PackSecurityService.runSecurityScan fails for malformed checksum format", 
   assert.ok(result.issues.some((i) => i.code === "PKG001" && i.severity === "critical"));
 });
 
-test("PackSecurityService.runSecurityScan fails for checksum mismatch", async () => {
+test("PackSecurityService.runSecurityScan fails for checksum mismatch [pack-security-comprehensive]", async () => {
   const service = new PackSecurityService();
   const input = createTestScanInput({
     manifestChecksum: sha256("different content"),
@@ -63,7 +63,7 @@ test("PackSecurityService.runSecurityScan fails for checksum mismatch", async ()
   assert.ok(result.issues.some((i) => i.code === "PKG002" && i.severity === "critical"));
 });
 
-test("PackSecurityService.runSecurityScan detects user-controlled exec pattern", async () => {
+test("PackSecurityService.runSecurityScan detects user-controlled exec pattern [pack-security-comprehensive]", async () => {
   const service = new PackSecurityService();
   const source = "exec(userInput)";
   const input = createTestScanInput({
@@ -76,7 +76,7 @@ test("PackSecurityService.runSecurityScan detects user-controlled exec pattern",
   assert.ok(result.issues.some((i) => i.code === "SAND001"));
 });
 
-test("PackSecurityService.runSecurityScan detects user-controlled eval pattern", async () => {
+test("PackSecurityService.runSecurityScan detects user-controlled eval pattern [pack-security-comprehensive]", async () => {
   const service = new PackSecurityService();
   const source = "eval(userData)";
   const input = createTestScanInput({
@@ -89,7 +89,7 @@ test("PackSecurityService.runSecurityScan detects user-controlled eval pattern",
   assert.ok(result.issues.some((i) => i.code === "SAND002"));
 });
 
-test("PackSecurityService.runSecurityScan detects broad environment access", async () => {
+test("PackSecurityService.runSecurityScan detects broad environment access [pack-security-comprehensive]", async () => {
   const service = new PackSecurityService();
   // The pattern process\.env(?!\.) matches process.env not followed by a dot
   // This catches bare process.env access without property access
@@ -104,7 +104,7 @@ test("PackSecurityService.runSecurityScan detects broad environment access", asy
   assert.ok(result.issues.some((i) => i.code === "SAND003"));
 });
 
-test("PackSecurityService.runSecurityScan detects shell execution in child_process", async () => {
+test("PackSecurityService.runSecurityScan detects shell execution in child_process [pack-security-comprehensive]", async () => {
   const service = new PackSecurityService();
   const source = "child_process.spawn('ls', {shell: true})";
   const input = createTestScanInput({
@@ -117,7 +117,7 @@ test("PackSecurityService.runSecurityScan detects shell execution in child_proce
   assert.ok(result.issues.some((i) => i.code === "SAND004"));
 });
 
-test("PackSecurityService.runSecurityScan detects critical exec+bash combination", async () => {
+test("PackSecurityService.runSecurityScan detects critical exec+bash combination [pack-security-comprehensive]", async () => {
   const service = new PackSecurityService();
   const input = createTestScanInput({
     capabilities: ["exec"],
@@ -129,7 +129,7 @@ test("PackSecurityService.runSecurityScan detects critical exec+bash combination
   assert.ok(result.issues.some((i) => i.code === "SAND010" && i.severity === "critical"));
 });
 
-test("PackSecurityService.runSecurityScan detects high-risk permissions", async () => {
+test("PackSecurityService.runSecurityScan detects high-risk permissions [pack-security-comprehensive]", async () => {
   const service = new PackSecurityService();
   const input = createTestScanInput({
     permissions: ["file:write", "exec:bash", "sql:write"],
@@ -140,7 +140,7 @@ test("PackSecurityService.runSecurityScan detects high-risk permissions", async 
   assert.ok(result.issues.some((i) => i.code === "PERM001" && i.severity === "medium"));
 });
 
-test("PackSecurityService.runSecurityScan warns for over-provisioned capabilities", async () => {
+test("PackSecurityService.runSecurityScan warns for over-provisioned capabilities [pack-security-comprehensive]", async () => {
   const service = new PackSecurityService();
   const input = createTestScanInput({
     capabilities: ["exec", "file_write", "sql_execute", "network_egress"],
@@ -151,7 +151,7 @@ test("PackSecurityService.runSecurityScan warns for over-provisioned capabilitie
   assert.ok(result.issues.some((i) => i.code === "CAP001" && i.severity === "low"));
 });
 
-test("PackSecurityService.runSecurityScan returns warning status for high severity", async () => {
+test("PackSecurityService.runSecurityScan returns warning status for high severity [pack-security-comprehensive]", async () => {
   const service = new PackSecurityService();
   const source = "child_process.spawn('ls', {shell: true})";
   const input = createTestScanInput({
@@ -164,7 +164,7 @@ test("PackSecurityService.runSecurityScan returns warning status for high severi
   assert.equal(result.status, "warning");
 });
 
-test("PackSecurityService.runSecurityScan handles multiple issues", async () => {
+test("PackSecurityService.runSecurityScan handles multiple issues [pack-security-comprehensive]", async () => {
   const service = new PackSecurityService();
   const source = "exec(userInput); eval(userData)";
   const input = createTestScanInput({
@@ -179,7 +179,7 @@ test("PackSecurityService.runSecurityScan handles multiple issues", async () => 
   assert.ok(result.issues.length >= 3);
 });
 
-test("PackSecurityService.runSecurityScan records all issue properties", async () => {
+test("PackSecurityService.runSecurityScan records all issue properties [pack-security-comprehensive]", async () => {
   const service = new PackSecurityService();
   const input = createTestScanInput({ manifestChecksum: "invalid" });
 
@@ -193,7 +193,7 @@ test("PackSecurityService.runSecurityScan records all issue properties", async (
   assert.ok(issue.message);
 });
 
-test("PackSecurityService.detectDependencyConflicts detects version mismatch with capability overlap", () => {
+test("PackSecurityService.detectDependencyConflicts detects version mismatch with capability overlap [pack-security-comprehensive]", () => {
   const service = new PackSecurityService();
   const dependencies: DependencyInfo[] = [
     { packId: "lodash", version: "4.17.21", capabilities: ["utility"] },
@@ -209,7 +209,7 @@ test("PackSecurityService.detectDependencyConflicts detects version mismatch wit
   assert.equal(result.conflicts[0]!.conflictType, "capability_overlap");
 });
 
-test("PackSecurityService.detectDependencyConflicts detects duplicate same-version dependency", () => {
+test("PackSecurityService.detectDependencyConflicts detects duplicate same-version dependency [pack-security-comprehensive]", () => {
   const service = new PackSecurityService();
   const dependencies: DependencyInfo[] = [
     { packId: "shared-auth", version: "1.0.0", capabilities: ["auth.read"] },
@@ -222,7 +222,7 @@ test("PackSecurityService.detectDependencyConflicts detects duplicate same-versi
   assert.equal(result.conflicts[0]?.conflictType, "duplicate_dependency");
 });
 
-test("PackSecurityService.detectDependencyConflicts detects same-version installed capability overlap", () => {
+test("PackSecurityService.detectDependencyConflicts detects same-version installed capability overlap [pack-security-comprehensive]", () => {
   const service = new PackSecurityService();
   const dependencies: DependencyInfo[] = [{ packId: "shared-auth", version: "1.0.0", capabilities: ["auth.write"] }];
   const existingPacks: DependencyInfo[] = [{ packId: "shared-auth", version: "1.0.0", capabilities: ["auth.write"] }];
@@ -233,7 +233,7 @@ test("PackSecurityService.detectDependencyConflicts detects same-version install
   assert.equal(result.conflicts[0]?.conflictType, "capability_overlap");
 });
 
-test("PackSecurityService.detectDependencyConflicts provides resolution suggestions", () => {
+test("PackSecurityService.detectDependencyConflicts provides resolution suggestions [pack-security-comprehensive]", () => {
   const service = new PackSecurityService();
   const dependencies: DependencyInfo[] = [
     { packId: "shared-lib", version: "1.0.0", capabilities: ["auth"] },
@@ -247,7 +247,7 @@ test("PackSecurityService.detectDependencyConflicts provides resolution suggesti
   assert.ok(result.suggestions.length > 0);
 });
 
-test("PackSecurityService.detectDependencyConflicts returns resolved when no conflicts", () => {
+test("PackSecurityService.detectDependencyConflicts returns resolved when no conflicts [pack-security-comprehensive]", () => {
   const service = new PackSecurityService();
   const dependencies: DependencyInfo[] = [
     { packId: "unique-pack", version: "1.0.0", capabilities: ["compute"] },
@@ -262,7 +262,7 @@ test("PackSecurityService.detectDependencyConflicts returns resolved when no con
   assert.equal(result.conflicts.length, 0);
 });
 
-test("PackSecurityService.detectDependencyConflicts handles empty dependencies", () => {
+test("PackSecurityService.detectDependencyConflicts handles empty dependencies [pack-security-comprehensive]", () => {
   const service = new PackSecurityService();
 
   const result = service.detectDependencyConflicts("test-pack", "1.0.0", [], []);
@@ -271,7 +271,7 @@ test("PackSecurityService.detectDependencyConflicts handles empty dependencies",
   assert.equal(result.conflicts.length, 0);
 });
 
-test("PackSecurityService.detectDependencyConflicts handles empty existing packs", () => {
+test("PackSecurityService.detectDependencyConflicts handles empty existing packs [pack-security-comprehensive]", () => {
   const service = new PackSecurityService();
   const dependencies: DependencyInfo[] = [
     { packId: "new-pack", version: "1.0.0", capabilities: ["compute"] },
@@ -283,7 +283,7 @@ test("PackSecurityService.detectDependencyConflicts handles empty existing packs
   assert.equal(result.conflicts.length, 0);
 });
 
-test("PackSecurityService.detectDependencyConflicts detects permission conflict type", () => {
+test("PackSecurityService.detectDependencyConflicts detects permission conflict type [pack-security-comprehensive]", () => {
   const service = new PackSecurityService();
   // Note: The actual conflict detection checks for same packId with different versions
   // and capability overlap - permission_conflict isn't automatically triggered
@@ -300,7 +300,7 @@ test("PackSecurityService.detectDependencyConflicts detects permission conflict 
   assert.ok(result.conflicts.length > 0);
 });
 
-test("PackSecurityService.runSecurityScan accepts registry URIs without checksum validation", async () => {
+test("PackSecurityService.runSecurityScan accepts registry URIs without checksum validation [pack-security-comprehensive]", async () => {
   const service = new PackSecurityService();
   const input = createTestScanInput({
     sourceUri: "registry://packs/analytics@v1.0.0",
@@ -313,7 +313,7 @@ test("PackSecurityService.runSecurityScan accepts registry URIs without checksum
   assert.ok(result.issues.some((i) => i.code === "PKG001") || result.status === "passed");
 });
 
-test("PackSecurityService.runSecurityScan scanId format is correct", async () => {
+test("PackSecurityService.runSecurityScan scanId format is correct [pack-security-comprehensive]", async () => {
   const service = new PackSecurityService();
   const input = createTestScanInput();
 
@@ -322,7 +322,7 @@ test("PackSecurityService.runSecurityScan scanId format is correct", async () =>
   assert.ok(result.scanId.startsWith("scan_"));
 });
 
-test("PackSecurityService.runSecurityScan packId and version are echoed in result", async () => {
+test("PackSecurityService.runSecurityScan packId and version are echoed in result [pack-security-comprehensive]", async () => {
   const service = new PackSecurityService();
   const input = createTestScanInput({ packId: "my-pack", version: "2.0.0" });
 
@@ -332,7 +332,7 @@ test("PackSecurityService.runSecurityScan packId and version are echoed in resul
   assert.equal(result.version, "2.0.0");
 });
 
-test("PackSecurityService.detectDependencyConflicts returns empty suggestions when resolved", () => {
+test("PackSecurityService.detectDependencyConflicts returns empty suggestions when resolved [pack-security-comprehensive]", () => {
   const service = new PackSecurityService();
   const dependencies: DependencyInfo[] = [
     { packId: "unique-pack", version: "1.0.0", capabilities: ["compute"] },
@@ -344,7 +344,7 @@ test("PackSecurityService.detectDependencyConflicts returns empty suggestions wh
   assert.equal(result.suggestions.length, 0);
 });
 
-test("PackSecurityService.runSecurityScan handles no capabilities or permissions", async () => {
+test("PackSecurityService.runSecurityScan handles no capabilities or permissions [pack-security-comprehensive]", async () => {
   const service = new PackSecurityService();
   const input = createTestScanInput({
     capabilities: [],

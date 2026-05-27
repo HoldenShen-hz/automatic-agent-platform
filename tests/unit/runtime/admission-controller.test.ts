@@ -8,7 +8,7 @@ import { AuthoritativeTaskStore } from "../../../src/platform/five-plane-state-e
 import { cleanupPath, createTempWorkspace } from "../../helpers/fs.js";
 import { seedTaskAndExecution } from "../../helpers/seed.js";
 
-test("admission controller allows work when runtime is below thresholds", () => {
+test("admission controller allows work when runtime is below thresholds [admission-controller]", () => {
   const workspace = createTempWorkspace("aa-admission-");
 
   try {
@@ -31,7 +31,7 @@ test("admission controller allows work when runtime is below thresholds", () => 
   }
 });
 
-test("admission controller rejects when budget is exceeded", () => {
+test("admission controller rejects when budget is exceeded [admission-controller]", () => {
   const workspace = createTempWorkspace("aa-admission-");
 
   try {
@@ -54,7 +54,7 @@ test("admission controller rejects when budget is exceeded", () => {
   }
 });
 
-test("admission controller queues under active execution overload and rejects when queue saturates", () => {
+test("admission controller queues under active execution overload and rejects when queue saturates [admission-controller]", () => {
   const workspace = createTempWorkspace("aa-admission-");
 
   try {
@@ -118,7 +118,7 @@ test("admission controller queues under active execution overload and rejects wh
   }
 });
 
-test("admission controller rejects when tier1 backlog crosses the hard limit", () => {
+test("admission controller rejects when tier1 backlog crosses the hard limit [admission-controller]", () => {
   const workspace = createTempWorkspace("aa-admission-");
 
   try {
@@ -154,7 +154,7 @@ test("admission controller rejects when tier1 backlog crosses the hard limit", (
   }
 });
 
-test("admission controller queues normal priority work when queue_only backpressure is active", () => {
+test("admission controller queues normal priority work when queue_only backpressure is active [admission-controller]", () => {
   const workspace = createTempWorkspace("aa-admission-");
 
   try {
@@ -189,7 +189,7 @@ test("admission controller queues normal priority work when queue_only backpress
   }
 });
 
-test("admission controller rejects low priority work when starvation protection is active", () => {
+test("admission controller rejects low priority work when starvation protection is active [admission-controller]", () => {
   const workspace = createTempWorkspace("aa-admission-");
 
   try {
@@ -224,7 +224,7 @@ test("admission controller rejects low priority work when starvation protection 
   }
 });
 
-test("admission controller rejects non-critical work when pause_non_critical mode is active", () => {
+test("admission controller rejects non-critical work when pause_non_critical mode is active [admission-controller]", () => {
   const workspace = createTempWorkspace("aa-admission-");
 
   try {
@@ -259,7 +259,7 @@ test("admission controller rejects non-critical work when pause_non_critical mod
   }
 });
 
-test("admission controller rejects authoritative work when read-only mode is active", () => {
+test("admission controller rejects authoritative work when read-only mode is active [admission-controller]", () => {
   const workspace = createTempWorkspace("aa-admission-");
 
   try {

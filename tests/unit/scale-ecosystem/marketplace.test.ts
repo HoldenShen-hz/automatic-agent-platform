@@ -8,7 +8,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import * as marketplace from "../../../src/scale-ecosystem/marketplace/index.js";
 
-test("marketplace barrel does not re-export extracted billing, tenant, enterprise, or intelligence modules", () => {
+test("marketplace barrel does not re-export extracted billing, tenant, enterprise, or intelligence modules [marketplace]", () => {
   const keys = Object.keys(marketplace).map((key) => key.toLowerCase());
   assert.equal(keys.some((key) => key.includes("billing")), false);
   assert.equal(keys.some((key) => key.includes("tenant")), false);
@@ -19,33 +19,33 @@ test("marketplace barrel does not re-export extracted billing, tenant, enterpris
   assert.equal(keys.some((key) => key.includes("operator")), false);
 });
 
-test("marketplace barrel exports certification", () => {
+test("marketplace barrel exports certification [marketplace]", () => {
   const keys = Object.keys(marketplace);
   assert.ok(keys.some((key) => key.toLowerCase().includes("certification")));
 });
 
-test("marketplace barrel exports marketplace governance", () => {
+test("marketplace barrel exports marketplace governance [marketplace]", () => {
   const keys = Object.keys(marketplace);
   assert.ok(keys.some((key) => key.toLowerCase().includes("marketplacegovernance") || key.toLowerCase().includes("governance")));
 });
 
-test("marketplace barrel exports pack security", () => {
+test("marketplace barrel exports pack security [marketplace]", () => {
   const keys = Object.keys(marketplace);
   assert.ok(keys.some((key) => key.toLowerCase().includes("packsecurity") || key.toLowerCase().includes("security")));
 });
 
-test("marketplace barrel exports publisher", () => {
+test("marketplace barrel exports publisher [marketplace]", () => {
   const keys = Object.keys(marketplace);
   assert.ok(keys.some((key) => key.toLowerCase().includes("publisher")));
 });
 
-test("marketplace barrel exports catalog helpers", () => {
+test("marketplace barrel exports catalog helpers [marketplace]", () => {
   const keys = Object.keys(marketplace);
   assert.ok(keys.some((key) => key.toLowerCase().includes("catalog") || key.includes("Schema")));
   assert.ok(keys.some((key) => key.toLowerCase().includes("sortcatalog") || key.toLowerCase().includes("sort")));
 });
 
-test("marketplace barrel remains a focused core surface", () => {
+test("marketplace barrel remains a focused core surface [marketplace]", () => {
   const keys = Object.keys(marketplace);
   assert.ok(keys.length >= 5);
   assert.ok(keys.length < 30);

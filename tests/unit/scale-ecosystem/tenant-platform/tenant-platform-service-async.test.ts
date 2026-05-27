@@ -63,14 +63,14 @@ function createMockDb(): AuthoritativeSqlDatabase {
 // TenantPlatformServiceAsync construction verification
 // ---------------------------------------------------------------------------
 
-test("TenantPlatformServiceAsync can be instantiated", () => {
+test("TenantPlatformServiceAsync can be instantiated [tenant-platform-service-async]", () => {
   const db = createMockDb();
   const store = createMockStore();
   const service = new TenantPlatformServiceAsync(db, store);
   assert.ok(service instanceof TenantPlatformServiceAsync);
 });
 
-test("TenantPlatformServiceAsync getSyncService returns underlying sync service", () => {
+test("TenantPlatformServiceAsync getSyncService returns underlying sync service [tenant-platform-service-async]", () => {
   const db = createMockDb();
   const store = createMockStore();
   const service = new TenantPlatformServiceAsync(db, store);
@@ -78,7 +78,7 @@ test("TenantPlatformServiceAsync getSyncService returns underlying sync service"
   assert.ok(sync !== null);
 });
 
-test("TenantPlatformServiceAsync uses SyncBackedAsyncService pattern", () => {
+test("TenantPlatformServiceAsync uses SyncBackedAsyncService pattern [tenant-platform-service-async]", () => {
   const db = createMockDb();
   const store = createMockStore();
   const service = new TenantPlatformServiceAsync(db, store);
@@ -91,28 +91,28 @@ test("TenantPlatformServiceAsync uses SyncBackedAsyncService pattern", () => {
   assert.equal(typeof service.createDataNamespaceAsync, "function");
 });
 
-test("TenantPlatformServiceAsync createTenantAsync is a function", () => {
+test("TenantPlatformServiceAsync createTenantAsync is a function [tenant-platform-service-async]", () => {
   const db = createMockDb();
   const store = createMockStore();
   const service = new TenantPlatformServiceAsync(db, store);
   assert.equal(typeof service.createTenantAsync, "function");
 });
 
-test("TenantPlatformServiceAsync createWorkspaceAsync is a function", () => {
+test("TenantPlatformServiceAsync createWorkspaceAsync is a function [tenant-platform-service-async]", () => {
   const db = createMockDb();
   const store = createMockStore();
   const service = new TenantPlatformServiceAsync(db, store);
   assert.equal(typeof service.createWorkspaceAsync, "function");
 });
 
-test("TenantPlatformServiceAsync createOrganizationAsync is a function", () => {
+test("TenantPlatformServiceAsync createOrganizationAsync is a function [tenant-platform-service-async]", () => {
   const db = createMockDb();
   const store = createMockStore();
   const service = new TenantPlatformServiceAsync(db, store);
   assert.equal(typeof service.createOrganizationAsync, "function");
 });
 
-test("TenantPlatformServiceAsync createDataNamespaceAsync is a function", () => {
+test("TenantPlatformServiceAsync createDataNamespaceAsync is a function [tenant-platform-service-async]", () => {
   const db = createMockDb();
   const store = createMockStore();
   const service = new TenantPlatformServiceAsync(db, store);

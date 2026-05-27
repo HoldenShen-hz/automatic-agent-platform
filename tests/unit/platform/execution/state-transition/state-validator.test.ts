@@ -68,7 +68,7 @@ const APPROVAL_TRANSITIONS: Record<ApprovalStatus, readonly ApprovalStatus[]> = 
 // Task State Validator Tests
 // ---------------------------------------------------------------------------
 
-test("TaskStateValidator - valid linear progression", () => {
+test("TaskStateValidator - valid linear progression [state-validator]", () => {
   const validator = new StateTransitionMachine("task", TASK_TRANSITIONS);
 
   validator.assertTransition("queued", "pending");
@@ -78,7 +78,7 @@ test("TaskStateValidator - valid linear progression", () => {
   validator.assertTransition("in_progress", "done");
 });
 
-test("TaskStateValidator - cancelled from early states", () => {
+test("TaskStateValidator - cancelled from early states [state-validator]", () => {
   const validator = new StateTransitionMachine("task", TASK_TRANSITIONS);
 
   validator.assertTransition("queued", "cancelled");
@@ -87,13 +87,13 @@ test("TaskStateValidator - cancelled from early states", () => {
   validator.assertTransition("awaiting_decision", "cancelled");
 });
 
-test("TaskStateValidator - failed from in_progress", () => {
+test("TaskStateValidator - failed from in_progress [state-validator]", () => {
   const validator = new StateTransitionMachine("task", TASK_TRANSITIONS);
 
   validator.assertTransition("in_progress", "failed");
 });
 
-test("TaskStateValidator - rejects skip transitions", () => {
+test("TaskStateValidator - rejects skip transitions [state-validator]", () => {
   const validator = new StateTransitionMachine("task", TASK_TRANSITIONS);
 
   assert.throws(() => validator.assertTransition("queued", "done"), WorkflowStateError);
@@ -102,7 +102,7 @@ test("TaskStateValidator - rejects skip transitions", () => {
   assert.throws(() => validator.assertTransition("pending", "awaiting_decision"), WorkflowStateError);
 });
 
-test("TaskStateValidator - rejects backward transitions", () => {
+test("TaskStateValidator - rejects backward transitions [state-validator]", () => {
   const validator = new StateTransitionMachine("task", TASK_TRANSITIONS);
 
   assert.throws(() => validator.assertTransition("in_progress", "pending"), WorkflowStateError);
@@ -110,7 +110,7 @@ test("TaskStateValidator - rejects backward transitions", () => {
   assert.throws(() => validator.assertTransition("awaiting_decision", "pending"), WorkflowStateError);
 });
 
-test("TaskStateValidator - terminal states block all transitions", () => {
+test("TaskStateValidator - terminal states block all transitions [state-validator]", () => {
   const validator = new StateTransitionMachine("task", TASK_TRANSITIONS);
 
   // done is terminal
@@ -125,7 +125,7 @@ test("TaskStateValidator - terminal states block all transitions", () => {
   assert.throws(() => validator.assertTransition("cancelled", "in_progress"), WorkflowStateError);
 });
 
-test("TaskStateValidator - no-op transitions always pass", () => {
+test("TaskStateValidator - no-op transitions always pass [state-validator]", () => {
   const validator = new StateTransitionMachine("task", TASK_TRANSITIONS);
 
   validator.assertTransition("queued", "queued");
@@ -141,7 +141,7 @@ test("TaskStateValidator - no-op transitions always pass", () => {
 // Workflow State Validator Tests
 // ---------------------------------------------------------------------------
 
-test("WorkflowStateValidator - valid pause/resume cycle", () => {
+test("WorkflowStateValidator - valid pause/resume cycle [state-validator]", () => {
   const validator = new StateTransitionMachine("workflow", WORKFLOW_TRANSITIONS);
 
   validator.assertTransition("running", "paused");
@@ -149,14 +149,14 @@ test("WorkflowStateValidator - valid pause/resume cycle", () => {
   validator.assertTransition("resuming", "running");
 });
 
-test("WorkflowStateValidator - valid cancellation flow", () => {
+test("WorkflowStateValidator - valid cancellation flow [state-validator]", () => {
   const validator = new StateTransitionMachine("workflow", WORKFLOW_TRANSITIONS);
 
   validator.assertTransition("running", "cancelling");
   validator.assertTransition("cancelling", "cancelled");
 });
 
-test("WorkflowStateValidator - terminal states block all transitions", () => {
+test("WorkflowStateValidator - terminal states block all transitions [state-validator]", () => {
   const validator = new StateTransitionMachine("workflow", WORKFLOW_TRANSITIONS);
 
   // completed is terminal
@@ -171,14 +171,14 @@ test("WorkflowStateValidator - terminal states block all transitions", () => {
   assert.throws(() => validator.assertTransition("cancelled", "running"), WorkflowStateError);
 });
 
-test("WorkflowStateValidator - cannot cancel completed workflow", () => {
+test("WorkflowStateValidator - cannot cancel completed workflow [state-validator]", () => {
   const validator = new StateTransitionMachine("workflow", WORKFLOW_TRANSITIONS);
 
   assert.throws(() => validator.assertTransition("completed", "cancelling"), WorkflowStateError);
   assert.throws(() => validator.assertTransition("failed", "cancelling"), WorkflowStateError);
 });
 
-test("WorkflowStateValidator - no-op transitions pass", () => {
+test("WorkflowStateValidator - no-op transitions pass [state-validator]", () => {
   const validator = new StateTransitionMachine("workflow", WORKFLOW_TRANSITIONS);
 
   validator.assertTransition("running", "running");
@@ -191,7 +191,7 @@ test("WorkflowStateValidator - no-op transitions pass", () => {
 // Execution State Validator Tests
 // ---------------------------------------------------------------------------
 
-test("ExecutionStateValidator - happy path", () => {
+test("ExecutionStateValidator - happy path [state-validator]", () => {
   const validator = new StateTransitionMachine("execution", EXECUTION_TRANSITIONS);
 
   validator.assertTransition("created", "prechecking");
@@ -199,7 +199,7 @@ test("ExecutionStateValidator - happy path", () => {
   validator.assertTransition("executing", "succeeded");
 });
 
-test("ExecutionStateValidator - blocked path", () => {
+test("ExecutionStateValidator - blocked path [state-validator]", () => {
   const validator = new StateTransitionMachine("execution", EXECUTION_TRANSITIONS);
 
   validator.assertTransition("created", "prechecking");
@@ -208,7 +208,7 @@ test("ExecutionStateValidator - blocked path", () => {
   validator.assertTransition("executing", "succeeded");
 });
 
-test("ExecutionStateValidator - can resume from blocked", () => {
+test("ExecutionStateValidator - can resume from blocked [state-validator]", () => {
   const validator = new StateTransitionMachine("execution", EXECUTION_TRANSITIONS);
 
   validator.assertTransition("blocked", "prechecking");
@@ -218,7 +218,7 @@ test("ExecutionStateValidator - can resume from blocked", () => {
   validator.assertTransition("blocked", "superseded");
 });
 
-test("ExecutionStateValidator - all terminal states block transitions", () => {
+test("ExecutionStateValidator - all terminal states block transitions [state-validator]", () => {
   const validator = new StateTransitionMachine("execution", EXECUTION_TRANSITIONS);
 
   assert.throws(() => validator.assertTransition("succeeded", "executing"), WorkflowStateError);
@@ -229,7 +229,7 @@ test("ExecutionStateValidator - all terminal states block transitions", () => {
   assert.throws(() => validator.assertTransition("superseded", "executing"), WorkflowStateError);
 });
 
-test("ExecutionStateValidator - no-op transitions pass", () => {
+test("ExecutionStateValidator - no-op transitions pass [state-validator]", () => {
   const validator = new StateTransitionMachine("execution", EXECUTION_TRANSITIONS);
 
   validator.assertTransition("created", "created");
@@ -242,32 +242,32 @@ test("ExecutionStateValidator - no-op transitions pass", () => {
 // Session State Validator Tests
 // ---------------------------------------------------------------------------
 
-test("SessionStateValidator - open to streaming to awaiting_user", () => {
+test("SessionStateValidator - open to streaming to awaiting_user [state-validator]", () => {
   const validator = new StateTransitionMachine("session", SESSION_TRANSITIONS);
 
   validator.assertTransition("open", "streaming");
   validator.assertTransition("streaming", "awaiting_user");
 });
 
-test("SessionStateValidator - streaming can return to open for recovery", () => {
+test("SessionStateValidator - streaming can return to open for recovery [state-validator]", () => {
   const validator = new StateTransitionMachine("session", SESSION_TRANSITIONS);
 
   validator.assertTransition("streaming", "open");
 });
 
-test("SessionStateValidator - awaiting_user can go to streaming", () => {
+test("SessionStateValidator - awaiting_user can go to streaming [state-validator]", () => {
   const validator = new StateTransitionMachine("session", SESSION_TRANSITIONS);
 
   validator.assertTransition("awaiting_user", "streaming");
 });
 
-test("SessionStateValidator - paused can resume to streaming", () => {
+test("SessionStateValidator - paused can resume to streaming [state-validator]", () => {
   const validator = new StateTransitionMachine("session", SESSION_TRANSITIONS);
 
   validator.assertTransition("paused", "streaming");
 });
 
-test("SessionStateValidator - terminal states block all transitions", () => {
+test("SessionStateValidator - terminal states block all transitions [state-validator]", () => {
   const validator = new StateTransitionMachine("session", SESSION_TRANSITIONS);
 
   assert.throws(() => validator.assertTransition("completed", "streaming"), WorkflowStateError);
@@ -275,7 +275,7 @@ test("SessionStateValidator - terminal states block all transitions", () => {
   assert.throws(() => validator.assertTransition("cancelled", "streaming"), WorkflowStateError);
 });
 
-test("SessionStateValidator - no-op transitions pass", () => {
+test("SessionStateValidator - no-op transitions pass [state-validator]", () => {
   const validator = new StateTransitionMachine("session", SESSION_TRANSITIONS);
 
   validator.assertTransition("open", "open");
@@ -288,31 +288,31 @@ test("SessionStateValidator - no-op transitions pass", () => {
 // Approval State Validator Tests
 // ---------------------------------------------------------------------------
 
-test("ApprovalStateValidator - requested to approved", () => {
+test("ApprovalStateValidator - requested to approved [state-validator]", () => {
   const validator = new StateTransitionMachine("approval", APPROVAL_TRANSITIONS);
 
   validator.assertTransition("requested", "approved");
 });
 
-test("ApprovalStateValidator - requested to rejected", () => {
+test("ApprovalStateValidator - requested to rejected [state-validator]", () => {
   const validator = new StateTransitionMachine("approval", APPROVAL_TRANSITIONS);
 
   validator.assertTransition("requested", "rejected");
 });
 
-test("ApprovalStateValidator - requested to expired", () => {
+test("ApprovalStateValidator - requested to expired [state-validator]", () => {
   const validator = new StateTransitionMachine("approval", APPROVAL_TRANSITIONS);
 
   validator.assertTransition("requested", "expired");
 });
 
-test("ApprovalStateValidator - requested to cancelled", () => {
+test("ApprovalStateValidator - requested to cancelled [state-validator]", () => {
   const validator = new StateTransitionMachine("approval", APPROVAL_TRANSITIONS);
 
   validator.assertTransition("requested", "cancelled");
 });
 
-test("ApprovalStateValidator - terminal states block all transitions", () => {
+test("ApprovalStateValidator - terminal states block all transitions [state-validator]", () => {
   const validator = new StateTransitionMachine("approval", APPROVAL_TRANSITIONS);
 
   assert.throws(() => validator.assertTransition("approved", "rejected"), WorkflowStateError);
@@ -322,7 +322,7 @@ test("ApprovalStateValidator - terminal states block all transitions", () => {
   assert.throws(() => validator.assertTransition("cancelled", "approved"), WorkflowStateError);
 });
 
-test("ApprovalStateValidator - no-op transitions pass", () => {
+test("ApprovalStateValidator - no-op transitions pass [state-validator]", () => {
   const validator = new StateTransitionMachine("approval", APPROVAL_TRANSITIONS);
 
   validator.assertTransition("requested", "requested");
@@ -336,7 +336,7 @@ test("ApprovalStateValidator - no-op transitions pass", () => {
 // WorkflowStateError Properties
 // ---------------------------------------------------------------------------
 
-test("WorkflowStateError contains correct entityKind in details", () => {
+test("WorkflowStateError contains correct entityKind in details [state-validator]", () => {
   const validator = new StateTransitionMachine("task", TASK_TRANSITIONS);
 
   try {
@@ -351,7 +351,7 @@ test("WorkflowStateError contains correct entityKind in details", () => {
   }
 });
 
-test("WorkflowStateError has correct error code format", () => {
+test("WorkflowStateError has correct error code format [state-validator]", () => {
   const validator = new StateTransitionMachine("execution", EXECUTION_TRANSITIONS);
 
   try {
@@ -363,7 +363,7 @@ test("WorkflowStateError has correct error code format", () => {
   }
 });
 
-test("WorkflowStateError is not retryable by default", () => {
+test("WorkflowStateError is not retryable by default [state-validator]", () => {
   const validator = new StateTransitionMachine("task", TASK_TRANSITIONS);
 
   try {
@@ -375,7 +375,7 @@ test("WorkflowStateError is not retryable by default", () => {
   }
 });
 
-test("WorkflowStateError has 409 Conflict status code", () => {
+test("WorkflowStateError has 409 Conflict status code [state-validator]", () => {
   const validator = new StateTransitionMachine("task", TASK_TRANSITIONS);
 
   try {
@@ -391,7 +391,7 @@ test("WorkflowStateError has 409 Conflict status code", () => {
 // Terminal State Cascade Mapping Tests
 // ---------------------------------------------------------------------------
 
-test("Task terminal 'done' maps to correct terminal states for cascade", () => {
+test("Task terminal 'done' maps to correct terminal states for cascade [state-validator]", () => {
   const taskValidator = new StateTransitionMachine("task", TASK_TRANSITIONS);
   const workflowValidator = new StateTransitionMachine("workflow", WORKFLOW_TRANSITIONS);
   const sessionValidator = new StateTransitionMachine("session", SESSION_TRANSITIONS);
@@ -404,7 +404,7 @@ test("Task terminal 'done' maps to correct terminal states for cascade", () => {
   executionValidator.assertTransition("executing", "succeeded");
 });
 
-test("Task terminal 'failed' maps to correct terminal states for cascade", () => {
+test("Task terminal 'failed' maps to correct terminal states for cascade [state-validator]", () => {
   const taskValidator = new StateTransitionMachine("task", TASK_TRANSITIONS);
   const workflowValidator = new StateTransitionMachine("workflow", WORKFLOW_TRANSITIONS);
   const sessionValidator = new StateTransitionMachine("session", SESSION_TRANSITIONS);
@@ -417,7 +417,7 @@ test("Task terminal 'failed' maps to correct terminal states for cascade", () =>
   executionValidator.assertTransition("executing", "failed");
 });
 
-test("Task terminal 'cancelled' maps to correct terminal states for cascade", () => {
+test("Task terminal 'cancelled' maps to correct terminal states for cascade [state-validator]", () => {
   const taskValidator = new StateTransitionMachine("task", TASK_TRANSITIONS);
   const workflowValidator = new StateTransitionMachine("workflow", WORKFLOW_TRANSITIONS);
   const sessionValidator = new StateTransitionMachine("session", SESSION_TRANSITIONS);

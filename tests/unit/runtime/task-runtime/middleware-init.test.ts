@@ -9,7 +9,7 @@ import {
   type InitializedMiddlewareContext,
 } from "../../../../src/platform/five-plane-execution/execution-engine/middleware-init.js";
 
-test("initializeMiddleware returns middleware context with loop detection", () => {
+test("initializeMiddleware returns middleware context with loop detection [middleware-init]", () => {
   resetMiddleware(); // Ensure clean state
 
   const ctx = initializeMiddleware({
@@ -23,7 +23,7 @@ test("initializeMiddleware returns middleware context with loop detection", () =
   assert.equal(typeof ctx.loopDetection.getRepeatCount, "function");
 });
 
-test("initializeMiddleware returns null loopDetection state when loopConfig is null", () => {
+test("initializeMiddleware returns null loopDetection state when loopConfig is null [middleware-init]", () => {
   resetMiddleware();
 
   const ctx = initializeMiddleware({
@@ -37,7 +37,7 @@ test("initializeMiddleware returns null loopDetection state when loopConfig is n
   assert.equal(ctx.loopDetection.getRepeatCount("tool", {}), 0);
 });
 
-test("initializeMiddleware is idempotent - returns same context on repeated calls", () => {
+test("initializeMiddleware is idempotent - returns same context on repeated calls [middleware-init]", () => {
   resetMiddleware();
 
   const ctx1 = initializeMiddleware({});
@@ -46,12 +46,12 @@ test("initializeMiddleware is idempotent - returns same context on repeated call
   assert.strictEqual(ctx1, ctx2);
 });
 
-test("getMiddlewareContext returns null before initialization", () => {
+test("getMiddlewareContext returns null before initialization [middleware-init]", () => {
   resetMiddleware();
   assert.equal(getMiddlewareContext(), null);
 });
 
-test("getMiddlewareContext returns context after initialization", () => {
+test("getMiddlewareContext returns context after initialization [middleware-init]", () => {
   resetMiddleware();
 
   initializeMiddleware({});
@@ -60,7 +60,7 @@ test("getMiddlewareContext returns context after initialization", () => {
   assert.ok(ctx != null);
 });
 
-test("getGlobalMiddlewareChain returns the global middleware chain", () => {
+test("getGlobalMiddlewareChain returns the global middleware chain [middleware-init]", () => {
   resetMiddleware();
 
   const ctx = initializeMiddleware({});
@@ -70,7 +70,7 @@ test("getGlobalMiddlewareChain returns the global middleware chain", () => {
   assert.strictEqual(chain, ctx.chain);
 });
 
-test("resetMiddleware clears context", () => {
+test("resetMiddleware clears context [middleware-init]", () => {
   resetMiddleware();
 
   initializeMiddleware({});
@@ -80,7 +80,7 @@ test("resetMiddleware clears context", () => {
   assert.equal(getMiddlewareContext(), null);
 });
 
-test("resetMiddleware allows re-initialization with different options", () => {
+test("resetMiddleware allows re-initialization with different options [middleware-init]", () => {
   resetMiddleware();
 
   const ctx1 = initializeMiddleware({
@@ -98,7 +98,7 @@ test("resetMiddleware allows re-initialization with different options", () => {
   assert.notStrictEqual(ctx2.loopDetection.state, state1);
 });
 
-test("initializeMiddleware registers loop detection hooks when config provided", () => {
+test("initializeMiddleware registers loop detection hooks when config provided [middleware-init]", () => {
   resetMiddleware();
 
   const ctx = initializeMiddleware({
@@ -110,7 +110,7 @@ test("initializeMiddleware registers loop detection hooks when config provided",
   assert.ok(hooks.wrapToolCall.length > 0);
 });
 
-test("MiddlewareInitOptions accepts loopDetection, failOpen", () => {
+test("MiddlewareInitOptions accepts loopDetection, failOpen [middleware-init]", () => {
   resetMiddleware();
 
   const options: MiddlewareInitOptions = {
@@ -122,7 +122,7 @@ test("MiddlewareInitOptions accepts loopDetection, failOpen", () => {
   assert.ok(ctx.chain != null);
 });
 
-test("InitializedMiddlewareContext has correct structure", () => {
+test("InitializedMiddlewareContext has correct structure [middleware-init]", () => {
   resetMiddleware();
 
   const ctx = initializeMiddleware({});

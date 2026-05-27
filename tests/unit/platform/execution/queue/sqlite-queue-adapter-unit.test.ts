@@ -77,13 +77,13 @@ function createMockDb(rows: MockRow[] = []) {
   };
 }
 
-test("SqliteQueueAdapter backendKind is sqlite", () => {
+test("SqliteQueueAdapter backendKind is sqlite [sqlite-queue-adapter-unit]", () => {
   const mockDb = createMockDb() as any;
   const adapter = new SqliteQueueAdapter(mockDb);
   assert.equal(adapter.backendKind, "sqlite");
 });
 
-test("SqliteQueueAdapter enqueue creates job with waiting status", () => {
+test("SqliteQueueAdapter enqueue creates job with waiting status [sqlite-queue-adapter-unit]", () => {
   const mockDb = createMockDb() as any;
   const adapter = new SqliteQueueAdapter(mockDb);
 
@@ -99,7 +99,7 @@ test("SqliteQueueAdapter enqueue creates job with waiting status", () => {
   assert.equal(job.priority, 0);
 });
 
-test("SqliteQueueAdapter enqueue with priority sets priority", () => {
+test("SqliteQueueAdapter enqueue with priority sets priority [sqlite-queue-adapter-unit]", () => {
   const mockDb = createMockDb() as any;
   const adapter = new SqliteQueueAdapter(mockDb);
 
@@ -112,7 +112,7 @@ test("SqliteQueueAdapter enqueue with priority sets priority", () => {
   assert.equal(job.priority, 10);
 });
 
-test("SqliteQueueAdapter enqueue with delayUntil sets delayed status", () => {
+test("SqliteQueueAdapter enqueue with delayUntil sets delayed status [sqlite-queue-adapter-unit]", () => {
   const mockDb = createMockDb() as any;
   const adapter = new SqliteQueueAdapter(mockDb);
 
@@ -127,7 +127,7 @@ test("SqliteQueueAdapter enqueue with delayUntil sets delayed status", () => {
   assert.equal(job.delayUntil, futureTime);
 });
 
-test("SqliteQueueAdapter getJob returns null for non-existent job", () => {
+test("SqliteQueueAdapter getJob returns null for non-existent job [sqlite-queue-adapter-unit]", () => {
   const mockDb = createMockDb([]) as any;
   const adapter = new SqliteQueueAdapter(mockDb);
 
@@ -135,7 +135,7 @@ test("SqliteQueueAdapter getJob returns null for non-existent job", () => {
   assert.equal(result, null);
 });
 
-test("SqliteQueueAdapter listJobs returns jobs for queue", () => {
+test("SqliteQueueAdapter listJobs returns jobs for queue [sqlite-queue-adapter-unit]", () => {
   const mockDb = createMockDb([]) as any;
   const adapter = new SqliteQueueAdapter(mockDb);
 
@@ -146,7 +146,7 @@ test("SqliteQueueAdapter listJobs returns jobs for queue", () => {
   assert.ok(jobs.length >= 2);
 });
 
-test("SqliteQueueAdapter stats returns counts per status", () => {
+test("SqliteQueueAdapter stats returns counts per status [sqlite-queue-adapter-unit]", () => {
   const mockDb = createMockDb([]) as any;
   const adapter = new SqliteQueueAdapter(mockDb);
 
@@ -159,7 +159,7 @@ test("SqliteQueueAdapter stats returns counts per status", () => {
   assert.ok(typeof stats.active === "number");
 });
 
-test("SqliteQueueAdapter listQueues returns queue names", () => {
+test("SqliteQueueAdapter listQueues returns queue names [sqlite-queue-adapter-unit]", () => {
   const mockDb = createMockDb([]) as any;
   const adapter = new SqliteQueueAdapter(mockDb);
 
@@ -170,7 +170,7 @@ test("SqliteQueueAdapter listQueues returns queue names", () => {
   assert.ok(queues.includes("queue-alpha") || queues.length >= 0);
 });
 
-test("SqliteQueueAdapter moveToDeadLetter updates job status", () => {
+test("SqliteQueueAdapter moveToDeadLetter updates job status [sqlite-queue-adapter-unit]", () => {
   const mockDb = createMockDb([]) as any;
   const adapter = new SqliteQueueAdapter(mockDb);
 
@@ -181,7 +181,7 @@ test("SqliteQueueAdapter moveToDeadLetter updates job status", () => {
   assert.equal(moved?.status, "dead_letter");
 });
 
-test("SqliteQueueAdapter retryJob resets dead letter job", () => {
+test("SqliteQueueAdapter retryJob resets dead letter job [sqlite-queue-adapter-unit]", () => {
   const mockDb = createMockDb([]) as any;
   const adapter = new SqliteQueueAdapter(mockDb);
 

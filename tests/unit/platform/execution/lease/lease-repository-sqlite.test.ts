@@ -189,13 +189,13 @@ function createAudit(overrides: Partial<LeaseAuditRecord> = {}): LeaseAuditRecor
 // Tests: SqliteLeaseRepository Constructor
 // ---------------------------------------------------------------------------
 
-test("SqliteLeaseRepository constructor requires db parameter", () => {
+test("SqliteLeaseRepository constructor requires db parameter [lease-repository-sqlite]", () => {
   const db = createMockSqliteDb();
   const repo = new SqliteLeaseRepository(db);
   assert.ok(repo != null);
 });
 
-test("SqliteLeaseRepository is instantiable", () => {
+test("SqliteLeaseRepository is instantiable [lease-repository-sqlite]", () => {
   const db = createMockSqliteDb();
   const repo = new SqliteLeaseRepository(db);
   assert.ok(repo instanceof SqliteLeaseRepository);
@@ -205,7 +205,7 @@ test("SqliteLeaseRepository is instantiable", () => {
 // Tests: SqliteLeaseRepository.insertLease
 // ---------------------------------------------------------------------------
 
-test("SqliteLeaseRepository.insertLease stores lease with all fields", async () => {
+test("SqliteLeaseRepository.insertLease stores lease with all fields [lease-repository-sqlite]", async () => {
   const state = { leases: new Map(), audits: [] };
   const db = createMockSqliteDb(state);
   const repo = new SqliteLeaseRepository(db);
@@ -232,7 +232,7 @@ test("SqliteLeaseRepository.insertLease stores lease with all fields", async () 
   assert.equal(retrieved!.queueName, "test-queue");
 });
 
-test("SqliteLeaseRepository.insertLease stores released lease", async () => {
+test("SqliteLeaseRepository.insertLease stores released lease [lease-repository-sqlite]", async () => {
   const state = { leases: new Map(), audits: [] };
   const db = createMockSqliteDb(state);
   const repo = new SqliteLeaseRepository(db);
@@ -252,7 +252,7 @@ test("SqliteLeaseRepository.insertLease stores released lease", async () => {
   assert.equal(retrieved!.reasonCode, "work_complete");
 });
 
-test("SqliteLeaseRepository.insertLease handles null queueName", async () => {
+test("SqliteLeaseRepository.insertLease handles null queueName [lease-repository-sqlite]", async () => {
   const state = { leases: new Map(), audits: [] };
   const db = createMockSqliteDb(state);
   const repo = new SqliteLeaseRepository(db);
@@ -269,7 +269,7 @@ test("SqliteLeaseRepository.insertLease handles null queueName", async () => {
 // Tests: SqliteLeaseRepository.getLease
 // ---------------------------------------------------------------------------
 
-test("SqliteLeaseRepository.getLease returns undefined for missing lease", async () => {
+test("SqliteLeaseRepository.getLease returns undefined for missing lease [lease-repository-sqlite]", async () => {
   const state = { leases: new Map(), audits: [] };
   const db = createMockSqliteDb(state);
   const repo = new SqliteLeaseRepository(db);
@@ -278,7 +278,7 @@ test("SqliteLeaseRepository.getLease returns undefined for missing lease", async
   assert.equal(result, undefined);
 });
 
-test("SqliteLeaseRepository.getLease returns lease by id", async () => {
+test("SqliteLeaseRepository.getLease returns lease by id [lease-repository-sqlite]", async () => {
   const state = { leases: new Map(), audits: [] };
   const db = createMockSqliteDb(state);
   const repo = new SqliteLeaseRepository(db);
@@ -290,7 +290,7 @@ test("SqliteLeaseRepository.getLease returns lease by id", async () => {
   assert.equal(result!.id, "lease-get-by-id");
 });
 
-test("SqliteLeaseRepository.getLease returns correct lease when multiple exist", async () => {
+test("SqliteLeaseRepository.getLease returns correct lease when multiple exist [lease-repository-sqlite]", async () => {
   const state = { leases: new Map(), audits: [] };
   const db = createMockSqliteDb(state);
   const repo = new SqliteLeaseRepository(db);
@@ -308,7 +308,7 @@ test("SqliteLeaseRepository.getLease returns correct lease when multiple exist",
 // Tests: SqliteLeaseRepository.getActiveLeaseForExecution
 // ---------------------------------------------------------------------------
 
-test("SqliteLeaseRepository.getActiveLeaseForExecution returns undefined when no leases", async () => {
+test("SqliteLeaseRepository.getActiveLeaseForExecution returns undefined when no leases [lease-repository-sqlite]", async () => {
   const state = { leases: new Map(), audits: [] };
   const db = createMockSqliteDb(state);
   const repo = new SqliteLeaseRepository(db);
@@ -317,7 +317,7 @@ test("SqliteLeaseRepository.getActiveLeaseForExecution returns undefined when no
   assert.equal(result, undefined);
 });
 
-test("SqliteLeaseRepository.getActiveLeaseForExecution returns active lease", async () => {
+test("SqliteLeaseRepository.getActiveLeaseForExecution returns active lease [lease-repository-sqlite]", async () => {
   const state = { leases: new Map(), audits: [] };
   const db = createMockSqliteDb(state);
   const repo = new SqliteLeaseRepository(db);
@@ -330,7 +330,7 @@ test("SqliteLeaseRepository.getActiveLeaseForExecution returns active lease", as
   assert.equal(result!.status, "active");
 });
 
-test("SqliteLeaseRepository.getActiveLeaseForExecution returns undefined for released lease", async () => {
+test("SqliteLeaseRepository.getActiveLeaseForExecution returns undefined for released lease [lease-repository-sqlite]", async () => {
   const state = { leases: new Map(), audits: [] };
   const db = createMockSqliteDb(state);
   const repo = new SqliteLeaseRepository(db);
@@ -346,7 +346,7 @@ test("SqliteLeaseRepository.getActiveLeaseForExecution returns undefined for rel
   assert.equal(result, undefined);
 });
 
-test("SqliteLeaseRepository.getActiveLeaseForExecution returns undefined for expired lease", async () => {
+test("SqliteLeaseRepository.getActiveLeaseForExecution returns undefined for expired lease [lease-repository-sqlite]", async () => {
   const state = { leases: new Map(), audits: [] };
   const db = createMockSqliteDb(state);
   const repo = new SqliteLeaseRepository(db);
@@ -361,7 +361,7 @@ test("SqliteLeaseRepository.getActiveLeaseForExecution returns undefined for exp
   assert.equal(result, undefined);
 });
 
-test("SqliteLeaseRepository.getActiveLeaseForExecution ignores other execution's leases", async () => {
+test("SqliteLeaseRepository.getActiveLeaseForExecution ignores other execution's leases [lease-repository-sqlite]", async () => {
   const state = { leases: new Map(), audits: [] };
   const db = createMockSqliteDb(state);
   const repo = new SqliteLeaseRepository(db);
@@ -378,7 +378,7 @@ test("SqliteLeaseRepository.getActiveLeaseForExecution ignores other execution's
 // Tests: SqliteLeaseRepository.getLatestFencingToken
 // ---------------------------------------------------------------------------
 
-test("SqliteLeaseRepository.getLatestFencingToken returns 0 for execution with no leases", async () => {
+test("SqliteLeaseRepository.getLatestFencingToken returns 0 for execution with no leases [lease-repository-sqlite]", async () => {
   const state = { leases: new Map(), audits: [] };
   const db = createMockSqliteDb(state);
   const repo = new SqliteLeaseRepository(db);
@@ -387,7 +387,7 @@ test("SqliteLeaseRepository.getLatestFencingToken returns 0 for execution with n
   assert.equal(result, 0);
 });
 
-test("SqliteLeaseRepository.getLatestFencingToken returns highest fencing token", async () => {
+test("SqliteLeaseRepository.getLatestFencingToken returns highest fencing token [lease-repository-sqlite]", async () => {
   const state = { leases: new Map(), audits: [] };
   const db = createMockSqliteDb(state);
   const repo = new SqliteLeaseRepository(db);
@@ -400,7 +400,7 @@ test("SqliteLeaseRepository.getLatestFencingToken returns highest fencing token"
   assert.equal(result, 5);
 });
 
-test("SqliteLeaseRepository.getLatestFencingToken returns 0 when all leases have token 0", async () => {
+test("SqliteLeaseRepository.getLatestFencingToken returns 0 when all leases have token 0 [lease-repository-sqlite]", async () => {
   const state = { leases: new Map(), audits: [] };
   const db = createMockSqliteDb(state);
   const repo = new SqliteLeaseRepository(db);
@@ -415,7 +415,7 @@ test("SqliteLeaseRepository.getLatestFencingToken returns 0 when all leases have
 // Tests: SqliteLeaseRepository.listExecutionLeases
 // ---------------------------------------------------------------------------
 
-test("SqliteLeaseRepository.listExecutionLeases returns empty for execution with no leases", async () => {
+test("SqliteLeaseRepository.listExecutionLeases returns empty for execution with no leases [lease-repository-sqlite]", async () => {
   const state = { leases: new Map(), audits: [] };
   const db = createMockSqliteDb(state);
   const repo = new SqliteLeaseRepository(db);
@@ -424,7 +424,7 @@ test("SqliteLeaseRepository.listExecutionLeases returns empty for execution with
   assert.deepEqual(result, []);
 });
 
-test("SqliteLeaseRepository.listExecutionLeases returns all leases sorted by fencing token", async () => {
+test("SqliteLeaseRepository.listExecutionLeases returns all leases sorted by fencing token [lease-repository-sqlite]", async () => {
   const state = { leases: new Map(), audits: [] };
   const db = createMockSqliteDb(state);
   const repo = new SqliteLeaseRepository(db);
@@ -440,7 +440,7 @@ test("SqliteLeaseRepository.listExecutionLeases returns all leases sorted by fen
   assert.equal(result[2]!.fencingToken, 3);
 });
 
-test("SqliteLeaseRepository.listExecutionLeases only returns leases for specified execution", async () => {
+test("SqliteLeaseRepository.listExecutionLeases only returns leases for specified execution [lease-repository-sqlite]", async () => {
   const state = { leases: new Map(), audits: [] };
   const db = createMockSqliteDb(state);
   const repo = new SqliteLeaseRepository(db);
@@ -458,7 +458,7 @@ test("SqliteLeaseRepository.listExecutionLeases only returns leases for specifie
 // Tests: SqliteLeaseRepository.updateLeaseStatus
 // ---------------------------------------------------------------------------
 
-test("SqliteLeaseRepository.updateLeaseStatus updates status", async () => {
+test("SqliteLeaseRepository.updateLeaseStatus updates status [lease-repository-sqlite]", async () => {
   const state = { leases: new Map(), audits: [] };
   const db = createMockSqliteDb(state);
   const repo = new SqliteLeaseRepository(db);
@@ -471,7 +471,7 @@ test("SqliteLeaseRepository.updateLeaseStatus updates status", async () => {
   assert.equal(updated!.status, "released");
 });
 
-test("SqliteLeaseRepository.updateLeaseStatus handles expired status", async () => {
+test("SqliteLeaseRepository.updateLeaseStatus handles expired status [lease-repository-sqlite]", async () => {
   const state = { leases: new Map(), audits: [] };
   const db = createMockSqliteDb(state);
   const repo = new SqliteLeaseRepository(db);
@@ -484,7 +484,7 @@ test("SqliteLeaseRepository.updateLeaseStatus handles expired status", async () 
   assert.equal(updated!.status, "expired");
 });
 
-test("SqliteLeaseRepository.updateLeaseStatus handles reclaimed status", async () => {
+test("SqliteLeaseRepository.updateLeaseStatus handles reclaimed status [lease-repository-sqlite]", async () => {
   const state = { leases: new Map(), audits: [] };
   const db = createMockSqliteDb(state);
   const repo = new SqliteLeaseRepository(db);
@@ -497,7 +497,7 @@ test("SqliteLeaseRepository.updateLeaseStatus handles reclaimed status", async (
   assert.equal(updated!.status, "reclaimed");
 });
 
-test("SqliteLeaseRepository.updateLeaseStatus handles nonexistent lease gracefully", async () => {
+test("SqliteLeaseRepository.updateLeaseStatus handles nonexistent lease gracefully [lease-repository-sqlite]", async () => {
   const state = { leases: new Map(), audits: [] };
   const db = createMockSqliteDb(state);
   const repo = new SqliteLeaseRepository(db);
@@ -511,7 +511,7 @@ test("SqliteLeaseRepository.updateLeaseStatus handles nonexistent lease graceful
 // Tests: SqliteLeaseRepository.updateLeaseHeartbeat
 // ---------------------------------------------------------------------------
 
-test("SqliteLeaseRepository.updateLeaseHeartbeat updates timestamp", async () => {
+test("SqliteLeaseRepository.updateLeaseHeartbeat updates timestamp [lease-repository-sqlite]", async () => {
   const state = { leases: new Map(), audits: [] };
   const db = createMockSqliteDb(state);
   const repo = new SqliteLeaseRepository(db);
@@ -525,7 +525,7 @@ test("SqliteLeaseRepository.updateLeaseHeartbeat updates timestamp", async () =>
   assert.equal(updated!.lastHeartbeatAt, newHeartbeat);
 });
 
-test("SqliteLeaseRepository.updateLeaseHeartbeat handles nonexistent lease gracefully", async () => {
+test("SqliteLeaseRepository.updateLeaseHeartbeat handles nonexistent lease gracefully [lease-repository-sqlite]", async () => {
   const state = { leases: new Map(), audits: [] };
   const db = createMockSqliteDb(state);
   const repo = new SqliteLeaseRepository(db);
@@ -538,7 +538,7 @@ test("SqliteLeaseRepository.updateLeaseHeartbeat handles nonexistent lease grace
 // Tests: SqliteLeaseRepository.updateLeaseRelease
 // ---------------------------------------------------------------------------
 
-test("SqliteLeaseRepository.updateLeaseRelease sets released fields", async () => {
+test("SqliteLeaseRepository.updateLeaseRelease sets released fields [lease-repository-sqlite]", async () => {
   const state = { leases: new Map(), audits: [] };
   const db = createMockSqliteDb(state);
   const repo = new SqliteLeaseRepository(db);
@@ -554,7 +554,7 @@ test("SqliteLeaseRepository.updateLeaseRelease sets released fields", async () =
   assert.equal(updated!.reasonCode, "work_complete");
 });
 
-test("SqliteLeaseRepository.updateLeaseRelease handles null reasonCode", async () => {
+test("SqliteLeaseRepository.updateLeaseRelease handles null reasonCode [lease-repository-sqlite]", async () => {
   const state = { leases: new Map(), audits: [] };
   const db = createMockSqliteDb(state);
   const repo = new SqliteLeaseRepository(db);
@@ -567,7 +567,7 @@ test("SqliteLeaseRepository.updateLeaseRelease handles null reasonCode", async (
   assert.equal(updated!.reasonCode, null);
 });
 
-test("SqliteLeaseRepository.updateLeaseRelease handles nonexistent lease gracefully", async () => {
+test("SqliteLeaseRepository.updateLeaseRelease handles nonexistent lease gracefully [lease-repository-sqlite]", async () => {
   const state = { leases: new Map(), audits: [] };
   const db = createMockSqliteDb(state);
   const repo = new SqliteLeaseRepository(db);
@@ -580,7 +580,7 @@ test("SqliteLeaseRepository.updateLeaseRelease handles nonexistent lease gracefu
 // Tests: SqliteLeaseRepository.insertLeaseAudit
 // ---------------------------------------------------------------------------
 
-test("SqliteLeaseRepository.insertLeaseAudit stores audit record", async () => {
+test("SqliteLeaseRepository.insertLeaseAudit stores audit record [lease-repository-sqlite]", async () => {
   const state = { leases: new Map(), audits: [] };
   const db = createMockSqliteDb(state);
   const repo = new SqliteLeaseRepository(db);
@@ -592,7 +592,7 @@ test("SqliteLeaseRepository.insertLeaseAudit stores audit record", async () => {
   assert.equal(state.audits[0]!.id, "audit-new");
 });
 
-test("SqliteLeaseRepository.insertLeaseAudit stores all event types", async () => {
+test("SqliteLeaseRepository.insertLeaseAudit stores all event types [lease-repository-sqlite]", async () => {
   const state = { leases: new Map(), audits: [] };
   const db = createMockSqliteDb(state);
   const repo = new SqliteLeaseRepository(db);
@@ -613,7 +613,7 @@ test("SqliteLeaseRepository.insertLeaseAudit stores all event types", async () =
 // Tests: SqliteLeaseRepository.listLeaseAudits
 // ---------------------------------------------------------------------------
 
-test("SqliteLeaseRepository.listLeaseAudits returns empty for execution with no audits", async () => {
+test("SqliteLeaseRepository.listLeaseAudits returns empty for execution with no audits [lease-repository-sqlite]", async () => {
   const state = { leases: new Map(), audits: [] };
   const db = createMockSqliteDb(state);
   const repo = new SqliteLeaseRepository(db);
@@ -622,7 +622,7 @@ test("SqliteLeaseRepository.listLeaseAudits returns empty for execution with no 
   assert.deepEqual(result, []);
 });
 
-test("SqliteLeaseRepository.listLeaseAudits returns audits sorted by recordedAt", async () => {
+test("SqliteLeaseRepository.listLeaseAudits returns audits sorted by recordedAt [lease-repository-sqlite]", async () => {
   const state = { leases: new Map(), audits: [] };
   const db = createMockSqliteDb(state);
   const repo = new SqliteLeaseRepository(db);
@@ -638,7 +638,7 @@ test("SqliteLeaseRepository.listLeaseAudits returns audits sorted by recordedAt"
   assert.equal(result[2]!.id, "audit-time-3");
 });
 
-test("SqliteLeaseRepository.listLeaseAudits only returns audits for specified execution", async () => {
+test("SqliteLeaseRepository.listLeaseAudits only returns audits for specified execution [lease-repository-sqlite]", async () => {
   const state = { leases: new Map(), audits: [] };
   const db = createMockSqliteDb(state);
   const repo = new SqliteLeaseRepository(db);
@@ -656,7 +656,7 @@ test("SqliteLeaseRepository.listLeaseAudits only returns audits for specified ex
 // Tests: Edge Cases and Error Handling
 // ---------------------------------------------------------------------------
 
-test("SqliteLeaseRepository handles multiple leases with same execution and different statuses", async () => {
+test("SqliteLeaseRepository handles multiple leases with same execution and different statuses [lease-repository-sqlite]", async () => {
   const state = { leases: new Map(), audits: [] };
   const db = createMockSqliteDb(state);
   const repo = new SqliteLeaseRepository(db);
@@ -673,7 +673,7 @@ test("SqliteLeaseRepository handles multiple leases with same execution and diff
   assert.equal(allLeases.length, 3);
 });
 
-test("SqliteLeaseRepository handles concurrent heartbeat updates", async () => {
+test("SqliteLeaseRepository handles concurrent heartbeat updates [lease-repository-sqlite]", async () => {
   const state = { leases: new Map(), audits: [] };
   const db = createMockSqliteDb(state);
   const repo = new SqliteLeaseRepository(db);
@@ -692,7 +692,7 @@ test("SqliteLeaseRepository handles concurrent heartbeat updates", async () => {
   assert.equal(updated!.lastHeartbeatAt, heartbeat2);
 });
 
-test("SqliteLeaseRepository lease lifecycle: grant -> renew -> release", async () => {
+test("SqliteLeaseRepository lease lifecycle: grant -> renew -> release [lease-repository-sqlite]", async () => {
   const state = { leases: new Map(), audits: [] };
   const db = createMockSqliteDb(state);
   const repo = new SqliteLeaseRepository(db);
@@ -724,7 +724,7 @@ test("SqliteLeaseRepository lease lifecycle: grant -> renew -> release", async (
   assert.equal(activeLease, undefined);
 });
 
-test("SqliteLeaseRepository audit trail records all lifecycle events", async () => {
+test("SqliteLeaseRepository audit trail records all lifecycle events [lease-repository-sqlite]", async () => {
   const state = { leases: new Map(), audits: [] };
   const db = createMockSqliteDb(state);
   const repo = new SqliteLeaseRepository(db);
@@ -740,7 +740,7 @@ test("SqliteLeaseRepository audit trail records all lifecycle events", async () 
   assert.equal(audits[2]!.eventType, "lease_released");
 });
 
-test("SqliteLeaseRepository getLatestFencingToken with mixed token values", async () => {
+test("SqliteLeaseRepository getLatestFencingToken with mixed token values [lease-repository-sqlite]", async () => {
   const state = { leases: new Map(), audits: [] };
   const db = createMockSqliteDb(state);
   const repo = new SqliteLeaseRepository(db);
@@ -754,7 +754,7 @@ test("SqliteLeaseRepository getLatestFencingToken with mixed token values", asyn
   assert.equal(result, 20);
 });
 
-test("SqliteLeaseRepository handles updateLeaseStatus to all possible statuses", async () => {
+test("SqliteLeaseRepository handles updateLeaseStatus to all possible statuses [lease-repository-sqlite]", async () => {
   const state = { leases: new Map(), audits: [] };
   const db = createMockSqliteDb(state);
   const repo = new SqliteLeaseRepository(db);
@@ -772,7 +772,7 @@ test("SqliteLeaseRepository handles updateLeaseStatus to all possible statuses",
 });
 
 // R26-08 fix: Test that invalid state transitions are rejected
-test("R26-08: updateLeaseStatus rejects invalid transition from released to active", async () => {
+test("R26-08: updateLeaseStatus rejects invalid transition from released to active [lease-repository-sqlite]", async () => {
   const state = { leases: new Map(), audits: [] };
   const db = createMockSqliteDb(state);
   const repo = new SqliteLeaseRepository(db);
@@ -787,7 +787,7 @@ test("R26-08: updateLeaseStatus rejects invalid transition from released to acti
 });
 
 // R26-08 fix: Test that expired lease cannot go back to expired
-test("R26-08: updateLeaseStatus rejects invalid transition from expired to expired", async () => {
+test("R26-08: updateLeaseStatus rejects invalid transition from expired to expired [lease-repository-sqlite]", async () => {
   const state = { leases: new Map(), audits: [] };
   const db = createMockSqliteDb(state);
   const repo = new SqliteLeaseRepository(db);
@@ -802,7 +802,7 @@ test("R26-08: updateLeaseStatus rejects invalid transition from expired to expir
 });
 
 // R26-09 fix: Test that release is only allowed from active/expired/handed_over states
-test("R26-09: updateLeaseRelease rejects release from already released lease", async () => {
+test("R26-09: updateLeaseRelease rejects release from already released lease [lease-repository-sqlite]", async () => {
   const state = { leases: new Map(), audits: [] };
   const db = createMockSqliteDb(state);
   const repo = new SqliteLeaseRepository(db);
@@ -816,7 +816,7 @@ test("R26-09: updateLeaseRelease rejects release from already released lease", a
 });
 
 // R26-10 fix: Test that heartbeat extends expires_at
-test("R26-10: updateLeaseHeartbeat extends expires_at by original lease duration", async () => {
+test("R26-10: updateLeaseHeartbeat extends expires_at by original lease duration [lease-repository-sqlite]", async () => {
   const state = { leases: new Map(), audits: [] };
   const db = createMockSqliteDb(state);
   const repo = new SqliteLeaseRepository(db);
@@ -841,7 +841,7 @@ test("R26-10: updateLeaseHeartbeat extends expires_at by original lease duration
 });
 
 // R26-10 fix: Test that heartbeat only works on active leases
-test("R26-10: updateLeaseHeartbeat rejects heartbeat on released lease", async () => {
+test("R26-10: updateLeaseHeartbeat rejects heartbeat on released lease [lease-repository-sqlite]", async () => {
   const state = { leases: new Map(), audits: [] };
   const db = createMockSqliteDb(state);
   const repo = new SqliteLeaseRepository(db);

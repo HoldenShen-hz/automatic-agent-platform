@@ -60,14 +60,14 @@ function createMockDb(): AuthoritativeSqlDatabase {
 // ExecutionDispatchServiceAsync construction
 // ---------------------------------------------------------------------------
 
-test("ExecutionDispatchServiceAsync can be instantiated", () => {
+test("ExecutionDispatchServiceAsync can be instantiated [execution-dispatch-service-async]", () => {
   const db = createMockDb();
   const store = createMockStore();
   const service = new ExecutionDispatchServiceAsync(db, store);
   assert.ok(service instanceof ExecutionDispatchServiceAsync);
 });
 
-test("ExecutionDispatchServiceAsync getSyncService returns underlying sync service", () => {
+test("ExecutionDispatchServiceAsync getSyncService returns underlying sync service [execution-dispatch-service-async]", () => {
   const db = createMockDb();
   const store = createMockStore();
   const service = new ExecutionDispatchServiceAsync(db, store);
@@ -80,7 +80,7 @@ test("ExecutionDispatchServiceAsync getSyncService returns underlying sync servi
 // ExecutionDispatchServiceAsync createTicket returns Promise
 // ---------------------------------------------------------------------------
 
-test("ExecutionDispatchServiceAsync createTicket returns a Promise", () => {
+test("ExecutionDispatchServiceAsync createTicket returns a Promise [execution-dispatch-service-async]", () => {
   const db = createMockDb();
   const store = createMockStore();
   const service = new ExecutionDispatchServiceAsync(db, store);
@@ -103,7 +103,7 @@ test("ExecutionDispatchServiceAsync createTicket returns a Promise", () => {
 // ExecutionDispatchServiceAsync dispatchNext returns Promise
 // ---------------------------------------------------------------------------
 
-test("ExecutionDispatchServiceAsync dispatchNext returns a Promise that resolves", async () => {
+test("ExecutionDispatchServiceAsync dispatchNext returns a Promise that resolves [execution-dispatch-service-async]", async () => {
   const db = createMockDb();
   const store = createMockStore();
   const service = new ExecutionDispatchServiceAsync(db, store);
@@ -114,7 +114,7 @@ test("ExecutionDispatchServiceAsync dispatchNext returns a Promise that resolves
   assert.equal(decision.outcome, "no_ticket");
 });
 
-test("ExecutionDispatchServiceAsync dispatchNext with queueName option", async () => {
+test("ExecutionDispatchServiceAsync dispatchNext with queueName option [execution-dispatch-service-async]", async () => {
   const db = createMockDb();
   const store = createMockStore();
   const service = new ExecutionDispatchServiceAsync(db, store);
@@ -126,7 +126,7 @@ test("ExecutionDispatchServiceAsync dispatchNext with queueName option", async (
 // ExecutionDispatchServiceAsync with backpressure snapshot
 // ---------------------------------------------------------------------------
 
-test("ExecutionDispatchServiceAsync accepts backpressure snapshot function", () => {
+test("ExecutionDispatchServiceAsync accepts backpressure snapshot function [execution-dispatch-service-async]", () => {
   const db = createMockDb();
   const store = createMockStore();
   const backpressure: AdmissionBackpressureSnapshot = {
@@ -151,7 +151,7 @@ test("ExecutionDispatchServiceAsync accepts backpressure snapshot function", () 
 // ExecutionDispatchServiceAsync with queue availability snapshot
 // ---------------------------------------------------------------------------
 
-test("ExecutionDispatchServiceAsync accepts queue availability snapshot function", () => {
+test("ExecutionDispatchServiceAsync accepts queue availability snapshot function [execution-dispatch-service-async]", () => {
   const db = createMockDb();
   const store = createMockStore();
   const queueAvail = {
@@ -166,7 +166,7 @@ test("ExecutionDispatchServiceAsync accepts queue availability snapshot function
 // Verify Promise resolution order is preserved
 // ---------------------------------------------------------------------------
 
-test("ExecutionDispatchServiceAsync returns Promise that resolves in correct order", async () => {
+test("ExecutionDispatchServiceAsync returns Promise that resolves in correct order [execution-dispatch-service-async]", async () => {
   const db = createMockDb();
   const store = createMockStore();
   const service = new ExecutionDispatchServiceAsync(db, store);

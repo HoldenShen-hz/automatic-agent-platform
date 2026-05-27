@@ -8,7 +8,7 @@ import {
   type GoldenTaskCase,
 } from "../../../../../src/platform/shared/stability/golden-task-runner.js";
 
-test("buildGoldenTaskInventoryBaseline with default cases covers all required classes", () => {
+test("buildGoldenTaskInventoryBaseline with default cases covers all required classes [golden-task-runner]", () => {
   const baseline = buildGoldenTaskInventoryBaseline();
 
   assert.equal(baseline.inventoryVersion, 1);
@@ -17,7 +17,7 @@ test("buildGoldenTaskInventoryBaseline with default cases covers all required cl
   assert.deepEqual(baseline.missingRequiredClasses, []);
 });
 
-test("buildGoldenTaskInventoryBaseline detects missing required classes", () => {
+test("buildGoldenTaskInventoryBaseline detects missing required classes [golden-task-runner]", () => {
   // Create a subset of cases that only covers some classes
   const partialCases: readonly GoldenTaskCase[] = [
     {
@@ -50,7 +50,7 @@ test("buildGoldenTaskInventoryBaseline detects missing required classes", () => 
   assert.deepEqual(baseline.missingRequiredClasses, REQUIRED_GOLDEN_TASK_CLASSES.filter((c) => c !== "coding"));
 });
 
-test("buildGoldenTaskInventoryBaseline with empty cases has all missing classes", () => {
+test("buildGoldenTaskInventoryBaseline with empty cases has all missing classes [golden-task-runner]", () => {
   const baseline = buildGoldenTaskInventoryBaseline([]);
 
   assert.equal(baseline.totalCases, 0);
@@ -58,7 +58,7 @@ test("buildGoldenTaskInventoryBaseline with empty cases has all missing classes"
   assert.deepEqual(baseline.missingRequiredClasses, [...REQUIRED_GOLDEN_TASK_CLASSES]);
 });
 
-test("buildGoldenTaskInventoryBaseline case summaries preserve expectedClass", () => {
+test("buildGoldenTaskInventoryBaseline case summaries preserve expectedClass [golden-task-runner]", () => {
   const baseline = buildGoldenTaskInventoryBaseline();
 
   for (const testCase of baseline.cases) {
@@ -69,7 +69,7 @@ test("buildGoldenTaskInventoryBaseline case summaries preserve expectedClass", (
   }
 });
 
-test("buildGoldenTaskInventoryBaseline case summaries preserve success criteria", () => {
+test("buildGoldenTaskInventoryBaseline case summaries preserve success criteria [golden-task-runner]", () => {
   const baseline = buildGoldenTaskInventoryBaseline();
 
   for (const testCase of baseline.cases) {
@@ -78,7 +78,7 @@ test("buildGoldenTaskInventoryBaseline case summaries preserve success criteria"
   }
 });
 
-test("buildGoldenTaskInventoryBaseline case summaries preserve latency band", () => {
+test("buildGoldenTaskInventoryBaseline case summaries preserve latency band [golden-task-runner]", () => {
   const baseline = buildGoldenTaskInventoryBaseline();
 
   for (const testCase of baseline.cases) {
@@ -89,7 +89,7 @@ test("buildGoldenTaskInventoryBaseline case summaries preserve latency band", ()
   }
 });
 
-test("buildGoldenTaskInventoryBaseline case summaries preserve cost ceiling", () => {
+test("buildGoldenTaskInventoryBaseline case summaries preserve cost ceiling [golden-task-runner]", () => {
   const baseline = buildGoldenTaskInventoryBaseline();
 
   for (const testCase of baseline.cases) {
@@ -98,7 +98,7 @@ test("buildGoldenTaskInventoryBaseline case summaries preserve cost ceiling", ()
   }
 });
 
-test("SINGLE_TASK_GOLDEN_TASKS has one case per required class", () => {
+test("SINGLE_TASK_GOLDEN_TASKS has one case per required class [golden-task-runner]", () => {
   const classCounts = new Map<string, number>();
 
   for (const task of SINGLE_TASK_GOLDEN_TASKS) {
@@ -114,7 +114,7 @@ test("SINGLE_TASK_GOLDEN_TASKS has one case per required class", () => {
   }
 });
 
-test("SINGLE_TASK_GOLDEN_TASKS all have expected outcome of done/completed/succeeded", () => {
+test("SINGLE_TASK_GOLDEN_TASKS all have expected outcome of done/completed/succeeded [golden-task-runner]", () => {
   for (const task of SINGLE_TASK_GOLDEN_TASKS) {
     assert.equal(task.expected.taskStatus, "done");
     assert.equal(task.expected.workflowStatus, "completed");
@@ -123,7 +123,7 @@ test("SINGLE_TASK_GOLDEN_TASKS all have expected outcome of done/completed/succe
   }
 });
 
-test("SINGLE_TASK_GOLDEN_TASKS coding class uses interactive latency", () => {
+test("SINGLE_TASK_GOLDEN_TASKS coding class uses interactive latency [golden-task-runner]", () => {
   const codingCases = SINGLE_TASK_GOLDEN_TASKS.filter(
     (t) => t.metadata.expectedClass === "coding",
   );
@@ -131,7 +131,7 @@ test("SINGLE_TASK_GOLDEN_TASKS coding class uses interactive latency", () => {
   assert.equal(codingCases[0]!.metadata.latencyBand, "interactive");
 });
 
-test("SINGLE_TASK_GOLDEN_TASKS crash_recovery class uses extended latency", () => {
+test("SINGLE_TASK_GOLDEN_TASKS crash_recovery class uses extended latency [golden-task-runner]", () => {
   const crashRecoveryCases = SINGLE_TASK_GOLDEN_TASKS.filter(
     (t) => t.metadata.expectedClass === "crash_recovery",
   );
@@ -139,14 +139,14 @@ test("SINGLE_TASK_GOLDEN_TASKS crash_recovery class uses extended latency", () =
   assert.equal(crashRecoveryCases[0]!.metadata.latencyBand, "extended");
 });
 
-test("SINGLE_TASK_GOLDEN_TASKS crash_recovery class has requeue_supported recovery expectation", () => {
+test("SINGLE_TASK_GOLDEN_TASKS crash_recovery class has requeue_supported recovery expectation [golden-task-runner]", () => {
   const crashRecoveryCases = SINGLE_TASK_GOLDEN_TASKS.filter(
     (t) => t.metadata.expectedClass === "crash_recovery",
   );
   assert.equal(crashRecoveryCases[0]!.metadata.recoveryExpectation, "requeue_supported");
 });
 
-test("SINGLE_TASK_GOLDEN_TASKS high_risk_approval class has supervised_review_expected", () => {
+test("SINGLE_TASK_GOLDEN_TASKS high_risk_approval class has supervised_review_expected [golden-task-runner]", () => {
   const highRiskCases = SINGLE_TASK_GOLDEN_TASKS.filter(
     (t) => t.metadata.expectedClass === "high_risk_approval",
   );

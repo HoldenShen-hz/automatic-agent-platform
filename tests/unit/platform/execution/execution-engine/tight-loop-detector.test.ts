@@ -8,11 +8,11 @@ import {
   type TightLoopPattern,
 } from "../../../../../src/platform/five-plane-execution/execution-engine/tight-loop-detector.js";
 
-test("TightLoopDetector exports createTightLoopDetector function", () => {
+test("TightLoopDetector exports createTightLoopDetector function [tight-loop-detector]", () => {
   assert.equal(typeof createTightLoopDetector, "function");
 });
 
-test("TightLoopDetector detects exact loop patterns", () => {
+test("TightLoopDetector detects exact loop patterns [tight-loop-detector]", () => {
   const detector = new TightLoopDetector({ warnThreshold: 2, escalateThreshold: 3 });
 
   // First call - should continue, pattern created but not yet detected as loop
@@ -35,7 +35,7 @@ test("TightLoopDetector detects exact loop patterns", () => {
   assert.ok(result3.pattern!.escalated);
 });
 
-test("TightLoopDetector detects similar loop patterns", () => {
+test("TightLoopDetector detects similar loop patterns [tight-loop-detector]", () => {
   const detector = new TightLoopDetector({ warnThreshold: 2, escalateThreshold: 3 });
 
   // Same tool with slightly different input formatting
@@ -48,7 +48,7 @@ test("TightLoopDetector detects similar loop patterns", () => {
   assert.ok(patterns.length >= 0); // Either exact or similar patterns exist
 });
 
-test("TightLoopDetector respects custom thresholds", () => {
+test("TightLoopDetector respects custom thresholds [tight-loop-detector]", () => {
   const detector = new TightLoopDetector({
     warnThreshold: 5,
     escalateThreshold: 10,
@@ -65,7 +65,7 @@ test("TightLoopDetector respects custom thresholds", () => {
   assert.equal(warnResult.action, "warn");
 });
 
-test("TightLoopDetector checkSequentialLoop detects repeating sequences", () => {
+test("TightLoopDetector checkSequentialLoop detects repeating sequences [tight-loop-detector]", () => {
   const detector = new TightLoopDetector({
     sequenceWindowSize: 3,
     sequenceRepeatThreshold: 2,
@@ -89,7 +89,7 @@ test("TightLoopDetector checkSequentialLoop detects repeating sequences", () => 
   assert.ok(result.count >= 2);
 });
 
-test("TightLoopDetector checkSequentialLoop returns continue when no loop", () => {
+test("TightLoopDetector checkSequentialLoop returns continue when no loop [tight-loop-detector]", () => {
   const detector = new TightLoopDetector({
     sequenceWindowSize: 3,
     sequenceRepeatThreshold: 2,
@@ -108,7 +108,7 @@ test("TightLoopDetector checkSequentialLoop returns continue when no loop", () =
   assert.equal(result.action, "continue");
 });
 
-test("TightLoopDetector getPatterns returns all tracked patterns", () => {
+test("TightLoopDetector getPatterns returns all tracked patterns [tight-loop-detector]", () => {
   const detector = new TightLoopDetector();
 
   detector.recordToolCall("read_file", { path: "/a.txt" });
@@ -119,7 +119,7 @@ test("TightLoopDetector getPatterns returns all tracked patterns", () => {
   assert.ok(patterns.length >= 2);
 });
 
-test("TightLoopDetector getEscalatedPatterns returns only escalated", () => {
+test("TightLoopDetector getEscalatedPatterns returns only escalated [tight-loop-detector]", () => {
   const detector = new TightLoopDetector({
     warnThreshold: 1,
     escalateThreshold: 2,
@@ -134,7 +134,7 @@ test("TightLoopDetector getEscalatedPatterns returns only escalated", () => {
   assert.ok(escalated.every((p) => p.escalated));
 });
 
-test("TightLoopDetector getWarnPatterns returns warning patterns", () => {
+test("TightLoopDetector getWarnPatterns returns warning patterns [tight-loop-detector]", () => {
   const detector = new TightLoopDetector({
     warnThreshold: 2,
     escalateThreshold: 5,
@@ -149,7 +149,7 @@ test("TightLoopDetector getWarnPatterns returns warning patterns", () => {
   assert.ok(warns.every((p) => !p.escalated && p.count >= 2));
 });
 
-test("TightLoopDetector reset clears all patterns", () => {
+test("TightLoopDetector reset clears all patterns [tight-loop-detector]", () => {
   const detector = new TightLoopDetector();
 
   detector.recordToolCall("read_file", { path: "/test.txt" });
@@ -164,7 +164,7 @@ test("TightLoopDetector reset clears all patterns", () => {
   assert.equal(detector.getWarnPatterns().length, 0);
 });
 
-test("TightLoopDetector getConfig returns configuration", () => {
+test("TightLoopDetector getConfig returns configuration [tight-loop-detector]", () => {
   const config: TightLoopConfig = {
     warnThreshold: 5,
     escalateThreshold: 10,
@@ -183,7 +183,7 @@ test("TightLoopDetector getConfig returns configuration", () => {
   assert.equal(retrievedConfig.sequenceRepeatThreshold, 4);
 });
 
-test("TightLoopDetector default config values", () => {
+test("TightLoopDetector default config values [tight-loop-detector]", () => {
   const detector = new TightLoopDetector();
   const config = detector.getConfig();
 
@@ -194,7 +194,7 @@ test("TightLoopDetector default config values", () => {
   assert.equal(config.sequenceRepeatThreshold, 3);
 });
 
-test("TightLoopDetector getSequenceHistory returns action sequence", () => {
+test("TightLoopDetector getSequenceHistory returns action sequence [tight-loop-detector]", () => {
   const detector = new TightLoopDetector();
 
   detector.recordToolCall("tool_a", { input: "1" });
@@ -205,7 +205,7 @@ test("TightLoopDetector getSequenceHistory returns action sequence", () => {
   assert.ok(history.length >= 3);
 });
 
-test("TightLoopDetector pattern contains correct metadata", () => {
+test("TightLoopDetector pattern contains correct metadata [tight-loop-detector]", () => {
   const detector = new TightLoopDetector();
 
   const result = detector.recordToolCall("read_file", { path: "/test.txt" });
@@ -223,7 +223,7 @@ test("TightLoopDetector pattern contains correct metadata", () => {
   assert.ok(pattern!.recentInputs.length > 0);
 });
 
-test("createTightLoopDetector creates instance with config", () => {
+test("createTightLoopDetector creates instance with config [tight-loop-detector]", () => {
   const detector = createTightLoopDetector({
     warnThreshold: 10,
     escalateThreshold: 20,
@@ -234,7 +234,7 @@ test("createTightLoopDetector creates instance with config", () => {
   assert.equal(config.escalateThreshold, 20);
 });
 
-test("TightLoopDetector handles different tool names separately", () => {
+test("TightLoopDetector handles different tool names separately [tight-loop-detector]", () => {
   const detector = new TightLoopDetector({
     warnThreshold: 2,
     escalateThreshold: 3,

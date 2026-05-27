@@ -226,7 +226,7 @@ function createPreemptionRequest(ticket: ExecutionTicketRecord, overrides: Parti
 // preemptForUrgentTicket with worker compatibility scenarios
 // ---------------------------------------------------------------------------
 
-test("preemptForUrgentTicket returns not_preempted when worker has available slots", () => {
+test("preemptForUrgentTicket returns not_preempted when worker has available slots [execution-priority-preemption-service-edge]", () => {
   const worker = createMockWorker({
     availableSlots: 1,
     maxConcurrency: 1,
@@ -247,7 +247,7 @@ test("preemptForUrgentTicket returns not_preempted when worker has available slo
   assert.equal(decision.trace.reasonCode, "no_safe_preemption_candidate");
 });
 
-test("preemptForUrgentTicket returns not_preempted when worker maxConcurrency is not 1", () => {
+test("preemptForUrgentTicket returns not_preempted when worker maxConcurrency is not 1 [execution-priority-preemption-service-edge]", () => {
   const worker = createMockWorker({
     availableSlots: 0,
     maxConcurrency: 2,
@@ -268,7 +268,7 @@ test("preemptForUrgentTicket returns not_preempted when worker maxConcurrency is
   assert.equal(decision.trace.reasonCode, "no_safe_preemption_candidate");
 });
 
-test("preemptForUrgentTicket returns not_preempted when worker has wrong runningExecutionIds count", () => {
+test("preemptForUrgentTicket returns not_preempted when worker has wrong runningExecutionIds count [execution-priority-preemption-service-edge]", () => {
   const worker = createMockWorker({
     availableSlots: 0,
     maxConcurrency: 1,
@@ -289,7 +289,7 @@ test("preemptForUrgentTicket returns not_preempted when worker has wrong running
   assert.equal(decision.trace.reasonCode, "no_safe_preemption_candidate");
 });
 
-test("preemptForUrgentTicket filters by dispatchTarget local_only with remote worker", () => {
+test("preemptForUrgentTicket filters by dispatchTarget local_only with remote worker [execution-priority-preemption-service-edge]", () => {
   const worker = createMockWorker({
     availableSlots: 0,
     maxConcurrency: 1,
@@ -311,7 +311,7 @@ test("preemptForUrgentTicket filters by dispatchTarget local_only with remote wo
   assert.equal(decision.trace.reasonCode, "no_safe_preemption_candidate");
 });
 
-test("preemptForUrgentTicket filters by dispatchTarget require_remote with local worker", () => {
+test("preemptForUrgentTicket filters by dispatchTarget require_remote with local worker [execution-priority-preemption-service-edge]", () => {
   const worker = createMockWorker({
     availableSlots: 0,
     maxConcurrency: 1,
@@ -333,7 +333,7 @@ test("preemptForUrgentTicket filters by dispatchTarget require_remote with local
   assert.equal(decision.trace.reasonCode, "no_safe_preemption_candidate");
 });
 
-test("preemptForUrgentTicket filters worker by unavailable status", () => {
+test("preemptForUrgentTicket filters worker by unavailable status [execution-priority-preemption-service-edge]", () => {
   const worker = createMockWorker({
     availableSlots: 0,
     maxConcurrency: 1,
@@ -355,7 +355,7 @@ test("preemptForUrgentTicket filters worker by unavailable status", () => {
   assert.equal(decision.trace.reasonCode, "no_safe_preemption_candidate");
 });
 
-test("preemptForUrgentTicket filters worker by quarantined status", () => {
+test("preemptForUrgentTicket filters worker by quarantined status [execution-priority-preemption-service-edge]", () => {
   const worker = createMockWorker({
     availableSlots: 0,
     maxConcurrency: 1,
@@ -377,7 +377,7 @@ test("preemptForUrgentTicket filters worker by quarantined status", () => {
   assert.equal(decision.trace.reasonCode, "no_safe_preemption_candidate");
 });
 
-test("preemptForUrgentTicket filters worker by offline status", () => {
+test("preemptForUrgentTicket filters worker by offline status [execution-priority-preemption-service-edge]", () => {
   const worker = createMockWorker({
     availableSlots: 0,
     maxConcurrency: 1,
@@ -399,7 +399,7 @@ test("preemptForUrgentTicket filters worker by offline status", () => {
   assert.equal(decision.trace.reasonCode, "no_safe_preemption_candidate");
 });
 
-test("preemptForUrgentTicket filters worker by draining status", () => {
+test("preemptForUrgentTicket filters worker by draining status [execution-priority-preemption-service-edge]", () => {
   const worker = createMockWorker({
     availableSlots: 0,
     maxConcurrency: 1,
@@ -421,7 +421,7 @@ test("preemptForUrgentTicket filters worker by draining status", () => {
   assert.equal(decision.trace.reasonCode, "no_safe_preemption_candidate");
 });
 
-test("preemptForUrgentTicket excludes degraded workers when includeDegraded is false", () => {
+test("preemptForUrgentTicket excludes degraded workers when includeDegraded is false [execution-priority-preemption-service-edge]", () => {
   const worker = createMockWorker({
     availableSlots: 0,
     maxConcurrency: 1,
@@ -443,7 +443,7 @@ test("preemptForUrgentTicket excludes degraded workers when includeDegraded is f
   assert.equal(decision.trace.reasonCode, "no_safe_preemption_candidate");
 });
 
-test("preemptForUrgentTicket filters untrusted remote workers", () => {
+test("preemptForUrgentTicket filters untrusted remote workers [execution-priority-preemption-service-edge]", () => {
   const worker = createMockWorker({
     availableSlots: 0,
     maxConcurrency: 1,
@@ -470,7 +470,7 @@ test("preemptForUrgentTicket filters untrusted remote workers", () => {
   assert.equal(decision.trace.reasonCode, "no_safe_preemption_candidate");
 });
 
-test("preemptForUrgentTicket filters by queueAffinity mismatch", () => {
+test("preemptForUrgentTicket filters by queueAffinity mismatch [execution-priority-preemption-service-edge]", () => {
   const worker = createMockWorker({
     availableSlots: 0,
     maxConcurrency: 1,
@@ -492,7 +492,7 @@ test("preemptForUrgentTicket filters by queueAffinity mismatch", () => {
   assert.equal(decision.trace.reasonCode, "no_safe_preemption_candidate");
 });
 
-test("preemptForUrgentTicket filters by insufficient isolation level", () => {
+test("preemptForUrgentTicket filters by insufficient isolation level [execution-priority-preemption-service-edge]", () => {
   const worker = createMockWorker({
     availableSlots: 0,
     maxConcurrency: 1,
@@ -514,7 +514,7 @@ test("preemptForUrgentTicket filters by insufficient isolation level", () => {
   assert.equal(decision.trace.reasonCode, "no_safe_preemption_candidate");
 });
 
-test("preemptForUrgentTicket filters by repo version mismatch", () => {
+test("preemptForUrgentTicket filters by repo version mismatch [execution-priority-preemption-service-edge]", () => {
   const worker = createMockWorker({
     availableSlots: 0,
     maxConcurrency: 1,
@@ -536,7 +536,7 @@ test("preemptForUrgentTicket filters by repo version mismatch", () => {
   assert.equal(decision.trace.reasonCode, "no_safe_preemption_candidate");
 });
 
-test("preemptForUrgentTicket filters by missing capabilities", () => {
+test("preemptForUrgentTicket filters by missing capabilities [execution-priority-preemption-service-edge]", () => {
   const worker = createMockWorker({
     availableSlots: 0,
     maxConcurrency: 1,
@@ -558,7 +558,7 @@ test("preemptForUrgentTicket filters by missing capabilities", () => {
   assert.equal(decision.trace.reasonCode, "no_safe_preemption_candidate");
 });
 
-test("preemptForUrgentTicket filters by preferredWorkerId mismatch", () => {
+test("preemptForUrgentTicket filters by preferredWorkerId mismatch [execution-priority-preemption-service-edge]", () => {
   const worker = createMockWorker({
     workerId: "worker-1",
     availableSlots: 0,
@@ -580,7 +580,7 @@ test("preemptForUrgentTicket filters by preferredWorkerId mismatch", () => {
   assert.equal(decision.trace.reasonCode, "no_safe_preemption_candidate");
 });
 
-test("preemptForUrgentTicket skips source execution in candidate selection", () => {
+test("preemptForUrgentTicket skips source execution in candidate selection [execution-priority-preemption-service-edge]", () => {
   const worker = createMockWorker({
     workerId: "worker-1",
     availableSlots: 0,
@@ -602,7 +602,7 @@ test("preemptForUrgentTicket skips source execution in candidate selection", () 
   assert.equal(decision.trace.reasonCode, "no_safe_preemption_candidate");
 });
 
-test("preemptForUrgentTicket filters execution with non-executing status", () => {
+test("preemptForUrgentTicket filters execution with non-executing status [execution-priority-preemption-service-edge]", () => {
   const worker = createMockWorker({
     workerId: "worker-1",
     availableSlots: 0,
@@ -628,7 +628,7 @@ test("preemptForUrgentTicket filters execution with non-executing status", () =>
   assert.equal(decision.trace.reasonCode, "no_safe_preemption_candidate");
 });
 
-test("preemptForUrgentTicket filters when workflow status is not running", () => {
+test("preemptForUrgentTicket filters when workflow status is not running [execution-priority-preemption-service-edge]", () => {
   const worker = createMockWorker({
     workerId: "worker-1",
     availableSlots: 0,
@@ -658,7 +658,7 @@ test("preemptForUrgentTicket filters when workflow status is not running", () =>
   assert.equal(decision.trace.reasonCode, "no_safe_preemption_candidate");
 });
 
-test("preemptForUrgentTicket filters when no active lease", () => {
+test("preemptForUrgentTicket filters when no active lease [execution-priority-preemption-service-edge]", () => {
   const worker = createMockWorker({
     workerId: "worker-1",
     availableSlots: 0,
@@ -689,7 +689,7 @@ test("preemptForUrgentTicket filters when no active lease", () => {
   assert.equal(decision.trace.reasonCode, "no_safe_preemption_candidate");
 });
 
-test("preemptForUrgentTicket filters when lease workerId does not match", () => {
+test("preemptForUrgentTicket filters when lease workerId does not match [execution-priority-preemption-service-edge]", () => {
   const worker = createMockWorker({
     workerId: "worker-1",
     availableSlots: 0,
@@ -721,7 +721,7 @@ test("preemptForUrgentTicket filters when lease workerId does not match", () => 
   assert.equal(decision.trace.reasonCode, "no_safe_preemption_candidate");
 });
 
-test("preemptForUrgentTicket filters when no recovery step", () => {
+test("preemptForUrgentTicket filters when no recovery step [execution-priority-preemption-service-edge]", () => {
   const worker = createMockWorker({
     workerId: "worker-1",
     availableSlots: 0,
@@ -754,7 +754,7 @@ test("preemptForUrgentTicket filters when no recovery step", () => {
   assert.equal(decision.trace.reasonCode, "no_safe_preemption_candidate");
 });
 
-test("preemptForUrgentTicket filters when worker currentStepId does not match recovery step", () => {
+test("preemptForUrgentTicket filters when worker currentStepId does not match recovery step [execution-priority-preemption-service-edge]", () => {
   const worker = createMockWorker({
     workerId: "worker-1",
     availableSlots: 0,
@@ -788,7 +788,7 @@ test("preemptForUrgentTicket filters when worker currentStepId does not match re
   assert.equal(decision.trace.reasonCode, "no_safe_preemption_candidate");
 });
 
-test("preemptForUrgentTicket filters when agentExecution currentStepId does not match recovery step", () => {
+test("preemptForUrgentTicket filters when agentExecution currentStepId does not match recovery step [execution-priority-preemption-service-edge]", () => {
   const worker = createMockWorker({
     workerId: "worker-1",
     availableSlots: 0,

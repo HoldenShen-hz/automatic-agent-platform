@@ -8,18 +8,18 @@ import {
 } from "../../../../src/platform/five-plane-execution/execution-engine/multi-step-supervisor.js";
 import type { MultiStepToolExecutionInput } from "../../../../src/platform/five-plane-execution/execution-engine/multi-step-orchestration-types.js";
 
-test("normalizeStepFailurePlan converts string to StepFailurePlan", () => {
+test("normalizeStepFailurePlan converts string to StepFailurePlan [multi-step-supervisor]", () => {
   const result = normalizeStepFailurePlan("E001");
   assert.deepEqual(result, { errorCode: "E001" });
 });
 
-test("normalizeStepFailurePlan preserves StepFailurePlan objects", () => {
+test("normalizeStepFailurePlan preserves StepFailurePlan objects [multi-step-supervisor]", () => {
   const input = { errorCode: "E002", summary: "Something went wrong", message: "Details here" };
   const result = normalizeStepFailurePlan(input);
   assert.deepEqual(result, input);
 });
 
-test("resolveStepFailurePlan returns null when no failures configured", () => {
+test("resolveStepFailurePlan returns null when no failures configured [multi-step-supervisor]", () => {
   const input: MultiStepToolExecutionInput = {
     dbPath: "/tmp/test.db",
     title: "test task",
@@ -29,7 +29,7 @@ test("resolveStepFailurePlan returns null when no failures configured", () => {
   assert.equal(resolveStepFailurePlan(input, "step_1", 1), null);
 });
 
-test("resolveStepFailurePlan returns configured plan for step and attempt", () => {
+test("resolveStepFailurePlan returns configured plan for step and attempt [multi-step-supervisor]", () => {
   const input: MultiStepToolExecutionInput = {
     dbPath: "/tmp/test.db",
     title: "test task",
@@ -57,7 +57,7 @@ test("resolveStepFailurePlan returns configured plan for step and attempt", () =
   assert.deepEqual(result4, { errorCode: "E200", summary: "Step 2 failed" });
 });
 
-test("resolveStepFailurePlan returns injected failure for first attempt", () => {
+test("resolveStepFailurePlan returns injected failure for first attempt [multi-step-supervisor]", () => {
   const input: MultiStepToolExecutionInput = {
     dbPath: "/tmp/test.db",
     title: "test task",
@@ -71,7 +71,7 @@ test("resolveStepFailurePlan returns injected failure for first attempt", () => 
   assert.ok(result.summary?.includes("Step step_injected failed (injected)"));
 });
 
-test("resolveStepFailurePlan returns null for injected step on subsequent attempts", () => {
+test("resolveStepFailurePlan returns null for injected step on subsequent attempts [multi-step-supervisor]", () => {
   const input: MultiStepToolExecutionInput = {
     dbPath: "/tmp/test.db",
     title: "test task",
@@ -84,32 +84,32 @@ test("resolveStepFailurePlan returns null for injected step on subsequent attemp
   assert.equal(result, null);
 });
 
-test("normalizeStepErrorCode handles validation schema mismatch", () => {
+test("normalizeStepErrorCode handles validation schema mismatch [multi-step-supervisor]", () => {
   assert.equal(
     normalizeStepErrorCode(new Error("workflow.output_schema_invalid: field x is wrong")),
     "validation.schema_mismatch",
   );
 });
 
-test("normalizeStepErrorCode handles validation invalid input", () => {
+test("normalizeStepErrorCode handles validation invalid input [multi-step-supervisor]", () => {
   assert.equal(
     normalizeStepErrorCode(new Error("workflow.output_schema_missing: field y")),
     "validation.invalid_input",
   );
 });
 
-test("normalizeStepErrorCode returns unexpected error code for other errors", () => {
+test("normalizeStepErrorCode returns unexpected error code for other errors [multi-step-supervisor]", () => {
   assert.equal(normalizeStepErrorCode(new Error("some other error")), "internal.unexpected_error");
   assert.equal(normalizeStepErrorCode(new Error("unknown error")), "internal.unexpected_error");
 });
 
-test("normalizeStepErrorCode handles non-Error inputs", () => {
+test("normalizeStepErrorCode handles non-Error inputs [multi-step-supervisor]", () => {
   assert.equal(normalizeStepErrorCode("string error"), "internal.unexpected_error");
   assert.equal(normalizeStepErrorCode(123), "internal.unexpected_error");
   assert.equal(normalizeStepErrorCode(null), "internal.unexpected_error");
 });
 
-test("buildStepFailureSummary for retry action", () => {
+test("buildStepFailureSummary for retry action [multi-step-supervisor]", () => {
   const decision = { action: "retry" as const, errorCode: "E100", retryDelayMs: 1000, failureClass: "transient" as const, retryable: true, backoff: "exponential" as const };
   const summary = buildStepFailureSummary("step_1", decision);
   assert.ok(summary.includes("step_1"));
@@ -117,7 +117,7 @@ test("buildStepFailureSummary for retry action", () => {
   assert.ok(summary.includes("retry"));
 });
 
-test("buildStepFailureSummary for escalate action", () => {
+test("buildStepFailureSummary for escalate action [multi-step-supervisor]", () => {
   const decision = { action: "escalate" as const, errorCode: "E200", retryDelayMs: 0, failureClass: "permanent" as const, retryable: false, backoff: "none" as const };
   const summary = buildStepFailureSummary("step_2", decision as any);
   assert.ok(summary.includes("step_2"));
@@ -125,7 +125,7 @@ test("buildStepFailureSummary for escalate action", () => {
   assert.ok(summary.includes("escalation"));
 });
 
-test("buildStepFailureSummary for fail action", () => {
+test("buildStepFailureSummary for fail action [multi-step-supervisor]", () => {
   const decision = { action: "fail" as const, errorCode: "E300", retryDelayMs: 0, failureClass: "unknown" as const, retryable: false, backoff: "none" as const };
   const summary = buildStepFailureSummary("step_3", decision as any);
   assert.ok(summary.includes("step_3"));

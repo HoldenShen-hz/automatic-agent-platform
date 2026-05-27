@@ -107,7 +107,6 @@ export class DashboardProjectionService {
     };
 
     // System health events are global; all others are tenant-scoped
-    // @ts-expect-error - system.health.changed may not be in TypedEventType but is handled at runtime
     const isSystemHealth = eventType === "system.health.changed";
     const rawPayload = payload as Record<string, unknown>;
     const tenantId = isSystemHealth ? null : (rawPayload?.tenantId as string ?? null);

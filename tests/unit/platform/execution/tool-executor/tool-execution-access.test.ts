@@ -9,7 +9,7 @@ import {
   type ExecutionAllowedPathRootsResolution,
 } from "../../../../../src/platform/five-plane-execution/tool-executor/tool-execution-access.js";
 
-test("resolveExecutionAllowedTools uses request-level allowlist when provided", () => {
+test("resolveExecutionAllowedTools uses request-level allowlist when provided [tool-execution-access]", () => {
   const result = resolveExecutionAllowedTools({
     execution: { allowedToolsJson: null },
     executionRequired: false,
@@ -20,7 +20,7 @@ test("resolveExecutionAllowedTools uses request-level allowlist when provided", 
   assert.equal(result.errorCode, null);
 });
 
-test("resolveExecutionAllowedTools returns undefined when no restrictions", () => {
+test("resolveExecutionAllowedTools returns undefined when no restrictions [tool-execution-access]", () => {
   const result = resolveExecutionAllowedTools({
     execution: null,
     executionRequired: false,
@@ -30,7 +30,7 @@ test("resolveExecutionAllowedTools returns undefined when no restrictions", () =
   assert.equal(result.errorCode, null);
 });
 
-test("resolveExecutionAllowedTools returns error when execution required but missing", () => {
+test("resolveExecutionAllowedTools returns error when execution required but missing [tool-execution-access]", () => {
   const result = resolveExecutionAllowedTools({
     execution: null,
     executionRequired: true,
@@ -40,7 +40,7 @@ test("resolveExecutionAllowedTools returns error when execution required but mis
   assert.equal(result.errorCode, "tool.execution_missing");
 });
 
-test("resolveExecutionAllowedTools parses execution-level allowlist", () => {
+test("resolveExecutionAllowedTools parses execution-level allowlist [tool-execution-access]", () => {
   const result = resolveExecutionAllowedTools({
     execution: { allowedToolsJson: '["exec_tool_a","exec_tool_b"]' },
     executionRequired: true,
@@ -50,7 +50,7 @@ test("resolveExecutionAllowedTools parses execution-level allowlist", () => {
   assert.equal(result.errorCode, null);
 });
 
-test("resolveExecutionAllowedTools returns error for invalid JSON", () => {
+test("resolveExecutionAllowedTools returns error for invalid JSON [tool-execution-access]", () => {
   const result = resolveExecutionAllowedTools({
     execution: { allowedToolsJson: "not valid json" },
     executionRequired: true,
@@ -60,7 +60,7 @@ test("resolveExecutionAllowedTools returns error for invalid JSON", () => {
   assert.equal(result.errorCode, "tool.execution_allowed_tools_invalid");
 });
 
-test("resolveExecutionAllowedTools returns error for non-array JSON", () => {
+test("resolveExecutionAllowedTools returns error for non-array JSON [tool-execution-access]", () => {
   const result = resolveExecutionAllowedTools({
     execution: { allowedToolsJson: '"just a string"' },
     executionRequired: true,
@@ -70,7 +70,7 @@ test("resolveExecutionAllowedTools returns error for non-array JSON", () => {
   assert.equal(result.errorCode, "tool.execution_allowed_tools_invalid");
 });
 
-test("resolveExecutionAllowedTools fail-closes on invalid stored allowlist", () => {
+test("resolveExecutionAllowedTools fail-closes on invalid stored allowlist [tool-execution-access]", () => {
   const result = resolveExecutionAllowedTools({
     execution: { allowedToolsJson: '["read", 1]' },
     executionRequired: true,
@@ -80,7 +80,7 @@ test("resolveExecutionAllowedTools fail-closes on invalid stored allowlist", () 
   assert.equal(isExecutionToolAllowed("read", result.allowedTools), false);
 });
 
-test("resolveExecutionAllowedTools normalizes whitespace in allowlist", () => {
+test("resolveExecutionAllowedTools normalizes whitespace in allowlist [tool-execution-access]", () => {
   const result = resolveExecutionAllowedTools({
     execution: { allowedToolsJson: null },
     executionRequired: false,
@@ -90,7 +90,7 @@ test("resolveExecutionAllowedTools normalizes whitespace in allowlist", () => {
   assert.deepEqual(result.allowedTools, ["tool_a", "tool_b"]);
 });
 
-test("resolveExecutionAllowedTools filters empty strings", () => {
+test("resolveExecutionAllowedTools filters empty strings [tool-execution-access]", () => {
   const result = resolveExecutionAllowedTools({
     execution: { allowedToolsJson: null },
     executionRequired: false,
@@ -100,28 +100,28 @@ test("resolveExecutionAllowedTools filters empty strings", () => {
   assert.deepEqual(result.allowedTools, ["tool_a", "tool_b"]);
 });
 
-test("isExecutionToolAllowed returns true when allowlist is undefined", () => {
+test("isExecutionToolAllowed returns true when allowlist is undefined [tool-execution-access]", () => {
   assert.equal(isExecutionToolAllowed("any_tool", undefined), true);
 });
 
-test("isExecutionToolAllowed returns true when tool is in allowlist", () => {
+test("isExecutionToolAllowed returns true when tool is in allowlist [tool-execution-access]", () => {
   assert.equal(isExecutionToolAllowed("allowed_tool", ["allowed_tool", "other_tool"]), true);
 });
 
-test("isExecutionToolAllowed returns false when tool is not in allowlist", () => {
+test("isExecutionToolAllowed returns false when tool is not in allowlist [tool-execution-access]", () => {
   assert.equal(isExecutionToolAllowed("blocked_tool", ["allowed_tool"]), false);
 });
 
-test("isExecutionToolAllowed is case-sensitive", () => {
+test("isExecutionToolAllowed is case-sensitive [tool-execution-access]", () => {
   assert.equal(isExecutionToolAllowed("Tool_A", ["tool_a"]), false);
 });
 
-test("isExecutionToolAllowed handles empty allowlist", () => {
+test("isExecutionToolAllowed handles empty allowlist [tool-execution-access]", () => {
   // Empty allowlist technically means no tools allowed, but undefined means all allowed
   assert.equal(isExecutionToolAllowed("any_tool", []), false);
 });
 
-test("resolveExecutionAllowedPathRoots uses request-level paths when provided", () => {
+test("resolveExecutionAllowedPathRoots uses request-level paths when provided [tool-execution-access]", () => {
   const result = resolveExecutionAllowedPathRoots({
     execution: { allowedPathsJson: null },
     executionRequired: false,
@@ -134,7 +134,7 @@ test("resolveExecutionAllowedPathRoots uses request-level paths when provided", 
   assert.equal(result.errorCode, null);
 });
 
-test("resolveExecutionAllowedPathRoots returns undefined when no restrictions", () => {
+test("resolveExecutionAllowedPathRoots returns undefined when no restrictions [tool-execution-access]", () => {
   const result = resolveExecutionAllowedPathRoots({
     execution: null,
     executionRequired: false,
@@ -144,7 +144,7 @@ test("resolveExecutionAllowedPathRoots returns undefined when no restrictions", 
   assert.equal(result.errorCode, null);
 });
 
-test("resolveExecutionAllowedPathRoots returns error when execution required but missing", () => {
+test("resolveExecutionAllowedPathRoots returns error when execution required but missing [tool-execution-access]", () => {
   const result = resolveExecutionAllowedPathRoots({
     execution: null,
     executionRequired: true,
@@ -154,7 +154,7 @@ test("resolveExecutionAllowedPathRoots returns error when execution required but
   assert.equal(result.errorCode, "tool.execution_missing");
 });
 
-test("resolveExecutionAllowedPathRoots parses execution-level paths", () => {
+test("resolveExecutionAllowedPathRoots parses execution-level paths [tool-execution-access]", () => {
   const result = resolveExecutionAllowedPathRoots({
     execution: { allowedPathsJson: '["/exec/path/a","/exec/path/b"]' },
     executionRequired: true,
@@ -166,7 +166,7 @@ test("resolveExecutionAllowedPathRoots parses execution-level paths", () => {
   assert.equal(result.errorCode, null);
 });
 
-test("resolveExecutionAllowedPathRoots returns error for invalid JSON", () => {
+test("resolveExecutionAllowedPathRoots returns error for invalid JSON [tool-execution-access]", () => {
   const result = resolveExecutionAllowedPathRoots({
     execution: { allowedPathsJson: "invalid json" },
     executionRequired: true,
@@ -176,7 +176,7 @@ test("resolveExecutionAllowedPathRoots returns error for invalid JSON", () => {
   assert.equal(result.errorCode, "tool.execution_allowed_paths_invalid");
 });
 
-test("ExecutionAllowedToolsResolution interface structure", () => {
+test("ExecutionAllowedToolsResolution interface structure [tool-execution-access]", () => {
   const result: ExecutionAllowedToolsResolution = {
     allowedTools: ["tool1", "tool2"],
     errorCode: null,
@@ -186,7 +186,7 @@ test("ExecutionAllowedToolsResolution interface structure", () => {
   assert.equal(result.errorCode, null);
 });
 
-test("ExecutionAllowedToolsResolution interface with undefined allowedTools", () => {
+test("ExecutionAllowedToolsResolution interface with undefined allowedTools [tool-execution-access]", () => {
   const result: ExecutionAllowedToolsResolution = {
     allowedTools: undefined,
     errorCode: null,
@@ -195,7 +195,7 @@ test("ExecutionAllowedToolsResolution interface with undefined allowedTools", ()
   assert.equal(result.allowedTools, undefined);
 });
 
-test("ExecutionAllowedPathRootsResolution interface structure", () => {
+test("ExecutionAllowedPathRootsResolution interface structure [tool-execution-access]", () => {
   const result: ExecutionAllowedPathRootsResolution = {
     allowedPathRoots: ["/root/a", "/root/b"],
     errorCode: null,

@@ -13,33 +13,33 @@ import type { Phase1BToolDefinition } from "../../../../../src/platform/five-pla
 // Phase1B Re-Export Verification Tests
 // =============================================================================
 
-test("phase1b-orchestration exports runPhase1BOrchestration alias", async () => {
+test("phase1b-orchestration exports runPhase1BOrchestration alias [multi-step-orchestration-types]", async () => {
   const { runPhase1BOrchestration } = await import("../../../../../src/platform/five-plane-execution/execution-engine/phase1b-orchestration.js");
   const { runMultiStepOrchestration } = await import("../../../../../src/platform/five-plane-execution/execution-engine/multi-step-orchestration.js");
 
   assert.equal(runPhase1BOrchestration, runMultiStepOrchestration, "runPhase1BOrchestration should be an alias for runMultiStepOrchestration");
 });
 
-test("phase1b-orchestration exports executePhase1BToolCallForTests alias", async () => {
+test("phase1b-orchestration exports executePhase1BToolCallForTests alias [multi-step-orchestration-types]", async () => {
   const { executePhase1BToolCallForTests } = await import("../../../../../src/platform/five-plane-execution/execution-engine/phase1b-orchestration.js");
   const { executeMultiStepToolCallForTests } = await import("../../../../../src/platform/five-plane-execution/execution-engine/multi-step-orchestration.js");
 
   assert.equal(executePhase1BToolCallForTests, executeMultiStepToolCallForTests, "executePhase1BToolCallForTests should be an alias for executeMultiStepToolCallForTests");
 });
 
-test("phase1b-orchestration exports resetPhase1BToolRegistryForTests alias", async () => {
+test("phase1b-orchestration exports resetPhase1BToolRegistryForTests alias [multi-step-orchestration-types]", async () => {
   const { resetPhase1BToolRegistryForTests } = await import("../../../../../src/platform/five-plane-execution/execution-engine/phase1b-orchestration.js");
   const { resetMultiStepToolRegistryForTests } = await import("../../../../../src/platform/five-plane-execution/execution-engine/multi-step-orchestration.js");
 
   assert.equal(resetPhase1BToolRegistryForTests, resetMultiStepToolRegistryForTests, "resetPhase1BToolRegistryForTests should be an alias for resetMultiStepToolRegistryForTests");
 });
 
-test("phase1b-orchestration exports Phase1BOrchestrationResult type alias", () => {
+test("phase1b-orchestration exports Phase1BOrchestrationResult type alias [multi-step-orchestration-types]", () => {
   const result: Phase1BOrchestrationResult | null = null;
   assert.equal(result, null);
 });
 
-test("phase1b-orchestration exports Phase1BOrchestrationInput type alias", () => {
+test("phase1b-orchestration exports Phase1BOrchestrationInput type alias [multi-step-orchestration-types]", () => {
   const input = {
     dbPath: "/tmp/phase1b.db",
     title: "Phase1B Test",
@@ -48,21 +48,21 @@ test("phase1b-orchestration exports Phase1BOrchestrationInput type alias", () =>
   assert.equal(input.title, "Phase1B Test");
 });
 
-test("phase1b-tool-definitions exports PHASE1B_TOOL_DEFINITIONS alias", async () => {
+test("phase1b-tool-definitions exports PHASE1B_TOOL_DEFINITIONS alias [multi-step-orchestration-types]", async () => {
   const { PHASE1B_TOOL_DEFINITIONS } = await import("../../../../../src/platform/five-plane-execution/execution-engine/phase1b-tool-definitions.js");
   const { MULTI_STEP_TOOL_DEFINITIONS } = await import("../../../../../src/platform/five-plane-execution/execution-engine/multi-step-tool-definitions.js");
 
   assert.equal(PHASE1B_TOOL_DEFINITIONS, MULTI_STEP_TOOL_DEFINITIONS, "PHASE1B_TOOL_DEFINITIONS should be an alias for MULTI_STEP_TOOL_DEFINITIONS");
 });
 
-test("phase1b-tool-definitions exports getPhase1BToolDefinitions alias", async () => {
+test("phase1b-tool-definitions exports getPhase1BToolDefinitions alias [multi-step-orchestration-types]", async () => {
   const { getPhase1BToolDefinitions } = await import("../../../../../src/platform/five-plane-execution/execution-engine/phase1b-tool-definitions.js");
   const { getMultiStepToolDefinitions } = await import("../../../../../src/platform/five-plane-execution/execution-engine/multi-step-tool-definitions.js");
 
   assert.equal(getPhase1BToolDefinitions, getMultiStepToolDefinitions, "getPhase1BToolDefinitions should be an alias for getMultiStepToolDefinitions");
 });
 
-test("phase1b-tool-definitions exports Phase1BToolDefinition type alias", () => {
+test("phase1b-tool-definitions exports Phase1BToolDefinition type alias [multi-step-orchestration-types]", () => {
   const definition = {
     name: "test-tool",
     description: "Phase1B type alias coverage",
@@ -71,35 +71,35 @@ test("phase1b-tool-definitions exports Phase1BToolDefinition type alias", () => 
   assert.equal(definition.name, "test-tool");
 });
 
-test("phase1b-utils exports resolvePhase1BToolPath alias", async () => {
+test("phase1b-utils exports resolvePhase1BToolPath alias [multi-step-orchestration-types]", async () => {
   const { resolvePhase1BToolPath } = await import("../../../../../src/platform/five-plane-execution/execution-engine/phase1b-utils.js");
   const { resolveMultiStepToolPath } = await import("../../../../../src/platform/five-plane-execution/execution-engine/multi-step-utils.js");
 
   assert.equal(resolvePhase1BToolPath, resolveMultiStepToolPath, "resolvePhase1BToolPath should be an alias for resolveMultiStepToolPath");
 });
 
-test("phase1b-utils exports parseOptionalPositiveInteger function", async () => {
+test("phase1b-utils exports parseOptionalPositiveInteger function [multi-step-orchestration-types]", async () => {
   const { parseOptionalPositiveInteger } = await import("../../../../../src/platform/five-plane-execution/execution-engine/phase1b-utils.js");
 
   assert.equal(parseOptionalPositiveInteger(42), 42, "parseOptionalPositiveInteger should return 42 for input 42");
   assert.equal(parseOptionalPositiveInteger("not a number"), undefined, "parseOptionalPositiveInteger should return undefined for non-number");
 });
 
-test("phase1b-utils exports parseOptionalStringArray function", async () => {
+test("phase1b-utils exports parseOptionalStringArray function [multi-step-orchestration-types]", async () => {
   const { parseOptionalStringArray } = await import("../../../../../src/platform/five-plane-execution/execution-engine/phase1b-utils.js");
 
   assert.deepEqual(parseOptionalStringArray(["a", "b", "c"]), ["a", "b", "c"], "parseOptionalStringArray should return array as-is for valid strings");
   assert.deepEqual(parseOptionalStringArray("not an array"), [], "parseOptionalStringArray should return empty array for non-array input");
 });
 
-test("phase1b-utils exports safeParseToolResult function", async () => {
+test("phase1b-utils exports safeParseToolResult function [multi-step-orchestration-types]", async () => {
   const { safeParseToolResult } = await import("../../../../../src/platform/five-plane-execution/execution-engine/phase1b-utils.js");
 
   assert.deepEqual(safeParseToolResult('{"key": "value"}'), { key: "value" }, "safeParseToolResult should parse valid JSON");
   assert.equal(safeParseToolResult("not json"), "not json", "safeParseToolResult should return raw string for invalid JSON");
 });
 
-test("StepFailurePlan requires errorCode", () => {
+test("StepFailurePlan requires errorCode [multi-step-orchestration-types]", () => {
   const plan: StepFailurePlan = {
     errorCode: "step.execution_failed",
   };
@@ -109,7 +109,7 @@ test("StepFailurePlan requires errorCode", () => {
   assert.equal(plan.message, undefined);
 });
 
-test("StepFailurePlan with optional fields", () => {
+test("StepFailurePlan with optional fields [multi-step-orchestration-types]", () => {
   const plan: StepFailurePlan = {
     errorCode: "validation.schema_mismatch",
     summary: "Schema validation failed",
@@ -121,7 +121,7 @@ test("StepFailurePlan with optional fields", () => {
   assert.equal(plan.message, "The output schema does not match the expected format");
 });
 
-test("StepFailurePlan allows partial fields - summary only", () => {
+test("StepFailurePlan allows partial fields - summary only [multi-step-orchestration-types]", () => {
   const plan: StepFailurePlan = {
     errorCode: "internal.unexpected_error",
     summary: "Something went wrong",
@@ -132,7 +132,7 @@ test("StepFailurePlan allows partial fields - summary only", () => {
   assert.equal(plan.message, undefined);
 });
 
-test("StepFailurePlan allows partial fields - message only", () => {
+test("StepFailurePlan allows partial fields - message only [multi-step-orchestration-types]", () => {
   const plan: StepFailurePlan = {
     errorCode: "tool.execution_failed",
     message: "The tool call timed out",
@@ -143,7 +143,7 @@ test("StepFailurePlan allows partial fields - message only", () => {
   assert.equal(plan.message, "The tool call timed out");
 });
 
-test("MultiStepToolExecutionInput requires core fields", () => {
+test("MultiStepToolExecutionInput requires core fields [multi-step-orchestration-types]", () => {
   const input: MultiStepToolExecutionInput = {
     dbPath: "/tmp/test.db",
     title: "Test Task",
@@ -161,7 +161,7 @@ test("MultiStepToolExecutionInput requires core fields", () => {
   assert.equal(input.stepOutputOverrides, undefined);
 });
 
-test("MultiStepToolExecutionInput with optional contextBudgetTokens", () => {
+test("MultiStepToolExecutionInput with optional contextBudgetTokens [multi-step-orchestration-types]", () => {
   const input: MultiStepToolExecutionInput = {
     dbPath: "/tmp/test.db",
     title: "Token Budget Test",
@@ -172,7 +172,7 @@ test("MultiStepToolExecutionInput with optional contextBudgetTokens", () => {
   assert.equal(input.contextBudgetTokens, 50000);
 });
 
-test("MultiStepToolExecutionInput with stepFailureInjection", () => {
+test("MultiStepToolExecutionInput with stepFailureInjection [multi-step-orchestration-types]", () => {
   const input: MultiStepToolExecutionInput = {
     dbPath: "/tmp/test.db",
     title: "Failure Injection Test",
@@ -186,7 +186,7 @@ test("MultiStepToolExecutionInput with stepFailureInjection", () => {
   assert.equal(input.stepFailureInjection.has("step_2"), false);
 });
 
-test("MultiStepToolExecutionInput with stepFailurePlans using strings", () => {
+test("MultiStepToolExecutionInput with stepFailurePlans using strings [multi-step-orchestration-types]", () => {
   const input: MultiStepToolExecutionInput = {
     dbPath: "/tmp/test.db",
     title: "Step Failure Plans Test",
@@ -208,7 +208,7 @@ test("MultiStepToolExecutionInput with stepFailurePlans using strings", () => {
   assert.equal(step2Plans[0], "internal.unexpected_error");
 });
 
-test("MultiStepToolExecutionInput with stepFailurePlans using StepFailurePlan objects", () => {
+test("MultiStepToolExecutionInput with stepFailurePlans using StepFailurePlan objects [multi-step-orchestration-types]", () => {
   const input: MultiStepToolExecutionInput = {
     dbPath: "/tmp/test.db",
     title: "Step Failure Plans Objects Test",
@@ -235,7 +235,7 @@ test("MultiStepToolExecutionInput with stepFailurePlans using StepFailurePlan ob
   assert.equal((plan1 as StepFailurePlan).message, "Details here");
 });
 
-test("MultiStepToolExecutionInput with mixed stepFailurePlans (strings and objects)", () => {
+test("MultiStepToolExecutionInput with mixed stepFailurePlans (strings and objects) [multi-step-orchestration-types]", () => {
   const input: MultiStepToolExecutionInput = {
     dbPath: "/tmp/test.db",
     title: "Mixed Failure Plans Test",
@@ -255,7 +255,7 @@ test("MultiStepToolExecutionInput with mixed stepFailurePlans (strings and objec
   assert.equal(plan1.errorCode, "validation.schema_mismatch");
 });
 
-test("MultiStepToolExecutionInput with stepOutputOverrides", () => {
+test("MultiStepToolExecutionInput with stepOutputOverrides [multi-step-orchestration-types]", () => {
   const input: MultiStepToolExecutionInput = {
     dbPath: "/tmp/test.db",
     title: "Output Overrides Test",
@@ -271,7 +271,7 @@ test("MultiStepToolExecutionInput with stepOutputOverrides", () => {
   assert.deepEqual(input.stepOutputOverrides["step_2"], { status: "skipped" });
 });
 
-test("MultiStepOrchestrationResult type can be instantiated with partial data", () => {
+test("MultiStepOrchestrationResult type can be instantiated with partial data [multi-step-orchestration-types]", () => {
   // This test verifies the type structure without actual implementation
   const mockSnapshot = {} as any;
   const mockRouting = {} as any;
@@ -293,7 +293,7 @@ test("MultiStepOrchestrationResult type can be instantiated with partial data", 
   assert.equal(result.compaction, null);
 });
 
-test("MultiStepOrchestrationResult with compaction object", () => {
+test("MultiStepOrchestrationResult with compaction object [multi-step-orchestration-types]", () => {
   const compaction: ContextCompactionResult = {
     usageBeforeTokens: 50000,
     usageAfterStage1Tokens: 35000,

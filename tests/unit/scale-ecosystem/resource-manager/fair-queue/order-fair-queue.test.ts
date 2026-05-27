@@ -42,19 +42,19 @@ function makeItem(overrides: Partial<FairQueueItem> & { weight?: number; borrowe
 // orderFairQueue Tests - Core Sorting Behavior
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("orderFairQueue returns empty array for empty input", () => {
+test("orderFairQueue returns empty array for empty input [order-fair-queue]", () => {
   const result = orderFairQueue([]);
   assert.deepEqual(result, []);
 });
 
-test("orderFairQueue returns single item unchanged", () => {
+test("orderFairQueue returns single item unchanged [order-fair-queue]", () => {
   const items = [makeItem({ itemId: "only" })];
   const result = orderFairQueue(items);
   assert.equal(result.length, 1);
   assert.equal(result[0]?.itemId, "only");
 });
 
-test("orderFairQueue does not mutate original array", () => {
+test("orderFairQueue does not mutate original array [order-fair-queue]", () => {
   const items = [
     makeItem({ itemId: "a" }),
     makeItem({ itemId: "b" }),
@@ -65,7 +65,7 @@ test("orderFairQueue does not mutate original array", () => {
   assert.equal(items[1]?.itemId, original[1]?.itemId);
 });
 
-test("orderFairQueue sorts by SLA tier as primary factor", () => {
+test("orderFairQueue sorts by SLA tier as primary factor [order-fair-queue]", () => {
   const items = [
     makeItem({ itemId: "low-tier", slaTier: 1, priority: 1, weight: 1 }),
     makeItem({ itemId: "high-tier", slaTier: 10, priority: 1, weight: 1 }),
@@ -78,7 +78,7 @@ test("orderFairQueue sorts by SLA tier as primary factor", () => {
   assert.equal(result[1]?.itemId, "low-tier");
 });
 
-test("orderFairQueue considers weight in normalization", () => {
+test("orderFairQueue considers weight in normalization [order-fair-queue]", () => {
   const items = [
     makeItem({ itemId: "heavy", slaTier: 5, weight: 10, priority: 5 }),
     makeItem({ itemId: "light", slaTier: 5, weight: 1, priority: 5 }),
@@ -94,7 +94,7 @@ test("orderFairQueue considers weight in normalization", () => {
   assert.equal(result[0]?.itemId, "heavy");
 });
 
-test("orderFairQueue respects priority score (lower priority number = higher priority)", () => {
+test("orderFairQueue respects priority score (lower priority number = higher priority) [order-fair-queue]", () => {
   const items = [
     makeItem({ itemId: "low-priority", priority: 10, slaTier: 0 }),
     makeItem({ itemId: "high-priority", priority: 1, slaTier: 0 }),
@@ -106,7 +106,7 @@ test("orderFairQueue respects priority score (lower priority number = higher pri
   assert.equal(result[0]?.itemId, "high-priority");
 });
 
-test("orderFairQueue applies age factor capped at 99", () => {
+test("orderFairQueue applies age factor capped at 99 [order-fair-queue]", () => {
   const items = [
     makeItem({ itemId: "very-old", priority: 5, ageMs: 600_000 }), // 10 minutes = 10 minutes
     makeItem({ itemId: "new", priority: 5, ageMs: 0 }),
@@ -121,7 +121,7 @@ test("orderFairQueue applies age factor capped at 99", () => {
   assert.equal(result[0]?.itemId, "new");
 });
 
-test("orderFairQueue ages items beyond cap are capped at 99", () => {
+test("orderFairQueue ages items beyond cap are capped at 99 [order-fair-queue]", () => {
   const items = [
     makeItem({ itemId: "very-old", priority: 5, ageMs: 10_000_000 }), // huge age
     makeItem({ itemId: "moderately-old", priority: 5, ageMs: 300_000 }), // 5 minutes
@@ -133,7 +133,7 @@ test("orderFairQueue ages items beyond cap are capped at 99", () => {
   assert.equal(result[0]?.itemId, "moderately-old"); // same priority, tiebreaker on age
 });
 
-test("orderFairQueue prioritizes items with borrowed quota for repayment", () => {
+test("orderFairQueue prioritizes items with borrowed quota for repayment [order-fair-queue]", () => {
   const items = [
     makeItem({ itemId: "borrower", priority: 5, borrowedQuota: 10 }),
     makeItem({ itemId: "lender", priority: 5, borrowedQuota: -5 }),
@@ -148,7 +148,7 @@ test("orderFairQueue prioritizes items with borrowed quota for repayment", () =>
   assert.equal(result[2]?.itemId, "lender");
 });
 
-test("orderFairQueue uses guaranteedQuota as final tiebreaker", () => {
+test("orderFairQueue uses guaranteedQuota as final tiebreaker [order-fair-queue]", () => {
   const items = [
     makeItem({ itemId: "low-quota", priority: 5, guaranteedQuota: 10 }),
     makeItem({ itemId: "high-quota", priority: 5, guaranteedQuota: 100 }),
@@ -160,7 +160,7 @@ test("orderFairQueue uses guaranteedQuota as final tiebreaker", () => {
   assert.equal(result[0]?.itemId, "high-quota");
 });
 
-test("orderFairQueue combines all factors correctly", () => {
+test("orderFairQueue combines all factors correctly [order-fair-queue]", () => {
   const items = [
     makeItem({ itemId: "critical", slaTier: 10, priority: 1, weight: 1, ageMs: 0 }),
     makeItem({ itemId: "normal", slaTier: 5, priority: 5, weight: 5, ageMs: 0 }),
@@ -175,7 +175,7 @@ test("orderFairQueue combines all factors correctly", () => {
   assert.equal(result[2]?.itemId, "background");
 });
 
-test("orderFairQueue handles items with missing optional fields", () => {
+test("orderFairQueue handles items with missing optional fields [order-fair-queue]", () => {
   const items: FairQueueItem[] = [
     { itemId: "minimal", tenantId: "t1", priority: 5, ageMs: 0 }, // no slaTier, weight, etc
     makeItem({ itemId: "full", priority: 5, ageMs: 0, slaTier: 1 }),
@@ -187,7 +187,7 @@ test("orderFairQueue handles items with missing optional fields", () => {
   assert.equal(result.length, 2);
 });
 
-test("orderFairQueue handles items with zero weight", () => {
+test("orderFairQueue handles items with zero weight [order-fair-queue]", () => {
   const items = [
     makeItem({ itemId: "zero-weight", priority: 5, weight: 0 }),
     makeItem({ itemId: "normal-weight", priority: 5, weight: 1 }),
@@ -199,7 +199,7 @@ test("orderFairQueue handles items with zero weight", () => {
   assert.equal(result.length, 2);
 });
 
-test("orderFairQueue uses default weight of 1 when not specified", () => {
+test("orderFairQueue uses default weight of 1 when not specified [order-fair-queue]", () => {
   const items = [
     makeItem({ itemId: "no-weight" }), // weight defaults to 1
     makeItem({ itemId: "explicit-weight", weight: 1 }),
@@ -211,7 +211,7 @@ test("orderFairQueue uses default weight of 1 when not specified", () => {
   assert.equal(result.length, 2);
 });
 
-test("orderFairQueue applies SLA tier multiplied by 10000 weight factor", () => {
+test("orderFairQueue applies SLA tier multiplied by 10000 weight factor [order-fair-queue]", () => {
   const items = [
     makeItem({ itemId: "tier-1", slaTier: 1, priority: 1, weight: 1 }),
     makeItem({ itemId: "tier-2", slaTier: 2, priority: 1, weight: 1 }),
@@ -223,7 +223,7 @@ test("orderFairQueue applies SLA tier multiplied by 10000 weight factor", () => 
   assert.equal(result[0]?.itemId, "tier-2");
 });
 
-test("orderFairQueue priority score uses (100 - min(100, priority))", () => {
+test("orderFairQueue priority score uses (100 - min(100, priority)) [order-fair-queue]", () => {
   const items = [
     makeItem({ itemId: "p0", priority: 0 }), // score = (100-0)*100 = 10000
     makeItem({ itemId: "p50", priority: 50 }), // score = (100-50)*100 = 5000
@@ -237,7 +237,7 @@ test("orderFairQueue priority score uses (100 - min(100, priority))", () => {
   assert.equal(result[2]?.itemId, "p100");
 });
 
-test("orderFairQueue handles negative borrowed quota (lent resources)", () => {
+test("orderFairQueue handles negative borrowed quota (lent resources) [order-fair-queue]", () => {
   const items = [
     makeItem({ itemId: "lent", borrowedQuota: -10 }),
     makeItem({ itemId: "neutral", borrowedQuota: 0 }),
@@ -250,7 +250,7 @@ test("orderFairQueue handles negative borrowed quota (lent resources)", () => {
   assert.equal(result[0]?.itemId, "neutral");
 });
 
-test("orderFairQueue items with exact same score use tiebreaker", () => {
+test("orderFairQueue items with exact same score use tiebreaker [order-fair-queue]", () => {
   const items = [
     makeItem({ itemId: "same", slaTier: 1, priority: 1, weight: 1, ageMs: 0, guaranteedQuota: 50 }),
     makeItem({ itemId: "also-same", slaTier: 1, priority: 1, weight: 1, ageMs: 0, guaranteedQuota: 100 }),
@@ -262,7 +262,7 @@ test("orderFairQueue items with exact same score use tiebreaker", () => {
   assert.equal(result[0]?.itemId, "also-same");
 });
 
-test("orderFairQueue works with many items", () => {
+test("orderFairQueue works with many items [order-fair-queue]", () => {
   const items = Array.from({ length: 100 }, (_, i) =>
     makeItem({
       itemId: `item-${i}`,
@@ -279,7 +279,7 @@ test("orderFairQueue works with many items", () => {
   assert.ok(result[0]?.itemId.startsWith("item-"));
 });
 
-test("orderFairQueue composite score calculation is deterministic", () => {
+test("orderFairQueue composite score calculation is deterministic [order-fair-queue]", () => {
   const items = [
     makeItem({ itemId: "a", priority: 5, slaTier: 3, weight: 2, ageMs: 60000 }),
     makeItem({ itemId: "b", priority: 5, slaTier: 3, weight: 2, ageMs: 60000 }),

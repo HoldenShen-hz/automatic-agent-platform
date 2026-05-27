@@ -34,7 +34,7 @@ function createSignal(overrides: Partial<FeedbackSignal>): FeedbackSignal {
   });
 }
 
-test("FeedbackImprovementService turns feedback into traceable candidates and gated release", () => {
+test("FeedbackImprovementService turns feedback into traceable candidates and gated release [feedback-improvement-service]", () => {
   const service = new FeedbackImprovementService();
   const ingested = service.ingest({
     taskId: "task_1",
@@ -82,7 +82,7 @@ test("FeedbackImprovementService turns feedback into traceable candidates and ga
   assert.equal(snapshot.trackingSummary.released, 1);
 });
 
-test("FeedbackImprovementService rejects candidates without source signals", () => {
+test("FeedbackImprovementService rejects candidates without source signals [feedback-improvement-service]", () => {
   const service = new FeedbackImprovementService();
   assert.throws(() => {
     service.createCandidate({

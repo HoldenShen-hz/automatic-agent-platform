@@ -71,7 +71,7 @@ function createResidencyPolicy(overrides: Partial<ResidencyPolicy> = {}): Reside
 // CrossRegionRoutingService Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("CrossRegionRoutingService.route selects lowest latency region", () => {
+test("CrossRegionRoutingService.route selects lowest latency region [multi-region]", () => {
   const service = new CrossRegionRoutingService();
   const regions = [
     createRegion({ regionId: "us-east", latencyScore: 30 }),
@@ -90,7 +90,7 @@ test("CrossRegionRoutingService.route selects lowest latency region", () => {
   assert.equal(decision.residencyDecision, "allowed");
 });
 
-test("CrossRegionRoutingService.route blocks regions by blockedRegionIds", () => {
+test("CrossRegionRoutingService.route blocks regions by blockedRegionIds [multi-region]", () => {
   const service = new CrossRegionRoutingService();
   const regions = [
     createRegion({ regionId: "us-east", latencyScore: 10 }),
@@ -108,7 +108,7 @@ test("CrossRegionRoutingService.route blocks regions by blockedRegionIds", () =>
   assert.equal(decision.selectedRegionId, "eu-west");
 });
 
-test("CrossRegionRoutingService.route respects allowedJurisdictions", () => {
+test("CrossRegionRoutingService.route respects allowedJurisdictions [multi-region]", () => {
   const service = new CrossRegionRoutingService();
   const regions = [
     createRegion({ regionId: "us-east", jurisdiction: "US", latencyScore: 10 }),
@@ -126,7 +126,7 @@ test("CrossRegionRoutingService.route respects allowedJurisdictions", () => {
   assert.equal(decision.selectedRegionId, "us-east");
 });
 
-test("CrossRegionRoutingService.route requires capabilities when specified", () => {
+test("CrossRegionRoutingService.route requires capabilities when specified [multi-region]", () => {
   const service = new CrossRegionRoutingService();
   const regions = [
     createRegion({ regionId: "us-east", capabilities: ["llm", "storage"] }),
@@ -144,7 +144,7 @@ test("CrossRegionRoutingService.route requires capabilities when specified", () 
   assert.equal(decision.selectedRegionId, "us-east");
 });
 
-test("CrossRegionRoutingService.route returns blocked when no valid region", () => {
+test("CrossRegionRoutingService.route returns blocked when no valid region [multi-region]", () => {
   const service = new CrossRegionRoutingService();
   const regions = [
     createRegion({ regionId: "cn-north", jurisdiction: "CN", status: "disabled" }),
@@ -161,7 +161,7 @@ test("CrossRegionRoutingService.route returns blocked when no valid region", () 
   assert.equal(decision.selectedRegionId, null);
 });
 
-test("CrossRegionRoutingService.route uses preferredRegionId when provided", () => {
+test("CrossRegionRoutingService.route uses preferredRegionId when provided [multi-region]", () => {
   const service = new CrossRegionRoutingService();
   const regions = [
     createRegion({ regionId: "us-east", latencyScore: 10 }),
@@ -179,7 +179,7 @@ test("CrossRegionRoutingService.route uses preferredRegionId when provided", () 
   assert.equal(decision.selectedRegionId, "eu-west");
 });
 
-test("CrossRegionRoutingService.route sets recoveryTopology with failover target", () => {
+test("CrossRegionRoutingService.route sets recoveryTopology with failover target [multi-region]", () => {
   const service = new CrossRegionRoutingService();
   const regions = [
     createRegion({ regionId: "us-east", latencyScore: 10 }),
@@ -197,7 +197,7 @@ test("CrossRegionRoutingService.route sets recoveryTopology with failover target
   assert.equal(decision.recoveryTopology.failoverRegionId, null);
 });
 
-test("CrossRegionRoutingService.route handles residencyAllowed false", () => {
+test("CrossRegionRoutingService.route handles residencyAllowed false [multi-region]", () => {
   const service = new CrossRegionRoutingService();
   const regions = [
     createRegion({ regionId: "us-east", residencyAllowed: false }),
@@ -219,12 +219,12 @@ test("CrossRegionRoutingService.route handles residencyAllowed false", () => {
 // selectPreferredRegion Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("selectPreferredRegion returns null for empty array", () => {
+test("selectPreferredRegion returns null for empty array [multi-region]", () => {
   const result = selectPreferredRegion([]);
   assert.equal(result, null);
 });
 
-test("selectPreferredRegion returns null when all regions disabled", () => {
+test("selectPreferredRegion returns null when all regions disabled [multi-region]", () => {
   const regions = [
     createRegion({ regionId: "us-east", status: "disabled" }),
     createRegion({ regionId: "eu-west", status: "disabled" }),
@@ -233,7 +233,7 @@ test("selectPreferredRegion returns null when all regions disabled", () => {
   assert.equal(result, null);
 });
 
-test("selectPreferredRegion filters out disabled regions", () => {
+test("selectPreferredRegion filters out disabled regions [multi-region]", () => {
   const regions = [
     createRegion({ regionId: "us-east", status: "disabled" }),
     createRegion({ regionId: "eu-west", status: "active" }),
@@ -243,7 +243,7 @@ test("selectPreferredRegion filters out disabled regions", () => {
   assert.equal(result.regionId, "eu-west");
 });
 
-test("selectPreferredRegion sorts by latencyScore ascending", () => {
+test("selectPreferredRegion sorts by latencyScore ascending [multi-region]", () => {
   const regions = [
     createRegion({ regionId: "ap-south", latencyScore: 150 }),
     createRegion({ regionId: "us-east", latencyScore: 30 }),
@@ -254,7 +254,7 @@ test("selectPreferredRegion sorts by latencyScore ascending", () => {
   assert.equal(result.regionId, "us-east");
 });
 
-test("selectPreferredRegion includes degraded status regions", () => {
+test("selectPreferredRegion includes degraded status regions [multi-region]", () => {
   const regions = [
     createRegion({ regionId: "us-east", status: "degraded", latencyScore: 10 }),
     createRegion({ regionId: "eu-west", status: "active", latencyScore: 50 }),
@@ -268,7 +268,7 @@ test("selectPreferredRegion includes degraded status regions", () => {
 // resolveRegionFailover Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("resolveRegionFailover returns no failover when primary healthy", () => {
+test("resolveRegionFailover returns no failover when primary healthy [multi-region]", () => {
   const decision = resolveRegionFailover({
     primaryHealthy: true,
     candidateRegionIds: ["eu-west"],
@@ -277,7 +277,7 @@ test("resolveRegionFailover returns no failover when primary healthy", () => {
   assert.equal(decision.rationale, "multi_region.primary_within_threshold");
 });
 
-test("resolveRegionFailover triggers on unhealthy primary", () => {
+test("resolveRegionFailover triggers on unhealthy primary [multi-region]", () => {
   const decision = resolveRegionFailover({
     primaryHealthy: false,
     candidateRegionIds: ["eu-west"],
@@ -287,7 +287,7 @@ test("resolveRegionFailover triggers on unhealthy primary", () => {
   assert.equal(decision.rationale, "multi_region.primary_unhealthy");
 });
 
-test("resolveRegionFailover triggers on latency breach", () => {
+test("resolveRegionFailover triggers on latency breach [multi-region]", () => {
   const decision = resolveRegionFailover({
     primaryHealthy: true,
     primaryLatencyMs: 300,
@@ -298,7 +298,7 @@ test("resolveRegionFailover triggers on latency breach", () => {
   assert.equal(decision.rationale, "multi_region.primary_latency_breached");
 });
 
-test("resolveRegionFailover triggers on error rate breach", () => {
+test("resolveRegionFailover triggers on error rate breach [multi-region]", () => {
   const decision = resolveRegionFailover({
     primaryHealthy: true,
     primaryErrorRate: 0.1,
@@ -309,7 +309,7 @@ test("resolveRegionFailover triggers on error rate breach", () => {
   assert.equal(decision.rationale, "multi_region.primary_error_rate_breached");
 });
 
-test("resolveRegionFailover prefers preferredRegionId when in candidates", () => {
+test("resolveRegionFailover prefers preferredRegionId when in candidates [multi-region]", () => {
   const decision = resolveRegionFailover({
     primaryHealthy: false,
     candidateRegionIds: ["eu-west", "ap-south"],
@@ -318,7 +318,7 @@ test("resolveRegionFailover prefers preferredRegionId when in candidates", () =>
   assert.equal(decision.targetRegionId, "ap-south");
 });
 
-test("resolveRegionFailover ignores preferredRegionId when not in candidates", () => {
+test("resolveRegionFailover ignores preferredRegionId when not in candidates [multi-region]", () => {
   const decision = resolveRegionFailover({
     primaryHealthy: false,
     candidateRegionIds: ["eu-west", "ap-south"],
@@ -327,7 +327,7 @@ test("resolveRegionFailover ignores preferredRegionId when not in candidates", (
   assert.equal(decision.targetRegionId, "eu-west");
 });
 
-test("resolveRegionFailover returns no candidate when empty candidates", () => {
+test("resolveRegionFailover returns no candidate when empty candidates [multi-region]", () => {
   const decision = resolveRegionFailover({
     primaryHealthy: false,
     candidateRegionIds: [],
@@ -340,7 +340,7 @@ test("resolveRegionFailover returns no candidate when empty candidates", () => {
 // RegionHealthCheckService Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("RegionHealthCheckService.registerRegion adds region to monitoring", () => {
+test("RegionHealthCheckService.registerRegion adds region to monitoring [multi-region]", () => {
   const service = new RegionHealthCheckService();
   const config: RegionHealthCheckConfig = {
     regionId: "us-east",
@@ -360,7 +360,7 @@ test("RegionHealthCheckService.registerRegion adds region to monitoring", () => 
   assert.equal(service.getHealthStatus("us-east"), "unknown");
 });
 
-test("RegionHealthCheckService.checkRegion returns unknown for unregistered region", async () => {
+test("RegionHealthCheckService.checkRegion returns unknown for unregistered region [multi-region]", async () => {
   const service = new RegionHealthCheckService();
   const result = await service.checkRegion("unknown-region");
 
@@ -369,7 +369,7 @@ test("RegionHealthCheckService.checkRegion returns unknown for unregistered regi
   assert.equal(result.errorMessage, "Region not registered");
 });
 
-test("RegionHealthCheckService.unregisterRegion removes region from monitoring", () => {
+test("RegionHealthCheckService.unregisterRegion removes region from monitoring [multi-region]", () => {
   const service = new RegionHealthCheckService();
   const config = createHealthConfig("us-east");
   service.registerRegion(config);
@@ -379,24 +379,24 @@ test("RegionHealthCheckService.unregisterRegion removes region from monitoring",
   assert.equal(result, null);
 });
 
-test("RegionHealthCheckService.getHealthSummary returns null for unknown region", () => {
+test("RegionHealthCheckService.getHealthSummary returns null for unknown region [multi-region]", () => {
   const service = new RegionHealthCheckService();
   const result = service.getHealthSummary("unknown");
   assert.equal(result, null);
 });
 
-test("RegionHealthCheckService.shouldFailover returns false for unregistered region", () => {
+test("RegionHealthCheckService.shouldFailover returns false for unregistered region [multi-region]", () => {
   const service = new RegionHealthCheckService();
   assert.equal(service.shouldFailover("unknown-region"), false);
 });
 
-test("RegionHealthCheckService.getRegionsNeedingFailover returns empty for no failures", () => {
+test("RegionHealthCheckService.getRegionsNeedingFailover returns empty for no failures [multi-region]", () => {
   const service = new RegionHealthCheckService();
   service.registerRegion(createHealthConfig("us-east"));
   assert.deepEqual(service.getRegionsNeedingFailover(), []);
 });
 
-test("RegionHealthCheckService.resetHealthState clears failure count", () => {
+test("RegionHealthCheckService.resetHealthState clears failure count [multi-region]", () => {
   const service = new RegionHealthCheckService();
   const config = createHealthConfig("us-east");
   service.registerRegion(config);
@@ -407,7 +407,7 @@ test("RegionHealthCheckService.resetHealthState clears failure count", () => {
   assert.equal(result.consecutiveFailures, 0);
 });
 
-test("RegionHealthCheckService.getThresholds returns thresholds when registered", () => {
+test("RegionHealthCheckService.getThresholds returns thresholds when registered [multi-region]", () => {
   const service = new RegionHealthCheckService();
   const config = createHealthConfig("us-east");
   service.registerRegion(config);
@@ -417,7 +417,7 @@ test("RegionHealthCheckService.getThresholds returns thresholds when registered"
   assert.equal(thresholds.maxLatencyMs, 200);
 });
 
-test("RegionHealthCheckService.getAllHealthStatuses returns map of all statuses", () => {
+test("RegionHealthCheckService.getAllHealthStatuses returns map of all statuses [multi-region]", () => {
   const service = new RegionHealthCheckService();
   service.registerRegion(createHealthConfig("us-east"));
   service.registerRegion(createHealthConfig("eu-west"));
@@ -430,7 +430,7 @@ test("RegionHealthCheckService.getAllHealthStatuses returns map of all statuses"
 // RegionFailoverOrchestrator Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("RegionFailoverOrchestrator.registerRegion delegates to health service", () => {
+test("RegionFailoverOrchestrator.registerRegion delegates to health service [multi-region]", () => {
   const orchestrator = new RegionFailoverOrchestrator();
   orchestrator.registerRegion(createHealthConfig("us-east"));
 
@@ -439,7 +439,7 @@ test("RegionFailoverOrchestrator.registerRegion delegates to health service", ()
   assert.equal(summary.regionId, "us-east");
 });
 
-test("RegionFailoverOrchestrator.selectFailoverTarget returns null when no healthy regions", () => {
+test("RegionFailoverOrchestrator.selectFailoverTarget returns null when no healthy regions [multi-region]", () => {
   const orchestrator = new RegionFailoverOrchestrator();
   orchestrator.registerRegion(createHealthConfig("us-east"));
 
@@ -447,7 +447,7 @@ test("RegionFailoverOrchestrator.selectFailoverTarget returns null when no healt
   assert.equal(target, null);
 });
 
-test("RegionFailoverOrchestrator.addFailoverListener registers listener", () => {
+test("RegionFailoverOrchestrator.addFailoverListener registers listener [multi-region]", () => {
   const orchestrator = new RegionFailoverOrchestrator();
   const listener = (_source: string, _target: string) => {};
 
@@ -456,7 +456,7 @@ test("RegionFailoverOrchestrator.addFailoverListener registers listener", () => 
   // If remove doesn't throw, listener was added
 });
 
-test("RegionFailoverOrchestrator.orchestrateFailover returns failure when no target", async () => {
+test("RegionFailoverOrchestrator.orchestrateFailover returns failure when no target [multi-region]", async () => {
   const orchestrator = new RegionFailoverOrchestrator();
   orchestrator.registerRegion(createHealthConfig("us-east"));
 
@@ -465,7 +465,7 @@ test("RegionFailoverOrchestrator.orchestrateFailover returns failure when no tar
   assert.equal(result.targetRegionId, null);
 });
 
-test("RegionFailoverOrchestrator.checkAndFailover returns no failover when healthy", async () => {
+test("RegionFailoverOrchestrator.checkAndFailover returns no failover when healthy [multi-region]", async () => {
   const orchestrator = new RegionFailoverOrchestrator();
   orchestrator.registerRegion(createHealthConfig("us-east"));
 
@@ -477,7 +477,7 @@ test("RegionFailoverOrchestrator.checkAndFailover returns no failover when healt
 // CDCReplicationService Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("CDCReplicationService.registerReplication adds config", () => {
+test("CDCReplicationService.registerReplication adds config [multi-region]", () => {
   const service = new CDCReplicationService();
   service.registerReplication({
     sourceRegionId: "us-east",
@@ -493,36 +493,36 @@ test("CDCReplicationService.registerReplication adds config", () => {
   assert.equal(config.sourceRegionId, "us-east");
 });
 
-test("CDCReplicationService.getCheckpoint returns undefined for unregistered pair", () => {
+test("CDCReplicationService.getCheckpoint returns undefined for unregistered pair [multi-region]", () => {
   const service = new CDCReplicationService();
   const checkpoint = service.getCheckpoint("us-east", "eu-west");
   assert.equal(checkpoint, undefined);
 });
 
-test("CDCReplicationService.isEnabled returns false when not registered", () => {
+test("CDCReplicationService.isEnabled returns false when not registered [multi-region]", () => {
   const service = new CDCReplicationService();
   assert.equal(service.isEnabled("us-east", "eu-west"), false);
 });
 
-test("CDCReplicationService.getStatus returns idle when no queue", () => {
+test("CDCReplicationService.getStatus returns idle when no queue [multi-region]", () => {
   const service = new CDCReplicationService();
   const status = service.getStatus("us-east", "eu-west");
   assert.equal(status, "idle");
 });
 
-test("CDCReplicationService.getRegisteredRegionPairs returns empty when none registered", () => {
+test("CDCReplicationService.getRegisteredRegionPairs returns empty when none registered [multi-region]", () => {
   const service = new CDCReplicationService();
   const pairs = service.getRegisteredRegionPairs();
   assert.deepEqual(pairs, []);
 });
 
-test("CDCReplicationService.getReplicationLag returns total events when no checkpoint", () => {
+test("CDCReplicationService.getReplicationLag returns total events when no checkpoint [multi-region]", () => {
   const service = new CDCReplicationService();
   const lag = service.getReplicationLag("us-east", "eu-west", 100);
   assert.equal(lag, 100);
 });
 
-test("CDCReplicationService.recordFailure logs error without throwing", () => {
+test("CDCReplicationService.recordFailure logs error without throwing [multi-region]", () => {
   const service = new CDCReplicationService();
   service.registerReplication({
     sourceRegionId: "us-east",
@@ -550,7 +550,7 @@ test("CDCReplicationService.recordFailure logs error without throwing", () => {
 // MultiRegionReplicationCoordinator Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("MultiRegionReplicationCoordinator.setupRegionReplication registers configs", () => {
+test("MultiRegionReplicationCoordinator.setupRegionReplication registers configs [multi-region]", () => {
   const coordinator = new MultiRegionReplicationCoordinator();
   coordinator.setupRegionReplication("us-east", [
     { targetRegionId: "eu-west" },
@@ -561,7 +561,7 @@ test("MultiRegionReplicationCoordinator.setupRegionReplication registers configs
   assert.equal(replications.length, 2);
 });
 
-test("MultiRegionReplicationCoordinator.getCDCService returns service instance", () => {
+test("MultiRegionReplicationCoordinator.getCDCService returns service instance [multi-region]", () => {
   const coordinator = new MultiRegionReplicationCoordinator();
   const cdc = coordinator.getCDCService();
   assert.ok(cdc instanceof CDCReplicationService);
@@ -571,7 +571,7 @@ test("MultiRegionReplicationCoordinator.getCDCService returns service instance",
 // ReplicationEventBuffer Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("ReplicationEventBuffer.size returns current buffer size", () => {
+test("ReplicationEventBuffer.size returns current buffer size [multi-region]", () => {
   const buffer = new ReplicationEventBuffer(10);
   assert.equal(buffer.size(), 0);
 
@@ -589,7 +589,7 @@ test("ReplicationEventBuffer.size returns current buffer size", () => {
   assert.equal(buffer.size(), 1);
 });
 
-test("ReplicationEventBuffer.add returns true when max size reached", () => {
+test("ReplicationEventBuffer.add returns true when max size reached [multi-region]", () => {
   const buffer = new ReplicationEventBuffer(2);
   const event1 = createReplicationEvent("event-1");
   const event2 = createReplicationEvent("event-2");
@@ -598,7 +598,7 @@ test("ReplicationEventBuffer.add returns true when max size reached", () => {
   assert.equal(buffer.add(event2), true); // max size reached
 });
 
-test("ReplicationEventBuffer.flush clears buffer and returns events", () => {
+test("ReplicationEventBuffer.flush clears buffer and returns events [multi-region]", () => {
   const buffer = new ReplicationEventBuffer(10);
   buffer.add(createReplicationEvent("event-1"));
   buffer.add(createReplicationEvent("event-2"));
@@ -608,7 +608,7 @@ test("ReplicationEventBuffer.flush clears buffer and returns events", () => {
   assert.equal(buffer.size(), 0);
 });
 
-test("ReplicationEventBuffer.shouldFlush returns false for empty buffer", () => {
+test("ReplicationEventBuffer.shouldFlush returns false for empty buffer [multi-region]", () => {
   const buffer = new ReplicationEventBuffer(10, 60000);
   assert.equal(buffer.shouldFlush(), false);
 });
@@ -617,19 +617,19 @@ test("ReplicationEventBuffer.shouldFlush returns false for empty buffer", () => 
 // computeChecksum Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("computeChecksum produces sha256 hash by default", () => {
+test("computeChecksum produces sha256 hash by default [multi-region]", () => {
   const checksum = computeChecksum({ data: "test" });
   assert.equal(checksum.length, 64); // SHA-256 produces 64 hex chars
 });
 
-test("computeChecksum rejects md5 when specified", () => {
+test("computeChecksum rejects md5 when specified [multi-region]", () => {
   assert.throws(
     () => computeChecksum({ data: "test" }, "md5" as never),
     /data_replicator\.unsupported_checksum_algorithm:md5/,
   );
 });
 
-test("computeChecksum produces same result for same input", () => {
+test("computeChecksum produces same result for same input [multi-region]", () => {
   const payload = { key: "value" };
   const checksum1 = computeChecksum(payload);
   const checksum2 = computeChecksum(payload);
@@ -640,7 +640,7 @@ test("computeChecksum produces same result for same input", () => {
 // createDataReplicator Factory Function Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("createDataReplicator returns DataReplicatorService instance", () => {
+test("createDataReplicator returns DataReplicatorService instance [multi-region]", () => {
   const replicator = createDataReplicator("us-east", ["eu-west"], {
     sourceRegionId: "us-east",
     targetRegionIds: ["eu-west"],
@@ -650,7 +650,7 @@ test("createDataReplicator returns DataReplicatorService instance", () => {
   assert.equal(replicator.getBuffer("eu-west")?.size() ?? -1, 0);
 });
 
-test("createDataReplicator with custom options", () => {
+test("createDataReplicator with custom options [multi-region]", () => {
   const replicator = createDataReplicator("us-east", ["eu-west"], {
     sourceRegionId: "us-east",
     targetRegionIds: ["eu-west"],
@@ -665,7 +665,7 @@ test("createDataReplicator with custom options", () => {
 // RegionDescriptorSchema Validation Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("RegionDescriptorSchema accepts valid minimal input", () => {
+test("RegionDescriptorSchema accepts valid minimal input [multi-region]", () => {
   const result = RegionDescriptorSchema.safeParse({
     regionId: "us-east",
     jurisdiction: "US",
@@ -676,7 +676,7 @@ test("RegionDescriptorSchema accepts valid minimal input", () => {
   assert.equal(result.success, true);
 });
 
-test("RegionDescriptorSchema rejects empty regionId", () => {
+test("RegionDescriptorSchema rejects empty regionId [multi-region]", () => {
   const result = RegionDescriptorSchema.safeParse({
     regionId: "",
     jurisdiction: "US",
@@ -684,7 +684,7 @@ test("RegionDescriptorSchema rejects empty regionId", () => {
   assert.equal(result.success, false);
 });
 
-test("RegionDescriptorSchema rejects short countryCode", () => {
+test("RegionDescriptorSchema rejects short countryCode [multi-region]", () => {
   const result = RegionDescriptorSchema.safeParse({
     regionId: "us-east",
     countryCode: "U",
@@ -693,7 +693,7 @@ test("RegionDescriptorSchema rejects short countryCode", () => {
   assert.equal(result.success, false);
 });
 
-test("RegionDescriptorSchema accepts all valid status values", () => {
+test("RegionDescriptorSchema accepts all valid status values [multi-region]", () => {
   for (const status of ["active", "standby", "draining"]) {
     const result = RegionDescriptorSchema.safeParse({
       regionId: "us-east",

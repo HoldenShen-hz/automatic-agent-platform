@@ -11,7 +11,7 @@
  * The service creates a standardized skill structure on disk and optionally registers
  * the skill with a governance service for lifecycle management.
  *
- * @see {@link https://github.com/anomalyco/automatic_agent/blob/main/docs_zh/contracts/sandbox_contract.md}
+ * @see {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/contracts/sandbox_contract.md}
  */
 
 import {

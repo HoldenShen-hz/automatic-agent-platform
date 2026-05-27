@@ -137,7 +137,7 @@ const createWorkflowDefinition = (
 // PluginExecutionService Tests (Legacy)
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("PluginExecutionService.register() adds plugin to registry", () => {
+test("PluginExecutionService.register() adds plugin to registry [plugin-executor]", () => {
   const service = new PluginExecutionService();
   const plugin: PluginRegistration = {
     pluginId: "legacy-plugin",
@@ -156,7 +156,7 @@ test("PluginExecutionService.register() adds plugin to registry", () => {
   assert.equal(plugins[0]!.pluginId, "legacy-plugin");
 });
 
-test("PluginExecutionService.execute() throws for unregistered plugin", async () => {
+test("PluginExecutionService.execute() throws for unregistered plugin [plugin-executor]", async () => {
   const service = new PluginExecutionService();
   const request: PluginExecutionRequest = {
     pluginId: "nonexistent",
@@ -173,7 +173,7 @@ test("PluginExecutionService.execute() throws for unregistered plugin", async ()
   );
 });
 
-test("PluginExecutionService.execute() throws for disallowed action", async () => {
+test("PluginExecutionService.execute() throws for disallowed action [plugin-executor]", async () => {
   const service = new PluginExecutionService();
   const plugin: PluginRegistration = {
     pluginId: "plugin-with-actions",
@@ -203,7 +203,7 @@ test("PluginExecutionService.execute() throws for disallowed action", async () =
   );
 });
 
-test("PluginExecutionService.execute() returns rejected status for explicit rejection", async () => {
+test("PluginExecutionService.execute() returns rejected status for explicit rejection [plugin-executor]", async () => {
   const service = new PluginExecutionService();
   const plugin: PluginRegistration = {
     pluginId: "rejecting-plugin",
@@ -229,7 +229,7 @@ test("PluginExecutionService.execute() returns rejected status for explicit reje
   assert.equal(result.status, "rejected");
 });
 
-test("PluginExecutionService.listPlugins() returns copy of plugins array", () => {
+test("PluginExecutionService.listPlugins() returns copy of plugins array [plugin-executor]", () => {
   const service = new PluginExecutionService();
   const plugin: PluginRegistration = {
     pluginId: "test-plugin",
@@ -249,12 +249,12 @@ test("PluginExecutionService.listPlugins() returns copy of plugins array", () =>
 // PluginExecutorService Lifecycle State Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("PluginExecutorService.getState() returns null for unregistered plugin", () => {
+test("PluginExecutorService.getState() returns null for unregistered plugin [plugin-executor]", () => {
   const service = new PluginExecutorService();
   assert.equal(service.getState("nonexistent"), null);
 });
 
-test("PluginExecutorService.load() throws for unregistered plugin", async () => {
+test("PluginExecutorService.load() throws for unregistered plugin [plugin-executor]", async () => {
   const service = new PluginExecutorService();
   await assert.rejects(
     async () => service.load("nonexistent-plugin"),
@@ -262,7 +262,7 @@ test("PluginExecutorService.load() throws for unregistered plugin", async () => 
   );
 });
 
-test("PluginExecutorService.deactivate() is idempotent for disabled plugin", async () => {
+test("PluginExecutorService.deactivate() is idempotent for disabled plugin [plugin-executor]", async () => {
   const service = new PluginExecutorService();
   const manifest = createTestManifest();
   const hooks = createTestHooks();
@@ -276,7 +276,7 @@ test("PluginExecutorService.deactivate() is idempotent for disabled plugin", asy
   await service.deactivate("test-plugin");
 });
 
-test("PluginExecutorService.deactivate() transitions to inactive", async () => {
+test("PluginExecutorService.deactivate() transitions to inactive [plugin-executor]", async () => {
   const service = new PluginExecutorService();
   const manifest = createTestManifest();
   let deactivateCalled = false;
@@ -295,7 +295,7 @@ test("PluginExecutorService.deactivate() transitions to inactive", async () => {
   assert.equal(deactivateCalled, true);
 });
 
-test("PluginExecutorService.register() twice with same pluginId throws", () => {
+test("PluginExecutorService.register() twice with same pluginId throws [plugin-executor]", () => {
   const service = new PluginExecutorService();
   const manifest = createTestManifest();
   const hooks = createTestHooks();
@@ -312,7 +312,7 @@ test("PluginExecutorService.register() twice with same pluginId throws", () => {
 // PluginExecutorService Execution Edge Cases
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("PluginExecutorService.execute() with retriever action returns output", async () => {
+test("PluginExecutorService.execute() with retriever action returns output [plugin-executor]", async () => {
   const service = new PluginExecutorService();
   const manifest = createTestManifest({ spiTypes: ["retriever"] });
   const hooks = createTestHooks({
@@ -329,7 +329,7 @@ test("PluginExecutorService.execute() with retriever action returns output", asy
   assert.ok(result.output);
 });
 
-test("PluginExecutorService.execute() with validator action returns output", async () => {
+test("PluginExecutorService.execute() with validator action returns output [plugin-executor]", async () => {
   const service = new PluginExecutorService();
   const manifest = createTestManifest({ spiTypes: ["validator"] });
   const hooks = createTestHooks({
@@ -345,7 +345,7 @@ test("PluginExecutorService.execute() with validator action returns output", asy
   assert.equal(result.status, "ok");
 });
 
-test("PluginExecutorService.execute() records error count on failure", async () => {
+test("PluginExecutorService.execute() records error count on failure [plugin-executor]", async () => {
   const service = new PluginExecutorService();
   const manifest = createTestManifest({
     spiTypes: ["retriever"],
@@ -385,7 +385,7 @@ test("PluginExecutorService.execute() records error count on failure", async () 
   // This test verifies error tracking is working
 });
 
-test("PluginExecutorService.execute() writes artifact on success", async () => {
+test("PluginExecutorService.execute() writes artifact on success [plugin-executor]", async () => {
   const service = new PluginExecutorService();
   const manifest = createTestManifest({ spiTypes: ["retriever"] });
   const hooks = createTestHooks({
@@ -402,7 +402,7 @@ test("PluginExecutorService.execute() writes artifact on success", async () => {
   assert.equal(result.status, "ok");
 });
 
-test("PluginExecutorService.execute() writes artifact on error", async () => {
+test("PluginExecutorService.execute() writes artifact on error [plugin-executor]", async () => {
   const service = new PluginExecutorService();
   const manifest = createTestManifest({
     spiTypes: ["retriever"],
@@ -438,7 +438,7 @@ test("PluginExecutorService.execute() writes artifact on error", async () => {
   assert.ok(result.error);
 });
 
-test("PluginExecutorService.execute() with null tenantId works", async () => {
+test("PluginExecutorService.execute() with null tenantId works [plugin-executor]", async () => {
   const service = new PluginExecutorService();
   const manifest = createTestManifest({ spiTypes: ["retriever"] });
   const hooks = createTestHooks({
@@ -455,7 +455,7 @@ test("PluginExecutorService.execute() with null tenantId works", async () => {
   assert.equal(result.status, "ok");
 });
 
-test("PluginExecutorService.unregister() throws for unknown pluginId", async () => {
+test("PluginExecutorService.unregister() throws for unknown pluginId [plugin-executor]", async () => {
   const service = new PluginExecutorService();
 
   await assert.rejects(
@@ -468,7 +468,7 @@ test("PluginExecutorService.unregister() throws for unknown pluginId", async () 
 // PluginExecutorService Sandbox Tier Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("PluginExecutorService.execute() with process tier succeeds", async () => {
+test("PluginExecutorService.execute() with process tier succeeds [plugin-executor]", async () => {
   const service = new PluginExecutorService();
   const manifest = createTestManifest({ spiTypes: ["retriever"] });
   const hooks = createTestHooks({
@@ -485,7 +485,7 @@ test("PluginExecutorService.execute() with process tier succeeds", async () => {
   assert.equal(result.status, "ok");
 });
 
-test("PluginExecutorService.execute() with scoped_external_access tier and allowedExternalDomains", async () => {
+test("PluginExecutorService.execute() with scoped_external_access tier and allowedExternalDomains [plugin-executor]", async () => {
   const service = new PluginExecutorService();
   const manifest = createTestManifest({
     spiTypes: ["retriever"],
@@ -522,7 +522,7 @@ test("PluginExecutorService.execute() with scoped_external_access tier and allow
 // ScopedExternalAccessSandbox Edge Cases
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("ScopedExternalAccessSandbox with empty allowedDomains blocks all", async () => {
+test("ScopedExternalAccessSandbox with empty allowedDomains blocks all [plugin-executor]", async () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: [],
     rateLimitPerMinute: 60,
@@ -532,7 +532,7 @@ test("ScopedExternalAccessSandbox with empty allowedDomains blocks all", async (
   assert.equal(result, false);
 });
 
-test("ScopedExternalAccessSandbox.getRateLimitStatus() returns empty for new sandbox", () => {
+test("ScopedExternalAccessSandbox.getRateLimitStatus() returns empty for new sandbox [plugin-executor]", () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["example.com"],
     rateLimitPerMinute: 60,
@@ -542,7 +542,7 @@ test("ScopedExternalAccessSandbox.getRateLimitStatus() returns empty for new san
   assert.deepEqual(status, {});
 });
 
-test("ScopedExternalAccessSandbox handles domain with subdomain", async () => {
+test("ScopedExternalAccessSandbox handles domain with subdomain [plugin-executor]", async () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["api.example.com"],
     rateLimitPerMinute: 60,
@@ -557,7 +557,7 @@ test("ScopedExternalAccessSandbox handles domain with subdomain", async () => {
   assert.equal(allowed, true);
 });
 
-test("ScopedExternalAccessSandbox default config values", async () => {
+test("ScopedExternalAccessSandbox default config values [plugin-executor]", async () => {
   const sandbox = new ScopedExternalAccessSandbox();
 
   // Should have defaults - empty allowedDomains blocks all
@@ -569,7 +569,7 @@ test("ScopedExternalAccessSandbox default config values", async () => {
   assert.equal(allowed, false);
 });
 
-test("ScopedExternalAccessSandbox.executeScopedRequest handles network errors gracefully", async () => {
+test("ScopedExternalAccessSandbox.executeScopedRequest handles network errors gracefully [plugin-executor]", async () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["example.com"],
     rateLimitPerMinute: 60,
@@ -585,12 +585,12 @@ test("ScopedExternalAccessSandbox.executeScopedRequest handles network errors gr
   assert.equal(typeof result.status, "number");
 });
 
-test("createScopedExternalAccessSandbox factory creates sandbox", () => {
+test("createScopedExternalAccessSandbox factory creates sandbox [plugin-executor]", () => {
   const sandbox = createScopedExternalAccessSandbox(["test.com"], { rateLimitPerMinute: 30 });
   assert.ok(sandbox instanceof ScopedExternalAccessSandbox);
 });
 
-test("ScopedExternalAccessSandbox.validateResponseSize handles boolean", () => {
+test("ScopedExternalAccessSandbox.validateResponseSize handles boolean [plugin-executor]", () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: [],
     maxResponseSizeBytes: 100,
@@ -602,7 +602,7 @@ test("ScopedExternalAccessSandbox.validateResponseSize handles boolean", () => {
   assert.equal(sandbox.validateResponseSize(false), true);
 });
 
-test("ScopedExternalAccessSandbox.validateResponseSize handles arrays", () => {
+test("ScopedExternalAccessSandbox.validateResponseSize handles arrays [plugin-executor]", () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: [],
     maxResponseSizeBytes: 50,
@@ -616,7 +616,7 @@ test("ScopedExternalAccessSandbox.validateResponseSize handles arrays", () => {
   assert.equal(sandbox.validateResponseSize(largeArray), false);
 });
 
-test("ScopedExternalAccessSandbox.validateResponseSize handles numbers", () => {
+test("ScopedExternalAccessSandbox.validateResponseSize handles numbers [plugin-executor]", () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: [],
     maxResponseSizeBytes: 10,
@@ -633,7 +633,7 @@ test("ScopedExternalAccessSandbox.validateResponseSize handles numbers", () => {
 // BrowserExecutor Edge Cases
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("BrowserExecutor validates URL with ftp protocol", async () => {
+test("BrowserExecutor validates URL with ftp protocol [plugin-executor]", async () => {
   const executor = new BrowserExecutor();
   const context = createBrowserTestContext();
   const sessionId = executor.createSession(context);
@@ -646,7 +646,7 @@ test("BrowserExecutor validates URL with ftp protocol", async () => {
   assert.ok(result.error?.includes("Only http and https URLs are allowed"));
 });
 
-test("BrowserExecutor validates URL with javascript protocol", async () => {
+test("BrowserExecutor validates URL with javascript protocol [plugin-executor]", async () => {
   const executor = new BrowserExecutor();
   const context = createBrowserTestContext();
   const sessionId = executor.createSession(context);
@@ -658,7 +658,7 @@ test("BrowserExecutor validates URL with javascript protocol", async () => {
   assert.equal(result.status, "error");
 });
 
-test("BrowserExecutor.navigate() updates session URL on success", async () => {
+test("BrowserExecutor.navigate() updates session URL on success [plugin-executor]", async () => {
   const executor = new BrowserExecutor();
   const context = createBrowserTestContext();
   const sessionId = executor.createSession(context);
@@ -669,7 +669,7 @@ test("BrowserExecutor.navigate() updates session URL on success", async () => {
   assert.equal(session?.url, "https://example.com");
 });
 
-test("BrowserExecutor.navigate() with custom waitUntil", async () => {
+test("BrowserExecutor.navigate() with custom waitUntil [plugin-executor]", async () => {
   const executor = new BrowserExecutor();
   const context = createBrowserTestContext();
   const sessionId = executor.createSession(context);
@@ -682,7 +682,7 @@ test("BrowserExecutor.navigate() with custom waitUntil", async () => {
   assert.equal(result.status, "ok");
 });
 
-test("BrowserExecutor.click() with multiple clicks", async () => {
+test("BrowserExecutor.click() with multiple clicks [plugin-executor]", async () => {
   const executor = new BrowserExecutor();
   const context = createBrowserTestContext();
   const sessionId = executor.createSession(context);
@@ -697,7 +697,7 @@ test("BrowserExecutor.click() with multiple clicks", async () => {
   assert.equal(output.clickCount, 3);
 });
 
-test("BrowserExecutor.input() with empty text", async () => {
+test("BrowserExecutor.input() with empty text [plugin-executor]", async () => {
   const executor = new BrowserExecutor();
   const context = createBrowserTestContext();
   const sessionId = executor.createSession(context);
@@ -710,7 +710,7 @@ test("BrowserExecutor.input() with empty text", async () => {
   assert.equal(result.status, "ok");
 });
 
-test("BrowserExecutor.waitForSelector() with attached state", async () => {
+test("BrowserExecutor.waitForSelector() with attached state [plugin-executor]", async () => {
   const executor = new BrowserExecutor();
   const context = createBrowserTestContext();
   const sessionId = executor.createSession(context);
@@ -723,7 +723,7 @@ test("BrowserExecutor.waitForSelector() with attached state", async () => {
   assert.equal(result.status, "ok");
 });
 
-test("BrowserExecutor.waitForSelector() with detached state", async () => {
+test("BrowserExecutor.waitForSelector() with detached state [plugin-executor]", async () => {
   const executor = new BrowserExecutor();
   const context = createBrowserTestContext();
   const sessionId = executor.createSession(context);
@@ -736,7 +736,7 @@ test("BrowserExecutor.waitForSelector() with detached state", async () => {
   assert.equal(result.status, "ok");
 });
 
-test("BrowserExecutor.waitForSelector() with hidden state", async () => {
+test("BrowserExecutor.waitForSelector() with hidden state [plugin-executor]", async () => {
   const executor = new BrowserExecutor();
   const context = createBrowserTestContext();
   const sessionId = executor.createSession(context);
@@ -749,7 +749,7 @@ test("BrowserExecutor.waitForSelector() with hidden state", async () => {
   assert.equal(result.status, "ok");
 });
 
-test("BrowserExecutor.getSession() after close returns null", async () => {
+test("BrowserExecutor.getSession() after close returns null [plugin-executor]", async () => {
   const executor = new BrowserExecutor();
   const context = createBrowserTestContext();
   const sessionId = executor.createSession(context);
@@ -758,7 +758,7 @@ test("BrowserExecutor.getSession() after close returns null", async () => {
   assert.equal(executor.getSession(sessionId), null);
 });
 
-test("BrowserExecutor.listSessions() after all closed returns empty", async () => {
+test("BrowserExecutor.listSessions() after all closed returns empty [plugin-executor]", async () => {
   const executor = new BrowserExecutor();
   const context = createBrowserTestContext();
   const sessionId = executor.createSession(context);
@@ -767,7 +767,7 @@ test("BrowserExecutor.listSessions() after all closed returns empty", async () =
   assert.equal(executor.listSessions().length, 0);
 });
 
-test("BrowserExecutor.closeSession() marks session as inactive", () => {
+test("BrowserExecutor.closeSession() marks session as inactive [plugin-executor]", () => {
   const executor = new BrowserExecutor();
   const context = createBrowserTestContext();
   const sessionId = executor.createSession(context);
@@ -779,7 +779,7 @@ test("BrowserExecutor.closeSession() marks session as inactive", () => {
   assert.equal(session, null, "Session should be removed after close");
 });
 
-test("BrowserExecutor.closeSession() can be called multiple times if session already deleted", () => {
+test("BrowserExecutor.closeSession() can be called multiple times if session already deleted [plugin-executor]", () => {
   const executor = new BrowserExecutor();
   const context = createBrowserTestContext();
   const sessionId = executor.createSession(context);
@@ -796,21 +796,21 @@ test("BrowserExecutor.closeSession() can be called multiple times if session alr
 // SubWorkflowExecutor Edge Cases
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("SubWorkflowExecutor.getStep() returns null for unknown workflow", () => {
+test("SubWorkflowExecutor.getStep() returns null for unknown workflow [plugin-executor]", () => {
   const executor = new SubWorkflowExecutor();
 
   const step = executor.getStep("nonexistent", "step-1");
   assert.equal(step, null);
 });
 
-test("SubWorkflowExecutor.getSteps() returns empty array for unknown workflow", () => {
+test("SubWorkflowExecutor.getSteps() returns empty array for unknown workflow [plugin-executor]", () => {
   const executor = new SubWorkflowExecutor();
 
   const steps = executor.getSteps("nonexistent");
   assert.deepEqual(steps, []);
 });
 
-test("SubWorkflowExecutor.executeWorkflow() throws for cancelled workflow", async () => {
+test("SubWorkflowExecutor.executeWorkflow() throws for cancelled workflow [plugin-executor]", async () => {
   const executor = new SubWorkflowExecutor();
   const context: SubWorkflowContext = {
     executionId: "exec",
@@ -842,7 +842,7 @@ test("SubWorkflowExecutor.executeWorkflow() throws for cancelled workflow", asyn
   );
 });
 
-test("SubWorkflowExecutor.skipStep() marks step output with skipped reason", () => {
+test("SubWorkflowExecutor.skipStep() marks step output with skipped reason [plugin-executor]", () => {
   const executor = new SubWorkflowExecutor();
   const context: SubWorkflowContext = {
     executionId: "exec",
@@ -870,7 +870,7 @@ test("SubWorkflowExecutor.skipStep() marks step output with skipped reason", () 
   assert.deepEqual(step?.output, { skipped: true, reason: "Business reason" });
 });
 
-test("SubWorkflowExecutor.retryStep() increments retry count and re-executes", async () => {
+test("SubWorkflowExecutor.retryStep() increments retry count and re-executes [plugin-executor]", async () => {
   const executor = new SubWorkflowExecutor({ enableCheckpointing: false });
   const context: SubWorkflowContext = {
     executionId: "exec",
@@ -905,7 +905,7 @@ test("SubWorkflowExecutor.retryStep() increments retry count and re-executes", a
   assert.equal(retried.error, undefined);
 });
 
-test("SubWorkflowExecutor.performRollbackFromId() throws for rollback policy none", async () => {
+test("SubWorkflowExecutor.performRollbackFromId() throws for rollback policy none [plugin-executor]", async () => {
   const executor = new SubWorkflowExecutor({ enableCheckpointing: false });
   const context: SubWorkflowContext = {
     executionId: "exec",
@@ -934,7 +934,7 @@ test("SubWorkflowExecutor.performRollbackFromId() throws for rollback policy non
   );
 });
 
-test("SubWorkflowExecutor.cancelWorkflow() with manual rollback does not rollback", async () => {
+test("SubWorkflowExecutor.cancelWorkflow() with manual rollback does not rollback [plugin-executor]", async () => {
   const executor = new SubWorkflowExecutor({ enableCheckpointing: false });
   const context: SubWorkflowContext = {
     executionId: "exec",
@@ -963,7 +963,7 @@ test("SubWorkflowExecutor.cancelWorkflow() with manual rollback does not rollbac
   assert.notEqual(step?.status, "rolled_back");
 });
 
-test("SubWorkflowExecutor.getCheckpoints() for workflow without checkpoints", () => {
+test("SubWorkflowExecutor.getCheckpoints() for workflow without checkpoints [plugin-executor]", () => {
   const executor = new SubWorkflowExecutor({ enableCheckpointing: false });
   const context: SubWorkflowContext = {
     executionId: "exec",
@@ -989,7 +989,7 @@ test("SubWorkflowExecutor.getCheckpoints() for workflow without checkpoints", ()
   assert.deepEqual(checkpoints, []);
 });
 
-test("SubWorkflowExecutor creates checkpoint during execution with checkpointIntervalSteps", async () => {
+test("SubWorkflowExecutor creates checkpoint during execution with checkpointIntervalSteps [plugin-executor]", async () => {
   const executor = new SubWorkflowExecutor({ enableCheckpointing: true });
   const context: SubWorkflowContext = {
     executionId: "exec",
@@ -1018,7 +1018,7 @@ test("SubWorkflowExecutor creates checkpoint during execution with checkpointInt
   assert.ok(checkpoints.length > 0);
 });
 
-test("SubWorkflowExecutor handles step with dependsOn where dependency is skipped", async () => {
+test("SubWorkflowExecutor handles step with dependsOn where dependency is skipped [plugin-executor]", async () => {
   const executor = new SubWorkflowExecutor({ enableCheckpointing: false });
   const context: SubWorkflowContext = {
     executionId: "exec",
@@ -1052,7 +1052,7 @@ test("SubWorkflowExecutor handles step with dependsOn where dependency is skippe
   assert.equal(step2?.status, "completed");
 });
 
-test("SubWorkflowExecutor handles step with conditional that does not match", async () => {
+test("SubWorkflowExecutor handles step with conditional that does not match [plugin-executor]", async () => {
   const executor = new SubWorkflowExecutor({ enableCheckpointing: false });
   const context: SubWorkflowContext = {
     executionId: "exec",
@@ -1086,7 +1086,7 @@ test("SubWorkflowExecutor handles step with conditional that does not match", as
   assert.equal(step2?.status, "skipped");
 });
 
-test("SubWorkflowExecutor handles empty steps array", () => {
+test("SubWorkflowExecutor handles empty steps array [plugin-executor]", () => {
   const executor = new SubWorkflowExecutor();
   const context: SubWorkflowContext = {
     executionId: "exec",
@@ -1108,7 +1108,7 @@ test("SubWorkflowExecutor handles empty steps array", () => {
   assert.ok(executionId);
 });
 
-test("SubWorkflowExecutor.executeWorkflow() on empty workflow completes immediately", async () => {
+test("SubWorkflowExecutor.executeWorkflow() on empty workflow completes immediately [plugin-executor]", async () => {
   const executor = new SubWorkflowExecutor({ enableCheckpointing: false });
   const context: SubWorkflowContext = {
     executionId: "exec",
@@ -1133,7 +1133,7 @@ test("SubWorkflowExecutor.executeWorkflow() on empty workflow completes immediat
   assert.ok(result.durationMs >= 0);
 });
 
-test("SubWorkflowExecutor builds result with output from completed steps", async () => {
+test("SubWorkflowExecutor builds result with output from completed steps [plugin-executor]", async () => {
   const executor = new SubWorkflowExecutor({ enableCheckpointing: false });
   const context: SubWorkflowContext = {
     executionId: "exec",
@@ -1161,7 +1161,7 @@ test("SubWorkflowExecutor builds result with output from completed steps", async
   assert.ok(Array.isArray(output.completedSteps));
 });
 
-test("SubWorkflowExecutor handles automatic rollback policy and performs rollback", async () => {
+test("SubWorkflowExecutor handles automatic rollback policy and performs rollback [plugin-executor]", async () => {
   const executor = new SubWorkflowExecutor({ enableCheckpointing: false });
   const context: SubWorkflowContext = {
     executionId: "exec",
@@ -1189,7 +1189,7 @@ test("SubWorkflowExecutor handles automatic rollback policy and performs rollbac
   assert.equal(result.status, "cancelled");
 });
 
-test("SubWorkflowExecutor.getExecutionLog() returns immutable results", async () => {
+test("SubWorkflowExecutor.getExecutionLog() returns immutable results [plugin-executor]", async () => {
   const executor = new SubWorkflowExecutor({ enableCheckpointing: false });
   const context: SubWorkflowContext = {
     executionId: "exec",
@@ -1217,7 +1217,7 @@ test("SubWorkflowExecutor.getExecutionLog() returns immutable results", async ()
   assert.ok(log.length > 0);
 });
 
-test("SubWorkflowExecutor.buildResult handles error case without checkpoint", async () => {
+test("SubWorkflowExecutor.buildResult handles error case without checkpoint [plugin-executor]", async () => {
   const executor = new SubWorkflowExecutor({ enableCheckpointing: false });
   const context: SubWorkflowContext = {
     executionId: "exec",
@@ -1246,7 +1246,7 @@ test("SubWorkflowExecutor.buildResult handles error case without checkpoint", as
   assert.ok(result.workflowId);
 });
 
-test("SubWorkflowExecutor.cancelWorkflow() throws for completed workflow", async () => {
+test("SubWorkflowExecutor.cancelWorkflow() throws for completed workflow [plugin-executor]", async () => {
   const executor = new SubWorkflowExecutor({ enableCheckpointing: false });
   const context: SubWorkflowContext = {
     executionId: "exec",
@@ -1275,7 +1275,7 @@ test("SubWorkflowExecutor.cancelWorkflow() throws for completed workflow", async
   );
 });
 
-test("SubWorkflowExecutor.pauseWorkflow() throws for non-running workflow", () => {
+test("SubWorkflowExecutor.pauseWorkflow() throws for non-running workflow [plugin-executor]", () => {
   const executor = new SubWorkflowExecutor({ enableCheckpointing: false });
   const context: SubWorkflowContext = {
     executionId: "exec",
@@ -1303,7 +1303,7 @@ test("SubWorkflowExecutor.pauseWorkflow() throws for non-running workflow", () =
   );
 });
 
-test("SubWorkflowExecutor.pauseWorkflow() throws for unknown workflow", () => {
+test("SubWorkflowExecutor.pauseWorkflow() throws for unknown workflow [plugin-executor]", () => {
   const executor = new SubWorkflowExecutor();
 
   assert.throws(
@@ -1312,7 +1312,7 @@ test("SubWorkflowExecutor.pauseWorkflow() throws for unknown workflow", () => {
   );
 });
 
-test("SubWorkflowExecutor.cancelWorkflow() throws for unknown workflow", async () => {
+test("SubWorkflowExecutor.cancelWorkflow() throws for unknown workflow [plugin-executor]", async () => {
   const executor = new SubWorkflowExecutor();
 
   await assert.rejects(
@@ -1321,7 +1321,7 @@ test("SubWorkflowExecutor.cancelWorkflow() throws for unknown workflow", async (
   );
 });
 
-test("SubWorkflowExecutor.skipStep() throws for unknown workflow", () => {
+test("SubWorkflowExecutor.skipStep() throws for unknown workflow [plugin-executor]", () => {
   const executor = new SubWorkflowExecutor();
 
   assert.throws(
@@ -1330,7 +1330,7 @@ test("SubWorkflowExecutor.skipStep() throws for unknown workflow", () => {
   );
 });
 
-test("SubWorkflowExecutor.skipStep() throws for unknown step", () => {
+test("SubWorkflowExecutor.skipStep() throws for unknown step [plugin-executor]", () => {
   const executor = new SubWorkflowExecutor();
   const context: SubWorkflowContext = {
     executionId: "exec",
@@ -1358,7 +1358,7 @@ test("SubWorkflowExecutor.skipStep() throws for unknown step", () => {
   );
 });
 
-test("SubWorkflowExecutor.skipStep() throws for non-pending step", async () => {
+test("SubWorkflowExecutor.skipStep() throws for non-pending step [plugin-executor]", async () => {
   const executor = new SubWorkflowExecutor({ enableCheckpointing: false });
   const context: SubWorkflowContext = {
     executionId: "exec",
@@ -1387,7 +1387,7 @@ test("SubWorkflowExecutor.skipStep() throws for non-pending step", async () => {
   );
 });
 
-test("SubWorkflowExecutor.retryStep() throws for unknown workflow", async () => {
+test("SubWorkflowExecutor.retryStep() throws for unknown workflow [plugin-executor]", async () => {
   const executor = new SubWorkflowExecutor();
 
   await assert.rejects(
@@ -1396,7 +1396,7 @@ test("SubWorkflowExecutor.retryStep() throws for unknown workflow", async () => 
   );
 });
 
-test("SubWorkflowExecutor.retryStep() throws for unknown step", async () => {
+test("SubWorkflowExecutor.retryStep() throws for unknown step [plugin-executor]", async () => {
   const executor = new SubWorkflowExecutor();
   const context: SubWorkflowContext = {
     executionId: "exec",
@@ -1424,7 +1424,7 @@ test("SubWorkflowExecutor.retryStep() throws for unknown step", async () => {
   );
 });
 
-test("SubWorkflowExecutor.retryStep() throws for non-failed step", async () => {
+test("SubWorkflowExecutor.retryStep() throws for non-failed step [plugin-executor]", async () => {
   const executor = new SubWorkflowExecutor();
   const context: SubWorkflowContext = {
     executionId: "exec",
@@ -1452,7 +1452,7 @@ test("SubWorkflowExecutor.retryStep() throws for non-failed step", async () => {
   );
 });
 
-test("SubWorkflowExecutor.retryStep() throws when max retries exceeded", async () => {
+test("SubWorkflowExecutor.retryStep() throws when max retries exceeded [plugin-executor]", async () => {
   const executor = new SubWorkflowExecutor();
   const context: SubWorkflowContext = {
     executionId: "exec",
@@ -1484,7 +1484,7 @@ test("SubWorkflowExecutor.retryStep() throws when max retries exceeded", async (
   );
 });
 
-test("SubWorkflowExecutor.performRollbackFromId() throws for unknown workflow", async () => {
+test("SubWorkflowExecutor.performRollbackFromId() throws for unknown workflow [plugin-executor]", async () => {
   const executor = new SubWorkflowExecutor();
 
   await assert.rejects(
@@ -1493,7 +1493,7 @@ test("SubWorkflowExecutor.performRollbackFromId() throws for unknown workflow", 
   );
 });
 
-test("SubWorkflowExecutor.enforces max nested depth", () => {
+test("SubWorkflowExecutor.enforces max nested depth [plugin-executor]", () => {
   const executor = new SubWorkflowExecutor({ maxNestedDepth: 2 });
   const context: SubWorkflowContext = {
     executionId: "exec",
@@ -1519,7 +1519,7 @@ test("SubWorkflowExecutor.enforces max nested depth", () => {
   );
 });
 
-test("SubWorkflowExecutor allows depth within limit", () => {
+test("SubWorkflowExecutor allows depth within limit [plugin-executor]", () => {
   const executor = new SubWorkflowExecutor({ maxNestedDepth: 3 });
   const context: SubWorkflowContext = {
     executionId: "exec",
@@ -1543,7 +1543,7 @@ test("SubWorkflowExecutor allows depth within limit", () => {
   assert.ok(executionId);
 });
 
-test("SubWorkflowExecutor.getExecutionLog() returns all results", async () => {
+test("SubWorkflowExecutor.getExecutionLog() returns all results [plugin-executor]", async () => {
   const executor = new SubWorkflowExecutor({ enableCheckpointing: false });
   const context: SubWorkflowContext = {
     executionId: "exec",
@@ -1570,7 +1570,7 @@ test("SubWorkflowExecutor.getExecutionLog() returns all results", async () => {
   assert.equal(log.length, 2);
 });
 
-test("SubWorkflowExecutor.getExecutionLog() returns immutable copy", async () => {
+test("SubWorkflowExecutor.getExecutionLog() returns immutable copy [plugin-executor]", async () => {
   const executor = new SubWorkflowExecutor({ enableCheckpointing: false });
   const context: SubWorkflowContext = {
     executionId: "exec",
@@ -1593,12 +1593,12 @@ test("SubWorkflowExecutor.getExecutionLog() returns immutable copy", async () =>
   assert.equal(executor.getExecutionLog().length, 1);
 });
 
-test("createSubWorkflowExecutor() creates executor with default options", () => {
+test("createSubWorkflowExecutor() creates executor with default options [plugin-executor]", () => {
   const executor = createSubWorkflowExecutor();
   assert.ok(executor instanceof SubWorkflowExecutor);
 });
 
-test("createSubWorkflowExecutor() creates executor with custom options", () => {
+test("createSubWorkflowExecutor() creates executor with custom options [plugin-executor]", () => {
   const executor = createSubWorkflowExecutor({
     defaultTimeout: 60000,
     maxNestedDepth: 5,
@@ -1607,7 +1607,7 @@ test("createSubWorkflowExecutor() creates executor with custom options", () => {
   assert.ok(executor instanceof SubWorkflowExecutor);
 });
 
-test("SubWorkflowExecutor uses default timeout of 30 seconds", async () => {
+test("SubWorkflowExecutor uses default timeout of 30 seconds [plugin-executor]", async () => {
   const executor = new SubWorkflowExecutor({ enableCheckpointing: false });
   const context: SubWorkflowContext = {
     executionId: "exec",
@@ -1627,7 +1627,7 @@ test("SubWorkflowExecutor uses default timeout of 30 seconds", async () => {
   assert.equal(result.status, "completed");
 });
 
-test("SubWorkflowExecutor maintains isolation between workflows", async () => {
+test("SubWorkflowExecutor maintains isolation between workflows [plugin-executor]", async () => {
   const executor = new SubWorkflowExecutor({ enableCheckpointing: false });
   const context1: SubWorkflowContext = {
     executionId: "exec-1",
@@ -1672,7 +1672,7 @@ test("SubWorkflowExecutor maintains isolation between workflows", async () => {
 // Type Export Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("PluginExecutorService exports ExecutionContext type", () => {
+test("PluginExecutorService exports ExecutionContext type [plugin-executor]", () => {
   // Verify type is exported and can be used
   const context: ExecutionContext = {
     executionId: "exec",
@@ -1684,7 +1684,7 @@ test("PluginExecutorService exports ExecutionContext type", () => {
   assert.ok(context);
 });
 
-test("SubWorkflowExecutor exports SubWorkflowContext type", () => {
+test("SubWorkflowExecutor exports SubWorkflowContext type [plugin-executor]", () => {
   const context: SubWorkflowContext = {
     executionId: "exec",
     taskId: "task",

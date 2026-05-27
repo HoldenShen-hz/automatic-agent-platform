@@ -37,13 +37,13 @@ function calculateExponentialBackoff(
 // Backoff Strategy Calculation Tests
 // =============================================================================
 
-test("calculateExponentialBackoff returns initial delay for first attempt", () => {
+test("calculateExponentialBackoff returns initial delay for first attempt [retry-strategy]", () => {
   const delay = calculateExponentialBackoff(1000, 2.0, 1);
 
   assert.equal(delay, 1000);
 });
 
-test("calculateExponentialBackoff applies multiplier for subsequent attempts", () => {
+test("calculateExponentialBackoff applies multiplier for subsequent attempts [retry-strategy]", () => {
   // First attempt: 1000 * 2^0 = 1000
   assert.equal(calculateExponentialBackoff(1000, 2.0, 1), 1000);
   // Second attempt: 1000 * 2^1 = 2000
@@ -52,7 +52,7 @@ test("calculateExponentialBackoff applies multiplier for subsequent attempts", (
   assert.equal(calculateExponentialBackoff(1000, 2.0, 3), 4000);
 });
 
-test("calculateExponentialBackoff handles fractional multiplier", () => {
+test("calculateExponentialBackoff handles fractional multiplier [retry-strategy]", () => {
   // Initial: 1000 * 1.5^0 = 1000
   assert.equal(calculateExponentialBackoff(1000, 1.5, 1), 1000);
   // Second: 1000 * 1.5^1 = 1500
@@ -61,14 +61,14 @@ test("calculateExponentialBackoff handles fractional multiplier", () => {
   assert.equal(calculateExponentialBackoff(1000, 1.5, 3), 2250);
 });
 
-test("calculateExponentialBackoff handles unit multiplier (no exponential growth)", () => {
+test("calculateExponentialBackoff handles unit multiplier (no exponential growth) [retry-strategy]", () => {
   // With multiplier of 1.0, delay stays constant
   assert.equal(calculateExponentialBackoff(100, 1.0, 1), 100);
   assert.equal(calculateExponentialBackoff(100, 1.0, 2), 100);
   assert.equal(calculateExponentialBackoff(100, 1.0, 3), 100);
 });
 
-test("calculateExponentialBackoff handles zero initial delay", () => {
+test("calculateExponentialBackoff handles zero initial delay [retry-strategy]", () => {
   // All attempts should be 0 if initial delay is 0
   assert.equal(calculateExponentialBackoff(0, 2.0, 1), 0);
   assert.equal(calculateExponentialBackoff(0, 2.0, 2), 0);
@@ -79,7 +79,7 @@ test("calculateExponentialBackoff handles zero initial delay", () => {
 // Exception Strategy Backoff Configuration Tests
 // =============================================================================
 
-test("transient_external_error has correct backoff strategy", () => {
+test("transient_external_error has correct backoff strategy [retry-strategy]", () => {
   clearExceptionRecoveryConfigCache();
   const config = loadExceptionRecoveryConfig();
   const strategy = config.recoveryStrategyTable.byExceptionType.transient_external_error;
@@ -90,7 +90,7 @@ test("transient_external_error has correct backoff strategy", () => {
   assert.equal(strategy.initialDelayMs, 1000);
 });
 
-test("locking_error has short backoff for quick retry", () => {
+test("locking_error has short backoff for quick retry [retry-strategy]", () => {
   clearExceptionRecoveryConfigCache();
   const config = loadExceptionRecoveryConfig();
   const strategy = config.recoveryStrategyTable.byExceptionType.locking_error;
@@ -101,7 +101,7 @@ test("locking_error has short backoff for quick retry", () => {
   assert.equal(strategy.initialDelayMs, 100); // Short delay for lock contention
 });
 
-test("storage_error has moderate backoff", () => {
+test("storage_error has moderate backoff [retry-strategy]", () => {
   clearExceptionRecoveryConfigCache();
   const config = loadExceptionRecoveryConfig();
   const strategy = config.recoveryStrategyTable.byExceptionType.storage_error;
@@ -112,7 +112,7 @@ test("storage_error has moderate backoff", () => {
   assert.equal(strategy.initialDelayMs, 500);
 });
 
-test("provider_error has longer backoff for external providers", () => {
+test("provider_error has longer backoff for external providers [retry-strategy]", () => {
   clearExceptionRecoveryConfigCache();
   const config = loadExceptionRecoveryConfig();
   const strategy = config.recoveryStrategyTable.byExceptionType.provider_error;
@@ -123,7 +123,7 @@ test("provider_error has longer backoff for external providers", () => {
   assert.equal(strategy.initialDelayMs, 2000);
 });
 
-test("runtime_error has single retry with exponential backoff", () => {
+test("runtime_error has single retry with exponential backoff [retry-strategy]", () => {
   clearExceptionRecoveryConfigCache();
   const config = loadExceptionRecoveryConfig();
   const strategy = config.recoveryStrategyTable.byExceptionType.runtime_error;
@@ -138,7 +138,7 @@ test("runtime_error has single retry with exponential backoff", () => {
 // Non-Retryable Exception Types Tests
 // =============================================================================
 
-test("validation_error is not retryable", () => {
+test("validation_error is not retryable [retry-strategy]", () => {
   clearExceptionRecoveryConfigCache();
   const config = loadExceptionRecoveryConfig();
   const strategy = config.recoveryStrategyTable.byExceptionType.validation_error;
@@ -147,7 +147,7 @@ test("validation_error is not retryable", () => {
   assert.equal(strategy.maxRetries, 0);
 });
 
-test("policy_denied_error is not retryable", () => {
+test("policy_denied_error is not retryable [retry-strategy]", () => {
   clearExceptionRecoveryConfigCache();
   const config = loadExceptionRecoveryConfig();
   const strategy = config.recoveryStrategyTable.byExceptionType.policy_denied;
@@ -156,7 +156,7 @@ test("policy_denied_error is not retryable", () => {
   assert.equal(strategy.maxRetries, 0);
 });
 
-test("permanent_external_error is not retryable", () => {
+test("permanent_external_error is not retryable [retry-strategy]", () => {
   clearExceptionCache();
   const config = loadExceptionRecoveryConfig();
   const strategy = config.recoveryStrategyTable.byExceptionType.permanent_external_error;
@@ -165,7 +165,7 @@ test("permanent_external_error is not retryable", () => {
   assert.equal(strategy.maxRetries, 0);
 });
 
-test("auth_error is not retryable", () => {
+test("auth_error is not retryable [retry-strategy]", () => {
   clearExceptionRecoveryConfigCache();
   const config = loadExceptionRecoveryConfig();
   const strategy = config.recoveryStrategyTable.byExceptionType.auth_error;
@@ -174,7 +174,7 @@ test("auth_error is not retryable", () => {
   assert.equal(strategy.maxRetries, 0);
 });
 
-test("sandbox_error is not retryable", () => {
+test("sandbox_error is not retryable [retry-strategy]", () => {
   clearExceptionRecoveryConfigCache();
   const config = loadExceptionRecoveryConfig();
   const strategy = config.recoveryStrategyTable.byExceptionType.sandbox_error;
@@ -187,7 +187,7 @@ test("sandbox_error is not retryable", () => {
 // Exception Type Action Mapping Tests
 // =============================================================================
 
-test("validation_error action is cancel", () => {
+test("validation_error action is cancel [retry-strategy]", () => {
   clearExceptionRecoveryConfigCache();
   const config = loadExceptionRecoveryConfig();
   const strategy = config.recoveryStrategyTable.byExceptionType.validation_error;
@@ -195,7 +195,7 @@ test("validation_error action is cancel", () => {
   assert.equal(strategy.action, "cancel");
 });
 
-test("tool_execution_error action is escalate_takeover", () => {
+test("tool_execution_error action is escalate_takeover [retry-strategy]", () => {
   clearExceptionRecoveryConfigCache();
   const config = loadExceptionRecoveryConfig();
   const strategy = config.recoveryStrategyTable.byExceptionType.tool_execution_error;
@@ -203,7 +203,7 @@ test("tool_execution_error action is escalate_takeover", () => {
   assert.equal(strategy.action, "escalate_takeover");
 });
 
-test("memory_error action is escalate_takeover", () => {
+test("memory_error action is escalate_takeover [retry-strategy]", () => {
   clearExceptionRecoveryConfigCache();
   const config = loadExceptionRecoveryConfig();
   const strategy = config.recoveryStrategyTable.byExceptionType.memory_error;
@@ -211,7 +211,7 @@ test("memory_error action is escalate_takeover", () => {
   assert.equal(strategy.action, "escalate_takeover");
 });
 
-test("workflow_state_error action is escalate_takeover", () => {
+test("workflow_state_error action is escalate_takeover [retry-strategy]", () => {
   clearExceptionRecoveryConfigCache();
   const config = loadExceptionRecoveryConfig();
   const strategy = config.recoveryStrategyTable.byExceptionType.workflow_state_error;
@@ -219,7 +219,7 @@ test("workflow_state_error action is escalate_takeover", () => {
   assert.equal(strategy.action, "escalate_takeover");
 });
 
-test("tenant_boundary_error action is cancel", () => {
+test("tenant_boundary_error action is cancel [retry-strategy]", () => {
   clearExceptionRecoveryConfigCache();
   const config = loadExceptionRecoveryConfig();
   const strategy = config.recoveryStrategyTable.byExceptionType.tenant_boundary_error;
@@ -227,7 +227,7 @@ test("tenant_boundary_error action is cancel", () => {
   assert.equal(strategy.action, "cancel");
 });
 
-test("monetization_error action is move_dead_letter", () => {
+test("monetization_error action is move_dead_letter [retry-strategy]", () => {
   clearExceptionRecoveryConfigCache();
   const config = loadExceptionRecoveryConfig();
   const strategy = config.recoveryStrategyTable.byExceptionType.monetization_error;
@@ -235,7 +235,7 @@ test("monetization_error action is move_dead_letter", () => {
   assert.equal(strategy.action, "move_dead_letter");
 });
 
-test("internal_error action is move_dead_letter", () => {
+test("internal_error action is move_dead_letter [retry-strategy]", () => {
   clearExceptionRecoveryConfigCache();
   const config = loadExceptionRecoveryConfig();
   const strategy = config.recoveryStrategyTable.byExceptionType.internal_error;
@@ -243,7 +243,7 @@ test("internal_error action is move_dead_letter", () => {
   assert.equal(strategy.action, "move_dead_letter");
 });
 
-test("unknown_error action is move_dead_letter", () => {
+test("unknown_error action is move_dead_letter [retry-strategy]", () => {
   clearExceptionRecoveryConfigCache();
   const config = loadExceptionRecoveryConfig();
   const strategy = config.recoveryStrategyTable.byExceptionType.unknown_error;
@@ -255,7 +255,7 @@ test("unknown_error action is move_dead_letter", () => {
 // Retry Exhaustion Tests
 // =============================================================================
 
-test("retry count stays within maxRetries bounds for transient_external_error", () => {
+test("retry count stays within maxRetries bounds for transient_external_error [retry-strategy]", () => {
   clearExceptionRecoveryConfigCache();
   const config = loadExceptionRecoveryConfig();
   const strategy = config.recoveryStrategyTable.byExceptionType.transient_external_error;
@@ -268,7 +268,7 @@ test("retry count stays within maxRetries bounds for transient_external_error", 
   assert.ok(maxAttempt > strategy.maxRetries);
 });
 
-test("retry count stays within maxRetries bounds for locking_error", () => {
+test("retry count stays within maxRetries bounds for locking_error [retry-strategy]", () => {
   clearExceptionRecoveryConfigCache();
   const config = loadExceptionRecoveryConfig();
   const strategy = config.recoveryStrategyTable.byExceptionType.locking_error;
@@ -281,7 +281,7 @@ test("retry count stays within maxRetries bounds for locking_error", () => {
 // Backoff Sequence Generation Tests
 // =============================================================================
 
-test("generates correct backoff sequence for transient_external_error", () => {
+test("generates correct backoff sequence for transient_external_error [retry-strategy]", () => {
   clearExceptionRecoveryConfigCache();
   const config = loadExceptionRecoveryConfig();
   const strategy = config.recoveryStrategyTable.byExceptionType.transient_external_error;
@@ -299,7 +299,7 @@ test("generates correct backoff sequence for transient_external_error", () => {
   assert.deepEqual(sequence, [1000, 1500, 2250]);
 });
 
-test("generates correct backoff sequence for provider_error", () => {
+test("generates correct backoff sequence for provider_error [retry-strategy]", () => {
   clearExceptionRecoveryConfigCache();
   const config = loadExceptionRecoveryConfig();
   const strategy = config.recoveryStrategyTable.byExceptionType.provider_error;
@@ -317,7 +317,7 @@ test("generates correct backoff sequence for provider_error", () => {
   assert.deepEqual(sequence, [2000, 4000, 8000]);
 });
 
-test("generates correct backoff sequence for storage_error", () => {
+test("generates correct backoff sequence for storage_error [retry-strategy]", () => {
   clearExceptionRecoveryConfigCache();
   const config = loadExceptionRecoveryConfig();
   const strategy = config.recoveryStrategyTable.byExceptionType.storage_error;
@@ -335,7 +335,7 @@ test("generates correct backoff sequence for storage_error", () => {
   assert.deepEqual(sequence, [500, 750]);
 });
 
-test("generates flat backoff sequence for locking_error (multiplier=1.0)", () => {
+test("generates flat backoff sequence for locking_error (multiplier=1.0) [retry-strategy]", () => {
   clearExceptionRecoveryConfigCache();
   const config = loadExceptionRecoveryConfig();
   const strategy = config.recoveryStrategyTable.byExceptionType.locking_error;
@@ -358,7 +358,7 @@ test("generates flat backoff sequence for locking_error (multiplier=1.0)", () =>
 // Risk Level Strategy Tests
 // =============================================================================
 
-test("low risk level enables auto-recovery without notification", () => {
+test("low risk level enables auto-recovery without notification [retry-strategy]", () => {
   clearExceptionRecoveryConfigCache();
   const config = loadExceptionRecoveryConfig();
   const strategy = config.recoveryStrategyTable.byRiskLevel.low;
@@ -367,7 +367,7 @@ test("low risk level enables auto-recovery without notification", () => {
   assert.equal(strategy.notifyOnFailure, false);
 });
 
-test("medium risk level enables auto-recovery with notification", () => {
+test("medium risk level enables auto-recovery with notification [retry-strategy]", () => {
   clearExceptionRecoveryConfigCache();
   const config = loadExceptionRecoveryConfig();
   const strategy = config.recoveryStrategyTable.byRiskLevel.medium;
@@ -376,7 +376,7 @@ test("medium risk level enables auto-recovery with notification", () => {
   assert.equal(strategy.notifyOnFailure, true);
 });
 
-test("high risk level disables auto-recovery but notifies", () => {
+test("high risk level disables auto-recovery but notifies [retry-strategy]", () => {
   clearExceptionRecoveryConfigCache();
   const config = loadExceptionRecoveryConfig();
   const strategy = config.recoveryStrategyTable.byRiskLevel.high;
@@ -385,7 +385,7 @@ test("high risk level disables auto-recovery but notifies", () => {
   assert.equal(strategy.notifyOnFailure, true);
 });
 
-test("critical risk level disables auto-recovery but notifies", () => {
+test("critical risk level disables auto-recovery but notifies [retry-strategy]", () => {
   clearExceptionRecoveryConfigCache();
   const config = loadExceptionRecoveryConfig();
   const strategy = config.recoveryStrategyTable.byRiskLevel.critical;
@@ -398,7 +398,7 @@ test("critical risk level disables auto-recovery but notifies", () => {
 // Attempt Threshold Tests
 // =============================================================================
 
-test("resumeSameWorkerMaxAttempts threshold is 2", () => {
+test("resumeSameWorkerMaxAttempts threshold is 2 [retry-strategy]", () => {
   clearExceptionRecoveryConfigCache();
   const config = loadExceptionRecoveryConfig();
   const thresholds = config.recoveryStrategyTable.byAttemptThreshold;
@@ -406,7 +406,7 @@ test("resumeSameWorkerMaxAttempts threshold is 2", () => {
   assert.equal(thresholds.resumeSameWorkerMaxAttempts, 2);
 });
 
-test("retryNewTicketMaxAttempts threshold is 3", () => {
+test("retryNewTicketMaxAttempts threshold is 3 [retry-strategy]", () => {
   clearExceptionRecoveryConfigCache();
   const config = loadExceptionRecoveryConfig();
   const thresholds = config.recoveryStrategyTable.byAttemptThreshold;
@@ -414,7 +414,7 @@ test("retryNewTicketMaxAttempts threshold is 3", () => {
   assert.equal(thresholds.retryNewTicketMaxAttempts, 3);
 });
 
-test("moveToDeadLetterMinAttempts threshold is 2", () => {
+test("moveToDeadLetterMinAttempts threshold is 2 [retry-strategy]", () => {
   clearExceptionRecoveryConfigCache();
   const config = loadExceptionRecoveryConfig();
   const thresholds = config.recoveryStrategyTable.byAttemptThreshold;
@@ -422,7 +422,7 @@ test("moveToDeadLetterMinAttempts threshold is 2", () => {
   assert.equal(thresholds.moveToDeadLetterMinAttempts, 2);
 });
 
-test("escalateTakeoverMinAttempts threshold is 1", () => {
+test("escalateTakeoverMinAttempts threshold is 1 [retry-strategy]", () => {
   clearExceptionRecoveryConfigCache();
   const config = loadExceptionRecoveryConfig();
   const thresholds = config.recoveryStrategyTable.byAttemptThreshold;
@@ -434,14 +434,14 @@ test("escalateTakeoverMinAttempts threshold is 1", () => {
 // Global Timeout Configuration Tests
 // =============================================================================
 
-test("staleExecutionThresholdMs is 5 minutes", () => {
+test("staleExecutionThresholdMs is 5 minutes [retry-strategy]", () => {
   clearExceptionRecoveryConfigCache();
   const config = loadExceptionRecoveryConfig();
 
   assert.equal(config.staleExecutionThresholdMs, 300000); // 5 minutes in ms
 });
 
-test("heartbeatTimeoutMs is 1 minute", () => {
+test("heartbeatTimeoutMs is 1 minute [retry-strategy]", () => {
   clearExceptionRecoveryConfigCache();
   const config = loadExceptionRecoveryConfig();
 
@@ -452,7 +452,7 @@ test("heartbeatTimeoutMs is 1 minute", () => {
 // Default Action Tests
 // =============================================================================
 
-test("defaultAction is move_dead_letter", () => {
+test("defaultAction is move_dead_letter [retry-strategy]", () => {
   clearExceptionRecoveryConfigCache();
   const config = loadExceptionRecoveryConfig();
 
@@ -463,7 +463,7 @@ test("defaultAction is move_dead_letter", () => {
 // All Exception Types Present Tests
 // =============================================================================
 
-test("all exception types are present in configuration", () => {
+test("all exception types are present in configuration [retry-strategy]", () => {
   clearExceptionRecoveryConfigCache();
   const config = loadExceptionRecoveryConfig();
   const byExceptionType = config.recoveryStrategyTable.byExceptionType;

@@ -20,7 +20,7 @@ function createHarness(prefix: string) {
   };
 }
 
-test("SqliteQueueAdapter listJobs filters by status and respects the limit", () => {
+test("SqliteQueueAdapter listJobs filters by status and respects the limit [sqlite-queue-adapter]", () => {
   const harness = createHarness("aa-sqlite-queue-direct-");
   try {
     const { adapter } = harness;
@@ -44,7 +44,7 @@ test("SqliteQueueAdapter listJobs filters by status and respects the limit", () 
   }
 });
 
-test("SqliteQueueAdapter nack without explicit error uses default dead-letter reason at max attempts", () => {
+test("SqliteQueueAdapter nack without explicit error uses default dead-letter reason at max attempts [sqlite-queue-adapter]", () => {
   const harness = createHarness("aa-sqlite-queue-direct-");
   try {
     const { adapter } = harness;
@@ -63,7 +63,7 @@ test("SqliteQueueAdapter nack without explicit error uses default dead-letter re
   }
 });
 
-test("SqliteQueueAdapter retryJob returns null for unknown ids and purge returns zero when nothing matches", () => {
+test("SqliteQueueAdapter retryJob returns null for unknown ids and purge returns zero when nothing matches [sqlite-queue-adapter]", () => {
   const harness = createHarness("aa-sqlite-queue-direct-");
   try {
     const { adapter } = harness;
@@ -77,7 +77,7 @@ test("SqliteQueueAdapter retryJob returns null for unknown ids and purge returns
   }
 });
 
-test("SqliteQueueAdapter retryJob preserves historical attempts for dead-letter jobs", () => {
+test("SqliteQueueAdapter retryJob preserves historical attempts for dead-letter jobs [sqlite-queue-adapter]", () => {
   const harness = createHarness("aa-sqlite-queue-retry-attempts-");
   try {
     const { adapter } = harness;
@@ -97,7 +97,7 @@ test("SqliteQueueAdapter retryJob preserves historical attempts for dead-letter 
   }
 });
 
-test("SqliteQueueAdapter stats returns correct counts for each status", () => {
+test("SqliteQueueAdapter stats returns correct counts for each status [sqlite-queue-adapter]", () => {
   const harness = createHarness("aa-sqlite-queue-stats-");
   try {
     const { adapter } = harness;
@@ -126,7 +126,7 @@ test("SqliteQueueAdapter stats returns correct counts for each status", () => {
   }
 });
 
-test("SqliteQueueAdapter stats returns zeros for empty queue", () => {
+test("SqliteQueueAdapter stats returns zeros for empty queue [sqlite-queue-adapter]", () => {
   const harness = createHarness("aa-sqlite-queue-stats-empty-");
   try {
     const { adapter } = harness;
@@ -144,7 +144,7 @@ test("SqliteQueueAdapter stats returns zeros for empty queue", () => {
   }
 });
 
-test("SqliteQueueAdapter listQueues returns distinct queue names", () => {
+test("SqliteQueueAdapter listQueues returns distinct queue names [sqlite-queue-adapter]", () => {
   const harness = createHarness("aa-sqlite-queue-list-");
   try {
     const { adapter } = harness;
@@ -163,7 +163,7 @@ test("SqliteQueueAdapter listQueues returns distinct queue names", () => {
   }
 });
 
-test("SqliteQueueAdapter listQueues returns empty array when no queues", () => {
+test("SqliteQueueAdapter listQueues returns empty array when no queues [sqlite-queue-adapter]", () => {
   const harness = createHarness("aa-sqlite-queue-list-empty-");
   try {
     const { adapter } = harness;
@@ -176,7 +176,7 @@ test("SqliteQueueAdapter listQueues returns empty array when no queues", () => {
   }
 });
 
-test("SqliteQueueAdapter dequeue returns null when queue is empty", () => {
+test("SqliteQueueAdapter dequeue returns null when queue is empty [sqlite-queue-adapter]", () => {
   const harness = createHarness("aa-sqlite-queue-dequeue-empty-");
   try {
     const { adapter } = harness;
@@ -189,7 +189,7 @@ test("SqliteQueueAdapter dequeue returns null when queue is empty", () => {
   }
 });
 
-test("SqliteQueueAdapter enqueue with idempotency key returns existing job", () => {
+test("SqliteQueueAdapter enqueue with idempotency key returns existing job [sqlite-queue-adapter]", () => {
   const harness = createHarness("aa-sqlite-queue-idempotent-");
   try {
     const { adapter } = harness;
@@ -214,7 +214,7 @@ test("SqliteQueueAdapter enqueue with idempotency key returns existing job", () 
   }
 });
 
-test("SqliteQueueAdapter nack with error message stores the error", () => {
+test("SqliteQueueAdapter nack with error message stores the error [sqlite-queue-adapter]", () => {
   const harness = createHarness("aa-sqlite-queue-nack-err-");
   try {
     const { adapter } = harness;
@@ -233,7 +233,7 @@ test("SqliteQueueAdapter nack with error message stores the error", () => {
   }
 });
 
-test("SqliteQueueAdapter dead letter job with max attempts exceeded", () => {
+test("SqliteQueueAdapter dead letter job with max attempts exceeded [sqlite-queue-adapter]", () => {
   const harness = createHarness("aa-sqlite-queue-dead-");
   try {
     const { adapter } = harness;
@@ -252,7 +252,7 @@ test("SqliteQueueAdapter dead letter job with max attempts exceeded", () => {
   }
 });
 
-test("SqliteQueueAdapter moveToDeadLetter directly moves job to dead letter", () => {
+test("SqliteQueueAdapter moveToDeadLetter directly moves job to dead letter [sqlite-queue-adapter]", () => {
   const harness = createHarness("aa-sqlite-queue-movetodl-");
   try {
     const { adapter } = harness;
@@ -269,7 +269,7 @@ test("SqliteQueueAdapter moveToDeadLetter directly moves job to dead letter", ()
   }
 });
 
-test("SqliteQueueAdapter purge removes completed and dead letter jobs older than timestamp", () => {
+test("SqliteQueueAdapter purge removes completed and dead letter jobs older than timestamp [sqlite-queue-adapter]", () => {
   const harness = createHarness("aa-sqlite-queue-purge-");
   try {
     const { adapter } = harness;

@@ -6,7 +6,7 @@ import { minimalWorkflowToPlanGraphBundle } from "../../../../../src/platform/fi
 import { executeOapeflirRuntimePlan } from "../../../../../src/platform/five-plane-execution/oapeflir/runtime-plan-executor.js";
 import { initHaCoordinatorForTests } from "../../../../helpers/ha-coordinator.ts";
 
-test("executeOapeflirRuntimePlan consumes the provided PlanGraphBundle as the P3→P4 contract", async () => {
+test("executeOapeflirRuntimePlan consumes the provided PlanGraphBundle as the P3→P4 contract [runtime-plan-executor]", async () => {
   const { dbPath, cleanup } = initHaCoordinatorForTests();
 
   try {

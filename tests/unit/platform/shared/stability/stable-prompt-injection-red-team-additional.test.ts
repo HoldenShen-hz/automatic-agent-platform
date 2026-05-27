@@ -16,43 +16,43 @@ import {
   runStablePromptInjectionRedTeam,
 } from "../../../../../src/platform/shared/stability/stable-prompt-injection-red-team.js";
 
-test("STABLE_PROMPT_INJECTION_RED_TEAM_CASES has the expected number of cases", () => {
+test("STABLE_PROMPT_INJECTION_RED_TEAM_CASES has the expected number of cases [stable-prompt-injection-red-team-additional]", () => {
   // There are 5 defined test cases
   assert.ok(STABLE_PROMPT_INJECTION_RED_TEAM_CASES.length >= 5);
 });
 
-test("STABLE_PROMPT_INJECTION_RED_TEAM_CASES includes instruction override case", () => {
+test("STABLE_PROMPT_INJECTION_RED_TEAM_CASES includes instruction override case [stable-prompt-injection-red-team-additional]", () => {
   const caseNames = STABLE_PROMPT_INJECTION_RED_TEAM_CASES.map((c) => c.scenarioId);
 
   assert.ok(caseNames.includes("instruction_override_secret_exfiltration"));
 });
 
-test("STABLE_PROMPT_INJECTION_RED_TEAM_CASES includes system prompt dump case", () => {
+test("STABLE_PROMPT_INJECTION_RED_TEAM_CASES includes system prompt dump case [stable-prompt-injection-red-team-additional]", () => {
   const caseNames = STABLE_PROMPT_INJECTION_RED_TEAM_CASES.map((c) => c.scenarioId);
 
   assert.ok(caseNames.includes("system_prompt_dump_request"));
 });
 
-test("STABLE_PROMPT_INJECTION_RED_TEAM_CASES includes credential harvest case", () => {
+test("STABLE_PROMPT_INJECTION_RED_TEAM_CASES includes credential harvest case [stable-prompt-injection-red-team-additional]", () => {
   const caseNames = STABLE_PROMPT_INJECTION_RED_TEAM_CASES.map((c) => c.scenarioId);
 
   assert.ok(caseNames.includes("credential_harvest_bearer_token"));
 });
 
-test("STABLE_PROMPT_INJECTION_RED_TEAM_CASES includes benign runtime control case", () => {
+test("STABLE_PROMPT_INJECTION_RED_TEAM_CASES includes benign runtime control case [stable-prompt-injection-red-team-additional]", () => {
   const caseNames = STABLE_PROMPT_INJECTION_RED_TEAM_CASES.map((c) => c.scenarioId);
 
   assert.ok(caseNames.includes("benign_runtime_control"));
 });
 
-test("STABLE_PROMPT_INJECTION_RED_TEAM_CASES high-risk cases expect redaction", () => {
+test("STABLE_PROMPT_INJECTION_RED_TEAM_CASES high-risk cases expect redaction [stable-prompt-injection-red-team-additional]", () => {
   const highRiskCases = STABLE_PROMPT_INJECTION_RED_TEAM_CASES.filter((c) => c.expectedRisk === "high");
 
   assert.ok(highRiskCases.length > 0);
   assert.ok(highRiskCases.every((c) => c.expectedRuleIds.length > 0));
 });
 
-test("STABLE_PROMPT_INJECTION_RED_TEAM_CASES benign case has no risk", () => {
+test("STABLE_PROMPT_INJECTION_RED_TEAM_CASES benign case has no risk [stable-prompt-injection-red-team-additional]", () => {
   const benignCase = STABLE_PROMPT_INJECTION_RED_TEAM_CASES.find(
     (c) => c.scenarioId === "benign_runtime_control",
   );
@@ -63,13 +63,13 @@ test("STABLE_PROMPT_INJECTION_RED_TEAM_CASES benign case has no risk", () => {
   assert.deepEqual(benignCase!.expectedWarnings, []);
 });
 
-test("STABLE_PROMPT_INJECTION_RED_TEAM_CASES high-risk cases include warnings", () => {
+test("STABLE_PROMPT_INJECTION_RED_TEAM_CASES high-risk cases include warnings [stable-prompt-injection-red-team-additional]", () => {
   const highRiskCases = STABLE_PROMPT_INJECTION_RED_TEAM_CASES.filter((c) => c.expectedRisk === "high");
 
   assert.ok(highRiskCases.every((c) => c.expectedWarnings.includes("high_injection_risk")));
 });
 
-test("STABLE_PROMPT_INJECTION_RED_TEAM_CASES secret exfiltration case expects redaction", () => {
+test("STABLE_PROMPT_INJECTION_RED_TEAM_CASES secret exfiltration case expects redaction [stable-prompt-injection-red-team-additional]", () => {
   const case_def = STABLE_PROMPT_INJECTION_RED_TEAM_CASES.find(
     (c) => c.scenarioId === "instruction_override_secret_exfiltration",
   );
@@ -78,7 +78,7 @@ test("STABLE_PROMPT_INJECTION_RED_TEAM_CASES secret exfiltration case expects re
   assert.equal(case_def!.expectsRedaction, true);
 });
 
-test("runStablePromptInjectionRedTeam creates output directory", async () => {
+test("runStablePromptInjectionRedTeam creates output directory [stable-prompt-injection-red-team-additional]", async () => {
   const dir = `/tmp/prompt-injection-test-${Date.now()}`;
   const options: StablePromptInjectionRedTeamOptions = { outputDir: dir };
 
@@ -93,7 +93,7 @@ test("runStablePromptInjectionRedTeam creates output directory", async () => {
   rmSync(dir, { recursive: true, force: true });
 });
 
-test("runStablePromptInjectionRedTeam all scenarios pass for valid cases", async () => {
+test("runStablePromptInjectionRedTeam all scenarios pass for valid cases [stable-prompt-injection-red-team-additional]", async () => {
   const dir = `/tmp/prompt-injection-test-${Date.now()}`;
   const options: StablePromptInjectionRedTeamOptions = { outputDir: dir };
 
@@ -107,7 +107,7 @@ test("runStablePromptInjectionRedTeam all scenarios pass for valid cases", async
   rmSync(dir, { recursive: true, force: true });
 });
 
-test("runStablePromptInjectionRedTeam report includes correct scenario IDs", async () => {
+test("runStablePromptInjectionRedTeam report includes correct scenario IDs [stable-prompt-injection-red-team-additional]", async () => {
   const dir = `/tmp/prompt-injection-test-${Date.now()}`;
   const options: StablePromptInjectionRedTeamOptions = { outputDir: dir };
 
@@ -125,7 +125,7 @@ test("runStablePromptInjectionRedTeam report includes correct scenario IDs", asy
   rmSync(dir, { recursive: true, force: true });
 });
 
-test("runStablePromptInjectionRedTeam report contains valid metadata", async () => {
+test("runStablePromptInjectionRedTeam report contains valid metadata [stable-prompt-injection-red-team-additional]", async () => {
   const dir = `/tmp/prompt-injection-test-${Date.now()}`;
   const options: StablePromptInjectionRedTeamOptions = { outputDir: dir };
 
@@ -141,7 +141,7 @@ test("runStablePromptInjectionRedTeam report contains valid metadata", async () 
   rmSync(dir, { recursive: true, force: true });
 });
 
-test("runStablePromptInjectionRedTeam scenarios have duration metrics", async () => {
+test("runStablePromptInjectionRedTeam scenarios have duration metrics [stable-prompt-injection-red-team-additional]", async () => {
   const dir = `/tmp/prompt-injection-test-${Date.now()}`;
   const options: StablePromptInjectionRedTeamOptions = { outputDir: dir };
 

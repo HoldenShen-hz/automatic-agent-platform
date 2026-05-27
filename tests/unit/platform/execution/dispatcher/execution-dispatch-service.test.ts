@@ -148,14 +148,14 @@ function createMockTicket(
 // ExecutionDispatchService construction
 // ---------------------------------------------------------------------------
 
-test("ExecutionDispatchService can be instantiated", () => {
+test("ExecutionDispatchService can be instantiated [execution-dispatch-service]", () => {
   const db = createMockDb();
   const store = createMockStore();
   const service = new ExecutionDispatchService(db, store);
   assert.ok(service instanceof ExecutionDispatchService);
 });
 
-test("ExecutionDispatchService accepts optional backpressure snapshot function", () => {
+test("ExecutionDispatchService accepts optional backpressure snapshot function [execution-dispatch-service]", () => {
   const db = createMockDb();
   const store = createMockStore();
   const backpressureSnapshot = () => null;
@@ -163,7 +163,7 @@ test("ExecutionDispatchService accepts optional backpressure snapshot function",
   assert.ok(service instanceof ExecutionDispatchService);
 });
 
-test("ExecutionDispatchService accepts optional queue availability snapshot function", () => {
+test("ExecutionDispatchService accepts optional queue availability snapshot function [execution-dispatch-service]", () => {
   const db = createMockDb();
   const store = createMockStore();
   const queueAvailSnapshot = () => null;
@@ -175,7 +175,7 @@ test("ExecutionDispatchService accepts optional queue availability snapshot func
 // createTicket throws when execution not found
 // ---------------------------------------------------------------------------
 
-test("createTicket throws StorageError when execution not found", () => {
+test("createTicket throws StorageError when execution not found [execution-dispatch-service]", () => {
   const db = createMockDb();
   const store = createMockStore();
   const service = new ExecutionDispatchService(db, store);
@@ -195,7 +195,7 @@ test("createTicket throws StorageError when execution not found", () => {
 // createTicket returns exists when ticket already active
 // ---------------------------------------------------------------------------
 
-test("createTicket returns outcome=exists when active ticket already exists", () => {
+test("createTicket returns outcome=exists when active ticket already exists [execution-dispatch-service]", () => {
   const existingTicket = createMockTicket("existing-ticket", "exec-1", "task-1");
   const mockExecution = createMockExecution("exec-1", "task-1");
   const mockTask = createMockTask("task-1");
@@ -224,7 +224,7 @@ test("createTicket returns outcome=exists when active ticket already exists", ()
 // createTicket throws when task not found
 // ---------------------------------------------------------------------------
 
-test("createTicket throws StorageError when task not found", () => {
+test("createTicket throws StorageError when task not found [execution-dispatch-service]", () => {
   const mockExecution = createMockExecution("exec-1", "task-1");
 
   const store = createMockStore();
@@ -256,7 +256,7 @@ test("createTicket throws StorageError when task not found", () => {
 // createTicket creates new ticket successfully
 // ---------------------------------------------------------------------------
 
-test("createTicket creates new ticket with default priority from task", () => {
+test("createTicket creates new ticket with default priority from task [execution-dispatch-service]", () => {
   const mockExecution = createMockExecution("exec-1", "task-1");
   const mockTask = createMockTask("task-1", "high");
 
@@ -286,7 +286,7 @@ test("createTicket creates new ticket with default priority from task", () => {
   assert.equal(result.ticket.status, "pending");
 });
 
-test("createTicket creates new ticket with explicit priority override", () => {
+test("createTicket creates new ticket with explicit priority override [execution-dispatch-service]", () => {
   const mockExecution = createMockExecution("exec-1", "task-1");
   const mockTask = createMockTask("task-1", "normal");
 
@@ -312,7 +312,7 @@ test("createTicket creates new ticket with explicit priority override", () => {
   assert.equal(result.ticket.priority, "urgent"); // Override
 });
 
-test("createTicket creates new ticket with queueName", () => {
+test("createTicket creates new ticket with queueName [execution-dispatch-service]", () => {
   const mockExecution = createMockExecution("exec-1", "task-1");
   const mockTask = createMockTask("task-1");
 
@@ -338,7 +338,7 @@ test("createTicket creates new ticket with queueName", () => {
   assert.equal(result.ticket.queueName, "priority-queue");
 });
 
-test("createTicket creates new ticket with dispatchTarget", () => {
+test("createTicket creates new ticket with dispatchTarget [execution-dispatch-service]", () => {
   const mockExecution = createMockExecution("exec-1", "task-1");
   const mockTask = createMockTask("task-1");
 
@@ -364,7 +364,7 @@ test("createTicket creates new ticket with dispatchTarget", () => {
   assert.equal(result.ticket.dispatchTarget, "local_only");
 });
 
-test("createTicket creates new ticket with requiredCapabilities", () => {
+test("createTicket creates new ticket with requiredCapabilities [execution-dispatch-service]", () => {
   const mockExecution = createMockExecution("exec-1", "task-1");
   const mockTask = createMockTask("task-1");
 
@@ -394,7 +394,7 @@ test("createTicket creates new ticket with requiredCapabilities", () => {
   assert.deepStrictEqual(capabilities.sort(), ["gpu", "large_memory"]);
 });
 
-test("createTicket creates new ticket with requiredIsolationLevel", () => {
+test("createTicket creates new ticket with requiredIsolationLevel [execution-dispatch-service]", () => {
   const mockExecution = createMockExecution("exec-1", "task-1");
   const mockTask = createMockTask("task-1");
 
@@ -423,7 +423,7 @@ test("createTicket creates new ticket with requiredIsolationLevel", () => {
   assert.equal(result.ticket.requiredIsolationLevel, "hardened");
 });
 
-test("createTicket creates new ticket with requiredRepoVersion", () => {
+test("createTicket creates new ticket with requiredRepoVersion [execution-dispatch-service]", () => {
   const mockExecution = createMockExecution("exec-1", "task-1");
   const mockTask = createMockTask("task-1");
 
@@ -456,7 +456,7 @@ test("createTicket creates new ticket with requiredRepoVersion", () => {
 // dispatchNext returns no_ticket when no tickets available
 // ---------------------------------------------------------------------------
 
-test("dispatchNext returns no_ticket outcome when no tickets", () => {
+test("dispatchNext returns no_ticket outcome when no tickets [execution-dispatch-service]", () => {
   const db = createMockDb();
   const store = createMockStore();
   const service = new ExecutionDispatchService(db, store);
@@ -468,7 +468,7 @@ test("dispatchNext returns no_ticket outcome when no tickets", () => {
   assert.equal(result.leaseId, null);
 });
 
-test("dispatchNext with queueName returns no_ticket when no tickets", () => {
+test("dispatchNext with queueName returns no_ticket when no tickets [execution-dispatch-service]", () => {
   const db = createMockDb();
   const store = createMockStore();
   const service = new ExecutionDispatchService(db, store);
@@ -481,7 +481,7 @@ test("dispatchNext with queueName returns no_ticket when no tickets", () => {
 // dispatchNext with queue unavailable
 // ---------------------------------------------------------------------------
 
-test("dispatchNext returns no_ticket when queue availability unavailable", () => {
+test("dispatchNext returns no_ticket when queue availability unavailable [execution-dispatch-service]", () => {
   const db = createMockDb();
   const store = createMockStore();
   const queueAvailSnapshot = () => ({
@@ -494,7 +494,7 @@ test("dispatchNext returns no_ticket when queue availability unavailable", () =>
   assert.equal(result.outcome, "no_ticket");
 });
 
-test("dispatchNext with empty tickets and unavailable queue returns no_ticket", () => {
+test("dispatchNext with empty tickets and unavailable queue returns no_ticket [execution-dispatch-service]", () => {
   const db = createMockDb();
   const store = createMockStore();
   const queueAvailSnapshot = () => ({
@@ -511,7 +511,7 @@ test("dispatchNext with empty tickets and unavailable queue returns no_ticket", 
 // dispatchNext with backpressure blocking
 // ---------------------------------------------------------------------------
 
-test("dispatchNext returns blocked for low priority ticket when queue_only backpressure", () => {
+test("dispatchNext returns blocked for low priority ticket when queue_only backpressure [execution-dispatch-service]", () => {
   const mockTicket = createMockTicket("ticket-1", "exec-1", "task-1", "low");
   const mockWorker = createMockWorker("worker-1", { availableSlots: 5 });
 
@@ -547,7 +547,7 @@ test("dispatchNext returns blocked for low priority ticket when queue_only backp
 // dispatchNext passes occurredAt to options
 // ---------------------------------------------------------------------------
 
-test("dispatchNext uses occurredAt from options", () => {
+test("dispatchNext uses occurredAt from options [execution-dispatch-service]", () => {
   const db = createMockDb();
   const store = createMockStore();
   const service = new ExecutionDispatchService(db, store);
@@ -557,7 +557,7 @@ test("dispatchNext uses occurredAt from options", () => {
   assert.equal(result.outcome, "no_ticket");
 });
 
-test("dispatchNext accepts includeDegraded option", () => {
+test("dispatchNext accepts includeDegraded option [execution-dispatch-service]", () => {
   const db = createMockDb();
   const store = createMockStore();
   const service = new ExecutionDispatchService(db, store);
@@ -566,7 +566,7 @@ test("dispatchNext accepts includeDegraded option", () => {
   assert.equal(result.outcome, "no_ticket");
 });
 
-test("dispatchNext accepts preferredWorkerId option", () => {
+test("dispatchNext accepts preferredWorkerId option [execution-dispatch-service]", () => {
   const db = createMockDb();
   const store = createMockStore();
   const service = new ExecutionDispatchService(db, store);
@@ -575,7 +575,7 @@ test("dispatchNext accepts preferredWorkerId option", () => {
   assert.equal(result.outcome, "no_ticket");
 });
 
-test("dispatchNext prioritizes starved executions before normal queue ordering", () => {
+test("dispatchNext prioritizes starved executions before normal queue ordering [execution-dispatch-service]", () => {
   const ticketA = createMockTicket("ticket-a", "exec-a", "task-a", "normal");
   const ticketB = createMockTicket("ticket-b", "exec-b", "task-b", "normal");
   const worker = createMockWorker("worker-1", { availableSlots: 2 });
@@ -690,7 +690,7 @@ function workerToSnapshot(worker: RegisteredWorkerView): WorkerSnapshotRecord {
   };
 }
 
-test("dispatchNext returns no_worker when all workers filtered out", () => {
+test("dispatchNext returns no_worker when all workers filtered out [execution-dispatch-service]", () => {
   const mockTicket = createMockTicket("ticket-1", "exec-1", "task-1");
   mockTicket.requiredCapabilitiesJson = JSON.stringify(["nonexistent-capability"]);
   const worker1 = createMockWorker("worker-1", { capabilities: ["gpu"], availableSlots: 5 });
@@ -728,7 +728,7 @@ test("dispatchNext returns no_worker when all workers filtered out", () => {
 // dispatchNext with local_only dispatch target
 // ---------------------------------------------------------------------------
 
-test("dispatchNext with local_only dispatchTarget filters remote workers", () => {
+test("dispatchNext with local_only dispatchTarget filters remote workers [execution-dispatch-service]", () => {
   const mockTicket = createMockTicket("ticket-1", "exec-1", "task-1");
   mockTicket.dispatchTarget = "local_only";
   const remoteWorker = createMockWorker("worker-remote", { placement: "remote", availableSlots: 5 });
@@ -777,7 +777,7 @@ test("dispatchNext with local_only dispatchTarget filters remote workers", () =>
 // dispatchNext with require_remote dispatch target and no remote workers
 // ---------------------------------------------------------------------------
 
-test("dispatchNext with require_remote returns no_worker when no remote workers exist", () => {
+test("dispatchNext with require_remote returns no_worker when no remote workers exist [execution-dispatch-service]", () => {
   const mockTicket = createMockTicket("ticket-1", "exec-1", "task-1");
   mockTicket.dispatchTarget = "require_remote";
   const localWorker = createMockWorker("worker-local", { placement: "local", availableSlots: 5 });
@@ -826,7 +826,7 @@ test("dispatchNext with require_remote returns no_worker when no remote workers 
 // dispatchNext with prefer_remote and only local workers available
 // ---------------------------------------------------------------------------
 
-test("dispatchNext with prefer_remote returns no_worker when only unavailable workers", () => {
+test("dispatchNext with prefer_remote returns no_worker when only unavailable workers [execution-dispatch-service]", () => {
   const mockTicket = createMockTicket("ticket-1", "exec-1", "task-1");
   mockTicket.dispatchTarget = "prefer_remote";
   // Local worker with no available slots
@@ -876,7 +876,7 @@ test("dispatchNext with prefer_remote returns no_worker when only unavailable wo
 // dispatchNext with worker unavailable status
 // ---------------------------------------------------------------------------
 
-test("dispatchNext skips workers with unavailable status", () => {
+test("dispatchNext skips workers with unavailable status [execution-dispatch-service]", () => {
   const mockTicket = createMockTicket("ticket-1", "exec-1", "task-1");
   const unavailableWorker = createMockWorker("worker-1", { status: "unavailable", availableSlots: 5 });
 
@@ -922,7 +922,7 @@ test("dispatchNext skips workers with unavailable status", () => {
 // dispatchNext with worker quarantined status
 // ---------------------------------------------------------------------------
 
-test("dispatchNext skips workers with quarantined status", () => {
+test("dispatchNext skips workers with quarantined status [execution-dispatch-service]", () => {
   const mockTicket = createMockTicket("ticket-1", "exec-1", "task-1");
   const quarantinedWorker = createMockWorker("worker-1", { status: "quarantined", availableSlots: 5 });
 
@@ -968,7 +968,7 @@ test("dispatchNext skips workers with quarantined status", () => {
 // dispatchNext with worker offline status
 // ---------------------------------------------------------------------------
 
-test("dispatchNext skips workers with offline status", () => {
+test("dispatchNext skips workers with offline status [execution-dispatch-service]", () => {
   const mockTicket = createMockTicket("ticket-1", "exec-1", "task-1");
   const offlineWorker = createMockWorker("worker-1", { status: "offline", availableSlots: 5 });
 
@@ -1014,7 +1014,7 @@ test("dispatchNext skips workers with offline status", () => {
 // dispatchNext with worker draining status
 // ---------------------------------------------------------------------------
 
-test("dispatchNext skips workers with draining status", () => {
+test("dispatchNext skips workers with draining status [execution-dispatch-service]", () => {
   const mockTicket = createMockTicket("ticket-1", "exec-1", "task-1");
   const drainingWorker = createMockWorker("worker-1", { status: "draining", availableSlots: 5 });
 
@@ -1060,7 +1060,7 @@ test("dispatchNext skips workers with draining status", () => {
 // dispatchNext with worker at capacity
 // ---------------------------------------------------------------------------
 
-test("dispatchNext skips workers with no available slots", () => {
+test("dispatchNext skips workers with no available slots [execution-dispatch-service]", () => {
   const mockTicket = createMockTicket("ticket-1", "exec-1", "task-1");
   const worker = createMockWorker("worker-1", { availableSlots: 0 });
 
@@ -1106,7 +1106,7 @@ test("dispatchNext skips workers with no available slots", () => {
 // dispatchNext with queue affinity mismatch
 // ---------------------------------------------------------------------------
 
-test("dispatchNext skips workers with queue affinity mismatch", () => {
+test("dispatchNext skips workers with queue affinity mismatch [execution-dispatch-service]", () => {
   const mockTicket = createMockTicket("ticket-1", "exec-1", "task-1");
   mockTicket.queueName = "priority-queue";
   const worker = createMockWorker("worker-1", { queueAffinity: "different-queue", availableSlots: 5 });
@@ -1153,7 +1153,7 @@ test("dispatchNext skips workers with queue affinity mismatch", () => {
 // dispatchNext with worker isolation level mismatch
 // ---------------------------------------------------------------------------
 
-test("dispatchNext skips workers with insufficient isolation level", () => {
+test("dispatchNext skips workers with insufficient isolation level [execution-dispatch-service]", () => {
   const mockTicket = createMockTicket("ticket-1", "exec-1", "task-1");
   mockTicket.requiredIsolationLevel = "strict";
   const worker = createMockWorker("worker-1", { isolationLevel: "standard", availableSlots: 5 });
@@ -1200,7 +1200,7 @@ test("dispatchNext skips workers with insufficient isolation level", () => {
 // dispatchNext with worker repo version mismatch
 // ---------------------------------------------------------------------------
 
-test("dispatchNext skips workers with repo version mismatch", () => {
+test("dispatchNext skips workers with repo version mismatch [execution-dispatch-service]", () => {
   const mockTicket = createMockTicket("ticket-1", "exec-1", "task-1");
   mockTicket.requiredRepoVersion = "v2.0.0";
   const worker = createMockWorker("worker-1", { repoVersion: "v1.0.0", availableSlots: 5 });
@@ -1247,7 +1247,7 @@ test("dispatchNext skips workers with repo version mismatch", () => {
 // dispatchNext with preferredWorkerId option
 // ---------------------------------------------------------------------------
 
-test("dispatchNext with preferredWorkerId returns no_worker when worker not found", () => {
+test("dispatchNext with preferredWorkerId returns no_worker when worker not found [execution-dispatch-service]", () => {
   const mockTicket = createMockTicket("ticket-1", "exec-1", "task-1");
 
   const store = createMockStore();
@@ -1293,7 +1293,7 @@ test("dispatchNext with preferredWorkerId returns no_worker when worker not foun
 // dispatchNext with degraded workers included
 // ---------------------------------------------------------------------------
 
-test("dispatchNext without includeDegraded filters out degraded workers", () => {
+test("dispatchNext without includeDegraded filters out degraded workers [execution-dispatch-service]", () => {
   const mockTicket = createMockTicket("ticket-1", "exec-1", "task-1");
   const degradedWorker = createMockWorker("worker-1", { status: "degraded", availableSlots: 5 });
 

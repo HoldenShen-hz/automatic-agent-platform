@@ -54,7 +54,7 @@ function createAdapterWithMockRedis(mockRedis: ReturnType<typeof createMockRedis
 // Lock Acquisition Timeout Tests
 // =============================================================================
 
-test("[SYS-REL-2.3] acquireAsync uses default TTL of 30000ms when not specified", async () => {
+test("[SYS-REL-2.3] acquireAsync uses default TTL of 30000ms when not specified [lock-acquisition-timeout]", async () => {
   let setArgs: Array<string | number> = [];
   const mockRedis = createMockRedis({
     status: "ready",
@@ -72,7 +72,7 @@ test("[SYS-REL-2.3] acquireAsync uses default TTL of 30000ms when not specified"
   assert.equal(setArgs[pxIndex + 1], 30000, "Default TTL should remain in milliseconds");
 });
 
-test("[SYS-REL-2.3] acquireAsync respects provided ttlMs parameter", async () => {
+test("[SYS-REL-2.3] acquireAsync respects provided ttlMs parameter [lock-acquisition-timeout]", async () => {
   let setArgs: Array<string | number> = [];
   const mockRedis = createMockRedis({
     status: "ready",
@@ -89,7 +89,7 @@ test("[SYS-REL-2.3] acquireAsync respects provided ttlMs parameter", async () =>
   assert.equal(setArgs[pxIndex + 1], 60000, "TTL should remain 60000ms");
 });
 
-test("[SYS-REL-2.3] acquireAsync returns acquired=false when lock already held", async () => {
+test("[SYS-REL-2.3] acquireAsync returns acquired=false when lock already held [lock-acquisition-timeout]", async () => {
   const mockRedis = createMockRedis({
     status: "ready",
     set: async () => null, // NX fails - lock already exists
@@ -106,7 +106,7 @@ test("[SYS-REL-2.3] acquireAsync returns acquired=false when lock already held",
   assert.equal(result.lock, undefined, "Should not return lock record");
 });
 
-test("[SYS-REL-2.3] acquireAsync returns acquired=true with lock record on success", async () => {
+test("[SYS-REL-2.3] acquireAsync returns acquired=true with lock record on success [lock-acquisition-timeout]", async () => {
   const mockRedis = createMockRedis({
     status: "ready",
     set: async () => "OK",
@@ -128,7 +128,7 @@ test("[SYS-REL-2.3] acquireAsync returns acquired=true with lock record on succe
   assert.ok(result.lock!.ttlMs > 0, "TTL should be set");
 });
 
-test("[SYS-REL-2.3] acquireAsync failure due to connection error propagates error", async () => {
+test("[SYS-REL-2.3] acquireAsync failure due to connection error propagates error [lock-acquisition-timeout]", async () => {
   const mockRedis = createMockRedis({
     status: "ready",
     set: async () => {
@@ -144,7 +144,7 @@ test("[SYS-REL-2.3] acquireAsync failure due to connection error propagates erro
   );
 });
 
-test("[SYS-REL-2.3] acquireAsync with very short TTL works correctly", async () => {
+test("[SYS-REL-2.3] acquireAsync with very short TTL works correctly [lock-acquisition-timeout]", async () => {
   let setArgs: Array<string | number> = [];
   const mockRedis = createMockRedis({
     status: "ready",
@@ -162,7 +162,7 @@ test("[SYS-REL-2.3] acquireAsync with very short TTL works correctly", async () 
   assert.equal(setArgs[pxIndex + 1], 100, "Short TTL should stay in millisecond precision");
 });
 
-test("[SYS-REL-2.3] acquireAsync with very long TTL is capped at reasonable maximum", async () => {
+test("[SYS-REL-2.3] acquireAsync with very long TTL is capped at reasonable maximum [lock-acquisition-timeout]", async () => {
   let setArgs: Array<string | number> = [];
   const mockRedis = createMockRedis({
     status: "ready",
@@ -182,7 +182,7 @@ test("[SYS-REL-2.3] acquireAsync with very long TTL is capped at reasonable maxi
   assert.equal(ttlMs, twoYearsMs, "Redis adapter currently preserves caller-provided ttlMs");
 });
 
-test("[SYS-REL-2.3] lock key format uses lock: prefix", async () => {
+test("[SYS-REL-2.3] lock key format uses lock: prefix [lock-acquisition-timeout]", async () => {
   let capturedKey: string | null = null;
   const mockRedis = createMockRedis({
     status: "ready",
@@ -200,7 +200,7 @@ test("[SYS-REL-2.3] lock key format uses lock: prefix", async () => {
   assert.ok(capturedKey.includes("my-test-lock"), "Key should include lock key name");
 });
 
-test("[SYS-REL-2.3] forceStealAsync acquires lock regardless of existing owner", async () => {
+test("[SYS-REL-2.3] forceStealAsync acquires lock regardless of existing owner [lock-acquisition-timeout]", async () => {
   let evalArgs: string[] = [];
   const mockRedis = createMockRedis({
     status: "ready",
@@ -220,7 +220,7 @@ test("[SYS-REL-2.3] forceStealAsync acquires lock regardless of existing owner",
   assert.equal(evalArgs[0], "lock:existing-lock");
 });
 
-test("[SYS-REL-2.3] forceStealAsync throws when lock does not exist", async () => {
+test("[SYS-REL-2.3] forceStealAsync throws when lock does not exist [lock-acquisition-timeout]", async () => {
   const mockRedis = createMockRedis({
     status: "ready",
     eval: async () => -1,
@@ -236,7 +236,7 @@ test("[SYS-REL-2.3] forceStealAsync throws when lock does not exist", async () =
   );
 });
 
-test("[SYS-REL-2.3] extendAsync returns null when lock not found", async () => {
+test("[SYS-REL-2.3] extendAsync returns null when lock not found [lock-acquisition-timeout]", async () => {
   const mockRedis = createMockRedis({
     status: "ready",
     eval: async () => -1, // Lock not found
@@ -248,7 +248,7 @@ test("[SYS-REL-2.3] extendAsync returns null when lock not found", async () => {
   assert.equal(result, null, "Should return null for non-existent lock");
 });
 
-test("[SYS-REL-2.3] extendAsync returns null when owner does not match", async () => {
+test("[SYS-REL-2.3] extendAsync returns null when owner does not match [lock-acquisition-timeout]", async () => {
   const mockRedis = createMockRedis({
     status: "ready",
     eval: async () => 0, // Owner mismatch
@@ -260,7 +260,7 @@ test("[SYS-REL-2.3] extendAsync returns null when owner does not match", async (
   assert.equal(result, null, "Should return null when owner doesn't match");
 });
 
-test("[SYS-REL-2.3] extendAsync caps additionalMs at 600000ms", async () => {
+test("[SYS-REL-2.3] extendAsync caps additionalMs at 600000ms [lock-acquisition-timeout]", async () => {
   const mockRedis = createMockRedis({
     status: "ready",
     incr: async () => 42,
@@ -279,7 +279,7 @@ test("[SYS-REL-2.3] extendAsync caps additionalMs at 600000ms", async () => {
   assert.equal(result?.fencingToken, 42);
 });
 
-test("[SYS-REL-2.3] releaseAsync returns false when lock not found", async () => {
+test("[SYS-REL-2.3] releaseAsync returns false when lock not found [lock-acquisition-timeout]", async () => {
   const mockRedis = createMockRedis({
     status: "ready",
     eval: async () => -1, // Lock not found
@@ -291,7 +291,7 @@ test("[SYS-REL-2.3] releaseAsync returns false when lock not found", async () =>
   assert.equal(result, false, "Should return false when lock doesn't exist");
 });
 
-test("[SYS-REL-2.3] releaseAsync returns false when owner does not match", async () => {
+test("[SYS-REL-2.3] releaseAsync returns false when owner does not match [lock-acquisition-timeout]", async () => {
   const mockRedis = createMockRedis({
     status: "ready",
     eval: async () => 0, // Owner mismatch
@@ -303,7 +303,7 @@ test("[SYS-REL-2.3] releaseAsync returns false when owner does not match", async
   assert.equal(result, false, "Should return false when owner doesn't match");
 });
 
-test("[SYS-REL-2.3] releaseAsync returns true on successful release", async () => {
+test("[SYS-REL-2.3] releaseAsync returns true on successful release [lock-acquisition-timeout]", async () => {
   const mockRedis = createMockRedis({
     status: "ready",
     eval: async () => 1, // Success
@@ -315,7 +315,7 @@ test("[SYS-REL-2.3] releaseAsync returns true on successful release", async () =
   assert.equal(result, true, "Should return true when release succeeds");
 });
 
-test("[SYS-REL-2.3] inspectAsync returns lock record when exists", async () => {
+test("[SYS-REL-2.3] inspectAsync returns lock record when exists [lock-acquisition-timeout]", async () => {
   const mockRedis = createMockRedis({
     status: "ready",
     get: async () => JSON.stringify({
@@ -336,7 +336,7 @@ test("[SYS-REL-2.3] inspectAsync returns lock record when exists", async () => {
   assert.equal(result!.fencingToken, 42);
 });
 
-test("[SYS-REL-2.3] inspectAsync returns null when lock does not exist", async () => {
+test("[SYS-REL-2.3] inspectAsync returns null when lock does not exist [lock-acquisition-timeout]", async () => {
   const mockRedis = createMockRedis({
     status: "ready",
     get: async () => null,
@@ -348,7 +348,7 @@ test("[SYS-REL-2.3] inspectAsync returns null when lock does not exist", async (
   assert.equal(result, null, "Should return null for non-existent lock");
 });
 
-test("[SYS-REL-2.3] listHeldAsync returns empty array when no locks", async () => {
+test("[SYS-REL-2.3] listHeldAsync returns empty array when no locks [lock-acquisition-timeout]", async () => {
   const mockRedis = createMockRedis({
     status: "ready",
     scan: async () => ["0", []], // No keys
@@ -360,7 +360,7 @@ test("[SYS-REL-2.3] listHeldAsync returns empty array when no locks", async () =
   assert.equal(result.length, 0, "Should return empty array when no locks");
 });
 
-test("[SYS-REL-2.3] listHeldAsync returns all held locks", async () => {
+test("[SYS-REL-2.3] listHeldAsync returns all held locks [lock-acquisition-timeout]", async () => {
   const mockRedis = createMockRedis({
     status: "ready",
     scan: async () => ["0", ["lock:key1", "lock:key2", "lock:key3"]],
@@ -378,7 +378,7 @@ test("[SYS-REL-2.3] listHeldAsync returns all held locks", async () => {
   assert.ok(result.every((r) => r.status === "held"));
 });
 
-test("[SYS-REL-2.3] listHeldAsync respects limit parameter", async () => {
+test("[SYS-REL-2.3] listHeldAsync respects limit parameter [lock-acquisition-timeout]", async () => {
   let mgetCalledWith: string[][] = [];
   const mockRedis = createMockRedis({
     status: "ready",
@@ -398,7 +398,7 @@ test("[SYS-REL-2.3] listHeldAsync respects limit parameter", async () => {
   assert.equal(result.length, 3, "Should return at most 3 locks");
 });
 
-test("[SYS-REL-2.3] acquireAsync reconnects when Redis status is 'wait'", async () => {
+test("[SYS-REL-2.3] acquireAsync reconnects when Redis status is 'wait' [lock-acquisition-timeout]", async () => {
   let connectCalled = false;
   const mockRedis = createMockRedis({
     status: "wait",
@@ -414,7 +414,7 @@ test("[SYS-REL-2.3] acquireAsync reconnects when Redis status is 'wait'", async 
   assert.equal(connectCalled, true, "Should call connect when status is wait");
 });
 
-test("[SYS-REL-2.3] acquireAsync throws LockingError when connection fails after 'end' status", async () => {
+test("[SYS-REL-2.3] acquireAsync throws LockingError when connection fails after 'end' status [lock-acquisition-timeout]", async () => {
   const adapter = new RedisLockAdapter({ host: "localhost", port: 6379 });
 
   const redis = (adapter as unknown as { redis: RedisLockAdapter["redis"] }).redis;
@@ -434,7 +434,7 @@ test("[SYS-REL-2.3] acquireAsync throws LockingError when connection fails after
   await adapter.close();
 });
 
-test("[SYS-REL-2.3] acquireAsync includes owner in lock data", async () => {
+test("[SYS-REL-2.3] acquireAsync includes owner in lock data [lock-acquisition-timeout]", async () => {
   let capturedValue: string | null = null;
   const mockRedis = createMockRedis({
     status: "ready",
@@ -452,7 +452,7 @@ test("[SYS-REL-2.3] acquireAsync includes owner in lock data", async () => {
   assert.equal(parsed.owner, "my-special-owner", "Owner should be stored in lock data");
 });
 
-test("[SYS-REL-2.3] lock data includes fencingToken for ordering", async () => {
+test("[SYS-REL-2.3] lock data includes fencingToken for ordering [lock-acquisition-timeout]", async () => {
   let capturedValue: string | null = null;
   const mockRedis = createMockRedis({
     status: "ready",
@@ -469,7 +469,7 @@ test("[SYS-REL-2.3] lock data includes fencingToken for ordering", async () => {
   assert.ok(result.lock!.fencingToken > 0, "Fencing token should be positive");
 });
 
-test("[SYS-REL-2.3] multiple rapid acquireAsync calls all succeed with different keys", async () => {
+test("[SYS-REL-2.3] multiple rapid acquireAsync calls all succeed with different keys [lock-acquisition-timeout]", async () => {
   const mockRedis = createMockRedis({
     status: "ready",
     set: async () => "OK",
@@ -486,7 +486,7 @@ test("[SYS-REL-2.3] multiple rapid acquireAsync calls all succeed with different
   assert.ok(results.every((r) => r.lock !== undefined), "All should have lock records");
 });
 
-test("[SYS-REL-2.3] acquireAsync with same key returns acquired=false for second call", async () => {
+test("[SYS-REL-2.3] acquireAsync with same key returns acquired=false for second call [lock-acquisition-timeout]", async () => {
   const mockRedis = createMockRedis({
     status: "ready",
     set: async () => "OK", // First call succeeds
@@ -509,7 +509,7 @@ test("[SYS-REL-2.3] acquireAsync with same key returns acquired=false for second
   assert.equal(second.acquired, false, "Second acquire should fail");
 });
 
-test("[SYS-REL-2.3] forceStealAsync with TTL parameter sets correct expiration", async () => {
+test("[SYS-REL-2.3] forceStealAsync with TTL parameter sets correct expiration [lock-acquisition-timeout]", async () => {
   let capturedValue: string | null = null;
   let capturedTtl: string | null = null;
   const mockRedis = createMockRedis({
@@ -530,7 +530,7 @@ test("[SYS-REL-2.3] forceStealAsync with TTL parameter sets correct expiration",
   assert.equal(capturedTtl, "30000");
 });
 
-test("[SYS-REL-2.3] acquireAsync metadata is null by default", async () => {
+test("[SYS-REL-2.3] acquireAsync metadata is null by default [lock-acquisition-timeout]", async () => {
   let capturedValue: string | null = null;
   const mockRedis = createMockRedis({
     status: "ready",
@@ -547,7 +547,7 @@ test("[SYS-REL-2.3] acquireAsync metadata is null by default", async () => {
   assert.equal(parsed.metadata, null, "Metadata should be null by default");
 });
 
-test("[SYS-REL-2.3] forceStealAsync stores reason in metadata", async () => {
+test("[SYS-REL-2.3] forceStealAsync stores reason in metadata [lock-acquisition-timeout]", async () => {
   let capturedValue: string | null = null;
   const mockRedis = createMockRedis({
     status: "ready",

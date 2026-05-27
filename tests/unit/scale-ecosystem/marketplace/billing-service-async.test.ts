@@ -9,6 +9,6 @@ import test from "node:test";
 
 import * as BillingServiceAsync from "../../../../src/scale-ecosystem/marketplace/billing-service-async.js";
 
-test("billing-service-async exports BillingServiceAsync", () => {
+test("billing-service-async exports BillingServiceAsync [billing-service-async]", () => {
   assert.ok(BillingServiceAsync.BillingServiceAsync !== undefined);
 });

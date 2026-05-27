@@ -4,19 +4,6 @@ dist_*/
 :memory:*
 
 data/
-data/sqlite/
-data/stable-gate/
-data/stable-chaos/
-data/stable-concurrency/
-data/stable-lease/
-data/stable-rollback/
-data/stable-replay/
-data/stable-restore/
-data/stable-campaign/
-data/soak/
-data/stable-evidence/
-data/stable-package/
-data/validation/
 
 *.db
 *.db-backup
@@ -30,8 +17,6 @@ coverage/
 .cache/
 .claude/scheduled_tasks.json
 .stryker-tmp/
-dist_temp/
-dist_test
 dist-test/
 .test-db/
 .tmp/
@@ -47,13 +32,6 @@ artifacts/
 dist-checkpoints/
 session-replay/
 logs/
-
-# Legacy five-plane compatibility symlinks under src/platform/
-src/platform/control-plane
-src/platform/execution
-src/platform/interface
-src/platform/orchestration
-src/platform/state-evidence
 
 # Test artifacts (UUID-named task/artifact directories)
 tests/**/artifacts/

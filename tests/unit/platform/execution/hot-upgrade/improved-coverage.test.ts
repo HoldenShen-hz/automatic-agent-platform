@@ -26,7 +26,7 @@ import type {
   UpgradeAuditEntry,
 } from "../../../../../src/platform/five-plane-execution/hot-upgrade/hot-upgrade-repository.js";
 
-test("VersionCompatibility type structure", () => {
+test("VersionCompatibility type structure [improved-coverage]", () => {
   const compat: VersionCompatibility = {
     fromVersion: "v1.0",
     toVersion: "v2.0",
@@ -42,7 +42,7 @@ test("VersionCompatibility type structure", () => {
   assert.equal(compat.rollbackSupported, true);
 });
 
-test("HealthCheckResult type structure", () => {
+test("HealthCheckResult type structure [improved-coverage]", () => {
   const result: HealthCheckResult = {
     checkId: "check-1",
     checkType: "worker_health",
@@ -57,7 +57,7 @@ test("HealthCheckResult type structure", () => {
   assert.equal(result.passed, true);
 });
 
-test("HealthGateConfig type structure", () => {
+test("HealthGateConfig type structure [improved-coverage]", () => {
   const config: HealthGateConfig = {
     gateType: "worker_ready",
     threshold: 0.95,
@@ -71,7 +71,7 @@ test("HealthGateConfig type structure", () => {
   assert.equal(config.operator, "gte");
 });
 
-test("UpgradePolicy type structure with all fields", () => {
+test("UpgradePolicy type structure with all fields [improved-coverage]", () => {
   const policy: UpgradePolicy = {
     canaryPercent: 10,
     canaryBatches: 3,
@@ -90,7 +90,7 @@ test("UpgradePolicy type structure with all fields", () => {
   assert.ok(policy.healthGates.length > 0);
 });
 
-test("UpgradeBatch type structure", () => {
+test("UpgradeBatch type structure [improved-coverage]", () => {
   const batch: UpgradeBatch = {
     batchId: "batch-1",
     upgradeId: "upgrade-1",
@@ -109,7 +109,7 @@ test("UpgradeBatch type structure", () => {
   assert.equal(batch.status, "pending");
 });
 
-test("RollbackTrigger type structure", () => {
+test("RollbackTrigger type structure [improved-coverage]", () => {
   const trigger: RollbackTrigger = {
     triggerId: "trigger-1",
     upgradeId: "upgrade-1",
@@ -123,7 +123,7 @@ test("RollbackTrigger type structure", () => {
   assert.equal(trigger.reasonCode, "health_check_failed");
 });
 
-test("UpgradeProgress type structure", () => {
+test("UpgradeProgress type structure [improved-coverage]", () => {
   const progress: UpgradeProgress = {
     upgradeId: "upgrade-1",
     phase: "canary",
@@ -142,7 +142,7 @@ test("UpgradeProgress type structure", () => {
   assert.equal(progress.completedBatches, 2);
 });
 
-test("UpgradeAuditEntry type structure", () => {
+test("UpgradeAuditEntry type structure [improved-coverage]", () => {
   const entry: UpgradeAuditEntry = {
     id: "audit-1",
     upgradeId: "upgrade-1",
@@ -158,7 +158,7 @@ test("UpgradeAuditEntry type structure", () => {
   assert.equal(entry.details, null);
 });
 
-test("UpgradePlan type structure", () => {
+test("UpgradePlan type structure [improved-coverage]", () => {
   const plan: UpgradePlan = {
     planId: "plan-1",
     upgradeId: "upgrade-1",
@@ -186,7 +186,7 @@ test("UpgradePlan type structure", () => {
   assert.equal(plan.currentPhase, "canary");
 });
 
-test("UpgradeTarget type structure", () => {
+test("UpgradeTarget type structure [improved-coverage]", () => {
   const target: UpgradeTarget = {
     targetId: "target-1",
     targetType: "coordinator",
@@ -201,7 +201,7 @@ test("UpgradeTarget type structure", () => {
   assert.equal(target.targetVersion, "v2.0");
 });
 
-test("HotUpgradeRepository interface has all required methods", () => {
+test("HotUpgradeRepository interface has all required methods [improved-coverage]", () => {
   const methods: (keyof HotUpgradeRepository)[] = [
     "upsertVersionCompatibility",
     "getVersionCompatibility",
@@ -223,7 +223,7 @@ test("HotUpgradeRepository interface has all required methods", () => {
   assert.ok(methods.length >= 14);
 });
 
-test("CompatibilityLevel allows all valid values", () => {
+test("CompatibilityLevel allows all valid values [improved-coverage]", () => {
   const levels: ("full" | "n_minus_1" | "incompatible")[] = ["full", "n_minus_1", "incompatible"];
 
   assert.equal(levels.length, 3);
@@ -232,13 +232,13 @@ test("CompatibilityLevel allows all valid values", () => {
   assert.ok(levels.includes("incompatible"));
 });
 
-test("UpgradePhase allows all valid values", () => {
+test("UpgradePhase allows all valid values [improved-coverage]", () => {
   const phases: UpgradePhase[] = ["canary", "rollout", "full", "rollback"];
 
   assert.equal(phases.length, 4);
 });
 
-test("UpgradeStatus allows all valid values", () => {
+test("UpgradeStatus allows all valid values [improved-coverage]", () => {
   const statuses: UpgradeStatus[] = [
     "pending",
     "in_progress",
@@ -250,7 +250,7 @@ test("UpgradeStatus allows all valid values", () => {
   assert.equal(statuses.length, 5);
 });
 
-test("BatchStatus allows all valid values", () => {
+test("BatchStatus allows all valid values [improved-coverage]", () => {
   const statuses: UpgradeBatch["status"][] = [
     "pending",
     "in_progress",
@@ -262,7 +262,7 @@ test("BatchStatus allows all valid values", () => {
   assert.equal(statuses.length, 5);
 });
 
-test("ReasonCode allows all valid values", () => {
+test("ReasonCode allows all valid values [improved-coverage]", () => {
   const codes: RollbackTrigger["reasonCode"][] = [
     "health_check_failed",
     "dispatch_error_rate_high",
@@ -274,7 +274,7 @@ test("ReasonCode allows all valid values", () => {
   assert.equal(codes.length, 5);
 });
 
-test("HealthCheckResult checkType allows all valid values", () => {
+test("HealthCheckResult checkType allows all valid values [improved-coverage]", () => {
   const types: HealthCheckResult["checkType"][] = [
     "worker_health",
     "dispatch_routing",
@@ -286,7 +286,7 @@ test("HealthCheckResult checkType allows all valid values", () => {
   assert.equal(types.length, 5);
 });
 
-test("Default health gates are properly configured", () => {
+test("Default health gates are properly configured [improved-coverage]", () => {
   const defaultGates: HealthGateConfig[] = [
     { gateType: "worker_ready", threshold: 0.95, windowSeconds: 60, operator: "gte" },
     { gateType: "dispatch_healthy", threshold: 0.99, windowSeconds: 120, operator: "gte" },
@@ -300,7 +300,7 @@ test("Default health gates are properly configured", () => {
   assert.equal(defaultGates[4]!.gateType, "latency_pct");
 });
 
-test("UpgradePolicy default values computation", () => {
+test("UpgradePolicy default values computation [improved-coverage]", () => {
   const canaryPercent = 10;
   const canaryBatches = 3;
   const batchSize = 33;
@@ -312,7 +312,7 @@ test("UpgradePolicy default values computation", () => {
   assert.equal(maxUpgradeDurationMs, 1800000);
 });
 
-test("Batch computation with small target set", () => {
+test("Batch computation with small target set [improved-coverage]", () => {
   const targets = ["t1", "t2", "t3"];
   const canaryPercent = 10;
   const canaryBatches = 3;
@@ -323,7 +323,7 @@ test("Batch computation with small target set", () => {
   assert.equal(canaryBatchSize, 1);
 });
 
-test("Batch computation with large target set", () => {
+test("Batch computation with large target set [improved-coverage]", () => {
   const targets = Array.from({ length: 100 }, (_, i) => `t${i}`);
   const canaryPercent = 10;
   const canaryBatches = 3;
@@ -335,7 +335,7 @@ test("Batch computation with large target set", () => {
   assert.equal(canaryBatchSize, 10);
 });
 
-test("Health check pass rate calculation", () => {
+test("Health check pass rate calculation [improved-coverage]", () => {
   const checks: HealthCheckResult[] = [
     { checkId: "1", checkType: "worker_health", passed: true, message: "", checkedAt: "", details: {} },
     { checkId: "2", checkType: "worker_health", passed: true, message: "", checkedAt: "", details: {} },
@@ -348,7 +348,7 @@ test("Health check pass rate calculation", () => {
   assert.equal(passRate, 75);
 });
 
-test("Health check pass rate with no checks", () => {
+test("Health check pass rate with no checks [improved-coverage]", () => {
   const checks: HealthCheckResult[] = [];
 
   const passRate = checks.length > 0
@@ -358,7 +358,7 @@ test("Health check pass rate with no checks", () => {
   assert.equal(passRate, 100);
 });
 
-test("Error rate calculation", () => {
+test("Error rate calculation [improved-coverage]", () => {
   const totalBatches = 10;
   const failedBatches = 2;
 
@@ -367,7 +367,7 @@ test("Error rate calculation", () => {
   assert.equal(errorRate, 20);
 });
 
-test("Error rate calculation with no failures", () => {
+test("Error rate calculation with no failures [improved-coverage]", () => {
   const totalBatches = 10;
   const failedBatches = 0;
 
@@ -376,7 +376,7 @@ test("Error rate calculation with no failures", () => {
   assert.equal(errorRate, 0);
 });
 
-test("Estimated completion calculation", () => {
+test("Estimated completion calculation [improved-coverage]", () => {
   const elapsedMs = 60000; // 1 minute
   const completedRatio = 0.5; // 50% complete
 
@@ -385,7 +385,7 @@ test("Estimated completion calculation", () => {
   assert.equal(estimatedCompletionMs, 60000);
 });
 
-test("Version compatibility mapping preserves all fields", () => {
+test("Version compatibility mapping preserves all fields [improved-coverage]", () => {
   const rawRow = {
     from_version: "v1.0",
     to_version: "v2.0",
@@ -409,7 +409,7 @@ test("Version compatibility mapping preserves all fields", () => {
   assert.equal(compat.rollbackSupported, true);
 });
 
-test("HOT_UPGRADE_DDL string exists and contains tables", () => {
+test("HOT_UPGRADE_DDL string exists and contains tables [improved-coverage]", () => {
   // DDL is exported from hot-upgrade-service.ts
   // Verify it contains expected table definitions
   const ddl = `
@@ -478,7 +478,7 @@ CREATE TABLE IF NOT EXISTS upgrade_audit (
   assert.ok(ddl.includes("CREATE TABLE IF NOT EXISTS upgrade_audit"));
 });
 
-test("HOT_UPGRADE_DDL contains proper indexes", () => {
+test("HOT_UPGRADE_DDL contains proper indexes [improved-coverage]", () => {
   const ddl = `
 CREATE INDEX IF NOT EXISTS idx_upgrade_plans_upgrade ON upgrade_plans(upgrade_id);
 CREATE INDEX IF NOT EXISTS idx_upgrade_plans_status ON upgrade_plans(status);
@@ -496,7 +496,7 @@ CREATE INDEX IF NOT EXISTS idx_upgrade_audit_upgrade ON upgrade_audit(upgrade_id
   assert.ok(ddl.includes("CREATE INDEX IF NOT EXISTS idx_upgrade_audit_upgrade"));
 });
 
-test("UpgradeTarget targetType allows all valid values", () => {
+test("UpgradeTarget targetType allows all valid values [improved-coverage]", () => {
   const types: UpgradeTarget["targetType"][] = ["coordinator", "worker_pool", "database", "config"];
 
   assert.equal(types.length, 4);
@@ -506,13 +506,13 @@ test("UpgradeTarget targetType allows all valid values", () => {
   assert.ok(types.includes("config"));
 });
 
-test("HealthGateConfig operator allows all valid values", () => {
+test("HealthGateConfig operator allows all valid values [improved-coverage]", () => {
   const operators: HealthGateConfig["operator"][] = ["gt", "lt", "gte", "lte", "eq"];
 
   assert.equal(operators.length, 5);
 });
 
-test("Version compatibility roundtrip conversion", () => {
+test("Version compatibility roundtrip conversion [improved-coverage]", () => {
   const original: VersionCompatibility = {
     fromVersion: "v1.0",
     toVersion: "v2.0",
@@ -542,7 +542,7 @@ test("Version compatibility roundtrip conversion", () => {
   assert.deepEqual(reconstructed, original);
 });
 
-test("Upgrade batch status transitions", () => {
+test("Upgrade batch status transitions [improved-coverage]", () => {
   const pendingBatch: UpgradeBatch = {
     batchId: "batch-1",
     upgradeId: "upgrade-1",

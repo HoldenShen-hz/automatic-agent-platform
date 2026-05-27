@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 
 import { ValidationRepairLoopService } from "../../../src/platform/five-plane-execution/recovery/validation-repair-loop.js";
 
-test("ValidationRepairLoopService releases when review and validation pass", () => {
+test("ValidationRepairLoopService releases when review and validation pass [validation-repair-loop]", () => {
   const service = new ValidationRepairLoopService();
   const decision = service.decide({
     taskId: "task_1",
@@ -22,7 +22,7 @@ test("ValidationRepairLoopService releases when review and validation pass", () 
   assert.equal(decision.requiresRepair, false);
 });
 
-test("ValidationRepairLoopService builds repair evidence package and escalates after max rounds", () => {
+test("ValidationRepairLoopService builds repair evidence package and escalates after max rounds [validation-repair-loop]", () => {
   const service = new ValidationRepairLoopService();
   const input = {
     taskId: "task_2",
@@ -45,7 +45,7 @@ test("ValidationRepairLoopService builds repair evidence package and escalates a
   assert.equal(decision.requiresEscalation, true);
 });
 
-test("ValidationRepairLoopService marks failed_blocking when forbidden scope touched", () => {
+test("ValidationRepairLoopService marks failed_blocking when forbidden scope touched [validation-repair-loop]", () => {
   const service = new ValidationRepairLoopService();
   const decision = service.decide({
     taskId: "task_forbidden",
@@ -67,7 +67,7 @@ test("ValidationRepairLoopService marks failed_blocking when forbidden scope tou
   assert.equal(decision.requiresEscalation, true);
 });
 
-test("ValidationRepairLoopService returns failed_repairable when review fails but repair rounds remain", () => {
+test("ValidationRepairLoopService returns failed_repairable when review fails but repair rounds remain [validation-repair-loop]", () => {
   const service = new ValidationRepairLoopService();
   const decision = service.decide({
     taskId: "task_review_fail",
@@ -88,7 +88,7 @@ test("ValidationRepairLoopService returns failed_repairable when review fails bu
   assert.equal(decision.requiresEscalation, false);
 });
 
-test("ValidationRepairLoopService returns escalated when review fails and no repair rounds remain", () => {
+test("ValidationRepairLoopService returns escalated when review fails and no repair rounds remain [validation-repair-loop]", () => {
   const service = new ValidationRepairLoopService();
   const decision = service.decide({
     taskId: "task_review_exhausted",
@@ -108,7 +108,7 @@ test("ValidationRepairLoopService returns escalated when review fails and no rep
   assert.equal(decision.requiresEscalation, true);
 });
 
-test("ValidationRepairLoopService returns failed_repairable when validation fails but repair rounds remain", () => {
+test("ValidationRepairLoopService returns failed_repairable when validation fails but repair rounds remain [validation-repair-loop]", () => {
   const service = new ValidationRepairLoopService();
   const decision = service.decide({
     taskId: "task_val_fail",
@@ -129,7 +129,7 @@ test("ValidationRepairLoopService returns failed_repairable when validation fail
   assert.equal(decision.requiresEscalation, false);
 });
 
-test("ValidationRepairLoopService returns escalated when validation fails and no repair rounds remain", () => {
+test("ValidationRepairLoopService returns escalated when validation fails and no repair rounds remain [validation-repair-loop]", () => {
   const service = new ValidationRepairLoopService();
   const decision = service.decide({
     taskId: "task_val_exhausted",
@@ -149,7 +149,7 @@ test("ValidationRepairLoopService returns escalated when validation fails and no
   assert.equal(decision.requiresEscalation, true);
 });
 
-test("ValidationRepairLoopService buildRepairEvidencePackage copies input fields", () => {
+test("ValidationRepairLoopService buildRepairEvidencePackage copies input fields [validation-repair-loop]", () => {
   const service = new ValidationRepairLoopService();
   const input = {
     taskId: "task_evidence",

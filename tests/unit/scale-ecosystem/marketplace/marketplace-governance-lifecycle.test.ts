@@ -77,7 +77,7 @@ function createHarness() {
   return { service, packages, publications };
 }
 
-test("MarketplaceGovernanceService deprecates and retires packages without database backing", () => {
+test("MarketplaceGovernanceService deprecates and retires packages without database backing [marketplace-governance-lifecycle]", () => {
   const { service, packages, publications } = createHarness();
   const deprecated = service.deprecatePackage({
     packageId: "pkg_lifecycle",
@@ -108,7 +108,7 @@ test("MarketplaceGovernanceService deprecates and retires packages without datab
   assert.equal(publications.get("pub_lifecycle")?.status, "retired");
 });
 
-test("MarketplaceGovernanceService blocks direct sunset and premature retire transitions", () => {
+test("MarketplaceGovernanceService blocks direct sunset and premature retire transitions [marketplace-governance-lifecycle]", () => {
   const { service } = createHarness();
 
   assert.throws(

@@ -10,7 +10,7 @@ import {
   type LoopDetectionConfig,
 } from "../../../src/platform/five-plane-execution/execution-engine/loop-detection.js";
 
-test("LoopDetectionState custom hashFn produces consistent results", () => {
+test("LoopDetectionState custom hashFn produces consistent results [loop-detection-extended]", () => {
   const customHashFn = (toolName: string, input: unknown): string => {
     return `${toolName}:${JSON.stringify(input)}`.slice(0, 16);
   };
@@ -24,7 +24,7 @@ test("LoopDetectionState custom hashFn produces consistent results", () => {
   assert.equal(result2.pattern.count, 2);
 });
 
-test("LoopDetectionState getConfig returns all config values", () => {
+test("LoopDetectionState getConfig returns all config values [loop-detection-extended]", () => {
   const config: LoopDetectionConfig = {
     warnThreshold: 2,
     escalateThreshold: 5,
@@ -40,7 +40,7 @@ test("LoopDetectionState getConfig returns all config values", () => {
   assert.equal(retrieved.terminateAtEscalate, true);
 });
 
-test("LoopDetectionState uses default hashFn when not provided", () => {
+test("LoopDetectionState uses default hashFn when not provided [loop-detection-extended]", () => {
   const state = new LoopDetectionState({});
   const result = state.recordToolCall("tool", { arg: "value" });
 
@@ -48,18 +48,18 @@ test("LoopDetectionState uses default hashFn when not provided", () => {
   assert.ok(result.pattern.inputSummary.length > 0);
 });
 
-test("normalizeToolInputForHash handles number inputs", () => {
+test("normalizeToolInputForHash handles number inputs [loop-detection-extended]", () => {
   assert.equal(normalizeToolInputForHash(42), "42");
   assert.equal(normalizeToolInputForHash(0), "0");
   assert.equal(normalizeToolInputForHash(-1), "-1");
 });
 
-test("normalizeToolInputForHash handles boolean inputs", () => {
+test("normalizeToolInputForHash handles boolean inputs [loop-detection-extended]", () => {
   assert.equal(normalizeToolInputForHash(true), "true");
   assert.equal(normalizeToolInputForHash(false), "false");
 });
 
-test("normalizeToolInputForHash handles array inputs", () => {
+test("normalizeToolInputForHash handles array inputs [loop-detection-extended]", () => {
   const arr1 = [1, 2, 3];
   const arr2 = [1, 2, 3];
   const hash1 = normalizeToolInputForHash(arr1);
@@ -71,12 +71,12 @@ test("normalizeToolInputForHash handles array inputs", () => {
   assert.notEqual(hash1, hash3);
 });
 
-test("hashToolCall produces 16 character hashes", () => {
+test("hashToolCall produces 16 character hashes [loop-detection-extended]", () => {
   const hash = hashToolCall("read", { path: "/foo" });
   assert.equal(hash.length, 16);
 });
 
-test("SequenceLoopDetector respects repeatThreshold", () => {
+test("SequenceLoopDetector respects repeatThreshold [loop-detection-extended]", () => {
   const detector = new SequenceLoopDetector({
     windowSize: 2,
     repeatThreshold: 3,
@@ -94,7 +94,7 @@ test("SequenceLoopDetector respects repeatThreshold", () => {
   assert.equal(result.isLoop, true);
 });
 
-test("SequenceLoopDetector returns empty history after reset", () => {
+test("SequenceLoopDetector returns empty history after reset [loop-detection-extended]", () => {
   const detector = new SequenceLoopDetector();
   detector.recordAction("action1");
   detector.recordAction("action2");
@@ -104,7 +104,7 @@ test("SequenceLoopDetector returns empty history after reset", () => {
   assert.equal(detector.getHistory().length, 0);
 });
 
-test("SequenceLoopDetector action history bounded by windowSize", () => {
+test("SequenceLoopDetector action history bounded by windowSize [loop-detection-extended]", () => {
   const detector = new SequenceLoopDetector({ windowSize: 3 });
 
   for (let i = 0; i < 10; i++) {
@@ -115,7 +115,7 @@ test("SequenceLoopDetector action history bounded by windowSize", () => {
   assert.ok(history.length <= 6);
 });
 
-test("createLoopDetectionMiddlewareFull returns full middleware set", () => {
+test("createLoopDetectionMiddlewareFull returns full middleware set [loop-detection-extended]", () => {
   const middlewareSet = createLoopDetectionMiddlewareFull();
 
   assert.ok(middlewareSet.state instanceof LoopDetectionState);
@@ -123,7 +123,7 @@ test("createLoopDetectionMiddlewareFull returns full middleware set", () => {
   assert.equal(middlewareSet.wrapToolCall.name, "loop_detection_wrap_tool_call");
 });
 
-test("createLoopDetectionMiddlewareFull wrapToolCall is called", async () => {
+test("createLoopDetectionMiddlewareFull wrapToolCall is called [loop-detection-extended]", async () => {
   const { wrapToolCall, state } = createLoopDetectionMiddlewareFull({
     warnThreshold: 1,
     escalateThreshold: 3,
@@ -148,7 +148,7 @@ test("createLoopDetectionMiddlewareFull wrapToolCall is called", async () => {
   assert.equal(result, "done");
 });
 
-test("createLoopDetectionMiddlewareFull beforeAgent returns error with warning", async () => {
+test("createLoopDetectionMiddlewareFull beforeAgent returns error with warning [loop-detection-extended]", async () => {
   const { beforeAgent, state } = createLoopDetectionMiddlewareFull({
     warnThreshold: 2,
     escalateThreshold: 5,
@@ -173,7 +173,7 @@ test("createLoopDetectionMiddlewareFull beforeAgent returns error with warning",
   assert.equal(result.error?.warning, true);
 });
 
-test("SequenceLoopDetector handles empty action string", () => {
+test("SequenceLoopDetector handles empty action string [loop-detection-extended]", () => {
   const detector = new SequenceLoopDetector({ windowSize: 2 });
 
   const result = detector.recordAction("");
@@ -181,7 +181,7 @@ test("SequenceLoopDetector handles empty action string", () => {
   assert.deepEqual(result.sequence, []);
 });
 
-test("SequenceLoopDetector detects loop when same sequence repeats", () => {
+test("SequenceLoopDetector detects loop when same sequence repeats [loop-detection-extended]", () => {
   const detector = new SequenceLoopDetector({
     windowSize: 2,
     repeatThreshold: 2,
@@ -199,7 +199,7 @@ test("SequenceLoopDetector detects loop when same sequence repeats", () => {
   assert.ok(result.count >= 2);
 });
 
-test("LoopDetectionState removePattern works with custom hashFn", () => {
+test("LoopDetectionState removePattern works with custom hashFn [loop-detection-extended]", () => {
   const customHashFn = (toolName: string, input: unknown): string => {
     return `custom_${JSON.stringify(input)}`.slice(0, 16);
   };
@@ -215,7 +215,7 @@ test("LoopDetectionState removePattern works with custom hashFn", () => {
   assert.equal(state.getRepeatCount("tool", { key: "value" }), 0);
 });
 
-test("SequenceLoopDetector records first action as non-loop", () => {
+test("SequenceLoopDetector records first action as non-loop [loop-detection-extended]", () => {
   const detector = new SequenceLoopDetector();
   const result = detector.recordAction("first");
 
@@ -224,7 +224,7 @@ test("SequenceLoopDetector records first action as non-loop", () => {
   assert.deepEqual(result.sequence, []);
 });
 
-test("normalizeToolInputForHash handles nested objects", () => {
+test("normalizeToolInputForHash handles nested objects [loop-detection-extended]", () => {
   const obj1 = { nested: { deep: { value: 1 } } };
   const obj2 = { nested: { deep: { value: 1 } } };
   const hash1 = normalizeToolInputForHash(obj1);
@@ -232,13 +232,13 @@ test("normalizeToolInputForHash handles nested objects", () => {
   assert.equal(hash1, hash2);
 });
 
-test("hashToolCall different tool names produce different hashes", () => {
+test("hashToolCall different tool names produce different hashes [loop-detection-extended]", () => {
   const hash1 = hashToolCall("tool_a", { same: "input" });
   const hash2 = hashToolCall("tool_b", { same: "input" });
   assert.notEqual(hash1, hash2);
 });
 
-test("LoopDetectionState wouldEscalate returns false below threshold", () => {
+test("LoopDetectionState wouldEscalate returns false below threshold [loop-detection-extended]", () => {
   const state = new LoopDetectionState({ escalateThreshold: 5 });
 
   for (let i = 0; i < 4; i++) {
@@ -248,7 +248,7 @@ test("LoopDetectionState wouldEscalate returns false below threshold", () => {
   assert.equal(state.wouldEscalate("tool", { data: "value" }), false);
 });
 
-test("LoopDetectionState wouldEscalate returns true at threshold", () => {
+test("LoopDetectionState wouldEscalate returns true at threshold [loop-detection-extended]", () => {
   const state = new LoopDetectionState({ escalateThreshold: 3 });
 
   state.recordToolCall("tool", { data: "value" });
@@ -259,7 +259,7 @@ test("LoopDetectionState wouldEscalate returns true at threshold", () => {
   assert.equal(state.wouldEscalate("tool", { data: "value" }), true);
 });
 
-test("SequenceLoopDetector windowSize parameter works", () => {
+test("SequenceLoopDetector windowSize parameter works [loop-detection-extended]", () => {
   // Test that different window sizes produce different behavior
   const detector3 = new SequenceLoopDetector({ windowSize: 3, repeatThreshold: 2 });
   const detector5 = new SequenceLoopDetector({ windowSize: 5, repeatThreshold: 2 });

@@ -18,7 +18,7 @@ function createTempDir(): string {
   return join("/tmp", `event-replay-test-${Date.now()}-${Math.random().toString(16).slice(2)}`);
 }
 
-test("runStableEventReplayRehearsal executes the scenario successfully", async () => {
+test("runStableEventReplayRehearsal executes the scenario successfully [stable-event-replay-rehearsal]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableEventReplayRehearsal({ outputDir });
@@ -37,7 +37,7 @@ test("runStableEventReplayRehearsal executes the scenario successfully", async (
   }
 });
 
-test("failed_consumer_ack_replay scenario passes", async () => {
+test("failed_consumer_ack_replay scenario passes [stable-event-replay-rehearsal]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableEventReplayRehearsal({ outputDir });
@@ -54,7 +54,7 @@ test("failed_consumer_ack_replay scenario passes", async () => {
   }
 });
 
-test("writeStableEventReplayRehearsalReport writes valid JSON", async () => {
+test("writeStableEventReplayRehearsalReport writes valid JSON [stable-event-replay-rehearsal]", async () => {
   const outputDir = createTempDir();
   const reportPath = join(outputDir, "report.json");
   try {
@@ -76,7 +76,7 @@ test("writeStableEventReplayRehearsalReport writes valid JSON", async () => {
   }
 });
 
-test("report contains valid startedAt and finishedAt timestamps", async () => {
+test("report contains valid startedAt and finishedAt timestamps [stable-event-replay-rehearsal]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableEventReplayRehearsal({ outputDir });
@@ -95,7 +95,7 @@ test("report contains valid startedAt and finishedAt timestamps", async () => {
   }
 });
 
-test("report outputDir matches options", async () => {
+test("report outputDir matches options [stable-event-replay-rehearsal]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableEventReplayRehearsal({ outputDir });
@@ -108,7 +108,7 @@ test("report outputDir matches options", async () => {
   }
 });
 
-test("scenario has durationMs greater than zero", async () => {
+test("scenario has durationMs greater than zero [stable-event-replay-rehearsal]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableEventReplayRehearsal({ outputDir });

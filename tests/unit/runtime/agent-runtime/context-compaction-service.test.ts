@@ -58,7 +58,7 @@ class MockStore implements AuthoritativeTaskStore {
   };
 }
 
-test("ContextCompactionService constructor accepts db and store", () => {
+test("ContextCompactionService constructor accepts db and store [context-compaction-service]", () => {
   const db = new MockSqlDatabase();
   const store = new MockStore();
 
@@ -67,7 +67,7 @@ test("ContextCompactionService constructor accepts db and store", () => {
   assert.ok(service);
 });
 
-test("compactContext returns result structure with no messages", () => {
+test("compactContext returns result structure with no messages [context-compaction-service]", () => {
   const db = new MockSqlDatabase();
   const store = new MockStore();
   const service = new ContextCompactionService(db, store);
@@ -91,7 +91,7 @@ test("compactContext returns result structure with no messages", () => {
   assert.ok(Array.isArray(result.persistedRecords));
 });
 
-test("compactContext with zero maxContextTokens returns valid result", () => {
+test("compactContext with zero maxContextTokens returns valid result [context-compaction-service]", () => {
   const db = new MockSqlDatabase();
   const store = new MockStore();
   const service = new ContextCompactionService(db, store);
@@ -108,7 +108,7 @@ test("compactContext with zero maxContextTokens returns valid result", () => {
   assert.ok(result.contextMessages.length === 0);
 });
 
-test("compactContext with custom stage ratios", () => {
+test("compactContext with custom stage ratios [context-compaction-service]", () => {
   const db = new MockSqlDatabase();
   const store = new MockStore();
   const service = new ContextCompactionService(db, store);
@@ -126,7 +126,7 @@ test("compactContext with custom stage ratios", () => {
   assert.ok(result);
 });
 
-test("compactContext with providerMaxOutputTokens calculates reserved budget", () => {
+test("compactContext with providerMaxOutputTokens calculates reserved budget [context-compaction-service]", () => {
   const db = new MockSqlDatabase();
   const store = new MockStore();
   const service = new ContextCompactionService(db, store);
@@ -143,7 +143,7 @@ test("compactContext with providerMaxOutputTokens calculates reserved budget", (
   assert.ok(result);
 });
 
-test("compactContext with custom recentToolResultWindow", () => {
+test("compactContext with custom recentToolResultWindow [context-compaction-service]", () => {
   const db = new MockSqlDatabase();
   const store = new MockStore();
   const service = new ContextCompactionService(db, store);
@@ -160,7 +160,7 @@ test("compactContext with custom recentToolResultWindow", () => {
   assert.ok(result);
 });
 
-test("compactContext with custom compactionMaxFrequencyPerSession", () => {
+test("compactContext with custom compactionMaxFrequencyPerSession [context-compaction-service]", () => {
   const db = new MockSqlDatabase();
   const store = new MockStore();
   const service = new ContextCompactionService(db, store);
@@ -177,7 +177,7 @@ test("compactContext with custom compactionMaxFrequencyPerSession", () => {
   assert.ok(result);
 });
 
-test("compactContext with occurredAt uses provided timestamp", () => {
+test("compactContext with occurredAt uses provided timestamp [context-compaction-service]", () => {
   const db = new MockSqlDatabase();
   const store = new MockStore();
   const service = new ContextCompactionService(db, store);
@@ -196,7 +196,7 @@ test("compactContext with occurredAt uses provided timestamp", () => {
   assert.ok(result.persistedRecords.length === 0 || result.persistedRecords[0]?.createdAt === occurredAt);
 });
 
-test("ContextCompactionResult type structure", () => {
+test("ContextCompactionResult type structure [context-compaction-service]", () => {
   const result: ContextCompactionResult = {
     usageBeforeTokens: 5000,
     usageAfterStage1Tokens: 4000,
@@ -215,7 +215,7 @@ test("ContextCompactionResult type structure", () => {
   assert.equal(result.errorCode, null);
 });
 
-test("CompactedContextMessage type structure", () => {
+test("CompactedContextMessage type structure [context-compaction-service]", () => {
   const message: CompactedContextMessage = {
     messageId: "msg_123",
     direction: "inbound",
@@ -231,7 +231,7 @@ test("CompactedContextMessage type structure", () => {
   assert.equal(message.protected, true);
 });
 
-test("compactContext returns errorCode when budget exhausted", () => {
+test("compactContext returns errorCode when budget exhausted [context-compaction-service]", () => {
   const db = new MockSqlDatabase();
   const store = new MockStore();
   const service = new ContextCompactionService(db, store);
@@ -248,7 +248,7 @@ test("compactContext returns errorCode when budget exhausted", () => {
   assert.ok(result.errorCode === null || result.errorCode === "runtime.compaction_budget_exhausted");
 });
 
-test("compactContext with KV cache config", () => {
+test("compactContext with KV cache config [context-compaction-service]", () => {
   const db = new MockSqlDatabase();
   const store = new MockStore();
   const service = new ContextCompactionService(db, store);

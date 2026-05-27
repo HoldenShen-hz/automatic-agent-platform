@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { resolveRemoteAuthorityBlockReason } from "../../../src/platform/five-plane-execution/worker-pool/remote-session-guard.js";
 
-test("remote session guard allows local workers and healthy remote workers", () => {
+test("remote session guard allows local workers and healthy remote workers [remote-session-guard]", () => {
   assert.equal(
     resolveRemoteAuthorityBlockReason({
       placement: "local",
@@ -26,7 +26,7 @@ test("remote session guard allows local workers and healthy remote workers", () 
   );
 });
 
-test("remote session guard blocks viewer-only, consistency mismatch, and missing resume offset", () => {
+test("remote session guard blocks viewer-only, consistency mismatch, and missing resume offset [remote-session-guard]", () => {
   assert.equal(
     resolveRemoteAuthorityBlockReason({
       placement: "remote",
@@ -69,7 +69,7 @@ test("remote session guard blocks viewer-only, consistency mismatch, and missing
   );
 });
 
-test("remote session guard returns null for remote workers that are connecting", () => {
+test("remote session guard returns null for remote workers that are connecting [remote-session-guard]", () => {
   // connecting status should not trigger resume offset missing
   assert.equal(
     resolveRemoteAuthorityBlockReason({
@@ -83,7 +83,7 @@ test("remote session guard returns null for remote workers that are connecting",
   );
 });
 
-test("remote session guard returns null for remote workers that have failed", () => {
+test("remote session guard returns null for remote workers that have failed [remote-session-guard]", () => {
   // failed status should not trigger resume offset missing
   assert.equal(
     resolveRemoteAuthorityBlockReason({
@@ -97,7 +97,7 @@ test("remote session guard returns null for remote workers that have failed", ()
   );
 });
 
-test("remote session guard handles empty string stream offset as missing", () => {
+test("remote session guard handles empty string stream offset as missing [remote-session-guard]", () => {
   assert.equal(
     resolveRemoteAuthorityBlockReason({
       placement: "remote",
@@ -110,7 +110,7 @@ test("remote session guard handles empty string stream offset as missing", () =>
   );
 });
 
-test("remote session guard handles whitespace-only stream offset as missing", () => {
+test("remote session guard handles whitespace-only stream offset as missing [remote-session-guard]", () => {
   assert.equal(
     resolveRemoteAuthorityBlockReason({
       placement: "remote",
@@ -123,7 +123,7 @@ test("remote session guard handles whitespace-only stream offset as missing", ()
   );
 });
 
-test("remote session guard allows remote worker with valid offset even if other fields are null", () => {
+test("remote session guard allows remote worker with valid offset even if other fields are null [remote-session-guard]", () => {
   // Only placement is remote, session is connected, and has a valid offset
   assert.equal(
     resolveRemoteAuthorityBlockReason({
@@ -137,7 +137,7 @@ test("remote session guard allows remote worker with valid offset even if other 
   );
 });
 
-test("remote session guard handles undefined placement as allowed", () => {
+test("remote session guard handles undefined placement as allowed [remote-session-guard]", () => {
   // undefined placement defaults to local behavior (not remote)
   assert.equal(
     resolveRemoteAuthorityBlockReason({
@@ -151,7 +151,7 @@ test("remote session guard handles undefined placement as allowed", () => {
   );
 });
 
-test("remote session guard handles null placement as allowed", () => {
+test("remote session guard handles null placement as allowed [remote-session-guard]", () => {
   assert.equal(
     resolveRemoteAuthorityBlockReason({
       placement: null,
@@ -164,7 +164,7 @@ test("remote session guard handles null placement as allowed", () => {
   );
 });
 
-test("remote session guard priority: viewer_only blocks even with valid offset", () => {
+test("remote session guard priority: viewer_only blocks even with valid offset [remote-session-guard]", () => {
   // viewer_only is checked before resume offset, so it should block even with valid offset
   assert.equal(
     resolveRemoteAuthorityBlockReason({
@@ -178,7 +178,7 @@ test("remote session guard priority: viewer_only blocks even with valid offset",
   );
 });
 
-test("remote session guard priority: consistency mismatch checked before workspace sync", () => {
+test("remote session guard priority: consistency mismatch checked before workspace sync [remote-session-guard]", () => {
   // consistency mismatch is checked before workspace sync conflict
   assert.equal(
     resolveRemoteAuthorityBlockReason({

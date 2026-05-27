@@ -16,10 +16,10 @@
  * ## Key Concepts
  *
  * - **Workflow**: Structured execution path defining steps, dependencies, I/O, and failure paths
- *   * See: {@link https://github.com/automatic-agent/automatic_agent_platform/blob/main/docs_zh/governance/glossary_and_terminology.md | Glossary: workflow}
+ *   * See: {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/governance/glossary_and_terminology.md | Glossary: workflow}
  *
  * - **Step**: Single execution unit within a workflow
- *   * See: {@link https://github.com/automatic-agent/automatic_agent_platform/blob/main/docs_zh/governance/glossary_and_terminology.md | Glossary: step}
+ *   * See: {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/governance/glossary_and_terminology.md | Glossary: step}
  *
  * ## Output
  *

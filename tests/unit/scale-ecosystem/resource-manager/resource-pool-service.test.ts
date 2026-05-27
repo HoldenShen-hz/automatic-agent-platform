@@ -27,7 +27,7 @@ function createTestPool(overrides: Partial<ResourcePool> = {}): ResourcePool {
   };
 }
 
-test("ResourcePoolService.registerPool parses and stores pool", () => {
+test("ResourcePoolService.registerPool parses and stores pool [resource-pool-service]", () => {
   const service = new ResourcePoolService();
   const pool = createTestPool();
 
@@ -37,7 +37,7 @@ test("ResourcePoolService.registerPool parses and stores pool", () => {
   assert.equal(registered.capacityUnits, 100);
 });
 
-test("ResourcePoolService.registerPool applies defaults", () => {
+test("ResourcePoolService.registerPool applies defaults [resource-pool-service]", () => {
   const service = new ResourcePoolService();
   const pool = createTestPool({
     poolId: "pool-1",
@@ -53,7 +53,7 @@ test("ResourcePoolService.registerPool applies defaults", () => {
   assert.equal(registered.burstUnits, 0);
 });
 
-test("ResourcePoolService.allocate grants when capacity available", () => {
+test("ResourcePoolService.allocate grants when capacity available [resource-pool-service]", () => {
   const service = new ResourcePoolService();
   service.registerPool(createTestPool({ capacityUnits: 100, burstUnits: 20 }));
 
@@ -64,7 +64,7 @@ test("ResourcePoolService.allocate grants when capacity available", () => {
   assert.deepEqual(allocation.reasonCodes, ["resource_pool.allocated"]);
 });
 
-test("ResourcePoolService.allocate uses burst when base capacity exceeded", () => {
+test("ResourcePoolService.allocate uses burst when base capacity exceeded [resource-pool-service]", () => {
   const service = new ResourcePoolService();
   service.registerPool(createTestPool({ capacityUnits: 100, allocatedUnits: 90, burstUnits: 20 }));
 
@@ -73,7 +73,7 @@ test("ResourcePoolService.allocate uses burst when base capacity exceeded", () =
   assert.equal(allocation.granted, true);
 });
 
-test("ResourcePoolService.allocate denies when burst capacity exceeded", () => {
+test("ResourcePoolService.allocate denies when burst capacity exceeded [resource-pool-service]", () => {
   const service = new ResourcePoolService();
   service.registerPool(createTestPool({ capacityUnits: 100, allocatedUnits: 100, burstUnits: 20 }));
 
@@ -83,7 +83,7 @@ test("ResourcePoolService.allocate denies when burst capacity exceeded", () => {
   assert.deepEqual(allocation.reasonCodes, ["resource_pool.capacity_exceeded"]);
 });
 
-test("ResourcePoolService.allocate updates allocatedUnits", () => {
+test("ResourcePoolService.allocate updates allocatedUnits [resource-pool-service]", () => {
   const service = new ResourcePoolService();
   service.registerPool(createTestPool({ capacityUnits: 100 }));
 
@@ -94,7 +94,7 @@ test("ResourcePoolService.allocate updates allocatedUnits", () => {
   assert.equal(second.granted, true);
 });
 
-test("ResourcePoolService.release reduces allocatedUnits", () => {
+test("ResourcePoolService.release reduces allocatedUnits [resource-pool-service]", () => {
   const service = new ResourcePoolService();
   service.registerPool(createTestPool({ capacityUnits: 100, allocatedUnits: 60 }));
 
@@ -103,7 +103,7 @@ test("ResourcePoolService.release reduces allocatedUnits", () => {
   assert.equal(updated.allocatedUnits, 30);
 });
 
-test("ResourcePoolService.release clamps to zero", () => {
+test("ResourcePoolService.release clamps to zero [resource-pool-service]", () => {
   const service = new ResourcePoolService();
   service.registerPool(createTestPool({ capacityUnits: 100, allocatedUnits: 10 }));
 
@@ -112,7 +112,7 @@ test("ResourcePoolService.release clamps to zero", () => {
   assert.equal(updated.allocatedUnits, 0);
 });
 
-test("ResourcePoolService.getPool returns pool when registered", () => {
+test("ResourcePoolService.getPool returns pool when registered [resource-pool-service]", () => {
   const service = new ResourcePoolService();
   service.registerPool(createTestPool({ poolId: "pool-1" }));
 
@@ -121,7 +121,7 @@ test("ResourcePoolService.getPool returns pool when registered", () => {
   assert.equal(pool?.poolId, "pool-1");
 });
 
-test("ResourcePoolService.getPool returns null when not found", () => {
+test("ResourcePoolService.getPool returns null when not found [resource-pool-service]", () => {
   const service = new ResourcePoolService();
 
   const pool = service.getPool("nonexistent");
@@ -129,19 +129,19 @@ test("ResourcePoolService.getPool returns null when not found", () => {
   assert.equal(pool, null);
 });
 
-test("ResourcePoolService.allocate throws for unknown pool", () => {
+test("ResourcePoolService.allocate throws for unknown pool [resource-pool-service]", () => {
   const service = new ResourcePoolService();
 
   assert.throws(() => service.allocate("unknown", "consumer", 10), /resource_pool.not_found/);
 });
 
-test("ResourcePoolService.release throws for unknown pool", () => {
+test("ResourcePoolService.release throws for unknown pool [resource-pool-service]", () => {
   const service = new ResourcePoolService();
 
   assert.throws(() => service.release("unknown", 10), /resource_pool.not_found/);
 });
 
-test("ResourcePoolSchema parses valid pool", () => {
+test("ResourcePoolSchema parses valid pool [resource-pool-service]", () => {
   const result = ResourcePoolSchema.safeParse({
     poolId: "pool-1",
     resourceType: "gpu_units",
@@ -151,7 +151,7 @@ test("ResourcePoolSchema parses valid pool", () => {
   assert.equal(result.success, true);
 });
 
-test("ResourcePoolSchema rejects empty poolId", () => {
+test("ResourcePoolSchema rejects empty poolId [resource-pool-service]", () => {
   const result = ResourcePoolSchema.safeParse({
     poolId: "",
     resourceType: "gpu_units",
@@ -161,7 +161,7 @@ test("ResourcePoolSchema rejects empty poolId", () => {
   assert.equal(result.success, false);
 });
 
-test("ResourcePoolSchema rejects negative capacity", () => {
+test("ResourcePoolSchema rejects negative capacity [resource-pool-service]", () => {
   const result = ResourcePoolSchema.safeParse({
     poolId: "pool-1",
     resourceType: "gpu_units",

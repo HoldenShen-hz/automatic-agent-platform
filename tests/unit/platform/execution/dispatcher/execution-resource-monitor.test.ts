@@ -39,7 +39,7 @@ function createMockStore(
 // ExecutionResourceMonitor detect() - basic behavior
 // ---------------------------------------------------------------------------
 
-test("ExecutionResourceMonitor detect returns empty array when no active executions", () => {
+test("ExecutionResourceMonitor detect returns empty array when no active executions [execution-resource-monitor]", () => {
   const store = createMockStore([]);
   const guard = new ExecutionResourceCeilingGuard({ maxToolCalls: 100 });
   const monitor = new ExecutionResourceMonitor(store, guard);
@@ -47,7 +47,7 @@ test("ExecutionResourceMonitor detect returns empty array when no active executi
   assert.equal(findings.length, 0);
 });
 
-test("ExecutionResourceMonitor detect returns empty when no executions exceed ceiling", () => {
+test("ExecutionResourceMonitor detect returns empty when no executions exceed ceiling [execution-resource-monitor]", () => {
   const executions = new Map([
     ["exec-1", { id: "exec-1", taskId: "task-1", agentId: "agent-1", status: "executing", startedAt: new Date(Date.now() - 10000).toISOString(), createdAt: new Date().toISOString() }],
   ]);
@@ -58,7 +58,7 @@ test("ExecutionResourceMonitor detect returns empty when no executions exceed ce
   assert.equal(findings.length, 0);
 });
 
-test("ExecutionResourceMonitor detect finds executions exceeding tool call ceiling", () => {
+test("ExecutionResourceMonitor detect finds executions exceeding tool call ceiling [execution-resource-monitor]", () => {
   const executions = new Map([
     ["exec-1", { id: "exec-1", taskId: "task-1", agentId: "agent-1", status: "executing", startedAt: new Date(Date.now() - 10000).toISOString(), createdAt: new Date().toISOString() }],
   ]);
@@ -75,7 +75,7 @@ test("ExecutionResourceMonitor detect finds executions exceeding tool call ceili
   assert.equal(findings[0]!.limit, 100);
 });
 
-test("ExecutionResourceMonitor detect finds executions exceeding memory ceiling", () => {
+test("ExecutionResourceMonitor detect finds executions exceeding memory ceiling [execution-resource-monitor]", () => {
   const executions = new Map([
     ["exec-1", { id: "exec-1", taskId: "task-1", agentId: "agent-1", status: "executing", createdAt: new Date().toISOString() }],
   ]);
@@ -91,7 +91,7 @@ test("ExecutionResourceMonitor detect finds executions exceeding memory ceiling"
   assert.equal(findings[0]!.actual, 4096);
 });
 
-test("ExecutionResourceMonitor detect finds executions exceeding elapsed time ceiling", () => {
+test("ExecutionResourceMonitor detect finds executions exceeding elapsed time ceiling [execution-resource-monitor]", () => {
   const startedAt = new Date(Date.now() - 600000).toISOString(); // 10 minutes ago
   const executions = new Map([
     ["exec-1", { id: "exec-1", taskId: "task-1", agentId: "agent-1", status: "executing", startedAt, createdAt: startedAt }],
@@ -104,7 +104,7 @@ test("ExecutionResourceMonitor detect finds executions exceeding elapsed time ce
   assert.equal(findings[0]!.dimension, "elapsed_ms");
 });
 
-test("ExecutionResourceMonitor detect skips executions not found in store", () => {
+test("ExecutionResourceMonitor detect skips executions not found in store [execution-resource-monitor]", () => {
   const store = createMockStore([{ executionId: "nonexistent" }], new Map());
   const guard = new ExecutionResourceCeilingGuard({ maxToolCalls: 100 });
   const monitor = new ExecutionResourceMonitor(store, guard);
@@ -112,7 +112,7 @@ test("ExecutionResourceMonitor detect skips executions not found in store", () =
   assert.equal(findings.length, 0);
 });
 
-test("ExecutionResourceMonitor detect uses custom now timestamp", () => {
+test("ExecutionResourceMonitor detect uses custom now timestamp [execution-resource-monitor]", () => {
   const startedAt = new Date(Date.now() - 10000).toISOString();
   const customNow = new Date(Date.now() - 600000).toISOString(); // 10 min ago, same as startedAt
   const executions = new Map([
@@ -126,7 +126,7 @@ test("ExecutionResourceMonitor detect uses custom now timestamp", () => {
   assert.equal(findings.length, 0);
 });
 
-test("ExecutionResourceMonitor detect handles missing startedAt gracefully", () => {
+test("ExecutionResourceMonitor detect handles missing startedAt gracefully [execution-resource-monitor]", () => {
   const executions = new Map([
     ["exec-1", { id: "exec-1", taskId: "task-1", agentId: "agent-1", status: "executing", createdAt: new Date().toISOString() }],
   ]);
@@ -138,7 +138,7 @@ test("ExecutionResourceMonitor detect handles missing startedAt gracefully", () 
   assert.equal(findings.length, 0);
 });
 
-test("ExecutionResourceMonitor detect uses agent execution record for agentId", () => {
+test("ExecutionResourceMonitor detect uses agent execution record for agentId [execution-resource-monitor]", () => {
   const executions = new Map([
     ["exec-1", { id: "exec-1", taskId: "task-1", agentId: "exec-agent-id", status: "executing", createdAt: new Date().toISOString() }],
   ]);
@@ -154,7 +154,7 @@ test("ExecutionResourceMonitor detect uses agent execution record for agentId", 
   assert.equal(findings[0]!.agentId, "actual-agent-id");
 });
 
-test("ExecutionResourceMonitor detect uses worker snapshot for runtime info", () => {
+test("ExecutionResourceMonitor detect uses worker snapshot for runtime info [execution-resource-monitor]", () => {
   const executions = new Map([
     ["exec-1", { id: "exec-1", taskId: "task-1", agentId: "agent-1", status: "executing", createdAt: new Date().toISOString() }],
   ]);
@@ -178,7 +178,7 @@ test("ExecutionResourceMonitor detect uses worker snapshot for runtime info", ()
 // Additional resource monitor tests
 // ---------------------------------------------------------------------------
 
-test("ExecutionResourceMonitor detect finds multiple violations for same execution", () => {
+test("ExecutionResourceMonitor detect finds multiple violations for same execution [execution-resource-monitor]", () => {
   const startedAt = new Date(Date.now() - 600000).toISOString(); // 10 minutes ago
   const executions = new Map([
     ["exec-1", { id: "exec-1", taskId: "task-1", agentId: "agent-1", status: "executing", startedAt, createdAt: startedAt }],
@@ -197,7 +197,7 @@ test("ExecutionResourceMonitor detect finds multiple violations for same executi
   assert.equal(findings.length, 3);
 });
 
-test("ExecutionResourceMonitor detect with default guard options", () => {
+test("ExecutionResourceMonitor detect with default guard options [execution-resource-monitor]", () => {
   const executions = new Map([
     ["exec-1", { id: "exec-1", taskId: "task-1", agentId: "agent-1", status: "executing", createdAt: new Date().toISOString() }],
   ]);
@@ -210,7 +210,7 @@ test("ExecutionResourceMonitor detect with default guard options", () => {
   assert.equal(findings.length, 0);
 });
 
-test("ExecutionResourceMonitor detect with null toolCallCount does not trigger tool calls limit", () => {
+test("ExecutionResourceMonitor detect with null toolCallCount does not trigger tool calls limit [execution-resource-monitor]", () => {
   const executions = new Map([
     ["exec-1", { id: "exec-1", taskId: "task-1", agentId: "agent-1", status: "executing", createdAt: new Date().toISOString() }],
   ]);
@@ -224,7 +224,7 @@ test("ExecutionResourceMonitor detect with null toolCallCount does not trigger t
   assert.equal(findings.length, 0);
 });
 
-test("ExecutionResourceMonitor detect with null memoryMb does not trigger memory limit", () => {
+test("ExecutionResourceMonitor detect with null memoryMb does not trigger memory limit [execution-resource-monitor]", () => {
   const executions = new Map([
     ["exec-1", { id: "exec-1", taskId: "task-1", agentId: "agent-1", status: "executing", createdAt: new Date().toISOString() }],
   ]);
@@ -241,7 +241,7 @@ test("ExecutionResourceMonitor detect with null memoryMb does not trigger memory
   assert.equal(findings.length, 0);
 });
 
-test("ExecutionResourceMonitor detect with no ceiling limits returns empty", () => {
+test("ExecutionResourceMonitor detect with no ceiling limits returns empty [execution-resource-monitor]", () => {
   const startedAt = new Date(Date.now() - 600000).toISOString();
   const executions = new Map([
     ["exec-1", { id: "exec-1", taskId: "task-1", agentId: "agent-1", status: "executing", startedAt, createdAt: startedAt }],
@@ -259,7 +259,7 @@ test("ExecutionResourceMonitor detect with no ceiling limits returns empty", () 
   assert.equal(findings.length, 0);
 });
 
-test("ExecutionResourceMonitor detect processes multiple executions", () => {
+test("ExecutionResourceMonitor detect processes multiple executions [execution-resource-monitor]", () => {
   const startedAt = new Date(Date.now() - 600000).toISOString();
   const executions = new Map([
     ["exec-1", { id: "exec-1", taskId: "task-1", agentId: "agent-1", status: "executing", startedAt, createdAt: startedAt }],
@@ -276,7 +276,7 @@ test("ExecutionResourceMonitor detect processes multiple executions", () => {
   assert.equal(findings.length, 2);
 });
 
-test("ExecutionResourceMonitor detect handles missing agent execution record", () => {
+test("ExecutionResourceMonitor detect handles missing agent execution record [execution-resource-monitor]", () => {
   const executions = new Map([
     ["exec-1", { id: "exec-1", taskId: "task-1", agentId: "agent-1", status: "executing", createdAt: new Date().toISOString() }],
   ]);
@@ -293,7 +293,7 @@ test("ExecutionResourceMonitor detect handles missing agent execution record", (
   assert.equal(findings[0]!.agentId, "agent-1");
 });
 
-test("ExecutionResourceMonitor detect uses execution startedAt when agentExecution startedAt is missing", () => {
+test("ExecutionResourceMonitor detect uses execution startedAt when agentExecution startedAt is missing [execution-resource-monitor]", () => {
   const startedAt = new Date(Date.now() - 600000).toISOString();
   const executions = new Map([
     ["exec-1", { id: "exec-1", taskId: "task-1", agentId: "agent-1", status: "executing", startedAt, createdAt: startedAt }],
@@ -309,7 +309,7 @@ test("ExecutionResourceMonitor detect uses execution startedAt when agentExecuti
   assert.equal(findings[0]!.dimension, "elapsed_ms");
 });
 
-test("ExecutionResourceMonitor detect uses execution createdAt when both startedAt are missing", () => {
+test("ExecutionResourceMonitor detect uses execution createdAt when both startedAt are missing [execution-resource-monitor]", () => {
   const createdAt = new Date(Date.now() - 600000).toISOString();
   const executions = new Map([
     ["exec-1", { id: "exec-1", taskId: "task-1", agentId: "agent-1", status: "executing", createdAt }],
@@ -325,7 +325,7 @@ test("ExecutionResourceMonitor detect uses execution createdAt when both started
   assert.equal(findings[0]!.dimension, "elapsed_ms");
 });
 
-test("ExecutionResourceMonitor detect handles mixed violations across executions", () => {
+test("ExecutionResourceMonitor detect handles mixed violations across executions [execution-resource-monitor]", () => {
   const startedAt = new Date(Date.now() - 600000).toISOString();
   const executions = new Map([
     ["exec-1", { id: "exec-1", taskId: "task-1", agentId: "agent-1", status: "executing", startedAt, createdAt: startedAt }],

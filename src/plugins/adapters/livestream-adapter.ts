@@ -10,11 +10,26 @@
 import type { ExternalAdapterPlugin } from "../../domains/registry/plugin-spi.js";
 import { PolicyDeniedError, ValidationError, type ErrorCode } from "../../platform/contracts/errors.js";
 import { NetworkEgressPolicyService } from "../../platform/five-plane-control-plane/iam/network-egress-policy.js";
+import { parseSafeOutboundUrl } from "../../platform/five-plane-control-plane/iam/outbound-url-policy.js";
 import { buildHashedCredentialFingerprint } from "./credential-hygiene.js";
 
 export interface LivestreamAdapterPluginOptions {
   policy?: NetworkEgressPolicyService;
 }
+
+function defineAdapterEndpoint(url: string, key: string): string {
+  return parseSafeOutboundUrl(url, {
+    invalid: `livestream_adapter.invalid_${key}`,
+    blocked: `livestream_adapter.blocked_${key}`,
+  }).toString().replace(/\/$/, "");
+}
+
+const TWITCH_STREAMS_URL = defineAdapterEndpoint("https://api.twitch.tv/helix/streams", "twitch_streams_url");
+const YOUTUBE_LIVE_BROADCASTS_URL = defineAdapterEndpoint(
+  "https://www.googleapis.com/youtube/v3/liveBroadcasts",
+  "youtube_live_broadcasts_url",
+);
+const TWITCH_API_BASE_URL = defineAdapterEndpoint("https://api.twitch.tv", "twitch_api_base_url");
 
 export function createLivestreamAdapterPlugin(options: LivestreamAdapterPluginOptions = {}): ExternalAdapterPlugin {
   const policy = options.policy ?? new NetworkEgressPolicyService({
@@ -36,8 +51,8 @@ export function createLivestreamAdapterPlugin(options: LivestreamAdapterPluginOp
         return false;
       }
       const [twitchDecision, youtubeDecision] = await Promise.all([
-        policy.evaluate("https://api.twitch.tv/helix/streams"),
-        policy.evaluate("https://www.googleapis.com/youtube/v3/liveBroadcasts"),
+        policy.evaluate(TWITCH_STREAMS_URL),
+        policy.evaluate(YOUTUBE_LIVE_BROADCASTS_URL),
       ]);
       return twitchDecision.allowed && youtubeDecision.allowed;
     },
@@ -64,7 +79,7 @@ export function createLivestreamAdapterPlugin(options: LivestreamAdapterPluginOp
         throw new Error("livestream_adapter.not_authenticated");
       }
 
-      const decision = await policy.evaluate("https://api.twitch.tv");
+      const decision = await policy.evaluate(TWITCH_API_BASE_URL);
       if (!decision.allowed) {
         throw new PolicyDeniedError("egress.denied" as ErrorCode, "Livestream adapter: egress denied");
       }

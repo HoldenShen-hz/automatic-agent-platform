@@ -108,7 +108,7 @@ function createTestWorker(store: AuthoritativeTaskStore, workerId: string, now: 
 // Lease Acquisition Tests
 // =============================================================================
 
-test("acquireLease grants a new lease to a worker", () => {
+test("acquireLease grants a new lease to a worker [execution-lease-service]", () => {
   const workspace = createTempWorkspace("aa-lease-");
   try {
     const db = new SqliteDatabase(join(workspace, "test.db"));
@@ -142,7 +142,7 @@ test("acquireLease grants a new lease to a worker", () => {
   }
 });
 
-test("acquireLease blocks when an active lease already exists", () => {
+test("acquireLease blocks when an active lease already exists [execution-lease-service]", () => {
   const workspace = createTempWorkspace("aa-lease-");
   try {
     const db = new SqliteDatabase(join(workspace, "test.db"));
@@ -181,7 +181,7 @@ test("acquireLease blocks when an active lease already exists", () => {
   }
 });
 
-test("acquireLease throws when execution not found", () => {
+test("acquireLease throws when execution not found [execution-lease-service]", () => {
   const workspace = createTempWorkspace("aa-lease-");
   try {
     const db = new SqliteDatabase(join(workspace, "test.db"));
@@ -205,7 +205,7 @@ test("acquireLease throws when execution not found", () => {
   }
 });
 
-test("acquireLease increments fencing token for each new lease", () => {
+test("acquireLease increments fencing token for each new lease [execution-lease-service]", () => {
   const workspace = createTempWorkspace("aa-lease-");
   try {
     const db = new SqliteDatabase(join(workspace, "test.db"));
@@ -253,7 +253,7 @@ test("acquireLease increments fencing token for each new lease", () => {
 // Lease Renewal Tests
 // =============================================================================
 
-test("renewLease extends the lease expiration time", () => {
+test("renewLease extends the lease expiration time [execution-lease-service]", () => {
   const workspace = createTempWorkspace("aa-lease-");
   try {
     const db = new SqliteDatabase(join(workspace, "test.db"));
@@ -293,7 +293,7 @@ test("renewLease extends the lease expiration time", () => {
   }
 });
 
-test("renewLease blocked when lease not found", () => {
+test("renewLease blocked when lease not found [execution-lease-service]", () => {
   const workspace = createTempWorkspace("aa-lease-");
   try {
     const db = new SqliteDatabase(join(workspace, "test.db"));
@@ -319,7 +319,7 @@ test("renewLease blocked when lease not found", () => {
   }
 });
 
-test("renewLease blocked when worker ID does not match lease owner", () => {
+test("renewLease blocked when worker ID does not match lease owner [execution-lease-service]", () => {
   const workspace = createTempWorkspace("aa-lease-");
   try {
     const db = new SqliteDatabase(join(workspace, "test.db"));
@@ -355,7 +355,7 @@ test("renewLease blocked when worker ID does not match lease owner", () => {
   }
 });
 
-test("renewLease blocked when lease is not active (already released)", () => {
+test("renewLease blocked when lease is not active (already released) [execution-lease-service]", () => {
   const workspace = createTempWorkspace("aa-lease-");
   try {
     const db = new SqliteDatabase(join(workspace, "test.db"));
@@ -400,7 +400,7 @@ test("renewLease blocked when lease is not active (already released)", () => {
   }
 });
 
-test("renewLease blocked when lease has already expired", () => {
+test("renewLease blocked when lease has already expired [execution-lease-service]", () => {
   const workspace = createTempWorkspace("aa-lease-");
   try {
     const db = new SqliteDatabase(join(workspace, "test.db"));
@@ -443,7 +443,7 @@ test("renewLease blocked when lease has already expired", () => {
 // Lease Release Tests
 // =============================================================================
 
-test("releaseLease releases an active lease", () => {
+test("releaseLease releases an active lease [execution-lease-service]", () => {
   const workspace = createTempWorkspace("aa-lease-");
   try {
     const db = new SqliteDatabase(join(workspace, "test.db"));
@@ -484,7 +484,7 @@ test("releaseLease releases an active lease", () => {
   }
 });
 
-test("releaseLease blocked when lease not found", () => {
+test("releaseLease blocked when lease not found [execution-lease-service]", () => {
   const workspace = createTempWorkspace("aa-lease-");
   try {
     const db = new SqliteDatabase(join(workspace, "test.db"));
@@ -509,7 +509,7 @@ test("releaseLease blocked when lease not found", () => {
   }
 });
 
-test("releaseLease blocked when worker ID does not match", () => {
+test("releaseLease blocked when worker ID does not match [execution-lease-service]", () => {
   const workspace = createTempWorkspace("aa-lease-");
   try {
     const db = new SqliteDatabase(join(workspace, "test.db"));
@@ -545,7 +545,7 @@ test("releaseLease blocked when worker ID does not match", () => {
   }
 });
 
-test("releaseLease blocked when lease is not active", () => {
+test("releaseLease blocked when lease is not active [execution-lease-service]", () => {
   const workspace = createTempWorkspace("aa-lease-");
   try {
     const db = new SqliteDatabase(join(workspace, "test.db"));
@@ -594,7 +594,7 @@ test("releaseLease blocked when lease is not active", () => {
 // Lease Timeout / Expiration Tests
 // =============================================================================
 
-test("acquireLease expires an existing lease that has passed its expiration time", () => {
+test("acquireLease expires an existing lease that has passed its expiration time [execution-lease-service]", () => {
   const workspace = createTempWorkspace("aa-lease-");
   try {
     const db = new SqliteDatabase(join(workspace, "test.db"));
@@ -640,7 +640,7 @@ test("acquireLease expires an existing lease that has passed its expiration time
   }
 });
 
-test("reclaimExpiredLeases reclaims leases past their expiration", () => {
+test("reclaimExpiredLeases reclaims leases past their expiration [execution-lease-service]", () => {
   const workspace = createTempWorkspace("aa-lease-");
   try {
     const db = new SqliteDatabase(join(workspace, "test.db"));
@@ -679,7 +679,7 @@ test("reclaimExpiredLeases reclaims leases past their expiration", () => {
   }
 });
 
-test("reclaimActiveLease reclaims an active lease by execution ID", () => {
+test("reclaimActiveLease reclaims an active lease by execution ID [execution-lease-service]", () => {
   const workspace = createTempWorkspace("aa-lease-");
   try {
     const db = new SqliteDatabase(join(workspace, "test.db"));
@@ -721,7 +721,7 @@ test("reclaimActiveLease reclaims an active lease by execution ID", () => {
 // Concurrent Lease Acquisition Tests
 // =============================================================================
 
-test("concurrent acquireLease - only first worker succeeds", () => {
+test("concurrent acquireLease - only first worker succeeds [execution-lease-service]", () => {
   const workspace = createTempWorkspace("aa-lease-");
   try {
     const db = new SqliteDatabase(join(workspace, "test.db"));
@@ -755,7 +755,7 @@ test("concurrent acquireLease - only first worker succeeds", () => {
   }
 });
 
-test("after release, new worker can acquire lease", () => {
+test("after release, new worker can acquire lease [execution-lease-service]", () => {
   const workspace = createTempWorkspace("aa-lease-");
   try {
     const db = new SqliteDatabase(join(workspace, "test.db"));
@@ -806,7 +806,7 @@ test("after release, new worker can acquire lease", () => {
 // Write Access Validation Tests
 // =============================================================================
 
-test("validateWriteAccess allows write with valid lease and fencing token", () => {
+test("validateWriteAccess allows write with valid lease and fencing token [execution-lease-service]", () => {
   const workspace = createTempWorkspace("aa-lease-");
   try {
     const db = new SqliteDatabase(join(workspace, "test.db"));
@@ -844,7 +844,7 @@ test("validateWriteAccess allows write with valid lease and fencing token", () =
   }
 });
 
-test("validateWriteAccess denies write with stale fencing token", () => {
+test("validateWriteAccess denies write with stale fencing token [execution-lease-service]", () => {
   const workspace = createTempWorkspace("aa-lease-");
   try {
     const db = new SqliteDatabase(join(workspace, "test.db"));
@@ -880,7 +880,7 @@ test("validateWriteAccess denies write with stale fencing token", () => {
   }
 });
 
-test("validateWriteAccess denies write when worker ID does not match", () => {
+test("validateWriteAccess denies write when worker ID does not match [execution-lease-service]", () => {
   const workspace = createTempWorkspace("aa-lease-");
   try {
     const db = new SqliteDatabase(join(workspace, "test.db"));
@@ -916,7 +916,7 @@ test("validateWriteAccess denies write when worker ID does not match", () => {
   }
 });
 
-test("validateWriteAccess denies write when no active lease exists", () => {
+test("validateWriteAccess denies write when no active lease exists [execution-lease-service]", () => {
   const workspace = createTempWorkspace("aa-lease-");
   try {
     const db = new SqliteDatabase(join(workspace, "test.db"));
@@ -946,7 +946,7 @@ test("validateWriteAccess denies write when no active lease exists", () => {
   }
 });
 
-test("validateWriteAccess denies write after lease is released", () => {
+test("validateWriteAccess denies write after lease is released [execution-lease-service]", () => {
   const workspace = createTempWorkspace("aa-lease-");
   try {
     const db = new SqliteDatabase(join(workspace, "test.db"));
@@ -992,7 +992,7 @@ test("validateWriteAccess denies write after lease is released", () => {
   }
 });
 
-test("validateWriteAccess denies write when lease ID does not match", () => {
+test("validateWriteAccess denies write when lease ID does not match [execution-lease-service]", () => {
   const workspace = createTempWorkspace("aa-lease-");
   try {
     const db = new SqliteDatabase(join(workspace, "test.db"));
@@ -1033,7 +1033,7 @@ test("validateWriteAccess denies write when lease ID does not match", () => {
 // Handover Tests
 // =============================================================================
 
-test("handoverLease transfers lease from one worker to another", () => {
+test("handoverLease transfers lease from one worker to another [execution-lease-service]", () => {
   const workspace = createTempWorkspace("aa-lease-");
   try {
     const db = new SqliteDatabase(join(workspace, "test.db"));
@@ -1077,7 +1077,7 @@ test("handoverLease transfers lease from one worker to another", () => {
   }
 });
 
-test("handoverLease blocked when worker ID does not match", () => {
+test("handoverLease blocked when worker ID does not match [execution-lease-service]", () => {
   const workspace = createTempWorkspace("aa-lease-");
   try {
     const db = new SqliteDatabase(join(workspace, "test.db"));
@@ -1116,7 +1116,7 @@ test("handoverLease blocked when worker ID does not match", () => {
   }
 });
 
-test("handoverLease blocked when new worker is at capacity", () => {
+test("handoverLease blocked when new worker is at capacity [execution-lease-service]", () => {
   const workspace = createTempWorkspace("aa-lease-");
   try {
     const db = new SqliteDatabase(join(workspace, "test.db"));
@@ -1156,7 +1156,7 @@ test("handoverLease blocked when new worker is at capacity", () => {
   }
 });
 
-test("handoverLease blocked when trying to handover to same worker", () => {
+test("handoverLease blocked when trying to handover to same worker [execution-lease-service]", () => {
   const workspace = createTempWorkspace("aa-lease-");
   try {
     const db = new SqliteDatabase(join(workspace, "test.db"));
@@ -1198,7 +1198,7 @@ test("handoverLease blocked when trying to handover to same worker", () => {
 // Audit Trail Tests
 // =============================================================================
 
-test("lease operations create audit records", () => {
+test("lease operations create audit records [execution-lease-service]", () => {
   const workspace = createTempWorkspace("aa-lease-");
   try {
     const db = new SqliteDatabase(join(workspace, "test.db"));

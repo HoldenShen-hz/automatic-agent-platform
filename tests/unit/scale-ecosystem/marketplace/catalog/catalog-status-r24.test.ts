@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { MarketplaceCatalogEntrySchema } from "../../../../../src/scale-ecosystem/marketplace/catalog/index.js";
 
-test("MarketplaceCatalogEntrySchema accepts reviewing, published, and suspended review statuses", () => {
+test("MarketplaceCatalogEntrySchema accepts reviewing, published, and suspended review statuses [catalog-status-r24]", () => {
   const reviewing = MarketplaceCatalogEntrySchema.parse({
     listingId: "listing-reviewing",
     packId: "pack-reviewing",

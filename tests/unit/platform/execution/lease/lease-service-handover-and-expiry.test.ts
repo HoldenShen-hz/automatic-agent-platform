@@ -159,7 +159,7 @@ function createExecution(id: string = "exec-1", attempt: number = 1): { id: stri
   };
 }
 
-test("handoverLease hands over lease when valid", async () => {
+test("handoverLease hands over lease when valid [lease-service-handover-and-expiry]", async () => {
   const existingLease = createLease({ id: "lease-1", executionId: "exec-1", workerId: "worker-1", fencingToken: 1 });
   const state: MockStoreState = {
     leases: new Map([[existingLease.id, existingLease]]),
@@ -185,7 +185,7 @@ test("handoverLease hands over lease when valid", async () => {
   assert.equal(result.lease!.fencingToken, 2);
 });
 
-test("handoverLease blocks when lease not found", async () => {
+test("handoverLease blocks when lease not found [lease-service-handover-and-expiry]", async () => {
   const state: MockStoreState = {
     leases: new Map(),
     activeLeaseByExecution: new Map(),
@@ -208,7 +208,7 @@ test("handoverLease blocks when lease not found", async () => {
   assert.equal(result.reasonCode, "lease_not_found");
 });
 
-test("handoverLease blocks when worker mismatch", async () => {
+test("handoverLease blocks when worker mismatch [lease-service-handover-and-expiry]", async () => {
   const existingLease = createLease({ id: "lease-1", executionId: "exec-1", workerId: "worker-1" });
   const state: MockStoreState = {
     leases: new Map([[existingLease.id, existingLease]]),
@@ -232,7 +232,7 @@ test("handoverLease blocks when worker mismatch", async () => {
   assert.equal(result.reasonCode, "worker_mismatch");
 });
 
-test("handoverLease creates audit records for release and granted", async () => {
+test("handoverLease creates audit records for release and granted [lease-service-handover-and-expiry]", async () => {
   const existingLease = createLease({ id: "lease-1", executionId: "exec-1", workerId: "worker-1", fencingToken: 1 });
   const state: MockStoreState = {
     leases: new Map([[existingLease.id, existingLease]]),
@@ -256,7 +256,7 @@ test("handoverLease creates audit records for release and granted", async () => 
   assert.equal(state.audits[0]!.eventType, "lease_released");
 });
 
-test("acquireLease expires active lease that has passed expiration time", async () => {
+test("acquireLease expires active lease that has passed expiration time [lease-service-handover-and-expiry]", async () => {
   const expiredLease = createLease({
     id: "lease-old",
     executionId: "exec-1",

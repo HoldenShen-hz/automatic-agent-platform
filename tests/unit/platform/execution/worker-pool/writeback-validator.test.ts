@@ -24,7 +24,7 @@ function createMockStore(): AuthoritativeTaskStore {
 // buildAgentExecutionRecord tests
 // ---------------------------------------------------------------------------
 
-test("buildAgentExecutionRecord creates new record when no existing record", () => {
+test("buildAgentExecutionRecord creates new record when no existing record [writeback-validator]", () => {
   const store = createMockStore();
   const execution = {
     id: "exec-001",
@@ -71,7 +71,7 @@ test("buildAgentExecutionRecord creates new record when no existing record", () 
   assert.equal(result.startedAt, "2024-01-01T00:00:00.000Z");
 });
 
-test("buildAgentExecutionRecord preserves existing record fields when present", () => {
+test("buildAgentExecutionRecord preserves existing record fields when present [writeback-validator]", () => {
   const store = createMockStore();
   const existingRecord: AgentExecutionRecord = {
     executionId: "exec-001",
@@ -139,7 +139,7 @@ test("buildAgentExecutionRecord preserves existing record fields when present", 
   assert.equal(result.progressMessage, "done");
 });
 
-test("buildAgentExecutionRecord clamps negative toolCallCount to zero", () => {
+test("buildAgentExecutionRecord clamps negative toolCallCount to zero [writeback-validator]", () => {
   const store = createMockStore();
   const execution = {
     id: "exec-001",
@@ -169,7 +169,7 @@ test("buildAgentExecutionRecord clamps negative toolCallCount to zero", () => {
   assert.equal(result.toolCallCount, 0);
 });
 
-test("buildAgentExecutionRecord calculates retryCount from execution attempt", () => {
+test("buildAgentExecutionRecord calculates retryCount from execution attempt [writeback-validator]", () => {
   const store = createMockStore();
   store.worker.getAgentExecutionRecord = () => undefined;
 
@@ -206,7 +206,7 @@ test("buildAgentExecutionRecord calculates retryCount from execution attempt", (
 // persistRemoteLogs tests
 // ---------------------------------------------------------------------------
 
-test("persistRemoteLogs does nothing when remoteLogs is undefined", () => {
+test("persistRemoteLogs does nothing when remoteLogs is undefined [writeback-validator]", () => {
   const store = createMockStore();
   let insertRemoteLogCalled = false;
   store.worker.insertRemoteLog = () => { insertRemoteLogCalled = true; };
@@ -216,7 +216,7 @@ test("persistRemoteLogs does nothing when remoteLogs is undefined", () => {
   assert.equal(insertRemoteLogCalled, false);
 });
 
-test("persistRemoteLogs does nothing when remoteLogs is empty array", () => {
+test("persistRemoteLogs does nothing when remoteLogs is empty array [writeback-validator]", () => {
   const store = createMockStore();
   let insertRemoteLogCalled = false;
   store.worker.insertRemoteLog = () => { insertRemoteLogCalled = true; };
@@ -226,7 +226,7 @@ test("persistRemoteLogs does nothing when remoteLogs is empty array", () => {
   assert.equal(insertRemoteLogCalled, false);
 });
 
-test("persistRemoteLogs persists valid log entries", () => {
+test("persistRemoteLogs persists valid log entries [writeback-validator]", () => {
   const store = createMockStore();
   const insertedLogs: unknown[] = [];
   store.worker.insertRemoteLog = (log: unknown) => { insertedLogs.push(log); };
@@ -245,7 +245,7 @@ test("persistRemoteLogs persists valid log entries", () => {
   assert.equal((insertedLogs[1] as { level: string }).level, "debug");
 });
 
-test("persistRemoteLogs skips empty messages", () => {
+test("persistRemoteLogs skips empty messages [writeback-validator]", () => {
   const store = createMockStore();
   const insertedLogs: unknown[] = [];
   store.worker.insertRemoteLog = (log: unknown) => { insertedLogs.push(log); };
@@ -261,7 +261,7 @@ test("persistRemoteLogs skips empty messages", () => {
   assert.equal((insertedLogs[0] as { message: string }).message, "valid message");
 });
 
-test("persistRemoteLogs trims whitespace from messages", () => {
+test("persistRemoteLogs trims whitespace from messages [writeback-validator]", () => {
   const store = createMockStore();
   const insertedLogs: unknown[] = [];
   store.worker.insertRemoteLog = (log: unknown) => { insertedLogs.push(log); };
@@ -276,7 +276,7 @@ test("persistRemoteLogs trims whitespace from messages", () => {
   assert.equal((insertedLogs[0] as { message: string }).message, "trimmed message");
 });
 
-test("persistRemoteLogs uses defaultOccurredAt when entry has no occurredAt", () => {
+test("persistRemoteLogs uses defaultOccurredAt when entry has no occurredAt [writeback-validator]", () => {
   const store = createMockStore();
   const insertedLogs: unknown[] = [];
   store.worker.insertRemoteLog = (log: unknown) => { insertedLogs.push(log); };
@@ -291,7 +291,7 @@ test("persistRemoteLogs uses defaultOccurredAt when entry has no occurredAt", ()
   assert.equal((insertedLogs[0] as { createdAt: string }).createdAt, "2024-01-01T00:00:00.000Z");
 });
 
-test("persistRemoteLogs includes correlation context in log", () => {
+test("persistRemoteLogs includes correlation context in log [writeback-validator]", () => {
   const store = createMockStore();
   const insertedLogs: unknown[] = [];
   store.worker.insertRemoteLog = (log: unknown) => { insertedLogs.push(log); };
@@ -317,7 +317,7 @@ test("persistRemoteLogs includes correlation context in log", () => {
 // resolveRemoteAuthorityBlockReason tests - extended coverage
 // ---------------------------------------------------------------------------
 
-test("resolveRemoteAuthorityBlockReason returns null for local placement", () => {
+test("resolveRemoteAuthorityBlockReason returns null for local placement [writeback-validator]", () => {
   const result = resolveRemoteAuthorityBlockReason({
     placement: "local",
     remoteSessionStatus: null,
@@ -328,7 +328,7 @@ test("resolveRemoteAuthorityBlockReason returns null for local placement", () =>
   assert.equal(result, null);
 });
 
-test("resolveRemoteAuthorityBlockReason returns null for undefined placement", () => {
+test("resolveRemoteAuthorityBlockReason returns null for undefined placement [writeback-validator]", () => {
   const result = resolveRemoteAuthorityBlockReason({
     placement: undefined,
     remoteSessionStatus: null,
@@ -339,7 +339,7 @@ test("resolveRemoteAuthorityBlockReason returns null for undefined placement", (
   assert.equal(result, null);
 });
 
-test("resolveRemoteAuthorityBlockReason returns remote_session_viewer_only", () => {
+test("resolveRemoteAuthorityBlockReason returns remote_session_viewer_only [writeback-validator]", () => {
   const result = resolveRemoteAuthorityBlockReason({
     placement: "remote",
     remoteSessionStatus: "viewer_only",
@@ -350,7 +350,7 @@ test("resolveRemoteAuthorityBlockReason returns remote_session_viewer_only", () 
   assert.equal(result, "remote_session_viewer_only");
 });
 
-test("resolveRemoteAuthorityBlockReason returns remote_session_consistency_mismatch", () => {
+test("resolveRemoteAuthorityBlockReason returns remote_session_consistency_mismatch [writeback-validator]", () => {
   const result = resolveRemoteAuthorityBlockReason({
     placement: "remote",
     remoteSessionStatus: "connected",
@@ -361,7 +361,7 @@ test("resolveRemoteAuthorityBlockReason returns remote_session_consistency_misma
   assert.equal(result, "remote_session_consistency_mismatch");
 });
 
-test("resolveRemoteAuthorityBlockReason returns remote_workspace_sync_conflict", () => {
+test("resolveRemoteAuthorityBlockReason returns remote_workspace_sync_conflict [writeback-validator]", () => {
   const result = resolveRemoteAuthorityBlockReason({
     placement: "remote",
     remoteSessionStatus: "connected",
@@ -372,7 +372,7 @@ test("resolveRemoteAuthorityBlockReason returns remote_workspace_sync_conflict",
   assert.equal(result, "remote_workspace_sync_conflict");
 });
 
-test("resolveRemoteAuthorityBlockReason returns remote_session_resume_offset_missing", () => {
+test("resolveRemoteAuthorityBlockReason returns remote_session_resume_offset_missing [writeback-validator]", () => {
   const result = resolveRemoteAuthorityBlockReason({
     placement: "remote",
     remoteSessionStatus: "connected",
@@ -383,7 +383,7 @@ test("resolveRemoteAuthorityBlockReason returns remote_session_resume_offset_mis
   assert.equal(result, "remote_session_resume_offset_missing");
 });
 
-test("resolveRemoteAuthorityBlockReason returns null for remote with connecting status and no offset", () => {
+test("resolveRemoteAuthorityBlockReason returns null for remote with connecting status and no offset [writeback-validator]", () => {
   const result = resolveRemoteAuthorityBlockReason({
     placement: "remote",
     remoteSessionStatus: "connecting",
@@ -394,7 +394,7 @@ test("resolveRemoteAuthorityBlockReason returns null for remote with connecting 
   assert.equal(result, null);
 });
 
-test("resolveRemoteAuthorityBlockReason returns null for remote with failed status and no offset", () => {
+test("resolveRemoteAuthorityBlockReason returns null for remote with failed status and no offset [writeback-validator]", () => {
   const result = resolveRemoteAuthorityBlockReason({
     placement: "remote",
     remoteSessionStatus: "failed",
@@ -405,7 +405,7 @@ test("resolveRemoteAuthorityBlockReason returns null for remote with failed stat
   assert.equal(result, null);
 });
 
-test("resolveRemoteAuthorityBlockReason returns null for remote with valid offset", () => {
+test("resolveRemoteAuthorityBlockReason returns null for remote with valid offset [writeback-validator]", () => {
   const result = resolveRemoteAuthorityBlockReason({
     placement: "remote",
     remoteSessionStatus: "connected",
@@ -416,7 +416,7 @@ test("resolveRemoteAuthorityBlockReason returns null for remote with valid offse
   assert.equal(result, null);
 });
 
-test("resolveRemoteAuthorityBlockReason treats empty string as missing offset", () => {
+test("resolveRemoteAuthorityBlockReason treats empty string as missing offset [writeback-validator]", () => {
   const result = resolveRemoteAuthorityBlockReason({
     placement: "remote",
     remoteSessionStatus: "connected",
@@ -427,7 +427,7 @@ test("resolveRemoteAuthorityBlockReason treats empty string as missing offset", 
   assert.equal(result, "remote_session_resume_offset_missing");
 });
 
-test("resolveRemoteAuthorityBlockReason treats whitespace-only string as missing offset", () => {
+test("resolveRemoteAuthorityBlockReason treats whitespace-only string as missing offset [writeback-validator]", () => {
   const result = resolveRemoteAuthorityBlockReason({
     placement: "remote",
     remoteSessionStatus: "connected",

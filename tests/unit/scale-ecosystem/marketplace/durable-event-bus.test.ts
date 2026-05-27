@@ -9,6 +9,6 @@ import test from "node:test";
 
 import * as DurableEventBus from "../../../../src/scale-ecosystem/marketplace/durable-event-bus.js";
 
-test("durable-event-bus exports DurableEventBus", () => {
+test("durable-event-bus exports DurableEventBus [durable-event-bus]", () => {
   assert.ok(DurableEventBus.DurableEventBus !== undefined);
 });

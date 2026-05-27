@@ -9,7 +9,7 @@ import { runSingleTaskExecution, type HappyPathInput } from "../../../../../src/
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-test("runSingleTaskExecution happy path execution", async () => {
+test("runSingleTaskExecution happy path execution [single-task-execution]", async () => {
   const dbPath = join(__dirname, "test-happy-path.db");
 
   // Clean up any existing test database
@@ -43,7 +43,7 @@ test("runSingleTaskExecution happy path execution", async () => {
   }
 });
 
-test("runSingleTaskExecution with stepOutputOverride", async () => {
+test("runSingleTaskExecution with stepOutputOverride [single-task-execution]", async () => {
   const dbPath = join(__dirname, "test-step-override.db");
 
   if (existsSync(dbPath)) {
@@ -75,7 +75,7 @@ test("runSingleTaskExecution with stepOutputOverride", async () => {
   }
 });
 
-test("runSingleTaskExecution creates task with correct divisionId", async () => {
+test("runSingleTaskExecution creates task with correct divisionId [single-task-execution]", async () => {
   const dbPath = join(__dirname, "test-division.db");
 
   if (existsSync(dbPath)) {
@@ -101,7 +101,7 @@ test("runSingleTaskExecution creates task with correct divisionId", async () => 
   }
 });
 
-test("runSingleTaskExecution sets task priority", async () => {
+test("runSingleTaskExecution sets task priority [single-task-execution]", async () => {
   const dbPath = join(__dirname, "test-priority.db");
 
   if (existsSync(dbPath)) {
@@ -126,7 +126,7 @@ test("runSingleTaskExecution sets task priority", async () => {
   }
 });
 
-test("runSingleTaskExecution creates workflow record", async () => {
+test("runSingleTaskExecution creates workflow record [single-task-execution]", async () => {
   const dbPath = join(__dirname, "test-workflow.db");
 
   if (existsSync(dbPath)) {
@@ -152,7 +152,7 @@ test("runSingleTaskExecution creates workflow record", async () => {
   }
 });
 
-test("runSingleTaskExecution creates session record", async () => {
+test("runSingleTaskExecution creates session record [single-task-execution]", async () => {
   const dbPath = join(__dirname, "test-session.db");
 
   if (existsSync(dbPath)) {
@@ -179,7 +179,7 @@ test("runSingleTaskExecution creates session record", async () => {
   }
 });
 
-test("runSingleTaskExecution creates execution record", async () => {
+test("runSingleTaskExecution creates execution record [single-task-execution]", async () => {
   const dbPath = join(__dirname, "test-execution.db");
 
   if (existsSync(dbPath)) {
@@ -205,7 +205,7 @@ test("runSingleTaskExecution creates execution record", async () => {
   }
 });
 
-test("runSingleTaskExecution creates step output", async () => {
+test("runSingleTaskExecution creates step output [single-task-execution]", async () => {
   const dbPath = join(__dirname, "test-step-output.db");
 
   if (existsSync(dbPath)) {
@@ -230,7 +230,7 @@ test("runSingleTaskExecution creates step output", async () => {
   }
 });
 
-test("runSingleTaskExecution with null stepOutputOverride falls back to synthetic output", async () => {
+test("runSingleTaskExecution with null stepOutputOverride falls back to synthetic output [single-task-execution]", async () => {
   const dbPath = join(__dirname, "test-synthetic.db");
 
   if (existsSync(dbPath)) {
@@ -255,7 +255,7 @@ test("runSingleTaskExecution with null stepOutputOverride falls back to syntheti
   }
 });
 
-test("runSingleTaskExecution generates valid timestamps", async () => {
+test("runSingleTaskExecution generates valid timestamps [single-task-execution]", async () => {
   const dbPath = join(__dirname, "test-timestamps.db");
 
   if (existsSync(dbPath)) {
@@ -283,7 +283,7 @@ test("runSingleTaskExecution generates valid timestamps", async () => {
   }
 });
 
-test("runSingleTaskExecution handles admission policy", async () => {
+test("runSingleTaskExecution handles admission policy [single-task-execution]", async () => {
   const dbPath = join(__dirname, "test-admission.db");
 
   if (existsSync(dbPath)) {
@@ -307,7 +307,7 @@ test("runSingleTaskExecution handles admission policy", async () => {
   }
 });
 
-test("runSingleTaskExecution task output JSON is valid", async () => {
+test("runSingleTaskExecution task output JSON is valid [single-task-execution]", async () => {
   const dbPath = join(__dirname, "test-output-json.db");
 
   if (existsSync(dbPath)) {
@@ -334,7 +334,7 @@ test("runSingleTaskExecution task output JSON is valid", async () => {
   }
 });
 
-test("runSingleTaskExecution input JSON is stored", async () => {
+test("runSingleTaskExecution input JSON is stored [single-task-execution]", async () => {
   const dbPath = join(__dirname, "test-input-json.db");
 
   if (existsSync(dbPath)) {
@@ -365,7 +365,7 @@ test("runSingleTaskExecution input JSON is stored", async () => {
 // New Tests: Crash Injection Scenarios
 // ============================================================================
 
-test("runSingleTaskExecution crash injection at step_started throws InjectedWorkflowCrashError", async () => {
+test("runSingleTaskExecution crash injection at step_started throws InjectedWorkflowCrashError [single-task-execution]", async () => {
   const dbPath = join(__dirname, "test-crash-step-started.db");
 
   if (existsSync(dbPath)) {
@@ -394,7 +394,7 @@ test("runSingleTaskExecution crash injection at step_started throws InjectedWork
   }
 });
 
-test("runSingleTaskExecution crash injection at tool_completed throws InjectedWorkflowCrashError", async () => {
+test("runSingleTaskExecution crash injection at tool_completed throws InjectedWorkflowCrashError [single-task-execution]", async () => {
   const dbPath = join(__dirname, "test-crash-tool-completed.db");
 
   if (existsSync(dbPath)) {
@@ -422,7 +422,7 @@ test("runSingleTaskExecution crash injection at tool_completed throws InjectedWo
   }
 });
 
-test("runSingleTaskExecution crash injection at before_commit throws InjectedWorkflowCrashError", async () => {
+test("runSingleTaskExecution crash injection at before_commit throws InjectedWorkflowCrashError [single-task-execution]", async () => {
   const dbPath = join(__dirname, "test-crash-before-commit.db");
 
   if (existsSync(dbPath)) {
@@ -450,7 +450,7 @@ test("runSingleTaskExecution crash injection at before_commit throws InjectedWor
   }
 });
 
-test("runSingleTaskExecution crash injection with specific stepId only affects matching step", async () => {
+test("runSingleTaskExecution crash injection with specific stepId only affects matching step [single-task-execution]", async () => {
   const dbPath = join(__dirname, "test-crash-step-id.db");
 
   if (existsSync(dbPath)) {
@@ -482,7 +482,7 @@ test("runSingleTaskExecution crash injection with specific stepId only affects m
 // New Tests: Admission Policy Rejection Scenarios
 // ============================================================================
 
-test("runSingleTaskExecution with admission reject due to budget exceeded", async () => {
+test("runSingleTaskExecution with admission reject due to budget exceeded [single-task-execution]", async () => {
   const dbPath = join(__dirname, "test-admission-budget.db");
 
   if (existsSync(dbPath)) {
@@ -518,7 +518,7 @@ test("runSingleTaskExecution with admission reject due to budget exceeded", asyn
   }
 });
 
-test("runSingleTaskExecution with admission policy maxQueuedTasks 0 rejects task", async () => {
+test("runSingleTaskExecution with admission policy maxQueuedTasks 0 rejects task [single-task-execution]", async () => {
   const dbPath = join(__dirname, "test-admission-queue-zero.db");
 
   if (existsSync(dbPath)) {
@@ -553,7 +553,7 @@ test("runSingleTaskExecution with admission policy maxQueuedTasks 0 rejects task
   }
 });
 
-test("runSingleTaskExecution with saturated queue rejects non-urgent task", async () => {
+test("runSingleTaskExecution with saturated queue rejects non-urgent task [single-task-execution]", async () => {
   const dbPath = join(__dirname, "test-admission-high-priority.db");
 
   if (existsSync(dbPath)) {
@@ -590,7 +590,7 @@ test("runSingleTaskExecution with saturated queue rejects non-urgent task", asyn
 // New Tests: Execution and Session State Transition Verification
 // ============================================================================
 
-test("runSingleTaskExecution creates session with valid status", async () => {
+test("runSingleTaskExecution creates session with valid status [single-task-execution]", async () => {
   const dbPath = join(__dirname, "test-session-streaming.db");
 
   if (existsSync(dbPath)) {
@@ -619,7 +619,7 @@ test("runSingleTaskExecution creates session with valid status", async () => {
   }
 });
 
-test("runSingleTaskExecution execution transitions through created -> prechecking -> executing", async () => {
+test("runSingleTaskExecution execution transitions through created -> prechecking -> executing [single-task-execution]", async () => {
   const dbPath = join(__dirname, "test-execution-transitions.db");
 
   if (existsSync(dbPath)) {
@@ -646,7 +646,7 @@ test("runSingleTaskExecution execution transitions through created -> precheckin
   }
 });
 
-test("runSingleTaskExecution creates execution precheck record", async () => {
+test("runSingleTaskExecution creates execution precheck record [single-task-execution]", async () => {
   const dbPath = join(__dirname, "test-execution-precheck.db");
 
   if (existsSync(dbPath)) {
@@ -677,7 +677,7 @@ test("runSingleTaskExecution creates execution precheck record", async () => {
 // New Tests: Cost and Billing Verification
 // ============================================================================
 
-test("runSingleTaskExecution creates cost event record", async () => {
+test("runSingleTaskExecution creates cost event record [single-task-execution]", async () => {
   const dbPath = join(__dirname, "test-cost-event.db");
 
   if (existsSync(dbPath)) {
@@ -704,7 +704,7 @@ test("runSingleTaskExecution creates cost event record", async () => {
   }
 });
 
-test("runSingleTaskExecution estimated cost is set on task", async () => {
+test("runSingleTaskExecution estimated cost is set on task [single-task-execution]", async () => {
   const dbPath = join(__dirname, "test-est-cost.db");
 
   if (existsSync(dbPath)) {
@@ -735,7 +735,7 @@ test("runSingleTaskExecution estimated cost is set on task", async () => {
 // New Tests: Workflow State and Output Verification
 // ============================================================================
 
-test("runSingleTaskExecution workflow has correct workflowId", async () => {
+test("runSingleTaskExecution workflow has correct workflowId [single-task-execution]", async () => {
   const dbPath = join(__dirname, "test-workflow-id.db");
 
   if (existsSync(dbPath)) {
@@ -762,7 +762,7 @@ test("runSingleTaskExecution workflow has correct workflowId", async () => {
   }
 });
 
-test("runSingleTaskExecution workflow outputs JSON contains step output", async () => {
+test("runSingleTaskExecution workflow outputs JSON contains step output [single-task-execution]", async () => {
   const dbPath = join(__dirname, "test-workflow-outputs.db");
 
   if (existsSync(dbPath)) {
@@ -792,7 +792,7 @@ test("runSingleTaskExecution workflow outputs JSON contains step output", async 
   }
 });
 
-test("runSingleTaskExecution task has source field set to user", async () => {
+test("runSingleTaskExecution task has source field set to user [single-task-execution]", async () => {
   const dbPath = join(__dirname, "test-task-source.db");
 
   if (existsSync(dbPath)) {
@@ -818,7 +818,7 @@ test("runSingleTaskExecution task has source field set to user", async () => {
   }
 });
 
-test("runSingleTaskExecution task has errorCode null on success", async () => {
+test("runSingleTaskExecution task has errorCode null on success [single-task-execution]", async () => {
   const dbPath = join(__dirname, "test-error-code.db");
 
   if (existsSync(dbPath)) {
@@ -844,7 +844,7 @@ test("runSingleTaskExecution task has errorCode null on success", async () => {
   }
 });
 
-test("runSingleTaskExecution step output has succeeded status", async () => {
+test("runSingleTaskExecution step output has succeeded status [single-task-execution]", async () => {
   const dbPath = join(__dirname, "test-step-status.db");
 
   if (existsSync(dbPath)) {
@@ -871,7 +871,7 @@ test("runSingleTaskExecution step output has succeeded status", async () => {
   }
 });
 
-test("runSingleTaskExecution step output contains summary", async () => {
+test("runSingleTaskExecution step output contains summary [single-task-execution]", async () => {
   const dbPath = join(__dirname, "test-step-summary.db");
 
   if (existsSync(dbPath)) {
@@ -898,7 +898,7 @@ test("runSingleTaskExecution step output contains summary", async () => {
   }
 });
 
-test("runSingleTaskExecution step output contains token cost and duration", async () => {
+test("runSingleTaskExecution step output contains token cost and duration [single-task-execution]", async () => {
   const dbPath = join(__dirname, "test-step-cost-duration.db");
 
   if (existsSync(dbPath)) {
@@ -925,7 +925,7 @@ test("runSingleTaskExecution step output contains token cost and duration", asyn
   }
 });
 
-test("runSingleTaskExecution step output has producedAt timestamp", async () => {
+test("runSingleTaskExecution step output has producedAt timestamp [single-task-execution]", async () => {
   const dbPath = join(__dirname, "test-step-produced-at.db");
 
   if (existsSync(dbPath)) {
@@ -952,7 +952,7 @@ test("runSingleTaskExecution step output has producedAt timestamp", async () => 
   }
 });
 
-test("runSingleTaskExecution step output contains validation JSON", async () => {
+test("runSingleTaskExecution step output contains validation JSON [single-task-execution]", async () => {
   const dbPath = join(__dirname, "test-step-validation.db");
 
   if (existsSync(dbPath)) {
@@ -980,7 +980,7 @@ test("runSingleTaskExecution step output contains validation JSON", async () => 
   }
 });
 
-test("runSingleTaskExecution step output contains artifacts JSON", async () => {
+test("runSingleTaskExecution step output contains artifacts JSON [single-task-execution]", async () => {
   const dbPath = join(__dirname, "test-step-artifacts.db");
 
   if (existsSync(dbPath)) {
@@ -1008,7 +1008,7 @@ test("runSingleTaskExecution step output contains artifacts JSON", async () => {
   }
 });
 
-test("runSingleTaskExecution task completedAt is set on success", async () => {
+test("runSingleTaskExecution task completedAt is set on success [single-task-execution]", async () => {
   const dbPath = join(__dirname, "test-completed-at.db");
 
   if (existsSync(dbPath)) {
@@ -1035,7 +1035,7 @@ test("runSingleTaskExecution task completedAt is set on success", async () => {
   }
 });
 
-test("runSingleTaskExecution task output JSON is valid and contains summary and result", async () => {
+test("runSingleTaskExecution task output JSON is valid and contains summary and result [single-task-execution]", async () => {
   const dbPath = join(__dirname, "test-output-valid.db");
 
   if (existsSync(dbPath)) {
@@ -1065,7 +1065,7 @@ test("runSingleTaskExecution task output JSON is valid and contains summary and 
   }
 });
 
-test("runSingleTaskExecution execution record has correct timeout from step", async () => {
+test("runSingleTaskExecution execution record has correct timeout from step [single-task-execution]", async () => {
   const dbPath = join(__dirname, "test-execution-timeout.db");
 
   if (existsSync(dbPath)) {
@@ -1092,7 +1092,7 @@ test("runSingleTaskExecution execution record has correct timeout from step", as
   }
 });
 
-test("runSingleTaskExecution execution record has budgetUsdLimit", async () => {
+test("runSingleTaskExecution execution record has budgetUsdLimit [single-task-execution]", async () => {
   const dbPath = join(__dirname, "test-execution-budget.db");
 
   if (existsSync(dbPath)) {
@@ -1118,7 +1118,7 @@ test("runSingleTaskExecution execution record has budgetUsdLimit", async () => {
   }
 });
 
-test("runSingleTaskExecution execution sandboxMode is workspace_write", async () => {
+test("runSingleTaskExecution execution sandboxMode is workspace_write [single-task-execution]", async () => {
   const dbPath = join(__dirname, "test-execution-sandbox.db");
 
   if (existsSync(dbPath)) {
@@ -1144,7 +1144,7 @@ test("runSingleTaskExecution execution sandboxMode is workspace_write", async ()
   }
 });
 
-test("runSingleTaskExecution execution uses default retry policy for single task", async () => {
+test("runSingleTaskExecution execution uses default retry policy for single task [single-task-execution]", async () => {
   const dbPath = join(__dirname, "test-execution-retries.db");
 
   if (existsSync(dbPath)) {
@@ -1171,7 +1171,7 @@ test("runSingleTaskExecution execution uses default retry policy for single task
   }
 });
 
-test("runSingleTaskExecution workflow retryCount is 0 on success", async () => {
+test("runSingleTaskExecution workflow retryCount is 0 on success [single-task-execution]", async () => {
   const dbPath = join(__dirname, "test-workflow-retry.db");
 
   if (existsSync(dbPath)) {
@@ -1198,7 +1198,7 @@ test("runSingleTaskExecution workflow retryCount is 0 on success", async () => {
   }
 });
 
-test("runSingleTaskExecution workflow resumableFromStep is null on success", async () => {
+test("runSingleTaskExecution workflow resumableFromStep is null on success [single-task-execution]", async () => {
   const dbPath = join(__dirname, "test-workflow-resumable.db");
 
   if (existsSync(dbPath)) {
@@ -1224,7 +1224,7 @@ test("runSingleTaskExecution workflow resumableFromStep is null on success", asy
   }
 });
 
-test("runSingleTaskExecution with very long request string", async () => {
+test("runSingleTaskExecution with very long request string [single-task-execution]", async () => {
   const dbPath = join(__dirname, "test-long-request.db");
 
   if (existsSync(dbPath)) {
@@ -1253,7 +1253,7 @@ test("runSingleTaskExecution with very long request string", async () => {
   }
 });
 
-test("runSingleTaskExecution with unicode title and request", async () => {
+test("runSingleTaskExecution with unicode title and request [single-task-execution]", async () => {
   const dbPath = join(__dirname, "test-unicode.db");
 
   if (existsSync(dbPath)) {
@@ -1279,7 +1279,7 @@ test("runSingleTaskExecution with unicode title and request", async () => {
   }
 });
 
-test("runSingleTaskExecution with special characters in title", async () => {
+test("runSingleTaskExecution with special characters in title [single-task-execution]", async () => {
   const dbPath = join(__dirname, "test-special-chars.db");
 
   if (existsSync(dbPath)) {

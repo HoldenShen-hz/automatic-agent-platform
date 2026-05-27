@@ -11,7 +11,7 @@ import test from "node:test";
 // Import directly from test fixture which contains the implementation
 import { QueueMetricsService } from "./test-fixture.js";
 
-test("QueueMetricsService records queue depth correctly", () => {
+test("QueueMetricsService records queue depth correctly [queue-metrics-service.unit]", () => {
   const collector = new QueueMetricsService();
 
   collector.recordDepth("tasks", 10);
@@ -24,7 +24,7 @@ test("QueueMetricsService records queue depth correctly", () => {
   assert.equal(summary.queues.get("workflows"), 5);
 });
 
-test("QueueMetricsService records enqueue operations", () => {
+test("QueueMetricsService records enqueue operations [queue-metrics-service.unit]", () => {
   const collector = new QueueMetricsService();
 
   collector.recordEnqueue("tasks");
@@ -37,7 +37,7 @@ test("QueueMetricsService records enqueue operations", () => {
   assert.equal(summary.enqueuedPerMinute.get("workflows"), 1);
 });
 
-test("QueueMetricsService records dequeue operations", () => {
+test("QueueMetricsService records dequeue operations [queue-metrics-service.unit]", () => {
   const collector = new QueueMetricsService();
 
   collector.recordDequeue("tasks");
@@ -49,7 +49,7 @@ test("QueueMetricsService records dequeue operations", () => {
   assert.equal(summary.dequeuedPerMinute.get("tasks"), 3);
 });
 
-test("QueueMetricsService calculates average wait time", () => {
+test("QueueMetricsService calculates average wait time [queue-metrics-service.unit]", () => {
   const collector = new QueueMetricsService();
 
   collector.recordWaitTime("tasks", 100);
@@ -61,7 +61,7 @@ test("QueueMetricsService calculates average wait time", () => {
   assert.equal(summary.averageWaitTimeMs.get("tasks"), 200);
 });
 
-test("QueueMetricsService records failed jobs", () => {
+test("QueueMetricsService records failed jobs [queue-metrics-service.unit]", () => {
   const collector = new QueueMetricsService();
 
   collector.recordFailed("tasks", "timeout");
@@ -74,7 +74,7 @@ test("QueueMetricsService records failed jobs", () => {
   assert.equal(summary.failedJobs.get("workflows"), 1);
 });
 
-test("QueueMetricsService provides queue metrics by name", () => {
+test("QueueMetricsService provides queue metrics by name [queue-metrics-service.unit]", () => {
   const collector = new QueueMetricsService();
 
   collector.recordDepth("priority-queue", 50);
@@ -91,7 +91,7 @@ test("QueueMetricsService provides queue metrics by name", () => {
   assert.equal(metrics.averageWaitTimeMs, 150);
 });
 
-test("QueueMetricsService returns undefined for unknown queue", () => {
+test("QueueMetricsService returns undefined for unknown queue [queue-metrics-service.unit]", () => {
   const collector = new QueueMetricsService();
 
   const metrics = collector.getQueueMetrics("unknown-queue");
@@ -99,7 +99,7 @@ test("QueueMetricsService returns undefined for unknown queue", () => {
   assert.equal(metrics, undefined);
 });
 
-test("QueueMetricsService reset clears all metrics", () => {
+test("QueueMetricsService reset clears all metrics [queue-metrics-service.unit]", () => {
   const collector = new QueueMetricsService();
 
   collector.recordDepth("tasks", 10);
@@ -119,7 +119,7 @@ test("QueueMetricsService reset clears all metrics", () => {
   assert.equal(summary.failedJobs.size, 0);
 });
 
-test("QueueMetricsService snapshot structure is correct", () => {
+test("QueueMetricsService snapshot structure is correct [queue-metrics-service.unit]", () => {
   const collector = new QueueMetricsService();
 
   collector.recordDepth("test-queue", 25);
@@ -138,7 +138,7 @@ test("QueueMetricsService snapshot structure is correct", () => {
   assert.ok(snapshot.failedJobs instanceof Map);
 });
 
-test("QueueMetricsService calculates success rate", () => {
+test("QueueMetricsService calculates success rate [queue-metrics-service.unit]", () => {
   const collector = new QueueMetricsService();
 
   collector.recordEnqueue("tasks");
@@ -155,7 +155,7 @@ test("QueueMetricsService calculates success rate", () => {
   assert.equal(successRate, 2 / 3);
 });
 
-test("QueueMetricsService handles zero wait times", () => {
+test("QueueMetricsService handles zero wait times [queue-metrics-service.unit]", () => {
   const collector = new QueueMetricsService();
 
   collector.recordWaitTime("fast-queue", 0);
@@ -166,7 +166,7 @@ test("QueueMetricsService handles zero wait times", () => {
   assert.equal(summary.averageWaitTimeMs.get("fast-queue"), 0);
 });
 
-test("QueueMetricsService calculates p95 wait time", () => {
+test("QueueMetricsService calculates p95 wait time [queue-metrics-service.unit]", () => {
   const collector = new QueueMetricsService();
 
   // Record 100 wait times
@@ -185,7 +185,7 @@ test("QueueMetricsService calculates p95 wait time", () => {
   assert.equal(p95, 95);
 });
 
-test("QueueMetricsService getAllQueues returns queue names", () => {
+test("QueueMetricsService getAllQueues returns queue names [queue-metrics-service.unit]", () => {
   const collector = new QueueMetricsService();
 
   collector.recordDepth("queue-a", 10);
@@ -200,7 +200,7 @@ test("QueueMetricsService getAllQueues returns queue names", () => {
   assert.ok(queues.includes("queue-c"));
 });
 
-test("QueueMetricsService derives metrics from stats object", () => {
+test("QueueMetricsService derives metrics from stats object [queue-metrics-service.unit]", () => {
   const collector = new QueueMetricsService();
 
   collector.deriveFromStats({
@@ -218,7 +218,7 @@ test("QueueMetricsService derives metrics from stats object", () => {
   assert.equal(summary.failedJobs.get("derived-queue"), 3); // failed + deadLetter
 });
 
-test("QueueMetricsService getCollector returns existing collector", () => {
+test("QueueMetricsService getCollector returns existing collector [queue-metrics-service.unit]", () => {
   const collector = new QueueMetricsService();
 
   const c1 = collector.getCollector("tasks");
@@ -227,7 +227,7 @@ test("QueueMetricsService getCollector returns existing collector", () => {
   assert.strictEqual(c1, c2);
 });
 
-test("QueueMetricsService getCollector creates new collector", () => {
+test("QueueMetricsService getCollector creates new collector [queue-metrics-service.unit]", () => {
   const collector = new QueueMetricsService();
 
   const c1 = collector.getCollector("tasks");

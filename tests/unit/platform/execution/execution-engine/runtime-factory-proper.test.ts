@@ -123,7 +123,7 @@ function createPostgresHandleWithoutShadow(): PostgresAuthoritativeStorageBacken
 // createRuntimeServices
 // ---------------------------------------------------------------------------
 
-test("createRuntimeServices creates all runtime services with valid postgres backend", () => {
+test("createRuntimeServices creates all runtime services with valid postgres backend [runtime-factory-proper]", () => {
   const workspace = createTempWorkspace("aa-runtime-factory-unit-");
   const shadowPath = join(workspace, "shadow.db");
 
@@ -147,7 +147,7 @@ test("createRuntimeServices creates all runtime services with valid postgres bac
   }
 });
 
-test("createRuntimeServices throws without shadow sqlite for postgres", () => {
+test("createRuntimeServices throws without shadow sqlite for postgres [runtime-factory-proper]", () => {
   const backend = createPostgresHandleWithoutShadow();
 
   assert.throws(
@@ -160,7 +160,7 @@ test("createRuntimeServices throws without shadow sqlite for postgres", () => {
 // runtimeFactories
 // ---------------------------------------------------------------------------
 
-test("runtimeFactories.createHaCoordinatorService creates ha service", () => {
+test("runtimeFactories.createHaCoordinatorService creates ha service [runtime-factory-proper]", () => {
   const workspace = createTempWorkspace("aa-runtime-factory-ha-");
   const shadowPath = join(workspace, "shadow.db");
 
@@ -177,7 +177,7 @@ test("runtimeFactories.createHaCoordinatorService creates ha service", () => {
   }
 });
 
-test("runtimeFactories.createExecutionLeaseService creates lease service", () => {
+test("runtimeFactories.createExecutionLeaseService creates lease service [runtime-factory-proper]", () => {
   const workspace = createTempWorkspace("aa-runtime-factory-lease-");
   const shadowPath = join(workspace, "shadow.db");
 
@@ -194,7 +194,7 @@ test("runtimeFactories.createExecutionLeaseService creates lease service", () =>
   }
 });
 
-test("runtimeFactories.createHotUpgradeService creates hot upgrade service", () => {
+test("runtimeFactories.createHotUpgradeService creates hot upgrade service [runtime-factory-proper]", () => {
   const workspace = createTempWorkspace("aa-runtime-factory-hotup-");
   const shadowPath = join(workspace, "shadow.db");
 
@@ -211,7 +211,7 @@ test("runtimeFactories.createHotUpgradeService creates hot upgrade service", () 
   }
 });
 
-test("runtimeFactories.createDispatchService creates dispatch service", () => {
+test("runtimeFactories.createDispatchService creates dispatch service [runtime-factory-proper]", () => {
   const workspace = createTempWorkspace("aa-runtime-factory-dispatch-");
   const shadowPath = join(workspace, "shadow.db");
 
@@ -228,7 +228,7 @@ test("runtimeFactories.createDispatchService creates dispatch service", () => {
   }
 });
 
-test("runtimeFactories.createHandshakeService creates handshake service", () => {
+test("runtimeFactories.createHandshakeService creates handshake service [runtime-factory-proper]", () => {
   const workspace = createTempWorkspace("aa-runtime-factory-handshake-");
   const shadowPath = join(workspace, "shadow.db");
 
@@ -245,7 +245,7 @@ test("runtimeFactories.createHandshakeService creates handshake service", () => 
   }
 });
 
-test("runtimeFactories.createWritebackService creates writeback service", () => {
+test("runtimeFactories.createWritebackService creates writeback service [runtime-factory-proper]", () => {
   const workspace = createTempWorkspace("aa-runtime-factory-writeback-");
   const shadowPath = join(workspace, "shadow.db");
 
@@ -262,7 +262,7 @@ test("runtimeFactories.createWritebackService creates writeback service", () => 
   }
 });
 
-test("runtimeFactories.createPreemptionService creates preemption service", () => {
+test("runtimeFactories.createPreemptionService creates preemption service [runtime-factory-proper]", () => {
   const workspace = createTempWorkspace("aa-runtime-factory-preempt-");
   const shadowPath = join(workspace, "shadow.db");
 
@@ -283,7 +283,7 @@ test("runtimeFactories.createPreemptionService creates preemption service", () =
 // Individual factory error cases
 // ---------------------------------------------------------------------------
 
-test("runtimeFactories.createDispatchService throws without shadow sqlite", () => {
+test("runtimeFactories.createDispatchService throws without shadow sqlite [runtime-factory-proper]", () => {
   const backend = createPostgresHandleWithoutShadow();
 
   assert.throws(
@@ -292,7 +292,7 @@ test("runtimeFactories.createDispatchService throws without shadow sqlite", () =
   );
 });
 
-test("runtimeFactories.createHandshakeService throws without shadow sqlite", () => {
+test("runtimeFactories.createHandshakeService throws without shadow sqlite [runtime-factory-proper]", () => {
   const backend = createPostgresHandleWithoutShadow();
 
   assert.throws(
@@ -301,7 +301,7 @@ test("runtimeFactories.createHandshakeService throws without shadow sqlite", () 
   );
 });
 
-test("runtimeFactories.createWritebackService throws without shadow sqlite", () => {
+test("runtimeFactories.createWritebackService throws without shadow sqlite [runtime-factory-proper]", () => {
   const backend = createPostgresHandleWithoutShadow();
 
   assert.throws(
@@ -310,7 +310,7 @@ test("runtimeFactories.createWritebackService throws without shadow sqlite", () 
   );
 });
 
-test("runtimeFactories.createPreemptionService throws without shadow sqlite", () => {
+test("runtimeFactories.createPreemptionService throws without shadow sqlite [runtime-factory-proper]", () => {
   const backend = createPostgresHandleWithoutShadow();
 
   assert.throws(
@@ -323,7 +323,7 @@ test("runtimeFactories.createPreemptionService throws without shadow sqlite", ()
 // Type exports
 // ---------------------------------------------------------------------------
 
-test("RuntimeServices interface structure is correct", () => {
+test("RuntimeServices interface structure is correct [runtime-factory-proper]", () => {
   // This verifies the type is properly structured
   const services: RuntimeServices = {
     ha: null as unknown as ReturnType<typeof createHaCoordinatorService>,
@@ -344,7 +344,7 @@ test("RuntimeServices interface structure is correct", () => {
   assert.ok("preemption" in services);
 });
 
-test("all runtimeFactories methods are functions", () => {
+test("all runtimeFactories methods are functions [runtime-factory-proper]", () => {
   assert.equal(typeof runtimeFactories.createHaCoordinatorService, "function");
   assert.equal(typeof runtimeFactories.createExecutionLeaseService, "function");
   assert.equal(typeof runtimeFactories.createHotUpgradeService, "function");
@@ -354,7 +354,7 @@ test("all runtimeFactories methods are functions", () => {
   assert.equal(typeof runtimeFactories.createPreemptionService, "function");
 });
 
-test("each runtimeFactories function is distinct", () => {
+test("each runtimeFactories function is distinct [runtime-factory-proper]", () => {
   const factories = [
     runtimeFactories.createHaCoordinatorService,
     runtimeFactories.createExecutionLeaseService,

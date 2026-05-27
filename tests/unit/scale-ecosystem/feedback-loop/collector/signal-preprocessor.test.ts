@@ -51,7 +51,7 @@ function createFeedbackBatch(signals: FeedbackSignal[] = []) {
 // deduplicate tests
 // =============================================================================
 
-test("deduplicate removes exact duplicate signals", () => {
+test("deduplicate removes exact duplicate signals [signal-preprocessor]", () => {
   const preprocessor = new SignalPreprocessor();
   const signals = [
     createSignal({ signalId: "sig_1", stepOutputRefs: ["step:1"] }),
@@ -64,7 +64,7 @@ test("deduplicate removes exact duplicate signals", () => {
   assert.equal(result[0]?.stepOutputRefs.length, 1);
 });
 
-test("deduplicate preserves non-duplicate signals", () => {
+test("deduplicate preserves non-duplicate signals [signal-preprocessor]", () => {
   const preprocessor = new SignalPreprocessor();
   const signals = [
     createSignal({ signalId: "sig_1", stepOutputRefs: ["step:1"], category: "failure" }),
@@ -76,7 +76,7 @@ test("deduplicate preserves non-duplicate signals", () => {
   assert.equal(result.length, 2);
 });
 
-test("deduplicate increments occurrenceCount on merge", () => {
+test("deduplicate increments occurrenceCount on merge [signal-preprocessor]", () => {
   const preprocessor = new SignalPreprocessor();
   const signals = [
     createSignal({ signalId: "sig_1", stepOutputRefs: ["step:1"], payload: { occurrenceCount: 1 } }),
@@ -89,7 +89,7 @@ test("deduplicate increments occurrenceCount on merge", () => {
   assert.equal(result[0]?.payload.occurrenceCount, 2);
 });
 
-test("deduplicate keeps first signal when keys match", () => {
+test("deduplicate keeps first signal when keys match [signal-preprocessor]", () => {
   const preprocessor = new SignalPreprocessor();
   // Two signals with identical keys - only first one is kept
   const signals = [
@@ -104,13 +104,13 @@ test("deduplicate keeps first signal when keys match", () => {
   assert.deepEqual(result[0]?.stepOutputRefs, ["step:1"]);
 });
 
-test("deduplicate handles empty array", () => {
+test("deduplicate handles empty array [signal-preprocessor]", () => {
   const preprocessor = new SignalPreprocessor();
   const result = preprocessor.deduplicate([]);
   assert.equal(result.length, 0);
 });
 
-test("deduplicate filters empty stepOutputRefs in merge", () => {
+test("deduplicate filters empty stepOutputRefs in merge [signal-preprocessor]", () => {
   const preprocessor = new SignalPreprocessor();
   const signals = [
     createSignal({ signalId: "sig_1", stepOutputRefs: [] }),
@@ -126,7 +126,7 @@ test("deduplicate filters empty stepOutputRefs in merge", () => {
 // mergeCorrelated tests
 // =============================================================================
 
-test("mergeCorrelated groups signals by stepOutputRef", () => {
+test("mergeCorrelated groups signals by stepOutputRef [signal-preprocessor]", () => {
   const preprocessor = new SignalPreprocessor();
   const signals = [
     createSignal({ signalId: "sig_1", stepOutputRefs: ["step:1"], category: "failure" }),
@@ -140,7 +140,7 @@ test("mergeCorrelated groups signals by stepOutputRef", () => {
   assert.equal(result[0]?.stepOutputRefs.length, 1);
 });
 
-test("mergeCorrelated separates signals with different stepOutputRefs", () => {
+test("mergeCorrelated separates signals with different stepOutputRefs [signal-preprocessor]", () => {
   const preprocessor = new SignalPreprocessor();
   const signals = [
     createSignal({ signalId: "sig_1", stepOutputRefs: ["step:1"] }),
@@ -152,7 +152,7 @@ test("mergeCorrelated separates signals with different stepOutputRefs", () => {
   assert.equal(result.length, 2);
 });
 
-test("mergeCorrelated adds correlatedCategories to payload", () => {
+test("mergeCorrelated adds correlatedCategories to payload [signal-preprocessor]", () => {
   const preprocessor = new SignalPreprocessor();
   const signals = [
     createSignal({ signalId: "sig_1", stepOutputRefs: ["step:1"], category: "failure" }),
@@ -166,7 +166,7 @@ test("mergeCorrelated adds correlatedCategories to payload", () => {
   assert.deepEqual(categories, ["failure", "correction"]);
 });
 
-test("mergeCorrelated handles empty array", () => {
+test("mergeCorrelated handles empty array [signal-preprocessor]", () => {
   const preprocessor = new SignalPreprocessor();
   const result = preprocessor.mergeCorrelated([]);
   assert.equal(result.length, 0);
@@ -176,7 +176,7 @@ test("mergeCorrelated handles empty array", () => {
 // normalize tests
 // =============================================================================
 
-test("normalize deduplicates signals with same key", () => {
+test("normalize deduplicates signals with same key [signal-preprocessor]", () => {
   const preprocessor = new SignalPreprocessor();
   const signals = [
     createSignal({ signalId: "sig_1", stepOutputRefs: ["step:1"] }),
@@ -188,7 +188,7 @@ test("normalize deduplicates signals with same key", () => {
   assert.equal(result.length, 1);
 });
 
-test("normalize updates occurrenceCount on merge", () => {
+test("normalize updates occurrenceCount on merge [signal-preprocessor]", () => {
   const preprocessor = new SignalPreprocessor();
   const signals = [
     createSignal({ signalId: "sig_1", stepOutputRefs: ["step:1"] }),
@@ -201,7 +201,7 @@ test("normalize updates occurrenceCount on merge", () => {
   assert.equal((result[0]?.payload as Record<string, unknown>).occurrenceCount, 2);
 });
 
-test("normalize preserves minimum timestamp", () => {
+test("normalize preserves minimum timestamp [signal-preprocessor]", () => {
   const preprocessor = new SignalPreprocessor();
   const signals = [
     createSignal({ signalId: "sig_1", timestamp: 2000, stepOutputRefs: ["step:1"] }),
@@ -213,7 +213,7 @@ test("normalize preserves minimum timestamp", () => {
   assert.equal(result[0]?.timestamp, 1000);
 });
 
-test("normalize handles empty array", () => {
+test("normalize handles empty array [signal-preprocessor]", () => {
   const preprocessor = new SignalPreprocessor();
   const result = preprocessor.normalize([]);
   assert.equal(result.length, 0);
@@ -223,7 +223,7 @@ test("normalize handles empty array", () => {
 // toLearningSignals tests
 // =============================================================================
 
-test("toLearningSignals produces recovery_playbook from failure+correction+success", () => {
+test("toLearningSignals produces recovery_playbook from failure+correction+success [signal-preprocessor]", () => {
   const preprocessor = new SignalPreprocessor();
   const feedback = createFeedbackBatch([
     createSignal({ signalId: "sig_1", category: "failure", stepOutputRefs: ["step:1"] }),
@@ -236,7 +236,7 @@ test("toLearningSignals produces recovery_playbook from failure+correction+succe
   assert.ok(result.some(s => s.learningType === "recovery_playbook"));
 });
 
-test("toLearningSignals produces failure_pattern from failure signal", () => {
+test("toLearningSignals produces failure_pattern from failure signal [signal-preprocessor]", () => {
   const preprocessor = new SignalPreprocessor();
   const feedback = createFeedbackBatch([
     createSignal({ signalId: "sig_1", category: "failure", stepOutputRefs: ["step:1"] }),
@@ -247,7 +247,7 @@ test("toLearningSignals produces failure_pattern from failure signal", () => {
   assert.ok(result.some(s => s.learningType === "failure_pattern"));
 });
 
-test("toLearningSignals produces user_correction from user correction", () => {
+test("toLearningSignals produces user_correction from user correction [signal-preprocessor]", () => {
   const preprocessor = new SignalPreprocessor();
   const feedback = createFeedbackBatch([
     createSignal({ signalId: "sig_1", category: "correction", source: "user" }),
@@ -258,7 +258,7 @@ test("toLearningSignals produces user_correction from user correction", () => {
   assert.ok(result.some(s => s.learningType === "user_correction"));
 });
 
-test("toLearningSignals excludes informational success signals by default", () => {
+test("toLearningSignals excludes informational success signals by default [signal-preprocessor]", () => {
   const preprocessor = new SignalPreprocessor();
   const feedback = createFeedbackBatch([
     createSignal({ signalId: "sig_1", category: "success", severity: "info" }),
@@ -269,7 +269,7 @@ test("toLearningSignals excludes informational success signals by default", () =
   assert.equal(result.length, 0);
 });
 
-test("toLearningSignals includes informational success signals when option enabled", () => {
+test("toLearningSignals includes informational success signals when option enabled [signal-preprocessor]", () => {
   const preprocessor = new SignalPreprocessor();
   // info success signal is skipped by default but included when option enabled
   // within a recovery pattern (failure + correction + success)
@@ -285,7 +285,7 @@ test("toLearningSignals includes informational success signals when option enabl
   assert.ok(result.some(s => s.learningType === "recovery_playbook"));
 });
 
-test("toLearningSignals infers correct confidence by source", () => {
+test("toLearningSignals infers correct confidence by source [signal-preprocessor]", () => {
   const preprocessor = new SignalPreprocessor();
   const feedback = createFeedbackBatch([
     createSignal({ signalId: "sig_1", source: "user", category: "correction" }),
@@ -300,7 +300,7 @@ test("toLearningSignals infers correct confidence by source", () => {
   assert.equal(failure?.confidence, 0.8);
 });
 
-test("toLearningSignals handles empty signals array", () => {
+test("toLearningSignals handles empty signals array [signal-preprocessor]", () => {
   const preprocessor = new SignalPreprocessor();
   const feedback = createFeedbackBatch([]);
 
@@ -309,7 +309,7 @@ test("toLearningSignals handles empty signals array", () => {
   assert.equal(result.length, 0);
 });
 
-test("toLearningSignals handles timeout category with failure pattern", () => {
+test("toLearningSignals handles timeout category with failure pattern [signal-preprocessor]", () => {
   const preprocessor = new SignalPreprocessor();
   const feedback = createFeedbackBatch([
     createSignal({ signalId: "sig_1", category: "timeout", stepOutputRefs: ["step:1"] }),
@@ -320,7 +320,7 @@ test("toLearningSignals handles timeout category with failure pattern", () => {
   assert.ok(result.some(s => s.learningType === "failure_pattern"));
 });
 
-test("toLearningSignals handles partial category with lower confidence", () => {
+test("toLearningSignals handles partial category with lower confidence [signal-preprocessor]", () => {
   const preprocessor = new SignalPreprocessor();
   const feedback = createFeedbackBatch([
     createSignal({ signalId: "sig_1", category: "partial", stepOutputRefs: ["step:1"] }),
@@ -332,7 +332,7 @@ test("toLearningSignals handles partial category with lower confidence", () => {
   assert.equal(partial?.confidence, 0.5);
 });
 
-test("toLearningSignals infers confidence 1 for hitl source correction", () => {
+test("toLearningSignals infers confidence 1 for hitl source correction [signal-preprocessor]", () => {
   const preprocessor = new SignalPreprocessor();
   const feedback = createFeedbackBatch([
     createSignal({ signalId: "sig_1", source: "hitl", category: "correction", stepOutputRefs: ["step:1"] }),
@@ -344,7 +344,7 @@ test("toLearningSignals infers confidence 1 for hitl source correction", () => {
   assert.equal(hitlCorrection?.confidence, 1);
 });
 
-test("toLearningSignals generates multiple learning signals from multiple signal groups", () => {
+test("toLearningSignals generates multiple learning signals from multiple signal groups [signal-preprocessor]", () => {
   const preprocessor = new SignalPreprocessor();
   const feedback = createFeedbackBatch([
     createSignal({ signalId: "sig_1", category: "failure", stepOutputRefs: ["step:1"], source: "execution" }),
@@ -360,7 +360,7 @@ test("toLearningSignals generates multiple learning signals from multiple signal
   assert.ok(result.some(s => s.learningType === "failure_pattern"));
 });
 
-test("toLearningSignals recovery playbook uses minimum timestamp for order", () => {
+test("toLearningSignals recovery playbook uses minimum timestamp for order [signal-preprocessor]", () => {
   const preprocessor = new SignalPreprocessor();
   const feedback = createFeedbackBatch([
     createSignal({ signalId: "sig_fail", category: "failure", stepOutputRefs: ["step:1"], timestamp: 3000 }),
@@ -376,7 +376,7 @@ test("toLearningSignals recovery playbook uses minimum timestamp for order", () 
   assert.ok(playbook.valueSummary.includes("->"));
 });
 
-test("deduplicate does not merge signals with different stepOutputRefs", () => {
+test("deduplicate does not merge signals with different stepOutputRefs [signal-preprocessor]", () => {
   const preprocessor = new SignalPreprocessor();
   const signals = [
     createSignal({ signalId: "sig_1", stepOutputRefs: ["step:1", "step:2"] }),
@@ -389,7 +389,7 @@ test("deduplicate does not merge signals with different stepOutputRefs", () => {
   assert.equal(result.length, 2);
 });
 
-test("deduplicate merges signals with identical keys including stepOutputRefs", () => {
+test("deduplicate merges signals with identical keys including stepOutputRefs [signal-preprocessor]", () => {
   const preprocessor = new SignalPreprocessor();
   const signals = [
     createSignal({ signalId: "sig_1", stepOutputRefs: ["step:1"] }),
@@ -402,7 +402,7 @@ test("deduplicate merges signals with identical keys including stepOutputRefs", 
   assert.deepEqual(result[0]?.stepOutputRefs.sort(), ["step:1"]);
 });
 
-test("normalize does not combine signals with different stepOutputRefs", () => {
+test("normalize does not combine signals with different stepOutputRefs [signal-preprocessor]", () => {
   const preprocessor = new SignalPreprocessor();
   const signals = [
     createSignal({ signalId: "sig_1", stepOutputRefs: ["step:a"] }),
@@ -415,7 +415,7 @@ test("normalize does not combine signals with different stepOutputRefs", () => {
   assert.equal(result.length, 2);
 });
 
-test("normalize merges signals with identical keys", () => {
+test("normalize merges signals with identical keys [signal-preprocessor]", () => {
   const preprocessor = new SignalPreprocessor();
   const signals = [
     createSignal({ signalId: "sig_1", stepOutputRefs: ["step:1"] }),
@@ -428,7 +428,7 @@ test("normalize merges signals with identical keys", () => {
   assert.deepEqual(result[0]?.stepOutputRefs.sort(), ["step:1"]);
 });
 
-test("mergeCorrelated groups signals with same stepOutputRefs", () => {
+test("mergeCorrelated groups signals with same stepOutputRefs [signal-preprocessor]", () => {
   const preprocessor = new SignalPreprocessor();
   const signals = [
     createSignal({ signalId: "sig_1", stepOutputRefs: [], category: "failure", source: "execution" }),

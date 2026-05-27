@@ -17,7 +17,7 @@ function createHarness(prefix: string) {
   return { workspace, db, store };
 }
 
-test("HITLExplainabilityService can be instantiated", () => {
+test("HITLExplainabilityService can be instantiated [hitl-explainability-service]", () => {
   const h = createHarness("aa-hitl-instantiate-");
   try {
     const service = new HITLExplainabilityService(h.store);
@@ -29,7 +29,7 @@ test("HITLExplainabilityService can be instantiated", () => {
   }
 });
 
-test("generateExplanation creates a decision explanation", () => {
+test("generateExplanation creates a decision explanation [hitl-explainability-service]", () => {
   const h = createHarness("aa-hitl-generate-");
   try {
     const service = new HITLExplainabilityService(h.store);
@@ -54,7 +54,7 @@ test("generateExplanation creates a decision explanation", () => {
   }
 });
 
-test("explainTaskEscalation generates escalation explanation", () => {
+test("explainTaskEscalation generates escalation explanation [hitl-explainability-service]", () => {
   const h = createHarness("aa-hitl-escalation-");
   try {
     const service = new HITLExplainabilityService(h.store);
@@ -75,7 +75,7 @@ test("explainTaskEscalation generates escalation explanation", () => {
   }
 });
 
-test("explainApprovalRequired generates approval explanation", () => {
+test("explainApprovalRequired generates approval explanation [hitl-explainability-service]", () => {
   const h = createHarness("aa-hitl-approval-");
   try {
     const service = new HITLExplainabilityService(h.store);
@@ -96,7 +96,7 @@ test("explainApprovalRequired generates approval explanation", () => {
   }
 });
 
-test("getExplanation retrieves explanation by id", () => {
+test("getExplanation retrieves explanation by id [hitl-explainability-service]", () => {
   const h = createHarness("aa-hitl-get-");
   try {
     const service = new HITLExplainabilityService(h.store);
@@ -116,7 +116,7 @@ test("getExplanation retrieves explanation by id", () => {
   }
 });
 
-test("getExplanation returns null for unknown id", () => {
+test("getExplanation returns null for unknown id [hitl-explainability-service]", () => {
   const h = createHarness("aa-hitl-get-unknown-");
   try {
     const service = new HITLExplainabilityService(h.store);
@@ -128,7 +128,7 @@ test("getExplanation returns null for unknown id", () => {
   }
 });
 
-test("getExplanationsForTask filters by task id", () => {
+test("getExplanationsForTask filters by task id [hitl-explainability-service]", () => {
   const h = createHarness("aa-hitl-for-task-");
   try {
     const service = new HITLExplainabilityService(h.store);
@@ -151,7 +151,7 @@ test("getExplanationsForTask filters by task id", () => {
   }
 });
 
-test("getRecentExplanations respects limit", () => {
+test("getRecentExplanations respects limit [hitl-explainability-service]", () => {
   const h = createHarness("aa-hitl-recent-");
   try {
     const service = new HITLExplainabilityService(h.store);
@@ -169,7 +169,7 @@ test("getRecentExplanations respects limit", () => {
   }
 });
 
-test("recordFeedback creates feedback record", () => {
+test("recordFeedback creates feedback record [hitl-explainability-service]", () => {
   const h = createHarness("aa-hitl-feedback-");
   try {
     const service = new HITLExplainabilityService(h.store);
@@ -194,7 +194,7 @@ test("recordFeedback creates feedback record", () => {
   }
 });
 
-test("getFeedbackForSession filters by session id", () => {
+test("getFeedbackForSession filters by session id [hitl-explainability-service]", () => {
   const h = createHarness("aa-hitl-fb-session-");
   try {
     const service = new HITLExplainabilityService(h.store);
@@ -214,7 +214,7 @@ test("getFeedbackForSession filters by session id", () => {
   }
 });
 
-test("getFeedbackForTask filters by task id", () => {
+test("getFeedbackForTask filters by task id [hitl-explainability-service]", () => {
   const h = createHarness("aa-hitl-fb-task-");
   try {
     const service = new HITLExplainabilityService(h.store);
@@ -231,7 +231,7 @@ test("getFeedbackForTask filters by task id", () => {
   }
 });
 
-test("getOperatorMetrics calculates correct metrics", () => {
+test("getOperatorMetrics calculates correct metrics [hitl-explainability-service]", () => {
   const h = createHarness("aa-hitl-metrics-");
   try {
     const service = new HITLExplainabilityService(h.store);
@@ -251,7 +251,7 @@ test("getOperatorMetrics calculates correct metrics", () => {
   }
 });
 
-test("getOperatorMetrics returns defaults for unknown operator", () => {
+test("getOperatorMetrics returns defaults for unknown operator [hitl-explainability-service]", () => {
   const h = createHarness("aa-hitl-metrics-unknown-");
   try {
     const service = new HITLExplainabilityService(h.store);
@@ -266,7 +266,7 @@ test("getOperatorMetrics returns defaults for unknown operator", () => {
   }
 });
 
-test("getOverallSatisfactionMetrics returns aggregate metrics", () => {
+test("getOverallSatisfactionMetrics returns aggregate metrics [hitl-explainability-service]", () => {
   const h = createHarness("aa-hitl-overall-");
   try {
     const service = new HITLExplainabilityService(h.store);
@@ -288,7 +288,7 @@ test("getOverallSatisfactionMetrics returns aggregate metrics", () => {
   }
 });
 
-test("getOverallSatisfactionMetrics returns defaults for empty records", () => {
+test("getOverallSatisfactionMetrics returns defaults for empty records [hitl-explainability-service]", () => {
   const h = createHarness("aa-hitl-overall-empty-");
   try {
     const service = new HITLExplainabilityService(h.store);
@@ -305,7 +305,7 @@ test("getOverallSatisfactionMetrics returns defaults for empty records", () => {
   }
 });
 
-test("isFeedbackDue returns true when feedback is due", () => {
+test("isFeedbackDue returns true when feedback is due [hitl-explainability-service]", () => {
   const h = createHarness("aa-hitl-feedback-due-");
   try {
     const service = new HITLExplainabilityService(h.store, {
@@ -330,7 +330,7 @@ test("isFeedbackDue returns true when feedback is due", () => {
   }
 });
 
-test("isFeedbackDue returns false when feedback already submitted", () => {
+test("isFeedbackDue returns false when feedback already submitted [hitl-explainability-service]", () => {
   const h = createHarness("aa-hitl-feedback-submitted-");
   try {
     const service = new HITLExplainabilityService(h.store, {
@@ -357,7 +357,7 @@ test("isFeedbackDue returns false when feedback already submitted", () => {
   }
 });
 
-test("isFeedbackDue returns false when session not closed", () => {
+test("isFeedbackDue returns false when session not closed [hitl-explainability-service]", () => {
   const h = createHarness("aa-hitl-feedback-open-");
   try {
     const service = new HITLExplainabilityService(h.store, {
@@ -382,7 +382,7 @@ test("isFeedbackDue returns false when session not closed", () => {
   }
 });
 
-test("getConfig returns service configuration", () => {
+test("getConfig returns service configuration [hitl-explainability-service]", () => {
   const h = createHarness("aa-hitl-config-");
   try {
     const service = new HITLExplainabilityService(h.store, {
@@ -405,7 +405,7 @@ test("getConfig returns service configuration", () => {
   }
 });
 
-test("disabled service does not store explanations", () => {
+test("disabled service does not store explanations [hitl-explainability-service]", () => {
   const h = createHarness("aa-hitl-disabled-");
   try {
     const service = new HITLExplainabilityService(h.store, {
@@ -431,7 +431,7 @@ test("disabled service does not store explanations", () => {
   }
 });
 
-test("disabled service does not store feedback", () => {
+test("disabled service does not store feedback [hitl-explainability-service]", () => {
   const h = createHarness("aa-hitl-fb-disabled-");
   try {
     const service = new HITLExplainabilityService(h.store, {

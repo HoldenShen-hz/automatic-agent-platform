@@ -37,13 +37,13 @@ async function flushMicrotasks(rounds: number = 10): Promise<void> {
   }
 }
 
-test("ProcessTracker constructor creates empty tracker", () => {
+test("ProcessTracker constructor creates empty tracker [process-tracker]", () => {
   const tracker = new ProcessTracker();
   assert.equal(tracker.getActiveCount(), 0);
   assert.equal(tracker.getZombieCount(), 0);
 });
 
-test("ProcessTracker.register adds process to registry", () => {
+test("ProcessTracker.register adds process to registry [process-tracker]", () => {
   const tracker = new ProcessTracker();
   const proc = createMockChildProcess(12345);
 
@@ -58,7 +58,7 @@ test("ProcessTracker.register adds process to registry", () => {
   assert.equal(active[0]!.state, "running");
 });
 
-test("ProcessTracker.register handles invalid pid", () => {
+test("ProcessTracker.register handles invalid pid [process-tracker]", () => {
   const tracker = new ProcessTracker();
   const proc = createMockChildProcess(0);
 
@@ -67,7 +67,7 @@ test("ProcessTracker.register handles invalid pid", () => {
   assert.equal(tracker.getActiveCount(), 0);
 });
 
-test("ProcessTracker.register stores pgid when available", () => {
+test("ProcessTracker.register stores pgid when available [process-tracker]", () => {
   const tracker = new ProcessTracker();
   const proc = createMockChildProcess(12345, 12340);
 
@@ -76,7 +76,7 @@ test("ProcessTracker.register stores pgid when available", () => {
   assert.equal(tracker.getActive()[0]!.pgid, 12340);
 });
 
-test("ProcessTracker.unregister removes process from registry", () => {
+test("ProcessTracker.unregister removes process from registry [process-tracker]", () => {
   const tracker = new ProcessTracker();
   tracker.register(createMockChildProcess(12345), "bash-tool", "echo", ["hello"]);
 
@@ -85,7 +85,7 @@ test("ProcessTracker.unregister removes process from registry", () => {
   assert.equal(tracker.getActiveCount(), 0);
 });
 
-test("ProcessTracker.getCountByOwner returns correct counts", () => {
+test("ProcessTracker.getCountByOwner returns correct counts [process-tracker]", () => {
   const tracker = new ProcessTracker();
   tracker.register(createMockChildProcess(111), "bash-tool", "cmd1", []);
   tracker.register(createMockChildProcess(222), "bash-tool", "cmd2", []);
@@ -99,7 +99,7 @@ test("ProcessTracker.getCountByOwner returns correct counts", () => {
   assert.equal(counts["mcp-transport"], 0);
 });
 
-test("ProcessTracker.reset clears all processes", () => {
+test("ProcessTracker.reset clears all processes [process-tracker]", () => {
   const tracker = new ProcessTracker();
   tracker.register(createMockChildProcess(111), "bash-tool", "cmd1", []);
   tracker.register(createMockChildProcess(222), "docker", "cmd2", []);
@@ -110,7 +110,7 @@ test("ProcessTracker.reset clears all processes", () => {
   assert.equal(tracker.getZombieCount(), 0);
 });
 
-test("ProcessTracker.getSummary returns correct structure", () => {
+test("ProcessTracker.getSummary returns correct structure [process-tracker]", () => {
   const tracker = new ProcessTracker();
   tracker.register(createMockChildProcess(111), "bash-tool", "cmd1", []);
   tracker.register(createMockChildProcess(222), "docker", "cmd2", []);
@@ -122,12 +122,12 @@ test("ProcessTracker.getSummary returns correct structure", () => {
   assert.equal(summary.byOwner["docker"], 1);
 });
 
-test("ProcessTracker.kill returns false for unknown process", async () => {
+test("ProcessTracker.kill returns false for unknown process [process-tracker]", async () => {
   const tracker = new ProcessTracker();
   assert.equal(await tracker.kill(99999), false);
 });
 
-test("ProcessTracker process exit event cleans up process", () => {
+test("ProcessTracker process exit event cleans up process [process-tracker]", () => {
   mock.timers.enable({ apis: ["setTimeout", "Date"] });
 
   try {
@@ -144,7 +144,7 @@ test("ProcessTracker process exit event cleans up process", () => {
   }
 });
 
-test("ProcessTracker close event cleans up running process", () => {
+test("ProcessTracker close event cleans up running process [process-tracker]", () => {
   const tracker = new ProcessTracker();
   const proc = createMockChildProcess(12345);
   tracker.register(proc, "bash-tool", "echo", ["hello"]);
@@ -154,7 +154,7 @@ test("ProcessTracker close event cleans up running process", () => {
   assert.equal(tracker.getActiveCount(), 0);
 });
 
-test("getProcessTracker returns singleton instance", () => {
+test("getProcessTracker returns singleton instance [process-tracker]", () => {
   resetProcessTracker();
   const tracker1 = getProcessTracker();
   const tracker2 = getProcessTracker();
@@ -162,7 +162,7 @@ test("getProcessTracker returns singleton instance", () => {
   resetProcessTracker();
 });
 
-test("resetProcessTracker clears singleton", () => {
+test("resetProcessTracker clears singleton [process-tracker]", () => {
   resetProcessTracker();
   const tracker1 = getProcessTracker();
   resetProcessTracker();
@@ -171,7 +171,7 @@ test("resetProcessTracker clears singleton", () => {
   resetProcessTracker();
 });
 
-test("ProcessTracker exported types remain usable", () => {
+test("ProcessTracker exported types remain usable [process-tracker]", () => {
   const owners: ProcessOwner[] = ["bash-tool", "mcp-transport", "lsp-client", "redis-cli", "pg-cli", "docker", "exec-file", "plugin-runtime", "unknown"];
   const states: TrackedProcessState[] = ["running", "terminating", "killed", "exited"];
   const tracked: TrackedProcess = {
@@ -191,7 +191,7 @@ test("ProcessTracker exported types remain usable", () => {
   assert.equal(tracked.command, "node");
 });
 
-test("ProcessTracker.getActive returns only running and terminating processes", () => {
+test("ProcessTracker.getActive returns only running and terminating processes [process-tracker]", () => {
   const tracker = new ProcessTracker();
   tracker.register(createMockChildProcess(111), "bash-tool", "cmd1", []);
   tracker.register(createMockChildProcess(222), "bash-tool", "cmd2", []);
@@ -206,7 +206,7 @@ test("ProcessTracker.getActive returns only running and terminating processes", 
   }
 });
 
-test("ProcessTracker.getActive excludes exited processes", () => {
+test("ProcessTracker.getActive excludes exited processes [process-tracker]", () => {
   const tracker = new ProcessTracker();
   const proc1 = createMockChildProcess(111);
   tracker.register(proc1, "bash-tool", "cmd1", []);
@@ -220,7 +220,7 @@ test("ProcessTracker.getActive excludes exited processes", () => {
   assert.equal(active[0]!.pid, 222);
 });
 
-test("ProcessTracker.getZombieCount returns count of exited processes", () => {
+test("ProcessTracker.getZombieCount returns count of exited processes [process-tracker]", () => {
   const tracker = new ProcessTracker();
   const proc1 = createMockChildProcess(111);
   const proc2 = createMockChildProcess(222);
@@ -233,7 +233,7 @@ test("ProcessTracker.getZombieCount returns count of exited processes", () => {
   assert.equal(tracker.getZombieCount(), 1);
 });
 
-test("ProcessTracker.kill returns true for known process", async () => {
+test("ProcessTracker.kill returns true for known process [process-tracker]", async () => {
   const tracker = new ProcessTracker();
   tracker.register(createMockChildProcess(111), "bash-tool", "sleep", ["100"]);
 
@@ -249,7 +249,7 @@ test("ProcessTracker.kill returns true for known process", async () => {
   }
 });
 
-test("ProcessTracker.kill handles ESRCH error gracefully", async () => {
+test("ProcessTracker.kill handles ESRCH error gracefully [process-tracker]", async () => {
   const tracker = new ProcessTracker();
   tracker.register(createMockChildProcess(111), "bash-tool", "sleep", ["0"]);
 
@@ -270,7 +270,7 @@ test("ProcessTracker.kill handles ESRCH error gracefully", async () => {
   }
 });
 
-test("ProcessTracker.kill handles EPERM error gracefully", async () => {
+test("ProcessTracker.kill handles EPERM error gracefully [process-tracker]", async () => {
   const tracker = new ProcessTracker();
   tracker.register(createMockChildProcess(111), "bash-tool", "sleep", ["100"]);
 
@@ -290,14 +290,14 @@ test("ProcessTracker.kill handles EPERM error gracefully", async () => {
   }
 });
 
-test("ProcessTracker.killAll does nothing when no active processes", async () => {
+test("ProcessTracker.killAll does nothing when no active processes [process-tracker]", async () => {
   const tracker = new ProcessTracker();
 
   await tracker.killAll("SIGTERM", 100);
   assert.equal(tracker.getActiveCount(), 0);
 });
 
-test("ProcessTracker.getSummary returns correct zombie count", () => {
+test("ProcessTracker.getSummary returns correct zombie count [process-tracker]", () => {
   const tracker = new ProcessTracker();
   const proc1 = createMockChildProcess(111);
   tracker.register(proc1, "bash-tool", "cmd1", []);
@@ -311,7 +311,7 @@ test("ProcessTracker.getSummary returns correct zombie count", () => {
   assert.equal(summary.zombie, 1);
 });
 
-test("ProcessTracker.getSummary handles all owner types with zero counts", () => {
+test("ProcessTracker.getSummary handles all owner types with zero counts [process-tracker]", () => {
   const tracker = new ProcessTracker();
   const summary = tracker.getSummary();
 
@@ -325,7 +325,7 @@ test("ProcessTracker.getSummary handles all owner types with zero counts", () =>
   assert.equal(summary.byOwner["unknown"], 0);
 });
 
-test("ProcessTracker.register stores correct args", () => {
+test("ProcessTracker.register stores correct args [process-tracker]", () => {
   const tracker = new ProcessTracker();
   const proc = createMockChildProcess(12345);
 
@@ -335,7 +335,7 @@ test("ProcessTracker.register stores correct args", () => {
   assert.deepEqual(active[0]!.args, ["-c", "SELECT * FROM users;"]);
 });
 
-test("ProcessTracker.register handles empty args array", () => {
+test("ProcessTracker.register handles empty args array [process-tracker]", () => {
   const tracker = new ProcessTracker();
   const proc = createMockChildProcess(12345);
 
@@ -345,7 +345,7 @@ test("ProcessTracker.register handles empty args array", () => {
   assert.deepEqual(active[0]!.args, []);
 });
 
-test("ProcessTracker.getCountByOwner handles all zero counts", () => {
+test("ProcessTracker.getCountByOwner handles all zero counts [process-tracker]", () => {
   const tracker = new ProcessTracker();
   const counts = tracker.getCountByOwner();
 
@@ -355,7 +355,7 @@ test("ProcessTracker.getCountByOwner handles all zero counts", () => {
   }
 });
 
-test("ProcessTracker.getCountByOwner counts only active processes", () => {
+test("ProcessTracker.getCountByOwner counts only active processes [process-tracker]", () => {
   const tracker = new ProcessTracker();
   const proc1 = createMockChildProcess(111);
   tracker.register(proc1, "bash-tool", "cmd1", []);
@@ -371,7 +371,7 @@ test("ProcessTracker.getCountByOwner counts only active processes", () => {
   assert.equal(counts["unknown"], 0);
 });
 
-test("ProcessTracker multiple owners in getCountByOwner", () => {
+test("ProcessTracker multiple owners in getCountByOwner [process-tracker]", () => {
   const tracker = new ProcessTracker();
   tracker.register(createMockChildProcess(1), "bash-tool", "cmd", []);
   tracker.register(createMockChildProcess(2), "mcp-transport", "cmd", []);
@@ -393,7 +393,7 @@ test("ProcessTracker multiple owners in getCountByOwner", () => {
   assert.equal(counts["unknown"], 1);
 });
 
-test("spawnTracked creates and registers a process", () => {
+test("spawnTracked creates and registers a process [process-tracker]", () => {
   const tracker = new ProcessTracker();
 
   const result = spawnTracked(tracker, "echo", ["hello"], {}, "bash-tool");
@@ -406,7 +406,7 @@ test("spawnTracked creates and registers a process", () => {
   tracker.kill(result.pid!, "SIGKILL");
 });
 
-test("spawnTracked registers with correct owner", () => {
+test("spawnTracked registers with correct owner [process-tracker]", () => {
   const tracker = new ProcessTracker();
 
   spawnTracked(tracker, "echo", ["test"], {}, "mcp-transport");
@@ -421,7 +421,7 @@ test("spawnTracked registers with correct owner", () => {
   }
 });
 
-test("ProcessTracker.getSummary with mixed states", () => {
+test("ProcessTracker.getSummary with mixed states [process-tracker]", () => {
   const tracker = new ProcessTracker();
   const proc1 = createMockChildProcess(111);
   tracker.register(proc1, "bash-tool", "cmd1", []);
@@ -442,7 +442,7 @@ test("ProcessTracker.getSummary with mixed states", () => {
   assert.equal(summary.byOwner["redis-cli"], 1); // 444
 });
 
-test("ProcessTracker exit then close event handles duplicate cleanup", () => {
+test("ProcessTracker exit then close event handles duplicate cleanup [process-tracker]", () => {
   const tracker = new ProcessTracker();
   const proc = createMockChildProcess(12345);
   tracker.register(proc, "bash-tool", "echo", ["hello"]);
@@ -456,7 +456,7 @@ test("ProcessTracker exit then close event handles duplicate cleanup", () => {
   assert.equal(tracker.getActiveCount(), 0);
 });
 
-test("ProcessTracker.getActiveCount returns correct count", () => {
+test("ProcessTracker.getActiveCount returns correct count [process-tracker]", () => {
   const tracker = new ProcessTracker();
   assert.equal(tracker.getActiveCount(), 0);
 
@@ -473,7 +473,7 @@ test("ProcessTracker.getActiveCount returns correct count", () => {
   assert.equal(tracker.getActiveCount(), 0);
 });
 
-test("ProcessTracker process exit with non-zero code is handled", () => {
+test("ProcessTracker process exit with non-zero code is handled [process-tracker]", () => {
   mock.timers.enable({ apis: ["setTimeout", "Date"] });
 
   try {
@@ -490,7 +490,7 @@ test("ProcessTracker process exit with non-zero code is handled", () => {
   }
 });
 
-test("ProcessTracker tracked process has correct metadata", () => {
+test("ProcessTracker tracked process has correct metadata [process-tracker]", () => {
   const tracker = new ProcessTracker();
   const proc = createMockChildProcess(12345, 12340);
 
@@ -509,7 +509,7 @@ test("ProcessTracker tracked process has correct metadata", () => {
   assert.equal(tracked.lastSignal, undefined);
 });
 
-test("ProcessTracker kill with SIGKILL signal", async () => {
+test("ProcessTracker kill with SIGKILL signal [process-tracker]", async () => {
   const tracker = new ProcessTracker();
   tracker.register(createMockChildProcess(111), "bash-tool", "sleep", ["100"]);
 
@@ -524,7 +524,7 @@ test("ProcessTracker kill with SIGKILL signal", async () => {
   }
 });
 
-test("ProcessTracker getSummary active and zombie match getActiveCount and getZombieCount", () => {
+test("ProcessTracker getSummary active and zombie match getActiveCount and getZombieCount [process-tracker]", () => {
   const tracker = new ProcessTracker();
   const proc1 = createMockChildProcess(111);
   tracker.register(proc1, "bash-tool", "cmd1", []);
@@ -537,7 +537,7 @@ test("ProcessTracker getSummary active and zombie match getActiveCount and getZo
   assert.equal(summary.zombie, tracker.getZombieCount());
 });
 
-test("ProcessTracker tracked process spawnedAt is set", () => {
+test("ProcessTracker tracked process spawnedAt is set [process-tracker]", () => {
   const tracker = new ProcessTracker();
   const before = Date.now();
   const proc = createMockChildProcess(12345);
@@ -551,7 +551,7 @@ test("ProcessTracker tracked process spawnedAt is set", () => {
   assert.ok(active[0]!.spawnedAt <= after);
 });
 
-test("ProcessTracker all ProcessOwner types can be registered", () => {
+test("ProcessTracker all ProcessOwner types can be registered [process-tracker]", () => {
   const tracker = new ProcessTracker();
 
   tracker.register(createMockChildProcess(1), "bash-tool", "cmd", []);
@@ -566,7 +566,7 @@ test("ProcessTracker all ProcessOwner types can be registered", () => {
   assert.equal(tracker.getActiveCount(), 8);
 });
 
-test("ProcessTracker.kill sends SIGTERM to process group when pgid differs from pid", async () => {
+test("ProcessTracker.kill sends SIGTERM to process group when pgid differs from pid [process-tracker]", async () => {
   const tracker = new ProcessTracker();
   // Create process with different pgid to trigger group kill
   const proc = createMockChildProcess(111, 100);
@@ -596,7 +596,7 @@ test("ProcessTracker.kill sends SIGTERM to process group when pgid differs from 
   }
 });
 
-test("ProcessTracker.kill updates tracked.lastSignal and killRequestedAt", async () => {
+test("ProcessTracker.kill updates tracked.lastSignal and killRequestedAt [process-tracker]", async () => {
   const tracker = new ProcessTracker();
   tracker.register(createMockChildProcess(111), "bash-tool", "sleep", ["100"]);
 
@@ -615,7 +615,7 @@ test("ProcessTracker.kill updates tracked.lastSignal and killRequestedAt", async
   }
 });
 
-test("ProcessTracker.kill changes state to terminating", async () => {
+test("ProcessTracker.kill changes state to terminating [process-tracker]", async () => {
   const tracker = new ProcessTracker();
   tracker.register(createMockChildProcess(111), "bash-tool", "sleep", ["100"]);
 
@@ -632,7 +632,7 @@ test("ProcessTracker.kill changes state to terminating", async () => {
   }
 });
 
-test("ProcessTracker.killAll sends SIGTERM then waits then SIGKILL", async () => {
+test("ProcessTracker.killAll sends SIGTERM then waits then SIGKILL [process-tracker]", async () => {
   mock.timers.enable({ apis: ["setTimeout", "Date"] });
 
   try {
@@ -673,7 +673,7 @@ test("ProcessTracker.killAll sends SIGTERM then waits then SIGKILL", async () =>
   }
 });
 
-test("ProcessTracker.killAll handles mixed termination", async () => {
+test("ProcessTracker.killAll handles mixed termination [process-tracker]", async () => {
   mock.timers.enable({ apis: ["setTimeout", "Date"] });
 
   try {
@@ -715,7 +715,7 @@ test("ProcessTracker.killAll handles mixed termination", async () => {
   }
 });
 
-test("ProcessTracker.killAll with no processes does nothing", async () => {
+test("ProcessTracker.killAll with no processes does nothing [process-tracker]", async () => {
   const tracker = new ProcessTracker();
 
   const originalKill = process.kill;
@@ -733,7 +733,7 @@ test("ProcessTracker.killAll with no processes does nothing", async () => {
   }
 });
 
-test("ProcessTracker.close event does not double-delete exited process", () => {
+test("ProcessTracker.close event does not double-delete exited process [process-tracker]", () => {
   const tracker = new ProcessTracker();
   const proc = createMockChildProcess(12345);
   tracker.register(proc, "bash-tool", "echo", ["hello"]);
@@ -751,7 +751,7 @@ test("ProcessTracker.close event does not double-delete exited process", () => {
   assert.equal(tracker.getActiveCount(), 0);
 });
 
-test("ProcessTracker.register handles undefined stdin/stdout/stderr", () => {
+test("ProcessTracker.register handles undefined stdin/stdout/stderr [process-tracker]", () => {
   const tracker = new ProcessTracker();
   const emitter = new EventEmitter();
   const proc = Object.assign(emitter, {
@@ -767,7 +767,7 @@ test("ProcessTracker.register handles undefined stdin/stdout/stderr", () => {
   tracker.unregister(99999);
 });
 
-test("ProcessTracker.kill with SIGUSR1 signal", async () => {
+test("ProcessTracker.kill with SIGUSR1 signal [process-tracker]", async () => {
   const tracker = new ProcessTracker();
   tracker.register(createMockChildProcess(111), "bash-tool", "sleep", ["100"]);
 
@@ -785,7 +785,7 @@ test("ProcessTracker.kill with SIGUSR1 signal", async () => {
   }
 });
 
-test("ProcessTracker.kill with SIGHUP signal", async () => {
+test("ProcessTracker.kill with SIGHUP signal [process-tracker]", async () => {
   const tracker = new ProcessTracker();
   tracker.register(createMockChildProcess(111), "bash-tool", "sleep", ["100"]);
 
@@ -803,7 +803,7 @@ test("ProcessTracker.kill with SIGHUP signal", async () => {
   }
 });
 
-test("ProcessTracker.killAll logs warning when killing orphans", async () => {
+test("ProcessTracker.killAll logs warning when killing orphans [process-tracker]", async () => {
   mock.timers.enable({ apis: ["setTimeout", "Date"] });
 
   try {
@@ -832,7 +832,7 @@ test("ProcessTracker.killAll logs warning when killing orphans", async () => {
   }
 });
 
-test("spawnTracked passes correct cwd option", () => {
+test("spawnTracked passes correct cwd option [process-tracker]", () => {
   const tracker = new ProcessTracker();
 
   const result = spawnTracked(tracker, "echo", [], { cwd: "/tmp" }, "bash-tool");
@@ -843,7 +843,7 @@ test("spawnTracked passes correct cwd option", () => {
   tracker.kill(result.pid!, "SIGKILL");
 });
 
-test("spawnTracked passes correct env option", () => {
+test("spawnTracked passes correct env option [process-tracker]", () => {
   const tracker = new ProcessTracker();
 
   const result = spawnTracked(
@@ -860,7 +860,7 @@ test("spawnTracked passes correct env option", () => {
   tracker.kill(result.pid!, "SIGKILL");
 });
 
-test("spawnTracked uses detached true on non-Windows", () => {
+test("spawnTracked uses detached true on non-Windows [process-tracker]", () => {
   const tracker = new ProcessTracker();
 
   const result = spawnTracked(tracker, "echo", ["x"], {}, "bash-tool");
@@ -871,7 +871,7 @@ test("spawnTracked uses detached true on non-Windows", () => {
   tracker.kill(result.pid!, "SIGKILL");
 });
 
-test("ProcessTracker.getActive returns empty array when no processes", () => {
+test("ProcessTracker.getActive returns empty array when no processes [process-tracker]", () => {
   const tracker = new ProcessTracker();
 
   const active = tracker.getActive();
@@ -879,7 +879,7 @@ test("ProcessTracker.getActive returns empty array when no processes", () => {
   assert.deepEqual(active, []);
 });
 
-test("ProcessTracker.getActive returns new array each call", () => {
+test("ProcessTracker.getActive returns new array each call [process-tracker]", () => {
   const tracker = new ProcessTracker();
   tracker.register(createMockChildProcess(111), "bash-tool", "cmd", []);
 
@@ -890,7 +890,7 @@ test("ProcessTracker.getActive returns new array each call", () => {
   assert.deepEqual(active1, active2);
 });
 
-test("ProcessTracker.getCountByOwner returns new object each call", () => {
+test("ProcessTracker.getCountByOwner returns new object each call [process-tracker]", () => {
   const tracker = new ProcessTracker();
   tracker.register(createMockChildProcess(111), "bash-tool", "cmd", []);
 
@@ -901,7 +901,7 @@ test("ProcessTracker.getCountByOwner returns new object each call", () => {
   assert.equal(counts1["bash-tool"], counts2["bash-tool"]);
 });
 
-test("ProcessTracker.kill returns true when process already exited via exit event", async () => {
+test("ProcessTracker.kill returns true when process already exited via exit event [process-tracker]", async () => {
   const tracker = new ProcessTracker();
   const proc = createMockChildProcess(111);
   tracker.register(proc, "bash-tool", "sleep", ["0"]);
@@ -916,7 +916,7 @@ test("ProcessTracker.kill returns true when process already exited via exit even
   assert.equal(result, true);
 });
 
-test("ProcessTracker.registered process has correct spawnedAt timestamp", () => {
+test("ProcessTracker.registered process has correct spawnedAt timestamp [process-tracker]", () => {
   const tracker = new ProcessTracker();
   const before = Date.now() - 10;
   const proc = createMockChildProcess(12345);
@@ -930,7 +930,7 @@ test("ProcessTracker.registered process has correct spawnedAt timestamp", () => 
   assert.ok(active[0]!.spawnedAt <= after);
 });
 
-test("ProcessTracker.unregister non-existent pid does nothing", () => {
+test("ProcessTracker.unregister non-existent pid does nothing [process-tracker]", () => {
   const tracker = new ProcessTracker();
   tracker.register(createMockChildProcess(111), "bash-tool", "cmd", []);
 
@@ -941,7 +941,7 @@ test("ProcessTracker.unregister non-existent pid does nothing", () => {
   assert.equal(tracker.getActiveCount(), 1);
 });
 
-test("ProcessTracker.getSummary with empty tracker", () => {
+test("ProcessTracker.getSummary with empty tracker [process-tracker]", () => {
   const tracker = new ProcessTracker();
 
   const summary = tracker.getSummary();
@@ -953,7 +953,7 @@ test("ProcessTracker.getSummary with empty tracker", () => {
   }
 });
 
-test("ProcessTracker multiple kill calls on same process", async () => {
+test("ProcessTracker multiple kill calls on same process [process-tracker]", async () => {
   const tracker = new ProcessTracker();
   tracker.register(createMockChildProcess(111), "bash-tool", "sleep", ["100"]);
 
@@ -972,7 +972,7 @@ test("ProcessTracker multiple kill calls on same process", async () => {
   }
 });
 
-test("ProcessTracker.killAll with single process", async () => {
+test("ProcessTracker.killAll with single process [process-tracker]", async () => {
   mock.timers.enable({ apis: ["setTimeout", "Date"] });
 
   try {
@@ -1000,7 +1000,7 @@ test("ProcessTracker.killAll with single process", async () => {
   }
 });
 
-test("ProcessTracker tracked process state transitions: running -> terminating -> killed", async () => {
+test("ProcessTracker tracked process state transitions: running -> terminating -> killed [process-tracker]", async () => {
   const tracker = new ProcessTracker();
   const proc = createMockChildProcess(111);
   tracker.register(proc, "bash-tool", "sleep", ["100"]);
@@ -1019,7 +1019,7 @@ test("ProcessTracker tracked process state transitions: running -> terminating -
   }
 });
 
-test("spawnTracked with all owner types registers correctly", () => {
+test("spawnTracked with all owner types registers correctly [process-tracker]", () => {
   const tracker = new ProcessTracker();
 
   const owners: ProcessOwner[] = [
@@ -1045,7 +1045,7 @@ test("spawnTracked with all owner types registers correctly", () => {
   }
 });
 
-test("spawnTracked with empty args", () => {
+test("spawnTracked with empty args [process-tracker]", () => {
   const tracker = new ProcessTracker();
 
   const result = spawnTracked(tracker, "echo", undefined, {}, "bash-tool");

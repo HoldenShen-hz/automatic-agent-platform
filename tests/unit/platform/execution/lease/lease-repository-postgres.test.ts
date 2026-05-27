@@ -126,7 +126,7 @@ function createTestLease(overrides: Partial<ExecutionLeaseRecord> = {}): Executi
   };
 }
 
-test("PostgresLeaseRepository implements LeaseRepository interface", () => {
+test("PostgresLeaseRepository implements LeaseRepository interface [lease-repository-postgres]", () => {
   const mockDb = createMockAsyncDb() as any;
   const repo = new PostgresLeaseRepository(mockDb);
 
@@ -137,7 +137,7 @@ test("PostgresLeaseRepository implements LeaseRepository interface", () => {
   assert.equal(typeof repo.insertLeaseAudit, "function");
 });
 
-test("PostgresLeaseRepository.insertLease and getLease work", async () => {
+test("PostgresLeaseRepository.insertLease and getLease work [lease-repository-postgres]", async () => {
   const mockDb = createMockAsyncDb() as any;
   const repo = new PostgresLeaseRepository(mockDb) as any;
 
@@ -150,7 +150,7 @@ test("PostgresLeaseRepository.insertLease and getLease work", async () => {
   assert.equal(retrieved?.executionId, "exec-1");
 });
 
-test("PostgresLeaseRepository.getLease returns undefined for non-existent", async () => {
+test("PostgresLeaseRepository.getLease returns undefined for non-existent [lease-repository-postgres]", async () => {
   const mockDb = createMockAsyncDb() as any;
   const repo = new PostgresLeaseRepository(mockDb) as any;
 
@@ -158,7 +158,7 @@ test("PostgresLeaseRepository.getLease returns undefined for non-existent", asyn
   assert.equal(result, undefined);
 });
 
-test("PostgresLeaseRepository.getActiveLeaseForExecution returns active lease", async () => {
+test("PostgresLeaseRepository.getActiveLeaseForExecution returns active lease [lease-repository-postgres]", async () => {
   const mockDb = createMockAsyncDb() as any;
   const repo = new PostgresLeaseRepository(mockDb) as any;
 
@@ -171,7 +171,7 @@ test("PostgresLeaseRepository.getActiveLeaseForExecution returns active lease", 
   assert.equal(retrieved?.status, "active");
 });
 
-test("PostgresLeaseRepository.getActiveLeaseForExecution returns undefined when no active lease", async () => {
+test("PostgresLeaseRepository.getActiveLeaseForExecution returns undefined when no active lease [lease-repository-postgres]", async () => {
   const mockDb = createMockAsyncDb() as any;
   const repo = new PostgresLeaseRepository(mockDb) as any;
 
@@ -182,7 +182,7 @@ test("PostgresLeaseRepository.getActiveLeaseForExecution returns undefined when 
   assert.equal(result, undefined);
 });
 
-test("PostgresLeaseRepository.listExecutionLeases returns all leases for execution", async () => {
+test("PostgresLeaseRepository.listExecutionLeases returns all leases for execution [lease-repository-postgres]", async () => {
   const mockDb = createMockAsyncDb() as any;
   const repo = new PostgresLeaseRepository(mockDb) as any;
 
@@ -197,7 +197,7 @@ test("PostgresLeaseRepository.listExecutionLeases returns all leases for executi
   assert.equal(leases[1].fencingToken, 2);
 });
 
-test("PostgresLeaseRepository.updateLeaseStatus changes status", async () => {
+test("PostgresLeaseRepository.updateLeaseStatus changes status [lease-repository-postgres]", async () => {
   const mockDb = createMockAsyncDb() as any;
   const repo = new PostgresLeaseRepository(mockDb) as any;
 
@@ -211,7 +211,7 @@ test("PostgresLeaseRepository.updateLeaseStatus changes status", async () => {
   assert.equal(retrieved?.status, "released");
 });
 
-test("PostgresLeaseRepository.updateLeaseHeartbeat updates timestamp", async () => {
+test("PostgresLeaseRepository.updateLeaseHeartbeat updates timestamp [lease-repository-postgres]", async () => {
   const mockDb = createMockAsyncDb() as any;
   const repo = new PostgresLeaseRepository(mockDb) as any;
 
@@ -226,7 +226,7 @@ test("PostgresLeaseRepository.updateLeaseHeartbeat updates timestamp", async () 
   assert.equal(retrieved?.lastHeartbeatAt, newHeartbeat);
 });
 
-test("PostgresLeaseRepository.updateLeaseRelease marks lease as released", async () => {
+test("PostgresLeaseRepository.updateLeaseRelease marks lease as released [lease-repository-postgres]", async () => {
   const mockDb = createMockAsyncDb() as any;
   const repo = new PostgresLeaseRepository(mockDb) as any;
 
@@ -243,7 +243,7 @@ test("PostgresLeaseRepository.updateLeaseRelease marks lease as released", async
   assert.equal(retrieved?.reasonCode, "completed");
 });
 
-test("PostgresLeaseRepository.insertLeaseAudit and listLeaseAudits work", async () => {
+test("PostgresLeaseRepository.insertLeaseAudit and listLeaseAudits work [lease-repository-postgres]", async () => {
   const mockDb = createMockAsyncDb() as any;
   const repo = new PostgresLeaseRepository(mockDb) as any;
 
@@ -266,7 +266,7 @@ test("PostgresLeaseRepository.insertLeaseAudit and listLeaseAudits work", async 
   assert.equal(audits[0].eventType, "lease_created");
 });
 
-test("PostgresLeaseRepository.getLatestFencingToken returns max token", async () => {
+test("PostgresLeaseRepository.getLatestFencingToken returns max token [lease-repository-postgres]", async () => {
   const mockDb = createMockAsyncDb() as any;
   const repo = new PostgresLeaseRepository(mockDb) as any;
 
@@ -279,7 +279,7 @@ test("PostgresLeaseRepository.getLatestFencingToken returns max token", async ()
   assert.equal(maxToken, 10);
 });
 
-test("PostgresLeaseRepository.getLatestFencingToken returns 0 when no leases", async () => {
+test("PostgresLeaseRepository.getLatestFencingToken returns 0 when no leases [lease-repository-postgres]", async () => {
   const mockDb = createMockAsyncDb() as any;
   const repo = new PostgresLeaseRepository(mockDb) as any;
 

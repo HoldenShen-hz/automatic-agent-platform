@@ -17,7 +17,7 @@ function createHarness(prefix: string) {
   return { workspace, db, store, service };
 }
 
-test("LicenseEnforcementService allows feature access when enforcement is disabled", () => {
+test("LicenseEnforcementService allows feature access when enforcement is disabled [license-enforcement-service]", () => {
   const harness = createHarness("aa-license-disabled-");
   try {
     harness.service.setEnabled(false);
@@ -31,7 +31,7 @@ test("LicenseEnforcementService allows feature access when enforcement is disabl
   }
 });
 
-test("LicenseEnforcementService denies access when tier is insufficient in strict mode", () => {
+test("LicenseEnforcementService denies access when tier is insufficient in strict mode [license-enforcement-service]", () => {
   const harness = createHarness("aa-license-strict-");
   try {
     harness.service.setStrictMode(true);
@@ -45,7 +45,7 @@ test("LicenseEnforcementService denies access when tier is insufficient in stric
   }
 });
 
-test("LicenseEnforcementService warns but allows access when tier is insufficient in non-strict mode", () => {
+test("LicenseEnforcementService warns but allows access when tier is insufficient in non-strict mode [license-enforcement-service]", () => {
   const harness = createHarness("aa-license-warn-");
   try {
     harness.service.setStrictMode(false);
@@ -59,7 +59,7 @@ test("LicenseEnforcementService warns but allows access when tier is insufficien
   }
 });
 
-test("LicenseEnforcementService records feature usage and meters consumption", () => {
+test("LicenseEnforcementService records feature usage and meters consumption [license-enforcement-service]", () => {
   const harness = createHarness("aa-license-meter-");
   try {
     // Record usage for a metered feature
@@ -88,7 +88,7 @@ test("LicenseEnforcementService records feature usage and meters consumption", (
   }
 });
 
-test("LicenseEnforcementService denies access when usage limit is exceeded", () => {
+test("LicenseEnforcementService denies access when usage limit is exceeded [license-enforcement-service]", () => {
   const harness = createHarness("aa-license-limit-");
   try {
     // Register a feature gate with a low limit
@@ -116,7 +116,7 @@ test("LicenseEnforcementService denies access when usage limit is exceeded", () 
   }
 });
 
-test("LicenseEnforcementService warns when usage approaches limit threshold", () => {
+test("LicenseEnforcementService warns when usage approaches limit threshold [license-enforcement-service]", () => {
   const harness = createHarness("aa-license-warn-threshold-");
   try {
     // Register a feature gate with a low limit and low warn threshold
@@ -145,7 +145,7 @@ test("LicenseEnforcementService warns when usage approaches limit threshold", ()
   }
 });
 
-test("LicenseEnforcementService tracks violations and returns them", () => {
+test("LicenseEnforcementService tracks violations and returns them [license-enforcement-service]", () => {
   const harness = createHarness("aa-license-violation-");
   try {
     harness.service.setStrictMode(true);
@@ -162,7 +162,7 @@ test("LicenseEnforcementService tracks violations and returns them", () => {
   }
 });
 
-test("LicenseEnforcementService enables and disables feature gates", () => {
+test("LicenseEnforcementService enables and disables feature gates [license-enforcement-service]", () => {
   const harness = createHarness("aa-license-gate-toggle-");
   try {
     // admin_console is enabled by default
@@ -189,7 +189,7 @@ test("LicenseEnforcementService enables and disables feature gates", () => {
   }
 });
 
-test("LicenseEnforcementService lists and retrieves feature gates", () => {
+test("LicenseEnforcementService lists and retrieves feature gates [license-enforcement-service]", () => {
   const harness = createHarness("aa-license-list-gates-");
   try {
     const gates = harness.service.listFeatureGates();
@@ -204,7 +204,7 @@ test("LicenseEnforcementService lists and retrieves feature gates", () => {
   }
 });
 
-test("LicenseEnforcementService resets meters correctly", () => {
+test("LicenseEnforcementService resets meters correctly [license-enforcement-service]", () => {
   const harness = createHarness("aa-license-reset-meter-");
   try {
     harness.service.recordFeatureUsage("audit_export", { accountId: "acct_reset" });
@@ -225,7 +225,7 @@ test("LicenseEnforcementService resets meters correctly", () => {
   }
 });
 
-test("LicenseEnforcementService lists active meters", () => {
+test("LicenseEnforcementService lists active meters [license-enforcement-service]", () => {
   const harness = createHarness("aa-license-list-meters-");
   try {
     harness.service.recordFeatureUsage("audit_export", { accountId: "acct_meters_1" });
@@ -239,7 +239,7 @@ test("LicenseEnforcementService lists active meters", () => {
   }
 });
 
-test("LicenseEnforcementService respects tier ordering for compareTier", () => {
+test("LicenseEnforcementService respects tier ordering for compareTier [license-enforcement-service]", () => {
   const harness = createHarness("aa-license-tier-compare-");
   try {
     // Enterprise > Professional > Community
@@ -254,7 +254,7 @@ test("LicenseEnforcementService respects tier ordering for compareTier", () => {
   }
 });
 
-test("LicenseEnforcementService returns config and mode status", () => {
+test("LicenseEnforcementService returns config and mode status [license-enforcement-service]", () => {
   const harness = createHarness("aa-license-config-");
   try {
     assert.equal(harness.service.isEnabled(), true);
@@ -275,7 +275,7 @@ test("LicenseEnforcementService returns config and mode status", () => {
   }
 });
 
-test("LicenseEnforcementService updateFeatureLimit modifies gate limits", () => {
+test("LicenseEnforcementService updateFeatureLimit modifies gate limits [license-enforcement-service]", () => {
   const harness = createHarness("aa-license-update-limit-");
   try {
     const originalGate = harness.service.getFeatureGate("audit_export");

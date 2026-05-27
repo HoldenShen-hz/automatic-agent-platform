@@ -25,7 +25,7 @@ import {
 // Assertion Functions Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("tenant-platform-types: assertIdentifier accepts valid identifiers", () => {
+test("tenant-platform-types: assertIdentifier accepts valid identifiers [tenant-platform-types]", () => {
   const validIds = ["abc", "abc123", "a.b.c", "a:b:c", "a_b_c", "a-b-c"];
   for (const id of validIds) {
     const result = assertIdentifier(id, "TEST_ERROR");
@@ -33,7 +33,7 @@ test("tenant-platform-types: assertIdentifier accepts valid identifiers", () => 
   }
 });
 
-test("tenant-platform-types: assertIdentifier rejects invalid identifiers", () => {
+test("tenant-platform-types: assertIdentifier rejects invalid identifiers [tenant-platform-types]", () => {
   const invalidIds = ["", "a", "a!", "a b", "a@b"];
   for (const id of invalidIds) {
     assert.throws(
@@ -43,14 +43,14 @@ test("tenant-platform-types: assertIdentifier rejects invalid identifiers", () =
   }
 });
 
-test("tenant-platform-types: assertIdentifier rejects identifiers shorter than 2 chars", () => {
+test("tenant-platform-types: assertIdentifier rejects identifiers shorter than 2 chars [tenant-platform-types]", () => {
   assert.throws(
     () => assertIdentifier("a", "TOO_SHORT"),
     (err: unknown) => (err as Error).message.includes("TOO_SHORT")
   );
 });
 
-test("tenant-platform-types: assertIdentifier rejects identifiers longer than 128 chars", () => {
+test("tenant-platform-types: assertIdentifier rejects identifiers longer than 128 chars [tenant-platform-types]", () => {
   const longId = "a".repeat(129);
   assert.throws(
     () => assertIdentifier(longId, "TOO_LONG"),
@@ -58,24 +58,24 @@ test("tenant-platform-types: assertIdentifier rejects identifiers longer than 12
   );
 });
 
-test("tenant-platform-types: assertNonEmpty accepts non-empty strings", () => {
+test("tenant-platform-types: assertNonEmpty accepts non-empty strings [tenant-platform-types]", () => {
   const result = assertNonEmpty("hello", "EMPTY_ERROR");
   assert.equal(result, "hello");
 });
 
-test("tenant-platform-types: assertNonEmpty trims whitespace", () => {
+test("tenant-platform-types: assertNonEmpty trims whitespace [tenant-platform-types]", () => {
   const result = assertNonEmpty("  hello  ", "EMPTY_ERROR");
   assert.equal(result, "hello");
 });
 
-test("tenant-platform-types: assertNonEmpty rejects empty strings", () => {
+test("tenant-platform-types: assertNonEmpty rejects empty strings [tenant-platform-types]", () => {
   assert.throws(
     () => assertNonEmpty("", "EMPTY_ERROR"),
     (err: unknown) => (err as Error).message.includes("EMPTY_ERROR")
   );
 });
 
-test("tenant-platform-types: assertNonEmpty rejects whitespace-only strings", () => {
+test("tenant-platform-types: assertNonEmpty rejects whitespace-only strings [tenant-platform-types]", () => {
   assert.throws(
     () => assertNonEmpty("   ", "EMPTY_ERROR"),
     (err: unknown) => (err as Error).message.includes("EMPTY_ERROR")
@@ -86,39 +86,39 @@ test("tenant-platform-types: assertNonEmpty rejects whitespace-only strings", ()
 // Lifecycle Stage Conversion Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("tenant-platform-types: toTenantStatus converts provisioning to active", () => {
+test("tenant-platform-types: toTenantStatus converts provisioning to active [tenant-platform-types]", () => {
   assert.equal(toTenantStatus("provisioning"), "active");
 });
 
-test("tenant-platform-types: toTenantStatus converts active to active", () => {
+test("tenant-platform-types: toTenantStatus converts active to active [tenant-platform-types]", () => {
   assert.equal(toTenantStatus("active"), "active");
 });
 
-test("tenant-platform-types: toTenantStatus converts suspended to suspended", () => {
+test("tenant-platform-types: toTenantStatus converts suspended to suspended [tenant-platform-types]", () => {
   assert.equal(toTenantStatus("suspended"), "suspended");
 });
 
-test("tenant-platform-types: toTenantStatus converts deactivated to active", () => {
+test("tenant-platform-types: toTenantStatus converts deactivated to active [tenant-platform-types]", () => {
   assert.equal(toTenantStatus("deactivated"), "active");
 });
 
-test("tenant-platform-types: toTenantStatus converts decommissioned to terminated", () => {
+test("tenant-platform-types: toTenantStatus converts decommissioned to terminated [tenant-platform-types]", () => {
   assert.equal(toTenantStatus("decommissioned"), "terminated");
 });
 
-test("tenant-platform-types: fromTenantStatus converts suspended", () => {
+test("tenant-platform-types: fromTenantStatus converts suspended [tenant-platform-types]", () => {
   assert.equal(fromTenantStatus("suspended"), "suspended");
 });
 
-test("tenant-platform-types: fromTenantStatus converts terminated to decommissioned", () => {
+test("tenant-platform-types: fromTenantStatus converts terminated to decommissioned [tenant-platform-types]", () => {
   assert.equal(fromTenantStatus("terminated"), "decommissioned");
 });
 
-test("tenant-platform-types: fromTenantStatus converts active to active", () => {
+test("tenant-platform-types: fromTenantStatus converts active to active [tenant-platform-types]", () => {
   assert.equal(fromTenantStatus("active"), "active");
 });
 
-test("tenant-platform-types: fromTenantStatus converts undefined to active", () => {
+test("tenant-platform-types: fromTenantStatus converts undefined to active [tenant-platform-types]", () => {
   assert.equal(fromTenantStatus(undefined), "active");
 });
 
@@ -126,47 +126,47 @@ test("tenant-platform-types: fromTenantStatus converts undefined to active", () 
 // Valid Lifecycle Transitions Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("tenant-platform-types: VALID_LIFECYCLE_TRANSITIONS provisioning allows active", () => {
+test("tenant-platform-types: VALID_LIFECYCLE_TRANSITIONS provisioning allows active [tenant-platform-types]", () => {
   assert.ok(VALID_LIFECYCLE_TRANSITIONS.provisioning.includes("active"));
 });
 
-test("tenant-platform-types: VALID_LIFECYCLE_TRANSITIONS provisioning allows decommissioned", () => {
+test("tenant-platform-types: VALID_LIFECYCLE_TRANSITIONS provisioning allows decommissioned [tenant-platform-types]", () => {
   assert.ok(VALID_LIFECYCLE_TRANSITIONS.provisioning.includes("decommissioned"));
 });
 
-test("tenant-platform-types: VALID_LIFECYCLE_TRANSITIONS active allows suspended", () => {
+test("tenant-platform-types: VALID_LIFECYCLE_TRANSITIONS active allows suspended [tenant-platform-types]", () => {
   assert.ok(VALID_LIFECYCLE_TRANSITIONS.active.includes("suspended"));
 });
 
-test("tenant-platform-types: VALID_LIFECYCLE_TRANSITIONS active allows deactivated", () => {
+test("tenant-platform-types: VALID_LIFECYCLE_TRANSITIONS active allows deactivated [tenant-platform-types]", () => {
   assert.ok(VALID_LIFECYCLE_TRANSITIONS.active.includes("deactivated"));
 });
 
-test("tenant-platform-types: VALID_LIFECYCLE_TRANSITIONS active allows decommissioned", () => {
+test("tenant-platform-types: VALID_LIFECYCLE_TRANSITIONS active allows decommissioned [tenant-platform-types]", () => {
   assert.ok(VALID_LIFECYCLE_TRANSITIONS.active.includes("decommissioned"));
 });
 
-test("tenant-platform-types: VALID_LIFECYCLE_TRANSITIONS suspended allows active", () => {
+test("tenant-platform-types: VALID_LIFECYCLE_TRANSITIONS suspended allows active [tenant-platform-types]", () => {
   assert.ok(VALID_LIFECYCLE_TRANSITIONS.suspended.includes("active"));
 });
 
-test("tenant-platform-types: VALID_LIFECYCLE_TRANSITIONS suspended allows deactivated", () => {
+test("tenant-platform-types: VALID_LIFECYCLE_TRANSITIONS suspended allows deactivated [tenant-platform-types]", () => {
   assert.ok(VALID_LIFECYCLE_TRANSITIONS.suspended.includes("deactivated"));
 });
 
-test("tenant-platform-types: VALID_LIFECYCLE_TRANSITIONS suspended allows decommissioned", () => {
+test("tenant-platform-types: VALID_LIFECYCLE_TRANSITIONS suspended allows decommissioned [tenant-platform-types]", () => {
   assert.ok(VALID_LIFECYCLE_TRANSITIONS.suspended.includes("decommissioned"));
 });
 
-test("tenant-platform-types: VALID_LIFECYCLE_TRANSITIONS deactivated allows active", () => {
+test("tenant-platform-types: VALID_LIFECYCLE_TRANSITIONS deactivated allows active [tenant-platform-types]", () => {
   assert.ok(VALID_LIFECYCLE_TRANSITIONS.deactivated.includes("active"));
 });
 
-test("tenant-platform-types: VALID_LIFECYCLE_TRANSITIONS deactivated allows decommissioned", () => {
+test("tenant-platform-types: VALID_LIFECYCLE_TRANSITIONS deactivated allows decommissioned [tenant-platform-types]", () => {
   assert.ok(VALID_LIFECYCLE_TRANSITIONS.deactivated.includes("decommissioned"));
 });
 
-test("tenant-platform-types: VALID_LIFECYCLE_TRANSITIONS decommissioned has no transitions", () => {
+test("tenant-platform-types: VALID_LIFECYCLE_TRANSITIONS decommissioned has no transitions [tenant-platform-types]", () => {
   assert.equal(VALID_LIFECYCLE_TRANSITIONS.decommissioned.length, 0);
 });
 
@@ -174,7 +174,7 @@ test("tenant-platform-types: VALID_LIFECYCLE_TRANSITIONS decommissioned has no t
 // Type Interfaces Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("tenant-platform-types: CreateWorkspaceInput accepts valid input", () => {
+test("tenant-platform-types: CreateWorkspaceInput accepts valid input [tenant-platform-types]", () => {
   const input: CreateWorkspaceInput = {
     ownerId: "user-1",
     displayName: "Test Workspace",
@@ -187,7 +187,7 @@ test("tenant-platform-types: CreateWorkspaceInput accepts valid input", () => {
   assert.equal(input.organizationId, undefined);
 });
 
-test("tenant-platform-types: CreateWorkspaceInput allows optional organizationId", () => {
+test("tenant-platform-types: CreateWorkspaceInput allows optional organizationId [tenant-platform-types]", () => {
   const input: CreateWorkspaceInput = {
     ownerId: "user-1",
     displayName: "Test Workspace",
@@ -198,7 +198,7 @@ test("tenant-platform-types: CreateWorkspaceInput allows optional organizationId
   assert.equal(input.organizationId, "org-1");
 });
 
-test("tenant-platform-types: AddWorkspaceMembershipInput accepts valid input", () => {
+test("tenant-platform-types: AddWorkspaceMembershipInput accepts valid input [tenant-platform-types]", () => {
   const input: AddWorkspaceMembershipInput = {
     workspaceId: "ws-1",
     userId: "user-1",
@@ -210,7 +210,7 @@ test("tenant-platform-types: AddWorkspaceMembershipInput accepts valid input", (
   assert.equal(input.role, "member");
 });
 
-test("tenant-platform-types: CreateOrganizationInput accepts valid input", () => {
+test("tenant-platform-types: CreateOrganizationInput accepts valid input [tenant-platform-types]", () => {
   const input: CreateOrganizationInput = {
     displayName: "Test Org",
     billingAccountId: "billing-1",
@@ -220,7 +220,7 @@ test("tenant-platform-types: CreateOrganizationInput accepts valid input", () =>
   assert.equal(input.billingAccountId, "billing-1");
 });
 
-test("tenant-platform-types: AddOrganizationMembershipInput accepts valid input", () => {
+test("tenant-platform-types: AddOrganizationMembershipInput accepts valid input [tenant-platform-types]", () => {
   const input: AddOrganizationMembershipInput = {
     organizationId: "org-1",
     userId: "user-1",
@@ -232,7 +232,7 @@ test("tenant-platform-types: AddOrganizationMembershipInput accepts valid input"
   assert.equal(input.role, "admin");
 });
 
-test("tenant-platform-types: CreateTenantInput accepts all fields", () => {
+test("tenant-platform-types: CreateTenantInput accepts all fields [tenant-platform-types]", () => {
   const input: CreateTenantInput = {
     tenantId: "tenant-1",
     organizationId: "org-1",
@@ -249,7 +249,7 @@ test("tenant-platform-types: CreateTenantInput accepts all fields", () => {
   assert.equal(input.deploymentMode, "private_cloud");
 });
 
-test("tenant-platform-types: CreateTenantInput allows optional encryption config", () => {
+test("tenant-platform-types: CreateTenantInput allows optional encryption config [tenant-platform-types]", () => {
   const input: CreateTenantInput = {
     organizationId: "org-1",
     storageScope: "region-us",
@@ -273,7 +273,7 @@ test("tenant-platform-types: CreateTenantInput allows optional encryption config
 // TenantLifecycleStage Type Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("tenant-platform-types: TenantLifecycleStage has all expected values", () => {
+test("tenant-platform-types: TenantLifecycleStage has all expected values [tenant-platform-types]", () => {
   const stages: TenantLifecycleStage[] = ["provisioning", "active", "suspended", "deactivated", "decommissioned"];
   for (const stage of stages) {
     assert.ok(VALID_LIFECYCLE_TRANSITIONS[stage] !== undefined);

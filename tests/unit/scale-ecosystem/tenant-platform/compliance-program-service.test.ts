@@ -28,7 +28,7 @@ function createMockStore(overrides: Partial<{
   } as unknown as AuthoritativeTaskStore;
 }
 
-test("ComplianceProgramService.buildReport returns empty report when no data", () => {
+test("ComplianceProgramService.buildReport returns empty report when no data [compliance-program-service]", () => {
   const store = createMockStore();
   const service = new ComplianceProgramService(store);
 
@@ -43,7 +43,7 @@ test("ComplianceProgramService.buildReport returns empty report when no data", (
   assert.ok(report.reportId.startsWith("compliance_program_"));
 });
 
-test("ComplianceProgramService.buildReport counts entities correctly", () => {
+test("ComplianceProgramService.buildReport counts entities correctly [compliance-program-service]", () => {
   const store = createMockStore({
     tenants: [{ tenantId: "tenant-1" }, { tenantId: "tenant-2" }] as AuthoritativeTaskStore["organization"]["listTenantRecords"] extends (...args: unknown[]) => infer R ? R : never,
     workspaces: [{ workspaceId: "ws-1" }, { workspaceId: "ws-2" }, { workspaceId: "ws-3" }] as AuthoritativeTaskStore["organization"]["listWorkspaceRecords"] extends (...args: unknown[]) => infer R ? R : never,
@@ -60,7 +60,7 @@ test("ComplianceProgramService.buildReport counts entities correctly", () => {
   assert.equal(report.namespaceCount, 0);
 });
 
-test("ComplianceProgramService.buildReport groups namespaces by residency policy", () => {
+test("ComplianceProgramService.buildReport groups namespaces by residency policy [compliance-program-service]", () => {
   const namespaces: DataNamespaceRecord[] = [
     { namespaceId: "ns-1", tenantId: "t1", organizationId: "o1", workspaceId: "w1", plane: "transactional", residencyPolicy: "us-east" },
     { namespaceId: "ns-2", tenantId: "t1", organizationId: "o1", workspaceId: "w1", plane: "artifact", residencyPolicy: "us-east" },
@@ -89,7 +89,7 @@ test("ComplianceProgramService.buildReport groups namespaces by residency policy
   assert.equal(unspecified.namespaceCount, 1);
 });
 
-test("ComplianceProgramService.buildReport sets auditExportReady based on reports and namespaces", () => {
+test("ComplianceProgramService.buildReport sets auditExportReady based on reports and namespaces [compliance-program-service]", () => {
   const storeWithoutReports = createMockStore({ namespaces: [] as DataNamespaceRecord[] });
   const service1 = new ComplianceProgramService(storeWithoutReports);
   const report1 = service1.buildReport();
@@ -111,7 +111,7 @@ test("ComplianceProgramService.buildReport sets auditExportReady based on report
   assert.equal(report3.auditExportReady, true);
 });
 
-test("ComplianceProgramService.buildReport includes compliance controls", () => {
+test("ComplianceProgramService.buildReport includes compliance controls [compliance-program-service]", () => {
   const store = createMockStore();
   const service = new ComplianceProgramService(store);
 
@@ -122,7 +122,7 @@ test("ComplianceProgramService.buildReport includes compliance controls", () => 
   assert.ok(report.complianceControls.some((c) => c.includes("Residency policy")));
 });
 
-test("ComplianceProgramService.buildReport uses custom generatedAt when provided", () => {
+test("ComplianceProgramService.buildReport uses custom generatedAt when provided [compliance-program-service]", () => {
   const store = createMockStore();
   const service = new ComplianceProgramService(store);
   const customTime = "2024-01-15T10:00:00.000Z";
@@ -133,7 +133,7 @@ test("ComplianceProgramService.buildReport uses custom generatedAt when provided
   assert.equal(report.generatedAt, customTime);
 });
 
-test("ComplianceProgramService.buildReport sorts residency summary alphabetically", () => {
+test("ComplianceProgramService.buildReport sorts residency summary alphabetically [compliance-program-service]", () => {
   const namespaces: DataNamespaceRecord[] = [
     { namespaceId: "ns-1", tenantId: "t1", organizationId: "o1", workspaceId: "w1", plane: "transactional", residencyPolicy: "zulu" },
     { namespaceId: "ns-2", tenantId: "t1", organizationId: "o1", workspaceId: "w1", plane: "artifact", residencyPolicy: "alpha" },

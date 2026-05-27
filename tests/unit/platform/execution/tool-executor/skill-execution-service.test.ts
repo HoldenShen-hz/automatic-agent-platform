@@ -61,7 +61,7 @@ function createService(
   };
 }
 
-test("skill execution service records retries, step outputs, and completion evidence", async () => {
+test("skill execution service records retries, step outputs, and completion evidence [skill-execution-service]", async () => {
   const attempts = new Map<string, number>();
   const skill: SkillDefinition = {
     skillId: "add_unit_test",
@@ -142,7 +142,7 @@ test("skill execution service records retries, step outputs, and completion evid
   }
 });
 
-test("skill execution service applies tool metadata timeout defaults and retries timed out steps", async () => {
+test("skill execution service applies tool metadata timeout defaults and retries timed out steps [skill-execution-service]", async () => {
   const observedTimeouts: number[] = [];
   const metadata: ToolExecutionMetadata = {
     toolName: "slow_read",
@@ -228,7 +228,7 @@ test("skill execution service applies tool metadata timeout defaults and retries
   }
 });
 
-test("skill execution service fail-closes retry decisions to metadata allowlisted errors", async () => {
+test("skill execution service fail-closes retry decisions to metadata allowlisted errors [skill-execution-service]", async () => {
   const metadata: ToolExecutionMetadata = {
     toolName: "guarded_write",
     readOnly: false,
@@ -303,7 +303,7 @@ test("skill execution service fail-closes retry decisions to metadata allowliste
   }
 });
 
-test("skill execution service records terminal failure as failed output", async () => {
+test("skill execution service records terminal failure as failed output [skill-execution-service]", async () => {
   const skill: SkillDefinition = {
     skillId: "deploy_check",
     version: "1.0.0",
@@ -351,7 +351,7 @@ test("skill execution service records terminal failure as failed output", async 
   }
 });
 
-test("skill execution service resolves model-aware tool overrides before invoking the runner", async () => {
+test("skill execution service resolves model-aware tool overrides before invoking the runner [skill-execution-service]", async () => {
   const requestedToolNames: string[] = [];
   const skill: SkillDefinition = {
     skillId: "model_aware_edit",
@@ -406,7 +406,7 @@ test("skill execution service resolves model-aware tool overrides before invokin
   }
 });
 
-test("skill execution service rejects model overrides that point at undeclared tools", async () => {
+test("skill execution service rejects model overrides that point at undeclared tools [skill-execution-service]", async () => {
   const skill: SkillDefinition = {
     skillId: "invalid_model_override",
     version: "1.0.0",
@@ -449,7 +449,7 @@ test("skill execution service rejects model overrides that point at undeclared t
   }
 });
 
-test("skill execution service falls back to execution allowed tools when no explicit runtime tool set is provided", async () => {
+test("skill execution service falls back to execution allowed tools when no explicit runtime tool set is provided [skill-execution-service]", async () => {
   const skill: SkillDefinition = {
     skillId: "deploy_check",
     version: "1.0.0",
@@ -487,7 +487,7 @@ test("skill execution service falls back to execution allowed tools when no expl
   }
 });
 
-test("skill execution service rejects override-resolved tools that exceed the execution permission set", async () => {
+test("skill execution service rejects override-resolved tools that exceed the execution permission set [skill-execution-service]", async () => {
   const skill: SkillDefinition = {
     skillId: "model_aware_edit_denied",
     version: "1.0.0",
@@ -532,7 +532,7 @@ test("skill execution service rejects override-resolved tools that exceed the ex
   }
 });
 
-test("skill execution service fail-closes when execution allowed tools contain malformed entries", async () => {
+test("skill execution service fail-closes when execution allowed tools contain malformed entries [skill-execution-service]", async () => {
   const skill: SkillDefinition = {
     skillId: "invalid_allowed_tools",
     version: "1.0.0",
@@ -573,7 +573,7 @@ test("skill execution service fail-closes when execution allowed tools contain m
   }
 });
 
-test("skill execution service reuses a cached result only when git/source fingerprints still match", async () => {
+test("skill execution service reuses a cached result only when git/source fingerprints still match [skill-execution-service]", async () => {
   let toolCallCount = 0;
   const skill: SkillDefinition = {
     skillId: "code_review",
@@ -650,7 +650,7 @@ test("skill execution service reuses a cached result only when git/source finger
   }
 });
 
-test("skill execution service bypasses a stale cache when source fingerprint changes or caching is disabled", async () => {
+test("skill execution service bypasses a stale cache when source fingerprint changes or caching is disabled [skill-execution-service]", async () => {
   let toolCallCount = 0;
   const skill: SkillDefinition = {
     skillId: "code_review",
@@ -737,7 +737,7 @@ test("skill execution service bypasses a stale cache when source fingerprint cha
   }
 });
 
-test("skill execution service fail-closes when the execution exceeds the tool call ceiling", async () => {
+test("skill execution service fail-closes when the execution exceeds the tool call ceiling [skill-execution-service]", async () => {
   let toolCallCount = 0;
   const skill: SkillDefinition = {
     skillId: "resource_limited_review",

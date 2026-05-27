@@ -67,12 +67,12 @@ import {
 // FederationGateway Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("FederationGateway - can be created with default config", () => {
+test("FederationGateway - can be created with default config [federation]", () => {
   const gateway = createFederationGateway();
   assert.ok(gateway instanceof FederationGateway);
 });
 
-test("FederationGateway - can be created with custom config", () => {
+test("FederationGateway - can be created with custom config [federation]", () => {
   const config: FederationGatewayConfig = {
     federationId: "test-federation",
     enableAudit: true,
@@ -84,7 +84,7 @@ test("FederationGateway - can be created with custom config", () => {
   assert.ok(gateway instanceof FederationGateway);
 });
 
-test("FederationGateway.registerOrganization adds org to registry", async () => {
+test("FederationGateway.registerOrganization adds org to registry [federation]", async () => {
   const gateway = createFederationGateway();
   const org = await gateway.registerOrganization({
     id: "org-1",
@@ -97,7 +97,7 @@ test("FederationGateway.registerOrganization adds org to registry", async () => 
   assert.equal(org.enabled, true);
 });
 
-test("FederationGateway.registerOrganization emits audit event", async () => {
+test("FederationGateway.registerOrganization emits audit event [federation]", async () => {
   const gateway = createFederationGateway({ enableAudit: true });
   let eventEmitted = false;
   gateway.on("federation:event", () => {
@@ -112,7 +112,7 @@ test("FederationGateway.registerOrganization emits audit event", async () => {
   assert.equal(eventEmitted, true);
 });
 
-test("FederationGateway.getOrganization returns registered org", async () => {
+test("FederationGateway.getOrganization returns registered org [federation]", async () => {
   const gateway = createFederationGateway();
   await gateway.registerOrganization({
     id: "org-1",
@@ -125,13 +125,13 @@ test("FederationGateway.getOrganization returns registered org", async () => {
   assert.equal(org?.id, "org-1");
 });
 
-test("FederationGateway.getOrganization returns undefined for unknown org", async () => {
+test("FederationGateway.getOrganization returns undefined for unknown org [federation]", async () => {
   const gateway = createFederationGateway();
   const org = await gateway.getOrganization("unknown-org");
   assert.equal(org, undefined);
 });
 
-test("FederationGateway.updateOrganizationCapabilities updates capabilities", async () => {
+test("FederationGateway.updateOrganizationCapabilities updates capabilities [federation]", async () => {
   const gateway = createFederationGateway();
   await gateway.registerOrganization({
     id: "org-1",
@@ -146,7 +146,7 @@ test("FederationGateway.updateOrganizationCapabilities updates capabilities", as
   assert.equal(org.capabilities.has("capability-2"), true);
 });
 
-test("FederationGateway.enableOrganization toggles enabled status", async () => {
+test("FederationGateway.enableOrganization toggles enabled status [federation]", async () => {
   const gateway = createFederationGateway();
   await gateway.registerOrganization({
     id: "org-1",
@@ -160,7 +160,7 @@ test("FederationGateway.enableOrganization toggles enabled status", async () => 
   assert.equal(org.enabled, false);
 });
 
-test("FederationGateway.establishTrust creates trust relationship", async () => {
+test("FederationGateway.establishTrust creates trust relationship [federation]", async () => {
   const gateway = createFederationGateway();
   await gateway.registerOrganization({
     id: "org-1",
@@ -189,7 +189,7 @@ test("FederationGateway.establishTrust creates trust relationship", async () => 
   assert.equal(trust.level, TrustLevel.READ);
 });
 
-test("FederationGateway.establishTrust throws for unknown org", async () => {
+test("FederationGateway.establishTrust throws for unknown org [federation]", async () => {
   const gateway = createFederationGateway();
   await gateway.registerOrganization({
     id: "org-1",
@@ -211,7 +211,7 @@ test("FederationGateway.establishTrust throws for unknown org", async () => {
   );
 });
 
-test("FederationGateway.establishTrust throws for disabled org", async () => {
+test("FederationGateway.establishTrust throws for disabled org [federation]", async () => {
   const gateway = createFederationGateway();
   await gateway.registerOrganization({
     id: "org-1",
@@ -240,7 +240,7 @@ test("FederationGateway.establishTrust throws for disabled org", async () => {
   );
 });
 
-test("FederationGateway.getTrustsForOrg returns trust relationships", async () => {
+test("FederationGateway.getTrustsForOrg returns trust relationships [federation]", async () => {
   const gateway = createFederationGateway();
   await gateway.registerOrganization({
     id: "org-1",
@@ -268,7 +268,7 @@ test("FederationGateway.getTrustsForOrg returns trust relationships", async () =
   assert.equal(trusts[0]?.sourceOrgId, "org-1");
 });
 
-test("FederationGateway.revokeTrust sets expiry to now", async () => {
+test("FederationGateway.revokeTrust sets expiry to now [federation]", async () => {
   const gateway = createFederationGateway();
   await gateway.registerOrganization({
     id: "org-1",
@@ -299,7 +299,7 @@ test("FederationGateway.revokeTrust sets expiry to now", async () => {
   assert.ok(updatedTrust.expiresAt <= new Date());
 });
 
-test("FederationGateway.requestDelegation returns success without approval", async () => {
+test("FederationGateway.requestDelegation returns success without approval [federation]", async () => {
   const gateway = createFederationGateway({ requireApproval: false });
   await gateway.registerOrganization({
     id: "org-1",
@@ -333,7 +333,7 @@ test("FederationGateway.requestDelegation returns success without approval", asy
   assert.equal(result.success, true);
 });
 
-test("FederationGateway.requestDelegation returns pending with approval required", async () => {
+test("FederationGateway.requestDelegation returns pending with approval required [federation]", async () => {
   const gateway = createFederationGateway({ requireApproval: true });
   await gateway.registerOrganization({
     id: "org-1",
@@ -368,7 +368,7 @@ test("FederationGateway.requestDelegation returns pending with approval required
   assert.equal(result.errorCode, "PENDING_APPROVAL");
 });
 
-test("FederationGateway.checkCapabilityAccess returns true for granted permission", async () => {
+test("FederationGateway.checkCapabilityAccess returns true for granted permission [federation]", async () => {
   const gateway = createFederationGateway({ requireApproval: false });
   await gateway.registerOrganization({
     id: "org-1",
@@ -405,7 +405,7 @@ test("FederationGateway.checkCapabilityAccess returns true for granted permissio
   assert.equal(hasAccess, true);
 });
 
-test("FederationGateway.getAuditLog returns audit events", async () => {
+test("FederationGateway.getAuditLog returns audit events [federation]", async () => {
   const gateway = createFederationGateway({ enableAudit: true });
   await gateway.registerOrganization({
     id: "org-1",
@@ -423,7 +423,7 @@ test("FederationGateway.getAuditLog returns audit events", async () => {
 // FederationTopology Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("computeFederationTopologyDiff detects added regions", () => {
+test("computeFederationTopologyDiff detects added regions [federation]", () => {
   const left: FederationTopology = {
     federationId: "fed-1",
     regions: [],
@@ -442,7 +442,7 @@ test("computeFederationTopologyDiff detects added regions", () => {
   assert.equal(diff.addedRegions[0], "region-1");
 });
 
-test("computeFederationTopologyDiff detects removed regions", () => {
+test("computeFederationTopologyDiff detects removed regions [federation]", () => {
   const left: FederationTopology = {
     federationId: "fed-1",
     regions: [{ regionId: "region-1", endpoint: "https://region-1.example.com", priority: 1, status: "active" }],
@@ -461,7 +461,7 @@ test("computeFederationTopologyDiff detects removed regions", () => {
   assert.equal(diff.removedRegions[0], "region-1");
 });
 
-test("computeFederationTopologyDiff detects modified regions", () => {
+test("computeFederationTopologyDiff detects modified regions [federation]", () => {
   const left: FederationTopology = {
     federationId: "fed-1",
     regions: [{ regionId: "region-1", endpoint: "https://region-1.example.com", priority: 1, status: "active" }],
@@ -480,7 +480,7 @@ test("computeFederationTopologyDiff detects modified regions", () => {
   assert.equal(diff.modifiedRegions[0]?.regionId, "region-1");
 });
 
-test("computeFederationTopologyDiff identifies unchanged regions", () => {
+test("computeFederationTopologyDiff identifies unchanged regions [federation]", () => {
   const left: FederationTopology = {
     federationId: "fed-1",
     regions: [{ regionId: "region-1", endpoint: "https://region-1.example.com", priority: 1, status: "active" }],
@@ -503,12 +503,12 @@ test("computeFederationTopologyDiff identifies unchanged regions", () => {
 // FederationAudit Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("FederationAudit - can be created", () => {
+test("FederationAudit - can be created [federation]", () => {
   const audit = createFederationAudit({ maxAgeDays: 365 });
   assert.ok(audit instanceof FederationAudit);
 });
 
-test("FederationAudit.record adds audit record", () => {
+test("FederationAudit.record adds audit record [federation]", () => {
   const audit = createFederationAudit({ maxAgeDays: 365 });
   audit.record({
     orgId: "org-1",
@@ -523,7 +523,7 @@ test("FederationAudit.record adds audit record", () => {
   assert.equal(records.length, 1);
 });
 
-test("FederationAudit.query filters by orgId", () => {
+test("FederationAudit.query filters by orgId [federation]", () => {
   const audit = createFederationAudit({ maxAgeDays: 365 });
   audit.record({
     orgId: "org-1",
@@ -546,7 +546,7 @@ test("FederationAudit.query filters by orgId", () => {
   assert.equal(records.length, 1);
 });
 
-test("FederationAudit.getSummary returns aggregate stats", () => {
+test("FederationAudit.getSummary returns aggregate stats [federation]", () => {
   const audit = createFederationAudit({ maxAgeDays: 365 });
   audit.record({
     orgId: "org-1",
@@ -575,12 +575,12 @@ test("FederationAudit.getSummary returns aggregate stats", () => {
 // TrustRelationshipManager Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("TrustRelationshipManager - can be created", () => {
+test("TrustRelationshipManager - can be created [federation]", () => {
   const manager = createTrustRelationshipManager();
   assert.ok(manager instanceof TrustRelationshipManager);
 });
 
-test("TrustRelationshipManager.createTrustRelationship creates relationship", async () => {
+test("TrustRelationshipManager.createTrustRelationship creates relationship [federation]", async () => {
   const manager = createTrustRelationshipManager();
   const relationship = await manager.createTrustRelationship({
     sourceOrgId: "org-1",
@@ -595,7 +595,7 @@ test("TrustRelationshipManager.createTrustRelationship creates relationship", as
   assert.equal(relationship.status, "active");
 });
 
-test("TrustRelationshipManager.getTrustsForOrganization returns relationships", async () => {
+test("TrustRelationshipManager.getTrustsForOrganization returns relationships [federation]", async () => {
   const manager = createTrustRelationshipManager();
   await manager.createTrustRelationship({
     sourceOrgId: "org-1",
@@ -608,7 +608,7 @@ test("TrustRelationshipManager.getTrustsForOrganization returns relationships", 
   assert.equal(trusts.length, 1);
 });
 
-test("TrustRelationshipManager.suspendTrust updates status", async () => {
+test("TrustRelationshipManager.suspendTrust updates status [federation]", async () => {
   const manager = createTrustRelationshipManager();
   const relationship = await manager.createTrustRelationship({
     sourceOrgId: "org-1",
@@ -622,7 +622,7 @@ test("TrustRelationshipManager.suspendTrust updates status", async () => {
   assert.equal(updated?.status, "suspended");
 });
 
-test("TrustRelationshipManager.revokeTrust updates status and expires", async () => {
+test("TrustRelationshipManager.revokeTrust updates status and expires [federation]", async () => {
   const manager = createTrustRelationshipManager();
   const relationship = await manager.createTrustRelationship({
     sourceOrgId: "org-1",
@@ -638,7 +638,7 @@ test("TrustRelationshipManager.revokeTrust updates status and expires", async ()
   assert.ok(updated.expiresAt <= new Date());
 });
 
-test("TrustRelationshipManager.evaluateTrust returns evaluation", async () => {
+test("TrustRelationshipManager.evaluateTrust returns evaluation [federation]", async () => {
   const manager = createTrustRelationshipManager();
   const relationship = await manager.createTrustRelationship({
     sourceOrgId: "org-1",
@@ -652,7 +652,7 @@ test("TrustRelationshipManager.evaluateTrust returns evaluation", async () => {
   assert.ok(evaluation.trustScore >= 0 && evaluation.trustScore <= 1);
 });
 
-test("TrustRelationshipManager.updateMetrics updates trust metrics", async () => {
+test("TrustRelationshipManager.updateMetrics updates trust metrics [federation]", async () => {
   const manager = createTrustRelationshipManager();
   const relationship = await manager.createTrustRelationship({
     sourceOrgId: "org-1",
@@ -671,12 +671,12 @@ test("TrustRelationshipManager.updateMetrics updates trust metrics", async () =>
 // CapabilityDelegation Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("CapabilityDelegation - can be created", () => {
+test("CapabilityDelegation - can be created [federation]", () => {
   const delegation = createCapabilityDelegation();
   assert.ok(delegation instanceof CapabilityDelegation);
 });
 
-test("CapabilityDelegation.registerCapability adds capability", () => {
+test("CapabilityDelegation.registerCapability adds capability [federation]", () => {
   const delegation = createCapabilityDelegation();
   const capability = delegation.registerCapability({
     name: "Test Capability",
@@ -692,7 +692,7 @@ test("CapabilityDelegation.registerCapability adds capability", () => {
   assert.equal(capability.name, "Test Capability");
 });
 
-test("CapabilityDelegation.getCapability returns registered capability", () => {
+test("CapabilityDelegation.getCapability returns registered capability [federation]", () => {
   const delegation = createCapabilityDelegation();
   const registered = delegation.registerCapability({
     name: "Test Capability",
@@ -709,7 +709,7 @@ test("CapabilityDelegation.getCapability returns registered capability", () => {
   assert.equal(found?.name, "Test Capability");
 });
 
-test("CapabilityDelegation.createGrant creates capability grant", async () => {
+test("CapabilityDelegation.createGrant creates capability grant [federation]", async () => {
   const delegation = createCapabilityDelegation();
   const capability = delegation.registerCapability({
     name: "Test Capability",
@@ -733,7 +733,7 @@ test("CapabilityDelegation.createGrant creates capability grant", async () => {
   assert.equal(grant.status, "active");
 });
 
-test("CapabilityDelegation.createGrant throws for deprecated capability", async () => {
+test("CapabilityDelegation.createGrant throws for deprecated capability [federation]", async () => {
   const delegation = createCapabilityDelegation();
   const capability = delegation.registerCapability({
     name: "Test Capability",
@@ -758,7 +758,7 @@ test("CapabilityDelegation.createGrant throws for deprecated capability", async 
   );
 });
 
-test("CapabilityDelegation.getGrantsForOrg returns org grants", async () => {
+test("CapabilityDelegation.getGrantsForOrg returns org grants [federation]", async () => {
   const delegation = createCapabilityDelegation();
   const capability = delegation.registerCapability({
     name: "Test Capability",
@@ -782,7 +782,7 @@ test("CapabilityDelegation.getGrantsForOrg returns org grants", async () => {
   assert.equal(grants.length, 1);
 });
 
-test("CapabilityDelegation.checkAccess allows permitted access", async () => {
+test("CapabilityDelegation.checkAccess allows permitted access [federation]", async () => {
   const delegation = createCapabilityDelegation();
   const capability = delegation.registerCapability({
     name: "Test Capability",
@@ -811,7 +811,7 @@ test("CapabilityDelegation.checkAccess allows permitted access", async () => {
   assert.equal(decision.allowed, true);
 });
 
-test("CapabilityDelegation.checkAccess denies without grant", async () => {
+test("CapabilityDelegation.checkAccess denies without grant [federation]", async () => {
   const delegation = createCapabilityDelegation();
   const capability = delegation.registerCapability({
     name: "Test Capability",
@@ -832,7 +832,7 @@ test("CapabilityDelegation.checkAccess denies without grant", async () => {
   assert.equal(decision.allowed, false);
 });
 
-test("CapabilityDelegation.setQuota enforces quota limits", async () => {
+test("CapabilityDelegation.setQuota enforces quota limits [federation]", async () => {
   const delegation = createCapabilityDelegation();
   const capability = delegation.registerCapability({
     name: "Test Capability",
@@ -876,7 +876,7 @@ test("CapabilityDelegation.setQuota enforces quota limits", async () => {
   assert.equal(decision2.allowed, true);
 });
 
-test("CapabilityDelegation.suspendGrant updates grant status", async () => {
+test("CapabilityDelegation.suspendGrant updates grant status [federation]", async () => {
   const delegation = createCapabilityDelegation();
   const capability = delegation.registerCapability({
     name: "Test Capability",
@@ -901,7 +901,7 @@ test("CapabilityDelegation.suspendGrant updates grant status", async () => {
   assert.equal(updated?.status, "suspended");
 });
 
-test("CapabilityDelegation.revokeGrant updates grant status", async () => {
+test("CapabilityDelegation.revokeGrant updates grant status [federation]", async () => {
   const delegation = createCapabilityDelegation();
   const capability = delegation.registerCapability({
     name: "Test Capability",

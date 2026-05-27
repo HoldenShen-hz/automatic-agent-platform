@@ -24,7 +24,7 @@ interface MockStore {
   };
 }
 
-test("R13-19: WorkerServiceIdentityRegistry persists identity to durable storage", () => {
+test("R13-19: WorkerServiceIdentityRegistry persists identity to durable storage [worker-service-identity-r13]", () => {
   const persistedRecords: WorkerIdentityRecord[] = [];
 
   const mockStore: MockStore = {
@@ -74,7 +74,7 @@ test("R13-19: WorkerServiceIdentityRegistry persists identity to durable storage
   );
 });
 
-test("R13-19: WorkerServiceIdentityRegistry loads identity from durable storage on evaluateClaim", () => {
+test("R13-19: WorkerServiceIdentityRegistry loads identity from durable storage on evaluateClaim [worker-service-identity-r13]", () => {
   const storedRecords: Map<string, WorkerIdentityRecord> = new Map();
 
   const mockStore: MockStore = {
@@ -163,7 +163,7 @@ test("R13-19: WorkerServiceIdentityRegistry loads identity from durable storage 
   assert.equal(decision.reasonCode, "worker_identity.accepted", "Reason should be accepted");
 });
 
-test("R13-19: WorkerServiceIdentityRegistry returns worker_unknown for unregistered worker", () => {
+test("R13-19: WorkerServiceIdentityRegistry returns worker_unknown for unregistered worker [worker-service-identity-r13]", () => {
   function loadFromStore(workerId: string): null {
     // No store, no records
     return null;
@@ -183,7 +183,7 @@ test("R13-19: WorkerServiceIdentityRegistry returns worker_unknown for unregiste
   assert.equal(decision.reasonCode, "worker_identity.worker_unknown", "Reason should be worker_unknown");
 });
 
-test("R13-19: Persistence failure prevents registration and avoids memory-only acceptance", () => {
+test("R13-19: Persistence failure prevents registration and avoids memory-only acceptance [worker-service-identity-r13]", () => {
   const registry = new WorkerServiceIdentityRegistry({
     worker: {
       upsertWorkerIdentity() {

@@ -101,7 +101,7 @@ function createSoakReport(
   };
 }
 
-test("mergeStableSoakReports combines cycles and renumbers them", () => {
+test("mergeStableSoakReports combines cycles and renumbers them [stable-runtime-soak-runner-additional]", () => {
   const report1 = createSoakReport("2026-04-07T00:00:00.000Z", 60_000, 60_000, 2, 2, 0);
   const report2 = createSoakReport("2026-04-07T00:01:00.000Z", 60_000, 60_000, 2, 2, 0);
 
@@ -114,7 +114,7 @@ test("mergeStableSoakReports combines cycles and renumbers them", () => {
   assert.equal(merged.cycles[3]!.cycle, 4);
 });
 
-test("mergeStableSoakReports aggregates total runs and failures", () => {
+test("mergeStableSoakReports aggregates total runs and failures [stable-runtime-soak-runner-additional]", () => {
   const report1 = createSoakReport("2026-04-07T00:00:00.000Z", 60_000, 60_000, 2, 2, 1);
   const report2 = createSoakReport("2026-04-07T00:01:00.000Z", 60_000, 60_000, 2, 2, 0);
 
@@ -125,7 +125,7 @@ test("mergeStableSoakReports aggregates total runs and failures", () => {
   assert.equal(merged.passedRuns, 3);
 });
 
-test("mergeStableSoakReports aggregates duration and wallClockDurationMs", () => {
+test("mergeStableSoakReports aggregates duration and wallClockDurationMs [stable-runtime-soak-runner-additional]", () => {
   const report1 = createSoakReport("2026-04-07T00:00:00.000Z", 60_000, 60_000, 2, 2, 0);
   const report2 = createSoakReport("2026-04-07T00:01:00.000Z", 90_000, 90_000, 2, 2, 0);
 
@@ -135,7 +135,7 @@ test("mergeStableSoakReports aggregates duration and wallClockDurationMs", () =>
   assert.equal(merged.wallClockDurationMs, 150_000);
 });
 
-test("mergeStableSoakReports computes memory growth ratio", () => {
+test("mergeStableSoakReports computes memory growth ratio [stable-runtime-soak-runner-additional]", () => {
   const report1 = createSoakReport(
     "2026-04-07T00:00:00.000Z",
     60_000,
@@ -164,14 +164,14 @@ test("mergeStableSoakReports computes memory growth ratio", () => {
   assert.equal(merged.memoryGrowthRatio, 2.0);
 });
 
-test("mergeStableSoakReports handles empty array gracefully", () => {
+test("mergeStableSoakReports handles empty array gracefully [stable-runtime-soak-runner-additional]", () => {
   const merged = mergeStableSoakReports([]);
 
   assert.equal(merged.cycles.length, 0);
   assert.equal(merged.totalRuns, 0);
 });
 
-test("mergeStableSoakReports uses first report's interval and iterationsPerCycle", () => {
+test("mergeStableSoakReports uses first report's interval and iterationsPerCycle [stable-runtime-soak-runner-additional]", () => {
   const report1 = createSoakReport("2026-04-07T00:00:00.000Z", 60_000, 60_000, 2, 2, 0);
   report1.intervalMs = 5_000;
   report1.iterationsPerCycle = 3;
@@ -186,7 +186,7 @@ test("mergeStableSoakReports uses first report's interval and iterationsPerCycle
   assert.equal(merged.iterationsPerCycle, 3);
 });
 
-test("mergeStableSoakReports preserves startedAt from first report", () => {
+test("mergeStableSoakReports preserves startedAt from first report [stable-runtime-soak-runner-additional]", () => {
   const report1 = createSoakReport("2026-04-07T00:00:00.000Z", 60_000, 60_000, 2, 2, 0);
   const report2 = createSoakReport("2026-04-07T01:00:00.000Z", 60_000, 60_000, 2, 2, 0);
 
@@ -195,7 +195,7 @@ test("mergeStableSoakReports preserves startedAt from first report", () => {
   assert.equal(merged.startedAt, "2026-04-07T00:00:00.000Z");
 });
 
-test("mergeStableSoakReports uses last report's finishedAt", () => {
+test("mergeStableSoakReports uses last report's finishedAt [stable-runtime-soak-runner-additional]", () => {
   const report1 = createSoakReport("2026-04-07T00:00:00.000Z", 60_000, 60_000, 2, 2, 0);
   const report2 = createSoakReport("2026-04-07T01:00:00.000Z", 60_000, 60_000, 2, 2, 0);
   report2.finishedAt = "2026-04-07T02:00:00.000Z";
@@ -205,7 +205,7 @@ test("mergeStableSoakReports uses last report's finishedAt", () => {
   assert.equal(merged.finishedAt, "2026-04-07T02:00:00.000Z");
 });
 
-test("mergeStableSoakReports aggregates integrityFailures and backupFailures", () => {
+test("mergeStableSoakReports aggregates integrityFailures and backupFailures [stable-runtime-soak-runner-additional]", () => {
   const report1 = createSoakReport("2026-04-07T00:00:00.000Z", 60_000, 60_000, 2, 2, 0);
   report1.integrityFailures = 2;
   report1.backupFailures = 1;

@@ -130,15 +130,15 @@ function createMockPostgresBackend(coordinatorId?: string): any {
 // Tests: Barrel exports factory functions
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("ha-coordinator-service exports createHaCoordinatorService", async () => {
+test("ha-coordinator-service exports createHaCoordinatorService [ha-coordinator-service]", async () => {
   assert.equal(typeof createHaCoordinatorService, "function");
 });
 
-test("ha-coordinator-service exports createHaRepositoryForBackend", async () => {
+test("ha-coordinator-service exports createHaRepositoryForBackend [ha-coordinator-service]", async () => {
   assert.equal(typeof createHaRepositoryForBackend, "function");
 });
 
-test("createHaCoordinatorService and createHaRepositoryForBackend are different functions", async () => {
+test("createHaCoordinatorService and createHaRepositoryForBackend are different functions [ha-coordinator-service]", async () => {
   assert.notStrictEqual(
     createHaCoordinatorService,
     createHaRepositoryForBackend,
@@ -149,7 +149,7 @@ test("createHaCoordinatorService and createHaRepositoryForBackend are different 
 // Tests: Barrel exports HaCoordinatorService class
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("ha-coordinator-service exports HaCoordinatorService class", async () => {
+test("ha-coordinator-service exports HaCoordinatorService class [ha-coordinator-service]", async () => {
   assert.equal(typeof HaCoordinatorService, "function");
   // Should be instantiable
   const backend = createMockSqliteBackend();
@@ -157,13 +157,13 @@ test("ha-coordinator-service exports HaCoordinatorService class", async () => {
   assert.ok(service !== null);
 });
 
-test("HaCoordinatorService can be instantiated with default options", async () => {
+test("HaCoordinatorService can be instantiated with default options [ha-coordinator-service]", async () => {
   const backend = createMockSqliteBackend();
   const service = new HaCoordinatorService(backend.sql);
   assert.ok(service !== null);
 });
 
-test("HaCoordinatorService can be instantiated with custom options", async () => {
+test("HaCoordinatorService can be instantiated with custom options [ha-coordinator-service]", async () => {
   const backend = createMockSqliteBackend();
   const service = new HaCoordinatorService(backend.sql, {
     defaultTtlMs: 30_000,
@@ -176,23 +176,23 @@ test("HaCoordinatorService can be instantiated with custom options", async () =>
 // Tests: Barrel exports constants from ha-coordinator-service-inner
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("ha-coordinator-service exports DEFAULT_LEASE_TTL_MS constant", async () => {
+test("ha-coordinator-service exports DEFAULT_LEASE_TTL_MS constant [ha-coordinator-service]", async () => {
   assert.equal(DEFAULT_LEASE_TTL_MS, 15_000);
 });
 
-test("ha-coordinator-service exports MIN_LEASE_TTL_MS constant", async () => {
+test("ha-coordinator-service exports MIN_LEASE_TTL_MS constant [ha-coordinator-service]", async () => {
   assert.equal(MIN_LEASE_TTL_MS, 5_000);
 });
 
-test("ha-coordinator-service exports MAX_LEASE_TTL_MS constant", async () => {
+test("ha-coordinator-service exports MAX_LEASE_TTL_MS constant [ha-coordinator-service]", async () => {
   assert.equal(MAX_LEASE_TTL_MS, 60_000);
 });
 
-test("ha-coordinator-service exports EPOCH_FENCING_TOKEN_START constant", async () => {
+test("ha-coordinator-service exports EPOCH_FENCING_TOKEN_START constant [ha-coordinator-service]", async () => {
   assert.equal(EPOCH_FENCING_TOKEN_START, 1);
 });
 
-test("ha-coordinator-service exports HA_COORDINATOR_DDL string", async () => {
+test("ha-coordinator-service exports HA_COORDINATOR_DDL string [ha-coordinator-service]", async () => {
   assert.equal(typeof HA_COORDINATOR_DDL, "string");
   assert.ok(HA_COORDINATOR_DDL.length > 0);
   // Should contain the main tables
@@ -205,7 +205,7 @@ test("ha-coordinator-service exports HA_COORDINATOR_DDL string", async () => {
 // Tests: Barrel exports types from ha-coordinator-service-inner
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("ha-coordinator-service exports CoordinatorNode type", async () => {
+test("ha-coordinator-service exports CoordinatorNode type [ha-coordinator-service]", async () => {
   const node: CoordinatorNode = {
     nodeId: "test-node",
     region: "us-east-1",
@@ -220,12 +220,12 @@ test("ha-coordinator-service exports CoordinatorNode type", async () => {
   assert.equal(node.status, "active");
 });
 
-test("ha-coordinator-service exports CoordinatorNodeStatus type", async () => {
+test("ha-coordinator-service exports CoordinatorNodeStatus type [ha-coordinator-service]", async () => {
   const statuses: CoordinatorNodeStatus[] = ["active", "draining", "offline"];
   assert.deepEqual(statuses, ["active", "draining", "offline"]);
 });
 
-test("ha-coordinator-service exports LeaderLease type", async () => {
+test("ha-coordinator-service exports LeaderLease type [ha-coordinator-service]", async () => {
   const lease: LeaderLease = {
     leaseId: "lease-1",
     nodeId: "node-1",
@@ -239,7 +239,7 @@ test("ha-coordinator-service exports LeaderLease type", async () => {
   assert.equal(lease.status, "active");
 });
 
-test("ha-coordinator-service exports LeadershipEpoch type", async () => {
+test("ha-coordinator-service exports LeadershipEpoch type [ha-coordinator-service]", async () => {
   const epoch: LeadershipEpoch = {
     epoch: 1,
     leaderNodeId: "node-1",
@@ -252,7 +252,7 @@ test("ha-coordinator-service exports LeadershipEpoch type", async () => {
   assert.equal(epoch.cause, "acquired");
 });
 
-test("ha-coordinator-service exports FailoverDecision type", async () => {
+test("ha-coordinator-service exports FailoverDecision type [ha-coordinator-service]", async () => {
   const decision: FailoverDecision = {
     decisionId: "decision-1",
     oldLeaderNodeId: "node-old",
@@ -267,7 +267,7 @@ test("ha-coordinator-service exports FailoverDecision type", async () => {
   assert.equal(decision.outcome, "leader_changed");
 });
 
-test("ha-coordinator-service exports LeaderActionAuthority type", async () => {
+test("ha-coordinator-service exports LeaderActionAuthority type [ha-coordinator-service]", async () => {
   const authorities: LeaderActionAuthority[] = [
     "leader_only",
     "follower_allowed",
@@ -276,7 +276,7 @@ test("ha-coordinator-service exports LeaderActionAuthority type", async () => {
   assert.deepEqual(authorities, ["leader_only", "follower_allowed", "any"]);
 });
 
-test("ha-coordinator-service exports LeadershipAcquisitionInput type", async () => {
+test("ha-coordinator-service exports LeadershipAcquisitionInput type [ha-coordinator-service]", async () => {
   const input: LeadershipAcquisitionInput = {
     nodeId: "node-1",
     ttlMs: 15_000,
@@ -286,7 +286,7 @@ test("ha-coordinator-service exports LeadershipAcquisitionInput type", async () 
   assert.equal(input.forceAcquire, false);
 });
 
-test("ha-coordinator-service exports LeadershipRenewalInput type", async () => {
+test("ha-coordinator-service exports LeadershipRenewalInput type [ha-coordinator-service]", async () => {
   const input: LeadershipRenewalInput = {
     nodeId: "node-1",
     ttlMs: 10_000,
@@ -294,7 +294,7 @@ test("ha-coordinator-service exports LeadershipRenewalInput type", async () => {
   assert.equal(input.nodeId, "node-1");
 });
 
-test("ha-coordinator-service exports LeadershipQueryResult type", async () => {
+test("ha-coordinator-service exports LeadershipQueryResult type [ha-coordinator-service]", async () => {
   const result: LeadershipQueryResult = {
     isLeader: true,
     leaderNodeId: "node-1",
@@ -307,7 +307,7 @@ test("ha-coordinator-service exports LeadershipQueryResult type", async () => {
   assert.equal(result.isExpired, false);
 });
 
-test("ha-coordinator-service exports LeaderActionAuthorization type", async () => {
+test("ha-coordinator-service exports LeaderActionAuthorization type [ha-coordinator-service]", async () => {
   const auth: LeaderActionAuthorization = {
     authorized: true,
     authority: "leader_only",
@@ -320,7 +320,7 @@ test("ha-coordinator-service exports LeaderActionAuthorization type", async () =
   assert.equal(auth.authority, "leader_only");
 });
 
-test("ha-coordinator-service exports HaCoordinatorServiceOptions type", async () => {
+test("ha-coordinator-service exports HaCoordinatorServiceOptions type [ha-coordinator-service]", async () => {
   const options: HaCoordinatorServiceOptions = {
     defaultTtlMs: 30_000,
     strictLeaderAuthority: true,
@@ -333,7 +333,7 @@ test("ha-coordinator-service exports HaCoordinatorServiceOptions type", async ()
 // Tests: HaCoordinatorService instance methods via barrel
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("HaCoordinatorService instance - registerNode and getNode", async () => {
+test("HaCoordinatorService instance - registerNode and getNode [ha-coordinator-service]", async () => {
   const backend = createMockSqliteBackend();
   const service = new HaCoordinatorService(backend.sql);
 
@@ -349,7 +349,7 @@ test("HaCoordinatorService instance - registerNode and getNode", async () => {
   assert.equal(retrieved!.nodeId, "node-1");
 });
 
-test("HaCoordinatorService instance - getNode returns null for unknown node", async () => {
+test("HaCoordinatorService instance - getNode returns null for unknown node [ha-coordinator-service]", async () => {
   const backend = createMockSqliteBackend();
   const service = new HaCoordinatorService(backend.sql);
 
@@ -357,7 +357,7 @@ test("HaCoordinatorService instance - getNode returns null for unknown node", as
   assert.equal(retrieved, null);
 });
 
-test("HaCoordinatorService instance - listNodes", async () => {
+test("HaCoordinatorService instance - listNodes [ha-coordinator-service]", async () => {
   const backend = createMockSqliteBackend();
   const service = new HaCoordinatorService(backend.sql);
 
@@ -368,7 +368,7 @@ test("HaCoordinatorService instance - listNodes", async () => {
   assert.equal(nodes.length, 2);
 });
 
-test("HaCoordinatorService instance - getCurrentLeader when no leader", async () => {
+test("HaCoordinatorService instance - getCurrentLeader when no leader [ha-coordinator-service]", async () => {
   const backend = createMockSqliteBackend();
   const service = new HaCoordinatorService(backend.sql);
 
@@ -376,7 +376,7 @@ test("HaCoordinatorService instance - getCurrentLeader when no leader", async ()
   assert.equal(leader, null);
 });
 
-test("HaCoordinatorService instance - getLatestEpoch when no epochs", async () => {
+test("HaCoordinatorService instance - getLatestEpoch when no epochs [ha-coordinator-service]", async () => {
   const backend = createMockSqliteBackend();
   const service = new HaCoordinatorService(backend.sql);
 
@@ -385,7 +385,7 @@ test("HaCoordinatorService instance - getLatestEpoch when no epochs", async () =
   assert.equal(epoch.leaderNodeId, null);
 });
 
-test("HaCoordinatorService instance - queryLeadership when no leader", async () => {
+test("HaCoordinatorService instance - queryLeadership when no leader [ha-coordinator-service]", async () => {
   const backend = createMockSqliteBackend();
   const service = new HaCoordinatorService(backend.sql);
 
@@ -395,7 +395,7 @@ test("HaCoordinatorService instance - queryLeadership when no leader", async () 
   assert.equal(result.isExpired, true);
 });
 
-test("HaCoordinatorService instance - verifyWriteAuthority", async () => {
+test("HaCoordinatorService instance - verifyWriteAuthority [ha-coordinator-service]", async () => {
   const backend = createMockSqliteBackend();
   const service = new HaCoordinatorService(backend.sql);
 
@@ -404,7 +404,7 @@ test("HaCoordinatorService instance - verifyWriteAuthority", async () => {
   assert.equal(service.verifyWriteAuthority(1), true);
 });
 
-test("HaCoordinatorService instance - purgeExpiredLeases returns 0 when none", async () => {
+test("HaCoordinatorService instance - purgeExpiredLeases returns 0 when none [ha-coordinator-service]", async () => {
   const backend = createMockSqliteBackend();
   const service = new HaCoordinatorService(backend.sql);
 
@@ -412,7 +412,7 @@ test("HaCoordinatorService instance - purgeExpiredLeases returns 0 when none", a
   assert.equal(count, 0);
 });
 
-test("HaCoordinatorService instance - purgeOldFailoverDecisions returns 0 when none", async () => {
+test("HaCoordinatorService instance - purgeOldFailoverDecisions returns 0 when none [ha-coordinator-service]", async () => {
   const backend = createMockSqliteBackend();
   const service = new HaCoordinatorService(backend.sql);
 
@@ -420,7 +420,7 @@ test("HaCoordinatorService instance - purgeOldFailoverDecisions returns 0 when n
   assert.equal(count, 0);
 });
 
-test("HaCoordinatorService instance - getFailoverHistory returns empty array", async () => {
+test("HaCoordinatorService instance - getFailoverHistory returns empty array [ha-coordinator-service]", async () => {
   const backend = createMockSqliteBackend();
   const service = new HaCoordinatorService(backend.sql);
 
@@ -429,7 +429,7 @@ test("HaCoordinatorService instance - getFailoverHistory returns empty array", a
   assert.equal(history.length, 0);
 });
 
-test("HaCoordinatorService instance - listEpochs returns empty array", async () => {
+test("HaCoordinatorService instance - listEpochs returns empty array [ha-coordinator-service]", async () => {
   const backend = createMockSqliteBackend();
   const service = new HaCoordinatorService(backend.sql);
 

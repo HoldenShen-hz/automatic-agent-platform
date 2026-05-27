@@ -20,7 +20,7 @@ function createHarness(prefix: string) {
   return { workspace, db };
 }
 
-test("registerNode creates a coordinator node", () => {
+test("registerNode creates a coordinator node [ha-coordinator-service]", () => {
   const h = createHarness("aa-node-reg-");
   try {
     const service = new HaCoordinatorService(h.db);
@@ -37,7 +37,7 @@ test("registerNode creates a coordinator node", () => {
   }
 });
 
-test("getNode retrieves registered node", () => {
+test("getNode retrieves registered node [ha-coordinator-service]", () => {
   const h = createHarness("aa-get-node-");
   try {
     const service = new HaCoordinatorService(h.db);
@@ -52,7 +52,7 @@ test("getNode retrieves registered node", () => {
   }
 });
 
-test("listNodes returns all registered nodes", () => {
+test("listNodes returns all registered nodes [ha-coordinator-service]", () => {
   const h = createHarness("aa-list-nodes-");
   try {
     const service = new HaCoordinatorService(h.db);
@@ -67,7 +67,7 @@ test("listNodes returns all registered nodes", () => {
   }
 });
 
-test("acquireLeadership gains leadership lease", () => {
+test("acquireLeadership gains leadership lease [ha-coordinator-service]", () => {
   const h = createHarness("aa-acquire-lead-");
   try {
     const service = new HaCoordinatorService(h.db);
@@ -87,7 +87,7 @@ test("acquireLeadership gains leadership lease", () => {
   }
 });
 
-test("acquireLeadership uses DEFAULT_LEASE_TTL_MS when ttlMs not specified", () => {
+test("acquireLeadership uses DEFAULT_LEASE_TTL_MS when ttlMs not specified [ha-coordinator-service]", () => {
   const h = createHarness("aa-acquire-default-ttl-");
   try {
     const service = new HaCoordinatorService(h.db);
@@ -107,7 +107,7 @@ test("acquireLeadership uses DEFAULT_LEASE_TTL_MS when ttlMs not specified", () 
   }
 });
 
-test("acquireLeadership fails when another node holds leadership", () => {
+test("acquireLeadership fails when another node holds leadership [ha-coordinator-service]", () => {
   const h = createHarness("aa-acquire-fail-");
   try {
     const service = new HaCoordinatorService(h.db);
@@ -127,7 +127,7 @@ test("acquireLeadership fails when another node holds leadership", () => {
   }
 });
 
-test("acquireLeadership with forceAcquire preempts existing leadership", () => {
+test("acquireLeadership with forceAcquire preempts existing leadership [ha-coordinator-service]", () => {
   const h = createHarness("aa-force-acq-");
   try {
     const service = new HaCoordinatorService(h.db);
@@ -152,7 +152,7 @@ test("acquireLeadership with forceAcquire preempts existing leadership", () => {
   }
 });
 
-test("renewLeadership extends lease", () => {
+test("renewLeadership extends lease [ha-coordinator-service]", () => {
   const h = createHarness("aa-renew-lead-");
   try {
     const service = new HaCoordinatorService(h.db);
@@ -170,7 +170,7 @@ test("renewLeadership extends lease", () => {
   }
 });
 
-test("renewLeadership fails for non-leader", () => {
+test("renewLeadership fails for non-leader [ha-coordinator-service]", () => {
   const h = createHarness("aa-renew-fail-");
   try {
     const service = new HaCoordinatorService(h.db);
@@ -185,7 +185,7 @@ test("renewLeadership fails for non-leader", () => {
   }
 });
 
-test("releaseLeadership releases leadership", () => {
+test("releaseLeadership releases leadership [ha-coordinator-service]", () => {
   const h = createHarness("aa-release-lead-");
   try {
     const service = new HaCoordinatorService(h.db);
@@ -204,7 +204,7 @@ test("releaseLeadership releases leadership", () => {
   }
 });
 
-test("getCurrentLeader returns current leader node", () => {
+test("getCurrentLeader returns current leader node [ha-coordinator-service]", () => {
   const h = createHarness("aa-get-leader-");
   try {
     const service = new HaCoordinatorService(h.db);
@@ -224,7 +224,7 @@ test("getCurrentLeader returns current leader node", () => {
   }
 });
 
-test("queryLeadership returns correct leadership state", () => {
+test("queryLeadership returns correct leadership state [ha-coordinator-service]", () => {
   const h = createHarness("aa-query-lead-");
   try {
     const service = new HaCoordinatorService(h.db);
@@ -249,7 +249,7 @@ test("queryLeadership returns correct leadership state", () => {
   }
 });
 
-test("authorizeAction allows leader-only action for current leader", () => {
+test("authorizeAction allows leader-only action for current leader [ha-coordinator-service]", () => {
   const h = createHarness("aa-auth-lead-");
   try {
     const service = new HaCoordinatorService(h.db);
@@ -266,7 +266,7 @@ test("authorizeAction allows leader-only action for current leader", () => {
   }
 });
 
-test("authorizeAction denies leader-only action for follower", () => {
+test("authorizeAction denies leader-only action for follower [ha-coordinator-service]", () => {
   const h = createHarness("aa-auth-follower-");
   try {
     const service = new HaCoordinatorService(h.db);
@@ -284,7 +284,7 @@ test("authorizeAction denies leader-only action for follower", () => {
   }
 });
 
-test("authorizeAction allows follower_allowed action for any node", () => {
+test("authorizeAction allows follower_allowed action for any node [ha-coordinator-service]", () => {
   const h = createHarness("aa-auth-any-");
   try {
     const service = new HaCoordinatorService(h.db);
@@ -302,7 +302,7 @@ test("authorizeAction allows follower_allowed action for any node", () => {
   }
 });
 
-test("getLatestEpoch returns current epoch", () => {
+test("getLatestEpoch returns current epoch [ha-coordinator-service]", () => {
   const h = createHarness("aa-get-epoch-");
   try {
     const service = new HaCoordinatorService(h.db);
@@ -322,7 +322,7 @@ test("getLatestEpoch returns current epoch", () => {
   }
 });
 
-test("triggerFailover promotes new leader when old leader fails", () => {
+test("triggerFailover promotes new leader when old leader fails [ha-coordinator-service]", () => {
   const h = createHarness("aa-failover-");
   try {
     const service = new HaCoordinatorService(h.db);
@@ -344,7 +344,7 @@ test("triggerFailover promotes new leader when old leader fails", () => {
   }
 });
 
-test("triggerFailover with forceNodeId promotes specific node", () => {
+test("triggerFailover with forceNodeId promotes specific node [ha-coordinator-service]", () => {
   const h = createHarness("aa-force-failover-");
   try {
     const service = new HaCoordinatorService(h.db);
@@ -362,7 +362,7 @@ test("triggerFailover with forceNodeId promotes specific node", () => {
   }
 });
 
-test("triggerFailover returns no_candidate when no followers available", () => {
+test("triggerFailover returns no_candidate when no followers available [ha-coordinator-service]", () => {
   const h = createHarness("aa-no-cand-");
   try {
     const service = new HaCoordinatorService(h.db);
@@ -378,7 +378,7 @@ test("triggerFailover returns no_candidate when no followers available", () => {
   }
 });
 
-test("getFailoverHistory records failover decisions", () => {
+test("getFailoverHistory records failover decisions [ha-coordinator-service]", () => {
   const h = createHarness("aa-failover-hist-");
   try {
     const service = new HaCoordinatorService(h.db);
@@ -397,7 +397,7 @@ test("getFailoverHistory records failover decisions", () => {
   }
 });
 
-test("verifyWriteAuthority accepts current fencing token", () => {
+test("verifyWriteAuthority accepts current fencing token [ha-coordinator-service]", () => {
   const h = createHarness("aa-verify-write-");
   try {
     const service = new HaCoordinatorService(h.db);
@@ -413,7 +413,7 @@ test("verifyWriteAuthority accepts current fencing token", () => {
   }
 });
 
-test("verifyWriteAuthority rejects stale fencing token", () => {
+test("verifyWriteAuthority rejects stale fencing token [ha-coordinator-service]", () => {
   const h = createHarness("aa-stale-write-");
   try {
     const service = new HaCoordinatorService(h.db);
@@ -434,7 +434,7 @@ test("verifyWriteAuthority rejects stale fencing token", () => {
   }
 });
 
-test("purgeExpiredLeases cleans up expired leases", async () => {
+test("purgeExpiredLeases cleans up expired leases [ha-coordinator-service]", async () => {
   const h = createHarness("aa-purge-leases-");
   try {
     const service = new HaCoordinatorService(h.db);
@@ -452,7 +452,7 @@ test("purgeExpiredLeases cleans up expired leases", async () => {
   }
 });
 
-test("listEpochs returns epoch history", () => {
+test("listEpochs returns epoch history [ha-coordinator-service]", () => {
   const h = createHarness("aa-list-epochs-");
   try {
     const service = new HaCoordinatorService(h.db);
@@ -470,7 +470,7 @@ test("listEpochs returns epoch history", () => {
   }
 });
 
-test("acquireLeadership clamps TTL below MIN_LEASE_TTL_MS to MIN_LEASE_TTL_MS", () => {
+test("acquireLeadership clamps TTL below MIN_LEASE_TTL_MS to MIN_LEASE_TTL_MS [ha-coordinator-service]", () => {
   const h = createHarness("aa-ttl-min-");
   try {
     const service = new HaCoordinatorService(h.db);
@@ -489,7 +489,7 @@ test("acquireLeadership clamps TTL below MIN_LEASE_TTL_MS to MIN_LEASE_TTL_MS", 
   }
 });
 
-test("acquireLeadership clamps TTL above MAX_LEASE_TTL_MS to MAX_LEASE_TTL_MS", () => {
+test("acquireLeadership clamps TTL above MAX_LEASE_TTL_MS to MAX_LEASE_TTL_MS [ha-coordinator-service]", () => {
   const h = createHarness("aa-ttl-max-");
   try {
     const service = new HaCoordinatorService(h.db);
@@ -508,7 +508,7 @@ test("acquireLeadership clamps TTL above MAX_LEASE_TTL_MS to MAX_LEASE_TTL_MS", 
   }
 });
 
-test("acquireLeadership accepts TTL at exactly MIN_LEASE_TTL_MS boundary", () => {
+test("acquireLeadership accepts TTL at exactly MIN_LEASE_TTL_MS boundary [ha-coordinator-service]", () => {
   const h = createHarness("aa-ttl-min-boundary-");
   try {
     const service = new HaCoordinatorService(h.db);
@@ -525,7 +525,7 @@ test("acquireLeadership accepts TTL at exactly MIN_LEASE_TTL_MS boundary", () =>
   }
 });
 
-test("acquireLeadership accepts TTL at exactly MAX_LEASE_TTL_MS boundary", () => {
+test("acquireLeadership accepts TTL at exactly MAX_LEASE_TTL_MS boundary [ha-coordinator-service]", () => {
   const h = createHarness("aa-ttl-max-boundary-");
   try {
     const service = new HaCoordinatorService(h.db);
@@ -542,7 +542,7 @@ test("acquireLeadership accepts TTL at exactly MAX_LEASE_TTL_MS boundary", () =>
   }
 });
 
-test("renewLeadership clamps TTL below MIN_LEASE_TTL_MS to MIN_LEASE_TTL_MS", () => {
+test("renewLeadership clamps TTL below MIN_LEASE_TTL_MS to MIN_LEASE_TTL_MS [ha-coordinator-service]", () => {
   const h = createHarness("aa-renew-ttl-min-");
   try {
     const service = new HaCoordinatorService(h.db);
@@ -561,7 +561,7 @@ test("renewLeadership clamps TTL below MIN_LEASE_TTL_MS to MIN_LEASE_TTL_MS", ()
   }
 });
 
-test("renewLeadership clamps TTL above MAX_LEASE_TTL_MS to MAX_LEASE_TTL_MS", () => {
+test("renewLeadership clamps TTL above MAX_LEASE_TTL_MS to MAX_LEASE_TTL_MS [ha-coordinator-service]", () => {
   const h = createHarness("aa-renew-ttl-max-");
   try {
     const service = new HaCoordinatorService(h.db);
@@ -580,7 +580,7 @@ test("renewLeadership clamps TTL above MAX_LEASE_TTL_MS to MAX_LEASE_TTL_MS", ()
   }
 });
 
-test("acquireLeadership throws RuntimeError when node is not registered", () => {
+test("acquireLeadership throws RuntimeError when node is not registered [ha-coordinator-service]", () => {
   // Tests the error path at ha-coordinator-service.ts:186 when node does not exist
   const h = createHarness("aa-acquire-unregistered-");
   try {
@@ -598,7 +598,7 @@ test("acquireLeadership throws RuntimeError when node is not registered", () => 
   }
 });
 
-test("releaseLeadership returns false when node has no leadership", () => {
+test("releaseLeadership returns false when node has no leadership [ha-coordinator-service]", () => {
   // Tests that releasing leadership on a node that never had it returns false
   const h = createHarness("aa-release-no-lead-");
   try {
@@ -614,7 +614,7 @@ test("releaseLeadership returns false when node has no leadership", () => {
   }
 });
 
-test("authorizeAction denies leader-only action for non-leader", () => {
+test("authorizeAction denies leader-only action for non-leader [ha-coordinator-service]", () => {
   // Tests that strict leader authority denies actions from non-leaders
   const h = createHarness("aa-auth-deny-");
   try {
@@ -634,7 +634,7 @@ test("authorizeAction denies leader-only action for non-leader", () => {
   }
 });
 
-test("listNodes filters by status correctly", () => {
+test("listNodes filters by status correctly [ha-coordinator-service]", () => {
   const h = createHarness("aa-list-filter-");
   try {
     const service = new HaCoordinatorService(h.db);

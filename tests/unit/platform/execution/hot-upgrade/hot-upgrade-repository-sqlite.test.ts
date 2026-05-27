@@ -86,13 +86,13 @@ function createMockDb() {
   };
 }
 
-test("SqliteHotUpgradeRepository is instantiable", () => {
+test("SqliteHotUpgradeRepository is instantiable [hot-upgrade-repository-sqlite]", () => {
   const mockDb = createMockDb() as any;
   const repo = new SqliteHotUpgradeRepository(mockDb);
   assert.ok(repo instanceof SqliteHotUpgradeRepository);
 });
 
-test("SqliteHotUpgradeRepository implements HotUpgradeRepository interface", () => {
+test("SqliteHotUpgradeRepository implements HotUpgradeRepository interface [hot-upgrade-repository-sqlite]", () => {
   const mockDb = createMockDb() as any;
   const repo = new SqliteHotUpgradeRepository(mockDb);
 
@@ -121,7 +121,7 @@ test("SqliteHotUpgradeRepository implements HotUpgradeRepository interface", () 
   assert.equal(typeof repo.listUpgradeAudits, "function");
 });
 
-test("SqliteHotUpgradeRepository.upsertVersionCompatibility inserts compatibility record", async () => {
+test("SqliteHotUpgradeRepository.upsertVersionCompatibility inserts compatibility record [hot-upgrade-repository-sqlite]", async () => {
   const mockDb = createMockDb() as any;
   const repo = new SqliteHotUpgradeRepository(mockDb);
 
@@ -144,7 +144,7 @@ test("SqliteHotUpgradeRepository.upsertVersionCompatibility inserts compatibilit
   assert.equal(saved.rollback_supported, 1);
 });
 
-test("SqliteHotUpgradeRepository.insertUpgradePlan inserts plan record", async () => {
+test("SqliteHotUpgradeRepository.insertUpgradePlan inserts plan record [hot-upgrade-repository-sqlite]", async () => {
   const mockDb = createMockDb() as any;
   const repo = new SqliteHotUpgradeRepository(mockDb);
 
@@ -180,7 +180,7 @@ test("SqliteHotUpgradeRepository.insertUpgradePlan inserts plan record", async (
   assert.equal(saved.status, "pending");
 });
 
-test("SqliteHotUpgradeRepository.insertUpgradeBatch inserts batch record", async () => {
+test("SqliteHotUpgradeRepository.insertUpgradeBatch inserts batch record [hot-upgrade-repository-sqlite]", async () => {
   const mockDb = createMockDb() as any;
   const repo = new SqliteHotUpgradeRepository(mockDb);
 
@@ -205,7 +205,7 @@ test("SqliteHotUpgradeRepository.insertUpgradeBatch inserts batch record", async
   assert.equal(saved.batch_number, 1);
 });
 
-test("SqliteHotUpgradeRepository.insertRollbackTrigger inserts trigger record", async () => {
+test("SqliteHotUpgradeRepository.insertRollbackTrigger inserts trigger record [hot-upgrade-repository-sqlite]", async () => {
   const mockDb = createMockDb() as any;
   const repo = new SqliteHotUpgradeRepository(mockDb);
 
@@ -227,7 +227,7 @@ test("SqliteHotUpgradeRepository.insertRollbackTrigger inserts trigger record", 
   assert.equal(saved.reason_code, "health_check_failed");
 });
 
-test("SqliteHotUpgradeRepository.insertUpgradeAudit inserts audit record", async () => {
+test("SqliteHotUpgradeRepository.insertUpgradeAudit inserts audit record [hot-upgrade-repository-sqlite]", async () => {
   const mockDb = createMockDb() as any;
   const repo = new SqliteHotUpgradeRepository(mockDb);
 

@@ -18,7 +18,7 @@ import type {
   ArtifactRef,
 } from "../../../../src/platform/contracts/types/domain.js";
 
-test("CreateAnalyticsFactInput structure is correct", () => {
+test("CreateAnalyticsFactInput structure is correct [data-plane-flow-service-types]", () => {
   const input: CreateAnalyticsFactInput = {
     namespaceId: "ns_123",
     metricName: "task_completion",
@@ -34,7 +34,7 @@ test("CreateAnalyticsFactInput structure is correct", () => {
   assert.equal(input.value, 1);
 });
 
-test("CreateAnalyticsFactInput allows optional metadata", () => {
+test("CreateAnalyticsFactInput allows optional metadata [data-plane-flow-service-types]", () => {
   const input: CreateAnalyticsFactInput = {
     namespaceId: "ns_456",
     metricName: "error_count",
@@ -48,7 +48,7 @@ test("CreateAnalyticsFactInput allows optional metadata", () => {
   assert.deepEqual(input.dimensions, { source: "worker_1" });
 });
 
-test("CreateArchiveBundleInput structure is correct", () => {
+test("CreateArchiveBundleInput structure is correct [data-plane-flow-service-types]", () => {
   const input: CreateArchiveBundleInput = {
     namespaceId: "ns_archive",
     bundleType: "memory_snapshot",
@@ -61,7 +61,7 @@ test("CreateArchiveBundleInput structure is correct", () => {
   assert.equal(input.sourceRefs.length, 2);
 });
 
-test("CreateArchiveBundleInput allows optional bundleId", () => {
+test("CreateArchiveBundleInput allows optional bundleId [data-plane-flow-service-types]", () => {
   const input: CreateArchiveBundleInput = {
     bundleId: "bundle_123",
     namespaceId: "ns_archive",
@@ -73,7 +73,7 @@ test("CreateArchiveBundleInput allows optional bundleId", () => {
   assert.equal(input.bundleId, "bundle_123");
 });
 
-test("CreateReplayDatasetInput structure is correct", () => {
+test("CreateReplayDatasetInput structure is correct [data-plane-flow-service-types]", () => {
   const input: CreateReplayDatasetInput = {
     namespaceId: "ns_replay",
     datasetType: "test_replay",
@@ -89,7 +89,7 @@ test("CreateReplayDatasetInput structure is correct", () => {
   assert.equal(input.version, "1.0.0");
 });
 
-test("StartDataMovementJobInput structure is correct", () => {
+test("StartDataMovementJobInput structure is correct [data-plane-flow-service-types]", () => {
   const input: StartDataMovementJobInput = {
     sourceNamespaceId: "ns_src",
     targetNamespaceId: "ns_tgt",
@@ -103,7 +103,7 @@ test("StartDataMovementJobInput structure is correct", () => {
   assert.equal(input.inputRefs.length, 2);
 });
 
-test("StartDataMovementJobInput allows optional jobId", () => {
+test("StartDataMovementJobInput allows optional jobId [data-plane-flow-service-types]", () => {
   const input: StartDataMovementJobInput = {
     jobId: "job_123",
     sourceNamespaceId: "ns_src",
@@ -115,7 +115,7 @@ test("StartDataMovementJobInput allows optional jobId", () => {
   assert.equal(input.jobId, "job_123");
 });
 
-test("CompleteDataMovementJobInput structure is correct", () => {
+test("CompleteDataMovementJobInput structure is correct [data-plane-flow-service-types]", () => {
   const input: CompleteDataMovementJobInput = {
     jobId: "job_123",
     status: "completed",
@@ -125,7 +125,7 @@ test("CompleteDataMovementJobInput structure is correct", () => {
   assert.equal(input.status, "completed");
 });
 
-test("CompleteDataMovementJobInput allows failure status", () => {
+test("CompleteDataMovementJobInput allows failure status [data-plane-flow-service-types]", () => {
   const input: CompleteDataMovementJobInput = {
     jobId: "job_456",
     status: "failed",
@@ -136,7 +136,7 @@ test("CompleteDataMovementJobInput allows failure status", () => {
   assert.deepEqual(input.report, { error: "Connection timeout" });
 });
 
-test("DataPlaneSummaryInput structure is correct", () => {
+test("DataPlaneSummaryInput structure is correct [data-plane-flow-service-types]", () => {
   const input: DataPlaneSummaryInput = {
     tenantId: "tenant_123",
   };
@@ -144,12 +144,12 @@ test("DataPlaneSummaryInput structure is correct", () => {
   assert.equal(input.tenantId, "tenant_123");
 });
 
-test("DataPlaneSummaryInput allows empty input", () => {
+test("DataPlaneSummaryInput allows empty input [data-plane-flow-service-types]", () => {
   const input: DataPlaneSummaryInput = {};
   assert.equal(input.tenantId, undefined);
 });
 
-test("DataPlaneSummary structure is correct", () => {
+test("DataPlaneSummary structure is correct [data-plane-flow-service-types]", () => {
   const summary: DataPlaneSummary = {
     reportId: "report_123",
     generatedAt: "2026-04-14T12:00:00.000Z",
@@ -195,7 +195,7 @@ test("DataPlaneSummary structure is correct", () => {
   assert.equal(summary.recentJobs.length, 1);
 });
 
-test("DataPlaneExportResult structure is correct", () => {
+test("DataPlaneExportResult structure is correct [data-plane-flow-service-types]", () => {
   const result: DataPlaneExportResult = {
     summary: {
       reportId: "report_export",
@@ -244,7 +244,7 @@ test("DataPlaneExportResult structure is correct", () => {
   assert.equal(result.markdownArtifact.artifactId, "art_md");
 });
 
-test("DataPlaneFlowServiceOptions structure is correct", () => {
+test("DataPlaneFlowServiceOptions structure is correct [data-plane-flow-service-types]", () => {
   const options: DataPlaneFlowServiceOptions = {
     artifactStoreOptions: {
       rootDir: "/var/data-plane/artifacts",
@@ -255,12 +255,12 @@ test("DataPlaneFlowServiceOptions structure is correct", () => {
   assert.equal(options.artifactStoreOptions?.rootDir, "/var/data-plane/artifacts");
 });
 
-test("DataPlaneFlowServiceOptions allows empty options", () => {
+test("DataPlaneFlowServiceOptions allows empty options [data-plane-flow-service-types]", () => {
   const options: DataPlaneFlowServiceOptions = {};
   assert.equal(options.artifactStoreOptions, undefined);
 });
 
-test("DataNamespacePlane accepts all valid values", () => {
+test("DataNamespacePlane accepts all valid values [data-plane-flow-service-types]", () => {
   const planes: DataNamespacePlane[] = [
     "transactional",
     "analytics",

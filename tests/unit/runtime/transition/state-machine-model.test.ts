@@ -13,7 +13,7 @@ import {
 // TASK STATE MACHINE TESTS
 // =============================================================================
 
-test("taskStateMachine allows valid task status transitions", () => {
+test("taskStateMachine allows valid task status transitions [state-machine-model]", () => {
   // From queued
   taskStateMachine.assertTransition("queued", "pending");
   taskStateMachine.assertTransition("queued", "in_progress");
@@ -35,7 +35,7 @@ test("taskStateMachine allows valid task status transitions", () => {
   taskStateMachine.assertTransition("awaiting_decision", "cancelled");
 });
 
-test("taskStateMachine rejects invalid task status transitions", () => {
+test("taskStateMachine rejects invalid task status transitions [state-machine-model]", () => {
   // Cannot go back from terminal states
   assert.throws(
     () => taskStateMachine.assertTransition("done", "in_progress"),
@@ -67,7 +67,7 @@ test("taskStateMachine rejects invalid task status transitions", () => {
   );
 });
 
-test("taskStateMachine allows same-state no-op transitions", () => {
+test("taskStateMachine allows same-state no-op transitions [state-machine-model]", () => {
   taskStateMachine.assertTransition("queued", "queued");
   taskStateMachine.assertTransition("pending", "pending");
   taskStateMachine.assertTransition("in_progress", "in_progress");
@@ -78,7 +78,7 @@ test("taskStateMachine allows same-state no-op transitions", () => {
 // WORKFLOW STATE MACHINE TESTS
 // =============================================================================
 
-test("workflowStateMachine allows valid workflow status transitions", () => {
+test("workflowStateMachine allows valid workflow status transitions [state-machine-model]", () => {
   // From created
   workflowStateMachine.assertTransition("created", "running");
   workflowStateMachine.assertTransition("created", "failed");
@@ -105,7 +105,7 @@ test("workflowStateMachine allows valid workflow status transitions", () => {
   workflowStateMachine.assertTransition("cancelling", "cancelled");
 });
 
-test("workflowStateMachine rejects invalid workflow status transitions", () => {
+test("workflowStateMachine rejects invalid workflow status transitions [state-machine-model]", () => {
   // Cannot transition from terminal states
   assert.throws(
     () => workflowStateMachine.assertTransition("completed", "running"),
@@ -133,7 +133,7 @@ test("workflowStateMachine rejects invalid workflow status transitions", () => {
   );
 });
 
-test("workflowStateMachine allows same-state no-op transitions", () => {
+test("workflowStateMachine allows same-state no-op transitions [state-machine-model]", () => {
   workflowStateMachine.assertTransition("created", "created");
   workflowStateMachine.assertTransition("running", "running");
   workflowStateMachine.assertTransition("paused", "paused");
@@ -145,7 +145,7 @@ test("workflowStateMachine allows same-state no-op transitions", () => {
 // SESSION STATE MACHINE TESTS
 // =============================================================================
 
-test("sessionStateMachine allows valid session status transitions", () => {
+test("sessionStateMachine allows valid session status transitions [state-machine-model]", () => {
   // From open
   sessionStateMachine.assertTransition("open", "streaming");
   sessionStateMachine.assertTransition("open", "awaiting_user");
@@ -174,7 +174,7 @@ test("sessionStateMachine allows valid session status transitions", () => {
   sessionStateMachine.assertTransition("paused", "open");
 });
 
-test("sessionStateMachine rejects invalid session status transitions", () => {
+test("sessionStateMachine rejects invalid session status transitions [state-machine-model]", () => {
   // Cannot transition from terminal states
   assert.throws(
     () => sessionStateMachine.assertTransition("completed", "streaming"),
@@ -196,7 +196,7 @@ test("sessionStateMachine rejects invalid session status transitions", () => {
   );
 });
 
-test("sessionStateMachine allows same-state no-op transitions", () => {
+test("sessionStateMachine allows same-state no-op transitions [state-machine-model]", () => {
   sessionStateMachine.assertTransition("open", "open");
   sessionStateMachine.assertTransition("streaming", "streaming");
   sessionStateMachine.assertTransition("awaiting_user", "awaiting_user");
@@ -207,7 +207,7 @@ test("sessionStateMachine allows same-state no-op transitions", () => {
 // EXECUTION STATE MACHINE TESTS
 // =============================================================================
 
-test("executionStateMachine allows valid execution status transitions", () => {
+test("executionStateMachine allows valid execution status transitions [state-machine-model]", () => {
   // From created
   executionStateMachine.assertTransition("created", "prechecking");
   executionStateMachine.assertTransition("created", "executing");
@@ -271,7 +271,7 @@ test("executionStateMachine allows valid execution status transitions", () => {
   executionStateMachine.assertTransition("timed_out", "failed");
 });
 
-test("executionStateMachine rejects invalid execution status transitions", () => {
+test("executionStateMachine rejects invalid execution status transitions [state-machine-model]", () => {
   // Cannot skip states arbitrarily
   assert.throws(
     () => executionStateMachine.assertTransition("created", "succeeded"),
@@ -309,7 +309,7 @@ test("executionStateMachine rejects invalid execution status transitions", () =>
   );
 });
 
-test("executionStateMachine allows same-state no-op transitions", () => {
+test("executionStateMachine allows same-state no-op transitions [state-machine-model]", () => {
   executionStateMachine.assertTransition("created", "created");
   executionStateMachine.assertTransition("executing", "executing");
   executionStateMachine.assertTransition("blocked", "blocked");
@@ -320,14 +320,14 @@ test("executionStateMachine allows same-state no-op transitions", () => {
 // APPROVAL STATE MACHINE TESTS
 // =============================================================================
 
-test("approvalStateMachine allows valid approval status transitions", () => {
+test("approvalStateMachine allows valid approval status transitions [state-machine-model]", () => {
   approvalStateMachine.assertTransition("requested", "approved");
   approvalStateMachine.assertTransition("requested", "rejected");
   approvalStateMachine.assertTransition("requested", "expired");
   approvalStateMachine.assertTransition("requested", "cancelled");
 });
 
-test("approvalStateMachine rejects invalid approval status transitions", () => {
+test("approvalStateMachine rejects invalid approval status transitions [state-machine-model]", () => {
   // Cannot transition from terminal states
   assert.throws(
     () => approvalStateMachine.assertTransition("approved", "rejected"),
@@ -354,7 +354,7 @@ test("approvalStateMachine rejects invalid approval status transitions", () => {
   approvalStateMachine.assertTransition("requested", "requested");
 });
 
-test("approvalStateMachine rejects all transitions from terminal states", () => {
+test("approvalStateMachine rejects all transitions from terminal states [state-machine-model]", () => {
   const terminalStates = [
     "approved",
     "rejected",
@@ -384,7 +384,7 @@ test("approvalStateMachine rejects all transitions from terminal states", () => 
 // CROSS-MACHINE ISOLATION TESTS
 // =============================================================================
 
-test("each state machine is isolated and entity-specific", () => {
+test("each state machine is isolated and entity-specific [state-machine-model]", () => {
   // Task transitions don't affect workflow machine
   assert.throws(
     () => workflowStateMachine.assertTransition("created", "completed"),
@@ -408,7 +408,7 @@ test("each state machine is isolated and entity-specific", () => {
 // EDGE CASES
 // =============================================================================
 
-test("workflowStateMachine cancelling is only transition from cancelling", () => {
+test("workflowStateMachine cancelling is only transition from cancelling [state-machine-model]", () => {
   workflowStateMachine.assertTransition("cancelling", "cancelled");
 
   // Cannot go back to running from cancelling
@@ -418,11 +418,11 @@ test("workflowStateMachine cancelling is only transition from cancelling", () =>
   );
 });
 
-test("executionStateMachine blocked can go to superseded", () => {
+test("executionStateMachine blocked can go to superseded [state-machine-model]", () => {
   executionStateMachine.assertTransition("blocked", "superseded");
 });
 
-test("sessionStateMachine allows open to streaming and back", () => {
+test("sessionStateMachine allows open to streaming and back [state-machine-model]", () => {
   sessionStateMachine.assertTransition("open", "streaming");
   sessionStateMachine.assertTransition("streaming", "open");
 });

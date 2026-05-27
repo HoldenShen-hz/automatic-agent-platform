@@ -15,7 +15,7 @@
  * - Token usage accounting
  * - Tenant quota management
  *
- * @see {@link https://github.com/automatic-agent/automatic_agent_platform/blob/main/docs_zh/architecture/00-platform-architecture.md}
+ * @see {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/architecture/00-platform-architecture.md}
  */
 
 import type {

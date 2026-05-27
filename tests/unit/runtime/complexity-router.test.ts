@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { routeComplexity, type ComplexityPath } from "../../../src/platform/five-plane-execution/execution-engine/complexity-router.js";
 
-test("routeComplexity returns correct structure", () => {
+test("routeComplexity returns correct structure [complexity-router]", () => {
   const result = routeComplexity("simple task");
   assert.equal(typeof result.path, "string");
   assert.equal(typeof result.reason, "string");
@@ -11,33 +11,33 @@ test("routeComplexity returns correct structure", () => {
   assert.equal(typeof result.routedAt, "string");
 });
 
-test("routeComplexity routes short input to passthrough", () => {
+test("routeComplexity routes short input to passthrough [complexity-router]", () => {
   const result = routeComplexity("hi");
   assert.equal(result.path, "passthrough");
   assert.equal(result.reason, "short_input");
   assert.equal(result.estimatedBudgetFactor, 0.1);
 });
 
-test("routeComplexity routes very short input to passthrough", () => {
+test("routeComplexity routes very short input to passthrough [complexity-router]", () => {
   const result = routeComplexity("a");
   assert.equal(result.path, "passthrough");
 });
 
-test("routeComplexity routes to fast with fast keywords", () => {
+test("routeComplexity routes to fast with fast keywords [complexity-router]", () => {
   // Input must be longer than passthroughMaxChars (50) to reach fast keyword check
   const result = routeComplexity("please tell me what is the weather forecast for tomorrow");
   assert.equal(result.path, "fast");
   assert.ok(result.reason.startsWith("keyword_match:"));
 });
 
-test("routeComplexity routes to full with full keywords", () => {
+test("routeComplexity routes to full with full keywords [complexity-router]", () => {
   // Input must be longer than passthroughMaxChars (50) to reach full keyword check
   const result = routeComplexity("refactor the entire codebase and improve the architecture");
   assert.equal(result.path, "full");
   assert.ok(result.reason.startsWith("keyword_match:"));
 });
 
-test("routeComplexity is case insensitive", () => {
+test("routeComplexity is case insensitive [complexity-router]", () => {
   const lower = routeComplexity("what is this");
   const upper = routeComplexity("WHAT IS THIS");
   const mixed = routeComplexity("What Is This");
@@ -45,26 +45,26 @@ test("routeComplexity is case insensitive", () => {
   assert.equal(upper.path, mixed.path);
 });
 
-test("routeComplexity qaMode forces full path", () => {
+test("routeComplexity qaMode forces full path [complexity-router]", () => {
   const result = routeComplexity("simple task", { qaMode: true });
   assert.equal(result.path, "full");
   assert.equal(result.reason, "qa_mode_active");
   assert.equal(result.estimatedBudgetFactor, 2.0);
 });
 
-test("routeComplexity multi-step (stepCount > 3) routes to standard or full", () => {
+test("routeComplexity multi-step (stepCount > 3) routes to standard or full [complexity-router]", () => {
   const result = routeComplexity("some task", { stepCount: 5 });
   assert.ok(result.path === "standard" || result.path === "full");
   assert.equal(result.reason, "multi_step_workflow");
 });
 
-test("routeComplexity multi-step with full keyword routes to full", () => {
+test("routeComplexity multi-step with full keyword routes to full [complexity-router]", () => {
   const result = routeComplexity("refactor this task", { stepCount: 5 });
   assert.equal(result.path, "full");
   assert.ok(result.reason.startsWith("keyword_match:"));
 });
 
-test("routeComplexity high token estimate routes to full", () => {
+test("routeComplexity high token estimate routes to full [complexity-router]", () => {
   // Input longer than passthroughMaxChars (50) to reach the high token check
   const result = routeComplexity("a moderately complex task that needs processing time", { estimatedTokens: 60000 });
   assert.equal(result.path, "full");
@@ -72,7 +72,7 @@ test("routeComplexity high token estimate routes to full", () => {
   assert.equal(result.estimatedBudgetFactor, 2.0);
 });
 
-test("routeComplexity default routes to standard", () => {
+test("routeComplexity default routes to standard [complexity-router]", () => {
   // Input longer than passthroughMaxChars (50) and no special flags
   const result = routeComplexity("perform a moderately complex task with multiple steps");
   assert.equal(result.path, "standard");
@@ -80,7 +80,7 @@ test("routeComplexity default routes to standard", () => {
   assert.equal(result.estimatedBudgetFactor, 1.0);
 });
 
-test("routeComplexity custom fullPathKeywords", () => {
+test("routeComplexity custom fullPathKeywords [complexity-router]", () => {
   const result = routeComplexity("make it turbo mode for better performance", {
     config: {
       fullPathKeywords: ["turbo"],
@@ -92,7 +92,7 @@ test("routeComplexity custom fullPathKeywords", () => {
   assert.equal(result.path, "full");
 });
 
-test("routeComplexity custom fastPathKeywords", () => {
+test("routeComplexity custom fastPathKeywords [complexity-router]", () => {
   const result = routeComplexity("make it turbo for faster processing", {
     config: {
       fullPathKeywords: [],
@@ -104,7 +104,7 @@ test("routeComplexity custom fastPathKeywords", () => {
   assert.equal(result.path, "fast");
 });
 
-test("routeComplexity respects custom passthroughMaxChars", () => {
+test("routeComplexity respects custom passthroughMaxChars [complexity-router]", () => {
   const result = routeComplexity("short", {
     config: {
       fullPathKeywords: [],
@@ -126,7 +126,7 @@ test("routeComplexity respects custom passthroughMaxChars", () => {
   assert.notEqual(result2.path, "passthrough");
 });
 
-test("routeComplexity qaModeForceFull can be disabled", () => {
+test("routeComplexity qaModeForceFull can be disabled [complexity-router]", () => {
   const result = routeComplexity("simple task", {
     qaMode: true,
     config: {
@@ -140,7 +140,7 @@ test("routeComplexity qaModeForceFull can be disabled", () => {
   assert.ok(["fast", "standard", "passthrough"].includes(result.path));
 });
 
-test("routeComplexity all default full keywords work", () => {
+test("routeComplexity all default full keywords work [complexity-router]", () => {
   const keywords = [
     "refactor", "redesign", "migrate", "architecture", "security audit",
     "performance analysis", "comprehensive", "all files", "entire codebase",
@@ -154,7 +154,7 @@ test("routeComplexity all default full keywords work", () => {
   }
 });
 
-test("routeComplexity all default fast keywords work", () => {
+test("routeComplexity all default fast keywords work [complexity-router]", () => {
   const keywords = [
     "what is", "show me", "list", "find", "grep", "search",
     "quick", "simple", "brief", "lookup", "check",
@@ -167,7 +167,7 @@ test("routeComplexity all default fast keywords work", () => {
   }
 });
 
-test("routeComplexity estimatedBudgetFactor is correct for each path", () => {
+test("routeComplexity estimatedBudgetFactor is correct for each path [complexity-router]", () => {
   const passthrough = routeComplexity("hi");
   assert.equal(passthrough.estimatedBudgetFactor, 0.1);
 
@@ -182,14 +182,14 @@ test("routeComplexity estimatedBudgetFactor is correct for each path", () => {
   assert.equal(full.estimatedBudgetFactor, 2.0);
 });
 
-test("routeComplexity has ISO timestamp in routedAt", () => {
+test("routeComplexity has ISO timestamp in routedAt [complexity-router]", () => {
   const result = routeComplexity("test");
   // Should be parseable as an ISO date
   const date = new Date(result.routedAt);
   assert.ok(!isNaN(date.getTime()));
 });
 
-test("routeComplexity handles negative estimatedTokens without error", () => {
+test("routeComplexity handles negative estimatedTokens without error [complexity-router]", () => {
   // Negative token values should not trigger high_token_estimate path
   const result = routeComplexity("some task that is long enough to not be passthrough", { estimatedTokens: -1000 });
   // Should return a valid result, not throw - negative tokens don't trigger high_token_estimate
@@ -198,14 +198,14 @@ test("routeComplexity handles negative estimatedTokens without error", () => {
   assert.equal(typeof result.estimatedBudgetFactor, "number");
 });
 
-test("routeComplexity handles zero estimatedTokens without error", () => {
+test("routeComplexity handles zero estimatedTokens without error [complexity-router]", () => {
   const result = routeComplexity("some task that is long enough to not be passthrough", { estimatedTokens: 0 });
   // Should return a valid result
   assert.equal(typeof result.path, "string");
   assert.equal(typeof result.reason, "string");
 });
 
-test("routeComplexity handles very large estimatedTokens", () => {
+test("routeComplexity handles very large estimatedTokens [complexity-router]", () => {
   // Very large token values should route to full
   // Need input longer than passthroughMaxChars (50) to reach the high_token_estimate check
   const result = routeComplexity("a task that is longer than fifty characters to bypass passthrough", { estimatedTokens: 1000000 });

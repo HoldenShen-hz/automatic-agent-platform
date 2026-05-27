@@ -13,7 +13,7 @@ import {
   createLimiterPolicy,
 } from "../../../src/platform/five-plane-execution/execution-engine/call-governance.js";
 
-test("CallRateLimiter enforces per-key windows independently", () => {
+test("CallRateLimiter enforces per-key windows independently [call-governance]", () => {
   const limiter = new CallRateLimiter({ maxCalls: 1, windowMs: 1000 });
 
   assert.equal(limiter.checkAndConsume("alpha").allowed, true);
@@ -21,7 +21,7 @@ test("CallRateLimiter enforces per-key windows independently", () => {
   assert.equal(limiter.checkAndConsume("beta").allowed, true);
 });
 
-test("CallCircuitBreaker exposes reusable state transitions", () => {
+test("CallCircuitBreaker exposes reusable state transitions [call-governance]", () => {
   const breaker = new CallCircuitBreaker({
     failureThreshold: 2,
     successThreshold: 1,
@@ -37,7 +37,7 @@ test("CallCircuitBreaker exposes reusable state transitions", () => {
   assert.equal(breaker.getSnapshot("svc")?.state, "open");
 });
 
-test("CallHistoryRecorder keeps bounded stats independent of governance orchestration", () => {
+test("CallHistoryRecorder keeps bounded stats independent of governance orchestration [call-governance]", () => {
   const history = new CallHistoryRecorder();
   history.record("svc", { success: true });
   history.record("svc", { success: false, error: { code: "provider.failed", message: "x", retryable: false } });
@@ -55,7 +55,7 @@ test("CallHistoryRecorder keeps bounded stats independent of governance orchestr
   assert.equal(stats.currentCircuitState, "open");
 });
 
-test("CallGovernance execute succeeds when call succeeds", async () => {
+test("CallGovernance execute succeeds when call succeeds [call-governance]", async () => {
   const gov = new CallGovernance({});
   const result = await gov.execute("key1", async () => "hello");
   assert.equal(result.success, true);
@@ -63,7 +63,7 @@ test("CallGovernance execute succeeds when call succeeds", async () => {
   assert.equal(result.metadata?.attempts, 1);
 });
 
-test("CallGovernance execute fails when call throws with non-retryable code", async () => {
+test("CallGovernance execute fails when call throws with non-retryable code [call-governance]", async () => {
   // Must provide nonRetryableCodes in retry policy for "auth" to be recognized
   const gov = new CallGovernance({
     retry: { maxAttempts: 3, baseDelayMs: 10, maxDelayMs: 100, backoffMultiplier: 2, nonRetryableCodes: ["auth"] },
@@ -78,7 +78,7 @@ test("CallGovernance execute fails when call throws with non-retryable code", as
   assert.equal(result.metadata?.attempts, 1); // no retries
 });
 
-test("CallGovernance limiter rejects at maxCalls", async () => {
+test("CallGovernance limiter rejects at maxCalls [call-governance]", async () => {
   const gov = new CallGovernance({
     limiter: { maxCalls: 2, windowMs: 1000 },
   });
@@ -93,7 +93,7 @@ test("CallGovernance limiter rejects at maxCalls", async () => {
   assert.ok(third.error?.retryAfterMs != null);
 });
 
-test("CallGovernance can use a distributed rate limiter when provided", async () => {
+test("CallGovernance can use a distributed rate limiter when provided [call-governance]", async () => {
   const calls: string[] = [];
   const distributedRateLimiter: DistributedRateLimiterLike = {
     async checkAndConsume(key: string) {
@@ -120,7 +120,7 @@ test("CallGovernance can use a distributed rate limiter when provided", async ()
   assert.deepEqual(calls, ["distributed_key", "distributed_key"]);
 });
 
-test("CallGovernance limiter window resets after windowMs", async () => {
+test("CallGovernance limiter window resets after windowMs [call-governance]", async () => {
   mock.timers.enable({ apis: ["setTimeout", "Date"] });
 
   try {
@@ -143,7 +143,7 @@ test("CallGovernance limiter window resets after windowMs", async () => {
   }
 });
 
-test("CallGovernance retry retries on retryable errors", async () => {
+test("CallGovernance retry retries on retryable errors [call-governance]", async () => {
   let attempts = 0;
   const gov = new CallGovernance({
     retry: { maxAttempts: 3, baseDelayMs: 10, maxDelayMs: 100, backoffMultiplier: 2 },
@@ -163,7 +163,7 @@ test("CallGovernance retry retries on retryable errors", async () => {
   assert.equal(result.metadata?.attempts, 3);
 });
 
-test("CallGovernance retry does not retry on non-retryable errors", async () => {
+test("CallGovernance retry does not retry on non-retryable errors [call-governance]", async () => {
   let attempts = 0;
   const gov = new CallGovernance({
     retry: {
@@ -186,7 +186,7 @@ test("CallGovernance retry does not retry on non-retryable errors", async () => 
   assert.equal(result.metadata?.attempts, 1); // no retries
 });
 
-test("CallGovernance circuit breaker opens after failure threshold", async () => {
+test("CallGovernance circuit breaker opens after failure threshold [call-governance]", async () => {
   const gov = new CallGovernance({
     breaker: { failureThreshold: 3, successThreshold: 2, resetTimeoutMs: 1000 },
     retry: { maxAttempts: 1, baseDelayMs: 10, maxDelayMs: 100, backoffMultiplier: 2 },
@@ -204,7 +204,7 @@ test("CallGovernance circuit breaker opens after failure threshold", async () =>
   assert.equal(result.metadata?.circuitState, "open");
 });
 
-test("CallGovernance circuit breaker half-open after resetTimeout", async () => {
+test("CallGovernance circuit breaker half-open after resetTimeout [call-governance]", async () => {
   mock.timers.enable({ apis: ["setTimeout", "Date"] });
 
   try {
@@ -226,7 +226,7 @@ test("CallGovernance circuit breaker half-open after resetTimeout", async () => 
   }
 });
 
-test("CallGovernance getStats returns correct counts", async () => {
+test("CallGovernance getStats returns correct counts [call-governance]", async () => {
   const gov = new CallGovernance({});
 
   await gov.execute("stats_key", async () => "ok");
@@ -240,7 +240,7 @@ test("CallGovernance getStats returns correct counts", async () => {
   assert.equal(stats.rejectedCalls, 0);
 });
 
-test("CallGovernance getStats counts rejections separately", async () => {
+test("CallGovernance getStats counts rejections separately [call-governance]", async () => {
   const gov = new CallGovernance({
     limiter: { maxCalls: 1, windowMs: 1000 },
   });
@@ -256,7 +256,7 @@ test("CallGovernance getStats counts rejections separately", async () => {
   assert.equal(stats.rejectedCalls, 2);
 });
 
-test("CallGovernance reset clears all state", async () => {
+test("CallGovernance reset clears all state [call-governance]", async () => {
   const gov = new CallGovernance({
     limiter: { maxCalls: 1, windowMs: 10000 },
   });
@@ -271,7 +271,7 @@ test("CallGovernance reset clears all state", async () => {
   assert.equal(gov.getStats("reset_key").totalCalls, 1);
 });
 
-test("createRetryPolicy has correct defaults", () => {
+test("createRetryPolicy has correct defaults [call-governance]", () => {
   const policy = createRetryPolicy();
   assert.equal(policy.maxAttempts, 3);
   assert.equal(policy.baseDelayMs, 100);
@@ -282,20 +282,20 @@ test("createRetryPolicy has correct defaults", () => {
   assert.ok(policy.nonRetryableCodes!.includes("auth"));
 });
 
-test("createBreakerPolicy has correct defaults", () => {
+test("createBreakerPolicy has correct defaults [call-governance]", () => {
   const policy = createBreakerPolicy();
   assert.equal(policy.failureThreshold, 5);
   assert.equal(policy.successThreshold, 2);
   assert.equal(policy.resetTimeoutMs, 30000);
 });
 
-test("createLimiterPolicy requires maxCalls and windowMs", () => {
+test("createLimiterPolicy requires maxCalls and windowMs [call-governance]", () => {
   const policy = createLimiterPolicy({ maxCalls: 10, windowMs: 1000 });
   assert.equal(policy.maxCalls, 10);
   assert.equal(policy.windowMs, 1000);
 });
 
-test("CallGovernance updatePolicy merges correctly", async () => {
+test("CallGovernance updatePolicy merges correctly [call-governance]", async () => {
   const gov = new CallGovernance({
     limiter: { maxCalls: 5, windowMs: 1000 },
   });
@@ -315,7 +315,7 @@ test("CallGovernance updatePolicy merges correctly", async () => {
   }
 });
 
-test("CallGovernance retry delay has exponential backoff", async () => {
+test("CallGovernance retry delay has exponential backoff [call-governance]", async () => {
   const gov = new CallGovernance({
     retry: { maxAttempts: 4, baseDelayMs: 1, maxDelayMs: 10, backoffMultiplier: 2, jitterFactor: 0 },
   });
@@ -336,7 +336,7 @@ test("CallGovernance retry delay has exponential backoff", async () => {
   assert.equal(result.metadata?.attempts, 4);
 });
 
-test("CallGovernance with retryAfterMs from error uses that delay", async () => {
+test("CallGovernance with retryAfterMs from error uses that delay [call-governance]", async () => {
   const gov = new CallGovernance({
     retry: { maxAttempts: 2, baseDelayMs: 10000, maxDelayMs: 10000, backoffMultiplier: 2 },
   });

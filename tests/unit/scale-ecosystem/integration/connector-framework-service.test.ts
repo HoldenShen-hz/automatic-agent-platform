@@ -5,7 +5,7 @@ import { ConnectorFrameworkService } from "../../../../src/scale-ecosystem/integ
 import type { ConnectorManifest } from "../../../../src/scale-ecosystem/integration/connector-registry/index.js";
 import type { ConnectorHealthReport } from "../../../../src/scale-ecosystem/integration/health-monitor/index.js";
 
-test("ConnectorFrameworkService registers a connector manifest", () => {
+test("ConnectorFrameworkService registers a connector manifest [connector-framework-service]", () => {
   const service = new ConnectorFrameworkService();
   const manifest: ConnectorManifest = {
     connectorId: "test-connector",
@@ -22,7 +22,7 @@ test("ConnectorFrameworkService registers a connector manifest", () => {
   assert.equal(registered.provider, "TestProvider");
 });
 
-test("ConnectorFrameworkService binds a connector to a tenant", () => {
+test("ConnectorFrameworkService binds a connector to a tenant [connector-framework-service]", () => {
   const service = new ConnectorFrameworkService();
   const manifest: ConnectorManifest = {
     connectorId: "test-connector",
@@ -38,7 +38,7 @@ test("ConnectorFrameworkService binds a connector to a tenant", () => {
   assert.equal(binding.environment, "dev");
 });
 
-test("ConnectorFrameworkService bind throws for prod with non-verified connector", () => {
+test("ConnectorFrameworkService bind throws for prod with non-verified connector [connector-framework-service]", () => {
   const service = new ConnectorFrameworkService();
   const manifest: ConnectorManifest = {
     connectorId: "test-connector",
@@ -54,7 +54,7 @@ test("ConnectorFrameworkService bind throws for prod with non-verified connector
   );
 });
 
-test("ConnectorFrameworkService bind allows prod with verified connector", () => {
+test("ConnectorFrameworkService bind allows prod with verified connector [connector-framework-service]", () => {
   const service = new ConnectorFrameworkService();
   const manifest: ConnectorManifest = {
     connectorId: "test-connector",
@@ -68,7 +68,7 @@ test("ConnectorFrameworkService bind allows prod with verified connector", () =>
   assert.equal(binding.environment, "prod");
 });
 
-test("ConnectorFrameworkService bind allows prod with enabled connector", () => {
+test("ConnectorFrameworkService bind allows prod with enabled connector [connector-framework-service]", () => {
   const service = new ConnectorFrameworkService();
   const manifest: ConnectorManifest = {
     connectorId: "test-connector",
@@ -82,7 +82,7 @@ test("ConnectorFrameworkService bind allows prod with enabled connector", () => 
   assert.equal(binding.environment, "prod");
 });
 
-test("ConnectorFrameworkService records health reports", () => {
+test("ConnectorFrameworkService records health reports [connector-framework-service]", () => {
   const service = new ConnectorFrameworkService();
   const manifest: ConnectorManifest = {
     connectorId: "test-connector",
@@ -104,7 +104,7 @@ test("ConnectorFrameworkService records health reports", () => {
   assert.equal(recorded.status, "healthy");
 });
 
-test("ConnectorFrameworkService execute returns success for healthy connector", async () => {
+test("ConnectorFrameworkService execute returns success for healthy connector [connector-framework-service]", async () => {
   const service = new ConnectorFrameworkService();
   const manifest: ConnectorManifest = {
     connectorId: "test-connector",
@@ -129,7 +129,7 @@ test("ConnectorFrameworkService execute returns success for healthy connector", 
   assert.equal(result.status, "succeeded");
 });
 
-test("ConnectorFrameworkService execute returns failed for unsupported event", async () => {
+test("ConnectorFrameworkService execute returns failed for unsupported event [connector-framework-service]", async () => {
   const service = new ConnectorFrameworkService();
   const manifest: ConnectorManifest = {
     connectorId: "test-connector",
@@ -155,7 +155,7 @@ test("ConnectorFrameworkService execute returns failed for unsupported event", a
   assert.equal(result.status, "failed");
 });
 
-test("ConnectorFrameworkService execute returns failed for unhealthy connector", async () => {
+test("ConnectorFrameworkService execute returns failed for unhealthy connector [connector-framework-service]", async () => {
   const service = new ConnectorFrameworkService();
   const manifest: ConnectorManifest = {
     connectorId: "test-connector",
@@ -187,7 +187,7 @@ test("ConnectorFrameworkService execute returns failed for unhealthy connector",
   assert.equal(result.status, "failed");
 });
 
-test("ConnectorFrameworkService execute returns deferred for degraded connector", async () => {
+test("ConnectorFrameworkService execute returns deferred for degraded connector [connector-framework-service]", async () => {
   const service = new ConnectorFrameworkService();
   const manifest: ConnectorManifest = {
     connectorId: "test-connector",
@@ -219,7 +219,7 @@ test("ConnectorFrameworkService execute returns deferred for degraded connector"
   assert.equal(result.status, "deferred");
 });
 
-test("ConnectorFrameworkService execute throws for prod with non-verified connector", async () => {
+test("ConnectorFrameworkService execute throws for prod with non-verified connector [connector-framework-service]", async () => {
   const service = new ConnectorFrameworkService();
   const manifest: ConnectorManifest = {
     connectorId: "test-connector",
@@ -245,7 +245,7 @@ test("ConnectorFrameworkService execute throws for prod with non-verified connec
   );
 });
 
-test("ConnectorFrameworkService execute fails closed when policyRef or secret bindings are missing", async () => {
+test("ConnectorFrameworkService execute fails closed when policyRef or secret bindings are missing [connector-framework-service]", async () => {
   const service = new ConnectorFrameworkService();
   service.register({
     connectorId: "test-connector",
@@ -280,7 +280,7 @@ test("ConnectorFrameworkService execute fails closed when policyRef or secret bi
   assert.equal(withoutSecret.status, "failed");
 });
 
-test("ConnectorFrameworkService execute throws for unknown connector", async () => {
+test("ConnectorFrameworkService execute throws for unknown connector [connector-framework-service]", async () => {
   const service = new ConnectorFrameworkService();
 
   await assert.rejects(
@@ -293,7 +293,7 @@ test("ConnectorFrameworkService execute throws for unknown connector", async () 
   );
 });
 
-test("ConnectorFrameworkService listEnabled returns enabled connectors", () => {
+test("ConnectorFrameworkService listEnabled returns enabled connectors [connector-framework-service]", () => {
   const service = new ConnectorFrameworkService();
   service.register({
     connectorId: "enabled-connector",
@@ -319,7 +319,7 @@ test("ConnectorFrameworkService listEnabled returns enabled connectors", () => {
   assert.equal(enabled[0]!.connectorId, "enabled-connector");
 });
 
-test("ConnectorFrameworkService getManifest returns registered manifest", () => {
+test("ConnectorFrameworkService getManifest returns registered manifest [connector-framework-service]", () => {
   const service = new ConnectorFrameworkService();
   const manifest: ConnectorManifest = {
     connectorId: "test-connector",
@@ -334,14 +334,14 @@ test("ConnectorFrameworkService getManifest returns registered manifest", () => 
   assert.equal(found!.connectorId, "test-connector");
 });
 
-test("ConnectorFrameworkService getManifest returns null for unknown connector", () => {
+test("ConnectorFrameworkService getManifest returns null for unknown connector [connector-framework-service]", () => {
   const service = new ConnectorFrameworkService();
 
   const found = service.getManifest("unknown-connector");
   assert.equal(found, null);
 });
 
-test("ConnectorFrameworkService listBindings filters by connectorId", () => {
+test("ConnectorFrameworkService listBindings filters by connectorId [connector-framework-service]", () => {
   const service = new ConnectorFrameworkService();
   const manifest: ConnectorManifest = {
     connectorId: "test-connector",
@@ -364,7 +364,7 @@ test("ConnectorFrameworkService listBindings filters by connectorId", () => {
   assert.ok(bindings.every((b) => b.connectorId === "test-connector"));
 });
 
-test("ConnectorFrameworkService listBindings filters by tenantId", () => {
+test("ConnectorFrameworkService listBindings filters by tenantId [connector-framework-service]", () => {
   const service = new ConnectorFrameworkService();
   const manifest: ConnectorManifest = {
     connectorId: "test-connector",
@@ -382,7 +382,7 @@ test("ConnectorFrameworkService listBindings filters by tenantId", () => {
   assert.equal(bindings[0]!.tenantId, "tenant-1");
 });
 
-test("ConnectorFrameworkService listBindings filters by environment", () => {
+test("ConnectorFrameworkService listBindings filters by environment [connector-framework-service]", () => {
   const service = new ConnectorFrameworkService();
   const manifest: ConnectorManifest = {
     connectorId: "test-connector",
@@ -404,7 +404,7 @@ test("ConnectorFrameworkService listBindings filters by environment", () => {
   assert.equal(prodBindings[0]!.environment, "prod");
 });
 
-test("ConnectorFrameworkService bind throws for unknown connector", () => {
+test("ConnectorFrameworkService bind throws for unknown connector [connector-framework-service]", () => {
   const service = new ConnectorFrameworkService();
 
   assert.throws(
@@ -413,7 +413,7 @@ test("ConnectorFrameworkService bind throws for unknown connector", () => {
   );
 });
 
-test("ConnectorFrameworkService recordHealth throws for unknown connector", () => {
+test("ConnectorFrameworkService recordHealth throws for unknown connector [connector-framework-service]", () => {
   const service = new ConnectorFrameworkService();
 
   assert.throws(
@@ -428,7 +428,7 @@ test("ConnectorFrameworkService recordHealth throws for unknown connector", () =
   );
 });
 
-test("ConnectorFrameworkService bind evicts bindings older than maxBindingAgeMs", () => {
+test("ConnectorFrameworkService bind evicts bindings older than maxBindingAgeMs [connector-framework-service]", () => {
   // Use a 7-day max age for the test
   const service = new ConnectorFrameworkService(null, 7 * 24 * 60 * 60 * 1000, 100);
   const manifest: ConnectorManifest = {
@@ -452,7 +452,7 @@ test("ConnectorFrameworkService bind evicts bindings older than maxBindingAgeMs"
   assert.equal(bindings[0]!.tenantId, "tenant-new");
 });
 
-test("ConnectorFrameworkService bind respects maxBindingAgeMs on every bind call", () => {
+test("ConnectorFrameworkService bind respects maxBindingAgeMs on every bind call [connector-framework-service]", () => {
   // 7-day max age
   const service = new ConnectorFrameworkService(null, 7 * 24 * 60 * 60 * 1000, 100);
   const manifest: ConnectorManifest = {
@@ -483,7 +483,7 @@ test("ConnectorFrameworkService bind respects maxBindingAgeMs on every bind call
   assert.ok(!tenantIds.includes("tenant-old"));
 });
 
-test("ConnectorFrameworkService health eviction respects healthRetentionCount", () => {
+test("ConnectorFrameworkService health eviction respects healthRetentionCount [connector-framework-service]", () => {
   const service = new ConnectorFrameworkService(null, 30 * 24 * 60 * 60 * 1000, 5);
   const manifest: ConnectorManifest = {
     connectorId: "test-connector",
@@ -508,7 +508,7 @@ test("ConnectorFrameworkService health eviction respects healthRetentionCount", 
   assert.equal(reports.length, 5);
 });
 
-test("ConnectorFrameworkService loadBindings applies eviction to persisted data", async () => {
+test("ConnectorFrameworkService loadBindings applies eviction to persisted data [connector-framework-service]", async () => {
   const { mkdirSync, rmSync } = await import("node:fs");
   const path = `/tmp/connector-framework-test-${Date.now()}`;
   mkdirSync(path, { recursive: true });

@@ -69,14 +69,14 @@ function createRecoveryRecord(overrides: Record<string, unknown> = {}) {
   };
 }
 
-test("RuntimeRecoveryReplayService can be instantiated", () => {
+test("RuntimeRecoveryReplayService can be instantiated [runtime-recovery-replay-service-root]", () => {
   const store = createMockStore();
   const service = new RuntimeRecoveryReplayService(store);
 
   assert.ok(service != null);
 });
 
-test("RuntimeRecoveryReplayService.buildTaskReplayReport throws when task not found", () => {
+test("RuntimeRecoveryReplayService.buildTaskReplayReport throws when task not found [runtime-recovery-replay-service-root]", () => {
   const store = createMockStore({ tasks: [] });
   const service = new RuntimeRecoveryReplayService(store);
 
@@ -86,7 +86,7 @@ test("RuntimeRecoveryReplayService.buildTaskReplayReport throws when task not fo
   );
 });
 
-test("RuntimeRecoveryReplayService.buildExecutionReplayReport throws when execution not found", () => {
+test("RuntimeRecoveryReplayService.buildExecutionReplayReport throws when execution not found [runtime-recovery-replay-service-root]", () => {
   const store = createMockStore({
     tasks: [{ id: "task-1", divisionId: null, status: "pending" }],
   });
@@ -98,7 +98,7 @@ test("RuntimeRecoveryReplayService.buildExecutionReplayReport throws when execut
   );
 });
 
-test("RecoveryReplayExecutionOutcome type accepts all valid values", () => {
+test("RecoveryReplayExecutionOutcome type accepts all valid values [runtime-recovery-replay-service-root]", () => {
   const outcomes: RecoveryReplayExecutionOutcome[] = [
     "active",
     "repair_pending",
@@ -111,7 +111,7 @@ test("RecoveryReplayExecutionOutcome type accepts all valid values", () => {
   assert.equal(outcomes.length, 6);
 });
 
-test("RecoveryReplayTaskOutcome type accepts all valid values", () => {
+test("RecoveryReplayTaskOutcome type accepts all valid values [runtime-recovery-replay-service-root]", () => {
   const outcomes: RecoveryReplayTaskOutcome[] = [
     "active",
     "repair_pending",
@@ -125,7 +125,7 @@ test("RecoveryReplayTaskOutcome type accepts all valid values", () => {
   assert.equal(outcomes.length, 7);
 });
 
-test("RecoveryReplayDecision has correct structure", () => {
+test("RecoveryReplayDecision has correct structure [runtime-recovery-replay-service-root]", () => {
   const decision: RecoveryReplayDecision = {
     eventId: "evt-1",
     decisionId: "dec-1",
@@ -143,7 +143,7 @@ test("RecoveryReplayDecision has correct structure", () => {
   assert.ok("decidedBy" in decision);
 });
 
-test("RecoveryReplayRepair has correct structure", () => {
+test("RecoveryReplayRepair has correct structure [runtime-recovery-replay-service-root]", () => {
   const repair: RecoveryReplayRepair = {
     eventId: "evt-1",
     createdAt: "2025-01-01T00:00:00.000Z",
@@ -159,7 +159,7 @@ test("RecoveryReplayRepair has correct structure", () => {
   assert.ok("detail" in repair);
 });
 
-test("RecoveryReplayTimelineEvent has correct structure", () => {
+test("RecoveryReplayTimelineEvent has correct structure [runtime-recovery-replay-service-root]", () => {
   const event: RecoveryReplayTimelineEvent = {
     eventId: "evt-1",
     eventType: "recovery:repair_applied",
@@ -189,7 +189,7 @@ test("RecoveryReplayTimelineEvent has correct structure", () => {
   assert.ok("deadLetterId" in event);
 });
 
-test("RuntimeRecoveryReplayService.buildTaskReplayReport returns report", () => {
+test("RuntimeRecoveryReplayService.buildTaskReplayReport returns report [runtime-recovery-replay-service-root]", () => {
   const store = createMockStore({
     tasks: [{ id: "task-1", divisionId: "division-1", status: "in_progress" }],
     executions: [{ id: "exec-1", taskId: "task-1", traceId: "trace-1", attempt: 2, status: "executing", lastErrorCode: "E1" }],
@@ -228,7 +228,7 @@ test("RuntimeRecoveryReplayService.buildTaskReplayReport returns report", () => 
   assert.equal(report.executions.length, 1);
 });
 
-test("RuntimeRecoveryReplayService.buildExecutionReplayReport returns report", () => {
+test("RuntimeRecoveryReplayService.buildExecutionReplayReport returns report [runtime-recovery-replay-service-root]", () => {
   const store = createMockStore({
     tasks: [{ id: "task-1", divisionId: "division-1", status: "in_progress" }],
     executions: [{ id: "exec-1", taskId: "task-1", traceId: "trace-1", attempt: 2, status: "failed", lastErrorCode: "E1" }],
@@ -267,7 +267,7 @@ test("RuntimeRecoveryReplayService.buildExecutionReplayReport returns report", (
   assert.equal(report.finalOutcome, "dead_lettered");
 });
 
-test("RuntimeRecoveryReplayService identifies active execution and counts candidates", () => {
+test("RuntimeRecoveryReplayService identifies active execution and counts candidates [runtime-recovery-replay-service-root]", () => {
   const store = createMockStore({
     tasks: [{ id: "task-1", divisionId: "division-1", status: "in_progress" }],
     executions: [
@@ -285,7 +285,7 @@ test("RuntimeRecoveryReplayService identifies active execution and counts candid
   assert.equal(report.executions.length, 2);
 });
 
-test("RuntimeRecoveryReplayService counts recovery events and repairs", () => {
+test("RuntimeRecoveryReplayService counts recovery events and repairs [runtime-recovery-replay-service-root]", () => {
   const store = createMockStore({
     tasks: [{ id: "task-1", divisionId: "division-1", status: "in_progress" }],
     executions: [{ id: "exec-1", taskId: "task-1", traceId: "trace-1", attempt: 2, status: "failed", lastErrorCode: "E1" }],
@@ -311,7 +311,7 @@ test("RuntimeRecoveryReplayService counts recovery events and repairs", () => {
   assert.equal(report.repairs[0]!.repairAction, "requeue_execution");
 });
 
-test("RuntimeRecoveryReplayService handles task with multiple executions and mixed outcomes", () => {
+test("RuntimeRecoveryReplayService handles task with multiple executions and mixed outcomes [runtime-recovery-replay-service-root]", () => {
   const store = createMockStore({
     tasks: [{ id: "task-1", divisionId: "division-1", status: "in_progress" }],
     executions: [

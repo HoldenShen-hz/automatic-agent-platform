@@ -149,7 +149,7 @@ function createMockAsyncDb() {
 // HotUpgradeServiceAsync tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("HotUpgradeServiceAsync registerVersionCompatibility stores compat", async () => {
+test("HotUpgradeServiceAsync registerVersionCompatibility stores compat [hot-upgrade-service-async]", async () => {
   const repo = createMockRepo();
   const db = createMockAsyncDb();
   const service = new HotUpgradeServiceAsync(db, repo);
@@ -170,7 +170,7 @@ test("HotUpgradeServiceAsync registerVersionCompatibility stores compat", async 
   assert.equal(result!.compatibilityLevel, "full");
 });
 
-test("HotUpgradeServiceAsync getVersionCompatibility returns null for non-existent", async () => {
+test("HotUpgradeServiceAsync getVersionCompatibility returns null for non-existent [hot-upgrade-service-async]", async () => {
   const repo = createMockRepo();
   const db = createMockAsyncDb();
   const service = new HotUpgradeServiceAsync(db, repo);
@@ -180,7 +180,7 @@ test("HotUpgradeServiceAsync getVersionCompatibility returns null for non-existe
   assert.equal(result, null);
 });
 
-test("HotUpgradeServiceAsync isUpgradeSafe returns incompatible when no record", async () => {
+test("HotUpgradeServiceAsync isUpgradeSafe returns incompatible when no record [hot-upgrade-service-async]", async () => {
   const repo = createMockRepo();
   const db = createMockAsyncDb();
   const service = new HotUpgradeServiceAsync(db, repo);
@@ -192,7 +192,7 @@ test("HotUpgradeServiceAsync isUpgradeSafe returns incompatible when no record",
   assert.equal(result.reasonCode, "no_compatibility_record");
 });
 
-test("HotUpgradeServiceAsync isUpgradeSafe returns safe for full compat", async () => {
+test("HotUpgradeServiceAsync isUpgradeSafe returns safe for full compat [hot-upgrade-service-async]", async () => {
   const repo = createMockRepo();
   const db = createMockAsyncDb();
   const service = new HotUpgradeServiceAsync(db, repo);
@@ -213,7 +213,7 @@ test("HotUpgradeServiceAsync isUpgradeSafe returns safe for full compat", async 
   assert.equal(result.supportsRollback, true);
 });
 
-test("HotUpgradeServiceAsync isUpgradeSafe returns safe for n_minus_1 compat", async () => {
+test("HotUpgradeServiceAsync isUpgradeSafe returns safe for n_minus_1 compat [hot-upgrade-service-async]", async () => {
   const repo = createMockRepo();
   const db = createMockAsyncDb();
   const service = new HotUpgradeServiceAsync(db, repo);
@@ -233,7 +233,7 @@ test("HotUpgradeServiceAsync isUpgradeSafe returns safe for n_minus_1 compat", a
   assert.equal(result.requiresMigration, true);
 });
 
-test("HotUpgradeServiceAsync isUpgradeSafe returns unsafe for incompatible", async () => {
+test("HotUpgradeServiceAsync isUpgradeSafe returns unsafe for incompatible [hot-upgrade-service-async]", async () => {
   const repo = createMockRepo();
   const db = createMockAsyncDb();
   const service = new HotUpgradeServiceAsync(db, repo);
@@ -252,7 +252,7 @@ test("HotUpgradeServiceAsync isUpgradeSafe returns unsafe for incompatible", asy
   assert.equal(result.compatibilityLevel, "incompatible");
 });
 
-test("HotUpgradeServiceAsync createUpgradePlan creates plan with batches", async () => {
+test("HotUpgradeServiceAsync createUpgradePlan creates plan with batches [hot-upgrade-service-async]", async () => {
   const repo = createMockRepo();
   const db = createMockAsyncDb();
   const service = new HotUpgradeServiceAsync(db, repo);
@@ -272,7 +272,7 @@ test("HotUpgradeServiceAsync createUpgradePlan creates plan with batches", async
   assert.equal(plan.currentPhase, "canary");
 });
 
-test("HotUpgradeServiceAsync createUpgradePlan with custom policy", async () => {
+test("HotUpgradeServiceAsync createUpgradePlan with custom policy [hot-upgrade-service-async]", async () => {
   const repo = createMockRepo();
   const db = createMockAsyncDb();
   const service = new HotUpgradeServiceAsync(db, repo);
@@ -295,7 +295,7 @@ test("HotUpgradeServiceAsync createUpgradePlan with custom policy", async () => 
   assert.equal(plan.policy.canaryPercent, 50);
 });
 
-test("HotUpgradeServiceAsync getUpgradePlan retrieves plan", async () => {
+test("HotUpgradeServiceAsync getUpgradePlan retrieves plan [hot-upgrade-service-async]", async () => {
   const repo = createMockRepo();
   const db = createMockAsyncDb();
   const service = new HotUpgradeServiceAsync(db, repo);
@@ -311,7 +311,7 @@ test("HotUpgradeServiceAsync getUpgradePlan retrieves plan", async () => {
   assert.equal(retrieved!.planId, created.planId);
 });
 
-test("HotUpgradeServiceAsync getUpgradePlan returns null for non-existent", async () => {
+test("HotUpgradeServiceAsync getUpgradePlan returns null for non-existent [hot-upgrade-service-async]", async () => {
   const repo = createMockRepo();
   const db = createMockAsyncDb();
   const service = new HotUpgradeServiceAsync(db, repo);
@@ -321,7 +321,7 @@ test("HotUpgradeServiceAsync getUpgradePlan returns null for non-existent", asyn
   assert.equal(result, null);
 });
 
-test("HotUpgradeServiceAsync getUpgradePlansByStatus retrieves by status", async () => {
+test("HotUpgradeServiceAsync getUpgradePlansByStatus retrieves by status [hot-upgrade-service-async]", async () => {
   const repo = createMockRepo();
   const db = createMockAsyncDb();
   const service = new HotUpgradeServiceAsync(db, repo);
@@ -338,7 +338,7 @@ test("HotUpgradeServiceAsync getUpgradePlansByStatus retrieves by status", async
   assert.equal(pendingPlans.length, 2);
 });
 
-test("HotUpgradeServiceAsync startUpgrade starts upgrade", async () => {
+test("HotUpgradeServiceAsync startUpgrade starts upgrade [hot-upgrade-service-async]", async () => {
   const repo = createMockRepo();
   const db = createMockAsyncDb();
   const service = new HotUpgradeServiceAsync(db, repo);
@@ -355,7 +355,7 @@ test("HotUpgradeServiceAsync startUpgrade starts upgrade", async () => {
   assert.ok(result.firstBatch !== null);
 });
 
-test("HotUpgradeServiceAsync startUpgrade fails for non-existent plan", async () => {
+test("HotUpgradeServiceAsync startUpgrade fails for non-existent plan [hot-upgrade-service-async]", async () => {
   const repo = createMockRepo();
   const db = createMockAsyncDb();
   const service = new HotUpgradeServiceAsync(db, repo);
@@ -366,7 +366,7 @@ test("HotUpgradeServiceAsync startUpgrade fails for non-existent plan", async ()
   assert.equal(result.reasonCode, "plan_not_found");
 });
 
-test("HotUpgradeServiceAsync startUpgrade fails for non-pending status", async () => {
+test("HotUpgradeServiceAsync startUpgrade fails for non-pending status [hot-upgrade-service-async]", async () => {
   const repo = createMockRepo();
   const db = createMockAsyncDb();
   const service = new HotUpgradeServiceAsync(db, repo);
@@ -383,7 +383,7 @@ test("HotUpgradeServiceAsync startUpgrade fails for non-pending status", async (
   assert.equal(secondStart.reasonCode, "upgrade_not_pending");
 });
 
-test("HotUpgradeServiceAsync startBatch starts pending batch", async () => {
+test("HotUpgradeServiceAsync startBatch starts pending batch [hot-upgrade-service-async]", async () => {
   const repo = createMockRepo();
   const db = createMockAsyncDb();
   const service = new HotUpgradeServiceAsync(db, repo);
@@ -400,7 +400,7 @@ test("HotUpgradeServiceAsync startBatch starts pending batch", async () => {
   assert.equal(result.batch!.status, "in_progress");
 });
 
-test("HotUpgradeServiceAsync startBatch fails for non-existent batch", async () => {
+test("HotUpgradeServiceAsync startBatch fails for non-existent batch [hot-upgrade-service-async]", async () => {
   const repo = createMockRepo();
   const db = createMockAsyncDb();
   const service = new HotUpgradeServiceAsync(db, repo);
@@ -411,7 +411,7 @@ test("HotUpgradeServiceAsync startBatch fails for non-existent batch", async () 
   assert.equal(result.reasonCode, "batch_not_found");
 });
 
-test("HotUpgradeServiceAsync startBatch fails for non-pending batch", async () => {
+test("HotUpgradeServiceAsync startBatch fails for non-pending batch [hot-upgrade-service-async]", async () => {
   const repo = createMockRepo();
   const db = createMockAsyncDb();
   const service = new HotUpgradeServiceAsync(db, repo);
@@ -429,7 +429,7 @@ test("HotUpgradeServiceAsync startBatch fails for non-pending batch", async () =
   assert.equal(secondStart.reasonCode, "batch_not_pending");
 });
 
-test("HotUpgradeServiceAsync completeBatch completes with passing health checks", async () => {
+test("HotUpgradeServiceAsync completeBatch completes with passing health checks [hot-upgrade-service-async]", async () => {
   const repo = createMockRepo();
   const db = createMockAsyncDb();
   const service = new HotUpgradeServiceAsync(db, repo);
@@ -460,7 +460,7 @@ test("HotUpgradeServiceAsync completeBatch completes with passing health checks"
   assert.equal(result.batch!.status, "completed");
 });
 
-test("HotUpgradeServiceAsync completeBatch triggers rollback on failure", async () => {
+test("HotUpgradeServiceAsync completeBatch triggers rollback on failure [hot-upgrade-service-async]", async () => {
   const repo = createMockRepo();
   const db = createMockAsyncDb();
   const service = new HotUpgradeServiceAsync(db, repo);
@@ -491,7 +491,7 @@ test("HotUpgradeServiceAsync completeBatch triggers rollback on failure", async 
   assert.equal(result.batch!.status, "failed");
 });
 
-test("HotUpgradeServiceAsync completeBatch with rollback disabled does not trigger rollback", async () => {
+test("HotUpgradeServiceAsync completeBatch with rollback disabled does not trigger rollback [hot-upgrade-service-async]", async () => {
   const repo = createMockRepo();
   const db = createMockAsyncDb();
   const service = new HotUpgradeServiceAsync(db, repo);
@@ -520,7 +520,7 @@ test("HotUpgradeServiceAsync completeBatch with rollback disabled does not trigg
   assert.equal(result.triggerRollback, false);
 });
 
-test("HotUpgradeServiceAsync triggerRollback creates rollback trigger", async () => {
+test("HotUpgradeServiceAsync triggerRollback creates rollback trigger [hot-upgrade-service-async]", async () => {
   const repo = createMockRepo();
   const db = createMockAsyncDb();
   const service = new HotUpgradeServiceAsync(db, repo);
@@ -539,7 +539,7 @@ test("HotUpgradeServiceAsync triggerRollback creates rollback trigger", async ()
   assert.equal(result.triggerRecord!.reasonCode, "manual");
 });
 
-test("HotUpgradeServiceAsync recordAudit creates audit entry", async () => {
+test("HotUpgradeServiceAsync recordAudit creates audit entry [hot-upgrade-service-async]", async () => {
   const repo = createMockRepo();
   const db = createMockAsyncDb();
   const service = new HotUpgradeServiceAsync(db, repo);
@@ -553,7 +553,7 @@ test("HotUpgradeServiceAsync recordAudit creates audit entry", async () => {
   assert.equal(auditLog[0]!.actor, "system");
 });
 
-test("HotUpgradeServiceAsync getUpgradeAuditLog returns audit entries", async () => {
+test("HotUpgradeServiceAsync getUpgradeAuditLog returns audit entries [hot-upgrade-service-async]", async () => {
   const repo = createMockRepo();
   const db = createMockAsyncDb();
   const service = new HotUpgradeServiceAsync(db, repo);
@@ -566,7 +566,7 @@ test("HotUpgradeServiceAsync getUpgradeAuditLog returns audit entries", async ()
   assert.equal(log.length, 2);
 });
 
-test("HotUpgradeServiceAsync default policy values", () => {
+test("HotUpgradeServiceAsync default policy values [hot-upgrade-service-async]", () => {
   const repo = createMockRepo();
   const db = createMockAsyncDb();
   const service = new HotUpgradeServiceAsync(db, repo);
@@ -575,7 +575,7 @@ test("HotUpgradeServiceAsync default policy values", () => {
   assert.ok(service !== null);
 });
 
-test("HotUpgradeServiceAsync custom options sets default policy", () => {
+test("HotUpgradeServiceAsync custom options sets default policy [hot-upgrade-service-async]", () => {
   const repo = createMockRepo();
   const db = createMockAsyncDb();
 
@@ -589,7 +589,7 @@ test("HotUpgradeServiceAsync custom options sets default policy", () => {
   assert.ok(service !== null);
 });
 
-test("HotUpgradeServiceAsync computeBatches with single target", async () => {
+test("HotUpgradeServiceAsync computeBatches with single target [hot-upgrade-service-async]", async () => {
   const repo = createMockRepo();
   const db = createMockAsyncDb();
   const service = new HotUpgradeServiceAsync(db, repo);
@@ -605,7 +605,7 @@ test("HotUpgradeServiceAsync computeBatches with single target", async () => {
   assert.equal(plan.batches[0]!.batchNumber, 1);
 });
 
-test("HotUpgradeServiceAsync health gates are set from policy", async () => {
+test("HotUpgradeServiceAsync health gates are set from policy [hot-upgrade-service-async]", async () => {
   const repo = createMockRepo();
   const db = createMockAsyncDb();
   const service = new HotUpgradeServiceAsync(db, repo);

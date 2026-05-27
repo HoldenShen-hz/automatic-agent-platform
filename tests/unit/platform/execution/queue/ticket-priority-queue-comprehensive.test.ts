@@ -9,17 +9,17 @@ import test from "node:test";
 
 import { TicketPriorityQueue, type Ticket, type EnqueueTicketInput } from "../../../../../src/platform/five-plane-execution/queue/ticket-priority-queue.js";
 
-test("TicketPriorityQueue can be instantiated", () => {
+test("TicketPriorityQueue can be instantiated [ticket-priority-queue-comprehensive]", () => {
   const queue = new TicketPriorityQueue();
   assert.ok(queue instanceof TicketPriorityQueue);
 });
 
-test("TicketPriorityQueue size starts at zero", () => {
+test("TicketPriorityQueue size starts at zero [ticket-priority-queue-comprehensive]", () => {
   const queue = new TicketPriorityQueue();
   assert.equal(queue.size, 0);
 });
 
-test("TicketPriorityQueue enqueue increments size", () => {
+test("TicketPriorityQueue enqueue increments size [ticket-priority-queue-comprehensive]", () => {
   const queue = new TicketPriorityQueue();
   queue.enqueue({ payload: "test" });
   assert.equal(queue.size, 1);
@@ -27,38 +27,38 @@ test("TicketPriorityQueue enqueue increments size", () => {
   assert.equal(queue.size, 2);
 });
 
-test("TicketPriorityQueue enqueue with default priority of 0", () => {
+test("TicketPriorityQueue enqueue with default priority of 0 [ticket-priority-queue-comprehensive]", () => {
   const queue = new TicketPriorityQueue();
   const ticket = queue.enqueue({ payload: "test" });
   assert.equal(ticket.priority, 0);
 });
 
-test("TicketPriorityQueue enqueue with custom priority", () => {
+test("TicketPriorityQueue enqueue with custom priority [ticket-priority-queue-comprehensive]", () => {
   const queue = new TicketPriorityQueue();
   const ticket = queue.enqueue({ payload: "test", priority: 5 });
   assert.equal(ticket.priority, 5);
 });
 
-test("TicketPriorityQueue enqueue with negative priority", () => {
+test("TicketPriorityQueue enqueue with negative priority [ticket-priority-queue-comprehensive]", () => {
   const queue = new TicketPriorityQueue();
   const ticket = queue.enqueue({ payload: "test", priority: -1 });
   assert.equal(ticket.priority, -1);
 });
 
-test("TicketPriorityQueue enqueue with null dispatchAfter", () => {
+test("TicketPriorityQueue enqueue with null dispatchAfter [ticket-priority-queue-comprehensive]", () => {
   const queue = new TicketPriorityQueue();
   const ticket = queue.enqueue({ payload: "test", dispatchAfter: null });
   assert.equal(ticket.dispatchAfter, null);
 });
 
-test("TicketPriorityQueue enqueue with future dispatchAfter", () => {
+test("TicketPriorityQueue enqueue with future dispatchAfter [ticket-priority-queue-comprehensive]", () => {
   const futureTime = "2099-12-31T23:59:59.999Z";
   const queue = new TicketPriorityQueue();
   const ticket = queue.enqueue({ payload: "test", dispatchAfter: futureTime });
   assert.equal(ticket.dispatchAfter, futureTime);
 });
 
-test("TicketPriorityQueue enqueue ticket has correct structure", () => {
+test("TicketPriorityQueue enqueue ticket has correct structure [ticket-priority-queue-comprehensive]", () => {
   const queue = new TicketPriorityQueue();
   const ticket = queue.enqueue({ payload: { data: "value" }, priority: 10 });
 
@@ -70,18 +70,18 @@ test("TicketPriorityQueue enqueue ticket has correct structure", () => {
   assert.ok(typeof ticket.createdAt === "string");
 });
 
-test("TicketPriorityQueue enqueue ticket id is prefixed with ticket-", () => {
+test("TicketPriorityQueue enqueue ticket id is prefixed with ticket- [ticket-priority-queue-comprehensive]", () => {
   const queue = new TicketPriorityQueue();
   const ticket = queue.enqueue({ payload: "test" });
   assert.ok(ticket.id.startsWith("ticket-"));
 });
 
-test("TicketPriorityQueue dequeue returns null when empty", () => {
+test("TicketPriorityQueue dequeue returns null when empty [ticket-priority-queue-comprehensive]", () => {
   const queue = new TicketPriorityQueue();
   assert.equal(queue.dequeue(), null);
 });
 
-test("TicketPriorityQueue dequeue removes and returns ticket", () => {
+test("TicketPriorityQueue dequeue removes and returns ticket [ticket-priority-queue-comprehensive]", () => {
   const queue = new TicketPriorityQueue();
   queue.enqueue({ payload: "test" });
   const result = queue.dequeue();
@@ -90,7 +90,7 @@ test("TicketPriorityQueue dequeue removes and returns ticket", () => {
   assert.equal(queue.size, 0);
 });
 
-test("TicketPriorityQueue dequeue returns highest priority ticket first", () => {
+test("TicketPriorityQueue dequeue returns highest priority ticket first [ticket-priority-queue-comprehensive]", () => {
   const queue = new TicketPriorityQueue();
 
   queue.enqueue({ payload: "low", priority: 1 });
@@ -102,7 +102,7 @@ test("TicketPriorityQueue dequeue returns highest priority ticket first", () => 
   assert.equal(first!.priority, 10);
 });
 
-test("TicketPriorityQueue dequeue returns FIFO for same priority", () => {
+test("TicketPriorityQueue dequeue returns FIFO for same priority [ticket-priority-queue-comprehensive]", () => {
   const queue = new TicketPriorityQueue();
 
   queue.enqueue({ payload: "first", priority: 5 });
@@ -115,7 +115,7 @@ test("TicketPriorityQueue dequeue returns FIFO for same priority", () => {
   assert.deepEqual(second!.payload, "second");
 });
 
-test("TicketPriorityQueue dequeue skips tickets with future dispatchAfter", () => {
+test("TicketPriorityQueue dequeue skips tickets with future dispatchAfter [ticket-priority-queue-comprehensive]", () => {
   const queue = new TicketPriorityQueue();
 
   const futureTime = "2099-01-01T00:00:00.000Z";
@@ -126,7 +126,7 @@ test("TicketPriorityQueue dequeue skips tickets with future dispatchAfter", () =
   assert.deepEqual(result!.payload, "now");
 });
 
-test("TicketPriorityQueue dequeue returns null when all tickets have future dispatchAfter", () => {
+test("TicketPriorityQueue dequeue returns null when all tickets have future dispatchAfter [ticket-priority-queue-comprehensive]", () => {
   const queue = new TicketPriorityQueue();
 
   const futureTime = "2099-01-01T00:00:00.000Z";
@@ -136,7 +136,7 @@ test("TicketPriorityQueue dequeue returns null when all tickets have future disp
   assert.equal(result, null);
 });
 
-test("TicketPriorityQueue dequeue respects priority regardless of dispatchAfter", () => {
+test("TicketPriorityQueue dequeue respects priority regardless of dispatchAfter [ticket-priority-queue-comprehensive]", () => {
   const queue = new TicketPriorityQueue();
 
   // High priority but in the future
@@ -150,12 +150,12 @@ test("TicketPriorityQueue dequeue respects priority regardless of dispatchAfter"
   assert.deepEqual(result!.payload, "low-now");
 });
 
-test("TicketPriorityQueue peek returns null when empty", () => {
+test("TicketPriorityQueue peek returns null when empty [ticket-priority-queue-comprehensive]", () => {
   const queue = new TicketPriorityQueue();
   assert.equal(queue.peek(), null);
 });
 
-test("TicketPriorityQueue peek does not remove ticket", () => {
+test("TicketPriorityQueue peek does not remove ticket [ticket-priority-queue-comprehensive]", () => {
   const queue = new TicketPriorityQueue();
   queue.enqueue({ payload: "test" });
   queue.peek();
@@ -163,7 +163,7 @@ test("TicketPriorityQueue peek does not remove ticket", () => {
   assert.equal(queue.size, 1);
 });
 
-test("TicketPriorityQueue peek returns highest priority ticket", () => {
+test("TicketPriorityQueue peek returns highest priority ticket [ticket-priority-queue-comprehensive]", () => {
   const queue = new TicketPriorityQueue();
 
   queue.enqueue({ payload: "low", priority: 1 });
@@ -173,7 +173,7 @@ test("TicketPriorityQueue peek returns highest priority ticket", () => {
   assert.deepEqual(peeked!.payload, "high");
 });
 
-test("TicketPriorityQueue clear removes all tickets", () => {
+test("TicketPriorityQueue clear removes all tickets [ticket-priority-queue-comprehensive]", () => {
   const queue = new TicketPriorityQueue();
 
   queue.enqueue({ payload: "test1" });
@@ -185,14 +185,14 @@ test("TicketPriorityQueue clear removes all tickets", () => {
   assert.equal(queue.size, 0);
 });
 
-test("TicketPriorityQueue clear makes dequeue return null", () => {
+test("TicketPriorityQueue clear makes dequeue return null [ticket-priority-queue-comprehensive]", () => {
   const queue = new TicketPriorityQueue();
   queue.enqueue({ payload: "test" });
   queue.clear();
   assert.equal(queue.dequeue(), null);
 });
 
-test("TicketPriorityQueue priority ordering descending", () => {
+test("TicketPriorityQueue priority ordering descending [ticket-priority-queue-comprehensive]", () => {
   const queue = new TicketPriorityQueue();
 
   queue.enqueue({ payload: "p1", priority: 1 });
@@ -210,7 +210,7 @@ test("TicketPriorityQueue priority ordering descending", () => {
   assert.deepEqual(results, [9, 7, 5, 3, 1]);
 });
 
-test("TicketPriorityQueue handles many tickets", () => {
+test("TicketPriorityQueue handles many tickets [ticket-priority-queue-comprehensive]", () => {
   const queue = new TicketPriorityQueue();
 
   for (let i = 0; i < 100; i++) {
@@ -226,7 +226,7 @@ test("TicketPriorityQueue handles many tickets", () => {
   assert.equal(count, 100);
 });
 
-test("TicketPriorityQueue empty after all dequeued", () => {
+test("TicketPriorityQueue empty after all dequeued [ticket-priority-queue-comprehensive]", () => {
   const queue = new TicketPriorityQueue();
 
   queue.enqueue({ payload: "test" });
@@ -236,7 +236,7 @@ test("TicketPriorityQueue empty after all dequeued", () => {
   assert.equal(queue.peek(), null);
 });
 
-test("TicketPriorityQueue Ticket interface accepts valid structure", () => {
+test("TicketPriorityQueue Ticket interface accepts valid structure [ticket-priority-queue-comprehensive]", () => {
   const ticket: Ticket = {
     id: "ticket-123",
     priority: 5,
@@ -250,7 +250,7 @@ test("TicketPriorityQueue Ticket interface accepts valid structure", () => {
   assert.deepEqual(ticket.payload, { key: "value" });
 });
 
-test("TicketPriorityQueue EnqueueTicketInput minimal structure", () => {
+test("TicketPriorityQueue EnqueueTicketInput minimal structure [ticket-priority-queue-comprehensive]", () => {
   const input: EnqueueTicketInput = {
     payload: "minimal",
   };
@@ -260,7 +260,7 @@ test("TicketPriorityQueue EnqueueTicketInput minimal structure", () => {
   assert.equal(input.dispatchAfter, undefined);
 });
 
-test("TicketPriorityQueue EnqueueTicketInput full structure", () => {
+test("TicketPriorityQueue EnqueueTicketInput full structure [ticket-priority-queue-comprehensive]", () => {
   const input: EnqueueTicketInput = {
     payload: { complex: { nested: true } },
     priority: 100,
@@ -272,7 +272,7 @@ test("TicketPriorityQueue EnqueueTicketInput full structure", () => {
   assert.equal(input.dispatchAfter, "2025-12-31T23:59:59.999Z");
 });
 
-test("TicketPriorityQueue payload can be any type", () => {
+test("TicketPriorityQueue payload can be any type [ticket-priority-queue-comprehensive]", () => {
   const queue = new TicketPriorityQueue();
 
   queue.enqueue({ payload: "string" });
@@ -285,7 +285,7 @@ test("TicketPriorityQueue payload can be any type", () => {
   assert.equal(queue.size, 6);
 });
 
-test("TicketPriorityQueue dispatchAfter with past date is treated as ready", () => {
+test("TicketPriorityQueue dispatchAfter with past date is treated as ready [ticket-priority-queue-comprehensive]", () => {
   const queue = new TicketPriorityQueue();
 
   const pastTime = "2020-01-01T00:00:00.000Z";
@@ -295,7 +295,7 @@ test("TicketPriorityQueue dispatchAfter with past date is treated as ready", () 
   assert.deepEqual(result!.payload, "past");
 });
 
-test("TicketPriorityQueue dispatchAfter with current time is ready", () => {
+test("TicketPriorityQueue dispatchAfter with current time is ready [ticket-priority-queue-comprehensive]", () => {
   const queue = new TicketPriorityQueue();
 
   const now = new Date().toISOString();

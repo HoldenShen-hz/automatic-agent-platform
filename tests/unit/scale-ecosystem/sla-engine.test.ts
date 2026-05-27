@@ -8,7 +8,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import * as slaEngine from "../../../src/scale-ecosystem/sla-engine/index.js";
 
-test("sla-engine barrel exports breach-detector", () => {
+test("sla-engine barrel exports breach-detector [sla-engine]", () => {
   const keys = Object.keys(slaEngine);
   assert.ok(
     keys.some(k => k.toLowerCase().includes("breach")),
@@ -16,7 +16,7 @@ test("sla-engine barrel exports breach-detector", () => {
   );
 });
 
-test("sla-engine barrel exports resource allocation functions", () => {
+test("sla-engine barrel exports resource allocation functions [sla-engine]", () => {
   const keys = Object.keys(slaEngine);
   assert.ok(
     keys.some(k => k.toLowerCase().includes("allocate") || k.toLowerCase().includes("reserved")),
@@ -24,7 +24,7 @@ test("sla-engine barrel exports resource allocation functions", () => {
   );
 });
 
-test("sla-engine barrel exports sla-operations-service", () => {
+test("sla-engine barrel exports sla-operations-service [sla-engine]", () => {
   const keys = Object.keys(slaEngine);
   assert.ok(
     keys.some(k => k.toLowerCase().includes("slaoperations") || k.toLowerCase().includes("operations")),
@@ -32,7 +32,7 @@ test("sla-engine barrel exports sla-operations-service", () => {
   );
 });
 
-test("sla-engine barrel exports tier-resolver", () => {
+test("sla-engine barrel exports tier-resolver [sla-engine]", () => {
   const keys = Object.keys(slaEngine);
   assert.ok(
     keys.some(k => k.toLowerCase().includes("tier")),
@@ -40,7 +40,7 @@ test("sla-engine barrel exports tier-resolver", () => {
   );
 });
 
-test("sla-engine barrel has multiple exports", () => {
+test("sla-engine barrel has multiple exports [sla-engine]", () => {
   const keys = Object.keys(slaEngine);
   assert.ok(keys.length >= 3, "should have multiple exports (breach, allocator, tier)");
 });

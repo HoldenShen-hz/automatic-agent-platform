@@ -46,7 +46,7 @@ function createEnvelope<TType extends DomainEventFeedbackType>(
   };
 }
 
-test("DomainEventFeedbackConsumer aggregates domain lifecycle signals by scope", () => {
+test("DomainEventFeedbackConsumer aggregates domain lifecycle signals by scope [domain-event-feedback-consumer]", () => {
   const consumer = new DomainEventFeedbackConsumer();
 
   consumer.consume(createEnvelope("domain:registered", {
@@ -80,7 +80,7 @@ test("DomainEventFeedbackConsumer aggregates domain lifecycle signals by scope",
   assert.ok(snapshot?.recentSignals.every((signal) => signal.category === "success"));
 });
 
-test("DomainEventFeedbackConsumer maps isolated plugin errors into failure feedback", () => {
+test("DomainEventFeedbackConsumer maps isolated plugin errors into failure feedback [domain-event-feedback-consumer]", () => {
   const consumer = new DomainEventFeedbackConsumer();
 
   const snapshot = consumer.consume(createEnvelope("plugin:error_isolated", {
@@ -106,7 +106,7 @@ test("DomainEventFeedbackConsumer maps isolated plugin errors into failure feedb
   assert.equal(snapshot?.recentSignals[0]?.severity, "critical");
 });
 
-test("DomainEventFeedbackConsumer aggregates multiple events into same scope", () => {
+test("DomainEventFeedbackConsumer aggregates multiple events into same scope [domain-event-feedback-consumer]", () => {
   const consumer = new DomainEventFeedbackConsumer();
 
   consumer.consume(createEnvelope("domain:registered", {
@@ -139,7 +139,7 @@ test("DomainEventFeedbackConsumer aggregates multiple events into same scope", (
   assert.ok(snapshot?.recentSignals.length >= 1);
 });
 
-test("DomainEventFeedbackConsumer translate plugin:spi_registered", () => {
+test("DomainEventFeedbackConsumer translate plugin:spi_registered [domain-event-feedback-consumer]", () => {
   const consumer = new DomainEventFeedbackConsumer();
   const snapshot = consumer.consume(createEnvelope("plugin:spi_registered", {
     pluginId: "plugin.coding.retriever",
@@ -160,7 +160,7 @@ test("DomainEventFeedbackConsumer translate plugin:spi_registered", () => {
   assert.equal(snapshot?.feedback.outcome, "completed");
 });
 
-test("DomainEventFeedbackConsumer translate plugin:activated", () => {
+test("DomainEventFeedbackConsumer translate plugin:activated [domain-event-feedback-consumer]", () => {
   const consumer = new DomainEventFeedbackConsumer();
   const snapshot = consumer.consume(createEnvelope("plugin:activated", {
     pluginId: "plugin.coding.generator",
@@ -179,7 +179,7 @@ test("DomainEventFeedbackConsumer translate plugin:activated", () => {
   assert.equal(snapshot?.recentSignals[0]?.category, "success");
 });
 
-test("DomainEventFeedbackConsumer translate knowledge:chunk_indexed", () => {
+test("DomainEventFeedbackConsumer translate knowledge:chunk_indexed [domain-event-feedback-consumer]", () => {
   const consumer = new DomainEventFeedbackConsumer();
   const snapshot = consumer.consume(createEnvelope("knowledge:chunk_indexed", {
     chunkId: "chunk_001",
@@ -199,7 +199,7 @@ test("DomainEventFeedbackConsumer translate knowledge:chunk_indexed", () => {
   assert.equal(snapshot?.recentSignals[0]?.category, "success");
 });
 
-test("DomainEventFeedbackConsumer getSnapshot returns correct snapshot", () => {
+test("DomainEventFeedbackConsumer getSnapshot returns correct snapshot [domain-event-feedback-consumer]", () => {
   const consumer = new DomainEventFeedbackConsumer();
   consumer.consume(createEnvelope("domain:registered", {
     domainId: "test_domain",
@@ -217,13 +217,13 @@ test("DomainEventFeedbackConsumer getSnapshot returns correct snapshot", () => {
   assert.equal(snapshot?.scopeId, "domain:test_domain");
 });
 
-test("DomainEventFeedbackConsumer getSnapshot returns null for unknown scope", () => {
+test("DomainEventFeedbackConsumer getSnapshot returns null for unknown scope [domain-event-feedback-consumer]", () => {
   const consumer = new DomainEventFeedbackConsumer();
   const snapshot = consumer.getSnapshot("domain:unknown");
   assert.equal(snapshot, null);
 });
 
-test("DomainEventFeedbackConsumer listSnapshots returns all snapshots", () => {
+test("DomainEventFeedbackConsumer listSnapshots returns all snapshots [domain-event-feedback-consumer]", () => {
   const consumer = new DomainEventFeedbackConsumer();
   consumer.consume(createEnvelope("domain:registered", {
     domainId: "domain_a",
@@ -251,7 +251,7 @@ test("DomainEventFeedbackConsumer listSnapshots returns all snapshots", () => {
   assert.equal(snapshots.length, 2);
 });
 
-test("DomainEventFeedbackConsumer respects maxSignalsPerScope limit", () => {
+test("DomainEventFeedbackConsumer respects maxSignalsPerScope limit [domain-event-feedback-consumer]", () => {
   const consumer = new DomainEventFeedbackConsumer({ maxSignalsPerScope: 3 });
 
   for (let i = 0; i < 5; i++) {
@@ -273,7 +273,7 @@ test("DomainEventFeedbackConsumer respects maxSignalsPerScope limit", () => {
   assert.ok(snapshot.recentSignals.length <= 3);
 });
 
-test("DomainEventFeedbackConsumer returns null for unhandled event type", () => {
+test("DomainEventFeedbackConsumer returns null for unhandled event type [domain-event-feedback-consumer]", () => {
   const consumer = new DomainEventFeedbackConsumer();
   const snapshot = consumer.consume({
     event: {
@@ -292,7 +292,7 @@ test("DomainEventFeedbackConsumer returns null for unhandled event type", () => 
   assert.equal(snapshot, null);
 });
 
-test("DomainEventFeedbackConsumer plugin:error_isolated with timeout detection", () => {
+test("DomainEventFeedbackConsumer plugin:error_isolated with timeout detection [domain-event-feedback-consumer]", () => {
   const consumer = new DomainEventFeedbackConsumer();
   const snapshot = consumer.consume(createEnvelope("plugin:error_isolated", {
     pluginId: "plugin.coding.retriever",

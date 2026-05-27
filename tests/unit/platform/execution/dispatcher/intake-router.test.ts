@@ -43,56 +43,56 @@ function createRouteInput(overrides: Partial<IntakeRouteInput> = {}): IntakeRout
 // Intake routing - basic intent classification
 // ---------------------------------------------------------------------------
 
-test("IntakeRouter.route classifies create intent from implement keyword", () => {
+test("IntakeRouter.route classifies create intent from implement keyword [intake-router]", () => {
   const router = new IntakeRouter();
   const result = router.route(createRouteInput({ title: "Task", request: "implement a new feature" }));
 
   assert.equal(result.classification.intent, "create");
 });
 
-test("IntakeRouter.route classifies query intent from explain keyword", () => {
+test("IntakeRouter.route classifies query intent from explain keyword [intake-router]", () => {
   const router = new IntakeRouter();
   const result = router.route(createRouteInput({ title: "Help", request: "explain how the system works" }));
 
   assert.equal(result.classification.intent, "query");
 });
 
-test("IntakeRouter.route classifies modify intent from refactor keyword", () => {
+test("IntakeRouter.route classifies modify intent from refactor keyword [intake-router]", () => {
   const router = new IntakeRouter();
   const result = router.route(createRouteInput({ title: "Code", request: "refactor the module" }));
 
   assert.equal(result.classification.intent, "modify");
 });
 
-test("IntakeRouter.route classifies approve intent from confirm keyword", () => {
+test("IntakeRouter.route classifies approve intent from confirm keyword [intake-router]", () => {
   const router = new IntakeRouter();
   const result = router.route(createRouteInput({ title: "Review", request: "confirm the changes are correct" }));
 
   assert.equal(result.classification.intent, "approve");
 });
 
-test("IntakeRouter.route classifies cancel intent from terminate keyword", () => {
+test("IntakeRouter.route classifies cancel intent from terminate keyword [intake-router]", () => {
   const router = new IntakeRouter();
   const result = router.route(createRouteInput({ title: "Stop", request: "terminate the process" }));
 
   assert.equal(result.classification.intent, "cancel");
 });
 
-test("IntakeRouter.route classifies clarify intent from be more specific phrase", () => {
+test("IntakeRouter.route classifies clarify intent from be more specific phrase [intake-router]", () => {
   const router = new IntakeRouter();
   const result = router.route(createRouteInput({ title: "Help", request: "can you be more specific about the requirement" }));
 
   assert.equal(result.classification.intent, "clarify");
 });
 
-test("IntakeRouter.route classifies chitchat intent from thank you phrase", () => {
+test("IntakeRouter.route classifies chitchat intent from thank you phrase [intake-router]", () => {
   const router = new IntakeRouter();
   const result = router.route(createRouteInput({ title: "Note", request: "thank you for your help" }));
 
   assert.equal(result.classification.intent, "chitchat");
 });
 
-test("IntakeRouter.route classifies correction intent from instead keyword", () => {
+test("IntakeRouter.route classifies correction intent from instead keyword [intake-router]", () => {
   const router = new IntakeRouter();
   const result = router.route(createRouteInput({ title: "Fix", request: "actually use a different approach instead" }));
 
@@ -103,7 +103,7 @@ test("IntakeRouter.route classifies correction intent from instead keyword", () 
 // Intake routing - queue/division selection
 // ---------------------------------------------------------------------------
 
-test("IntakeRouter.route selects division by trigger pattern", () => {
+test("IntakeRouter.route selects division by trigger pattern [intake-router]", () => {
   const devopsDivision = createMockDivision({
     id: "devops",
     priority: 10,
@@ -117,7 +117,7 @@ test("IntakeRouter.route selects division by trigger pattern", () => {
   assert.equal(result.divisionId, "devops");
 });
 
-test("IntakeRouter.route selects division by highest priority when multiple match", () => {
+test("IntakeRouter.route selects division by highest priority when multiple match [intake-router]", () => {
   const lowPriDivision = createMockDivision({
     id: "low_pri",
     priority: 1,
@@ -136,7 +136,7 @@ test("IntakeRouter.route selects division by highest priority when multiple matc
   assert.equal(result.divisionId, "high_pri");
 });
 
-test("IntakeRouter.route selects longest matching trigger", () => {
+test("IntakeRouter.route selects longest matching trigger [intake-router]", () => {
   const shortMatch = createMockDivision({
     id: "design",
     priority: 5,
@@ -155,7 +155,7 @@ test("IntakeRouter.route selects longest matching trigger", () => {
   assert.equal(result.divisionId, "system_design");
 });
 
-test("IntakeRouter.route handles pipe-separated trigger alternatives", () => {
+test("IntakeRouter.route handles pipe-separated trigger alternatives [intake-router]", () => {
   const division = createMockDivision({
     id: "release",
     priority: 10,
@@ -169,7 +169,7 @@ test("IntakeRouter.route handles pipe-separated trigger alternatives", () => {
   assert.equal(result.divisionId, "release");
 });
 
-test("IntakeRouter.route falls back to general_ops when no division matches", () => {
+test("IntakeRouter.route falls back to general_ops when no division matches [intake-router]", () => {
   const generalOps = createMockDivision({ id: "general_ops", priority: 0, triggers: [] });
   const registry = createMockRegistry([generalOps]);
   const router = new IntakeRouter({ divisionRegistry: registry });
@@ -179,7 +179,7 @@ test("IntakeRouter.route falls back to general_ops when no division matches", ()
   assert.equal(result.divisionId, "general_ops");
 });
 
-test("IntakeRouter.route uses default workflow when no orchestration needed", () => {
+test("IntakeRouter.route uses default workflow when no orchestration needed [intake-router]", () => {
   const division = createMockDivision({
     id: "coding",
     priority: 10,
@@ -195,7 +195,7 @@ test("IntakeRouter.route uses default workflow when no orchestration needed", ()
   assert.equal(result.requiresOrchestration, false);
 });
 
-test("IntakeRouter.route uses orchestration workflow when required", () => {
+test("IntakeRouter.route uses orchestration workflow when required [intake-router]", () => {
   const division = createMockDivision({
     id: "analysis",
     priority: 10,
@@ -219,7 +219,7 @@ test("IntakeRouter.route uses orchestration workflow when required", () => {
 // Intake routing - orchestration requirement detection
 // ---------------------------------------------------------------------------
 
-test("IntakeRouter.route triggers orchestration for 2+ orchestration hints", () => {
+test("IntakeRouter.route triggers orchestration for 2+ orchestration hints [intake-router]", () => {
   const router = new IntakeRouter();
   const result = router.route(createRouteInput({
     title: "Plan",
@@ -229,7 +229,7 @@ test("IntakeRouter.route triggers orchestration for 2+ orchestration hints", () 
   assert.equal(result.requiresOrchestration, true);
 });
 
-test("IntakeRouter.route triggers orchestration for long requests over 120 chars", () => {
+test("IntakeRouter.route triggers orchestration for long requests over 120 chars [intake-router]", () => {
   const router = new IntakeRouter();
   const longRequest = "This is a very long request that exceeds the threshold and should trigger orchestration because it contains a lot of text that suggests a complex multi-step task";
   const result = router.route(createRouteInput({ title: "Task", request: longRequest }));
@@ -237,14 +237,14 @@ test("IntakeRouter.route triggers orchestration for long requests over 120 chars
   assert.equal(result.requiresOrchestration, true);
 });
 
-test("IntakeRouter.route does not trigger orchestration for short simple requests", () => {
+test("IntakeRouter.route does not trigger orchestration for short simple requests [intake-router]", () => {
   const router = new IntakeRouter();
   const result = router.route(createRouteInput({ title: "Quick", request: "do it now" }));
 
   assert.equal(result.requiresOrchestration, false);
 });
 
-test("IntakeRouter.route triggers orchestration for create with single hint and length > 80", () => {
+test("IntakeRouter.route triggers orchestration for create with single hint and length > 80 [intake-router]", () => {
   const router = new IntakeRouter();
   const result = router.route(createRouteInput({
     title: "Build",
@@ -255,7 +255,7 @@ test("IntakeRouter.route triggers orchestration for create with single hint and 
   assert.equal(result.classification.intent, "create");
 });
 
-test("IntakeRouter.route triggers orchestration for modify with single hint and length > 80", () => {
+test("IntakeRouter.route triggers orchestration for modify with single hint and length > 80 [intake-router]", () => {
   const router = new IntakeRouter();
   const result = router.route(createRouteInput({
     title: "Refactor",
@@ -266,7 +266,7 @@ test("IntakeRouter.route triggers orchestration for modify with single hint and 
   assert.equal(result.classification.intent, "modify");
 });
 
-test("IntakeRouter.route triggers orchestration for correction with hint and length > 80", () => {
+test("IntakeRouter.route triggers orchestration for correction with hint and length > 80 [intake-router]", () => {
   const router = new IntakeRouter();
   const result = router.route(createRouteInput({
     title: "Fix",
@@ -277,7 +277,7 @@ test("IntakeRouter.route triggers orchestration for correction with hint and len
   assert.equal(result.classification.intent, "correction");
 });
 
-test("IntakeRouter.route triggers orchestration for follow_up with 1+ hints", () => {
+test("IntakeRouter.route triggers orchestration for follow_up with 1+ hints [intake-router]", () => {
   const router = new IntakeRouter();
   const result = router.route(createRouteInput({
     title: "Continue",
@@ -292,35 +292,35 @@ test("IntakeRouter.route triggers orchestration for follow_up with 1+ hints", ()
 // Intake routing - continuation classification
 // ---------------------------------------------------------------------------
 
-test("IntakeRouter.route detects follow_up from continue keyword", () => {
+test("IntakeRouter.route detects follow_up from continue keyword [intake-router]", () => {
   const router = new IntakeRouter();
   const result = router.route(createRouteInput({ title: "Continue", request: "continue from where we left off" }));
 
   assert.equal(result.classification.continuation, "follow_up");
 });
 
-test("IntakeRouter.route detects follow_up from next keyword", () => {
+test("IntakeRouter.route detects follow_up from next keyword [intake-router]", () => {
   const router = new IntakeRouter();
   const result = router.route(createRouteInput({ title: "Next", request: "next, do the second step" }));
 
   assert.equal(result.classification.continuation, "follow_up");
 });
 
-test("IntakeRouter.route detects follow_up from then keyword", () => {
+test("IntakeRouter.route detects follow_up from then keyword [intake-router]", () => {
   const router = new IntakeRouter();
   const result = router.route(createRouteInput({ title: "Then", request: "then proceed with the analysis" }));
 
   assert.equal(result.classification.continuation, "follow_up");
 });
 
-test("IntakeRouter.route detects correction from correction keyword", () => {
+test("IntakeRouter.route detects correction from correction keyword [intake-router]", () => {
   const router = new IntakeRouter();
   const result = router.route(createRouteInput({ title: "Fix", request: "correction: the previous result was wrong" }));
 
   assert.equal(result.classification.continuation, "correction");
 });
 
-test("IntakeRouter.route returns new_task by default", () => {
+test("IntakeRouter.route returns new_task by default [intake-router]", () => {
   const router = new IntakeRouter();
   const result = router.route(createRouteInput({ title: "Task", request: "create a new widget" }));
 
@@ -331,7 +331,7 @@ test("IntakeRouter.route returns new_task by default", () => {
 // Intake routing - confidence scoring
 // ---------------------------------------------------------------------------
 
-test("IntakeRouter.route computes confidence within valid range 0.45-0.98", () => {
+test("IntakeRouter.route computes confidence within valid range 0.45-0.98 [intake-router]", () => {
   const router = new IntakeRouter();
   const result = router.route(createRouteInput({ title: "Query", request: "what is the status?" }));
 
@@ -339,21 +339,21 @@ test("IntakeRouter.route computes confidence within valid range 0.45-0.98", () =
   assert.ok(result.classification.confidence <= 0.98);
 });
 
-test("IntakeRouter.route boosts confidence for query with question mark", () => {
+test("IntakeRouter.route boosts confidence for query with question mark [intake-router]", () => {
   const router = new IntakeRouter();
   const result = router.route(createRouteInput({ title: "Query", request: "what is it?" }));
 
   assert.ok(result.classification.confidence >= 0.52);
 });
 
-test("IntakeRouter.route boosts confidence for short chitchat", () => {
+test("IntakeRouter.route boosts confidence for short chitchat [intake-router]", () => {
   const router = new IntakeRouter();
   const result = router.route(createRouteInput({ title: "Hi", request: "hello" }));
 
   assert.ok(result.classification.confidence >= 0.52);
 });
 
-test("IntakeRouter.route lowers confidence when no rules matched", () => {
+test("IntakeRouter.route lowers confidence when no rules matched [intake-router]", () => {
   const router = new IntakeRouter();
   const result = router.route(createRouteInput({ title: "Task", request: "do something generic here" }));
 
@@ -365,7 +365,7 @@ test("IntakeRouter.route lowers confidence when no rules matched", () => {
 // Intake routing - retry handling (continuation + new attempt)
 // ---------------------------------------------------------------------------
 
-test("IntakeRouter.route handles follow-up with orchestration for retry scenario", () => {
+test("IntakeRouter.route handles follow-up with orchestration for retry scenario [intake-router]", () => {
   const router = new IntakeRouter();
   // A follow-up that needs orchestration suggests retry/recovery scenario
   const result = router.route(createRouteInput({
@@ -377,7 +377,7 @@ test("IntakeRouter.route handles follow-up with orchestration for retry scenario
   assert.equal(result.requiresOrchestration, true);
 });
 
-test("IntakeRouter.route handles correction as retry with modified approach", () => {
+test("IntakeRouter.route handles correction as retry with modified approach [intake-router]", () => {
   const router = new IntakeRouter();
   const result = router.route(createRouteInput({
     title: "Retry",
@@ -388,7 +388,7 @@ test("IntakeRouter.route handles correction as retry with modified approach", ()
   assert.equal(result.classification.intent, "correction");
 });
 
-test("IntakeRouter.route preserves requiresOrchestration for retry on complex task", () => {
+test("IntakeRouter.route preserves requiresOrchestration for retry on complex task [intake-router]", () => {
   const division = createMockDivision({
     id: "complex",
     priority: 10,
@@ -408,7 +408,7 @@ test("IntakeRouter.route preserves requiresOrchestration for retry on complex ta
   assert.equal(result.requiresOrchestration, true);
 });
 
-test("IntakeRouter.route classifies retry against existing context as follow_up", () => {
+test("IntakeRouter.route classifies retry against existing context as follow_up [intake-router]", () => {
   const router = new IntakeRouter();
   const result = router.route(createRouteInput({
     title: "Again",
@@ -422,7 +422,7 @@ test("IntakeRouter.route classifies retry against existing context as follow_up"
 // Intake routing - route trace
 // ---------------------------------------------------------------------------
 
-test("IntakeRouter.route populates routeTrace with decision details", () => {
+test("IntakeRouter.route populates routeTrace with decision details [intake-router]", () => {
   const router = new IntakeRouter();
   const result = router.route(createRouteInput({ title: "Query", request: "what is status?" }));
 
@@ -432,14 +432,14 @@ test("IntakeRouter.route populates routeTrace with decision details", () => {
   assert.ok(result.routeTrace.some(t => t.startsWith("matched_divisions:")));
 });
 
-test("IntakeRouter.route includes matched rules in trace", () => {
+test("IntakeRouter.route includes matched rules in trace [intake-router]", () => {
   const router = new IntakeRouter();
   const result = router.route(createRouteInput({ title: "Query", request: "how do I create and build this" }));
 
   assert.ok(result.routeTrace.some(t => t.startsWith("matched_intent_rules:")));
 });
 
-test("IntakeRouter.route records routeReason as multi_step_or_high_context", () => {
+test("IntakeRouter.route records routeReason as multi_step_or_high_context [intake-router]", () => {
   const router = new IntakeRouter();
   const result = router.route(createRouteInput({
     title: "Task",
@@ -450,7 +450,7 @@ test("IntakeRouter.route records routeReason as multi_step_or_high_context", () 
   assert.equal(result.requiresOrchestration, true);
 });
 
-test("IntakeRouter.route records routeReason as simple_request", () => {
+test("IntakeRouter.route records routeReason as simple_request [intake-router]", () => {
   const router = new IntakeRouter();
   const result = router.route(createRouteInput({ title: "Query", request: "status?" }));
 
@@ -462,7 +462,7 @@ test("IntakeRouter.route records routeReason as simple_request", () => {
 // Intake routing - edge cases
 // ---------------------------------------------------------------------------
 
-test("IntakeRouter.route handles empty title and request", () => {
+test("IntakeRouter.route handles empty title and request [intake-router]", () => {
   const router = new IntakeRouter();
   const result = router.route(createRouteInput({ title: "", request: "" }));
 
@@ -471,14 +471,14 @@ test("IntakeRouter.route handles empty title and request", () => {
   assert.ok(Array.isArray(result.routeTrace));
 });
 
-test("IntakeRouter.route handles whitespace-only input", () => {
+test("IntakeRouter.route handles whitespace-only input [intake-router]", () => {
   const router = new IntakeRouter();
   const result = router.route(createRouteInput({ title: "   ", request: "   " }));
 
   assert.ok(result.classification.intent !== undefined);
 });
 
-test("IntakeRouter.route handles null divisionRegistry gracefully", () => {
+test("IntakeRouter.route handles null divisionRegistry gracefully [intake-router]", () => {
   const router = new IntakeRouter({ divisionRegistry: null });
   const result = router.route(createRouteInput({ title: "Test", request: "simple task" }));
 
@@ -486,7 +486,7 @@ test("IntakeRouter.route handles null divisionRegistry gracefully", () => {
   assert.ok(typeof result.workflowId === "string");
 });
 
-test("IntakeRouter.route returns correct IntakeRouteDecision structure", () => {
+test("IntakeRouter.route returns correct IntakeRouteDecision structure [intake-router]", () => {
   const router = new IntakeRouter();
   const result = router.route(createRouteInput({ title: "Test", request: "simple" }));
 
@@ -506,42 +506,42 @@ test("IntakeRouter.route returns correct IntakeRouteDecision structure", () => {
 // Intake routing - Chinese keyword support
 // ---------------------------------------------------------------------------
 
-test("IntakeRouter.route handles Chinese create keyword", () => {
+test("IntakeRouter.route handles Chinese create keyword [intake-router]", () => {
   const router = new IntakeRouter();
   const result = router.route(createRouteInput({ title: "创建", request: "创建一个新功能" }));
 
   assert.equal(result.classification.intent, "create");
 });
 
-test("IntakeRouter.route handles Chinese modify keyword", () => {
+test("IntakeRouter.route handles Chinese modify keyword [intake-router]", () => {
   const router = new IntakeRouter();
   const result = router.route(createRouteInput({ title: "修复", request: "修复这个bug" }));
 
   assert.equal(result.classification.intent, "modify");
 });
 
-test("IntakeRouter.route handles Chinese query keyword", () => {
+test("IntakeRouter.route handles Chinese query keyword [intake-router]", () => {
   const router = new IntakeRouter();
   const result = router.route(createRouteInput({ title: "查询", request: "查看状态信息" }));
 
   assert.equal(result.classification.intent, "query");
 });
 
-test("IntakeRouter.route handles Chinese cancel keyword", () => {
+test("IntakeRouter.route handles Chinese cancel keyword [intake-router]", () => {
   const router = new IntakeRouter();
   const result = router.route(createRouteInput({ title: "取消", request: "撤销操作" }));
 
   assert.equal(result.classification.intent, "cancel");
 });
 
-test("IntakeRouter.route handles Chinese approve keyword", () => {
+test("IntakeRouter.route handles Chinese approve keyword [intake-router]", () => {
   const router = new IntakeRouter();
   const result = router.route(createRouteInput({ title: "审批", request: "批准通过" }));
 
   assert.equal(result.classification.intent, "approve");
 });
 
-test("IntakeRouter.route handles Chinese orchestration hint", () => {
+test("IntakeRouter.route handles Chinese orchestration hint [intake-router]", () => {
   const router = new IntakeRouter();
   const result = router.route(createRouteInput({
     title: "分析",
@@ -555,7 +555,7 @@ test("IntakeRouter.route handles Chinese orchestration hint", () => {
 // Intake routing - priority over other intents
 // ---------------------------------------------------------------------------
 
-test("IntakeRouter.route correction takes priority over create", () => {
+test("IntakeRouter.route correction takes priority over create [intake-router]", () => {
   const router = new IntakeRouter();
   const result = router.route(createRouteInput({
     title: "Build",
@@ -565,7 +565,7 @@ test("IntakeRouter.route correction takes priority over create", () => {
   assert.equal(result.classification.intent, "correction");
 });
 
-test("IntakeRouter.route cancel takes priority over query", () => {
+test("IntakeRouter.route cancel takes priority over query [intake-router]", () => {
   const router = new IntakeRouter();
   const result = router.route(createRouteInput({
     title: "Stop",
@@ -575,7 +575,7 @@ test("IntakeRouter.route cancel takes priority over query", () => {
   assert.equal(result.classification.intent, "cancel");
 });
 
-test("IntakeRouter.route approve takes priority over create", () => {
+test("IntakeRouter.route approve takes priority over create [intake-router]", () => {
   const router = new IntakeRouter();
   const result = router.route(createRouteInput({
     title: "Build",
@@ -585,7 +585,7 @@ test("IntakeRouter.route approve takes priority over create", () => {
   assert.equal(result.classification.intent, "approve");
 });
 
-test("IntakeRouter.route clarify takes priority over chitchat", () => {
+test("IntakeRouter.route clarify takes priority over chitchat [intake-router]", () => {
   const router = new IntakeRouter();
   const result = router.route(createRouteInput({
     title: "Hello",
@@ -599,7 +599,7 @@ test("IntakeRouter.route clarify takes priority over chitchat", () => {
 // Intake routing - matchedRules content
 // ---------------------------------------------------------------------------
 
-test("IntakeRouter.route matchedRules contains keywords that triggered intent", () => {
+test("IntakeRouter.route matchedRules contains keywords that triggered intent [intake-router]", () => {
   const router = new IntakeRouter();
   const result = router.route(createRouteInput({
     title: "Query",
@@ -611,7 +611,7 @@ test("IntakeRouter.route matchedRules contains keywords that triggered intent", 
   assert.ok(matchedRules.some(rule => rule.includes("how") || rule.includes("query")));
 });
 
-test("IntakeRouter.route matchedRules includes follow_up keywords when applicable", () => {
+test("IntakeRouter.route matchedRules includes follow_up keywords when applicable [intake-router]", () => {
   const router = new IntakeRouter();
   const result = router.route(createRouteInput({
     title: "Continue",
@@ -625,7 +625,7 @@ test("IntakeRouter.route matchedRules includes follow_up keywords when applicabl
 // Intake routing - workflow selection based on division config
 // ---------------------------------------------------------------------------
 
-test("IntakeRouter.route uses division's orchestrationWorkflowId when orchestration required", () => {
+test("IntakeRouter.route uses division's orchestrationWorkflowId when orchestration required [intake-router]", () => {
   const division = createMockDivision({
     id: "engineering",
     priority: 10,
@@ -646,7 +646,7 @@ test("IntakeRouter.route uses division's orchestrationWorkflowId when orchestrat
   assert.equal(result.divisionId, "engineering");
 });
 
-test("IntakeRouter.route uses division's defaultWorkflowId when no orchestration", () => {
+test("IntakeRouter.route uses division's defaultWorkflowId when no orchestration [intake-router]", () => {
   const division = createMockDivision({
     id: "support",
     priority: 10,
@@ -667,7 +667,7 @@ test("IntakeRouter.route uses division's defaultWorkflowId when no orchestration
   assert.equal(result.divisionId, "support");
 });
 
-test("IntakeRouter.route falls back to default orchestration workflow when division has none", () => {
+test("IntakeRouter.route falls back to default orchestration workflow when division has none [intake-router]", () => {
   const division = createMockDivision({
     id: "basic",
     priority: 10,
@@ -687,7 +687,7 @@ test("IntakeRouter.route falls back to default orchestration workflow when divis
   assert.equal(result.workflowId, "single_division_multi_step_orchestration");
 });
 
-test("IntakeRouter.route falls back to single_agent_minimal when no division matches and no orchestration", () => {
+test("IntakeRouter.route falls back to single_agent_minimal when no division matches and no orchestration [intake-router]", () => {
   const router = new IntakeRouter();
   const result = router.route(createRouteInput({
     title: "Simple",

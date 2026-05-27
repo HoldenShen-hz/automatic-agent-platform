@@ -98,7 +98,7 @@ function createMockTicket(
 // R6-3: Risk class isolation routing
 // ---------------------------------------------------------------------------
 
-test("R6-3: admission-controller enforces risk-class isolation for high/critical tasks", () => {
+test("R6-3: admission-controller enforces risk-class isolation for high/critical tasks [execution-dispatch-r6-fixes]", () => {
   // This test verifies the admission controller properly routes high/critical risk tasks
   const store = createMockStore();
   const db = createMockDb();
@@ -113,7 +113,7 @@ test("R6-3: admission-controller enforces risk-class isolation for high/critical
   assert.ok(service != null);
 });
 
-test("R6-3: ticket contains riskClass field for isolation routing", () => {
+test("R6-3: ticket contains riskClass field for isolation routing [execution-dispatch-r6-fixes]", () => {
   const ticket = createMockTicket("ticket-1", "exec-1", "task-1", "high", {
     riskClass: "high",
     requiredSandboxType: "hardened",
@@ -129,7 +129,7 @@ test("R6-3: ticket contains riskClass field for isolation routing", () => {
 // R6-4: Deterministic graph scheduler ordering
 // ---------------------------------------------------------------------------
 
-test("R6-4: dispatchNext applies deterministic ordering by critical_path_rank", () => {
+test("R6-4: dispatchNext applies deterministic ordering by critical_path_rank [execution-dispatch-r6-fixes]", () => {
   const occurredAt = "2026-05-01T00:00:00.000Z";
   const store = createMockStore();
   const events: string[] = [];
@@ -167,7 +167,7 @@ test("R6-4: dispatchNext applies deterministic ordering by critical_path_rank", 
 // R6-5: Emergency lane for critical NodeRun
 // ---------------------------------------------------------------------------
 
-test("R6-5: critical risk class triggers emergency lane preemption", () => {
+test("R6-5: critical risk class triggers emergency lane preemption [execution-dispatch-r6-fixes]", () => {
   const occurredAt = "2026-05-01T00:00:00.000Z";
   const store = createMockStore();
 
@@ -220,7 +220,7 @@ test("R6-5: critical risk class triggers emergency lane preemption", () => {
 // R6-6: dispatch_backpressure_rejected event + DLQ integration
 // ---------------------------------------------------------------------------
 
-test("R6-6: dispatchNext emits dispatch:backpressure_rejected event for blocked tickets", () => {
+test("R6-6: dispatchNext emits dispatch:backpressure_rejected event for blocked tickets [execution-dispatch-r6-fixes]", () => {
   const occurredAt = "2026-05-01T00:00:00.000Z";
   const store = createMockStore();
   const events: string[] = [];
@@ -255,7 +255,7 @@ test("R6-6: dispatchNext emits dispatch:backpressure_rejected event for blocked 
   assert.ok(events.includes("dispatch:backpressure_rejected"));
 });
 
-test("R6-6: DLQ enqueues rejected tickets for retry", () => {
+test("R6-6: DLQ enqueues rejected tickets for retry [execution-dispatch-r6-fixes]", () => {
   const occurredAt = "2026-05-01T00:00:00.000Z";
   const store = createMockStore();
   const dlqEnqueued: Array<{ errorCode: string; payloadJson: string }> = [];
@@ -324,7 +324,7 @@ test("R6-6: DLQ enqueues rejected tickets for retry", () => {
 // R6-7: Scheduler event fields (ready_set, selected_node_ids, ordering_policy_version)
 // ---------------------------------------------------------------------------
 
-test("R6-7: dispatch trace includes ready_set and selected_node_ids", () => {
+test("R6-7: dispatch trace includes ready_set and selected_node_ids [execution-dispatch-r6-fixes]", () => {
   const occurredAt = "2026-05-01T00:00:00.000Z";
   const store = createMockStore();
 
@@ -379,7 +379,7 @@ test("R6-7: dispatch trace includes ready_set and selected_node_ids", () => {
 // R6-10: Heartbeat staleness detection
 // ---------------------------------------------------------------------------
 
-test("R6-10: stale heartbeat worker is rejected during evaluation", () => {
+test("R6-10: stale heartbeat worker is rejected during evaluation [execution-dispatch-r6-fixes]", () => {
   const occurredAt = "2026-05-01T00:00:00.000Z";
   const store = createMockStore();
 

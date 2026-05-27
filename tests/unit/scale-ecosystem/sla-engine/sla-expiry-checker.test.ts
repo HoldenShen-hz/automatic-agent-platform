@@ -34,7 +34,7 @@ function createExpiryDate(daysFromNow: number): string {
   return date.toISOString();
 }
 
-test("SlaExpiryChecker.checkExpiry returns active status for distant expiry", () => {
+test("SlaExpiryChecker.checkExpiry returns active status for distant expiry [sla-expiry-checker]", () => {
   const checker = new SlaExpiryChecker();
   const request = createTestRequest({ expiresAt: createExpiryDate(30) });
 
@@ -45,7 +45,7 @@ test("SlaExpiryChecker.checkExpiry returns active status for distant expiry", ()
   assert.equal(result.shouldWarn, false);
 });
 
-test("SlaExpiryChecker.checkExpiry returns expiring_soon for 7 days or less", () => {
+test("SlaExpiryChecker.checkExpiry returns expiring_soon for 7 days or less [sla-expiry-checker]", () => {
   const checker = new SlaExpiryChecker();
   const request = createTestRequest({ expiresAt: createExpiryDate(5) });
 
@@ -54,7 +54,7 @@ test("SlaExpiryChecker.checkExpiry returns expiring_soon for 7 days or less", ()
   assert.equal(result.record.currentStatus, "expiring_soon");
 });
 
-test("SlaExpiryChecker.checkExpiry returns expired for past date", () => {
+test("SlaExpiryChecker.checkExpiry returns expired for past date [sla-expiry-checker]", () => {
   const checker = new SlaExpiryChecker();
   const request = createTestRequest({ expiresAt: createExpiryDate(-1) });
 
@@ -63,7 +63,7 @@ test("SlaExpiryChecker.checkExpiry returns expired for past date", () => {
   assert.equal(result.record.currentStatus, "expired");
 });
 
-test("SlaExpiryChecker.checkExpiry issues info warning at 7 days", () => {
+test("SlaExpiryChecker.checkExpiry issues info warning at 7 days [sla-expiry-checker]", () => {
   const checker = new SlaExpiryChecker();
   const request = createTestRequest({ expiresAt: createExpiryDate(7) });
 
@@ -74,7 +74,7 @@ test("SlaExpiryChecker.checkExpiry issues info warning at 7 days", () => {
   assert.ok(result.warningMessage?.includes("7 days"));
 });
 
-test("SlaExpiryChecker.checkExpiry issues warning at 3 days", () => {
+test("SlaExpiryChecker.checkExpiry issues warning at 3 days [sla-expiry-checker]", () => {
   const checker = new SlaExpiryChecker();
   const request = createTestRequest({ expiresAt: createExpiryDate(3) });
 
@@ -85,7 +85,7 @@ test("SlaExpiryChecker.checkExpiry issues warning at 3 days", () => {
   assert.ok(result.warningMessage?.includes("3 days"));
 });
 
-test("SlaExpiryChecker.checkExpiry issues critical warning at 1 day", () => {
+test("SlaExpiryChecker.checkExpiry issues critical warning at 1 day [sla-expiry-checker]", () => {
   const checker = new SlaExpiryChecker();
   const request = createTestRequest({ expiresAt: createExpiryDate(1) });
 
@@ -96,7 +96,7 @@ test("SlaExpiryChecker.checkExpiry issues critical warning at 1 day", () => {
   assert.ok(result.warningMessage?.includes("1 day"));
 });
 
-test("SlaExpiryChecker.checkExpiry uses highest severity when multiple thresholds match", () => {
+test("SlaExpiryChecker.checkExpiry uses highest severity when multiple thresholds match [sla-expiry-checker]", () => {
   const checker = new SlaExpiryChecker();
   const request = createTestRequest({ expiresAt: createExpiryDate(0) }); // At 0 days
 
@@ -105,7 +105,7 @@ test("SlaExpiryChecker.checkExpiry uses highest severity when multiple threshold
   assert.equal(result.record.warningLevel, "critical");
 });
 
-test("SlaExpiryChecker.checkExpiry respects custom warning intervals", () => {
+test("SlaExpiryChecker.checkExpiry respects custom warning intervals [sla-expiry-checker]", () => {
   const checker = new SlaExpiryChecker();
   const request = createTestRequest({
     expiresAt: createExpiryDate(14),
@@ -121,7 +121,7 @@ test("SlaExpiryChecker.checkExpiry respects custom warning intervals", () => {
   assert.equal(result.record.warningLevel, "info");
 });
 
-test("SlaExpiryChecker.checkExpiry respects custom warning thresholds", () => {
+test("SlaExpiryChecker.checkExpiry respects custom warning thresholds [sla-expiry-checker]", () => {
   const checker = new SlaExpiryChecker();
   const request = createTestRequest({
     expiresAt: createExpiryDate(10),
@@ -140,7 +140,7 @@ test("SlaExpiryChecker.checkExpiry respects custom warning thresholds", () => {
   assert.equal(result.record.warningLevel, "critical");
 });
 
-test("SlaExpiryChecker.checkBatch processes multiple requests", () => {
+test("SlaExpiryChecker.checkBatch processes multiple requests [sla-expiry-checker]", () => {
   const checker = new SlaExpiryChecker();
   const requests: SlaExpiryCheckRequest[] = [
     createTestRequest({ slaId: "sla-1", expiresAt: createExpiryDate(30) }),
@@ -156,7 +156,7 @@ test("SlaExpiryChecker.checkBatch processes multiple requests", () => {
   assert.equal(results[2].record.warningLevel, "critical");
 });
 
-test("SlaExpiryChecker.checkExpiry records all required fields", () => {
+test("SlaExpiryChecker.checkExpiry records all required fields [sla-expiry-checker]", () => {
   const checker = new SlaExpiryChecker();
   const request = createTestRequest({ slaId: "sla-full", tierId: "platinum", domainId: "enterprise" });
 
@@ -168,7 +168,7 @@ test("SlaExpiryChecker.checkExpiry records all required fields", () => {
   assert.ok(result.record.expiresAt);
 });
 
-test("SlaExpiryChecker.checkExpiry includes warning message when shouldWarn is true", () => {
+test("SlaExpiryChecker.checkExpiry includes warning message when shouldWarn is true [sla-expiry-checker]", () => {
   const checker = new SlaExpiryChecker();
   const request = createTestRequest({ expiresAt: createExpiryDate(3) });
 
@@ -179,7 +179,7 @@ test("SlaExpiryChecker.checkExpiry includes warning message when shouldWarn is t
   assert.ok(result.warningMessage.includes("gold"));
 });
 
-test("SlaExpiryChecker.checkExpiry returns null warning message when not warning", () => {
+test("SlaExpiryChecker.checkExpiry returns null warning message when not warning [sla-expiry-checker]", () => {
   const checker = new SlaExpiryChecker();
   const request = createTestRequest({ expiresAt: createExpiryDate(30) });
 
@@ -189,11 +189,11 @@ test("SlaExpiryChecker.checkExpiry returns null warning message when not warning
   assert.equal(result.warningMessage, null);
 });
 
-test("SLA_EXPIRY_WARNING_DAYS contains expected values", () => {
+test("SLA_EXPIRY_WARNING_DAYS contains expected values [sla-expiry-checker]", () => {
   assert.deepEqual(SLA_EXPIRY_WARNING_DAYS, [7, 3, 1]);
 });
 
-test("SlaExpiryChecker.checkExpiry handles boundary at exactly 7 days", () => {
+test("SlaExpiryChecker.checkExpiry handles boundary at exactly 7 days [sla-expiry-checker]", () => {
   const checker = new SlaExpiryChecker();
   const request = createTestRequest({ expiresAt: createExpiryDate(7) });
 
@@ -203,7 +203,7 @@ test("SlaExpiryChecker.checkExpiry handles boundary at exactly 7 days", () => {
   assert.equal(result.record.warningLevel, "info");
 });
 
-test("SlaExpiryChecker.checkExpiry handles boundary at exactly 3 days", () => {
+test("SlaExpiryChecker.checkExpiry handles boundary at exactly 3 days [sla-expiry-checker]", () => {
   const checker = new SlaExpiryChecker();
   const request = createTestRequest({ expiresAt: createExpiryDate(3) });
 
@@ -213,7 +213,7 @@ test("SlaExpiryChecker.checkExpiry handles boundary at exactly 3 days", () => {
   assert.equal(result.record.warningLevel, "warning");
 });
 
-test("SlaExpiryChecker.checkExpiry handles boundary at exactly 1 day", () => {
+test("SlaExpiryChecker.checkExpiry handles boundary at exactly 1 day [sla-expiry-checker]", () => {
   const checker = new SlaExpiryChecker();
   const request = createTestRequest({ expiresAt: createExpiryDate(1) });
 
@@ -223,7 +223,7 @@ test("SlaExpiryChecker.checkExpiry handles boundary at exactly 1 day", () => {
   assert.equal(result.record.warningLevel, "critical");
 });
 
-test("SlaExpiryChecker.checkExpiry handles fractional days correctly", () => {
+test("SlaExpiryChecker.checkExpiry handles fractional days correctly [sla-expiry-checker]", () => {
   const checker = new SlaExpiryChecker();
   // Set expiry to 6.5 days from now
   const date = new Date();
@@ -237,7 +237,7 @@ test("SlaExpiryChecker.checkExpiry handles fractional days correctly", () => {
   assert.equal(result.record.warningLevel, "info");
 });
 
-test("SlaExpiryChecker.checkExpiry records warningsIssued array", () => {
+test("SlaExpiryChecker.checkExpiry records warningsIssued array [sla-expiry-checker]", () => {
   const checker = new SlaExpiryChecker();
   const request = createTestRequest({ expiresAt: createExpiryDate(3) });
 

@@ -11,32 +11,32 @@ import type {
  * This file re-exports multi-step orchestrator from five-plane-execution.
  * Coverage: 0% (all statements/skipped)
  */
-test("planner re-exports executeAgentRoundLoop function", async () => {
+test("planner re-exports executeAgentRoundLoop function [planner]", async () => {
   const mod = await import("../../../src/core/runtime/planner/index.js");
   assert.ok("executeAgentRoundLoop" in mod, "should export executeAgentRoundLoop function");
 });
 
-test("planner re-exports buildStepOutput function", async () => {
+test("planner re-exports buildStepOutput function [planner]", async () => {
   const mod = await import("../../../src/core/runtime/planner/index.js");
   assert.ok("buildStepOutput" in mod, "should export buildStepOutput function");
 });
 
-test("planner re-exports AgentRoundLoopInput interface", () => {
+test("planner re-exports AgentRoundLoopInput interface [planner]", () => {
   // AgentRoundLoopInput is a TypeScript interface - verify it exists as a type export
   type _ = AgentRoundLoopInput;
 });
 
-test("planner re-exports AgentRoundLoopResult interface", () => {
+test("planner re-exports AgentRoundLoopResult interface [planner]", () => {
   // AgentRoundLoopResult is a TypeScript interface - verify it exists as a type export
   type _ = AgentRoundLoopResult;
 });
 
-test("planner re-exports ToolCallResult interface", () => {
+test("planner re-exports ToolCallResult interface [planner]", () => {
   // ToolCallResult is a TypeScript interface - verify it exists as a type export
   type _ = ToolCallResult;
 });
 
-test("planner exports are functions or interfaces", async () => {
+test("planner exports are functions or interfaces [planner]", async () => {
   const mod = await import("../../../src/core/runtime/planner/index.js");
   assert.ok(typeof mod === "object", "module should export an object");
 });

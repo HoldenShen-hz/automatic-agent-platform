@@ -162,7 +162,7 @@ function createMockTicket(
 // R9-05: Ticket dispatch filtering / poison pill detection
 // ---------------------------------------------------------------------------
 
-test("dispatchNext only returns pending tickets from listDispatchableExecutionTickets", () => {
+test("dispatchNext only returns pending tickets from listDispatchableExecutionTickets [execution-dispatch-service-poison-pill]", () => {
   // listDispatchableExecutionTickets only returns pending tickets with dispatchAfter <= now
   const store = createMockStore();
   (store.worker as any).listDispatchableExecutionTickets = () => [];
@@ -175,7 +175,7 @@ test("dispatchNext only returns pending tickets from listDispatchableExecutionTi
   assert.equal(result.outcome, "no_ticket");
 });
 
-test("dispatchNext skips tickets when listDispatchableExecutionTickets returns empty array", () => {
+test("dispatchNext skips tickets when listDispatchableExecutionTickets returns empty array [execution-dispatch-service-poison-pill]", () => {
   const store = createMockStore();
   (store.worker as any).listDispatchableExecutionTickets = () => [];
 
@@ -188,7 +188,7 @@ test("dispatchNext skips tickets when listDispatchableExecutionTickets returns e
   assert.equal(result.worker, null);
 });
 
-test("dispatchNext returns first ticket when listDispatchableExecutionTickets returns tickets", () => {
+test("dispatchNext returns first ticket when listDispatchableExecutionTickets returns tickets [execution-dispatch-service-poison-pill]", () => {
   const mockTicket1 = createMockTicket("ticket-1", "exec-1", "task-1");
   mockTicket1.priority = "low";
 
@@ -229,7 +229,7 @@ test("dispatchNext returns first ticket when listDispatchableExecutionTickets re
   assert.equal(result.ticket?.id, "ticket-1");
 });
 
-test("dispatchNext skips ticket when backpressure blocks it", () => {
+test("dispatchNext skips ticket when backpressure blocks it [execution-dispatch-service-poison-pill]", () => {
   const mockTicket = createMockTicket("ticket-1", "exec-1", "task-1", "low");
 
   const store = createMockStore();
@@ -269,7 +269,7 @@ test("dispatchNext skips ticket when backpressure blocks it", () => {
   assert.equal(result.reasonCode, "backpressure.starvation_protection");
 });
 
-test("dispatchNext uses dispatchAfter to filter tickets at query level", () => {
+test("dispatchNext uses dispatchAfter to filter tickets at query level [execution-dispatch-service-poison-pill]", () => {
   // The listDispatchableExecutionTickets filters by dispatchAfter at SQL level
   // Tickets with dispatchAfter > current time are not returned
   const store = createMockStore();
@@ -287,7 +287,7 @@ test("dispatchNext uses dispatchAfter to filter tickets at query level", () => {
   assert.equal(result.outcome, "no_ticket");
 });
 
-test("dispatchNext with queueName filter only returns tickets for that queue", () => {
+test("dispatchNext with queueName filter only returns tickets for that queue [execution-dispatch-service-poison-pill]", () => {
   const store = createMockStore();
   (store.worker as any).listDispatchableExecutionTickets = () => []; // No tickets for "other-queue"
 
@@ -303,7 +303,7 @@ test("dispatchNext with queueName filter only returns tickets for that queue", (
   assert.equal(result.outcome, "no_ticket");
 });
 
-test("createTicket marks new tickets with pending status", () => {
+test("createTicket marks new tickets with pending status [execution-dispatch-service-poison-pill]", () => {
   const mockExecution = createMockExecution("exec-1", "task-1");
   const mockTask = createMockTask("task-1");
 
@@ -331,7 +331,7 @@ test("createTicket marks new tickets with pending status", () => {
   assert.equal(result.ticket.consumedAt, null);
 });
 
-test("createTicket returns existing ticket instead of creating new one", () => {
+test("createTicket returns existing ticket instead of creating new one [execution-dispatch-service-poison-pill]", () => {
   const existingTicket = createMockTicket("existing-ticket", "exec-1", "task-1");
   const mockExecution = createMockExecution("exec-1", "task-1");
   const mockTask = createMockTask("task-1");
@@ -358,7 +358,7 @@ test("createTicket returns existing ticket instead of creating new one", () => {
   assert.equal(result.ticket.status, "pending");
 });
 
-test("dispatchNext blocks high priority when read_only mode even though elevated", () => {
+test("dispatchNext blocks high priority when read_only mode even though elevated [execution-dispatch-service-poison-pill]", () => {
   const mockTicket = createMockTicket("ticket-1", "exec-1", "task-1", "high");
 
   const store = createMockStore();
@@ -398,7 +398,7 @@ test("dispatchNext blocks high priority when read_only mode even though elevated
   assert.equal(result.reasonCode, "backpressure.read_only_mode");
 });
 
-test("dispatchNext allows critical priority even when pause_non_critical backpressure", () => {
+test("dispatchNext allows critical priority even when pause_non_critical backpressure [execution-dispatch-service-poison-pill]", () => {
   const mockTicket = createMockTicket("ticket-1", "exec-1", "task-1", "critical");
 
   const store = createMockStore();
@@ -440,7 +440,7 @@ test("dispatchNext allows critical priority even when pause_non_critical backpre
   assert.equal(result.ticket?.id, "ticket-1");
 });
 
-test("dispatchNext invalidates abandoned poison-pill tickets instead of leaving them in the queue forever", () => {
+test("dispatchNext invalidates abandoned poison-pill tickets instead of leaving them in the queue forever [execution-dispatch-service-poison-pill]", () => {
   const staleTicket = createMockTicket("ticket-stale", "exec-stale", "task-stale", "normal", {
     createdAt: "2025-01-01T00:00:00.000Z",
     updatedAt: "2025-01-01T00:00:00.000Z",

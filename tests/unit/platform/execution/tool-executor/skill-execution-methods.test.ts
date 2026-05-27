@@ -25,7 +25,7 @@ function createService() {
   return { workspace, db, store, service };
 }
 
-test("SkillExecutionService resolveModelProfile handles blank, valid, and unknown profiles", () => {
+test("SkillExecutionService resolveModelProfile handles blank, valid, and unknown profiles [skill-execution-methods]", () => {
   const { workspace, db, service } = createService();
   try {
     const [profileName] = Object.keys(DEFAULT_MODEL_METADATA_REGISTRY.profiles);
@@ -49,7 +49,7 @@ test("SkillExecutionService resolveModelProfile handles blank, valid, and unknow
   }
 });
 
-test("SkillExecutionService resolveSkillSteps applies matching model overrides", () => {
+test("SkillExecutionService resolveSkillSteps applies matching model overrides [skill-execution-methods]", () => {
   const { workspace, db, service } = createService();
   try {
     const [profileName, profile] = Object.entries(DEFAULT_MODEL_METADATA_REGISTRY.profiles)[0]!;
@@ -89,7 +89,7 @@ test("SkillExecutionService resolveSkillSteps applies matching model overrides",
   }
 });
 
-test("SkillExecutionService resolves cache lookup lifecycle from disabled to miss to hit to expired", async () => {
+test("SkillExecutionService resolves cache lookup lifecycle from disabled to miss to hit to expired [skill-execution-methods]", async () => {
   const { workspace, db, service } = createService();
   try {
     const skill: SkillDefinition = {
@@ -179,7 +179,7 @@ test("SkillExecutionService resolves cache lookup lifecycle from disabled to mis
   }
 });
 
-test("SkillExecutionService buildStepOutput embeds cache hit metadata in the serialized payload", () => {
+test("SkillExecutionService buildStepOutput embeds cache hit metadata in the serialized payload [skill-execution-methods]", () => {
   const { workspace, db, service } = createService();
   try {
     const skill: SkillDefinition = {

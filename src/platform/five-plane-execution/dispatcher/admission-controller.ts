@@ -10,10 +10,10 @@
  *
  * Provides decisions: allow (execute immediately), queue (wait for capacity), or reject.
  *
- * @see {@link https://github.com/anomalyco/automatic-agent/tree/main/docs_zh/architecture/00-platform-architecture.md | Architecture and Technical Design}
- * @see {@link https://github.com/anomalyco/automatic-agent/tree/main/docs_zh/contracts/runtime_execution_contract.md | Runtime Execution Contract}
- * @see {@link https://github.com/anomalyco/automatic-agent/tree/main/docs_zh/contracts/task_and_workflow_contract.md | Task and Workflow Contract}
- * @see {@link https://github.com/anomalyco/automatic-agent/tree/main/docs_zh/governance/glossary_and_terminology.md | Glossary and Terminology}
+ * @see {@link https://github.com/automatic-agent/automatic-agent-platform/tree/main/docs_zh/architecture/00-platform-architecture.md | Architecture and Technical Design}
+ * @see {@link https://github.com/automatic-agent/automatic-agent-platform/tree/main/docs_zh/contracts/runtime_execution_contract.md | Runtime Execution Contract}
+ * @see {@link https://github.com/automatic-agent/automatic-agent-platform/tree/main/docs_zh/contracts/task_and_workflow_contract.md | Task and Workflow Contract}
+ * @see {@link https://github.com/automatic-agent/automatic-agent-platform/tree/main/docs_zh/governance/glossary_and_terminology.md | Glossary and Terminology}
  */
 
 import type { TaskPriority } from "../../contracts/types/domain.js";

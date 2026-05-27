@@ -36,7 +36,7 @@ function createMockDb() {
   };
 }
 
-test("DEFAULT_ENTERPRISE_CAPABILITIES contains expected capabilities", () => {
+test("DEFAULT_ENTERPRISE_CAPABILITIES contains expected capabilities [enterprise-capability-matrix-service]", () => {
   const capabilityKeys = DEFAULT_ENTERPRISE_CAPABILITIES.map(c => c.capabilityKey);
 
   assert.ok(capabilityKeys.includes("admin_console"));
@@ -51,7 +51,7 @@ test("DEFAULT_ENTERPRISE_CAPABILITIES contains expected capabilities", () => {
   assert.ok(capabilityKeys.includes("audit_export"));
 });
 
-test("EnterpriseCapabilityMatrixService registers environment readiness", () => {
+test("EnterpriseCapabilityMatrixService registers environment readiness [enterprise-capability-matrix-service]", () => {
   const service = new EnterpriseCapabilityMatrixService(createMockDb() as any, createMockStore() as any);
 
   const record = service.registerEnvironmentReadiness({
@@ -69,7 +69,7 @@ test("EnterpriseCapabilityMatrixService registers environment readiness", () => 
   assert.equal(record.owner, "platform_team");
 });
 
-test("EnterpriseCapabilityMatrixService builds matrix with community tier", () => {
+test("EnterpriseCapabilityMatrixService builds matrix with community tier [enterprise-capability-matrix-service]", () => {
   const service = new EnterpriseCapabilityMatrixService(createMockDb() as any, createMockStore() as any);
 
   const result = service.buildMatrix({
@@ -83,7 +83,7 @@ test("EnterpriseCapabilityMatrixService builds matrix with community tier", () =
   assert.ok(result.report.entries.length > 0);
 });
 
-test("EnterpriseCapabilityMatrixService blocks enterprise features for community tier", () => {
+test("EnterpriseCapabilityMatrixService blocks enterprise features for community tier [enterprise-capability-matrix-service]", () => {
   const service = new EnterpriseCapabilityMatrixService(createMockDb() as any, createMockStore() as any);
 
   const result = service.buildMatrix({
@@ -97,7 +97,7 @@ test("EnterpriseCapabilityMatrixService blocks enterprise features for community
   assert.ok(ssoEntry.reasonCodes.some(r => r.includes("license_tier_below_requirement")));
 });
 
-test("EnterpriseCapabilityMatrixService allows professional features for professional tier", () => {
+test("EnterpriseCapabilityMatrixService allows professional features for professional tier [enterprise-capability-matrix-service]", () => {
   const mockStore = createMockStore();
   mockStore.billing.getBillingAccount = () => ({ planId: "pro" } as any);
   mockStore.release.getActiveEnvironmentReadinessRecord = () => ({
@@ -127,7 +127,7 @@ test("EnterpriseCapabilityMatrixService allows professional features for profess
   assert.equal(adminEntry.requiredTier, "professional");
 });
 
-test("EnterpriseCapabilityMatrixService blocks features not supported in deployment mode", () => {
+test("EnterpriseCapabilityMatrixService blocks features not supported in deployment mode [enterprise-capability-matrix-service]", () => {
   const mockStore = createMockStore();
   mockStore.billing.getBillingAccount = () => ({ planId: "enterprise" } as any);
 
@@ -146,7 +146,7 @@ test("EnterpriseCapabilityMatrixService blocks features not supported in deploym
   assert.ok(privateModelEntry.reasonCodes.some(r => r.includes("deployment_mode_not_supported")));
 });
 
-test("EnterpriseCapabilityMatrixService summary counts are correct", () => {
+test("EnterpriseCapabilityMatrixService summary counts are correct [enterprise-capability-matrix-service]", () => {
   const service = new EnterpriseCapabilityMatrixService(createMockDb() as any, createMockStore() as any);
 
   const result = service.buildMatrix({
@@ -163,7 +163,7 @@ test("EnterpriseCapabilityMatrixService summary counts are correct", () => {
   );
 });
 
-test("EnterpriseCapabilityMatrixService overall verdict is blocked when any blocked", () => {
+test("EnterpriseCapabilityMatrixService overall verdict is blocked when any blocked [enterprise-capability-matrix-service]", () => {
   const service = new EnterpriseCapabilityMatrixService(createMockDb() as any, createMockStore() as any);
 
   const result = service.buildMatrix({
@@ -178,7 +178,7 @@ test("EnterpriseCapabilityMatrixService overall verdict is blocked when any bloc
   }
 });
 
-test("EnterpriseCapabilityMatrixService evaluates readiness correctly", () => {
+test("EnterpriseCapabilityMatrixService evaluates readiness correctly [enterprise-capability-matrix-service]", () => {
   const mockStore = createMockStore();
   mockStore.billing.getBillingAccount = () => ({ planId: "enterprise" } as any);
   mockStore.release.getActiveEnvironmentReadinessRecord = () => ({
@@ -207,7 +207,7 @@ test("EnterpriseCapabilityMatrixService evaluates readiness correctly", () => {
   assert.equal(ssoEntry.status, "available");
 });
 
-test("EnterpriseCapabilityMatrixService handles missing readiness records", () => {
+test("EnterpriseCapabilityMatrixService handles missing readiness records [enterprise-capability-matrix-service]", () => {
   const mockStore = createMockStore();
   mockStore.billing.getBillingAccount = () => ({ planId: "enterprise" } as any);
   // No readiness records returned
@@ -226,7 +226,7 @@ test("EnterpriseCapabilityMatrixService handles missing readiness records", () =
   assert.ok(ssoEntry.reasonCodes.some(r => r.includes("readiness_missing")));
 });
 
-test("EnterpriseCapabilityMatrixService listEnvironmentReadiness works", () => {
+test("EnterpriseCapabilityMatrixService listEnvironmentReadiness works [enterprise-capability-matrix-service]", () => {
   const service = new EnterpriseCapabilityMatrixService(createMockDb() as any, createMockStore() as any);
 
   const records = service.listEnvironmentReadiness("production");
@@ -234,7 +234,7 @@ test("EnterpriseCapabilityMatrixService listEnvironmentReadiness works", () => {
   assert.ok(Array.isArray(records));
 });
 
-test("EnterpriseCapabilityMatrixService listReports works", () => {
+test("EnterpriseCapabilityMatrixService listReports works [enterprise-capability-matrix-service]", () => {
   const service = new EnterpriseCapabilityMatrixService(createMockDb() as any, createMockStore() as any);
 
   const reports = service.listReports(10);
@@ -242,7 +242,7 @@ test("EnterpriseCapabilityMatrixService listReports works", () => {
   assert.ok(Array.isArray(reports));
 });
 
-test("EnterpriseCapabilityMatrixService buildMatrix validates generatedAt", () => {
+test("EnterpriseCapabilityMatrixService buildMatrix validates generatedAt [enterprise-capability-matrix-service]", () => {
   const service = new EnterpriseCapabilityMatrixService(createMockDb() as any, createMockStore() as any);
 
   const result = service.buildMatrix({
@@ -254,7 +254,7 @@ test("EnterpriseCapabilityMatrixService buildMatrix validates generatedAt", () =
   assert.equal(result.report.generatedAt, "2026-04-14T00:00:00.000Z");
 });
 
-test("EnterpriseCapabilityMatrixService buildMatrix throws on invalid generatedAt", () => {
+test("EnterpriseCapabilityMatrixService buildMatrix throws on invalid generatedAt [enterprise-capability-matrix-service]", () => {
   const service = new EnterpriseCapabilityMatrixService(createMockDb() as any, createMockStore() as any);
 
   assert.throws(() => {
@@ -266,7 +266,7 @@ test("EnterpriseCapabilityMatrixService buildMatrix throws on invalid generatedA
   });
 });
 
-test("EnterpriseCapabilityMatrixService registerEnvironmentReadiness validates componentId", () => {
+test("EnterpriseCapabilityMatrixService registerEnvironmentReadiness validates componentId [enterprise-capability-matrix-service]", () => {
   const service = new EnterpriseCapabilityMatrixService(createMockDb() as any, createMockStore() as any);
 
   assert.throws(() => {
@@ -280,7 +280,7 @@ test("EnterpriseCapabilityMatrixService registerEnvironmentReadiness validates c
   });
 });
 
-test("EnterpriseCapabilityMatrixService registerEnvironmentReadiness validates owner", () => {
+test("EnterpriseCapabilityMatrixService registerEnvironmentReadiness validates owner [enterprise-capability-matrix-service]", () => {
   const service = new EnterpriseCapabilityMatrixService(createMockDb() as any, createMockStore() as any);
 
   assert.throws(() => {
@@ -294,7 +294,7 @@ test("EnterpriseCapabilityMatrixService registerEnvironmentReadiness validates o
   });
 });
 
-test("EnterpriseCapabilityMatrixService exports matrix", () => {
+test("EnterpriseCapabilityMatrixService exports matrix [enterprise-capability-matrix-service]", () => {
   const service = new EnterpriseCapabilityMatrixService(createMockDb() as any, createMockStore() as any);
 
   const result = service.exportMatrix({
@@ -307,7 +307,7 @@ test("EnterpriseCapabilityMatrixService exports matrix", () => {
   assert.ok(result.report);
 });
 
-test("EnterpriseCapabilityMatrixService buildMatrix throws on non-existent account", () => {
+test("EnterpriseCapabilityMatrixService buildMatrix throws on non-existent account [enterprise-capability-matrix-service]", () => {
   const mockStore = createMockStore();
   mockStore.billing.getBillingAccount = () => null;
 

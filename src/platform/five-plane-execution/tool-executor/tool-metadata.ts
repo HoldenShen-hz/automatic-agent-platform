@@ -6,10 +6,10 @@
  * It provides a centralized schema for describing tool characteristics such as security posture,
  * side effects, recovery strategies, and output handling.
  *
- * @see {@link https://github.com/anomalyco/automatic_agent/blob/main/docs_zh/contracts/sandbox_contract.md}
- * @see {@link https://github.com/anomalyco/automatic_agent/blob/main/docs_zh/contracts/policy_engine_contract.md}
- * @see {@link https://github.com/anomalyco/automatic_agent/blob/main/docs_zh/governance/glossary_and_terminology.md}
- * @see {@link https://github.com/anomalyco/automatic_agent/blob/main/docs_zh/architecture/00-platform-architecture.md}
+ * @see {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/contracts/sandbox_contract.md}
+ * @see {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/contracts/policy_engine_contract.md}
+ * @see {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/governance/glossary_and_terminology.md}
+ * @see {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/architecture/00-platform-architecture.md}
  */
 
 import type { SandboxPolicy } from "../../five-plane-control-plane/iam/sandbox-policy.js";

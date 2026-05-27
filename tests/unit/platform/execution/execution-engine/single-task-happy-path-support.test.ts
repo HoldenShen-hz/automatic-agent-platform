@@ -15,21 +15,21 @@ import {
   type HappyPathInput,
 } from "../../../../../src/platform/five-plane-execution/execution-engine/single-task-happy-path-support.js";
 
-test("DEFAULT_SINGLE_TASK_MAX_RETRIES is 2", () => {
+test("DEFAULT_SINGLE_TASK_MAX_RETRIES is 2 [single-task-happy-path-support]", () => {
   assert.equal(DEFAULT_SINGLE_TASK_MAX_RETRIES, 2);
 });
 
-test("DEFAULT_SINGLE_TASK_RETRY_BACKOFF is linear", () => {
+test("DEFAULT_SINGLE_TASK_RETRY_BACKOFF is linear [single-task-happy-path-support]", () => {
   assert.equal(DEFAULT_SINGLE_TASK_RETRY_BACKOFF, "linear");
 });
 
-test("DEFAULT_RUNTIME_BACKPRESSURE_HEALTH_OPTIONS has correct defaults", () => {
+test("DEFAULT_RUNTIME_BACKPRESSURE_HEALTH_OPTIONS has correct defaults [single-task-happy-path-support]", () => {
   assert.equal(DEFAULT_RUNTIME_BACKPRESSURE_HEALTH_OPTIONS.memoryHighWatermarkMb, Number.POSITIVE_INFINITY);
   assert.equal(DEFAULT_RUNTIME_BACKPRESSURE_HEALTH_OPTIONS.eventLoopLagThresholdMs, Number.POSITIVE_INFINITY);
   assert.equal(DEFAULT_RUNTIME_BACKPRESSURE_HEALTH_OPTIONS.tier1AckDegradedThreshold, 100);
 });
 
-test("createContext creates TransitionAuditContext", () => {
+test("createContext creates TransitionAuditContext [single-task-happy-path-support]", () => {
   const traceContext = {
     traceId: "trace_abc",
     spanId: "span_123",
@@ -46,7 +46,7 @@ test("createContext creates TransitionAuditContext", () => {
   assert.equal(context.occurredAt, context.occurredAt); // ISO timestamp
 });
 
-test("createContext handles missing optional fields", () => {
+test("createContext handles missing optional fields [single-task-happy-path-support]", () => {
   const traceContext = {
     traceId: "trace_xyz",
   };
@@ -59,7 +59,7 @@ test("createContext handles missing optional fields", () => {
   assert.ok(context.occurredAt);
 });
 
-test("createContext includes spanId when present", () => {
+test("createContext includes spanId when present [single-task-happy-path-support]", () => {
   const traceContext = {
     traceId: "trace_with_span",
     spanId: "span_abc",
@@ -74,7 +74,7 @@ test("createContext includes spanId when present", () => {
   assert.equal(context.parentSpanId, "span_abc");
 });
 
-test("createContext includes correlationId when present", () => {
+test("createContext includes correlationId when present [single-task-happy-path-support]", () => {
   const traceContext = {
     traceId: "trace_corr",
     correlationId: "corr_123",
@@ -85,7 +85,7 @@ test("createContext includes correlationId when present", () => {
   assert.equal(context.correlationId, "corr_123");
 });
 
-test("HappyPathInput interface has expected properties", () => {
+test("HappyPathInput interface has expected properties [single-task-happy-path-support]", () => {
   const input: HappyPathInput = {
     dbPath: "/tmp/test.db",
     title: "Test Task",
@@ -97,7 +97,7 @@ test("HappyPathInput interface has expected properties", () => {
   assert.equal(input.request, "Do something");
 });
 
-test("HappyPathInput optional properties work correctly", () => {
+test("HappyPathInput optional properties work correctly [single-task-happy-path-support]", () => {
   const input: HappyPathInput = {
     dbPath: "/tmp/test.db",
     title: "Test Task",
@@ -108,7 +108,7 @@ test("HappyPathInput optional properties work correctly", () => {
   assert.equal(input.tenantId, "tenant_123");
 });
 
-test("DEFAULT_RUNTIME_BACKPRESSURE_HEALTH_OPTIONS is typed as readonly defaults", () => {
+test("DEFAULT_RUNTIME_BACKPRESSURE_HEALTH_OPTIONS is typed as readonly defaults [single-task-happy-path-support]", () => {
   assert.deepEqual(DEFAULT_RUNTIME_BACKPRESSURE_HEALTH_OPTIONS, {
     memoryHighWatermarkMb: Number.POSITIVE_INFINITY,
     eventLoopLagThresholdMs: Number.POSITIVE_INFINITY,
@@ -116,13 +116,13 @@ test("DEFAULT_RUNTIME_BACKPRESSURE_HEALTH_OPTIONS is typed as readonly defaults"
   });
 });
 
-test("DEFAULT_RUNTIME_BACKPRESSURE_HEALTH_OPTIONS values are correct types", () => {
+test("DEFAULT_RUNTIME_BACKPRESSURE_HEALTH_OPTIONS values are correct types [single-task-happy-path-support]", () => {
   assert.equal(typeof DEFAULT_RUNTIME_BACKPRESSURE_HEALTH_OPTIONS.memoryHighWatermarkMb, "number");
   assert.equal(typeof DEFAULT_RUNTIME_BACKPRESSURE_HEALTH_OPTIONS.eventLoopLagThresholdMs, "number");
   assert.equal(typeof DEFAULT_RUNTIME_BACKPRESSURE_HEALTH_OPTIONS.tier1AckDegradedThreshold, "number");
 });
 
-test("createContext returns valid ISO timestamp", () => {
+test("createContext returns valid ISO timestamp [single-task-happy-path-support]", () => {
   const traceContext = { traceId: "trace_iso" };
   const before = new Date().toISOString();
 

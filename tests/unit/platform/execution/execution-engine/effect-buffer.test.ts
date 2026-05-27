@@ -14,7 +14,7 @@ import {
   type EffectScopeResult,
 } from "../../../../../src/platform/five-plane-execution/execution-engine/effect-buffer.js";
 
-test("EffectBuilder creates effect with required fields", () => {
+test("EffectBuilder creates effect with required fields [effect-buffer]", () => {
   const effect = EffectBuilder.create("event_publish", "Test effect")
     .withExecute(async () => {})
     .build();
@@ -26,7 +26,7 @@ test("EffectBuilder creates effect with required fields", () => {
   assert.equal(effect.continueOnFailure, false);
 });
 
-test("EffectBuilder withId sets custom id", () => {
+test("EffectBuilder withId sets custom id [effect-buffer]", () => {
   const effect = EffectBuilder.create("stream_emit", "Test")
     .withId("custom_id_123")
     .withExecute(async () => {})
@@ -35,7 +35,7 @@ test("EffectBuilder withId sets custom id", () => {
   assert.equal(effect.id, "custom_id_123");
 });
 
-test("EffectBuilder withPriority sets priority", () => {
+test("EffectBuilder withPriority sets priority [effect-buffer]", () => {
   const effect = EffectBuilder.create("callback_invoke", "Test")
     .withPriority("critical")
     .withExecute(async () => {})
@@ -44,7 +44,7 @@ test("EffectBuilder withPriority sets priority", () => {
   assert.equal(effect.priority, "critical");
 });
 
-test("EffectBuilder continueOnFailure enables continue behavior", () => {
+test("EffectBuilder continueOnFailure enables continue behavior [effect-buffer]", () => {
   const effect = EffectBuilder.create("ui_update", "Test")
     .withExecute(async () => {})
     .continueOnFailure()
@@ -53,7 +53,7 @@ test("EffectBuilder continueOnFailure enables continue behavior", () => {
   assert.equal(effect.continueOnFailure, true);
 });
 
-test("EffectBuilder withTimeout sets timeout", () => {
+test("EffectBuilder withTimeout sets timeout [effect-buffer]", () => {
   const effect = EffectBuilder.create("external_notification", "Test")
     .withExecute(async () => {})
     .withTimeout(5000)
@@ -62,7 +62,7 @@ test("EffectBuilder withTimeout sets timeout", () => {
   assert.equal(effect.timeoutMs, 5000);
 });
 
-test("EffectBuilder withCompensate sets compensation", () => {
+test("EffectBuilder withCompensate sets compensation [effect-buffer]", () => {
   const compensateFn = async () => {};
   const effect = EffectBuilder.create("artifact_flush", "Test")
     .withExecute(async () => {})
@@ -72,7 +72,7 @@ test("EffectBuilder withCompensate sets compensation", () => {
   assert.equal(effect.compensate, compensateFn);
 });
 
-test("EffectBuilder throws when execute is missing", () => {
+test("EffectBuilder throws when execute is missing [effect-buffer]", () => {
   assert.throws(
     () => {
       EffectBuilder.create("event_publish", "Test").build();
@@ -81,7 +81,7 @@ test("EffectBuilder throws when execute is missing", () => {
   );
 });
 
-test("EffectScope constructor sets options correctly", () => {
+test("EffectScope constructor sets options correctly [effect-buffer]", () => {
   const scope = new EffectScope({
     scopeId: "test_scope",
     defaultTimeoutMs: 3000,
@@ -100,7 +100,7 @@ test("EffectScope constructor sets options correctly", () => {
   assert.equal(scope.getEffectCount(), 1);
 });
 
-test("EffectScope addEffect adds effect to scope", () => {
+test("EffectScope addEffect adds effect to scope [effect-buffer]", () => {
   const scope = new EffectScope({ scopeId: "test_scope" });
 
   scope.addEffect(
@@ -112,7 +112,7 @@ test("EffectScope addEffect adds effect to scope", () => {
   assert.equal(scope.getEffectCount(), 1);
 });
 
-test("EffectScope addEffect throws when committed", () => {
+test("EffectScope addEffect throws when committed [effect-buffer]", () => {
   const scope = new EffectScope({ scopeId: "test_scope" });
   scope.commit();
 
@@ -128,7 +128,7 @@ test("EffectScope addEffect throws when committed", () => {
   );
 });
 
-test("EffectScope addEffect throws when rolled back", () => {
+test("EffectScope addEffect throws when rolled back [effect-buffer]", () => {
   const scope = new EffectScope({ scopeId: "test_scope" });
   scope.rollback();
 
@@ -144,7 +144,7 @@ test("EffectScope addEffect throws when rolled back", () => {
   );
 });
 
-test("EffectScope commit marks scope as committed", () => {
+test("EffectScope commit marks scope as committed [effect-buffer]", () => {
   const scope = new EffectScope({ scopeId: "test_scope" });
   assert.equal(scope.isCommitted(), false);
 
@@ -153,14 +153,14 @@ test("EffectScope commit marks scope as committed", () => {
   assert.equal(scope.isCommitted(), true);
 });
 
-test("EffectScope rollback marks scope as rolled back", () => {
+test("EffectScope rollback marks scope as rolled back [effect-buffer]", () => {
   const scope = new EffectScope({ scopeId: "test_scope" });
   scope.rollback();
 
   assert.equal(scope.isRolledBack(), true);
 });
 
-test("EffectScope executeEffects executes in priority order", async () => {
+test("EffectScope executeEffects executes in priority order [effect-buffer]", async () => {
   const scope = new EffectScope({ scopeId: "test_scope" });
 
   const executionOrder: string[] = [];
@@ -198,7 +198,7 @@ test("EffectScope executeEffects executes in priority order", async () => {
   assert.deepEqual(executionOrder, ["critical", "normal", "low"]);
 });
 
-test("EffectScope executeEffects returns proper result", async () => {
+test("EffectScope executeEffects returns proper result [effect-buffer]", async () => {
   const scope = new EffectScope({ scopeId: "test_scope" });
 
   scope.addEffect(
@@ -217,7 +217,7 @@ test("EffectScope executeEffects returns proper result", async () => {
   assert.equal(result.allSucceeded, true);
 });
 
-test("EffectScope executeEffects handles failures", async () => {
+test("EffectScope executeEffects handles failures [effect-buffer]", async () => {
   const scope = new EffectScope({ scopeId: "test_scope" });
 
   scope.addEffect(
@@ -236,7 +236,7 @@ test("EffectScope executeEffects handles failures", async () => {
   assert.equal(result.allSucceeded, false);
 });
 
-test("EffectScope executeEffects skips effects when rolled back", async () => {
+test("EffectScope executeEffects skips effects when rolled back [effect-buffer]", async () => {
   const scope = new EffectScope({ scopeId: "test_scope" });
 
   scope.addEffect(
@@ -259,7 +259,7 @@ test("EffectScope executeEffects skips effects when rolled back", async () => {
   assert.equal(result.allSucceeded, true);
 });
 
-test("EffectScope executeEffects throws when not committed", async () => {
+test("EffectScope executeEffects throws when not committed [effect-buffer]", async () => {
   const scope = new EffectScope({ scopeId: "test_scope" });
 
   scope.addEffect(
@@ -276,7 +276,7 @@ test("EffectScope executeEffects throws when not committed", async () => {
   );
 });
 
-test("EffectScope compensateEffects calls compensation functions", async () => {
+test("EffectScope compensateEffects calls compensation functions [effect-buffer]", async () => {
   const scope = new EffectScope({ scopeId: "test_scope" });
 
   let compensated = false;
@@ -298,7 +298,7 @@ test("EffectScope compensateEffects calls compensation functions", async () => {
   assert.equal(compensated, true);
 });
 
-test("EffectBuffer createScope creates and stores scope", () => {
+test("EffectBuffer createScope creates and stores scope [effect-buffer]", () => {
   const buffer = new EffectBuffer();
 
   const scope = buffer.createScope({ scopeId: "new_scope" });
@@ -307,7 +307,7 @@ test("EffectBuffer createScope creates and stores scope", () => {
   assert.equal(buffer.getScope("new_scope"), scope);
 });
 
-test("EffectBuffer createScope evicts expired scopes", () => {
+test("EffectBuffer createScope evicts expired scopes [effect-buffer]", () => {
   const buffer = new EffectBuffer();
 
   // Create scope that will be evicted (simulated by TTL)
@@ -315,13 +315,13 @@ test("EffectBuffer createScope evicts expired scopes", () => {
   assert.equal(buffer.getScope("scope1"), scope1);
 });
 
-test("EffectBuffer getScope returns undefined for missing scope", () => {
+test("EffectBuffer getScope returns undefined for missing scope [effect-buffer]", () => {
   const buffer = new EffectBuffer();
 
   assert.equal(buffer.getScope("nonexistent"), undefined);
 });
 
-test("EffectBuffer removeScope deletes scope", () => {
+test("EffectBuffer removeScope deletes scope [effect-buffer]", () => {
   const buffer = new EffectBuffer();
 
   buffer.createScope({ scopeId: "to_remove" });
@@ -331,7 +331,7 @@ test("EffectBuffer removeScope deletes scope", () => {
   assert.equal(buffer.getScope("to_remove"), undefined);
 });
 
-test("EffectBuffer flush executes all committed scopes", async () => {
+test("EffectBuffer flush executes all committed scopes [effect-buffer]", async () => {
   const buffer = new EffectBuffer();
 
   const scope1 = buffer.createScope({ scopeId: "scope1" });
@@ -356,7 +356,7 @@ test("EffectBuffer flush executes all committed scopes", async () => {
   assert.equal(results.every((r) => r.allSucceeded), true);
 });
 
-test("EffectBuffer flush skips rolled back scopes", async () => {
+test("EffectBuffer flush skips rolled back scopes [effect-buffer]", async () => {
   const buffer = new EffectBuffer();
 
   const scope = buffer.createScope({ scopeId: "rolled_back_scope" });
@@ -374,7 +374,7 @@ test("EffectBuffer flush skips rolled back scopes", async () => {
   assert.equal(results.length, 0);
 });
 
-test("EffectBuffer flush skips uncommitted scopes", async () => {
+test("EffectBuffer flush skips uncommitted scopes [effect-buffer]", async () => {
   const buffer = new EffectBuffer();
 
   const scope = buffer.createScope({ scopeId: "uncommitted_scope" });
@@ -392,7 +392,7 @@ test("EffectBuffer flush skips uncommitted scopes", async () => {
   assert.equal(results.length, 0);
 });
 
-test("EffectBuffer getScopeCount returns correct count", () => {
+test("EffectBuffer getScopeCount returns correct count [effect-buffer]", () => {
   const buffer = new EffectBuffer();
 
   assert.equal(buffer.getScopeCount(), 0);
@@ -404,7 +404,7 @@ test("EffectBuffer getScopeCount returns correct count", () => {
   assert.equal(buffer.getScopeCount(), 2);
 });
 
-test("EffectBuffer clear removes all scopes", () => {
+test("EffectBuffer clear removes all scopes [effect-buffer]", () => {
   const buffer = new EffectBuffer();
 
   buffer.createScope({ scopeId: "scope1" });
@@ -417,11 +417,11 @@ test("EffectBuffer clear removes all scopes", () => {
   assert.equal(buffer.getScopeCount(), 0);
 });
 
-test("globalEffectBuffer is an EffectBuffer instance", () => {
+test("globalEffectBuffer is an EffectBuffer instance [effect-buffer]", () => {
   assert.ok(globalEffectBuffer instanceof EffectBuffer);
 });
 
-test("EffectScope add is fluent", () => {
+test("EffectScope add is fluent [effect-buffer]", () => {
   const scope = new EffectScope({ scopeId: "test_scope" });
 
   const result = scope.add("event_publish", "Test", async () => {});
@@ -430,7 +430,7 @@ test("EffectScope add is fluent", () => {
   assert.equal(scope.getEffectCount(), 1);
 });
 
-test("EffectBuilder fluent chain builds correctly", () => {
+test("EffectBuilder fluent chain builds correctly [effect-buffer]", () => {
   const effect = EffectBuilder.create("stream_emit", "Chain test")
     .withId("chained_id")
     .withPriority("high")

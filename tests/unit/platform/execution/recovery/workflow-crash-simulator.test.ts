@@ -20,14 +20,14 @@ function makeCrashContext(point: WorkflowCrashPoint = "step_started"): WorkflowC
   };
 }
 
-test("maybeInjectWorkflowCrash does not throw when injection is undefined", () => {
+test("maybeInjectWorkflowCrash does not throw when injection is undefined [workflow-crash-simulator]", () => {
   const context = makeCrashContext();
 
   // Should not throw
   maybeInjectWorkflowCrash(undefined, context);
 });
 
-test("maybeInjectWorkflowCrash does not throw when injection point does not match context point", () => {
+test("maybeInjectWorkflowCrash does not throw when injection point does not match context point [workflow-crash-simulator]", () => {
   const context = makeCrashContext("step_started");
 
   const injection: WorkflowCrashInjection = {
@@ -38,7 +38,7 @@ test("maybeInjectWorkflowCrash does not throw when injection point does not matc
   maybeInjectWorkflowCrash(injection, context);
 });
 
-test("maybeInjectWorkflowCrash does not throw when stepId does not match", () => {
+test("maybeInjectWorkflowCrash does not throw when stepId does not match [workflow-crash-simulator]", () => {
   const context = makeCrashContext("step_started");
 
   const injection: WorkflowCrashInjection = {
@@ -50,7 +50,7 @@ test("maybeInjectWorkflowCrash does not throw when stepId does not match", () =>
   maybeInjectWorkflowCrash(injection, context);
 });
 
-test("maybeInjectWorkflowCrash throws when point and stepId match", () => {
+test("maybeInjectWorkflowCrash throws when point and stepId match [workflow-crash-simulator]", () => {
   const context = makeCrashContext("step_started");
 
   const injection: WorkflowCrashInjection = {
@@ -64,7 +64,7 @@ test("maybeInjectWorkflowCrash throws when point and stepId match", () => {
   );
 });
 
-test("maybeInjectWorkflowCrash throws when point matches and stepId is null (any step)", () => {
+test("maybeInjectWorkflowCrash throws when point matches and stepId is null (any step) [workflow-crash-simulator]", () => {
   const context = makeCrashContext("tool_completed");
 
   const injection: WorkflowCrashInjection = {
@@ -78,7 +78,7 @@ test("maybeInjectWorkflowCrash throws when point matches and stepId is null (any
   );
 });
 
-test("maybeInjectWorkflowCrash throws for before_commit point", () => {
+test("maybeInjectWorkflowCrash throws for before_commit point [workflow-crash-simulator]", () => {
   const context = makeCrashContext("before_commit");
 
   const injection: WorkflowCrashInjection = {
@@ -91,7 +91,7 @@ test("maybeInjectWorkflowCrash throws for before_commit point", () => {
   );
 });
 
-test("InjectedWorkflowCrashError has correct error properties", () => {
+test("InjectedWorkflowCrashError has correct error properties [workflow-crash-simulator]", () => {
   const context: WorkflowCrashContext = {
     point: "step_started",
     taskId: "task-test",
@@ -112,38 +112,38 @@ test("InjectedWorkflowCrashError has correct error properties", () => {
   assert.ok(error.message.includes("step-test"));
 });
 
-test("InjectedWorkflowCrashError is an instance of Error", () => {
+test("InjectedWorkflowCrashError is an instance of Error [workflow-crash-simulator]", () => {
   const error = new InjectedWorkflowCrashError(makeCrashContext());
 
   assert.ok(error instanceof Error);
 });
 
-test("isInjectedWorkflowCrashError returns true for InjectedWorkflowCrashError", () => {
+test("isInjectedWorkflowCrashError returns true for InjectedWorkflowCrashError [workflow-crash-simulator]", () => {
   const error = new InjectedWorkflowCrashError(makeCrashContext());
 
   assert.equal(isInjectedWorkflowCrashError(error), true);
 });
 
-test("isInjectedWorkflowCrashError returns false for regular Error", () => {
+test("isInjectedWorkflowCrashError returns false for regular Error [workflow-crash-simulator]", () => {
   const error = new Error("regular error");
 
   assert.equal(isInjectedWorkflowCrashError(error), false);
 });
 
-test("isInjectedWorkflowCrashError returns false for null", () => {
+test("isInjectedWorkflowCrashError returns false for null [workflow-crash-simulator]", () => {
   assert.equal(isInjectedWorkflowCrashError(null), false);
 });
 
-test("isInjectedWorkflowCrashError returns false for undefined", () => {
+test("isInjectedWorkflowCrashError returns false for undefined [workflow-crash-simulator]", () => {
   assert.equal(isInjectedWorkflowCrashError(undefined), false);
 });
 
-test("WorkflowCrashPoint type accepts all valid values", () => {
+test("WorkflowCrashPoint type accepts all valid values [workflow-crash-simulator]", () => {
   const points: WorkflowCrashPoint[] = ["step_started", "tool_completed", "before_commit"];
   assert.equal(points.length, 3);
 });
 
-test("WorkflowCrashInjection interface structure", () => {
+test("WorkflowCrashInjection interface structure [workflow-crash-simulator]", () => {
   const injection: WorkflowCrashInjection = {
     point: "step_started",
     stepId: "step-1",
@@ -153,7 +153,7 @@ test("WorkflowCrashInjection interface structure", () => {
   assert.equal(injection.stepId, "step-1");
 });
 
-test("WorkflowCrashInjection with null stepId matches any step", () => {
+test("WorkflowCrashInjection with null stepId matches any step [workflow-crash-simulator]", () => {
   const context = makeCrashContext("tool_completed");
 
   const injection: WorkflowCrashInjection = {
@@ -168,7 +168,7 @@ test("WorkflowCrashInjection with null stepId matches any step", () => {
   );
 });
 
-test("maybeInjectWorkflowCrash handles multiple calls", () => {
+test("maybeInjectWorkflowCrash handles multiple calls [workflow-crash-simulator]", () => {
   const context = makeCrashContext("step_started");
 
   const injection: WorkflowCrashInjection = {
@@ -183,7 +183,7 @@ test("maybeInjectWorkflowCrash handles multiple calls", () => {
   );
 });
 
-test("InjectedWorkflowCrashError contains context details in error data", () => {
+test("InjectedWorkflowCrashError contains context details in error data [workflow-crash-simulator]", () => {
   const context: WorkflowCrashContext = {
     point: "before_commit",
     taskId: "task-specific",

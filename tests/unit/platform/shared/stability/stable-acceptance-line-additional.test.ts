@@ -136,7 +136,7 @@ function createEmptyRepairReport() {
   };
 }
 
-test("acceptance line long_run_evidence fails when soak has failed runs", () => {
+test("acceptance line long_run_evidence fails when soak has failed runs [stable-acceptance-line-additional]", () => {
   const report = buildStableAcceptanceLineReport({
     profileName: "24h",
     validationReport: createValidationReport(100),
@@ -152,7 +152,7 @@ test("acceptance line long_run_evidence fails when soak has failed runs", () => 
   assert.equal(criterion?.status, "fail");
 });
 
-test("acceptance line long_run_evidence fails when soak has integrity failures", () => {
+test("acceptance line long_run_evidence fails when soak has integrity failures [stable-acceptance-line-additional]", () => {
   const report = buildStableAcceptanceLineReport({
     profileName: "24h",
     validationReport: createValidationReport(100),
@@ -168,7 +168,7 @@ test("acceptance line long_run_evidence fails when soak has integrity failures",
   assert.equal(criterion?.status, "fail");
 });
 
-test("acceptance line manual_db_repair_free passes when no manual repairs needed", () => {
+test("acceptance line manual_db_repair_free passes when no manual repairs needed [stable-acceptance-line-additional]", () => {
   const report = buildStableAcceptanceLineReport({
     profileName: "smoke",
     validationReport: createValidationReport(80),
@@ -181,7 +181,7 @@ test("acceptance line manual_db_repair_free passes when no manual repairs needed
   assert.equal(criterion?.status, "pass");
 });
 
-test("acceptance line orphan_queue_free passes when no orphan queue claims", () => {
+test("acceptance line orphan_queue_free passes when no orphan queue claims [stable-acceptance-line-additional]", () => {
   const report = buildStableAcceptanceLineReport({
     profileName: "smoke",
     validationReport: createValidationReport(80),
@@ -194,7 +194,7 @@ test("acceptance line orphan_queue_free passes when no orphan queue claims", () 
   assert.equal(criterion?.status, "pass");
 });
 
-test("acceptance line zombie_lock_free passes when no zombie locks", () => {
+test("acceptance line zombie_lock_free passes when no zombie locks [stable-acceptance-line-additional]", () => {
   const report = buildStableAcceptanceLineReport({
     profileName: "smoke",
     validationReport: createValidationReport(80),
@@ -207,7 +207,7 @@ test("acceptance line zombie_lock_free passes when no zombie locks", () => {
   assert.equal(criterion?.status, "pass");
 });
 
-test("acceptance line recovery_success_rate passes when all automatic repairs succeed", () => {
+test("acceptance line recovery_success_rate passes when all automatic repairs succeed [stable-acceptance-line-additional]", () => {
   const report = buildStableAcceptanceLineReport({
     profileName: "smoke",
     validationReport: createValidationReport(80),
@@ -239,7 +239,7 @@ test("acceptance line recovery_success_rate passes when all automatic repairs su
   assert.equal(report.observed.recoverySuccessRatePct, 100);
 });
 
-test("acceptance line recovery_success_rate fails when repairs do not succeed", () => {
+test("acceptance line recovery_success_rate fails when repairs do not succeed [stable-acceptance-line-additional]", () => {
   const report = buildStableAcceptanceLineReport({
     profileName: "smoke",
     validationReport: createValidationReport(80),
@@ -271,7 +271,7 @@ test("acceptance line recovery_success_rate fails when repairs do not succeed", 
   assert.equal(report.observed.recoverySuccessRatePct, 0);
 });
 
-test("acceptance line recovery_success_rate defaults to 100 when no repairs attempted", () => {
+test("acceptance line recovery_success_rate defaults to 100 when no repairs attempted [stable-acceptance-line-additional]", () => {
   const report = buildStableAcceptanceLineReport({
     profileName: "smoke",
     validationReport: createValidationReport(80),
@@ -286,7 +286,7 @@ test("acceptance line recovery_success_rate defaults to 100 when no repairs atte
   assert.equal(report.observed.recoverySuccessRatePct, 100);
 });
 
-test("acceptance line latency_budget_p95 reports partial when no samples", () => {
+test("acceptance line latency_budget_p95 reports partial when no samples [stable-acceptance-line-additional]", () => {
   const report = buildStableAcceptanceLineReport({
     profileName: "smoke",
     validationReport: createValidationReport(80, "unknown_case"),
@@ -299,7 +299,7 @@ test("acceptance line latency_budget_p95 reports partial when no samples", () =>
   assert.equal(criterion?.status, "partial");
 });
 
-test("acceptance line includes truth notes for smoke profile", () => {
+test("acceptance line includes truth notes for smoke profile [stable-acceptance-line-additional]", () => {
   const report = buildStableAcceptanceLineReport({
     profileName: "smoke",
     validationReport: createValidationReport(80),
@@ -311,7 +311,7 @@ test("acceptance line includes truth notes for smoke profile", () => {
   assert.ok(report.truthNotes.some((note) => note.includes("Smoke evidence only")));
 });
 
-test("acceptance line observed metrics are correctly computed", () => {
+test("acceptance line observed metrics are correctly computed [stable-acceptance-line-additional]", () => {
   const report = buildStableAcceptanceLineReport({
     profileName: "24h",
     validationReport: createValidationReport(100),
@@ -327,7 +327,7 @@ test("acceptance line observed metrics are correctly computed", () => {
   assert.equal(report.observed.zombieLockCount, 0);
 });
 
-test("acceptance line latency budget includes interactive and extended bands", () => {
+test("acceptance line latency budget includes interactive and extended bands [stable-acceptance-line-additional]", () => {
   const report = buildStableAcceptanceLineReport({
     profileName: "smoke",
     validationReport: createValidationReport(80),

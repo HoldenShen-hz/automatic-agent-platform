@@ -22,12 +22,12 @@ test.after(() => {
   process.env.AA_RUNNING_TESTS = previousRunningTests;
 });
 
-test("RedisQueueAdapter backendKind is redis", () => {
+test("RedisQueueAdapter backendKind is redis [redis-queue-adapter.unit]", () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
   assert.equal(adapter.backendKind, "redis");
 });
 
-test("RedisQueueAdapter enqueue returns a job record without throwing", () => {
+test("RedisQueueAdapter enqueue returns a job record without throwing [redis-queue-adapter.unit]", () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
   const job = adapter.enqueue({ queueName: "test-queue", payload: { taskId: "t1" } });
 
@@ -37,7 +37,7 @@ test("RedisQueueAdapter enqueue returns a job record without throwing", () => {
   assert.equal(job.attempts, 0);
 });
 
-test("RedisQueueAdapter enqueue accepts all input options", () => {
+test("RedisQueueAdapter enqueue accepts all input options [redis-queue-adapter.unit]", () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
   const job = adapter.enqueue({
     queueName: "priority-queue",
@@ -53,7 +53,7 @@ test("RedisQueueAdapter enqueue accepts all input options", () => {
   assert.equal(job.idempotencyKey, "key-123");
 });
 
-test("RedisQueueAdapter enqueue handles delayed jobs", () => {
+test("RedisQueueAdapter enqueue handles delayed jobs [redis-queue-adapter.unit]", () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
   const futureDate = new Date(Date.now() + 3600000).toISOString();
   const job = adapter.enqueue({
@@ -66,7 +66,7 @@ test("RedisQueueAdapter enqueue handles delayed jobs", () => {
   assert.ok(job.delayUntil != null);
 });
 
-test("RedisQueueAdapter enqueue job structure is complete", () => {
+test("RedisQueueAdapter enqueue job structure is complete [redis-queue-adapter.unit]", () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
   const job = adapter.enqueue({ queueName: "q", payload: { test: true } });
 
@@ -77,52 +77,52 @@ test("RedisQueueAdapter enqueue job structure is complete", () => {
   assert.equal(job.completedAt, null);
 });
 
-test("RedisQueueAdapter sync dequeue throws not-supported error", () => {
+test("RedisQueueAdapter sync dequeue throws not-supported error [redis-queue-adapter.unit]", () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
   assert.throws(() => adapter.dequeue("q"), /sync_dequeue_not_supported/);
 });
 
-test("RedisQueueAdapter sync getJob throws not-supported error", () => {
+test("RedisQueueAdapter sync getJob throws not-supported error [redis-queue-adapter.unit]", () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
   assert.throws(() => adapter.getJob("x"), /sync_getJob_not_supported/);
 });
 
-test("RedisQueueAdapter sync listJobs throws not-supported error", () => {
+test("RedisQueueAdapter sync listJobs throws not-supported error [redis-queue-adapter.unit]", () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
   assert.throws(() => adapter.listJobs("q"), /sync_listJobs_not_supported/);
 });
 
-test("RedisQueueAdapter sync moveToDeadLetter throws not-supported error", () => {
+test("RedisQueueAdapter sync moveToDeadLetter throws not-supported error [redis-queue-adapter.unit]", () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
   assert.throws(() => adapter.moveToDeadLetter("x", "r"), /sync_moveToDeadLetter_not_supported/);
 });
 
-test("RedisQueueAdapter sync retryJob throws not-supported error", () => {
+test("RedisQueueAdapter sync retryJob throws not-supported error [redis-queue-adapter.unit]", () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
   assert.throws(() => adapter.retryJob("x"), /sync_retryJob_not_supported/);
 });
 
-test("RedisQueueAdapter sync purge throws not-supported error", () => {
+test("RedisQueueAdapter sync purge throws not-supported error [redis-queue-adapter.unit]", () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
   assert.throws(() => adapter.purge("q", "2026-01-01"), /sync_purge_not_supported/);
 });
 
-test("RedisQueueAdapter sync stats throws not-supported error", () => {
+test("RedisQueueAdapter sync stats throws not-supported error [redis-queue-adapter.unit]", () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
   assert.throws(() => adapter.stats("q"), /sync_stats_not_supported/);
 });
 
-test("RedisQueueAdapter sync listQueues throws not-supported error", () => {
+test("RedisQueueAdapter sync listQueues throws not-supported error [redis-queue-adapter.unit]", () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
   assert.throws(() => adapter.listQueues(), /sync_listQueues_not_supported/);
 });
 
-test("RedisQueueAdapter config defaults", () => {
+test("RedisQueueAdapter config defaults [redis-queue-adapter.unit]", () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
   assert.equal(adapter.backendKind, "redis");
 });
 
-test("RedisQueueAdapter config with all options", () => {
+test("RedisQueueAdapter config with all options [redis-queue-adapter.unit]", () => {
   const adapter = new RedisQueueAdapter({
     host: "redis.example.com",
     port: 6380,
@@ -136,7 +136,7 @@ test("RedisQueueAdapter config with all options", () => {
 
 // §17.1 Concurrency Tests for RedisQueueAdapter
 
-test("RedisQueueAdapter concurrent enqueues maintain data integrity", async () => {
+test("RedisQueueAdapter concurrent enqueues maintain data integrity [redis-queue-adapter.unit]", async () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
 
   const result = await runConcurrentInvariant(async (workerId: number) => {
@@ -150,7 +150,7 @@ test("RedisQueueAdapter concurrent enqueues maintain data integrity", async () =
   assert.equal(result.values.length, 10, "All 10 enqueues completed");
 });
 
-test("RedisQueueAdapter concurrent enqueue idempotency check", async () => {
+test("RedisQueueAdapter concurrent enqueue idempotency check [redis-queue-adapter.unit]", async () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
 
   // First enqueue with idempotency key
@@ -179,13 +179,13 @@ test("RedisQueueAdapter concurrent enqueue idempotency check", async () => {
   await adapter.close();
 });
 
-test("RedisQueueAdapter async dequeue returns null for empty queue", async () => {
+test("RedisQueueAdapter async dequeue returns null for empty queue [redis-queue-adapter.unit]", async () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
   const result = await adapter.dequeueAsync("nonexistent");
   assert.equal(result, null);
 });
 
-test("RedisQueueAdapter async enqueue and dequeue workflow", async () => {
+test("RedisQueueAdapter async enqueue and dequeue workflow [redis-queue-adapter.unit]", async () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
 
   const job = await adapter.enqueueAsync({
@@ -201,7 +201,7 @@ test("RedisQueueAdapter async enqueue and dequeue workflow", async () => {
   await adapter.close();
 });
 
-test("RedisQueueAdapter async dequeue ack marks job completed", async () => {
+test("RedisQueueAdapter async dequeue ack marks job completed [redis-queue-adapter.unit]", async () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
 
   await adapter.enqueueAsync({ queueName: "ack-test", payload: { done: true } });
@@ -217,7 +217,7 @@ test("RedisQueueAdapter async dequeue ack marks job completed", async () => {
   await adapter.close();
 });
 
-test("RedisQueueAdapter async dequeue nack requeues on retry", async () => {
+test("RedisQueueAdapter async dequeue nack requeues on retry [redis-queue-adapter.unit]", async () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
 
   const job = await adapter.enqueueAsync({
@@ -238,7 +238,7 @@ test("RedisQueueAdapter async dequeue nack requeues on retry", async () => {
   await adapter.close();
 });
 
-test("RedisQueueAdapter async moveToDeadLetter marks job dead_letter", async () => {
+test("RedisQueueAdapter async moveToDeadLetter marks job dead_letter [redis-queue-adapter.unit]", async () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
 
   const job = await adapter.enqueueAsync({ queueName: "dlq-test", payload: { dead: true } });
@@ -251,7 +251,7 @@ test("RedisQueueAdapter async moveToDeadLetter marks job dead_letter", async () 
   await adapter.close();
 });
 
-test("RedisQueueAdapter async stats returns correct counts", async () => {
+test("RedisQueueAdapter async stats returns correct counts [redis-queue-adapter.unit]", async () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
 
   await adapter.enqueueAsync({ queueName: "stats-test", payload: { a: 1 } });
@@ -267,7 +267,7 @@ test("RedisQueueAdapter async stats returns correct counts", async () => {
   await adapter.close();
 });
 
-test("RedisQueueAdapter async listQueues returns all queue names", async () => {
+test("RedisQueueAdapter async listQueues returns all queue names [redis-queue-adapter.unit]", async () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
 
   await adapter.enqueueAsync({ queueName: "queue-a", payload: {} });
@@ -282,7 +282,7 @@ test("RedisQueueAdapter async listQueues returns all queue names", async () => {
   await adapter.close();
 });
 
-test("RedisQueueAdapter async retryJob resets failed job", async () => {
+test("RedisQueueAdapter async retryJob resets failed job [redis-queue-adapter.unit]", async () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
 
   const job = await adapter.enqueueAsync({ queueName: "retry-test", payload: {} });
@@ -298,7 +298,7 @@ test("RedisQueueAdapter async retryJob resets failed job", async () => {
   await adapter.close();
 });
 
-test("RedisQueueAdapter async with idempotency key returns existing job", async () => {
+test("RedisQueueAdapter async with idempotency key returns existing job [redis-queue-adapter.unit]", async () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
 
   const first = await adapter.enqueueAsync({
@@ -318,7 +318,7 @@ test("RedisQueueAdapter async with idempotency key returns existing job", async 
   await adapter.close();
 });
 
-test("RedisQueueAdapter async with priority orders correctly", async () => {
+test("RedisQueueAdapter async with priority orders correctly [redis-queue-adapter.unit]", async () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
 
   await adapter.enqueueAsync({ queueName: "priority-test", payload: { n: 1 }, priority: 1 });
@@ -333,7 +333,7 @@ test("RedisQueueAdapter async with priority orders correctly", async () => {
   await adapter.close();
 });
 
-test("RedisQueueAdapter async dequeue nack after max attempts moves to dead letter", async () => {
+test("RedisQueueAdapter async dequeue nack after max attempts moves to dead letter [redis-queue-adapter.unit]", async () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
 
   const job = await adapter.enqueueAsync({ queueName: "tasks", payload: {}, maxAttempts: 2 });
@@ -352,7 +352,7 @@ test("RedisQueueAdapter async dequeue nack after max attempts moves to dead lett
   await adapter.close();
 });
 
-test("RedisQueueAdapter concurrent async enqueue and dequeue operations", async () => {
+test("RedisQueueAdapter concurrent async enqueue and dequeue operations [redis-queue-adapter.unit]", async () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
 
   // Enqueue 10 jobs concurrently
@@ -375,14 +375,14 @@ test("RedisQueueAdapter concurrent async enqueue and dequeue operations", async 
   assert.ok(dequeuedJobs.length > 0, "Some jobs should be dequeued");
 });
 
-test("RedisQueueAdapter ping returns PONG", async () => {
+test("RedisQueueAdapter ping returns PONG [redis-queue-adapter.unit]", async () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
   const result = await adapter.ping();
   assert.equal(result, "PONG");
   await adapter.close();
 });
 
-test("RedisQueueAdapter close succeeds without error", async () => {
+test("RedisQueueAdapter close succeeds without error [redis-queue-adapter.unit]", async () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
   await adapter.close();
   assert.ok(true, "Close should not throw");

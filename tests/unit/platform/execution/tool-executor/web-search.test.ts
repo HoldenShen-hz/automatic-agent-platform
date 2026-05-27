@@ -8,7 +8,7 @@ import {
   type WebSearchRequest,
 } from "../../../../../src/platform/five-plane-execution/tool-executor/web-search.js";
 
-test("isBlockedHostname blocks private IP patterns", () => {
+test("isBlockedHostname blocks private IP patterns [web-search]", () => {
   assert.ok(isBlockedHostname("127.0.0.1"));
   assert.ok(isBlockedHostname("10.0.0.1"));
   assert.ok(isBlockedHostname("172.16.0.1"));
@@ -18,13 +18,13 @@ test("isBlockedHostname blocks private IP patterns", () => {
   assert.ok(isBlockedHostname("localhost"));
 });
 
-test("isBlockedHostname blocks internal domain suffixes", () => {
+test("isBlockedHostname blocks internal domain suffixes [web-search]", () => {
   assert.ok(isBlockedHostname("server.local"));
   assert.ok(isBlockedHostname("host.internal"));
   assert.ok(isBlockedHostname("machine.private"));
 });
 
-test("isBlockedHostname allows public hostnames", () => {
+test("isBlockedHostname allows public hostnames [web-search]", () => {
   assert.ok(!isBlockedHostname("duckduckgo.com"));
   assert.ok(!isBlockedHostname("google.com"));
   assert.ok(!isBlockedHostname("github.com"));
@@ -32,7 +32,7 @@ test("isBlockedHostname allows public hostnames", () => {
   assert.ok(!isBlockedHostname("1.1.1.1"));
 });
 
-test("decodeHTMLEntities decodes common entities", () => {
+test("decodeHTMLEntities decodes common entities [web-search]", () => {
   assert.equal(decodeHTMLEntities("Hello &amp; World"), "Hello & World");
   assert.equal(decodeHTMLEntities("&lt;div&gt;"), "<div>");
   assert.equal(decodeHTMLEntities("&quot;quoted&quot;"), '"quoted"');
@@ -43,7 +43,7 @@ test("decodeHTMLEntities decodes common entities", () => {
   assert.equal(decodeHTMLEntities("no entities"), "no entities");
 });
 
-test("extractSearchResults parses DuckDuckGo HTML results", () => {
+test("extractSearchResults parses DuckDuckGo HTML results [web-search]", () => {
   const html = `
     <div class="result">
       <a class="result__a" href="https://example.com/article1">Example Article One</a>
@@ -68,7 +68,7 @@ test("extractSearchResults parses DuckDuckGo HTML results", () => {
   assert.equal(results[2]!.title, "Example Article Three");
 });
 
-test("extractSearchResults respects limit", () => {
+test("extractSearchResults respects limit [web-search]", () => {
   const html = `
     <a class="result__a" href="https://example.com/1">Result 1</a>
     <a class="result__snippet" href="https://example.com/1">Snippet 1</a>
@@ -82,7 +82,7 @@ test("extractSearchResults respects limit", () => {
   assert.equal(limited.length, 2);
 });
 
-test("extractSearchResults skips non-http and blocked URLs", () => {
+test("extractSearchResults skips non-http and blocked URLs [web-search]", () => {
   const html = `
     <a class="result__a" href="https://good.com/article">Good Article</a>
     <a class="result__snippet" href="https://good.com/article">Good snippet.</a>
@@ -99,7 +99,7 @@ test("extractSearchResults skips non-http and blocked URLs", () => {
   assert.equal(results[0]!.url, "https://good.com/article");
 });
 
-test("extractSearchResults handles missing snippets gracefully", () => {
+test("extractSearchResults handles missing snippets gracefully [web-search]", () => {
   const html = `
     <a class="result__a" href="https://example.com/no-snippet">Title Only</a>
   `;
@@ -109,12 +109,12 @@ test("extractSearchResults handles missing snippets gracefully", () => {
   assert.equal(results[0]!.snippet, "");
 });
 
-test("createWebSearchTool returns a tool with correct name", () => {
+test("createWebSearchTool returns a tool with correct name [web-search]", () => {
   const tool = createWebSearchTool();
   assert.equal(tool.name, "web_search");
 });
 
-test("createWebSearchTool rejects empty query", async () => {
+test("createWebSearchTool rejects empty query [web-search]", async () => {
   const tool = createWebSearchTool();
   const result = await tool.execute({ query: "" });
 
@@ -124,7 +124,7 @@ test("createWebSearchTool rejects empty query", async () => {
   assert.equal(result.count, 0);
 });
 
-test("createWebSearchTool rejects whitespace-only query", async () => {
+test("createWebSearchTool rejects whitespace-only query [web-search]", async () => {
   const tool = createWebSearchTool();
   const result = await tool.execute({ query: "   " });
 
@@ -132,7 +132,7 @@ test("createWebSearchTool rejects whitespace-only query", async () => {
   assert.equal(result.errorCode, "EMPTY_QUERY");
 });
 
-test("extractSearchResults respects the limit parameter and returns up to that many results", () => {
+test("extractSearchResults respects the limit parameter and returns up to that many results [web-search]", () => {
   // Build mock HTML with 60 results
   // Note: snippet links use no href so result__a regex only matches result links
   const items: string[] = [];
@@ -158,7 +158,7 @@ test("extractSearchResults respects the limit parameter and returns up to that m
   assert.equal(r100.length, 60, `Should return 60 results when limit=100 and HTML has 60 results, got ${r100.length}`);
 });
 
-test("createWebSearchTool caps execute limit at MAX_LIMIT=30", async () => {
+test("createWebSearchTool caps execute limit at MAX_LIMIT=30 [web-search]", async () => {
   const items: string[] = [];
   for (let i = 1; i <= 60; i++) {
     items.push(`<a class="result__a" href="https://example.com/${i}">Result ${i}</a>`);

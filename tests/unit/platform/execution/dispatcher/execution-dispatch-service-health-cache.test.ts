@@ -242,7 +242,7 @@ function workerToSnapshot(worker: RegisteredWorkerView): WorkerSnapshotRecord {
 // R9-10: HealthService caching tests
 // ---------------------------------------------------------------------------
 
-test("dispatchNext creates HealthService once when no backpressureSnapshot provided", () => {
+test("dispatchNext creates HealthService once when no backpressureSnapshot provided [execution-dispatch-service-health-cache]", () => {
   const mockTicket = createMockTicket("ticket-1", "exec-1", "task-1");
   const mockWorker = createMockWorker("worker-1", { availableSlots: 5 });
 
@@ -275,7 +275,7 @@ test("dispatchNext creates HealthService once when no backpressureSnapshot provi
   assert.ok(result2.outcome !== undefined);
 });
 
-test("dispatchNext reuses cached HealthService across multiple calls", () => {
+test("dispatchNext reuses cached HealthService across multiple calls [execution-dispatch-service-health-cache]", () => {
   const mockTicket = createMockTicket("ticket-1", "exec-1", "task-1");
   const mockWorker = createMockWorker("worker-1", { availableSlots: 5 });
 
@@ -306,7 +306,7 @@ test("dispatchNext reuses cached HealthService across multiple calls", () => {
   assert.ok(true);
 });
 
-test("dispatchNext uses provided backpressureSnapshot instead of creating HealthService", () => {
+test("dispatchNext uses provided backpressureSnapshot instead of creating HealthService [execution-dispatch-service-health-cache]", () => {
   const mockTicket = createMockTicket("ticket-1", "exec-1", "task-1");
   const mockWorker = createMockWorker("worker-1", { availableSlots: 5 });
 
@@ -353,7 +353,7 @@ test("dispatchNext uses provided backpressureSnapshot instead of creating Health
   assert.ok(result.outcome !== undefined);
 });
 
-test("dispatchNext does not cache HealthService when backpressureSnapshot is provided", () => {
+test("dispatchNext does not cache HealthService when backpressureSnapshot is provided [execution-dispatch-service-health-cache]", () => {
   const mockTicket = createMockTicket("ticket-1", "exec-1", "task-1");
   const mockWorker = createMockWorker("worker-1", { availableSlots: 5 });
 
@@ -402,7 +402,7 @@ test("dispatchNext does not cache HealthService when backpressureSnapshot is pro
   assert.equal(callCount, 2);
 });
 
-test("HealthService is not created when backpressureSnapshot returns null", () => {
+test("HealthService is not created when backpressureSnapshot returns null [execution-dispatch-service-health-cache]", () => {
   const store = createMockStore();
   (store.worker as any).listDispatchableExecutionTickets = () => [];
 
@@ -417,7 +417,7 @@ test("HealthService is not created when backpressureSnapshot returns null", () =
   assert.equal(result.outcome, "no_ticket");
 });
 
-test("dispatchNext with different occurredAt values uses same cached HealthService", () => {
+test("dispatchNext with different occurredAt values uses same cached HealthService [execution-dispatch-service-health-cache]", () => {
   const mockTicket = createMockTicket("ticket-1", "exec-1", "task-1");
   const mockWorker = createMockWorker("worker-1", { availableSlots: 5 });
 

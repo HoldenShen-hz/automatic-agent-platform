@@ -15,7 +15,7 @@ import {
   type VcrReplayRecording,
 } from "../../../../../src/platform/shared/stability/vcr-replay-fixture.js";
 
-test("buildVcrReplayFixture returns fixture with replay and recording methods", () => {
+test("buildVcrReplayFixture returns fixture with replay and recording methods [vcr-replay-fixture-additional]", () => {
   const options: VcrReplayFixtureOptions = {
     fixtureId: "test-fixture",
     outputDir: "/tmp/vcr-test",
@@ -29,7 +29,7 @@ test("buildVcrReplayFixture returns fixture with replay and recording methods", 
   assert.ok(typeof fixture.record === "function");
 });
 
-test("createVcrReplayRecording creates a valid recording structure", () => {
+test("createVcrReplayRecording creates a valid recording structure [vcr-replay-fixture-additional]", () => {
   const recording = createVcrReplayRecording({
     fixtureId: "test-recording",
     recordedAt: "2026-04-07T00:00:00.000Z",
@@ -50,7 +50,7 @@ test("createVcrReplayRecording creates a valid recording structure", () => {
   assert.equal(recording.events.length, 1);
 });
 
-test("createVcrReplayRecording requires events array", () => {
+test("createVcrReplayRecording requires events array [vcr-replay-fixture-additional]", () => {
   const recording = createVcrReplayRecording({
     fixtureId: "test-recording",
     recordedAt: "2026-04-07T00:00:00.000Z",
@@ -62,7 +62,7 @@ test("createVcrReplayRecording requires events array", () => {
   assert.ok(Array.isArray(recording.events));
 });
 
-test("validateVcrReplayRecording accepts valid recording", () => {
+test("validateVcrReplayRecording accepts valid recording [vcr-replay-fixture-additional]", () => {
   const recording: VcrReplayRecording = {
     fixtureId: "valid-recording",
     recordedAt: "2026-04-07T00:00:00.000Z",
@@ -82,7 +82,7 @@ test("validateVcrReplayRecording accepts valid recording", () => {
   assert.equal(result.valid, true);
 });
 
-test("validateVcrReplayRecording rejects missing fixtureId", () => {
+test("validateVcrReplayRecording rejects missing fixtureId [vcr-replay-fixture-additional]", () => {
   const recording = {
     fixtureId: "",
     recordedAt: "2026-04-07T00:00:00.000Z",
@@ -97,7 +97,7 @@ test("validateVcrReplayRecording rejects missing fixtureId", () => {
   assert.ok(result.errors.some((e) => e.includes("fixtureId")));
 });
 
-test("validateVcrReplayRecording rejects negative duration", () => {
+test("validateVcrReplayRecording rejects negative duration [vcr-replay-fixture-additional]", () => {
   const recording = {
     fixtureId: "test-recording",
     recordedAt: "2026-04-07T00:00:00.000Z",
@@ -112,7 +112,7 @@ test("validateVcrReplayRecording rejects negative duration", () => {
   assert.ok(result.errors.some((e) => e.includes("duration")));
 });
 
-test("VcrReplayRecording events have required fields", () => {
+test("VcrReplayRecording events have required fields [vcr-replay-fixture-additional]", () => {
   const recording = createVcrReplayRecording({
     fixtureId: "test-recording",
     recordedAt: "2026-04-07T00:00:00.000Z",
@@ -133,7 +133,7 @@ test("VcrReplayRecording events have required fields", () => {
   assert.ok(event.payload);
 });
 
-test("buildVcrReplayFixture with seed provides deterministic replay", () => {
+test("buildVcrReplayFixture with seed provides deterministic replay [vcr-replay-fixture-additional]", () => {
   const options: VcrReplayFixtureOptions = {
     fixtureId: "seeded-fixture",
     outputDir: "/tmp/vcr-test",

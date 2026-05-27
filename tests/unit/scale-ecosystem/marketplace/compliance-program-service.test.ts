@@ -8,7 +8,7 @@ import { AuthoritativeTaskStore } from "../../../../src/platform/five-plane-stat
 import { SqliteDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite-database.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 
-test("ComplianceProgramService summarizes namespace residency and audit export readiness", () => {
+test("ComplianceProgramService summarizes namespace residency and audit export readiness [compliance-program-service]", () => {
   const workspace = createTempWorkspace("aa-compliance-program-");
   const dbPath = join(workspace, "compliance-program.db");
   const db = new SqliteDatabase(dbPath);
@@ -71,7 +71,7 @@ test("ComplianceProgramService summarizes namespace residency and audit export r
   }
 });
 
-test("ComplianceProgramService reports zero tenants when store is empty", () => {
+test("ComplianceProgramService reports zero tenants when store is empty [compliance-program-service]", () => {
   const workspace = createTempWorkspace("aa-compliance-empty-");
   const dbPath = join(workspace, "compliance-empty.db");
   const db = new SqliteDatabase(dbPath);

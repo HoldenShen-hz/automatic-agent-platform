@@ -6,7 +6,7 @@ import { AuthoritativeTaskStore } from "../../../../src/platform/five-plane-stat
 import { SqliteDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite-database.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 
-test("marketplace governance service can register, review, publish, and summarize a signed package", () => {
+test("marketplace governance service can register, review, publish, and summarize a signed package [marketplace-governance-service]", () => {
   const workspace = createTempWorkspace("aa-marketplace-unit-");
   const dbPath = `${workspace}/marketplace.db`;
 
@@ -70,7 +70,7 @@ test("marketplace governance service can register, review, publish, and summariz
   }
 });
 
-test("marketplace governance service blocks publishing packages with rejected or missing review state", () => {
+test("marketplace governance service blocks publishing packages with rejected or missing review state [marketplace-governance-service]", () => {
   const workspace = createTempWorkspace("aa-marketplace-unit-");
   const dbPath = `${workspace}/marketplace.db`;
 
@@ -133,7 +133,7 @@ test("marketplace governance service blocks publishing packages with rejected or
   }
 });
 
-test("marketplace governance service fail-closes malformed identifiers and checksums", () => {
+test("marketplace governance service fail-closes malformed identifiers and checksums [marketplace-governance-service]", () => {
   const workspace = createTempWorkspace("aa-marketplace-unit-");
   const dbPath = `${workspace}/marketplace.db`;
 
@@ -175,7 +175,7 @@ test("marketplace governance service fail-closes malformed identifiers and check
   }
 });
 
-test("marketplace governance service scopes duplicate extension versions across tenants", () => {
+test("marketplace governance service scopes duplicate extension versions across tenants [marketplace-governance-service]", () => {
   const workspace = createTempWorkspace("aa-marketplace-tenant-");
   const dbPath = `${workspace}/marketplace-tenant.db`;
 
@@ -291,7 +291,7 @@ test("marketplace governance service scopes duplicate extension versions across 
   }
 });
 
-test("marketplace governance service blocks publish when certification gates are incomplete", () => {
+test("marketplace governance service blocks publish when certification gates are incomplete [marketplace-governance-service]", () => {
   const workspace = createTempWorkspace("aa-marketplace-unit-");
   const dbPath = `${workspace}/marketplace.db`;
 

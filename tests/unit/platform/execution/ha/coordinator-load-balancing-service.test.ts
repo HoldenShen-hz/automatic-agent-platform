@@ -121,7 +121,7 @@ function createCoordinatorRecord(overrides: Partial<CoordinatorInstanceRecord> =
 // Tests: Heartbeat Registration
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("CoordinatorLoadBalancingService - registerHeartbeat creates new coordinator", () => {
+test("CoordinatorLoadBalancingService - registerHeartbeat creates new coordinator [coordinator-load-balancing-service]", () => {
   const { service, store } = createService();
 
   const input: RegisterCoordinatorHeartbeatInput = {
@@ -139,7 +139,7 @@ test("CoordinatorLoadBalancingService - registerHeartbeat creates new coordinato
   assert.ok(store.worker.snapshots.has("coordinator-1"));
 });
 
-test("CoordinatorLoadBalancingService - registerHeartbeat updates existing coordinator", () => {
+test("CoordinatorLoadBalancingService - registerHeartbeat updates existing coordinator [coordinator-load-balancing-service]", () => {
   const { service, store } = createService();
 
   // First registration
@@ -163,7 +163,7 @@ test("CoordinatorLoadBalancingService - registerHeartbeat updates existing coord
   assert.equal(record.backlogCount, 10);
 });
 
-test("CoordinatorLoadBalancingService - registerHeartbeat generates ID if not provided", () => {
+test("CoordinatorLoadBalancingService - registerHeartbeat generates ID if not provided [coordinator-load-balancing-service]", () => {
   const { service } = createService();
 
   const record = service.registerHeartbeat({
@@ -174,7 +174,7 @@ test("CoordinatorLoadBalancingService - registerHeartbeat generates ID if not pr
   assert.ok(record.coordinatorId.includes("coordinator"));
 });
 
-test("CoordinatorLoadBalancingService - registerHeartbeat applies defaults", () => {
+test("CoordinatorLoadBalancingService - registerHeartbeat applies defaults [coordinator-load-balancing-service]", () => {
   const { service } = createService();
 
   const record = service.registerHeartbeat({
@@ -188,7 +188,7 @@ test("CoordinatorLoadBalancingService - registerHeartbeat applies defaults", () 
   assert.equal(record.backlogCount, 0);
 });
 
-test("CoordinatorLoadBalancingService - registerHeartbeat normalizes shards", () => {
+test("CoordinatorLoadBalancingService - registerHeartbeat normalizes shards [coordinator-load-balancing-service]", () => {
   const { service } = createService();
 
   const record = service.registerHeartbeat({
@@ -204,7 +204,7 @@ test("CoordinatorLoadBalancingService - registerHeartbeat normalizes shards", ()
   assert.ok(shards.includes("shard-2"));
 });
 
-test("CoordinatorLoadBalancingService - registerHeartbeat respects queue affinity", () => {
+test("CoordinatorLoadBalancingService - registerHeartbeat respects queue affinity [coordinator-load-balancing-service]", () => {
   const { service } = createService();
 
   const record = service.registerHeartbeat({
@@ -216,7 +216,7 @@ test("CoordinatorLoadBalancingService - registerHeartbeat respects queue affinit
   assert.equal(record.queueAffinity, "high-priority-queue");
 });
 
-test("CoordinatorLoadBalancingService - registerHeartbeat clamps cpuPct", () => {
+test("CoordinatorLoadBalancingService - registerHeartbeat clamps cpuPct [coordinator-load-balancing-service]", () => {
   const { service } = createService();
 
   const record = service.registerHeartbeat({
@@ -228,7 +228,7 @@ test("CoordinatorLoadBalancingService - registerHeartbeat clamps cpuPct", () => 
   assert.equal(record.cpuPct, 100);
 });
 
-test("CoordinatorLoadBalancingService - registerHeartbeat handles null cpuPct", () => {
+test("CoordinatorLoadBalancingService - registerHeartbeat handles null cpuPct [coordinator-load-balancing-service]", () => {
   const { service } = createService();
 
   const record = service.registerHeartbeat({
@@ -244,7 +244,7 @@ test("CoordinatorLoadBalancingService - registerHeartbeat handles null cpuPct", 
 // Tests: Snapshot Listing
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("CoordinatorLoadBalancingService - listSnapshots returns all snapshots", () => {
+test("CoordinatorLoadBalancingService - listSnapshots returns all snapshots [coordinator-load-balancing-service]", () => {
   const { service } = createService();
 
   service.registerHeartbeat({ coordinatorId: "coordinator-1", region: "us-east-1" });
@@ -259,7 +259,7 @@ test("CoordinatorLoadBalancingService - listSnapshots returns all snapshots", ()
 // Tests: Summary Building
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("CoordinatorLoadBalancingService - buildSummary returns correct counts", () => {
+test("CoordinatorLoadBalancingService - buildSummary returns correct counts [coordinator-load-balancing-service]", () => {
   const { service } = createService();
 
   service.registerHeartbeat({ coordinatorId: "coordinator-1", region: "us-east-1", status: "active" });
@@ -277,7 +277,7 @@ test("CoordinatorLoadBalancingService - buildSummary returns correct counts", ()
   assert.ok(summary.regions.includes("us-west-1"));
 });
 
-test("CoordinatorLoadBalancingService - buildSummary calculates total capacity", () => {
+test("CoordinatorLoadBalancingService - buildSummary calculates total capacity [coordinator-load-balancing-service]", () => {
   const { service } = createService();
 
   service.registerHeartbeat({
@@ -296,7 +296,7 @@ test("CoordinatorLoadBalancingService - buildSummary calculates total capacity",
   assert.equal(summary.totalCapacity, 15);
 });
 
-test("CoordinatorLoadBalancingService - buildSummary calculates total load", () => {
+test("CoordinatorLoadBalancingService - buildSummary calculates total load [coordinator-load-balancing-service]", () => {
   const { service } = createService();
 
   service.registerHeartbeat({
@@ -318,7 +318,7 @@ test("CoordinatorLoadBalancingService - buildSummary calculates total load", () 
   assert.equal(summary.totalBacklogCount, 10);
 });
 
-test("CoordinatorLoadBalancingService - buildSummary identifies hot coordinators", () => {
+test("CoordinatorLoadBalancingService - buildSummary identifies hot coordinators [coordinator-load-balancing-service]", () => {
   const { service } = createService();
 
   // Normal coordinator (load score < 1.0)
@@ -344,7 +344,7 @@ test("CoordinatorLoadBalancingService - buildSummary identifies hot coordinators
   assert.ok(summary.hotCoordinatorIds.includes("coordinator-2"));
 });
 
-test("CoordinatorLoadBalancingService - buildSummary includes generatedAt", () => {
+test("CoordinatorLoadBalancingService - buildSummary includes generatedAt [coordinator-load-balancing-service]", () => {
   const { service } = createService();
 
   const summary = service.buildSummary();
@@ -357,7 +357,7 @@ test("CoordinatorLoadBalancingService - buildSummary includes generatedAt", () =
 // Tests: Coordinator Selection
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("CoordinatorLoadBalancingService - selectCoordinator returns no_candidate when empty", () => {
+test("CoordinatorLoadBalancingService - selectCoordinator returns no_candidate when empty [coordinator-load-balancing-service]", () => {
   const { service } = createService();
 
   const decision = service.selectCoordinator({});
@@ -367,7 +367,7 @@ test("CoordinatorLoadBalancingService - selectCoordinator returns no_candidate w
   assert.equal(decision.reasonCode, "no_active_coordinator");
 });
 
-test("CoordinatorLoadBalancingService - selectCoordinator selects active coordinator", () => {
+test("CoordinatorLoadBalancingService - selectCoordinator selects active coordinator [coordinator-load-balancing-service]", () => {
   const { service } = createService();
 
   service.registerHeartbeat({
@@ -385,7 +385,7 @@ test("CoordinatorLoadBalancingService - selectCoordinator selects active coordin
   assert.equal(decision.selectedCoordinatorId, "coordinator-1");
 });
 
-test("CoordinatorLoadBalancingService - selectCoordinator filters inactive", () => {
+test("CoordinatorLoadBalancingService - selectCoordinator filters inactive [coordinator-load-balancing-service]", () => {
   const { service } = createService();
 
   service.registerHeartbeat({
@@ -399,7 +399,7 @@ test("CoordinatorLoadBalancingService - selectCoordinator filters inactive", () 
   assert.equal(decision.outcome, "no_candidate");
 });
 
-test("CoordinatorLoadBalancingService - selectCoordinator filters by queue affinity", () => {
+test("CoordinatorLoadBalancingService - selectCoordinator filters by queue affinity [coordinator-load-balancing-service]", () => {
   const { service } = createService();
 
   service.registerHeartbeat({
@@ -421,7 +421,7 @@ test("CoordinatorLoadBalancingService - selectCoordinator filters by queue affin
   assert.equal(decision.selectedCoordinatorId, "coordinator-1");
 });
 
-test("CoordinatorLoadBalancingService - selectCoordinator filters by tenant shard", () => {
+test("CoordinatorLoadBalancingService - selectCoordinator filters by tenant shard [coordinator-load-balancing-service]", () => {
   const { service } = createService();
 
   service.registerHeartbeat({
@@ -443,7 +443,7 @@ test("CoordinatorLoadBalancingService - selectCoordinator filters by tenant shar
   assert.equal(decision.selectedCoordinatorId, "coordinator-1");
 });
 
-test("CoordinatorLoadBalancingService - selectCoordinator prefers lower load", () => {
+test("CoordinatorLoadBalancingService - selectCoordinator prefers lower load [coordinator-load-balancing-service]", () => {
   const { service } = createService();
 
   service.registerHeartbeat({
@@ -468,7 +468,7 @@ test("CoordinatorLoadBalancingService - selectCoordinator prefers lower load", (
   assert.equal(decision.selectedCoordinatorId, "coordinator-2");
 });
 
-test("CoordinatorLoadBalancingService - selectCoordinator gives region bonus", () => {
+test("CoordinatorLoadBalancingService - selectCoordinator gives region bonus [coordinator-load-balancing-service]", () => {
   const { service } = createService();
 
   // Two coordinators with same load
@@ -495,7 +495,7 @@ test("CoordinatorLoadBalancingService - selectCoordinator gives region bonus", (
   assert.equal(decision.selectedCoordinatorId, "coordinator-1");
 });
 
-test("CoordinatorLoadBalancingService - selectCoordinator returns all evaluations", () => {
+test("CoordinatorLoadBalancingService - selectCoordinator returns all evaluations [coordinator-load-balancing-service]", () => {
   const { service } = createService();
 
   service.registerHeartbeat({
@@ -519,7 +519,7 @@ test("CoordinatorLoadBalancingService - selectCoordinator returns all evaluation
   assert.equal(offlineEval?.reasonCode, "coordinator_inactive");
 });
 
-test("CoordinatorLoadBalancingService - selectCoordinator uses requestKey for stable distribution", () => {
+test("CoordinatorLoadBalancingService - selectCoordinator uses requestKey for stable distribution [coordinator-load-balancing-service]", () => {
   const { service } = createService();
 
   // Two coordinators with identical load
@@ -547,7 +547,7 @@ test("CoordinatorLoadBalancingService - selectCoordinator uses requestKey for st
   assert.equal(decision1.selectedCoordinatorId, decision2.selectedCoordinatorId);
 });
 
-test("CoordinatorLoadBalancingService - selectCoordinator gives queue affinity bonus", () => {
+test("CoordinatorLoadBalancingService - selectCoordinator gives queue affinity bonus [coordinator-load-balancing-service]", () => {
   const { service } = createService();
 
   // Coordinator with matching queue affinity should win even with slightly higher load
@@ -579,7 +579,7 @@ test("CoordinatorLoadBalancingService - selectCoordinator gives queue affinity b
 // Tests: Edge Cases
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("CoordinatorLoadBalancingService - selectCoordinator handles all coordinators ineligible", () => {
+test("CoordinatorLoadBalancingService - selectCoordinator handles all coordinators ineligible [coordinator-load-balancing-service]", () => {
   const { service } = createService();
 
   service.registerHeartbeat({
@@ -594,7 +594,7 @@ test("CoordinatorLoadBalancingService - selectCoordinator handles all coordinato
   assert.equal(decision.outcome, "no_candidate");
 });
 
-test("CoordinatorLoadBalancingService - selectCoordinator handles tenant shard mismatch", () => {
+test("CoordinatorLoadBalancingService - selectCoordinator handles tenant shard mismatch [coordinator-load-balancing-service]", () => {
   const { service } = createService();
 
   service.registerHeartbeat({
@@ -609,7 +609,7 @@ test("CoordinatorLoadBalancingService - selectCoordinator handles tenant shard m
   assert.equal(decision.outcome, "no_candidate");
 });
 
-test("CoordinatorLoadBalancingService - buildSummary handles empty state", () => {
+test("CoordinatorLoadBalancingService - buildSummary handles empty state [coordinator-load-balancing-service]", () => {
   const { service } = createService();
 
   const summary = service.buildSummary();
@@ -620,7 +620,7 @@ test("CoordinatorLoadBalancingService - buildSummary handles empty state", () =>
   assert.deepEqual(summary.hotCoordinatorIds, []);
 });
 
-test("CoordinatorLoadBalancingService - registerHeartbeat with metadata stores it", () => {
+test("CoordinatorLoadBalancingService - registerHeartbeat with metadata stores it [coordinator-load-balancing-service]", () => {
   const { service } = createService();
 
   const record = service.registerHeartbeat({

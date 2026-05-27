@@ -87,12 +87,12 @@ class MockQueueAdapter implements QueueAdapter {
   }
 }
 
-test("QueuePartitioner can be instantiated", () => {
+test("QueuePartitioner can be instantiated [queue-partitioner-comprehensive]", () => {
   const partitioner = new QueuePartitioner();
   assert.ok(partitioner instanceof QueuePartitioner);
 });
 
-test("QueuePartitioner.registerPartition adds a partition", () => {
+test("QueuePartitioner.registerPartition adds a partition [queue-partitioner-comprehensive]", () => {
   const partitioner = new QueuePartitioner();
   const partition: QueuePartition = {
     name: "test-partition",
@@ -114,13 +114,13 @@ test("QueuePartitioner.registerPartition adds a partition", () => {
   assert.equal(retrieved.config.maxDepth, 100);
 });
 
-test("QueuePartitioner.getPartition returns undefined for unregistered type", () => {
+test("QueuePartitioner.getPartition returns undefined for unregistered type [queue-partitioner-comprehensive]", () => {
   const partitioner = new QueuePartitioner();
   const result = partitioner.getPartition("nonexistent");
   assert.equal(result, undefined);
 });
 
-test("QueuePartitioner.extractPartitionKey extracts aggregateType and tenantId from payload", () => {
+test("QueuePartitioner.extractPartitionKey extracts aggregateType and tenantId from payload [queue-partitioner-comprehensive]", () => {
   const partitioner = new QueuePartitioner();
   const payload = { aggregateType: "task", tenantId: "tenant-123", data: "test" };
   const key = partitioner.extractPartitionKey(payload);
@@ -129,7 +129,7 @@ test("QueuePartitioner.extractPartitionKey extracts aggregateType and tenantId f
   assert.equal(key.tenantId, "tenant-123");
 });
 
-test("QueuePartitioner.extractPartitionKey defaults to 'default' when fields missing", () => {
+test("QueuePartitioner.extractPartitionKey defaults to 'default' when fields missing [queue-partitioner-comprehensive]", () => {
   const partitioner = new QueuePartitioner();
   const key = partitioner.extractPartitionKey({});
 
@@ -137,45 +137,45 @@ test("QueuePartitioner.extractPartitionKey defaults to 'default' when fields mis
   assert.equal(key.tenantId, "default");
 });
 
-test("QueuePartitioner.extractPartitionKey uses domain as fallback for aggregateType", () => {
+test("QueuePartitioner.extractPartitionKey uses domain as fallback for aggregateType [queue-partitioner-comprehensive]", () => {
   const partitioner = new QueuePartitioner();
   const key = partitioner.extractPartitionKey({ domain: "workflow", tenantId: "tenant-1" });
 
   assert.equal(key.aggregateType, "workflow");
 });
 
-test("QueuePartitioner.extractPartitionKey uses tenant_id as fallback for tenantId", () => {
+test("QueuePartitioner.extractPartitionKey uses tenant_id as fallback for tenantId [queue-partitioner-comprehensive]", () => {
   const partitioner = new QueuePartitioner();
   const key = partitioner.extractPartitionKey({ aggregateType: "task", tenant_id: "tenant-456" });
 
   assert.equal(key.tenantId, "tenant-456");
 });
 
-test("QueuePartitioner.computePartitionName with byTenant strategy", () => {
+test("QueuePartitioner.computePartitionName with byTenant strategy [queue-partitioner-comprehensive]", () => {
   const partitioner = new QueuePartitioner();
   const name = partitioner.computePartitionName("task", "tenant-123", "byTenant");
   assert.equal(name, "queue:tenant-123");
 });
 
-test("QueuePartitioner.computePartitionName with byAggregateType strategy", () => {
+test("QueuePartitioner.computePartitionName with byAggregateType strategy [queue-partitioner-comprehensive]", () => {
   const partitioner = new QueuePartitioner();
   const name = partitioner.computePartitionName("task", "tenant-123", "byAggregateType");
   assert.equal(name, "queue:task");
 });
 
-test("QueuePartitioner.computePartitionName with byTenantAndAggregate strategy", () => {
+test("QueuePartitioner.computePartitionName with byTenantAndAggregate strategy [queue-partitioner-comprehensive]", () => {
   const partitioner = new QueuePartitioner();
   const name = partitioner.computePartitionName("task", "tenant-123", "byTenantAndAggregate");
   assert.equal(name, "queue:tenant-123:task");
 });
 
-test("QueuePartitioner.computePartitionName with unknown strategy defaults to byAggregateType", () => {
+test("QueuePartitioner.computePartitionName with unknown strategy defaults to byAggregateType [queue-partitioner-comprehensive]", () => {
   const partitioner = new QueuePartitioner();
   const name = partitioner.computePartitionName("task", "tenant-123", "byAggregateType" as any);
   assert.equal(name, "queue:task");
 });
 
-test("QueuePartitioner.route enqueues job to correct partition", () => {
+test("QueuePartitioner.route enqueues job to correct partition [queue-partitioner-comprehensive]", () => {
   const partitioner = new QueuePartitioner();
   const adapter = new MockQueueAdapter();
 
@@ -196,7 +196,7 @@ test("QueuePartitioner.route enqueues job to correct partition", () => {
   assert.ok(jobId.length > 0);
 });
 
-test("QueuePartitioner.route uses default strategy when no partition registered", () => {
+test("QueuePartitioner.route uses default strategy when no partition registered [queue-partitioner-comprehensive]", () => {
   const partitioner = new QueuePartitioner();
   const adapter = new MockQueueAdapter();
 
@@ -204,7 +204,7 @@ test("QueuePartitioner.route uses default strategy when no partition registered"
   assert.ok(jobId.length > 0);
 });
 
-test("QueuePartitioner.route passes priority option to adapter", () => {
+test("QueuePartitioner.route passes priority option to adapter [queue-partitioner-comprehensive]", () => {
   const partitioner = new QueuePartitioner();
   const adapter = new MockQueueAdapter();
 
@@ -212,7 +212,7 @@ test("QueuePartitioner.route passes priority option to adapter", () => {
   assert.ok(jobId.length > 0);
 });
 
-test("QueuePartitioner.route passes maxAttempts option to adapter", () => {
+test("QueuePartitioner.route passes maxAttempts option to adapter [queue-partitioner-comprehensive]", () => {
   const partitioner = new QueuePartitioner();
   const adapter = new MockQueueAdapter();
 
@@ -220,7 +220,7 @@ test("QueuePartitioner.route passes maxAttempts option to adapter", () => {
   assert.ok(jobId.length > 0);
 });
 
-test("QueuePartitioner.getPartitionStats returns stats for all registered partitions", () => {
+test("QueuePartitioner.getPartitionStats returns stats for all registered partitions [queue-partitioner-comprehensive]", () => {
   const partitioner = new QueuePartitioner();
   const adapter = new MockQueueAdapter();
 
@@ -242,7 +242,7 @@ test("QueuePartitioner.getPartitionStats returns stats for all registered partit
   assert.equal(stats.has("task"), true);
 });
 
-test("QueuePartitioner.detectOverload returns empty array when no overload", () => {
+test("QueuePartitioner.detectOverload returns empty array when no overload [queue-partitioner-comprehensive]", () => {
   const partitioner = new QueuePartitioner();
   const adapter = new MockQueueAdapter();
 
@@ -264,7 +264,7 @@ test("QueuePartitioner.detectOverload returns empty array when no overload", () 
   assert.equal(overloads.length, 0);
 });
 
-test("QueuePartitioner.detectOverload detects when waiting + delayed exceeds maxDepth", () => {
+test("QueuePartitioner.detectOverload detects when waiting + delayed exceeds maxDepth [queue-partitioner-comprehensive]", () => {
   const partitioner = new QueuePartitioner();
   const adapter = new MockQueueAdapter();
 
@@ -290,7 +290,7 @@ test("QueuePartitioner.detectOverload detects when waiting + delayed exceeds max
   assert.equal(overloads[0].aggregateType, "task");
 });
 
-test("QueuePartitioner PartitionKey interface structure", () => {
+test("QueuePartitioner PartitionKey interface structure [queue-partitioner-comprehensive]", () => {
   const key: PartitionKey = {
     aggregateType: "task",
     tenantId: "tenant-123",
@@ -299,7 +299,7 @@ test("QueuePartitioner PartitionKey interface structure", () => {
   assert.equal(key.tenantId, "tenant-123");
 });
 
-test("QueuePartitioner PartitionConfig interface structure", () => {
+test("QueuePartitioner PartitionConfig interface structure [queue-partitioner-comprehensive]", () => {
   const config: PartitionConfig = {
     maxDepth: 100,
     alertThreshold: 80,
@@ -310,7 +310,7 @@ test("QueuePartitioner PartitionConfig interface structure", () => {
   assert.equal(config.partitioningStrategy, "byAggregateType");
 });
 
-test("QueuePartitioner PartitionConfig all partitioning strategies", () => {
+test("QueuePartitioner PartitionConfig all partitioning strategies [queue-partitioner-comprehensive]", () => {
   const strategies: PartitionConfig["partitioningStrategy"][] = [
     "byTenant",
     "byAggregateType",
@@ -319,7 +319,7 @@ test("QueuePartitioner PartitionConfig all partitioning strategies", () => {
   assert.equal(strategies.length, 3);
 });
 
-test("QueuePartitioner multiple partitions can be registered", () => {
+test("QueuePartitioner multiple partitions can be registered [queue-partitioner-comprehensive]", () => {
   const partitioner = new QueuePartitioner();
 
   partitioner.registerPartition({
@@ -344,7 +344,7 @@ test("QueuePartitioner multiple partitions can be registered", () => {
   assert.equal(partitioner.getPartition("workflow")?.name, "workflow-partition");
 });
 
-test("QueuePartitioner partition can be overwritten", () => {
+test("QueuePartitioner partition can be overwritten [queue-partitioner-comprehensive]", () => {
   const partitioner = new QueuePartitioner();
 
   partitioner.registerPartition({

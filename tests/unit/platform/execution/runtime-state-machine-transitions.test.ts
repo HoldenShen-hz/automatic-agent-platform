@@ -14,7 +14,7 @@ function createMachine() {
   return new RuntimeStateMachine({ persistEvent: () => {} });
 }
 
-test("RuntimeStateMachine allows HarnessRun admission with version lock, fencing, and audit", () => {
+test("RuntimeStateMachine allows HarnessRun admission with version lock, fencing, and audit [runtime-state-machine-transitions]", () => {
   const machine = createMachine();
   const run = createHarnessRun({
     harnessRunId: "run-transition-admit",
@@ -48,7 +48,7 @@ test("RuntimeStateMachine allows HarnessRun admission with version lock, fencing
   assert.equal(result.aggregate.status, "admitted");
 });
 
-test("RuntimeStateMachine allows NodeRun execution transitions with lease, fencing, and audit", () => {
+test("RuntimeStateMachine allows NodeRun execution transitions with lease, fencing, and audit [runtime-state-machine-transitions]", () => {
   const machine = createMachine();
   const readyNode = createNodeRun({
     harnessRunId: "run-1",
@@ -91,7 +91,7 @@ test("RuntimeStateMachine allows NodeRun execution transitions with lease, fenci
   assert.equal(running.aggregate.status, "running");
 });
 
-test("RuntimeStateMachine allows SideEffectRecord commit path when current safety proofs are present", () => {
+test("RuntimeStateMachine allows SideEffectRecord commit path when current safety proofs are present [runtime-state-machine-transitions]", () => {
   const machine = createMachine();
   const sideEffect = createSideEffectRecord({
     sideEffectId: "se-1",
@@ -130,7 +130,7 @@ test("RuntimeStateMachine allows SideEffectRecord commit path when current safet
   assert.equal(result.aggregate.status, "committing");
 });
 
-test("RuntimeStateMachine allows BudgetLedger and BudgetReservation transitions with current guards", () => {
+test("RuntimeStateMachine allows BudgetLedger and BudgetReservation transitions with current guards [runtime-state-machine-transitions]", () => {
   const machine = createMachine();
   const ledger = createBudgetLedger({
     budgetLedgerId: "ledger-1",

@@ -22,24 +22,24 @@ interface TestWorkerLoadSignal {
   cpuPct: number | null;
 }
 
-test("worker-load-balancing exports computeWorkerLoadScore", () => {
+test("worker-load-balancing exports computeWorkerLoadScore [worker-scheduling]", () => {
   assert.ok(typeof computeWorkerLoadScore === "function");
 });
 
-test("worker-load-balancing exports computeEffectiveActiveLeaseCount", () => {
+test("worker-load-balancing exports computeEffectiveActiveLeaseCount [worker-scheduling]", () => {
   assert.ok(typeof computeEffectiveActiveLeaseCount === "function");
 });
 
-test("worker-load-balancing exports summarizeWorkerLoadSkew", () => {
+test("worker-load-balancing exports summarizeWorkerLoadSkew [worker-scheduling]", () => {
   assert.ok(typeof summarizeWorkerLoadSkew === "function");
 });
 
-test("worker-load-balancing exports MAX_RECOMMENDED_STICKY_SHARE", () => {
+test("worker-load-balancing exports MAX_RECOMMENDED_STICKY_SHARE [worker-scheduling]", () => {
   assert.equal(typeof MAX_RECOMMENDED_STICKY_SHARE, "number");
   assert.equal(MAX_RECOMMENDED_STICKY_SHARE, 0.6);
 });
 
-test("computeEffectiveActiveLeaseCount returns max of activeLeaseCount and runningExecutionCount", () => {
+test("computeEffectiveActiveLeaseCount returns max of activeLeaseCount and runningExecutionCount [worker-scheduling]", () => {
   const signal: TestWorkerLoadSignal = {
     workerId: "worker-1",
     queueAffinity: null,
@@ -54,7 +54,7 @@ test("computeEffectiveActiveLeaseCount returns max of activeLeaseCount and runni
   assert.equal(computeEffectiveActiveLeaseCount(signal as never), 5);
 });
 
-test("computeEffectiveActiveLeaseCount returns activeLeaseCount when greater", () => {
+test("computeEffectiveActiveLeaseCount returns activeLeaseCount when greater [worker-scheduling]", () => {
   const signal: TestWorkerLoadSignal = {
     workerId: "worker-2",
     queueAffinity: null,
@@ -69,7 +69,7 @@ test("computeEffectiveActiveLeaseCount returns activeLeaseCount when greater", (
   assert.equal(computeEffectiveActiveLeaseCount(signal as never), 7);
 });
 
-test("computeEffectiveActiveLeaseCount returns equal values when both same", () => {
+test("computeEffectiveActiveLeaseCount returns equal values when both same [worker-scheduling]", () => {
   const signal: TestWorkerLoadSignal = {
     workerId: "worker-3",
     queueAffinity: null,
@@ -84,7 +84,7 @@ test("computeEffectiveActiveLeaseCount returns equal values when both same", () 
   assert.equal(computeEffectiveActiveLeaseCount(signal as never), 5);
 });
 
-test("computeWorkerLoadScore returns non-negative number", () => {
+test("computeWorkerLoadScore returns non-negative number [worker-scheduling]", () => {
   const signal: TestWorkerLoadSignal = {
     workerId: "worker-1",
     queueAffinity: null,
@@ -100,7 +100,7 @@ test("computeWorkerLoadScore returns non-negative number", () => {
   assert.ok(score >= 0);
 });
 
-test("computeWorkerLoadScore handles all saturation values", () => {
+test("computeWorkerLoadScore handles all saturation values [worker-scheduling]", () => {
   const signal1: TestWorkerLoadSignal = {
     workerId: "w1",
     queueAffinity: null,
@@ -129,13 +129,13 @@ test("computeWorkerLoadScore handles all saturation values", () => {
   assert.ok(score2 >= 0);
 });
 
-test("summarizeWorkerLoadSkew returns not detected for empty signals", () => {
+test("summarizeWorkerLoadSkew returns not detected for empty signals [worker-scheduling]", () => {
   const result = summarizeWorkerLoadSkew([]);
   assert.equal(result.detected, false);
   assert.equal(result.dominantWorkerId, null);
 });
 
-test("summarizeWorkerLoadSkew returns not detected for single worker", () => {
+test("summarizeWorkerLoadSkew returns not detected for single worker [worker-scheduling]", () => {
   const signals: TestWorkerLoadSignal[] = [{
     workerId: "solo-worker",
     queueAffinity: null,
@@ -151,7 +151,7 @@ test("summarizeWorkerLoadSkew returns not detected for single worker", () => {
   assert.equal(result.detected, false);
 });
 
-test("summarizeWorkerLoadSkew returns not detected for low total lease count", () => {
+test("summarizeWorkerLoadSkew returns not detected for low total lease count [worker-scheduling]", () => {
   const signals: TestWorkerLoadSignal[] = [
     {
       workerId: "worker-1",
@@ -181,7 +181,7 @@ test("summarizeWorkerLoadSkew returns not detected for low total lease count", (
   assert.equal(result.detected, false);
 });
 
-test("summarizeWorkerLoadSkew returns correct structure for valid signals", () => {
+test("summarizeWorkerLoadSkew returns correct structure for valid signals [worker-scheduling]", () => {
   const signals: TestWorkerLoadSignal[] = [
     {
       workerId: "worker-1",
@@ -215,45 +215,45 @@ test("summarizeWorkerLoadSkew returns correct structure for valid signals", () =
   assert.equal(result.maxRecommendedStickyShare, 0.6);
 });
 
-test("toWorkerSchedulingStatus returns correct scheduling status for idle", () => {
+test("toWorkerSchedulingStatus returns correct scheduling status for idle [worker-scheduling]", () => {
   assert.equal(toWorkerSchedulingStatus("idle"), "healthy");
 });
 
-test("toWorkerSchedulingStatus returns correct scheduling status for busy", () => {
+test("toWorkerSchedulingStatus returns correct scheduling status for busy [worker-scheduling]", () => {
   assert.equal(toWorkerSchedulingStatus("busy"), "healthy");
 });
 
-test("toWorkerSchedulingStatus returns correct scheduling status for degraded", () => {
+test("toWorkerSchedulingStatus returns correct scheduling status for degraded [worker-scheduling]", () => {
   assert.equal(toWorkerSchedulingStatus("degraded"), "degraded");
 });
 
-test("toWorkerSchedulingStatus returns correct scheduling status for draining", () => {
+test("toWorkerSchedulingStatus returns correct scheduling status for draining [worker-scheduling]", () => {
   assert.equal(toWorkerSchedulingStatus("draining"), "draining");
 });
 
-test("toWorkerSchedulingStatus returns correct scheduling status for quarantined", () => {
+test("toWorkerSchedulingStatus returns correct scheduling status for quarantined [worker-scheduling]", () => {
   assert.equal(toWorkerSchedulingStatus("quarantined"), "quarantined");
 });
 
-test("toWorkerSchedulingStatus returns correct scheduling status for offline", () => {
+test("toWorkerSchedulingStatus returns correct scheduling status for offline [worker-scheduling]", () => {
   assert.equal(toWorkerSchedulingStatus("offline"), "offline");
 });
 
-test("toWorkerSchedulingStatus returns correct scheduling status for unavailable", () => {
+test("toWorkerSchedulingStatus returns correct scheduling status for unavailable [worker-scheduling]", () => {
   assert.equal(toWorkerSchedulingStatus("unavailable"), "unavailable");
 });
 
-test("WorkerSchedulingStatus type includes all expected values", () => {
+test("WorkerSchedulingStatus type includes all expected values [worker-scheduling]", () => {
   const statuses: WorkerSchedulingStatus[] = ["healthy", "degraded", "draining", "quarantined", "offline", "unavailable"];
   assert.equal(statuses.length, 6);
 });
 
-test("WorkerStatus type includes all expected values", () => {
+test("WorkerStatus type includes all expected values [worker-scheduling]", () => {
   const statuses: WorkerStatus[] = ["idle", "busy", "degraded", "draining", "quarantined", "offline", "unavailable"];
   assert.equal(statuses.length, 7);
 });
 
-test("computeWorkerLoadScore with zero availableSlots", () => {
+test("computeWorkerLoadScore with zero availableSlots [worker-scheduling]", () => {
   const signal: TestWorkerLoadSignal = {
     workerId: "worker-1",
     queueAffinity: null,
@@ -269,7 +269,7 @@ test("computeWorkerLoadScore with zero availableSlots", () => {
   assert.ok(score >= 0);
 });
 
-test("computeWorkerLoadScore with high toolBacklogCount", () => {
+test("computeWorkerLoadScore with high toolBacklogCount [worker-scheduling]", () => {
   const signal: TestWorkerLoadSignal = {
     workerId: "worker-1",
     queueAffinity: null,

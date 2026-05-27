@@ -21,7 +21,7 @@ function createRequest(overrides: Partial<ConnectorExecutionRequest> = {}): Conn
   };
 }
 
-test("JiraConnector.execute returns success for create_issue capability", () => {
+test("JiraConnector.execute returns success for create_issue capability [jira-connector]", () => {
   const connector = new JiraConnector();
   const request = createRequest({ capability: "create_issue" });
 
@@ -32,7 +32,7 @@ test("JiraConnector.execute returns success for create_issue capability", () => 
   assert.equal(result.connectorId, "jira-test");
 });
 
-test("JiraConnector.execute returns success for search_issue capability", () => {
+test("JiraConnector.execute returns success for search_issue capability [jira-connector]", () => {
   const connector = new JiraConnector();
   const request = createRequest({ capability: "search_issue" });
 
@@ -42,7 +42,7 @@ test("JiraConnector.execute returns success for search_issue capability", () => 
   assert.equal(result.status, "succeeded");
 });
 
-test("JiraConnector.execute returns failure for unknown capability", () => {
+test("JiraConnector.execute returns failure for unknown capability [jira-connector]", () => {
   const connector = new JiraConnector();
   const request = createRequest({ capability: "update_issue" });
 
@@ -52,7 +52,7 @@ test("JiraConnector.execute returns failure for unknown capability", () => {
   assert.equal(result.status, "failed");
 });
 
-test("JiraConnector.execute preserves connectorId from request", () => {
+test("JiraConnector.execute preserves connectorId from request [jira-connector]", () => {
   const connector = new JiraConnector();
   const request = createRequest({ connectorId: "jira-prod-connector" });
 
@@ -61,7 +61,7 @@ test("JiraConnector.execute preserves connectorId from request", () => {
   assert.equal(result.connectorId, "jira-prod-connector");
 });
 
-test("JiraConnector.execute handles create_issue with full payload", () => {
+test("JiraConnector.execute handles create_issue with full payload [jira-connector]", () => {
   const connector = new JiraConnector();
   const request = createRequest({
     capability: "create_issue",
@@ -80,7 +80,7 @@ test("JiraConnector.execute handles create_issue with full payload", () => {
   assert.equal(result.status, "succeeded");
 });
 
-test("JiraConnector.execute handles search_issue with JQL payload", () => {
+test("JiraConnector.execute handles search_issue with JQL payload [jira-connector]", () => {
   const connector = new JiraConnector();
   const request = createRequest({
     capability: "search_issue",
@@ -93,7 +93,7 @@ test("JiraConnector.execute handles search_issue with JQL payload", () => {
   assert.equal(result.status, "succeeded");
 });
 
-test("JiraConnector.execute is case-sensitive for capability names", () => {
+test("JiraConnector.execute is case-sensitive for capability names [jira-connector]", () => {
   const connector = new JiraConnector();
   const requestUpper = createRequest({ capability: "CREATE_ISSUE" });
   const requestLower = createRequest({ capability: "create_issue" });
@@ -109,7 +109,7 @@ test("JiraConnector.execute is case-sensitive for capability names", () => {
   assert.equal(resultLower.status, "succeeded");
 });
 
-test("JiraConnector.execute rejects delete_issue capability", () => {
+test("JiraConnector.execute rejects delete_issue capability [jira-connector]", () => {
   const connector = new JiraConnector();
   const request = createRequest({ capability: "delete_issue" });
 
@@ -119,7 +119,7 @@ test("JiraConnector.execute rejects delete_issue capability", () => {
   assert.equal(result.status, "failed");
 });
 
-test("JiraConnector.execute fails closed when policyRef is missing", () => {
+test("JiraConnector.execute fails closed when policyRef is missing [jira-connector]", () => {
   const connector = new JiraConnector();
   const request = createRequest({ policyRef: undefined });
 
@@ -129,7 +129,7 @@ test("JiraConnector.execute fails closed when policyRef is missing", () => {
   assert.equal(result.status, "failed");
 });
 
-test("JiraConnector.execute fails closed when secretBindings are missing", () => {
+test("JiraConnector.execute fails closed when secretBindings are missing [jira-connector]", () => {
   const connector = new JiraConnector();
   const request = createRequest({ secretBindings: [] });
 

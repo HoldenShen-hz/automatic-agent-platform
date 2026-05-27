@@ -52,7 +52,7 @@ function createBaseRequest(overrides: Partial<RuntimeGovernanceRequest> = {}): R
   };
 }
 
-test("RuntimeGovernanceService evaluates with empty inputs", () => {
+test("RuntimeGovernanceService evaluates with empty inputs [runtime-governance-service]", () => {
   const service = new RuntimeGovernanceService();
   const request = createBaseRequest({
     connectors: [],
@@ -82,7 +82,7 @@ test("RuntimeGovernanceService evaluates with empty inputs", () => {
   assert.deepEqual(decision.breaches, []);
 });
 
-test("RuntimeGovernanceService selects first healthy connector matching capability", () => {
+test("RuntimeGovernanceService selects first healthy connector matching capability [runtime-governance-service]", () => {
   const service = new RuntimeGovernanceService();
   const request = createBaseRequest({
     capability: "notify",
@@ -102,7 +102,7 @@ test("RuntimeGovernanceService selects first healthy connector matching capabili
   assert.equal(decision.connectorId, "slack_primary");
 });
 
-test("RuntimeGovernanceService returns null connector when all health reports are failed", () => {
+test("RuntimeGovernanceService returns null connector when all health reports are failed [runtime-governance-service]", () => {
   const service = new RuntimeGovernanceService();
   const request = createBaseRequest({
     connectors: [
@@ -118,7 +118,7 @@ test("RuntimeGovernanceService returns null connector when all health reports ar
   assert.equal(decision.connectorId, null);
 });
 
-test("RuntimeGovernanceService filters connectors by requested capability", () => {
+test("RuntimeGovernanceService filters connectors by requested capability [runtime-governance-service]", () => {
   const service = new RuntimeGovernanceService();
   const request = createBaseRequest({
     capability: "email",
@@ -137,7 +137,7 @@ test("RuntimeGovernanceService filters connectors by requested capability", () =
   assert.equal(decision.connectorId, "email_primary");
 });
 
-test("RuntimeGovernanceService selects preferred region by latency score", () => {
+test("RuntimeGovernanceService selects preferred region by latency score [runtime-governance-service]", () => {
   const service = new RuntimeGovernanceService();
   const request = createBaseRequest({
     regions: [
@@ -153,7 +153,7 @@ test("RuntimeGovernanceService selects preferred region by latency score", () =>
   assert.equal(decision.regionId, "cn-sh");
 });
 
-test("RuntimeGovernanceService handles failover when primary region unhealthy", () => {
+test("RuntimeGovernanceService handles failover when primary region unhealthy [runtime-governance-service]", () => {
   const service = new RuntimeGovernanceService();
   const request = createBaseRequest({
     regions: [
@@ -168,7 +168,7 @@ test("RuntimeGovernanceService handles failover when primary region unhealthy", 
   assert.equal(decision.failoverRegionId, "us-west-2");
 });
 
-test("RuntimeGovernanceService skips non-residency-allowed regions for failover", () => {
+test("RuntimeGovernanceService skips non-residency-allowed regions for failover [runtime-governance-service]", () => {
   const service = new RuntimeGovernanceService();
   const request = createBaseRequest({
     regions: [
@@ -185,7 +185,7 @@ test("RuntimeGovernanceService skips non-residency-allowed regions for failover"
   assert.ok(decision.failoverRegionId === "us-west-2" || decision.failoverRegionId === "eu-west-1");
 });
 
-test("RuntimeGovernanceService denies quota when hard limit exceeded", () => {
+test("RuntimeGovernanceService denies quota when hard limit exceeded [runtime-governance-service]", () => {
   const service = new RuntimeGovernanceService();
   const request = createBaseRequest({
     quotaPolicy: createQuotaPolicy(9),
@@ -197,7 +197,7 @@ test("RuntimeGovernanceService denies quota when hard limit exceeded", () => {
   assert.equal(decision.quotaAllowed, false);
 });
 
-test("RuntimeGovernanceService allows quota when within hard limit", () => {
+test("RuntimeGovernanceService allows quota when within hard limit [runtime-governance-service]", () => {
   const service = new RuntimeGovernanceService();
   const request = createBaseRequest({
     quotaPolicy: createQuotaPolicy(3),
@@ -209,7 +209,7 @@ test("RuntimeGovernanceService allows quota when within hard limit", () => {
   assert.equal(decision.quotaAllowed, true);
 });
 
-test("RuntimeGovernanceService orders queue items fairly by priority and age", () => {
+test("RuntimeGovernanceService orders queue items fairly by priority and age [runtime-governance-service]", () => {
   const service = new RuntimeGovernanceService();
   const request = createBaseRequest({
     queueItems: [
@@ -227,7 +227,7 @@ test("RuntimeGovernanceService orders queue items fairly by priority and age", (
   assert.ok(decision.queueOrder.includes("job_3"));
 });
 
-test("RuntimeGovernanceService selects preemption victim by lowest priority", () => {
+test("RuntimeGovernanceService selects preemption victim by lowest priority [runtime-governance-service]", () => {
   const service = new RuntimeGovernanceService();
   const request = createBaseRequest({
     preemptionCandidates: [
@@ -242,7 +242,7 @@ test("RuntimeGovernanceService selects preemption victim by lowest priority", ()
   assert.equal(decision.preemptionVictimId, "exec_low");
 });
 
-test("RuntimeGovernanceService returns null preemption victim when no candidates", () => {
+test("RuntimeGovernanceService returns null preemption victim when no candidates [runtime-governance-service]", () => {
   const service = new RuntimeGovernanceService();
   const request = createBaseRequest({
     preemptionCandidates: [],
@@ -253,7 +253,7 @@ test("RuntimeGovernanceService returns null preemption victim when no candidates
   assert.equal(decision.preemptionVictimId, null);
 });
 
-test("RuntimeGovernanceService resolves highest priority SLA tier", () => {
+test("RuntimeGovernanceService resolves highest priority SLA tier [runtime-governance-service]", () => {
   const service = new RuntimeGovernanceService();
   const request = createBaseRequest({
     tiers: [
@@ -269,7 +269,7 @@ test("RuntimeGovernanceService resolves highest priority SLA tier", () => {
   assert.equal(decision.highestTierId, "enterprise");
 });
 
-test("RuntimeGovernanceService returns null tier when no tiers provided", () => {
+test("RuntimeGovernanceService returns null tier when no tiers provided [runtime-governance-service]", () => {
   const service = new RuntimeGovernanceService();
   const request = createBaseRequest({
     tiers: [],
@@ -280,7 +280,7 @@ test("RuntimeGovernanceService returns null tier when no tiers provided", () => 
   assert.equal(decision.highestTierId, null);
 });
 
-test("RuntimeGovernanceService allocates reserved capacity correctly", () => {
+test("RuntimeGovernanceService allocates reserved capacity correctly [runtime-governance-service]", () => {
   const service = new RuntimeGovernanceService();
   const request = createBaseRequest({
     totalCapacityUnits: 100,
@@ -296,7 +296,7 @@ test("RuntimeGovernanceService allocates reserved capacity correctly", () => {
   assert.equal(decision.reservedCapacity["standard"], 20);
 });
 
-test("RuntimeGovernanceService detects SLA latency breach", () => {
+test("RuntimeGovernanceService detects SLA latency breach [runtime-governance-service]", () => {
   const service = new RuntimeGovernanceService();
   const request = createBaseRequest({
     observation: { latencyMs: 500, successRate: 0.99, queueWaitMs: 500 },
@@ -308,7 +308,7 @@ test("RuntimeGovernanceService detects SLA latency breach", () => {
   assert.ok(decision.breaches.includes("sla.latency_breach"));
 });
 
-test("RuntimeGovernanceService detects SLA success rate breach", () => {
+test("RuntimeGovernanceService detects SLA success rate breach [runtime-governance-service]", () => {
   const service = new RuntimeGovernanceService();
   const request = createBaseRequest({
     observation: { latencyMs: 200, successRate: 0.90, queueWaitMs: 500 },
@@ -320,7 +320,7 @@ test("RuntimeGovernanceService detects SLA success rate breach", () => {
   assert.ok(decision.breaches.includes("sla.success_rate_breach"));
 });
 
-test("RuntimeGovernanceService detects SLA queue wait breach", () => {
+test("RuntimeGovernanceService detects SLA queue wait breach [runtime-governance-service]", () => {
   const service = new RuntimeGovernanceService();
   const request = createBaseRequest({
     observation: { latencyMs: 200, successRate: 0.99, queueWaitMs: 2000 },
@@ -332,7 +332,7 @@ test("RuntimeGovernanceService detects SLA queue wait breach", () => {
   assert.ok(decision.breaches.includes("sla.queue_wait_breach"));
 });
 
-test("RuntimeGovernanceService returns no breaches when SLA is met", () => {
+test("RuntimeGovernanceService returns no breaches when SLA is met [runtime-governance-service]", () => {
   const service = new RuntimeGovernanceService();
   const request = createBaseRequest({
     observation: { latencyMs: 200, successRate: 0.99, queueWaitMs: 500 },
@@ -344,7 +344,7 @@ test("RuntimeGovernanceService returns no breaches when SLA is met", () => {
   assert.deepEqual(decision.breaches, []);
 });
 
-test("RuntimeGovernanceService handles disabled connector lifecycle state", () => {
+test("RuntimeGovernanceService handles disabled connector lifecycle state [runtime-governance-service]", () => {
   const service = new RuntimeGovernanceService();
   const request = createBaseRequest({
     connectors: [
@@ -362,7 +362,7 @@ test("RuntimeGovernanceService handles disabled connector lifecycle state", () =
   assert.equal(decision.connectorId, "slack_enabled");
 });
 
-test("RuntimeGovernanceService handles connector without capabilities list", () => {
+test("RuntimeGovernanceService handles connector without capabilities list [runtime-governance-service]", () => {
   const service = new RuntimeGovernanceService();
   const request = createBaseRequest({
     capability: "notify",
@@ -379,7 +379,7 @@ test("RuntimeGovernanceService handles connector without capabilities list", () 
   assert.equal(decision.connectorId, null);
 });
 
-test("RuntimeGovernanceService combines all decisions in single evaluate call", () => {
+test("RuntimeGovernanceService combines all decisions in single evaluate call [runtime-governance-service]", () => {
   const service = new RuntimeGovernanceService();
   const decision = service.evaluate(createBaseRequest());
 
@@ -394,7 +394,7 @@ test("RuntimeGovernanceService combines all decisions in single evaluate call", 
   assert.ok(Array.isArray(decision.breaches));
 });
 
-test("RuntimeGovernanceService handles zero capacity units", () => {
+test("RuntimeGovernanceService handles zero capacity units [runtime-governance-service]", () => {
   const service = new RuntimeGovernanceService();
   const request = createBaseRequest({
     totalCapacityUnits: 0,
@@ -408,7 +408,7 @@ test("RuntimeGovernanceService handles zero capacity units", () => {
   assert.deepEqual(decision.reservedCapacity, { enterprise: 0 });
 });
 
-test("RuntimeGovernanceService combines connector, region, quota, queue, and SLA decisions", () => {
+test("RuntimeGovernanceService combines connector, region, quota, queue, and SLA decisions [runtime-governance-service]", () => {
   const service = new RuntimeGovernanceService();
   const decision = service.evaluate({
     capability: "notify",

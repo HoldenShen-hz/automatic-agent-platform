@@ -35,7 +35,7 @@ function createBaseCommand(): LockTransitionCommand {
 // Happy path tests
 // =============================================================================
 
-test("transitionLock accepts valid transition from held to extended", () => {
+test("transitionLock accepts valid transition from held to extended [transition-lock-validation]", () => {
   const command = createBaseCommand();
   command.fromStatus = "held";
   command.toStatus = "extended";
@@ -47,7 +47,7 @@ test("transitionLock accepts valid transition from held to extended", () => {
   assert.equal(result.command.fromStatus, "held");
 });
 
-test("transitionLock accepts valid transition from held to released", () => {
+test("transitionLock accepts valid transition from held to released [transition-lock-validation]", () => {
   const command = createBaseCommand();
   command.fromStatus = "held";
   command.toStatus = "released";
@@ -58,7 +58,7 @@ test("transitionLock accepts valid transition from held to released", () => {
   assert.equal(result.command.toStatus, "released");
 });
 
-test("transitionLock accepts valid transition from extended to held", () => {
+test("transitionLock accepts valid transition from extended to held [transition-lock-validation]", () => {
   const command = createBaseCommand();
   command.fromStatus = "extended";
   command.toStatus = "held";
@@ -69,7 +69,7 @@ test("transitionLock accepts valid transition from extended to held", () => {
   assert.equal(result.command.toStatus, "held");
 });
 
-test("transitionLock accepts valid transition from held to expired", () => {
+test("transitionLock accepts valid transition from held to expired [transition-lock-validation]", () => {
   const command = createBaseCommand();
   command.fromStatus = "held";
   command.toStatus = "expired";
@@ -80,7 +80,7 @@ test("transitionLock accepts valid transition from held to expired", () => {
   assert.equal(result.command.toStatus, "expired");
 });
 
-test("transitionLock accepts valid transition from held to reclaimed", () => {
+test("transitionLock accepts valid transition from held to reclaimed [transition-lock-validation]", () => {
   const command = createBaseCommand();
   command.fromStatus = "held";
   command.toStatus = "reclaimed";
@@ -91,7 +91,7 @@ test("transitionLock accepts valid transition from held to reclaimed", () => {
   assert.equal(result.command.toStatus, "reclaimed");
 });
 
-test("transitionLock accepts valid transition from held to stolen", () => {
+test("transitionLock accepts valid transition from held to stolen [transition-lock-validation]", () => {
   const command = createBaseCommand();
   command.fromStatus = "held";
   command.toStatus = "stolen";
@@ -102,7 +102,7 @@ test("transitionLock accepts valid transition from held to stolen", () => {
   assert.equal(result.command.toStatus, "stolen");
 });
 
-test("transitionLock accepts transition with all valid LockStatus values", () => {
+test("transitionLock accepts transition with all valid LockStatus values [transition-lock-validation]", () => {
   const validStatuses: LockStatus[] = ["pending", "held", "extended", "released", "expired", "reclaimed", "stolen"];
 
   for (const fromStatus of validStatuses) {
@@ -119,7 +119,7 @@ test("transitionLock accepts transition with all valid LockStatus values", () =>
   }
 });
 
-test("transitionLock accepts transition with all valid LockType values", () => {
+test("transitionLock accepts transition with all valid LockType values [transition-lock-validation]", () => {
   const validTypes: LockType[] = ["execution_lease", "approval_lock", "file_lock", "advisory_lock"];
 
   for (const lockType of validTypes) {
@@ -135,7 +135,7 @@ test("transitionLock accepts transition with all valid LockType values", () => {
 // Noop transition tests (fromStatus === toStatus)
 // =============================================================================
 
-test("transitionLock rejects noop transition when fromStatus equals toStatus", () => {
+test("transitionLock rejects noop transition when fromStatus equals toStatus [transition-lock-validation]", () => {
   const command = createBaseCommand();
   command.fromStatus = "held";
   command.toStatus = "held";
@@ -146,7 +146,7 @@ test("transitionLock rejects noop transition when fromStatus equals toStatus", (
   );
 });
 
-test("transitionLock rejects noop transition for extended status", () => {
+test("transitionLock rejects noop transition for extended status [transition-lock-validation]", () => {
   const command = createBaseCommand();
   command.fromStatus = "extended";
   command.toStatus = "extended";
@@ -157,7 +157,7 @@ test("transitionLock rejects noop transition for extended status", () => {
   );
 });
 
-test("transitionLock rejects noop transition for released status", () => {
+test("transitionLock rejects noop transition for released status [transition-lock-validation]", () => {
   const command = createBaseCommand();
   command.fromStatus = "released";
   command.toStatus = "released";
@@ -172,7 +172,7 @@ test("transitionLock rejects noop transition for released status", () => {
 // lockId validation tests
 // =============================================================================
 
-test("transitionLock throws for empty lockId", () => {
+test("transitionLock throws for empty lockId [transition-lock-validation]", () => {
   const command = createBaseCommand();
   command.lockId = "";
 
@@ -182,7 +182,7 @@ test("transitionLock throws for empty lockId", () => {
   );
 });
 
-test("transitionLock throws for whitespace-only lockId", () => {
+test("transitionLock throws for whitespace-only lockId [transition-lock-validation]", () => {
   const command = createBaseCommand();
   command.lockId = "   ";
 
@@ -192,7 +192,7 @@ test("transitionLock throws for whitespace-only lockId", () => {
   );
 });
 
-test("transitionLock throws for lockId with only newlines", () => {
+test("transitionLock throws for lockId with only newlines [transition-lock-validation]", () => {
   const command = createBaseCommand();
   command.lockId = "\n\t";
 
@@ -206,7 +206,7 @@ test("transitionLock throws for lockId with only newlines", () => {
 // resourceKey validation tests
 // =============================================================================
 
-test("transitionLock throws for empty resourceKey", () => {
+test("transitionLock throws for empty resourceKey [transition-lock-validation]", () => {
   const command = createBaseCommand();
   command.resourceKey = "";
 
@@ -216,7 +216,7 @@ test("transitionLock throws for empty resourceKey", () => {
   );
 });
 
-test("transitionLock throws for whitespace-only resourceKey", () => {
+test("transitionLock throws for whitespace-only resourceKey [transition-lock-validation]", () => {
   const command = createBaseCommand();
   command.resourceKey = "   ";
 
@@ -226,7 +226,7 @@ test("transitionLock throws for whitespace-only resourceKey", () => {
   );
 });
 
-test("transitionLock throws for resourceKey with only tabs", () => {
+test("transitionLock throws for resourceKey with only tabs [transition-lock-validation]", () => {
   const command = createBaseCommand();
   command.resourceKey = "\t\t";
 
@@ -240,7 +240,7 @@ test("transitionLock throws for resourceKey with only tabs", () => {
 // ownerId validation tests
 // =============================================================================
 
-test("transitionLock throws for empty ownerId", () => {
+test("transitionLock throws for empty ownerId [transition-lock-validation]", () => {
   const command = createBaseCommand();
   command.ownerId = "";
 
@@ -250,7 +250,7 @@ test("transitionLock throws for empty ownerId", () => {
   );
 });
 
-test("transitionLock throws for whitespace-only ownerId", () => {
+test("transitionLock throws for whitespace-only ownerId [transition-lock-validation]", () => {
   const command = createBaseCommand();
   command.ownerId = "   ";
 
@@ -260,7 +260,7 @@ test("transitionLock throws for whitespace-only ownerId", () => {
   );
 });
 
-test("transitionLock throws for ownerId with only spaces", () => {
+test("transitionLock throws for ownerId with only spaces [transition-lock-validation]", () => {
   const command = createBaseCommand();
   command.ownerId = "               ";
 
@@ -274,7 +274,7 @@ test("transitionLock throws for ownerId with only spaces", () => {
 // reasonCode validation tests
 // =============================================================================
 
-test("transitionLock throws for empty reasonCode", () => {
+test("transitionLock throws for empty reasonCode [transition-lock-validation]", () => {
   const command = createBaseCommand();
   command.reasonCode = "";
 
@@ -284,7 +284,7 @@ test("transitionLock throws for empty reasonCode", () => {
   );
 });
 
-test("transitionLock throws for whitespace-only reasonCode", () => {
+test("transitionLock throws for whitespace-only reasonCode [transition-lock-validation]", () => {
   const command = createBaseCommand();
   command.reasonCode = "   ";
 
@@ -294,7 +294,7 @@ test("transitionLock throws for whitespace-only reasonCode", () => {
   );
 });
 
-test("transitionLock throws for reasonCode with only newlines", () => {
+test("transitionLock throws for reasonCode with only newlines [transition-lock-validation]", () => {
   const command = createBaseCommand();
   command.reasonCode = "\n\n";
 
@@ -308,7 +308,7 @@ test("transitionLock throws for reasonCode with only newlines", () => {
 // traceId validation tests
 // =============================================================================
 
-test("transitionLock throws for empty traceId", () => {
+test("transitionLock throws for empty traceId [transition-lock-validation]", () => {
   const command = createBaseCommand();
   command.traceId = "";
 
@@ -318,7 +318,7 @@ test("transitionLock throws for empty traceId", () => {
   );
 });
 
-test("transitionLock throws for whitespace-only traceId", () => {
+test("transitionLock throws for whitespace-only traceId [transition-lock-validation]", () => {
   const command = createBaseCommand();
   command.traceId = "   ";
 
@@ -328,7 +328,7 @@ test("transitionLock throws for whitespace-only traceId", () => {
   );
 });
 
-test("transitionLock throws for traceId with only spaces", () => {
+test("transitionLock throws for traceId with only spaces [transition-lock-validation]", () => {
   const command = createBaseCommand();
   command.traceId = "          ";
 
@@ -342,7 +342,7 @@ test("transitionLock throws for traceId with only spaces", () => {
 // Multiple validation errors - first error thrown
 // =============================================================================
 
-test("transitionLock throws lock_id_required before resource_key_required when lockId is empty", () => {
+test("transitionLock throws lock_id_required before resource_key_required when lockId is empty [transition-lock-validation]", () => {
   const command = createBaseCommand();
   command.lockId = "";
   command.resourceKey = "";
@@ -355,7 +355,7 @@ test("transitionLock throws lock_id_required before resource_key_required when l
   }
 });
 
-test("transitionLock validation order: lockId is checked before resourceKey", () => {
+test("transitionLock validation order: lockId is checked before resourceKey [transition-lock-validation]", () => {
   const command = createBaseCommand();
   command.lockId = "";
   // resourceKey is valid
@@ -368,7 +368,7 @@ test("transitionLock validation order: lockId is checked before resourceKey", ()
   }
 });
 
-test("transitionLock validation order: resourceKey is checked before ownerId", () => {
+test("transitionLock validation order: resourceKey is checked before ownerId [transition-lock-validation]", () => {
   const command = createBaseCommand();
   command.resourceKey = "";
 
@@ -380,7 +380,7 @@ test("transitionLock validation order: resourceKey is checked before ownerId", (
   }
 });
 
-test("transitionLock validation order: ownerId is checked before reasonCode", () => {
+test("transitionLock validation order: ownerId is checked before reasonCode [transition-lock-validation]", () => {
   const command = createBaseCommand();
   command.ownerId = "";
 
@@ -392,7 +392,7 @@ test("transitionLock validation order: ownerId is checked before reasonCode", ()
   }
 });
 
-test("transitionLock validation order: reasonCode is checked before traceId", () => {
+test("transitionLock validation order: reasonCode is checked before traceId [transition-lock-validation]", () => {
   const command = createBaseCommand();
   command.reasonCode = "";
 
@@ -404,7 +404,7 @@ test("transitionLock validation order: reasonCode is checked before traceId", ()
   }
 });
 
-test("transitionLock validation order: traceId is checked before fromStatus vs toStatus", () => {
+test("transitionLock validation order: traceId is checked before fromStatus vs toStatus [transition-lock-validation]", () => {
   const command = createBaseCommand();
   command.traceId = "";
 
@@ -420,7 +420,7 @@ test("transitionLock validation order: traceId is checked before fromStatus vs t
 // Return value structure tests
 // =============================================================================
 
-test("transitionLock returns LockTransitionResult with accepted=true on success", () => {
+test("transitionLock returns LockTransitionResult with accepted=true on success [transition-lock-validation]", () => {
   const command = createBaseCommand();
   const result = transitionLock(command);
 
@@ -437,7 +437,7 @@ test("transitionLock returns LockTransitionResult with accepted=true on success"
   assert.equal(result.command.occurredAt, command.occurredAt);
 });
 
-test("transitionLock preserves optional fencingToken in result", () => {
+test("transitionLock preserves optional fencingToken in result [transition-lock-validation]", () => {
   const command = createBaseCommand();
   command.fencingToken = 42;
 
@@ -447,7 +447,7 @@ test("transitionLock preserves optional fencingToken in result", () => {
   assert.equal(result.command.fencingToken, 42);
 });
 
-test("transitionLock result command is the same object as input", () => {
+test("transitionLock result command is the same object as input [transition-lock-validation]", () => {
   const command = createBaseCommand();
   const result = transitionLock(command);
 
@@ -459,7 +459,7 @@ test("transitionLock result command is the same object as input", () => {
 // Edge cases
 // =============================================================================
 
-test("transitionLock handles lockId with leading/trailing whitespace that is not trimmed", () => {
+test("transitionLock handles lockId with leading/trailing whitespace that is not trimmed [transition-lock-validation]", () => {
   // Note: The implementation uses trim().length === 0 to check for empty,
   // but does not actually trim the value before storing
   const command = createBaseCommand();
@@ -470,7 +470,7 @@ test("transitionLock handles lockId with leading/trailing whitespace that is not
   assert.equal(result.command.lockId, "  lock-with-spaces  ");
 });
 
-test("transitionLock handles resourceKey with special characters", () => {
+test("transitionLock handles resourceKey with special characters [transition-lock-validation]", () => {
   const command = createBaseCommand();
   command.resourceKey = "worker:lease:001:sub:resource?query=value&other=123";
 
@@ -478,7 +478,7 @@ test("transitionLock handles resourceKey with special characters", () => {
   assert.equal(result.accepted, true);
 });
 
-test("transitionLock handles reasonCode with dots and underscores", () => {
+test("transitionLock handles reasonCode with dots and underscores [transition-lock-validation]", () => {
   const command = createBaseCommand();
   command.reasonCode = "lease.refresh_v2.1";
 
@@ -487,7 +487,7 @@ test("transitionLock handles reasonCode with dots and underscores", () => {
   assert.equal(result.command.reasonCode, "lease.refresh_v2.1");
 });
 
-test("transitionLock handles traceId with UUID format", () => {
+test("transitionLock handles traceId with UUID format [transition-lock-validation]", () => {
   const command = createBaseCommand();
   command.traceId = "550e8400-e29b-41d4-a716-446655440000";
 
@@ -496,7 +496,7 @@ test("transitionLock handles traceId with UUID format", () => {
   assert.equal(result.command.traceId, "550e8400-e29b-41d4-a716-446655440000");
 });
 
-test("transitionLock handles occurredAt with various ISO timestamp formats", () => {
+test("transitionLock handles occurredAt with various ISO timestamp formats [transition-lock-validation]", () => {
   const command = createBaseCommand();
 
   const validTimestamps = [

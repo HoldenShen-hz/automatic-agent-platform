@@ -8,7 +8,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import * as scaleEcosystem from "../../../src/scale-ecosystem/index.js";
 
-test("scale-ecosystem barrel exports feedback-loop module", () => {
+test("scale-ecosystem barrel exports feedback-loop module [index]", () => {
   const keys = Object.keys(scaleEcosystem);
   assert.ok(
     keys.some(k => k.toLowerCase().includes("feedback")),
@@ -16,7 +16,7 @@ test("scale-ecosystem barrel exports feedback-loop module", () => {
   );
 });
 
-test("scale-ecosystem barrel exports runtime-governance-service", () => {
+test("scale-ecosystem barrel exports runtime-governance-service [index]", () => {
   const keys = Object.keys(scaleEcosystem);
   assert.ok(
     keys.some(k => k.toLowerCase().includes("runtimegovernance") || k.toLowerCase().includes("runtime")),
@@ -24,7 +24,7 @@ test("scale-ecosystem barrel exports runtime-governance-service", () => {
   );
 });
 
-test("scale-ecosystem barrel exports integration module", () => {
+test("scale-ecosystem barrel exports integration module [index]", () => {
   const keys = Object.keys(scaleEcosystem);
   assert.ok(
     keys.some(k => k.toLowerCase().includes("integration") || k.toLowerCase().includes("connector")),
@@ -32,7 +32,7 @@ test("scale-ecosystem barrel exports integration module", () => {
   );
 });
 
-test("scale-ecosystem barrel exports marketplace module", () => {
+test("scale-ecosystem barrel exports marketplace module [index]", () => {
   const keys = Object.keys(scaleEcosystem);
   assert.ok(
     keys.some(k => k.toLowerCase().includes("marketplace") || k.toLowerCase().includes("billing")),
@@ -40,7 +40,7 @@ test("scale-ecosystem barrel exports marketplace module", () => {
   );
 });
 
-test("scale-ecosystem barrel exports multi-region module", () => {
+test("scale-ecosystem barrel exports multi-region module [index]", () => {
   const keys = Object.keys(scaleEcosystem);
   assert.ok(
     keys.some(k => k.toLowerCase().includes("region") || k.toLowerCase().includes("replication")),
@@ -48,7 +48,7 @@ test("scale-ecosystem barrel exports multi-region module", () => {
   );
 });
 
-test("scale-ecosystem barrel exports resource-manager module", () => {
+test("scale-ecosystem barrel exports resource-manager module [index]", () => {
   const keys = Object.keys(scaleEcosystem);
   assert.ok(
     keys.some(k => k.toLowerCase().includes("resource") || k.toLowerCase().includes("fair")),
@@ -56,7 +56,7 @@ test("scale-ecosystem barrel exports resource-manager module", () => {
   );
 });
 
-test("scale-ecosystem barrel exports scale-baseline-catalog", () => {
+test("scale-ecosystem barrel exports scale-baseline-catalog [index]", () => {
   const keys = Object.keys(scaleEcosystem);
   assert.ok(
     keys.some(k => k.toLowerCase().includes("scalebaseline") || k.toLowerCase().includes("baseline")),
@@ -64,7 +64,7 @@ test("scale-ecosystem barrel exports scale-baseline-catalog", () => {
   );
 });
 
-test("scale-ecosystem barrel exports scale-bootstrap", () => {
+test("scale-ecosystem barrel exports scale-bootstrap [index]", () => {
   const keys = Object.keys(scaleEcosystem);
   assert.ok(
     keys.some(k => k.toLowerCase().includes("scalebootstrap") || k.toLowerCase().includes("bootstrap")),
@@ -72,7 +72,7 @@ test("scale-ecosystem barrel exports scale-bootstrap", () => {
   );
 });
 
-test("scale-ecosystem barrel exports sla-engine module", () => {
+test("scale-ecosystem barrel exports sla-engine module [index]", () => {
   const keys = Object.keys(scaleEcosystem);
   assert.ok(
     keys.some(k => k.toLowerCase().includes("sla")),
@@ -80,12 +80,12 @@ test("scale-ecosystem barrel exports sla-engine module", () => {
   );
 });
 
-test("scale-ecosystem barrel has multiple exports", () => {
+test("scale-ecosystem barrel has multiple exports [index]", () => {
   const keys = Object.keys(scaleEcosystem);
   assert.ok(keys.length > 5, "should have multiple exports from submodules");
 });
 
-test("scale-ecosystem barrel exports runtime-services module", () => {
+test("scale-ecosystem barrel exports runtime-services module [index]", () => {
   const keys = Object.keys(scaleEcosystem);
   // runtime-services exports things like ExecutionDispatchService, DurableEventBus, etc.
   assert.ok(
@@ -101,7 +101,7 @@ test("scale-ecosystem barrel exports runtime-services module", () => {
   );
 });
 
-test("scale-ecosystem barrel exports CrossRegionRoutingService", () => {
+test("scale-ecosystem barrel exports CrossRegionRoutingService [index]", () => {
   const keys = Object.keys(scaleEcosystem);
   assert.ok(
     keys.some(k => k.toLowerCase().includes("crossregion") || k.toLowerCase().includes("routing")),
@@ -109,7 +109,7 @@ test("scale-ecosystem barrel exports CrossRegionRoutingService", () => {
   );
 });
 
-test("scale-ecosystem barrel exports region-health-check-service", () => {
+test("scale-ecosystem barrel exports region-health-check-service [index]", () => {
   const keys = Object.keys(scaleEcosystem);
   assert.ok(
     keys.some(k => k.toLowerCase().includes("health") || k.toLowerCase().includes("region")),
@@ -117,7 +117,7 @@ test("scale-ecosystem barrel exports region-health-check-service", () => {
   );
 });
 
-test("scale-ecosystem barrel exports cdc-replication-service", () => {
+test("scale-ecosystem barrel exports cdc-replication-service [index]", () => {
   const keys = Object.keys(scaleEcosystem);
   assert.ok(
     keys.some(k => k.toLowerCase().includes("cdc") || k.toLowerCase().includes("replication")),
@@ -125,7 +125,7 @@ test("scale-ecosystem barrel exports cdc-replication-service", () => {
   );
 });
 
-test("scale-ecosystem barrel exports data-replicator", () => {
+test("scale-ecosystem barrel exports data-replicator [index]", () => {
   const keys = Object.keys(scaleEcosystem);
   assert.ok(
     keys.some(k => k.toLowerCase().includes("replicator") || k.toLowerCase().includes("replicate")),
@@ -133,7 +133,7 @@ test("scale-ecosystem barrel exports data-replicator", () => {
   );
 });
 
-test("scale-ecosystem barrel exports failover-controller", () => {
+test("scale-ecosystem barrel exports failover-controller [index]", () => {
   const keys = Object.keys(scaleEcosystem);
   assert.ok(
     keys.some(k => k.toLowerCase().includes("failover")),
@@ -141,7 +141,7 @@ test("scale-ecosystem barrel exports failover-controller", () => {
   );
 });
 
-test("scale-ecosystem barrel exports region-router", () => {
+test("scale-ecosystem barrel exports region-router [index]", () => {
   const keys = Object.keys(scaleEcosystem);
   assert.ok(
     keys.some(k => k.toLowerCase().includes("regionrouter") || k.toLowerCase().includes("selectpreferredregion")),
@@ -149,7 +149,7 @@ test("scale-ecosystem barrel exports region-router", () => {
   );
 });
 
-test("scale-ecosystem barrel exports feedback-loop submodules", () => {
+test("scale-ecosystem barrel exports feedback-loop submodules [index]", () => {
   const keys = Object.keys(scaleEcosystem);
   // feedback-loop includes: analyzer, collector, improvement-tracker, quality-grader, fine-tuning-exporter
   assert.ok(
@@ -165,7 +165,7 @@ test("scale-ecosystem barrel exports feedback-loop submodules", () => {
   );
 });
 
-test("scale-ecosystem barrel exports sla-engine submodules", () => {
+test("scale-ecosystem barrel exports sla-engine submodules [index]", () => {
   const keys = Object.keys(scaleEcosystem);
   // sla-engine includes: breach-detector, resource-allocator, tier-resolver
   assert.ok(
@@ -179,7 +179,7 @@ test("scale-ecosystem barrel exports sla-engine submodules", () => {
   );
 });
 
-test("scale-ecosystem barrel exports resource-manager submodules", () => {
+test("scale-ecosystem barrel exports resource-manager submodules [index]", () => {
   const keys = Object.keys(scaleEcosystem);
   // resource-manager includes: fair-scheduling-service, fair-queue, preemption, resource-pool-service, quota-enforcer
   assert.ok(
@@ -193,7 +193,7 @@ test("scale-ecosystem barrel exports resource-manager submodules", () => {
   );
 });
 
-test("scale-ecosystem barrel exports integration submodules", () => {
+test("scale-ecosystem barrel exports integration submodules [index]", () => {
   const keys = Object.keys(scaleEcosystem);
   // integration includes: connector-registry, connector-framework-service, connector-runtime, health-monitor
   assert.ok(
@@ -207,7 +207,7 @@ test("scale-ecosystem barrel exports integration submodules", () => {
   );
 });
 
-test("scale-ecosystem barrel exports marketplace submodules", () => {
+test("scale-ecosystem barrel exports marketplace submodules [index]", () => {
   const keys = Object.keys(scaleEcosystem);
   // marketplace includes: billing-service, tenant-platform-service, certification, catalog, publisher, etc.
   assert.ok(
@@ -226,7 +226,7 @@ test("scale-ecosystem barrel exports marketplace submodules", () => {
   );
 });
 
-test("scale-ecosystem exports contain identifiable service classes or functions", () => {
+test("scale-ecosystem exports contain identifiable service classes or functions [index]", () => {
   const exports = Object.values(scaleEcosystem);
   // At least some exports should be classes or functions
   const hasExports = exports.length > 0;

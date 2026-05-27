@@ -20,7 +20,7 @@ function createStore(record: RuntimeRecoveryRecord) {
   } as any;
 }
 
-test("RuntimeRecoveryService downgrades resume_same_worker when worker region no longer matches the primary", () => {
+test("RuntimeRecoveryService downgrades resume_same_worker when worker region no longer matches the primary [runtime-recovery-service-multi-region]", () => {
   const record: RuntimeRecoveryRecord = {
     executionId: "exec-1",
     taskId: "task-1",

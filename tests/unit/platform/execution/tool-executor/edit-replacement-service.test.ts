@@ -134,7 +134,7 @@ function insertCompetingExecution(
   });
 }
 
-test("edit replacement service applies exact matches", async () => {
+test("edit replacement service applies exact matches [edit-replacement-service]", async () => {
   const harness = createHarness("aa-edit-unit-");
   const filePath = join(harness.workspace, "demo.ts");
 
@@ -169,7 +169,7 @@ test("edit replacement service applies exact matches", async () => {
   }
 });
 
-test("edit replacement service applies multiple edits atomically to the same file", async () => {
+test("edit replacement service applies multiple edits atomically to the same file [edit-replacement-service]", async () => {
   const harness = createHarness("aa-edit-unit-");
   const filePath = join(harness.workspace, "batch.ts");
 
@@ -217,7 +217,7 @@ test("edit replacement service applies multiple edits atomically to the same fil
   }
 });
 
-test("edit replacement service surfaces diagnostics feedback after introducing a TypeScript error", async () => {
+test("edit replacement service surfaces diagnostics feedback after introducing a TypeScript error [edit-replacement-service]", async () => {
   const harness = createHarness("aa-edit-unit-");
   const filePath = join(harness.workspace, "diagnostics.ts");
 
@@ -245,7 +245,7 @@ test("edit replacement service surfaces diagnostics feedback after introducing a
   }
 });
 
-test("edit replacement service rolls back atomic multiedit when a later edit fails", async () => {
+test("edit replacement service rolls back atomic multiedit when a later edit fails [edit-replacement-service]", async () => {
   const harness = createHarness("aa-edit-unit-");
   const filePath = join(harness.workspace, "batch-rollback.ts");
 
@@ -290,7 +290,7 @@ test("edit replacement service rolls back atomic multiedit when a later edit fai
   }
 });
 
-test("edit replacement service tolerates whitespace-only drift", async () => {
+test("edit replacement service tolerates whitespace-only drift [edit-replacement-service]", async () => {
   const harness = createHarness("aa-edit-unit-");
   const filePath = join(harness.workspace, "whitespace.ts");
 
@@ -317,7 +317,7 @@ test("edit replacement service tolerates whitespace-only drift", async () => {
   }
 });
 
-test("edit replacement service preserves current indentation when matching normalized blocks", async () => {
+test("edit replacement service preserves current indentation when matching normalized blocks [edit-replacement-service]", async () => {
   const harness = createHarness("aa-edit-unit-");
   const filePath = join(harness.workspace, "indent.ts");
 
@@ -358,7 +358,7 @@ test("edit replacement service preserves current indentation when matching norma
   }
 });
 
-test("edit replacement service applies anchored fuzzy edits with warnings", async () => {
+test("edit replacement service applies anchored fuzzy edits with warnings [edit-replacement-service]", async () => {
   const harness = createHarness("aa-edit-unit-");
   const filePath = join(harness.workspace, "anchored.ts");
 
@@ -400,7 +400,7 @@ test("edit replacement service applies anchored fuzzy edits with warnings", asyn
   }
 });
 
-test("edit replacement service fails on ambiguous matches without guessing", async () => {
+test("edit replacement service fails on ambiguous matches without guessing [edit-replacement-service]", async () => {
   const harness = createHarness("aa-edit-unit-");
   const filePath = join(harness.workspace, "ambiguous.ts");
 
@@ -431,7 +431,7 @@ test("edit replacement service fails on ambiguous matches without guessing", asy
   }
 });
 
-test("edit replacement service honors execution allowed path roots when provided by execution state", async () => {
+test("edit replacement service honors execution allowed path roots when provided by execution state [edit-replacement-service]", async () => {
   const harness = createHarness("aa-edit-unit-");
   const allowedDir = join(harness.workspace, "allowed");
   const blockedFile = join(harness.workspace, "blocked.ts");
@@ -466,7 +466,7 @@ test("edit replacement service honors execution allowed path roots when provided
   }
 });
 
-test("edit replacement service blocks execution-scoped tool calls outside the allowed tool set", async () => {
+test("edit replacement service blocks execution-scoped tool calls outside the allowed tool set [edit-replacement-service]", async () => {
   const harness = createHarness("aa-edit-unit-");
   const filePath = join(harness.workspace, "tool-denied.ts");
 
@@ -499,7 +499,7 @@ test("edit replacement service blocks execution-scoped tool calls outside the al
   }
 });
 
-test("edit replacement service fail-closes when execution allowed tools contain malformed entries", async () => {
+test("edit replacement service fail-closes when execution allowed tools contain malformed entries [edit-replacement-service]", async () => {
   const harness = createHarness("aa-edit-unit-");
   const filePath = join(harness.workspace, "invalid-tools.ts");
 
@@ -532,7 +532,7 @@ test("edit replacement service fail-closes when execution allowed tools contain 
   }
 });
 
-test("edit replacement service fails with lock conflict when another execution holds the lock", async () => {
+test("edit replacement service fails with lock conflict when another execution holds the lock [edit-replacement-service]", async () => {
   const harness = createHarness("aa-edit-unit-");
   const filePath = join(harness.workspace, "locked.ts");
 
@@ -585,7 +585,7 @@ test("edit replacement service fails with lock conflict when another execution h
   }
 });
 
-test("edit replacement service reports already_applied when file already contains newString", async () => {
+test("edit replacement service reports already_applied when file already contains newString [edit-replacement-service]", async () => {
   const harness = createHarness("aa-edit-unit-");
   const filePath = join(harness.workspace, "already.ts");
 
@@ -617,7 +617,7 @@ test("edit replacement service reports already_applied when file already contain
   }
 });
 
-test("edit replacement service rolls back all edits when a middle edit fails in batch", async () => {
+test("edit replacement service rolls back all edits when a middle edit fails in batch [edit-replacement-service]", async () => {
   const harness = createHarness("aa-edit-unit-");
   const filePath = join(harness.workspace, "batch-full-rollback.ts");
 
@@ -676,7 +676,7 @@ test("edit replacement service rolls back all edits when a middle edit fails in 
   }
 });
 
-test("edit replacement service handles empty edits array in batch", async () => {
+test("edit replacement service handles empty edits array in batch [edit-replacement-service]", async () => {
   const harness = createHarness("aa-edit-unit-");
   const filePath = join(harness.workspace, "batch-empty.ts");
 
@@ -711,7 +711,7 @@ test("edit replacement service handles empty edits array in batch", async () => 
   }
 });
 
-test("edit replacement service fail-closes when execution allowed paths contain malformed entries", async () => {
+test("edit replacement service fail-closes when execution allowed paths contain malformed entries [edit-replacement-service]", async () => {
   const harness = createHarness("aa-edit-unit-");
   const filePath = join(harness.workspace, "invalid-paths.ts");
 
@@ -744,7 +744,7 @@ test("edit replacement service fail-closes when execution allowed paths contain 
   }
 });
 
-test("edit replacement service fails with lock conflict in batch mode when another execution holds the lock", async () => {
+test("edit replacement service fails with lock conflict in batch mode when another execution holds the lock [edit-replacement-service]", async () => {
   const harness = createHarness("aa-edit-unit-");
   const filePath = join(harness.workspace, "batch-locked.ts");
 
@@ -811,7 +811,7 @@ test("edit replacement service fails with lock conflict in batch mode when anoth
   }
 });
 
-test("edit replacement service reports already_applied in batch mode when file already contains newString", async () => {
+test("edit replacement service reports already_applied in batch mode when file already contains newString [edit-replacement-service]", async () => {
   const harness = createHarness("aa-edit-unit-");
   const filePath = join(harness.workspace, "batch-already.ts");
 
@@ -858,7 +858,7 @@ test("edit replacement service reports already_applied in batch mode when file a
   }
 });
 
-test("edit replacement service rolls back all edits atomically when second edit fails in 3-edit batch", async () => {
+test("edit replacement service rolls back all edits atomically when second edit fails in 3-edit batch [edit-replacement-service]", async () => {
   const harness = createHarness("aa-edit-unit-");
   const filePath = join(harness.workspace, "batch-atomic-rollback.ts");
 
@@ -915,7 +915,7 @@ test("edit replacement service rolls back all edits atomically when second edit 
   }
 });
 
-test("edit replacement service handles empty edits array in batch gracefully", async () => {
+test("edit replacement service handles empty edits array in batch gracefully [edit-replacement-service]", async () => {
   const harness = createHarness("aa-edit-unit-");
   const filePath = join(harness.workspace, "batch-truly-empty.ts");
 

@@ -364,7 +364,7 @@ function createLeaderElectionService(
 // Tests: LeaderElectionService - Edge Cases
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("LeaderElectionService - renewLeadership failure when lease not found", async () => {
+test("LeaderElectionService - renewLeadership failure when lease not found [ha-services-comprehensive]", async () => {
   const coordinator = createMockCoordinator();
   const service = createLeaderElectionService(coordinator, { haLevel: "HA_2" });
 
@@ -378,7 +378,7 @@ test("LeaderElectionService - renewLeadership failure when lease not found", asy
   service.dispose();
 });
 
-test("LeaderElectionService - attemptElection returns early when shutdown", async () => {
+test("LeaderElectionService - attemptElection returns early when shutdown [ha-services-comprehensive]", async () => {
   const coordinator = createMockCoordinator();
   const service = createLeaderElectionService(coordinator, { haLevel: "HA_2" });
 
@@ -391,7 +391,7 @@ test("LeaderElectionService - attemptElection returns early when shutdown", asyn
   // attemptElection should return early due to shutdown/disposed check
 });
 
-test("LeaderElectionService - renewLeadership returns early when not leader", async () => {
+test("LeaderElectionService - renewLeadership returns early when not leader [ha-services-comprehensive]", async () => {
   const coordinator = createMockCoordinator();
   const service = createLeaderElectionService(coordinator, { haLevel: "HA_2" });
 
@@ -399,7 +399,7 @@ test("LeaderElectionService - renewLeadership returns early when not leader", as
   service.dispose();
 });
 
-test("LeaderElectionService - isLeader returns false after stop in HA_2", async () => {
+test("LeaderElectionService - isLeader returns false after stop in HA_2 [ha-services-comprehensive]", async () => {
   const coordinator = createMockCoordinator();
   const service = createLeaderElectionService(coordinator, { haLevel: "HA_2" });
 
@@ -412,7 +412,7 @@ test("LeaderElectionService - isLeader returns false after stop in HA_2", async 
   service.dispose();
 });
 
-test("LeaderElectionService - getLeaderNodeId returns correct node for HA_1 when leader", async () => {
+test("LeaderElectionService - getLeaderNodeId returns correct node for HA_1 when leader [ha-services-comprehensive]", async () => {
   const coordinator = createMockCoordinator();
   const service = createLeaderElectionService(coordinator, {
     haLevel: "HA_1",
@@ -426,7 +426,7 @@ test("LeaderElectionService - getLeaderNodeId returns correct node for HA_1 when
   service.dispose();
 });
 
-test("LeaderElectionService - getLeaderNodeId returns null for HA_1 when not leader", async () => {
+test("LeaderElectionService - getLeaderNodeId returns null for HA_1 when not leader [ha-services-comprehensive]", async () => {
   const coordinator = createMockCoordinator();
   const service = createLeaderElectionService(coordinator, { haLevel: "HA_1" });
 
@@ -436,7 +436,7 @@ test("LeaderElectionService - getLeaderNodeId returns null for HA_1 when not lea
   service.dispose();
 });
 
-test("LeaderElectionService - queryLeadership for HA_1 when stopped", async () => {
+test("LeaderElectionService - queryLeadership for HA_1 when stopped [ha-services-comprehensive]", async () => {
   const coordinator = createMockCoordinator();
   const service = createLeaderElectionService(coordinator, { haLevel: "HA_1" });
 
@@ -447,7 +447,7 @@ test("LeaderElectionService - queryLeadership for HA_1 when stopped", async () =
   service.dispose();
 });
 
-test("LeaderElectionService - getHaConfig returns copy", async () => {
+test("LeaderElectionService - getHaConfig returns copy [ha-services-comprehensive]", async () => {
   const coordinator = createMockCoordinator();
   const service = createLeaderElectionService(coordinator, { haLevel: "HA_2" });
 
@@ -460,7 +460,7 @@ test("LeaderElectionService - getHaConfig returns copy", async () => {
   service.dispose();
 });
 
-test("LeaderElectionService - transferLeadership when not current leader returns false", async () => {
+test("LeaderElectionService - transferLeadership when not current leader returns false [ha-services-comprehensive]", async () => {
   const coordinator = createMockCoordinator();
 
   // Node-2 is the leader
@@ -476,7 +476,7 @@ test("LeaderElectionService - transferLeadership when not current leader returns
   service.dispose();
 });
 
-test("LeaderElectionService - getCurrentLease returns null when stopped", async () => {
+test("LeaderElectionService - getCurrentLease returns null when stopped [ha-services-comprehensive]", async () => {
   const coordinator = createMockCoordinator();
   const service = createLeaderElectionService(coordinator, { haLevel: "HA_2" });
 
@@ -485,7 +485,7 @@ test("LeaderElectionService - getCurrentLease returns null when stopped", async 
   service.dispose();
 });
 
-test("LeaderElectionService - heartbeat continues until stop", async () => {
+test("LeaderElectionService - heartbeat continues until stop [ha-services-comprehensive]", async () => {
   const coordinator = createMockCoordinator();
   const service = createLeaderElectionService(coordinator, { haLevel: "HA_2" });
 
@@ -498,7 +498,7 @@ test("LeaderElectionService - heartbeat continues until stop", async () => {
   service.dispose();
 });
 
-test("LeaderElectionService - releaseLeadership calls coordinator", async () => {
+test("LeaderElectionService - releaseLeadership calls coordinator [ha-services-comprehensive]", async () => {
   const coordinator = createMockCoordinator();
   const service = createLeaderElectionService(coordinator, { haLevel: "HA_1" });
 
@@ -515,7 +515,7 @@ test("LeaderElectionService - releaseLeadership calls coordinator", async () => 
   service.dispose();
 });
 
-test("LeaderElectionService - forceAcquireLeadership fails when disposed", async () => {
+test("LeaderElectionService - forceAcquireLeadership fails when disposed [ha-services-comprehensive]", async () => {
   const coordinator = createMockCoordinator();
   const service = createLeaderElectionService(coordinator);
 
@@ -525,7 +525,7 @@ test("LeaderElectionService - forceAcquireLeadership fails when disposed", async
   assert.equal(result, false);
 });
 
-test("LeaderElectionService - forceAcquireLeadership fails when shutdown", async () => {
+test("LeaderElectionService - forceAcquireLeadership fails when shutdown [ha-services-comprehensive]", async () => {
   const coordinator = createMockCoordinator();
   const service = createLeaderElectionService(coordinator, { haLevel: "HA_2" });
 
@@ -539,7 +539,7 @@ test("LeaderElectionService - forceAcquireLeadership fails when shutdown", async
   assert.equal(result, false);
 });
 
-test("LeaderElectionService - HA level config properly overrides defaults", async () => {
+test("LeaderElectionService - HA level config properly overrides defaults [ha-services-comprehensive]", async () => {
   const coordinator = createMockCoordinator();
   const service = createLeaderElectionService(coordinator, {
     haLevel: "HA_3",
@@ -557,7 +557,7 @@ test("LeaderElectionService - HA level config properly overrides defaults", asyn
   service.dispose();
 });
 
-test("LeaderElectionService - multiple election attempts tracking", async () => {
+test("LeaderElectionService - multiple election attempts tracking [ha-services-comprehensive]", async () => {
   const coordinator = createMockCoordinator();
 
   // Make election always fail
@@ -584,7 +584,7 @@ test("LeaderElectionService - multiple election attempts tracking", async () => 
 // Tests: LeaseReclaimerService - Edge Cases
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("LeaseReclaimerService - reclaimOnce with no expired leases returns empty", async () => {
+test("LeaseReclaimerService - reclaimOnce with no expired leases returns empty [ha-services-comprehensive]", async () => {
   const coordinator = createMockCoordinator();
 
   // Register node but no expired leases
@@ -603,7 +603,7 @@ test("LeaseReclaimerService - reclaimOnce with no expired leases returns empty",
   service.dispose();
 });
 
-test("LeaseReclaimerService - reclaimOnce with leadership query returning null leader", async () => {
+test("LeaseReclaimerService - reclaimOnce with leadership query returning null leader [ha-services-comprehensive]", async () => {
   const coordinator = createMockCoordinator();
 
   // Set up coordinator with no leader
@@ -621,7 +621,7 @@ test("LeaseReclaimerService - reclaimOnce with leadership query returning null l
   service.dispose();
 });
 
-test("LeaseReclaimerService - expireLease logs debug message", async () => {
+test("LeaseReclaimerService - expireLease logs debug message [ha-services-comprehensive]", async () => {
   const coordinator = createMockCoordinator();
 
   coordinator.registerNode("node-1", "us-east-1");
@@ -652,7 +652,7 @@ test("LeaseReclaimerService - expireLease logs debug message", async () => {
   service.dispose();
 });
 
-test("LeaseReclaimerService - expireLeaseForNode logs debug message", async () => {
+test("LeaseReclaimerService - expireLeaseForNode logs debug message [ha-services-comprehensive]", async () => {
   const coordinator = createMockCoordinator();
 
   coordinator.registerNode("node-1", "us-east-1");
@@ -671,7 +671,7 @@ test("LeaseReclaimerService - expireLeaseForNode logs debug message", async () =
   service.dispose();
 });
 
-test("LeaseReclaimerService - runRecoveryCycle returns proper report", async () => {
+test("LeaseReclaimerService - runRecoveryCycle returns proper report [ha-services-comprehensive]", async () => {
   const coordinator = createMockCoordinator();
 
   const service = new LeaseReclaimerService({
@@ -689,7 +689,7 @@ test("LeaseReclaimerService - runRecoveryCycle returns proper report", async () 
   service.dispose();
 });
 
-test("LeaseReclaimerService - runRecoveryCycle handles errors gracefully", async () => {
+test("LeaseReclaimerService - runRecoveryCycle handles errors gracefully [ha-services-comprehensive]", async () => {
   const coordinator = createMockCoordinator();
 
   // Corrupt the coordinator to throw during queryLeadership
@@ -716,7 +716,7 @@ test("LeaseReclaimerService - runRecoveryCycle handles errors gracefully", async
   service.dispose();
 });
 
-test("LeaseReclaimerService - getWorkerId returns nodeId", async () => {
+test("LeaseReclaimerService - getWorkerId returns nodeId [ha-services-comprehensive]", async () => {
   const coordinator = createMockCoordinator();
 
   const service = new LeaseReclaimerService({
@@ -730,7 +730,7 @@ test("LeaseReclaimerService - getWorkerId returns nodeId", async () => {
   service.dispose();
 });
 
-test("LeaseReclaimerService - getRecoveryCadence returns correct cadence", async () => {
+test("LeaseReclaimerService - getRecoveryCadence returns correct cadence [ha-services-comprehensive]", async () => {
   const coordinator = createMockCoordinator();
 
   const service = new LeaseReclaimerService({
@@ -750,7 +750,7 @@ test("LeaseReclaimerService - getRecoveryCadence returns correct cadence", async
 // Tests: StuckRunSweeperService - Edge Cases
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("StuckRunSweeperService - evictExpiredRuns when not yet time", () => {
+test("StuckRunSweeperService - evictExpiredRuns when not yet time [ha-services-comprehensive]", () => {
   const clock = new TestClock(0);
   clock.install();
 
@@ -762,7 +762,7 @@ test("StuckRunSweeperService - evictExpiredRuns when not yet time", () => {
   service.dispose();
 });
 
-test("StuckRunSweeperService - evictExpiredRuns removes old runs", () => {
+test("StuckRunSweeperService - evictExpiredRuns removes old runs [ha-services-comprehensive]", () => {
   const clock = new TestClock(0);
   clock.install();
 
@@ -784,7 +784,7 @@ test("StuckRunSweeperService - evictExpiredRuns removes old runs", () => {
   service.dispose();
 });
 
-test("StuckRunSweeperService - MAX_TRACKED_RUNS eviction when over capacity", () => {
+test("StuckRunSweeperService - MAX_TRACKED_RUNS eviction when over capacity [ha-services-comprehensive]", () => {
   const service = new StuckRunSweeperService({
     config: { sweepIntervalMs: 60_000, stuckThresholdMs: 60_000, killAfterWarningMs: 30_000, cleanupAfterKillMs: 60_000, maxRunsPerSweep: 100 },
   });
@@ -804,7 +804,7 @@ test("StuckRunSweeperService - MAX_TRACKED_RUNS eviction when over capacity", ()
   service.dispose();
 });
 
-test("StuckRunSweeperService - doSweepCycle handles processRun error gracefully", async () => {
+test("StuckRunSweeperService - doSweepCycle handles processRun error gracefully [ha-services-comprehensive]", async () => {
   const clock = new TestClock(0);
   clock.install();
 
@@ -826,7 +826,7 @@ test("StuckRunSweeperService - doSweepCycle handles processRun error gracefully"
   service.dispose();
 });
 
-test("StuckRunSweeperService - getWorkerId returns stuck-run-sweeper", () => {
+test("StuckRunSweeperService - getWorkerId returns stuck-run-sweeper [ha-services-comprehensive]", () => {
   const service = new StuckRunSweeperService({
     config: { sweepIntervalMs: 60_000, stuckThresholdMs: 60_000, killAfterWarningMs: 30_000, cleanupAfterKillMs: 60_000, maxRunsPerSweep: 100 },
   });
@@ -836,7 +836,7 @@ test("StuckRunSweeperService - getWorkerId returns stuck-run-sweeper", () => {
   service.dispose();
 });
 
-test("StuckRunSweeperService - getRecoveryCadence returns correct cadence", () => {
+test("StuckRunSweeperService - getRecoveryCadence returns correct cadence [ha-services-comprehensive]", () => {
   const service = new StuckRunSweeperService({
     config: { sweepIntervalMs: 60_000, stuckThresholdMs: 60_000, killAfterWarningMs: 30_000, cleanupAfterKillMs: 60_000, maxRunsPerSweep: 100 },
   });
@@ -849,7 +849,7 @@ test("StuckRunSweeperService - getRecoveryCadence returns correct cadence", () =
   service.dispose();
 });
 
-test("StuckRunSweeperService - runRecoveryCycle returns proper report", async () => {
+test("StuckRunSweeperService - runRecoveryCycle returns proper report [ha-services-comprehensive]", async () => {
   const clock = new TestClock(0);
   clock.install();
 
@@ -873,7 +873,7 @@ test("StuckRunSweeperService - runRecoveryCycle returns proper report", async ()
   service.dispose();
 });
 
-test("StuckRunSweeperService - runRecoveryCycle handles errors", async () => {
+test("StuckRunSweeperService - runRecoveryCycle handles errors [ha-services-comprehensive]", async () => {
   const clock = new TestClock(0);
   clock.install();
 
@@ -890,7 +890,7 @@ test("StuckRunSweeperService - runRecoveryCycle handles errors", async () => {
   service.dispose();
 });
 
-test("StuckRunSweeperService - multiple runs in same sweep", async () => {
+test("StuckRunSweeperService - multiple runs in same sweep [ha-services-comprehensive]", async () => {
   const clock = new TestClock(0);
   clock.install();
 
@@ -914,7 +914,7 @@ test("StuckRunSweeperService - multiple runs in same sweep", async () => {
   service.dispose();
 });
 
-test("StuckRunSweeperService - resolved runs are filtered in sweep", async () => {
+test("StuckRunSweeperService - resolved runs are filtered in sweep [ha-services-comprehensive]", async () => {
   const clock = new TestClock(0);
   clock.install();
 
@@ -937,7 +937,7 @@ test("StuckRunSweeperService - resolved runs are filtered in sweep", async () =>
   service.dispose();
 });
 
-test("StuckRunSweeperService - cleaned_up runs are filtered in sweep", async () => {
+test("StuckRunSweeperService - cleaned_up runs are filtered in sweep [ha-services-comprehensive]", async () => {
   const clock = new TestClock(0);
   clock.install();
 
@@ -967,7 +967,7 @@ test("StuckRunSweeperService - cleaned_up runs are filtered in sweep", async () 
 // Tests: CrossRegionEventReplicationService - Edge Cases
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("CrossRegionEventReplicationService - getReplicationStatus with mixed statuses", () => {
+test("CrossRegionEventReplicationService - getReplicationStatus with mixed statuses [ha-services-comprehensive]", () => {
   const publisher = createMockPublisher();
   const service = new CrossRegionEventReplicationService(publisher, "region-a");
 
@@ -992,7 +992,7 @@ test("CrossRegionEventReplicationService - getReplicationStatus with mixed statu
   assert.ok(["pending", "replicating", "completed", "partial", "failed"].includes(result.status));
 });
 
-test("CrossRegionEventReplicationService - multiple events accumulate in pendingEvents", () => {
+test("CrossRegionEventReplicationService - multiple events accumulate in pendingEvents [ha-services-comprehensive]", () => {
   const publisher = createMockPublisher();
   const service = new CrossRegionEventReplicationService(publisher, "region-a");
 
@@ -1011,7 +1011,7 @@ test("CrossRegionEventReplicationService - multiple events accumulate in pending
   assert.ok(metrics.totalEvents >= 3);
 });
 
-test("CrossRegionEventReplicationService - pruneCompleted behavior", () => {
+test("CrossRegionEventReplicationService - pruneCompleted behavior [ha-services-comprehensive]", () => {
   const publisher = createMockPublisher();
   const service = new CrossRegionEventReplicationService(publisher, "region-a");
 
@@ -1033,7 +1033,7 @@ test("CrossRegionEventReplicationService - pruneCompleted behavior", () => {
   assert.ok(pruned >= 0);
 });
 
-test("CrossRegionEventReplicationService - calculateBackoff uses exponential backoff", () => {
+test("CrossRegionEventReplicationService - calculateBackoff uses exponential backoff [ha-services-comprehensive]", () => {
   const publisher = createMockPublisher();
   const service = new CrossRegionEventReplicationService(publisher, "region-a", {
     baseRetryDelayMs: 100,
@@ -1059,7 +1059,7 @@ test("CrossRegionEventReplicationService - calculateBackoff uses exponential bac
   assert.ok(result);
 });
 
-test("CrossRegionEventReplicationService - replicate to non-existent target throws", () => {
+test("CrossRegionEventReplicationService - replicate to non-existent target throws [ha-services-comprehensive]", () => {
   const publisher = createMockPublisher();
   const service = new CrossRegionEventReplicationService(publisher, "region-a");
 
@@ -1071,7 +1071,7 @@ test("CrossRegionEventReplicationService - replicate to non-existent target thro
   );
 });
 
-test("CrossRegionEventReplicationService - getMetrics tracks all status types", () => {
+test("CrossRegionEventReplicationService - getMetrics tracks all status types [ha-services-comprehensive]", () => {
   const publisher = createMockPublisher();
   const service = new CrossRegionEventReplicationService(publisher, "region-a");
 
@@ -1104,7 +1104,7 @@ test("CrossRegionEventReplicationService - getMetrics tracks all status types", 
   assert.ok(metrics.replicationRatePerSecond >= 0);
 });
 
-test("CrossRegionEventReplicationService - getTargetRegions returns copy of regions", () => {
+test("CrossRegionEventReplicationService - getTargetRegions returns copy of regions [ha-services-comprehensive]", () => {
   const publisher = createMockPublisher();
   const service = new CrossRegionEventReplicationService(publisher, "region-a");
 
@@ -1127,7 +1127,7 @@ test("CrossRegionEventReplicationService - getTargetRegions returns copy of regi
   assert.equal(regions3.length, 1);
 });
 
-test("CrossRegionEventReplicationService - processReplicationQueue handles empty queue", () => {
+test("CrossRegionEventReplicationService - processReplicationQueue handles empty queue [ha-services-comprehensive]", () => {
   const publisher = createMockPublisher();
   const service = new CrossRegionEventReplicationService(publisher, "region-a");
 
@@ -1139,7 +1139,7 @@ test("CrossRegionEventReplicationService - processReplicationQueue handles empty
   assert.equal(metrics.totalEvents, 0);
 });
 
-test("CrossRegionEventReplicationService - replication with inactive target region", () => {
+test("CrossRegionEventReplicationService - replication with inactive target region [ha-services-comprehensive]", () => {
   const publisher = createMockPublisher();
   const service = new CrossRegionEventReplicationService(publisher, "region-a");
 
@@ -1156,7 +1156,7 @@ test("CrossRegionEventReplicationService - replication with inactive target regi
   assert.ok(result);
 });
 
-test("CrossRegionEventReplicationService - replication with degraded target region", () => {
+test("CrossRegionEventReplicationService - replication with degraded target region [ha-services-comprehensive]", () => {
   const publisher = createMockPublisher();
   const service = new CrossRegionEventReplicationService(publisher, "region-a");
 
@@ -1173,7 +1173,7 @@ test("CrossRegionEventReplicationService - replication with degraded target regi
   assert.ok(result);
 });
 
-test("CrossRegionEventReplicationService - removeTargetRegion when region doesn't exist", () => {
+test("CrossRegionEventReplicationService - removeTargetRegion when region doesn't exist [ha-services-comprehensive]", () => {
   const publisher = createMockPublisher();
   const service = new CrossRegionEventReplicationService(publisher, "region-a");
 
@@ -1191,7 +1191,7 @@ test("CrossRegionEventReplicationService - removeTargetRegion when region doesn'
   assert.equal(service.getTargetRegions().length, 1);
 });
 
-test("CrossRegionEventReplicationService - partial config override", () => {
+test("CrossRegionEventReplicationService - partial config override [ha-services-comprehensive]", () => {
   const publisher = createMockPublisher();
   const service = new CrossRegionEventReplicationService(publisher, "region-a", {
     maxRetries: 10,

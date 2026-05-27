@@ -35,7 +35,7 @@ function createMinimalGateReport(): StableReleaseGateReport {
   };
 }
 
-test("buildNextActions returns action for missing smoke profile", () => {
+test("buildNextActions returns action for missing smoke profile [stable-release-package-additional]", () => {
   const gate = createMinimalGateReport();
   const profiles: Parameters<typeof buildNextActions>[1] = [];
 
@@ -44,7 +44,7 @@ test("buildNextActions returns action for missing smoke profile", () => {
   assert.ok(actions.some((a) => a.includes("Generate smoke evidence")));
 });
 
-test("buildNextActions returns action for failing smoke profile", () => {
+test("buildNextActions returns action for failing smoke profile [stable-release-package-additional]", () => {
   const gate = createMinimalGateReport();
   const profiles: Parameters<typeof buildNextActions>[1] = [
     {
@@ -78,7 +78,7 @@ test("buildNextActions returns action for failing smoke profile", () => {
   assert.ok(actions.some((a) => a.includes("smoke evidence bundle") && a.includes("failing")));
 });
 
-test("buildNextActions includes promote action when gate is approved", () => {
+test("buildNextActions includes promote action when gate is approved [stable-release-package-additional]", () => {
   const gate: StableReleaseGateReport = {
     ...createMinimalGateReport(),
     overallVerdict: "promote_approved",
@@ -91,7 +91,7 @@ test("buildNextActions includes promote action when gate is approved", () => {
   assert.ok(actions.some((a) => a.includes("Proceed with the") && a.includes("rollout")));
 });
 
-test("buildNextActions includes conditional action for conditional verdict", () => {
+test("buildNextActions includes conditional action for conditional verdict [stable-release-package-additional]", () => {
   const gate: StableReleaseGateReport = {
     ...createMinimalGateReport(),
     overallVerdict: "conditional",
@@ -104,7 +104,7 @@ test("buildNextActions includes conditional action for conditional verdict", () 
   assert.ok(actions.some((a) => a.includes("Keep the component at")));
 });
 
-test("buildNextActions includes blocked action when gate is blocked", () => {
+test("buildNextActions includes blocked action when gate is blocked [stable-release-package-additional]", () => {
   const gate: StableReleaseGateReport = {
     ...createMinimalGateReport(),
     overallVerdict: "promote_blocked",
@@ -117,7 +117,7 @@ test("buildNextActions includes blocked action when gate is blocked", () => {
   assert.ok(actions.some((a) => a.includes("Do not promote")));
 });
 
-test("buildRecommendedCommands returns array of commands", () => {
+test("buildRecommendedCommands returns array of commands [stable-release-package-additional]", () => {
   const commands = buildRecommendedCommands("canary");
 
   assert.ok(Array.isArray(commands));
@@ -125,7 +125,7 @@ test("buildRecommendedCommands returns array of commands", () => {
   assert.ok(commands.some((c) => c.includes("npm run")));
 });
 
-test("buildRecommendedCommands includes profile-specific commands", () => {
+test("buildRecommendedCommands includes profile-specific commands [stable-release-package-additional]", () => {
   const commands = buildRecommendedCommands("production_ready");
 
   assert.ok(commands.some((c) => c.includes("24h")));
@@ -133,7 +133,7 @@ test("buildRecommendedCommands includes profile-specific commands", () => {
   assert.ok(commands.some((c) => c.includes("production_ready")));
 });
 
-test("summarizeCriteria returns pass when all criteria pass", () => {
+test("summarizeCriteria returns pass when all criteria pass [stable-release-package-additional]", () => {
   const criteria = [
     { criterionId: "test1", status: "pass" as const, detail: "test1 pass", evidenceRefs: [] },
     { criterionId: "test2", status: "pass" as const, detail: "test2 pass", evidenceRefs: [] },
@@ -144,7 +144,7 @@ test("summarizeCriteria returns pass when all criteria pass", () => {
   assert.equal(result.status, "pass");
 });
 
-test("summarizeCriteria returns partial when any criterion is partial", () => {
+test("summarizeCriteria returns partial when any criterion is partial [stable-release-package-additional]", () => {
   const criteria = [
     { criterionId: "test1", status: "pass" as const, detail: "test1 pass", evidenceRefs: [] },
     { criterionId: "test2", status: "partial" as const, detail: "test2 partial", evidenceRefs: [] },
@@ -155,7 +155,7 @@ test("summarizeCriteria returns partial when any criterion is partial", () => {
   assert.equal(result.status, "partial");
 });
 
-test("summarizeCriteria returns fail when any criterion fails", () => {
+test("summarizeCriteria returns fail when any criterion fails [stable-release-package-additional]", () => {
   const criteria = [
     { criterionId: "test1", status: "pass" as const, detail: "test1 pass", evidenceRefs: [] },
     { criterionId: "test2", status: "fail" as const, detail: "test2 fail", evidenceRefs: [] },
@@ -166,7 +166,7 @@ test("summarizeCriteria returns fail when any criterion fails", () => {
   assert.equal(result.status, "fail");
 });
 
-test("summarizeCriteria dedupes evidence refs", () => {
+test("summarizeCriteria dedupes evidence refs [stable-release-package-additional]", () => {
   const criteria = [
     { criterionId: "test1", status: "pass" as const, detail: "test1 pass", evidenceRefs: ["/evidence/1.json"] },
     { criterionId: "test2", status: "pass" as const, detail: "test2 pass", evidenceRefs: ["/evidence/1.json", "/evidence/2.json"] },

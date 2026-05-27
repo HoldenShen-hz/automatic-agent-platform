@@ -85,7 +85,7 @@ function createMockArtifactRecord(overrides?: Partial<ArtifactRecord>): Artifact
 // StepOutputRecord nodeRunId Tests
 // =============================================================================
 
-test("R6-19: StepOutputRecord uses nodeRunId as canonical identifier", () => {
+test("R6-19: StepOutputRecord uses nodeRunId as canonical identifier [nodeRunId-canonization]", () => {
   const nodeRunId = newId("nrun");
   const stepOutput = createMockStepOutput({ nodeRunId });
 
@@ -95,14 +95,14 @@ test("R6-19: StepOutputRecord uses nodeRunId as canonical identifier", () => {
   assert.ok(stepOutput.stepId?.startsWith("legacy_step_"));
 });
 
-test("R6-19: StepOutputRecord stepId is marked as optional deprecated field", () => {
+test("R6-19: StepOutputRecord stepId is marked as optional deprecated field [nodeRunId-canonization]", () => {
   const stepOutput = createMockStepOutput();
 
   // stepId is optional (for backward compat)
   assert.ok(stepOutput.stepId !== undefined); // explicitly set in our mock
 });
 
-test("R6-19: ArtifactRecord uses nodeRunId for canonical correlation", () => {
+test("R6-19: ArtifactRecord uses nodeRunId for canonical correlation [nodeRunId-canonization]", () => {
   const nodeRunId = newId("nrun");
   const artifact = createMockArtifactRecord({ nodeRunId });
 
@@ -116,7 +116,7 @@ test("R6-19: ArtifactRecord uses nodeRunId for canonical correlation", () => {
 // Result Envelope nodeRunId Tests
 // =============================================================================
 
-test("R6-19: buildStepResultEnvelope uses nodeRunId in provenance", () => {
+test("R6-19: buildStepResultEnvelope uses nodeRunId in provenance [nodeRunId-canonization]", () => {
   const nodeRunId = newId("nrun");
   const stepOutput = createMockStepOutput({ nodeRunId });
   const artifacts: ArtifactRecord[] = [];
@@ -127,7 +127,7 @@ test("R6-19: buildStepResultEnvelope uses nodeRunId in provenance", () => {
   assert.equal(envelope.provenance?.["nodeRunId"], nodeRunId);
 });
 
-test("R6-19: buildStepResultEnvelope provenance does not use deprecated stepId", () => {
+test("R6-19: buildStepResultEnvelope provenance does not use deprecated stepId [nodeRunId-canonization]", () => {
   const nodeRunId = newId("nrun");
   const stepOutput = createMockStepOutput({ nodeRunId });
   const artifacts: ArtifactRecord[] = [];
@@ -138,7 +138,7 @@ test("R6-19: buildStepResultEnvelope provenance does not use deprecated stepId",
   assert.ok(!envelope.provenance || (envelope.provenance as Record<string, unknown>)["stepId"] === undefined);
 });
 
-test("R6-19: collectStepWarnings uses nodeRunId for warning prefix", () => {
+test("R6-19: collectStepWarnings uses nodeRunId for warning prefix [nodeRunId-canonization]", () => {
   const nodeRunId = newId("nrun");
   const stepOutput = createMockStepOutput({
     nodeRunId,
@@ -158,7 +158,7 @@ test("R6-19: collectStepWarnings uses nodeRunId for warning prefix", () => {
 // Artifact Resolution nodeRunId Priority Tests
 // =============================================================================
 
-test("R6-19: resolveArtifactRefs prefers nodeRunId match over stepId", () => {
+test("R6-19: resolveArtifactRefs prefers nodeRunId match over stepId [nodeRunId-canonization]", () => {
   const nodeRunId = newId("nrun");
   const legacyStepId = `legacy_${nodeRunId}`;
 
@@ -215,7 +215,7 @@ function resolveArtifactRefsFromModule(
 // CompensationStep nodeRunId Tests
 // =============================================================================
 
-test("R6-19: CompensationStep uses nodeRunId for canonical identity", async () => {
+test("R6-19: CompensationStep uses nodeRunId for canonical identity [nodeRunId-canonization]", async () => {
   const { CompensationStep } = await import("../../../../../src/platform/five-plane-execution/compensation-manager.js");
 
   // R6-19: CompensationStep should have nodeRunId as canonical field
@@ -237,7 +237,7 @@ test("R6-19: CompensationStep uses nodeRunId for canonical identity", async () =
 // Task Result Envelope nodeRunId Tests
 // =============================================================================
 
-test("R6-19: buildTaskResultEnvelope uses nodeRunId for step correlation", () => {
+test("R6-19: buildTaskResultEnvelope uses nodeRunId for step correlation [nodeRunId-canonization]", () => {
   const nodeRunId1 = newId("nrun");
   const nodeRunId2 = newId("nrun");
 
@@ -265,7 +265,7 @@ test("R6-19: buildTaskResultEnvelope uses nodeRunId for step correlation", () =>
 // Billing Types nodeRunId Tests
 // =============================================================================
 
-test("R6-19: UsageEventRecord has nodeRunId as canonical field", async () => {
+test("R6-19: UsageEventRecord has nodeRunId as canonical field [nodeRunId-canonization]", async () => {
   const { UsageEventRecord } = await import("../../../../../src/platform/contracts/types/domain/billing-types.js");
 
   // nodeRunId is the canonical field for execution correlation

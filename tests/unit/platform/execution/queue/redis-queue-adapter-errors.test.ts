@@ -24,7 +24,7 @@ function createAdapterWithMockRedis(mockRedis: any): RedisQueueAdapter {
 // hmset Failure During enqueueAsync Pipeline
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("RedisQueueAdapter enqueueAsync throws when hmset fails", async () => {
+test("RedisQueueAdapter enqueueAsync throws when hmset fails [redis-queue-adapter-errors]", async () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
   const mockClient = adapter as unknown as { client: { redis: any } };
 
@@ -45,7 +45,7 @@ test("RedisQueueAdapter enqueueAsync throws when hmset fails", async () => {
   }
 });
 
-test("RedisQueueAdapter enqueueAsync throws when expire fails", async () => {
+test("RedisQueueAdapter enqueueAsync throws when expire fails [redis-queue-adapter-errors]", async () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
   const mockClient = adapter as unknown as { client: { redis: any } };
 
@@ -65,7 +65,7 @@ test("RedisQueueAdapter enqueueAsync throws when expire fails", async () => {
   }
 });
 
-test("RedisQueueAdapter enqueueAsync throws when sadd fails", async () => {
+test("RedisQueueAdapter enqueueAsync throws when sadd fails [redis-queue-adapter-errors]", async () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
   const mockClient = adapter as unknown as { client: { redis: any } };
 
@@ -86,7 +86,7 @@ test("RedisQueueAdapter enqueueAsync throws when sadd fails", async () => {
   }
 });
 
-test("RedisQueueAdapter enqueueAsync throws when zadd fails", async () => {
+test("RedisQueueAdapter enqueueAsync throws when zadd fails [redis-queue-adapter-errors]", async () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
   const mockClient = adapter as unknown as { client: { redis: any } };
 
@@ -112,7 +112,7 @@ test("RedisQueueAdapter enqueueAsync throws when zadd fails", async () => {
 // getJobAsync with Malformed Redis Hash Data
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("RedisQueueAdapter getJobAsync returns null when job not found", async () => {
+test("RedisQueueAdapter getJobAsync returns null when job not found [redis-queue-adapter-errors]", async () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
   const mockClient = adapter as unknown as { client: { hgetall: (key: string) => Promise<Record<string, string>> } };
 
@@ -122,7 +122,7 @@ test("RedisQueueAdapter getJobAsync returns null when job not found", async () =
   assert.equal(result, null);
 });
 
-test("RedisQueueAdapter getJobAsync returns null when hash has no id field", async () => {
+test("RedisQueueAdapter getJobAsync returns null when hash has no id field [redis-queue-adapter-errors]", async () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
   const mockClient = adapter as unknown as { client: { hgetall: (key: string) => Promise<Record<string, string>> } };
 
@@ -136,7 +136,7 @@ test("RedisQueueAdapter getJobAsync returns null when hash has no id field", asy
   assert.equal(result, null);
 });
 
-test("RedisQueueAdapter mapRedisToJobRecord handles non-numeric priority", () => {
+test("RedisQueueAdapter mapRedisToJobRecord handles non-numeric priority [redis-queue-adapter-errors]", () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 }) as any;
   const result = adapter.mapRedisToJobRecord({
     id: "job-1",
@@ -159,7 +159,7 @@ test("RedisQueueAdapter mapRedisToJobRecord handles non-numeric priority", () =>
   assert.equal(Number.isNaN(result.priority), true);
 });
 
-test("RedisQueueAdapter mapRedisToJobRecord handles non-numeric attempts", () => {
+test("RedisQueueAdapter mapRedisToJobRecord handles non-numeric attempts [redis-queue-adapter-errors]", () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 }) as any;
   const result = adapter.mapRedisToJobRecord({
     id: "job-1",
@@ -181,7 +181,7 @@ test("RedisQueueAdapter mapRedisToJobRecord handles non-numeric attempts", () =>
   assert.equal(Number.isNaN(result.attempts), true);
 });
 
-test("RedisQueueAdapter mapRedisToJobRecord handles invalid status value", () => {
+test("RedisQueueAdapter mapRedisToJobRecord handles invalid status value [redis-queue-adapter-errors]", () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 }) as any;
   const result = adapter.mapRedisToJobRecord({
     id: "job-1",
@@ -213,7 +213,7 @@ test("RedisQueueAdapter mapRedisToJobRecord handles invalid status value", () =>
 // mapRedisToJobRecord() Error Handling
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("RedisQueueAdapter mapRedisToJobRecord handles empty data gracefully", () => {
+test("RedisQueueAdapter mapRedisToJobRecord handles empty data gracefully [redis-queue-adapter-errors]", () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 }) as any;
   const result = adapter.mapRedisToJobRecord({});
 
@@ -232,7 +232,7 @@ test("RedisQueueAdapter mapRedisToJobRecord handles empty data gracefully", () =
   assert.equal(result.completedAt, null);
 });
 
-test("RedisQueueAdapter mapRedisToJobRecord handles null/undefined values in data", () => {
+test("RedisQueueAdapter mapRedisToJobRecord handles null/undefined values in data [redis-queue-adapter-errors]", () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 }) as any;
 
   // TypeScript would not allow this at compile time but runtime can pass undefined
@@ -266,7 +266,7 @@ test("RedisQueueAdapter mapRedisToJobRecord handles null/undefined values in dat
 // Redis Connection Error Handling
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("RedisQueueAdapter ensureConnected throws when connection fails", async () => {
+test("RedisQueueAdapter ensureConnected throws when connection fails [redis-queue-adapter-errors]", async () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
   const mockClient = adapter as unknown as { client: { redis: any; ensureConnected: () => Promise<void> } };
 
@@ -284,7 +284,7 @@ test("RedisQueueAdapter ensureConnected throws when connection fails", async () 
   }
 });
 
-test("RedisQueueAdapter handles ping failure gracefully", async () => {
+test("RedisQueueAdapter handles ping failure gracefully [redis-queue-adapter-errors]", async () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
   const mockClient = adapter as unknown as { client: { redis: any; ping: () => Promise<string> } };
 
@@ -307,7 +307,7 @@ test("RedisQueueAdapter handles ping failure gracefully", async () => {
 // .catch() only logs but doesn't propagate error - caller gets false success.
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("SYS-REL-2.4 sync enqueue() must propagate pipeline failure to caller", async () => {
+test("SYS-REL-2.4 sync enqueue() must propagate pipeline failure to caller [redis-queue-adapter-errors]", async () => {
   runtimeMetricsRegistry.reset();
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
   const mockClient = adapter as unknown as { client: { redis: any } };
@@ -340,7 +340,7 @@ test("SYS-REL-2.4 sync enqueue() must propagate pipeline failure to caller", asy
   );
 });
 
-test("SYS-REL-2.4 sync enqueue() must propagate pipeline result-level failure to caller", async () => {
+test("SYS-REL-2.4 sync enqueue() must propagate pipeline result-level failure to caller [redis-queue-adapter-errors]", async () => {
   runtimeMetricsRegistry.reset();
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
   const mockClient = adapter as unknown as { client: { redis: any } };

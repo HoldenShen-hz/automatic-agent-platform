@@ -4,7 +4,7 @@ import test from "node:test";
 import { buildAttempt } from "../../../../../../src/platform/five-plane-execution/tool-executor/edit-replacement/edit-replacement-result-support.js";
 import type { MatchOutcome } from "../../../../../../src/platform/five-plane-execution/tool-executor/edit-replacement/edit-replacement-types.js";
 
-test("buildAttempt creates attempt with exact level and matched candidate", () => {
+test("buildAttempt creates attempt with exact level and matched candidate [edit-replacement-result-support]", () => {
   const outcome: MatchOutcome = {
     matched: true,
     candidateCount: 1,
@@ -24,7 +24,7 @@ test("buildAttempt creates attempt with exact level and matched candidate", () =
   assert.equal(attempt.appliedRange, "L1:C1-L1:C6");
 });
 
-test("buildAttempt creates attempt with fuzzy level and warning codes", () => {
+test("buildAttempt creates attempt with fuzzy level and warning codes [edit-replacement-result-support]", () => {
   const outcome: MatchOutcome = {
     matched: true,
     candidateCount: 1,
@@ -44,7 +44,7 @@ test("buildAttempt creates attempt with fuzzy level and warning codes", () => {
   assert.equal(attempt.appliedRange, "L1:C1-L1:C6");
 });
 
-test("buildAttempt returns null appliedRange when candidate is null", () => {
+test("buildAttempt returns null appliedRange when candidate is null [edit-replacement-result-support]", () => {
   const outcome: MatchOutcome = {
     matched: false,
     candidateCount: 0,
@@ -61,7 +61,7 @@ test("buildAttempt returns null appliedRange when candidate is null", () => {
   assert.equal(attempt.candidateCount, 0);
 });
 
-test("buildAttempt returns null appliedRange for multiple candidates", () => {
+test("buildAttempt returns null appliedRange for multiple candidates [edit-replacement-result-support]", () => {
   const outcome: MatchOutcome = {
     matched: false,
     candidateCount: 3,
@@ -78,7 +78,7 @@ test("buildAttempt returns null appliedRange for multiple candidates", () => {
   assert.equal(attempt.candidateCount, 3);
 });
 
-test("buildAttempt handles multiline content with correct range", () => {
+test("buildAttempt handles multiline content with correct range [edit-replacement-result-support]", () => {
   const content = "line1\nline2\nline3";
   const outcome: MatchOutcome = {
     matched: true,
@@ -94,7 +94,7 @@ test("buildAttempt handles multiline content with correct range", () => {
   assert.equal(attempt.appliedRange, "L2:C1-L2:C6");
 });
 
-test("buildAttempt handles anchored fuzzy with anchored warning", () => {
+test("buildAttempt handles anchored fuzzy with anchored warning [edit-replacement-result-support]", () => {
   const outcome: MatchOutcome = {
     matched: true,
     candidateCount: 1,
@@ -110,7 +110,7 @@ test("buildAttempt handles anchored fuzzy with anchored warning", () => {
   assert.ok(attempt.warningCodes.includes("anchored_fuzzy_edit_applied"));
 });
 
-test("buildAttempt handles whitespace_normalized level", () => {
+test("buildAttempt handles whitespace_normalized level [edit-replacement-result-support]", () => {
   const outcome: MatchOutcome = {
     matched: true,
     candidateCount: 1,
@@ -126,7 +126,7 @@ test("buildAttempt handles whitespace_normalized level", () => {
   assert.equal(attempt.matched, true);
 });
 
-test("buildAttempt handles indentation_normalized level", () => {
+test("buildAttempt handles indentation_normalized level [edit-replacement-result-support]", () => {
   const content = "  hello\n  world";
   const outcome: MatchOutcome = {
     matched: true,
@@ -143,7 +143,7 @@ test("buildAttempt handles indentation_normalized level", () => {
   assert.equal(attempt.matched, true);
 });
 
-test("buildAttempt preserves all warning codes", () => {
+test("buildAttempt preserves all warning codes [edit-replacement-result-support]", () => {
   const outcome: MatchOutcome = {
     matched: true,
     candidateCount: 1,
@@ -158,7 +158,7 @@ test("buildAttempt preserves all warning codes", () => {
   assert.deepEqual(attempt.warningCodes, ["fuzzy_edit_applied", "indentation_adjusted"]);
 });
 
-test("buildAttempt handles empty content", () => {
+test("buildAttempt handles empty content [edit-replacement-result-support]", () => {
   const outcome: MatchOutcome = {
     matched: true,
     candidateCount: 1,

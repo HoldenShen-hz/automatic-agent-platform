@@ -6,7 +6,7 @@ import { ProjectionRebuildWorker } from "../../../../../src/platform/five-plane-
 import { ReplayWorker } from "../../../../../src/platform/five-plane-execution/ha/replay-worker.js";
 import { WorkflowRepairWorker } from "../../../../../src/platform/five-plane-execution/ha/workflow-repair-worker.js";
 
-test("ExecutionRecoveryWorker summarizes active, stale, and blocked candidates", async () => {
+test("ExecutionRecoveryWorker summarizes active, stale, and blocked candidates [recovery-workers]", async () => {
   const appliedExecutionIds: string[] = [];
   const worker = new ExecutionRecoveryWorker({
     recoveryService: {
@@ -32,7 +32,7 @@ test("ExecutionRecoveryWorker summarizes active, stale, and blocked candidates",
   assert.deepEqual(appliedExecutionIds, ["exec-1", "exec-2"]);
 });
 
-test("WorkflowRepairWorker applies startup repairs through repair service", async () => {
+test("WorkflowRepairWorker applies startup repairs through repair service [recovery-workers]", async () => {
   const worker = new WorkflowRepairWorker({
     checker: {
       run: () => ({
@@ -53,7 +53,7 @@ test("WorkflowRepairWorker applies startup repairs through repair service", asyn
   assert.equal(report.itemsRecovered, 1);
 });
 
-test("ProjectionRebuildWorker aggregates projection rebuild results", async () => {
+test("ProjectionRebuildWorker aggregates projection rebuild results [recovery-workers]", async () => {
   const worker = new ProjectionRebuildWorker({
     projectionRebuildService: {
       rebuildAll: () => new Map([
@@ -70,7 +70,7 @@ test("ProjectionRebuildWorker aggregates projection rebuild results", async () =
   assert.equal(report.errors.length, 1);
 });
 
-test("ReplayWorker builds replay reports for known tasks", async () => {
+test("ReplayWorker builds replay reports for known tasks [recovery-workers]", async () => {
   const worker = new ReplayWorker({
     replayService: {
       buildTaskReplayReport: (taskId: string) => ({

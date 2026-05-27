@@ -18,7 +18,7 @@ import { AdapterExecutor, type AdapterDescriptor, type AdapterExecutionRequest }
 // gRPC Adapter Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("AdapterExecutor uses custom gRPC factory", async () => {
+test("AdapterExecutor uses custom gRPC factory [adapter-executor.extended]", async () => {
   let factoryCallCount = 0;
   const executor = new AdapterExecutor({
     grpcFactory: (descriptor) => {
@@ -52,7 +52,7 @@ test("AdapterExecutor uses custom gRPC factory", async () => {
   assert.equal(result.status, "error");
 });
 
-test("AdapterExecutor gRPC extracts service name from grpc config", async () => {
+test("AdapterExecutor gRPC extracts service name from grpc config [adapter-executor.extended]", async () => {
   let receivedServiceName = "";
   const executor = new AdapterExecutor({
     grpcFactory: (descriptor) => {
@@ -84,7 +84,7 @@ test("AdapterExecutor gRPC extracts service name from grpc config", async () => 
   assert.equal(receivedServiceName, "my.package.MyService");
 });
 
-test("AdapterExecutor gRPC falls back to adapterId when grpc config missing", async () => {
+test("AdapterExecutor gRPC falls back to adapterId when grpc config missing [adapter-executor.extended]", async () => {
   let receivedServiceName = "";
   const executor = new AdapterExecutor({
     grpcFactory: () => {
@@ -113,7 +113,7 @@ test("AdapterExecutor gRPC falls back to adapterId when grpc config missing", as
   assert.equal(receivedServiceName, "fallback-grpc-adapter");
 });
 
-test("AdapterExecutor gRPC parses host from endpoint when grpc host not specified", async () => {
+test("AdapterExecutor gRPC parses host from endpoint when grpc host not specified [adapter-executor.extended]", async () => {
   const executor = new AdapterExecutor({
     grpcFactory: (descriptor) => {
       // The default factory parses host from endpoint
@@ -149,7 +149,7 @@ test("AdapterExecutor gRPC parses host from endpoint when grpc host not specifie
 // REST Adapter Extended Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("AdapterExecutor REST adapter uses custom timeout", async () => {
+test("AdapterExecutor REST adapter uses custom timeout [adapter-executor.extended]", async () => {
   let receivedSignal: AbortSignal | null = null;
   const executor = new AdapterExecutor({
     fetchImpl: async (_input, init) => {
@@ -178,7 +178,7 @@ test("AdapterExecutor REST adapter uses custom timeout", async () => {
   assert.ok(receivedSignal);
 });
 
-test("AdapterExecutor REST adapter handles text response", async () => {
+test("AdapterExecutor REST adapter handles text response [adapter-executor.extended]", async () => {
   const executor = new AdapterExecutor({
     fetchImpl: async () =>
       new Response("plain text response", {
@@ -203,7 +203,7 @@ test("AdapterExecutor REST adapter handles text response", async () => {
   assert.equal(result.output, "plain text response");
 });
 
-test("AdapterExecutor REST adapter handles empty response body", async () => {
+test("AdapterExecutor REST adapter handles empty response body [adapter-executor.extended]", async () => {
   const executor = new AdapterExecutor({
     fetchImpl: async () => new Response(null, { status: 204 }),
   });
@@ -223,7 +223,7 @@ test("AdapterExecutor REST adapter handles empty response body", async () => {
   assert.equal(result.status, "ok");
 });
 
-test("AdapterExecutor REST adapter handles request with no headers", async () => {
+test("AdapterExecutor REST adapter handles request with no headers [adapter-executor.extended]", async () => {
   let receivedHeaders: Record<string, string> = {};
   const executor = new AdapterExecutor({
     fetchImpl: async (_input, init) => {
@@ -251,7 +251,7 @@ test("AdapterExecutor REST adapter handles request with no headers", async () =>
   assert.equal(receivedHeaders["content-type"], "application/json");
 });
 
-test("AdapterExecutor REST adapter includes action and context in body", async () => {
+test("AdapterExecutor REST adapter includes action and context in body [adapter-executor.extended]", async () => {
   let receivedBody: unknown = null;
   const executor = new AdapterExecutor({
     fetchImpl: async (_input, init) => {
@@ -286,7 +286,7 @@ test("AdapterExecutor REST adapter includes action and context in body", async (
   });
 });
 
-test("AdapterExecutor REST uses POST method regardless of action type", async () => {
+test("AdapterExecutor REST uses POST method regardless of action type [adapter-executor.extended]", async () => {
   let receivedMethod = "";
   const executor = new AdapterExecutor({
     fetchImpl: async (_input, init) => {
@@ -313,7 +313,7 @@ test("AdapterExecutor REST uses POST method regardless of action type", async ()
   assert.equal(receivedMethod, "POST");
 });
 
-test("AdapterExecutor REST adds Content-Type for JSON body", async () => {
+test("AdapterExecutor REST adds Content-Type for JSON body [adapter-executor.extended]", async () => {
   let receivedHeaders: Record<string, string> = {};
   const executor = new AdapterExecutor({
     fetchImpl: async (_input, init) => {
@@ -348,7 +348,7 @@ test("AdapterExecutor REST adds Content-Type for JSON body", async () => {
 // Retry Policy Edge Case Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("AdapterExecutor retry policy handles maxAttempts of 1", async () => {
+test("AdapterExecutor retry policy handles maxAttempts of 1 [adapter-executor.extended]", async () => {
   let attempts = 0;
   const executor = new AdapterExecutor({
     fetchImpl: async () => {
@@ -377,7 +377,7 @@ test("AdapterExecutor retry policy handles maxAttempts of 1", async () => {
   assert.equal(result.attempts, 1);
 });
 
-test("AdapterExecutor retry policy handles zero backoff", async () => {
+test("AdapterExecutor retry policy handles zero backoff [adapter-executor.extended]", async () => {
   let attempts = 0;
   const executor = new AdapterExecutor({
     fetchImpl: async () => {
@@ -410,7 +410,7 @@ test("AdapterExecutor retry policy handles zero backoff", async () => {
   assert.equal(result.attempts, 2);
 });
 
-test("AdapterExecutor retry policy handles retry with backoff delay", async () => {
+test("AdapterExecutor retry policy handles retry with backoff delay [adapter-executor.extended]", async () => {
   let attempts = 0;
   const executor = new AdapterExecutor({
     fetchImpl: async () => {
@@ -446,7 +446,7 @@ test("AdapterExecutor retry policy handles retry with backoff delay", async () =
   // With backoff, there should be some delay (though minimal in test environment)
 });
 
-test("AdapterExecutor retry policy does not retry on success", async () => {
+test("AdapterExecutor retry policy does not retry on success [adapter-executor.extended]", async () => {
   let attempts = 0;
   const executor = new AdapterExecutor({
     fetchImpl: async () => {
@@ -482,7 +482,7 @@ test("AdapterExecutor retry policy does not retry on success", async () => {
 // Error Handling Extended Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("AdapterExecutor handles non-JSON error responses", async () => {
+test("AdapterExecutor handles non-JSON error responses [adapter-executor.extended]", async () => {
   const executor = new AdapterExecutor({
     fetchImpl: async () => new Response("Internal Server Error", { status: 500 }),
   });
@@ -503,7 +503,7 @@ test("AdapterExecutor handles non-JSON error responses", async () => {
   assert.ok(result.output && typeof result.output === "object" && "error" in result.output);
 });
 
-test("AdapterExecutor handles network errors", async () => {
+test("AdapterExecutor handles network errors [adapter-executor.extended]", async () => {
   const executor = new AdapterExecutor({
     fetchImpl: async () => {
       throw new Error("ENOTFOUND: getaddrinfo failed");
@@ -525,7 +525,7 @@ test("AdapterExecutor handles network errors", async () => {
   assert.equal(result.status, "error");
 });
 
-test("AdapterExecutor handles timeout errors", async () => {
+test("AdapterExecutor handles timeout errors [adapter-executor.extended]", async () => {
   const executor = new AdapterExecutor({
     fetchImpl: async (_input, init) => {
       // Simulate a timeout by immediately aborting
@@ -550,7 +550,7 @@ test("AdapterExecutor handles timeout errors", async () => {
   assert.equal(result.status, "error");
 });
 
-test("AdapterExecutor preserves error message from failed requests", async () => {
+test("AdapterExecutor preserves error message from failed requests [adapter-executor.extended]", async () => {
   const executor = new AdapterExecutor({
     fetchImpl: async () => {
       throw new Error("Connection refused");
@@ -574,7 +574,7 @@ test("AdapterExecutor preserves error message from failed requests", async () =>
   assert.equal(output.error, "Connection refused");
 });
 
-test("AdapterExecutor handles non-Error objects thrown", async () => {
+test("AdapterExecutor handles non-Error objects thrown [adapter-executor.extended]", async () => {
   const executor = new AdapterExecutor({
     fetchImpl: async () => {
       throw "string error";
@@ -602,7 +602,7 @@ test("AdapterExecutor handles non-Error objects thrown", async () => {
 // Duration and Performance Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("AdapterExecutor returns positive durationMs", async () => {
+test("AdapterExecutor returns positive durationMs [adapter-executor.extended]", async () => {
   const executor = new AdapterExecutor({
     fetchImpl: async () => {
       // Small delay to ensure duration is measurable
@@ -629,7 +629,7 @@ test("AdapterExecutor returns positive durationMs", async () => {
   assert.ok(result.durationMs >= 0);
 });
 
-test("AdapterExecutor reports attempt count correctly on multi-attempt success", async () => {
+test("AdapterExecutor reports attempt count correctly on multi-attempt success [adapter-executor.extended]", async () => {
   let attempts = 0;
   const executor = new AdapterExecutor({
     fetchImpl: async () => {
@@ -658,7 +658,7 @@ test("AdapterExecutor reports attempt count correctly on multi-attempt success",
   assert.equal(result.attempts, 3);
 });
 
-test("AdapterExecutor reports attempt count correctly on all failures", async () => {
+test("AdapterExecutor reports attempt count correctly on all failures [adapter-executor.extended]", async () => {
   let attempts = 0;
   const executor = new AdapterExecutor({
     fetchImpl: async () => {
@@ -688,7 +688,7 @@ test("AdapterExecutor reports attempt count correctly on all failures", async ()
 // Adapter Registry Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("AdapterExecutor does not allow duplicate adapter registration", () => {
+test("AdapterExecutor does not allow duplicate adapter registration [adapter-executor.extended]", () => {
   const executor = new AdapterExecutor();
   const descriptor: AdapterDescriptor = {
     adapterId: "duplicate-adapter",
@@ -706,7 +706,7 @@ test("AdapterExecutor does not allow duplicate adapter registration", () => {
   );
 });
 
-test("AdapterExecutor allows different adapters with same endpoint", () => {
+test("AdapterExecutor allows different adapters with same endpoint [adapter-executor.extended]", () => {
   const executor = new AdapterExecutor();
 
   executor.register({
@@ -725,14 +725,14 @@ test("AdapterExecutor allows different adapters with same endpoint", () => {
   assert.equal(adapters.length, 2);
 });
 
-test("AdapterExecutor listAdapters returns empty initially", () => {
+test("AdapterExecutor listAdapters returns empty initially [adapter-executor.extended]", () => {
   const executor = new AdapterExecutor();
 
   const adapters = executor.listAdapters();
   assert.deepStrictEqual(adapters, []);
 });
 
-test("AdapterExecutor listAdapters returns readonly array", () => {
+test("AdapterExecutor listAdapters returns readonly array [adapter-executor.extended]", () => {
   const executor = new AdapterExecutor();
   executor.register({
     adapterId: "readonly-test",
@@ -751,7 +751,7 @@ test("AdapterExecutor listAdapters returns readonly array", () => {
 // Protocol Routing Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("AdapterExecutor routes to REST protocol handler", async () => {
+test("AdapterExecutor routes to REST protocol handler [adapter-executor.extended]", async () => {
   let handlerCalled = false;
   const executor = new AdapterExecutor({
     fetchImpl: async () => {
@@ -778,7 +778,7 @@ test("AdapterExecutor routes to REST protocol handler", async () => {
   assert.equal(handlerCalled, true);
 });
 
-test("AdapterExecutor routes to gRPC protocol handler", async () => {
+test("AdapterExecutor routes to gRPC protocol handler [adapter-executor.extended]", async () => {
   const executor = new AdapterExecutor({
     grpcFactory: () => ({
       call: async () => {
@@ -803,7 +803,7 @@ test("AdapterExecutor routes to gRPC protocol handler", async () => {
   assert.equal(result.status, "error");
 });
 
-test("AdapterExecutor routes to MQ protocol handler", async () => {
+test("AdapterExecutor routes to MQ protocol handler [adapter-executor.extended]", async () => {
   const executor = new AdapterExecutor({
     mqDispatcher: async (descriptor, request) => ({
       mqAdapterId: descriptor.adapterId,
@@ -829,7 +829,7 @@ test("AdapterExecutor routes to MQ protocol handler", async () => {
   assert.equal(output.receivedAction, "publish");
 });
 
-test("AdapterExecutor handles unsupported protocol", async () => {
+test("AdapterExecutor handles unsupported protocol [adapter-executor.extended]", async () => {
   const executor = new AdapterExecutor();
 
   // Create an executor with an invalid protocol directly in the map
@@ -852,7 +852,7 @@ test("AdapterExecutor handles unsupported protocol", async () => {
 // Default Values Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("AdapterExecutor defaults to fetch global when no fetchImpl provided", () => {
+test("AdapterExecutor defaults to fetch global when no fetchImpl provided [adapter-executor.extended]", () => {
   // This test verifies that without a custom fetchImpl, the global fetch is used
   // We can't actually test the global fetch in unit tests without a real endpoint
   // So we just verify the executor is created without error
@@ -860,7 +860,7 @@ test("AdapterExecutor defaults to fetch global when no fetchImpl provided", () =
   assert.ok(executor);
 });
 
-test("AdapterExecutor defaults maxAttempts to 1", async () => {
+test("AdapterExecutor defaults maxAttempts to 1 [adapter-executor.extended]", async () => {
   const executor = new AdapterExecutor({
     fetchImpl: async () => {
       throw new Error("Fail");
@@ -883,7 +883,7 @@ test("AdapterExecutor defaults maxAttempts to 1", async () => {
   assert.equal(result.attempts, 1);
 });
 
-test("AdapterExecutor defaults backoffMs to 0", async () => {
+test("AdapterExecutor defaults backoffMs to 0 [adapter-executor.extended]", async () => {
   let attempts = 0;
   const executor = new AdapterExecutor({
     fetchImpl: async () => {
@@ -920,7 +920,7 @@ test("AdapterExecutor defaults backoffMs to 0", async () => {
   assert.ok(elapsed < 100);
 });
 
-test("AdapterExecutor defaults timeoutMs to 5000", async () => {
+test("AdapterExecutor defaults timeoutMs to 5000 [adapter-executor.extended]", async () => {
   let receivedTimeout: number | undefined;
   const executor = new AdapterExecutor({
     fetchImpl: async (_input, init) => {
@@ -953,7 +953,7 @@ test("AdapterExecutor defaults timeoutMs to 5000", async () => {
 // Context Passthrough Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("AdapterExecutor preserves full context in request body", async () => {
+test("AdapterExecutor preserves full context in request body [adapter-executor.extended]", async () => {
   let receivedContext: unknown = null;
   const executor = new AdapterExecutor({
     fetchImpl: async (_input, init) => {
@@ -989,7 +989,7 @@ test("AdapterExecutor preserves full context in request body", async () => {
   });
 });
 
-test("AdapterExecutor handles null tenantId in context", async () => {
+test("AdapterExecutor handles null tenantId in context [adapter-executor.extended]", async () => {
   let receivedContext: unknown = null;
   const executor = new AdapterExecutor({
     fetchImpl: async (_input, init) => {
@@ -1017,7 +1017,7 @@ test("AdapterExecutor handles null tenantId in context", async () => {
   assert.equal((receivedContext as any).tenantId, null);
 });
 
-test("AdapterExecutor handles undefined optional context fields", async () => {
+test("AdapterExecutor handles undefined optional context fields [adapter-executor.extended]", async () => {
   let receivedContext: unknown = null;
   const executor = new AdapterExecutor({
     fetchImpl: async (_input, init) => {

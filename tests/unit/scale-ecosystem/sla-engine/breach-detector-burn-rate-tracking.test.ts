@@ -21,7 +21,7 @@ import {
 // Issue #2131: Burn-rate and error-budget tracking
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("breach-detector-2131: SlaObservation accepts request-count and window metadata for burn-rate analysis", () => {
+test("breach-detector-2131: SlaObservation accepts request-count and window metadata for burn-rate analysis [breach-detector-burn-rate-tracking]", () => {
   const observation: SlaObservation = {
     latencyMs: 100,
     successRate: 0.99,
@@ -34,7 +34,7 @@ test("breach-detector-2131: SlaObservation accepts request-count and window meta
   assert.equal(observation.windowMs, 60_000);
 });
 
-test("breach-detector-2131: analyzeSlaBreach calculates burn-rate and error-budget state", () => {
+test("breach-detector-2131: analyzeSlaBreach calculates burn-rate and error-budget state [breach-detector-burn-rate-tracking]", () => {
   const observation: SlaObservation = {
     latencyMs: 100,
     successRate: 0.95,
@@ -60,7 +60,7 @@ test("breach-detector-2131: analyzeSlaBreach calculates burn-rate and error-budg
   assert.ok(analysis.alerts.includes("sla.error_budget_exhausted"));
 });
 
-test("breach-detector-2131: SlaCommitment includes error-budget thresholds", () => {
+test("breach-detector-2131: SlaCommitment includes error-budget thresholds [breach-detector-burn-rate-tracking]", () => {
   const commitment: SlaCommitment = {
     maxLatencyMs: 100,
     minSuccessRate: 0.99,
@@ -75,7 +75,7 @@ test("breach-detector-2131: SlaCommitment includes error-budget thresholds", () 
   assert.equal(commitment.budgetWindowMs, 60_000);
 });
 
-test("breach-detector-2131: burn-rate tracking requires historical observations", () => {
+test("breach-detector-2131: burn-rate tracking requires historical observations [breach-detector-burn-rate-tracking]", () => {
   // Issue #2131: To calculate burn-rate, we need multiple observations over time
   // This test documents the requirement
 
@@ -89,7 +89,7 @@ test("breach-detector-2131: burn-rate tracking requires historical observations"
   assert.equal(observations.length, 3);
 });
 
-test("breach-detector-2131: detectSlaBreach remains backward-compatible for breach codes", () => {
+test("breach-detector-2131: detectSlaBreach remains backward-compatible for breach codes [breach-detector-burn-rate-tracking]", () => {
   const currentSuccessRate = 0.95;
   const breaches = detectSlaBreach(
     {
@@ -109,7 +109,7 @@ test("breach-detector-2131: detectSlaBreach remains backward-compatible for brea
   assert.ok(breaches.includes("sla.success_rate_breach"));
 });
 
-test("breach-detector-2131: multiple burn-rate breach types", () => {
+test("breach-detector-2131: multiple burn-rate breach types [breach-detector-burn-rate-tracking]", () => {
   // Issue #2131: Burn-rate should be tracked for multiple SLA types
   // - Error rate burn-rate
   // - Latency burn-rate
@@ -136,7 +136,7 @@ test("breach-detector-2131: multiple burn-rate breach types", () => {
   assert.ok(breaches.includes("sla.queue_wait_breach"));
 });
 
-test("breach-detector-2131: threshold for burn-rate alert", () => {
+test("breach-detector-2131: threshold for burn-rate alert [breach-detector-burn-rate-tracking]", () => {
   // Issue #2131: Should alert when burn-rate exceeds threshold
   // e.g., burnRate > 1.0 means depleting budget, burnRate > 2.0 means critical
 
@@ -160,7 +160,7 @@ test("breach-detector-2131: threshold for burn-rate alert", () => {
   // So these alerts are not generated
 });
 
-test("breach-detector-2131: detecting slow burn vs fast burn", () => {
+test("breach-detector-2131: detecting slow burn vs fast burn [breach-detector-burn-rate-tracking]", () => {
   // Issue #2131: Slow burn (burn-rate < 1) means budget recovering
   // Fast burn (burn-rate > 1) means budget depleting
 
@@ -181,7 +181,7 @@ test("breach-detector-2131: detecting slow burn vs fast burn", () => {
   assert.ok(true);
 });
 
-test("breach-detector-2131: burn-rate requires time window", () => {
+test("breach-detector-2131: burn-rate requires time window [breach-detector-burn-rate-tracking]", () => {
   // Issue #2131: Burn-rate must be calculated over a time window
   // e.g., last 1 hour, last 24 hours, last 7 days
 
@@ -195,7 +195,7 @@ test("breach-detector-2131: burn-rate requires time window", () => {
   assert.ok(timeWindows.length === 3);
 });
 
-test("breach-detector-2131: cumulative vs point-in-time breach detection", () => {
+test("breach-detector-2131: cumulative vs point-in-time breach detection [breach-detector-burn-rate-tracking]", () => {
   // Issue #2131: Should detect both:
   // 1. Point-in-time: single observation exceeds threshold
   // 2. Cumulative: burn-rate indicates future breach

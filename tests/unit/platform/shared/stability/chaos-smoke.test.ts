@@ -23,7 +23,7 @@ function createTempDir(): string {
   return dir;
 }
 
-test("runStableChaosSmoke executes all five scenarios successfully", async () => {
+test("runStableChaosSmoke executes all five scenarios successfully [chaos-smoke]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableChaosSmoke({ outputDir });
@@ -42,7 +42,7 @@ test("runStableChaosSmoke executes all five scenarios successfully", async () =>
   }
 });
 
-test("stale_execution_repair scenario passes", async () => {
+test("stale_execution_repair scenario passes [chaos-smoke]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableChaosSmoke({ outputDir });
@@ -59,7 +59,7 @@ test("stale_execution_repair scenario passes", async () => {
   }
 });
 
-test("orphan_session_cleanup scenario passes", async () => {
+test("orphan_session_cleanup scenario passes [chaos-smoke]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableChaosSmoke({ outputDir });
@@ -76,7 +76,7 @@ test("orphan_session_cleanup scenario passes", async () => {
   }
 });
 
-test("orphan_queue_claim_reconciled_via_runtime_repair scenario passes", async () => {
+test("orphan_queue_claim_reconciled_via_runtime_repair scenario passes [chaos-smoke]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableChaosSmoke({ outputDir });
@@ -95,7 +95,7 @@ test("orphan_queue_claim_reconciled_via_runtime_repair scenario passes", async (
   }
 });
 
-test("duplicate_approval_response_idempotent scenario passes", async () => {
+test("duplicate_approval_response_idempotent scenario passes [chaos-smoke]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableChaosSmoke({ outputDir });
@@ -112,7 +112,7 @@ test("duplicate_approval_response_idempotent scenario passes", async () => {
   }
 });
 
-test("missing_ack_rebuild_and_replay scenario passes", async () => {
+test("missing_ack_rebuild_and_replay scenario passes [chaos-smoke]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableChaosSmoke({ outputDir });
@@ -129,7 +129,7 @@ test("missing_ack_rebuild_and_replay scenario passes", async () => {
   }
 });
 
-test("writeStableChaosSmokeReport writes valid JSON", async () => {
+test("writeStableChaosSmokeReport writes valid JSON [chaos-smoke]", async () => {
   const outputDir = createTempDir();
   const reportPath = join(outputDir, "report.json");
   try {
@@ -151,7 +151,7 @@ test("writeStableChaosSmokeReport writes valid JSON", async () => {
   }
 });
 
-test("report contains valid startedAt and finishedAt timestamps", async () => {
+test("report contains valid startedAt and finishedAt timestamps [chaos-smoke]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableChaosSmoke({ outputDir });
@@ -170,7 +170,7 @@ test("report contains valid startedAt and finishedAt timestamps", async () => {
   }
 });
 
-test("report outputDir matches options", async () => {
+test("report outputDir matches options [chaos-smoke]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableChaosSmoke({ outputDir });

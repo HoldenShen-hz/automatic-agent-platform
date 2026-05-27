@@ -9,12 +9,12 @@ import {
 } from "../../../../../src/platform/five-plane-execution/tool-executor/skill-creator-service.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 
-test("slugifySkillName normalizes human-readable names into lowercase kebab-case", () => {
+test("slugifySkillName normalizes human-readable names into lowercase kebab-case [skill-creator-service]", () => {
   assert.equal(slugifySkillName("My Helpful Skill"), "my-helpful-skill");
   assert.equal(slugifySkillName("Skill__Creator 2"), "skill-creator-2");
 });
 
-test("skill creator creates scaffold with required sections and optional resource directories", () => {
+test("skill creator creates scaffold with required sections and optional resource directories [skill-creator-service]", () => {
   const workspace = createTempWorkspace("aa-skill-creator-unit-");
   try {
     const service = new SkillCreatorService();
@@ -46,7 +46,7 @@ test("skill creator creates scaffold with required sections and optional resourc
   }
 });
 
-test("skill creator validate reports missing sections", () => {
+test("skill creator validate reports missing sections [skill-creator-service]", () => {
   const workspace = createTempWorkspace("aa-skill-creator-validate-");
   try {
     const service = new SkillCreatorService();

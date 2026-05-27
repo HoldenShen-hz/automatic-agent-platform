@@ -24,12 +24,12 @@ import { cleanupPath, createTempWorkspace } from "../../helpers/fs.js";
 // FederationAudit Construction Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("federation-audit: createFederationAudit returns instance", () => {
+test("federation-audit: createFederationAudit returns instance [federation-audit]", () => {
   const audit = createFederationAudit();
   assert.ok(audit instanceof FederationAudit);
 });
 
-test("federation-audit: constructor accepts custom retention policy", () => {
+test("federation-audit: constructor accepts custom retention policy [federation-audit]", () => {
   const audit = new FederationAudit({
     maxAgeDays: 30,
     minRetentionDays: 30,
@@ -43,7 +43,7 @@ test("federation-audit: constructor accepts custom retention policy", () => {
 // Record Operations Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("federation-audit: record creates audit record with id and timestamp", () => {
+test("federation-audit: record creates audit record with id and timestamp [federation-audit]", () => {
   const audit = new FederationAudit();
   const record = audit.record({
     orgId: "org-1",
@@ -60,7 +60,7 @@ test("federation-audit: record creates audit record with id and timestamp", () =
   assert.equal(record.action, "org.registered");
 });
 
-test("federation-audit: record generates unique ids", () => {
+test("federation-audit: record generates unique ids [federation-audit]", () => {
   const audit = new FederationAudit();
   const record1 = audit.record({
     orgId: "org-1",
@@ -80,7 +80,7 @@ test("federation-audit: record generates unique ids", () => {
   assert.notEqual(record1.id, record2.id);
 });
 
-test("federation-audit: record accepts all optional fields", () => {
+test("federation-audit: record accepts all optional fields [federation-audit]", () => {
   const audit = new FederationAudit();
   const record = audit.record({
     orgId: "org-1",
@@ -107,7 +107,7 @@ test("federation-audit: record accepts all optional fields", () => {
 // Query Operations Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("federation-audit: query returns all records when no filter", () => {
+test("federation-audit: query returns all records when no filter [federation-audit]", () => {
   const audit = new FederationAudit();
   audit.record({ orgId: "org-1", action: "org.registered", resourceType: "organization", status: "success", details: {} });
   audit.record({ orgId: "org-2", action: "org.registered", resourceType: "organization", status: "success", details: {} });
@@ -116,7 +116,7 @@ test("federation-audit: query returns all records when no filter", () => {
   assert.equal(results.length, 2);
 });
 
-test("federation-audit: query filters by orgId", () => {
+test("federation-audit: query filters by orgId [federation-audit]", () => {
   const audit = new FederationAudit();
   audit.record({ orgId: "org-1", action: "org.registered", resourceType: "organization", status: "success", details: {} });
   audit.record({ orgId: "org-2", action: "org.registered", resourceType: "organization", status: "success", details: {} });
@@ -126,7 +126,7 @@ test("federation-audit: query filters by orgId", () => {
   assert.equal(results[0]?.orgId, "org-1");
 });
 
-test("federation-audit: query filters by action", () => {
+test("federation-audit: query filters by action [federation-audit]", () => {
   const audit = new FederationAudit();
   audit.record({ orgId: "org-1", action: "org.registered", resourceType: "organization", status: "success", details: {} });
   audit.record({ orgId: "org-1", action: "trust.established", resourceType: "trust", status: "success", details: {} });
@@ -136,7 +136,7 @@ test("federation-audit: query filters by action", () => {
   assert.equal(results[0]?.action, "trust.established");
 });
 
-test("federation-audit: query filters by resourceType", () => {
+test("federation-audit: query filters by resourceType [federation-audit]", () => {
   const audit = new FederationAudit();
   audit.record({ orgId: "org-1", action: "org.registered", resourceType: "organization", status: "success", details: {} });
   audit.record({ orgId: "org-1", action: "trust.established", resourceType: "trust", status: "success", details: {} });
@@ -146,7 +146,7 @@ test("federation-audit: query filters by resourceType", () => {
   assert.equal(results[0]?.resourceType, "organization");
 });
 
-test("federation-audit: query filters by status", () => {
+test("federation-audit: query filters by status [federation-audit]", () => {
   const audit = new FederationAudit();
   audit.record({ orgId: "org-1", action: "org.registered", resourceType: "organization", status: "success", details: {} });
   audit.record({ orgId: "org-1", action: "org.deactivated", resourceType: "organization", status: "failure", details: {} });
@@ -156,7 +156,7 @@ test("federation-audit: query filters by status", () => {
   assert.equal(results[0]?.status, "failure");
 });
 
-test("federation-audit: query filters by targetOrgId", () => {
+test("federation-audit: query filters by targetOrgId [federation-audit]", () => {
   const audit = new FederationAudit();
   audit.record({ orgId: "org-1", targetOrgId: "org-2", action: "trust.established", resourceType: "trust", status: "success", details: {} });
   audit.record({ orgId: "org-1", targetOrgId: "org-3", action: "trust.established", resourceType: "trust", status: "success", details: {} });
@@ -166,7 +166,7 @@ test("federation-audit: query filters by targetOrgId", () => {
   assert.equal(results[0]?.targetOrgId, "org-2");
 });
 
-test("federation-audit: query applies all filters together", () => {
+test("federation-audit: query applies all filters together [federation-audit]", () => {
   const audit = new FederationAudit(undefined, { persistent: false });
   audit.record({
     orgId: "org-1",
@@ -202,7 +202,7 @@ test("federation-audit: query applies all filters together", () => {
   assert.equal(results[0]?.correlationId, "corr-1");
 });
 
-test("federation-audit: query applies pagination with limit", () => {
+test("federation-audit: query applies pagination with limit [federation-audit]", () => {
   const audit = new FederationAudit();
   for (let i = 0; i < 10; i++) {
     audit.record({ orgId: "org-1", action: "access.checked", resourceType: "audit", status: "success", details: { index: i } });
@@ -212,7 +212,7 @@ test("federation-audit: query applies pagination with limit", () => {
   assert.equal(results.length, 5);
 });
 
-test("federation-audit: query applies pagination with offset", () => {
+test("federation-audit: query applies pagination with offset [federation-audit]", () => {
   const audit = new FederationAudit();
   for (let i = 0; i < 10; i++) {
     audit.record({ orgId: "org-1", action: "access.checked", resourceType: "audit", status: "success", details: { index: i } });
@@ -222,7 +222,7 @@ test("federation-audit: query applies pagination with offset", () => {
   assert.equal(results.length, 5);
 });
 
-test("federation-audit: query filters by time range", () => {
+test("federation-audit: query filters by time range [federation-audit]", () => {
   const audit = new FederationAudit();
   const now = new Date();
   const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
@@ -237,7 +237,7 @@ test("federation-audit: query filters by time range", () => {
   assert.ok(Array.isArray(results));
 });
 
-test("federation-audit: query results are sorted by timestamp descending", () => {
+test("federation-audit: query results are sorted by timestamp descending [federation-audit]", () => {
   const audit = new FederationAudit();
   audit.record({ orgId: "org-1", action: "trust.established", resourceType: "audit", status: "success", details: { order: "first" } });
 
@@ -256,7 +256,7 @@ test("federation-audit: query results are sorted by timestamp descending", () =>
 // Get Record Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("federation-audit: getRecord returns record by id", () => {
+test("federation-audit: getRecord returns record by id [federation-audit]", () => {
   const audit = new FederationAudit();
   const recorded = audit.record({ orgId: "org-1", action: "org.registered", resourceType: "organization", status: "success", details: {} });
 
@@ -265,7 +265,7 @@ test("federation-audit: getRecord returns record by id", () => {
   assert.equal(retrieved?.id, recorded.id);
 });
 
-test("federation-audit: getRecord returns undefined for unknown id", () => {
+test("federation-audit: getRecord returns undefined for unknown id [federation-audit]", () => {
   const audit = new FederationAudit();
   const retrieved = audit.getRecord("unknown-id");
   assert.equal(retrieved, undefined);
@@ -275,7 +275,7 @@ test("federation-audit: getRecord returns undefined for unknown id", () => {
 // Get Records For Resource Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("federation-audit: getRecordsForResource returns records for resource", () => {
+test("federation-audit: getRecordsForResource returns records for resource [federation-audit]", () => {
   const audit = new FederationAudit();
   audit.record({ orgId: "org-1", action: "capability.granted", resourceType: "capability", resourceId: "cap-1", status: "success", details: {} });
   audit.record({ orgId: "org-1", action: "capability.suspended", resourceType: "capability", resourceId: "cap-1", status: "success", details: {} });
@@ -285,7 +285,7 @@ test("federation-audit: getRecordsForResource returns records for resource", () 
   assert.equal(results.length, 2);
 });
 
-test("federation-audit: getRecordsForResource returns empty for unknown resource", () => {
+test("federation-audit: getRecordsForResource returns empty for unknown resource [federation-audit]", () => {
   const audit = new FederationAudit();
   const results = audit.getRecordsForResource("capability", "unknown");
   assert.equal(results.length, 0);
@@ -295,7 +295,7 @@ test("federation-audit: getRecordsForResource returns empty for unknown resource
 // Get Records For Org Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("federation-audit: getRecordsForOrg returns all records for org", () => {
+test("federation-audit: getRecordsForOrg returns all records for org [federation-audit]", () => {
   const audit = new FederationAudit();
   audit.record({ orgId: "org-1", action: "org.registered", resourceType: "organization", status: "success", details: {} });
   audit.record({ orgId: "org-1", action: "trust.established", resourceType: "trust", targetOrgId: "org-2", status: "success", details: {} });
@@ -305,7 +305,7 @@ test("federation-audit: getRecordsForOrg returns all records for org", () => {
   assert.equal(results.length, 2);
 });
 
-test("federation-audit: getRecordsForOrg applies limit", () => {
+test("federation-audit: getRecordsForOrg applies limit [federation-audit]", () => {
   const audit = new FederationAudit();
   for (let i = 0; i < 5; i++) {
     audit.record({ orgId: "org-1", action: "access.checked", resourceType: "audit", status: "success", details: {} });
@@ -319,7 +319,7 @@ test("federation-audit: getRecordsForOrg applies limit", () => {
 // Summary Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("federation-audit: getSummary returns correct counts", () => {
+test("federation-audit: getSummary returns correct counts [federation-audit]", () => {
   const audit = new FederationAudit();
   audit.record({ orgId: "org-1", action: "org.registered", resourceType: "organization", status: "success", details: {} });
   audit.record({ orgId: "org-1", action: "org.registered", resourceType: "organization", status: "success", details: {} });
@@ -335,7 +335,7 @@ test("federation-audit: getSummary returns correct counts", () => {
   assert.ok(summary.byOrg["org-2"] === 1);
 });
 
-test("federation-audit: getSummary includes time range", () => {
+test("federation-audit: getSummary includes time range [federation-audit]", () => {
   const audit = new FederationAudit();
   audit.record({ orgId: "org-1", action: "org.registered", resourceType: "organization", status: "success", details: {} });
 
@@ -348,7 +348,7 @@ test("federation-audit: getSummary includes time range", () => {
 // Retention Management Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("federation-audit: getExpiredRecordIds returns expired records", () => {
+test("federation-audit: getExpiredRecordIds returns expired records [federation-audit]", () => {
   const audit = new FederationAudit({ maxAgeDays: 0, minRetentionDays: 0, archiveBeforeDelete: false, compressArchives: false });
   audit.record({ orgId: "org-1", action: "org.registered", resourceType: "organization", status: "success", details: {} });
 
@@ -356,7 +356,7 @@ test("federation-audit: getExpiredRecordIds returns expired records", () => {
   assert.equal(expiredIds.length, 1);
 });
 
-test("federation-audit: getExpiredRecordIds returns empty when no records expired", () => {
+test("federation-audit: getExpiredRecordIds returns empty when no records expired [federation-audit]", () => {
   const audit = new FederationAudit({ maxAgeDays: 365, minRetentionDays: 365, archiveBeforeDelete: false, compressArchives: false });
   audit.record({ orgId: "org-1", action: "org.registered", resourceType: "organization", status: "success", details: {} });
 
@@ -364,7 +364,7 @@ test("federation-audit: getExpiredRecordIds returns empty when no records expire
   assert.equal(expiredIds.length, 0);
 });
 
-test("federation-audit: applyRetentionPolicy deletes expired records", async () => {
+test("federation-audit: applyRetentionPolicy deletes expired records [federation-audit]", async () => {
   const audit = new FederationAudit({ maxAgeDays: 0, minRetentionDays: 0, archiveBeforeDelete: false, compressArchives: false });
   const record = audit.record({ orgId: "org-1", action: "org.registered", resourceType: "organization", status: "success", details: {} });
 
@@ -375,7 +375,7 @@ test("federation-audit: applyRetentionPolicy deletes expired records", async () 
   assert.equal(retrieved, undefined);
 });
 
-test("federation-audit: applyRetentionPolicy respects archiveBeforeDelete", async () => {
+test("federation-audit: applyRetentionPolicy respects archiveBeforeDelete [federation-audit]", async () => {
   const audit = new FederationAudit({ maxAgeDays: 0, minRetentionDays: 0, archiveBeforeDelete: true, compressArchives: true });
   audit.record({ orgId: "org-1", action: "org.registered", resourceType: "organization", status: "success", details: {} });
 
@@ -383,7 +383,7 @@ test("federation-audit: applyRetentionPolicy respects archiveBeforeDelete", asyn
   assert.equal(result.archived, 1);
 });
 
-test("federation-audit: applyRetentionPolicy writes archive records to disk", async () => {
+test("federation-audit: applyRetentionPolicy writes archive records to disk [federation-audit]", async () => {
   const workspace = createTempWorkspace("federation-audit-archive-");
   try {
     const storageDir = join(workspace, "audit-store");
@@ -410,7 +410,7 @@ test("federation-audit: applyRetentionPolicy writes archive records to disk", as
   }
 });
 
-test("federation-audit: persistent snapshot survives restart", () => {
+test("federation-audit: persistent snapshot survives restart [federation-audit]", () => {
   const workspace = createTempWorkspace("federation-audit-persist-");
   try {
     const storageDir = join(workspace, "audit-store");
@@ -440,7 +440,7 @@ test("federation-audit: persistent snapshot survives restart", () => {
 // Compliance Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("federation-audit: exportForCompliance returns records in time range", () => {
+test("federation-audit: exportForCompliance returns records in time range [federation-audit]", () => {
   const audit = new FederationAudit();
   const now = new Date();
   const start = new Date(now.getTime() - 24 * 60 * 60 * 1000);
@@ -452,7 +452,7 @@ test("federation-audit: exportForCompliance returns records in time range", () =
   assert.ok(Array.isArray(results));
 });
 
-test("federation-audit: verifyIntegrity returns valid for healthy records", () => {
+test("federation-audit: verifyIntegrity returns valid for healthy records [federation-audit]", () => {
   const audit = new FederationAudit();
   audit.record({ orgId: "org-1", action: "org.registered", resourceType: "organization", status: "success", details: {} });
 
@@ -461,7 +461,7 @@ test("federation-audit: verifyIntegrity returns valid for healthy records", () =
   assert.equal(result.issues.length, 0);
 });
 
-test("federation-audit: verifyIntegrity detects issues", () => {
+test("federation-audit: verifyIntegrity detects issues [federation-audit]", () => {
   const audit = new FederationAudit();
   // Manually add a malformed record by accessing internal state
   const records = (audit as unknown as { records: Map<string, FederationAuditRecord> }).records;
@@ -480,7 +480,7 @@ test("federation-audit: verifyIntegrity detects issues", () => {
   assert.ok(result.issues.length > 0);
 });
 
-test("federation-audit: getRecordCount returns correct count", () => {
+test("federation-audit: getRecordCount returns correct count [federation-audit]", () => {
   const audit = new FederationAudit();
   assert.equal(audit.getRecordCount(), 0);
 

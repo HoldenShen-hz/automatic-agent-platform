@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { ProjectionRebuildWorker } from "../../../../../src/platform/five-plane-execution/ha/projection-rebuild-worker.js";
 
-test("ProjectionRebuildWorker.getWorkerId returns default worker id", () => {
+test("ProjectionRebuildWorker.getWorkerId returns default worker id [projection-rebuild-worker]", () => {
   const worker = new ProjectionRebuildWorker({
     projectionRebuildService: {
       rebuildAll: () => new Map(),
@@ -13,7 +13,7 @@ test("ProjectionRebuildWorker.getWorkerId returns default worker id", () => {
   assert.equal(worker.getWorkerId(), "projection-rebuild-worker");
 });
 
-test("ProjectionRebuildWorker.getWorkerId returns custom worker id", () => {
+test("ProjectionRebuildWorker.getWorkerId returns custom worker id [projection-rebuild-worker]", () => {
   const worker = new ProjectionRebuildWorker({
     projectionRebuildService: {
       rebuildAll: () => new Map(),
@@ -24,7 +24,7 @@ test("ProjectionRebuildWorker.getWorkerId returns custom worker id", () => {
   assert.equal(worker.getWorkerId(), "custom-rebuild-worker");
 });
 
-test("ProjectionRebuildWorker.getRecoveryCadence returns configured cadence", () => {
+test("ProjectionRebuildWorker.getRecoveryCadence returns configured cadence [projection-rebuild-worker]", () => {
   const worker = new ProjectionRebuildWorker({
     projectionRebuildService: {
       rebuildAll: () => new Map(),
@@ -42,7 +42,7 @@ test("ProjectionRebuildWorker.getRecoveryCadence returns configured cadence", ()
   assert.equal(cadence.priority, "high");
 });
 
-test("ProjectionRebuildWorker.runRecoveryCycle processes projections", async () => {
+test("ProjectionRebuildWorker.runRecoveryCycle processes projections [projection-rebuild-worker]", async () => {
   const worker = new ProjectionRebuildWorker({
     projectionRebuildService: {
       rebuildAll: () => new Map([
@@ -62,7 +62,7 @@ test("ProjectionRebuildWorker.runRecoveryCycle processes projections", async () 
   assert.equal(report.metadata.projectionCount, 2);
 });
 
-test("ProjectionRebuildWorker.runRecoveryCycle with no projections", async () => {
+test("ProjectionRebuildWorker.runRecoveryCycle with no projections [projection-rebuild-worker]", async () => {
   const worker = new ProjectionRebuildWorker({
     projectionRebuildService: {
       rebuildAll: () => new Map(),
@@ -78,7 +78,7 @@ test("ProjectionRebuildWorker.runRecoveryCycle with no projections", async () =>
   assert.equal(report.errors.length, 0);
 });
 
-test("ProjectionRebuildWorker.runRecoveryCycle handles errors gracefully", async () => {
+test("ProjectionRebuildWorker.runRecoveryCycle handles errors gracefully [projection-rebuild-worker]", async () => {
   const worker = new ProjectionRebuildWorker({
     projectionRebuildService: {
       rebuildAll: () => {
@@ -97,7 +97,7 @@ test("ProjectionRebuildWorker.runRecoveryCycle handles errors gracefully", async
   assert.equal(report.errors[0]!.code, "projection_rebuild.cycle_failed");
 });
 
-test("ProjectionRebuildWorker.runRecoveryCycle handles projection errors", async () => {
+test("ProjectionRebuildWorker.runRecoveryCycle handles projection errors [projection-rebuild-worker]", async () => {
   const worker = new ProjectionRebuildWorker({
     projectionRebuildService: {
       rebuildAll: () => new Map([
@@ -117,7 +117,7 @@ test("ProjectionRebuildWorker.runRecoveryCycle handles projection errors", async
   assert.equal(report.errors[0]!.message, "read error");
 });
 
-test("ProjectionRebuildWorker.runRecoveryCycle includes metadata", async () => {
+test("ProjectionRebuildWorker.runRecoveryCycle includes metadata [projection-rebuild-worker]", async () => {
   const worker = new ProjectionRebuildWorker({
     projectionRebuildService: {
       rebuildAll: () => new Map([
@@ -136,7 +136,7 @@ test("ProjectionRebuildWorker.runRecoveryCycle includes metadata", async () => {
   assert.equal(report.metadata.projections["projection-a"].eventsSkipped, 2);
 });
 
-test("ProjectionRebuildWorker.runRecoveryCycle with rebuild options", async () => {
+test("ProjectionRebuildWorker.runRecoveryCycle with rebuild options [projection-rebuild-worker]", async () => {
   const worker = new ProjectionRebuildWorker({
     projectionRebuildService: {
       rebuildAll: (options) => {

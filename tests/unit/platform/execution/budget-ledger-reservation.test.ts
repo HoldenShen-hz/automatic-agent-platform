@@ -13,7 +13,7 @@ import { runSingleTaskExecution } from "../../../../src/platform/five-plane-exec
 import { openAuthoritativeStorageContext } from "../../../../src/platform/five-plane-state-evidence/truth/storage-backend-factory.js";
 import { BudgetRepository } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite/repositories/budget-repository.js";
 
-test("reserveBudgetLedger fail-closes when ledger is missing", async () => {
+test("reserveBudgetLedger fail-closes when ledger is missing [budget-ledger-reservation]", async () => {
   const tempDir = await mkdtemp(join(tmpdir(), "budget-ledger-reserve-"));
   const dbPath = join(tempDir, "runtime.db");
   const storage = openAuthoritativeStorageContext({ dbPath });
@@ -44,7 +44,7 @@ test("reserveBudgetLedger fail-closes when ledger is missing", async () => {
   }
 });
 
-test("ensureBudgetLedger inserts missing canonical ledger before reservation", async () => {
+test("ensureBudgetLedger inserts missing canonical ledger before reservation [budget-ledger-reservation]", async () => {
   const tempDir = await mkdtemp(join(tmpdir(), "budget-ledger-ensure-"));
   const dbPath = join(tempDir, "runtime.db");
 

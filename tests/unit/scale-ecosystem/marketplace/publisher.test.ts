@@ -13,7 +13,7 @@ import {
   type PublisherProfile,
 } from "../../../../src/scale-ecosystem/marketplace/publisher/index.js";
 
-test("PublisherProfileSchema parses valid profile", () => {
+test("PublisherProfileSchema parses valid profile [publisher]", () => {
   const profile = {
     publisherId: "pub_001",
     displayName: "Acme Corp",
@@ -27,7 +27,7 @@ test("PublisherProfileSchema parses valid profile", () => {
   assert.equal(result.trustLevel, "verified");
 });
 
-test("PublisherProfileSchema applies default values", () => {
+test("PublisherProfileSchema applies default values [publisher]", () => {
   const profile = {
     publisherId: "pub_002",
     displayName: "Basic Publisher",
@@ -42,7 +42,7 @@ test("PublisherProfileSchema applies default values", () => {
   assert.equal(result.publishedArtifactCount, 0);
 });
 
-test("PublisherProfileSchema accepts full profile with optional fields", () => {
+test("PublisherProfileSchema accepts full profile with optional fields [publisher]", () => {
   const profile = {
     publisherId: "pub_003",
     displayName: "Full Publisher",
@@ -61,7 +61,7 @@ test("PublisherProfileSchema accepts full profile with optional fields", () => {
   assert.equal(result.publishedArtifactCount, 42);
 });
 
-test("PublisherProfileSchema rejects empty publisherId", () => {
+test("PublisherProfileSchema rejects empty publisherId [publisher]", () => {
   const profile = {
     publisherId: "",
     displayName: "Bad Publisher",
@@ -74,7 +74,7 @@ test("PublisherProfileSchema rejects empty publisherId", () => {
   );
 });
 
-test("PublisherProfileSchema rejects empty displayName", () => {
+test("PublisherProfileSchema rejects empty displayName [publisher]", () => {
   const profile = {
     publisherId: "pub_004",
     displayName: "",
@@ -87,7 +87,7 @@ test("PublisherProfileSchema rejects empty displayName", () => {
   );
 });
 
-test("PublisherProfileSchema rejects invalid trustLevel", () => {
+test("PublisherProfileSchema rejects invalid trustLevel [publisher]", () => {
   const profile = {
     publisherId: "pub_005",
     displayName: "Bad Trust",
@@ -100,7 +100,7 @@ test("PublisherProfileSchema rejects invalid trustLevel", () => {
   );
 });
 
-test("PublisherProfileSchema rejects invalid email", () => {
+test("PublisherProfileSchema rejects invalid email [publisher]", () => {
   const profile = {
     publisherId: "pub_006",
     displayName: "Bad Email Publisher",
@@ -114,7 +114,7 @@ test("PublisherProfileSchema rejects invalid email", () => {
   );
 });
 
-test("PublisherProfileSchema rejects negative reputation score", () => {
+test("PublisherProfileSchema rejects negative reputation score [publisher]", () => {
   const profile = {
     publisherId: "pub_007",
     displayName: "Negative Reputation",
@@ -128,7 +128,7 @@ test("PublisherProfileSchema rejects negative reputation score", () => {
   );
 });
 
-test("PublisherProfileSchema rejects reputation score over 1", () => {
+test("PublisherProfileSchema rejects reputation score over 1 [publisher]", () => {
   const profile = {
     publisherId: "pub_008",
     displayName: "Over Reputation",
@@ -142,7 +142,7 @@ test("PublisherProfileSchema rejects reputation score over 1", () => {
   );
 });
 
-test("PublisherProfileSchema rejects negative published artifact count", () => {
+test("PublisherProfileSchema rejects negative published artifact count [publisher]", () => {
   const profile = {
     publisherId: "pub_009",
     displayName: "Negative Count",
@@ -156,7 +156,7 @@ test("PublisherProfileSchema rejects negative published artifact count", () => {
   );
 });
 
-test("PublisherProfileSchema accepts zero reputation score", () => {
+test("PublisherProfileSchema accepts zero reputation score [publisher]", () => {
   const profile = {
     publisherId: "pub_010",
     displayName: "Zero Reputation",
@@ -168,7 +168,7 @@ test("PublisherProfileSchema accepts zero reputation score", () => {
   assert.equal(result.reputationScore, 0);
 });
 
-test("PublisherProfileSchema accepts reputation score of exactly 1", () => {
+test("PublisherProfileSchema accepts reputation score of exactly 1 [publisher]", () => {
   const profile = {
     publisherId: "pub_011",
     displayName: "Perfect Reputation",
@@ -180,7 +180,7 @@ test("PublisherProfileSchema accepts reputation score of exactly 1", () => {
   assert.equal(result.reputationScore, 1);
 });
 
-test("PublisherProfileSchema accepts zero artifact count", () => {
+test("PublisherProfileSchema accepts zero artifact count [publisher]", () => {
   const profile = {
     publisherId: "pub_012",
     displayName: "New Publisher",
@@ -192,7 +192,7 @@ test("PublisherProfileSchema accepts zero artifact count", () => {
   assert.equal(result.publishedArtifactCount, 0);
 });
 
-test("PublisherProfileSchema accepts all valid trust levels", () => {
+test("PublisherProfileSchema accepts all valid trust levels [publisher]", () => {
   const trustLevels = ["sandboxed", "verified", "enterprise"] as const;
 
   for (const trustLevel of trustLevels) {
@@ -207,7 +207,7 @@ test("PublisherProfileSchema accepts all valid trust levels", () => {
   }
 });
 
-test("PublisherProfileSchema accepts empty allowedArtifactTypes", () => {
+test("PublisherProfileSchema accepts empty allowedArtifactTypes [publisher]", () => {
   const profile = {
     publisherId: "pub_013",
     displayName: "No Artifacts Publisher",
@@ -219,7 +219,7 @@ test("PublisherProfileSchema accepts empty allowedArtifactTypes", () => {
   assert.deepEqual(result.allowedArtifactTypes, []);
 });
 
-test("canPublisherReleaseArtifact returns true when artifact type is allowed and reputation >= 0.4", () => {
+test("canPublisherReleaseArtifact returns true when artifact type is allowed and reputation >= 0.4 [publisher]", () => {
   const profile: PublisherProfile = {
     publisherId: "pub_010",
     displayName: "Good Publisher",
@@ -234,7 +234,7 @@ test("canPublisherReleaseArtifact returns true when artifact type is allowed and
   assert.equal(result, true);
 });
 
-test("canPublisherReleaseArtifact returns true when reputation is exactly 0.4", () => {
+test("canPublisherReleaseArtifact returns true when reputation is exactly 0.4 [publisher]", () => {
   const profile: PublisherProfile = {
     publisherId: "pub_011",
     displayName: "Threshold Publisher",
@@ -249,7 +249,7 @@ test("canPublisherReleaseArtifact returns true when reputation is exactly 0.4", 
   assert.equal(result, true);
 });
 
-test("canPublisherReleaseArtifact returns false when artifact type is not allowed", () => {
+test("canPublisherReleaseArtifact returns false when artifact type is not allowed [publisher]", () => {
   const profile: PublisherProfile = {
     publisherId: "pub_012",
     displayName: "Limited Publisher",
@@ -264,7 +264,7 @@ test("canPublisherReleaseArtifact returns false when artifact type is not allowe
   assert.equal(result, false);
 });
 
-test("canPublisherReleaseArtifact returns false when reputation is below 0.4", () => {
+test("canPublisherReleaseArtifact returns false when reputation is below 0.4 [publisher]", () => {
   const profile: PublisherProfile = {
     publisherId: "pub_013",
     displayName: "Low Reputation",
@@ -279,7 +279,7 @@ test("canPublisherReleaseArtifact returns false when reputation is below 0.4", (
   assert.equal(result, false);
 });
 
-test("canPublisherReleaseArtifact returns false when reputation is 0", () => {
+test("canPublisherReleaseArtifact returns false when reputation is 0 [publisher]", () => {
   const profile: PublisherProfile = {
     publisherId: "pub_014",
     displayName: "Zero Reputation",
@@ -294,7 +294,7 @@ test("canPublisherReleaseArtifact returns false when reputation is 0", () => {
   assert.equal(result, false);
 });
 
-test("canPublisherReleaseArtifact returns false when allowedArtifactTypes is empty", () => {
+test("canPublisherReleaseArtifact returns false when allowedArtifactTypes is empty [publisher]", () => {
   const profile: PublisherProfile = {
     publisherId: "pub_015",
     displayName: "No Artifacts Publisher",
@@ -309,7 +309,7 @@ test("canPublisherReleaseArtifact returns false when allowedArtifactTypes is emp
   assert.equal(result, false);
 });
 
-test("canPublisherReleaseArtifact works with enterprise trust level", () => {
+test("canPublisherReleaseArtifact works with enterprise trust level [publisher]", () => {
   const profile: PublisherProfile = {
     publisherId: "pub_016",
     displayName: "Enterprise Publisher",
@@ -324,7 +324,7 @@ test("canPublisherReleaseArtifact works with enterprise trust level", () => {
   assert.equal(result, true);
 });
 
-test("canPublisherReleaseArtifact is case-sensitive for artifact type", () => {
+test("canPublisherReleaseArtifact is case-sensitive for artifact type [publisher]", () => {
   const profile: PublisherProfile = {
     publisherId: "pub_017",
     displayName: "Case Publisher",
@@ -341,7 +341,7 @@ test("canPublisherReleaseArtifact is case-sensitive for artifact type", () => {
   assert.equal(resultUpper, true);
 });
 
-test("canPublisherReleaseArtifact requires both conditions to be true", () => {
+test("canPublisherReleaseArtifact requires both conditions to be true [publisher]", () => {
   const profile: PublisherProfile = {
     publisherId: "pub_018",
     displayName: "Borderline Publisher",
@@ -357,7 +357,7 @@ test("canPublisherReleaseArtifact requires both conditions to be true", () => {
   assert.equal(result, false);
 });
 
-test("canPublisherReleaseArtifact works with verified trust level at threshold", () => {
+test("canPublisherReleaseArtifact works with verified trust level at threshold [publisher]", () => {
   const profile: PublisherProfile = {
     publisherId: "pub_019",
     displayName: "Verified Threshold",
@@ -376,7 +376,7 @@ test("canPublisherReleaseArtifact works with verified trust level at threshold",
   assert.equal(workflowResult, true);
 });
 
-test("canPublisherReleaseArtifact returns false for unlisted artifact type even with high reputation", () => {
+test("canPublisherReleaseArtifact returns false for unlisted artifact type even with high reputation [publisher]", () => {
   const profile: PublisherProfile = {
     publisherId: "pub_020",
     displayName: "Restricted Publisher",

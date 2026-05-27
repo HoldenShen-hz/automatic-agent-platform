@@ -35,37 +35,37 @@ function createSessionStateMachine(): StateTransitionMachine<string> {
 // Valid transitions
 // ---------------------------------------------------------------------------
 
-test("SessionStateMachine: allows valid transition from created to streaming", () => {
+test("SessionStateMachine: allows valid transition from created to streaming [session-state-machine]", () => {
   const machine = createSessionStateMachine();
   machine.assertTransition("created", "streaming");
 });
 
-test("SessionStateMachine: allows valid transition from streaming to completed", () => {
+test("SessionStateMachine: allows valid transition from streaming to completed [session-state-machine]", () => {
   const machine = createSessionStateMachine();
   machine.assertTransition("streaming", "completed");
 });
 
-test("SessionStateMachine: allows valid transition from streaming to paused", () => {
+test("SessionStateMachine: allows valid transition from streaming to paused [session-state-machine]", () => {
   const machine = createSessionStateMachine();
   machine.assertTransition("streaming", "paused");
 });
 
-test("SessionStateMachine: allows valid transition from paused to streaming", () => {
+test("SessionStateMachine: allows valid transition from paused to streaming [session-state-machine]", () => {
   const machine = createSessionStateMachine();
   machine.assertTransition("paused", "streaming");
 });
 
-test("SessionStateMachine: allows valid transition from streaming to failed", () => {
+test("SessionStateMachine: allows valid transition from streaming to failed [session-state-machine]", () => {
   const machine = createSessionStateMachine();
   machine.assertTransition("streaming", "failed");
 });
 
-test("SessionStateMachine: allows valid transition from created to cancelled", () => {
+test("SessionStateMachine: allows valid transition from created to cancelled [session-state-machine]", () => {
   const machine = createSessionStateMachine();
   machine.assertTransition("created", "cancelled");
 });
 
-test("SessionStateMachine: allows valid transition from paused to cancelled", () => {
+test("SessionStateMachine: allows valid transition from paused to cancelled [session-state-machine]", () => {
   const machine = createSessionStateMachine();
   machine.assertTransition("paused", "cancelled");
 });
@@ -74,7 +74,7 @@ test("SessionStateMachine: allows valid transition from paused to cancelled", ()
 // Invalid transitions
 // ---------------------------------------------------------------------------
 
-test("SessionStateMachine: rejects invalid transition from completed to streaming", () => {
+test("SessionStateMachine: rejects invalid transition from completed to streaming [session-state-machine]", () => {
   const machine = createSessionStateMachine();
   assert.throws(
     () => machine.assertTransition("completed", "streaming"),
@@ -82,7 +82,7 @@ test("SessionStateMachine: rejects invalid transition from completed to streamin
   );
 });
 
-test("SessionStateMachine: rejects invalid transition from failed to completed", () => {
+test("SessionStateMachine: rejects invalid transition from failed to completed [session-state-machine]", () => {
   const machine = createSessionStateMachine();
   assert.throws(
     () => machine.assertTransition("failed", "completed"),
@@ -90,7 +90,7 @@ test("SessionStateMachine: rejects invalid transition from failed to completed",
   );
 });
 
-test("SessionStateMachine: rejects invalid transition from created to completed", () => {
+test("SessionStateMachine: rejects invalid transition from created to completed [session-state-machine]", () => {
   const machine = createSessionStateMachine();
   assert.throws(
     () => machine.assertTransition("created", "completed"),
@@ -98,7 +98,7 @@ test("SessionStateMachine: rejects invalid transition from created to completed"
   );
 });
 
-test("SessionStateMachine: rejects invalid transition from paused to created", () => {
+test("SessionStateMachine: rejects invalid transition from paused to created [session-state-machine]", () => {
   const machine = createSessionStateMachine();
   assert.throws(
     () => machine.assertTransition("paused", "created"),
@@ -106,7 +106,7 @@ test("SessionStateMachine: rejects invalid transition from paused to created", (
   );
 });
 
-test("SessionStateMachine: rejects invalid transition from completed to failed", () => {
+test("SessionStateMachine: rejects invalid transition from completed to failed [session-state-machine]", () => {
   const machine = createSessionStateMachine();
   assert.throws(
     () => machine.assertTransition("completed", "failed"),
@@ -114,7 +114,7 @@ test("SessionStateMachine: rejects invalid transition from completed to failed",
   );
 });
 
-test("SessionStateMachine: rejects invalid transition from cancelled to streaming", () => {
+test("SessionStateMachine: rejects invalid transition from cancelled to streaming [session-state-machine]", () => {
   const machine = createSessionStateMachine();
   assert.throws(
     () => machine.assertTransition("cancelled", "streaming"),
@@ -126,22 +126,22 @@ test("SessionStateMachine: rejects invalid transition from cancelled to streamin
 // No-op transitions are idempotent and allowed by the generic transition machine.
 // ---------------------------------------------------------------------------
 
-test("SessionStateMachine: allows no-op transition on streaming", () => {
+test("SessionStateMachine: allows no-op transition on streaming [session-state-machine]", () => {
   const machine = createSessionStateMachine();
   machine.assertTransition("streaming", "streaming");
 });
 
-test("SessionStateMachine: allows no-op transition on completed", () => {
+test("SessionStateMachine: allows no-op transition on completed [session-state-machine]", () => {
   const machine = createSessionStateMachine();
   machine.assertTransition("completed", "completed");
 });
 
-test("SessionStateMachine: allows no-op transition on failed", () => {
+test("SessionStateMachine: allows no-op transition on failed [session-state-machine]", () => {
   const machine = createSessionStateMachine();
   machine.assertTransition("failed", "failed");
 });
 
-test("SessionStateMachine: allows no-op transition on cancelled", () => {
+test("SessionStateMachine: allows no-op transition on cancelled [session-state-machine]", () => {
   const machine = createSessionStateMachine();
   machine.assertTransition("cancelled", "cancelled");
 });
@@ -150,7 +150,7 @@ test("SessionStateMachine: allows no-op transition on cancelled", () => {
 // Terminal states have no outgoing transitions
 // ---------------------------------------------------------------------------
 
-test("SessionStateMachine: terminal state completed has no outgoing transitions", () => {
+test("SessionStateMachine: terminal state completed has no outgoing transitions [session-state-machine]", () => {
   const machine = createSessionStateMachine();
   const nonTerminalStates = ["created", "streaming", "paused", "failed", "cancelled"];
 
@@ -163,7 +163,7 @@ test("SessionStateMachine: terminal state completed has no outgoing transitions"
   }
 });
 
-test("SessionStateMachine: terminal state failed has no outgoing transitions", () => {
+test("SessionStateMachine: terminal state failed has no outgoing transitions [session-state-machine]", () => {
   const machine = createSessionStateMachine();
   const nonTerminalStates = ["created", "streaming", "paused", "completed", "cancelled"];
 
@@ -176,7 +176,7 @@ test("SessionStateMachine: terminal state failed has no outgoing transitions", (
   }
 });
 
-test("SessionStateMachine: terminal state cancelled has no outgoing transitions", () => {
+test("SessionStateMachine: terminal state cancelled has no outgoing transitions [session-state-machine]", () => {
   const machine = createSessionStateMachine();
   const nonTerminalStates = ["created", "streaming", "paused", "completed", "failed"];
 
@@ -189,7 +189,7 @@ test("SessionStateMachine: terminal state cancelled has no outgoing transitions"
   }
 });
 
-test("SessionStateMachine: all terminal states together cannot transition to any other state", () => {
+test("SessionStateMachine: all terminal states together cannot transition to any other state [session-state-machine]", () => {
   const machine = createSessionStateMachine();
   const terminalStates = ["completed", "failed", "cancelled"];
   const allStates = ["created", "streaming", "paused", "completed", "failed", "cancelled"];
@@ -211,12 +211,12 @@ test("SessionStateMachine: all terminal states together cannot transition to any
 // Streaming to completed transition works correctly
 // ---------------------------------------------------------------------------
 
-test("SessionStateMachine: streaming to completed is valid terminal transition", () => {
+test("SessionStateMachine: streaming to completed is valid terminal transition [session-state-machine]", () => {
   const machine = createSessionStateMachine();
   machine.assertTransition("streaming", "completed");
 });
 
-test("SessionStateMachine: streaming to completed is the normal termination path", () => {
+test("SessionStateMachine: streaming to completed is the normal termination path [session-state-machine]", () => {
   const machine = createSessionStateMachine();
 
   // This is a valid transition
@@ -229,7 +229,7 @@ test("SessionStateMachine: streaming to completed is the normal termination path
   );
 });
 
-test("SessionStateMachine: streaming can also fail or be cancelled", () => {
+test("SessionStateMachine: streaming can also fail or be cancelled [session-state-machine]", () => {
   const machine = createSessionStateMachine();
 
   // These are all valid terminal paths from streaming
@@ -241,7 +241,7 @@ test("SessionStateMachine: streaming can also fail or be cancelled", () => {
 // Error details
 // ---------------------------------------------------------------------------
 
-test("SessionStateMachine: WorkflowStateError contains correct entityKind", () => {
+test("SessionStateMachine: WorkflowStateError contains correct entityKind [session-state-machine]", () => {
   const machine = createSessionStateMachine();
 
   try {
@@ -256,12 +256,12 @@ test("SessionStateMachine: WorkflowStateError contains correct entityKind", () =
   }
 });
 
-test("SessionStateMachine: no-op transition does not throw WorkflowStateError", () => {
+test("SessionStateMachine: no-op transition does not throw WorkflowStateError [session-state-machine]", () => {
   const machine = createSessionStateMachine();
   machine.assertTransition("streaming", "streaming");
 });
 
-test("SessionStateMachine: WorkflowStateError has statusCode 409", () => {
+test("SessionStateMachine: WorkflowStateError has statusCode 409 [session-state-machine]", () => {
   const machine = createSessionStateMachine();
 
   try {
@@ -274,7 +274,7 @@ test("SessionStateMachine: WorkflowStateError has statusCode 409", () => {
   }
 });
 
-test("SessionStateMachine: WorkflowStateError is not retryable", () => {
+test("SessionStateMachine: WorkflowStateError is not retryable [session-state-machine]", () => {
   const machine = createSessionStateMachine();
 
   try {
@@ -287,7 +287,7 @@ test("SessionStateMachine: WorkflowStateError is not retryable", () => {
   }
 });
 
-test("SessionStateMachine: WorkflowStateError category is workflow", () => {
+test("SessionStateMachine: WorkflowStateError category is workflow [session-state-machine]", () => {
   const machine = createSessionStateMachine();
 
   try {
@@ -300,7 +300,7 @@ test("SessionStateMachine: WorkflowStateError category is workflow", () => {
   }
 });
 
-test("SessionStateMachine: WorkflowStateError source is workflow", () => {
+test("SessionStateMachine: WorkflowStateError source is workflow [session-state-machine]", () => {
   const machine = createSessionStateMachine();
 
   try {
@@ -317,7 +317,7 @@ test("SessionStateMachine: WorkflowStateError source is workflow", () => {
 // Error message format
 // ---------------------------------------------------------------------------
 
-test("SessionStateMachine: invalid transition error message contains invalid_transition code", () => {
+test("SessionStateMachine: invalid transition error message contains invalid_transition code [session-state-machine]", () => {
   const machine = createSessionStateMachine();
 
   try {
@@ -329,7 +329,7 @@ test("SessionStateMachine: invalid transition error message contains invalid_tra
   }
 });
 
-test("SessionStateMachine: noop transition is accepted as idempotent", () => {
+test("SessionStateMachine: noop transition is accepted as idempotent [session-state-machine]", () => {
   const machine = createSessionStateMachine();
   machine.assertTransition("streaming", "streaming");
 });
@@ -338,7 +338,7 @@ test("SessionStateMachine: noop transition is accepted as idempotent", () => {
 // Unknown source state
 // ---------------------------------------------------------------------------
 
-test("SessionStateMachine: rejects unknown source state", () => {
+test("SessionStateMachine: rejects unknown source state [session-state-machine]", () => {
   const machine = createSessionStateMachine();
 
   assert.throws(
@@ -347,7 +347,7 @@ test("SessionStateMachine: rejects unknown source state", () => {
   );
 });
 
-test("SessionStateMachine: rejects unknown target state from valid source", () => {
+test("SessionStateMachine: rejects unknown target state from valid source [session-state-machine]", () => {
   const machine = createSessionStateMachine();
 
   assert.throws(

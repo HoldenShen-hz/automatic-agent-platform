@@ -24,31 +24,31 @@ import {
   type LicenseEnforcementConfig,
 } from "../../../../src/scale-ecosystem/enterprise/index.js";
 
-test("EnterpriseCapabilityMatrixService is exported", () => {
+test("EnterpriseCapabilityMatrixService is exported [enterprise-index]", () => {
   assert.equal(typeof EnterpriseCapabilityMatrixService, "function");
 });
 
-test("createEnterpriseCapabilityMatrixService is exported", () => {
+test("createEnterpriseCapabilityMatrixService is exported [enterprise-index]", () => {
   assert.equal(typeof createEnterpriseCapabilityMatrixService, "function");
 });
 
-test("DEFAULT_ENTERPRISE_CAPABILITIES is exported and is an array", () => {
+test("DEFAULT_ENTERPRISE_CAPABILITIES is exported and is an array [enterprise-index]", () => {
   assert.ok(Array.isArray(DEFAULT_ENTERPRISE_CAPABILITIES));
   assert.ok(DEFAULT_ENTERPRISE_CAPABILITIES.length > 0);
 });
 
-test("LicenseEnforcementService is exported", () => {
+test("LicenseEnforcementService is exported [enterprise-index]", () => {
   assert.equal(typeof LicenseEnforcementService, "function");
 });
 
-test("LicenseTier type values are valid", () => {
+test("LicenseTier type values are valid [enterprise-index]", () => {
   const validTiers: LicenseTier[] = ["community", "professional", "enterprise"];
   for (const tier of validTiers) {
     assert.ok(DEFAULT_ENTERPRISE_CAPABILITIES.every(cap => cap.requiredTier === tier || validTiers.includes(cap.requiredTier)));
   }
 });
 
-test("DEFAULT_ENTERPRISE_CAPABILITIES has all expected capability keys", () => {
+test("DEFAULT_ENTERPRISE_CAPABILITIES has all expected capability keys [enterprise-index]", () => {
   const expectedKeys = [
     "admin_console",
     "audit_export",
@@ -68,7 +68,7 @@ test("DEFAULT_ENTERPRISE_CAPABILITIES has all expected capability keys", () => {
   }
 });
 
-test("RegisterEnvironmentReadinessInput type is exported", () => {
+test("RegisterEnvironmentReadinessInput type is exported [enterprise-index]", () => {
   // Verify the type can be used to construct valid input
   const input: RegisterEnvironmentReadinessInput = {
     environment: "production",
@@ -85,7 +85,7 @@ test("RegisterEnvironmentReadinessInput type is exported", () => {
   assert.equal(input.owner, "test_owner");
 });
 
-test("EnterpriseCapabilityMatrixRunInput type is exported", () => {
+test("EnterpriseCapabilityMatrixRunInput type is exported [enterprise-index]", () => {
   const input: EnterpriseCapabilityMatrixRunInput = {
     environment: "production",
     deploymentMode: "cloud_shared",
@@ -95,14 +95,14 @@ test("EnterpriseCapabilityMatrixRunInput type is exported", () => {
   assert.equal(input.deploymentMode, "cloud_shared");
 });
 
-test("EnforcementAction type values are valid", () => {
+test("EnforcementAction type values are valid [enterprise-index]", () => {
   const validActions: EnforcementAction[] = ["allow", "deny", "meter", "warn"];
   for (const action of validActions) {
     assert.ok(true, `Valid action: ${action}`);
   }
 });
 
-test("LicenseCheckResult structure is correct", () => {
+test("LicenseCheckResult structure is correct [enterprise-index]", () => {
   const result: LicenseCheckResult = {
     allowed: true,
     action: "allow",
@@ -118,7 +118,7 @@ test("LicenseCheckResult structure is correct", () => {
   assert.equal(result.reason, "test_reason");
 });
 
-test("UsageMeter structure is correct", () => {
+test("UsageMeter structure is correct [enterprise-index]", () => {
   const meter: UsageMeter = {
     meterId: "meter_123",
     feature: "test_feature",
@@ -138,7 +138,7 @@ test("UsageMeter structure is correct", () => {
   assert.equal(meter.limit, 100);
 });
 
-test("LicenseViolation structure is correct", () => {
+test("LicenseViolation structure is correct [enterprise-index]", () => {
   const violation: LicenseViolation = {
     id: "lv_123",
     accountId: "acct_123",
@@ -158,7 +158,7 @@ test("LicenseViolation structure is correct", () => {
   assert.equal(violation.tierActual, "community");
 });
 
-test("FeatureGate structure is correct", () => {
+test("FeatureGate structure is correct [enterprise-index]", () => {
   const gate: FeatureGate = {
     featureKey: "test_feature",
     requiredTier: "enterprise",
@@ -175,7 +175,7 @@ test("FeatureGate structure is correct", () => {
   assert.equal(gate.meterUsage, false);
 });
 
-test("LicenseEnforcementConfig structure is correct", () => {
+test("LicenseEnforcementConfig structure is correct [enterprise-index]", () => {
   const config: LicenseEnforcementConfig = {
     enabled: true,
     strictMode: false,
@@ -191,7 +191,7 @@ test("LicenseEnforcementConfig structure is correct", () => {
   assert.equal(config.enableUsageMetering, true);
 });
 
-test("EnterpriseCapabilityDefinition structure is valid", () => {
+test("EnterpriseCapabilityDefinition structure is valid [enterprise-index]", () => {
   const definition: EnterpriseCapabilityDefinition = {
     capabilityKey: "admin_console",
     displayName: "Admin Console",
@@ -213,7 +213,7 @@ test("EnterpriseCapabilityDefinition structure is valid", () => {
   assert.equal(definition.readinessRequirements.length, 1);
 });
 
-test("DEFAULT_ENTERPRISE_CAPABILITIES each entry has valid structure", () => {
+test("DEFAULT_ENTERPRISE_CAPABILITIES each entry has valid structure [enterprise-index]", () => {
   for (const cap of DEFAULT_ENTERPRISE_CAPABILITIES) {
     assert.ok(cap.capabilityKey, `Missing capabilityKey for ${cap}`);
     assert.ok(cap.displayName, `Missing displayName for ${cap}`);
@@ -224,7 +224,7 @@ test("DEFAULT_ENTERPRISE_CAPABILITIES each entry has valid structure", () => {
   }
 });
 
-test("Capability keys are unique in DEFAULT_ENTERPRISE_CAPABILITIES", () => {
+test("Capability keys are unique in DEFAULT_ENTERPRISE_CAPABILITIES [enterprise-index]", () => {
   const keys = DEFAULT_ENTERPRISE_CAPABILITIES.map(c => c.capabilityKey);
   const uniqueKeys = new Set(keys);
   assert.equal(keys.length, uniqueKeys.size, "Duplicate capability keys found");

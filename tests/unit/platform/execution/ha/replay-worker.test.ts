@@ -14,7 +14,7 @@ function createMockReplayService() {
   };
 }
 
-test("ReplayWorker returns correct workerId", () => {
+test("ReplayWorker returns correct workerId [replay-worker]", () => {
   const worker = new ReplayWorker({
     replayService: createMockReplayService(),
     workerId: "test-replay-worker",
@@ -24,7 +24,7 @@ test("ReplayWorker returns correct workerId", () => {
   assert.equal(worker.getWorkerId(), "test-replay-worker");
 });
 
-test("ReplayWorker returns default workerId when not provided", () => {
+test("ReplayWorker returns default workerId when not provided [replay-worker]", () => {
   const worker = new ReplayWorker({
     replayService: createMockReplayService(),
     listTaskIds: () => [],
@@ -33,7 +33,7 @@ test("ReplayWorker returns default workerId when not provided", () => {
   assert.equal(worker.getWorkerId(), "replay-worker");
 });
 
-test("ReplayWorker returns recovery cadence", () => {
+test("ReplayWorker returns recovery cadence [replay-worker]", () => {
   const worker = new ReplayWorker({
     replayService: createMockReplayService(),
     listTaskIds: () => [],
@@ -47,7 +47,7 @@ test("ReplayWorker returns recovery cadence", () => {
   assert.equal(cadence.priority, "high");
 });
 
-test("ReplayWorker uses default cadence when not provided", () => {
+test("ReplayWorker uses default cadence when not provided [replay-worker]", () => {
   const worker = new ReplayWorker({
     replayService: createMockReplayService(),
     listTaskIds: () => [],
@@ -60,7 +60,7 @@ test("ReplayWorker uses default cadence when not provided", () => {
   assert.equal(cadence.priority, "normal");
 });
 
-test("ReplayWorker runRecoveryCycle returns successful report with no tasks", async () => {
+test("ReplayWorker runRecoveryCycle returns successful report with no tasks [replay-worker]", async () => {
   const worker = new ReplayWorker({
     replayService: createMockReplayService(),
     listTaskIds: () => [],
@@ -76,7 +76,7 @@ test("ReplayWorker runRecoveryCycle returns successful report with no tasks", as
   assert.deepEqual(report.errors, []);
 });
 
-test("ReplayWorker runRecoveryCycle processes task ids from listTaskIds", async () => {
+test("ReplayWorker runRecoveryCycle processes task ids from listTaskIds [replay-worker]", async () => {
   const replayService = {
     buildTaskReplayReport: (taskId: string, startedAt: string) => ({
       taskId,
@@ -100,7 +100,7 @@ test("ReplayWorker runRecoveryCycle processes task ids from listTaskIds", async 
   assert.deepEqual(report.metadata.replayedTaskIds, ["task_1", "task_2", "task_3"]);
 });
 
-test("ReplayWorker runRecoveryCycle counts recovery_active outcomes", async () => {
+test("ReplayWorker runRecoveryCycle counts recovery_active outcomes [replay-worker]", async () => {
   const replayService = {
     buildTaskReplayReport: (taskId: string, startedAt: string) => {
       if (taskId === "task_1") {
@@ -127,7 +127,7 @@ test("ReplayWorker runRecoveryCycle counts recovery_active outcomes", async () =
   assert.equal(report.metadata.recoveryActiveCount, 2);
 });
 
-test("ReplayWorker runRecoveryCycle handles async listTaskIds", async () => {
+test("ReplayWorker runRecoveryCycle handles async listTaskIds [replay-worker]", async () => {
   const worker = new ReplayWorker({
     replayService: createMockReplayService(),
     listTaskIds: async () => ["task_async_1", "task_async_2"],
@@ -139,7 +139,7 @@ test("ReplayWorker runRecoveryCycle handles async listTaskIds", async () => {
   assert.equal(report.itemsProcessed, 2);
 });
 
-test("ReplayWorker runRecoveryCycle handles replay service errors", async () => {
+test("ReplayWorker runRecoveryCycle handles replay service errors [replay-worker]", async () => {
   const replayService = {
     buildTaskReplayReport: (taskId: string, startedAt: string) => {
       throw new Error("Replay service unavailable");
@@ -162,7 +162,7 @@ test("ReplayWorker runRecoveryCycle handles replay service errors", async () => 
   assert.equal(report.errors[0]!.message, "Replay service unavailable");
 });
 
-test("ReplayWorker reports include timing information", async () => {
+test("ReplayWorker reports include timing information [replay-worker]", async () => {
   const replayService = createMockReplayService();
   let callCount = 0;
   const now = () => {
@@ -185,7 +185,7 @@ test("ReplayWorker reports include timing information", async () => {
   assert.ok(report.durationMs >= 0);
 });
 
-test("ReplayWorker rejects replay policies that allow real side effects", async () => {
+test("ReplayWorker rejects replay policies that allow real side effects [replay-worker]", async () => {
   assert.throws(
     () =>
       new ReplayWorker({
@@ -200,7 +200,7 @@ test("ReplayWorker rejects replay policies that allow real side effects", async 
   );
 });
 
-test("ReplayWorker requires sandboxId for isolated sandbox replay", async () => {
+test("ReplayWorker requires sandboxId for isolated sandbox replay [replay-worker]", async () => {
   assert.throws(
     () =>
       new ReplayWorker({
@@ -215,7 +215,7 @@ test("ReplayWorker requires sandboxId for isolated sandbox replay", async () => 
   );
 });
 
-test("ReplayWorker records isolated sandbox replay metadata when explicitly allowed", async () => {
+test("ReplayWorker records isolated sandbox replay metadata when explicitly allowed [replay-worker]", async () => {
   const worker = new ReplayWorker({
     replayService: createMockReplayService(),
     listTaskIds: () => ["task_1"],

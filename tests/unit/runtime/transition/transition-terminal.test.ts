@@ -115,7 +115,7 @@ function createTerminalFixture(name: string) {
   return { workspace, db, store, service, now, baseInput };
 }
 
-test("TransitionService.transitionTaskTerminalState marks task, workflow, session, and execution as done/completed/succeeded", () => {
+test("TransitionService.transitionTaskTerminalState marks task, workflow, session, and execution as done/completed/succeeded [transition-terminal]", () => {
   const fixture = createTerminalFixture("done");
   try {
     fixture.service.transitionTaskTerminalState(fixture.baseInput("done"));
@@ -131,7 +131,7 @@ test("TransitionService.transitionTaskTerminalState marks task, workflow, sessio
   }
 });
 
-test("TransitionService.transitionTaskTerminalState propagates failure reason to task and execution", () => {
+test("TransitionService.transitionTaskTerminalState propagates failure reason to task and execution [transition-terminal]", () => {
   const fixture = createTerminalFixture("failed");
   try {
     fixture.service.transitionTaskTerminalState(fixture.baseInput("failed"));
@@ -148,7 +148,7 @@ test("TransitionService.transitionTaskTerminalState propagates failure reason to
   }
 });
 
-test("TransitionService.applyTaskTerminalState handles cancellation without transaction wrapper drift", () => {
+test("TransitionService.applyTaskTerminalState handles cancellation without transaction wrapper drift [transition-terminal]", () => {
   const fixture = createTerminalFixture("cancelled");
   try {
     fixture.service.applyTaskTerminalState(fixture.baseInput("cancelled"));

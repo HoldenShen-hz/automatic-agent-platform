@@ -23,7 +23,7 @@ function sha256Hex(value: string): string {
 // Cache Key Format Verification
 // ---------------------------------------------------------------------------
 
-test("staticCacheKey is a valid SHA256 hex string (64 chars)", () => {
+test("staticCacheKey is a valid SHA256 hex string (64 chars) [prompt-partition-cache-key-generation]", () => {
   const input: PromptPartitionInput = {
     model: "claude-3-5-sonnet",
     messages: [{ role: "system", content: "Test" }],
@@ -36,7 +36,7 @@ test("staticCacheKey is a valid SHA256 hex string (64 chars)", () => {
   assert.match(result.staticCacheKey, /^[a-f0-9]{64}$/);
 });
 
-test("dynamicCacheKey is a valid SHA256 hex string (64 chars)", () => {
+test("dynamicCacheKey is a valid SHA256 hex string (64 chars) [prompt-partition-cache-key-generation]", () => {
   const input: PromptPartitionInput = {
     messages: [
       { role: "system", content: "System" },
@@ -50,7 +50,7 @@ test("dynamicCacheKey is a valid SHA256 hex string (64 chars)", () => {
   assert.match(result.dynamicCacheKey, /^[a-f0-9]{64}$/);
 });
 
-test("fixedPrefixCacheKey is a valid SHA256 hex string (64 chars)", () => {
+test("fixedPrefixCacheKey is a valid SHA256 hex string (64 chars) [prompt-partition-cache-key-generation]", () => {
   const input: PromptPartitionInput = {
     messages: [
       { role: "system", content: "Fixed prefix" },
@@ -65,7 +65,7 @@ test("fixedPrefixCacheKey is a valid SHA256 hex string (64 chars)", () => {
   assert.match(result.fixedPrefixCacheKey, /^[a-f0-9]{64}$/);
 });
 
-test("domainBlockCacheKey is a valid SHA256 hex string when present", () => {
+test("domainBlockCacheKey is a valid SHA256 hex string when present [prompt-partition-cache-key-generation]", () => {
   const input: PromptPartitionInput = {
     domainId: "coding",
     messages: [
@@ -83,7 +83,7 @@ test("domainBlockCacheKey is a valid SHA256 hex string when present", () => {
   }
 });
 
-test("digests are valid SHA256 hex strings (64 chars)", () => {
+test("digests are valid SHA256 hex strings (64 chars) [prompt-partition-cache-key-generation]", () => {
   const input: PromptPartitionInput = {
     messages: [
       { role: "system", content: "System message" },
@@ -104,7 +104,7 @@ test("digests are valid SHA256 hex strings (64 chars)", () => {
 // Cache Key Collision Resistance
 // ---------------------------------------------------------------------------
 
-test("different models produce different staticCacheKey even with same messages", () => {
+test("different models produce different staticCacheKey even with same messages [prompt-partition-cache-key-generation]", () => {
   const input1: PromptPartitionInput = {
     model: "claude-3-5-sonnet",
     messages: [{ role: "system", content: "Same system prompt" }],
@@ -121,7 +121,7 @@ test("different models produce different staticCacheKey even with same messages"
   assert.notEqual(result1.staticCacheKey, result2.staticCacheKey);
 });
 
-test("different profileIds produce different staticCacheKey even with same messages", () => {
+test("different profileIds produce different staticCacheKey even with same messages [prompt-partition-cache-key-generation]", () => {
   const input1: PromptPartitionInput = {
     model: "claude-3-5-sonnet",
     profileId: "profile-a",
@@ -140,7 +140,7 @@ test("different profileIds produce different staticCacheKey even with same messa
   assert.notEqual(result1.staticCacheKey, result2.staticCacheKey);
 });
 
-test("different fixedPrefixMessageCount produces different fixedPrefixCacheKey", () => {
+test("different fixedPrefixMessageCount produces different fixedPrefixCacheKey [prompt-partition-cache-key-generation]", () => {
   const input1: PromptPartitionInput = {
     kvCache: { enabled: true, fixedPrefixMessageCount: 1 },
     messages: [
@@ -165,7 +165,7 @@ test("different fixedPrefixMessageCount produces different fixedPrefixCacheKey",
   assert.notEqual(result1.fixedPrefixCacheKey, result2.fixedPrefixCacheKey);
 });
 
-test("same dynamic content with different static content produces different dynamicCacheKey", () => {
+test("same dynamic content with different static content produces different dynamicCacheKey [prompt-partition-cache-key-generation]", () => {
   const input1: PromptPartitionInput = {
     messages: [
       { role: "system", content: "Static A" },
@@ -186,7 +186,7 @@ test("same dynamic content with different static content produces different dyna
   assert.notEqual(result1.dynamicCacheKey, result2.dynamicCacheKey);
 });
 
-test("same static content with different dynamic content produces different dynamicCacheKey", () => {
+test("same static content with different dynamic content produces different dynamicCacheKey [prompt-partition-cache-key-generation]", () => {
   const input1: PromptPartitionInput = {
     messages: [
       { role: "system", content: "Static" },
@@ -211,7 +211,7 @@ test("same static content with different dynamic content produces different dyna
 // Cache Key Scope Isolation
 // ---------------------------------------------------------------------------
 
-test("staticCacheKey depends on model and profileId scope", () => {
+test("staticCacheKey depends on model and profileId scope [prompt-partition-cache-key-generation]", () => {
   const input1: PromptPartitionInput = {
     model: "claude-3-5-sonnet",
     profileId: "default",
@@ -232,7 +232,7 @@ test("staticCacheKey depends on model and profileId scope", () => {
   assert.equal(result1.dynamicCacheKey, result2.dynamicCacheKey);
 });
 
-test("dynamicCacheKey incorporates both static and dynamic digests", () => {
+test("dynamicCacheKey incorporates both static and dynamic digests [prompt-partition-cache-key-generation]", () => {
   const input: PromptPartitionInput = {
     messages: [
       { role: "system", content: "Static" },
@@ -254,7 +254,7 @@ test("dynamicCacheKey incorporates both static and dynamic digests", () => {
 // Partition Boundary Behavior
 // ---------------------------------------------------------------------------
 
-test("once dynamic starts, no more static messages even if role is system", () => {
+test("once dynamic starts, no more static messages even if role is system [prompt-partition-cache-key-generation]", () => {
   const input: PromptPartitionInput = {
     messages: [
       { role: "system", content: "First system" },
@@ -269,7 +269,7 @@ test("once dynamic starts, no more static messages even if role is system", () =
   assert.equal(result.dynamicMessageCount, 2);
 });
 
-test("mixed roles at start - only leading system messages are static", () => {
+test("mixed roles at start - only leading system messages are static [prompt-partition-cache-key-generation]", () => {
   const input: PromptPartitionInput = {
     messages: [
       { role: "system", content: "System 1" },
@@ -286,7 +286,7 @@ test("mixed roles at start - only leading system messages are static", () => {
   assert.equal(result.dynamicMessageCount, 3);
 });
 
-test("empty static prefix - all messages dynamic", () => {
+test("empty static prefix - all messages dynamic [prompt-partition-cache-key-generation]", () => {
   const input: PromptPartitionInput = {
     messages: [
       { role: "user", content: "User 1" },
@@ -303,7 +303,7 @@ test("empty static prefix - all messages dynamic", () => {
   assert.equal(result.domainBlockMessageCount, 0);
 });
 
-test("all static - no dynamic messages", () => {
+test("all static - no dynamic messages [prompt-partition-cache-key-generation]", () => {
   const input: PromptPartitionInput = {
     messages: [
       { role: "system", content: "System 1" },
@@ -324,7 +324,7 @@ test("all static - no dynamic messages", () => {
 // Byte Count Accuracy
 // ---------------------------------------------------------------------------
 
-test("stablePrefixBytes equals sum of static message canonical bytes", () => {
+test("stablePrefixBytes equals sum of static message canonical bytes [prompt-partition-cache-key-generation]", () => {
   const messages = [
     { role: "system", content: "Hello" },
     { role: "system", content: "World" },
@@ -346,7 +346,7 @@ test("stablePrefixBytes equals sum of static message canonical bytes", () => {
   assert.equal(result.stablePrefixBytes, Buffer.byteLength(expected, "utf8"));
 });
 
-test("fixedPrefixBytes counts only fixed prefix messages", () => {
+test("fixedPrefixBytes counts only fixed prefix messages [prompt-partition-cache-key-generation]", () => {
   const input: PromptPartitionInput = {
     kvCache: { enabled: true, fixedPrefixMessageCount: 1 },
     messages: [
@@ -367,7 +367,7 @@ test("fixedPrefixBytes counts only fixed prefix messages", () => {
   assert.equal(result.fixedPrefixBytes, expectedBytes);
 });
 
-test("domainBlockBytes counts only domain block messages", () => {
+test("domainBlockBytes counts only domain block messages [prompt-partition-cache-key-generation]", () => {
   const input: PromptPartitionInput = {
     kvCache: { enabled: true, fixedPrefixMessageCount: 1 },
     messages: [
@@ -388,7 +388,7 @@ test("domainBlockBytes counts only domain block messages", () => {
   assert.equal(result.domainBlockBytes, expectedBytes);
 });
 
-test("variableSuffixBytes counts only dynamic messages", () => {
+test("variableSuffixBytes counts only dynamic messages [prompt-partition-cache-key-generation]", () => {
   const input: PromptPartitionInput = {
     messages: [
       { role: "system", content: "System" },
@@ -411,7 +411,7 @@ test("variableSuffixBytes counts only dynamic messages", () => {
 // Digest Consistency
 // ---------------------------------------------------------------------------
 
-test("fixedPrefixDigest is hash of fixed prefix payload", () => {
+test("fixedPrefixDigest is hash of fixed prefix payload [prompt-partition-cache-key-generation]", () => {
   const input: PromptPartitionInput = {
     kvCache: { enabled: true, fixedPrefixMessageCount: 1 },
     messages: [
@@ -429,7 +429,7 @@ test("fixedPrefixDigest is hash of fixed prefix payload", () => {
   assert.equal(result.fixedPrefixDigest, expectedDigest);
 });
 
-test("domainBlockDigest is hash of domain block payload (empty when no domain block)", () => {
+test("domainBlockDigest is hash of domain block payload (empty when no domain block) [prompt-partition-cache-key-generation]", () => {
   const input: PromptPartitionInput = {
     kvCache: { enabled: true, fixedPrefixMessageCount: 2 },
     messages: [
@@ -445,7 +445,7 @@ test("domainBlockDigest is hash of domain block payload (empty when no domain bl
   assert.equal(result.domainBlockMessageCount, 0);
 });
 
-test("variableSuffixDigest equals dynamicDigest", () => {
+test("variableSuffixDigest equals dynamicDigest [prompt-partition-cache-key-generation]", () => {
   const input: PromptPartitionInput = {
     messages: [
       { role: "system", content: "System" },
@@ -462,7 +462,7 @@ test("variableSuffixDigest equals dynamicDigest", () => {
 // Service Cache Key Tracking
 // ---------------------------------------------------------------------------
 
-test("PromptPartitionCacheService uses dynamicCacheKey for tracking", () => {
+test("PromptPartitionCacheService uses dynamicCacheKey for tracking [prompt-partition-cache-key-generation]", () => {
   const service = new PromptPartitionCacheService();
 
   const input: PromptPartitionInput = {
@@ -489,7 +489,7 @@ test("PromptPartitionCacheService uses dynamicCacheKey for tracking", () => {
   assert.equal(usage1.partition.dynamicCacheKey, usage2.partition.dynamicCacheKey);
 });
 
-test("PromptPartitionCacheService different dynamic keys tracked separately", () => {
+test("PromptPartitionCacheService different dynamic keys tracked separately [prompt-partition-cache-key-generation]", () => {
   const service = new PromptPartitionCacheService();
 
   service.record({
@@ -509,7 +509,7 @@ test("PromptPartitionCacheService different dynamic keys tracked separately", ()
   assert.equal(service.listUsage().length, 2);
 });
 
-test("PromptPartitionCacheService returns usage by exact dynamicCacheKey", () => {
+test("PromptPartitionCacheService returns usage by exact dynamicCacheKey [prompt-partition-cache-key-generation]", () => {
   const service = new PromptPartitionCacheService();
 
   const input: PromptPartitionInput = {

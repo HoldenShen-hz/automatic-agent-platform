@@ -1,5 +1,6 @@
 import * as electron from "electron";
 import type { BrowserWindow as BrowserWindowHandle } from "electron";
+import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -7,6 +8,7 @@ const { app, BrowserWindow, globalShortcut, Notification, shell } = electron;
 
 const currentDir = dirname(fileURLToPath(import.meta.url));
 const rendererHtmlPath = join(currentDir, "../dist/index.html");
+const webAppHtmlPath = join(currentDir, "../../web/dist/index.html");
 const preloadScriptPath = join(currentDir, "preload.js");
 const ALLOWED_SHELL_COMMANDS = new Set(["status", "health", "version"]);
 
@@ -100,10 +102,15 @@ function reportWindowLoadFailure(error: unknown): void {
   process.stderr.write(`electron.window_load_failed: ${message}\n`);
 }
 
+function resolveWindowHtmlPath(): string {
+  return existsSync(webAppHtmlPath) ? webAppHtmlPath : rendererHtmlPath;
+}
+
 function loadWindowFile(windowHandle: BrowserWindowHandle, hash?: string): void {
+  const htmlPath = resolveWindowHtmlPath();
   const pendingLoad = hash == null
-    ? windowHandle.loadFile(rendererHtmlPath)
-    : windowHandle.loadFile(rendererHtmlPath, { hash });
+    ? windowHandle.loadFile(htmlPath)
+    : windowHandle.loadFile(htmlPath, { hash });
   if (pendingLoad != null && typeof (pendingLoad as Promise<unknown>).catch === "function") {
     void (pendingLoad as Promise<unknown>).catch(reportWindowLoadFailure);
   }

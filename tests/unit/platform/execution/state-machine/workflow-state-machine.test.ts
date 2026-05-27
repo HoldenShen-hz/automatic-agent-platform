@@ -35,27 +35,27 @@ function createWorkflowStateMachine(): StateTransitionMachine<string> {
 // Valid transitions from running
 // ---------------------------------------------------------------------------
 
-test("WorkflowStateMachine: allows running -> paused", () => {
+test("WorkflowStateMachine: allows running -> paused [workflow-state-machine]", () => {
   const machine = createWorkflowStateMachine();
   machine.assertTransition("running", "paused");
 });
 
-test("WorkflowStateMachine: allows running -> completed", () => {
+test("WorkflowStateMachine: allows running -> completed [workflow-state-machine]", () => {
   const machine = createWorkflowStateMachine();
   machine.assertTransition("running", "completed");
 });
 
-test("WorkflowStateMachine: allows running -> failed", () => {
+test("WorkflowStateMachine: allows running -> failed [workflow-state-machine]", () => {
   const machine = createWorkflowStateMachine();
   machine.assertTransition("running", "failed");
 });
 
-test("WorkflowStateMachine: allows running -> cancelling", () => {
+test("WorkflowStateMachine: allows running -> cancelling [workflow-state-machine]", () => {
   const machine = createWorkflowStateMachine();
   machine.assertTransition("running", "cancelling");
 });
 
-test("WorkflowStateMachine: allows running -> cancelled", () => {
+test("WorkflowStateMachine: allows running -> cancelled [workflow-state-machine]", () => {
   const machine = createWorkflowStateMachine();
   machine.assertTransition("running", "cancelled");
 });
@@ -64,17 +64,17 @@ test("WorkflowStateMachine: allows running -> cancelled", () => {
 // Valid transitions from paused
 // ---------------------------------------------------------------------------
 
-test("WorkflowStateMachine: allows paused -> resuming", () => {
+test("WorkflowStateMachine: allows paused -> resuming [workflow-state-machine]", () => {
   const machine = createWorkflowStateMachine();
   machine.assertTransition("paused", "resuming");
 });
 
-test("WorkflowStateMachine: allows paused -> failed", () => {
+test("WorkflowStateMachine: allows paused -> failed [workflow-state-machine]", () => {
   const machine = createWorkflowStateMachine();
   machine.assertTransition("paused", "failed");
 });
 
-test("WorkflowStateMachine: allows paused -> cancelled", () => {
+test("WorkflowStateMachine: allows paused -> cancelled [workflow-state-machine]", () => {
   const machine = createWorkflowStateMachine();
   machine.assertTransition("paused", "cancelled");
 });
@@ -83,17 +83,17 @@ test("WorkflowStateMachine: allows paused -> cancelled", () => {
 // Valid transitions from resuming
 // ---------------------------------------------------------------------------
 
-test("WorkflowStateMachine: allows resuming -> running", () => {
+test("WorkflowStateMachine: allows resuming -> running [workflow-state-machine]", () => {
   const machine = createWorkflowStateMachine();
   machine.assertTransition("resuming", "running");
 });
 
-test("WorkflowStateMachine: allows resuming -> failed", () => {
+test("WorkflowStateMachine: allows resuming -> failed [workflow-state-machine]", () => {
   const machine = createWorkflowStateMachine();
   machine.assertTransition("resuming", "failed");
 });
 
-test("WorkflowStateMachine: allows resuming -> cancelled", () => {
+test("WorkflowStateMachine: allows resuming -> cancelled [workflow-state-machine]", () => {
   const machine = createWorkflowStateMachine();
   machine.assertTransition("resuming", "cancelled");
 });
@@ -102,7 +102,7 @@ test("WorkflowStateMachine: allows resuming -> cancelled", () => {
 // Valid transitions from cancelling
 // ---------------------------------------------------------------------------
 
-test("WorkflowStateMachine: allows cancelling -> cancelled", () => {
+test("WorkflowStateMachine: allows cancelling -> cancelled [workflow-state-machine]", () => {
   const machine = createWorkflowStateMachine();
   machine.assertTransition("cancelling", "cancelled");
 });
@@ -111,7 +111,7 @@ test("WorkflowStateMachine: allows cancelling -> cancelled", () => {
 // Invalid transitions from running
 // ---------------------------------------------------------------------------
 
-test("WorkflowStateMachine: rejects running -> resuming", () => {
+test("WorkflowStateMachine: rejects running -> resuming [workflow-state-machine]", () => {
   const machine = createWorkflowStateMachine();
   assert.throws(
     () => machine.assertTransition("running", "resuming"),
@@ -119,7 +119,7 @@ test("WorkflowStateMachine: rejects running -> resuming", () => {
   );
 });
 
-test("WorkflowStateMachine: rejects running -> open (non-existent)", () => {
+test("WorkflowStateMachine: rejects running -> open (non-existent) [workflow-state-machine]", () => {
   const machine = createWorkflowStateMachine();
   assert.throws(
     () => machine.assertTransition("running", "open"),
@@ -131,7 +131,7 @@ test("WorkflowStateMachine: rejects running -> open (non-existent)", () => {
 // Invalid transitions from paused
 // ---------------------------------------------------------------------------
 
-test("WorkflowStateMachine: rejects paused -> running", () => {
+test("WorkflowStateMachine: rejects paused -> running [workflow-state-machine]", () => {
   const machine = createWorkflowStateMachine();
   assert.throws(
     () => machine.assertTransition("paused", "running"),
@@ -139,7 +139,7 @@ test("WorkflowStateMachine: rejects paused -> running", () => {
   );
 });
 
-test("WorkflowStateMachine: rejects paused -> completed", () => {
+test("WorkflowStateMachine: rejects paused -> completed [workflow-state-machine]", () => {
   const machine = createWorkflowStateMachine();
   assert.throws(
     () => machine.assertTransition("paused", "completed"),
@@ -147,7 +147,7 @@ test("WorkflowStateMachine: rejects paused -> completed", () => {
   );
 });
 
-test("WorkflowStateMachine: rejects paused -> cancelling", () => {
+test("WorkflowStateMachine: rejects paused -> cancelling [workflow-state-machine]", () => {
   const machine = createWorkflowStateMachine();
   assert.throws(
     () => machine.assertTransition("paused", "cancelling"),
@@ -159,7 +159,7 @@ test("WorkflowStateMachine: rejects paused -> cancelling", () => {
 // Invalid transitions from resuming
 // ---------------------------------------------------------------------------
 
-test("WorkflowStateMachine: rejects resuming -> paused", () => {
+test("WorkflowStateMachine: rejects resuming -> paused [workflow-state-machine]", () => {
   const machine = createWorkflowStateMachine();
   assert.throws(
     () => machine.assertTransition("resuming", "paused"),
@@ -167,7 +167,7 @@ test("WorkflowStateMachine: rejects resuming -> paused", () => {
   );
 });
 
-test("WorkflowStateMachine: rejects resuming -> completed", () => {
+test("WorkflowStateMachine: rejects resuming -> completed [workflow-state-machine]", () => {
   const machine = createWorkflowStateMachine();
   assert.throws(
     () => machine.assertTransition("resuming", "completed"),
@@ -175,7 +175,7 @@ test("WorkflowStateMachine: rejects resuming -> completed", () => {
   );
 });
 
-test("WorkflowStateMachine: rejects resuming -> cancelling", () => {
+test("WorkflowStateMachine: rejects resuming -> cancelling [workflow-state-machine]", () => {
   const machine = createWorkflowStateMachine();
   assert.throws(
     () => machine.assertTransition("resuming", "cancelling"),
@@ -187,7 +187,7 @@ test("WorkflowStateMachine: rejects resuming -> cancelling", () => {
 // Terminal state transitions
 // ---------------------------------------------------------------------------
 
-test("WorkflowStateMachine: rejects transitions from completed", () => {
+test("WorkflowStateMachine: rejects transitions from completed [workflow-state-machine]", () => {
   const machine = createWorkflowStateMachine();
   const validTargets = ["running", "paused", "resuming", "failed", "cancelling", "cancelled"];
 
@@ -200,7 +200,7 @@ test("WorkflowStateMachine: rejects transitions from completed", () => {
   }
 });
 
-test("WorkflowStateMachine: rejects transitions from failed", () => {
+test("WorkflowStateMachine: rejects transitions from failed [workflow-state-machine]", () => {
   const machine = createWorkflowStateMachine();
   const validTargets = ["running", "paused", "resuming", "completed", "cancelling", "cancelled"];
 
@@ -213,7 +213,7 @@ test("WorkflowStateMachine: rejects transitions from failed", () => {
   }
 });
 
-test("WorkflowStateMachine: rejects transitions from cancelled", () => {
+test("WorkflowStateMachine: rejects transitions from cancelled [workflow-state-machine]", () => {
   const machine = createWorkflowStateMachine();
   const validTargets = ["running", "paused", "resuming", "completed", "failed", "cancelling"];
 
@@ -230,7 +230,7 @@ test("WorkflowStateMachine: rejects transitions from cancelled", () => {
 // No-op transitions
 // ---------------------------------------------------------------------------
 
-test("WorkflowStateMachine: allows no-op transition on same state", () => {
+test("WorkflowStateMachine: allows no-op transition on same state [workflow-state-machine]", () => {
   const machine = createWorkflowStateMachine();
   const states = ["running", "paused", "resuming", "completed", "failed", "cancelling", "cancelled"];
 
@@ -243,7 +243,7 @@ test("WorkflowStateMachine: allows no-op transition on same state", () => {
 // Error details
 // ---------------------------------------------------------------------------
 
-test("WorkflowStateMachine: WorkflowStateError contains correct entityKind", () => {
+test("WorkflowStateMachine: WorkflowStateError contains correct entityKind [workflow-state-machine]", () => {
   const machine = createWorkflowStateMachine();
 
   try {
@@ -258,7 +258,7 @@ test("WorkflowStateMachine: WorkflowStateError contains correct entityKind", () 
   }
 });
 
-test("WorkflowStateMachine: WorkflowStateError has statusCode 409", () => {
+test("WorkflowStateMachine: WorkflowStateError has statusCode 409 [workflow-state-machine]", () => {
   const machine = createWorkflowStateMachine();
 
   try {
@@ -271,7 +271,7 @@ test("WorkflowStateMachine: WorkflowStateError has statusCode 409", () => {
   }
 });
 
-test("WorkflowStateMachine: WorkflowStateError is not retryable", () => {
+test("WorkflowStateMachine: WorkflowStateError is not retryable [workflow-state-machine]", () => {
   const machine = createWorkflowStateMachine();
 
   try {
@@ -288,7 +288,7 @@ test("WorkflowStateMachine: WorkflowStateError is not retryable", () => {
 // Error message format
 // ---------------------------------------------------------------------------
 
-test("WorkflowStateMachine: error message contains invalid_transition code", () => {
+test("WorkflowStateMachine: error message contains invalid_transition code [workflow-state-machine]", () => {
   const machine = createWorkflowStateMachine();
 
   try {
@@ -304,7 +304,7 @@ test("WorkflowStateMachine: error message contains invalid_transition code", () 
 // Cancellation flow
 // ---------------------------------------------------------------------------
 
-test("WorkflowStateMachine: supports graceful cancellation flow (running -> cancelling -> cancelled)", () => {
+test("WorkflowStateMachine: supports graceful cancellation flow (running -> cancelling -> cancelled) [workflow-state-machine]", () => {
   const machine = createWorkflowStateMachine();
 
   // running -> cancelling is valid
@@ -314,7 +314,7 @@ test("WorkflowStateMachine: supports graceful cancellation flow (running -> canc
   machine.assertTransition("cancelling", "cancelled");
 });
 
-test("WorkflowStateMachine: supports immediate cancellation (running -> cancelled)", () => {
+test("WorkflowStateMachine: supports immediate cancellation (running -> cancelled) [workflow-state-machine]", () => {
   const machine = createWorkflowStateMachine();
   machine.assertTransition("running", "cancelled");
 });
@@ -323,7 +323,7 @@ test("WorkflowStateMachine: supports immediate cancellation (running -> cancelle
 // Pause/Resume cycle
 // ---------------------------------------------------------------------------
 
-test("WorkflowStateMachine: supports pause/resume cycle (running -> paused -> resuming -> running)", () => {
+test("WorkflowStateMachine: supports pause/resume cycle (running -> paused -> resuming -> running) [workflow-state-machine]", () => {
   const machine = createWorkflowStateMachine();
 
   machine.assertTransition("running", "paused");

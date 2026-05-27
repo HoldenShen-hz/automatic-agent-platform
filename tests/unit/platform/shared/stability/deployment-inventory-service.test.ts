@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { DeploymentInventoryService } from "../../../../../src/platform/shared/stability/deployment-inventory-service.js";
 
-test("DeploymentInventoryService lists all deployments", () => {
+test("DeploymentInventoryService lists all deployments [deployment-inventory-service]", () => {
   const service = new DeploymentInventoryService();
   const records = service.listDeployments();
 
@@ -14,7 +14,7 @@ test("DeploymentInventoryService lists all deployments", () => {
   assert.ok(records.some((r) => r.deploymentId === "deploy.prod.tenant-gray"));
 });
 
-test("DeploymentInventoryService listDeployments returns a copy", () => {
+test("DeploymentInventoryService listDeployments returns a copy [deployment-inventory-service]", () => {
   const service = new DeploymentInventoryService();
   const first = service.listDeployments();
   const second = service.listDeployments();
@@ -26,7 +26,7 @@ test("DeploymentInventoryService listDeployments returns a copy", () => {
   assert.equal(second.length, 4);
 });
 
-test("DeploymentInventoryService buildSummary counts all readiness statuses", () => {
+test("DeploymentInventoryService buildSummary counts all readiness statuses [deployment-inventory-service]", () => {
   const service = new DeploymentInventoryService();
   const summary = service.buildSummary();
 
@@ -36,14 +36,14 @@ test("DeploymentInventoryService buildSummary counts all readiness statuses", ()
   assert.equal(summary.blocked, 0);
 });
 
-test("DeploymentInventoryService buildSummary counts contract_only deployments", () => {
+test("DeploymentInventoryService buildSummary counts contract_only deployments [deployment-inventory-service]", () => {
   const service = new DeploymentInventoryService();
   const summary = service.buildSummary();
 
   assert.equal(summary.contractOnly, 4);
 });
 
-test("DeploymentInventoryService buildSummary is idempotent", () => {
+test("DeploymentInventoryService buildSummary is idempotent [deployment-inventory-service]", () => {
   const service = new DeploymentInventoryService();
   const first = service.buildSummary();
   const second = service.buildSummary();
@@ -51,7 +51,7 @@ test("DeploymentInventoryService buildSummary is idempotent", () => {
   assert.deepEqual(first, second);
 });
 
-test("DeploymentInventoryService deploy records have correct environment values", () => {
+test("DeploymentInventoryService deploy records have correct environment values [deployment-inventory-service]", () => {
   const service = new DeploymentInventoryService();
   const records = service.listDeployments();
 
@@ -62,7 +62,7 @@ test("DeploymentInventoryService deploy records have correct environment values"
   assert.ok(environments.includes("prod"));
 });
 
-test("DeploymentInventoryService deploy records have correct rollout strategies", () => {
+test("DeploymentInventoryService deploy records have correct rollout strategies [deployment-inventory-service]", () => {
   const service = new DeploymentInventoryService();
   const records = service.listDeployments();
 
@@ -73,14 +73,14 @@ test("DeploymentInventoryService deploy records have correct rollout strategies"
   assert.ok(strategies.includes("tenant_gray"));
 });
 
-test("DeploymentInventoryService all deployments require drills", () => {
+test("DeploymentInventoryService all deployments require drills [deployment-inventory-service]", () => {
   const service = new DeploymentInventoryService();
   const records = service.listDeployments();
 
   assert.ok(records.every((r) => r.requiredDrills.length > 0));
 });
 
-test("DeploymentInventoryService all deployments are contract_only s4Mode", () => {
+test("DeploymentInventoryService all deployments are contract_only s4Mode [deployment-inventory-service]", () => {
   const service = new DeploymentInventoryService();
   const records = service.listDeployments();
 

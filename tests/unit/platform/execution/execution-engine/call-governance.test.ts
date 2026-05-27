@@ -20,19 +20,19 @@ import {
 // CallRateLimiter
 // ---------------------------------------------------------------------------
 
-test("CallRateLimiter allows calls when no config", () => {
+test("CallRateLimiter allows calls when no config [call-governance]", () => {
   const limiter = new CallRateLimiter(null);
   const result = limiter.checkAndConsume("key1");
   assert.equal(result.allowed, true);
 });
 
-test("CallRateLimiter allows first call in window", () => {
+test("CallRateLimiter allows first call in window [call-governance]", () => {
   const limiter = new CallRateLimiter({ maxCalls: 3, windowMs: 1000 });
   const result = limiter.checkAndConsume("key1");
   assert.equal(result.allowed, true);
 });
 
-test("CallRateLimiter counts calls within window", () => {
+test("CallRateLimiter counts calls within window [call-governance]", () => {
   const limiter = new CallRateLimiter({ maxCalls: 3, windowMs: 1000 });
   limiter.checkAndConsume("key1");
   limiter.checkAndConsume("key1");
@@ -42,7 +42,7 @@ test("CallRateLimiter counts calls within window", () => {
   assert.ok(result.retryAfterMs !== undefined);
 });
 
-test("CallRateLimiter resets after window expires", () => {
+test("CallRateLimiter resets after window expires [call-governance]", () => {
   const limiter = new CallRateLimiter({ maxCalls: 1, windowMs: 50 });
   limiter.checkAndConsume("key1");
   const result = limiter.checkAndConsume("key1");
@@ -58,7 +58,7 @@ test("CallRateLimiter resets after window expires", () => {
   });
 });
 
-test("CallRateLimiter.reset clears entry", () => {
+test("CallRateLimiter.reset clears entry [call-governance]", () => {
   const limiter = new CallRateLimiter({ maxCalls: 1, windowMs: 1000 });
   limiter.checkAndConsume("key1");
   limiter.reset("key1");
@@ -66,7 +66,7 @@ test("CallRateLimiter.reset clears entry", () => {
   assert.equal(result.allowed, true);
 });
 
-test("CallRateLimiter.updateConfig changes limit", () => {
+test("CallRateLimiter.updateConfig changes limit [call-governance]", () => {
   const limiter = new CallRateLimiter({ maxCalls: 1, windowMs: 1000 });
   limiter.checkAndConsume("key1");
   limiter.updateConfig({ maxCalls: 5, windowMs: 1000 });
@@ -74,7 +74,7 @@ test("CallRateLimiter.updateConfig changes limit", () => {
   assert.equal(result.allowed, true);
 });
 
-test("CallRateLimiter.evictExpired removes old entries", async () => {
+test("CallRateLimiter.evictExpired removes old entries [call-governance]", async () => {
   const limiter = new CallRateLimiter({ maxCalls: 1, windowMs: 50 });
   limiter.checkAndConsume("oldkey");
   await new Promise(resolve => setTimeout(resolve, 60));
@@ -84,7 +84,7 @@ test("CallRateLimiter.evictExpired removes old entries", async () => {
   assert.equal(result.allowed, true);
 });
 
-test("CallRateLimiter works with no config", () => {
+test("CallRateLimiter works with no config [call-governance]", () => {
   const limiter = new CallRateLimiter(undefined);
   const result = limiter.checkAndConsume("key1");
   assert.equal(result.allowed, true);
@@ -94,21 +94,21 @@ test("CallRateLimiter works with no config", () => {
 // CallCircuitBreaker
 // ---------------------------------------------------------------------------
 
-test("CallCircuitBreaker allows calls when no config", () => {
+test("CallCircuitBreaker allows calls when no config [call-governance]", () => {
   const breaker = new CallCircuitBreaker(null);
   const result = breaker.check("key1");
   assert.equal(result.allowed, true);
   assert.equal(result.state, "closed");
 });
 
-test("CallCircuitBreaker starts in closed state", () => {
+test("CallCircuitBreaker starts in closed state [call-governance]", () => {
   const breaker = new CallCircuitBreaker({ failureThreshold: 3, successThreshold: 2, resetTimeoutMs: 1000 });
   const result = breaker.check("key1");
   assert.equal(result.allowed, true);
   assert.equal(result.state, "closed");
 });
 
-test("CallCircuitBreaker records failures", () => {
+test("CallCircuitBreaker records failures [call-governance]", () => {
   const breaker = new CallCircuitBreaker({ failureThreshold: 3, successThreshold: 2, resetTimeoutMs: 1000 });
   breaker.recordFailure("key1");
   breaker.recordFailure("key1");
@@ -118,7 +118,7 @@ test("CallCircuitBreaker records failures", () => {
   assert.equal(result.state, "open");
 });
 
-test("CallCircuitBreaker opens after threshold", () => {
+test("CallCircuitBreaker opens after threshold [call-governance]", () => {
   const breaker = new CallCircuitBreaker({ failureThreshold: 2, successThreshold: 2, resetTimeoutMs: 1000 });
   breaker.recordFailure("key1");
   breaker.recordFailure("key1");
@@ -127,7 +127,7 @@ test("CallCircuitBreaker opens after threshold", () => {
   assert.equal(result.allowed, false);
 });
 
-test("CallCircuitBreaker.transitions to half_open after timeout", () => {
+test("CallCircuitBreaker.transitions to half_open after timeout [call-governance]", () => {
   const breaker = new CallCircuitBreaker({ failureThreshold: 1, successThreshold: 2, resetTimeoutMs: 50 });
   breaker.recordFailure("key1");
   assert.equal(breaker.check("key1").state, "open");
@@ -142,7 +142,7 @@ test("CallCircuitBreaker.transitions to half_open after timeout", () => {
   });
 });
 
-test("CallCircuitBreaker.records success in closed state", () => {
+test("CallCircuitBreaker.records success in closed state [call-governance]", () => {
   const breaker = new CallCircuitBreaker({ failureThreshold: 3, successThreshold: 2, resetTimeoutMs: 1000 });
   breaker.recordFailure("key1");
   breaker.recordFailure("key1");
@@ -152,7 +152,7 @@ test("CallCircuitBreaker.records success in closed state", () => {
   assert.equal(result.state, "closed");
 });
 
-test("CallCircuitBreaker.closes after success threshold in half_open", () => {
+test("CallCircuitBreaker.closes after success threshold in half_open [call-governance]", () => {
   const breaker = new CallCircuitBreaker({ failureThreshold: 1, successThreshold: 2, resetTimeoutMs: 50 });
   breaker.recordFailure("key1");
   // Move to half_open
@@ -168,7 +168,7 @@ test("CallCircuitBreaker.closes after success threshold in half_open", () => {
   });
 });
 
-test("CallCircuitBreaker.getSnapshot returns state", () => {
+test("CallCircuitBreaker.getSnapshot returns state [call-governance]", () => {
   const breaker = new CallCircuitBreaker({ failureThreshold: 3, successThreshold: 2, resetTimeoutMs: 1000 });
   breaker.recordFailure("key1");
   const snapshot = breaker.getSnapshot("key1");
@@ -177,13 +177,13 @@ test("CallCircuitBreaker.getSnapshot returns state", () => {
   assert.equal(snapshot!.state, "closed");
 });
 
-test("CallCircuitBreaker.getSnapshot returns null for unknown key", () => {
+test("CallCircuitBreaker.getSnapshot returns null for unknown key [call-governance]", () => {
   const breaker = new CallCircuitBreaker({ failureThreshold: 3, successThreshold: 2, resetTimeoutMs: 1000 });
   const snapshot = breaker.getSnapshot("unknown");
   assert.equal(snapshot, null);
 });
 
-test("CallCircuitBreaker.reset clears entry", () => {
+test("CallCircuitBreaker.reset clears entry [call-governance]", () => {
   const breaker = new CallCircuitBreaker({ failureThreshold: 1, successThreshold: 2, resetTimeoutMs: 1000 });
   breaker.recordFailure("key1");
   breaker.reset("key1");
@@ -192,7 +192,7 @@ test("CallCircuitBreaker.reset clears entry", () => {
   assert.equal(result.allowed, true);
 });
 
-test("CallCircuitBreaker.updateConfig changes config", () => {
+test("CallCircuitBreaker.updateConfig changes config [call-governance]", () => {
   const breaker = new CallCircuitBreaker({ failureThreshold: 3, successThreshold: 2, resetTimeoutMs: 1000 });
   breaker.updateConfig({ failureThreshold: 5, successThreshold: 3, resetTimeoutMs: 2000 });
   // Config updated - should now require 5 failures to open
@@ -207,7 +207,7 @@ test("CallCircuitBreaker.updateConfig changes config", () => {
 // CallHistoryRecorder
 // ---------------------------------------------------------------------------
 
-test("CallHistoryRecorder.records successful call", () => {
+test("CallHistoryRecorder.records successful call [call-governance]", () => {
   const recorder = new CallHistoryRecorder();
   recorder.record("key1", { success: true, data: "result", metadata: { attempts: 1, latencyMs: 10 } });
   const stats = recorder.getStats("key1", null);
@@ -216,7 +216,7 @@ test("CallHistoryRecorder.records successful call", () => {
   assert.equal(stats.failedCalls, 0);
 });
 
-test("CallHistoryRecorder.records failed call", () => {
+test("CallHistoryRecorder.records failed call [call-governance]", () => {
   const recorder = new CallHistoryRecorder();
   recorder.record("key1", {
     success: false,
@@ -229,7 +229,7 @@ test("CallHistoryRecorder.records failed call", () => {
   assert.equal(stats.failedCalls, 1);
 });
 
-test("CallHistoryRecorder.records rejected call", () => {
+test("CallHistoryRecorder.records rejected call [call-governance]", () => {
   const recorder = new CallHistoryRecorder();
   recorder.record("key1", {
     success: false,
@@ -240,14 +240,14 @@ test("CallHistoryRecorder.records rejected call", () => {
   assert.equal(stats.rejectedCalls, 1);
 });
 
-test("CallHistoryRecorder.getStats includes circuit state", () => {
+test("CallHistoryRecorder.getStats includes circuit state [call-governance]", () => {
   const recorder = new CallHistoryRecorder();
   const breakerSnapshot = { failures: 2, state: "open" as const, lastFailure: Date.now() };
   const stats = recorder.getStats("key1", breakerSnapshot);
   assert.equal(stats.currentCircuitState, "open");
 });
 
-test("CallHistoryRecorder.reset clears history", () => {
+test("CallHistoryRecorder.reset clears history [call-governance]", () => {
   const recorder = new CallHistoryRecorder();
   recorder.record("key1", { success: true, data: "result", metadata: { attempts: 1, latencyMs: 10 } });
   recorder.reset("key1");
@@ -259,7 +259,7 @@ test("CallHistoryRecorder.reset clears history", () => {
 // createRetryPolicy
 // ---------------------------------------------------------------------------
 
-test("createRetryPolicy returns defaults", () => {
+test("createRetryPolicy returns defaults [call-governance]", () => {
   const policy = createRetryPolicy();
   assert.equal(policy.maxAttempts, 3);
   assert.equal(policy.baseDelayMs, 100);
@@ -269,7 +269,7 @@ test("createRetryPolicy returns defaults", () => {
   assert.deepEqual(policy.nonRetryableCodes, ["auth", "forbidden", "not_found"]);
 });
 
-test("createRetryPolicy accepts partial config", () => {
+test("createRetryPolicy accepts partial config [call-governance]", () => {
   const policy = createRetryPolicy({ maxAttempts: 5 });
   assert.equal(policy.maxAttempts, 5);
   assert.equal(policy.baseDelayMs, 100);
@@ -279,20 +279,20 @@ test("createRetryPolicy accepts partial config", () => {
 // createBreakerPolicy
 // ---------------------------------------------------------------------------
 
-test("createBreakerPolicy returns defaults", () => {
+test("createBreakerPolicy returns defaults [call-governance]", () => {
   const policy = createBreakerPolicy();
   assert.equal(policy.failureThreshold, 5);
   assert.equal(policy.successThreshold, 2);
   assert.equal(policy.resetTimeoutMs, 30000);
 });
 
-test("createBreakerPolicy accepts partial config", () => {
+test("createBreakerPolicy accepts partial config [call-governance]", () => {
   const policy = createBreakerPolicy({ failureThreshold: 10 });
   assert.equal(policy.failureThreshold, 10);
   assert.equal(policy.successThreshold, 2);
 });
 
-test("createBreakerPolicy handles halfOpenMaxCalls", () => {
+test("createBreakerPolicy handles halfOpenMaxCalls [call-governance]", () => {
   const policy = createBreakerPolicy({ halfOpenMaxCalls: 3 });
   assert.equal(policy.halfOpenMaxCalls, 3);
 });
@@ -301,7 +301,7 @@ test("createBreakerPolicy handles halfOpenMaxCalls", () => {
 // createLimiterPolicy
 // ---------------------------------------------------------------------------
 
-test("createLimiterPolicy requires maxCalls and windowMs", () => {
+test("createLimiterPolicy requires maxCalls and windowMs [call-governance]", () => {
   const policy = createLimiterPolicy({ maxCalls: 10, windowMs: 1000 });
   assert.equal(policy.maxCalls, 10);
   assert.equal(policy.windowMs, 1000);
@@ -311,14 +311,14 @@ test("createLimiterPolicy requires maxCalls and windowMs", () => {
 // CallGovernance
 // ---------------------------------------------------------------------------
 
-test("CallGovernance.execute succeeds with no policy", async () => {
+test("CallGovernance.execute succeeds with no policy [call-governance]", async () => {
   const governance = new CallGovernance({});
   const result = await governance.execute("key1", async () => "success");
   assert.equal(result.success, true);
   assert.equal(result.data, "success");
 });
 
-test("CallGovernance.execute respects rate limiter", async () => {
+test("CallGovernance.execute respects rate limiter [call-governance]", async () => {
   const governance = new CallGovernance({
     limiter: { maxCalls: 1, windowMs: 1000 },
   });
@@ -331,7 +331,7 @@ test("CallGovernance.execute respects rate limiter", async () => {
   assert.equal(result2.error?.code, "governance.limiter_rejected");
 });
 
-test("CallGovernance.execute respects circuit breaker", async () => {
+test("CallGovernance.execute respects circuit breaker [call-governance]", async () => {
   const governance = new CallGovernance({
     breaker: { failureThreshold: 1, successThreshold: 2, resetTimeoutMs: 50000 },
   });
@@ -346,7 +346,7 @@ test("CallGovernance.execute respects circuit breaker", async () => {
   assert.equal(result.error?.code, "governance.circuit_open");
 });
 
-test("CallGovernance.execute retries on retryable error", async () => {
+test("CallGovernance.execute retries on retryable error [call-governance]", async () => {
   let attempts = 0;
   const governance = new CallGovernance({
     retry: { maxAttempts: 3, baseDelayMs: 10, maxDelayMs: 50, backoffMultiplier: 2 },
@@ -366,7 +366,7 @@ test("CallGovernance.execute retries on retryable error", async () => {
   assert.equal(attempts, 2);
 });
 
-test("CallGovernance.execute does not retry non-retryable error", async () => {
+test("CallGovernance.execute does not retry non-retryable error [call-governance]", async () => {
   let attempts = 0;
   const governance = new CallGovernance({
     retry: { maxAttempts: 3, baseDelayMs: 10, maxDelayMs: 50, backoffMultiplier: 2 },
@@ -383,7 +383,7 @@ test("CallGovernance.execute does not retry non-retryable error", async () => {
   assert.equal(attempts, 1);
 });
 
-test("CallGovernance.getStats returns statistics", async () => {
+test("CallGovernance.getStats returns statistics [call-governance]", async () => {
   const governance = new CallGovernance({});
   await governance.execute("stats", async () => "result");
   const stats = governance.getStats("stats");
@@ -391,7 +391,7 @@ test("CallGovernance.getStats returns statistics", async () => {
   assert.equal(stats.successfulCalls, 1);
 });
 
-test("CallGovernance.reset clears all state", async () => {
+test("CallGovernance.reset clears all state [call-governance]", async () => {
   const governance = new CallGovernance({
     limiter: { maxCalls: 1, windowMs: 1000 },
   });
@@ -401,7 +401,7 @@ test("CallGovernance.reset clears all state", async () => {
   assert.equal(stats.totalCalls, 0);
 });
 
-test("CallGovernance.updatePolicy updates limiter config", async () => {
+test("CallGovernance.updatePolicy updates limiter config [call-governance]", async () => {
   const governance = new CallGovernance({
     limiter: { maxCalls: 1, windowMs: 1000 },
   });
@@ -411,7 +411,7 @@ test("CallGovernance.updatePolicy updates limiter config", async () => {
   assert.equal(result.success, true);
 });
 
-test("CallGovernance.execute handles distributed rate limiter", async () => {
+test("CallGovernance.execute handles distributed rate limiter [call-governance]", async () => {
   const mockDistributed = {
     checkAndConsume: async (_key: string) => ({ allowed: false, retryAfterMs: 100 }),
   };
@@ -421,7 +421,7 @@ test("CallGovernance.execute handles distributed rate limiter", async () => {
   assert.equal(result.error?.code, "governance.limiter_rejected");
 });
 
-test("CallGovernance records circuit state in metadata", async () => {
+test("CallGovernance records circuit state in metadata [call-governance]", async () => {
   const governance = new CallGovernance({
     breaker: { failureThreshold: 1, successThreshold: 2, resetTimeoutMs: 50000 },
   });

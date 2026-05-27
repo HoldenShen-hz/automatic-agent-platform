@@ -7,7 +7,7 @@ import { ValidationError } from "../../../../../src/platform/contracts/errors.js
 import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 
-test("createQueueAdapter throws for redis kind without config", () => {
+test("createQueueAdapter throws for redis kind without config [queue-adapter-factory]", () => {
   try {
     createQueueAdapter({ kind: "redis" });
     assert.fail("Expected ValidationError");
@@ -17,7 +17,7 @@ test("createQueueAdapter throws for redis kind without config", () => {
   }
 });
 
-test("createQueueAdapter throws for sqlite kind without db", () => {
+test("createQueueAdapter throws for sqlite kind without db [queue-adapter-factory]", () => {
   try {
     createQueueAdapter({ kind: "sqlite" });
     assert.fail("Expected ValidationError");
@@ -27,7 +27,7 @@ test("createQueueAdapter throws for sqlite kind without db", () => {
   }
 });
 
-test("createQueueAdapter creates adapter with valid redis config", () => {
+test("createQueueAdapter creates adapter with valid redis config [queue-adapter-factory]", () => {
   const adapter = createQueueAdapter({
     kind: "redis",
     redis: {
@@ -38,7 +38,7 @@ test("createQueueAdapter creates adapter with valid redis config", () => {
   assert.equal(adapter.backendKind, "redis");
 });
 
-test("createQueueAdapter accepts redis config with all options", () => {
+test("createQueueAdapter accepts redis config with all options [queue-adapter-factory]", () => {
   const adapter = createQueueAdapter({
     kind: "redis",
     redis: {
@@ -53,7 +53,7 @@ test("createQueueAdapter accepts redis config with all options", () => {
   assert.equal(adapter.backendKind, "redis");
 });
 
-test("createQueueAdapter accepts redis config with minimal options", () => {
+test("createQueueAdapter accepts redis config with minimal options [queue-adapter-factory]", () => {
   const adapter = createQueueAdapter({
     kind: "redis",
     redis: {
@@ -64,7 +64,7 @@ test("createQueueAdapter accepts redis config with minimal options", () => {
   assert.equal(adapter.backendKind, "redis");
 });
 
-test("createQueueAdapter creates sqlite adapter when database is provided", () => {
+test("createQueueAdapter creates sqlite adapter when database is provided [queue-adapter-factory]", () => {
   const workspace = createTempWorkspace("aa-queue-factory-");
   const db = new SqliteDatabase(join(workspace, "queue-factory.db"));
   try {

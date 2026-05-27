@@ -21,21 +21,21 @@ import {
 // Types and Schemas
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("PackTrustLevelSchema accepts valid trust levels", () => {
+test("PackTrustLevelSchema accepts valid trust levels [pack-security]", () => {
   const validLevels = ["untrusted", "community", "verified", "internal", "strategic"] as const;
   for (const level of validLevels) {
     assert.ok(true, `Accepted trust level: ${level}`);
   }
 });
 
-test("SecuritySeveritySchema accepts all severity levels", () => {
+test("SecuritySeveritySchema accepts all severity levels [pack-security]", () => {
   const validSeverities = ["critical", "high", "medium", "low", "info"] as const;
   for (const severity of validSeverities) {
     assert.ok(true, `Accepted severity: ${severity}`);
   }
 });
 
-test("SecurityIssueCategorySchema accepts all category values", () => {
+test("SecurityIssueCategorySchema accepts all category values [pack-security]", () => {
   const validCategories = [
     "sandbox_violation",
     "static_analysis",
@@ -54,11 +54,11 @@ test("SecurityIssueCategorySchema accepts all category values", () => {
 // Default Security Policies
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("DEFAULT_SECURITY_POLICIES contains three policies", () => {
+test("DEFAULT_SECURITY_POLICIES contains three policies [pack-security]", () => {
   assert.equal(DEFAULT_SECURITY_POLICIES.length, 3);
 });
 
-test("Strict policy requires verified trust level and blocks unverified", () => {
+test("Strict policy requires verified trust level and blocks unverified [pack-security]", () => {
   const strictPolicy = DEFAULT_SECURITY_POLICIES.find((p) => p.policyId === "default-strict");
   assert.ok(strictPolicy);
   assert.equal(strictPolicy.minTrustLevel, "verified");
@@ -69,7 +69,7 @@ test("Strict policy requires verified trust level and blocks unverified", () => 
   assert.equal(strictPolicy.criticalVulnerabilitiesBlockInstall, true);
 });
 
-test("Moderate policy allows community packs with moderate restrictions", () => {
+test("Moderate policy allows community packs with moderate restrictions [pack-security]", () => {
   const moderatePolicy = DEFAULT_SECURITY_POLICIES.find((p) => p.policyId === "default-moderate");
   assert.ok(moderatePolicy);
   assert.equal(moderatePolicy.minTrustLevel, "community");
@@ -78,7 +78,7 @@ test("Moderate policy allows community packs with moderate restrictions", () => 
   assert.equal(moderatePolicy.maxDependencyVulnerabilities, 5);
 });
 
-test("Permissive policy allows untrusted packs with high vulnerability tolerance", () => {
+test("Permissive policy allows untrusted packs with high vulnerability tolerance [pack-security]", () => {
   const permissivePolicy = DEFAULT_SECURITY_POLICIES.find((p) => p.policyId === "default-permissive");
   assert.ok(permissivePolicy);
   assert.equal(permissivePolicy.minTrustLevel, "untrusted");
@@ -90,7 +90,7 @@ test("Permissive policy allows untrusted packs with high vulnerability tolerance
 // Policy Evaluation
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("evaluatePackSecurityPolicy allows pack with verified trust and all verifications", () => {
+test("evaluatePackSecurityPolicy allows pack with verified trust and all verifications [pack-security]", () => {
   const policy = DEFAULT_SECURITY_POLICIES[0]!; // Strict policy
   const input: PackSecurityEvaluationInput = {
     packId: "test-pack",
@@ -111,7 +111,7 @@ test("evaluatePackSecurityPolicy allows pack with verified trust and all verific
   assert.equal(result.blockingReasons.length, 0);
 });
 
-test("evaluatePackSecurityPolicy blocks pack with trust level below minimum", () => {
+test("evaluatePackSecurityPolicy blocks pack with trust level below minimum [pack-security]", () => {
   const policy = DEFAULT_SECURITY_POLICIES[0]!; // Strict policy requires "verified"
   const input: PackSecurityEvaluationInput = {
     packId: "test-pack",
@@ -131,7 +131,7 @@ test("evaluatePackSecurityPolicy blocks pack with trust level below minimum", ()
   assert.ok(result.blockingReasons.some((r) => r.includes("Trust level")));
 });
 
-test("evaluatePackSecurityPolicy blocks when blockUnverified is true and verifications missing", () => {
+test("evaluatePackSecurityPolicy blocks when blockUnverified is true and verifications missing [pack-security]", () => {
   const policy = DEFAULT_SECURITY_POLICIES[0]!; // Strict policy
   const input: PackSecurityEvaluationInput = {
     packId: "test-pack",
@@ -151,7 +151,7 @@ test("evaluatePackSecurityPolicy blocks when blockUnverified is true and verific
   assert.ok(result.blockingReasons.length >= 4);
 });
 
-test("evaluatePackSecurityPolicy blocks when critical vulnerabilities exceed threshold", () => {
+test("evaluatePackSecurityPolicy blocks when critical vulnerabilities exceed threshold [pack-security]", () => {
   const policy = DEFAULT_SECURITY_POLICIES[0]!; // Strict policy
   const vulnerabilities: readonly PackCveVulnerability[] = [
     { cveId: "CVE-2024-0001", severity: "critical", description: "RCE vulnerability", affectedVersionRange: "<1.0.1" },
@@ -175,7 +175,7 @@ test("evaluatePackSecurityPolicy blocks when critical vulnerabilities exceed thr
   assert.ok(result.blockingReasons.some((r) => r.includes("critical vulnerabilities")));
 });
 
-test("evaluatePackSecurityPolicy warns when vulnerability count exceeds threshold but does not block", () => {
+test("evaluatePackSecurityPolicy warns when vulnerability count exceeds threshold but does not block [pack-security]", () => {
   const moderatePolicy = DEFAULT_SECURITY_POLICIES.find((p) => p.policyId === "default-moderate")!;
   const vulnerabilities: readonly PackCveVulnerability[] = [
     { cveId: "CVE-2024-0001", severity: "medium", description: "Info leak", affectedVersionRange: "<1.0.1" },
@@ -203,7 +203,7 @@ test("evaluatePackSecurityPolicy warns when vulnerability count exceeds threshol
   assert.ok(result.warnings.length > 0);
 });
 
-test("evaluatePackSecurityPolicy calculates risk score based on multiple factors", () => {
+test("evaluatePackSecurityPolicy calculates risk score based on multiple factors [pack-security]", () => {
   const policy = DEFAULT_SECURITY_POLICIES[0]!;
   const vulnerabilities: readonly PackCveVulnerability[] = [
     { cveId: "CVE-2024-0001", severity: "critical", description: "RCE", affectedVersionRange: "<1.0.1" },
@@ -227,7 +227,7 @@ test("evaluatePackSecurityPolicy calculates risk score based on multiple factors
   assert.ok(result.confidence < 0.5, "Untrusted pack should have low confidence");
 });
 
-test("evaluatePackSecurityPolicy returns correct policyId in result", () => {
+test("evaluatePackSecurityPolicy returns correct policyId in result [pack-security]", () => {
   const policy = DEFAULT_SECURITY_POLICIES[1]!; // Moderate policy
   const input: PackSecurityEvaluationInput = {
     packId: "test-pack",
@@ -246,7 +246,7 @@ test("evaluatePackSecurityPolicy returns correct policyId in result", () => {
   assert.equal(result.policyId, "default-moderate");
 });
 
-test("evaluatePackSecurityPolicy includes evaluatedAt timestamp", () => {
+test("evaluatePackSecurityPolicy includes evaluatedAt timestamp [pack-security]", () => {
   const policy = DEFAULT_SECURITY_POLICIES[0]!;
   const input: PackSecurityEvaluationInput = {
     packId: "test-pack",
@@ -270,7 +270,7 @@ test("evaluatePackSecurityPolicy includes evaluatedAt timestamp", () => {
 // Security Report Generation
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("generatePackSecurityReport creates report with correct structure", () => {
+test("generatePackSecurityReport creates report with correct structure [pack-security]", () => {
   const scanResults: readonly PackSecurityScanResult[] = [];
   const evaluation = {
     allowed: true,
@@ -295,7 +295,7 @@ test("generatePackSecurityReport creates report with correct structure", () => {
   assert.ok(Array.isArray(report.recommendations));
 });
 
-test("generatePackSecurityReport counts vulnerabilities correctly", () => {
+test("generatePackSecurityReport counts vulnerabilities correctly [pack-security]", () => {
   const scanResults: readonly PackSecurityScanResult[] = [
     {
       scanId: "scan-1",
@@ -332,7 +332,7 @@ test("generatePackSecurityReport counts vulnerabilities correctly", () => {
   assert.equal(report.vulnerabilitySummary.low, 1);
 });
 
-test("generatePackSecurityReport includes recommendations based on evaluation", () => {
+test("generatePackSecurityReport includes recommendations based on evaluation [pack-security]", () => {
   const scanResults: readonly PackSecurityScanResult[] = [];
   const evaluation = {
     allowed: false,
@@ -351,7 +351,7 @@ test("generatePackSecurityReport includes recommendations based on evaluation", 
   assert.ok(report.recommendations.some((r) => r.includes("blocking")));
 });
 
-test("generatePackSecurityReport trustEvaluation reflects evaluation result", () => {
+test("generatePackSecurityReport trustEvaluation reflects evaluation result [pack-security]", () => {
   const scanResults: readonly PackSecurityScanResult[] = [];
   const evaluation = {
     allowed: true,
@@ -372,7 +372,7 @@ test("generatePackSecurityReport trustEvaluation reflects evaluation result", ()
   assert.equal(report.trustEvaluation.version, "1.0.0");
 });
 
-test("generatePackSecurityReport with empty scan results works correctly", () => {
+test("generatePackSecurityReport with empty scan results works correctly [pack-security]", () => {
   const scanResults: readonly PackSecurityScanResult[] = [];
   const evaluation = {
     allowed: true,
@@ -398,7 +398,7 @@ test("generatePackSecurityReport with empty scan results works correctly", () =>
 // Edge Cases
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("evaluatePackSecurityPolicy handles empty vulnerability list", () => {
+test("evaluatePackSecurityPolicy handles empty vulnerability list [pack-security]", () => {
   const policy = DEFAULT_SECURITY_POLICIES[0]!;
   const input: PackSecurityEvaluationInput = {
     packId: "test-pack",
@@ -418,7 +418,7 @@ test("evaluatePackSecurityPolicy handles empty vulnerability list", () => {
   assert.equal(result.riskScore, 20); // Base score for verified trust
 });
 
-test("evaluatePackSecurityPolicy handles internal trust level with minimum strict", () => {
+test("evaluatePackSecurityPolicy handles internal trust level with minimum strict [pack-security]", () => {
   const policy = DEFAULT_SECURITY_POLICIES[0]!;
   const input: PackSecurityEvaluationInput = {
     packId: "internal-pack",
@@ -438,7 +438,7 @@ test("evaluatePackSecurityPolicy handles internal trust level with minimum stric
   assert.ok(result.riskScore < 20); // Internal should have lower risk than verified
 });
 
-test("evaluatePackSecurityPolicy handles strategic trust level", () => {
+test("evaluatePackSecurityPolicy handles strategic trust level [pack-security]", () => {
   const policy = DEFAULT_SECURITY_POLICIES[0]!;
   const input: PackSecurityEvaluationInput = {
     packId: "strategic-pack",
@@ -459,7 +459,7 @@ test("evaluatePackSecurityPolicy handles strategic trust level", () => {
   assert.ok(result.confidence >= 0.89);
 });
 
-test("evaluatePackSecurityPolicy warns when approaching but not exceeding max vulnerabilities", () => {
+test("evaluatePackSecurityPolicy warns when approaching but not exceeding max vulnerabilities [pack-security]", () => {
   const policy = DEFAULT_SECURITY_POLICIES.find((p) => p.policyId === "default-moderate")!;
   const vulnerabilities: readonly PackCveVulnerability[] = [
     { cveId: "CVE-2024-0001", severity: "low", description: "Minor", affectedVersionRange: "<1.0.1" },
@@ -486,7 +486,7 @@ test("evaluatePackSecurityPolicy warns when approaching but not exceeding max vu
   assert.ok(!result.warnings.some((w) => w.includes("vulnerabilities")));
 });
 
-test("generatePackSecurityReport handles multiple scan results", () => {
+test("generatePackSecurityReport handles multiple scan results [pack-security]", () => {
   const scanResults: readonly PackSecurityScanResult[] = [
     {
       scanId: "scan-1",

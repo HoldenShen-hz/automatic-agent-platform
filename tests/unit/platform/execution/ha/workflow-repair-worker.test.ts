@@ -21,7 +21,7 @@ function createMockRepairService() {
   };
 }
 
-test("WorkflowRepairWorker returns correct workerId", () => {
+test("WorkflowRepairWorker returns correct workerId [workflow-repair-worker]", () => {
   const worker = new WorkflowRepairWorker({
     checker: createMockStartupConsistencyChecker(),
     repairService: createMockRepairService(),
@@ -31,7 +31,7 @@ test("WorkflowRepairWorker returns correct workerId", () => {
   assert.equal(worker.getWorkerId(), "test-repair-worker");
 });
 
-test("WorkflowRepairWorker returns default workerId when not provided", () => {
+test("WorkflowRepairWorker returns default workerId when not provided [workflow-repair-worker]", () => {
   const worker = new WorkflowRepairWorker({
     checker: createMockStartupConsistencyChecker(),
     repairService: createMockRepairService(),
@@ -40,7 +40,7 @@ test("WorkflowRepairWorker returns default workerId when not provided", () => {
   assert.equal(worker.getWorkerId(), "workflow-repair-worker");
 });
 
-test("WorkflowRepairWorker returns recovery cadence", () => {
+test("WorkflowRepairWorker returns recovery cadence [workflow-repair-worker]", () => {
   const worker = new WorkflowRepairWorker({
     checker: createMockStartupConsistencyChecker(),
     repairService: createMockRepairService(),
@@ -54,7 +54,7 @@ test("WorkflowRepairWorker returns recovery cadence", () => {
   assert.equal(cadence.priority, "high");
 });
 
-test("WorkflowRepairWorker uses default cadence when not provided", () => {
+test("WorkflowRepairWorker uses default cadence when not provided [workflow-repair-worker]", () => {
   const worker = new WorkflowRepairWorker({
     checker: createMockStartupConsistencyChecker(),
     repairService: createMockRepairService(),
@@ -67,7 +67,7 @@ test("WorkflowRepairWorker uses default cadence when not provided", () => {
   assert.equal(cadence.priority, "high");
 });
 
-test("WorkflowRepairWorker runRecoveryCycle returns successful report", async () => {
+test("WorkflowRepairWorker runRecoveryCycle returns successful report [workflow-repair-worker]", async () => {
   const checker = createMockStartupConsistencyChecker();
   const repairService = createMockRepairService();
   const now = "2024-06-01T12:00:00.000Z";
@@ -88,7 +88,7 @@ test("WorkflowRepairWorker runRecoveryCycle returns successful report", async ()
   assert.deepEqual(report.errors, []);
 });
 
-test("WorkflowRepairWorker runRecoveryCycle processes repair actions", async () => {
+test("WorkflowRepairWorker runRecoveryCycle processes repair actions [workflow-repair-worker]", async () => {
   const checker = {
     run: () => ({
       status: "inconsistent" as const,
@@ -119,7 +119,7 @@ test("WorkflowRepairWorker runRecoveryCycle processes repair actions", async () 
   assert.equal(report.metadata.findingCount, 1);
 });
 
-test("WorkflowRepairWorker runRecoveryCycle handles repair failures", async () => {
+test("WorkflowRepairWorker runRecoveryCycle handles repair failures [workflow-repair-worker]", async () => {
   const checker = {
     run: () => ({
       status: "inconsistent" as const,
@@ -150,7 +150,7 @@ test("WorkflowRepairWorker runRecoveryCycle handles repair failures", async () =
   assert.equal(report.errors[0]!.code, "workflow_repair.restore_checkpoint");
 });
 
-test("WorkflowRepairWorker runRecoveryCycle handles checker errors", async () => {
+test("WorkflowRepairWorker runRecoveryCycle handles checker errors [workflow-repair-worker]", async () => {
   const checker = {
     run: () => {
       throw new Error("Checker failed");
@@ -174,7 +174,7 @@ test("WorkflowRepairWorker runRecoveryCycle handles checker errors", async () =>
   assert.equal(report.errors[0]!.message, "Checker failed");
 });
 
-test("WorkflowRepairWorker reports include completedAt and duration", async () => {
+test("WorkflowRepairWorker reports include completedAt and duration [workflow-repair-worker]", async () => {
   const checker = createMockStartupConsistencyChecker();
   const repairService = createMockRepairService();
   let callCount = 0;

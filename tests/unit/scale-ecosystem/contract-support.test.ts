@@ -23,7 +23,7 @@ import {
   parseFeedbackSignal,
 } from "../../../src/platform/five-plane-orchestration/oapeflir/types/feedback-signal.js";
 
-test("scale-ecosystem support modules provide contract-aligned helpers", () => {
+test("scale-ecosystem support modules provide contract-aligned helpers [contract-support]", () => {
   assert.deepEqual(
     analyzeFeedbackSignals([
       parseFeedbackSignal({

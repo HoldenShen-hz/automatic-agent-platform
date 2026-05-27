@@ -56,7 +56,7 @@ function createHeartbeat(overrides: Partial<WorkerRegistryHeartbeatInput> = {}):
 // recordHeartbeat tests
 // ---------------------------------------------------------------------------
 
-test("recordHeartbeat creates new worker snapshot on first heartbeat", () => {
+test("recordHeartbeat creates new worker snapshot on first heartbeat [worker-pool]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -70,7 +70,7 @@ test("recordHeartbeat creates new worker snapshot on first heartbeat", () => {
   assert.equal(view.availableSlots, 4);
 });
 
-test("recordHeartbeat updates existing worker snapshot", () => {
+test("recordHeartbeat updates existing worker snapshot [worker-pool]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -80,7 +80,7 @@ test("recordHeartbeat updates existing worker snapshot", () => {
   assert.equal(view.status, "busy");
 });
 
-test("recordHeartbeat preserves telemetry when not provided", () => {
+test("recordHeartbeat preserves telemetry when not provided [worker-pool]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -100,7 +100,7 @@ test("recordHeartbeat preserves telemetry when not provided", () => {
   assert.equal(view.memoryMb, 1024);
 });
 
-test("recordHeartbeat updates telemetry when explicitly provided", () => {
+test("recordHeartbeat updates telemetry when explicitly provided [worker-pool]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -120,7 +120,7 @@ test("recordHeartbeat updates telemetry when explicitly provided", () => {
   assert.equal(view.memoryMb, 2048);
 });
 
-test("recordHeartbeat computes availableSlots correctly", () => {
+test("recordHeartbeat computes availableSlots correctly [worker-pool]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -133,7 +133,7 @@ test("recordHeartbeat computes availableSlots correctly", () => {
   assert.equal(view.availableSlots, 5);
 });
 
-test("recordHeartbeat availableSlots cannot go negative", () => {
+test("recordHeartbeat availableSlots cannot go negative [worker-pool]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -146,7 +146,7 @@ test("recordHeartbeat availableSlots cannot go negative", () => {
   assert.equal(view.availableSlots, 0);
 });
 
-test("recordHeartbeat normalizes capabilities array", () => {
+test("recordHeartbeat normalizes capabilities array [worker-pool]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -158,7 +158,7 @@ test("recordHeartbeat normalizes capabilities array", () => {
   assert.deepEqual(view.capabilities, ["bash", "edit", "read"]);
 });
 
-test("recordHeartbeat sets remoteSessionStatus to null for local placement", () => {
+test("recordHeartbeat sets remoteSessionStatus to null for local placement [worker-pool]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -171,7 +171,7 @@ test("recordHeartbeat sets remoteSessionStatus to null for local placement", () 
   assert.equal(view.remoteSessionStatus, null);
 });
 
-test("recordHeartbeat preserves remoteSessionStatus for remote placement", () => {
+test("recordHeartbeat preserves remoteSessionStatus for remote placement [worker-pool]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -185,7 +185,7 @@ test("recordHeartbeat preserves remoteSessionStatus for remote placement", () =>
   assert.equal(view.remoteSessionStatus, "connected");
 });
 
-test("recordHeartbeat marks remote worker as trusted only with registrationVerifiedAt", () => {
+test("recordHeartbeat marks remote worker as trusted only with registrationVerifiedAt [worker-pool]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -203,7 +203,7 @@ test("recordHeartbeat marks remote worker as trusted only with registrationVerif
   assert.equal(trustedView.trusted, true);
 });
 
-test("recordHeartbeat increments restartGeneration when runtimeInstanceId changes", () => {
+test("recordHeartbeat increments restartGeneration when runtimeInstanceId changes [worker-pool]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -223,7 +223,7 @@ test("recordHeartbeat increments restartGeneration when runtimeInstanceId change
   assert.equal(afterRestart.restartedFromRuntimeInstanceId, "instance-a");
 });
 
-test("recordHeartbeat normalizes saturation to [0, 1] range", () => {
+test("recordHeartbeat normalizes saturation to [0, 1] range [worker-pool]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -240,7 +240,7 @@ test("recordHeartbeat normalizes saturation to [0, 1] range", () => {
   assert.equal(view2.saturation, 0);
 });
 
-test("recordHeartbeat updates lastProgressAt only when progressMessage provided", () => {
+test("recordHeartbeat updates lastProgressAt only when progressMessage provided [worker-pool]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -262,7 +262,7 @@ test("recordHeartbeat updates lastProgressAt only when progressMessage provided"
 // getWorker tests
 // ---------------------------------------------------------------------------
 
-test("getWorker returns null for non-existent worker", () => {
+test("getWorker returns null for non-existent worker [worker-pool]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -270,7 +270,7 @@ test("getWorker returns null for non-existent worker", () => {
   assert.equal(worker, null);
 });
 
-test("getWorker returns worker by ID", () => {
+test("getWorker returns worker by ID [worker-pool]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -281,7 +281,7 @@ test("getWorker returns worker by ID", () => {
   assert.equal(worker!.workerId, "worker-1");
 });
 
-test("getWorker returns null after worker is removed", () => {
+test("getWorker returns null after worker is removed [worker-pool]", () => {
   const workers = new Map<string, WorkerSnapshotRecord>();
   const store = createMockStore(workers);
   const service = new WorkerRegistryService(store);
@@ -299,7 +299,7 @@ test("getWorker returns null after worker is removed", () => {
 // listWorkers tests
 // ---------------------------------------------------------------------------
 
-test("listWorkers returns empty array when no workers registered", () => {
+test("listWorkers returns empty array when no workers registered [worker-pool]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -307,7 +307,7 @@ test("listWorkers returns empty array when no workers registered", () => {
   assert.deepEqual(workers, []);
 });
 
-test("listWorkers returns all registered workers", () => {
+test("listWorkers returns all registered workers [worker-pool]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -325,7 +325,7 @@ test("listWorkers returns all registered workers", () => {
 // listEligibleWorkers tests
 // ---------------------------------------------------------------------------
 
-test("listEligibleWorkers excludes unavailable workers", () => {
+test("listEligibleWorkers excludes unavailable workers [worker-pool]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -339,7 +339,7 @@ test("listEligibleWorkers excludes unavailable workers", () => {
   assert.ok(!ids.includes("worker-unavailable"));
 });
 
-test("listEligibleWorkers excludes draining workers", () => {
+test("listEligibleWorkers excludes draining workers [worker-pool]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -353,7 +353,7 @@ test("listEligibleWorkers excludes draining workers", () => {
   assert.ok(!ids.includes("worker-draining"));
 });
 
-test("listEligibleWorkers excludes quarantined workers", () => {
+test("listEligibleWorkers excludes quarantined workers [worker-pool]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -366,7 +366,7 @@ test("listEligibleWorkers excludes quarantined workers", () => {
   assert.ok(!ids.includes("worker-quarantined"));
 });
 
-test("listEligibleWorkers excludes offline workers", () => {
+test("listEligibleWorkers excludes offline workers [worker-pool]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -379,7 +379,7 @@ test("listEligibleWorkers excludes offline workers", () => {
   assert.ok(!ids.includes("worker-offline"));
 });
 
-test("listEligibleWorkers excludes degraded workers by default", () => {
+test("listEligibleWorkers excludes degraded workers by default [worker-pool]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -393,7 +393,7 @@ test("listEligibleWorkers excludes degraded workers by default", () => {
   assert.ok(ids.includes("worker-idle"));
 });
 
-test("listEligibleWorkers includes degraded workers when includeDegraded is true", () => {
+test("listEligibleWorkers includes degraded workers when includeDegraded is true [worker-pool]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -407,7 +407,7 @@ test("listEligibleWorkers includes degraded workers when includeDegraded is true
   assert.ok(ids.includes("worker-idle"));
 });
 
-test("listEligibleWorkers excludes workers at capacity", () => {
+test("listEligibleWorkers excludes workers at capacity [worker-pool]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -429,7 +429,7 @@ test("listEligibleWorkers excludes workers at capacity", () => {
   assert.ok(ids.includes("worker-available"));
 });
 
-test("listEligibleWorkers filters by requiredCapabilities", () => {
+test("listEligibleWorkers filters by requiredCapabilities [worker-pool]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -442,7 +442,7 @@ test("listEligibleWorkers filters by requiredCapabilities", () => {
   assert.equal(eligible[0]!.workerId, "worker-all");
 });
 
-test("listEligibleWorkers includes worker with no queue affinity for any queue filter", () => {
+test("listEligibleWorkers includes worker with no queue affinity for any queue filter [worker-pool]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -456,7 +456,7 @@ test("listEligibleWorkers includes worker with no queue affinity for any queue f
   assert.ok(ids.includes("worker-queue-x"));
 });
 
-test("listEligibleWorkers excludes worker with mismatched queue affinity", () => {
+test("listEligibleWorkers excludes worker with mismatched queue affinity [worker-pool]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -470,7 +470,7 @@ test("listEligibleWorkers excludes worker with mismatched queue affinity", () =>
   assert.ok(ids.includes("worker-queue-x"));
 });
 
-test("listEligibleWorkers filters by isolation level", () => {
+test("listEligibleWorkers filters by isolation level [worker-pool]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -486,7 +486,7 @@ test("listEligibleWorkers filters by isolation level", () => {
   assert.ok(ids.includes("worker-strict")); // strict >= hardened
 });
 
-test("listEligibleWorkers includes idle and busy workers", () => {
+test("listEligibleWorkers includes idle and busy workers [worker-pool]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -500,7 +500,7 @@ test("listEligibleWorkers includes idle and busy workers", () => {
   assert.ok(ids.includes("worker-busy"));
 });
 
-test("listEligibleWorkers excludes untrusted remote workers", () => {
+test("listEligibleWorkers excludes untrusted remote workers [worker-pool]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -533,7 +533,7 @@ test("listEligibleWorkers excludes untrusted remote workers", () => {
 // listStaleWorkers tests
 // ---------------------------------------------------------------------------
 
-test("listStaleWorkers returns workers older than cutoff", () => {
+test("listStaleWorkers returns workers older than cutoff [worker-pool]", () => {
   const workers = new Map<string, WorkerSnapshotRecord>();
   const store = createMockStore(workers);
   const service = new WorkerRegistryService(store);
@@ -592,7 +592,7 @@ test("listStaleWorkers returns workers older than cutoff", () => {
 // verifyRemoteWorkerRegistration tests
 // ---------------------------------------------------------------------------
 
-test("verifyRemoteWorkerRegistration creates remote worker with trusted status", () => {
+test("verifyRemoteWorkerRegistration creates remote worker with trusted status [worker-pool]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -611,7 +611,7 @@ test("verifyRemoteWorkerRegistration creates remote worker with trusted status",
   assert.equal(view.maxConcurrency, 4);
 });
 
-test("verifyRemoteWorkerRegistration updates existing worker", () => {
+test("verifyRemoteWorkerRegistration updates existing worker [worker-pool]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -634,7 +634,7 @@ test("verifyRemoteWorkerRegistration updates existing worker", () => {
   assert.deepEqual(view.capabilities, ["bash", "edit"]);
 });
 
-test("verifyRemoteWorkerRegistration sets registrationVerifiedAt to occurredAt if not provided", () => {
+test("verifyRemoteWorkerRegistration sets registrationVerifiedAt to occurredAt if not provided [worker-pool]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -652,7 +652,7 @@ test("verifyRemoteWorkerRegistration sets registrationVerifiedAt to occurredAt i
   assert.ok(view.registrationVerifiedAt <= after);
 });
 
-test("verifyRemoteWorkerRegistration preserves existing remote session status", () => {
+test("verifyRemoteWorkerRegistration preserves existing remote session status [worker-pool]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -677,7 +677,7 @@ test("verifyRemoteWorkerRegistration preserves existing remote session status", 
 // Edge cases and integration scenarios
 // ---------------------------------------------------------------------------
 
-test("multiple heartbeats with same workerId updates existing record", () => {
+test("multiple heartbeats with same workerId updates existing record [worker-pool]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -700,7 +700,7 @@ test("multiple heartbeats with same workerId updates existing record", () => {
   assert.equal(worker.availableSlots, 3);
 });
 
-test("worker with zero maxConcurrency has zero capacity", () => {
+test("worker with zero maxConcurrency has zero capacity [worker-pool]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -713,7 +713,7 @@ test("worker with zero maxConcurrency has zero capacity", () => {
   assert.equal(view.availableSlots, 0);
 });
 
-test("worker isolation level defaults to standard", () => {
+test("worker isolation level defaults to standard [worker-pool]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -725,7 +725,7 @@ test("worker isolation level defaults to standard", () => {
   assert.equal(view.isolationLevel, "standard");
 });
 
-test("strict isolation satisfies hardened requirement", () => {
+test("strict isolation satisfies hardened requirement [worker-pool]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -739,7 +739,7 @@ test("strict isolation satisfies hardened requirement", () => {
   assert.equal(eligible[0]!.workerId, "worker-strict");
 });
 
-test("empty capabilities array is valid", () => {
+test("empty capabilities array is valid [worker-pool]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -751,7 +751,7 @@ test("empty capabilities array is valid", () => {
   assert.deepEqual(view.capabilities, []);
 });
 
-test("worker scheduling status maps correctly", () => {
+test("worker scheduling status maps correctly [worker-pool]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -766,7 +766,7 @@ test("worker scheduling status maps correctly", () => {
   assert.equal(service.getWorker("w-draining")!.schedulingStatus, "draining");
 });
 
-test("heartbeat with occurredAt uses provided timestamp", () => {
+test("heartbeat with occurredAt uses provided timestamp [worker-pool]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -779,7 +779,7 @@ test("heartbeat with occurredAt uses provided timestamp", () => {
   assert.equal(view.lastHeartbeatAt, customTime);
 });
 
-test("activeLeaseCount defaults to 0", () => {
+test("activeLeaseCount defaults to 0 [worker-pool]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -791,7 +791,7 @@ test("activeLeaseCount defaults to 0", () => {
   assert.equal(view.activeLeaseCount, 0);
 });
 
-test("toolBacklogCount defaults to 0", () => {
+test("toolBacklogCount defaults to 0 [worker-pool]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -803,7 +803,7 @@ test("toolBacklogCount defaults to 0", () => {
   assert.equal(view.toolBacklogCount, 0);
 });
 
-test("runtimeInstanceId preserved on heartbeat without restart", () => {
+test("runtimeInstanceId preserved on heartbeat without restart [worker-pool]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -823,7 +823,7 @@ test("runtimeInstanceId preserved on heartbeat without restart", () => {
   assert.equal(worker.runtimeInstanceId, "instance-1");
 });
 
-test("worker placement defaults to local", () => {
+test("worker placement defaults to local [worker-pool]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -835,7 +835,7 @@ test("worker placement defaults to local", () => {
   assert.equal(view.placement, "local");
 });
 
-test("requiredCapabilities returns empty array when not specified", () => {
+test("requiredCapabilities returns empty array when not specified [worker-pool]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -845,7 +845,7 @@ test("requiredCapabilities returns empty array when not specified", () => {
   assert.equal(eligible.length, 1);
 });
 
-test("queueAffinity filter with null matches workers with no affinity", () => {
+test("queueAffinity filter with null matches workers with no affinity [worker-pool]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -855,7 +855,7 @@ test("queueAffinity filter with null matches workers with no affinity", () => {
   assert.equal(eligible.length, 1);
 });
 
-test("saturation null is handled correctly in computation", () => {
+test("saturation null is handled correctly in computation [worker-pool]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -867,7 +867,7 @@ test("saturation null is handled correctly in computation", () => {
   assert.equal(view.saturation, null);
 });
 
-test("meanStartupLatencyMs null is preserved", () => {
+test("meanStartupLatencyMs null is preserved [worker-pool]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -879,7 +879,7 @@ test("meanStartupLatencyMs null is preserved", () => {
   assert.equal(view.meanStartupLatencyMs, null);
 });
 
-test("sandboxSuccessRate normalized correctly", () => {
+test("sandboxSuccessRate normalized correctly [worker-pool]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -891,7 +891,7 @@ test("sandboxSuccessRate normalized correctly", () => {
   assert.equal(view.sandboxSuccessRate, 0.95);
 });
 
-test("repoCacheHitRate null for local placement", () => {
+test("repoCacheHitRate null for local placement [worker-pool]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 
@@ -904,7 +904,7 @@ test("repoCacheHitRate null for local placement", () => {
   assert.equal(view.repoCacheHitRate, null);
 });
 
-test("repoCacheHitRate preserved for remote placement", () => {
+test("repoCacheHitRate preserved for remote placement [worker-pool]", () => {
   const store = createMockStore();
   const service = new WorkerRegistryService(store);
 

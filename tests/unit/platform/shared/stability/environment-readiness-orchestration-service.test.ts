@@ -43,7 +43,7 @@ function seedBaseline(service: EnvironmentReadinessOrchestrationService): void {
   });
 }
 
-test("EnvironmentReadinessOrchestrationService summarizes ready and stale components", () => {
+test("EnvironmentReadinessOrchestrationService summarizes ready and stale components [environment-readiness-orchestration-service]", () => {
   const service = new EnvironmentReadinessOrchestrationService();
   seedBaseline(service);
   service.upsertReadiness({
@@ -69,7 +69,7 @@ test("EnvironmentReadinessOrchestrationService summarizes ready and stale compon
   assert.equal(gateway?.allReady, false);
 });
 
-test("EnvironmentReadinessOrchestrationService blocks production promotion when failover and SLO coverage are missing", () => {
+test("EnvironmentReadinessOrchestrationService blocks production promotion when failover and SLO coverage are missing [environment-readiness-orchestration-service]", () => {
   const service = new EnvironmentReadinessOrchestrationService();
   seedBaseline(service);
   service.upsertReadiness({
@@ -132,7 +132,7 @@ test("EnvironmentReadinessOrchestrationService blocks production promotion when 
   assert.equal(report.currentStatus, "contract_frozen");
 });
 
-test("EnvironmentReadinessOrchestrationService approves tenant gray when readiness, drills, SLOs, and pools align", () => {
+test("EnvironmentReadinessOrchestrationService approves tenant gray when readiness, drills, SLOs, and pools align [environment-readiness-orchestration-service]", () => {
   const service = new EnvironmentReadinessOrchestrationService();
   seedBaseline(service);
   service.upsertReadiness({

@@ -33,13 +33,13 @@ import type {
   UsageEventRecord,
 } from "../../../../src/platform/contracts/types/domain.js";
 
-test("BillingServiceOptions can be created with minimal config", () => {
+test("BillingServiceOptions can be created with minimal config [types]", () => {
   const options: BillingServiceOptions = {};
   assert.ok(options !== null);
   assert.ok(options !== undefined);
 });
 
-test("BillingServiceOptions accepts artifactStoreOptions", () => {
+test("BillingServiceOptions accepts artifactStoreOptions [types]", () => {
   const options: BillingServiceOptions = {
     artifactStoreOptions: {
       basePath: "/tmp/artifacts",
@@ -49,7 +49,7 @@ test("BillingServiceOptions accepts artifactStoreOptions", () => {
   assert.equal(options.artifactStoreOptions.basePath, "/tmp/artifacts");
 });
 
-test("BillingServiceOptions accepts planCatalog", () => {
+test("BillingServiceOptions accepts planCatalog [types]", () => {
   const options: BillingServiceOptions = {
     planCatalog: {
       plan_basic: {
@@ -65,7 +65,7 @@ test("BillingServiceOptions accepts planCatalog", () => {
   assert.ok(options.planCatalog["plan_basic"]);
 });
 
-test("BillingServiceOptions accepts paymentGateway", () => {
+test("BillingServiceOptions accepts paymentGateway [types]", () => {
   const mockGateway = {
     kind: "stripe" as const,
     createCheckoutSession: () => ({
@@ -82,7 +82,7 @@ test("BillingServiceOptions accepts paymentGateway", () => {
   assert.equal(options.paymentGateway.kind, "stripe");
 });
 
-test("CreateBillingAccountInput minimal fields", () => {
+test("CreateBillingAccountInput minimal fields [types]", () => {
   const input: CreateBillingAccountInput = {
     ownerId: "owner_123",
     planId: "plan_basic",
@@ -93,7 +93,7 @@ test("CreateBillingAccountInput minimal fields", () => {
   assert.equal(input.status, undefined);
 });
 
-test("CreateBillingAccountInput with all fields", () => {
+test("CreateBillingAccountInput with all fields [types]", () => {
   const input: CreateBillingAccountInput = {
     accountId: "acct_custom",
     ownerId: "owner_456",
@@ -110,7 +110,7 @@ test("CreateBillingAccountInput with all fields", () => {
   assert.equal(input.createdAt, "2024-01-15T10:00:00.000Z");
 });
 
-test("EvaluateEntitlementInput minimal fields", () => {
+test("EvaluateEntitlementInput minimal fields [types]", () => {
   const input: EvaluateEntitlementInput = {
     accountId: "acct_ent",
     featureKey: "feature_ai",
@@ -121,7 +121,7 @@ test("EvaluateEntitlementInput minimal fields", () => {
   assert.equal(input.requestedQuantity, undefined);
 });
 
-test("EvaluateEntitlementInput with all fields", () => {
+test("EvaluateEntitlementInput with all fields [types]", () => {
   const input: EvaluateEntitlementInput = {
     accountId: "acct_ent2",
     featureKey: "feature_pro",
@@ -136,7 +136,7 @@ test("EvaluateEntitlementInput with all fields", () => {
   assert.equal(input.evaluatedAt, "2024-02-20T15:30:00.000Z");
 });
 
-test("RecordUsageInput minimal fields", () => {
+test("RecordUsageInput minimal fields [types]", () => {
   const input: RecordUsageInput = {
     accountId: "acct_usage",
     metricType: "task_execution",
@@ -149,7 +149,7 @@ test("RecordUsageInput minimal fields", () => {
   assert.equal(input.source, "api");
 });
 
-test("RecordUsageInput with optional fields", () => {
+test("RecordUsageInput with optional fields [types]", () => {
   const input: RecordUsageInput = {
     accountId: "acct_usage2",
     subjectId: "subject_abc",
@@ -173,7 +173,7 @@ test("RecordUsageInput with optional fields", () => {
   assert.equal(input.capturedAt, "2024-03-01T08:00:00.000Z");
 });
 
-test("RecordUsageResult structure", () => {
+test("RecordUsageResult structure [types]", () => {
   const mockUsageEvent: UsageEventRecord = {
     usageId: "usage_001",
     accountId: "acct_result",
@@ -226,7 +226,7 @@ test("RecordUsageResult structure", () => {
   assert.equal(result.ledgerEntry.entryType, "usage_charge");
 });
 
-test("BillingAccountSummary structure", () => {
+test("BillingAccountSummary structure [types]", () => {
   const mockAccount: BillingAccountRecord = {
     accountId: "acct_summary",
     ownerId: "owner_summary",
@@ -279,7 +279,7 @@ test("BillingAccountSummary structure", () => {
   assert.equal(summary.quotas[0].remainingQuantity, 500);
 });
 
-test("CreateBillingInvoiceInput structure", () => {
+test("CreateBillingInvoiceInput structure [types]", () => {
   const input: CreateBillingInvoiceInput = {
     accountId: "acct_inv",
     tenantId: "tenant_inv",
@@ -295,7 +295,7 @@ test("CreateBillingInvoiceInput structure", () => {
   assert.equal(input.externalInvoiceRef, "EXT-INV-001");
 });
 
-test("CreateBillingCheckoutSessionInput structure", () => {
+test("CreateBillingCheckoutSessionInput structure [types]", () => {
   const input: CreateBillingCheckoutSessionInput = {
     invoiceId: "inv_checkout",
     tenantId: "tenant_checkout",
@@ -306,7 +306,7 @@ test("CreateBillingCheckoutSessionInput structure", () => {
   assert.equal(input.createdAt, "2024-03-20T10:00:00.000Z");
 });
 
-test("SettleBillingPaymentSessionInput structure", () => {
+test("SettleBillingPaymentSessionInput structure [types]", () => {
   const input: SettleBillingPaymentSessionInput = {
     sessionId: "session_settle",
     tenantId: "tenant_settle",
@@ -317,7 +317,7 @@ test("SettleBillingPaymentSessionInput structure", () => {
   assert.equal(input.settledAt, "2024-03-21T14:30:00.000Z");
 });
 
-test("ReconcileBillingPaymentSessionInput structure", () => {
+test("ReconcileBillingPaymentSessionInput structure [types]", () => {
   const input: ReconcileBillingPaymentSessionInput = {
     gatewayKind: "stripe",
     gatewaySessionRef: "cs_reconcile",
@@ -332,7 +332,7 @@ test("ReconcileBillingPaymentSessionInput structure", () => {
   assert.equal(input.failureCode, null);
 });
 
-test("ReconcilePendingPaymentSessionsInput structure", () => {
+test("ReconcilePendingPaymentSessionsInput structure [types]", () => {
   const input: ReconcilePendingPaymentSessionsInput = {
     tenantId: "tenant_pending",
     gatewayKind: "paddle",
@@ -344,7 +344,7 @@ test("ReconcilePendingPaymentSessionsInput structure", () => {
   assert.equal(input.limit, 100);
 });
 
-test("ReconcilePendingPaymentSessionsResult structure", () => {
+test("ReconcilePendingPaymentSessionsResult structure [types]", () => {
   const result: ReconcilePendingPaymentSessionsResult = {
     scannedCount: 10,
     reconciledCount: 8,
@@ -380,7 +380,7 @@ test("ReconcilePendingPaymentSessionsResult structure", () => {
   assert.equal(result.results[1].reason, "unchanged");
 });
 
-test("ExportBillingSummaryResult structure", () => {
+test("ExportBillingSummaryResult structure [types]", () => {
   const mockArtifactRef = {
     artifactId: "artifact_export_json",
     uri: "mem://test/export.json",

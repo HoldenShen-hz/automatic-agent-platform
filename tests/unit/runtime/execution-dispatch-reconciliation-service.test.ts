@@ -182,19 +182,19 @@ function createLease(
 // isTerminalExecutionStatus Tests
 // ============================================================================
 
-test("isTerminalExecutionStatus returns true for succeeded status", () => {
+test("isTerminalExecutionStatus returns true for succeeded status [execution-dispatch-reconciliation-service]", () => {
   // This is tested via the detect scenario
 });
 
-test("isTerminalExecutionStatus returns true for failed status", () => {
+test("isTerminalExecutionStatus returns true for failed status [execution-dispatch-reconciliation-service]", () => {
   // This is tested via the detect scenario
 });
 
-test("isTerminalExecutionStatus returns true for cancelled status", () => {
+test("isTerminalExecutionStatus returns true for cancelled status [execution-dispatch-reconciliation-service]", () => {
   // This is tested via the detect scenario
 });
 
-test("isTerminalExecutionStatus returns true for superseded status", () => {
+test("isTerminalExecutionStatus returns true for superseded status [execution-dispatch-reconciliation-service]", () => {
   // This is tested via the detect scenario
 });
 
@@ -202,7 +202,7 @@ test("isTerminalExecutionStatus returns true for superseded status", () => {
 // scanPaginated Tests
 // ============================================================================
 
-test("scanPaginated returns empty array when no tickets exist", () => {
+test("scanPaginated returns empty array when no tickets exist [execution-dispatch-reconciliation-service]", () => {
   const harness = createReconciliationServiceHarness();
   try {
     const issues = harness.service.scanPaginated(100);
@@ -212,7 +212,7 @@ test("scanPaginated returns empty array when no tickets exist", () => {
   }
 });
 
-test("scanPaginated returns empty array when all tickets are healthy", () => {
+test("scanPaginated returns empty array when all tickets are healthy [execution-dispatch-reconciliation-service]", () => {
   const harness = createReconciliationServiceHarness();
   try {
     const taskId = newId("task");
@@ -244,7 +244,7 @@ test("scanPaginated returns empty array when all tickets are healthy", () => {
   }
 });
 
-test("scanPaginated detects terminal execution ticket issue", () => {
+test("scanPaginated detects terminal execution ticket issue [execution-dispatch-reconciliation-service]", () => {
   const harness = createReconciliationServiceHarness();
   try {
     const taskId = newId("task");
@@ -277,7 +277,7 @@ test("scanPaginated detects terminal execution ticket issue", () => {
   }
 });
 
-test("scanPaginated detects missing active lease issue", () => {
+test("scanPaginated detects missing active lease issue [execution-dispatch-reconciliation-service]", () => {
   const harness = createReconciliationServiceHarness();
   try {
     const taskId = newId("task");
@@ -306,7 +306,7 @@ test("scanPaginated detects missing active lease issue", () => {
   }
 });
 
-test("scanPaginated detects expired lease issue", () => {
+test("scanPaginated detects expired lease issue [execution-dispatch-reconciliation-service]", () => {
   const harness = createReconciliationServiceHarness();
   try {
     const taskId = newId("task");
@@ -342,7 +342,7 @@ test("scanPaginated detects expired lease issue", () => {
   }
 });
 
-test("scanPaginated detects lease ticket mismatch issue", () => {
+test("scanPaginated detects lease ticket mismatch issue [execution-dispatch-reconciliation-service]", () => {
   const harness = createReconciliationServiceHarness();
   try {
     const taskId = newId("task");
@@ -379,7 +379,7 @@ test("scanPaginated detects lease ticket mismatch issue", () => {
   }
 });
 
-test("scanPaginated scans in pages while returning the full issue set", () => {
+test("scanPaginated scans in pages while returning the full issue set [execution-dispatch-reconciliation-service]", () => {
   const harness = createReconciliationServiceHarness();
   try {
     // Create multiple tickets with terminal executions
@@ -418,7 +418,7 @@ test("scanPaginated scans in pages while returning the full issue set", () => {
 // findIssueByTicketId Tests
 // ============================================================================
 
-test("findIssueByTicketId returns null for non-existent ticket", () => {
+test("findIssueByTicketId returns null for non-existent ticket [execution-dispatch-reconciliation-service]", () => {
   const harness = createReconciliationServiceHarness();
   try {
     const issue = harness.service.findIssueByTicketId("nonexistent-ticket");
@@ -428,7 +428,7 @@ test("findIssueByTicketId returns null for non-existent ticket", () => {
   }
 });
 
-test("findIssueByTicketId returns null for already processed ticket (not pending/claimed)", () => {
+test("findIssueByTicketId returns null for already processed ticket (not pending/claimed) [execution-dispatch-reconciliation-service]", () => {
   const harness = createReconciliationServiceHarness();
   try {
     const taskId = newId("task");
@@ -451,7 +451,7 @@ test("findIssueByTicketId returns null for already processed ticket (not pending
   }
 });
 
-test("findIssueByTicketId finds issue for valid ticket with terminal execution", () => {
+test("findIssueByTicketId finds issue for valid ticket with terminal execution [execution-dispatch-reconciliation-service]", () => {
   const harness = createReconciliationServiceHarness();
   try {
     const taskId = newId("task");
@@ -484,7 +484,7 @@ test("findIssueByTicketId finds issue for valid ticket with terminal execution",
 // repairTicket Tests
 // ============================================================================
 
-test("repairTicket returns null for non-existent ticket", () => {
+test("repairTicket returns null for non-existent ticket [execution-dispatch-reconciliation-service]", () => {
   const harness = createReconciliationServiceHarness();
   try {
     const result = harness.service.repairTicket("nonexistent-ticket");
@@ -494,7 +494,7 @@ test("repairTicket returns null for non-existent ticket", () => {
   }
 });
 
-test("repairTicket applies repair for terminal execution ticket", () => {
+test("repairTicket applies repair for terminal execution ticket [execution-dispatch-reconciliation-service]", () => {
   const harness = createReconciliationServiceHarness();
   try {
     const taskId = newId("task");
@@ -529,7 +529,7 @@ test("repairTicket applies repair for terminal execution ticket", () => {
   }
 });
 
-test("repairTicket requeues orphan queue claim with replacement ticket", () => {
+test("repairTicket requeues orphan queue claim with replacement ticket [execution-dispatch-reconciliation-service]", () => {
   const harness = createReconciliationServiceHarness();
   try {
     const taskId = newId("task");
@@ -572,7 +572,7 @@ test("repairTicket requeues orphan queue claim with replacement ticket", () => {
 // repair Tests
 // ============================================================================
 
-test("repair returns both issues and applied repairs", () => {
+test("repair returns both issues and applied repairs [execution-dispatch-reconciliation-service]", () => {
   const harness = createReconciliationServiceHarness();
   try {
     // Create two issues
@@ -608,7 +608,7 @@ test("repair returns both issues and applied repairs", () => {
 // Edge Cases
 // ============================================================================
 
-test("scanPaginated returns empty array after execution delete cascades ticket removal", () => {
+test("scanPaginated returns empty array after execution delete cascades ticket removal [execution-dispatch-reconciliation-service]", () => {
   const harness = createReconciliationServiceHarness();
   try {
     const taskId = newId("task");
@@ -636,7 +636,7 @@ test("scanPaginated returns empty array after execution delete cascades ticket r
   }
 });
 
-test("scanPaginated handles pending tickets (not claimed) without lease issues", () => {
+test("scanPaginated handles pending tickets (not claimed) without lease issues [execution-dispatch-reconciliation-service]", () => {
   const harness = createReconciliationServiceHarness();
   try {
     const taskId = newId("task");
@@ -661,7 +661,7 @@ test("scanPaginated handles pending tickets (not claimed) without lease issues",
   }
 });
 
-test("repairTicket does not apply repair when ticket no longer exists", () => {
+test("repairTicket does not apply repair when ticket no longer exists [execution-dispatch-reconciliation-service]", () => {
   const harness = createReconciliationServiceHarness();
   try {
     const taskId = newId("task");
@@ -693,7 +693,7 @@ test("repairTicket does not apply repair when ticket no longer exists", () => {
   }
 });
 
-test("repair emits reconciliation event", () => {
+test("repair emits reconciliation event [execution-dispatch-reconciliation-service]", () => {
   const harness = createReconciliationServiceHarness();
   try {
     const taskId = newId("task");

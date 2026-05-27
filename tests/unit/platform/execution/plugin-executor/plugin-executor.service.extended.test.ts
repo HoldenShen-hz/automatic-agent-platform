@@ -126,7 +126,7 @@ const createTestContext = (overrides: Partial<ExecutionContext> = {}): Execution
 // Lifecycle State Machine Extended Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("PluginExecutorService transitions through full lifecycle", async () => {
+test("PluginExecutorService transitions through full lifecycle [plugin-executor.service.extended]", async () => {
   const service = new PluginExecutorService();
   const manifest = createTestManifest();
   const hooks = createTestHooks();
@@ -152,7 +152,7 @@ test("PluginExecutorService transitions through full lifecycle", async () => {
   assert.equal(service.getState("test-plugin"), null);
 });
 
-test("PluginExecutorService deactivate from loaded state returns to loaded", async () => {
+test("PluginExecutorService deactivate from loaded state returns to loaded [plugin-executor.service.extended]", async () => {
   const service = new PluginExecutorService();
   const manifest = createTestManifest();
   const hooks = createTestHooks();
@@ -165,7 +165,7 @@ test("PluginExecutorService deactivate from loaded state returns to loaded", asy
   assert.equal(service.getState("test-plugin"), "loaded");
 });
 
-test("PluginExecutorService deactivate from active state returns to inactive", async () => {
+test("PluginExecutorService deactivate from active state returns to inactive [plugin-executor.service.extended]", async () => {
   const service = new PluginExecutorService();
   const manifest = createTestManifest();
   const hooks = createTestHooks();
@@ -179,7 +179,7 @@ test("PluginExecutorService deactivate from active state returns to inactive", a
   assert.equal(service.getState("test-plugin"), "inactive");
 });
 
-test("PluginExecutorService activate twice is idempotent for state", async () => {
+test("PluginExecutorService activate twice is idempotent for state [plugin-executor.service.extended]", async () => {
   const service = new PluginExecutorService();
   const manifest = createTestManifest();
   const hooks = createTestHooks();
@@ -196,7 +196,7 @@ test("PluginExecutorService activate twice is idempotent for state", async () =>
   assert.equal(state1, "active");
 });
 
-test("PluginExecutorService deactivate twice is idempotent for state", async () => {
+test("PluginExecutorService deactivate twice is idempotent for state [plugin-executor.service.extended]", async () => {
   const service = new PluginExecutorService();
   const manifest = createTestManifest();
   const hooks = createTestHooks();
@@ -214,7 +214,7 @@ test("PluginExecutorService deactivate twice is idempotent for state", async () 
   assert.equal(state1, "inactive");
 });
 
-test("PluginExecutorService deactivate does nothing for unregistered plugin", async () => {
+test("PluginExecutorService deactivate does nothing for unregistered plugin [plugin-executor.service.extended]", async () => {
   const service = new PluginExecutorService();
 
   // Should not throw
@@ -227,7 +227,7 @@ test("PluginExecutorService deactivate does nothing for unregistered plugin", as
 // Hooks Invocation Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("PluginExecutorService calls initialize hook during load", async () => {
+test("PluginExecutorService calls initialize hook during load [plugin-executor.service.extended]", async () => {
   const service = new PluginExecutorService();
   let initializeCalled = false;
 
@@ -243,7 +243,7 @@ test("PluginExecutorService calls initialize hook during load", async () => {
   assert.equal(initializeCalled, true);
 });
 
-test("PluginExecutorService calls onLoad hook during load", async () => {
+test("PluginExecutorService calls onLoad hook during load [plugin-executor.service.extended]", async () => {
   const service = new PluginExecutorService();
   let onLoadCalled = false;
 
@@ -259,7 +259,7 @@ test("PluginExecutorService calls onLoad hook during load", async () => {
   assert.equal(onLoadCalled, true);
 });
 
-test("PluginExecutorService calls onActivate hook during activate", async () => {
+test("PluginExecutorService calls onActivate hook during activate [plugin-executor.service.extended]", async () => {
   const service = new PluginExecutorService();
   let activateCalled = false;
 
@@ -275,7 +275,7 @@ test("PluginExecutorService calls onActivate hook during activate", async () => 
   assert.equal(activateCalled, true);
 });
 
-test("PluginExecutorService calls onDeactivate hook during deactivate", async () => {
+test("PluginExecutorService calls onDeactivate hook during deactivate [plugin-executor.service.extended]", async () => {
   const service = new PluginExecutorService();
   let deactivateCalled = false;
 
@@ -292,7 +292,7 @@ test("PluginExecutorService calls onDeactivate hook during deactivate", async ()
   assert.equal(deactivateCalled, true);
 });
 
-test("PluginExecutorService calls onUnload hook during unregister", async () => {
+test("PluginExecutorService calls onUnload hook during unregister [plugin-executor.service.extended]", async () => {
   const service = new PluginExecutorService();
   let unloadCalled = false;
 
@@ -307,7 +307,7 @@ test("PluginExecutorService calls onUnload hook during unregister", async () => 
   assert.equal(unloadCalled, true);
 });
 
-test("PluginExecutorService handles missing onUnload gracefully", async () => {
+test("PluginExecutorService handles missing onUnload gracefully [plugin-executor.service.extended]", async () => {
   const service = new PluginExecutorService();
 
   const manifest = createTestManifest();
@@ -321,7 +321,7 @@ test("PluginExecutorService handles missing onUnload gracefully", async () => {
   await service.unregister("test-plugin");
 });
 
-test("PluginExecutorService handles missing onLoad gracefully", async () => {
+test("PluginExecutorService handles missing onLoad gracefully [plugin-executor.service.extended]", async () => {
   const service = new PluginExecutorService();
 
   const manifest = createTestManifest();
@@ -336,7 +336,7 @@ test("PluginExecutorService handles missing onLoad gracefully", async () => {
   await service.load("test-plugin");
 });
 
-test("PluginExecutorService handles missing onActivate gracefully", async () => {
+test("PluginExecutorService handles missing onActivate gracefully [plugin-executor.service.extended]", async () => {
   const service = new PluginExecutorService();
 
   const manifest = createTestManifest();
@@ -351,7 +351,7 @@ test("PluginExecutorService handles missing onActivate gracefully", async () => 
   await service.activate("test-plugin");
 });
 
-test("PluginExecutorService handles missing onDeactivate gracefully", async () => {
+test("PluginExecutorService handles missing onDeactivate gracefully [plugin-executor.service.extended]", async () => {
   const service = new PluginExecutorService();
 
   const manifest = createTestManifest();
@@ -371,7 +371,7 @@ test("PluginExecutorService handles missing onDeactivate gracefully", async () =
 // Error Tracking Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("PluginExecutorService tracks error count on execution failure", async () => {
+test("PluginExecutorService tracks error count on execution failure [plugin-executor.service.extended]", async () => {
   const service = new PluginExecutorService();
 
   const manifest = createTestManifest({ spiTypes: ["retriever"] });
@@ -395,7 +395,7 @@ test("PluginExecutorService tracks error count on execution failure", async () =
   assert.equal(healthy, true); // Fallback threshold is 5 failures.
 });
 
-test("PluginExecutorService tracks last error message", async () => {
+test("PluginExecutorService tracks last error message [plugin-executor.service.extended]", async () => {
   const service = new PluginExecutorService();
 
   const manifest = createTestManifest({ spiTypes: ["retriever"] });
@@ -415,7 +415,7 @@ test("PluginExecutorService tracks last error message", async () => {
   assert.equal(healthy, true); // A single failure should not trip the fallback threshold.
 });
 
-test("PluginExecutorService healthCheck true when no errors", async () => {
+test("PluginExecutorService healthCheck true when no errors [plugin-executor.service.extended]", async () => {
   const service = new PluginExecutorService();
 
   const manifest = createTestManifest({ spiTypes: ["retriever"] });
@@ -432,7 +432,7 @@ test("PluginExecutorService healthCheck true when no errors", async () => {
   assert.equal(healthy, true);
 });
 
-test("PluginExecutorService healthCheck returns true when no healthCheck hook but low error count", async () => {
+test("PluginExecutorService healthCheck returns true when no healthCheck hook but low error count [plugin-executor.service.extended]", async () => {
   const service = new PluginExecutorService();
 
   const manifest = createTestManifest();
@@ -445,7 +445,7 @@ test("PluginExecutorService healthCheck returns true when no healthCheck hook bu
   assert.equal(healthy, true);
 });
 
-test("PluginExecutorService healthCheck uses custom healthCheck hook", async () => {
+test("PluginExecutorService healthCheck uses custom healthCheck hook [plugin-executor.service.extended]", async () => {
   const service = new PluginExecutorService();
 
   const manifest = createTestManifest();
@@ -463,21 +463,21 @@ test("PluginExecutorService healthCheck uses custom healthCheck hook", async () 
 // State Retrieval Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("PluginExecutorService getState returns null for unknown plugin", () => {
+test("PluginExecutorService getState returns null for unknown plugin [plugin-executor.service.extended]", () => {
   const service = new PluginExecutorService();
 
   const state = service.getState("nonexistent-plugin");
   assert.equal(state, null);
 });
 
-test("PluginExecutorService listPlugins returns empty initially", () => {
+test("PluginExecutorService listPlugins returns empty initially [plugin-executor.service.extended]", () => {
   const service = new PluginExecutorService();
 
   const plugins = service.listPlugins();
   assert.deepStrictEqual(plugins, []);
 });
 
-test("PluginExecutorService listPlugins returns all registered manifests", () => {
+test("PluginExecutorService listPlugins returns all registered manifests [plugin-executor.service.extended]", () => {
   const service = new PluginExecutorService();
 
   service.register(createTestManifest({ pluginId: "plugin-1" }), createTestHooks());
@@ -489,7 +489,7 @@ test("PluginExecutorService listPlugins returns all registered manifests", () =>
   assert.ok(plugins.some((p) => p.pluginId === "plugin-2"));
 });
 
-test("PluginExecutorService listPlugins returns copy not reference", () => {
+test("PluginExecutorService listPlugins returns copy not reference [plugin-executor.service.extended]", () => {
   const service = new PluginExecutorService();
 
   service.register(createTestManifest(), createTestHooks());
@@ -504,7 +504,7 @@ test("PluginExecutorService listPlugins returns copy not reference", () => {
 // Execution Extended Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("PluginExecutorService execute returns output from plugin action", async () => {
+test("PluginExecutorService execute returns output from plugin action [plugin-executor.service.extended]", async () => {
   const service = new PluginExecutorService();
 
   const manifest = createTestManifest({ spiTypes: ["retriever"] });
@@ -527,7 +527,7 @@ test("PluginExecutorService execute returns output from plugin action", async ()
   assert.equal(output.success, true);
 });
 
-test("PluginExecutorService execute includes pluginId in result", async () => {
+test("PluginExecutorService execute includes pluginId in result [plugin-executor.service.extended]", async () => {
   const service = new PluginExecutorService();
 
   const manifest = createTestManifest({ pluginId: "specific-plugin-id", spiTypes: ["retriever"] });
@@ -543,7 +543,7 @@ test("PluginExecutorService execute includes pluginId in result", async () => {
   assert.equal(result.pluginId, "specific-plugin-id");
 });
 
-test("PluginExecutorService execute includes executionId in result", async () => {
+test("PluginExecutorService execute includes executionId in result [plugin-executor.service.extended]", async () => {
   const service = new PluginExecutorService();
 
   const manifest = createTestManifest({ spiTypes: ["retriever"] });
@@ -559,7 +559,7 @@ test("PluginExecutorService execute includes executionId in result", async () =>
   assert.ok(result.executionId.startsWith("exec_"));
 });
 
-test("PluginExecutorService execute includes duration in result", async () => {
+test("PluginExecutorService execute includes duration in result [plugin-executor.service.extended]", async () => {
   const service = new PluginExecutorService();
 
   const manifest = createTestManifest({ spiTypes: ["retriever"] });
@@ -575,7 +575,7 @@ test("PluginExecutorService execute includes duration in result", async () => {
   assert.ok(result.durationMs >= 0);
 });
 
-test("PluginExecutorService execute includes timestamp in result", async () => {
+test("PluginExecutorService execute includes timestamp in result [plugin-executor.service.extended]", async () => {
   const service = new PluginExecutorService();
 
   const manifest = createTestManifest({ spiTypes: ["retriever"] });
@@ -593,7 +593,7 @@ test("PluginExecutorService execute includes timestamp in result", async () => {
   assert.ok(!isNaN(timestamp));
 });
 
-test("PluginExecutorService execute handles loaded but not activated plugin", async () => {
+test("PluginExecutorService execute handles loaded but not activated plugin [plugin-executor.service.extended]", async () => {
   const service = new PluginExecutorService();
 
   const manifest = createTestManifest({ spiTypes: ["retriever"] });
@@ -610,7 +610,7 @@ test("PluginExecutorService execute handles loaded but not activated plugin", as
   assert.equal(result.status, "ok");
 });
 
-test("PluginExecutorService execute rejects disabled plugin", async () => {
+test("PluginExecutorService execute rejects disabled plugin [plugin-executor.service.extended]", async () => {
   const service = new PluginExecutorService();
 
   const manifest = createTestManifest({ spiTypes: ["retriever"] });
@@ -629,7 +629,7 @@ test("PluginExecutorService execute rejects disabled plugin", async () => {
   );
 });
 
-test("PluginExecutorService execute rejects unregistered action", async () => {
+test("PluginExecutorService execute rejects unregistered action [plugin-executor.service.extended]", async () => {
   const service = new PluginExecutorService();
 
   const manifest = createTestManifest({ spiTypes: ["retriever"] }); // Only retriever registered
@@ -653,7 +653,7 @@ test("PluginExecutorService execute rejects unregistered action", async () => {
 // Sandbox Tier Extended Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("PluginExecutorService handles scoped_external_access tier with domains", async () => {
+test("PluginExecutorService handles scoped_external_access tier with domains [plugin-executor.service.extended]", async () => {
   const service = new PluginExecutorService();
 
   const manifest = createTestManifest({
@@ -685,7 +685,7 @@ test("PluginExecutorService handles scoped_external_access tier with domains", a
   assert.equal(result.status, "ok");
 });
 
-test("PluginExecutorService handles container sandbox tier", async () => {
+test("PluginExecutorService handles container sandbox tier [plugin-executor.service.extended]", async () => {
   const service = new PluginExecutorService();
 
   const manifest = createTestManifest({ spiTypes: ["retriever"] });
@@ -701,7 +701,7 @@ test("PluginExecutorService handles container sandbox tier", async () => {
   assert.equal(result.status, "ok");
 });
 
-test("PluginExecutorService handles none sandbox tier", async () => {
+test("PluginExecutorService handles none sandbox tier [plugin-executor.service.extended]", async () => {
   const service = new PluginExecutorService();
 
   const manifest = createTestManifest({ spiTypes: ["retriever"] });
@@ -721,7 +721,7 @@ test("PluginExecutorService handles none sandbox tier", async () => {
 // Timeout Extended Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("PluginExecutorService execute uses manifest timeout", async () => {
+test("PluginExecutorService execute uses manifest timeout [plugin-executor.service.extended]", async () => {
   const service = new PluginExecutorService();
 
   const manifest = createTestManifest({
@@ -748,7 +748,7 @@ test("PluginExecutorService execute uses manifest timeout", async () => {
   assert.ok(result.error?.includes("timed out"));
 });
 
-test("PluginExecutorService execute returns error status for sync errors", async () => {
+test("PluginExecutorService execute returns error status for sync errors [plugin-executor.service.extended]", async () => {
   const service = new PluginExecutorService();
 
   const manifest = createTestManifest({ spiTypes: ["retriever"] });
@@ -767,7 +767,7 @@ test("PluginExecutorService execute returns error status for sync errors", async
   assert.ok(result.error?.includes("Synchronous error"));
 });
 
-test("PluginExecutorService execute returns error status for async errors", async () => {
+test("PluginExecutorService execute returns error status for async errors [plugin-executor.service.extended]", async () => {
   const service = new PluginExecutorService();
 
   const manifest = createTestManifest({ spiTypes: ["retriever"] });
@@ -787,7 +787,7 @@ test("PluginExecutorService execute returns error status for async errors", asyn
   assert.ok(result.error?.includes("Async error"));
 });
 
-test("PluginExecutorService execute returns rejected status for validation errors", async () => {
+test("PluginExecutorService execute returns rejected status for validation errors [plugin-executor.service.extended]", async () => {
   const service = new PluginExecutorService();
 
   const manifest = createTestManifest({ spiTypes: ["retriever"] });
@@ -812,7 +812,7 @@ test("PluginExecutorService execute returns rejected status for validation error
 // Context Building Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("PluginExecutorService passes execution context to plugin action", async () => {
+test("PluginExecutorService passes execution context to plugin action [plugin-executor.service.extended]", async () => {
   const service = new PluginExecutorService();
 
   const manifest = createTestManifest({ spiTypes: ["retriever"] });
@@ -847,7 +847,7 @@ test("PluginExecutorService passes execution context to plugin action", async ()
 // Unregister Extended Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("PluginExecutorService unregister removes plugin from list", async () => {
+test("PluginExecutorService unregister removes plugin from list [plugin-executor.service.extended]", async () => {
   const service = new PluginExecutorService();
 
   const manifest = createTestManifest();
@@ -860,7 +860,7 @@ test("PluginExecutorService unregister removes plugin from list", async () => {
   assert.equal(service.listPlugins().length, 0);
 });
 
-test("PluginExecutorService unregister twice throws", async () => {
+test("PluginExecutorService unregister twice throws [plugin-executor.service.extended]", async () => {
   const service = new PluginExecutorService();
 
   const manifest = createTestManifest();
@@ -877,7 +877,7 @@ test("PluginExecutorService unregister twice throws", async () => {
   );
 });
 
-test("PluginExecutorService unregister unknown plugin throws", async () => {
+test("PluginExecutorService unregister unknown plugin throws [plugin-executor.service.extended]", async () => {
   const service = new PluginExecutorService();
 
   await assert.rejects(
@@ -892,7 +892,7 @@ test("PluginExecutorService unregister unknown plugin throws", async () => {
 // Multiple Plugin Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("PluginExecutorService manages multiple plugins independently", async () => {
+test("PluginExecutorService manages multiple plugins independently [plugin-executor.service.extended]", async () => {
   const service = new PluginExecutorService();
 
   const manifest1 = createTestManifest({ pluginId: "plugin-1", spiTypes: ["retriever"] });
@@ -920,7 +920,7 @@ test("PluginExecutorService manages multiple plugins independently", async () =>
   assert.equal((result2.output as { source: string }).source, "plugin-2");
 });
 
-test("PluginExecutorService plugins maintain separate state", async () => {
+test("PluginExecutorService plugins maintain separate state [plugin-executor.service.extended]", async () => {
   const service = new PluginExecutorService();
 
   const manifest1 = createTestManifest({ pluginId: "plugin-1" });
@@ -936,7 +936,7 @@ test("PluginExecutorService plugins maintain separate state", async () => {
   assert.equal(service.getState("plugin-2"), "registered");
 });
 
-test("PluginExecutorService prevents duplicate registration", () => {
+test("PluginExecutorService prevents duplicate registration [plugin-executor.service.extended]", () => {
   const service = new PluginExecutorService();
 
   const manifest = createTestManifest();
@@ -956,7 +956,7 @@ test("PluginExecutorService prevents duplicate registration", () => {
 // Validation Extended Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("PluginExecutorService load requires valid pluginId", async () => {
+test("PluginExecutorService load requires valid pluginId [plugin-executor.service.extended]", async () => {
   const service = new PluginExecutorService();
 
   await assert.rejects(
@@ -967,7 +967,7 @@ test("PluginExecutorService load requires valid pluginId", async () => {
   );
 });
 
-test("PluginExecutorService activate requires valid pluginId", async () => {
+test("PluginExecutorService activate requires valid pluginId [plugin-executor.service.extended]", async () => {
   const service = new PluginExecutorService();
 
   await assert.rejects(
@@ -978,7 +978,7 @@ test("PluginExecutorService activate requires valid pluginId", async () => {
   );
 });
 
-test("PluginExecutorService activate rejects disabled plugin", async () => {
+test("PluginExecutorService activate rejects disabled plugin [plugin-executor.service.extended]", async () => {
   const service = new PluginExecutorService();
 
   const manifest = createTestManifest();
@@ -999,7 +999,7 @@ test("PluginExecutorService activate rejects disabled plugin", async () => {
 // Load Time Tracking Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("PluginExecutorService records load time", async () => {
+test("PluginExecutorService records load time [plugin-executor.service.extended]", async () => {
   const service = new PluginExecutorService();
 
   const manifest = createTestManifest();
@@ -1012,7 +1012,7 @@ test("PluginExecutorService records load time", async () => {
   assert.equal(service.getState("test-plugin"), "loaded");
 });
 
-test("PluginExecutorService records unload time", async () => {
+test("PluginExecutorService records unload time [plugin-executor.service.extended]", async () => {
   const service = new PluginExecutorService();
 
   const manifest = createTestManifest();
@@ -1029,13 +1029,13 @@ test("PluginExecutorService records unload time", async () => {
 // Factory Function Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("PluginExecutorService can be created without options", () => {
+test("PluginExecutorService can be created without options [plugin-executor.service.extended]", () => {
   const service = new PluginExecutorService();
   assert.ok(service);
   assert.deepStrictEqual(service.listPlugins(), []);
 });
 
-test("PluginExecutorService can be created with plugin directory option", () => {
+test("PluginExecutorService can be created with plugin directory option [plugin-executor.service.extended]", () => {
   const service = new PluginExecutorService({
     pluginDir: "/custom/plugin/directory",
   });

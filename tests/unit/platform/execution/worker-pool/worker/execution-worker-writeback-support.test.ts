@@ -14,28 +14,28 @@ import type { WorkerRemoteLogInput } from "../../../../../../src/platform/five-p
 // parseJsonArray - additional edge cases
 // ---------------------------------------------------------------------------
 
-test("parseJsonArray handles JSON array with escaped characters", () => {
+test("parseJsonArray handles JSON array with escaped characters [execution-worker-writeback-support]", () => {
   const result = parseJsonArray('["a\\"b", "c\\nd"]');
   assert.deepEqual(result, ["a\"b", "c\nd"]);
 });
 
-test("parseJsonArray handles nested JSON arrays", () => {
+test("parseJsonArray handles nested JSON arrays [execution-worker-writeback-support]", () => {
   const result = parseJsonArray('[["inner"], "outer"]');
   assert.deepEqual(result, ["outer"]);
 });
 
-test("parseJsonArray handles unicode characters", () => {
+test("parseJsonArray handles unicode characters [execution-worker-writeback-support]", () => {
   const result = parseJsonArray('["hello", "你好", "🎉"]');
   assert.deepEqual(result, ["hello", "你好", "🎉"]);
 });
 
-test("parseJsonArray handles whitespace-only strings", () => {
+test("parseJsonArray handles whitespace-only strings [execution-worker-writeback-support]", () => {
   const result = parseJsonArray('["  ", "a"]');
   // Whitespace-only strings are kept (they are valid strings)
   assert.ok(result.includes("  "));
 });
 
-test("parseJsonArray handles JSON number strings", () => {
+test("parseJsonArray handles JSON number strings [execution-worker-writeback-support]", () => {
   const result = parseJsonArray('["123", "456"]');
   assert.deepEqual(result, ["123", "456"]);
 });
@@ -44,33 +44,33 @@ test("parseJsonArray handles JSON number strings", () => {
 // removeExecutionId - additional edge cases
 // ---------------------------------------------------------------------------
 
-test("removeExecutionId handles empty array", () => {
+test("removeExecutionId handles empty array [execution-worker-writeback-support]", () => {
   const result = removeExecutionId([], "exec-1");
   assert.deepEqual(result, []);
 });
 
-test("removeExecutionId handles single matching element", () => {
+test("removeExecutionId handles single matching element [execution-worker-writeback-support]", () => {
   const result = removeExecutionId(["exec-1"], "exec-1");
   assert.deepEqual(result, []);
 });
 
-test("removeExecutionId handles single non-matching element", () => {
+test("removeExecutionId handles single non-matching element [execution-worker-writeback-support]", () => {
   const result = removeExecutionId(["exec-1"], "exec-2");
   assert.deepEqual(result, ["exec-1"]);
 });
 
-test("removeExecutionId removes all occurrences (duplicates)", () => {
+test("removeExecutionId removes all occurrences (duplicates) [execution-worker-writeback-support]", () => {
   const result = removeExecutionId(["exec-1", "exec-2", "exec-1"], "exec-1");
   // Should remove all exec-1, leaving only exec-2
   assert.deepEqual(result, ["exec-2"]);
 });
 
-test("removeExecutionId returns sorted result even for single element", () => {
+test("removeExecutionId returns sorted result even for single element [execution-worker-writeback-support]", () => {
   const result = removeExecutionId(["z", "a", "m"], "a");
   assert.deepEqual(result, ["m", "z"]);
 });
 
-test("removeExecutionId handles large arrays", () => {
+test("removeExecutionId handles large arrays [execution-worker-writeback-support]", () => {
   const largeArray = Array.from({ length: 1000 }, (_, i) => `exec-${i}`);
   const result = removeExecutionId(largeArray, "exec-500");
   assert.equal(result.length, 999);
@@ -105,7 +105,7 @@ function createMockStoreWithExecution(): {
   return { store, execution };
 }
 
-test("buildAgentExecutionRecord creates record with correct base fields", () => {
+test("buildAgentExecutionRecord creates record with correct base fields [execution-worker-writeback-support]", () => {
   const { store, execution } = createMockStoreWithExecution();
 
   const result = buildAgentExecutionRecord(store, execution, "exec-123", "2024-01-02T00:00:00.000Z", {
@@ -129,7 +129,7 @@ test("buildAgentExecutionRecord creates record with correct base fields", () => 
   assert.equal(result.runKind, "task_run");
 });
 
-test("buildAgentExecutionRecord uses existing planJson when available", () => {
+test("buildAgentExecutionRecord uses existing planJson when available [execution-worker-writeback-support]", () => {
   const execution = {
     id: "exec-123",
     taskId: "task-456",
@@ -170,7 +170,7 @@ test("buildAgentExecutionRecord uses existing planJson when available", () => {
   assert.equal(result.planJson, '{"custom":"plan"}');
 });
 
-test("buildAgentExecutionRecord computes retryCount from execution attempt", () => {
+test("buildAgentExecutionRecord computes retryCount from execution attempt [execution-worker-writeback-support]", () => {
   const { store, execution } = createMockStoreWithExecution();
 
   const result = buildAgentExecutionRecord(store, execution, "exec-123", "2024-01-02T00:00:00.000Z", {
@@ -191,7 +191,7 @@ test("buildAgentExecutionRecord computes retryCount from execution attempt", () 
   assert.equal(result.retryCount, 1);
 });
 
-test("buildAgentExecutionRecord uses existing retryCount when higher", () => {
+test("buildAgentExecutionRecord uses existing retryCount when higher [execution-worker-writeback-support]", () => {
   const execution = {
     id: "exec-123",
     taskId: "task-456",
@@ -233,7 +233,7 @@ test("buildAgentExecutionRecord uses existing retryCount when higher", () => {
   assert.equal(result.retryCount, 5);
 });
 
-test("buildAgentExecutionRecord sets startedAt from execution when existing has none", () => {
+test("buildAgentExecutionRecord sets startedAt from execution when existing has none [execution-worker-writeback-support]", () => {
   const execution = {
     id: "exec-123",
     taskId: "task-456",
@@ -268,7 +268,7 @@ test("buildAgentExecutionRecord sets startedAt from execution when existing has 
   assert.equal(result.startedAt, "2024-01-01T00:00:00.000Z");
 });
 
-test("buildAgentExecutionRecord clamps toolCallCount to non-negative", () => {
+test("buildAgentExecutionRecord clamps toolCallCount to non-negative [execution-worker-writeback-support]", () => {
   const { store, execution } = createMockStoreWithExecution();
 
   const result = buildAgentExecutionRecord(store, execution, "exec-123", "2024-01-02T00:00:00.000Z", {
@@ -292,7 +292,7 @@ test("buildAgentExecutionRecord clamps toolCallCount to non-negative", () => {
 // persistRemoteLogs
 // ---------------------------------------------------------------------------
 
-test("persistRemoteLogs skips empty messages", () => {
+test("persistRemoteLogs skips empty messages [execution-worker-writeback-support]", () => {
   const logs: WorkerRemoteLogInput[] = [
     { level: "info", message: "" },
     { level: "warn", message: "  " },
@@ -310,7 +310,7 @@ test("persistRemoteLogs skips empty messages", () => {
   assert.equal(insertedLogs.length, 0);
 });
 
-test("persistRemoteLogs inserts valid log entries", () => {
+test("persistRemoteLogs inserts valid log entries [execution-worker-writeback-support]", () => {
   const logs: WorkerRemoteLogInput[] = [
     { level: "info", message: "Hello world", context: { key: "value" } },
   ];
@@ -332,7 +332,7 @@ test("persistRemoteLogs inserts valid log entries", () => {
   assert.equal(insertedLogs[0].workerId, "worker-1");
 });
 
-test("persistRemoteLogs uses custom occurredAt when provided", () => {
+test("persistRemoteLogs uses custom occurredAt when provided [execution-worker-writeback-support]", () => {
   const logs: WorkerRemoteLogInput[] = [
     { level: "error", message: "Error occurred", occurredAt: "2024-06-01T12:00:00.000Z" },
   ];
@@ -349,7 +349,7 @@ test("persistRemoteLogs uses custom occurredAt when provided", () => {
   assert.equal(insertedLogs[0].createdAt, "2024-06-01T12:00:00.000Z");
 });
 
-test("persistRemoteLogs uses default occurredAt when not provided", () => {
+test("persistRemoteLogs uses default occurredAt when not provided [execution-worker-writeback-support]", () => {
   const logs: WorkerRemoteLogInput[] = [
     { level: "info", message: "Log message" },
   ];
@@ -366,7 +366,7 @@ test("persistRemoteLogs uses default occurredAt when not provided", () => {
   assert.equal(insertedLogs[0].createdAt, "2024-01-02T00:00:00.000Z");
 });
 
-test("persistRemoteLogs handles undefined logs array", () => {
+test("persistRemoteLogs handles undefined logs array [execution-worker-writeback-support]", () => {
   const insertedLogs: any[] = [];
   const store = {
     worker: {
@@ -379,7 +379,7 @@ test("persistRemoteLogs handles undefined logs array", () => {
   assert.equal(insertedLogs.length, 0);
 });
 
-test("persistRemoteLogs includes runtimeInstanceId in context when present", () => {
+test("persistRemoteLogs includes runtimeInstanceId in context when present [execution-worker-writeback-support]", () => {
   const logs: WorkerRemoteLogInput[] = [
     { level: "debug", message: "Debug info" },
   ];
@@ -397,7 +397,7 @@ test("persistRemoteLogs includes runtimeInstanceId in context when present", () 
   assert.equal(context.runtimeInstanceId, "runtime-xyz");
 });
 
-test("persistRemoteLogs includes correlationId in context", () => {
+test("persistRemoteLogs includes correlationId in context [execution-worker-writeback-support]", () => {
   const logs: WorkerRemoteLogInput[] = [
     { level: "info", message: "Test log" },
   ];

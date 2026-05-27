@@ -160,7 +160,7 @@ function seedEmptyEvidenceProfileMissingPlaybooks(evidenceRoot: string, profile:
   );
 }
 
-test("StableReleasePackageOptions interface accepts valid options", () => {
+test("StableReleasePackageOptions interface accepts valid options [stable-release-package]", () => {
   const options: StableReleasePackageOptions = {
     evidenceRootDir: "/tmp/evidence",
     outputDir: "/tmp/output",
@@ -172,7 +172,7 @@ test("StableReleasePackageOptions interface accepts valid options", () => {
   assert.equal(options.targetStatus, "canary");
 });
 
-test("StableReleasePackageOptions targetStatus is optional", () => {
+test("StableReleasePackageOptions targetStatus is optional [stable-release-package]", () => {
   const options: StableReleasePackageOptions = {
     evidenceRootDir: "/tmp/evidence",
     outputDir: "/tmp/output",
@@ -181,7 +181,7 @@ test("StableReleasePackageOptions targetStatus is optional", () => {
   assert.equal(options.targetStatus, undefined);
 });
 
-test("StableReleasePackageReport has correct structure for canary promotion", () => {
+test("StableReleasePackageReport has correct structure for canary promotion [stable-release-package]", () => {
   const workspace = createTempWorkspace("aa-stable-package-canary-");
   const evidenceRoot = join(workspace, "evidence");
   const outputDir = join(workspace, "output");
@@ -210,7 +210,7 @@ test("StableReleasePackageReport has correct structure for canary promotion", ()
   }
 });
 
-test("StableReleasePackageReport includes smoke profile summary", () => {
+test("StableReleasePackageReport includes smoke profile summary [stable-release-package]", () => {
   const workspace = createTempWorkspace("aa-stable-package-smoke-");
   const evidenceRoot = join(workspace, "evidence");
   const outputDir = join(workspace, "output");
@@ -232,7 +232,7 @@ test("StableReleasePackageReport includes smoke profile summary", () => {
   }
 });
 
-test("StableReleasePackageReport missing smoke profile when not present", () => {
+test("StableReleasePackageReport missing smoke profile when not present [stable-release-package]", () => {
   const workspace = createTempWorkspace("aa-stable-package-missing-");
   const evidenceRoot = join(workspace, "evidence");
   const outputDir = join(workspace, "output");
@@ -252,7 +252,7 @@ test("StableReleasePackageReport missing smoke profile when not present", () => 
   }
 });
 
-test("StableReleasePackageReport verdict is conditional when profiles missing", () => {
+test("StableReleasePackageReport verdict is conditional when profiles missing [stable-release-package]", () => {
   const workspace = createTempWorkspace("aa-stable-package-conditional-");
   const evidenceRoot = join(workspace, "evidence");
   const outputDir = join(workspace, "output");
@@ -275,7 +275,7 @@ test("StableReleasePackageReport verdict is conditional when profiles missing", 
   }
 });
 
-test("StableReleasePackageReport nextActions includes smoke action when missing", () => {
+test("StableReleasePackageReport nextActions includes smoke action when missing [stable-release-package]", () => {
   const workspace = createTempWorkspace("aa-stable-package-actions-");
   const evidenceRoot = join(workspace, "evidence");
   const outputDir = join(workspace, "output");
@@ -296,7 +296,7 @@ test("StableReleasePackageReport nextActions includes smoke action when missing"
   }
 });
 
-test("StableReleasePackageReport recommendedCommands includes expected commands", () => {
+test("StableReleasePackageReport recommendedCommands includes expected commands [stable-release-package]", () => {
   const workspace = createTempWorkspace("aa-stable-package-commands-");
   const evidenceRoot = join(workspace, "evidence");
   const outputDir = join(workspace, "output");
@@ -316,7 +316,7 @@ test("StableReleasePackageReport recommendedCommands includes expected commands"
   }
 });
 
-test("StableReleasePackageReport runbookRefs contains expected documentation", () => {
+test("StableReleasePackageReport runbookRefs contains expected documentation [stable-release-package]", () => {
   const workspace = createTempWorkspace("aa-stable-package-runbooks-");
   const evidenceRoot = join(workspace, "evidence");
   const outputDir = join(workspace, "output");
@@ -335,7 +335,7 @@ test("StableReleasePackageReport runbookRefs contains expected documentation", (
   }
 });
 
-test("StableReleasePackageReport releaseChecklist has correct structure", () => {
+test("StableReleasePackageReport releaseChecklist has correct structure [stable-release-package]", () => {
   const workspace = createTempWorkspace("aa-stable-package-checklist-");
   const evidenceRoot = join(workspace, "evidence");
   const outputDir = join(workspace, "output");
@@ -357,7 +357,7 @@ test("StableReleasePackageReport releaseChecklist has correct structure", () => 
   }
 });
 
-test("StableReleasePackageReport releaseChecklist items have expected IDs", () => {
+test("StableReleasePackageReport releaseChecklist items have expected IDs [stable-release-package]", () => {
   const workspace = createTempWorkspace("aa-stable-package-checklist-ids-");
   const evidenceRoot = join(workspace, "evidence");
   const outputDir = join(workspace, "output");
@@ -378,7 +378,7 @@ test("StableReleasePackageReport releaseChecklist items have expected IDs", () =
   }
 });
 
-test("StableReleasePackageReport artifacts are written to output dir", () => {
+test("StableReleasePackageReport artifacts are written to output dir [stable-release-package]", () => {
   const workspace = createTempWorkspace("aa-stable-package-artifacts-");
   const evidenceRoot = join(workspace, "evidence");
   const outputDir = join(workspace, "output");
@@ -400,7 +400,7 @@ test("StableReleasePackageReport artifacts are written to output dir", () => {
   }
 });
 
-test("StableReleasePackageReport gates field contains gate report", () => {
+test("StableReleasePackageReport gates field contains gate report [stable-release-package]", () => {
   const workspace = createTempWorkspace("aa-stable-package-gate-");
   const evidenceRoot = join(workspace, "evidence");
   const outputDir = join(workspace, "output");
@@ -423,7 +423,7 @@ test("StableReleasePackageReport gates field contains gate report", () => {
   }
 });
 
-test("StableReleasePackageReport tenant_gray target includes tenant_gray criteria", () => {
+test("StableReleasePackageReport tenant_gray target includes tenant_gray criteria [stable-release-package]", () => {
   const workspace = createTempWorkspace("aa-stable-package-tenant-gray-");
   const evidenceRoot = join(workspace, "evidence");
   const outputDir = join(workspace, "output");
@@ -446,7 +446,7 @@ test("StableReleasePackageReport tenant_gray target includes tenant_gray criteri
   }
 });
 
-test("StableReleasePackageReport production_ready target requires additional criteria", () => {
+test("StableReleasePackageReport production_ready target requires additional criteria [stable-release-package]", () => {
   const workspace = createTempWorkspace("aa-stable-package-prod-");
   const evidenceRoot = join(workspace, "evidence");
   const outputDir = join(workspace, "output");
@@ -476,7 +476,7 @@ test("StableReleasePackageReport production_ready target requires additional cri
   }
 });
 
-test("StableReleaseChecklistItem structure is correct", () => {
+test("StableReleaseChecklistItem structure is correct [stable-release-package]", () => {
   const item: StableReleaseChecklistItem = {
     itemId: "smoke_evidence_available",
     status: "pass",
@@ -490,7 +490,7 @@ test("StableReleaseChecklistItem structure is correct", () => {
   assert.deepEqual(item.evidenceRefs, ["/path/to/report.json"]);
 });
 
-test("StableReleaseChecklist overallStatus reflects item statuses", () => {
+test("StableReleaseChecklist overallStatus reflects item statuses [stable-release-package]", () => {
   const checklist: StableReleaseChecklist = {
     overallStatus: "fail",
     passedCount: 5,

@@ -21,7 +21,7 @@ function createTempDir(): string {
   return dir;
 }
 
-test("runStableWorkerHandshakeRehearsal executes all three scenarios successfully", async () => {
+test("runStableWorkerHandshakeRehearsal executes all three scenarios successfully [worker-handshake-rehearsal]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableWorkerHandshakeRehearsal({ outputDir });
@@ -40,7 +40,7 @@ test("runStableWorkerHandshakeRehearsal executes all three scenarios successfull
   }
 });
 
-test("worker_claim_consumes_ticket scenario passes", async () => {
+test("worker_claim_consumes_ticket scenario passes [worker-handshake-rehearsal]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableWorkerHandshakeRehearsal({ outputDir });
@@ -57,7 +57,7 @@ test("worker_claim_consumes_ticket scenario passes", async () => {
   }
 });
 
-test("worker_heartbeat_renews_lease scenario passes", async () => {
+test("worker_heartbeat_renews_lease scenario passes [worker-handshake-rehearsal]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableWorkerHandshakeRehearsal({ outputDir });
@@ -74,7 +74,7 @@ test("worker_heartbeat_renews_lease scenario passes", async () => {
   }
 });
 
-test("stale_fencing_handshake_rejected scenario passes", async () => {
+test("stale_fencing_handshake_rejected scenario passes [worker-handshake-rehearsal]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableWorkerHandshakeRehearsal({ outputDir });
@@ -91,7 +91,7 @@ test("stale_fencing_handshake_rejected scenario passes", async () => {
   }
 });
 
-test("writeStableWorkerHandshakeRehearsalReport writes valid JSON", async () => {
+test("writeStableWorkerHandshakeRehearsalReport writes valid JSON [worker-handshake-rehearsal]", async () => {
   const outputDir = createTempDir();
   const reportPath = join(outputDir, "report.json");
   try {
@@ -110,7 +110,7 @@ test("writeStableWorkerHandshakeRehearsalReport writes valid JSON", async () => 
   }
 });
 
-test("report contains valid startedAt and finishedAt timestamps", async () => {
+test("report contains valid startedAt and finishedAt timestamps [worker-handshake-rehearsal]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableWorkerHandshakeRehearsal({ outputDir });
@@ -126,7 +126,7 @@ test("report contains valid startedAt and finishedAt timestamps", async () => {
   }
 });
 
-test("report outputDir matches options", async () => {
+test("report outputDir matches options [worker-handshake-rehearsal]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableWorkerHandshakeRehearsal({ outputDir });

@@ -22,7 +22,7 @@ function createHarness(prefix: string) {
   return { workspace, db, store, tenantPlatform, service };
 }
 
-test("DataPlaneFlowService rejects invalid fact IDs", () => {
+test("DataPlaneFlowService rejects invalid fact IDs [data-plane-flow-service]", () => {
   const harness = createHarness("dpf-invalid-fact-");
   try {
     const org = harness.tenantPlatform.createOrganization({ organizationId: "org-if", displayName: "Fact Org" });
@@ -57,7 +57,7 @@ test("DataPlaneFlowService rejects invalid fact IDs", () => {
   }
 });
 
-test("DataPlaneFlowService rejects invalid metric names", () => {
+test("DataPlaneFlowService rejects invalid metric names [data-plane-flow-service]", () => {
   const harness = createHarness("dpf-invalid-metric-");
   try {
     const org = harness.tenantPlatform.createOrganization({ organizationId: "org-im", displayName: "Metric Org" });
@@ -91,7 +91,7 @@ test("DataPlaneFlowService rejects invalid metric names", () => {
   }
 });
 
-test("DataPlaneFlowService rejects invalid timestamps", () => {
+test("DataPlaneFlowService rejects invalid timestamps [data-plane-flow-service]", () => {
   const harness = createHarness("dpf-invalid-ts-");
   try {
     const org = harness.tenantPlatform.createOrganization({ organizationId: "org-its", displayName: "TS Org" });
@@ -125,7 +125,7 @@ test("DataPlaneFlowService rejects invalid timestamps", () => {
   }
 });
 
-test("DataPlaneFlowService rejects empty source refs", () => {
+test("DataPlaneFlowService rejects empty source refs [data-plane-flow-service]", () => {
   const harness = createHarness("dpf-empty-src-");
   try {
     const org = harness.tenantPlatform.createOrganization({ organizationId: "org-es", displayName: "SRC Org" });
@@ -159,7 +159,7 @@ test("DataPlaneFlowService rejects empty source refs", () => {
   }
 });
 
-test("DataPlaneFlowService rejects wrong plane type for namespace", () => {
+test("DataPlaneFlowService rejects wrong plane type for namespace [data-plane-flow-service]", () => {
   const harness = createHarness("dpf-wrong-plane-");
   try {
     const org = harness.tenantPlatform.createOrganization({ organizationId: "org-wp", displayName: "Plane Org" });
@@ -194,7 +194,7 @@ test("DataPlaneFlowService rejects wrong plane type for namespace", () => {
   }
 });
 
-test("DataPlaneFlowService rejects cross-tenant movement", () => {
+test("DataPlaneFlowService rejects cross-tenant movement [data-plane-flow-service]", () => {
   const harness = createHarness("dpf-cross-tenant-");
   try {
     const org = harness.tenantPlatform.createOrganization({ organizationId: "org-ct", displayName: "CrossTenant Org" });
@@ -236,7 +236,7 @@ test("DataPlaneFlowService rejects cross-tenant movement", () => {
   }
 });
 
-test("DataPlaneFlowService rejects disallowed movement types", () => {
+test("DataPlaneFlowService rejects disallowed movement types [data-plane-flow-service]", () => {
   const harness = createHarness("dpf-disallow-");
   try {
     const org = harness.tenantPlatform.createOrganization({ organizationId: "org-da", displayName: "Disallow Org" });
@@ -274,7 +274,7 @@ test("DataPlaneFlowService rejects disallowed movement types", () => {
   }
 });
 
-test("DataPlaneFlowService rejects archive_compaction across planes", () => {
+test("DataPlaneFlowService rejects archive_compaction across planes [data-plane-flow-service]", () => {
   const harness = createHarness("dpf-archive-");
   try {
     const org = harness.tenantPlatform.createOrganization({ organizationId: "org-ar", displayName: "Archive Org" });
@@ -312,7 +312,7 @@ test("DataPlaneFlowService rejects archive_compaction across planes", () => {
   }
 });
 
-test("DataPlaneFlowService rejects replay_dataset_build from analytics", () => {
+test("DataPlaneFlowService rejects replay_dataset_build from analytics [data-plane-flow-service]", () => {
   const harness = createHarness("dpf-replay-");
   try {
     const org = harness.tenantPlatform.createOrganization({ organizationId: "org-rp", displayName: "Replay Org" });
@@ -350,7 +350,7 @@ test("DataPlaneFlowService rejects replay_dataset_build from analytics", () => {
   }
 });
 
-test("DataPlaneFlowService rejects artifact_lifecycle_move across planes", () => {
+test("DataPlaneFlowService rejects artifact_lifecycle_move across planes [data-plane-flow-service]", () => {
   const harness = createHarness("dpf-artifact-");
   try {
     const org = harness.tenantPlatform.createOrganization({ organizationId: "org-al", displayName: "Artifact Org" });
@@ -388,7 +388,7 @@ test("DataPlaneFlowService rejects artifact_lifecycle_move across planes", () =>
   }
 });
 
-test("DataPlaneFlowService completeMovementJob throws for unknown job", () => {
+test("DataPlaneFlowService completeMovementJob throws for unknown job [data-plane-flow-service]", () => {
   const harness = createHarness("dpf-complete-unknown-");
   try {
     const org = harness.tenantPlatform.createOrganization({ organizationId: "org-cu", displayName: "Complete Org" });
@@ -415,7 +415,7 @@ test("DataPlaneFlowService completeMovementJob throws for unknown job", () => {
   }
 });
 
-test("DataPlaneFlowService rejects archive bundle in non-archive plane", () => {
+test("DataPlaneFlowService rejects archive bundle in non-archive plane [data-plane-flow-service]", () => {
   const harness = createHarness("dpf-bundle-plane-");
   try {
     const org = harness.tenantPlatform.createOrganization({ organizationId: "org-bp", displayName: "Bundle Org" });
@@ -449,7 +449,7 @@ test("DataPlaneFlowService rejects archive bundle in non-archive plane", () => {
   }
 });
 
-test("DataPlaneFlowService rejects replay dataset in non-replay plane", () => {
+test("DataPlaneFlowService rejects replay dataset in non-replay plane [data-plane-flow-service]", () => {
   const harness = createHarness("dpf-dataset-plane-");
   try {
     const org = harness.tenantPlatform.createOrganization({ organizationId: "org-dp", displayName: "Dataset Org" });
@@ -484,7 +484,7 @@ test("DataPlaneFlowService rejects replay dataset in non-replay plane", () => {
   }
 });
 
-test("DataPlaneFlowService rejects invalid bundle type identifier", () => {
+test("DataPlaneFlowService rejects invalid bundle type identifier [data-plane-flow-service]", () => {
   const harness = createHarness("dpf-bundle-type-");
   try {
     const org = harness.tenantPlatform.createOrganization({ organizationId: "org-bt", displayName: "BundleType Org" });

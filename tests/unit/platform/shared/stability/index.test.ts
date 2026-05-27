@@ -13,13 +13,13 @@ import {
   type GoldenTaskCase,
 } from "../../../../../src/platform/stability/index.js";
 
-test("REQUIRED_GOLDEN_TASK_CLASSES is an array of task classes", () => {
+test("REQUIRED_GOLDEN_TASK_CLASSES is an array of task classes [index]", () => {
   assert.ok(Array.isArray(REQUIRED_GOLDEN_TASK_CLASSES));
   assert.equal(REQUIRED_GOLDEN_TASK_CLASSES.length, 7);
   assert.equal(REQUIRED_GOLDEN_TASK_CLASSES[0], "coding");
 });
 
-test("GoldenTaskClass type accepts valid values from REQUIRED_GOLDEN_TASK_CLASSES", () => {
+test("GoldenTaskClass type accepts valid values from REQUIRED_GOLDEN_TASK_CLASSES [index]", () => {
   const validClasses: GoldenTaskClass[] = [
     "coding",
     "research",
@@ -32,12 +32,12 @@ test("GoldenTaskClass type accepts valid values from REQUIRED_GOLDEN_TASK_CLASSE
   assert.equal(validClasses.length, 7);
 });
 
-test("GoldenTaskLatencyBand type accepts valid values", () => {
+test("GoldenTaskLatencyBand type accepts valid values [index]", () => {
   const bands: GoldenTaskLatencyBand[] = ["interactive", "extended"];
   assert.equal(bands.length, 2);
 });
 
-test("GoldenTaskApprovalExpectation type accepts valid values", () => {
+test("GoldenTaskApprovalExpectation type accepts valid values [index]", () => {
   const expectations: GoldenTaskApprovalExpectation[] = [
     "not_expected",
     "supervised_review_expected",
@@ -45,7 +45,7 @@ test("GoldenTaskApprovalExpectation type accepts valid values", () => {
   assert.equal(expectations.length, 2);
 });
 
-test("GoldenTaskRecoveryExpectation type accepts valid values", () => {
+test("GoldenTaskRecoveryExpectation type accepts valid values [index]", () => {
   const expectations: GoldenTaskRecoveryExpectation[] = [
     "not_required",
     "requeue_supported",
@@ -54,12 +54,12 @@ test("GoldenTaskRecoveryExpectation type accepts valid values", () => {
   assert.equal(expectations.length, 3);
 });
 
-test("SINGLE_TASK_GOLDEN_TASKS is a non-empty array", () => {
+test("SINGLE_TASK_GOLDEN_TASKS is a non-empty array [index]", () => {
   assert.ok(Array.isArray(SINGLE_TASK_GOLDEN_TASKS));
   assert.ok(SINGLE_TASK_GOLDEN_TASKS.length > 0);
 });
 
-test("GoldenTaskCase structure is correct", () => {
+test("GoldenTaskCase structure is correct [index]", () => {
   const taskCase: GoldenTaskCase = {
     id: "test_case",
     title: "Test case",
@@ -88,6 +88,6 @@ test("GoldenTaskCase structure is correct", () => {
   assert.equal(taskCase.expected.taskStatus, "done");
 });
 
-test("stability barrel exposes environment readiness orchestration", () => {
+test("stability barrel exposes environment readiness orchestration [index]", () => {
   assert.equal(typeof EnvironmentReadinessOrchestrationService, "function");
 });

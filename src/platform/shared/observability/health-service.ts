@@ -13,13 +13,13 @@
  * ## Key Concepts
  *
  * - **Healthz**: Minimum health check endpoint
- *   * See: {@link https://github.com/automatic-agent/automatic_agent_platform/blob/main/docs_zh/governance/glossary_and_terminology.md | Glossary: healthz}
+ *   * See: {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/governance/glossary_and_terminology.md | Glossary: healthz}
  *
  * - **Backpressure**: System response to overload (delay, degrade, reject)
- *   * See: {@link https://github.com/automatic-agent/automatic_agent_platform/blob/main/docs_zh/governance/glossary_and_terminology.md | Glossary: backpressure}
+ *   * See: {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/governance/glossary_and_terminology.md | Glossary: backpressure}
  *
  * - **SLO/SLA**: Service objectives and agreements
- *   * See: {@link https://github.com/automatic-agent/automatic_agent_platform/blob/main/docs_zh/governance/glossary_and_terminology.md | Glossary: SLO/SLA}
+ *   * See: {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/governance/glossary_and_terminology.md | Glossary: SLO/SLA}
  *
  * ## Health Status
  *

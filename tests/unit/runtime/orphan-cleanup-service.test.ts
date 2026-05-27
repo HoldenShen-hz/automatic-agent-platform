@@ -9,7 +9,7 @@ import { SqliteDatabase } from "../../../src/platform/five-plane-state-evidence/
 import { cleanupPath, createTempWorkspace } from "../../helpers/fs.js";
 import { seedTaskAndExecution } from "../../helpers/seed.js";
 
-test("orphan cleanup service preserves valid worker execution refs while pruning orphaned ones", () => {
+test("orphan cleanup service preserves valid worker execution refs while pruning orphaned ones [orphan-cleanup-service]", () => {
   const workspace = createTempWorkspace("aa-orphan-cleanup-unit-");
   const dbPath = join(workspace, "orphan-cleanup-unit.db");
 
@@ -91,7 +91,7 @@ test("orphan cleanup service preserves valid worker execution refs while pruning
   }
 });
 
-test("orphan cleanup service reports no issues when all execution refs are valid", () => {
+test("orphan cleanup service reports no issues when all execution refs are valid [orphan-cleanup-service]", () => {
   const workspace = createTempWorkspace("aa-orphan-cleanup-valid-");
   const dbPath = join(workspace, "orphan-cleanup-valid.db");
 
@@ -144,7 +144,7 @@ test("orphan cleanup service reports no issues when all execution refs are valid
   }
 });
 
-test("orphan cleanup service detects orphan session", () => {
+test("orphan cleanup service detects orphan session [orphan-cleanup-service]", () => {
   const workspace = createTempWorkspace("aa-orphan-session-");
   const dbPath = join(workspace, "orphan-session.db");
 
@@ -196,7 +196,7 @@ test("orphan cleanup service detects orphan session", () => {
   }
 });
 
-test("orphan cleanup service enforce applies close_orphan_session action", () => {
+test("orphan cleanup service enforce applies close_orphan_session action [orphan-cleanup-service]", () => {
   const workspace = createTempWorkspace("aa-orphan-enforce-");
   const dbPath = join(workspace, "orphan-enforce.db");
 
@@ -248,7 +248,7 @@ test("orphan cleanup service enforce applies close_orphan_session action", () =>
   }
 });
 
-test("orphan cleanup service close_orphan_session skips session that is already missing", () => {
+test("orphan cleanup service close_orphan_session skips session that is already missing [orphan-cleanup-service]", () => {
   const workspace = createTempWorkspace("aa-orphan-missing-");
   const dbPath = join(workspace, "orphan-missing.db");
 

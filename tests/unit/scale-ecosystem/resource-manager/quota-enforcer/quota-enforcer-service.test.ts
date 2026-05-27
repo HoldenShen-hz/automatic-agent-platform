@@ -60,7 +60,7 @@ function makeRequestedUnits(overrides: Partial<Record<string, number>> = {}): Pa
 // evaluateQuota Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("evaluateQuota returns not exceeded when projected is under hard limit", () => {
+test("evaluateQuota returns not exceeded when projected is under hard limit [quota-enforcer-service]", () => {
   const policy = makeQuotaPolicy({ hardLimit: 100, currentUsage: 30 });
   const result = evaluateQuota(policy, 20);
 
@@ -70,7 +70,7 @@ test("evaluateQuota returns not exceeded when projected is under hard limit", ()
   assert.equal(result.remainingUnits, 70); // burstLimit - projected = 120 - 50
 });
 
-test("evaluateQuota returns warning when projected exceeds soft limit", () => {
+test("evaluateQuota returns warning when projected exceeds soft limit [quota-enforcer-service]", () => {
   const policy = makeQuotaPolicy({ hardLimit: 100, softLimit: 50, currentUsage: 30 });
   const result = evaluateQuota(policy, 30);
 
@@ -80,7 +80,7 @@ test("evaluateQuota returns warning when projected exceeds soft limit", () => {
   assert.equal(result.usesBurst, false);
 });
 
-test("evaluateQuota returns exceeded when projected exceeds burst limit", () => {
+test("evaluateQuota returns exceeded when projected exceeds burst limit [quota-enforcer-service]", () => {
   const policy = makeQuotaPolicy({ hardLimit: 100, burstLimit: 120, currentUsage: 100 });
   const result = evaluateQuota(policy, 30);
 
@@ -91,7 +91,7 @@ test("evaluateQuota returns exceeded when projected exceeds burst limit", () => 
   assert.equal(result.remainingUnits, 0);
 });
 
-test("evaluateQuota returns usesBurst when between hard and burst limit", () => {
+test("evaluateQuota returns usesBurst when between hard and burst limit [quota-enforcer-service]", () => {
   const policy = makeQuotaPolicy({ hardLimit: 100, burstLimit: 120, currentUsage: 80 });
   const result = evaluateQuota(policy, 30);
 
@@ -102,7 +102,7 @@ test("evaluateQuota returns usesBurst when between hard and burst limit", () => 
   assert.equal(result.remainingUnits, 10); // 120 - 110 = 10
 });
 
-test("evaluateQuota handles zero requested units", () => {
+test("evaluateQuota handles zero requested units [quota-enforcer-service]", () => {
   const policy = makeQuotaPolicy({ hardLimit: 100, currentUsage: 50 });
   const result = evaluateQuota(policy, 0);
 
@@ -111,7 +111,7 @@ test("evaluateQuota handles zero requested units", () => {
   assert.equal(result.remainingUnits, 70); // burstLimit - currentUsage = 120 - 50
 });
 
-test("evaluateQuota handles currentUsage equal to hardLimit with zero request", () => {
+test("evaluateQuota handles currentUsage equal to hardLimit with zero request [quota-enforcer-service]", () => {
   const policy = makeQuotaPolicy({ hardLimit: 100, currentUsage: 100 });
   const result = evaluateQuota(policy, 0);
 
@@ -120,7 +120,7 @@ test("evaluateQuota handles currentUsage equal to hardLimit with zero request", 
   assert.equal(result.remainingUnits, 20); // burstLimit - currentUsage
 });
 
-test("evaluateQuota handles edge case at exactly hard limit", () => {
+test("evaluateQuota handles edge case at exactly hard limit [quota-enforcer-service]", () => {
   const policy = makeQuotaPolicy({ hardLimit: 100, burstLimit: 100, currentUsage: 70 });
   const result = evaluateQuota(policy, 30);
 
@@ -129,7 +129,7 @@ test("evaluateQuota handles edge case at exactly hard limit", () => {
   assert.equal(result.usesBurst, false);
 });
 
-test("evaluateQuota calculates remainingUnits correctly", () => {
+test("evaluateQuota calculates remainingUnits correctly [quota-enforcer-service]", () => {
   const policy = makeQuotaPolicy({ hardLimit: 100, burstLimit: 150, currentUsage: 20 });
   const result = evaluateQuota(policy, 50);
 
@@ -142,21 +142,21 @@ test("evaluateQuota calculates remainingUnits correctly", () => {
 // isQuotaExceeded Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("isQuotaExceeded returns false when under burst limit", () => {
+test("isQuotaExceeded returns false when under burst limit [quota-enforcer-service]", () => {
   const policy = makeQuotaPolicy({ hardLimit: 100, burstLimit: 120, currentUsage: 50 });
   const result = isQuotaExceeded(policy, 50);
 
   assert.equal(result, false);
 });
 
-test("isQuotaExceeded returns true when over burst limit", () => {
+test("isQuotaExceeded returns true when over burst limit [quota-enforcer-service]", () => {
   const policy = makeQuotaPolicy({ hardLimit: 100, burstLimit: 120, currentUsage: 100 });
   const result = isQuotaExceeded(policy, 30);
 
   assert.equal(result, true);
 });
 
-test("isQuotaExceeded uses burstLimit not hardLimit", () => {
+test("isQuotaExceeded uses burstLimit not hardLimit [quota-enforcer-service]", () => {
   const policy = makeQuotaPolicy({ hardLimit: 100, burstLimit: 100, currentUsage: 90 });
   const result = isQuotaExceeded(policy, 20);
 
@@ -168,7 +168,7 @@ test("isQuotaExceeded uses burstLimit not hardLimit", () => {
 // QuotaPolicySchema Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("QuotaPolicySchema parses valid policy", () => {
+test("QuotaPolicySchema parses valid policy [quota-enforcer-service]", () => {
   const policy = {
     scopeId: "tenant-1",
     resourceType: "runtime_units",
@@ -186,7 +186,7 @@ test("QuotaPolicySchema parses valid policy", () => {
   }
 });
 
-test("QuotaPolicySchema rejects tenant scope without scopeId", () => {
+test("QuotaPolicySchema rejects tenant scope without scopeId [quota-enforcer-service]", () => {
   const policy = {
     resourceType: "runtime_units",
     hardLimit: 100,
@@ -198,7 +198,7 @@ test("QuotaPolicySchema rejects tenant scope without scopeId", () => {
   assert.equal(result.success, false);
 });
 
-test("QuotaPolicySchema applies defaults", () => {
+test("QuotaPolicySchema applies defaults [quota-enforcer-service]", () => {
   const policy = {
     scopeId: "tenant-1",
     hardLimit: 100,
@@ -215,7 +215,7 @@ test("QuotaPolicySchema applies defaults", () => {
   }
 });
 
-test("QuotaPolicySchema accepts multiResourceQuota", () => {
+test("QuotaPolicySchema accepts multiResourceQuota [quota-enforcer-service]", () => {
   const policy = {
     scopeId: "tenant-1",
     hardLimit: 100,
@@ -235,7 +235,7 @@ test("QuotaPolicySchema accepts multiResourceQuota", () => {
 // QuotaEnforcerService Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("QuotaEnforcerService.registerQuota stores policy", () => {
+test("QuotaEnforcerService.registerQuota stores policy [quota-enforcer-service]", () => {
   const service = new QuotaEnforcerService();
   const policy = makeQuotaPolicy({ scopeId: "tenant-1" });
 
@@ -245,7 +245,7 @@ test("QuotaEnforcerService.registerQuota stores policy", () => {
   assert.equal(result.exceeded, false);
 });
 
-test("QuotaEnforcerService.checkQuota returns passed for unregistered policy", () => {
+test("QuotaEnforcerService.checkQuota returns passed for unregistered policy [quota-enforcer-service]", () => {
   const service = new QuotaEnforcerService();
   const request = makeRequestedUnits({ worker_concurrency: 10 });
 
@@ -255,7 +255,7 @@ test("QuotaEnforcerService.checkQuota returns passed for unregistered policy", (
   assert.deepEqual(result.failedDimensions, []);
 });
 
-test("QuotaEnforcerService.checkQuota enforces registered policy", () => {
+test("QuotaEnforcerService.checkQuota enforces registered policy [quota-enforcer-service]", () => {
   const service = new QuotaEnforcerService();
   service.registerQuota("tenant", "tenant-1", makeQuotaPolicy({
     scopeId: "tenant-1",
@@ -273,7 +273,7 @@ test("QuotaEnforcerService.checkQuota enforces registered policy", () => {
   assert.ok(result.failedDimensions.includes("worker_concurrency"));
 });
 
-test("QuotaEnforcerService.checkSingleResourceQuota evaluates single resource", () => {
+test("QuotaEnforcerService.checkSingleResourceQuota evaluates single resource [quota-enforcer-service]", () => {
   const service = new QuotaEnforcerService();
   service.registerQuota("tenant", "tenant-1", makeQuotaPolicy({
     scopeId: "tenant-1",
@@ -287,7 +287,7 @@ test("QuotaEnforcerService.checkSingleResourceQuota evaluates single resource", 
   assert.equal(result.exceeded, true); // 50 + 60 = 110 > 100
 });
 
-test("QuotaEnforcerService.checkSingleResourceQuota returns not-exceeded for unregistered", () => {
+test("QuotaEnforcerService.checkSingleResourceQuota returns not-exceeded for unregistered [quota-enforcer-service]", () => {
   const service = new QuotaEnforcerService();
 
   const result = service.checkSingleResourceQuota("tenant", "unknown", "runtime_units", 1000);
@@ -296,7 +296,7 @@ test("QuotaEnforcerService.checkSingleResourceQuota returns not-exceeded for unr
   assert.equal(result.remainingUnits, Infinity);
 });
 
-test("QuotaEnforcerService.updateUsage updates current usage", () => {
+test("QuotaEnforcerService.updateUsage updates current usage [quota-enforcer-service]", () => {
   const service = new QuotaEnforcerService();
   service.registerQuota("tenant", "tenant-1", makeQuotaPolicy({
     scopeId: "tenant-1",
@@ -313,7 +313,7 @@ test("QuotaEnforcerService.updateUsage updates current usage", () => {
   assert.equal(result.exceeded, true);
 });
 
-test("QuotaEnforcerService.checkQuota handles multi-dimensional warnings", () => {
+test("QuotaEnforcerService.checkQuota handles multi-dimensional warnings [quota-enforcer-service]", () => {
   const service = new QuotaEnforcerService();
   service.registerQuota("tenant", "tenant-1", makeQuotaPolicy({
     scopeId: "tenant-1",
@@ -332,7 +332,7 @@ test("QuotaEnforcerService.checkQuota handles multi-dimensional warnings", () =>
   assert.ok(result.warningDimensions.includes("worker_concurrency"));
 });
 
-test("QuotaEnforcerService.checkQuota multiple dimension failures", () => {
+test("QuotaEnforcerService.checkQuota multiple dimension failures [quota-enforcer-service]", () => {
   const service = new QuotaEnforcerService();
   service.registerQuota("tenant", "tenant-1", makeQuotaPolicy({
     scopeId: "tenant-1",
@@ -360,7 +360,7 @@ test("QuotaEnforcerService.checkQuota multiple dimension failures", () => {
 // evaluateMultiDimensionalQuota Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("evaluateMultiDimensionalQuota uses single resource when no multiResourceHardLimits", () => {
+test("evaluateMultiDimensionalQuota uses single resource when no multiResourceHardLimits [quota-enforcer-service]", () => {
   const policy = makeQuotaPolicy({ hardLimit: 100, currentUsage: 0 });
   const request = makeRequestedUnits({ worker_concurrency: 50 });
 
@@ -372,7 +372,7 @@ test("evaluateMultiDimensionalQuota uses single resource when no multiResourceHa
   assert.equal(result.overallDecision.exceeded, false);
 });
 
-test("evaluateMultiDimensionalQuota with multiResourceHardLimits checks each dimension", () => {
+test("evaluateMultiDimensionalQuota with multiResourceHardLimits checks each dimension [quota-enforcer-service]", () => {
   const policy = makeQuotaPolicy({
     hardLimit: 100,
     multiResourceHardLimits: {
@@ -389,7 +389,7 @@ test("evaluateMultiDimensionalQuota with multiResourceHardLimits checks each dim
   assert.deepEqual(result.failedDimensions, []);
 });
 
-test("evaluateMultiDimensionalQuota detects failed dimension", () => {
+test("evaluateMultiDimensionalQuota detects failed dimension [quota-enforcer-service]", () => {
   const policy = makeQuotaPolicy({
     hardLimit: 100,
     multiResourceHardLimits: {
@@ -405,7 +405,7 @@ test("evaluateMultiDimensionalQuota detects failed dimension", () => {
   assert.ok(result.failedDimensions.includes("worker_concurrency"));
 });
 
-test("evaluateMultiDimensionalQuota uses 80% of hardLimit as soft limit", () => {
+test("evaluateMultiDimensionalQuota uses 80% of hardLimit as soft limit [quota-enforcer-service]", () => {
   const policy = makeQuotaPolicy({
     hardLimit: 100,
     multiResourceHardLimits: {

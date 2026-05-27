@@ -7,7 +7,7 @@ import test from "node:test";
  */
 
 // R13-14 test: Tickets should be sorted by critical path rank (descending)
-test("R13-14: Tickets sorted by critical path rank descending", () => {
+test("R13-14: Tickets sorted by critical path rank descending [execution-dispatch-service-r13]", () => {
   type TaskPriority = "critical" | "urgent" | "high" | "normal" | "low";
 
   interface Ticket {
@@ -62,7 +62,7 @@ test("R13-14: Tickets sorted by critical path rank descending", () => {
 });
 
 // R13-14 test: Priority ordering should be critical > urgent > high > normal > low
-test("R13-14: Priority ordering enforced correctly", () => {
+test("R13-14: Priority ordering enforced correctly [execution-dispatch-service-r13]", () => {
   type TaskPriority = "critical" | "urgent" | "high" | "normal" | "low";
   const PRIORITY_ORDER: Record<TaskPriority, number> = {
     critical: 5,
@@ -83,7 +83,7 @@ test("R13-14: Priority ordering enforced correctly", () => {
 });
 
 // R13-15 test: InterleaveByTenant prevents single tenant from flooding
-test("R13-15: Interleave by tenant prevents single tenant flooding", () => {
+test("R13-15: Interleave by tenant prevents single tenant flooding [execution-dispatch-service-r13]", () => {
   interface Ticket {
     id: string;
     tenantId: string;
@@ -172,7 +172,7 @@ test("R13-15: Interleave by tenant prevents single tenant flooding", () => {
 });
 
 // R13-15 test: Single tenant should not monopolize all dispatch slots
-test("R13-15: monopolizing tenant cannot consume more than burst quota when another tenant is queued", () => {
+test("R13-15: monopolizing tenant cannot consume more than burst quota when another tenant is queued [execution-dispatch-service-r13]", () => {
   interface Ticket {
     id: string;
     tenantId: string;

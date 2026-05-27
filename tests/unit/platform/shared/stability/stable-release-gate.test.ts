@@ -9,7 +9,7 @@ import type {
   StableReleaseGateReport,
 } from "../../../../../src/platform/shared/stability/stable-release-gate.js";
 
-test("StableGateTargetStatus type exports are correct", () => {
+test("StableGateTargetStatus type exports are correct [stable-release-gate]", () => {
   const targets: StableGateTargetStatus[] = ["canary", "tenant_gray", "production_ready"];
 
   for (const target of targets) {
@@ -17,7 +17,7 @@ test("StableGateTargetStatus type exports are correct", () => {
   }
 });
 
-test("StableGateVerdict type exports are correct", () => {
+test("StableGateVerdict type exports are correct [stable-release-gate]", () => {
   const verdicts: StableGateVerdict[] = ["promote_approved", "conditional", "promote_blocked"];
 
   for (const verdict of verdicts) {
@@ -25,7 +25,7 @@ test("StableGateVerdict type exports are correct", () => {
   }
 });
 
-test("StableGateCriterion structure - pass", () => {
+test("StableGateCriterion structure - pass [stable-release-gate]", () => {
   const criterion: StableGateCriterion = {
     criterionId: "conformance_tests",
     status: "pass",
@@ -39,7 +39,7 @@ test("StableGateCriterion structure - pass", () => {
   assert.deepEqual(criterion.evidenceRefs, ["/evidence/conformance/results.json"]);
 });
 
-test("StableGateCriterion structure - partial", () => {
+test("StableGateCriterion structure - partial [stable-release-gate]", () => {
   const criterion: StableGateCriterion = {
     criterionId: "chaos_drill_results",
     status: "partial",
@@ -50,7 +50,7 @@ test("StableGateCriterion structure - partial", () => {
   assert.equal(criterion.status, "partial");
 });
 
-test("StableGateCriterion structure - fail", () => {
+test("StableGateCriterion structure - fail [stable-release-gate]", () => {
   const criterion: StableGateCriterion = {
     criterionId: "backup_restore_tested",
     status: "fail",
@@ -61,7 +61,7 @@ test("StableGateCriterion structure - fail", () => {
   assert.equal(criterion.status, "fail");
 });
 
-test("StableReleaseGateReport structure", () => {
+test("StableReleaseGateReport structure [stable-release-gate]", () => {
   const report: StableReleaseGateReport = {
     packageId: "stable_pkg_123",
     componentId: "stable_core",
@@ -91,7 +91,7 @@ test("StableReleaseGateReport structure", () => {
   assert.equal(report.overallVerdict, "promote_approved");
 });
 
-test("StableReleaseGateReport with blockers", () => {
+test("StableReleaseGateReport with blockers [stable-release-gate]", () => {
   const report: StableReleaseGateReport = {
     packageId: "stable_pkg_456",
     componentId: "stable_core",
@@ -126,7 +126,7 @@ test("StableReleaseGateReport with blockers", () => {
   assert.deepEqual(report.blockers, ["conformance_tests"]);
 });
 
-test("StableReleaseGateReport with conditional verdict", () => {
+test("StableReleaseGateReport with conditional verdict [stable-release-gate]", () => {
   const report: StableReleaseGateReport = {
     packageId: "stable_pkg_789",
     componentId: "stable_core",
@@ -160,7 +160,7 @@ test("StableReleaseGateReport with conditional verdict", () => {
   assert.equal(report.overallVerdict, "conditional");
 });
 
-test("All criterion IDs are valid", () => {
+test("All criterion IDs are valid [stable-release-gate]", () => {
   const criterionIds: StableGateCriterion["criterionId"][] = [
     "contracts_frozen",
     "conformance_tests",
@@ -188,10 +188,10 @@ test("All criterion IDs are valid", () => {
   }
 });
 
-test("buildStableReleaseGateReport can be imported", () => {
+test("buildStableReleaseGateReport can be imported [stable-release-gate]", () => {
   assert.ok(typeof buildStableReleaseGateReport === "function");
 });
 
-test("writeStableReleaseGateReport can be imported", () => {
+test("writeStableReleaseGateReport can be imported [stable-release-gate]", () => {
   assert.ok(typeof writeStableReleaseGateReport === "function");
 });

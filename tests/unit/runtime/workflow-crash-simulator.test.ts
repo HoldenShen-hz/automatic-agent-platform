@@ -8,7 +8,7 @@ import {
   type WorkflowCrashPoint,
 } from "../../../src/platform/five-plane-execution/recovery/workflow-crash-simulator.js";
 
-test("workflow crash simulator throws only for the matching point and step", () => {
+test("workflow crash simulator throws only for the matching point and step [workflow-crash-simulator]", () => {
   const context = {
     point: "tool_completed" as const,
     taskId: "task-1",
@@ -38,7 +38,7 @@ test("workflow crash simulator throws only for the matching point and step", () 
   assert.equal((thrown as InjectedWorkflowCrashError).executionId, "exec-1");
 });
 
-test("workflow crash simulator does not throw when injection is undefined", () => {
+test("workflow crash simulator does not throw when injection is undefined [workflow-crash-simulator]", () => {
   const context = {
     point: "tool_completed" as const,
     taskId: "task-1",
@@ -52,7 +52,7 @@ test("workflow crash simulator does not throw when injection is undefined", () =
   });
 });
 
-test("workflow crash simulator crashes when point matches and stepId is null (any step)", () => {
+test("workflow crash simulator crashes when point matches and stepId is null (any step) [workflow-crash-simulator]", () => {
   const context = {
     point: "step_started" as const,
     taskId: "task-1",
@@ -76,7 +76,7 @@ test("workflow crash simulator crashes when point matches and stepId is null (an
   assert.equal((thrown as InjectedWorkflowCrashError).point, "step_started");
 });
 
-test("workflow crash simulator handles all crash points", () => {
+test("workflow crash simulator handles all crash points [workflow-crash-simulator]", () => {
   const points: WorkflowCrashPoint[] = ["step_started", "tool_completed", "before_commit"];
 
   for (const point of points) {
@@ -100,7 +100,7 @@ test("workflow crash simulator handles all crash points", () => {
   }
 });
 
-test("isInjectedWorkflowCrashError returns false for non-crash errors", () => {
+test("isInjectedWorkflowCrashError returns false for non-crash errors [workflow-crash-simulator]", () => {
   assert.equal(isInjectedWorkflowCrashError(new Error("regular error")), false);
   assert.equal(isInjectedWorkflowCrashError(null), false);
   assert.equal(isInjectedWorkflowCrashError(undefined), false);
@@ -108,7 +108,7 @@ test("isInjectedWorkflowCrashError returns false for non-crash errors", () => {
   assert.equal(isInjectedWorkflowCrashError("string error"), false);
 });
 
-test("InjectedWorkflowCrashError has correct error code and details", () => {
+test("InjectedWorkflowCrashError has correct error code and details [workflow-crash-simulator]", () => {
   const context = {
     point: "before_commit" as const,
     taskId: "task-abc",

@@ -23,7 +23,7 @@ const createOption = (id: string, label: string, isDefault?: boolean): QuestionO
   isDefault: isDefault ?? null,
 });
 
-test("validateQuestionRequest accepts valid single choice request", () => {
+test("validateQuestionRequest accepts valid single choice request [question-tool]", () => {
   const request = createMockRequest({
     question: "What is your favorite color?",
     questionType: "single_choice",
@@ -32,7 +32,7 @@ test("validateQuestionRequest accepts valid single choice request", () => {
   assert.equal(validateQuestionRequest(request).valid, true);
 });
 
-test("validateQuestionRequest accepts valid multiple choice request", () => {
+test("validateQuestionRequest accepts valid multiple choice request [question-tool]", () => {
   const request = createMockRequest({
     question: "Select your interests?",
     questionType: "multiple_choice",
@@ -41,7 +41,7 @@ test("validateQuestionRequest accepts valid multiple choice request", () => {
   assert.equal(validateQuestionRequest(request).valid, true);
 });
 
-test("validateQuestionRequest rejects empty question", () => {
+test("validateQuestionRequest rejects empty question [question-tool]", () => {
   const request = createMockRequest({
     question: "   ",
     questionType: "single_choice",
@@ -52,7 +52,7 @@ test("validateQuestionRequest rejects empty question", () => {
   assert.ok(result.error?.includes("Question text"));
 });
 
-test("validateQuestionRequest rejects missing question", () => {
+test("validateQuestionRequest rejects missing question [question-tool]", () => {
   const request = createMockRequest({
     question: "",
     questionType: "single_choice",
@@ -64,7 +64,7 @@ test("validateQuestionRequest rejects missing question", () => {
   assert.equal(result.valid, false);
 });
 
-test("validateQuestionRequest rejects empty options", () => {
+test("validateQuestionRequest rejects empty options [question-tool]", () => {
   const request = createMockRequest({
     question: "What is your favorite?",
     questionType: "single_choice",
@@ -75,7 +75,7 @@ test("validateQuestionRequest rejects empty options", () => {
   assert.ok(result.error?.includes("At least one option"));
 });
 
-test("validateQuestionRequest rejects option without ID", () => {
+test("validateQuestionRequest rejects option without ID [question-tool]", () => {
   const request = createMockRequest({
     question: "What is your favorite?",
     questionType: "single_choice",
@@ -86,7 +86,7 @@ test("validateQuestionRequest rejects option without ID", () => {
   assert.ok(result.error?.includes("Option ID"));
 });
 
-test("validateQuestionRequest rejects option without label", () => {
+test("validateQuestionRequest rejects option without label [question-tool]", () => {
   const request = createMockRequest({
     question: "What is your favorite?",
     questionType: "single_choice",
@@ -97,7 +97,7 @@ test("validateQuestionRequest rejects option without label", () => {
   assert.ok(result.error?.includes("Option label"));
 });
 
-test("validateQuestionRequest rejects single choice with multiple defaults", () => {
+test("validateQuestionRequest rejects single choice with multiple defaults [question-tool]", () => {
   const request = createMockRequest({
     question: "What is your favorite?",
     questionType: "single_choice",
@@ -111,7 +111,7 @@ test("validateQuestionRequest rejects single choice with multiple defaults", () 
   assert.ok(result.error?.includes("only have one default"));
 });
 
-test("validateQuestionRequest allows single choice with one default", () => {
+test("validateQuestionRequest allows single choice with one default [question-tool]", () => {
   const request = createMockRequest({
     question: "What is your favorite?",
     questionType: "single_choice",
@@ -123,7 +123,7 @@ test("validateQuestionRequest allows single choice with one default", () => {
   assert.equal(validateQuestionRequest(request).valid, true);
 });
 
-test("validateQuestionRequest allows multiple choice with multiple defaults", () => {
+test("validateQuestionRequest allows multiple choice with multiple defaults [question-tool]", () => {
   const request = createMockRequest({
     question: "Select your interests?",
     questionType: "multiple_choice",
@@ -135,59 +135,59 @@ test("validateQuestionRequest allows multiple choice with multiple defaults", ()
   assert.equal(validateQuestionRequest(request).valid, true);
 });
 
-test("normalizeAnswer returns null as-is", () => {
+test("normalizeAnswer returns null as-is [question-tool]", () => {
   assert.equal(normalizeAnswer(null, "single_choice"), null);
   assert.equal(normalizeAnswer(null, "multiple_choice"), null);
   assert.equal(normalizeAnswer(null, "skippable"), null);
 });
 
-test("normalizeAnswer handles single choice with string answer", () => {
+test("normalizeAnswer handles single choice with string answer [question-tool]", () => {
   const result = normalizeAnswer("opt1", "single_choice");
   assert.equal(result, "opt1");
 });
 
-test("normalizeAnswer handles single choice with array answer (takes first)", () => {
+test("normalizeAnswer handles single choice with array answer (takes first) [question-tool]", () => {
   const result = normalizeAnswer(["opt1", "opt2"], "single_choice");
   assert.equal(result, "opt1");
 });
 
-test("normalizeAnswer handles single choice with empty array", () => {
+test("normalizeAnswer handles single choice with empty array [question-tool]", () => {
   const result = normalizeAnswer([], "single_choice");
   assert.equal(result, null);
 });
 
-test("normalizeAnswer handles multiple choice with array answer (dedupes)", () => {
+test("normalizeAnswer handles multiple choice with array answer (dedupes) [question-tool]", () => {
   const result = normalizeAnswer(["opt1", "opt2", "opt1"], "multiple_choice");
   assert.deepEqual(result, ["opt1", "opt2"]);
 });
 
-test("normalizeAnswer handles multiple choice with string answer (wraps in array)", () => {
+test("normalizeAnswer handles multiple choice with string answer (wraps in array) [question-tool]", () => {
   const result = normalizeAnswer("opt1", "multiple_choice");
   assert.deepEqual(result, ["opt1"]);
 });
 
-test("normalizeAnswer passes through for skippable", () => {
+test("normalizeAnswer passes through for skippable [question-tool]", () => {
   const result = normalizeAnswer("any-answer", "skippable");
   assert.equal(result, "any-answer");
 });
 
-test("getAnswerLabel returns null for null answer", () => {
+test("getAnswerLabel returns null for null answer [question-tool]", () => {
   const options = [createOption("opt1", "Red"), createOption("opt2", "Blue")];
   assert.equal(getAnswerLabel(null, options), null);
 });
 
-test("getAnswerLabel returns label for single answer", () => {
+test("getAnswerLabel returns label for single answer [question-tool]", () => {
   const options = [createOption("opt1", "Red"), createOption("opt2", "Blue")];
   assert.equal(getAnswerLabel("opt1", options), "Red");
   assert.equal(getAnswerLabel("opt2", options), "Blue");
 });
 
-test("getAnswerLabel returns null for unknown option ID", () => {
+test("getAnswerLabel returns null for unknown option ID [question-tool]", () => {
   const options = [createOption("opt1", "Red")];
   assert.equal(getAnswerLabel("unknown", options), null);
 });
 
-test("getAnswerLabel returns joined labels for array answer", () => {
+test("getAnswerLabel returns joined labels for array answer [question-tool]", () => {
   const options = [
     createOption("opt1", "Red"),
     createOption("opt2", "Blue"),
@@ -196,12 +196,12 @@ test("getAnswerLabel returns joined labels for array answer", () => {
   assert.equal(getAnswerLabel(["opt1", "opt3"], options), "Red, Green");
 });
 
-test("getAnswerLabel filters unknown option IDs", () => {
+test("getAnswerLabel filters unknown option IDs [question-tool]", () => {
   const options = [createOption("opt1", "Red")];
   assert.equal(getAnswerLabel(["opt1", "unknown"], options), "Red");
 });
 
-test("QuestionToolService.createQuestion creates valid question", () => {
+test("QuestionToolService.createQuestion creates valid question [question-tool]", () => {
   const service = new QuestionToolService();
   const request = createMockRequest({
     question: "What is your favorite color?",
@@ -220,7 +220,7 @@ test("QuestionToolService.createQuestion creates valid question", () => {
   assert.equal(result.renderable.context, "User preference survey");
 });
 
-test("QuestionToolService.createQuestion uses default timeout of 5 minutes", () => {
+test("QuestionToolService.createQuestion uses default timeout of 5 minutes [question-tool]", () => {
   const service = new QuestionToolService();
   const request = createMockRequest({
     question: "What is your favorite?",
@@ -233,7 +233,7 @@ test("QuestionToolService.createQuestion uses default timeout of 5 minutes", () 
   assert.equal(result.metadata.timeoutMs, 300000);
 });
 
-test("QuestionToolService.createQuestion throws for invalid request", () => {
+test("QuestionToolService.createQuestion throws for invalid request [question-tool]", () => {
   const service = new QuestionToolService();
   const request = createMockRequest({
     question: "",
@@ -247,59 +247,59 @@ test("QuestionToolService.createQuestion throws for invalid request", () => {
   );
 });
 
-test("QuestionToolService.validateAnswer accepts null answer", () => {
+test("QuestionToolService.validateAnswer accepts null answer [question-tool]", () => {
   const service = new QuestionToolService();
   const result = service.validateAnswer(null, "single_choice", new Set(["opt1"]));
   assert.equal(result.valid, true);
 });
 
-test("QuestionToolService.validateAnswer accepts valid single choice", () => {
+test("QuestionToolService.validateAnswer accepts valid single choice [question-tool]", () => {
   const service = new QuestionToolService();
   const result = service.validateAnswer("opt1", "single_choice", new Set(["opt1", "opt2"]));
   assert.equal(result.valid, true);
 });
 
-test("QuestionToolService.validateAnswer rejects array for single choice", () => {
+test("QuestionToolService.validateAnswer rejects array for single choice [question-tool]", () => {
   const service = new QuestionToolService();
   const result = service.validateAnswer(["opt1"], "single_choice", new Set(["opt1"]));
   assert.equal(result.valid, false);
   assert.ok(result.error?.includes("Single choice"));
 });
 
-test("QuestionToolService.validateAnswer rejects unknown option for single choice", () => {
+test("QuestionToolService.validateAnswer rejects unknown option for single choice [question-tool]", () => {
   const service = new QuestionToolService();
   const result = service.validateAnswer("unknown", "single_choice", new Set(["opt1"]));
   assert.equal(result.valid, false);
   assert.ok(result.error?.includes("Invalid option ID"));
 });
 
-test("QuestionToolService.validateAnswer accepts valid multiple choice", () => {
+test("QuestionToolService.validateAnswer accepts valid multiple choice [question-tool]", () => {
   const service = new QuestionToolService();
   const result = service.validateAnswer(["opt1", "opt2"], "multiple_choice", new Set(["opt1", "opt2"]));
   assert.equal(result.valid, true);
 });
 
-test("QuestionToolService.validateAnswer rejects string for multiple choice", () => {
+test("QuestionToolService.validateAnswer rejects string for multiple choice [question-tool]", () => {
   const service = new QuestionToolService();
   const result = service.validateAnswer("opt1", "multiple_choice", new Set(["opt1"]));
   assert.equal(result.valid, false);
   assert.ok(result.error?.includes("Multiple choice"));
 });
 
-test("QuestionToolService.validateAnswer rejects unknown option for multiple choice", () => {
+test("QuestionToolService.validateAnswer rejects unknown option for multiple choice [question-tool]", () => {
   const service = new QuestionToolService();
   const result = service.validateAnswer(["opt1", "unknown"], "multiple_choice", new Set(["opt1"]));
   assert.equal(result.valid, false);
   assert.ok(result.error?.includes("Invalid option ID"));
 });
 
-test("QuestionToolService.validateAnswer accepts any answer for skippable", () => {
+test("QuestionToolService.validateAnswer accepts any answer for skippable [question-tool]", () => {
   const service = new QuestionToolService();
   const result = service.validateAnswer("anything", "skippable", new Set());
   assert.equal(result.valid, true);
 });
 
-test("QuestionToolService.validateAnswer accepts array for skippable", () => {
+test("QuestionToolService.validateAnswer accepts array for skippable [question-tool]", () => {
   const service = new QuestionToolService();
   const result = service.validateAnswer(["any", "thing"], "skippable", new Set());
   assert.equal(result.valid, true);

@@ -86,12 +86,12 @@ function createMockRedisClient(overrides: Partial<{
 // backendKind property
 // =============================================================================
 
-test("RedisQueueAdapter has backendKind of redis", () => {
+test("RedisQueueAdapter has backendKind of redis [redis-queue-adapter-functions]", () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
   assert.equal(adapter.backendKind, "redis");
 });
 
-test("RedisQueueAdapter uses in-memory redis when AA_RUNNING_TESTS is enabled", async () => {
+test("RedisQueueAdapter uses in-memory redis when AA_RUNNING_TESTS is enabled [redis-queue-adapter-functions]", async () => {
   const previousRunningTests = process.env.AA_RUNNING_TESTS;
   const previousNodeEnv = process.env.NODE_ENV;
   process.env.AA_RUNNING_TESTS = "1";
@@ -115,7 +115,7 @@ test("RedisQueueAdapter uses in-memory redis when AA_RUNNING_TESTS is enabled", 
   }
 });
 
-test("RedisQueueAdapter in-memory client covers default config and empty-store branches", async () => {
+test("RedisQueueAdapter in-memory client covers default config and empty-store branches [redis-queue-adapter-functions]", async () => {
   const previousRunningTests = process.env.AA_RUNNING_TESTS;
   const previousNodeEnv = process.env.NODE_ENV;
   process.env.AA_RUNNING_TESTS = "1";
@@ -149,7 +149,7 @@ test("RedisQueueAdapter in-memory client covers default config and empty-store b
   }
 });
 
-test("RedisQueueAdapter forbids in-memory redis in production test mode", () => {
+test("RedisQueueAdapter forbids in-memory redis in production test mode [redis-queue-adapter-functions]", () => {
   const previousRunningTests = process.env.AA_RUNNING_TESTS;
   const previousNodeEnv = process.env.NODE_ENV;
   process.env.AA_RUNNING_TESTS = "1";
@@ -175,7 +175,7 @@ test("RedisQueueAdapter forbids in-memory redis in production test mode", () => 
 // enqueue (sync) Tests
 // =============================================================================
 
-test("RedisQueueAdapter sync enqueue returns job immediately", () => {
+test("RedisQueueAdapter sync enqueue returns job immediately [redis-queue-adapter-functions]", () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
   const job = adapter.enqueue({ queueName: "test-queue", payload: { data: "test" } });
 
@@ -185,7 +185,7 @@ test("RedisQueueAdapter sync enqueue returns job immediately", () => {
   assert.equal(job.attempts, 0);
 });
 
-test("RedisQueueAdapter sync enqueue sets delayed status for future date", () => {
+test("RedisQueueAdapter sync enqueue sets delayed status for future date [redis-queue-adapter-functions]", () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
   const futureDate = new Date(Date.now() + 60000).toISOString();
   const job = adapter.enqueue({
@@ -198,7 +198,7 @@ test("RedisQueueAdapter sync enqueue sets delayed status for future date", () =>
   assert.equal(job.delayUntil, futureDate);
 });
 
-test("RedisQueueAdapter sync enqueue respects priority", () => {
+test("RedisQueueAdapter sync enqueue respects priority [redis-queue-adapter-functions]", () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
   const job = adapter.enqueue({
     queueName: "test-queue",
@@ -209,14 +209,14 @@ test("RedisQueueAdapter sync enqueue respects priority", () => {
   assert.equal(job.priority, 99);
 });
 
-test("RedisQueueAdapter sync enqueue uses default maxAttempts", () => {
+test("RedisQueueAdapter sync enqueue uses default maxAttempts [redis-queue-adapter-functions]", () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
   const job = adapter.enqueue({ queueName: "test-queue", payload: { data: "test" } });
 
   assert.equal(job.maxAttempts, 3);
 });
 
-test("RedisQueueAdapter sync enqueue accepts custom maxAttempts", () => {
+test("RedisQueueAdapter sync enqueue accepts custom maxAttempts [redis-queue-adapter-functions]", () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
   const job = adapter.enqueue({
     queueName: "test-queue",
@@ -227,7 +227,7 @@ test("RedisQueueAdapter sync enqueue accepts custom maxAttempts", () => {
   assert.equal(job.maxAttempts, 10);
 });
 
-test("RedisQueueAdapter sync enqueue uses default priority when not specified", () => {
+test("RedisQueueAdapter sync enqueue uses default priority when not specified [redis-queue-adapter-functions]", () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
   const job = adapter.enqueue({ queueName: "test-queue", payload: { data: "test" } });
 
@@ -238,7 +238,7 @@ test("RedisQueueAdapter sync enqueue uses default priority when not specified", 
 // enqueueAsync Tests
 // =============================================================================
 
-test("RedisQueueAdapter enqueueAsync creates job with waiting status", async () => {
+test("RedisQueueAdapter enqueueAsync creates job with waiting status [redis-queue-adapter-functions]", async () => {
   const mockRedis = createMockRedisClient({
     hmset: async () => {},
     expire: async () => 1,
@@ -259,7 +259,7 @@ test("RedisQueueAdapter enqueueAsync creates job with waiting status", async () 
   assert.ok(result.updatedAt);
 });
 
-test("RedisQueueAdapter enqueueAsync sets delayed status for future date", async () => {
+test("RedisQueueAdapter enqueueAsync sets delayed status for future date [redis-queue-adapter-functions]", async () => {
   const mockRedis = createMockRedisClient({
     hmset: async () => {},
     expire: async () => 1,
@@ -279,7 +279,7 @@ test("RedisQueueAdapter enqueueAsync sets delayed status for future date", async
   assert.equal(result.delayUntil, futureDate);
 });
 
-test("RedisQueueAdapter enqueueAsync with idempotency key stores index", async () => {
+test("RedisQueueAdapter enqueueAsync with idempotency key stores index [redis-queue-adapter-functions]", async () => {
   let hsetCalls: Array<{ key: string; field: string; value: string }> = [];
 
   const mockRedis = createMockRedisClient({
@@ -305,7 +305,7 @@ test("RedisQueueAdapter enqueueAsync with idempotency key stores index", async (
   assert.ok(hsetCalls.some((c) => c.key.includes("idempotency") && c.field === "my-idem-key"));
 });
 
-test("RedisQueueAdapter enqueueAsync with idempotency key returns existing job", async () => {
+test("RedisQueueAdapter enqueueAsync with idempotency key returns existing job [redis-queue-adapter-functions]", async () => {
   const mockRedis = createMockRedisClient({
     hget: async () => "existing-job-123",
     hgetall: async (key: string) => {
@@ -345,7 +345,7 @@ test("RedisQueueAdapter enqueueAsync with idempotency key returns existing job",
 // dequeueAsync Tests
 // =============================================================================
 
-test("RedisQueueAdapter dequeueAsync returns null when waiting list is empty", async () => {
+test("RedisQueueAdapter dequeueAsync returns null when waiting list is empty [redis-queue-adapter-functions]", async () => {
   const mockRedis = createMockRedisClient({
     zrangebyscore: async () => [],
   });
@@ -356,7 +356,7 @@ test("RedisQueueAdapter dequeueAsync returns null when waiting list is empty", a
   assert.equal(result, null);
 });
 
-test("RedisQueueAdapter dequeueAsync returns job with ack/nack functions", async () => {
+test("RedisQueueAdapter dequeueAsync returns job with ack/nack functions [redis-queue-adapter-functions]", async () => {
   const mockRedis = createMockRedisClient({
     zrangebyscore: async () => ["job-123"],
     hgetall: async () => ({
@@ -392,7 +392,7 @@ test("RedisQueueAdapter dequeueAsync returns job with ack/nack functions", async
   assert.equal(typeof result!.nack, "function");
 });
 
-test("RedisQueueAdapter dequeueAsync skips non-waiting jobs", async () => {
+test("RedisQueueAdapter dequeueAsync skips non-waiting jobs [redis-queue-adapter-functions]", async () => {
   const mockRedis = createMockRedisClient({
     zrangebyscore: async () => ["job-active"],
     hgetall: async () => ({
@@ -419,7 +419,7 @@ test("RedisQueueAdapter dequeueAsync skips non-waiting jobs", async () => {
   assert.equal(result, null);
 });
 
-test("RedisQueueAdapter dequeueAsync ack completes job and cleans up", async () => {
+test("RedisQueueAdapter dequeueAsync ack completes job and cleans up [redis-queue-adapter-functions]", async () => {
   let hmsetCalls: Array<Record<string, string>> = [];
   let sremCalled = false;
   let saddCalled = false;
@@ -460,7 +460,7 @@ test("RedisQueueAdapter dequeueAsync ack completes job and cleans up", async () 
   assert.ok(saddCalled, "sadd should be called for completed set");
 });
 
-test("RedisQueueAdapter dequeueAsync nack requeues when under maxAttempts", async () => {
+test("RedisQueueAdapter dequeueAsync nack requeues when under maxAttempts [redis-queue-adapter-functions]", async () => {
   let hmsetCalls: Array<Record<string, string>> = [];
   let zaddCalled = false;
 
@@ -500,7 +500,7 @@ test("RedisQueueAdapter dequeueAsync nack requeues when under maxAttempts", asyn
   assert.ok(zaddCalled, "zadd should be called to requeue");
 });
 
-test("RedisQueueAdapter dequeueAsync nack moves to dead letter when at maxAttempts", async () => {
+test("RedisQueueAdapter dequeueAsync nack moves to dead letter when at maxAttempts [redis-queue-adapter-functions]", async () => {
   let hmsetCalls: Array<Record<string, string>> = [];
   let saddForDl = false;
 
@@ -546,7 +546,7 @@ test("RedisQueueAdapter dequeueAsync nack moves to dead letter when at maxAttemp
 // getJobAsync Tests
 // =============================================================================
 
-test("RedisQueueAdapter getJobAsync returns null for non-existent job", async () => {
+test("RedisQueueAdapter getJobAsync returns null for non-existent job [redis-queue-adapter-functions]", async () => {
   const mockRedis = createMockRedisClient({
     hgetall: async () => ({}),
   });
@@ -557,7 +557,7 @@ test("RedisQueueAdapter getJobAsync returns null for non-existent job", async ()
   assert.equal(result, null);
 });
 
-test("RedisQueueAdapter getJobAsync returns job when found", async () => {
+test("RedisQueueAdapter getJobAsync returns job when found [redis-queue-adapter-functions]", async () => {
   const mockRedis = createMockRedisClient({
     hgetall: async () => ({
       id: "found-job",
@@ -595,7 +595,7 @@ test("RedisQueueAdapter getJobAsync returns job when found", async () => {
 // listJobsAsync Tests
 // =============================================================================
 
-test("RedisQueueAdapter listJobsAsync returns empty array for empty queue", async () => {
+test("RedisQueueAdapter listJobsAsync returns empty array for empty queue [redis-queue-adapter-functions]", async () => {
   const mockRedis = createMockRedisClient({
     zrangebyscore: async () => [],
     smembers: async () => [],
@@ -608,7 +608,7 @@ test("RedisQueueAdapter listJobsAsync returns empty array for empty queue", asyn
   assert.equal(result.length, 0);
 });
 
-test("RedisQueueAdapter listJobsAsync returns all jobs across sets when no status filter", async () => {
+test("RedisQueueAdapter listJobsAsync returns all jobs across sets when no status filter [redis-queue-adapter-functions]", async () => {
   let hgetallCallCount = 0;
 
   const mockRedis = createMockRedisClient({
@@ -645,7 +645,7 @@ test("RedisQueueAdapter listJobsAsync returns all jobs across sets when no statu
   assert.ok(hgetallCallCount >= 1);
 });
 
-test("RedisQueueAdapter listJobsAsync filters by status", async () => {
+test("RedisQueueAdapter listJobsAsync filters by status [redis-queue-adapter-functions]", async () => {
   const mockRedis = createMockRedisClient({
     zrangebyscore: async () => ["job-waiting"],
     smembers: async () => [],
@@ -672,7 +672,7 @@ test("RedisQueueAdapter listJobsAsync filters by status", async () => {
   assert.ok(waitingJobs.every((j) => j.status === "waiting"));
 });
 
-test("RedisQueueAdapter listJobsAsync respects limit parameter", async () => {
+test("RedisQueueAdapter listJobsAsync respects limit parameter [redis-queue-adapter-functions]", async () => {
   const mockRedis = createMockRedisClient({
     zrangebyscore: async () => ["job-1", "job-2", "job-3", "job-4", "job-5"],
     smembers: async () => [],
@@ -702,7 +702,7 @@ test("RedisQueueAdapter listJobsAsync respects limit parameter", async () => {
   assert.equal(result.length, 3);
 });
 
-test("RedisQueueAdapter listJobsAsync skips jobs that no longer exist", async () => {
+test("RedisQueueAdapter listJobsAsync skips jobs that no longer exist [redis-queue-adapter-functions]", async () => {
   const mockRedis = createMockRedisClient({
     zrangebyscore: async () => ["ghost-job", "valid-job"],
     smembers: async () => [],
@@ -737,7 +737,7 @@ test("RedisQueueAdapter listJobsAsync skips jobs that no longer exist", async ()
 // moveToDeadLetterAsync Tests
 // =============================================================================
 
-test("RedisQueueAdapter moveToDeadLetterAsync does nothing for non-existent job", async () => {
+test("RedisQueueAdapter moveToDeadLetterAsync does nothing for non-existent job [redis-queue-adapter-functions]", async () => {
   let hmsetCalled = false;
 
   const mockRedis = createMockRedisClient({
@@ -751,7 +751,7 @@ test("RedisQueueAdapter moveToDeadLetterAsync does nothing for non-existent job"
   assert.equal(hmsetCalled, false);
 });
 
-test("RedisQueueAdapter moveToDeadLetterAsync updates job to dead_letter status", async () => {
+test("RedisQueueAdapter moveToDeadLetterAsync updates job to dead_letter status [redis-queue-adapter-functions]", async () => {
   let hmsetData: Record<string, string> = {};
   let sremCalled = false;
   let saddCalled = false;
@@ -795,7 +795,7 @@ test("RedisQueueAdapter moveToDeadLetterAsync updates job to dead_letter status"
 // retryJobAsync Tests
 // =============================================================================
 
-test("RedisQueueAdapter retryJobAsync returns null for non-existent job", async () => {
+test("RedisQueueAdapter retryJobAsync returns null for non-existent job [redis-queue-adapter-functions]", async () => {
   const mockRedis = createMockRedisClient({
     hgetall: async () => ({}),
   });
@@ -806,7 +806,7 @@ test("RedisQueueAdapter retryJobAsync returns null for non-existent job", async 
   assert.equal(result, null);
 });
 
-test("RedisQueueAdapter retryJobAsync returns null for waiting job", async () => {
+test("RedisQueueAdapter retryJobAsync returns null for waiting job [redis-queue-adapter-functions]", async () => {
   const mockRedis = createMockRedisClient({
     hgetall: async () => ({
       id: "waiting-job",
@@ -831,7 +831,7 @@ test("RedisQueueAdapter retryJobAsync returns null for waiting job", async () =>
   assert.equal(result, null);
 });
 
-test("RedisQueueAdapter retryJobAsync returns null for active job", async () => {
+test("RedisQueueAdapter retryJobAsync returns null for active job [redis-queue-adapter-functions]", async () => {
   const mockRedis = createMockRedisClient({
     hgetall: async () => ({
       id: "active-job",
@@ -856,7 +856,7 @@ test("RedisQueueAdapter retryJobAsync returns null for active job", async () => 
   assert.equal(result, null);
 });
 
-test("RedisQueueAdapter retryJobAsync resets failed job to waiting", async () => {
+test("RedisQueueAdapter retryJobAsync resets failed job to waiting [redis-queue-adapter-functions]", async () => {
   let hmsetData: Record<string, string> = {};
   let sremCalledForActive = false;
   let sremCalledForDl = false;
@@ -901,7 +901,7 @@ test("RedisQueueAdapter retryJobAsync resets failed job to waiting", async () =>
   assert.ok(sremCalledForDl);
 });
 
-test("RedisQueueAdapter retryJobAsync resets dead_letter job to waiting", async () => {
+test("RedisQueueAdapter retryJobAsync resets dead_letter job to waiting [redis-queue-adapter-functions]", async () => {
   let hgetallCalls = 0;
 
   const mockRedis = createMockRedisClient({
@@ -958,7 +958,7 @@ test("RedisQueueAdapter retryJobAsync resets dead_letter job to waiting", async 
 // purgeAsync Tests
 // =============================================================================
 
-test("RedisQueueAdapter purgeAsync returns 0 when no completed jobs", async () => {
+test("RedisQueueAdapter purgeAsync returns 0 when no completed jobs [redis-queue-adapter-functions]", async () => {
   const mockRedis = createMockRedisClient({
     smembers: async () => [],
   });
@@ -969,7 +969,7 @@ test("RedisQueueAdapter purgeAsync returns 0 when no completed jobs", async () =
   assert.equal(result, 0);
 });
 
-test("RedisQueueAdapter purgeAsync deletes completed jobs older than cutoff", async () => {
+test("RedisQueueAdapter purgeAsync deletes completed jobs older than cutoff [redis-queue-adapter-functions]", async () => {
   let deletedJobs: string[] = [];
 
   const mockRedis = createMockRedisClient({
@@ -1016,7 +1016,7 @@ test("RedisQueueAdapter purgeAsync deletes completed jobs older than cutoff", as
   assert.ok(!deletedJobs.includes("new-job"));
 });
 
-test("RedisQueueAdapter purgeAsync also purges dead letter jobs", async () => {
+test("RedisQueueAdapter purgeAsync also purges dead letter jobs [redis-queue-adapter-functions]", async () => {
   let deletedDlJobs: string[] = [];
 
   const mockRedis = createMockRedisClient({
@@ -1059,7 +1059,7 @@ test("RedisQueueAdapter purgeAsync also purges dead letter jobs", async () => {
   assert.ok(deletedDlJobs.includes("old-dl-job"));
 });
 
-test("RedisQueueAdapter purgeAsync does not delete jobs newer than cutoff", async () => {
+test("RedisQueueAdapter purgeAsync does not delete jobs newer than cutoff [redis-queue-adapter-functions]", async () => {
   let deletedJobs: string[] = [];
 
   const mockRedis = createMockRedisClient({
@@ -1100,7 +1100,7 @@ test("RedisQueueAdapter purgeAsync does not delete jobs newer than cutoff", asyn
 // statsAsync Tests
 // =============================================================================
 
-test("RedisQueueAdapter statsAsync returns correct queue statistics", async () => {
+test("RedisQueueAdapter statsAsync returns correct queue statistics [redis-queue-adapter-functions]", async () => {
   const mockRedis = createMockRedisClient({
     zcard: async () => 15,
     scard: async (key: string) => {
@@ -1124,7 +1124,7 @@ test("RedisQueueAdapter statsAsync returns correct queue statistics", async () =
   assert.equal(result.failed, 0);
 });
 
-test("RedisQueueAdapter statsAsync returns zeros for empty queue", async () => {
+test("RedisQueueAdapter statsAsync returns zeros for empty queue [redis-queue-adapter-functions]", async () => {
   const mockRedis = createMockRedisClient({
     zcard: async () => 0,
     scard: async () => 0,
@@ -1143,7 +1143,7 @@ test("RedisQueueAdapter statsAsync returns zeros for empty queue", async () => {
   assert.equal(result.deadLetter, 0);
 });
 
-test("RedisQueueAdapter statsAsync handles all jobs being delayed", async () => {
+test("RedisQueueAdapter statsAsync handles all jobs being delayed [redis-queue-adapter-functions]", async () => {
   const mockRedis = createMockRedisClient({
     zcard: async () => 10,
     scard: async (key: string) => {
@@ -1167,7 +1167,7 @@ test("RedisQueueAdapter statsAsync handles all jobs being delayed", async () => 
 // listQueuesAsync Tests
 // =============================================================================
 
-test("RedisQueueAdapter listQueuesAsync returns all registered queue names", async () => {
+test("RedisQueueAdapter listQueuesAsync returns all registered queue names [redis-queue-adapter-functions]", async () => {
   const mockRedis = createMockRedisClient({
     smembers: async () => ["queue-a", "queue-b", "queue-c"],
   });
@@ -1181,7 +1181,7 @@ test("RedisQueueAdapter listQueuesAsync returns all registered queue names", asy
   assert.ok(result.includes("queue-c"));
 });
 
-test("RedisQueueAdapter listQueuesAsync returns empty array when no queues registered", async () => {
+test("RedisQueueAdapter listQueuesAsync returns empty array when no queues registered [redis-queue-adapter-functions]", async () => {
   const mockRedis = createMockRedisClient({
     smembers: async () => [],
   });
@@ -1197,7 +1197,7 @@ test("RedisQueueAdapter listQueuesAsync returns empty array when no queues regis
 // ping and close Tests
 // =============================================================================
 
-test("RedisQueueAdapter ping returns PONG", async () => {
+test("RedisQueueAdapter ping returns PONG [redis-queue-adapter-functions]", async () => {
   const mockRedis = createMockRedisClient({
     ping: async () => "PONG",
   });
@@ -1208,7 +1208,7 @@ test("RedisQueueAdapter ping returns PONG", async () => {
   assert.equal(result, "PONG");
 });
 
-test("RedisQueueAdapter ping connects when redis client is waiting", async () => {
+test("RedisQueueAdapter ping connects when redis client is waiting [redis-queue-adapter-functions]", async () => {
   let connectCalls = 0;
   const mockRedis = createMockRedisClient({
     status: "wait",
@@ -1224,7 +1224,7 @@ test("RedisQueueAdapter ping connects when redis client is waiting", async () =>
   assert.equal(connectCalls, 1);
 });
 
-test("RedisQueueAdapter ping throws when Redis is unavailable", async () => {
+test("RedisQueueAdapter ping throws when Redis is unavailable [redis-queue-adapter-functions]", async () => {
   const mockRedis = createMockRedisClient({
     ping: async () => {
       throw new Error("Connection refused");
@@ -1235,7 +1235,7 @@ test("RedisQueueAdapter ping throws when Redis is unavailable", async () => {
   await assert.rejects(adapter.ping());
 });
 
-test("RedisQueueAdapter ping throws storage error when closed connection cannot reconnect", async () => {
+test("RedisQueueAdapter ping throws storage error when closed connection cannot reconnect [redis-queue-adapter-functions]", async () => {
   const mockRedis = createMockRedisClient({
     status: "end",
     connect: async () => {
@@ -1247,7 +1247,7 @@ test("RedisQueueAdapter ping throws storage error when closed connection cannot 
   await assert.rejects(adapter.ping(), /queue.redis_connection_failed/);
 });
 
-test("RedisQueueAdapter close calls quit when status is ready", async () => {
+test("RedisQueueAdapter close calls quit when status is ready [redis-queue-adapter-functions]", async () => {
   let quitCalled = false;
 
   const mockRedis = createMockRedisClient({
@@ -1261,7 +1261,7 @@ test("RedisQueueAdapter close calls quit when status is ready", async () => {
   assert.ok(quitCalled);
 });
 
-test("RedisQueueAdapter close disconnects when status is wait", async () => {
+test("RedisQueueAdapter close disconnects when status is wait [redis-queue-adapter-functions]", async () => {
   let disconnected = false;
 
   const mockRedis = createMockRedisClient({
@@ -1275,7 +1275,7 @@ test("RedisQueueAdapter close disconnects when status is wait", async () => {
   assert.ok(disconnected);
 });
 
-test("RedisQueueAdapter close disconnects when status is end", async () => {
+test("RedisQueueAdapter close disconnects when status is end [redis-queue-adapter-functions]", async () => {
   let disconnected = false;
 
   const mockRedis = createMockRedisClient({
@@ -1293,7 +1293,7 @@ test("RedisQueueAdapter close disconnects when status is end", async () => {
 // Sync methods throw validation errors
 // =============================================================================
 
-test("RedisQueueAdapter dequeue throws sync_not_supported", () => {
+test("RedisQueueAdapter dequeue throws sync_not_supported [redis-queue-adapter-functions]", () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
 
   assert.throws(
@@ -1302,7 +1302,7 @@ test("RedisQueueAdapter dequeue throws sync_not_supported", () => {
   );
 });
 
-test("RedisQueueAdapter getJob throws sync_not_supported", () => {
+test("RedisQueueAdapter getJob throws sync_not_supported [redis-queue-adapter-functions]", () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
 
   assert.throws(
@@ -1311,7 +1311,7 @@ test("RedisQueueAdapter getJob throws sync_not_supported", () => {
   );
 });
 
-test("RedisQueueAdapter listJobs throws sync_not_supported", () => {
+test("RedisQueueAdapter listJobs throws sync_not_supported [redis-queue-adapter-functions]", () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
 
   assert.throws(
@@ -1320,7 +1320,7 @@ test("RedisQueueAdapter listJobs throws sync_not_supported", () => {
   );
 });
 
-test("RedisQueueAdapter moveToDeadLetter throws sync_not_supported", () => {
+test("RedisQueueAdapter moveToDeadLetter throws sync_not_supported [redis-queue-adapter-functions]", () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
 
   assert.throws(
@@ -1329,7 +1329,7 @@ test("RedisQueueAdapter moveToDeadLetter throws sync_not_supported", () => {
   );
 });
 
-test("RedisQueueAdapter retryJob throws sync_not_supported", () => {
+test("RedisQueueAdapter retryJob throws sync_not_supported [redis-queue-adapter-functions]", () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
 
   assert.throws(
@@ -1338,7 +1338,7 @@ test("RedisQueueAdapter retryJob throws sync_not_supported", () => {
   );
 });
 
-test("RedisQueueAdapter purge throws sync_not_supported", () => {
+test("RedisQueueAdapter purge throws sync_not_supported [redis-queue-adapter-functions]", () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
 
   assert.throws(
@@ -1347,7 +1347,7 @@ test("RedisQueueAdapter purge throws sync_not_supported", () => {
   );
 });
 
-test("RedisQueueAdapter stats throws sync_not_supported", () => {
+test("RedisQueueAdapter stats throws sync_not_supported [redis-queue-adapter-functions]", () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
 
   assert.throws(
@@ -1356,7 +1356,7 @@ test("RedisQueueAdapter stats throws sync_not_supported", () => {
   );
 });
 
-test("RedisQueueAdapter listQueues throws sync_not_supported", () => {
+test("RedisQueueAdapter listQueues throws sync_not_supported [redis-queue-adapter-functions]", () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
 
   assert.throws(

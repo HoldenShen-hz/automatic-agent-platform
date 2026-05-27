@@ -33,13 +33,13 @@ function createValidMetadata(overrides: Partial<ToolExecutionMetadata> = {}): To
   };
 }
 
-test("validateToolExecutionMetadata passes for valid metadata", () => {
+test("validateToolExecutionMetadata passes for valid metadata [tool-contract-validator]", () => {
   const metadata = createValidMetadata();
   const violations = validateToolExecutionMetadata(metadata);
   assert.deepEqual(violations, []);
 });
 
-test("validateToolExecutionMetadata detects missing tool name", () => {
+test("validateToolExecutionMetadata detects missing tool name [tool-contract-validator]", () => {
   const metadata = createValidMetadata({ toolName: "   " });
   const violations = validateToolExecutionMetadata(metadata);
 
@@ -47,119 +47,119 @@ test("validateToolExecutionMetadata detects missing tool name", () => {
   assert.equal(violations[0]?.code, "tool_name_missing");
 });
 
-test("validateToolExecutionMetadata detects invalid default timeout", () => {
+test("validateToolExecutionMetadata detects invalid default timeout [tool-contract-validator]", () => {
   const metadata = createValidMetadata({ defaultTimeoutMs: 0 });
   const violations = validateToolExecutionMetadata(metadata);
 
   assert.ok(violations.some((v) => v.code === "default_timeout_invalid"));
 });
 
-test("validateToolExecutionMetadata detects negative timeout", () => {
+test("validateToolExecutionMetadata detects negative timeout [tool-contract-validator]", () => {
   const metadata = createValidMetadata({ defaultTimeoutMs: -1000 });
   const violations = validateToolExecutionMetadata(metadata);
 
   assert.ok(violations.some((v) => v.code === "default_timeout_invalid"));
 });
 
-test("validateToolExecutionMetadata detects invalid max output", () => {
+test("validateToolExecutionMetadata detects invalid max output [tool-contract-validator]", () => {
   const metadata = createValidMetadata({ maxOutputBytes: 0 });
   const violations = validateToolExecutionMetadata(metadata);
 
   assert.ok(violations.some((v) => v.code === "max_output_invalid"));
 });
 
-test("validateToolExecutionMetadata detects invalid retryable error code", () => {
+test("validateToolExecutionMetadata detects invalid retryable error code [tool-contract-validator]", () => {
   const metadata = createValidMetadata({ retryableErrorCodes: ["", "valid"] as any });
   const violations = validateToolExecutionMetadata(metadata);
 
   assert.ok(violations.some((v) => v.code === "retryable_error_codes_invalid"));
 });
 
-test("validateToolExecutionMetadata detects duplicate retryable error codes", () => {
+test("validateToolExecutionMetadata detects duplicate retryable error codes [tool-contract-validator]", () => {
   const metadata = createValidMetadata({ retryableErrorCodes: ["error1", "error1", "error2"] });
   const violations = validateToolExecutionMetadata(metadata);
 
   assert.ok(violations.some((v) => v.code === "retryable_error_codes_duplicate"));
 });
 
-test("validateToolExecutionMetadata detects read-only with side effects", () => {
+test("validateToolExecutionMetadata detects read-only with side effects [tool-contract-validator]", () => {
   const metadata = createValidMetadata({ readOnly: true, sideEffectScope: "local_file" });
   const violations = validateToolExecutionMetadata(metadata);
 
   assert.ok(violations.some((v) => v.code === "read_only_side_effect_mismatch"));
 });
 
-test("validateToolExecutionMetadata allows read-only with no side effects", () => {
+test("validateToolExecutionMetadata allows read-only with no side effects [tool-contract-validator]", () => {
   const metadata = createValidMetadata({ readOnly: true, sideEffectScope: "none" });
   const violations = validateToolExecutionMetadata(metadata);
 
   assert.ok(!violations.some((v) => v.code === "read_only_side_effect_mismatch"));
 });
 
-test("validateToolExecutionMetadata detects read-only with write lock", () => {
+test("validateToolExecutionMetadata detects read-only with write lock [tool-contract-validator]", () => {
   const metadata = createValidMetadata({ readOnly: true, needsFileLock: "write" });
   const violations = validateToolExecutionMetadata(metadata);
 
   assert.ok(violations.some((v) => v.code === "read_only_lock_mismatch"));
 });
 
-test("validateToolExecutionMetadata detects read-only with dynamic lock", () => {
+test("validateToolExecutionMetadata detects read-only with dynamic lock [tool-contract-validator]", () => {
   const metadata = createValidMetadata({ readOnly: true, needsFileLock: "dynamic" });
   const violations = validateToolExecutionMetadata(metadata);
 
   assert.ok(violations.some((v) => v.code === "read_only_lock_mismatch"));
 });
 
-test("validateToolExecutionMetadata allows read-only with read lock", () => {
+test("validateToolExecutionMetadata allows read-only with read lock [tool-contract-validator]", () => {
   const metadata = createValidMetadata({ readOnly: true, needsFileLock: "read" });
   const violations = validateToolExecutionMetadata(metadata);
 
   assert.ok(!violations.some((v) => v.code === "read_only_lock_mismatch"));
 });
 
-test("validateToolExecutionMetadata detects artifact without artifact output", () => {
+test("validateToolExecutionMetadata detects artifact without artifact output [tool-contract-validator]", () => {
   const metadata = createValidMetadata({ producesArtifact: true, outputKind: "text" });
   const violations = validateToolExecutionMetadata(metadata);
 
   assert.ok(violations.some((v) => v.code === "artifact_output_mismatch"));
 });
 
-test("validateToolExecutionMetadata allows artifact with artifact_ref output", () => {
+test("validateToolExecutionMetadata allows artifact with artifact_ref output [tool-contract-validator]", () => {
   const metadata = createValidMetadata({ producesArtifact: true, outputKind: "artifact_ref" });
   const violations = validateToolExecutionMetadata(metadata);
 
   assert.ok(!violations.some((v) => v.code === "artifact_output_mismatch"));
 });
 
-test("validateToolExecutionMetadata allows artifact with mixed output", () => {
+test("validateToolExecutionMetadata allows artifact with mixed output [tool-contract-validator]", () => {
   const metadata = createValidMetadata({ producesArtifact: true, outputKind: "mixed" });
   const violations = validateToolExecutionMetadata(metadata);
 
   assert.ok(!violations.some((v) => v.code === "artifact_output_mismatch"));
 });
 
-test("validateToolExecutionMetadata detects mutable tool without execution receipt", () => {
+test("validateToolExecutionMetadata detects mutable tool without execution receipt [tool-contract-validator]", () => {
   const metadata = createValidMetadata({ readOnly: false, requiresExecutionReceipt: false });
   const violations = validateToolExecutionMetadata(metadata);
 
   assert.ok(violations.some((v) => v.code === "mutable_execution_receipt_required"));
 });
 
-test("validateToolExecutionMetadata allows mutable tool with execution receipt", () => {
+test("validateToolExecutionMetadata allows mutable tool with execution receipt [tool-contract-validator]", () => {
   const metadata = createValidMetadata({ readOnly: false, requiresExecutionReceipt: true });
   const violations = validateToolExecutionMetadata(metadata);
 
   assert.ok(!violations.some((v) => v.code === "mutable_execution_receipt_required"));
 });
 
-test("validateToolExecutionMetadata allows read-only tool without execution receipt", () => {
+test("validateToolExecutionMetadata allows read-only tool without execution receipt [tool-contract-validator]", () => {
   const metadata = createValidMetadata({ readOnly: true, requiresExecutionReceipt: false });
   const violations = validateToolExecutionMetadata(metadata);
 
   assert.ok(!violations.some((v) => v.code === "mutable_execution_receipt_required"));
 });
 
-test("validateToolMetadataRegistry aggregates violations from multiple tools", () => {
+test("validateToolMetadataRegistry aggregates violations from multiple tools [tool-contract-validator]", () => {
   const metadata1 = createValidMetadata({ toolName: "tool1", defaultTimeoutMs: 0 });
   const metadata2 = createValidMetadata({ toolName: "tool2", readOnly: true, sideEffectScope: "local_file" });
 
@@ -169,7 +169,7 @@ test("validateToolMetadataRegistry aggregates violations from multiple tools", (
   assert.ok(violations.some((v) => v.toolName === "tool2" && v.code === "read_only_side_effect_mismatch"));
 });
 
-test("validateToolMetadataRegistry returns empty for valid registry", () => {
+test("validateToolMetadataRegistry returns empty for valid registry [tool-contract-validator]", () => {
   const metadata1 = createValidMetadata({ toolName: "tool1" });
   const metadata2 = createValidMetadata({ toolName: "tool2" });
 

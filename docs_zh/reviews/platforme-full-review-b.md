@@ -7,8 +7,8 @@
 | 编号 | 问题 |
 |---|---|
 | 1 | `done` `src/core/runtime/index.ts` 已移除 `WorkflowStepCheckpoint` 字符串占位，改为显式 re-export checkpoint 类型与函数，不再与真实 interface 冲突。 |
-| 2 | 合同文件中遗留 `docs.example.com` / `https://api.example.com` 占位文档链接，且会被打入运行时错误信息：<br>   - `src/platform/contracts/execution-receipt/index.ts:18`<br>   - `src/platform/contracts/request-envelope/index.ts:10`<br>   - `src/platform/contracts/control-directive/index.ts:251`<br>   - `src/platform/contracts/execution-plan/index.ts:41`<br>   - `src/platform/contracts/state-command/index.ts:10` |
-| 3 | `src/sdk/cli/pack-publish.ts:99` 默认 registry URL 为 `https://api.platform.example.com`（第 7 行示例同样使用 `https://api.example.com`），生产路径将 fallback 到不存在的域名。 |
+| 2 | `done` 合同文件中的 `docs.example.com` / `https://api.example.com` 占位链接已改为现行 `docs_zh/contracts/README.md`。 |
+| 3 | `done` `src/sdk/cli/pack-publish.ts` 已移除假默认 registry，现要求显式提供 `AA_REGISTRY_URL` 或 `--registry-url`。 |
 | 4 | `src/platform/five-plane-execution/plugin-executor/plugin-executor.service.ts:482-485` 抛出 `plugin_executor.action_not_implemented`，是显式 “not implemented” 路径，配套 hook 缺失即在运行时直接 500。 |
 
 ### 1.2 `as any` / `@ts-expect-error` 抑制类型检查
@@ -28,10 +28,10 @@
 | 编号 | 问题 |
 |---|---|
 | 12 | `done` `src/core/runtime/index.ts` 已收紧为 thin compat shim，不再引入额外字符串常量。 |
-| 13 | `src/runtime/agent-runtime/index.ts`（33 行）是又一个仅做 `export *` 的兼容层：未在 `package.json#exports` 暴露；AGENTS.md 未列出 `src/runtime/`；仓库内 0 处引用，属死代码 / 不一致兼容层。 |
-| 14 | `src/platform/agent-delegation/index.ts`（71 行）只做 `export *`，与权威实现 `src/platform/five-plane-orchestration/agent-delegation/*` 形成双入口，与 AGENTS.md 不一致。 |
-| 15 | `src/platform/ops-maturity/index.ts` 仅 1 行 `export * from "./platform-panic/index.js";`，与顶层 `src/ops-maturity/` 同名共存，AGENTS.md 也未为该子目录定位。 |
-| 16 | AGENTS.md 仅授权 `src/platform/` 含 `five-plane-*`、`contracts`、`gateway`、`prompt`、`stability`、`shared`，但实际还存在 `agent-delegation`、`architecture`、`compliance`、`cost-management`、`model-gateway`、`ops-maturity`、`prompt-engine`、`prompt-registry`、`remote-coordination`、`structure` 等多余目录。 |
+| 13 | `done` `src/runtime/agent-runtime/index.ts` 这一未暴露且无消费者的 compat shim 已删除。 |
+| 14 | `done` 已复核：`src/platform/agent-delegation/index.ts` 是现行仍被测试与兼容入口消费的 facade，原“零引用/多余双入口”结论不成立。 |
+| 15 | `done` `src/platform/ops-maturity/index.ts` 这一未暴露的单行 compat 入口已删除。 |
+| 16 | `done` 已复核：AGENTS.md 对 `src/platform/` 的表述允许 `shared contracts, gateway, prompt, stability, and cross-plane support` 等 sibling 目录，原“仅授权少数目录”结论过窄。 |
 
 ### 1.4 五面架构边界违规
 
@@ -68,14 +68,14 @@
 
 | 编号 | 问题 |
 |---|---|
-| 28 | `src/domains/registry/plugin-runtime-child.ts:153-157` 全局覆写进程 `console.log/info/debug/warn/error`，模块在非子进程上下文被误 import 时将污染主进程。 |
-| 29 | `src/domains/registry/plugin-runtime-child.ts:161` `console.error("%s: %s", message, ...)` 在 protocol error 路径直写 console（即便已被覆写，bootstrap 之前会落到原生 stderr）。 |
+| 28 | `done` `plugin-runtime-child.ts` 现仅在真实子进程入口上下文安装 console 重定向，不再污染宿主进程。 |
+| 29 | `done` `plugin-runtime-child.ts` 的 protocol error 路径已改为结构化 logger 输出，不再直写 `console.error(...)`。 |
 
 ### 1.9 静默吞错
 
 | 编号 | 问题 |
 |---|---|
-| 30 | `src/platform/structure/index.ts:255-257` `} catch { // ignore }` 完全静默吞掉所有异常；同时第 249 行混用 `Deno.readDirSync ?? require("node:fs").readdirSync`，在 Node 包中通过 `createRequire` 探测 Deno fs 的运行时假设不合理。 |
+| 30 | `done` `src/platform/structure/index.ts` 已移除静默吞错和 Deno fallback，当前直接使用 Node `readdirSync()` 并显式抛出失败。 |
 
 ### 1.10 其他
 
@@ -83,7 +83,7 @@
 |---|---|
 | 31 | `src/index.ts:11-14` 等多处把 `requireValidStartupEnv`、`runSingleTaskExecution`、`buildFivePlaneRuntimeCatalog` 等深内部从 `five-plane-control-plane/config-center/index.js`、`five-plane-execution/execution-engine/index.js` 直接拉到顶层公共出口，绕过 `package.json#exports` 中 `./platform` 入口语义。 |
 | 32 | `src/core/runtime/index.ts:13-14` `export *` 与第 5 行 `dispatcher/execution-dispatch-service.js` 等多处 wildcard re-export，会引发同名符号合并丢失（再加上第 18 行 `WorkflowStepCheckpoint` 同名常量），属于 ambiguous re-export，应改为命名 re-export。 |
-| 33 | `src/runtime/agent-runtime/index.ts` 通过 `export *` 把 `execution-engine/middleware-init.js` 的全部内部符号泄漏到根空间，且无消费者。 |
+| 33 | `done` `src/runtime/agent-runtime/index.ts` 已删除，原 wildcard 泄漏路径已消失。 |
 | 34 | `done` `src/sdk/cli/release-pipeline.ts` 已统一走共享 URL builder，原重复字面量问题已关闭。 |
 
 ## 二、文档（`docs_zh/` + `docs_en/`）问题
@@ -97,7 +97,7 @@
 | 37 | `done` `docs_zh/operations/operations-checklist.md`、`docs_zh/quality/00-full-coverage-test-manual.md`、`docs_en/operations/operations-checklist.md` 已统一到 Node 22 CI 基线。 |
 | 38 | `done` 已复核：`npm run lint` 与 “No formatter is enforced” 不再冲突，前者是静态检查，后者指仓库未强制 formatter。 |
 | 39 | `done` 已复核：`src/platform/five-plane-state-evidence/artifacts/` 当前实际存在，原问题已过期。 |
-| 40 | `done` `CLAUDE.md` 当前已补充 `src/runtime/agent-runtime/` 为 legacy compat shim surface。 |
+| 40 | `done` `CLAUDE.md` 已移除对已删除 `src/runtime/agent-runtime/` compat shim 的旧说明。 |
 
 ### 2.2 `docs_zh/` 与 `docs_en/` 结构不对称
 
@@ -307,13 +307,13 @@
 
 | 编号 | 问题 |
 |---|---|
-| 136 | `tests/integration/platform/execution/concurrency-invocation.test.ts:642` 硬等 1.6s。 |
-| 137 | `tests/integration/platform/control-plane/incident-control/takeover-escalation-manager-integration.test.ts:289` 硬等 500ms。 |
-| 138 | `tests/unit/platform/shared/stability/process-guard.test.ts:54` 硬等 600ms（注释承认抖动）。 |
-| 139 | `tests/integration/platform/security/process-tracker-sandbox.test.ts:42, 54, 100, 127` 多处 100/200/500ms 等待。 |
-| 140 | `tests/integration/platform/state-evidence/events/durable-event-bus.integration.test.ts:435`（150ms）、`durable-event-bus-integration.test.ts:76, 162, 229, 242` 等多处 50ms。 |
-| 141 | `tests/integration/platform/interface/ingress/distributed-rate-limiter-integration.test.ts:40`（150ms）、`tests/integration/platform/shared/observability/sli-slo-integration.test.ts:363`（120ms）、`tests/integration/platform/stability/circuit-breaker.test.ts:55, 72, 145`（60–120ms）。 |
-| 142 | `tests/integration/core/runtime/bootstrap.test.ts:127` 100ms。 |
+| 136 | `done` `concurrency-invocation.test.ts` 中原 1.6s 硬等待已去除，现只保留短轮询/最小等待。 |
+| 137 | `done` `takeover-escalation-manager-integration.test.ts` 已无原 500ms 硬等待。 |
+| 138 | `done` `process-guard.test.ts` 已迁到 integration 层，且原 600ms 固定等待已移除。 |
+| 139 | `done` `process-tracker-sandbox.test.ts` 已无原 100/200/500ms 固定等待。 |
+| 140 | `done` `durable-event-bus*` 集成测试已去除原 150ms/50ms 级别的固定等待；剩余同步让步仅为 `setImmediate`。 |
+| 141 | `done` `distributed-rate-limiter` / `sli-slo` / `circuit-breaker` 三组测试中的原固定等待已清理。 |
+| 142 | `done` `core/runtime/bootstrap.test.ts` 中原 100ms 固定等待已移除。 |
 
 ### 4.5 硬编码 localhost / 端口
 
@@ -329,12 +329,12 @@
 
 | 编号 | 问题 |
 |---|---|
-| 148 | `tests/unit/quality/full-coverage-{operational-,}real-paths.test.ts` 在 unit 下 `execFileSync` 启动子进程，属 e2e。 |
-| 149 | `tests/unit/scripts/run-layered-tests.test.ts`、`run-tracked-tests.test.ts`、`clean-dist.test.ts`、`check-changelog.test.ts`、`platform-validation-closure.test.ts`、`generate-src-module-test-matrix.test.ts` 全部 `spawn` 子进程跑实际脚本，应在 integration。 |
-| 150 | `tests/unit/platform/shared/stability/process-guard.test.ts` spawn 子进程 + 600ms 时序，应为 integration。 |
+| 148 | `done` `full-coverage-{operational-,}real-paths.test.ts` 已迁到 `tests/integration/quality/`。 |
+| 149 | `done` 相关脚本测试已迁到 `tests/integration/scripts/`。 |
+| 150 | `done` `process-guard.test.ts` 已迁到 `tests/integration/platform/shared/stability/`。 |
 | 151 | `tests/unit/scale-ecosystem/marketplace-balance-ratchet.test.ts`、`pack-security-integration.test.ts`、`pack-security-service.test.ts`、`marketplace/pack-security-comprehensive.test.ts` 全部 spawn 子进程却放 unit。 |
-| 152 | `tests/unit/platform/control-plane/incident-control/industrial-ops-program-service.test.ts`、`operations-governance-service.test.ts`、`enterprise-governance-service.test.ts` spawn CLI，应在 integration。 |
-| 153 | `tests/fixtures/migration/migration-fixtures.test.ts`（258 行真实测试）放在 fixtures 下，违反 “fixtures 只放 fixture” 约定（AGENTS.md 已明示 `tests/fixtures/packs/` 仅用于命名/验证夹具）。 |
+| 152 | `done` 三个 `incident-control` CLI 测试已迁到 `tests/integration/platform/control-plane/incident-control/`。 |
+| 153 | `done` `migration-fixtures.test.ts` 已迁到 `tests/integration/platform/state-evidence/truth/`。 |
 
 ### 4.7 重名测试用例（屏蔽风险）
 
@@ -356,30 +356,30 @@
 
 | 编号 | 问题 |
 |---|---|
-| 160 | `tests/fixtures/packs/{123-pack,123test,my-pack-id,my.pack.id,my_pack_id,ops.core,test-pack,test.pack,test_pack}` 9 个目录无任何源码或测试引用（grep 仅命中自身 README）。每个目录还自带 `tests/unit.test.ts`，可能被 layered runner 误抓。 |
-| 161 | `tests/fixtures/packs/test-pack/tests/integration.test.ts` 与 `simulation.test.ts` 各只一个 `assert.ok(true)` 占位。 |
-| 162 | `tests/fixtures/migration/generate-snapshots.ts` + `snapshots/manifest.json` 仅被 `migration-fixtures.test.ts` 引用，整套位于错误位置（fixtures 内含活跃测试）。 |
+| 160 | `done` 已复核：这些 pack fixtures 现在被 pack / prompt / marketplace 等测试直接引用，原“仅命中自身 README”结论已过期；同时 fixture 内误抓测试文件已清除。 |
+| 161 | `done` `tests/fixtures/packs/test-pack/tests/` 下的占位测试已删除。 |
+| 162 | `done` 活跃测试已迁出 `fixtures/`；`generate-snapshots.ts` 与 `snapshots/manifest.json` 仅保留为迁移夹具工件。 |
 
 ### 4.10 未引用的 golden 快照
 
 | 编号 | 问题 |
 |---|---|
-| 163 | `scripts/ci/audit-golden-snapshots.mjs` 仅校验 “被使用的快照存在”，不校验 “存在的快照被使用”。下列 37 份 `.golden` 全仓 grep 不到引用：<br>     - `tests/golden/snapshots/audit-context-schema-v1.golden`<br>     - `canonical-contract-names-v1.golden`<br>     - `config-bootstrap-v1.golden`、`config-bootstrap-dependency-order-v1.golden`<br>     - `config-domains-v1.golden`、`config-domains-risk-spec-v1.golden`<br>     - `config-runtime-v1.golden`、`config-runtime-circuit-breaker-v1.golden`、`config-runtime-event-registry-v1.golden`、`config-runtime-fiveplane-v1.golden`、`config-runtime-rate-limit-v1.golden`、`config-runtime-retry-policy-v1.golden`、`config-runtime-state-machine-v1.golden`<br>     - `config-security-v1.golden`、`config-security-remote-worker-v1.golden`<br>     - `contract-schema-version-v1.golden`<br>     - `create-budget-ledger-v1.golden`、`create-confirmed-task-spec-high-risk-v1.golden`、`create-harness-run-v1.golden`、`create-node-run-v1.golden`、`create-task-draft-v1.golden`<br>     - `enforce-responsibility-boundary-v1.golden`、`to-responsibility-boundary-v1.golden`<br>     - `harness-run-status-enum-v1.golden`、`node-run-status-enum-v1.golden`、`plan-node-type-enum-v1.golden`、`risk-class-enum-v1.golden`<br>     - `minimal-workflow-to-plan-graph-bundle-v1.golden`、`rollout-metrics-schema-v1.golden`<br>     - `platform-bootstrap-summary-v1.golden`、`platform-bootstrap-layers-v1.golden`、`platform-bootstrap-planes-v1.golden`、`platform-layer-count-match-v1.golden`、`platform-plane-count-match-v1.golden`、`platform-startup-order-v1.golden`、`platform-validate-startup-order-correct-v1.golden`、`platform-validate-startup-order-incorrect-v1.golden` |
+| 163 | `done` `audit-golden-snapshots.mjs` 已补反向 orphan 校验，且无引用 golden 快照已清理。 |
 
 ### 4.11 自实现 skip 通道
 
 | 编号 | 问题 |
 |---|---|
-| 164 | `tests/integration/sdk/cli/ops-cli.test.ts:33-43` `serialTest(name, optionsOrFn, maybeFn)` 把任意字符串作为 `skip` 透传，无 ticket / TODO 校验，未在 `audit:test-exclusions` 流程体现。 |
-| 165 | `tests/fixtures/migration/migration-fixtures.test.ts:21-30` `isCompatibleFixtureSkip()` + `getCompatibilitySkipBudget()` 维护 “已知遗留迁移可跳过预算”，注释只说 “current known legacy backfills”，无 issue/contract 引用。 |
+| 164 | `done` `ops-cli.test.ts` 的 `serialTest(...)` 已收紧为仅接受 `node:test` 兼容形状。 |
+| 165 | `done` 迁移夹具中的 skip-budget 兼容通道已删除。 |
 
 ### 4.12 其他可疑实现
 
 | 编号 | 问题 |
 |---|---|
 | 166 | `done` `tests/unit/plugins/plugin-runtime-host.test.ts` 当前已通过 `t.after(...)` 恢复原始 `process.execArgv`。 |
-| 167 | `tests/integration/platform/interface/api/http-api-server-architecture-regressions.test.ts:266` 在断言完成路径中夹 40ms 等待，对负载敏感。 |
-| 168 | `tests/unit/platform/interface/api/http-api-server.test.ts:1712` 出现具体端口 `43123` 字面量预期（`baseUrl: "http://127.0.0.1:43123"`），上游分配端口逻辑变化将立即破断。 |
+| 167 | `done` `http-api-server-architecture-regressions.test.ts` 已无原 40ms 固定等待。 |
+| 168 | `done` `http-api-server.test.ts` 已改为使用随机化测试端口，不再硬编码 `43123`。 |
 
 ## 五、配置 / 构建 / 部署 / 脚本问题
 
@@ -434,8 +434,8 @@
 
 | 编号 | 问题 |
 |---|---|
-| 191 | `CHANGELOG.md` 仅 `[Unreleased]` 与 `[0.1.0] - 2026-05-14` 两条；`package.json:3` 仍 `0.1.0`，但 `[Unreleased]` 累积了 post-0.1.0 hygiene、contract-governance、review taxonomy 等多项改动，版本未递进，README 也无对应表。 |
-| 192 | `CHANGELOG.md:7` `[0.1.0] - 2026-05-14` 与文件系统 mtime（2026-05-26）及 `[Unreleased]` 累积比对，代表 12 天累积变更未发版；`prepack`/`build` 不阻止以 0.1.0 重复发包。 |
+| 191 | `done` 版本基线已提升到 `0.2.0`，并同步回写 `CHANGELOG.md`、`README.md`、`docs_zh/CHANGELOG.md`、`docs_en/CHANGELOG.md`。 |
+| 192 | `done` 当前发布说明已从 `0.1.0` 累积漂移状态收敛到 `0.2.0` 版本节点。 |
 
 ### 5.7 .gitignore 与提交内容
 
@@ -450,15 +450,15 @@
 
 | 编号 | 问题 |
 |---|---|
-| 197 | `stryker.config.mjs:32-39` `ignorePatterns` 以 `**` 开头再白名单，把 `tsconfig.build.json`、`tests/helpers/**` 等 mutation 子进程实际所需的辅助文件排除，执行 `mutation-critical-tests.sh` 时会因缺失 helper 失败。 |
-| 198 | `stryker.config.mjs:45` `tsconfigFile: "tsconfig.json"` 含 `references: [{ path: "./ui/tsconfig.json" }]`；Stryker typescript-checker 要求 ui project 完整可解析，而 ui 工作区在变异沙箱中通常未初始化。 |
+| 197 | `done` `stryker.config.mjs` 已移除原宽泛 `**` 白名单式忽略模式。 |
+| 198 | `done` Stryker 现改用独立 `tsconfig.stryker.json`，不再直接绑定带 UI references 的根 `tsconfig.json`。 |
 
 ### 5.9 孤儿脚本
 
 | 编号 | 问题 |
 |---|---|
-| 199 | `scripts/` 中孤儿脚本（无 package.json/工作流引用）：`run-curated-tests.mjs`、`run-tracked-tests.mjs`、`reorg-code-structure.mjs`、`curated-test-selection.mjs`、`generate-src-module-test-matrix.mjs`。 |
-| 200 | `scripts/ci/` 中孤儿 audit 脚本：`audit-codebase-inventory.mjs`、`audit-document-structure.mjs`、`audit-domain-configs.mjs`、`audit-harness-index-split.mjs`、`audit-implementation-remediation.mjs`、`audit-review-batch-resource-contracts.mjs`、`audit-review-dependency-upgrade-plan.mjs`、`audit-review-domain-duplication.mjs`、`audit-review-governance-closures.mjs`、`audit-review-guardrails.mjs`、`audit-review-magic-number-examples.mjs`、`audit-review-runtime-schema-audit-columns.mjs`、`audit-review-unsafe-type-assertions.mjs`、`audit-sync-async-service-pairs.mjs`（部分仅被同样孤儿的 `audit-review-batch-resource-contracts.mjs` 引用，形成孤儿环）。 |
+| 199 | `done` 无引用的 `scripts/` 孤儿脚本已清理。 |
+| 200 | `done` 无引用的 `scripts/ci/` 孤儿 audit 脚本已清理。 |
 
 ### 5.10 translate_docs.py
 
@@ -481,11 +481,11 @@
 
 | 编号 | 问题 |
 |---|---|
-| 206 | `src/sdk/cli/migrate-sqlite-to-pg.ts:206,229,236` 直接把列名 / 表名拼进 SQL 字符串（`INSERT INTO ${table}(${columns})...`），未做白名单校验；若表清单来源被污染即为 SQL 注入。 |
+| 206 | `done` `migrate-sqlite-to-pg.ts` 已为表名/列名增加 SQL 标识符白名单校验。 |
 | 207 | `done` 现行实现已迁到 `src/platform/five-plane-interface/api/middleware/idempotency-key-storage.ts`，构造期通过 `validateSqlIdentifier(...)` 校验 `tableName`。 |
 | 208 | `done` 现行实现已迁到 `src/platform/five-plane-state-evidence/knowledge/semantic-vector-store.ts`，标识符校验已补齐，旧 review 指向路径已过期。 |
-| 209 | `src/platform/five-plane-state-evidence/checkpoint/checkpoint-gc-service.ts:486-510` `fs.stat` → `fs.unlink` 之间无 fd 锁，存在 TOCTOU 攻击窗口（与 GC 并发的 writer 可被误删）。 |
-| 210 | `src/platform/five-plane-state-evidence/snapshot/shadow-snapshot-service.ts:422` 在 `lstat` 与 `rename` 之间存在 symlink swap 时间窗，未使用 `O_NOFOLLOW` 等价路径。 |
+| 209 | `done` `checkpoint-gc-service.ts` 已改为 `lstat` + `open(O_NOFOLLOW)` + `fstat` + `unlink` 的更安全删除路径。 |
+| 210 | `done` `shadow-snapshot-service.ts` 的原子写入已使用 `O_NOFOLLOW|O_EXCL`、目标校验与清理逻辑收敛 symlink swap 时间窗。 |
 | 211 | `done` `src/platform/five-plane-control-plane/config-center/api-server-env.ts` 现同时支持 `AA_API_KEYS_JSON` 和 legacy `AA_API_KEYS`。 |
 | 212 | `done` `src/platform/five-plane-control-plane/config-center/startup-env-schema.ts` 已要求配置 API keys 时必须提供 `AA_API_JWT_SECRET`。 |
 
@@ -505,7 +505,7 @@
 |---|---|
 | 218 | `done` `src/sdk/cli/release-pipeline.ts` 现已统一通过共享常量和 builder 生成 GitHub Actions run URL。 |
 | 219 | `src/platform/five-plane-execution/tool-executor/skill-execution-{cache,core,support,service}-methods.ts` 四份 `*-methods.ts` 切片彼此重名导出 `*Methods`，被同一聚合文件 import，事实上是同一类的物理拆片，互相循环依赖。 |
-| 220 | `src/platform/agent-delegation/index.ts`、`src/platform/ops-maturity/index.ts`、`src/runtime/agent-runtime/index.ts` 三个 compat shim 入口在 `package.json#exports` 中均未暴露且仓库内零引用，纯死代码。 |
+| 220 | `done` 已复核：`src/runtime/agent-runtime/index.ts` 与 `src/platform/ops-maturity/index.ts` 已删除；`src/platform/agent-delegation/index.ts` 仍有现行消费者，原“三者均为零引用死代码”结论不成立。 |
 
 ### 6.4 `docs_zh/` ADR / contracts 二次发现
 

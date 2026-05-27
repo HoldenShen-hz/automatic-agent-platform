@@ -26,7 +26,7 @@ function createMockStatement(result: { avg_cost: number | null; sample_count: nu
   return { get: () => result };
 }
 
-test("CostEstimationService estimates with default config", () => {
+test("CostEstimationService estimates with default config [cost-estimation-service]", () => {
   const service = new CostEstimationService(createMockDb() as any);
 
   const estimate = service.estimate();
@@ -37,7 +37,7 @@ test("CostEstimationService estimates with default config", () => {
   assert.ok(estimate.estimatedCostUsd >= 0);
 });
 
-test("CostEstimationService uses default cost when no data", () => {
+test("CostEstimationService uses default cost when no data [cost-estimation-service]", () => {
   const service = new CostEstimationService(createMockDb() as any);
 
   const estimate = service.estimate();
@@ -45,7 +45,7 @@ test("CostEstimationService uses default cost when no data", () => {
   assert.equal(estimate.estimatedCostUsd, 0.05);
 });
 
-test("CostEstimationService uses division-specific average when available", () => {
+test("CostEstimationService uses division-specific average when available [cost-estimation-service]", () => {
   const mockDb = createMockDb();
   mockDb.connection.prepare = () => createMockStatement({ avg_cost: 0.15, sample_count: 25 });
 
@@ -60,7 +60,7 @@ test("CostEstimationService uses division-specific average when available", () =
   assert.equal(estimate.sampleCount, 25);
 });
 
-test("CostEstimationService falls back to global average when division has no data", () => {
+test("CostEstimationService falls back to global average when division has no data [cost-estimation-service]", () => {
   const mockDb = createMockDb();
   mockDb.connection.prepare = (sql?: string) => {
     if (sql?.includes("division_id")) {
@@ -78,7 +78,7 @@ test("CostEstimationService falls back to global average when division has no da
   assert.equal(estimate.estimatedCostUsd, 0.10);
 });
 
-test("CostEstimationService falls back to default when no data at all", () => {
+test("CostEstimationService falls back to default when no data at all [cost-estimation-service]", () => {
   const mockDb = createMockDb();
   mockDb.connection.prepare = () => createMockStatement(null);
 
@@ -90,7 +90,7 @@ test("CostEstimationService falls back to default when no data at all", () => {
   assert.equal(estimate.estimatedCostUsd, 0.05);
 });
 
-test("CostEstimationService confidence is high with 20+ samples", () => {
+test("CostEstimationService confidence is high with 20+ samples [cost-estimation-service]", () => {
   const mockDb = createMockDb();
   mockDb.connection.prepare = () => createMockStatement({ avg_cost: 0.25, sample_count: 100 });
 
@@ -101,7 +101,7 @@ test("CostEstimationService confidence is high with 20+ samples", () => {
   assert.equal(estimate.confidence, "high");
 });
 
-test("CostEstimationService confidence is medium with 5-19 samples", () => {
+test("CostEstimationService confidence is medium with 5-19 samples [cost-estimation-service]", () => {
   const mockDb = createMockDb();
   mockDb.connection.prepare = () => createMockStatement({ avg_cost: 0.25, sample_count: 10 });
 
@@ -112,7 +112,7 @@ test("CostEstimationService confidence is medium with 5-19 samples", () => {
   assert.equal(estimate.confidence, "medium");
 });
 
-test("CostEstimationService confidence is low with 1-4 samples", () => {
+test("CostEstimationService confidence is low with 1-4 samples [cost-estimation-service]", () => {
   const mockDb = createMockDb();
   mockDb.connection.prepare = () => createMockStatement({ avg_cost: 0.25, sample_count: 3 });
 
@@ -123,7 +123,7 @@ test("CostEstimationService confidence is low with 1-4 samples", () => {
   assert.equal(estimate.confidence, "low");
 });
 
-test("CostEstimationService uses custom default cost", () => {
+test("CostEstimationService uses custom default cost [cost-estimation-service]", () => {
   const mockDb = createMockDb();
   mockDb.connection.prepare = () => createMockStatement(null);
 
@@ -138,7 +138,7 @@ test("CostEstimationService uses custom default cost", () => {
   assert.equal(estimate.estimatedCostUsd, 0.10);
 });
 
-test("CostEstimationService uses custom confidence thresholds", () => {
+test("CostEstimationService uses custom confidence thresholds [cost-estimation-service]", () => {
   const mockDb = createMockDb();
   mockDb.connection.prepare = () => createMockStatement({ avg_cost: 0.25, sample_count: 8 });
 
@@ -156,7 +156,7 @@ test("CostEstimationService uses custom confidence thresholds", () => {
   assert.equal(estimate.confidence, "low");
 });
 
-test("CostEstimationService rounds estimated cost to 4 decimal places", () => {
+test("CostEstimationService rounds estimated cost to 4 decimal places [cost-estimation-service]", () => {
   const mockDb = createMockDb();
   mockDb.connection.prepare = () => createMockStatement({ avg_cost: 0.123456789, sample_count: 100 });
 
@@ -167,7 +167,7 @@ test("CostEstimationService rounds estimated cost to 4 decimal places", () => {
   assert.equal(estimate.estimatedCostUsd, 0.1235);
 });
 
-test("CostEstimationService estimate without division returns null divisionId", () => {
+test("CostEstimationService estimate without division returns null divisionId [cost-estimation-service]", () => {
   const mockDb = createMockDb();
   mockDb.connection.prepare = () => createMockStatement({ avg_cost: 0.10, sample_count: 50 });
 
@@ -178,7 +178,7 @@ test("CostEstimationService estimate without division returns null divisionId", 
   assert.equal(estimate.divisionId, null);
 });
 
-test("CostEstimationService estimate with null divisionId uses global", () => {
+test("CostEstimationService estimate with null divisionId uses global [cost-estimation-service]", () => {
   const mockDb = createMockDb();
   mockDb.connection.prepare = () => createMockStatement({ avg_cost: 0.08, sample_count: 30 });
 
@@ -190,7 +190,7 @@ test("CostEstimationService estimate with null divisionId uses global", () => {
   assert.equal(estimate.divisionId, null);
 });
 
-test("CostEstimationService filters out zero-cost events", () => {
+test("CostEstimationService filters out zero-cost events [cost-estimation-service]", () => {
   const mockDb = createMockDb();
   let callCount = 0;
   mockDb.connection.prepare = (sql?: string) => {
@@ -209,7 +209,7 @@ test("CostEstimationService filters out zero-cost events", () => {
   assert.equal(estimate.basedOn, "global_avg");
 });
 
-test("CostEstimationService CostEstimate type is correctly structured", () => {
+test("CostEstimationService CostEstimate type is correctly structured [cost-estimation-service]", () => {
   const estimate: CostEstimate = {
     estimatedCostUsd: 0.25,
     confidence: "high",
@@ -225,7 +225,7 @@ test("CostEstimationService CostEstimate type is correctly structured", () => {
   assert.equal(estimate.basedOn, "division_avg");
 });
 
-test("CostEstimationService CostEstimationConfig type is correctly structured", () => {
+test("CostEstimationService CostEstimationConfig type is correctly structured [cost-estimation-service]", () => {
   const config: CostEstimationConfig = {
     highConfidenceThreshold: 30,
     mediumConfidenceThreshold: 10,
@@ -237,7 +237,7 @@ test("CostEstimationService CostEstimationConfig type is correctly structured", 
   assert.equal(config.defaultCostUsd, 0.15);
 });
 
-test("CostEstimationService handles undefined avg_cost", () => {
+test("CostEstimationService handles undefined avg_cost [cost-estimation-service]", () => {
   const mockDb = createMockDb();
   mockDb.connection.prepare = () => createMockStatement({ avg_cost: null, sample_count: 0 });
 

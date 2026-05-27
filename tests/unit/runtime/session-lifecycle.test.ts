@@ -8,31 +8,31 @@ import {
   createRecoverySession,
 } from "../../../src/platform/five-plane-execution/execution-engine/session-lifecycle.js";
 
-test("isSessionTerminalStatus returns true for terminal statuses", () => {
+test("isSessionTerminalStatus returns true for terminal statuses [session-lifecycle]", () => {
   assert.equal(isSessionTerminalStatus("completed"), true);
   assert.equal(isSessionTerminalStatus("failed"), true);
   assert.equal(isSessionTerminalStatus("cancelled"), true);
 });
 
-test("isSessionTerminalStatus returns false for non-terminal statuses", () => {
+test("isSessionTerminalStatus returns false for non-terminal statuses [session-lifecycle]", () => {
   assert.equal(isSessionTerminalStatus("open"), false);
   assert.equal(isSessionTerminalStatus("closed" as SessionStatus), false);
 });
 
-test("isTaskActiveStatus returns true for active task statuses", () => {
+test("isTaskActiveStatus returns true for active task statuses [session-lifecycle]", () => {
   assert.equal(isTaskActiveStatus("queued"), true);
   assert.equal(isTaskActiveStatus("pending"), true);
   assert.equal(isTaskActiveStatus("in_progress"), true);
   assert.equal(isTaskActiveStatus("awaiting_decision"), true);
 });
 
-test("isTaskActiveStatus returns false for non-active statuses", () => {
+test("isTaskActiveStatus returns false for non-active statuses [session-lifecycle]", () => {
   assert.equal(isTaskActiveStatus("done"), false);
   assert.equal(isTaskActiveStatus("failed" as TaskStatus), false);
   assert.equal(isTaskActiveStatus("cancelled" as TaskStatus), false);
 });
 
-test("createRecoverySession generates new id and sets status to open", () => {
+test("createRecoverySession generates new id and sets status to open [session-lifecycle]", () => {
   const original: SessionRecord = {
     id: "sess_old",
     taskId: "task_abc",
@@ -55,7 +55,7 @@ test("createRecoverySession generates new id and sets status to open", () => {
   assert.equal(recovery.updatedAt, "2024-01-02T00:00:00.000Z");
 });
 
-test("createRecoverySession preserves all session fields except id/status/dates", () => {
+test("createRecoverySession preserves all session fields except id/status/dates [session-lifecycle]", () => {
   const original: SessionRecord = {
     id: "sess_original",
     taskId: "task_xyz",
@@ -73,12 +73,12 @@ test("createRecoverySession preserves all session fields except id/status/dates"
   assert.equal(recovery.externalSessionId, "ext_456");
 });
 
-test("isSessionTerminalStatus handles unknown status gracefully", () => {
+test("isSessionTerminalStatus handles unknown status gracefully [session-lifecycle]", () => {
   // Unknown statuses should return false
   assert.equal(isSessionTerminalStatus("unknown" as any), false);
 });
 
-test("isTaskActiveStatus handles unknown status gracefully", () => {
+test("isTaskActiveStatus handles unknown status gracefully [session-lifecycle]", () => {
   // Unknown statuses should return false
   assert.equal(isTaskActiveStatus("unknown" as any), false);
 });

@@ -9,19 +9,19 @@ import test from "node:test";
 
 import { QueueMetricsService, type QueueMetrics, type QueueMetricsSnapshot } from "../../../../../src/platform/five-plane-execution/queue-metrics/index.js";
 
-test("QueueMetricsService can be instantiated", () => {
+test("QueueMetricsService can be instantiated [queue-metrics-service-comprehensive]", () => {
   const service = new QueueMetricsService();
   assert.ok(service instanceof QueueMetricsService);
 });
 
-test("QueueMetricsService.recordDepth stores depth for queue", () => {
+test("QueueMetricsService.recordDepth stores depth for queue [queue-metrics-service-comprehensive]", () => {
   const service = new QueueMetricsService();
   service.recordDepth("test-queue", 10);
   const metrics = service.getQueueMetrics("test-queue");
   assert.equal(metrics?.depth, 10);
 });
 
-test("QueueMetricsService.recordEnqueue increments counter", () => {
+test("QueueMetricsService.recordEnqueue increments counter [queue-metrics-service-comprehensive]", () => {
   const service = new QueueMetricsService();
   service.recordEnqueue("test-queue");
   service.recordEnqueue("test-queue");
@@ -29,14 +29,14 @@ test("QueueMetricsService.recordEnqueue increments counter", () => {
   assert.equal(snapshot.enqueuedPerMinute.get("test-queue"), 2);
 });
 
-test("QueueMetricsService.recordDequeue increments counter", () => {
+test("QueueMetricsService.recordDequeue increments counter [queue-metrics-service-comprehensive]", () => {
   const service = new QueueMetricsService();
   service.recordDequeue("test-queue");
   const snapshot = service.getSnapshot();
   assert.equal(snapshot.dequeuedPerMinute.get("test-queue"), 1);
 });
 
-test("QueueMetricsService.recordWaitTime stores wait time", () => {
+test("QueueMetricsService.recordWaitTime stores wait time [queue-metrics-service-comprehensive]", () => {
   const service = new QueueMetricsService();
   service.recordWaitTime("test-queue", 100);
   service.recordWaitTime("test-queue", 200);
@@ -44,7 +44,7 @@ test("QueueMetricsService.recordWaitTime stores wait time", () => {
   assert.equal(snapshot.averageWaitTimeMs.get("test-queue"), 150);
 });
 
-test("QueueMetricsService.recordWaitTime handles multiple queues", () => {
+test("QueueMetricsService.recordWaitTime handles multiple queues [queue-metrics-service-comprehensive]", () => {
   const service = new QueueMetricsService();
   service.recordWaitTime("queue1", 100);
   service.recordWaitTime("queue2", 200);
@@ -53,7 +53,7 @@ test("QueueMetricsService.recordWaitTime handles multiple queues", () => {
   assert.equal(snapshot.averageWaitTimeMs.get("queue2"), 200);
 });
 
-test("QueueMetricsService.recordFailed increments failed counter", () => {
+test("QueueMetricsService.recordFailed increments failed counter [queue-metrics-service-comprehensive]", () => {
   const service = new QueueMetricsService();
   service.recordFailed("test-queue", "timeout");
   service.recordFailed("test-queue", "error");
@@ -61,7 +61,7 @@ test("QueueMetricsService.recordFailed increments failed counter", () => {
   assert.equal(snapshot.failedJobs.get("test-queue"), 2);
 });
 
-test("QueueMetricsService.deriveFromStats calculates depth from stats", () => {
+test("QueueMetricsService.deriveFromStats calculates depth from stats [queue-metrics-service-comprehensive]", () => {
   const service = new QueueMetricsService();
   service.deriveFromStats({
     queueName: "test-queue",
@@ -75,7 +75,7 @@ test("QueueMetricsService.deriveFromStats calculates depth from stats", () => {
   assert.equal(metrics?.depth, 10); // 5 + 3 + 2
 });
 
-test("QueueMetricsService.deriveFromStats updates failed count", () => {
+test("QueueMetricsService.deriveFromStats updates failed count [queue-metrics-service-comprehensive]", () => {
   const service = new QueueMetricsService();
   service.deriveFromStats({
     queueName: "test-queue",
@@ -89,7 +89,7 @@ test("QueueMetricsService.deriveFromStats updates failed count", () => {
   assert.equal(snapshot.failedJobs.get("test-queue"), 7); // 5 + 2
 });
 
-test("QueueMetricsService.getSnapshot returns correct structure", () => {
+test("QueueMetricsService.getSnapshot returns correct structure [queue-metrics-service-comprehensive]", () => {
   const service = new QueueMetricsService();
   service.recordDepth("q1", 10);
   service.recordEnqueue("q1");
@@ -105,20 +105,20 @@ test("QueueMetricsService.getSnapshot returns correct structure", () => {
   assert.ok(snapshot.successRate instanceof Map);
 });
 
-test("QueueMetricsService.getSnapshot includes timestamp", () => {
+test("QueueMetricsService.getSnapshot includes timestamp [queue-metrics-service-comprehensive]", () => {
   const service = new QueueMetricsService();
   const snapshot = service.getSnapshot();
   assert.ok(snapshot.timestamp.length > 0);
   assert.ok(snapshot.timestamp.includes("T"));
 });
 
-test("QueueMetricsService.getQueueMetrics returns undefined for unknown queue", () => {
+test("QueueMetricsService.getQueueMetrics returns undefined for unknown queue [queue-metrics-service-comprehensive]", () => {
   const service = new QueueMetricsService();
   const result = service.getQueueMetrics("nonexistent");
   assert.equal(result, undefined);
 });
 
-test("QueueMetricsService.getQueueMetrics returns correct structure", () => {
+test("QueueMetricsService.getQueueMetrics returns correct structure [queue-metrics-service-comprehensive]", () => {
   const service = new QueueMetricsService();
   service.recordDepth("test-queue", 10);
   service.recordEnqueue("test-queue");
@@ -134,7 +134,7 @@ test("QueueMetricsService.getQueueMetrics returns correct structure", () => {
   assert.equal(metrics!.averageWaitTimeMs, 150);
 });
 
-test("QueueMetricsService.getAllQueues returns list of tracked queues", () => {
+test("QueueMetricsService.getAllQueues returns list of tracked queues [queue-metrics-service-comprehensive]", () => {
   const service = new QueueMetricsService();
   service.recordDepth("q1", 1);
   service.recordDepth("q2", 2);
@@ -147,27 +147,27 @@ test("QueueMetricsService.getAllQueues returns list of tracked queues", () => {
   assert.ok(queues.includes("q3"));
 });
 
-test("QueueMetricsService.getAllQueues returns empty for no queues", () => {
+test("QueueMetricsService.getAllQueues returns empty for no queues [queue-metrics-service-comprehensive]", () => {
   const service = new QueueMetricsService();
   const queues = service.getAllQueues();
   assert.deepEqual(queues, []);
 });
 
-test("QueueMetricsService.getCollector creates new collector", () => {
+test("QueueMetricsService.getCollector creates new collector [queue-metrics-service-comprehensive]", () => {
   const service = new QueueMetricsService();
   const collector = service.getCollector("new-queue");
   assert.ok(collector !== undefined);
   assert.equal(collector.queueName, "new-queue");
 });
 
-test("QueueMetricsService.getCollector returns existing collector", () => {
+test("QueueMetricsService.getCollector returns existing collector [queue-metrics-service-comprehensive]", () => {
   const service = new QueueMetricsService();
   const c1 = service.getCollector("shared-queue");
   const c2 = service.getCollector("shared-queue");
   assert.strictEqual(c1, c2);
 });
 
-test("QueueMetricsService.reset clears all state", () => {
+test("QueueMetricsService.reset clears all state [queue-metrics-service-comprehensive]", () => {
   const service = new QueueMetricsService();
   service.recordDepth("q1", 10);
   service.recordEnqueue("q1");
@@ -183,7 +183,7 @@ test("QueueMetricsService.reset clears all state", () => {
   assert.equal(snapshot.failedJobs.size, 0);
 });
 
-test("QueueMetricsService reset clears all collectors", () => {
+test("QueueMetricsService reset clears all collectors [queue-metrics-service-comprehensive]", () => {
   const service = new QueueMetricsService();
   service.getCollector("q1");
 
@@ -193,7 +193,7 @@ test("QueueMetricsService reset clears all collectors", () => {
   assert.deepEqual(queues, []);
 });
 
-test("QueueMetricsService p95 wait time calculation", () => {
+test("QueueMetricsService p95 wait time calculation [queue-metrics-service-comprehensive]", () => {
   const service = new QueueMetricsService();
 
   // Record 20 wait times: 10, 20, 30, ... 200
@@ -210,7 +210,7 @@ test("QueueMetricsService p95 wait time calculation", () => {
   assert.ok(p95 >= 150); // Should be high percentile
 });
 
-test("QueueMetricsService success rate calculation", () => {
+test("QueueMetricsService success rate calculation [queue-metrics-service-comprehensive]", () => {
   const service = new QueueMetricsService();
   service.recordEnqueue("test-queue");
   service.recordEnqueue("test-queue");
@@ -224,7 +224,7 @@ test("QueueMetricsService success rate calculation", () => {
   assert.ok(Math.abs(rate! - 2/3) < 0.01);
 });
 
-test("QueueMetricsService success rate is 1 when no failures", () => {
+test("QueueMetricsService success rate is 1 when no failures [queue-metrics-service-comprehensive]", () => {
   const service = new QueueMetricsService();
   service.recordEnqueue("test-queue");
   service.recordEnqueue("test-queue");
@@ -233,7 +233,7 @@ test("QueueMetricsService success rate is 1 when no failures", () => {
   assert.equal(snapshot.successRate.get("test-queue"), 1);
 });
 
-test("QueueMetricsService success rate is 0 when all failed", () => {
+test("QueueMetricsService success rate is 0 when all failed [queue-metrics-service-comprehensive]", () => {
   const service = new QueueMetricsService();
   service.recordEnqueue("test-queue");
   service.recordFailed("test-queue", "error");
@@ -242,7 +242,7 @@ test("QueueMetricsService success rate is 0 when all failed", () => {
   assert.equal(snapshot.successRate.get("test-queue"), 0);
 });
 
-test("QueueMetricsService multiple queues have independent metrics", () => {
+test("QueueMetricsService multiple queues have independent metrics [queue-metrics-service-comprehensive]", () => {
   const service = new QueueMetricsService();
 
   service.recordDepth("q1", 10);
@@ -260,7 +260,7 @@ test("QueueMetricsService multiple queues have independent metrics", () => {
   assert.equal(m2?.enqueuedPerMinute, 2);
 });
 
-test("QueueMetricsService average wait time of zero for no wait times", () => {
+test("QueueMetricsService average wait time of zero for no wait times [queue-metrics-service-comprehensive]", () => {
   const service = new QueueMetricsService();
   service.recordDepth("test-queue", 5);
 
@@ -268,7 +268,7 @@ test("QueueMetricsService average wait time of zero for no wait times", () => {
   assert.equal(snapshot.averageWaitTimeMs.get("test-queue"), 0);
 });
 
-test("QueueMetricsService p95 is zero when no wait times", () => {
+test("QueueMetricsService p95 is zero when no wait times [queue-metrics-service-comprehensive]", () => {
   const service = new QueueMetricsService();
   service.recordDepth("test-queue", 5);
 
@@ -276,7 +276,7 @@ test("QueueMetricsService p95 is zero when no wait times", () => {
   assert.equal(snapshot.p95WaitTimeMs.get("test-queue"), 0);
 });
 
-test("QueueMetrics interface structure", () => {
+test("QueueMetrics interface structure [queue-metrics-service-comprehensive]", () => {
   const metrics: QueueMetrics = {
     queueName: "test",
     depth: 10,
@@ -289,7 +289,7 @@ test("QueueMetrics interface structure", () => {
   assert.equal(metrics.depth, 10);
 });
 
-test("QueueMetricsSnapshot interface structure", () => {
+test("QueueMetricsSnapshot interface structure [queue-metrics-service-comprehensive]", () => {
   const snapshot: QueueMetricsSnapshot = {
     timestamp: new Date().toISOString(),
     queues: new Map([["q1", 10]]),

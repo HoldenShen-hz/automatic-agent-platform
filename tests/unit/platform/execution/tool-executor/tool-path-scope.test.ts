@@ -10,107 +10,107 @@ import {
   type ToolPathScopeCheckResult,
 } from "../../../../../src/platform/five-plane-execution/tool-executor/tool-path-scope.js";
 
-test("normalizeToolPathScopeRoots returns empty array for null input", () => {
+test("normalizeToolPathScopeRoots returns empty array for null input [tool-path-scope]", () => {
   const result = normalizeToolPathScopeRoots(null);
   assert.deepEqual(result, []);
 });
 
-test("normalizeToolPathScopeRoots returns empty array for undefined input", () => {
+test("normalizeToolPathScopeRoots returns empty array for undefined input [tool-path-scope]", () => {
   const result = normalizeToolPathScopeRoots(undefined);
   assert.deepEqual(result, []);
 });
 
-test("normalizeToolPathScopeRoots returns empty array for empty array", () => {
+test("normalizeToolPathScopeRoots returns empty array for empty array [tool-path-scope]", () => {
   const result = normalizeToolPathScopeRoots([]);
   assert.deepEqual(result, []);
 });
 
-test("normalizeToolPathScopeRoots filters out empty strings", () => {
+test("normalizeToolPathScopeRoots filters out empty strings [tool-path-scope]", () => {
   const result = normalizeToolPathScopeRoots(["", "  ", "/valid"]);
   // normalizeRoot adds trailing separator, so "/valid" becomes "/valid/"
   assert.equal(result[0], "/valid/");
   assert.equal(result.length, 1);
 });
 
-test("normalizeToolPathScopeRoots removes duplicates", () => {
+test("normalizeToolPathScopeRoots removes duplicates [tool-path-scope]", () => {
   const result = normalizeToolPathScopeRoots(["/same", "/same", "/other"]);
   // Deduplication uses path comparison, which on Windows handles differently
   assert.ok(result.length === 2);
 });
 
-test("normalizeToolPathScopeRoots normalizes paths with trailing separators", () => {
+test("normalizeToolPathScopeRoots normalizes paths with trailing separators [tool-path-scope]", () => {
   const input = `/test${sep}path${sep}`;
   const result = normalizeToolPathScopeRoots([input]);
   assert.equal(result[0]!.endsWith(sep), true);
 });
 
-test("hasToolPathScopeRestrictions returns false for null", () => {
+test("hasToolPathScopeRestrictions returns false for null [tool-path-scope]", () => {
   assert.equal(hasToolPathScopeRestrictions(null), false);
 });
 
-test("hasToolPathScopeRestrictions returns false for empty array", () => {
+test("hasToolPathScopeRestrictions returns false for empty array [tool-path-scope]", () => {
   assert.equal(hasToolPathScopeRestrictions([]), false);
 });
 
-test("hasToolPathScopeRestrictions returns true when roots exist", () => {
+test("hasToolPathScopeRestrictions returns true when roots exist [tool-path-scope]", () => {
   assert.equal(hasToolPathScopeRestrictions(["/allowed"]), true);
 });
 
-test("checkToolPathScope allows path when no roots specified", () => {
+test("checkToolPathScope allows path when no roots specified [tool-path-scope]", () => {
   const result = checkToolPathScope("/any/path", null);
   assert.equal(result.allowed, true);
   assert.equal(result.reasonCode, null);
 });
 
-test("checkToolPathScope allows path when no roots specified (empty array)", () => {
+test("checkToolPathScope allows path when no roots specified (empty array) [tool-path-scope]", () => {
   const result = checkToolPathScope("/any/path", []);
   assert.equal(result.allowed, true);
   assert.equal(result.reasonCode, null);
 });
 
-test("checkToolPathScope allows path within root", () => {
+test("checkToolPathScope allows path within root [tool-path-scope]", () => {
   const result = checkToolPathScope("/allowed/subdir/file.txt", ["/allowed"]);
   assert.equal(result.allowed, true);
   assert.equal(result.reasonCode, null);
 });
 
-test("checkToolPathScope allows path equal to root", () => {
+test("checkToolPathScope allows path equal to root [tool-path-scope]", () => {
   const result = checkToolPathScope("/allowed", ["/allowed"]);
   assert.equal(result.allowed, true);
   assert.equal(result.reasonCode, null);
 });
 
-test("checkToolPathScope denies path outside root", () => {
+test("checkToolPathScope denies path outside root [tool-path-scope]", () => {
   const result = checkToolPathScope("/denied/file.txt", ["/allowed"]);
   assert.equal(result.allowed, false);
   assert.equal(result.reasonCode, "tool.path_scope_denied");
 });
 
-test("checkToolPathScope allows path within any of multiple roots", () => {
+test("checkToolPathScope allows path within any of multiple roots [tool-path-scope]", () => {
   const result = checkToolPathScope("/other/path", ["/allowed", "/other"]);
   assert.equal(result.allowed, true);
   assert.equal(result.reasonCode, null);
 });
 
-test("checkToolPathScope normalizes paths before checking", () => {
+test("checkToolPathScope normalizes paths before checking [tool-path-scope]", () => {
   // On Unix systems, /allowed/../allowed is normalized to /allowed
   const result = checkToolPathScope("/allowed/../allowed/file.txt", ["/allowed"]);
   assert.equal(result.allowed, true);
 });
 
-test("checkToolPathScope returns normalizedPath in result", () => {
+test("checkToolPathScope returns normalizedPath in result [tool-path-scope]", () => {
   const result = checkToolPathScope("/input/path", ["/allowed"]);
   assert.ok(result.normalizedPath.length > 0);
   assert.equal(typeof result.normalizedPath, "string");
 });
 
-test("checkToolPathScope is case-sensitive on Unix", () => {
+test("checkToolPathScope is case-sensitive on Unix [tool-path-scope]", () => {
   // Unix is case-sensitive, so /Allowed is different from /allowed
   const result = checkToolPathScope("/Allowed/file.txt", ["/allowed"]);
   assert.equal(result.allowed, false);
 });
 
-test("ToolPathScopeCheckResult type accepts valid results", () => {
+test("ToolPathScopeCheckResult type accepts valid results [tool-path-scope]", () => {
   const allowedResult: ToolPathScopeCheckResult = {
     allowed: true,
     normalizedPath: "/test/path",

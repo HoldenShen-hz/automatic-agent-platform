@@ -87,7 +87,7 @@ function createWorkflowRepository(initial: WorkflowStateRecord, staleReadsRemain
   };
 }
 
-test("[SYS-REL-2.7] concurrent workflow transitions - only one succeeds via CAS", async () => {
+test("[SYS-REL-2.7] concurrent workflow transitions - only one succeeds via CAS [workflow-cas-concurrent]", async () => {
   // Bug scenario: concurrent transitions on the same workflow
   // With stale reads, both workers may initially read the same state
   // but only one should succeed via CAS protection
@@ -162,7 +162,7 @@ test("[SYS-REL-2.7] concurrent workflow transitions - only one succeeds via CAS"
   );
 });
 
-test("[SYS-REL-2.7] runConcurrentInvariant - workflow transitions CAS protection", async () => {
+test("[SYS-REL-2.7] runConcurrentInvariant - workflow transitions CAS protection [workflow-cas-concurrent]", async () => {
   const now = new Date().toISOString();
   const repository = createWorkflowRepository({
     taskId: "workflow-invariant-001",
@@ -273,7 +273,7 @@ function createMockRedis(overrides: Partial<{
   };
 }
 
-test("[SYS-REL-2.2] concurrent extendAsync - TOCTOU race between eval and get", async () => {
+test("[SYS-REL-2.2] concurrent extendAsync - TOCTOU race between eval and get [workflow-cas-concurrent]", async () => {
   // Bug: extendAsync has a TOCTOU race - after Lua script succeeds (eval returns 1),
   // another process could steal the lock before the subsequent GET, resulting
   // in returning stale data or null despite the eval success
@@ -312,7 +312,7 @@ test("[SYS-REL-2.2] concurrent extendAsync - TOCTOU race between eval and get", 
   assert.equal(failed.length, 2, "Expected both concurrent extends to resolve to null under TOCTOU simulation");
 });
 
-test("[SYS-REL-2.2] concurrent forceStealAsync - only one should win", async () => {
+test("[SYS-REL-2.2] concurrent forceStealAsync - only one should win [workflow-cas-concurrent]", async () => {
   // Bug: forceStealAsync is not atomic - rapid concurrent steals can result in
   // multiple "successful" steals before the final state settles
 
@@ -376,7 +376,7 @@ test("[SYS-REL-2.2] concurrent forceStealAsync - only one should win", async () 
   );
 });
 
-test("[SYS-REL-2.2] runConcurrentInvariant - Redis lock extend race detection", async () => {
+test("[SYS-REL-2.2] runConcurrentInvariant - Redis lock extend race detection [workflow-cas-concurrent]", async () => {
   let evalCallCount = 0;
 
   const mockRedis = createMockRedis({
@@ -414,7 +414,7 @@ test("[SYS-REL-2.2] runConcurrentInvariant - Redis lock extend race detection", 
   assert.equal(result.errors.length, 0, "No unexpected errors should occur");
 });
 
-test("[SYS-REL-2.2] extendAsync returns null when lock stolen between eval and get", async () => {
+test("[SYS-REL-2.2] extendAsync returns null when lock stolen between eval and get [workflow-cas-concurrent]", async () => {
   // This test specifically demonstrates the TOCTOU race:
   // 1. eval succeeds (Lua confirms we own the lock)
   // 2. another process forceSteals the lock
@@ -437,7 +437,7 @@ test("[SYS-REL-2.2] extendAsync returns null when lock stolen between eval and g
     "extendAsync should return null when lock was stolen between eval and get (TOCTOU race)");
 });
 
-test("[SYS-REL-2.2] many concurrent workers extending same lock", async () => {
+test("[SYS-REL-2.2] many concurrent workers extending same lock [workflow-cas-concurrent]", async () => {
   let evalCallCount = 0;
   const workers = 10;
 

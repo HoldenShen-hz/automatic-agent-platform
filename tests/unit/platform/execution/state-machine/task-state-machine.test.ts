@@ -32,17 +32,17 @@ function createTaskStateMachine(): StateTransitionMachine<string> {
 // Valid transitions from queued
 // ---------------------------------------------------------------------------
 
-test("TaskStateMachine: allows queued -> pending", () => {
+test("TaskStateMachine: allows queued -> pending [task-state-machine]", () => {
   const machine = createTaskStateMachine();
   machine.assertTransition("queued", "pending");
 });
 
-test("TaskStateMachine: allows queued -> in_progress", () => {
+test("TaskStateMachine: allows queued -> in_progress [task-state-machine]", () => {
   const machine = createTaskStateMachine();
   machine.assertTransition("queued", "in_progress");
 });
 
-test("TaskStateMachine: allows queued -> cancelled", () => {
+test("TaskStateMachine: allows queued -> cancelled [task-state-machine]", () => {
   const machine = createTaskStateMachine();
   machine.assertTransition("queued", "cancelled");
 });
@@ -51,12 +51,12 @@ test("TaskStateMachine: allows queued -> cancelled", () => {
 // Valid transitions from pending
 // ---------------------------------------------------------------------------
 
-test("TaskStateMachine: allows pending -> in_progress", () => {
+test("TaskStateMachine: allows pending -> in_progress [task-state-machine]", () => {
   const machine = createTaskStateMachine();
   machine.assertTransition("pending", "in_progress");
 });
 
-test("TaskStateMachine: allows pending -> cancelled", () => {
+test("TaskStateMachine: allows pending -> cancelled [task-state-machine]", () => {
   const machine = createTaskStateMachine();
   machine.assertTransition("pending", "cancelled");
 });
@@ -65,22 +65,22 @@ test("TaskStateMachine: allows pending -> cancelled", () => {
 // Valid transitions from in_progress
 // ---------------------------------------------------------------------------
 
-test("TaskStateMachine: allows in_progress -> awaiting_decision", () => {
+test("TaskStateMachine: allows in_progress -> awaiting_decision [task-state-machine]", () => {
   const machine = createTaskStateMachine();
   machine.assertTransition("in_progress", "awaiting_decision");
 });
 
-test("TaskStateMachine: allows in_progress -> done", () => {
+test("TaskStateMachine: allows in_progress -> done [task-state-machine]", () => {
   const machine = createTaskStateMachine();
   machine.assertTransition("in_progress", "done");
 });
 
-test("TaskStateMachine: allows in_progress -> failed", () => {
+test("TaskStateMachine: allows in_progress -> failed [task-state-machine]", () => {
   const machine = createTaskStateMachine();
   machine.assertTransition("in_progress", "failed");
 });
 
-test("TaskStateMachine: allows in_progress -> cancelled", () => {
+test("TaskStateMachine: allows in_progress -> cancelled [task-state-machine]", () => {
   const machine = createTaskStateMachine();
   machine.assertTransition("in_progress", "cancelled");
 });
@@ -89,17 +89,17 @@ test("TaskStateMachine: allows in_progress -> cancelled", () => {
 // Valid transitions from awaiting_decision
 // ---------------------------------------------------------------------------
 
-test("TaskStateMachine: allows awaiting_decision -> in_progress", () => {
+test("TaskStateMachine: allows awaiting_decision -> in_progress [task-state-machine]", () => {
   const machine = createTaskStateMachine();
   machine.assertTransition("awaiting_decision", "in_progress");
 });
 
-test("TaskStateMachine: allows awaiting_decision -> failed", () => {
+test("TaskStateMachine: allows awaiting_decision -> failed [task-state-machine]", () => {
   const machine = createTaskStateMachine();
   machine.assertTransition("awaiting_decision", "failed");
 });
 
-test("TaskStateMachine: allows awaiting_decision -> cancelled", () => {
+test("TaskStateMachine: allows awaiting_decision -> cancelled [task-state-machine]", () => {
   const machine = createTaskStateMachine();
   machine.assertTransition("awaiting_decision", "cancelled");
 });
@@ -108,7 +108,7 @@ test("TaskStateMachine: allows awaiting_decision -> cancelled", () => {
 // Invalid transitions: terminal state done has no outgoing transitions
 // ---------------------------------------------------------------------------
 
-test("TaskStateMachine: rejects done -> in_progress", () => {
+test("TaskStateMachine: rejects done -> in_progress [task-state-machine]", () => {
   const machine = createTaskStateMachine();
   assert.throws(
     () => machine.assertTransition("done", "in_progress"),
@@ -116,7 +116,7 @@ test("TaskStateMachine: rejects done -> in_progress", () => {
   );
 });
 
-test("TaskStateMachine: rejects done -> failed", () => {
+test("TaskStateMachine: rejects done -> failed [task-state-machine]", () => {
   const machine = createTaskStateMachine();
   assert.throws(
     () => machine.assertTransition("done", "failed"),
@@ -124,7 +124,7 @@ test("TaskStateMachine: rejects done -> failed", () => {
   );
 });
 
-test("TaskStateMachine: rejects done -> cancelled", () => {
+test("TaskStateMachine: rejects done -> cancelled [task-state-machine]", () => {
   const machine = createTaskStateMachine();
   assert.throws(
     () => machine.assertTransition("done", "cancelled"),
@@ -136,7 +136,7 @@ test("TaskStateMachine: rejects done -> cancelled", () => {
 // Invalid transitions: terminal state failed has no outgoing transitions
 // ---------------------------------------------------------------------------
 
-test("TaskStateMachine: rejects failed -> done", () => {
+test("TaskStateMachine: rejects failed -> done [task-state-machine]", () => {
   const machine = createTaskStateMachine();
   assert.throws(
     () => machine.assertTransition("failed", "done"),
@@ -144,7 +144,7 @@ test("TaskStateMachine: rejects failed -> done", () => {
   );
 });
 
-test("TaskStateMachine: rejects failed -> in_progress", () => {
+test("TaskStateMachine: rejects failed -> in_progress [task-state-machine]", () => {
   const machine = createTaskStateMachine();
   assert.throws(
     () => machine.assertTransition("failed", "in_progress"),
@@ -152,7 +152,7 @@ test("TaskStateMachine: rejects failed -> in_progress", () => {
   );
 });
 
-test("TaskStateMachine: rejects failed -> cancelled", () => {
+test("TaskStateMachine: rejects failed -> cancelled [task-state-machine]", () => {
   const machine = createTaskStateMachine();
   assert.throws(
     () => machine.assertTransition("failed", "cancelled"),
@@ -164,7 +164,7 @@ test("TaskStateMachine: rejects failed -> cancelled", () => {
 // Invalid transitions: terminal state cancelled has no outgoing transitions
 // ---------------------------------------------------------------------------
 
-test("TaskStateMachine: rejects cancelled -> in_progress", () => {
+test("TaskStateMachine: rejects cancelled -> in_progress [task-state-machine]", () => {
   const machine = createTaskStateMachine();
   assert.throws(
     () => machine.assertTransition("cancelled", "in_progress"),
@@ -172,7 +172,7 @@ test("TaskStateMachine: rejects cancelled -> in_progress", () => {
   );
 });
 
-test("TaskStateMachine: rejects cancelled -> done", () => {
+test("TaskStateMachine: rejects cancelled -> done [task-state-machine]", () => {
   const machine = createTaskStateMachine();
   assert.throws(
     () => machine.assertTransition("cancelled", "done"),
@@ -180,7 +180,7 @@ test("TaskStateMachine: rejects cancelled -> done", () => {
   );
 });
 
-test("TaskStateMachine: rejects cancelled -> failed", () => {
+test("TaskStateMachine: rejects cancelled -> failed [task-state-machine]", () => {
   const machine = createTaskStateMachine();
   assert.throws(
     () => machine.assertTransition("cancelled", "failed"),
@@ -192,7 +192,7 @@ test("TaskStateMachine: rejects cancelled -> failed", () => {
 // Invalid transitions: no skip states allowed
 // ---------------------------------------------------------------------------
 
-test("TaskStateMachine: rejects queued -> done (skip pending)", () => {
+test("TaskStateMachine: rejects queued -> done (skip pending) [task-state-machine]", () => {
   const machine = createTaskStateMachine();
   assert.throws(
     () => machine.assertTransition("queued", "done"),
@@ -200,7 +200,7 @@ test("TaskStateMachine: rejects queued -> done (skip pending)", () => {
   );
 });
 
-test("TaskStateMachine: rejects queued -> failed (skip states)", () => {
+test("TaskStateMachine: rejects queued -> failed (skip states) [task-state-machine]", () => {
   const machine = createTaskStateMachine();
   assert.throws(
     () => machine.assertTransition("queued", "failed"),
@@ -208,7 +208,7 @@ test("TaskStateMachine: rejects queued -> failed (skip states)", () => {
   );
 });
 
-test("TaskStateMachine: rejects pending -> done (skip in_progress)", () => {
+test("TaskStateMachine: rejects pending -> done (skip in_progress) [task-state-machine]", () => {
   const machine = createTaskStateMachine();
   assert.throws(
     () => machine.assertTransition("pending", "done"),
@@ -216,7 +216,7 @@ test("TaskStateMachine: rejects pending -> done (skip in_progress)", () => {
   );
 });
 
-test("TaskStateMachine: rejects pending -> failed (skip in_progress)", () => {
+test("TaskStateMachine: rejects pending -> failed (skip in_progress) [task-state-machine]", () => {
   const machine = createTaskStateMachine();
   assert.throws(
     () => machine.assertTransition("pending", "failed"),
@@ -228,7 +228,7 @@ test("TaskStateMachine: rejects pending -> failed (skip in_progress)", () => {
 // Invalid transitions: backward transitions not allowed
 // ---------------------------------------------------------------------------
 
-test("TaskStateMachine: rejects pending -> queued", () => {
+test("TaskStateMachine: rejects pending -> queued [task-state-machine]", () => {
   const machine = createTaskStateMachine();
   assert.throws(
     () => machine.assertTransition("pending", "queued"),
@@ -236,7 +236,7 @@ test("TaskStateMachine: rejects pending -> queued", () => {
   );
 });
 
-test("TaskStateMachine: rejects in_progress -> pending", () => {
+test("TaskStateMachine: rejects in_progress -> pending [task-state-machine]", () => {
   const machine = createTaskStateMachine();
   assert.throws(
     () => machine.assertTransition("in_progress", "pending"),
@@ -244,7 +244,7 @@ test("TaskStateMachine: rejects in_progress -> pending", () => {
   );
 });
 
-test("TaskStateMachine: rejects in_progress -> queued", () => {
+test("TaskStateMachine: rejects in_progress -> queued [task-state-machine]", () => {
   const machine = createTaskStateMachine();
   assert.throws(
     () => machine.assertTransition("in_progress", "queued"),
@@ -256,17 +256,17 @@ test("TaskStateMachine: rejects in_progress -> queued", () => {
 // No-op transitions are accepted as idempotent writes.
 // ---------------------------------------------------------------------------
 
-test("TaskStateMachine: allows no-op queued -> queued", () => {
+test("TaskStateMachine: allows no-op queued -> queued [task-state-machine]", () => {
   const machine = createTaskStateMachine();
   machine.assertTransition("queued", "queued");
 });
 
-test("TaskStateMachine: allows no-op in_progress -> in_progress", () => {
+test("TaskStateMachine: allows no-op in_progress -> in_progress [task-state-machine]", () => {
   const machine = createTaskStateMachine();
   machine.assertTransition("in_progress", "in_progress");
 });
 
-test("TaskStateMachine: allows no-op done -> done", () => {
+test("TaskStateMachine: allows no-op done -> done [task-state-machine]", () => {
   const machine = createTaskStateMachine();
   machine.assertTransition("done", "done");
 });
@@ -275,7 +275,7 @@ test("TaskStateMachine: allows no-op done -> done", () => {
 // WorkflowStateError details are populated correctly
 // ---------------------------------------------------------------------------
 
-test("TaskStateMachine: error contains entityKind in details", () => {
+test("TaskStateMachine: error contains entityKind in details [task-state-machine]", () => {
   const machine = createTaskStateMachine();
   try {
     machine.assertTransition("done", "in_progress");
@@ -286,7 +286,7 @@ test("TaskStateMachine: error contains entityKind in details", () => {
   }
 });
 
-test("TaskStateMachine: error contains current and next states in details", () => {
+test("TaskStateMachine: error contains current and next states in details [task-state-machine]", () => {
   const machine = createTaskStateMachine();
   try {
     machine.assertTransition("queued", "done");

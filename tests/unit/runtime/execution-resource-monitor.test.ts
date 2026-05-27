@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 
 import { ExecutionResourceCeilingGuard } from "../../../src/platform/five-plane-execution/dispatcher/execution-resource-ceiling-guard.js";
 
-test("ExecutionResourceCeilingGuard evaluate returns empty array when no limits exceeded", () => {
+test("ExecutionResourceCeilingGuard evaluate returns empty array when no limits exceeded [execution-resource-monitor]", () => {
   const guard = new ExecutionResourceCeilingGuard({ maxToolCalls: 100, maxMemoryMb: 1024, maxElapsedMs: 60000 });
   const sample = {
     executionId: "exec-1",
@@ -21,7 +21,7 @@ test("ExecutionResourceCeilingGuard evaluate returns empty array when no limits 
   assert.equal(findings.length, 0);
 });
 
-test("ExecutionResourceCeilingGuard firstFinding returns null when no ceiling exceeded", () => {
+test("ExecutionResourceCeilingGuard firstFinding returns null when no ceiling exceeded [execution-resource-monitor]", () => {
   const guard = new ExecutionResourceCeilingGuard({ maxToolCalls: 100 });
   const sample = {
     executionId: "exec-1",
@@ -34,7 +34,7 @@ test("ExecutionResourceCeilingGuard firstFinding returns null when no ceiling ex
   assert.equal(guard.firstFinding(sample), null);
 });
 
-test("ExecutionResourceCeilingGuard evaluate returns finding when tool call limit exceeded", () => {
+test("ExecutionResourceCeilingGuard evaluate returns finding when tool call limit exceeded [execution-resource-monitor]", () => {
   const guard = new ExecutionResourceCeilingGuard({ maxToolCalls: 10 });
   const sample = {
     executionId: "exec-1",
@@ -55,7 +55,7 @@ test("ExecutionResourceCeilingGuard evaluate returns finding when tool call limi
   assert.equal(findings[0]!.limit, 10);
 });
 
-test("ExecutionResourceCeilingGuard evaluate returns finding when memory limit exceeded", () => {
+test("ExecutionResourceCeilingGuard evaluate returns finding when memory limit exceeded [execution-resource-monitor]", () => {
   const guard = new ExecutionResourceCeilingGuard({ maxMemoryMb: 512 });
   const sample = {
     executionId: "exec-1",
@@ -76,7 +76,7 @@ test("ExecutionResourceCeilingGuard evaluate returns finding when memory limit e
   assert.equal(findings[0]!.limit, 512);
 });
 
-test("ExecutionResourceCeilingGuard evaluate returns finding when elapsed limit exceeded", () => {
+test("ExecutionResourceCeilingGuard evaluate returns finding when elapsed limit exceeded [execution-resource-monitor]", () => {
   const guard = new ExecutionResourceCeilingGuard({ maxElapsedMs: 5000 });
   const oldTime = new Date(Date.now() - 10000).toISOString();
   const sample = {
@@ -96,7 +96,7 @@ test("ExecutionResourceCeilingGuard evaluate returns finding when elapsed limit 
   assert.equal(findings[0]!.dimension, "elapsed_ms");
 });
 
-test("ExecutionResourceCeilingGuard null limits mean no checking", () => {
+test("ExecutionResourceCeilingGuard null limits mean no checking [execution-resource-monitor]", () => {
   const guard = new ExecutionResourceCeilingGuard({ maxToolCalls: null, maxMemoryMb: null, maxElapsedMs: null });
   const sample = {
     executionId: "exec-1",

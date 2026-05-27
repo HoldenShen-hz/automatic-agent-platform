@@ -26,7 +26,7 @@ function createTestBus(): { workspace: string; db: SqliteDatabase; bus: DurableE
   return { workspace, db, bus };
 }
 
-test("DurableEventBusAsync constructor applies default options", () => {
+test("DurableEventBusAsync constructor applies default options [durable-event-bus-async]", () => {
   const workspace = createTempWorkspace("aa-durable-default-");
   const dbPath = join(workspace, "durable-default.db");
 
@@ -48,7 +48,7 @@ test("DurableEventBusAsync constructor applies default options", () => {
   }
 });
 
-test("DurableEventBusAsync constructor applies custom options", () => {
+test("DurableEventBusAsync constructor applies custom options [durable-event-bus-async]", () => {
   const workspace = createTempWorkspace("aa-durable-custom-");
   const dbPath = join(workspace, "durable-custom.db");
 
@@ -73,7 +73,7 @@ test("DurableEventBusAsync constructor applies custom options", () => {
   }
 });
 
-test("DurableEventBusAsync subscribe adds subscriber", () => {
+test("DurableEventBusAsync subscribe adds subscriber [durable-event-bus-async]", () => {
   const h = createTestBus();
 
   try {
@@ -92,7 +92,7 @@ test("DurableEventBusAsync subscribe adds subscriber", () => {
   }
 });
 
-test("DurableEventBusAsync subscribeHighPriority adds high priority subscriber", () => {
+test("DurableEventBusAsync subscribeHighPriority adds high priority subscriber [durable-event-bus-async]", () => {
   const h = createTestBus();
 
   try {
@@ -108,7 +108,7 @@ test("DurableEventBusAsync subscribeHighPriority adds high priority subscriber",
   }
 });
 
-test("DurableEventBusAsync subscribeLowPriority adds low priority subscriber", () => {
+test("DurableEventBusAsync subscribeLowPriority adds low priority subscriber [durable-event-bus-async]", () => {
   const h = createTestBus();
 
   try {
@@ -124,7 +124,7 @@ test("DurableEventBusAsync subscribeLowPriority adds low priority subscriber", (
   }
 });
 
-test("DurableEventBusAsync unsubscribe removes subscriber", () => {
+test("DurableEventBusAsync unsubscribe removes subscriber [durable-event-bus-async]", () => {
   const h = createTestBus();
 
   try {
@@ -140,7 +140,7 @@ test("DurableEventBusAsync unsubscribe removes subscriber", () => {
   }
 });
 
-test("DurableEventBusAsync getAllSubscribers returns all subscribers", () => {
+test("DurableEventBusAsync getAllSubscribers returns all subscribers [durable-event-bus-async]", () => {
   const h = createTestBus();
 
   try {
@@ -160,7 +160,7 @@ test("DurableEventBusAsync getAllSubscribers returns all subscribers", () => {
   }
 });
 
-test("DurableEventBusAsync publish emits event_published", async () => {
+test("DurableEventBusAsync publish emits event_published [durable-event-bus-async]", async () => {
   const h = createTestBus();
 
   try {
@@ -183,7 +183,7 @@ test("DurableEventBusAsync publish emits event_published", async () => {
   }
 });
 
-test("DurableEventBusAsync publish rejects payload exceeding max size", async () => {
+test("DurableEventBusAsync publish rejects payload exceeding max size [durable-event-bus-async]", async () => {
   const h = createTestBus();
 
   try {
@@ -203,7 +203,7 @@ test("DurableEventBusAsync publish rejects payload exceeding max size", async ()
   }
 });
 
-test("DurableEventBusAsync publish throws when circuit breaker is open", async () => {
+test("DurableEventBusAsync publish throws when circuit breaker is open [durable-event-bus-async]", async () => {
   const h = createTestBus();
 
   try {
@@ -225,7 +225,7 @@ test("DurableEventBusAsync publish throws when circuit breaker is open", async (
   }
 });
 
-test("DurableEventBusAsync pendingForConsumer returns pending events", () => {
+test("DurableEventBusAsync pendingForConsumer returns pending events [durable-event-bus-async]", () => {
   const h = createTestBus();
 
   try {
@@ -240,7 +240,7 @@ test("DurableEventBusAsync pendingForConsumer returns pending events", () => {
   }
 });
 
-test("DurableEventBusAsync pendingForConsumerAsync returns promise", async () => {
+test("DurableEventBusAsync pendingForConsumerAsync returns promise [durable-event-bus-async]", async () => {
   const h = createTestBus();
 
   try {
@@ -255,7 +255,7 @@ test("DurableEventBusAsync pendingForConsumerAsync returns promise", async () =>
   }
 });
 
-test("DurableEventBusAsync getPendingCount returns count", () => {
+test("DurableEventBusAsync getPendingCount returns count [durable-event-bus-async]", () => {
   const h = createTestBus();
 
   try {
@@ -270,7 +270,7 @@ test("DurableEventBusAsync getPendingCount returns count", () => {
   }
 });
 
-test("DurableEventBusAsync getMetrics returns metrics object", () => {
+test("DurableEventBusAsync getMetrics returns metrics object [durable-event-bus-async]", () => {
   const h = createTestBus();
 
   try {
@@ -290,7 +290,7 @@ test("DurableEventBusAsync getMetrics returns metrics object", () => {
   }
 });
 
-test("DurableEventBusAsync resetMetrics resets all values", () => {
+test("DurableEventBusAsync resetMetrics resets all values [durable-event-bus-async]", () => {
   const h = createTestBus();
 
   try {
@@ -307,7 +307,7 @@ test("DurableEventBusAsync resetMetrics resets all values", () => {
   }
 });
 
-test("DurableEventBusAsync getSyncService returns sync service", () => {
+test("DurableEventBusAsync getSyncService returns sync service [durable-event-bus-async]", () => {
   const h = createTestBus();
 
   try {
@@ -320,7 +320,7 @@ test("DurableEventBusAsync getSyncService returns sync service", () => {
   }
 });
 
-test("DurableEventBusAsync dispose prevents further operations", () => {
+test("DurableEventBusAsync dispose prevents further operations [durable-event-bus-async]", () => {
   const h = createTestBus();
 
   h.bus.dispose();
@@ -334,7 +334,7 @@ test("DurableEventBusAsync dispose prevents further operations", () => {
   cleanupPath(h.workspace);
 });
 
-test("DurableEventBusAsync double dispose is safe", () => {
+test("DurableEventBusAsync double dispose is safe [durable-event-bus-async]", () => {
   const h = createTestBus();
 
   h.bus.dispose();
@@ -344,7 +344,7 @@ test("DurableEventBusAsync double dispose is safe", () => {
   cleanupPath(h.workspace);
 });
 
-test("DurableEventBusAsync emits subscriber_added event", () => {
+test("DurableEventBusAsync emits subscriber_added event [durable-event-bus-async]", () => {
   const h = createTestBus();
 
   try {
@@ -364,7 +364,7 @@ test("DurableEventBusAsync emits subscriber_added event", () => {
   }
 });
 
-test("DurableEventBusAsync emits subscriber_removed event", () => {
+test("DurableEventBusAsync emits subscriber_removed event [durable-event-bus-async]", () => {
   const h = createTestBus();
 
   try {
@@ -384,7 +384,7 @@ test("DurableEventBusAsync emits subscriber_removed event", () => {
   }
 });
 
-test("DurableEventBusAsync circuit breaker closes after backoff", async () => {
+test("DurableEventBusAsync circuit breaker closes after backoff [durable-event-bus-async]", async () => {
   const h = createTestBus();
 
   try {

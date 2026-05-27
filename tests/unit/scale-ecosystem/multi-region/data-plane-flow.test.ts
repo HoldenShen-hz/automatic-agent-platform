@@ -15,22 +15,22 @@ import { CDCReplicationService } from "../../../../src/scale-ecosystem/multi-reg
 // Issue #1925: syncState method
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("data-plane-flow-1925: MultiRegionDataPlaneFlowServiceAsync is exported and is a class", () => {
+test("data-plane-flow-1925: MultiRegionDataPlaneFlowServiceAsync is exported and is a class [data-plane-flow]", () => {
   assert.equal(typeof MultiRegionDataPlaneFlowServiceAsync, "function");
 });
 
-test("data-plane-flow-1925: constructor creates CDC service internally when not provided", () => {
+test("data-plane-flow-1925: constructor creates CDC service internally when not provided [data-plane-flow]", () => {
   const service = new MultiRegionDataPlaneFlowServiceAsync();
   assert.ok(service.getCDCService() instanceof CDCReplicationService);
 });
 
-test("data-plane-flow-1925: constructor accepts CDC service as parameter", () => {
+test("data-plane-flow-1925: constructor accepts CDC service as parameter [data-plane-flow]", () => {
   const cdcService = new CDCReplicationService();
   const service = new MultiRegionDataPlaneFlowServiceAsync(cdcService);
   assert.equal(service.getCDCService(), cdcService);
 });
 
-test("data-plane-flow-1925: syncStateAsync returns DataPlaneFlowState", async () => {
+test("data-plane-flow-1925: syncStateAsync returns DataPlaneFlowState [data-plane-flow]", async () => {
   const service = new MultiRegionDataPlaneFlowServiceAsync();
   const result = await service.syncStateAsync({
     partitionKey: "global",
@@ -47,7 +47,7 @@ test("data-plane-flow-1925: syncStateAsync returns DataPlaneFlowState", async ()
   assert.ok(typeof result.activeConflicts === "number");
 });
 
-test("data-plane-flow-1925: syncState tracks region state", async () => {
+test("data-plane-flow-1925: syncState tracks region state [data-plane-flow]", async () => {
   const service = new MultiRegionDataPlaneFlowServiceAsync();
 
   // Sync first region
@@ -74,7 +74,7 @@ test("data-plane-flow-1925: syncState tracks region state", async () => {
 // Issue #1925: resolveConflict method
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("data-plane-flow-1925: resolveConflictAsync returns ConflictResolutionResult", async () => {
+test("data-plane-flow-1925: resolveConflictAsync returns ConflictResolutionResult [data-plane-flow]", async () => {
   const service = new MultiRegionDataPlaneFlowServiceAsync();
   const result = await service.resolveConflictAsync({
     partitionKey: "global",
@@ -99,7 +99,7 @@ test("data-plane-flow-1925: resolveConflictAsync returns ConflictResolutionResul
   assert.ok(Array.isArray(result.writesRejected));
 });
 
-test("data-plane-flow-1925: resolveConflict uses fencing token when available", async () => {
+test("data-plane-flow-1925: resolveConflict uses fencing token when available [data-plane-flow]", async () => {
   const service = new MultiRegionDataPlaneFlowServiceAsync();
   const result = await service.resolveConflictAsync({
     partitionKey: "global",
@@ -122,7 +122,7 @@ test("data-plane-flow-1925: resolveConflict uses fencing token when available", 
   assert.ok(result.writesRejected.includes("write-2"));
 });
 
-test("data-plane-flow-1925: resolveConflict falls back to timestamp when no fencing tokens", async () => {
+test("data-plane-flow-1925: resolveConflict falls back to timestamp when no fencing tokens [data-plane-flow]", async () => {
   const service = new MultiRegionDataPlaneFlowServiceAsync();
   const result = await service.resolveConflictAsync({
     partitionKey: "global",
@@ -140,7 +140,7 @@ test("data-plane-flow-1925: resolveConflict falls back to timestamp when no fenc
   assert.equal(result.winningRegionId, "region-us-east"); // earliest timestamp
 });
 
-test("data-plane-flow-1925: resolveConflict returns unresolved when no conflict data", async () => {
+test("data-plane-flow-1925: resolveConflict returns unresolved when no conflict data [data-plane-flow]", async () => {
   const service = new MultiRegionDataPlaneFlowServiceAsync();
   const result = await service.resolveConflictAsync({
     partitionKey: "global",
@@ -158,14 +158,14 @@ test("data-plane-flow-1925: resolveConflict returns unresolved when no conflict 
 // Issue #1925: getReplicationLag method
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("data-plane-flow-1925: getReplicationLagAsync returns number", async () => {
+test("data-plane-flow-1925: getReplicationLagAsync returns number [data-plane-flow]", async () => {
   const service = new MultiRegionDataPlaneFlowServiceAsync();
   const lag = await service.getReplicationLagAsync("region-us-east", "region-us-west");
   assert.equal(typeof lag, "number");
   assert.ok(lag >= 0);
 });
 
-test("data-plane-flow-1925: getReplicationLagStatusAsync returns ReplicationLagStatus or null", async () => {
+test("data-plane-flow-1925: getReplicationLagStatusAsync returns ReplicationLagStatus or null [data-plane-flow]", async () => {
   const service = new MultiRegionDataPlaneFlowServiceAsync();
   const status = await service.getReplicationLagStatusAsync("region-us-east", "region-us-west");
 
@@ -180,7 +180,7 @@ test("data-plane-flow-1925: getReplicationLagStatusAsync returns ReplicationLagS
   }
 });
 
-test("data-plane-flow-1925: getReplicationLag returns 0 for idle status", async () => {
+test("data-plane-flow-1925: getReplicationLag returns 0 for idle status [data-plane-flow]", async () => {
   const cdcService = new CDCReplicationService();
   const service = new MultiRegionDataPlaneFlowServiceAsync(cdcService);
 
@@ -193,7 +193,7 @@ test("data-plane-flow-1925: getReplicationLag returns 0 for idle status", async 
 // Issue #1925: getActiveRegions method
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("data-plane-flow-1925: getActiveRegionsAsync returns array of RegionState", async () => {
+test("data-plane-flow-1925: getActiveRegionsAsync returns array of RegionState [data-plane-flow]", async () => {
   const service = new MultiRegionDataPlaneFlowServiceAsync();
 
   // Sync some regions first
@@ -217,7 +217,7 @@ test("data-plane-flow-1925: getActiveRegionsAsync returns array of RegionState",
   }
 });
 
-test("data-plane-flow-1925: getActiveRegions returns empty array for unknown partition", async () => {
+test("data-plane-flow-1925: getActiveRegions returns empty array for unknown partition [data-plane-flow]", async () => {
   const service = new MultiRegionDataPlaneFlowServiceAsync();
   const regions = await service.getActiveRegionsAsync("unknown-partition");
   assert.ok(Array.isArray(regions));
@@ -228,7 +228,7 @@ test("data-plane-flow-1925: getActiveRegions returns empty array for unknown par
 // Issue #1925: getState method
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("data-plane-flow-1925: getStateAsync returns state or null", async () => {
+test("data-plane-flow-1925: getStateAsync returns state or null [data-plane-flow]", async () => {
   const service = new MultiRegionDataPlaneFlowServiceAsync();
 
   // Initially no state
@@ -252,13 +252,13 @@ test("data-plane-flow-1925: getStateAsync returns state or null", async () => {
 // Issue #1925: Singleton behavior
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("data-plane-flow-1925: getMultiRegionDataPlaneFlowService returns singleton", () => {
+test("data-plane-flow-1925: getMultiRegionDataPlaneFlowService returns singleton [data-plane-flow]", () => {
   const service1 = getMultiRegionDataPlaneFlowService();
   const service2 = getMultiRegionDataPlaneFlowService();
   assert.equal(service1, service2);
 });
 
-test("data-plane-flow-1925: getMultiRegionDataPlaneFlowService returns MultiRegionDataPlaneFlowServiceAsync", () => {
+test("data-plane-flow-1925: getMultiRegionDataPlaneFlowService returns MultiRegionDataPlaneFlowServiceAsync [data-plane-flow]", () => {
   const service = getMultiRegionDataPlaneFlowService();
   assert.ok(service instanceof MultiRegionDataPlaneFlowServiceAsync);
 });

@@ -21,7 +21,7 @@ function createRequest(overrides: Partial<ConnectorExecutionRequest> = {}): Conn
   };
 }
 
-test("SlackConnector.execute returns success for send_message capability", () => {
+test("SlackConnector.execute returns success for send_message capability [slack-connector]", () => {
   const connector = new SlackConnector();
   const request = createRequest({ capability: "send_message" });
 
@@ -32,7 +32,7 @@ test("SlackConnector.execute returns success for send_message capability", () =>
   assert.equal(result.connectorId, "slack-test");
 });
 
-test("SlackConnector.execute returns success for open_modal capability", () => {
+test("SlackConnector.execute returns success for open_modal capability [slack-connector]", () => {
   const connector = new SlackConnector();
   const request = createRequest({ capability: "open_modal" });
 
@@ -42,7 +42,7 @@ test("SlackConnector.execute returns success for open_modal capability", () => {
   assert.equal(result.status, "succeeded");
 });
 
-test("SlackConnector.execute returns failure for unknown capability", () => {
+test("SlackConnector.execute returns failure for unknown capability [slack-connector]", () => {
   const connector = new SlackConnector();
   const request = createRequest({ capability: "unknown_action" });
 
@@ -52,7 +52,7 @@ test("SlackConnector.execute returns failure for unknown capability", () => {
   assert.equal(result.status, "failed");
 });
 
-test("SlackConnector.execute preserves connectorId from request", () => {
+test("SlackConnector.execute preserves connectorId from request [slack-connector]", () => {
   const connector = new SlackConnector();
   const request = createRequest({ connectorId: "custom-connector-id" });
 
@@ -61,7 +61,7 @@ test("SlackConnector.execute preserves connectorId from request", () => {
   assert.equal(result.connectorId, "custom-connector-id");
 });
 
-test("SlackConnector.execute handles different payload structures", () => {
+test("SlackConnector.execute handles different payload structures [slack-connector]", () => {
   const connector = new SlackConnector();
   const request = createRequest({
     capability: "send_message",
@@ -74,7 +74,7 @@ test("SlackConnector.execute handles different payload structures", () => {
   assert.equal(result.status, "succeeded");
 });
 
-test("SlackConnector.execute handles empty payload", () => {
+test("SlackConnector.execute handles empty payload [slack-connector]", () => {
   const connector = new SlackConnector();
   const request = createRequest({
     capability: "send_message",
@@ -87,7 +87,7 @@ test("SlackConnector.execute handles empty payload", () => {
   assert.equal(result.status, "succeeded");
 });
 
-test("SlackConnector.execute is case-sensitive for capability names", () => {
+test("SlackConnector.execute is case-sensitive for capability names [slack-connector]", () => {
   const connector = new SlackConnector();
   const requestUpper = createRequest({ capability: "SEND_MESSAGE" });
   const requestLower = createRequest({ capability: "send_message" });
@@ -103,7 +103,7 @@ test("SlackConnector.execute is case-sensitive for capability names", () => {
   assert.equal(resultLower.status, "succeeded");
 });
 
-test("SlackConnector.execute fails closed when policyRef is missing", () => {
+test("SlackConnector.execute fails closed when policyRef is missing [slack-connector]", () => {
   const connector = new SlackConnector();
   const request = createRequest({ policyRef: undefined });
 
@@ -113,7 +113,7 @@ test("SlackConnector.execute fails closed when policyRef is missing", () => {
   assert.equal(result.status, "failed");
 });
 
-test("SlackConnector.execute fails closed when secretBindings are missing", () => {
+test("SlackConnector.execute fails closed when secretBindings are missing [slack-connector]", () => {
   const connector = new SlackConnector();
   const request = createRequest({ secretBindings: [] });
 

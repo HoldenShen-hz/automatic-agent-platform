@@ -15,7 +15,7 @@ import {
 // calculateBurnRate Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("calculateBurnRate returns default state for empty observations", () => {
+test("calculateBurnRate returns default state for empty observations [calculate-burn-rate]", () => {
   const result = calculateBurnRate([], 86400000, 0.01); // 24h window, 1% error rate
 
   assert.equal(result.totalRequests, 0);
@@ -25,7 +25,7 @@ test("calculateBurnRate returns default state for empty observations", () => {
   assert.equal(result.errorBudgetConsumed, 0);
 });
 
-test("calculateBurnRate calculates correct error budget consumed", () => {
+test("calculateBurnRate calculates correct error budget consumed [calculate-burn-rate]", () => {
   const now = Date.now();
   const observations = [
     { errorCount: 10, requestCount: 1000, timestampMs: now - 3600000 }, // 1h ago
@@ -38,7 +38,7 @@ test("calculateBurnRate calculates correct error budget consumed", () => {
   assert.ok(result.errorCount >= 0);
 });
 
-test("calculateBurnRate handles observations outside window", () => {
+test("calculateBurnRate handles observations outside window [calculate-burn-rate]", () => {
   const now = Date.now();
   const windowMs = 3600000; // 1 hour window
   const observations = [
@@ -52,7 +52,7 @@ test("calculateBurnRate handles observations outside window", () => {
   assert.ok(result.totalRequests <= 100);
 });
 
-test("calculateBurnRate calculates burn-rate correctly for healthy system", () => {
+test("calculateBurnRate calculates burn-rate correctly for healthy system [calculate-burn-rate]", () => {
   const now = Date.now();
   const windowMs = 3600000; // 1 hour
   const targetErrorRate = 0.01; // 1% allowed
@@ -69,7 +69,7 @@ test("calculateBurnRate calculates burn-rate correctly for healthy system", () =
   assert.ok(result.currentBurnRate >= 0);
 });
 
-test("calculateBurnRate calculates burn-rate correctly for degrading system", () => {
+test("calculateBurnRate calculates burn-rate correctly for degrading system [calculate-burn-rate]", () => {
   const now = Date.now();
   const windowMs = 3600000; // 1 hour
   const targetErrorRate = 0.01; // 1% allowed
@@ -86,7 +86,7 @@ test("calculateBurnRate calculates burn-rate correctly for degrading system", ()
   assert.ok(result.currentBurnRate > 1);
 });
 
-test("calculateBurnRate handles zero elapsed time", () => {
+test("calculateBurnRate handles zero elapsed time [calculate-burn-rate]", () => {
   const now = Date.now();
   const observations = [
     { errorCount: 10, requestCount: 1000, timestampMs: now },
@@ -99,7 +99,7 @@ test("calculateBurnRate handles zero elapsed time", () => {
   assert.ok(result.errorBudgetRemaining >= 0);
 });
 
-test("calculateBurnRate calculates error budget consumed correctly", () => {
+test("calculateBurnRate calculates error budget consumed correctly [calculate-burn-rate]", () => {
   const now = Date.now();
   const windowMs = 86400000; // 24h
   const targetErrorRate = 0.01; // 1% allowed
@@ -117,7 +117,7 @@ test("calculateBurnRate calculates error budget consumed correctly", () => {
   assert.ok(result.errorBudgetConsumed >= 0);
 });
 
-test("calculateBurnRate returns valid SloBurnRateState structure", () => {
+test("calculateBurnRate returns valid SloBurnRateState structure [calculate-burn-rate]", () => {
   const result = calculateBurnRate([], 86400000, 0.01);
 
   assert.ok("windowStartMs" in result);
@@ -128,7 +128,7 @@ test("calculateBurnRate returns valid SloBurnRateState structure", () => {
   assert.ok("errorBudgetConsumed" in result);
 });
 
-test("calculateBurnRate windowStartMs is correctly calculated", () => {
+test("calculateBurnRate windowStartMs is correctly calculated [calculate-burn-rate]", () => {
   const now = Date.now();
   const windowMs = 3600000; // 1 hour
 
@@ -139,7 +139,7 @@ test("calculateBurnRate windowStartMs is correctly calculated", () => {
   assert.ok(result.windowStartMs > now - windowMs - 1000); // allow 1s tolerance
 });
 
-test("calculateBurnRate error budget remaining is bounded 0-100", () => {
+test("calculateBurnRate error budget remaining is bounded 0-100 [calculate-burn-rate]", () => {
   const now = Date.now();
 
   // Many observations at high error rate
@@ -158,7 +158,7 @@ test("calculateBurnRate error budget remaining is bounded 0-100", () => {
   assert.ok(result.errorBudgetConsumed <= 100);
 });
 
-test("calculateBurnRate handles single observation", () => {
+test("calculateBurnRate handles single observation [calculate-burn-rate]", () => {
   const now = Date.now();
   const observations = [
     { errorCount: 1, requestCount: 100, timestampMs: now },
@@ -170,7 +170,7 @@ test("calculateBurnRate handles single observation", () => {
   assert.equal(result.errorCount, 1);
 });
 
-test("calculateBurnRate handles many observations with aggregation", () => {
+test("calculateBurnRate handles many observations with aggregation [calculate-burn-rate]", () => {
   const now = Date.now();
   const observations = Array.from({ length: 100 }, (_, i) => ({
     errorCount: 1,
@@ -184,7 +184,7 @@ test("calculateBurnRate handles many observations with aggregation", () => {
   assert.equal(result.errorCount, 100);    // 100 * 1
 });
 
-test("calculateBurnRate allows burn-rate < 1 for healthy system", () => {
+test("calculateBurnRate allows burn-rate < 1 for healthy system [calculate-burn-rate]", () => {
   const now = Date.now();
   const windowMs = 3600000;
   const targetErrorRate = 0.01;
@@ -202,7 +202,7 @@ test("calculateBurnRate allows burn-rate < 1 for healthy system", () => {
   assert.ok(result.currentBurnRate >= 0);
 });
 
-test("calculateBurnRate calculates budget correctly at exactly target error rate", () => {
+test("calculateBurnRate calculates budget correctly at exactly target error rate [calculate-burn-rate]", () => {
   const now = Date.now();
   const targetErrorRate = 0.01; // 1%
 

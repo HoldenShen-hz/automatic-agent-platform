@@ -49,7 +49,7 @@ function makeRegion(overrides: Partial<TopologyRegion> = {}): TopologyRegion {
 // validateTopology Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("validateTopology rejects empty topology", () => {
+test("validateTopology rejects empty topology [topology-declaration]", () => {
   const topology: MultiRegionTopology = {
     topologyId: "test",
     topologyType: "active-passive",
@@ -67,7 +67,7 @@ test("validateTopology rejects empty topology", () => {
   assert.ok(result.errors.some((e) => e.includes("at least one region")));
 });
 
-test("validateTopology validates active-passive has exactly one primary", () => {
+test("validateTopology validates active-passive has exactly one primary [topology-declaration]", () => {
   const topology: MultiRegionTopology = {
     topologyId: "test",
     topologyType: "active-passive",
@@ -87,7 +87,7 @@ test("validateTopology validates active-passive has exactly one primary", () => 
   assert.equal(result.valid, true);
 });
 
-test("validateTopology rejects active-passive with multiple primaries", () => {
+test("validateTopology rejects active-passive with multiple primaries [topology-declaration]", () => {
   const topology: MultiRegionTopology = {
     topologyId: "test",
     topologyType: "active-passive",
@@ -108,7 +108,7 @@ test("validateTopology rejects active-passive with multiple primaries", () => {
   assert.ok(result.errors.some((e) => e.includes("exactly one primary")));
 });
 
-test("validateTopology validates active-active has multiple writable regions", () => {
+test("validateTopology validates active-active has multiple writable regions [topology-declaration]", () => {
   const topology: MultiRegionTopology = {
     topologyId: "test",
     topologyType: "active-active",
@@ -128,7 +128,7 @@ test("validateTopology validates active-active has multiple writable regions", (
   assert.equal(result.valid, true);
 });
 
-test("validateTopology rejects active-active with single writable region", () => {
+test("validateTopology rejects active-active with single writable region [topology-declaration]", () => {
   const topology: MultiRegionTopology = {
     topologyId: "test",
     topologyType: "active-active",
@@ -149,7 +149,7 @@ test("validateTopology rejects active-active with single writable region", () =>
   assert.ok(result.errors.some((e) => e.includes("at least two writable regions")));
 });
 
-test("validateTopology validates region pair references", () => {
+test("validateTopology validates region pair references [topology-declaration]", () => {
   const topology: MultiRegionTopology = {
     topologyId: "test",
     topologyType: "active-passive",
@@ -174,7 +174,7 @@ test("validateTopology validates region pair references", () => {
   assert.ok(result.errors.some((e) => e.includes("unknown target region")));
 });
 
-test("validateTopology requires conflict resolution for active-active async", () => {
+test("validateTopology requires conflict resolution for active-active async [topology-declaration]", () => {
   const topology: MultiRegionTopology = {
     topologyId: "test",
     topologyType: "active-active",
@@ -203,7 +203,7 @@ test("validateTopology requires conflict resolution for active-active async", ()
 // Active-Passive Topology Builder Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("buildActivePassiveTopology creates valid topology", () => {
+test("buildActivePassiveTopology creates valid topology [topology-declaration]", () => {
   const primary = makeRegion({ regionId: "us-east", role: "primary" });
   const secondaries = [
     makeRegion({ regionId: "eu-west", role: "secondary", isWritable: false }),
@@ -217,7 +217,7 @@ test("buildActivePassiveTopology creates valid topology", () => {
   assert.equal(topology.conflictResolutionStrategy, "last-write-wins");
 });
 
-test("buildActivePassiveTopology creates correct region pairs", () => {
+test("buildActivePassiveTopology creates correct region pairs [topology-declaration]", () => {
   const primary = makeRegion({ regionId: "us-east", role: "primary" });
   const secondaries = [
     makeRegion({ regionId: "eu-west", role: "secondary", isWritable: false }),
@@ -233,7 +233,7 @@ test("buildActivePassiveTopology creates correct region pairs", () => {
   assert.equal(topology.regionPairs[1]?.targetRegionId, "ap-south");
 });
 
-test("buildActivePassiveTopology supports read replicas", () => {
+test("buildActivePassiveTopology supports read replicas [topology-declaration]", () => {
   const primary = makeRegion({ regionId: "us-east", role: "primary" });
   const secondaries = [
     makeRegion({ regionId: "eu-west", role: "secondary", isWritable: false }),
@@ -249,7 +249,7 @@ test("buildActivePassiveTopology supports read replicas", () => {
 // Active-Active Topology Builder Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("buildActiveActiveTopology creates valid topology", () => {
+test("buildActiveActiveTopology creates valid topology [topology-declaration]", () => {
   const regions = [
     makeRegion({ regionId: "us-east", role: "primary", isWritable: true }),
     makeRegion({ regionId: "eu-west", role: "primary", isWritable: true }),
@@ -262,7 +262,7 @@ test("buildActiveActiveTopology creates valid topology", () => {
   assert.equal(topology.supportsFailover, false); // Active-active typically doesn't auto-failover
 });
 
-test("buildActiveActiveTopology creates symmetric region pairs", () => {
+test("buildActiveActiveTopology creates symmetric region pairs [topology-declaration]", () => {
   const regions = [
     makeRegion({ regionId: "us-east", role: "primary", isWritable: true }),
     makeRegion({ regionId: "eu-west", role: "primary", isWritable: true }),
@@ -280,7 +280,7 @@ test("buildActiveActiveTopology creates symmetric region pairs", () => {
   assert.equal(topology.regionPairs.some((p) => p.sourceRegionId === "eu-west" && p.targetRegionId === "us-east"), false);
 });
 
-test("buildActiveActiveTopology with custom conflict resolution", () => {
+test("buildActiveActiveTopology with custom conflict resolution [topology-declaration]", () => {
   const regions = [
     makeRegion({ regionId: "us-east", role: "primary", isWritable: true }),
     makeRegion({ regionId: "eu-west", role: "primary", isWritable: true }),
@@ -297,7 +297,7 @@ test("buildActiveActiveTopology with custom conflict resolution", () => {
 // Helper Function Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("getPrimaryRegion returns primary from active-passive", () => {
+test("getPrimaryRegion returns primary from active-passive [topology-declaration]", () => {
   const primary = makeRegion({ regionId: "us-east", role: "primary" });
   const secondaries = [
     makeRegion({ regionId: "eu-west", role: "secondary", isWritable: false }),
@@ -310,7 +310,7 @@ test("getPrimaryRegion returns primary from active-passive", () => {
   assert.equal(found?.regionId, "us-east");
 });
 
-test("getPrimaryRegion returns the first primary region from active-active topology", () => {
+test("getPrimaryRegion returns the first primary region from active-active topology [topology-declaration]", () => {
   const regions = [
     makeRegion({ regionId: "us-east", role: "primary", isWritable: true }),
     makeRegion({ regionId: "eu-west", role: "primary", isWritable: true }),
@@ -322,7 +322,7 @@ test("getPrimaryRegion returns the first primary region from active-active topol
   assert.equal(found?.regionId, "us-east");
 });
 
-test("getSecondaryRegions returns secondary regions", () => {
+test("getSecondaryRegions returns secondary regions [topology-declaration]", () => {
   const primary = makeRegion({ regionId: "us-east", role: "primary" });
   const secondaries = [
     makeRegion({ regionId: "eu-west", role: "secondary", isWritable: false }),
@@ -335,7 +335,7 @@ test("getSecondaryRegions returns secondary regions", () => {
   assert.equal(found.length, 2);
 });
 
-test("getReadReplicaRegions returns read replicas", () => {
+test("getReadReplicaRegions returns read replicas [topology-declaration]", () => {
   const primary = makeRegion({ regionId: "us-east", role: "primary" });
   const secondaries = [
     makeRegion({ regionId: "eu-west", role: "secondary", isWritable: false }),
@@ -349,7 +349,7 @@ test("getReadReplicaRegions returns read replicas", () => {
   assert.equal(found[0]?.regionId, "read-1");
 });
 
-test("getWritableRegions returns all writable regions", () => {
+test("getWritableRegions returns all writable regions [topology-declaration]", () => {
   const regions = [
     makeRegion({ regionId: "us-east", role: "primary", isWritable: true }),
     makeRegion({ regionId: "eu-west", role: "primary", isWritable: true }),
@@ -366,7 +366,7 @@ test("getWritableRegions returns all writable regions", () => {
 // Failover Support Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("supportsAutomaticFailover returns true for active-passive with witness", () => {
+test("supportsAutomaticFailover returns true for active-passive with witness [topology-declaration]", () => {
   const primary = makeRegion({ regionId: "us-east", role: "primary" });
   const secondaries = [
     makeRegion({ regionId: "eu-west", role: "secondary", isWritable: false }),
@@ -377,7 +377,7 @@ test("supportsAutomaticFailover returns true for active-passive with witness", (
   assert.equal(supportsAutomaticFailover(topology), true);
 });
 
-test("supportsAutomaticFailover returns false for active-active", () => {
+test("supportsAutomaticFailover returns false for active-active [topology-declaration]", () => {
   const regions = [
     makeRegion({ regionId: "us-east", role: "primary", isWritable: true }),
     makeRegion({ regionId: "eu-west", role: "primary", isWritable: true }),
@@ -387,7 +387,7 @@ test("supportsAutomaticFailover returns false for active-active", () => {
   assert.equal(supportsAutomaticFailover(topology), false);
 });
 
-test("canFailoverTo validates failover targets", () => {
+test("canFailoverTo validates failover targets [topology-declaration]", () => {
   const primary = makeRegion({ regionId: "us-east", role: "primary" });
   const secondaries = [
     makeRegion({ regionId: "eu-west", role: "secondary", isWritable: false }),
@@ -410,7 +410,7 @@ test("canFailoverTo validates failover targets", () => {
 // R13-24: Explicit Topology Mode Declaration Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("topology declares explicit mode as active-active", () => {
+test("topology declares explicit mode as active-active [topology-declaration]", () => {
   const regions = [
     makeRegion({ regionId: "us-east", role: "primary", isWritable: true }),
     makeRegion({ regionId: "eu-west", role: "primary", isWritable: true }),
@@ -421,7 +421,7 @@ test("topology declares explicit mode as active-active", () => {
   assert.equal(topology.topologyType, "active-active");
 });
 
-test("topology declares explicit mode as active-passive", () => {
+test("topology declares explicit mode as active-passive [topology-declaration]", () => {
   const primary = makeRegion({ regionId: "us-east", role: "primary" });
   const secondaries = [
     makeRegion({ regionId: "eu-west", role: "secondary", isWritable: false }),
@@ -432,7 +432,7 @@ test("topology declares explicit mode as active-passive", () => {
   assert.equal(topology.topologyType, "active-passive");
 });
 
-test("active-active topology handles conflict resolution for concurrent writes", () => {
+test("active-active topology handles conflict resolution for concurrent writes [topology-declaration]", () => {
   const regions = [
     makeRegion({ regionId: "us-east", role: "primary", isWritable: true }),
     makeRegion({ regionId: "eu-west", role: "primary", isWritable: true }),
@@ -452,7 +452,7 @@ test("active-active topology handles conflict resolution for concurrent writes",
   }
 });
 
-test("active-passive topology uses last-write-wins by default", () => {
+test("active-passive topology uses last-write-wins by default [topology-declaration]", () => {
   const primary = makeRegion({ regionId: "us-east", role: "primary" });
   const secondaries = [
     makeRegion({ regionId: "eu-west", role: "secondary", isWritable: false }),
@@ -464,7 +464,7 @@ test("active-passive topology uses last-write-wins by default", () => {
   assert.equal(topology.conflictResolutionStrategy, "last-write-wins");
 });
 
-test("active-active topology sets supportsFailover to false", () => {
+test("active-active topology sets supportsFailover to false [topology-declaration]", () => {
   const regions = [
     makeRegion({ regionId: "us-east", role: "primary", isWritable: true }),
     makeRegion({ regionId: "eu-west", role: "primary", isWritable: true }),
@@ -476,7 +476,7 @@ test("active-active topology sets supportsFailover to false", () => {
   // In active-active, all regions are peers - no single failover target
 });
 
-test("active-passive topology sets supportsFailover to true", () => {
+test("active-passive topology sets supportsFailover to true [topology-declaration]", () => {
   const primary = makeRegion({ regionId: "us-east", role: "primary" });
   const secondaries = [
     makeRegion({ regionId: "eu-west", role: "secondary", isWritable: false }),
@@ -491,7 +491,7 @@ test("active-passive topology sets supportsFailover to true", () => {
 // R13-24: Region Role Declaration Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("region declares role explicitly", () => {
+test("region declares role explicitly [topology-declaration]", () => {
   const primary = makeRegion({ regionId: "us-east", role: "primary" });
   const secondary = makeRegion({ regionId: "eu-west", role: "secondary" });
   const witness = makeRegion({ regionId: "witness", role: "witness" });
@@ -501,7 +501,7 @@ test("region declares role explicitly", () => {
   assert.equal(witness.role, "witness");
 });
 
-test("region declares writability explicitly", () => {
+test("region declares writability explicitly [topology-declaration]", () => {
   const writable = makeRegion({ regionId: "us-east", isWritable: true });
   const readOnly = makeRegion({ regionId: "eu-west", isWritable: false });
 
@@ -509,7 +509,7 @@ test("region declares writability explicitly", () => {
   assert.equal(readOnly.isWritable, false);
 });
 
-test("region declares priority for routing/failover order", () => {
+test("region declares priority for routing/failover order [topology-declaration]", () => {
   const highPriority = makeRegion({ regionId: "us-east", priority: 100 });
   const lowPriority = makeRegion({ regionId: "eu-west", priority: 50 });
 
@@ -520,7 +520,7 @@ test("region declares priority for routing/failover order", () => {
 // R13-24: Region Pair Configuration Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("region pair declares replication mode explicitly", () => {
+test("region pair declares replication mode explicitly [topology-declaration]", () => {
   const topology: MultiRegionTopology = {
     topologyId: "test",
     topologyType: "active-passive",
@@ -545,7 +545,7 @@ test("region pair declares replication mode explicitly", () => {
   assert.equal(pair?.replicationMode, "synchronous");
 });
 
-test("region pair declares conflict resolution for async replication", () => {
+test("region pair declares conflict resolution for async replication [topology-declaration]", () => {
   const topology: MultiRegionTopology = {
     topologyId: "test",
     topologyType: "active-active",

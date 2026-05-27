@@ -8,18 +8,18 @@ import {
   runPhase1BOrchestration,
 } from "../../../../../src/platform/five-plane-execution/execution-engine/index.js";
 
-test("execution-engine barrel exports orchestration entrypoints", () => {
+test("execution-engine barrel exports orchestration entrypoints [index]", () => {
   assert.equal(typeof runMultiStepOrchestration, "function");
   assert.equal(typeof runPhase1BOrchestration, "function");
   assert.equal(runPhase1BOrchestration, runMultiStepOrchestration);
 });
 
-test("execution-engine barrel exports tool definition surface", () => {
+test("execution-engine barrel exports tool definition surface [index]", () => {
   assert.ok(Array.isArray(MULTI_STEP_TOOL_DEFINITIONS));
   assert.ok(MULTI_STEP_TOOL_DEFINITIONS.some((tool) => tool.name === "todo_write"));
 });
 
-test("execution-engine barrel exports multi-step path guard helpers", () => {
+test("execution-engine barrel exports multi-step path guard helpers [index]", () => {
   const rootPath = "/workspace";
   assert.equal(resolveMultiStepToolPath(rootPath, "src/index.ts"), "/workspace/src/index.ts");
 });

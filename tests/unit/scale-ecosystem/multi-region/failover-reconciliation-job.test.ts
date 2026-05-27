@@ -105,7 +105,7 @@ function createInputWithRestrictedWrites(writes: { writeId: string; resourceId: 
 // FailoverReconciliationJob Core Functionality Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("FailoverReconciliationJob: runReconciliation returns scan result with correct structure", () => {
+test("FailoverReconciliationJob: runReconciliation returns scan result with correct structure [failover-reconciliation-job]", () => {
   const job = new FailoverReconciliationJob();
   const input = createMinimalInput();
 
@@ -121,7 +121,7 @@ test("FailoverReconciliationJob: runReconciliation returns scan result with corr
   assert.ok(result.warnings.includes("failover_reconciliation.caller_supplied_evidence_only"));
 });
 
-test("FailoverReconciliationJob: detects unreplicated writes", () => {
+test("FailoverReconciliationJob: detects unreplicated writes [failover-reconciliation-job]", () => {
   const job = new FailoverReconciliationJob();
   const input = createInputWithWrites(5);
 
@@ -132,7 +132,7 @@ test("FailoverReconciliationJob: detects unreplicated writes", () => {
   assert.ok(result.issues.some(i => i.issueType === "unreplicated_write"));
 });
 
-test("FailoverReconciliationJob: unreplicated writes with count > 10 are critical", () => {
+test("FailoverReconciliationJob: unreplicated writes with count > 10 are critical [failover-reconciliation-job]", () => {
   const job = new FailoverReconciliationJob();
   const input = createInputWithWrites(15);
 
@@ -144,7 +144,7 @@ test("FailoverReconciliationJob: unreplicated writes with count > 10 are critica
   assert.equal(result.canProceed, false, "cannot proceed with critical issues");
 });
 
-test("FailoverReconciliationJob: unreplicated writes with count <= 10 are high severity", () => {
+test("FailoverReconciliationJob: unreplicated writes with count <= 10 are high severity [failover-reconciliation-job]", () => {
   const job = new FailoverReconciliationJob();
   const input = createInputWithWrites(8);
 
@@ -154,7 +154,7 @@ test("FailoverReconciliationJob: unreplicated writes with count <= 10 are high s
   assert.ok(unreplicatedIssues.every(i => i.severity === "high"), "count <= 10 should be high");
 });
 
-test("FailoverReconciliationJob: detects pending approvals", () => {
+test("FailoverReconciliationJob: detects pending approvals [failover-reconciliation-job]", () => {
   const job = new FailoverReconciliationJob();
   const input = createInputWithApprovals([
     { approvalId: "approval-1", taskId: "task-1", createdAt: "2026-05-01T10:00:00Z" },
@@ -169,7 +169,7 @@ test("FailoverReconciliationJob: detects pending approvals", () => {
   assert.ok(approvalIssues.every(i => i.severity === "medium"));
 });
 
-test("FailoverReconciliationJob: detects open budgets", () => {
+test("FailoverReconciliationJob: detects open budgets [failover-reconciliation-job]", () => {
   const job = new FailoverReconciliationJob();
   const input = createInputWithBudgets([
     { budgetId: "budget-1", resourceType: "compute", allocatedAmount: 1000 },
@@ -184,7 +184,7 @@ test("FailoverReconciliationJob: detects open budgets", () => {
   assert.ok(budgetIssues.every(i => i.severity === "medium"));
 });
 
-test("FailoverReconciliationJob: detects outbox gaps with correct severity", () => {
+test("FailoverReconciliationJob: detects outbox gaps with correct severity [failover-reconciliation-job]", () => {
   const job = new FailoverReconciliationJob();
   const input = createInputWithOutboxMessages([
     { messageId: "msg-1", createdAt: "2026-05-01T10:00:00Z", retryCount: 1 },
@@ -201,7 +201,7 @@ test("FailoverReconciliationJob: detects outbox gaps with correct severity", () 
   assert.equal(highSeverity.length, 1);
 });
 
-test("FailoverReconciliationJob: restricted writes are always critical", () => {
+test("FailoverReconciliationJob: restricted writes are always critical [failover-reconciliation-job]", () => {
   const job = new FailoverReconciliationJob();
   const input = createInputWithRestrictedWrites([
     { writeId: "write-1", resourceId: "res-1", blockedAt: "2026-05-01T10:00:00Z" },
@@ -217,7 +217,7 @@ test("FailoverReconciliationJob: restricted writes are always critical", () => {
   assert.ok(restrictedIssues.every(i => i.requiresAttention === true));
 });
 
-test("FailoverReconciliationJob: active leases held by the source region block promotion", () => {
+test("FailoverReconciliationJob: active leases held by the source region block promotion [failover-reconciliation-job]", () => {
   const job = new FailoverReconciliationJob();
   const input: ReconciliationJobInput = {
     ...createMinimalInput(),
@@ -239,7 +239,7 @@ test("FailoverReconciliationJob: active leases held by the source region block p
   assert.equal(activeLeaseIssue?.severity, "critical");
 });
 
-test("FailoverReconciliationJob: multiple issue types are correctly counted", () => {
+test("FailoverReconciliationJob: multiple issue types are correctly counted [failover-reconciliation-job]", () => {
   const job = new FailoverReconciliationJob();
   const input: ReconciliationJobInput = {
     sourceRegionId: "region-us-east-1",
@@ -270,13 +270,13 @@ test("FailoverReconciliationJob: multiple issue types are correctly counted", ()
 // FailoverReconciliationJob History Management Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("FailoverReconciliationJob: getLastScanResult returns null initially", () => {
+test("FailoverReconciliationJob: getLastScanResult returns null initially [failover-reconciliation-job]", () => {
   const job = new FailoverReconciliationJob();
 
   assert.equal(job.getLastScanResult(), null);
 });
 
-test("FailoverReconciliationJob: getLastScanResult returns most recent result", () => {
+test("FailoverReconciliationJob: getLastScanResult returns most recent result [failover-reconciliation-job]", () => {
   const job = new FailoverReconciliationJob();
   const input1: ReconciliationJobInput = {
     sourceRegionId: "region-1",
@@ -309,7 +309,7 @@ test("FailoverReconciliationJob: getLastScanResult returns most recent result", 
   assert.equal(lastResult.sourceRegionId, "region-2");
 });
 
-test("FailoverReconciliationJob: getScanHistory returns all results", () => {
+test("FailoverReconciliationJob: getScanHistory returns all results [failover-reconciliation-job]", () => {
   const job = new FailoverReconciliationJob();
 
   job.runReconciliation(createMinimalInput());
@@ -320,7 +320,7 @@ test("FailoverReconciliationJob: getScanHistory returns all results", () => {
   assert.equal(history.length, 3);
 });
 
-test("FailoverReconciliationJob: getScanHistory returns copy not reference", () => {
+test("FailoverReconciliationJob: getScanHistory returns copy not reference [failover-reconciliation-job]", () => {
   const job = new FailoverReconciliationJob();
 
   job.runReconciliation(createMinimalInput());
@@ -335,7 +335,7 @@ test("FailoverReconciliationJob: getScanHistory returns copy not reference", () 
 // FailoverReconciliationJob acknowledgeIssue Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("FailoverReconciliationJob: acknowledgeIssue returns false for unknown scanId", () => {
+test("FailoverReconciliationJob: acknowledgeIssue returns false for unknown scanId [failover-reconciliation-job]", () => {
   const job = new FailoverReconciliationJob();
   job.runReconciliation(createMinimalInput());
 
@@ -344,7 +344,7 @@ test("FailoverReconciliationJob: acknowledgeIssue returns false for unknown scan
   assert.equal(result, false);
 });
 
-test("FailoverReconciliationJob: acknowledgeIssue returns false for unknown issueId", () => {
+test("FailoverReconciliationJob: acknowledgeIssue returns false for unknown issueId [failover-reconciliation-job]", () => {
   const job = new FailoverReconciliationJob();
   job.runReconciliation(createMinimalInput());
 
@@ -354,7 +354,7 @@ test("FailoverReconciliationJob: acknowledgeIssue returns false for unknown issu
   assert.equal(result, false);
 });
 
-test("FailoverReconciliationJob: acknowledgeIssue returns true for valid ids", () => {
+test("FailoverReconciliationJob: acknowledgeIssue returns true for valid ids [failover-reconciliation-job]", () => {
   const job = new FailoverReconciliationJob();
   const input = createInputWithWrites(1);
   job.runReconciliation(input);
@@ -370,7 +370,7 @@ test("FailoverReconciliationJob: acknowledgeIssue returns true for valid ids", (
 // FailoverReconciliationJob Edge Cases
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("FailoverReconciliationJob: handles empty issue lists with all zeros", () => {
+test("FailoverReconciliationJob: handles empty issue lists with all zeros [failover-reconciliation-job]", () => {
   const job = new FailoverReconciliationJob();
   const input = createMinimalInput();
 
@@ -388,7 +388,7 @@ test("FailoverReconciliationJob: handles empty issue lists with all zeros", () =
   assert.equal(result.canProceed, true);
 });
 
-test("FailoverReconciliationJob: issue descriptions are descriptive", () => {
+test("FailoverReconciliationJob: issue descriptions are descriptive [failover-reconciliation-job]", () => {
   const job = new FailoverReconciliationJob();
   const input = createInputWithApprovals([{ approvalId: "approval-123", taskId: "task-456", createdAt: "2026-05-01T10:00:00Z" }]);
 
@@ -399,7 +399,7 @@ test("FailoverReconciliationJob: issue descriptions are descriptive", () => {
   assert.ok(issue!.description.includes("task-456"));
 });
 
-test("FailoverReconciliationJob: issue contains correct region information", () => {
+test("FailoverReconciliationJob: issue contains correct region information [failover-reconciliation-job]", () => {
   const job = new FailoverReconciliationJob();
   const input = createMinimalInput();
 
@@ -411,7 +411,7 @@ test("FailoverReconciliationJob: issue contains correct region information", () 
   }
 });
 
-test("FailoverReconciliationJob: canProceed is false when critical issues exist", () => {
+test("FailoverReconciliationJob: canProceed is false when critical issues exist [failover-reconciliation-job]", () => {
   const job = new FailoverReconciliationJob();
   const input = createInputWithRestrictedWrites([
     { writeId: "write-1", resourceId: "res-1", blockedAt: "2026-05-01T10:00:00Z" },
@@ -424,7 +424,7 @@ test("FailoverReconciliationJob: canProceed is false when critical issues exist"
   assert.equal(result.canProceed, false);
 });
 
-test("FailoverReconciliationJob: canProceed is true when only non-critical issues exist", () => {
+test("FailoverReconciliationJob: canProceed is true when only non-critical issues exist [failover-reconciliation-job]", () => {
   const job = new FailoverReconciliationJob();
   const input = createInputWithApprovals([{ approvalId: "a1", taskId: "t1", createdAt: "2026-05-01T10:00:00Z" }]);
 
@@ -433,7 +433,7 @@ test("FailoverReconciliationJob: canProceed is true when only non-critical issue
   assert.equal(result.canProceed, true);
 });
 
-test("FailoverReconciliationJob: requiresAttention is true for critical and high severity", () => {
+test("FailoverReconciliationJob: requiresAttention is true for critical and high severity [failover-reconciliation-job]", () => {
   const job = new FailoverReconciliationJob();
   const input: ReconciliationJobInput = {
     sourceRegionId: "region-us-east-1",
@@ -455,7 +455,7 @@ test("FailoverReconciliationJob: requiresAttention is true for critical and high
   assert.ok(highIssues.every(i => i.requiresAttention === true));
 });
 
-test("FailoverReconciliationJob: requiresAttention is false for medium and low severity", () => {
+test("FailoverReconciliationJob: requiresAttention is false for medium and low severity [failover-reconciliation-job]", () => {
   const job = new FailoverReconciliationJob();
   const input: ReconciliationJobInput = {
     sourceRegionId: "region-us-east-1",

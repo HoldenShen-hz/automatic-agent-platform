@@ -34,42 +34,42 @@ function createMockStore(overrides: Partial<AuthoritativeTaskStore> = {}): Autho
 // mergeExecutionIds
 // ---------------------------------------------------------------------------
 
-test("mergeExecutionIds adds new execution ID to existing array", () => {
+test("mergeExecutionIds adds new execution ID to existing array [execution-worker-handshake-support-functions]", () => {
   const result = mergeExecutionIds(["exec-1", "exec-2"], "exec-3");
   assert.deepEqual(result, ["exec-1", "exec-2", "exec-3"]);
 });
 
-test("mergeExecutionIds does not duplicate existing ID", () => {
+test("mergeExecutionIds does not duplicate existing ID [execution-worker-handshake-support-functions]", () => {
   const result = mergeExecutionIds(["exec-1", "exec-2"], "exec-1");
   assert.deepEqual(result, ["exec-1", "exec-2"]);
 });
 
-test("mergeExecutionIds returns sorted result", () => {
+test("mergeExecutionIds returns sorted result [execution-worker-handshake-support-functions]", () => {
   const result = mergeExecutionIds(["exec-3", "exec-1"], "exec-2");
   assert.deepEqual(result, ["exec-1", "exec-2", "exec-3"]);
 });
 
-test("mergeExecutionIds handles empty array", () => {
+test("mergeExecutionIds handles empty array [execution-worker-handshake-support-functions]", () => {
   const result = mergeExecutionIds([], "exec-1");
   assert.deepEqual(result, ["exec-1"]);
 });
 
-test("mergeExecutionIds handles single element array", () => {
+test("mergeExecutionIds handles single element array [execution-worker-handshake-support-functions]", () => {
   const result = mergeExecutionIds(["exec-1"], "exec-2");
   assert.deepEqual(result, ["exec-1", "exec-2"]);
 });
 
-test("mergeExecutionIds removes duplicates from existing array", () => {
+test("mergeExecutionIds removes duplicates from existing array [execution-worker-handshake-support-functions]", () => {
   const result = mergeExecutionIds(["exec-1", "exec-1", "exec-2"], "exec-3");
   assert.deepEqual(result, ["exec-1", "exec-2", "exec-3"]);
 });
 
-test("mergeExecutionIds returns empty sorted when all duplicates", () => {
+test("mergeExecutionIds returns empty sorted when all duplicates [execution-worker-handshake-support-functions]", () => {
   const result = mergeExecutionIds(["exec-1", "exec-1"], "exec-1");
   assert.deepEqual(result, ["exec-1"]);
 });
 
-test("mergeExecutionIds handles large arrays", () => {
+test("mergeExecutionIds handles large arrays [execution-worker-handshake-support-functions]", () => {
   const existing = Array.from({ length: 100 }, (_, i) => `exec-${i}`);
   const result = mergeExecutionIds(existing, "exec-new");
   assert.equal(result.length, 101);
@@ -80,7 +80,7 @@ test("mergeExecutionIds handles large arrays", () => {
 // recordRejectedEvent
 // ---------------------------------------------------------------------------
 
-test("recordRejectedEvent inserts event with worker:claim_rejected type", () => {
+test("recordRejectedEvent inserts event with worker:claim_rejected type [execution-worker-handshake-support-functions]", () => {
   let insertedEvent: { eventType: string; taskId: string; executionId: string; payloadJson: string } | null = null;
 
   const store = createMockStore({
@@ -102,7 +102,7 @@ test("recordRejectedEvent inserts event with worker:claim_rejected type", () => 
   assert.equal(insertedEvent!.executionId, "exec-456");
 });
 
-test("recordRejectedEvent inserts event with worker:heartbeat_rejected type", () => {
+test("recordRejectedEvent inserts event with worker:heartbeat_rejected type [execution-worker-handshake-support-functions]", () => {
   let insertedEvent: { eventType: string } | null = null;
 
   const store = createMockStore({
@@ -119,7 +119,7 @@ test("recordRejectedEvent inserts event with worker:heartbeat_rejected type", ()
   assert.equal(insertedEvent!.eventType, "worker:heartbeat_rejected");
 });
 
-test("recordRejectedEvent uses traceId from execution when available", () => {
+test("recordRejectedEvent uses traceId from execution when available [execution-worker-handshake-support-functions]", () => {
   let insertedEvent: { traceId: string | null } | null = null;
 
   const store = createMockStore({
@@ -139,7 +139,7 @@ test("recordRejectedEvent uses traceId from execution when available", () => {
   assert.equal(insertedEvent!.traceId, "trace-abc");
 });
 
-test("recordRejectedEvent uses null traceId when execution not found", () => {
+test("recordRejectedEvent uses null traceId when execution not found [execution-worker-handshake-support-functions]", () => {
   let insertedEvent: { traceId: string | null } | null = null;
 
   const store = createMockStore({
@@ -159,7 +159,7 @@ test("recordRejectedEvent uses null traceId when execution not found", () => {
   assert.equal(insertedEvent!.traceId, null);
 });
 
-test("recordRejectedEvent serializes payload to JSON", () => {
+test("recordRejectedEvent serializes payload to JSON [execution-worker-handshake-support-functions]", () => {
   let insertedEvent: { payloadJson: string } | null = null;
 
   const store = createMockStore({
@@ -186,53 +186,53 @@ test("recordRejectedEvent serializes payload to JSON", () => {
 // normalizeLeaseReason
 // ---------------------------------------------------------------------------
 
-test("normalizeLeaseReason returns lease_not_found as-is", () => {
+test("normalizeLeaseReason returns lease_not_found as-is [execution-worker-handshake-support-functions]", () => {
   const result = normalizeLeaseReason("lease_not_found");
   assert.equal(result, "lease_not_found");
 });
 
-test("normalizeLeaseReason returns lease_not_active as-is", () => {
+test("normalizeLeaseReason returns lease_not_active as-is [execution-worker-handshake-support-functions]", () => {
   const result = normalizeLeaseReason("lease_not_active");
   assert.equal(result, "lease_not_active");
 });
 
-test("normalizeLeaseReason returns lease_expired as-is", () => {
+test("normalizeLeaseReason returns lease_expired as-is [execution-worker-handshake-support-functions]", () => {
   const result = normalizeLeaseReason("lease_expired");
   assert.equal(result, "lease_expired");
 });
 
-test("normalizeLeaseReason returns worker_mismatch as-is", () => {
+test("normalizeLeaseReason returns worker_mismatch as-is [execution-worker-handshake-support-functions]", () => {
   const result = normalizeLeaseReason("worker_mismatch");
   assert.equal(result, "worker_mismatch");
 });
 
-test("normalizeLeaseReason returns no_active_lease as-is", () => {
+test("normalizeLeaseReason returns no_active_lease as-is [execution-worker-handshake-support-functions]", () => {
   const result = normalizeLeaseReason("no_active_lease");
   assert.equal(result, "no_active_lease");
 });
 
-test("normalizeLeaseReason returns stale_fencing_token as-is", () => {
+test("normalizeLeaseReason returns stale_fencing_token as-is [execution-worker-handshake-support-functions]", () => {
   const result = normalizeLeaseReason("stale_fencing_token");
   assert.equal(result, "stale_fencing_token");
 });
 
-test("normalizeLeaseReason returns null for unknown reason codes", () => {
+test("normalizeLeaseReason returns null for unknown reason codes [execution-worker-handshake-support-functions]", () => {
   const result = normalizeLeaseReason("unknown_reason");
   assert.equal(result, null);
 });
 
-test("normalizeLeaseReason returns null for empty string", () => {
+test("normalizeLeaseReason returns null for empty string [execution-worker-handshake-support-functions]", () => {
   const result = normalizeLeaseReason(null);
   assert.equal(result, null);
 });
 
-test("normalizeLeaseReason handles various invalid reason codes", () => {
+test("normalizeLeaseReason handles various invalid reason codes [execution-worker-handshake-support-functions]", () => {
   assert.equal(normalizeLeaseReason(""), null);
   assert.equal(normalizeLeaseReason("invalid"), null);
   assert.equal(normalizeLeaseReason("some_other_reason"), null);
 });
 
-test("normalizeLeaseReason return type matches WorkerHandshakeDecision reasonCode", () => {
+test("normalizeLeaseReason return type matches WorkerHandshakeDecision reasonCode [execution-worker-handshake-support-functions]", () => {
   const validReasons: WorkerHandshakeDecision["reasonCode"][] = [
     "lease_not_found",
     "lease_not_active",

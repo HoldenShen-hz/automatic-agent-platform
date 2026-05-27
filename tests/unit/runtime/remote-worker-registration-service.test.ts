@@ -7,7 +7,7 @@ import { AuthoritativeTaskStore } from "../../../src/platform/five-plane-state-e
 import { SqliteDatabase } from "../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 import { cleanupPath, createTempWorkspace } from "../../helpers/fs.js";
 
-test("remote worker registration service issues and completes a trusted registration challenge", () => {
+test("remote worker registration service issues and completes a trusted registration challenge [remote-worker-registration-service]", () => {
   const workspace = createTempWorkspace("aa-remote-worker-registration-");
   const dbPath = join(workspace, "remote-worker-registration.db");
 
@@ -57,7 +57,7 @@ test("remote worker registration service issues and completes a trusted registra
   }
 });
 
-test("remote worker registration service rejects capabilities outside the allowlist", () => {
+test("remote worker registration service rejects capabilities outside the allowlist [remote-worker-registration-service]", () => {
   const workspace = createTempWorkspace("aa-remote-worker-registration-");
   const dbPath = join(workspace, "remote-worker-registration-reject.db");
 
@@ -86,7 +86,7 @@ test("remote worker registration service rejects capabilities outside the allowl
   }
 });
 
-test("remote worker registration service rejects expired challenges", () => {
+test("remote worker registration service rejects expired challenges [remote-worker-registration-service]", () => {
   const workspace = createTempWorkspace("aa-remote-worker-registration-");
   const dbPath = join(workspace, "remote-worker-registration-expired.db");
 

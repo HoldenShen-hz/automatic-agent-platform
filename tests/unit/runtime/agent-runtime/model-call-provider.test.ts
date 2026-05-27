@@ -9,7 +9,7 @@ import {
   type LlmModelCallResult,
 } from "../../../../src/platform/five-plane-execution/execution-engine/model-call-provider.js";
 
-test("initializeModelCallProvider returns provider instance", () => {
+test("initializeModelCallProvider returns provider instance [model-call-provider]", () => {
   resetModelCallProvider();
 
   const provider = initializeModelCallProvider({});
@@ -20,7 +20,7 @@ test("initializeModelCallProvider returns provider instance", () => {
   assert.equal(typeof provider.hasAnyProvider, "function");
 });
 
-test("initializeModelCallProvider returns singleton on subsequent calls", () => {
+test("initializeModelCallProvider returns singleton on subsequent calls [model-call-provider]", () => {
   resetModelCallProvider();
 
   const provider1 = initializeModelCallProvider({});
@@ -29,7 +29,7 @@ test("initializeModelCallProvider returns singleton on subsequent calls", () => 
   assert.strictEqual(provider1, provider2);
 });
 
-test("getModelCallProvider returns null before initialization", () => {
+test("getModelCallProvider returns null before initialization [model-call-provider]", () => {
   resetModelCallProvider();
 
   const provider = getModelCallProvider();
@@ -37,7 +37,7 @@ test("getModelCallProvider returns null before initialization", () => {
   assert.strictEqual(provider, null);
 });
 
-test("getModelCallProvider returns provider after initialization", () => {
+test("getModelCallProvider returns provider after initialization [model-call-provider]", () => {
   resetModelCallProvider();
 
   initializeModelCallProvider({});
@@ -46,7 +46,7 @@ test("getModelCallProvider returns provider after initialization", () => {
   assert.ok(provider);
 });
 
-test("resetModelCallProvider clears the singleton", () => {
+test("resetModelCallProvider clears the singleton [model-call-provider]", () => {
   resetModelCallProvider();
 
   initializeModelCallProvider({});
@@ -57,7 +57,7 @@ test("resetModelCallProvider clears the singleton", () => {
   assert.strictEqual(getModelCallProvider(), null);
 });
 
-test("ModelCallProviderService has provider detection methods", () => {
+test("ModelCallProviderService has provider detection methods [model-call-provider]", () => {
   resetModelCallProvider();
 
   const provider = initializeModelCallProvider({});
@@ -68,7 +68,7 @@ test("ModelCallProviderService has provider detection methods", () => {
   assert.equal(typeof provider.hasAnyProvider, "function");
 });
 
-test("ModelCallProviderService has getDefaultModel method", () => {
+test("ModelCallProviderService has getDefaultModel method [model-call-provider]", () => {
   resetModelCallProvider();
 
   const provider = initializeModelCallProvider({});
@@ -77,7 +77,7 @@ test("ModelCallProviderService has getDefaultModel method", () => {
   assert.equal(provider.getDefaultModel(), "MiniMax-M2.7");
 });
 
-test("ModelCallProviderService dispose is safe to call multiple times", () => {
+test("ModelCallProviderService dispose is safe to call multiple times [model-call-provider]", () => {
   resetModelCallProvider();
 
   const provider = initializeModelCallProvider({});
@@ -88,7 +88,7 @@ test("ModelCallProviderService dispose is safe to call multiple times", () => {
   assert.ok(true);
 });
 
-test("createModelCallMiddleware creates a middleware hook", () => {
+test("createModelCallMiddleware creates a middleware hook [model-call-provider]", () => {
   resetModelCallProvider();
 
   const hook = createModelCallMiddleware({});
@@ -99,7 +99,7 @@ test("createModelCallMiddleware creates a middleware hook", () => {
   assert.equal(typeof hook.priority, "number");
 });
 
-test("ModelCallProviderService with custom default model", () => {
+test("ModelCallProviderService with custom default model [model-call-provider]", () => {
   resetModelCallProvider();
 
   const provider = initializeModelCallProvider({
@@ -109,7 +109,7 @@ test("ModelCallProviderService with custom default model", () => {
   assert.equal(provider.getDefaultModel(), "custom-model");
 });
 
-test("createCompletion throws when no provider is configured", async () => {
+test("createCompletion throws when no provider is configured [model-call-provider]", async () => {
   resetModelCallProvider();
 
   const provider = initializeModelCallProvider({});
@@ -130,7 +130,7 @@ test("createCompletion throws when no provider is configured", async () => {
   );
 });
 
-test("createStreamingCompletion throws when no provider is configured", async () => {
+test("createStreamingCompletion throws when no provider is configured [model-call-provider]", async () => {
   resetModelCallProvider();
 
   const provider = initializeModelCallProvider({});
@@ -154,7 +154,7 @@ test("createStreamingCompletion throws when no provider is configured", async ()
   );
 });
 
-test("LlmModelCallRequest type accepts valid structure", () => {
+test("LlmModelCallRequest type accepts valid structure [model-call-provider]", () => {
   const request: LlmModelCallRequest = {
     model: "MiniMax-M2.7",
     messages: [
@@ -168,7 +168,7 @@ test("LlmModelCallRequest type accepts valid structure", () => {
   assert.equal(request.maxTokens, 1024);
 });
 
-test("LlmModelCallResult type structure", () => {
+test("LlmModelCallResult type structure [model-call-provider]", () => {
   const result: LlmModelCallResult = {
     id: "test-id",
     content: "Test response",
@@ -187,7 +187,7 @@ test("LlmModelCallResult type structure", () => {
   assert.equal(result.finishReason, "stop");
 });
 
-test("initializeModelCallProvider registers middleware hook", () => {
+test("initializeModelCallProvider registers middleware hook [model-call-provider]", () => {
   resetModelCallProvider();
 
   initializeModelCallProvider({});
@@ -196,7 +196,7 @@ test("initializeModelCallProvider registers middleware hook", () => {
   assert.ok(provider);
 });
 
-test("provider dispose clears state", () => {
+test("provider dispose clears state [model-call-provider]", () => {
   resetModelCallProvider();
 
   const provider = initializeModelCallProvider({});

@@ -45,7 +45,7 @@ function createMockPostgresBackend(coordinatorId?: string): any {
 // Tests: createHaRepository factory
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("createHaRepository returns SqliteHaRepository for sqlite driver", () => {
+test("createHaRepository returns SqliteHaRepository for sqlite driver [ha-repository]", () => {
   const backend = createMockSqliteBackend();
 
   const repo = createHaRepository(backend);
@@ -53,7 +53,7 @@ test("createHaRepository returns SqliteHaRepository for sqlite driver", () => {
   assert.ok(repo instanceof SqliteHaRepository);
 });
 
-test("createHaRepository returns PostgresHaRepository for postgres driver", () => {
+test("createHaRepository returns PostgresHaRepository for postgres driver [ha-repository]", () => {
   const backend = createMockPostgresBackend("my-custom-coord");
 
   const repo = createHaRepository(backend, "my-custom-coord");
@@ -61,7 +61,7 @@ test("createHaRepository returns PostgresHaRepository for postgres driver", () =
   assert.ok(repo instanceof PostgresHaRepository);
 });
 
-test("createHaRepository uses provided coordinatorId for postgres", () => {
+test("createHaRepository uses provided coordinatorId for postgres [ha-repository]", () => {
   const backend = createMockPostgresBackend("my-custom-coord");
 
   const repo = createHaRepository(backend, "my-custom-coord");
@@ -69,7 +69,7 @@ test("createHaRepository uses provided coordinatorId for postgres", () => {
   assert.ok(repo instanceof PostgresHaRepository);
 });
 
-test("createHaRepository accepts optional coordinatorId for sqlite", () => {
+test("createHaRepository accepts optional coordinatorId for sqlite [ha-repository]", () => {
   const backend = createMockSqliteBackend();
 
   // Should not throw - coordinatorId is optional for sqlite
@@ -78,7 +78,7 @@ test("createHaRepository accepts optional coordinatorId for sqlite", () => {
   assert.ok(repo instanceof SqliteHaRepository);
 });
 
-test("createHaRepository returns HaRepository interface compliant object", () => {
+test("createHaRepository returns HaRepository interface compliant object [ha-repository]", () => {
   const backend = createMockSqliteBackend();
   const repo = createHaRepository(backend);
 
@@ -110,7 +110,7 @@ test("createHaRepository returns HaRepository interface compliant object", () =>
 // Tests: SqliteHaRepository instance
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("SqliteHaRepository can be instantiated directly", () => {
+test("SqliteHaRepository can be instantiated directly [ha-repository]", () => {
   const backend = createMockSqliteBackend();
 
   const repo = new SqliteHaRepository(backend.sql);
@@ -118,7 +118,7 @@ test("SqliteHaRepository can be instantiated directly", () => {
   assert.ok(repo instanceof SqliteHaRepository);
 });
 
-test("SqliteHaRepository implements all HaRepository methods", async () => {
+test("SqliteHaRepository implements all HaRepository methods [ha-repository]", async () => {
   const backend = createMockSqliteBackend();
   const repo = new SqliteHaRepository(backend.sql);
 
@@ -147,7 +147,7 @@ test("SqliteHaRepository implements all HaRepository methods", async () => {
 // Tests: PostgresHaRepository instance
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("PostgresHaRepository can be instantiated directly", () => {
+test("PostgresHaRepository can be instantiated directly [ha-repository]", () => {
   const backend = createMockPostgresBackend("coord-123");
 
   const repo = new PostgresHaRepository(backend.asyncSql, backend.coordinatorId);
@@ -155,7 +155,7 @@ test("PostgresHaRepository can be instantiated directly", () => {
   assert.ok(repo instanceof PostgresHaRepository);
 });
 
-test("PostgresHaRepository implements all HaRepository methods", async () => {
+test("PostgresHaRepository implements all HaRepository methods [ha-repository]", async () => {
   const backend = createMockPostgresBackend("coord-123");
   const repo = new PostgresHaRepository(backend.asyncSql, backend.coordinatorId);
 
@@ -176,7 +176,7 @@ test("PostgresHaRepository implements all HaRepository methods", async () => {
   assert.ok(Array.isArray(nodes));
 });
 
-test("PostgresHaRepository has tryAcquireAdvisoryLock method", async () => {
+test("PostgresHaRepository has tryAcquireAdvisoryLock method [ha-repository]", async () => {
   const backend = createMockPostgresBackend("coord-123");
   const repo = new PostgresHaRepository(backend.asyncSql, backend.coordinatorId);
 
@@ -185,7 +185,7 @@ test("PostgresHaRepository has tryAcquireAdvisoryLock method", async () => {
   assert.equal(typeof result, "boolean");
 });
 
-test("PostgresHaRepository has releaseAdvisoryLock method", async () => {
+test("PostgresHaRepository has releaseAdvisoryLock method [ha-repository]", async () => {
   const backend = createMockPostgresBackend("coord-123");
   const repo = new PostgresHaRepository(backend.asyncSql, backend.coordinatorId);
 

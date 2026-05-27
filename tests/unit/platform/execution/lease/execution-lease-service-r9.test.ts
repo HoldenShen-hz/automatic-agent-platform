@@ -161,7 +161,7 @@ function createExecution(id: string = "exec-1", attempt: number = 1): { id: stri
 // Tests: Lease TTL Bounds Enforcement (R9-08)
 // ---------------------------------------------------------------------------
 
-test("acquireLease rejects TTL below MIN_LEASE_TTL_MS", () => {
+test("acquireLease rejects TTL below MIN_LEASE_TTL_MS [execution-lease-service-r9]", () => {
   const state: MockStoreState = {
     leases: new Map(),
     activeLeaseByExecution: new Map(),
@@ -186,7 +186,7 @@ test("acquireLease rejects TTL below MIN_LEASE_TTL_MS", () => {
   assert.equal(result.lease, null);
 });
 
-test("acquireLease rejects TTL above MAX_LEASE_TTL_MS", () => {
+test("acquireLease rejects TTL above MAX_LEASE_TTL_MS [execution-lease-service-r9]", () => {
   const state: MockStoreState = {
     leases: new Map(),
     activeLeaseByExecution: new Map(),
@@ -211,7 +211,7 @@ test("acquireLease rejects TTL above MAX_LEASE_TTL_MS", () => {
   assert.equal(result.lease, null);
 });
 
-test("acquireLease accepts TTL at MIN_LEASE_TTL_MS boundary", () => {
+test("acquireLease accepts TTL at MIN_LEASE_TTL_MS boundary [execution-lease-service-r9]", () => {
   const state: MockStoreState = {
     leases: new Map(),
     activeLeaseByExecution: new Map(),
@@ -236,7 +236,7 @@ test("acquireLease accepts TTL at MIN_LEASE_TTL_MS boundary", () => {
   assert.equal(result.lease!.status, "active");
 });
 
-test("acquireLease accepts TTL at MAX_LEASE_TTL_MS boundary", () => {
+test("acquireLease accepts TTL at MAX_LEASE_TTL_MS boundary [execution-lease-service-r9]", () => {
   const state: MockStoreState = {
     leases: new Map(),
     activeLeaseByExecution: new Map(),
@@ -265,7 +265,7 @@ test("acquireLease accepts TTL at MAX_LEASE_TTL_MS boundary", () => {
 // Tests: CAS Semantics on Lease Acquisition (R9-03)
 // ---------------------------------------------------------------------------
 
-test("acquireLease increments fencing token on subsequent acquisition", () => {
+test("acquireLease increments fencing token on subsequent acquisition [execution-lease-service-r9]", () => {
   // First lease
   const state1: MockStoreState = {
     leases: new Map(),
@@ -313,7 +313,7 @@ test("acquireLease increments fencing token on subsequent acquisition", () => {
   assert.equal(result2.lease!.fencingToken, 1); // New execution starts at token 1
 });
 
-test("acquireLease increments fencing token from previous lease for same execution", () => {
+test("acquireLease increments fencing token from previous lease for same execution [execution-lease-service-r9]", () => {
   // Create a previous lease in the store state
   const previousLease = createLease({
     id: "lease-previous",
@@ -349,7 +349,7 @@ test("acquireLease increments fencing token from previous lease for same executi
 // Tests: Lease Expiry Validation (R9-01)
 // ---------------------------------------------------------------------------
 
-test("acquireLease expires existing lease that has already passed expiration", () => {
+test("acquireLease expires existing lease that has already passed expiration [execution-lease-service-r9]", () => {
   // Create an expired lease
   const expiredTime = new Date(Date.now() - 5000).toISOString(); // 5 seconds ago
   const expiredLease = createLease({
@@ -388,7 +388,7 @@ test("acquireLease expires existing lease that has already passed expiration", (
   assert.notEqual(closedLease!.status, "active");
 });
 
-test("acquireLease creates lease with correct expiresAt based on ttlMs", () => {
+test("acquireLease creates lease with correct expiresAt based on ttlMs [execution-lease-service-r9]", () => {
   const state: MockStoreState = {
     leases: new Map(),
     activeLeaseByExecution: new Map(),
@@ -423,7 +423,7 @@ test("acquireLease creates lease with correct expiresAt based on ttlMs", () => {
 // Tests: Double-Release Prevention (R9-03)
 // ---------------------------------------------------------------------------
 
-test("releaseLease blocks when lease already released (double-release prevention)", () => {
+test("releaseLease blocks when lease already released (double-release prevention) [execution-lease-service-r9]", () => {
   // Create a lease that is already released
   const releasedLease = createLease({
     id: "lease-1",
@@ -455,7 +455,7 @@ test("releaseLease blocks when lease already released (double-release prevention
   assert.equal(result.reasonCode, "lease_not_active");
 });
 
-test("releaseLease blocks when trying to release expired lease", () => {
+test("releaseLease blocks when trying to release expired lease [execution-lease-service-r9]", () => {
   // Create an expired lease that was auto-closed
   const expiredLease = createLease({
     id: "lease-1",
@@ -491,7 +491,7 @@ test("releaseLease blocks when trying to release expired lease", () => {
 // Tests: Fencing Token Enforcement
 // ---------------------------------------------------------------------------
 
-test("validateWriteAccess denies when lease has expired even if other fields match", () => {
+test("validateWriteAccess denies when lease has expired even if other fields match [execution-lease-service-r9]", () => {
   const expiredTime = new Date(Date.now() - 5000).toISOString();
   const existingLease = createLease({
     id: "lease-1",
@@ -524,7 +524,7 @@ test("validateWriteAccess denies when lease has expired even if other fields mat
   assert.equal(result.reasonCode, "lease_expired");
 });
 
-test("validateWriteAccess allows access when fence token matches and lease is active", () => {
+test("validateWriteAccess allows access when fence token matches and lease is active [execution-lease-service-r9]", () => {
   const existingLease = createLease({
     id: "lease-1",
     executionId: "exec-1",
@@ -561,7 +561,7 @@ test("validateWriteAccess allows access when fence token matches and lease is ac
 // Tests: renewLease with expired lease
 // ---------------------------------------------------------------------------
 
-test("renewLease blocks and closes lease when lease has expired", () => {
+test("renewLease blocks and closes lease when lease has expired [execution-lease-service-r9]", () => {
   const expiredTime = new Date(Date.now() - 5000).toISOString();
   const existingLease = createLease({
     id: "lease-1",

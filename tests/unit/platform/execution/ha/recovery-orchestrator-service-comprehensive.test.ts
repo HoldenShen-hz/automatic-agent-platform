@@ -38,18 +38,18 @@ function makeReport(workerId: string, itemsProcessed = 5, itemsRecovered = 3): R
 // Constructor and listWorkers
 // ---------------------------------------------------------------------------
 
-test("RecoveryOrchestratorService constructor accepts empty workers array", () => {
+test("RecoveryOrchestratorService constructor accepts empty workers array [recovery-orchestrator-service-comprehensive]", () => {
   const service = new RecoveryOrchestratorService([]);
   assert.deepEqual(service.listWorkers(), []);
 });
 
-test("RecoveryOrchestratorService constructor accepts single worker", () => {
+test("RecoveryOrchestratorService constructor accepts single worker [recovery-orchestrator-service-comprehensive]", () => {
   const worker = makeRecoveryWorker("worker-1", "normal", 60_000);
   const service = new RecoveryOrchestratorService([worker]);
   assert.deepEqual(service.listWorkers(), [worker]);
 });
 
-test("RecoveryOrchestratorService constructor accepts multiple workers", () => {
+test("RecoveryOrchestratorService constructor accepts multiple workers [recovery-orchestrator-service-comprehensive]", () => {
   const worker1 = makeRecoveryWorker("worker-a", "high", 30_000);
   const worker2 = makeRecoveryWorker("worker-b", "low", 120_000);
   const worker3 = makeRecoveryWorker("worker-c", "critical", 15_000);
@@ -57,13 +57,13 @@ test("RecoveryOrchestratorService constructor accepts multiple workers", () => {
   assert.equal(service.listWorkers().length, 3);
 });
 
-test("RecoveryOrchestratorService uses default orchestratorId", () => {
+test("RecoveryOrchestratorService uses default orchestratorId [recovery-orchestrator-service-comprehensive]", () => {
   const service = new RecoveryOrchestratorService([]);
   // Access internal state if available, or just verify service is created
   assert.ok(service);
 });
 
-test("RecoveryOrchestratorService accepts custom orchestratorId", () => {
+test("RecoveryOrchestratorService accepts custom orchestratorId [recovery-orchestrator-service-comprehensive]", () => {
   const service = new RecoveryOrchestratorService([], "custom-orchestrator");
   assert.ok(service);
 });
@@ -72,7 +72,7 @@ test("RecoveryOrchestratorService accepts custom orchestratorId", () => {
 // Worker ordering by priority and interval
 // ---------------------------------------------------------------------------
 
-test("workers are sorted by priority: critical before high", async () => {
+test("workers are sorted by priority: critical before high [recovery-orchestrator-service-comprehensive]", async () => {
   const calls: string[] = [];
   const createWorker = (workerId: string, priority: "critical" | "high" | "normal" | "low", intervalMs: number): RecoveryWorker => ({
     getWorkerId: () => workerId,
@@ -92,7 +92,7 @@ test("workers are sorted by priority: critical before high", async () => {
   assert.deepEqual(calls, ["critical-worker", "high-worker"]);
 });
 
-test("workers are sorted by priority: high before normal", async () => {
+test("workers are sorted by priority: high before normal [recovery-orchestrator-service-comprehensive]", async () => {
   const calls: string[] = [];
   const createWorker = (workerId: string, priority: "critical" | "high" | "normal" | "low", intervalMs: number): RecoveryWorker => ({
     getWorkerId: () => workerId,
@@ -112,7 +112,7 @@ test("workers are sorted by priority: high before normal", async () => {
   assert.deepEqual(calls, ["high-worker", "normal-worker"]);
 });
 
-test("workers are sorted by priority: normal before low", async () => {
+test("workers are sorted by priority: normal before low [recovery-orchestrator-service-comprehensive]", async () => {
   const calls: string[] = [];
   const createWorker = (workerId: string, priority: "critical" | "high" | "normal" | "low", intervalMs: number): RecoveryWorker => ({
     getWorkerId: () => workerId,
@@ -132,7 +132,7 @@ test("workers are sorted by priority: normal before low", async () => {
   assert.deepEqual(calls, ["normal-worker", "low-worker"]);
 });
 
-test("workers are sorted by priority: critical before all others", async () => {
+test("workers are sorted by priority: critical before all others [recovery-orchestrator-service-comprehensive]", async () => {
   const calls: string[] = [];
   const createWorker = (workerId: string, priority: "critical" | "high" | "normal" | "low", intervalMs: number): RecoveryWorker => ({
     getWorkerId: () => workerId,
@@ -154,7 +154,7 @@ test("workers are sorted by priority: critical before all others", async () => {
   assert.deepEqual(calls, ["critical-worker", "high-worker", "normal-worker", "low-worker"]);
 });
 
-test("workers with same priority are sorted by interval ascending", async () => {
+test("workers with same priority are sorted by interval ascending [recovery-orchestrator-service-comprehensive]", async () => {
   const calls: string[] = [];
   const createWorker = (workerId: string, priority: "critical" | "high" | "normal" | "low", intervalMs: number): RecoveryWorker => ({
     getWorkerId: () => workerId,
@@ -176,7 +176,7 @@ test("workers with same priority are sorted by interval ascending", async () => 
   assert.deepEqual(calls, ["fast-worker", "medium-worker", "slow-worker"]);
 });
 
-test("workers with same priority and interval are sorted by workerId alphabetically", async () => {
+test("workers with same priority and interval are sorted by workerId alphabetically [recovery-orchestrator-service-comprehensive]", async () => {
   const calls: string[] = [];
   const createWorker = (workerId: string, priority: "critical" | "high" | "normal" | "low", intervalMs: number): RecoveryWorker => ({
     getWorkerId: () => workerId,
@@ -202,20 +202,20 @@ test("workers with same priority and interval are sorted by workerId alphabetica
 // runCycle execution
 // ---------------------------------------------------------------------------
 
-test("runCycle returns report with correct orchestratorId", async () => {
+test("runCycle returns report with correct orchestratorId [recovery-orchestrator-service-comprehensive]", async () => {
   const service = new RecoveryOrchestratorService([], "my-orchestrator");
   const report = await service.runCycle();
   assert.equal(report.orchestratorId, "my-orchestrator");
 });
 
-test("runCycle returns report with startedAt and completedAt timestamps", async () => {
+test("runCycle returns report with startedAt and completedAt timestamps [recovery-orchestrator-service-comprehensive]", async () => {
   const service = new RecoveryOrchestratorService([]);
   const report = await service.runCycle();
   assert.ok(report.startedAt);
   assert.ok(report.completedAt);
 });
 
-test("runCycle completedAt is after or equal to startedAt", async () => {
+test("runCycle completedAt is after or equal to startedAt [recovery-orchestrator-service-comprehensive]", async () => {
   const service = new RecoveryOrchestratorService([]);
   const report = await service.runCycle();
   const startedMs = new Date(report.startedAt).getTime();
@@ -223,13 +223,13 @@ test("runCycle completedAt is after or equal to startedAt", async () => {
   assert.ok(completedMs >= startedMs);
 });
 
-test("runCycle returns empty workerReports for empty workers", async () => {
+test("runCycle returns empty workerReports for empty workers [recovery-orchestrator-service-comprehensive]", async () => {
   const service = new RecoveryOrchestratorService([]);
   const report = await service.runCycle();
   assert.deepEqual(report.workerReports, []);
 });
 
-test("runCycle returns one report per worker", async () => {
+test("runCycle returns one report per worker [recovery-orchestrator-service-comprehensive]", async () => {
   const workers = [
     makeRecoveryWorker("worker-1", "normal", 60_000),
     makeRecoveryWorker("worker-2", "high", 30_000),
@@ -239,7 +239,7 @@ test("runCycle returns one report per worker", async () => {
   assert.equal(report.workerReports.length, 2);
 });
 
-test("runCycle executes workers in sorted order", async () => {
+test("runCycle executes workers in sorted order [recovery-orchestrator-service-comprehensive]", async () => {
   const calls: string[] = [];
   const createWorker = (workerId: string): RecoveryWorker => ({
     getWorkerId: () => workerId,
@@ -259,7 +259,7 @@ test("runCycle executes workers in sorted order", async () => {
   assert.deepEqual(calls, ["worker-a", "worker-b"]);
 });
 
-test("runCycle reports contain workerId matching the worker", async () => {
+test("runCycle reports contain workerId matching the worker [recovery-orchestrator-service-comprehensive]", async () => {
   const workers = [
     makeRecoveryWorker("alpha-worker", "normal", 60_000),
     makeRecoveryWorker("beta-worker", "normal", 60_000),
@@ -271,21 +271,21 @@ test("runCycle reports contain workerId matching the worker", async () => {
   assert.ok(reportWorkerIds.includes("beta-worker"));
 });
 
-test("runCycle reports contain workerType", async () => {
+test("runCycle reports contain workerType [recovery-orchestrator-service-comprehensive]", async () => {
   const workers = [makeRecoveryWorker("test-worker", "normal", 60_000)];
   const service = new RecoveryOrchestratorService(workers);
   const report = await service.runCycle();
   assert.equal(report.workerReports[0]!.workerType, "test-worker");
 });
 
-test("runCycle reports contain durationMs", async () => {
+test("runCycle reports contain durationMs [recovery-orchestrator-service-comprehensive]", async () => {
   const workers = [makeRecoveryWorker("timer-worker", "normal", 60_000)];
   const service = new RecoveryOrchestratorService(workers);
   const report = await service.runCycle();
   assert.ok(typeof report.workerReports[0]!.durationMs === "number");
 });
 
-test("runCycle reports contain itemsProcessed and itemsRecovered", async () => {
+test("runCycle reports contain itemsProcessed and itemsRecovered [recovery-orchestrator-service-comprehensive]", async () => {
   const workers = [makeRecoveryWorker("stats-worker", "normal", 60_000)];
   const service = new RecoveryOrchestratorService(workers);
   const report = await service.runCycle();
@@ -293,7 +293,7 @@ test("runCycle reports contain itemsProcessed and itemsRecovered", async () => {
   assert.ok(typeof report.workerReports[0]!.itemsRecovered === "number");
 });
 
-test("runCycle reports contain errors array", async () => {
+test("runCycle reports contain errors array [recovery-orchestrator-service-comprehensive]", async () => {
   const workers = [makeRecoveryWorker("error-worker", "normal", 60_000)];
   const service = new RecoveryOrchestratorService(workers);
   const report = await service.runCycle();
@@ -304,7 +304,7 @@ test("runCycle reports contain errors array", async () => {
 // Edge cases
 // ---------------------------------------------------------------------------
 
-test("runCycle handles worker that returns custom report values", async () => {
+test("runCycle handles worker that returns custom report values [recovery-orchestrator-service-comprehensive]", async () => {
   const customWorker: RecoveryWorker = {
     getWorkerId: () => "custom-worker",
     getRecoveryCadence: () => ({ intervalMs: 60_000, maxConcurrent: 1, priority: "normal" }),
@@ -328,7 +328,7 @@ test("runCycle handles worker that returns custom report values", async () => {
   assert.equal(report.workerReports[0]!.errors.length, 1);
 });
 
-test("runCycle handles all four priority levels in order", async () => {
+test("runCycle handles all four priority levels in order [recovery-orchestrator-service-comprehensive]", async () => {
   const calls: string[] = [];
   const createWorker = (workerId: string, priority: "critical" | "high" | "normal" | "low"): RecoveryWorker => ({
     getWorkerId: () => workerId,
@@ -350,7 +350,7 @@ test("runCycle handles all four priority levels in order", async () => {
   assert.deepEqual(calls, ["critical-priority", "high-priority", "normal-priority", "low-priority"]);
 });
 
-test("runCycle with single worker executes in expected time", async () => {
+test("runCycle with single worker executes in expected time [recovery-orchestrator-service-comprehensive]", async () => {
   const service = new RecoveryOrchestratorService([
     makeRecoveryWorker("solo-worker", "high", 30_000),
   ]);
@@ -363,7 +363,7 @@ test("runCycle with single worker executes in expected time", async () => {
   assert.ok(elapsed < 5000);
 });
 
-test("runCycle with multiple workers maintains ordering", async () => {
+test("runCycle with multiple workers maintains ordering [recovery-orchestrator-service-comprehensive]", async () => {
   const calls: string[] = [];
   const createWorker = (workerId: string, priority: "critical" | "high" | "normal" | "low", intervalMs: number): RecoveryWorker => ({
     getWorkerId: () => workerId,

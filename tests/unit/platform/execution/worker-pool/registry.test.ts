@@ -84,7 +84,7 @@ function makeHeartbeat(overrides: Partial<WorkerRegistryHeartbeatInput> = {}): W
 // recordHeartbeat
 // ---------------------------------------------------------------------------
 
-test("WorkerRegistryService recordHeartbeat creates snapshot for new worker", () => {
+test("WorkerRegistryService recordHeartbeat creates snapshot for new worker [registry]", () => {
   const snapshots = new Map<string, WorkerSnapshotRecord>();
   const store = createMockStore(snapshots);
   const service = new WorkerRegistryService(store);
@@ -96,7 +96,7 @@ test("WorkerRegistryService recordHeartbeat creates snapshot for new worker", ()
   assert.equal(snapshots.has("worker-new"), true);
 });
 
-test("WorkerRegistryService recordHeartbeat updates existing snapshot", () => {
+test("WorkerRegistryService recordHeartbeat updates existing snapshot [registry]", () => {
   const existing = createMockWorkerSnapshot({ workerId: "worker-1", status: "idle", cpuPct: 10 });
   const snapshots = new Map([["worker-1", existing]]);
   const store = createMockStore(snapshots);
@@ -108,7 +108,7 @@ test("WorkerRegistryService recordHeartbeat updates existing snapshot", () => {
   assert.equal(view.cpuPct, 50);
 });
 
-test("WorkerRegistryService recordHeartbeat preserves existing telemetry when not provided", () => {
+test("WorkerRegistryService recordHeartbeat preserves existing telemetry when not provided [registry]", () => {
   const existing = createMockWorkerSnapshot({ workerId: "worker-1", cpuPct: 30, memoryMb: 512 });
   const snapshots = new Map([["worker-1", existing]]);
   const store = createMockStore(snapshots);
@@ -120,7 +120,7 @@ test("WorkerRegistryService recordHeartbeat preserves existing telemetry when no
   assert.equal(view.memoryMb, 512);
 });
 
-test("WorkerRegistryService recordHeartbeat merges running execution IDs", () => {
+test("WorkerRegistryService recordHeartbeat merges running execution IDs [registry]", () => {
   const existing = createMockWorkerSnapshot({ workerId: "worker-1", runningExecutionsJson: '["exec-1"]' });
   const snapshots = new Map([["worker-1", existing]]);
   const store = createMockStore(snapshots);
@@ -133,7 +133,7 @@ test("WorkerRegistryService recordHeartbeat merges running execution IDs", () =>
   assert.ok(view.runningExecutionIds.includes("exec-2"));
 });
 
-test("WorkerRegistryService recordHeartbeat normalizes capabilities", () => {
+test("WorkerRegistryService recordHeartbeat normalizes capabilities [registry]", () => {
   const snapshots = new Map<string, WorkerSnapshotRecord>();
   const store = createMockStore(snapshots);
   const service = new WorkerRegistryService(store);
@@ -146,7 +146,7 @@ test("WorkerRegistryService recordHeartbeat normalizes capabilities", () => {
   assert.deepEqual(view.capabilities, ["tool_a", "tool_b"]);
 });
 
-test("WorkerRegistryService recordHeartbeat handles remote placement", () => {
+test("WorkerRegistryService recordHeartbeat handles remote placement [registry]", () => {
   const snapshots = new Map<string, WorkerSnapshotRecord>();
   const store = createMockStore(snapshots);
   const service = new WorkerRegistryService(store);
@@ -163,7 +163,7 @@ test("WorkerRegistryService recordHeartbeat handles remote placement", () => {
   assert.equal(view.lastAcknowledgedStreamOffset, "offset-123");
 });
 
-test("WorkerRegistryService recordHeartbeat computes availableSlots", () => {
+test("WorkerRegistryService recordHeartbeat computes availableSlots [registry]", () => {
   const existing = createMockWorkerSnapshot({
     workerId: "worker-1",
     maxConcurrency: 4,
@@ -181,7 +181,7 @@ test("WorkerRegistryService recordHeartbeat computes availableSlots", () => {
   assert.equal(view.availableSlots, 2);
 });
 
-test("WorkerRegistryService recordHeartbeat increments restartGeneration on runtime change", () => {
+test("WorkerRegistryService recordHeartbeat increments restartGeneration on runtime change [registry]", () => {
   const existing = createMockWorkerSnapshot({
     workerId: "worker-1",
     runtimeInstanceId: "old-runtime",
@@ -201,7 +201,7 @@ test("WorkerRegistryService recordHeartbeat increments restartGeneration on runt
   assert.equal(view.restartedFromRuntimeInstanceId, "old-runtime");
 });
 
-test("WorkerRegistryService recordHeartbeat updates lastProgressAt when progressMessage provided", () => {
+test("WorkerRegistryService recordHeartbeat updates lastProgressAt when progressMessage provided [registry]", () => {
   const existing = createMockWorkerSnapshot({ workerId: "worker-1", lastProgressAt: null });
   const snapshots = new Map([["worker-1", existing]]);
   const store = createMockStore(snapshots);
@@ -217,7 +217,7 @@ test("WorkerRegistryService recordHeartbeat updates lastProgressAt when progress
   assert.ok(view.lastProgressAt! >= beforeRecord);
 });
 
-test("WorkerRegistryService recordHeartbeat normalizes rate values", () => {
+test("WorkerRegistryService recordHeartbeat normalizes rate values [registry]", () => {
   const snapshots = new Map<string, WorkerSnapshotRecord>();
   const store = createMockStore(snapshots);
   const service = new WorkerRegistryService(store);
@@ -232,7 +232,7 @@ test("WorkerRegistryService recordHeartbeat normalizes rate values", () => {
   assert.equal(view.sandboxSuccessRate, 0);
 });
 
-test("WorkerRegistryService recordHeartbeat normalizes activeLeaseCount", () => {
+test("WorkerRegistryService recordHeartbeat normalizes activeLeaseCount [registry]", () => {
   const snapshots = new Map<string, WorkerSnapshotRecord>();
   const store = createMockStore(snapshots);
   const service = new WorkerRegistryService(store);
@@ -249,7 +249,7 @@ test("WorkerRegistryService recordHeartbeat normalizes activeLeaseCount", () => 
 // verifyRemoteWorkerRegistration
 // ---------------------------------------------------------------------------
 
-test("WorkerRegistryService verifyRemoteWorkerRegistration creates remote worker", () => {
+test("WorkerRegistryService verifyRemoteWorkerRegistration creates remote worker [registry]", () => {
   const snapshots = new Map<string, WorkerSnapshotRecord>();
   const store = createMockStore(snapshots);
   const service = new WorkerRegistryService(store);
@@ -267,7 +267,7 @@ test("WorkerRegistryService verifyRemoteWorkerRegistration creates remote worker
   assert.ok(view.registrationVerifiedAt != null);
 });
 
-test("WorkerRegistryService verifyRemoteWorkerRegistration sets registrationVerifiedAt", () => {
+test("WorkerRegistryService verifyRemoteWorkerRegistration sets registrationVerifiedAt [registry]", () => {
   const snapshots = new Map<string, WorkerSnapshotRecord>();
   const store = createMockStore(snapshots);
   const service = new WorkerRegistryService(store);
@@ -286,7 +286,7 @@ test("WorkerRegistryService verifyRemoteWorkerRegistration sets registrationVeri
   assert.ok(view.registrationVerifiedAt! <= after);
 });
 
-test("WorkerRegistryService verifyRemoteWorkerRegistration preserves existing state", () => {
+test("WorkerRegistryService verifyRemoteWorkerRegistration preserves existing state [registry]", () => {
   const existing = createMockWorkerSnapshot({
     workerId: "remote-worker-1",
     placement: "remote",
@@ -312,7 +312,7 @@ test("WorkerRegistryService verifyRemoteWorkerRegistration preserves existing st
 // getWorker
 // ---------------------------------------------------------------------------
 
-test("WorkerRegistryService getWorker returns worker view when exists", () => {
+test("WorkerRegistryService getWorker returns worker view when exists [registry]", () => {
   const existing = createMockWorkerSnapshot({ workerId: "worker-1" });
   const snapshots = new Map([["worker-1", existing]]);
   const store = createMockStore(snapshots);
@@ -324,7 +324,7 @@ test("WorkerRegistryService getWorker returns worker view when exists", () => {
   assert.equal(view!.workerId, "worker-1");
 });
 
-test("WorkerRegistryService getWorker returns null when not exists", () => {
+test("WorkerRegistryService getWorker returns null when not exists [registry]", () => {
   const snapshots = new Map<string, WorkerSnapshotRecord>();
   const store = createMockStore(snapshots);
   const service = new WorkerRegistryService(store);
@@ -338,7 +338,7 @@ test("WorkerRegistryService getWorker returns null when not exists", () => {
 // listWorkers
 // ---------------------------------------------------------------------------
 
-test("WorkerRegistryService listWorkers returns all workers", () => {
+test("WorkerRegistryService listWorkers returns all workers [registry]", () => {
   const snapshots = new Map([
     ["worker-1", createMockWorkerSnapshot({ workerId: "worker-1" })],
     ["worker-2", createMockWorkerSnapshot({ workerId: "worker-2" })],
@@ -355,7 +355,7 @@ test("WorkerRegistryService listWorkers returns all workers", () => {
 // listEligibleWorkers
 // ---------------------------------------------------------------------------
 
-test("WorkerRegistryService listEligibleWorkers excludes unavailable workers", () => {
+test("WorkerRegistryService listEligibleWorkers excludes unavailable workers [registry]", () => {
   const snapshots = new Map([
     ["worker-available", createMockWorkerSnapshot({ workerId: "worker-available", status: "idle", maxConcurrency: 4 })],
     ["worker-unavailable", createMockWorkerSnapshot({ workerId: "worker-unavailable", status: "unavailable", maxConcurrency: 4 })],
@@ -369,7 +369,7 @@ test("WorkerRegistryService listEligibleWorkers excludes unavailable workers", (
   assert.equal(eligible[0]!.workerId, "worker-available");
 });
 
-test("WorkerRegistryService listEligibleWorkers excludes draining workers", () => {
+test("WorkerRegistryService listEligibleWorkers excludes draining workers [registry]", () => {
   const snapshots = new Map([
     ["worker-idle", createMockWorkerSnapshot({ workerId: "worker-idle", status: "idle", maxConcurrency: 4 })],
     ["worker-draining", createMockWorkerSnapshot({ workerId: "worker-draining", status: "draining", maxConcurrency: 4 })],
@@ -383,7 +383,7 @@ test("WorkerRegistryService listEligibleWorkers excludes draining workers", () =
   assert.equal(eligible[0]!.workerId, "worker-idle");
 });
 
-test("WorkerRegistryService listEligibleWorkers excludes workers at capacity", () => {
+test("WorkerRegistryService listEligibleWorkers excludes workers at capacity [registry]", () => {
   const snapshots = new Map([
     ["worker-capacity", createMockWorkerSnapshot({
       workerId: "worker-capacity",
@@ -407,7 +407,7 @@ test("WorkerRegistryService listEligibleWorkers excludes workers at capacity", (
   assert.equal(eligible[0]!.workerId, "worker-slot");
 });
 
-test("WorkerRegistryService listEligibleWorkers excludes untrusted remote workers", () => {
+test("WorkerRegistryService listEligibleWorkers excludes untrusted remote workers [registry]", () => {
   const snapshots = new Map([
     ["local-worker", createMockWorkerSnapshot({
       workerId: "local-worker",
@@ -441,7 +441,7 @@ test("WorkerRegistryService listEligibleWorkers excludes untrusted remote worker
   assert.ok(!eligible.some((w) => w.workerId === "remote-untrusted"));
 });
 
-test("WorkerRegistryService listEligibleWorkers excludes degraded workers by default", () => {
+test("WorkerRegistryService listEligibleWorkers excludes degraded workers by default [registry]", () => {
   const snapshots = new Map([
     ["worker-healthy", createMockWorkerSnapshot({ workerId: "worker-healthy", status: "idle", maxConcurrency: 4 })],
     ["worker-degraded", createMockWorkerSnapshot({ workerId: "worker-degraded", status: "degraded", maxConcurrency: 4 })],
@@ -455,7 +455,7 @@ test("WorkerRegistryService listEligibleWorkers excludes degraded workers by def
   assert.equal(eligible[0]!.workerId, "worker-healthy");
 });
 
-test("WorkerRegistryService listEligibleWorkers includes degraded workers when requested", () => {
+test("WorkerRegistryService listEligibleWorkers includes degraded workers when requested [registry]", () => {
   const snapshots = new Map([
     ["worker-healthy", createMockWorkerSnapshot({ workerId: "worker-healthy", status: "idle", maxConcurrency: 4 })],
     ["worker-degraded", createMockWorkerSnapshot({ workerId: "worker-degraded", status: "degraded", maxConcurrency: 4 })],
@@ -468,7 +468,7 @@ test("WorkerRegistryService listEligibleWorkers includes degraded workers when r
   assert.equal(eligible.length, 2);
 });
 
-test("WorkerRegistryService listEligibleWorkers filters by required capabilities", () => {
+test("WorkerRegistryService listEligibleWorkers filters by required capabilities [registry]", () => {
   const snapshots = new Map([
     ["worker-cap-a", createMockWorkerSnapshot({
       workerId: "worker-cap-a",
@@ -492,7 +492,7 @@ test("WorkerRegistryService listEligibleWorkers filters by required capabilities
   assert.equal(eligible[0]!.workerId, "worker-cap-a");
 });
 
-test("WorkerRegistryService listEligibleWorkers respects isolation level requirement", () => {
+test("WorkerRegistryService listEligibleWorkers respects isolation level requirement [registry]", () => {
   const snapshots = new Map([
     ["worker-standard", createMockWorkerSnapshot({
       workerId: "worker-standard",
@@ -516,7 +516,7 @@ test("WorkerRegistryService listEligibleWorkers respects isolation level require
   assert.equal(eligible[0]!.workerId, "worker-hardened");
 });
 
-test("WorkerRegistryService listEligibleWorkers filters by queue affinity", () => {
+test("WorkerRegistryService listEligibleWorkers filters by queue affinity [registry]", () => {
   const snapshots = new Map([
     ["worker-queue-a", createMockWorkerSnapshot({
       workerId: "worker-queue-a",
@@ -544,7 +544,7 @@ test("WorkerRegistryService listEligibleWorkers filters by queue affinity", () =
 // listStaleWorkers
 // ---------------------------------------------------------------------------
 
-test("WorkerRegistryService listStaleWorkers returns workers with old heartbeats", () => {
+test("WorkerRegistryService listStaleWorkers returns workers with old heartbeats [registry]", () => {
   const staleTime = new Date(Date.now() - 60000).toISOString();
   const freshTime = new Date().toISOString();
   const snapshots = new Map([

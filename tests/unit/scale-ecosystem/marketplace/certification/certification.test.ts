@@ -35,7 +35,7 @@ function createCertificationRecord(overrides: Partial<CertificationRecord> = {})
   };
 }
 
-test("CertificationRecordSchema parses valid pending record", () => {
+test("CertificationRecordSchema parses valid pending record [certification]", () => {
   const record = {
     listingId: "listing_001",
     certificationId: "cert_001",
@@ -50,7 +50,7 @@ test("CertificationRecordSchema parses valid pending record", () => {
   assert.equal(result.approvedAt, null);
 });
 
-test("CertificationRecordSchema parses valid approved record", () => {
+test("CertificationRecordSchema parses valid approved record [certification]", () => {
   const record = {
     listingId: "listing_002",
     certificationId: "cert_002",
@@ -64,7 +64,7 @@ test("CertificationRecordSchema parses valid approved record", () => {
   assert.equal(result.approvedAt, "2026-04-01T00:00:00.000Z");
 });
 
-test("CertificationRecordSchema parses valid revoked record", () => {
+test("CertificationRecordSchema parses valid revoked record [certification]", () => {
   const record = {
     listingId: "listing_003",
     certificationId: "cert_003",
@@ -77,7 +77,7 @@ test("CertificationRecordSchema parses valid revoked record", () => {
   assert.equal(result.approvedAt, null);
 });
 
-test("CertificationRecordSchema applies default approvedAt", () => {
+test("CertificationRecordSchema applies default approvedAt [certification]", () => {
   const record = {
     listingId: "listing_004",
     certificationId: "cert_004",
@@ -89,7 +89,7 @@ test("CertificationRecordSchema applies default approvedAt", () => {
   assert.equal(result.approvedAt, null);
 });
 
-test("CertificationRecordSchema rejects empty listingId", () => {
+test("CertificationRecordSchema rejects empty listingId [certification]", () => {
   const record = {
     listingId: "",
     certificationId: "cert_005",
@@ -102,7 +102,7 @@ test("CertificationRecordSchema rejects empty listingId", () => {
   );
 });
 
-test("CertificationRecordSchema rejects empty certificationId", () => {
+test("CertificationRecordSchema rejects empty certificationId [certification]", () => {
   const record = {
     listingId: "listing_006",
     certificationId: "",
@@ -115,7 +115,7 @@ test("CertificationRecordSchema rejects empty certificationId", () => {
   );
 });
 
-test("CertificationRecordSchema rejects invalid status", () => {
+test("CertificationRecordSchema rejects invalid status [certification]", () => {
   const record = {
     listingId: "listing_007",
     certificationId: "cert_007",
@@ -128,7 +128,7 @@ test("CertificationRecordSchema rejects invalid status", () => {
   );
 });
 
-test("isMarketplaceListingCertified returns true for approved status", () => {
+test("isMarketplaceListingCertified returns true for approved status [certification]", () => {
   const record = createCertificationRecord({
     listingId: "listing_008",
     certificationId: "cert_008",
@@ -139,7 +139,7 @@ test("isMarketplaceListingCertified returns true for approved status", () => {
   assert.equal(result, true);
 });
 
-test("isMarketplaceListingCertified returns false for pending status", () => {
+test("isMarketplaceListingCertified returns false for pending status [certification]", () => {
   const record = createCertificationRecord({
     listingId: "listing_009",
     certificationId: "cert_009",
@@ -152,7 +152,7 @@ test("isMarketplaceListingCertified returns false for pending status", () => {
   assert.equal(result, false);
 });
 
-test("isMarketplaceListingCertified returns false for revoked status", () => {
+test("isMarketplaceListingCertified returns false for revoked status [certification]", () => {
   const record = createCertificationRecord({
     listingId: "listing_010",
     certificationId: "cert_010",
@@ -165,7 +165,7 @@ test("isMarketplaceListingCertified returns false for revoked status", () => {
   assert.equal(result, false);
 });
 
-test("CertificationRecordSchema rejects approvedAt with non-approved status", () => {
+test("CertificationRecordSchema rejects approvedAt with non-approved status [certification]", () => {
   const record = {
     listingId: "listing_011",
     certificationId: "cert_011",
@@ -178,7 +178,7 @@ test("CertificationRecordSchema rejects approvedAt with non-approved status", ()
   assert.equal(result.approvedAt, "2026-04-01T00:00:00.000Z");
 });
 
-test("isMarketplaceListingCertified fails closed when quality and security evidence is incomplete", () => {
+test("isMarketplaceListingCertified fails closed when quality and security evidence is incomplete [certification]", () => {
   const record = createCertificationRecord({
     listingId: "listing_012",
     certificationId: "cert_012",
@@ -191,7 +191,7 @@ test("isMarketplaceListingCertified fails closed when quality and security evide
   assert.ok(status.reasons.some((reason) => reason.includes("SBOM")));
 });
 
-test("CertificationGate blocks agent certification without full quality and security evidence", () => {
+test("CertificationGate blocks agent certification without full quality and security evidence [certification]", () => {
   const gate = new CertificationGate();
   const result = gate.checkAgentCertification({
     certificationId: "agent-cert-1",

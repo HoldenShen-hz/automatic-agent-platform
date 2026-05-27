@@ -164,7 +164,7 @@ function createMockRepo(state: MockStoreState) {
 // Tests: Lease TTL Bounds + Expiry Validation (R9-01 / R9-08)
 // ---------------------------------------------------------------------------
 
-test("acquireLease rejects TTL below MIN_LEASE_TTL_MS", async () => {
+test("acquireLease rejects TTL below MIN_LEASE_TTL_MS [execution-lease-service-async-r9]", async () => {
   const state: MockStoreState = {
     leases: new Map(),
     activeLeaseByExecution: new Map(),
@@ -189,7 +189,7 @@ test("acquireLease rejects TTL below MIN_LEASE_TTL_MS", async () => {
   assert.equal(result.lease, null);
 });
 
-test("acquireLease rejects TTL above MAX_LEASE_TTL_MS", async () => {
+test("acquireLease rejects TTL above MAX_LEASE_TTL_MS [execution-lease-service-async-r9]", async () => {
   const state: MockStoreState = {
     leases: new Map(),
     activeLeaseByExecution: new Map(),
@@ -214,7 +214,7 @@ test("acquireLease rejects TTL above MAX_LEASE_TTL_MS", async () => {
   assert.equal(result.lease, null);
 });
 
-test("acquireLease increments fencing token from previous lease for same execution", async () => {
+test("acquireLease increments fencing token from previous lease for same execution [execution-lease-service-async-r9]", async () => {
   const previousLease = createLease({
     id: "lease-previous",
     executionId: "exec-1",
@@ -249,7 +249,7 @@ test("acquireLease increments fencing token from previous lease for same executi
 // Tests: Lease Expiry Validation (R9-01)
 // ---------------------------------------------------------------------------
 
-test("acquireLease expires existing lease that has already passed expiration", async () => {
+test("acquireLease expires existing lease that has already passed expiration [execution-lease-service-async-r9]", async () => {
   const expiredTime = new Date(Date.now() - 5000).toISOString();
   const expiredLease = createLease({
     id: "lease-expired",
@@ -285,7 +285,7 @@ test("acquireLease expires existing lease that has already passed expiration", a
   assert.notEqual(closedLease!.status, "active");
 });
 
-test("acquireLease creates lease with correct expiresAt based on ttlMs", async () => {
+test("acquireLease creates lease with correct expiresAt based on ttlMs [execution-lease-service-async-r9]", async () => {
   const state: MockStoreState = {
     leases: new Map(),
     activeLeaseByExecution: new Map(),
@@ -319,7 +319,7 @@ test("acquireLease creates lease with correct expiresAt based on ttlMs", async (
 // Tests: Double-Release Prevention (R9-03)
 // ---------------------------------------------------------------------------
 
-test("releaseLease blocks when lease already released (double-release prevention)", async () => {
+test("releaseLease blocks when lease already released (double-release prevention) [execution-lease-service-async-r9]", async () => {
   const releasedLease = createLease({
     id: "lease-1",
     executionId: "exec-1",
@@ -350,7 +350,7 @@ test("releaseLease blocks when lease already released (double-release prevention
   assert.equal(result.reasonCode, "lease_not_active");
 });
 
-test("releaseLease blocks when trying to release expired lease", async () => {
+test("releaseLease blocks when trying to release expired lease [execution-lease-service-async-r9]", async () => {
   const expiredLease = createLease({
     id: "lease-1",
     executionId: "exec-1",
@@ -385,7 +385,7 @@ test("releaseLease blocks when trying to release expired lease", async () => {
 // Tests: Fencing Token + Lease Expiry Enforcement
 // ---------------------------------------------------------------------------
 
-test("validateWriteAccess denies when lease has expired even if other fields match", () => {
+test("validateWriteAccess denies when lease has expired even if other fields match [execution-lease-service-async-r9]", () => {
   const expiredTime = new Date(Date.now() - 5000).toISOString();
   const existingLease = createLease({
     id: "lease-1",
@@ -422,7 +422,7 @@ test("validateWriteAccess denies when lease has expired even if other fields mat
   assert.ok(state.audits.some((audit) => audit.eventType === "stale_write_rejected"));
 });
 
-test("validateWriteAccess allows access when fence token matches and lease is active", () => {
+test("validateWriteAccess allows access when fence token matches and lease is active [execution-lease-service-async-r9]", () => {
   const existingLease = createLease({
     id: "lease-1",
     executionId: "exec-1",
@@ -460,7 +460,7 @@ test("validateWriteAccess allows access when fence token matches and lease is ac
 // Tests: renewLease with expired lease
 // ---------------------------------------------------------------------------
 
-test("renewLease blocks when lease has expired", async () => {
+test("renewLease blocks when lease has expired [execution-lease-service-async-r9]", async () => {
   const expiredTime = new Date(Date.now() - 5000).toISOString();
   const existingLease = createLease({
     id: "lease-1",

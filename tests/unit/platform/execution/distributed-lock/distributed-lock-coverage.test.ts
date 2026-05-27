@@ -37,7 +37,7 @@ function createTestDb(): DatabaseSync {
   return db;
 }
 
-test("SqliteLockAdapter handles zero TTL as infinite expiry", () => {
+test("SqliteLockAdapter handles zero TTL as infinite expiry [distributed-lock-coverage]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -53,7 +53,7 @@ test("SqliteLockAdapter handles zero TTL as infinite expiry", () => {
   db.close();
 });
 
-test("SqliteLockAdapter release returns false when owner does not match", () => {
+test("SqliteLockAdapter release returns false when owner does not match [distributed-lock-coverage]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -70,7 +70,7 @@ test("SqliteLockAdapter release returns false when owner does not match", () => 
   db.close();
 });
 
-test("SqliteLockAdapter extend returns null when owner does not match", () => {
+test("SqliteLockAdapter extend returns null when owner does not match [distributed-lock-coverage]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -82,7 +82,7 @@ test("SqliteLockAdapter extend returns null when owner does not match", () => {
   db.close();
 });
 
-test("SqliteLockAdapter extend increments fencing token", () => {
+test("SqliteLockAdapter extend increments fencing token [distributed-lock-coverage]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -97,7 +97,7 @@ test("SqliteLockAdapter extend increments fencing token", () => {
   db.close();
 });
 
-test("SqliteLockAdapter forceSteal replaces existing lock", () => {
+test("SqliteLockAdapter forceSteal replaces existing lock [distributed-lock-coverage]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -111,7 +111,7 @@ test("SqliteLockAdapter forceSteal replaces existing lock", () => {
   db.close();
 });
 
-test("SqliteLockAdapter forceSteal creates lock if not exists", () => {
+test("SqliteLockAdapter forceSteal creates lock if not exists [distributed-lock-coverage]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -123,7 +123,7 @@ test("SqliteLockAdapter forceSteal creates lock if not exists", () => {
   db.close();
 });
 
-test("SqliteLockAdapter inspect returns correct metadata", () => {
+test("SqliteLockAdapter inspect returns correct metadata [distributed-lock-coverage]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -135,7 +135,7 @@ test("SqliteLockAdapter inspect returns correct metadata", () => {
   db.close();
 });
 
-test("SqliteLockAdapter acquire issues a fresh fencing token after expired lock eviction", () => {
+test("SqliteLockAdapter acquire issues a fresh fencing token after expired lock eviction [distributed-lock-coverage]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -159,7 +159,7 @@ test("SqliteLockAdapter acquire issues a fresh fencing token after expired lock 
 // database error during acquire with a missing table (it would fail in constructor).
 // The error handling for release, extend, inspect, and forceSteal is tested above.
 
-test("SqliteLockAdapter handles database error on release", () => {
+test("SqliteLockAdapter handles database error on release [distributed-lock-coverage]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -172,7 +172,7 @@ test("SqliteLockAdapter handles database error on release", () => {
   assert.equal(released, false);
 });
 
-test("SqliteLockAdapter handles database error on extend", () => {
+test("SqliteLockAdapter handles database error on extend [distributed-lock-coverage]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -185,7 +185,7 @@ test("SqliteLockAdapter handles database error on extend", () => {
   assert.equal(extended, null);
 });
 
-test("SqliteLockAdapter handles database error on inspect", () => {
+test("SqliteLockAdapter handles database error on inspect [distributed-lock-coverage]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -198,7 +198,7 @@ test("SqliteLockAdapter handles database error on inspect", () => {
   assert.equal(record, null);
 });
 
-test("SqliteLockAdapter handles database error on forceSteal", () => {
+test("SqliteLockAdapter handles database error on forceSteal [distributed-lock-coverage]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -215,7 +215,7 @@ test("SqliteLockAdapter handles database error on forceSteal", () => {
 // DistributedLockAdapter interface tests
 // =============================================================================
 
-test("DistributedLockAdapter interface requires backendKind property", () => {
+test("DistributedLockAdapter interface requires backendKind property [distributed-lock-coverage]", () => {
   const mockAdapter: DistributedLockAdapter = {
     backendKind: "sqlite",
     acquire: () => ({ acquired: false }),
@@ -228,7 +228,7 @@ test("DistributedLockAdapter interface requires backendKind property", () => {
   assert.equal(mockAdapter.backendKind, "sqlite");
 });
 
-test("LockBackendKind accepts all valid string literals", () => {
+test("LockBackendKind accepts all valid string literals [distributed-lock-coverage]", () => {
   const kinds: LockBackendKind[] = ["sqlite", "pg_advisory", "redis"];
   assert.equal(kinds.length, 3);
 });
@@ -237,7 +237,7 @@ test("LockBackendKind accepts all valid string literals", () => {
 // DISTRIBUTED_LOCKS_DDL tests
 // =============================================================================
 
-test("DISTRIBUTED_LOCKS_DDL creates valid SQL", () => {
+test("DISTRIBUTED_LOCKS_DDL creates valid SQL [distributed-lock-coverage]", () => {
   assert.ok(DISTRIBUTED_LOCKS_DDL.includes("CREATE TABLE"));
   assert.ok(DISTRIBUTED_LOCKS_DDL.includes("distributed_locks"));
   assert.ok(DISTRIBUTED_LOCKS_DDL.includes("lock_key"));
@@ -250,7 +250,7 @@ test("DISTRIBUTED_LOCKS_DDL creates valid SQL", () => {
   assert.ok(DISTRIBUTED_LOCKS_DDL.includes("version"));
 });
 
-test("DISTRIBUTED_LOCKS_DDL can be executed on in-memory database", () => {
+test("DISTRIBUTED_LOCKS_DDL can be executed on in-memory database [distributed-lock-coverage]", () => {
   const db = new DatabaseSync(":memory:");
   db.exec(DISTRIBUTED_LOCKS_DDL);
 
@@ -269,38 +269,38 @@ test("DISTRIBUTED_LOCKS_DDL can be executed on in-memory database", () => {
 // compile-time constructs and are not exported as runtime values.
 // We test the actual runtime exports below.
 
-test("Index exports DISTRIBUTED_LOCKS_DDL constant", () => {
+test("Index exports DISTRIBUTED_LOCKS_DDL constant [distributed-lock-coverage]", () => {
   assert.ok(DistributedLock.DISTRIBUTED_LOCKS_DDL);
   assert.equal(typeof DistributedLock.DISTRIBUTED_LOCKS_DDL, "string");
 });
 
-test("Index exports lockLogger", () => {
+test("Index exports lockLogger [distributed-lock-coverage]", () => {
   assert.ok(DistributedLock.lockLogger);
 });
 
-test("Index exports defaultPostgresFactory", () => {
+test("Index exports defaultPostgresFactory [distributed-lock-coverage]", () => {
   assert.ok(DistributedLock.defaultPostgresFactory);
   assert.equal(typeof DistributedLock.defaultPostgresFactory, "function");
 });
 
-test("Index exports inferPgSslFromDsn", () => {
+test("Index exports inferPgSslFromDsn [distributed-lock-coverage]", () => {
   assert.ok(DistributedLock.inferPgSslFromDsn);
   assert.equal(typeof DistributedLock.inferPgSslFromDsn, "function");
 });
 
-test("Index exports SqliteLockAdapter", () => {
+test("Index exports SqliteLockAdapter [distributed-lock-coverage]", () => {
   assert.ok(DistributedLock.SqliteLockAdapter);
 });
 
-test("Index exports PgAdvisoryLockAdapter", () => {
+test("Index exports PgAdvisoryLockAdapter [distributed-lock-coverage]", () => {
   assert.ok(DistributedLock.PgAdvisoryLockAdapter);
 });
 
-test("Index exports RedisLockAdapter", () => {
+test("Index exports RedisLockAdapter [distributed-lock-coverage]", () => {
   assert.ok(DistributedLock.RedisLockAdapter);
 });
 
-test("Index exports createLockAdapter function", () => {
+test("Index exports createLockAdapter function [distributed-lock-coverage]", () => {
   assert.ok(DistributedLock.createLockAdapter);
   assert.equal(typeof DistributedLock.createLockAdapter, "function");
 });
@@ -309,29 +309,29 @@ test("Index exports createLockAdapter function", () => {
 // inferPgSslFromDsn edge case tests
 // =============================================================================
 
-test("inferPgSslFromDsn handles url with multiple query params", () => {
+test("inferPgSslFromDsn handles url with multiple query params [distributed-lock-coverage]", () => {
   const result = DistributedLock.inferPgSslFromDsn("postgres://user:pass@host/db?foo=bar&sslmode=require&baz=qux");
   assert.deepEqual(result, { rejectUnauthorized: true });
 });
 
-test("inferPgSslFromDsn handles url with port and query params", () => {
+test("inferPgSslFromDsn handles url with port and query params [distributed-lock-coverage]", () => {
   const result = DistributedLock.inferPgSslFromDsn("postgres://user:pass@host:5432/db?sslmode=require");
   assert.deepEqual(result, { rejectUnauthorized: true });
 });
 
-test("inferPgSslFromDsn returns null for sslmode=verify-full", () => {
+test("inferPgSslFromDsn returns null for sslmode=verify-full [distributed-lock-coverage]", () => {
   // verify-full is not 'require', so returns null
   const result = DistributedLock.inferPgSslFromDsn("postgres://user:pass@host/db?sslmode=verify-full");
   assert.equal(result, null);
 });
 
-test("inferPgSslFromDsn handles whitespace in sslmode value", () => {
+test("inferPgSslFromDsn handles whitespace in sslmode value [distributed-lock-coverage]", () => {
   const result = DistributedLock.inferPgSslFromDsn("postgres://user:pass@host/db?sslmode=%20require%20");
   // URL decoded value should be " require " which trims to "require"
   assert.deepEqual(result, { rejectUnauthorized: true });
 });
 
-test("inferPgSslFromDsn returns null for empty sslmode value", () => {
+test("inferPgSslFromDsn returns null for empty sslmode value [distributed-lock-coverage]", () => {
   const result = DistributedLock.inferPgSslFromDsn("postgres://user:pass@host/db?sslmode=");
   // Empty string after trimming is falsy, so returns null
   assert.equal(result, null);
@@ -341,7 +341,7 @@ test("inferPgSslFromDsn returns null for empty sslmode value", () => {
 // defaultPostgresFactory edge case tests
 // =============================================================================
 
-test("defaultPostgresFactory returns function that can be called with different DSNs", () => {
+test("defaultPostgresFactory returns function that can be called with different DSNs [distributed-lock-coverage]", () => {
   const factory = DistributedLock.defaultPostgresFactory;
 
   // Multiple calls should return separate drivers

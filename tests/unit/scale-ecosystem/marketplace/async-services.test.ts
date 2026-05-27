@@ -9,7 +9,7 @@ import { AuthoritativeTaskStore } from "../../../../src/platform/five-plane-stat
 import { SqliteDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite-database.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 
-test("BillingServiceAsync wraps sync BillingService and provides async createAccount", async () => {
+test("BillingServiceAsync wraps sync BillingService and provides async createAccount [async-services]", async () => {
   const workspace = createTempWorkspace("aa-billing-async-");
   const dbPath = join(workspace, "billing-async.db");
 
@@ -38,7 +38,7 @@ test("BillingServiceAsync wraps sync BillingService and provides async createAcc
   }
 });
 
-test("DataPlaneFlowServiceAsync wraps sync DataPlaneFlowService", async () => {
+test("DataPlaneFlowServiceAsync wraps sync DataPlaneFlowService [async-services]", async () => {
   const workspace = createTempWorkspace("aa-data-plane-async-");
   const dbPath = join(workspace, "data-plane-async.db");
 
@@ -58,7 +58,7 @@ test("DataPlaneFlowServiceAsync wraps sync DataPlaneFlowService", async () => {
   }
 });
 
-test("PerceptionServiceAsync wraps sync PerceptionService and provides async ingestIntel", async () => {
+test("PerceptionServiceAsync wraps sync PerceptionService and provides async ingestIntel [async-services]", async () => {
   const workspace = createTempWorkspace("aa-perception-async-");
   const dbPath = join(workspace, "perception-async.db");
 

@@ -14,7 +14,7 @@ function createHarness(prefix: string) {
   return { workspace, db, adapter: new SqliteQueueAdapter(db) };
 }
 
-test("queue enqueue creates job with correct initial state", () => {
+test("queue enqueue creates job with correct initial state [queue]", () => {
   const h = createHarness("aa-queue-enqueue-");
   try {
     const job = h.adapter.enqueue({ queueName: "tasks", payload: { taskId: "t1" } });
@@ -30,7 +30,7 @@ test("queue enqueue creates job with correct initial state", () => {
   }
 });
 
-test("queue dequeue moves job from waiting to active", () => {
+test("queue dequeue moves job from waiting to active [queue]", () => {
   const h = createHarness("aa-queue-dequeue-");
   try {
     const job = h.adapter.enqueue({ queueName: "tasks", payload: { id: 1 } });
@@ -47,7 +47,7 @@ test("queue dequeue moves job from waiting to active", () => {
   }
 });
 
-test("queue dequeue returns null for empty queue", () => {
+test("queue dequeue returns null for empty queue [queue]", () => {
   const h = createHarness("aa-queue-empty-");
   try {
     const result = h.adapter.dequeue("nonexistent");
@@ -58,7 +58,7 @@ test("queue dequeue returns null for empty queue", () => {
   }
 });
 
-test("queue ack moves job to completed", () => {
+test("queue ack moves job to completed [queue]", () => {
   const h = createHarness("aa-queue-ack-");
   try {
     const job = h.adapter.enqueue({ queueName: "tasks", payload: { id: 1 } });
@@ -75,7 +75,7 @@ test("queue ack moves job to completed", () => {
   }
 });
 
-test("queue nack increments attempts and returns to waiting", () => {
+test("queue nack increments attempts and returns to waiting [queue]", () => {
   const h = createHarness("aa-queue-nack-");
   try {
     const job = h.adapter.enqueue({ queueName: "tasks", payload: { id: 1 }, maxAttempts: 3 });
@@ -93,7 +93,7 @@ test("queue nack increments attempts and returns to waiting", () => {
   }
 });
 
-test("queue nack moves to dead letter when max attempts exceeded", () => {
+test("queue nack moves to dead letter when max attempts exceeded [queue]", () => {
   const h = createHarness("aa-queue-nack-dl-");
   try {
     h.adapter.enqueue({ queueName: "tasks", payload: { id: 1 }, maxAttempts: 1 });
@@ -111,7 +111,7 @@ test("queue nack moves to dead letter when max attempts exceeded", () => {
   }
 });
 
-test("queue getJob returns job by id", () => {
+test("queue getJob returns job by id [queue]", () => {
   const h = createHarness("aa-queue-getjob-");
   try {
     const job = h.adapter.enqueue({ queueName: "tasks", payload: { id: 1 } });
@@ -125,7 +125,7 @@ test("queue getJob returns job by id", () => {
   }
 });
 
-test("queue getJob returns null for unknown id", () => {
+test("queue getJob returns null for unknown id [queue]", () => {
   const h = createHarness("aa-queue-getjob-missing-");
   try {
     const result = h.adapter.getJob("unknown-id");
@@ -136,7 +136,7 @@ test("queue getJob returns null for unknown id", () => {
   }
 });
 
-test("queue listJobs returns all jobs for queue", () => {
+test("queue listJobs returns all jobs for queue [queue]", () => {
   const h = createHarness("aa-queue-listjobs-");
   try {
     h.adapter.enqueue({ queueName: "tasks", payload: { id: 1 } });
@@ -151,7 +151,7 @@ test("queue listJobs returns all jobs for queue", () => {
   }
 });
 
-test("queue listJobs filters by status", () => {
+test("queue listJobs filters by status [queue]", () => {
   const h = createHarness("aa-queue-listjobs-status-");
   try {
     h.adapter.enqueue({ queueName: "tasks", payload: { id: 1 } });
@@ -170,7 +170,7 @@ test("queue listJobs filters by status", () => {
   }
 });
 
-test("queue listJobs respects limit parameter", () => {
+test("queue listJobs respects limit parameter [queue]", () => {
   const h = createHarness("aa-queue-listjobs-limit-");
   try {
     h.adapter.enqueue({ queueName: "tasks", payload: { id: 1 } });
@@ -185,7 +185,7 @@ test("queue listJobs respects limit parameter", () => {
   }
 });
 
-test("queue moveToDeadLetter manually moves job to dead letter", () => {
+test("queue moveToDeadLetter manually moves job to dead letter [queue]", () => {
   const h = createHarness("aa-queue-movetodl-");
   try {
     const job = h.adapter.enqueue({ queueName: "tasks", payload: { id: 1 } });
@@ -200,7 +200,7 @@ test("queue moveToDeadLetter manually moves job to dead letter", () => {
   }
 });
 
-test("queue retryJob resets dead letter job to waiting", () => {
+test("queue retryJob resets dead letter job to waiting [queue]", () => {
   const h = createHarness("aa-queue-retryjob-");
   try {
     const job = h.adapter.enqueue({ queueName: "tasks", payload: { id: 1 }, maxAttempts: 1 });
@@ -219,7 +219,7 @@ test("queue retryJob resets dead letter job to waiting", () => {
   }
 });
 
-test("queue retryJob returns null for unknown job", () => {
+test("queue retryJob returns null for unknown job [queue]", () => {
   const h = createHarness("aa-queue-retryjob-missing-");
   try {
     const result = h.adapter.retryJob("unknown-id");
@@ -230,7 +230,7 @@ test("queue retryJob returns null for unknown job", () => {
   }
 });
 
-test("queue purge removes completed jobs older than cutoff", () => {
+test("queue purge removes completed jobs older than cutoff [queue]", () => {
   const h = createHarness("aa-queue-purge-");
   try {
     const job = h.adapter.enqueue({ queueName: "tasks", payload: { id: 1 } });
@@ -249,7 +249,7 @@ test("queue purge removes completed jobs older than cutoff", () => {
   }
 });
 
-test("queue purge returns zero when nothing to purge", () => {
+test("queue purge returns zero when nothing to purge [queue]", () => {
   const h = createHarness("aa-queue-purge-empty-");
   try {
     h.adapter.enqueue({ queueName: "tasks", payload: { id: 1 } });
@@ -261,7 +261,7 @@ test("queue purge returns zero when nothing to purge", () => {
   }
 });
 
-test("queue stats returns correct counts for each status", () => {
+test("queue stats returns correct counts for each status [queue]", () => {
   const h = createHarness("aa-queue-stats-");
   try {
     h.adapter.enqueue({ queueName: "tasks", payload: { id: 1 } });
@@ -285,7 +285,7 @@ test("queue stats returns correct counts for each status", () => {
   }
 });
 
-test("queue stats returns zeros for empty queue", () => {
+test("queue stats returns zeros for empty queue [queue]", () => {
   const h = createHarness("aa-queue-stats-empty-");
   try {
     const stats = h.adapter.stats("nonexistent");
@@ -301,7 +301,7 @@ test("queue stats returns zeros for empty queue", () => {
   }
 });
 
-test("queue listQueues returns distinct queue names", () => {
+test("queue listQueues returns distinct queue names [queue]", () => {
   const h = createHarness("aa-queue-listqueues-");
   try {
     h.adapter.enqueue({ queueName: "tasks", payload: { id: 1 } });
@@ -318,7 +318,7 @@ test("queue listQueues returns distinct queue names", () => {
   }
 });
 
-test("queue listQueues returns empty for no queues", () => {
+test("queue listQueues returns empty for no queues [queue]", () => {
   const h = createHarness("aa-queue-listqueues-empty-");
   try {
     const queues = h.adapter.listQueues();
@@ -329,7 +329,7 @@ test("queue listQueues returns empty for no queues", () => {
   }
 });
 
-test("queue enqueue with idempotency key prevents duplicates", () => {
+test("queue enqueue with idempotency key prevents duplicates [queue]", () => {
   const h = createHarness("aa-queue-idempotent-");
   try {
     const first = h.adapter.enqueue({
@@ -351,7 +351,7 @@ test("queue enqueue with idempotency key prevents duplicates", () => {
   }
 });
 
-test("queue enqueue with delay moves job to delayed status", () => {
+test("queue enqueue with delay moves job to delayed status [queue]", () => {
   const h = createHarness("aa-queue-delay-");
   try {
     const futureDate = new Date(Date.now() + 60_000).toISOString();
@@ -370,7 +370,7 @@ test("queue enqueue with delay moves job to delayed status", () => {
   }
 });
 
-test("queue dequeue respects maxAttempts from enqueue input", () => {
+test("queue dequeue respects maxAttempts from enqueue input [queue]", () => {
   const h = createHarness("aa-queue-maxattempts-");
   try {
     h.adapter.enqueue({ queueName: "tasks", payload: { id: 1 }, maxAttempts: 2 });

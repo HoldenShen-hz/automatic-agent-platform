@@ -66,7 +66,7 @@ function createTestMessage(overrides: Partial<MessageRecord> = {}): MessageRecor
 // clampRatio function edge cases
 // ---------------------------------------------------------------------------
 
-test("clampRatio returns value when positive finite", () => {
+test("clampRatio returns value when positive finite [context-compaction-service-detailed]", () => {
   const db = createMockDb();
   const store = createMockStore();
   const service = new ContextCompactionService(db, store);
@@ -84,7 +84,7 @@ test("clampRatio returns value when positive finite", () => {
   assert.equal(result.errorCode, null);
 });
 
-test("clampRatio uses fallback when value is 0", () => {
+test("clampRatio uses fallback when value is 0 [context-compaction-service-detailed]", () => {
   const db = createMockDb();
   const store = createMockStore();
   const service = new ContextCompactionService(db, store);
@@ -102,7 +102,7 @@ test("clampRatio uses fallback when value is 0", () => {
   assert.equal(result.errorCode, null);
 });
 
-test("clampRatio uses fallback when value is negative", () => {
+test("clampRatio uses fallback when value is negative [context-compaction-service-detailed]", () => {
   const db = createMockDb();
   const store = createMockStore();
   const service = new ContextCompactionService(db, store);
@@ -123,7 +123,7 @@ test("clampRatio uses fallback when value is negative", () => {
 // excerpt function behavior (tested via stage2 summary)
 // ---------------------------------------------------------------------------
 
-test("excerpt handles content shorter than maxLength", () => {
+test("excerpt handles content shorter than maxLength [context-compaction-service-detailed]", () => {
   const db = createMockDb();
   const messages = [
     createTestMessage({ id: "user-1", direction: "inbound", messageType: "user_request", content: "Short" }),
@@ -150,7 +150,7 @@ test("excerpt handles content shorter than maxLength", () => {
   }
 });
 
-test("excerpt handles content with multiple whitespace types", () => {
+test("excerpt handles content with multiple whitespace types [context-compaction-service-detailed]", () => {
   const db = createMockDb();
   const messages = [
     createTestMessage({ id: "user-1", direction: "inbound", messageType: "user_request", content: "User request" }),
@@ -182,7 +182,7 @@ test("excerpt handles content with multiple whitespace types", () => {
 // isProtectedMessage function edge cases
 // ---------------------------------------------------------------------------
 
-test("isProtectedMessage returns true for latest user message by id", () => {
+test("isProtectedMessage returns true for latest user message by id [context-compaction-service-detailed]", () => {
   const db = createMockDb();
   // Create a message sequence where the latest user message is not the last message overall
   const messages = [
@@ -209,7 +209,7 @@ test("isProtectedMessage returns true for latest user message by id", () => {
   assert.equal(latestUser.protected, true);
 });
 
-test("isProtectedMessage does not protect arbitrary tool_result", () => {
+test("isProtectedMessage does not protect arbitrary tool_result [context-compaction-service-detailed]", () => {
   const db = createMockDb();
   const messages = [
     createTestMessage({ id: "user-1", direction: "inbound", messageType: "user_request", content: "User request" }),
@@ -235,7 +235,7 @@ test("isProtectedMessage does not protect arbitrary tool_result", () => {
   assert.equal(toolMsg.protected, false);
 });
 
-test("isProtectedMessage protects compaction_summary type", () => {
+test("isProtectedMessage protects compaction_summary type [context-compaction-service-detailed]", () => {
   const db = createMockDb();
   const messages = [
     createTestMessage({ id: "summary-1", direction: "system", messageType: "compaction_summary", content: "Previous summary content" }),
@@ -258,7 +258,7 @@ test("isProtectedMessage protects compaction_summary type", () => {
   assert.equal(summaryMsg.protected, true);
 });
 
-test("compactContext populates kvCacheFixedPrefixCacheKey for preserved system prefix", () => {
+test("compactContext populates kvCacheFixedPrefixCacheKey for preserved system prefix [context-compaction-service-detailed]", () => {
   const db = createMockDb();
   const messages = [
     createTestMessage({ id: "sys-1", direction: "system", messageType: "assistant_plan", content: "System prefix" }),
@@ -282,7 +282,7 @@ test("compactContext populates kvCacheFixedPrefixCacheKey for preserved system p
   assert.equal(result.kvCacheFixedPrefixCacheKey?.length, 64);
 });
 
-test("compactContext populates kvCacheDomainBlockCacheKey for non-prefix conversation body", () => {
+test("compactContext populates kvCacheDomainBlockCacheKey for non-prefix conversation body [context-compaction-service-detailed]", () => {
   const db = createMockDb();
   const messages = [
     createTestMessage({ id: "sys-1", direction: "system", messageType: "assistant_plan", content: "System prefix" }),
@@ -307,7 +307,7 @@ test("compactContext populates kvCacheDomainBlockCacheKey for non-prefix convers
   assert.equal(result.kvCacheDomainBlockCacheKey?.length, 64);
 });
 
-test("isProtectedMessage protects feedback and learning summaries from compaction", () => {
+test("isProtectedMessage protects feedback and learning summaries from compaction [context-compaction-service-detailed]", () => {
   const db = createMockDb();
   const messages = [
     createTestMessage({ id: "feedback-1", direction: "system", messageType: "feedback_signal", content: "Feedback summary" }),
@@ -333,7 +333,7 @@ test("isProtectedMessage protects feedback and learning summaries from compactio
 // isFixedPrefixMessage function edge cases
 // ---------------------------------------------------------------------------
 
-test("isFixedPrefixMessage returns false for non-system messages before fixedPrefixEndIndex", () => {
+test("isFixedPrefixMessage returns false for non-system messages before fixedPrefixEndIndex [context-compaction-service-detailed]", () => {
   const db = createMockDb();
   // First message is inbound (not system) - should not be considered fixed prefix
   const messages = [
@@ -361,7 +361,7 @@ test("isFixedPrefixMessage returns false for non-system messages before fixedPre
   // It's only protected if it's a protected type, not because of fixed prefix
 });
 
-test("isFixedPrefixMessage returns false for system messages after fixedPrefixEndIndex", () => {
+test("isFixedPrefixMessage returns false for system messages after fixedPrefixEndIndex [context-compaction-service-detailed]", () => {
   const db = createMockDb();
   // System message after an inbound message should not be at start = not fixed prefix
   const messages = [
@@ -390,7 +390,7 @@ test("isFixedPrefixMessage returns false for system messages after fixedPrefixEn
   // Later system messages are not automatically protected by fixed prefix rules
 });
 
-test("KV cache fixed prefix identifies consecutive system messages at start", () => {
+test("KV cache fixed prefix identifies consecutive system messages at start [context-compaction-service-detailed]", () => {
   const db = createMockDb();
   const messages = [
     createTestMessage({ id: "sys-1", direction: "system", content: "System 1" }),
@@ -430,7 +430,7 @@ test("KV cache fixed prefix identifies consecutive system messages at start", ()
 // Stage2 fallback when no summary candidates
 // ---------------------------------------------------------------------------
 
-test("stage2 falls back to stage1 when all messages are protected", () => {
+test("stage2 falls back to stage1 when all messages are protected [context-compaction-service-detailed]", () => {
   const db = createMockDb();
   // Only protected message types - no trim/summarize candidates
   const messages = [
@@ -461,7 +461,7 @@ test("stage2 falls back to stage1 when all messages are protected", () => {
   }
 });
 
-test("stage2 falls back when summaryCandidates has only protected messages", () => {
+test("stage2 falls back when summaryCandidates has only protected messages [context-compaction-service-detailed]", () => {
   const db = createMockDb();
   // After stage1 trim, the only remaining non-protected messages might be protected
   const messages = [
@@ -494,7 +494,7 @@ test("stage2 falls back when summaryCandidates has only protected messages", () 
 // Token budget calculations edge cases
 // ---------------------------------------------------------------------------
 
-test("usableBudgetTokens minimum is 1 when reserved exceeds max", () => {
+test("usableBudgetTokens minimum is 1 when reserved exceeds max [context-compaction-service-detailed]", () => {
   const db = createMockDb();
   const messages = [
     createTestMessage({ id: "user-1", direction: "inbound", messageType: "user_request", content: "User request with substantial content to ensure tokens exceed threshold and trigger compaction" }),
@@ -521,7 +521,7 @@ test("usableBudgetTokens minimum is 1 when reserved exceeds max", () => {
   // The important thing is no error occurred - stage1 may or may not trigger depending on token estimation
 });
 
-test("reservedOutputBudgetTokens defaults correctly with providerMaxOutputTokens", () => {
+test("reservedOutputBudgetTokens defaults correctly with providerMaxOutputTokens [context-compaction-service-detailed]", () => {
   const db = createMockDb();
   const store = createMockStore();
   const service = new ContextCompactionService(db, store);
@@ -540,7 +540,7 @@ test("reservedOutputBudgetTokens defaults correctly with providerMaxOutputTokens
   assert.equal(result.errorCode, null);
 });
 
-test("reservedOutputBudgetTokens cap at 20000 when providerMaxOutputTokens is large", () => {
+test("reservedOutputBudgetTokens cap at 20000 when providerMaxOutputTokens is large [context-compaction-service-detailed]", () => {
   const db = createMockDb();
   const store = createMockStore();
   const service = new ContextCompactionService(db, store);
@@ -558,7 +558,7 @@ test("reservedOutputBudgetTokens cap at 20000 when providerMaxOutputTokens is la
   assert.equal(result.errorCode, null);
 });
 
-test("compactionMaxFrequencyPerSession minimum is 1", () => {
+test("compactionMaxFrequencyPerSession minimum is 1 [context-compaction-service-detailed]", () => {
   const db = createMockDb();
   const messages = [
     createTestMessage({ id: "user-1", direction: "inbound", messageType: "user_request", content: "User" }),
@@ -585,7 +585,7 @@ test("compactionMaxFrequencyPerSession minimum is 1", () => {
 // Recent tool result window edge cases
 // ---------------------------------------------------------------------------
 
-test("recentToolResultWindow of 1 preserves only the last tool result", () => {
+test("recentToolResultWindow of 1 preserves only the last tool result [context-compaction-service-detailed]", () => {
   const db = createMockDb();
   const messages = [
     createTestMessage({ id: "user-1", direction: "inbound", messageType: "user_request", content: "User request with substantial content to ensure tokens exceed threshold and trigger compaction" }),
@@ -614,7 +614,7 @@ test("recentToolResultWindow of 1 preserves only the last tool result", () => {
   assert.ok(userMsg, "user message should be preserved");
 });
 
-test("recentToolResultWindow larger than available tools preserves all tools", () => {
+test("recentToolResultWindow larger than available tools preserves all tools [context-compaction-service-detailed]", () => {
   const db = createMockDb();
   const messages = [
     createTestMessage({ id: "user-1", direction: "inbound", messageType: "user_request", content: "User" }),
@@ -643,7 +643,7 @@ test("recentToolResultWindow larger than available tools preserves all tools", (
   }
 });
 
-test("recentToolResultWindow of 0 trims all tool results in stage1", () => {
+test("recentToolResultWindow of 0 trims all tool results in stage1 [context-compaction-service-detailed]", () => {
   const db = createMockDb();
   const messages = [
     createTestMessage({ id: "user-1", direction: "inbound", messageType: "user_request", content: "User" }),
@@ -675,7 +675,7 @@ test("recentToolResultWindow of 0 trims all tool results in stage1", () => {
 // Compaction record persistence details
 // ---------------------------------------------------------------------------
 
-test("stage1 compaction record has correct tokenReductionEstimate", () => {
+test("stage1 compaction record has correct tokenReductionEstimate [context-compaction-service-detailed]", () => {
   const db = createMockDb();
   const messages = [
     createTestMessage({ id: "user-1", direction: "inbound", messageType: "user_request", content: "User request" }),
@@ -705,7 +705,7 @@ test("stage1 compaction record has correct tokenReductionEstimate", () => {
   }
 });
 
-test("stage2 compaction record has correct sourceMessageIdsJson", () => {
+test("stage2 compaction record has correct sourceMessageIdsJson [context-compaction-service-detailed]", () => {
   const db = createMockDb();
   const messages = [
     createTestMessage({ id: "user-1", direction: "inbound", messageType: "user_request", content: "User" }),
@@ -737,7 +737,7 @@ test("stage2 compaction record has correct sourceMessageIdsJson", () => {
   }
 });
 
-test("compaction record uses correct compactionReason values", () => {
+test("compaction record uses correct compactionReason values [context-compaction-service-detailed]", () => {
   const db = createMockDb();
   const messages = [
     createTestMessage({ id: "user-1", direction: "inbound", messageType: "user_request", content: "User" }),
@@ -768,7 +768,7 @@ test("compaction record uses correct compactionReason values", () => {
 // KV cache keys in result
 // ---------------------------------------------------------------------------
 
-test("result includes kvCacheFixedPrefixCacheKey when KV cache enabled", () => {
+test("result includes kvCacheFixedPrefixCacheKey when KV cache enabled [context-compaction-service-detailed]", () => {
   const db = createMockDb();
   const messages = [
     createTestMessage({ id: "sys-1", direction: "system", content: "System" }),
@@ -794,7 +794,7 @@ test("result includes kvCacheFixedPrefixCacheKey when KV cache enabled", () => {
   assert.ok(result.kvCacheFixedPrefixCacheKey === null || typeof result.kvCacheFixedPrefixCacheKey === "string" || result.kvCacheFixedPrefixCacheKey === undefined);
 });
 
-test("kvCacheFixedPrefixCacheKey is null when KV cache disabled", () => {
+test("kvCacheFixedPrefixCacheKey is null when KV cache disabled [context-compaction-service-detailed]", () => {
   const db = createMockDb();
   const messages = [
     createTestMessage({ id: "sys-1", direction: "system", content: "System" }),
@@ -821,7 +821,7 @@ test("kvCacheFixedPrefixCacheKey is null when KV cache disabled", () => {
 // Usage calculations
 // ---------------------------------------------------------------------------
 
-test("usageAfterStage2Tokens is less than usageAfterStage1Tokens when stage2 reduces", () => {
+test("usageAfterStage2Tokens is less than usageAfterStage1Tokens when stage2 reduces [context-compaction-service-detailed]", () => {
   const db = createMockDb();
   // Create scenario with many messages that can be summarized
   const messages = [
@@ -853,7 +853,7 @@ test("usageAfterStage2Tokens is less than usageAfterStage1Tokens when stage2 red
   assert.ok(result.usageAfterStage2Tokens >= 0);
 });
 
-test("usageBeforeTokens is sum of all message tokens", () => {
+test("usageBeforeTokens is sum of all message tokens [context-compaction-service-detailed]", () => {
   const db = createMockDb();
   const messages = [
     createTestMessage({ id: "msg-1", direction: "inbound", content: "Short" }),
@@ -880,7 +880,7 @@ test("usageBeforeTokens is sum of all message tokens", () => {
 // Message direction handling
 // ---------------------------------------------------------------------------
 
-test("inbound messages are not system direction", () => {
+test("inbound messages are not system direction [context-compaction-service-detailed]", () => {
   const db = createMockDb();
   const messages = [
     createTestMessage({ id: "msg-1", direction: "inbound", messageType: "user_request", content: "User" }),
@@ -903,7 +903,7 @@ test("inbound messages are not system direction", () => {
   assert.equal(msg.protected, true); // user_request is protected
 });
 
-test("outbound messages are not system direction", () => {
+test("outbound messages are not system direction [context-compaction-service-detailed]", () => {
   const db = createMockDb();
   const messages = [
     createTestMessage({ id: "msg-1", direction: "outbound", messageType: "assistant_response", content: "Response" }),
@@ -929,7 +929,7 @@ test("outbound messages are not system direction", () => {
 // Mixed message type compaction scenarios
 // ---------------------------------------------------------------------------
 
-test("mixed protected and trim candidates with stage1", () => {
+test("mixed protected and trim candidates with stage1 [context-compaction-service-detailed]", () => {
   const db = createMockDb();
   const messages = [
     createTestMessage({ id: "user-1", direction: "inbound", messageType: "user_request", content: "User request with substantial content that adds many tokens to exceed threshold and trigger compaction" }),
@@ -960,7 +960,7 @@ test("mixed protected and trim candidates with stage1", () => {
   assert.equal(result.errorCode, null);
 });
 
-test("assistant_response messages are in summary candidates", () => {
+test("assistant_response messages are in summary candidates [context-compaction-service-detailed]", () => {
   const db = createMockDb();
   const messages = [
     createTestMessage({ id: "user-1", direction: "inbound", messageType: "user_request", content: "User" }),
@@ -992,7 +992,7 @@ test("assistant_response messages are in summary candidates", () => {
 // Transaction handling
 // ---------------------------------------------------------------------------
 
-test("compactContext executes within transaction", () => {
+test("compactContext executes within transaction [context-compaction-service-detailed]", () => {
   const db = createMockDb();
   const messages = [
     createTestMessage({ id: "msg-1", direction: "inbound", messageType: "user_request", content: "User" }),
@@ -1021,7 +1021,7 @@ test("compactContext executes within transaction", () => {
 // Prior compaction records impact
 // ---------------------------------------------------------------------------
 
-test("prior trim records don't count toward summarize limit", () => {
+test("prior trim records don't count toward summarize limit [context-compaction-service-detailed]", () => {
   const db = createMockDb();
   const messages = [
     createTestMessage({ id: "user-1", direction: "inbound", messageType: "user_request", content: "User" }),
@@ -1052,7 +1052,7 @@ test("prior trim records don't count toward summarize limit", () => {
   }
 });
 
-test("summarize limit counts only summarize stage records", () => {
+test("summarize limit counts only summarize stage records [context-compaction-service-detailed]", () => {
   const db = createMockDb();
   const messages = [
     createTestMessage({ id: "user-1", direction: "inbound", messageType: "user_request", content: "User" }),

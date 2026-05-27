@@ -47,7 +47,7 @@ const DELIVERY_POLL_INTERVAL_LOW_QUEUE_MS = 250;
  * ## Architecture
  *
  * Implements the event delivery semantics defined in the
- * {@link https://github.com/automatic-agent/automatic_agent_platform/blob/main/docs_zh/contracts/event_registry_and_ops_threshold_contract.md | Event Registry Contract}.
+ * {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/contracts/event_registry_and_ops_threshold_contract.md | Event Registry Contract}.
  *
  * ## Event Flow
  *

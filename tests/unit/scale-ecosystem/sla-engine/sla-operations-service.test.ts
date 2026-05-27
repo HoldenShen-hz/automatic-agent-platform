@@ -38,7 +38,7 @@ function createTestObservation(overrides: Partial<SlaObservation> = {}): SlaObse
   };
 }
 
-test("SlaOperationsService.evaluate selects highest priority tier when none selected", () => {
+test("SlaOperationsService.evaluate selects highest priority tier when none selected [sla-operations-service]", () => {
   const service = new SlaOperationsService();
   const tiers: SlaTierProfile[] = [
     { ...createTestTier({ tierId: "gold", priority: 2 }), targetLatencyMs: 500, targetSuccessRate: 0.999, maxQueueWaitMs: 2000, preemptionPriority: 10 },
@@ -60,7 +60,7 @@ test("SlaOperationsService.evaluate selects highest priority tier when none sele
   assert.equal(decision.routingHint?.tierId, "gold");
 });
 
-test("SlaOperationsService.evaluate uses selectedTierId when provided", () => {
+test("SlaOperationsService.evaluate uses selectedTierId when provided [sla-operations-service]", () => {
   const service = new SlaOperationsService();
   const tiers: SlaTierProfile[] = [
     { ...createTestTier({ tierId: "gold", priority: 2 }), targetLatencyMs: 500, targetSuccessRate: 0.999, maxQueueWaitMs: 2000, preemptionPriority: 10 },
@@ -80,7 +80,7 @@ test("SlaOperationsService.evaluate uses selectedTierId when provided", () => {
   assert.equal(decision.selectedTierId, "silver");
 });
 
-test("SlaOperationsService.evaluate detects latency breach", () => {
+test("SlaOperationsService.evaluate detects latency breach [sla-operations-service]", () => {
   const service = new SlaOperationsService();
   const tiers: SlaTierProfile[] = [
     { ...createTestTier({ tierId: "gold" }), targetLatencyMs: 500, targetSuccessRate: 0.999, maxQueueWaitMs: 2000, preemptionPriority: 10 },
@@ -101,7 +101,7 @@ test("SlaOperationsService.evaluate detects latency breach", () => {
   assert.equal(decision.breachRecords[0]!.severity, "warning");
 });
 
-test("SlaOperationsService.evaluate detects success rate breach", () => {
+test("SlaOperationsService.evaluate detects success rate breach [sla-operations-service]", () => {
   const service = new SlaOperationsService();
   const tiers: SlaTierProfile[] = [
     { ...createTestTier({ tierId: "gold", targetSuccessRate: 0.999 }), targetLatencyMs: 500, targetSuccessRate: 0.999, maxQueueWaitMs: 2000, preemptionPriority: 10 },
@@ -122,7 +122,7 @@ test("SlaOperationsService.evaluate detects success rate breach", () => {
   assert.equal(decision.breachRecords[0]!.severity, "critical");
 });
 
-test("SlaOperationsService.evaluate detects queue wait breach", () => {
+test("SlaOperationsService.evaluate detects queue wait breach [sla-operations-service]", () => {
   const service = new SlaOperationsService();
   const tiers: SlaTierProfile[] = [
     { ...createTestTier({ tierId: "gold", maxQueueWaitMs: 2000 }), targetLatencyMs: 500, targetSuccessRate: 0.999, maxQueueWaitMs: 2000, preemptionPriority: 10 },
@@ -142,7 +142,7 @@ test("SlaOperationsService.evaluate detects queue wait breach", () => {
   assert.ok(decision.breachRecords[0]!.breachCodes.includes("sla.queue_wait_breach"));
 });
 
-test("SlaOperationsService.evaluate returns no breaches when within commitment", () => {
+test("SlaOperationsService.evaluate returns no breaches when within commitment [sla-operations-service]", () => {
   const service = new SlaOperationsService();
   const tiers: SlaTierProfile[] = [
     { ...createTestTier({ tierId: "gold" }), targetLatencyMs: 500, targetSuccessRate: 0.99, maxQueueWaitMs: 2000, preemptionPriority: 10 },
@@ -161,7 +161,7 @@ test("SlaOperationsService.evaluate returns no breaches when within commitment",
   assert.equal(decision.breachRecords.length, 0);
 });
 
-test("SlaOperationsService.evaluate calculates reserved capacity", () => {
+test("SlaOperationsService.evaluate calculates reserved capacity [sla-operations-service]", () => {
   const service = new SlaOperationsService();
   const tiers: SlaTierProfile[] = [
     { ...createTestTier({ tierId: "gold", reservedCapacityPercent: 20 }), targetLatencyMs: 500, targetSuccessRate: 0.99, maxQueueWaitMs: 2000, preemptionPriority: 10 },
@@ -182,7 +182,7 @@ test("SlaOperationsService.evaluate calculates reserved capacity", () => {
   assert.ok(decision.reservedCapacity["silver"]);
 });
 
-test("SlaOperationsService.evaluate handles custom reserved capacity plan", () => {
+test("SlaOperationsService.evaluate handles custom reserved capacity plan [sla-operations-service]", () => {
   const service = new SlaOperationsService();
   const tiers: SlaTierProfile[] = [
     { ...createTestTier({ tierId: "gold", reservedCapacityPercent: 20 }), targetLatencyMs: 500, targetSuccessRate: 0.99, maxQueueWaitMs: 2000, preemptionPriority: 10 },
@@ -206,7 +206,7 @@ test("SlaOperationsService.evaluate handles custom reserved capacity plan", () =
   assert.equal(decision.reservedCapacity["gold"], 50);
 });
 
-test("SlaOperationsService.evaluate handles empty tiers", () => {
+test("SlaOperationsService.evaluate handles empty tiers [sla-operations-service]", () => {
   const service = new SlaOperationsService();
 
   const request: SlaOperationsRequest = {
@@ -224,7 +224,7 @@ test("SlaOperationsService.evaluate handles empty tiers", () => {
   assert.equal(decision.breachRecords.length, 0);
 });
 
-test("detectSlaBreach returns empty array when within commitment", () => {
+test("detectSlaBreach returns empty array when within commitment [sla-operations-service]", () => {
   const observation: SlaObservation = { latencyMs: 400, successRate: 1.0, queueWaitMs: 1500 };
   const commitment: SlaCommitment = { maxLatencyMs: 500, minSuccessRate: 0.99, maxQueueWaitMs: 2000 };
 
@@ -233,7 +233,7 @@ test("detectSlaBreach returns empty array when within commitment", () => {
   assert.equal(breaches.length, 0);
 });
 
-test("detectSlaBreach detects all three breach types", () => {
+test("detectSlaBreach detects all three breach types [sla-operations-service]", () => {
   const observation: SlaObservation = { latencyMs: 600, successRate: 0.95, queueWaitMs: 2500 };
   const commitment: SlaCommitment = { maxLatencyMs: 500, minSuccessRate: 0.99, maxQueueWaitMs: 2000 };
 
@@ -245,7 +245,7 @@ test("detectSlaBreach detects all three breach types", () => {
   assert.ok(breaches.includes("sla.queue_wait_breach"));
 });
 
-test("allocateReservedCapacity calculates correct amounts", () => {
+test("allocateReservedCapacity calculates correct amounts [sla-operations-service]", () => {
   const allocations: ReservedCapacityAllocation[] = [
     { tierId: "gold", reservedPercent: 50 },
     { tierId: "silver", reservedPercent: 25 },
@@ -257,7 +257,7 @@ test("allocateReservedCapacity calculates correct amounts", () => {
   assert.equal(result["silver"], 25);
 });
 
-test("resolveHighestPriorityTier returns highest priority", () => {
+test("resolveHighestPriorityTier returns highest priority [sla-operations-service]", () => {
   const tiers: SlaTier[] = [
     createTestTier({ tierId: "bronze", priority: 1 }),
     createTestTier({ tierId: "silver", priority: 2 }),
@@ -269,7 +269,7 @@ test("resolveHighestPriorityTier returns highest priority", () => {
   assert.equal(result?.tierId, "gold");
 });
 
-test("resolveHighestPriorityTier returns null for empty array", () => {
+test("resolveHighestPriorityTier returns null for empty array [sla-operations-service]", () => {
   const result = resolveHighestPriorityTier([]);
   assert.equal(result, null);
 });

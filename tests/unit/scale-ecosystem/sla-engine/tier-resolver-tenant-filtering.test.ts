@@ -47,7 +47,7 @@ function createTier(overrides: Partial<SlaTier> & { tierId: string; displayName:
 // resolveHighestPriorityTier - tenant filtering tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("resolveHighestPriorityTier with no tenantId returns global tier (highest priority)", () => {
+test("resolveHighestPriorityTier with no tenantId returns global tier (highest priority) [tier-resolver-tenant-filtering]", () => {
   const tiers: SlaTier[] = [
     createTier({ tierId: "tenant-gold", tenantId: "tenant-1", priority: 3 }),
     createTier({ tierId: "global-high", priority: 2 }), // no tenantId = global
@@ -60,7 +60,7 @@ test("resolveHighestPriorityTier with no tenantId returns global tier (highest p
   assert.equal(result?.tierId, "global-high");
 });
 
-test("resolveHighestPriorityTier with tenantId matches tenant-specific tiers", () => {
+test("resolveHighestPriorityTier with tenantId matches tenant-specific tiers [tier-resolver-tenant-filtering]", () => {
   const tiers: SlaTier[] = [
     createTier({ tierId: "tenant-gold", tenantId: "tenant-1", priority: 3 }),
     createTier({ tierId: "global-high", priority: 2 }),
@@ -73,7 +73,7 @@ test("resolveHighestPriorityTier with tenantId matches tenant-specific tiers", (
   assert.equal(result?.tierId, "tenant-gold");
 });
 
-test("resolveHighestPriorityTier with tenantId falls back to global tiers when no tenant-specific match", () => {
+test("resolveHighestPriorityTier with tenantId falls back to global tiers when no tenant-specific match [tier-resolver-tenant-filtering]", () => {
   const tiers: SlaTier[] = [
     createTier({ tierId: "global-high", priority: 2 }),
     createTier({ tierId: "other-tenant", tenantId: "other-tenant", priority: 3 }),
@@ -86,7 +86,7 @@ test("resolveHighestPriorityTier with tenantId falls back to global tiers when n
   assert.equal(result?.tierId, "global-high");
 });
 
-test("resolveHighestPriorityTier with tenantId considers both tenant and global tiers", () => {
+test("resolveHighestPriorityTier with tenantId considers both tenant and global tiers [tier-resolver-tenant-filtering]", () => {
   const tiers: SlaTier[] = [
     createTier({ tierId: "tenant-medium", tenantId: "tenant-1", priority: 2 }),
     createTier({ tierId: "global-high", priority: 3 }), // higher priority but global
@@ -99,7 +99,7 @@ test("resolveHighestPriorityTier with tenantId considers both tenant and global 
   assert.equal(result?.tierId, "global-high");
 });
 
-test("resolveHighestPriorityTier with tenantId returns null when only non-matching tenant tiers exist", () => {
+test("resolveHighestPriorityTier with tenantId returns null when only non-matching tenant tiers exist [tier-resolver-tenant-filtering]", () => {
   const tiers: SlaTier[] = [
     createTier({ tierId: "other-tenant", tenantId: "other-tenant", priority: 3 }),
   ];
@@ -110,7 +110,7 @@ test("resolveHighestPriorityTier with tenantId returns null when only non-matchi
   assert.equal(result, null);
 });
 
-test("resolveHighestPriorityTier with explicit null tenantId returns only global tiers", () => {
+test("resolveHighestPriorityTier with explicit null tenantId returns only global tiers [tier-resolver-tenant-filtering]", () => {
   const tiers: SlaTier[] = [
     createTier({ tierId: "tenant-gold", tenantId: "tenant-1", priority: 3 }),
     createTier({ tierId: "global-medium", priority: 2 }),
@@ -123,7 +123,7 @@ test("resolveHighestPriorityTier with explicit null tenantId returns only global
   assert.equal(result?.tierId, "global-medium");
 });
 
-test("resolveHighestPriorityTier with undefined tenantId returns only global tiers", () => {
+test("resolveHighestPriorityTier with undefined tenantId returns only global tiers [tier-resolver-tenant-filtering]", () => {
   const tiers: SlaTier[] = [
     createTier({ tierId: "tenant-gold", tenantId: "tenant-1", priority: 3 }),
     createTier({ tierId: "global-medium", priority: 2 }),
@@ -135,7 +135,7 @@ test("resolveHighestPriorityTier with undefined tenantId returns only global tie
   assert.equal(result?.tierId, "global-medium");
 });
 
-test("resolveHighestPriorityTier with tenantId returns highest priority among all matching tiers", () => {
+test("resolveHighestPriorityTier with tenantId returns highest priority among all matching tiers [tier-resolver-tenant-filtering]", () => {
   const tiers: SlaTier[] = [
     createTier({ tierId: "tenant-high", tenantId: "tenant-1", priority: 3 }),
     createTier({ tierId: "tenant-medium", tenantId: "tenant-1", priority: 2 }),
@@ -150,7 +150,7 @@ test("resolveHighestPriorityTier with tenantId returns highest priority among al
   assert.equal(result?.tierId, "global-high");
 });
 
-test("resolveHighestPriorityTier with tenantId returns highest priority across all eligible tiers", () => {
+test("resolveHighestPriorityTier with tenantId returns highest priority across all eligible tiers [tier-resolver-tenant-filtering]", () => {
   const tiers: SlaTier[] = [
     createTier({ tierId: "tenant-low", tenantId: "tenant-1", priority: 1 }),
     createTier({ tierId: "global-high", priority: 5 }),
@@ -162,7 +162,7 @@ test("resolveHighestPriorityTier with tenantId returns highest priority across a
   assert.equal(result?.tierId, "global-high");
 });
 
-test("resolveHighestPriorityTier tenant filtering does not mutate input array", () => {
+test("resolveHighestPriorityTier tenant filtering does not mutate input array [tier-resolver-tenant-filtering]", () => {
   const tiers: SlaTier[] = [
     createTier({ tierId: "t1", tenantId: "tenant-1", priority: 1 }),
     createTier({ tierId: "t2", priority: 2 }),
@@ -175,7 +175,7 @@ test("resolveHighestPriorityTier tenant filtering does not mutate input array", 
   assert.equal(tiers[0]?.tenantId, "tenant-1");
 });
 
-test("resolveHighestPriorityTier tenant filtering does not mutate tier objects", () => {
+test("resolveHighestPriorityTier tenant filtering does not mutate tier objects [tier-resolver-tenant-filtering]", () => {
   const tiers: SlaTier[] = [
     createTier({ tierId: "t1", tenantId: "tenant-1", priority: 1 }),
     createTier({ tierId: "t2", priority: 2 }),
@@ -192,7 +192,7 @@ test("resolveHighestPriorityTier tenant filtering does not mutate tier objects",
 // SlaTierSchema - comprehensive field validation tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("SlaTierSchema parses complete valid tier", () => {
+test("SlaTierSchema parses complete valid tier [tier-resolver-tenant-filtering]", () => {
   const result = SlaTierSchema.safeParse({
     tierId: "gold",
     displayName: "Gold Tier",
@@ -227,7 +227,7 @@ test("SlaTierSchema parses complete valid tier", () => {
   }
 });
 
-test("SlaTierSchema validates supportLevel enum", () => {
+test("SlaTierSchema validates supportLevel enum [tier-resolver-tenant-filtering]", () => {
   const validLevels = ["basic", "standard", "premium", "enterprise"];
 
   for (const level of validLevels) {
@@ -241,7 +241,7 @@ test("SlaTierSchema validates supportLevel enum", () => {
   }
 });
 
-test("SlaTierSchema rejects invalid supportLevel", () => {
+test("SlaTierSchema rejects invalid supportLevel [tier-resolver-tenant-filtering]", () => {
   const result = SlaTierSchema.safeParse({
     tierId: "test",
     displayName: "Test",
@@ -252,7 +252,7 @@ test("SlaTierSchema rejects invalid supportLevel", () => {
   assert.equal(result.success, false);
 });
 
-test("SlaTierSchema validates recoveryAction enum", () => {
+test("SlaTierSchema validates recoveryAction enum [tier-resolver-tenant-filtering]", () => {
   const validActions = ["skip", "retry", "escalate", "freeze"];
 
   for (const action of validActions) {
@@ -266,7 +266,7 @@ test("SlaTierSchema validates recoveryAction enum", () => {
   }
 });
 
-test("SlaTierSchema rejects invalid recoveryAction", () => {
+test("SlaTierSchema rejects invalid recoveryAction [tier-resolver-tenant-filtering]", () => {
   const result = SlaTierSchema.safeParse({
     tierId: "test",
     displayName: "Test",
@@ -277,7 +277,7 @@ test("SlaTierSchema rejects invalid recoveryAction", () => {
   assert.equal(result.success, false);
 });
 
-test("SlaTierSchema validates availability range 0-1", () => {
+test("SlaTierSchema validates availability range 0-1 [tier-resolver-tenant-filtering]", () => {
   const result = SlaTierSchema.safeParse({
     tierId: "test",
     displayName: "Test",
@@ -288,7 +288,7 @@ test("SlaTierSchema validates availability range 0-1", () => {
   assert.equal(result.success, false);
 });
 
-test("SlaTierSchema validates availability at boundary 0", () => {
+test("SlaTierSchema validates availability at boundary 0 [tier-resolver-tenant-filtering]", () => {
   const result = SlaTierSchema.safeParse({
     tierId: "test",
     displayName: "Test",
@@ -299,7 +299,7 @@ test("SlaTierSchema validates availability at boundary 0", () => {
   assert.equal(result.success, true);
 });
 
-test("SlaTierSchema validates availability at boundary 1", () => {
+test("SlaTierSchema validates availability at boundary 1 [tier-resolver-tenant-filtering]", () => {
   const result = SlaTierSchema.safeParse({
     tierId: "test",
     displayName: "Test",
@@ -310,7 +310,7 @@ test("SlaTierSchema validates availability at boundary 1", () => {
   assert.equal(result.success, true);
 });
 
-test("SlaTierSchema validates costMultiplier non-negative", () => {
+test("SlaTierSchema validates costMultiplier non-negative [tier-resolver-tenant-filtering]", () => {
   const result = SlaTierSchema.safeParse({
     tierId: "test",
     displayName: "Test",
@@ -321,7 +321,7 @@ test("SlaTierSchema validates costMultiplier non-negative", () => {
   assert.equal(result.success, false);
 });
 
-test("SlaTierSchema validates externalP95 non-negative integer", () => {
+test("SlaTierSchema validates externalP95 non-negative integer [tier-resolver-tenant-filtering]", () => {
   const result = SlaTierSchema.safeParse({
     tierId: "test",
     displayName: "Test",
@@ -332,7 +332,7 @@ test("SlaTierSchema validates externalP95 non-negative integer", () => {
   assert.equal(result.success, false);
 });
 
-test("SlaTierSchema validates internalP99 non-negative integer", () => {
+test("SlaTierSchema validates internalP99 non-negative integer [tier-resolver-tenant-filtering]", () => {
   const result = SlaTierSchema.safeParse({
     tierId: "test",
     displayName: "Test",
@@ -343,7 +343,7 @@ test("SlaTierSchema validates internalP99 non-negative integer", () => {
   assert.equal(result.success, false);
 });
 
-test("SlaTierSchema validates approvalLatencySlo non-negative integer", () => {
+test("SlaTierSchema validates approvalLatencySlo non-negative integer [tier-resolver-tenant-filtering]", () => {
   const result = SlaTierSchema.safeParse({
     tierId: "test",
     displayName: "Test",
@@ -354,7 +354,7 @@ test("SlaTierSchema validates approvalLatencySlo non-negative integer", () => {
   assert.equal(result.success, false);
 });
 
-test("SlaTierSchema validates incidentResponseSlo non-negative integer", () => {
+test("SlaTierSchema validates incidentResponseSlo non-negative integer [tier-resolver-tenant-filtering]", () => {
   const result = SlaTierSchema.safeParse({
     tierId: "test",
     displayName: "Test",
@@ -365,7 +365,7 @@ test("SlaTierSchema validates incidentResponseSlo non-negative integer", () => {
   assert.equal(result.success, false);
 });
 
-test("SlaTierSchema validates targetLatencyMs positive integer", () => {
+test("SlaTierSchema validates targetLatencyMs positive integer [tier-resolver-tenant-filtering]", () => {
   const result = SlaTierSchema.safeParse({
     tierId: "test",
     displayName: "Test",
@@ -376,7 +376,7 @@ test("SlaTierSchema validates targetLatencyMs positive integer", () => {
   assert.equal(result.success, false);
 });
 
-test("SlaTierSchema validates targetSuccessRate range 0-1", () => {
+test("SlaTierSchema validates targetSuccessRate range 0-1 [tier-resolver-tenant-filtering]", () => {
   const result = SlaTierSchema.safeParse({
     tierId: "test",
     displayName: "Test",
@@ -387,7 +387,7 @@ test("SlaTierSchema validates targetSuccessRate range 0-1", () => {
   assert.equal(result.success, false);
 });
 
-test("SlaTierSchema validates maxQueueWaitMs non-negative integer", () => {
+test("SlaTierSchema validates maxQueueWaitMs non-negative integer [tier-resolver-tenant-filtering]", () => {
   const result = SlaTierSchema.safeParse({
     tierId: "test",
     displayName: "Test",
@@ -398,7 +398,7 @@ test("SlaTierSchema validates maxQueueWaitMs non-negative integer", () => {
   assert.equal(result.success, false);
 });
 
-test("SlaTierSchema validates preemptionPriority non-negative integer", () => {
+test("SlaTierSchema validates preemptionPriority non-negative integer [tier-resolver-tenant-filtering]", () => {
   const result = SlaTierSchema.safeParse({
     tierId: "test",
     displayName: "Test",
@@ -409,7 +409,7 @@ test("SlaTierSchema validates preemptionPriority non-negative integer", () => {
   assert.equal(result.success, false);
 });
 
-test("SlaTierSchema validates reservedCapacityPercent range 0-100", () => {
+test("SlaTierSchema validates reservedCapacityPercent range 0-100 [tier-resolver-tenant-filtering]", () => {
   const result = SlaTierSchema.safeParse({
     tierId: "test",
     displayName: "Test",
@@ -420,7 +420,7 @@ test("SlaTierSchema validates reservedCapacityPercent range 0-100", () => {
   assert.equal(result.success, false);
 });
 
-test("SlaTierSchema validates executionTimeoutMs positive integer", () => {
+test("SlaTierSchema validates executionTimeoutMs positive integer [tier-resolver-tenant-filtering]", () => {
   const result = SlaTierSchema.safeParse({
     tierId: "test",
     displayName: "Test",
@@ -431,7 +431,7 @@ test("SlaTierSchema validates executionTimeoutMs positive integer", () => {
   assert.equal(result.success, false);
 });
 
-test("SlaTierSchema validates degradationTolerancePercent range 0-100", () => {
+test("SlaTierSchema validates degradationTolerancePercent range 0-100 [tier-resolver-tenant-filtering]", () => {
   const result = SlaTierSchema.safeParse({
     tierId: "test",
     displayName: "Test",
@@ -442,7 +442,7 @@ test("SlaTierSchema validates degradationTolerancePercent range 0-100", () => {
   assert.equal(result.success, false);
 });
 
-test("SlaTierSchema validates budgetAllocationPercent range 0-100", () => {
+test("SlaTierSchema validates budgetAllocationPercent range 0-100 [tier-resolver-tenant-filtering]", () => {
   const result = SlaTierSchema.safeParse({
     tierId: "test",
     displayName: "Test",
@@ -453,7 +453,7 @@ test("SlaTierSchema validates budgetAllocationPercent range 0-100", () => {
   assert.equal(result.success, false);
 });
 
-test("SlaTierSchema applies default availability when not provided", () => {
+test("SlaTierSchema applies default availability when not provided [tier-resolver-tenant-filtering]", () => {
   const result = SlaTierSchema.safeParse({
     tierId: "test",
     displayName: "Test",
@@ -466,7 +466,7 @@ test("SlaTierSchema applies default availability when not provided", () => {
   }
 });
 
-test("SlaTierSchema applies default supportLevel when not provided", () => {
+test("SlaTierSchema applies default supportLevel when not provided [tier-resolver-tenant-filtering]", () => {
   const result = SlaTierSchema.safeParse({
     tierId: "test",
     displayName: "Test",
@@ -479,7 +479,7 @@ test("SlaTierSchema applies default supportLevel when not provided", () => {
   }
 });
 
-test("SlaTierSchema applies default recoveryAction when not provided", () => {
+test("SlaTierSchema applies default recoveryAction when not provided [tier-resolver-tenant-filtering]", () => {
   const result = SlaTierSchema.safeParse({
     tierId: "test",
     displayName: "Test",
@@ -492,7 +492,7 @@ test("SlaTierSchema applies default recoveryAction when not provided", () => {
   }
 });
 
-test("SlaTierSchema applies default costMultiplier when not provided", () => {
+test("SlaTierSchema applies default costMultiplier when not provided [tier-resolver-tenant-filtering]", () => {
   const result = SlaTierSchema.safeParse({
     tierId: "test",
     displayName: "Test",
@@ -505,7 +505,7 @@ test("SlaTierSchema applies default costMultiplier when not provided", () => {
   }
 });
 
-test("SlaTierSchema applies default budgetAllocationPercent when not provided", () => {
+test("SlaTierSchema applies default budgetAllocationPercent when not provided [tier-resolver-tenant-filtering]", () => {
   const result = SlaTierSchema.safeParse({
     tierId: "test",
     displayName: "Test",
@@ -522,13 +522,13 @@ test("SlaTierSchema applies default budgetAllocationPercent when not provided", 
 // Edge cases
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("resolveHighestPriorityTier handles empty array with tenantId", () => {
+test("resolveHighestPriorityTier handles empty array with tenantId [tier-resolver-tenant-filtering]", () => {
   const result = resolveHighestPriorityTier([], "tenant-1");
 
   assert.equal(result, null);
 });
 
-test("resolveHighestPriorityTier handles tier with all optional fields", () => {
+test("resolveHighestPriorityTier handles tier with all optional fields [tier-resolver-tenant-filtering]", () => {
   const tiers: SlaTier[] = [
     createTier({
       tierId: "full",
@@ -555,7 +555,7 @@ test("resolveHighestPriorityTier handles tier with all optional fields", () => {
   assert.equal(result?.tierId, "full");
 });
 
-test("resolveHighestPriorityTier returns first tier when all priorities are equal", () => {
+test("resolveHighestPriorityTier returns first tier when all priorities are equal [tier-resolver-tenant-filtering]", () => {
   const tiers: SlaTier[] = [
     createTier({ tierId: "first", displayName: "First", priority: 5, tenantId: "t1" }),
     createTier({ tierId: "second", displayName: "Second", priority: 5, tenantId: "t1" }),
@@ -566,7 +566,7 @@ test("resolveHighestPriorityTier returns first tier when all priorities are equa
   assert.equal(result?.tierId, "first");
 });
 
-test("SlaTierSchema accepts tierId with whitespace (standard Zod min(1) behavior)", () => {
+test("SlaTierSchema accepts tierId with whitespace (standard Zod min(1) behavior) [tier-resolver-tenant-filtering]", () => {
   const result = SlaTierSchema.safeParse({
     tierId: "   ",
     displayName: "Test",
@@ -577,7 +577,7 @@ test("SlaTierSchema accepts tierId with whitespace (standard Zod min(1) behavior
   assert.equal(result.success, true);
 });
 
-test("SlaTierSchema rejects empty displayName", () => {
+test("SlaTierSchema rejects empty displayName [tier-resolver-tenant-filtering]", () => {
   const result = SlaTierSchema.safeParse({
     tierId: "test",
     displayName: "",
@@ -587,7 +587,7 @@ test("SlaTierSchema rejects empty displayName", () => {
   assert.equal(result.success, false);
 });
 
-test("SlaTierSchema rejects priority that is not an integer", () => {
+test("SlaTierSchema rejects priority that is not an integer [tier-resolver-tenant-filtering]", () => {
   const result = SlaTierSchema.safeParse({
     tierId: "test",
     displayName: "Test",

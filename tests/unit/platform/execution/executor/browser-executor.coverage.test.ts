@@ -49,7 +49,7 @@ function createTestContext(overrides: Partial<BrowserExecutionContext> = {}): Br
 // Sandbox Tier Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("BrowserExecutor works with sandboxTier none", () => {
+test("BrowserExecutor works with sandboxTier none [browser-executor.coverage]", () => {
   const executor = createBrowserExecutor();
   const context = createTestContext({ sandboxTier: "none" });
 
@@ -60,7 +60,7 @@ test("BrowserExecutor works with sandboxTier none", () => {
   assert.equal(session?.isActive, true);
 });
 
-test("BrowserExecutor works with sandboxTier process", () => {
+test("BrowserExecutor works with sandboxTier process [browser-executor.coverage]", () => {
   const executor = createBrowserExecutor();
   const context = createTestContext({ sandboxTier: "process" });
 
@@ -71,7 +71,7 @@ test("BrowserExecutor works with sandboxTier process", () => {
   assert.equal(session?.isActive, true);
 });
 
-test("BrowserExecutor works with sandboxTier container", () => {
+test("BrowserExecutor works with sandboxTier container [browser-executor.coverage]", () => {
   const executor = createBrowserExecutor();
   const context = createTestContext({ sandboxTier: "container" });
 
@@ -86,7 +86,7 @@ test("BrowserExecutor works with sandboxTier container", () => {
 // Navigation waitUntil Options Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("BrowserExecutor.navigate() with waitUntil load", async () => {
+test("BrowserExecutor.navigate() with waitUntil load [browser-executor.coverage]", async () => {
   const executor = createBrowserExecutor();
   const context = createTestContext();
   const sessionId = executor.createSession(context);
@@ -102,7 +102,7 @@ test("BrowserExecutor.navigate() with waitUntil load", async () => {
   assert.equal(result.browserAction, "navigate");
 });
 
-test("BrowserExecutor.navigate() with waitUntil domcontentloaded", async () => {
+test("BrowserExecutor.navigate() with waitUntil domcontentloaded [browser-executor.coverage]", async () => {
   const executor = createBrowserExecutor();
   const context = createTestContext();
   const sessionId = executor.createSession(context);
@@ -118,7 +118,7 @@ test("BrowserExecutor.navigate() with waitUntil domcontentloaded", async () => {
   assert.equal(result.browserAction, "navigate");
 });
 
-test("BrowserExecutor.navigate() with waitUntil networkidle", async () => {
+test("BrowserExecutor.navigate() with waitUntil networkidle [browser-executor.coverage]", async () => {
   const executor = createBrowserExecutor();
   const context = createTestContext();
   const sessionId = executor.createSession(context);
@@ -134,7 +134,7 @@ test("BrowserExecutor.navigate() with waitUntil networkidle", async () => {
   assert.equal(result.browserAction, "navigate");
 });
 
-test("BrowserExecutor.navigate() without waitUntil defaults to load behavior", async () => {
+test("BrowserExecutor.navigate() without waitUntil defaults to load behavior [browser-executor.coverage]", async () => {
   const executor = createBrowserExecutor();
   const context = createTestContext();
   const sessionId = executor.createSession(context);
@@ -150,7 +150,7 @@ test("BrowserExecutor.navigate() without waitUntil defaults to load behavior", a
 // WaitForSelector State Options Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("BrowserExecutor.waitForSelector() with state attached", async () => {
+test("BrowserExecutor.waitForSelector() with state attached [browser-executor.coverage]", async () => {
   const executor = createBrowserExecutor();
   const context = createTestContext();
   const sessionId = executor.createSession(context);
@@ -167,7 +167,7 @@ test("BrowserExecutor.waitForSelector() with state attached", async () => {
   assert.equal(output.state, "attached");
 });
 
-test("BrowserExecutor.waitForSelector() with state detached", async () => {
+test("BrowserExecutor.waitForSelector() with state detached [browser-executor.coverage]", async () => {
   const executor = createBrowserExecutor();
   const context = createTestContext();
   const sessionId = executor.createSession(context);
@@ -184,7 +184,7 @@ test("BrowserExecutor.waitForSelector() with state detached", async () => {
   assert.equal(output.state, "detached");
 });
 
-test("BrowserExecutor.waitForSelector() with state hidden", async () => {
+test("BrowserExecutor.waitForSelector() with state hidden [browser-executor.coverage]", async () => {
   const executor = createBrowserExecutor();
   const context = createTestContext();
   const sessionId = executor.createSession(context);
@@ -205,7 +205,7 @@ test("BrowserExecutor.waitForSelector() with state hidden", async () => {
 // Click Button Variations Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("BrowserExecutor.click() with middle button", async () => {
+test("BrowserExecutor.click() with middle button [browser-executor.coverage]", async () => {
   const executor = createBrowserExecutor();
   const context = createTestContext();
   const sessionId = executor.createSession(context);
@@ -224,7 +224,7 @@ test("BrowserExecutor.click() with middle button", async () => {
   assert.equal(output.clickCount, 1);
 });
 
-test("BrowserExecutor.click() with double click", async () => {
+test("BrowserExecutor.click() with double click [browser-executor.coverage]", async () => {
   const executor = createBrowserExecutor();
   const context = createTestContext();
   const sessionId = executor.createSession(context);
@@ -246,7 +246,7 @@ test("BrowserExecutor.click() with double click", async () => {
 // Session Timestamp Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("BrowserExecutor session lastUsedAt updates after navigate", async () => {
+test("BrowserExecutor session lastUsedAt updates after navigate [browser-executor.coverage]", async () => {
   const executor = createBrowserExecutor();
   const context = createTestContext();
   const sessionId = executor.createSession(context);
@@ -264,7 +264,7 @@ test("BrowserExecutor session lastUsedAt updates after navigate", async () => {
   assert.ok(sessionAfter!.lastUsedAt >= createdAt!);
 });
 
-test("BrowserExecutor session lastUsedAt updates after click", async () => {
+test("BrowserExecutor session lastUsedAt updates after click [browser-executor.coverage]", async () => {
   const executor = createBrowserExecutor();
   const context = createTestContext();
   const sessionId = executor.createSession(context);
@@ -279,7 +279,7 @@ test("BrowserExecutor session lastUsedAt updates after click", async () => {
   assert.ok(sessionAfter!.lastUsedAt >= createdAt!);
 });
 
-test("BrowserExecutor session lastUsedAt updates after input", async () => {
+test("BrowserExecutor session lastUsedAt updates after input [browser-executor.coverage]", async () => {
   const executor = createBrowserExecutor();
   const context = createTestContext();
   const sessionId = executor.createSession(context);
@@ -294,7 +294,7 @@ test("BrowserExecutor session lastUsedAt updates after input", async () => {
   assert.ok(sessionAfter!.lastUsedAt >= createdAt!);
 });
 
-test("BrowserExecutor session lastUsedAt updates after screenshot", async () => {
+test("BrowserExecutor session lastUsedAt updates after screenshot [browser-executor.coverage]", async () => {
   const executor = createBrowserExecutor();
   const context = createTestContext();
   const sessionId = executor.createSession(context);
@@ -313,7 +313,7 @@ test("BrowserExecutor session lastUsedAt updates after screenshot", async () => 
 // Execution Result Metadata Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("BrowserExecutor execution result has valid timestamp", async () => {
+test("BrowserExecutor execution result has valid timestamp [browser-executor.coverage]", async () => {
   const executor = createBrowserExecutor();
   const context = createTestContext();
   const sessionId = executor.createSession(context);
@@ -325,7 +325,7 @@ test("BrowserExecutor execution result has valid timestamp", async () => {
   assert.ok(result.timestamp.length > 0);
 });
 
-test("BrowserExecutor execution result has valid executionId", async () => {
+test("BrowserExecutor execution result has valid executionId [browser-executor.coverage]", async () => {
   const executor = createBrowserExecutor();
   const context = createTestContext();
   const sessionId = executor.createSession(context);
@@ -336,7 +336,7 @@ test("BrowserExecutor execution result has valid executionId", async () => {
   assert.ok(result.executionId.startsWith("bexec_"));
 });
 
-test("BrowserExecutor execution results have incremental executionIds", async () => {
+test("BrowserExecutor execution results have incremental executionIds [browser-executor.coverage]", async () => {
   const executor = createBrowserExecutor();
   const context = createTestContext();
   const sessionId = executor.createSession(context);
@@ -354,7 +354,7 @@ test("BrowserExecutor execution results have incremental executionIds", async ()
 // Multiple Session Operations Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("BrowserExecutor multiple sessions can operate independently", async () => {
+test("BrowserExecutor multiple sessions can operate independently [browser-executor.coverage]", async () => {
   const executor = createBrowserExecutor();
   const context = createTestContext();
 
@@ -373,7 +373,7 @@ test("BrowserExecutor multiple sessions can operate independently", async () => 
   assert.equal(session2?.url, "https://site-b.com");
 });
 
-test("BrowserExecutor closing one session does not affect others", async () => {
+test("BrowserExecutor closing one session does not affect others [browser-executor.coverage]", async () => {
   const executor = createBrowserExecutor();
   const context = createTestContext();
 
@@ -391,7 +391,7 @@ test("BrowserExecutor closing one session does not affect others", async () => {
   assert.equal(result.status, "ok");
 });
 
-test("BrowserExecutor listSessions returns empty after all closed", () => {
+test("BrowserExecutor listSessions returns empty after all closed [browser-executor.coverage]", () => {
   const executor = createBrowserExecutor();
   const context = createTestContext();
 
@@ -409,7 +409,7 @@ test("BrowserExecutor listSessions returns empty after all closed", () => {
 // Input Validation Edge Cases Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("BrowserExecutor.input() rejects whitespace-only text as valid", async () => {
+test("BrowserExecutor.input() rejects whitespace-only text as valid [browser-executor.coverage]", async () => {
   const executor = createBrowserExecutor();
   const context = createTestContext();
   const sessionId = executor.createSession(context);
@@ -427,7 +427,7 @@ test("BrowserExecutor.input() rejects whitespace-only text as valid", async () =
   assert.equal(output.cleared, true);
 });
 
-test("BrowserExecutor.input() handles empty text", async () => {
+test("BrowserExecutor.input() handles empty text [browser-executor.coverage]", async () => {
   const executor = createBrowserExecutor();
   const context = createTestContext();
   const sessionId = executor.createSession(context);
@@ -444,7 +444,7 @@ test("BrowserExecutor.input() handles empty text", async () => {
   assert.equal(output.cleared, true);
 });
 
-test("BrowserExecutor.input() handles unicode text", async () => {
+test("BrowserExecutor.input() handles unicode text [browser-executor.coverage]", async () => {
   const executor = createBrowserExecutor();
   const context = createTestContext();
   const sessionId = executor.createSession(context);
@@ -460,7 +460,7 @@ test("BrowserExecutor.input() handles unicode text", async () => {
   assert.equal(output.textLength, 8);
 });
 
-test("BrowserExecutor.input() handles long text", async () => {
+test("BrowserExecutor.input() handles long text [browser-executor.coverage]", async () => {
   const executor = createBrowserExecutor();
   const context = createTestContext();
   const sessionId = executor.createSession(context);
@@ -480,7 +480,7 @@ test("BrowserExecutor.input() handles long text", async () => {
 // Navigation URL Validation Edge Cases Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("BrowserExecutor.navigate() rejects javascript protocol", async () => {
+test("BrowserExecutor.navigate() rejects javascript protocol [browser-executor.coverage]", async () => {
   const executor = createBrowserExecutor();
   const context = createTestContext();
   const sessionId = executor.createSession(context);
@@ -492,7 +492,7 @@ test("BrowserExecutor.navigate() rejects javascript protocol", async () => {
   assert.equal(result.status, "error");
 });
 
-test("BrowserExecutor.navigate() rejects data protocol", async () => {
+test("BrowserExecutor.navigate() rejects data protocol [browser-executor.coverage]", async () => {
   const executor = createBrowserExecutor();
   const context = createTestContext();
   const sessionId = executor.createSession(context);
@@ -504,7 +504,7 @@ test("BrowserExecutor.navigate() rejects data protocol", async () => {
   assert.equal(result.status, "error");
 });
 
-test("BrowserExecutor.navigate() rejects ftp protocol", async () => {
+test("BrowserExecutor.navigate() rejects ftp protocol [browser-executor.coverage]", async () => {
   const executor = createBrowserExecutor();
   const context = createTestContext();
   const sessionId = executor.createSession(context);
@@ -516,7 +516,7 @@ test("BrowserExecutor.navigate() rejects ftp protocol", async () => {
   assert.equal(result.status, "error");
 });
 
-test("BrowserExecutor.navigate() accepts https URL", async () => {
+test("BrowserExecutor.navigate() accepts https URL [browser-executor.coverage]", async () => {
   const executor = createBrowserExecutor();
   const context = createTestContext();
   const sessionId = executor.createSession(context);
@@ -528,7 +528,7 @@ test("BrowserExecutor.navigate() accepts https URL", async () => {
   assert.equal(result.status, "ok");
 });
 
-test("BrowserExecutor.navigate() accepts http URL", async () => {
+test("BrowserExecutor.navigate() accepts http URL [browser-executor.coverage]", async () => {
   const executor = createBrowserExecutor();
   const context = createTestContext();
   const sessionId = executor.createSession(context);
@@ -540,7 +540,7 @@ test("BrowserExecutor.navigate() accepts http URL", async () => {
   assert.equal(result.status, "ok");
 });
 
-test("BrowserExecutor.navigate() handles URL with query params", async () => {
+test("BrowserExecutor.navigate() handles URL with query params [browser-executor.coverage]", async () => {
   const executor = createBrowserExecutor();
   const context = createTestContext();
   const sessionId = executor.createSession(context);
@@ -554,7 +554,7 @@ test("BrowserExecutor.navigate() handles URL with query params", async () => {
   assert.ok(output.url.includes("q=test"));
 });
 
-test("BrowserExecutor.navigate() handles URL with fragment", async () => {
+test("BrowserExecutor.navigate() handles URL with fragment [browser-executor.coverage]", async () => {
   const executor = createBrowserExecutor();
   const context = createTestContext();
   const sessionId = executor.createSession(context);
@@ -572,7 +572,7 @@ test("BrowserExecutor.navigate() handles URL with fragment", async () => {
 // Executor Options Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("BrowserExecutor accepts screenshotDirectory option", () => {
+test("BrowserExecutor accepts screenshotDirectory option [browser-executor.coverage]", () => {
   const executor = new BrowserExecutor({
     screenshotDirectory: "/tmp/browser-screenshots",
   });
@@ -585,7 +585,7 @@ test("BrowserExecutor accepts screenshotDirectory option", () => {
   assert.ok(session);
 });
 
-test("BrowserExecutor with all custom options works", async () => {
+test("BrowserExecutor with all custom options works [browser-executor.coverage]", async () => {
   const executor = new BrowserExecutor({
     defaultTimeout: 45000,
     navigationTimeout: 90000,
@@ -604,7 +604,7 @@ test("BrowserExecutor with all custom options works", async () => {
   assert.equal(result.status, "ok");
 });
 
-test("BrowserExecutor default timeout values are reasonable", () => {
+test("BrowserExecutor default timeout values are reasonable [browser-executor.coverage]", () => {
   const executor = new BrowserExecutor();
 
   const context = createTestContext();
@@ -622,7 +622,7 @@ test("BrowserExecutor default timeout values are reasonable", () => {
 // Error Status Classification Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("BrowserExecutor error classification handles timeout keyword", async () => {
+test("BrowserExecutor error classification handles timeout keyword [browser-executor.coverage]", async () => {
   const executor = createBrowserExecutor();
   const context = createTestContext();
   const sessionId = executor.createSession(context);
@@ -636,7 +636,7 @@ test("BrowserExecutor error classification handles timeout keyword", async () =>
   assert.ok(["ok", "error", "navigation_error", "timeout"].includes(result.status));
 });
 
-test("BrowserExecutor evaluate error result has correct structure", async () => {
+test("BrowserExecutor evaluate error result has correct structure [browser-executor.coverage]", async () => {
   const executor = createBrowserExecutor();
   const context = createTestContext();
   const sessionId = executor.createSession(context);
@@ -651,7 +651,7 @@ test("BrowserExecutor evaluate error result has correct structure", async () => 
   assert.deepEqual(result.output, {});
 });
 
-test("BrowserExecutor click error result has correct structure", async () => {
+test("BrowserExecutor click error result has correct structure [browser-executor.coverage]", async () => {
   const executor = createBrowserExecutor();
   const context = createTestContext();
   const sessionId = executor.createSession(context);
@@ -665,7 +665,7 @@ test("BrowserExecutor click error result has correct structure", async () => {
   assert.equal(result.browserAction, "click");
 });
 
-test("BrowserExecutor input error result has correct structure", async () => {
+test("BrowserExecutor input error result has correct structure [browser-executor.coverage]", async () => {
   const executor = createBrowserExecutor();
   const context = createTestContext();
   const sessionId = executor.createSession(context);
@@ -680,7 +680,7 @@ test("BrowserExecutor input error result has correct structure", async () => {
   assert.equal(result.browserAction, "input");
 });
 
-test("BrowserExecutor getAttribute error result has correct structure", async () => {
+test("BrowserExecutor getAttribute error result has correct structure [browser-executor.coverage]", async () => {
   const executor = createBrowserExecutor();
   const context = createTestContext();
   const sessionId = executor.createSession(context);
@@ -695,7 +695,7 @@ test("BrowserExecutor getAttribute error result has correct structure", async ()
   assert.equal(result.browserAction, "getAttribute");
 });
 
-test("BrowserExecutor waitForSelector error result has correct structure", async () => {
+test("BrowserExecutor waitForSelector error result has correct structure [browser-executor.coverage]", async () => {
   const executor = createBrowserExecutor();
   const context = createTestContext();
   const sessionId = executor.createSession(context);
@@ -709,7 +709,7 @@ test("BrowserExecutor waitForSelector error result has correct structure", async
   assert.equal(result.browserAction, "waitForSelector");
 });
 
-test("BrowserExecutor scroll allows empty selector for page scroll", async () => {
+test("BrowserExecutor scroll allows empty selector for page scroll [browser-executor.coverage]", async () => {
   const executor = createBrowserExecutor();
   const context = createTestContext();
   const sessionId = executor.createSession(context);
@@ -730,7 +730,7 @@ test("BrowserExecutor scroll allows empty selector for page scroll", async () =>
 // Session Context Metadata Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("BrowserExecutor session stores createdAt timestamp", () => {
+test("BrowserExecutor session stores createdAt timestamp [browser-executor.coverage]", () => {
   const executor = createBrowserExecutor();
   const context = createTestContext();
   const sessionId = executor.createSession(context);
@@ -740,7 +740,7 @@ test("BrowserExecutor session stores createdAt timestamp", () => {
   assert.ok(typeof session?.createdAt === "string");
 });
 
-test("BrowserExecutor session with null tenantId works", () => {
+test("BrowserExecutor session with null tenantId works [browser-executor.coverage]", () => {
   const executor = createBrowserExecutor();
   const context = createTestContext({ tenantId: null });
 
@@ -751,7 +751,7 @@ test("BrowserExecutor session with null tenantId works", () => {
   assert.equal(session?.isActive, true);
 });
 
-test("BrowserExecutor execution result includes correct browserAction per method", async () => {
+test("BrowserExecutor execution result includes correct browserAction per method [browser-executor.coverage]", async () => {
   const executor = createBrowserExecutor();
   const context = createTestContext();
   const sessionId = executor.createSession(context);
@@ -779,7 +779,7 @@ test("BrowserExecutor execution result includes correct browserAction per method
 // Execution Log Comprehensive Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("BrowserExecutor execution log contains all actions in order", async () => {
+test("BrowserExecutor execution log contains all actions in order [browser-executor.coverage]", async () => {
   const executor = createBrowserExecutor();
   const context = createTestContext();
   const sessionId = executor.createSession(context);
@@ -797,7 +797,7 @@ test("BrowserExecutor execution log contains all actions in order", async () => 
   assert.equal(log[3]?.browserAction, "screenshot");
 });
 
-test("BrowserExecutor clearExecutionLog can be called multiple times", () => {
+test("BrowserExecutor clearExecutionLog can be called multiple times [browser-executor.coverage]", () => {
   const executor = createBrowserExecutor();
   const context = createTestContext();
   const sessionId = executor.createSession(context);
@@ -809,7 +809,7 @@ test("BrowserExecutor clearExecutionLog can be called multiple times", () => {
   assert.equal(executor.getExecutionLog().length, 0);
 });
 
-test("BrowserExecutor getExecutionLog returns new array instance", async () => {
+test("BrowserExecutor getExecutionLog returns new array instance [browser-executor.coverage]", async () => {
   const executor = createBrowserExecutor();
   const context = createTestContext();
   const sessionId = executor.createSession(context);

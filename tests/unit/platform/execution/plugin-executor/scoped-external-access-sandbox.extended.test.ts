@@ -23,7 +23,7 @@ import {
 // Configuration Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("ScopedExternalAccessSandbox merges partial config with defaults", () => {
+test("ScopedExternalAccessSandbox merges partial config with defaults [scoped-external-access-sandbox.extended]", () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["custom.example.com"],
   });
@@ -36,7 +36,7 @@ test("ScopedExternalAccessSandbox merges partial config with defaults", () => {
   assert.equal(result2, false);
 });
 
-test("ScopedExternalAccessSandbox accepts empty allowedDomains", () => {
+test("ScopedExternalAccessSandbox accepts empty allowedDomains [scoped-external-access-sandbox.extended]", () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: [],
   });
@@ -45,7 +45,7 @@ test("ScopedExternalAccessSandbox accepts empty allowedDomains", () => {
   assert.equal(result, false);
 });
 
-test("ScopedExternalAccessSandbox handles config with all options", () => {
+test("ScopedExternalAccessSandbox handles config with all options [scoped-external-access-sandbox.extended]", () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["api.example.com"],
     maxResponseSizeBytes: 1024,
@@ -58,7 +58,7 @@ test("ScopedExternalAccessSandbox handles config with all options", () => {
   assert.equal(allowed, true);
 });
 
-test("createScopedExternalAccessSandbox creates sandbox with allowedDomains", () => {
+test("createScopedExternalAccessSandbox creates sandbox with allowedDomains [scoped-external-access-sandbox.extended]", () => {
   const sandbox = createScopedExternalAccessSandbox(["a.com", "b.com"]);
 
   assert.equal(sandbox.validateOutboundRequest("https://a.com/path"), true);
@@ -66,7 +66,7 @@ test("createScopedExternalAccessSandbox creates sandbox with allowedDomains", ()
   assert.equal(sandbox.validateOutboundRequest("https://c.com/path"), false);
 });
 
-test("createScopedExternalAccessSandbox accepts optional config", () => {
+test("createScopedExternalAccessSandbox accepts optional config [scoped-external-access-sandbox.extended]", () => {
   const sandbox = createScopedExternalAccessSandbox(["example.com"], {
     maxResponseSizeBytes: 5000,
     rateLimitPerMinute: 10,
@@ -86,7 +86,7 @@ test("createScopedExternalAccessSandbox accepts optional config", () => {
 // Domain Validation Extended Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("ScopedExternalAccessSandbox validates exact domain match", () => {
+test("ScopedExternalAccessSandbox validates exact domain match [scoped-external-access-sandbox.extended]", () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["api.example.com"],
   });
@@ -96,7 +96,7 @@ test("ScopedExternalAccessSandbox validates exact domain match", () => {
   assert.equal(sandbox.validateOutboundRequest("https://api.example.com/path/to/resource"), true);
 });
 
-test("ScopedExternalAccessSandbox blocks subdomain of allowed domain", () => {
+test("ScopedExternalAccessSandbox blocks subdomain of allowed domain [scoped-external-access-sandbox.extended]", () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["api.example.com"],
   });
@@ -106,7 +106,7 @@ test("ScopedExternalAccessSandbox blocks subdomain of allowed domain", () => {
   assert.equal(sandbox.validateOutboundRequest("https://staging.api.example.com"), false);
 });
 
-test("ScopedExternalAccessSandbox handles subdomain perspective", () => {
+test("ScopedExternalAccessSandbox handles subdomain perspective [scoped-external-access-sandbox.extended]", () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["example.com"],
   });
@@ -116,7 +116,7 @@ test("ScopedExternalAccessSandbox handles subdomain perspective", () => {
   assert.equal(sandbox.validateOutboundRequest("https://sub.example.com"), false);
 });
 
-test("ScopedExternalAccessSandbox allows explicitly wildcarded subdomains", () => {
+test("ScopedExternalAccessSandbox allows explicitly wildcarded subdomains [scoped-external-access-sandbox.extended]", () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["*.example.com"],
   });
@@ -126,7 +126,7 @@ test("ScopedExternalAccessSandbox allows explicitly wildcarded subdomains", () =
   assert.equal(sandbox.validateOutboundRequest("https://example.com"), false);
 });
 
-test("ScopedExternalAccessSandbox rejects public-suffix style implicit wildcard matches", () => {
+test("ScopedExternalAccessSandbox rejects public-suffix style implicit wildcard matches [scoped-external-access-sandbox.extended]", () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["co.uk"],
   });
@@ -134,7 +134,7 @@ test("ScopedExternalAccessSandbox rejects public-suffix style implicit wildcard 
   assert.equal(sandbox.validateOutboundRequest("https://evil.co.uk"), false);
 });
 
-test("ScopedExternalAccessSandbox handles port in hostname correctly", () => {
+test("ScopedExternalAccessSandbox handles port in hostname correctly [scoped-external-access-sandbox.extended]", () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["api.example.com"],
   });
@@ -143,7 +143,7 @@ test("ScopedExternalAccessSandbox handles port in hostname correctly", () => {
   assert.equal(sandbox.validateOutboundRequest("https://api.example.com:8080"), true);
 });
 
-test("ScopedExternalAccessSandbox handles multiple subdomains", () => {
+test("ScopedExternalAccessSandbox handles multiple subdomains [scoped-external-access-sandbox.extended]", () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["deep.sub.example.com"],
   });
@@ -152,7 +152,7 @@ test("ScopedExternalAccessSandbox handles multiple subdomains", () => {
   assert.equal(sandbox.validateOutboundRequest("https://not.deep.sub.example.com"), false);
 });
 
-test("ScopedExternalAccessSandbox validates case-sensitive domain matching", () => {
+test("ScopedExternalAccessSandbox validates case-sensitive domain matching [scoped-external-access-sandbox.extended]", () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["API.EXAMPLE.COM"],
   });
@@ -161,7 +161,7 @@ test("ScopedExternalAccessSandbox validates case-sensitive domain matching", () 
   assert.equal(sandbox.validateOutboundRequest("https://api.example.com"), true);
 });
 
-test("ScopedExternalAccessSandbox validates UTF-8 response sizes by bytes", () => {
+test("ScopedExternalAccessSandbox validates UTF-8 response sizes by bytes [scoped-external-access-sandbox.extended]", () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["api.example.com"],
     maxResponseSizeBytes: 3,
@@ -175,7 +175,7 @@ test("ScopedExternalAccessSandbox validates UTF-8 response sizes by bytes", () =
 // Rate Limiting Extended Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("ScopedExternalAccessSandbox tracks rate limit state", () => {
+test("ScopedExternalAccessSandbox tracks rate limit state [scoped-external-access-sandbox.extended]", () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["ratelimit.example.com"],
     rateLimitPerMinute: 5,
@@ -190,7 +190,7 @@ test("ScopedExternalAccessSandbox tracks rate limit state", () => {
   assert.equal(sandbox.checkRateLimit("ratelimit.example.com"), false);
 });
 
-test("ScopedExternalAccessSandbox resets rate limit for new domain", () => {
+test("ScopedExternalAccessSandbox resets rate limit for new domain [scoped-external-access-sandbox.extended]", () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["a.com", "b.com"],
     rateLimitPerMinute: 1,
@@ -204,7 +204,7 @@ test("ScopedExternalAccessSandbox resets rate limit for new domain", () => {
   assert.equal(sandbox.checkRateLimit("b.com"), true);
 });
 
-test("ScopedExternalAccessSandbox.getRateLimitStatus returns copy", () => {
+test("ScopedExternalAccessSandbox.getRateLimitStatus returns copy [scoped-external-access-sandbox.extended]", () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["status.example.com"],
     rateLimitPerMinute: 10,
@@ -221,7 +221,7 @@ test("ScopedExternalAccessSandbox.getRateLimitStatus returns copy", () => {
   assert.equal(status2["status.example.com"].count, 1);
 });
 
-test("ScopedExternalAccessSandbox.getRateLimitStatus handles empty state", () => {
+test("ScopedExternalAccessSandbox.getRateLimitStatus handles empty state [scoped-external-access-sandbox.extended]", () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["test.example.com"],
     rateLimitPerMinute: 60,
@@ -237,7 +237,7 @@ test("ScopedExternalAccessSandbox.getRateLimitStatus handles empty state", () =>
 // Header Filtering Extended Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("ScopedExternalAccessSandbox filters authorization header case variations", () => {
+test("ScopedExternalAccessSandbox filters authorization header case variations [scoped-external-access-sandbox.extended]", () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["test.example.com"],
     sensitiveHeaders: ["authorization"],
@@ -256,7 +256,7 @@ test("ScopedExternalAccessSandbox filters authorization header case variations",
   assert.equal(filtered["AUTHORIZATION"], undefined);
 });
 
-test("ScopedExternalAccessSandbox filters x-auth-token header", () => {
+test("ScopedExternalAccessSandbox filters x-auth-token header [scoped-external-access-sandbox.extended]", () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["test.example.com"],
   });
@@ -272,7 +272,7 @@ test("ScopedExternalAccessSandbox filters x-auth-token header", () => {
   assert.ok(filtered["content-type"]);
 });
 
-test("ScopedExternalAccessSandbox handles headers with mixed case keys", () => {
+test("ScopedExternalAccessSandbox handles headers with mixed case keys [scoped-external-access-sandbox.extended]", () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["test.example.com"],
     sensitiveHeaders: ["authorization"],
@@ -290,7 +290,7 @@ test("ScopedExternalAccessSandbox handles headers with mixed case keys", () => {
   assert.equal(filtered["HOST"], "example.com");
 });
 
-test("ScopedExternalAccessSandbox handles empty headers", () => {
+test("ScopedExternalAccessSandbox handles empty headers [scoped-external-access-sandbox.extended]", () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["test.example.com"],
   });
@@ -300,7 +300,7 @@ test("ScopedExternalAccessSandbox handles empty headers", () => {
   assert.deepStrictEqual(filtered, {});
 });
 
-test("ScopedExternalAccessSandbox handles headers with only sensitive headers", () => {
+test("ScopedExternalAccessSandbox handles headers with only sensitive headers [scoped-external-access-sandbox.extended]", () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["test.example.com"],
     sensitiveHeaders: ["authorization", "x-api-key"],
@@ -314,7 +314,7 @@ test("ScopedExternalAccessSandbox handles headers with only sensitive headers", 
   assert.deepStrictEqual(filtered, {});
 });
 
-test("ScopedExternalAccessSandbox preserves non-sensitive headers when filtering", () => {
+test("ScopedExternalAccessSandbox preserves non-sensitive headers when filtering [scoped-external-access-sandbox.extended]", () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["test.example.com"],
   });
@@ -338,7 +338,7 @@ test("ScopedExternalAccessSandbox preserves non-sensitive headers when filtering
 // Response Size Validation Extended Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("ScopedExternalAccessSandbox rejects large string response", () => {
+test("ScopedExternalAccessSandbox rejects large string response [scoped-external-access-sandbox.extended]", () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["test.example.com"],
     maxResponseSizeBytes: 10,
@@ -347,7 +347,7 @@ test("ScopedExternalAccessSandbox rejects large string response", () => {
   assert.equal(sandbox.validateResponseSize("hello world!"), false);
 });
 
-test("ScopedExternalAccessSandbox accepts small string response", () => {
+test("ScopedExternalAccessSandbox accepts small string response [scoped-external-access-sandbox.extended]", () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["test.example.com"],
     maxResponseSizeBytes: 100,
@@ -356,7 +356,7 @@ test("ScopedExternalAccessSandbox accepts small string response", () => {
   assert.equal(sandbox.validateResponseSize("short"), true);
 });
 
-test("ScopedExternalAccessSandbox validates JSON object string representation", () => {
+test("ScopedExternalAccessSandbox validates JSON object string representation [scoped-external-access-sandbox.extended]", () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["test.example.com"],
     maxResponseSizeBytes: 50,
@@ -370,7 +370,7 @@ test("ScopedExternalAccessSandbox validates JSON object string representation", 
   assert.equal(sandbox.validateResponseSize(largeObj), false);
 });
 
-test("ScopedExternalAccessSandbox validates array response size", () => {
+test("ScopedExternalAccessSandbox validates array response size [scoped-external-access-sandbox.extended]", () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["test.example.com"],
     maxResponseSizeBytes: 20,
@@ -383,7 +383,7 @@ test("ScopedExternalAccessSandbox validates array response size", () => {
   assert.equal(sandbox.validateResponseSize(largeArray), false);
 });
 
-test("ScopedExternalAccessSandbox validates number response", () => {
+test("ScopedExternalAccessSandbox validates number response [scoped-external-access-sandbox.extended]", () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["test.example.com"],
     maxResponseSizeBytes: 5,
@@ -394,7 +394,7 @@ test("ScopedExternalAccessSandbox validates number response", () => {
   assert.equal(sandbox.validateResponseSize(123456), false);
 });
 
-test("ScopedExternalAccessSandbox validates boolean response", () => {
+test("ScopedExternalAccessSandbox validates boolean response [scoped-external-access-sandbox.extended]", () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["test.example.com"],
     maxResponseSizeBytes: 5,
@@ -404,7 +404,7 @@ test("ScopedExternalAccessSandbox validates boolean response", () => {
   assert.equal(sandbox.validateResponseSize(false), true);
 });
 
-test("ScopedExternalAccessSandbox handles nested objects", () => {
+test("ScopedExternalAccessSandbox handles nested objects [scoped-external-access-sandbox.extended]", () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["test.example.com"],
     maxResponseSizeBytes: 100,
@@ -430,7 +430,7 @@ test("ScopedExternalAccessSandbox handles nested objects", () => {
 // Default Config Constants Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("ScopedExternalAccessSandbox has default sensitive headers", () => {
+test("ScopedExternalAccessSandbox has default sensitive headers [scoped-external-access-sandbox.extended]", () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["test.example.com"],
   });
@@ -454,7 +454,7 @@ test("ScopedExternalAccessSandbox has default sensitive headers", () => {
   assert.equal(filtered["content-type"], "text/html");
 });
 
-test("ScopedExternalAccessSandbox default maxResponseSizeBytes is 5MB", () => {
+test("ScopedExternalAccessSandbox default maxResponseSizeBytes is 5MB [scoped-external-access-sandbox.extended]", () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["test.example.com"],
   });
@@ -467,7 +467,7 @@ test("ScopedExternalAccessSandbox default maxResponseSizeBytes is 5MB", () => {
   assert.equal(sandbox.validateResponseSize(sixMBString), false);
 });
 
-test("ScopedExternalAccessSandbox default rateLimitPerMinute is 60", () => {
+test("ScopedExternalAccessSandbox default rateLimitPerMinute is 60 [scoped-external-access-sandbox.extended]", () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["ratelimit.example.com"],
   });
@@ -483,7 +483,7 @@ test("ScopedExternalAccessSandbox default rateLimitPerMinute is 60", () => {
 // Egress Proxy URL Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("ScopedExternalAccessSandbox constructs proxy URL with encoded target", () => {
+test("ScopedExternalAccessSandbox constructs proxy URL with encoded target [scoped-external-access-sandbox.extended]", () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["api.example.com"],
     egressProxyUrl: "https://proxy.example.com/proxy?url=",
@@ -501,7 +501,7 @@ test("ScopedExternalAccessSandbox constructs proxy URL with encoded target", () 
   assert.equal(sandbox.validateOutboundRequest(request.url), true);
 });
 
-test("ScopedExternalAccessSandbox handles egress proxy without trailing equals", () => {
+test("ScopedExternalAccessSandbox handles egress proxy without trailing equals [scoped-external-access-sandbox.extended]", () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["api.example.com"],
     egressProxyUrl: "https://proxy.example.com/proxy?url",
@@ -515,7 +515,7 @@ test("ScopedExternalAccessSandbox handles egress proxy without trailing equals",
   assert.equal(sandbox.validateOutboundRequest(request.url), true);
 });
 
-test("ScopedExternalAccessSandbox uses direct URL when no egress proxy", () => {
+test("ScopedExternalAccessSandbox uses direct URL when no egress proxy [scoped-external-access-sandbox.extended]", () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["api.example.com"],
     // No egressProxyUrl
@@ -533,7 +533,7 @@ test("ScopedExternalAccessSandbox uses direct URL when no egress proxy", () => {
 // executeScopedRequest Edge Cases
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("ScopedExternalAccessSandbox blocks request to disallowed domain", async () => {
+test("ScopedExternalAccessSandbox blocks request to disallowed domain [scoped-external-access-sandbox.extended]", async () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["allowed.example.com"],
   });
@@ -548,7 +548,7 @@ test("ScopedExternalAccessSandbox blocks request to disallowed domain", async ()
   assert.equal(response.status, 403);
 });
 
-test("ScopedExternalAccessSandbox blocks request when rate limited", async () => {
+test("ScopedExternalAccessSandbox blocks request when rate limited [scoped-external-access-sandbox.extended]", async () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["ratelimit.example.com"],
     rateLimitPerMinute: 1,
@@ -562,7 +562,7 @@ test("ScopedExternalAccessSandbox blocks request when rate limited", async () =>
   assert.equal(withinLimit, false);
 });
 
-test("ScopedExternalAccessSandbox handles request with all HTTP methods", async () => {
+test("ScopedExternalAccessSandbox handles request with all HTTP methods [scoped-external-access-sandbox.extended]", async () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["api.example.com"],
   });
@@ -580,7 +580,7 @@ test("ScopedExternalAccessSandbox handles request with all HTTP methods", async 
   }
 });
 
-test("ScopedExternalAccessSandbox handles request with custom headers", async () => {
+test("ScopedExternalAccessSandbox handles request with custom headers [scoped-external-access-sandbox.extended]", async () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["api.example.com"],
   });
@@ -599,7 +599,7 @@ test("ScopedExternalAccessSandbox handles request with custom headers", async ()
   assert.equal(allowed, true);
 });
 
-test("ScopedExternalAccessSandbox handles request with body for GET method", async () => {
+test("ScopedExternalAccessSandbox handles request with body for GET method [scoped-external-access-sandbox.extended]", async () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["api.example.com"],
   });
@@ -614,7 +614,7 @@ test("ScopedExternalAccessSandbox handles request with body for GET method", asy
   assert.equal(allowed, true);
 });
 
-test("ScopedExternalAccessSandbox handles request with null body", async () => {
+test("ScopedExternalAccessSandbox handles request with null body [scoped-external-access-sandbox.extended]", async () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["api.example.com"],
   });
@@ -633,7 +633,7 @@ test("ScopedExternalAccessSandbox handles request with null body", async () => {
 // validateOutboundRequest Edge Cases
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("ScopedExternalAccessSandbox handles URL with query parameters", () => {
+test("ScopedExternalAccessSandbox handles URL with query parameters [scoped-external-access-sandbox.extended]", () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["api.example.com"],
   });
@@ -642,7 +642,7 @@ test("ScopedExternalAccessSandbox handles URL with query parameters", () => {
   assert.equal(sandbox.validateOutboundRequest("https://api.example.com/path?key1=value1&key2=value2"), true);
 });
 
-test("ScopedExternalAccessSandbox handles URL with fragment", () => {
+test("ScopedExternalAccessSandbox handles URL with fragment [scoped-external-access-sandbox.extended]", () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["api.example.com"],
   });
@@ -650,7 +650,7 @@ test("ScopedExternalAccessSandbox handles URL with fragment", () => {
   assert.equal(sandbox.validateOutboundRequest("https://api.example.com#section"), true);
 });
 
-test("ScopedExternalAccessSandbox handles URL with special characters in path", () => {
+test("ScopedExternalAccessSandbox handles URL with special characters in path [scoped-external-access-sandbox.extended]", () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["api.example.com"],
   });
@@ -659,7 +659,7 @@ test("ScopedExternalAccessSandbox handles URL with special characters in path", 
   assert.equal(sandbox.validateOutboundRequest("https://api.example.com/path/with/slashes"), true);
 });
 
-test("ScopedExternalAccessSandbox handles URL with credentials (basic auth)", () => {
+test("ScopedExternalAccessSandbox handles URL with credentials (basic auth) [scoped-external-access-sandbox.extended]", () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["api.example.com"],
   });
@@ -668,7 +668,7 @@ test("ScopedExternalAccessSandbox handles URL with credentials (basic auth)", ()
   assert.equal(sandbox.validateOutboundRequest("https://user:pass@api.example.com"), true);
 });
 
-test("ScopedExternalAccessSandbox validates URL with IP address hostname", () => {
+test("ScopedExternalAccessSandbox validates URL with IP address hostname [scoped-external-access-sandbox.extended]", () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["api.example.com"],
   });
@@ -677,7 +677,7 @@ test("ScopedExternalAccessSandbox validates URL with IP address hostname", () =>
   assert.equal(sandbox.validateOutboundRequest("https://192.168.1.1"), false);
 });
 
-test("ScopedExternalAccessSandbox handles URL with localhost", () => {
+test("ScopedExternalAccessSandbox handles URL with localhost [scoped-external-access-sandbox.extended]", () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["localhost"],
   });
@@ -689,7 +689,7 @@ test("ScopedExternalAccessSandbox handles URL with localhost", () => {
 // Error Handling Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("ScopedExternalAccessSandbox handles invalid URL in validateOutboundRequest", async () => {
+test("ScopedExternalAccessSandbox handles invalid URL in validateOutboundRequest [scoped-external-access-sandbox.extended]", async () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["test.example.com"],
   });
@@ -699,7 +699,7 @@ test("ScopedExternalAccessSandbox handles invalid URL in validateOutboundRequest
   assert.equal(result, false);
 });
 
-test("ScopedExternalAccessSandbox handles empty URL in validateOutboundRequest", async () => {
+test("ScopedExternalAccessSandbox handles empty URL in validateOutboundRequest [scoped-external-access-sandbox.extended]", async () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["test.example.com"],
   });
@@ -708,7 +708,7 @@ test("ScopedExternalAccessSandbox handles empty URL in validateOutboundRequest",
   assert.equal(result, false);
 });
 
-test("ScopedExternalAccessSandbox handles null-like URL", async () => {
+test("ScopedExternalAccessSandbox handles null-like URL [scoped-external-access-sandbox.extended]", async () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["test.example.com"],
   });

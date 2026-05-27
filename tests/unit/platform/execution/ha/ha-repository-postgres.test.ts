@@ -142,7 +142,7 @@ function createMockAsyncDb() {
   };
 }
 
-test("PostgresHaRepository is instance of HaRepository", () => {
+test("PostgresHaRepository is instance of HaRepository [ha-repository-postgres]", () => {
   const mockDb = createMockAsyncDb() as any;
   const repo = new PostgresHaRepository(mockDb, "test-coordinator");
   // Verify it implements the HaRepository interface by having expected methods
@@ -157,7 +157,7 @@ test("PostgresHaRepository is instance of HaRepository", () => {
   assert.equal(typeof repo.getLatestEpoch, "function");
 });
 
-test("PostgresHaRepository implements HaRepository interface via upsertNode", async () => {
+test("PostgresHaRepository implements HaRepository interface via upsertNode [ha-repository-postgres]", async () => {
   const mockDb = createMockAsyncDb() as any;
   const repo = new PostgresHaRepository(mockDb, "test-coordinator") as any;
 
@@ -178,7 +178,7 @@ test("PostgresHaRepository implements HaRepository interface via upsertNode", as
   assert.equal(retrieved?.region, "us-east-1");
 });
 
-test("PostgresHaRepository.getNode returns undefined for non-existent node", async () => {
+test("PostgresHaRepository.getNode returns undefined for non-existent node [ha-repository-postgres]", async () => {
   const mockDb = createMockAsyncDb() as any;
   const repo = new PostgresHaRepository(mockDb, "test-coordinator") as any;
 
@@ -186,7 +186,7 @@ test("PostgresHaRepository.getNode returns undefined for non-existent node", asy
   assert.equal(result, undefined);
 });
 
-test("PostgresHaRepository.deleteNode removes node", async () => {
+test("PostgresHaRepository.deleteNode removes node [ha-repository-postgres]", async () => {
   const mockDb = createMockAsyncDb() as any;
   const repo = new PostgresHaRepository(mockDb, "test-coordinator") as any;
 
@@ -206,7 +206,7 @@ test("PostgresHaRepository.deleteNode removes node", async () => {
   assert.equal(result, undefined);
 });
 
-test("PostgresHaRepository.insertLease and getActiveLease work", async () => {
+test("PostgresHaRepository.insertLease and getActiveLease work [ha-repository-postgres]", async () => {
   const mockDb = createMockAsyncDb() as any;
   const repo = new PostgresHaRepository(mockDb, "test-coordinator") as any;
 
@@ -226,7 +226,7 @@ test("PostgresHaRepository.insertLease and getActiveLease work", async () => {
   assert.equal(retrieved?.leaseId, "lease-1");
 });
 
-test("PostgresHaRepository.insertEpoch and getLatestEpoch work", async () => {
+test("PostgresHaRepository.insertEpoch and getLatestEpoch work [ha-repository-postgres]", async () => {
   const mockDb = createMockAsyncDb() as any;
   const repo = new PostgresHaRepository(mockDb, "test-coordinator") as any;
 
@@ -246,7 +246,7 @@ test("PostgresHaRepository.insertEpoch and getLatestEpoch work", async () => {
   assert.equal(retrieved?.leaderNodeId, "node-1");
 });
 
-test("PostgresHaRepository.insertFailoverDecision and listFailoverDecisions work", async () => {
+test("PostgresHaRepository.insertFailoverDecision and listFailoverDecisions work [ha-repository-postgres]", async () => {
   const mockDb = createMockAsyncDb() as any;
   const repo = new PostgresHaRepository(mockDb, "test-coordinator") as any;
 
@@ -269,7 +269,7 @@ test("PostgresHaRepository.insertFailoverDecision and listFailoverDecisions work
   assert.equal(retrieved[0].outcome, "leader_changed");
 });
 
-test("PostgresHaRepository.updateLeaseStatus changes status", async () => {
+test("PostgresHaRepository.updateLeaseStatus changes status [ha-repository-postgres]", async () => {
   const mockDb = createMockAsyncDb() as any;
   const repo = new PostgresHaRepository(mockDb, "test-coordinator") as any;
 
@@ -290,7 +290,7 @@ test("PostgresHaRepository.updateLeaseStatus changes status", async () => {
   assert.equal(retrieved?.status, "expired");
 });
 
-test("PostgresHaRepository.updateEpochEnd marks epoch ended", async () => {
+test("PostgresHaRepository.updateEpochEnd marks epoch ended [ha-repository-postgres]", async () => {
   const mockDb = createMockAsyncDb() as any;
   const repo = new PostgresHaRepository(mockDb, "test-coordinator") as any;
 
@@ -310,7 +310,7 @@ test("PostgresHaRepository.updateEpochEnd marks epoch ended", async () => {
   assert.equal(retrieved?.endedAt, retrieved.endedAt); // endedAt is set
 });
 
-test("PostgresHaRepository.tryAcquireAdvisoryLock returns boolean", async () => {
+test("PostgresHaRepository.tryAcquireAdvisoryLock returns boolean [ha-repository-postgres]", async () => {
   const mockDb = createMockAsyncDb() as any;
   const repo = new PostgresHaRepository(mockDb, "test-coordinator") as any;
 
@@ -318,7 +318,7 @@ test("PostgresHaRepository.tryAcquireAdvisoryLock returns boolean", async () => 
   assert.equal(typeof result, "boolean");
 });
 
-test("PostgresHaRepository.getLeaseByNodeId returns lease for node", async () => {
+test("PostgresHaRepository.getLeaseByNodeId returns lease for node [ha-repository-postgres]", async () => {
   const mockDb = createMockAsyncDb() as any;
   const repo = new PostgresHaRepository(mockDb, "test-coordinator") as any;
 
@@ -338,7 +338,7 @@ test("PostgresHaRepository.getLeaseByNodeId returns lease for node", async () =>
   assert.equal(retrieved?.nodeId, "specific-node");
 });
 
-test("PostgresHaRepository.recordActionAudit inserts audit entry", async () => {
+test("PostgresHaRepository.recordActionAudit inserts audit entry [ha-repository-postgres]", async () => {
   const mockDb = createMockAsyncDb() as any;
   const repo = new PostgresHaRepository(mockDb, "test-coordinator") as any;
 

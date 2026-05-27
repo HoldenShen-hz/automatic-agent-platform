@@ -18,53 +18,53 @@ import { resetModelCallProvider, initializeModelCallProvider } from "../../../..
 // parseStepOutput
 // ---------------------------------------------------------------------------
 
-test("parseStepOutput parses JSON with summary and result", () => {
+test("parseStepOutput parses JSON with summary and result [multi-step-agent-round-loop]", () => {
   const content = JSON.stringify({ summary: "Test summary", result: "Test result" });
   const result = parseStepOutput(content, "step1");
   assert.equal(result.summary, "Test summary");
   assert.equal(result.result, "Test result");
 });
 
-test("parseStepOutput falls back to line parsing when not JSON", () => {
+test("parseStepOutput falls back to line parsing when not JSON [multi-step-agent-round-loop]", () => {
   const content = "First line summary\nSecond line content\nThird line content";
   const result = parseStepOutput(content, "step1");
   assert.equal(result.summary, "First line summary");
   assert.equal(result.result, "Second line content\nThird line content");
 });
 
-test("parseStepOutput strips markdown bullets from summary", () => {
+test("parseStepOutput strips markdown bullets from summary [multi-step-agent-round-loop]", () => {
   const content = "- This is a summary\nThis is the result";
   const result = parseStepOutput(content, "step1");
   assert.equal(result.summary, "This is a summary");
 });
 
-test("parseStepOutput handles invalid JSON gracefully", () => {
+test("parseStepOutput handles invalid JSON gracefully [multi-step-agent-round-loop]", () => {
   const content = "not json at all {broken";
   const result = parseStepOutput(content, "step1");
   assert.equal(result.summary, "Step step1 completed");
 });
 
-test("parseStepOutput handles empty content", () => {
+test("parseStepOutput handles empty content [multi-step-agent-round-loop]", () => {
   const result = parseStepOutput("", "step1");
   assert.equal(result.summary, "Step step1 completed");
   assert.equal(result.result, "Step executed: step1");
 });
 
-test("parseStepOutput handles missing fields in JSON", () => {
+test("parseStepOutput handles missing fields in JSON [multi-step-agent-round-loop]", () => {
   const content = JSON.stringify({});
   const result = parseStepOutput(content, "step1");
   assert.equal(result.summary, "Step step1 completed");
   assert.equal(result.result, "{}");
 });
 
-test("parseStepOutput handles single line content returns default", () => {
+test("parseStepOutput handles single line content returns default [multi-step-agent-round-loop]", () => {
   const content = "Single line content";
   const result = parseStepOutput(content, "step1");
   // Single line falls back to default since it doesn't have 2+ lines
   assert.equal(result.summary, "Step step1 completed");
 });
 
-test("parseStepOutput handles multi-line with bullets", () => {
+test("parseStepOutput handles multi-line with bullets [multi-step-agent-round-loop]", () => {
   const content = "* Summary line\nResult line 1\nResult line 2";
   const result = parseStepOutput(content, "step1");
   assert.equal(result.summary, "Summary line");
@@ -75,7 +75,7 @@ test("parseStepOutput handles multi-line with bullets", () => {
 // fallbackStepOutput
 // ---------------------------------------------------------------------------
 
-test("fallbackStepOutput handles intake_triage step", () => {
+test("fallbackStepOutput handles intake_triage step [multi-step-agent-round-loop]", () => {
   const input: AgentRoundLoopInput = {
     stepId: "intake_triage",
     roleId: "triage",
@@ -94,7 +94,7 @@ test("fallbackStepOutput handles intake_triage step", () => {
   assert.equal(result.finishReason, "stop");
 });
 
-test("fallbackStepOutput handles draft_solution step", () => {
+test("fallbackStepOutput handles draft_solution step [multi-step-agent-round-loop]", () => {
   const input: AgentRoundLoopInput = {
     stepId: "draft_solution",
     roleId: "drafter",
@@ -110,7 +110,7 @@ test("fallbackStepOutput handles draft_solution step", () => {
   assert.equal(result.finishReason, "stop");
 });
 
-test("fallbackStepOutput handles final_review step", () => {
+test("fallbackStepOutput handles final_review step [multi-step-agent-round-loop]", () => {
   const input: AgentRoundLoopInput = {
     stepId: "final_review",
     roleId: "reviewer",
@@ -125,7 +125,7 @@ test("fallbackStepOutput handles final_review step", () => {
   assert.equal(result.finishReason, "stop");
 });
 
-test("fallbackStepOutput handles unknown step", () => {
+test("fallbackStepOutput handles unknown step [multi-step-agent-round-loop]", () => {
   const input: AgentRoundLoopInput = {
     stepId: "unknown_step",
     roleId: "agent",
@@ -140,7 +140,7 @@ test("fallbackStepOutput handles unknown step", () => {
   assert.equal(result.finishReason, "stop");
 });
 
-test("fallbackStepOutput returns correct structure", () => {
+test("fallbackStepOutput returns correct structure [multi-step-agent-round-loop]", () => {
   const input: AgentRoundLoopInput = {
     stepId: "test",
     roleId: "role",
@@ -162,7 +162,7 @@ test("fallbackStepOutput returns correct structure", () => {
 // Additional parseStepOutput edge cases
 // ---------------------------------------------------------------------------
 
-test("parseStepOutput handles JSON with only summary field", () => {
+test("parseStepOutput handles JSON with only summary field [multi-step-agent-round-loop]", () => {
   const content = JSON.stringify({ summary: "Only summary provided" });
   const result = parseStepOutput(content, "step1");
   assert.equal(result.summary, "Only summary provided");
@@ -170,21 +170,21 @@ test("parseStepOutput handles JSON with only summary field", () => {
   assert.equal(result.result, content);
 });
 
-test("parseStepOutput handles JSON with only result field", () => {
+test("parseStepOutput handles JSON with only result field [multi-step-agent-round-loop]", () => {
   const content = JSON.stringify({ result: "Only result provided" });
   const result = parseStepOutput(content, "step1");
   assert.equal(result.summary, "Step step1 completed");
   assert.equal(result.result, "Only result provided");
 });
 
-test("parseStepOutput handles JSON with extra fields ignored", () => {
+test("parseStepOutput handles JSON with extra fields ignored [multi-step-agent-round-loop]", () => {
   const content = JSON.stringify({ summary: "Summary", result: "Result", extra: "ignored", number: 42 });
   const result = parseStepOutput(content, "step1");
   assert.equal(result.summary, "Summary");
   assert.equal(result.result, "Result");
 });
 
-test("parseStepOutput handles content starting with spaces before JSON", () => {
+test("parseStepOutput handles content starting with spaces before JSON [multi-step-agent-round-loop]", () => {
   const content = "   " + JSON.stringify({ summary: "Summary", result: "Result" });
   const result = parseStepOutput(content, "step1");
   // After trim(), content starts with '{' so it gets parsed as JSON
@@ -192,7 +192,7 @@ test("parseStepOutput handles content starting with spaces before JSON", () => {
   assert.equal(result.result, "Result");
 });
 
-test("parseStepOutput handles content with tabs in bullet lines", () => {
+test("parseStepOutput handles content with tabs in bullet lines [multi-step-agent-round-loop]", () => {
   const content = "\t\t* Summary line\nResult line 1\nResult line 2";
   const result = parseStepOutput(content, "step1");
   // Tabs before bullet are not stripped - bullet regex only matches ^[*-] at line start
@@ -200,7 +200,7 @@ test("parseStepOutput handles content with tabs in bullet lines", () => {
   assert.equal(result.result, "Result line 1\nResult line 2");
 });
 
-test("parseStepOutput handles content with leading whitespace on lines", () => {
+test("parseStepOutput handles content with leading whitespace on lines [multi-step-agent-round-loop]", () => {
   const content = "  First line   \n  Second line  \n  Third line";
   const result = parseStepOutput(content, "step1");
   assert.equal(result.summary, "First line");
@@ -208,20 +208,20 @@ test("parseStepOutput handles content with leading whitespace on lines", () => {
   assert.equal(result.result, "Second line  \n  Third line");
 });
 
-test("parseStepOutput handles content with empty first line", () => {
+test("parseStepOutput handles content with empty first line [multi-step-agent-round-loop]", () => {
   const content = "\nFirst actual line\nSecond line";
   const result = parseStepOutput(content, "step1");
   // After filtering empty lines, first line is "First actual line", not empty
   assert.equal(result.summary, "First actual line");
 });
 
-test("parseStepOutput handles content with only newlines and spaces", () => {
+test("parseStepOutput handles content with only newlines and spaces [multi-step-agent-round-loop]", () => {
   const content = "\n   \n   \n";
   const result = parseStepOutput(content, "step1");
   assert.equal(result.summary, "Step step1 completed");
 });
 
-test("parseStepOutput handles plus bullet style", () => {
+test("parseStepOutput handles plus bullet style [multi-step-agent-round-loop]", () => {
   const content = "+ Summary with plus\nResult content";
   const result = parseStepOutput(content, "step1");
   // Plus sign is NOT stripped by the bullet regex (only * and - are matched)
@@ -229,21 +229,21 @@ test("parseStepOutput handles plus bullet style", () => {
   assert.equal(result.result, "Result content");
 });
 
-test("parseStepOutput handles mixed bullet styles", () => {
+test("parseStepOutput handles mixed bullet styles [multi-step-agent-round-loop]", () => {
   const content = "- First style\n+ Second style\n* Third style\nResult";
   const result = parseStepOutput(content, "step1");
   assert.equal(result.summary, "First style");
   assert.equal(result.result, "+ Second style\n* Third style\nResult");
 });
 
-test("parseStepOutput handles JSON with nested objects", () => {
+test("parseStepOutput handles JSON with nested objects [multi-step-agent-round-loop]", () => {
   const content = JSON.stringify({ summary: "Summary", result: "Result", nested: { foo: "bar" } });
   const result = parseStepOutput(content, "step1");
   assert.equal(result.summary, "Summary");
   assert.equal(result.result, "Result");
 });
 
-test("parseStepOutput handles very long single line content", () => {
+test("parseStepOutput handles very long single line content [multi-step-agent-round-loop]", () => {
   const longLine = "a".repeat(10000);
   const result = parseStepOutput(longLine, "step1");
   assert.equal(result.summary, "Step step1 completed");
@@ -253,7 +253,7 @@ test("parseStepOutput handles very long single line content", () => {
 // Additional fallbackStepOutput edge cases
 // ---------------------------------------------------------------------------
 
-test("fallbackStepOutput intake_triage with empty request", () => {
+test("fallbackStepOutput intake_triage with empty request [multi-step-agent-round-loop]", () => {
   const input: AgentRoundLoopInput = {
     stepId: "intake_triage",
     roleId: "triage",
@@ -266,7 +266,7 @@ test("fallbackStepOutput intake_triage with empty request", () => {
   assert.ok(result.result.includes("Route reason="));
 });
 
-test("fallbackStepOutput draft_solution with empty priorSummaries", () => {
+test("fallbackStepOutput draft_solution with empty priorSummaries [multi-step-agent-round-loop]", () => {
   const input: AgentRoundLoopInput = {
     stepId: "draft_solution",
     roleId: "drafter",
@@ -279,7 +279,7 @@ test("fallbackStepOutput draft_solution with empty priorSummaries", () => {
   assert.ok(result.result.includes("Draft generated from prior steps: "));
 });
 
-test("fallbackStepOutput final_review with single prior summary", () => {
+test("fallbackStepOutput final_review with single prior summary [multi-step-agent-round-loop]", () => {
   const input: AgentRoundLoopInput = {
     stepId: "final_review",
     roleId: "reviewer",
@@ -292,7 +292,7 @@ test("fallbackStepOutput final_review with single prior summary", () => {
   assert.ok(result.result.includes("Only one prior step"));
 });
 
-test("fallbackStepOutput unknown step with special characters in roleId", () => {
+test("fallbackStepOutput unknown step with special characters in roleId [multi-step-agent-round-loop]", () => {
   const input: AgentRoundLoopInput = {
     stepId: "custom-step-123",
     roleId: "role-with-dashes_and_underscores",
@@ -306,7 +306,7 @@ test("fallbackStepOutput unknown step with special characters in roleId", () => 
   assert.ok(result.result.includes("request with special chars: !@#$%"));
 });
 
-test("fallbackStepOutput iterations is always 0", () => {
+test("fallbackStepOutput iterations is always 0 [multi-step-agent-round-loop]", () => {
   const input: AgentRoundLoopInput = {
     stepId: "intake_triage",
     roleId: "triage",
@@ -318,7 +318,7 @@ test("fallbackStepOutput iterations is always 0", () => {
   assert.equal(result.iterations, 0);
 });
 
-test("fallbackStepOutput toolCalls is always empty array", () => {
+test("fallbackStepOutput toolCalls is always empty array [multi-step-agent-round-loop]", () => {
   const input: AgentRoundLoopInput = {
     stepId: "draft_solution",
     roleId: "drafter",
@@ -331,7 +331,7 @@ test("fallbackStepOutput toolCalls is always empty array", () => {
   assert.equal(result.toolCalls.length, 0);
 });
 
-test("fallbackStepOutput llmResult is always null", () => {
+test("fallbackStepOutput llmResult is always null [multi-step-agent-round-loop]", () => {
   const input: AgentRoundLoopInput = {
     stepId: "final_review",
     roleId: "reviewer",
@@ -347,7 +347,7 @@ test("fallbackStepOutput llmResult is always null", () => {
 // executeAgentRoundLoop tests
 // ---------------------------------------------------------------------------
 
-test("executeAgentRoundLoop falls back when no provider is configured", async () => {
+test("executeAgentRoundLoop falls back when no provider is configured [multi-step-agent-round-loop]", async () => {
   // Reset provider to ensure no provider is available
   resetModelCallProvider();
   initializeModelCallProvider({});
@@ -368,7 +368,7 @@ test("executeAgentRoundLoop falls back when no provider is configured", async ()
   assert.ok(Array.isArray(result.toolCalls));
 });
 
-test("executeAgentRoundLoop returns valid result structure", async () => {
+test("executeAgentRoundLoop returns valid result structure [multi-step-agent-round-loop]", async () => {
   resetModelCallProvider();
   // No provider configured - will use fallback
   initializeModelCallProvider({});
@@ -390,7 +390,7 @@ test("executeAgentRoundLoop returns valid result structure", async () => {
   assert.ok(["stop", "max_iterations", "error"].includes(result.finishReason));
 });
 
-test("executeAgentRoundLoop with custom maxIterations", async () => {
+test("executeAgentRoundLoop with custom maxIterations [multi-step-agent-round-loop]", async () => {
   resetModelCallProvider();
   initializeModelCallProvider({});
 
@@ -409,7 +409,7 @@ test("executeAgentRoundLoop with custom maxIterations", async () => {
   assert.equal(result.finishReason, "stop");
 });
 
-test("executeAgentRoundLoop with tools defined but no provider", async () => {
+test("executeAgentRoundLoop with tools defined but no provider [multi-step-agent-round-loop]", async () => {
   resetModelCallProvider();
   initializeModelCallProvider({});
 
@@ -438,7 +438,7 @@ test("executeAgentRoundLoop with tools defined but no provider", async () => {
 // buildStepOutput tests
 // ---------------------------------------------------------------------------
 
-test("buildStepOutput returns correct structure with fallback", async () => {
+test("buildStepOutput returns correct structure with fallback [multi-step-agent-round-loop]", async () => {
   resetModelCallProvider();
   initializeModelCallProvider({});
 
@@ -458,7 +458,7 @@ test("buildStepOutput returns correct structure with fallback", async () => {
   assert.ok(!("llmResult" in result) || result.llmResult === undefined);
 });
 
-test("buildStepOutput with custom maxIterations", async () => {
+test("buildStepOutput with custom maxIterations [multi-step-agent-round-loop]", async () => {
   resetModelCallProvider();
   initializeModelCallProvider({});
 
@@ -477,7 +477,7 @@ test("buildStepOutput with custom maxIterations", async () => {
   assert.ok(typeof result.result === "string");
 });
 
-test("buildStepOutput with tools", async () => {
+test("buildStepOutput with tools [multi-step-agent-round-loop]", async () => {
   resetModelCallProvider();
   initializeModelCallProvider({});
 
@@ -506,7 +506,7 @@ test("buildStepOutput with tools", async () => {
 // ToolCallResult interface tests
 // ---------------------------------------------------------------------------
 
-test("ToolCallResult structure is correct", () => {
+test("ToolCallResult structure is correct [multi-step-agent-round-loop]", () => {
   const toolCallResult: ToolCallResult = {
     toolCallId: "call_123",
     toolName: "test_tool",
@@ -520,7 +520,7 @@ test("ToolCallResult structure is correct", () => {
   assert.equal(toolCallResult.success, true);
 });
 
-test("AgentRoundLoopResult structure is correct", () => {
+test("AgentRoundLoopResult structure is correct [multi-step-agent-round-loop]", () => {
   const mockLlmResult: LlmModelCallResult = {
     id: "msg_123",
     content: "Test content",
@@ -550,7 +550,7 @@ test("AgentRoundLoopResult structure is correct", () => {
   assert.ok(Array.isArray(result.toolCalls));
 });
 
-test("AgentRoundLoopResult with max_iterations finishReason", () => {
+test("AgentRoundLoopResult with max_iterations finishReason [multi-step-agent-round-loop]", () => {
   const result: AgentRoundLoopResult = {
     summary: "Partial result",
     result: "Iteration limit reached",
@@ -564,7 +564,7 @@ test("AgentRoundLoopResult with max_iterations finishReason", () => {
   assert.equal(result.iterations, 10);
 });
 
-test("AgentRoundLoopResult with error finishReason", () => {
+test("AgentRoundLoopResult with error finishReason [multi-step-agent-round-loop]", () => {
   const result: AgentRoundLoopResult = {
     summary: "Error result",
     result: "An error occurred",
@@ -582,7 +582,7 @@ test("AgentRoundLoopResult with error finishReason", () => {
 // Input validation tests
 // ---------------------------------------------------------------------------
 
-test("AgentRoundLoopInput interface accepts valid input", () => {
+test("AgentRoundLoopInput interface accepts valid input [multi-step-agent-round-loop]", () => {
   const input: AgentRoundLoopInput = {
     stepId: "test_step",
     roleId: "test_role",
@@ -602,7 +602,7 @@ test("AgentRoundLoopInput interface accepts valid input", () => {
   assert.equal(input.maxIterations, 5);
 });
 
-test("AgentRoundLoopInput tools field is optional", () => {
+test("AgentRoundLoopInput tools field is optional [multi-step-agent-round-loop]", () => {
   const input: AgentRoundLoopInput = {
     stepId: "test",
     roleId: "role",
@@ -614,7 +614,7 @@ test("AgentRoundLoopInput tools field is optional", () => {
   assert.equal(input.tools, undefined);
 });
 
-test("AgentRoundLoopInput maxIterations defaults are handled by function", () => {
+test("AgentRoundLoopInput maxIterations defaults are handled by function [multi-step-agent-round-loop]", () => {
   const input: AgentRoundLoopInput = {
     stepId: "test",
     roleId: "role",
@@ -632,7 +632,7 @@ test("AgentRoundLoopInput maxIterations defaults are handled by function", () =>
 // Edge case tests for executeAgentRoundLoop with mocked provider
 // ---------------------------------------------------------------------------
 
-test("executeAgentRoundLoop with provider returning empty content", async () => {
+test("executeAgentRoundLoop with provider returning empty content [multi-step-agent-round-loop]", async () => {
   // This test verifies the behavior when priorSummaries is empty
   resetModelCallProvider();
   initializeModelCallProvider({});
@@ -651,7 +651,7 @@ test("executeAgentRoundLoop with provider returning empty content", async () => 
   assert.ok(result.summary.length > 0);
 });
 
-test("executeAgentRoundLoop formats priorSummaries correctly when present", async () => {
+test("executeAgentRoundLoop formats priorSummaries correctly when present [multi-step-agent-round-loop]", async () => {
   resetModelCallProvider();
   initializeModelCallProvider({});
 
@@ -668,7 +668,7 @@ test("executeAgentRoundLoop formats priorSummaries correctly when present", asyn
   assert.ok(typeof result.result === "string");
 });
 
-test("executeAgentRoundLoop finishReason enum values", async () => {
+test("executeAgentRoundLoop finishReason enum values [multi-step-agent-round-loop]", async () => {
   resetModelCallProvider();
   initializeModelCallProvider({});
 
@@ -686,7 +686,7 @@ test("executeAgentRoundLoop finishReason enum values", async () => {
   assert.ok(["stop", "max_iterations", "error"].includes(result.finishReason));
 });
 
-test("executeAgentRoundLoop handles various step IDs", async () => {
+test("executeAgentRoundLoop handles various step IDs [multi-step-agent-round-loop]", async () => {
   resetModelCallProvider();
   initializeModelCallProvider({});
 
@@ -706,7 +706,7 @@ test("executeAgentRoundLoop handles various step IDs", async () => {
   }
 });
 
-test("executeAgentRoundLoop handles various role IDs", async () => {
+test("executeAgentRoundLoop handles various role IDs [multi-step-agent-round-loop]", async () => {
   resetModelCallProvider();
   initializeModelCallProvider({});
 
@@ -730,7 +730,7 @@ test("executeAgentRoundLoop handles various role IDs", async () => {
 // Summary and result content tests
 // ---------------------------------------------------------------------------
 
-test("parseStepOutput with result containing newlines preserved", () => {
+test("parseStepOutput with result containing newlines preserved [multi-step-agent-round-loop]", () => {
   const content = "Summary line\nLine 1 of result\nLine 2 of result\nLine 3 of result";
   const result = parseStepOutput(content, "multiline_step");
   assert.equal(result.summary, "Summary line");
@@ -739,7 +739,7 @@ test("parseStepOutput with result containing newlines preserved", () => {
   assert.ok(result.result.includes("Line 3"));
 });
 
-test("parseStepOutput with JSON containing newlines in result", () => {
+test("parseStepOutput with JSON containing newlines in result [multi-step-agent-round-loop]", () => {
   const content = JSON.stringify({
     summary: "JSON Summary",
     result: "Line 1\nLine 2\nLine 3",
@@ -749,33 +749,33 @@ test("parseStepOutput with JSON containing newlines in result", () => {
   assert.equal(result.result, "Line 1\nLine 2\nLine 3");
 });
 
-test("parseStepOutput with Unicode content", () => {
+test("parseStepOutput with Unicode content [multi-step-agent-round-loop]", () => {
   const content = "Unicode summary: 你好世界\nResult: 🎉🎊";
   const result = parseStepOutput(content, "unicode_step");
   assert.ok(result.summary.includes("Unicode summary"));
 });
 
-test("parseStepOutput with empty JSON object", () => {
+test("parseStepOutput with empty JSON object [multi-step-agent-round-loop]", () => {
   const content = "{}";
   const result = parseStepOutput(content, "empty_json_step");
   assert.equal(result.summary, "Step empty_json_step completed");
   assert.equal(result.result, "{}");
 });
 
-test("parseStepOutput with JSON null values", () => {
+test("parseStepOutput with JSON null values [multi-step-agent-round-loop]", () => {
   const content = JSON.stringify({ summary: null, result: null });
   const result = parseStepOutput(content, "null_json_step");
   assert.equal(result.summary, "Step null_json_step completed");
   assert.equal(result.result, "{\"summary\":null,\"result\":null}");
 });
 
-test("parseStepOutput with multiple bullet styles on same line", () => {
+test("parseStepOutput with multiple bullet styles on same line [multi-step-agent-round-loop]", () => {
   const content = "-*+ Mixed bullets\nResult";
   const result = parseStepOutput(content, "mixed_bullet_step");
   assert.equal(result.summary, "*+ Mixed bullets");
 });
 
-test("parseStepOutput line count edge case", () => {
+test("parseStepOutput line count edge case [multi-step-agent-round-loop]", () => {
   // Exactly 2 lines
   const twoLines = "Line one\nLine two";
   const r1 = parseStepOutput(twoLines, "step");
@@ -792,7 +792,7 @@ test("parseStepOutput line count edge case", () => {
 // Integration-style tests for complete flow
 // ---------------------------------------------------------------------------
 
-test("complete flow with intake_triage returns expected summary", async () => {
+test("complete flow with intake_triage returns expected summary [multi-step-agent-round-loop]", async () => {
   resetModelCallProvider();
   initializeModelCallProvider({});
 
@@ -809,7 +809,7 @@ test("complete flow with intake_triage returns expected summary", async () => {
   assert.ok(result.summary.includes("triaged") || result.summary.includes("Step intake_triage"));
 });
 
-test("complete flow with draft_solution returns expected summary", async () => {
+test("complete flow with draft_solution returns expected summary [multi-step-agent-round-loop]", async () => {
   resetModelCallProvider();
   initializeModelCallProvider({});
 
@@ -826,7 +826,7 @@ test("complete flow with draft_solution returns expected summary", async () => {
   assert.ok(result.summary.includes("Draft") || result.summary.includes("Step draft_solution"));
 });
 
-test("complete flow with final_review returns expected summary", async () => {
+test("complete flow with final_review returns expected summary [multi-step-agent-round-loop]", async () => {
   resetModelCallProvider();
   initializeModelCallProvider({});
 

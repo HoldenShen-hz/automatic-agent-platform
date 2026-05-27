@@ -4,7 +4,7 @@ import test from "node:test";
 import { buildStableGrayReleasePlaybook } from "../../../../../src/platform/shared/stability/stable-gray-release-rehearsal.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 
-test("buildStableGrayReleasePlaybook produces gray cohorts, rollback switches, and guardrails", () => {
+test("buildStableGrayReleasePlaybook produces gray cohorts, rollback switches, and guardrails [stable-gray-release-rehearsal]", () => {
   const workspace = createTempWorkspace("aa-gray-playbook-");
 
   try {
@@ -54,7 +54,7 @@ test("buildStableGrayReleasePlaybook produces gray cohorts, rollback switches, a
   }
 });
 
-test("buildStableGrayReleasePlaybook handles failed scenario in evidence", () => {
+test("buildStableGrayReleasePlaybook handles failed scenario in evidence [stable-gray-release-rehearsal]", () => {
   const workspace = createTempWorkspace("aa-gray-failed-");
 
   try {
@@ -97,7 +97,7 @@ test("buildStableGrayReleasePlaybook handles failed scenario in evidence", () =>
   }
 });
 
-test("buildStableGrayReleasePlaybook handles all scenarios failing", () => {
+test("buildStableGrayReleasePlaybook handles all scenarios failing [stable-gray-release-rehearsal]", () => {
   const workspace = createTempWorkspace("aa-gray-all-fail-");
 
   try {

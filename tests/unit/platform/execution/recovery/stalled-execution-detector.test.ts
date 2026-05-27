@@ -24,7 +24,7 @@ function createMockStore(records: Array<{
   } as unknown as { operations: { listActiveExecutionActivity: () => typeof records } };
 }
 
-test("StalledExecutionDetector.detect returns empty array when no active executions", () => {
+test("StalledExecutionDetector.detect returns empty array when no active executions [stalled-execution-detector]", () => {
   const store = createMockStore([]);
   const detector = new StalledExecutionDetector(store as any);
 
@@ -33,7 +33,7 @@ test("StalledExecutionDetector.detect returns empty array when no active executi
   assert.deepEqual(results, []);
 });
 
-test("StalledExecutionDetector.detect returns empty when executions are not stale", () => {
+test("StalledExecutionDetector.detect returns empty when executions are not stale [stalled-execution-detector]", () => {
   const now = new Date().toISOString();
   const recent = new Date(Date.now() - 60 * 1000).toISOString(); // 1 minute ago
 
@@ -54,7 +54,7 @@ test("StalledExecutionDetector.detect returns empty when executions are not stal
   assert.deepEqual(results, []);
 });
 
-test("StalledExecutionDetector.detect detects stale execution with missing heartbeat", () => {
+test("StalledExecutionDetector.detect detects stale execution with missing heartbeat [stalled-execution-detector]", () => {
   const now = new Date().toISOString();
   const staleTime = new Date(Date.now() - 10 * 60 * 1000).toISOString(); // 10 minutes ago
 
@@ -82,7 +82,7 @@ test("StalledExecutionDetector.detect detects stale execution with missing heart
   assert.equal(results[0]!.recommendedAction, "lease_reclaim");
 });
 
-test("StalledExecutionDetector.detect detects stale execution with no progress despite heartbeat", () => {
+test("StalledExecutionDetector.detect detects stale execution with no progress despite heartbeat [stalled-execution-detector]", () => {
   const now = new Date().toISOString();
   const staleTime = new Date(Date.now() - 10 * 60 * 1000).toISOString(); // 10 minutes ago
   const recentHeartbeat = new Date(Date.now() - 1 * 60 * 1000).toISOString(); // 1 minute ago
@@ -111,7 +111,7 @@ test("StalledExecutionDetector.detect detects stale execution with no progress d
   assert.equal(results[0]!.recommendedAction, "restart_or_escalate");
 });
 
-test("StalledExecutionDetector.detect uses maxIso to determine lastProgressAt", () => {
+test("StalledExecutionDetector.detect uses maxIso to determine lastProgressAt [stalled-execution-detector]", () => {
   const now = new Date().toISOString();
   const oldTime = new Date(Date.now() - 10 * 60 * 1000).toISOString();
   const newerTime = new Date(Date.now() - 5 * 60 * 1000).toISOString();
@@ -139,7 +139,7 @@ test("StalledExecutionDetector.detect uses maxIso to determine lastProgressAt", 
   assert.equal(results[0]!.lastProgressAt, newerTime);
 });
 
-test("StalledExecutionDetector.detect returns multiple findings", () => {
+test("StalledExecutionDetector.detect returns multiple findings [stalled-execution-detector]", () => {
   const now = new Date().toISOString();
   const staleTime = new Date(Date.now() - 10 * 60 * 1000).toISOString();
 
@@ -171,7 +171,7 @@ test("StalledExecutionDetector.detect returns multiple findings", () => {
   assert.equal(results.length, 2);
 });
 
-test("StalledExecutionDetector.detect uses default options", () => {
+test("StalledExecutionDetector.detect uses default options [stalled-execution-detector]", () => {
   const now = new Date().toISOString();
   const staleTime = new Date(Date.now() - 10 * 60 * 1000).toISOString();
 
@@ -194,7 +194,7 @@ test("StalledExecutionDetector.detect uses default options", () => {
   assert.equal(results[0]!.staleKind, "missing_heartbeat");
 });
 
-test("StalledExecutionDetector.isoMinusMs correctly calculates timestamps", () => {
+test("StalledExecutionDetector.isoMinusMs correctly calculates timestamps [stalled-execution-detector]", () => {
   const now = new Date().toISOString();
   const staleTime = new Date(Date.now() - 10 * 60 * 1000).toISOString();
 
@@ -222,7 +222,7 @@ test("StalledExecutionDetector.isoMinusMs correctly calculates timestamps", () =
   assert.equal(results.length, 1);
 });
 
-test("StalledExecutionFinding has correct structure", () => {
+test("StalledExecutionFinding has correct structure [stalled-execution-detector]", () => {
   const now = new Date().toISOString();
   const staleTime = new Date(Date.now() - 10 * 60 * 1000).toISOString();
 
@@ -251,7 +251,7 @@ test("StalledExecutionFinding has correct structure", () => {
   assert.ok("recommendedAction" in finding);
 });
 
-test("StalledExecutionDetectionOptions defaults", () => {
+test("StalledExecutionDetectionOptions defaults [stalled-execution-detector]", () => {
   const store = createMockStore([]);
   const detector = new StalledExecutionDetector(store as any);
 
@@ -260,7 +260,7 @@ test("StalledExecutionDetectionOptions defaults", () => {
   assert.deepEqual(results, []);
 });
 
-test("staleKind is one of the expected values", () => {
+test("staleKind is one of the expected values [stalled-execution-detector]", () => {
   const now = new Date().toISOString();
   const staleTime = new Date(Date.now() - 10 * 60 * 1000).toISOString();
 
@@ -282,7 +282,7 @@ test("staleKind is one of the expected values", () => {
   assert.ok(staleKind === "missing_heartbeat" || staleKind === "no_progress");
 });
 
-test("recommendedAction is one of the expected values", () => {
+test("recommendedAction is one of the expected values [stalled-execution-detector]", () => {
   const now = new Date().toISOString();
   const staleTime = new Date(Date.now() - 10 * 60 * 1000).toISOString();
 
@@ -304,7 +304,7 @@ test("recommendedAction is one of the expected values", () => {
   assert.ok(recommendedAction === "lease_reclaim" || recommendedAction === "restart_or_escalate");
 });
 
-test("StalledExecutionDetector.detect uses updatedAt when latestEventAt is null", () => {
+test("StalledExecutionDetector.detect uses updatedAt when latestEventAt is null [stalled-execution-detector]", () => {
   const now = new Date().toISOString();
   const staleTime = new Date(Date.now() - 10 * 60 * 1000).toISOString();
 
@@ -331,7 +331,7 @@ test("StalledExecutionDetector.detect uses updatedAt when latestEventAt is null"
   assert.equal(results[0]!.lastProgressAt, staleTime);
 });
 
-test("StalledExecutionDetector.detect handles heartbeat at exact boundary", () => {
+test("StalledExecutionDetector.detect handles heartbeat at exact boundary [stalled-execution-detector]", () => {
   const now = new Date("2025-01-01T00:10:00.000Z");
   const heartbeatTime = new Date("2025-01-01T00:08:00.000Z"); // exactly 2 minutes ago (boundary)
   const staleTime = new Date("2025-01-01T00:05:00.000Z"); // 5 minutes ago
@@ -362,7 +362,7 @@ test("StalledExecutionDetector.detect handles heartbeat at exact boundary", () =
   assert.equal(results[0]!.staleKind, "missing_heartbeat");
 });
 
-test("StalledExecutionDetector.detect handles stale detection at exact threshold", () => {
+test("StalledExecutionDetector.detect handles stale detection at exact threshold [stalled-execution-detector]", () => {
   const now = new Date("2025-01-01T00:10:00.000Z");
   const staleTime = new Date("2025-01-01T00:05:00.001Z"); // just over 5 minutes ago
 
@@ -388,7 +388,7 @@ test("StalledExecutionDetector.detect handles stale detection at exact threshold
   assert.equal(results.length, 0);
 });
 
-test("StalledExecutionDetector.detect filters out non-stale executions across multiple", () => {
+test("StalledExecutionDetector.detect filters out non-stale executions across multiple [stalled-execution-detector]", () => {
   const now = new Date().toISOString();
   const staleTime = new Date(Date.now() - 10 * 60 * 1000).toISOString();
   const recentTime = new Date(Date.now() - 1 * 60 * 1000).toISOString();
@@ -433,7 +433,7 @@ test("StalledExecutionDetector.detect filters out non-stale executions across mu
   assert.ok(!results.some((r) => r.executionId === "exec-recent"));
 });
 
-test("StalledExecutionDetector.detect handles all different status values", () => {
+test("StalledExecutionDetector.detect handles all different status values [stalled-execution-detector]", () => {
   const now = new Date().toISOString();
   const staleTime = new Date(Date.now() - 10 * 60 * 1000).toISOString();
   const statuses = ["created", "prechecking", "executing", "blocked"] as const;
@@ -456,7 +456,7 @@ test("StalledExecutionDetector.detect handles all different status values", () =
   assert.equal(results.length, 4);
 });
 
-test("StalledExecutionFinding structure contains all required fields", () => {
+test("StalledExecutionFinding structure contains all required fields [stalled-execution-detector]", () => {
   const finding: StalledExecutionFinding = {
     executionId: "exec-test",
     taskId: "task-test",
@@ -478,7 +478,7 @@ test("StalledExecutionFinding structure contains all required fields", () => {
   assert.equal(finding.recommendedAction, "restart_or_escalate");
 });
 
-test("StalledExecutionDetectionOptions accepts partial options", () => {
+test("StalledExecutionDetectionOptions accepts partial options [stalled-execution-detector]", () => {
   const store = createMockStore([]);
   const detector = new StalledExecutionDetector(store as any);
 
@@ -493,7 +493,7 @@ test("StalledExecutionDetectionOptions accepts partial options", () => {
   assert.deepEqual(results3, []);
 });
 
-test("isoMinusMs produces correct timestamps", () => {
+test("isoMinusMs produces correct timestamps [stalled-execution-detector]", () => {
   const store = createMockStore([]);
   const detector = new StalledExecutionDetector(store as any);
 
@@ -521,7 +521,7 @@ test("isoMinusMs produces correct timestamps", () => {
   assert.equal(results[0]!.executionId, "exec-1");
 });
 
-test("StalledExecutionDetector handles heartbeat just inside grace period", () => {
+test("StalledExecutionDetector handles heartbeat just inside grace period [stalled-execution-detector]", () => {
   const now = new Date("2025-01-01T00:10:00.000Z");
   const heartbeatTime = new Date("2025-01-01T00:08:01.000Z"); // just inside 2 minute grace
   const staleTime = new Date("2025-01-01T00:05:00.000Z");
@@ -550,7 +550,7 @@ test("StalledExecutionDetector handles heartbeat just inside grace period", () =
   assert.equal(results[0]!.recommendedAction, "restart_or_escalate");
 });
 
-test("StalledExecutionDetector handles heartbeat just outside grace period", () => {
+test("StalledExecutionDetector handles heartbeat just outside grace period [stalled-execution-detector]", () => {
   const now = new Date("2025-01-01T00:10:00.000Z");
   const heartbeatTime = new Date("2025-01-01T00:07:59.000Z"); // just outside 2 minute grace
   const staleTime = new Date("2025-01-01T00:05:00.000Z");

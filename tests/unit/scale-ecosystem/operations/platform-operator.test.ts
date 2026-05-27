@@ -61,12 +61,12 @@ function createMockDb() {
 // Tests
 // ---------------------------------------------------------------------------
 
-test("PlatformOperatorService can be instantiated", () => {
+test("PlatformOperatorService can be instantiated [platform-operator]", () => {
   const service = new PlatformOperatorService(createMockDb() as any, createMockStore() as any);
   assert.ok(service);
 });
 
-test("PlatformOperatorService buildReport returns valid report structure", () => {
+test("PlatformOperatorService buildReport returns valid report structure [platform-operator]", () => {
   const service = new PlatformOperatorService(createMockDb() as any, createMockStore() as any);
 
   const input: PlatformOperatorBuildInput = {
@@ -86,7 +86,7 @@ test("PlatformOperatorService buildReport returns valid report structure", () =>
   assert.equal(report.promoteEligible, false); // empty store means no approve verdict
 });
 
-test("PlatformOperatorService buildReport accepts custom targetStatus", () => {
+test("PlatformOperatorService buildReport accepts custom targetStatus [platform-operator]", () => {
   const service = new PlatformOperatorService(createMockDb() as any, createMockStore() as any);
 
   const report = service.buildReport({
@@ -99,7 +99,7 @@ test("PlatformOperatorService buildReport accepts custom targetStatus", () => {
   assert.equal(report.targetStatus, "production_ready");
 });
 
-test("PlatformOperatorService buildReport uses provided generatedAt", () => {
+test("PlatformOperatorService buildReport uses provided generatedAt [platform-operator]", () => {
   const service = new PlatformOperatorService(createMockDb() as any, createMockStore() as any);
 
   const report = service.buildReport({
@@ -112,7 +112,7 @@ test("PlatformOperatorService buildReport uses provided generatedAt", () => {
   assert.equal(report.generatedAt, "2026-04-14T00:00:00.000Z");
 });
 
-test("PlatformOperatorService buildReport throws on invalid generatedAt", () => {
+test("PlatformOperatorService buildReport throws on invalid generatedAt [platform-operator]", () => {
   const service = new PlatformOperatorService(createMockDb() as any, createMockStore() as any);
 
   assert.throws(() => {
@@ -125,7 +125,7 @@ test("PlatformOperatorService buildReport throws on invalid generatedAt", () => 
   });
 });
 
-test("PlatformOperatorService buildReport counts workers by scheduling status", () => {
+test("PlatformOperatorService buildReport counts workers by scheduling status [platform-operator]", () => {
   // WorkerStatus: idle | busy | draining | degraded | unavailable | quarantined | offline
   // toWorkerSchedulingStatus maps: idle->healthy, busy->degraded, etc.
   const store = createMockStore({
@@ -150,7 +150,7 @@ test("PlatformOperatorService buildReport counts workers by scheduling status", 
   assert.equal(report.executionPlane.workerCounts.draining, 1);
 });
 
-test("PlatformOperatorService buildReport identifies stale workers", () => {
+test("PlatformOperatorService buildReport identifies stale workers [platform-operator]", () => {
   const oldHeartbeat = new Date(Date.now() - 20 * 60 * 1000).toISOString(); // 20 minutes ago
 
   const store = createMockStore({
@@ -174,7 +174,7 @@ test("PlatformOperatorService buildReport identifies stale workers", () => {
   assert.equal(report.executionPlane.workerCounts.stale, 1);
 });
 
-test("PlatformOperatorService buildReport identifies untrusted remote workers", () => {
+test("PlatformOperatorService buildReport identifies untrusted remote workers [platform-operator]", () => {
   const store = createMockStore({
     listWorkerSnapshots: () => [
       { workerId: "w1", status: "idle", maxConcurrency: 5, runningExecutionsJson: "[]", lastHeartbeatAt: new Date().toISOString(), placement: "remote", registrationVerifiedAt: null, registrationChallengeId: null, capabilitiesJson: "[]", queueAffinity: "primary", runtimeInstanceId: "r1", restartedFromRuntimeInstanceId: null, restartGeneration: 0, cpuPct: 10, memoryMb: 128, toolBacklogCount: 0, currentStepId: null, lastProgressAt: new Date().toISOString(), updatedAt: new Date().toISOString(), saturation: 0, activeLeaseCount: 0, meanStartupLatencyMs: 100, sandboxSuccessRate: 1, repoCacheHitRate: 0.9, remoteSessionStatus: null, lastAcknowledgedStreamOffset: null, streamResumeSuccessRate: null, credentialRefreshSuccessRate: null, sessionConsistencyCheckStatus: null, sessionConsistencyCheckedAt: null, workspaceSyncStatus: null, workspaceSyncCheckedAt: null } as WorkerSnapshotRecord,
@@ -193,7 +193,7 @@ test("PlatformOperatorService buildReport identifies untrusted remote workers", 
   assert.equal(report.executionPlane.workerCounts.untrusted, 1);
 });
 
-test("PlatformOperatorService buildReport local workers are always trusted", () => {
+test("PlatformOperatorService buildReport local workers are always trusted [platform-operator]", () => {
   const store = createMockStore({
     listWorkerSnapshots: () => [
       { workerId: "w1", status: "idle", maxConcurrency: 5, runningExecutionsJson: "[]", lastHeartbeatAt: new Date().toISOString(), placement: "local", registrationVerifiedAt: null, registrationChallengeId: null, capabilitiesJson: "[]", queueAffinity: "primary", runtimeInstanceId: "r1", restartedFromRuntimeInstanceId: null, restartGeneration: 0, cpuPct: 10, memoryMb: 128, toolBacklogCount: 0, currentStepId: null, lastProgressAt: new Date().toISOString(), updatedAt: new Date().toISOString(), saturation: 0, activeLeaseCount: 0, meanStartupLatencyMs: 100, sandboxSuccessRate: 1, repoCacheHitRate: 0.9, remoteSessionStatus: null, lastAcknowledgedStreamOffset: null, streamResumeSuccessRate: null, credentialRefreshSuccessRate: null, sessionConsistencyCheckStatus: null, sessionConsistencyCheckedAt: null, workspaceSyncStatus: null, workspaceSyncCheckedAt: null } as WorkerSnapshotRecord,
@@ -212,7 +212,7 @@ test("PlatformOperatorService buildReport local workers are always trusted", () 
   assert.equal(report.executionPlane.workerCounts.untrusted, 0);
 });
 
-test("PlatformOperatorService buildReport counts tickets by status", () => {
+test("PlatformOperatorService buildReport counts tickets by status [platform-operator]", () => {
   const store = createMockStore({
     listExecutionTicketsByStatuses: (statuses: string[]) => {
       if (statuses.includes("pending")) return new Array(5).fill("ticket") as any;
@@ -239,7 +239,7 @@ test("PlatformOperatorService buildReport counts tickets by status", () => {
   assert.equal(report.executionPlane.ticketCounts.expired, 1);
 });
 
-test("PlatformOperatorService buildReport counts leases by status", () => {
+test("PlatformOperatorService buildReport counts leases by status [platform-operator]", () => {
   const store = createMockStore({
     listExecutionLeasesByStatuses: (statuses: string[]) => {
       if (statuses.includes("active")) return new Array(4).fill("lease") as any;
@@ -264,7 +264,7 @@ test("PlatformOperatorService buildReport counts leases by status", () => {
   assert.equal(report.executionPlane.leaseCounts.released, 1);
 });
 
-test("PlatformOperatorService buildReport builds readiness summary per component type", () => {
+test("PlatformOperatorService buildReport builds readiness summary per component type [platform-operator]", () => {
   const store = createMockStore({}, {
     listEnvironmentReadinessRecords: () => [
       { componentType: "gateway", credentialReady: 1, secondaryGatesJson: "{}", lastVerifiedAt: new Date().toISOString() },
@@ -294,7 +294,7 @@ test("PlatformOperatorService buildReport builds readiness summary per component
   assert.equal(sandboxSummary.allReady, false);
 });
 
-test("PlatformOperatorService buildReport marks readiness stale when lastVerifiedAt is old", () => {
+test("PlatformOperatorService buildReport marks readiness stale when lastVerifiedAt is old [platform-operator]", () => {
   const oldTimestamp = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString(); // 48 hours ago
 
   const store = createMockStore({}, {
@@ -319,7 +319,7 @@ test("PlatformOperatorService buildReport marks readiness stale when lastVerifie
   assert.equal(providerSummary.allReady, false);
 });
 
-test("PlatformOperatorService buildReport collects topology counts", () => {
+test("PlatformOperatorService buildReport collects topology counts [platform-operator]", () => {
   const store = createMockStore({}, {}, {
     listOrganizationRecords: () => [1, 2],
     listWorkspaceRecords: () => [10, 11, 12],
@@ -343,7 +343,7 @@ test("PlatformOperatorService buildReport collects topology counts", () => {
   assert.equal(report.executionPlane.topology.dataNamespaces, 2);
 });
 
-test("PlatformOperatorService buildReport calculates totalAvailableSlots from worker concurrency", () => {
+test("PlatformOperatorService buildReport calculates totalAvailableSlots from worker concurrency [platform-operator]", () => {
   const store = createMockStore({
     listWorkerSnapshots: () => [
       { workerId: "w1", status: "idle", maxConcurrency: 5, runningExecutionsJson: "[1,2,3]", lastHeartbeatAt: new Date().toISOString(), placement: "local", registrationVerifiedAt: new Date().toISOString(), registrationChallengeId: "ch1", capabilitiesJson: "[]", queueAffinity: "primary", runtimeInstanceId: "r1", restartedFromRuntimeInstanceId: null, restartGeneration: 0, cpuPct: 10, memoryMb: 128, toolBacklogCount: 0, currentStepId: null, lastProgressAt: new Date().toISOString(), updatedAt: new Date().toISOString(), saturation: 0, activeLeaseCount: 0, meanStartupLatencyMs: 100, sandboxSuccessRate: 1, repoCacheHitRate: 0.9, remoteSessionStatus: null, lastAcknowledgedStreamOffset: null, streamResumeSuccessRate: null, credentialRefreshSuccessRate: null, sessionConsistencyCheckStatus: null, sessionConsistencyCheckedAt: null, workspaceSyncStatus: null, workspaceSyncCheckedAt: null } as WorkerSnapshotRecord,
@@ -363,7 +363,7 @@ test("PlatformOperatorService buildReport calculates totalAvailableSlots from wo
   assert.equal(report.executionPlane.workerCounts.totalAvailableSlots, 12);
 });
 
-test("PlatformOperatorService buildReport handles malformed runningExecutionsJson gracefully", () => {
+test("PlatformOperatorService buildReport handles malformed runningExecutionsJson gracefully [platform-operator]", () => {
   const store = createMockStore({
     listWorkerSnapshots: () => [
       { workerId: "w1", status: "idle", maxConcurrency: 5, runningExecutionsJson: "not valid json", lastHeartbeatAt: new Date().toISOString(), placement: "local", registrationVerifiedAt: new Date().toISOString(), registrationChallengeId: "ch1", capabilitiesJson: "[]", queueAffinity: "primary", runtimeInstanceId: "r1", restartedFromRuntimeInstanceId: null, restartGeneration: 0, cpuPct: 10, memoryMb: 128, toolBacklogCount: 0, currentStepId: null, lastProgressAt: new Date().toISOString(), updatedAt: new Date().toISOString(), saturation: 0, activeLeaseCount: 0, meanStartupLatencyMs: 100, sandboxSuccessRate: 1, repoCacheHitRate: 0.9, remoteSessionStatus: null, lastAcknowledgedStreamOffset: null, streamResumeSuccessRate: null, credentialRefreshSuccessRate: null, sessionConsistencyCheckStatus: null, sessionConsistencyCheckedAt: null, workspaceSyncStatus: null, workspaceSyncCheckedAt: null } as WorkerSnapshotRecord,
@@ -382,7 +382,7 @@ test("PlatformOperatorService buildReport handles malformed runningExecutionsJso
   assert.equal(report.executionPlane.workerCounts.totalAvailableSlots, 5);
 });
 
-test("PlatformOperatorService buildReport flags promotion risk when active leases exceed workers", () => {
+test("PlatformOperatorService buildReport flags promotion risk when active leases exceed workers [platform-operator]", () => {
   const store = createMockStore({
     listWorkerSnapshots: () => [
       { workerId: "w1", status: "idle", maxConcurrency: 5, runningExecutionsJson: "[]", lastHeartbeatAt: new Date().toISOString(), placement: "local", registrationVerifiedAt: new Date().toISOString(), registrationChallengeId: "ch1", capabilitiesJson: "[]", queueAffinity: "primary", runtimeInstanceId: "r1", restartedFromRuntimeInstanceId: null, restartGeneration: 0, cpuPct: 10, memoryMb: 128, toolBacklogCount: 0, currentStepId: null, lastProgressAt: new Date().toISOString(), updatedAt: new Date().toISOString(), saturation: 0, activeLeaseCount: 0, meanStartupLatencyMs: 100, sandboxSuccessRate: 1, repoCacheHitRate: 0.9, remoteSessionStatus: null, lastAcknowledgedStreamOffset: null, streamResumeSuccessRate: null, credentialRefreshSuccessRate: null, sessionConsistencyCheckStatus: null, sessionConsistencyCheckedAt: null, workspaceSyncStatus: null, workspaceSyncCheckedAt: null } as WorkerSnapshotRecord,
@@ -404,7 +404,7 @@ test("PlatformOperatorService buildReport flags promotion risk when active lease
   assert.ok(report.executionPlane.promotionRisks.some((r) => r.includes("lease count exceeds")));
 });
 
-test("PlatformOperatorService buildReport flags promotion risk when deployment bindings exceed tenants", () => {
+test("PlatformOperatorService buildReport flags promotion risk when deployment bindings exceed tenants [platform-operator]", () => {
   const store = createMockStore({}, {}, {
     listTenantRecords: () => [100],
     listDeploymentBindings: () => [200, 201], // 2 bindings, 1 tenant is suspicious
@@ -421,7 +421,7 @@ test("PlatformOperatorService buildReport flags promotion risk when deployment b
   assert.ok(report.executionPlane.promotionRisks.some((r) => r.includes("deployment binding count exceeds")));
 });
 
-test("PlatformOperatorService buildReport flags promotion risk when data namespaces are fewer than tenants", () => {
+test("PlatformOperatorService buildReport flags promotion risk when data namespaces are fewer than tenants [platform-operator]", () => {
   const store = createMockStore({}, {}, {
     listTenantRecords: () => [100, 101, 102],
     listDataNamespaces: () => [1], // only 1 namespace for 3 tenants
@@ -438,7 +438,7 @@ test("PlatformOperatorService buildReport flags promotion risk when data namespa
   assert.ok(report.executionPlane.promotionRisks.some((r) => r.includes("data namespaces are incomplete")));
 });
 
-test("PlatformOperatorService buildReport marks promoteEligible false when risks exist", () => {
+test("PlatformOperatorService buildReport marks promoteEligible false when risks exist [platform-operator]", () => {
   const store = createMockStore({
     listWorkerSnapshots: () => [
       { workerId: "w1", status: "idle", maxConcurrency: 5, runningExecutionsJson: "[]", lastHeartbeatAt: new Date().toISOString(), placement: "remote", registrationVerifiedAt: null, registrationChallengeId: null, capabilitiesJson: "[]", queueAffinity: "primary", runtimeInstanceId: "r1", restartedFromRuntimeInstanceId: null, restartGeneration: 0, cpuPct: 10, memoryMb: 128, toolBacklogCount: 0, currentStepId: null, lastProgressAt: new Date().toISOString(), updatedAt: new Date().toISOString(), saturation: 0, activeLeaseCount: 0, meanStartupLatencyMs: 100, sandboxSuccessRate: 1, repoCacheHitRate: 0.9, remoteSessionStatus: null, lastAcknowledgedStreamOffset: null, streamResumeSuccessRate: null, credentialRefreshSuccessRate: null, sessionConsistencyCheckStatus: null, sessionConsistencyCheckedAt: null, workspaceSyncStatus: null, workspaceSyncCheckedAt: null } as WorkerSnapshotRecord,
@@ -458,7 +458,7 @@ test("PlatformOperatorService buildReport marks promoteEligible false when risks
   assert.equal(report.promoteEligible, false);
 });
 
-test("PlatformOperatorService exportReport returns report and artifact refs", () => {
+test("PlatformOperatorService exportReport returns report and artifact refs [platform-operator]", () => {
   const store = createMockStore();
 
   const service = new PlatformOperatorService(createMockDb() as any, store as any);
@@ -476,7 +476,7 @@ test("PlatformOperatorService exportReport returns report and artifact refs", ()
   assert.equal(result.markdownArtifact.kind, "platform_operator_summary");
 });
 
-test("PlatformOperatorService buildReport adds stale worker to promotion risks", () => {
+test("PlatformOperatorService buildReport adds stale worker to promotion risks [platform-operator]", () => {
   const oldHeartbeat = new Date(Date.now() - 20 * 60 * 1000).toISOString();
 
   const store = createMockStore({
@@ -499,7 +499,7 @@ test("PlatformOperatorService buildReport adds stale worker to promotion risks",
   assert.ok(report.executionPlane.staleWorkerIds.includes("stale-worker"));
 });
 
-test("PlatformOperatorService buildReport readiness allReady is true when no issues", () => {
+test("PlatformOperatorService buildReport readiness allReady is true when no issues [platform-operator]", () => {
   const store = createMockStore({}, {
     listEnvironmentReadinessRecords: () => [
       { componentType: "worker_fleet", credentialReady: 1, secondaryGatesJson: "{}", lastVerifiedAt: new Date().toISOString() },
@@ -519,7 +519,7 @@ test("PlatformOperatorService buildReport readiness allReady is true when no iss
   assert.equal(fleetSummary.allReady, true);
 });
 
-test("PlatformOperatorService buildReport missing readiness records add promotion risk", () => {
+test("PlatformOperatorService buildReport missing readiness records add promotion risk [platform-operator]", () => {
   // No readiness records at all for a component type
   const store = createMockStore({}, {
     listEnvironmentReadinessRecords: () => [],

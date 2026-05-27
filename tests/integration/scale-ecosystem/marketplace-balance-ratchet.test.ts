@@ -16,7 +16,7 @@ function countImplementationLines(paths: readonly string[]): number {
   return total;
 }
 
-test("[SYS-QUAL-7.3] marketplace implementation footprint stays below extracted threshold", async () => {
+test("[SYS-QUAL-7.3] marketplace implementation footprint stays below extracted threshold [marketplace-balance-ratchet]", async () => {
   const { execFileSync } = await import("node:child_process");
   const root = process.cwd();
   const marketplaceFiles = execFileSync(

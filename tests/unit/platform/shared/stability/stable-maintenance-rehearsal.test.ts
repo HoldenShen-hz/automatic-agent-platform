@@ -4,7 +4,7 @@ import test from "node:test";
 import { buildStableMaintenancePlaybook } from "../../../../../src/platform/shared/stability/stable-maintenance-rehearsal.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 
-test("buildStableMaintenancePlaybook produces maintenance ownership, drain policy, and targets", () => {
+test("buildStableMaintenancePlaybook produces maintenance ownership, drain policy, and targets [stable-maintenance-rehearsal]", () => {
   const workspace = createTempWorkspace("aa-maintenance-playbook-");
 
   try {
@@ -54,7 +54,7 @@ test("buildStableMaintenancePlaybook produces maintenance ownership, drain polic
   }
 });
 
-test("buildStableMaintenancePlaybook handles failed scenario in evidence", () => {
+test("buildStableMaintenancePlaybook handles failed scenario in evidence [stable-maintenance-rehearsal]", () => {
   const workspace = createTempWorkspace("aa-maintenance-failed-");
 
   try {
@@ -94,7 +94,7 @@ test("buildStableMaintenancePlaybook handles failed scenario in evidence", () =>
   }
 });
 
-test("buildStableMaintenancePlaybook handles all scenarios failing", () => {
+test("buildStableMaintenancePlaybook handles all scenarios failing [stable-maintenance-rehearsal]", () => {
   const workspace = createTempWorkspace("aa-maintenance-all-fail-");
 
   try {

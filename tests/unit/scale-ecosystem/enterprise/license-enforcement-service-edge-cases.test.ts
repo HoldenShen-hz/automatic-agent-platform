@@ -20,7 +20,7 @@ function createMockStore() {
 }
 
 describe("LicenseEnforcementService meter window expiration", () => {
-  test("meter resets count when window expires", () => {
+  test("meter resets count when window expires [license-enforcement-service-edge-cases]", () => {
     const service = new LicenseEnforcementService(createMockStore() as any, { enableUsageMetering: true });
 
     // Record usage
@@ -35,7 +35,7 @@ describe("LicenseEnforcementService meter window expiration", () => {
     // The actual window expiration happens in recordFeatureUsage
   });
 
-  test("meter with no window end does not reset", () => {
+  test("meter with no window end does not reset [license-enforcement-service-edge-cases]", () => {
     const service = new LicenseEnforcementService(createMockStore() as any, { enableUsageMetering: true });
 
     // admin_console has no usageLimit (no window)
@@ -46,14 +46,14 @@ describe("LicenseEnforcementService meter window expiration", () => {
     assert.equal(gate?.meterUsage, false); // admin_console is not metered
   });
 
-  test("getFeatureUsage returns null for non-metered feature with no meter", () => {
+  test("getFeatureUsage returns null for non-metered feature with no meter [license-enforcement-service-edge-cases]", () => {
     const service = new LicenseEnforcementService(createMockStore() as any, { enableUsageMetering: true });
 
     const usage = service.getFeatureUsage("admin_console", { accountId: "acct_123" });
     assert.equal(usage, null); // admin_console is not metered
   });
 
-  test("getFeatureUsage returns zero for metered feature with no usage", () => {
+  test("getFeatureUsage returns zero for metered feature with no usage [license-enforcement-service-edge-cases]", () => {
     const service = new LicenseEnforcementService(createMockStore() as any, { enableUsageMetering: true });
 
     const usage = service.getFeatureUsage("audit_export", { accountId: "acct_new" });
@@ -65,7 +65,7 @@ describe("LicenseEnforcementService meter window expiration", () => {
 });
 
 describe("LicenseEnforcementService buildMeterKey", () => {
-  test("meter key includes all context levels", () => {
+  test("meter key includes all context levels [license-enforcement-service-edge-cases]", () => {
     const service = new LicenseEnforcementService(createMockStore() as any, { enableUsageMetering: true });
 
     service.recordFeatureUsage("scim", {
@@ -84,7 +84,7 @@ describe("LicenseEnforcementService buildMeterKey", () => {
     assert.ok(meter, "Meter should exist with all context levels");
   });
 
-  test("different contexts create separate meters", () => {
+  test("different contexts create separate meters [license-enforcement-service-edge-cases]", () => {
     const service = new LicenseEnforcementService(createMockStore() as any, { enableUsageMetering: true });
 
     // Same feature, different accounts
@@ -101,7 +101,7 @@ describe("LicenseEnforcementService buildMeterKey", () => {
     assert.equal(usageC?.count, 1);
   });
 
-  test("global context meter when no context provided", () => {
+  test("global context meter when no context provided [license-enforcement-service-edge-cases]", () => {
     const service = new LicenseEnforcementService(createMockStore() as any, { enableUsageMetering: true });
 
     service.recordFeatureUsage("audit_export"); // No context
@@ -112,7 +112,7 @@ describe("LicenseEnforcementService buildMeterKey", () => {
 });
 
 describe("LicenseEnforcementService recordViolation", () => {
-  test("violations are bounded at 1000", () => {
+  test("violations are bounded at 1000 [license-enforcement-service-edge-cases]", () => {
     const service = new LicenseEnforcementService(createMockStore() as any, {
       strictMode: true,
       logViolations: true,
@@ -127,7 +127,7 @@ describe("LicenseEnforcementService recordViolation", () => {
     assert.ok(violations.length <= 1000, "Violations should be bounded at 1000");
   });
 
-  test("getViolations respects limit", () => {
+  test("getViolations respects limit [license-enforcement-service-edge-cases]", () => {
     const service = new LicenseEnforcementService(createMockStore() as any, { strictMode: true });
 
     // Generate violations
@@ -139,7 +139,7 @@ describe("LicenseEnforcementService recordViolation", () => {
     assert.equal(violations.length, 10);
   });
 
-  test("violation contains correct tier information", () => {
+  test("violation contains correct tier information [license-enforcement-service-edge-cases]", () => {
     const service = new LicenseEnforcementService(createMockStore() as any, { strictMode: true });
 
     service.checkFeatureAccess("sso", "community");
@@ -153,7 +153,7 @@ describe("LicenseEnforcementService recordViolation", () => {
     assert.equal(lastViolation.capability, "sso");
   });
 
-  test("violation with context records account/workspace/tenant", () => {
+  test("violation with context records account/workspace/tenant [license-enforcement-service-edge-cases]", () => {
     const service = new LicenseEnforcementService(createMockStore() as any, { strictMode: true });
 
     service.checkFeatureAccess("sso", "community", {
@@ -173,35 +173,35 @@ describe("LicenseEnforcementService recordViolation", () => {
 });
 
 describe("LicenseEnforcementService feature gate management edge cases", () => {
-  test("getFeatureGate returns null for non-existent gate", () => {
+  test("getFeatureGate returns null for non-existent gate [license-enforcement-service-edge-cases]", () => {
     const service = new LicenseEnforcementService(createMockStore() as any);
 
     const gate = service.getFeatureGate("nonexistent_feature_xyz");
     assert.equal(gate, null);
   });
 
-  test("enableFeatureGate returns false for non-existent gate", () => {
+  test("enableFeatureGate returns false for non-existent gate [license-enforcement-service-edge-cases]", () => {
     const service = new LicenseEnforcementService(createMockStore() as any);
 
     const result = service.enableFeatureGate("nonexistent_feature_xyz");
     assert.equal(result, false);
   });
 
-  test("disableFeatureGate returns false for non-existent gate", () => {
+  test("disableFeatureGate returns false for non-existent gate [license-enforcement-service-edge-cases]", () => {
     const service = new LicenseEnforcementService(createMockStore() as any);
 
     const result = service.disableFeatureGate("nonexistent_feature_xyz");
     assert.equal(result, false);
   });
 
-  test("updateFeatureLimit returns false for non-existent gate", () => {
+  test("updateFeatureLimit returns false for non-existent gate [license-enforcement-service-edge-cases]", () => {
     const service = new LicenseEnforcementService(createMockStore() as any);
 
     const result = service.updateFeatureLimit("nonexistent_feature_xyz", 1000, 3600000);
     assert.equal(result, false);
   });
 
-  test("registerFeatureGate overwrites existing gate", () => {
+  test("registerFeatureGate overwrites existing gate [license-enforcement-service-edge-cases]", () => {
     const service = new LicenseEnforcementService(createMockStore() as any);
 
     const originalGate = service.getFeatureGate("scim");
@@ -224,7 +224,7 @@ describe("LicenseEnforcementService feature gate management edge cases", () => {
     assert.equal(updatedGate?.requiredTier, "professional");
   });
 
-  test("disableFeatureGate prevents access even for enterprise tier", () => {
+  test("disableFeatureGate prevents access even for enterprise tier [license-enforcement-service-edge-cases]", () => {
     const service = new LicenseEnforcementService(createMockStore() as any);
 
     service.disableFeatureGate("sso");
@@ -234,7 +234,7 @@ describe("LicenseEnforcementService feature gate management edge cases", () => {
     assert.equal(result.reason, "feature_not_found_or_disabled");
   });
 
-  test("listFeatureGates returns copy not reference", () => {
+  test("listFeatureGates returns copy not reference [license-enforcement-service-edge-cases]", () => {
     const service = new LicenseEnforcementService(createMockStore() as any);
 
     const gates1 = service.listFeatureGates();
@@ -251,7 +251,7 @@ describe("LicenseEnforcementService feature gate management edge cases", () => {
 });
 
 describe("LicenseEnforcementService usage metering edge cases", () => {
-  test("usageRatio is null when limit is null", () => {
+  test("usageRatio is null when limit is null [license-enforcement-service-edge-cases]", () => {
     const service = new LicenseEnforcementService(createMockStore() as any, { enableUsageMetering: true });
 
     // non-metered feature has null limit
@@ -259,7 +259,7 @@ describe("LicenseEnforcementService usage metering edge cases", () => {
     assert.equal(usage, null);
   });
 
-  test("recordFeatureUsage does nothing when metering disabled", () => {
+  test("recordFeatureUsage does nothing when metering disabled [license-enforcement-service-edge-cases]", () => {
     const service = new LicenseEnforcementService(createMockStore() as any, { enableUsageMetering: false });
 
     service.recordFeatureUsage("audit_export", { accountId: "acct_123" });
@@ -270,7 +270,7 @@ describe("LicenseEnforcementService usage metering edge cases", () => {
     assert.equal(auditMeters.length, 0, "No meter should be created when metering is disabled");
   });
 
-  test("checkFeatureAccess does nothing for non-metered feature", () => {
+  test("checkFeatureAccess does nothing for non-metered feature [license-enforcement-service-edge-cases]", () => {
     const service = new LicenseEnforcementService(createMockStore() as any, { enableUsageMetering: true });
 
     // admin_console is not metered
@@ -278,14 +278,14 @@ describe("LicenseEnforcementService usage metering edge cases", () => {
     assert.equal(result.action, "meter"); // Still returns meter action
   });
 
-  test("resetMeter returns false when meter does not exist", () => {
+  test("resetMeter returns false when meter does not exist [license-enforcement-service-edge-cases]", () => {
     const service = new LicenseEnforcementService(createMockStore() as any, { enableUsageMetering: true });
 
     const result = service.resetMeter("nonexistent_feature", { accountId: "acct_123" });
     assert.equal(result, false);
   });
 
-  test("resetMeter removes existing meter", () => {
+  test("resetMeter removes existing meter [license-enforcement-service-edge-cases]", () => {
     const service = new LicenseEnforcementService(createMockStore() as any, { enableUsageMetering: true });
 
     service.recordFeatureUsage("audit_export", { accountId: "acct_reset" });
@@ -301,7 +301,7 @@ describe("LicenseEnforcementService usage metering edge cases", () => {
 });
 
 describe("LicenseEnforcementService context handling", () => {
-  test("checkFeatureAccess with null context values", () => {
+  test("checkFeatureAccess with null context values [license-enforcement-service-edge-cases]", () => {
     const service = new LicenseEnforcementService(createMockStore() as any);
 
     const result = service.checkFeatureAccess("sso", "enterprise", {
@@ -313,7 +313,7 @@ describe("LicenseEnforcementService context handling", () => {
     assert.equal(result.allowed, true);
   });
 
-  test("recordFeatureUsage with null context values", () => {
+  test("recordFeatureUsage with null context values [license-enforcement-service-edge-cases]", () => {
     const service = new LicenseEnforcementService(createMockStore() as any, { enableUsageMetering: true });
 
     // Should not throw
@@ -331,7 +331,7 @@ describe("LicenseEnforcementService context handling", () => {
     assert.equal(usage?.count, 1);
   });
 
-  test("checkFeatureAccess without optional context", () => {
+  test("checkFeatureAccess without optional context [license-enforcement-service-edge-cases]", () => {
     const service = new LicenseEnforcementService(createMockStore() as any);
 
     const result = service.checkFeatureAccess("sso", "enterprise");
@@ -340,7 +340,7 @@ describe("LicenseEnforcementService context handling", () => {
 });
 
 describe("LicenseEnforcementService config defaults", () => {
-  test("default config values", () => {
+  test("default config values [license-enforcement-service-edge-cases]", () => {
     const service = new LicenseEnforcementService(createMockStore() as any);
 
     const config = service.getConfig();
@@ -351,7 +351,7 @@ describe("LicenseEnforcementService config defaults", () => {
     assert.equal(config.enableUsageMetering, true);
   });
 
-  test("custom config overrides", () => {
+  test("custom config overrides [license-enforcement-service-edge-cases]", () => {
     const service = new LicenseEnforcementService(createMockStore() as any, {
       enabled: false,
       strictMode: true,
@@ -370,7 +370,7 @@ describe("LicenseEnforcementService config defaults", () => {
 });
 
 describe("LicenseEnforcementService meter eviction", () => {
-  test("listActiveMeters returns array", () => {
+  test("listActiveMeters returns array [license-enforcement-service-edge-cases]", () => {
     const service = new LicenseEnforcementService(createMockStore() as any, { enableUsageMetering: true });
 
     service.recordFeatureUsage("audit_export", { accountId: "acct_1" });
@@ -381,7 +381,7 @@ describe("LicenseEnforcementService meter eviction", () => {
     assert.ok(meters.length >= 2);
   });
 
-  test("listActiveMeters returns copy not reference", () => {
+  test("listActiveMeters returns copy not reference [license-enforcement-service-edge-cases]", () => {
     const service = new LicenseEnforcementService(createMockStore() as any, { enableUsageMetering: true });
 
     service.recordFeatureUsage("audit_export", { accountId: "acct_1" });
@@ -399,7 +399,7 @@ describe("LicenseEnforcementService meter eviction", () => {
 });
 
 describe("LicenseEnforcementService cross-tier access", () => {
-  test("professional tier allows professional feature", () => {
+  test("professional tier allows professional feature [license-enforcement-service-edge-cases]", () => {
     const service = new LicenseEnforcementService(createMockStore() as any);
 
     const result = service.checkFeatureAccess("admin_console", "professional");
@@ -407,7 +407,7 @@ describe("LicenseEnforcementService cross-tier access", () => {
     assert.equal(result.action, "meter");
   });
 
-  test("professional tier denies enterprise feature", () => {
+  test("professional tier denies enterprise feature [license-enforcement-service-edge-cases]", () => {
     const service = new LicenseEnforcementService(createMockStore() as any);
 
     const result = service.checkFeatureAccess("sso", "professional");
@@ -416,7 +416,7 @@ describe("LicenseEnforcementService cross-tier access", () => {
     assert.equal(result.currentTier, "professional");
   });
 
-  test("enterprise tier allows all features", () => {
+  test("enterprise tier allows all features [license-enforcement-service-edge-cases]", () => {
     const service = new LicenseEnforcementService(createMockStore() as any);
 
     const features = ["admin_console", "sso", "scim", "tenant_isolation", "private_model"];
@@ -426,7 +426,7 @@ describe("LicenseEnforcementService cross-tier access", () => {
     }
   });
 
-  test("community tier denies professional and enterprise features", () => {
+  test("community tier denies professional and enterprise features [license-enforcement-service-edge-cases]", () => {
     const service = new LicenseEnforcementService(createMockStore() as any);
 
     // Professional feature
@@ -440,7 +440,7 @@ describe("LicenseEnforcementService cross-tier access", () => {
 });
 
 describe("LicenseEnforcementService usage warning threshold", () => {
-  test("warn threshold is not triggered below threshold", () => {
+  test("warn threshold is not triggered below threshold [license-enforcement-service-edge-cases]", () => {
     const service = new LicenseEnforcementService(createMockStore() as any, { enableUsageMetering: true });
 
     // Record 50% usage (threshold is 80%)
@@ -453,7 +453,7 @@ describe("LicenseEnforcementService usage warning threshold", () => {
     assert.notEqual(result.action, "warn");
   });
 
-  test("usageRatio calculation is correct", () => {
+  test("usageRatio calculation is correct [license-enforcement-service-edge-cases]", () => {
     const service = new LicenseEnforcementService(createMockStore() as any, { enableUsageMetering: true });
 
     // Record 80% usage

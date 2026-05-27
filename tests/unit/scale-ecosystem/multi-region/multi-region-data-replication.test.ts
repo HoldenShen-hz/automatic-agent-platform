@@ -8,7 +8,7 @@ import {
 } from "../../../../src/scale-ecosystem/multi-region/region-health-check-service.js";
 import { allocateReservedCapacity } from "../../../../src/scale-ecosystem/sla-engine/resource-allocator/index.js";
 
-test("RegionHealthCheckService marks a region degraded when latency exceeds the threshold", async () => {
+test("RegionHealthCheckService marks a region degraded when latency exceeds the threshold [multi-region-data-replication]", async () => {
   const service = new RegionHealthCheckService();
 
   service.registerRegion({
@@ -42,7 +42,7 @@ test("RegionHealthCheckService marks a region degraded when latency exceeds the 
   assert.equal(result.status, "degraded");
 });
 
-test("allocateReservedCapacity rejects cumulative reserved percentages above capacity", () => {
+test("allocateReservedCapacity rejects cumulative reserved percentages above capacity [multi-region-data-replication]", () => {
   assert.throws(
     () =>
       allocateReservedCapacity(100, [
@@ -61,7 +61,7 @@ test("allocateReservedCapacity rejects cumulative reserved percentages above cap
   );
 });
 
-test("DataReplicatorService scheduled flush emits buffered events and checkpoints them", async () => {
+test("DataReplicatorService scheduled flush emits buffered events and checkpoints them [multi-region-data-replication]", async () => {
   const emitted: string[] = [];
   const replicator = new DataReplicatorService({
     sourceRegionId: "us-east-1",
@@ -90,7 +90,7 @@ test("DataReplicatorService scheduled flush emits buffered events and checkpoint
   assert.equal(replicator.getCheckpoint("eu-west-1")?.sequenceNumber, 1);
 });
 
-test("DataReplicatorService checkpoint pendingCount tracks only unconfirmed events", async () => {
+test("DataReplicatorService checkpoint pendingCount tracks only unconfirmed events [multi-region-data-replication]", async () => {
   const replicator = new DataReplicatorService({
     sourceRegionId: "us-east-1",
     targetRegionIds: ["eu-west-1"],
@@ -124,7 +124,7 @@ test("DataReplicatorService checkpoint pendingCount tracks only unconfirmed even
   assert.equal(checkpoint?.pendingCount, 1);
 });
 
-test("DataReplicatorService does not double-count sequence after a successful retry", async () => {
+test("DataReplicatorService does not double-count sequence after a successful retry [multi-region-data-replication]", async () => {
   const replicator = new DataReplicatorService({
     sourceRegionId: "us-east-1",
     targetRegionIds: ["eu-west-1"],

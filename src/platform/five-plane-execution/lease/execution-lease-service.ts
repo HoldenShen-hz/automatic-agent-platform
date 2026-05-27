@@ -9,13 +9,13 @@
  * ## Key Concepts
  *
  * - **Lease**: Temporary ownership of execution right
- *   * See: {@link https://github.com/automatic-agent/automatic_agent_platform/blob/main/docs_zh/governance/glossary_and_terminology.md | Glossary: lease}
+ *   * See: {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/governance/glossary_and_terminology.md | Glossary: lease}
  *
  * - **Fencing Token**: Version token that prevents split-brain scenarios
- *   * See: {@link https://github.com/automatic-agent/automatic_agent_platform/blob/main/docs_zh/governance/glossary_and_terminology.md | Glossary: fencing token}
+ *   * See: {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/governance/glossary_and_terminology.md | Glossary: fencing token}
  *
  * - **Lease Owner**: Entity holding the current execution right
- *   * See: {@link https://github.com/automatic-agent/automatic_agent_platform/blob/main/docs_zh/governance/glossary_and_terminology.md | Glossary: lease owner}
+ *   * See: {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/governance/glossary_and_terminology.md | Glossary: lease owner}
  *
  * ## Operations
  *

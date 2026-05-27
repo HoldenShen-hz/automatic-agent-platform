@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { evaluateQuota, isQuotaExceeded, QuotaPolicySchema, type QuotaPolicy } from "../../../../../src/scale-ecosystem/resource-manager/quota-enforcer/index.js";
 
-test("evaluateQuota returns not exceeded when under hard limit", () => {
+test("evaluateQuota returns not exceeded when under hard limit [index]", () => {
   const policy: QuotaPolicy = {
     scope: "tenant",
     scopeId: "tenant-1",
@@ -20,7 +20,7 @@ test("evaluateQuota returns not exceeded when under hard limit", () => {
   assert.equal(decision.remainingUnits, 20); // 100 - 80 = 20
 });
 
-test("evaluateQuota triggers warning when over soft limit", () => {
+test("evaluateQuota triggers warning when over soft limit [index]", () => {
   const policy: QuotaPolicy = {
     scope: "tenant",
     scopeId: "tenant-1",
@@ -37,7 +37,7 @@ test("evaluateQuota triggers warning when over soft limit", () => {
   assert.equal(decision.warning, true); // 70 > 60
 });
 
-test("evaluateQuota marks burst usage when over hard but under burst limit", () => {
+test("evaluateQuota marks burst usage when over hard but under burst limit [index]", () => {
   const policy: QuotaPolicy = {
     scope: "tenant",
     scopeId: "tenant-1",
@@ -55,7 +55,7 @@ test("evaluateQuota marks burst usage when over hard but under burst limit", () 
   assert.equal(decision.usesBurst, true);
 });
 
-test("evaluateQuota marks exceeded when over burst limit", () => {
+test("evaluateQuota marks exceeded when over burst limit [index]", () => {
   const policy: QuotaPolicy = {
     scope: "tenant",
     scopeId: "tenant-1",
@@ -72,7 +72,7 @@ test("evaluateQuota marks exceeded when over burst limit", () => {
   assert.equal(decision.remainingUnits, 0);
 });
 
-test("evaluateQuota uses hardLimit as softLimit when softLimit not provided", () => {
+test("evaluateQuota uses hardLimit as softLimit when softLimit not provided [index]", () => {
   const policy: QuotaPolicy = {
     scope: "tenant",
     scopeId: "tenant-1",
@@ -87,7 +87,7 @@ test("evaluateQuota uses hardLimit as softLimit when softLimit not provided", ()
   assert.equal(decision.warning, true); // 110 > 100
 });
 
-test("isQuotaExceeded returns true when exceeded", () => {
+test("isQuotaExceeded returns true when exceeded [index]", () => {
   const policy: QuotaPolicy = {
     scope: "tenant",
     scopeId: "tenant-1",
@@ -103,7 +103,7 @@ test("isQuotaExceeded returns true when exceeded", () => {
   assert.equal(result, true);
 });
 
-test("isQuotaExceeded returns false when not exceeded", () => {
+test("isQuotaExceeded returns false when not exceeded [index]", () => {
   const policy: QuotaPolicy = {
     scope: "tenant",
     scopeId: "tenant-1",
@@ -118,7 +118,7 @@ test("isQuotaExceeded returns false when not exceeded", () => {
   assert.equal(result, false);
 });
 
-test("QuotaPolicySchema applies defaults", () => {
+test("QuotaPolicySchema applies defaults [index]", () => {
   const result = QuotaPolicySchema.safeParse({
     scopeId: "tenant-1",
     hardLimit: 100,
@@ -132,7 +132,7 @@ test("QuotaPolicySchema applies defaults", () => {
   }
 });
 
-test("QuotaPolicySchema rejects invalid input", () => {
+test("QuotaPolicySchema rejects invalid input [index]", () => {
   const result = QuotaPolicySchema.safeParse({
     scopeId: "",
     hardLimit: -1,

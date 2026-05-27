@@ -44,7 +44,7 @@ function createMockPostgresBackend(coordinatorId?: string): any {
 // Tests: createHaCoordinatorService
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("createHaCoordinatorService creates HaCoordinatorServiceAsync for sqlite backend", () => {
+test("createHaCoordinatorService creates HaCoordinatorServiceAsync for sqlite backend [ha-coordinator-factory]", () => {
   const backend = createMockSqliteBackend();
 
   const service = createHaCoordinatorService(backend);
@@ -52,7 +52,7 @@ test("createHaCoordinatorService creates HaCoordinatorServiceAsync for sqlite ba
   assert.ok(service instanceof HaCoordinatorServiceAsync);
 });
 
-test("createHaCoordinatorService creates HaCoordinatorServiceAsync for postgres backend", () => {
+test("createHaCoordinatorService creates HaCoordinatorServiceAsync for postgres backend [ha-coordinator-factory]", () => {
   const backend = createMockPostgresBackend("my-coord-123");
 
   const service = createHaCoordinatorService(backend);
@@ -60,7 +60,7 @@ test("createHaCoordinatorService creates HaCoordinatorServiceAsync for postgres 
   assert.ok(service instanceof HaCoordinatorServiceAsync);
 });
 
-test("createHaCoordinatorService accepts optional options", () => {
+test("createHaCoordinatorService accepts optional options [ha-coordinator-factory]", () => {
   const backend = createMockSqliteBackend();
 
   const service = createHaCoordinatorService(backend, {
@@ -71,7 +71,7 @@ test("createHaCoordinatorService accepts optional options", () => {
   assert.ok(service instanceof HaCoordinatorServiceAsync);
 });
 
-test("createHaCoordinatorService accepts coordinatorId override for sqlite", () => {
+test("createHaCoordinatorService accepts coordinatorId override for sqlite [ha-coordinator-factory]", () => {
   const backend = createMockSqliteBackend();
 
   // Should accept coordinatorId even for sqlite (though it may not use it)
@@ -86,7 +86,7 @@ test("createHaCoordinatorService accepts coordinatorId override for sqlite", () 
 // Tests: createHaRepositoryForBackend
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("createHaRepositoryForBackend creates repository for sqlite backend", () => {
+test("createHaRepositoryForBackend creates repository for sqlite backend [ha-coordinator-factory]", () => {
   const backend = createMockSqliteBackend();
 
   const repo = createHaRepositoryForBackend(backend);
@@ -98,7 +98,7 @@ test("createHaRepositoryForBackend creates repository for sqlite backend", () =>
   assert.equal(typeof repo.listNodes, "function");
 });
 
-test("createHaRepositoryForBackend accepts optional coordinatorId for sqlite", () => {
+test("createHaRepositoryForBackend accepts optional coordinatorId for sqlite [ha-coordinator-factory]", () => {
   const backend = createMockSqliteBackend();
 
   // coordinatorId is optional for sqlite
@@ -107,7 +107,7 @@ test("createHaRepositoryForBackend accepts optional coordinatorId for sqlite", (
   assert.ok(repo !== null);
 });
 
-test("createHaRepositoryForBackend returns object with all HaRepository methods", () => {
+test("createHaRepositoryForBackend returns object with all HaRepository methods [ha-coordinator-factory]", () => {
   const backend = createMockSqliteBackend();
   const repo = createHaRepositoryForBackend(backend);
 
@@ -135,7 +135,7 @@ test("createHaRepositoryForBackend returns object with all HaRepository methods"
   assert.equal(typeof repo.getStaleNodes, "function");
 });
 
-test("createHaRepositoryForBackend with undefined backend throws", () => {
+test("createHaRepositoryForBackend with undefined backend throws [ha-coordinator-factory]", () => {
   assert.throws(
     () => createHaRepositoryForBackend(undefined as any),
     // Will throw because backend.driver is undefined

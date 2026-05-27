@@ -11,17 +11,17 @@ import {
   type StableAcceptanceLineOptions,
 } from "../../../../../src/platform/shared/stability/stable-acceptance-line.js";
 
-test("STABLE_ACCEPTANCE_REQUIRED_DURATION_MS is 14 days in ms", () => {
+test("STABLE_ACCEPTANCE_REQUIRED_DURATION_MS is 14 days in ms [stable-acceptance-line-types]", () => {
   const fourteenDaysMs = 14 * 24 * 60 * 60 * 1000;
   assert.equal(STABLE_ACCEPTANCE_REQUIRED_DURATION_MS, fourteenDaysMs);
 });
 
-test("STABLE_ACCEPTANCE_P95_BUDGET_MS has correct values", () => {
+test("STABLE_ACCEPTANCE_P95_BUDGET_MS has correct values [stable-acceptance-line-types]", () => {
   assert.equal(STABLE_ACCEPTANCE_P95_BUDGET_MS.interactive, 30_000);
   assert.equal(STABLE_ACCEPTANCE_P95_BUDGET_MS.extended, 120_000);
 });
 
-test("StableAcceptanceCriterionId accepts all valid values", () => {
+test("StableAcceptanceCriterionId accepts all valid values [stable-acceptance-line-types]", () => {
   const ids: StableAcceptanceCriterionId[] = [
     "long_run_evidence",
     "manual_db_repair_free",
@@ -37,7 +37,7 @@ test("StableAcceptanceCriterionId accepts all valid values", () => {
   }
 });
 
-test("StableAcceptanceCriterion structure is correct", () => {
+test("StableAcceptanceCriterion structure is correct [stable-acceptance-line-types]", () => {
   const criterion: StableAcceptanceCriterion = {
     criterionId: "long_run_evidence",
     status: "pass",
@@ -54,7 +54,7 @@ test("StableAcceptanceCriterion structure is correct", () => {
   assert.equal(criterion.metrics.coverageDays, 14);
 });
 
-test("StableAcceptanceCriterion status accepts all valid values", () => {
+test("StableAcceptanceCriterion status accepts all valid values [stable-acceptance-line-types]", () => {
   const statuses: StableAcceptanceCriterion["status"][] = ["pass", "partial", "fail"];
 
   for (const status of statuses) {
@@ -68,7 +68,7 @@ test("StableAcceptanceCriterion status accepts all valid values", () => {
   }
 });
 
-test("StableAcceptanceLatencyBudgetStatus structure is correct", () => {
+test("StableAcceptanceLatencyBudgetStatus structure is correct [stable-acceptance-line-types]", () => {
   const status: StableAcceptanceLatencyBudgetStatus = {
     latencyBand: "interactive",
     budgetMs: 30_000,
@@ -84,7 +84,7 @@ test("StableAcceptanceLatencyBudgetStatus structure is correct", () => {
   assert.equal(status.status, "pass");
 });
 
-test("StableAcceptanceLatencyBudgetStatus allows null values when no data", () => {
+test("StableAcceptanceLatencyBudgetStatus allows null values when no data [stable-acceptance-line-types]", () => {
   const status: StableAcceptanceLatencyBudgetStatus = {
     latencyBand: "extended",
     budgetMs: 120_000,
@@ -99,7 +99,7 @@ test("StableAcceptanceLatencyBudgetStatus allows null values when no data", () =
   assert.equal(status.maxDurationMs, null);
 });
 
-test("StableAcceptanceLatencyBudgetStatus latencyBand accepts all valid values", () => {
+test("StableAcceptanceLatencyBudgetStatus latencyBand accepts all valid values [stable-acceptance-line-types]", () => {
   const bands: StableAcceptanceLatencyBudgetStatus["latencyBand"][] = ["interactive", "extended"];
 
   for (const band of bands) {
@@ -115,7 +115,7 @@ test("StableAcceptanceLatencyBudgetStatus latencyBand accepts all valid values",
   }
 });
 
-test("StableAcceptanceLineReport structure is correct", () => {
+test("StableAcceptanceLineReport structure is correct [stable-acceptance-line-types]", () => {
   const report: StableAcceptanceLineReport = {
     evaluatedAt: "2026-04-14T00:00:00.000Z",
     status: "pass",
@@ -141,7 +141,7 @@ test("StableAcceptanceLineReport structure is correct", () => {
   assert.equal(report.observed.recoverySuccessRatePct, 100);
 });
 
-test("StableAcceptanceLineReport status accepts all valid values", () => {
+test("StableAcceptanceLineReport status accepts all valid values [stable-acceptance-line-types]", () => {
   const statuses: StableAcceptanceLineReport["status"][] = ["pass", "partial", "fail"];
 
   for (const status of statuses) {
@@ -168,7 +168,7 @@ test("StableAcceptanceLineReport status accepts all valid values", () => {
   }
 });
 
-test("StableAcceptanceLineReport allows partial coverage", () => {
+test("StableAcceptanceLineReport allows partial coverage [stable-acceptance-line-types]", () => {
   const report: StableAcceptanceLineReport = {
     evaluatedAt: "2026-04-14T00:00:00.000Z",
     status: "partial",
@@ -200,7 +200,7 @@ test("StableAcceptanceLineReport allows partial coverage", () => {
   assert.ok(report.observed.longRunCoveragePct < 100);
 });
 
-test("StableAcceptanceLineOptions structure is correct", () => {
+test("StableAcceptanceLineOptions structure is correct [stable-acceptance-line-types]", () => {
   const options: StableAcceptanceLineOptions = {
     profileName: "production_stable",
     validationReport: {

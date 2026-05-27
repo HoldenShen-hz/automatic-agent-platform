@@ -12,7 +12,7 @@ import type {
   ValidateExecutionWriteInput,
 } from "../../../../../src/platform/five-plane-execution/lease/execution-lease-service-async.js";
 
-test("AcquireExecutionLeaseInput interface structure", () => {
+test("AcquireExecutionLeaseInput interface structure [execution-lease-service-async]", () => {
   const input: AcquireExecutionLeaseInput = {
     executionId: "exec_1",
     workerId: "worker_1",
@@ -25,7 +25,7 @@ test("AcquireExecutionLeaseInput interface structure", () => {
   assert.equal(input.ttlMs, 30_000);
 });
 
-test("AcquireExecutionLeaseInput queueName is optional", () => {
+test("AcquireExecutionLeaseInput queueName is optional [execution-lease-service-async]", () => {
   const input: AcquireExecutionLeaseInput = {
     executionId: "exec_1",
     workerId: "worker_1",
@@ -35,7 +35,7 @@ test("AcquireExecutionLeaseInput queueName is optional", () => {
   assert.equal(input.queueName, undefined);
 });
 
-test("RenewExecutionLeaseInput interface structure", () => {
+test("RenewExecutionLeaseInput interface structure [execution-lease-service-async]", () => {
   const input: RenewExecutionLeaseInput = {
     leaseId: "lease_1",
     workerId: "worker_1",
@@ -48,7 +48,7 @@ test("RenewExecutionLeaseInput interface structure", () => {
   assert.equal(input.ttlMs, 15_000);
 });
 
-test("ReleaseExecutionLeaseInput interface structure", () => {
+test("ReleaseExecutionLeaseInput interface structure [execution-lease-service-async]", () => {
   const input: ReleaseExecutionLeaseInput = {
     leaseId: "lease_1",
     workerId: "worker_1",
@@ -60,7 +60,7 @@ test("ReleaseExecutionLeaseInput interface structure", () => {
   assert.equal(input.reasonCode, "work_completed");
 });
 
-test("ReleaseExecutionLeaseInput reasonCode is optional", () => {
+test("ReleaseExecutionLeaseInput reasonCode is optional [execution-lease-service-async]", () => {
   const input: ReleaseExecutionLeaseInput = {
     leaseId: "lease_1",
     workerId: "worker_1",
@@ -69,7 +69,7 @@ test("ReleaseExecutionLeaseInput reasonCode is optional", () => {
   assert.equal(input.reasonCode, undefined);
 });
 
-test("ValidateExecutionWriteInput interface structure", () => {
+test("ValidateExecutionWriteInput interface structure [execution-lease-service-async]", () => {
   const input: ValidateExecutionWriteInput = {
     executionId: "exec_1",
     leaseId: "lease_1",
@@ -83,7 +83,7 @@ test("ValidateExecutionWriteInput interface structure", () => {
   assert.equal(input.fencingToken, 1);
 });
 
-test("HandoverExecutionLeaseInput interface structure", () => {
+test("HandoverExecutionLeaseInput interface structure [execution-lease-service-async]", () => {
   const input: HandoverExecutionLeaseInput = {
     leaseId: "lease_1",
     workerId: "worker_1",
@@ -98,7 +98,7 @@ test("HandoverExecutionLeaseInput interface structure", () => {
   assert.equal(input.reasonCode, "worker_draining");
 });
 
-test("ExecutionLeaseDecision outcome types", () => {
+test("ExecutionLeaseDecision outcome types [execution-lease-service-async]", () => {
   const blockedDecision: ExecutionLeaseDecision = {
     outcome: "blocked",
     reasonCode: "active_lease_exists",
@@ -131,7 +131,7 @@ test("ExecutionLeaseDecision outcome types", () => {
   assert.ok(grantedDecision.lease);
 });
 
-test("ExecutionLeaseDecision with renewed outcome", () => {
+test("ExecutionLeaseDecision with renewed outcome [execution-lease-service-async]", () => {
   const decision: ExecutionLeaseDecision = {
     outcome: "renewed",
     reasonCode: null,
@@ -154,7 +154,7 @@ test("ExecutionLeaseDecision with renewed outcome", () => {
   assert.equal(decision.outcome, "renewed");
 });
 
-test("ExecutionLeaseDecision with released outcome", () => {
+test("ExecutionLeaseDecision with released outcome [execution-lease-service-async]", () => {
   const decision: ExecutionLeaseDecision = {
     outcome: "released",
     reasonCode: null,
@@ -164,7 +164,7 @@ test("ExecutionLeaseDecision with released outcome", () => {
   assert.equal(decision.outcome, "released");
 });
 
-test("ExecutionWriteValidationResult allowed structure", () => {
+test("ExecutionWriteValidationResult allowed structure [execution-lease-service-async]", () => {
   const result: ExecutionWriteValidationResult = {
     allowed: true,
     reasonCode: null,
@@ -176,7 +176,7 @@ test("ExecutionWriteValidationResult allowed structure", () => {
   assert.equal(result.authoritativeFencingToken, 1);
 });
 
-test("ExecutionWriteValidationResult not allowed - no active lease", () => {
+test("ExecutionWriteValidationResult not allowed - no active lease [execution-lease-service-async]", () => {
   const result: ExecutionWriteValidationResult = {
     allowed: false,
     reasonCode: "no_active_lease",
@@ -188,7 +188,7 @@ test("ExecutionWriteValidationResult not allowed - no active lease", () => {
   assert.equal(result.reasonCode, "no_active_lease");
 });
 
-test("ExecutionWriteValidationResult not allowed - lease mismatch", () => {
+test("ExecutionWriteValidationResult not allowed - lease mismatch [execution-lease-service-async]", () => {
   const result: ExecutionWriteValidationResult = {
     allowed: false,
     reasonCode: "lease_mismatch",
@@ -201,7 +201,7 @@ test("ExecutionWriteValidationResult not allowed - lease mismatch", () => {
   assert.equal(result.authoritativeFencingToken, 2);
 });
 
-test("ExecutionWriteValidationResult not allowed - worker mismatch", () => {
+test("ExecutionWriteValidationResult not allowed - worker mismatch [execution-lease-service-async]", () => {
   const result: ExecutionWriteValidationResult = {
     allowed: false,
     reasonCode: "worker_mismatch",
@@ -213,7 +213,7 @@ test("ExecutionWriteValidationResult not allowed - worker mismatch", () => {
   assert.equal(result.reasonCode, "worker_mismatch");
 });
 
-test("ExecutionWriteValidationResult not allowed - stale fencing token", () => {
+test("ExecutionWriteValidationResult not allowed - stale fencing token [execution-lease-service-async]", () => {
   const result: ExecutionWriteValidationResult = {
     allowed: false,
     reasonCode: "stale_fencing_token",
@@ -226,7 +226,7 @@ test("ExecutionWriteValidationResult not allowed - stale fencing token", () => {
   assert.equal(result.authoritativeFencingToken, 3);
 });
 
-test("ExecutionLeaseHandoverDecision blocked structure", () => {
+test("ExecutionLeaseHandoverDecision blocked structure [execution-lease-service-async]", () => {
   const decision: ExecutionLeaseHandoverDecision = {
     outcome: "blocked",
     reasonCode: "lease_not_found",
@@ -238,7 +238,7 @@ test("ExecutionLeaseHandoverDecision blocked structure", () => {
   assert.equal(decision.reasonCode, "lease_not_found");
 });
 
-test("ExecutionLeaseHandoverDecision handed_over structure", () => {
+test("ExecutionLeaseHandoverDecision handed_over structure [execution-lease-service-async]", () => {
   const decision: ExecutionLeaseHandoverDecision = {
     outcome: "handed_over",
     reasonCode: null,

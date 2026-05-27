@@ -13,7 +13,7 @@ import { SqliteDatabase } from "../../../src/platform/five-plane-state-evidence/
 import { cleanupPath, createTempWorkspace } from "../../helpers/fs.js";
 import { seedTaskAndExecution } from "../../helpers/seed.js";
 
-test("stalled execution escalation service builds a missing-heartbeat escalation package", () => {
+test("stalled execution escalation service builds a missing-heartbeat escalation package [stalled-execution-escalation-service]", () => {
   const workspace = createTempWorkspace("aa-stalled-escalation-");
   const dbPath = join(workspace, "stalled-escalation.db");
 
@@ -99,7 +99,7 @@ test("stalled execution escalation service builds a missing-heartbeat escalation
   }
 });
 
-test("stalled execution escalation service recommends restart when heartbeat is still present", () => {
+test("stalled execution escalation service recommends restart when heartbeat is still present [stalled-execution-escalation-service]", () => {
   const workspace = createTempWorkspace("aa-stalled-escalation-heartbeat-");
   const dbPath = join(workspace, "stalled-escalation-heartbeat.db");
 

@@ -17,49 +17,49 @@ import {
   type LlmModelCallRequest,
 } from "../../../../../src/platform/five-plane-execution/execution-engine/model-call-provider.js";
 
-test("ModelCallProviderService hasAnthropic returns false when not configured", () => {
+test("ModelCallProviderService hasAnthropic returns false when not configured [model-call-provider]", () => {
   const config: ModelCallProviderConfig = {};
   const provider = new ModelCallProviderService(config);
 
   assert.equal(provider.hasAnthropic(), false);
 });
 
-test("ModelCallProviderService hasOpenAI returns false when not configured", () => {
+test("ModelCallProviderService hasOpenAI returns false when not configured [model-call-provider]", () => {
   const config: ModelCallProviderConfig = {};
   const provider = new ModelCallProviderService(config);
 
   assert.equal(provider.hasOpenAI(), false);
 });
 
-test("ModelCallProviderService hasMinimax returns false when not configured", () => {
+test("ModelCallProviderService hasMinimax returns false when not configured [model-call-provider]", () => {
   const config: ModelCallProviderConfig = {};
   const provider = new ModelCallProviderService(config);
 
   assert.equal(provider.hasMinimax(), false);
 });
 
-test("ModelCallProviderService hasAnyProvider returns false when no providers configured", () => {
+test("ModelCallProviderService hasAnyProvider returns false when no providers configured [model-call-provider]", () => {
   const config: ModelCallProviderConfig = {};
   const provider = new ModelCallProviderService(config);
 
   assert.equal(provider.hasAnyProvider(), false);
 });
 
-test("ModelCallProviderService getDefaultModel returns MiniMax-M2.7 by default", () => {
+test("ModelCallProviderService getDefaultModel returns MiniMax-M2.7 by default [model-call-provider]", () => {
   const config: ModelCallProviderConfig = {};
   const provider = new ModelCallProviderService(config);
 
   assert.equal(provider.getDefaultModel(), "MiniMax-M2.7");
 });
 
-test("ModelCallProviderService getDefaultModel returns configured default", () => {
+test("ModelCallProviderService getDefaultModel returns configured default [model-call-provider]", () => {
   const config: ModelCallProviderConfig = { defaultModel: "claude-3-5-sonnet" };
   const provider = new ModelCallProviderService(config);
 
   assert.equal(provider.getDefaultModel(), "claude-3-5-sonnet");
 });
 
-test("ModelCallProviderService dispose marks provider as disposed", () => {
+test("ModelCallProviderService dispose marks provider as disposed [model-call-provider]", () => {
   const config: ModelCallProviderConfig = {};
   const provider = new ModelCallProviderService(config);
 
@@ -69,7 +69,7 @@ test("ModelCallProviderService dispose marks provider as disposed", () => {
   assert.equal(provider.hasAnthropic(), false);
 });
 
-test("ModelCallProviderService dispose can only be called once", () => {
+test("ModelCallProviderService dispose can only be called once [model-call-provider]", () => {
   const config: ModelCallProviderConfig = {};
   const provider = new ModelCallProviderService(config);
 
@@ -78,7 +78,7 @@ test("ModelCallProviderService dispose can only be called once", () => {
   provider.dispose();
 });
 
-test("ModelCallProviderService createCompletion throws when no provider configured", async () => {
+test("ModelCallProviderService createCompletion throws when no provider configured [model-call-provider]", async () => {
   const config: ModelCallProviderConfig = {};
   const provider = new ModelCallProviderService(config);
 
@@ -99,7 +99,7 @@ test("ModelCallProviderService createCompletion throws when no provider configur
   );
 });
 
-test("ModelCallProviderService createStreamingCompletion throws when no provider configured", async () => {
+test("ModelCallProviderService createStreamingCompletion throws when no provider configured [model-call-provider]", async () => {
   const config: ModelCallProviderConfig = {};
   const provider = new ModelCallProviderService(config);
 
@@ -122,7 +122,7 @@ test("ModelCallProviderService createStreamingCompletion throws when no provider
   );
 });
 
-test("ModelCallProviderService createMiddlewareHook returns a hook object", () => {
+test("ModelCallProviderService createMiddlewareHook returns a hook object [model-call-provider]", () => {
   const config: ModelCallProviderConfig = {};
   const provider = new ModelCallProviderService(config);
 
@@ -133,7 +133,7 @@ test("ModelCallProviderService createMiddlewareHook returns a hook object", () =
   assert.equal(typeof hook.run, "function");
 });
 
-test("initializeModelCallProvider returns singleton instance", () => {
+test("initializeModelCallProvider returns singleton instance [model-call-provider]", () => {
   resetModelCallProvider();
 
   const config: ModelCallProviderConfig = {};
@@ -145,13 +145,13 @@ test("initializeModelCallProvider returns singleton instance", () => {
   resetModelCallProvider();
 });
 
-test("getModelCallProvider returns null when not initialized", () => {
+test("getModelCallProvider returns null when not initialized [model-call-provider]", () => {
   resetModelCallProvider();
 
   assert.equal(getModelCallProvider(), null);
 });
 
-test("getModelCallProvider returns instance after initialization", () => {
+test("getModelCallProvider returns instance after initialization [model-call-provider]", () => {
   resetModelCallProvider();
 
   const config: ModelCallProviderConfig = {};
@@ -162,7 +162,7 @@ test("getModelCallProvider returns instance after initialization", () => {
   resetModelCallProvider();
 });
 
-test("ModelCallProviderService accepts callRateLimit in config", () => {
+test("ModelCallProviderService accepts callRateLimit in config [model-call-provider]", () => {
   const config: ModelCallProviderConfig = {
     callRateLimit: {
       maxCalls: 100,
@@ -175,7 +175,7 @@ test("ModelCallProviderService accepts callRateLimit in config", () => {
   assert.equal(provider.hasAnyProvider(), false);
 });
 
-test("resetModelCallProvider clears the singleton", () => {
+test("resetModelCallProvider clears the singleton [model-call-provider]", () => {
   resetModelCallProvider();
 
   const config: ModelCallProviderConfig = {};
@@ -188,7 +188,7 @@ test("resetModelCallProvider clears the singleton", () => {
   assert.equal(getModelCallProvider(), null);
 });
 
-test("ModelCallProviderService hasAnthropic returns false when disposed", () => {
+test("ModelCallProviderService hasAnthropic returns false when disposed [model-call-provider]", () => {
   const config: ModelCallProviderConfig = {};
   const provider = new ModelCallProviderService(config);
 
@@ -197,7 +197,7 @@ test("ModelCallProviderService hasAnthropic returns false when disposed", () => 
   assert.equal(provider.hasAnthropic(), false);
 });
 
-test("ModelCallProviderService hasOpenAI returns false when disposed", () => {
+test("ModelCallProviderService hasOpenAI returns false when disposed [model-call-provider]", () => {
   const config: ModelCallProviderConfig = {};
   const provider = new ModelCallProviderService(config);
 
@@ -206,7 +206,7 @@ test("ModelCallProviderService hasOpenAI returns false when disposed", () => {
   assert.equal(provider.hasOpenAI(), false);
 });
 
-test("ModelCallProviderService hasMinimax returns false when disposed", () => {
+test("ModelCallProviderService hasMinimax returns false when disposed [model-call-provider]", () => {
   const config: ModelCallProviderConfig = {};
   const provider = new ModelCallProviderService(config);
 

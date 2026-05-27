@@ -73,7 +73,7 @@ const createMessage = (overrides: Partial<{
   ...overrides,
 } as any);
 
-test("ContextCompactionService compactContext returns empty result for no messages", () => {
+test("ContextCompactionService compactContext returns empty result for no messages [context-compaction]", () => {
   const mockStore = createMockStore({
     dispatch: {
       listMessagesBySession: () => [],
@@ -95,7 +95,7 @@ test("ContextCompactionService compactContext returns empty result for no messag
   assert.equal(result.contextMessages.length, 0);
 });
 
-test("ContextCompactionService does not trigger stage1 when under threshold", () => {
+test("ContextCompactionService does not trigger stage1 when under threshold [context-compaction]", () => {
   const mockStore = createMockStore({
     dispatch: {
       listMessagesBySession: () => [
@@ -118,7 +118,7 @@ test("ContextCompactionService does not trigger stage1 when under threshold", ()
   assert.equal(result.stage2Triggered, false);
 });
 
-test("ContextCompactionService uses default stage1TriggerRatio of 0.7", () => {
+test("ContextCompactionService uses default stage1TriggerRatio of 0.7 [context-compaction]", () => {
   const mockStore = createMockStore({
     dispatch: {
       listMessagesBySession: () => [
@@ -140,7 +140,7 @@ test("ContextCompactionService uses default stage1TriggerRatio of 0.7", () => {
   assert.equal(typeof result.stage1Triggered, "boolean");
 });
 
-test("ContextCompactionService uses default stage2TriggerRatio of 0.85", () => {
+test("ContextCompactionService uses default stage2TriggerRatio of 0.85 [context-compaction]", () => {
   const mockStore = createMockStore({
     dispatch: {
       listMessagesBySession: () => [
@@ -161,7 +161,7 @@ test("ContextCompactionService uses default stage2TriggerRatio of 0.85", () => {
   assert.equal(typeof result.stage2Triggered, "boolean");
 });
 
-test("ContextCompactionService respects custom stage1TriggerRatio", () => {
+test("ContextCompactionService respects custom stage1TriggerRatio [context-compaction]", () => {
   const mockStore = createMockStore({
     dispatch: {
       listMessagesBySession: () => [
@@ -185,7 +185,7 @@ test("ContextCompactionService respects custom stage1TriggerRatio", () => {
   assert.equal(typeof result.stage1Triggered, "boolean");
 });
 
-test("ContextCompactionService uses default recentToolResultWindow of 3", () => {
+test("ContextCompactionService uses default recentToolResultWindow of 3 [context-compaction]", () => {
   const mockStore = createMockStore({
     dispatch: {
       listMessagesBySession: () => [
@@ -211,7 +211,7 @@ test("ContextCompactionService uses default recentToolResultWindow of 3", () => 
   assert.ok(Array.isArray(result.contextMessages));
 });
 
-test("ContextCompactionService uses default compactionMaxFrequencyPerSession of 2", () => {
+test("ContextCompactionService uses default compactionMaxFrequencyPerSession of 2 [context-compaction]", () => {
   const mockStore = createMockStore({
     dispatch: {
       listMessagesBySession: () => [
@@ -246,7 +246,7 @@ test("ContextCompactionService uses default compactionMaxFrequencyPerSession of 
   assert.equal(result.errorCode, "runtime.compaction_budget_exhausted");
 });
 
-test("ContextCompactionService falls back to stage1 when max summaries exceeded", () => {
+test("ContextCompactionService falls back to stage1 when max summaries exceeded [context-compaction]", () => {
   const mockStore = createMockStore({
     dispatch: {
       listMessagesBySession: () => [
@@ -277,7 +277,7 @@ test("ContextCompactionService falls back to stage1 when max summaries exceeded"
   assert.equal(result.errorCode, "runtime.compaction_budget_exhausted");
 });
 
-test("ContextCompactionService uses custom occurredAt timestamp", () => {
+test("ContextCompactionService uses custom occurredAt timestamp [context-compaction]", () => {
   const mockStore = createMockStore({
     dispatch: {
       listMessagesBySession: () => [],
@@ -298,7 +298,7 @@ test("ContextCompactionService uses custom occurredAt timestamp", () => {
   assert.equal(result.persistedRecords.length >= 0, true);
 });
 
-test("ContextCompactionService preserves protected messages", () => {
+test("ContextCompactionService preserves protected messages [context-compaction]", () => {
   const mockStore = createMockStore({
     dispatch: {
       listMessagesBySession: () => [
@@ -325,7 +325,7 @@ test("ContextCompactionService preserves protected messages", () => {
   assert.equal(hasProtected, true);
 });
 
-test("ContextCompactionService calculates token reduction on stage1", () => {
+test("ContextCompactionService calculates token reduction on stage1 [context-compaction]", () => {
   const mockStore = createMockStore({
     dispatch: {
       listMessagesBySession: () => [
@@ -351,7 +351,7 @@ test("ContextCompactionService calculates token reduction on stage1", () => {
   }
 });
 
-test("ContextCompactionService handles KV cache config", () => {
+test("ContextCompactionService handles KV cache config [context-compaction]", () => {
   const mockStore = createMockStore({
     dispatch: {
       listMessagesBySession: () => [

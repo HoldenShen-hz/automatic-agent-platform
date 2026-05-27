@@ -22,13 +22,13 @@ function createTestContext(): AgentExecutorContext {
   };
 }
 
-test("AgentExecutor creates with default options", () => {
+test("AgentExecutor creates with default options [agent-executor]", () => {
   const executor = createAgentExecutor();
   assert.ok(executor instanceof AgentExecutor);
   executor.resetLoopDetection();
 });
 
-test("AgentExecutor registers middleware hooks", () => {
+test("AgentExecutor registers middleware hooks [agent-executor]", () => {
   const executor = createAgentExecutor({ loopDetection: null });
   const hooks = executor.getRegisteredHooks();
   assert.ok(Array.isArray(hooks.beforeAgent));
@@ -40,7 +40,7 @@ test("AgentExecutor registers middleware hooks", () => {
   assert.ok(hooks.wrapToolCall.includes("cache-governance"));
 });
 
-test("AgentExecutor executeAgentRound runs full middleware chain", async () => {
+test("AgentExecutor executeAgentRound runs full middleware chain [agent-executor]", async () => {
   const executor = createAgentExecutor({ loopDetection: null });
   const executionLog: string[] = [];
 
@@ -66,7 +66,7 @@ test("AgentExecutor executeAgentRound runs full middleware chain", async () => {
   assert.ok(Array.isArray(result.afterAgentWarnings));
 });
 
-test("AgentExecutor with loop detection registers detection hooks", () => {
+test("AgentExecutor with loop detection registers detection hooks [agent-executor]", () => {
   const executor = createAgentExecutor({
     loopDetection: { warnThreshold: 2, escalateThreshold: 3 },
   });
@@ -79,7 +79,7 @@ test("AgentExecutor with loop detection registers detection hooks", () => {
   assert.ok(hasLoopDetectionWrapTool || hooks.wrapToolCall.length >= 1, "Should have wrap_tool_call hook");
 });
 
-test("AgentExecutor tracks loop detection patterns", async () => {
+test("AgentExecutor tracks loop detection patterns [agent-executor]", async () => {
   const executor = createAgentExecutor({
     loopDetection: { warnThreshold: 2, escalateThreshold: 3 },
   });
@@ -92,7 +92,7 @@ test("AgentExecutor tracks loop detection patterns", async () => {
   assert.equal(afterReset.length, 0);
 });
 
-test("AgentExecutor executeAgentRound increments agent round", async () => {
+test("AgentExecutor executeAgentRound increments agent round [agent-executor]", async () => {
   const executor = createAgentExecutor({ loopDetection: null });
 
   await executor.executeAgentRound(
@@ -126,7 +126,7 @@ test("AgentExecutor executeAgentRound increments agent round", async () => {
   );
 });
 
-test("AgentExecutor wrapToolCall wraps tool execution", async () => {
+test("AgentExecutor wrapToolCall wraps tool execution [agent-executor]", async () => {
   const executor = createAgentExecutor({ loopDetection: null });
   let toolCallCount = 0;
 
@@ -144,7 +144,7 @@ test("AgentExecutor wrapToolCall wraps tool execution", async () => {
   assert.ok(Array.isArray(result.warnings));
 });
 
-test("initializeAgentExecutor returns singleton context", () => {
+test("initializeAgentExecutor returns singleton context [agent-executor]", () => {
   resetMiddleware();
 
   const ctx1 = initializeAgentExecutor({ loopDetection: null });
@@ -155,7 +155,7 @@ test("initializeAgentExecutor returns singleton context", () => {
   assert.strictEqual(ctx1, ctx2);
 });
 
-test("getGlobalAgentMiddlewareChain returns global chain", () => {
+test("getGlobalAgentMiddlewareChain returns global chain [agent-executor]", () => {
   const chain = getGlobalAgentMiddlewareChain();
   assert.ok(chain);
   assert.ok(typeof chain.beforeAgent === "function");
@@ -167,7 +167,7 @@ test("getGlobalAgentMiddlewareChain returns global chain", () => {
   assert.ok(typeof chain.runAgentRound === "function");
 });
 
-test("AgentExecutor fails gracefully on model error", async () => {
+test("AgentExecutor fails gracefully on model error [agent-executor]", async () => {
   const executor = createAgentExecutor({ loopDetection: null });
 
   await assert.rejects(
@@ -188,7 +188,7 @@ test("AgentExecutor fails gracefully on model error", async () => {
   );
 });
 
-test("AgentExecutor result includes loop detection when enabled", async () => {
+test("AgentExecutor result includes loop detection when enabled [agent-executor]", async () => {
   const executor = createAgentExecutor({
     loopDetection: { warnThreshold: 2, escalateThreshold: 3 },
   });
@@ -208,7 +208,7 @@ test("AgentExecutor result includes loop detection when enabled", async () => {
   assert.ok(typeof result.loopDetection!.escalated === "boolean");
 });
 
-test("AgentExecutor with custom logger receives middleware logs", async () => {
+test("AgentExecutor with custom logger receives middleware logs [agent-executor]", async () => {
   const logs: Array<{ code: string; msg: string }> = [];
   const executor = createAgentExecutor({
     loopDetection: null,
@@ -228,7 +228,7 @@ test("AgentExecutor with custom logger receives middleware logs", async () => {
   );
 });
 
-test("AgentExecutor executeAgentRound passes request and history to middleware", async () => {
+test("AgentExecutor executeAgentRound passes request and history to middleware [agent-executor]", async () => {
   const executor = createAgentExecutor({ loopDetection: null });
 
   const result = await executor.executeAgentRound(
@@ -244,7 +244,7 @@ test("AgentExecutor executeAgentRound passes request and history to middleware",
   assert.ok(result);
 });
 
-test("AgentExecutor resetLoopDetection clears patterns", async () => {
+test("AgentExecutor resetLoopDetection clears patterns [agent-executor]", async () => {
   const executor = createAgentExecutor({
     loopDetection: { warnThreshold: 1, escalateThreshold: 2 },
   });

@@ -2,6 +2,8 @@
 
 Enterprise automatic-agent platform baseline built on Node.js 22 + TypeScript ESM. The repository follows a seven-layer architecture documented in `docs_zh/architecture/00-platform-architecture.md` and `docs_en/architecture/00-platform-architecture.md`; inside that architecture, the runtime implementation is organized around five execution planes under `src/platform/five-plane-*`.
 
+Current release baseline: `0.2.0` (`2026-05-27`). Unreleased changes continue to accumulate in the root `CHANGELOG.md`.
+
 ## Quick Start
 
 ```bash

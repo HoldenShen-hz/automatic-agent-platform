@@ -7,7 +7,7 @@ import { createQueueAdapter } from "../../../../../src/platform/five-plane-execu
 import { RedisQueueAdapter } from "../../../../../src/platform/five-plane-execution/queue/redis-queue-adapter.js";
 import { SqliteQueueAdapter } from "../../../../../src/platform/five-plane-execution/queue/sqlite-queue-adapter.js";
 
-test("queue barrel files re-export the runtime adapter surface", () => {
+test("queue barrel files re-export the runtime adapter surface [queue-runtime-surface]", () => {
   assert.equal(queueIndex.createQueueAdapter, createQueueAdapter);
   assert.equal(queueIndex.RedisQueueAdapter, RedisQueueAdapter);
   assert.equal(queueIndex.SqliteQueueAdapter, SqliteQueueAdapter);
@@ -16,11 +16,11 @@ test("queue barrel files re-export the runtime adapter surface", () => {
   assert.equal(queueSurface.SqliteQueueAdapter, SqliteQueueAdapter);
 });
 
-test("queue index barrel re-exports queue adapter", () => {
+test("queue index barrel re-exports queue adapter [queue-runtime-surface]", () => {
   assert.ok(typeof queueIndex.createQueueAdapter === "function");
 });
 
-test("createQueueAdapter throws for unknown kind", () => {
+test("createQueueAdapter throws for unknown kind [queue-runtime-surface]", () => {
   assert.throws(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     () => createQueueAdapter({ kind: "unknown" } as any),

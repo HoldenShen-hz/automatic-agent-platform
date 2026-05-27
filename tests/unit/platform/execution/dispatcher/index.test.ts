@@ -22,20 +22,20 @@ test.afterEach(() => {
 // Singleton behavior
 // ---------------------------------------------------------------------------
 
-test("getToolRegistry returns a singleton instance", () => {
+test("getToolRegistry returns a singleton instance [index]", () => {
   const registry1 = getToolRegistry();
   const registry2 = getToolRegistry();
   assert.strictEqual(registry1, registry2, "getToolRegistry should return the same instance");
 });
 
-test("resetToolRegistry clears the singleton", () => {
+test("resetToolRegistry clears the singleton [index]", () => {
   const registry1 = getToolRegistry();
   resetToolRegistry();
   const registry2 = getToolRegistry();
   assert.notStrictEqual(registry1, registry2, "After reset, getToolRegistry should return a new instance");
 });
 
-test("resetMultiStepToolRegistryForTests clears the singleton (test-only export)", () => {
+test("resetMultiStepToolRegistryForTests clears the singleton (test-only export) [index]", () => {
   const registry1 = getToolRegistry();
   resetMultiStepToolRegistryForTests();
   const registry2 = getToolRegistry();
@@ -46,7 +46,7 @@ test("resetMultiStepToolRegistryForTests clears the singleton (test-only export)
 // Tool registry interface
 // ---------------------------------------------------------------------------
 
-test("tool registry has executeToolCall method", () => {
+test("tool registry has executeToolCall method [index]", () => {
   const registry = getToolRegistry();
   assert.equal(typeof registry.executeToolCall, "function", "Registry should have executeToolCall method");
 });
@@ -55,7 +55,7 @@ test("tool registry has executeToolCall method", () => {
 // executeToolCall - question tool (skipped implementation)
 // ---------------------------------------------------------------------------
 
-test("executeToolCall handles question tool and returns skipped status", async () => {
+test("executeToolCall handles question tool and returns skipped status [index]", async () => {
   const result = await executeMultiStepToolCallForTests("question", JSON.stringify({
     question: "What is the meaning of life?",
     context: "I'm writing a test",
@@ -71,7 +71,7 @@ test("executeToolCall handles question tool and returns skipped status", async (
 // executeToolCall - web_search tool with missing query
 // ---------------------------------------------------------------------------
 
-test("executeToolCall returns error for web_search with missing query", async () => {
+test("executeToolCall returns error for web_search with missing query [index]", async () => {
   const result = await executeMultiStepToolCallForTests("web_search", JSON.stringify({}));
 
   const parsed = JSON.parse(result);
@@ -84,7 +84,7 @@ test("executeToolCall returns error for web_search with missing query", async ()
 // executeToolCall - web_fetch tool with missing url
 // ---------------------------------------------------------------------------
 
-test("executeToolCall returns error for web_fetch with missing url", async () => {
+test("executeToolCall returns error for web_fetch with missing url [index]", async () => {
   const result = await executeMultiStepToolCallForTests("web_fetch", JSON.stringify({}));
 
   const parsed = JSON.parse(result);
@@ -97,7 +97,7 @@ test("executeToolCall returns error for web_fetch with missing url", async () =>
 // executeToolCall - git tool with missing args
 // ---------------------------------------------------------------------------
 
-test("executeToolCall returns error for git with missing args", async () => {
+test("executeToolCall returns error for git with missing args [index]", async () => {
   const result = await executeMultiStepToolCallForTests("git", JSON.stringify({}));
 
   const parsed = JSON.parse(result);
@@ -110,7 +110,7 @@ test("executeToolCall returns error for git with missing args", async () => {
 // executeToolCall - repo-map tool with missing query
 // ---------------------------------------------------------------------------
 
-test("executeToolCall returns error for repo-map with missing query", async () => {
+test("executeToolCall returns error for repo-map with missing query [index]", async () => {
   const result = await executeMultiStepToolCallForTests("repo-map", JSON.stringify({
     query: "",
   }));
@@ -125,7 +125,7 @@ test("executeToolCall returns error for repo-map with missing query", async () =
 // executeToolCall - spawn-agent with new agent
 // ---------------------------------------------------------------------------
 
-test("executeToolCall spawn-agent creates new agent and executes", async () => {
+test("executeToolCall spawn-agent creates new agent and executes [index]", async () => {
   const result = await executeMultiStepToolCallForTests("spawn-agent", JSON.stringify({
     agentId: "test-agent-1",
     request: "Hello, agent!",
@@ -144,7 +144,7 @@ test("executeToolCall spawn-agent creates new agent and executes", async () => {
 // executeToolCall - spawn-agent with existing agent returns cached
 // ---------------------------------------------------------------------------
 
-test("executeToolCall spawn-agent returns cached result for existing agent", async () => {
+test("executeToolCall spawn-agent returns cached result for existing agent [index]", async () => {
   // First spawn
   const result1 = await executeMultiStepToolCallForTests("spawn-agent", JSON.stringify({
     agentId: "test-agent-cached",
@@ -171,7 +171,7 @@ test("executeToolCall spawn-agent returns cached result for existing agent", asy
 // executeToolCall - wait-agent with missing agentId
 // ---------------------------------------------------------------------------
 
-test("executeToolCall returns error for wait-agent with missing agentId", async () => {
+test("executeToolCall returns error for wait-agent with missing agentId [index]", async () => {
   const result = await executeMultiStepToolCallForTests("wait-agent", JSON.stringify({}));
 
   const parsed = JSON.parse(result);
@@ -184,7 +184,7 @@ test("executeToolCall returns error for wait-agent with missing agentId", async 
 // executeToolCall - wait-agent with nonexistent agent
 // ---------------------------------------------------------------------------
 
-test("executeToolCall returns error for wait-agent with nonexistent agent", async () => {
+test("executeToolCall returns error for wait-agent with nonexistent agent [index]", async () => {
   const result = await executeMultiStepToolCallForTests("wait-agent", JSON.stringify({
     agentId: "nonexistent-agent-12345",
   }));
@@ -199,7 +199,7 @@ test("executeToolCall returns error for wait-agent with nonexistent agent", asyn
 // executeToolCall - send-message with missing args
 // ---------------------------------------------------------------------------
 
-test("executeToolCall returns error for send-message with missing agentId", async () => {
+test("executeToolCall returns error for send-message with missing agentId [index]", async () => {
   const result = await executeMultiStepToolCallForTests("send-message", JSON.stringify({
     message: "Hello",
   }));
@@ -210,7 +210,7 @@ test("executeToolCall returns error for send-message with missing agentId", asyn
   assert.equal(parsed.errorCode, "MISSING_ARGS");
 });
 
-test("executeToolCall returns error for send-message with missing message", async () => {
+test("executeToolCall returns error for send-message with missing message [index]", async () => {
   const result = await executeMultiStepToolCallForTests("send-message", JSON.stringify({
     agentId: "some-agent",
   }));
@@ -225,7 +225,7 @@ test("executeToolCall returns error for send-message with missing message", asyn
 // executeToolCall - send-message with nonexistent agent
 // ---------------------------------------------------------------------------
 
-test("executeMultiStepToolCallForTests returns error for send-message with nonexistent agent", async () => {
+test("executeMultiStepToolCallForTests returns error for send-message with nonexistent agent [index]", async () => {
   const result = await executeMultiStepToolCallForTests("send-message", JSON.stringify({
     agentId: "nonexistent-agent-xyz",
     message: "Hello",
@@ -241,7 +241,7 @@ test("executeMultiStepToolCallForTests returns error for send-message with nonex
 // executeToolCall - batch-tool with missing toolCalls
 // ---------------------------------------------------------------------------
 
-test("executeToolCall returns error for batch-tool with missing toolCalls", async () => {
+test("executeToolCall returns error for batch-tool with missing toolCalls [index]", async () => {
   const result = await executeMultiStepToolCallForTests("batch-tool", JSON.stringify({
     toolCalls: [],
   }));
@@ -252,7 +252,7 @@ test("executeToolCall returns error for batch-tool with missing toolCalls", asyn
   assert.equal(parsed.errorCode, "MISSING_TOOL_CALLS");
 });
 
-test("executeToolCall returns error for batch-tool with non-array toolCalls", async () => {
+test("executeToolCall returns error for batch-tool with non-array toolCalls [index]", async () => {
   const result = await executeMultiStepToolCallForTests("batch-tool", JSON.stringify({
     toolCalls: "not-an-array",
   }));
@@ -267,7 +267,7 @@ test("executeToolCall returns error for batch-tool with non-array toolCalls", as
 // executeToolCall - batch-tool with valid calls
 // ---------------------------------------------------------------------------
 
-test("executeToolCall batch-tool executes tools in serial mode", async () => {
+test("executeToolCall batch-tool executes tools in serial mode [index]", async () => {
   const result = await executeMultiStepToolCallForTests("batch-tool", JSON.stringify({
     toolCalls: [
       { toolName: "question", arguments: { question: "Test?" } },
@@ -285,7 +285,7 @@ test("executeToolCall batch-tool executes tools in serial mode", async () => {
 // executeToolCall - unknown tool
 // ---------------------------------------------------------------------------
 
-test("executeToolCall returns error for unknown tool", async () => {
+test("executeToolCall returns error for unknown tool [index]", async () => {
   const result = await executeMultiStepToolCallForTests("unknown-tool-xyz", JSON.stringify({}));
 
   const parsed = JSON.parse(result);
@@ -298,7 +298,7 @@ test("executeToolCall returns error for unknown tool", async () => {
 // executeToolCall - invalid JSON arguments
 // ---------------------------------------------------------------------------
 
-test("executeToolCall handles invalid JSON arguments gracefully", async () => {
+test("executeToolCall handles invalid JSON arguments gracefully [index]", async () => {
   const result = await executeMultiStepToolCallForTests("question", "not-valid-json");
 
   const parsed = JSON.parse(result);
@@ -311,7 +311,7 @@ test("executeToolCall handles invalid JSON arguments gracefully", async () => {
 // Tool definitions export
 // ---------------------------------------------------------------------------
 
-test("MultiStepToolDefinition type is exported", () => {
+test("MultiStepToolDefinition type is exported [index]", () => {
   // Verify the type exists by creating a valid tool definition
   const toolDef: MultiStepToolDefinition = {
     name: "test_tool",

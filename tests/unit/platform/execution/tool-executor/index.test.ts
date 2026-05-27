@@ -10,28 +10,28 @@ import {
   type ToolCallResult,
 } from "../../../../../src/platform/five-plane-execution/tool-executor/tool-call-result.js";
 
-test("ToolCallStatus type accepts valid values", () => {
+test("ToolCallStatus type accepts valid values [index]", () => {
   const statuses: ToolCallStatus[] = ["succeeded", "failed", "timed_out", "blocked", "cancelled"];
   assert.equal(statuses.length, 5);
 });
 
-test("ToolCallErrorSource type accepts valid values", () => {
+test("ToolCallErrorSource type accepts valid values [index]", () => {
   const sources: ToolCallErrorSource[] = ["provider", "tool", "network", "security", "validation", "system"];
   assert.equal(sources.length, 6);
 });
 
-test("isToolCallSuccessful returns true for succeeded", () => {
+test("isToolCallSuccessful returns true for succeeded [index]", () => {
   assert.equal(isToolCallSuccessful("succeeded"), true);
 });
 
-test("isToolCallSuccessful returns false for other statuses", () => {
+test("isToolCallSuccessful returns false for other statuses [index]", () => {
   assert.equal(isToolCallSuccessful("failed"), false);
   assert.equal(isToolCallSuccessful("timed_out"), false);
   assert.equal(isToolCallSuccessful("blocked"), false);
   assert.equal(isToolCallSuccessful("cancelled"), false);
 });
 
-test("ToolCallError structure is correct", () => {
+test("ToolCallError structure is correct [index]", () => {
   const error: ToolCallError = {
     code: "tool.execution_failed",
     message: "Tool execution failed",
@@ -43,7 +43,7 @@ test("ToolCallError structure is correct", () => {
   assert.equal(error.source, "tool");
 });
 
-test("ToolCallResult structure is correct", () => {
+test("ToolCallResult structure is correct [index]", () => {
   const result: ToolCallResult<string> = {
     callId: "call_1",
     toolName: "read",
@@ -63,7 +63,7 @@ test("ToolCallResult structure is correct", () => {
   assert.equal(result.success, true);
 });
 
-test("ToolCallResult with error", () => {
+test("ToolCallResult with error [index]", () => {
   const result: ToolCallResult<string> = {
     callId: "call_2",
     toolName: "read",

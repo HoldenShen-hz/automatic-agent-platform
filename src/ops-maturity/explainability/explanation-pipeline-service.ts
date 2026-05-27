@@ -150,7 +150,6 @@ export class ExplanationPipelineService {
     const redactedEvidenceRefs = collectExplanationEvidenceIds(hiddenEvidence);
     const rationaleId = newId("rationale");
     const summary = options.inferredSummary ?? request.summary;
-    // @ts-expect-error - exactOptionalPropertyTypes complexity with Omit
     const rationaleWithoutLock: Omit<StageRationale, "versionLockRef"> = {
       rationaleId,
       taskId: request.taskId,
@@ -167,10 +166,10 @@ export class ExplanationPipelineService {
       decisionFactors: uniqueStrings(request.decisionFactors),
       evidenceRefs,
       riskNotes: uniqueStrings(request.riskNotes),
-      alternatives: options.alternatives ? uniqueStrings(options.alternatives) : undefined,
-      confidence: options.confidence,
-      decisionInputRef: options.decisionInputRef,
-      visibilityLabels: options.visibilityLabels ? uniqueStrings(options.visibilityLabels) : undefined,
+      ...(options.alternatives != null ? { alternatives: uniqueStrings(options.alternatives) } : {}),
+      ...(options.confidence != null ? { confidence: options.confidence } : {}),
+      ...(options.decisionInputRef != null ? { decisionInputRef: options.decisionInputRef } : {}),
+      ...(options.visibilityLabels != null ? { visibilityLabels: uniqueStrings(options.visibilityLabels) } : {}),
       generatedAt: request.generatedAt ?? nowIso(),
     };
     const versionLockRef = options.versionLockRef ?? buildVersionLockRef(rationaleWithoutLock);

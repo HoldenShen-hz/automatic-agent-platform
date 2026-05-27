@@ -31,7 +31,7 @@ function createResourcePool(overrides: Partial<ResourcePool> = {}): ResourcePool
 // registerPool Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("registerPool adds pool and returns parsed pool", () => {
+test("registerPool adds pool and returns parsed pool [resource-pool]", () => {
   const service = new ResourcePoolService();
   const pool = createResourcePool({ poolId: "pool-new" });
 
@@ -41,7 +41,7 @@ test("registerPool adds pool and returns parsed pool", () => {
   assert.equal(registered.capacityUnits, 100);
 });
 
-test("registerPool makes pool available via getPool", () => {
+test("registerPool makes pool available via getPool [resource-pool]", () => {
   const service = new ResourcePoolService();
   const pool = createResourcePool({ poolId: "pool-visible" });
 
@@ -52,7 +52,7 @@ test("registerPool makes pool available via getPool", () => {
   assert.equal(retrieved?.poolId, "pool-visible");
 });
 
-test("registerPool throws on invalid pool data", () => {
+test("registerPool throws on invalid pool data [resource-pool]", () => {
   const service = new ResourcePoolService();
 
   assert.throws(() => {
@@ -64,7 +64,7 @@ test("registerPool throws on invalid pool data", () => {
 // allocate Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("allocate grants request when capacity available", () => {
+test("allocate grants request when capacity available [resource-pool]", () => {
   const service = new ResourcePoolService();
   service.registerPool(createResourcePool({ poolId: "pool-alloc", capacityUnits: 100, allocatedUnits: 0 }));
 
@@ -75,7 +75,7 @@ test("allocate grants request when capacity available", () => {
   assert.deepEqual(allocation.reasonCodes, ["resource_pool.allocated"]);
 });
 
-test("allocate updates pool allocatedUnits after grant", () => {
+test("allocate updates pool allocatedUnits after grant [resource-pool]", () => {
   const service = new ResourcePoolService();
   service.registerPool(createResourcePool({ poolId: "pool-track", capacityUnits: 100, allocatedUnits: 0 }));
 
@@ -85,7 +85,7 @@ test("allocate updates pool allocatedUnits after grant", () => {
   assert.equal(pool?.allocatedUnits, 30);
 });
 
-test("allocate grants request using burst units when regular capacity exhausted", () => {
+test("allocate grants request using burst units when regular capacity exhausted [resource-pool]", () => {
   const service = new ResourcePoolService();
   service.registerPool(createResourcePool({
     poolId: "pool-burst",
@@ -100,7 +100,7 @@ test("allocate grants request using burst units when regular capacity exhausted"
   assert.equal(allocation.units, 15);
 });
 
-test("allocate denies request when capacity and burst exhausted", () => {
+test("allocate denies request when capacity and burst exhausted [resource-pool]", () => {
   const service = new ResourcePoolService();
   service.registerPool(createResourcePool({
     poolId: "pool-full",
@@ -116,7 +116,7 @@ test("allocate denies request when capacity and burst exhausted", () => {
   assert.deepEqual(allocation.reasonCodes, ["resource_pool.capacity_exceeded"]);
 });
 
-test("allocate denies request for exact available amount plus one", () => {
+test("allocate denies request for exact available amount plus one [resource-pool]", () => {
   const service = new ResourcePoolService();
   service.registerPool(createResourcePool({
     poolId: "pool-exact",
@@ -130,7 +130,7 @@ test("allocate denies request for exact available amount plus one", () => {
   assert.equal(allocation.granted, false);
 });
 
-test("allocate multiple consumers correctly tracks allocation", () => {
+test("allocate multiple consumers correctly tracks allocation [resource-pool]", () => {
   const service = new ResourcePoolService();
   service.registerPool(createResourcePool({ poolId: "pool-multi", capacityUnits: 100, allocatedUnits: 0 }));
 
@@ -141,7 +141,7 @@ test("allocate multiple consumers correctly tracks allocation", () => {
   assert.equal(pool?.allocatedUnits, 70);
 });
 
-test("allocate throws for non-existent pool", () => {
+test("allocate throws for non-existent pool [resource-pool]", () => {
   const service = new ResourcePoolService();
 
   assert.throws(() => {
@@ -153,7 +153,7 @@ test("allocate throws for non-existent pool", () => {
 // release Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("release reduces allocatedUnits", () => {
+test("release reduces allocatedUnits [resource-pool]", () => {
   const service = new ResourcePoolService();
   service.registerPool(createResourcePool({ poolId: "pool-release", capacityUnits: 100, allocatedUnits: 50 }));
 
@@ -162,7 +162,7 @@ test("release reduces allocatedUnits", () => {
   assert.equal(pool.allocatedUnits, 30);
 });
 
-test("release does not reduce below zero", () => {
+test("release does not reduce below zero [resource-pool]", () => {
   const service = new ResourcePoolService();
   service.registerPool(createResourcePool({ poolId: "pool-underflow", capacityUnits: 100, allocatedUnits: 10 }));
 
@@ -171,7 +171,7 @@ test("release does not reduce below zero", () => {
   assert.equal(pool.allocatedUnits, 0);
 });
 
-test("release makes released capacity available for new allocation", () => {
+test("release makes released capacity available for new allocation [resource-pool]", () => {
   const service = new ResourcePoolService();
   service.registerPool(createResourcePool({ poolId: "pool-reuse", capacityUnits: 100, allocatedUnits: 80 }));
 
@@ -181,7 +181,7 @@ test("release makes released capacity available for new allocation", () => {
   assert.equal(allocation.granted, true);
 });
 
-test("release throws for non-existent pool", () => {
+test("release throws for non-existent pool [resource-pool]", () => {
   const service = new ResourcePoolService();
 
   assert.throws(() => {
@@ -193,7 +193,7 @@ test("release throws for non-existent pool", () => {
 // getPool Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("getPool returns null for non-existent pool", () => {
+test("getPool returns null for non-existent pool [resource-pool]", () => {
   const service = new ResourcePoolService();
 
   const pool = service.getPool("nonexistent");
@@ -201,7 +201,7 @@ test("getPool returns null for non-existent pool", () => {
   assert.equal(pool, null);
 });
 
-test("getPool returns current pool state after allocations", () => {
+test("getPool returns current pool state after allocations [resource-pool]", () => {
   const service = new ResourcePoolService();
   service.registerPool(createResourcePool({ poolId: "pool-state" }));
 

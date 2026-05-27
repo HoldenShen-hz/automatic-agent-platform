@@ -20,7 +20,7 @@ import {
 // Issue #2203: a failed session must not silently jump back to connected.
 // Recovery has to go through connecting first so the session performs a new handshake.
 
-test("remote-session-state: connected signal returns connected from any state except failed", () => {
+test("remote-session-state: connected signal returns connected from any state except failed [remote-session-state]", () => {
   // From connecting -> connected
   assert.equal(
     transitionRemoteSessionState("connecting", "connected"),
@@ -46,7 +46,7 @@ test("remote-session-state: connected signal returns connected from any state ex
   );
 });
 
-test("remote-session-state: failed + connected signal re-enters connecting instead of silently clearing failure", () => {
+test("remote-session-state: failed + connected signal re-enters connecting instead of silently clearing failure [remote-session-state]", () => {
   const result = transitionRemoteSessionState("failed", "connected");
 
   assert.equal(
@@ -56,7 +56,7 @@ test("remote-session-state: failed + connected signal re-enters connecting inste
   );
 });
 
-test("remote-session-state: connection_lost transitions correctly from non-failed states", () => {
+test("remote-session-state: connection_lost transitions correctly from non-failed states [remote-session-state]", () => {
   // From connecting -> reconnecting
   assert.equal(
     transitionRemoteSessionState("connecting", "connection_lost"),
@@ -82,7 +82,7 @@ test("remote-session-state: connection_lost transitions correctly from non-faile
   );
 });
 
-test("remote-session-state: connection_lost from failed stays failed", () => {
+test("remote-session-state: connection_lost from failed stays failed [remote-session-state]", () => {
   // From failed -> connection_lost should stay failed
   assert.equal(
     transitionRemoteSessionState("failed", "connection_lost"),
@@ -90,7 +90,7 @@ test("remote-session-state: connection_lost from failed stays failed", () => {
   );
 });
 
-test("remote-session-state: partial_sync transitions to degraded", () => {
+test("remote-session-state: partial_sync transitions to degraded [remote-session-state]", () => {
   assert.equal(
     transitionRemoteSessionState("connecting", "partial_sync"),
     "degraded"
@@ -112,7 +112,7 @@ test("remote-session-state: partial_sync transitions to degraded", () => {
   );
 });
 
-test("remote-session-state: hard_failure transitions to failed", () => {
+test("remote-session-state: hard_failure transitions to failed [remote-session-state]", () => {
   assert.equal(
     transitionRemoteSessionState("connecting", "hard_failure"),
     "failed"
@@ -145,7 +145,7 @@ test("remote-session-state: hard_failure transitions to failed", () => {
   );
 });
 
-test("remote-session-state: viewer_mode transitions to viewer_only", () => {
+test("remote-session-state: viewer_mode transitions to viewer_only [remote-session-state]", () => {
   assert.equal(
     transitionRemoteSessionState("connecting", "viewer_mode"),
     "viewer_only"
@@ -172,7 +172,7 @@ test("remote-session-state: viewer_mode transitions to viewer_only", () => {
   );
 });
 
-test("remote-session-state: unknown signal returns current state", () => {
+test("remote-session-state: unknown signal returns current state [remote-session-state]", () => {
   // Using undefined or any unknown signal should return current state
   const unknownSignal = "unknown_signal" as any;
 
@@ -192,7 +192,7 @@ test("remote-session-state: unknown signal returns current state", () => {
   );
 });
 
-test("remote-session-state: all valid state values are covered", () => {
+test("remote-session-state: all valid state values are covered [remote-session-state]", () => {
   const validStates: RemoteSessionState[] = [
     "connecting",
     "connected",
@@ -222,7 +222,7 @@ test("remote-session-state: all valid state values are covered", () => {
   }
 });
 
-test("remote-session-state: recovery path from failed to connected", () => {
+test("remote-session-state: recovery path from failed to connected [remote-session-state]", () => {
   // Recovery is a two-step handshake: failed -> connecting -> connected.
   let state: RemoteSessionState = "failed";
   state = transitionRemoteSessionState(state, "connected");

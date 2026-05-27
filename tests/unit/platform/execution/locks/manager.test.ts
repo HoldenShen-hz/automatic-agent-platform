@@ -23,7 +23,7 @@ function createTestDb(): DatabaseSync {
 // createLockAdapter factory tests
 // =============================================================================
 
-test("createLockAdapter creates SqliteLockAdapter with valid database", () => {
+test("createLockAdapter creates SqliteLockAdapter with valid database [manager]", () => {
   const db = createTestDb();
   const adapter = createLockAdapter("sqlite", db);
 
@@ -33,21 +33,21 @@ test("createLockAdapter creates SqliteLockAdapter with valid database", () => {
   db.close();
 });
 
-test("createLockAdapter creates PgAdvisoryLockAdapter without database", () => {
+test("createLockAdapter creates PgAdvisoryLockAdapter without database [manager]", () => {
   const adapter = createLockAdapter("pg_advisory");
 
   assert.ok(adapter instanceof PgAdvisoryLockAdapter);
   assert.equal(adapter.backendKind, "pg_advisory");
 });
 
-test("createLockAdapter creates RedisLockAdapter without database", () => {
+test("createLockAdapter creates RedisLockAdapter without database [manager]", () => {
   const adapter = createLockAdapter("redis");
 
   assert.ok(adapter instanceof RedisLockAdapter);
   assert.equal(adapter.backendKind, "redis");
 });
 
-test("createLockAdapter throws for unknown backend kind", () => {
+test("createLockAdapter throws for unknown backend kind [manager]", () => {
   assert.throws(
     () => createLockAdapter("unknown" as "sqlite" | "pg_advisory" | "redis"),
     (error: unknown) => {
@@ -60,7 +60,7 @@ test("createLockAdapter throws for unknown backend kind", () => {
   );
 });
 
-test("createLockAdapter throws for sqlite when db is not provided", () => {
+test("createLockAdapter throws for sqlite when db is not provided [manager]", () => {
   assert.throws(
     () => createLockAdapter("sqlite"),
     (error: unknown) => {
@@ -70,7 +70,7 @@ test("createLockAdapter throws for sqlite when db is not provided", () => {
   );
 });
 
-test("createLockAdapter error message includes the unsupported backend name", () => {
+test("createLockAdapter error message includes the unsupported backend name [manager]", () => {
   assert.throws(
     () => createLockAdapter("mysql" as "sqlite" | "pg_advisory" | "redis"),
     (error: unknown) => {
@@ -84,7 +84,7 @@ test("createLockAdapter error message includes the unsupported backend name", ()
 // DistributedLockAdapter mock tests
 // =============================================================================
 
-test("DistributedLockAdapter mock can be created with all required methods", () => {
+test("DistributedLockAdapter mock can be created with all required methods [manager]", () => {
   const mockAdapter: DistributedLockAdapter = {
     backendKind: "mock",
     acquire: () => ({ acquired: true, lock: { lockKey: "key", owner: "owner", fencingToken: 1, status: "held", acquiredAt: new Date().toISOString(), ttlMs: 30000, metadata: null } }),
@@ -102,7 +102,7 @@ test("DistributedLockAdapter mock can be created with all required methods", () 
   assert.equal(typeof mockAdapter.inspect, "function");
 });
 
-test("DistributedLockAdapter mock acquire returns correct result structure", () => {
+test("DistributedLockAdapter mock acquire returns correct result structure [manager]", () => {
   const mockAdapter: DistributedLockAdapter = {
     backendKind: "mock",
     acquire: () => ({ acquired: false }),
@@ -116,7 +116,7 @@ test("DistributedLockAdapter mock acquire returns correct result structure", () 
   assert.equal(result.acquired, false);
 });
 
-test("DistributedLockAdapter mock extend returns null for non-existent lock", () => {
+test("DistributedLockAdapter mock extend returns null for non-existent lock [manager]", () => {
   const mockAdapter: DistributedLockAdapter = {
     backendKind: "mock",
     acquire: () => ({ acquired: false }),
@@ -134,7 +134,7 @@ test("DistributedLockAdapter mock extend returns null for non-existent lock", ()
 // Manager-level lock operations with SQLite adapter
 // =============================================================================
 
-test("Manager: SqliteLockAdapter acquire returns lock with correct structure", () => {
+test("Manager: SqliteLockAdapter acquire returns lock with correct structure [manager]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -151,7 +151,7 @@ test("Manager: SqliteLockAdapter acquire returns lock with correct structure", (
   db.close();
 });
 
-test("Manager: SqliteLockAdapter release returns true for correct owner", () => {
+test("Manager: SqliteLockAdapter release returns true for correct owner [manager]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -162,7 +162,7 @@ test("Manager: SqliteLockAdapter release returns true for correct owner", () => 
   db.close();
 });
 
-test("Manager: SqliteLockAdapter release returns false for wrong owner", () => {
+test("Manager: SqliteLockAdapter release returns false for wrong owner [manager]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -173,7 +173,7 @@ test("Manager: SqliteLockAdapter release returns false for wrong owner", () => {
   db.close();
 });
 
-test("Manager: SqliteLockAdapter extend returns extended lock info", () => {
+test("Manager: SqliteLockAdapter extend returns extended lock info [manager]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -186,7 +186,7 @@ test("Manager: SqliteLockAdapter extend returns extended lock info", () => {
   db.close();
 });
 
-test("Manager: SqliteLockAdapter extend returns null for wrong owner", () => {
+test("Manager: SqliteLockAdapter extend returns null for wrong owner [manager]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -197,7 +197,7 @@ test("Manager: SqliteLockAdapter extend returns null for wrong owner", () => {
   db.close();
 });
 
-test("Manager: SqliteLockAdapter inspect returns lock info", () => {
+test("Manager: SqliteLockAdapter inspect returns lock info [manager]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -211,7 +211,7 @@ test("Manager: SqliteLockAdapter inspect returns lock info", () => {
   db.close();
 });
 
-test("Manager: SqliteLockAdapter inspect returns null for non-existent lock", () => {
+test("Manager: SqliteLockAdapter inspect returns null for non-existent lock [manager]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -221,7 +221,7 @@ test("Manager: SqliteLockAdapter inspect returns null for non-existent lock", ()
   db.close();
 });
 
-test("Manager: SqliteLockAdapter forceSteal transfers lock to new owner", () => {
+test("Manager: SqliteLockAdapter forceSteal transfers lock to new owner [manager]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -237,7 +237,7 @@ test("Manager: SqliteLockAdapter forceSteal transfers lock to new owner", () => 
 // Error handling tests
 // =============================================================================
 
-test("Manager: createLockAdapter throws descriptive error for empty backend string", () => {
+test("Manager: createLockAdapter throws descriptive error for empty backend string [manager]", () => {
   assert.throws(
     () => createLockAdapter("" as "sqlite" | "pg_advisory" | "redis"),
     (error: unknown) => {
@@ -247,7 +247,7 @@ test("Manager: createLockAdapter throws descriptive error for empty backend stri
   );
 });
 
-test("Manager: SqliteLockAdapter release on closed database returns false", () => {
+test("Manager: SqliteLockAdapter release on closed database returns false [manager]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -258,7 +258,7 @@ test("Manager: SqliteLockAdapter release on closed database returns false", () =
   assert.equal(released, false);
 });
 
-test("Manager: SqliteLockAdapter extend on closed database returns null", () => {
+test("Manager: SqliteLockAdapter extend on closed database returns null [manager]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -269,7 +269,7 @@ test("Manager: SqliteLockAdapter extend on closed database returns null", () => 
   assert.equal(extended, null);
 });
 
-test("Manager: SqliteLockAdapter inspect on closed database returns null", () => {
+test("Manager: SqliteLockAdapter inspect on closed database returns null [manager]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -284,7 +284,7 @@ test("Manager: SqliteLockAdapter inspect on closed database returns null", () =>
 // TTL behavior tests
 // =============================================================================
 
-test("Manager: SqliteLockAdapter uses default TTL when not specified", () => {
+test("Manager: SqliteLockAdapter uses default TTL when not specified [manager]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -296,7 +296,7 @@ test("Manager: SqliteLockAdapter uses default TTL when not specified", () => {
   db.close();
 });
 
-test("Manager: SqliteLockAdapter respects custom TTL", () => {
+test("Manager: SqliteLockAdapter respects custom TTL [manager]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -308,7 +308,7 @@ test("Manager: SqliteLockAdapter respects custom TTL", () => {
   db.close();
 });
 
-test("Manager: SqliteLockAdapter treats zero TTL as infinite", () => {
+test("Manager: SqliteLockAdapter treats zero TTL as infinite [manager]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 

@@ -224,7 +224,6 @@ export class NoisyNeighborProtectionService {
         used,
       };
     } else {
-      // New window - @ts-expect-error: type mismatch between number windowStart/End and string in record
       record = {
         tenantId,
         resourceType,

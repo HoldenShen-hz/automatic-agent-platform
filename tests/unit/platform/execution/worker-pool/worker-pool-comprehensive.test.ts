@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { WorkerDrainProtocol, WorkerDrainPhase, DEFAULT_DRAIN_CONFIG } from "../../../../../src/platform/five-plane-execution/worker-pool/worker-drain-protocol.js";
 
-test("WorkerDrainProtocol beginDrain returns DRAIN phase receipt", () => {
+test("WorkerDrainProtocol beginDrain returns DRAIN phase receipt [worker-pool-comprehensive]", () => {
   const protocol = new WorkerDrainProtocol();
   const request = {
     workerId: "worker-1",
@@ -27,7 +27,7 @@ test("WorkerDrainProtocol beginDrain returns DRAIN phase receipt", () => {
   assert.equal(receipt.phaseHistory[0]?.phase, WorkerDrainPhase.DRAIN);
 });
 
-test("WorkerDrainProtocol advancePhase transitions from DRAIN to QUIESCE", () => {
+test("WorkerDrainProtocol advancePhase transitions from DRAIN to QUIESCE [worker-pool-comprehensive]", () => {
   const protocol = new WorkerDrainProtocol();
   const request = {
     workerId: "worker-1",
@@ -45,7 +45,7 @@ test("WorkerDrainProtocol advancePhase transitions from DRAIN to QUIESCE", () =>
   assert.ok(advancedReceipt.phaseHistory.length >= 1);
 });
 
-test("WorkerDrainProtocol advancePhase transitions from QUIESCE to TERMINATE", () => {
+test("WorkerDrainProtocol advancePhase transitions from QUIESCE to TERMINATE [worker-pool-comprehensive]", () => {
   const protocol = new WorkerDrainProtocol();
   const request = {
     workerId: "worker-1",
@@ -63,7 +63,7 @@ test("WorkerDrainProtocol advancePhase transitions from QUIESCE to TERMINATE", (
   assert.ok(terminateReceipt.status === "terminated" || terminateReceipt.status === "deadline_exceeded");
 });
 
-test("WorkerDrainProtocol advancePhase returns current receipt for TERMINATE phase", () => {
+test("WorkerDrainProtocol advancePhase returns current receipt for TERMINATE phase [worker-pool-comprehensive]", () => {
   const protocol = new WorkerDrainProtocol();
   const request = {
     workerId: "worker-1",
@@ -82,7 +82,7 @@ test("WorkerDrainProtocol advancePhase returns current receipt for TERMINATE pha
   assert.equal(againReceipt, terminateReceipt);
 });
 
-test("WorkerDrainProtocol isDrainComplete returns true when all leases completed", () => {
+test("WorkerDrainProtocol isDrainComplete returns true when all leases completed [worker-pool-comprehensive]", () => {
   const protocol = new WorkerDrainProtocol();
   const receipt = {
     workerId: "worker-1",
@@ -102,7 +102,7 @@ test("WorkerDrainProtocol isDrainComplete returns true when all leases completed
   assert.equal(protocol.isDrainComplete(receipt), true);
 });
 
-test("WorkerDrainProtocol isDrainComplete returns true when in TERMINATE phase", () => {
+test("WorkerDrainProtocol isDrainComplete returns true when in TERMINATE phase [worker-pool-comprehensive]", () => {
   const protocol = new WorkerDrainProtocol();
   const receipt = {
     workerId: "worker-1",
@@ -122,7 +122,7 @@ test("WorkerDrainProtocol isDrainComplete returns true when in TERMINATE phase",
   assert.equal(protocol.isDrainComplete(receipt), true);
 });
 
-test("WorkerDrainProtocol isDrainComplete returns false when leases pending", () => {
+test("WorkerDrainProtocol isDrainComplete returns false when leases pending [worker-pool-comprehensive]", () => {
   const protocol = new WorkerDrainProtocol();
   const receipt = {
     workerId: "worker-1",
@@ -142,7 +142,7 @@ test("WorkerDrainProtocol isDrainComplete returns false when leases pending", ()
   assert.equal(protocol.isDrainComplete(receipt), false);
 });
 
-test("WorkerDrainProtocol isDeadlineExceeded returns true when past deadline", () => {
+test("WorkerDrainProtocol isDeadlineExceeded returns true when past deadline [worker-pool-comprehensive]", () => {
   const protocol = new WorkerDrainProtocol();
   const receipt = {
     workerId: "worker-1",
@@ -162,7 +162,7 @@ test("WorkerDrainProtocol isDeadlineExceeded returns true when past deadline", (
   assert.equal(protocol.isDeadlineExceeded(receipt, "2024-01-01T12:00:00Z"), true);
 });
 
-test("WorkerDrainProtocol isDeadlineExceeded returns false when before deadline", () => {
+test("WorkerDrainProtocol isDeadlineExceeded returns false when before deadline [worker-pool-comprehensive]", () => {
   const protocol = new WorkerDrainProtocol();
   const receipt = {
     workerId: "worker-1",
@@ -182,7 +182,7 @@ test("WorkerDrainProtocol isDeadlineExceeded returns false when before deadline"
   assert.equal(protocol.isDeadlineExceeded(receipt, "2024-01-01T10:30:00Z"), false);
 });
 
-test("WorkerDrainProtocol createReceipt with custom config", () => {
+test("WorkerDrainProtocol createReceipt with custom config [worker-pool-comprehensive]", () => {
   const protocol = new WorkerDrainProtocol({
     drainTimeoutMs: 5000,
     quiesceTimeoutMs: 10000,
@@ -202,7 +202,7 @@ test("WorkerDrainProtocol createReceipt with custom config", () => {
   assert.equal(receipt.phase, WorkerDrainPhase.DRAIN);
 });
 
-test("WorkerDrainProtocol createReceipt determines QUIESCE phase correctly", () => {
+test("WorkerDrainProtocol createReceipt determines QUIESCE phase correctly [worker-pool-comprehensive]", () => {
   const protocol = new WorkerDrainProtocol();
   const request = {
     workerId: "worker-1",
@@ -219,7 +219,7 @@ test("WorkerDrainProtocol createReceipt determines QUIESCE phase correctly", () 
   assert.equal(receipt.status, "quiescing");
 });
 
-test("WorkerDrainProtocol createReceipt determines TERMINATE phase correctly", () => {
+test("WorkerDrainProtocol createReceipt determines TERMINATE phase correctly [worker-pool-comprehensive]", () => {
   const protocol = new WorkerDrainProtocol();
   const request = {
     workerId: "worker-1",
@@ -235,19 +235,19 @@ test("WorkerDrainProtocol createReceipt determines TERMINATE phase correctly", (
   assert.equal(receipt.phase, WorkerDrainPhase.TERMINATE);
 });
 
-test("DEFAULT_DRAIN_CONFIG has expected values", () => {
+test("DEFAULT_DRAIN_CONFIG has expected values [worker-pool-comprehensive]", () => {
   assert.equal(DEFAULT_DRAIN_CONFIG.drainTimeoutMs, 10_000);
   assert.equal(DEFAULT_DRAIN_CONFIG.quiesceTimeoutMs, 30_000);
   assert.equal(DEFAULT_DRAIN_CONFIG.checkIntervalMs, 1_000);
 });
 
-test("WorkerDrainPhase enum has expected values", () => {
+test("WorkerDrainPhase enum has expected values [worker-pool-comprehensive]", () => {
   assert.equal(WorkerDrainPhase.DRAIN, "drain");
   assert.equal(WorkerDrainPhase.QUIESCE, "quiesce");
   assert.equal(WorkerDrainPhase.TERMINATE, "terminate");
 });
 
-test("WorkerDrainProtocol tracks phase history correctly", () => {
+test("WorkerDrainProtocol tracks phase history correctly [worker-pool-comprehensive]", () => {
   const protocol = new WorkerDrainProtocol();
   const request = {
     workerId: "worker-1",
@@ -264,7 +264,7 @@ test("WorkerDrainProtocol tracks phase history correctly", () => {
   assert.ok(quiesceReceipt.phaseHistory.length >= 2);
 });
 
-test("WorkerDrainProtocol handles handover lease IDs", () => {
+test("WorkerDrainProtocol handles handover lease IDs [worker-pool-comprehensive]", () => {
   const protocol = new WorkerDrainProtocol();
   const request = {
     workerId: "worker-1",
@@ -286,7 +286,7 @@ test("WorkerDrainProtocol handles handover lease IDs", () => {
   assert.ok(!receipt.handoverLeaseIds.includes("lease-no-handover"));
 });
 
-test("WorkerDrainProtocol forcedHandoffCount when deadline exceeded", () => {
+test("WorkerDrainProtocol forcedHandoffCount when deadline exceeded [worker-pool-comprehensive]", () => {
   const protocol = new WorkerDrainProtocol();
   const request = {
     workerId: "worker-1",
@@ -304,7 +304,7 @@ test("WorkerDrainProtocol forcedHandoffCount when deadline exceeded", () => {
   assert.equal(receipt.forcedHandoffCount > 0 || receipt.runTerminationCleanupRequired, true);
 });
 
-test("WorkerDrainProtocol beginDrain with empty activeLeases", () => {
+test("WorkerDrainProtocol beginDrain with empty activeLeases [worker-pool-comprehensive]", () => {
   const protocol = new WorkerDrainProtocol();
   const request = {
     workerId: "worker-empty",
@@ -322,7 +322,7 @@ test("WorkerDrainProtocol beginDrain with empty activeLeases", () => {
   assert.equal(receipt.runTerminationCleanupRequired, false);
 });
 
-test("WorkerDrainProtocol with drainReason in request", () => {
+test("WorkerDrainProtocol with drainReason in request [worker-pool-comprehensive]", () => {
   const protocol = new WorkerDrainProtocol();
   const request = {
     workerId: "worker-1",

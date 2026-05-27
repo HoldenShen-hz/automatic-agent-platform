@@ -15,7 +15,7 @@ function createMockStore(): AuthoritativeTaskStore {
   } as unknown as AuthoritativeTaskStore;
 }
 
-test("WorkerServiceIdentityRegistry evaluateClaim loads from store before evaluation", () => {
+test("WorkerServiceIdentityRegistry evaluateClaim loads from store before evaluation [worker-pool-components]", () => {
   // This test verifies that loadFromStore is called during evaluateClaim
   // even if the registry hasn't been explicitly loaded
   const registry = new WorkerServiceIdentityRegistry(createMockStore());
@@ -31,7 +31,7 @@ test("WorkerServiceIdentityRegistry evaluateClaim loads from store before evalua
   assert.equal(decision.reasonCode, "worker_identity.worker_unknown");
 });
 
-test("WorkerServiceIdentityRegistry multiple workers can be registered and evaluated", () => {
+test("WorkerServiceIdentityRegistry multiple workers can be registered and evaluated [worker-pool-components]", () => {
   const registry = new WorkerServiceIdentityRegistry(createMockStore());
 
   // Register first worker
@@ -71,7 +71,7 @@ test("WorkerServiceIdentityRegistry multiple workers can be registered and evalu
   assert.equal(decision2.accepted, true);
 });
 
-test("WorkerServiceIdentityRegistry evaluateClaim fails for wrong tenant", () => {
+test("WorkerServiceIdentityRegistry evaluateClaim fails for wrong tenant [worker-pool-components]", () => {
   const registry = new WorkerServiceIdentityRegistry(createMockStore());
 
   registry.register({
@@ -93,7 +93,7 @@ test("WorkerServiceIdentityRegistry evaluateClaim fails for wrong tenant", () =>
   assert.equal(decision.reasonCode, "worker_identity.tenant_not_allowed");
 });
 
-test("WorkerDrainProtocol beginDrain creates correct initial receipt", () => {
+test("WorkerDrainProtocol beginDrain creates correct initial receipt [worker-pool-components]", () => {
   const protocol = new WorkerDrainProtocol();
   const request = {
     workerId: "worker-1",
@@ -117,7 +117,7 @@ test("WorkerDrainProtocol beginDrain creates correct initial receipt", () => {
   assert.equal(receipt.forcedHandoffCount, 0);
 });
 
-test("WorkerDrainProtocol advancePhase marks phase history entry as exited", () => {
+test("WorkerDrainProtocol advancePhase marks phase history entry as exited [worker-pool-components]", () => {
   const protocol = new WorkerDrainProtocol();
   const request = {
     workerId: "worker-1",
@@ -137,7 +137,7 @@ test("WorkerDrainProtocol advancePhase marks phase history entry as exited", () 
   assert.ok(drainPhase?.exitedAt);
 });
 
-test("WorkerDrainProtocol createReceipt with zero activeLeases returns drained status", () => {
+test("WorkerDrainProtocol createReceipt with zero activeLeases returns drained status [worker-pool-components]", () => {
   const protocol = new WorkerDrainProtocol();
   const request = {
     workerId: "worker-1",
@@ -154,7 +154,7 @@ test("WorkerDrainProtocol createReceipt with zero activeLeases returns drained s
   assert.equal(receipt.activeLeaseCount, 0);
 });
 
-test("WorkerDrainProtocol createReceipt calculates completed leases proportionally in QUIESCE", () => {
+test("WorkerDrainProtocol createReceipt calculates completed leases proportionally in QUIESCE [worker-pool-components]", () => {
   const protocol = new WorkerDrainProtocol();
   const request = {
     workerId: "worker-1",
@@ -178,7 +178,7 @@ test("WorkerDrainProtocol createReceipt calculates completed leases proportional
   assert.ok(receipt.completedLeaseCount <= 4);
 });
 
-test("WorkerDrainProtocol createReceipt marks runTerminationCleanupRequired when handover required", () => {
+test("WorkerDrainProtocol createReceipt marks runTerminationCleanupRequired when handover required [worker-pool-components]", () => {
   const protocol = new WorkerDrainProtocol();
   const request = {
     workerId: "worker-1",
@@ -195,7 +195,7 @@ test("WorkerDrainProtocol createReceipt marks runTerminationCleanupRequired when
   assert.equal(receipt.runTerminationCleanupRequired, true);
 });
 
-test("WorkerDrainProtocol createReceipt calculates forcedHandoffCount on deadline exceeded", () => {
+test("WorkerDrainProtocol createReceipt calculates forcedHandoffCount on deadline exceeded [worker-pool-components]", () => {
   const protocol = new WorkerDrainProtocol();
   const request = {
     workerId: "worker-1",
@@ -214,7 +214,7 @@ test("WorkerDrainProtocol createReceipt calculates forcedHandoffCount on deadlin
   assert.equal(receipt.status, "deadline_exceeded");
 });
 
-test("WorkerDrainProtocol advancePhase sets cleanupRequired based on handover leases", () => {
+test("WorkerDrainProtocol advancePhase sets cleanupRequired based on handover leases [worker-pool-components]", () => {
   const protocol = new WorkerDrainProtocol();
   const request = {
     workerId: "worker-1",
@@ -233,7 +233,7 @@ test("WorkerDrainProtocol advancePhase sets cleanupRequired based on handover le
   assert.equal(advancedReceipt.runTerminationCleanupRequired, true);
 });
 
-test("WorkerDrainProtocol createReceipt phaseHistory structure", () => {
+test("WorkerDrainProtocol createReceipt phaseHistory structure [worker-pool-components]", () => {
   const protocol = new WorkerDrainProtocol();
   const request = {
     workerId: "worker-1",
@@ -254,7 +254,7 @@ test("WorkerDrainProtocol createReceipt phaseHistory structure", () => {
   }
 });
 
-test("WorkerDrainProtocol isDeadlineExceeded edge case - exactly at deadline", () => {
+test("WorkerDrainProtocol isDeadlineExceeded edge case - exactly at deadline [worker-pool-components]", () => {
   const protocol = new WorkerDrainProtocol();
   const receipt = {
     workerId: "worker-1",
@@ -275,7 +275,7 @@ test("WorkerDrainProtocol isDeadlineExceeded edge case - exactly at deadline", (
   assert.equal(protocol.isDeadlineExceeded(receipt, "2024-01-01T11:00:00.001Z"), true);
 });
 
-test("WorkerServiceIdentityRegistry register returns identity with correct fields", () => {
+test("WorkerServiceIdentityRegistry register returns identity with correct fields [worker-pool-components]", () => {
   const registry = new WorkerServiceIdentityRegistry(createMockStore());
   const identity = {
     workerId: "worker-return-test",
@@ -292,7 +292,7 @@ test("WorkerServiceIdentityRegistry register returns identity with correct field
   assert.deepEqual(result.allowedNodeRunTenants, identity.allowedNodeRunTenants);
 });
 
-test("WorkerServiceIdentityRegistry evaluateClaim returns correct reason codes for all failure cases", () => {
+test("WorkerServiceIdentityRegistry evaluateClaim returns correct reason codes for all failure cases [worker-pool-components]", () => {
   const registry = new WorkerServiceIdentityRegistry(createMockStore());
 
   registry.register({

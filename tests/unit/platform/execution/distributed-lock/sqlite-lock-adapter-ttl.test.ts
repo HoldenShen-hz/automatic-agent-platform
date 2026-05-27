@@ -28,7 +28,7 @@ function createTestDb(): DatabaseSync {
 // Lock not expired (within TTL) - new owner rejected
 // ---------------------------------------------------------------------------
 
-test("Lock not expired (within TTL) - new owner rejected", () => {
+test("Lock not expired (within TTL) - new owner rejected [sqlite-lock-adapter-ttl]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -51,7 +51,7 @@ test("Lock not expired (within TTL) - new owner rejected", () => {
 // Lock expired (past TTL) - new owner can acquire
 // ---------------------------------------------------------------------------
 
-test("Lock expired (past TTL) - new owner can acquire", () => {
+test("Lock expired (past TTL) - new owner can acquire [sqlite-lock-adapter-ttl]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -75,7 +75,7 @@ test("Lock expired (past TTL) - new owner can acquire", () => {
 // TTL = 0 treated as no-expiry (infinite)
 // ---------------------------------------------------------------------------
 
-test("TTL = 0 treated as no-expiry (infinite)", () => {
+test("TTL = 0 treated as no-expiry (infinite) [sqlite-lock-adapter-ttl]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -95,7 +95,7 @@ test("TTL = 0 treated as no-expiry (infinite)", () => {
   db.close();
 });
 
-test("TTL = 0 stored correctly and does not cause division by zero", () => {
+test("TTL = 0 stored correctly and does not cause division by zero [sqlite-lock-adapter-ttl]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -114,7 +114,7 @@ test("TTL = 0 stored correctly and does not cause division by zero", () => {
 // Very long TTL (> 1 year) handled correctly
 // ---------------------------------------------------------------------------
 
-test("Very long TTL (> 1 year) handled correctly", () => {
+test("Very long TTL (> 1 year) handled correctly [sqlite-lock-adapter-ttl]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -133,7 +133,7 @@ test("Very long TTL (> 1 year) handled correctly", () => {
   db.close();
 });
 
-test("Lock with long TTL is still honored within the TTL period", () => {
+test("Lock with long TTL is still honored within the TTL period [sqlite-lock-adapter-ttl]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -152,7 +152,7 @@ test("Lock with long TTL is still honored within the TTL period", () => {
 // Lock extended beyond original TTL
 // ---------------------------------------------------------------------------
 
-test("Lock extended beyond original TTL", () => {
+test("Lock extended beyond original TTL [sqlite-lock-adapter-ttl]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -171,7 +171,7 @@ test("Lock extended beyond original TTL", () => {
   db.close();
 });
 
-test("Extended lock can still be force stolen after extension", () => {
+test("Extended lock can still be force stolen after extension [sqlite-lock-adapter-ttl]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -190,7 +190,7 @@ test("Extended lock can still be force stolen after extension", () => {
 // Force steal clears previous owner's TTL
 // ---------------------------------------------------------------------------
 
-test("Force steal clears previous owner's TTL", () => {
+test("Force steal clears previous owner's TTL [sqlite-lock-adapter-ttl]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -211,7 +211,7 @@ test("Force steal clears previous owner's TTL", () => {
   db.close();
 });
 
-test("Force steal creates fresh TTL, ignoring previous expiration", () => {
+test("Force steal creates fresh TTL, ignoring previous expiration [sqlite-lock-adapter-ttl]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -244,7 +244,7 @@ test("Force steal creates fresh TTL, ignoring previous expiration", () => {
 // Additional TTL edge cases
 // ---------------------------------------------------------------------------
 
-test("Lock with TTL exactly at expiresAt boundary is considered expired", () => {
+test("Lock with TTL exactly at expiresAt boundary is considered expired [sqlite-lock-adapter-ttl]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -264,7 +264,7 @@ test("Lock with TTL exactly at expiresAt boundary is considered expired", () => 
   db.close();
 });
 
-test("Re-acquiring same owner extends TTL and refreshes fencing token", () => {
+test("Re-acquiring same owner extends TTL and refreshes fencing token [sqlite-lock-adapter-ttl]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 

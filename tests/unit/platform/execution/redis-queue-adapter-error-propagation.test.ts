@@ -10,7 +10,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-test("[SYS-REL-2.4] enqueue propagates Redis write failure", async () => {
+test("[SYS-REL-2.4] enqueue propagates Redis write failure [redis-queue-adapter-error-propagation]", async () => {
   // Simulate Redis hmset failing with READONLY error
   const mockHmset = async () => {
     throw new Error("READONLY - cannot write to read-only replica");
@@ -45,7 +45,7 @@ test("[SYS-REL-2.4] enqueue propagates Redis write failure", async () => {
   );
 });
 
-test("[SYS-REL-2.4] pipeline .catch(() => {}) swallows errors - defect demonstration", async () => {
+test("[SYS-REL-2.4] pipeline .catch(() => {}) swallows errors - defect demonstration [redis-queue-adapter-error-propagation]", async () => {
   // This test demonstrates the DEFECT: pipeline errors are swallowed
   // The actual implementation has .catch(() => { throw new Error(...) }) but
   // because it's attached to a fire-and-forget promise, the error doesn't propagate
@@ -79,7 +79,7 @@ test("[SYS-REL-2.4] pipeline .catch(() => {}) swallows errors - defect demonstra
   assert.strictEqual(errorThrownFromCatch, true, "Error should propagate through catch chain");
 });
 
-test("[SYS-REL-2.4] enqueueAsync properly propagates write failures", async () => {
+test("[SYS-REL-2.4] enqueueAsync properly propagates write failures [redis-queue-adapter-error-propagation]", async () => {
   // Test the async version of enqueue which should properly propagate errors
   let writeAttempts = 0;
 
@@ -113,7 +113,7 @@ test("[SYS-REL-2.4] enqueueAsync properly propagates write failures", async () =
   assert.strictEqual(writeAttempts, 1, "hmset should be called once before failing");
 });
 
-test("[SYS-REL-2.4] enqueue (sync) should not return job when pipeline fails", () => {
+test("[SYS-REL-2.4] enqueue (sync) should not return job when pipeline fails [redis-queue-adapter-error-propagation]", () => {
   // The sync enqueue() returns a job immediately but the pipeline failure
   // causes the job to be "dropped" silently
 
@@ -160,7 +160,7 @@ test("[SYS-REL-2.4] enqueue (sync) should not return job when pipeline fails", (
   // This is the defect - caller doesn't know the job wasn't persisted
 });
 
-test("[SYS-REL-2.4] queue adapter should track failed enqueue operations", async () => {
+test("[SYS-REL-2.4] queue adapter should track failed enqueue operations [redis-queue-adapter-error-propagation]", async () => {
   // After a failed enqueue, the queue adapter should track the failure
   // for monitoring/alerting purposes
 
@@ -186,7 +186,7 @@ test("[SYS-REL-2.4] queue adapter should track failed enqueue operations", async
   );
 });
 
-test("[SYS-REL-2.4] redis queue adapter pipeline error must be caught and re-thrown", async () => {
+test("[SYS-REL-2.4] redis queue adapter pipeline error must be caught and re-thrown [redis-queue-adapter-error-propagation]", async () => {
   // Verify that pipeline errors in enqueue are properly caught and re-thrown
   // with the queue.enqueue_failed prefix
 
@@ -221,7 +221,7 @@ test("[SYS-REL-2.4] redis queue adapter pipeline error must be caught and re-thr
   );
 });
 
-test("[SYS-REL-2.4] sync enqueue should not silently drop tasks on Redis error", () => {
+test("[SYS-REL-2.4] sync enqueue should not silently drop tasks on Redis error [redis-queue-adapter-error-propagation]", () => {
   // This test validates the expected behavior after the fix:
   // sync enqueue should either throw immediately or use a mechanism
   // that guarantees error visibility

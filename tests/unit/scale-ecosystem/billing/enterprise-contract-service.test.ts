@@ -4,7 +4,7 @@ import test from "node:test";
 import { EnterpriseContractService } from "../../../../src/scale-ecosystem/billing/enterprise-contract-service.js";
 import { MonetizationError } from "../../../../src/platform/contracts/errors.js";
 
-test("EnterpriseContractService.createContract - creates contract with correct fields", (t) => {
+test("EnterpriseContractService.createContract - creates contract with correct fields [enterprise-contract-service]", (t) => {
   const service = new EnterpriseContractService();
   const input = {
     accountId: "acc_123",
@@ -29,7 +29,7 @@ test("EnterpriseContractService.createContract - creates contract with correct f
   assert.ok(contract.updatedAt);
 });
 
-test("EnterpriseContractService.createContract - without optional metadata", (t) => {
+test("EnterpriseContractService.createContract - without optional metadata [enterprise-contract-service]", (t) => {
   const service = new EnterpriseContractService();
   const input = {
     accountId: "acc_456",
@@ -44,7 +44,7 @@ test("EnterpriseContractService.createContract - without optional metadata", (t)
   assert.deepStrictEqual(contract.metadata, {});
 });
 
-test("EnterpriseContractService.getContract - returns contract by id", (t) => {
+test("EnterpriseContractService.getContract - returns contract by id [enterprise-contract-service]", (t) => {
   const service = new EnterpriseContractService();
   const input = {
     accountId: "acc_123",
@@ -59,7 +59,7 @@ test("EnterpriseContractService.getContract - returns contract by id", (t) => {
   assert.deepStrictEqual(retrieved, created);
 });
 
-test("EnterpriseContractService.getContract - returns null for unknown id", (t) => {
+test("EnterpriseContractService.getContract - returns null for unknown id [enterprise-contract-service]", (t) => {
   const service = new EnterpriseContractService();
 
   const result = service.getContract("unknown_contract_id");
@@ -67,7 +67,7 @@ test("EnterpriseContractService.getContract - returns null for unknown id", (t) 
   assert.strictEqual(result, null);
 });
 
-test("EnterpriseContractService.listContracts - returns all contracts for account", (t) => {
+test("EnterpriseContractService.listContracts - returns all contracts for account [enterprise-contract-service]", (t) => {
   const service = new EnterpriseContractService();
   service.createContract({
     accountId: "acc_123",
@@ -94,7 +94,7 @@ test("EnterpriseContractService.listContracts - returns all contracts for accoun
   assert.ok(contracts.every((c) => c.accountId === "acc_123"));
 });
 
-test("EnterpriseContractService.modifyContract - adds new version with clauses", (t) => {
+test("EnterpriseContractService.modifyContract - adds new version with clauses [enterprise-contract-service]", (t) => {
   const service = new EnterpriseContractService();
   const created = service.createContract({
     accountId: "acc_123",
@@ -119,7 +119,7 @@ test("EnterpriseContractService.modifyContract - adds new version with clauses",
   assert.ok(modified.versionId.startsWith("version_"));
 });
 
-test("EnterpriseContractService.modifyContract - throws when contract is terminated", (t) => {
+test("EnterpriseContractService.modifyContract - throws when contract is terminated [enterprise-contract-service]", (t) => {
   const service = new EnterpriseContractService();
   const created = service.createContract({
     accountId: "acc_123",
@@ -147,7 +147,7 @@ test("EnterpriseContractService.modifyContract - throws when contract is termina
   );
 });
 
-test("EnterpriseContractService.modifyContract - throws when contract is expired", (t) => {
+test("EnterpriseContractService.modifyContract - throws when contract is expired [enterprise-contract-service]", (t) => {
   const service = new EnterpriseContractService();
   const created = service.createContract({
     accountId: "acc_123",
@@ -178,7 +178,7 @@ test("EnterpriseContractService.modifyContract - throws when contract is expired
   );
 });
 
-test("EnterpriseContractService.modifyContract - throws when contract not found", (t) => {
+test("EnterpriseContractService.modifyContract - throws when contract not found [enterprise-contract-service]", (t) => {
   const service = new EnterpriseContractService();
 
   assert.throws(
@@ -199,7 +199,7 @@ test("EnterpriseContractService.modifyContract - throws when contract not found"
   );
 });
 
-test("EnterpriseContractService.terminateContract - sets status to terminated", (t) => {
+test("EnterpriseContractService.terminateContract - sets status to terminated [enterprise-contract-service]", (t) => {
   const service = new EnterpriseContractService();
   const created = service.createContract({
     accountId: "acc_123",
@@ -213,7 +213,7 @@ test("EnterpriseContractService.terminateContract - sets status to terminated", 
   assert.strictEqual(terminated.status, "terminated");
 });
 
-test("EnterpriseContractService.terminateContract - throws when contract not found", (t) => {
+test("EnterpriseContractService.terminateContract - throws when contract not found [enterprise-contract-service]", (t) => {
   const service = new EnterpriseContractService();
 
   assert.throws(
@@ -226,7 +226,7 @@ test("EnterpriseContractService.terminateContract - throws when contract not fou
   );
 });
 
-test("EnterpriseContractService.getVersionHistory - returns version history sorted by version number desc", (t) => {
+test("EnterpriseContractService.getVersionHistory - returns version history sorted by version number desc [enterprise-contract-service]", (t) => {
   const service = new EnterpriseContractService();
   const created = service.createContract({
     accountId: "acc_123",
@@ -262,7 +262,7 @@ test("EnterpriseContractService.getVersionHistory - returns version history sort
   assert.strictEqual(history[0].changeReason, "Update 2");
 });
 
-test("EnterpriseContractService.getVersionHistory - returns empty array for unknown contract", (t) => {
+test("EnterpriseContractService.getVersionHistory - returns empty array for unknown contract [enterprise-contract-service]", (t) => {
   const service = new EnterpriseContractService();
 
   const history = service.getVersionHistory("nonexistent_contract");
@@ -270,7 +270,7 @@ test("EnterpriseContractService.getVersionHistory - returns empty array for unkn
   assert.deepStrictEqual(history, []);
 });
 
-test("EnterpriseContractService.getContractVersion - returns version by id", (t) => {
+test("EnterpriseContractService.getContractVersion - returns version by id [enterprise-contract-service]", (t) => {
   const service = new EnterpriseContractService();
   const created = service.createContract({
     accountId: "acc_123",
@@ -286,7 +286,7 @@ test("EnterpriseContractService.getContractVersion - returns version by id", (t)
   assert.strictEqual(version?.contractId, created.contractId);
 });
 
-test("EnterpriseContractService.getContractVersion - returns null for unknown version id", (t) => {
+test("EnterpriseContractService.getContractVersion - returns null for unknown version id [enterprise-contract-service]", (t) => {
   const service = new EnterpriseContractService();
 
   const version = service.getContractVersion("unknown_version_id");
@@ -294,7 +294,7 @@ test("EnterpriseContractService.getContractVersion - returns null for unknown ve
   assert.strictEqual(version, null);
 });
 
-test("EnterpriseContractService.modifyContract - preserves previousText in clauses", (t) => {
+test("EnterpriseContractService.modifyContract - preserves previousText in clauses [enterprise-contract-service]", (t) => {
   const service = new EnterpriseContractService();
   const created = service.createContract({
     accountId: "acc_123",
@@ -320,7 +320,7 @@ test("EnterpriseContractService.modifyContract - preserves previousText in claus
   assert.strictEqual(tierClause?.newText, "pro");
 });
 
-test("EnterpriseContractService.modifyContract - without effectiveUntil uses null", (t) => {
+test("EnterpriseContractService.modifyContract - without effectiveUntil uses null [enterprise-contract-service]", (t) => {
   const service = new EnterpriseContractService();
   const created = service.createContract({
     accountId: "acc_123",

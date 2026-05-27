@@ -84,7 +84,7 @@ function createSoakReport(durationMs: number, runDurationMs: number, caseId = "c
   };
 }
 
-test("stable acceptance line remains partial when evidence is healthy but below the 14-day threshold", () => {
+test("stable acceptance line remains partial when evidence is healthy but below the 14-day threshold [stable-acceptance-line]", () => {
   const report = buildStableAcceptanceLineReport({
     profileName: "smoke",
     validationReport: createValidationReport(80),
@@ -134,7 +134,7 @@ test("stable acceptance line remains partial when evidence is healthy but below 
   assert.match(report.truthNotes[0] ?? "", /does not truthfully prove a full 14-day continuous run/);
 });
 
-test("stable acceptance line passes when 14-day soak, recovery, and latency budgets are all satisfied", () => {
+test("stable acceptance line passes when 14-day soak, recovery, and latency budgets are all satisfied [stable-acceptance-line]", () => {
   const report = buildStableAcceptanceLineReport({
     profileName: "72h",
     validationReport: createValidationReport(250, "coding_minimal_baseline"),
@@ -225,7 +225,7 @@ test("stable acceptance line passes when 14-day soak, recovery, and latency budg
   assert.equal(report.latencyBudget.find((item) => item.latencyBand === "extended")?.status, "pass");
 });
 
-test("stable acceptance line fails when orphan queue, zombie lock, or manual DB repair signals exist", () => {
+test("stable acceptance line fails when orphan queue, zombie lock, or manual DB repair signals exist [stable-acceptance-line]", () => {
   const report = buildStableAcceptanceLineReport({
     profileName: "24h",
     validationReport: createValidationReport(100),

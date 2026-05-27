@@ -36,7 +36,11 @@ import {
   createTaskDraft as createCanonicalTaskDraft,
 } from "../../platform/contracts/executable-contracts/index.js";
 import { loadNlGatewayConfig, getConversationWindowSize, type NlGatewayConfig } from "./nl-gateway-config-loader.js";
-import { parseIntentTokensWithModel } from "./intent-parser/index.js";
+import {
+  parseIntentTokensWithModel,
+  type IntentType as ParsedIntentType,
+  type ModelIntentParserPort,
+} from "./intent-parser/index.js";
 import { buildSlotClarificationState } from "./slot-resolver/index.js";
 import { createRequestEnvelope } from "../../platform/contracts/types/index.js";
 import { nowIso } from "../../platform/contracts/types/ids.js";
@@ -86,6 +90,7 @@ import type {
   DryRunPreview,
   ExtractedEntity,
   IntentParseResult,
+  IntentParserLlmResult,
   IntentParserPort,
   LocaleConfig,
   MemoryServicePort,
@@ -144,6 +149,41 @@ import {
   SLOT_CONFIDENCE_THRESHOLD,
   toJsonValue,
 } from "./nl-gateway-support.js";
+
+function toParsedIntentType(intentType: IntentParserLlmResult["intentType"]): ParsedIntentType {
+  switch (intentType) {
+    case "cancel_task":
+      return "task_modify";
+    case "create_goal":
+      return "task_create";
+    case "decompress_goal":
+      return "task_query";
+    default:
+      return intentType;
+  }
+}
+
+function adaptModelIntentParser(
+  parser: IntentParserPort | null | undefined,
+  priorConversationContext: ConversationContext | undefined,
+): ModelIntentParserPort | null {
+  if (parser?.parseWithLlm == null) {
+    return null;
+  }
+  return {
+    async parseWithLlm(input) {
+      const parsed = await parser.parseWithLlm?.({
+        message: input.message,
+        locale: input.locale,
+        ...(priorConversationContext == null ? {} : { priorConversationContext }),
+      });
+      return parsed == null ? null : {
+        intentType: toParsedIntentType(parsed.intentType),
+        confidence: parsed.confidence,
+      };
+    },
+  };
+}
 
 export class ContextEnricher {
   public enrich(
@@ -287,12 +327,7 @@ export class NlEntryService implements NlEntryPort {
       ? []
       : await parseIntentTokensWithModel(request.message, {
           locale,
-          // @ts-expect-error - parser type mismatch: IntentParserPort vs ModelIntentParserPort
-          parser: this.intentParser?.parseWithLlm == null
-            ? null
-            : {
-                parseWithLlm: (input) => this.intentParser!.parseWithLlm!(input),
-              },
+          parser: adaptModelIntentParser(this.intentParser, priorConversationContext),
           minimumConfidence: this.clarificationThreshold,
         });
     const parserIntent = parsedIntentTokens[0];

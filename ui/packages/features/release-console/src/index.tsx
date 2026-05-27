@@ -10,7 +10,7 @@ const releaseConsoleFeature = createFeatureModule({
   group: "Operations",
   path: "/operations/release-console",
   permission: "authenticated",
-  status: "Implemented/Contracted",
+  status: "Planned",
   summary: featureCopy.summary,
   render: ReleaseConsoleWebView,
 });

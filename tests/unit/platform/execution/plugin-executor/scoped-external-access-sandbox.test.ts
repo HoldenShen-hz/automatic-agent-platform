@@ -18,7 +18,7 @@ import {
 // Invalid URL Parsing Rejection
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("ScopedExternalAccessSandbox rejects invalid URL with missing protocol", async () => {
+test("ScopedExternalAccessSandbox rejects invalid URL with missing protocol [scoped-external-access-sandbox]", async () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["api.example.com"],
     rateLimitPerMinute: 60,
@@ -28,7 +28,7 @@ test("ScopedExternalAccessSandbox rejects invalid URL with missing protocol", as
   assert.equal(result, false, "URL without protocol should be rejected");
 });
 
-test("ScopedExternalAccessSandbox rejects URL with null byte injection", async () => {
+test("ScopedExternalAccessSandbox rejects URL with null byte injection [scoped-external-access-sandbox]", async () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["api.example.com"],
     rateLimitPerMinute: 60,
@@ -38,7 +38,7 @@ test("ScopedExternalAccessSandbox rejects URL with null byte injection", async (
   assert.equal(result, false, "URL with null byte should be rejected");
 });
 
-test("ScopedExternalAccessSandbox rejects URL with newlines and protocol injection", async () => {
+test("ScopedExternalAccessSandbox rejects URL with newlines and protocol injection [scoped-external-access-sandbox]", async () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["api.example.com"],
     rateLimitPerMinute: 60,
@@ -48,7 +48,7 @@ test("ScopedExternalAccessSandbox rejects URL with newlines and protocol injecti
   assert.equal(result, false, "URL with newline injection should be rejected");
 });
 
-test("ScopedExternalAccessSandbox rejects completely malformed URL", async () => {
+test("ScopedExternalAccessSandbox rejects completely malformed URL [scoped-external-access-sandbox]", async () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["api.example.com"],
     rateLimitPerMinute: 60,
@@ -58,7 +58,7 @@ test("ScopedExternalAccessSandbox rejects completely malformed URL", async () =>
   assert.equal(result, false, "Malformed URL should be rejected");
 });
 
-test("ScopedExternalAccessSandbox rejects URL with authentication hijack", async () => {
+test("ScopedExternalAccessSandbox rejects URL with authentication hijack [scoped-external-access-sandbox]", async () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["api.example.com"],
     rateLimitPerMinute: 60,
@@ -69,7 +69,7 @@ test("ScopedExternalAccessSandbox rejects URL with authentication hijack", async
   assert.equal(result, false, "URL with authentication hijack should be rejected");
 });
 
-test("ScopedExternalAccessSandbox rejects URL with port confusion", async () => {
+test("ScopedExternalAccessSandbox rejects URL with port confusion [scoped-external-access-sandbox]", async () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["api.example.com"],
     rateLimitPerMinute: 60,
@@ -86,7 +86,7 @@ test("ScopedExternalAccessSandbox rejects URL with port confusion", async () => 
 // Rate Limit Window Reset Edge Cases
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("ScopedExternalAccessSandbox resets rate limit after window expiration", async () => {
+test("ScopedExternalAccessSandbox resets rate limit after window expiration [scoped-external-access-sandbox]", async () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["api.example.com"],
     rateLimitPerMinute: 2,
@@ -108,7 +108,7 @@ test("ScopedExternalAccessSandbox resets rate limit after window expiration", as
   }
 });
 
-test("ScopedExternalAccessSandbox handles rate limit for never-seen domain", async () => {
+test("ScopedExternalAccessSandbox handles rate limit for never-seen domain [scoped-external-access-sandbox]", async () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["api.example.com"],
     rateLimitPerMinute: 1,
@@ -119,7 +119,7 @@ test("ScopedExternalAccessSandbox handles rate limit for never-seen domain", asy
   assert.equal(result, true);
 });
 
-test("ScopedExternalAccessSandbox passes AbortSignal and blocks timed-out requests", async () => {
+test("ScopedExternalAccessSandbox passes AbortSignal and blocks timed-out requests [scoped-external-access-sandbox]", async () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["api.example.com"],
     rateLimitPerMinute: 60,
@@ -149,7 +149,7 @@ test("ScopedExternalAccessSandbox passes AbortSignal and blocks timed-out reques
   }
 });
 
-test("ScopedExternalAccessSandbox handles rate limit count overflow boundary", async () => {
+test("ScopedExternalAccessSandbox handles rate limit count overflow boundary [scoped-external-access-sandbox]", async () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["api.example.com"],
     rateLimitPerMinute: 60,
@@ -167,7 +167,7 @@ test("ScopedExternalAccessSandbox handles rate limit count overflow boundary", a
   assert.equal(typeof result, "boolean");
 });
 
-test("ScopedExternalAccessSandbox enforces separate limits per domain", async () => {
+test("ScopedExternalAccessSandbox enforces separate limits per domain [scoped-external-access-sandbox]", async () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["a.com", "b.com"],
     rateLimitPerMinute: 1,
@@ -185,7 +185,7 @@ test("ScopedExternalAccessSandbox enforces separate limits per domain", async ()
 // Proxy URL Manipulation Attempts
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("ScopedExternalAccessSandbox blocks domain bypass via proxy URL query param injection", async () => {
+test("ScopedExternalAccessSandbox blocks domain bypass via proxy URL query param injection [scoped-external-access-sandbox]", async () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["api.example.com"],
     rateLimitPerMinute: 60,
@@ -205,7 +205,7 @@ test("ScopedExternalAccessSandbox blocks domain bypass via proxy URL query param
   assert.equal(typeof response.blocked, "boolean");
 });
 
-test("ScopedExternalAccessSandbox handles empty egress proxy URL", async () => {
+test("ScopedExternalAccessSandbox handles empty egress proxy URL [scoped-external-access-sandbox]", async () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["api.example.com"],
     rateLimitPerMinute: 60,
@@ -222,7 +222,7 @@ test("ScopedExternalAccessSandbox handles empty egress proxy URL", async () => {
   assert.equal(typeof response.blocked, "boolean");
 });
 
-test("ScopedExternalAccessSandbox handles proxy URL without proper encoding", async () => {
+test("ScopedExternalAccessSandbox handles proxy URL without proper encoding [scoped-external-access-sandbox]", async () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["api.example.com"],
     rateLimitPerMinute: 60,
@@ -239,7 +239,7 @@ test("ScopedExternalAccessSandbox handles proxy URL without proper encoding", as
   assert.equal(typeof response.blocked, "boolean");
 });
 
-test("ScopedExternalAccessSandbox blocks when egress proxy URL itself is suspicious", async () => {
+test("ScopedExternalAccessSandbox blocks when egress proxy URL itself is suspicious [scoped-external-access-sandbox]", async () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["api.example.com"],
     rateLimitPerMinute: 60,
@@ -261,7 +261,7 @@ test("ScopedExternalAccessSandbox blocks when egress proxy URL itself is suspici
 // Response Size Validation Bypass
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("ScopedExternalAccessSandbox rejects oversized JSON string response", async () => {
+test("ScopedExternalAccessSandbox rejects oversized JSON string response [scoped-external-access-sandbox]", async () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["api.example.com"],
     maxResponseSizeBytes: 100,
@@ -274,7 +274,7 @@ test("ScopedExternalAccessSandbox rejects oversized JSON string response", async
   assert.equal(result, false, "String exceeding maxResponseSizeBytes should be rejected");
 });
 
-test("ScopedExternalAccessSandbox rejects oversized JSON object response", async () => {
+test("ScopedExternalAccessSandbox rejects oversized JSON object response [scoped-external-access-sandbox]", async () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["api.example.com"],
     maxResponseSizeBytes: 50,
@@ -286,7 +286,7 @@ test("ScopedExternalAccessSandbox rejects oversized JSON object response", async
   assert.equal(result, false, "JSON object exceeding limit should be rejected");
 });
 
-test("ScopedExternalAccessSandbox accepts null body regardless of size limit", async () => {
+test("ScopedExternalAccessSandbox accepts null body regardless of size limit [scoped-external-access-sandbox]", async () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["api.example.com"],
     maxResponseSizeBytes: 1,
@@ -297,7 +297,7 @@ test("ScopedExternalAccessSandbox accepts null body regardless of size limit", a
   assert.equal(sandbox.validateResponseSize(undefined), true);
 });
 
-test("ScopedExternalAccessSandbox calculates size correctly for different body types", async () => {
+test("ScopedExternalAccessSandbox calculates size correctly for different body types [scoped-external-access-sandbox]", async () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["api.example.com"],
     maxResponseSizeBytes: 1000,
@@ -313,7 +313,7 @@ test("ScopedExternalAccessSandbox calculates size correctly for different body t
   assert.equal(sandbox.validateResponseSize(smallObject), true);
 });
 
-test("ScopedExternalAccessSandbox blocks exactly at boundary", async () => {
+test("ScopedExternalAccessSandbox blocks exactly at boundary [scoped-external-access-sandbox]", async () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["api.example.com"],
     maxResponseSizeBytes: 5,
@@ -327,7 +327,7 @@ test("ScopedExternalAccessSandbox blocks exactly at boundary", async () => {
   assert.equal(sandbox.validateResponseSize("123456"), false);
 });
 
-test("ScopedExternalAccessSandbox handles zero maxResponseSizeBytes", async () => {
+test("ScopedExternalAccessSandbox handles zero maxResponseSizeBytes [scoped-external-access-sandbox]", async () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["api.example.com"],
     maxResponseSizeBytes: 0,
@@ -343,7 +343,7 @@ test("ScopedExternalAccessSandbox handles zero maxResponseSizeBytes", async () =
   assert.equal(sandbox.validateResponseSize("x"), false);
 });
 
-test("ScopedExternalAccessSandbox handles extremely large response size limit", async () => {
+test("ScopedExternalAccessSandbox handles extremely large response size limit [scoped-external-access-sandbox]", async () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["api.example.com"],
     maxResponseSizeBytes: Number.MAX_SAFE_INTEGER,
@@ -354,7 +354,7 @@ test("ScopedExternalAccessSandbox handles extremely large response size limit", 
   assert.equal(sandbox.validateResponseSize(hugeString), true);
 });
 
-test("ScopedExternalAccessSandbox blocks oversized fetched bodies before JSON parsing", async () => {
+test("ScopedExternalAccessSandbox blocks oversized fetched bodies before JSON parsing [scoped-external-access-sandbox]", async () => {
   const originalFetch = globalThis.fetch;
   try {
     globalThis.fetch = (async () => ({
@@ -386,7 +386,7 @@ test("ScopedExternalAccessSandbox blocks oversized fetched bodies before JSON pa
 // Sensitive Header Filtering Security
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("ScopedExternalAccessSandbox filters authorization header case-insensitively", () => {
+test("ScopedExternalAccessSandbox filters authorization header case-insensitively [scoped-external-access-sandbox]", () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["api.example.com"],
     rateLimitPerMinute: 60,
@@ -404,7 +404,7 @@ test("ScopedExternalAccessSandbox filters authorization header case-insensitivel
   assert.equal(filtered["Content-Type"], "application/json");
 });
 
-test("ScopedExternalAccessSandbox filters x-api-key header", () => {
+test("ScopedExternalAccessSandbox filters x-api-key header [scoped-external-access-sandbox]", () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["api.example.com"],
     rateLimitPerMinute: 60,
@@ -420,7 +420,7 @@ test("ScopedExternalAccessSandbox filters x-api-key header", () => {
   assert.equal(filtered["content-type"], "application/json");
 });
 
-test("ScopedExternalAccessSandbox filters set-cookie header", () => {
+test("ScopedExternalAccessSandbox filters set-cookie header [scoped-external-access-sandbox]", () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["api.example.com"],
     rateLimitPerMinute: 60,
@@ -436,7 +436,7 @@ test("ScopedExternalAccessSandbox filters set-cookie header", () => {
   assert.equal(filtered["content-type"], "text/html");
 });
 
-test("ScopedExternalAccessSandbox filters www-authenticate header", () => {
+test("ScopedExternalAccessSandbox filters www-authenticate header [scoped-external-access-sandbox]", () => {
   const sandbox = new ScopedExternalAccessSandbox({
     allowedDomains: ["api.example.com"],
     rateLimitPerMinute: 60,

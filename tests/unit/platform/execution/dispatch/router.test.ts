@@ -26,27 +26,27 @@ import type { DispatchTarget, WorkerIsolationLevel, TaskPriority } from "../../.
 // resolveDispatchTarget
 // =============================================================================
 
-test("resolveDispatchTarget returns exact value for local_only", () => {
+test("resolveDispatchTarget returns exact value for local_only [router]", () => {
   assert.equal(resolveDispatchTarget("local_only"), "local_only");
 });
 
-test("resolveDispatchTarget returns exact value for prefer_remote", () => {
+test("resolveDispatchTarget returns exact value for prefer_remote [router]", () => {
   assert.equal(resolveDispatchTarget("prefer_remote"), "prefer_remote");
 });
 
-test("resolveDispatchTarget returns exact value for require_remote", () => {
+test("resolveDispatchTarget returns exact value for require_remote [router]", () => {
   assert.equal(resolveDispatchTarget("require_remote"), "require_remote");
 });
 
-test("resolveDispatchTarget returns any for null", () => {
+test("resolveDispatchTarget returns any for null [router]", () => {
   assert.equal(resolveDispatchTarget(null), "any");
 });
 
-test("resolveDispatchTarget returns any for undefined", () => {
+test("resolveDispatchTarget returns any for undefined [router]", () => {
   assert.equal(resolveDispatchTarget(undefined), "any");
 });
 
-test("resolveDispatchTarget returns any for unknown values", () => {
+test("resolveDispatchTarget returns any for unknown values [router]", () => {
   assert.equal(resolveDispatchTarget("unknown" as DispatchTarget), "any");
 });
 
@@ -54,23 +54,23 @@ test("resolveDispatchTarget returns any for unknown values", () => {
 // resolveRequiredIsolationLevel
 // =============================================================================
 
-test("resolveRequiredIsolationLevel returns exact value for hardened", () => {
+test("resolveRequiredIsolationLevel returns exact value for hardened [router]", () => {
   assert.equal(resolveRequiredIsolationLevel("hardened"), "hardened");
 });
 
-test("resolveRequiredIsolationLevel returns exact value for strict", () => {
+test("resolveRequiredIsolationLevel returns exact value for strict [router]", () => {
   assert.equal(resolveRequiredIsolationLevel("strict"), "strict");
 });
 
-test("resolveRequiredIsolationLevel returns standard for null", () => {
+test("resolveRequiredIsolationLevel returns standard for null [router]", () => {
   assert.equal(resolveRequiredIsolationLevel(null), "standard");
 });
 
-test("resolveRequiredIsolationLevel returns standard for undefined", () => {
+test("resolveRequiredIsolationLevel returns standard for undefined [router]", () => {
   assert.equal(resolveRequiredIsolationLevel(undefined), "standard");
 });
 
-test("resolveRequiredIsolationLevel returns standard for unknown values", () => {
+test("resolveRequiredIsolationLevel returns standard for unknown values [router]", () => {
   assert.equal(resolveRequiredIsolationLevel("unknown" as WorkerIsolationLevel), "standard");
 });
 
@@ -78,23 +78,23 @@ test("resolveRequiredIsolationLevel returns standard for unknown values", () => 
 // resolveRequiredRepoVersion
 // =============================================================================
 
-test("resolveRequiredRepoVersion returns trimmed value for valid string", () => {
+test("resolveRequiredRepoVersion returns trimmed value for valid string [router]", () => {
   assert.equal(resolveRequiredRepoVersion("  v1.2.3  "), "v1.2.3");
 });
 
-test("resolveRequiredRepoVersion returns null for empty string", () => {
+test("resolveRequiredRepoVersion returns null for empty string [router]", () => {
   assert.equal(resolveRequiredRepoVersion(""), null);
 });
 
-test("resolveRequiredRepoVersion returns null for whitespace-only string", () => {
+test("resolveRequiredRepoVersion returns null for whitespace-only string [router]", () => {
   assert.equal(resolveRequiredRepoVersion("   "), null);
 });
 
-test("resolveRequiredRepoVersion returns null for null", () => {
+test("resolveRequiredRepoVersion returns null for null [router]", () => {
   assert.equal(resolveRequiredRepoVersion(null), null);
 });
 
-test("resolveRequiredRepoVersion returns null for undefined", () => {
+test("resolveRequiredRepoVersion returns null for undefined [router]", () => {
   assert.equal(resolveRequiredRepoVersion(undefined), null);
 });
 
@@ -102,39 +102,39 @@ test("resolveRequiredRepoVersion returns null for undefined", () => {
 // meetsIsolationRequirement
 // =============================================================================
 
-test("meetsIsolationRequirement standard accepts standard", () => {
+test("meetsIsolationRequirement standard accepts standard [router]", () => {
   assert.equal(meetsIsolationRequirement("standard", "standard"), true);
 });
 
-test("meetsIsolationRequirement hardened accepts standard", () => {
+test("meetsIsolationRequirement hardened accepts standard [router]", () => {
   assert.equal(meetsIsolationRequirement("hardened", "standard"), true);
 });
 
-test("meetsIsolationRequirement strict accepts standard", () => {
+test("meetsIsolationRequirement strict accepts standard [router]", () => {
   assert.equal(meetsIsolationRequirement("strict", "standard"), true);
 });
 
-test("meetsIsolationRequirement standard does not accept hardened", () => {
+test("meetsIsolationRequirement standard does not accept hardened [router]", () => {
   assert.equal(meetsIsolationRequirement("standard", "hardened"), false);
 });
 
-test("meetsIsolationRequirement standard does not accept strict", () => {
+test("meetsIsolationRequirement standard does not accept strict [router]", () => {
   assert.equal(meetsIsolationRequirement("standard", "strict"), false);
 });
 
-test("meetsIsolationRequirement hardened accepts hardened", () => {
+test("meetsIsolationRequirement hardened accepts hardened [router]", () => {
   assert.equal(meetsIsolationRequirement("hardened", "hardened"), true);
 });
 
-test("meetsIsolationRequirement strict accepts hardened", () => {
+test("meetsIsolationRequirement strict accepts hardened [router]", () => {
   assert.equal(meetsIsolationRequirement("strict", "hardened"), true);
 });
 
-test("meetsIsolationRequirement hardened does not accept strict", () => {
+test("meetsIsolationRequirement hardened does not accept strict [router]", () => {
   assert.equal(meetsIsolationRequirement("hardened", "strict"), false);
 });
 
-test("meetsIsolationRequirement strict accepts strict", () => {
+test("meetsIsolationRequirement strict accepts strict [router]", () => {
   assert.equal(meetsIsolationRequirement("strict", "strict"), true);
 });
 
@@ -142,27 +142,27 @@ test("meetsIsolationRequirement strict accepts strict", () => {
 // normalizeStringArray
 // =============================================================================
 
-test("normalizeStringArray removes duplicates and sorts", () => {
+test("normalizeStringArray removes duplicates and sorts [router]", () => {
   const result = normalizeStringArray(["z", "a", "m", "a", "z"]);
   assert.deepEqual(result, ["a", "m", "z"]);
 });
 
-test("normalizeStringArray trims whitespace", () => {
+test("normalizeStringArray trims whitespace [router]", () => {
   const result = normalizeStringArray(["  foo  ", " bar ", "baz"]);
   assert.deepEqual(result, ["bar", "baz", "foo"]);
 });
 
-test("normalizeStringArray removes empty strings", () => {
+test("normalizeStringArray removes empty strings [router]", () => {
   const result = normalizeStringArray(["a", "", "  ", "b"]);
   assert.deepEqual(result, ["a", "b"]);
 });
 
-test("normalizeStringArray returns empty array for empty input", () => {
+test("normalizeStringArray returns empty array for empty input [router]", () => {
   const result = normalizeStringArray([]);
   assert.deepEqual(result, []);
 });
 
-test("normalizeStringArray returns empty array for all empty strings", () => {
+test("normalizeStringArray returns empty array for all empty strings [router]", () => {
   const result = normalizeStringArray(["", "  ", ""]);
   assert.deepEqual(result, []);
 });
@@ -171,38 +171,38 @@ test("normalizeStringArray returns empty array for all empty strings", () => {
 // parseJsonArray
 // =============================================================================
 
-test("parseJsonArray parses valid JSON array", () => {
+test("parseJsonArray parses valid JSON array [router]", () => {
   const result = parseJsonArray('["a", "b", "c"]');
   assert.deepEqual(result, ["a", "b", "c"]);
 });
 
-test("parseJsonArray filters non-string items", () => {
+test("parseJsonArray filters non-string items [router]", () => {
   const result = parseJsonArray('["a", 123, true, "b", null]');
   assert.deepEqual(result, ["a", "b"]);
 });
 
-test("parseJsonArray returns empty array for non-array JSON", () => {
+test("parseJsonArray returns empty array for non-array JSON [router]", () => {
   const result = parseJsonArray('{"key": "value"}');
   assert.deepEqual(result, []);
 });
 
-test("parseJsonArray returns empty array for invalid JSON", () => {
+test("parseJsonArray returns empty array for invalid JSON [router]", () => {
   const result = parseJsonArray("not json at all");
   assert.deepEqual(result, []);
 });
 
-test("parseJsonArray returns empty array for empty string", () => {
+test("parseJsonArray returns empty array for empty string [router]", () => {
   const result = parseJsonArray("");
   assert.deepEqual(result, []);
 });
 
-test("parseJsonArray calls onError callback for invalid JSON", () => {
+test("parseJsonArray calls onError callback for invalid JSON [router]", () => {
   let errorMessage = "";
   parseJsonArray("invalid", (msg) => { errorMessage = msg; });
   assert.ok(errorMessage.length > 0);
 });
 
-test("parseJsonArray handles nested arrays", () => {
+test("parseJsonArray handles nested arrays [router]", () => {
   const result = parseJsonArray('[["a"], ["b"]]');
   // Only direct string elements pass the filter
   assert.deepEqual(result, []);
@@ -212,19 +212,19 @@ test("parseJsonArray handles nested arrays", () => {
 // isElevatedPriority
 // =============================================================================
 
-test("isElevatedPriority returns true for high", () => {
+test("isElevatedPriority returns true for high [router]", () => {
   assert.equal(isElevatedPriority("high"), true);
 });
 
-test("isElevatedPriority returns true for urgent", () => {
+test("isElevatedPriority returns true for urgent [router]", () => {
   assert.equal(isElevatedPriority("urgent"), true);
 });
 
-test("isElevatedPriority returns false for low", () => {
+test("isElevatedPriority returns false for low [router]", () => {
   assert.equal(isElevatedPriority("low"), false);
 });
 
-test("isElevatedPriority returns false for normal", () => {
+test("isElevatedPriority returns false for normal [router]", () => {
   assert.equal(isElevatedPriority("normal"), false);
 });
 
@@ -232,14 +232,14 @@ test("isElevatedPriority returns false for normal", () => {
 // CreateExecutionTicketInput type structure
 // =============================================================================
 
-test("CreateExecutionTicketInput accepts minimal required fields", () => {
+test("CreateExecutionTicketInput accepts minimal required fields [router]", () => {
   const input: CreateExecutionTicketInput = {
     executionId: "exec_123",
   };
   assert.equal(input.executionId, "exec_123");
 });
 
-test("CreateExecutionTicketInput accepts all optional fields", () => {
+test("CreateExecutionTicketInput accepts all optional fields [router]", () => {
   const input: CreateExecutionTicketInput = {
     executionId: "exec_123",
     priority: "high",
@@ -259,7 +259,7 @@ test("CreateExecutionTicketInput accepts all optional fields", () => {
   assert.deepEqual(input.requiredCapabilities, ["gpu", "large-memory"]);
 });
 
-test("CreateExecutionTicketInput allows null for nullable fields", () => {
+test("CreateExecutionTicketInput allows null for nullable fields [router]", () => {
   const input: CreateExecutionTicketInput = {
     executionId: "exec_123",
     queueName: null,
@@ -276,14 +276,14 @@ test("CreateExecutionTicketInput allows null for nullable fields", () => {
 // DispatchExecutionOptions type structure
 // =============================================================================
 
-test("DispatchExecutionOptions accepts minimal required fields", () => {
+test("DispatchExecutionOptions accepts minimal required fields [router]", () => {
   const input: DispatchExecutionOptions = {
     leaseTtlMs: 30000,
   };
   assert.equal(input.leaseTtlMs, 30000);
 });
 
-test("DispatchExecutionOptions accepts all optional fields", () => {
+test("DispatchExecutionOptions accepts all optional fields [router]", () => {
   const input: DispatchExecutionOptions = {
     queueName: "default",
     preferredWorkerId: "worker_abc",
@@ -297,7 +297,7 @@ test("DispatchExecutionOptions accepts all optional fields", () => {
   assert.equal(input.includeDegraded, true);
 });
 
-test("DispatchExecutionOptions allows null for queueName", () => {
+test("DispatchExecutionOptions allows null for queueName [router]", () => {
   const input: DispatchExecutionOptions = {
     queueName: null,
     leaseTtlMs: 30000,

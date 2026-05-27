@@ -9,7 +9,7 @@ import type {
 } from "../../../../../src/platform/shared/stability/vcr-replay-fixture.js";
 import type { StreamEventFrame } from "../../../../../src/platform/five-plane-interface/channel-gateway/stream-bridge.js";
 
-test("VcrReplayMode accepts all valid values", () => {
+test("VcrReplayMode accepts all valid values [vcr-replay-fixture-types]", () => {
   const modes: VcrReplayMode[] = ["fixture_only", "vcr_replay", "vcr_record"];
   assert.equal(modes.length, 3);
   for (const mode of modes) {
@@ -18,7 +18,7 @@ test("VcrReplayMode accepts all valid values", () => {
   }
 });
 
-test("VcrRequestMessage structure is correct", () => {
+test("VcrRequestMessage structure is correct [vcr-replay-fixture-types]", () => {
   const message: VcrRequestMessage = {
     role: "user",
     content: "Hello, world!",
@@ -28,7 +28,7 @@ test("VcrRequestMessage structure is correct", () => {
   assert.equal(message.content, "Hello, world!");
 });
 
-test("VcrRequestMessage role accepts all valid values", () => {
+test("VcrRequestMessage role accepts all valid values [vcr-replay-fixture-types]", () => {
   const roles: VcrRequestMessage["role"][] = ["system", "user", "assistant"];
 
   for (const role of roles) {
@@ -37,7 +37,7 @@ test("VcrRequestMessage role accepts all valid values", () => {
   }
 });
 
-test("VcrReplayRequest structure is correct", () => {
+test("VcrReplayRequest structure is correct [vcr-replay-fixture-types]", () => {
   const request: VcrReplayRequest = {
     provider: "anthropic",
     model: "claude-opus-4-5",
@@ -60,7 +60,7 @@ test("VcrReplayRequest structure is correct", () => {
   assert.equal(request.settings?.temperature, 0.7);
 });
 
-test("VcrReplayRequest allows minimal definition", () => {
+test("VcrReplayRequest allows minimal definition [vcr-replay-fixture-types]", () => {
   const request: VcrReplayRequest = {
     provider: "openai",
     model: "gpt-4",
@@ -72,7 +72,7 @@ test("VcrReplayRequest allows minimal definition", () => {
   assert.equal(request.settings, undefined);
 });
 
-test("VcrReplayRequest allows partial settings", () => {
+test("VcrReplayRequest allows partial settings [vcr-replay-fixture-types]", () => {
   const request: VcrReplayRequest = {
     provider: "anthropic",
     model: "claude-sonnet-4",
@@ -87,7 +87,7 @@ test("VcrReplayRequest allows partial settings", () => {
   assert.equal(request.settings?.topP, undefined);
 });
 
-test("RecordedInteraction structure is correct", () => {
+test("RecordedInteraction structure is correct [vcr-replay-fixture-types]", () => {
   const interaction: RecordedInteraction = {
     interactionId: "inter_123",
     provider: "anthropic",
@@ -109,7 +109,7 @@ test("RecordedInteraction structure is correct", () => {
   assert.equal(interaction.usageSnapshot?.inputTokens, 100);
 });
 
-test("RecordedInteraction allows optional fields", () => {
+test("RecordedInteraction allows optional fields [vcr-replay-fixture-types]", () => {
   const interaction: RecordedInteraction = {
     interactionId: "inter_456",
     provider: "openai",
@@ -128,7 +128,7 @@ test("RecordedInteraction allows optional fields", () => {
   assert.equal(interaction.usageSnapshot, undefined);
 });
 
-test("RecordedInteraction allows stream chunks", () => {
+test("RecordedInteraction allows stream chunks [vcr-replay-fixture-types]", () => {
   const streamChunk: StreamEventFrame = {
     streamId: "stream_abc",
     taskId: "task_123",
@@ -159,7 +159,7 @@ test("RecordedInteraction allows stream chunks", () => {
   assert.equal(interaction.streamChunks![0]!.eventType, "message_delta");
 });
 
-test("RecordedInteraction requestSummary structure is correct", () => {
+test("RecordedInteraction requestSummary structure is correct [vcr-replay-fixture-types]", () => {
   const interaction: RecordedInteraction = {
     interactionId: "inter_summary",
     provider: "anthropic",

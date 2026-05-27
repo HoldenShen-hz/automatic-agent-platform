@@ -13,7 +13,7 @@
  * ensuring all changes are validated against security policies
  * before any filesystem modification occurs.
  *
- * @see {@link https://github.com/anomalyco/automatic_agent/blob/main/docs_zh/contracts/sandbox_contract.md}
+ * @see {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/contracts/sandbox_contract.md}
  */
 
 import {

@@ -32,7 +32,7 @@ function createMockStore(overrides: {
 // snapshot()
 // ---------------------------------------------------------------------------
 
-test("AdmissionController.snapshot returns correct counts", () => {
+test("AdmissionController.snapshot returns correct counts [admission-controller]", () => {
   const store = createMockStore({ queuedTasks: 5, activeExecutions: 10, tier1AckBacklog: 3 });
   const controller = new AdmissionController(store);
   const snapshot = controller.snapshot();
@@ -42,7 +42,7 @@ test("AdmissionController.snapshot returns correct counts", () => {
   assert.equal(snapshot.tier1AckBacklog, 3);
 });
 
-test("AdmissionController.snapshot uses defaults when store returns undefined", () => {
+test("AdmissionController.snapshot uses defaults when store returns undefined [admission-controller]", () => {
   const store = createMockStore({});
   const controller = new AdmissionController(store);
   const snapshot = controller.snapshot();
@@ -56,7 +56,7 @@ test("AdmissionController.snapshot uses defaults when store returns undefined", 
 // evaluate() - allow decision
 // ---------------------------------------------------------------------------
 
-test("evaluate returns allow when under all limits", () => {
+test("evaluate returns allow when under all limits [admission-controller]", () => {
   const store = createMockStore({ queuedTasks: 2, activeExecutions: 5, tier1AckBacklog: 10 });
   const controller = new AdmissionController(store);
   const decision = controller.evaluate({ priority: "normal" });
@@ -65,7 +65,7 @@ test("evaluate returns allow when under all limits", () => {
   assert.equal(decision.reasonCode, "admission.ok");
 });
 
-test("evaluate allows high priority when queue is near limit but under headroom", () => {
+test("evaluate allows high priority when queue is near limit but under headroom [admission-controller]", () => {
   const store = createMockStore({ queuedTasks: 6 }); // maxQueuedTasks=5, urgentQueueHeadroom=2
   const controller = new AdmissionController(store);
   const decision = controller.evaluate({ priority: "high" });
@@ -74,7 +74,7 @@ test("evaluate allows high priority when queue is near limit but under headroom"
   assert.equal(decision.reasonCode, "admission.queue_overloaded");
 });
 
-test("evaluate allows urgent priority when queue is at capacity but within headroom", () => {
+test("evaluate allows urgent priority when queue is at capacity but within headroom [admission-controller]", () => {
   const store = createMockStore({ queuedTasks: 6 }); // max=5, headroom=2, so 7 max
   const controller = new AdmissionController(store);
   const decision = controller.evaluate({ priority: "urgent" });
@@ -87,7 +87,7 @@ test("evaluate allows urgent priority when queue is at capacity but within headr
 // evaluate() - queue decision
 // ---------------------------------------------------------------------------
 
-test("evaluate queues when active executions at limit", () => {
+test("evaluate queues when active executions at limit [admission-controller]", () => {
   const store = createMockStore({ activeExecutions: 10 }); // maxActiveExecutions=10
   const controller = new AdmissionController(store);
   const decision = controller.evaluate({ priority: "normal" });
@@ -96,7 +96,7 @@ test("evaluate queues when active executions at limit", () => {
   assert.equal(decision.reasonCode, "admission.queue_overloaded");
 });
 
-test("evaluate queues when queue backpressure and non-elevated priority", () => {
+test("evaluate queues when queue backpressure and non-elevated priority [admission-controller]", () => {
   const store = createMockStore({});
   // Create a minimal backpressure snapshot
   const backpressure = {
@@ -116,7 +116,7 @@ test("evaluate queues when queue backpressure and non-elevated priority", () => 
 // evaluate() - reject decisions
 // ---------------------------------------------------------------------------
 
-test("evaluate rejects when budget exceeded", () => {
+test("evaluate rejects when budget exceeded [admission-controller]", () => {
   const store = createMockStore({});
   const controller = new AdmissionController(store);
   const decision = controller.evaluate({
@@ -129,7 +129,7 @@ test("evaluate rejects when budget exceeded", () => {
   assert.equal(decision.reasonCode, "admission.reject_budget_exceeded");
 });
 
-test("evaluate rejects when read_only_mode and non-elevated priority", () => {
+test("evaluate rejects when read_only_mode and non-elevated priority [admission-controller]", () => {
   const store = createMockStore({});
   const backpressure = {
     status: "degraded" as const,
@@ -144,7 +144,7 @@ test("evaluate rejects when read_only_mode and non-elevated priority", () => {
   assert.equal(decision.reasonCode, "admission.reject_read_only_mode");
 });
 
-test("evaluate rejects when pause_non_critical and non-elevated priority", () => {
+test("evaluate rejects when pause_non_critical and non-elevated priority [admission-controller]", () => {
   const store = createMockStore({});
   const backpressure = {
     status: "degraded" as const,
@@ -159,7 +159,7 @@ test("evaluate rejects when pause_non_critical and non-elevated priority", () =>
   assert.equal(decision.reasonCode, "admission.reject_non_critical_paused");
 });
 
-test("evaluate allows elevated priority when pause_non_critical", () => {
+test("evaluate allows elevated priority when pause_non_critical [admission-controller]", () => {
   const store = createMockStore({});
   const backpressure = {
     status: "degraded" as const,
@@ -174,7 +174,7 @@ test("evaluate allows elevated priority when pause_non_critical", () => {
   assert.equal(decision.decision, "allow");
 });
 
-test("evaluate rejects low priority when starvation detected", () => {
+test("evaluate rejects low priority when starvation detected [admission-controller]", () => {
   const store = createMockStore({});
   const backpressure = {
     status: "degraded" as const,
@@ -189,7 +189,7 @@ test("evaluate rejects low priority when starvation detected", () => {
   assert.equal(decision.reasonCode, "admission.reject_starvation_protection");
 });
 
-test("evaluate allows non-low priority when starvation detected", () => {
+test("evaluate allows non-low priority when starvation detected [admission-controller]", () => {
   const store = createMockStore({});
   const backpressure = {
     status: "degraded" as const,
@@ -203,7 +203,7 @@ test("evaluate allows non-low priority when starvation detected", () => {
   assert.equal(decision.decision, "allow");
 });
 
-test("evaluate rejects when tier1 ack backlog at limit", () => {
+test("evaluate rejects when tier1 ack backlog at limit [admission-controller]", () => {
   const store = createMockStore({ tier1AckBacklog: 25 }); // maxTier1AckBacklog=25
   const controller = new AdmissionController(store);
   const decision = controller.evaluate({ priority: "normal" });
@@ -212,7 +212,7 @@ test("evaluate rejects when tier1 ack backlog at limit", () => {
   assert.equal(decision.reasonCode, "admission.reject_tier1_backlog");
 });
 
-test("evaluate rejects when queue saturated and non-elevated priority", () => {
+test("evaluate rejects when queue saturated and non-elevated priority [admission-controller]", () => {
   const store = createMockStore({ queuedTasks: 7 }); // maxQueuedTasks=5 + urgentQueueHeadroom=2 = 7
   const controller = new AdmissionController(store);
   const decision = controller.evaluate({ priority: "low" });
@@ -221,7 +221,7 @@ test("evaluate rejects when queue saturated and non-elevated priority", () => {
   assert.equal(decision.reasonCode, "admission.reject_queue_saturated");
 });
 
-test("evaluate allows high priority when queue saturated but within headroom", () => {
+test("evaluate allows high priority when queue saturated but within headroom [admission-controller]", () => {
   const store = createMockStore({ queuedTasks: 6 }); // max=5, headroom=2, 7 max
   const controller = new AdmissionController(store);
   const decision = controller.evaluate({ priority: "high" });
@@ -234,7 +234,7 @@ test("evaluate allows high priority when queue saturated but within headroom", (
 // Custom policy
 // ---------------------------------------------------------------------------
 
-test("evaluate uses custom policy limits", () => {
+test("evaluate uses custom policy limits [admission-controller]", () => {
   const customPolicy: AdmissionPolicy = {
     maxQueuedTasks: 2,
     maxActiveExecutions: 5,
@@ -249,7 +249,7 @@ test("evaluate uses custom policy limits", () => {
   assert.equal(decision.reasonCode, "admission.reject_queue_saturated");
 });
 
-test("evaluate respects custom urgentQueueHeadroom", () => {
+test("evaluate respects custom urgentQueueHeadroom [admission-controller]", () => {
   const customPolicy: AdmissionPolicy = {
     maxQueuedTasks: 5,
     maxActiveExecutions: 10,
@@ -268,7 +268,7 @@ test("evaluate respects custom urgentQueueHeadroom", () => {
 // Backpressure snapshot integration
 // ---------------------------------------------------------------------------
 
-test("evaluate includes backpressure snapshot in decision when present", () => {
+test("evaluate includes backpressure snapshot in decision when present [admission-controller]", () => {
   const store = createMockStore({});
   const backpressure = {
     status: "degraded" as const,
@@ -283,7 +283,7 @@ test("evaluate includes backpressure snapshot in decision when present", () => {
   assert.equal(decision.backpressure!.degradationMode, "queue_only");
 });
 
-test("evaluate includes snapshot in decision", () => {
+test("evaluate includes snapshot in decision [admission-controller]", () => {
   const store = createMockStore({ queuedTasks: 3, activeExecutions: 7, tier1AckBacklog: 15 });
   const controller = new AdmissionController(store);
   const decision = controller.evaluate({ priority: "normal" });
@@ -297,7 +297,7 @@ test("evaluate includes snapshot in decision", () => {
 // Edge cases
 // ---------------------------------------------------------------------------
 
-test("evaluate allows when estimated cost equals budget", () => {
+test("evaluate allows when estimated cost equals budget [admission-controller]", () => {
   const store = createMockStore({});
   const controller = new AdmissionController(store);
   const decision = controller.evaluate({
@@ -310,7 +310,7 @@ test("evaluate allows when estimated cost equals budget", () => {
   assert.equal(decision.decision, "allow");
 });
 
-test("evaluate with null cost/budget allows", () => {
+test("evaluate with null cost/budget allows [admission-controller]", () => {
   const store = createMockStore({});
   const controller = new AdmissionController(store);
   const decision = controller.evaluate({ priority: "normal" });
@@ -318,7 +318,7 @@ test("evaluate with null cost/budget allows", () => {
   assert.equal(decision.decision, "allow");
 });
 
-test("evaluate with null backpressure function works", () => {
+test("evaluate with null backpressure function works [admission-controller]", () => {
   const store = createMockStore({});
   const controller = new AdmissionController(store, DEFAULT_ADMISSION_POLICY, null);
   const decision = controller.evaluate({ priority: "normal" });

@@ -12,7 +12,7 @@ import { UNREACHABLE_LOOPBACK_BASE_URL } from "../../../helpers/network-test-con
 
 const callbackEndpoint = (path: string): string => `${UNREACHABLE_LOOPBACK_BASE_URL}${path}`;
 
-test("invokeCallback returns false when server is unreachable", async () => {
+test("invokeCallback returns false when server is unreachable [invoke-callback]", async () => {
   const result = await invokeCallback(callbackEndpoint("/callback"), {
     connectorId: "test",
     success: true,
@@ -22,7 +22,7 @@ test("invokeCallback returns false when server is unreachable", async () => {
   assert.equal(result, false);
 });
 
-test("invokeCallback returns false on connection refused", async () => {
+test("invokeCallback returns false on connection refused [invoke-callback]", async () => {
   const result = await invokeCallback(callbackEndpoint("/callback"), {
     connectorId: "test",
     success: false,
@@ -32,7 +32,7 @@ test("invokeCallback returns false on connection refused", async () => {
   assert.equal(result, false);
 });
 
-test("invokeCallback sends correct headers", async () => {
+test("invokeCallback sends correct headers [invoke-callback]", async () => {
   // This will fail but demonstrates the function attempts with correct structure
   const result = await invokeCallback(callbackEndpoint("/test"), {
     connectorId: "my-connector",
@@ -45,7 +45,7 @@ test("invokeCallback sends correct headers", async () => {
   assert.equal(result, false);
 });
 
-test("invokeCallback handles result with executionId", async () => {
+test("invokeCallback handles result with executionId [invoke-callback]", async () => {
   const result = await invokeCallback(callbackEndpoint("/callback"), {
     connectorId: "test",
     executionId: "exec-123",
@@ -56,7 +56,7 @@ test("invokeCallback handles result with executionId", async () => {
   assert.equal(result, false); // No server to receive
 });
 
-test("invokeCallback handles failed status", async () => {
+test("invokeCallback handles failed status [invoke-callback]", async () => {
   const result = await invokeCallback(callbackEndpoint("/callback"), {
     connectorId: "test",
     success: false,
@@ -66,7 +66,7 @@ test("invokeCallback handles failed status", async () => {
   assert.equal(result, false);
 });
 
-test("invokeCallback handles deferred status", async () => {
+test("invokeCallback handles deferred status [invoke-callback]", async () => {
   const result = await invokeCallback(callbackEndpoint("/callback"), {
     connectorId: "test",
     success: false,
@@ -76,7 +76,7 @@ test("invokeCallback handles deferred status", async () => {
   assert.equal(result, false);
 });
 
-test("invokeCallback handles empty resultPayload", async () => {
+test("invokeCallback handles empty resultPayload [invoke-callback]", async () => {
   const result = await invokeCallback(callbackEndpoint("/callback"), {
     connectorId: "test",
     success: true,
@@ -87,7 +87,7 @@ test("invokeCallback handles empty resultPayload", async () => {
   assert.equal(result, false);
 });
 
-test("invokeCallback returns false on timeout", async () => {
+test("invokeCallback returns false on timeout [invoke-callback]", async () => {
   const result = await invokeCallback("http://10.255.255.1:1/callback", {
     connectorId: "timeout-test",
     success: false,
@@ -97,7 +97,7 @@ test("invokeCallback returns false on timeout", async () => {
   assert.equal(result, false);
 });
 
-test("invokeCallback returns false on DNS resolution failure", async () => {
+test("invokeCallback returns false on DNS resolution failure [invoke-callback]", async () => {
   const result = await invokeCallback("http://this-domain-does-not-exist.example.com/callback", {
     connectorId: "dns-fail",
     success: false,

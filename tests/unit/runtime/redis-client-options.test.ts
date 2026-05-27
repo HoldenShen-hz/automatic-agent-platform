@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { buildRedisClientOptions, readRedisConnectionConfigFromEnv } from "../../../src/platform/shared/utils/redis-client-options.js";
 
-test("buildRedisClientOptions builds standalone redis options with bounded retry backoff", () => {
+test("buildRedisClientOptions builds standalone redis options with bounded retry backoff [redis-client-options]", () => {
   const options = buildRedisClientOptions({
     host: "redis.internal",
     port: 6380,
@@ -25,7 +25,7 @@ test("buildRedisClientOptions builds standalone redis options with bounded retry
   assert.equal(retryStrategy(9), null);
 });
 
-test("buildRedisClientOptions builds sentinel options when sentinel endpoints are configured", () => {
+test("buildRedisClientOptions builds sentinel options when sentinel endpoints are configured [redis-client-options]", () => {
   const options = buildRedisClientOptions({
     mode: "sentinel",
     sentinelName: "aa-master",
@@ -47,7 +47,7 @@ test("buildRedisClientOptions builds sentinel options when sentinel endpoints ar
   assert.equal("host" in options, false);
 });
 
-test("buildRedisClientOptions rejects sentinel mode without a master name", () => {
+test("buildRedisClientOptions rejects sentinel mode without a master name [redis-client-options]", () => {
   assert.throws(
     () => buildRedisClientOptions({
       mode: "sentinel",
@@ -57,7 +57,7 @@ test("buildRedisClientOptions rejects sentinel mode without a master name", () =
   );
 });
 
-test("readRedisConnectionConfigFromEnv parses sentinel deployment settings", () => {
+test("readRedisConnectionConfigFromEnv parses sentinel deployment settings [redis-client-options]", () => {
   const config = readRedisConnectionConfigFromEnv("AA_REDIS", {
     AA_REDIS_MODE: "sentinel",
     AA_REDIS_SENTINEL_NAME: "aa-master",
@@ -82,11 +82,11 @@ test("readRedisConnectionConfigFromEnv parses sentinel deployment settings", () 
   });
 });
 
-test("readRedisConnectionConfigFromEnv returns null when no redis env is configured", () => {
+test("readRedisConnectionConfigFromEnv returns null when no redis env is configured [redis-client-options]", () => {
   assert.equal(readRedisConnectionConfigFromEnv("AA_REDIS", {}), null);
 });
 
-test("readRedisConnectionConfigFromEnv rejects malformed sentinel endpoints", () => {
+test("readRedisConnectionConfigFromEnv rejects malformed sentinel endpoints [redis-client-options]", () => {
   assert.throws(
     () => readRedisConnectionConfigFromEnv("AA_REDIS", {
       AA_REDIS_MODE: "sentinel",

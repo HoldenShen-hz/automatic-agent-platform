@@ -13,7 +13,7 @@ import { TrustLevel } from "../../../../src/scale-ecosystem/federation/trust-lev
 // TrustLevel Enum Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("trust-level: TrustLevel enum has all expected values", () => {
+test("trust-level: TrustLevel enum has all expected values [trust-level]", () => {
   assert.equal(TrustLevel.NONE, "none");
   assert.equal(TrustLevel.AUDIT_ONLY, "audit_only");
   assert.equal(TrustLevel.READ, "read");
@@ -21,25 +21,25 @@ test("trust-level: TrustLevel enum has all expected values", () => {
   assert.equal(TrustLevel.ADMIN, "admin");
 });
 
-test("trust-level: TrustLevel enum has correct number of values", () => {
+test("trust-level: TrustLevel enum has correct number of values [trust-level]", () => {
   const values = Object.values(TrustLevel);
   assert.equal(values.length, 5);
 });
 
-test("trust-level: TrustLevel is a string enum", () => {
+test("trust-level: TrustLevel is a string enum [trust-level]", () => {
   assert.equal(typeof TrustLevel.NONE, "string");
   assert.equal(typeof TrustLevel.READ, "string");
   assert.equal(typeof TrustLevel.WRITE, "string");
   assert.equal(typeof TrustLevel.ADMIN, "string");
 });
 
-test("trust-level: TrustLevel values are unique strings", () => {
+test("trust-level: TrustLevel values are unique strings [trust-level]", () => {
   const values = Object.values(TrustLevel) as string[];
   const uniqueValues = new Set(values);
   assert.equal(uniqueValues.size, values.length, "All TrustLevel values should be unique");
 });
 
-test("trust-level: TrustLevel values follow naming convention", () => {
+test("trust-level: TrustLevel values follow naming convention [trust-level]", () => {
   const values = Object.values(TrustLevel) as string[];
   for (const value of values) {
     assert.ok(
@@ -49,39 +49,39 @@ test("trust-level: TrustLevel values follow naming convention", () => {
   }
 });
 
-test("trust-level: TrustLevel.NONE equals 'none'", () => {
+test("trust-level: TrustLevel.NONE equals 'none' [trust-level]", () => {
   assert.equal(TrustLevel.NONE, "none");
 });
 
-test("trust-level: TrustLevel.AUDIT_ONLY equals 'audit_only'", () => {
+test("trust-level: TrustLevel.AUDIT_ONLY equals 'audit_only' [trust-level]", () => {
   assert.equal(TrustLevel.AUDIT_ONLY, "audit_only");
 });
 
-test("trust-level: TrustLevel.READ equals 'read'", () => {
+test("trust-level: TrustLevel.READ equals 'read' [trust-level]", () => {
   assert.equal(TrustLevel.READ, "read");
 });
 
-test("trust-level: TrustLevel.WRITE equals 'write'", () => {
+test("trust-level: TrustLevel.WRITE equals 'write' [trust-level]", () => {
   assert.equal(TrustLevel.WRITE, "write");
 });
 
-test("trust-level: TrustLevel.ADMIN equals 'admin'", () => {
+test("trust-level: TrustLevel.ADMIN equals 'admin' [trust-level]", () => {
   assert.equal(TrustLevel.ADMIN, "admin");
 });
 
-test("trust-level: TrustLevel can be compared using equality", () => {
+test("trust-level: TrustLevel can be compared using equality [trust-level]", () => {
   assert.equal(TrustLevel.READ, TrustLevel.READ);
   assert.notEqual(TrustLevel.READ, TrustLevel.WRITE);
   assert.notEqual(TrustLevel.WRITE, TrustLevel.ADMIN);
 });
 
-test("trust-level: TrustLevel keys match values", () => {
+test("trust-level: TrustLevel keys match values [trust-level]", () => {
   const keys = Object.keys(TrustLevel);
   const values = Object.values(TrustLevel);
   assert.equal(keys.length, values.length);
 });
 
-test("trust-level: TrustLevel can be used in Map as key", () => {
+test("trust-level: TrustLevel can be used in Map as key [trust-level]", () => {
   const trustMap = new Map<TrustLevel, string>();
   trustMap.set(TrustLevel.READ, "read-access");
   trustMap.set(TrustLevel.WRITE, "write-access");
@@ -92,7 +92,7 @@ test("trust-level: TrustLevel can be used in Map as key", () => {
   assert.equal(trustMap.get(TrustLevel.ADMIN), "admin-access");
 });
 
-test("trust-level: TrustLevel can be serialized to JSON and back", () => {
+test("trust-level: TrustLevel can be serialized to JSON and back [trust-level]", () => {
   const original = TrustLevel.WRITE;
   const serialized = JSON.stringify(original);
   const deserialized = JSON.parse(serialized);
@@ -100,7 +100,7 @@ test("trust-level: TrustLevel can be serialized to JSON and back", () => {
   assert.equal(deserialized, original);
 });
 
-test("trust-level: TrustLevel ordering is hierarchical", () => {
+test("trust-level: TrustLevel ordering is hierarchical [trust-level]", () => {
   const hierarchy: TrustLevel[] = [
     TrustLevel.NONE,
     TrustLevel.AUDIT_ONLY,

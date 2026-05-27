@@ -28,4 +28,5 @@ export type {
   CompensationTransition,
 } from "./compensation-manager.js";
 export { BudgetAllocator } from "./budget-allocator.js";
+export { runSingleTaskExecution } from "./execution-engine/single-task-happy-path.js";
 export { TransitionService } from "./state-transition/transition-service.js";

@@ -63,7 +63,7 @@ function createMockDb(): AuthoritativeSqlDatabase {
 // Constructor
 // ---------------------------------------------------------------------------
 
-test("RemoteWorkerRegistrationService constructor sets default capabilities", () => {
+test("RemoteWorkerRegistrationService constructor sets default capabilities [remote-worker-registration-service]", () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new RemoteWorkerRegistrationService(db, store);
@@ -71,7 +71,7 @@ test("RemoteWorkerRegistrationService constructor sets default capabilities", ()
   assert.ok(service);
 });
 
-test("RemoteWorkerRegistrationService constructor accepts custom capabilities", () => {
+test("RemoteWorkerRegistrationService constructor accepts custom capabilities [remote-worker-registration-service]", () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new RemoteWorkerRegistrationService(db, store, {
@@ -81,7 +81,7 @@ test("RemoteWorkerRegistrationService constructor accepts custom capabilities", 
   assert.ok(service);
 });
 
-test("RemoteWorkerRegistrationService constructor accepts custom challenge TTL", () => {
+test("RemoteWorkerRegistrationService constructor accepts custom challenge TTL [remote-worker-registration-service]", () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new RemoteWorkerRegistrationService(db, store, {
@@ -91,7 +91,7 @@ test("RemoteWorkerRegistrationService constructor accepts custom challenge TTL",
   assert.ok(service);
 });
 
-test("RemoteWorkerRegistrationService constructor defaults to bash, edit, mcp capabilities", () => {
+test("RemoteWorkerRegistrationService constructor defaults to bash, edit, mcp capabilities [remote-worker-registration-service]", () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new RemoteWorkerRegistrationService(db, store);
@@ -103,7 +103,7 @@ test("RemoteWorkerRegistrationService constructor defaults to bash, edit, mcp ca
 // issueChallenge - basic functionality
 // ---------------------------------------------------------------------------
 
-test("issueChallenge issues challenge for valid request", () => {
+test("issueChallenge issues challenge for valid request [remote-worker-registration-service]", () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new RemoteWorkerRegistrationService(db, store);
@@ -122,7 +122,7 @@ test("issueChallenge issues challenge for valid request", () => {
   assert.deepEqual(result.rejectedCapabilities, []);
 });
 
-test("issueChallenge returns challenge with valid ID format", () => {
+test("issueChallenge returns challenge with valid ID format [remote-worker-registration-service]", () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new RemoteWorkerRegistrationService(db, store);
@@ -138,7 +138,7 @@ test("issueChallenge returns challenge with valid ID format", () => {
   assert.equal(result.challengeToken!.length, 48);
 });
 
-test("issueChallenge returns challenge with valid expiresAt", () => {
+test("issueChallenge returns challenge with valid expiresAt [remote-worker-registration-service]", () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new RemoteWorkerRegistrationService(db, store);
@@ -159,7 +159,7 @@ test("issueChallenge returns challenge with valid expiresAt", () => {
 // issueChallenge - capability filtering
 // ---------------------------------------------------------------------------
 
-test("issueChallenge rejects when TTL is invalid - zero", () => {
+test("issueChallenge rejects when TTL is invalid - zero [remote-worker-registration-service]", () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new RemoteWorkerRegistrationService(db, store);
@@ -176,7 +176,7 @@ test("issueChallenge rejects when TTL is invalid - zero", () => {
   assert.equal(result.challengeToken, null);
 });
 
-test("issueChallenge rejects when TTL is invalid - negative", () => {
+test("issueChallenge rejects when TTL is invalid - negative [remote-worker-registration-service]", () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new RemoteWorkerRegistrationService(db, store);
@@ -191,7 +191,7 @@ test("issueChallenge rejects when TTL is invalid - negative", () => {
   assert.equal(result.reasonCode, "challenge_ttl_invalid");
 });
 
-test("issueChallenge rejects when TTL is invalid - Infinity", () => {
+test("issueChallenge rejects when TTL is invalid - Infinity [remote-worker-registration-service]", () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new RemoteWorkerRegistrationService(db, store);
@@ -206,7 +206,7 @@ test("issueChallenge rejects when TTL is invalid - Infinity", () => {
   assert.equal(result.reasonCode, "challenge_ttl_invalid");
 });
 
-test("issueChallenge rejects disallowed capabilities", () => {
+test("issueChallenge rejects disallowed capabilities [remote-worker-registration-service]", () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new RemoteWorkerRegistrationService(db, store);
@@ -221,7 +221,7 @@ test("issueChallenge rejects disallowed capabilities", () => {
   assert.deepEqual(result.rejectedCapabilities, ["disallowed-capability"]);
 });
 
-test("issueChallenge rejects all capabilities when none allowed", () => {
+test("issueChallenge rejects all capabilities when none allowed [remote-worker-registration-service]", () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new RemoteWorkerRegistrationService(db, store, { allowedCapabilities: [] });
@@ -235,7 +235,7 @@ test("issueChallenge rejects all capabilities when none allowed", () => {
   assert.equal(result.reasonCode, "capability_not_allowed");
 });
 
-test("issueChallenge accepts subset of allowed capabilities", () => {
+test("issueChallenge accepts subset of allowed capabilities [remote-worker-registration-service]", () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new RemoteWorkerRegistrationService(db, store);
@@ -255,7 +255,7 @@ test("issueChallenge accepts subset of allowed capabilities", () => {
 // issueChallenge - normalization
 // ---------------------------------------------------------------------------
 
-test("issueChallenge normalizes capabilities with whitespace", () => {
+test("issueChallenge normalizes capabilities with whitespace [remote-worker-registration-service]", () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new RemoteWorkerRegistrationService(db, store);
@@ -269,7 +269,7 @@ test("issueChallenge normalizes capabilities with whitespace", () => {
   assert.deepEqual(result.allowedCapabilities, ["bash", "edit"]);
 });
 
-test("issueChallenge removes empty capability strings", () => {
+test("issueChallenge removes empty capability strings [remote-worker-registration-service]", () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new RemoteWorkerRegistrationService(db, store);
@@ -287,7 +287,7 @@ test("issueChallenge removes empty capability strings", () => {
 // issueChallenge - challenge persistence
 // ---------------------------------------------------------------------------
 
-test("issueChallenge stores challenge in mock store", () => {
+test("issueChallenge stores challenge in mock store [remote-worker-registration-service]", () => {
   const challenges = new Map<string, MockChallenge>();
   const store = createMockStore(challenges);
   const db = createMockDb();
@@ -309,7 +309,7 @@ test("issueChallenge stores challenge in mock store", () => {
 // completeRegistration - basic functionality
 // ---------------------------------------------------------------------------
 
-test("completeRegistration accepts valid challenge", () => {
+test("completeRegistration accepts valid challenge [remote-worker-registration-service]", () => {
   const challenges = new Map<string, MockChallenge>();
   const workers = new Map<string, unknown>();
   const store = createMockStore(challenges, workers);
@@ -340,7 +340,7 @@ test("completeRegistration accepts valid challenge", () => {
 // completeRegistration - error cases
 // ---------------------------------------------------------------------------
 
-test("completeRegistration rejects challenge not found", () => {
+test("completeRegistration rejects challenge not found [remote-worker-registration-service]", () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new RemoteWorkerRegistrationService(db, store);
@@ -358,7 +358,7 @@ test("completeRegistration rejects challenge not found", () => {
   assert.equal(result.workerId, "worker-1");
 });
 
-test("completeRegistration rejects worker ID mismatch", () => {
+test("completeRegistration rejects worker ID mismatch [remote-worker-registration-service]", () => {
   const challenges = new Map<string, MockChallenge>();
   const store = createMockStore(challenges);
   const db = createMockDb();
@@ -381,7 +381,7 @@ test("completeRegistration rejects worker ID mismatch", () => {
   assert.equal(result.reasonCode, "challenge_worker_mismatch");
 });
 
-test("completeRegistration rejects already used challenge", () => {
+test("completeRegistration rejects already used challenge [remote-worker-registration-service]", () => {
   const challenges = new Map<string, MockChallenge>();
   const workers = new Map<string, unknown>();
   const store = createMockStore(challenges, workers);
@@ -415,7 +415,7 @@ test("completeRegistration rejects already used challenge", () => {
   assert.equal(result.reasonCode, "challenge_already_used");
 });
 
-test("completeRegistration rejects expired challenge", () => {
+test("completeRegistration rejects expired challenge [remote-worker-registration-service]", () => {
   const challengeId = "wchal_expired";
   const challengeToken = randomBytes(24).toString("hex");
   const challenges = new Map<string, MockChallenge>([[challengeId, {
@@ -444,7 +444,7 @@ test("completeRegistration rejects expired challenge", () => {
   assert.equal(result.reasonCode, "challenge_expired");
 });
 
-test("completeRegistration rejects invalid token", () => {
+test("completeRegistration rejects invalid token [remote-worker-registration-service]", () => {
   const challenges = new Map<string, MockChallenge>();
   const workers = new Map<string, unknown>();
   const store = createMockStore(challenges, workers);
@@ -468,7 +468,7 @@ test("completeRegistration rejects invalid token", () => {
   assert.equal(result.reasonCode, "challenge_token_invalid");
 });
 
-test("completeRegistration rejects disallowed capabilities", () => {
+test("completeRegistration rejects disallowed capabilities [remote-worker-registration-service]", () => {
   const challenges = new Map<string, MockChallenge>();
   const workers = new Map<string, unknown>();
   const store = createMockStore(challenges, workers);
@@ -497,7 +497,7 @@ test("completeRegistration rejects disallowed capabilities", () => {
 // completeRegistration - HMAC compatibility
 // ---------------------------------------------------------------------------
 
-test("completeRegistration accepts legacy token format", () => {
+test("completeRegistration accepts legacy token format [remote-worker-registration-service]", () => {
   const challengeId = "wchal_legacy";
   const challengeToken = randomBytes(24).toString("hex");
   const challenges = new Map<string, MockChallenge>([[challengeId, {
@@ -529,7 +529,7 @@ test("completeRegistration accepts legacy token format", () => {
 // completeRegistration - worker registration
 // ---------------------------------------------------------------------------
 
-test("completeRegistration calls verifyRemoteWorkerRegistration", () => {
+test("completeRegistration calls verifyRemoteWorkerRegistration [remote-worker-registration-service]", () => {
   const challenges = new Map<string, MockChallenge>();
   const workers = new Map<string, unknown>();
   const store = createMockStore(challenges, workers);
@@ -560,7 +560,7 @@ test("completeRegistration calls verifyRemoteWorkerRegistration", () => {
 // completeRegistration - timing safety
 // ---------------------------------------------------------------------------
 
-test("completeRegistration uses timing-safe comparison", () => {
+test("completeRegistration uses timing-safe comparison [remote-worker-registration-service]", () => {
   const challenges = new Map<string, MockChallenge>();
   const workers = new Map<string, unknown>();
   const store = createMockStore(challenges, workers);

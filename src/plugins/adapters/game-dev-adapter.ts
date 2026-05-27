@@ -9,7 +9,17 @@
 import type { ExternalAdapterPlugin } from "../../domains/registry/plugin-spi.js";
 import { PolicyDeniedError, type ErrorCode } from "../../platform/contracts/errors.js";
 import { NetworkEgressPolicyService } from "../../platform/five-plane-control-plane/iam/network-egress-policy.js";
+import { parseSafeOutboundUrl } from "../../platform/five-plane-control-plane/iam/outbound-url-policy.js";
 import { buildHashedCredentialFingerprint } from "./credential-hygiene.js";
+
+function defineAdapterEndpoint(url: string, key: string): string {
+  return parseSafeOutboundUrl(url, {
+    invalid: `game_dev_adapter.invalid_${key}`,
+    blocked: `game_dev_adapter.blocked_${key}`,
+  }).toString().replace(/\/$/, "");
+}
+
+const UNITY_BUILD_API_URL = defineAdapterEndpoint("https://build-api.unity.com", "unity_build_api_url");
 
 // R28-13 fix: add auth check and egress policy to game-dev-adapter
 const gameDevPolicy = new NetworkEgressPolicyService({
@@ -29,7 +39,7 @@ export function createGameDevAdapterPlugin(): ExternalAdapterPlugin {
       // Unity Cloud Build credentials would be validated here
     },
     healthCheck() {
-      return gameDevPolicy.evaluate("https://build-api.unity.com").allowed && credentialFingerprint != null;
+      return gameDevPolicy.evaluate(UNITY_BUILD_API_URL).allowed && credentialFingerprint != null;
     },
     async shutdown() {
       credentialFingerprint = null;
@@ -52,7 +62,7 @@ export function createGameDevAdapterPlugin(): ExternalAdapterPlugin {
       };
 
       // R28-13 fix: enforce egress policy
-      const decision = await gameDevPolicy.evaluate("https://build-api.unity.com");
+      const decision = await gameDevPolicy.evaluate(UNITY_BUILD_API_URL);
       if (!decision.allowed) {
         throw new PolicyDeniedError("egress.denied" as ErrorCode, "Game dev adapter: egress denied");
       }

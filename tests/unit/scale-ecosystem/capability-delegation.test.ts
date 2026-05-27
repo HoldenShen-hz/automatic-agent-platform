@@ -20,12 +20,12 @@ import {
 // CapabilityDelegation Construction Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("capability-delegation: createCapabilityDelegation returns instance", () => {
+test("capability-delegation: createCapabilityDelegation returns instance [capability-delegation]", () => {
   const delegation = createCapabilityDelegation();
   assert.ok(delegation instanceof CapabilityDelegation);
 });
 
-test("capability-delegation: constructor accepts initial capabilities", () => {
+test("capability-delegation: constructor accepts initial capabilities [capability-delegation]", () => {
   const capabilities: Capability[] = [
     {
       id: "cap-1",
@@ -49,7 +49,7 @@ test("capability-delegation: constructor accepts initial capabilities", () => {
 // Capability Management Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("capability-delegation: registerCapability adds capability with generated id", () => {
+test("capability-delegation: registerCapability adds capability with generated id [capability-delegation]", () => {
   const delegation = new CapabilityDelegation();
   const capability = delegation.registerCapability({
     name: "New Capability",
@@ -66,7 +66,7 @@ test("capability-delegation: registerCapability adds capability with generated i
   assert.equal(capability.name, "New Capability");
 });
 
-test("capability-delegation: registerCapability records audit entry", () => {
+test("capability-delegation: registerCapability records audit entry [capability-delegation]", () => {
   const delegation = new CapabilityDelegation();
   const capability = delegation.registerCapability({
     name: "Audit Test",
@@ -84,7 +84,7 @@ test("capability-delegation: registerCapability records audit entry", () => {
   assert.equal(auditEntries[0]?.action, "capability.registered");
 });
 
-test("capability-delegation: getCapability returns registered capability", () => {
+test("capability-delegation: getCapability returns registered capability [capability-delegation]", () => {
   const delegation = new CapabilityDelegation();
   const registered = delegation.registerCapability({
     name: "Get Test",
@@ -101,13 +101,13 @@ test("capability-delegation: getCapability returns registered capability", () =>
   assert.equal(retrieved?.name, "Get Test");
 });
 
-test("capability-delegation: getCapability returns undefined for unknown id", () => {
+test("capability-delegation: getCapability returns undefined for unknown id [capability-delegation]", () => {
   const delegation = new CapabilityDelegation();
   const retrieved = delegation.getCapability("unknown-id");
   assert.equal(retrieved, undefined);
 });
 
-test("capability-delegation: getCapabilitiesByCategory returns only non-deprecated", () => {
+test("capability-delegation: getCapabilitiesByCategory returns only non-deprecated [capability-delegation]", () => {
   const delegation = new CapabilityDelegation();
   delegation.registerCapability({
     name: "Exec 1",
@@ -133,7 +133,7 @@ test("capability-delegation: getCapabilitiesByCategory returns only non-deprecat
   assert.equal(capabilities[0]?.name, "Exec 1");
 });
 
-test("capability-delegation: deprecateCapability marks as deprecated", () => {
+test("capability-delegation: deprecateCapability marks as deprecated [capability-delegation]", () => {
   const delegation = new CapabilityDelegation();
   const capability = delegation.registerCapability({
     name: "Deprecate Test",
@@ -155,7 +155,7 @@ test("capability-delegation: deprecateCapability marks as deprecated", () => {
 // Grant Management Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("capability-delegation: createGrant creates active grant", async () => {
+test("capability-delegation: createGrant creates active grant [capability-delegation]", async () => {
   const delegation = new CapabilityDelegation();
   const capability = delegation.registerCapability({
     name: "Grant Test",
@@ -181,7 +181,7 @@ test("capability-delegation: createGrant creates active grant", async () => {
   assert.equal(grant.capabilityId, capability.id);
 });
 
-test("capability-delegation: createGrant applies default constraints", async () => {
+test("capability-delegation: createGrant applies default constraints [capability-delegation]", async () => {
   const delegation = new CapabilityDelegation();
   const capability = delegation.registerCapability({
     name: "Constraint Test",
@@ -212,7 +212,7 @@ test("capability-delegation: createGrant applies default constraints", async () 
   assert.ok(grant.constraints.length > 0);
 });
 
-test("capability-delegation: createGrant throws for deprecated capability", async () => {
+test("capability-delegation: createGrant throws for deprecated capability [capability-delegation]", async () => {
   const delegation = new CapabilityDelegation();
   const capability = delegation.registerCapability({
     name: "Deprecated Grant Test",
@@ -240,7 +240,7 @@ test("capability-delegation: createGrant throws for deprecated capability", asyn
   );
 });
 
-test("capability-delegation: getGrant returns grant by id", async () => {
+test("capability-delegation: getGrant returns grant by id [capability-delegation]", async () => {
   const delegation = new CapabilityDelegation();
   const capability = delegation.registerCapability({
     name: "Get Grant Test",
@@ -265,7 +265,7 @@ test("capability-delegation: getGrant returns grant by id", async () => {
   assert.equal(retrieved?.id, created.id);
 });
 
-test("capability-delegation: getGrantsForOrg returns only active grants", async () => {
+test("capability-delegation: getGrantsForOrg returns only active grants [capability-delegation]", async () => {
   const delegation = new CapabilityDelegation();
   const capability = delegation.registerCapability({
     name: "Org Grants Test",
@@ -290,7 +290,7 @@ test("capability-delegation: getGrantsForOrg returns only active grants", async 
   assert.ok(grants.every((g) => g.status === "active"));
 });
 
-test("capability-delegation: suspendGrant updates status", async () => {
+test("capability-delegation: suspendGrant updates status [capability-delegation]", async () => {
   const delegation = new CapabilityDelegation();
   const capability = delegation.registerCapability({
     name: "Suspend Grant Test",
@@ -316,7 +316,7 @@ test("capability-delegation: suspendGrant updates status", async () => {
   assert.equal(retrieved?.status, "suspended");
 });
 
-test("capability-delegation: revokeGrant updates status", async () => {
+test("capability-delegation: revokeGrant updates status [capability-delegation]", async () => {
   const delegation = new CapabilityDelegation();
   const capability = delegation.registerCapability({
     name: "Revoke Grant Test",
@@ -342,7 +342,7 @@ test("capability-delegation: revokeGrant updates status", async () => {
   assert.equal(retrieved?.status, "revoked");
 });
 
-test("capability-delegation: renewGrant updates expiry", async () => {
+test("capability-delegation: renewGrant updates expiry [capability-delegation]", async () => {
   const delegation = new CapabilityDelegation();
   const capability = delegation.registerCapability({
     name: "Renew Grant Test",
@@ -373,7 +373,7 @@ test("capability-delegation: renewGrant updates expiry", async () => {
 // Delegation Request Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("capability-delegation: createDelegationRequest creates pending request", () => {
+test("capability-delegation: createDelegationRequest creates pending request [capability-delegation]", () => {
   const delegation = new CapabilityDelegation();
   const request = delegation.createDelegationRequest({
     capabilityId: "cap-1",
@@ -388,7 +388,7 @@ test("capability-delegation: createDelegationRequest creates pending request", (
   assert.equal(request.status, "pending");
 });
 
-test("capability-delegation: getDelegationRequest returns request by id", () => {
+test("capability-delegation: getDelegationRequest returns request by id [capability-delegation]", () => {
   const delegation = new CapabilityDelegation();
   const created = delegation.createDelegationRequest({
     capabilityId: "cap-1",
@@ -403,7 +403,7 @@ test("capability-delegation: getDelegationRequest returns request by id", () => 
   assert.equal(retrieved?.id, created.id);
 });
 
-test("capability-delegation: getPendingRequestsForOrg returns pending requests", () => {
+test("capability-delegation: getPendingRequestsForOrg returns pending requests [capability-delegation]", () => {
   const delegation = new CapabilityDelegation();
   delegation.createDelegationRequest({
     capabilityId: "cap-1",
@@ -417,7 +417,7 @@ test("capability-delegation: getPendingRequestsForOrg returns pending requests",
   assert.equal(pending.length, 1);
 });
 
-test("capability-delegation: approveRequest changes status and creates grant", async () => {
+test("capability-delegation: approveRequest changes status and creates grant [capability-delegation]", async () => {
   const delegation = new CapabilityDelegation();
   const capability = delegation.registerCapability({
     name: "Approve Test",
@@ -444,7 +444,7 @@ test("capability-delegation: approveRequest changes status and creates grant", a
   assert.equal(retrieved?.status, "approved");
 });
 
-test("capability-delegation: rejectRequest changes status", () => {
+test("capability-delegation: rejectRequest changes status [capability-delegation]", () => {
   const delegation = new CapabilityDelegation();
   const request = delegation.createDelegationRequest({
     capabilityId: "cap-1",
@@ -464,7 +464,7 @@ test("capability-delegation: rejectRequest changes status", () => {
 // Access Control Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("capability-delegation: checkAccess returns denied when no grants", async () => {
+test("capability-delegation: checkAccess returns denied when no grants [capability-delegation]", async () => {
   const delegation = new CapabilityDelegation();
   const decision = await delegation.checkAccess({
     orgId: "org-1",
@@ -475,7 +475,7 @@ test("capability-delegation: checkAccess returns denied when no grants", async (
   assert.equal(decision.allowed, false);
 });
 
-test("capability-delegation: checkAccess returns allowed with valid grant", async () => {
+test("capability-delegation: checkAccess returns allowed with valid grant [capability-delegation]", async () => {
   const delegation = new CapabilityDelegation();
   const capability = delegation.registerCapability({
     name: "Access Test",
@@ -504,7 +504,7 @@ test("capability-delegation: checkAccess returns allowed with valid grant", asyn
   assert.equal(decision.allowed, true);
 });
 
-test("capability-delegation: checkAccess returns denied for ungranted permission", async () => {
+test("capability-delegation: checkAccess returns denied for ungranted permission [capability-delegation]", async () => {
   const delegation = new CapabilityDelegation();
   const capability = delegation.registerCapability({
     name: "Permission Test",
@@ -537,7 +537,7 @@ test("capability-delegation: checkAccess returns denied for ungranted permission
 // Quota Management Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("capability-delegation: setQuota configures quota", () => {
+test("capability-delegation: setQuota configures quota [capability-delegation]", () => {
   const delegation = new CapabilityDelegation();
   delegation.setQuota({
     orgId: "org-1",
@@ -552,7 +552,7 @@ test("capability-delegation: setQuota configures quota", () => {
   assert.equal(quota?.windowType, "hourly");
 });
 
-test("capability-delegation: quota tracks usage", async () => {
+test("capability-delegation: quota tracks usage [capability-delegation]", async () => {
   const delegation = new CapabilityDelegation();
   const capability = delegation.registerCapability({
     name: "Quota Test",
@@ -587,7 +587,7 @@ test("capability-delegation: quota tracks usage", async () => {
   assert.equal(quota?.used, 2);
 });
 
-test("capability-delegation: unlimited window type bypasses quota", async () => {
+test("capability-delegation: unlimited window type bypasses quota [capability-delegation]", async () => {
   const delegation = new CapabilityDelegation();
   const capability = delegation.registerCapability({
     name: "Unlimited Test",
@@ -627,7 +627,7 @@ test("capability-delegation: unlimited window type bypasses quota", async () => 
 // Audit Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("capability-delegation: getAuditLog returns all entries when no filter", () => {
+test("capability-delegation: getAuditLog returns all entries when no filter [capability-delegation]", () => {
   const delegation = new CapabilityDelegation();
   delegation.registerCapability({
     name: "Audit Test",
@@ -643,7 +643,7 @@ test("capability-delegation: getAuditLog returns all entries when no filter", ()
   assert.ok(auditEntries.length > 0);
 });
 
-test("capability-delegation: getAuditLog filters by orgId", () => {
+test("capability-delegation: getAuditLog filters by orgId [capability-delegation]", () => {
   const delegation = new CapabilityDelegation();
   delegation.registerCapability({
     name: "Org Filter Test",
@@ -660,7 +660,7 @@ test("capability-delegation: getAuditLog filters by orgId", () => {
   assert.ok(auditEntries.every((e) => e.orgId === "system"));
 });
 
-test("capability-delegation: getAuditLog applies limit", () => {
+test("capability-delegation: getAuditLog applies limit [capability-delegation]", () => {
   const delegation = new CapabilityDelegation();
   for (let i = 0; i < 5; i++) {
     delegation.registerCapability({

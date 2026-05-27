@@ -17,7 +17,7 @@ function makeCandidate(overrides: Partial<PreemptionCandidate> = {}): Preemption
   };
 }
 
-test("PreemptionService selects lowest priority victim", () => {
+test("PreemptionService selects lowest priority victim [preemption-service]", () => {
   const service = new PreemptionService();
   const candidates: PreemptionCandidate[] = [
     makeCandidate({ executionId: "e1", priority: 10 }),
@@ -32,7 +32,7 @@ test("PreemptionService selects lowest priority victim", () => {
   assert.equal(result.filteredCount, 0);
 });
 
-test("PreemptionService breaks ties by higher progress percent", () => {
+test("PreemptionService breaks ties by higher progress percent [preemption-service]", () => {
   const service = new PreemptionService();
   const candidates: PreemptionCandidate[] = [
     makeCandidate({ executionId: "e1", priority: 5, progressPercent: 30 }),
@@ -45,7 +45,7 @@ test("PreemptionService breaks ties by higher progress percent", () => {
   assert.equal(result.victim?.executionId, "e2");
 });
 
-test("PreemptionService returns null when no candidates", () => {
+test("PreemptionService returns null when no candidates [preemption-service]", () => {
   const service = new PreemptionService();
   const result = service.selectVictim([]);
 
@@ -54,7 +54,7 @@ test("PreemptionService returns null when no candidates", () => {
   assert.equal(result.filteredCount, 0);
 });
 
-test("PreemptionService filters protected candidates", () => {
+test("PreemptionService filters protected candidates [preemption-service]", () => {
   const service = new PreemptionService();
   const candidates: PreemptionCandidate[] = [
     makeCandidate({ executionId: "e1", priority: 5 }),
@@ -69,7 +69,7 @@ test("PreemptionService filters protected candidates", () => {
   assert.equal(result.filteredCount, 1);
 });
 
-test("PreemptionService filters candidates without valid checkpoints", () => {
+test("PreemptionService filters candidates without valid checkpoints [preemption-service]", () => {
   const service = new PreemptionService();
   const candidates: PreemptionCandidate[] = [
     makeCandidate({ executionId: "e1", priority: 5, lastCheckpointTimestampMs: RECENT_CHECKPOINT_MS }),
@@ -87,7 +87,7 @@ test("PreemptionService filters candidates without valid checkpoints", () => {
   assert.equal(result.filteredCount, 0);
 });
 
-test("PreemptionService filters candidates with stale checkpoints", () => {
+test("PreemptionService filters candidates with stale checkpoints [preemption-service]", () => {
   const service = new PreemptionService({ maxCheckpointAgeMs: 300_000 });
   const candidates: PreemptionCandidate[] = [
     makeCandidate({ executionId: "e1", priority: 5, lastCheckpointTimestampMs: RECENT_CHECKPOINT_MS }),
@@ -100,7 +100,7 @@ test("PreemptionService filters candidates with stale checkpoints", () => {
   assert.equal(result.victim?.executionId, "e1");
 });
 
-test("PreemptionService respects custom maxCheckpointAgeMs", () => {
+test("PreemptionService respects custom maxCheckpointAgeMs [preemption-service]", () => {
   const service = new PreemptionService({ maxCheckpointAgeMs: 60_000 });
   const oldButWithinWindow = NOW - 30_000;
   const candidates: PreemptionCandidate[] = [
@@ -113,7 +113,7 @@ test("PreemptionService respects custom maxCheckpointAgeMs", () => {
   assert.equal(result.victim?.executionId, "e1");
 });
 
-test("PreemptionService respects minPreemptablePriority", () => {
+test("PreemptionService respects minPreemptablePriority [preemption-service]", () => {
   const service = new PreemptionService({ minPreemptablePriority: 20 });
   const candidates: PreemptionCandidate[] = [
     makeCandidate({ executionId: "e1", priority: 10 }), // below threshold
@@ -126,7 +126,7 @@ test("PreemptionService respects minPreemptablePriority", () => {
   assert.equal(result.victim?.executionId, "e2");
 });
 
-test("PreemptionService respects maxProtectedPriority", () => {
+test("PreemptionService respects maxProtectedPriority [preemption-service]", () => {
   const service = new PreemptionService({ maxProtectedPriority: 60 });
   const candidates: PreemptionCandidate[] = [
     makeCandidate({ executionId: "e1", priority: 50 }),
@@ -140,7 +140,7 @@ test("PreemptionService respects maxProtectedPriority", () => {
   assert.equal(result.victim?.executionId, "e3");
 });
 
-test("PreemptionService uses checkpointLatencyMs as final tiebreaker", () => {
+test("PreemptionService uses checkpointLatencyMs as final tiebreaker [preemption-service]", () => {
   const service = new PreemptionService();
   const candidates: PreemptionCandidate[] = [
     makeCandidate({ executionId: "e1", priority: 5, progressPercent: 50, checkpointLatencyMs: 100 }),
@@ -154,7 +154,7 @@ test("PreemptionService uses checkpointLatencyMs as final tiebreaker", () => {
   assert.equal(result.victim?.executionId, "e2");
 });
 
-test("PreemptionService static chooseVictim delegates to choosePreemptionVictim", () => {
+test("PreemptionService static chooseVictim delegates to choosePreemptionVictim [preemption-service]", () => {
   const candidates: PreemptionCandidate[] = [
     makeCandidate({ executionId: "e1", priority: 10 }),
     makeCandidate({ executionId: "e2", priority: 5 }),
@@ -165,12 +165,12 @@ test("PreemptionService static chooseVictim delegates to choosePreemptionVictim"
   assert.equal(victim?.executionId, "e2");
 });
 
-test("PreemptionService static chooseVictim returns null for empty array", () => {
+test("PreemptionService static chooseVictim returns null for empty array [preemption-service]", () => {
   const victim = PreemptionService.chooseVictim([]);
   assert.equal(victim, null);
 });
 
-test("PreemptionService applies default options", () => {
+test("PreemptionService applies default options [preemption-service]", () => {
   const service = new PreemptionService();
   // Default maxCheckpointAgeMs is 300_000, minPreemptablePriority is 0, maxProtectedPriority is 100
   const candidates: PreemptionCandidate[] = [
@@ -192,7 +192,7 @@ test("PreemptionService applies default options", () => {
   assert.equal(result.filteredCount, 1);
 });
 
-test("PreemptionService handles candidates at priority boundaries", () => {
+test("PreemptionService handles candidates at priority boundaries [preemption-service]", () => {
   const service = new PreemptionService({ minPreemptablePriority: 0, maxProtectedPriority: 100 });
   const candidates: PreemptionCandidate[] = [
     makeCandidate({ executionId: "e0", priority: 0, lastCheckpointTimestampMs: RECENT_CHECKPOINT_MS }),
@@ -206,7 +206,7 @@ test("PreemptionService handles candidates at priority boundaries", () => {
   assert.equal(result.victim?.executionId, "e0");
 });
 
-test("PreemptionService returns correct eligibleCandidates count", () => {
+test("PreemptionService returns correct eligibleCandidates count [preemption-service]", () => {
   const service = new PreemptionService();
   const candidates: PreemptionCandidate[] = [
     makeCandidate({ executionId: "e1", protectedFromPreemption: true }),
@@ -221,7 +221,7 @@ test("PreemptionService returns correct eligibleCandidates count", () => {
   assert.equal(result.filteredCount, 2);
 });
 
-test("PreemptionService does not mutate candidates array", () => {
+test("PreemptionService does not mutate candidates array [preemption-service]", () => {
   const service = new PreemptionService();
   const candidates: PreemptionCandidate[] = [
     makeCandidate({ executionId: "e1" }),

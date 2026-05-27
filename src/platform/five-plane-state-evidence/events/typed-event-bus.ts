@@ -103,6 +103,7 @@ export interface TypedEventPayloadMap {
   "config.rollout.cancelled": Record<string, unknown>;
   "config.rollout.auto_progressed": Record<string, unknown>;
   "config.drift_detected": Record<string, unknown>;
+  "system.health.changed": Record<string, unknown>;
   "skill:execution_started": {
     skillId: string;
     version: string;

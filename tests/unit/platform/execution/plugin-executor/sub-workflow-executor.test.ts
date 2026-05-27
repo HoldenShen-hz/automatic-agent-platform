@@ -66,7 +66,7 @@ const createWorkflowDefinition = (
 // Workflow Creation Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("SubWorkflowExecutor creates workflow and returns executionId", () => {
+test("SubWorkflowExecutor creates workflow and returns executionId [sub-workflow-executor]", () => {
   const executor = new SubWorkflowExecutor();
   const context = createTestContext();
   const definition = createWorkflowDefinition("wf-1", [
@@ -79,7 +79,7 @@ test("SubWorkflowExecutor creates workflow and returns executionId", () => {
   assert.ok(executor.getWorkflow(executionId), "Workflow should be retrievable");
 });
 
-test("SubWorkflowExecutor stores workflow definition", () => {
+test("SubWorkflowExecutor stores workflow definition [sub-workflow-executor]", () => {
   const executor = new SubWorkflowExecutor();
   const context = createTestContext();
   const definition = createWorkflowDefinition("wf-1", [
@@ -96,7 +96,7 @@ test("SubWorkflowExecutor stores workflow definition", () => {
   assert.equal(workflow!.status, "created");
 });
 
-test("SubWorkflowExecutor initializes steps with pending status", async () => {
+test("SubWorkflowExecutor initializes steps with pending status [sub-workflow-executor]", async () => {
   const executor = new SubWorkflowExecutor({ enableCheckpointing: false });
   const context = createTestContext();
   const definition = createWorkflowDefinition("wf-1", [
@@ -113,7 +113,7 @@ test("SubWorkflowExecutor initializes steps with pending status", async () => {
   assert.equal(steps[1]!.status, "completed");
 });
 
-test("SubWorkflowExecutor listWorkflows returns all workflow IDs", () => {
+test("SubWorkflowExecutor listWorkflows returns all workflow IDs [sub-workflow-executor]", () => {
   const executor = new SubWorkflowExecutor();
   const context = createTestContext();
 
@@ -136,7 +136,7 @@ test("SubWorkflowExecutor listWorkflows returns all workflow IDs", () => {
 // Workflow Execution Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("SubWorkflowExecutor.executeWorkflow() completes workflow", async () => {
+test("SubWorkflowExecutor.executeWorkflow() completes workflow [sub-workflow-executor]", async () => {
   const executor = new SubWorkflowExecutor({ enableCheckpointing: false });
   const context = createTestContext();
   const definition = createWorkflowDefinition("wf-1", [
@@ -158,7 +158,7 @@ test("SubWorkflowExecutor.executeWorkflow() completes workflow", async () => {
   assert.ok(result.durationMs >= 0);
 });
 
-test("SubWorkflowExecutor.executeWorkflow() marks steps as completed", async () => {
+test("SubWorkflowExecutor.executeWorkflow() marks steps as completed [sub-workflow-executor]", async () => {
   const executor = new SubWorkflowExecutor({ enableCheckpointing: false });
   const context = createTestContext();
   const definition = createWorkflowDefinition("wf-1", [
@@ -176,7 +176,7 @@ test("SubWorkflowExecutor.executeWorkflow() marks steps as completed", async () 
   assert.equal(step!.nodeId, "step-1");
 });
 
-test("SubWorkflowExecutor resolves nodeId and legacy stepId to the same step", () => {
+test("SubWorkflowExecutor resolves nodeId and legacy stepId to the same step [sub-workflow-executor]", () => {
   const executor = new SubWorkflowExecutor();
   const context = createTestContext();
   const definition = createWorkflowDefinition("wf-node", [
@@ -188,7 +188,7 @@ test("SubWorkflowExecutor resolves nodeId and legacy stepId to the same step", (
   assert.equal(executor.getStep(executionId, "node-primary")?.stepId, "legacy-step");
 });
 
-test("SubWorkflowExecutor.executeWorkflow() fails for unknown workflow", async () => {
+test("SubWorkflowExecutor.executeWorkflow() fails for unknown workflow [sub-workflow-executor]", async () => {
   const executor = new SubWorkflowExecutor();
 
   await assert.rejects(
@@ -199,7 +199,7 @@ test("SubWorkflowExecutor.executeWorkflow() fails for unknown workflow", async (
   );
 });
 
-test("SubWorkflowExecutor.executeWorkflow() cannot execute completed workflow", async () => {
+test("SubWorkflowExecutor.executeWorkflow() cannot execute completed workflow [sub-workflow-executor]", async () => {
   const executor = new SubWorkflowExecutor({ enableCheckpointing: false });
   const context = createTestContext();
   const definition = createWorkflowDefinition("wf-1", [
@@ -217,7 +217,7 @@ test("SubWorkflowExecutor.executeWorkflow() cannot execute completed workflow", 
   );
 });
 
-test("SubWorkflowExecutor.executeWorkflow() cannot execute cancelled workflow", async () => {
+test("SubWorkflowExecutor.executeWorkflow() cannot execute cancelled workflow [sub-workflow-executor]", async () => {
   const executor = new SubWorkflowExecutor({ enableCheckpointing: false });
   const context = createTestContext();
   const definition = createWorkflowDefinition("wf-1", [
@@ -239,7 +239,7 @@ test("SubWorkflowExecutor.executeWorkflow() cannot execute cancelled workflow", 
 // Pause and Cancel Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("SubWorkflowExecutor.pauseWorkflow() throws for non-running workflow", () => {
+test("SubWorkflowExecutor.pauseWorkflow() throws for non-running workflow [sub-workflow-executor]", () => {
   const executor = new SubWorkflowExecutor({ enableCheckpointing: false });
   const context = createTestContext();
   const definition = createWorkflowDefinition("wf-1", [
@@ -258,7 +258,7 @@ test("SubWorkflowExecutor.pauseWorkflow() throws for non-running workflow", () =
   );
 });
 
-test("SubWorkflowExecutor.pauseWorkflow() throws for unknown workflow", () => {
+test("SubWorkflowExecutor.pauseWorkflow() throws for unknown workflow [sub-workflow-executor]", () => {
   const executor = new SubWorkflowExecutor();
 
   assert.throws(
@@ -269,7 +269,7 @@ test("SubWorkflowExecutor.pauseWorkflow() throws for unknown workflow", () => {
   );
 });
 
-test("SubWorkflowExecutor.cancelWorkflow() cancels workflow", async () => {
+test("SubWorkflowExecutor.cancelWorkflow() cancels workflow [sub-workflow-executor]", async () => {
   const executor = new SubWorkflowExecutor({ enableCheckpointing: false });
   const context = createTestContext();
   const definition = createWorkflowDefinition("wf-1", [
@@ -282,7 +282,7 @@ test("SubWorkflowExecutor.cancelWorkflow() cancels workflow", async () => {
   assert.equal(result.status, "cancelled");
 });
 
-test("SubWorkflowExecutor.cancelWorkflow() throws for unknown workflow", async () => {
+test("SubWorkflowExecutor.cancelWorkflow() throws for unknown workflow [sub-workflow-executor]", async () => {
   const executor = new SubWorkflowExecutor();
 
   await assert.rejects(
@@ -293,7 +293,7 @@ test("SubWorkflowExecutor.cancelWorkflow() throws for unknown workflow", async (
   );
 });
 
-test("SubWorkflowExecutor.cancelWorkflow() throws for completed workflow", async () => {
+test("SubWorkflowExecutor.cancelWorkflow() throws for completed workflow [sub-workflow-executor]", async () => {
   const executor = new SubWorkflowExecutor({ enableCheckpointing: false });
   const context = createTestContext();
   const definition = createWorkflowDefinition("wf-1", [
@@ -315,7 +315,7 @@ test("SubWorkflowExecutor.cancelWorkflow() throws for completed workflow", async
 // Step Operations Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("SubWorkflowExecutor.getStep() returns step details", () => {
+test("SubWorkflowExecutor.getStep() returns step details [sub-workflow-executor]", () => {
   const executor = new SubWorkflowExecutor();
   const context = createTestContext();
   const definition = createWorkflowDefinition("wf-1", [
@@ -332,7 +332,7 @@ test("SubWorkflowExecutor.getStep() returns step details", () => {
   assert.equal(step!.retryCount, 0);
 });
 
-test("SubWorkflowExecutor.getStep() returns null for unknown step", () => {
+test("SubWorkflowExecutor.getStep() returns null for unknown step [sub-workflow-executor]", () => {
   const executor = new SubWorkflowExecutor();
   const context = createTestContext();
   const definition = createWorkflowDefinition("wf-1", [
@@ -345,7 +345,7 @@ test("SubWorkflowExecutor.getStep() returns null for unknown step", () => {
   assert.equal(step, null);
 });
 
-test("SubWorkflowExecutor.getSteps() returns all steps in order", () => {
+test("SubWorkflowExecutor.getSteps() returns all steps in order [sub-workflow-executor]", () => {
   const executor = new SubWorkflowExecutor();
   const context = createTestContext();
   const definition = createWorkflowDefinition("wf-1", [
@@ -363,7 +363,7 @@ test("SubWorkflowExecutor.getSteps() returns all steps in order", () => {
   assert.equal(steps[2]!.stepId, "step-3");
 });
 
-test("SubWorkflowExecutor.skipStep() skips pending step", () => {
+test("SubWorkflowExecutor.skipStep() skips pending step [sub-workflow-executor]", () => {
   const executor = new SubWorkflowExecutor();
   const context = createTestContext();
   const definition = createWorkflowDefinition("wf-1", [
@@ -379,7 +379,7 @@ test("SubWorkflowExecutor.skipStep() skips pending step", () => {
   assert.deepEqual(step!.output, { skipped: true, reason: "Not needed" });
 });
 
-test("SubWorkflowExecutor.skipStep() throws for unknown workflow", () => {
+test("SubWorkflowExecutor.skipStep() throws for unknown workflow [sub-workflow-executor]", () => {
   const executor = new SubWorkflowExecutor();
 
   assert.throws(
@@ -390,7 +390,7 @@ test("SubWorkflowExecutor.skipStep() throws for unknown workflow", () => {
   );
 });
 
-test("SubWorkflowExecutor.skipStep() throws for unknown step", () => {
+test("SubWorkflowExecutor.skipStep() throws for unknown step [sub-workflow-executor]", () => {
   const executor = new SubWorkflowExecutor();
   const context = createTestContext();
   const definition = createWorkflowDefinition("wf-1", [
@@ -407,7 +407,7 @@ test("SubWorkflowExecutor.skipStep() throws for unknown step", () => {
   );
 });
 
-test("SubWorkflowExecutor.skipStep() throws for non-pending step", async () => {
+test("SubWorkflowExecutor.skipStep() throws for non-pending step [sub-workflow-executor]", async () => {
   const executor = new SubWorkflowExecutor({ enableCheckpointing: false });
   const context = createTestContext();
   const definition = createWorkflowDefinition("wf-1", [
@@ -425,7 +425,7 @@ test("SubWorkflowExecutor.skipStep() throws for non-pending step", async () => {
   );
 });
 
-test("SubWorkflowExecutor.retryStep() retries failed step", async () => {
+test("SubWorkflowExecutor.retryStep() retries failed step [sub-workflow-executor]", async () => {
   const executor = new SubWorkflowExecutor({ enableCheckpointing: false });
   const context = createTestContext();
   const definition = createWorkflowDefinition("wf-1", [
@@ -447,7 +447,7 @@ test("SubWorkflowExecutor.retryStep() retries failed step", async () => {
   assert.equal(retriedStep.error, undefined);
 });
 
-test("SubWorkflowExecutor.retryStep() throws for unknown workflow", async () => {
+test("SubWorkflowExecutor.retryStep() throws for unknown workflow [sub-workflow-executor]", async () => {
   const executor = new SubWorkflowExecutor();
 
   await assert.rejects(
@@ -458,7 +458,7 @@ test("SubWorkflowExecutor.retryStep() throws for unknown workflow", async () => 
   );
 });
 
-test("SubWorkflowExecutor.retryStep() throws for unknown step", async () => {
+test("SubWorkflowExecutor.retryStep() throws for unknown step [sub-workflow-executor]", async () => {
   const executor = new SubWorkflowExecutor();
   const context = createTestContext();
   const definition = createWorkflowDefinition("wf-1", [
@@ -475,7 +475,7 @@ test("SubWorkflowExecutor.retryStep() throws for unknown step", async () => {
   );
 });
 
-test("SubWorkflowExecutor.retryStep() throws for non-failed step", async () => {
+test("SubWorkflowExecutor.retryStep() throws for non-failed step [sub-workflow-executor]", async () => {
   const executor = new SubWorkflowExecutor();
   const context = createTestContext();
   const definition = createWorkflowDefinition("wf-1", [
@@ -492,7 +492,7 @@ test("SubWorkflowExecutor.retryStep() throws for non-failed step", async () => {
   );
 });
 
-test("SubWorkflowExecutor.retryStep() throws when max retries exceeded", async () => {
+test("SubWorkflowExecutor.retryStep() throws when max retries exceeded [sub-workflow-executor]", async () => {
   const executor = new SubWorkflowExecutor();
   const context = createTestContext();
   const definition = createWorkflowDefinition("wf-1", [
@@ -517,7 +517,7 @@ test("SubWorkflowExecutor.retryStep() throws when max retries exceeded", async (
 // Dependency-Based Execution Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("SubWorkflowExecutor executes steps respecting dependencies", async () => {
+test("SubWorkflowExecutor executes steps respecting dependencies [sub-workflow-executor]", async () => {
   const executor = new SubWorkflowExecutor({ enableCheckpointing: false });
   const context = createTestContext();
   const definition = createWorkflowDefinition("wf-1", [
@@ -533,7 +533,7 @@ test("SubWorkflowExecutor executes steps respecting dependencies", async () => {
   assert.equal(result.status, "completed");
 });
 
-test("SubWorkflowExecutor handles multiple dependencies", async () => {
+test("SubWorkflowExecutor handles multiple dependencies [sub-workflow-executor]", async () => {
   const executor = new SubWorkflowExecutor({ enableCheckpointing: false });
   const context = createTestContext();
   const definition = createWorkflowDefinition("wf-1", [
@@ -554,7 +554,7 @@ test("SubWorkflowExecutor handles multiple dependencies", async () => {
 // Conditional Execution Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("SubWorkflowExecutor executes step when conditional is met", async () => {
+test("SubWorkflowExecutor executes step when conditional is met [sub-workflow-executor]", async () => {
   const executor = new SubWorkflowExecutor({ enableCheckpointing: false });
   const context = createTestContext();
   const definition = createWorkflowDefinition("wf-1", [
@@ -579,7 +579,7 @@ test("SubWorkflowExecutor executes step when conditional is met", async () => {
 // Checkpoint Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("SubWorkflowExecutor.createCheckpointFromId() creates checkpoint", () => {
+test("SubWorkflowExecutor.createCheckpointFromId() creates checkpoint [sub-workflow-executor]", () => {
   const executor = new SubWorkflowExecutor();
   const context = createTestContext();
   const definition = createWorkflowDefinition("wf-1", [
@@ -593,7 +593,7 @@ test("SubWorkflowExecutor.createCheckpointFromId() creates checkpoint", () => {
   assert.ok(checkpointId.startsWith("ckpt_"));
 });
 
-test("SubWorkflowExecutor.createCheckpointFromId() returns null for unknown workflow", () => {
+test("SubWorkflowExecutor.createCheckpointFromId() returns null for unknown workflow [sub-workflow-executor]", () => {
   const executor = new SubWorkflowExecutor();
 
   const checkpointId = executor.createCheckpointFromId("nonexistent");
@@ -601,7 +601,7 @@ test("SubWorkflowExecutor.createCheckpointFromId() returns null for unknown work
   assert.equal(checkpointId, null);
 });
 
-test("SubWorkflowExecutor.getCheckpoints() returns checkpoint list", async () => {
+test("SubWorkflowExecutor.getCheckpoints() returns checkpoint list [sub-workflow-executor]", async () => {
   const executor = new SubWorkflowExecutor({ enableCheckpointing: true });
   const context = createTestContext();
   const definition = createWorkflowDefinition(
@@ -621,7 +621,7 @@ test("SubWorkflowExecutor.getCheckpoints() returns checkpoint list", async () =>
   assert.ok(checkpoints.length >= 0);
 });
 
-test("SubWorkflowExecutor.getCheckpoints() returns empty array for unknown workflow", () => {
+test("SubWorkflowExecutor.getCheckpoints() returns empty array for unknown workflow [sub-workflow-executor]", () => {
   const executor = new SubWorkflowExecutor();
 
   const checkpoints = executor.getCheckpoints("nonexistent");
@@ -633,7 +633,7 @@ test("SubWorkflowExecutor.getCheckpoints() returns empty array for unknown workf
 // Rollback Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("SubWorkflowExecutor.performRollbackFromId() performs rollback", async () => {
+test("SubWorkflowExecutor.performRollbackFromId() performs rollback [sub-workflow-executor]", async () => {
   const executor = new SubWorkflowExecutor({ enableCheckpointing: false });
   const context = createTestContext();
   const definition = createWorkflowDefinition(
@@ -654,7 +654,7 @@ test("SubWorkflowExecutor.performRollbackFromId() performs rollback", async () =
   assert.equal(step!.status, "rolled_back");
 });
 
-test("SubWorkflowExecutor.performRollbackFromId() throws for unknown workflow", async () => {
+test("SubWorkflowExecutor.performRollbackFromId() throws for unknown workflow [sub-workflow-executor]", async () => {
   const executor = new SubWorkflowExecutor();
 
   await assert.rejects(
@@ -665,7 +665,7 @@ test("SubWorkflowExecutor.performRollbackFromId() throws for unknown workflow", 
   );
 });
 
-test("SubWorkflowExecutor.performRollbackFromId() throws for no-rollback policy", async () => {
+test("SubWorkflowExecutor.performRollbackFromId() throws for no-rollback policy [sub-workflow-executor]", async () => {
   const executor = new SubWorkflowExecutor({ enableCheckpointing: false });
   const context = createTestContext();
   const definition = createWorkflowDefinition(
@@ -689,7 +689,7 @@ test("SubWorkflowExecutor.performRollbackFromId() throws for no-rollback policy"
 // Nested Depth Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("SubWorkflowExecutor enforces max nested depth", () => {
+test("SubWorkflowExecutor enforces max nested depth [sub-workflow-executor]", () => {
   const executor = new SubWorkflowExecutor({ maxNestedDepth: 2 });
   const context = createTestContext({
     parentExecutionId: "parent1:parent2", // 2 levels already
@@ -706,7 +706,7 @@ test("SubWorkflowExecutor enforces max nested depth", () => {
   );
 });
 
-test("SubWorkflowExecutor allows depth within limit", () => {
+test("SubWorkflowExecutor allows depth within limit [sub-workflow-executor]", () => {
   const executor = new SubWorkflowExecutor({ maxNestedDepth: 3 });
   const context = createTestContext({
     parentExecutionId: "parent1", // 1 level
@@ -723,7 +723,7 @@ test("SubWorkflowExecutor allows depth within limit", () => {
 // Execution Log Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("SubWorkflowExecutor.getExecutionLog() returns all results", async () => {
+test("SubWorkflowExecutor.getExecutionLog() returns all results [sub-workflow-executor]", async () => {
   const executor = new SubWorkflowExecutor({ enableCheckpointing: false });
   const context = createTestContext();
 
@@ -743,7 +743,7 @@ test("SubWorkflowExecutor.getExecutionLog() returns all results", async () => {
   assert.equal(log.length, 2);
 });
 
-test("SubWorkflowExecutor.getExecutionLog() returns immutable copy", async () => {
+test("SubWorkflowExecutor.getExecutionLog() returns immutable copy [sub-workflow-executor]", async () => {
   const executor = new SubWorkflowExecutor({ enableCheckpointing: false });
   const context = createTestContext();
 
@@ -763,13 +763,13 @@ test("SubWorkflowExecutor.getExecutionLog() returns immutable copy", async () =>
 // Factory Function Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("createSubWorkflowExecutor() creates executor with default options", () => {
+test("createSubWorkflowExecutor() creates executor with default options [sub-workflow-executor]", () => {
   const executor = createSubWorkflowExecutor();
 
   assert.ok(executor instanceof SubWorkflowExecutor);
 });
 
-test("createSubWorkflowExecutor() creates executor with custom options", () => {
+test("createSubWorkflowExecutor() creates executor with custom options [sub-workflow-executor]", () => {
   const executor = createSubWorkflowExecutor({
     defaultTimeout: 60000,
     maxNestedDepth: 5,
@@ -783,7 +783,7 @@ test("createSubWorkflowExecutor() creates executor with custom options", () => {
 // Default Options Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("SubWorkflowExecutor uses default timeout of 30 seconds", async () => {
+test("SubWorkflowExecutor uses default timeout of 30 seconds [sub-workflow-executor]", async () => {
   const executor = new SubWorkflowExecutor({ enableCheckpointing: false });
   const context = createTestContext();
   const definition = createWorkflowDefinition("wf-1", [
@@ -795,7 +795,7 @@ test("SubWorkflowExecutor uses default timeout of 30 seconds", async () => {
   assert.equal(result.status, "completed");
 });
 
-test("SubWorkflowExecutor uses custom default timeout", async () => {
+test("SubWorkflowExecutor uses custom default timeout [sub-workflow-executor]", async () => {
   const executor = new SubWorkflowExecutor({
     defaultTimeout: 60000,
     enableCheckpointing: false,
@@ -814,7 +814,7 @@ test("SubWorkflowExecutor uses custom default timeout", async () => {
 // Workflow Output Aggregation Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("SubWorkflowExecutor aggregates output from completed steps", async () => {
+test("SubWorkflowExecutor aggregates output from completed steps [sub-workflow-executor]", async () => {
   const executor = new SubWorkflowExecutor({ enableCheckpointing: false });
   const context = createTestContext();
   const definition = createWorkflowDefinition("wf-1", [
@@ -829,7 +829,7 @@ test("SubWorkflowExecutor aggregates output from completed steps", async () => {
   assert.ok("completedSteps" in (result.output as object));
 });
 
-test("SubWorkflowExecutor.buildResult includes checkpoint reference when available", async () => {
+test("SubWorkflowExecutor.buildResult includes checkpoint reference when available [sub-workflow-executor]", async () => {
   const executor = new SubWorkflowExecutor({ enableCheckpointing: true });
   const context = createTestContext();
   const definition = createWorkflowDefinition(
@@ -852,7 +852,7 @@ test("SubWorkflowExecutor.buildResult includes checkpoint reference when availab
 // Workflow Status Transition Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("SubWorkflowExecutor tracks workflow through status transitions", async () => {
+test("SubWorkflowExecutor tracks workflow through status transitions [sub-workflow-executor]", async () => {
   const executor = new SubWorkflowExecutor({ enableCheckpointing: false });
   const context = createTestContext();
   const definition = createWorkflowDefinition("wf-1", [
@@ -871,7 +871,7 @@ test("SubWorkflowExecutor tracks workflow through status transitions", async () 
   assert.equal(workflow.status, "completed");
 });
 
-test("SubWorkflowExecutor sets startedAt and completedAt timestamps", async () => {
+test("SubWorkflowExecutor sets startedAt and completedAt timestamps [sub-workflow-executor]", async () => {
   const executor = new SubWorkflowExecutor({ enableCheckpointing: false });
   const context = createTestContext();
   const definition = createWorkflowDefinition("wf-1", [
@@ -890,7 +890,7 @@ test("SubWorkflowExecutor sets startedAt and completedAt timestamps", async () =
 // Multiple Workflow Isolation Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("SubWorkflowExecutor maintains isolation between workflows", async () => {
+test("SubWorkflowExecutor maintains isolation between workflows [sub-workflow-executor]", async () => {
   const executor = new SubWorkflowExecutor({ enableCheckpointing: false });
   const context1 = createTestContext({ executionId: "exec-1" });
   const context2 = createTestContext({ executionId: "exec-2" });
@@ -921,7 +921,7 @@ test("SubWorkflowExecutor maintains isolation between workflows", async () => {
 // Cancel with Automatic Rollback Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("SubWorkflowExecutor.cancelWorkflow() with automatic rollback policy", async () => {
+test("SubWorkflowExecutor.cancelWorkflow() with automatic rollback policy [sub-workflow-executor]", async () => {
   const executor = new SubWorkflowExecutor({ enableCheckpointing: false });
   const context = createTestContext();
   const definition = createWorkflowDefinition(

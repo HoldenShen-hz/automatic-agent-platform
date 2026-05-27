@@ -16,7 +16,7 @@ function makePolicy(overrides: Partial<QuotaPolicy> = {}): QuotaPolicy {
   };
 }
 
-test("evaluateQuota allows request within hard limit", () => {
+test("evaluateQuota allows request within hard limit [quota-enforcer]", () => {
   const policy = makePolicy({ hardLimit: 100, currentUsage: 50 });
   const result = evaluateQuota(policy, 30);
   assert.equal(result.exceeded, false);
@@ -25,21 +25,21 @@ test("evaluateQuota allows request within hard limit", () => {
   assert.equal(result.remainingUnits, 40);
 });
 
-test("evaluateQuota warns when exceeding soft limit", () => {
+test("evaluateQuota warns when exceeding soft limit [quota-enforcer]", () => {
   const policy = makePolicy({ softLimit: 80, currentUsage: 70 });
   const result = evaluateQuota(policy, 20);
   assert.equal(result.exceeded, false);
   assert.equal(result.warning, true);
 });
 
-test("evaluateQuota marks as exceeded when exceeding burst limit", () => {
+test("evaluateQuota marks as exceeded when exceeding burst limit [quota-enforcer]", () => {
   const policy = makePolicy({ hardLimit: 100, burstLimit: 120, currentUsage: 100 });
   const result = evaluateQuota(policy, 30);
   assert.equal(result.exceeded, true);
   assert.equal(result.remainingUnits, 0);
 });
 
-test("evaluateQuota uses burst when above hard but below burst", () => {
+test("evaluateQuota uses burst when above hard but below burst [quota-enforcer]", () => {
   const policy = makePolicy({ hardLimit: 100, burstLimit: 120, currentUsage: 90 });
   const result = evaluateQuota(policy, 20);
   assert.equal(result.exceeded, false);
@@ -47,31 +47,31 @@ test("evaluateQuota uses burst when above hard but below burst", () => {
   assert.equal(result.remainingUnits, 10);
 });
 
-test("isQuotaExceeded returns true when exceeded", () => {
+test("isQuotaExceeded returns true when exceeded [quota-enforcer]", () => {
   const policy = makePolicy({ hardLimit: 100, currentUsage: 100 });
   assert.equal(isQuotaExceeded(policy, 21), true);
 });
 
-test("isQuotaExceeded returns false when within limit", () => {
+test("isQuotaExceeded returns false when within limit [quota-enforcer]", () => {
   const policy = makePolicy({ hardLimit: 100, currentUsage: 50 });
   assert.equal(isQuotaExceeded(policy, 30), false);
 });
 
-test("evaluateQuota handles zero requested units", () => {
+test("evaluateQuota handles zero requested units [quota-enforcer]", () => {
   const policy = makePolicy({ hardLimit: 100, currentUsage: 50 });
   const result = evaluateQuota(policy, 0);
   assert.equal(result.exceeded, false);
   assert.equal(result.remainingUnits, 70);
 });
 
-test("evaluateQuota handles zero current usage", () => {
+test("evaluateQuota handles zero current usage [quota-enforcer]", () => {
   const policy = makePolicy({ hardLimit: 100, currentUsage: 0 });
   const result = evaluateQuota(policy, 100);
   assert.equal(result.exceeded, false);
   assert.equal(result.remainingUnits, 20);
 });
 
-test("QuotaPolicySchema parses valid policy", () => {
+test("QuotaPolicySchema parses valid policy [quota-enforcer]", () => {
   const result = QuotaPolicySchema.safeParse({
     scopeId: "scope-1",
     resourceType: "tokens",
@@ -81,7 +81,7 @@ test("QuotaPolicySchema parses valid policy", () => {
   assert.equal(result.success, true);
 });
 
-test("QuotaPolicySchema applies defaults", () => {
+test("QuotaPolicySchema applies defaults [quota-enforcer]", () => {
   const result = QuotaPolicySchema.safeParse({
     scopeId: "scope-1",
     hardLimit: 100,
@@ -94,7 +94,7 @@ test("QuotaPolicySchema applies defaults", () => {
   }
 });
 
-test("QuotaPolicySchema rejects empty scopeId", () => {
+test("QuotaPolicySchema rejects empty scopeId [quota-enforcer]", () => {
   const result = QuotaPolicySchema.safeParse({
     scopeId: "",
     hardLimit: 100,
@@ -103,14 +103,14 @@ test("QuotaPolicySchema rejects empty scopeId", () => {
   assert.equal(result.success, false);
 });
 
-test("evaluateQuota handles missing soft limit (defaults to hard limit)", () => {
+test("evaluateQuota handles missing soft limit (defaults to hard limit) [quota-enforcer]", () => {
   const policy = makePolicy({ softLimit: undefined, hardLimit: 100, currentUsage: 90 });
   const result = evaluateQuota(policy, 20);
   // Soft limit defaults to hard limit (100), so 110 > 100, should warn
   assert.equal(result.warning, true);
 });
 
-test("evaluateQuota calculates remaining units correctly", () => {
+test("evaluateQuota calculates remaining units correctly [quota-enforcer]", () => {
   const policy = makePolicy({ hardLimit: 100, burstLimit: 150, currentUsage: 30 });
   const result = evaluateQuota(policy, 50);
   // Projected = 80, remaining from burst = 150 - 80 = 70

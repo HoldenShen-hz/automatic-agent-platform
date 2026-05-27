@@ -22,7 +22,7 @@ function createSignal(overrides: Partial<FeedbackSignal> & Pick<FeedbackSignal, 
   };
 }
 
-test("FeedbackCollector deduplicates signals and emits learning signals", () => {
+test("FeedbackCollector deduplicates signals and emits learning signals [feedback-collector]", () => {
   const collector = new FeedbackCollector();
   const feedback = collector.collect({
     taskId: "task_1",
@@ -63,7 +63,7 @@ test("FeedbackCollector deduplicates signals and emits learning signals", () => 
   assert.deepEqual(learningSignals[0]?.sourceSignalIds, ["sig_1", "sig_2"]);
 });
 
-test("FeedbackCollector collapses recovery sequences into a recovery playbook learning signal", () => {
+test("FeedbackCollector collapses recovery sequences into a recovery playbook learning signal [feedback-collector]", () => {
   const collector = new FeedbackCollector();
   const feedback = collector.collect({
     taskId: "task_2",
@@ -117,7 +117,7 @@ test("FeedbackCollector collapses recovery sequences into a recovery playbook le
   assert.equal(learningSignals[0]?.evidence.pattern, "recovery_path");
 });
 
-test("FeedbackCollector handles empty signals", () => {
+test("FeedbackCollector handles empty signals [feedback-collector]", () => {
   const collector = new FeedbackCollector();
   const feedback = collector.collect({
     taskId: "task_empty",
@@ -129,7 +129,7 @@ test("FeedbackCollector handles empty signals", () => {
   assert.equal(learningSignals.length, 0);
 });
 
-test("FeedbackCollector outcome is repairable when correction signal present", () => {
+test("FeedbackCollector outcome is repairable when correction signal present [feedback-collector]", () => {
   const collector = new FeedbackCollector();
   const feedback = collector.collect({
     taskId: "task_correction",
@@ -150,7 +150,7 @@ test("FeedbackCollector outcome is repairable when correction signal present", (
   assert.equal(feedback.outcome, "repairable");
 });
 
-test("FeedbackCollector outcome is partial when partial signal present", () => {
+test("FeedbackCollector outcome is partial when partial signal present [feedback-collector]", () => {
   const collector = new FeedbackCollector();
   const feedback = collector.collect({
     taskId: "task_partial",
@@ -171,7 +171,7 @@ test("FeedbackCollector outcome is partial when partial signal present", () => {
   assert.equal(feedback.outcome, "partial");
 });
 
-test("FeedbackCollector outcome is completed for success signals only", () => {
+test("FeedbackCollector outcome is completed for success signals only [feedback-collector]", () => {
   const collector = new FeedbackCollector();
   const feedback = collector.collect({
     taskId: "task_success",
@@ -192,7 +192,7 @@ test("FeedbackCollector outcome is completed for success signals only", () => {
   assert.equal(feedback.outcome, "completed");
 });
 
-test("FeedbackCollector outcome is failed when timeout signal present", () => {
+test("FeedbackCollector outcome is failed when timeout signal present [feedback-collector]", () => {
   const collector = new FeedbackCollector();
   const feedback = collector.collect({
     taskId: "task_timeout",
@@ -213,7 +213,7 @@ test("FeedbackCollector outcome is failed when timeout signal present", () => {
   assert.equal(feedback.outcome, "failed");
 });
 
-test("FeedbackCollector preserves executionId and planId", () => {
+test("FeedbackCollector preserves executionId and planId [feedback-collector]", () => {
   const collector = new FeedbackCollector();
   const feedback = collector.collect({
     taskId: "task_ids",
@@ -237,7 +237,7 @@ test("FeedbackCollector preserves executionId and planId", () => {
   assert.equal(feedback.planId, "plan_456");
 });
 
-test("FeedbackCollector handles null executionId and planId", () => {
+test("FeedbackCollector handles null executionId and planId [feedback-collector]", () => {
   const collector = new FeedbackCollector();
   const feedback = collector.collect({
     taskId: "task_null_ids",

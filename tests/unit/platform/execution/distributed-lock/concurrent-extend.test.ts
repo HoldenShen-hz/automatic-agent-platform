@@ -51,7 +51,7 @@ function createMockRedis(overrides: Partial<{
   };
 }
 
-test("[SYS-REL-2.2] concurrent extendAsync on same lock grants only one", async () => {
+test("[SYS-REL-2.2] concurrent extendAsync on same lock grants only one [concurrent-extend]", async () => {
   // Track eval calls to simulate the race condition
   let evalCallCount = 0;
   const lockData = {
@@ -93,7 +93,7 @@ test("[SYS-REL-2.2] concurrent extendAsync on same lock grants only one", async 
   assert.equal(failed.length, 1, `Expected exactly 1 failed extend, got ${failed.length}`);
 });
 
-test("[SYS-REL-2.2] concurrent extendAsync with same owner - only one succeeds", async () => {
+test("[SYS-REL-2.2] concurrent extendAsync with same owner - only one succeeds [concurrent-extend]", async () => {
   let evalCallCount = 0;
 
   const mockRedis = createMockRedis({
@@ -129,7 +129,7 @@ test("[SYS-REL-2.2] concurrent extendAsync with same owner - only one succeeds",
   assert.ok(succeeded.length <= 2, "At most 2 extends should succeed with same owner");
 });
 
-test("[SYS-REL-2.2] concurrent extendAsync race - many concurrent workers", async () => {
+test("[SYS-REL-2.2] concurrent extendAsync race - many concurrent workers [concurrent-extend]", async () => {
   let evalCallCount = 0;
   const workers = 10;
 
@@ -165,7 +165,7 @@ test("[SYS-REL-2.2] concurrent extendAsync race - many concurrent workers", asyn
   assert.equal(succeeded.length, 1, `Expected exactly 1 successful extend among ${workers} workers, got ${succeeded.length}`);
 });
 
-test("[SYS-REL-2.2] extendAsync returns null when lock was stolen between eval and get", async () => {
+test("[SYS-REL-2.2] extendAsync returns null when lock was stolen between eval and get [concurrent-extend]", async () => {
   // This test simulates the TOCTOU race where:
   // 1. eval succeeds (we still own the lock)
   // 2. another process forceSteals the lock
@@ -194,7 +194,7 @@ test("[SYS-REL-2.2] extendAsync returns null when lock was stolen between eval a
   assert.equal(result, null, "extendAsync should return null when lock was stolen between eval and get");
 });
 
-test("[SYS-REL-2.2] extendAsync handles rapid concurrent steals correctly", async () => {
+test("[SYS-REL-2.2] extendAsync handles rapid concurrent steals correctly [concurrent-extend]", async () => {
   let stealCount = 0;
   let storedLockData = {
     id: "lock_contested_0",
@@ -246,7 +246,7 @@ test("[SYS-REL-2.2] extendAsync handles rapid concurrent steals correctly", asyn
   );
 });
 
-test("[SYS-REL-2.2] runConcurrentInvariant helper for extend race detection", async () => {
+test("[SYS-REL-2.2] runConcurrentInvariant helper for extend race detection [concurrent-extend]", async () => {
   let evalCallCount = 0;
 
   const mockRedis = createMockRedis({

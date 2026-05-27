@@ -11,7 +11,7 @@ import {
   type ToolCallResult,
 } from "../../../../../src/platform/five-plane-execution/execution-engine/multi-step-agent-round-loop.js";
 
-test("executeAgentRoundLoop returns fallback when no model provider", async () => {
+test("executeAgentRoundLoop returns fallback when no model provider [run-loop]", async () => {
   const input: AgentRoundLoopInput = {
     stepId: "intake_triage",
     roleId: "planner",
@@ -31,7 +31,7 @@ test("executeAgentRoundLoop returns fallback when no model provider", async () =
   assert.deepEqual(result.toolCalls, []);
 });
 
-test("executeAgentRoundLoop fallback handles intake_triage step", async () => {
+test("executeAgentRoundLoop fallback handles intake_triage step [run-loop]", async () => {
   const input: AgentRoundLoopInput = {
     stepId: "intake_triage",
     roleId: "planner",
@@ -46,7 +46,7 @@ test("executeAgentRoundLoop fallback handles intake_triage step", async () => {
   assert.ok(result.result.includes("Route reason=user request"));
 });
 
-test("executeAgentRoundLoop fallback handles draft_solution step", async () => {
+test("executeAgentRoundLoop fallback handles draft_solution step [run-loop]", async () => {
   const input: AgentRoundLoopInput = {
     stepId: "draft_solution",
     roleId: "generator",
@@ -61,7 +61,7 @@ test("executeAgentRoundLoop fallback handles draft_solution step", async () => {
   assert.ok(result.result.includes("step 1 completed"));
 });
 
-test("executeAgentRoundLoop fallback handles final_review step", async () => {
+test("executeAgentRoundLoop fallback handles final_review step [run-loop]", async () => {
   const input: AgentRoundLoopInput = {
     stepId: "final_review",
     roleId: "evaluator",
@@ -78,7 +78,7 @@ test("executeAgentRoundLoop fallback handles final_review step", async () => {
   assert.ok(result.result.includes("output 3"));
 });
 
-test("executeAgentRoundLoop fallback handles unknown stepId", async () => {
+test("executeAgentRoundLoop fallback handles unknown stepId [run-loop]", async () => {
   const input: AgentRoundLoopInput = {
     stepId: "custom_step",
     roleId: "worker",
@@ -94,7 +94,7 @@ test("executeAgentRoundLoop fallback handles unknown stepId", async () => {
   assert.ok(result.result.includes("do something"));
 });
 
-test("executeAgentRoundLoop respects maxIterations parameter", async () => {
+test("executeAgentRoundLoop respects maxIterations parameter [run-loop]", async () => {
   const input: AgentRoundLoopInput = {
     stepId: "test_step",
     roleId: "tester",
@@ -111,7 +111,7 @@ test("executeAgentRoundLoop respects maxIterations parameter", async () => {
   assert.equal(result.finishReason, "stop");
 });
 
-test("executeAgentRoundLoop handles empty priorSummaries", async () => {
+test("executeAgentRoundLoop handles empty priorSummaries [run-loop]", async () => {
   const input: AgentRoundLoopInput = {
     stepId: "intake_triage",
     roleId: "planner",
@@ -125,7 +125,7 @@ test("executeAgentRoundLoop handles empty priorSummaries", async () => {
   assert.ok(result.result.includes("No prior steps") || result.result.length > 0);
 });
 
-test("executeAgentRoundLoop handles multiple priorSummaries", async () => {
+test("executeAgentRoundLoop handles multiple priorSummaries [run-loop]", async () => {
   const input: AgentRoundLoopInput = {
     stepId: "draft_solution",
     roleId: "generator",
@@ -141,7 +141,7 @@ test("executeAgentRoundLoop handles multiple priorSummaries", async () => {
   assert.ok(result.result.includes("third step"));
 });
 
-test("AgentRoundLoopResult interface structure is correct", async () => {
+test("AgentRoundLoopResult interface structure is correct [run-loop]", async () => {
   const input: AgentRoundLoopInput = {
     stepId: "test",
     roleId: "tester",
@@ -160,7 +160,7 @@ test("AgentRoundLoopResult interface structure is correct", async () => {
   assert.ok(result.llmResult === null || typeof result.llmResult === "object");
 });
 
-test("ToolCallResult interface structure is correct", () => {
+test("ToolCallResult interface structure is correct [run-loop]", () => {
   const toolCall: ToolCallResult = {
     toolCallId: "tool_123",
     toolName: "test_tool",
@@ -174,7 +174,7 @@ test("ToolCallResult interface structure is correct", () => {
   assert.equal(toolCall.success, true);
 });
 
-test("parseStepOutput handles JSON output", () => {
+test("parseStepOutput handles JSON output [run-loop]", () => {
   const jsonContent = JSON.stringify({
     summary: "Test summary",
     result: "Test result content",
@@ -186,7 +186,7 @@ test("parseStepOutput handles JSON output", () => {
   assert.equal(parsed.result, "Test result content");
 });
 
-test("parseStepOutput handles non-JSON content with lines", () => {
+test("parseStepOutput handles non-JSON content with lines [run-loop]", () => {
   const content = "Summary line\nMore detailed result content\nEven more content";
 
   const parsed = parseStepOutput(content, "test_step");
@@ -195,7 +195,7 @@ test("parseStepOutput handles non-JSON content with lines", () => {
   assert.ok(parsed.result.includes("More detailed result content"));
 });
 
-test("parseStepOutput handles single line content", () => {
+test("parseStepOutput handles single line content [run-loop]", () => {
   const content = "Single line result";
 
   const parsed = parseStepOutput(content, "my_step");
@@ -204,7 +204,7 @@ test("parseStepOutput handles single line content", () => {
   assert.ok(parsed.result.includes("Single line result"));
 });
 
-test("parseStepOutput handles bullet points in summary", () => {
+test("parseStepOutput handles bullet points in summary [run-loop]", () => {
   const content = "- Important summary point\nDetail line 1\nDetail line 2";
 
   const parsed = parseStepOutput(content, "bullet_step");
@@ -212,7 +212,7 @@ test("parseStepOutput handles bullet points in summary", () => {
   assert.ok(parsed.summary.includes("Important summary point"));
 });
 
-test("parseStepOutput falls back for malformed JSON", () => {
+test("parseStepOutput falls back for malformed JSON [run-loop]", () => {
   const content = "{ invalid json }";
   const parsed = parseStepOutput(content, "json_step");
 
@@ -220,20 +220,20 @@ test("parseStepOutput falls back for malformed JSON", () => {
   assert.ok(parsed.summary.length > 0);
 });
 
-test("parseStepOutput handles empty content", () => {
+test("parseStepOutput handles empty content [run-loop]", () => {
   const parsed = parseStepOutput("", "empty_step");
 
   assert.ok(parsed.summary.includes("empty_step") || parsed.summary.length > 0);
   assert.ok(parsed.result.length > 0);
 });
 
-test("parseStepOutput uses stepId in default summary", () => {
+test("parseStepOutput uses stepId in default summary [run-loop]", () => {
   const parsed = parseStepOutput("", "unique_step_id");
 
   assert.ok(parsed.summary.includes("unique_step_id") || parsed.summary.includes("completed"));
 });
 
-test("buildStepOutput returns expected structure", async () => {
+test("buildStepOutput returns expected structure [run-loop]", async () => {
   const input = {
     stepId: "test_step",
     roleId: "tester",
@@ -250,7 +250,7 @@ test("buildStepOutput returns expected structure", async () => {
   assert.ok(typeof result.iterations === "number" || result.iterations === undefined);
 });
 
-test("buildStepOutput returns same summary and result as executeAgentRoundLoop", async () => {
+test("buildStepOutput returns same summary and result as executeAgentRoundLoop [run-loop]", async () => {
   const input = {
     stepId: "intake_triage",
     roleId: "planner",
@@ -266,7 +266,7 @@ test("buildStepOutput returns same summary and result as executeAgentRoundLoop",
   assert.equal(stepOutput.result, loopResult.result);
 });
 
-test("fallbackStepOutput returns correct interface", () => {
+test("fallbackStepOutput returns correct interface [run-loop]", () => {
   const input: AgentRoundLoopInput = {
     stepId: "unknown",
     roleId: "unknown",
@@ -286,7 +286,7 @@ test("fallbackStepOutput returns correct interface", () => {
   assert.equal(result.finishReason, "stop");
 });
 
-test("fallbackStepOutput with priorSummaries includes them in result", () => {
+test("fallbackStepOutput with priorSummaries includes them in result [run-loop]", () => {
   const input: AgentRoundLoopInput = {
     stepId: "draft_solution",
     roleId: "generator",

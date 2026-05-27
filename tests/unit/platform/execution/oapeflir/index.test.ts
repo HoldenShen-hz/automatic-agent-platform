@@ -13,11 +13,11 @@ import {
   type RuntimePlanExecutor,
 } from "../../../../../src/platform/five-plane-execution/oapeflir/index.js";
 
-test("index exports executeOapeflirRuntimePlan function", () => {
+test("index exports executeOapeflirRuntimePlan function [index]", () => {
   assert.equal(typeof executeOapeflirRuntimePlan, "function");
 });
 
-test("index exports RuntimePlanExecutionInput type", () => {
+test("index exports RuntimePlanExecutionInput type [index]", () => {
   // RuntimePlanExecutionInput should be a valid type/interface
   const input: RuntimePlanExecutionInput = {
     dbPath: "/tmp/test.db",
@@ -50,13 +50,13 @@ test("index exports RuntimePlanExecutionInput type", () => {
   assert.equal(input.planGraphBundle.planGraphBundleId, "test-bundle");
 });
 
-test("index exports RuntimePlanExecutor type as function type", () => {
+test("index exports RuntimePlanExecutor type as function type [index]", () => {
   // RuntimePlanExecutor should be compatible with the executeOapeflirRuntimePlan function
   const executor: RuntimePlanExecutor = executeOapeflirRuntimePlan;
   assert.equal(typeof executor, "function");
 });
 
-test("executeOapeflirRuntimePlan callable with required fields only", async () => {
+test("executeOapeflirRuntimePlan callable with required fields only [index]", async () => {
   const { dbPath, cleanup } = await import("../../../../helpers/ha-coordinator.js").then((m) =>
     m.initHaCoordinatorForTests(),
   );
@@ -112,7 +112,7 @@ test("executeOapeflirRuntimePlan callable with required fields only", async () =
   }
 });
 
-test("executeOapeflirRuntimePlan callable with optional contextBudgetTokens", async () => {
+test("executeOapeflirRuntimePlan callable with optional contextBudgetTokens [index]", async () => {
   const { dbPath, cleanup } = await import("../../../../helpers/ha-coordinator.js").then((m) =>
     m.initHaCoordinatorForTests(),
   );

@@ -29,7 +29,7 @@ function createMockTickets(): MockTicket[] {
 }
 
 // Test the sorting logic in isolation since the full service requires complex mocking
-test("R13-14: Tickets should be sorted by critical path rank (highest first)", () => {
+test("R13-14: Tickets should be sorted by critical path rank (highest first) [dispatch-queue-priority]", () => {
   const tickets = createMockTickets();
 
   // Simulate the deterministic dispatch sorting algorithm
@@ -74,7 +74,7 @@ test("R13-14: Tickets should be sorted by critical path rank (highest first)", (
   assert.equal(sorted[4]?.id, "t-low");
 });
 
-test("R13-14: Priority ordering should be critical > urgent > high > normal > low", () => {
+test("R13-14: Priority ordering should be critical > urgent > high > normal > low [dispatch-queue-priority]", () => {
   const PRIORITY_ORDER: Record<string, number> = {
     critical: 5,
     urgent: 4,
@@ -92,7 +92,7 @@ test("R13-14: Priority ordering should be critical > urgent > high > normal > lo
   }
 });
 
-test("R13-14: Urgent ticket should not wait for all prior tickets if it has higher priority", () => {
+test("R13-14: Urgent ticket should not wait for all prior tickets if it has higher priority [dispatch-queue-priority]", () => {
   // This test verifies that an urgent ticket with lower critical path rank
   // should still be dispatched before a normal ticket with higher rank
   // if the urgent ticket has significantly higher priority

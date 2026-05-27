@@ -10,7 +10,7 @@ import {
   type AgentRoundLoopInput,
 } from "../../../../../src/platform/five-plane-execution/execution-engine/multi-step-agent-round-loop.js";
 
-test("parseStepOutput extracts summary and result from JSON", () => {
+test("parseStepOutput extracts summary and result from JSON [step-executor]", () => {
   const content = JSON.stringify({
     summary: "Action completed successfully",
     result: "The action produced 42 items",
@@ -22,7 +22,7 @@ test("parseStepOutput extracts summary and result from JSON", () => {
   assert.equal(output.result, "The action produced 42 items");
 });
 
-test("parseStepOutput extracts summary from first line and result from rest", () => {
+test("parseStepOutput extracts summary from first line and result from rest [step-executor]", () => {
   const content = "First line summary\nSecond line details\nThird line more info";
 
   const output = parseStepOutput(content, "line_step");
@@ -32,7 +32,7 @@ test("parseStepOutput extracts summary from first line and result from rest", ()
   assert.ok(output.result.includes("Third line more info"));
 });
 
-test("parseStepOutput strips bullet prefix from summary", () => {
+test("parseStepOutput strips bullet prefix from summary [step-executor]", () => {
   const content = "- This is a bullet summary\nResult line";
 
   const output = parseStepOutput(content, "bullet_step");
@@ -40,7 +40,7 @@ test("parseStepOutput strips bullet prefix from summary", () => {
   assert.equal(output.summary, "This is a bullet summary");
 });
 
-test("parseStepOutput handles asterisk bullet prefix", () => {
+test("parseStepOutput handles asterisk bullet prefix [step-executor]", () => {
   const content = "* Asterisk bullet\nResult content";
 
   const output = parseStepOutput(content, "asterisk_step");
@@ -48,7 +48,7 @@ test("parseStepOutput handles asterisk bullet prefix", () => {
   assert.equal(output.summary, "Asterisk bullet");
 });
 
-test("parseStepOutput handles default summary when JSON lacks summary field", () => {
+test("parseStepOutput handles default summary when JSON lacks summary field [step-executor]", () => {
   const content = JSON.stringify({
     result: "Only result field",
   });
@@ -59,7 +59,7 @@ test("parseStepOutput handles default summary when JSON lacks summary field", ()
   assert.equal(output.result, "Only result field");
 });
 
-test("parseStepOutput handles default result when JSON lacks result field", () => {
+test("parseStepOutput handles default result when JSON lacks result field [step-executor]", () => {
   const content = JSON.stringify({
     summary: "Only summary field",
   });
@@ -70,7 +70,7 @@ test("parseStepOutput handles default result when JSON lacks result field", () =
   assert.ok(output.result.length > 0);
 });
 
-test("parseStepOutput handles empty JSON object", () => {
+test("parseStepOutput handles empty JSON object [step-executor]", () => {
   const content = "{}";
 
   const output = parseStepOutput(content, "empty_json_step");
@@ -79,7 +79,7 @@ test("parseStepOutput handles empty JSON object", () => {
   assert.ok(output.result.length > 0);
 });
 
-test("parseStepOutput trims whitespace from summary lines", () => {
+test("parseStepOutput trims whitespace from summary lines [step-executor]", () => {
   const content = "  Summary with spaces  \n  Result with spaces  ";
 
   const output = parseStepOutput(content, "whitespace_step");
@@ -87,7 +87,7 @@ test("parseStepOutput trims whitespace from summary lines", () => {
   assert.equal(output.summary, "Summary with spaces");
 });
 
-test("parseStepOutput handles single word content", () => {
+test("parseStepOutput handles single word content [step-executor]", () => {
   const content = "Word";
 
   const output = parseStepOutput(content, "word_step");
@@ -96,7 +96,7 @@ test("parseStepOutput handles single word content", () => {
   assert.ok(output.result.includes("Word") || output.result.length > 0);
 });
 
-test("parseStepOutput handles multiline with many empty lines", () => {
+test("parseStepOutput handles multiline with many empty lines [step-executor]", () => {
   const content = "Summary line\n\n\n\nMany blank lines\nDetail line";
 
   const output = parseStepOutput(content, "multiline_step");
@@ -105,7 +105,7 @@ test("parseStepOutput handles multiline with many empty lines", () => {
   assert.ok(output.result.includes("Many blank lines"));
 });
 
-test("parseStepOutput default summary includes stepId", () => {
+test("parseStepOutput default summary includes stepId [step-executor]", () => {
   const output = parseStepOutput("", "my_special_step_id");
 
   assert.ok(
@@ -114,13 +114,13 @@ test("parseStepOutput default summary includes stepId", () => {
   );
 });
 
-test("parseStepOutput default result includes stepId for empty content", () => {
+test("parseStepOutput default result includes stepId for empty content [step-executor]", () => {
   const output = parseStepOutput("", "empty_content_step");
 
   assert.ok(output.result.includes("empty_content_step") || output.result.length > 0);
 });
 
-test("buildStepOutput returns summary and result", async () => {
+test("buildStepOutput returns summary and result [step-executor]", async () => {
   const input: BuildStepOutputInput = {
     stepId: "test_step",
     roleId: "tester",
@@ -135,7 +135,7 @@ test("buildStepOutput returns summary and result", async () => {
   assert.ok(typeof result.result === "string");
 });
 
-test("buildStepOutput result matches executeAgentRoundLoop", async () => {
+test("buildStepOutput result matches executeAgentRoundLoop [step-executor]", async () => {
   const input: BuildStepOutputInput = {
     stepId: "draft_solution",
     roleId: "generator",
@@ -151,7 +151,7 @@ test("buildStepOutput result matches executeAgentRoundLoop", async () => {
   assert.ok(result.summary.length > 0);
 });
 
-test("buildStepOutput with tools parameter does not error", async () => {
+test("buildStepOutput with tools parameter does not error [step-executor]", async () => {
   const input: BuildStepOutputInput = {
     stepId: "tool_step",
     roleId: "tool_user",
@@ -173,7 +173,7 @@ test("buildStepOutput with tools parameter does not error", async () => {
   assert.ok(typeof result.result === "string");
 });
 
-test("buildStepOutput does not include llmResult when null", async () => {
+test("buildStepOutput does not include llmResult when null [step-executor]", async () => {
   const input: BuildStepOutputInput = {
     stepId: "no_llm_step",
     roleId: "worker",
@@ -187,7 +187,7 @@ test("buildStepOutput does not include llmResult when null", async () => {
   assert.ok(!("llmResult" in result) || result.llmResult === undefined);
 });
 
-test("buildStepOutput does not include toolCalls when empty", async () => {
+test("buildStepOutput does not include toolCalls when empty [step-executor]", async () => {
   const input: BuildStepOutputInput = {
     stepId: "no_tools_step",
     roleId: "worker",
@@ -201,7 +201,7 @@ test("buildStepOutput does not include toolCalls when empty", async () => {
   assert.ok(!("toolCalls" in result) || result.toolCalls === undefined || result.toolCalls.length === 0);
 });
 
-test("BuildStepOutputInput interface requires stepId", () => {
+test("BuildStepOutputInput interface requires stepId [step-executor]", () => {
   const input: BuildStepOutputInput = {
     stepId: "required_field",
     roleId: "tester",
@@ -213,7 +213,7 @@ test("BuildStepOutputInput interface requires stepId", () => {
   assert.equal(input.stepId, "required_field");
 });
 
-test("BuildStepOutputInput interface accepts optional tools", () => {
+test("BuildStepOutputInput interface accepts optional tools [step-executor]", () => {
   const input: BuildStepOutputInput = {
     stepId: "tool_input",
     roleId: "tool_user",
@@ -226,7 +226,7 @@ test("BuildStepOutputInput interface accepts optional tools", () => {
   assert.ok(Array.isArray(input.tools));
 });
 
-test("fallbackStepOutput returns valid result for intake_triage", () => {
+test("fallbackStepOutput returns valid result for intake_triage [step-executor]", () => {
   const input: AgentRoundLoopInput = {
     stepId: "intake_triage",
     roleId: "planner",
@@ -241,7 +241,7 @@ test("fallbackStepOutput returns valid result for intake_triage", () => {
   assert.ok(result.result.includes("Route reason=initial triage"));
 });
 
-test("fallbackStepOutput returns valid result for draft_solution", () => {
+test("fallbackStepOutput returns valid result for draft_solution [step-executor]", () => {
   const input: AgentRoundLoopInput = {
     stepId: "draft_solution",
     roleId: "generator",
@@ -256,7 +256,7 @@ test("fallbackStepOutput returns valid result for draft_solution", () => {
   assert.ok(result.result.includes("step 1 done"));
 });
 
-test("fallbackStepOutput returns valid result for final_review", () => {
+test("fallbackStepOutput returns valid result for final_review [step-executor]", () => {
   const input: AgentRoundLoopInput = {
     stepId: "final_review",
     roleId: "evaluator",
@@ -272,7 +272,7 @@ test("fallbackStepOutput returns valid result for final_review", () => {
   assert.ok(result.result.includes("output B"));
 });
 
-test("fallbackStepOutput returns valid result for unknown stepId", () => {
+test("fallbackStepOutput returns valid result for unknown stepId [step-executor]", () => {
   const input: AgentRoundLoopInput = {
     stepId: "custom_action",
     roleId: "operator",
@@ -286,7 +286,7 @@ test("fallbackStepOutput returns valid result for unknown stepId", () => {
   assert.ok(result.result.includes("custom_action") || result.result.includes("operator"));
 });
 
-test("fallbackStepOutput includes request in result for unknown step", () => {
+test("fallbackStepOutput includes request in result for unknown step [step-executor]", () => {
   const input: AgentRoundLoopInput = {
     stepId: "unknown",
     roleId: "worker",
@@ -300,7 +300,7 @@ test("fallbackStepOutput includes request in result for unknown step", () => {
   assert.ok(result.result.includes("special request content"));
 });
 
-test("fallbackStepOutput joins priorSummaries with pipe separator", () => {
+test("fallbackStepOutput joins priorSummaries with pipe separator [step-executor]", () => {
   const input: AgentRoundLoopInput = {
     stepId: "draft_solution",
     roleId: "generator",
@@ -317,7 +317,7 @@ test("fallbackStepOutput joins priorSummaries with pipe separator", () => {
   assert.ok(result.result.includes("third"));
 });
 
-test("fallbackStepOutput handles empty priorSummaries", () => {
+test("fallbackStepOutput handles empty priorSummaries [step-executor]", () => {
   const input: AgentRoundLoopInput = {
     stepId: "draft_solution",
     roleId: "generator",
@@ -331,7 +331,7 @@ test("fallbackStepOutput handles empty priorSummaries", () => {
   assert.ok(result.result.includes("Draft generated") || result.result.length > 0);
 });
 
-test("fallbackStepOutput sets finishReason to stop", () => {
+test("fallbackStepOutput sets finishReason to stop [step-executor]", () => {
   const input: AgentRoundLoopInput = {
     stepId: "test",
     roleId: "tester",
@@ -345,7 +345,7 @@ test("fallbackStepOutput sets finishReason to stop", () => {
   assert.equal(result.finishReason, "stop");
 });
 
-test("fallbackStepOutput sets iterations to 0", () => {
+test("fallbackStepOutput sets iterations to 0 [step-executor]", () => {
   const input: AgentRoundLoopInput = {
     stepId: "test",
     roleId: "tester",
@@ -359,7 +359,7 @@ test("fallbackStepOutput sets iterations to 0", () => {
   assert.equal(result.iterations, 0);
 });
 
-test("fallbackStepOutput sets llmResult to null", () => {
+test("fallbackStepOutput sets llmResult to null [step-executor]", () => {
   const input: AgentRoundLoopInput = {
     stepId: "test",
     roleId: "tester",
@@ -373,7 +373,7 @@ test("fallbackStepOutput sets llmResult to null", () => {
   assert.equal(result.llmResult, null);
 });
 
-test("fallbackStepOutput sets toolCalls to empty array", () => {
+test("fallbackStepOutput sets toolCalls to empty array [step-executor]", () => {
   const input: AgentRoundLoopInput = {
     stepId: "test",
     roleId: "tester",
@@ -388,7 +388,7 @@ test("fallbackStepOutput sets toolCalls to empty array", () => {
   assert.equal(result.toolCalls.length, 0);
 });
 
-test("parseStepOutput with asterisk bullet points", () => {
+test("parseStepOutput with asterisk bullet points [step-executor]", () => {
   const content = "* Important bullet\nDetail line";
 
   const output = parseStepOutput(content, "bullet_test");
@@ -396,7 +396,7 @@ test("parseStepOutput with asterisk bullet points", () => {
   assert.equal(output.summary, "Important bullet");
 });
 
-test("parseStepOutput with dash bullet points", () => {
+test("parseStepOutput with dash bullet points [step-executor]", () => {
   const content = "- Dash bullet point\nResult details";
 
   const output = parseStepOutput(content, "dash_bullet");
@@ -404,7 +404,7 @@ test("parseStepOutput with dash bullet points", () => {
   assert.equal(output.summary, "Dash bullet point");
 });
 
-test("parseStepOutput with mixed bullet styles", () => {
+test("parseStepOutput with mixed bullet styles [step-executor]", () => {
   const content = "* First bullet\n- Second bullet\nContent line";
 
   const output = parseStepOutput(content, "mixed_bullet");

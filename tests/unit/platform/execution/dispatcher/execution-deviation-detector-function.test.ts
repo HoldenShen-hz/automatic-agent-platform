@@ -31,7 +31,7 @@ function makeFeedback(overrides: Partial<FeedbackBatch> = {}): FeedbackBatch {
   } as FeedbackBatch;
 }
 
-test("detect returns empty array when outcome is succeeded", () => {
+test("detect returns empty array when outcome is succeeded [execution-deviation-detector-function]", () => {
   const detector = new ExecutionDeviationDetector();
   const plan = makePlan();
   const feedback = makeFeedback({ outcome: "succeeded" });
@@ -41,7 +41,7 @@ test("detect returns empty array when outcome is succeeded", () => {
   assert.deepEqual(deviations, []);
 });
 
-test("detect returns deviation when outcome is repairable", () => {
+test("detect returns deviation when outcome is repairable [execution-deviation-detector-function]", () => {
   const detector = new ExecutionDeviationDetector();
   const plan = makePlan({ taskId: "task_repairable" });
   const feedback = makeFeedback({ outcome: "repairable" });
@@ -54,7 +54,7 @@ test("detect returns deviation when outcome is repairable", () => {
   assert.equal(deviations[0]!.taskId, "task_repairable");
 });
 
-test("detect returns deviation when outcome is failed", () => {
+test("detect returns deviation when outcome is failed [execution-deviation-detector-function]", () => {
   const detector = new ExecutionDeviationDetector();
   const plan = makePlan({ taskId: "task_failed" });
   const feedback = makeFeedback({ outcome: "failed" });
@@ -66,7 +66,7 @@ test("detect returns deviation when outcome is failed", () => {
   assert.equal(deviations[0]!.reasonCode, "execution.failed");
 });
 
-test("detect returns deviation when outcome is escalated", () => {
+test("detect returns deviation when outcome is escalated [execution-deviation-detector-function]", () => {
   const detector = new ExecutionDeviationDetector();
   const plan = makePlan({ taskId: "task_escalated" });
   const feedback = makeFeedback({ outcome: "escalated" });
@@ -78,7 +78,7 @@ test("detect returns deviation when outcome is escalated", () => {
   assert.equal(deviations[0]!.reasonCode, "execution.escalated");
 });
 
-test("detect returns timeout deviation when signal has timeout category", () => {
+test("detect returns timeout deviation when signal has timeout category [execution-deviation-detector-function]", () => {
   const detector = new ExecutionDeviationDetector();
   const plan = makePlan({ taskId: "task_timeout" });
   const feedback = makeFeedback({
@@ -93,7 +93,7 @@ test("detect returns timeout deviation when signal has timeout category", () => 
   assert.equal(deviations[0]!.reasonCode, "execution.timeout");
 });
 
-test("detect returns multiple deviations when both outcome is failed and timeout signal", () => {
+test("detect returns multiple deviations when both outcome is failed and timeout signal [execution-deviation-detector-function]", () => {
   const detector = new ExecutionDeviationDetector();
   const plan = makePlan({ taskId: "task_multi" });
   const feedback = makeFeedback({
@@ -108,7 +108,7 @@ test("detect returns multiple deviations when both outcome is failed and timeout
   assert.ok(deviations.some(d => d.reasonCode === "execution.timeout"));
 });
 
-test("detect does not return timeout deviation when no timeout signal", () => {
+test("detect does not return timeout deviation when no timeout signal [execution-deviation-detector-function]", () => {
   const detector = new ExecutionDeviationDetector();
   const plan = makePlan({ taskId: "task_no_timeout" });
   const feedback = makeFeedback({
@@ -121,7 +121,7 @@ test("detect does not return timeout deviation when no timeout signal", () => {
   assert.equal(deviations.length, 0);
 });
 
-test("detect assigns unique deviationId to each deviation", () => {
+test("detect assigns unique deviationId to each deviation [execution-deviation-detector-function]", () => {
   const detector = new ExecutionDeviationDetector();
   const plan = makePlan({ taskId: "task_unique" });
   const feedback = makeFeedback({
@@ -135,7 +135,7 @@ test("detect assigns unique deviationId to each deviation", () => {
   assert.notEqual(deviations[0]!.deviationId, deviations[1]!.deviationId);
 });
 
-test("detect includes current timestamp in detectedAt", () => {
+test("detect includes current timestamp in detectedAt [execution-deviation-detector-function]", () => {
   const detector = new ExecutionDeviationDetector();
   const plan = makePlan();
   const feedback = makeFeedback({ outcome: "failed" });

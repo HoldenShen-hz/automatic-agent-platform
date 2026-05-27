@@ -28,52 +28,52 @@ function createMockRequest(overrides: Partial<TodoWriteToolRequest> = {}): TodoW
   };
 }
 
-test("validateTodoTitle accepts valid title", () => {
+test("validateTodoTitle accepts valid title [todo-write-tool]", () => {
   assert.equal(validateTodoTitle("Buy groceries").valid, true);
   assert.equal(validateTodoTitle("Task with special chars: @#$%").valid, true);
   assert.equal(validateTodoTitle("Multi-word task description").valid, true);
 });
 
-test("validateTodoTitle accepts null/undefined for optional", () => {
+test("validateTodoTitle accepts null/undefined for optional [todo-write-tool]", () => {
   assert.equal(validateTodoTitle(null).valid, true);
   assert.equal(validateTodoTitle(undefined).valid, true);
 });
 
-test("validateTodoTitle rejects empty string", () => {
+test("validateTodoTitle rejects empty string [todo-write-tool]", () => {
   const result = validateTodoTitle("");
   assert.equal(result.valid, false);
   assert.ok(result.error?.includes("empty"));
 });
 
-test("validateTodoTitle rejects whitespace-only string", () => {
+test("validateTodoTitle rejects whitespace-only string [todo-write-tool]", () => {
   const result = validateTodoTitle("   ");
   assert.equal(result.valid, false);
 });
 
-test("validateTodoTitle rejects title over 500 characters", () => {
+test("validateTodoTitle rejects title over 500 characters [todo-write-tool]", () => {
   const longTitle = "a".repeat(501);
   const result = validateTodoTitle(longTitle);
   assert.equal(result.valid, false);
   assert.ok(result.error?.includes("500"));
 });
 
-test("validateTodoId accepts valid format", () => {
+test("validateTodoId accepts valid format [todo-write-tool]", () => {
   assert.equal(validateTodoId("todo_123").valid, true);
   assert.equal(validateTodoId("todo_abc123xyz").valid, true);
 });
 
-test("validateTodoId accepts null/undefined for optional", () => {
+test("validateTodoId accepts null/undefined for optional [todo-write-tool]", () => {
   assert.equal(validateTodoId(null).valid, true);
   assert.equal(validateTodoId(undefined).valid, true);
 });
 
-test("validateTodoId rejects invalid format", () => {
+test("validateTodoId rejects invalid format [todo-write-tool]", () => {
   assert.equal(validateTodoId("task_123").valid, false);
   assert.equal(validateTodoId("todo").valid, false);
   assert.equal(validateTodoId("").valid, false);
 });
 
-test("validateProgressPercent accepts valid values", () => {
+test("validateProgressPercent accepts valid values [todo-write-tool]", () => {
   assert.equal(validateProgressPercent(null).valid, true);
   assert.equal(validateProgressPercent(undefined).valid, true);
   assert.equal(validateProgressPercent(0).valid, true);
@@ -81,13 +81,13 @@ test("validateProgressPercent accepts valid values", () => {
   assert.equal(validateProgressPercent(100).valid, true);
 });
 
-test("validateProgressPercent rejects invalid values", () => {
+test("validateProgressPercent rejects invalid values [todo-write-tool]", () => {
   assert.equal(validateProgressPercent(-1).valid, false);
   assert.equal(validateProgressPercent(101).valid, false);
   assert.equal(validateProgressPercent(150).valid, false);
 });
 
-test("TodoWriteToolService.createTodo creates todo with defaults", () => {
+test("TodoWriteToolService.createTodo creates todo with defaults [todo-write-tool]", () => {
   const service = new TodoWriteToolService();
   const request = createMockRequest({ operation: "create" });
 
@@ -105,7 +105,7 @@ test("TodoWriteToolService.createTodo creates todo with defaults", () => {
   assert.equal(todo.completedAt, null);
 });
 
-test("TodoWriteToolService.createTodo creates todo with all fields", () => {
+test("TodoWriteToolService.createTodo creates todo with all fields [todo-write-tool]", () => {
   const service = new TodoWriteToolService();
   const request = createMockRequest({
     operation: "create",
@@ -127,7 +127,7 @@ test("TodoWriteToolService.createTodo creates todo with all fields", () => {
   assert.equal(todo.progressPercent, 30);
 });
 
-test("TodoWriteToolService.updateTodo updates existing todo", () => {
+test("TodoWriteToolService.updateTodo updates existing todo [todo-write-tool]", () => {
   const service = new TodoWriteToolService();
   const createRequest = createMockRequest({ operation: "create", title: "Original" });
   const created = service.createTodo(createRequest);
@@ -146,7 +146,7 @@ test("TodoWriteToolService.updateTodo updates existing todo", () => {
   assert.ok(updated.updatedAt >= created.updatedAt);
 });
 
-test("TodoWriteToolService.updateTodo throws for non-existent todo", () => {
+test("TodoWriteToolService.updateTodo throws for non-existent todo [todo-write-tool]", () => {
   const service = new TodoWriteToolService();
   const request = createMockRequest({
     operation: "update",
@@ -157,7 +157,7 @@ test("TodoWriteToolService.updateTodo throws for non-existent todo", () => {
   assert.throws(() => service.updateTodo(request), /not found/);
 });
 
-test("TodoWriteToolService.deleteTodo removes todo", () => {
+test("TodoWriteToolService.deleteTodo removes todo [todo-write-tool]", () => {
   const service = new TodoWriteToolService();
   const created = service.createTodo(createMockRequest({ operation: "create" }));
 
@@ -166,7 +166,7 @@ test("TodoWriteToolService.deleteTodo removes todo", () => {
   assert.equal(service.getTodo({ todoId: created.todoId } as TodoWriteToolRequest), null);
 });
 
-test("TodoWriteToolService.deleteTodo throws for non-existent todo", () => {
+test("TodoWriteToolService.deleteTodo throws for non-existent todo [todo-write-tool]", () => {
   const service = new TodoWriteToolService();
 
   assert.throws(
@@ -175,7 +175,7 @@ test("TodoWriteToolService.deleteTodo throws for non-existent todo", () => {
   );
 });
 
-test("TodoWriteToolService.getTodo returns todo", () => {
+test("TodoWriteToolService.getTodo returns todo [todo-write-tool]", () => {
   const service = new TodoWriteToolService();
   const created = service.createTodo(createMockRequest({ operation: "create" }));
 
@@ -185,7 +185,7 @@ test("TodoWriteToolService.getTodo returns todo", () => {
   assert.equal(retrieved?.title, created.title);
 });
 
-test("TodoWriteToolService.getTodo returns null for non-existent", () => {
+test("TodoWriteToolService.getTodo returns null for non-existent [todo-write-tool]", () => {
   const service = new TodoWriteToolService();
 
   const result = service.getTodo({ todoId: "todo_nonexistent" } as TodoWriteToolRequest);
@@ -193,7 +193,7 @@ test("TodoWriteToolService.getTodo returns null for non-existent", () => {
   assert.equal(result, null);
 });
 
-test("TodoWriteToolService.listTodos returns all todos", () => {
+test("TodoWriteToolService.listTodos returns all todos [todo-write-tool]", () => {
   const service = new TodoWriteToolService();
   service.createTodo(createMockRequest({ title: "Todo 1" }));
   service.createTodo(createMockRequest({ title: "Todo 2" }));
@@ -204,7 +204,7 @@ test("TodoWriteToolService.listTodos returns all todos", () => {
   assert.equal(todos.length, 3);
 });
 
-test("TodoWriteToolService.listTodos filters by status", () => {
+test("TodoWriteToolService.listTodos filters by status [todo-write-tool]", () => {
   const service = new TodoWriteToolService();
   service.createTodo(createMockRequest({ title: "Pending 1", status: "pending" }));
   service.createTodo(createMockRequest({ title: "Pending 2", status: "pending" }));
@@ -220,7 +220,7 @@ test("TodoWriteToolService.listTodos filters by status", () => {
   assert.ok(todos.every(t => t.status === "pending"));
 });
 
-test("TodoWriteToolService.listTodos filters by sessionId", () => {
+test("TodoWriteToolService.listTodos filters by sessionId [todo-write-tool]", () => {
   const service = new TodoWriteToolService();
   service.createTodo(createMockRequest({ title: "Session 1", filterSessionId: "session_a" }));
   service.createTodo(createMockRequest({ title: "Session 2", filterSessionId: "session_a" }));
@@ -234,7 +234,7 @@ test("TodoWriteToolService.listTodos filters by sessionId", () => {
   assert.equal(todos.length, 2);
 });
 
-test("TodoWriteToolService.listTodos sorts by createdAt descending", () => {
+test("TodoWriteToolService.listTodos sorts by createdAt descending [todo-write-tool]", () => {
   const service = new TodoWriteToolService();
   const t1 = service.createTodo(createMockRequest({ title: "First" }));
   const t2 = service.createTodo(createMockRequest({ title: "Second" }));
@@ -247,7 +247,7 @@ test("TodoWriteToolService.listTodos sorts by createdAt descending", () => {
   assert.equal(todos[2]!.title, "First");
 });
 
-test("TodoWriteToolService.getStats returns correct counts", () => {
+test("TodoWriteToolService.getStats returns correct counts [todo-write-tool]", () => {
   const service = new TodoWriteToolService();
   service.createTodo(createMockRequest({ status: "pending" }));
   service.createTodo(createMockRequest({ status: "pending" }));
@@ -264,7 +264,7 @@ test("TodoWriteToolService.getStats returns correct counts", () => {
   assert.equal(stats.cancelled, 1);
 });
 
-test("executeTodoOperation create returns success", () => {
+test("executeTodoOperation create returns success [todo-write-tool]", () => {
   const service = new TodoWriteToolService();
   const request = createMockRequest({ operation: "create" });
 
@@ -278,7 +278,7 @@ test("executeTodoOperation create returns success", () => {
   assert.equal(result.errorCode, null);
 });
 
-test("executeTodoOperation list returns todos", () => {
+test("executeTodoOperation list returns todos [todo-write-tool]", () => {
   const service = new TodoWriteToolService();
   service.createTodo(createMockRequest({ title: "Test" }));
   const request = createMockRequest({ operation: "list" });
@@ -291,7 +291,7 @@ test("executeTodoOperation list returns todos", () => {
   assert.equal(result.todos.length, 1);
 });
 
-test("executeTodoOperation update returns success", () => {
+test("executeTodoOperation update returns success [todo-write-tool]", () => {
   const service = new TodoWriteToolService();
   const created = service.createTodo(createMockRequest({ operation: "create" }));
   const request = createMockRequest({
@@ -307,7 +307,7 @@ test("executeTodoOperation update returns success", () => {
   assert.equal(result.todo?.status, "completed");
 });
 
-test("executeTodoOperation delete returns success", () => {
+test("executeTodoOperation delete returns success [todo-write-tool]", () => {
   const service = new TodoWriteToolService();
   const created = service.createTodo(createMockRequest({ operation: "create" }));
   const request = createMockRequest({
@@ -322,7 +322,7 @@ test("executeTodoOperation delete returns success", () => {
   assert.equal(result.todo, null);
 });
 
-test("executeTodoOperation get returns success", () => {
+test("executeTodoOperation get returns success [todo-write-tool]", () => {
   const service = new TodoWriteToolService();
   const created = service.createTodo(createMockRequest({ operation: "create" }));
   const request = createMockRequest({
@@ -337,7 +337,7 @@ test("executeTodoOperation get returns success", () => {
   assert.equal(result.todo?.todoId, created.todoId);
 });
 
-test("executeTodoOperation sets completedAt when status becomes completed", () => {
+test("executeTodoOperation sets completedAt when status becomes completed [todo-write-tool]", () => {
   const service = new TodoWriteToolService();
   const created = service.createTodo(createMockRequest({ operation: "create" }));
   const request = createMockRequest({

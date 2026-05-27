@@ -9,7 +9,7 @@
  * ## Key Concepts
  *
  * - **Inspect**: Debug query view for task, execution, session, worker
- *   * See: {@link https://github.com/automatic-agent/automatic_agent_platform/blob/main/docs_zh/governance/glossary_and_terminology.md | Glossary: inspect}
+ *   * See: {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/governance/glossary_and_terminology.md | Glossary: inspect}
  *
  * - **Task Board**: Operator-facing view of pending/running tasks
  *

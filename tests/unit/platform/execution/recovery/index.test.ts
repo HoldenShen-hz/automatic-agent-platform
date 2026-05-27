@@ -10,17 +10,17 @@ import type {
   ReleaseStrategy,
 } from "../../../../../src/platform/five-plane-execution/recovery/index.js";
 
-test("TaskRiskLevel type accepts valid values", () => {
+test("TaskRiskLevel type accepts valid values [index]", () => {
   const levels: TaskRiskLevel[] = ["low", "medium", "high", "critical"];
   assert.equal(levels.length, 4);
 });
 
-test("TaskStage type accepts valid values", () => {
+test("TaskStage type accepts valid values [index]", () => {
   const stages: TaskStage[] = ["plan", "build", "review", "validate", "release"];
   assert.equal(stages.length, 5);
 });
 
-test("TaskCard structure is correct", () => {
+test("TaskCard structure is correct [index]", () => {
   const card: TaskCard = {
     taskId: "task_1",
     title: "Test task",
@@ -46,7 +46,7 @@ test("TaskCard structure is correct", () => {
   assert.equal(card.maxChangedFiles, 10);
 });
 
-test("TaskCheck structure is correct", () => {
+test("TaskCheck structure is correct [index]", () => {
   const check: TaskCheck = {
     id: "check_1",
     name: "TypeScript type check",
@@ -59,7 +59,7 @@ test("TaskCheck structure is correct", () => {
   assert.equal(check.required, true);
 });
 
-test("ReleaseStrategy interface structure is correct", () => {
+test("ReleaseStrategy interface structure is correct [index]", () => {
   const strategy: ReleaseStrategy = {
     requireFeatureFlag: false,
     requireHumanGate: false,
@@ -70,7 +70,7 @@ test("ReleaseStrategy interface structure is correct", () => {
   assert.equal(strategy.allowedEnvironments.length, 2);
 });
 
-test("ReleaseStrategy with rollback plan", () => {
+test("ReleaseStrategy with rollback plan [index]", () => {
   const strategy: ReleaseStrategy = {
     requireFeatureFlag: true,
     requireHumanGate: true,

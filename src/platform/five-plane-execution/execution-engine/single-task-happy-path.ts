@@ -12,11 +12,11 @@
  * The happy path validates the entire lifecycle:
  * Task creation → Workflow initialization → Execution → Step completion → Task terminal state
  *
- * @see {@link https://github.com/anomalyco/automatic-agent/tree/main/docs_zh/architecture/00-platform-architecture.md | Architecture and Technical Design}
- * @see {@link https://github.com/anomalyco/automatic-agent/tree/main/docs_zh/contracts/runtime_execution_contract.md | Runtime Execution Contract}
- * @see {@link https://github.com/anomalyco/automatic-agent/tree/main/docs_zh/contracts/transition_service_contract.md | Transition Service Contract}
- * @see {@link https://github.com/anomalyco/automatic-agent/tree/main/docs_zh/contracts/task_and_workflow_contract.md | Task and Workflow Contract}
- * @see {@link https://github.com/anomalyco/automatic-agent/tree/main/docs_zh/governance/glossary_and_terminology.md | Glossary and Terminology}
+ * @see {@link https://github.com/automatic-agent/automatic-agent-platform/tree/main/docs_zh/architecture/00-platform-architecture.md | Architecture and Technical Design}
+ * @see {@link https://github.com/automatic-agent/automatic-agent-platform/tree/main/docs_zh/contracts/runtime_execution_contract.md | Runtime Execution Contract}
+ * @see {@link https://github.com/automatic-agent/automatic-agent-platform/tree/main/docs_zh/contracts/transition_service_contract.md | Transition Service Contract}
+ * @see {@link https://github.com/automatic-agent/automatic-agent-platform/tree/main/docs_zh/contracts/task_and_workflow_contract.md | Task and Workflow Contract}
+ * @see {@link https://github.com/automatic-agent/automatic-agent-platform/tree/main/docs_zh/governance/glossary_and_terminology.md | Glossary and Terminology}
  */
 
 import { dirname, join } from "node:path";

@@ -31,7 +31,7 @@ function assertQuotaVector(
   assert.ok("workerUnits" in quota || "qps" in quota);
 }
 
-test("QuotaEnforcerService registers tenant-scoped quota with mandatory scope binding", () => {
+test("QuotaEnforcerService registers tenant-scoped quota with mandatory scope binding [quota-enforcer-stateful-r13]", () => {
   const service = new QuotaEnforcerService();
   const quota = service.registerTenant("tenant-alpha", makeQuotaVector("tenant-alpha"));
 
@@ -40,7 +40,7 @@ test("QuotaEnforcerService registers tenant-scoped quota with mandatory scope bi
   assert.equal(service.listRegistrations().length, 1);
 });
 
-test("QuotaEnforcerService persists usage across service restarts via file-backed store", () => {
+test("QuotaEnforcerService persists usage across service restarts via file-backed store [quota-enforcer-stateful-r13]", () => {
   rmSync(STATE_FILE, { force: true });
   const store = new FileQuotaStateStore(STATE_FILE);
   const serviceA = new QuotaEnforcerService(store);
@@ -59,7 +59,7 @@ test("QuotaEnforcerService persists usage across service restarts via file-backe
   rmSync(STATE_FILE, { force: true });
 });
 
-test("QuotaEnforcerService merges concurrent file-backed updates instead of last-write-wins overwrite", () => {
+test("QuotaEnforcerService merges concurrent file-backed updates instead of last-write-wins overwrite [quota-enforcer-stateful-r13]", () => {
   rmSync(STATE_FILE, { force: true });
   const store = new FileQuotaStateStore(STATE_FILE);
   const bootstrap = new QuotaEnforcerService(store);
@@ -81,7 +81,7 @@ test("QuotaEnforcerService merges concurrent file-backed updates instead of last
   rmSync(STATE_FILE, { force: true });
 });
 
-test("QuotaEnforcerService enforces quota per tenant instead of using stateless global checks", () => {
+test("QuotaEnforcerService enforces quota per tenant instead of using stateless global checks [quota-enforcer-stateful-r13]", () => {
   const service = new QuotaEnforcerService();
   service.registerTenant("tenant-low", {
     workerUnits: { hardLimit: 3, softLimit: 2, currentUsage: 0 },
@@ -98,7 +98,7 @@ test("QuotaEnforcerService enforces quota per tenant instead of using stateless 
   assert.equal(highDecision.passed, true);
 });
 
-test("FileQuotaStateStore fails closed under held lock without corrupting persisted snapshot", () => {
+test("FileQuotaStateStore fails closed under held lock without corrupting persisted snapshot [quota-enforcer-stateful-r13]", () => {
   const rootDir = mkdtempSync(join(tmpdir(), "quota-state-lock-"));
   const stateFile = join(rootDir, "quota-state.json");
   const store = new FileQuotaStateStore(stateFile);

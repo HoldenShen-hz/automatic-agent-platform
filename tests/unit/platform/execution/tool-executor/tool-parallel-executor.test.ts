@@ -37,7 +37,7 @@ function makeMetadata(overrides: Partial<ToolExecutionMetadata> = {}): ToolExecu
   } as ToolExecutionMetadata;
 }
 
-test("isConcurrentSafe returns explicit value when set", () => {
+test("isConcurrentSafe returns explicit value when set [tool-parallel-executor]", () => {
   const meta = makeMetadata({ isConcurrencySafe: true });
   assert.equal(isConcurrentSafe(meta), true);
 
@@ -45,47 +45,47 @@ test("isConcurrentSafe returns explicit value when set", () => {
   assert.equal(isConcurrentSafe(meta2), false);
 });
 
-test("isConcurrentSafe returns true for read-only tools", () => {
+test("isConcurrentSafe returns true for read-only tools [tool-parallel-executor]", () => {
   assert.equal(isConcurrentSafe(makeMetadata({ readOnly: true })), true);
 });
 
-test("isConcurrentSafe returns true for no lock or read lock", () => {
+test("isConcurrentSafe returns true for no lock or read lock [tool-parallel-executor]", () => {
   assert.equal(isConcurrentSafe(makeMetadata({ needsFileLock: "none" })), true);
   assert.equal(isConcurrentSafe(makeMetadata({ needsFileLock: "read" })), true);
 });
 
-test("isConcurrentSafe returns false for write lock", () => {
+test("isConcurrentSafe returns false for write lock [tool-parallel-executor]", () => {
   assert.equal(isConcurrentSafe(makeMetadata({ needsFileLock: "write" })), false);
   assert.equal(isConcurrentSafe(makeMetadata({ needsFileLock: "dynamic" })), false);
 });
 
-test("requiresExclusiveExecution returns true for write/dynamic locks", () => {
+test("requiresExclusiveExecution returns true for write/dynamic locks [tool-parallel-executor]", () => {
   assert.equal(requiresExclusiveExecution(makeMetadata({ needsFileLock: "write" })), true);
   assert.equal(requiresExclusiveExecution(makeMetadata({ needsFileLock: "dynamic" })), true);
 });
 
-test("requiresExclusiveExecution returns true for remote/org_state side effects", () => {
+test("requiresExclusiveExecution returns true for remote/org_state side effects [tool-parallel-executor]", () => {
   assert.equal(requiresExclusiveExecution(makeMetadata({ sideEffectScope: "remote_api" })), true);
   assert.equal(requiresExclusiveExecution(makeMetadata({ sideEffectScope: "org_state" })), true);
 });
 
-test("requiresExclusiveExecution returns true for non-idempotent local_file", () => {
+test("requiresExclusiveExecution returns true for non-idempotent local_file [tool-parallel-executor]", () => {
   assert.equal(
     requiresExclusiveExecution(makeMetadata({ readOnly: false, idempotent: false, sideEffectScope: "local_file" })),
     true,
   );
 });
 
-test("partitionParallelToolGroups empty input", () => {
+test("partitionParallelToolGroups empty input [tool-parallel-executor]", () => {
   assert.deepEqual(partitionParallelToolGroups([]), []);
 });
 
-test("partitionParallelToolGroups single tool", () => {
+test("partitionParallelToolGroups single tool [tool-parallel-executor]", () => {
   const meta = [makeMetadata({ toolName: "tool1" })];
   assert.deepEqual(partitionParallelToolGroups(meta), [[0]]);
 });
 
-test("partitionParallelToolGroups separates exclusive tools and groups consecutive read-only", () => {
+test("partitionParallelToolGroups separates exclusive tools and groups consecutive read-only [tool-parallel-executor]", () => {
   // Three tools: read-only, exclusive (write lock), read-only
   // read1 and read2 cannot be in the same group because write1 separates them
   const meta = [
@@ -101,7 +101,7 @@ test("partitionParallelToolGroups separates exclusive tools and groups consecuti
   assert.equal(groups.length, 3);
 });
 
-test("partitionParallelToolGroups groups consecutive read-only tools together", () => {
+test("partitionParallelToolGroups groups consecutive read-only tools together [tool-parallel-executor]", () => {
   // Two consecutive read-only tools should be in the same group
   const meta = [
     makeMetadata({ toolName: "read1", readOnly: true }),
@@ -113,12 +113,12 @@ test("partitionParallelToolGroups groups consecutive read-only tools together", 
   assert.deepEqual(groups, [[0, 1, 2]]);
 });
 
-test("canExecuteInParallel true for empty or single", () => {
+test("canExecuteInParallel true for empty or single [tool-parallel-executor]", () => {
   assert.equal(canExecuteInParallel([]), true);
   assert.equal(canExecuteInParallel([makeMetadata()]), true);
 });
 
-test("canExecuteInParallel false when any requires exclusive", () => {
+test("canExecuteInParallel false when any requires exclusive [tool-parallel-executor]", () => {
   const meta = [
     makeMetadata({ readOnly: true }),
     makeMetadata({ needsFileLock: "write" }),
@@ -126,7 +126,7 @@ test("canExecuteInParallel false when any requires exclusive", () => {
   assert.equal(canExecuteInParallel(meta), false);
 });
 
-test("canExecuteInParallel true when all concurrent-safe", () => {
+test("canExecuteInParallel true when all concurrent-safe [tool-parallel-executor]", () => {
   const meta = [
     makeMetadata({ readOnly: true }),
     makeMetadata({ readOnly: true }),
@@ -134,14 +134,14 @@ test("canExecuteInParallel true when all concurrent-safe", () => {
   assert.equal(canExecuteInParallel(meta), true);
 });
 
-test("partitionToolsByExecutionMode empty", () => {
+test("partitionToolsByExecutionMode empty [tool-parallel-executor]", () => {
   const result = partitionToolsByExecutionMode([]);
   assert.deepEqual(result.parallelIndices, []);
   assert.deepEqual(result.exclusiveIndices, []);
   assert.equal(result.isValid, true);
 });
 
-test("partitionToolsByExecutionMode all parallel", () => {
+test("partitionToolsByExecutionMode all parallel [tool-parallel-executor]", () => {
   const meta = [
     makeMetadata({ readOnly: true, toolName: "r1" }),
     makeMetadata({ readOnly: true, toolName: "r2" }),
@@ -152,7 +152,7 @@ test("partitionToolsByExecutionMode all parallel", () => {
   assert.equal(result.isValid, true);
 });
 
-test("partitionToolsByExecutionMode mixed", () => {
+test("partitionToolsByExecutionMode mixed [tool-parallel-executor]", () => {
   const meta = [
     makeMetadata({ readOnly: true, toolName: "r1" }),
     makeMetadata({ needsFileLock: "write", toolName: "w1" }),
@@ -164,7 +164,7 @@ test("partitionToolsByExecutionMode mixed", () => {
   assert.equal(result.isValid, true);
 });
 
-test("executeToolsInParallel empty", async () => {
+test("executeToolsInParallel empty [tool-parallel-executor]", async () => {
   const result = await executeToolsInParallel([], []);
   assert.deepEqual(result.results, []);
   assert.deepEqual(result.errors, []);
@@ -172,7 +172,7 @@ test("executeToolsInParallel empty", async () => {
   assert.equal(result.anyFailed, false);
 });
 
-test("executeToolsInParallel single success", async () => {
+test("executeToolsInParallel single success [tool-parallel-executor]", async () => {
   const fns = [async () => ({ ok: true })];
   const metas = [makeMetadata({ toolName: "t1" })];
   const result = await executeToolsInParallel(fns, metas);
@@ -182,7 +182,7 @@ test("executeToolsInParallel single success", async () => {
   assert.equal(result.errors.length, 0);
 });
 
-test("executeToolsInParallel single failure", async () => {
+test("executeToolsInParallel single failure [tool-parallel-executor]", async () => {
   const fns = [async () => { throw new Error("test error"); }];
   const metas = [makeMetadata({ toolName: "t1" })];
   const result = await executeToolsInParallel(fns, metas);
@@ -194,7 +194,7 @@ test("executeToolsInParallel single failure", async () => {
   assert.equal(result.errors[0]!.toolName, "t1");
 });
 
-test("executeToolsInParallel parallel execution", async () => {
+test("executeToolsInParallel parallel execution [tool-parallel-executor]", async () => {
   let order: number[] = [];
   const makeFn = (id: number) => async () => {
     order.push(id);
@@ -213,7 +213,7 @@ test("executeToolsInParallel parallel execution", async () => {
   assert.equal(result.results.length, 3);
 });
 
-test("executeToolsInParallel length mismatch throws", async () => {
+test("executeToolsInParallel length mismatch throws [tool-parallel-executor]", async () => {
   const fns = [async () => 1, async () => 2];
   const metas = [makeMetadata({ toolName: "t1" })];
   await assert.rejects(
@@ -222,7 +222,7 @@ test("executeToolsInParallel length mismatch throws", async () => {
   );
 });
 
-test("executeToolsInParallel failFast works between batches", async () => {
+test("executeToolsInParallel failFast works between batches [tool-parallel-executor]", async () => {
   // failFast stops execution of subsequent batches after an error in the current batch.
   // Within a single parallel batch (Promise.allSettled), all tools run regardless.
   let secondCalled = false;
@@ -241,7 +241,7 @@ test("executeToolsInParallel failFast works between batches", async () => {
   assert.equal(secondCalled, true);
 });
 
-test("executeToolsInParallel compacts failed positions instead of returning undefined holes", async () => {
+test("executeToolsInParallel compacts failed positions instead of returning undefined holes [tool-parallel-executor]", async () => {
   const fns = [
     async () => "first",
     async () => { throw new Error("boom"); },
@@ -259,7 +259,7 @@ test("executeToolsInParallel compacts failed positions instead of returning unde
   assert.equal(result.errors[0]!.index, 1);
 });
 
-test("executeToolItemsInParallel passes through correctly", async () => {
+test("executeToolItemsInParallel passes through correctly [tool-parallel-executor]", async () => {
   const items: Array<{ metadata: ToolExecutionMetadata; execute: () => Promise<number> }> = [
     { metadata: makeMetadata({ toolName: "a", readOnly: true }), execute: async () => 1 },
     { metadata: makeMetadata({ toolName: "b", readOnly: true }), execute: async () => 2 },

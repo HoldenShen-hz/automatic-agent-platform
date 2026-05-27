@@ -8,7 +8,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import * as costAttribution from "../../../../src/scale-ecosystem/cost-attribution/index.js";
 
-test("cost-attribution re-exports CostOptimizationService", () => {
+test("cost-attribution re-exports CostOptimizationService [index]", () => {
   assert.ok(
     "CostOptimizationService" in costAttribution,
     "should export CostOptimizationService"
@@ -20,7 +20,7 @@ test("cost-attribution re-exports CostOptimizationService", () => {
   );
 });
 
-test("cost-attribution CostOptimizationService is instantiable", () => {
+test("cost-attribution CostOptimizationService is instantiable [index]", () => {
   const Service = costAttribution.CostOptimizationService;
   const instance = new Service();
   assert.ok(instance != null, "should create instance");

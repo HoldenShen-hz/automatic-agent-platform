@@ -32,7 +32,7 @@ function createTestManifest(overrides: Partial<ConnectorManifest> = {}): Connect
   });
 }
 
-test("ConnectorFrameworkService.register stores and retrieves manifest", () => {
+test("ConnectorFrameworkService.register stores and retrieves manifest [connector-framework-comprehensive]", () => {
   const service = new ConnectorFrameworkService();
   const manifest = createTestManifest({ connectorId: "github-v1" });
 
@@ -44,7 +44,7 @@ test("ConnectorFrameworkService.register stores and retrieves manifest", () => {
   assert.equal(retrieved!.connectorId, "github-v1");
 });
 
-test("ConnectorFrameworkService.register normalizes manifest with defaults", () => {
+test("ConnectorFrameworkService.register normalizes manifest with defaults [connector-framework-comprehensive]", () => {
   const service = new ConnectorFrameworkService();
   const manifest = createTestManifest({ connectorId: "slack-v1" });
 
@@ -56,7 +56,7 @@ test("ConnectorFrameworkService.register normalizes manifest with defaults", () 
   assert.equal(registered.authMode, "oauth2");
 });
 
-test("ConnectorFrameworkService.register requires lifecycleState in schema", () => {
+test("ConnectorFrameworkService.register requires lifecycleState in schema [connector-framework-comprehensive]", () => {
   const service = new ConnectorFrameworkService();
 
   // Schema requires lifecycleState - this tests that the schema enforces required fields
@@ -72,7 +72,7 @@ test("ConnectorFrameworkService.register requires lifecycleState in schema", () 
   assert.equal(registered.lifecycleState, "enabled");
 });
 
-test("ConnectorFrameworkService.bind creates binding for valid connector in dev", () => {
+test("ConnectorFrameworkService.bind creates binding for valid connector in dev [connector-framework-comprehensive]", () => {
   const service = new ConnectorFrameworkService();
   service.register(createTestManifest({ connectorId: "jira-v1", lifecycleState: "enabled" }));
 
@@ -85,7 +85,7 @@ test("ConnectorFrameworkService.bind creates binding for valid connector in dev"
   assert.ok(binding.boundAt);
 });
 
-test("ConnectorFrameworkService.bind creates binding for verified connector in prod", () => {
+test("ConnectorFrameworkService.bind creates binding for verified connector in prod [connector-framework-comprehensive]", () => {
   const service = new ConnectorFrameworkService();
   service.register(createTestManifest({ connectorId: "verified-connector", lifecycleState: "verified" }));
 
@@ -95,7 +95,7 @@ test("ConnectorFrameworkService.bind creates binding for verified connector in p
   assert.equal(binding.environment, "prod");
 });
 
-test("ConnectorFrameworkService.bind creates binding for enabled connector in prod", () => {
+test("ConnectorFrameworkService.bind creates binding for enabled connector in prod [connector-framework-comprehensive]", () => {
   const service = new ConnectorFrameworkService();
   service.register(createTestManifest({ connectorId: "enabled-connector", lifecycleState: "enabled" }));
 
@@ -105,7 +105,7 @@ test("ConnectorFrameworkService.bind creates binding for enabled connector in pr
   assert.equal(binding.environment, "prod");
 });
 
-test("ConnectorFrameworkService.bind throws for non-existent connector", () => {
+test("ConnectorFrameworkService.bind throws for non-existent connector [connector-framework-comprehensive]", () => {
   const service = new ConnectorFrameworkService();
 
   assert.throws(() => {
@@ -113,7 +113,7 @@ test("ConnectorFrameworkService.bind throws for non-existent connector", () => {
   }, /connector_not_found/);
 });
 
-test("ConnectorFrameworkService.bind throws for registered connector in prod", () => {
+test("ConnectorFrameworkService.bind throws for registered connector in prod [connector-framework-comprehensive]", () => {
   const service = new ConnectorFrameworkService();
   service.register(createTestManifest({ connectorId: "unverified-connector", lifecycleState: "registered" }));
 
@@ -122,7 +122,7 @@ test("ConnectorFrameworkService.bind throws for registered connector in prod", (
   }, /prod_requires_verified/);
 });
 
-test("ConnectorFrameworkService.bind allows custom boundAt timestamp", () => {
+test("ConnectorFrameworkService.bind allows custom boundAt timestamp [connector-framework-comprehensive]", () => {
   const service = new ConnectorFrameworkService();
   service.register(createTestManifest({ connectorId: "custom-time-connector", lifecycleState: "enabled" }));
 
@@ -131,7 +131,7 @@ test("ConnectorFrameworkService.bind allows custom boundAt timestamp", () => {
   assert.equal(binding.boundAt, "2025-01-01T00:00:00.000Z");
 });
 
-test("ConnectorFrameworkService.recordHealth stores and returns health report", () => {
+test("ConnectorFrameworkService.recordHealth stores and returns health report [connector-framework-comprehensive]", () => {
   const service = new ConnectorFrameworkService();
   service.register(createTestManifest({ connectorId: "health-connector" }));
 
@@ -149,7 +149,7 @@ test("ConnectorFrameworkService.recordHealth stores and returns health report", 
   assert.equal(recorded.latencyMs, 50);
 });
 
-test("ConnectorFrameworkService.recordHealth throws for unknown connector", () => {
+test("ConnectorFrameworkService.recordHealth throws for unknown connector [connector-framework-comprehensive]", () => {
   const service = new ConnectorFrameworkService();
 
   assert.throws(() => {
@@ -162,7 +162,7 @@ test("ConnectorFrameworkService.recordHealth throws for unknown connector", () =
   }, /connector_not_found/);
 });
 
-test("ConnectorFrameworkService.execute succeeds for healthy connector with all requirements", async () => {
+test("ConnectorFrameworkService.execute succeeds for healthy connector with all requirements [connector-framework-comprehensive]", async () => {
   const service = new ConnectorFrameworkService();
   service.register(createTestManifest({ connectorId: "healthy-connector", lifecycleState: "enabled" }));
   service.recordHealth({
@@ -188,7 +188,7 @@ test("ConnectorFrameworkService.execute succeeds for healthy connector with all 
   assert.ok(result.executedAt);
 });
 
-test("ConnectorFrameworkService.execute defers for degraded connector", async () => {
+test("ConnectorFrameworkService.execute defers for degraded connector [connector-framework-comprehensive]", async () => {
   const service = new ConnectorFrameworkService();
   service.register(createTestManifest({ connectorId: "degraded-connector", lifecycleState: "enabled" }));
   service.recordHealth({
@@ -212,7 +212,7 @@ test("ConnectorFrameworkService.execute defers for degraded connector", async ()
   assert.equal(result.status, "deferred");
 });
 
-test("ConnectorFrameworkService.execute fails for failed connector", async () => {
+test("ConnectorFrameworkService.execute fails for failed connector [connector-framework-comprehensive]", async () => {
   const service = new ConnectorFrameworkService();
   service.register(createTestManifest({ connectorId: "failed-connector", lifecycleState: "enabled" }));
   service.recordHealth({
@@ -236,7 +236,7 @@ test("ConnectorFrameworkService.execute fails for failed connector", async () =>
   assert.equal(result.status, "failed");
 });
 
-test("ConnectorFrameworkService.execute fails for missing secret bindings", async () => {
+test("ConnectorFrameworkService.execute fails for missing secret bindings [connector-framework-comprehensive]", async () => {
   const service = new ConnectorFrameworkService();
   service.register(createTestManifest({ connectorId: "secure-connector", lifecycleState: "enabled" }));
 
@@ -254,7 +254,7 @@ test("ConnectorFrameworkService.execute fails for missing secret bindings", asyn
   assert.equal(result.status, "failed");
 });
 
-test("ConnectorFrameworkService.execute fails for missing policy ref", async () => {
+test("ConnectorFrameworkService.execute fails for missing policy ref [connector-framework-comprehensive]", async () => {
   const service = new ConnectorFrameworkService();
   service.register(createTestManifest({ connectorId: "policy-connector", lifecycleState: "enabled" }));
 
@@ -271,7 +271,7 @@ test("ConnectorFrameworkService.execute fails for missing policy ref", async () 
   assert.equal(result.status, "failed");
 });
 
-test("ConnectorFrameworkService.execute fails for unsupported event type", async () => {
+test("ConnectorFrameworkService.execute fails for unsupported event type [connector-framework-comprehensive]", async () => {
   const service = new ConnectorFrameworkService();
   service.register(createTestManifest({
     connectorId: "event-connector",
@@ -293,7 +293,7 @@ test("ConnectorFrameworkService.execute fails for unsupported event type", async
   assert.equal(result.status, "failed");
 });
 
-test("ConnectorFrameworkService.execute succeeds for supported event type", async () => {
+test("ConnectorFrameworkService.execute succeeds for supported event type [connector-framework-comprehensive]", async () => {
   const service = new ConnectorFrameworkService();
   service.register(createTestManifest({
     connectorId: "supported-event-connector",
@@ -315,7 +315,7 @@ test("ConnectorFrameworkService.execute succeeds for supported event type", asyn
   assert.equal(result.status, "succeeded");
 });
 
-test("ConnectorFrameworkService.execute throws for unknown connector", async () => {
+test("ConnectorFrameworkService.execute throws for unknown connector [connector-framework-comprehensive]", async () => {
   const service = new ConnectorFrameworkService();
 
   await assert.rejects(async () => {
@@ -326,7 +326,7 @@ test("ConnectorFrameworkService.execute throws for unknown connector", async () 
   }, /connector_not_found/);
 });
 
-test("ConnectorFrameworkService.execute throws for prod with registered connector", async () => {
+test("ConnectorFrameworkService.execute throws for prod with registered connector [connector-framework-comprehensive]", async () => {
   const service = new ConnectorFrameworkService();
   service.register(createTestManifest({ connectorId: "unverified", lifecycleState: "registered" }));
 
@@ -344,7 +344,7 @@ test("ConnectorFrameworkService.execute throws for prod with registered connecto
   }, /prod_requires_verified/);
 });
 
-test("ConnectorFrameworkService.listEnabled returns only enabled connectors", () => {
+test("ConnectorFrameworkService.listEnabled returns only enabled connectors [connector-framework-comprehensive]", () => {
   const service = new ConnectorFrameworkService();
   service.register(createTestManifest({ connectorId: "enabled-1", lifecycleState: "enabled" }));
   service.register(createTestManifest({ connectorId: "enabled-2", lifecycleState: "enabled" }));
@@ -360,7 +360,7 @@ test("ConnectorFrameworkService.listEnabled returns only enabled connectors", ()
   assert.ok(!enabled.some((c) => c.connectorId === "registered-1"));
 });
 
-test("ConnectorFrameworkService.listBindings returns all bindings when no filter", () => {
+test("ConnectorFrameworkService.listBindings returns all bindings when no filter [connector-framework-comprehensive]", () => {
   const service = new ConnectorFrameworkService();
   service.register(createTestManifest({ connectorId: "multi-tenant-connector", lifecycleState: "enabled" }));
   service.bind("multi-tenant-connector", "tenant-1", "dev");
@@ -372,7 +372,7 @@ test("ConnectorFrameworkService.listBindings returns all bindings when no filter
   assert.equal(bindings.length, 3);
 });
 
-test("ConnectorFrameworkService.listBindings filters by connectorId", () => {
+test("ConnectorFrameworkService.listBindings filters by connectorId [connector-framework-comprehensive]", () => {
   const service = new ConnectorFrameworkService();
   service.register(createTestManifest({ connectorId: "filter-connector", lifecycleState: "enabled" }));
   service.register(createTestManifest({ connectorId: "other-connector", lifecycleState: "enabled" }));
@@ -386,7 +386,7 @@ test("ConnectorFrameworkService.listBindings filters by connectorId", () => {
   assert.ok(bindings.every((b) => b.connectorId === "filter-connector"));
 });
 
-test("ConnectorFrameworkService.listBindings filters by tenantId", () => {
+test("ConnectorFrameworkService.listBindings filters by tenantId [connector-framework-comprehensive]", () => {
   const service = new ConnectorFrameworkService();
   service.register(createTestManifest({ connectorId: "tenant-connector", lifecycleState: "enabled" }));
   service.bind("tenant-connector", "tenant-a", "dev");
@@ -399,7 +399,7 @@ test("ConnectorFrameworkService.listBindings filters by tenantId", () => {
   assert.equal(bindings[0]!.tenantId, "tenant-a");
 });
 
-test("ConnectorFrameworkService.listBindings filters by environment", () => {
+test("ConnectorFrameworkService.listBindings filters by environment [connector-framework-comprehensive]", () => {
   const service = new ConnectorFrameworkService();
   service.register(createTestManifest({ connectorId: "env-connector", lifecycleState: "enabled" }));
   service.bind("env-connector", "tenant-1", "dev");
@@ -415,7 +415,7 @@ test("ConnectorFrameworkService.listBindings filters by environment", () => {
   assert.equal(devBindings[0]!.environment, "dev");
 });
 
-test("ConnectorFrameworkService.listBindings filters by multiple criteria", () => {
+test("ConnectorFrameworkService.listBindings filters by multiple criteria [connector-framework-comprehensive]", () => {
   const service = new ConnectorFrameworkService();
   service.register(createTestManifest({ connectorId: "multi-filter-connector", lifecycleState: "enabled" }));
   service.bind("multi-filter-connector", "tenant-a", "dev");
@@ -429,7 +429,7 @@ test("ConnectorFrameworkService.listBindings filters by multiple criteria", () =
   assert.equal(bindings[0]!.environment, "prod");
 });
 
-test("ConnectorFrameworkService.getManifest returns null for non-existent connector", () => {
+test("ConnectorFrameworkService.getManifest returns null for non-existent connector [connector-framework-comprehensive]", () => {
   const service = new ConnectorFrameworkService();
 
   const manifest = service.getManifest("non-existent");
@@ -437,7 +437,7 @@ test("ConnectorFrameworkService.getManifest returns null for non-existent connec
   assert.equal(manifest, null);
 });
 
-test("ConnectorFrameworkService.execute uses custom executedAt timestamp", async () => {
+test("ConnectorFrameworkService.execute uses custom executedAt timestamp [connector-framework-comprehensive]", async () => {
   const service = new ConnectorFrameworkService();
   service.register(createTestManifest({ connectorId: "timestamp-connector", lifecycleState: "enabled" }));
   service.recordHealth({

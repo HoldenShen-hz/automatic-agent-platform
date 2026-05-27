@@ -14,7 +14,7 @@ import {
 } from "../../../../../src/platform/five-plane-execution/queue/bounded-dispatch-event.js";
 import { runConcurrentInvariant } from "../../../../helpers/concurrent-runner.js";
 
-test("BoundedDispatchQueueEventFactory create returns accepted event when queue has capacity", () => {
+test("BoundedDispatchQueueEventFactory create returns accepted event when queue has capacity [bounded-dispatch-queue.unit]", () => {
   const factory = new BoundedDispatchQueueEventFactory();
   const snapshot: BoundedDispatchQueueSnapshot = {
     queueName: "test-queue",
@@ -32,7 +32,7 @@ test("BoundedDispatchQueueEventFactory create returns accepted event when queue 
   assert.equal(event.maxQueueDepth, 10);
 });
 
-test("BoundedDispatchQueueEventFactory create returns rejected event when queue at max depth", () => {
+test("BoundedDispatchQueueEventFactory create returns rejected event when queue at max depth [bounded-dispatch-queue.unit]", () => {
   const factory = new BoundedDispatchQueueEventFactory();
   const snapshot: BoundedDispatchQueueSnapshot = {
     queueName: "test-queue",
@@ -50,7 +50,7 @@ test("BoundedDispatchQueueEventFactory create returns rejected event when queue 
   assert.equal(event.maxQueueDepth, 10);
 });
 
-test("BoundedDispatchQueueEventFactory create includes all required fields", () => {
+test("BoundedDispatchQueueEventFactory create includes all required fields [bounded-dispatch-queue.unit]", () => {
   const factory = new BoundedDispatchQueueEventFactory();
   const snapshot: BoundedDispatchQueueSnapshot = {
     queueName: "full-queue",
@@ -69,7 +69,7 @@ test("BoundedDispatchQueueEventFactory create includes all required fields", () 
   assert.equal(event.dlqName, "full-dlq");
 });
 
-test("BoundedDispatchQueueEventFactory creates snapshot with correct structure", () => {
+test("BoundedDispatchQueueEventFactory creates snapshot with correct structure [bounded-dispatch-queue.unit]", () => {
   const factory = new BoundedDispatchQueueEventFactory();
   const snapshot: BoundedDispatchQueueSnapshot = {
     queueName: "snapshot-test",
@@ -85,7 +85,7 @@ test("BoundedDispatchQueueEventFactory creates snapshot with correct structure",
   assert.equal(event.dlqName, snapshot.dlqName);
 });
 
-test("BoundedDispatchQueueEventFactory accepted event structure", () => {
+test("BoundedDispatchQueueEventFactory accepted event structure [bounded-dispatch-queue.unit]", () => {
   const factory = new BoundedDispatchQueueEventFactory();
   const snapshot: BoundedDispatchQueueSnapshot = {
     queueName: "accepted-queue",
@@ -102,7 +102,7 @@ test("BoundedDispatchQueueEventFactory accepted event structure", () => {
   assert.ok("traceId" in event);
 });
 
-test("BoundedDispatchQueueEventFactory rejected event structure", () => {
+test("BoundedDispatchQueueEventFactory rejected event structure [bounded-dispatch-queue.unit]", () => {
   const factory = new BoundedDispatchQueueEventFactory();
   const snapshot: BoundedDispatchQueueSnapshot = {
     queueName: "rejected-queue",
@@ -119,7 +119,7 @@ test("BoundedDispatchQueueEventFactory rejected event structure", () => {
 
 // §17.1 Concurrency Tests for BoundedDispatchQueue
 
-test("BoundedDispatchQueue concurrent event creation maintains consistency", async () => {
+test("BoundedDispatchQueue concurrent event creation maintains consistency [bounded-dispatch-queue.unit]", async () => {
   const factory = new BoundedDispatchQueueEventFactory();
 
   const result = await runConcurrentInvariant(async (workerId: number) => {
@@ -141,7 +141,7 @@ test("BoundedDispatchQueue concurrent event creation maintains consistency", asy
   }
 });
 
-test("BoundedDispatchQueue concurrent accepted events for same queue", async () => {
+test("BoundedDispatchQueue concurrent accepted events for same queue [bounded-dispatch-queue.unit]", async () => {
   const factory = new BoundedDispatchQueueEventFactory();
 
   const result = await runConcurrentInvariant(async (workerId: number) => {
@@ -162,7 +162,7 @@ test("BoundedDispatchQueue concurrent accepted events for same queue", async () 
   assert.ok(acceptedCount > 0, "Some events should be accepted");
 });
 
-test("BoundedDispatchQueue rejected events have correct reason code", async () => {
+test("BoundedDispatchQueue rejected events have correct reason code [bounded-dispatch-queue.unit]", async () => {
   const factory = new BoundedDispatchQueueEventFactory();
   const snapshot: BoundedDispatchQueueSnapshot = {
     queueName: "overloaded-queue",
@@ -177,7 +177,7 @@ test("BoundedDispatchQueue rejected events have correct reason code", async () =
   assert.equal(event.reasonCode, "queue.max_depth_exceeded");
 });
 
-test("BoundedDispatchQueueEventFactory multiple create calls produce unique events", () => {
+test("BoundedDispatchQueueEventFactory multiple create calls produce unique events [bounded-dispatch-queue.unit]", () => {
   const factory = new BoundedDispatchQueueEventFactory();
   const snapshots: BoundedDispatchQueueSnapshot[] = [
     { queueName: "q1", queueDepthBefore: 1, maxQueueDepth: 10, dlqName: "dlq1" },
@@ -196,7 +196,7 @@ test("BoundedDispatchQueueEventFactory multiple create calls produce unique even
   }
 });
 
-test("BoundedDispatchQueue event types are correct values", () => {
+test("BoundedDispatchQueue event types are correct values [bounded-dispatch-queue.unit]", () => {
   const factory = new BoundedDispatchQueueEventFactory();
 
   const acceptedSnapshot: BoundedDispatchQueueSnapshot = {

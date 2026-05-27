@@ -75,7 +75,7 @@ function createMockDb(): AuthoritativeSqlDatabase {
 // ExecutionWorkerHandshakeService claimExecution rejection tests
 // ---------------------------------------------------------------------------
 
-test("ExecutionWorkerHandshakeService claimExecution rejects when ticket not found", () => {
+test("ExecutionWorkerHandshakeService claimExecution rejects when ticket not found [execution-worker-handshake-service]", () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new ExecutionWorkerHandshakeService(db, store);
@@ -91,7 +91,7 @@ test("ExecutionWorkerHandshakeService claimExecution rejects when ticket not fou
   assert.equal(decision.reasonCode, "ticket_not_found");
 });
 
-test("ExecutionWorkerHandshakeService claimExecution rejects when worker not registered", () => {
+test("ExecutionWorkerHandshakeService claimExecution rejects when worker not registered [execution-worker-handshake-service]", () => {
   const ticket: Partial<ExecutionTicketRecord> = {
     id: "ticket-001",
     taskId: "task-001",
@@ -119,7 +119,7 @@ test("ExecutionWorkerHandshakeService claimExecution rejects when worker not reg
   assert.equal(decision.reasonCode, "worker_not_registered");
 });
 
-test("ExecutionWorkerHandshakeService claimExecution rejects untrusted remote worker", () => {
+test("ExecutionWorkerHandshakeService claimExecution rejects untrusted remote worker [execution-worker-handshake-service]", () => {
   const ticket: Partial<ExecutionTicketRecord> = {
     id: "ticket-001",
     taskId: "task-001",
@@ -157,7 +157,7 @@ test("ExecutionWorkerHandshakeService claimExecution rejects untrusted remote wo
   assert.equal(decision.reasonCode, "worker_not_trusted");
 });
 
-test("ExecutionWorkerHandshakeService claimExecution rejects when ticket not claimed", () => {
+test("ExecutionWorkerHandshakeService claimExecution rejects when ticket not claimed [execution-worker-handshake-service]", () => {
   const ticket: Partial<ExecutionTicketRecord> = {
     id: "ticket-001",
     taskId: "task-001",
@@ -194,7 +194,7 @@ test("ExecutionWorkerHandshakeService claimExecution rejects when ticket not cla
   assert.equal(decision.reasonCode, "ticket_not_claimed");
 });
 
-test("ExecutionWorkerHandshakeService claimExecution rejects when worker ID mismatch", () => {
+test("ExecutionWorkerHandshakeService claimExecution rejects when worker ID mismatch [execution-worker-handshake-service]", () => {
   const ticket: Partial<ExecutionTicketRecord> = {
     id: "ticket-001",
     taskId: "task-001",
@@ -231,7 +231,7 @@ test("ExecutionWorkerHandshakeService claimExecution rejects when worker ID mism
   assert.equal(decision.reasonCode, "worker_mismatch");
 });
 
-test("ExecutionWorkerHandshakeService claimExecution rejects when lease ID mismatch", () => {
+test("ExecutionWorkerHandshakeService claimExecution rejects when lease ID mismatch [execution-worker-handshake-service]", () => {
   const ticket: Partial<ExecutionTicketRecord> = {
     id: "ticket-001",
     taskId: "task-001",
@@ -268,7 +268,7 @@ test("ExecutionWorkerHandshakeService claimExecution rejects when lease ID misma
   assert.equal(decision.reasonCode, "lease_mismatch");
 });
 
-test("ExecutionWorkerHandshakeService claimExecution rejects when lease validation fails first", () => {
+test("ExecutionWorkerHandshakeService claimExecution rejects when lease validation fails first [execution-worker-handshake-service]", () => {
   // The service validates lease BEFORE checking execution existence
   // So with a missing lease, we get "lease_not_found" rather than "execution_not_found"
   const ticket: Partial<ExecutionTicketRecord> = {
@@ -314,7 +314,7 @@ test("ExecutionWorkerHandshakeService claimExecution rejects when lease validati
 // ExecutionWorkerHandshakeService recordHeartbeat rejection tests
 // ---------------------------------------------------------------------------
 
-test("ExecutionWorkerHandshakeService recordHeartbeat rejects when execution not found", () => {
+test("ExecutionWorkerHandshakeService recordHeartbeat rejects when execution not found [execution-worker-handshake-service]", () => {
   const store = createMockStore({
     dispatchGetExecution: () => null,
   });
@@ -333,7 +333,7 @@ test("ExecutionWorkerHandshakeService recordHeartbeat rejects when execution not
   assert.equal(decision.reasonCode, "execution_not_found");
 });
 
-test("ExecutionWorkerHandshakeService recordHeartbeat rejects when worker not registered", () => {
+test("ExecutionWorkerHandshakeService recordHeartbeat rejects when worker not registered [execution-worker-handshake-service]", () => {
   const execution: Partial<ExecutionRecord> = {
     id: "exec-001",
     taskId: "task-001",
@@ -360,7 +360,7 @@ test("ExecutionWorkerHandshakeService recordHeartbeat rejects when worker not re
   assert.equal(decision.reasonCode, "worker_not_registered");
 });
 
-test("ExecutionWorkerHandshakeService recordHeartbeat rejects untrusted remote worker", () => {
+test("ExecutionWorkerHandshakeService recordHeartbeat rejects untrusted remote worker [execution-worker-handshake-service]", () => {
   const execution: Partial<ExecutionRecord> = {
     id: "exec-001",
     taskId: "task-001",
@@ -401,7 +401,7 @@ test("ExecutionWorkerHandshakeService recordHeartbeat rejects untrusted remote w
 // ExecutionWorkerHandshakeService with custom resource ceiling guard
 // ---------------------------------------------------------------------------
 
-test("ExecutionWorkerHandshakeService uses custom resource ceiling guard when provided", () => {
+test("ExecutionWorkerHandshakeService uses custom resource ceiling guard when provided [execution-worker-handshake-service]", () => {
   const ticket: Partial<ExecutionTicketRecord> = {
     id: "ticket-001",
     taskId: "task-001",
@@ -457,7 +457,7 @@ test("ExecutionWorkerHandshakeService uses custom resource ceiling guard when pr
 // ExecutionWorkerHandshakeService with occurredAt parameter
 // ---------------------------------------------------------------------------
 
-test("ExecutionWorkerHandshakeService claimExecution uses custom occurredAt timestamp", () => {
+test("ExecutionWorkerHandshakeService claimExecution uses custom occurredAt timestamp [execution-worker-handshake-service]", () => {
   const ticket: Partial<ExecutionTicketRecord> = {
     id: "ticket-001",
     taskId: "task-001",
@@ -506,7 +506,7 @@ test("ExecutionWorkerHandshakeService claimExecution uses custom occurredAt time
   assert.ok(typeof decision.accepted === "boolean");
 });
 
-test("ExecutionWorkerHandshakeService recordHeartbeat uses custom occurredAt timestamp", () => {
+test("ExecutionWorkerHandshakeService recordHeartbeat uses custom occurredAt timestamp [execution-worker-handshake-service]", () => {
   const execution: Partial<ExecutionRecord> = {
     id: "exec-001",
     taskId: "task-001",
@@ -548,7 +548,7 @@ test("ExecutionWorkerHandshakeService recordHeartbeat uses custom occurredAt tim
 // ExecutionWorkerHandshakeService telemetry updates
 // ---------------------------------------------------------------------------
 
-test("ExecutionWorkerHandshakeService claimExecution accepts valid request with telemetry", () => {
+test("ExecutionWorkerHandshakeService claimExecution accepts valid request with telemetry [execution-worker-handshake-service]", () => {
   const ticket: Partial<ExecutionTicketRecord> = {
     id: "ticket-001",
     taskId: "task-001",
@@ -617,7 +617,7 @@ test("ExecutionWorkerHandshakeService claimExecution accepts valid request with 
   assert.equal(decision.executionId, "exec-001");
 });
 
-test("ExecutionWorkerHandshakeService recordHeartbeat includes progress message in decision", () => {
+test("ExecutionWorkerHandshakeService recordHeartbeat includes progress message in decision [execution-worker-handshake-service]", () => {
   const execution: Partial<ExecutionRecord> = {
     id: "exec-001",
     taskId: "task-001",
@@ -659,7 +659,7 @@ test("ExecutionWorkerHandshakeService recordHeartbeat includes progress message 
 // ExecutionWorkerHandshakeService trust verification for remote workers
 // ---------------------------------------------------------------------------
 
-test("ExecutionWorkerHandshakeService trusts verified remote worker", () => {
+test("ExecutionWorkerHandshakeService trusts verified remote worker [execution-worker-handshake-service]", () => {
   const ticket: Partial<ExecutionTicketRecord> = {
     id: "ticket-001",
     taskId: "task-001",
@@ -727,7 +727,7 @@ test("ExecutionWorkerHandshakeService trusts verified remote worker", () => {
 // ExecutionWorkerHandshakeService service construction
 // ---------------------------------------------------------------------------
 
-test("ExecutionWorkerHandshakeService can be constructed with empty options", () => {
+test("ExecutionWorkerHandshakeService can be constructed with empty options [execution-worker-handshake-service]", () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new ExecutionWorkerHandshakeService(db, store);
@@ -735,7 +735,7 @@ test("ExecutionWorkerHandshakeService can be constructed with empty options", ()
   assert.ok(service != null);
 });
 
-test("ExecutionWorkerHandshakeService can be constructed with custom resourceCeilingGuard", () => {
+test("ExecutionWorkerHandshakeService can be constructed with custom resourceCeilingGuard [execution-worker-handshake-service]", () => {
   const store = createMockStore();
   const db = createMockDb();
   const customGuard = new ExecutionResourceCeilingGuard();

@@ -32,42 +32,42 @@ import type {
 // assertIdentifier tests
 // ---------------------------------------------------------------------------
 
-test("assertIdentifier accepts valid alphanumeric identifier", () => {
+test("assertIdentifier accepts valid alphanumeric identifier [index]", () => {
   const result = assertIdentifier("workspace_001", "ERR_INVALID_ID");
   assert.equal(result, "workspace_001");
 });
 
-test("assertIdentifier accepts identifiers with dots, underscores, colons, hyphens", () => {
+test("assertIdentifier accepts identifiers with dots, underscores, colons, hyphens [index]", () => {
   assert.equal(assertIdentifier("my.workspace:001", "ERR"), "my.workspace:001");
   assert.equal(assertIdentifier("org_abc-123", "ERR"), "org_abc-123");
   assert.equal(assertIdentifier("a:b.c-d", "ERR"), "a:b.c-d");
 });
 
-test("assertIdentifier accepts minimum length (2 chars)", () => {
+test("assertIdentifier accepts minimum length (2 chars) [index]", () => {
   const result = assertIdentifier("ab", "ERR");
   assert.equal(result, "ab");
 });
 
-test("assertIdentifier accepts maximum length (128 chars)", () => {
+test("assertIdentifier accepts maximum length (128 chars) [index]", () => {
   const result = assertIdentifier("a".repeat(128), "ERR");
   assert.equal(result, "a".repeat(128));
 });
 
-test("assertIdentifier rejects identifiers shorter than 2 characters", () => {
+test("assertIdentifier rejects identifiers shorter than 2 characters [index]", () => {
   assert.throws(
     () => assertIdentifier("a", "ERR_TOO_SHORT"),
     (err: any) => err.code === "ERR_TOO_SHORT" && err.category === "tenant"
   );
 });
 
-test("assertIdentifier rejects identifiers longer than 128 characters", () => {
+test("assertIdentifier rejects identifiers longer than 128 characters [index]", () => {
   assert.throws(
     () => assertIdentifier("a".repeat(129), "ERR_TOO_LONG"),
     (err: any) => err.code === "ERR_TOO_LONG" && err.category === "tenant"
   );
 });
 
-test("assertIdentifier rejects identifiers with invalid characters", () => {
+test("assertIdentifier rejects identifiers with invalid characters [index]", () => {
   assert.throws(
     () => assertIdentifier("workspace@001", "ERR_INVALID"),
     (err: any) => err.code === "ERR_INVALID" && err.category === "tenant"
@@ -82,14 +82,14 @@ test("assertIdentifier rejects identifiers with invalid characters", () => {
   );
 });
 
-test("assertIdentifier rejects empty string", () => {
+test("assertIdentifier rejects empty string [index]", () => {
   assert.throws(
     () => assertIdentifier("", "ERR_EMPTY"),
     (err: any) => err.code === "ERR_EMPTY" && err.category === "tenant"
   );
 });
 
-test("assertIdentifier passes through value in error details", () => {
+test("assertIdentifier passes through value in error details [index]", () => {
   try {
     assertIdentifier("invalid@id", "ERR_BAD");
     assert.fail("Should have thrown");
@@ -102,38 +102,38 @@ test("assertIdentifier passes through value in error details", () => {
 // assertNonEmpty tests
 // ---------------------------------------------------------------------------
 
-test("assertNonEmpty accepts non-empty string", () => {
+test("assertNonEmpty accepts non-empty string [index]", () => {
   const result = assertNonEmpty("hello world", "ERR_EMPTY");
   assert.equal(result, "hello world");
 });
 
-test("assertNonEmpty trims whitespace", () => {
+test("assertNonEmpty trims whitespace [index]", () => {
   const result = assertNonEmpty("  trimmed  ", "ERR_EMPTY");
   assert.equal(result, "trimmed");
 });
 
-test("assertNonEmpty rejects empty string", () => {
+test("assertNonEmpty rejects empty string [index]", () => {
   assert.throws(
     () => assertNonEmpty("", "ERR_EMPTY"),
     (err: any) => err.code === "ERR_EMPTY" && err.category === "tenant"
   );
 });
 
-test("assertNonEmpty rejects whitespace-only string", () => {
+test("assertNonEmpty rejects whitespace-only string [index]", () => {
   assert.throws(
     () => assertNonEmpty("   ", "ERR_WHITESPACE"),
     (err: any) => err.code === "ERR_WHITESPACE" && err.category === "tenant"
   );
 });
 
-test("assertNonEmpty rejects tab-only string", () => {
+test("assertNonEmpty rejects tab-only string [index]", () => {
   assert.throws(
     () => assertNonEmpty("\t", "ERR_TAB"),
     (err: any) => err.code === "ERR_TAB" && err.category === "tenant"
   );
 });
 
-test("assertNonEmpty rejects newline-only string", () => {
+test("assertNonEmpty rejects newline-only string [index]", () => {
   assert.throws(
     () => assertNonEmpty("\n", "ERR_NEWLINE"),
     (err: any) => err.code === "ERR_NEWLINE" && err.category === "tenant"
@@ -144,23 +144,23 @@ test("assertNonEmpty rejects newline-only string", () => {
 // toTenantStatus tests
 // ---------------------------------------------------------------------------
 
-test("toTenantStatus maps provisioning to active", () => {
+test("toTenantStatus maps provisioning to active [index]", () => {
   assert.equal(toTenantStatus("provisioning"), "active");
 });
 
-test("toTenantStatus maps active to active", () => {
+test("toTenantStatus maps active to active [index]", () => {
   assert.equal(toTenantStatus("active"), "active");
 });
 
-test("toTenantStatus maps deactivated to active", () => {
+test("toTenantStatus maps deactivated to active [index]", () => {
   assert.equal(toTenantStatus("deactivated"), "active");
 });
 
-test("toTenantStatus maps suspended to suspended", () => {
+test("toTenantStatus maps suspended to suspended [index]", () => {
   assert.equal(toTenantStatus("suspended"), "suspended");
 });
 
-test("toTenantStatus maps decommissioned to terminated", () => {
+test("toTenantStatus maps decommissioned to terminated [index]", () => {
   assert.equal(toTenantStatus("decommissioned"), "terminated");
 });
 
@@ -168,19 +168,19 @@ test("toTenantStatus maps decommissioned to terminated", () => {
 // fromTenantStatus tests
 // ---------------------------------------------------------------------------
 
-test("fromTenantStatus maps active to active", () => {
+test("fromTenantStatus maps active to active [index]", () => {
   assert.equal(fromTenantStatus("active"), "active");
 });
 
-test("fromTenantStatus maps suspended to suspended", () => {
+test("fromTenantStatus maps suspended to suspended [index]", () => {
   assert.equal(fromTenantStatus("suspended"), "suspended");
 });
 
-test("fromTenantStatus maps terminated to decommissioned", () => {
+test("fromTenantStatus maps terminated to decommissioned [index]", () => {
   assert.equal(fromTenantStatus("terminated"), "decommissioned");
 });
 
-test("fromTenantStatus maps undefined to active (default)", () => {
+test("fromTenantStatus maps undefined to active (default) [index]", () => {
   assert.equal(fromTenantStatus(undefined), "active");
 });
 
@@ -188,7 +188,7 @@ test("fromTenantStatus maps undefined to active (default)", () => {
 // VALID_LIFECYCLE_TRANSITIONS tests
 // ---------------------------------------------------------------------------
 
-test("VALID_LIFECYCLE_TRANSITIONS defines provisioning transitions", () => {
+test("VALID_LIFECYCLE_TRANSITIONS defines provisioning transitions [index]", () => {
   const transitions = VALID_LIFECYCLE_TRANSITIONS["provisioning"];
   assert.ok(Array.isArray(transitions));
   assert.ok(transitions.includes("active"));
@@ -196,7 +196,7 @@ test("VALID_LIFECYCLE_TRANSITIONS defines provisioning transitions", () => {
   assert.equal(transitions.length, 2);
 });
 
-test("VALID_LIFECYCLE_TRANSITIONS defines active transitions", () => {
+test("VALID_LIFECYCLE_TRANSITIONS defines active transitions [index]", () => {
   const transitions = VALID_LIFECYCLE_TRANSITIONS["active"];
   assert.ok(Array.isArray(transitions));
   assert.ok(transitions.includes("suspended"));
@@ -205,7 +205,7 @@ test("VALID_LIFECYCLE_TRANSITIONS defines active transitions", () => {
   assert.equal(transitions.length, 3);
 });
 
-test("VALID_LIFECYCLE_TRANSITIONS defines suspended transitions", () => {
+test("VALID_LIFECYCLE_TRANSITIONS defines suspended transitions [index]", () => {
   const transitions = VALID_LIFECYCLE_TRANSITIONS["suspended"];
   assert.ok(Array.isArray(transitions));
   assert.ok(transitions.includes("active"));
@@ -214,7 +214,7 @@ test("VALID_LIFECYCLE_TRANSITIONS defines suspended transitions", () => {
   assert.equal(transitions.length, 3);
 });
 
-test("VALID_LIFECYCLE_TRANSITIONS defines deactivated transitions", () => {
+test("VALID_LIFECYCLE_TRANSITIONS defines deactivated transitions [index]", () => {
   const transitions = VALID_LIFECYCLE_TRANSITIONS["deactivated"];
   assert.ok(Array.isArray(transitions));
   assert.ok(transitions.includes("active"));
@@ -222,13 +222,13 @@ test("VALID_LIFECYCLE_TRANSITIONS defines deactivated transitions", () => {
   assert.equal(transitions.length, 2);
 });
 
-test("VALID_LIFECYCLE_TRANSITIONS defines decommissioned transitions (none)", () => {
+test("VALID_LIFECYCLE_TRANSITIONS defines decommissioned transitions (none) [index]", () => {
   const transitions = VALID_LIFECYCLE_TRANSITIONS["decommissioned"];
   assert.ok(Array.isArray(transitions));
   assert.equal(transitions.length, 0);
 });
 
-test("VALID_LIFECYCLE_TRANSITIONS covers all lifecycle stages as keys", () => {
+test("VALID_LIFECYCLE_TRANSITIONS covers all lifecycle stages as keys [index]", () => {
   const stages: TenantLifecycleStage[] = [
     "provisioning",
     "active",
@@ -248,7 +248,7 @@ test("VALID_LIFECYCLE_TRANSITIONS covers all lifecycle stages as keys", () => {
 // Interface/type shape verification tests
 // ---------------------------------------------------------------------------
 
-test("CreateWorkspaceInput interface structure", () => {
+test("CreateWorkspaceInput interface structure [index]", () => {
   const input: CreateWorkspaceInput = {
     ownerId: "owner_001",
     displayName: "Test Workspace",
@@ -260,7 +260,7 @@ test("CreateWorkspaceInput interface structure", () => {
   assert.equal(input.displayName, "Test Workspace");
 });
 
-test("AddWorkspaceMembershipInput interface structure", () => {
+test("AddWorkspaceMembershipInput interface structure [index]", () => {
   const input: AddWorkspaceMembershipInput = {
     workspaceId: "ws_001",
     userId: "user_001",
@@ -272,7 +272,7 @@ test("AddWorkspaceMembershipInput interface structure", () => {
   assert.equal(input.role, "admin");
 });
 
-test("CreateOrganizationInput interface structure", () => {
+test("CreateOrganizationInput interface structure [index]", () => {
   const input: CreateOrganizationInput = {
     displayName: "Test Org",
     billingAccountId: "bill_001",
@@ -283,7 +283,7 @@ test("CreateOrganizationInput interface structure", () => {
   assert.equal(input.billingAccountId, "bill_001");
 });
 
-test("AddOrganizationMembershipInput interface structure", () => {
+test("AddOrganizationMembershipInput interface structure [index]", () => {
   const input: AddOrganizationMembershipInput = {
     organizationId: "org_001",
     userId: "user_001",
@@ -294,7 +294,7 @@ test("AddOrganizationMembershipInput interface structure", () => {
   assert.equal(input.userId, "user_001");
 });
 
-test("CreateTenantInput interface structure with encryption config", () => {
+test("CreateTenantInput interface structure with encryption config [index]", () => {
   const input: CreateTenantInput = {
     tenantId: "tenant_001",
     organizationId: "org_001",
@@ -316,7 +316,7 @@ test("CreateTenantInput interface structure with encryption config", () => {
   assert.equal(input.encryptionConfig?.enforceHardwareSecurityModule, true);
 });
 
-test("CreateDeploymentBindingInput interface structure", () => {
+test("CreateDeploymentBindingInput interface structure [index]", () => {
   const input: CreateDeploymentBindingInput = {
     bindingId: "binding_001",
     tenantId: "tenant_001",
@@ -330,7 +330,7 @@ test("CreateDeploymentBindingInput interface structure", () => {
   assert.equal(input.region, "us-east-1");
 });
 
-test("CreateDataNamespaceInput interface structure", () => {
+test("CreateDataNamespaceInput interface structure [index]", () => {
   const input: CreateDataNamespaceInput = {
     namespaceId: "ns_001",
     plane: "control-plane",
@@ -345,7 +345,7 @@ test("CreateDataNamespaceInput interface structure", () => {
   assert.equal(input.retentionPolicy, "90-days");
 });
 
-test("TenantLifecycleInput interface structure", () => {
+test("TenantLifecycleInput interface structure [index]", () => {
   const input: TenantLifecycleInput = {
     tenantId: "tenant_001",
     actor: "admin_001",
@@ -355,7 +355,7 @@ test("TenantLifecycleInput interface structure", () => {
   assert.equal(input.actor, "admin_001");
 });
 
-test("DedicatedPoolIsolationRecord interface structure", () => {
+test("DedicatedPoolIsolationRecord interface structure [index]", () => {
   const record: DedicatedPoolIsolationRecord = {
     tenantId: "tenant_001",
     organizationId: "org_001",
@@ -369,7 +369,7 @@ test("DedicatedPoolIsolationRecord interface structure", () => {
   assert.equal(record.executionIsolation, "tenant_scoped_worker_pool");
 });
 
-test("TenantLifecycleStage type accepts all valid values", () => {
+test("TenantLifecycleStage type accepts all valid values [index]", () => {
   const stages: TenantLifecycleStage[] = [
     "provisioning",
     "active",
@@ -383,7 +383,7 @@ test("TenantLifecycleStage type accepts all valid values", () => {
   }
 });
 
-test("TenantTopologySummary interface structure", () => {
+test("TenantTopologySummary interface structure [index]", () => {
   const summary: TenantTopologySummary = {
     generatedAt: "2026-01-01T00:00:00.000Z",
     counts: {

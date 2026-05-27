@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { ValidationError, WorkflowStateError } from "../../contracts/errors.js";
 import { newId } from "../../contracts/types/ids.js";
+import type { EvidenceRecord } from "../../contracts/types/platform-contracts.js";
 import {
   type BudgetLedger,
   type BudgetReservation,
@@ -62,6 +63,7 @@ export interface RuntimeRepository {
   ): RuntimeTransitionResult<TAggregate>;
   appendNodeAttemptReceipt(receipt: NodeAttemptReceipt): void;
   appendRunVersionLock(lock: RunVersionLock): void;
+  appendEvidenceRecord(record: EvidenceRecord): void;
   snapshot(): RuntimeTruthRepositorySnapshot;
   /**
    * R24-34: Replay events to rebuild aggregate state from event store.
@@ -405,6 +407,12 @@ export class RuntimeTruthRepository implements RuntimeRepository {
 
   public listAuditRefs(): readonly string[] {
     return [...this.state.auditRefs];
+  }
+
+  public appendEvidenceRecord(record: EvidenceRecord): void {
+    this.transaction(() => {
+      this.appendAuditRef(record.recordId);
+    });
   }
 
   /**

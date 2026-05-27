@@ -38,7 +38,7 @@ function cleanupDb(dbPath: string): void {
 // Task Lifecycle State Transition Tests
 // =============================================================================
 
-test("runMultiStepOrchestration transitions task from queued to in_progress", async () => {
+test("runMultiStepOrchestration transitions task from queued to in_progress [multi-step-orchestration-comprehensive]", async () => {
   const dbPath = createTestDbPath("task-lifecycle");
   cleanupDb(dbPath);
 
@@ -63,7 +63,7 @@ test("runMultiStepOrchestration transitions task from queued to in_progress", as
   }
 });
 
-test("runMultiStepOrchestration sets task rootId equal to taskId for root tasks", async () => {
+test("runMultiStepOrchestration sets task rootId equal to taskId for root tasks [multi-step-orchestration-comprehensive]", async () => {
   const dbPath = createTestDbPath("root-id");
   cleanupDb(dbPath);
 
@@ -84,7 +84,7 @@ test("runMultiStepOrchestration sets task rootId equal to taskId for root tasks"
   }
 });
 
-test("runMultiStepOrchestration sets divisionId on task from workflow", async () => {
+test("runMultiStepOrchestration sets divisionId on task from workflow [multi-step-orchestration-comprehensive]", async () => {
   const dbPath = createTestDbPath("task-division");
   cleanupDb(dbPath);
 
@@ -106,7 +106,7 @@ test("runMultiStepOrchestration sets divisionId on task from workflow", async ()
   }
 });
 
-test("runMultiStepOrchestration task status updatedAt changes on transition", async () => {
+test("runMultiStepOrchestration task status updatedAt changes on transition [multi-step-orchestration-comprehensive]", async () => {
   const dbPath = createTestDbPath("task-updated");
   cleanupDb(dbPath);
 
@@ -136,7 +136,7 @@ test("runMultiStepOrchestration task status updatedAt changes on transition", as
 // Workflow State Tests
 // =============================================================================
 
-test("runMultiStepOrchestration workflow state has correct taskId", async () => {
+test("runMultiStepOrchestration workflow state has correct taskId [multi-step-orchestration-comprehensive]", async () => {
   const dbPath = createTestDbPath("workflow-taskid");
   cleanupDb(dbPath);
 
@@ -156,7 +156,7 @@ test("runMultiStepOrchestration workflow state has correct taskId", async () => 
   }
 });
 
-test("runMultiStepOrchestration workflow status transitions from running", async () => {
+test("runMultiStepOrchestration workflow status transitions from running [multi-step-orchestration-comprehensive]", async () => {
   const dbPath = createTestDbPath("workflow-status");
   cleanupDb(dbPath);
 
@@ -180,7 +180,7 @@ test("runMultiStepOrchestration workflow status transitions from running", async
   }
 });
 
-test("runMultiStepOrchestration workflow currentStepIndex tracks progress", async () => {
+test("runMultiStepOrchestration workflow currentStepIndex tracks progress [multi-step-orchestration-comprehensive]", async () => {
   const dbPath = createTestDbPath("workflow-step-index");
   cleanupDb(dbPath);
 
@@ -205,7 +205,7 @@ test("runMultiStepOrchestration workflow currentStepIndex tracks progress", asyn
 // Session State Tests
 // =============================================================================
 
-test("runMultiStepOrchestration session has correct taskId reference", async () => {
+test("runMultiStepOrchestration session has correct taskId reference [multi-step-orchestration-comprehensive]", async () => {
   const dbPath = createTestDbPath("session-taskid");
   cleanupDb(dbPath);
 
@@ -225,7 +225,7 @@ test("runMultiStepOrchestration session has correct taskId reference", async () 
   }
 });
 
-test("runMultiStepOrchestration session channel is set to cli", async () => {
+test("runMultiStepOrchestration session channel is set to cli [multi-step-orchestration-comprehensive]", async () => {
   const dbPath = createTestDbPath("session-channel");
   cleanupDb(dbPath);
 
@@ -245,7 +245,7 @@ test("runMultiStepOrchestration session channel is set to cli", async () => {
   }
 });
 
-test("runMultiStepOrchestration session status transitions from open", async () => {
+test("runMultiStepOrchestration session status transitions from open [multi-step-orchestration-comprehensive]", async () => {
   const dbPath = createTestDbPath("session-status");
   cleanupDb(dbPath);
 
@@ -268,7 +268,7 @@ test("runMultiStepOrchestration session status transitions from open", async () 
   }
 });
 
-test("runMultiStepOrchestration session has timestamp fields", async () => {
+test("runMultiStepOrchestration session has timestamp fields [multi-step-orchestration-comprehensive]", async () => {
   const dbPath = createTestDbPath("session-timestamps");
   cleanupDb(dbPath);
 
@@ -293,7 +293,7 @@ test("runMultiStepOrchestration session has timestamp fields", async () => {
 // Message and Event Tests
 // =============================================================================
 
-test("runMultiStepOrchestration stores inbound message", async () => {
+test("runMultiStepOrchestration stores inbound message [multi-step-orchestration-comprehensive]", async () => {
   const dbPath = createTestDbPath("inbound-message");
   cleanupDb(dbPath);
 
@@ -320,7 +320,7 @@ test("runMultiStepOrchestration stores inbound message", async () => {
 // Task Input/Output Tests
 // =============================================================================
 
-test("runMultiStepOrchestration stores normalized input", async () => {
+test("runMultiStepOrchestration stores normalized input [multi-step-orchestration-comprehensive]", async () => {
   const dbPath = createTestDbPath("normalized-input");
   cleanupDb(dbPath);
 
@@ -343,7 +343,7 @@ test("runMultiStepOrchestration stores normalized input", async () => {
   }
 });
 
-test("runMultiStepOrchestration initial estimatedCostUsd is set", async () => {
+test("runMultiStepOrchestration initial estimatedCostUsd is set [multi-step-orchestration-comprehensive]", async () => {
   const dbPath = createTestDbPath("estimated-cost");
   cleanupDb(dbPath);
 
@@ -363,7 +363,7 @@ test("runMultiStepOrchestration initial estimatedCostUsd is set", async () => {
   }
 });
 
-test("runMultiStepOrchestration actualCostUsd starts at 0", async () => {
+test("runMultiStepOrchestration actualCostUsd starts at 0 [multi-step-orchestration-comprehensive]", async () => {
   const dbPath = createTestDbPath("actual-cost");
   cleanupDb(dbPath);
 
@@ -382,7 +382,7 @@ test("runMultiStepOrchestration actualCostUsd starts at 0", async () => {
   }
 });
 
-test("runMultiStepOrchestration errorCode is null on success", async () => {
+test("runMultiStepOrchestration errorCode is null on success [multi-step-orchestration-comprehensive]", async () => {
   const dbPath = createTestDbPath("error-code-null");
   cleanupDb(dbPath);
 
@@ -408,7 +408,7 @@ test("runMultiStepOrchestration errorCode is null on success", async () => {
 // Priority Tests
 // =============================================================================
 
-test("runMultiStepOrchestration default priority is normal", async () => {
+test("runMultiStepOrchestration default priority is normal [multi-step-orchestration-comprehensive]", async () => {
   const dbPath = createTestDbPath("default-priority");
   cleanupDb(dbPath);
 
@@ -431,7 +431,7 @@ test("runMultiStepOrchestration default priority is normal", async () => {
 // Workflow Outputs Tests
 // =============================================================================
 
-test("runMultiStepOrchestration workflow outputsJson is valid JSON", async () => {
+test("runMultiStepOrchestration workflow outputsJson is valid JSON [multi-step-orchestration-comprehensive]", async () => {
   const dbPath = createTestDbPath("outputs-json");
   cleanupDb(dbPath);
 
@@ -453,7 +453,7 @@ test("runMultiStepOrchestration workflow outputsJson is valid JSON", async () =>
   }
 });
 
-test("runMultiStepOrchestration workflow retryCount starts at 0", async () => {
+test("runMultiStepOrchestration workflow retryCount starts at 0 [multi-step-orchestration-comprehensive]", async () => {
   const dbPath = createTestDbPath("retry-count");
   cleanupDb(dbPath);
 
@@ -473,7 +473,7 @@ test("runMultiStepOrchestration workflow retryCount starts at 0", async () => {
   }
 });
 
-test("runMultiStepOrchestration workflow lastErrorCode is null initially", async () => {
+test("runMultiStepOrchestration workflow lastErrorCode is null initially [multi-step-orchestration-comprehensive]", async () => {
   const dbPath = createTestDbPath("last-error");
   cleanupDb(dbPath);
 
@@ -500,7 +500,7 @@ test("runMultiStepOrchestration workflow lastErrorCode is null initially", async
 // Workflow StartedAt and CompletedAt Tests
 // =============================================================================
 
-test("runMultiStepOrchestration workflow startedAt is set", async () => {
+test("runMultiStepOrchestration workflow startedAt is set [multi-step-orchestration-comprehensive]", async () => {
   const dbPath = createTestDbPath("started-at");
   cleanupDb(dbPath);
 
@@ -520,7 +520,7 @@ test("runMultiStepOrchestration workflow startedAt is set", async () => {
   }
 });
 
-test("runMultiStepOrchestration completedAt is null while running", async () => {
+test("runMultiStepOrchestration completedAt is null while running [multi-step-orchestration-comprehensive]", async () => {
   const dbPath = createTestDbPath("completed-at");
   cleanupDb(dbPath);
 
@@ -544,7 +544,7 @@ test("runMultiStepOrchestration completedAt is null while running", async () => 
 // Routing Verification Tests
 // =============================================================================
 
-test("runMultiStepOrchestration routing workflowId matches plannedWorkflow", async () => {
+test("runMultiStepOrchestration routing workflowId matches plannedWorkflow [multi-step-orchestration-comprehensive]", async () => {
   const dbPath = createTestDbPath("routing-workflowid");
   cleanupDb(dbPath);
 
@@ -563,7 +563,7 @@ test("runMultiStepOrchestration routing workflowId matches plannedWorkflow", asy
   }
 });
 
-test("runMultiStepOrchestration routing divisionId matches plannedWorkflow", async () => {
+test("runMultiStepOrchestration routing divisionId matches plannedWorkflow [multi-step-orchestration-comprehensive]", async () => {
   const dbPath = createTestDbPath("routing-divisionid");
   cleanupDb(dbPath);
 
@@ -582,7 +582,7 @@ test("runMultiStepOrchestration routing divisionId matches plannedWorkflow", asy
   }
 });
 
-test("runMultiStepOrchestration routing classification has valid intent", async () => {
+test("runMultiStepOrchestration routing classification has valid intent [multi-step-orchestration-comprehensive]", async () => {
   const dbPath = createTestDbPath("routing-intent");
   cleanupDb(dbPath);
 
@@ -601,7 +601,7 @@ test("runMultiStepOrchestration routing classification has valid intent", async 
   }
 });
 
-test("runMultiStepOrchestration routing classification confidence is between 0 and 1", async () => {
+test("runMultiStepOrchestration routing classification confidence is between 0 and 1 [multi-step-orchestration-comprehensive]", async () => {
   const dbPath = createTestDbPath("routing-confidence");
   cleanupDb(dbPath);
 
@@ -621,7 +621,7 @@ test("runMultiStepOrchestration routing classification confidence is between 0 a
   }
 });
 
-test("runMultiStepOrchestration routing classification has valid continuation", async () => {
+test("runMultiStepOrchestration routing classification has valid continuation [multi-step-orchestration-comprehensive]", async () => {
   const dbPath = createTestDbPath("routing-continuation");
   cleanupDb(dbPath);
 
@@ -641,7 +641,7 @@ test("runMultiStepOrchestration routing classification has valid continuation", 
   }
 });
 
-test("runMultiStepOrchestration routing matchedRules is array", async () => {
+test("runMultiStepOrchestration routing matchedRules is array [multi-step-orchestration-comprehensive]", async () => {
   const dbPath = createTestDbPath("routing-rules");
   cleanupDb(dbPath);
 
@@ -664,7 +664,7 @@ test("runMultiStepOrchestration routing matchedRules is array", async () => {
 // Plan Reason Tests
 // =============================================================================
 
-test("runMultiStepOrchestration planReason is non-empty string", async () => {
+test("runMultiStepOrchestration planReason is non-empty string [multi-step-orchestration-comprehensive]", async () => {
   const dbPath = createTestDbPath("plan-reason");
   cleanupDb(dbPath);
 
@@ -689,7 +689,7 @@ test("runMultiStepOrchestration planReason is non-empty string", async () => {
 // Stream Bridge Tests
 // =============================================================================
 
-test("runMultiStepOrchestration streamFrames is replayable", async () => {
+test("runMultiStepOrchestration streamFrames is replayable [multi-step-orchestration-comprehensive]", async () => {
   const dbPath = createTestDbPath("stream-frames-replay");
   cleanupDb(dbPath);
 
@@ -712,7 +712,7 @@ test("runMultiStepOrchestration streamFrames is replayable", async () => {
 // Admission Decision Edge Cases
 // =============================================================================
 
-test("runMultiStepOrchestration with null backpressure snapshot", async () => {
+test("runMultiStepOrchestration with null backpressure snapshot [multi-step-orchestration-comprehensive]", async () => {
   const dbPath = createTestDbPath("null-backpressure");
   cleanupDb(dbPath);
 
@@ -732,7 +732,7 @@ test("runMultiStepOrchestration with null backpressure snapshot", async () => {
   }
 });
 
-test("runMultiStepOrchestration handles high queue backlog", async () => {
+test("runMultiStepOrchestration handles high queue backlog [multi-step-orchestration-comprehensive]", async () => {
   const dbPath = createTestDbPath("high-backlog");
   cleanupDb(dbPath);
 
@@ -769,7 +769,7 @@ test("runMultiStepOrchestration handles high queue backlog", async () => {
 // Concurrency Input Variations
 // =============================================================================
 
-test("runMultiStepOrchestration handles request with newlines", async () => {
+test("runMultiStepOrchestration handles request with newlines [multi-step-orchestration-comprehensive]", async () => {
   const dbPath = createTestDbPath("newlines");
   cleanupDb(dbPath);
 
@@ -788,7 +788,7 @@ test("runMultiStepOrchestration handles request with newlines", async () => {
   }
 });
 
-test("runMultiStepOrchestration handles request with tabs", async () => {
+test("runMultiStepOrchestration handles request with tabs [multi-step-orchestration-comprehensive]", async () => {
   const dbPath = createTestDbPath("tabs");
   cleanupDb(dbPath);
 
@@ -807,7 +807,7 @@ test("runMultiStepOrchestration handles request with tabs", async () => {
   }
 });
 
-test("runMultiStepOrchestration handles very long title", async () => {
+test("runMultiStepOrchestration handles very long title [multi-step-orchestration-comprehensive]", async () => {
   const dbPath = createTestDbPath("long-title");
   cleanupDb(dbPath);
 
@@ -826,7 +826,7 @@ test("runMultiStepOrchestration handles very long title", async () => {
   }
 });
 
-test("runMultiStepOrchestration handles title with special characters", async () => {
+test("runMultiStepOrchestration handles title with special characters [multi-step-orchestration-comprehensive]", async () => {
   const dbPath = createTestDbPath("title-special");
   cleanupDb(dbPath);
 
@@ -849,7 +849,7 @@ test("runMultiStepOrchestration handles title with special characters", async ()
 // Database Path Edge Cases
 // =============================================================================
 
-test("runMultiStepOrchestration handles path with spaces", async () => {
+test("runMultiStepOrchestration handles path with spaces [multi-step-orchestration-comprehensive]", async () => {
   const dbPath = createTestDbPath("path with spaces");
   cleanupDb(dbPath);
 
@@ -868,7 +868,7 @@ test("runMultiStepOrchestration handles path with spaces", async () => {
   }
 });
 
-test("runMultiStepOrchestration handles path with unicode characters", async () => {
+test("runMultiStepOrchestration handles path with unicode characters [multi-step-orchestration-comprehensive]", async () => {
   const dbPath = createTestDbPath("路径测试");
   cleanupDb(dbPath);
 

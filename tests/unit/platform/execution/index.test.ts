@@ -9,7 +9,7 @@ import {
   resetToolRegistry,
 } from "../../../../src/platform/five-plane-execution/index.js";
 
-test("execution root barrel exposes canonical execution plane services", () => {
+test("execution root barrel exposes canonical execution plane services [index]", () => {
   assert.equal(typeof executeToolCall, "function");
   assert.equal(typeof resetToolRegistry, "function");
   assert.equal(typeof ExecutionLeaseService, "function");

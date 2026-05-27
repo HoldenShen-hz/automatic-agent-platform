@@ -13,42 +13,42 @@ import type {
   ToolExecutionMetadata,
 } from "../../../../../src/platform/five-plane-execution/tool-executor/tool-metadata.js";
 
-test("ToolSideEffectScope accepts all valid values", () => {
+test("ToolSideEffectScope accepts all valid values [tool-metadata-types]", () => {
   const scopes: ToolSideEffectScope[] = ["none", "local_file", "local_process", "remote_api", "billing", "org_state"];
   assert.equal(scopes.length, 6);
 });
 
-test("ToolRecoveryStrategy accepts all valid values", () => {
+test("ToolRecoveryStrategy accepts all valid values [tool-metadata-types]", () => {
   const strategies: ToolRecoveryStrategy[] = ["retry_safe", "retry_with_check", "skip_if_verified", "manual_resume_required"];
   assert.equal(strategies.length, 4);
 });
 
-test("ToolNeedsFileLock accepts all valid values", () => {
+test("ToolNeedsFileLock accepts all valid values [tool-metadata-types]", () => {
   const locks: ToolNeedsFileLock[] = ["none", "read", "write", "dynamic"];
   assert.equal(locks.length, 4);
 });
 
-test("ToolPathScopeMode accepts all valid values", () => {
+test("ToolPathScopeMode accepts all valid values [tool-metadata-types]", () => {
   const modes: ToolPathScopeMode[] = ["none", "declared", "dynamic"];
   assert.equal(modes.length, 3);
 });
 
-test("ToolOutputKind accepts all valid values", () => {
+test("ToolOutputKind accepts all valid values [tool-metadata-types]", () => {
   const kinds: ToolOutputKind[] = ["text", "structured_json", "artifact_ref", "mixed"];
   assert.equal(kinds.length, 4);
 });
 
-test("ToolApprovalMode accepts all valid values", () => {
+test("ToolApprovalMode accepts all valid values [tool-metadata-types]", () => {
   const modes: ToolApprovalMode[] = ["never", "policy_driven", "always"];
   assert.equal(modes.length, 3);
 });
 
-test("ToolRiskLevel accepts all valid values", () => {
+test("ToolRiskLevel accepts all valid values [tool-metadata-types]", () => {
   const levels: ToolRiskLevel[] = ["low", "medium", "high", "critical"];
   assert.equal(levels.length, 4);
 });
 
-test("ToolRetryPolicy structure is correct", () => {
+test("ToolRetryPolicy structure is correct [tool-metadata-types]", () => {
   const policy: ToolRetryPolicy = {
     maxAttempts: 3,
     initialDelayMs: 1000,
@@ -60,13 +60,13 @@ test("ToolRetryPolicy structure is correct", () => {
   assert.equal(policy.backoffMultiplier, 2.0);
 });
 
-test("ToolRetryPolicy allows minimal definition", () => {
+test("ToolRetryPolicy allows minimal definition [tool-metadata-types]", () => {
   const policy: ToolRetryPolicy = {};
   assert.equal(policy.maxAttempts, undefined);
   assert.equal(policy.initialDelayMs, undefined);
 });
 
-test("ToolRetryPolicy allows partial fields", () => {
+test("ToolRetryPolicy allows partial fields [tool-metadata-types]", () => {
   const policy: ToolRetryPolicy = {
     maxAttempts: 5,
   };
@@ -74,7 +74,7 @@ test("ToolRetryPolicy allows partial fields", () => {
   assert.equal(policy.nonRetryableCodes, undefined);
 });
 
-test("ToolExecutionMetadata structure is correct", () => {
+test("ToolExecutionMetadata structure is correct [tool-metadata-types]", () => {
   const metadata: ToolExecutionMetadata = {
     toolName: "command_exec",
     readOnly: false,
@@ -102,7 +102,7 @@ test("ToolExecutionMetadata structure is correct", () => {
   assert.equal(metadata.defaultTimeoutMs, 60000);
 });
 
-test("ToolExecutionMetadata allows minimal definition", () => {
+test("ToolExecutionMetadata allows minimal definition [tool-metadata-types]", () => {
   const metadata: ToolExecutionMetadata = {
     toolName: "minimal_tool",
     readOnly: true,
@@ -129,7 +129,7 @@ test("ToolExecutionMetadata allows minimal definition", () => {
   assert.equal(metadata.maxOutputBytes, undefined);
 });
 
-test("ToolExecutionMetadata allows optional fields", () => {
+test("ToolExecutionMetadata allows optional fields [tool-metadata-types]", () => {
   const metadata: ToolExecutionMetadata = {
     toolName: "optional_tool",
     readOnly: false,
@@ -166,17 +166,17 @@ test("ToolExecutionMetadata allows optional fields", () => {
   assert.equal(metadata.interruptBehavior, "graceful");
 });
 
-test("ToolExecutionMetadata cleanupGuarantee accepts all valid values", () => {
+test("ToolExecutionMetadata cleanupGuarantee accepts all valid values [tool-metadata-types]", () => {
   const guarantees: ToolExecutionMetadata["cleanupGuarantee"][] = ["none", "best_effort", "required"];
   assert.equal(guarantees.length, 3);
 });
 
-test("ToolExecutionMetadata providerDependency accepts all valid values", () => {
+test("ToolExecutionMetadata providerDependency accepts all valid values [tool-metadata-types]", () => {
   const deps: ToolExecutionMetadata["providerDependency"][] = ["none", "optional", "required"];
   assert.equal(deps.length, 3);
 });
 
-test("ToolExecutionMetadata interruptBehavior accepts all valid values", () => {
+test("ToolExecutionMetadata interruptBehavior accepts all valid values [tool-metadata-types]", () => {
   const behaviors: ToolExecutionMetadata["interruptBehavior"][] = ["graceful", "forceful", "deferred"];
   assert.equal(behaviors.length, 3);
 });

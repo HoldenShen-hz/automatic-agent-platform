@@ -11,7 +11,7 @@ import {
   type PromptPartitionInput,
 } from "../../../../../src/platform/five-plane-execution/execution-engine/prompt-partition-cache.js";
 
-test("partitionPromptForCache separates static and dynamic messages", () => {
+test("partitionPromptForCache separates static and dynamic messages [prompt-partition-cache-comprehensive]", () => {
   const input: PromptPartitionInput = {
     model: "gpt-4",
     messages: [
@@ -28,7 +28,7 @@ test("partitionPromptForCache separates static and dynamic messages", () => {
   assert.equal(result.model, "gpt-4");
 });
 
-test("partitionPromptForCache handles messages with parts", () => {
+test("partitionPromptForCache handles messages with parts [prompt-partition-cache-comprehensive]", () => {
   const input: PromptPartitionInput = {
     model: "gpt-4",
     messages: [
@@ -43,7 +43,7 @@ test("partitionPromptForCache handles messages with parts", () => {
   assert.equal(result.dynamicMessageCount, 1);
 });
 
-test("partitionPromptForCache computes stable digests", () => {
+test("partitionPromptForCache computes stable digests [prompt-partition-cache-comprehensive]", () => {
   const input: PromptPartitionInput = {
     model: "gpt-4",
     messages: [
@@ -60,7 +60,7 @@ test("partitionPromptForCache computes stable digests", () => {
   assert.ok(result.dynamicCacheKey.length > 0);
 });
 
-test("partitionPromptForCache handles null model", () => {
+test("partitionPromptForCache handles null model [prompt-partition-cache-comprehensive]", () => {
   const input: PromptPartitionInput = {
     model: null,
     messages: [
@@ -73,7 +73,7 @@ test("partitionPromptForCache handles null model", () => {
   assert.equal(result.model, null);
 });
 
-test("partitionPromptForCache handles empty messages array", () => {
+test("partitionPromptForCache handles empty messages array [prompt-partition-cache-comprehensive]", () => {
   const input: PromptPartitionInput = {
     model: "gpt-4",
     messages: [],
@@ -87,7 +87,7 @@ test("partitionPromptForCache handles empty messages array", () => {
   assert.ok(result.dynamicCacheKey.length > 0);
 });
 
-test("partitionPromptForCache handles KV cache options", () => {
+test("partitionPromptForCache handles KV cache options [prompt-partition-cache-comprehensive]", () => {
   const input: PromptPartitionInput = {
     model: "gpt-4",
     kvCache: {
@@ -110,7 +110,7 @@ test("partitionPromptForCache handles KV cache options", () => {
   assert.ok(result.fixedPrefixCacheKey.length > 0);
 });
 
-test("partitionPromptForCache respects cacheKeyStrategy exact_match", () => {
+test("partitionPromptForCache respects cacheKeyStrategy exact_match [prompt-partition-cache-comprehensive]", () => {
   const input1: PromptPartitionInput = {
     model: "gpt-4",
     kvCache: {
@@ -140,7 +140,7 @@ test("partitionPromptForCache respects cacheKeyStrategy exact_match", () => {
   assert.notEqual(result1.fixedPrefixCacheKey, result2.fixedPrefixCacheKey);
 });
 
-test("partitionPromptForCache computes byte counts", () => {
+test("partitionPromptForCache computes byte counts [prompt-partition-cache-comprehensive]", () => {
   const input: PromptPartitionInput = {
     model: "gpt-4",
     messages: [
@@ -156,7 +156,7 @@ test("partitionPromptForCache computes byte counts", () => {
   assert.ok(result.variableSuffixBytes >= 0);
 });
 
-test("partitionPromptForCache handles profileId", () => {
+test("partitionPromptForCache handles profileId [prompt-partition-cache-comprehensive]", () => {
   const input: PromptPartitionInput = {
     model: "gpt-4",
     profileId: "user-profile-123",
@@ -170,7 +170,7 @@ test("partitionPromptForCache handles profileId", () => {
   assert.equal(result.profileId, "user-profile-123");
 });
 
-test("partitionPromptForCache handles domainId", () => {
+test("partitionPromptForCache handles domainId [prompt-partition-cache-comprehensive]", () => {
   const input: PromptPartitionInput = {
     model: "gpt-4",
     domainId: "domain-abc",
@@ -184,7 +184,7 @@ test("partitionPromptForCache handles domainId", () => {
   assert.equal(result.domainId, "domain-abc");
 });
 
-test("partitionPromptForCache computes domain block cache key when domainId provided", () => {
+test("partitionPromptForCache computes domain block cache key when domainId provided [prompt-partition-cache-comprehensive]", () => {
   const input: PromptPartitionInput = {
     model: "gpt-4",
     domainId: "my-domain",
@@ -202,7 +202,7 @@ test("partitionPromptForCache computes domain block cache key when domainId prov
   assert.equal(result.domainBlockMessageCount, 1); // One message after fixed prefix
 });
 
-test("partitionPromptForCache domainBlockCacheKey is null when no domain messages", () => {
+test("partitionPromptForCache domainBlockCacheKey is null when no domain messages [prompt-partition-cache-comprehensive]", () => {
   const input: PromptPartitionInput = {
     model: "gpt-4",
     domainId: "my-domain",
@@ -220,7 +220,7 @@ test("partitionPromptForCache domainBlockCacheKey is null when no domain message
   assert.equal(result.domainBlockMessageCount, 0);
 });
 
-test("partitionPromptForCache handles KV cache disabled", () => {
+test("partitionPromptForCache handles KV cache disabled [prompt-partition-cache-comprehensive]", () => {
   const input: PromptPartitionInput = {
     model: "gpt-4",
     kvCache: {
@@ -237,7 +237,7 @@ test("partitionPromptForCache handles KV cache disabled", () => {
   assert.equal(result.kvCacheEnabled, false);
 });
 
-test("partitionPromptForCache applies fixedPrefixMessageCount constraints", () => {
+test("partitionPromptForCache applies fixedPrefixMessageCount constraints [prompt-partition-cache-comprehensive]", () => {
   const input: PromptPartitionInput = {
     model: "gpt-4",
     kvCache: {
@@ -256,7 +256,7 @@ test("partitionPromptForCache applies fixedPrefixMessageCount constraints", () =
   assert.equal(result.fixedPrefixMessageCount, 2);
 });
 
-test("partitionPromptForCache negative fixedPrefixMessageCount becomes zero", () => {
+test("partitionPromptForCache negative fixedPrefixMessageCount becomes zero [prompt-partition-cache-comprehensive]", () => {
   const input: PromptPartitionInput = {
     model: "gpt-4",
     kvCache: {
@@ -273,7 +273,7 @@ test("partitionPromptForCache negative fixedPrefixMessageCount becomes zero", ()
   assert.equal(result.fixedPrefixMessageCount, 0);
 });
 
-test("partitionPromptForCache digests are deterministic for same input", () => {
+test("partitionPromptForCache digests are deterministic for same input [prompt-partition-cache-comprehensive]", () => {
   const input: PromptPartitionInput = {
     model: "gpt-4",
     messages: [
@@ -290,7 +290,7 @@ test("partitionPromptForCache digests are deterministic for same input", () => {
   assert.equal(result1.dynamicCacheKey, result2.dynamicCacheKey);
 });
 
-test("partitionPromptForCache different inputs produce different digests", () => {
+test("partitionPromptForCache different inputs produce different digests [prompt-partition-cache-comprehensive]", () => {
   const input1: PromptPartitionInput = {
     model: "gpt-4",
     messages: [{ role: "system", content: "Content A" }],
@@ -312,7 +312,7 @@ test("partitionPromptForCache different inputs produce different digests", () =>
 // PromptPartitionCacheService
 // ---------------------------------------------------------------------------
 
-test("PromptPartitionCacheService.record creates usage entry", () => {
+test("PromptPartitionCacheService.record creates usage entry [prompt-partition-cache-comprehensive]", () => {
   const service = new PromptPartitionCacheService();
   const input: PromptPartitionInput = {
     model: "gpt-4",
@@ -326,7 +326,7 @@ test("PromptPartitionCacheService.record creates usage entry", () => {
   assert.ok(usage.lastSeenAt.length > 0);
 });
 
-test("PromptPartitionCacheService.record increments reuse count", () => {
+test("PromptPartitionCacheService.record increments reuse count [prompt-partition-cache-comprehensive]", () => {
   const service = new PromptPartitionCacheService();
   const input: PromptPartitionInput = {
     model: "gpt-4",
@@ -339,14 +339,14 @@ test("PromptPartitionCacheService.record increments reuse count", () => {
   assert.equal(usage2.reuseCount, 1);
 });
 
-test("PromptPartitionCacheService.getUsage returns null for unknown key", () => {
+test("PromptPartitionCacheService.getUsage returns null for unknown key [prompt-partition-cache-comprehensive]", () => {
   const service = new PromptPartitionCacheService();
   const result = service.getUsage("nonexistent-key");
 
   assert.equal(result, null);
 });
 
-test("PromptPartitionCacheService.getUsage returns correct usage", () => {
+test("PromptPartitionCacheService.getUsage returns correct usage [prompt-partition-cache-comprehensive]", () => {
   const service = new PromptPartitionCacheService();
   const input: PromptPartitionInput = {
     model: "gpt-4",
@@ -361,7 +361,7 @@ test("PromptPartitionCacheService.getUsage returns correct usage", () => {
   assert.equal(retrieved!.reuseCount, 0);
 });
 
-test("PromptPartitionCacheService.listUsage returns all entries", () => {
+test("PromptPartitionCacheService.listUsage returns all entries [prompt-partition-cache-comprehensive]", () => {
   const service = new PromptPartitionCacheService();
 
   service.record({ model: "gpt-4", messages: [{ role: "system", content: "A" }] });
@@ -372,7 +372,7 @@ test("PromptPartitionCacheService.listUsage returns all entries", () => {
   assert.equal(list.length, 2);
 });
 
-test("PromptPartitionCacheService.listUsage returns sorted by key", () => {
+test("PromptPartitionCacheService.listUsage returns sorted by key [prompt-partition-cache-comprehensive]", () => {
   const service = new PromptPartitionCacheService();
 
   service.record({ model: "gpt-4", messages: [{ role: "system", content: "Z" }] });
@@ -384,7 +384,7 @@ test("PromptPartitionCacheService.listUsage returns sorted by key", () => {
   assert.ok(list[0].partition.dynamicCacheKey <= list[1].partition.dynamicCacheKey);
 });
 
-test("PromptPartitionCacheService.clear removes all entries", () => {
+test("PromptPartitionCacheService.clear removes all entries [prompt-partition-cache-comprehensive]", () => {
   const service = new PromptPartitionCacheService();
 
   service.record({ model: "gpt-4", messages: [{ role: "system", content: "A" }] });
@@ -395,7 +395,7 @@ test("PromptPartitionCacheService.clear removes all entries", () => {
   assert.equal(service.listUsage().length, 0);
 });
 
-test("PromptPartitionCacheService records different models separately", () => {
+test("PromptPartitionCacheService records different models separately [prompt-partition-cache-comprehensive]", () => {
   const service = new PromptPartitionCacheService();
 
   service.record({ model: "gpt-4", messages: [{ role: "system", content: "Same" }] });
@@ -405,7 +405,7 @@ test("PromptPartitionCacheService records different models separately", () => {
   assert.equal(list.length, 2);
 });
 
-test("PromptPartitionCacheService tracks reuse across multiple records", () => {
+test("PromptPartitionCacheService tracks reuse across multiple records [prompt-partition-cache-comprehensive]", () => {
   const service = new PromptPartitionCacheService();
 
   const input: PromptPartitionInput = {
@@ -424,7 +424,7 @@ test("PromptPartitionCacheService tracks reuse across multiple records", () => {
   assert.equal(usage!.reuseCount, 4); // First record has count 0, next 4 have 1,2,3,4
 });
 
-test("PromptPartitionCacheService preserves firstSeenAt across reuses", () => {
+test("PromptPartitionCacheService preserves firstSeenAt across reuses [prompt-partition-cache-comprehensive]", () => {
   const service = new PromptPartitionCacheService();
   const input: PromptPartitionInput = {
     model: "gpt-4",
@@ -440,7 +440,7 @@ test("PromptPartitionCacheService preserves firstSeenAt across reuses", () => {
   assert.equal(second.firstSeenAt, firstSeenBefore); // First seen should be preserved
 });
 
-test("PromptPartitionCacheService.lastSeenAt updates on reuse", () => {
+test("PromptPartitionCacheService.lastSeenAt updates on reuse [prompt-partition-cache-comprehensive]", () => {
   const service = new PromptPartitionCacheService();
   const input: PromptPartitionInput = {
     model: "gpt-4",

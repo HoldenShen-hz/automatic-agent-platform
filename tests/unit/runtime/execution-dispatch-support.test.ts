@@ -14,44 +14,44 @@ import {
 // These functions are tested indirectly via execution-dispatch-service integration tests.
 // The pure utility functions below provide direct unit coverage.
 
-test("normalizeStringArray deduplicates and sorts", () => {
+test("normalizeStringArray deduplicates and sorts [execution-dispatch-support]", () => {
   const result = normalizeStringArray(["  bar  ", "foo", "baz", "  bar  ", "qux"]);
   assert.deepEqual(result, ["bar", "baz", "foo", "qux"]);
 });
 
-test("normalizeStringArray filters empty strings", () => {
+test("normalizeStringArray filters empty strings [execution-dispatch-support]", () => {
   const result = normalizeStringArray(["foo", "", "  ", "bar"]);
   assert.deepEqual(result, ["bar", "foo"]);
 });
 
-test("normalizeStringArray returns empty array for all empty", () => {
+test("normalizeStringArray returns empty array for all empty [execution-dispatch-support]", () => {
   assert.deepEqual(normalizeStringArray([]), []);
   assert.deepEqual(normalizeStringArray(["", "  "]), []);
 });
 
-test("parseJsonArray parses valid JSON array", () => {
+test("parseJsonArray parses valid JSON array [execution-dispatch-support]", () => {
   const result = parseJsonArray('["a", "b", "c"]');
   assert.deepEqual(result, ["a", "b", "c"]);
 });
 
-test("parseJsonArray returns empty for invalid JSON", () => {
+test("parseJsonArray returns empty for invalid JSON [execution-dispatch-support]", () => {
   const errors: string[] = [];
   const result = parseJsonArray("not json", (msg: string) => errors.push(msg));
   assert.deepEqual(result, []);
   assert.equal(errors.length, 1);
 });
 
-test("parseJsonArray returns empty for non-array JSON", () => {
+test("parseJsonArray returns empty for non-array JSON [execution-dispatch-support]", () => {
   const result = parseJsonArray('{"key":"value"}');
   assert.deepEqual(result, []);
 });
 
-test("parseJsonArray filters non-string elements", () => {
+test("parseJsonArray filters non-string elements [execution-dispatch-support]", () => {
   const result = parseJsonArray('["a", 123, null, "b"]');
   assert.deepEqual(result, ["a", "b"]);
 });
 
-test("resolveDispatchTarget returns exact values for valid targets", () => {
+test("resolveDispatchTarget returns exact values for valid targets [execution-dispatch-support]", () => {
   assert.equal(resolveDispatchTarget("local_only"), "local_only");
   assert.equal(resolveDispatchTarget("prefer_remote"), "prefer_remote");
   assert.equal(resolveDispatchTarget("require_remote"), "require_remote");
@@ -60,7 +60,7 @@ test("resolveDispatchTarget returns exact values for valid targets", () => {
   assert.equal(resolveDispatchTarget(undefined), "any");
 });
 
-test("resolveRequiredIsolationLevel returns exact values for valid levels", () => {
+test("resolveRequiredIsolationLevel returns exact values for valid levels [execution-dispatch-support]", () => {
   assert.equal(resolveRequiredIsolationLevel("hardened"), "hardened");
   assert.equal(resolveRequiredIsolationLevel("strict"), "strict");
   assert.equal(resolveRequiredIsolationLevel("standard"), "standard");
@@ -68,7 +68,7 @@ test("resolveRequiredIsolationLevel returns exact values for valid levels", () =
   assert.equal(resolveRequiredIsolationLevel(undefined), "standard");
 });
 
-test("resolveRequiredRepoVersion trims and returns non-empty strings", () => {
+test("resolveRequiredRepoVersion trims and returns non-empty strings [execution-dispatch-support]", () => {
   assert.equal(resolveRequiredRepoVersion("  v1.0.0  "), "v1.0.0");
   assert.equal(resolveRequiredRepoVersion(null), null);
   assert.equal(resolveRequiredRepoVersion(undefined), null);
@@ -76,7 +76,7 @@ test("resolveRequiredRepoVersion trims and returns non-empty strings", () => {
   assert.equal(resolveRequiredRepoVersion("   "), null);
 });
 
-test("meetsIsolationRequirement compares isolation levels correctly", () => {
+test("meetsIsolationRequirement compares isolation levels correctly [execution-dispatch-support]", () => {
   assert.equal(meetsIsolationRequirement("standard", "standard"), true);
   assert.equal(meetsIsolationRequirement("hardened", "standard"), true);
   assert.equal(meetsIsolationRequirement("strict", "standard"), true);

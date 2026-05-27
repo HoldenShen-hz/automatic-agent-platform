@@ -96,7 +96,7 @@ function createMockUpdates(
 // buildAgentExecutionRecord tests
 // ---------------------------------------------------------------------------
 
-test("buildAgentExecutionRecord creates new record with required fields", () => {
+test("buildAgentExecutionRecord creates new record with required fields [agent-execution-record]", () => {
   const store = createMockStore();
   const execution = createMockExecution();
   const occurredAt = "2024-01-01T00:00:00.000Z";
@@ -118,7 +118,7 @@ test("buildAgentExecutionRecord creates new record with required fields", () => 
   assert.equal(result.progressMessage, "Working on step 1");
 });
 
-test("buildAgentExecutionRecord sets planJson from execution details when no existing record", () => {
+test("buildAgentExecutionRecord sets planJson from execution details when no existing record [agent-execution-record]", () => {
   const store = createMockStore();
   const execution = createMockExecution();
   const occurredAt = "2024-01-01T00:00:00.000Z";
@@ -132,7 +132,7 @@ test("buildAgentExecutionRecord sets planJson from execution details when no exi
   assert.equal(planJson.runKind, "task_run");
 });
 
-test("buildAgentExecutionRecord preserves existing planJson when present", () => {
+test("buildAgentExecutionRecord preserves existing planJson when present [agent-execution-record]", () => {
   const existingRecord: AgentExecutionRecord = {
     executionId: "exec-001",
     taskId: "task-001",
@@ -170,7 +170,7 @@ test("buildAgentExecutionRecord preserves existing planJson when present", () =>
   assert.equal(result.currentStepId, "step-003");
 });
 
-test("buildAgentExecutionRecord preserves existing lastDecisionJson when no update provided", () => {
+test("buildAgentExecutionRecord preserves existing lastDecisionJson when no update provided [agent-execution-record]", () => {
   const existingRecord: AgentExecutionRecord = {
     executionId: "exec-001",
     taskId: "task-001",
@@ -207,7 +207,7 @@ test("buildAgentExecutionRecord preserves existing lastDecisionJson when no upda
   assert.equal(result.lastDecisionJson, '{"decision": "skip"}');
 });
 
-test("buildAgentExecutionRecord calculates retryCount from attempt when no existing record", () => {
+test("buildAgentExecutionRecord calculates retryCount from attempt when no existing record [agent-execution-record]", () => {
   const store = createMockStore();
   const execution = createMockExecution({ attempt: 3 });
   const occurredAt = "2024-01-01T00:00:00.000Z";
@@ -218,7 +218,7 @@ test("buildAgentExecutionRecord calculates retryCount from attempt when no exist
   assert.equal(result.retryCount, 2);
 });
 
-test("buildAgentExecutionRecord preserves existing retryCount when present", () => {
+test("buildAgentExecutionRecord preserves existing retryCount when present [agent-execution-record]", () => {
   const existingRecord: AgentExecutionRecord = {
     executionId: "exec-001",
     taskId: "task-001",
@@ -255,7 +255,7 @@ test("buildAgentExecutionRecord preserves existing retryCount when present", () 
   assert.equal(result.retryCount, 5);
 });
 
-test("buildAgentExecutionRecord handles startedAt with explicit value", () => {
+test("buildAgentExecutionRecord handles startedAt with explicit value [agent-execution-record]", () => {
   const store = createMockStore();
   const execution = createMockExecution();
   const occurredAt = "2024-01-01T00:00:00.000Z";
@@ -266,7 +266,7 @@ test("buildAgentExecutionRecord handles startedAt with explicit value", () => {
   assert.equal(result.startedAt, "2024-01-01T00:01:00.000Z");
 });
 
-test("buildAgentExecutionRecord uses occurredAt as startedAt when not provided", () => {
+test("buildAgentExecutionRecord uses occurredAt as startedAt when not provided [agent-execution-record]", () => {
   const store = createMockStore();
   const execution = createMockExecution();
   const occurredAt = "2024-01-01T00:00:00.000Z";
@@ -277,7 +277,7 @@ test("buildAgentExecutionRecord uses occurredAt as startedAt when not provided",
   assert.equal(result.startedAt, occurredAt);
 });
 
-test("buildAgentExecutionRecord preserves existing startedAt when startedAt is undefined", () => {
+test("buildAgentExecutionRecord preserves existing startedAt when startedAt is undefined [agent-execution-record]", () => {
   const existingRecord: AgentExecutionRecord = {
     executionId: "exec-001",
     taskId: "task-001",
@@ -314,7 +314,7 @@ test("buildAgentExecutionRecord preserves existing startedAt when startedAt is u
   assert.equal(result.startedAt, "2024-01-01T00:05:00.000Z");
 });
 
-test("buildAgentExecutionRecord handles completedAt with explicit value", () => {
+test("buildAgentExecutionRecord handles completedAt with explicit value [agent-execution-record]", () => {
   const store = createMockStore();
   const execution = createMockExecution();
   const occurredAt = "2024-01-01T00:00:00.000Z";
@@ -325,7 +325,7 @@ test("buildAgentExecutionRecord handles completedAt with explicit value", () => 
   assert.equal(result.completedAt, "2024-01-01T00:10:00.000Z");
 });
 
-test("buildAgentExecutionRecord sets completedAt to null when not provided and no existing", () => {
+test("buildAgentExecutionRecord sets completedAt to null when not provided and no existing [agent-execution-record]", () => {
   const store = createMockStore();
   const execution = createMockExecution();
   const occurredAt = "2024-01-01T00:00:00.000Z";
@@ -336,7 +336,7 @@ test("buildAgentExecutionRecord sets completedAt to null when not provided and n
   assert.equal(result.completedAt, null);
 });
 
-test("buildAgentExecutionRecord preserves existing completedAt when completedAt is undefined", () => {
+test("buildAgentExecutionRecord preserves existing completedAt when completedAt is undefined [agent-execution-record]", () => {
   const existingRecord: AgentExecutionRecord = {
     executionId: "exec-001",
     taskId: "task-001",
@@ -373,7 +373,7 @@ test("buildAgentExecutionRecord preserves existing completedAt when completedAt 
   assert.equal(result.completedAt, "2024-01-01T00:10:00.000Z");
 });
 
-test("buildAgentExecutionRecord normalizes negative toolCallCount to zero", () => {
+test("buildAgentExecutionRecord normalizes negative toolCallCount to zero [agent-execution-record]", () => {
   const store = createMockStore();
   const execution = createMockExecution();
   const occurredAt = "2024-01-01T00:00:00.000Z";
@@ -384,7 +384,7 @@ test("buildAgentExecutionRecord normalizes negative toolCallCount to zero", () =
   assert.equal(result.toolCallCount, 0);
 });
 
-test("buildAgentExecutionRecord truncates fractional toolCallCount", () => {
+test("buildAgentExecutionRecord truncates fractional toolCallCount [agent-execution-record]", () => {
   const store = createMockStore();
   const execution = createMockExecution();
   const occurredAt = "2024-01-01T00:00:00.000Z";
@@ -395,7 +395,7 @@ test("buildAgentExecutionRecord truncates fractional toolCallCount", () => {
   assert.equal(result.toolCallCount, 5);
 });
 
-test("buildAgentExecutionRecord sets createdAt from existing record when present", () => {
+test("buildAgentExecutionRecord sets createdAt from existing record when present [agent-execution-record]", () => {
   const existingRecord: AgentExecutionRecord = {
     executionId: "exec-001",
     taskId: "task-001",
@@ -432,7 +432,7 @@ test("buildAgentExecutionRecord sets createdAt from existing record when present
   assert.equal(result.createdAt, "2024-01-01T00:00:00.000Z");
 });
 
-test("buildAgentExecutionRecord sets createdAt to occurredAt when no existing record", () => {
+test("buildAgentExecutionRecord sets createdAt to occurredAt when no existing record [agent-execution-record]", () => {
   const store = createMockStore();
   const execution = createMockExecution();
   const occurredAt = "2024-01-01T00:00:00.000Z";
@@ -443,7 +443,7 @@ test("buildAgentExecutionRecord sets createdAt to occurredAt when no existing re
   assert.equal(result.createdAt, occurredAt);
 });
 
-test("buildAgentExecutionRecord always sets updatedAt to occurredAt", () => {
+test("buildAgentExecutionRecord always sets updatedAt to occurredAt [agent-execution-record]", () => {
   const existingRecord: AgentExecutionRecord = {
     executionId: "exec-001",
     taskId: "task-001",
@@ -480,7 +480,7 @@ test("buildAgentExecutionRecord always sets updatedAt to occurredAt", () => {
   assert.equal(result.updatedAt, "2024-01-02T00:00:00.000Z");
 });
 
-test("buildAgentExecutionRecord handles null values for nullable fields", () => {
+test("buildAgentExecutionRecord handles null values for nullable fields [agent-execution-record]", () => {
   const store = createMockStore();
   const execution = createMockExecution();
   const occurredAt = "2024-01-01T00:00:00.000Z";
@@ -503,7 +503,7 @@ test("buildAgentExecutionRecord handles null values for nullable fields", () => 
   assert.equal(result.lastErrorCode, null);
 });
 
-test("buildAgentExecutionRecord handles restartedFromRuntimeInstanceId", () => {
+test("buildAgentExecutionRecord handles restartedFromRuntimeInstanceId [agent-execution-record]", () => {
   const store = createMockStore();
   const execution = createMockExecution();
   const occurredAt = "2024-01-01T00:00:00.000Z";
@@ -518,7 +518,7 @@ test("buildAgentExecutionRecord handles restartedFromRuntimeInstanceId", () => {
   assert.equal(result.restartGeneration, 2);
 });
 
-test("buildAgentExecutionRecord handles null lastErrorCode", () => {
+test("buildAgentExecutionRecord handles null lastErrorCode [agent-execution-record]", () => {
   const store = createMockStore();
   const execution = createMockExecution();
   const occurredAt = "2024-01-01T00:00:00.000Z";
@@ -529,7 +529,7 @@ test("buildAgentExecutionRecord handles null lastErrorCode", () => {
   assert.equal(result.lastErrorCode, null);
 });
 
-test("buildAgentExecutionRecord handles lastErrorCode with value", () => {
+test("buildAgentExecutionRecord handles lastErrorCode with value [agent-execution-record]", () => {
   const store = createMockStore();
   const execution = createMockExecution();
   const occurredAt = "2024-01-01T00:00:00.000Z";

@@ -244,7 +244,7 @@ export function createFailoverController(
 // Tests: Construction and Initial State
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("FailoverController - creation with defaults", () => {
+test("FailoverController - creation with defaults [failover-controller]", () => {
   const controller = new FailoverController();
 
   assert.equal(controller.getState(), "idle");
@@ -254,7 +254,7 @@ test("FailoverController - creation with defaults", () => {
   controller.dispose();
 });
 
-test("FailoverController - creation with options", () => {
+test("FailoverController - creation with options [failover-controller]", () => {
   let decisionCalled = false;
   let completeCalled = false;
 
@@ -269,7 +269,7 @@ test("FailoverController - creation with options", () => {
   controller.dispose();
 });
 
-test("FailoverController - dispose clears state", () => {
+test("FailoverController - dispose clears state [failover-controller]", () => {
   const controller = new FailoverController();
 
   controller.dispose();
@@ -284,7 +284,7 @@ test("FailoverController - dispose clears state", () => {
 // Tests: initiateFailover
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("FailoverController - initiateFailover with candidates returns leader_changed", () => {
+test("FailoverController - initiateFailover with candidates returns leader_changed [failover-controller]", () => {
   const controller = new FailoverController();
 
   const candidates: CoordinatorNode[] = [
@@ -309,7 +309,7 @@ test("FailoverController - initiateFailover with candidates returns leader_chang
   controller.dispose();
 });
 
-test("FailoverController - initiateFailover without candidates returns no_candidate", () => {
+test("FailoverController - initiateFailover without candidates returns no_candidate [failover-controller]", () => {
   const controller = new FailoverController();
 
   const decision = controller.initiateFailover("node-1", [], "heartbeat_missing");
@@ -321,7 +321,7 @@ test("FailoverController - initiateFailover without candidates returns no_candid
   controller.dispose();
 });
 
-test("FailoverController - initiateFailover triggers onDecision callback", () => {
+test("FailoverController - initiateFailover triggers onDecision callback [failover-controller]", () => {
   let capturedDecision: FailoverDecision | null = null;
 
   const controller = new FailoverController({
@@ -351,7 +351,7 @@ test("FailoverController - initiateFailover triggers onDecision callback", () =>
   controller.dispose();
 });
 
-test("FailoverController - initiateFailover triggers onComplete callback for successful failover", () => {
+test("FailoverController - initiateFailover triggers onComplete callback for successful failover [failover-controller]", () => {
   let completeDecision: FailoverDecision | null = null;
 
   const controller = new FailoverController({
@@ -381,7 +381,7 @@ test("FailoverController - initiateFailover triggers onComplete callback for suc
   controller.dispose();
 });
 
-test("FailoverController - initiateFailover rejects reentrant call while deciding", () => {
+test("FailoverController - initiateFailover rejects reentrant call while deciding [failover-controller]", () => {
   let nestedError: Error | null = null;
 
   const candidates: CoordinatorNode[] = [
@@ -414,7 +414,7 @@ test("FailoverController - initiateFailover rejects reentrant call while decidin
   controller.dispose();
 });
 
-test("FailoverController - initiateFailover rejects when disposed", () => {
+test("FailoverController - initiateFailover rejects when disposed [failover-controller]", () => {
   const controller = new FailoverController();
   controller.dispose();
 
@@ -428,7 +428,7 @@ test("FailoverController - initiateFailover rejects when disposed", () => {
 // Tests: selectCandidate
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("FailoverController - selectCandidate returns active node", () => {
+test("FailoverController - selectCandidate returns active node [failover-controller]", () => {
   const controller = new FailoverController();
 
   const candidates: CoordinatorNode[] = [
@@ -460,7 +460,7 @@ test("FailoverController - selectCandidate returns active node", () => {
   controller.dispose();
 });
 
-test("FailoverController - selectCandidate returns null for empty candidates", () => {
+test("FailoverController - selectCandidate returns null for empty candidates [failover-controller]", () => {
   const controller = new FailoverController();
 
   const selected = controller.selectCandidate([]);
@@ -470,7 +470,7 @@ test("FailoverController - selectCandidate returns null for empty candidates", (
   controller.dispose();
 });
 
-test("FailoverController - selectCandidate uses deterministic ordering", () => {
+test("FailoverController - selectCandidate uses deterministic ordering [failover-controller]", () => {
   const controller = new FailoverController();
 
   const candidates: CoordinatorNode[] = [
@@ -511,7 +511,7 @@ test("FailoverController - selectCandidate uses deterministic ordering", () => {
   controller.dispose();
 });
 
-test("FailoverController - selectCandidate prefers active over draining", () => {
+test("FailoverController - selectCandidate prefers active over draining [failover-controller]", () => {
   const controller = new FailoverController();
 
   const candidates: CoordinatorNode[] = [
@@ -542,7 +542,7 @@ test("FailoverController - selectCandidate prefers active over draining", () => 
   controller.dispose();
 });
 
-test("FailoverController - selectCandidate ignores offline nodes", () => {
+test("FailoverController - selectCandidate ignores offline nodes [failover-controller]", () => {
   const controller = new FailoverController();
 
   const candidates: CoordinatorNode[] = [
@@ -577,7 +577,7 @@ test("FailoverController - selectCandidate ignores offline nodes", () => {
 // Tests: evaluateNeedForFailover
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("FailoverController - evaluateNeedForFailover returns true when no leader", () => {
+test("FailoverController - evaluateNeedForFailover returns true when no leader [failover-controller]", () => {
   const controller = new FailoverController();
 
   const leadership: LeadershipQueryResult = {
@@ -596,7 +596,7 @@ test("FailoverController - evaluateNeedForFailover returns true when no leader",
   controller.dispose();
 });
 
-test("FailoverController - evaluateNeedForFailover returns true when lease expired", () => {
+test("FailoverController - evaluateNeedForFailover returns true when lease expired [failover-controller]", () => {
   const controller = new FailoverController();
 
   const leadership: LeadershipQueryResult = {
@@ -615,7 +615,7 @@ test("FailoverController - evaluateNeedForFailover returns true when lease expir
   controller.dispose();
 });
 
-test("FailoverController - evaluateNeedForFailover returns true when known lost leader", () => {
+test("FailoverController - evaluateNeedForFailover returns true when known lost leader [failover-controller]", () => {
   const controller = new FailoverController();
 
   const leadership: LeadershipQueryResult = {
@@ -634,7 +634,7 @@ test("FailoverController - evaluateNeedForFailover returns true when known lost 
   controller.dispose();
 });
 
-test("FailoverController - evaluateNeedForFailover returns false when leader is healthy", () => {
+test("FailoverController - evaluateNeedForFailover returns false when leader is healthy [failover-controller]", () => {
   const controller = new FailoverController();
 
   const leadership: LeadershipQueryResult = {
@@ -657,7 +657,7 @@ test("FailoverController - evaluateNeedForFailover returns false when leader is 
 // Tests: validateFailoverPreconditions
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("FailoverController - validateFailoverPreconditions passes with valid state", () => {
+test("FailoverController - validateFailoverPreconditions passes with valid state [failover-controller]", () => {
   const controller = new FailoverController();
 
   const leadership: LeadershipQueryResult = {
@@ -688,7 +688,7 @@ test("FailoverController - validateFailoverPreconditions passes with valid state
   controller.dispose();
 });
 
-test("FailoverController - validateFailoverPreconditions fails with no leader", () => {
+test("FailoverController - validateFailoverPreconditions fails with no leader [failover-controller]", () => {
   const controller = new FailoverController();
 
   const leadership: LeadershipQueryResult = {
@@ -708,7 +708,7 @@ test("FailoverController - validateFailoverPreconditions fails with no leader", 
   controller.dispose();
 });
 
-test("FailoverController - validateFailoverPreconditions fails with no candidates", () => {
+test("FailoverController - validateFailoverPreconditions fails with no candidates [failover-controller]", () => {
   const controller = new FailoverController();
 
   const leadership: LeadershipQueryResult = {
@@ -728,7 +728,7 @@ test("FailoverController - validateFailoverPreconditions fails with no candidate
   controller.dispose();
 });
 
-test("FailoverController - validateFailoverPreconditions fails when expired with no candidates", () => {
+test("FailoverController - validateFailoverPreconditions fails when expired with no candidates [failover-controller]", () => {
   const controller = new FailoverController();
 
   const leadership: LeadershipQueryResult = {
@@ -752,7 +752,7 @@ test("FailoverController - validateFailoverPreconditions fails when expired with
 // Tests: State Transitions
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("FailoverController - state transitions from idle to deciding on initiateFailover", () => {
+test("FailoverController - state transitions from idle to deciding on initiateFailover [failover-controller]", () => {
   const controller = new FailoverController();
 
   // Override to observe state changes
@@ -778,7 +778,7 @@ test("FailoverController - state transitions from idle to deciding on initiateFa
   controller.dispose();
 });
 
-test("FailoverController - getState returns current state", () => {
+test("FailoverController - getState returns current state [failover-controller]", () => {
   const controller = new FailoverController();
 
   assert.equal(controller.getState(), "idle");
@@ -786,7 +786,7 @@ test("FailoverController - getState returns current state", () => {
   controller.dispose();
 });
 
-test("FailoverController - isIdle returns true only when idle", () => {
+test("FailoverController - isIdle returns true only when idle [failover-controller]", () => {
   const controller = new FailoverController();
 
   assert.equal(controller.isIdle(), true);
@@ -798,7 +798,7 @@ test("FailoverController - isIdle returns true only when idle", () => {
 // Tests: createFailoverController Factory
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("createFailoverController factory creates instance", () => {
+test("createFailoverController factory creates instance [failover-controller]", () => {
   const controller = createFailoverController();
 
   assert.ok(controller instanceof FailoverController);
@@ -807,7 +807,7 @@ test("createFailoverController factory creates instance", () => {
   controller.dispose();
 });
 
-test("createFailoverController factory with options", () => {
+test("createFailoverController factory with options [failover-controller]", () => {
   let called = false;
   const controller = createFailoverController({
     onComplete: () => { called = true; },
@@ -822,7 +822,7 @@ test("createFailoverController factory with options", () => {
 // Tests: Decision Properties
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("FailoverController - decision has all required fields", () => {
+test("FailoverController - decision has all required fields [failover-controller]", () => {
   const controller = new FailoverController();
 
   const candidates: CoordinatorNode[] = [
@@ -849,7 +849,7 @@ test("FailoverController - decision has all required fields", () => {
   controller.dispose();
 });
 
-test("FailoverController - different causes produce valid decisions", () => {
+test("FailoverController - different causes produce valid decisions [failover-controller]", () => {
   const controller = new FailoverController();
 
   const candidates: CoordinatorNode[] = [
@@ -880,7 +880,7 @@ test("FailoverController - different causes produce valid decisions", () => {
   controller.dispose();
 });
 
-test("FailoverController - multiple sequential failovers produce unique decisionIds", () => {
+test("FailoverController - multiple sequential failovers produce unique decisionIds [failover-controller]", () => {
   const controller = new FailoverController();
 
   const candidates: CoordinatorNode[] = [
@@ -904,7 +904,7 @@ test("FailoverController - multiple sequential failovers produce unique decision
 // Tests: Error Handling
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("FailoverController - onFail callback is called on error", () => {
+test("FailoverController - onFail callback is called on error [failover-controller]", () => {
   let failCalled = false;
   let capturedError: Error | null = null;
   let capturedDecision: FailoverDecision | null = null;
@@ -952,7 +952,7 @@ test("FailoverController - onFail callback is called on error", () => {
 // Tests: Edge Cases
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("FailoverController - handles single candidate correctly", () => {
+test("FailoverController - handles single candidate correctly [failover-controller]", () => {
   const controller = new FailoverController();
 
   const candidates: CoordinatorNode[] = [
@@ -975,7 +975,7 @@ test("FailoverController - handles single candidate correctly", () => {
   controller.dispose();
 });
 
-test("FailoverController - handles all nodes offline", () => {
+test("FailoverController - handles all nodes offline [failover-controller]", () => {
   const controller = new FailoverController();
 
   const candidates: CoordinatorNode[] = [
@@ -999,7 +999,7 @@ test("FailoverController - handles all nodes offline", () => {
   controller.dispose();
 });
 
-test("FailoverController - getCurrentDecision returns last decision", () => {
+test("FailoverController - getCurrentDecision returns last decision [failover-controller]", () => {
   const controller = new FailoverController();
 
   assert.equal(controller.getCurrentDecision(), null);
@@ -1025,7 +1025,7 @@ test("FailoverController - getCurrentDecision returns last decision", () => {
   controller.dispose();
 });
 
-test("FailoverController - sequential initiation attempts are allowed after completion", () => {
+test("FailoverController - sequential initiation attempts are allowed after completion [failover-controller]", () => {
   const controller = new FailoverController();
 
   const candidates: CoordinatorNode[] = [

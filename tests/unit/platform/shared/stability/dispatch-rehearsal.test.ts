@@ -91,7 +91,7 @@ function seedTaskAndExecution(
   });
 }
 
-test("dispatch creates a ticket successfully", (t, done) => {
+test("dispatch creates a ticket successfully [dispatch-rehearsal]", (t, done) => {
   const { db, store, cleanup } = createTempDb();
   const dispatch = new ExecutionDispatchService(db, store);
 
@@ -112,7 +112,7 @@ test("dispatch creates a ticket successfully", (t, done) => {
   done();
 });
 
-test("dispatch selects worker with matching capabilities", (t, done) => {
+test("dispatch selects worker with matching capabilities [dispatch-rehearsal]", (t, done) => {
   const { db, store, cleanup } = createTempDb();
   const workers = new WorkerRegistryService(store);
   const dispatch = new ExecutionDispatchService(db, store);
@@ -154,7 +154,7 @@ test("dispatch selects worker with matching capabilities", (t, done) => {
   done();
 });
 
-test("dispatch rejects worker with missing capabilities", (t, done) => {
+test("dispatch rejects worker with missing capabilities [dispatch-rehearsal]", (t, done) => {
   const { db, store, cleanup } = createTempDb();
   const workers = new WorkerRegistryService(store);
   const dispatch = new ExecutionDispatchService(db, store);
@@ -194,7 +194,7 @@ test("dispatch rejects worker with missing capabilities", (t, done) => {
   done();
 });
 
-test("dispatch respects dispatch_after timing constraint", (t, done) => {
+test("dispatch respects dispatch_after timing constraint [dispatch-rehearsal]", (t, done) => {
   const { db, store, cleanup } = createTempDb();
   const workers = new WorkerRegistryService(store);
   const dispatch = new ExecutionDispatchService(db, store);
@@ -235,7 +235,7 @@ test("dispatch respects dispatch_after timing constraint", (t, done) => {
   done();
 });
 
-test("dispatch returns no_worker when no capable workers exist", (t, done) => {
+test("dispatch returns no_worker when no capable workers exist [dispatch-rehearsal]", (t, done) => {
   const { db, store, cleanup } = createTempDb();
   const dispatch = new ExecutionDispatchService(db, store);
 
@@ -263,7 +263,7 @@ test("dispatch returns no_worker when no capable workers exist", (t, done) => {
   done();
 });
 
-test("multiple workers are evaluated in dispatch decision", (t, done) => {
+test("multiple workers are evaluated in dispatch decision [dispatch-rehearsal]", (t, done) => {
   const { db, store, cleanup } = createTempDb();
   const workers = new WorkerRegistryService(store);
   const dispatch = new ExecutionDispatchService(db, store);

@@ -12,7 +12,7 @@ import {
   type ReviewIssueSeverity,
 } from "../../../../../src/platform/five-plane-execution/recovery/review-report.js";
 
-test("createReviewReport creates report with defaults", () => {
+test("createReviewReport creates report with defaults [review-report]", () => {
   const report = createReviewReport({
     reportId: "review_1",
     taskId: "task_1",
@@ -32,7 +32,7 @@ test("createReviewReport creates report with defaults", () => {
   assert.ok(report.createdAt);
 });
 
-test("createReviewReport creates report with custom values", () => {
+test("createReviewReport creates report with custom values [review-report]", () => {
   const issues: readonly ReviewIssue[] = [
     {
       id: "issue_1",
@@ -60,7 +60,7 @@ test("createReviewReport creates report with custom values", () => {
   assert.equal(report.durationMs, 5000);
 });
 
-test("hasBlockingIssues returns false when no issues", () => {
+test("hasBlockingIssues returns false when no issues [review-report]", () => {
   const report = createReviewReport({
     reportId: "review_1",
     taskId: "task_1",
@@ -72,7 +72,7 @@ test("hasBlockingIssues returns false when no issues", () => {
   assert.equal(hasBlockingIssues(report), false);
 });
 
-test("hasBlockingIssues returns false when no blocking issues", () => {
+test("hasBlockingIssues returns false when no blocking issues [review-report]", () => {
   const issues: readonly ReviewIssue[] = [
     {
       id: "issue_1",
@@ -96,7 +96,7 @@ test("hasBlockingIssues returns false when no blocking issues", () => {
   assert.equal(hasBlockingIssues(report), false);
 });
 
-test("hasBlockingIssues returns true when has blocking issue", () => {
+test("hasBlockingIssues returns true when has blocking issue [review-report]", () => {
   const issues: readonly ReviewIssue[] = [
     {
       id: "issue_1",
@@ -120,7 +120,7 @@ test("hasBlockingIssues returns true when has blocking issue", () => {
   assert.equal(hasBlockingIssues(report), true);
 });
 
-test("getBlockingIssueCount returns zero when no issues", () => {
+test("getBlockingIssueCount returns zero when no issues [review-report]", () => {
   const report = createReviewReport({
     reportId: "review_1",
     taskId: "task_1",
@@ -132,7 +132,7 @@ test("getBlockingIssueCount returns zero when no issues", () => {
   assert.equal(getBlockingIssueCount(report), 0);
 });
 
-test("getBlockingIssueCount returns correct count", () => {
+test("getBlockingIssueCount returns correct count [review-report]", () => {
   const issues: readonly ReviewIssue[] = [
     {
       id: "issue_1",
@@ -172,7 +172,7 @@ test("getBlockingIssueCount returns correct count", () => {
   assert.equal(getBlockingIssueCount(report), 2);
 });
 
-test("getCriticalIssueCount returns zero when no issues", () => {
+test("getCriticalIssueCount returns zero when no issues [review-report]", () => {
   const report = createReviewReport({
     reportId: "review_1",
     taskId: "task_1",
@@ -184,7 +184,7 @@ test("getCriticalIssueCount returns zero when no issues", () => {
   assert.equal(getCriticalIssueCount(report), 0);
 });
 
-test("getCriticalIssueCount returns correct count", () => {
+test("getCriticalIssueCount returns correct count [review-report]", () => {
   const issues: readonly ReviewIssue[] = [
     {
       id: "issue_1",
@@ -224,17 +224,17 @@ test("getCriticalIssueCount returns correct count", () => {
   assert.equal(getCriticalIssueCount(report), 2);
 });
 
-test("ReviewVerdict type accepts all valid values", () => {
+test("ReviewVerdict type accepts all valid values [review-report]", () => {
   const verdicts: ReviewVerdict[] = ["approve", "request_changes", "reject"];
   assert.equal(verdicts.length, 3);
 });
 
-test("ReviewIssueSeverity type accepts all valid values", () => {
+test("ReviewIssueSeverity type accepts all valid values [review-report]", () => {
   const severities: ReviewIssueSeverity[] = ["critical", "major", "minor", "suggestion"];
   assert.equal(severities.length, 4);
 });
 
-test("ReviewIssue category accepts all valid values", () => {
+test("ReviewIssue category accepts all valid values [review-report]", () => {
   const issue: ReviewIssue = {
     id: "test",
     title: "Test",

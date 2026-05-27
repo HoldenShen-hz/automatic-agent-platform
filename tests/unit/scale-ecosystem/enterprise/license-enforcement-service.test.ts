@@ -13,7 +13,7 @@ function createMockStore() {
   };
 }
 
-test("LicenseEnforcementService allows access when enforcement disabled", () => {
+test("LicenseEnforcementService allows access when enforcement disabled [license-enforcement-service]", () => {
   const service = new LicenseEnforcementService(createMockStore() as any, { enabled: false });
 
   const result = service.checkFeatureAccess("sso", "community");
@@ -23,7 +23,7 @@ test("LicenseEnforcementService allows access when enforcement disabled", () => 
   assert.equal(result.reason, "enforcement_disabled");
 });
 
-test("LicenseEnforcementService denies feature not in gates", () => {
+test("LicenseEnforcementService denies feature not in gates [license-enforcement-service]", () => {
   const service = new LicenseEnforcementService(createMockStore() as any);
 
   const result = service.checkFeatureAccess("nonexistent_feature", "enterprise");
@@ -33,7 +33,7 @@ test("LicenseEnforcementService denies feature not in gates", () => {
   assert.equal(result.reason, "feature_not_found_or_disabled");
 });
 
-test("LicenseEnforcementService denies enterprise feature for community tier in strict mode", () => {
+test("LicenseEnforcementService denies enterprise feature for community tier in strict mode [license-enforcement-service]", () => {
   const service = new LicenseEnforcementService(createMockStore() as any, { strictMode: true });
 
   const result = service.checkFeatureAccess("sso", "community");
@@ -44,7 +44,7 @@ test("LicenseEnforcementService denies enterprise feature for community tier in 
   assert.equal(result.currentTier, "community");
 });
 
-test("LicenseEnforcementService warns community tier for enterprise feature in non-strict mode", () => {
+test("LicenseEnforcementService warns community tier for enterprise feature in non-strict mode [license-enforcement-service]", () => {
   const service = new LicenseEnforcementService(createMockStore() as any, { strictMode: false });
 
   const result = service.checkFeatureAccess("sso", "community");
@@ -53,7 +53,7 @@ test("LicenseEnforcementService warns community tier for enterprise feature in n
   assert.equal(result.action, "warn");
 });
 
-test("LicenseEnforcementService allows enterprise feature for enterprise tier", () => {
+test("LicenseEnforcementService allows enterprise feature for enterprise tier [license-enforcement-service]", () => {
   const service = new LicenseEnforcementService(createMockStore() as any);
 
   const result = service.checkFeatureAccess("sso", "enterprise");
@@ -62,7 +62,7 @@ test("LicenseEnforcementService allows enterprise feature for enterprise tier", 
   assert.equal(result.reason, "access_granted");
 });
 
-test("LicenseEnforcementService allows professional feature for enterprise tier", () => {
+test("LicenseEnforcementService allows professional feature for enterprise tier [license-enforcement-service]", () => {
   const service = new LicenseEnforcementService(createMockStore() as any);
 
   const result = service.checkFeatureAccess("admin_console", "enterprise");
@@ -71,7 +71,7 @@ test("LicenseEnforcementService allows professional feature for enterprise tier"
   assert.equal(result.reason, "access_granted");
 });
 
-test("LicenseEnforcementService tracks violations", () => {
+test("LicenseEnforcementService tracks violations [license-enforcement-service]", () => {
   const service = new LicenseEnforcementService(createMockStore() as any, { strictMode: true });
 
   service.checkFeatureAccess("sso", "community");
@@ -83,7 +83,7 @@ test("LicenseEnforcementService tracks violations", () => {
   assert.equal(violations[violations.length - 1]!.tierRequired, "enterprise");
 });
 
-test("LicenseEnforcementService does not log violations when disabled", () => {
+test("LicenseEnforcementService does not log violations when disabled [license-enforcement-service]", () => {
   const service = new LicenseEnforcementService(createMockStore() as any, { logViolations: false });
 
   service.checkFeatureAccess("sso", "community");
@@ -92,7 +92,7 @@ test("LicenseEnforcementService does not log violations when disabled", () => {
   assert.equal(violations.length, 0);
 });
 
-test("LicenseEnforcementService meters usage correctly", () => {
+test("LicenseEnforcementService meters usage correctly [license-enforcement-service]", () => {
   const service = new LicenseEnforcementService(createMockStore() as any, { enableUsageMetering: true });
 
   service.recordFeatureUsage("audit_export", { accountId: "acct_123" });
@@ -104,7 +104,7 @@ test("LicenseEnforcementService meters usage correctly", () => {
   assert.equal(usage?.limit, 1000);
 });
 
-test("LicenseEnforcementService denies when usage limit exceeded", () => {
+test("LicenseEnforcementService denies when usage limit exceeded [license-enforcement-service]", () => {
   const service = new LicenseEnforcementService(createMockStore() as any, { enableUsageMetering: true });
 
   // Record 1000 uses (at limit)
@@ -119,7 +119,7 @@ test("LicenseEnforcementService denies when usage limit exceeded", () => {
   assert.ok(result.reason.includes("usage_limit_exceeded"));
 });
 
-test("LicenseEnforcementService warns when approaching usage threshold", () => {
+test("LicenseEnforcementService warns when approaching usage threshold [license-enforcement-service]", () => {
   const service = new LicenseEnforcementService(createMockStore() as any, { enableUsageMetering: true });
 
   // Record 800 uses (80% of 1000 limit = warn threshold)
@@ -134,7 +134,7 @@ test("LicenseEnforcementService warns when approaching usage threshold", () => {
   assert.ok(result.reason.includes("usage_threshold_warning"));
 });
 
-test("LicenseEnforcementService registers custom feature gate", () => {
+test("LicenseEnforcementService registers custom feature gate [license-enforcement-service]", () => {
   const service = new LicenseEnforcementService(createMockStore() as any);
 
   const gate: FeatureGate = {
@@ -155,7 +155,7 @@ test("LicenseEnforcementService registers custom feature gate", () => {
   assert.equal(result.tierRequired, "professional");
 });
 
-test("LicenseEnforcementService enables and disables feature gates", () => {
+test("LicenseEnforcementService enables and disables feature gates [license-enforcement-service]", () => {
   const service = new LicenseEnforcementService(createMockStore() as any);
 
   service.disableFeatureGate("sso");
@@ -168,7 +168,7 @@ test("LicenseEnforcementService enables and disables feature gates", () => {
   assert.equal(result2.allowed, true);
 });
 
-test("LicenseEnforcementService resets meter correctly", () => {
+test("LicenseEnforcementService resets meter correctly [license-enforcement-service]", () => {
   const service = new LicenseEnforcementService(createMockStore() as any, { enableUsageMetering: true });
 
   service.recordFeatureUsage("scim", { accountId: "acct_reset" });
@@ -183,7 +183,7 @@ test("LicenseEnforcementService resets meter correctly", () => {
   assert.equal(usageAfter?.count, 0);
 });
 
-test("LicenseEnforcementService lists active meters", () => {
+test("LicenseEnforcementService lists active meters [license-enforcement-service]", () => {
   const service = new LicenseEnforcementService(createMockStore() as any, { enableUsageMetering: true });
 
   service.recordFeatureUsage("audit_export", { accountId: "acct_1" });
@@ -193,7 +193,7 @@ test("LicenseEnforcementService lists active meters", () => {
   assert.ok(meters.length >= 2);
 });
 
-test("LicenseEnforcementService updateFeatureLimit works", () => {
+test("LicenseEnforcementService updateFeatureLimit works [license-enforcement-service]", () => {
   const service = new LicenseEnforcementService(createMockStore() as any);
 
   const updated = service.updateFeatureLimit("audit_export", 5000, 60 * 60 * 1000);
@@ -204,7 +204,7 @@ test("LicenseEnforcementService updateFeatureLimit works", () => {
   assert.equal(gate?.usageWindowMs, 60 * 60 * 1000);
 });
 
-test("LicenseEnforcementService getConfig returns config", () => {
+test("LicenseEnforcementService getConfig returns config [license-enforcement-service]", () => {
   const service = new LicenseEnforcementService(createMockStore() as any, {
     enabled: true,
     strictMode: true,
@@ -221,7 +221,7 @@ test("LicenseEnforcementService getConfig returns config", () => {
   assert.equal(config.enableUsageMetering, false);
 });
 
-test("LicenseEnforcementService isEnabled and setEnabled work", () => {
+test("LicenseEnforcementService isEnabled and setEnabled work [license-enforcement-service]", () => {
   const service = new LicenseEnforcementService(createMockStore() as any, { enabled: true });
 
   assert.equal(service.isEnabled(), true);
@@ -233,7 +233,7 @@ test("LicenseEnforcementService isEnabled and setEnabled work", () => {
   assert.equal(service.isEnabled(), true);
 });
 
-test("LicenseEnforcementService isStrictMode and setStrictMode work", () => {
+test("LicenseEnforcementService isStrictMode and setStrictMode work [license-enforcement-service]", () => {
   const service = new LicenseEnforcementService(createMockStore() as any, { strictMode: false });
 
   assert.equal(service.isStrictMode(), false);
@@ -242,7 +242,7 @@ test("LicenseEnforcementService isStrictMode and setStrictMode work", () => {
   assert.equal(service.isStrictMode(), true);
 });
 
-test("LicenseEnforcementService different contexts have separate meters", () => {
+test("LicenseEnforcementService different contexts have separate meters [license-enforcement-service]", () => {
   const service = new LicenseEnforcementService(createMockStore() as any, { enableUsageMetering: true });
 
   service.recordFeatureUsage("scim", { accountId: "acct_a", workspaceId: "ws_a" });
@@ -255,7 +255,7 @@ test("LicenseEnforcementService different contexts have separate meters", () => 
   assert.equal(usageB?.count, 1);
 });
 
-test("LicenseEnforcementService listFeatureGates returns all gates", () => {
+test("LicenseEnforcementService listFeatureGates returns all gates [license-enforcement-service]", () => {
   const service = new LicenseEnforcementService(createMockStore() as any);
 
   const gates = service.listFeatureGates();

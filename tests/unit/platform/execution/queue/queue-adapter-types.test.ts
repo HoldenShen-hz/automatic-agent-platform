@@ -16,13 +16,13 @@ import {
   type RedisQueueConfig,
 } from "../../../../../src/platform/five-plane-execution/queue/queue-adapter-types.js";
 
-test("DEFAULT_RETRY_POLICY has correct values", () => {
+test("DEFAULT_RETRY_POLICY has correct values [queue-adapter-types]", () => {
   assert.equal(DEFAULT_RETRY_POLICY.maxAttempts, 3);
   assert.equal(DEFAULT_RETRY_POLICY.backoffMs, 1000);
   assert.equal(DEFAULT_RETRY_POLICY.backoffMultiplier, 2);
 });
 
-test("QueueJobStatus type accepts all valid values", () => {
+test("QueueJobStatus type accepts all valid values [queue-adapter-types]", () => {
   const statuses: QueueJobStatus[] = [
     "waiting",
     "delayed",
@@ -34,12 +34,12 @@ test("QueueJobStatus type accepts all valid values", () => {
   assert.equal(statuses.length, 6);
 });
 
-test("QueueBackendKind type accepts all valid values", () => {
+test("QueueBackendKind type accepts all valid values [queue-adapter-types]", () => {
   const kinds: QueueBackendKind[] = ["sqlite", "redis"];
   assert.equal(kinds.length, 2);
 });
 
-test("QueueJobRecord structure is correct", () => {
+test("QueueJobRecord structure is correct [queue-adapter-types]", () => {
   const record: QueueJobRecord = {
     id: "job_123",
     queueName: "default",
@@ -63,7 +63,7 @@ test("QueueJobRecord structure is correct", () => {
   assert.equal(record.maxAttempts, 3);
 });
 
-test("QueueJobRecord allows completed status with completedAt", () => {
+test("QueueJobRecord allows completed status with completedAt [queue-adapter-types]", () => {
   const record: QueueJobRecord = {
     id: "job_completed",
     queueName: "priority",
@@ -83,7 +83,7 @@ test("QueueJobRecord allows completed status with completedAt", () => {
   assert.ok(record.completedAt !== null);
 });
 
-test("QueueJobRecord allows failed status with lastError", () => {
+test("QueueJobRecord allows failed status with lastError [queue-adapter-types]", () => {
   const record: QueueJobRecord = {
     id: "job_failed",
     queueName: "default",
@@ -104,7 +104,7 @@ test("QueueJobRecord allows failed status with lastError", () => {
   assert.equal(record.attempts, 3);
 });
 
-test("QueueJobRecord allows delayed status with delayUntil", () => {
+test("QueueJobRecord allows delayed status with delayUntil [queue-adapter-types]", () => {
   const record: QueueJobRecord = {
     id: "job_delayed",
     queueName: "background",
@@ -125,7 +125,7 @@ test("QueueJobRecord allows delayed status with delayUntil", () => {
   assert.ok(record.delayUntil > record.createdAt);
 });
 
-test("QueueJobRecord allows dead_letter status", () => {
+test("QueueJobRecord allows dead_letter status [queue-adapter-types]", () => {
   const record: QueueJobRecord = {
     id: "job_dead",
     queueName: "critical",
@@ -145,7 +145,7 @@ test("QueueJobRecord allows dead_letter status", () => {
   assert.equal(record.priority, 100);
 });
 
-test("EnqueueInput structure is correct", () => {
+test("EnqueueInput structure is correct [queue-adapter-types]", () => {
   const input: EnqueueInput = {
     queueName: "high_priority",
     payload: { taskId: "task_123" },
@@ -160,7 +160,7 @@ test("EnqueueInput structure is correct", () => {
   assert.equal(input.maxAttempts, 5);
 });
 
-test("EnqueueInput allows minimal definition", () => {
+test("EnqueueInput allows minimal definition [queue-adapter-types]", () => {
   const input: EnqueueInput = {
     queueName: "minimal_queue",
     payload: "simple payload",
@@ -172,7 +172,7 @@ test("EnqueueInput allows minimal definition", () => {
   assert.equal(input.idempotencyKey, undefined);
 });
 
-test("QueueStats structure is correct", () => {
+test("QueueStats structure is correct [queue-adapter-types]", () => {
   const stats: QueueStats = {
     queueName: "test_queue",
     waiting: 10,
@@ -187,7 +187,7 @@ test("QueueStats structure is correct", () => {
   assert.equal(stats.completed, 100);
 });
 
-test("QueueStats allows zero values", () => {
+test("QueueStats allows zero values [queue-adapter-types]", () => {
   const stats: QueueStats = {
     queueName: "empty_queue",
     waiting: 0,
@@ -201,7 +201,7 @@ test("QueueStats allows zero values", () => {
   assert.equal(stats.completed, 0);
 });
 
-test("RetryPolicy structure is correct", () => {
+test("RetryPolicy structure is correct [queue-adapter-types]", () => {
   const policy: RetryPolicy = {
     maxAttempts: 5,
     backoffMs: 2000,
@@ -212,7 +212,7 @@ test("RetryPolicy structure is correct", () => {
   assert.equal(policy.backoffMultiplier, 1.5);
 });
 
-test("RetryPolicy allows DEFAULT_RETRY_POLICY values", () => {
+test("RetryPolicy allows DEFAULT_RETRY_POLICY values [queue-adapter-types]", () => {
   const policy: RetryPolicy = {
     maxAttempts: DEFAULT_RETRY_POLICY.maxAttempts,
     backoffMs: DEFAULT_RETRY_POLICY.backoffMs,
@@ -223,13 +223,13 @@ test("RetryPolicy allows DEFAULT_RETRY_POLICY values", () => {
   assert.equal(policy.backoffMultiplier, 2);
 });
 
-test("QUEUE_JOBS_DDL contains expected SQL statements", () => {
+test("QUEUE_JOBS_DDL contains expected SQL statements [queue-adapter-types]", () => {
   assert.ok(QUEUE_JOBS_DDL.includes("CREATE TABLE"));
   assert.ok(QUEUE_JOBS_DDL.includes("queue_jobs"));
   assert.ok(QUEUE_JOBS_DDL.includes("idx_queue_jobs_queue_status_priority"));
 });
 
-test("RedisQueueConfig structure is correct", () => {
+test("RedisQueueConfig structure is correct [queue-adapter-types]", () => {
   const config: RedisQueueConfig = {
     host: "localhost",
     port: 6379,
@@ -246,7 +246,7 @@ test("RedisQueueConfig structure is correct", () => {
   assert.equal(config.tls, true);
 });
 
-test("RedisQueueConfig allows minimal definition", () => {
+test("RedisQueueConfig allows minimal definition [queue-adapter-types]", () => {
   const config: RedisQueueConfig = {
     host: "redis.example.com",
     port: 6380,
@@ -259,7 +259,7 @@ test("RedisQueueConfig allows minimal definition", () => {
   assert.equal(config.tls, undefined);
 });
 
-test("QueueBackendConfig structure is correct", () => {
+test("QueueBackendConfig structure is correct [queue-adapter-types]", () => {
   const config: QueueBackendConfig = {
     kind: "redis",
     redis: {
@@ -271,7 +271,7 @@ test("QueueBackendConfig structure is correct", () => {
   assert.ok(config.redis !== undefined);
 });
 
-test("QueueBackendConfig allows sqlite kind", () => {
+test("QueueBackendConfig allows sqlite kind [queue-adapter-types]", () => {
   const config: QueueBackendConfig = {
     kind: "sqlite",
   };
@@ -279,7 +279,7 @@ test("QueueBackendConfig allows sqlite kind", () => {
   assert.equal(config.redis, undefined);
 });
 
-test("DequeueResult structure is correct", () => {
+test("DequeueResult structure is correct [queue-adapter-types]", () => {
   let acked = false;
   let nacked = false;
   const job: QueueJobRecord = {
@@ -309,7 +309,7 @@ test("DequeueResult structure is correct", () => {
   assert.equal(acked, true);
 });
 
-test("DequeueResult nack accepts optional error message", () => {
+test("DequeueResult nack accepts optional error message [queue-adapter-types]", () => {
   let capturedError: string | undefined;
   const job: QueueJobRecord = {
     id: "job_nack_test",
@@ -335,7 +335,7 @@ test("DequeueResult nack accepts optional error message", () => {
   assert.equal(capturedError, "Connection timeout");
 });
 
-test("DequeueResult nack works without error argument", () => {
+test("DequeueResult nack works without error argument [queue-adapter-types]", () => {
   let nacked = false;
   const job: QueueJobRecord = {
     id: "job_nack_no_err",
@@ -361,7 +361,7 @@ test("DequeueResult nack works without error argument", () => {
   assert.equal(nacked, true);
 });
 
-test("QueueAdapter interface is satisfied by mock implementation", () => {
+test("QueueAdapter interface is satisfied by mock implementation [queue-adapter-types]", () => {
   const mockAdapter: QueueAdapter = {
     backendKind: "sqlite",
     enqueue: (input) => ({
@@ -402,7 +402,7 @@ test("QueueAdapter interface is satisfied by mock implementation", () => {
   assert.deepEqual(JSON.parse(job.payload), { data: "value" });
 });
 
-test("QUEUE_JOBS_DDL contains all expected schema elements", () => {
+test("QUEUE_JOBS_DDL contains all expected schema elements [queue-adapter-types]", () => {
   assert.ok(QUEUE_JOBS_DDL.includes("CREATE TABLE"));
   assert.ok(QUEUE_JOBS_DDL.includes("queue_jobs"));
   assert.ok(QUEUE_JOBS_DDL.includes("id TEXT PRIMARY KEY"));

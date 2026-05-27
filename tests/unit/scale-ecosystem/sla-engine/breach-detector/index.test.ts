@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { detectSlaBreach, type SlaObservation, type SlaCommitment } from "../../../../../src/scale-ecosystem/sla-engine/breach-detector/index.js";
 
-test("detectSlaBreach returns empty array when all metrics pass", () => {
+test("detectSlaBreach returns empty array when all metrics pass [index]", () => {
   const observation: SlaObservation = {
     latencyMs: 50,
     successRate: 0.99,
@@ -19,7 +19,7 @@ test("detectSlaBreach returns empty array when all metrics pass", () => {
   assert.deepEqual(breaches, []);
 });
 
-test("detectSlaBreach detects latency breach", () => {
+test("detectSlaBreach detects latency breach [index]", () => {
   const observation: SlaObservation = {
     latencyMs: 150,
     successRate: 0.99,
@@ -37,7 +37,7 @@ test("detectSlaBreach detects latency breach", () => {
   assert.equal(breaches.length, 1);
 });
 
-test("detectSlaBreach detects success rate breach", () => {
+test("detectSlaBreach detects success rate breach [index]", () => {
   const observation: SlaObservation = {
     latencyMs: 50,
     successRate: 0.90,
@@ -54,7 +54,7 @@ test("detectSlaBreach detects success rate breach", () => {
   assert.ok(breaches.includes("sla.success_rate_breach"));
 });
 
-test("detectSlaBreach detects queue wait breach", () => {
+test("detectSlaBreach detects queue wait breach [index]", () => {
   const observation: SlaObservation = {
     latencyMs: 50,
     successRate: 0.99,
@@ -71,7 +71,7 @@ test("detectSlaBreach detects queue wait breach", () => {
   assert.ok(breaches.includes("sla.queue_wait_breach"));
 });
 
-test("detectSlaBreach returns multiple breaches when multiple metrics fail", () => {
+test("detectSlaBreach returns multiple breaches when multiple metrics fail [index]", () => {
   const observation: SlaObservation = {
     latencyMs: 150,
     successRate: 0.90,
@@ -91,7 +91,7 @@ test("detectSlaBreach returns multiple breaches when multiple metrics fail", () 
   assert.ok(breaches.includes("sla.queue_wait_breach"));
 });
 
-test("detectSlaBreach handles boundary values at exactly the limit", () => {
+test("detectSlaBreach handles boundary values at exactly the limit [index]", () => {
   const observation: SlaObservation = {
     latencyMs: 100, // exactly at max
     successRate: 0.95, // exactly at min

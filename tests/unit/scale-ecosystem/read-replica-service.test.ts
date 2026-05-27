@@ -40,7 +40,7 @@ function createRoutingRequest(overrides: Partial<ReadRoutingRequest> = {}): Read
 // ReadReplicaService Registration Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("ReadReplicaService registers primary replica correctly", () => {
+test("ReadReplicaService registers primary replica correctly [read-replica-service]", () => {
   const service = new ReadReplicaService("us-east-1");
   service.registerReplica(createReplicaConfig({ replicaId: "primary", isPrimary: true }));
 
@@ -51,7 +51,7 @@ test("ReadReplicaService registers primary replica correctly", () => {
   assert.equal(primary!.isPrimary, true);
 });
 
-test("ReadReplicaService registers follower replicas correctly", () => {
+test("ReadReplicaService registers follower replicas correctly [read-replica-service]", () => {
   const service = new ReadReplicaService("us-east-1");
   service.registerReplica(createReplicaConfig({ replicaId: "follower-1", isPrimary: false }));
 
@@ -61,7 +61,7 @@ test("ReadReplicaService registers follower replicas correctly", () => {
   assert.equal(followers[0]!.replicaId, "follower-1");
 });
 
-test("ReadReplicaService unregisters replica", () => {
+test("ReadReplicaService unregisters replica [read-replica-service]", () => {
   const service = new ReadReplicaService("us-east-1");
   service.registerReplica(createReplicaConfig({ replicaId: "replica-1" }));
   service.unregisterReplica("replica-1");
@@ -71,7 +71,7 @@ test("ReadReplicaService unregisters replica", () => {
   assert.equal(replicas.length, 0);
 });
 
-test("ReadReplicaService returns all replicas", () => {
+test("ReadReplicaService returns all replicas [read-replica-service]", () => {
   const service = new ReadReplicaService("us-east-1");
   service.registerReplica(createReplicaConfig({ replicaId: "primary", isPrimary: true }));
   service.registerReplica(createReplicaConfig({ replicaId: "follower-1", isPrimary: false }));
@@ -85,7 +85,7 @@ test("ReadReplicaService returns all replicas", () => {
 // ReadReplicaService Health Metrics Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("ReadReplicaService updates replica metrics", () => {
+test("ReadReplicaService updates replica metrics [read-replica-service]", () => {
   const service = new ReadReplicaService("us-east-1");
   service.registerReplica(createReplicaConfig({ replicaId: "replica-1" }));
   service.updateReplicaMetrics("replica-1", { latencyMs: 50, lagMs: 100 });
@@ -96,7 +96,7 @@ test("ReadReplicaService updates replica metrics", () => {
   assert.equal(replica!.lagMs, 100);
 });
 
-test("ReadReplicaService updates replica health status", () => {
+test("ReadReplicaService updates replica health status [read-replica-service]", () => {
   const service = new ReadReplicaService("us-east-1");
   service.registerReplica(createReplicaConfig({ replicaId: "replica-1" }));
   service.updateReplicaMetrics("replica-1", { healthStatus: "healthy" });
@@ -106,7 +106,7 @@ test("ReadReplicaService updates replica health status", () => {
   assert.equal(replica!.healthStatus, "healthy");
 });
 
-test("ReadReplicaService handles partial metric updates", () => {
+test("ReadReplicaService handles partial metric updates [read-replica-service]", () => {
   const service = new ReadReplicaService("us-east-1");
   service.registerReplica(createReplicaConfig({ replicaId: "replica-1" }));
   service.updateReplicaMetrics("replica-1", { latencyMs: 50 });
@@ -117,7 +117,7 @@ test("ReadReplicaService handles partial metric updates", () => {
   assert.notEqual(replica!.lagMs, 50); // Original lagMs preserved
 });
 
-test("ReadReplicaService ignores update for unknown replica", () => {
+test("ReadReplicaService ignores update for unknown replica [read-replica-service]", () => {
   const service = new ReadReplicaService("us-east-1");
   service.registerReplica(createReplicaConfig({ replicaId: "replica-1" }));
 
@@ -132,7 +132,7 @@ test("ReadReplicaService ignores update for unknown replica", () => {
 // ReadReplicaService isReplicaHealthyForRead Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("isReplicaHealthyForRead returns true for primary regardless of lag", () => {
+test("isReplicaHealthyForRead returns true for primary regardless of lag [read-replica-service]", () => {
   const service = new ReadReplicaService("us-east-1");
   service.registerReplica(createReplicaConfig({ replicaId: "primary", isPrimary: true }));
   service.updateReplicaMetrics("primary", { lagMs: 10000 });
@@ -142,7 +142,7 @@ test("isReplicaHealthyForRead returns true for primary regardless of lag", () =>
   assert.equal(result, true);
 });
 
-test("isReplicaHealthyForRead returns false for unhealthy replica", () => {
+test("isReplicaHealthyForRead returns false for unhealthy replica [read-replica-service]", () => {
   const service = new ReadReplicaService("us-east-1");
   service.registerReplica(createReplicaConfig({ replicaId: "replica-1", isPrimary: false }));
   service.updateReplicaMetrics("replica-1", { healthStatus: "unhealthy" });
@@ -152,7 +152,7 @@ test("isReplicaHealthyForRead returns false for unhealthy replica", () => {
   assert.equal(result, false);
 });
 
-test("isReplicaHealthyForRead returns false when lag exceeds max", () => {
+test("isReplicaHealthyForRead returns false when lag exceeds max [read-replica-service]", () => {
   const service = new ReadReplicaService("us-east-1");
   service.registerReplica(createReplicaConfig({ replicaId: "replica-1", isPrimary: false, maxLagMs: 1000 }));
   service.updateReplicaMetrics("replica-1", { lagMs: 2000 });
@@ -162,7 +162,7 @@ test("isReplicaHealthyForRead returns false when lag exceeds max", () => {
   assert.equal(result, false);
 });
 
-test("isReplicaHealthyForRead returns true when lag is within threshold", () => {
+test("isReplicaHealthyForRead returns true when lag is within threshold [read-replica-service]", () => {
   const service = new ReadReplicaService("us-east-1");
   service.registerReplica(createReplicaConfig({ replicaId: "replica-1", isPrimary: false, maxLagMs: 5000 }));
   service.updateReplicaMetrics("replica-1", { lagMs: 500 });
@@ -172,7 +172,7 @@ test("isReplicaHealthyForRead returns true when lag is within threshold", () => 
   assert.equal(result, true);
 });
 
-test("isReplicaHealthyForRead returns false for unknown replica", () => {
+test("isReplicaHealthyForRead returns false for unknown replica [read-replica-service]", () => {
   const service = new ReadReplicaService("us-east-1");
 
   const result = service.isReplicaHealthyForRead("unknown", 5000);
@@ -184,7 +184,7 @@ test("isReplicaHealthyForRead returns false for unknown replica", () => {
 // ReadReplicaService.routeRead Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("routeRead with strong consistency routes to primary only", () => {
+test("routeRead with strong consistency routes to primary only [read-replica-service]", () => {
   const service = new ReadReplicaService("us-east-1");
   service.registerReplica(createReplicaConfig({ replicaId: "primary", isPrimary: true, regionId: "us-east-1" }));
   service.registerReplica(createReplicaConfig({ replicaId: "follower-1", isPrimary: false, regionId: "us-west-2" }));
@@ -197,7 +197,7 @@ test("routeRead with strong consistency routes to primary only", () => {
   assert.equal(decision.consistencyLevel, "strong");
 });
 
-test("routeRead with eventual consistency routes to nearest healthy replica", () => {
+test("routeRead with eventual consistency routes to nearest healthy replica [read-replica-service]", () => {
   const service = new ReadReplicaService("us-east-1");
   service.registerReplica(createReplicaConfig({ replicaId: "primary", isPrimary: true, regionId: "us-east-1" }));
   service.registerReplica(createReplicaConfig({ replicaId: "follower-1", isPrimary: false, regionId: "us-west-2" }));
@@ -209,7 +209,7 @@ test("routeRead with eventual consistency routes to nearest healthy replica", ()
   assert.equal(decision.isPrimaryRoute, false);
 });
 
-test("routeRead falls back to primary when no healthy replicas", () => {
+test("routeRead falls back to primary when no healthy replicas [read-replica-service]", () => {
   const service = new ReadReplicaService("us-east-1");
   service.registerReplica(createReplicaConfig({ replicaId: "primary", isPrimary: true, regionId: "us-east-1" }));
   service.registerReplica(createReplicaConfig({ replicaId: "follower-1", isPrimary: false, regionId: "us-west-2" }));
@@ -221,7 +221,7 @@ test("routeRead falls back to primary when no healthy replicas", () => {
   assert.equal(decision.isPrimaryRoute, true);
 });
 
-test("routeRead with preferred region selects that region when available", () => {
+test("routeRead with preferred region selects that region when available [read-replica-service]", () => {
   const service = new ReadReplicaService("us-east-1");
   service.registerReplica(createReplicaConfig({ replicaId: "primary", isPrimary: true, regionId: "us-east-1" }));
   service.registerReplica(createReplicaConfig({ replicaId: "follower-1", isPrimary: false, regionId: "us-west-2" }));
@@ -238,7 +238,7 @@ test("routeRead with preferred region selects that region when available", () =>
   assert.equal(decision.selectedRegionId, "eu-west-1");
 });
 
-test("routeRead with session consistency sets waitForReplication for followers", () => {
+test("routeRead with session consistency sets waitForReplication for followers [read-replica-service]", () => {
   const service = new ReadReplicaService("us-east-1");
   service.registerReplica(createReplicaConfig({ replicaId: "primary", isPrimary: true, regionId: "us-east-1" }));
   service.registerReplica(createReplicaConfig({ replicaId: "follower-1", isPrimary: false, regionId: "us-west-2" }));
@@ -249,7 +249,7 @@ test("routeRead with session consistency sets waitForReplication for followers",
   assert.equal(decision.waitForReplication, true);
 });
 
-test("routeRead with strong consistency does not wait for replication", () => {
+test("routeRead with strong consistency does not wait for replication [read-replica-service]", () => {
   const service = new ReadReplicaService("us-east-1");
   service.registerReplica(createReplicaConfig({ replicaId: "primary", isPrimary: true, regionId: "us-east-1" }));
 
@@ -258,7 +258,7 @@ test("routeRead with strong consistency does not wait for replication", () => {
   assert.equal(decision.waitForReplication, false);
 });
 
-test("routeRead audit trail includes consistency and routing mode", () => {
+test("routeRead audit trail includes consistency and routing mode [read-replica-service]", () => {
   const service = new ReadReplicaService("us-east-1");
   service.registerReplica(createReplicaConfig({ replicaId: "primary", isPrimary: true }));
 
@@ -272,7 +272,7 @@ test("routeRead audit trail includes consistency and routing mode", () => {
 // ReadReplicaService Read-After-Write Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("recordWriteForReadAfterWrite stores pending read entry", () => {
+test("recordWriteForReadAfterWrite stores pending read entry [read-replica-service]", () => {
   const service = new ReadReplicaService("us-east-1");
   service.registerReplica(createReplicaConfig({ replicaId: "primary", isPrimary: true }));
 
@@ -281,7 +281,7 @@ test("recordWriteForReadAfterWrite stores pending read entry", () => {
   // Internal state is not directly accessible, but we can verify via waitForReadAfterWrite behavior
 });
 
-test("isReplicaHealthyForRead handles null lagMs", () => {
+test("isReplicaHealthyForRead handles null lagMs [read-replica-service]", () => {
   const service = new ReadReplicaService("us-east-1");
   service.registerReplica(createReplicaConfig({ replicaId: "replica-1", isPrimary: false }));
 
@@ -295,7 +295,7 @@ test("isReplicaHealthyForRead handles null lagMs", () => {
 // ReadWriteSplitRouter Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("ReadWriteSplitRouter.routeRead delegates to readReplicaService", () => {
+test("ReadWriteSplitRouter.routeRead delegates to readReplicaService [read-replica-service]", () => {
   const router = new ReadWriteSplitRouter("us-east-1");
   router.getReadReplicaService().registerReplica(createReplicaConfig({ replicaId: "primary", isPrimary: true }));
 
@@ -304,7 +304,7 @@ test("ReadWriteSplitRouter.routeRead delegates to readReplicaService", () => {
   assert.equal(decision.selectedReplicaId, "primary");
 });
 
-test("ReadWriteSplitRouter.routeWrite returns primary region", () => {
+test("ReadWriteSplitRouter.routeWrite returns primary region [read-replica-service]", () => {
   const router = new ReadWriteSplitRouter("us-east-1");
   router.getReadReplicaService().registerReplica(createReplicaConfig({ replicaId: "primary", isPrimary: true, regionId: "us-east-1" }));
 
@@ -314,7 +314,7 @@ test("ReadWriteSplitRouter.routeWrite returns primary region", () => {
   assert.equal(result.primaryRegionId, "us-east-1");
 });
 
-test("ReadWriteSplitRouter.routeWrite throws when no primary available", () => {
+test("ReadWriteSplitRouter.routeWrite throws when no primary available [read-replica-service]", () => {
   const router = new ReadWriteSplitRouter("us-east-1");
 
   assert.throws(
@@ -323,7 +323,7 @@ test("ReadWriteSplitRouter.routeWrite throws when no primary available", () => {
   );
 });
 
-test("ReadWriteSplitRouter.getReadReplicaService returns the underlying service", () => {
+test("ReadWriteSplitRouter.getReadReplicaService returns the underlying service [read-replica-service]", () => {
   const router = new ReadWriteSplitRouter("us-east-1");
   const service = router.getReadReplicaService();
 
@@ -334,7 +334,7 @@ test("ReadWriteSplitRouter.getReadReplicaService returns the underlying service"
 // Edge Cases
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("ReadReplicaService handles empty replica list", () => {
+test("ReadReplicaService handles empty replica list [read-replica-service]", () => {
   const service = new ReadReplicaService("us-east-1");
 
   const replicas = service.getReplicas();
@@ -346,7 +346,7 @@ test("ReadReplicaService handles empty replica list", () => {
   assert.equal(followers.length, 0);
 });
 
-test("ReadReplicaService handles multiple primaries (uses first one)", () => {
+test("ReadReplicaService handles multiple primaries (uses first one) [read-replica-service]", () => {
   const service = new ReadReplicaService("us-east-1");
   service.registerReplica(createReplicaConfig({ replicaId: "primary-1", isPrimary: true }));
   service.registerReplica(createReplicaConfig({ replicaId: "primary-2", isPrimary: true }));
@@ -357,7 +357,7 @@ test("ReadReplicaService handles multiple primaries (uses first one)", () => {
   assert.equal(primary!.replicaId, "primary-1");
 });
 
-test("ReadReplicaService with primary_only routing mode returns only primary", () => {
+test("ReadReplicaService with primary_only routing mode returns only primary [read-replica-service]", () => {
   const service = new ReadReplicaService("us-east-1");
   service.registerReplica(createReplicaConfig({ replicaId: "primary", isPrimary: true }));
   service.registerReplica(createReplicaConfig({ replicaId: "follower-1", isPrimary: false }));
@@ -367,7 +367,7 @@ test("ReadReplicaService with primary_only routing mode returns only primary", (
   assert.equal(decision.selectedReplicaId, "primary");
 });
 
-test("ReadReplicaService with any_healthy routing mode returns any healthy replica", () => {
+test("ReadReplicaService with any_healthy routing mode returns any healthy replica [read-replica-service]", () => {
   const service = new ReadReplicaService("us-east-1");
   service.registerReplica(createReplicaConfig({ replicaId: "primary", isPrimary: true }));
   service.registerReplica(createReplicaConfig({ replicaId: "follower-1", isPrimary: false }));

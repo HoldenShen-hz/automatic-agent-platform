@@ -42,7 +42,7 @@ function createMockStore(overrides: {
 // R6-03 §14.2: Risk Class Isolation Routing
 // ---------------------------------------------------------------------------
 
-test("evaluate rejects when risk class task count exceeds limit", () => {
+test("evaluate rejects when risk class task count exceeds limit [admission-controller-scheduling-factors]", () => {
   // Create tasks that fill up the risk class to its limit
   const tasks = Array.from({ length: 2 }, () => ({ riskClass: "critical" }));
   const store = createMockStore({ tasks });
@@ -55,7 +55,7 @@ test("evaluate rejects when risk class task count exceeds limit", () => {
   assert.equal(decision.reasonCode, "admission.reject_risk_class_isolation");
 });
 
-test("evaluate allows when risk class task count is below limit", () => {
+test("evaluate allows when risk class task count is below limit [admission-controller-scheduling-factors]", () => {
   const tasks = [{ riskClass: "critical" }]; // Only 1 task, limit is 2
   const store = createMockStore({ tasks });
   const controller = new AdmissionController(store, DEFAULT_ADMISSION_POLICY);
@@ -66,7 +66,7 @@ test("evaluate allows when risk class task count is below limit", () => {
   assert.equal(decision.reasonCode, "admission.ok");
 });
 
-test("evaluate allows unknown risk class without limit check", () => {
+test("evaluate allows unknown risk class without limit check [admission-controller-scheduling-factors]", () => {
   const store = createMockStore({});
   const controller = new AdmissionController(store, DEFAULT_ADMISSION_POLICY);
 
@@ -76,7 +76,7 @@ test("evaluate allows unknown risk class without limit check", () => {
   assert.equal(decision.decision, "allow");
 });
 
-test("evaluate skips risk class isolation when policy disabled", () => {
+test("evaluate skips risk class isolation when policy disabled [admission-controller-scheduling-factors]", () => {
   const tasks = Array.from({ length: 5 }, () => ({ riskClass: "high" }));
   const store = createMockStore({ tasks });
   const policy = {
@@ -91,7 +91,7 @@ test("evaluate skips risk class isolation when policy disabled", () => {
   assert.equal(decision.decision, "allow");
 });
 
-test("evaluate uses per-risk-class limits from policy", () => {
+test("evaluate uses per-risk-class limits from policy [admission-controller-scheduling-factors]", () => {
   const tasks = Array.from({ length: 5 }, () => ({ riskClass: "high" }));
   const store = createMockStore({ tasks });
   const policy = {
@@ -111,7 +111,7 @@ test("evaluate uses per-risk-class limits from policy", () => {
 // R6-03 §14.2: Tenant Quota
 // ---------------------------------------------------------------------------
 
-test("evaluate rejects when tenant task quota exceeded", () => {
+test("evaluate rejects when tenant task quota exceeded [admission-controller-scheduling-factors]", () => {
   // Create tasks that fill up the tenant quota to its limit (50 by default)
   const tasks = Array.from({ length: 50 }, () => ({ tenantId: "tenant-A" }));
   const store = createMockStore({ tasks });
@@ -124,7 +124,7 @@ test("evaluate rejects when tenant task quota exceeded", () => {
   assert.equal(decision.reasonCode, "admission.reject_tenant_quota");
 });
 
-test("evaluate allows when tenant task count is below quota", () => {
+test("evaluate allows when tenant task count is below quota [admission-controller-scheduling-factors]", () => {
   const tasks = [{ tenantId: "tenant-A" }]; // Only 1 task, quota is 50
   const store = createMockStore({ tasks });
   const controller = new AdmissionController(store, DEFAULT_ADMISSION_POLICY);
@@ -134,7 +134,7 @@ test("evaluate allows when tenant task count is below quota", () => {
   assert.equal(decision.decision, "allow");
 });
 
-test("evaluate allows different tenant even when one tenant is at quota", () => {
+test("evaluate allows different tenant even when one tenant is at quota [admission-controller-scheduling-factors]", () => {
   const tasks = Array.from({ length: 50 }, () => ({ tenantId: "tenant-A" }));
   const store = createMockStore({ tasks });
   const controller = new AdmissionController(store, DEFAULT_ADMISSION_POLICY);
@@ -146,7 +146,7 @@ test("evaluate allows different tenant even when one tenant is at quota", () => 
   assert.equal(decision.reasonCode, "admission.ok");
 });
 
-test("evaluate skips tenant quota when policy disabled", () => {
+test("evaluate skips tenant quota when policy disabled [admission-controller-scheduling-factors]", () => {
   const tasks = Array.from({ length: 100 }, () => ({ tenantId: "tenant-X" }));
   const store = createMockStore({ tasks });
   const policy = {
@@ -160,7 +160,7 @@ test("evaluate skips tenant quota when policy disabled", () => {
   assert.equal(decision.decision, "allow");
 });
 
-test("evaluate respects custom tenant task quota", () => {
+test("evaluate respects custom tenant task quota [admission-controller-scheduling-factors]", () => {
   const tasks = Array.from({ length: 10 }, () => ({ tenantId: "tenant-Y" }));
   const store = createMockStore({ tasks });
   const policy = {
@@ -180,7 +180,7 @@ test("evaluate respects custom tenant task quota", () => {
 // R6-03 §14.2: Sandbox Matching
 // ---------------------------------------------------------------------------
 
-test("evaluate rejects when requested sandbox type has zero availability", () => {
+test("evaluate rejects when requested sandbox type has zero availability [admission-controller-scheduling-factors]", () => {
   const store = createMockStore({});
   const controller = new AdmissionController(store, DEFAULT_ADMISSION_POLICY);
 
@@ -193,7 +193,7 @@ test("evaluate rejects when requested sandbox type has zero availability", () =>
   assert.equal(decision.decision, "allow");
 });
 
-test("evaluate allows when sandbox type has availability", () => {
+test("evaluate allows when sandbox type has availability [admission-controller-scheduling-factors]", () => {
   const store = createMockStore({});
   const controller = new AdmissionController(store, DEFAULT_ADMISSION_POLICY);
 
@@ -203,7 +203,7 @@ test("evaluate allows when sandbox type has availability", () => {
   assert.equal(decision.reasonCode, "admission.ok");
 });
 
-test("evaluate skips sandbox matching when policy disabled", () => {
+test("evaluate skips sandbox matching when policy disabled [admission-controller-scheduling-factors]", () => {
   const store = createMockStore({});
   const policy = {
     ...DEFAULT_ADMISSION_POLICY,
@@ -217,7 +217,7 @@ test("evaluate skips sandbox matching when policy disabled", () => {
   assert.equal(decision.decision, "allow");
 });
 
-test("evaluate rejects unknown sandbox type when matching enabled", () => {
+test("evaluate rejects unknown sandbox type when matching enabled [admission-controller-scheduling-factors]", () => {
   const store = createMockStore({});
   const controller = new AdmissionController(store, DEFAULT_ADMISSION_POLICY);
 
@@ -232,7 +232,7 @@ test("evaluate rejects unknown sandbox type when matching enabled", () => {
 // R6-03 §14.2: Capability Class Gate
 // ---------------------------------------------------------------------------
 
-test("evaluate rejects when required capability has zero capacity", () => {
+test("evaluate rejects when required capability has zero capacity [admission-controller-scheduling-factors]", () => {
   const store = createMockStore({});
   const controller = new AdmissionController(store, DEFAULT_ADMISSION_POLICY);
 
@@ -246,7 +246,7 @@ test("evaluate rejects when required capability has zero capacity", () => {
   assert.equal(decision.decision, "allow");
 });
 
-test("evaluate allows when required capability has capacity", () => {
+test("evaluate allows when required capability has capacity [admission-controller-scheduling-factors]", () => {
   const store = createMockStore({});
   const controller = new AdmissionController(store, DEFAULT_ADMISSION_POLICY);
 
@@ -260,7 +260,7 @@ test("evaluate allows when required capability has capacity", () => {
   assert.equal(decision.reasonCode, "admission.ok");
 });
 
-test("evaluate rejects when any required capability has zero capacity", () => {
+test("evaluate rejects when any required capability has zero capacity [admission-controller-scheduling-factors]", () => {
   const store = createMockStore({});
   const controller = new AdmissionController(store, DEFAULT_ADMISSION_POLICY);
 
@@ -275,7 +275,7 @@ test("evaluate rejects when any required capability has zero capacity", () => {
   assert.equal(decision.reasonCode, "admission.reject_capability_class");
 });
 
-test("evaluate allows when all required capabilities have capacity", () => {
+test("evaluate allows when all required capabilities have capacity [admission-controller-scheduling-factors]", () => {
   const store = createMockStore({});
   const controller = new AdmissionController(store, DEFAULT_ADMISSION_POLICY);
 
@@ -289,7 +289,7 @@ test("evaluate allows when all required capabilities have capacity", () => {
   assert.equal(decision.reasonCode, "admission.ok");
 });
 
-test("evaluate skips capability class gate when policy disabled", () => {
+test("evaluate skips capability class gate when policy disabled [admission-controller-scheduling-factors]", () => {
   const store = createMockStore({});
   const policy = {
     ...DEFAULT_ADMISSION_POLICY,
@@ -311,7 +311,7 @@ test("evaluate skips capability class gate when policy disabled", () => {
 // Combined scheduling factor tests
 // ---------------------------------------------------------------------------
 
-test("evaluate checks all scheduling factors in correct priority order", () => {
+test("evaluate checks all scheduling factors in correct priority order [admission-controller-scheduling-factors]", () => {
   const tasks = Array.from({ length: 2 }, () => ({ riskClass: "critical", tenantId: "tenant-X" }));
   const store = createMockStore({ tasks });
   const controller = new AdmissionController(store, DEFAULT_ADMISSION_POLICY);
@@ -330,7 +330,7 @@ test("evaluate checks all scheduling factors in correct priority order", () => {
   assert.equal(decision.reasonCode, "admission.reject_risk_class_isolation");
 });
 
-test("snapshot includes all scheduling factor distributions", () => {
+test("snapshot includes all scheduling factor distributions [admission-controller-scheduling-factors]", () => {
   const tasks = [
     { riskClass: "critical", tenantId: "tenant-A" },
     { riskClass: "critical", tenantId: "tenant-A" },
@@ -352,7 +352,7 @@ test("snapshot includes all scheduling factor distributions", () => {
 // Policy edge cases
 // ---------------------------------------------------------------------------
 
-test("evaluate with all scheduling factors disabled allows requests that would otherwise be rejected", () => {
+test("evaluate with all scheduling factors disabled allows requests that would otherwise be rejected [admission-controller-scheduling-factors]", () => {
   const tasks = Array.from({ length: 10 }, () => ({ riskClass: "critical", tenantId: "tenant-Z" }));
   const store = createMockStore({ tasks });
   const policy = {

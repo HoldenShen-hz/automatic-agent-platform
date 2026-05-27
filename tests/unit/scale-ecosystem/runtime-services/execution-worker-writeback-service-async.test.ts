@@ -7,21 +7,21 @@ import type { WorkerWritebackDecision } from "../../../../src/scale-ecosystem/ru
 // NOTE: Full integration tests require database setup.
 // These tests focus on class structure, options handling, and behavior validation.
 
-test("ExecutionWorkerWritebackServiceAsync exposes typed emitter methods", () => {
+test("ExecutionWorkerWritebackServiceAsync exposes typed emitter methods [execution-worker-writeback-service-async]", () => {
   const service = new ExecutionWorkerWritebackServiceAsync({} as never, {} as never);
   assert.equal(typeof service.on, "function");
   assert.equal(typeof service.once, "function");
   assert.equal(typeof service.off, "function");
 });
 
-test("ExecutionWorkerWritebackServiceAsync default options are applied", () => {
+test("ExecutionWorkerWritebackServiceAsync default options are applied [execution-worker-writeback-service-async]", () => {
   const service = new ExecutionWorkerWritebackServiceAsync({} as never, {} as never);
   const status = service.getCircuitBreakerStatus();
   assert.equal(status.state, "closed");
   assert.equal(status.failures, 0);
 });
 
-test("ExecutionWorkerWritebackServiceAsync custom async options are applied", () => {
+test("ExecutionWorkerWritebackServiceAsync custom async options are applied [execution-worker-writeback-service-async]", () => {
   const service = new ExecutionWorkerWritebackServiceAsync({} as never, {} as never, {}, {
     maxRetries: 5,
     initialBackoffMs: 200,
@@ -41,14 +41,14 @@ test("ExecutionWorkerWritebackServiceAsync custom async options are applied", ()
   assert.equal(status.state, "closed");
 });
 
-test("ExecutionWorkerWritebackServiceAsync getSyncService returns ExecutionWorkerWritebackService", () => {
+test("ExecutionWorkerWritebackServiceAsync getSyncService returns ExecutionWorkerWritebackService [execution-worker-writeback-service-async]", () => {
   const service = new ExecutionWorkerWritebackServiceAsync({} as never, {} as never);
   const sync = service.getSyncService();
   assert.ok(sync != null);
   assert.equal(typeof sync.recordWriteback, "function");
 });
 
-test("ExecutionWorkerWritebackServiceAsync resetCircuitBreaker resets state", () => {
+test("ExecutionWorkerWritebackServiceAsync resetCircuitBreaker resets state [execution-worker-writeback-service-async]", () => {
   const service = new ExecutionWorkerWritebackServiceAsync({} as never, {} as never);
   service.resetCircuitBreaker();
   const status = service.getCircuitBreakerStatus();
@@ -57,7 +57,7 @@ test("ExecutionWorkerWritebackServiceAsync resetCircuitBreaker resets state", ()
   assert.equal(status.lastFailure, null);
 });
 
-test("ExecutionWorkerWritebackServiceAsync getMetrics returns metrics object", () => {
+test("ExecutionWorkerWritebackServiceAsync getMetrics returns metrics object [execution-worker-writeback-service-async]", () => {
   const service = new ExecutionWorkerWritebackServiceAsync({} as never, {} as never);
   const metrics = service.getMetrics();
   assert.ok(metrics != null);
@@ -66,7 +66,7 @@ test("ExecutionWorkerWritebackServiceAsync getMetrics returns metrics object", (
   assert.ok(typeof metrics.rejectedWritebacks === "number");
 });
 
-test("ExecutionWorkerWritebackServiceAsync resetMetrics clears all metrics", () => {
+test("ExecutionWorkerWritebackServiceAsync resetMetrics clears all metrics [execution-worker-writeback-service-async]", () => {
   const service = new ExecutionWorkerWritebackServiceAsync({} as never, {} as never);
   service.resetMetrics();
   const metrics = service.getMetrics();
@@ -75,17 +75,17 @@ test("ExecutionWorkerWritebackServiceAsync resetMetrics clears all metrics", () 
   assert.equal(metrics.rejectedWritebacks, 0);
 });
 
-test("ExecutionWorkerWritebackServiceAsync getQueueDepth returns initial queue size", () => {
+test("ExecutionWorkerWritebackServiceAsync getQueueDepth returns initial queue size [execution-worker-writeback-service-async]", () => {
   const service = new ExecutionWorkerWritebackServiceAsync({} as never, {} as never);
   assert.equal(service.getQueueDepth(), 0);
 });
 
-test("ExecutionWorkerWritebackServiceAsync getActiveOperationCount returns initial count", () => {
+test("ExecutionWorkerWritebackServiceAsync getActiveOperationCount returns initial count [execution-worker-writeback-service-async]", () => {
   const service = new ExecutionWorkerWritebackServiceAsync({} as never, {} as never);
   assert.equal(service.getActiveOperationCount(), 0);
 });
 
-test("ExecutionWorkerWritebackServiceAsync exports WorkerWritebackDecision type", () => {
+test("ExecutionWorkerWritebackServiceAsync exports WorkerWritebackDecision type [execution-worker-writeback-service-async]", () => {
   // Verify type is exported and usable
   const decision: WorkerWritebackDecision = {
     accepted: true,
@@ -99,7 +99,7 @@ test("ExecutionWorkerWritebackServiceAsync exports WorkerWritebackDecision type"
   assert.equal(decision.executionId, "exec-1");
 });
 
-test("ExecutionWorkerWritebackServiceAsync dispose marks service as disposed", () => {
+test("ExecutionWorkerWritebackServiceAsync dispose marks service as disposed [execution-worker-writeback-service-async]", () => {
   const service = new ExecutionWorkerWritebackServiceAsync({} as never, {} as never);
   service.dispose();
   // After dispose, enqueueWriteback should reject
@@ -116,7 +116,7 @@ test("ExecutionWorkerWritebackServiceAsync dispose marks service as disposed", (
   );
 });
 
-test("ExecutionWorkerWritebackServiceAsync metrics track coalesced writebacks", () => {
+test("ExecutionWorkerWritebackServiceAsync metrics track coalesced writebacks [execution-worker-writeback-service-async]", () => {
   const service = new ExecutionWorkerWritebackServiceAsync({} as never, {} as never, {}, {
     coalescingEnabled: true,
     coalescingWindowMs: 50,
@@ -125,7 +125,7 @@ test("ExecutionWorkerWritebackServiceAsync metrics track coalesced writebacks", 
   assert.ok(typeof metrics.coalescedWritebacks === "number");
 });
 
-test("ExecutionWorkerWritebackServiceAsync batchingEnabled creates batch flush timer", () => {
+test("ExecutionWorkerWritebackServiceAsync batchingEnabled creates batch flush timer [execution-worker-writeback-service-async]", () => {
   const service = new ExecutionWorkerWritebackServiceAsync({} as never, {} as never, {}, {
     batchingEnabled: true,
     batchFlushIntervalMs: 100,
@@ -133,7 +133,7 @@ test("ExecutionWorkerWritebackServiceAsync batchingEnabled creates batch flush t
   assert.ok(true); // If no throw, timer was set up
 });
 
-test("ExecutionWorkerWritebackServiceAsync unrefs coalescing and batch timers", () => {
+test("ExecutionWorkerWritebackServiceAsync unrefs coalescing and batch timers [execution-worker-writeback-service-async]", () => {
   const service = new ExecutionWorkerWritebackServiceAsync({} as never, {} as never, {}, {
     batchingEnabled: true,
     batchFlushIntervalMs: 1000,
@@ -156,7 +156,7 @@ test("ExecutionWorkerWritebackServiceAsync unrefs coalescing and batch timers", 
   service.dispose();
 });
 
-test("ExecutionWorkerWritebackServiceAsync emits circuit_breaker_close on reset", () => {
+test("ExecutionWorkerWritebackServiceAsync emits circuit_breaker_close on reset [execution-worker-writeback-service-async]", () => {
   const service = new ExecutionWorkerWritebackServiceAsync({} as never, {} as never);
   let closeCount = 0;
   service.on("circuit_breaker_close" as never, () => closeCount++);
@@ -164,7 +164,7 @@ test("ExecutionWorkerWritebackServiceAsync emits circuit_breaker_close on reset"
   assert.equal(closeCount, 1);
 });
 
-test("ExecutionWorkerWritebackServiceAsync serializes overlapping batch flushes", async () => {
+test("ExecutionWorkerWritebackServiceAsync serializes overlapping batch flushes [execution-worker-writeback-service-async]", async () => {
   const service = new ExecutionWorkerWritebackServiceAsync({} as never, {} as never, {}, {
     batchingEnabled: true,
     batchSize: 1,

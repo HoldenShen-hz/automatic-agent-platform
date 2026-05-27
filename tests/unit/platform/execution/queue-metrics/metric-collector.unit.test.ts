@@ -11,7 +11,7 @@ import test from "node:test";
 // Import directly from test fixture which contains the implementation
 import { QueueMetricCollector } from "./test-fixture.js";
 
-test("QueueMetricCollector records single enqueue", () => {
+test("QueueMetricCollector records single enqueue [metric-collector.unit]", () => {
   const collector = new QueueMetricCollector("test-queue");
 
   collector.recordEnqueue();
@@ -21,7 +21,7 @@ test("QueueMetricCollector records single enqueue", () => {
   assert.equal(snapshot.depth, 1);
 });
 
-test("QueueMetricCollector records multiple enqueues", () => {
+test("QueueMetricCollector records multiple enqueues [metric-collector.unit]", () => {
   const collector = new QueueMetricCollector("test-queue");
 
   collector.recordEnqueue();
@@ -33,7 +33,7 @@ test("QueueMetricCollector records multiple enqueues", () => {
   assert.equal(snapshot.depth, 3);
 });
 
-test("QueueMetricCollector records dequeue", () => {
+test("QueueMetricCollector records dequeue [metric-collector.unit]", () => {
   const collector = new QueueMetricCollector("test-queue");
 
   collector.recordEnqueue();
@@ -45,7 +45,7 @@ test("QueueMetricCollector records dequeue", () => {
   assert.equal(snapshot.depth, 1);
 });
 
-test("QueueMetricCollector records wait time", () => {
+test("QueueMetricCollector records wait time [metric-collector.unit]", () => {
   const collector = new QueueMetricCollector("test-queue");
 
   collector.recordWaitTime(150);
@@ -56,7 +56,7 @@ test("QueueMetricCollector records wait time", () => {
   assert.deepEqual(snapshot.waitTimes, [150, 250]);
 });
 
-test("QueueMetricCollector records failed job", () => {
+test("QueueMetricCollector records failed job [metric-collector.unit]", () => {
   const collector = new QueueMetricCollector("test-queue");
 
   collector.recordEnqueue();
@@ -67,7 +67,7 @@ test("QueueMetricCollector records failed job", () => {
   assert.deepEqual(snapshot.failureReasons, ["timeout"]);
 });
 
-test("QueueMetricCollector records multiple failure reasons", () => {
+test("QueueMetricCollector records multiple failure reasons [metric-collector.unit]", () => {
   const collector = new QueueMetricCollector("test-queue");
 
   collector.recordFailed("error");
@@ -79,7 +79,7 @@ test("QueueMetricCollector records multiple failure reasons", () => {
   assert.deepEqual(snapshot.failureReasons, ["error", "timeout", "cancelled"]);
 });
 
-test("QueueMetricCollector snapshot structure", () => {
+test("QueueMetricCollector snapshot structure [metric-collector.unit]", () => {
   const collector = new QueueMetricCollector("test-queue");
 
   collector.recordEnqueue();
@@ -100,7 +100,7 @@ test("QueueMetricCollector snapshot structure", () => {
   assert.ok(Array.isArray(snapshot.failureReasons));
 });
 
-test("QueueMetricCollector reset clears state", () => {
+test("QueueMetricCollector reset clears state [metric-collector.unit]", () => {
   const collector = new QueueMetricCollector("test-queue");
 
   collector.recordEnqueue();
@@ -121,7 +121,7 @@ test("QueueMetricCollector reset clears state", () => {
   assert.deepEqual(snapshot.failureReasons, []);
 });
 
-test("QueueMetricCollector handles empty wait times array", () => {
+test("QueueMetricCollector handles empty wait times array [metric-collector.unit]", () => {
   const collector = new QueueMetricCollector("test-queue");
 
   const snapshot = collector.snapshot();
@@ -129,7 +129,7 @@ test("QueueMetricCollector handles empty wait times array", () => {
   assert.deepEqual(snapshot.waitTimes, []);
 });
 
-test("QueueMetricCollector calculates p95 latency", () => {
+test("QueueMetricCollector calculates p95 latency [metric-collector.unit]", () => {
   const collector = new QueueMetricCollector("latency-queue");
 
   // Record 20 wait times
@@ -142,7 +142,7 @@ test("QueueMetricCollector calculates p95 latency", () => {
   assert.equal(snapshot.p95WaitTimeMs, 200);
 });
 
-test("QueueMetricCollector calculates p99 latency", () => {
+test("QueueMetricCollector calculates p99 latency [metric-collector.unit]", () => {
   const collector = new QueueMetricCollector("latency-queue");
 
   // Record 100 wait times
@@ -155,7 +155,7 @@ test("QueueMetricCollector calculates p99 latency", () => {
   assert.equal(snapshot.p99WaitTimeMs, 100);
 });
 
-test("QueueMetricCollector tracks depth correctly", () => {
+test("QueueMetricCollector tracks depth correctly [metric-collector.unit]", () => {
   const collector = new QueueMetricCollector("depth-queue");
 
   collector.recordEnqueue();
@@ -169,7 +169,7 @@ test("QueueMetricCollector tracks depth correctly", () => {
   assert.equal(collector.snapshot().depth, 0);
 });
 
-test("QueueMetricCollector handles negative depth gracefully", () => {
+test("QueueMetricCollector handles negative depth gracefully [metric-collector.unit]", () => {
   const collector = new QueueMetricCollector("edge-queue");
 
   // Dequeue without prior enqueue
@@ -179,7 +179,7 @@ test("QueueMetricCollector handles negative depth gracefully", () => {
   assert.equal(snapshot.depth, -1);
 });
 
-test("QueueMetricCollector failure rate calculation", () => {
+test("QueueMetricCollector failure rate calculation [metric-collector.unit]", () => {
   const collector = new QueueMetricCollector("rate-queue");
 
   collector.recordEnqueue();
@@ -194,7 +194,7 @@ test("QueueMetricCollector failure rate calculation", () => {
   assert.equal(snapshot.failureRate, 1 / 3);
 });
 
-test("QueueMetricCollector success rate calculation", () => {
+test("QueueMetricCollector success rate calculation [metric-collector.unit]", () => {
   const collector = new QueueMetricCollector("success-queue");
 
   collector.recordEnqueue();
@@ -209,7 +209,7 @@ test("QueueMetricCollector success rate calculation", () => {
   assert.equal(snapshot.successRate, 2 / 3);
 });
 
-test("QueueMetricCollector throughput calculation", () => {
+test("QueueMetricCollector throughput calculation [metric-collector.unit]", () => {
   const collector = new QueueMetricCollector("throughput-queue");
 
   collector.recordEnqueue();
@@ -221,7 +221,7 @@ test("QueueMetricCollector throughput calculation", () => {
   assert.equal(snapshot.throughputPerMinute, 2); // enqueued - dequeued = 3 - 1
 });
 
-test("QueueMetricCollector queueName is exposed", () => {
+test("QueueMetricCollector queueName is exposed [metric-collector.unit]", () => {
   const collector = new QueueMetricCollector("my-special-queue");
 
   assert.equal(collector.queueName, "my-special-queue");

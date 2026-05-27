@@ -8,7 +8,7 @@ import type {
   TrackedProcess,
 } from "../../../../../src/platform/five-plane-execution/resource/index.js";
 
-test("ProcessOwner type accepts valid values", () => {
+test("ProcessOwner type accepts valid values [index]", () => {
   const owners: ProcessOwner[] = [
     "bash-tool",
     "mcp-transport",
@@ -22,12 +22,12 @@ test("ProcessOwner type accepts valid values", () => {
   assert.equal(owners.length, 8);
 });
 
-test("TrackedProcessState type accepts valid values", () => {
+test("TrackedProcessState type accepts valid values [index]", () => {
   const states: TrackedProcessState[] = ["running", "terminating", "killed", "exited"];
   assert.equal(states.length, 4);
 });
 
-test("TrackedProcess structure is correct", () => {
+test("TrackedProcess structure is correct [index]", () => {
   const process: TrackedProcess = {
     pid: 1234,
     command: "node server.js",
@@ -46,7 +46,7 @@ test("TrackedProcess structure is correct", () => {
   assert.equal(process.pgid, undefined);
 });
 
-test("TrackedProcess with pgid", () => {
+test("TrackedProcess with pgid [index]", () => {
   const process: TrackedProcess = {
     pid: 5678,
     command: "docker",
@@ -62,7 +62,7 @@ test("TrackedProcess with pgid", () => {
   assert.equal(process.pgid, 5678);
 });
 
-test("TrackedProcess in exited state", () => {
+test("TrackedProcess in exited state [index]", () => {
   const process: TrackedProcess = {
     pid: 9999,
     command: "exit",
@@ -77,7 +77,7 @@ test("TrackedProcess in exited state", () => {
   assert.equal(process.state, "exited");
 });
 
-test("TrackedProcess with kill requested", () => {
+test("TrackedProcess with kill requested [index]", () => {
   const now = Date.now();
   const process: TrackedProcess = {
     pid: 1111,

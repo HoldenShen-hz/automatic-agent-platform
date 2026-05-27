@@ -13,7 +13,7 @@ import {
   type MarketplaceCatalogEntry,
 } from "../../../../../src/scale-ecosystem/marketplace/catalog/index.js";
 
-test("MarketplaceCatalogEntrySchema parses valid entry", () => {
+test("MarketplaceCatalogEntrySchema parses valid entry [catalog]", () => {
   const entry = {
     entryId: "listing_001",
     title: "Analytics Pack",
@@ -29,7 +29,7 @@ test("MarketplaceCatalogEntrySchema parses valid entry", () => {
   assert.equal(result.lifecycleState, "active");
 });
 
-test("MarketplaceCatalogEntrySchema applies default quality metrics", () => {
+test("MarketplaceCatalogEntrySchema applies default quality metrics [catalog]", () => {
   const entry = {
     entryId: "listing_002",
     title: "Basic Pack",
@@ -44,7 +44,7 @@ test("MarketplaceCatalogEntrySchema applies default quality metrics", () => {
   assert.equal(result.qualityMetrics.supportScore, 0);
 });
 
-test("MarketplaceCatalogEntrySchema accepts custom quality metrics", () => {
+test("MarketplaceCatalogEntrySchema accepts custom quality metrics [catalog]", () => {
   const entry = {
     entryId: "listing_003",
     title: "Premium Pack",
@@ -64,7 +64,7 @@ test("MarketplaceCatalogEntrySchema accepts custom quality metrics", () => {
   assert.equal(result.qualityMetrics.supportScore, 0.92);
 });
 
-test("MarketplaceCatalogEntrySchema rejects invalid trustLevel", () => {
+test("MarketplaceCatalogEntrySchema rejects invalid trustLevel [catalog]", () => {
   const entry = {
     entryId: "listing_004",
     title: "Bad Pack",
@@ -78,7 +78,7 @@ test("MarketplaceCatalogEntrySchema rejects invalid trustLevel", () => {
   );
 });
 
-test("MarketplaceCatalogEntrySchema rejects invalid lifecycleState", () => {
+test("MarketplaceCatalogEntrySchema rejects invalid lifecycleState [catalog]", () => {
   const entry = {
     entryId: "listing_005",
     title: "Bad Pack",
@@ -92,7 +92,7 @@ test("MarketplaceCatalogEntrySchema rejects invalid lifecycleState", () => {
   );
 });
 
-test("MarketplaceCatalogEntrySchema rejects empty entryId", () => {
+test("MarketplaceCatalogEntrySchema rejects empty entryId [catalog]", () => {
   const entry = {
     entryId: "",
     title: "Bad Pack",
@@ -106,7 +106,7 @@ test("MarketplaceCatalogEntrySchema rejects empty entryId", () => {
   );
 });
 
-test("MarketplaceCatalogEntrySchema rejects empty title", () => {
+test("MarketplaceCatalogEntrySchema rejects empty title [catalog]", () => {
   const entry = {
     listingId: "listing_006",
     title: "",
@@ -120,7 +120,7 @@ test("MarketplaceCatalogEntrySchema rejects empty title", () => {
   );
 });
 
-test("sortMarketplaceCatalog sorts by trust level first", () => {
+test("sortMarketplaceCatalog sorts by trust level first [catalog]", () => {
   const entries: MarketplaceCatalogEntry[] = [
     {
       listingId: "community_pack",
@@ -153,7 +153,7 @@ test("sortMarketplaceCatalog sorts by trust level first", () => {
   assert.equal(sorted[2]!.trustLevel, "community");
 });
 
-test("sortMarketplaceCatalog sorts by quality metrics within same trust level", () => {
+test("sortMarketplaceCatalog sorts by quality metrics within same trust level [catalog]", () => {
   const entries: MarketplaceCatalogEntry[] = [
     {
       listingId: "low_quality",
@@ -186,7 +186,7 @@ test("sortMarketplaceCatalog sorts by quality metrics within same trust level", 
   assert.equal(sorted[2]!.listingId, "low_quality");
 });
 
-test("sortMarketplaceCatalog does not mutate original array", () => {
+test("sortMarketplaceCatalog does not mutate original array [catalog]", () => {
   const entries: MarketplaceCatalogEntry[] = [
     {
       listingId: "first",
@@ -211,12 +211,12 @@ test("sortMarketplaceCatalog does not mutate original array", () => {
   assert.equal(entries[0]!.trustLevel, "community");
 });
 
-test("sortMarketplaceCatalog handles empty array", () => {
+test("sortMarketplaceCatalog handles empty array [catalog]", () => {
   const sorted = sortMarketplaceCatalog([]);
   assert.equal(sorted.length, 0);
 });
 
-test("sortMarketplaceCatalog handles single element", () => {
+test("sortMarketplaceCatalog handles single element [catalog]", () => {
   const entries: MarketplaceCatalogEntry[] = [
     {
       listingId: "only",
@@ -233,7 +233,7 @@ test("sortMarketplaceCatalog handles single element", () => {
   assert.equal(sorted[0]!.listingId, "only");
 });
 
-test("sortMarketplaceCatalog sorts internal above verified even with low quality", () => {
+test("sortMarketplaceCatalog sorts internal above verified even with low quality [catalog]", () => {
   const entries: MarketplaceCatalogEntry[] = [
     {
       listingId: "verified_high",

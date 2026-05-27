@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { CertificationStatusSchema } from "../../../../../src/scale-ecosystem/marketplace/certification/index.js";
 
-test("CertificationStatusSchema accepts reviewing, published, and suspended states", () => {
+test("CertificationStatusSchema accepts reviewing, published, and suspended states [certification-status-r24]", () => {
   assert.equal(CertificationStatusSchema.parse("reviewing"), "reviewing");
   assert.equal(CertificationStatusSchema.parse("published"), "published");
   assert.equal(CertificationStatusSchema.parse("suspended"), "suspended");

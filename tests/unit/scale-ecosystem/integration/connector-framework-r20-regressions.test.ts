@@ -6,7 +6,7 @@ import test from "node:test";
 
 import { ConnectorFrameworkService } from "../../../../src/scale-ecosystem/integration/connector-framework-service.js";
 
-test("R20-50 first-party connectors run through concrete executors and deliver callbacks", async () => {
+test("R20-50 first-party connectors run through concrete executors and deliver callbacks [connector-framework-r20-regressions]", async () => {
   const service = new ConnectorFrameworkService();
   service.register({
     connectorId: "github-first-party",
@@ -57,7 +57,7 @@ test("R20-50 first-party connectors run through concrete executors and deliver c
   }
 });
 
-test("R20-51 manifests and bindings survive restart via durable connector storage", async () => {
+test("R20-51 manifests and bindings survive restart via durable connector storage [connector-framework-r20-regressions]", async () => {
   const storageDir = mkdtempSync(join(tmpdir(), "connector-framework-r20-"));
   try {
     const writer = new ConnectorFrameworkService(storageDir);

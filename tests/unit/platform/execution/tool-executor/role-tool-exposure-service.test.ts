@@ -4,7 +4,7 @@ import test from "node:test";
 import type { DivisionRegistry } from "../../../../../src/domains/governance/division-loader.js";
 import { RoleToolExposureService } from "../../../../../src/platform/five-plane-execution/tool-executor/role-tool-exposure-service.js";
 
-test("RoleToolExposureService resolves general executor tools without filtering", () => {
+test("RoleToolExposureService resolves general executor tools without filtering [role-tool-exposure-service]", () => {
   const service = new RoleToolExposureService();
   const result = service.resolve({
     divisionId: "general_ops",
@@ -19,7 +19,7 @@ test("RoleToolExposureService resolves general executor tools without filtering"
   assert.equal(result.wasFiltered, false);
 });
 
-test("RoleToolExposureService applies deferred loading to larger engineering tool surfaces", () => {
+test("RoleToolExposureService applies deferred loading to larger engineering tool surfaces [role-tool-exposure-service]", () => {
   const service = new RoleToolExposureService();
   const result = service.resolve({
     divisionId: "engineering_ops",
@@ -37,7 +37,7 @@ test("RoleToolExposureService applies deferred loading to larger engineering too
   assert.ok(result.visibleToolNames.includes("apply_patch"));
 });
 
-test("RoleToolExposureService fail-closes unknown declared tool aliases", () => {
+test("RoleToolExposureService fail-closes unknown declared tool aliases [role-tool-exposure-service]", () => {
   const registry: DivisionRegistry = {
     divisions: new Map([
       ["custom_ops", {

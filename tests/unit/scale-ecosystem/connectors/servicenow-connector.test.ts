@@ -21,24 +21,24 @@ function createRequest(overrides: Partial<ConnectorExecutionRequest> = {}): Conn
   };
 }
 
-test("ServiceNowConnector.listCapabilities returns all supported capabilities", () => {
+test("ServiceNowConnector.listCapabilities returns all supported capabilities [servicenow-connector]", () => {
   const connector = new ServiceNowConnector();
   const capabilities = connector.listCapabilities();
 
   assert.deepStrictEqual(capabilities, ["create_incident", "update_ticket"]);
 });
 
-test("ServiceNowConnector.supportsCapability returns true for create_incident", () => {
+test("ServiceNowConnector.supportsCapability returns true for create_incident [servicenow-connector]", () => {
   const connector = new ServiceNowConnector();
   assert.equal(connector.supportsCapability("create_incident"), true);
 });
 
-test("ServiceNowConnector.supportsCapability returns true for update_ticket", () => {
+test("ServiceNowConnector.supportsCapability returns true for update_ticket [servicenow-connector]", () => {
   const connector = new ServiceNowConnector();
   assert.equal(connector.supportsCapability("update_ticket"), true);
 });
 
-test("ServiceNowConnector.supportsCapability returns false for unsupported capabilities", () => {
+test("ServiceNowConnector.supportsCapability returns false for unsupported capabilities [servicenow-connector]", () => {
   const connector = new ServiceNowConnector();
   assert.equal(connector.supportsCapability("close_incident"), false);
   assert.equal(connector.supportsCapability("delete_ticket"), false);
@@ -46,7 +46,7 @@ test("ServiceNowConnector.supportsCapability returns false for unsupported capab
   assert.equal(connector.supportsCapability("CREATE_INCIDENT"), false);
 });
 
-test("ServiceNowConnector.execute returns success for create_incident capability", () => {
+test("ServiceNowConnector.execute returns success for create_incident capability [servicenow-connector]", () => {
   const connector = new ServiceNowConnector();
   const request = createRequest({ capability: "create_incident" });
 
@@ -57,7 +57,7 @@ test("ServiceNowConnector.execute returns success for create_incident capability
   assert.equal(result.connectorId, "servicenow-test");
 });
 
-test("ServiceNowConnector.execute returns success for update_ticket capability", () => {
+test("ServiceNowConnector.execute returns success for update_ticket capability [servicenow-connector]", () => {
   const connector = new ServiceNowConnector();
   const request = createRequest({ capability: "update_ticket" });
 
@@ -67,7 +67,7 @@ test("ServiceNowConnector.execute returns success for update_ticket capability",
   assert.equal(result.status, "succeeded");
 });
 
-test("ServiceNowConnector.execute returns failure for unknown capability", () => {
+test("ServiceNowConnector.execute returns failure for unknown capability [servicenow-connector]", () => {
   const connector = new ServiceNowConnector();
   const request = createRequest({ capability: "close_incident" });
 
@@ -77,7 +77,7 @@ test("ServiceNowConnector.execute returns failure for unknown capability", () =>
   assert.equal(result.status, "failed");
 });
 
-test("ServiceNowConnector.execute preserves connectorId from request", () => {
+test("ServiceNowConnector.execute preserves connectorId from request [servicenow-connector]", () => {
   const connector = new ServiceNowConnector();
   const request = createRequest({ connectorId: "servicenow-prod" });
 
@@ -86,7 +86,7 @@ test("ServiceNowConnector.execute preserves connectorId from request", () => {
   assert.equal(result.connectorId, "servicenow-prod");
 });
 
-test("ServiceNowConnector.execute fails when policyRef is missing", () => {
+test("ServiceNowConnector.execute fails when policyRef is missing [servicenow-connector]", () => {
   const connector = new ServiceNowConnector();
   const request = createRequest({ policyRef: undefined });
 
@@ -96,7 +96,7 @@ test("ServiceNowConnector.execute fails when policyRef is missing", () => {
   assert.equal(result.status, "failed");
 });
 
-test("ServiceNowConnector.execute fails when secretBindings are empty", () => {
+test("ServiceNowConnector.execute fails when secretBindings are empty [servicenow-connector]", () => {
   const connector = new ServiceNowConnector();
   const request = createRequest({ secretBindings: [] });
 
@@ -106,7 +106,7 @@ test("ServiceNowConnector.execute fails when secretBindings are empty", () => {
   assert.equal(result.status, "failed");
 });
 
-test("ServiceNowConnector.execute succeeds with valid policyRef and secretBindings", () => {
+test("ServiceNowConnector.execute succeeds with valid policyRef and secretBindings [servicenow-connector]", () => {
   const connector = new ServiceNowConnector();
   const request = createRequest({
     policyRef: "policy.connector.servicenow",
@@ -119,7 +119,7 @@ test("ServiceNowConnector.execute succeeds with valid policyRef and secretBindin
   assert.equal(result.status, "succeeded");
 });
 
-test("ServiceNowConnector.execute handles create_incident with full payload", () => {
+test("ServiceNowConnector.execute handles create_incident with full payload [servicenow-connector]", () => {
   const connector = new ServiceNowConnector();
   const request = createRequest({
     capability: "create_incident",
@@ -138,7 +138,7 @@ test("ServiceNowConnector.execute handles create_incident with full payload", ()
   assert.equal(result.status, "succeeded");
 });
 
-test("ServiceNowConnector.execute handles create_incident with various priority levels", () => {
+test("ServiceNowConnector.execute handles create_incident with various priority levels [servicenow-connector]", () => {
   const connector = new ServiceNowConnector();
 
   const request1 = createRequest({
@@ -159,7 +159,7 @@ test("ServiceNowConnector.execute handles create_incident with various priority 
   assert.equal(result2.status, "succeeded");
 });
 
-test("ServiceNowConnector.execute handles update_ticket with state changes", () => {
+test("ServiceNowConnector.execute handles update_ticket with state changes [servicenow-connector]", () => {
   const connector = new ServiceNowConnector();
   const request = createRequest({
     capability: "update_ticket",
@@ -176,7 +176,7 @@ test("ServiceNowConnector.execute handles update_ticket with state changes", () 
   assert.equal(result.status, "succeeded");
 });
 
-test("ServiceNowConnector.execute handles update_ticket with resolution", () => {
+test("ServiceNowConnector.execute handles update_ticket with resolution [servicenow-connector]", () => {
   const connector = new ServiceNowConnector();
   const request = createRequest({
     capability: "update_ticket",
@@ -194,7 +194,7 @@ test("ServiceNowConnector.execute handles update_ticket with resolution", () => 
   assert.equal(result.status, "succeeded");
 });
 
-test("ServiceNowConnector.execute is case-sensitive for capability names", () => {
+test("ServiceNowConnector.execute is case-sensitive for capability names [servicenow-connector]", () => {
   const connector = new ServiceNowConnector();
 
   const upperRequest = createRequest({ capability: "CREATE_INCIDENT" });
@@ -209,7 +209,7 @@ test("ServiceNowConnector.execute is case-sensitive for capability names", () =>
   assert.equal(resultLower.status, "succeeded");
 });
 
-test("ServiceNowConnector.execute rejects get_incident capability", () => {
+test("ServiceNowConnector.execute rejects get_incident capability [servicenow-connector]", () => {
   const connector = new ServiceNowConnector();
   const request = createRequest({ capability: "get_incident" });
 
@@ -219,7 +219,7 @@ test("ServiceNowConnector.execute rejects get_incident capability", () => {
   assert.equal(result.status, "failed");
 });
 
-test("ServiceNowConnector.execute rejects delete_ticket capability", () => {
+test("ServiceNowConnector.execute rejects delete_ticket capability [servicenow-connector]", () => {
   const connector = new ServiceNowConnector();
   const request = createRequest({ capability: "delete_ticket" });
 
@@ -229,7 +229,7 @@ test("ServiceNowConnector.execute rejects delete_ticket capability", () => {
   assert.equal(result.status, "failed");
 });
 
-test("ServiceNowConnector.execute handles empty payload", () => {
+test("ServiceNowConnector.execute handles empty payload [servicenow-connector]", () => {
   const connector = new ServiceNowConnector();
   const request = createRequest({ capability: "create_incident", payload: {} });
 
@@ -239,7 +239,7 @@ test("ServiceNowConnector.execute handles empty payload", () => {
   assert.equal(result.status, "succeeded");
 });
 
-test("ServiceNowConnector is stateless - multiple executions produce same result", () => {
+test("ServiceNowConnector is stateless - multiple executions produce same result [servicenow-connector]", () => {
   const connector = new ServiceNowConnector();
   const request = createRequest({ capability: "create_incident" });
 
@@ -249,7 +249,7 @@ test("ServiceNowConnector is stateless - multiple executions produce same result
   assert.deepStrictEqual(result1, result2);
 });
 
-test("ServiceNowConnector.execute handles update_ticket with empty payload", () => {
+test("ServiceNowConnector.execute handles update_ticket with empty payload [servicenow-connector]", () => {
   const connector = new ServiceNowConnector();
   const request = createRequest({ capability: "update_ticket", payload: {} });
 

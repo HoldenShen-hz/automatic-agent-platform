@@ -21,7 +21,7 @@ function closeAndCleanup(path: string, db: DatabaseSync): void {
   rmSync(path, { recursive: true, force: true });
 }
 
-test("[SYS-REL-2.2] SQLite lock adapter acquires lock when no existing lock", () => {
+test("[SYS-REL-2.2] SQLite lock adapter acquires lock when no existing lock [sqlite-lock-adapter-robustness]", () => {
   const { path, db } = createTempDb();
   try {
     const adapter = new SqliteLockAdapter(db);
@@ -36,7 +36,7 @@ test("[SYS-REL-2.2] SQLite lock adapter acquires lock when no existing lock", ()
   }
 });
 
-test("[SYS-REL-2.2] SQLite lock adapter rejects lock when same owner holds it (renewal)", () => {
+test("[SYS-REL-2.2] SQLite lock adapter rejects lock when same owner holds it (renewal) [sqlite-lock-adapter-robustness]", () => {
   const { path, db } = createTempDb();
   try {
     const adapter = new SqliteLockAdapter(db);
@@ -50,7 +50,7 @@ test("[SYS-REL-2.2] SQLite lock adapter rejects lock when same owner holds it (r
   }
 });
 
-test("[SYS-REL-2.2] SQLite lock adapter rejects lock when different owner holds it and not expired", () => {
+test("[SYS-REL-2.2] SQLite lock adapter rejects lock when different owner holds it and not expired [sqlite-lock-adapter-robustness]", () => {
   const { path, db } = createTempDb();
   try {
     const adapter = new SqliteLockAdapter(db);
@@ -63,7 +63,7 @@ test("[SYS-REL-2.2] SQLite lock adapter rejects lock when different owner holds 
   }
 });
 
-test("[SYS-REL-2.2] SQLite lock adapter honours TTL on stale locks - evicts expired lock", () => {
+test("[SYS-REL-2.2] SQLite lock adapter honours TTL on stale locks - evicts expired lock [sqlite-lock-adapter-robustness]", () => {
   const { path, db } = createTempDb();
   try {
     const adapter = new SqliteLockAdapter(db);
@@ -82,7 +82,7 @@ test("[SYS-REL-2.2] SQLite lock adapter honours TTL on stale locks - evicts expi
   }
 });
 
-test("[SYS-REL-2.2] SQLite lock adapter releases lock correctly", () => {
+test("[SYS-REL-2.2] SQLite lock adapter releases lock correctly [sqlite-lock-adapter-robustness]", () => {
   const { path, db } = createTempDb();
   try {
     const adapter = new SqliteLockAdapter(db);
@@ -98,7 +98,7 @@ test("[SYS-REL-2.2] SQLite lock adapter releases lock correctly", () => {
   }
 });
 
-test("[SYS-REL-2.2] SQLite lock adapter returns false when releasing non-existent lock", () => {
+test("[SYS-REL-2.2] SQLite lock adapter returns false when releasing non-existent lock [sqlite-lock-adapter-robustness]", () => {
   const { path, db } = createTempDb();
   try {
     const adapter = new SqliteLockAdapter(db);
@@ -109,7 +109,7 @@ test("[SYS-REL-2.2] SQLite lock adapter returns false when releasing non-existen
   }
 });
 
-test("[SYS-REL-2.2] SQLite lock adapter forceSteal evicts existing lock", () => {
+test("[SYS-REL-2.2] SQLite lock adapter forceSteal evicts existing lock [sqlite-lock-adapter-robustness]", () => {
   const { path, db } = createTempDb();
   try {
     const adapter = new SqliteLockAdapter(db);
@@ -126,7 +126,7 @@ test("[SYS-REL-2.2] SQLite lock adapter forceSteal evicts existing lock", () => 
   }
 });
 
-test("[SYS-REL-2.2] SQLite lock adapter orphaned lock cleanup - inspect returns null for missing lock", () => {
+test("[SYS-REL-2.2] SQLite lock adapter orphaned lock cleanup - inspect returns null for missing lock [sqlite-lock-adapter-robustness]", () => {
   const { path, db } = createTempDb();
   try {
     const adapter = new SqliteLockAdapter(db);
@@ -137,7 +137,7 @@ test("[SYS-REL-2.2] SQLite lock adapter orphaned lock cleanup - inspect returns 
   }
 });
 
-test("[SYS-REL-2.2] SQLite lock adapter extend updates ttl and fencing token", () => {
+test("[SYS-REL-2.2] SQLite lock adapter extend updates ttl and fencing token [sqlite-lock-adapter-robustness]", () => {
   const { path, db } = createTempDb();
   try {
     const adapter = new SqliteLockAdapter(db);
@@ -152,7 +152,7 @@ test("[SYS-REL-2.2] SQLite lock adapter extend updates ttl and fencing token", (
   }
 });
 
-test("[SYS-REL-2.2] SQLite lock adapter extend returns null for non-existent lock", () => {
+test("[SYS-REL-2.2] SQLite lock adapter extend returns null for non-existent lock [sqlite-lock-adapter-robustness]", () => {
   const { path, db } = createTempDb();
   try {
     const adapter = new SqliteLockAdapter(db);
@@ -163,7 +163,7 @@ test("[SYS-REL-2.2] SQLite lock adapter extend returns null for non-existent loc
   }
 });
 
-test("[SYS-REL-2.2] SQLite lock adapter concurrent acquire returns first winner", () => {
+test("[SYS-REL-2.2] SQLite lock adapter concurrent acquire returns first winner [sqlite-lock-adapter-robustness]", () => {
   const { path, db } = createTempDb();
   try {
     const adapter = new SqliteLockAdapter(db);
@@ -179,7 +179,7 @@ test("[SYS-REL-2.2] SQLite lock adapter concurrent acquire returns first winner"
   }
 });
 
-test("[SYS-REL-2.2] SQLite lock adapter ttlMs=0 means infinite TTL (never expires)", () => {
+test("[SYS-REL-2.2] SQLite lock adapter ttlMs=0 means infinite TTL (never expires) [sqlite-lock-adapter-robustness]", () => {
   const { path, db } = createTempDb();
   try {
     const adapter = new SqliteLockAdapter(db);

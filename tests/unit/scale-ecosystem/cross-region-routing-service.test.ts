@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { CrossRegionRoutingService } from "../../../src/scale-ecosystem/multi-region/cross-region-routing-service.js";
 
-test("CrossRegionRoutingService honors residency policy before latency preference", () => {
+test("CrossRegionRoutingService honors residency policy before latency preference [cross-region-routing-service]", () => {
   const service = new CrossRegionRoutingService();
   const decision = service.route({
     regions: [

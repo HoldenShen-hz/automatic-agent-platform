@@ -22,7 +22,7 @@ function createDb(): AuthoritativeSqlDatabase {
   };
 }
 
-test("FencingTokenService persists leadership state in the authoritative SQL database", () => {
+test("FencingTokenService persists leadership state in the authoritative SQL database [fencing-token-service-database]", () => {
   const db = createDb();
   const first = new FencingTokenService({ database: db });
   const token = first.acquireLeadership("us-east", "global");

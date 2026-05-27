@@ -23,14 +23,14 @@ import {
 // SplitBrainProtectionService Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("SplitBrainProtectionService.recordHeartbeat stores heartbeat", () => {
+test("SplitBrainProtectionService.recordHeartbeat stores heartbeat [split-brain-protection]", () => {
   const service = new SplitBrainProtectionService();
   service.recordHeartbeat("us-east");
 
   assert.equal(service.isRegionHealthy("us-east"), true);
 });
 
-test("SplitBrainProtectionService.recordHeartbeat updates existing state", () => {
+test("SplitBrainProtectionService.recordHeartbeat updates existing state [split-brain-protection]", () => {
   const service = new SplitBrainProtectionService();
   service.recordHeartbeat("us-east");
   service.recordHeartbeat("us-east");
@@ -38,12 +38,12 @@ test("SplitBrainProtectionService.recordHeartbeat updates existing state", () =>
   assert.equal(service.isRegionHealthy("us-east"), true);
 });
 
-test("SplitBrainProtectionService.isRegionHealthy returns false for unknown region", () => {
+test("SplitBrainProtectionService.isRegionHealthy returns false for unknown region [split-brain-protection]", () => {
   const service = new SplitBrainProtectionService();
   assert.equal(service.isRegionHealthy("unknown-region"), false);
 });
 
-test("SplitBrainProtectionService.recordFencingEpoch stores epoch", () => {
+test("SplitBrainProtectionService.recordFencingEpoch stores epoch [split-brain-protection]", () => {
   const service = new SplitBrainProtectionService();
   service.recordFencingEpoch("us-east", 1);
   service.recordFencingEpoch("us-east", 2);
@@ -52,7 +52,7 @@ test("SplitBrainProtectionService.recordFencingEpoch stores epoch", () => {
   assert.equal(service.isRegionHealthy("us-east"), false); // No heartbeat yet
 });
 
-test("SplitBrainProtectionService.recordFencingEpoch ignores lower epoch", () => {
+test("SplitBrainProtectionService.recordFencingEpoch ignores lower epoch [split-brain-protection]", () => {
   const service = new SplitBrainProtectionService();
   service.recordFencingEpoch("us-east", 5);
   service.recordFencingEpoch("us-east", 3); // Lower epoch should be ignored
@@ -61,7 +61,7 @@ test("SplitBrainProtectionService.recordFencingEpoch ignores lower epoch", () =>
   // but it should not throw
 });
 
-test("SplitBrainProtectionService.detectSplitBrain returns clear when no evidence", () => {
+test("SplitBrainProtectionService.detectSplitBrain returns clear when no evidence [split-brain-protection]", () => {
   const service = new SplitBrainProtectionService();
   service.recordHeartbeat("us-east");
   service.recordHeartbeat("eu-west");
@@ -72,7 +72,7 @@ test("SplitBrainProtectionService.detectSplitBrain returns clear when no evidenc
   assert.equal(result.confidence, 0);
 });
 
-test("SplitBrainProtectionService.detectSplitBrain detects heartbeat timeout", () => {
+test("SplitBrainProtectionService.detectSplitBrain detects heartbeat timeout [split-brain-protection]", () => {
   const service = new SplitBrainProtectionService();
   // Record heartbeat long ago (will timeout)
   service.recordHeartbeat("us-east");
@@ -84,7 +84,7 @@ test("SplitBrainProtectionService.detectSplitBrain detects heartbeat timeout", (
   assert.ok(result.evidence.some((e) => e.type === "heartbeat_timeout"));
 });
 
-test("SplitBrainProtectionService.detectSplitBrain detects fencing epoch conflict", () => {
+test("SplitBrainProtectionService.detectSplitBrain detects fencing epoch conflict [split-brain-protection]", () => {
   const service = new SplitBrainProtectionService();
   service.recordFencingEpoch("us-east", 1);
   service.recordFencingEpoch("eu-west", 1);
@@ -94,7 +94,7 @@ test("SplitBrainProtectionService.detectSplitBrain detects fencing epoch conflic
   assert.ok(result.evidence.some((e) => e.type === "fencing_epoch_conflict"));
 });
 
-test("SplitBrainProtectionService.detectSplitBrain does not flag normal epoch advancement as split-brain", () => {
+test("SplitBrainProtectionService.detectSplitBrain does not flag normal epoch advancement as split-brain [split-brain-protection]", () => {
   const service = new SplitBrainProtectionService();
   service.recordFencingEpoch("us-east", 1);
   service.recordFencingEpoch("eu-west", 2);
@@ -104,7 +104,7 @@ test("SplitBrainProtectionService.detectSplitBrain does not flag normal epoch ad
   assert.equal(result.evidence.some((e) => e.type === "fencing_epoch_conflict"), false);
 });
 
-test("SplitBrainProtectionService.detectSplitBrain returns conflicting regions", () => {
+test("SplitBrainProtectionService.detectSplitBrain returns conflicting regions [split-brain-protection]", () => {
   const service = new SplitBrainProtectionService();
   service.recordHeartbeat("us-east");
 
@@ -113,7 +113,7 @@ test("SplitBrainProtectionService.detectSplitBrain returns conflicting regions",
   assert.ok(result.conflictingRegions.includes("us-east"));
 });
 
-test("SplitBrainProtectionService.resolveViaQuorum returns leader_abdication when quorum met", () => {
+test("SplitBrainProtectionService.resolveViaQuorum returns leader_abdication when quorum met [split-brain-protection]", () => {
   const service = new SplitBrainProtectionService();
   service.recordHeartbeat("us-east");
   service.recordHeartbeat("eu-west");
@@ -125,7 +125,7 @@ test("SplitBrainProtectionService.resolveViaQuorum returns leader_abdication whe
   assert.equal(resolution, "leader_abdication");
 });
 
-test("SplitBrainProtectionService.resolveViaQuorum returns fencing_token_invalidation when quorum not met", () => {
+test("SplitBrainProtectionService.resolveViaQuorum returns fencing_token_invalidation when quorum not met [split-brain-protection]", () => {
   const service = new SplitBrainProtectionService();
 
   const resolution = service.resolveViaQuorum(["us-east", "eu-west"], 0.5);
@@ -133,7 +133,7 @@ test("SplitBrainProtectionService.resolveViaQuorum returns fencing_token_invalid
   assert.equal(resolution, "fencing_token_invalidation");
 });
 
-test("SplitBrainProtectionService.invalidateFencingTokens bumps epoch", () => {
+test("SplitBrainProtectionService.invalidateFencingTokens bumps epoch [split-brain-protection]", () => {
   const service = new SplitBrainProtectionService();
   service.recordFencingEpoch("us-east", 5);
 
@@ -143,7 +143,7 @@ test("SplitBrainProtectionService.invalidateFencingTokens bumps epoch", () => {
   assert.ok(invalidated[0]!.includes("invalidated"));
 });
 
-test("SplitBrainProtectionService.recordIncident creates incident", () => {
+test("SplitBrainProtectionService.recordIncident creates incident [split-brain-protection]", () => {
   const service = new SplitBrainProtectionService();
   const evidence: SplitBrainEvidence[] = [
     {
@@ -163,7 +163,7 @@ test("SplitBrainProtectionService.recordIncident creates incident", () => {
   assert.equal(incident.status, "confirmed");
 });
 
-test("SplitBrainProtectionService.recordIncident resolves with quorum when evidence >= 3", () => {
+test("SplitBrainProtectionService.recordIncident resolves with quorum when evidence >= 3 [split-brain-protection]", () => {
   const service = new SplitBrainProtectionService();
   service.recordHeartbeat("us-east");
   service.recordHeartbeat("eu-west");
@@ -196,7 +196,7 @@ test("SplitBrainProtectionService.recordIncident resolves with quorum when evide
   assert.ok(incident.resolution !== null);
 });
 
-test("SplitBrainProtectionService.getLastIncident returns last incident", () => {
+test("SplitBrainProtectionService.getLastIncident returns last incident [split-brain-protection]", () => {
   const service = new SplitBrainProtectionService();
   const evidence: SplitBrainEvidence[] = [
     {
@@ -215,7 +215,7 @@ test("SplitBrainProtectionService.getLastIncident returns last incident", () => 
   assert.equal(last.affectedRegions[0], "eu-west");
 });
 
-test("SplitBrainProtectionService.getIncidents returns all incidents", () => {
+test("SplitBrainProtectionService.getIncidents returns all incidents [split-brain-protection]", () => {
   const service = new SplitBrainProtectionService();
   const evidence: SplitBrainEvidence[] = [
     {
@@ -233,7 +233,7 @@ test("SplitBrainProtectionService.getIncidents returns all incidents", () => {
   assert.equal(incidents.length, 2);
 });
 
-test("SplitBrainProtectionService.getQuorumState returns state for known region", () => {
+test("SplitBrainProtectionService.getQuorumState returns state for known region [split-brain-protection]", () => {
   const service = new SplitBrainProtectionService();
   service.recordHeartbeat("us-east");
 
@@ -243,13 +243,13 @@ test("SplitBrainProtectionService.getQuorumState returns state for known region"
   assert.equal(state?.isConnected, true);
 });
 
-test("SplitBrainProtectionService.getQuorumState returns null for unknown region", () => {
+test("SplitBrainProtectionService.getQuorumState returns null for unknown region [split-brain-protection]", () => {
   const service = new SplitBrainProtectionService();
   const state = service.getQuorumState("unknown");
   assert.equal(state, null);
 });
 
-test("SplitBrainProtectionService.acquireLeadershipWithFencing rejects blank entity ids", () => {
+test("SplitBrainProtectionService.acquireLeadershipWithFencing rejects blank entity ids [split-brain-protection]", () => {
   const service = new SplitBrainProtectionService();
   assert.throws(
     () => service.acquireLeadershipWithFencing("us-east", "   "),
@@ -261,7 +261,7 @@ test("SplitBrainProtectionService.acquireLeadershipWithFencing rejects blank ent
   );
 });
 
-test("SplitBrainProtectionService.setQuorumWeight updates weight", () => {
+test("SplitBrainProtectionService.setQuorumWeight updates weight [split-brain-protection]", () => {
   const service = new SplitBrainProtectionService();
   service.recordHeartbeat("us-east");
   service.setQuorumWeight("us-east", 2);
@@ -274,14 +274,14 @@ test("SplitBrainProtectionService.setQuorumWeight updates weight", () => {
 // Singleton Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("getSplitBrainProtectionService returns singleton instance", () => {
+test("getSplitBrainProtectionService returns singleton instance [split-brain-protection]", () => {
   resetSplitBrainProtectionService();
   const instance1 = getSplitBrainProtectionService();
   const instance2 = getSplitBrainProtectionService();
   assert.ok(instance1 === instance2);
 });
 
-test("resetSplitBrainProtectionService clears singleton", () => {
+test("resetSplitBrainProtectionService clears singleton [split-brain-protection]", () => {
   const instance1 = getSplitBrainProtectionService();
   resetSplitBrainProtectionService();
   const instance2 = getSplitBrainProtectionService();
@@ -292,7 +292,7 @@ test("resetSplitBrainProtectionService clears singleton", () => {
 // R13-22: Split-Brain Protection Contract Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("R13-22: Split-brain protection detects split-brain condition", () => {
+test("R13-22: Split-brain protection detects split-brain condition [split-brain-protection]", () => {
   const service = new SplitBrainProtectionService();
 
   // Simulate two regions both claiming to be leader
@@ -305,7 +305,7 @@ test("R13-22: Split-brain protection detects split-brain condition", () => {
   assert.ok(result.evidence.length >= 1 || result.confidence > 0);
 });
 
-test("R13-22: Split-brain protection provides evidence for incidents", () => {
+test("R13-22: Split-brain protection provides evidence for incidents [split-brain-protection]", () => {
   const service = new SplitBrainProtectionService();
 
   // Create evidence of split-brain
@@ -331,7 +331,7 @@ test("R13-22: Split-brain protection provides evidence for incidents", () => {
   assert.ok(incident.fencingTokensInvalidated.length >= 0);
 });
 
-test("R13-22: Split-brain protection uses fencing token invalidation for resolution", () => {
+test("R13-22: Split-brain protection uses fencing token invalidation for resolution [split-brain-protection]", () => {
   const service = new SplitBrainProtectionService();
 
   // When quorum cannot be established, fencing tokens should be invalidated
@@ -340,7 +340,7 @@ test("R13-22: Split-brain protection uses fencing token invalidation for resolut
   assert.equal(resolution, "fencing_token_invalidation");
 });
 
-test("R13-22: Split-brain protection uses quorum-based resolution when possible", () => {
+test("R13-22: Split-brain protection uses quorum-based resolution when possible [split-brain-protection]", () => {
   const service = new SplitBrainProtectionService();
 
   // Setup connected regions with quorum

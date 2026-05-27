@@ -9,6 +9,6 @@ import test from "node:test";
 
 import * as ExecutionDispatchService from "../../../../src/scale-ecosystem/marketplace/execution-dispatch-service.js";
 
-test("execution-dispatch-service exports ExecutionDispatchService", () => {
+test("execution-dispatch-service exports ExecutionDispatchService [execution-dispatch-service]", () => {
   assert.ok(ExecutionDispatchService.ExecutionDispatchService !== undefined);
 });

@@ -32,7 +32,7 @@ import {
 // RpoRtoTrackingService Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("RpoRtoTrackingService.registerTarget stores target", () => {
+test("RpoRtoTrackingService.registerTarget stores target [rpo-rto-tracking]", () => {
   const service = new RpoRtoTrackingService();
   const target: RpoRtoTarget = {
     targetId: "target-1",
@@ -49,14 +49,14 @@ test("RpoRtoTrackingService.registerTarget stores target", () => {
   assert.equal(retrieved?.rtoMs, 60000);
 });
 
-test("RpoRtoTrackingService.recordReplicationSequence updates sequence", () => {
+test("RpoRtoTrackingService.recordReplicationSequence updates sequence [rpo-rto-tracking]", () => {
   const service = new RpoRtoTrackingService();
   service.recordReplicationSequence("us-east", "eu-west", 100);
   const seq = service.getLastReplicationSequence("us-east", "eu-west");
   assert.equal(seq, 100);
 });
 
-test("RpoRtoTrackingService.recordReplicationLag detects RPO breach", () => {
+test("RpoRtoTrackingService.recordReplicationLag detects RPO breach [rpo-rto-tracking]", () => {
   const service = new RpoRtoTrackingService();
   service.registerTarget({
     targetId: "target-1",
@@ -72,7 +72,7 @@ test("RpoRtoTrackingService.recordReplicationLag detects RPO breach", () => {
   assert.equal(lag.lagMs, 15000);
 });
 
-test("RpoRtoTrackingService.clearReplicationLag clears lag event", () => {
+test("RpoRtoTrackingService.clearReplicationLag clears lag event [rpo-rto-tracking]", () => {
   const service = new RpoRtoTrackingService();
   service.recordReplicationLag("us-east", "eu-west", 5000);
   service.clearReplicationLag("us-east", "eu-west");
@@ -81,7 +81,7 @@ test("RpoRtoTrackingService.clearReplicationLag clears lag event", () => {
   assert.equal(currentLag, 0);
 });
 
-test("RpoRtoTrackingService.startFailover begins failover tracking", () => {
+test("RpoRtoTrackingService.startFailover begins failover tracking [rpo-rto-tracking]", () => {
   const service = new RpoRtoTrackingService();
   const event = service.startFailover("us-east", "eu-west");
 
@@ -92,7 +92,7 @@ test("RpoRtoTrackingService.startFailover begins failover tracking", () => {
   assert.equal(event.success, false);
 });
 
-test("RpoRtoTrackingService.startFailover rejects overlapping failovers for the same pair", () => {
+test("RpoRtoTrackingService.startFailover rejects overlapping failovers for the same pair [rpo-rto-tracking]", () => {
   const service = new RpoRtoTrackingService();
   service.startFailover("us-east", "eu-west");
 
@@ -102,7 +102,7 @@ test("RpoRtoTrackingService.startFailover rejects overlapping failovers for the 
   );
 });
 
-test("RpoRtoTrackingService.completeFailover calculates actual RTO", async () => {
+test("RpoRtoTrackingService.completeFailover calculates actual RTO [rpo-rto-tracking]", async () => {
   const service = new RpoRtoTrackingService();
   service.startFailover("us-east", "eu-west");
 
@@ -116,7 +116,7 @@ test("RpoRtoTrackingService.completeFailover calculates actual RTO", async () =>
   assert.ok(event.actualRtoMs >= 0);
 });
 
-test("RpoRtoTrackingService.recordMeasurement detects breaches", () => {
+test("RpoRtoTrackingService.recordMeasurement detects breaches [rpo-rto-tracking]", () => {
   const service = new RpoRtoTrackingService();
   service.registerTarget({
     targetId: "target-1",
@@ -134,7 +134,7 @@ test("RpoRtoTrackingService.recordMeasurement detects breaches", () => {
   assert.equal(measurement.breachSeverity, "warning"); // 15s is not > 2x 10s
 });
 
-test("RpoRtoTrackingService.recordMeasurement detects critical breach", () => {
+test("RpoRtoTrackingService.recordMeasurement detects critical breach [rpo-rto-tracking]", () => {
   const service = new RpoRtoTrackingService();
   service.registerTarget({
     targetId: "target-1",
@@ -150,7 +150,7 @@ test("RpoRtoTrackingService.recordMeasurement detects critical breach", () => {
   assert.equal(measurement.breachSeverity, "critical");
 });
 
-test("RpoRtoTrackingService.getStatus returns correct status", () => {
+test("RpoRtoTrackingService.getStatus returns correct status [rpo-rto-tracking]", () => {
   const service = new RpoRtoTrackingService();
   service.registerTarget({
     targetId: "target-1",
@@ -167,7 +167,7 @@ test("RpoRtoTrackingService.getStatus returns correct status", () => {
   assert.equal(status?.rpoBreached, false);
 });
 
-test("RpoRtoTrackingService.isMeetingSla returns false when breached", () => {
+test("RpoRtoTrackingService.isMeetingSla returns false when breached [rpo-rto-tracking]", () => {
   const service = new RpoRtoTrackingService();
   service.registerTarget({
     targetId: "target-1",
@@ -181,7 +181,7 @@ test("RpoRtoTrackingService.isMeetingSla returns false when breached", () => {
   assert.equal(service.isMeetingSla("us-east->eu-west"), false);
 });
 
-test("RpoRtoTrackingService.isMeetingSla returns true when no breach", () => {
+test("RpoRtoTrackingService.isMeetingSla returns true when no breach [rpo-rto-tracking]", () => {
   const service = new RpoRtoTrackingService();
   service.registerTarget({
     targetId: "target-1",
@@ -195,7 +195,7 @@ test("RpoRtoTrackingService.isMeetingSla returns true when no breach", () => {
   assert.equal(service.isMeetingSla("us-east->eu-west"), true);
 });
 
-test("RpoRtoTrackingService.getMeasurements returns measurement history", () => {
+test("RpoRtoTrackingService.getMeasurements returns measurement history [rpo-rto-tracking]", () => {
   const service = new RpoRtoTrackingService();
   service.registerTarget({
     targetId: "target-1",
@@ -212,7 +212,7 @@ test("RpoRtoTrackingService.getMeasurements returns measurement history", () => 
   assert.equal(measurements.length, 2);
 });
 
-test("RpoRtoTrackingService.getFailoverHistory returns failover events", () => {
+test("RpoRtoTrackingService.getFailoverHistory returns failover events [rpo-rto-tracking]", () => {
   const service = new RpoRtoTrackingService();
   service.startFailover("us-east", "eu-west");
 
@@ -220,7 +220,7 @@ test("RpoRtoTrackingService.getFailoverHistory returns failover events", () => {
   assert.equal(history.length, 1);
 });
 
-test("RpoRtoTrackingService.getAverageRto returns average RTO", async () => {
+test("RpoRtoTrackingService.getAverageRto returns average RTO [rpo-rto-tracking]", async () => {
   const service = new RpoRtoTrackingService();
   service.startFailover("us-east", "eu-west");
   await new Promise((resolve) => setTimeout(resolve, 5));
@@ -235,7 +235,7 @@ test("RpoRtoTrackingService.getAverageRto returns average RTO", async () => {
 // R13-23: SLA Compliance Assertion Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("RpoRtoTrackingService.assertSlaCompliance does not throw when SLA met", () => {
+test("RpoRtoTrackingService.assertSlaCompliance does not throw when SLA met [rpo-rto-tracking]", () => {
   const service = new RpoRtoTrackingService();
   service.registerTarget({
     targetId: "target-1",
@@ -250,7 +250,7 @@ test("RpoRtoTrackingService.assertSlaCompliance does not throw when SLA met", ()
   service.assertSlaCompliance("us-east->eu-west");
 });
 
-test("RpoRtoTrackingService.assertSlaCompliance throws when RPO breached", () => {
+test("RpoRtoTrackingService.assertSlaCompliance throws when RPO breached [rpo-rto-tracking]", () => {
   const service = new RpoRtoTrackingService();
   service.registerTarget({
     targetId: "target-1",
@@ -267,7 +267,7 @@ test("RpoRtoTrackingService.assertSlaCompliance throws when RPO breached", () =>
   );
 });
 
-test("RpoRtoTrackingService.assertSlaCompliance throws when RTO breached", () => {
+test("RpoRtoTrackingService.assertSlaCompliance throws when RTO breached [rpo-rto-tracking]", () => {
   const service = new RpoRtoTrackingService();
   service.registerTarget({
     targetId: "target-1",
@@ -284,7 +284,7 @@ test("RpoRtoTrackingService.assertSlaCompliance throws when RTO breached", () =>
   );
 });
 
-test("RpoRtoTrackingService.getSlaCompliance returns compliant=false on breach", () => {
+test("RpoRtoTrackingService.getSlaCompliance returns compliant=false on breach [rpo-rto-tracking]", () => {
   const service = new RpoRtoTrackingService();
   service.registerTarget({
     targetId: "target-1",
@@ -300,7 +300,7 @@ test("RpoRtoTrackingService.getSlaCompliance returns compliant=false on breach",
   assert.ok(result.breaches.length > 0);
 });
 
-test("RpoRtoTrackingService.getSlaCompliance returns compliant=true when SLA met", () => {
+test("RpoRtoTrackingService.getSlaCompliance returns compliant=true when SLA met [rpo-rto-tracking]", () => {
   const service = new RpoRtoTrackingService();
   service.registerTarget({
     targetId: "target-1",
@@ -316,7 +316,7 @@ test("RpoRtoTrackingService.getSlaCompliance returns compliant=true when SLA met
   assert.equal(result.breaches.length, 0);
 });
 
-test("RpoRtoTrackingService.getGuaranteeSummary returns detailed summary", () => {
+test("RpoRtoTrackingService.getGuaranteeSummary returns detailed summary [rpo-rto-tracking]", () => {
   const service = new RpoRtoTrackingService();
   service.registerTarget({
     targetId: "target-1",
@@ -337,7 +337,7 @@ test("RpoRtoTrackingService.getGuaranteeSummary returns detailed summary", () =>
   assert.equal(summary.consecutiveBreaches, 0);
 });
 
-test("RpoRtoTrackingService.getGuaranteeSummary returns null for unknown pair", () => {
+test("RpoRtoTrackingService.getGuaranteeSummary returns null for unknown pair [rpo-rto-tracking]", () => {
   const service = new RpoRtoTrackingService();
   const summary = service.getGuaranteeSummary("unknown->unknown");
   assert.equal(summary, null);
@@ -347,7 +347,7 @@ test("RpoRtoTrackingService.getGuaranteeSummary returns null for unknown pair", 
 // DataReplicatorService Lag Measurement Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("DataReplicatorService.measureReplicationLag returns measurement", () => {
+test("DataReplicatorService.measureReplicationLag returns measurement [rpo-rto-tracking]", () => {
   const replicator = createDataReplicator("us-east", ["eu-west"], {
     sourceRegionId: "us-east",
     targetRegionIds: ["eu-west"],
@@ -364,7 +364,7 @@ test("DataReplicatorService.measureReplicationLag returns measurement", () => {
   assert.equal(measurement.exceedsRpo, false); // 0 lag should not exceed 10s RPO
 });
 
-test("DataReplicatorService.measureReplicationLag detects RPO breach", () => {
+test("DataReplicatorService.measureReplicationLag detects RPO breach [rpo-rto-tracking]", () => {
   const replicator = createDataReplicator("us-east", ["eu-west"], {
     sourceRegionId: "us-east",
     targetRegionIds: ["eu-west"],
@@ -379,7 +379,7 @@ test("DataReplicatorService.measureReplicationLag detects RPO breach", () => {
   assert.equal(measurement.exceedsRpo, true);
 });
 
-test("DataReplicatorService.isRpoMet returns false when RPO breached", () => {
+test("DataReplicatorService.isRpoMet returns false when RPO breached [rpo-rto-tracking]", () => {
   const replicator = createDataReplicator("us-east", ["eu-west"], {
     sourceRegionId: "us-east",
     targetRegionIds: ["eu-west"],
@@ -391,7 +391,7 @@ test("DataReplicatorService.isRpoMet returns false when RPO breached", () => {
   assert.equal(replicator.isRpoMet("eu-west"), false);
 });
 
-test("DataReplicatorService.isRpoMet returns true when RPO met", () => {
+test("DataReplicatorService.isRpoMet returns true when RPO met [rpo-rto-tracking]", () => {
   const replicator = createDataReplicator("us-east", ["eu-west"], {
     sourceRegionId: "us-east",
     targetRegionIds: ["eu-west"],
@@ -403,7 +403,7 @@ test("DataReplicatorService.isRpoMet returns true when RPO met", () => {
   assert.equal(replicator.isRpoMet("eu-west"), true);
 });
 
-test("DataReplicatorService.getCurrentLag returns lag in ms", () => {
+test("DataReplicatorService.getCurrentLag returns lag in ms [rpo-rto-tracking]", () => {
   const replicator = createDataReplicator("us-east", ["eu-west"], {
     sourceRegionId: "us-east",
     targetRegionIds: ["eu-west"],
@@ -416,7 +416,7 @@ test("DataReplicatorService.getCurrentLag returns lag in ms", () => {
   assert.ok(lag >= 0);
 });
 
-test("DataReplicatorService.getLagMeasurements returns all measurements", () => {
+test("DataReplicatorService.getLagMeasurements returns all measurements [rpo-rto-tracking]", () => {
   const replicator = createDataReplicator("us-east", ["eu-west"], {
     sourceRegionId: "us-east",
     targetRegionIds: ["eu-west"],
@@ -433,14 +433,14 @@ test("DataReplicatorService.getLagMeasurements returns all measurements", () => 
 // Singleton Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("getRpoRtoTrackingService returns singleton instance", () => {
+test("getRpoRtoTrackingService returns singleton instance [rpo-rto-tracking]", () => {
   resetRpoRtoTrackingService();
   const instance1 = getRpoRtoTrackingService();
   const instance2 = getRpoRtoTrackingService();
   assert.ok(instance1 === instance2);
 });
 
-test("resetRpoRtoTrackingService clears singleton", () => {
+test("resetRpoRtoTrackingService clears singleton [rpo-rto-tracking]", () => {
   const instance1 = getRpoRtoTrackingService();
   resetRpoRtoTrackingService();
   const instance2 = getRpoRtoTrackingService();

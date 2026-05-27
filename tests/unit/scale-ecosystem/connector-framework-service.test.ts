@@ -15,7 +15,7 @@ function manifest(lifecycleState: "registered" | "configured" | "verified" | "en
   };
 }
 
-test("ConnectorFrameworkService enforces verification and health on production execution", async () => {
+test("ConnectorFrameworkService enforces verification and health on production execution [connector-framework-service]", async () => {
   const service = new ConnectorFrameworkService();
   service.register(manifest("verified"));
   const binding = service.bind("crm_sync", "tenant_1", "prod", "2026-04-20T00:00:00.000Z");
@@ -41,7 +41,7 @@ test("ConnectorFrameworkService enforces verification and health on production e
   assert.equal(result.status, "succeeded");
 });
 
-test("ConnectorFrameworkService forbids unverified prod events and failed health cannot return success", async () => {
+test("ConnectorFrameworkService forbids unverified prod events and failed health cannot return success [connector-framework-service]", async () => {
   const service = new ConnectorFrameworkService();
   service.register(manifest("configured"));
   assert.throws(() => {
@@ -73,7 +73,7 @@ test("ConnectorFrameworkService forbids unverified prod events and failed health
   assert.equal(result.status, "failed");
 });
 
-test("ConnectorFrameworkService evicts bindings older than maxBindingAgeMs", () => {
+test("ConnectorFrameworkService evicts bindings older than maxBindingAgeMs [connector-framework-service]", () => {
   // Use a very short maxBindingAgeMs (1ms) to trigger eviction on next bind
   const service = new ConnectorFrameworkService(null, 1);
   service.register(manifest("enabled"));
@@ -89,7 +89,7 @@ test("ConnectorFrameworkService evicts bindings older than maxBindingAgeMs", () 
   assert.equal(bindings[0]!.tenantId, "tenant_new");
 });
 
-test("ConnectorFrameworkService retains at most healthRetentionCount health reports per connector", () => {
+test("ConnectorFrameworkService retains at most healthRetentionCount health reports per connector [connector-framework-service]", () => {
   // Use retention count of 3
   const service = new ConnectorFrameworkService(null, 30 * 24 * 60 * 60 * 1000, 3);
   service.register(manifest("enabled"));
@@ -107,7 +107,7 @@ test("ConnectorFrameworkService retains at most healthRetentionCount health repo
   assert.equal(reports.length, 3, "Health reports should be capped at retention count");
 });
 
-test("ConnectorFrameworkService evicts LRU connector's bindings when maxBindings is exceeded", () => {
+test("ConnectorFrameworkService evicts LRU connector's bindings when maxBindings is exceeded [connector-framework-service]", () => {
   // maxBindings=4. We add 4 bindings (reaching capacity), then add 1 more which triggers eviction.
   // Eviction removes 1 binding from the LRU head (crm_sync with 3 bindings, so it loses 1, not all).
   // crm_sync: 3 → 2, erp_sync: 1 → 1, jira_sync: 1 → 1. Total: 4.
@@ -136,7 +136,7 @@ test("ConnectorFrameworkService evicts LRU connector's bindings when maxBindings
   assert.equal(allBindings.filter((b) => b.connectorId === "crm_sync").length, 2, "crm_sync should have 2 bindings after eviction");
 });
 
-test("ConnectorFrameworkService evicts LRU health entry when maxHealthConnectors is exceeded", () => {
+test("ConnectorFrameworkService evicts LRU health entry when maxHealthConnectors is exceeded [connector-framework-service]", () => {
   // Use maxHealthConnectors = 3 to force eviction after 3 connectors report health
   const service = new ConnectorFrameworkService(null, 30 * 24 * 60 * 60 * 1000, 100, 10_000, 3);
   service.register(manifest("enabled"));

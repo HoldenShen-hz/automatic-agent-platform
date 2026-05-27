@@ -8,7 +8,7 @@ import { SqliteDatabase } from "../../../../src/platform/five-plane-state-eviden
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 import { PMF_EVALUATED_AT, seedPmfValidationDataset } from "../../../helpers/pmf.js";
 
-test("pmf validation service builds a passing report for the seeded baseline dataset", () => {
+test("pmf validation service builds a passing report for the seeded baseline dataset [pmf-validation-service]", () => {
   const workspace = createTempWorkspace("aa-pmf-unit-");
   const dbPath = join(workspace, "pmf.db");
 
@@ -45,7 +45,7 @@ test("pmf validation service builds a passing report for the seeded baseline dat
   }
 });
 
-test("pmf validation service persists history and fails when thresholds are not met", () => {
+test("pmf validation service persists history and fails when thresholds are not met [pmf-validation-service]", () => {
   const workspace = createTempWorkspace("aa-pmf-thresholds-");
   const dbPath = join(workspace, "pmf-thresholds.db");
 
@@ -83,7 +83,7 @@ test("pmf validation service persists history and fails when thresholds are not 
   }
 });
 
-test("pmf validation service rejects malformed run options", () => {
+test("pmf validation service rejects malformed run options [pmf-validation-service]", () => {
   const workspace = createTempWorkspace("aa-pmf-invalid-");
   const dbPath = join(workspace, "pmf-invalid.db");
 

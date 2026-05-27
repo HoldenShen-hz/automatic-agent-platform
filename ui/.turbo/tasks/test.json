@@ -3,8 +3,12 @@
   "command": [
     "vitest",
     "run",
-    "tests/unit/ui/apps/electron-win/main.test.ts"
+    "tests/features/registry.test.ts",
+    "tests/features/memory-review.test.tsx",
+    "tests/features/release-console.test.tsx",
+    "tests/features/trace-explorer.test.tsx",
+    "tests/features/flows.test.tsx"
   ],
-  "startedAt": "2026-05-27T03:26:51.678Z",
-  "completedAt": "2026-05-27T03:26:52.648Z"
+  "startedAt": "2026-05-27T06:23:10.338Z",
+  "completedAt": "2026-05-27T06:23:12.655Z"
 }

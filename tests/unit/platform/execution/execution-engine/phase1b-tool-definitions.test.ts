@@ -24,16 +24,16 @@ import {
 // PHASE1B_TOOL_DEFINITIONS alias tests
 // =============================================================================
 
-test("PHASE1B_TOOL_DEFINITIONS is identical to MULTI_STEP_TOOL_DEFINITIONS", () => {
+test("PHASE1B_TOOL_DEFINITIONS is identical to MULTI_STEP_TOOL_DEFINITIONS [phase1b-tool-definitions]", () => {
   assert.strictEqual(PHASE1B_TOOL_DEFINITIONS, MULTI_STEP_TOOL_DEFINITIONS);
 });
 
-test("PHASE1B_TOOL_DEFINITIONS is a readonly array", () => {
+test("PHASE1B_TOOL_DEFINITIONS is a readonly array [phase1b-tool-definitions]", () => {
   assert.ok(Array.isArray(PHASE1B_TOOL_DEFINITIONS));
   assert.equal(PHASE1B_TOOL_DEFINITIONS.length, MULTI_STEP_TOOL_DEFINITIONS.length);
 });
 
-test("PHASE1B_TOOL_DEFINITIONS contains expected tool names", () => {
+test("PHASE1B_TOOL_DEFINITIONS contains expected tool names [phase1b-tool-definitions]", () => {
   const toolNames = PHASE1B_TOOL_DEFINITIONS.map((t) => t.name);
   assert.ok(toolNames.includes("todo_write"));
   assert.ok(toolNames.includes("question"));
@@ -51,7 +51,7 @@ test("PHASE1B_TOOL_DEFINITIONS contains expected tool names", () => {
   assert.ok(toolNames.includes("write"));
 });
 
-test("PHASE1B_TOOL_DEFINITIONS tools have required properties", () => {
+test("PHASE1B_TOOL_DEFINITIONS tools have required properties [phase1b-tool-definitions]", () => {
   for (const tool of PHASE1B_TOOL_DEFINITIONS) {
     assert.ok(typeof tool.name === "string");
     assert.ok(typeof tool.description === "string");
@@ -59,7 +59,7 @@ test("PHASE1B_TOOL_DEFINITIONS tools have required properties", () => {
   }
 });
 
-test("PHASE1B_TOOL_DEFINITIONS length matches source", () => {
+test("PHASE1B_TOOL_DEFINITIONS length matches source [phase1b-tool-definitions]", () => {
   assert.equal(PHASE1B_TOOL_DEFINITIONS.length, MULTI_STEP_TOOL_DEFINITIONS.length);
 });
 
@@ -67,34 +67,34 @@ test("PHASE1B_TOOL_DEFINITIONS length matches source", () => {
 // getPhase1BToolDefinitions alias tests
 // =============================================================================
 
-test("getPhase1BToolDefinitions is identical to getMultiStepToolDefinitions", () => {
+test("getPhase1BToolDefinitions is identical to getMultiStepToolDefinitions [phase1b-tool-definitions]", () => {
   assert.strictEqual(getPhase1BToolDefinitions, getMultiStepToolDefinitions);
 });
 
-test("getPhase1BToolDefinitions returns filtered tools by name", () => {
+test("getPhase1BToolDefinitions returns filtered tools by name [phase1b-tool-definitions]", () => {
   const result = getPhase1BToolDefinitions(["todo_write", "question"]);
   assert.equal(result.length, 2);
   assert.equal(result[0].name, "todo_write");
   assert.equal(result[1].name, "question");
 });
 
-test("getPhase1BToolDefinitions returns empty array for empty input", () => {
+test("getPhase1BToolDefinitions returns empty array for empty input [phase1b-tool-definitions]", () => {
   const result = getPhase1BToolDefinitions([]);
   assert.equal(result.length, 0);
 });
 
-test("getPhase1BToolDefinitions returns all tools when given all names", () => {
+test("getPhase1BToolDefinitions returns all tools when given all names [phase1b-tool-definitions]", () => {
   const allNames = MULTI_STEP_TOOL_DEFINITIONS.map((t) => t.name);
   const result = getPhase1BToolDefinitions(allNames);
   assert.equal(result.length, MULTI_STEP_TOOL_DEFINITIONS.length);
 });
 
-test("getPhase1BToolDefinitions ignores unknown tool names", () => {
+test("getPhase1BToolDefinitions ignores unknown tool names [phase1b-tool-definitions]", () => {
   const result = getPhase1BToolDefinitions(["todo_write", "unknown_tool", "question"]);
   assert.equal(result.length, 2);
 });
 
-test("getPhase1BToolDefinitions returns tools in same order as source", () => {
+test("getPhase1BToolDefinitions returns tools in same order as source [phase1b-tool-definitions]", () => {
   const result = getPhase1BToolDefinitions(["web_fetch", "web_search", "git"]);
   assert.equal(result[0].name, "web_search");
   assert.equal(result[1].name, "web_fetch");
@@ -105,7 +105,7 @@ test("getPhase1BToolDefinitions returns tools in same order as source", () => {
 // Phase1BToolDefinition type alias tests
 // =============================================================================
 
-test("Phase1BToolDefinition can be used as a type", () => {
+test("Phase1BToolDefinition can be used as a type [phase1b-tool-definitions]", () => {
   const toolDef: Phase1BToolDefinition = {
     name: "test_tool",
     description: "A test tool",
@@ -115,7 +115,7 @@ test("Phase1BToolDefinition can be used as a type", () => {
   assert.equal(toolDef.description, "A test tool");
 });
 
-test("Phase1BToolDefinition structure matches MultiStepToolDefinition", () => {
+test("Phase1BToolDefinition structure matches MultiStepToolDefinition [phase1b-tool-definitions]", () => {
   const phase1bDef: Phase1BToolDefinition = {
     name: "custom_tool",
     description: "Custom description",

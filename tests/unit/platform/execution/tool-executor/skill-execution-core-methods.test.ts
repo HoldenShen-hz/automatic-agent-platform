@@ -37,7 +37,7 @@ function createService(
   return { workspace, db, store, service };
 }
 
-test("normalizeToolCallResult derives errorCode from status when not provided", () => {
+test("normalizeToolCallResult derives errorCode from status when not provided [skill-execution-core-methods]", () => {
   const { workspace, db, service } = createService(async () => ({
     success: false,
     summary: "failed",
@@ -66,7 +66,7 @@ test("normalizeToolCallResult derives errorCode from status when not provided", 
   }
 });
 
-test("normalizeToolCallResult sets timeout errorCode when status is timed_out", () => {
+test("normalizeToolCallResult sets timeout errorCode when status is timed_out [skill-execution-core-methods]", () => {
   const { workspace, db, service } = createService(async () => ({
     success: false,
     status: "timed_out",
@@ -95,7 +95,7 @@ test("normalizeToolCallResult sets timeout errorCode when status is timed_out", 
   }
 });
 
-test("normalizeToolCallResult preserves provided errorCode and errorSource", () => {
+test("normalizeToolCallResult preserves provided errorCode and errorSource [skill-execution-core-methods]", () => {
   const { workspace, db, service } = createService(async () => ({
     success: false,
     summary: "custom error",
@@ -123,7 +123,7 @@ test("normalizeToolCallResult preserves provided errorCode and errorSource", () 
   }
 });
 
-test("normalizeToolCallResult marks retryable based on metadata when failure occurs", () => {
+test("normalizeToolCallResult marks retryable based on metadata when failure occurs [skill-execution-core-methods]", () => {
   const metadata: ToolExecutionMetadata = {
     toolName: "retryable_tool",
     readOnly: true,
@@ -175,7 +175,7 @@ test("normalizeToolCallResult marks retryable based on metadata when failure occ
   }
 });
 
-test("normalizeToolCallResult calculates durationMs from startedAtMs to now", () => {
+test("normalizeToolCallResult calculates durationMs from startedAtMs to now [skill-execution-core-methods]", () => {
   const { workspace, db, service } = createService(async () => ({
     success: true,
     summary: "ok",
@@ -201,7 +201,7 @@ test("normalizeToolCallResult calculates durationMs from startedAtMs to now", ()
   }
 });
 
-test("validateSkillDefinition accepts valid skill definition", () => {
+test("validateSkillDefinition accepts valid skill definition [skill-execution-core-methods]", () => {
   const { workspace, db, service } = createService(async () => ({
     success: true,
     summary: "ok",
@@ -224,7 +224,7 @@ test("validateSkillDefinition accepts valid skill definition", () => {
   }
 });
 
-test("validateSkillDefinition rejects skill with step using undeclared tool", () => {
+test("validateSkillDefinition rejects skill with step using undeclared tool [skill-execution-core-methods]", () => {
   const { workspace, db, service } = createService(async () => ({
     success: true,
     summary: "ok",
@@ -249,7 +249,7 @@ test("validateSkillDefinition rejects skill with step using undeclared tool", ()
   }
 });
 
-test("validateSkillDefinition rejects skill with model override using undeclared tool", () => {
+test("validateSkillDefinition rejects skill with model override using undeclared tool [skill-execution-core-methods]", () => {
   const { workspace, db, service } = createService(async () => ({
     success: true,
     summary: "ok",
@@ -280,7 +280,7 @@ test("validateSkillDefinition rejects skill with model override using undeclared
   }
 });
 
-test("validateSkillDefinition rejects skill with unknown required tool", () => {
+test("validateSkillDefinition rejects skill with unknown required tool [skill-execution-core-methods]", () => {
   const { workspace, db, service } = createService(async () => ({
     success: true,
     summary: "ok",
@@ -305,7 +305,7 @@ test("validateSkillDefinition rejects skill with unknown required tool", () => {
   }
 });
 
-test("validateResolvedSteps accepts resolved steps with all tools declared", () => {
+test("validateResolvedSteps accepts resolved steps with all tools declared [skill-execution-core-methods]", () => {
   const { workspace, db, service } = createService(async () => ({
     success: true,
     summary: "ok",
@@ -332,7 +332,7 @@ test("validateResolvedSteps accepts resolved steps with all tools declared", () 
   }
 });
 
-test("validateResolvedSteps rejects resolved step with tool not in requiredTools", () => {
+test("validateResolvedSteps rejects resolved step with tool not in requiredTools [skill-execution-core-methods]", () => {
   const { workspace, db, service } = createService(async () => ({
     success: true,
     summary: "ok",
@@ -360,7 +360,7 @@ test("validateResolvedSteps rejects resolved step with tool not in requiredTools
   }
 });
 
-test("validateAllowedTools accepts when allowedTools contains all required tools", () => {
+test("validateAllowedTools accepts when allowedTools contains all required tools [skill-execution-core-methods]", () => {
   const { workspace, db, service } = createService(async () => ({
     success: true,
     summary: "ok",
@@ -387,7 +387,7 @@ test("validateAllowedTools accepts when allowedTools contains all required tools
   }
 });
 
-test("validateAllowedTools rejects when allowedTools is missing a required tool", () => {
+test("validateAllowedTools rejects when allowedTools is missing a required tool [skill-execution-core-methods]", () => {
   const { workspace, db, service } = createService(async () => ({
     success: true,
     summary: "ok",
@@ -416,7 +416,7 @@ test("validateAllowedTools rejects when allowedTools is missing a required tool"
   }
 });
 
-test("validateAllowedTools allows null/undefined allowedTools (no restriction)", () => {
+test("validateAllowedTools allows null/undefined allowedTools (no restriction) [skill-execution-core-methods]", () => {
   const { workspace, db, service } = createService(async () => ({
     success: true,
     summary: "ok",
@@ -440,7 +440,7 @@ test("validateAllowedTools allows null/undefined allowedTools (no restriction)",
   }
 });
 
-test("executeToolCallWithPolicy resolves timeout from metadata", async () => {
+test("executeToolCallWithPolicy resolves timeout from metadata [skill-execution-core-methods]", async () => {
   const observedTimeouts: number[] = [];
   const metadata: ToolExecutionMetadata = {
     toolName: "timed_tool",
@@ -499,7 +499,7 @@ test("executeToolCallWithPolicy resolves timeout from metadata", async () => {
   }
 });
 
-test("executeToolCallWithPolicy handles timeout correctly", async () => {
+test("executeToolCallWithPolicy handles timeout correctly [skill-execution-core-methods]", async () => {
   const metadata: ToolExecutionMetadata = {
     toolName: "slow_tool",
     readOnly: true,
@@ -558,7 +558,7 @@ test("executeToolCallWithPolicy handles timeout correctly", async () => {
   }
 });
 
-test("executeToolCallWithPolicy handles runner rejection gracefully", async () => {
+test("executeToolCallWithPolicy handles runner rejection gracefully [skill-execution-core-methods]", async () => {
   const { workspace, db, service } = createService(async () => {
     throw new Error("Runner failed");
   });

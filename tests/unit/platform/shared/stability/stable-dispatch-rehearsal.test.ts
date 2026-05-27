@@ -21,7 +21,7 @@ function createTempDir(): string {
   return join("/tmp", `dispatch-rehearsal-test-${Date.now()}`);
 }
 
-test("runStableDispatchRehearsal executes all four scenarios successfully", async () => {
+test("runStableDispatchRehearsal executes all four scenarios successfully [stable-dispatch-rehearsal]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableDispatchRehearsal({ outputDir });
@@ -40,7 +40,7 @@ test("runStableDispatchRehearsal executes all four scenarios successfully", asyn
   }
 });
 
-test("dispatch_claims_capable_worker scenario passes", async () => {
+test("dispatch_claims_capable_worker scenario passes [stable-dispatch-rehearsal]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableDispatchRehearsal({ outputDir });
@@ -57,7 +57,7 @@ test("dispatch_claims_capable_worker scenario passes", async () => {
   }
 });
 
-test("dispatch_balances_affinity_against_hotspot_load scenario passes", async () => {
+test("dispatch_balances_affinity_against_hotspot_load scenario passes [stable-dispatch-rehearsal]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableDispatchRehearsal({ outputDir });
@@ -74,7 +74,7 @@ test("dispatch_balances_affinity_against_hotspot_load scenario passes", async ()
   }
 });
 
-test("dispatch_respects_dispatch_after scenario passes", async () => {
+test("dispatch_respects_dispatch_after scenario passes [stable-dispatch-rehearsal]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableDispatchRehearsal({ outputDir });
@@ -91,7 +91,7 @@ test("dispatch_respects_dispatch_after scenario passes", async () => {
   }
 });
 
-test("dispatch_reports_no_worker_for_capability_gap scenario passes", async () => {
+test("dispatch_reports_no_worker_for_capability_gap scenario passes [stable-dispatch-rehearsal]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableDispatchRehearsal({ outputDir });
@@ -108,7 +108,7 @@ test("dispatch_reports_no_worker_for_capability_gap scenario passes", async () =
   }
 });
 
-test("writeStableDispatchRehearsalReport writes valid JSON", async () => {
+test("writeStableDispatchRehearsalReport writes valid JSON [stable-dispatch-rehearsal]", async () => {
   const outputDir = createTempDir();
   const reportPath = join(outputDir, "report.json");
   try {
@@ -130,7 +130,7 @@ test("writeStableDispatchRehearsalReport writes valid JSON", async () => {
   }
 });
 
-test("report contains valid startedAt and finishedAt timestamps", async () => {
+test("report contains valid startedAt and finishedAt timestamps [stable-dispatch-rehearsal]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableDispatchRehearsal({ outputDir });
@@ -149,7 +149,7 @@ test("report contains valid startedAt and finishedAt timestamps", async () => {
   }
 });
 
-test("report outputDir matches options", async () => {
+test("report outputDir matches options [stable-dispatch-rehearsal]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableDispatchRehearsal({ outputDir });

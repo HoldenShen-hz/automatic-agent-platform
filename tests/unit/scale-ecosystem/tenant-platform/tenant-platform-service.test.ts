@@ -48,7 +48,7 @@ function createMockDb() {
   };
 }
 
-test("TenantPlatformService.createWorkspace creates workspace and adds owner membership", () => {
+test("TenantPlatformService.createWorkspace creates workspace and adds owner membership [tenant-platform-service]", () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new TenantPlatformService(db, store);
@@ -66,7 +66,7 @@ test("TenantPlatformService.createWorkspace creates workspace and adds owner mem
   assert.ok(workspace.createdAt);
 });
 
-test("TenantPlatformService.createWorkspace accepts custom workspaceId", () => {
+test("TenantPlatformService.createWorkspace accepts custom workspaceId [tenant-platform-service]", () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new TenantPlatformService(db, store);
@@ -81,7 +81,7 @@ test("TenantPlatformService.createWorkspace accepts custom workspaceId", () => {
   assert.equal(workspace.workspaceId, "ws_custom_123");
 });
 
-test("TenantPlatformService.createWorkspace with organizationId links to organization", () => {
+test("TenantPlatformService.createWorkspace with organizationId links to organization [tenant-platform-service]", () => {
   const store = createMockStore();
   store.organization.upsertOrganizationRecord({
     organizationId: "org_001",
@@ -104,7 +104,7 @@ test("TenantPlatformService.createWorkspace with organizationId links to organiz
   assert.equal(workspace.organizationId, "org_001");
 });
 
-test("TenantPlatformService.addWorkspaceMembership adds member to workspace", () => {
+test("TenantPlatformService.addWorkspaceMembership adds member to workspace [tenant-platform-service]", () => {
   const store = createMockStore();
   store.organization.upsertWorkspaceRecord({
     workspaceId: "ws_001",
@@ -129,7 +129,7 @@ test("TenantPlatformService.addWorkspaceMembership adds member to workspace", ()
   assert.equal(membership.role, "member");
 });
 
-test("TenantPlatformService.createOrganization creates organization", () => {
+test("TenantPlatformService.createOrganization creates organization [tenant-platform-service]", () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new TenantPlatformService(db, store);
@@ -143,7 +143,7 @@ test("TenantPlatformService.createOrganization creates organization", () => {
   assert.ok(org.createdAt);
 });
 
-test("TenantPlatformService.createOrganization with billing account validates account exists", () => {
+test("TenantPlatformService.createOrganization with billing account validates account exists [tenant-platform-service]", () => {
   const store = createMockStore();
   store.billing.upsertBillingAccount({
     accountId: "bill_acct_001",
@@ -165,7 +165,7 @@ test("TenantPlatformService.createOrganization with billing account validates ac
   assert.equal(org.billingAccountId, "bill_acct_001");
 });
 
-test("TenantPlatformService.createOrganization throws for non-existent billing account", () => {
+test("TenantPlatformService.createOrganization throws for non-existent billing account [tenant-platform-service]", () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new TenantPlatformService(db, store);
@@ -178,7 +178,7 @@ test("TenantPlatformService.createOrganization throws for non-existent billing a
   }, /tenant.billing_account_not_found/);
 });
 
-test("TenantPlatformService.addOrganizationMembership adds member to organization", () => {
+test("TenantPlatformService.addOrganizationMembership adds member to organization [tenant-platform-service]", () => {
   const store = createMockStore();
   store.organization.upsertOrganizationRecord({
     organizationId: "org_002",
@@ -202,7 +202,7 @@ test("TenantPlatformService.addOrganizationMembership adds member to organizatio
   assert.equal(membership.role, "admin");
 });
 
-test("TenantPlatformService.createTenant creates tenant within organization", () => {
+test("TenantPlatformService.createTenant creates tenant within organization [tenant-platform-service]", () => {
   const store = createMockStore();
   store.organization.upsertOrganizationRecord({
     organizationId: "org_003",
@@ -229,7 +229,7 @@ test("TenantPlatformService.createTenant creates tenant within organization", ()
   assert.equal(tenant.deploymentMode, "cloud_shared");
 });
 
-test("TenantPlatformService.createTenant sets organization default when requested", () => {
+test("TenantPlatformService.createTenant sets organization default when requested [tenant-platform-service]", () => {
   const store = createMockStore();
   store.organization.upsertOrganizationRecord({
     organizationId: "org_default_test",
@@ -255,7 +255,7 @@ test("TenantPlatformService.createTenant sets organization default when requeste
   assert.equal(updatedOrg.defaultTenantId, tenant.tenantId);
 });
 
-test("TenantPlatformService.createTenant initializes per-tenant static encryption and can encrypt payloads", () => {
+test("TenantPlatformService.createTenant initializes per-tenant static encryption and can encrypt payloads [tenant-platform-service]", () => {
   const store = createMockStore();
   store.organization.upsertOrganizationRecord({
     organizationId: "org_encrypt",
@@ -283,7 +283,7 @@ test("TenantPlatformService.createTenant initializes per-tenant static encryptio
   assert.equal(service.decryptTenantData(tenant.tenantId, encrypted), "secret-payload");
 });
 
-test("TenantPlatformService.createTenant provisions a dedicated tenant-scoped worker pool for dedicated_pool isolation", () => {
+test("TenantPlatformService.createTenant provisions a dedicated tenant-scoped worker pool for dedicated_pool isolation [tenant-platform-service]", () => {
   const store = createMockStore();
   store.organization.upsertOrganizationRecord({
     organizationId: "org_dedicated",
@@ -315,7 +315,7 @@ test("TenantPlatformService.createTenant provisions a dedicated tenant-scoped wo
   assert.equal(service.getResourcePoolService().getPool(isolation.resourcePool.poolId)?.organizationId, "org_dedicated");
 });
 
-test("TenantPlatformService.decommissionTenant tears down tenant encryption keys", () => {
+test("TenantPlatformService.decommissionTenant tears down tenant encryption keys [tenant-platform-service]", () => {
   const store = createMockStore();
   store.organization.upsertOrganizationRecord({
     organizationId: "org_encrypt_cleanup",
@@ -346,7 +346,7 @@ test("TenantPlatformService.decommissionTenant tears down tenant encryption keys
   assert.equal(encryption.isInitialized(tenant.tenantId), false);
 });
 
-test("TenantPlatformService.createDeploymentBinding creates binding for tenant", () => {
+test("TenantPlatformService.createDeploymentBinding creates binding for tenant [tenant-platform-service]", () => {
   const store = createMockStore();
   store.organization.upsertOrganizationRecord({
     organizationId: "org_binding",
@@ -385,7 +385,7 @@ test("TenantPlatformService.createDeploymentBinding creates binding for tenant",
   assert.equal(binding.region, "us-east-1");
 });
 
-test("TenantPlatformService.createDataNamespace creates namespace with tenant scope", () => {
+test("TenantPlatformService.createDataNamespace creates namespace with tenant scope [tenant-platform-service]", () => {
   const store = createMockStore();
   store.organization.upsertOrganizationRecord({
     organizationId: "org_ns",
@@ -423,7 +423,7 @@ test("TenantPlatformService.createDataNamespace creates namespace with tenant sc
   assert.equal(ns.retentionPolicy, "retention_30d");
 });
 
-test("TenantPlatformService.createDataNamespace throws when no scope provided", () => {
+test("TenantPlatformService.createDataNamespace throws when no scope provided [tenant-platform-service]", () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new TenantPlatformService(db, store);
@@ -437,7 +437,7 @@ test("TenantPlatformService.createDataNamespace throws when no scope provided", 
   }, /tenant.namespace_scope_required/);
 });
 
-test("TenantPlatformService.createDataNamespace throws on workspace-tenant organization mismatch", () => {
+test("TenantPlatformService.createDataNamespace throws on workspace-tenant organization mismatch [tenant-platform-service]", () => {
   const store = createMockStore();
   store.organization.upsertOrganizationRecord({
     organizationId: "org_wrong",
@@ -491,7 +491,7 @@ test("TenantPlatformService.createDataNamespace throws on workspace-tenant organ
   }, /tenant.workspace_tenant_organization_mismatch/);
 });
 
-test("TenantPlatformService.buildTopologySummary returns complete summary", () => {
+test("TenantPlatformService.buildTopologySummary returns complete summary [tenant-platform-service]", () => {
   const store = createMockStore();
   store.organization.upsertOrganizationRecord({
     organizationId: "org_summary",
@@ -534,7 +534,7 @@ test("TenantPlatformService.buildTopologySummary returns complete summary", () =
   assert.ok(summary.generatedAt);
 });
 
-test("TenantPlatformService throws for invalid workspaceId format", () => {
+test("TenantPlatformService throws for invalid workspaceId format [tenant-platform-service]", () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new TenantPlatformService(db, store);
@@ -549,7 +549,7 @@ test("TenantPlatformService throws for invalid workspaceId format", () => {
   }, /tenant.invalid_workspace_id/);
 });
 
-test("TenantPlatformService throws for invalid ownerId format", () => {
+test("TenantPlatformService throws for invalid ownerId format [tenant-platform-service]", () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new TenantPlatformService(db, store);
@@ -563,7 +563,7 @@ test("TenantPlatformService throws for invalid ownerId format", () => {
   }, /tenant.invalid_owner_id/);
 });
 
-test("TenantPlatformService throws for empty displayName", () => {
+test("TenantPlatformService throws for empty displayName [tenant-platform-service]", () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new TenantPlatformService(db, store);
@@ -577,7 +577,7 @@ test("TenantPlatformService throws for empty displayName", () => {
   }, /tenant.invalid_workspace_display_name/);
 });
 
-test("TenantPlatformService supports suspend, reactivate, deactivate, and decommission lifecycle transitions", () => {
+test("TenantPlatformService supports suspend, reactivate, deactivate, and decommission lifecycle transitions [tenant-platform-service]", () => {
   const store = createMockStore();
   store.organization.upsertOrganizationRecord({
     organizationId: "org_lifecycle",
@@ -635,7 +635,7 @@ test("TenantPlatformService supports suspend, reactivate, deactivate, and decomm
   }, /tenant.invalid_lifecycle_transition/);
 });
 
-test("TenantPlatformService enforces quota checks before provisioning tenant-scoped resources", () => {
+test("TenantPlatformService enforces quota checks before provisioning tenant-scoped resources [tenant-platform-service]", () => {
   const store = createMockStore();
   store.organization.upsertOrganizationRecord({
     organizationId: "org_quota",
@@ -700,7 +700,7 @@ test("TenantPlatformService enforces quota checks before provisioning tenant-sco
   );
 });
 
-test("TenantPlatformService rejects resource creation when tenant quota is exceeded", () => {
+test("TenantPlatformService rejects resource creation when tenant quota is exceeded [tenant-platform-service]", () => {
   const store = createMockStore();
   store.organization.upsertOrganizationRecord({
     organizationId: "org_quota_blocked",
@@ -745,7 +745,7 @@ test("TenantPlatformService rejects resource creation when tenant quota is excee
   }, /Quota exceeded for storage: 10\/10/);
 });
 
-test("TenantPlatformService.createOrganization throws when defaultTenantId belongs to a different organization", () => {
+test("TenantPlatformService.createOrganization throws when defaultTenantId belongs to a different organization [tenant-platform-service]", () => {
   const store = createMockStore();
   // Create the organization that will own the tenant
   store.organization.upsertOrganizationRecord({
@@ -792,7 +792,7 @@ test("TenantPlatformService.createOrganization throws when defaultTenantId belon
   }, /tenant.default_tenant_mismatch/);
 });
 
-test("TenantPlatformService.createOrganization accepts defaultTenantId that belongs to same organization", () => {
+test("TenantPlatformService.createOrganization accepts defaultTenantId that belongs to same organization [tenant-platform-service]", () => {
   const store = createMockStore();
   // Create the organization
   store.organization.upsertOrganizationRecord({
@@ -830,7 +830,7 @@ test("TenantPlatformService.createOrganization accepts defaultTenantId that belo
   assert.equal(org.defaultTenantId, "tenant_same_org");
 });
 
-test("TenantPlatformService.createOrganization rejects defaultTenantId when tenant has null organizationId (unassigned tenant cannot be claimed)", () => {
+test("TenantPlatformService.createOrganization rejects defaultTenantId when tenant has null organizationId (unassigned tenant cannot be claimed) [tenant-platform-service]", () => {
   const store = createMockStore();
   // Create tenant with null organizationId (unassigned/legacy tenant)
   store.organization.upsertTenantRecord({

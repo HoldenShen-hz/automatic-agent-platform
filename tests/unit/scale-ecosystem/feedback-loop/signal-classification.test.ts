@@ -59,7 +59,7 @@ function createFeedbackBatch(signals: FeedbackSignal[] = []) {
 // inferConfidence branches - source-based classification
 // =============================================================================
 
-test("inferConfidence returns 1 for user source", () => {
+test("inferConfidence returns 1 for user source [signal-classification]", () => {
   const preprocessor = new SignalPreprocessor();
   const feedback = createFeedbackBatch([
     createSignal({ signalId: "sig_1", source: "user", category: "correction" }),
@@ -71,7 +71,7 @@ test("inferConfidence returns 1 for user source", () => {
   assert.equal(signal?.confidence, 1);
 });
 
-test("inferConfidence returns 1 for hitl source", () => {
+test("inferConfidence returns 1 for hitl source [signal-classification]", () => {
   const preprocessor = new SignalPreprocessor();
   const feedback = createFeedbackBatch([
     createSignal({ signalId: "sig_1", source: "hitl", category: "correction" }),
@@ -83,7 +83,7 @@ test("inferConfidence returns 1 for hitl source", () => {
   assert.equal(signal?.confidence, 1);
 });
 
-test("inferConfidence returns 0.8 for correction category", () => {
+test("inferConfidence returns 0.8 for correction category [signal-classification]", () => {
   const preprocessor = new SignalPreprocessor();
   const feedback = createFeedbackBatch([
     createSignal({ signalId: "sig_1", source: "execution", category: "correction" }),
@@ -95,7 +95,7 @@ test("inferConfidence returns 0.8 for correction category", () => {
   assert.equal(signal?.confidence, 0.8);
 });
 
-test("inferConfidence returns 0.8 for failure category", () => {
+test("inferConfidence returns 0.8 for failure category [signal-classification]", () => {
   const preprocessor = new SignalPreprocessor();
   const feedback = createFeedbackBatch([
     createSignal({ signalId: "sig_1", source: "execution", category: "failure" }),
@@ -107,7 +107,7 @@ test("inferConfidence returns 0.8 for failure category", () => {
   assert.equal(signal?.confidence, 0.8);
 });
 
-test("inferConfidence returns 0.8 for timeout category", () => {
+test("inferConfidence returns 0.8 for timeout category [signal-classification]", () => {
   const preprocessor = new SignalPreprocessor();
   const feedback = createFeedbackBatch([
     createSignal({ signalId: "sig_1", source: "execution", category: "timeout" }),
@@ -119,7 +119,7 @@ test("inferConfidence returns 0.8 for timeout category", () => {
   assert.equal(signal?.confidence, 0.8);
 });
 
-test("inferConfidence returns 0.5 for partial category", () => {
+test("inferConfidence returns 0.5 for partial category [signal-classification]", () => {
   const preprocessor = new SignalPreprocessor();
   const feedback = createFeedbackBatch([
     createSignal({ signalId: "sig_1", source: "execution", category: "partial" }),
@@ -131,7 +131,7 @@ test("inferConfidence returns 0.5 for partial category", () => {
   assert.equal(signal?.confidence, 0.5);
 });
 
-test("inferConfidence returns 0.3 for unknown category", () => {
+test("inferConfidence returns 0.3 for unknown category [signal-classification]", () => {
   const preprocessor = new SignalPreprocessor();
   // category that doesn't match any specific branch
   const feedback = createFeedbackBatch([
@@ -148,7 +148,7 @@ test("inferConfidence returns 0.3 for unknown category", () => {
 // Learning type assignment based on signal category
 // =============================================================================
 
-test("learningType is user_correction for user correction", () => {
+test("learningType is user_correction for user correction [signal-classification]", () => {
   const preprocessor = new SignalPreprocessor();
   const feedback = createFeedbackBatch([
     createSignal({ signalId: "sig_1", source: "user", category: "correction" }),
@@ -159,7 +159,7 @@ test("learningType is user_correction for user correction", () => {
   assert.ok(result.some(s => s.learningType === "user_correction"));
 });
 
-test("learningType is recovery_playbook for execution correction", () => {
+test("learningType is recovery_playbook for execution correction [signal-classification]", () => {
   const preprocessor = new SignalPreprocessor();
   const feedback = createFeedbackBatch([
     createSignal({ signalId: "sig_1", source: "execution", category: "correction" }),
@@ -171,7 +171,7 @@ test("learningType is recovery_playbook for execution correction", () => {
   assert.equal(signal?.learningType, "recovery_playbook");
 });
 
-test("learningType is failure_pattern for failure category", () => {
+test("learningType is failure_pattern for failure category [signal-classification]", () => {
   const preprocessor = new SignalPreprocessor();
   const feedback = createFeedbackBatch([
     createSignal({ signalId: "sig_1", category: "failure" }),
@@ -182,7 +182,7 @@ test("learningType is failure_pattern for failure category", () => {
   assert.ok(result.some(s => s.learningType === "failure_pattern"));
 });
 
-test("learningType is failure_pattern for timeout category", () => {
+test("learningType is failure_pattern for timeout category [signal-classification]", () => {
   const preprocessor = new SignalPreprocessor();
   const feedback = createFeedbackBatch([
     createSignal({ signalId: "sig_1", category: "timeout" }),
@@ -193,7 +193,7 @@ test("learningType is failure_pattern for timeout category", () => {
   assert.ok(result.some(s => s.learningType === "failure_pattern"));
 });
 
-test("learningType is failure_pattern for partial category", () => {
+test("learningType is failure_pattern for partial category [signal-classification]", () => {
   const preprocessor = new SignalPreprocessor();
   const feedback = createFeedbackBatch([
     createSignal({ signalId: "sig_1", category: "partial" }),
@@ -204,7 +204,7 @@ test("learningType is failure_pattern for partial category", () => {
   assert.ok(result.some(s => s.learningType === "failure_pattern"));
 });
 
-test("learningType is null for unclassified signals (filtered out)", () => {
+test("learningType is null for unclassified signals (filtered out) [signal-classification]", () => {
   const preprocessor = new SignalPreprocessor();
   // success/info signals are filtered out by default
   const feedback = createFeedbackBatch([
@@ -220,7 +220,7 @@ test("learningType is null for unclassified signals (filtered out)", () => {
 // Signal routing based on category and source combinations
 // =============================================================================
 
-test("correction from user routes to user_correction learning type", () => {
+test("correction from user routes to user_correction learning type [signal-classification]", () => {
   const preprocessor = new SignalPreprocessor();
   const feedback = createFeedbackBatch([
     createSignal({ signalId: "sig_1", source: "user", category: "correction" }),
@@ -233,7 +233,7 @@ test("correction from user routes to user_correction learning type", () => {
   assert.equal(signal?.confidence, 1);
 });
 
-test("correction from execution routes to recovery_playbook learning type", () => {
+test("correction from execution routes to recovery_playbook learning type [signal-classification]", () => {
   const preprocessor = new SignalPreprocessor();
   const feedback = createFeedbackBatch([
     createSignal({ signalId: "sig_1", source: "execution", category: "correction" }),
@@ -246,7 +246,7 @@ test("correction from execution routes to recovery_playbook learning type", () =
   assert.equal(signal?.confidence, 0.8);
 });
 
-test("failure signals route to failure_pattern", () => {
+test("failure signals route to failure_pattern [signal-classification]", () => {
   const preprocessor = new SignalPreprocessor();
   const feedback = createFeedbackBatch([
     createSignal({ signalId: "sig_1", category: "failure" }),
@@ -257,7 +257,7 @@ test("failure signals route to failure_pattern", () => {
   assert.ok(result.some(s => s.learningType === "failure_pattern"));
 });
 
-test("recovery playbook requires failure+correction+success pattern", () => {
+test("recovery playbook requires failure+correction+success pattern [signal-classification]", () => {
   const preprocessor = new SignalPreprocessor();
   const feedback = createFeedbackBatch([
     createSignal({ signalId: "sig_1", category: "failure", stepOutputRefs: ["step:1"] }),
@@ -270,7 +270,7 @@ test("recovery playbook requires failure+correction+success pattern", () => {
   assert.ok(result.some(s => s.learningType === "recovery_playbook"));
 });
 
-test("incomplete recovery pattern does not produce recovery_playbook", () => {
+test("incomplete recovery pattern does not produce recovery_playbook [signal-classification]", () => {
   const preprocessor = new SignalPreprocessor();
   // missing success signal
   const feedback = createFeedbackBatch([
@@ -289,7 +289,7 @@ test("incomplete recovery pattern does not produce recovery_playbook", () => {
 // Empty signal handling
 // =============================================================================
 
-test("empty signals array produces empty learning signals", () => {
+test("empty signals array produces empty learning signals [signal-classification]", () => {
   const preprocessor = new SignalPreprocessor();
   const feedback = createFeedbackBatch([]);
 
@@ -298,7 +298,7 @@ test("empty signals array produces empty learning signals", () => {
   assert.equal(result.length, 0);
 });
 
-test("empty stepOutputRefs uses signalId as group key", () => {
+test("empty stepOutputRefs uses signalId as group key [signal-classification]", () => {
   const preprocessor = new SignalPreprocessor();
   const signals = [
     createSignal({ signalId: "sig_1", stepOutputRefs: [], category: "failure" }),

@@ -18,7 +18,7 @@ function createHarness(prefix: string) {
   };
 }
 
-test("priority-queue: higher priority jobs dequeue first", () => {
+test("priority-queue: higher priority jobs dequeue first [priority-queue]", () => {
   const harness = createHarness("aa-priority-higher-first-");
   try {
     const { adapter } = harness;
@@ -43,7 +43,7 @@ test("priority-queue: higher priority jobs dequeue first", () => {
   }
 });
 
-test("priority-queue: equal priority jobs follow FIFO order by createdAt", () => {
+test("priority-queue: equal priority jobs follow FIFO order by createdAt [priority-queue]", () => {
   const harness = createHarness("aa-priority-fifo-");
   try {
     const { adapter } = harness;
@@ -67,7 +67,7 @@ test("priority-queue: equal priority jobs follow FIFO order by createdAt", () =>
   }
 });
 
-test("priority-queue: default priority is zero", () => {
+test("priority-queue: default priority is zero [priority-queue]", () => {
   const harness = createHarness("aa-priority-default-");
   try {
     const { adapter } = harness;
@@ -92,7 +92,7 @@ test("priority-queue: default priority is zero", () => {
   }
 });
 
-test("priority-queue: negative priority values are handled", () => {
+test("priority-queue: negative priority values are handled [priority-queue]", () => {
   const harness = createHarness("aa-priority-negative-");
   try {
     const { adapter } = harness;
@@ -116,7 +116,7 @@ test("priority-queue: negative priority values are handled", () => {
   }
 });
 
-test("priority-queue: listJobs returns jobs ordered by priority desc", () => {
+test("priority-queue: listJobs returns jobs ordered by priority desc [priority-queue]", () => {
   const harness = createHarness("aa-priority-list-");
   try {
     const { adapter } = harness;
@@ -136,7 +136,7 @@ test("priority-queue: listJobs returns jobs ordered by priority desc", () => {
   }
 });
 
-test("priority-queue: priority with delayUntil maintains priority ordering after delay", () => {
+test("priority-queue: priority with delayUntil maintains priority ordering after delay [priority-queue]", () => {
   const harness = createHarness("aa-priority-delay-");
   try {
     const { adapter } = harness;
@@ -160,7 +160,7 @@ test("priority-queue: priority with delayUntil maintains priority ordering after
   }
 });
 
-test("priority-queue: very high priority values work correctly", () => {
+test("priority-queue: very high priority values work correctly [priority-queue]", () => {
   const harness = createHarness("aa-priority-high-");
   try {
     const { adapter } = harness;
@@ -176,7 +176,7 @@ test("priority-queue: very high priority values work correctly", () => {
   }
 });
 
-test("priority-queue: mixed priority across different queues", () => {
+test("priority-queue: mixed priority across different queues [priority-queue]", () => {
   const harness = createHarness("aa-priority-mixed-");
   try {
     const { adapter } = harness;
@@ -196,7 +196,7 @@ test("priority-queue: mixed priority across different queues", () => {
   }
 });
 
-test("priority-queue: stats reflect priority ordering correctly", () => {
+test("priority-queue: stats reflect priority ordering correctly [priority-queue]", () => {
   const harness = createHarness("aa-priority-stats-");
   try {
     const { adapter } = harness;
@@ -212,7 +212,7 @@ test("priority-queue: stats reflect priority ordering correctly", () => {
   }
 });
 
-test("priority-queue: ack/nack with priority maintains queue integrity", () => {
+test("priority-queue: ack/nack with priority maintains queue integrity [priority-queue]", () => {
   const harness = createHarness("aa-priority-ack-");
   try {
     const { adapter } = harness;
@@ -237,7 +237,7 @@ test("priority-queue: ack/nack with priority maintains queue integrity", () => {
   }
 });
 
-test("priority-queue: nack requeues with same priority", () => {
+test("priority-queue: nack requeues with same priority [priority-queue]", () => {
   const harness = createHarness("aa-priority-nack-");
   try {
     const { adapter } = harness;

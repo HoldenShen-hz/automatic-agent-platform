@@ -9,13 +9,13 @@ import test from "node:test";
 
 import { QueueMetricCollector } from "../../../../../src/platform/five-plane-execution/queue-metrics/index.js";
 
-test("QueueMetricCollector can be instantiated with name", () => {
+test("QueueMetricCollector can be instantiated with name [metric-collector-comprehensive]", () => {
   const collector = new QueueMetricCollector("test-queue");
   assert.ok(collector instanceof QueueMetricCollector);
   assert.equal(collector.queueName, "test-queue");
 });
 
-test("QueueMetricCollector recordEnqueue increments enqueued counter", () => {
+test("QueueMetricCollector recordEnqueue increments enqueued counter [metric-collector-comprehensive]", () => {
   const collector = new QueueMetricCollector("test");
 
   collector.recordEnqueue();
@@ -26,7 +26,7 @@ test("QueueMetricCollector recordEnqueue increments enqueued counter", () => {
   assert.equal(snapshot.totalEnqueued, 3);
 });
 
-test("QueueMetricCollector recordDequeue increments dequeued counter", () => {
+test("QueueMetricCollector recordDequeue increments dequeued counter [metric-collector-comprehensive]", () => {
   const collector = new QueueMetricCollector("test");
 
   collector.recordEnqueue();
@@ -36,7 +36,7 @@ test("QueueMetricCollector recordDequeue increments dequeued counter", () => {
   assert.equal(snapshot.totalDequeued, 1);
 });
 
-test("QueueMetricCollector recordFailed increments failed counter", () => {
+test("QueueMetricCollector recordFailed increments failed counter [metric-collector-comprehensive]", () => {
   const collector = new QueueMetricCollector("test");
 
   collector.recordFailed("error");
@@ -47,7 +47,7 @@ test("QueueMetricCollector recordFailed increments failed counter", () => {
   assert.deepEqual(snapshot.failureReasons, ["error", "timeout"]);
 });
 
-test("QueueMetricCollector recordWaitTime adds to wait times", () => {
+test("QueueMetricCollector recordWaitTime adds to wait times [metric-collector-comprehensive]", () => {
   const collector = new QueueMetricCollector("test");
 
   collector.recordWaitTime(100);
@@ -57,7 +57,7 @@ test("QueueMetricCollector recordWaitTime adds to wait times", () => {
   assert.deepEqual(snapshot.waitTimes, [100, 200]);
 });
 
-test("QueueMetricCollector snapshot calculates average wait time", () => {
+test("QueueMetricCollector snapshot calculates average wait time [metric-collector-comprehensive]", () => {
   const collector = new QueueMetricCollector("test");
 
   collector.recordWaitTime(100);
@@ -68,7 +68,7 @@ test("QueueMetricCollector snapshot calculates average wait time", () => {
   assert.equal(snapshot.averageWaitTimeMs, 200);
 });
 
-test("QueueMetricCollector snapshot calculates depth", () => {
+test("QueueMetricCollector snapshot calculates depth [metric-collector-comprehensive]", () => {
   const collector = new QueueMetricCollector("test");
 
   collector.recordEnqueue();
@@ -79,7 +79,7 @@ test("QueueMetricCollector snapshot calculates depth", () => {
   assert.equal(snapshot.depth, 1);
 });
 
-test("QueueMetricCollector reset clears all counters", () => {
+test("QueueMetricCollector reset clears all counters [metric-collector-comprehensive]", () => {
   const collector = new QueueMetricCollector("test");
 
   collector.recordEnqueue();
@@ -99,7 +99,7 @@ test("QueueMetricCollector reset clears all counters", () => {
   assert.deepEqual(snapshot.failureReasons, []);
 });
 
-test("QueueMetricCollector snapshot returns correct structure", () => {
+test("QueueMetricCollector snapshot returns correct structure [metric-collector-comprehensive]", () => {
   const collector = new QueueMetricCollector("test");
 
   collector.recordEnqueue();
@@ -125,7 +125,7 @@ test("QueueMetricCollector snapshot returns correct structure", () => {
   assert.ok(typeof snapshot.successRate === "number");
 });
 
-test("QueueMetricCollector empty snapshot has zero values", () => {
+test("QueueMetricCollector empty snapshot has zero values [metric-collector-comprehensive]", () => {
   const collector = new QueueMetricCollector("test");
 
   const snapshot = collector.snapshot();
@@ -139,7 +139,7 @@ test("QueueMetricCollector empty snapshot has zero values", () => {
   assert.deepEqual(snapshot.failureReasons, []);
 });
 
-test("QueueMetricCollector p95 calculation with 20 values", () => {
+test("QueueMetricCollector p95 calculation with 20 values [metric-collector-comprehensive]", () => {
   const collector = new QueueMetricCollector("test");
 
   // 20 wait times: 10, 20, ..., 200
@@ -153,7 +153,7 @@ test("QueueMetricCollector p95 calculation with 20 values", () => {
   assert.equal(snapshot.p95WaitTimeMs, 200);
 });
 
-test("QueueMetricCollector p99 calculation with 100 values", () => {
+test("QueueMetricCollector p99 calculation with 100 values [metric-collector-comprehensive]", () => {
   const collector = new QueueMetricCollector("test");
 
   // 100 wait times: 1, 2, ..., 100
@@ -167,7 +167,7 @@ test("QueueMetricCollector p99 calculation with 100 values", () => {
   assert.equal(snapshot.p99WaitTimeMs, 100);
 });
 
-test("QueueMetricCollector p95 handles small dataset", () => {
+test("QueueMetricCollector p95 handles small dataset [metric-collector-comprehensive]", () => {
   const collector = new QueueMetricCollector("test");
 
   collector.recordWaitTime(50);
@@ -178,7 +178,7 @@ test("QueueMetricCollector p95 handles small dataset", () => {
   assert.ok(snapshot.p95WaitTimeMs >= 50);
 });
 
-test("QueueMetricCollector failureRate calculation", () => {
+test("QueueMetricCollector failureRate calculation [metric-collector-comprehensive]", () => {
   const collector = new QueueMetricCollector("test");
 
   collector.recordEnqueue();
@@ -191,7 +191,7 @@ test("QueueMetricCollector failureRate calculation", () => {
   assert.equal(snapshot.failureRate, 0.25); // 1/4
 });
 
-test("QueueMetricCollector successRate calculation", () => {
+test("QueueMetricCollector successRate calculation [metric-collector-comprehensive]", () => {
   const collector = new QueueMetricCollector("test");
 
   collector.recordEnqueue();
@@ -204,7 +204,7 @@ test("QueueMetricCollector successRate calculation", () => {
   assert.equal(snapshot.successRate, 0.75); // 3/4
 });
 
-test("QueueMetricCollector failureRate is 0 with no enqueues", () => {
+test("QueueMetricCollector failureRate is 0 with no enqueues [metric-collector-comprehensive]", () => {
   const collector = new QueueMetricCollector("test");
 
   collector.recordFailed("error");
@@ -213,14 +213,14 @@ test("QueueMetricCollector failureRate is 0 with no enqueues", () => {
   assert.equal(snapshot.failureRate, 0);
 });
 
-test("QueueMetricCollector successRate is 1 with no enqueues", () => {
+test("QueueMetricCollector successRate is 1 with no enqueues [metric-collector-comprehensive]", () => {
   const collector = new QueueMetricCollector("test");
 
   const snapshot = collector.snapshot();
   assert.equal(snapshot.successRate, 1);
 });
 
-test("QueueMetricCollector throughputPerMinute is enqueued minus dequeued", () => {
+test("QueueMetricCollector throughputPerMinute is enqueued minus dequeued [metric-collector-comprehensive]", () => {
   const collector = new QueueMetricCollector("test");
 
   collector.recordEnqueue();
@@ -232,7 +232,7 @@ test("QueueMetricCollector throughputPerMinute is enqueued minus dequeued", () =
   assert.equal(snapshot.throughputPerMinute, 2);
 });
 
-test("QueueMetricCollector depth can go negative", () => {
+test("QueueMetricCollector depth can go negative [metric-collector-comprehensive]", () => {
   const collector = new QueueMetricCollector("test");
 
   // Dequeue without any enqueue
@@ -242,7 +242,7 @@ test("QueueMetricCollector depth can go negative", () => {
   assert.equal(snapshot.depth, -1);
 });
 
-test("QueueMetricCollector multiple failures record all reasons", () => {
+test("QueueMetricCollector multiple failures record all reasons [metric-collector-comprehensive]", () => {
   const collector = new QueueMetricCollector("test");
 
   collector.recordFailed("timeout");
@@ -253,7 +253,7 @@ test("QueueMetricCollector multiple failures record all reasons", () => {
   assert.deepEqual(snapshot.failureReasons, ["timeout", "connection_refused", "invalid_payload"]);
 });
 
-test("QueueMetricCollector waitTimes are sorted for percentile calculation", () => {
+test("QueueMetricCollector waitTimes are sorted for percentile calculation [metric-collector-comprehensive]", () => {
   const collector = new QueueMetricCollector("test");
 
   collector.recordWaitTime(300);
@@ -265,7 +265,7 @@ test("QueueMetricCollector waitTimes are sorted for percentile calculation", () 
   assert.equal(snapshot.p95WaitTimeMs, 300);
 });
 
-test("QueueMetricCollector can be used for concurrent queue simulation", () => {
+test("QueueMetricCollector can be used for concurrent queue simulation [metric-collector-comprehensive]", () => {
   const collector = new QueueMetricCollector("concurrent-queue");
 
   // Simulate 100 items enqueued over time

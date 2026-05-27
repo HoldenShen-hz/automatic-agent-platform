@@ -34,7 +34,7 @@ function disposeAsyncService(service: unknown): void {
 // ExecutionDispatchServiceAsync Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("ExecutionDispatchServiceAsync getSyncService returns sync service", () => {
+test("ExecutionDispatchServiceAsync getSyncService returns sync service [execution-worker-services-async]", () => {
   const workspace = createTempWorkspace("aa-exec-dispatch-");
   const dbPath = join(workspace, "exec-dispatch.db");
 
@@ -59,7 +59,7 @@ test("ExecutionDispatchServiceAsync getSyncService returns sync service", () => 
 // ExecutionWorkerHandshakeServiceAsync Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("ExecutionWorkerHandshakeServiceAsync getSyncService returns sync service", () => {
+test("ExecutionWorkerHandshakeServiceAsync getSyncService returns sync service [execution-worker-services-async]", () => {
   const workspace = createTempWorkspace("aa-exec-handshake-");
   const dbPath = join(workspace, "exec-handshake.db");
 
@@ -84,7 +84,7 @@ test("ExecutionWorkerHandshakeServiceAsync getSyncService returns sync service",
 // ExecutionWorkerWritebackServiceAsync Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("ExecutionWorkerWritebackServiceAsync getSyncService returns sync service", () => {
+test("ExecutionWorkerWritebackServiceAsync getSyncService returns sync service [execution-worker-services-async]", () => {
   const workspace = createTempWorkspace("aa-exec-writeback-");
   const dbPath = join(workspace, "exec-writeback.db");
 
@@ -109,7 +109,7 @@ test("ExecutionWorkerWritebackServiceAsync getSyncService returns sync service",
 // HumanTakeoverServiceAsync Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("HumanTakeoverServiceAsync getSyncService returns sync service", () => {
+test("HumanTakeoverServiceAsync getSyncService returns sync service [execution-worker-services-async]", () => {
   const workspace = createTempWorkspace("aa-human-takeover-");
   const dbPath = join(workspace, "human-takeover.db");
 
@@ -134,7 +134,7 @@ test("HumanTakeoverServiceAsync getSyncService returns sync service", () => {
 // TenantPlatformServiceAsync Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("TenantPlatformServiceAsync getSyncService returns sync service", () => {
+test("TenantPlatformServiceAsync getSyncService returns sync service [execution-worker-services-async]", () => {
   const workspace = createTempWorkspace("aa-tenant-platform-");
   const dbPath = join(workspace, "tenant-platform.db");
 

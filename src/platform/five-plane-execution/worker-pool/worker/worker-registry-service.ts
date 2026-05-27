@@ -10,13 +10,13 @@
  *
  * - **Worker**: Execution bearer that can be local or remote
  *   * Not to be confused with 'agent' (intelligent entity) or 'sub-agent' (collaborative entity)
- *   * See: {@link https://github.com/automatic-agent/automatic_agent_platform/blob/main/docs_zh/governance/glossary_and_terminology.md | Glossary: worker}
+ *   * See: {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/governance/glossary_and_terminology.md | Glossary: worker}
  *
  * - **Heartbeat**: Periodic health/load report from worker
- *   * See: {@link https://github.com/automatic-agent/automatic_agent_platform/blob/main/docs_zh/governance/glossary_and_terminology.md | Glossary: heartbeat}
+ *   * See: {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/governance/glossary_and_terminology.md | Glossary: heartbeat}
  *
  * - **Stalled**: Process may not be dead but has no valid progress in specified time
- *   * See: {@link https://github.com/automatic-agent/automatic_agent_platform/blob/main/docs_zh/governance/glossary_and_terminology.md | Glossary: stalled}
+ *   * See: {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/governance/glossary_and_terminology.md | Glossary: stalled}
  *
  * ## Tracked State
  *

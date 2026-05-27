@@ -88,6 +88,38 @@ export interface FeatureWorkbenchPanelAction {
   readonly onTrigger?: (item: FeatureWorkbenchItem | null) => void | Promise<void>;
 }
 
+export function buildWorkbenchActionHandler(
+  scope: string,
+  actionId: string,
+  options: {
+    readonly copySelection?: boolean;
+    readonly deepLinkPath?: string | ((item: FeatureWorkbenchItem | null) => string | null);
+  } = {},
+): (item: FeatureWorkbenchItem | null) => Promise<void> {
+  return async (item) => {
+    if (options.copySelection && item != null) {
+      const summary = `${item.title}\n${item.description}`;
+      await globalThis.navigator?.clipboard?.writeText?.(summary);
+    }
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("aa:feature-workbench-action", {
+        detail: {
+          scope,
+          actionId,
+          itemId: item?.id ?? null,
+          occurredAt: new Date().toISOString(),
+        },
+      }));
+      const target = typeof options.deepLinkPath === "function"
+        ? options.deepLinkPath(item)
+        : options.deepLinkPath ?? null;
+      if (target != null && target.trim().length > 0) {
+        window.location.hash = target.startsWith("#") ? target : `#${target.replace(/^\/+/, "/")}`;
+      }
+    }
+  };
+}
+
 export interface FeatureWorkbenchLabels {
   readonly filterLabel: string;
   readonly filterPlaceholder: string;

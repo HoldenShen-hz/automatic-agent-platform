@@ -5,19 +5,19 @@ import { DurableEventBusAsync } from "../../../../src/scale-ecosystem/runtime-se
 // NOTE: Full integration tests require database setup.
 // These tests focus on class structure, options handling, and behavior validation.
 
-test("DurableEventBusAsync exposes typed event emitter methods", () => {
+test("DurableEventBusAsync exposes typed event emitter methods [durable-event-bus-async]", () => {
   const bus = new DurableEventBusAsync({} as never, {} as never);
   assert.equal(typeof bus.on, "function");
   assert.equal(typeof bus.emit, "function");
 });
 
-test("DurableEventBusAsync default options are applied", () => {
+test("DurableEventBusAsync default options are applied [durable-event-bus-async]", () => {
   const bus = new DurableEventBusAsync({} as never, {} as never);
   const status = bus.getSyncService();
   assert.ok(status != null);
 });
 
-test("DurableEventBusAsync custom options are applied", () => {
+test("DurableEventBusAsync custom options are applied [durable-event-bus-async]", () => {
   const bus = new DurableEventBusAsync({} as never, {} as never, {
     maxDeliveryRetries: 5,
     initialBackoffMs: 200,
@@ -33,7 +33,7 @@ test("DurableEventBusAsync custom options are applied", () => {
   assert.ok(bus != null);
 });
 
-test("DurableEventBusAsync getSyncService returns DurableEventBus", () => {
+test("DurableEventBusAsync getSyncService returns DurableEventBus [durable-event-bus-async]", () => {
   const bus = new DurableEventBusAsync({} as never, {} as never);
   const sync = bus.getSyncService();
   assert.ok(sync != null);
@@ -42,7 +42,7 @@ test("DurableEventBusAsync getSyncService returns DurableEventBus", () => {
   assert.equal(typeof sync.unsubscribe, "function");
 });
 
-test("DurableEventBusAsync getMetrics returns metrics object", () => {
+test("DurableEventBusAsync getMetrics returns metrics object [durable-event-bus-async]", () => {
   const bus = new DurableEventBusAsync({} as never, {} as never);
   const metrics = bus.getMetrics();
   assert.ok(metrics != null);
@@ -51,7 +51,7 @@ test("DurableEventBusAsync getMetrics returns metrics object", () => {
   assert.ok(typeof metrics.totalFailedDeliveries === "number");
 });
 
-test("DurableEventBusAsync resetMetrics clears all metrics", () => {
+test("DurableEventBusAsync resetMetrics clears all metrics [durable-event-bus-async]", () => {
   const bus = new DurableEventBusAsync({} as never, {} as never);
   bus.resetMetrics();
   const metrics = bus.getMetrics();
@@ -61,26 +61,26 @@ test("DurableEventBusAsync resetMetrics clears all metrics", () => {
   assert.equal(metrics.totalDeadLetteredEvents, 0);
 });
 
-test("DurableEventBusAsync getSubscriber returns undefined for unknown consumer", () => {
+test("DurableEventBusAsync getSubscriber returns undefined for unknown consumer [durable-event-bus-async]", () => {
   const bus = new DurableEventBusAsync({} as never, {} as never);
   const subscriber = bus.getSubscriber("unknown-consumer");
   assert.equal(subscriber, undefined);
 });
 
-test("DurableEventBusAsync getAllSubscribers returns empty map initially", () => {
+test("DurableEventBusAsync getAllSubscribers returns empty map initially [durable-event-bus-async]", () => {
   const bus = new DurableEventBusAsync({} as never, {} as never);
   const subscribers = bus.getAllSubscribers();
   assert.ok(subscribers instanceof Map);
   assert.equal(subscribers.size, 0);
 });
 
-test("DurableEventBusAsync getPendingCount returns 0 for unknown consumer", () => {
+test("DurableEventBusAsync getPendingCount returns 0 for unknown consumer [durable-event-bus-async]", () => {
   const bus = new DurableEventBusAsync({} as never, {} as never);
   const count = bus.getPendingCount("unknown-consumer");
   assert.equal(count, 0);
 });
 
-test("DurableEventBusAsync dispose marks service as disposed", async () => {
+test("DurableEventBusAsync dispose marks service as disposed [durable-event-bus-async]", async () => {
   const bus = new DurableEventBusAsync({} as never, {} as never);
   bus.dispose();
   // After dispose, publish should throw
@@ -90,14 +90,14 @@ test("DurableEventBusAsync dispose marks service as disposed", async () => {
   );
 });
 
-test("DurableEventBusAsync dispose can be called multiple times safely", () => {
+test("DurableEventBusAsync dispose can be called multiple times safely [durable-event-bus-async]", () => {
   const bus = new DurableEventBusAsync({} as never, {} as never);
   bus.dispose();
   bus.dispose(); // Should not throw
   assert.ok(true);
 });
 
-test("DurableEventBusAsync exports BusMetrics type", () => {
+test("DurableEventBusAsync exports BusMetrics type [durable-event-bus-async]", () => {
   const metrics: ReturnType<DurableEventBusAsync["getMetrics"]> = {
     totalPublishedEvents: 10,
     totalDeliveredEvents: 8,
@@ -110,7 +110,7 @@ test("DurableEventBusAsync exports BusMetrics type", () => {
   assert.equal(metrics.averageDeliveryLatencyMs, 100);
 });
 
-test("DurableEventBusAsync emits subscriber_added event on subscribe", (t) => {
+test("DurableEventBusAsync emits subscriber_added event on subscribe [durable-event-bus-async]", (t) => {
   const bus = new DurableEventBusAsync({} as never, {} as never);
   let eventReceived = false;
   bus.on("subscriber_added" as never, () => {
@@ -120,7 +120,7 @@ test("DurableEventBusAsync emits subscriber_added event on subscribe", (t) => {
   assert.ok(eventReceived);
 });
 
-test("DurableEventBusAsync emits subscriber_removed event on unsubscribe", (t) => {
+test("DurableEventBusAsync emits subscriber_removed event on unsubscribe [durable-event-bus-async]", (t) => {
   const bus = new DurableEventBusAsync({} as never, {} as never);
   let eventReceived = false;
   bus.on("subscriber_removed" as never, () => {
@@ -131,7 +131,7 @@ test("DurableEventBusAsync emits subscriber_removed event on unsubscribe", (t) =
   assert.ok(eventReceived);
 });
 
-test("DurableEventBusAsync batchingEnabled sets up batch flush timer", () => {
+test("DurableEventBusAsync batchingEnabled sets up batch flush timer [durable-event-bus-async]", () => {
   const bus = new DurableEventBusAsync({} as never, {} as never, {
     batchingEnabled: true,
     batchFlushIntervalMs: 50,
@@ -141,7 +141,7 @@ test("DurableEventBusAsync batchingEnabled sets up batch flush timer", () => {
   bus.dispose();
 });
 
-test("DurableEventBusAsync schedules at most one publish batch timeout", () => {
+test("DurableEventBusAsync schedules at most one publish batch timeout [durable-event-bus-async]", () => {
   const bus = new DurableEventBusAsync({} as never, {} as never, {
     batchingEnabled: true,
     batchFlushIntervalMs: 50,

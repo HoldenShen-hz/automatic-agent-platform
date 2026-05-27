@@ -13,7 +13,7 @@
  * - HierarchicalPromptRegistryService: Multi-level prompt bundle storage
  * - PromptVersionManager: Version control for prompt bundles
  *
- * @see {@link https://github.com/automatic-agent/automatic_agent_platform/blob/main/docs_zh/architecture/00-platform-architecture.md}
+ * @see {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/architecture/00-platform-architecture.md}
  */
 
 // Re-export from prompt-engine/registry

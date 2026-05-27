@@ -5,12 +5,12 @@ import { PgAdvisoryLockAdapter } from "../../../../../src/platform/five-plane-ex
 import { LockingError } from "../../../../../src/platform/contracts/errors.js";
 import type { PgAdvisoryLockConfig } from "../../../../../src/platform/five-plane-execution/distributed-lock/distributed-lock-types.js";
 
-test("PgAdvisoryLockAdapter backendKind is pg_advisory", () => {
+test("PgAdvisoryLockAdapter backendKind is pg_advisory [pg-advisory-lock-adapter]", () => {
   const adapter = new PgAdvisoryLockAdapter();
   assert.equal(adapter.backendKind, "pg_advisory");
 });
 
-test("PgAdvisoryLockAdapter acquire throws sync not supported error", () => {
+test("PgAdvisoryLockAdapter acquire throws sync not supported error [pg-advisory-lock-adapter]", () => {
   const adapter = new PgAdvisoryLockAdapter();
   assert.throws(
     () => adapter.acquire({ lockKey: "test", owner: "owner" }),
@@ -22,7 +22,7 @@ test("PgAdvisoryLockAdapter acquire throws sync not supported error", () => {
   );
 });
 
-test("PgAdvisoryLockAdapter release throws sync not supported error", () => {
+test("PgAdvisoryLockAdapter release throws sync not supported error [pg-advisory-lock-adapter]", () => {
   const adapter = new PgAdvisoryLockAdapter();
   assert.throws(
     () => adapter.release("test", "owner"),
@@ -34,7 +34,7 @@ test("PgAdvisoryLockAdapter release throws sync not supported error", () => {
   );
 });
 
-test("PgAdvisoryLockAdapter forceSteal throws advisory cannot force steal error", () => {
+test("PgAdvisoryLockAdapter forceSteal throws advisory cannot force steal error [pg-advisory-lock-adapter]", () => {
   const adapter = new PgAdvisoryLockAdapter();
   assert.throws(
     () => adapter.forceSteal("test", "newOwner", "reason"),
@@ -46,26 +46,26 @@ test("PgAdvisoryLockAdapter forceSteal throws advisory cannot force steal error"
   );
 });
 
-test("PgAdvisoryLockAdapter inspect returns null", () => {
+test("PgAdvisoryLockAdapter inspect returns null [pg-advisory-lock-adapter]", () => {
   const adapter = new PgAdvisoryLockAdapter();
   const result = adapter.inspect("test");
   assert.equal(result, null);
 });
 
-test("PgAdvisoryLockAdapter extend calls inspect and returns null", () => {
+test("PgAdvisoryLockAdapter extend calls inspect and returns null [pg-advisory-lock-adapter]", () => {
   const adapter = new PgAdvisoryLockAdapter();
   // extend delegates to inspect which returns null
   const result = adapter.extend("test", "owner", 30000);
   assert.equal(result, null);
 });
 
-test("PgAdvisoryLockAdapter close does nothing when not connected", async () => {
+test("PgAdvisoryLockAdapter close does nothing when not connected [pg-advisory-lock-adapter]", async () => {
   const adapter = new PgAdvisoryLockAdapter();
   // Should not throw
   await adapter.close();
 });
 
-test("PgAdvisoryLockAdapter accepts config with dsn", () => {
+test("PgAdvisoryLockAdapter accepts config with dsn [pg-advisory-lock-adapter]", () => {
   const config: PgAdvisoryLockConfig = {
     dsn: "postgresql://user:pass@localhost/db",
   };
@@ -73,7 +73,7 @@ test("PgAdvisoryLockAdapter accepts config with dsn", () => {
   assert.equal(adapter.backendKind, "pg_advisory");
 });
 
-test("PgAdvisoryLockAdapter accepts config with pool settings", () => {
+test("PgAdvisoryLockAdapter accepts config with pool settings [pg-advisory-lock-adapter]", () => {
   const config: PgAdvisoryLockConfig = {
     poolMin: 2,
     poolMax: 10,
@@ -84,7 +84,7 @@ test("PgAdvisoryLockAdapter accepts config with pool settings", () => {
   assert.equal(adapter.backendKind, "pg_advisory");
 });
 
-test("PgAdvisoryLockAdapter accepts config with ssl settings", () => {
+test("PgAdvisoryLockAdapter accepts config with ssl settings [pg-advisory-lock-adapter]", () => {
   const config: PgAdvisoryLockConfig = {
     ssl: { rejectUnauthorized: true },
   };
@@ -92,7 +92,7 @@ test("PgAdvisoryLockAdapter accepts config with ssl settings", () => {
   assert.equal(adapter.backendKind, "pg_advisory");
 });
 
-test("PgAdvisoryLockAdapter lockKeyToAdvisoryKey produces consistent bigint", () => {
+test("PgAdvisoryLockAdapter lockKeyToAdvisoryKey produces consistent bigint [pg-advisory-lock-adapter]", () => {
   // Use reflection to test private method behavior indirectly
   const adapter = new PgAdvisoryLockAdapter();
   const key1 = adapter.acquireAsync({ lockKey: "test-lock", owner: "owner" });
@@ -101,7 +101,7 @@ test("PgAdvisoryLockAdapter lockKeyToAdvisoryKey produces consistent bigint", ()
   assert.ok(key1 !== undefined);
 });
 
-test("PgAdvisoryLockAdapter acquireAsync returns false when connection fails", async () => {
+test("PgAdvisoryLockAdapter acquireAsync returns false when connection fails [pg-advisory-lock-adapter]", async () => {
   const adapter = new PgAdvisoryLockAdapter({
     dsn: "postgresql://invalid:invalid@localhost:99999/db",
   });
@@ -111,7 +111,7 @@ test("PgAdvisoryLockAdapter acquireAsync returns false when connection fails", a
   assert.equal(result.acquired, false);
 });
 
-test("PgAdvisoryLockAdapter releaseAsync returns false when not connected", async () => {
+test("PgAdvisoryLockAdapter releaseAsync returns false when not connected [pg-advisory-lock-adapter]", async () => {
   const adapter = new PgAdvisoryLockAdapter({
     dsn: "postgresql://invalid:invalid@localhost:99999/db",
   });
@@ -121,7 +121,7 @@ test("PgAdvisoryLockAdapter releaseAsync returns false when not connected", asyn
   assert.equal(result, false);
 });
 
-test("PgAdvisoryLockAdapter close handles already ended connection", async () => {
+test("PgAdvisoryLockAdapter close handles already ended connection [pg-advisory-lock-adapter]", async () => {
   const adapter = new PgAdvisoryLockAdapter({
     dsn: "postgresql://invalid:invalid@localhost:99999/db",
   });
@@ -132,7 +132,7 @@ test("PgAdvisoryLockAdapter close handles already ended connection", async () =>
   await adapter.close();
 });
 
-test("PgAdvisoryLockAdapter uses default TTL when not specified", async () => {
+test("PgAdvisoryLockAdapter uses default TTL when not specified [pg-advisory-lock-adapter]", async () => {
   const adapter = new PgAdvisoryLockAdapter({
     dsn: "postgresql://invalid:invalid@localhost:99999/db",
   });
@@ -142,7 +142,7 @@ test("PgAdvisoryLockAdapter uses default TTL when not specified", async () => {
   assert.equal(result.acquired, false);
 });
 
-test("PgAdvisoryLockAdapter acquireAsync increments fencing counter", async () => {
+test("PgAdvisoryLockAdapter acquireAsync increments fencing counter [pg-advisory-lock-adapter]", async () => {
   const adapter = new PgAdvisoryLockAdapter({
     dsn: "postgresql://invalid:invalid@localhost:99999/db",
   });

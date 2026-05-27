@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { AdapterExecutor } from "../../../../../src/platform/five-plane-execution/plugin-executor/adapter-executor.js";
 
-test("AdapterExecutor executes REST adapters with injected fetch", async () => {
+test("AdapterExecutor executes REST adapters with injected fetch [adapter-executor]", async () => {
   const executor = new AdapterExecutor({
     fetchImpl: async (_input, init) => new Response(init?.body as string, {
       status: 200,
@@ -26,7 +26,7 @@ test("AdapterExecutor executes REST adapters with injected fetch", async () => {
   assert.equal(result.protocol, "rest");
 });
 
-test("AdapterExecutor executes MQ adapters with dispatcher", async () => {
+test("AdapterExecutor executes MQ adapters with dispatcher [adapter-executor]", async () => {
   const executor = new AdapterExecutor({
     mqDispatcher: async (_descriptor, request) => ({
       acceptedAction: request.action,
@@ -49,7 +49,7 @@ test("AdapterExecutor executes MQ adapters with dispatcher", async () => {
   assert.deepStrictEqual(result.output, { acceptedAction: "publish", taskId: "task_2" });
 });
 
-test("AdapterExecutor REST adapter handles non-200 response as error", async () => {
+test("AdapterExecutor REST adapter handles non-200 response as error [adapter-executor]", async () => {
   let callCount = 0;
   const executor = new AdapterExecutor({
     fetchImpl: async () => {
@@ -73,7 +73,7 @@ test("AdapterExecutor REST adapter handles non-200 response as error", async () 
   assert.ok(result.output && typeof result.output === "object" && "error" in result.output);
 });
 
-test("AdapterExecutor REST adapter handles JSON and text responses", async () => {
+test("AdapterExecutor REST adapter handles JSON and text responses [adapter-executor]", async () => {
   const executor = new AdapterExecutor({
     fetchImpl: async (_input, init) => {
       const body = JSON.parse(init?.body as string);
@@ -99,7 +99,7 @@ test("AdapterExecutor REST adapter handles JSON and text responses", async () =>
   assert.deepStrictEqual(result.output, { echoed: { message: "hello" } });
 });
 
-test("AdapterExecutor MQ adapter throws when dispatcher is missing", async () => {
+test("AdapterExecutor MQ adapter throws when dispatcher is missing [adapter-executor]", async () => {
   const executor = new AdapterExecutor();
   executor.register({
     adapterId: "mq-adapter",
@@ -117,7 +117,7 @@ test("AdapterExecutor MQ adapter throws when dispatcher is missing", async () =>
   assert.ok(result.output && typeof result.output === "object" && "error" in result.output);
 });
 
-test("AdapterExecutor retry policy retries on failure", async () => {
+test("AdapterExecutor retry policy retries on failure [adapter-executor]", async () => {
   let attempts = 0;
   const executor = new AdapterExecutor({
     fetchImpl: async () => {
@@ -151,7 +151,7 @@ test("AdapterExecutor retry policy retries on failure", async () => {
   assert.equal(result.attempts, 3);
 });
 
-test("AdapterExecutor retry policy returns error when all attempts fail", async () => {
+test("AdapterExecutor retry policy returns error when all attempts fail [adapter-executor]", async () => {
   let attempts = 0;
   const executor = new AdapterExecutor({
     fetchImpl: async () => {
@@ -185,7 +185,7 @@ test("AdapterExecutor retry policy returns error when all attempts fail", async 
   assert.equal(output.lastErrorCode, "Error");
 });
 
-test("AdapterExecutor listAdapters returns all registered adapters", () => {
+test("AdapterExecutor listAdapters returns all registered adapters [adapter-executor]", () => {
   const executor = new AdapterExecutor();
   executor.register({
     adapterId: "adapter-1",
@@ -204,7 +204,7 @@ test("AdapterExecutor listAdapters returns all registered adapters", () => {
   assert.ok(adapters.some((a) => a.adapterId === "adapter-2"));
 });
 
-test("AdapterExecutor execute throws for unknown adapter", async () => {
+test("AdapterExecutor execute throws for unknown adapter [adapter-executor]", async () => {
   const executor = new AdapterExecutor();
 
   await assert.rejects(
@@ -220,7 +220,7 @@ test("AdapterExecutor execute throws for unknown adapter", async () => {
   );
 });
 
-test("AdapterExecutor includes duration and attempt count in result", async () => {
+test("AdapterExecutor includes duration and attempt count in result [adapter-executor]", async () => {
   const executor = new AdapterExecutor({
     fetchImpl: async () => new Response('{"ok":true}', {
       status: 200,
@@ -243,7 +243,7 @@ test("AdapterExecutor includes duration and attempt count in result", async () =
   assert.ok(result.durationMs >= 0);
 });
 
-test("AdapterExecutor passes correlationId and tenantId in context", async () => {
+test("AdapterExecutor passes correlationId and tenantId in context [adapter-executor]", async () => {
   let receivedContext: unknown = null;
   const executor = new AdapterExecutor({
     fetchImpl: async (_input, init) => {
@@ -278,7 +278,7 @@ test("AdapterExecutor passes correlationId and tenantId in context", async () =>
   });
 });
 
-test("AdapterExecutor uses custom headers in REST requests", async () => {
+test("AdapterExecutor uses custom headers in REST requests [adapter-executor]", async () => {
   let receivedHeaders: Record<string, string> = {};
   const executor = new AdapterExecutor({
     fetchImpl: async (_input, init) => {

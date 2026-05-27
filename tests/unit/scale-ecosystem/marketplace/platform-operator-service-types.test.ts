@@ -11,17 +11,17 @@ import type {
 import type { EnvironmentName, WorkerSchedulingStatus, ExecutionTicketRecord, ExecutionLeaseRecord, EnvironmentReadinessComponentType } from "../../../../src/platform/contracts/types/domain.js";
 import type { StableGateTargetStatus } from "../../../../src/platform/shared/stability/stable-release-gate.js";
 
-test("EnvironmentName accepts all valid values", () => {
+test("EnvironmentName accepts all valid values [platform-operator-service-types]", () => {
   const names: EnvironmentName[] = ["dev", "test", "staging", "pre-prod", "prod"];
   assert.equal(names.length, 5);
 });
 
-test("StableGateTargetStatus accepts all valid values", () => {
+test("StableGateTargetStatus accepts all valid values [platform-operator-service-types]", () => {
   const statuses: StableGateTargetStatus[] = ["canary", "tenant_gray", "production_ready"];
   assert.equal(statuses.length, 3);
 });
 
-test("PlatformOperatorBuildInput structure is correct", () => {
+test("PlatformOperatorBuildInput structure is correct [platform-operator-service-types]", () => {
   const input: PlatformOperatorBuildInput = {
     environment: "prod",
     evidenceRootDir: "/var/evidence",
@@ -33,7 +33,7 @@ test("PlatformOperatorBuildInput structure is correct", () => {
   assert.equal(input.packageOutputDir, "/var/packages");
 });
 
-test("PlatformOperatorBuildInput allows optional fields", () => {
+test("PlatformOperatorBuildInput allows optional fields [platform-operator-service-types]", () => {
   const input: PlatformOperatorBuildInput = {
     environment: "staging",
     evidenceRootDir: "/var/evidence/staging",
@@ -46,7 +46,7 @@ test("PlatformOperatorBuildInput allows optional fields", () => {
   assert.equal(input.generatedAt, "2026-04-14T00:00:00.000Z");
 });
 
-test("WorkerSchedulingStatus accepts all valid values", () => {
+test("WorkerSchedulingStatus accepts all valid values [platform-operator-service-types]", () => {
   const statuses: WorkerSchedulingStatus[] = [
     "healthy",
     "degraded",
@@ -58,7 +58,7 @@ test("WorkerSchedulingStatus accepts all valid values", () => {
   assert.equal(statuses.length, 6);
 });
 
-test("ExecutionTicketRecord status accepts all valid values", () => {
+test("ExecutionTicketRecord status accepts all valid values [platform-operator-service-types]", () => {
   const statuses: ExecutionTicketRecord["status"][] = [
     "pending",
     "claimed",
@@ -68,7 +68,7 @@ test("ExecutionTicketRecord status accepts all valid values", () => {
   assert.equal(statuses.length, 4);
 });
 
-test("ExecutionLeaseRecord status accepts all valid values", () => {
+test("ExecutionLeaseRecord status accepts all valid values [platform-operator-service-types]", () => {
   const statuses: ExecutionLeaseRecord["status"][] = [
     "active",
     "expired",
@@ -77,7 +77,7 @@ test("ExecutionLeaseRecord status accepts all valid values", () => {
   assert.equal(statuses.length, 3);
 });
 
-test("EnvironmentReadinessComponentType accepts all valid values", () => {
+test("EnvironmentReadinessComponentType accepts all valid values [platform-operator-service-types]", () => {
   const types: EnvironmentReadinessComponentType[] = [
     "provider",
     "gateway",
@@ -88,7 +88,7 @@ test("EnvironmentReadinessComponentType accepts all valid values", () => {
   assert.equal(types.length, 5);
 });
 
-test("PlatformOperatorServiceOptions structure is correct", () => {
+test("PlatformOperatorServiceOptions structure is correct [platform-operator-service-types]", () => {
   const options: PlatformOperatorServiceOptions = {
     artifactStoreOptions: {
       rootDir: "/var/platform/artifacts",
@@ -102,13 +102,13 @@ test("PlatformOperatorServiceOptions structure is correct", () => {
   assert.equal(options.readinessStaleThresholdMs, 86400000);
 });
 
-test("PlatformOperatorServiceOptions allows empty options", () => {
+test("PlatformOperatorServiceOptions allows empty options [platform-operator-service-types]", () => {
   const options: PlatformOperatorServiceOptions = {};
   assert.equal(options.artifactStoreOptions, undefined);
   assert.equal(options.staleWorkerThresholdMs, undefined);
 });
 
-test("PlatformOperatorServiceOptions allows partial options", () => {
+test("PlatformOperatorServiceOptions allows partial options [platform-operator-service-types]", () => {
   const options: PlatformOperatorServiceOptions = {
     staleWorkerThresholdMs: 300000,
   };

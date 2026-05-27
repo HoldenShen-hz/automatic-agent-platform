@@ -35,7 +35,7 @@ function createMockStore(overrides: {
 // R6-09: Budget Reservation Check Tests
 // ---------------------------------------------------------------------------
 
-test("evaluate rejects when estimated cost exceeds budget remaining", () => {
+test("evaluate rejects when estimated cost exceeds budget remaining [admission-controller-budget]", () => {
   const store = createMockStore({});
   const controller = new AdmissionController(store);
 
@@ -49,7 +49,7 @@ test("evaluate rejects when estimated cost exceeds budget remaining", () => {
   assert.equal(decision.reasonCode, "admission.reject_budget_exceeded");
 });
 
-test("evaluate allows when estimated cost equals budget remaining", () => {
+test("evaluate allows when estimated cost equals budget remaining [admission-controller-budget]", () => {
   const store = createMockStore({});
   const controller = new AdmissionController(store);
 
@@ -63,7 +63,7 @@ test("evaluate allows when estimated cost equals budget remaining", () => {
   assert.equal(decision.reasonCode, "admission.ok");
 });
 
-test("evaluate allows when estimated cost is less than budget remaining", () => {
+test("evaluate allows when estimated cost is less than budget remaining [admission-controller-budget]", () => {
   const store = createMockStore({});
   const controller = new AdmissionController(store);
 
@@ -77,7 +77,7 @@ test("evaluate allows when estimated cost is less than budget remaining", () => 
   assert.equal(decision.reasonCode, "admission.ok");
 });
 
-test("evaluate allows when estimated cost is null", () => {
+test("evaluate allows when estimated cost is null [admission-controller-budget]", () => {
   const store = createMockStore({});
   const controller = new AdmissionController(store);
 
@@ -90,7 +90,7 @@ test("evaluate allows when estimated cost is null", () => {
   assert.equal(decision.decision, "allow");
 });
 
-test("evaluate allows when budget remaining is null", () => {
+test("evaluate allows when budget remaining is null [admission-controller-budget]", () => {
   const store = createMockStore({});
   const controller = new AdmissionController(store);
 
@@ -103,7 +103,7 @@ test("evaluate allows when budget remaining is null", () => {
   assert.equal(decision.decision, "allow");
 });
 
-test("evaluate allows when both estimated cost and budget are null", () => {
+test("evaluate allows when both estimated cost and budget are null [admission-controller-budget]", () => {
   const store = createMockStore({});
   const controller = new AdmissionController(store);
 
@@ -116,7 +116,7 @@ test("evaluate allows when both estimated cost and budget are null", () => {
   assert.equal(decision.decision, "allow");
 });
 
-test("evaluate allows when neither cost nor budget are provided", () => {
+test("evaluate allows when neither cost nor budget are provided [admission-controller-budget]", () => {
   const store = createMockStore({});
   const controller = new AdmissionController(store);
 
@@ -126,7 +126,7 @@ test("evaluate allows when neither cost nor budget are provided", () => {
   assert.equal(decision.reasonCode, "admission.ok");
 });
 
-test("evaluate rejects high priority task when budget exceeded", () => {
+test("evaluate rejects high priority task when budget exceeded [admission-controller-budget]", () => {
   const store = createMockStore({});
   const controller = new AdmissionController(store);
 
@@ -141,7 +141,7 @@ test("evaluate rejects high priority task when budget exceeded", () => {
   assert.equal(decision.reasonCode, "admission.reject_budget_exceeded");
 });
 
-test("evaluate rejects critical priority task when budget exceeded", () => {
+test("evaluate rejects critical priority task when budget exceeded [admission-controller-budget]", () => {
   const store = createMockStore({});
   const controller = new AdmissionController(store);
 
@@ -155,7 +155,7 @@ test("evaluate rejects critical priority task when budget exceeded", () => {
   assert.equal(decision.reasonCode, "admission.reject_budget_exceeded");
 });
 
-test("evaluate budget check happens before other checks", () => {
+test("evaluate budget check happens before other checks [admission-controller-budget]", () => {
   const store = createMockStore({ queuedTasks: 100, activeExecutions: 100 });
   const controller = new AdmissionController(store, DEFAULT_ADMISSION_POLICY);
 
@@ -171,7 +171,7 @@ test("evaluate budget check happens before other checks", () => {
   assert.equal(decision.reasonCode, "admission.reject_budget_exceeded");
 });
 
-test("evaluate with zero budget remaining rejects any cost > 0", () => {
+test("evaluate with zero budget remaining rejects any cost > 0 [admission-controller-budget]", () => {
   const store = createMockStore({});
   const controller = new AdmissionController(store);
 
@@ -185,7 +185,7 @@ test("evaluate with zero budget remaining rejects any cost > 0", () => {
   assert.equal(decision.reasonCode, "admission.reject_budget_exceeded");
 });
 
-test("evaluate with zero budget allows zero estimated cost", () => {
+test("evaluate with zero budget allows zero estimated cost [admission-controller-budget]", () => {
   const store = createMockStore({});
   const controller = new AdmissionController(store);
 
@@ -198,7 +198,7 @@ test("evaluate with zero budget allows zero estimated cost", () => {
   assert.equal(decision.decision, "allow");
 });
 
-test("decision snapshot contains correct queue state even when budget exceeded", () => {
+test("decision snapshot contains correct queue state even when budget exceeded [admission-controller-budget]", () => {
   const store = createMockStore({ queuedTasks: 3, activeExecutions: 5 });
   const controller = new AdmissionController(store);
 
@@ -213,7 +213,7 @@ test("decision snapshot contains correct queue state even when budget exceeded",
   assert.equal(decision.snapshot.activeExecutions, 5);
 });
 
-test("decision backpressure is null when budget check fails (no backpressure involved)", () => {
+test("decision backpressure is null when budget check fails (no backpressure involved) [admission-controller-budget]", () => {
   const store = createMockStore({});
   const controller = new AdmissionController(store);
 

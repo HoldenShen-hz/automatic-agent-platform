@@ -60,7 +60,7 @@ function createPlanNode(overrides: Partial<PlanNode> & { nodeId: string; nodeTyp
   };
 }
 
-test("executeOapeflirRuntimePlan handles empty nodes array", async () => {
+test("executeOapeflirRuntimePlan handles empty nodes array [runtime-plan-executor-comprehensive]", async () => {
   const { dbPath, cleanup } = initHaCoordinatorForTests();
 
   try {
@@ -78,7 +78,7 @@ test("executeOapeflirRuntimePlan handles empty nodes array", async () => {
   }
 });
 
-test("executeOapeflirRuntimePlan handles single node", async () => {
+test("executeOapeflirRuntimePlan handles single node [runtime-plan-executor-comprehensive]", async () => {
   const { dbPath, cleanup } = initHaCoordinatorForTests();
 
   try {
@@ -104,7 +104,7 @@ test("executeOapeflirRuntimePlan handles single node", async () => {
   }
 });
 
-test("executeOapeflirRuntimePlan handles multiple nodes with dependencies", async () => {
+test("executeOapeflirRuntimePlan handles multiple nodes with dependencies [runtime-plan-executor-comprehensive]", async () => {
   const { dbPath, cleanup } = initHaCoordinatorForTests();
 
   try {
@@ -145,7 +145,7 @@ test("executeOapeflirRuntimePlan handles multiple nodes with dependencies", asyn
   }
 });
 
-test("executeOapeflirRuntimePlan handles all node types", async () => {
+test("executeOapeflirRuntimePlan handles all node types [runtime-plan-executor-comprehensive]", async () => {
   const { dbPath, cleanup } = initHaCoordinatorForTests();
 
   try {
@@ -180,7 +180,7 @@ test("executeOapeflirRuntimePlan handles all node types", async () => {
   }
 });
 
-test("executeOapeflirRuntimePlan with contextBudgetTokens", async () => {
+test("executeOapeflirRuntimePlan with contextBudgetTokens [runtime-plan-executor-comprehensive]", async () => {
   const { dbPath, cleanup } = initHaCoordinatorForTests();
 
   try {
@@ -201,7 +201,7 @@ test("executeOapeflirRuntimePlan with contextBudgetTokens", async () => {
   }
 });
 
-test("executeOapeflirRuntimePlan with different risk classes", async () => {
+test("executeOapeflirRuntimePlan with different risk classes [runtime-plan-executor-comprehensive]", async () => {
   const { dbPath, cleanup } = initHaCoordinatorForTests();
 
   try {
@@ -224,7 +224,7 @@ test("executeOapeflirRuntimePlan with different risk classes", async () => {
   }
 });
 
-test("executeOapeflirRuntimePlan preserves node timeout values", async () => {
+test("executeOapeflirRuntimePlan preserves node timeout values [runtime-plan-executor-comprehensive]", async () => {
   const { dbPath, cleanup } = initHaCoordinatorForTests();
 
   try {
@@ -259,7 +259,7 @@ test("executeOapeflirRuntimePlan preserves node timeout values", async () => {
   }
 });
 
-test("executeOapeflirRuntimePlan preserves input dependencies", async () => {
+test("executeOapeflirRuntimePlan preserves input dependencies [runtime-plan-executor-comprehensive]", async () => {
   const { dbPath, cleanup } = initHaCoordinatorForTests();
 
   try {
@@ -300,7 +300,7 @@ test("executeOapeflirRuntimePlan preserves input dependencies", async () => {
   }
 });
 
-test("executeOapeflirRuntimePlan generates harness run events", async () => {
+test("executeOapeflirRuntimePlan generates harness run events [runtime-plan-executor-comprehensive]", async () => {
   const { dbPath, cleanup } = initHaCoordinatorForTests();
 
   try {
@@ -325,7 +325,7 @@ test("executeOapeflirRuntimePlan generates harness run events", async () => {
   }
 });
 
-test("executeOapeflirRuntimePlan with complex bundle id", async () => {
+test("executeOapeflirRuntimePlan with complex bundle id [runtime-plan-executor-comprehensive]", async () => {
   const { dbPath, cleanup } = initHaCoordinatorForTests();
 
   try {
@@ -352,7 +352,7 @@ test("executeOapeflirRuntimePlan with complex bundle id", async () => {
   }
 });
 
-test("executeOapeflirRuntimePlan with output schema refs", async () => {
+test("executeOapeflirRuntimePlan with output schema refs [runtime-plan-executor-comprehensive]", async () => {
   const { dbPath, cleanup } = initHaCoordinatorForTests();
 
   try {
@@ -380,7 +380,7 @@ test("executeOapeflirRuntimePlan with output schema refs", async () => {
   }
 });
 
-test("executeOapeflirRuntimePlan handles retry policies", async () => {
+test("executeOapeflirRuntimePlan handles retry policies [runtime-plan-executor-comprehensive]", async () => {
   const { dbPath, cleanup } = initHaCoordinatorForTests();
 
   try {
@@ -417,7 +417,7 @@ test("executeOapeflirRuntimePlan handles retry policies", async () => {
   }
 });
 
-test("executeOapeflirRuntimePlan with budget intents", async () => {
+test("executeOapeflirRuntimePlan with budget intents [runtime-plan-executor-comprehensive]", async () => {
   const { dbPath, cleanup } = initHaCoordinatorForTests();
 
   try {
@@ -444,7 +444,7 @@ test("executeOapeflirRuntimePlan with budget intents", async () => {
   }
 });
 
-test("executeOapeflirRuntimePlan with side effect profiles", async () => {
+test("executeOapeflirRuntimePlan with side effect profiles [runtime-plan-executor-comprehensive]", async () => {
   const { dbPath, cleanup } = initHaCoordinatorForTests();
 
   try {

@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { ExecutionRecoveryWorker } from "../../../../../src/platform/five-plane-execution/ha/execution-recovery-worker.js";
 
-test("ExecutionRecoveryWorker.getWorkerId returns default worker id", () => {
+test("ExecutionRecoveryWorker.getWorkerId returns default worker id [execution-recovery-worker]", () => {
   const worker = new ExecutionRecoveryWorker({
     recoveryService: {
       listRecoverableExecutingRuns: () => [],
@@ -16,7 +16,7 @@ test("ExecutionRecoveryWorker.getWorkerId returns default worker id", () => {
   assert.equal(worker.getWorkerId(), "execution-recovery-worker");
 });
 
-test("ExecutionRecoveryWorker.getWorkerId returns custom worker id", () => {
+test("ExecutionRecoveryWorker.getWorkerId returns custom worker id [execution-recovery-worker]", () => {
   const worker = new ExecutionRecoveryWorker({
     recoveryService: {
       listRecoverableExecutingRuns: () => [],
@@ -30,7 +30,7 @@ test("ExecutionRecoveryWorker.getWorkerId returns custom worker id", () => {
   assert.equal(worker.getWorkerId(), "custom-recovery-worker");
 });
 
-test("ExecutionRecoveryWorker.getRecoveryCadence returns configured cadence", () => {
+test("ExecutionRecoveryWorker.getRecoveryCadence returns configured cadence [execution-recovery-worker]", () => {
   const worker = new ExecutionRecoveryWorker({
     recoveryService: {
       listRecoverableExecutingRuns: () => [],
@@ -51,7 +51,7 @@ test("ExecutionRecoveryWorker.getRecoveryCadence returns configured cadence", ()
   assert.equal(cadence.priority, "normal");
 });
 
-test("ExecutionRecoveryWorker.runRecoveryCycle processes all candidate types", async () => {
+test("ExecutionRecoveryWorker.runRecoveryCycle processes all candidate types [execution-recovery-worker]", async () => {
   const appliedExecutionIds: string[] = [];
   const worker = new ExecutionRecoveryWorker({
     recoveryService: {
@@ -84,7 +84,7 @@ test("ExecutionRecoveryWorker.runRecoveryCycle processes all candidate types", a
   assert.deepEqual(appliedExecutionIds, ["exec-active-1", "exec-active-2"]);
 });
 
-test("ExecutionRecoveryWorker.runRecoveryCycle with no candidates", async () => {
+test("ExecutionRecoveryWorker.runRecoveryCycle with no candidates [execution-recovery-worker]", async () => {
   const worker = new ExecutionRecoveryWorker({
     recoveryService: {
       listRecoverableExecutingRuns: () => [],
@@ -103,7 +103,7 @@ test("ExecutionRecoveryWorker.runRecoveryCycle with no candidates", async () => 
   assert.equal(report.errors.length, 0);
 });
 
-test("ExecutionRecoveryWorker.runRecoveryCycle handles errors gracefully", async () => {
+test("ExecutionRecoveryWorker.runRecoveryCycle handles errors gracefully [execution-recovery-worker]", async () => {
   const worker = new ExecutionRecoveryWorker({
     recoveryService: {
       listRecoverableExecutingRuns: () => {
@@ -129,7 +129,7 @@ test("ExecutionRecoveryWorker.runRecoveryCycle handles errors gracefully", async
   assert.equal(report.errors[0]!.code, "execution_recovery.cycle_failed");
 });
 
-test("ExecutionRecoveryWorker.runRecoveryCycle calculates stale threshold correctly", async () => {
+test("ExecutionRecoveryWorker.runRecoveryCycle calculates stale threshold correctly [execution-recovery-worker]", async () => {
   const worker = new ExecutionRecoveryWorker({
     recoveryService: {
       listRecoverableExecutingRuns: (startedAt: string) => [],
@@ -149,7 +149,7 @@ test("ExecutionRecoveryWorker.runRecoveryCycle calculates stale threshold correc
   assert.ok(true);
 });
 
-test("ExecutionRecoveryWorker.runRecoveryCycle with custom stale threshold", async () => {
+test("ExecutionRecoveryWorker.runRecoveryCycle with custom stale threshold [execution-recovery-worker]", async () => {
   const worker = new ExecutionRecoveryWorker({
     recoveryService: {
       listRecoverableExecutingRuns: (startedAt: string, tenantId: string | null | undefined) => {
@@ -171,7 +171,7 @@ test("ExecutionRecoveryWorker.runRecoveryCycle with custom stale threshold", asy
   assert.equal(report.itemsProcessed, 0);
 });
 
-test("ExecutionRecoveryWorker.runRecoveryCycle counts actionable items correctly", async () => {
+test("ExecutionRecoveryWorker.runRecoveryCycle counts actionable items correctly [execution-recovery-worker]", async () => {
   const appliedExecutionIds: string[] = [];
   const worker = new ExecutionRecoveryWorker({
     recoveryService: {
@@ -203,7 +203,7 @@ test("ExecutionRecoveryWorker.runRecoveryCycle counts actionable items correctly
   assert.deepEqual(appliedExecutionIds, ["exec-1", "exec-2"]);
 });
 
-test("ExecutionRecoveryWorker.runRecoveryCycle reports missing applier for actionable candidates", async () => {
+test("ExecutionRecoveryWorker.runRecoveryCycle reports missing applier for actionable candidates [execution-recovery-worker]", async () => {
   const worker = new ExecutionRecoveryWorker({
     recoveryService: {
       listRecoverableExecutingRuns: () => [

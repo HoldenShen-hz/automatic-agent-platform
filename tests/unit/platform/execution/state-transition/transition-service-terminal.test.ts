@@ -449,7 +449,7 @@ type TaskTerminalStatus = "done" | "failed" | "cancelled";
 // TaskTerminalTransitionService Tests (via TransitionService.applyTaskTerminalState)
 // ---------------------------------------------------------------------------
 
-test("TaskTerminalTransitionService.apply() uses CAS updates for task status", () => {
+test("TaskTerminalTransitionService.apply() uses CAS updates for task status [transition-service-terminal]", () => {
   const db = createMockDatabase();
   const repository = createMockRepository();
   const mockStore = {} as AuthoritativeTaskStore;
@@ -474,7 +474,7 @@ test("TaskTerminalTransitionService.apply() uses CAS updates for task status", (
   assert.equal(taskCasCall!.toStatus, "done", "CAS should update to done status");
 });
 
-test("TaskTerminalTransitionService.apply() uses CAS updates for workflow status", () => {
+test("TaskTerminalTransitionService.apply() uses CAS updates for workflow status [transition-service-terminal]", () => {
   const db = createMockDatabase();
   const repository = createMockRepository();
   const mockStore = {} as AuthoritativeTaskStore;
@@ -495,7 +495,7 @@ test("TaskTerminalTransitionService.apply() uses CAS updates for workflow status
   assert.ok(repository.updateWorkflowStateCasCalls.includes("task-1"), "updateWorkflowStateCas should be called");
 });
 
-test("TaskTerminalTransitionService.apply() uses CAS updates for session status", () => {
+test("TaskTerminalTransitionService.apply() uses CAS updates for session status [transition-service-terminal]", () => {
   const db = createMockDatabase();
   const repository = createMockRepository();
   const mockStore = {} as AuthoritativeTaskStore;
@@ -516,7 +516,7 @@ test("TaskTerminalTransitionService.apply() uses CAS updates for session status"
   assert.ok(repository.updateSessionStatusCasCalls.includes("session-1"), "updateSessionStatusCas should be called");
 });
 
-test("TaskTerminalTransitionService.apply() skips workflow CAS when no workflow state exists", () => {
+test("TaskTerminalTransitionService.apply() skips workflow CAS when no workflow state exists [transition-service-terminal]", () => {
   const db = createMockDatabase();
   const repository = createMockRepository();
   const mockStore = {} as AuthoritativeTaskStore;
@@ -538,7 +538,7 @@ test("TaskTerminalTransitionService.apply() skips workflow CAS when no workflow 
   assert.equal(repository.mockState.executionStatuses.get("exec-1")?.status, "succeeded");
 });
 
-test("TaskTerminalTransitionService.apply() skips execution CAS when execution is already terminal", () => {
+test("TaskTerminalTransitionService.apply() skips execution CAS when execution is already terminal [transition-service-terminal]", () => {
   const db = createMockDatabase();
   const repository = createMockRepository();
   const mockStore = {} as AuthoritativeTaskStore;
@@ -571,7 +571,7 @@ test("TaskTerminalTransitionService.apply() skips execution CAS when execution i
   assert.equal(repository.mockState.executionStatuses.get("exec-1")?.status, "cancelled");
 });
 
-test("TaskTerminalTransitionService.apply() uses CAS updates for execution status", () => {
+test("TaskTerminalTransitionService.apply() uses CAS updates for execution status [transition-service-terminal]", () => {
   const db = createMockDatabase();
   const repository = createMockRepository();
   const mockStore = {} as AuthoritativeTaskStore;
@@ -592,7 +592,7 @@ test("TaskTerminalTransitionService.apply() uses CAS updates for execution statu
   assert.ok(repository.updateExecutionStatusCasCalls.includes("exec-1"), "updateExecutionStatusCas should be called");
 });
 
-test("TaskTerminalTransitionService.apply() throws when workflow status doesn't match expected", () => {
+test("TaskTerminalTransitionService.apply() throws when workflow status doesn't match expected [transition-service-terminal]", () => {
   const db = createMockDatabase();
   const repository = createMockRepository();
   const mockStore = {} as AuthoritativeTaskStore;
@@ -616,7 +616,7 @@ test("TaskTerminalTransitionService.apply() throws when workflow status doesn't 
   );
 });
 
-test("TaskTerminalTransitionService.apply() throws when task status CAS fails", () => {
+test("TaskTerminalTransitionService.apply() throws when task status CAS fails [transition-service-terminal]", () => {
   const db = createMockDatabase();
   const repository = createMockRepository();
   const mockStore = {} as AuthoritativeTaskStore;
@@ -640,7 +640,7 @@ test("TaskTerminalTransitionService.apply() throws when task status CAS fails", 
   );
 });
 
-test("TaskTerminalTransitionService.apply() throws when session status CAS fails", () => {
+test("TaskTerminalTransitionService.apply() throws when session status CAS fails [transition-service-terminal]", () => {
   const db = createMockDatabase();
   const repository = createMockRepository();
   const mockStore = {} as AuthoritativeTaskStore;
@@ -663,7 +663,7 @@ test("TaskTerminalTransitionService.apply() throws when session status CAS fails
   );
 });
 
-test("TaskTerminalTransitionService.apply() throws when execution status CAS fails", () => {
+test("TaskTerminalTransitionService.apply() throws when execution status CAS fails [transition-service-terminal]", () => {
   const db = createMockDatabase();
   const repository = createMockRepository();
   const mockStore = {} as AuthoritativeTaskStore;
@@ -686,7 +686,7 @@ test("TaskTerminalTransitionService.apply() throws when execution status CAS fai
   );
 });
 
-test("TaskTerminalTransitionService.apply() correctly transitions task to done status", () => {
+test("TaskTerminalTransitionService.apply() correctly transitions task to done status [transition-service-terminal]", () => {
   const db = createMockDatabase();
   const repository = createMockRepository();
   const mockStore = {} as AuthoritativeTaskStore;
@@ -706,7 +706,7 @@ test("TaskTerminalTransitionService.apply() correctly transitions task to done s
   assert.equal(repository.mockState.taskStatuses.get("task-1")?.status, "done", "Task should be transitioned to done");
 });
 
-test("TaskTerminalTransitionService.apply() correctly transitions task to failed status", () => {
+test("TaskTerminalTransitionService.apply() correctly transitions task to failed status [transition-service-terminal]", () => {
   const db = createMockDatabase();
   const repository = createMockRepository();
   const mockStore = {} as AuthoritativeTaskStore;
@@ -730,7 +730,7 @@ test("TaskTerminalTransitionService.apply() correctly transitions task to failed
   assert.equal(repository.mockState.taskStatuses.get("task-1")?.status, "failed", "Task should be transitioned to failed");
 });
 
-test("TaskTerminalTransitionService.apply() correctly transitions task to cancelled status", () => {
+test("TaskTerminalTransitionService.apply() correctly transitions task to cancelled status [transition-service-terminal]", () => {
   const db = createMockDatabase();
   const repository = createMockRepository();
   const mockStore = {} as AuthoritativeTaskStore;
@@ -753,7 +753,7 @@ test("TaskTerminalTransitionService.apply() correctly transitions task to cancel
   assert.equal(repository.mockState.taskStatuses.get("task-1")?.status, "cancelled", "Task should be transitioned to cancelled");
 });
 
-test("TaskTerminalTransitionService.apply() maps done terminal status to workflow completed", () => {
+test("TaskTerminalTransitionService.apply() maps done terminal status to workflow completed [transition-service-terminal]", () => {
   const db = createMockDatabase();
   const repository = createMockRepository();
   const mockStore = {} as AuthoritativeTaskStore;
@@ -774,7 +774,7 @@ test("TaskTerminalTransitionService.apply() maps done terminal status to workflo
   assert.equal(repository.mockState.executionStatuses.get("exec-1")?.status, "succeeded", "Execution should be transitioned to succeeded");
 });
 
-test("TaskTerminalTransitionService.apply() maps failed terminal status correctly", () => {
+test("TaskTerminalTransitionService.apply() maps failed terminal status correctly [transition-service-terminal]", () => {
   const db = createMockDatabase();
   const repository = createMockRepository();
   const mockStore = {} as AuthoritativeTaskStore;
@@ -796,7 +796,7 @@ test("TaskTerminalTransitionService.apply() maps failed terminal status correctl
   assert.equal(repository.mockState.executionStatuses.get("exec-1")?.status, "failed", "Execution should be transitioned to failed");
 });
 
-test("TaskTerminalTransitionService.apply() maps cancelled terminal status correctly", () => {
+test("TaskTerminalTransitionService.apply() maps cancelled terminal status correctly [transition-service-terminal]", () => {
   const db = createMockDatabase();
   const repository = createMockRepository();
   const mockStore = {} as AuthoritativeTaskStore;
@@ -817,7 +817,7 @@ test("TaskTerminalTransitionService.apply() maps cancelled terminal status corre
   assert.equal(repository.mockState.executionStatuses.get("exec-1")?.status, "cancelled", "Execution should be transitioned to cancelled");
 });
 
-test("Transition service rejects invalid state transition from in_progress to done via terminal service", () => {
+test("Transition service rejects invalid state transition from in_progress to done via terminal service [transition-service-terminal]", () => {
   const db = createMockDatabase();
   const repository = createMockRepository();
   const mockStore = {} as AuthoritativeTaskStore;
@@ -843,7 +843,7 @@ test("Transition service rejects invalid state transition from in_progress to do
   );
 });
 
-test("Transition service rejects invalid workflow state transition to terminal", () => {
+test("Transition service rejects invalid workflow state transition to terminal [transition-service-terminal]", () => {
   const db = createMockDatabase();
   const repository = createMockRepository();
   const mockStore = {} as AuthoritativeTaskStore;
@@ -867,7 +867,7 @@ test("Transition service rejects invalid workflow state transition to terminal",
   );
 });
 
-test("verifyTransitionAllowed correctly validates task state machine rules", () => {
+test("verifyTransitionAllowed correctly validates task state machine rules [transition-service-terminal]", () => {
   const db = createMockDatabase();
   const repository = createMockRepository();
   const mockStore = {} as AuthoritativeTaskStore;
@@ -888,7 +888,7 @@ test("verifyTransitionAllowed correctly validates task state machine rules", () 
   assert.equal(repository.mockState.taskStatuses.get("task-1")?.status, "done");
 });
 
-test("verifyTransitionAllowed treats no-op transitions as idempotent", () => {
+test("verifyTransitionAllowed treats no-op transitions as idempotent [transition-service-terminal]", () => {
   const db = createMockDatabase();
   const repository = createMockRepository();
   const mockStore = {} as AuthoritativeTaskStore;
@@ -910,7 +910,7 @@ test("verifyTransitionAllowed treats no-op transitions as idempotent", () => {
   );
 });
 
-test("TaskTerminalTransitionService.apply() emits tier1 event on successful transition", () => {
+test("TaskTerminalTransitionService.apply() emits tier1 event on successful transition [transition-service-terminal]", () => {
   const db = createMockDatabase();
   const repository = createMockRepository();
   const mockStore = {} as AuthoritativeTaskStore;
@@ -932,7 +932,7 @@ test("TaskTerminalTransitionService.apply() emits tier1 event on successful tran
   assert.equal(repository.mockState.tier1Events[0]!.taskId, "task-1");
 });
 
-test("TaskTerminalTransitionService.apply() updates task output", () => {
+test("TaskTerminalTransitionService.apply() updates task output [transition-service-terminal]", () => {
   const db = createMockDatabase();
   const repository = createMockRepository();
   const mockStore = {} as AuthoritativeTaskStore;
@@ -953,7 +953,7 @@ test("TaskTerminalTransitionService.apply() updates task output", () => {
   assert.equal(repository.mockState.taskOutputs.get("task-1"), taskOutput, "Task output should be stored");
 });
 
-test("TaskTerminalTransitionService.apply() sets error code on failed terminal status", () => {
+test("TaskTerminalTransitionService.apply() sets error code on failed terminal status [transition-service-terminal]", () => {
   const db = createMockDatabase();
   const repository = createMockRepository();
   const mockStore = {} as AuthoritativeTaskStore;
@@ -981,7 +981,7 @@ test("TaskTerminalTransitionService.apply() sets error code on failed terminal s
   assert.equal(execution!.lastErrorCode, "ERR_OOM", "Execution should have error code set on failed terminal transition");
 });
 
-test("TaskTerminalTransitionService.transition() wraps apply in database transaction", () => {
+test("TaskTerminalTransitionService.transition() wraps apply in database transaction [transition-service-terminal]", () => {
   const db = createMockDatabase();
   const repository = createMockRepository();
   const mockStore = {} as AuthoritativeTaskStore;

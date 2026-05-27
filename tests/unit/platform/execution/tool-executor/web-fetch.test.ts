@@ -11,7 +11,7 @@ import {
   sanitizeUrlForTelemetry,
 } from "../../../../../src/platform/five-plane-control-plane/iam/outbound-url-policy.js";
 
-test("isBlockedIpOrHostname blocks localhost IP patterns", () => {
+test("isBlockedIpOrHostname blocks localhost IP patterns [web-fetch]", () => {
   assert.ok(isBlockedIpOrHostname("127.0.0.1"));
   assert.ok(isBlockedIpOrHostname("127.255.255.255"));
   assert.ok(isBlockedIpOrHostname("10.0.0.1"));
@@ -22,14 +22,14 @@ test("isBlockedIpOrHostname blocks localhost IP patterns", () => {
   assert.ok(isBlockedIpOrHostname("192.168.255.255"));
 });
 
-test("isBlockedIpOrHostname blocks IPv6 patterns", () => {
+test("isBlockedIpOrHostname blocks IPv6 patterns [web-fetch]", () => {
   assert.ok(isBlockedIpOrHostname("::1"));
   assert.ok(isBlockedIpOrHostname("fe80:0000:0000:0000:0000:0000:0000:0001"));
   assert.ok(isBlockedIpOrHostname("fc00::"));
   assert.ok(isBlockedIpOrHostname("fd00::"));
 });
 
-test("isBlockedIpOrHostname blocks blocked hostnames", () => {
+test("isBlockedIpOrHostname blocks blocked hostnames [web-fetch]", () => {
   assert.ok(isBlockedIpOrHostname("localhost"));
   assert.ok(isBlockedIpOrHostname("LOCALHOST"));
   assert.ok(isBlockedIpOrHostname("127.0.0.1"));
@@ -39,13 +39,13 @@ test("isBlockedIpOrHostname blocks blocked hostnames", () => {
   assert.ok(isBlockedIpOrHostname("metadata.google.internal"));
 });
 
-test("isBlockedIpOrHostname allows public IPs", () => {
+test("isBlockedIpOrHostname allows public IPs [web-fetch]", () => {
   assert.ok(!isBlockedIpOrHostname("8.8.8.8"));
   assert.ok(!isBlockedIpOrHostname("1.1.1.1"));
   assert.ok(!isBlockedIpOrHostname("93.184.216.34"));
 });
 
-test("parseSafeOutboundUrl rejects link-local metadata endpoints", () => {
+test("parseSafeOutboundUrl rejects link-local metadata endpoints [web-fetch]", () => {
   assert.throws(
     () => parseSafeOutboundUrl("http://169.254.169.254/latest/meta-data", {
       invalid: "invalid",
@@ -55,20 +55,20 @@ test("parseSafeOutboundUrl rejects link-local metadata endpoints", () => {
   );
 });
 
-test("sanitizeUrlForTelemetry redacts tokens, credentials, and telegram bot paths", () => {
+test("sanitizeUrlForTelemetry redacts tokens, credentials, and telegram bot paths [web-fetch]", () => {
   assert.equal(
     sanitizeUrlForTelemetry("https://user:pass@example.com/botsecret-token/sendMessage?token=abc123&trace=1"),
     "https://***:***@example.com/bot***/sendMessage?token=***&trace=1",
   );
 });
 
-test("isBlockedIpOrHostname blocks internal domain suffixes", () => {
+test("isBlockedIpOrHostname blocks internal domain suffixes [web-fetch]", () => {
   assert.ok(isBlockedIpOrHostname("server.local"));
   assert.ok(isBlockedIpOrHostname("host.internal"));
   assert.ok(isBlockedIpOrHostname("machine.private"));
 });
 
-test("isDomainAllowed respects whitelist only", () => {
+test("isDomainAllowed respects whitelist only [web-fetch]", () => {
   const allowedDomains = ["example.com", "trusted.org"];
 
   assert.ok(isDomainAllowed("example.com", allowedDomains, undefined));
@@ -78,7 +78,7 @@ test("isDomainAllowed respects whitelist only", () => {
   assert.ok(isDomainAllowed("evil.example.com", allowedDomains, undefined));
 });
 
-test("isDomainAllowed respects blacklist", () => {
+test("isDomainAllowed respects blacklist [web-fetch]", () => {
   const blockedDomains = ["evil.com", "blocked.org"];
 
   assert.ok(!isDomainAllowed("evil.com", undefined, blockedDomains));
@@ -87,14 +87,14 @@ test("isDomainAllowed respects blacklist", () => {
   assert.ok(isDomainAllowed("good.com", undefined, blockedDomains));
 });
 
-test("isDomainAllowed whitelist takes precedence over blacklist", () => {
+test("isDomainAllowed whitelist takes precedence over blacklist [web-fetch]", () => {
   const allowedDomains = ["example.com"];
   const blockedDomains = ["example.com"];
 
   assert.ok(isDomainAllowed("example.com", allowedDomains, blockedDomains));
 });
 
-test("isDomainAllowed case insensitive matching", () => {
+test("isDomainAllowed case insensitive matching [web-fetch]", () => {
   const allowedDomains = ["EXAMPLE.COM"];
 
   assert.ok(isDomainAllowed("example.com", allowedDomains, undefined));
@@ -102,30 +102,30 @@ test("isDomainAllowed case insensitive matching", () => {
   assert.ok(isDomainAllowed("Sub.EXAMPLE.COM", allowedDomains, undefined));
 });
 
-test("isInternalUrl blocks non-http protocols", () => {
+test("isInternalUrl blocks non-http protocols [web-fetch]", () => {
   assert.ok(isInternalUrl(new URL("file:///etc/passwd")));
   assert.ok(isInternalUrl(new URL("ftp://example.com")));
   assert.ok(isInternalUrl(new URL("javascript:alert(1)")));
 });
 
-test("isInternalUrl allows http and https", () => {
+test("isInternalUrl allows http and https [web-fetch]", () => {
   assert.ok(!isInternalUrl(new URL("http://example.com")));
   assert.ok(!isInternalUrl(new URL("https://example.com")));
 });
 
-test("isInternalUrl blocks internal URLs", () => {
+test("isInternalUrl blocks internal URLs [web-fetch]", () => {
   assert.ok(isInternalUrl(new URL("http://localhost:8080")));
   assert.ok(isInternalUrl(new URL("http://127.0.0.1:8080")));
   assert.ok(isInternalUrl(new URL("http://10.0.0.1:8080")));
 });
 
-test("createWebFetchTool returns correct tool structure", () => {
+test("createWebFetchTool returns correct tool structure [web-fetch]", () => {
   const tool = createWebFetchTool();
   assert.equal(tool.name, "web_fetch");
   assert.ok(typeof tool.execute === "function");
 });
 
-test("createWebFetchTool rejects invalid URLs", async () => {
+test("createWebFetchTool rejects invalid URLs [web-fetch]", async () => {
   const tool = createWebFetchTool();
   const result = await tool.execute({ url: "not-a-valid-url" });
 
@@ -134,7 +134,7 @@ test("createWebFetchTool rejects invalid URLs", async () => {
   assert.equal(result.errorCode, "INVALID_URL");
 });
 
-test("createWebFetchTool rejects internal network URLs", async () => {
+test("createWebFetchTool rejects internal network URLs [web-fetch]", async () => {
   const tool = createWebFetchTool();
   const result = await tool.execute({ url: "http://localhost:8080" });
 
@@ -143,7 +143,7 @@ test("createWebFetchTool rejects internal network URLs", async () => {
   assert.equal(result.errorCode, "INTERNAL_NETWORK_BLOCKED");
 });
 
-test("createWebFetchTool rejects private IPs", async () => {
+test("createWebFetchTool rejects private IPs [web-fetch]", async () => {
   const tool = createWebFetchTool();
   const result = await tool.execute({ url: "http://10.0.0.1:8080" });
 
@@ -152,7 +152,7 @@ test("createWebFetchTool rejects private IPs", async () => {
   assert.equal(result.errorCode, "INTERNAL_NETWORK_BLOCKED");
 });
 
-test("createWebFetchTool rejects non-whitelisted domains", async () => {
+test("createWebFetchTool rejects non-whitelisted domains [web-fetch]", async () => {
   const tool = createWebFetchTool();
   const result = await tool.execute({
     url: "https://evil.com",
@@ -164,7 +164,7 @@ test("createWebFetchTool rejects non-whitelisted domains", async () => {
   assert.equal(result.errorCode, "DOMAIN_BLOCKED");
 });
 
-test("createWebFetchTool allows whitelisted domains", async () => {
+test("createWebFetchTool allows whitelisted domains [web-fetch]", async () => {
   const tool = createWebFetchTool();
   const result = await tool.execute({
     url: "https://example.com",
@@ -180,7 +180,7 @@ test("createWebFetchTool allows whitelisted domains", async () => {
   assert.ok(result.errorCode !== "DOMAIN_BLOCKED");
 });
 
-test("createWebFetchTool applies custom timeout", async () => {
+test("createWebFetchTool applies custom timeout [web-fetch]", async () => {
   const tool = createWebFetchTool();
   const result = await tool.execute({
     url: "https://example.com",
@@ -191,7 +191,7 @@ test("createWebFetchTool applies custom timeout", async () => {
   assert.ok(result.status === "timed_out" || result.status === "blocked" || result.status === "failed");
 });
 
-test("createWebFetchTool HEAD method works without body", async () => {
+test("createWebFetchTool HEAD method works without body [web-fetch]", async () => {
   const tool = createWebFetchTool();
   const result = await tool.execute({
     url: "https://example.com",
@@ -201,7 +201,7 @@ test("createWebFetchTool HEAD method works without body", async () => {
   assert.ok(result.status === "succeeded" || result.status === "blocked" || result.status === "failed");
 });
 
-test("createWebFetchTool aborts overly chatty response streams", async () => {
+test("createWebFetchTool aborts overly chatty response streams [web-fetch]", async () => {
   let chunkIndex = 0;
   const tool = createWebFetchTool({
     dnsLookup: async () => [{ address: "93.184.216.34", family: 4 }],

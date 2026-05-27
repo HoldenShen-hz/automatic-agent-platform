@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { partitionPromptForCache, PromptPartitionCacheService } from "../../../src/platform/five-plane-execution/execution-engine/prompt-partition-cache.js";
 
-test("partitionPromptForCache keeps leading system messages in the static prefix", () => {
+test("partitionPromptForCache keeps leading system messages in the static prefix [prompt-partition-cache]", () => {
   const result = partitionPromptForCache({
     model: "minimax-2.7",
     profileId: "default",
@@ -29,7 +29,7 @@ test("partitionPromptForCache keeps leading system messages in the static prefix
   assert.notEqual(result.fixedPrefixCacheKey, result.domainBlockCacheKey);
 });
 
-test("PromptPartitionCacheService tracks reuse count for identical dynamic partitions", () => {
+test("PromptPartitionCacheService tracks reuse count for identical dynamic partitions [prompt-partition-cache]", () => {
   const service = new PromptPartitionCacheService();
   const first = service.record({
     model: "reasoning-medium",
@@ -44,7 +44,7 @@ test("PromptPartitionCacheService tracks reuse count for identical dynamic parti
   assert.equal(second.reuseCount, 1);
 });
 
-test("partitionPromptForCache handles empty messages array", () => {
+test("partitionPromptForCache handles empty messages array [prompt-partition-cache]", () => {
   const result = partitionPromptForCache({
     model: "minimax-2.7",
     profileId: "default",
@@ -62,7 +62,7 @@ test("partitionPromptForCache handles empty messages array", () => {
   assert.equal(result.domainBlockMessageCount, 0);
 });
 
-test("partitionPromptForCache handles different models produce different cache keys", () => {
+test("partitionPromptForCache handles different models produce different cache keys [prompt-partition-cache]", () => {
   const baseMessages = [{ role: "system", content: "same" }, { role: "user", content: "hello" }];
 
   const result1 = partitionPromptForCache({
@@ -85,7 +85,7 @@ test("partitionPromptForCache handles different models produce different cache k
   assert.notEqual(result1.staticCacheKey, result2.staticCacheKey);
 });
 
-test("PromptPartitionCacheService records different messages as separate partitions", () => {
+test("PromptPartitionCacheService records different messages as separate partitions [prompt-partition-cache]", () => {
   const service = new PromptPartitionCacheService();
   const first = service.record({
     model: "minimax-2.7",

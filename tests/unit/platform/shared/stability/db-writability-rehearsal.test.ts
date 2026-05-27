@@ -21,7 +21,7 @@ function createTempDir(): string {
   return mkdtempSync(join(tmpdir(), "db-writability-test-"));
 }
 
-test("runStableDbWritabilityRehearsal executes all three scenarios successfully", async () => {
+test("runStableDbWritabilityRehearsal executes all three scenarios successfully [db-writability-rehearsal]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableDbWritabilityRehearsal({ outputDir });
@@ -40,7 +40,7 @@ test("runStableDbWritabilityRehearsal executes all three scenarios successfully"
   }
 });
 
-test("health_and_doctor_fail_close_when_db_is_not_writable scenario passes", async () => {
+test("health_and_doctor_fail_close_when_db_is_not_writable scenario passes [db-writability-rehearsal]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableDbWritabilityRehearsal({ outputDir });
@@ -59,7 +59,7 @@ test("health_and_doctor_fail_close_when_db_is_not_writable scenario passes", asy
   }
 });
 
-test("multi_step_admission_rejects_new_work_in_read_only_mode scenario passes", async () => {
+test("multi_step_admission_rejects_new_work_in_read_only_mode scenario passes [db-writability-rehearsal]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableDbWritabilityRehearsal({ outputDir });
@@ -78,7 +78,7 @@ test("multi_step_admission_rejects_new_work_in_read_only_mode scenario passes", 
   }
 });
 
-test("dispatch_blocks_claims_without_dropping_pending_ticket_in_read_only_mode scenario passes", async () => {
+test("dispatch_blocks_claims_without_dropping_pending_ticket_in_read_only_mode scenario passes [db-writability-rehearsal]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableDbWritabilityRehearsal({ outputDir });
@@ -99,7 +99,7 @@ test("dispatch_blocks_claims_without_dropping_pending_ticket_in_read_only_mode s
   }
 });
 
-test("writeStableDbWritabilityRehearsalReport writes valid JSON", async () => {
+test("writeStableDbWritabilityRehearsalReport writes valid JSON [db-writability-rehearsal]", async () => {
   const outputDir = createTempDir();
   const reportPath = join(outputDir, "report.json");
   try {
@@ -121,7 +121,7 @@ test("writeStableDbWritabilityRehearsalReport writes valid JSON", async () => {
   }
 });
 
-test("report contains valid startedAt and finishedAt timestamps", async () => {
+test("report contains valid startedAt and finishedAt timestamps [db-writability-rehearsal]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableDbWritabilityRehearsal({ outputDir });
@@ -137,7 +137,7 @@ test("report contains valid startedAt and finishedAt timestamps", async () => {
   }
 });
 
-test("report outputDir matches options", async () => {
+test("report outputDir matches options [db-writability-rehearsal]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableDbWritabilityRehearsal({ outputDir });

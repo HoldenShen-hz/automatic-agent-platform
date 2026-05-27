@@ -36,87 +36,87 @@ function createExecutionStateMachine(): StateTransitionMachine<string> {
 // Valid transitions
 // ---------------------------------------------------------------------------
 
-test("ExecutionStateMachine: allows created -> prechecking", () => {
+test("ExecutionStateMachine: allows created -> prechecking [execution-state-machine]", () => {
   const machine = createExecutionStateMachine();
   machine.assertTransition("created", "prechecking");
 });
 
-test("ExecutionStateMachine: allows created -> executing", () => {
+test("ExecutionStateMachine: allows created -> executing [execution-state-machine]", () => {
   const machine = createExecutionStateMachine();
   machine.assertTransition("created", "executing");
 });
 
-test("ExecutionStateMachine: allows created -> cancelled", () => {
+test("ExecutionStateMachine: allows created -> cancelled [execution-state-machine]", () => {
   const machine = createExecutionStateMachine();
   machine.assertTransition("created", "cancelled");
 });
 
-test("ExecutionStateMachine: allows created -> failed", () => {
+test("ExecutionStateMachine: allows created -> failed [execution-state-machine]", () => {
   const machine = createExecutionStateMachine();
   machine.assertTransition("created", "failed");
 });
 
-test("ExecutionStateMachine: allows prechecking -> executing", () => {
+test("ExecutionStateMachine: allows prechecking -> executing [execution-state-machine]", () => {
   const machine = createExecutionStateMachine();
   machine.assertTransition("prechecking", "executing");
 });
 
-test("ExecutionStateMachine: allows prechecking -> blocked", () => {
+test("ExecutionStateMachine: allows prechecking -> blocked [execution-state-machine]", () => {
   const machine = createExecutionStateMachine();
   machine.assertTransition("prechecking", "blocked");
 });
 
-test("ExecutionStateMachine: allows prechecking -> cancelled", () => {
+test("ExecutionStateMachine: allows prechecking -> cancelled [execution-state-machine]", () => {
   const machine = createExecutionStateMachine();
   machine.assertTransition("prechecking", "cancelled");
 });
 
-test("ExecutionStateMachine: allows prechecking -> failed", () => {
+test("ExecutionStateMachine: allows prechecking -> failed [execution-state-machine]", () => {
   const machine = createExecutionStateMachine();
   machine.assertTransition("prechecking", "failed");
 });
 
-test("ExecutionStateMachine: allows executing -> blocked", () => {
+test("ExecutionStateMachine: allows executing -> blocked [execution-state-machine]", () => {
   const machine = createExecutionStateMachine();
   machine.assertTransition("executing", "blocked");
 });
 
-test("ExecutionStateMachine: allows executing -> succeeded", () => {
+test("ExecutionStateMachine: allows executing -> succeeded [execution-state-machine]", () => {
   const machine = createExecutionStateMachine();
   machine.assertTransition("executing", "succeeded");
 });
 
-test("ExecutionStateMachine: allows executing -> failed", () => {
+test("ExecutionStateMachine: allows executing -> failed [execution-state-machine]", () => {
   const machine = createExecutionStateMachine();
   machine.assertTransition("executing", "failed");
 });
 
-test("ExecutionStateMachine: allows executing -> cancelled", () => {
+test("ExecutionStateMachine: allows executing -> cancelled [execution-state-machine]", () => {
   const machine = createExecutionStateMachine();
   machine.assertTransition("executing", "cancelled");
 });
 
-test("ExecutionStateMachine: allows blocked -> prechecking", () => {
+test("ExecutionStateMachine: allows blocked -> prechecking [execution-state-machine]", () => {
   const machine = createExecutionStateMachine();
   machine.assertTransition("blocked", "prechecking");
 });
 
-test("ExecutionStateMachine: allows blocked -> executing", () => {
+test("ExecutionStateMachine: allows blocked -> executing [execution-state-machine]", () => {
   const machine = createExecutionStateMachine();
   machine.assertTransition("blocked", "executing");
 });
 
-test("ExecutionStateMachine: allows blocked -> cancelled", () => {
+test("ExecutionStateMachine: allows blocked -> cancelled [execution-state-machine]", () => {
   const machine = createExecutionStateMachine();
   machine.assertTransition("blocked", "cancelled");
 });
 
-test("ExecutionStateMachine: allows blocked -> failed", () => {
+test("ExecutionStateMachine: allows blocked -> failed [execution-state-machine]", () => {
   const machine = createExecutionStateMachine();
   machine.assertTransition("blocked", "failed");
 });
 
-test("ExecutionStateMachine: allows blocked -> superseded", () => {
+test("ExecutionStateMachine: allows blocked -> superseded [execution-state-machine]", () => {
   const machine = createExecutionStateMachine();
   machine.assertTransition("blocked", "superseded");
 });
@@ -125,7 +125,7 @@ test("ExecutionStateMachine: allows blocked -> superseded", () => {
 // Invalid transitions
 // ---------------------------------------------------------------------------
 
-test("ExecutionStateMachine: rejects created -> succeeded", () => {
+test("ExecutionStateMachine: rejects created -> succeeded [execution-state-machine]", () => {
   const machine = createExecutionStateMachine();
   assert.throws(
     () => machine.assertTransition("created", "succeeded"),
@@ -133,7 +133,7 @@ test("ExecutionStateMachine: rejects created -> succeeded", () => {
   );
 });
 
-test("ExecutionStateMachine: rejects created -> blocked", () => {
+test("ExecutionStateMachine: rejects created -> blocked [execution-state-machine]", () => {
   const machine = createExecutionStateMachine();
   assert.throws(
     () => machine.assertTransition("created", "blocked"),
@@ -141,7 +141,7 @@ test("ExecutionStateMachine: rejects created -> blocked", () => {
   );
 });
 
-test("ExecutionStateMachine: rejects created -> superseded", () => {
+test("ExecutionStateMachine: rejects created -> superseded [execution-state-machine]", () => {
   const machine = createExecutionStateMachine();
   assert.throws(
     () => machine.assertTransition("created", "superseded"),
@@ -149,7 +149,7 @@ test("ExecutionStateMachine: rejects created -> superseded", () => {
   );
 });
 
-test("ExecutionStateMachine: rejects prechecking -> succeeded", () => {
+test("ExecutionStateMachine: rejects prechecking -> succeeded [execution-state-machine]", () => {
   const machine = createExecutionStateMachine();
   assert.throws(
     () => machine.assertTransition("prechecking", "succeeded"),
@@ -157,7 +157,7 @@ test("ExecutionStateMachine: rejects prechecking -> succeeded", () => {
   );
 });
 
-test("ExecutionStateMachine: rejects executing -> prechecking", () => {
+test("ExecutionStateMachine: rejects executing -> prechecking [execution-state-machine]", () => {
   const machine = createExecutionStateMachine();
   assert.throws(
     () => machine.assertTransition("executing", "prechecking"),
@@ -165,7 +165,7 @@ test("ExecutionStateMachine: rejects executing -> prechecking", () => {
   );
 });
 
-test("ExecutionStateMachine: rejects blocked -> succeeded", () => {
+test("ExecutionStateMachine: rejects blocked -> succeeded [execution-state-machine]", () => {
   const machine = createExecutionStateMachine();
   assert.throws(
     () => machine.assertTransition("blocked", "succeeded"),
@@ -173,7 +173,7 @@ test("ExecutionStateMachine: rejects blocked -> succeeded", () => {
   );
 });
 
-test("ExecutionStateMachine: rejects any transition from terminal states", () => {
+test("ExecutionStateMachine: rejects any transition from terminal states [execution-state-machine]", () => {
   const machine = createExecutionStateMachine();
   const terminalStates = ["succeeded", "failed", "cancelled", "superseded"];
 
@@ -192,7 +192,7 @@ test("ExecutionStateMachine: rejects any transition from terminal states", () =>
 // No-op transitions
 // ---------------------------------------------------------------------------
 
-test("ExecutionStateMachine: allows no-op transition on same state", () => {
+test("ExecutionStateMachine: allows no-op transition on same state [execution-state-machine]", () => {
   const machine = createExecutionStateMachine();
   const states = ["created", "prechecking", "executing", "blocked", "succeeded", "failed", "cancelled", "superseded"];
 
@@ -205,7 +205,7 @@ test("ExecutionStateMachine: allows no-op transition on same state", () => {
 // Error details
 // ---------------------------------------------------------------------------
 
-test("ExecutionStateMachine: WorkflowStateError contains correct entityKind", () => {
+test("ExecutionStateMachine: WorkflowStateError contains correct entityKind [execution-state-machine]", () => {
   const machine = createExecutionStateMachine();
 
   try {
@@ -220,7 +220,7 @@ test("ExecutionStateMachine: WorkflowStateError contains correct entityKind", ()
   }
 });
 
-test("ExecutionStateMachine: WorkflowStateError has statusCode 409", () => {
+test("ExecutionStateMachine: WorkflowStateError has statusCode 409 [execution-state-machine]", () => {
   const machine = createExecutionStateMachine();
 
   try {
@@ -233,7 +233,7 @@ test("ExecutionStateMachine: WorkflowStateError has statusCode 409", () => {
   }
 });
 
-test("ExecutionStateMachine: WorkflowStateError is not retryable", () => {
+test("ExecutionStateMachine: WorkflowStateError is not retryable [execution-state-machine]", () => {
   const machine = createExecutionStateMachine();
 
   try {
@@ -250,7 +250,7 @@ test("ExecutionStateMachine: WorkflowStateError is not retryable", () => {
 // Error message format
 // ---------------------------------------------------------------------------
 
-test("ExecutionStateMachine: error message contains invalid_transition code", () => {
+test("ExecutionStateMachine: error message contains invalid_transition code [execution-state-machine]", () => {
   const machine = createExecutionStateMachine();
 
   try {

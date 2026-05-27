@@ -12,7 +12,7 @@ import test from "node:test";
 
 import { EnvironmentReadinessOrchestrationService } from "../../../../../src/platform/shared/stability/environment-readiness-orchestration-service.js";
 
-test("EnvironmentReadinessOrchestrationService SLO comparison with min comparator", () => {
+test("EnvironmentReadinessOrchestrationService SLO comparison with min comparator [environment-readiness-orchestration-service-additional]", () => {
   const service = new EnvironmentReadinessOrchestrationService();
 
   service.recordSlo({
@@ -41,7 +41,7 @@ test("EnvironmentReadinessOrchestrationService SLO comparison with min comparato
   assert.ok(Array.isArray(records));
 });
 
-test("EnvironmentReadinessOrchestrationService records multiple drills", () => {
+test("EnvironmentReadinessOrchestrationService records multiple drills [environment-readiness-orchestration-service-additional]", () => {
   const service = new EnvironmentReadinessOrchestrationService();
 
   service.recordDrill({
@@ -70,7 +70,7 @@ test("EnvironmentReadinessOrchestrationService records multiple drills", () => {
   // All drills should be recorded (drill evaluation happens in evaluatePromotion)
 });
 
-test("EnvironmentReadinessOrchestrationService upserts resource pool", () => {
+test("EnvironmentReadinessOrchestrationService upserts resource pool [environment-readiness-orchestration-service-additional]", () => {
   const service = new EnvironmentReadinessOrchestrationService();
 
   const pool1 = service.upsertResourcePool({
@@ -113,7 +113,7 @@ test("EnvironmentReadinessOrchestrationService upserts resource pool", () => {
   assert.equal(pool2.availableCapacityUnits, 70);
 });
 
-test("EnvironmentReadinessOrchestrationService summarizeEnvironment computes correct counts", () => {
+test("EnvironmentReadinessOrchestrationService summarizeEnvironment computes correct counts [environment-readiness-orchestration-service-additional]", () => {
   const service = new EnvironmentReadinessOrchestrationService();
 
   service.upsertReadiness({
@@ -154,7 +154,7 @@ test("EnvironmentReadinessOrchestrationService summarizeEnvironment computes cor
   assert.equal(gatewaySummary!.ready, 1);
 });
 
-test("EnvironmentReadinessOrchestrationService isStale detects stale records", () => {
+test("EnvironmentReadinessOrchestrationService isStale detects stale records [environment-readiness-orchestration-service-additional]", () => {
   const service = new EnvironmentReadinessOrchestrationService();
 
   service.upsertReadiness({
@@ -189,7 +189,7 @@ test("EnvironmentReadinessOrchestrationService isStale detects stale records", (
   assert.equal(providerSummary!.stale, 1);
 });
 
-test("EnvironmentReadinessOrchestrationService throws on promotion without records", () => {
+test("EnvironmentReadinessOrchestrationService throws on promotion without records [environment-readiness-orchestration-service-additional]", () => {
   const service = new EnvironmentReadinessOrchestrationService();
 
   assert.throws(
@@ -203,7 +203,7 @@ test("EnvironmentReadinessOrchestrationService throws on promotion without recor
   );
 });
 
-test("EnvironmentReadinessOrchestrationService normalizes empty componentId", () => {
+test("EnvironmentReadinessOrchestrationService normalizes empty componentId [environment-readiness-orchestration-service-additional]", () => {
   const service = new EnvironmentReadinessOrchestrationService();
 
   assert.throws(
@@ -220,7 +220,7 @@ test("EnvironmentReadinessOrchestrationService normalizes empty componentId", ()
   );
 });
 
-test("EnvironmentReadinessOrchestrationService normalizes empty owner", () => {
+test("EnvironmentReadinessOrchestrationService normalizes empty owner [environment-readiness-orchestration-service-additional]", () => {
   const service = new EnvironmentReadinessOrchestrationService();
 
   assert.throws(

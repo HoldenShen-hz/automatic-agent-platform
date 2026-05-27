@@ -39,7 +39,7 @@ function createMetadata(overrides: Partial<ToolExecutionMetadata> = {}): ToolExe
   } as ToolExecutionMetadata;
 }
 
-test("ToolExecutor executeCommand returns CommandExecutionResult with correct envelope", async () => {
+test("ToolExecutor executeCommand returns CommandExecutionResult with correct envelope [tool-executor-service]", async () => {
   const executor = new ToolExecutor(
     mockCommandExecutor(async (request: CommandToolRequest) => ({
       callId: request.callId,
@@ -77,7 +77,7 @@ test("ToolExecutor executeCommand returns CommandExecutionResult with correct en
   assert.equal(result.error, null);
 });
 
-test("ToolExecutor executeCommand propagates timeout via AbortSignal", async () => {
+test("ToolExecutor executeCommand propagates timeout via AbortSignal [tool-executor-service]", async () => {
   let receivedSignal: AbortSignal | undefined;
   const executor = new ToolExecutor(
     mockCommandExecutor(async (_request: CommandToolRequest, signal?: AbortSignal) => {
@@ -114,7 +114,7 @@ test("ToolExecutor executeCommand propagates timeout via AbortSignal", async () 
   assert.ok(receivedSignal !== undefined);
 });
 
-test("ToolExecutor executeCommand returns failed status on command failure", async () => {
+test("ToolExecutor executeCommand returns failed status on command failure [tool-executor-service]", async () => {
   const executor = new ToolExecutor(
     mockCommandExecutor(async (request: CommandToolRequest) => ({
       callId: request.callId,
@@ -149,7 +149,7 @@ test("ToolExecutor executeCommand returns failed status on command failure", asy
   assert.equal(result.error?.retryable, false);
 });
 
-test("ToolExecutor executeCommand returns blocked status for denied commands", async () => {
+test("ToolExecutor executeCommand returns blocked status for denied commands [tool-executor-service]", async () => {
   const executor = new ToolExecutor(
     mockCommandExecutor(async (request: CommandToolRequest) => ({
       callId: request.callId,
@@ -183,7 +183,7 @@ test("ToolExecutor executeCommand returns blocked status for denied commands", a
   assert.equal(result.error?.source, "security");
 });
 
-test("ToolExecutor executeCommand serializes result metadata correctly", async () => {
+test("ToolExecutor executeCommand serializes result metadata correctly [tool-executor-service]", async () => {
   const executor = new ToolExecutor(
     mockCommandExecutor(async (request: CommandToolRequest) => ({
       callId: request.callId,
@@ -222,7 +222,7 @@ test("ToolExecutor executeCommand serializes result metadata correctly", async (
   assert.ok(result.output.warnings.includes("output_truncated"));
 });
 
-test("ToolExecutor executeParallel respects concurrency-safe grouping", async () => {
+test("ToolExecutor executeParallel respects concurrency-safe grouping [tool-executor-service]", async () => {
   const callOrder: number[] = [];
   const executor = new ToolExecutor(
     mockCommandExecutor(async () => ({
@@ -256,7 +256,7 @@ test("ToolExecutor executeParallel respects concurrency-safe grouping", async ()
   assert.deepEqual(result.results, ["result-a", "result-b"]);
 });
 
-test("ToolExecutor executeParallel reports failures in errors array", async () => {
+test("ToolExecutor executeParallel reports failures in errors array [tool-executor-service]", async () => {
   const executor = new ToolExecutor(
     mockCommandExecutor(async () => ({
       callId: "call-parallel-error",
@@ -293,7 +293,7 @@ test("ToolExecutor executeParallel reports failures in errors array", async () =
   assert.equal(result.errors[0].toolName, "read.fail");
 });
 
-test("ToolExecutor executeParallel uses maxParallelism option", async () => {
+test("ToolExecutor executeParallel uses maxParallelism option [tool-executor-service]", async () => {
   let concurrentCount = 0;
   let maxSeen = 0;
   const executor = new ToolExecutor(
@@ -329,7 +329,7 @@ test("ToolExecutor executeParallel uses maxParallelism option", async () => {
   assert.equal(maxSeen, 2);
 });
 
-test("ToolExecutor defaults parallelOptions to empty object when not provided", async () => {
+test("ToolExecutor defaults parallelOptions to empty object when not provided [tool-executor-service]", async () => {
   const executor = new ToolExecutor(
     mockCommandExecutor(async () => ({
       callId: "call-defaults",

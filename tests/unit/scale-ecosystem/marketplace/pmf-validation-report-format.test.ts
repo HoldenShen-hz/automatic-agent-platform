@@ -4,7 +4,7 @@ import test from "node:test";
 import { buildMarkdownReport } from "../../../../src/scale-ecosystem/marketplace/pmf-validation/report-format.js";
 import type { PmfValidationReport } from "../../../../src/scale-ecosystem/marketplace/pmf-validation/types.js";
 
-test("buildMarkdownReport generates header section", () => {
+test("buildMarkdownReport generates header section [pmf-validation-report-format]", () => {
   const report = createMockPmfReport({
     reportId: "rpt_001",
     profileName: "test_profile",
@@ -17,7 +17,7 @@ test("buildMarkdownReport generates header section", () => {
   assert.ok(output.includes("Verdict: `pass`"));
 });
 
-test("buildMarkdownReport includes window information", () => {
+test("buildMarkdownReport includes window information [pmf-validation-report-format]", () => {
   const report = createMockPmfReport({
     window: { start: "2026-03-01", end: "2026-03-31", days: 30 },
   });
@@ -25,7 +25,7 @@ test("buildMarkdownReport includes window information", () => {
   assert.ok(output.includes("Window: `2026-03-01` -> `2026-03-31` (30d)"));
 });
 
-test("buildMarkdownReport shows division scope", () => {
+test("buildMarkdownReport shows division scope [pmf-validation-report-format]", () => {
   const report1 = createMockPmfReport({ divisionId: "div_123" });
   assert.ok(buildMarkdownReport(report1).includes("Division Scope: `div_123`"));
 
@@ -33,14 +33,14 @@ test("buildMarkdownReport shows division scope", () => {
   assert.ok(buildMarkdownReport(report2).includes("Division Scope: `all`"));
 });
 
-test("buildMarkdownReport includes summary", () => {
+test("buildMarkdownReport includes summary [pmf-validation-report-format]", () => {
   const report = createMockPmfReport({ summary: "All metrics within threshold" });
   const output = buildMarkdownReport(report);
   assert.ok(output.includes("## Summary"));
   assert.ok(output.includes("All metrics within threshold"));
 });
 
-test("buildMarkdownReport renders all required metrics", () => {
+test("buildMarkdownReport renders all required metrics [pmf-validation-report-format]", () => {
   const report = createMockPmfReport({
     metrics: {
       taskCount: 100,
@@ -72,7 +72,7 @@ test("buildMarkdownReport renders all required metrics", () => {
   assert.ok(output.includes("p95StepDurationMs: 5000"));
 });
 
-test("buildMarkdownReport handles null optional metrics as n/a", () => {
+test("buildMarkdownReport handles null optional metrics as n/a [pmf-validation-report-format]", () => {
   const report = createMockPmfReport({
     metrics: {
       taskCount: 100,
@@ -100,7 +100,7 @@ test("buildMarkdownReport handles null optional metrics as n/a", () => {
   assert.ok(output.includes("p95StepDurationMs: n/a"));
 });
 
-test("buildMarkdownReport renders checks section", () => {
+test("buildMarkdownReport renders checks section [pmf-validation-report-format]", () => {
   const report = createMockPmfReport({
     checks: [
       {
@@ -129,7 +129,7 @@ test("buildMarkdownReport renders checks section", () => {
   assert.ok(output.includes("threshold=70"));
 });
 
-test("buildMarkdownReport handles checks with null observed/threshold", () => {
+test("buildMarkdownReport handles checks with null observed/threshold [pmf-validation-report-format]", () => {
   const report = createMockPmfReport({
     checks: [
       {

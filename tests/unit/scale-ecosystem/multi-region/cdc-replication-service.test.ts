@@ -26,7 +26,7 @@ function createDb(): AuthoritativeSqlDatabase {
   };
 }
 
-test("CDCReplicationService registers and retrieves replication config", () => {
+test("CDCReplicationService registers and retrieves replication config [cdc-replication-service]", () => {
   const service = new CDCReplicationService();
 
   const config: RegionReplicationConfig = {
@@ -47,7 +47,7 @@ test("CDCReplicationService registers and retrieves replication config", () => {
   assert.equal(retrieved?.batchSize, 100);
 });
 
-test("CDCReplicationService initializes checkpoint on registration", () => {
+test("CDCReplicationService initializes checkpoint on registration [cdc-replication-service]", () => {
   const service = new CDCReplicationService();
 
   const config: RegionReplicationConfig = {
@@ -68,7 +68,7 @@ test("CDCReplicationService initializes checkpoint on registration", () => {
   assert.equal(checkpoint?.lastEventSequence, 0);
 });
 
-test("CDCReplicationService prepares batch from events", () => {
+test("CDCReplicationService prepares batch from events [cdc-replication-service]", () => {
   const service = new CDCReplicationService();
 
   const config: RegionReplicationConfig = {
@@ -96,7 +96,7 @@ test("CDCReplicationService prepares batch from events", () => {
   assert.equal(batch!.endSequence, 2);
 });
 
-test("CDCReplicationService confirms batch and updates checkpoint", () => {
+test("CDCReplicationService confirms batch and updates checkpoint [cdc-replication-service]", () => {
   const service = new CDCReplicationService();
 
   const config: RegionReplicationConfig = {
@@ -125,7 +125,7 @@ test("CDCReplicationService confirms batch and updates checkpoint", () => {
   assert.equal(checkpoint?.lastEventId, "evt_2");
 });
 
-test("CDCReplicationService persists checkpoint and pending queue state atomically across restart", () => {
+test("CDCReplicationService persists checkpoint and pending queue state atomically across restart [cdc-replication-service]", () => {
   const db = createDb();
   const events = [
     { id: "evt_1", sequence: 1, eventType: "task:created", taskId: "task_1", payloadJson: "{}", createdAt: "2024-01-01T00:00:00Z" },
@@ -162,7 +162,7 @@ test("CDCReplicationService persists checkpoint and pending queue state atomical
   assert.equal(nextBatch?.endSequence, 3);
 });
 
-test("CDCReplicationService returns null when no new events", () => {
+test("CDCReplicationService returns null when no new events [cdc-replication-service]", () => {
   const service = new CDCReplicationService();
 
   const config: RegionReplicationConfig = {
@@ -192,7 +192,7 @@ test("CDCReplicationService returns null when no new events", () => {
   assert.equal(batch2, null);
 });
 
-test("CDCReplicationService does not enqueue a second batch while one is already pending", () => {
+test("CDCReplicationService does not enqueue a second batch while one is already pending [cdc-replication-service]", () => {
   const service = new CDCReplicationService();
   service.registerReplication({
     sourceRegionId: "us-east",
@@ -216,7 +216,7 @@ test("CDCReplicationService does not enqueue a second batch while one is already
   assert.equal(secondBatch, null);
 });
 
-test("CDCReplicationService isEnabled returns correct value", () => {
+test("CDCReplicationService isEnabled returns correct value [cdc-replication-service]", () => {
   const service = new CDCReplicationService();
 
   const enabledConfig: RegionReplicationConfig = {
@@ -234,7 +234,7 @@ test("CDCReplicationService isEnabled returns correct value", () => {
   assert.equal(service.isEnabled("us-east", "ap-south"), false); // Not registered
 });
 
-test("CDCReplicationService calculates replication lag", () => {
+test("CDCReplicationService calculates replication lag [cdc-replication-service]", () => {
   const service = new CDCReplicationService();
 
   const config: RegionReplicationConfig = {
@@ -271,7 +271,7 @@ test("CDCReplicationService calculates replication lag", () => {
   assert.equal(lagAfter, 50);
 });
 
-test("MultiRegionReplicationCoordinator sets up region replications", () => {
+test("MultiRegionReplicationCoordinator sets up region replications [cdc-replication-service]", () => {
   const coordinator = new MultiRegionReplicationCoordinator();
 
   coordinator.setupRegionReplication("us-east", [
@@ -285,7 +285,7 @@ test("MultiRegionReplicationCoordinator sets up region replications", () => {
   assert.ok(replications.some((r) => r.targetRegionId === "ap-south"));
 });
 
-test("CDCReplicationService getRegisteredRegionPairs", () => {
+test("CDCReplicationService getRegisteredRegionPairs [cdc-replication-service]", () => {
   const service = new CDCReplicationService();
 
   service.registerReplication({
@@ -310,7 +310,7 @@ test("CDCReplicationService getRegisteredRegionPairs", () => {
   assert.equal(pairs.length, 2);
 });
 
-test("CDCReplicationService prunes idle region-pair state and stale vector clocks", () => {
+test("CDCReplicationService prunes idle region-pair state and stale vector clocks [cdc-replication-service]", () => {
   const service = new CDCReplicationService();
 
   for (let index = 0; index < 260; index += 1) {
@@ -336,7 +336,7 @@ test("CDCReplicationService prunes idle region-pair state and stale vector clock
   assert.ok(service.getVectorClock("entity-2049") != null);
 });
 
-test("CDCReplicationService returns idle status when no pending work", () => {
+test("CDCReplicationService returns idle status when no pending work [cdc-replication-service]", () => {
   const service = new CDCReplicationService();
 
   service.registerReplication({

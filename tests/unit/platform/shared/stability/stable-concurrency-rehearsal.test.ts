@@ -20,7 +20,7 @@ function createTempDir(): string {
   return join("/tmp", `concurrency-test-${Date.now()}-${Math.random().toString(16).slice(2)}`);
 }
 
-test("runStableConcurrencyRehearsal executes all three scenarios successfully", async () => {
+test("runStableConcurrencyRehearsal executes all three scenarios successfully [stable-concurrency-rehearsal]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableConcurrencyRehearsal({ outputDir });
@@ -39,7 +39,7 @@ test("runStableConcurrencyRehearsal executes all three scenarios successfully", 
   }
 });
 
-test("expired_lock_released scenario passes", async () => {
+test("expired_lock_released scenario passes [stable-concurrency-rehearsal]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableConcurrencyRehearsal({ outputDir });
@@ -56,7 +56,7 @@ test("expired_lock_released scenario passes", async () => {
   }
 });
 
-test("active_execution_conflict_fail_closed scenario passes", async () => {
+test("active_execution_conflict_fail_closed scenario passes [stable-concurrency-rehearsal]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableConcurrencyRehearsal({ outputDir });
@@ -73,7 +73,7 @@ test("active_execution_conflict_fail_closed scenario passes", async () => {
   }
 });
 
-test("competing_write_transactions_fail_closed scenario passes", async () => {
+test("competing_write_transactions_fail_closed scenario passes [stable-concurrency-rehearsal]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableConcurrencyRehearsal({ outputDir });
@@ -90,7 +90,7 @@ test("competing_write_transactions_fail_closed scenario passes", async () => {
   }
 });
 
-test("writeStableConcurrencyRehearsalReport writes valid JSON", async () => {
+test("writeStableConcurrencyRehearsalReport writes valid JSON [stable-concurrency-rehearsal]", async () => {
   const outputDir = createTempDir();
   const reportPath = join(outputDir, "report.json");
   try {
@@ -112,7 +112,7 @@ test("writeStableConcurrencyRehearsalReport writes valid JSON", async () => {
   }
 });
 
-test("report contains valid startedAt and finishedAt timestamps", async () => {
+test("report contains valid startedAt and finishedAt timestamps [stable-concurrency-rehearsal]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableConcurrencyRehearsal({ outputDir });
@@ -131,7 +131,7 @@ test("report contains valid startedAt and finishedAt timestamps", async () => {
   }
 });
 
-test("report outputDir matches options", async () => {
+test("report outputDir matches options [stable-concurrency-rehearsal]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableConcurrencyRehearsal({ outputDir });
@@ -144,7 +144,7 @@ test("report outputDir matches options", async () => {
   }
 });
 
-test("each scenario has durationMs greater than zero", async () => {
+test("each scenario has durationMs greater than zero [stable-concurrency-rehearsal]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableConcurrencyRehearsal({ outputDir });

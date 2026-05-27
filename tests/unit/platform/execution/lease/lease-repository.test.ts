@@ -44,14 +44,14 @@ function createPostgresBackend(): any {
 // Tests: Basic factory behavior
 // ---------------------------------------------------------------------------
 
-test("createLeaseRepository returns SqliteLeaseRepository for sqlite backend", () => {
+test("createLeaseRepository returns SqliteLeaseRepository for sqlite backend [lease-repository]", () => {
   const backend = createSqliteBackend();
   const repo = createLeaseRepository(backend);
 
   assert.ok(repo instanceof SqliteLeaseRepository);
 });
 
-test("createLeaseRepository returns PostgresLeaseRepository for postgres backend", () => {
+test("createLeaseRepository returns PostgresLeaseRepository for postgres backend [lease-repository]", () => {
   const backend = createPostgresBackend();
   const repo = createLeaseRepository(backend);
 
@@ -62,7 +62,7 @@ test("createLeaseRepository returns PostgresLeaseRepository for postgres backend
 // Tests: SqliteLeaseRepository interface
 // ---------------------------------------------------------------------------
 
-test("createLeaseRepository interface is satisfied - SqliteLeaseRepository has all required methods", () => {
+test("createLeaseRepository interface is satisfied - SqliteLeaseRepository has all required methods [lease-repository]", () => {
   const backend = createSqliteBackend();
   const repo = createLeaseRepository(backend);
 
@@ -79,7 +79,7 @@ test("createLeaseRepository interface is satisfied - SqliteLeaseRepository has a
   assert.equal(typeof repo.listLeaseAudits, "function");
 });
 
-test("createLeaseRepository interface is satisfied - PostgresLeaseRepository has all required methods", () => {
+test("createLeaseRepository interface is satisfied - PostgresLeaseRepository has all required methods [lease-repository]", () => {
   const backend = createPostgresBackend();
   const repo = createLeaseRepository(backend);
 
@@ -100,7 +100,7 @@ test("createLeaseRepository interface is satisfied - PostgresLeaseRepository has
 // Tests: Repository type safety
 // ---------------------------------------------------------------------------
 
-test("SqliteLeaseRepository implements LeaseRepository interface correctly", () => {
+test("SqliteLeaseRepository implements LeaseRepository interface correctly [lease-repository]", () => {
   const backend = createSqliteBackend();
   const repo = createLeaseRepository(backend);
 
@@ -108,7 +108,7 @@ test("SqliteLeaseRepository implements LeaseRepository interface correctly", () 
   assert.equal(repo.constructor.name, "SqliteLeaseRepository");
 });
 
-test("PostgresLeaseRepository implements LeaseRepository interface correctly", () => {
+test("PostgresLeaseRepository implements LeaseRepository interface correctly [lease-repository]", () => {
   const backend = createPostgresBackend();
   const repo = createLeaseRepository(backend);
 
@@ -120,7 +120,7 @@ test("PostgresLeaseRepository implements LeaseRepository interface correctly", (
 // Tests: Multiple backend instances
 // ---------------------------------------------------------------------------
 
-test("createLeaseRepository creates independent repository instances", () => {
+test("createLeaseRepository creates independent repository instances [lease-repository]", () => {
   const backend1 = createSqliteBackend();
   const backend2 = createSqliteBackend();
 
@@ -133,7 +133,7 @@ test("createLeaseRepository creates independent repository instances", () => {
   assert.ok(repo1 !== repo2);
 });
 
-test("createLeaseRepository works with multiple sqlite backends", () => {
+test("createLeaseRepository works with multiple sqlite backends [lease-repository]", () => {
   const backend1 = createSqliteBackend();
   const backend2 = createSqliteBackend();
 
@@ -148,7 +148,7 @@ test("createLeaseRepository works with multiple sqlite backends", () => {
 // Tests: Factory is idempotent
 // ---------------------------------------------------------------------------
 
-test("createLeaseRepository is idempotent for same backend", () => {
+test("createLeaseRepository is idempotent for same backend [lease-repository]", () => {
   const backend = createSqliteBackend();
 
   const repo1 = createLeaseRepository(backend);
@@ -163,14 +163,14 @@ test("createLeaseRepository is idempotent for same backend", () => {
 // Tests: Driver type is properly detected
 // ---------------------------------------------------------------------------
 
-test("createLeaseRepository detects 'sqlite' driver correctly", () => {
+test("createLeaseRepository detects 'sqlite' driver correctly [lease-repository]", () => {
   const backend = createSqliteBackend();
   const repo = createLeaseRepository(backend);
 
   assert.ok(repo instanceof SqliteLeaseRepository);
 });
 
-test("createLeaseRepository detects 'postgres' driver correctly", () => {
+test("createLeaseRepository detects 'postgres' driver correctly [lease-repository]", () => {
   const backend = createPostgresBackend();
   const repo = createLeaseRepository(backend);
 

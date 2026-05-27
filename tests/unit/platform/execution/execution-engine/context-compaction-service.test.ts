@@ -55,7 +55,7 @@ function createTestMessage(overrides: Partial<MessageRecord> = {}): MessageRecor
 // ContextCompactionService construction
 // ---------------------------------------------------------------------------
 
-test("ContextCompactionService can be instantiated with db and store", () => {
+test("ContextCompactionService can be instantiated with db and store [context-compaction-service]", () => {
   const db = createMockDb();
   const store = createMockStore();
   const service = new ContextCompactionService(db, store);
@@ -66,7 +66,7 @@ test("ContextCompactionService can be instantiated with db and store", () => {
 // compactContext - basic functionality
 // ---------------------------------------------------------------------------
 
-test("compactContext returns result with empty messages when no session messages", () => {
+test("compactContext returns result with empty messages when no session messages [context-compaction-service]", () => {
   const db = createMockDb();
   const store = createMockStore();
   const service = new ContextCompactionService(db, store);
@@ -85,7 +85,7 @@ test("compactContext returns result with empty messages when no session messages
   assert.equal(result.contextMessages.length, 0);
 });
 
-test("compactContext preserves messages when under threshold", () => {
+test("compactContext preserves messages when under threshold [context-compaction-service]", () => {
   const db = createMockDb();
   const messages = [
     createTestMessage({ id: "msg-1", direction: "system", content: "System prompt" }),
@@ -108,7 +108,7 @@ test("compactContext preserves messages when under threshold", () => {
   assert.equal(result.contextMessages.length, 2);
 });
 
-test("compactContext preserves user_request messages as protected", () => {
+test("compactContext preserves user_request messages as protected [context-compaction-service]", () => {
   const db = createMockDb();
   const messages = [
     createTestMessage({ id: "msg-1", direction: "system", content: "System" }),
@@ -131,7 +131,7 @@ test("compactContext preserves user_request messages as protected", () => {
   assert.equal(userMessage.protected, true);
 });
 
-test("compactContext preserves latest user message as protected", () => {
+test("compactContext preserves latest user message as protected [context-compaction-service]", () => {
   const db = createMockDb();
   const messages = [
     createTestMessage({ id: "msg-1", direction: "inbound", messageType: "user_request", content: "First request" }),
@@ -154,7 +154,7 @@ test("compactContext preserves latest user message as protected", () => {
   assert.equal(latestUserMessage.protected, true);
 });
 
-test("compactContext preserves assistant_plan messages as protected", () => {
+test("compactContext preserves assistant_plan messages as protected [context-compaction-service]", () => {
   const db = createMockDb();
   const messages = [
     createTestMessage({ id: "msg-1", direction: "system", content: "System" }),
@@ -176,7 +176,7 @@ test("compactContext preserves assistant_plan messages as protected", () => {
   assert.equal(planMessage.protected, true);
 });
 
-test("compactContext preserves approval_decision messages as protected", () => {
+test("compactContext preserves approval_decision messages as protected [context-compaction-service]", () => {
   const db = createMockDb();
   const messages = [
     createTestMessage({ id: "msg-1", direction: "system", content: "System" }),
@@ -202,7 +202,7 @@ test("compactContext preserves approval_decision messages as protected", () => {
 // compactContext - options validation
 // ---------------------------------------------------------------------------
 
-test("compactContext uses default stage1TriggerRatio of 0.7", () => {
+test("compactContext uses default stage1TriggerRatio of 0.7 [context-compaction-service]", () => {
   const db = createMockDb();
   const store = createMockStore();
   const service = new ContextCompactionService(db, store);
@@ -217,7 +217,7 @@ test("compactContext uses default stage1TriggerRatio of 0.7", () => {
   assert.equal(result.errorCode, null);
 });
 
-test("compactContext uses default stage2TriggerRatio of 0.85", () => {
+test("compactContext uses default stage2TriggerRatio of 0.85 [context-compaction-service]", () => {
   const db = createMockDb();
   const store = createMockStore();
   const service = new ContextCompactionService(db, store);
@@ -232,7 +232,7 @@ test("compactContext uses default stage2TriggerRatio of 0.85", () => {
   assert.equal(result.errorCode, null);
 });
 
-test("compactContext accepts custom stage ratios", () => {
+test("compactContext accepts custom stage ratios [context-compaction-service]", () => {
   const db = createMockDb();
   const store = createMockStore();
   const service = new ContextCompactionService(db, store);
@@ -249,7 +249,7 @@ test("compactContext accepts custom stage ratios", () => {
   assert.equal(result.errorCode, null);
 });
 
-test("compactContext uses default recentToolResultWindow of 3", () => {
+test("compactContext uses default recentToolResultWindow of 3 [context-compaction-service]", () => {
   const db = createMockDb();
   const store = createMockStore();
   const service = new ContextCompactionService(db, store);
@@ -264,7 +264,7 @@ test("compactContext uses default recentToolResultWindow of 3", () => {
   assert.equal(result.errorCode, null);
 });
 
-test("compactContext uses default compactionMaxFrequencyPerSession of 2", () => {
+test("compactContext uses default compactionMaxFrequencyPerSession of 2 [context-compaction-service]", () => {
   const db = createMockDb();
   const store = createMockStore();
   const service = new ContextCompactionService(db, store);
@@ -279,7 +279,7 @@ test("compactContext uses default compactionMaxFrequencyPerSession of 2", () => 
   assert.equal(result.errorCode, null);
 });
 
-test("compactContext accepts custom providerMaxOutputTokens", () => {
+test("compactContext accepts custom providerMaxOutputTokens [context-compaction-service]", () => {
   const db = createMockDb();
   const store = createMockStore();
   const service = new ContextCompactionService(db, store);
@@ -295,7 +295,7 @@ test("compactContext accepts custom providerMaxOutputTokens", () => {
   assert.equal(result.errorCode, null);
 });
 
-test("compactContext accepts custom occurredAt", () => {
+test("compactContext accepts custom occurredAt [context-compaction-service]", () => {
   const db = createMockDb();
   const store = createMockStore();
   const service = new ContextCompactionService(db, store);
@@ -315,7 +315,7 @@ test("compactContext accepts custom occurredAt", () => {
 // ContextCompactionOptions type
 // ---------------------------------------------------------------------------
 
-test("ContextCompactionOptions can be created with required fields", () => {
+test("ContextCompactionOptions can be created with required fields [context-compaction-service]", () => {
   const options: ContextCompactionOptions = {
     taskId: "task-1",
     sessionId: "sess-1",
@@ -326,7 +326,7 @@ test("ContextCompactionOptions can be created with required fields", () => {
   assert.equal(options.maxContextTokens, 10000);
 });
 
-test("ContextCompactionOptions accepts kvCacheConfig", () => {
+test("ContextCompactionOptions accepts kvCacheConfig [context-compaction-service]", () => {
   const options: ContextCompactionOptions = {
     taskId: "task-1",
     sessionId: "sess-1",
@@ -342,7 +342,7 @@ test("ContextCompactionOptions accepts kvCacheConfig", () => {
 // CompactedContextMessage type
 // ---------------------------------------------------------------------------
 
-test("CompactedContextMessage can be created", () => {
+test("CompactedContextMessage can be created [context-compaction-service]", () => {
   const msg: CompactedContextMessage = {
     messageId: "msg-1",
     direction: "inbound",
@@ -361,7 +361,7 @@ test("CompactedContextMessage can be created", () => {
 // ContextCompactionResult type
 // ---------------------------------------------------------------------------
 
-test("ContextCompactionResult has expected structure", () => {
+test("ContextCompactionResult has expected structure [context-compaction-service]", () => {
   const result: ContextCompactionResult = {
     usageBeforeTokens: 1000,
     usageAfterStage1Tokens: 800,
@@ -382,7 +382,7 @@ test("ContextCompactionResult has expected structure", () => {
 // Edge cases
 // ---------------------------------------------------------------------------
 
-test("compactContext handles negative recentToolResultWindow as 0", () => {
+test("compactContext handles negative recentToolResultWindow as 0 [context-compaction-service]", () => {
   const db = createMockDb();
   const store = createMockStore();
   const service = new ContextCompactionService(db, store);
@@ -398,7 +398,7 @@ test("compactContext handles negative recentToolResultWindow as 0", () => {
   assert.equal(result.errorCode, null);
 });
 
-test("compactContext handles 0 recentToolResultWindow", () => {
+test("compactContext handles 0 recentToolResultWindow [context-compaction-service]", () => {
   const db = createMockDb();
   const messages = [
     createTestMessage({ id: "msg-1", messageType: "tool_result", content: "Tool result" }),
@@ -422,7 +422,7 @@ test("compactContext handles 0 recentToolResultWindow", () => {
 // Stage 2 (summarize) triggering
 // ---------------------------------------------------------------------------
 
-test("compactContext triggers stage2 when stage1 insufficient and over stage2 threshold", () => {
+test("compactContext triggers stage2 when stage1 insufficient and over stage2 threshold [context-compaction-service]", () => {
   const db = createMockDb();
   // Create many messages to ensure we exceed both thresholds
   const messages = [
@@ -453,7 +453,7 @@ test("compactContext triggers stage2 when stage1 insufficient and over stage2 th
   assert.ok(result.contextMessages.length > 0);
 });
 
-test("compactContext stage2 creates compaction_summary message", () => {
+test("compactContext stage2 creates compaction_summary message [context-compaction-service]", () => {
   const db = createMockDb();
   const messages = [
     createTestMessage({ id: "user-1", direction: "inbound", messageType: "user_request", content: "User request" }),
@@ -482,7 +482,7 @@ test("compactContext stage2 creates compaction_summary message", () => {
   }
 });
 
-test("compactContext stage2 summary includes up to 6 messages", () => {
+test("compactContext stage2 summary includes up to 6 messages [context-compaction-service]", () => {
   const db = createMockDb();
   const messages = [
     createTestMessage({ id: "user-1", direction: "inbound", messageType: "user_request", content: "User 1" }),
@@ -517,7 +517,7 @@ test("compactContext stage2 summary includes up to 6 messages", () => {
   }
 });
 
-test("compactContext fallbackToStage1 when compactionMaxFrequencyPerSession exceeded", () => {
+test("compactContext fallbackToStage1 when compactionMaxFrequencyPerSession exceeded [context-compaction-service]", () => {
   const db = createMockDb();
   const messages = [
     createTestMessage({ id: "user-1", direction: "inbound", messageType: "user_request", content: "User request" }),
@@ -577,7 +577,7 @@ test("compactContext fallbackToStage1 when compactionMaxFrequencyPerSession exce
   assert.equal(result.errorCode, "runtime.compaction_budget_exhausted", "should have budget exhausted error");
 });
 
-test("compactContext handles scenario with only protected messages", () => {
+test("compactContext handles scenario with only protected messages [context-compaction-service]", () => {
   const db = createMockDb();
   // All messages are user_request (protected) - no trim candidates for stage1
   const messages = [
@@ -609,7 +609,7 @@ test("compactContext handles scenario with only protected messages", () => {
   assert.ok(result.errorCode === null || result.errorCode === "runtime.compaction_budget_exhausted");
 });
 
-test("compactContext persists stage1 record when stage1 triggered", () => {
+test("compactContext persists stage1 record when stage1 triggered [context-compaction-service]", () => {
   const db = createMockDb();
   const messages = [
     createTestMessage({ id: "user-1", direction: "inbound", messageType: "user_request", content: "User request" }),
@@ -637,7 +637,7 @@ test("compactContext persists stage1 record when stage1 triggered", () => {
   }
 });
 
-test("compactContext persists stage2 record when stage2 triggered", () => {
+test("compactContext persists stage2 record when stage2 triggered [context-compaction-service]", () => {
   const db = createMockDb();
   const messages = [
     createTestMessage({ id: "user-1", direction: "inbound", messageType: "user_request", content: "User request" }),
@@ -669,7 +669,7 @@ test("compactContext persists stage2 record when stage2 triggered", () => {
 // KV Cache prefix configuration (G9)
 // ---------------------------------------------------------------------------
 
-test("compactContext with KV cache enabled protects system messages at start", () => {
+test("compactContext with KV cache enabled protects system messages at start [context-compaction-service]", () => {
   const db = createMockDb();
   const messages = [
     createTestMessage({ id: "sys-1", direction: "system", content: "System prompt" }),
@@ -700,7 +700,7 @@ test("compactContext with KV cache enabled protects system messages at start", (
   });
 });
 
-test("compactContext with KV cache disabled does not apply fixed prefix protection", () => {
+test("compactContext with KV cache disabled does not apply fixed prefix protection [context-compaction-service]", () => {
   const db = createMockDb();
   const messages = [
     createTestMessage({ id: "sys-1", direction: "system", content: "System prompt" }),
@@ -725,7 +725,7 @@ test("compactContext with KV cache disabled does not apply fixed prefix protecti
   assert.ok(result.contextMessages.length >= 2);
 });
 
-test("compactContext KV cache preserves fixed prefix in final messages", () => {
+test("compactContext KV cache preserves fixed prefix in final messages [context-compaction-service]", () => {
   const db = createMockDb();
   const messages = [
     createTestMessage({ id: "sys-1", direction: "system", content: "System prompt" }),
@@ -757,7 +757,7 @@ test("compactContext KV cache preserves fixed prefix in final messages", () => {
 // Tool result trimming with recentWindow
 // ---------------------------------------------------------------------------
 
-test("compactContext handles messages with tool results", () => {
+test("compactContext handles messages with tool results [context-compaction-service]", () => {
   const db = createMockDb();
   const messages = [
     createTestMessage({ id: "user-1", direction: "inbound", messageType: "user_request", content: "User request" }),
@@ -785,7 +785,7 @@ test("compactContext handles messages with tool results", () => {
   assert.ok(result.contextMessages.length >= 3, "all messages should be in context");
 });
 
-test("compactContext handles multiple tool results with larger window", () => {
+test("compactContext handles multiple tool results with larger window [context-compaction-service]", () => {
   const db = createMockDb();
   const messages = [
     createTestMessage({ id: "user-1", direction: "inbound", messageType: "user_request", content: "User request" }),
@@ -814,7 +814,7 @@ test("compactContext handles multiple tool results with larger window", () => {
   assert.ok(result.contextMessages.length >= 4, "all tool messages should be in context");
 });
 
-test("compactContext stage1 not triggered when under threshold despite tool results", () => {
+test("compactContext stage1 not triggered when under threshold despite tool results [context-compaction-service]", () => {
   const db = createMockDb();
   const messages = [
     createTestMessage({ id: "user-1", direction: "inbound", messageType: "user_request", content: "Short" }),
@@ -840,7 +840,7 @@ test("compactContext stage1 not triggered when under threshold despite tool resu
 // Token budget and ratio calculations
 // ---------------------------------------------------------------------------
 
-test("compactContext uses correct reservedOutputBudgetTokens calculation", () => {
+test("compactContext uses correct reservedOutputBudgetTokens calculation [context-compaction-service]", () => {
   const db = createMockDb();
   const messages = [
     createTestMessage({ id: "user-1", direction: "inbound", messageType: "user_request", content: "User request" }),
@@ -863,7 +863,7 @@ test("compactContext uses correct reservedOutputBudgetTokens calculation", () =>
   assert.equal(result.usageBeforeTokens > 0, true);
 });
 
-test("compactContext calculates usageAfterStage1Tokens correctly", () => {
+test("compactContext calculates usageAfterStage1Tokens correctly [context-compaction-service]", () => {
   const db = createMockDb();
   const messages = [
     createTestMessage({ id: "user-1", direction: "inbound", messageType: "user_request", content: "User request" }),
@@ -887,7 +887,7 @@ test("compactContext calculates usageAfterStage1Tokens correctly", () => {
   assert.ok(result.usageBeforeTokens >= result.usageAfterStage1Tokens || !result.stage1Triggered);
 });
 
-test("compactContext clampRatio handles NaN values", () => {
+test("compactContext clampRatio handles NaN values [context-compaction-service]", () => {
   const db = createMockDb();
   const store = createMockStore();
   const service = new ContextCompactionService(db, store);
@@ -905,7 +905,7 @@ test("compactContext clampRatio handles NaN values", () => {
   assert.equal(result.errorCode, null);
 });
 
-test("compactContext clampRatio handles Infinity values", () => {
+test("compactContext clampRatio handles Infinity values [context-compaction-service]", () => {
   const db = createMockDb();
   const store = createMockStore();
   const service = new ContextCompactionService(db, store);
@@ -923,7 +923,7 @@ test("compactContext clampRatio handles Infinity values", () => {
   assert.equal(result.errorCode, null);
 });
 
-test("compactContext clampRatio handles negative ratio values", () => {
+test("compactContext clampRatio handles negative ratio values [context-compaction-service]", () => {
   const db = createMockDb();
   const store = createMockStore();
   const service = new ContextCompactionService(db, store);
@@ -941,7 +941,7 @@ test("compactContext clampRatio handles negative ratio values", () => {
   assert.equal(result.errorCode, null);
 });
 
-test("compactContext maxContextTokens minus reservedOutputBudgetTokens minimum is 1", () => {
+test("compactContext maxContextTokens minus reservedOutputBudgetTokens minimum is 1 [context-compaction-service]", () => {
   const db = createMockDb();
   const store = createMockStore();
   const service = new ContextCompactionService(db, store);
@@ -963,7 +963,7 @@ test("compactContext maxContextTokens minus reservedOutputBudgetTokens minimum i
 // Protected message types
 // ---------------------------------------------------------------------------
 
-test("compactContext protects compaction_summary message type", () => {
+test("compactContext protects compaction_summary message type [context-compaction-service]", () => {
   const db = createMockDb();
   const messages = [
     createTestMessage({ id: "user-1", direction: "inbound", messageType: "user_request", content: "User request" }),
@@ -988,7 +988,7 @@ test("compactContext protects compaction_summary message type", () => {
   assert.equal(summaryMsg.protected, true, "compaction_summary should be protected");
 });
 
-test("compactContext latest user message is always protected regardless of position", () => {
+test("compactContext latest user message is always protected regardless of position [context-compaction-service]", () => {
   const db = createMockDb();
   const messages = [
     createTestMessage({ id: "tool-1", direction: "outbound", messageType: "tool_result", content: "Tool 1" }),
@@ -1017,7 +1017,7 @@ test("compactContext latest user message is always protected regardless of posit
 // Message ordering preservation
 // ---------------------------------------------------------------------------
 
-test("compactContext preserves message order in final context", () => {
+test("compactContext preserves message order in final context [context-compaction-service]", () => {
   const db = createMockDb();
   const messages = [
     createTestMessage({ id: "sys-1", direction: "system", content: "System" }),
@@ -1051,7 +1051,7 @@ test("compactContext preserves message order in final context", () => {
 // Excerpt function behavior (via stage2 summary)
 // ---------------------------------------------------------------------------
 
-test("compactContext excerpt function strips excessive whitespace", () => {
+test("compactContext excerpt function strips excessive whitespace [context-compaction-service]", () => {
   const db = createMockDb();
   const messages = [
     createTestMessage({ id: "user-1", direction: "inbound", messageType: "user_request", content: "User request" }),
@@ -1079,7 +1079,7 @@ test("compactContext excerpt function strips excessive whitespace", () => {
   }
 });
 
-test("compactContext excerpt function truncates long content to 80 chars", () => {
+test("compactContext excerpt function truncates long content to 80 chars [context-compaction-service]", () => {
   const db = createMockDb();
   const messages = [
     createTestMessage({ id: "user-1", direction: "inbound", messageType: "user_request", content: "User request" }),
@@ -1115,7 +1115,7 @@ test("compactContext excerpt function truncates long content to 80 chars", () =>
 // Edge cases
 // ---------------------------------------------------------------------------
 
-test("compactContext handles all messages being protected", () => {
+test("compactContext handles all messages being protected [context-compaction-service]", () => {
   const db = createMockDb();
   const messages = [
     createTestMessage({ id: "user-1", direction: "inbound", messageType: "user_request", content: "User request 1" }),
@@ -1141,7 +1141,7 @@ test("compactContext handles all messages being protected", () => {
   assert.ok(result.contextMessages.length > 0);
 });
 
-test("compactContext handles message with null partsJson", () => {
+test("compactContext handles message with null partsJson [context-compaction-service]", () => {
   const db = createMockDb();
   const messages = [
     createTestMessage({ id: "msg-1", direction: "inbound", partsJson: null, content: "Content without parts" }),
@@ -1161,7 +1161,7 @@ test("compactContext handles message with null partsJson", () => {
   assert.ok(result.contextMessages.length >= 1);
 });
 
-test("compactContext handles message with empty partsJson", () => {
+test("compactContext handles message with empty partsJson [context-compaction-service]", () => {
   const db = createMockDb();
   const messages = [
     createTestMessage({ id: "msg-1", direction: "inbound", partsJson: null, content: "" }),
@@ -1180,7 +1180,7 @@ test("compactContext handles message with empty partsJson", () => {
   assert.equal(result.errorCode, null);
 });
 
-test("compactContext with very low maxContextTokens", () => {
+test("compactContext with very low maxContextTokens [context-compaction-service]", () => {
   const db = createMockDb();
   const messages = [
     createTestMessage({ id: "msg-1", direction: "inbound", messageType: "user_request", content: "User request" }),
@@ -1200,7 +1200,7 @@ test("compactContext with very low maxContextTokens", () => {
   assert.ok(result.errorCode === null || result.errorCode === "runtime.compaction_budget_exhausted");
 });
 
-test("compactContext session without any inbound messages", () => {
+test("compactContext session without any inbound messages [context-compaction-service]", () => {
   const db = createMockDb();
   const messages = [
     createTestMessage({ id: "sys-1", direction: "system", content: "System" }),
@@ -1223,7 +1223,7 @@ test("compactContext session without any inbound messages", () => {
   assert.equal(result.errorCode, null);
 });
 
-test("compactContext with custom occurredAt timestamp", () => {
+test("compactContext with custom occurredAt timestamp [context-compaction-service]", () => {
   const db = createMockDb();
   const messages = [
     createTestMessage({ id: "user-1", direction: "inbound", messageType: "user_request", content: "User request" }),

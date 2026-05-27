@@ -28,7 +28,7 @@ function makeMockStore(activeExecutions: Array<{
   } as unknown as AuthoritativeTaskStore;
 }
 
-test("detect returns empty when all executions are active", () => {
+test("detect returns empty when all executions are active [stalled-execution-detector]", () => {
   const now = new Date().toISOString();
   const store = makeMockStore([
     {
@@ -45,7 +45,7 @@ test("detect returns empty when all executions are active", () => {
   assert.deepEqual(findings, []);
 });
 
-test("detect finds execution with no progress within stale threshold", () => {
+test("detect finds execution with no progress within stale threshold [stalled-execution-detector]", () => {
   const now = "2024-01-01T12:00:00.000Z";
   const staleAfterMs = 5 * 60 * 1000; // 5 minutes
   const heartbeatGraceMs = 30_000;
@@ -68,7 +68,7 @@ test("detect finds execution with no progress within stale threshold", () => {
   assert.equal(findings[0]!.recommendedAction, "lease_reclaim");
 });
 
-test("detect finds execution with missing heartbeat within grace period", () => {
+test("detect finds execution with missing heartbeat within grace period [stalled-execution-detector]", () => {
   const now = "2024-01-01T12:00:00.000Z";
   const staleAfterMs = 5 * 60 * 1000;
   const heartbeatGraceMs = 2 * 60 * 1000; // 2 minutes
@@ -90,7 +90,7 @@ test("detect finds execution with missing heartbeat within grace period", () => 
   assert.equal(findings[0]!.recommendedAction, "lease_reclaim");
 });
 
-test("detect uses latestEventAt when more recent than updatedAt", () => {
+test("detect uses latestEventAt when more recent than updatedAt [stalled-execution-detector]", () => {
   const now = "2024-01-01T12:00:00.000Z";
   const staleAfterMs = 5 * 60 * 1000;
   const store = makeMockStore([
@@ -109,7 +109,7 @@ test("detect uses latestEventAt when more recent than updatedAt", () => {
   assert.deepEqual(findings, []); // not stale because latestEventAt is recent
 });
 
-test("detect handles null latestHeartbeatAt as missing", () => {
+test("detect handles null latestHeartbeatAt as missing [stalled-execution-detector]", () => {
   const now = "2024-01-01T12:00:00.000Z";
   const staleAfterMs = 5 * 60 * 1000;
   const heartbeatGraceMs = 30_000;
@@ -131,14 +131,14 @@ test("detect handles null latestHeartbeatAt as missing", () => {
   assert.equal(findings[0]!.recommendedAction, "lease_reclaim");
 });
 
-test("detect returns empty array when no active executions", () => {
+test("detect returns empty array when no active executions [stalled-execution-detector]", () => {
   const store = makeMockStore([]);
   const detector = new StalledExecutionDetector(store);
   const findings = detector.detect();
   assert.deepEqual(findings, []);
 });
 
-test("detect respects custom staleAfterMs", () => {
+test("detect respects custom staleAfterMs [stalled-execution-detector]", () => {
   const now = "2024-01-01T12:00:00.000Z";
   const staleAfterMs = 10 * 60 * 1000; // 10 minutes
   const store = makeMockStore([

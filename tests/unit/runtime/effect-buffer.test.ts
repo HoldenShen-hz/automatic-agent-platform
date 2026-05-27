@@ -9,7 +9,7 @@ import {
   type EffectPriority,
 } from "../../../src/platform/five-plane-execution/execution-engine/effect-buffer.js";
 
-test("EffectBuilder creates basic effect", () => {
+test("EffectBuilder creates basic effect [effect-buffer]", () => {
   const effect = EffectBuilder.create("event_publish", "publish task event")
     .withExecute(async () => {})
     .build();
@@ -21,14 +21,14 @@ test("EffectBuilder creates basic effect", () => {
   assert.ok(effect.id.startsWith("effect_"));
 });
 
-test("EffectBuilder requires execute function", () => {
+test("EffectBuilder requires execute function [effect-buffer]", () => {
   assert.throws(
     () => EffectBuilder.create("event_publish", "test").build(),
     /effect_builder.missing_execute/,
   );
 });
 
-test("EffectBuilder fluent API sets all options", () => {
+test("EffectBuilder fluent API sets all options [effect-buffer]", () => {
   const effect = EffectBuilder.create("callback_invoke", "test callback")
     .withId("custom_id")
     .withPriority("high")
@@ -45,7 +45,7 @@ test("EffectBuilder fluent API sets all options", () => {
   assert.ok(effect.compensate != null);
 });
 
-test("EffectScope addEffect throws when already committed", () => {
+test("EffectScope addEffect throws when already committed [effect-buffer]", () => {
   const scope = new EffectScope({ scopeId: "test" });
   scope.addEffect(EffectBuilder.create("event_publish", "e1").withExecute(async () => {}).build());
   scope.commit();
@@ -55,7 +55,7 @@ test("EffectScope addEffect throws when already committed", () => {
   );
 });
 
-test("EffectScope addEffect throws when rolled back", () => {
+test("EffectScope addEffect throws when rolled back [effect-buffer]", () => {
   const scope = new EffectScope({ scopeId: "test" });
   scope.rollback();
   assert.throws(
@@ -64,7 +64,7 @@ test("EffectScope addEffect throws when rolled back", () => {
   );
 });
 
-test("EffectScope commit and rollback both set their respective flags", async () => {
+test("EffectScope commit and rollback both set their respective flags [effect-buffer]", async () => {
   const scope = new EffectScope({ scopeId: "test" });
   scope.commit();
   // commit() does NOT check rolledBack — it just sets committed
@@ -81,13 +81,13 @@ test("EffectScope commit and rollback both set their respective flags", async ()
   assert.equal(result.skipped, 0); // 0 because never had effects
 });
 
-test("EffectScope add convenience method", () => {
+test("EffectScope add convenience method [effect-buffer]", () => {
   const scope = new EffectScope({ scopeId: "test" });
   scope.add("metric_record", "record metric", async () => {});
   assert.equal(scope.getEffectCount(), 1);
 });
 
-test("EffectScope executeEffects throws when not committed", async () => {
+test("EffectScope executeEffects throws when not committed [effect-buffer]", async () => {
   const scope = new EffectScope({ scopeId: "test" });
   scope.addEffect(EffectBuilder.create("event_publish", "e1")
     .withExecute(async () => {})
@@ -96,7 +96,7 @@ test("EffectScope executeEffects throws when not committed", async () => {
   await assert.rejects(() => scope.executeEffects(), /effect_scope.not_committed/);
 });
 
-test("EffectScope executeEffects skips when committed then rolled back", async () => {
+test("EffectScope executeEffects skips when committed then rolled back [effect-buffer]", async () => {
   const scope = new EffectScope({ scopeId: "test" });
   let executed = false;
   scope.addEffect(EffectBuilder.create("event_publish", "e1")
@@ -111,7 +111,7 @@ test("EffectScope executeEffects skips when committed then rolled back", async (
   assert.equal(result.allSucceeded, true); // skipped is not a failure
 });
 
-test("EffectScope executeEffects runs committed effects", async () => {
+test("EffectScope executeEffects runs committed effects [effect-buffer]", async () => {
   const scope = new EffectScope({ scopeId: "test" });
   let executed = false;
   scope.addEffect(EffectBuilder.create("event_publish", "e1")
@@ -126,7 +126,7 @@ test("EffectScope executeEffects runs committed effects", async () => {
   assert.equal(result.allSucceeded, true);
 });
 
-test("EffectScope executeEffects respects priority order", async () => {
+test("EffectScope executeEffects respects priority order [effect-buffer]", async () => {
   const order: string[] = [];
   const scope = new EffectScope({ scopeId: "test" });
 
@@ -149,7 +149,7 @@ test("EffectScope executeEffects respects priority order", async () => {
   assert.deepEqual(order, ["critical", "high", "low"]);
 });
 
-test("EffectScope executeEffects handles failure with continueOnFailure", async () => {
+test("EffectScope executeEffects handles failure with continueOnFailure [effect-buffer]", async () => {
   const order: string[] = [];
   const scope = new EffectScope({ scopeId: "test" });
 
@@ -171,7 +171,7 @@ test("EffectScope executeEffects handles failure with continueOnFailure", async 
   assert.equal(result.allSucceeded, false);
 });
 
-test("EffectScope executeEffects handles effect timeout", async () => {
+test("EffectScope executeEffects handles effect timeout [effect-buffer]", async () => {
   const scope = new EffectScope({ scopeId: "test", defaultTimeoutMs: 50 });
 
   scope.addEffect(EffectBuilder.create("event_publish", "slow")
@@ -189,7 +189,7 @@ test("EffectScope executeEffects handles effect timeout", async () => {
   assert.ok(result.results[0]!.error!.message.includes("timeout"));
 });
 
-test("EffectScope compensateEffects calls compensate in reverse order", async () => {
+test("EffectScope compensateEffects calls compensate in reverse order [effect-buffer]", async () => {
   const order: string[] = [];
   const scope = new EffectScope({ scopeId: "test" });
 
@@ -211,7 +211,7 @@ test("EffectScope compensateEffects calls compensate in reverse order", async ()
   assert.deepEqual(order, ["compensate_second", "compensate_first"]);
 });
 
-test("EffectScope compensateEffects catches and logs compensate errors", async () => {
+test("EffectScope compensateEffects catches and logs compensate errors [effect-buffer]", async () => {
   const scope = new EffectScope({ scopeId: "test" });
   const logs: string[] = [];
 
@@ -237,21 +237,21 @@ test("EffectScope compensateEffects catches and logs compensate errors", async (
   assert.deepEqual(logs, ["second_compensated"]);
 });
 
-test("EffectBuffer createScope and getScope", () => {
+test("EffectBuffer createScope and getScope [effect-buffer]", () => {
   const buffer = new EffectBuffer();
   const scope = buffer.createScope({ scopeId: "scope1" });
   assert.ok(buffer.getScope("scope1") === scope);
   assert.equal(buffer.getScope("nonexistent"), undefined);
 });
 
-test("EffectBuffer removeScope", () => {
+test("EffectBuffer removeScope [effect-buffer]", () => {
   const buffer = new EffectBuffer();
   buffer.createScope({ scopeId: "scope1" });
   buffer.removeScope("scope1");
   assert.equal(buffer.getScopeCount(), 0);
 });
 
-test("EffectBuffer flush executes committed scopes in order", async () => {
+test("EffectBuffer flush executes committed scopes in order [effect-buffer]", async () => {
   const buffer = new EffectBuffer();
   const order: string[] = [];
 
@@ -268,7 +268,7 @@ test("EffectBuffer flush executes committed scopes in order", async () => {
   assert.deepEqual(order, ["s1", "s2"]);
 });
 
-test("EffectBuffer flush skips rolled-back scopes", async () => {
+test("EffectBuffer flush skips rolled-back scopes [effect-buffer]", async () => {
   const buffer = new EffectBuffer();
   const scope = buffer.createScope({ scopeId: "scope1" });
   scope.add("event_publish", "s1", async () => {});
@@ -279,7 +279,7 @@ test("EffectBuffer flush skips rolled-back scopes", async () => {
   assert.equal(buffer.getScopeCount(), 1);
 });
 
-test("EffectBuffer flush skips uncommitted scopes", async () => {
+test("EffectBuffer flush skips uncommitted scopes [effect-buffer]", async () => {
   const buffer = new EffectBuffer();
   buffer.createScope({ scopeId: "scope1" });
 
@@ -287,7 +287,7 @@ test("EffectBuffer flush skips uncommitted scopes", async () => {
   assert.equal(results.length, 0);
 });
 
-test("EffectBuffer clear removes all scopes", () => {
+test("EffectBuffer clear removes all scopes [effect-buffer]", () => {
   const buffer = new EffectBuffer();
   buffer.createScope({ scopeId: "scope1" });
   buffer.createScope({ scopeId: "scope2" });
@@ -295,7 +295,7 @@ test("EffectBuffer clear removes all scopes", () => {
   assert.equal(buffer.getScopeCount(), 0);
 });
 
-test("EffectScope throws on executeEffects when never committed", async () => {
+test("EffectScope throws on executeEffects when never committed [effect-buffer]", async () => {
   const scope = new EffectScope({ scopeId: "test" });
   // Never commit or rollback — the code checks !this.committed first and throws
   await assert.rejects(
@@ -304,7 +304,7 @@ test("EffectScope throws on executeEffects when never committed", async () => {
   );
 });
 
-test("EffectScope isCommitted and isRolledBack", () => {
+test("EffectScope isCommitted and isRolledBack [effect-buffer]", () => {
   const scope = new EffectScope({ scopeId: "test" });
   assert.equal(scope.isCommitted(), false);
   assert.equal(scope.isRolledBack(), false);
@@ -319,7 +319,7 @@ test("EffectScope isCommitted and isRolledBack", () => {
   assert.equal(scope2.isRolledBack(), true);
 });
 
-test("EffectBuffer logger receives all lifecycle events", async () => {
+test("EffectBuffer logger receives all lifecycle events [effect-buffer]", async () => {
   const logs: Array<{ message: string; context?: Record<string, unknown> }> = [];
   const buffer = new EffectBuffer((msg, ctx) => logs.push({ message: msg, ...(ctx != null ? { context: ctx } : {}) }));
 
@@ -335,7 +335,7 @@ test("EffectBuffer logger receives all lifecycle events", async () => {
   assert.ok(logs.some(l => l.message === "effect_succeeded"));
 });
 
-test("EffectScope executeEffects Promise.race effect throws before timeout fires", async () => {
+test("EffectScope executeEffects Promise.race effect throws before timeout fires [effect-buffer]", async () => {
   // Tests the concurrent path: effect throws BEFORE timeout fires.
   // Promise.race rejects with whichever settles first (the effect error).
   // This exercises the catch block at line 350 handling the effect error,
@@ -360,7 +360,7 @@ test("EffectScope executeEffects Promise.race effect throws before timeout fires
   assert.ok(!result.results[0]!.error!.message.startsWith("effect.timeout:"), `Expected effect error, got timeout: ${result.results[0]!.error!.message}`);
 });
 
-test("EffectScope executeEffects Promise.race timeout fires during slow effect", async () => {
+test("EffectScope executeEffects Promise.race timeout fires during slow effect [effect-buffer]", async () => {
   // Tests when timeout fires while effect is still running (effect eventually throws).
   // Promise.race rejects with the timeout error (fires first).
   const scope = new EffectScope({ scopeId: "test", defaultTimeoutMs: 100 });
@@ -381,7 +381,7 @@ test("EffectScope executeEffects Promise.race timeout fires during slow effect",
   assert.ok(result.results[0]!.error!.message.includes("timeout"));
 });
 
-test("EffectScope executeEffects multiple effects with mixed success and timeout", async () => {
+test("EffectScope executeEffects multiple effects with mixed success and timeout [effect-buffer]", async () => {
   // Tests effect execution with one succeeding, one timeout, one throwing
   const scope = new EffectScope({ scopeId: "test", defaultTimeoutMs: 200 });
 
@@ -410,7 +410,7 @@ test("EffectScope executeEffects multiple effects with mixed success and timeout
   assert.equal(result.results[2]!.error!.message.includes("effect error"), true);
 });
 
-test("EffectScope executeEffects with continueOnFailure and mixed errors", async () => {
+test("EffectScope executeEffects with continueOnFailure and mixed errors [effect-buffer]", async () => {
   // Tests that effects marked continueOnFailure continue even when others fail
   const scope = new EffectScope({ scopeId: "test", defaultTimeoutMs: 200 });
 

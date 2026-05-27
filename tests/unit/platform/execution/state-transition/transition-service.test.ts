@@ -434,7 +434,7 @@ function makeContext(overrides?: Partial<TransitionAuditContext>): TransitionAud
 // TaskTransitionService Tests
 // ---------------------------------------------------------------------------
 
-test("TaskTransitionService - successful status transition emits tier1 event", () => {
+test("TaskTransitionService - successful status transition emits tier1 event [transition-service]", () => {
   const db = createMockDatabase();
   const repository = createMockRepository("queued");
 
@@ -457,7 +457,7 @@ test("TaskTransitionService - successful status transition emits tier1 event", (
   assert.equal(repository.mockState.tier1Events[0]!.eventType, "task:status_changed");
 });
 
-test("TaskTransitionService - CAS failure throws error on concurrent modification", () => {
+test("TaskTransitionService - CAS failure throws error on concurrent modification [transition-service]", () => {
   const db = createMockDatabase();
   // Do not initialize task status - simulates concurrent modification
   const repository = createMockRepository();
@@ -478,7 +478,7 @@ test("TaskTransitionService - CAS failure throws error on concurrent modificatio
   );
 });
 
-test("TaskTransitionService - invalid transition throws WorkflowStateError", () => {
+test("TaskTransitionService - invalid transition throws WorkflowStateError [transition-service]", () => {
   const db = createMockDatabase();
   const repository = createMockRepository("done");
 
@@ -498,7 +498,7 @@ test("TaskTransitionService - invalid transition throws WorkflowStateError", () 
   );
 });
 
-test("TaskTransitionService - terminal status transition validation", () => {
+test("TaskTransitionService - terminal status transition validation [transition-service]", () => {
   const db = createMockDatabase();
   const repository = createMockRepository("in_progress");
 
@@ -516,7 +516,7 @@ test("TaskTransitionService - terminal status transition validation", () => {
   assert.equal(repository.mockState.taskStatuses.get("task-1")?.status, "done");
 });
 
-test("TaskTransitionService - failed status sets reasonCode", () => {
+test("TaskTransitionService - failed status sets reasonCode [transition-service]", () => {
   const db = createMockDatabase();
   const repository = createMockRepository("in_progress");
 
@@ -534,7 +534,7 @@ test("TaskTransitionService - failed status sets reasonCode", () => {
   assert.equal(repository.mockState.taskStatuses.get("task-1")?.status, "failed");
 });
 
-test("TaskTransitionService - wraps in database transaction for atomicity", () => {
+test("TaskTransitionService - wraps in database transaction for atomicity [transition-service]", () => {
   const db = createMockDatabase();
   const repository = createMockRepository("queued");
 
@@ -553,7 +553,7 @@ test("TaskTransitionService - wraps in database transaction for atomicity", () =
   assert.equal((db as any).transactionCalls?.length ?? (db as any).transactionCalls?.size ?? 0, 1);
 });
 
-test("TaskTransitionService - event payload contains correct transition details", () => {
+test("TaskTransitionService - event payload contains correct transition details [transition-service]", () => {
   const db = createMockDatabase();
   const repository = createMockRepository("queued");
 
@@ -581,7 +581,7 @@ test("TaskTransitionService - event payload contains correct transition details"
 // WorkflowTransitionService Tests
 // ---------------------------------------------------------------------------
 
-test("WorkflowTransitionService - successful status transition", () => {
+test("WorkflowTransitionService - successful status transition [transition-service]", () => {
   const db = createMockDatabase();
   const repository = createMockRepository("queued", "running");
 
@@ -602,7 +602,7 @@ test("WorkflowTransitionService - successful status transition", () => {
   assert.equal(repository.mockState.workflowStates.get("task-1")?.status, "paused");
 });
 
-test("WorkflowTransitionService - CAS failure when status mismatch", () => {
+test("WorkflowTransitionService - CAS failure when status mismatch [transition-service]", () => {
   const db = createMockDatabase();
   const repository = createMockRepository("queued", "completed"); // workflow already in terminal state
 
@@ -623,7 +623,7 @@ test("WorkflowTransitionService - CAS failure when status mismatch", () => {
   );
 });
 
-test("WorkflowTransitionService - workflow not found throws error", () => {
+test("WorkflowTransitionService - workflow not found throws error [transition-service]", () => {
   const db = createMockDatabase();
   const repository = createMockRepository("queued"); // No workflow state initialized
 
@@ -644,7 +644,7 @@ test("WorkflowTransitionService - workflow not found throws error", () => {
   );
 });
 
-test("WorkflowTransitionService - invalid transition throws error", () => {
+test("WorkflowTransitionService - invalid transition throws error [transition-service]", () => {
   const db = createMockDatabase();
   const repository = createMockRepository("queued", "completed");
 
@@ -665,7 +665,7 @@ test("WorkflowTransitionService - invalid transition throws error", () => {
   );
 });
 
-test("WorkflowTransitionService - updates step index on transition", () => {
+test("WorkflowTransitionService - updates step index on transition [transition-service]", () => {
   const db = createMockDatabase();
   const repository = createMockRepository("queued", "running");
   repository.mockState.workflowStates.set("task-1", { status: "running", currentStepIndex: 0, updatedAt: new Date().toISOString() });
@@ -685,7 +685,7 @@ test("WorkflowTransitionService - updates step index on transition", () => {
   assert.equal(repository.mockState.workflowStates.get("task-1")?.currentStepIndex, 1);
 });
 
-test("WorkflowTransitionService - wraps in database transaction for atomicity", () => {
+test("WorkflowTransitionService - wraps in database transaction for atomicity [transition-service]", () => {
   const db = createMockDatabase();
   const repository = createMockRepository("queued", "running");
 
@@ -709,7 +709,7 @@ test("WorkflowTransitionService - wraps in database transaction for atomicity", 
 // SessionTransitionService Tests
 // ---------------------------------------------------------------------------
 
-test("SessionTransitionService - successful status transition", () => {
+test("SessionTransitionService - successful status transition [transition-service]", () => {
   const repository = createMockRepository();
   repository.mockState.sessionStatuses.set("session-1", { status: "open", updatedAt: new Date().toISOString() });
 
@@ -728,7 +728,7 @@ test("SessionTransitionService - successful status transition", () => {
   assert.equal(repository.mockState.sessionStatuses.get("session-1")?.status, "streaming");
 });
 
-test("SessionTransitionService - CAS failure throws error on concurrent modification", () => {
+test("SessionTransitionService - CAS failure throws error on concurrent modification [transition-service]", () => {
   const repository = createMockRepository();
   // Session already in streaming state but we try to transition from open
   repository.mockState.sessionStatuses.set("session-1", { status: "streaming", updatedAt: new Date().toISOString() });
@@ -748,7 +748,7 @@ test("SessionTransitionService - CAS failure throws error on concurrent modifica
   );
 });
 
-test("SessionTransitionService - invalid transition throws error", () => {
+test("SessionTransitionService - invalid transition throws error [transition-service]", () => {
   const repository = createMockRepository();
   repository.mockState.sessionStatuses.set("session-1", { status: "completed", updatedAt: new Date().toISOString() });
 
@@ -767,7 +767,7 @@ test("SessionTransitionService - invalid transition throws error", () => {
   );
 });
 
-test("SessionTransitionService - validates allowed transitions", () => {
+test("SessionTransitionService - validates allowed transitions [transition-service]", () => {
   const repository = createMockRepository();
   repository.mockState.sessionStatuses.set("session-1", { status: "open", updatedAt: new Date().toISOString() });
 
@@ -784,7 +784,7 @@ test("SessionTransitionService - validates allowed transitions", () => {
   assert.equal(repository.mockState.sessionStatuses.get("session-1")?.status, "streaming");
 });
 
-test("SessionTransitionService - rejects invalid transition from terminal state", () => {
+test("SessionTransitionService - rejects invalid transition from terminal state [transition-service]", () => {
   const repository = createMockRepository();
   repository.mockState.sessionStatuses.set("session-1", { status: "completed", updatedAt: new Date().toISOString() });
 
@@ -807,7 +807,7 @@ test("SessionTransitionService - rejects invalid transition from terminal state"
 // ExecutionTransitionService Tests
 // ---------------------------------------------------------------------------
 
-test("ExecutionTransitionService - transition to executing sets startedAt timestamp", () => {
+test("ExecutionTransitionService - transition to executing sets startedAt timestamp [transition-service]", () => {
   const repository = createMockRepository();
   repository.mockState.executionStatuses.set("exec-1", { status: "created", startedAt: null, finishedAt: null, lastErrorCode: null, updatedAt: new Date().toISOString() });
 
@@ -826,7 +826,7 @@ test("ExecutionTransitionService - transition to executing sets startedAt timest
   assert.ok(repository.mockState.executionStatuses.get("exec-1")?.startedAt);
 });
 
-test("ExecutionTransitionService - transition to succeeded sets finishedAt timestamp", () => {
+test("ExecutionTransitionService - transition to succeeded sets finishedAt timestamp [transition-service]", () => {
   const repository = createMockRepository();
   repository.mockState.executionStatuses.set("exec-1", { status: "executing", startedAt: "2024-01-01T00:00:00Z", finishedAt: null, lastErrorCode: null, updatedAt: new Date().toISOString() });
 
@@ -845,7 +845,7 @@ test("ExecutionTransitionService - transition to succeeded sets finishedAt times
   assert.ok(repository.mockState.executionStatuses.get("exec-1")?.finishedAt);
 });
 
-test("ExecutionTransitionService - transition to failed sets lastErrorCode", () => {
+test("ExecutionTransitionService - transition to failed sets lastErrorCode [transition-service]", () => {
   const repository = createMockRepository();
   repository.mockState.executionStatuses.set("exec-1", { status: "executing", startedAt: "2024-01-01T00:00:00Z", finishedAt: null, lastErrorCode: null, updatedAt: new Date().toISOString() });
 
@@ -864,7 +864,7 @@ test("ExecutionTransitionService - transition to failed sets lastErrorCode", () 
   assert.equal(repository.mockState.executionStatuses.get("exec-1")?.lastErrorCode, "ERR_TIMEOUT");
 });
 
-test("ExecutionTransitionService - CAS failure throws error on concurrent modification", () => {
+test("ExecutionTransitionService - CAS failure throws error on concurrent modification [transition-service]", () => {
   const repository = createMockRepository();
   // Execution already transitioned to succeeded
   repository.mockState.executionStatuses.set("exec-1", { status: "succeeded", startedAt: "2024-01-01T00:00:00Z", finishedAt: "2024-01-01T00:01:00Z", lastErrorCode: null, updatedAt: new Date().toISOString() });
@@ -885,7 +885,7 @@ test("ExecutionTransitionService - CAS failure throws error on concurrent modifi
   );
 });
 
-test("ExecutionTransitionService - validates allowed execution transitions", () => {
+test("ExecutionTransitionService - validates allowed execution transitions [transition-service]", () => {
   const repository = createMockRepository();
   repository.mockState.executionStatuses.set("exec-1", { status: "created", startedAt: null, finishedAt: null, lastErrorCode: null, updatedAt: new Date().toISOString() });
 
@@ -909,7 +909,7 @@ test("ExecutionTransitionService - validates allowed execution transitions", () 
 // ApprovalTransitionService Tests
 // ---------------------------------------------------------------------------
 
-test("ApprovalTransitionService - successful transition to approved", () => {
+test("ApprovalTransitionService - successful transition to approved [transition-service]", () => {
   const repository = createMockRepository();
   repository.mockState.approvalDecisions.set("approval-1", { status: "requested", responseJson: null, respondedAt: null });
 
@@ -930,7 +930,7 @@ test("ApprovalTransitionService - successful transition to approved", () => {
   assert.equal(repository.updateApprovalDecisionCasCalls[0]?.expectedStatus, "requested");
 });
 
-test("ApprovalTransitionService - CAS failure throws error on concurrent modification", () => {
+test("ApprovalTransitionService - CAS failure throws error on concurrent modification [transition-service]", () => {
   const repository = createMockRepository();
   // Approval already approved
   repository.mockState.approvalDecisions.set("approval-1", { status: "approved", responseJson: '{"decision": "approved"}', respondedAt: "2024-01-01T00:00:00Z" });
@@ -952,7 +952,7 @@ test("ApprovalTransitionService - CAS failure throws error on concurrent modific
   );
 });
 
-test("ApprovalTransitionService - invalid transition throws error", () => {
+test("ApprovalTransitionService - invalid transition throws error [transition-service]", () => {
   const repository = createMockRepository();
   repository.mockState.approvalDecisions.set("approval-1", { status: "approved", responseJson: '{"decision": "approved"}', respondedAt: "2024-01-01T00:00:00Z" });
 
@@ -973,7 +973,7 @@ test("ApprovalTransitionService - invalid transition throws error", () => {
   );
 });
 
-test("ApprovalTransitionService - validates all approval status transitions", () => {
+test("ApprovalTransitionService - validates all approval status transitions [transition-service]", () => {
   const repository = createMockRepository();
   repository.mockState.approvalDecisions.set("approval-1", { status: "requested", responseJson: null, respondedAt: null });
 
@@ -1004,7 +1004,7 @@ test("ApprovalTransitionService - validates all approval status transitions", ()
 // TransitionService Integration Tests
 // ---------------------------------------------------------------------------
 
-test("TransitionService - transitions task status via facade", () => {
+test("TransitionService - transitions task status via facade [transition-service]", () => {
   const db = createMockDatabase();
   const mockStore = {} as AuthoritativeTaskStore;
   const repository = createMockRepository("queued");
@@ -1024,7 +1024,7 @@ test("TransitionService - transitions task status via facade", () => {
   assert.equal(repository.mockState.taskStatuses.get("task-1")?.status, "pending");
 });
 
-test("TransitionService - transitions workflow status via facade", () => {
+test("TransitionService - transitions workflow status via facade [transition-service]", () => {
   const db = createMockDatabase();
   const mockStore = {} as AuthoritativeTaskStore;
   const repository = createMockRepository("queued", "running");
@@ -1044,7 +1044,7 @@ test("TransitionService - transitions workflow status via facade", () => {
   assert.equal(repository.mockState.workflowStates.get("task-1")?.status, "paused");
 });
 
-test("TransitionService - transitions session status via facade", () => {
+test("TransitionService - transitions session status via facade [transition-service]", () => {
   const db = createMockDatabase();
   const mockStore = {} as AuthoritativeTaskStore;
   const repository = createMockRepository();
@@ -1063,7 +1063,7 @@ test("TransitionService - transitions session status via facade", () => {
   assert.equal(repository.mockState.sessionStatuses.get("session-1")?.status, "streaming");
 });
 
-test("TransitionService - transitions execution status via facade", () => {
+test("TransitionService - transitions execution status via facade [transition-service]", () => {
   const db = createMockDatabase();
   const mockStore = {} as AuthoritativeTaskStore;
   const repository = createMockRepository();
@@ -1083,7 +1083,7 @@ test("TransitionService - transitions execution status via facade", () => {
   assert.equal(repository.mockState.executionStatuses.get("exec-1")?.status, "prechecking");
 });
 
-test("TransitionService - transitions approval status via facade", () => {
+test("TransitionService - transitions approval status via facade [transition-service]", () => {
   const db = createMockDatabase();
   const mockStore = {} as AuthoritativeTaskStore;
   const repository = createMockRepository();
@@ -1104,7 +1104,7 @@ test("TransitionService - transitions approval status via facade", () => {
   assert.equal(repository.mockState.approvalDecisions.get("approval-1")?.status, "approved");
 });
 
-test("TransitionService - emits tier1 event on task transition", () => {
+test("TransitionService - emits tier1 event on task transition [transition-service]", () => {
   const db = createMockDatabase();
   const mockStore = {} as AuthoritativeTaskStore;
   const repository = createMockRepository("queued");
@@ -1126,7 +1126,7 @@ test("TransitionService - emits tier1 event on task transition", () => {
   assert.equal(repository.mockState.tier1Events[0]?.eventType, "task:status_changed");
 });
 
-test("TransitionService - task event contains transition payload with from/to status", () => {
+test("TransitionService - task event contains transition payload with from/to status [transition-service]", () => {
   const db = createMockDatabase();
   const mockStore = {} as AuthoritativeTaskStore;
   const repository = createMockRepository("queued");
@@ -1151,7 +1151,7 @@ test("TransitionService - task event contains transition payload with from/to st
   assert.equal(event.payload.reasonCode, "USER_REQUEST");
 });
 
-test("TransitionService - guards against invalid task status transitions", () => {
+test("TransitionService - guards against invalid task status transitions [transition-service]", () => {
   const db = createMockDatabase();
   const mockStore = {} as AuthoritativeTaskStore;
   const repository = createMockRepository("done");
@@ -1173,7 +1173,7 @@ test("TransitionService - guards against invalid task status transitions", () =>
   );
 });
 
-test("TransitionService - guards against invalid workflow status transitions", () => {
+test("TransitionService - guards against invalid workflow status transitions [transition-service]", () => {
   const db = createMockDatabase();
   const mockStore = {} as AuthoritativeTaskStore;
   const repository = createMockRepository("queued", "completed");

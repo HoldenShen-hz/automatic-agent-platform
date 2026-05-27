@@ -8,34 +8,34 @@ import {
   type StableEvidenceBundleOptions,
 } from "../../../../../src/platform/shared/stability/stable-evidence-bundle-support.js";
 
-test("STABLE_EVIDENCE_PROFILES has smoke, 24h, and 72h profiles", () => {
+test("STABLE_EVIDENCE_PROFILES has smoke, 24h, and 72h profiles [stable-evidence-bundle-support]", () => {
   assert.ok(STABLE_EVIDENCE_PROFILES["smoke"]);
   assert.ok(STABLE_EVIDENCE_PROFILES["24h"]);
   assert.ok(STABLE_EVIDENCE_PROFILES["72h"]);
 });
 
-test("STABLE_EVIDENCE_PROFILES smoke has quick settings", () => {
+test("STABLE_EVIDENCE_PROFILES smoke has quick settings [stable-evidence-bundle-support]", () => {
   const smoke = STABLE_EVIDENCE_PROFILES["smoke"];
   assert.equal(smoke.name, "smoke");
   assert.equal(smoke.validationIterations, 2);
   assert.ok(smoke.soakDurationMs < 60_000); // Less than 1 minute
 });
 
-test("STABLE_EVIDENCE_PROFILES 24h has 24-hour soak duration", () => {
+test("STABLE_EVIDENCE_PROFILES 24h has 24-hour soak duration [stable-evidence-bundle-support]", () => {
   const profile = STABLE_EVIDENCE_PROFILES["24h"];
   assert.equal(profile.name, "24h");
   assert.equal(profile.validationIterations, 5);
   assert.equal(profile.soakDurationMs, 24 * 60 * 60 * 1000);
 });
 
-test("STABLE_EVIDENCE_PROFILES 72h has 72-hour soak duration", () => {
+test("STABLE_EVIDENCE_PROFILES 72h has 72-hour soak duration [stable-evidence-bundle-support]", () => {
   const profile = STABLE_EVIDENCE_PROFILES["72h"];
   assert.equal(profile.name, "72h");
   assert.equal(profile.validationIterations, 8);
   assert.equal(profile.soakDurationMs, 72 * 60 * 60 * 1000);
 });
 
-test("STABLE_EVIDENCE_PROFILES all have required fields", () => {
+test("STABLE_EVIDENCE_PROFILES all have required fields [stable-evidence-bundle-support]", () => {
   for (const profile of Object.values(STABLE_EVIDENCE_PROFILES)) {
     assert.ok(profile.name);
     assert.ok(typeof profile.validationIterations === "number");
@@ -45,14 +45,14 @@ test("STABLE_EVIDENCE_PROFILES all have required fields", () => {
   }
 });
 
-test("resolveStableEvidenceProfile returns default smoke profile", () => {
+test("resolveStableEvidenceProfile returns default smoke profile [stable-evidence-bundle-support]", () => {
   const profile = resolveStableEvidenceProfile();
 
   assert.equal(profile.name, "smoke");
   assert.deepEqual(profile, STABLE_EVIDENCE_PROFILES["smoke"]);
 });
 
-test("resolveStableEvidenceProfile returns named profile", () => {
+test("resolveStableEvidenceProfile returns named profile [stable-evidence-bundle-support]", () => {
   const profile24h = resolveStableEvidenceProfile("24h");
   assert.equal(profile24h.name, "24h");
 
@@ -60,7 +60,7 @@ test("resolveStableEvidenceProfile returns named profile", () => {
   assert.equal(profile72h.name, "72h");
 });
 
-test("resolveStableEvidenceProfile applies overrides", () => {
+test("resolveStableEvidenceProfile applies overrides [stable-evidence-bundle-support]", () => {
   const profile = resolveStableEvidenceProfile("smoke", {
     validationIterations: 10,
     soakDurationMs: 60_000,
@@ -72,7 +72,7 @@ test("resolveStableEvidenceProfile applies overrides", () => {
   assert.equal(profile.name, "smoke");
 });
 
-test("resolveStableEvidenceProfile partial overrides preserve base values", () => {
+test("resolveStableEvidenceProfile partial overrides preserve base values [stable-evidence-bundle-support]", () => {
   const profile = resolveStableEvidenceProfile("24h", {
     soakDurationMs: 30 * 60 * 1000, // 30 minutes instead of 24 hours
   });
@@ -85,7 +85,7 @@ test("resolveStableEvidenceProfile partial overrides preserve base values", () =
   assert.equal(profile.name, "24h");
 });
 
-test("resolveStableEvidenceProfile with empty overrides returns base profile", () => {
+test("resolveStableEvidenceProfile with empty overrides returns base profile [stable-evidence-bundle-support]", () => {
   const profile = resolveStableEvidenceProfile("smoke", {});
 
   assert.equal(profile.name, "smoke");

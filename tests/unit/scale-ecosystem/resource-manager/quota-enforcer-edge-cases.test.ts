@@ -21,7 +21,7 @@ function createQuotaPolicy(overrides: Partial<QuotaPolicy> = {}): QuotaPolicy {
   };
 }
 
-test("evaluateQuota with zero requestedUnits returns full remaining", () => {
+test("evaluateQuota with zero requestedUnits returns full remaining [quota-enforcer-edge-cases]", () => {
   const policy = createQuotaPolicy({ currentUsage: 70, burstLimit: 100 });
 
   const decision = evaluateQuota(policy, 0);
@@ -32,7 +32,7 @@ test("evaluateQuota with zero requestedUnits returns full remaining", () => {
   assert.equal(decision.remainingUnits, 30);
 });
 
-test("evaluateQuota with requestedUnits that brings exactly to burstLimit", () => {
+test("evaluateQuota with requestedUnits that brings exactly to burstLimit [quota-enforcer-edge-cases]", () => {
   const policy = createQuotaPolicy({ currentUsage: 80, burstLimit: 100 });
 
   const decision = evaluateQuota(policy, 20);
@@ -42,7 +42,7 @@ test("evaluateQuota with requestedUnits that brings exactly to burstLimit", () =
   assert.equal(decision.remainingUnits, 0);
 });
 
-test("evaluateQuota with requestedUnits that exceeds burstLimit by 1", () => {
+test("evaluateQuota with requestedUnits that exceeds burstLimit by 1 [quota-enforcer-edge-cases]", () => {
   const policy = createQuotaPolicy({ currentUsage: 80, burstLimit: 100 });
 
   const decision = evaluateQuota(policy, 21);
@@ -52,7 +52,7 @@ test("evaluateQuota with requestedUnits that exceeds burstLimit by 1", () => {
   assert.equal(decision.remainingUnits, 0);
 });
 
-test("evaluateQuota uses hardLimit as burstLimit when burstLimit not provided", () => {
+test("evaluateQuota uses hardLimit as burstLimit when burstLimit not provided [quota-enforcer-edge-cases]", () => {
   const policy = createQuotaPolicy({ hardLimit: 100, burstLimit: undefined });
 
   const decision = evaluateQuota(policy, 101);
@@ -61,7 +61,7 @@ test("evaluateQuota uses hardLimit as burstLimit when burstLimit not provided", 
   assert.equal(decision.exceeded, true);
 });
 
-test("evaluateQuota remainingUnits never goes negative", () => {
+test("evaluateQuota remainingUnits never goes negative [quota-enforcer-edge-cases]", () => {
   const policy = createQuotaPolicy({ currentUsage: 150, burstLimit: 100 });
 
   const decision = evaluateQuota(policy, 10);
@@ -69,7 +69,7 @@ test("evaluateQuota remainingUnits never goes negative", () => {
   assert.equal(decision.remainingUnits, 0);
 });
 
-test("isQuotaExceeded delegates to evaluateQuota.exceeded", () => {
+test("isQuotaExceeded delegates to evaluateQuota.exceeded [quota-enforcer-edge-cases]", () => {
   const policy = createQuotaPolicy({ currentUsage: 90, burstLimit: 100 });
 
   const result = isQuotaExceeded(policy, 20);
@@ -78,7 +78,7 @@ test("isQuotaExceeded delegates to evaluateQuota.exceeded", () => {
   assert.equal(result, true);
 });
 
-test("isQuotaExceeded returns false when exactly at limit", () => {
+test("isQuotaExceeded returns false when exactly at limit [quota-enforcer-edge-cases]", () => {
   const policy = createQuotaPolicy({ currentUsage: 100, burstLimit: 100 });
 
   const result = isQuotaExceeded(policy, 0);
@@ -86,7 +86,7 @@ test("isQuotaExceeded returns false when exactly at limit", () => {
   assert.equal(result, false);
 });
 
-test("evaluateQuota warning triggers when projected equals softLimit", () => {
+test("evaluateQuota warning triggers when projected equals softLimit [quota-enforcer-edge-cases]", () => {
   const policy = createQuotaPolicy({ currentUsage: 60, softLimit: 80 });
 
   const decision = evaluateQuota(policy, 20);
@@ -95,7 +95,7 @@ test("evaluateQuota warning triggers when projected equals softLimit", () => {
   assert.equal(decision.warning, false);
 });
 
-test("evaluateQuota warning triggers when projected exceeds softLimit", () => {
+test("evaluateQuota warning triggers when projected exceeds softLimit [quota-enforcer-edge-cases]", () => {
   const policy = createQuotaPolicy({ currentUsage: 61, softLimit: 80 });
 
   const decision = evaluateQuota(policy, 20);

@@ -16,7 +16,7 @@ function createService() {
   return { workspace, db, store, service };
 }
 
-test("checkFeatureAccess allows professional feature for enterprise tier", () => {
+test("checkFeatureAccess allows professional feature for enterprise tier [license-enforcement-service]", () => {
   const h = createService();
   try {
     const result = h.service.checkFeatureAccess("sso", "enterprise");
@@ -27,7 +27,7 @@ test("checkFeatureAccess allows professional feature for enterprise tier", () =>
   }
 });
 
-test("checkFeatureAccess denies enterprise feature for professional tier", () => {
+test("checkFeatureAccess denies enterprise feature for professional tier [license-enforcement-service]", () => {
   const h = createService();
   try {
     // In non-strict mode, insufficient tier returns "warn" not "deny"
@@ -40,7 +40,7 @@ test("checkFeatureAccess denies enterprise feature for professional tier", () =>
   }
 });
 
-test("checkFeatureAccess allows professional feature for professional tier", () => {
+test("checkFeatureAccess allows professional feature for professional tier [license-enforcement-service]", () => {
   const h = createService();
   try {
     const result = h.service.checkFeatureAccess("admin_console", "professional");
@@ -51,7 +51,7 @@ test("checkFeatureAccess allows professional feature for professional tier", () 
   }
 });
 
-test("checkFeatureAccess denies professional feature for community tier", () => {
+test("checkFeatureAccess denies professional feature for community tier [license-enforcement-service]", () => {
   const h = createService();
   try {
     const result = h.service.checkFeatureAccess("admin_console", "community");
@@ -61,7 +61,7 @@ test("checkFeatureAccess denies professional feature for community tier", () => 
   }
 });
 
-test("checkFeatureAccess warns in non-strict mode when tier insufficient", () => {
+test("checkFeatureAccess warns in non-strict mode when tier insufficient [license-enforcement-service]", () => {
   const h = createService();
   try {
     const result = h.service.checkFeatureAccess("sso", "professional");
@@ -72,7 +72,7 @@ test("checkFeatureAccess warns in non-strict mode when tier insufficient", () =>
   }
 });
 
-test("checkFeatureAccess denies in strict mode when tier insufficient", () => {
+test("checkFeatureAccess denies in strict mode when tier insufficient [license-enforcement-service]", () => {
   const h = createService();
   try {
     const strictService = new LicenseEnforcementService(h.store, { strictMode: true });
@@ -84,7 +84,7 @@ test("checkFeatureAccess denies in strict mode when tier insufficient", () => {
   }
 });
 
-test("checkFeatureAccess allows all when enforcement disabled", () => {
+test("checkFeatureAccess allows all when enforcement disabled [license-enforcement-service]", () => {
   const h = createService();
   try {
     const disabledService = new LicenseEnforcementService(h.store, { enabled: false });
@@ -96,7 +96,7 @@ test("checkFeatureAccess allows all when enforcement disabled", () => {
   }
 });
 
-test("recordFeatureUsage increments meter", () => {
+test("recordFeatureUsage increments meter [license-enforcement-service]", () => {
   const h = createService();
   try {
     h.service.recordFeatureUsage("audit_export");
@@ -110,7 +110,7 @@ test("recordFeatureUsage increments meter", () => {
   }
 });
 
-test("getFeatureUsage returns null for non-metered feature", () => {
+test("getFeatureUsage returns null for non-metered feature [license-enforcement-service]", () => {
   const h = createService();
   try {
     const usage = h.service.getFeatureUsage("admin_console");
@@ -120,7 +120,7 @@ test("getFeatureUsage returns null for non-metered feature", () => {
   }
 });
 
-test("exceeding usage limit denies access", () => {
+test("exceeding usage limit denies access [license-enforcement-service]", () => {
   const h = createService();
   try {
     // Create service with very low limit
@@ -140,7 +140,7 @@ test("exceeding usage limit denies access", () => {
   }
 });
 
-test("violations are recorded", () => {
+test("violations are recorded [license-enforcement-service]", () => {
   const h = createService();
   try {
     h.service.checkFeatureAccess("sso", "professional"); // Should be denied
@@ -155,7 +155,7 @@ test("violations are recorded", () => {
   }
 });
 
-test("feature gates can be enabled and disabled", () => {
+test("feature gates can be enabled and disabled [license-enforcement-service]", () => {
   const h = createService();
   try {
     const gate = h.service.getFeatureGate("sso");
@@ -174,7 +174,7 @@ test("feature gates can be enabled and disabled", () => {
   }
 });
 
-test("custom feature gate can be registered", () => {
+test("custom feature gate can be registered [license-enforcement-service]", () => {
   const h = createService();
   try {
     h.service.registerFeatureGate({
@@ -198,7 +198,7 @@ test("custom feature gate can be registered", () => {
   }
 });
 
-test("listFeatureGates returns all gates", () => {
+test("listFeatureGates returns all gates [license-enforcement-service]", () => {
   const h = createService();
   try {
     const gates = h.service.listFeatureGates();
@@ -208,7 +208,7 @@ test("listFeatureGates returns all gates", () => {
   }
 });
 
-test("listActiveMeters returns all meters", () => {
+test("listActiveMeters returns all meters [license-enforcement-service]", () => {
   const h = createService();
   try {
     h.service.recordFeatureUsage("audit_export");
@@ -221,7 +221,7 @@ test("listActiveMeters returns all meters", () => {
   }
 });
 
-test("resetMeter clears meter", () => {
+test("resetMeter clears meter [license-enforcement-service]", () => {
   const h = createService();
   try {
     h.service.recordFeatureUsage("audit_export");
@@ -238,7 +238,7 @@ test("resetMeter clears meter", () => {
   }
 });
 
-test("strict mode denies instead of warns", () => {
+test("strict mode denies instead of warns [license-enforcement-service]", () => {
   const h = createService();
   try {
     const strictService = new LicenseEnforcementService(h.store, { strictMode: true });

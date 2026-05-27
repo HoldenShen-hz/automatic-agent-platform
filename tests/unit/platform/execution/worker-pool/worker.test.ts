@@ -13,32 +13,32 @@ import type { WorkerSnapshotRecord } from "../../../../../src/platform/contracts
 // parseJsonArray
 // ---------------------------------------------------------------------------
 
-test("parseJsonArray parses valid JSON array", () => {
+test("parseJsonArray parses valid JSON array [worker]", () => {
   const result = parseJsonArray('["a", "b", "c"]');
   assert.deepEqual(result, ["a", "b", "c"]);
 });
 
-test("parseJsonArray returns empty array for invalid JSON", () => {
+test("parseJsonArray returns empty array for invalid JSON [worker]", () => {
   const result = parseJsonArray("not json");
   assert.deepEqual(result, []);
 });
 
-test("parseJsonArray returns empty array for non-array JSON", () => {
+test("parseJsonArray returns empty array for non-array JSON [worker]", () => {
   const result = parseJsonArray('{"key": "value"}');
   assert.deepEqual(result, []);
 });
 
-test("parseJsonArray filters out non-string items", () => {
+test("parseJsonArray filters out non-string items [worker]", () => {
   const result = parseJsonArray('["a", 123, true, null, "b"]');
   assert.deepEqual(result, ["a", "b"]);
 });
 
-test("parseJsonArray handles empty array", () => {
+test("parseJsonArray handles empty array [worker]", () => {
   const result = parseJsonArray("[]");
   assert.deepEqual(result, []);
 });
 
-test("parseJsonArray handles empty string", () => {
+test("parseJsonArray handles empty string [worker]", () => {
   const result = parseJsonArray("");
   assert.deepEqual(result, []);
 });
@@ -47,17 +47,17 @@ test("parseJsonArray handles empty string", () => {
 // mergeExecutionIds
 // ---------------------------------------------------------------------------
 
-test("mergeExecutionIds combines and sorts unique IDs", () => {
+test("mergeExecutionIds combines and sorts unique IDs [worker]", () => {
   const result = mergeExecutionIds(["a", "c"], "b");
   assert.deepEqual(result, ["a", "b", "c"]);
 });
 
-test("mergeExecutionIds does not duplicate existing IDs", () => {
+test("mergeExecutionIds does not duplicate existing IDs [worker]", () => {
   const result = mergeExecutionIds(["a", "b"], "b");
   assert.deepEqual(result, ["a", "b"]);
 });
 
-test("mergeExecutionIds handles empty existing array", () => {
+test("mergeExecutionIds handles empty existing array [worker]", () => {
   const result = mergeExecutionIds([], "a");
   assert.deepEqual(result, ["a"]);
 });
@@ -66,37 +66,37 @@ test("mergeExecutionIds handles empty existing array", () => {
 // toWorkerStatus
 // ---------------------------------------------------------------------------
 
-test("toWorkerStatus returns unavailable when snapshot is unavailable", () => {
+test("toWorkerStatus returns unavailable when snapshot is unavailable [worker]", () => {
   const snapshot = { status: "unavailable" } as WorkerSnapshotRecord;
   assert.equal(toWorkerStatus(snapshot, []), "unavailable");
 });
 
-test("toWorkerStatus returns quarantined when snapshot is quarantined", () => {
+test("toWorkerStatus returns quarantined when snapshot is quarantined [worker]", () => {
   const snapshot = { status: "quarantined" } as WorkerSnapshotRecord;
   assert.equal(toWorkerStatus(snapshot, []), "quarantined");
 });
 
-test("toWorkerStatus returns offline when snapshot is offline", () => {
+test("toWorkerStatus returns offline when snapshot is offline [worker]", () => {
   const snapshot = { status: "offline" } as WorkerSnapshotRecord;
   assert.equal(toWorkerStatus(snapshot, []), "offline");
 });
 
-test("toWorkerStatus returns draining when snapshot is draining", () => {
+test("toWorkerStatus returns draining when snapshot is draining [worker]", () => {
   const snapshot = { status: "draining" } as WorkerSnapshotRecord;
   assert.equal(toWorkerStatus(snapshot, []), "draining");
 });
 
-test("toWorkerStatus returns degraded when snapshot is degraded", () => {
+test("toWorkerStatus returns degraded when snapshot is degraded [worker]", () => {
   const snapshot = { status: "degraded" } as WorkerSnapshotRecord;
   assert.equal(toWorkerStatus(snapshot, []), "degraded");
 });
 
-test("toWorkerStatus returns busy when running executions exist", () => {
+test("toWorkerStatus returns busy when running executions exist [worker]", () => {
   const snapshot = { status: "idle" } as WorkerSnapshotRecord;
   assert.equal(toWorkerStatus(snapshot, ["exec_1", "exec_2"]), "busy");
 });
 
-test("toWorkerStatus returns idle when no running executions", () => {
+test("toWorkerStatus returns idle when no running executions [worker]", () => {
   const snapshot = { status: "idle" } as WorkerSnapshotRecord;
   assert.equal(toWorkerStatus(snapshot, []), "idle");
 });
@@ -105,34 +105,34 @@ test("toWorkerStatus returns idle when no running executions", () => {
 // normalizeLeaseReason
 // ---------------------------------------------------------------------------
 
-test("normalizeLeaseReason returns lease_not_found as-is", () => {
+test("normalizeLeaseReason returns lease_not_found as-is [worker]", () => {
   assert.equal(normalizeLeaseReason("lease_not_found"), "lease_not_found");
 });
 
-test("normalizeLeaseReason returns lease_not_active as-is", () => {
+test("normalizeLeaseReason returns lease_not_active as-is [worker]", () => {
   assert.equal(normalizeLeaseReason("lease_not_active"), "lease_not_active");
 });
 
-test("normalizeLeaseReason returns lease_expired as-is", () => {
+test("normalizeLeaseReason returns lease_expired as-is [worker]", () => {
   assert.equal(normalizeLeaseReason("lease_expired"), "lease_expired");
 });
 
-test("normalizeLeaseReason returns worker_mismatch as-is", () => {
+test("normalizeLeaseReason returns worker_mismatch as-is [worker]", () => {
   assert.equal(normalizeLeaseReason("worker_mismatch"), "worker_mismatch");
 });
 
-test("normalizeLeaseReason returns no_active_lease as-is", () => {
+test("normalizeLeaseReason returns no_active_lease as-is [worker]", () => {
   assert.equal(normalizeLeaseReason("no_active_lease"), "no_active_lease");
 });
 
-test("normalizeLeaseReason returns stale_fencing_token as-is", () => {
+test("normalizeLeaseReason returns stale_fencing_token as-is [worker]", () => {
   assert.equal(normalizeLeaseReason("stale_fencing_token"), "stale_fencing_token");
 });
 
-test("normalizeLeaseReason returns null for unknown reason codes", () => {
+test("normalizeLeaseReason returns null for unknown reason codes [worker]", () => {
   assert.equal(normalizeLeaseReason("unknown_code"), null);
 });
 
-test("normalizeLeaseReason returns null for null input", () => {
+test("normalizeLeaseReason returns null for null input [worker]", () => {
   assert.equal(normalizeLeaseReason(null), null);
 });

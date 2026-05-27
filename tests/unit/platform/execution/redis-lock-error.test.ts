@@ -102,7 +102,7 @@ async function captureLockLogs(action: () => Promise<void>): Promise<StructuredL
   }
 }
 
-test("[SYS-REL-2.1] Redis lock adapter logs error on connection failure", async () => {
+test("[SYS-REL-2.1] Redis lock adapter logs error on connection failure [redis-lock-error]", async () => {
   const logs = await captureLockLogs(async () => {
     await withMockRedisCtor(async () => {
       const adapter = new RedisLockAdapter({ host: "mock-host", port: 6379 });
@@ -121,7 +121,7 @@ test("[SYS-REL-2.1] Redis lock adapter logs error on connection failure", async 
   );
 });
 
-test("[SYS-REL-2.1] Redis lock adapter error handler should not be empty", async () => {
+test("[SYS-REL-2.1] Redis lock adapter error handler should not be empty [redis-lock-error]", async () => {
   await withMockRedisCtor(async () => {
     const adapter = new RedisLockAdapter({ host: "mock-host", port: 6379 });
     try {
@@ -139,7 +139,7 @@ test("[SYS-REL-2.1] Redis lock adapter error handler should not be empty", async
 // Error path tests for Redis operations
 // =============================================================================
 
-test("RedisLockAdapter acquireAsync propagates error when redis.set throws", async () => {
+test("RedisLockAdapter acquireAsync propagates error when redis.set throws [redis-lock-error]", async () => {
   const mockRedis = createMockRedis({
     status: "ready",
     set: async () => {
@@ -154,7 +154,7 @@ test("RedisLockAdapter acquireAsync propagates error when redis.set throws", asy
   );
 });
 
-test("RedisLockAdapter releaseAsync throws LockingError when Lua script fails", async () => {
+test("RedisLockAdapter releaseAsync throws LockingError when Lua script fails [redis-lock-error]", async () => {
   const mockRedis = createMockRedis({
     status: "ready",
     eval: async () => {
@@ -169,7 +169,7 @@ test("RedisLockAdapter releaseAsync throws LockingError when Lua script fails", 
   );
 });
 
-test("RedisLockAdapter close() best-effort disconnects when quit() throws", async () => {
+test("RedisLockAdapter close() best-effort disconnects when quit() throws [redis-lock-error]", async () => {
   let disconnected = false;
   const mockRedis = createMockRedis({
     status: "ready",
@@ -186,7 +186,7 @@ test("RedisLockAdapter close() best-effort disconnects when quit() throws", asyn
   assert.equal(disconnected, true);
 });
 
-test("RedisLockAdapter listHeldAsync propagates error when scan throws", async () => {
+test("RedisLockAdapter listHeldAsync propagates error when scan throws [redis-lock-error]", async () => {
   const mockRedis = createMockRedis({
     status: "ready",
     scan: async () => {
@@ -201,7 +201,7 @@ test("RedisLockAdapter listHeldAsync propagates error when scan throws", async (
   );
 });
 
-test("RedisLockAdapter listHeldAsync propagates error when mget throws", async () => {
+test("RedisLockAdapter listHeldAsync propagates error when mget throws [redis-lock-error]", async () => {
   const mockRedis = createMockRedis({
     status: "ready",
     scan: async () => ["0", ["lock:key1", "lock:key2"]],

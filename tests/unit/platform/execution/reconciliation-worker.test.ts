@@ -16,7 +16,7 @@ import { ReconciliationWorker } from "../../../../src/platform/five-plane-execut
 
 // ── Next Action Determination Tests ─────────────────────────────────────────────
 
-test("ReconciliationWorker: determineNextAction for confirmed result", () => {
+test("ReconciliationWorker: determineNextAction for confirmed result [reconciliation-worker]", () => {
   const worker = new ReconciliationWorker();
 
   const action = worker.determineNextAction("confirmed", "low");
@@ -24,7 +24,7 @@ test("ReconciliationWorker: determineNextAction for confirmed result", () => {
   assert.equal(action, "mark_confirmed");
 });
 
-test("ReconciliationWorker: determineNextAction for not_found with low risk", () => {
+test("ReconciliationWorker: determineNextAction for not_found with low risk [reconciliation-worker]", () => {
   const worker = new ReconciliationWorker();
 
   const action = worker.determineNextAction("not_found", "low");
@@ -33,7 +33,7 @@ test("ReconciliationWorker: determineNextAction for not_found with low risk", ()
   assert.equal(action, "mark_failed");
 });
 
-test("ReconciliationWorker: determineNextAction for not_found with high risk", () => {
+test("ReconciliationWorker: determineNextAction for not_found with high risk [reconciliation-worker]", () => {
   const worker = new ReconciliationWorker();
 
   const action = worker.determineNextAction("not_found", "high");
@@ -42,7 +42,7 @@ test("ReconciliationWorker: determineNextAction for not_found with high risk", (
   assert.equal(action, "compensate");
 });
 
-test("ReconciliationWorker: determineNextAction for ambiguous result", () => {
+test("ReconciliationWorker: determineNextAction for ambiguous result [reconciliation-worker]", () => {
   const worker = new ReconciliationWorker();
 
   const action = worker.determineNextAction("ambiguous", "medium");
@@ -51,7 +51,7 @@ test("ReconciliationWorker: determineNextAction for ambiguous result", () => {
   assert.equal(action, "retry_probe");
 });
 
-test("ReconciliationWorker: determineNextAction for failed with critical risk", () => {
+test("ReconciliationWorker: determineNextAction for failed with critical risk [reconciliation-worker]", () => {
   const worker = new ReconciliationWorker();
 
   const action = worker.determineNextAction("failed", "critical");
@@ -60,7 +60,7 @@ test("ReconciliationWorker: determineNextAction for failed with critical risk", 
   assert.equal(action, "escalate_hitl");
 });
 
-test("ReconciliationWorker: determineNextAction for failed with low risk", () => {
+test("ReconciliationWorker: determineNextAction for failed with low risk [reconciliation-worker]", () => {
   const worker = new ReconciliationWorker();
 
   const action = worker.determineNextAction("failed", "low");
@@ -71,7 +71,7 @@ test("ReconciliationWorker: determineNextAction for failed with low risk", () =>
 
 // ── Expiration Checking Tests ──────────────────────────────────────────────────
 
-test("ReconciliationWorker: isReconciliationExpired returns true for expired", () => {
+test("ReconciliationWorker: isReconciliationExpired returns true for expired [reconciliation-worker]", () => {
   const worker = new ReconciliationWorker({
     defaultReconciliationWindowMs: 30000, // 30 seconds
   });
@@ -84,7 +84,7 @@ test("ReconciliationWorker: isReconciliationExpired returns true for expired", (
   assert.equal(isExpired, true);
 });
 
-test("ReconciliationWorker: isReconciliationExpired returns false for recent", () => {
+test("ReconciliationWorker: isReconciliationExpired returns false for recent [reconciliation-worker]", () => {
   const worker = new ReconciliationWorker({
     defaultReconciliationWindowMs: 30000, // 30 seconds
   });
@@ -97,7 +97,7 @@ test("ReconciliationWorker: isReconciliationExpired returns false for recent", (
   assert.equal(isExpired, false);
 });
 
-test("ReconciliationWorker: isReconciliationExpired uses custom window", () => {
+test("ReconciliationWorker: isReconciliationExpired uses custom window [reconciliation-worker]", () => {
   const worker = new ReconciliationWorker({
     defaultReconciliationWindowMs: 60000, // 60 seconds default
   });
@@ -110,7 +110,7 @@ test("ReconciliationWorker: isReconciliationExpired uses custom window", () => {
   assert.equal(isExpired, false);
 });
 
-test("ReconciliationWorker: isReconciliationExpired with very old record", () => {
+test("ReconciliationWorker: isReconciliationExpired with very old record [reconciliation-worker]", () => {
   const worker = new ReconciliationWorker({
     defaultReconciliationWindowMs: 30000,
   });
@@ -125,7 +125,7 @@ test("ReconciliationWorker: isReconciliationExpired with very old record", () =>
 
 // ── Target Status Mapping Tests ────────────────────────────────────────────────
 
-test("ReconciliationWorker: getTargetStatus for mark_confirmed", () => {
+test("ReconciliationWorker: getTargetStatus for mark_confirmed [reconciliation-worker]", () => {
   const worker = new ReconciliationWorker();
 
   const status = worker.getTargetStatus("mark_confirmed");
@@ -133,7 +133,7 @@ test("ReconciliationWorker: getTargetStatus for mark_confirmed", () => {
   assert.equal(status, "confirmed");
 });
 
-test("ReconciliationWorker: getTargetStatus for retry_probe", () => {
+test("ReconciliationWorker: getTargetStatus for retry_probe [reconciliation-worker]", () => {
   const worker = new ReconciliationWorker();
 
   const status = worker.getTargetStatus("retry_probe");
@@ -141,7 +141,7 @@ test("ReconciliationWorker: getTargetStatus for retry_probe", () => {
   assert.equal(status, "reconciling");
 });
 
-test("ReconciliationWorker: getTargetStatus for compensate", () => {
+test("ReconciliationWorker: getTargetStatus for compensate [reconciliation-worker]", () => {
   const worker = new ReconciliationWorker();
 
   const status = worker.getTargetStatus("compensate");
@@ -149,7 +149,7 @@ test("ReconciliationWorker: getTargetStatus for compensate", () => {
   assert.equal(status, "compensation_required");
 });
 
-test("ReconciliationWorker: getTargetStatus for escalate_hitl", () => {
+test("ReconciliationWorker: getTargetStatus for escalate_hitl [reconciliation-worker]", () => {
   const worker = new ReconciliationWorker();
 
   const status = worker.getTargetStatus("escalate_hitl");
@@ -157,7 +157,7 @@ test("ReconciliationWorker: getTargetStatus for escalate_hitl", () => {
   assert.equal(status, "manual_review_required");
 });
 
-test("ReconciliationWorker: getTargetStatus for mark_failed", () => {
+test("ReconciliationWorker: getTargetStatus for mark_failed [reconciliation-worker]", () => {
   const worker = new ReconciliationWorker();
 
   const status = worker.getTargetStatus("mark_failed");
@@ -167,7 +167,7 @@ test("ReconciliationWorker: getTargetStatus for mark_failed", () => {
 
 // ── Escalation Logic Tests ─────────────────────────────────────────────────────
 
-test("ReconciliationWorker: requiresEscalation on max retries exceeded", () => {
+test("ReconciliationWorker: requiresEscalation on max retries exceeded [reconciliation-worker]", () => {
   const worker = new ReconciliationWorker({
     maxRetryAttempts: 3,
   });
@@ -177,7 +177,7 @@ test("ReconciliationWorker: requiresEscalation on max retries exceeded", () => {
   assert.equal(needsEscalation, true);
 });
 
-test("ReconciliationWorker: requiresEscalation before max retries", () => {
+test("ReconciliationWorker: requiresEscalation before max retries [reconciliation-worker]", () => {
   const worker = new ReconciliationWorker({
     maxRetryAttempts: 3,
   });
@@ -187,7 +187,7 @@ test("ReconciliationWorker: requiresEscalation before max retries", () => {
   assert.equal(needsEscalation, false);
 });
 
-test("ReconciliationWorker: requiresEscalation for critical failed", () => {
+test("ReconciliationWorker: requiresEscalation for critical failed [reconciliation-worker]", () => {
   const worker = new ReconciliationWorker();
 
   const needsEscalation = worker.requiresEscalation("failed", 1, "critical");
@@ -195,7 +195,7 @@ test("ReconciliationWorker: requiresEscalation for critical failed", () => {
   assert.equal(needsEscalation, true);
 });
 
-test("ReconciliationWorker: no escalation for non-critical failed", () => {
+test("ReconciliationWorker: no escalation for non-critical failed [reconciliation-worker]", () => {
   const worker = new ReconciliationWorker();
 
   const needsEscalation = worker.requiresEscalation("failed", 1, "medium");
@@ -203,7 +203,7 @@ test("ReconciliationWorker: no escalation for non-critical failed", () => {
   assert.equal(needsEscalation, false);
 });
 
-test("ReconciliationWorker: no escalation for successful confirmed", () => {
+test("ReconciliationWorker: no escalation for successful confirmed [reconciliation-worker]", () => {
   const worker = new ReconciliationWorker();
 
   const needsEscalation = worker.requiresEscalation("confirmed", 1, "critical");
@@ -213,7 +213,7 @@ test("ReconciliationWorker: no escalation for successful confirmed", () => {
 
 // ── Configuration Tests ─────────────────────────────────────────────────────
 
-test("ReconciliationWorker: uses default configuration", () => {
+test("ReconciliationWorker: uses default configuration [reconciliation-worker]", () => {
   const worker = new ReconciliationWorker();
 
   // Default: 30 second window, 3 max retries, 10 second probe timeout
@@ -224,7 +224,7 @@ test("ReconciliationWorker: uses default configuration", () => {
   assert.equal(isExpired, true);
 });
 
-test("ReconciliationWorker: respects custom configuration", () => {
+test("ReconciliationWorker: respects custom configuration [reconciliation-worker]", () => {
   const worker = new ReconciliationWorker({
     defaultReconciliationWindowMs: 60000, // 1 minute
     maxRetryAttempts: 5,
@@ -241,7 +241,7 @@ test("ReconciliationWorker: respects custom configuration", () => {
 
 // ── Reconciliation Record Creation Tests ──────────────────────────────────────
 
-test("ReconciliationWorker: createReconciliationRecord", () => {
+test("ReconciliationWorker: createReconciliationRecord [reconciliation-worker]", () => {
   const worker = new ReconciliationWorker();
 
   const record = worker.createReconciliationRecord(
@@ -260,7 +260,7 @@ test("ReconciliationWorker: createReconciliationRecord", () => {
   assert.equal(record.nextAction, "mark_confirmed");
 });
 
-test("ReconciliationWorker: createReconciliationRecord with evidence refs", () => {
+test("ReconciliationWorker: createReconciliationRecord with evidence refs [reconciliation-worker]", () => {
   const worker = new ReconciliationWorker();
 
   const evidenceRefs = [
@@ -281,7 +281,7 @@ test("ReconciliationWorker: createReconciliationRecord with evidence refs", () =
 
 // ── Action Combinations Tests ─────────────────────────────────────────────────
 
-test("ReconciliationWorker: all reconciliation results have next actions", () => {
+test("ReconciliationWorker: all reconciliation results have next actions [reconciliation-worker]", () => {
   const worker = new ReconciliationWorker();
   const results: Array<"confirmed" | "not_found" | "ambiguous" | "failed"> = [
     "confirmed",

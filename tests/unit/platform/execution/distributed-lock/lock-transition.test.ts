@@ -25,7 +25,7 @@ function makeCommand(overrides: Partial<LockTransitionCommand> = {}): LockTransi
   };
 }
 
-test("transitionLock returns accepted true for valid transition", () => {
+test("transitionLock returns accepted true for valid transition [lock-transition]", () => {
   const command = makeCommand();
 
   const result = transitionLock(command);
@@ -34,49 +34,49 @@ test("transitionLock returns accepted true for valid transition", () => {
   assert.equal(result.command, command);
 });
 
-test("transitionLock throws for empty lockId", () => {
+test("transitionLock throws for empty lockId [lock-transition]", () => {
   const command = makeCommand({ lockId: "" });
 
   assert.throws(() => transitionLock(command), { message: "distributed_lock.lock_id_required" });
 });
 
-test("transitionLock throws for whitespace-only lockId", () => {
+test("transitionLock throws for whitespace-only lockId [lock-transition]", () => {
   const command = makeCommand({ lockId: "   " });
 
   assert.throws(() => transitionLock(command), { message: "distributed_lock.lock_id_required" });
 });
 
-test("transitionLock throws for empty resourceKey", () => {
+test("transitionLock throws for empty resourceKey [lock-transition]", () => {
   const command = makeCommand({ resourceKey: "" });
 
   assert.throws(() => transitionLock(command), { message: "distributed_lock.resource_key_required" });
 });
 
-test("transitionLock throws for empty ownerId", () => {
+test("transitionLock throws for empty ownerId [lock-transition]", () => {
   const command = makeCommand({ ownerId: "" });
 
   assert.throws(() => transitionLock(command), { message: "distributed_lock.owner_id_required" });
 });
 
-test("transitionLock throws for empty reasonCode", () => {
+test("transitionLock throws for empty reasonCode [lock-transition]", () => {
   const command = makeCommand({ reasonCode: "" });
 
   assert.throws(() => transitionLock(command), { message: "distributed_lock.reason_code_required" });
 });
 
-test("transitionLock throws for empty traceId", () => {
+test("transitionLock throws for empty traceId [lock-transition]", () => {
   const command = makeCommand({ traceId: "" });
 
   assert.throws(() => transitionLock(command), { message: "distributed_lock.trace_id_required" });
 });
 
-test("transitionLock throws when fromStatus equals toStatus (noop)", () => {
+test("transitionLock throws when fromStatus equals toStatus (noop) [lock-transition]", () => {
   const command = makeCommand({ fromStatus: "held", toStatus: "held" });
 
   assert.throws(() => transitionLock(command), { message: "distributed_lock.transition_noop" });
 });
 
-test("transitionLock accepts any valid status transition", () => {
+test("transitionLock accepts any valid status transition [lock-transition]", () => {
   const validTransitions: [LockTransitionCommand["fromStatus"], LockTransitionCommand["toStatus"]][] = [
     ["held", "released"],
     ["held", "expired"],
@@ -94,7 +94,7 @@ test("transitionLock accepts any valid status transition", () => {
   }
 });
 
-test("transitionLock passes through fencingToken", () => {
+test("transitionLock passes through fencingToken [lock-transition]", () => {
   const command = makeCommand({ fencingToken: 42 });
 
   const result = transitionLock(command);
@@ -102,7 +102,7 @@ test("transitionLock passes through fencingToken", () => {
   assert.equal(result.command.fencingToken, 42);
 });
 
-test("transitionLock preserves all command fields in result", () => {
+test("transitionLock preserves all command fields in result [lock-transition]", () => {
   const command = makeCommand();
 
   const result = transitionLock(command);

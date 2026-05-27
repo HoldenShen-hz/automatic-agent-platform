@@ -66,7 +66,7 @@ function createMockWorkerView(overrides: Partial<{
   };
 }
 
-test("toWorkerEvaluation creates evaluation with all worker fields", () => {
+test("toWorkerEvaluation creates evaluation with all worker fields [execution-dispatch-support-worker-selection]", () => {
   const worker = createMockWorkerView({
     workerId: "worker-42",
     status: "busy",
@@ -99,7 +99,7 @@ test("toWorkerEvaluation creates evaluation with all worker fields", () => {
   assert.deepStrictEqual(evaluation.missingCapabilities, []);
 });
 
-test("toWorkerEvaluation with accepted false and rejection reason", () => {
+test("toWorkerEvaluation with accepted false and rejection reason [execution-dispatch-support-worker-selection]", () => {
   const worker = createMockWorkerView();
   const evaluation = toWorkerEvaluation(worker, false, "worker_capacity_full", ["gpu"]);
   assert.equal(evaluation.accepted, false);
@@ -107,20 +107,20 @@ test("toWorkerEvaluation with accepted false and rejection reason", () => {
   assert.deepStrictEqual(evaluation.missingCapabilities, ["gpu"]);
 });
 
-test("toWorkerEvaluation includes missing capabilities", () => {
+test("toWorkerEvaluation includes missing capabilities [execution-dispatch-support-worker-selection]", () => {
   const worker = createMockWorkerView();
   const evaluation = toWorkerEvaluation(worker, false, null, ["gpu", "large_memory"]);
   assert.deepStrictEqual(evaluation.missingCapabilities, ["gpu", "large_memory"]);
 });
 
-test("toWorkerEvaluation with null rejection reason for accepted worker", () => {
+test("toWorkerEvaluation with null rejection reason for accepted worker [execution-dispatch-support-worker-selection]", () => {
   const worker = createMockWorkerView();
   const evaluation = toWorkerEvaluation(worker, true, null, []);
   assert.equal(evaluation.accepted, true);
   assert.equal(evaluation.rejectionReason, null);
 });
 
-test("selectWorkersForDispatch prefer_remote with mixed local and remote workers", () => {
+test("selectWorkersForDispatch prefer_remote with mixed local and remote workers [execution-dispatch-support-worker-selection]", () => {
   const workers = [
     { workerId: "w1", placement: "local" as const },
     { workerId: "w2", placement: "remote" as const },
@@ -133,20 +133,20 @@ test("selectWorkersForDispatch prefer_remote with mixed local and remote workers
   assert.equal(result.fallbackApplied, false);
 });
 
-test("selectWorkersForDispatch prefer_remote falls back to local when remote unavailable with reason", () => {
+test("selectWorkersForDispatch prefer_remote falls back to local when remote unavailable with reason [execution-dispatch-support-worker-selection]", () => {
   const workers = [{ workerId: "w1", placement: "local" as const }];
   const result = selectWorkersForDispatch("prefer_remote", workers as any, "unavailable", null, null, null);
   assert.equal(result.fallbackApplied, true);
   assert.equal(result.reasonCode, "remote.fallback_local.unavailable");
 });
 
-test("selectWorkersForDispatch prefer_remote prefers trust reason over availability reason", () => {
+test("selectWorkersForDispatch prefer_remote prefers trust reason over availability reason [execution-dispatch-support-worker-selection]", () => {
   const workers = [{ workerId: "w1", placement: "local" as const }];
   const result = selectWorkersForDispatch("prefer_remote", workers as any, "degraded", "remote.untrusted", null, null);
   assert.equal(result.reasonCode, "remote.untrusted");
 });
 
-test("selectWorkersForDispatch prefer_remote prefers session reason over repo version reason", () => {
+test("selectWorkersForDispatch prefer_remote prefers session reason over repo version reason [execution-dispatch-support-worker-selection]", () => {
   const workers = [{ workerId: "w1", placement: "local" as const }];
   const result = selectWorkersForDispatch(
     "prefer_remote",
@@ -159,13 +159,13 @@ test("selectWorkersForDispatch prefer_remote prefers session reason over repo ve
   assert.equal(result.reasonCode, "remote.session_unready");
 });
 
-test("selectWorkersForDispatch prefer_remote uses repo version reason as fallback", () => {
+test("selectWorkersForDispatch prefer_remote uses repo version reason as fallback [execution-dispatch-support-worker-selection]", () => {
   const workers = [{ workerId: "w1", placement: "local" as const }];
   const result = selectWorkersForDispatch("prefer_remote", workers as any, "degraded", null, null, "remote.repo_version_mismatch");
   assert.equal(result.reasonCode, "remote.repo_version_mismatch");
 });
 
-test("selectWorkersForDispatch require_remote returns all workers unchanged", () => {
+test("selectWorkersForDispatch require_remote returns all workers unchanged [execution-dispatch-support-worker-selection]", () => {
   const workers = [
     { workerId: "w1", placement: "local" as const },
     { workerId: "w2", placement: "local" as const },
@@ -176,7 +176,7 @@ test("selectWorkersForDispatch require_remote returns all workers unchanged", ()
   assert.equal(result.reasonCode, null);
 });
 
-test("selectWorkersForDispatch local_only returns all workers unchanged", () => {
+test("selectWorkersForDispatch local_only returns all workers unchanged [execution-dispatch-support-worker-selection]", () => {
   const workers = [
     { workerId: "w1", placement: "local" as const },
     { workerId: "w2", placement: "remote" as const },
@@ -187,7 +187,7 @@ test("selectWorkersForDispatch local_only returns all workers unchanged", () => 
   assert.equal(result.fallbackApplied, false);
 });
 
-test("selectWorkersForDispatch any returns all workers regardless of placement", () => {
+test("selectWorkersForDispatch any returns all workers regardless of placement [execution-dispatch-support-worker-selection]", () => {
   const workers = [
     { workerId: "w1", placement: "local" as const },
     { workerId: "w2", placement: "remote" as const },
@@ -197,7 +197,7 @@ test("selectWorkersForDispatch any returns all workers regardless of placement",
   assert.equal(result.fallbackApplied, false);
 });
 
-test("resolveRemoteAvailability returns partial_available when reasons vary and not degraded", () => {
+test("resolveRemoteAvailability returns partial_available when reasons vary and not degraded [execution-dispatch-support-worker-selection]", () => {
   const evaluations = [
     makeEvaluation("remote", false, "worker_unavailable"),
     makeEvaluation("remote", false, "worker_capacity_full"),
@@ -205,52 +205,52 @@ test("resolveRemoteAvailability returns partial_available when reasons vary and 
   assert.equal(resolveRemoteAvailability("prefer_remote", evaluations), "partial_available");
 });
 
-test("resolveRemoteAvailability returns null for any target", () => {
+test("resolveRemoteAvailability returns null for any target [execution-dispatch-support-worker-selection]", () => {
   const evaluations = [makeEvaluation("remote", true)];
   assert.equal(resolveRemoteAvailability("any", evaluations), null);
 });
 
-test("resolveRemoteAvailability returns null for local_only target", () => {
+test("resolveRemoteAvailability returns null for local_only target [execution-dispatch-support-worker-selection]", () => {
   const evaluations = [makeEvaluation("remote", true)];
   assert.equal(resolveRemoteAvailability("local_only", evaluations), null);
 });
 
-test("resolveRemoteAvailability handles empty evaluations for prefer_remote", () => {
+test("resolveRemoteAvailability handles empty evaluations for prefer_remote [execution-dispatch-support-worker-selection]", () => {
   const evaluations: ReturnType<typeof makeEvaluation>[] = [];
   assert.equal(resolveRemoteAvailability("prefer_remote", evaluations), "unavailable");
 });
 
-test("resolveRemoteAvailability handles empty evaluations for require_remote", () => {
+test("resolveRemoteAvailability handles empty evaluations for require_remote [execution-dispatch-support-worker-selection]", () => {
   const evaluations: ReturnType<typeof makeEvaluation>[] = [];
   assert.equal(resolveRemoteAvailability("require_remote", evaluations), "unavailable");
 });
 
-test("resolveRemoteRepoVersionReason returns null when required version matches", () => {
+test("resolveRemoteRepoVersionReason returns null when required version matches [execution-dispatch-support-worker-selection]", () => {
   const evaluations = [makeEvaluation("remote", true)];
   assert.equal(resolveRemoteRepoVersionReason("require_remote", evaluations, "v1"), null);
 });
 
-test("resolveRemoteRepoVersionReason returns null when dispatch target is any", () => {
+test("resolveRemoteRepoVersionReason returns null when dispatch target is any [execution-dispatch-support-worker-selection]", () => {
   const evaluations = [makeEvaluation("remote", false, "worker_repo_version_mismatch")];
   assert.equal(resolveRemoteRepoVersionReason("any", evaluations, "v1"), null);
 });
 
-test("resolveRemoteSessionReason returns null when session is ready", () => {
+test("resolveRemoteSessionReason returns null when session is ready [execution-dispatch-support-worker-selection]", () => {
   const evaluations = [makeEvaluation("remote", true)];
   assert.equal(resolveRemoteSessionReason("require_remote", evaluations), null);
 });
 
-test("resolveRemoteSessionReason returns null when dispatch target is local_only", () => {
+test("resolveRemoteSessionReason returns null when dispatch target is local_only [execution-dispatch-support-worker-selection]", () => {
   const evaluations = [makeEvaluation("remote", false, "worker_remote_session_unready")];
   assert.equal(resolveRemoteSessionReason("local_only", evaluations), null);
 });
 
-test("resolveRemoteTrustReason returns null when worker is trusted", () => {
+test("resolveRemoteTrustReason returns null when worker is trusted [execution-dispatch-support-worker-selection]", () => {
   const evaluations = [makeEvaluation("remote", true)];
   assert.equal(resolveRemoteTrustReason("require_remote", evaluations), null);
 });
 
-test("resolveRemoteTrustReason returns null when dispatch target is any", () => {
+test("resolveRemoteTrustReason returns null when dispatch target is any [execution-dispatch-support-worker-selection]", () => {
   const evaluations = [makeEvaluation("remote", false, "worker_untrusted")];
   assert.equal(resolveRemoteTrustReason("any", evaluations), null);
 });

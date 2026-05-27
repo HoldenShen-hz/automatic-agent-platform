@@ -83,7 +83,7 @@ function buildDlqStub(occurredAt: string, sink: Array<{ errorCode: string; paylo
   };
 }
 
-test("dispatchNext records scheduler snapshot and DLQ for backpressure-blocked tickets", () => {
+test("dispatchNext records scheduler snapshot and DLQ for backpressure-blocked tickets [execution-dispatch-service-scheduler-dlq]", () => {
   const occurredAt = "2026-05-01T00:00:00.000Z";
   const store = createMockStore();
   const events: string[] = [];
@@ -149,7 +149,7 @@ test("dispatchNext records scheduler snapshot and DLQ for backpressure-blocked t
   assert.ok(events.includes("dispatch.dlq_enqueue"));
 });
 
-test("dispatchNext records scheduler snapshot on remote-blocked paths", () => {
+test("dispatchNext records scheduler snapshot on remote-blocked paths [execution-dispatch-service-scheduler-dlq]", () => {
   const occurredAt = "2026-05-01T00:10:00.000Z";
   const store = createMockStore();
   const events: string[] = [];

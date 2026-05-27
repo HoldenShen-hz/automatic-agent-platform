@@ -15,7 +15,7 @@ class SignalBus extends EventEmitter {
   }
 }
 
-test("graceful shutdown runs handlers in reverse registration order", async () => {
+test("graceful shutdown runs handlers in reverse registration order [graceful-shutdown]", async () => {
   const calls: string[] = [];
   const shutdown = new GracefulShutdown({
     logger: new StructuredLogger({ retentionLimit: 10 }),
@@ -40,7 +40,7 @@ test("graceful shutdown runs handlers in reverse registration order", async () =
   assert.equal(result.success, true);
 });
 
-test("graceful shutdown signal handling reuses the same shutdown result and sets exit code", async () => {
+test("graceful shutdown signal handling reuses the same shutdown result and sets exit code [graceful-shutdown]", async () => {
   const signalBus = new SignalBus();
   const exits: number[] = [];
   let runs = 0;
@@ -68,7 +68,7 @@ test("graceful shutdown signal handling reuses the same shutdown result and sets
   assert.deepEqual(exits, [0]);
 });
 
-test("graceful shutdown times out slow handlers", async () => {
+test("graceful shutdown times out slow handlers [graceful-shutdown]", async () => {
   const shutdown = new GracefulShutdown({
     logger: new StructuredLogger({ retentionLimit: 10 }),
     timeoutMs: 50, // Very short default timeout
@@ -91,7 +91,7 @@ test("graceful shutdown times out slow handlers", async () => {
   assert.ok(result.errors.some((e) => e.includes("slow") && e.includes("timed out")));
 });
 
-test("graceful shutdown catches handler throwing an error", async () => {
+test("graceful shutdown catches handler throwing an error [graceful-shutdown]", async () => {
   // Tests the catch block at line 237 when handler() throws (not times out)
   // This exercises Promise.race rejecting with the handler error
   const shutdown = new GracefulShutdown({
@@ -113,7 +113,7 @@ test("graceful shutdown catches handler throwing an error", async () => {
   assert.ok(result.errors.some((e) => e.includes("fails") && e.includes("handler internal error")));
 });
 
-test("graceful shutdown Promise.race handler resolves before timeout", async () => {
+test("graceful shutdown Promise.race handler resolves before timeout [graceful-shutdown]", async () => {
   // Tests that when handler completes before timeout, the result reflects success
   // The clearTimeout is called after Promise.race resolves
   const shutdown = new GracefulShutdown({
@@ -136,7 +136,7 @@ test("graceful shutdown Promise.race handler resolves before timeout", async () 
   assert.equal(result.errors.length, 0);
 });
 
-test("graceful shutdown multiple handlers run even if first times out", async () => {
+test("graceful shutdown multiple handlers run even if first times out [graceful-shutdown]", async () => {
   // Verifies that when first handler times out (Promise.race rejects with timeout),
   // subsequent handlers still execute. This tests the loop continuation after catch.
   // Note: slow's async work continues after its timeout fires; the setTimeout

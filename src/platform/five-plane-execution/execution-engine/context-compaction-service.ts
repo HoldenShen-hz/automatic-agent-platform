@@ -12,9 +12,9 @@
  *
  * Both stages are recorded as CompactionRecords for audit and replay purposes.
  *
- * @see {@link https://github.com/anomalyco/automatic-agent/tree/main/docs_zh/architecture/00-platform-architecture.md | Architecture and Technical Design}
- * @see {@link https://github.com/anomalyco/automatic-agent/tree/main/docs_zh/contracts/context_compaction_and_overflow_contract.md | Context Compaction and Overflow Contract}
- * @see {@link https://github.com/anomalyco/automatic-agent/tree/main/docs_zh/governance/glossary_and_terminology.md | Glossary and Terminology}
+ * @see {@link https://github.com/automatic-agent/automatic-agent-platform/tree/main/docs_zh/architecture/00-platform-architecture.md | Architecture and Technical Design}
+ * @see {@link https://github.com/automatic-agent/automatic-agent-platform/tree/main/docs_zh/contracts/context_compaction_and_overflow_contract.md | Context Compaction and Overflow Contract}
+ * @see {@link https://github.com/automatic-agent/automatic-agent-platform/tree/main/docs_zh/governance/glossary_and_terminology.md | Glossary and Terminology}
  */
 
 import { createHash } from "node:crypto";

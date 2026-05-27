@@ -41,19 +41,19 @@ import {
 // Module Export Verification
 // =============================================================================
 
-test("index module exports getToolRegistry function", () => {
+test("index module exports getToolRegistry function [index]", () => {
   assert.equal(typeof getToolRegistry, "function");
 });
 
-test("index module exports resetToolRegistry function", () => {
+test("index module exports resetToolRegistry function [index]", () => {
   assert.equal(typeof resetToolRegistry, "function");
 });
 
-test("index module exports executeMultiStepToolCallForTests function", () => {
+test("index module exports executeMultiStepToolCallForTests function [index]", () => {
   assert.equal(typeof executeMultiStepToolCallForTests, "function");
 });
 
-test("index module exports resetMultiStepToolRegistryForTests function", () => {
+test("index module exports resetMultiStepToolRegistryForTests function [index]", () => {
   assert.equal(typeof resetMultiStepToolRegistryForTests, "function");
 });
 
@@ -61,20 +61,20 @@ test("index module exports resetMultiStepToolRegistryForTests function", () => {
 // Singleton Behavior
 // =============================================================================
 
-test("getToolRegistry returns consistent singleton instance", () => {
+test("getToolRegistry returns consistent singleton instance [index]", () => {
   const registry1 = getToolRegistry();
   const registry2 = getToolRegistry();
   assert.strictEqual(registry1, registry2);
 });
 
-test("resetToolRegistry clears singleton for fresh instance", () => {
+test("resetToolRegistry clears singleton for fresh instance [index]", () => {
   const registry1 = getToolRegistry();
   resetToolRegistry();
   const registry2 = getToolRegistry();
   assert.notStrictEqual(registry1, registry2);
 });
 
-test("resetMultiStepToolRegistryForTests clears singleton", () => {
+test("resetMultiStepToolRegistryForTests clears singleton [index]", () => {
   const registry1 = getToolRegistry();
   resetMultiStepToolRegistryForTests();
   const registry2 = getToolRegistry();
@@ -89,7 +89,7 @@ test.afterEach(() => {
 // ExecutionTicketRecord Type Structure
 // =============================================================================
 
-test("ExecutionTicketRecord has correct structure", () => {
+test("ExecutionTicketRecord has correct structure [index]", () => {
   const record: ExecutionTicketRecord = {
     id: "ticket_abc123",
     executionId: "exec_xyz",
@@ -117,12 +117,12 @@ test("ExecutionTicketRecord has correct structure", () => {
   assert.equal(record.status, "pending");
 });
 
-test("ExecutionTicketStatus accepts all valid status values", () => {
+test("ExecutionTicketStatus accepts all valid status values [index]", () => {
   const statuses: ExecutionTicketStatus[] = ["pending", "claimed", "consumed", "cancelled", "expired"];
   assert.equal(statuses.length, 5);
 });
 
-test("ExecutionTicketRecord with all fields populated", () => {
+test("ExecutionTicketRecord with all fields populated [index]", () => {
   const record: ExecutionTicketRecord = {
     id: "ticket_full",
     executionId: "exec_full",
@@ -154,7 +154,7 @@ test("ExecutionTicketRecord with all fields populated", () => {
 // DispatchWorkerEvaluation Type Structure
 // =============================================================================
 
-test("DispatchWorkerEvaluation has correct structure for accepted worker", () => {
+test("DispatchWorkerEvaluation has correct structure for accepted worker [index]", () => {
   const evaluation: DispatchWorkerEvaluation = {
     workerId: "worker_test",
     status: "idle",
@@ -186,7 +186,7 @@ test("DispatchWorkerEvaluation has correct structure for accepted worker", () =>
   assert.equal(evaluation.affinityMatched, true);
 });
 
-test("DispatchWorkerEvaluation has correct structure for rejected worker", () => {
+test("DispatchWorkerEvaluation has correct structure for rejected worker [index]", () => {
   const evaluation: DispatchWorkerEvaluation = {
     workerId: "worker_rejected",
     status: "degraded",
@@ -213,7 +213,7 @@ test("DispatchWorkerEvaluation has correct structure for rejected worker", () =>
 // DispatchDecisionTrace Type Structure
 // =============================================================================
 
-test("DispatchDecisionTrace has correct structure for dispatched outcome", () => {
+test("DispatchDecisionTrace has correct structure for dispatched outcome [index]", () => {
   const trace: DispatchDecisionTrace = {
     ticketId: "ticket_1",
     executionId: "exec_1",
@@ -238,7 +238,7 @@ test("DispatchDecisionTrace has correct structure for dispatched outcome", () =>
   assert.equal(trace.fallbackApplied, false);
 });
 
-test("DispatchDecisionTrace has correct structure for blocked outcome", () => {
+test("DispatchDecisionTrace has correct structure for blocked outcome [index]", () => {
   const trace: DispatchDecisionTrace = {
     ticketId: "ticket_2",
     executionId: "exec_2",
@@ -262,7 +262,7 @@ test("DispatchDecisionTrace has correct structure for blocked outcome", () => {
   assert.equal(trace.reasonCode, "remote.unavailable");
 });
 
-test("DispatchDecisionTrace with preemption applied", () => {
+test("DispatchDecisionTrace with preemption applied [index]", () => {
   const trace: DispatchDecisionTrace = {
     ticketId: "ticket_preempt",
     executionId: "exec_preempt",
@@ -301,7 +301,7 @@ test("DispatchDecisionTrace with preemption applied", () => {
 // CreateExecutionTicketInput Type Structure
 // =============================================================================
 
-test("CreateExecutionTicketInput minimal construction", () => {
+test("CreateExecutionTicketInput minimal construction [index]", () => {
   const input: CreateExecutionTicketInput = {
     executionId: "exec_minimal",
   };
@@ -310,7 +310,7 @@ test("CreateExecutionTicketInput minimal construction", () => {
   assert.equal(input.queueName, undefined);
 });
 
-test("CreateExecutionTicketInput full construction", () => {
+test("CreateExecutionTicketInput full construction [index]", () => {
   const input: CreateExecutionTicketInput = {
     executionId: "exec_full",
     priority: "high",
@@ -332,14 +332,14 @@ test("CreateExecutionTicketInput full construction", () => {
 // DispatchExecutionOptions Type Structure
 // =============================================================================
 
-test("DispatchExecutionOptions minimal construction", () => {
+test("DispatchExecutionOptions minimal construction [index]", () => {
   const input: DispatchExecutionOptions = {
     leaseTtlMs: 30000,
   };
   assert.equal(input.leaseTtlMs, 30000);
 });
 
-test("DispatchExecutionOptions full construction", () => {
+test("DispatchExecutionOptions full construction [index]", () => {
   const input: DispatchExecutionOptions = {
     queueName: "default",
     preferredWorkerId: "worker_preferred",
@@ -356,7 +356,7 @@ test("DispatchExecutionOptions full construction", () => {
 // DispatchQueueAvailabilitySnapshot Type Structure
 // =============================================================================
 
-test("DispatchQueueAvailabilitySnapshot available state", () => {
+test("DispatchQueueAvailabilitySnapshot available state [index]", () => {
   const snapshot: DispatchQueueAvailabilitySnapshot = {
     state: "available",
   };
@@ -364,7 +364,7 @@ test("DispatchQueueAvailabilitySnapshot available state", () => {
   assert.equal(snapshot.reasonCode, undefined);
 });
 
-test("DispatchQueueAvailabilitySnapshot unavailable state with reason", () => {
+test("DispatchQueueAvailabilitySnapshot unavailable state with reason [index]", () => {
   const snapshot: DispatchQueueAvailabilitySnapshot = {
     state: "unavailable",
     reasonCode: "queue_maintenance",
@@ -373,7 +373,7 @@ test("DispatchQueueAvailabilitySnapshot unavailable state with reason", () => {
   assert.equal(snapshot.reasonCode, "queue_maintenance");
 });
 
-test("DispatchQueueAvailabilitySnapshot degraded state", () => {
+test("DispatchQueueAvailabilitySnapshot degraded state [index]", () => {
   const snapshot: DispatchQueueAvailabilitySnapshot = {
     state: "degraded",
     reasonCode: "high_load",
@@ -386,7 +386,7 @@ test("DispatchQueueAvailabilitySnapshot degraded state", () => {
 // ExecutionTicketDecision Type Structure
 // =============================================================================
 
-test("ExecutionTicketDecision created outcome", () => {
+test("ExecutionTicketDecision created outcome [index]", () => {
   const decision: ExecutionTicketDecision = {
     outcome: "created",
     ticket: {
@@ -413,7 +413,7 @@ test("ExecutionTicketDecision created outcome", () => {
   assert.equal(decision.ticket.id, "ticket_new");
 });
 
-test("ExecutionTicketDecision exists outcome", () => {
+test("ExecutionTicketDecision exists outcome [index]", () => {
   const decision: ExecutionTicketDecision = {
     outcome: "exists",
     ticket: {
@@ -442,7 +442,7 @@ test("ExecutionTicketDecision exists outcome", () => {
 // DispatchExecutionDecision Type Structure
 // =============================================================================
 
-test("DispatchExecutionDecision no_ticket outcome", () => {
+test("DispatchExecutionDecision no_ticket outcome [index]", () => {
   const decision: DispatchExecutionDecision = {
     outcome: "no_ticket",
     reasonCode: null,
@@ -456,7 +456,7 @@ test("DispatchExecutionDecision no_ticket outcome", () => {
   assert.equal(decision.worker, null);
 });
 
-test("DispatchExecutionDecision no_worker outcome", () => {
+test("DispatchExecutionDecision no_worker outcome [index]", () => {
   const decision: DispatchExecutionDecision = {
     outcome: "no_worker",
     reasonCode: "no_eligible_workers",
@@ -490,7 +490,7 @@ test("DispatchExecutionDecision no_worker outcome", () => {
 // MultiStepToolDefinition Type
 // =============================================================================
 
-test("MultiStepToolDefinition structure", () => {
+test("MultiStepToolDefinition structure [index]", () => {
   const toolDef: MultiStepToolDefinition = {
     name: "test_tool",
     description: "A test tool for unit testing",
@@ -508,7 +508,7 @@ test("MultiStepToolDefinition structure", () => {
   assert.ok(toolDef.inputSchema.properties);
 });
 
-test("MultiStepToolDefinition with complex schema", () => {
+test("MultiStepToolDefinition with complex schema [index]", () => {
   const toolDef: MultiStepToolDefinition = {
     name: "complex_tool",
     description: "Tool with complex input schema",
@@ -542,7 +542,7 @@ test("MultiStepToolDefinition with complex schema", () => {
 // DispatchTarget Type Verification
 // =============================================================================
 
-test("DispatchTarget accepts all valid values", () => {
+test("DispatchTarget accepts all valid values [index]", () => {
   const targets: DispatchTarget[] = ["any", "local_only", "prefer_remote", "require_remote"];
   assert.equal(targets.length, 4);
 });
@@ -551,7 +551,7 @@ test("DispatchTarget accepts all valid values", () => {
 // WorkerIsolationLevel Type Verification
 // =============================================================================
 
-test("WorkerIsolationLevel accepts all valid values", () => {
+test("WorkerIsolationLevel accepts all valid values [index]", () => {
   const levels: WorkerIsolationLevel[] = ["standard", "hardened", "strict"];
   assert.equal(levels.length, 3);
 });
@@ -560,7 +560,7 @@ test("WorkerIsolationLevel accepts all valid values", () => {
 // TaskPriority Type Verification
 // =============================================================================
 
-test("TaskPriority accepts all standard values", () => {
+test("TaskPriority accepts all standard values [index]", () => {
   const priorities: TaskPriority[] = ["low", "normal", "high", "urgent"];
   assert.equal(priorities.length, 4);
 });

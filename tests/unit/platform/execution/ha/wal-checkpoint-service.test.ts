@@ -93,14 +93,14 @@ function createMockDatabase(): AuthoritativeSqlDatabase {
 // Constructor and defaults
 // ---------------------------------------------------------------------------
 
-test("WalCheckpointService constructor sets default config for HA_2", () => {
+test("WalCheckpointService constructor sets default config for HA_2 [wal-checkpoint-service]", () => {
   const db = createMockDatabase();
   const service = new WalCheckpointService({ db });
 
   assert.equal(service.isRunning(), false);
 });
 
-test("WalCheckpointService constructor respects walEnabled: false", () => {
+test("WalCheckpointService constructor respects walEnabled: false [wal-checkpoint-service]", () => {
   const db = createMockDatabase();
   const service = new WalCheckpointService({
     db,
@@ -111,7 +111,7 @@ test("WalCheckpointService constructor respects walEnabled: false", () => {
   assert.equal(service.isRunning(), false);
 });
 
-test("WalCheckpointService constructor accepts custom config overrides", () => {
+test("WalCheckpointService constructor accepts custom config overrides [wal-checkpoint-service]", () => {
   const db = createMockDatabase();
   const service = new WalCheckpointService({
     db,
@@ -123,7 +123,7 @@ test("WalCheckpointService constructor accepts custom config overrides", () => {
   assert.equal(service.isRunning(), false);
 });
 
-test("createWalCheckpointService is a factory that creates service", () => {
+test("createWalCheckpointService is a factory that creates service [wal-checkpoint-service]", () => {
   const db = createMockDatabase();
   const service = createWalCheckpointService({ db });
   assert.ok(service instanceof WalCheckpointService);
@@ -133,7 +133,7 @@ test("createWalCheckpointService is a factory that creates service", () => {
 // Schema initialization
 // ---------------------------------------------------------------------------
 
-test("WalCheckpointService initializeSchema executes DDL", () => {
+test("WalCheckpointService initializeSchema executes DDL [wal-checkpoint-service]", () => {
   const db = createMockDatabase();
   const service = new WalCheckpointService({ db });
 
@@ -146,7 +146,7 @@ test("WalCheckpointService initializeSchema executes DDL", () => {
 // start / stop / dispose
 // ---------------------------------------------------------------------------
 
-test("WalCheckpointService start enables checkpoint loop when walEnabled", () => {
+test("WalCheckpointService start enables checkpoint loop when walEnabled [wal-checkpoint-service]", () => {
   const db = createMockDatabase();
   const service = new WalCheckpointService({
     db,
@@ -162,7 +162,7 @@ test("WalCheckpointService start enables checkpoint loop when walEnabled", () =>
   assert.equal(service.isRunning(), false);
 });
 
-test("WalCheckpointService start does nothing when walEnabled is false", () => {
+test("WalCheckpointService start does nothing when walEnabled is false [wal-checkpoint-service]", () => {
   const db = createMockDatabase();
   const service = new WalCheckpointService({
     db,
@@ -173,7 +173,7 @@ test("WalCheckpointService start does nothing when walEnabled is false", () => {
   assert.equal(service.isRunning(), false);
 });
 
-test("WalCheckpointService stop clears interval handle", () => {
+test("WalCheckpointService stop clears interval handle [wal-checkpoint-service]", () => {
   const db = createMockDatabase();
   const service = new WalCheckpointService({
     db,
@@ -188,7 +188,7 @@ test("WalCheckpointService stop clears interval handle", () => {
   assert.equal(service.isRunning(), false);
 });
 
-test("WalCheckpointService dispose stops and marks as disposed", () => {
+test("WalCheckpointService dispose stops and marks as disposed [wal-checkpoint-service]", () => {
   const db = createMockDatabase();
   const service = new WalCheckpointService({
     db,
@@ -204,7 +204,7 @@ test("WalCheckpointService dispose stops and marks as disposed", () => {
   assert.equal(service.isRunning(), false);
 });
 
-test("WalCheckpointService start throws if already disposed", () => {
+test("WalCheckpointService start throws if already disposed [wal-checkpoint-service]", () => {
   const db = createMockDatabase();
   const service = new WalCheckpointService({ db });
 
@@ -216,7 +216,7 @@ test("WalCheckpointService start throws if already disposed", () => {
 // writeWalEntry
 // ---------------------------------------------------------------------------
 
-test("WalCheckpointService writeWalEntry throws when WAL disabled", () => {
+test("WalCheckpointService writeWalEntry throws when WAL disabled [wal-checkpoint-service]", () => {
   const db = createMockDatabase();
   const service = new WalCheckpointService({ db, haLevel: "HA_1" });
 
@@ -226,7 +226,7 @@ test("WalCheckpointService writeWalEntry throws when WAL disabled", () => {
   );
 });
 
-test("WalCheckpointService writeWalEntry throws when WAL disabled via config", () => {
+test("WalCheckpointService writeWalEntry throws when WAL disabled via config [wal-checkpoint-service]", () => {
   const db = createMockDatabase();
   const service = new WalCheckpointService({
     db,
@@ -239,7 +239,7 @@ test("WalCheckpointService writeWalEntry throws when WAL disabled via config", (
   );
 });
 
-test("WalCheckpointService writeWalEntry returns WalEntry with sequence number", () => {
+test("WalCheckpointService writeWalEntry returns WalEntry with sequence number [wal-checkpoint-service]", () => {
   const db = createMockDatabase();
   const service = new WalCheckpointService({
     db,
@@ -262,7 +262,7 @@ test("WalCheckpointService writeWalEntry returns WalEntry with sequence number",
   assert.deepStrictEqual(entry.payload, { key: "value" });
 });
 
-test("WalCheckpointService getLatestCheckpoint rejects non-object JSON state", () => {
+test("WalCheckpointService getLatestCheckpoint rejects non-object JSON state [wal-checkpoint-service]", () => {
   const db = {
     connection: {
       exec() {},
@@ -302,7 +302,7 @@ test("WalCheckpointService getLatestCheckpoint rejects non-object JSON state", (
   assert.throws(() => service.getLatestCheckpoint("exec-1"), /wal_checkpoint.invalid_state/);
 });
 
-test("WalCheckpointService resumes sequence numbers from persisted WAL state", () => {
+test("WalCheckpointService resumes sequence numbers from persisted WAL state [wal-checkpoint-service]", () => {
   const db = createMockDatabase();
   const firstService = new WalCheckpointService({
     db,
@@ -322,7 +322,7 @@ test("WalCheckpointService resumes sequence numbers from persisted WAL state", (
   assert.equal(resumedEntry.sequenceNumber, 3);
 });
 
-test("WalCheckpointService writeWalEntry increments sequence for each entry", () => {
+test("WalCheckpointService writeWalEntry increments sequence for each entry [wal-checkpoint-service]", () => {
   const db = createMockDatabase();
   const service = new WalCheckpointService({
     db,
@@ -339,7 +339,7 @@ test("WalCheckpointService writeWalEntry increments sequence for each entry", ()
   assert.equal(entry3.sequenceNumber, 3);
 });
 
-test("WalCheckpointService writeWalEntry handles optional fields as null", () => {
+test("WalCheckpointService writeWalEntry handles optional fields as null [wal-checkpoint-service]", () => {
   const db = createMockDatabase();
   const service = new WalCheckpointService({
     db,
@@ -362,7 +362,7 @@ test("WalCheckpointService writeWalEntry handles optional fields as null", () =>
 // createCheckpoint
 // ---------------------------------------------------------------------------
 
-test("WalCheckpointService createCheckpoint throws when WAL disabled", () => {
+test("WalCheckpointService createCheckpoint throws when WAL disabled [wal-checkpoint-service]", () => {
   const db = createMockDatabase();
   const service = new WalCheckpointService({ db, haLevel: "HA_1" });
 
@@ -372,7 +372,7 @@ test("WalCheckpointService createCheckpoint throws when WAL disabled", () => {
   );
 });
 
-test("WalCheckpointService createCheckpoint returns checkpoint with id", () => {
+test("WalCheckpointService createCheckpoint returns checkpoint with id [wal-checkpoint-service]", () => {
   const db = createMockDatabase();
   const service = new WalCheckpointService({
     db,
@@ -391,7 +391,7 @@ test("WalCheckpointService createCheckpoint returns checkpoint with id", () => {
   assert.ok(checkpoint.lastWalSequence >= 0);
 });
 
-test("WalCheckpointService createCheckpoint captures lastWalSequence", () => {
+test("WalCheckpointService createCheckpoint captures lastWalSequence [wal-checkpoint-service]", () => {
   const db = createMockDatabase();
   const service = new WalCheckpointService({
     db,
@@ -410,7 +410,7 @@ test("WalCheckpointService createCheckpoint captures lastWalSequence", () => {
   assert.equal(checkpoint.lastWalSequence, 2);
 });
 
-test("WalCheckpointService createCheckpoint stores metadata", () => {
+test("WalCheckpointService createCheckpoint stores metadata [wal-checkpoint-service]", () => {
   const db = createMockDatabase();
   const service = new WalCheckpointService({
     db,
@@ -431,7 +431,7 @@ test("WalCheckpointService createCheckpoint stores metadata", () => {
 // getLatestCheckpoint
 // ---------------------------------------------------------------------------
 
-test("WalCheckpointService getLatestCheckpoint returns null when no checkpoint", () => {
+test("WalCheckpointService getLatestCheckpoint returns null when no checkpoint [wal-checkpoint-service]", () => {
   const db = createMockDatabase();
   const service = new WalCheckpointService({ db });
 
@@ -443,7 +443,7 @@ test("WalCheckpointService getLatestCheckpoint returns null when no checkpoint",
 // replayWal
 // ---------------------------------------------------------------------------
 
-test("WalCheckpointService replayWal throws when eventReplayEnabled is false", async () => {
+test("WalCheckpointService replayWal throws when eventReplayEnabled is false [wal-checkpoint-service]", async () => {
   const db = createMockDatabase();
   const service = new WalCheckpointService({
     db,
@@ -460,7 +460,7 @@ test("WalCheckpointService replayWal throws when eventReplayEnabled is false", a
 // replayEvents
 // ---------------------------------------------------------------------------
 
-test("WalCheckpointService replayEvents returns a Promise when eventReplayEnabled is false", async () => {
+test("WalCheckpointService replayEvents returns a Promise when eventReplayEnabled is false [wal-checkpoint-service]", async () => {
   const db = createMockDatabase();
   const service = new WalCheckpointService({
     db,
@@ -476,7 +476,7 @@ test("WalCheckpointService replayEvents returns a Promise when eventReplayEnable
 // pruneOldEntries
 // ---------------------------------------------------------------------------
 
-test("WalCheckpointService pruneOldEntries returns counts even when no data", () => {
+test("WalCheckpointService pruneOldEntries returns counts even when no data [wal-checkpoint-service]", () => {
   const db = createMockDatabase();
   const service = new WalCheckpointService({ db });
 
@@ -490,7 +490,7 @@ test("WalCheckpointService pruneOldEntries returns counts even when no data", ()
 // getMetrics
 // ---------------------------------------------------------------------------
 
-test("WalCheckpointService getMetrics returns initialized metrics object", () => {
+test("WalCheckpointService getMetrics returns initialized metrics object [wal-checkpoint-service]", () => {
   const db = createMockDatabase();
   const service = new WalCheckpointService({ db });
 
@@ -502,7 +502,7 @@ test("WalCheckpointService getMetrics returns initialized metrics object", () =>
   assert.equal(metrics.eventsReplayed, 0);
 });
 
-test("WalCheckpointService getMetrics increments after operations", () => {
+test("WalCheckpointService getMetrics increments after operations [wal-checkpoint-service]", () => {
   const db = createMockDatabase();
   const service = new WalCheckpointService({
     db,
@@ -524,7 +524,7 @@ test("WalCheckpointService getMetrics increments after operations", () => {
 // onCheckpointCreated callback
 // ---------------------------------------------------------------------------
 
-test("WalCheckpointService calls onCheckpointCreated callback when provided", () => {
+test("WalCheckpointService calls onCheckpointCreated callback when provided [wal-checkpoint-service]", () => {
   const db = createMockDatabase();
   let callbackCalled = false;
   let capturedCheckpoint: ReturnType<typeof service.createCheckpoint> | null = null;
@@ -553,7 +553,7 @@ test("WalCheckpointService calls onCheckpointCreated callback when provided", ()
 // onWalEntryWritten callback
 // ---------------------------------------------------------------------------
 
-test("WalCheckpointService calls onWalEntryWritten callback when provided", () => {
+test("WalCheckpointService calls onWalEntryWritten callback when provided [wal-checkpoint-service]", () => {
   const db = createMockDatabase();
   let entries: ReturnType<typeof service.writeWalEntry>[] = [];
 
@@ -578,7 +578,7 @@ test("WalCheckpointService calls onWalEntryWritten callback when provided", () =
 // WAL_CHECKPOINT_DDL constant
 // ---------------------------------------------------------------------------
 
-test("WAL_CHECKPOINT_DDL contains required table definitions", () => {
+test("WAL_CHECKPOINT_DDL contains required table definitions [wal-checkpoint-service]", () => {
   assert.ok(WAL_CHECKPOINT_DDL.includes("CREATE TABLE IF NOT EXISTS wal_entries"));
   assert.ok(WAL_CHECKPOINT_DDL.includes("CREATE TABLE IF NOT EXISTS checkpoints"));
   assert.ok(WAL_CHECKPOINT_DDL.includes("CREATE TABLE IF NOT EXISTS event_replay_positions"));
@@ -590,7 +590,7 @@ test("WAL_CHECKPOINT_DDL contains required table definitions", () => {
 // getReplayPosition / saveReplayPosition
 // ---------------------------------------------------------------------------
 
-test("WalCheckpointService getReplayPosition returns null when no position saved", () => {
+test("WalCheckpointService getReplayPosition returns null when no position saved [wal-checkpoint-service]", () => {
   const db = createMockDatabase();
   const service = new WalCheckpointService({ db });
 
@@ -598,7 +598,7 @@ test("WalCheckpointService getReplayPosition returns null when no position saved
   assert.equal(result, null);
 });
 
-test("WalCheckpointService saveReplayPosition and getReplayPosition round-trip", () => {
+test("WalCheckpointService saveReplayPosition and getReplayPosition round-trip [wal-checkpoint-service]", () => {
   const db = createMockDatabase();
   const service = new WalCheckpointService({ db });
 
@@ -621,7 +621,7 @@ test("WalCheckpointService saveReplayPosition and getReplayPosition round-trip",
 // WAL entry types are valid
 // ---------------------------------------------------------------------------
 
-test("WalCheckpointService accepts all documented WalEntryType values", () => {
+test("WalCheckpointService accepts all documented WalEntryType values [wal-checkpoint-service]", () => {
   const db = createMockDatabase();
   const service = new WalCheckpointService({
     db,
@@ -651,7 +651,7 @@ test("WalCheckpointService accepts all documented WalEntryType values", () => {
 // Getter methods for configuration
 // ---------------------------------------------------------------------------
 
-test("WalCheckpointService isRunning returns false before start", () => {
+test("WalCheckpointService isRunning returns false before start [wal-checkpoint-service]", () => {
   const db = createMockDatabase();
   const service = new WalCheckpointService({
     db,
@@ -662,7 +662,7 @@ test("WalCheckpointService isRunning returns false before start", () => {
   assert.equal(service.isRunning(), false);
 });
 
-test("WalCheckpointService isRunning returns false after stop", () => {
+test("WalCheckpointService isRunning returns false after stop [wal-checkpoint-service]", () => {
   const db = createMockDatabase();
   const service = new WalCheckpointService({
     db,

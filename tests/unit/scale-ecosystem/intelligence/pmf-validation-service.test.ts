@@ -89,7 +89,7 @@ function makeReportRecord(overrides: Partial<PmfValidationReportRecord> = {}): P
   };
 }
 
-test("DEFAULT_PMF_THRESHOLDS has expected structure", () => {
+test("DEFAULT_PMF_THRESHOLDS has expected structure [pmf-validation-service]", () => {
   assert.ok(DEFAULT_PMF_THRESHOLDS.minTaskCount > 0);
   assert.ok(DEFAULT_PMF_THRESHOLDS.minSessionCount > 0);
   assert.ok(DEFAULT_PMF_THRESHOLDS.minTaskSuccessRatePct >= 0);
@@ -100,12 +100,12 @@ test("DEFAULT_PMF_THRESHOLDS has expected structure", () => {
   assert.ok(DEFAULT_PMF_THRESHOLDS.maxP95StepDurationMs > 0);
 });
 
-test("PmfValidationService can be instantiated", () => {
+test("PmfValidationService can be instantiated [pmf-validation-service]", () => {
   const service = createService();
   assert.ok(service);
 });
 
-test("PmfValidationService runValidation returns report and record", () => {
+test("PmfValidationService runValidation returns report and record [pmf-validation-service]", () => {
   const mockStore = createMockStore();
   const service = createService(createMockDb(), mockStore);
 
@@ -119,7 +119,7 @@ test("PmfValidationService runValidation returns report and record", () => {
   assert.ok(result.report.metrics);
 });
 
-test("PmfValidationService buildReport returns valid report structure", () => {
+test("PmfValidationService buildReport returns valid report structure [pmf-validation-service]", () => {
   const service = createService();
 
   const report = service.buildReport({});
@@ -137,25 +137,25 @@ test("PmfValidationService buildReport returns valid report structure", () => {
   assert.ok(report.metrics);
 });
 
-test("PmfValidationService buildReport accepts custom window days", () => {
+test("PmfValidationService buildReport accepts custom window days [pmf-validation-service]", () => {
   const service = createService();
   const report = service.buildReport({ windowDays: 30 });
   assert.equal(report.window.days, 30);
 });
 
-test("PmfValidationService buildReport accepts custom profile name", () => {
+test("PmfValidationService buildReport accepts custom profile name [pmf-validation-service]", () => {
   const service = createService();
   const report = service.buildReport({ profileName: "custom_profile" });
   assert.equal(report.profileName, "custom_profile");
 });
 
-test("PmfValidationService buildReport accepts custom division id", () => {
+test("PmfValidationService buildReport accepts custom division id [pmf-validation-service]", () => {
   const service = createService();
   const report = service.buildReport({ divisionId: "engineering" });
   assert.equal(report.divisionId, "engineering");
 });
 
-test("PmfValidationService buildReport calculates checks correctly for pass", () => {
+test("PmfValidationService buildReport calculates checks correctly for pass [pmf-validation-service]", () => {
   const mockDb = createMockDb();
   mockDb.connection.prepare = (sql) => ({
     get: () => {
@@ -196,7 +196,7 @@ test("PmfValidationService buildReport calculates checks correctly for pass", ()
   assert.equal(sampleSizeCheck.status, "pass");
 });
 
-test("PmfValidationService buildReport handles null metrics gracefully", () => {
+test("PmfValidationService buildReport handles null metrics gracefully [pmf-validation-service]", () => {
   const mockDb = createMockDb();
   mockDb.connection.prepare = () => ({
     get: () => null,
@@ -209,7 +209,7 @@ test("PmfValidationService buildReport handles null metrics gracefully", () => {
   assert.equal(report.verdict, "fail");
 });
 
-test("PmfValidationService exportValidation returns artifacts", () => {
+test("PmfValidationService exportValidation returns artifacts [pmf-validation-service]", () => {
   const mockStore = createMockStore();
   const mockDb = createMockDb();
   mockDb.connection.prepare = () => ({
@@ -225,7 +225,7 @@ test("PmfValidationService exportValidation returns artifacts", () => {
   assert.ok(result.record);
 });
 
-test("PmfValidationService listHistory returns reports", () => {
+test("PmfValidationService listHistory returns reports [pmf-validation-service]", () => {
   const mockStore = createMockStore();
   mockStore.operations.listPmfValidationReports = () => [
     makeReportRecord({ id: "report_1" }),
@@ -236,7 +236,7 @@ test("PmfValidationService listHistory returns reports", () => {
   assert.equal(history.length, 2);
 });
 
-test("PmfValidationService getLatest returns most recent report", () => {
+test("PmfValidationService getLatest returns most recent report [pmf-validation-service]", () => {
   const mockStore = createMockStore();
   mockStore.operations.getLatestPmfValidationReport = () => makeReportRecord({ id: "report_latest" });
 
@@ -246,7 +246,7 @@ test("PmfValidationService getLatest returns most recent report", () => {
   assert.equal(latest.id, "report_latest");
 });
 
-test("PmfValidationService getLatest with profile returns filtered report", () => {
+test("PmfValidationService getLatest with profile returns filtered report [pmf-validation-service]", () => {
   const mockStore = createMockStore();
   mockStore.operations.getLatestPmfValidationReport = () => makeReportRecord({ id: "report_production" });
 
@@ -254,7 +254,7 @@ test("PmfValidationService getLatest with profile returns filtered report", () =
   assert.ok(latest);
 });
 
-test("PmfValidationService getLatest returns null when no reports", () => {
+test("PmfValidationService getLatest returns null when no reports [pmf-validation-service]", () => {
   const mockStore = createMockStore();
   mockStore.operations.getLatestPmfValidationReport = () => null;
 
@@ -262,7 +262,7 @@ test("PmfValidationService getLatest returns null when no reports", () => {
   assert.equal(latest, null);
 });
 
-test("PmfValidationService buildReport with custom thresholds", () => {
+test("PmfValidationService buildReport with custom thresholds [pmf-validation-service]", () => {
   const report = createService().buildReport({
     thresholds: {
       ...DEFAULT_PMF_THRESHOLDS,
@@ -274,7 +274,7 @@ test("PmfValidationService buildReport with custom thresholds", () => {
   assert.ok(report);
 });
 
-test("PmfValidationService verdict is fail when sample size insufficient", () => {
+test("PmfValidationService verdict is fail when sample size insufficient [pmf-validation-service]", () => {
   const mockDb = createMockDb();
   mockDb.connection.prepare = () => ({
     get: () => ({
@@ -295,14 +295,14 @@ test("PmfValidationService verdict is fail when sample size insufficient", () =>
   assert.equal(report.verdict, "fail");
 });
 
-test("PmfValidationService check IDs are unique", () => {
+test("PmfValidationService check IDs are unique [pmf-validation-service]", () => {
   const report = createService().buildReport({});
   const checkIds = report.checks.map((check) => check.checkId);
   const uniqueIds = new Set(checkIds);
   assert.equal(checkIds.length, uniqueIds.size);
 });
 
-test("PmfValidationService checks cover all expected metric types", () => {
+test("PmfValidationService checks cover all expected metric types [pmf-validation-service]", () => {
   const report = createService().buildReport({});
   const expectedChecks = [
     "sample_size",
@@ -319,7 +319,7 @@ test("PmfValidationService checks cover all expected metric types", () => {
   }
 });
 
-test("PmfValidationService each check has required fields", () => {
+test("PmfValidationService each check has required fields [pmf-validation-service]", () => {
   const report = createService().buildReport({});
 
   for (const check of report.checks) {
@@ -332,7 +332,7 @@ test("PmfValidationService each check has required fields", () => {
   }
 });
 
-test("PmfValidationService metrics are all numbers or null", () => {
+test("PmfValidationService metrics are all numbers or null [pmf-validation-service]", () => {
   const report = createService().buildReport({});
   const numericMetrics = [
     report.metrics.taskCount,
@@ -351,7 +351,7 @@ test("PmfValidationService metrics are all numbers or null", () => {
   }
 });
 
-test("PmfValidationService report can be converted to record", () => {
+test("PmfValidationService report can be converted to record [pmf-validation-service]", () => {
   const mockStore = createMockStore();
   mockStore.operations.insertPmfValidationReport = (record) => {
     assert.ok(record.id);

@@ -29,20 +29,20 @@ import {
 // Tests: WAL_CHECKPOINT_DDL
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("WAL_CHECKPOINT_DDL contains required tables", () => {
+test("WAL_CHECKPOINT_DDL contains required tables [ha]", () => {
   assert.ok(WAL_CHECKPOINT_DDL.includes("wal_entries"));
   assert.ok(WAL_CHECKPOINT_DDL.includes("checkpoints"));
   assert.ok(WAL_CHECKPOINT_DDL.includes("event_replay_positions"));
   assert.ok(WAL_CHECKPOINT_DDL.includes("idx_wal_entries_sequence"));
 });
 
-test("WAL_CHECKPOINT_DDL has correct schema for wal_entries", () => {
+test("WAL_CHECKPOINT_DDL has correct schema for wal_entries [ha]", () => {
   assert.ok(WAL_CHECKPOINT_DDL.includes("entry_type TEXT NOT NULL"));
   assert.ok(WAL_CHECKPOINT_DDL.includes("sequence_number INTEGER NOT NULL"));
   assert.ok(WAL_CHECKPOINT_DDL.includes("checkpoint_id TEXT"));
 });
 
-test("WAL_CHECKPOINT_DDL has correct schema for checkpoints", () => {
+test("WAL_CHECKPOINT_DDL has correct schema for checkpoints [ha]", () => {
   assert.ok(WAL_CHECKPOINT_DDL.includes("execution_id TEXT NOT NULL"));
   assert.ok(WAL_CHECKPOINT_DDL.includes("last_wal_sequence INTEGER NOT NULL"));
 });
@@ -51,33 +51,33 @@ test("WAL_CHECKPOINT_DDL has correct schema for checkpoints", () => {
 // Tests: HA_COORDINATOR_DDL
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("HA_COORDINATOR_DDL contains coordinator_nodes table", () => {
+test("HA_COORDINATOR_DDL contains coordinator_nodes table [ha]", () => {
   assert.ok(HA_COORDINATOR_DDL.includes("coordinator_nodes"));
   assert.ok(HA_COORDINATOR_DDL.includes("node_id TEXT PRIMARY KEY"));
   assert.ok(HA_COORDINATOR_DDL.includes("region TEXT NOT NULL"));
   assert.ok(HA_COORDINATOR_DDL.includes("is_leader INTEGER NOT NULL DEFAULT 0"));
 });
 
-test("HA_COORDINATOR_DDL contains leadership_leases table", () => {
+test("HA_COORDINATOR_DDL contains leadership_leases table [ha]", () => {
   assert.ok(HA_COORDINATOR_DDL.includes("leadership_leases"));
   assert.ok(HA_COORDINATOR_DDL.includes("lease_id TEXT PRIMARY KEY"));
   assert.ok(HA_COORDINATOR_DDL.includes("epoch INTEGER NOT NULL"));
   assert.ok(HA_COORDINATOR_DDL.includes("fencing_token INTEGER NOT NULL DEFAULT 1"));
 });
 
-test("HA_COORDINATOR_DDL contains leadership_epochs table", () => {
+test("HA_COORDINATOR_DDL contains leadership_epochs table [ha]", () => {
   assert.ok(HA_COORDINATOR_DDL.includes("leadership_epochs"));
   assert.ok(HA_COORDINATOR_DDL.includes("epoch INTEGER PRIMARY KEY"));
   assert.ok(HA_COORDINATOR_DDL.includes("cause TEXT NOT NULL"));
 });
 
-test("HA_COORDINATOR_DDL contains failover_decisions table", () => {
+test("HA_COORDINATOR_DDL contains failover_decisions table [ha]", () => {
   assert.ok(HA_COORDINATOR_DDL.includes("failover_decisions"));
   assert.ok(HA_COORDINATOR_DDL.includes("decision_id TEXT PRIMARY KEY"));
   assert.ok(HA_COORDINATOR_DDL.includes("outcome TEXT NOT NULL"));
 });
 
-test("HA_COORDINATOR_DDL contains leader_action_audit table", () => {
+test("HA_COORDINATOR_DDL contains leader_action_audit table [ha]", () => {
   assert.ok(HA_COORDINATOR_DDL.includes("leader_action_audit"));
   assert.ok(HA_COORDINATOR_DDL.includes("authorized INTEGER NOT NULL"));
   assert.ok(HA_COORDINATOR_DDL.includes("reason_code TEXT NOT NULL"));
@@ -87,7 +87,7 @@ test("HA_COORDINATOR_DDL contains leader_action_audit table", () => {
 // Tests: CROSS_REGION_DDL
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("CROSS_REGION_DDL contains required tables", () => {
+test("CROSS_REGION_DDL contains required tables [ha]", () => {
   assert.ok(CROSS_REGION_DDL.includes("regions"));
   assert.ok(CROSS_REGION_DDL.includes("region_topologies"));
   assert.ok(CROSS_REGION_DDL.includes("traffic_weights"));
@@ -95,13 +95,13 @@ test("CROSS_REGION_DDL contains required tables", () => {
   assert.ok(CROSS_REGION_DDL.includes("failover_plans"));
 });
 
-test("CROSS_REGION_DDL regions table has correct schema", () => {
+test("CROSS_REGION_DDL regions table has correct schema [ha]", () => {
   assert.ok(CROSS_REGION_DDL.includes("region_id TEXT PRIMARY KEY"));
   assert.ok(CROSS_REGION_DDL.includes("health_score REAL NOT NULL DEFAULT 100"));
   assert.ok(CROSS_REGION_DDL.includes("max_concurrency INTEGER NOT NULL DEFAULT 1000"));
 });
 
-test("CROSS_REGION_DDL failover_plans table has correct schema", () => {
+test("CROSS_REGION_DDL failover_plans table has correct schema [ha]", () => {
   assert.ok(CROSS_REGION_DDL.includes("source_region_id TEXT NOT NULL"));
   assert.ok(CROSS_REGION_DDL.includes("steps_json TEXT NOT NULL"));
 });
@@ -110,23 +110,23 @@ test("CROSS_REGION_DDL failover_plans table has correct schema", () => {
 // Tests: HA Level Constants
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("DEFAULT_LEASE_TTL_MS is 15000", () => {
+test("DEFAULT_LEASE_TTL_MS is 15000 [ha]", () => {
   assert.equal(DEFAULT_LEASE_TTL_MS, 15_000);
 });
 
-test("MIN_LEASE_TTL_MS is 5000", () => {
+test("MIN_LEASE_TTL_MS is 5000 [ha]", () => {
   assert.equal(MIN_LEASE_TTL_MS, 5_000);
 });
 
-test("MAX_LEASE_TTL_MS is 60000", () => {
+test("MAX_LEASE_TTL_MS is 60000 [ha]", () => {
   assert.equal(MAX_LEASE_TTL_MS, 60_000);
 });
 
-test("EPOCH_FENCING_TOKEN_START is 1", () => {
+test("EPOCH_FENCING_TOKEN_START is 1 [ha]", () => {
   assert.equal(EPOCH_FENCING_TOKEN_START, 1);
 });
 
-test("TTL constants are defined correctly", () => {
+test("TTL constants are defined correctly [ha]", () => {
   assert.equal(DEFAULT_LEASE_TTL_MS, 15_000);
   assert.equal(MIN_LEASE_TTL_MS, 5_000);
   assert.equal(MAX_LEASE_TTL_MS, 60_000);
@@ -136,13 +136,13 @@ test("TTL constants are defined correctly", () => {
 // Tests: HA_LEVEL_CONFIGS
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("HA_LEVEL_CONFIGS has all three levels", () => {
+test("HA_LEVEL_CONFIGS has all three levels [ha]", () => {
   assert.ok(HA_LEVEL_CONFIGS.HA_1 !== undefined);
   assert.ok(HA_LEVEL_CONFIGS.HA_2 !== undefined);
   assert.ok(HA_LEVEL_CONFIGS.HA_3 !== undefined);
 });
 
-test("HA_1 config disables redundancy features", () => {
+test("HA_1 config disables redundancy features [ha]", () => {
   const config = HA_LEVEL_CONFIGS.HA_1;
   assert.equal(config.haLevel, "HA_1");
   assert.equal(config.leaseRenewalIntervalMs, 0);
@@ -152,13 +152,13 @@ test("HA_1 config disables redundancy features", () => {
   assert.equal(config.eventReplayEnabled, false);
 });
 
-test("HA_1 config has appropriate stuck run thresholds", () => {
+test("HA_1 config has appropriate stuck run thresholds [ha]", () => {
   const config = HA_LEVEL_CONFIGS.HA_1;
   assert.equal(config.stuckRunSweeperIntervalMs, 300_000); // 5 minutes
   assert.equal(config.stuckRunThresholdMs, 3_600_000); // 60 minutes
 });
 
-test("HA_2 config enables basic HA features", () => {
+test("HA_2 config enables basic HA features [ha]", () => {
   const config = HA_LEVEL_CONFIGS.HA_2;
   assert.equal(config.haLevel, "HA_2");
   assert.equal(config.leaseRenewalIntervalMs, 5_000);
@@ -169,7 +169,7 @@ test("HA_2 config enables basic HA features", () => {
   assert.equal(config.eventReplayEnabled, true);
 });
 
-test("HA_2 config has intermediate thresholds", () => {
+test("HA_2 config has intermediate thresholds [ha]", () => {
   const config = HA_LEVEL_CONFIGS.HA_2;
   assert.equal(config.stuckRunSweeperIntervalMs, 60_000); // 1 minute
   assert.equal(config.stuckRunThresholdMs, 1_800_000); // 30 minutes
@@ -177,7 +177,7 @@ test("HA_2 config has intermediate thresholds", () => {
   assert.equal(config.walRetentionMs, 86_400_000); // 24 hours
 });
 
-test("HA_3 config enables full HA features", () => {
+test("HA_3 config enables full HA features [ha]", () => {
   const config = HA_LEVEL_CONFIGS.HA_3;
   assert.equal(config.haLevel, "HA_3");
   assert.equal(config.leaseRenewalIntervalMs, 3_000);
@@ -188,7 +188,7 @@ test("HA_3 config enables full HA features", () => {
   assert.equal(config.eventReplayEnabled, true);
 });
 
-test("HA_3 config has aggressive thresholds", () => {
+test("HA_3 config has aggressive thresholds [ha]", () => {
   const config = HA_LEVEL_CONFIGS.HA_3;
   assert.equal(config.stuckRunSweeperIntervalMs, 30_000); // 30 seconds
   assert.equal(config.stuckRunThresholdMs, 600_000); // 10 minutes
@@ -196,7 +196,7 @@ test("HA_3 config has aggressive thresholds", () => {
   assert.equal(config.walRetentionMs, 604_800_000); // 7 days
 });
 
-test("HA levels have increasing aggressiveness", () => {
+test("HA levels have increasing aggressiveness [ha]", () => {
   const ha1 = HA_LEVEL_CONFIGS.HA_1;
   const ha2 = HA_LEVEL_CONFIGS.HA_2;
   const ha3 = HA_LEVEL_CONFIGS.HA_3;
@@ -217,22 +217,22 @@ test("HA levels have increasing aggressiveness", () => {
 // Tests: Type definitions
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("CoordinatorNodeStatus is a union type", () => {
+test("CoordinatorNodeStatus is a union type [ha]", () => {
   const statuses: CoordinatorNodeStatus[] = ["active", "draining", "offline"];
   assert.deepEqual(statuses, ["active", "draining", "offline"]);
 });
 
-test("HaLevel is a union type", () => {
+test("HaLevel is a union type [ha]", () => {
   const levels: HaLevel[] = ["HA_1", "HA_2", "HA_3"];
   assert.deepEqual(levels, ["HA_1", "HA_2", "HA_3"]);
 });
 
-test("LeaderActionAuthority is a union type", () => {
+test("LeaderActionAuthority is a union type [ha]", () => {
   const authorities: LeaderActionAuthority[] = ["leader_only", "follower_allowed", "any"];
   assert.deepEqual(authorities, ["leader_only", "follower_allowed", "any"]);
 });
 
-test("HaLevelConfig has all required fields", () => {
+test("HaLevelConfig has all required fields [ha]", () => {
   const config = HA_LEVEL_CONFIGS.HA_2;
   assert.ok("haLevel" in config);
   assert.ok("leaseRenewalIntervalMs" in config);
@@ -247,27 +247,27 @@ test("HaLevelConfig has all required fields", () => {
   assert.ok("eventReplayEnabled" in config);
 });
 
-test("LeaderLease status is a valid union", () => {
+test("LeaderLease status is a valid union [ha]", () => {
   const statuses: LeaderLease["status"][] = ["active", "expired", "released", "transferred"];
   assert.deepEqual(statuses, ["active", "expired", "released", "transferred"]);
 });
 
-test("LeadershipEpoch cause is a valid union", () => {
+test("LeadershipEpoch cause is a valid union [ha]", () => {
   const causes: LeadershipEpoch["cause"][] = ["acquired", "renewed", "expired", "preempted", "voluntary"];
   assert.deepEqual(causes, ["acquired", "renewed", "expired", "preempted", "voluntary"]);
 });
 
-test("FailoverDecision outcome is a valid union", () => {
+test("FailoverDecision outcome is a valid union [ha]", () => {
   const outcomes: FailoverDecision["outcome"][] = ["leader_changed", "no_change", "no_candidate"];
   assert.deepEqual(outcomes, ["leader_changed", "no_change", "no_candidate"]);
 });
 
-test("FailoverDecision cause is a valid union", () => {
+test("FailoverDecision cause is a valid union [ha]", () => {
   const causes: FailoverDecision["cause"][] = ["heartbeat_missing", "node_unhealthy", "voluntary", "operator_forced", "epoch_preempted"];
   assert.deepEqual(causes, ["heartbeat_missing", "node_unhealthy", "voluntary", "operator_forced", "epoch_preempted"]);
 });
 
-test("LeadershipQueryResult has expected shape", () => {
+test("LeadershipQueryResult has expected shape [ha]", () => {
   const result: LeadershipQueryResult = {
     isLeader: false,
     leaderNodeId: null,
@@ -283,7 +283,7 @@ test("LeadershipQueryResult has expected shape", () => {
   assert.equal(result.isExpired, true);
 });
 
-test("LeaderActionAuthorization has expected shape", () => {
+test("LeaderActionAuthorization has expected shape [ha]", () => {
   const auth: LeaderActionAuthorization = {
     authorized: false,
     authority: "leader_only",

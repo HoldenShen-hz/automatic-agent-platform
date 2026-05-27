@@ -27,7 +27,7 @@ function createTestPool(overrides: Partial<ResourcePool> = {}): ResourcePool {
   };
 }
 
-test("ResourcePoolService multiple consumers share pool correctly", () => {
+test("ResourcePoolService multiple consumers share pool correctly [resource-pool-service-edge-cases]", () => {
   const service = new ResourcePoolService();
   service.registerPool(createTestPool({ capacityUnits: 100, burstUnits: 20 }));
 
@@ -43,7 +43,7 @@ test("ResourcePoolService multiple consumers share pool correctly", () => {
   assert.deepEqual(alloc3.reasonCodes, ["resource_pool.allocated"]);
 });
 
-test("ResourcePoolService allocate exactly uses remaining capacity", () => {
+test("ResourcePoolService allocate exactly uses remaining capacity [resource-pool-service-edge-cases]", () => {
   const service = new ResourcePoolService();
   service.registerPool(createTestPool({ capacityUnits: 100, burstUnits: 20 }));
 
@@ -55,7 +55,7 @@ test("ResourcePoolService allocate exactly uses remaining capacity", () => {
   assert.equal(alloc2.units, 20);
 });
 
-test("ResourcePoolService allocate at capacity boundary", () => {
+test("ResourcePoolService allocate at capacity boundary [resource-pool-service-edge-cases]", () => {
   const service = new ResourcePoolService();
   service.registerPool(createTestPool({ capacityUnits: 100, allocatedUnits: 80, burstUnits: 20 }));
 
@@ -65,7 +65,7 @@ test("ResourcePoolService allocate at capacity boundary", () => {
   assert.equal(alloc.granted, true);
 });
 
-test("ResourcePoolService release then reallocate", () => {
+test("ResourcePoolService release then reallocate [resource-pool-service-edge-cases]", () => {
   const service = new ResourcePoolService();
   service.registerPool(createTestPool({ capacityUnits: 100, allocatedUnits: 60 }));
 
@@ -76,7 +76,7 @@ test("ResourcePoolService release then reallocate", () => {
   assert.equal(alloc.units, 100);
 });
 
-test("ResourcePoolService release zero does nothing", () => {
+test("ResourcePoolService release zero does nothing [resource-pool-service-edge-cases]", () => {
   const service = new ResourcePoolService();
   service.registerPool(createTestPool({ capacityUnits: 100, allocatedUnits: 50 }));
 
@@ -85,7 +85,7 @@ test("ResourcePoolService release zero does nothing", () => {
   assert.equal(pool.allocatedUnits, 50);
 });
 
-test("ResourcePoolService allocate zero units succeeds", () => {
+test("ResourcePoolService allocate zero units succeeds [resource-pool-service-edge-cases]", () => {
   const service = new ResourcePoolService();
   service.registerPool(createTestPool({ capacityUnits: 100 }));
 
@@ -95,7 +95,7 @@ test("ResourcePoolService allocate zero units succeeds", () => {
   assert.equal(alloc.units, 0);
 });
 
-test("ResourcePoolService registerPool overwrites existing pool", () => {
+test("ResourcePoolService registerPool overwrites existing pool [resource-pool-service-edge-cases]", () => {
   const service = new ResourcePoolService();
   service.registerPool(createTestPool({ poolId: "pool-1", capacityUnits: 100 }));
   service.registerPool(createTestPool({ poolId: "pool-1", capacityUnits: 200 }));
@@ -105,7 +105,7 @@ test("ResourcePoolService registerPool overwrites existing pool", () => {
   assert.equal(pool?.capacityUnits, 200);
 });
 
-test("ResourcePoolService getPool returns null for unregistered pool", () => {
+test("ResourcePoolService getPool returns null for unregistered pool [resource-pool-service-edge-cases]", () => {
   const service = new ResourcePoolService();
 
   const pool = service.getPool("nonexistent");
@@ -113,7 +113,7 @@ test("ResourcePoolService getPool returns null for unregistered pool", () => {
   assert.equal(pool, null);
 });
 
-test("ResourcePoolService allocate with burst only pool", () => {
+test("ResourcePoolService allocate with burst only pool [resource-pool-service-edge-cases]", () => {
   const service = new ResourcePoolService();
   service.registerPool(createTestPool({ capacityUnits: 0, burstUnits: 50 }));
 
@@ -122,7 +122,7 @@ test("ResourcePoolService allocate with burst only pool", () => {
   assert.equal(alloc.granted, true);
 });
 
-test("ResourcePoolService full release with excessive units", () => {
+test("ResourcePoolService full release with excessive units [resource-pool-service-edge-cases]", () => {
   const service = new ResourcePoolService();
   service.registerPool(createTestPool({ capacityUnits: 100, allocatedUnits: 30 }));
 

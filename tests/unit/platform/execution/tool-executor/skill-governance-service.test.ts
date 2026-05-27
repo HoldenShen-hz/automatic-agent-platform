@@ -47,17 +47,17 @@ const createMockStore = () => {
   };
 };
 
-test("computeSkillHealth returns 0.5 for never-executed skills", () => {
+test("computeSkillHealth returns 0.5 for never-executed skills [skill-governance-service]", () => {
   const health = computeSkillHealth(0, 0);
   assert.equal(health, 0.5);
 });
 
-test("computeSkillHealth converges toward success rate for executed skills", () => {
+test("computeSkillHealth converges toward success rate for executed skills [skill-governance-service]", () => {
   const health = computeSkillHealth(100, 0.9);
   assert.ok(Math.abs(health - 0.8921568627450981) < 1e-12);
 });
 
-test("computeSkillHealth uses smoothing for sparse samples and converges at scale", () => {
+test("computeSkillHealth uses smoothing for sparse samples and converges at scale [skill-governance-service]", () => {
   const lowSampleHealth = computeSkillHealth(1, 1);
   assert.equal(lowSampleHealth, 2 / 3);
 
@@ -65,11 +65,11 @@ test("computeSkillHealth uses smoothing for sparse samples and converges at scal
   assert.ok(Math.abs(health - 0.5) < 0.001);
 });
 
-test("skill governance schema constrains skill ids at the database layer", () => {
+test("skill governance schema constrains skill ids at the database layer [skill-governance-service]", () => {
   assert.match(SKILL_GOVERNANCE_FOUNDATION_SQL, /skill_id TEXT PRIMARY KEY CHECK\(skill_id GLOB '\[A-Za-z\]\[A-Za-z0-9_-\]\*'\)/);
 });
 
-test("SkillGovernanceService.validateSkill returns valid for correct input", () => {
+test("SkillGovernanceService.validateSkill returns valid for correct input [skill-governance-service]", () => {
   const service = new SkillGovernanceService(createMockStore() as unknown as import("../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js").AuthoritativeTaskStore);
 
   const result = service.validateSkill({
@@ -86,7 +86,7 @@ test("SkillGovernanceService.validateSkill returns valid for correct input", () 
   assert.equal(result.errors.length, 0);
 });
 
-test("SkillGovernanceService.validateSkill rejects invalid skillId", () => {
+test("SkillGovernanceService.validateSkill rejects invalid skillId [skill-governance-service]", () => {
   const service = new SkillGovernanceService(createMockStore() as unknown as import("../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js").AuthoritativeTaskStore);
 
   const result = service.validateSkill({
@@ -103,7 +103,7 @@ test("SkillGovernanceService.validateSkill rejects invalid skillId", () => {
   assert.ok(result.errors.some((e) => e.includes("skillId")));
 });
 
-test("SkillGovernanceService.validateSkill rejects invalid version", () => {
+test("SkillGovernanceService.validateSkill rejects invalid version [skill-governance-service]", () => {
   const service = new SkillGovernanceService(createMockStore() as unknown as import("../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js").AuthoritativeTaskStore);
 
   const result = service.validateSkill({
@@ -120,7 +120,7 @@ test("SkillGovernanceService.validateSkill rejects invalid version", () => {
   assert.ok(result.errors.some((e) => e.includes("version")));
 });
 
-test("SkillGovernanceService.validateSkill rejects short name", () => {
+test("SkillGovernanceService.validateSkill rejects short name [skill-governance-service]", () => {
   const service = new SkillGovernanceService(createMockStore() as unknown as import("../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js").AuthoritativeTaskStore);
 
   const result = service.validateSkill({
@@ -137,7 +137,7 @@ test("SkillGovernanceService.validateSkill rejects short name", () => {
   assert.ok(result.errors.some((e) => e.includes("name")));
 });
 
-test("SkillGovernanceService.validateSkill warns on short description", () => {
+test("SkillGovernanceService.validateSkill warns on short description [skill-governance-service]", () => {
   const service = new SkillGovernanceService(createMockStore() as unknown as import("../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js").AuthoritativeTaskStore);
 
   const result = service.validateSkill({
@@ -153,7 +153,7 @@ test("SkillGovernanceService.validateSkill warns on short description", () => {
   assert.ok(result.warnings.some((w) => w.includes("description")));
 });
 
-test("SkillGovernanceService.validateSkill warns on short cache TTL", () => {
+test("SkillGovernanceService.validateSkill warns on short cache TTL [skill-governance-service]", () => {
   const service = new SkillGovernanceService(createMockStore() as unknown as import("../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js").AuthoritativeTaskStore);
 
   const result = service.validateSkill({
@@ -169,7 +169,7 @@ test("SkillGovernanceService.validateSkill warns on short cache TTL", () => {
   assert.ok(result.warnings.some((w) => w.includes("cacheTtlSeconds")));
 });
 
-test("SkillGovernanceService.authorizeExecution denies when no policy exists", () => {
+test("SkillGovernanceService.authorizeExecution denies when no policy exists [skill-governance-service]", () => {
   const service = new SkillGovernanceService(createMockStore() as unknown as import("../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js").AuthoritativeTaskStore);
 
   const result = service.authorizeExecution({
@@ -185,14 +185,14 @@ test("SkillGovernanceService.authorizeExecution denies when no policy exists", (
   assert.match(result.deniedReasons[0] ?? "", /not configured/i);
 });
 
-test("SkillGovernanceService.listSkills returns empty array", () => {
+test("SkillGovernanceService.listSkills returns empty array [skill-governance-service]", () => {
   const service = new SkillGovernanceService(createMockStore() as unknown as import("../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js").AuthoritativeTaskStore);
 
   const skills = service.listSkills();
   assert.ok(Array.isArray(skills));
 });
 
-test("SkillGovernanceService.getExecutionPolicy returns null for unknown skill", () => {
+test("SkillGovernanceService.getExecutionPolicy returns null for unknown skill [skill-governance-service]", () => {
   const service = new SkillGovernanceService(createMockStore() as unknown as import("../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js").AuthoritativeTaskStore);
 
   const policy = service.getExecutionPolicy("test-skill");
@@ -200,7 +200,7 @@ test("SkillGovernanceService.getExecutionPolicy returns null for unknown skill",
   assert.equal(policy, null);
 });
 
-test("SkillGovernanceService.authorizeExecution enforces rate limits", () => {
+test("SkillGovernanceService.authorizeExecution enforces rate limits [skill-governance-service]", () => {
   const service = new SkillGovernanceService(createMockStore() as unknown as import("../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js").AuthoritativeTaskStore);
   service.setExecutionPolicy({
     skillId: "limited-skill",
@@ -232,14 +232,14 @@ test("SkillGovernanceService.authorizeExecution enforces rate limits", () => {
   assert.match(second.deniedReasons.join(" "), /rate limit/i);
 });
 
-test("SkillGovernanceService.getSkill returns null for non-existent skill", () => {
+test("SkillGovernanceService.getSkill returns null for non-existent skill [skill-governance-service]", () => {
   const service = new SkillGovernanceService(createMockStore() as unknown as import("../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js").AuthoritativeTaskStore);
 
   const skill = service.getSkill("non-existent");
   assert.equal(skill, null);
 });
 
-test("SkillGovernanceService.getSkillHealth returns 0 for non-existent skill", () => {
+test("SkillGovernanceService.getSkillHealth returns 0 for non-existent skill [skill-governance-service]", () => {
   const service = new SkillGovernanceService(createMockStore() as unknown as import("../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js").AuthoritativeTaskStore);
 
   const health = service.getSkillHealth("non-existent");

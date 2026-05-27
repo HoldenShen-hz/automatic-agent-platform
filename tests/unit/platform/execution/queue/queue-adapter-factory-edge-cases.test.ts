@@ -23,7 +23,7 @@ function createHarness(prefix: string) {
   return { workspace, db };
 }
 
-test("createQueueAdapter throws ValidationError with code queue.missing_redis_config when redis kind has no config", () => {
+test("createQueueAdapter throws ValidationError with code queue.missing_redis_config when redis kind has no config [queue-adapter-factory-edge-cases]", () => {
   try {
     createQueueAdapter({ kind: "redis" });
     assert.fail("Expected ValidationError to be thrown");
@@ -34,7 +34,7 @@ test("createQueueAdapter throws ValidationError with code queue.missing_redis_co
   }
 });
 
-test("createQueueAdapter throws ValidationError with code queue.missing_sqlite_db when sqlite kind has no db", () => {
+test("createQueueAdapter throws ValidationError with code queue.missing_sqlite_db when sqlite kind has no db [queue-adapter-factory-edge-cases]", () => {
   try {
     createQueueAdapter({ kind: "sqlite" });
     assert.fail("Expected ValidationError to be thrown");
@@ -45,7 +45,7 @@ test("createQueueAdapter throws ValidationError with code queue.missing_sqlite_d
   }
 });
 
-test("createQueueAdapter creates RedisQueueAdapter with minimal redis config", () => {
+test("createQueueAdapter creates RedisQueueAdapter with minimal redis config [queue-adapter-factory-edge-cases]", () => {
   const adapter = createQueueAdapter({
     kind: "redis",
     redis: {
@@ -57,7 +57,7 @@ test("createQueueAdapter creates RedisQueueAdapter with minimal redis config", (
   assert.equal(adapter.backendKind, "redis");
 });
 
-test("createQueueAdapter creates RedisQueueAdapter with full redis config", () => {
+test("createQueueAdapter creates RedisQueueAdapter with full redis config [queue-adapter-factory-edge-cases]", () => {
   const adapter = createQueueAdapter({
     kind: "redis",
     redis: {
@@ -73,7 +73,7 @@ test("createQueueAdapter creates RedisQueueAdapter with full redis config", () =
   assert.equal(adapter.backendKind, "redis");
 });
 
-test("createQueueAdapter creates RedisQueueAdapter with only host and port", () => {
+test("createQueueAdapter creates RedisQueueAdapter with only host and port [queue-adapter-factory-edge-cases]", () => {
   const adapter = createQueueAdapter({
     kind: "redis",
     redis: {
@@ -85,7 +85,7 @@ test("createQueueAdapter creates RedisQueueAdapter with only host and port", () 
   assert.equal(adapter.backendKind, "redis");
 });
 
-test("createQueueAdapter creates SqliteQueueAdapter with provided database", () => {
+test("createQueueAdapter creates SqliteQueueAdapter with provided database [queue-adapter-factory-edge-cases]", () => {
   const h = createHarness("aa-factory-sqlite-");
   try {
     const adapter = createQueueAdapter({ kind: "sqlite" }, h.db);
@@ -96,7 +96,7 @@ test("createQueueAdapter creates SqliteQueueAdapter with provided database", () 
   }
 });
 
-test("createQueueAdapter creates SqliteQueueAdapter with custom migration plan", () => {
+test("createQueueAdapter creates SqliteQueueAdapter with custom migration plan [queue-adapter-factory-edge-cases]", () => {
   const h = createHarness("aa-factory-sqlite-migration-");
   try {
     const adapter = createQueueAdapter({ kind: "sqlite" }, h.db);
@@ -111,7 +111,7 @@ test("createQueueAdapter creates SqliteQueueAdapter with custom migration plan",
   }
 });
 
-test("createQueueAdapter redis config with all optional TLS options", () => {
+test("createQueueAdapter redis config with all optional TLS options [queue-adapter-factory-edge-cases]", () => {
   const adapter = createQueueAdapter({
     kind: "redis",
     redis: {
@@ -126,7 +126,7 @@ test("createQueueAdapter redis config with all optional TLS options", () => {
   assert.equal(adapter.backendKind, "redis");
 });
 
-test("createQueueAdapter redis config with unix socket path", () => {
+test("createQueueAdapter redis config with unix socket path [queue-adapter-factory-edge-cases]", () => {
   const adapter = createQueueAdapter({
     kind: "redis",
     redis: {
@@ -138,7 +138,7 @@ test("createQueueAdapter redis config with unix socket path", () => {
   assert.equal(adapter.backendKind, "redis");
 });
 
-test("createQueueAdapter sqlite adapter enqueues and dequeues jobs", () => {
+test("createQueueAdapter sqlite adapter enqueues and dequeues jobs [queue-adapter-factory-edge-cases]", () => {
   const h = createHarness("aa-factory-functional-");
   try {
     const adapter = createQueueAdapter({ kind: "sqlite" }, h.db);
@@ -161,7 +161,7 @@ test("createQueueAdapter sqlite adapter enqueues and dequeues jobs", () => {
   }
 });
 
-test("createQueueAdapter sqlite adapter with multiple queue names", () => {
+test("createQueueAdapter sqlite adapter with multiple queue names [queue-adapter-factory-edge-cases]", () => {
   const h = createHarness("aa-factory-multi-queue-");
   try {
     const adapter = createQueueAdapter({ kind: "sqlite" }, h.db);
@@ -179,7 +179,7 @@ test("createQueueAdapter sqlite adapter with multiple queue names", () => {
   }
 });
 
-test("createQueueAdapter validates config.kind is required", () => {
+test("createQueueAdapter validates config.kind is required [queue-adapter-factory-edge-cases]", () => {
   // @ts-expect-error - testing invalid config
   try {
     createQueueAdapter({});
@@ -189,7 +189,7 @@ test("createQueueAdapter validates config.kind is required", () => {
   }
 });
 
-test("createQueueAdapter redis config host is required", () => {
+test("createQueueAdapter redis config host is required [queue-adapter-factory-edge-cases]", () => {
   assert.throws(
     () => createQueueAdapter({
       kind: "redis",
@@ -201,7 +201,7 @@ test("createQueueAdapter redis config host is required", () => {
   );
 });
 
-test("createQueueAdapter redis config port is validated by adapter", () => {
+test("createQueueAdapter redis config port is validated by adapter [queue-adapter-factory-edge-cases]", () => {
   // Redis config validation happens at adapter level, not factory level
   const adapter = createQueueAdapter({
     kind: "redis",
@@ -213,7 +213,7 @@ test("createQueueAdapter redis config port is validated by adapter", () => {
   assert.equal(adapter.backendKind, "redis");
 });
 
-test("createQueueAdapter sqlite adapter handles priority ordering", () => {
+test("createQueueAdapter sqlite adapter handles priority ordering [queue-adapter-factory-edge-cases]", () => {
   const h = createHarness("aa-factory-priority-");
   try {
     const adapter = createQueueAdapter({ kind: "sqlite" }, h.db);
@@ -239,7 +239,7 @@ test("createQueueAdapter sqlite adapter handles priority ordering", () => {
   }
 });
 
-test("createQueueAdapter sqlite adapter handles idempotency keys", () => {
+test("createQueueAdapter sqlite adapter handles idempotency keys [queue-adapter-factory-edge-cases]", () => {
   const h = createHarness("aa-factory-idempotent-");
   try {
     const adapter = createQueueAdapter({ kind: "sqlite" }, h.db);
@@ -255,7 +255,7 @@ test("createQueueAdapter sqlite adapter handles idempotency keys", () => {
   }
 });
 
-test("createQueueAdapter sqlite adapter handles delayed jobs", () => {
+test("createQueueAdapter sqlite adapter handles delayed jobs [queue-adapter-factory-edge-cases]", () => {
   const h = createHarness("aa-factory-delayed-");
   try {
     const adapter = createQueueAdapter({ kind: "sqlite" }, h.db);
@@ -277,7 +277,7 @@ test("createQueueAdapter sqlite adapter handles delayed jobs", () => {
   }
 });
 
-test("createQueueAdapter sqlite adapter moveToDeadLetter works", () => {
+test("createQueueAdapter sqlite adapter moveToDeadLetter works [queue-adapter-factory-edge-cases]", () => {
   const h = createHarness("aa-factory-dl-");
   try {
     const adapter = createQueueAdapter({ kind: "sqlite" }, h.db);
@@ -293,7 +293,7 @@ test("createQueueAdapter sqlite adapter moveToDeadLetter works", () => {
   }
 });
 
-test("createQueueAdapter sqlite adapter retryJob resets dead-letter job", () => {
+test("createQueueAdapter sqlite adapter retryJob resets dead-letter job [queue-adapter-factory-edge-cases]", () => {
   const h = createHarness("aa-factory-retry-");
   try {
     const adapter = createQueueAdapter({ kind: "sqlite" }, h.db);
@@ -312,7 +312,7 @@ test("createQueueAdapter sqlite adapter retryJob resets dead-letter job", () => 
   }
 });
 
-test("createQueueAdapter sqlite adapter stats returns correct counts", () => {
+test("createQueueAdapter sqlite adapter stats returns correct counts [queue-adapter-factory-edge-cases]", () => {
   const h = createHarness("aa-factory-stats-");
   try {
     const adapter = createQueueAdapter({ kind: "sqlite" }, h.db);
@@ -331,7 +331,7 @@ test("createQueueAdapter sqlite adapter stats returns correct counts", () => {
   }
 });
 
-test("createQueueAdapter sqlite adapter listJobs filters by status", () => {
+test("createQueueAdapter sqlite adapter listJobs filters by status [queue-adapter-factory-edge-cases]", () => {
   const h = createHarness("aa-factory-listjobs-");
   try {
     const adapter = createQueueAdapter({ kind: "sqlite" }, h.db);
@@ -350,7 +350,7 @@ test("createQueueAdapter sqlite adapter listJobs filters by status", () => {
   }
 });
 
-test("createQueueAdapter sqlite adapter purge removes old jobs", () => {
+test("createQueueAdapter sqlite adapter purge removes old jobs [queue-adapter-factory-edge-cases]", () => {
   const h = createHarness("aa-factory-purge-");
   try {
     const adapter = createQueueAdapter({ kind: "sqlite" }, h.db);
@@ -368,7 +368,7 @@ test("createQueueAdapter sqlite adapter purge removes old jobs", () => {
   }
 });
 
-test("createQueueAdapter redis throws for unsupported sync operations", () => {
+test("createQueueAdapter redis throws for unsupported sync operations [queue-adapter-factory-edge-cases]", () => {
   const adapter = createQueueAdapter({
     kind: "redis",
     redis: { host: "localhost", port: 6379 },

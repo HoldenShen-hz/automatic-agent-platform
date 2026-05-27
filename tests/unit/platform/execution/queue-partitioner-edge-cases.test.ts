@@ -87,7 +87,7 @@ function createPartition(name: string, aggregateType: string, strategy: "byTenan
   };
 }
 
-test("[SYS-REL-2.5] QueuePartitioner registers and retrieves partition", () => {
+test("[SYS-REL-2.5] QueuePartitioner registers and retrieves partition [queue-partitioner-edge-cases]", () => {
   const partitioner = new QueuePartitioner();
   const partition = createPartition("queue:task", "task");
   partitioner.registerPartition(partition);
@@ -98,57 +98,57 @@ test("[SYS-REL-2.5] QueuePartitioner registers and retrieves partition", () => {
   assert.equal(retrieved!.name, "queue:task");
 });
 
-test("[SYS-REL-2.5] QueuePartitioner returns undefined for unregistered aggregate type", () => {
+test("[SYS-REL-2.5] QueuePartitioner returns undefined for unregistered aggregate type [queue-partitioner-edge-cases]", () => {
   const partitioner = new QueuePartitioner();
   const retrieved = partitioner.getPartition("nonexistent");
   assert.equal(retrieved, undefined);
 });
 
-test("[SYS-REL-2.5] QueuePartitioner extracts partition key from payload with aggregateType", () => {
+test("[SYS-REL-2.5] QueuePartitioner extracts partition key from payload with aggregateType [queue-partitioner-edge-cases]", () => {
   const partitioner = new QueuePartitioner();
   const key = partitioner.extractPartitionKey({ aggregateType: "task", tenantId: "tenant-1" });
   assert.equal(key.aggregateType, "task");
   assert.equal(key.tenantId, "tenant-1");
 });
 
-test("[SYS-REL-2.5] QueuePartitioner extracts partition key from payload with domain fallback", () => {
+test("[SYS-REL-2.5] QueuePartitioner extracts partition key from payload with domain fallback [queue-partitioner-edge-cases]", () => {
   const partitioner = new QueuePartitioner();
   const key = partitioner.extractPartitionKey({ domain: "workflow", tenantId: "tenant-1" });
   assert.equal(key.aggregateType, "workflow");
 });
 
-test("[SYS-REL-2.5] QueuePartitioner extracts partition key with defaults when missing", () => {
+test("[SYS-REL-2.5] QueuePartitioner extracts partition key with defaults when missing [queue-partitioner-edge-cases]", () => {
   const partitioner = new QueuePartitioner();
   const key = partitioner.extractPartitionKey({});
   assert.equal(key.aggregateType, "default");
   assert.equal(key.tenantId, "default");
 });
 
-test("[SYS-REL-2.5] QueuePartitioner computePartitionName byAggregateType strategy", () => {
+test("[SYS-REL-2.5] QueuePartitioner computePartitionName byAggregateType strategy [queue-partitioner-edge-cases]", () => {
   const partitioner = new QueuePartitioner();
   const name = partitioner.computePartitionName("task", "tenant-1", "byAggregateType");
   assert.equal(name, "queue:task");
 });
 
-test("[SYS-REL-2.5] QueuePartitioner computePartitionName byTenant strategy", () => {
+test("[SYS-REL-2.5] QueuePartitioner computePartitionName byTenant strategy [queue-partitioner-edge-cases]", () => {
   const partitioner = new QueuePartitioner();
   const name = partitioner.computePartitionName("task", "tenant-1", "byTenant");
   assert.equal(name, "queue:tenant-1");
 });
 
-test("[SYS-REL-2.5] QueuePartitioner computePartitionName byTenantAndAggregate strategy", () => {
+test("[SYS-REL-2.5] QueuePartitioner computePartitionName byTenantAndAggregate strategy [queue-partitioner-edge-cases]", () => {
   const partitioner = new QueuePartitioner();
   const name = partitioner.computePartitionName("task", "tenant-1", "byTenantAndAggregate");
   assert.equal(name, "queue:tenant-1:task");
 });
 
-test("[SYS-REL-2.5] QueuePartitioner computePartitionName default strategy", () => {
+test("[SYS-REL-2.5] QueuePartitioner computePartitionName default strategy [queue-partitioner-edge-cases]", () => {
   const partitioner = new QueuePartitioner();
   const name = partitioner.computePartitionName("task", "tenant-1", "byAggregateType");
   assert.equal(name, "queue:task");
 });
 
-test("[SYS-REL-2.5] QueuePartitioner route uses registered partition strategy", () => {
+test("[SYS-REL-2.5] QueuePartitioner route uses registered partition strategy [queue-partitioner-edge-cases]", () => {
   const partitioner = new QueuePartitioner();
   const adapter = createMockQueueAdapter();
   partitioner.registerPartition(createPartition("queue:task", "task", "byTenant"));
@@ -157,7 +157,7 @@ test("[SYS-REL-2.5] QueuePartitioner route uses registered partition strategy", 
   assert.ok(jobId != null);
 });
 
-test("[SYS-REL-2.5] QueuePartitioner route falls back to byAggregateType when no partition registered", () => {
+test("[SYS-REL-2.5] QueuePartitioner route falls back to byAggregateType when no partition registered [queue-partitioner-edge-cases]", () => {
   const partitioner = new QueuePartitioner();
   const adapter = createMockQueueAdapter();
 
@@ -168,7 +168,7 @@ test("[SYS-REL-2.5] QueuePartitioner route falls back to byAggregateType when no
   assert.ok(stats.waiting >= 1);
 });
 
-test("[SYS-REL-2.5] QueuePartitioner route with priority and maxAttempts options", () => {
+test("[SYS-REL-2.5] QueuePartitioner route with priority and maxAttempts options [queue-partitioner-edge-cases]", () => {
   const partitioner = new QueuePartitioner();
   const adapter = createMockQueueAdapter();
   partitioner.registerPartition(createPartition("queue:task", "task"));
@@ -182,7 +182,7 @@ test("[SYS-REL-2.5] QueuePartitioner route with priority and maxAttempts options
   assert.equal(job.maxAttempts, 5);
 });
 
-test("[SYS-REL-2.5] QueuePartitioner getPartitionStats returns stats for all registered partitions", () => {
+test("[SYS-REL-2.5] QueuePartitioner getPartitionStats returns stats for all registered partitions [queue-partitioner-edge-cases]", () => {
   const partitioner = new QueuePartitioner();
   const adapter = createMockQueueAdapter();
   partitioner.registerPartition(createPartition("queue:task", "task"));
@@ -198,7 +198,7 @@ test("[SYS-REL-2.5] QueuePartitioner getPartitionStats returns stats for all reg
   assert.ok(stats.get("workflow") != null);
 });
 
-test("[SYS-REL-2.5] QueuePartitioner detectOverload returns overloaded partitions", () => {
+test("[SYS-REL-2.5] QueuePartitioner detectOverload returns overloaded partitions [queue-partitioner-edge-cases]", () => {
   const partitioner = new QueuePartitioner();
   const adapter = createMockQueueAdapter();
   partitioner.registerPartition({
@@ -224,7 +224,7 @@ test("[SYS-REL-2.5] QueuePartitioner detectOverload returns overloaded partition
   assert.equal(overloads[0]!.aggregateType, "heavy");
 });
 
-test("[SYS-REL-2.5] QueuePartitioner detectOverload returns empty when no overload", () => {
+test("[SYS-REL-2.5] QueuePartitioner detectOverload returns empty when no overload [queue-partitioner-edge-cases]", () => {
   const partitioner = new QueuePartitioner();
   const adapter = createMockQueueAdapter();
   partitioner.registerPartition({
@@ -246,14 +246,14 @@ test("[SYS-REL-2.5] QueuePartitioner detectOverload returns empty when no overlo
   assert.equal(overloads.length, 0);
 });
 
-test("[SYS-REL-2.5] QueuePartitioner hash collision - same tenant+type produces same queue name", () => {
+test("[SYS-REL-2.5] QueuePartitioner hash collision - same tenant+type produces same queue name [queue-partitioner-edge-cases]", () => {
   const partitioner = new QueuePartitioner();
   const name1 = partitioner.computePartitionName("task", "tenant-A", "byTenantAndAggregate");
   const name2 = partitioner.computePartitionName("task", "tenant-A", "byTenantAndAggregate");
   assert.equal(name1, name2, "Same inputs should produce same partition name");
 });
 
-test("[SYS-REL-2.5] QueuePartitioner rebalancing - unregister partition then reregister", () => {
+test("[SYS-REL-2.5] QueuePartitioner rebalancing - unregister partition then reregister [queue-partitioner-edge-cases]", () => {
   const partitioner = new QueuePartitioner();
   const adapter = createMockQueueAdapter();
 
@@ -269,7 +269,7 @@ test("[SYS-REL-2.5] QueuePartitioner rebalancing - unregister partition then rer
   assert.equal(retrieved!.config.partitioningStrategy, "byTenant");
 });
 
-test("[SYS-REL-2.5] QueuePartitioner multiple partitions with different strategies coexist", () => {
+test("[SYS-REL-2.5] QueuePartitioner multiple partitions with different strategies coexist [queue-partitioner-edge-cases]", () => {
   const partitioner = new QueuePartitioner();
   const adapter = createMockQueueAdapter();
 

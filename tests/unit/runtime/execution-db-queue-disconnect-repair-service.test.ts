@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { parseDbQueueDisconnectRepairTemplate } from "../../../src/platform/five-plane-execution/recovery/execution-db-queue-disconnect-repair-service.js";
 
-test("parseDbQueueDisconnectRepairTemplate recovers queue dispatch metadata from agent execution plan JSON", () => {
+test("parseDbQueueDisconnectRepairTemplate recovers queue dispatch metadata from agent execution plan JSON [execution-db-queue-disconnect-repair-service]", () => {
   const parsed = parseDbQueueDisconnectRepairTemplate(
     JSON.stringify({
       priority: "urgent",
@@ -28,7 +28,7 @@ test("parseDbQueueDisconnectRepairTemplate recovers queue dispatch metadata from
   });
 });
 
-test("parseDbQueueDisconnectRepairTemplate ignores malformed plan JSON", () => {
+test("parseDbQueueDisconnectRepairTemplate ignores malformed plan JSON [execution-db-queue-disconnect-repair-service]", () => {
   const parsed = parseDbQueueDisconnectRepairTemplate("{not-json");
 
   assert.equal(parsed.recoveredFromPlan, false);

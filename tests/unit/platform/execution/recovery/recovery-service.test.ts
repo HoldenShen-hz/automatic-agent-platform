@@ -95,7 +95,7 @@ function makeRecoveryRecord(overrides: Partial<RuntimeRecoveryRecord> = {}): Run
 // Recovery State Machine Tests
 // =============================================================================
 
-test("RuntimeRecoveryService suggests resume_same_worker for active execution at low attempt", () => {
+test("RuntimeRecoveryService suggests resume_same_worker for active execution at low attempt [recovery-service]", () => {
   const record = makeRecoveryRecord({
     executionId: "exec-1",
     status: "executing",
@@ -116,7 +116,7 @@ test("RuntimeRecoveryService suggests resume_same_worker for active execution at
   assert.equal(results[0]!.reason, "active_execution");
 });
 
-test("RuntimeRecoveryService suggests retry_new_ticket when attempt exceeds resume threshold", () => {
+test("RuntimeRecoveryService suggests retry_new_ticket when attempt exceeds resume threshold [recovery-service]", () => {
   const record = makeRecoveryRecord({
     executionId: "exec-1",
     status: "executing",
@@ -135,7 +135,7 @@ test("RuntimeRecoveryService suggests retry_new_ticket when attempt exceeds resu
   assert.equal(results[0]!.suggestedAction, "retry_new_ticket");
 });
 
-test("RuntimeRecoveryService suggests move_dead_letter when attempt exceeds retryNewTicketMaxAttempts", () => {
+test("RuntimeRecoveryService suggests move_dead_letter when attempt exceeds retryNewTicketMaxAttempts [recovery-service]", () => {
   const record = makeRecoveryRecord({
     executionId: "exec-1",
     status: "executing",
@@ -155,7 +155,7 @@ test("RuntimeRecoveryService suggests move_dead_letter when attempt exceeds retr
   assert.equal(view.candidates[0]!.suggestedAction, "move_dead_letter");
 });
 
-test("RuntimeRecoveryService suggests retry_new_ticket for execution errors before dead-letter threshold", () => {
+test("RuntimeRecoveryService suggests retry_new_ticket for execution errors before dead-letter threshold [recovery-service]", () => {
   const record = makeRecoveryRecord({
     executionId: "exec-1",
     status: "executing",
@@ -175,7 +175,7 @@ test("RuntimeRecoveryService suggests retry_new_ticket for execution errors befo
   assert.equal(view.candidates[0]!.suggestedAction, "retry_new_ticket");
 });
 
-test("RuntimeRecoveryService normalizes zero-attempt records to the first retry boundary", () => {
+test("RuntimeRecoveryService normalizes zero-attempt records to the first retry boundary [recovery-service]", () => {
   const record = makeRecoveryRecord({
     executionId: "exec-1",
     status: "executing",
@@ -195,7 +195,7 @@ test("RuntimeRecoveryService normalizes zero-attempt records to the first retry 
   assert.equal(results[0]!.suggestedAction, "resume_same_worker");
 });
 
-test("RuntimeRecoveryService suggests escalate_takeover for approval_pending regardless of attempt", () => {
+test("RuntimeRecoveryService suggests escalate_takeover for approval_pending regardless of attempt [recovery-service]", () => {
   const record = makeRecoveryRecord({
     executionId: "exec-1",
     pendingApprovalId: "approval-1",
@@ -212,7 +212,7 @@ test("RuntimeRecoveryService suggests escalate_takeover for approval_pending reg
   assert.equal(results[0]!.reason, "approval_pending");
 });
 
-test("RuntimeRecoveryService suggests cancel for precheck_denied regardless of attempt", () => {
+test("RuntimeRecoveryService suggests cancel for precheck_denied regardless of attempt [recovery-service]", () => {
   const record = makeRecoveryRecord({
     executionId: "exec-1",
     latestPrecheck: {
@@ -240,7 +240,7 @@ test("RuntimeRecoveryService suggests cancel for precheck_denied regardless of a
   assert.equal(view.candidates[0]!.reason, "precheck_denied:budget_exceeded");
 });
 
-test("RuntimeRecoveryService suggests escalate_takeover for blocked_without_approval", () => {
+test("RuntimeRecoveryService suggests escalate_takeover for blocked_without_approval [recovery-service]", () => {
   const record = makeRecoveryRecord({
     executionId: "exec-1",
     status: "blocked",
@@ -260,7 +260,7 @@ test("RuntimeRecoveryService suggests escalate_takeover for blocked_without_appr
   assert.equal(view.candidates[0]!.reason, "blocked_without_approval");
 });
 
-test("RuntimeRecoveryService suggests none for unknown states with no issues", () => {
+test("RuntimeRecoveryService suggests none for unknown states with no issues [recovery-service]", () => {
   const record = makeRecoveryRecord({
     executionId: "exec-1",
     status: "created",
@@ -285,7 +285,7 @@ test("RuntimeRecoveryService suggests none for unknown states with no issues", (
 // Execution Resurrection Tests
 // =============================================================================
 
-test("RuntimeRecoveryService can resurrect execution with valid checkpoint", () => {
+test("RuntimeRecoveryService can resurrect execution with valid checkpoint [recovery-service]", () => {
   const record = makeRecoveryRecord({
     executionId: "exec-1",
     taskId: "task-1",
@@ -318,7 +318,7 @@ test("RuntimeRecoveryService can resurrect execution with valid checkpoint", () 
   assert.equal(view.latestCheckpoint, null);
 });
 
-test("RuntimeRecoveryService handles resurrection with no checkpoint available", () => {
+test("RuntimeRecoveryService handles resurrection with no checkpoint available [recovery-service]", () => {
   const record = makeRecoveryRecord({
     executionId: "exec-1",
     taskId: "task-1",
@@ -346,7 +346,7 @@ test("RuntimeRecoveryService handles resurrection with no checkpoint available",
 // Error Code Classification Tests
 // =============================================================================
 
-test("RuntimeRecoveryService classifies E7 error codes as locking_error", () => {
+test("RuntimeRecoveryService classifies E7 error codes as locking_error [recovery-service]", () => {
   const record = makeRecoveryRecord({
     executionId: "exec-1",
     taskId: "task-1",
@@ -368,7 +368,7 @@ test("RuntimeRecoveryService classifies E7 error codes as locking_error", () => 
   assert.equal(view.candidates[0]!.suggestedAction, "resume_same_worker");
 });
 
-test("RuntimeRecoveryService classifies E8 error codes as memory_error", () => {
+test("RuntimeRecoveryService classifies E8 error codes as memory_error [recovery-service]", () => {
   const record = makeRecoveryRecord({
     executionId: "exec-1",
     taskId: "task-1",
@@ -390,7 +390,7 @@ test("RuntimeRecoveryService classifies E8 error codes as memory_error", () => {
   assert.equal(view.candidates[0]!.suggestedAction, "escalate_takeover");
 });
 
-test("RuntimeRecoveryService classifies EC error codes as runtime_error", () => {
+test("RuntimeRecoveryService classifies EC error codes as runtime_error [recovery-service]", () => {
   const record = makeRecoveryRecord({
     executionId: "exec-1",
     taskId: "task-1",
@@ -416,7 +416,7 @@ test("RuntimeRecoveryService classifies EC error codes as runtime_error", () => 
 // Stale Execution Detection Tests
 // =============================================================================
 
-test("RuntimeRecoveryService marks stale executions with retry_new_ticket action", () => {
+test("RuntimeRecoveryService marks stale executions with retry_new_ticket action [recovery-service]", () => {
   const record = makeRecoveryRecord({
     executionId: "exec-1",
     status: "executing",
@@ -436,7 +436,7 @@ test("RuntimeRecoveryService marks stale executions with retry_new_ticket action
   assert.equal(results[0]!.suggestedAction, "retry_new_ticket");
 });
 
-test("RuntimeRecoveryService distinguishes stale from active executions", () => {
+test("RuntimeRecoveryService distinguishes stale from active executions [recovery-service]", () => {
   const staleRecord = makeRecoveryRecord({
     executionId: "exec-stale",
     status: "executing",
@@ -469,7 +469,7 @@ test("RuntimeRecoveryService distinguishes stale from active executions", () => 
 // Recovery Event Tracking Tests
 // =============================================================================
 
-test("RuntimeRecoveryService includes recovery events in view", () => {
+test("RuntimeRecoveryService includes recovery events in view [recovery-service]", () => {
   const record = makeRecoveryRecord({
     executionId: "exec-1",
     taskId: "task-1",
@@ -501,7 +501,7 @@ test("RuntimeRecoveryService includes recovery events in view", () => {
   assert.equal(view.recentRecoveryEvents[0]!.targetId, "exec-1");
 });
 
-test("RuntimeRecoveryService limits recovery events to 10 most recent", () => {
+test("RuntimeRecoveryService limits recovery events to 10 most recent [recovery-service]", () => {
   const record = makeRecoveryRecord({
     executionId: "exec-1",
     taskId: "task-1",
@@ -529,7 +529,7 @@ test("RuntimeRecoveryService limits recovery events to 10 most recent", () => {
   assert.equal(view.recentRecoveryEvents.length, 10, "Should limit to 10 events");
 });
 
-test("RuntimeRecoveryService filters non-recovery events", () => {
+test("RuntimeRecoveryService filters non-recovery events [recovery-service]", () => {
   const record = makeRecoveryRecord({
     executionId: "exec-1",
     taskId: "task-1",
@@ -571,7 +571,7 @@ test("RuntimeRecoveryService filters non-recovery events", () => {
 // Division Recovery Overview Tests
 // =============================================================================
 
-test("RuntimeRecoveryService calculates newestCandidateAt correctly", () => {
+test("RuntimeRecoveryService calculates newestCandidateAt correctly [recovery-service]", () => {
   const records = [
     makeRecoveryRecord({
       executionId: "exec-1",
@@ -601,7 +601,7 @@ test("RuntimeRecoveryService calculates newestCandidateAt correctly", () => {
   assert.equal(overview[0]!.newestCandidateAt, "2025-01-02T12:00:00.000Z");
 });
 
-test("RuntimeRecoveryService handles unassigned division as unassigned", () => {
+test("RuntimeRecoveryService handles unassigned division as unassigned [recovery-service]", () => {
   const records = [
     makeRecoveryRecord({
       executionId: "exec-1",
@@ -629,7 +629,7 @@ test("RuntimeRecoveryService handles unassigned division as unassigned", () => {
 // Precheck Parsing Tests
 // =============================================================================
 
-test("RuntimeRecoveryService parses precheck allowed flag correctly", () => {
+test("RuntimeRecoveryService parses precheck allowed flag correctly [recovery-service]", () => {
   const record = makeRecoveryRecord({
     executionId: "exec-1",
     latestPrecheck: {
@@ -655,7 +655,7 @@ test("RuntimeRecoveryService parses precheck allowed flag correctly", () => {
   assert.equal(results[0]!.latestPrecheck?.allowed, true);
 });
 
-test("RuntimeRecoveryService parses precheck tools and paths correctly", () => {
+test("RuntimeRecoveryService parses precheck tools and paths correctly [recovery-service]", () => {
   const record = makeRecoveryRecord({
     executionId: "exec-1",
     latestPrecheck: {
@@ -682,7 +682,7 @@ test("RuntimeRecoveryService parses precheck tools and paths correctly", () => {
   assert.deepEqual(results[0]!.latestPrecheck?.resolvedPaths, ["/path1", "/path2"]);
 });
 
-test("RuntimeRecoveryService handles malformed precheck JSON gracefully", () => {
+test("RuntimeRecoveryService handles malformed precheck JSON gracefully [recovery-service]", () => {
   const record = makeRecoveryRecord({
     executionId: "exec-1",
     latestPrecheck: {
@@ -713,7 +713,7 @@ test("RuntimeRecoveryService handles malformed precheck JSON gracefully", () => 
 // Tenant Isolation Tests
 // =============================================================================
 
-test("RuntimeRecoveryService supports tenant filtering", () => {
+test("RuntimeRecoveryService supports tenant filtering [recovery-service]", () => {
   const record = makeRecoveryRecord({
     executionId: "exec-1",
     taskId: "task-1",

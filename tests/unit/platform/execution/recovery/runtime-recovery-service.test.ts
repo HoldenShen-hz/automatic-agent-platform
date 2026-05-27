@@ -73,14 +73,14 @@ function makeRecoveryRecord(overrides: Partial<RuntimeRecoveryRecord> = {}): Run
   };
 }
 
-test("RuntimeRecoveryService can be instantiated with a store", () => {
+test("RuntimeRecoveryService can be instantiated with a store [runtime-recovery-service]", () => {
   const store = createMockStore();
   const service = new RuntimeRecoveryService(store);
 
   assert.ok(service != null);
 });
 
-test("RuntimeRecoveryService.listRecoverableExecutingRuns returns empty when no records", () => {
+test("RuntimeRecoveryService.listRecoverableExecutingRuns returns empty when no records [runtime-recovery-service]", () => {
   const store = createMockStore();
   const service = new RuntimeRecoveryService(store);
 
@@ -89,7 +89,7 @@ test("RuntimeRecoveryService.listRecoverableExecutingRuns returns empty when no 
   assert.deepEqual(results, []);
 });
 
-test("RuntimeRecoveryService.listRecoverableExecutingRuns returns candidates", () => {
+test("RuntimeRecoveryService.listRecoverableExecutingRuns returns candidates [runtime-recovery-service]", () => {
   const record = makeRecoveryRecord({ executionId: "exec-1", taskId: "task-1" });
   const store = createMockStore({
     operations: {
@@ -104,7 +104,7 @@ test("RuntimeRecoveryService.listRecoverableExecutingRuns returns candidates", (
   assert.equal(results[0]!.executionId, "exec-1");
 });
 
-test("RuntimeRecoveryService.listStaleRuns returns candidates", () => {
+test("RuntimeRecoveryService.listStaleRuns returns candidates [runtime-recovery-service]", () => {
   const record = makeRecoveryRecord({ executionId: "exec-1", status: "executing" });
   const store = createMockStore({
     operations: {
@@ -122,7 +122,7 @@ test("RuntimeRecoveryService.listStaleRuns returns candidates", () => {
   assert.equal(results[0]!.suggestedAction, "retry_new_ticket");
 });
 
-test("RuntimeRecoveryService.findStaleExecuting computes staleBefore in the past", () => {
+test("RuntimeRecoveryService.findStaleExecuting computes staleBefore in the past [runtime-recovery-service]", () => {
   let capturedStaleBefore: string | null = null;
   const now = Date.now();
   const store = createMockStore({
@@ -143,7 +143,7 @@ test("RuntimeRecoveryService.findStaleExecuting computes staleBefore in the past
   assert.ok(staleBeforeMs >= now - 65_000, `expected staleBefore close to threshold, got ${capturedStaleBefore}`);
 });
 
-test("RuntimeRecoveryService.listBlockedRunsAwaitingApproval returns candidates", () => {
+test("RuntimeRecoveryService.listBlockedRunsAwaitingApproval returns candidates [runtime-recovery-service]", () => {
   const record = makeRecoveryRecord({
     executionId: "exec-1",
     pendingApprovalId: "approval-1",
@@ -163,7 +163,7 @@ test("RuntimeRecoveryService.listBlockedRunsAwaitingApproval returns candidates"
   assert.equal(results[0]!.suggestedAction, "escalate_takeover");
 });
 
-test("RuntimeRecoveryService.buildRuntimeRecoveryView throws when task not found", () => {
+test("RuntimeRecoveryService.buildRuntimeRecoveryView throws when task not found [runtime-recovery-service]", () => {
   const store = createMockStore({
     tasks: [], // No tasks
   });
@@ -175,7 +175,7 @@ test("RuntimeRecoveryService.buildRuntimeRecoveryView throws when task not found
   );
 });
 
-test("RuntimeRecoveryService.buildRuntimeRecoveryView returns view for valid task", () => {
+test("RuntimeRecoveryService.buildRuntimeRecoveryView returns view for valid task [runtime-recovery-service]", () => {
   const record = makeRecoveryRecord({ executionId: "exec-1", taskId: "task-1" });
   const store = createMockStore({
     tasks: [{ id: "task-1", divisionId: "div-1", status: "pending" }],
@@ -194,7 +194,7 @@ test("RuntimeRecoveryService.buildRuntimeRecoveryView returns view for valid tas
   assert.equal(view.deadLetters.length, 0);
 });
 
-test("RuntimeRecoveryService.buildRuntimeRecoveryView includes pending approvals", () => {
+test("RuntimeRecoveryService.buildRuntimeRecoveryView includes pending approvals [runtime-recovery-service]", () => {
   const record = makeRecoveryRecord({ executionId: "exec-1", taskId: "task-1" });
   const store = createMockStore({
     tasks: [{ id: "task-1", divisionId: null, status: "pending" }],
@@ -213,7 +213,7 @@ test("RuntimeRecoveryService.buildRuntimeRecoveryView includes pending approvals
   assert.equal(view.requestedApprovals[0]!.id, "approval-1");
 });
 
-test("RuntimeRecoveryService.buildRuntimeRecoveryView includes dead letters", () => {
+test("RuntimeRecoveryService.buildRuntimeRecoveryView includes dead letters [runtime-recovery-service]", () => {
   const record = makeRecoveryRecord({ executionId: "exec-1", taskId: "task-1" });
   const store = createMockStore({
     tasks: [{ id: "task-1", divisionId: null, status: "failed" }],
@@ -232,7 +232,7 @@ test("RuntimeRecoveryService.buildRuntimeRecoveryView includes dead letters", ()
   assert.equal(view.deadLetters[0]!.id, "dlq-1");
 });
 
-test("RuntimeRecoveryService.buildRuntimeRecoveryView filters non-requested approvals", () => {
+test("RuntimeRecoveryService.buildRuntimeRecoveryView filters non-requested approvals [runtime-recovery-service]", () => {
   const record = makeRecoveryRecord({ executionId: "exec-1", taskId: "task-1" });
   const store = createMockStore({
     tasks: [{ id: "task-1", divisionId: null, status: "pending" }],
@@ -254,7 +254,7 @@ test("RuntimeRecoveryService.buildRuntimeRecoveryView filters non-requested appr
   assert.equal(view.requestedApprovals[0]!.id, "approval-1");
 });
 
-test("RuntimeRecoveryService.listDivisionRecoveryOverview returns empty when no active candidates", () => {
+test("RuntimeRecoveryService.listDivisionRecoveryOverview returns empty when no active candidates [runtime-recovery-service]", () => {
   const store = createMockStore();
   const service = new RuntimeRecoveryService(store);
 
@@ -263,7 +263,7 @@ test("RuntimeRecoveryService.listDivisionRecoveryOverview returns empty when no 
   assert.deepEqual(overview, []);
 });
 
-test("RuntimeRecoveryService.listDivisionRecoveryOverview groups by division", () => {
+test("RuntimeRecoveryService.listDivisionRecoveryOverview groups by division [runtime-recovery-service]", () => {
   const records = [
     makeRecoveryRecord({ executionId: "exec-1", taskId: "task-1", divisionId: "div-1" }),
     makeRecoveryRecord({ executionId: "exec-2", taskId: "task-2", divisionId: "div-1" }),
@@ -289,7 +289,7 @@ test("RuntimeRecoveryService.listDivisionRecoveryOverview groups by division", (
   assert.equal(div2!.activeCandidateCount, 1);
 });
 
-test("RuntimeRecoveryService.listDivisionRecoveryOverview tracks stale and blocked counts", () => {
+test("RuntimeRecoveryService.listDivisionRecoveryOverview tracks stale and blocked counts [runtime-recovery-service]", () => {
   const activeRecords = [
     makeRecoveryRecord({ executionId: "exec-1", taskId: "task-1", divisionId: "div-1" }),
   ];
@@ -309,7 +309,7 @@ test("RuntimeRecoveryService.listDivisionRecoveryOverview tracks stale and block
   assert.equal(overview[0]!.blockedApprovalCount, 1);
 });
 
-test("RuntimeRecoveryService.listDivisionRecoveryOverview handles null divisionId as unassigned", () => {
+test("RuntimeRecoveryService.listDivisionRecoveryOverview handles null divisionId as unassigned [runtime-recovery-service]", () => {
   const records = [
     makeRecoveryRecord({ executionId: "exec-1", taskId: "task-1", divisionId: null }),
   ];
@@ -328,7 +328,7 @@ test("RuntimeRecoveryService.listDivisionRecoveryOverview handles null divisionI
   assert.equal(overview[0]!.divisionId, "unassigned");
 });
 
-test("RuntimeRecoveryService infers reason as active_execution when no issues", () => {
+test("RuntimeRecoveryService infers reason as active_execution when no issues [runtime-recovery-service]", () => {
   const record = makeRecoveryRecord({
     executionId: "exec-1",
     latestErrorCode: null,
@@ -347,7 +347,7 @@ test("RuntimeRecoveryService infers reason as active_execution when no issues", 
   assert.equal(results[0]!.suggestedAction, "resume_same_worker");
 });
 
-test("RuntimeRecoveryService listRecoverableExecutingRuns uses active_execution reason", () => {
+test("RuntimeRecoveryService listRecoverableExecutingRuns uses active_execution reason [runtime-recovery-service]", () => {
   const record = makeRecoveryRecord({
     executionId: "exec-1",
     latestErrorCode: "E1",
@@ -369,7 +369,7 @@ test("RuntimeRecoveryService listRecoverableExecutingRuns uses active_execution 
   assert.equal(results[0]!.suggestedAction, "resume_same_worker");
 });
 
-test("RuntimeRecoveryService suggests cancel for precheck denied", () => {
+test("RuntimeRecoveryService suggests cancel for precheck denied [runtime-recovery-service]", () => {
   const record = makeRecoveryRecord({
     executionId: "exec-1",
     latestPrecheck: {
@@ -396,7 +396,7 @@ test("RuntimeRecoveryService suggests cancel for precheck denied", () => {
   assert.equal(view.candidates[0]!.suggestedAction, "cancel");
 });
 
-test("RuntimeRecoveryService suggests escalate_takeover for blocked without approval", () => {
+test("RuntimeRecoveryService suggests escalate_takeover for blocked without approval [runtime-recovery-service]", () => {
   const record = makeRecoveryRecord({
     executionId: "exec-1",
     status: "blocked",
@@ -415,7 +415,7 @@ test("RuntimeRecoveryService suggests escalate_takeover for blocked without appr
   assert.equal(view.candidates[0]!.suggestedAction, "escalate_takeover");
 });
 
-test("RuntimeRecoveryService tracks unique taskIds per division", () => {
+test("RuntimeRecoveryService tracks unique taskIds per division [runtime-recovery-service]", () => {
   const records = [
     makeRecoveryRecord({ executionId: "exec-1", taskId: "task-1", divisionId: "div-1" }),
     makeRecoveryRecord({ executionId: "exec-2", taskId: "task-1", divisionId: "div-1" }), // Same task
@@ -439,7 +439,7 @@ test("RuntimeRecoveryService tracks unique taskIds per division", () => {
   assert.ok(overview[0]!.taskIds.includes("task-2"));
 });
 
-test("RuntimeRecoveryCandidate has correct structure", () => {
+test("RuntimeRecoveryCandidate has correct structure [runtime-recovery-service]", () => {
   const record = makeRecoveryRecord({
     executionId: "exec-1",
     taskId: "task-1",
@@ -478,7 +478,7 @@ test("RuntimeRecoveryCandidate has correct structure", () => {
   assert.ok("suggestedAction" in candidate);
 });
 
-test("RecoverySuggestedAction type accepts all valid values", () => {
+test("RecoverySuggestedAction type accepts all valid values [runtime-recovery-service]", () => {
   const actions: RecoverySuggestedAction[] = [
     "resume_same_worker",
     "retry_new_ticket",
@@ -491,7 +491,7 @@ test("RecoverySuggestedAction type accepts all valid values", () => {
   assert.equal(actions.length, 6);
 });
 
-test("RuntimeRecoveryService handles precheck with allowed true", () => {
+test("RuntimeRecoveryService handles precheck with allowed true [runtime-recovery-service]", () => {
   const record = makeRecoveryRecord({
     executionId: "exec-1",
     latestPrecheck: { allowed: 1, reasonCode: null, resolvedBudgetUsd: 100, resolvedTimeoutMs: 60000, resolvedSandboxMode: "standard", resolvedToolsJson: null, resolvedPathsJson: null, checkedAt: "" },
@@ -510,7 +510,7 @@ test("RuntimeRecoveryService handles precheck with allowed true", () => {
   assert.equal(results[0]!.reason, "active_execution");
 });
 
-test("RuntimeRecoveryService.buildCompensationPlan resolves task via execution lookup", () => {
+test("RuntimeRecoveryService.buildCompensationPlan resolves task via execution lookup [runtime-recovery-service]", () => {
   const record = makeRecoveryRecord({
     executionId: "exec-1",
     taskId: "task-from-execution",

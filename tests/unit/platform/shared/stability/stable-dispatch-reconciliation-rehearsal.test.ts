@@ -19,7 +19,7 @@ function createTempDir(): string {
   return join("/tmp", `dispatch-reconciliation-test-${Date.now()}`);
 }
 
-test("runStableDispatchReconciliationRehearsal executes all two scenarios successfully", async () => {
+test("runStableDispatchReconciliationRehearsal executes all two scenarios successfully [stable-dispatch-reconciliation-rehearsal]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableDispatchReconciliationRehearsal({ outputDir });
@@ -38,7 +38,7 @@ test("runStableDispatchReconciliationRehearsal executes all two scenarios succes
   }
 });
 
-test("orphan_claim_requeued scenario passes", async () => {
+test("orphan_claim_requeued scenario passes [stable-dispatch-reconciliation-rehearsal]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableDispatchReconciliationRehearsal({ outputDir });
@@ -55,7 +55,7 @@ test("orphan_claim_requeued scenario passes", async () => {
   }
 });
 
-test("terminal_execution_ticket_cancelled scenario passes", async () => {
+test("terminal_execution_ticket_cancelled scenario passes [stable-dispatch-reconciliation-rehearsal]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableDispatchReconciliationRehearsal({ outputDir });
@@ -72,7 +72,7 @@ test("terminal_execution_ticket_cancelled scenario passes", async () => {
   }
 });
 
-test("writeStableDispatchReconciliationRehearsalReport writes valid JSON", async () => {
+test("writeStableDispatchReconciliationRehearsalReport writes valid JSON [stable-dispatch-reconciliation-rehearsal]", async () => {
   const outputDir = createTempDir();
   const reportPath = join(outputDir, "report.json");
   try {
@@ -94,7 +94,7 @@ test("writeStableDispatchReconciliationRehearsalReport writes valid JSON", async
   }
 });
 
-test("report contains valid startedAt and finishedAt timestamps", async () => {
+test("report contains valid startedAt and finishedAt timestamps [stable-dispatch-reconciliation-rehearsal]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableDispatchReconciliationRehearsal({ outputDir });
@@ -113,7 +113,7 @@ test("report contains valid startedAt and finishedAt timestamps", async () => {
   }
 });
 
-test("report outputDir matches options", async () => {
+test("report outputDir matches options [stable-dispatch-reconciliation-rehearsal]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableDispatchReconciliationRehearsal({ outputDir });
@@ -126,7 +126,7 @@ test("report outputDir matches options", async () => {
   }
 });
 
-test("each scenario has durationMs greater than zero", async () => {
+test("each scenario has durationMs greater than zero [stable-dispatch-reconciliation-rehearsal]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableDispatchReconciliationRehearsal({ outputDir });

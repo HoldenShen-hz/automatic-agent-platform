@@ -10,7 +10,7 @@ const dispatchFeature = createFeatureModule({
   group: "Operations",
   path: "/operations/dispatch",
   permission: "platform_sre",
-  status: "Implemented/Contracted",
+  status: "Planned",
   summary: featureCopy.summary,
   render: DispatchWebView,
 });

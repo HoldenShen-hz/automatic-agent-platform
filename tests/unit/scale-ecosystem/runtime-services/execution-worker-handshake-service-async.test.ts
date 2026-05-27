@@ -7,21 +7,21 @@ import type { WorkerHandshakeDecision } from "../../../../src/scale-ecosystem/ru
 // NOTE: Full integration tests require database setup.
 // These tests focus on class structure, options handling, and behavior validation.
 
-test("ExecutionWorkerHandshakeServiceAsync exposes typed emitter methods", () => {
+test("ExecutionWorkerHandshakeServiceAsync exposes typed emitter methods [execution-worker-handshake-service-async]", () => {
   const service = new ExecutionWorkerHandshakeServiceAsync({} as never, {} as never);
   assert.equal(typeof service.on, "function");
   assert.equal(typeof service.once, "function");
   assert.equal(typeof service.off, "function");
 });
 
-test("ExecutionWorkerHandshakeServiceAsync default options are applied", () => {
+test("ExecutionWorkerHandshakeServiceAsync default options are applied [execution-worker-handshake-service-async]", () => {
   const service = new ExecutionWorkerHandshakeServiceAsync({} as never, {} as never);
   const status = service.getCircuitBreakerStatus();
   assert.equal(status.state, "closed");
   assert.equal(status.failures, 0);
 });
 
-test("ExecutionWorkerHandshakeServiceAsync custom options are applied", () => {
+test("ExecutionWorkerHandshakeServiceAsync custom options are applied [execution-worker-handshake-service-async]", () => {
   const service = new ExecutionWorkerHandshakeServiceAsync({} as never, {} as never, {}, {
     maxRetries: 5,
     initialBackoffMs: 200,
@@ -39,7 +39,7 @@ test("ExecutionWorkerHandshakeServiceAsync custom options are applied", () => {
   assert.equal(status.state, "closed");
 });
 
-test("ExecutionWorkerHandshakeServiceAsync getSyncService returns ExecutionWorkerHandshakeService", () => {
+test("ExecutionWorkerHandshakeServiceAsync getSyncService returns ExecutionWorkerHandshakeService [execution-worker-handshake-service-async]", () => {
   const service = new ExecutionWorkerHandshakeServiceAsync({} as never, {} as never);
   const sync = service.getSyncService();
   assert.ok(sync != null);
@@ -47,7 +47,7 @@ test("ExecutionWorkerHandshakeServiceAsync getSyncService returns ExecutionWorke
   assert.equal(typeof sync.recordHeartbeat, "function");
 });
 
-test("ExecutionWorkerHandshakeServiceAsync resetCircuitBreaker resets state", () => {
+test("ExecutionWorkerHandshakeServiceAsync resetCircuitBreaker resets state [execution-worker-handshake-service-async]", () => {
   const service = new ExecutionWorkerHandshakeServiceAsync({} as never, {} as never);
   service.resetCircuitBreaker();
   const status = service.getCircuitBreakerStatus();
@@ -56,7 +56,7 @@ test("ExecutionWorkerHandshakeServiceAsync resetCircuitBreaker resets state", ()
   assert.equal(status.lastFailure, null);
 });
 
-test("ExecutionWorkerHandshakeServiceAsync getMetrics returns metrics object", () => {
+test("ExecutionWorkerHandshakeServiceAsync getMetrics returns metrics object [execution-worker-handshake-service-async]", () => {
   const service = new ExecutionWorkerHandshakeServiceAsync({} as never, {} as never);
   const metrics = service.getMetrics();
   assert.ok(metrics != null);
@@ -65,7 +65,7 @@ test("ExecutionWorkerHandshakeServiceAsync getMetrics returns metrics object", (
   assert.ok(typeof metrics.failedOperations === "number");
 });
 
-test("ExecutionWorkerHandshakeServiceAsync resetMetrics clears all metrics", () => {
+test("ExecutionWorkerHandshakeServiceAsync resetMetrics clears all metrics [execution-worker-handshake-service-async]", () => {
   const service = new ExecutionWorkerHandshakeServiceAsync({} as never, {} as never);
   service.resetMetrics();
   const metrics = service.getMetrics();
@@ -74,17 +74,17 @@ test("ExecutionWorkerHandshakeServiceAsync resetMetrics clears all metrics", () 
   assert.equal(metrics.failedOperations, 0);
 });
 
-test("ExecutionWorkerHandshakeServiceAsync getQueueDepth returns initial queue size", () => {
+test("ExecutionWorkerHandshakeServiceAsync getQueueDepth returns initial queue size [execution-worker-handshake-service-async]", () => {
   const service = new ExecutionWorkerHandshakeServiceAsync({} as never, {} as never);
   assert.equal(service.getQueueDepth(), 0);
 });
 
-test("ExecutionWorkerHandshakeServiceAsync getActiveOperationCount returns initial count", () => {
+test("ExecutionWorkerHandshakeServiceAsync getActiveOperationCount returns initial count [execution-worker-handshake-service-async]", () => {
   const service = new ExecutionWorkerHandshakeServiceAsync({} as never, {} as never);
   assert.equal(service.getActiveOperationCount(), 0);
 });
 
-test("ExecutionWorkerHandshakeServiceAsync exports WorkerHandshakeDecision type", () => {
+test("ExecutionWorkerHandshakeServiceAsync exports WorkerHandshakeDecision type [execution-worker-handshake-service-async]", () => {
   // Verify type is exported and usable
   const decision: WorkerHandshakeDecision = {
     accepted: true,
@@ -97,7 +97,7 @@ test("ExecutionWorkerHandshakeServiceAsync exports WorkerHandshakeDecision type"
   assert.equal(decision.executionId, "exec-1");
 });
 
-test("ExecutionWorkerHandshakeServiceAsync dispose marks service as disposed", () => {
+test("ExecutionWorkerHandshakeServiceAsync dispose marks service as disposed [execution-worker-handshake-service-async]", () => {
   const service = new ExecutionWorkerHandshakeServiceAsync({} as never, {} as never);
   service.dispose();
   // After dispose, enqueueClaimExecution should reject
@@ -112,14 +112,14 @@ test("ExecutionWorkerHandshakeServiceAsync dispose marks service as disposed", (
   );
 });
 
-test("ExecutionWorkerHandshakeServiceAsync dispose can be called multiple times safely", () => {
+test("ExecutionWorkerHandshakeServiceAsync dispose can be called multiple times safely [execution-worker-handshake-service-async]", () => {
   const service = new ExecutionWorkerHandshakeServiceAsync({} as never, {} as never);
   service.dispose();
   service.dispose(); // Should not throw
   assert.ok(true);
 });
 
-test("ExecutionWorkerHandshakeServiceAsync batchingEnabled sets up batch flush timer", () => {
+test("ExecutionWorkerHandshakeServiceAsync batchingEnabled sets up batch flush timer [execution-worker-handshake-service-async]", () => {
   const service = new ExecutionWorkerHandshakeServiceAsync({} as never, {} as never, {}, {
     batchingEnabled: true,
     batchFlushIntervalMs: 50,
@@ -129,7 +129,7 @@ test("ExecutionWorkerHandshakeServiceAsync batchingEnabled sets up batch flush t
   service.dispose();
 });
 
-test("ExecutionWorkerHandshakeServiceAsync emits events on circuit breaker reset", () => {
+test("ExecutionWorkerHandshakeServiceAsync emits events on circuit breaker reset [execution-worker-handshake-service-async]", () => {
   const service = new ExecutionWorkerHandshakeServiceAsync({} as never, {} as never);
   let closeCount = 0;
   service.on("circuit_breaker_close" as never, () => closeCount++);
@@ -137,14 +137,14 @@ test("ExecutionWorkerHandshakeServiceAsync emits events on circuit breaker reset
   assert.equal(closeCount, 1);
 });
 
-test("ExecutionWorkerHandshakeServiceAsync operations track timed out count", () => {
+test("ExecutionWorkerHandshakeServiceAsync operations track timed out count [execution-worker-handshake-service-async]", () => {
   const service = new ExecutionWorkerHandshakeServiceAsync({} as never, {} as never);
   const metrics = service.getMetrics();
   assert.ok(typeof metrics.timedOutOperations === "number");
   assert.equal(metrics.timedOutOperations, 0);
 });
 
-test("ExecutionWorkerHandshakeServiceAsync operations track retried count", () => {
+test("ExecutionWorkerHandshakeServiceAsync operations track retried count [execution-worker-handshake-service-async]", () => {
   const service = new ExecutionWorkerHandshakeServiceAsync({} as never, {} as never);
   const metrics = service.getMetrics();
   assert.ok(typeof metrics.retriedOperations === "number");

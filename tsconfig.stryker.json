@@ -1,0 +1,17 @@
+{
+  "extends": "./tsconfig.json",
+  "references": [],
+  "include": [
+    "src/**/*.ts",
+    "tests/**/*.ts",
+    "helpers/**/*.ts"
+  ],
+  "exclude": [
+    "dist",
+    "node_modules",
+    "coverage",
+    ".cache",
+    ".stryker-tmp",
+    "ui"
+  ]
+}

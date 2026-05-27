@@ -105,27 +105,27 @@ class MockQueueAdapter implements QueueAdapter {
   }
 }
 
-test("QueuePartitioner extracts partition key from payload", () => {
+test("QueuePartitioner extracts partition key from payload [queue-partitioner]", () => {
   const partitioner = new QueuePartitioner();
   const key = partitioner.extractPartitionKey({ aggregateType: "task", tenantId: "tenant-123" });
   assert.equal(key.aggregateType, "task");
   assert.equal(key.tenantId, "tenant-123");
 });
 
-test("QueuePartitioner defaults to 'default' when no aggregate type", () => {
+test("QueuePartitioner defaults to 'default' when no aggregate type [queue-partitioner]", () => {
   const partitioner = new QueuePartitioner();
   const key = partitioner.extractPartitionKey({});
   assert.equal(key.aggregateType, "default");
 });
 
-test("QueuePartitioner computes partition names by strategy", () => {
+test("QueuePartitioner computes partition names by strategy [queue-partitioner]", () => {
   const partitioner = new QueuePartitioner();
   assert.equal(partitioner.computePartitionName("task", "tenant-1", "byTenant"), "queue:tenant-1");
   assert.equal(partitioner.computePartitionName("task", "tenant-1", "byAggregateType"), "queue:task");
   assert.equal(partitioner.computePartitionName("task", "tenant-1", "byTenantAndAggregate"), "queue:tenant-1:task");
 });
 
-test("QueuePartitioner registers and retrieves partitions", () => {
+test("QueuePartitioner registers and retrieves partitions [queue-partitioner]", () => {
   const partitioner = new QueuePartitioner();
   const partition: QueuePartition = {
     name: "queue:task",
@@ -139,7 +139,7 @@ test("QueuePartitioner registers and retrieves partitions", () => {
   assert.equal(partitioner.getPartition("unregistered"), undefined);
 });
 
-test("QueuePartitioner routes jobs to correct partition", () => {
+test("QueuePartitioner routes jobs to correct partition [queue-partitioner]", () => {
   const partitioner = new QueuePartitioner();
   const mockAdapter = new MockQueueAdapter();
   const partition: QueuePartition = {
@@ -156,7 +156,7 @@ test("QueuePartitioner routes jobs to correct partition", () => {
   assert.ok(mockAdapter.listQueues().includes("queue:execution"));
 });
 
-test("QueuePartitioner detects overload when partition exceeds maxDepth", () => {
+test("QueuePartitioner detects overload when partition exceeds maxDepth [queue-partitioner]", () => {
   const partitioner = new QueuePartitioner();
   const mockAdapter = new MockQueueAdapter();
   const partition: QueuePartition = {
@@ -174,7 +174,7 @@ test("QueuePartitioner detects overload when partition exceeds maxDepth", () => 
   assert.equal(overloads[0]!.aggregateType, "task");
 });
 
-test("QueuePartitioner returns empty overload array when no partition overloaded", () => {
+test("QueuePartitioner returns empty overload array when no partition overloaded [queue-partitioner]", () => {
   const partitioner = new QueuePartitioner();
   const mockAdapter = new MockQueueAdapter();
   const partition: QueuePartition = {
@@ -191,7 +191,7 @@ test("QueuePartitioner returns empty overload array when no partition overloaded
   assert.equal(overloads.length, 0);
 });
 
-test("QueuePartitioner getPartitionStats returns stats for all registered partitions", () => {
+test("QueuePartitioner getPartitionStats returns stats for all registered partitions [queue-partitioner]", () => {
   const partitioner = new QueuePartitioner();
   const mockAdapter = new MockQueueAdapter();
 
@@ -225,7 +225,7 @@ test("QueuePartitioner getPartitionStats returns stats for all registered partit
   assert.equal(stats.get("execution")!.waiting, 5);
 });
 
-test("QueuePartitioner getPartitionStats returns empty stats for unregistered aggregateType", () => {
+test("QueuePartitioner getPartitionStats returns empty stats for unregistered aggregateType [queue-partitioner]", () => {
   const partitioner = new QueuePartitioner();
   const mockAdapter = new MockQueueAdapter();
 
@@ -234,7 +234,7 @@ test("QueuePartitioner getPartitionStats returns empty stats for unregistered ag
   assert.equal(stats.size, 0);
 });
 
-test("QueuePartitioner detectOverload handles delayed jobs in count", () => {
+test("QueuePartitioner detectOverload handles delayed jobs in count [queue-partitioner]", () => {
   const partitioner = new QueuePartitioner();
   const mockAdapter = new MockQueueAdapter();
   const partition: QueuePartition = {
@@ -255,7 +255,7 @@ test("QueuePartitioner detectOverload handles delayed jobs in count", () => {
   assert.equal(overloads.length, 1);
 });
 
-test("QueuePartitioner detectOverload returns overloaded stats payload", () => {
+test("QueuePartitioner detectOverload returns overloaded stats payload [queue-partitioner]", () => {
   const partitioner = new QueuePartitioner();
   const mockAdapter = new MockQueueAdapter();
   partitioner.registerPartition({
@@ -271,7 +271,7 @@ test("QueuePartitioner detectOverload returns overloaded stats payload", () => {
   assert.equal(overloads[0]?.stats.waiting, 2);
 });
 
-test("QueuePartitioner route uses default partition strategy when no partition registered", () => {
+test("QueuePartitioner route uses default partition strategy when no partition registered [queue-partitioner]", () => {
   const partitioner = new QueuePartitioner();
   const mockAdapter = new MockQueueAdapter();
 
@@ -283,7 +283,7 @@ test("QueuePartitioner route uses default partition strategy when no partition r
   assert.ok(mockAdapter.listQueues().includes("queue:unknown"));
 });
 
-test("QueuePartitioner computePartitionName handles unknown strategy as byAggregateType", () => {
+test("QueuePartitioner computePartitionName handles unknown strategy as byAggregateType [queue-partitioner]", () => {
   const partitioner = new QueuePartitioner();
 
   // Unknown strategy should fall through to default case
@@ -291,14 +291,14 @@ test("QueuePartitioner computePartitionName handles unknown strategy as byAggreg
   assert.equal(result, "queue:task");
 });
 
-test("QueuePartitioner extractPartitionKey uses domain as fallback for aggregateType", () => {
+test("QueuePartitioner extractPartitionKey uses domain as fallback for aggregateType [queue-partitioner]", () => {
   const partitioner = new QueuePartitioner();
   const key = partitioner.extractPartitionKey({ domain: "execution", tenant_id: "tenant-123" });
   assert.equal(key.aggregateType, "execution");
   assert.equal(key.tenantId, "tenant-123");
 });
 
-test("QueuePartitioner getPartition returns undefined for unregistered partition", () => {
+test("QueuePartitioner getPartition returns undefined for unregistered partition [queue-partitioner]", () => {
   const partitioner = new QueuePartitioner();
   const result = partitioner.getPartition("nonexistent");
   assert.equal(result, undefined);

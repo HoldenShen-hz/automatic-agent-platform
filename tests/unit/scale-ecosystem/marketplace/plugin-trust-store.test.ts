@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { PluginTrustStore } from "../../../../src/scale-ecosystem/marketplace/plugin-trust-store.js";
 
-test("PluginTrustStore accepts trusted artifacts with provenance, trust root, and no revocation", () => {
+test("PluginTrustStore accepts trusted artifacts with provenance, trust root, and no revocation [plugin-trust-store]", () => {
   const store = new PluginTrustStore();
   const trustRoot = store.registerTrustRoot({
     publisherId: "publisher-1",
@@ -40,7 +40,7 @@ test("PluginTrustStore accepts trusted artifacts with provenance, trust root, an
   assert.equal(decision.requiredIsolationMode, "dedicated_pool");
 });
 
-test("PluginTrustStore blocks revoked artifacts and missing provenance evidence", () => {
+test("PluginTrustStore blocks revoked artifacts and missing provenance evidence [plugin-trust-store]", () => {
   const store = new PluginTrustStore();
   store.registerTrustRoot({
     publisherId: "publisher-2",

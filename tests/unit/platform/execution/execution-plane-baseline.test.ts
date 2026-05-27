@@ -6,7 +6,7 @@ import {
   resolveExecutionCapabilityBaseline,
 } from "../../../../src/platform/five-plane-execution/execution-plane-baseline.js";
 
-test("execution plane baseline covers execution entry modules", () => {
+test("execution plane baseline covers execution entry modules [execution-plane-baseline]", () => {
   const baselines = listExecutionCapabilityBaselines();
   assert.equal(baselines.length, 14);
   assert.ok(resolveExecutionCapabilityBaseline("lease").baselineServices.includes("ExecutionLeaseService"));

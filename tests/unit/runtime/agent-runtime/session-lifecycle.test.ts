@@ -9,67 +9,67 @@ import {
 } from "../../../../src/platform/five-plane-execution/execution-engine/session-lifecycle.js";
 import type { SessionRecord, TaskRecord } from "../../../../src/platform/five-plane-execution/contracts/types/domain.js";
 
-test("isSessionTerminalStatus returns true for completed", () => {
+test("isSessionTerminalStatus returns true for completed [session-lifecycle]", () => {
   assert.equal(isSessionTerminalStatus("completed"), true);
 });
 
-test("isSessionTerminalStatus returns true for failed", () => {
+test("isSessionTerminalStatus returns true for failed [session-lifecycle]", () => {
   assert.equal(isSessionTerminalStatus("failed"), true);
 });
 
-test("isSessionTerminalStatus returns true for cancelled", () => {
+test("isSessionTerminalStatus returns true for cancelled [session-lifecycle]", () => {
   assert.equal(isSessionTerminalStatus("cancelled"), true);
 });
 
-test("isSessionTerminalStatus returns false for open", () => {
+test("isSessionTerminalStatus returns false for open [session-lifecycle]", () => {
   assert.equal(isSessionTerminalStatus("open"), false);
 });
 
-test("isSessionTerminalStatus returns false for streaming", () => {
+test("isSessionTerminalStatus returns false for streaming [session-lifecycle]", () => {
   assert.equal(isSessionTerminalStatus("streaming"), false);
 });
 
-test("SessionTerminalStatus type is properly exported", () => {
+test("SessionTerminalStatus type is properly exported [session-lifecycle]", () => {
   const status: SessionTerminalStatus = "completed";
   assert.equal(status, "completed");
 });
 
-test("isTaskActiveStatus returns true for queued", () => {
+test("isTaskActiveStatus returns true for queued [session-lifecycle]", () => {
   const task = { status: "queued" } as TaskRecord;
   assert.equal(isTaskActiveStatus(task.status), true);
 });
 
-test("isTaskActiveStatus returns true for pending", () => {
+test("isTaskActiveStatus returns true for pending [session-lifecycle]", () => {
   const task = { status: "pending" } as TaskRecord;
   assert.equal(isTaskActiveStatus(task.status), true);
 });
 
-test("isTaskActiveStatus returns true for in_progress", () => {
+test("isTaskActiveStatus returns true for in_progress [session-lifecycle]", () => {
   const task = { status: "in_progress" } as TaskRecord;
   assert.equal(isTaskActiveStatus(task.status), true);
 });
 
-test("isTaskActiveStatus returns true for awaiting_decision", () => {
+test("isTaskActiveStatus returns true for awaiting_decision [session-lifecycle]", () => {
   const task = { status: "awaiting_decision" } as TaskRecord;
   assert.equal(isTaskActiveStatus(task.status), true);
 });
 
-test("isTaskActiveStatus returns false for done", () => {
+test("isTaskActiveStatus returns false for done [session-lifecycle]", () => {
   const task = { status: "done" } as TaskRecord;
   assert.equal(isTaskActiveStatus(task.status), false);
 });
 
-test("isTaskActiveStatus returns false for failed", () => {
+test("isTaskActiveStatus returns false for failed [session-lifecycle]", () => {
   const task = { status: "failed" } as TaskRecord;
   assert.equal(isTaskActiveStatus(task.status), false);
 });
 
-test("TaskActiveStatus type is properly exported", () => {
+test("TaskActiveStatus type is properly exported [session-lifecycle]", () => {
   const status: TaskActiveStatus = "in_progress";
   assert.equal(status, "in_progress");
 });
 
-test("createRecoverySession creates new session with new ID", () => {
+test("createRecoverySession creates new session with new ID [session-lifecycle]", () => {
   const originalSession: SessionRecord = {
     id: "sess_original",
     taskId: "task_123",
@@ -90,7 +90,7 @@ test("createRecoverySession creates new session with new ID", () => {
   assert.equal(recoverySession.externalSessionId, originalSession.externalSessionId);
 });
 
-test("createRecoverySession sets createdAt and updatedAt to occurredAt", () => {
+test("createRecoverySession sets createdAt and updatedAt to occurredAt [session-lifecycle]", () => {
   const originalSession: SessionRecord = {
     id: "sess_original",
     taskId: "task_123",
@@ -108,7 +108,7 @@ test("createRecoverySession sets createdAt and updatedAt to occurredAt", () => {
   assert.equal(recoverySession.updatedAt, occurredAt);
 });
 
-test("createRecoverySession preserves externalSessionId when null", () => {
+test("createRecoverySession preserves externalSessionId when null [session-lifecycle]", () => {
   const originalSession: SessionRecord = {
     id: "sess_original",
     taskId: "task_123",
@@ -124,7 +124,7 @@ test("createRecoverySession preserves externalSessionId when null", () => {
   assert.strictEqual(recoverySession.externalSessionId, null);
 });
 
-test("createRecoverySession preserves externalSessionId when present", () => {
+test("createRecoverySession preserves externalSessionId when present [session-lifecycle]", () => {
   const originalSession: SessionRecord = {
     id: "sess_original",
     taskId: "task_123",
@@ -140,7 +140,7 @@ test("createRecoverySession preserves externalSessionId when present", () => {
   assert.equal(recoverySession.externalSessionId, "ext_abc");
 });
 
-test("createRecoverySession works for all terminal session statuses", () => {
+test("createRecoverySession works for all terminal session statuses [session-lifecycle]", () => {
   const statuses: SessionTerminalStatus[] = ["completed", "failed", "cancelled"];
 
   for (const status of statuses) {
@@ -161,7 +161,7 @@ test("createRecoverySession works for all terminal session statuses", () => {
   }
 });
 
-test("isSessionTerminalStatus type guard narrows correctly", () => {
+test("isSessionTerminalStatus type guard narrows correctly [session-lifecycle]", () => {
   const statuses = ["completed", "failed", "cancelled", "open", "streaming"] as const;
 
   for (const status of statuses) {
@@ -173,7 +173,7 @@ test("isSessionTerminalStatus type guard narrows correctly", () => {
   }
 });
 
-test("isTaskActiveStatus type guard narrows correctly", () => {
+test("isTaskActiveStatus type guard narrows correctly [session-lifecycle]", () => {
   const statuses = ["queued", "pending", "in_progress", "awaiting_decision", "done", "failed", "cancelled"] as const;
 
   for (const status of statuses) {

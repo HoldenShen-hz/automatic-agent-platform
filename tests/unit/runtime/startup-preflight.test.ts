@@ -87,7 +87,7 @@ function seedConfigTree(root: string, overrides: Record<string, string> = {}): v
   }
 }
 
-test("startup config validator converts invalid bundles into structured failures", () => {
+test("startup config validator converts invalid bundles into structured failures [startup-preflight]", () => {
   const workspace = createTempWorkspace("aa-startup-preflight-");
   const configRoot = join(workspace, "config");
 
@@ -110,7 +110,7 @@ test("startup config validator converts invalid bundles into structured failures
   }
 });
 
-test("startup provider readiness probe requires API key credentials for the default provider", () => {
+test("startup provider readiness probe requires API key credentials for the default provider [startup-preflight]", () => {
   const workspace = createTempWorkspace("aa-startup-preflight-");
   const configRoot = join(workspace, "config");
 
@@ -136,7 +136,7 @@ test("startup provider readiness probe requires API key credentials for the defa
   }
 });
 
-test("startup config validator succeeds when all config files are valid", () => {
+test("startup config validator succeeds when all config files are valid [startup-preflight]", () => {
   const workspace = createTempWorkspace("aa-startup-preflight-");
   const configRoot = join(workspace, "config");
 
@@ -155,7 +155,7 @@ test("startup config validator succeeds when all config files are valid", () => 
   }
 });
 
-test("startup provider readiness probe passes when API key is present in env", () => {
+test("startup provider readiness probe passes when API key is present in env [startup-preflight]", () => {
   const workspace = createTempWorkspace("aa-startup-preflight-");
   const configRoot = join(workspace, "config");
 
@@ -180,7 +180,7 @@ test("startup provider readiness probe passes when API key is present in env", (
   }
 });
 
-test("deriveProviderApiKeyEnvName returns correct env var name format", () => {
+test("deriveProviderApiKeyEnvName returns correct env var name format [startup-preflight]", () => {
   assert.equal(deriveProviderApiKeyEnvName("anthropic"), "ANTHROPIC_API_KEY");
   assert.equal(deriveProviderApiKeyEnvName("openai"), "OPENAI_API_KEY");
   assert.equal(deriveProviderApiKeyEnvName("minimax"), "MINIMAX_API_KEY");

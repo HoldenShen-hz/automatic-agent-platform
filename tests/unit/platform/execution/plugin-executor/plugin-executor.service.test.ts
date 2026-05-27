@@ -82,7 +82,7 @@ const createTestContext = (overrides: Partial<ExecutionContext> = {}): Execution
 // Lifecycle Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("PluginExecutorService registers plugins and tracks state", () => {
+test("PluginExecutorService registers plugins and tracks state [plugin-executor.service]", () => {
   const service = new PluginExecutorService();
   const manifest = createTestManifest();
   const hooks = createTestHooks();
@@ -97,7 +97,7 @@ test("PluginExecutorService registers plugins and tracks state", () => {
   assert.equal(state, "registered");
 });
 
-test("PluginExecutorService.load() transitions state from registered to loaded", async () => {
+test("PluginExecutorService.load() transitions state from registered to loaded [plugin-executor.service]", async () => {
   const service = new PluginExecutorService();
   let loadCalled = false;
 
@@ -114,7 +114,7 @@ test("PluginExecutorService.load() transitions state from registered to loaded",
   assert.equal(service.getState("test-plugin"), "loaded");
 });
 
-test("PluginExecutorService.activate() transitions state from loaded to active", async () => {
+test("PluginExecutorService.activate() transitions state from loaded to active [plugin-executor.service]", async () => {
   const service = new PluginExecutorService();
   let activateCalled = false;
 
@@ -131,7 +131,7 @@ test("PluginExecutorService.activate() transitions state from loaded to active",
   assert.equal(service.getState("test-plugin"), "active");
 });
 
-test("PluginExecutorService.deactivate() transitions state from active to inactive", async () => {
+test("PluginExecutorService.deactivate() transitions state from active to inactive [plugin-executor.service]", async () => {
   const service = new PluginExecutorService();
   let deactivateCalled = false;
 
@@ -149,7 +149,7 @@ test("PluginExecutorService.deactivate() transitions state from active to inacti
   assert.equal(service.getState("test-plugin"), "inactive");
 });
 
-test("PluginExecutorService.unregister() transitions state to disabled and calls onUnload", async () => {
+test("PluginExecutorService.unregister() transitions state to disabled and calls onUnload [plugin-executor.service]", async () => {
   const service = new PluginExecutorService();
   let unloadCalled = false;
 
@@ -170,7 +170,7 @@ test("PluginExecutorService.unregister() transitions state to disabled and calls
 // Execution Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("PluginExecutorService.execute() runs plugin action and returns result", async () => {
+test("PluginExecutorService.execute() runs plugin action and returns result [plugin-executor.service]", async () => {
   const service = new PluginExecutorService();
 
   const manifest = createTestManifest({
@@ -196,7 +196,7 @@ test("PluginExecutorService.execute() runs plugin action and returns result", as
   assert.ok(result.timestamp);
 });
 
-test("PluginExecutorService.execute() rejects executing inactive plugin", async () => {
+test("PluginExecutorService.execute() rejects executing inactive plugin [plugin-executor.service]", async () => {
   const service = new PluginExecutorService();
 
   const manifest = createTestManifest();
@@ -215,7 +215,7 @@ test("PluginExecutorService.execute() rejects executing inactive plugin", async 
   );
 });
 
-test("PluginExecutorService.execute() throws for unknown plugin", async () => {
+test("PluginExecutorService.execute() throws for unknown plugin [plugin-executor.service]", async () => {
   const service = new PluginExecutorService();
   const context = createTestContext();
 
@@ -227,7 +227,7 @@ test("PluginExecutorService.execute() throws for unknown plugin", async () => {
   );
 });
 
-test("PluginExecutorService.execute() rejects action not in manifest spiTypes", async () => {
+test("PluginExecutorService.execute() rejects action not in manifest spiTypes [plugin-executor.service]", async () => {
   const service = new PluginExecutorService();
 
   const manifest = createTestManifest({ spiTypes: ["retriever"] });
@@ -251,7 +251,7 @@ test("PluginExecutorService.execute() rejects action not in manifest spiTypes", 
 // Error Handling Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("PluginExecutorService.execute() handles timeout and returns error status", async () => {
+test("PluginExecutorService.execute() handles timeout and returns error status [plugin-executor.service]", async () => {
   const service = new PluginExecutorService();
 
   const manifest = createTestManifest({
@@ -290,7 +290,7 @@ test("PluginExecutorService.execute() handles timeout and returns error status",
   assert.equal(result.pluginId, "test-plugin");
 });
 
-test("PluginExecutorService.healthCheck() returns plugin health status", async () => {
+test("PluginExecutorService.healthCheck() returns plugin health status [plugin-executor.service]", async () => {
   const service = new PluginExecutorService();
 
   const manifest = createTestManifest();
@@ -307,7 +307,7 @@ test("PluginExecutorService.healthCheck() returns plugin health status", async (
   assert.equal(nonexistent, false);
 });
 
-test("PluginExecutorService.healthCheck() falls back to error count threshold", async () => {
+test("PluginExecutorService.healthCheck() falls back to error count threshold [plugin-executor.service]", async () => {
   const service = new PluginExecutorService();
 
   const manifest = createTestManifest();
@@ -324,7 +324,7 @@ test("PluginExecutorService.healthCheck() falls back to error count threshold", 
 // Sandbox Tier Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("PluginExecutorService handles none sandbox tier", async () => {
+test("PluginExecutorService handles none sandbox tier [plugin-executor.service]", async () => {
   const service = new PluginExecutorService();
 
   const manifest = createTestManifest();
@@ -340,7 +340,7 @@ test("PluginExecutorService handles none sandbox tier", async () => {
   assert.equal(result.status, "ok");
 });
 
-test("PluginExecutorService handles container sandbox tier", async () => {
+test("PluginExecutorService handles container sandbox tier [plugin-executor.service]", async () => {
   const service = new PluginExecutorService();
 
   const manifest = createTestManifest();
@@ -360,7 +360,7 @@ test("PluginExecutorService handles container sandbox tier", async () => {
 // Scoped External Access Sandbox Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("PluginExecutorService execute with scoped_external_access tier", async () => {
+test("PluginExecutorService execute with scoped_external_access tier [plugin-executor.service]", async () => {
   const service = new PluginExecutorService();
 
   const manifest = createTestManifest();
@@ -376,7 +376,7 @@ test("PluginExecutorService execute with scoped_external_access tier", async () 
   assert.equal(result.status, "ok");
 });
 
-test("ScopedExternalAccessSandbox validates domain whitelist", async () => {
+test("ScopedExternalAccessSandbox validates domain whitelist [plugin-executor.service]", async () => {
   const { ScopedExternalAccessSandbox } = await import(
     "../../../../../src/platform/five-plane-execution/plugin-executor/scoped-external-access-sandbox.js"
   );
@@ -394,7 +394,7 @@ test("ScopedExternalAccessSandbox validates domain whitelist", async () => {
   assert.equal(blocked, false);
 });
 
-test("ScopedExternalAccessSandbox enforces rate limits", async () => {
+test("ScopedExternalAccessSandbox enforces rate limits [plugin-executor.service]", async () => {
   const { ScopedExternalAccessSandbox } = await import(
     "../../../../../src/platform/five-plane-execution/plugin-executor/scoped-external-access-sandbox.js"
   );
@@ -416,7 +416,7 @@ test("ScopedExternalAccessSandbox enforces rate limits", async () => {
   assert.equal(blocked, false);
 });
 
-test("ScopedExternalAccessSandbox filters sensitive headers", async () => {
+test("ScopedExternalAccessSandbox filters sensitive headers [plugin-executor.service]", async () => {
   const { ScopedExternalAccessSandbox } = await import(
     "../../../../../src/platform/five-plane-execution/plugin-executor/scoped-external-access-sandbox.js"
   );
@@ -442,7 +442,7 @@ test("ScopedExternalAccessSandbox filters sensitive headers", async () => {
   assert.equal(filtered["x-api-key"], undefined);
 });
 
-test("ScopedExternalAccessSandbox validates response size", async () => {
+test("ScopedExternalAccessSandbox validates response size [plugin-executor.service]", async () => {
   const { ScopedExternalAccessSandbox } = await import(
     "../../../../../src/platform/five-plane-execution/plugin-executor/scoped-external-access-sandbox.js"
   );
@@ -460,7 +460,7 @@ test("ScopedExternalAccessSandbox validates response size", async () => {
   assert.equal(sandbox.validateResponseSize(largeBody), false);
 });
 
-test("ScopedExternalAccessSandbox blocks oversized responses", async () => {
+test("ScopedExternalAccessSandbox blocks oversized responses [plugin-executor.service]", async () => {
   const { ScopedExternalAccessSandbox } = await import(
     "../../../../../src/platform/five-plane-execution/plugin-executor/scoped-external-access-sandbox.js"
   );
@@ -480,7 +480,7 @@ test("ScopedExternalAccessSandbox blocks oversized responses", async () => {
   assert.equal(response.blocked, true);
 });
 
-test("ScopedExternalAccessSandbox reports rate limit status", async () => {
+test("ScopedExternalAccessSandbox reports rate limit status [plugin-executor.service]", async () => {
   const { ScopedExternalAccessSandbox } = await import(
     "../../../../../src/platform/five-plane-execution/plugin-executor/scoped-external-access-sandbox.js"
   );
@@ -507,7 +507,7 @@ test("ScopedExternalAccessSandbox reports rate limit status", async () => {
 // Duplicate Registration Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("PluginExecutorService.register() throws for duplicate pluginId", () => {
+test("PluginExecutorService.register() throws for duplicate pluginId [plugin-executor.service]", () => {
   const service = new PluginExecutorService();
   const manifest = createTestManifest();
   const hooks = createTestHooks();
@@ -522,7 +522,7 @@ test("PluginExecutorService.register() throws for duplicate pluginId", () => {
   );
 });
 
-test("PluginExecutorService.unregister() throws for unknown pluginId", async () => {
+test("PluginExecutorService.unregister() throws for unknown pluginId [plugin-executor.service]", async () => {
   const service = new PluginExecutorService();
 
   await assert.rejects(
@@ -533,7 +533,7 @@ test("PluginExecutorService.unregister() throws for unknown pluginId", async () 
   );
 });
 
-test("PluginExecutorService.load() throws for unknown pluginId", async () => {
+test("PluginExecutorService.load() throws for unknown pluginId [plugin-executor.service]", async () => {
   const service = new PluginExecutorService();
 
   await assert.rejects(
@@ -544,7 +544,7 @@ test("PluginExecutorService.load() throws for unknown pluginId", async () => {
   );
 });
 
-test("PluginExecutorService.activate() throws for disabled plugin", async () => {
+test("PluginExecutorService.activate() throws for disabled plugin [plugin-executor.service]", async () => {
   const service = new PluginExecutorService();
   const manifest = createTestManifest();
   const hooks = createTestHooks();
@@ -564,7 +564,7 @@ test("PluginExecutorService.activate() throws for disabled plugin", async () => 
 // Legacy PluginExecutionService Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("PluginExecutionService registers plugins and exposes listPlugins", async () => {
+test("PluginExecutionService registers plugins and exposes listPlugins [plugin-executor.service]", async () => {
   const { PluginExecutionService } = await import(
     "../../../../../src/platform/five-plane-execution/plugin-executor/index.js"
   );
@@ -582,7 +582,7 @@ test("PluginExecutionService registers plugins and exposes listPlugins", async (
   assert.equal(plugins[0]!.pluginId, "legacy-plugin");
 });
 
-test("PluginExecutionService.execute() runs plugin action and returns result", async () => {
+test("PluginExecutionService.execute() runs plugin action and returns result [plugin-executor.service]", async () => {
   const { PluginExecutionService } = await import(
     "../../../../../src/platform/five-plane-execution/plugin-executor/index.js"
   );
@@ -612,7 +612,7 @@ test("PluginExecutionService.execute() runs plugin action and returns result", a
   assert.equal(result.action, "fetch");
 });
 
-test("PluginExecutionService.execute() throws for unknown plugin", async () => {
+test("PluginExecutionService.execute() throws for unknown plugin [plugin-executor.service]", async () => {
   const { PluginExecutionService } = await import(
     "../../../../../src/platform/five-plane-execution/plugin-executor/index.js"
   );
@@ -633,7 +633,7 @@ test("PluginExecutionService.execute() throws for unknown plugin", async () => {
   );
 });
 
-test("PluginExecutionService.execute() throws for unregistered action", async () => {
+test("PluginExecutionService.execute() throws for unregistered action [plugin-executor.service]", async () => {
   const { PluginExecutionService } = await import(
     "../../../../../src/platform/five-plane-execution/plugin-executor/index.js"
   );
@@ -660,7 +660,7 @@ test("PluginExecutionService.execute() throws for unregistered action", async ()
   );
 });
 
-test("PluginExecutionService.execute() supports sync execute function", async () => {
+test("PluginExecutionService.execute() supports sync execute function [plugin-executor.service]", async () => {
   const { PluginExecutionService } = await import(
     "../../../../../src/platform/five-plane-execution/plugin-executor/index.js"
   );

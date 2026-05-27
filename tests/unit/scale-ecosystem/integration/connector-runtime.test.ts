@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { buildConnectorExecutionKey, ConnectorExecutionRequest } from "../../../../src/scale-ecosystem/integration/connector-runtime/index.js";
 
-test("buildConnectorExecutionKey creates correct key", () => {
+test("buildConnectorExecutionKey creates correct key [connector-runtime]", () => {
   const request: ConnectorExecutionRequest = {
     connectorId: "slack",
     capability: "send_message",
@@ -16,7 +16,7 @@ test("buildConnectorExecutionKey creates correct key", () => {
   assert.equal(key, "slack:send_message");
 });
 
-test("buildConnectorExecutionKey handles complex capability names", () => {
+test("buildConnectorExecutionKey handles complex capability names [connector-runtime]", () => {
   const request: ConnectorExecutionRequest = {
     connectorId: "aws-s3",
     capability: "upload:multipart",
@@ -29,7 +29,7 @@ test("buildConnectorExecutionKey handles complex capability names", () => {
   assert.equal(key, "aws-s3:upload:multipart");
 });
 
-test("buildConnectorExecutionKey handles empty payload", () => {
+test("buildConnectorExecutionKey handles empty payload [connector-runtime]", () => {
   const request: ConnectorExecutionRequest = {
     connectorId: "http",
     capability: "GET",
@@ -42,21 +42,21 @@ test("buildConnectorExecutionKey handles empty payload", () => {
   assert.equal(key, "http:GET");
 });
 
-test("buildConnectorExecutionKey unique per connector", () => {
+test("buildConnectorExecutionKey unique per connector [connector-runtime]", () => {
   const request1: ConnectorExecutionRequest = { connectorId: "a", capability: "x", payload: {}, secretBindings: [] };
   const request2: ConnectorExecutionRequest = { connectorId: "b", capability: "x", payload: {}, secretBindings: [] };
 
   assert.notEqual(buildConnectorExecutionKey(request1), buildConnectorExecutionKey(request2));
 });
 
-test("buildConnectorExecutionKey unique per capability", () => {
+test("buildConnectorExecutionKey unique per capability [connector-runtime]", () => {
   const request1: ConnectorExecutionRequest = { connectorId: "svc", capability: "read", payload: {}, secretBindings: [] };
   const request2: ConnectorExecutionRequest = { connectorId: "svc", capability: "write", payload: {}, secretBindings: [] };
 
   assert.notEqual(buildConnectorExecutionKey(request1), buildConnectorExecutionKey(request2));
 });
 
-test("ConnectorExecutionResult schema validates succeeded", () => {
+test("ConnectorExecutionResult schema validates succeeded [connector-runtime]", () => {
   const result = {
     connectorId: "test",
     success: true,
@@ -67,7 +67,7 @@ test("ConnectorExecutionResult schema validates succeeded", () => {
   assert.equal(result.status, "succeeded");
 });
 
-test("ConnectorExecutionResult schema validates failed", () => {
+test("ConnectorExecutionResult schema validates failed [connector-runtime]", () => {
   const result = {
     connectorId: "test",
     success: false,
@@ -78,7 +78,7 @@ test("ConnectorExecutionResult schema validates failed", () => {
   assert.equal(result.status, "failed");
 });
 
-test("ConnectorExecutionResult schema validates deferred", () => {
+test("ConnectorExecutionResult schema validates deferred [connector-runtime]", () => {
   const result = {
     connectorId: "test",
     success: false,

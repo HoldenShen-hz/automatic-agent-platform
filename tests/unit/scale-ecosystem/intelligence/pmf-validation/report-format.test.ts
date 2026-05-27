@@ -72,7 +72,7 @@ function createReport(overrides: Partial<PmfValidationReport> = {}): PmfValidati
   return { ...base, ...overrides };
 }
 
-test("buildMarkdownReport renders report header fields", () => {
+test("buildMarkdownReport renders report header fields [report-format]", () => {
   const report = createReport({
     reportId: "test-123",
     profileName: "custom_profile",
@@ -89,7 +89,7 @@ test("buildMarkdownReport renders report header fields", () => {
   assert.match(output, /- Generated At: `2026-03-01T12:00:00Z`/);
 });
 
-test("buildMarkdownReport renders window information", () => {
+test("buildMarkdownReport renders window information [report-format]", () => {
   const report = createReport({
     window: {
       start: "2026-01-01T00:00:00Z",
@@ -103,7 +103,7 @@ test("buildMarkdownReport renders window information", () => {
   assert.match(output, /- Window: `2026-01-01T00:00:00Z` -> `2026-01-31T23:59:59Z` \(30d\)/);
 });
 
-test("buildMarkdownReport renders division scope", () => {
+test("buildMarkdownReport renders division scope [report-format]", () => {
   const report = createReport({ divisionId: "div-alpha" });
   const output = buildMarkdownReport(report);
   assert.match(output, /- Division Scope: `div-alpha`/);
@@ -113,14 +113,14 @@ test("buildMarkdownReport renders division scope", () => {
   assert.match(outputNoDivision, /- Division Scope: `all`/);
 });
 
-test("buildMarkdownReport renders summary section", () => {
+test("buildMarkdownReport renders summary section [report-format]", () => {
   const report = createReport({ summary: "Custom summary text." });
   const output = buildMarkdownReport(report);
   assert.match(output, /## Summary/);
   assert.match(output, /Custom summary text\./);
 });
 
-test("buildMarkdownReport renders all metrics", () => {
+test("buildMarkdownReport renders all metrics [report-format]", () => {
   const report = createReport();
   const output = buildMarkdownReport(report);
 
@@ -135,7 +135,7 @@ test("buildMarkdownReport renders all metrics", () => {
   assert.match(output, /- resolvedApprovalCount: 45/);
 });
 
-test("buildMarkdownReport renders nullable metrics as n/a", () => {
+test("buildMarkdownReport renders nullable metrics as n/a [report-format]", () => {
   const customMetrics: PmfValidationReport["metrics"] = {
     taskCount: 0,
     terminalTaskCount: 0,
@@ -168,7 +168,7 @@ test("buildMarkdownReport renders nullable metrics as n/a", () => {
   assert.match(output, /- crossDivisionUsageRatePct: n\/a/);
 });
 
-test("buildMarkdownReport renders checks section", () => {
+test("buildMarkdownReport renders checks section [report-format]", () => {
   const report = createReport({
     checks: [
       {
@@ -197,7 +197,7 @@ test("buildMarkdownReport renders checks section", () => {
   assert.match(output, /- activation_rate: warn \(observed=55 pct, threshold=60 pct\)/);
 });
 
-test("buildMarkdownReport handles check with null observed value", () => {
+test("buildMarkdownReport handles check with null observed value [report-format]", () => {
   const report = createReport({
     checks: [
       {
@@ -216,7 +216,7 @@ test("buildMarkdownReport handles check with null observed value", () => {
   assert.match(output, /- sample_size: fail \(observed=n\/a count, threshold=100 count\)/);
 });
 
-test("buildMarkdownReport handles empty checks array", () => {
+test("buildMarkdownReport handles empty checks array [report-format]", () => {
   const report = createReport({ checks: [] });
   const output = buildMarkdownReport(report);
 
@@ -225,7 +225,7 @@ test("buildMarkdownReport handles empty checks array", () => {
   assert.doesNotMatch(output, /checkId:/);
 });
 
-test("buildMarkdownReport output is valid markdown", () => {
+test("buildMarkdownReport output is valid markdown [report-format]", () => {
   const report = createReport();
   const output = buildMarkdownReport(report);
 

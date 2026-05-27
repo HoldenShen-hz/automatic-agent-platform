@@ -15,7 +15,7 @@ import {
   WEB_SEARCH_TOOL_METADATA,
 } from "../../../../../src/platform/five-plane-execution/tool-executor/tool-metadata.js";
 
-test("listBuiltinToolExecutionMetadata returns all built-in tools", () => {
+test("listBuiltinToolExecutionMetadata returns all built-in tools [tool-metadata]", () => {
   const metadata = listBuiltinToolExecutionMetadata();
 
   assert.ok(metadata.length >= 8);
@@ -26,7 +26,7 @@ test("listBuiltinToolExecutionMetadata returns all built-in tools", () => {
   assert.ok(toolNames.includes("bash"));
 });
 
-test("resolveToolExecutionMetadata returns metadata for known tool", () => {
+test("resolveToolExecutionMetadata returns metadata for known tool [tool-metadata]", () => {
   const metadata = resolveToolExecutionMetadata("command_exec");
 
   assert.ok(metadata !== null);
@@ -34,55 +34,55 @@ test("resolveToolExecutionMetadata returns metadata for known tool", () => {
   assert.equal(metadata!.riskLevel, "high");
 });
 
-test("resolveToolExecutionMetadata returns null for unknown tool", () => {
+test("resolveToolExecutionMetadata returns null for unknown tool [tool-metadata]", () => {
   const metadata = resolveToolExecutionMetadata("nonexistent_tool");
 
   assert.equal(metadata, null);
 });
 
-test("resolveToolTimeoutMs uses request timeout when valid", () => {
+test("resolveToolTimeoutMs uses request timeout when valid [tool-metadata]", () => {
   const result = resolveToolTimeoutMs(5000, null);
 
   assert.equal(result, 5000);
 });
 
-test("resolveToolTimeoutMs uses metadata default when no request timeout", () => {
+test("resolveToolTimeoutMs uses metadata default when no request timeout [tool-metadata]", () => {
   const result = resolveToolTimeoutMs(undefined, READ_TOOL_METADATA);
 
   assert.equal(result, READ_TOOL_METADATA.defaultTimeoutMs);
 });
 
-test("resolveToolTimeoutMs uses fallback when no request or metadata", () => {
+test("resolveToolTimeoutMs uses fallback when no request or metadata [tool-metadata]", () => {
   const result = resolveToolTimeoutMs(undefined, null);
 
   assert.equal(result, 30000);
 });
 
-test("resolveToolTimeoutMs ignores invalid request timeout", () => {
+test("resolveToolTimeoutMs ignores invalid request timeout [tool-metadata]", () => {
   const result = resolveToolTimeoutMs(-1000, READ_TOOL_METADATA);
 
   assert.equal(result, READ_TOOL_METADATA.defaultTimeoutMs);
 });
 
-test("resolveToolTimeoutMs ignores zero request timeout", () => {
+test("resolveToolTimeoutMs ignores zero request timeout [tool-metadata]", () => {
   const result = resolveToolTimeoutMs(0, READ_TOOL_METADATA);
 
   assert.equal(result, READ_TOOL_METADATA.defaultTimeoutMs);
 });
 
-test("resolveToolTimeoutMs ignores NaN request timeout", () => {
+test("resolveToolTimeoutMs ignores NaN request timeout [tool-metadata]", () => {
   const result = resolveToolTimeoutMs(NaN, READ_TOOL_METADATA);
 
   assert.equal(result, READ_TOOL_METADATA.defaultTimeoutMs);
 });
 
-test("resolveToolTimeoutMs clamps to minimum of 1", () => {
+test("resolveToolTimeoutMs clamps to minimum of 1 [tool-metadata]", () => {
   const result = resolveToolTimeoutMs(0.5, null);
 
   assert.equal(result, 1);
 });
 
-test("COMMAND_TOOL_METADATA has correct high-risk properties", () => {
+test("COMMAND_TOOL_METADATA has correct high-risk properties [tool-metadata]", () => {
   assert.equal(COMMAND_TOOL_METADATA.toolName, "command_exec");
   assert.equal(COMMAND_TOOL_METADATA.riskLevel, "high");
   assert.equal(COMMAND_TOOL_METADATA.readOnly, false);
@@ -91,7 +91,7 @@ test("COMMAND_TOOL_METADATA has correct high-risk properties", () => {
   assert.ok(COMMAND_TOOL_METADATA.highRiskPatterns.length > 0);
 });
 
-test("EDIT_TOOL_METADATA has correct properties", () => {
+test("EDIT_TOOL_METADATA has correct properties [tool-metadata]", () => {
   assert.equal(EDIT_TOOL_METADATA.toolName, "edit_replace");
   assert.equal(EDIT_TOOL_METADATA.riskLevel, "high");
   assert.equal(EDIT_TOOL_METADATA.idempotent, true);
@@ -99,7 +99,7 @@ test("EDIT_TOOL_METADATA has correct properties", () => {
   assert.equal(EDIT_TOOL_METADATA.needsFileLock, "write");
 });
 
-test("READ_TOOL_METADATA has correct low-risk properties", () => {
+test("READ_TOOL_METADATA has correct low-risk properties [tool-metadata]", () => {
   assert.equal(READ_TOOL_METADATA.toolName, "read");
   assert.equal(READ_TOOL_METADATA.riskLevel, "low");
   assert.equal(READ_TOOL_METADATA.readOnly, true);
@@ -107,34 +107,34 @@ test("READ_TOOL_METADATA has correct low-risk properties", () => {
   assert.equal(READ_TOOL_METADATA.isConcurrencySafe, true);
 });
 
-test("BASH_TOOL_METADATA is alias for command_exec", () => {
+test("BASH_TOOL_METADATA is alias for command_exec [tool-metadata]", () => {
   assert.equal(BASH_TOOL_METADATA.toolName, "bash");
   assert.equal(BASH_TOOL_METADATA.riskLevel, "high");
   assert.equal(BASH_TOOL_METADATA.sideEffectScope, "local_process");
 });
 
-test("QUESTION_TOOL_METADATA has correct properties", () => {
+test("QUESTION_TOOL_METADATA has correct properties [tool-metadata]", () => {
   assert.equal(QUESTION_TOOL_METADATA.toolName, "question");
   assert.equal(QUESTION_TOOL_METADATA.riskLevel, "low");
   assert.equal(QUESTION_TOOL_METADATA.readOnly, true);
   assert.equal(QUESTION_TOOL_METADATA.recoveryStrategy, "retry_safe");
 });
 
-test("TODO_WRITE_TOOL_METADATA has correct medium-risk properties", () => {
+test("TODO_WRITE_TOOL_METADATA has correct medium-risk properties [tool-metadata]", () => {
   assert.equal(TODO_WRITE_TOOL_METADATA.toolName, "todo_write");
   assert.equal(TODO_WRITE_TOOL_METADATA.riskLevel, "medium");
   assert.equal(TODO_WRITE_TOOL_METADATA.sideEffectScope, "org_state");
   assert.equal(TODO_WRITE_TOOL_METADATA.recoveryStrategy, "manual_resume_required");
 });
 
-test("WEB_SEARCH_TOOL_METADATA has correct properties", () => {
+test("WEB_SEARCH_TOOL_METADATA has correct properties [tool-metadata]", () => {
   assert.equal(WEB_SEARCH_TOOL_METADATA.toolName, "web_search");
   assert.equal(WEB_SEARCH_TOOL_METADATA.riskLevel, "medium");
   assert.equal(WEB_SEARCH_TOOL_METADATA.sideEffectScope, "none");
   assert.equal(WEB_SEARCH_TOOL_METADATA.supportsCancellation, true);
 });
 
-test("isToolFailureRetryable returns false for succeeded status", () => {
+test("isToolFailureRetryable returns false for succeeded status [tool-metadata]", () => {
   const result = isToolFailureRetryable({
     metadata: COMMAND_TOOL_METADATA,
     status: "succeeded",
@@ -143,7 +143,7 @@ test("isToolFailureRetryable returns false for succeeded status", () => {
   assert.equal(result, false);
 });
 
-test("isToolFailureRetryable returns false for blocked status", () => {
+test("isToolFailureRetryable returns false for blocked status [tool-metadata]", () => {
   const result = isToolFailureRetryable({
     metadata: COMMAND_TOOL_METADATA,
     status: "blocked",
@@ -152,7 +152,7 @@ test("isToolFailureRetryable returns false for blocked status", () => {
   assert.equal(result, false);
 });
 
-test("isToolFailureRetryable returns false for cancelled status", () => {
+test("isToolFailureRetryable returns false for cancelled status [tool-metadata]", () => {
   const result = isToolFailureRetryable({
     metadata: COMMAND_TOOL_METADATA,
     status: "cancelled",
@@ -161,7 +161,7 @@ test("isToolFailureRetryable returns false for cancelled status", () => {
   assert.equal(result, false);
 });
 
-test("isToolFailureRetryable returns false when manual_resume_required", () => {
+test("isToolFailureRetryable returns false when manual_resume_required [tool-metadata]", () => {
   const result = isToolFailureRetryable({
     metadata: TODO_WRITE_TOOL_METADATA,
     status: "failed",
@@ -171,7 +171,7 @@ test("isToolFailureRetryable returns false when manual_resume_required", () => {
   assert.equal(result, false);
 });
 
-test("isToolFailureRetryable returns true for retry_safe with non-security error", () => {
+test("isToolFailureRetryable returns true for retry_safe with non-security error [tool-metadata]", () => {
   const result = isToolFailureRetryable({
     metadata: READ_TOOL_METADATA,
     status: "failed",
@@ -182,7 +182,7 @@ test("isToolFailureRetryable returns true for retry_safe with non-security error
   assert.equal(result, true);
 });
 
-test("isToolFailureRetryable returns false for security source with retry_safe", () => {
+test("isToolFailureRetryable returns false for security source with retry_safe [tool-metadata]", () => {
   const result = isToolFailureRetryable({
     metadata: READ_TOOL_METADATA,
     status: "failed",
@@ -193,7 +193,7 @@ test("isToolFailureRetryable returns false for security source with retry_safe",
   assert.equal(result, false);
 });
 
-test("isToolFailureRetryable respects retryableErrorCodes allowlist", () => {
+test("isToolFailureRetryable respects retryableErrorCodes allowlist [tool-metadata]", () => {
   const result = isToolFailureRetryable({
     metadata: COMMAND_TOOL_METADATA,
     status: "failed",
@@ -203,7 +203,7 @@ test("isToolFailureRetryable respects retryableErrorCodes allowlist", () => {
   assert.equal(result, true);
 });
 
-test("isToolFailureRetryable rejects when requestedRetryable is false", () => {
+test("isToolFailureRetryable rejects when requestedRetryable is false [tool-metadata]", () => {
   const result = isToolFailureRetryable({
     metadata: READ_TOOL_METADATA,
     status: "failed",
@@ -214,7 +214,7 @@ test("isToolFailureRetryable rejects when requestedRetryable is false", () => {
   assert.equal(result, false);
 });
 
-test("isToolFailureRetryable allows when requestedRetryable is true and error code in allowlist", () => {
+test("isToolFailureRetryable allows when requestedRetryable is true and error code in allowlist [tool-metadata]", () => {
   const result = isToolFailureRetryable({
     metadata: null,
     status: "failed",
@@ -225,7 +225,7 @@ test("isToolFailureRetryable allows when requestedRetryable is true and error co
   assert.equal(result, true);
 });
 
-test("isToolFailureRetryable blocks retry for sandbox errors", () => {
+test("isToolFailureRetryable blocks retry for sandbox errors [tool-metadata]", () => {
   const result = isToolFailureRetryable({
     metadata: COMMAND_TOOL_METADATA,
     status: "failed",
@@ -236,7 +236,7 @@ test("isToolFailureRetryable blocks retry for sandbox errors", () => {
   assert.equal(result, false);
 });
 
-test("isToolFailureRetryable blocks retry for validation errors", () => {
+test("isToolFailureRetryable blocks retry for validation errors [tool-metadata]", () => {
   const result = isToolFailureRetryable({
     metadata: COMMAND_TOOL_METADATA,
     status: "failed",

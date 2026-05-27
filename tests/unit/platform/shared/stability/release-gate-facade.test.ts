@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { createReleaseManifestDraft } from "../../../../../src/platform/shared/stability/release-gate.js";
 
-test("createReleaseManifestDraft populates stable defaults", () => {
+test("createReleaseManifestDraft populates stable defaults [release-gate-facade]", () => {
   const manifest = createReleaseManifestDraft({
     artifactType: "tool",
     artifactId: "tool-gateway",

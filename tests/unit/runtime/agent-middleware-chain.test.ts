@@ -27,7 +27,7 @@ function createMockContext(): MiddlewareContext {
   };
 }
 
-test("AgentMiddlewareChain registers and returns hooks correctly", () => {
+test("AgentMiddlewareChain registers and returns hooks correctly [agent-middleware-chain]", () => {
   const chain = createMiddlewareChain();
   const hooks = chain.getRegisteredHooks();
   assert.deepEqual(hooks, {
@@ -42,7 +42,7 @@ test("AgentMiddlewareChain registers and returns hooks correctly", () => {
   });
 });
 
-test("AgentMiddlewareChain executes before_agent hooks in priority order", async () => {
+test("AgentMiddlewareChain executes before_agent hooks in priority order [agent-middleware-chain]", async () => {
   const chain = createMiddlewareChain();
   const callOrder: string[] = [];
 
@@ -73,7 +73,7 @@ test("AgentMiddlewareChain executes before_agent hooks in priority order", async
   assert.deepEqual(callOrder, ["hook2", "hook1"]);
 });
 
-test("AgentMiddlewareChain before_agent hooks can modify input", async () => {
+test("AgentMiddlewareChain before_agent hooks can modify input [agent-middleware-chain]", async () => {
   const chain = createMiddlewareChain();
 
   const modifyingHook: BeforeAgentHook = {
@@ -92,7 +92,7 @@ test("AgentMiddlewareChain before_agent hooks can modify input", async () => {
   assert.equal(result.input.request, "modified");
 });
 
-test("AgentMiddlewareChain before_model hooks execute and preserve warnings", async () => {
+test("AgentMiddlewareChain before_model hooks execute and preserve warnings [agent-middleware-chain]", async () => {
   const chain = createMiddlewareChain();
 
   const failingHook: BeforeModelHook = {
@@ -114,7 +114,7 @@ test("AgentMiddlewareChain before_model hooks execute and preserve warnings", as
   assert.ok(result.warnings[0]!.includes("Test error"));
 });
 
-test("AgentMiddlewareChain after_model hooks can modify response", async () => {
+test("AgentMiddlewareChain after_model hooks can modify response [agent-middleware-chain]", async () => {
   const chain = createMiddlewareChain();
 
   const modifyingHook: AfterModelHook = {
@@ -136,7 +136,7 @@ test("AgentMiddlewareChain after_model hooks can modify response", async () => {
   assert.equal(result.response, "modified-response");
 });
 
-test("AgentMiddlewareChain wrap_model_call wraps the actual call", async () => {
+test("AgentMiddlewareChain wrap_model_call wraps the actual call [agent-middleware-chain]", async () => {
   const chain = createMiddlewareChain();
   let callCount = 0;
 
@@ -163,7 +163,7 @@ test("AgentMiddlewareChain wrap_model_call wraps the actual call", async () => {
   assert.equal(result.result, "model-result");
 });
 
-test("AgentMiddlewareChain wrap_tool_call wraps tool execution", async () => {
+test("AgentMiddlewareChain wrap_tool_call wraps tool execution [agent-middleware-chain]", async () => {
   const chain = createMiddlewareChain();
   let toolNameSeen = "";
 
@@ -187,7 +187,7 @@ test("AgentMiddlewareChain wrap_tool_call wraps tool execution", async () => {
   assert.equal(result.result, "tool-result");
 });
 
-test("AgentMiddlewareChain after_agent hooks run with tools used", async () => {
+test("AgentMiddlewareChain after_agent hooks run with tools used [agent-middleware-chain]", async () => {
   const chain = createMiddlewareChain();
   let toolsSeen: string[] = [];
 
@@ -210,7 +210,7 @@ test("AgentMiddlewareChain after_agent hooks run with tools used", async () => {
   assert.deepEqual(toolsSeen, ["tool_a", "tool_b"]);
 });
 
-test("AgentMiddlewareChain runAgentRound executes full chain", async () => {
+test("AgentMiddlewareChain runAgentRound executes full chain [agent-middleware-chain]", async () => {
   const chain = createMiddlewareChain();
   const executionLog: string[] = [];
 
@@ -293,7 +293,7 @@ test("AgentMiddlewareChain runAgentRound executes full chain", async () => {
   ]);
 });
 
-test("AgentMiddlewareChain fails open by default and logs warnings", async () => {
+test("AgentMiddlewareChain fails open by default and logs warnings [agent-middleware-chain]", async () => {
   const chain = createMiddlewareChain({
     failOpen: true,
     logger: (code, _msg) => {
@@ -320,7 +320,7 @@ test("AgentMiddlewareChain fails open by default and logs warnings", async () =>
   assert.ok(result.warnings[0]!.includes("Intentional failure"));
 });
 
-test("AgentMiddlewareChain catches hook exception and fails open", async () => {
+test("AgentMiddlewareChain catches hook exception and fails open [agent-middleware-chain]", async () => {
   const chain = createMiddlewareChain({
     failOpen: true,
     logger: (code, _msg) => {
@@ -347,7 +347,7 @@ test("AgentMiddlewareChain catches hook exception and fails open", async () => {
   assert.ok(result.warnings[0]!.includes("Hook threw an exception"));
 });
 
-test("AgentMiddlewareChain throws when failOpen is false and hook throws", async () => {
+test("AgentMiddlewareChain throws when failOpen is false and hook throws [agent-middleware-chain]", async () => {
   const chain = createMiddlewareChain({
     failOpen: false,
   });
@@ -368,7 +368,7 @@ test("AgentMiddlewareChain throws when failOpen is false and hook throws", async
   );
 });
 
-test("AgentMiddlewareChain wraps multiple tool hooks in sequence", async () => {
+test("AgentMiddlewareChain wraps multiple tool hooks in sequence [agent-middleware-chain]", async () => {
   const chain = createMiddlewareChain();
   const order: string[] = [];
 
@@ -404,7 +404,7 @@ test("AgentMiddlewareChain wraps multiple tool hooks in sequence", async () => {
   assert.deepEqual(order, ["hook1:test", "hook2:test", "actual_tool"]);
 });
 
-test("createMiddlewareChain creates independent instances", () => {
+test("createMiddlewareChain creates independent instances [agent-middleware-chain]", () => {
   const chain1 = createMiddlewareChain();
   const chain2 = createMiddlewareChain();
 
@@ -421,7 +421,7 @@ test("createMiddlewareChain creates independent instances", () => {
   assert.equal(hooks2.beforeAgent.length, 0);
 });
 
-test("AgentMiddlewareChain wrapModelCall catches and re-throws model call errors", async () => {
+test("AgentMiddlewareChain wrapModelCall catches and re-throws model call errors [agent-middleware-chain]", async () => {
   const chain = createMiddlewareChain({
     failOpen: true,
     logger: (_code, _msg) => { /* ignore */ },
@@ -448,7 +448,7 @@ test("AgentMiddlewareChain wrapModelCall catches and re-throws model call errors
   );
 });
 
-test("AgentMiddlewareChain wrapToolCall catches and re-throws tool call errors", async () => {
+test("AgentMiddlewareChain wrapToolCall catches and re-throws tool call errors [agent-middleware-chain]", async () => {
   const chain = createMiddlewareChain({
     failOpen: true,
     logger: (_code, _msg) => { /* ignore */ },
@@ -475,7 +475,7 @@ test("AgentMiddlewareChain wrapToolCall catches and re-throws tool call errors",
   );
 });
 
-test("AgentMiddlewareChain buildContext catches getContext errors and uses fallback", () => {
+test("AgentMiddlewareChain buildContext catches getContext errors and uses fallback [agent-middleware-chain]", () => {
   const chain = createMiddlewareChain();
 
   // Register a hook that uses buildContext internally

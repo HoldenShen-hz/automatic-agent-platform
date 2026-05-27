@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { orderFairQueue, type FairQueueItem } from "../../../../../src/scale-ecosystem/resource-manager/fair-queue/index.js";
 
-test("orderFairQueue sorts by priority and age score", () => {
+test("orderFairQueue sorts by priority and age score [index]", () => {
   const items: FairQueueItem[] = [
     { itemId: "a", tenantId: "t1", priority: 1, ageMs: 0 },
     { itemId: "b", tenantId: "t1", priority: 3, ageMs: 0 },
@@ -16,7 +16,7 @@ test("orderFairQueue sorts by priority and age score", () => {
   assert.equal(sorted[2]?.itemId, "b");
 });
 
-test("orderFairQueue applies age penalty capped at 99", () => {
+test("orderFairQueue applies age penalty capped at 99 [index]", () => {
   const items: FairQueueItem[] = [
     { itemId: "old", tenantId: "t1", priority: 1, ageMs: 600_000 },
     { itemId: "new", tenantId: "t1", priority: 2, ageMs: 0 },
@@ -27,12 +27,12 @@ test("orderFairQueue applies age penalty capped at 99", () => {
   assert.equal(sorted[0]?.itemId, "old");
 });
 
-test("orderFairQueue handles empty array", () => {
+test("orderFairQueue handles empty array [index]", () => {
   const sorted = orderFairQueue([]);
   assert.deepEqual(sorted, []);
 });
 
-test("orderFairQueue handles single item", () => {
+test("orderFairQueue handles single item [index]", () => {
   const items: FairQueueItem[] = [
     { itemId: "only", tenantId: "t1", priority: 5, ageMs: 1000 },
   ];
@@ -43,7 +43,7 @@ test("orderFairQueue handles single item", () => {
   assert.equal(sorted[0]?.itemId, "only");
 });
 
-test("orderFairQueue does not mutate original array", () => {
+test("orderFairQueue does not mutate original array [index]", () => {
   const items: FairQueueItem[] = [
     { itemId: "a", tenantId: "t1", priority: 1, ageMs: 0 },
   ];

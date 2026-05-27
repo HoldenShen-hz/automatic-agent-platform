@@ -42,7 +42,7 @@ function createTestFailoverInput(overrides: Partial<RegionFailoverInput> = {}): 
   return result;
 }
 
-test("RegionFailoverController.resolve returns no failover for healthy primary", () => {
+test("RegionFailoverController.resolve returns no failover for healthy primary [failover-controller-comprehensive]", () => {
   const controller = new RegionFailoverController();
   const input = createTestFailoverInput({ primaryHealthy: true });
 
@@ -53,7 +53,7 @@ test("RegionFailoverController.resolve returns no failover for healthy primary",
   assert.equal(decision.rationale, "multi_region.primary_within_threshold");
 });
 
-test("RegionFailoverController.resolve triggers failover for unhealthy primary", () => {
+test("RegionFailoverController.resolve triggers failover for unhealthy primary [failover-controller-comprehensive]", () => {
   const controller = new RegionFailoverController();
   const input = createTestFailoverInput({ primaryHealthy: false });
 
@@ -63,7 +63,7 @@ test("RegionFailoverController.resolve triggers failover for unhealthy primary",
   assert.ok(decision.targetRegionId);
 });
 
-test("RegionFailoverController.resolve triggers failover for latency breach", () => {
+test("RegionFailoverController.resolve triggers failover for latency breach [failover-controller-comprehensive]", () => {
   const controller = new RegionFailoverController();
   const input = createTestFailoverInput({
     primaryHealthy: true,
@@ -77,7 +77,7 @@ test("RegionFailoverController.resolve triggers failover for latency breach", ()
   assert.equal(decision.rationale, "multi_region.primary_latency_breached");
 });
 
-test("RegionFailoverController.resolve triggers failover for error rate breach", () => {
+test("RegionFailoverController.resolve triggers failover for error rate breach [failover-controller-comprehensive]", () => {
   const controller = new RegionFailoverController();
   const input = createTestFailoverInput({
     primaryHealthy: true,
@@ -91,7 +91,7 @@ test("RegionFailoverController.resolve triggers failover for error rate breach",
   assert.equal(decision.rationale, "multi_region.primary_error_rate_breached");
 });
 
-test("RegionFailoverController.resolve respects preferred region", () => {
+test("RegionFailoverController.resolve respects preferred region [failover-controller-comprehensive]", () => {
   const controller = new RegionFailoverController();
   const input = createTestFailoverInput({
     primaryHealthy: false,
@@ -103,7 +103,7 @@ test("RegionFailoverController.resolve respects preferred region", () => {
   assert.equal(decision.targetRegionId, "eu-west-1");
 });
 
-test("RegionFailoverController.resolve returns no failover for empty candidates", () => {
+test("RegionFailoverController.resolve returns no failover for empty candidates [failover-controller-comprehensive]", () => {
   const controller = new RegionFailoverController();
   const input = createTestFailoverInput({
     primaryHealthy: false,
@@ -116,7 +116,7 @@ test("RegionFailoverController.resolve returns no failover for empty candidates"
   assert.equal(decision.rationale, "multi_region.no_candidate_available");
 });
 
-test("RegionFailoverController.resolve increments fencing epoch on each failover", () => {
+test("RegionFailoverController.resolve increments fencing epoch on each failover [failover-controller-comprehensive]", () => {
   const controller = new RegionFailoverController();
 
   controller.resolve(createTestFailoverInput({ primaryHealthy: false, preferredRegionId: "us-west-2" }));
@@ -125,7 +125,7 @@ test("RegionFailoverController.resolve increments fencing epoch on each failover
   assert.equal(decision2.fencingEpoch, 2);
 });
 
-test("RegionFailoverController.resolve sets demotedRegionId for leader change", () => {
+test("RegionFailoverController.resolve sets demotedRegionId for leader change [failover-controller-comprehensive]", () => {
   const controller = new RegionFailoverController();
   // First failover establishes a leader
   controller.resolve(createTestFailoverInput({
@@ -144,7 +144,7 @@ test("RegionFailoverController.resolve sets demotedRegionId for leader change", 
   assert.equal(decision.leaderState, "demoted_previous_leader");
 });
 
-test("RegionFailoverController.resolve does not set demotedRegionId for initial promotion", () => {
+test("RegionFailoverController.resolve does not set demotedRegionId for initial promotion [failover-controller-comprehensive]", () => {
   const controller = new RegionFailoverController();
   const decision = controller.resolve(createTestFailoverInput({ primaryHealthy: false }));
 
@@ -152,7 +152,7 @@ test("RegionFailoverController.resolve does not set demotedRegionId for initial 
   assert.equal(decision.leaderState, "promoted");
 });
 
-test("RegionFailoverController.resolve handles forced demotion", () => {
+test("RegionFailoverController.resolve handles forced demotion [failover-controller-comprehensive]", () => {
   const controller = new RegionFailoverController();
   const input = createTestFailoverInput({
     primaryHealthy: true, // primary is healthy but we're forcing demotion
@@ -168,7 +168,7 @@ test("RegionFailoverController.resolve handles forced demotion", () => {
   assert.equal(decision.rationale, "multi_region.forced_demotion");
 });
 
-test("RegionFailoverController.getState returns initial state", () => {
+test("RegionFailoverController.getState returns initial state [failover-controller-comprehensive]", () => {
   const controller = new RegionFailoverController();
 
   const state = controller.getState();
@@ -176,7 +176,7 @@ test("RegionFailoverController.getState returns initial state", () => {
   assert.equal(state, null); // No state recorded yet
 });
 
-test("RegionFailoverController.getState returns recorded state", () => {
+test("RegionFailoverController.getState returns recorded state [failover-controller-comprehensive]", () => {
   const controller = new RegionFailoverController();
   controller.resolve(createTestFailoverInput({ primaryHealthy: false, preferredRegionId: "us-west-2" }));
 
@@ -187,7 +187,7 @@ test("RegionFailoverController.getState returns recorded state", () => {
   assert.equal(state?.fencingEpoch, 1);
 });
 
-test("RegionFailoverController.resolve handles exact latency boundary", () => {
+test("RegionFailoverController.resolve handles exact latency boundary [failover-controller-comprehensive]", () => {
   const controller = new RegionFailoverController();
   const input = createTestFailoverInput({
     primaryHealthy: true,
@@ -201,7 +201,7 @@ test("RegionFailoverController.resolve handles exact latency boundary", () => {
   assert.equal(decision.shouldFailover, false);
 });
 
-test("RegionFailoverController.resolve handles exact error rate boundary", () => {
+test("RegionFailoverController.resolve handles exact error rate boundary [failover-controller-comprehensive]", () => {
   const controller = new RegionFailoverController();
   const input = createTestFailoverInput({
     primaryHealthy: true,
@@ -215,7 +215,7 @@ test("RegionFailoverController.resolve handles exact error rate boundary", () =>
   assert.equal(decision.shouldFailover, false);
 });
 
-test("RegionFailoverController.resolve handles zero latency", () => {
+test("RegionFailoverController.resolve handles zero latency [failover-controller-comprehensive]", () => {
   const controller = new RegionFailoverController();
   const input = createTestFailoverInput({
     primaryHealthy: true,
@@ -228,7 +228,7 @@ test("RegionFailoverController.resolve handles zero latency", () => {
   assert.equal(decision.shouldFailover, false);
 });
 
-test("RegionFailoverController.resolve handles zero error rate", () => {
+test("RegionFailoverController.resolve handles zero error rate [failover-controller-comprehensive]", () => {
   const controller = new RegionFailoverController();
   const input = createTestFailoverInput({
     primaryHealthy: true,
@@ -241,7 +241,7 @@ test("RegionFailoverController.resolve handles zero error rate", () => {
   assert.equal(decision.shouldFailover, false);
 });
 
-test("RegionFailoverController.resolve includes fencing epoch in decision", () => {
+test("RegionFailoverController.resolve includes fencing epoch in decision [failover-controller-comprehensive]", () => {
   const controller = new RegionFailoverController();
   const input = createTestFailoverInput({ primaryHealthy: false });
 
@@ -250,7 +250,7 @@ test("RegionFailoverController.resolve includes fencing epoch in decision", () =
   assert.equal(decision.fencingEpoch, 1);
 });
 
-test("RegionFailoverController.rejectRegionJoin accepts region with no prior state", () => {
+test("RegionFailoverController.rejectRegionJoin accepts region with no prior state [failover-controller-comprehensive]", () => {
   const controller = new RegionFailoverController();
   const input: RejectRegionJoinInput = {
     regionId: "us-west-2",
@@ -264,7 +264,7 @@ test("RegionFailoverController.rejectRegionJoin accepts region with no prior sta
   assert.equal(result.currentFencingEpoch, 0);
 });
 
-test("RegionFailoverController.rejectRegionJoin rejects stale demoted leader", () => {
+test("RegionFailoverController.rejectRegionJoin rejects stale demoted leader [failover-controller-comprehensive]", () => {
   const controller = new RegionFailoverController();
   // First, establish a state with a demoted leader
   controller.resolve(createTestFailoverInput({
@@ -285,7 +285,7 @@ test("RegionFailoverController.rejectRegionJoin rejects stale demoted leader", (
   assert.equal(result.mustRejoinAsFollower, true);
 });
 
-test("RegionFailoverController.rejectRegionJoin accepts current epoch from demoted leader", () => {
+test("RegionFailoverController.rejectRegionJoin accepts current epoch from demoted leader [failover-controller-comprehensive]", () => {
   const controller = new RegionFailoverController();
   // Establish state
   controller.resolve(createTestFailoverInput({
@@ -308,7 +308,7 @@ test("RegionFailoverController.rejectRegionJoin accepts current epoch from demot
   assert.equal(result.accepted, true);
 });
 
-test("RegionFailoverController.rejectRegionJoin clears stale demotion record after leader rejoins with current epoch", () => {
+test("RegionFailoverController.rejectRegionJoin clears stale demotion record after leader rejoins with current epoch [failover-controller-comprehensive]", () => {
   const controller = new RegionFailoverController();
   controller.resolve(createTestFailoverInput({
     primaryHealthy: false,
@@ -332,7 +332,7 @@ test("RegionFailoverController.rejectRegionJoin clears stale demotion record aft
   assert.equal(secondAttempt.accepted, true);
 });
 
-test("RegionFailoverController.resolve uses explicit promoteEpoch when provided", () => {
+test("RegionFailoverController.resolve uses explicit promoteEpoch when provided [failover-controller-comprehensive]", () => {
   const controller = new RegionFailoverController();
   const input = createTestFailoverInput({
     primaryHealthy: false,
@@ -344,7 +344,7 @@ test("RegionFailoverController.resolve uses explicit promoteEpoch when provided"
   assert.equal(decision.fencingEpoch, 100);
 });
 
-test("RegionFailoverController.resolve handles custom partition key", () => {
+test("RegionFailoverController.resolve handles custom partition key [failover-controller-comprehensive]", () => {
   const controller = new RegionFailoverController();
   const input = createTestFailoverInput({
     primaryHealthy: false,
@@ -359,7 +359,7 @@ test("RegionFailoverController.resolve handles custom partition key", () => {
   assert.equal(state?.leaderRegionId, "us-west-2");
 });
 
-test("RegionFailoverController.resolve returns stable leaderState when no failover", () => {
+test("RegionFailoverController.resolve returns stable leaderState when no failover [failover-controller-comprehensive]", () => {
   const controller = new RegionFailoverController();
   const input = createTestFailoverInput({ primaryHealthy: true });
 
@@ -368,7 +368,7 @@ test("RegionFailoverController.resolve returns stable leaderState when no failov
   assert.equal(decision.leaderState, "stable");
 });
 
-test("RegionFailoverController.resolve handles null currentLeaderRegionId", () => {
+test("RegionFailoverController.resolve handles null currentLeaderRegionId [failover-controller-comprehensive]", () => {
   const controller = new RegionFailoverController();
   const input = createTestFailoverInput({
     primaryHealthy: false,
@@ -383,7 +383,7 @@ test("RegionFailoverController.resolve handles null currentLeaderRegionId", () =
   assert.equal(decision.leaderState, "promoted");
 });
 
-test("RegionFailoverController.resolve reclaims demoted-region leases and forwards lease evidence into reconciliation", () => {
+test("RegionFailoverController.resolve reclaims demoted-region leases and forwards lease evidence into reconciliation [failover-controller-comprehensive]", () => {
   const controller = new RegionFailoverController();
   const reclaimed: string[] = [];
 

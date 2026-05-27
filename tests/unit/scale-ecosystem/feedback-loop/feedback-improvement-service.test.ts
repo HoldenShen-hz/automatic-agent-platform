@@ -34,7 +34,7 @@ function createSignal(overrides: Partial<FeedbackSignal>): FeedbackSignal {
   });
 }
 
-test("FeedbackImprovementService.ingest creates candidates from learning signals", () => {
+test("FeedbackImprovementService.ingest creates candidates from learning signals [feedback-improvement-service]", () => {
   const service = new FeedbackImprovementService();
   const result = service.ingest({
     taskId: "task_1",
@@ -58,7 +58,7 @@ test("FeedbackImprovementService.ingest creates candidates from learning signals
   assert.ok(result.candidates.length > 0);
 });
 
-test("FeedbackImprovementService.ingest keeps low-trust feedback in analysis but blocks direct candidates", () => {
+test("FeedbackImprovementService.ingest keeps low-trust feedback in analysis but blocks direct candidates [feedback-improvement-service]", () => {
   const service = new FeedbackImprovementService();
   const result = service.ingest({
     taskId: "task_low_trust",
@@ -82,7 +82,7 @@ test("FeedbackImprovementService.ingest keeps low-trust feedback in analysis but
   assert.equal(result.candidates.length, 0);
 });
 
-test("FeedbackImprovementService.createCandidate throws for signal without sourceSignalIds", () => {
+test("FeedbackImprovementService.createCandidate throws for signal without sourceSignalIds [feedback-improvement-service]", () => {
   const service = new FeedbackImprovementService();
   const signal = {
     learningSignalId: "sig_test",
@@ -104,7 +104,7 @@ test("FeedbackImprovementService.createCandidate throws for signal without sourc
   );
 });
 
-test("FeedbackImprovementService.createCandidate maps signal types correctly", () => {
+test("FeedbackImprovementService.createCandidate maps signal types correctly [feedback-improvement-service]", () => {
   const service = new FeedbackImprovementService();
 
   const failureSignal = {
@@ -172,7 +172,7 @@ test("FeedbackImprovementService.createCandidate maps signal types correctly", (
   assert.equal(datasetCandidate.candidateType, "data_augmentation");
 });
 
-test("FeedbackImprovementService.createCandidate risk assessment based on confidence", () => {
+test("FeedbackImprovementService.createCandidate risk assessment based on confidence [feedback-improvement-service]", () => {
   const service = new FeedbackImprovementService();
 
   const highConfidenceSignal = {
@@ -224,7 +224,7 @@ test("FeedbackImprovementService.createCandidate risk assessment based on confid
   assert.equal(lowCandidate.riskAssessment, "high");
 });
 
-test("FeedbackImprovementService.review approves when all gates pass", () => {
+test("FeedbackImprovementService.review approves when all gates pass [feedback-improvement-service]", () => {
   const service = new FeedbackImprovementService();
   const signal = {
     learningSignalId: "sig_review",
@@ -252,7 +252,7 @@ test("FeedbackImprovementService.review approves when all gates pass", () => {
   assert.equal(decision.policyGatePassed, true);
 });
 
-test("FeedbackImprovementService.review rejects when rollout gate fails", () => {
+test("FeedbackImprovementService.review rejects when rollout gate fails [feedback-improvement-service]", () => {
   const service = new FeedbackImprovementService();
   const signal = {
     learningSignalId: "sig_reject",
@@ -277,7 +277,7 @@ test("FeedbackImprovementService.review rejects when rollout gate fails", () => 
   assert.equal(decision.decision, "rejected");
 });
 
-test("FeedbackImprovementService.release throws if candidate not approved", () => {
+test("FeedbackImprovementService.release throws if candidate not approved [feedback-improvement-service]", () => {
   const service = new FeedbackImprovementService();
   const signal = {
     learningSignalId: "sig_release",
@@ -300,7 +300,7 @@ test("FeedbackImprovementService.release throws if candidate not approved", () =
   );
 });
 
-test("FeedbackImprovementService.release succeeds for approved candidate", () => {
+test("FeedbackImprovementService.release succeeds for approved candidate [feedback-improvement-service]", () => {
   const service = new FeedbackImprovementService();
   const signal = {
     learningSignalId: "sig_approved",
@@ -326,7 +326,7 @@ test("FeedbackImprovementService.release succeeds for approved candidate", () =>
   assert.equal(released.reviewStatus, "released");
 });
 
-test("FeedbackImprovementService.buildSnapshot returns analysis summary", () => {
+test("FeedbackImprovementService.buildSnapshot returns analysis summary [feedback-improvement-service]", () => {
   const service = new FeedbackImprovementService();
   const signals = [
     createSignal({
@@ -348,7 +348,7 @@ test("FeedbackImprovementService.buildSnapshot returns analysis summary", () => 
   assert.equal(snapshot.candidateCount >= 0, true);
 });
 
-test("FeedbackImprovementService.listCandidates returns all candidates", () => {
+test("FeedbackImprovementService.listCandidates returns all candidates [feedback-improvement-service]", () => {
   const service = new FeedbackImprovementService();
   service.ingest({
     taskId: "task_list",

@@ -143,7 +143,7 @@ function createMockSqliteDb() {
   };
 }
 
-test("SqliteHaRepository implements HaRepository interface via upsertNode", () => {
+test("SqliteHaRepository implements HaRepository interface via upsertNode [ha-repository-sqlite]", () => {
   const mockDb = createMockSqliteDb() as any;
   const repo = new SqliteHaRepository(mockDb);
 
@@ -155,7 +155,7 @@ test("SqliteHaRepository implements HaRepository interface via upsertNode", () =
   assert.equal(typeof repo.updateLeaseStatus, "function");
 });
 
-test("SqliteHaRepository.upsertNode and getNode work", async () => {
+test("SqliteHaRepository.upsertNode and getNode work [ha-repository-sqlite]", async () => {
   const mockDb = createMockSqliteDb() as any;
   const repo = new SqliteHaRepository(mockDb) as any;
 
@@ -176,7 +176,7 @@ test("SqliteHaRepository.upsertNode and getNode work", async () => {
   assert.equal(retrieved?.region, "us-west-1");
 });
 
-test("SqliteHaRepository.getNode returns undefined for non-existent node", async () => {
+test("SqliteHaRepository.getNode returns undefined for non-existent node [ha-repository-sqlite]", async () => {
   const mockDb = createMockSqliteDb() as any;
   const repo = new SqliteHaRepository(mockDb) as any;
 
@@ -184,7 +184,7 @@ test("SqliteHaRepository.getNode returns undefined for non-existent node", async
   assert.equal(result, undefined);
 });
 
-test("SqliteHaRepository.deleteNode removes node", async () => {
+test("SqliteHaRepository.deleteNode removes node [ha-repository-sqlite]", async () => {
   const mockDb = createMockSqliteDb() as any;
   const repo = new SqliteHaRepository(mockDb) as any;
 
@@ -204,7 +204,7 @@ test("SqliteHaRepository.deleteNode removes node", async () => {
   assert.equal(result, undefined);
 });
 
-test("SqliteHaRepository.insertLease works", async () => {
+test("SqliteHaRepository.insertLease works [ha-repository-sqlite]", async () => {
   const mockDb = createMockSqliteDb() as any;
   const repo = new SqliteHaRepository(mockDb) as any;
 
@@ -221,7 +221,7 @@ test("SqliteHaRepository.insertLease works", async () => {
   await repo.insertLease(lease);
 });
 
-test("SqliteHaRepository.updateLeaseStatus changes status", async () => {
+test("SqliteHaRepository.updateLeaseStatus changes status [ha-repository-sqlite]", async () => {
   const mockDb = createMockSqliteDb() as any;
   const repo = new SqliteHaRepository(mockDb) as any;
 
@@ -239,7 +239,7 @@ test("SqliteHaRepository.updateLeaseStatus changes status", async () => {
   await repo.updateLeaseStatus("lease-status-test", "expired");
 });
 
-test("SqliteHaRepository.insertEpoch and getLatestEpoch work", async () => {
+test("SqliteHaRepository.insertEpoch and getLatestEpoch work [ha-repository-sqlite]", async () => {
   const mockDb = createMockSqliteDb() as any;
   const repo = new SqliteHaRepository(mockDb) as any;
 
@@ -258,7 +258,7 @@ test("SqliteHaRepository.insertEpoch and getLatestEpoch work", async () => {
   assert.equal(retrieved?.epoch, 1);
 });
 
-test("SqliteHaRepository.updateEpochEnd marks epoch ended", async () => {
+test("SqliteHaRepository.updateEpochEnd marks epoch ended [ha-repository-sqlite]", async () => {
   const mockDb = createMockSqliteDb() as any;
   const repo = new SqliteHaRepository(mockDb) as any;
 
@@ -275,7 +275,7 @@ test("SqliteHaRepository.updateEpochEnd marks epoch ended", async () => {
   await repo.updateEpochEnd(5, new Date().toISOString(), "voluntary");
 });
 
-test("SqliteHaRepository.insertFailoverDecision works", async () => {
+test("SqliteHaRepository.insertFailoverDecision works [ha-repository-sqlite]", async () => {
   const mockDb = createMockSqliteDb() as any;
   const repo = new SqliteHaRepository(mockDb) as any;
 

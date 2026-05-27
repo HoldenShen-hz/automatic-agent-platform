@@ -4,7 +4,7 @@ import test from "node:test";
 import { createHarnessRun } from "../../../../src/platform/contracts/executable-contracts/index.js";
 import { RuntimeStateMachine } from "../../../../src/platform/five-plane-execution/runtime-state-machine.js";
 
-test("RuntimeStateMachine rejects empty auditRef for audited transitions", () => {
+test("RuntimeStateMachine rejects empty auditRef for audited transitions [runtime-state-machine-audit-regressions]", () => {
   const machine = new RuntimeStateMachine({
     persistEvent: () => {},
   });

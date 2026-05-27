@@ -50,7 +50,7 @@ function createReplicationConfig(overrides: Partial<RegionReplicationConfig> = {
 // VectorClock Concurrent Ordering Tests
 // =============================================================================
 
-test("[SYS-REL-2.2] VectorClock compare returns concurrent for truly concurrent events", () => {
+test("[SYS-REL-2.2] VectorClock compare returns concurrent for truly concurrent events [cdc-replication-concurrent]", () => {
   const clock1 = new VectorClock();
   const clock2 = new VectorClock();
 
@@ -58,7 +58,7 @@ test("[SYS-REL-2.2] VectorClock compare returns concurrent for truly concurrent 
   assert.equal(clock1.compare(clock2), 0, "Identical clocks should be concurrent (0)");
 });
 
-test("[SYS-REL-2.2] VectorClock detect concurrent updates from different regions", () => {
+test("[SYS-REL-2.2] VectorClock detect concurrent updates from different regions [cdc-replication-concurrent]", () => {
   const service = new CDCReplicationService();
 
   // Region A processes event 1
@@ -73,7 +73,7 @@ test("[SYS-REL-2.2] VectorClock detect concurrent updates from different regions
   assert.equal(clockA.compare(clockB), 0, "Independent region increments should be concurrent");
 });
 
-test("[SYS-REL-2.2] VectorClock happensBeforeOrEqual detects causal ordering", () => {
+test("[SYS-REL-2.2] VectorClock happensBeforeOrEqual detects causal ordering [cdc-replication-concurrent]", () => {
   const service = new CDCReplicationService();
 
   // Region A: event 1 -> event 2
@@ -91,7 +91,7 @@ test("[SYS-REL-2.2] VectorClock happensBeforeOrEqual detects causal ordering", (
   assert.ok([-1, 0, 1].includes(result), "Compare should return -1, 0, or 1");
 });
 
-test("[SYS-REL-2.2] CDC service mergeVectorClock combines per-region sequences", () => {
+test("[SYS-REL-2.2] CDC service mergeVectorClock combines per-region sequences [cdc-replication-concurrent]", () => {
   const service = new CDCReplicationService();
 
   // Initialize local clock
@@ -110,7 +110,7 @@ test("[SYS-REL-2.2] CDC service mergeVectorClock combines per-region sequences",
   assert.ok(merged.getMaxSequence() >= 10, "Merged clock should have max sequence from both");
 });
 
-test("[SYS-REL-2.2] CDC updateVectorClock stores explicit region sequence instead of blind increment", () => {
+test("[SYS-REL-2.2] CDC updateVectorClock stores explicit region sequence instead of blind increment [cdc-replication-concurrent]", () => {
   const service = new CDCReplicationService();
 
   service.updateVectorClock("entity-2", "us-west-2", 7);
@@ -119,7 +119,7 @@ test("[SYS-REL-2.2] CDC updateVectorClock stores explicit region sequence instea
   assert.equal(clock?.toMap().get("us-west-2"), 7);
 });
 
-test("[SYS-REL-2.2] CDC detectConflict returns false for different taskIds", () => {
+test("[SYS-REL-2.2] CDC detectConflict returns false for different taskIds [cdc-replication-concurrent]", () => {
   const service = new CDCReplicationService();
 
   const localEvent = createReplicationEvent({ taskId: "task-1", sequence: 1 });
@@ -134,7 +134,7 @@ test("[SYS-REL-2.2] CDC detectConflict returns false for different taskIds", () 
   assert.equal(result, false, "Events for different tasks should not conflict");
 });
 
-test("[SYS-REL-2.2] CDC detectConflict returns true for concurrent updates to same task", () => {
+test("[SYS-REL-2.2] CDC detectConflict returns true for concurrent updates to same task [cdc-replication-concurrent]", () => {
   const service = new CDCReplicationService();
 
   const localEvent = createReplicationEvent({
@@ -158,7 +158,7 @@ test("[SYS-REL-2.2] CDC detectConflict returns true for concurrent updates to sa
   assert.equal(service.detectConflict(localEvent, remoteEvent), true);
 });
 
-test("[SYS-REL-2.2] CDC mergeEventsWithConflictResolution handles concurrent events", () => {
+test("[SYS-REL-2.2] CDC mergeEventsWithConflictResolution handles concurrent events [cdc-replication-concurrent]", () => {
   const service = new CDCReplicationService();
 
   const localEvents: CDCReplicationEvent[] = [
@@ -176,7 +176,7 @@ test("[SYS-REL-2.2] CDC mergeEventsWithConflictResolution handles concurrent eve
   assert.ok(merged.length >= localEvents.length, "Should have merged events");
 });
 
-test("[SYS-REL-2.2] CDC applyBatch respects event vector clocks when replacing stale local events", () => {
+test("[SYS-REL-2.2] CDC applyBatch respects event vector clocks when replacing stale local events [cdc-replication-concurrent]", () => {
   const service = new CDCReplicationService();
 
   const localEvents: CDCReplicationEvent[] = [
@@ -209,7 +209,7 @@ test("[SYS-REL-2.2] CDC applyBatch respects event vector clocks when replacing s
   assert.equal(applied[0]?.id, "remote-1");
 });
 
-test("[SYS-REL-2.2] CDC prepareBatch filters events correctly after checkpoint", () => {
+test("[SYS-REL-2.2] CDC prepareBatch filters events correctly after checkpoint [cdc-replication-concurrent]", () => {
   const service = new CDCReplicationService();
   service.registerReplication(createReplicationConfig());
 
@@ -245,7 +245,7 @@ test("[SYS-REL-2.2] CDC prepareBatch filters events correctly after checkpoint",
   assert.equal(batch!.endSequence, 8, "Batch should end at sequence 8");
 });
 
-test("[SYS-REL-2.2] CDC prepareBatch returns null when all events already processed", () => {
+test("[SYS-REL-2.2] CDC prepareBatch returns null when all events already processed [cdc-replication-concurrent]", () => {
   const service = new CDCReplicationService();
   service.registerReplication(createReplicationConfig());
 
@@ -273,7 +273,7 @@ test("[SYS-REL-2.2] CDC prepareBatch returns null when all events already proces
   assert.equal(batch, null, "Should return null when all events already processed");
 });
 
-test("[SYS-REL-2.2] CDC batch processing order is preserved across confirmBatch", () => {
+test("[SYS-REL-2.2] CDC batch processing order is preserved across confirmBatch [cdc-replication-concurrent]", () => {
   const service = new CDCReplicationService();
   service.registerReplication(createReplicationConfig());
 
@@ -314,7 +314,7 @@ test("[SYS-REL-2.2] CDC batch processing order is preserved across confirmBatch"
   assert.equal(checkpoint!.lastEventId, "evt-4", "Checkpoint should have last event ID");
 });
 
-test("[SYS-REL-2.2] CDC concurrent prepareBatch calls don't create duplicate batches", async () => {
+test("[SYS-REL-2.2] CDC concurrent prepareBatch calls don't create duplicate batches [cdc-replication-concurrent]", async () => {
   const service = new CDCReplicationService();
   service.registerReplication(createReplicationConfig());
 
@@ -338,7 +338,7 @@ test("[SYS-REL-2.2] CDC concurrent prepareBatch calls don't create duplicate bat
   );
 });
 
-test("[SYS-REL-2.2] CDC recordFailure logs error without throwing", () => {
+test("[SYS-REL-2.2] CDC recordFailure logs error without throwing [cdc-replication-concurrent]", () => {
   const service = new CDCReplicationService();
 
   const batch: CDCReplicationBatch = {
@@ -357,7 +357,7 @@ test("[SYS-REL-2.2] CDC recordFailure logs error without throwing", () => {
   assert.ok(true, "recordFailure should not throw");
 });
 
-test("[SYS-REL-2.2] CDC conflict resolution LWW prefers later timestamp", () => {
+test("[SYS-REL-2.2] CDC conflict resolution LWW prefers later timestamp [cdc-replication-concurrent]", () => {
   const service = new CDCReplicationService();
 
   const localEvent = createReplicationEvent({
@@ -381,7 +381,7 @@ test("[SYS-REL-2.2] CDC conflict resolution LWW prefers later timestamp", () => 
   assert.equal(result.conflict!.resolution, "remote_wins", "Remote should win with LWW");
 });
 
-test("[SYS-REL-2.2] CDC conflict resolution merge combines payloads", () => {
+test("[SYS-REL-2.2] CDC conflict resolution merge combines payloads [cdc-replication-concurrent]", () => {
   const service = new CDCReplicationService();
 
   const localEvent = createReplicationEvent({
@@ -409,7 +409,7 @@ test("[SYS-REL-2.2] CDC conflict resolution merge combines payloads", () => {
   assert.equal(mergedPayload._merged, true, "Should be marked as merged");
 });
 
-test("[SYS-REL-2.2] CDC recordConflict stores conflict history", () => {
+test("[SYS-REL-2.2] CDC recordConflict stores conflict history [cdc-replication-concurrent]", () => {
   const service = new CDCReplicationService();
 
   const localEvent = createReplicationEvent({ id: "conflict-local", taskId: "task-1", sequence: 1 });
@@ -428,7 +428,7 @@ test("[SYS-REL-2.2] CDC recordConflict stores conflict history", () => {
   assert.ok(history.length > 0, "Conflict should be recorded");
 });
 
-test("[SYS-REL-2.2] VectorClock getMaxSequence returns highest per-region sequence", () => {
+test("[SYS-REL-2.2] VectorClock getMaxSequence returns highest per-region sequence [cdc-replication-concurrent]", () => {
   const service = new CDCReplicationService();
 
   service.updateVectorClock("entity-1", "region-a", 5);
@@ -439,7 +439,7 @@ test("[SYS-REL-2.2] VectorClock getMaxSequence returns highest per-region sequen
   assert.equal(clock.getMaxSequence(), 10, "Max sequence should be 10 from region-b");
 });
 
-test("[SYS-REL-2.2] CDC replication lag is time-based after checkpoint confirmation", () => {
+test("[SYS-REL-2.2] CDC replication lag is time-based after checkpoint confirmation [cdc-replication-concurrent]", () => {
   const service = new CDCReplicationService();
   service.registerReplication(createReplicationConfig());
 
@@ -462,7 +462,7 @@ test("[SYS-REL-2.2] CDC replication lag is time-based after checkpoint confirmat
   assert.ok(lag < 5_000, "Freshly confirmed batches should report low time-based lag");
 });
 
-test("[SYS-REL-2.2] CDC zero lag when fully caught up", () => {
+test("[SYS-REL-2.2] CDC zero lag when fully caught up [cdc-replication-concurrent]", () => {
   const service = new CDCReplicationService();
   service.registerReplication(createReplicationConfig());
 
@@ -484,7 +484,7 @@ test("[SYS-REL-2.2] CDC zero lag when fully caught up", () => {
   assert.equal(lag, 0, "Lag should be 0 when caught up");
 });
 
-test("[SYS-REL-2.2] CDC batch respects configured batch size limit", () => {
+test("[SYS-REL-2.2] CDC batch respects configured batch size limit [cdc-replication-concurrent]", () => {
   const service = new CDCReplicationService();
   service.registerReplication(createReplicationConfig({
     sourceRegionId: "us-west-2",
@@ -505,7 +505,7 @@ test("[SYS-REL-2.2] CDC batch respects configured batch size limit", () => {
   assert.equal(batch!.endSequence, 5, "First batch ends at 5");
 });
 
-test("[SYS-REL-2.2] CDC status transitions correctly through replication lifecycle", () => {
+test("[SYS-REL-2.2] CDC status transitions correctly through replication lifecycle [cdc-replication-concurrent]", () => {
   const service = new CDCReplicationService();
   service.registerReplication(createReplicationConfig());
 
@@ -519,7 +519,7 @@ test("[SYS-REL-2.2] CDC status transitions correctly through replication lifecyc
   assert.equal(service.getStatus("us-west-2", "eu-west-1"), "syncing");
 });
 
-test("[SYS-REL-2.2] CDC isEnabled reflects config enabled flag", () => {
+test("[SYS-REL-2.2] CDC isEnabled reflects config enabled flag [cdc-replication-concurrent]", () => {
   const service = new CDCReplicationService();
 
   service.registerReplication(createReplicationConfig({ enabled: true }));
@@ -533,7 +533,7 @@ test("[SYS-REL-2.2] CDC isEnabled reflects config enabled flag", () => {
   assert.equal(service.isEnabled("us-east", "eu-west-1"), false);
 });
 
-test("[SYS-REL-2.2] CDC registered region pairs are correctly enumerated", () => {
+test("[SYS-REL-2.2] CDC registered region pairs are correctly enumerated [cdc-replication-concurrent]", () => {
   const service = new CDCReplicationService();
 
   service.registerReplication(createReplicationConfig({

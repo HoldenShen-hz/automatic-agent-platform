@@ -18,7 +18,7 @@ import {
   type RevenueSharePolicy,
 } from "../../../src/scale-ecosystem/architecture-remediation.js";
 
-test("architecture remediation exports the documented state enums", () => {
+test("architecture remediation exports the documented state enums [architecture-remediation]", () => {
   const lifecycleStates: MarketplaceLifecycleState[] = ["active", "deprecated", "sunset", "removed"];
   const remoteStates: RemoteSessionState[] = ["connecting", "connected", "reconnecting", "degraded", "failed", "viewer_only"];
   const breachTypes: SlaBreachType[] = ["latency", "success_rate", "queue_wait", "execution_timeout", "dependency_unavailability"];
@@ -28,7 +28,7 @@ test("architecture remediation exports the documented state enums", () => {
   assert.equal(breachTypes.length, 5);
 });
 
-test("marketplace, revenue, capacity, cost, and routing records match the current contract", () => {
+test("marketplace, revenue, capacity, cost, and routing records match the current contract [architecture-remediation]", () => {
   const entry: MarketplaceCatalogEntry = {
     entryId: "entry-001",
     publisherId: "publisher-001",
@@ -82,7 +82,7 @@ test("marketplace, revenue, capacity, cost, and routing records match the curren
   assert.equal(routing.targetRegion, "eu-west-1");
 });
 
-test("buildBillingAdjustment always preserves the usage ledger", () => {
+test("buildBillingAdjustment always preserves the usage ledger [architecture-remediation]", () => {
   const adjustment = buildBillingAdjustment({
     adjustmentId: "adj-001",
     accountId: "acc-001",
@@ -101,7 +101,7 @@ test("buildBillingAdjustment always preserves the usage ledger", () => {
   } satisfies BillingAdjustment);
 });
 
-test("compareFairQueueEntries prioritizes SLA tier, then priority, then stable identifiers", () => {
+test("compareFairQueueEntries prioritizes SLA tier, then priority, then stable identifiers [architecture-remediation]", () => {
   const higherSla = compareFairQueueEntries(
     { tenantId: "tenant-b", orgId: "org", domainId: "ops", slaTier: 1, priority: 5 },
     { tenantId: "tenant-a", orgId: "org", domainId: "ops", slaTier: 2, priority: 1 },
@@ -115,7 +115,7 @@ test("compareFairQueueEntries prioritizes SLA tier, then priority, then stable i
   assert.equal(tieBrokenByPriority > 0, true);
 });
 
-test("validateListingDependencies reports missing compatibility evidence using entry ids", () => {
+test("validateListingDependencies reports missing compatibility evidence using entry ids [architecture-remediation]", () => {
   const dependencies: ListingDependency[] = [
     {
       entryId: "entry-a",
@@ -136,7 +136,7 @@ test("validateListingDependencies reports missing compatibility evidence using e
   assert.deepEqual(result.missingEvidenceIds, ["entry-c"]);
 });
 
-test("buildScaleEcosystemRemediationEvidence returns the full 20-item remediation checklist", () => {
+test("buildScaleEcosystemRemediationEvidence returns the full 20-item remediation checklist [architecture-remediation]", () => {
   const evidence = buildScaleEcosystemRemediationEvidence();
 
   assert.equal(evidence.length, 20);

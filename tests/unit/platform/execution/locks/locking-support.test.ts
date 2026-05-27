@@ -3,12 +3,12 @@ import test from "node:test";
 
 import { lockLogger, inferPgSslFromDsn } from "../../../../../src/platform/five-plane-execution/distributed-lock/locking-support.js";
 
-test("lockLogger is a StructuredLogger instance", () => {
+test("lockLogger is a StructuredLogger instance [locking-support]", () => {
   assert.ok(lockLogger !== undefined);
   assert.equal(typeof lockLogger.log, "function");
 });
 
-test("lockLogger.log accepts an object with level and message", () => {
+test("lockLogger.log accepts an object with level and message [locking-support]", () => {
   // Should not throw
   lockLogger.log({ level: "info", message: "test message" });
   lockLogger.log({ level: "debug", message: "debug message" });
@@ -16,7 +16,7 @@ test("lockLogger.log accepts an object with level and message", () => {
   lockLogger.log({ level: "error", message: "error message" });
 });
 
-test("lockLogger.log accepts optional data field", () => {
+test("lockLogger.log accepts optional data field [locking-support]", () => {
   lockLogger.log({
     level: "info",
     message: "test message with data",
@@ -24,7 +24,7 @@ test("lockLogger.log accepts optional data field", () => {
   });
 });
 
-test("lockLogger.log handles nested error objects", () => {
+test("lockLogger.log handles nested error objects [locking-support]", () => {
   lockLogger.log({
     level: "error",
     message: "error with cause",
@@ -32,7 +32,7 @@ test("lockLogger.log handles nested error objects", () => {
   });
 });
 
-test("lockLogger.log handles non-Error values in data", () => {
+test("lockLogger.log handles non-Error values in data [locking-support]", () => {
   lockLogger.log({
     level: "warn",
     message: "warning with mixed data",
@@ -41,27 +41,27 @@ test("lockLogger.log handles non-Error values in data", () => {
 });
 
 // inferPgSslFromDsn edge cases
-test("inferPgSslFromDsn handles various sslmode values", () => {
+test("inferPgSslFromDsn handles various sslmode values [locking-support]", () => {
   assert.deepEqual(inferPgSslFromDsn("postgres://host/db?sslmode=require"), { rejectUnauthorized: true });
   assert.equal(inferPgSslFromDsn("postgres://host/db?sslmode=disable"), null);
   assert.equal(inferPgSslFromDsn("postgres://host/db?sslmode=verify-full"), null);
   assert.equal(inferPgSslFromDsn("postgres://host/db?sslmode=prefer"), null);
 });
 
-test("inferPgSslFromDsn handles uppercase SSLMODE", () => {
+test("inferPgSslFromDsn handles uppercase SSLMODE [locking-support]", () => {
   assert.deepEqual(inferPgSslFromDsn("postgres://host/db?SSLMODE=REQUIRE"), { rejectUnauthorized: true });
 });
 
-test("inferPgSslFromDsn handles encoded characters in URL", () => {
+test("inferPgSslFromDsn handles encoded characters in URL [locking-support]", () => {
   // %20 is space, %3D is =
   assert.deepEqual(inferPgSslFromDsn("postgres://host/db?sslmode=%20require%20"), { rejectUnauthorized: true });
 });
 
-test("inferPgSslFromDsn returns null for empty sslmode value", () => {
+test("inferPgSslFromDsn returns null for empty sslmode value [locking-support]", () => {
   assert.equal(inferPgSslFromDsn("postgres://host/db?sslmode="), null);
 });
 
-test("inferPgSslFromDsn handles password with special characters in DSN", () => {
+test("inferPgSslFromDsn handles password with special characters in DSN [locking-support]", () => {
   // DSN with password containing special characters
   const dsn1 = "postgresql://user:p%40ssword@host/db?sslmode=require";
   assert.deepEqual(inferPgSslFromDsn(dsn1), { rejectUnauthorized: true });
@@ -70,15 +70,15 @@ test("inferPgSslFromDsn handles password with special characters in DSN", () => 
   assert.deepEqual(inferPgSslFromDsn(dsn2), { rejectUnauthorized: true });
 });
 
-test("inferPgSslFromDsn returns null for unix socket DSN", () => {
+test("inferPgSslFromDsn returns null for unix socket DSN [locking-support]", () => {
   assert.equal(inferPgSslFromDsn("/var/run/postgresql/.s.PGSQL.5432"), null);
 });
 
-test("inferPgSslFromDsn handles multiple query parameters", () => {
+test("inferPgSslFromDsn handles multiple query parameters [locking-support]", () => {
   const dsn = "postgresql://user:pass@localhost:5432/mydb?connect_timeout=10&sslmode=require&application_name=testapp";
   assert.deepEqual(inferPgSslFromDsn(dsn), { rejectUnauthorized: true });
 });
 
-test("inferPgSslFromDsn returns null when sslmode is not in query string", () => {
+test("inferPgSslFromDsn returns null when sslmode is not in query string [locking-support]", () => {
   assert.equal(inferPgSslFromDsn("postgresql://user:pass@localhost:5432/db"), null);
 });

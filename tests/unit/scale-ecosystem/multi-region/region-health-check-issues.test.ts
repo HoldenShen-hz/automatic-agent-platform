@@ -20,7 +20,7 @@ import {
 // Issue #2193: Latency degraded check uses > instead of >=
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("region-health-2193: latency at exactly threshold should be healthy, not degraded", async () => {
+test("region-health-2193: latency at exactly threshold should be healthy, not degraded [region-health-check-issues]", async () => {
   const service = new RegionHealthCheckService();
 
   service.registerRegion({
@@ -54,7 +54,7 @@ test("region-health-2193: latency at exactly threshold should be healthy, not de
   assert.equal(result.status, "healthy");
 });
 
-test("region-health-2193: latency one over threshold should be degraded", async () => {
+test("region-health-2193: latency one over threshold should be degraded [region-health-check-issues]", async () => {
   const service = new RegionHealthCheckService();
 
   service.registerRegion({
@@ -83,7 +83,7 @@ test("region-health-2193: latency one over threshold should be degraded", async 
   assert.equal(result.status, "degraded");
 });
 
-test("region-health-2193: boundary check should use >= for proper threshold behavior", async () => {
+test("region-health-2193: boundary check should use >= for proper threshold behavior [region-health-check-issues]", async () => {
   const service = new RegionHealthCheckService();
 
   // Test exact threshold
@@ -119,7 +119,7 @@ test("region-health-2193: boundary check should use >= for proper threshold beha
 // Issue #2199: Degraded doesn't accumulate consecutiveFailures
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("region-health-2199: degraded status should accumulate consecutiveFailures", async () => {
+test("region-health-2199: degraded status should accumulate consecutiveFailures [region-health-check-issues]", async () => {
   const service = new RegionHealthCheckService();
 
   service.registerRegion({
@@ -159,7 +159,7 @@ test("region-health-2199: degraded status should accumulate consecutiveFailures"
   assert.equal(summary?.consecutiveFailures, 0);
 });
 
-test("region-health-2199: unhealthy accumulates failures, degraded does not", async () => {
+test("region-health-2199: unhealthy accumulates failures, degraded does not [region-health-check-issues]", async () => {
   const service = new RegionHealthCheckService();
 
   service.registerRegion({
@@ -187,7 +187,7 @@ test("region-health-2199: unhealthy accumulates failures, degraded does not", as
   assert.ok(summary && summary.consecutiveFailures >= 1);
 });
 
-test("region-health-2199: mix of degraded and unhealthy counts differently", async () => {
+test("region-health-2199: mix of degraded and unhealthy counts differently [region-health-check-issues]", async () => {
   const service = new RegionHealthCheckService();
 
   service.registerRegion({
@@ -220,7 +220,7 @@ test("region-health-2199: mix of degraded and unhealthy counts differently", asy
 // Issue #2200: Serial health check O(N*T)
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("region-health-2200: checkAllRegions fan-outs health checks in parallel", async () => {
+test("region-health-2200: checkAllRegions fan-outs health checks in parallel [region-health-check-issues]", async () => {
   const service = new RegionHealthCheckService();
 
   // Register multiple regions
@@ -269,7 +269,7 @@ test("region-health-2200: checkAllRegions fan-outs health checks in parallel", a
   assert.ok(elapsedMs < 120);
 });
 
-test("region-health-2200: total latency is bounded by the slowest region, not by sum of regions", async () => {
+test("region-health-2200: total latency is bounded by the slowest region, not by sum of regions [region-health-check-issues]", async () => {
   const service = new RegionHealthCheckService();
 
   // Register regions with high latency
@@ -325,7 +325,7 @@ test("region-health-2200: total latency is bounded by the slowest region, not by
 // General region health check tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("region-health: shouldFailover returns true for unhealthy regions", async () => {
+test("region-health: shouldFailover returns true for unhealthy regions [region-health-check-issues]", async () => {
   const service = new RegionHealthCheckService();
 
   service.registerRegion({
@@ -352,7 +352,7 @@ test("region-health: shouldFailover returns true for unhealthy regions", async (
   // Just one check won't trigger failover unless it's a hard failure
 });
 
-test("region-health: getRegionsNeedingFailover returns correct regions", async () => {
+test("region-health: getRegionsNeedingFailover returns correct regions [region-health-check-issues]", async () => {
   const service = new RegionHealthCheckService();
 
   service.registerRegion({
@@ -383,7 +383,7 @@ test("region-health: getRegionsNeedingFailover returns correct regions", async (
   assert.ok(!regionsNeedingFailover.includes("healthy-region"));
 });
 
-test("region-health: resetHealthState clears consecutiveFailures", async () => {
+test("region-health: resetHealthState clears consecutiveFailures [region-health-check-issues]", async () => {
   const service = new RegionHealthCheckService();
 
   service.registerRegion({

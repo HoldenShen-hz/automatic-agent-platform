@@ -29,7 +29,7 @@ import { ValidationError } from "../../../src/platform/contracts/errors.js";
 // StateTransitionMachine Tests
 // ---------------------------------------------------------------------------
 
-test("StateTransitionMachine validates entity kind in constructor", () => {
+test("StateTransitionMachine validates entity kind in constructor [runtime-core]", () => {
   const machine = new StateTransitionMachine<string>("task", {
     pending: ["running"],
     running: ["done"],
@@ -38,7 +38,7 @@ test("StateTransitionMachine validates entity kind in constructor", () => {
   assert.ok(machine instanceof StateTransitionMachine);
 });
 
-test("StateTransitionMachine accepts valid transitions", () => {
+test("StateTransitionMachine accepts valid transitions [runtime-core]", () => {
   const machine = new StateTransitionMachine<string>("execution", {
     created: ["queued", "running"],
     queued: ["running", "cancelled"],
@@ -50,7 +50,7 @@ test("StateTransitionMachine accepts valid transitions", () => {
   machine.assertTransition("running", "succeeded");
 });
 
-test("StateTransitionMachine rejects invalid transitions", () => {
+test("StateTransitionMachine rejects invalid transitions [runtime-core]", () => {
   const machine = new StateTransitionMachine<string>("task", {
     pending: ["running"],
     running: ["done"],
@@ -62,7 +62,7 @@ test("StateTransitionMachine rejects invalid transitions", () => {
   );
 });
 
-test("StateTransitionMachine allows idempotent noop transitions", () => {
+test("StateTransitionMachine allows idempotent noop transitions [runtime-core]", () => {
   const machine = new StateTransitionMachine<string>("task", {
     pending: ["running"],
     running: ["done"],
@@ -73,7 +73,7 @@ test("StateTransitionMachine allows idempotent noop transitions", () => {
   );
 });
 
-test("StateTransitionMachine handles terminal states", () => {
+test("StateTransitionMachine handles terminal states [runtime-core]", () => {
   const machine = new StateTransitionMachine<string>("task", {
     pending: ["running"],
     running: ["completed"],
@@ -89,7 +89,7 @@ test("StateTransitionMachine handles terminal states", () => {
   );
 });
 
-test("StateTransitionMachine reports entity kind in error code", () => {
+test("StateTransitionMachine reports entity kind in error code [runtime-core]", () => {
   const machine = new StateTransitionMachine<string>("workflow", {
     running: ["completed"],
     completed: [],
@@ -106,7 +106,7 @@ test("StateTransitionMachine reports entity kind in error code", () => {
   }
 });
 
-test("StateTransitionMachine works with generic string states", () => {
+test("StateTransitionMachine works with generic string states [runtime-core]", () => {
   type SimpleState = "idle" | "active" | "stopped";
 
   const machine = new StateTransitionMachine<SimpleState>("simple", {
@@ -124,7 +124,7 @@ test("StateTransitionMachine works with generic string states", () => {
   );
 });
 
-test("StateTransitionMachine handles multiple allowed next states", () => {
+test("StateTransitionMachine handles multiple allowed next states [runtime-core]", () => {
   const machine = new StateTransitionMachine<string>("task", {
     created: ["pending", "running", "cancelled"],
     pending: ["running", "cancelled"],
@@ -138,7 +138,7 @@ test("StateTransitionMachine handles multiple allowed next states", () => {
   machine.assertTransition("running", "failed");
 });
 
-test("StateTransitionMachine throws on transition from non-existent state", () => {
+test("StateTransitionMachine throws on transition from non-existent state [runtime-core]", () => {
   const machine = new StateTransitionMachine<string>("task", {
     pending: ["running"],
     running: ["done"],
@@ -154,7 +154,7 @@ test("StateTransitionMachine throws on transition from non-existent state", () =
 // Runtime Context Tests - provideContext and getContext
 // ---------------------------------------------------------------------------
 
-test("provideContext creates context that can be retrieved with getContext", () => {
+test("provideContext creates context that can be retrieved with getContext [runtime-core]", () => {
   const snapshot = {
     traceId: "trace-1",
     taskId: "task-1",
@@ -182,19 +182,19 @@ test("provideContext creates context that can be retrieved with getContext", () 
   });
 });
 
-test("getContext throws when called outside provideContext", () => {
+test("getContext throws when called outside provideContext [runtime-core]", () => {
   assert.throws(
     () => getContext(),
     ValidationError,
   );
 });
 
-test("getContextOrNull returns null outside provideContext", () => {
+test("getContextOrNull returns null outside provideContext [runtime-core]", () => {
   const ctx = getContextOrNull();
   assert.equal(ctx, null);
 });
 
-test("getContextOrNull returns context inside provideContext", () => {
+test("getContextOrNull returns context inside provideContext [runtime-core]", () => {
   const snapshot = {
     traceId: "trace-1",
     taskId: "task-1",
@@ -225,7 +225,7 @@ test("getContextOrNull returns context inside provideContext", () => {
 // Runtime Context Tests - Tenant and Workspace
 // ---------------------------------------------------------------------------
 
-test("getTenantId returns tenantId from context", () => {
+test("getTenantId returns tenantId from context [runtime-core]", () => {
   const snapshot = {
     traceId: "trace-1",
     taskId: "task-1",
@@ -250,11 +250,11 @@ test("getTenantId returns tenantId from context", () => {
   });
 });
 
-test("getTenantId returns null outside context", () => {
+test("getTenantId returns null outside context [runtime-core]", () => {
   assert.equal(getTenantId(), null);
 });
 
-test("getTenantIdOrNull returns tenantId inside context", () => {
+test("getTenantIdOrNull returns tenantId inside context [runtime-core]", () => {
   const snapshot = {
     traceId: "trace-1",
     taskId: "task-1",
@@ -279,7 +279,7 @@ test("getTenantIdOrNull returns tenantId inside context", () => {
   });
 });
 
-test("getWorkspaceId returns workspaceId from context", () => {
+test("getWorkspaceId returns workspaceId from context [runtime-core]", () => {
   const snapshot = {
     traceId: "trace-1",
     taskId: "task-1",
@@ -304,11 +304,11 @@ test("getWorkspaceId returns workspaceId from context", () => {
   });
 });
 
-test("getWorkspaceId returns null outside context", () => {
+test("getWorkspaceId returns null outside context [runtime-core]", () => {
   assert.equal(getWorkspaceId(), null);
 });
 
-test("hasTenantContext returns true when tenantId is set", () => {
+test("hasTenantContext returns true when tenantId is set [runtime-core]", () => {
   const snapshot = {
     traceId: "trace-1",
     taskId: "task-1",
@@ -333,7 +333,7 @@ test("hasTenantContext returns true when tenantId is set", () => {
   });
 });
 
-test("hasTenantContext returns false when tenantId is empty", () => {
+test("hasTenantContext returns false when tenantId is empty [runtime-core]", () => {
   const snapshot = {
     traceId: "trace-1",
     taskId: "task-1",
@@ -358,7 +358,7 @@ test("hasTenantContext returns false when tenantId is empty", () => {
   });
 });
 
-test("hasWorkspaceContext returns true when workspaceId is set", () => {
+test("hasWorkspaceContext returns true when workspaceId is set [runtime-core]", () => {
   const snapshot = {
     traceId: "trace-1",
     taskId: "task-1",
@@ -383,7 +383,7 @@ test("hasWorkspaceContext returns true when workspaceId is set", () => {
   });
 });
 
-test("hasWorkspaceContext returns false when workspaceId is empty", () => {
+test("hasWorkspaceContext returns false when workspaceId is empty [runtime-core]", () => {
   const snapshot = {
     traceId: "trace-1",
     taskId: "task-1",
@@ -412,7 +412,7 @@ test("hasWorkspaceContext returns false when workspaceId is empty", () => {
 // Runtime Context Tests - withContextPatch
 // ---------------------------------------------------------------------------
 
-test("withContextPatch creates patched context for nested execution", () => {
+test("withContextPatch creates patched context for nested execution [runtime-core]", () => {
   const outerSnapshot = {
     traceId: "trace-outer",
     taskId: "task-outer",
@@ -444,7 +444,7 @@ test("withContextPatch creates patched context for nested execution", () => {
   });
 });
 
-test("withContextPatch preserves non-patched fields", () => {
+test("withContextPatch preserves non-patched fields [runtime-core]", () => {
   const outerSnapshot = {
     traceId: "trace-original",
     taskId: "task-original",
@@ -477,7 +477,7 @@ test("withContextPatch preserves non-patched fields", () => {
 // Runtime Context Tests - assertContext
 // ---------------------------------------------------------------------------
 
-test("assertContext returns context when all required keys are present", () => {
+test("assertContext returns context when all required keys are present [runtime-core]", () => {
   const snapshot = {
     traceId: "trace-1",
     taskId: "task-1",
@@ -504,7 +504,7 @@ test("assertContext returns context when all required keys are present", () => {
   });
 });
 
-test("assertContext throws ValidationError when required key is missing", () => {
+test("assertContext throws ValidationError when required key is missing [runtime-core]", () => {
   const snapshot = {
     traceId: "trace-1",
     taskId: "task-1",
@@ -532,7 +532,7 @@ test("assertContext throws ValidationError when required key is missing", () => 
   });
 });
 
-test("assertContext throws when required key is empty string", () => {
+test("assertContext throws when required key is empty string [runtime-core]", () => {
   const snapshot = {
     traceId: "trace-1",
     taskId: "task-1",
@@ -560,7 +560,7 @@ test("assertContext throws when required key is empty string", () => {
   });
 });
 
-test("assertContext works with no required keys", () => {
+test("assertContext works with no required keys [runtime-core]", () => {
   const snapshot = {
     traceId: "trace-1",
     taskId: "task-1",
@@ -590,7 +590,7 @@ test("assertContext works with no required keys", () => {
 // Nested Context Tests
 // ---------------------------------------------------------------------------
 
-test("nested provideContext preserves outer context after inner completes", () => {
+test("nested provideContext preserves outer context after inner completes [runtime-core]", () => {
   const outerSnapshot = {
     traceId: "trace-outer",
     taskId: "task-outer",
@@ -645,7 +645,7 @@ test("nested provideContext preserves outer context after inner completes", () =
 // Context with Different Entity Transitions
 // ---------------------------------------------------------------------------
 
-test("StateTransitionMachine with task status transitions", () => {
+test("StateTransitionMachine with task status transitions [runtime-core]", () => {
   const machine = new StateTransitionMachine<string>("task", {
     queued: ["pending", "in_progress", "cancelled"],
     pending: ["in_progress", "cancelled"],
@@ -668,7 +668,7 @@ test("StateTransitionMachine with task status transitions", () => {
   );
 });
 
-test("StateTransitionMachine with workflow status transitions", () => {
+test("StateTransitionMachine with workflow status transitions [runtime-core]", () => {
   const machine = new StateTransitionMachine<string>("workflow", {
     running: ["paused", "completed", "failed", "cancelling", "cancelled"],
     paused: ["resuming", "failed", "cancelled"],
@@ -692,7 +692,7 @@ test("StateTransitionMachine with workflow status transitions", () => {
   );
 });
 
-test("StateTransitionMachine with session status transitions", () => {
+test("StateTransitionMachine with session status transitions [runtime-core]", () => {
   const machine = new StateTransitionMachine<string>("session", {
     open: ["streaming", "awaiting_user", "completed", "failed", "cancelled"],
     streaming: ["awaiting_user", "completed", "failed", "cancelled", "open"],
@@ -715,7 +715,7 @@ test("StateTransitionMachine with session status transitions", () => {
   );
 });
 
-test("StateTransitionMachine with execution status transitions", () => {
+test("StateTransitionMachine with execution status transitions [runtime-core]", () => {
   const machine = new StateTransitionMachine<string>("execution", {
     created: ["queued", "prechecking", "executing", "cancelled", "failed"],
     queued: ["dispatching", "prechecking", "executing", "cancelled", "failed"],
@@ -746,7 +746,7 @@ test("StateTransitionMachine with execution status transitions", () => {
   );
 });
 
-test("StateTransitionMachine with approval status transitions", () => {
+test("StateTransitionMachine with approval status transitions [runtime-core]", () => {
   const machine = new StateTransitionMachine<string>("approval", {
     requested: ["approved", "rejected", "expired", "cancelled"],
     approved: [],

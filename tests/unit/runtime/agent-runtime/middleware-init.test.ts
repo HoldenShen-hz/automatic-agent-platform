@@ -9,7 +9,7 @@ import {
 } from "../../../../src/platform/five-plane-execution/execution-engine/middleware-init.js";
 import { globalMiddlewareChain } from "../../../../src/platform/five-plane-execution/execution-engine/agent-middleware-chain.js";
 
-test("initializeMiddleware returns middleware context", () => {
+test("initializeMiddleware returns middleware context [middleware-init]", () => {
   resetMiddleware();
 
   const context = initializeMiddleware({});
@@ -19,7 +19,7 @@ test("initializeMiddleware returns middleware context", () => {
   assert.ok(context.loopDetection);
 });
 
-test("initializeMiddleware returns same context on subsequent calls", () => {
+test("initializeMiddleware returns same context on subsequent calls [middleware-init]", () => {
   resetMiddleware();
 
   const context1 = initializeMiddleware({});
@@ -28,7 +28,7 @@ test("initializeMiddleware returns same context on subsequent calls", () => {
   assert.strictEqual(context1, context2);
 });
 
-test("initializeMiddleware throws when initialization is already in progress", () => {
+test("initializeMiddleware throws when initialization is already in progress [middleware-init]", () => {
   resetMiddleware();
 
   // This test verifies the race condition protection
@@ -37,7 +37,7 @@ test("initializeMiddleware throws when initialization is already in progress", (
   assert.ok(context);
 });
 
-test("initializeMiddleware with null loopDetection disables loop detection", () => {
+test("initializeMiddleware with null loopDetection disables loop detection [middleware-init]", () => {
   resetMiddleware();
 
   const context = initializeMiddleware({ loopDetection: null });
@@ -49,7 +49,7 @@ test("initializeMiddleware with null loopDetection disables loop detection", () 
   assert.equal(context.loopDetection.getRepeatCount("tool", {}), 0);
 });
 
-test("initializeMiddleware with config enables loop detection", () => {
+test("initializeMiddleware with config enables loop detection [middleware-init]", () => {
   resetMiddleware();
 
   const context = initializeMiddleware({
@@ -60,14 +60,14 @@ test("initializeMiddleware with config enables loop detection", () => {
   assert.ok(context.loopDetection.state !== null);
 });
 
-test("getMiddlewareContext returns null before initialization", () => {
+test("getMiddlewareContext returns null before initialization [middleware-init]", () => {
   resetMiddleware();
 
   const context = getMiddlewareContext();
   assert.strictEqual(context, null);
 });
 
-test("getMiddlewareContext returns context after initialization", () => {
+test("getMiddlewareContext returns context after initialization [middleware-init]", () => {
   resetMiddleware();
 
   initializeMiddleware({});
@@ -76,7 +76,7 @@ test("getMiddlewareContext returns context after initialization", () => {
   assert.ok(context);
 });
 
-test("getGlobalMiddlewareChain returns the global chain", () => {
+test("getGlobalMiddlewareChain returns the global chain [middleware-init]", () => {
   resetMiddleware();
 
   const chain = getGlobalMiddlewareChain();
@@ -85,7 +85,7 @@ test("getGlobalMiddlewareChain returns the global chain", () => {
   assert.strictEqual(chain, globalMiddlewareChain);
 });
 
-test("resetMiddleware clears context and resets chain", () => {
+test("resetMiddleware clears context and resets chain [middleware-init]", () => {
   resetMiddleware();
 
   initializeMiddleware({});
@@ -96,7 +96,7 @@ test("resetMiddleware clears context and resets chain", () => {
   assert.strictEqual(getMiddlewareContext(), null);
 });
 
-test("initialized middleware context tracks loop patterns", () => {
+test("initialized middleware context tracks loop patterns [middleware-init]", () => {
   resetMiddleware();
 
   const context = initializeMiddleware({
@@ -106,7 +106,7 @@ test("initialized middleware context tracks loop patterns", () => {
   assert.ok(Array.isArray(context.loopDetection.patterns()));
 });
 
-test("initialized middleware context reset clears state", () => {
+test("initialized middleware context reset clears state [middleware-init]", () => {
   resetMiddleware();
 
   const context = initializeMiddleware({
@@ -118,7 +118,7 @@ test("initialized middleware context reset clears state", () => {
   assert.deepEqual(context.loopDetection.patterns(), []);
 });
 
-test("middleware chain is functional after initialization", () => {
+test("middleware chain is functional after initialization [middleware-init]", () => {
   resetMiddleware();
 
   const context = initializeMiddleware({});
@@ -131,7 +131,7 @@ test("middleware chain is functional after initialization", () => {
   assert.ok(Array.isArray(hooks.wrapModelCall));
 });
 
-test("initializeMiddleware with failOpen option", () => {
+test("initializeMiddleware with failOpen option [middleware-init]", () => {
   resetMiddleware();
 
   const context = initializeMiddleware({ failOpen: true });
@@ -140,7 +140,7 @@ test("initializeMiddleware with failOpen option", () => {
   assert.ok(context.chain);
 });
 
-test("initializeMiddleware twice returns same singleton", () => {
+test("initializeMiddleware twice returns same singleton [middleware-init]", () => {
   resetMiddleware();
 
   const first = initializeMiddleware({});

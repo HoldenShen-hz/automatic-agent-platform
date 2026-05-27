@@ -23,7 +23,7 @@ function createTestDb(): DatabaseSync {
 // createLockAdapter factory function tests
 // =============================================================================
 
-test("createLockAdapter creates SqliteLockAdapter with DatabaseSync", () => {
+test("createLockAdapter creates SqliteLockAdapter with DatabaseSync [distributed-lock]", () => {
   const db = createTestDb();
   const adapter = createLockAdapter("sqlite", db);
 
@@ -33,21 +33,21 @@ test("createLockAdapter creates SqliteLockAdapter with DatabaseSync", () => {
   db.close();
 });
 
-test("createLockAdapter creates PgAdvisoryLockAdapter without db", () => {
+test("createLockAdapter creates PgAdvisoryLockAdapter without db [distributed-lock]", () => {
   const adapter = createLockAdapter("pg_advisory");
 
   assert.equal(adapter.backendKind, "pg_advisory");
   assert.ok(adapter instanceof PgAdvisoryLockAdapter);
 });
 
-test("createLockAdapter creates RedisLockAdapter without db", () => {
+test("createLockAdapter creates RedisLockAdapter without db [distributed-lock]", () => {
   const adapter = createLockAdapter("redis");
 
   assert.equal(adapter.backendKind, "redis");
   assert.ok(adapter instanceof RedisLockAdapter);
 });
 
-test("createLockAdapter throws LockingError for unknown backend kind", () => {
+test("createLockAdapter throws LockingError for unknown backend kind [distributed-lock]", () => {
   assert.throws(
     () => createLockAdapter("unknown" as "sqlite" | "pg_advisory" | "redis"),
     (error: unknown) => {
@@ -58,7 +58,7 @@ test("createLockAdapter throws LockingError for unknown backend kind", () => {
   );
 });
 
-test("createLockAdapter throws LockingError for sqlite without db", () => {
+test("createLockAdapter throws LockingError for sqlite without db [distributed-lock]", () => {
   assert.throws(
     () => createLockAdapter("sqlite"),
     (error: unknown) => {
@@ -72,7 +72,7 @@ test("createLockAdapter throws LockingError for sqlite without db", () => {
 // SqliteLockAdapter fencing token tests
 // =============================================================================
 
-test("SqliteLockAdapter fencing token starts at 1 for empty database", () => {
+test("SqliteLockAdapter fencing token starts at 1 for empty database [distributed-lock]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -84,7 +84,7 @@ test("SqliteLockAdapter fencing token starts at 1 for empty database", () => {
   db.close();
 });
 
-test("SqliteLockAdapter fencing token increments on each acquire", () => {
+test("SqliteLockAdapter fencing token increments on each acquire [distributed-lock]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -98,7 +98,7 @@ test("SqliteLockAdapter fencing token increments on each acquire", () => {
   db.close();
 });
 
-test("SqliteLockAdapter fencing token continues after forceSteal", () => {
+test("SqliteLockAdapter fencing token continues after forceSteal [distributed-lock]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -117,7 +117,7 @@ test("SqliteLockAdapter fencing token continues after forceSteal", () => {
 // SqliteLockAdapter TTL and expiry edge cases
 // =============================================================================
 
-test("SqliteLockAdapter uses default TTL of 30000ms", () => {
+test("SqliteLockAdapter uses default TTL of 30000ms [distributed-lock]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -129,7 +129,7 @@ test("SqliteLockAdapter uses default TTL of 30000ms", () => {
   db.close();
 });
 
-test("SqliteLockAdapter respects provided ttlMs", () => {
+test("SqliteLockAdapter respects provided ttlMs [distributed-lock]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -141,7 +141,7 @@ test("SqliteLockAdapter respects provided ttlMs", () => {
   db.close();
 });
 
-test("SqliteLockAdapter treats ttlMs of 0 as infinite TTL", () => {
+test("SqliteLockAdapter treats ttlMs of 0 as infinite TTL [distributed-lock]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -160,7 +160,7 @@ test("SqliteLockAdapter treats ttlMs of 0 as infinite TTL", () => {
   db.close();
 });
 
-test("SqliteLockAdapter handles lock with invalid acquired_at timestamp", () => {
+test("SqliteLockAdapter handles lock with invalid acquired_at timestamp [distributed-lock]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -183,7 +183,7 @@ test("SqliteLockAdapter handles lock with invalid acquired_at timestamp", () => 
 // SqliteLockAdapter error handling tests
 // =============================================================================
 
-test("SqliteLockAdapter release returns false when owner does not match", () => {
+test("SqliteLockAdapter release returns false when owner does not match [distributed-lock]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -194,7 +194,7 @@ test("SqliteLockAdapter release returns false when owner does not match", () => 
   assert.equal(released, false);
 });
 
-test("SqliteLockAdapter extend returns null when owner does not match", () => {
+test("SqliteLockAdapter extend returns null when owner does not match [distributed-lock]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -205,7 +205,7 @@ test("SqliteLockAdapter extend returns null when owner does not match", () => {
   assert.equal(extended, null);
 });
 
-test("SqliteLockAdapter forceSteal throws LockingError on database error", () => {
+test("SqliteLockAdapter forceSteal throws LockingError on database error [distributed-lock]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -218,7 +218,7 @@ test("SqliteLockAdapter forceSteal throws LockingError on database error", () =>
   );
 });
 
-test("SqliteLockAdapter inspect returns null for invalid JSON metadata", () => {
+test("SqliteLockAdapter inspect returns null for invalid JSON metadata [distributed-lock]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -241,7 +241,7 @@ test("SqliteLockAdapter inspect returns null for invalid JSON metadata", () => {
 // PgAdvisoryLockAdapter lockKeyToAdvisoryKey edge cases
 // =============================================================================
 
-test("PgAdvisoryLockAdapter lockKeyToAdvisoryKey handles empty string", () => {
+test("PgAdvisoryLockAdapter lockKeyToAdvisoryKey handles empty string [distributed-lock]", () => {
   const adapter = new PgAdvisoryLockAdapter({ dsn: "postgres://localhost/test" });
 
   const key = (adapter as unknown as { lockKeyToAdvisoryKey: (k: string) => bigint }).lockKeyToAdvisoryKey("");
@@ -249,7 +249,7 @@ test("PgAdvisoryLockAdapter lockKeyToAdvisoryKey handles empty string", () => {
   assert.equal(typeof key, "bigint");
 });
 
-test("PgAdvisoryLockAdapter lockKeyToAdvisoryKey handles unicode characters", () => {
+test("PgAdvisoryLockAdapter lockKeyToAdvisoryKey handles unicode characters [distributed-lock]", () => {
   const adapter = new PgAdvisoryLockAdapter({ dsn: "postgres://localhost/test" });
 
   const key1 = (adapter as unknown as { lockKeyToAdvisoryKey: (k: string) => bigint }).lockKeyToAdvisoryKey("lock-测试-🔒");
@@ -259,7 +259,7 @@ test("PgAdvisoryLockAdapter lockKeyToAdvisoryKey handles unicode characters", ()
   assert.equal(typeof key1, "bigint");
 });
 
-test("PgAdvisoryLockAdapter lockKeyToAdvisoryKey handles long strings", () => {
+test("PgAdvisoryLockAdapter lockKeyToAdvisoryKey handles long strings [distributed-lock]", () => {
   const adapter = new PgAdvisoryLockAdapter({ dsn: "postgres://localhost/test" });
 
   const longKey = "a".repeat(10000);
@@ -274,7 +274,7 @@ test("PgAdvisoryLockAdapter lockKeyToAdvisoryKey handles long strings", () => {
 // PgAdvisoryLockAdapter async method error handling
 // =============================================================================
 
-test("PgAdvisoryLockAdapter acquireAsync throws when postgres module not found", async () => {
+test("PgAdvisoryLockAdapter acquireAsync throws when postgres module not found [distributed-lock]", async () => {
   const adapter = new PgAdvisoryLockAdapter({
     dsn: "postgres://localhost/test",
     postgresFactory: () => {
@@ -288,7 +288,7 @@ test("PgAdvisoryLockAdapter acquireAsync throws when postgres module not found",
   );
 });
 
-test("PgAdvisoryLockAdapter acquireAsync throws on ECONNREFUSED", async () => {
+test("PgAdvisoryLockAdapter acquireAsync throws on ECONNREFUSED [distributed-lock]", async () => {
   const adapter = new PgAdvisoryLockAdapter({
     dsn: "postgres://localhost/test",
     postgresFactory: () => {
@@ -305,7 +305,7 @@ test("PgAdvisoryLockAdapter acquireAsync throws on ECONNREFUSED", async () => {
   );
 });
 
-test("PgAdvisoryLockAdapter releaseAsync throws when postgres module not found", async () => {
+test("PgAdvisoryLockAdapter releaseAsync throws when postgres module not found [distributed-lock]", async () => {
   const adapter = new PgAdvisoryLockAdapter({
     dsn: "postgres://localhost/test",
     postgresFactory: () => {
@@ -324,7 +324,7 @@ test("PgAdvisoryLockAdapter releaseAsync throws when postgres module not found",
   );
 });
 
-test("PgAdvisoryLockAdapter close is idempotent", async () => {
+test("PgAdvisoryLockAdapter close is idempotent [distributed-lock]", async () => {
   const mockDriver = {
     end: async () => {},
   };
@@ -343,39 +343,39 @@ test("PgAdvisoryLockAdapter close is idempotent", async () => {
 // RedisLockAdapter constructor and config tests
 // =============================================================================
 
-test("RedisLockAdapter uses default host and port", () => {
+test("RedisLockAdapter uses default host and port [distributed-lock]", () => {
   const adapter = new RedisLockAdapter();
 
   assert.equal((adapter as unknown as { host: string }).host, "localhost");
   assert.equal((adapter as unknown as { port: number }).port, 6379);
 });
 
-test("RedisLockAdapter uses custom host and port from config", () => {
+test("RedisLockAdapter uses custom host and port from config [distributed-lock]", () => {
   const adapter = new RedisLockAdapter({ host: "redis.example.com", port: 6380 });
 
   assert.equal((adapter as unknown as { host: string }).host, "redis.example.com");
   assert.equal((adapter as unknown as { port: number }).port, 6380);
 });
 
-test("RedisLockAdapter uses default cliPath", () => {
+test("RedisLockAdapter uses default cliPath [distributed-lock]", () => {
   const adapter = new RedisLockAdapter();
 
   assert.equal((adapter as unknown as { cliPath: string }).cliPath, "redis-cli");
 });
 
-test("RedisLockAdapter uses custom cliPath from config", () => {
+test("RedisLockAdapter uses custom cliPath from config [distributed-lock]", () => {
   const adapter = new RedisLockAdapter({ cliPath: "/usr/local/bin/redis-cli" });
 
   assert.equal((adapter as unknown as { cliPath: string }).cliPath, "/usr/local/bin/redis-cli");
 });
 
-test("RedisLockAdapter uses default connectTimeoutMs", () => {
+test("RedisLockAdapter uses default connectTimeoutMs [distributed-lock]", () => {
   const adapter = new RedisLockAdapter();
 
   assert.equal((adapter as unknown as { connectTimeoutMs: number }).connectTimeoutMs, 500);
 });
 
-test("RedisLockAdapter uses custom connectTimeoutMs from config", () => {
+test("RedisLockAdapter uses custom connectTimeoutMs from config [distributed-lock]", () => {
   const adapter = new RedisLockAdapter({ connectTimeoutMs: 2000 });
 
   assert.equal((adapter as unknown as { connectTimeoutMs: number }).connectTimeoutMs, 2000);
@@ -385,7 +385,7 @@ test("RedisLockAdapter uses custom connectTimeoutMs from config", () => {
 // RedisLockAdapter async method error handling edge cases
 // =============================================================================
 
-test("RedisLockAdapter acquireAsync throws on connection error", async () => {
+test("RedisLockAdapter acquireAsync throws on connection error [distributed-lock]", async () => {
   const adapter = new RedisLockAdapter({ host: "localhost", port: 6379 });
 
   (adapter as unknown as {
@@ -426,7 +426,7 @@ test("RedisLockAdapter acquireAsync throws on connection error", async () => {
   );
 });
 
-test("RedisLockAdapter releaseAsync throws on Lua script error", async () => {
+test("RedisLockAdapter releaseAsync throws on Lua script error [distributed-lock]", async () => {
   const adapter = new RedisLockAdapter({ host: "localhost", port: 6379 });
 
   const redis = (adapter as unknown as { redis: { status: string; connect: () => Promise<void>; eval: () => Promise<never> } }).redis;
@@ -442,7 +442,7 @@ test("RedisLockAdapter releaseAsync throws on Lua script error", async () => {
   );
 });
 
-test("RedisLockAdapter extendAsync caps TTL at 600000ms", async () => {
+test("RedisLockAdapter extendAsync caps TTL at 600000ms [distributed-lock]", async () => {
   const adapter = new RedisLockAdapter({ host: "localhost", port: 6379 });
 
   const redis = (adapter as unknown as {
@@ -482,17 +482,17 @@ test("RedisLockAdapter extendAsync caps TTL at 600000ms", async () => {
 // lockLogger tests
 // =============================================================================
 
-test("lockLogger has log method", () => {
+test("lockLogger has log method [distributed-lock]", () => {
   assert.equal(typeof lockLogger.log, "function");
 });
 
-test("lockLogger can be called without throwing", () => {
+test("lockLogger can be called without throwing [distributed-lock]", () => {
   assert.doesNotThrow(() => {
     lockLogger.log({ level: "info", message: "test", data: {} });
   });
 });
 
-test("lockLogger accepts various log levels", () => {
+test("lockLogger accepts various log levels [distributed-lock]", () => {
   const levels = ["debug", "info", "warn", "error"] as const;
 
   for (const level of levels) {
@@ -506,7 +506,7 @@ test("lockLogger accepts various log levels", () => {
 // Integration-style tests with SQLite adapter
 // =============================================================================
 
-test("SqliteLockAdapter full lifecycle: acquire, extend, release", () => {
+test("SqliteLockAdapter full lifecycle: acquire, extend, release [distributed-lock]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -531,7 +531,7 @@ test("SqliteLockAdapter full lifecycle: acquire, extend, release", () => {
   db.close();
 });
 
-test("SqliteLockAdapter concurrent acquire attempts: first wins", () => {
+test("SqliteLockAdapter concurrent acquire attempts: first wins [distributed-lock]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -546,7 +546,7 @@ test("SqliteLockAdapter concurrent acquire attempts: first wins", () => {
   db.close();
 });
 
-test("SqliteLockAdapter after release, new owner can acquire", () => {
+test("SqliteLockAdapter after release, new owner can acquire [distributed-lock]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -562,7 +562,7 @@ test("SqliteLockAdapter after release, new owner can acquire", () => {
   db.close();
 });
 
-test("SqliteLockAdapter forceSteal allows new owner to take lock", () => {
+test("SqliteLockAdapter forceSteal allows new owner to take lock [distributed-lock]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
@@ -589,7 +589,7 @@ test("SqliteLockAdapter forceSteal allows new owner to take lock", () => {
 // DISTRIBUTED_LOCKS_DDL tests
 // =============================================================================
 
-test("DISTRIBUTED_LOCKS_DDL creates valid SQLite table", () => {
+test("DISTRIBUTED_LOCKS_DDL creates valid SQLite table [distributed-lock]", () => {
   const db = createTestDb();
 
   // The DDL should have created the table. Let's verify by inserting and querying.
@@ -606,7 +606,7 @@ test("DISTRIBUTED_LOCKS_DDL creates valid SQLite table", () => {
   db.close();
 });
 
-test("DISTRIBUTED_LOCKS_DDL includes all required columns", () => {
+test("DISTRIBUTED_LOCKS_DDL includes all required columns [distributed-lock]", () => {
   assert.ok(DISTRIBUTED_LOCKS_DDL.includes("lock_key"));
   assert.ok(DISTRIBUTED_LOCKS_DDL.includes("owner"));
   assert.ok(DISTRIBUTED_LOCKS_DDL.includes("fencing_token"));

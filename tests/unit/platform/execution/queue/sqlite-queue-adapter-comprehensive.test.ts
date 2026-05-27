@@ -18,7 +18,7 @@ function createHarness(prefix: string) {
   };
 }
 
-test("SqliteQueueAdapter enqueue respects priority ordering", () => {
+test("SqliteQueueAdapter enqueue respects priority ordering [sqlite-queue-adapter-comprehensive]", () => {
   const harness = createHarness("priority-order-");
   try {
     const { adapter } = harness;
@@ -44,7 +44,7 @@ test("SqliteQueueAdapter enqueue respects priority ordering", () => {
   }
 });
 
-test("SqliteQueueAdapter enqueue respects FIFO for same priority", () => {
+test("SqliteQueueAdapter enqueue respects FIFO for same priority [sqlite-queue-adapter-comprehensive]", () => {
   const harness = createHarness("fifo-same-priority-");
   try {
     const { adapter } = harness;
@@ -61,7 +61,7 @@ test("SqliteQueueAdapter enqueue respects FIFO for same priority", () => {
   }
 });
 
-test("SqliteQueueAdapter dequeue moves job to active status", () => {
+test("SqliteQueueAdapter dequeue moves job to active status [sqlite-queue-adapter-comprehensive]", () => {
   const harness = createHarness("dequeue-active-");
   try {
     const { adapter } = harness;
@@ -82,7 +82,7 @@ test("SqliteQueueAdapter dequeue moves job to active status", () => {
   }
 });
 
-test("SqliteQueueAdapter ack moves job to completed", () => {
+test("SqliteQueueAdapter ack moves job to completed [sqlite-queue-adapter-comprehensive]", () => {
   const harness = createHarness("ack-completed-");
   try {
     const { adapter } = harness;
@@ -102,7 +102,7 @@ test("SqliteQueueAdapter ack moves job to completed", () => {
   }
 });
 
-test("SqliteQueueAdapter nack without max attempts returns to waiting", () => {
+test("SqliteQueueAdapter nack without max attempts returns to waiting [sqlite-queue-adapter-comprehensive]", () => {
   const harness = createHarness("nack-waiting-");
   try {
     const { adapter } = harness;
@@ -123,7 +123,7 @@ test("SqliteQueueAdapter nack without max attempts returns to waiting", () => {
   }
 });
 
-test("SqliteQueueAdapter nack at max attempts moves to dead letter", () => {
+test("SqliteQueueAdapter nack at max attempts moves to dead letter [sqlite-queue-adapter-comprehensive]", () => {
   const harness = createHarness("nack-deadletter-");
   try {
     const { adapter } = harness;
@@ -150,7 +150,7 @@ test("SqliteQueueAdapter nack at max attempts moves to dead letter", () => {
   }
 });
 
-test("SqliteQueueAdapter enqueue with idempotency key returns existing job", () => {
+test("SqliteQueueAdapter enqueue with idempotency key returns existing job [sqlite-queue-adapter-comprehensive]", () => {
   const harness = createHarness("idempotency-");
   try {
     const { adapter } = harness;
@@ -175,7 +175,7 @@ test("SqliteQueueAdapter enqueue with idempotency key returns existing job", () 
   }
 });
 
-test("SqliteQueueAdapter enqueue with delayUntil sets status to delayed", () => {
+test("SqliteQueueAdapter enqueue with delayUntil sets status to delayed [sqlite-queue-adapter-comprehensive]", () => {
   const harness = createHarness("delayed-");
   try {
     const { adapter } = harness;
@@ -195,7 +195,7 @@ test("SqliteQueueAdapter enqueue with delayUntil sets status to delayed", () => 
   }
 });
 
-test("SqliteQueueAdapter dequeue activates delayed jobs when time is reached", () => {
+test("SqliteQueueAdapter dequeue activates delayed jobs when time is reached [sqlite-queue-adapter-comprehensive]", () => {
   const harness = createHarness("delayed-activate-");
   try {
     const { adapter } = harness;
@@ -217,7 +217,7 @@ test("SqliteQueueAdapter dequeue activates delayed jobs when time is reached", (
   }
 });
 
-test("SqliteQueueAdapter moveToDeadLetter updates job status", () => {
+test("SqliteQueueAdapter moveToDeadLetter updates job status [sqlite-queue-adapter-comprehensive]", () => {
   const harness = createHarness("move-dlq-");
   try {
     const { adapter } = harness;
@@ -235,7 +235,7 @@ test("SqliteQueueAdapter moveToDeadLetter updates job status", () => {
   }
 });
 
-test("SqliteQueueAdapter retryJob resets failed job to waiting", () => {
+test("SqliteQueueAdapter retryJob resets failed job to waiting [sqlite-queue-adapter-comprehensive]", () => {
   const harness = createHarness("retry-");
   try {
     const { adapter } = harness;
@@ -257,7 +257,7 @@ test("SqliteQueueAdapter retryJob resets failed job to waiting", () => {
   }
 });
 
-test("SqliteQueueAdapter retryJob resets dead letter job to waiting", () => {
+test("SqliteQueueAdapter retryJob resets dead letter job to waiting [sqlite-queue-adapter-comprehensive]", () => {
   const harness = createHarness("retry-dlq-");
   try {
     const { adapter } = harness;
@@ -274,7 +274,7 @@ test("SqliteQueueAdapter retryJob resets dead letter job to waiting", () => {
   }
 });
 
-test("SqliteQueueAdapter listJobs returns jobs in correct order", () => {
+test("SqliteQueueAdapter listJobs returns jobs in correct order [sqlite-queue-adapter-comprehensive]", () => {
   const harness = createHarness("list-order-");
   try {
     const { adapter } = harness;
@@ -293,7 +293,7 @@ test("SqliteQueueAdapter listJobs returns jobs in correct order", () => {
   }
 });
 
-test("SqliteQueueAdapter listJobs respects limit", () => {
+test("SqliteQueueAdapter listJobs respects limit [sqlite-queue-adapter-comprehensive]", () => {
   const harness = createHarness("list-limit-");
   try {
     const { adapter } = harness;
@@ -310,7 +310,7 @@ test("SqliteQueueAdapter listJobs respects limit", () => {
   }
 });
 
-test("SqliteQueueAdapter listJobs filters by status", () => {
+test("SqliteQueueAdapter listJobs filters by status [sqlite-queue-adapter-comprehensive]", () => {
   const harness = createHarness("list-status-");
   try {
     const { adapter } = harness;
@@ -332,7 +332,7 @@ test("SqliteQueueAdapter listJobs filters by status", () => {
   }
 });
 
-test("SqliteQueueAdapter purge removes old completed jobs", () => {
+test("SqliteQueueAdapter purge removes old completed jobs [sqlite-queue-adapter-comprehensive]", () => {
   const harness = createHarness("purge-");
   try {
     const { adapter } = harness;
@@ -360,7 +360,7 @@ test("SqliteQueueAdapter purge removes old completed jobs", () => {
   }
 });
 
-test("SqliteQueueAdapter purge does not remove recent jobs", () => {
+test("SqliteQueueAdapter purge does not remove recent jobs [sqlite-queue-adapter-comprehensive]", () => {
   const harness = createHarness("purge-recent-");
   try {
     const { adapter } = harness;
@@ -388,7 +388,7 @@ test("SqliteQueueAdapter purge does not remove recent jobs", () => {
   }
 });
 
-test("SqliteQueueAdapter stats returns accurate counts", () => {
+test("SqliteQueueAdapter stats returns accurate counts [sqlite-queue-adapter-comprehensive]", () => {
   const harness = createHarness("stats-");
   try {
     const { adapter } = harness;
@@ -417,7 +417,7 @@ test("SqliteQueueAdapter stats returns accurate counts", () => {
   }
 });
 
-test("SqliteQueueAdapter listQueues returns all queue names", () => {
+test("SqliteQueueAdapter listQueues returns all queue names [sqlite-queue-adapter-comprehensive]", () => {
   const harness = createHarness("list-queues-");
   try {
     const { adapter } = harness;
@@ -436,7 +436,7 @@ test("SqliteQueueAdapter listQueues returns all queue names", () => {
   }
 });
 
-test("SqliteQueueAdapter getJob returns null for unknown job", () => {
+test("SqliteQueueAdapter getJob returns null for unknown job [sqlite-queue-adapter-comprehensive]", () => {
   const harness = createHarness("get-job-");
   try {
     const { adapter } = harness;
@@ -449,7 +449,7 @@ test("SqliteQueueAdapter getJob returns null for unknown job", () => {
   }
 });
 
-test("SqliteQueueAdapter dequeue returns null when queue is empty", () => {
+test("SqliteQueueAdapter dequeue returns null when queue is empty [sqlite-queue-adapter-comprehensive]", () => {
   const harness = createHarness("dequeue-empty-");
   try {
     const { adapter } = harness;
@@ -462,7 +462,7 @@ test("SqliteQueueAdapter dequeue returns null when queue is empty", () => {
   }
 });
 
-test("SqliteQueueAdapter nack with error message stores error", () => {
+test("SqliteQueueAdapter nack with error message stores error [sqlite-queue-adapter-comprehensive]", () => {
   const harness = createHarness("nack-error-");
   try {
     const { adapter } = harness;

@@ -68,7 +68,7 @@ function createSingleDimensionalPolicy(overrides: Partial<QuotaPolicy> = {}): Qu
 // evaluateMultiDimensionalQuota - All 7 Dimensions Validation
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("evaluateMultiDimensionalQuota validates all 7 dimensions and passes when all under limits", () => {
+test("evaluateMultiDimensionalQuota validates all 7 dimensions and passes when all under limits [quota-enforcer]", () => {
   const policy = createMultiDimensionalPolicy();
 
   const requested: LegacyQuotaRequested = {
@@ -90,7 +90,7 @@ test("evaluateMultiDimensionalQuota validates all 7 dimensions and passes when a
   assert.equal(decision.overallDecision.warning, false);
 });
 
-test("evaluateMultiDimensionalQuota validates all 7 dimensions - worker_concurrency overage", () => {
+test("evaluateMultiDimensionalQuota validates all 7 dimensions - worker_concurrency overage [quota-enforcer]", () => {
   const policy = createMultiDimensionalPolicy();
 
   const requested: LegacyQuotaRequested = {
@@ -111,7 +111,7 @@ test("evaluateMultiDimensionalQuota validates all 7 dimensions - worker_concurre
   assert.equal(decision.overallDecision.exceeded, true);
 });
 
-test("evaluateMultiDimensionalQuota validates all 7 dimensions - tool_qps overage", () => {
+test("evaluateMultiDimensionalQuota validates all 7 dimensions - tool_qps overage [quota-enforcer]", () => {
   const policy = createMultiDimensionalPolicy();
 
   const requested: LegacyQuotaRequested = {
@@ -131,7 +131,7 @@ test("evaluateMultiDimensionalQuota validates all 7 dimensions - tool_qps overag
   assert.equal(decision.failedDimensions.length, 1);
 });
 
-test("evaluateMultiDimensionalQuota validates all 7 dimensions - model_tpm overage", () => {
+test("evaluateMultiDimensionalQuota validates all 7 dimensions - model_tpm overage [quota-enforcer]", () => {
   const policy = createMultiDimensionalPolicy();
 
   const requested: LegacyQuotaRequested = {
@@ -150,7 +150,7 @@ test("evaluateMultiDimensionalQuota validates all 7 dimensions - model_tpm overa
   assert.ok(decision.failedDimensions.includes("model_tpm"));
 });
 
-test("evaluateMultiDimensionalQuota validates all 7 dimensions - model_rpm overage", () => {
+test("evaluateMultiDimensionalQuota validates all 7 dimensions - model_rpm overage [quota-enforcer]", () => {
   const policy = createMultiDimensionalPolicy();
 
   const requested: LegacyQuotaRequested = {
@@ -169,7 +169,7 @@ test("evaluateMultiDimensionalQuota validates all 7 dimensions - model_rpm overa
   assert.ok(decision.failedDimensions.includes("model_rpm"));
 });
 
-test("evaluateMultiDimensionalQuota validates all 7 dimensions - budget_amount overage", () => {
+test("evaluateMultiDimensionalQuota validates all 7 dimensions - budget_amount overage [quota-enforcer]", () => {
   const policy = createMultiDimensionalPolicy();
 
   const requested: LegacyQuotaRequested = {
@@ -188,7 +188,7 @@ test("evaluateMultiDimensionalQuota validates all 7 dimensions - budget_amount o
   assert.ok(decision.failedDimensions.includes("budget_amount"));
 });
 
-test("evaluateMultiDimensionalQuota validates all 7 dimensions - approval_capacity overage", () => {
+test("evaluateMultiDimensionalQuota validates all 7 dimensions - approval_capacity overage [quota-enforcer]", () => {
   const policy = createMultiDimensionalPolicy();
 
   const requested: LegacyQuotaRequested = {
@@ -207,7 +207,7 @@ test("evaluateMultiDimensionalQuota validates all 7 dimensions - approval_capaci
   assert.ok(decision.failedDimensions.includes("approval_capacity"));
 });
 
-test("evaluateMultiDimensionalQuota validates all 7 dimensions - storage_io overage", () => {
+test("evaluateMultiDimensionalQuota validates all 7 dimensions - storage_io overage [quota-enforcer]", () => {
   const policy = createMultiDimensionalPolicy();
 
   const requested: LegacyQuotaRequested = {
@@ -230,7 +230,7 @@ test("evaluateMultiDimensionalQuota validates all 7 dimensions - storage_io over
 // evaluateMultiDimensionalQuota - Multiple Dimension Failures
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("evaluateMultiDimensionalQuota fails on multiple dimension overage simultaneously", () => {
+test("evaluateMultiDimensionalQuota fails on multiple dimension overage simultaneously [quota-enforcer]", () => {
   const policy = createMultiDimensionalPolicy();
 
   const requested: LegacyQuotaRequested = {
@@ -254,7 +254,7 @@ test("evaluateMultiDimensionalQuota fails on multiple dimension overage simultan
   assert.equal(decision.overallDecision.exceeded, true);
 });
 
-test("evaluateMultiDimensionalQuota fails when all 7 dimensions exceed limits", () => {
+test("evaluateMultiDimensionalQuota fails when all 7 dimensions exceed limits [quota-enforcer]", () => {
   const policy = createMultiDimensionalPolicy();
 
   const requested: LegacyQuotaRequested = {
@@ -278,7 +278,7 @@ test("evaluateMultiDimensionalQuota fails when all 7 dimensions exceed limits", 
 // evaluateMultiDimensionalQuota - Warning Dimensions
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("evaluateMultiDimensionalQuota warns when dimension exceeds soft limit (80% of hard limit)", () => {
+test("evaluateMultiDimensionalQuota warns when dimension exceeds soft limit (80% of hard limit) [quota-enforcer]", () => {
   const policy = createMultiDimensionalPolicy();
 
   const requested: LegacyQuotaRequested = {
@@ -301,7 +301,7 @@ test("evaluateMultiDimensionalQuota warns when dimension exceeds soft limit (80%
   assert.equal(decision.overallDecision.warning, true);
 });
 
-test("evaluateMultiDimensionalQuota warns on multiple dimensions simultaneously", () => {
+test("evaluateMultiDimensionalQuota warns on multiple dimensions simultaneously [quota-enforcer]", () => {
   const policy = createMultiDimensionalPolicy();
 
   const requested: LegacyQuotaRequested = {
@@ -326,7 +326,7 @@ test("evaluateMultiDimensionalQuota warns on multiple dimensions simultaneously"
   assert.equal(decision.overallDecision.warning, true);
 });
 
-test("evaluateMultiDimensionalQuota all 7 dimensions can warn simultaneously", () => {
+test("evaluateMultiDimensionalQuota all 7 dimensions can warn simultaneously [quota-enforcer]", () => {
   const policy = createMultiDimensionalPolicy();
 
   const requested: LegacyQuotaRequested = {
@@ -347,7 +347,7 @@ test("evaluateMultiDimensionalQuota all 7 dimensions can warn simultaneously", (
   assert.equal(decision.overallDecision.warning, true);
 });
 
-test("evaluateMultiDimensionalQuota failed dimensions take precedence over warnings", () => {
+test("evaluateMultiDimensionalQuota failed dimensions take precedence over warnings [quota-enforcer]", () => {
   const policy = createMultiDimensionalPolicy();
 
   const requested: LegacyQuotaRequested = {
@@ -374,7 +374,7 @@ test("evaluateMultiDimensionalQuota failed dimensions take precedence over warni
 // evaluateMultiDimensionalQuota - Quota Tracking Per Tenant/Dimension
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("evaluateMultiDimensionalQuota tracks quota independently per dimension", () => {
+test("evaluateMultiDimensionalQuota tracks quota independently per dimension [quota-enforcer]", () => {
   const policy1 = createMultiDimensionalPolicy({ scopeId: "tenant-1" });
   const policy2 = createMultiDimensionalPolicy({ scopeId: "tenant-2" });
 
@@ -407,7 +407,7 @@ test("evaluateMultiDimensionalQuota tracks quota independently per dimension", (
   assert.equal(decision2.warningDimensions.length, 7);
 });
 
-test("evaluateMultiDimensionalQuota same request fails for one tenant but passes for another with higher limits", () => {
+test("evaluateMultiDimensionalQuota same request fails for one tenant but passes for another with higher limits [quota-enforcer]", () => {
   const lowLimitPolicy = createMultiDimensionalPolicy({
     scopeId: "tenant-low",
     multiResourceHardLimits: {
@@ -451,7 +451,7 @@ test("evaluateMultiDimensionalQuota same request fails for one tenant but passes
   assert.equal(highDecision.passed, true);
 });
 
-test("evaluateMultiDimensionalQuota dimension failures are isolated per dimension", () => {
+test("evaluateMultiDimensionalQuota dimension failures are isolated per dimension [quota-enforcer]", () => {
   const policy = createMultiDimensionalPolicy();
 
   const requestAllFail: LegacyQuotaRequested = {
@@ -486,7 +486,7 @@ test("evaluateMultiDimensionalQuota dimension failures are isolated per dimensio
 // evaluateMultiDimensionalQuota - Overage Rejection
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("evaluateMultiDimensionalQuota rejects overage when single dimension exceeds hard limit", () => {
+test("evaluateMultiDimensionalQuota rejects overage when single dimension exceeds hard limit [quota-enforcer]", () => {
   const policy = createMultiDimensionalPolicy();
 
   const requested: LegacyQuotaRequested = {
@@ -511,7 +511,7 @@ test("evaluateMultiDimensionalQuota rejects overage when single dimension exceed
   assert.equal(decision.overallDecision.exceeded, true);
 });
 
-test("evaluateMultiDimensionalQuota rejects when at exactly hard limit", () => {
+test("evaluateMultiDimensionalQuota rejects when at exactly hard limit [quota-enforcer]", () => {
   const policy = createMultiDimensionalPolicy();
 
   const requested: LegacyQuotaRequested = {
@@ -530,7 +530,7 @@ test("evaluateMultiDimensionalQuota rejects when at exactly hard limit", () => {
   assert.equal(decision.failedDimensions.length, 7);
 });
 
-test("evaluateMultiDimensionalQuota accepts when all dimensions at zero", () => {
+test("evaluateMultiDimensionalQuota accepts when all dimensions at zero [quota-enforcer]", () => {
   const policy = createMultiDimensionalPolicy();
 
   const requested: LegacyQuotaRequested = {
@@ -550,7 +550,7 @@ test("evaluateMultiDimensionalQuota accepts when all dimensions at zero", () => 
   assert.equal(decision.warningDimensions.length, 0);
 });
 
-test("evaluateMultiDimensionalQuota rejects when zero limit dimension is exceeded", () => {
+test("evaluateMultiDimensionalQuota rejects when zero limit dimension is exceeded [quota-enforcer]", () => {
   const policy = createMultiDimensionalPolicy({
     multiResourceHardLimits: {
       worker_concurrency: 0,
@@ -583,7 +583,7 @@ test("evaluateMultiDimensionalQuota rejects when zero limit dimension is exceede
 // evaluateMultiDimensionalQuota - Fallback to Single Dimension
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("evaluateMultiDimensionalQuota falls back to single dimension when no multiResourceHardLimits", () => {
+test("evaluateMultiDimensionalQuota falls back to single dimension when no multiResourceHardLimits [quota-enforcer]", () => {
   const policy = createSingleDimensionalPolicy({ hardLimit: 100, currentUsage: 50 });
 
   const requested: LegacyQuotaRequested = {
@@ -603,7 +603,7 @@ test("evaluateMultiDimensionalQuota falls back to single dimension when no multi
   assert.equal(decision.overallDecision.exceeded, true);
 });
 
-test("evaluateMultiDimensionalQuota falls back correctly when multiResourceHardLimits is undefined", () => {
+test("evaluateMultiDimensionalQuota falls back correctly when multiResourceHardLimits is undefined [quota-enforcer]", () => {
   const policy = createSingleDimensionalPolicy({ hardLimit: 100, currentUsage: 0 });
 
   const requested: LegacyQuotaRequested = {
@@ -627,7 +627,7 @@ test("evaluateMultiDimensionalQuota falls back correctly when multiResourceHardL
 // evaluateQuota - Quota Reservation
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("evaluateQuota correctly calculates remaining units for reservation", () => {
+test("evaluateQuota correctly calculates remaining units for reservation [quota-enforcer]", () => {
   const policy = createSingleDimensionalPolicy({ hardLimit: 100, burstLimit: 150, currentUsage: 30 });
 
   const decision = evaluateQuota(policy, 50);
@@ -636,7 +636,7 @@ test("evaluateQuota correctly calculates remaining units for reservation", () =>
   assert.equal(decision.remainingUnits, 70);
 });
 
-test("evaluateQuota remaining units is zero when projected equals burstLimit", () => {
+test("evaluateQuota remaining units is zero when projected equals burstLimit [quota-enforcer]", () => {
   const policy = createSingleDimensionalPolicy({ hardLimit: 100, burstLimit: 120, currentUsage: 50 });
 
   const decision = evaluateQuota(policy, 70);
@@ -645,7 +645,7 @@ test("evaluateQuota remaining units is zero when projected equals burstLimit", (
   assert.equal(decision.remainingUnits, 0);
 });
 
-test("evaluateQuota remaining units is zero when currentUsage already exceeds burstLimit", () => {
+test("evaluateQuota remaining units is zero when currentUsage already exceeds burstLimit [quota-enforcer]", () => {
   const policy = createSingleDimensionalPolicy({ hardLimit: 100, burstLimit: 120, currentUsage: 130 });
 
   const decision = evaluateQuota(policy, 10);
@@ -654,7 +654,7 @@ test("evaluateQuota remaining units is zero when currentUsage already exceeds bu
   assert.equal(decision.remainingUnits, 0);
 });
 
-test("evaluateQuota reservation works with zero soft and burst limits", () => {
+test("evaluateQuota reservation works with zero soft and burst limits [quota-enforcer]", () => {
   const policy = createSingleDimensionalPolicy({ hardLimit: 0, softLimit: 0, burstLimit: 0, currentUsage: 0 });
 
   const decision = evaluateQuota(policy, 0);
@@ -664,7 +664,7 @@ test("evaluateQuota reservation works with zero soft and burst limits", () => {
   assert.equal(decision.remainingUnits, 0);
 });
 
-test("evaluateQuota warning flag does not block reservation when under soft limit", () => {
+test("evaluateQuota warning flag does not block reservation when under soft limit [quota-enforcer]", () => {
   const policy = createSingleDimensionalPolicy({ hardLimit: 100, softLimit: 70, currentUsage: 50 });
 
   const decision = evaluateQuota(policy, 25);
@@ -678,7 +678,7 @@ test("evaluateQuota warning flag does not block reservation when under soft limi
 // isQuotaExceeded - Overage Detection
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("isQuotaExceeded returns true when quota exceeded", () => {
+test("isQuotaExceeded returns true when quota exceeded [quota-enforcer]", () => {
   const policy = createSingleDimensionalPolicy({ hardLimit: 100, currentUsage: 90 });
 
   const result = isQuotaExceeded(policy, 20);
@@ -686,7 +686,7 @@ test("isQuotaExceeded returns true when quota exceeded", () => {
   assert.equal(result, true);
 });
 
-test("isQuotaExceeded returns false when quota not exceeded", () => {
+test("isQuotaExceeded returns false when quota not exceeded [quota-enforcer]", () => {
   const policy = createSingleDimensionalPolicy({ hardLimit: 100, currentUsage: 50 });
 
   const result = isQuotaExceeded(policy, 30);
@@ -694,7 +694,7 @@ test("isQuotaExceeded returns false when quota not exceeded", () => {
   assert.equal(result, false);
 });
 
-test("isQuotaExceeded returns false when projected equals exactly burstLimit", () => {
+test("isQuotaExceeded returns false when projected equals exactly burstLimit [quota-enforcer]", () => {
   const policy = createSingleDimensionalPolicy({ hardLimit: 100, burstLimit: 120, currentUsage: 100 });
 
   const result = isQuotaExceeded(policy, 20);

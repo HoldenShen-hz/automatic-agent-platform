@@ -7,7 +7,7 @@
  * - Internal network blocking (private IPs, localhost, etc.)
  * - Domain blacklist/whitelist support
  *
- * @see {@link https://github.com/anomalyco/automatic_agent/blob/main/docs_zh/contracts/sandbox_contract.md}
+ * @see {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/contracts/sandbox_contract.md}
  */
 
 import { lookup } from "node:dns/promises";

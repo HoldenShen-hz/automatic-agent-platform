@@ -14,30 +14,30 @@ import {
   buildOapeflirPlannedWorkflow,
 } from "../../../../../src/platform/five-plane-execution/execution-engine/multi-step-oapeflir-plan.js";
 
-test("OAPEFLIR_PLAN_PREFIX has correct format", () => {
+test("OAPEFLIR_PLAN_PREFIX has correct format [multi-step-oapeflir-plan]", () => {
   assert.equal(OAPEFLIR_PLAN_PREFIX, "oapeflir://plan ");
 });
 
-test("isOapeflirPlanRequest returns true for oapeflir plan request", () => {
+test("isOapeflirPlanRequest returns true for oapeflir plan request [multi-step-oapeflir-plan]", () => {
   const request = "oapeflir://plan [{\"stepId\":\"step1\"}]";
   assert.equal(isOapeflirPlanRequest(request), true);
 });
 
-test("isOapeflirPlanRequest returns false for regular request", () => {
+test("isOapeflirPlanRequest returns false for regular request [multi-step-oapeflir-plan]", () => {
   const request = "regular task request";
   assert.equal(isOapeflirPlanRequest(request), false);
 });
 
-test("isOapeflirPlanRequest returns false for empty string", () => {
+test("isOapeflirPlanRequest returns false for empty string [multi-step-oapeflir-plan]", () => {
   assert.equal(isOapeflirPlanRequest(""), false);
 });
 
-test("isOapeflirPlanRequest returns false for non-matching prefix", () => {
+test("isOapeflirPlanRequest returns false for non-matching prefix [multi-step-oapeflir-plan]", () => {
   const request = "other://plan something";
   assert.equal(isOapeflirPlanRequest(request), false);
 });
 
-test("deserializeOapeflirPlan parses valid JSON", () => {
+test("deserializeOapeflirPlan parses valid JSON [multi-step-oapeflir-plan]", () => {
   const planJson = '[{"stepId":"step1","dependencies":[]}]';
   const request = OAPEFLIR_PLAN_PREFIX + planJson;
 
@@ -47,7 +47,7 @@ test("deserializeOapeflirPlan parses valid JSON", () => {
   assert.equal(steps[0]!.stepId, "step1");
 });
 
-test("deserializeOapeflirPlan handles multiple steps", () => {
+test("deserializeOapeflirPlan handles multiple steps [multi-step-oapeflir-plan]", () => {
   const planJson = JSON.stringify([
     { stepId: "step1", dependencies: [] },
     { stepId: "step2", dependencies: ["step1"] },
@@ -63,7 +63,7 @@ test("deserializeOapeflirPlan handles multiple steps", () => {
   assert.equal(steps[2]!.stepId, "step3");
 });
 
-test("buildOapeflirPlannedWorkflow creates workflow from legacy PlanStep", () => {
+test("buildOapeflirPlannedWorkflow creates workflow from legacy PlanStep [multi-step-oapeflir-plan]", () => {
   const steps = [
     { stepId: "step1", dependencies: [], outputs: ["out1"], timeout: 30000, retryPolicy: { maxRetries: 0 } },
     { stepId: "step2", dependencies: ["step1"], outputs: ["out2"], timeout: 60000, retryPolicy: { maxRetries: 1 } },
@@ -78,7 +78,7 @@ test("buildOapeflirPlannedWorkflow creates workflow from legacy PlanStep", () =>
   assert.equal(workflow.planReason, "oapeflir_bridge: plan_123");
 });
 
-test("buildOapeflirPlannedWorkflow creates workflow from PlanGraphNode", () => {
+test("buildOapeflirPlannedWorkflow creates workflow from PlanGraphNode [multi-step-oapeflir-plan]", () => {
   const nodes = [
     {
       nodeId: "node1",
@@ -98,7 +98,7 @@ test("buildOapeflirPlannedWorkflow creates workflow from PlanGraphNode", () => {
   assert.equal(workflow.workflow.steps.length, 2);
 });
 
-test("buildOapeflirPlannedWorkflow sets correct roleId", () => {
+test("buildOapeflirPlannedWorkflow sets correct roleId [multi-step-oapeflir-plan]", () => {
   const steps = [{ stepId: "step1", dependencies: [], outputs: ["out1"], timeout: 30000, retryPolicy: { maxRetries: 0 } }];
 
   const workflow = buildOapeflirPlannedWorkflow(steps, "plan_789");
@@ -107,7 +107,7 @@ test("buildOapeflirPlannedWorkflow sets correct roleId", () => {
   assert.equal(workflow.executionSteps[0]!.roleId, "general_executor");
 });
 
-test("buildOapeflirPlannedWorkflow sets correct maxAttempts", () => {
+test("buildOapeflirPlannedWorkflow sets correct maxAttempts [multi-step-oapeflir-plan]", () => {
   const steps = [
     { stepId: "step1", dependencies: [], outputs: ["out1"], timeout: 30000, retryPolicy: { maxRetries: 0 } },
     { stepId: "step2", dependencies: [], outputs: ["out2"], timeout: 30000, retryPolicy: { maxRetries: 2 } },
@@ -120,7 +120,7 @@ test("buildOapeflirPlannedWorkflow sets correct maxAttempts", () => {
   assert.equal(workflow.executionSteps[1]!.maxAttempts, 3);
 });
 
-test("buildOapeflirPlannedWorkflow handles node without explicit timeout", () => {
+test("buildOapeflirPlannedWorkflow handles node without explicit timeout [multi-step-oapeflir-plan]", () => {
   const nodes = [{ nodeId: "node1", inputRefs: [] }];
 
   const workflow = buildOapeflirPlannedWorkflow(nodes, "plan_no_timeout");
@@ -130,7 +130,7 @@ test("buildOapeflirPlannedWorkflow handles node without explicit timeout", () =>
   assert.equal(workflow.executionSteps[0]!.maxAttempts, 1);
 });
 
-test("buildOapeflirPlannedWorkflow sets outputKey correctly", () => {
+test("buildOapeflirPlannedWorkflow sets outputKey correctly [multi-step-oapeflir-plan]", () => {
   const steps = [{ stepId: "step1", dependencies: [], outputs: ["my_output"], timeout: 30000, retryPolicy: { maxRetries: 0 } }];
 
   const workflow = buildOapeflirPlannedWorkflow(steps, "plan_output");
@@ -138,7 +138,7 @@ test("buildOapeflirPlannedWorkflow sets outputKey correctly", () => {
   assert.equal(workflow.executionSteps[0]!.outputKey, "my_output");
 });
 
-test("buildOapeflirPlannedWorkflow sets outputSchemaPath", () => {
+test("buildOapeflirPlannedWorkflow sets outputSchemaPath [multi-step-oapeflir-plan]", () => {
   const steps = [{ stepId: "step1", dependencies: [], outputs: ["out1"], outputSchemaPath: "/path/to/schema", timeout: 30000, retryPolicy: { maxRetries: 0 } }];
 
   const workflow = buildOapeflirPlannedWorkflow(steps, "plan_schema");
@@ -146,7 +146,7 @@ test("buildOapeflirPlannedWorkflow sets outputSchemaPath", () => {
   assert.equal(workflow.executionSteps[0]!.outputSchemaPath, "/path/to/schema");
 });
 
-test("buildOapeflirPlannedWorkflow includes dependencyEdges", () => {
+test("buildOapeflirPlannedWorkflow includes dependencyEdges [multi-step-oapeflir-plan]", () => {
   const steps = [
     { stepId: "step1", dependencies: [], outputs: ["out1"], timeout: 30000, retryPolicy: { maxRetries: 0 } },
     { stepId: "step2", dependencies: ["step1"], outputs: ["out2"], timeout: 30000, retryPolicy: { maxRetries: 0 } },
@@ -157,7 +157,7 @@ test("buildOapeflirPlannedWorkflow includes dependencyEdges", () => {
   assert.ok(Array.isArray(workflow.dependencyEdges));
 });
 
-test("buildOapeflirPlannedWorkflow generates agent IDs", () => {
+test("buildOapeflirPlannedWorkflow generates agent IDs [multi-step-oapeflir-plan]", () => {
   const steps = [{ stepId: "step1", dependencies: [], outputs: ["out1"], timeout: 30000, retryPolicy: { maxRetries: 0 } }];
 
   const workflow = buildOapeflirPlannedWorkflow(steps, "plan_agent");
@@ -165,7 +165,7 @@ test("buildOapeflirPlannedWorkflow generates agent IDs", () => {
   assert.equal(workflow.executionSteps[0]!.agentId, "agent_general_executor");
 });
 
-test("buildOapeflirPlannedWorkflow handles PlanGraphNode with outputSchemaRef", () => {
+test("buildOapeflirPlannedWorkflow handles PlanGraphNode with outputSchemaRef [multi-step-oapeflir-plan]", () => {
   const nodes = [
     {
       nodeId: "node1",
@@ -181,7 +181,7 @@ test("buildOapeflirPlannedWorkflow handles PlanGraphNode with outputSchemaRef", 
   assert.ok(workflow.executionSteps[0]!.outputSchemaPath);
 });
 
-test("buildOapeflirPlannedWorkflow handles empty steps array", () => {
+test("buildOapeflirPlannedWorkflow handles empty steps array [multi-step-oapeflir-plan]", () => {
   const workflow = buildOapeflirPlannedWorkflow([], "plan_empty");
 
   assert.equal(workflow.workflow.steps.length, 0);

@@ -23,7 +23,7 @@ function createMockRequest(overrides: Partial<ConnectorExecutionRequest> = {}): 
   };
 }
 
-test("SlackConnector execute returns success for send_message capability", () => {
+test("SlackConnector execute returns success for send_message capability [connector-adapter]", () => {
   const connector = new SlackConnector();
   const request = createMockRequest({
     connectorId: "slack",
@@ -38,7 +38,7 @@ test("SlackConnector execute returns success for send_message capability", () =>
   assert.equal(result.status, "succeeded");
 });
 
-test("SlackConnector execute returns success for open_modal capability", () => {
+test("SlackConnector execute returns success for open_modal capability [connector-adapter]", () => {
   const connector = new SlackConnector();
   const request = createMockRequest({
     connectorId: "slack",
@@ -53,7 +53,7 @@ test("SlackConnector execute returns success for open_modal capability", () => {
   assert.equal(result.status, "succeeded");
 });
 
-test("SlackConnector execute returns failed for unsupported capability", () => {
+test("SlackConnector execute returns failed for unsupported capability [connector-adapter]", () => {
   const connector = new SlackConnector();
   const request = createMockRequest({
     connectorId: "slack",
@@ -68,7 +68,7 @@ test("SlackConnector execute returns failed for unsupported capability", () => {
   assert.equal(result.status, "failed");
 });
 
-test("GitHubConnector execute returns success for create_pr capability", () => {
+test("GitHubConnector execute returns success for create_pr capability [connector-adapter]", () => {
   const connector = new GitHubConnector();
   const request = createMockRequest({
     connectorId: "github",
@@ -83,7 +83,7 @@ test("GitHubConnector execute returns success for create_pr capability", () => {
   assert.equal(result.status, "succeeded");
 });
 
-test("GitHubConnector execute returns success for create_issue capability", () => {
+test("GitHubConnector execute returns success for create_issue capability [connector-adapter]", () => {
   const connector = new GitHubConnector();
   const request = createMockRequest({
     connectorId: "github",
@@ -98,7 +98,7 @@ test("GitHubConnector execute returns success for create_issue capability", () =
   assert.equal(result.status, "succeeded");
 });
 
-test("GitHubConnector execute returns success for dispatch_workflow capability", () => {
+test("GitHubConnector execute returns success for dispatch_workflow capability [connector-adapter]", () => {
   const connector = new GitHubConnector();
   const request = createMockRequest({
     connectorId: "github",
@@ -113,7 +113,7 @@ test("GitHubConnector execute returns success for dispatch_workflow capability",
   assert.equal(result.status, "succeeded");
 });
 
-test("GitHubConnector execute returns failed for unsupported capability", () => {
+test("GitHubConnector execute returns failed for unsupported capability [connector-adapter]", () => {
   const connector = new GitHubConnector();
   const request = createMockRequest({
     connectorId: "github",
@@ -128,7 +128,7 @@ test("GitHubConnector execute returns failed for unsupported capability", () => 
   assert.equal(result.status, "failed");
 });
 
-test("JiraConnector execute returns success for create_issue capability", () => {
+test("JiraConnector execute returns success for create_issue capability [connector-adapter]", () => {
   const connector = new JiraConnector();
   const request = createMockRequest({
     connectorId: "jira",
@@ -143,7 +143,7 @@ test("JiraConnector execute returns success for create_issue capability", () => 
   assert.equal(result.status, "succeeded");
 });
 
-test("JiraConnector execute returns success for search_issue capability", () => {
+test("JiraConnector execute returns success for search_issue capability [connector-adapter]", () => {
   const connector = new JiraConnector();
   const request = createMockRequest({
     connectorId: "jira",
@@ -158,7 +158,7 @@ test("JiraConnector execute returns success for search_issue capability", () => 
   assert.equal(result.status, "succeeded");
 });
 
-test("JiraConnector execute returns failed for unsupported capability", () => {
+test("JiraConnector execute returns failed for unsupported capability [connector-adapter]", () => {
   const connector = new JiraConnector();
   const request = createMockRequest({
     connectorId: "jira",
@@ -173,7 +173,7 @@ test("JiraConnector execute returns failed for unsupported capability", () => {
   assert.equal(result.status, "failed");
 });
 
-test("ServiceNowConnector execute returns success for create_incident capability", () => {
+test("ServiceNowConnector execute returns success for create_incident capability [connector-adapter]", () => {
   const connector = new ServiceNowConnector();
   const request = createMockRequest({
     connectorId: "servicenow",
@@ -188,7 +188,7 @@ test("ServiceNowConnector execute returns success for create_incident capability
   assert.equal(result.status, "succeeded");
 });
 
-test("ServiceNowConnector execute returns success for update_ticket capability", () => {
+test("ServiceNowConnector execute returns success for update_ticket capability [connector-adapter]", () => {
   const connector = new ServiceNowConnector();
   const request = createMockRequest({
     connectorId: "servicenow",
@@ -203,7 +203,7 @@ test("ServiceNowConnector execute returns success for update_ticket capability",
   assert.equal(result.status, "succeeded");
 });
 
-test("ServiceNowConnector execute returns failed for unsupported capability", () => {
+test("ServiceNowConnector execute returns failed for unsupported capability [connector-adapter]", () => {
   const connector = new ServiceNowConnector();
   const request = createMockRequest({
     connectorId: "servicenow",
@@ -218,7 +218,7 @@ test("ServiceNowConnector execute returns failed for unsupported capability", ()
   assert.equal(result.status, "failed");
 });
 
-test("All connectors preserve connectorId in result", () => {
+test("All connectors preserve connectorId in result [connector-adapter]", () => {
   const connectors = [
     new SlackConnector(),
     new GitHubConnector(),
@@ -241,7 +241,7 @@ test("All connectors preserve connectorId in result", () => {
   }
 });
 
-test("All connectors return expected status values", () => {
+test("All connectors return expected status values [connector-adapter]", () => {
   const connector = new SlackConnector();
   const successRequest = createMockRequest({
     connectorId: "slack",
@@ -262,7 +262,7 @@ test("All connectors return expected status values", () => {
   assert.equal(failedResult.status, "failed");
 });
 
-test("Connectors handle complex payloads", () => {
+test("Connectors handle complex payloads [connector-adapter]", () => {
   const connector = new SlackConnector();
   const request = createMockRequest({
     connectorId: "slack",
@@ -279,7 +279,7 @@ test("Connectors handle complex payloads", () => {
   assert.equal(result.success, true);
 });
 
-test("Connectors are instance-based and stateless", () => {
+test("Connectors are instance-based and stateless [connector-adapter]", () => {
   const connector1 = new SlackConnector();
   const connector2 = new SlackConnector();
 

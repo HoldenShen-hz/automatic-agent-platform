@@ -12,12 +12,12 @@ import type {
   RetryPolicy,
 } from "../../../../../src/platform/five-plane-execution/queue/index.js";
 
-test("QueueBackendKind type accepts valid values", () => {
+test("QueueBackendKind type accepts valid values [index]", () => {
   const kinds: QueueBackendKind[] = ["sqlite", "redis"];
   assert.equal(kinds.length, 2);
 });
 
-test("QueueJobStatus type accepts valid values", () => {
+test("QueueJobStatus type accepts valid values [index]", () => {
   const statuses: QueueJobStatus[] = [
     "waiting",
     "delayed",
@@ -29,7 +29,7 @@ test("QueueJobStatus type accepts valid values", () => {
   assert.equal(statuses.length, 6);
 });
 
-test("QueueJobRecord structure is correct", () => {
+test("QueueJobRecord structure is correct [index]", () => {
   const record: QueueJobRecord = {
     id: "job_1",
     queueName: "default",
@@ -53,7 +53,7 @@ test("QueueJobRecord structure is correct", () => {
   assert.equal(record.maxAttempts, 3);
 });
 
-test("EnqueueInput structure is correct", () => {
+test("EnqueueInput structure is correct [index]", () => {
   const input: EnqueueInput = {
     queueName: "test-queue",
     payload: { taskId: "task_1" },
@@ -68,7 +68,7 @@ test("EnqueueInput structure is correct", () => {
   assert.equal(input.maxAttempts, 5);
 });
 
-test("QueueStats structure is correct", () => {
+test("QueueStats structure is correct [index]", () => {
   const stats: QueueStats = {
     queueName: "test-queue",
     waiting: 10,
@@ -83,7 +83,7 @@ test("QueueStats structure is correct", () => {
   assert.equal(stats.completed, 100);
 });
 
-test("RetryPolicy structure is correct", () => {
+test("RetryPolicy structure is correct [index]", () => {
   const policy: RetryPolicy = {
     maxAttempts: 5,
     backoffMs: 2000,

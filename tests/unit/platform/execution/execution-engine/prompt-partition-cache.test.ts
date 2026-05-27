@@ -9,11 +9,11 @@ import {
   type PromptPartitionMessageLike,
 } from "../../../../../src/platform/five-plane-execution/execution-engine/prompt-partition-cache.js";
 
-test("partitionPromptForCache exports partitionPromptForCache function", () => {
+test("partitionPromptForCache exports partitionPromptForCache function [prompt-partition-cache]", () => {
   assert.equal(typeof partitionPromptForCache, "function");
 });
 
-test("partitionPromptForCache partitions system and user messages", () => {
+test("partitionPromptForCache partitions system and user messages [prompt-partition-cache]", () => {
   const input: PromptPartitionInput = {
     messages: [
       { role: "system", content: "You are a helpful assistant" },
@@ -29,7 +29,7 @@ test("partitionPromptForCache partitions system and user messages", () => {
   assert.equal(result.dynamicDigest.length > 0, true);
 });
 
-test("partitionPromptForCache generates stable cache keys", () => {
+test("partitionPromptForCache generates stable cache keys [prompt-partition-cache]", () => {
   const input1: PromptPartitionInput = {
     model: "claude-3-5-sonnet",
     profileId: "default",
@@ -55,7 +55,7 @@ test("partitionPromptForCache generates stable cache keys", () => {
   assert.equal(result1.dynamicCacheKey, result2.dynamicCacheKey);
 });
 
-test("partitionPromptForCache different content produces different keys", () => {
+test("partitionPromptForCache different content produces different keys [prompt-partition-cache]", () => {
   const input1: PromptPartitionInput = {
     messages: [
       { role: "system", content: "You are helpful" },
@@ -76,7 +76,7 @@ test("partitionPromptForCache different content produces different keys", () => 
   assert.notEqual(result1.dynamicCacheKey, result2.dynamicCacheKey);
 });
 
-test("partitionPromptForCache calculates byte sizes", () => {
+test("partitionPromptForCache calculates byte sizes [prompt-partition-cache]", () => {
   const input: PromptPartitionInput = {
     messages: [
       { role: "system", content: "You are a helpful assistant" },
@@ -91,7 +91,7 @@ test("partitionPromptForCache calculates byte sizes", () => {
   assert.ok(result.dynamicMessageCount >= 0);
 });
 
-test("partitionPromptForCache handles null/undefined roles", () => {
+test("partitionPromptForCache handles null/undefined roles [prompt-partition-cache]", () => {
   const input: PromptPartitionInput = {
     messages: [
       { role: null as unknown as string, content: "No role" },
@@ -106,7 +106,7 @@ test("partitionPromptForCache handles null/undefined roles", () => {
   assert.equal(result.dynamicMessageCount, 3);
 });
 
-test("partitionPromptForCache handles kvCache options", () => {
+test("partitionPromptForCache handles kvCache options [prompt-partition-cache]", () => {
   const input: PromptPartitionInput = {
     model: "claude-3-5-sonnet",
     kvCache: {
@@ -129,7 +129,7 @@ test("partitionPromptForCache handles kvCache options", () => {
   assert.equal(result.domainBlockMessageCount, 1); // Second system message
 });
 
-test("partitionPromptForCache exact_match strategy uses payload", () => {
+test("partitionPromptForCache exact_match strategy uses payload [prompt-partition-cache]", () => {
   const input: PromptPartitionInput = {
     kvCache: {
       enabled: true,
@@ -146,7 +146,7 @@ test("partitionPromptForCache exact_match strategy uses payload", () => {
   assert.ok(result.fixedPrefixCacheKey.length > 0);
 });
 
-test("partitionPromptForCache handles model and profileId", () => {
+test("partitionPromptForCache handles model and profileId [prompt-partition-cache]", () => {
   const input: PromptPartitionInput = {
     model: "claude-3-5-sonnet-20250514",
     profileId: "enterprise_user",
@@ -163,7 +163,7 @@ test("partitionPromptForCache handles model and profileId", () => {
   assert.equal(result.domainId, "coding");
 });
 
-test("PromptPartitionCacheService records partition and tracks usage", () => {
+test("PromptPartitionCacheService records partition and tracks usage [prompt-partition-cache]", () => {
   const service = new PromptPartitionCacheService();
 
   const input: PromptPartitionInput = {
@@ -183,7 +183,7 @@ test("PromptPartitionCacheService records partition and tracks usage", () => {
   assert.equal(usage3.reuseCount, 2);
 });
 
-test("PromptPartitionCacheService getUsage returns usage stats", () => {
+test("PromptPartitionCacheService getUsage returns usage stats [prompt-partition-cache]", () => {
   const service = new PromptPartitionCacheService();
 
   const input: PromptPartitionInput = {
@@ -202,7 +202,7 @@ test("PromptPartitionCacheService getUsage returns usage stats", () => {
   assert.ok(usage!.lastSeenAt);
 });
 
-test("PromptPartitionCacheService getUsage returns null for unknown key", () => {
+test("PromptPartitionCacheService getUsage returns null for unknown key [prompt-partition-cache]", () => {
   const service = new PromptPartitionCacheService();
 
   const usage = service.getUsage("nonexistent_key");
@@ -210,7 +210,7 @@ test("PromptPartitionCacheService getUsage returns null for unknown key", () => 
   assert.equal(usage, null);
 });
 
-test("PromptPartitionCacheService listUsage returns all tracked usage", () => {
+test("PromptPartitionCacheService listUsage returns all tracked usage [prompt-partition-cache]", () => {
   const service = new PromptPartitionCacheService();
 
   service.record({
@@ -226,7 +226,7 @@ test("PromptPartitionCacheService listUsage returns all tracked usage", () => {
   assert.equal(allUsage.length, 2);
 });
 
-test("PromptPartitionCacheService clear removes all tracked usage", () => {
+test("PromptPartitionCacheService clear removes all tracked usage [prompt-partition-cache]", () => {
   const service = new PromptPartitionCacheService();
 
   service.record({
@@ -240,7 +240,7 @@ test("PromptPartitionCacheService clear removes all tracked usage", () => {
   assert.equal(service.listUsage().length, 0);
 });
 
-test("partitionPromptForCache handles empty messages", () => {
+test("partitionPromptForCache handles empty messages [prompt-partition-cache]", () => {
   const input: PromptPartitionInput = {
     messages: [],
   };
@@ -253,7 +253,7 @@ test("partitionPromptForCache handles empty messages", () => {
   assert.equal(result.dynamicDigest.length > 0, true);
 });
 
-test("partitionPromptForCache handles only system messages", () => {
+test("partitionPromptForCache handles only system messages [prompt-partition-cache]", () => {
   const input: PromptPartitionInput = {
     messages: [
       { role: "system", content: "System 1" },
@@ -267,7 +267,7 @@ test("partitionPromptForCache handles only system messages", () => {
   assert.equal(result.dynamicMessageCount, 0);
 });
 
-test("partitionPromptForCache handles only dynamic messages", () => {
+test("partitionPromptForCache handles only dynamic messages [prompt-partition-cache]", () => {
   const input: PromptPartitionInput = {
     messages: [
       { role: "user", content: "User 1" },
@@ -281,7 +281,7 @@ test("partitionPromptForCache handles only dynamic messages", () => {
   assert.equal(result.dynamicMessageCount, 2);
 });
 
-test("partitionPromptForCache generates different digests for different content", () => {
+test("partitionPromptForCache generates different digests for different content [prompt-partition-cache]", () => {
   const input1: PromptPartitionInput = {
     messages: [
       { role: "system", content: "Hello world" },
@@ -305,7 +305,7 @@ test("partitionPromptForCache generates different digests for different content"
   assert.notEqual(result1.staticCacheKey, result2.staticCacheKey);
 });
 
-test("partitionPromptForCache generates domain block cache key when domainId provided", () => {
+test("partitionPromptForCache generates domain block cache key when domainId provided [prompt-partition-cache]", () => {
   const input: PromptPartitionInput = {
     model: "claude-3-5-sonnet",
     profileId: "default",
@@ -327,7 +327,7 @@ test("partitionPromptForCache generates domain block cache key when domainId pro
   assert.equal(result.domainBlockMessageCount, 1);
 });
 
-test("partitionPromptForCache domainBlockCacheKey is null when no domain block", () => {
+test("partitionPromptForCache domainBlockCacheKey is null when no domain block [prompt-partition-cache]", () => {
   const input: PromptPartitionInput = {
     messages: [
       { role: "system", content: "Only one system message" },
@@ -341,7 +341,7 @@ test("partitionPromptForCache domainBlockCacheKey is null when no domain block",
   assert.equal(result.domainBlockMessageCount, 0);
 });
 
-test("PromptPartitionCacheService tracks firstSeenAt and lastSeenAt", async () => {
+test("PromptPartitionCacheService tracks firstSeenAt and lastSeenAt [prompt-partition-cache]", async () => {
   const service = new PromptPartitionCacheService();
 
   const input: PromptPartitionInput = {
@@ -361,7 +361,7 @@ test("PromptPartitionCacheService tracks firstSeenAt and lastSeenAt", async () =
   assert.ok(usage2.firstSeenAt <= usage2.lastSeenAt);
 });
 
-test("PromptPartitionCacheService handles parts in messages", () => {
+test("PromptPartitionCacheService handles parts in messages [prompt-partition-cache]", () => {
   const input: PromptPartitionInput = {
     messages: [
       { role: "system", content: "System", parts: ["part1", "part2"] },
@@ -375,7 +375,7 @@ test("PromptPartitionCacheService handles parts in messages", () => {
   assert.equal(result.dynamicMessageCount, 1);
 });
 
-test("partitionPromptForCache kvCache disabled uses all static as fixed", () => {
+test("partitionPromptForCache kvCache disabled uses all static as fixed [prompt-partition-cache]", () => {
   const input: PromptPartitionInput = {
     kvCache: {
       enabled: false,
@@ -394,7 +394,7 @@ test("partitionPromptForCache kvCache disabled uses all static as fixed", () => 
   assert.equal(result.domainBlockMessageCount, 0);
 });
 
-test("PromptPartitionCacheService different dynamic parts get different keys", () => {
+test("PromptPartitionCacheService different dynamic parts get different keys [prompt-partition-cache]", () => {
   const service = new PromptPartitionCacheService();
 
   const usage1 = service.record({
@@ -414,7 +414,7 @@ test("PromptPartitionCacheService different dynamic parts get different keys", (
   assert.notEqual(usage1.partition.dynamicCacheKey, usage2.partition.dynamicCacheKey);
 });
 
-test("partitionPromptForCache handles whitespace-padded role names as system", () => {
+test("partitionPromptForCache handles whitespace-padded role names as system [prompt-partition-cache]", () => {
   const input: PromptPartitionInput = {
     messages: [
       { role: "  system  ", content: "Whitespace system" },
@@ -428,7 +428,7 @@ test("partitionPromptForCache handles whitespace-padded role names as system", (
   assert.equal(result.dynamicMessageCount, 1);
 });
 
-test("partitionPromptForCache treats SYSTEM (uppercase) as system role", () => {
+test("partitionPromptForCache treats SYSTEM (uppercase) as system role [prompt-partition-cache]", () => {
   const input: PromptPartitionInput = {
     messages: [
       { role: "SYSTEM", content: "Uppercase system" },
@@ -442,7 +442,7 @@ test("partitionPromptForCache treats SYSTEM (uppercase) as system role", () => {
   assert.equal(result.dynamicMessageCount, 1);
 });
 
-test("partitionPromptForCache treats System (mixed case) as system role", () => {
+test("partitionPromptForCache treats System (mixed case) as system role [prompt-partition-cache]", () => {
   const input: PromptPartitionInput = {
     messages: [
       { role: "System", content: "Mixed case system" },
@@ -456,7 +456,7 @@ test("partitionPromptForCache treats System (mixed case) as system role", () => 
   assert.equal(result.dynamicMessageCount, 1);
 });
 
-test("partitionPromptForCache fixedPrefixMessageCount of zero disables fixed prefix", () => {
+test("partitionPromptForCache fixedPrefixMessageCount of zero disables fixed prefix [prompt-partition-cache]", () => {
   const input: PromptPartitionInput = {
     kvCache: {
       enabled: true,
@@ -475,7 +475,7 @@ test("partitionPromptForCache fixedPrefixMessageCount of zero disables fixed pre
   assert.equal(result.domainBlockMessageCount, 2);
 });
 
-test("partitionPromptForCache fixedPrefixMessageCount exceeding static count is capped", () => {
+test("partitionPromptForCache fixedPrefixMessageCount exceeding static count is capped [prompt-partition-cache]", () => {
   const input: PromptPartitionInput = {
     kvCache: {
       enabled: true,
@@ -493,7 +493,7 @@ test("partitionPromptForCache fixedPrefixMessageCount exceeding static count is 
   assert.equal(result.domainBlockMessageCount, 0);
 });
 
-test("partitionPromptForCache negative fixedPrefixMessageCount becomes zero", () => {
+test("partitionPromptForCache negative fixedPrefixMessageCount becomes zero [prompt-partition-cache]", () => {
   const input: PromptPartitionInput = {
     kvCache: {
       enabled: true,
@@ -510,7 +510,7 @@ test("partitionPromptForCache negative fixedPrefixMessageCount becomes zero", ()
   assert.equal(result.fixedPrefixMessageCount, 0);
 });
 
-test("partitionPromptForCache calculates variableMessageCount correctly", () => {
+test("partitionPromptForCache calculates variableMessageCount correctly [prompt-partition-cache]", () => {
   const input: PromptPartitionInput = {
     messages: [
       { role: "system", content: "System" },
@@ -526,7 +526,7 @@ test("partitionPromptForCache calculates variableMessageCount correctly", () => 
   assert.equal(result.dynamicMessageCount, 3);
 });
 
-test("partitionPromptForCache calculates variableSuffixBytes correctly", () => {
+test("partitionPromptForCache calculates variableSuffixBytes correctly [prompt-partition-cache]", () => {
   const input: PromptPartitionInput = {
     messages: [
       { role: "system", content: "System" },
@@ -542,7 +542,7 @@ test("partitionPromptForCache calculates variableSuffixBytes correctly", () => {
   assert.equal(result.variableSuffixBytes, 46);
 });
 
-test("partitionPromptForCache variableSuffixDigest equals dynamicDigest", () => {
+test("partitionPromptForCache variableSuffixDigest equals dynamicDigest [prompt-partition-cache]", () => {
   const input: PromptPartitionInput = {
     messages: [
       { role: "system", content: "System" },
@@ -555,7 +555,7 @@ test("partitionPromptForCache variableSuffixDigest equals dynamicDigest", () => 
   assert.equal(result.variableSuffixDigest, result.dynamicDigest);
 });
 
-test("partitionPromptForCache domain block cache key generated when domainId is null", () => {
+test("partitionPromptForCache domain block cache key generated when domainId is null [prompt-partition-cache]", () => {
   const input: PromptPartitionInput = {
     model: "claude-3-5-sonnet",
     profileId: "default",
@@ -579,7 +579,7 @@ test("partitionPromptForCache domain block cache key generated when domainId is 
   assert.equal(result.domainBlockMessageCount, 1);
 });
 
-test("partitionPromptForCache model trim removes leading/trailing whitespace", () => {
+test("partitionPromptForCache model trim removes leading/trailing whitespace [prompt-partition-cache]", () => {
   const input: PromptPartitionInput = {
     model: "  claude-3-5-sonnet  ",
     messages: [
@@ -592,7 +592,7 @@ test("partitionPromptForCache model trim removes leading/trailing whitespace", (
   assert.equal(result.model, "claude-3-5-sonnet");
 });
 
-test("partitionPromptForCache model empty string becomes null", () => {
+test("partitionPromptForCache model empty string becomes null [prompt-partition-cache]", () => {
   const input: PromptPartitionInput = {
     model: "   ",
     messages: [
@@ -605,7 +605,7 @@ test("partitionPromptForCache model empty string becomes null", () => {
   assert.equal(result.model, null);
 });
 
-test("partitionPromptForCache profileId empty string becomes null", () => {
+test("partitionPromptForCache profileId empty string becomes null [prompt-partition-cache]", () => {
   const input: PromptPartitionInput = {
     profileId: "   ",
     messages: [
@@ -618,7 +618,7 @@ test("partitionPromptForCache profileId empty string becomes null", () => {
   assert.equal(result.profileId, null);
 });
 
-test("partitionPromptForCache domainId empty string becomes null", () => {
+test("partitionPromptForCache domainId empty string becomes null [prompt-partition-cache]", () => {
   const input: PromptPartitionInput = {
     domainId: "   ",
     messages: [
@@ -631,7 +631,7 @@ test("partitionPromptForCache domainId empty string becomes null", () => {
   assert.equal(result.domainId, null);
 });
 
-test("partitionPromptForCache message with parts but no content", () => {
+test("partitionPromptForCache message with parts but no content [prompt-partition-cache]", () => {
   const input: PromptPartitionInput = {
     messages: [
       { role: "system", parts: ["part1", "part2"] },
@@ -646,7 +646,7 @@ test("partitionPromptForCache message with parts but no content", () => {
   assert.ok(result.fixedPrefixBytes > 0);
 });
 
-test("partitionPromptForCache message with both content and parts", () => {
+test("partitionPromptForCache message with both content and parts [prompt-partition-cache]", () => {
   const input: PromptPartitionInput = {
     messages: [
       { role: "system", content: "Content text", parts: ["part1"] },
@@ -659,7 +659,7 @@ test("partitionPromptForCache message with both content and parts", () => {
   assert.ok(result.fixedPrefixBytes > 0);
 });
 
-test("partitionPromptForCache message with null content vs undefined content", () => {
+test("partitionPromptForCache message with null content vs undefined content [prompt-partition-cache]", () => {
   const input1: PromptPartitionInput = {
     messages: [
       { role: "system", content: null },
@@ -679,7 +679,7 @@ test("partitionPromptForCache message with null content vs undefined content", (
   assert.equal(result1.staticDigest, result2.staticDigest);
 });
 
-test("PromptPartitionCacheService firstSeenAt stays constant across records", () => {
+test("PromptPartitionCacheService firstSeenAt stays constant across records [prompt-partition-cache]", () => {
   const service = new PromptPartitionCacheService();
 
   const input: PromptPartitionInput = {
@@ -698,7 +698,7 @@ test("PromptPartitionCacheService firstSeenAt stays constant across records", ()
   assert.equal(firstSeen1, firstSeen2);
 });
 
-test("PromptPartitionCacheService lastSeenAt updates on each record", () => {
+test("PromptPartitionCacheService lastSeenAt updates on each record [prompt-partition-cache]", () => {
   const service = new PromptPartitionCacheService();
 
   const input: PromptPartitionInput = {
@@ -714,7 +714,7 @@ test("PromptPartitionCacheService lastSeenAt updates on each record", () => {
   assert.ok(usage2.lastSeenAt >= usage1.lastSeenAt);
 });
 
-test("PromptPartitionCacheService tracks multiple different partitions", () => {
+test("PromptPartitionCacheService tracks multiple different partitions [prompt-partition-cache]", () => {
   const service = new PromptPartitionCacheService();
 
   service.record({
@@ -743,7 +743,7 @@ test("PromptPartitionCacheService tracks multiple different partitions", () => {
   assert.equal(allUsage.length, 3);
 });
 
-test("PromptPartitionCacheService listUsage returns sorted by dynamicCacheKey", () => {
+test("PromptPartitionCacheService listUsage returns sorted by dynamicCacheKey [prompt-partition-cache]", () => {
   const service = new PromptPartitionCacheService();
 
   service.record({

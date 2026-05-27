@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { HumanWaitExecutor } from "../../../../../src/platform/five-plane-execution/plugin-executor/human-wait-executor.js";
 
-test("HumanWaitExecutor creates pending approvals as a formal execution result", () => {
+test("HumanWaitExecutor creates pending approvals as a formal execution result [human-wait-executor]", () => {
   const executor = new HumanWaitExecutor({
     now: () => "2026-04-25T00:00:00.000Z",
     idFactory: () => "approval-fixed",
@@ -19,7 +19,7 @@ test("HumanWaitExecutor creates pending approvals as a formal execution result",
   assert.equal(executor.listPendingApprovals().length, 1);
 });
 
-test("HumanWaitExecutor resolves approvals and removes them from pending state", () => {
+test("HumanWaitExecutor resolves approvals and removes them from pending state [human-wait-executor]", () => {
   let currentTime = "2026-04-25T00:00:00.000Z";
   const executor = new HumanWaitExecutor({
     now: () => currentTime,

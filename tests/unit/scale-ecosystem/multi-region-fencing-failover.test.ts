@@ -19,7 +19,7 @@ import { ResourcePoolService } from "../../../src/scale-ecosystem/resource-manag
 import { SlaTierSchema } from "../../../src/scale-ecosystem/sla-engine/tier-resolver/index.js";
 import { resetRpoRtoTrackingService } from "../../../src/scale-ecosystem/multi-region/rpo-rto-tracking.js";
 
-test("R15-49 records fencing epoch and rejects stale demoted leader rejoins", () => {
+test("R15-49 records fencing epoch and rejects stale demoted leader rejoins [multi-region-fencing-failover]", () => {
   const controller = new RegionFailoverController();
   const decision = controller.resolve({
     partitionKey: "orders",
@@ -41,7 +41,7 @@ test("R15-49 records fencing epoch and rejects stale demoted leader rejoins", ()
   assert.equal(rejection.mustRejoinAsFollower, true);
 });
 
-test("R15-50 failover reconciliation scans all required gap categories", () => {
+test("R15-50 failover reconciliation scans all required gap categories [multi-region-fencing-failover]", () => {
   const job = new FailoverReconciliationJob();
   const result = job.runReconciliation({
     sourceRegionId: "us-east-1",
@@ -62,7 +62,7 @@ test("R15-50 failover reconciliation scans all required gap categories", () => {
   );
 });
 
-test("R15-51 write routing stays on the partition leader", () => {
+test("R15-51 write routing stays on the partition leader [multi-region-fencing-failover]", () => {
   const service = new CrossRegionRoutingService();
   const decision = service.route({
     regions: [
@@ -100,7 +100,7 @@ test("R15-51 write routing stays on the partition leader", () => {
   assert.equal(decision.selectedRegionId, "us-west-2");
 });
 
-test("R15-52 region descriptor requires provider, endpoints, and data residency policy", () => {
+test("R15-52 region descriptor requires provider, endpoints, and data residency policy [multi-region-fencing-failover]", () => {
   const parsed = RegionDescriptorSchema.parse({
     regionId: "ap-southeast-1",
     provider: "aws",
@@ -114,7 +114,7 @@ test("R15-52 region descriptor requires provider, endpoints, and data residency 
   assert.equal(parsed.dataResidencyPolicy, "global");
 });
 
-test("R15-53 cross-border transfer chain performs classification, minimization, scanning, and logging", () => {
+test("R15-53 cross-border transfer chain performs classification, minimization, scanning, and logging [multi-region-fencing-failover]", () => {
   const service = new CrossBorderTransferComplianceService();
   const assessment = service.assessTransfer({
     sourceRegionId: "eu-west-1",
@@ -137,7 +137,7 @@ test("R15-53 cross-border transfer chain performs classification, minimization, 
   assert.equal(service.getTransferLog().length, 1);
 });
 
-test("R15-54 data replicator blocks local-only target residency", () => {
+test("R15-54 data replicator blocks local-only target residency [multi-region-fencing-failover]", () => {
   const service = new DataReplicatorService({
     sourceRegionId: "eu-west-1",
     targetRegionIds: ["us-east-1"],
@@ -160,7 +160,7 @@ test("R15-54 data replicator blocks local-only target residency", () => {
   assert.equal(event, null);
 });
 
-test("R15-55 region health checks use a real HTTP HEAD probe", async () => {
+test("R15-55 region health checks use a real HTTP HEAD probe [multi-region-fencing-failover]", async () => {
   const originalFetch = globalThis.fetch;
   const calls: Array<{ url: string; method: string | undefined }> = [];
   globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
@@ -192,7 +192,7 @@ test("R15-55 region health checks use a real HTTP HEAD probe", async () => {
   }
 });
 
-test("R15-56 replication checkpoint stores actual pending count after partial flush failures", async () => {
+test("R15-56 replication checkpoint stores actual pending count after partial flush failures [multi-region-fencing-failover]", async () => {
   const emitted: string[] = [];
   const service = new DataReplicatorService({
     sourceRegionId: "us-east-1",
@@ -229,7 +229,7 @@ test("R15-56 replication checkpoint stores actual pending count after partial fl
   assert.deepEqual(emitted, ["ok-1", "ok-3"]);
 });
 
-test("R15-58 quota evaluation is multi-dimensional", () => {
+test("R15-58 quota evaluation is multi-dimensional [multi-region-fencing-failover]", () => {
   const decision = evaluateMultiDimensionalQuota(
     {
       scope: "tenant",
@@ -249,7 +249,7 @@ test("R15-58 quota evaluation is multi-dimensional", () => {
   assert.equal(decision.remainingByDimension.workerUnits, 4);
 });
 
-test("R15-59 preemption requires a recent checkpoint", () => {
+test("R15-59 preemption requires a recent checkpoint [multi-region-fencing-failover]", () => {
   const recentCheckpoint = Date.now() - 5_000;
   const victim = choosePreemptionVictim([
     { executionId: "no-checkpoint", priority: 1, progressPercent: 10 },
@@ -259,7 +259,7 @@ test("R15-59 preemption requires a recent checkpoint", () => {
   assert.equal(victim?.executionId, "checkpointed");
 });
 
-test("R15-60 fair queue ordering is score-based rather than lexicographic", () => {
+test("R15-60 fair queue ordering is score-based rather than lexicographic [multi-region-fencing-failover]", () => {
   const ordered = orderFairQueue([
     { itemId: "a-item", tenantId: "tenant-a", priority: 1, ageMs: 1_000, guaranteedQuotaShare: 1, slaTier: 0 },
     { itemId: "z-item", tenantId: "tenant-z", priority: 9, ageMs: 60_000, guaranteedQuotaShare: 3, slaTier: 2 },
@@ -268,7 +268,7 @@ test("R15-60 fair queue ordering is score-based rather than lexicographic", () =
   assert.equal(ordered[0]?.itemId, "z-item");
 });
 
-test("R15-61 marketplace catalog accepts canonical entryId and backfills legacy listingId/packId", () => {
+test("R15-61 marketplace catalog accepts canonical entryId and backfills legacy listingId/packId [multi-region-fencing-failover]", () => {
   const parsed = MarketplaceCatalogEntrySchema.parse({
     entryId: "entry-123",
     title: "Verified Pack",
@@ -283,7 +283,7 @@ test("R15-61 marketplace catalog accepts canonical entryId and backfills legacy 
   assert.equal(parsed.certificationStatus, "platform_certified");
 });
 
-test("R15-65 SLA tier schema carries approval latency, incident response, cost, and support fields", () => {
+test("R15-65 SLA tier schema carries approval latency, incident response, cost, and support fields [multi-region-fencing-failover]", () => {
   const parsed = SlaTierSchema.parse({
     tierId: "enterprise",
     displayName: "Enterprise",
@@ -302,7 +302,7 @@ test("R15-65 SLA tier schema carries approval latency, incident response, cost, 
   assert.equal(parsed.supportLevel, "enterprise");
 });
 
-test("R15-66 CDC service exposes time-based lag monitoring against the 30s SLA", () => {
+test("R15-66 CDC service exposes time-based lag monitoring against the 30s SLA [multi-region-fencing-failover]", () => {
   const service = new CDCReplicationService();
   service.registerReplication({
     sourceRegionId: "us-east-1",
@@ -336,7 +336,7 @@ test("R15-66 CDC service exposes time-based lag monitoring against the 30s SLA",
   assert.equal(status.withinSlo, false);
 });
 
-test("R15-67 failover orchestration records failover history and fencing epoch events", async () => {
+test("R15-67 failover orchestration records failover history and fencing epoch events [multi-region-fencing-failover]", async () => {
   const orchestrator = new RegionFailoverOrchestrator();
   orchestrator.registerRegion({
     regionId: "us-west-2",
@@ -364,7 +364,7 @@ test("R15-67 failover orchestration records failover history and fencing epoch e
   );
 });
 
-test("R15-67a CDC replication failure logs carry explicit trace and correlation ids", () => {
+test("R15-67a CDC replication failure logs carry explicit trace and correlation ids [multi-region-fencing-failover]", () => {
   const captured: StructuredLogEntry[] = [];
   StructuredLogger.addTransport({
     name: "cdc-failure-capture",
@@ -411,7 +411,7 @@ test("R15-67a CDC replication failure logs carry explicit trace and correlation 
   }
 });
 
-test("R15-67b failover listener errors log explicit trace and correlation ids", async () => {
+test("R15-67b failover listener errors log explicit trace and correlation ids [multi-region-fencing-failover]", async () => {
   const captured: StructuredLogEntry[] = [];
   StructuredLogger.addTransport({
     name: "failover-log-capture",
@@ -458,7 +458,7 @@ test("R15-67b failover listener errors log explicit trace and correlation ids", 
   }
 });
 
-test("R15-68 fair scheduling enforces per-tenant promotion budgets", () => {
+test("R15-68 fair scheduling enforces per-tenant promotion budgets [multi-region-fencing-failover]", () => {
   const service = new FairSchedulingService();
   const decision = service.schedule({
     quotaPolicy: {
@@ -493,7 +493,7 @@ test("R15-68 fair scheduling enforces per-tenant promotion budgets", () => {
   assert.equal(decision.preemption.reason, "resource_manager.promotion_budget_exhausted");
 });
 
-test("R15-69 resource pools carry tenant scope and auto-isolate on high failure rate", () => {
+test("R15-69 resource pools carry tenant scope and auto-isolate on high failure rate [multi-region-fencing-failover]", () => {
   const service = new ResourcePoolService();
   service.registerPool({
     poolId: "tenant-pool",

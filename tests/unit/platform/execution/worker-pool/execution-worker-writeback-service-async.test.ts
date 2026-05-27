@@ -46,12 +46,12 @@ function makeAsyncWritebackService(): ExecutionWorkerWritebackServiceAsync {
 // Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("ExecutionWorkerWritebackServiceAsync is instantiable", () => {
+test("ExecutionWorkerWritebackServiceAsync is instantiable [execution-worker-writeback-service-async]", () => {
   const service = makeAsyncWritebackService();
   assert.ok(service != null);
 });
 
-test("recordWriteback returns a promise resolving to WorkerWritebackDecision", async () => {
+test("recordWriteback returns a promise resolving to WorkerWritebackDecision [execution-worker-writeback-service-async]", async () => {
   const service = makeAsyncWritebackService();
   const decision = await service.recordWriteback({
     executionId: "exec_1",
@@ -65,7 +65,7 @@ test("recordWriteback returns a promise resolving to WorkerWritebackDecision", a
   assert.ok(typeof decision.accepted === "boolean");
 });
 
-test("recordWriteback promise resolves with execution_not_found when no execution", async () => {
+test("recordWriteback promise resolves with execution_not_found when no execution [execution-worker-writeback-service-async]", async () => {
   const service = makeAsyncWritebackService();
   const decision = await service.recordWriteback({
     executionId: "nonexistent_exec",
@@ -78,7 +78,7 @@ test("recordWriteback promise resolves with execution_not_found when no executio
   assert.equal(decision.reasonCode, "execution_not_found");
 });
 
-test("recordWriteback accepts valid writeback input with required fields", async () => {
+test("recordWriteback accepts valid writeback input with required fields [execution-worker-writeback-service-async]", async () => {
   const service = makeAsyncWritebackService();
   const decision = await service.recordWriteback({
     executionId: "exec_1",
@@ -93,7 +93,7 @@ test("recordWriteback accepts valid writeback input with required fields", async
   assert.equal(decision.accepted, false);
 });
 
-test("recordWriteback handles different terminal statuses", async () => {
+test("recordWriteback handles different terminal statuses [execution-worker-writeback-service-async]", async () => {
   const service = makeAsyncWritebackService();
 
   const statuses = ["done", "failed", "cancelled"] as const;

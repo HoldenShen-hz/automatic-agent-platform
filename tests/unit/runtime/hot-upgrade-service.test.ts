@@ -18,7 +18,7 @@ function createHarness(prefix: string) {
   return { workspace, db };
 }
 
-test("registerVersionCompatibility stores compatibility record", () => {
+test("registerVersionCompatibility stores compatibility record [hot-upgrade-service]", () => {
   const h = createHarness("aa-compat-reg-");
   try {
     const service = new HotUpgradeService(h.db);
@@ -40,7 +40,7 @@ test("registerVersionCompatibility stores compatibility record", () => {
   }
 });
 
-test("getVersionCompatibility returns null for unknown pair", () => {
+test("getVersionCompatibility returns null for unknown pair [hot-upgrade-service]", () => {
   const h = createHarness("aa-compat-unknown-");
   try {
     const service = new HotUpgradeService(h.db);
@@ -52,7 +52,7 @@ test("getVersionCompatibility returns null for unknown pair", () => {
   }
 });
 
-test("isUpgradeSafe returns safe for compatible versions", () => {
+test("isUpgradeSafe returns safe for compatible versions [hot-upgrade-service]", () => {
   const h = createHarness("aa-upgrade-safe-");
   try {
     const service = new HotUpgradeService(h.db);
@@ -74,7 +74,7 @@ test("isUpgradeSafe returns safe for compatible versions", () => {
   }
 });
 
-test("isUpgradeSafe returns unsafe for incompatible versions", () => {
+test("isUpgradeSafe returns unsafe for incompatible versions [hot-upgrade-service]", () => {
   const h = createHarness("aa-upgrade-unsafe-");
   try {
     const service = new HotUpgradeService(h.db);
@@ -96,7 +96,7 @@ test("isUpgradeSafe returns unsafe for incompatible versions", () => {
   }
 });
 
-test("createUpgradePlan creates plan with batches", () => {
+test("createUpgradePlan creates plan with batches [hot-upgrade-service]", () => {
   const h = createHarness("aa-plan-create-");
   try {
     const service = new HotUpgradeService(h.db);
@@ -121,7 +121,7 @@ test("createUpgradePlan creates plan with batches", () => {
   }
 });
 
-test("getUpgradePlan retrieves plan by id", () => {
+test("getUpgradePlan retrieves plan by id [hot-upgrade-service]", () => {
   const h = createHarness("aa-plan-get-");
   try {
     const service = new HotUpgradeService(h.db);
@@ -141,7 +141,7 @@ test("getUpgradePlan retrieves plan by id", () => {
   }
 });
 
-test("getUpgradePlansByStatus filters by status", () => {
+test("getUpgradePlansByStatus filters by status [hot-upgrade-service]", () => {
   const h = createHarness("aa-plan-filter-");
   try {
     const service = new HotUpgradeService(h.db);
@@ -163,7 +163,7 @@ test("getUpgradePlansByStatus filters by status", () => {
   }
 });
 
-test("startUpgrade transitions plan to in_progress", () => {
+test("startUpgrade transitions plan to in_progress [hot-upgrade-service]", () => {
   const h = createHarness("aa-start-upgrade-");
   try {
     const service = new HotUpgradeService(h.db);
@@ -184,7 +184,7 @@ test("startUpgrade transitions plan to in_progress", () => {
   }
 });
 
-test("startUpgrade fails for non-pending plan", () => {
+test("startUpgrade fails for non-pending plan [hot-upgrade-service]", () => {
   const h = createHarness("aa-start-fail-");
   try {
     const service = new HotUpgradeService(h.db);
@@ -203,7 +203,7 @@ test("startUpgrade fails for non-pending plan", () => {
   }
 });
 
-test("completeBatch marks batch as completed when health checks pass", () => {
+test("completeBatch marks batch as completed when health checks pass [hot-upgrade-service]", () => {
   const h = createHarness("aa-complete-batch-");
   try {
     const service = new HotUpgradeService(h.db);
@@ -235,7 +235,7 @@ test("completeBatch marks batch as completed when health checks pass", () => {
   }
 });
 
-test("completeBatch triggers rollback when health checks fail", () => {
+test("completeBatch triggers rollback when health checks fail [hot-upgrade-service]", () => {
   const h = createHarness("aa-rollback-batch-");
   try {
     const service = new HotUpgradeService(h.db);
@@ -271,7 +271,7 @@ test("completeBatch triggers rollback when health checks fail", () => {
   }
 });
 
-test("triggerRollback records rollback trigger", () => {
+test("triggerRollback records rollback trigger [hot-upgrade-service]", () => {
   const h = createHarness("aa-trigger-rollback-");
   try {
     const service = new HotUpgradeService(h.db);
@@ -292,7 +292,7 @@ test("triggerRollback records rollback trigger", () => {
   }
 });
 
-test("getUpgradeProgress returns correct progress metrics", () => {
+test("getUpgradeProgress returns correct progress metrics [hot-upgrade-service]", () => {
   const h = createHarness("aa-progress-");
   try {
     const service = new HotUpgradeService(h.db);
@@ -315,7 +315,7 @@ test("getUpgradeProgress returns correct progress metrics", () => {
   }
 });
 
-test("recordAudit creates audit entry", () => {
+test("recordAudit creates audit entry [hot-upgrade-service]", () => {
   const h = createHarness("aa-audit-");
   try {
     const service = new HotUpgradeService(h.db);
@@ -335,7 +335,7 @@ test("recordAudit creates audit entry", () => {
   }
 });
 
-test("getUpgradeAuditLog returns audit entries", () => {
+test("getUpgradeAuditLog returns audit entries [hot-upgrade-service]", () => {
   const h = createHarness("aa-audit-log-");
   try {
     const service = new HotUpgradeService(h.db);
@@ -354,7 +354,7 @@ test("getUpgradeAuditLog returns audit entries", () => {
   }
 });
 
-test("upgrade with no rollbackOnFailure does not trigger rollback", () => {
+test("upgrade with no rollbackOnFailure does not trigger rollback [hot-upgrade-service]", () => {
   const h = createHarness("aa-no-rollback-");
   try {
     const service = new HotUpgradeService(h.db);

@@ -68,7 +68,7 @@ function createMockSession(overrides = {}) {
 // ManualBillingPaymentGateway Tests
 // ============================================================
 
-test("ManualBillingPaymentGateway createCheckoutSession generates correct session", () => {
+test("ManualBillingPaymentGateway createCheckoutSession generates correct session [billing-payment-gateway]", () => {
   const gateway = new ManualBillingPaymentGateway();
   const invoice = createMockInvoice();
   const account = createMockAccount();
@@ -83,7 +83,7 @@ test("ManualBillingPaymentGateway createCheckoutSession generates correct sessio
   assert.equal(session.expiresAt, null);
 });
 
-test("ManualBillingPaymentGateway createCheckoutSession with custom baseUrl", () => {
+test("ManualBillingPaymentGateway createCheckoutSession with custom baseUrl [billing-payment-gateway]", () => {
   const gateway = new ManualBillingPaymentGateway({ baseUrl: "https://pay.example.com/manual" });
   const invoice = createMockInvoice();
   const account = createMockAccount();
@@ -93,7 +93,7 @@ test("ManualBillingPaymentGateway createCheckoutSession with custom baseUrl", ()
   assert.ok(session.checkoutUrl.startsWith("https://pay.example.com/manual"));
 });
 
-test("ManualBillingPaymentGateway createCheckoutSession trims trailing slash from baseUrl", () => {
+test("ManualBillingPaymentGateway createCheckoutSession trims trailing slash from baseUrl [billing-payment-gateway]", () => {
   const gateway = new ManualBillingPaymentGateway({ baseUrl: "https://pay.example.com/manual///" });
   const invoice = createMockInvoice();
   const account = createMockAccount();
@@ -104,7 +104,7 @@ test("ManualBillingPaymentGateway createCheckoutSession trims trailing slash fro
   assert.ok(!session.checkoutUrl.includes("///"));
 });
 
-test("ManualBillingPaymentGateway createCheckoutSession encodes special characters in IDs", () => {
+test("ManualBillingPaymentGateway createCheckoutSession encodes special characters in IDs [billing-payment-gateway]", () => {
   const gateway = new ManualBillingPaymentGateway({ baseUrl: "https://pay.example.com" });
   const invoice = createMockInvoice({ invoiceId: "inv with spaces & symbols" });
   const account = createMockAccount({ accountId: "acct with spaces & symbols" });
@@ -115,7 +115,7 @@ test("ManualBillingPaymentGateway createCheckoutSession encodes special characte
   assert.ok(session.checkoutUrl.includes(encodeURIComponent(account.accountId)));
 });
 
-test("ManualBillingPaymentGateway fetchPaymentSessionStatus always returns null", () => {
+test("ManualBillingPaymentGateway fetchPaymentSessionStatus always returns null [billing-payment-gateway]", () => {
   const gateway = new ManualBillingPaymentGateway();
   const session = createMockSession({ gatewayKind: "manual" });
   const invoice = createMockInvoice();
@@ -130,7 +130,7 @@ test("ManualBillingPaymentGateway fetchPaymentSessionStatus always returns null"
 // StripeBillingPaymentGateway Tests
 // ============================================================
 
-test("StripeBillingPaymentGateway createCheckoutSession success", async () => {
+test("StripeBillingPaymentGateway createCheckoutSession success [billing-payment-gateway]", async () => {
   const mockFetch = async (url, options) => {
     assert.ok(url.includes("/checkout/sessions"));
     assert.equal(options.method, "POST");
@@ -174,7 +174,7 @@ test("StripeBillingPaymentGateway createCheckoutSession success", async () => {
   assert.ok(session.expiresAt !== null && session.expiresAt.includes("T"));
 });
 
-test("StripeBillingPaymentGateway createCheckoutSession converts USD to cents", async () => {
+test("StripeBillingPaymentGateway createCheckoutSession converts USD to cents [billing-payment-gateway]", async () => {
   let capturedBody;
   const mockFetch = async (url, options) => {
     capturedBody = options.body;
@@ -205,7 +205,7 @@ test("StripeBillingPaymentGateway createCheckoutSession converts USD to cents", 
   assert.ok(capturedBody.includes("line_items%5B0%5D%5Bprice_data%5D%5Bunit_amount%5D=5056"));
 });
 
-test("StripeBillingPaymentGateway createCheckoutSession handles zero amount", async () => {
+test("StripeBillingPaymentGateway createCheckoutSession handles zero amount [billing-payment-gateway]", async () => {
   let receivedUrl;
   const mockFetch = async (url, options) => {
     receivedUrl = url;
@@ -237,7 +237,7 @@ test("StripeBillingPaymentGateway createCheckoutSession handles zero amount", as
   assert.equal(session.gatewaySessionRef, "cs_zero");
 });
 
-test("StripeBillingPaymentGateway createCheckoutSession throws ProviderError on 5xx", async () => {
+test("StripeBillingPaymentGateway createCheckoutSession throws ProviderError on 5xx [billing-payment-gateway]", async () => {
   const mockFetch = async () => ({
     ok: false,
     status: 503,
@@ -268,7 +268,7 @@ test("StripeBillingPaymentGateway createCheckoutSession throws ProviderError on 
   );
 });
 
-test("StripeBillingPaymentGateway createCheckoutSession throws ValidationError on malformed response", async () => {
+test("StripeBillingPaymentGateway createCheckoutSession throws ValidationError on malformed response [billing-payment-gateway]", async () => {
   const mockFetch = async () => ({
     ok: true,
     status: 200,
@@ -301,7 +301,7 @@ test("StripeBillingPaymentGateway createCheckoutSession throws ValidationError o
   );
 });
 
-test("StripeBillingPaymentGateway fetchPaymentSessionStatus returns paid status", async () => {
+test("StripeBillingPaymentGateway fetchPaymentSessionStatus returns paid status [billing-payment-gateway]", async () => {
   const mockFetch = async (url) => {
     assert.ok(url.includes("/checkout/sessions/cs_test_paid"));
     return {
@@ -335,7 +335,7 @@ test("StripeBillingPaymentGateway fetchPaymentSessionStatus returns paid status"
   assert.ok(result?.occurredAt !== null);
 });
 
-test("StripeBillingPaymentGateway fetchPaymentSessionStatus returns expired status", async () => {
+test("StripeBillingPaymentGateway fetchPaymentSessionStatus returns expired status [billing-payment-gateway]", async () => {
   const mockFetch = async () => ({
     ok: true,
     status: 200,
@@ -363,7 +363,7 @@ test("StripeBillingPaymentGateway fetchPaymentSessionStatus returns expired stat
   assert.equal(result?.status, "expired");
 });
 
-test("StripeBillingPaymentGateway fetchPaymentSessionStatus returns pending for open session", async () => {
+test("StripeBillingPaymentGateway fetchPaymentSessionStatus returns pending for open session [billing-payment-gateway]", async () => {
   const mockFetch = async () => ({
     ok: true,
     status: 200,
@@ -391,7 +391,7 @@ test("StripeBillingPaymentGateway fetchPaymentSessionStatus returns pending for 
   assert.equal(result?.status, "pending");
 });
 
-test("StripeBillingPaymentGateway fetchPaymentSessionStatus throws ProviderError on 5xx", async () => {
+test("StripeBillingPaymentGateway fetchPaymentSessionStatus throws ProviderError on 5xx [billing-payment-gateway]", async () => {
   const mockFetch = async () => ({
     ok: false,
     status: 503,
@@ -423,7 +423,7 @@ test("StripeBillingPaymentGateway fetchPaymentSessionStatus throws ProviderError
   );
 });
 
-test("StripeBillingPaymentGateway fetchPaymentSessionStatus throws ProviderError on 429 (rate limit)", async () => {
+test("StripeBillingPaymentGateway fetchPaymentSessionStatus throws ProviderError on 429 (rate limit) [billing-payment-gateway]", async () => {
   const mockFetch = async () => ({
     ok: false,
     status: 429,
@@ -454,7 +454,7 @@ test("StripeBillingPaymentGateway fetchPaymentSessionStatus throws ProviderError
   );
 });
 
-test("StripeBillingPaymentGateway fetchPaymentSessionStatus throws ValidationError on mismatched session ID", async () => {
+test("StripeBillingPaymentGateway fetchPaymentSessionStatus throws ValidationError on mismatched session ID [billing-payment-gateway]", async () => {
   const mockFetch = async () => ({
     ok: true,
     status: 200,
@@ -489,7 +489,7 @@ test("StripeBillingPaymentGateway fetchPaymentSessionStatus throws ValidationErr
   );
 });
 
-test("StripeBillingPaymentGateway uses default API URL when not provided", async () => {
+test("StripeBillingPaymentGateway uses default API URL when not provided [billing-payment-gateway]", async () => {
   let capturedUrl;
   const mockFetch = async (url) => {
     capturedUrl = url;
@@ -520,7 +520,7 @@ test("StripeBillingPaymentGateway uses default API URL when not provided", async
 // PaddleBillingPaymentGateway Tests
 // ============================================================
 
-test("PaddleBillingPaymentGateway createCheckoutSession success", async () => {
+test("PaddleBillingPaymentGateway createCheckoutSession success [billing-payment-gateway]", async () => {
   const mockFetch = async (url, options) => {
     assert.ok(url.includes("/transactions"));
     assert.equal(options.method, "POST");
@@ -568,7 +568,7 @@ test("PaddleBillingPaymentGateway createCheckoutSession success", async () => {
   assert.equal(session.expiresAt, null); // Paddle doesn't return expiry
 });
 
-test("PaddleBillingPaymentGateway createCheckoutSession converts USD to cents", async () => {
+test("PaddleBillingPaymentGateway createCheckoutSession converts USD to cents [billing-payment-gateway]", async () => {
   let capturedBody;
   const mockFetch = async (url, options) => {
     capturedBody = JSON.parse(options.body);
@@ -602,7 +602,7 @@ test("PaddleBillingPaymentGateway createCheckoutSession converts USD to cents", 
   assert.equal(capturedBody.items[0].price.unit_price.amount, "12345");
 });
 
-test("PaddleBillingPaymentGateway createCheckoutSession throws ProviderError on error", async () => {
+test("PaddleBillingPaymentGateway createCheckoutSession throws ProviderError on error [billing-payment-gateway]", async () => {
   const mockFetch = async () => ({
     ok: false,
     status: 422,
@@ -633,7 +633,7 @@ test("PaddleBillingPaymentGateway createCheckoutSession throws ProviderError on 
   );
 });
 
-test("PaddleBillingPaymentGateway createCheckoutSession throws ProviderError on 5xx", async () => {
+test("PaddleBillingPaymentGateway createCheckoutSession throws ProviderError on 5xx [billing-payment-gateway]", async () => {
   const mockFetch = async () => ({
     ok: false,
     status: 503,
@@ -663,7 +663,7 @@ test("PaddleBillingPaymentGateway createCheckoutSession throws ProviderError on 
   );
 });
 
-test("PaddleBillingPaymentGateway createCheckoutSession throws ValidationError on malformed response", async () => {
+test("PaddleBillingPaymentGateway createCheckoutSession throws ValidationError on malformed response [billing-payment-gateway]", async () => {
   const mockFetch = async () => ({
     ok: true,
     status: 200,
@@ -698,7 +698,7 @@ test("PaddleBillingPaymentGateway createCheckoutSession throws ValidationError o
   );
 });
 
-test("PaddleBillingPaymentGateway fetchPaymentSessionStatus returns paid for completed transaction", async () => {
+test("PaddleBillingPaymentGateway fetchPaymentSessionStatus returns paid for completed transaction [billing-payment-gateway]", async () => {
   const mockFetch = async (url) => {
     assert.ok(url.includes("/transactions/trans_paddle_paid"));
     return {
@@ -734,7 +734,7 @@ test("PaddleBillingPaymentGateway fetchPaymentSessionStatus returns paid for com
   assert.equal(result?.occurredAt, "2026-04-15T10:30:00.000Z");
 });
 
-test("PaddleBillingPaymentGateway fetchPaymentSessionStatus maps various paid statuses", async () => {
+test("PaddleBillingPaymentGateway fetchPaymentSessionStatus maps various paid statuses [billing-payment-gateway]", async () => {
   const statuses = ["completed", "paid", "billed"];
   const gateway = new PaddleBillingPaymentGateway({
     apiKey: "paddle_test",
@@ -781,7 +781,7 @@ test("PaddleBillingPaymentGateway fetchPaymentSessionStatus maps various paid st
   }
 });
 
-test("PaddleBillingPaymentGateway fetchPaymentSessionStatus returns cancelled for canceled status", async () => {
+test("PaddleBillingPaymentGateway fetchPaymentSessionStatus returns cancelled for canceled status [billing-payment-gateway]", async () => {
   const mockFetch = async () => ({
     ok: true,
     status: 200,
@@ -811,7 +811,7 @@ test("PaddleBillingPaymentGateway fetchPaymentSessionStatus returns cancelled fo
   assert.equal(result?.status, "cancelled");
 });
 
-test("PaddleBillingPaymentGateway fetchPaymentSessionStatus returns cancelled for cancelled status", async () => {
+test("PaddleBillingPaymentGateway fetchPaymentSessionStatus returns cancelled for cancelled status [billing-payment-gateway]", async () => {
   const mockFetch = async () => ({
     ok: true,
     status: 200,
@@ -838,7 +838,7 @@ test("PaddleBillingPaymentGateway fetchPaymentSessionStatus returns cancelled fo
   assert.equal(result?.status, "cancelled");
 });
 
-test("PaddleBillingPaymentGateway fetchPaymentSessionStatus returns failed for past_due", async () => {
+test("PaddleBillingPaymentGateway fetchPaymentSessionStatus returns failed for past_due [billing-payment-gateway]", async () => {
   const mockFetch = async () => ({
     ok: true,
     status: 200,
@@ -865,7 +865,7 @@ test("PaddleBillingPaymentGateway fetchPaymentSessionStatus returns failed for p
   assert.equal(result?.status, "failed");
 });
 
-test("PaddleBillingPaymentGateway fetchPaymentSessionStatus returns failed for failed status", async () => {
+test("PaddleBillingPaymentGateway fetchPaymentSessionStatus returns failed for failed status [billing-payment-gateway]", async () => {
   const mockFetch = async () => ({
     ok: true,
     status: 200,
@@ -892,7 +892,7 @@ test("PaddleBillingPaymentGateway fetchPaymentSessionStatus returns failed for f
   assert.equal(result?.status, "failed");
 });
 
-test("PaddleBillingPaymentGateway fetchPaymentSessionStatus returns pending for unknown status", async () => {
+test("PaddleBillingPaymentGateway fetchPaymentSessionStatus returns pending for unknown status [billing-payment-gateway]", async () => {
   const mockFetch = async () => ({
     ok: true,
     status: 200,
@@ -919,7 +919,7 @@ test("PaddleBillingPaymentGateway fetchPaymentSessionStatus returns pending for 
   assert.equal(result?.status, "pending");
 });
 
-test("PaddleBillingPaymentGateway fetchPaymentSessionStatus throws ProviderError on error", async () => {
+test("PaddleBillingPaymentGateway fetchPaymentSessionStatus throws ProviderError on error [billing-payment-gateway]", async () => {
   const mockFetch = async () => ({
     ok: false,
     status: 404,
@@ -951,7 +951,7 @@ test("PaddleBillingPaymentGateway fetchPaymentSessionStatus throws ProviderError
   );
 });
 
-test("PaddleBillingPaymentGateway fetchPaymentSessionStatus throws ValidationError on mismatched ID", async () => {
+test("PaddleBillingPaymentGateway fetchPaymentSessionStatus throws ValidationError on mismatched ID [billing-payment-gateway]", async () => {
   const mockFetch = async () => ({
     ok: true,
     status: 200,
@@ -988,7 +988,7 @@ test("PaddleBillingPaymentGateway fetchPaymentSessionStatus throws ValidationErr
   );
 });
 
-test("PaddleBillingPaymentGateway fetchPaymentSessionStatus uses current time when updated_at missing", async () => {
+test("PaddleBillingPaymentGateway fetchPaymentSessionStatus uses current time when updated_at missing [billing-payment-gateway]", async () => {
   const mockFetch = async () => ({
     ok: true,
     status: 200,
@@ -1018,7 +1018,7 @@ test("PaddleBillingPaymentGateway fetchPaymentSessionStatus uses current time wh
   assert.ok(result!.occurredAt <= after);
 });
 
-test("PaddleBillingPaymentGateway uses default API URL when not provided", async () => {
+test("PaddleBillingPaymentGateway uses default API URL when not provided [billing-payment-gateway]", async () => {
   let capturedUrl;
   const mockFetch = async (url) => {
     capturedUrl = url;

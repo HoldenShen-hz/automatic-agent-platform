@@ -20,13 +20,13 @@
  * ## Key Concepts
  *
  * - **Tier 1 Event**: Event that must be reliably delivered and cannot be silently lost
- *   * See: {@link https://github.com/automatic-agent/automatic_agent_platform/blob/main/docs_zh/governance/glossary_and_terminology.md | Glossary: tier 1 event}
+ *   * See: {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/governance/glossary_and_terminology.md | Glossary: tier 1 event}
  *
  * - **Ack**: Record that consumer has confirmed processing
- *   * See: {@link https://github.com/automatic-agent/automatic_agent_platform/blob/main/docs_zh/governance/glossary_and_terminology.md | Glossary: ack}
+ *   * See: {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/governance/glossary_and_terminology.md | Glossary: ack}
  *
  * - **Consumer**: Projection maintaining materialized view of event data
- *   * See: {@link https://github.com/automatic-agent/automatic_agent_platform/blob/main/docs_zh/governance/glossary_and_terminology.md | Glossary: consumer}
+ *   * See: {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/governance/glossary_and_terminology.md | Glossary: consumer}
  *
  * @see Event Registry Contract: docs_zh/contracts/event_registry_and_ops_threshold_contract.md
  * @see Event Bus Contract: docs_zh/contracts/event_bus_contract.md

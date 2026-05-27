@@ -6,7 +6,7 @@ import {
   type ReservedCapacityAllocation,
 } from "../../../../../src/scale-ecosystem/sla-engine/resource-allocator/index.js";
 
-test("allocateReservedCapacity calculates correct allocations", () => {
+test("allocateReservedCapacity calculates correct allocations [index]", () => {
   const allocations: readonly ReservedCapacityAllocation[] = [
     { tierId: "tier1", reservedPercent: 50 },
     { tierId: "tier2", reservedPercent: 30 },
@@ -18,7 +18,7 @@ test("allocateReservedCapacity calculates correct allocations", () => {
   assert.equal(result["tier2"], 30);
 });
 
-test("allocateReservedCapacity handles zero totalUnits", () => {
+test("allocateReservedCapacity handles zero totalUnits [index]", () => {
   const allocations: readonly ReservedCapacityAllocation[] = [
     { tierId: "tier1", reservedPercent: 50 },
   ];
@@ -28,13 +28,13 @@ test("allocateReservedCapacity handles zero totalUnits", () => {
   assert.equal(result["tier1"], 0);
 });
 
-test("allocateReservedCapacity handles empty allocations", () => {
+test("allocateReservedCapacity handles empty allocations [index]", () => {
   const result = allocateReservedCapacity(100, []);
 
   assert.deepEqual(result, {});
 });
 
-test("allocateReservedCapacity floors fractional results", () => {
+test("allocateReservedCapacity floors fractional results [index]", () => {
   const allocations: readonly ReservedCapacityAllocation[] = [
     { tierId: "tier1", reservedPercent: 33 },
   ];
@@ -45,7 +45,7 @@ test("allocateReservedCapacity floors fractional results", () => {
   assert.equal(result["tier1"], 33);
 });
 
-test("allocateReservedCapacity handles 100 percent", () => {
+test("allocateReservedCapacity handles 100 percent [index]", () => {
   const allocations: readonly ReservedCapacityAllocation[] = [
     { tierId: "tier1", reservedPercent: 100 },
   ];
@@ -55,7 +55,7 @@ test("allocateReservedCapacity handles 100 percent", () => {
   assert.equal(result["tier1"], 100);
 });
 
-test("allocateReservedCapacity handles multiple tiers", () => {
+test("allocateReservedCapacity handles multiple tiers [index]", () => {
   const allocations: readonly ReservedCapacityAllocation[] = [
     { tierId: "gold", reservedPercent: 60 },
     { tierId: "silver", reservedPercent: 30 },

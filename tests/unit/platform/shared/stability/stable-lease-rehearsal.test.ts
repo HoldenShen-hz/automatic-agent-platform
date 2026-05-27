@@ -21,7 +21,7 @@ function createTempDir(): string {
   return join("/tmp", `lease-rehearsal-test-${Date.now()}`);
 }
 
-test("runStableLeaseRehearsal executes all four scenarios successfully", async () => {
+test("runStableLeaseRehearsal executes all four scenarios successfully [stable-lease-rehearsal]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableLeaseRehearsal({ outputDir });
@@ -40,7 +40,7 @@ test("runStableLeaseRehearsal executes all four scenarios successfully", async (
   }
 });
 
-test("lease_reclaim_increments_fencing scenario passes", async () => {
+test("lease_reclaim_increments_fencing scenario passes [stable-lease-rehearsal]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableLeaseRehearsal({ outputDir });
@@ -57,7 +57,7 @@ test("lease_reclaim_increments_fencing scenario passes", async () => {
   }
 });
 
-test("stale_write_rejected_after_failover scenario passes", async () => {
+test("stale_write_rejected_after_failover scenario passes [stable-lease-rehearsal]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableLeaseRehearsal({ outputDir });
@@ -74,7 +74,7 @@ test("stale_write_rejected_after_failover scenario passes", async () => {
   }
 });
 
-test("lease_handover_preserves_lineage scenario passes", async () => {
+test("lease_handover_preserves_lineage scenario passes [stable-lease-rehearsal]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableLeaseRehearsal({ outputDir });
@@ -91,7 +91,7 @@ test("lease_handover_preserves_lineage scenario passes", async () => {
   }
 });
 
-test("worker_registry_capacity_visible scenario passes", async () => {
+test("worker_registry_capacity_visible scenario passes [stable-lease-rehearsal]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableLeaseRehearsal({ outputDir });
@@ -108,7 +108,7 @@ test("worker_registry_capacity_visible scenario passes", async () => {
   }
 });
 
-test("writeStableLeaseRehearsalReport writes valid JSON", async () => {
+test("writeStableLeaseRehearsalReport writes valid JSON [stable-lease-rehearsal]", async () => {
   const outputDir = createTempDir();
   const reportPath = join(outputDir, "report.json");
   try {
@@ -130,7 +130,7 @@ test("writeStableLeaseRehearsalReport writes valid JSON", async () => {
   }
 });
 
-test("report contains valid startedAt and finishedAt timestamps", async () => {
+test("report contains valid startedAt and finishedAt timestamps [stable-lease-rehearsal]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableLeaseRehearsal({ outputDir });
@@ -149,7 +149,7 @@ test("report contains valid startedAt and finishedAt timestamps", async () => {
   }
 });
 
-test("report outputDir matches options", async () => {
+test("report outputDir matches options [stable-lease-rehearsal]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableLeaseRehearsal({ outputDir });

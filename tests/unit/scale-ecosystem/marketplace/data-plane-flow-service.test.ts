@@ -23,7 +23,7 @@ function createHarness(prefix: string) {
   return { workspace, db, store, tenantPlatform, service };
 }
 
-test("DataPlaneFlowService creates tenant-aware analytics/archive/replay objects and movement summary", () => {
+test("DataPlaneFlowService creates tenant-aware analytics/archive/replay objects and movement summary [data-plane-flow-service]", () => {
   const harness = createHarness("aa-data-plane-unit-");
   try {
     const organization = harness.tenantPlatform.createOrganization({
@@ -154,7 +154,7 @@ test("DataPlaneFlowService creates tenant-aware analytics/archive/replay objects
   }
 });
 
-test("DataPlaneFlowService tracks movement jobs across multiple statuses", () => {
+test("DataPlaneFlowService tracks movement jobs across multiple statuses [data-plane-flow-service]", () => {
   const harness = createHarness("aa-data-plane-multi-");
   try {
     const org = harness.tenantPlatform.createOrganization({

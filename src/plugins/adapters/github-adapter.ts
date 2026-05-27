@@ -1,6 +1,7 @@
 import type { ExternalAdapterPlugin } from "../../domains/registry/plugin-spi.js";
 import { PolicyDeniedError } from "../../platform/contracts/errors.js";
 import { NetworkEgressPolicyService } from "../../platform/five-plane-control-plane/iam/network-egress-policy.js";
+import { parseSafeOutboundUrl } from "../../platform/five-plane-control-plane/iam/outbound-url-policy.js";
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 
 // R8-25 FIX: Plugin signature verification for secure plugin loading
@@ -88,13 +89,10 @@ function requireString(value: unknown, field: string): string {
 }
 
 function normalizeApiBaseUrl(value: string | undefined): string {
-  const raw = (value ?? "https://api.github.com").trim();
-  let parsed: URL;
-  try {
-    parsed = new URL(raw);
-  } catch {
-    throw new Error("github_adapter.invalid_api_base_url");
-  }
+  const parsed = parseSafeOutboundUrl((value ?? "https://api.github.com").trim(), {
+    invalid: "github_adapter.invalid_api_base_url",
+    blocked: "github_adapter.blocked_api_base_url",
+  });
   if (parsed.protocol !== "https:") {
     throw new Error("github_adapter.invalid_api_base_url_protocol");
   }

@@ -8,7 +8,7 @@ import { AuthoritativeTaskStore } from "../../../../src/platform/five-plane-stat
 import { SqliteDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite-database.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 
-test("perception service deduplicates intel items and excludes expired items from briefs", () => {
+test("perception service deduplicates intel items and excludes expired items from briefs [perception-service]", () => {
   const workspace = createTempWorkspace("aa-perception-unit-");
   const dbPath = join(workspace, "perception.db");
 
@@ -88,7 +88,7 @@ test("perception service deduplicates intel items and excludes expired items fro
   }
 });
 
-test("perception service respects billing feature entitlements when a billing account is provided", () => {
+test("perception service respects billing feature entitlements when a billing account is provided [perception-service]", () => {
   const workspace = createTempWorkspace("aa-perception-billing-");
   const dbPath = join(workspace, "perception-billing.db");
 
@@ -132,7 +132,7 @@ test("perception service respects billing feature entitlements when a billing ac
   }
 });
 
-test("perception service scopes sources, briefs, and proposals by tenant", () => {
+test("perception service scopes sources, briefs, and proposals by tenant [perception-service]", () => {
   const workspace = createTempWorkspace("aa-perception-tenant-");
   const dbPath = join(workspace, "perception-tenant.db");
 

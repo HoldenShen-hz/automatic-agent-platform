@@ -4,14 +4,14 @@ import assert from "node:assert/strict";
 import { isElevatedPriority, resolveDispatchBackpressureReason } from "../../../src/platform/five-plane-execution/dispatcher/execution-dispatch-support.js";
 import type { ExecutionTicketRecord } from "../../../src/platform/contracts/types/domain.js";
 
-test("isElevatedPriority returns true for high and urgent", () => {
+test("isElevatedPriority returns true for high and urgent [execution-dispatch-support-utils]", () => {
   assert.equal(isElevatedPriority("high"), true);
   assert.equal(isElevatedPriority("urgent"), true);
   assert.equal(isElevatedPriority("normal"), false);
   assert.equal(isElevatedPriority("low"), false);
 });
 
-test("resolveDispatchBackpressureReason returns null when snapshot is null", () => {
+test("resolveDispatchBackpressureReason returns null when snapshot is null [execution-dispatch-support-utils]", () => {
   const result = resolveDispatchBackpressureReason(
     { priority: "high" } as unknown as ExecutionTicketRecord,
     null,
@@ -19,7 +19,7 @@ test("resolveDispatchBackpressureReason returns null when snapshot is null", () 
   assert.equal(result, null);
 });
 
-test("resolveDispatchBackpressureReason returns read_only_mode for read_only_operations_only degradation", () => {
+test("resolveDispatchBackpressureReason returns read_only_mode for read_only_operations_only degradation [execution-dispatch-support-utils]", () => {
   const result = resolveDispatchBackpressureReason(
     { priority: "normal" } as unknown as ExecutionTicketRecord,
     { degradationMode: "read_only_operations_only", queueGovernance: { starvationDetected: false } },
@@ -27,7 +27,7 @@ test("resolveDispatchBackpressureReason returns read_only_mode for read_only_ope
   assert.equal(result, "backpressure.read_only_mode");
 });
 
-test("resolveDispatchBackpressureReason returns null for elevated priority during pause_non_critical", () => {
+test("resolveDispatchBackpressureReason returns null for elevated priority during pause_non_critical [execution-dispatch-support-utils]", () => {
   const result = resolveDispatchBackpressureReason(
     { priority: "high" } as unknown as ExecutionTicketRecord,
     { degradationMode: "pause_non_critical", queueGovernance: { starvationDetected: false } },
@@ -35,7 +35,7 @@ test("resolveDispatchBackpressureReason returns null for elevated priority durin
   assert.equal(result, null);
 });
 
-test("resolveDispatchBackpressureReason returns backpressure.pause_non_critical for non-elevated during pause_non_critical", () => {
+test("resolveDispatchBackpressureReason returns backpressure.pause_non_critical for non-elevated during pause_non_critical [execution-dispatch-support-utils]", () => {
   const result = resolveDispatchBackpressureReason(
     { priority: "normal" } as unknown as ExecutionTicketRecord,
     { degradationMode: "pause_non_critical", queueGovernance: { starvationDetected: false } },
@@ -43,7 +43,7 @@ test("resolveDispatchBackpressureReason returns backpressure.pause_non_critical 
   assert.equal(result, "backpressure.pause_non_critical");
 });
 
-test("resolveDispatchBackpressureReason returns starvation_protection for low priority with starvation", () => {
+test("resolveDispatchBackpressureReason returns starvation_protection for low priority with starvation [execution-dispatch-support-utils]", () => {
   const result = resolveDispatchBackpressureReason(
     { priority: "low" } as unknown as ExecutionTicketRecord,
     { degradationMode: "queue_only", queueGovernance: { starvationDetected: true } },
@@ -51,7 +51,7 @@ test("resolveDispatchBackpressureReason returns starvation_protection for low pr
   assert.equal(result, "backpressure.starvation_protection");
 });
 
-test("resolveDispatchBackpressureReason returns backpressure.queue_only for non-elevated during queue_only", () => {
+test("resolveDispatchBackpressureReason returns backpressure.queue_only for non-elevated during queue_only [execution-dispatch-support-utils]", () => {
   const result = resolveDispatchBackpressureReason(
     { priority: "normal" } as unknown as ExecutionTicketRecord,
     { degradationMode: "queue_only", queueGovernance: { starvationDetected: false } },
@@ -59,7 +59,7 @@ test("resolveDispatchBackpressureReason returns backpressure.queue_only for non-
   assert.equal(result, "backpressure.queue_only");
 });
 
-test("resolveDispatchBackpressureReason returns null when no conditions match", () => {
+test("resolveDispatchBackpressureReason returns null when no conditions match [execution-dispatch-support-utils]", () => {
   const result = resolveDispatchBackpressureReason(
     { priority: "high" } as unknown as ExecutionTicketRecord,
     { degradationMode: "queue_only", queueGovernance: { starvationDetected: false } },

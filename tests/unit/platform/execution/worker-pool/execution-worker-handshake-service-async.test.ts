@@ -52,18 +52,18 @@ function makeAsyncService(): ExecutionWorkerHandshakeServiceAsync {
 // Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("ExecutionWorkerHandshakeServiceAsync is instantiable", () => {
+test("ExecutionWorkerHandshakeServiceAsync is instantiable [execution-worker-handshake-service-async]", () => {
   const service = makeAsyncService();
   assert.ok(service != null);
 });
 
-test("ExecutionWorkerHandshakeServiceAsync.getSyncService returns underlying sync service", () => {
+test("ExecutionWorkerHandshakeServiceAsync.getSyncService returns underlying sync service [execution-worker-handshake-service-async]", () => {
   const service = makeAsyncService();
   const sync = service.getSyncService();
   assert.ok(sync != null);
 });
 
-test("claimExecution returns a promise resolving to WorkerHandshakeDecision", async () => {
+test("claimExecution returns a promise resolving to WorkerHandshakeDecision [execution-worker-handshake-service-async]", async () => {
   const service = makeAsyncService();
   const decision = await service.claimExecution({
     ticketId: "ticket_1",
@@ -76,7 +76,7 @@ test("claimExecution returns a promise resolving to WorkerHandshakeDecision", as
   assert.ok(typeof decision.accepted === "boolean");
 });
 
-test("recordHeartbeat returns a promise resolving to WorkerHandshakeDecision", async () => {
+test("recordHeartbeat returns a promise resolving to WorkerHandshakeDecision [execution-worker-handshake-service-async]", async () => {
   const service = makeAsyncService();
   const decision = await service.recordHeartbeat({
     executionId: "exec_1",
@@ -89,7 +89,7 @@ test("recordHeartbeat returns a promise resolving to WorkerHandshakeDecision", a
   assert.ok(typeof decision.accepted === "boolean");
 });
 
-test("claimExecution promise resolves with execution_not_found when no ticket", async () => {
+test("claimExecution promise resolves with execution_not_found when no ticket [execution-worker-handshake-service-async]", async () => {
   const service = makeAsyncService();
   const decision = await service.claimExecution({
     ticketId: "nonexistent_ticket",
@@ -101,7 +101,7 @@ test("claimExecution promise resolves with execution_not_found when no ticket", 
   assert.equal(decision.reasonCode, "ticket_not_found");
 });
 
-test("recordHeartbeat promise resolves with execution_not_found when no execution", async () => {
+test("recordHeartbeat promise resolves with execution_not_found when no execution [execution-worker-handshake-service-async]", async () => {
   const service = makeAsyncService();
   const decision = await service.recordHeartbeat({
     executionId: "nonexistent_exec",

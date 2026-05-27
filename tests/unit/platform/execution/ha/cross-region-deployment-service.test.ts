@@ -18,7 +18,7 @@ import {
 // Tests: DDL and Constants
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("CROSS_REGION_DDL is defined and contains required tables", () => {
+test("CROSS_REGION_DDL is defined and contains required tables [cross-region-deployment-service]", () => {
   assert.ok(CROSS_REGION_DDL.includes("CREATE TABLE IF NOT EXISTS regions"));
   assert.ok(CROSS_REGION_DDL.includes("CREATE TABLE IF NOT EXISTS region_topologies"));
   assert.ok(CROSS_REGION_DDL.includes("CREATE TABLE IF NOT EXISTS traffic_weights"));
@@ -26,7 +26,7 @@ test("CROSS_REGION_DDL is defined and contains required tables", () => {
   assert.ok(CROSS_REGION_DDL.includes("CREATE TABLE IF NOT EXISTS failover_plans"));
 });
 
-test("CROSS_REGION_DDL contains required indexes", () => {
+test("CROSS_REGION_DDL contains required indexes [cross-region-deployment-service]", () => {
   assert.ok(CROSS_REGION_DDL.includes("CREATE INDEX IF NOT EXISTS idx_regions_status"));
   assert.ok(CROSS_REGION_DDL.includes("CREATE INDEX IF NOT EXISTS idx_topologies_active"));
 });
@@ -35,7 +35,7 @@ test("CROSS_REGION_DDL contains required indexes", () => {
 // Tests: Type Definitions
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("RegionStatus type accepts valid values", () => {
+test("RegionStatus type accepts valid values [cross-region-deployment-service]", () => {
   const statuses: RegionStatus[] = ["active", "draining", "failing_over", "offline", "degraded"];
 
   for (const status of statuses) {
@@ -43,7 +43,7 @@ test("RegionStatus type accepts valid values", () => {
   }
 });
 
-test("RoutingStrategy type accepts valid values", () => {
+test("RoutingStrategy type accepts valid values [cross-region-deployment-service]", () => {
   const strategies: RoutingStrategy[] = ["latency_based", "weighted", "failover", "geo", "custom"];
 
   for (const strategy of strategies) {
@@ -51,7 +51,7 @@ test("RoutingStrategy type accepts valid values", () => {
   }
 });
 
-test("Region interface can be constructed", () => {
+test("Region interface can be constructed [cross-region-deployment-service]", () => {
   const region: Region = {
     regionId: "region-1",
     name: "US East 1",
@@ -74,7 +74,7 @@ test("Region interface can be constructed", () => {
   assert.ok(region.healthScore >= 0 && region.healthScore <= 100);
 });
 
-test("RegionTopology interface can be constructed", () => {
+test("RegionTopology interface can be constructed [cross-region-deployment-service]", () => {
   const topology: RegionTopology = {
     topologyId: "topo-1",
     name: "Primary",
@@ -91,7 +91,7 @@ test("RegionTopology interface can be constructed", () => {
   assert.equal(topology.defaultRoutingStrategy, "latency_based");
 });
 
-test("RoutingDecision interface can be constructed", () => {
+test("RoutingDecision interface can be constructed [cross-region-deployment-service]", () => {
   const decision: RoutingDecision = {
     selectedRegionId: "region-1",
     routingStrategy: "latency_based",
@@ -104,7 +104,7 @@ test("RoutingDecision interface can be constructed", () => {
   assert.equal(decision.fallbackUsed, false);
 });
 
-test("RegionEvaluation interface can be constructed", () => {
+test("RegionEvaluation interface can be constructed [cross-region-deployment-service]", () => {
   const evaluation: RegionEvaluation = {
     regionId: "region-1",
     eligible: true,
@@ -118,7 +118,7 @@ test("RegionEvaluation interface can be constructed", () => {
   assert.ok(evaluation.score !== null);
 });
 
-test("TrafficWeight interface can be constructed", () => {
+test("TrafficWeight interface can be constructed [cross-region-deployment-service]", () => {
   const weight: TrafficWeight = {
     regionId: "region-1",
     weight: 75,
@@ -129,7 +129,7 @@ test("TrafficWeight interface can be constructed", () => {
   assert.equal(weight.weight, 75);
 });
 
-test("RegionHealthCheck interface can be constructed", () => {
+test("RegionHealthCheck interface can be constructed [cross-region-deployment-service]", () => {
   const check: RegionHealthCheck = {
     checkId: "check-1",
     regionId: "region-1",
@@ -144,7 +144,7 @@ test("RegionHealthCheck interface can be constructed", () => {
   assert.ok(check.healthScore >= 0 && check.healthScore <= 100);
 });
 
-test("FailoverPlan interface can be constructed", () => {
+test("FailoverPlan interface can be constructed [cross-region-deployment-service]", () => {
   const plan: FailoverPlan = {
     planId: "plan-1",
     sourceRegionId: "region-1",
@@ -160,7 +160,7 @@ test("FailoverPlan interface can be constructed", () => {
   assert.equal(plan.status, "pending");
 });
 
-test("FailoverPlan cause type accepts valid values", () => {
+test("FailoverPlan cause type accepts valid values [cross-region-deployment-service]", () => {
   const causes: FailoverPlan["cause"][] = [
     "health_check_failed",
     "manual",
@@ -173,7 +173,7 @@ test("FailoverPlan cause type accepts valid values", () => {
   }
 });
 
-test("FailoverPlan status type accepts valid values", () => {
+test("FailoverPlan status type accepts valid values [cross-region-deployment-service]", () => {
   const statuses: FailoverPlan["status"][] = [
     "pending",
     "in_progress",
@@ -187,7 +187,7 @@ test("FailoverPlan status type accepts valid values", () => {
   }
 });
 
-test("Region health score is validated (0-100 range)", () => {
+test("Region health score is validated (0-100 range) [cross-region-deployment-service]", () => {
   const region: Region = {
     regionId: "region-1",
     name: "Test",
@@ -208,7 +208,7 @@ test("Region health score is validated (0-100 range)", () => {
   assert.ok(region.healthScore >= 0 && region.healthScore <= 100);
 });
 
-test("Region with null latency is allowed", () => {
+test("Region with null latency is allowed [cross-region-deployment-service]", () => {
   const region: Region = {
     regionId: "region-1",
     name: "Test",
@@ -229,7 +229,7 @@ test("Region with null latency is allowed", () => {
   assert.equal(region.latencyMs, null);
 });
 
-test("RegionTopology with regions array", () => {
+test("RegionTopology with regions array [cross-region-deployment-service]", () => {
   const region: Region = {
     regionId: "region-1",
     name: "Test",
@@ -263,7 +263,7 @@ test("RegionTopology with regions array", () => {
   assert.equal(topology.regions[0]!.regionId, "region-1");
 });
 
-test("TrafficWeight with expiration", () => {
+test("TrafficWeight with expiration [cross-region-deployment-service]", () => {
   const weight: TrafficWeight = {
     regionId: "region-1",
     weight: 50,
@@ -275,7 +275,7 @@ test("TrafficWeight with expiration", () => {
   assert.ok(new Date(weight.expiresAt!).getTime() > Date.now());
 });
 
-test("RoutingDecision with fallback", () => {
+test("RoutingDecision with fallback [cross-region-deployment-service]", () => {
   const decision: RoutingDecision = {
     selectedRegionId: "region-1",
     routingStrategy: "weighted",
@@ -287,7 +287,7 @@ test("RoutingDecision with fallback", () => {
   assert.equal(decision.fallbackUsed, true);
 });
 
-test("RegionEvaluation ineligible with reason", () => {
+test("RegionEvaluation ineligible with reason [cross-region-deployment-service]", () => {
   const evaluation: RegionEvaluation = {
     regionId: "region-1",
     eligible: false,
@@ -302,7 +302,7 @@ test("RegionEvaluation ineligible with reason", () => {
   assert.ok(evaluation.reasonCode.length > 0);
 });
 
-test("RegionEvaluation at capacity", () => {
+test("RegionEvaluation at capacity [cross-region-deployment-service]", () => {
   const evaluation: RegionEvaluation = {
     regionId: "region-1",
     eligible: false,
@@ -315,7 +315,7 @@ test("RegionEvaluation at capacity", () => {
   assert.equal(evaluation.reasonCode, "at_capacity");
 });
 
-test("RegionEvaluation health score too low", () => {
+test("RegionEvaluation health score too low [cross-region-deployment-service]", () => {
   const evaluation: RegionEvaluation = {
     regionId: "region-1",
     eligible: false,
@@ -328,7 +328,7 @@ test("RegionEvaluation health score too low", () => {
   assert.equal(evaluation.reasonCode, "health_score_too_low");
 });
 
-test("FailoverPlan with steps", () => {
+test("FailoverPlan with steps [cross-region-deployment-service]", () => {
   const plan: FailoverPlan = {
     planId: "plan-1",
     sourceRegionId: "region-1",
@@ -359,7 +359,7 @@ test("FailoverPlan with steps", () => {
   assert.equal(plan.status, "completed");
 });
 
-test("FailoverPlan with failed step", () => {
+test("FailoverPlan with failed step [cross-region-deployment-service]", () => {
   const plan: FailoverPlan = {
     planId: "plan-1",
     sourceRegionId: "region-1",

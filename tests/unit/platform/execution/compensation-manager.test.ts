@@ -45,7 +45,7 @@ function createContext(): CompensationContext {
   };
 }
 
-test("CompensationManager creates compensation record", () => {
+test("CompensationManager creates compensation record [compensation-manager]", () => {
   const manager = new CompensationManager();
   const sideEffect = createSideEffect("compensation_required");
 
@@ -60,7 +60,7 @@ test("CompensationManager creates compensation record", () => {
   assert.ok(result.planRef);
 });
 
-test("CompensationManager creates compensation record with status", () => {
+test("CompensationManager creates compensation record with status [compensation-manager]", () => {
   const manager = new CompensationManager();
   const sideEffect = createSideEffect("compensation_required");
 
@@ -76,49 +76,49 @@ test("CompensationManager creates compensation record with status", () => {
 
 // ── isCompensatable Tests ─────────────────────────────────────────────────────
 
-test("CompensationManager: isCompensatable returns true for ambiguous status", () => {
+test("CompensationManager: isCompensatable returns true for ambiguous status [compensation-manager]", () => {
   const manager = new CompensationManager();
   const sideEffect = createSideEffect("ambiguous");
 
   assert.equal(manager.isCompensatable(sideEffect), true);
 });
 
-test("CompensationManager: isCompensatable returns true for compensation_required status", () => {
+test("CompensationManager: isCompensatable returns true for compensation_required status [compensation-manager]", () => {
   const manager = new CompensationManager();
   const sideEffect = createSideEffect("compensation_required");
 
   assert.equal(manager.isCompensatable(sideEffect), true);
 });
 
-test("CompensationManager: isCompensatable returns true for failed status", () => {
+test("CompensationManager: isCompensatable returns true for failed status [compensation-manager]", () => {
   const manager = new CompensationManager();
   const sideEffect = createSideEffect("failed");
 
   assert.equal(manager.isCompensatable(sideEffect), true);
 });
 
-test("CompensationManager: isCompensatable returns false for confirmed status", () => {
+test("CompensationManager: isCompensatable returns false for confirmed status [compensation-manager]", () => {
   const manager = new CompensationManager();
   const sideEffect = createSideEffect("confirmed");
 
   assert.equal(manager.isCompensatable(sideEffect), false);
 });
 
-test("CompensationManager: isCompensatable returns false for compensated status", () => {
+test("CompensationManager: isCompensatable returns false for compensated status [compensation-manager]", () => {
   const manager = new CompensationManager();
   const sideEffect = createSideEffect("compensated");
 
   assert.equal(manager.isCompensatable(sideEffect), false);
 });
 
-test("CompensationManager: isCompensatable returns false for committed status", () => {
+test("CompensationManager: isCompensatable returns false for committed status [compensation-manager]", () => {
   const manager = new CompensationManager();
   const sideEffect = createSideEffect("committed");
 
   assert.equal(manager.isCompensatable(sideEffect), false);
 });
 
-test("CompensationManager: isCompensatable returns false for reconciling status", () => {
+test("CompensationManager: isCompensatable returns false for reconciling status [compensation-manager]", () => {
   const manager = new CompensationManager();
   const sideEffect = createSideEffect("reconciling");
 
@@ -127,7 +127,7 @@ test("CompensationManager: isCompensatable returns false for reconciling status"
 
 // ── getNextCompensationStatus Tests ──────────────────────────────────────────
 
-test("CompensationManager: getNextCompensationStatus planned -> approve -> running", () => {
+test("CompensationManager: getNextCompensationStatus planned -> approve -> running [compensation-manager]", () => {
   const manager = new CompensationManager();
 
   const next = manager.getNextCompensationStatus("planned", "approve");
@@ -135,7 +135,7 @@ test("CompensationManager: getNextCompensationStatus planned -> approve -> runni
   assert.equal(next, "running");
 });
 
-test("CompensationManager: getNextCompensationStatus planned -> escalate -> requires_human", () => {
+test("CompensationManager: getNextCompensationStatus planned -> escalate -> requires_human [compensation-manager]", () => {
   const manager = new CompensationManager();
 
   const next = manager.getNextCompensationStatus("planned", "escalate");
@@ -143,7 +143,7 @@ test("CompensationManager: getNextCompensationStatus planned -> escalate -> requ
   assert.equal(next, "requires_human");
 });
 
-test("CompensationManager: getNextCompensationStatus running -> confirm -> succeeded", () => {
+test("CompensationManager: getNextCompensationStatus running -> confirm -> succeeded [compensation-manager]", () => {
   const manager = new CompensationManager();
 
   const next = manager.getNextCompensationStatus("running", "confirm");
@@ -151,7 +151,7 @@ test("CompensationManager: getNextCompensationStatus running -> confirm -> succe
   assert.equal(next, "succeeded");
 });
 
-test("CompensationManager: getNextCompensationStatus running -> fail -> failed", () => {
+test("CompensationManager: getNextCompensationStatus running -> fail -> failed [compensation-manager]", () => {
   const manager = new CompensationManager();
 
   const next = manager.getNextCompensationStatus("running", "fail");
@@ -159,7 +159,7 @@ test("CompensationManager: getNextCompensationStatus running -> fail -> failed",
   assert.equal(next, "failed");
 });
 
-test("CompensationManager: getNextCompensationStatus running -> commit stays running", () => {
+test("CompensationManager: getNextCompensationStatus running -> commit stays running [compensation-manager]", () => {
   const manager = new CompensationManager();
 
   const next = manager.getNextCompensationStatus("running", "commit");
@@ -167,7 +167,7 @@ test("CompensationManager: getNextCompensationStatus running -> commit stays run
   assert.equal(next, "running");
 });
 
-test("CompensationManager: getNextCompensationStatus succeeded has no transitions", () => {
+test("CompensationManager: getNextCompensationStatus succeeded has no transitions [compensation-manager]", () => {
   const manager = new CompensationManager();
 
   const next = manager.getNextCompensationStatus("succeeded", "approve");
@@ -175,7 +175,7 @@ test("CompensationManager: getNextCompensationStatus succeeded has no transition
   assert.equal(next, null);
 });
 
-test("CompensationManager: getNextCompensationStatus failed -> plan -> planned", () => {
+test("CompensationManager: getNextCompensationStatus failed -> plan -> planned [compensation-manager]", () => {
   const manager = new CompensationManager();
 
   const next = manager.getNextCompensationStatus("failed", "plan");
@@ -183,7 +183,7 @@ test("CompensationManager: getNextCompensationStatus failed -> plan -> planned",
   assert.equal(next, "planned");
 });
 
-test("CompensationManager: getNextCompensationStatus requires_human -> plan -> planned", () => {
+test("CompensationManager: getNextCompensationStatus requires_human -> plan -> planned [compensation-manager]", () => {
   const manager = new CompensationManager();
 
   const next = manager.getNextCompensationStatus("requires_human", "plan");
@@ -193,7 +193,7 @@ test("CompensationManager: getNextCompensationStatus requires_human -> plan -> p
 
 // ── getTargetSideEffectStatus Tests ───────────────────────────────────────────
 
-test("CompensationManager: getTargetSideEffectStatus succeeded -> compensated", () => {
+test("CompensationManager: getTargetSideEffectStatus succeeded -> compensated [compensation-manager]", () => {
   const manager = new CompensationManager();
 
   const status = manager.getTargetSideEffectStatus("succeeded");
@@ -201,7 +201,7 @@ test("CompensationManager: getTargetSideEffectStatus succeeded -> compensated", 
   assert.equal(status, "compensated");
 });
 
-test("CompensationManager: getTargetSideEffectStatus failed -> failed", () => {
+test("CompensationManager: getTargetSideEffectStatus failed -> failed [compensation-manager]", () => {
   const manager = new CompensationManager();
 
   const status = manager.getTargetSideEffectStatus("failed");
@@ -209,7 +209,7 @@ test("CompensationManager: getTargetSideEffectStatus failed -> failed", () => {
   assert.equal(status, "failed");
 });
 
-test("CompensationManager: getTargetSideEffectStatus requires_human -> manual_review_required", () => {
+test("CompensationManager: getTargetSideEffectStatus requires_human -> manual_review_required [compensation-manager]", () => {
   const manager = new CompensationManager();
 
   const status = manager.getTargetSideEffectStatus("requires_human");
@@ -217,7 +217,7 @@ test("CompensationManager: getTargetSideEffectStatus requires_human -> manual_re
   assert.equal(status, "manual_review_required");
 });
 
-test("CompensationManager: getTargetSideEffectStatus running -> compensating", () => {
+test("CompensationManager: getTargetSideEffectStatus running -> compensating [compensation-manager]", () => {
   const manager = new CompensationManager();
 
   const status = manager.getTargetSideEffectStatus("running");
@@ -225,7 +225,7 @@ test("CompensationManager: getTargetSideEffectStatus running -> compensating", (
   assert.equal(status, "compensating");
 });
 
-test("CompensationManager: getTargetSideEffectStatus planned -> compensating", () => {
+test("CompensationManager: getTargetSideEffectStatus planned -> compensating [compensation-manager]", () => {
   const manager = new CompensationManager();
 
   const status = manager.getTargetSideEffectStatus("planned");
@@ -235,19 +235,19 @@ test("CompensationManager: getTargetSideEffectStatus planned -> compensating", (
 
 // ── requiresHumanApproval Tests ───────────────────────────────────────────────
 
-test("CompensationManager: requiresHumanApproval high -> true", () => {
+test("CompensationManager: requiresHumanApproval high -> true [compensation-manager]", () => {
   const manager = new CompensationManager();
 
   assert.equal(manager.requiresHumanApproval("high"), true);
 });
 
-test("CompensationManager: requiresHumanApproval medium -> true", () => {
+test("CompensationManager: requiresHumanApproval medium -> true [compensation-manager]", () => {
   const manager = new CompensationManager();
 
   assert.equal(manager.requiresHumanApproval("medium"), true);
 });
 
-test("CompensationManager: requiresHumanApproval low -> false", () => {
+test("CompensationManager: requiresHumanApproval low -> false [compensation-manager]", () => {
   const manager = new CompensationManager();
 
   assert.equal(manager.requiresHumanApproval("low"), false);
@@ -255,7 +255,7 @@ test("CompensationManager: requiresHumanApproval low -> false", () => {
 
 // ── validateCompensationPreconditions Tests ───────────────────────────────────
 
-test("CompensationManager: validateCompensationPreconditions valid for ambiguous", () => {
+test("CompensationManager: validateCompensationPreconditions valid for ambiguous [compensation-manager]", () => {
   const manager = new CompensationManager();
   const sideEffect = createSideEffect("ambiguous");
 
@@ -264,7 +264,7 @@ test("CompensationManager: validateCompensationPreconditions valid for ambiguous
   assert.equal(result.valid, true);
 });
 
-test("CompensationManager: validateCompensationPreconditions valid for compensation_required", () => {
+test("CompensationManager: validateCompensationPreconditions valid for compensation_required [compensation-manager]", () => {
   const manager = new CompensationManager();
   const sideEffect = createSideEffect("compensation_required");
 
@@ -273,7 +273,7 @@ test("CompensationManager: validateCompensationPreconditions valid for compensat
   assert.equal(result.valid, true);
 });
 
-test("CompensationManager: validateCompensationPreconditions invalid for compensated", () => {
+test("CompensationManager: validateCompensationPreconditions invalid for compensated [compensation-manager]", () => {
   const manager = new CompensationManager();
   const sideEffect = createSideEffect("compensated");
 
@@ -283,7 +283,7 @@ test("CompensationManager: validateCompensationPreconditions invalid for compens
   assert.ok(result.reason);
 });
 
-test("CompensationManager: validateCompensationPreconditions invalid for confirmed", () => {
+test("CompensationManager: validateCompensationPreconditions invalid for confirmed [compensation-manager]", () => {
   const manager = new CompensationManager();
   const sideEffect = createSideEffect("confirmed");
 
@@ -295,7 +295,7 @@ test("CompensationManager: validateCompensationPreconditions invalid for confirm
 
 // ── planCompensation Tests ────────────────────────────────────────────────────
 
-test("CompensationManager: planCompensation creates plan with steps", () => {
+test("CompensationManager: planCompensation creates plan with steps [compensation-manager]", () => {
   const manager = new CompensationManager();
   const sideEffect = createSideEffect("compensation_required");
 
@@ -308,7 +308,7 @@ test("CompensationManager: planCompensation creates plan with steps", () => {
   assert.ok(plan.createdAt);
 });
 
-test("CompensationManager: planCompensation derives steps based on effect kind", () => {
+test("CompensationManager: planCompensation derives steps based on effect kind [compensation-manager]", () => {
   const manager = new CompensationManager();
   const sideEffect = createSideEffect("compensation_required");
 
@@ -318,7 +318,7 @@ test("CompensationManager: planCompensation derives steps based on effect kind",
   assert.ok(plan.steps[0]?.action.includes("external_api"));
 });
 
-test("CompensationManager: planCompensation estimates impact based on risk class", () => {
+test("CompensationManager: planCompensation estimates impact based on risk class [compensation-manager]", () => {
   const manager = new CompensationManager();
   const sideEffect = createSideEffectRecord({
     harnessRunId: "run-1",
@@ -337,7 +337,7 @@ test("CompensationManager: planCompensation estimates impact based on risk class
   assert.equal(plan.steps[0]?.estimatedImpact, "high");
 });
 
-test("CompensationManager: planCompensation uses externalRef or idempotencyKey for targetRef", () => {
+test("CompensationManager: planCompensation uses externalRef or idempotencyKey for targetRef [compensation-manager]", () => {
   const manager = new CompensationManager();
   const sideEffect = createSideEffect("compensation_required");
 
@@ -346,7 +346,7 @@ test("CompensationManager: planCompensation uses externalRef or idempotencyKey f
   assert.ok(plan.steps[0]?.targetRef);
 });
 
-test("CompensationManager: executeCompensationSteps records evidence when step returns false", () => {
+test("CompensationManager: executeCompensationSteps records evidence when step returns false [compensation-manager]", () => {
   const manager = new CompensationManager() as CompensationManager & {
     executeCompensationStep: (step: unknown, context: CompensationContext) => boolean;
   };

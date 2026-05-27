@@ -56,7 +56,7 @@ function createPostgresHandle(options: {
   };
 }
 
-test("runtime factory creates services for postgres backend when shadow sqlite compatibility is available", () => {
+test("runtime factory creates services for postgres backend when shadow sqlite compatibility is available [runtime-factory]", () => {
   const workspace = createTempWorkspace("aa-runtime-factory-");
   const shadowPath = join(workspace, "shadow.db");
 
@@ -88,7 +88,7 @@ test("runtime factory creates services for postgres backend when shadow sqlite c
   }
 });
 
-test("runtime factory fail-closes postgres backend without shadow sqlite compatibility", () => {
+test("runtime factory fail-closes postgres backend without shadow sqlite compatibility [runtime-factory]", () => {
   const unsupportedSql = {
     filePath: "postgresql://agent:secret@postgres.internal/agent_company_os?sslmode=require",
     backendType: "postgres" as const,

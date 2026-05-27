@@ -37,13 +37,13 @@ function assertDecision(
 // Primary healthy, no degradation
 // ---------------------------------------------------------------------------
 
-test("resolveRegionFailover - primary healthy with no degradation returns no failover", () => {
+test("resolveRegionFailover - primary healthy with no degradation returns no failover [index]", () => {
   const input = makeInput({ primaryHealthy: true });
   const result = resolveRegionFailover(input);
   assertDecision(result, false, null, "multi_region.primary_within_threshold");
 });
 
-test("resolveRegionFailover - primary healthy with latency below threshold returns no failover", () => {
+test("resolveRegionFailover - primary healthy with latency below threshold returns no failover [index]", () => {
   const input = makeInput({
     primaryHealthy: true,
     primaryLatencyMs: 50,
@@ -53,7 +53,7 @@ test("resolveRegionFailover - primary healthy with latency below threshold retur
   assertDecision(result, false, null, "multi_region.primary_within_threshold");
 });
 
-test("resolveRegionFailover - primary healthy with error rate below threshold returns no failover", () => {
+test("resolveRegionFailover - primary healthy with error rate below threshold returns no failover [index]", () => {
   const input = makeInput({
     primaryHealthy: true,
     primaryErrorRate: 0.01,
@@ -67,13 +67,13 @@ test("resolveRegionFailover - primary healthy with error rate below threshold re
 // Primary unhealthy triggers failover
 // ---------------------------------------------------------------------------
 
-test("resolveRegionFailover - primary unhealthy triggers failover to first candidate", () => {
+test("resolveRegionFailover - primary unhealthy triggers failover to first candidate [index]", () => {
   const input = makeInput({ primaryHealthy: false });
   const result = resolveRegionFailover(input);
   assertDecision(result, true, "us-east-1", "multi_region.primary_unhealthy");
 });
 
-test("resolveRegionFailover - primary unhealthy with preferred region uses preferred region", () => {
+test("resolveRegionFailover - primary unhealthy with preferred region uses preferred region [index]", () => {
   const input = makeInput({
     primaryHealthy: false,
     preferredRegionId: "us-west-2",
@@ -82,7 +82,7 @@ test("resolveRegionFailover - primary unhealthy with preferred region uses prefe
   assertDecision(result, true, "us-west-2", "multi_region.primary_unhealthy");
 });
 
-test("resolveRegionFailover - primary unhealthy with non-candidate preferred region falls back to first candidate", () => {
+test("resolveRegionFailover - primary unhealthy with non-candidate preferred region falls back to first candidate [index]", () => {
   const input = makeInput({
     primaryHealthy: false,
     preferredRegionId: "eu-west-1",
@@ -95,7 +95,7 @@ test("resolveRegionFailover - primary unhealthy with non-candidate preferred reg
 // Latency breach triggers failover
 // ---------------------------------------------------------------------------
 
-test("resolveRegionFailover - latency breach triggers failover", () => {
+test("resolveRegionFailover - latency breach triggers failover [index]", () => {
   const input = makeInput({
     primaryHealthy: true,
     primaryLatencyMs: 150,
@@ -105,7 +105,7 @@ test("resolveRegionFailover - latency breach triggers failover", () => {
   assertDecision(result, true, "us-east-1", "multi_region.primary_latency_breached");
 });
 
-test("resolveRegionFailover - latency breach with preferred region uses preferred region", () => {
+test("resolveRegionFailover - latency breach with preferred region uses preferred region [index]", () => {
   const input = makeInput({
     primaryHealthy: true,
     primaryLatencyMs: 150,
@@ -116,7 +116,7 @@ test("resolveRegionFailover - latency breach with preferred region uses preferre
   assertDecision(result, true, "us-west-2", "multi_region.primary_latency_breached");
 });
 
-test("resolveRegionFailover - latency at exact threshold does not breach", () => {
+test("resolveRegionFailover - latency at exact threshold does not breach [index]", () => {
   const input = makeInput({
     primaryHealthy: true,
     primaryLatencyMs: 100,
@@ -126,7 +126,7 @@ test("resolveRegionFailover - latency at exact threshold does not breach", () =>
   assertDecision(result, false, null, "multi_region.primary_within_threshold");
 });
 
-test("resolveRegionFailover - latency just above threshold breaches", () => {
+test("resolveRegionFailover - latency just above threshold breaches [index]", () => {
   const input = makeInput({
     primaryHealthy: true,
     primaryLatencyMs: 101,
@@ -140,7 +140,7 @@ test("resolveRegionFailover - latency just above threshold breaches", () => {
 // Error rate breach triggers failover
 // ---------------------------------------------------------------------------
 
-test("resolveRegionFailover - error rate breach triggers failover", () => {
+test("resolveRegionFailover - error rate breach triggers failover [index]", () => {
   const input = makeInput({
     primaryHealthy: true,
     primaryErrorRate: 0.1,
@@ -150,7 +150,7 @@ test("resolveRegionFailover - error rate breach triggers failover", () => {
   assertDecision(result, true, "us-east-1", "multi_region.primary_error_rate_breached");
 });
 
-test("resolveRegionFailover - error rate breach with preferred region uses preferred region", () => {
+test("resolveRegionFailover - error rate breach with preferred region uses preferred region [index]", () => {
   const input = makeInput({
     primaryHealthy: true,
     primaryErrorRate: 0.1,
@@ -161,7 +161,7 @@ test("resolveRegionFailover - error rate breach with preferred region uses prefe
   assertDecision(result, true, "us-west-2", "multi_region.primary_error_rate_breached");
 });
 
-test("resolveRegionFailover - error rate at exact threshold does not breach", () => {
+test("resolveRegionFailover - error rate at exact threshold does not breach [index]", () => {
   const input = makeInput({
     primaryHealthy: true,
     primaryErrorRate: 0.05,
@@ -171,7 +171,7 @@ test("resolveRegionFailover - error rate at exact threshold does not breach", ()
   assertDecision(result, false, null, "multi_region.primary_within_threshold");
 });
 
-test("resolveRegionFailover - error rate just above threshold breaches", () => {
+test("resolveRegionFailover - error rate just above threshold breaches [index]", () => {
   const input = makeInput({
     primaryHealthy: true,
     primaryErrorRate: 0.051,
@@ -185,7 +185,7 @@ test("resolveRegionFailover - error rate just above threshold breaches", () => {
 // Multiple degradation conditions
 // ---------------------------------------------------------------------------
 
-test("resolveRegionFailover - both latency and error rate breached uses primary_unhealthy rationale", () => {
+test("resolveRegionFailover - both latency and error rate breached uses primary_unhealthy rationale [index]", () => {
   const input = makeInput({
     primaryHealthy: false,
     primaryLatencyMs: 150,
@@ -197,7 +197,7 @@ test("resolveRegionFailover - both latency and error rate breached uses primary_
   assertDecision(result, true, "us-east-1", "multi_region.primary_unhealthy");
 });
 
-test("resolveRegionFailover - latency breached but primary unhealthy uses primary_unhealthy rationale", () => {
+test("resolveRegionFailover - latency breached but primary unhealthy uses primary_unhealthy rationale [index]", () => {
   const input = makeInput({
     primaryHealthy: false,
     primaryLatencyMs: 150,
@@ -211,7 +211,7 @@ test("resolveRegionFailover - latency breached but primary unhealthy uses primar
 // Empty candidate regions
 // ---------------------------------------------------------------------------
 
-test("resolveRegionFailover - empty candidate regions returns no failover when degraded", () => {
+test("resolveRegionFailover - empty candidate regions returns no failover when degraded [index]", () => {
   const input = makeInput({
     primaryHealthy: false,
     candidateRegionIds: [],
@@ -220,7 +220,7 @@ test("resolveRegionFailover - empty candidate regions returns no failover when d
   assertDecision(result, false, null, "multi_region.no_candidate_available");
 });
 
-test("resolveRegionFailover - empty candidate regions returns no failover when healthy", () => {
+test("resolveRegionFailover - empty candidate regions returns no failover when healthy [index]", () => {
   const input = makeInput({
     primaryHealthy: true,
     candidateRegionIds: [],
@@ -233,7 +233,7 @@ test("resolveRegionFailover - empty candidate regions returns no failover when h
 // Single candidate region
 // ---------------------------------------------------------------------------
 
-test("resolveRegionFailover - single candidate region is selected", () => {
+test("resolveRegionFailover - single candidate region is selected [index]", () => {
   const input = makeInput({
     primaryHealthy: false,
     candidateRegionIds: ["eu-west-1"],
@@ -246,7 +246,7 @@ test("resolveRegionFailover - single candidate region is selected", () => {
 // Null/undefined latency and error rate (no threshold check)
 // ---------------------------------------------------------------------------
 
-test("resolveRegionFailover - null latency and error rate with unhealthy primary triggers failover", () => {
+test("resolveRegionFailover - null latency and error rate with unhealthy primary triggers failover [index]", () => {
   const input = makeInput({
     primaryHealthy: false,
   });
@@ -254,7 +254,7 @@ test("resolveRegionFailover - null latency and error rate with unhealthy primary
   assertDecision(result, true, "us-east-1", "multi_region.primary_unhealthy");
 });
 
-test("resolveRegionFailover - null latency and error rate with healthy primary does not failover", () => {
+test("resolveRegionFailover - null latency and error rate with healthy primary does not failover [index]", () => {
   const input = makeInput({
     primaryHealthy: true,
   });
@@ -262,7 +262,7 @@ test("resolveRegionFailover - null latency and error rate with healthy primary d
   assertDecision(result, false, null, "multi_region.primary_within_threshold");
 });
 
-test("resolveRegionFailover - only latency provided with healthy primary at threshold", () => {
+test("resolveRegionFailover - only latency provided with healthy primary at threshold [index]", () => {
   const input = makeInput({
     primaryHealthy: true,
     primaryLatencyMs: 50,
@@ -272,7 +272,7 @@ test("resolveRegionFailover - only latency provided with healthy primary at thre
   assertDecision(result, false, null, "multi_region.primary_within_threshold");
 });
 
-test("resolveRegionFailover - only error rate provided with healthy primary at threshold", () => {
+test("resolveRegionFailover - only error rate provided with healthy primary at threshold [index]", () => {
   const input = makeInput({
     primaryHealthy: true,
     primaryErrorRate: 0.01,

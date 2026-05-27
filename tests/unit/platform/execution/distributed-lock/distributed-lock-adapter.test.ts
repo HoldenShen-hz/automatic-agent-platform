@@ -6,7 +6,7 @@ import { RedisLockAdapter } from "../../../../../src/platform/five-plane-executi
 import type { DistributedLockAdapter } from "../../../../../src/platform/five-plane-execution/distributed-lock/distributed-lock-types.js";
 import type { LockRecord, AcquireLockInput, AcquireLockResult } from "../../../../../src/platform/five-plane-execution/distributed-lock/distributed-lock-types.js";
 
-test("DistributedLockAdapter interface requires backendKind", () => {
+test("DistributedLockAdapter interface requires backendKind [distributed-lock-adapter]", () => {
   const adapter: DistributedLockAdapter = {
     backendKind: "test",
     acquire: () => ({ acquired: false }),
@@ -18,7 +18,7 @@ test("DistributedLockAdapter interface requires backendKind", () => {
   assert.equal(adapter.backendKind, "test");
 });
 
-test("DistributedLockAdapter acquire returns AcquireLockResult shape", () => {
+test("DistributedLockAdapter acquire returns AcquireLockResult shape [distributed-lock-adapter]", () => {
   const adapter: DistributedLockAdapter = {
     backendKind: "test",
     acquire: (input: AcquireLockInput) => {
@@ -37,7 +37,7 @@ test("DistributedLockAdapter acquire returns AcquireLockResult shape", () => {
   assert.equal(result.acquired, false);
 });
 
-test("DistributedLockAdapter release returns boolean", () => {
+test("DistributedLockAdapter release returns boolean [distributed-lock-adapter]", () => {
   const adapter: DistributedLockAdapter = {
     backendKind: "test",
     acquire: () => ({ acquired: false }),
@@ -55,7 +55,7 @@ test("DistributedLockAdapter release returns boolean", () => {
   assert.equal(released, true);
 });
 
-test("DistributedLockAdapter extend returns LockRecord shape or null", () => {
+test("DistributedLockAdapter extend returns LockRecord shape or null [distributed-lock-adapter]", () => {
   const adapter: DistributedLockAdapter = {
     backendKind: "test",
     acquire: () => ({ acquired: false }),
@@ -80,7 +80,7 @@ test("DistributedLockAdapter extend returns LockRecord shape or null", () => {
   assert.equal(result!.fencingToken, 1);
 });
 
-test("DistributedLockAdapter extend returns null when lock not found", () => {
+test("DistributedLockAdapter extend returns null when lock not found [distributed-lock-adapter]", () => {
   const adapter: DistributedLockAdapter = {
     backendKind: "test",
     acquire: () => ({ acquired: false }),
@@ -94,7 +94,7 @@ test("DistributedLockAdapter extend returns null when lock not found", () => {
   assert.equal(result, null);
 });
 
-test("DistributedLockAdapter forceSteal returns LockRecord shape", () => {
+test("DistributedLockAdapter forceSteal returns LockRecord shape [distributed-lock-adapter]", () => {
   const adapter: DistributedLockAdapter = {
     backendKind: "test",
     acquire: () => ({ acquired: false }),
@@ -119,7 +119,7 @@ test("DistributedLockAdapter forceSteal returns LockRecord shape", () => {
   assert.equal(result.fencingToken, 2);
 });
 
-test("DistributedLockAdapter inspect returns LockRecord or null", () => {
+test("DistributedLockAdapter inspect returns LockRecord or null [distributed-lock-adapter]", () => {
   const adapter: DistributedLockAdapter = {
     backendKind: "test",
     acquire: () => ({ acquired: false }),
@@ -147,7 +147,7 @@ test("DistributedLockAdapter inspect returns LockRecord or null", () => {
   assert.equal(notFound, null);
 });
 
-test("LockRecord type has all required fields", () => {
+test("LockRecord type has all required fields [distributed-lock-adapter]", () => {
   const record: LockRecord = {
     lockKey: "test-key",
     owner: "test-owner",
@@ -167,7 +167,7 @@ test("LockRecord type has all required fields", () => {
   assert.equal(record.metadata, null);
 });
 
-test("AcquireLockInput type is usable", () => {
+test("AcquireLockInput type is usable [distributed-lock-adapter]", () => {
   const input: AcquireLockInput = {
     lockKey: "test-key",
     owner: "test-owner",
@@ -179,7 +179,7 @@ test("AcquireLockInput type is usable", () => {
   assert.equal(input.ttlMs, 60000);
 });
 
-test("AcquireLockResult with successful acquisition", () => {
+test("AcquireLockResult with successful acquisition [distributed-lock-adapter]", () => {
   const result: AcquireLockResult = {
     acquired: true,
     lock: {
@@ -198,7 +198,7 @@ test("AcquireLockResult with successful acquisition", () => {
   assert.equal(result.lock!.fencingToken, 1);
 });
 
-test("AcquireLockResult with failed acquisition", () => {
+test("AcquireLockResult with failed acquisition [distributed-lock-adapter]", () => {
   const result: AcquireLockResult = {
     acquired: false,
   };
@@ -207,10 +207,10 @@ test("AcquireLockResult with failed acquisition", () => {
   assert.equal(result.lock, undefined);
 });
 
-test("SqliteLockAdapter is a constructor function", () => {
+test("SqliteLockAdapter is a constructor function [distributed-lock-adapter]", () => {
   assert.ok(typeof SqliteLockAdapter === "function");
 });
 
-test("RedisLockAdapter is a constructor function", () => {
+test("RedisLockAdapter is a constructor function [distributed-lock-adapter]", () => {
   assert.ok(typeof RedisLockAdapter === "function");
 });

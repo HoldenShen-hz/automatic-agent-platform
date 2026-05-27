@@ -11,12 +11,12 @@ function hasLockCode(error: unknown, expectedSuffix: string): boolean {
   return typeof (error as { code?: unknown })?.code === "string" && (error as { code: string }).code.endsWith(expectedSuffix);
 }
 
-test("RedisLockAdapter backendKind is redis", () => {
+test("RedisLockAdapter backendKind is redis [redis-lock-adapter]", () => {
   const adapter = new RedisLockAdapter();
   assert.equal(adapter.backendKind, "redis");
 });
 
-test("RedisLockAdapter accept config with host and port", () => {
+test("RedisLockAdapter accept config with host and port [redis-lock-adapter]", () => {
   const config: RedisLockConfig = {
     host: "redis.example.com",
     port: 6380,
@@ -25,7 +25,7 @@ test("RedisLockAdapter accept config with host and port", () => {
   assert.equal(adapter.backendKind, "redis");
 });
 
-test("RedisLockAdapter accept config with all options", () => {
+test("RedisLockAdapter accept config with all options [redis-lock-adapter]", () => {
   const config: RedisLockConfig = {
     host: "redis.example.com",
     port: 6380,
@@ -39,12 +39,12 @@ test("RedisLockAdapter accept config with all options", () => {
   assert.equal(adapter.backendKind, "redis");
 });
 
-test("RedisLockAdapter uses default host localhost", () => {
+test("RedisLockAdapter uses default host localhost [redis-lock-adapter]", () => {
   const adapter = new RedisLockAdapter();
   assert.equal(adapter.backendKind, "redis");
 });
 
-test("RedisLockAdapter acquire throws sync not supported error", () => {
+test("RedisLockAdapter acquire throws sync not supported error [redis-lock-adapter]", () => {
   const adapter = new RedisLockAdapter();
   assert.throws(
     () => adapter.acquire({ lockKey: "test", owner: "owner" }),
@@ -52,7 +52,7 @@ test("RedisLockAdapter acquire throws sync not supported error", () => {
   );
 });
 
-test("RedisLockAdapter release throws sync not supported error", () => {
+test("RedisLockAdapter release throws sync not supported error [redis-lock-adapter]", () => {
   const adapter = new RedisLockAdapter();
   assert.throws(
     () => adapter.release("test", "owner"),
@@ -60,7 +60,7 @@ test("RedisLockAdapter release throws sync not supported error", () => {
   );
 });
 
-test("RedisLockAdapter extend throws sync not supported error", () => {
+test("RedisLockAdapter extend throws sync not supported error [redis-lock-adapter]", () => {
   const adapter = new RedisLockAdapter();
   assert.throws(
     () => adapter.extend("test", "owner", 30000),
@@ -68,7 +68,7 @@ test("RedisLockAdapter extend throws sync not supported error", () => {
   );
 });
 
-test("RedisLockAdapter forceSteal throws sync not supported error", () => {
+test("RedisLockAdapter forceSteal throws sync not supported error [redis-lock-adapter]", () => {
   const adapter = new RedisLockAdapter();
   assert.throws(
     () => adapter.forceSteal("test", "newOwner", "reason"),
@@ -76,7 +76,7 @@ test("RedisLockAdapter forceSteal throws sync not supported error", () => {
   );
 });
 
-test("RedisLockAdapter inspect throws sync not supported error", () => {
+test("RedisLockAdapter inspect throws sync not supported error [redis-lock-adapter]", () => {
   const adapter = new RedisLockAdapter();
   assert.throws(
     () => adapter.inspect("test"),
@@ -84,20 +84,20 @@ test("RedisLockAdapter inspect throws sync not supported error", () => {
   );
 });
 
-test("RedisLockAdapter close handles disconnected state", async () => {
+test("RedisLockAdapter close handles disconnected state [redis-lock-adapter]", async () => {
   const adapter = new RedisLockAdapter();
   // Should not throw even when not connected
   await adapter.close();
 });
 
-test("RedisLockAdapter close handles wait state", async () => {
+test("RedisLockAdapter close handles wait state [redis-lock-adapter]", async () => {
   const adapter = new RedisLockAdapter({ connectTimeoutMs: 100 });
   // Manually trigger wait state by not connecting
   // close should handle it gracefully
   await adapter.close();
 });
 
-test("RedisLockAdapter forceStealAsync succeeds for a missing lock or fails cleanly when Redis is unavailable", async () => {
+test("RedisLockAdapter forceStealAsync succeeds for a missing lock or fails cleanly when Redis is unavailable [redis-lock-adapter]", async () => {
   const adapter = new RedisLockAdapter({ connectTimeoutMs: 100 });
 
   try {
@@ -108,22 +108,22 @@ test("RedisLockAdapter forceStealAsync succeeds for a missing lock or fails clea
   }
 });
 
-test("RedisLockAdapter uses default connect timeout", () => {
+test("RedisLockAdapter uses default connect timeout [redis-lock-adapter]", () => {
   const adapter = new RedisLockAdapter();
   assert.equal(adapter.backendKind, "redis");
 });
 
-test("RedisLockAdapter uses custom connect timeout", () => {
+test("RedisLockAdapter uses custom connect timeout [redis-lock-adapter]", () => {
   const adapter = new RedisLockAdapter({ connectTimeoutMs: 2000 });
   assert.equal(adapter.backendKind, "redis");
 });
 
-test("RedisLockAdapter uses custom cliPath", () => {
+test("RedisLockAdapter uses custom cliPath [redis-lock-adapter]", () => {
   const adapter = new RedisLockAdapter({ cliPath: "/usr/local/bin/redis-cli" });
   assert.equal(adapter.backendKind, "redis");
 });
 
-test("RedisLockAdapter acquireAsync with default TTL", async () => {
+test("RedisLockAdapter acquireAsync with default TTL [redis-lock-adapter]", async () => {
   const adapter = new RedisLockAdapter({ connectTimeoutMs: 100 });
 
   try {
@@ -136,7 +136,7 @@ test("RedisLockAdapter acquireAsync with default TTL", async () => {
   }
 });
 
-test("RedisLockAdapter acquireAsync with custom TTL", async () => {
+test("RedisLockAdapter acquireAsync with custom TTL [redis-lock-adapter]", async () => {
   const adapter = new RedisLockAdapter({ connectTimeoutMs: 100 });
 
   try {
@@ -147,7 +147,7 @@ test("RedisLockAdapter acquireAsync with custom TTL", async () => {
   }
 });
 
-test("RedisLockAdapter releaseAsync when not connected", async () => {
+test("RedisLockAdapter releaseAsync when not connected [redis-lock-adapter]", async () => {
   const adapter = new RedisLockAdapter({ connectTimeoutMs: 100 });
 
   try {
@@ -158,7 +158,7 @@ test("RedisLockAdapter releaseAsync when not connected", async () => {
   }
 });
 
-test("RedisLockAdapter extendAsync when not connected", async () => {
+test("RedisLockAdapter extendAsync when not connected [redis-lock-adapter]", async () => {
   const adapter = new RedisLockAdapter({ connectTimeoutMs: 100 });
 
   try {
@@ -169,7 +169,7 @@ test("RedisLockAdapter extendAsync when not connected", async () => {
   }
 });
 
-test("RedisLockAdapter inspectAsync when not connected", async () => {
+test("RedisLockAdapter inspectAsync when not connected [redis-lock-adapter]", async () => {
   const adapter = new RedisLockAdapter({ connectTimeoutMs: 100 });
 
   try {
@@ -180,7 +180,7 @@ test("RedisLockAdapter inspectAsync when not connected", async () => {
   }
 });
 
-test("RedisLockAdapter listHeldAsync when not connected", async () => {
+test("RedisLockAdapter listHeldAsync when not connected [redis-lock-adapter]", async () => {
   const adapter = new RedisLockAdapter({ connectTimeoutMs: 100 });
 
   try {
@@ -191,7 +191,7 @@ test("RedisLockAdapter listHeldAsync when not connected", async () => {
   }
 });
 
-test("RedisLockAdapter listHeldAsync respects limit parameter", async () => {
+test("RedisLockAdapter listHeldAsync respects limit parameter [redis-lock-adapter]", async () => {
   const adapter = new RedisLockAdapter({ connectTimeoutMs: 100 });
 
   try {
@@ -202,7 +202,7 @@ test("RedisLockAdapter listHeldAsync respects limit parameter", async () => {
   }
 });
 
-test("RedisLockAdapter forceStealAsync enforces 600000ms max TTL cap", async () => {
+test("RedisLockAdapter forceStealAsync enforces 600000ms max TTL cap [redis-lock-adapter]", async () => {
   const adapter = new RedisLockAdapter({ connectTimeoutMs: 100 });
 
   try {
@@ -214,7 +214,7 @@ test("RedisLockAdapter forceStealAsync enforces 600000ms max TTL cap", async () 
   }
 });
 
-test("RedisLockAdapter extendAsync caps TTL at 600000ms", async () => {
+test("RedisLockAdapter extendAsync caps TTL at 600000ms [redis-lock-adapter]", async () => {
   const adapter = new RedisLockAdapter({ connectTimeoutMs: 100 });
 
   try {
@@ -224,7 +224,7 @@ test("RedisLockAdapter extendAsync caps TTL at 600000ms", async () => {
   }
 });
 
-test("RedisLockAdapter enqueue method exists (inherited from QueueAdapter interface)", () => {
+test("RedisLockAdapter enqueue method exists (inherited from QueueAdapter interface) [redis-lock-adapter]", () => {
   const adapter = new RedisLockAdapter();
   // The RedisLockAdapter has an enqueue method from the queue adapter it implements
   // This is here for completeness of interface coverage
@@ -233,12 +233,12 @@ test("RedisLockAdapter enqueue method exists (inherited from QueueAdapter interf
 
 // ── Security: JSON.parse payload injection validation ───────────────────────
 
-test("RedisLockAdapter parseLockData rejects missing required fields", () => {
+test("RedisLockAdapter parseLockData rejects missing required fields [redis-lock-adapter]", () => {
   const result = LockDataSchema.safeParse({});
   assert.ok(result.success === false, "Empty object should be rejected");
 });
 
-test("RedisLockAdapter parseLockData rejects wrong types for required fields", () => {
+test("RedisLockAdapter parseLockData rejects wrong types for required fields [redis-lock-adapter]", () => {
   const result = LockDataSchema.safeParse({
     id: 123, // should be string
     owner: "owner",
@@ -250,21 +250,21 @@ test("RedisLockAdapter parseLockData rejects wrong types for required fields", (
   assert.ok(result.success === false, "id as number should be rejected");
 });
 
-test("RedisLockAdapter parseLockData rejects prototype pollution attempt", () => {
+test("RedisLockAdapter parseLockData rejects prototype pollution attempt [redis-lock-adapter]", () => {
   // Attempt prototype pollution via __proto__
   const maliciousPayload = JSON.parse('{"id":"lock_1","owner":"owner","fencingToken":1,"ttlMs":30000,"acquiredAt":"2026-01-01T00:00:00.000Z","metadata":null,"__proto__":{"admin":true}}');
   const result = LockDataSchema.safeParse(maliciousPayload);
   assert.ok(result.success === false, "Prototype pollution payload should be rejected");
 });
 
-test("RedisLockAdapter parseLockData rejects constructor property injection", () => {
+test("RedisLockAdapter parseLockData rejects constructor property injection [redis-lock-adapter]", () => {
   // Attempt constructor property injection
   const maliciousPayload = JSON.parse('{"id":"lock_1","owner":"owner","fencingToken":1,"ttlMs":30000,"acquiredAt":"2026-01-01T00:00:00.000Z","metadata":null,"constructor":{"admin":true}}');
   const result = LockDataSchema.safeParse(maliciousPayload);
   assert.ok(result.success === false, "Constructor property injection should be rejected");
 });
 
-test("RedisLockAdapter parseLockData rejects negative fencingToken", () => {
+test("RedisLockAdapter parseLockData rejects negative fencingToken [redis-lock-adapter]", () => {
   const result = LockDataSchema.safeParse({
     id: "lock_1",
     owner: "owner",
@@ -276,7 +276,7 @@ test("RedisLockAdapter parseLockData rejects negative fencingToken", () => {
   assert.ok(result.success === false, "Negative fencingToken should be rejected");
 });
 
-test("RedisLockAdapter parseLockData rejects non-positive ttlMs", () => {
+test("RedisLockAdapter parseLockData rejects non-positive ttlMs [redis-lock-adapter]", () => {
   const result = LockDataSchema.safeParse({
     id: "lock_1",
     owner: "owner",
@@ -288,7 +288,7 @@ test("RedisLockAdapter parseLockData rejects non-positive ttlMs", () => {
   assert.ok(result.success === false, "Zero ttlMs should be rejected");
 });
 
-test("RedisLockAdapter parseLockData rejects invalid ISO timestamp", () => {
+test("RedisLockAdapter parseLockData rejects invalid ISO timestamp [redis-lock-adapter]", () => {
   const result = LockDataSchema.safeParse({
     id: "lock_1",
     owner: "owner",
@@ -300,7 +300,7 @@ test("RedisLockAdapter parseLockData rejects invalid ISO timestamp", () => {
   assert.ok(result.success === false, "Invalid ISO timestamp should be rejected");
 });
 
-test("RedisLockAdapter parseLockData accepts valid minimal payload", () => {
+test("RedisLockAdapter parseLockData accepts valid minimal payload [redis-lock-adapter]", () => {
   const result = LockDataSchema.safeParse({
     id: "lock_1",
     owner: "owner",
@@ -313,7 +313,7 @@ test("RedisLockAdapter parseLockData accepts valid minimal payload", () => {
   assert.equal(result.data.owner, "owner");
 });
 
-test("RedisLockAdapter parseLockData accepts string metadata", () => {
+test("RedisLockAdapter parseLockData accepts string metadata [redis-lock-adapter]", () => {
   const result = LockDataSchema.safeParse({
     id: "lock_1",
     owner: "owner",
@@ -325,7 +325,7 @@ test("RedisLockAdapter parseLockData accepts string metadata", () => {
   assert.ok(result.success === true, "String metadata should be accepted");
 });
 
-test("RedisLockAdapter parseLockData rejects extra unknown fields due to strict mode", () => {
+test("RedisLockAdapter parseLockData rejects extra unknown fields due to strict mode [redis-lock-adapter]", () => {
   const result = LockDataSchema.safeParse({
     id: "lock_1",
     owner: "owner",

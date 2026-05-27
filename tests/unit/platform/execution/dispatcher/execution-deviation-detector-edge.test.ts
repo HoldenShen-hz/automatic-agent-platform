@@ -35,7 +35,7 @@ function makeFeedback(outcome: FeedbackBatch["outcome"], signals: FeedbackSignal
 // Additional edge cases for ExecutionDeviationDetector
 // ---------------------------------------------------------------------------
 
-test("ExecutionDeviationDetector detect returns empty for completed outcome", () => {
+test("ExecutionDeviationDetector detect returns empty for completed outcome [execution-deviation-detector-edge]", () => {
   const detector = new ExecutionDeviationDetector();
   const plan = makePlan("task-1");
   const feedback = makeFeedback("completed");
@@ -43,7 +43,7 @@ test("ExecutionDeviationDetector detect returns empty for completed outcome", ()
   assert.equal(deviations.length, 0);
 });
 
-test("ExecutionDeviationDetector detect handles empty signals array", () => {
+test("ExecutionDeviationDetector detect handles empty signals array [execution-deviation-detector-edge]", () => {
   const detector = new ExecutionDeviationDetector();
   const plan = makePlan("task-1");
   const feedback = makeFeedback("completed", []);
@@ -51,7 +51,7 @@ test("ExecutionDeviationDetector detect handles empty signals array", () => {
   assert.equal(deviations.length, 0);
 });
 
-test("ExecutionDeviationDetector detect returns repairable with high severity", () => {
+test("ExecutionDeviationDetector detect returns repairable with high severity [execution-deviation-detector-edge]", () => {
   const detector = new ExecutionDeviationDetector();
   const plan = makePlan("task-1");
   const feedback = makeFeedback("repairable");
@@ -61,7 +61,7 @@ test("ExecutionDeviationDetector detect returns repairable with high severity", 
   assert.equal(deviations[0]!.reasonCode, "execution.repairable");
 });
 
-test("ExecutionDeviationDetector detect returns failed with critical severity", () => {
+test("ExecutionDeviationDetector detect returns failed with critical severity [execution-deviation-detector-edge]", () => {
   const detector = new ExecutionDeviationDetector();
   const plan = makePlan("task-1");
   const feedback = makeFeedback("failed");
@@ -71,7 +71,7 @@ test("ExecutionDeviationDetector detect returns failed with critical severity", 
   assert.equal(deviations[0]!.reasonCode, "execution.failed");
 });
 
-test("ExecutionDeviationDetector detect returns escalated with critical severity", () => {
+test("ExecutionDeviationDetector detect returns escalated with critical severity [execution-deviation-detector-edge]", () => {
   const detector = new ExecutionDeviationDetector();
   const plan = makePlan("task-1");
   const feedback = makeFeedback("escalated");
@@ -81,7 +81,7 @@ test("ExecutionDeviationDetector detect returns escalated with critical severity
   assert.equal(deviations[0]!.reasonCode, "execution.escalated");
 });
 
-test("ExecutionDeviationDetector detect identifies timeout signal category", () => {
+test("ExecutionDeviationDetector detect identifies timeout signal category [execution-deviation-detector-edge]", () => {
   const detector = new ExecutionDeviationDetector();
   const plan = makePlan("task-1");
   const timeoutSignal: FeedbackSignal = {
@@ -101,7 +101,7 @@ test("ExecutionDeviationDetector detect identifies timeout signal category", () 
   assert.equal(deviations[0]!.severity, "high");
 });
 
-test("ExecutionDeviationDetector detect ignores non-timeout signals", () => {
+test("ExecutionDeviationDetector detect ignores non-timeout signals [execution-deviation-detector-edge]", () => {
   const detector = new ExecutionDeviationDetector();
   const plan = makePlan("task-1");
   const signals: FeedbackSignal[] = [
@@ -114,7 +114,7 @@ test("ExecutionDeviationDetector detect ignores non-timeout signals", () => {
   assert.equal(deviations.length, 0);
 });
 
-test("ExecutionDeviationDetector detect combines failed outcome with timeout", () => {
+test("ExecutionDeviationDetector detect combines failed outcome with timeout [execution-deviation-detector-edge]", () => {
   const detector = new ExecutionDeviationDetector();
   const plan = makePlan("task-1");
   const timeoutSignal: FeedbackSignal = {
@@ -135,7 +135,7 @@ test("ExecutionDeviationDetector detect combines failed outcome with timeout", (
   assert.ok(reasonCodes.includes("execution.timeout"));
 });
 
-test("ExecutionDeviationDetector detect handles multiple timeout signals (deduplicates)", () => {
+test("ExecutionDeviationDetector detect handles multiple timeout signals (deduplicates) [execution-deviation-detector-edge]", () => {
   const detector = new ExecutionDeviationDetector();
   const plan = makePlan("task-1");
   const signals: FeedbackSignal[] = [
@@ -149,7 +149,7 @@ test("ExecutionDeviationDetector detect handles multiple timeout signals (dedupl
   assert.equal(deviations[0]!.reasonCode, "execution.timeout");
 });
 
-test("ExecutionDeviationDetector detect assigns correct taskId to each deviation", () => {
+test("ExecutionDeviationDetector detect assigns correct taskId to each deviation [execution-deviation-detector-edge]", () => {
   const detector = new ExecutionDeviationDetector();
   const plan = makePlan("unique-task-id-12345");
   const feedback = makeFeedback("failed");
@@ -158,7 +158,7 @@ test("ExecutionDeviationDetector detect assigns correct taskId to each deviation
   assert.equal(deviations[0]!.taskId, "unique-task-id-12345");
 });
 
-test("ExecutionDeviationDetector detect sets detectedAt within reasonable range", () => {
+test("ExecutionDeviationDetector detect sets detectedAt within reasonable range [execution-deviation-detector-edge]", () => {
   const detector = new ExecutionDeviationDetector();
   const plan = makePlan("task-1");
   const feedback = makeFeedback("failed");
@@ -169,7 +169,7 @@ test("ExecutionDeviationDetector detect sets detectedAt within reasonable range"
   assert.ok(deviations[0]!.detectedAt <= after);
 });
 
-test("ExecutionDeviationDetector detect generates unique deviationId each call", () => {
+test("ExecutionDeviationDetector detect generates unique deviationId each call [execution-deviation-detector-edge]", () => {
   const detector = new ExecutionDeviationDetector();
   const plan = makePlan("task-1");
 
@@ -181,7 +181,7 @@ test("ExecutionDeviationDetector detect generates unique deviationId each call",
   assert.notEqual(deviations2[0]!.deviationId, deviations3[0]!.deviationId);
 });
 
-test("ExecutionDeviationDetector detect handles minimal valid plan without error", () => {
+test("ExecutionDeviationDetector detect handles minimal valid plan without error [execution-deviation-detector-edge]", () => {
   const detector = new ExecutionDeviationDetector();
   const emptyPlan = makePlan("task-empty");
   const feedback = makeFeedback("failed");
@@ -190,7 +190,7 @@ test("ExecutionDeviationDetector detect handles minimal valid plan without error
   assert.equal(deviations[0]!.taskId, "task-empty");
 });
 
-test("ExecutionDeviationDetector detect repairable deviation has correct summary", () => {
+test("ExecutionDeviationDetector detect repairable deviation has correct summary [execution-deviation-detector-edge]", () => {
   const detector = new ExecutionDeviationDetector();
   const plan = makePlan("task-1");
   const feedback = makeFeedback("repairable");
@@ -198,7 +198,7 @@ test("ExecutionDeviationDetector detect repairable deviation has correct summary
   assert.equal(deviations[0]!.summary, "Execution outcome drifted to repairable");
 });
 
-test("ExecutionDeviationDetector detect failed deviation has correct summary", () => {
+test("ExecutionDeviationDetector detect failed deviation has correct summary [execution-deviation-detector-edge]", () => {
   const detector = new ExecutionDeviationDetector();
   const plan = makePlan("task-1");
   const feedback = makeFeedback("failed");
@@ -206,7 +206,7 @@ test("ExecutionDeviationDetector detect failed deviation has correct summary", (
   assert.equal(deviations[0]!.summary, "Execution outcome drifted to failed");
 });
 
-test("ExecutionDeviationDetector detect escalated deviation has correct summary", () => {
+test("ExecutionDeviationDetector detect escalated deviation has correct summary [execution-deviation-detector-edge]", () => {
   const detector = new ExecutionDeviationDetector();
   const plan = makePlan("task-1");
   const feedback = makeFeedback("escalated");
@@ -214,7 +214,7 @@ test("ExecutionDeviationDetector detect escalated deviation has correct summary"
   assert.equal(deviations[0]!.summary, "Execution outcome drifted to escalated");
 });
 
-test("ExecutionDeviationDetector detect timeout deviation has correct summary", () => {
+test("ExecutionDeviationDetector detect timeout deviation has correct summary [execution-deviation-detector-edge]", () => {
   const detector = new ExecutionDeviationDetector();
   const plan = makePlan("task-1");
   const timeoutSignal: FeedbackSignal = {
@@ -232,7 +232,7 @@ test("ExecutionDeviationDetector detect timeout deviation has correct summary", 
   assert.equal(deviations[0]!.summary, "Execution exceeded expected timing budget.");
 });
 
-test("ExecutionDeviationDetector detect escalation with timeout gives two deviations", () => {
+test("ExecutionDeviationDetector detect escalation with timeout gives two deviations [execution-deviation-detector-edge]", () => {
   const detector = new ExecutionDeviationDetector();
   const plan = makePlan("task-1");
   const timeoutSignal: FeedbackSignal = {
@@ -253,7 +253,7 @@ test("ExecutionDeviationDetector detect escalation with timeout gives two deviat
   assert.ok(severities.includes("high")); // timeout
 });
 
-test("ExecutionDeviationDetector detect repairable with timeout gives two deviations", () => {
+test("ExecutionDeviationDetector detect repairable with timeout gives two deviations [execution-deviation-detector-edge]", () => {
   const detector = new ExecutionDeviationDetector();
   const plan = makePlan("task-1");
   const timeoutSignal: FeedbackSignal = {
@@ -274,7 +274,7 @@ test("ExecutionDeviationDetector detect repairable with timeout gives two deviat
   assert.ok(severities.includes("high")); // timeout
 });
 
-test("ExecutionDeviationDetector detect failed with timeout gives two deviations", () => {
+test("ExecutionDeviationDetector detect failed with timeout gives two deviations [execution-deviation-detector-edge]", () => {
   const detector = new ExecutionDeviationDetector();
   const plan = makePlan("task-1");
   const timeoutSignal: FeedbackSignal = {
@@ -295,7 +295,7 @@ test("ExecutionDeviationDetector detect failed with timeout gives two deviations
   assert.ok(severities.includes("high")); // timeout
 });
 
-test("ExecutionDeviationDetector detect ignores timeout signal with completed outcome", () => {
+test("ExecutionDeviationDetector detect ignores timeout signal with completed outcome [execution-deviation-detector-edge]", () => {
   // This is actually covered - completed outcome + timeout = 1 timeout deviation
   const detector = new ExecutionDeviationDetector();
   const plan = makePlan("task-1");
@@ -315,7 +315,7 @@ test("ExecutionDeviationDetector detect ignores timeout signal with completed ou
   assert.equal(deviations[0]!.reasonCode, "execution.timeout");
 });
 
-test("ExecutionDeviationDetector detect deviationId format is valid", () => {
+test("ExecutionDeviationDetector detect deviationId format is valid [execution-deviation-detector-edge]", () => {
   const detector = new ExecutionDeviationDetector();
   const plan = makePlan("task-1");
   const feedback = makeFeedback("failed");
@@ -324,7 +324,7 @@ test("ExecutionDeviationDetector detect deviationId format is valid", () => {
   assert.match(deviations[0]!.deviationId, /^deviation_/);
 });
 
-test("ExecutionDeviationDetector detect timeout with various payload structures", () => {
+test("ExecutionDeviationDetector detect timeout with various payload structures [execution-deviation-detector-edge]", () => {
   const detector = new ExecutionDeviationDetector();
   const plan = makePlan("task-1");
 

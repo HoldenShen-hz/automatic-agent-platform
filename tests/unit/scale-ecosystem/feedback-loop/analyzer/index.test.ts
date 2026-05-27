@@ -34,7 +34,7 @@ function createSignal(overrides: Partial<FeedbackSignal>): FeedbackSignal {
   });
 }
 
-test("analyzeFeedbackSignals returns empty summary for empty signals", () => {
+test("analyzeFeedbackSignals returns empty summary for empty signals [index]", () => {
   const result = analyzeFeedbackSignals([]);
 
   assert.equal(result.totalSignals, 0);
@@ -42,7 +42,7 @@ test("analyzeFeedbackSignals returns empty summary for empty signals", () => {
   assert.deepEqual(result.topSubjects, []);
 });
 
-test("analyzeFeedbackSignals counts signals by severity", () => {
+test("analyzeFeedbackSignals counts signals by severity [index]", () => {
   const signals = [
     createSignal({ signalId: "sig_1", taskId: "task_1" }),
     createSignal({ signalId: "sig_2", taskId: "task_1", timestamp: 2 }),
@@ -56,7 +56,7 @@ test("analyzeFeedbackSignals counts signals by severity", () => {
   assert.equal(result.bySeverity["warning"], 1);
 });
 
-test("analyzeFeedbackSignals identifies top subjects by task", () => {
+test("analyzeFeedbackSignals identifies top subjects by task [index]", () => {
   const signals = [
     createSignal({ signalId: "sig_1", taskId: "task_a" }),
     createSignal({ signalId: "sig_2", taskId: "task_a", timestamp: 2 }),
@@ -72,7 +72,7 @@ test("analyzeFeedbackSignals identifies top subjects by task", () => {
   assert.deepEqual(result.topSubjects, ["task:task_a", "task:task_b", "task:task_c"]);
 });
 
-test("analyzeFeedbackSignals limits top subjects to 3", () => {
+test("analyzeFeedbackSignals limits top subjects to 3 [index]", () => {
   const signals = [
     createSignal({ signalId: "sig_1", taskId: "task_1" }),
     createSignal({ signalId: "sig_2", taskId: "task_2", timestamp: 2 }),
@@ -87,7 +87,7 @@ test("analyzeFeedbackSignals limits top subjects to 3", () => {
   assert.deepEqual(result.topSubjects, ["task:task_1", "task:task_2", "task:task_3"]);
 });
 
-test("analyzeFeedbackSignals handles signals with different categories", () => {
+test("analyzeFeedbackSignals handles signals with different categories [index]", () => {
   const signals = [
     createSignal({ signalId: "sig_1", taskId: "task_1", category: "success", severity: "info" }),
     createSignal({ signalId: "sig_2", taskId: "task_1", timestamp: 2 }),

@@ -30,7 +30,7 @@ function createService(db?: SqliteDatabase): RemoteWorkerRegistrationService {
 // issueChallenge - basic behavior
 // ---------------------------------------------------------------------------
 
-test("issueChallenge returns issued=true for valid request", () => {
+test("issueChallenge returns issued=true for valid request [remote-worker-registration-service]", () => {
   const service = createService();
 
   const decision = service.issueChallenge({
@@ -45,7 +45,7 @@ test("issueChallenge returns issued=true for valid request", () => {
   assert.ok(decision.expiresAt !== null);
 });
 
-test("issueChallenge stores challenge token as challenge-scoped HMAC", () => {
+test("issueChallenge stores challenge token as challenge-scoped HMAC [remote-worker-registration-service]", () => {
   const db = createTestDb();
   const service = createService(db);
 
@@ -64,7 +64,7 @@ test("issueChallenge stores challenge token as challenge-scoped HMAC", () => {
   assert.notEqual(row.challengeTokenHash, legacy);
 });
 
-test("issueChallenge includes allowed capabilities in response", () => {
+test("issueChallenge includes allowed capabilities in response [remote-worker-registration-service]", () => {
   const service = createService();
 
   const decision = service.issueChallenge({
@@ -76,7 +76,7 @@ test("issueChallenge includes allowed capabilities in response", () => {
   assert.deepEqual(decision.rejectedCapabilities, []);
 });
 
-test("issueChallenge returns issued=false when capability not allowed", () => {
+test("issueChallenge returns issued=false when capability not allowed [remote-worker-registration-service]", () => {
   const db = createTestDb();
   const store = new AuthoritativeTaskStore(db);
   const service = new RemoteWorkerRegistrationService(db, store, {
@@ -96,7 +96,7 @@ test("issueChallenge returns issued=false when capability not allowed", () => {
   assert.deepEqual(decision.rejectedCapabilities, ["mcp"]);
 });
 
-test("issueChallenge returns issued=false when ttl is invalid", () => {
+test("issueChallenge returns issued=false when ttl is invalid [remote-worker-registration-service]", () => {
   const service = createService();
 
   const decision = service.issueChallenge({
@@ -109,7 +109,7 @@ test("issueChallenge returns issued=false when ttl is invalid", () => {
   assert.equal(decision.reasonCode, "challenge_ttl_invalid");
 });
 
-test("issueChallenge returns issued=false when ttl is zero", () => {
+test("issueChallenge returns issued=false when ttl is zero [remote-worker-registration-service]", () => {
   const service = createService();
 
   const decision = service.issueChallenge({
@@ -122,7 +122,7 @@ test("issueChallenge returns issued=false when ttl is zero", () => {
   assert.equal(decision.reasonCode, "challenge_ttl_invalid");
 });
 
-test("issueChallenge uses default TTL when not specified", () => {
+test("issueChallenge uses default TTL when not specified [remote-worker-registration-service]", () => {
   const service = createService();
 
   const decision = service.issueChallenge({
@@ -138,7 +138,7 @@ test("issueChallenge uses default TTL when not specified", () => {
   assert.ok(diffMs > 0 && diffMs <= 310_000); // Default is 300000ms with some tolerance
 });
 
-test("issueChallenge handles empty capabilities list", () => {
+test("issueChallenge handles empty capabilities list [remote-worker-registration-service]", () => {
   const service = createService();
 
   const decision = service.issueChallenge({
@@ -150,7 +150,7 @@ test("issueChallenge handles empty capabilities list", () => {
   assert.deepEqual(decision.allowedCapabilities, []);
 });
 
-test("issueChallenge normalizes capability whitespace", () => {
+test("issueChallenge normalizes capability whitespace [remote-worker-registration-service]", () => {
   const service = createService();
 
   const decision = service.issueChallenge({
@@ -162,7 +162,7 @@ test("issueChallenge normalizes capability whitespace", () => {
   assert.ok(decision.allowedCapabilities.includes("bash"));
 });
 
-test("issueChallenge deduplicates requested capabilities", () => {
+test("issueChallenge deduplicates requested capabilities [remote-worker-registration-service]", () => {
   const service = createService();
 
   const decision = service.issueChallenge({
@@ -178,7 +178,7 @@ test("issueChallenge deduplicates requested capabilities", () => {
 // completeRegistration - basic behavior
 // ---------------------------------------------------------------------------
 
-test("completeRegistration returns accepted=true for valid challenge", () => {
+test("completeRegistration returns accepted=true for valid challenge [remote-worker-registration-service]", () => {
   const db = createTestDb();
   const service = createService(db);
 
@@ -201,7 +201,7 @@ test("completeRegistration returns accepted=true for valid challenge", () => {
   assert.ok(decision.registrationChallengeId !== null);
 });
 
-test("completeRegistration returns accepted=false when challenge not found", () => {
+test("completeRegistration returns accepted=false when challenge not found [remote-worker-registration-service]", () => {
   const service = createService();
 
   const decision = service.completeRegistration({
@@ -216,7 +216,7 @@ test("completeRegistration returns accepted=false when challenge not found", () 
   assert.equal(decision.reasonCode, "challenge_not_found");
 });
 
-test("completeRegistration returns accepted=false when worker ID mismatch", () => {
+test("completeRegistration returns accepted=false when worker ID mismatch [remote-worker-registration-service]", () => {
   const db = createTestDb();
   const service = createService(db);
 
@@ -237,7 +237,7 @@ test("completeRegistration returns accepted=false when worker ID mismatch", () =
   assert.equal(decision.reasonCode, "challenge_worker_mismatch");
 });
 
-test("completeRegistration returns accepted=false when challenge already used", () => {
+test("completeRegistration returns accepted=false when challenge already used [remote-worker-registration-service]", () => {
   const db = createTestDb();
   const service = createService(db);
 
@@ -268,7 +268,7 @@ test("completeRegistration returns accepted=false when challenge already used", 
   assert.equal(decision.reasonCode, "challenge_already_used");
 });
 
-test("completeRegistration returns accepted=false when challenge expired", () => {
+test("completeRegistration returns accepted=false when challenge expired [remote-worker-registration-service]", () => {
   const db = createTestDb();
   const store = new AuthoritativeTaskStore(db);
   const service = createService(db);
@@ -295,7 +295,7 @@ test("completeRegistration returns accepted=false when challenge expired", () =>
   assert.equal(decision.reasonCode, "challenge_expired");
 });
 
-test("completeRegistration returns accepted=false when token invalid", () => {
+test("completeRegistration returns accepted=false when token invalid [remote-worker-registration-service]", () => {
   const db = createTestDb();
   const service = createService(db);
 
@@ -316,7 +316,7 @@ test("completeRegistration returns accepted=false when token invalid", () => {
   assert.equal(decision.reasonCode, "challenge_token_invalid");
 });
 
-test("completeRegistration accepts legacy sha256 challenge hashes with timing-safe migration compatibility", () => {
+test("completeRegistration accepts legacy sha256 challenge hashes with timing-safe migration compatibility [remote-worker-registration-service]", () => {
   const db = createTestDb();
   const service = createService(db);
 
@@ -340,7 +340,7 @@ test("completeRegistration accepts legacy sha256 challenge hashes with timing-sa
   assert.equal(decision.reasonCode, null);
 });
 
-test("completeRegistration returns accepted=false when capability not allowed", () => {
+test("completeRegistration returns accepted=false when capability not allowed [remote-worker-registration-service]", () => {
   const db = createTestDb();
   const service = createService(db);
 
@@ -365,7 +365,7 @@ test("completeRegistration returns accepted=false when capability not allowed", 
 // completeRegistration - edge cases
 // ---------------------------------------------------------------------------
 
-test("completeRegistration handles optional isolationLevel", () => {
+test("completeRegistration handles optional isolationLevel [remote-worker-registration-service]", () => {
   const db = createTestDb();
   const service = createService(db);
 
@@ -386,7 +386,7 @@ test("completeRegistration handles optional isolationLevel", () => {
   assert.equal(decision.accepted, true);
 });
 
-test("completeRegistration handles optional remoteSessionStatus", () => {
+test("completeRegistration handles optional remoteSessionStatus [remote-worker-registration-service]", () => {
   const db = createTestDb();
   const service = createService(db);
 
@@ -407,7 +407,7 @@ test("completeRegistration handles optional remoteSessionStatus", () => {
   assert.equal(decision.accepted, true);
 });
 
-test("completeRegistration normalizes capability whitespace", () => {
+test("completeRegistration normalizes capability whitespace [remote-worker-registration-service]", () => {
   const db = createTestDb();
   const service = createService(db);
 
@@ -427,7 +427,7 @@ test("completeRegistration normalizes capability whitespace", () => {
   assert.equal(decision.accepted, true);
 });
 
-test("completeRegistration rejects when requested more than allowed", () => {
+test("completeRegistration rejects when requested more than allowed [remote-worker-registration-service]", () => {
   const db = createTestDb();
   const service = createService(db);
 

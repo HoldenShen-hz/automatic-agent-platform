@@ -59,7 +59,7 @@ function seedCompleted24hEvidence(evidenceRoot: string): void {
   );
 }
 
-test("stable evidence sequence advances from completed 24h evidence into 72h and completes when evidence passes", async () => {
+test("stable evidence sequence advances from completed 24h evidence into 72h and completes when evidence passes [stable-evidence-sequence]", async () => {
   const workspace = createTempWorkspace("aa-stable-sequence-unit-");
   const evidenceRoot = join(workspace, "stable-evidence");
 
@@ -94,7 +94,7 @@ test("stable evidence sequence advances from completed 24h evidence into 72h and
   }
 });
 
-test("stable evidence sequence persists sequence state before long-run completion", async () => {
+test("stable evidence sequence persists sequence state before long-run completion [stable-evidence-sequence]", async () => {
   const workspace = createTempWorkspace("aa-stable-sequence-persist-");
   const evidenceRoot = join(workspace, "stable-evidence");
 
@@ -121,7 +121,7 @@ test("stable evidence sequence persists sequence state before long-run completio
   }
 });
 
-test("stable evidence sequence loads existing state and resumes from where it left off", async () => {
+test("stable evidence sequence loads existing state and resumes from where it left off [stable-evidence-sequence]", async () => {
   const workspace = createTempWorkspace("aa-stable-sequence-resume-");
   const evidenceRoot = join(workspace, "stable-evidence");
 

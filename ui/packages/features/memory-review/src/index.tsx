@@ -10,7 +10,7 @@ const memoryReviewFeature = createFeatureModule({
   group: "Governance",
   path: "/governance/memory-review",
   permission: "authenticated",
-  status: "Implemented/Contracted",
+  status: "Planned",
   summary: featureCopy.summary,
   render: MemoryReviewWebView,
 });

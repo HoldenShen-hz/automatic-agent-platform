@@ -26,7 +26,7 @@ function createTestLedger(overrides: Partial<Parameters<typeof createBudgetLedge
   });
 }
 
-test("BudgetAllocator.reserve updates ledger reservedAmount and increments version", () => {
+test("BudgetAllocator.reserve updates ledger reservedAmount and increments version [budget-allocator-comprehensive]", () => {
   const allocator = new BudgetAllocator();
   const ledger = createTestLedger({ version: 0 });
 
@@ -44,7 +44,7 @@ test("BudgetAllocator.reserve updates ledger reservedAmount and increments versi
   assert.equal(result.reservation.resourceKind, "tool");
 });
 
-test("BudgetAllocator.reserve rejects version mismatch", () => {
+test("BudgetAllocator.reserve rejects version mismatch [budget-allocator-comprehensive]", () => {
   const allocator = new BudgetAllocator();
   const ledger = createTestLedger({ version: 5 });
 
@@ -62,7 +62,7 @@ test("BudgetAllocator.reserve rejects version mismatch", () => {
   );
 });
 
-test("BudgetAllocator.reserve rejects when amount is not positive", () => {
+test("BudgetAllocator.reserve rejects when amount is not positive [budget-allocator-comprehensive]", () => {
   const allocator = new BudgetAllocator();
   const ledger = createTestLedger();
 
@@ -91,7 +91,7 @@ test("BudgetAllocator.reserve rejects when amount is not positive", () => {
   );
 });
 
-test("BudgetAllocator.reserve rejects when hard cap would be exceeded", () => {
+test("BudgetAllocator.reserve rejects when hard cap would be exceeded [budget-allocator-comprehensive]", () => {
   const allocator = new BudgetAllocator();
   const ledger = createTestLedger({ hardCap: 100, reservedAmount: 60, settledAmount: 30 });
 
@@ -109,7 +109,7 @@ test("BudgetAllocator.reserve rejects when hard cap would be exceeded", () => {
   );
 });
 
-test("BudgetAllocator.reserve allows reservation up to exact hard cap", () => {
+test("BudgetAllocator.reserve allows reservation up to exact hard cap [budget-allocator-comprehensive]", () => {
   const allocator = new BudgetAllocator();
   const ledger = createTestLedger({ hardCap: 100, reservedAmount: 60, settledAmount: 30, releasedAmount: 0 });
 
@@ -126,7 +126,7 @@ test("BudgetAllocator.reserve allows reservation up to exact hard cap", () => {
   assert.equal(result.ledger.reservedAmount, 70);
 });
 
-test("BudgetAllocator.reserve sets ledger status to hard_cap_reached when cap is reached", () => {
+test("BudgetAllocator.reserve sets ledger status to hard_cap_reached when cap is reached [budget-allocator-comprehensive]", () => {
   const allocator = new BudgetAllocator();
   const ledger = createTestLedger({ hardCap: 100, reservedAmount: 50, settledAmount: 0, releasedAmount: 0, status: "open" });
 
@@ -142,7 +142,7 @@ test("BudgetAllocator.reserve sets ledger status to hard_cap_reached when cap is
   assert.equal(result.ledger.status, "hard_cap_reached");
 });
 
-test("BudgetAllocator.reserve accepts all valid resource kinds", () => {
+test("BudgetAllocator.reserve accepts all valid resource kinds [budget-allocator-comprehensive]", () => {
   const allocator = new BudgetAllocator();
   const resourceKinds: BudgetResourceKind[] = ["token", "tool", "api", "compute", "human", "side_effect", "other"];
 
@@ -159,7 +159,7 @@ test("BudgetAllocator.reserve accepts all valid resource kinds", () => {
   }
 });
 
-test("BudgetAllocator.reserve with nodeRunId associates reservation with node", () => {
+test("BudgetAllocator.reserve with nodeRunId associates reservation with node [budget-allocator-comprehensive]", () => {
   const allocator = new BudgetAllocator();
   const ledger = createTestLedger();
 
@@ -175,7 +175,7 @@ test("BudgetAllocator.reserve with nodeRunId associates reservation with node", 
   assert.equal(result.reservation.nodeRunId, "node-run-abc");
 });
 
-test("BudgetAllocator.settle transitions reservation to settled status", () => {
+test("BudgetAllocator.settle transitions reservation to settled status [budget-allocator-comprehensive]", () => {
   const allocator = new BudgetAllocator();
   const ledger = createTestLedger();
   const reserved = allocator.reserve({
@@ -200,7 +200,7 @@ test("BudgetAllocator.settle transitions reservation to settled status", () => {
   assert.equal(settled.reservation.aggregate.status, "settled");
 });
 
-test("BudgetAllocator.release transitions reservation to released status", () => {
+test("BudgetAllocator.release transitions reservation to released status [budget-allocator-comprehensive]", () => {
   const allocator = new BudgetAllocator();
   const ledger = createTestLedger();
   const reserved = allocator.reserve({
@@ -227,7 +227,7 @@ test("BudgetAllocator.release transitions reservation to released status", () =>
   assert.equal(released.ledger.version, reserved.ledger.version + 1);
 });
 
-test("BudgetAllocator.settle updates ledger accounting correctly with exact amount", () => {
+test("BudgetAllocator.settle updates ledger accounting correctly with exact amount [budget-allocator-comprehensive]", () => {
   const allocator = new BudgetAllocator();
   const ledger = createTestLedger();
   const reserved = allocator.reserve({
@@ -255,7 +255,7 @@ test("BudgetAllocator.settle updates ledger accounting correctly with exact amou
   assert.equal(settled.ledger.version, reserved.ledger.version + 1);
 });
 
-test("BudgetAllocator.settle releases unused budget when actualAmount is less", () => {
+test("BudgetAllocator.settle releases unused budget when actualAmount is less [budget-allocator-comprehensive]", () => {
   const allocator = new BudgetAllocator();
   const ledger = createTestLedger();
   const reserved = allocator.reserve({
@@ -281,7 +281,7 @@ test("BudgetAllocator.settle releases unused budget when actualAmount is less", 
   assert.equal(settled.ledger.releasedAmount, 15); // 60 - 45
 });
 
-test("BudgetAllocator.settle with evidence refs includes them in settlement", () => {
+test("BudgetAllocator.settle with evidence refs includes them in settlement [budget-allocator-comprehensive]", () => {
   const allocator = new BudgetAllocator();
   const ledger = createTestLedger();
   const reserved = allocator.reserve({
@@ -314,7 +314,7 @@ test("BudgetAllocator.settle with evidence refs includes them in settlement", ()
   assert.equal(settled.settlement.evidenceRefs[0]?.artifactId, "artifact-1");
 });
 
-test("BudgetAllocator.settle creates settlement with final kind", () => {
+test("BudgetAllocator.settle creates settlement with final kind [budget-allocator-comprehensive]", () => {
   const allocator = new BudgetAllocator();
   const ledger = createTestLedger();
   const reserved = allocator.reserve({
@@ -339,7 +339,7 @@ test("BudgetAllocator.settle creates settlement with final kind", () => {
   assert.equal(settled.settlement.settlementKind, "final");
 });
 
-test("BudgetAllocator multiple sequential reservations accumulate correctly", () => {
+test("BudgetAllocator multiple sequential reservations accumulate correctly [budget-allocator-comprehensive]", () => {
   const allocator = new BudgetAllocator();
   let ledger = createTestLedger({ version: 0 });
 
@@ -373,7 +373,7 @@ test("BudgetAllocator multiple sequential reservations accumulate correctly", ()
   assert.equal(res3.ledger.version, 3);
 });
 
-test("BudgetAllocator multiple settlements reduce reservedAmount correctly", () => {
+test("BudgetAllocator multiple settlements reduce reservedAmount correctly [budget-allocator-comprehensive]", () => {
   const allocator = new BudgetAllocator();
   let ledger = createTestLedger({ version: 0 });
 
@@ -417,7 +417,7 @@ test("BudgetAllocator multiple settlements reduce reservedAmount correctly", () 
   assert.equal(settled2.ledger.releasedAmount, 5); // 30 - 25 released from first
 });
 
-test("BudgetAllocator.reserve with releasedAmount from previous settlements", () => {
+test("BudgetAllocator.reserve with releasedAmount from previous settlements [budget-allocator-comprehensive]", () => {
   const allocator = new BudgetAllocator();
   const ledger = createTestLedger({
     hardCap: 100,
@@ -441,7 +441,7 @@ test("BudgetAllocator.reserve with releasedAmount from previous settlements", ()
   assert.equal(result.ledger.version, 2);
 });
 
-test("BudgetAllocator.settle emits platform event with correct structure", () => {
+test("BudgetAllocator.settle emits platform event with correct structure [budget-allocator-comprehensive]", () => {
   const allocator = new BudgetAllocator();
   const ledger = createTestLedger();
   const reserved = allocator.reserve({
@@ -468,7 +468,7 @@ test("BudgetAllocator.settle emits platform event with correct structure", () =>
   assert.ok(settled.reservation.event.payloadHash);
 });
 
-test("BudgetAllocator settle requires budget precondition hardCapSatisfied to be true", () => {
+test("BudgetAllocator settle requires budget precondition hardCapSatisfied to be true [budget-allocator-comprehensive]", () => {
   const allocator = new BudgetAllocator();
   const ledger = createTestLedger();
   const reserved = allocator.reserve({
@@ -495,7 +495,7 @@ test("BudgetAllocator settle requires budget precondition hardCapSatisfied to be
   assert.equal(settled.reservation.aggregate.status, "settled");
 });
 
-test("BudgetAllocator reserve and settle with different currency preserves currency", () => {
+test("BudgetAllocator reserve and settle with different currency preserves currency [budget-allocator-comprehensive]", () => {
   const allocator = new BudgetAllocator();
   const ledger = createTestLedger({ currency: "EUR" });
 
@@ -528,7 +528,7 @@ test("BudgetAllocator reserve and settle with different currency preserves curre
   assert.equal(settled.ledger.currency, "EUR");
 });
 
-test("BudgetAllocator reserve and settle with soft cap in ledger", () => {
+test("BudgetAllocator reserve and settle with soft cap in ledger [budget-allocator-comprehensive]", () => {
   const allocator = new BudgetAllocator();
   const ledger = createTestLedger({ softCap: 80, status: "open" });
 

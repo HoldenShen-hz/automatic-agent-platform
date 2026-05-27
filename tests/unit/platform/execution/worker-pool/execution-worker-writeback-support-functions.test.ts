@@ -39,7 +39,7 @@ function createMockStore(overrides: Partial<AuthoritativeTaskStore> = {}): Autho
 // buildAgentExecutionRecord
 // ---------------------------------------------------------------------------
 
-test("buildAgentExecutionRecord creates new record with correct fields", () => {
+test("buildAgentExecutionRecord creates new record with correct fields [execution-worker-writeback-support-functions]", () => {
   const store = createMockStore();
   const execution = {
     id: "exec-123",
@@ -74,7 +74,7 @@ test("buildAgentExecutionRecord creates new record with correct fields", () => {
   assert.equal(record.toolCallCount, 5);
 });
 
-test("buildAgentExecutionRecord uses execution.startedAt when startedAt not in updates", () => {
+test("buildAgentExecutionRecord uses execution.startedAt when startedAt not in updates [execution-worker-writeback-support-functions]", () => {
   const store = createMockStore();
   const execution = {
     id: "exec-123",
@@ -104,7 +104,7 @@ test("buildAgentExecutionRecord uses execution.startedAt when startedAt not in u
   assert.equal(record.startedAt, "2024-01-01T00:00:00.000Z");
 });
 
-test("buildAgentExecutionRecord calculates retryCount from execution attempt", () => {
+test("buildAgentExecutionRecord calculates retryCount from execution attempt [execution-worker-writeback-support-functions]", () => {
   const store = createMockStore();
   const execution = {
     id: "exec-123",
@@ -134,7 +134,7 @@ test("buildAgentExecutionRecord calculates retryCount from execution attempt", (
   assert.equal(record.retryCount, 2);
 });
 
-test("buildAgentExecutionRecord clamps toolCallCount to zero minimum", () => {
+test("buildAgentExecutionRecord clamps toolCallCount to zero minimum [execution-worker-writeback-support-functions]", () => {
   const store = createMockStore();
   const execution = {
     id: "exec-123",
@@ -164,7 +164,7 @@ test("buildAgentExecutionRecord clamps toolCallCount to zero minimum", () => {
   assert.equal(record.toolCallCount, 0);
 });
 
-test("buildAgentExecutionRecord merges with existing record preserving planJson", () => {
+test("buildAgentExecutionRecord merges with existing record preserving planJson [execution-worker-writeback-support-functions]", () => {
   const store = createMockStore({
     worker: {
       getAgentExecutionRecord: () => ({
@@ -224,7 +224,7 @@ test("buildAgentExecutionRecord merges with existing record preserving planJson"
   assert.ok(record.planJson.includes("wf-789"));
 });
 
-test("buildAgentExecutionRecord throws TypeError when updates is undefined", () => {
+test("buildAgentExecutionRecord throws TypeError when updates is undefined [execution-worker-writeback-support-functions]", () => {
   const store = createMockStore();
   const execution = {
     id: "exec-123",
@@ -241,7 +241,7 @@ test("buildAgentExecutionRecord throws TypeError when updates is undefined", () 
   }, TypeError);
 });
 
-test("buildAgentExecutionRecord handles legacy signature with occurredAt as first string arg", () => {
+test("buildAgentExecutionRecord handles legacy signature with occurredAt as first string arg [execution-worker-writeback-support-functions]", () => {
   const store = createMockStore();
   const execution = {
     id: "exec-123",
@@ -277,7 +277,7 @@ test("buildAgentExecutionRecord handles legacy signature with occurredAt as firs
 // persistRemoteLogs
 // ---------------------------------------------------------------------------
 
-test("persistRemoteLogs inserts log entries into store", () => {
+test("persistRemoteLogs inserts log entries into store [execution-worker-writeback-support-functions]", () => {
   let insertedLog: { id: string; taskId: string; executionId: string; workerId: string; level: string; message: string } | null = null;
 
   const store = createMockStore({
@@ -312,7 +312,7 @@ test("persistRemoteLogs inserts log entries into store", () => {
   assert.equal(insertedLog!.message, "Task started");
 });
 
-test("persistRemoteLogs skips empty messages", () => {
+test("persistRemoteLogs skips empty messages [execution-worker-writeback-support-functions]", () => {
   let insertCallCount = 0;
 
   const store = createMockStore({
@@ -333,7 +333,7 @@ test("persistRemoteLogs skips empty messages", () => {
   assert.equal(insertCallCount, 1);
 });
 
-test("persistRemoteLogs skips whitespace-only messages", () => {
+test("persistRemoteLogs skips whitespace-only messages [execution-worker-writeback-support-functions]", () => {
   let insertCallCount = 0;
 
   const store = createMockStore({
@@ -354,7 +354,7 @@ test("persistRemoteLogs skips whitespace-only messages", () => {
   assert.equal(insertCallCount, 1);
 });
 
-test("persistRemoteLogs handles undefined logs array", () => {
+test("persistRemoteLogs handles undefined logs array [execution-worker-writeback-support-functions]", () => {
   let insertCallCount = 0;
 
   const store = createMockStore({
@@ -370,7 +370,7 @@ test("persistRemoteLogs handles undefined logs array", () => {
   assert.equal(insertCallCount, 0);
 });
 
-test("persistRemoteLogs includes context in contextJson", () => {
+test("persistRemoteLogs includes context in contextJson [execution-worker-writeback-support-functions]", () => {
   let insertedLog: { contextJson: string } | null = null;
 
   const store = createMockStore({
@@ -401,7 +401,7 @@ test("persistRemoteLogs includes context in contextJson", () => {
   assert.equal(context.customField, "customValue");
 });
 
-test("persistRemoteLogs includes runtimeInstanceId in context when provided", () => {
+test("persistRemoteLogs includes runtimeInstanceId in context when provided [execution-worker-writeback-support-functions]", () => {
   let insertedLog: { contextJson: string } | null = null;
 
   const store = createMockStore({
@@ -423,7 +423,7 @@ test("persistRemoteLogs includes runtimeInstanceId in context when provided", ()
   assert.equal(context.runtimeInstanceId, "runtime-xyz");
 });
 
-test("persistRemoteLogs uses defaultOccurredAt when entry has no occurredAt", () => {
+test("persistRemoteLogs uses defaultOccurredAt when entry has no occurredAt [execution-worker-writeback-support-functions]", () => {
   let insertedLog: { createdAt: string } | null = null;
 
   const store = createMockStore({
@@ -444,7 +444,7 @@ test("persistRemoteLogs uses defaultOccurredAt when entry has no occurredAt", ()
   assert.equal(insertedLog!.createdAt, "2024-01-01T00:00:00.000Z");
 });
 
-test("persistRemoteLogs handles multiple log entries", () => {
+test("persistRemoteLogs handles multiple log entries [execution-worker-writeback-support-functions]", () => {
   const insertedLogs: { level: string; message: string }[] = [];
 
   const store = createMockStore({

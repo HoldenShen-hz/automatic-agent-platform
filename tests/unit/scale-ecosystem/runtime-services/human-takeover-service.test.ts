@@ -2,11 +2,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { HumanTakeoverService, type TakeoverActionResult } from "../../../../src/scale-ecosystem/runtime-services/human-takeover-service.js";
 
-test("HumanTakeoverService is exported and is a class", () => {
+test("HumanTakeoverService is exported and is a class [human-takeover-service]", () => {
   assert.equal(typeof HumanTakeoverService, "function");
 });
 
-test("TakeoverActionResult type is exported", () => {
+test("TakeoverActionResult type is exported [human-takeover-service]", () => {
   // Verify type exists by checking a function signature that uses it
   const result: TakeoverActionResult = {
     taskId: "test-task",

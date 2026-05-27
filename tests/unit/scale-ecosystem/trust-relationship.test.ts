@@ -21,12 +21,12 @@ import { cleanupPath, createTempWorkspace } from "../../helpers/fs.js";
 // TrustRelationshipManager Construction Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("trust-relationship: createTrustRelationshipManager returns instance", () => {
+test("trust-relationship: createTrustRelationshipManager returns instance [trust-relationship]", () => {
   const manager = createTrustRelationshipManager();
   assert.ok(manager instanceof TrustRelationshipManager);
 });
 
-test("trust-relationship: constructor accepts initial policies", () => {
+test("trust-relationship: constructor accepts initial policies [trust-relationship]", () => {
   const policies: TrustPolicy[] = [
     {
       id: "policy-1",
@@ -51,7 +51,7 @@ test("trust-relationship: constructor accepts initial policies", () => {
 // Trust Relationship Creation Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("trust-relationship: createTrustRelationship creates active trust", async () => {
+test("trust-relationship: createTrustRelationship creates active trust [trust-relationship]", async () => {
   const manager = new TrustRelationshipManager();
   const trust = await manager.createTrustRelationship({
     sourceOrgId: "org-1",
@@ -68,7 +68,7 @@ test("trust-relationship: createTrustRelationship creates active trust", async (
   assert.equal(trust.status, "active");
 });
 
-test("trust-relationship: createTrustRelationship uses default policy", async () => {
+test("trust-relationship: createTrustRelationship uses default policy [trust-relationship]", async () => {
   const manager = new TrustRelationshipManager();
   const trust = await manager.createTrustRelationship({
     sourceOrgId: "org-1",
@@ -81,7 +81,7 @@ test("trust-relationship: createTrustRelationship uses default policy", async ()
   assert.equal(trust.policy.minTrustLevel, TrustLevel.WRITE);
 });
 
-test("trust-relationship: createTrustRelationship with custom policy", async () => {
+test("trust-relationship: createTrustRelationship with custom policy [trust-relationship]", async () => {
   const manager = new TrustRelationshipManager();
   const policy: TrustPolicy = {
     id: "custom-policy",
@@ -109,7 +109,7 @@ test("trust-relationship: createTrustRelationship with custom policy", async () 
   );
 });
 
-test("trust-relationship: createTrustRelationship records trust event", async () => {
+test("trust-relationship: createTrustRelationship records trust event [trust-relationship]", async () => {
   const manager = new TrustRelationshipManager();
   const trust = await manager.createTrustRelationship({
     sourceOrgId: "org-1",
@@ -128,7 +128,7 @@ test("trust-relationship: createTrustRelationship records trust event", async ()
 // Trust Relationship Retrieval Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("trust-relationship: getTrustRelationship returns trust by id", async () => {
+test("trust-relationship: getTrustRelationship returns trust by id [trust-relationship]", async () => {
   const manager = new TrustRelationshipManager();
   const created = await manager.createTrustRelationship({
     sourceOrgId: "org-1",
@@ -142,13 +142,13 @@ test("trust-relationship: getTrustRelationship returns trust by id", async () =>
   assert.equal(trust?.id, created.id);
 });
 
-test("trust-relationship: getTrustRelationship returns undefined for unknown id", async () => {
+test("trust-relationship: getTrustRelationship returns undefined for unknown id [trust-relationship]", async () => {
   const manager = new TrustRelationshipManager();
   const trust = await manager.getTrustRelationship("unknown-id");
   assert.equal(trust, undefined);
 });
 
-test("trust-relationship: getTrustsForOrganization returns all trusts for org", async () => {
+test("trust-relationship: getTrustsForOrganization returns all trusts for org [trust-relationship]", async () => {
   const manager = new TrustRelationshipManager();
   await manager.createTrustRelationship({
     sourceOrgId: "org-1",
@@ -167,7 +167,7 @@ test("trust-relationship: getTrustsForOrganization returns all trusts for org", 
   assert.equal(trusts.length, 2);
 });
 
-test("trust-relationship: getTrustBetweenOrgs returns active trust", async () => {
+test("trust-relationship: getTrustBetweenOrgs returns active trust [trust-relationship]", async () => {
   const manager = new TrustRelationshipManager();
   await manager.createTrustRelationship({
     sourceOrgId: "org-1",
@@ -183,7 +183,7 @@ test("trust-relationship: getTrustBetweenOrgs returns active trust", async () =>
   assert.equal(trust?.status, "active");
 });
 
-test("trust-relationship: getTrustBetweenOrgs returns undefined when no trust", async () => {
+test("trust-relationship: getTrustBetweenOrgs returns undefined when no trust [trust-relationship]", async () => {
   const manager = new TrustRelationshipManager();
   const trust = await manager.getTrustBetweenOrgs("org-1", "org-2");
   assert.equal(trust, undefined);
@@ -193,7 +193,7 @@ test("trust-relationship: getTrustBetweenOrgs returns undefined when no trust", 
 // Trust Level Update Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("trust-relationship: updateTrustLevel changes level", async () => {
+test("trust-relationship: updateTrustLevel changes level [trust-relationship]", async () => {
   const manager = new TrustRelationshipManager();
   const trust = await manager.createTrustRelationship({
     sourceOrgId: "org-1",
@@ -208,7 +208,7 @@ test("trust-relationship: updateTrustLevel changes level", async () => {
   assert.equal(updated?.level, TrustLevel.WRITE);
 });
 
-test("trust-relationship: updateTrustLevel records trust event", async () => {
+test("trust-relationship: updateTrustLevel records trust event [trust-relationship]", async () => {
   const manager = new TrustRelationshipManager();
   const trust = await manager.createTrustRelationship({
     sourceOrgId: "org-1",
@@ -228,7 +228,7 @@ test("trust-relationship: updateTrustLevel records trust event", async () => {
 // Trust Suspension Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("trust-relationship: suspendTrust changes status", async () => {
+test("trust-relationship: suspendTrust changes status [trust-relationship]", async () => {
   const manager = new TrustRelationshipManager();
   const trust = await manager.createTrustRelationship({
     sourceOrgId: "org-1",
@@ -243,7 +243,7 @@ test("trust-relationship: suspendTrust changes status", async () => {
   assert.equal(suspended?.status, "suspended");
 });
 
-test("trust-relationship: suspendTrust records event", async () => {
+test("trust-relationship: suspendTrust records event [trust-relationship]", async () => {
   const manager = new TrustRelationshipManager();
   const trust = await manager.createTrustRelationship({
     sourceOrgId: "org-1",
@@ -263,7 +263,7 @@ test("trust-relationship: suspendTrust records event", async () => {
 // Trust Revocation Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("trust-relationship: revokeTrust changes status and expires", async () => {
+test("trust-relationship: revokeTrust changes status and expires [trust-relationship]", async () => {
   const manager = new TrustRelationshipManager();
   const trust = await manager.createTrustRelationship({
     sourceOrgId: "org-1",
@@ -279,7 +279,7 @@ test("trust-relationship: revokeTrust changes status and expires", async () => {
   assert.ok(revoked?.expiresAt != null);
 });
 
-test("trust-relationship: revokeTrust records event", async () => {
+test("trust-relationship: revokeTrust records event [trust-relationship]", async () => {
   const manager = new TrustRelationshipManager();
   const trust = await manager.createTrustRelationship({
     sourceOrgId: "org-1",
@@ -299,7 +299,7 @@ test("trust-relationship: revokeTrust records event", async () => {
 // Trust Renewal Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("trust-relationship: renewTrust updates expiry", async () => {
+test("trust-relationship: renewTrust updates expiry [trust-relationship]", async () => {
   const manager = new TrustRelationshipManager();
   const trust = await manager.createTrustRelationship({
     sourceOrgId: "org-1",
@@ -316,7 +316,7 @@ test("trust-relationship: renewTrust updates expiry", async () => {
   assert.ok(renewed?.expiresAt?.getTime() === newExpiry.getTime());
 });
 
-test("trust-relationship: renewTrust records event", async () => {
+test("trust-relationship: renewTrust records event [trust-relationship]", async () => {
   const manager = new TrustRelationshipManager();
   const trust = await manager.createTrustRelationship({
     sourceOrgId: "org-1",
@@ -337,7 +337,7 @@ test("trust-relationship: renewTrust records event", async () => {
 // Trust Evaluation Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("trust-relationship: evaluateTrust returns evaluation result", async () => {
+test("trust-relationship: evaluateTrust returns evaluation result [trust-relationship]", async () => {
   const manager = new TrustRelationshipManager();
   const trust = await manager.createTrustRelationship({
     sourceOrgId: "org-1",
@@ -354,7 +354,7 @@ test("trust-relationship: evaluateTrust returns evaluation result", async () => 
   assert.ok(["grant", "review", "deny"].includes(evaluation.recommendation));
 });
 
-test("trust-relationship: evaluateTrustBetweenOrgs returns evaluation", async () => {
+test("trust-relationship: evaluateTrustBetweenOrgs returns evaluation [trust-relationship]", async () => {
   const manager = new TrustRelationshipManager();
   await manager.createTrustRelationship({
     sourceOrgId: "org-1",
@@ -369,7 +369,7 @@ test("trust-relationship: evaluateTrustBetweenOrgs returns evaluation", async ()
   assert.ok(evaluation?.targetOrgId === "org-2");
 });
 
-test("trust-relationship: evaluateTrustBetweenOrgs returns undefined when no trust", async () => {
+test("trust-relationship: evaluateTrustBetweenOrgs returns undefined when no trust [trust-relationship]", async () => {
   const manager = new TrustRelationshipManager();
   const evaluation = await manager.evaluateTrustBetweenOrgs("org-1", "org-2");
   assert.equal(evaluation, undefined);
@@ -379,7 +379,7 @@ test("trust-relationship: evaluateTrustBetweenOrgs returns undefined when no tru
 // Metrics Update Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("trust-relationship: updateMetrics updates success count", async () => {
+test("trust-relationship: updateMetrics updates success count [trust-relationship]", async () => {
   const manager = new TrustRelationshipManager();
   const trust = await manager.createTrustRelationship({
     sourceOrgId: "org-1",
@@ -395,7 +395,7 @@ test("trust-relationship: updateMetrics updates success count", async () => {
   assert.equal(updated?.metrics.failedInteractions, 0);
 });
 
-test("trust-relationship: updateMetrics updates failure count", async () => {
+test("trust-relationship: updateMetrics updates failure count [trust-relationship]", async () => {
   const manager = new TrustRelationshipManager();
   const trust = await manager.createTrustRelationship({
     sourceOrgId: "org-1",
@@ -410,7 +410,7 @@ test("trust-relationship: updateMetrics updates failure count", async () => {
   assert.equal(updated?.metrics.failedInteractions, 1);
 });
 
-test("trust-relationship: updateMetrics calculates uptime", async () => {
+test("trust-relationship: updateMetrics calculates uptime [trust-relationship]", async () => {
   const manager = new TrustRelationshipManager();
   const trust = await manager.createTrustRelationship({
     sourceOrgId: "org-1",
@@ -433,7 +433,7 @@ test("trust-relationship: updateMetrics calculates uptime", async () => {
 // Trust Events Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("trust-relationship: getTrustEvents returns events for trust", async () => {
+test("trust-relationship: getTrustEvents returns events for trust [trust-relationship]", async () => {
   const manager = new TrustRelationshipManager();
   const trust = await manager.createTrustRelationship({
     sourceOrgId: "org-1",
@@ -446,7 +446,7 @@ test("trust-relationship: getTrustEvents returns events for trust", async () => 
   assert.ok(events.length > 0);
 });
 
-test("trust-relationship: getRecentEvents returns sorted events", async () => {
+test("trust-relationship: getRecentEvents returns sorted events [trust-relationship]", async () => {
   const manager = new TrustRelationshipManager();
   const trust = await manager.createTrustRelationship({
     sourceOrgId: "org-1",
@@ -470,7 +470,7 @@ test("trust-relationship: getRecentEvents returns sorted events", async () => {
 // Policy Management Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("trust-relationship: registerPolicy adds policy", () => {
+test("trust-relationship: registerPolicy adds policy [trust-relationship]", () => {
   const manager = new TrustRelationshipManager();
   const policy: TrustPolicy = {
     id: "new-policy",
@@ -491,7 +491,7 @@ test("trust-relationship: registerPolicy adds policy", () => {
   assert.equal(retrieved?.name, "New Policy");
 });
 
-test("trust-relationship: getPoliciesForLevel returns matching policies", () => {
+test("trust-relationship: getPoliciesForLevel returns matching policies [trust-relationship]", () => {
   const manager = new TrustRelationshipManager();
   const policy: TrustPolicy = {
     id: "level-policy",
@@ -511,7 +511,7 @@ test("trust-relationship: getPoliciesForLevel returns matching policies", () => 
   assert.ok(policies.length > 0);
 });
 
-test("trust-relationship: expired trusts are blocked from active resolution", async () => {
+test("trust-relationship: expired trusts are blocked from active resolution [trust-relationship]", async () => {
   const manager = new TrustRelationshipManager([], { persistent: false });
   const trust = await manager.createTrustRelationship({
     sourceOrgId: "org-1",
@@ -528,7 +528,7 @@ test("trust-relationship: expired trusts are blocked from active resolution", as
   assert.equal(loaded?.status, "expired");
 });
 
-test("trust-relationship: overdue reauth blocks trust usage", async () => {
+test("trust-relationship: overdue reauth blocks trust usage [trust-relationship]", async () => {
   const policy: TrustPolicy = {
     id: "reauth-policy",
     name: "Reauth Policy",
@@ -559,7 +559,7 @@ test("trust-relationship: overdue reauth blocks trust usage", async () => {
   assert.equal(stored.status, "expired");
 });
 
-test("trust-relationship: persistent storage survives manager restart", async () => {
+test("trust-relationship: persistent storage survives manager restart [trust-relationship]", async () => {
   const workspace = createTempWorkspace("trust-relationship-");
   try {
     const storageDir = join(workspace, "trust-store");

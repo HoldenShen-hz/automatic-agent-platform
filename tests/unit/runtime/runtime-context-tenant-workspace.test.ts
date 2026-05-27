@@ -24,121 +24,121 @@ function baseContext(overrides: Partial<RuntimeContextSnapshot> = {}): RuntimeCo
   };
 }
 
-test("getTenantId returns tenantId when set in context", () => {
+test("getTenantId returns tenantId when set in context [runtime-context-tenant-workspace]", () => {
   const ctx = baseContext({ tenantId: "tenant_abc" });
   provideContext(ctx, () => {
     assert.equal(getTenantId(), "tenant_abc");
   });
 });
 
-test("getTenantId returns null when tenantId not set", () => {
+test("getTenantId returns null when tenantId not set [runtime-context-tenant-workspace]", () => {
   const ctx = baseContext({});
   provideContext(ctx, () => {
     assert.equal(getTenantId(), null);
   });
 });
 
-test("getTenantId returns null when context is missing", () => {
+test("getTenantId returns null when context is missing [runtime-context-tenant-workspace]", () => {
   assert.equal(getTenantId(), null);
 });
 
-test("getTenantIdOrNull returns tenantId when set", () => {
+test("getTenantIdOrNull returns tenantId when set [runtime-context-tenant-workspace]", () => {
   const ctx = baseContext({ tenantId: "tenant_xyz" });
   provideContext(ctx, () => {
     assert.equal(getTenantIdOrNull(), "tenant_xyz");
   });
 });
 
-test("getTenantIdOrNull returns null when not set", () => {
+test("getTenantIdOrNull returns null when not set [runtime-context-tenant-workspace]", () => {
   const ctx = baseContext({});
   provideContext(ctx, () => {
     assert.equal(getTenantIdOrNull(), null);
   });
 });
 
-test("getWorkspaceId returns workspaceId when set", () => {
+test("getWorkspaceId returns workspaceId when set [runtime-context-tenant-workspace]", () => {
   const ctx = baseContext({ workspaceId: "ws_123" });
   provideContext(ctx, () => {
     assert.equal(getWorkspaceId(), "ws_123");
   });
 });
 
-test("getWorkspaceId returns null when workspaceId not set", () => {
+test("getWorkspaceId returns null when workspaceId not set [runtime-context-tenant-workspace]", () => {
   const ctx = baseContext({});
   provideContext(ctx, () => {
     assert.equal(getWorkspaceId(), null);
   });
 });
 
-test("getWorkspaceId returns null when context is missing", () => {
+test("getWorkspaceId returns null when context is missing [runtime-context-tenant-workspace]", () => {
   assert.equal(getWorkspaceId(), null);
 });
 
-test("getWorkspaceIdOrNull returns workspaceId when set", () => {
+test("getWorkspaceIdOrNull returns workspaceId when set [runtime-context-tenant-workspace]", () => {
   const ctx = baseContext({ workspaceId: "ws_456" });
   provideContext(ctx, () => {
     assert.equal(getWorkspaceIdOrNull(), "ws_456");
   });
 });
 
-test("getWorkspaceIdOrNull returns null when not set", () => {
+test("getWorkspaceIdOrNull returns null when not set [runtime-context-tenant-workspace]", () => {
   const ctx = baseContext({});
   provideContext(ctx, () => {
     assert.equal(getWorkspaceIdOrNull(), null);
   });
 });
 
-test("hasTenantContext returns true when tenantId is set with value", () => {
+test("hasTenantContext returns true when tenantId is set with value [runtime-context-tenant-workspace]", () => {
   const ctx = baseContext({ tenantId: "tenant_active" });
   provideContext(ctx, () => {
     assert.equal(hasTenantContext(), true);
   });
 });
 
-test("hasTenantContext returns false when tenantId is empty string", () => {
+test("hasTenantContext returns false when tenantId is empty string [runtime-context-tenant-workspace]", () => {
   const ctx = baseContext({ tenantId: "" });
   provideContext(ctx, () => {
     assert.equal(hasTenantContext(), false);
   });
 });
 
-test("hasTenantContext returns false when tenantId is not set", () => {
+test("hasTenantContext returns false when tenantId is not set [runtime-context-tenant-workspace]", () => {
   const ctx = baseContext({});
   provideContext(ctx, () => {
     assert.equal(hasTenantContext(), false);
   });
 });
 
-test("hasTenantContext returns false when context missing", () => {
+test("hasTenantContext returns false when context missing [runtime-context-tenant-workspace]", () => {
   assert.equal(hasTenantContext(), false);
 });
 
-test("hasWorkspaceContext returns true when workspaceId is set", () => {
+test("hasWorkspaceContext returns true when workspaceId is set [runtime-context-tenant-workspace]", () => {
   const ctx = baseContext({ workspaceId: "ws_active" });
   provideContext(ctx, () => {
     assert.equal(hasWorkspaceContext(), true);
   });
 });
 
-test("hasWorkspaceContext returns false when workspaceId is empty string", () => {
+test("hasWorkspaceContext returns false when workspaceId is empty string [runtime-context-tenant-workspace]", () => {
   const ctx = baseContext({ workspaceId: "" });
   provideContext(ctx, () => {
     assert.equal(hasWorkspaceContext(), false);
   });
 });
 
-test("hasWorkspaceContext returns false when workspaceId is not set", () => {
+test("hasWorkspaceContext returns false when workspaceId is not set [runtime-context-tenant-workspace]", () => {
   const ctx = baseContext({});
   provideContext(ctx, () => {
     assert.equal(hasWorkspaceContext(), false);
   });
 });
 
-test("hasWorkspaceContext returns false when context missing", () => {
+test("hasWorkspaceContext returns false when context missing [runtime-context-tenant-workspace]", () => {
   assert.equal(hasWorkspaceContext(), false);
 });
 
-test("withContextPatch preserves workspaceId from parent when patching tenantId", () => {
+test("withContextPatch preserves workspaceId from parent when patching tenantId [runtime-context-tenant-workspace]", () => {
   const ctx = baseContext({
     tenantId: "tenant_parent",
     workspaceId: "ws_parent",
@@ -156,7 +156,7 @@ test("withContextPatch preserves workspaceId from parent when patching tenantId"
   });
 });
 
-test("withContextPatch can patch both tenant and workspace together", () => {
+test("withContextPatch can patch both tenant and workspace together [runtime-context-tenant-workspace]", () => {
   const ctx = baseContext({});
   provideContext(ctx, () => {
     withContextPatch({ tenantId: "new_tenant", workspaceId: "new_ws" }, () => {
@@ -169,7 +169,7 @@ test("withContextPatch can patch both tenant and workspace together", () => {
   });
 });
 
-test("assertContext includes tenantId and workspaceId when checking all fields", () => {
+test("assertContext includes tenantId and workspaceId when checking all fields [runtime-context-tenant-workspace]", () => {
   const ctx = baseContext({
     tenantId: "tenant_required",
     workspaceId: "ws_required",
@@ -181,7 +181,7 @@ test("assertContext includes tenantId and workspaceId when checking all fields",
   });
 });
 
-test("getContextOrNull returns context inside provideContext", () => {
+test("getContextOrNull returns context inside provideContext [runtime-context-tenant-workspace]", () => {
   const ctx = baseContext();
   provideContext(ctx, () => {
     const retrieved = getContextOrNull();
@@ -190,11 +190,11 @@ test("getContextOrNull returns context inside provideContext", () => {
   });
 });
 
-test("getContextOrNull returns null outside provideContext", () => {
+test("getContextOrNull returns null outside provideContext [runtime-context-tenant-workspace]", () => {
   assert.equal(getContextOrNull(), null);
 });
 
-test("multiple nested patches maintain isolation", () => {
+test("multiple nested patches maintain isolation [runtime-context-tenant-workspace]", () => {
   const ctx = baseContext({ tenantId: "tenant_outer" });
   provideContext(ctx, () => {
     withContextPatch({ tenantId: "tenant_middle" }, () => {

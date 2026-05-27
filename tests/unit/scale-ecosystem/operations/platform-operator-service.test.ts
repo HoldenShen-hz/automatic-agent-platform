@@ -38,13 +38,13 @@ function createMockDb() {
   return {};
 }
 
-test("PlatformOperatorService can be instantiated", () => {
+test("PlatformOperatorService can be instantiated [platform-operator-service]", () => {
   const service = new PlatformOperatorService(createMockDb() as any, createMockStore() as any);
 
   assert.ok(service);
 });
 
-test("PlatformOperatorService buildReport returns valid report structure", () => {
+test("PlatformOperatorService buildReport returns valid report structure [platform-operator-service]", () => {
   const mockStore = createMockStore();
   mockStore.worker.listWorkerSnapshots = () => [];
   mockStore.worker.listExecutionTicketsByStatuses = () => [];
@@ -74,7 +74,7 @@ test("PlatformOperatorService buildReport returns valid report structure", () =>
   assert.ok(report.releasePackage);
 });
 
-test("PlatformOperatorService buildReport with custom target status", () => {
+test("PlatformOperatorService buildReport with custom target status [platform-operator-service]", () => {
   const mockStore = createMockStore();
   mockStore.worker.listWorkerSnapshots = () => [];
   mockStore.worker.listExecutionTicketsByStatuses = () => [];
@@ -100,7 +100,7 @@ test("PlatformOperatorService buildReport with custom target status", () => {
   assert.equal(report.targetStatus, "canary");
 });
 
-test("PlatformOperatorService buildReport validates generatedAt", () => {
+test("PlatformOperatorService buildReport validates generatedAt [platform-operator-service]", () => {
   const mockStore = createMockStore();
   mockStore.worker.listWorkerSnapshots = () => [];
   mockStore.worker.listExecutionTicketsByStatuses = () => [];
@@ -126,7 +126,7 @@ test("PlatformOperatorService buildReport validates generatedAt", () => {
   assert.equal(report.generatedAt, "2026-04-14T00:00:00.000Z");
 });
 
-test("PlatformOperatorService buildReport throws on invalid generatedAt", () => {
+test("PlatformOperatorService buildReport throws on invalid generatedAt [platform-operator-service]", () => {
   const mockStore = createMockStore();
   mockStore.worker.listWorkerSnapshots = () => [];
   mockStore.worker.listExecutionTicketsByStatuses = () => [];
@@ -152,7 +152,7 @@ test("PlatformOperatorService buildReport throws on invalid generatedAt", () => 
   });
 });
 
-test("PlatformOperatorService buildReport counts workers correctly", () => {
+test("PlatformOperatorService buildReport counts workers correctly [platform-operator-service]", () => {
   const mockStore = createMockStore();
   mockStore.worker.listWorkerSnapshots = () => [
     { workerId: "w1", status: "healthy", maxConcurrency: 5, runningExecutionsJson: "[]", lastHeartbeatAt: new Date().toISOString(), placement: "local", registrationVerifiedAt: new Date().toISOString(), registrationChallengeId: "ch1" },
@@ -180,7 +180,7 @@ test("PlatformOperatorService buildReport counts workers correctly", () => {
   assert.equal(report.executionPlane.workerCounts.degraded, 1);
 });
 
-test("PlatformOperatorService buildReport identifies stale workers", () => {
+test("PlatformOperatorService buildReport identifies stale workers [platform-operator-service]", () => {
   const mockStore = createMockStore();
   const oldHeartbeat = new Date(Date.now() - 20 * 60 * 1000).toISOString(); // 20 minutes ago
   mockStore.worker.listWorkerSnapshots = () => [
@@ -209,7 +209,7 @@ test("PlatformOperatorService buildReport identifies stale workers", () => {
   assert.equal(report.executionPlane.workerCounts.stale, 1);
 });
 
-test("PlatformOperatorService buildReport identifies untrusted workers", () => {
+test("PlatformOperatorService buildReport identifies untrusted workers [platform-operator-service]", () => {
   const mockStore = createMockStore();
   mockStore.worker.listWorkerSnapshots = () => [
     { workerId: "w1", status: "healthy", maxConcurrency: 5, runningExecutionsJson: "[]", lastHeartbeatAt: new Date().toISOString(), placement: "remote", registrationVerifiedAt: null, registrationChallengeId: null },
@@ -235,7 +235,7 @@ test("PlatformOperatorService buildReport identifies untrusted workers", () => {
   assert.equal(report.executionPlane.workerCounts.untrusted, 1);
 });
 
-test("PlatformOperatorService buildReport counts tickets by status", () => {
+test("PlatformOperatorService buildReport counts tickets by status [platform-operator-service]", () => {
   const mockStore = createMockStore();
   mockStore.worker.listWorkerSnapshots = () => [];
   mockStore.worker.listExecutionTicketsByStatuses = ((statuses: string[]) => {
@@ -269,7 +269,7 @@ test("PlatformOperatorService buildReport counts tickets by status", () => {
   assert.equal(report.executionPlane.ticketCounts.expired, 1);
 });
 
-test("PlatformOperatorService buildReport counts leases by status", () => {
+test("PlatformOperatorService buildReport counts leases by status [platform-operator-service]", () => {
   const mockStore = createMockStore();
   mockStore.worker.listWorkerSnapshots = () => [];
   mockStore.worker.listExecutionTicketsByStatuses = () => [];
@@ -301,7 +301,7 @@ test("PlatformOperatorService buildReport counts leases by status", () => {
   assert.equal(report.executionPlane.leaseCounts.released, 1);
 });
 
-test("PlatformOperatorService buildReport readiness summary", () => {
+test("PlatformOperatorService buildReport readiness summary [platform-operator-service]", () => {
   const mockStore = createMockStore();
   mockStore.worker.listWorkerSnapshots = () => [];
   mockStore.worker.listExecutionTicketsByStatuses = () => [];
@@ -336,7 +336,7 @@ test("PlatformOperatorService buildReport readiness summary", () => {
   assert.equal(sandboxSummary.notReady, 1);
 });
 
-test("PlatformOperatorService buildReport topology counts", () => {
+test("PlatformOperatorService buildReport topology counts [platform-operator-service]", () => {
   const mockStore = createMockStore();
   mockStore.worker.listWorkerSnapshots = () => [];
   mockStore.worker.listExecutionTicketsByStatuses = () => [];
@@ -363,7 +363,7 @@ test("PlatformOperatorService buildReport topology counts", () => {
   assert.equal(report.executionPlane.topology.dataNamespaces, 3);
 });
 
-test("PlatformOperatorService exportReport returns artifacts", () => {
+test("PlatformOperatorService exportReport returns artifacts [platform-operator-service]", () => {
   const mockStore = createMockStore();
   mockStore.worker.listWorkerSnapshots = () => [];
   mockStore.worker.listExecutionTicketsByStatuses = () => [];
@@ -390,7 +390,7 @@ test("PlatformOperatorService exportReport returns artifacts", () => {
   assert.ok(result.report);
 });
 
-test("PlatformOperatorService available slots calculation", () => {
+test("PlatformOperatorService available slots calculation [platform-operator-service]", () => {
   const mockStore = createMockStore();
   mockStore.worker.listWorkerSnapshots = () => [
     { workerId: "w1", status: "healthy", maxConcurrency: 5, runningExecutionsJson: "[1,2,3]", lastHeartbeatAt: new Date().toISOString(), placement: "local", registrationVerifiedAt: new Date().toISOString(), registrationChallengeId: "ch1" },
@@ -418,7 +418,7 @@ test("PlatformOperatorService available slots calculation", () => {
   assert.equal(report.executionPlane.workerCounts.totalAvailableSlots, 12);
 });
 
-test("PlatformOperatorService handles malformed runningExecutionsJson", () => {
+test("PlatformOperatorService handles malformed runningExecutionsJson [platform-operator-service]", () => {
   const mockStore = createMockStore();
   mockStore.worker.listWorkerSnapshots = () => [
     { workerId: "w1", status: "healthy", maxConcurrency: 5, runningExecutionsJson: "not valid json", lastHeartbeatAt: new Date().toISOString(), placement: "local", registrationVerifiedAt: new Date().toISOString(), registrationChallengeId: "ch1" },
@@ -444,7 +444,7 @@ test("PlatformOperatorService handles malformed runningExecutionsJson", () => {
   assert.equal(report.executionPlane.workerCounts.totalAvailableSlots, 5);
 });
 
-test("PlatformOperatorService promotion eligibility", () => {
+test("PlatformOperatorService promotion eligibility [platform-operator-service]", () => {
   const mockStore = createMockStore();
   mockStore.worker.listWorkerSnapshots = () => [];
   mockStore.worker.listExecutionTicketsByStatuses = () => [];

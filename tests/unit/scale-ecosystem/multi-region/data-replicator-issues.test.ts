@@ -21,7 +21,7 @@ import {
 // Issue #2204: Event ID uses Date.now()+random not unique
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("data-replicator-2204: eventId generation should be unique", () => {
+test("data-replicator-2204: eventId generation should be unique [data-replicator-issues]", () => {
   const replicator = new DataReplicatorService({
     sourceRegionId: "us-east-1",
     targetRegionIds: ["us-west-2"],
@@ -61,7 +61,7 @@ test("data-replicator-2204: eventId generation should be unique", () => {
   assert.ok(events.length > 0);
 });
 
-test("data-replicator-2204: rapid event generation may produce duplicate IDs", () => {
+test("data-replicator-2204: rapid event generation may produce duplicate IDs [data-replicator-issues]", () => {
   const replicator = new DataReplicatorService({
     sourceRegionId: "us-east-1",
     targetRegionIds: ["us-west-2"],
@@ -102,7 +102,7 @@ test("data-replicator-2204: rapid event generation may produce duplicate IDs", (
   }
 });
 
-test("data-replicator-2204: eventId format analysis", () => {
+test("data-replicator-2204: eventId format analysis [data-replicator-issues]", () => {
   const replicator = new DataReplicatorService({
     sourceRegionId: "us-east-1",
     targetRegionIds: ["us-west-2"],
@@ -134,7 +134,7 @@ test("data-replicator-2204: eventId format analysis", () => {
 // Issue #2194: Timer flush return value discarded
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("data-replicator-2194: scheduleFlush timer return value is discarded", () => {
+test("data-replicator-2194: scheduleFlush timer return value is discarded [data-replicator-issues]", () => {
   const buffer = new ReplicationEventBuffer(100, 100); // Short interval
 
   buffer.add({
@@ -156,7 +156,7 @@ test("data-replicator-2194: scheduleFlush timer return value is discarded", () =
   assert.equal(buffer.size(), 1);
 });
 
-test("data-replicator-2194: flushTimer return value not captured", () => {
+test("data-replicator-2194: flushTimer return value not captured [data-replicator-issues]", () => {
   const buffer = new ReplicationEventBuffer(10, 10); // Very short interval
 
   // The issue is in scheduleFlush():
@@ -184,7 +184,7 @@ test("data-replicator-2194: flushTimer return value not captured", () => {
 // Issue #2197: pendingCount uses total not errors
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("data-replicator-2197: checkpoint pendingCount calculation is incorrect", async () => {
+test("data-replicator-2197: checkpoint pendingCount calculation is incorrect [data-replicator-issues]", async () => {
   const replicator = new DataReplicatorService({
     sourceRegionId: "us-east-1",
     targetRegionIds: ["us-west-2"],
@@ -220,7 +220,7 @@ test("data-replicator-2197: checkpoint pendingCount calculation is incorrect", a
   assert.equal(checkpoint?.pendingCount, 0);
 });
 
-test("data-replicator-2197: pendingCount should track in-flight events", async () => {
+test("data-replicator-2197: pendingCount should track in-flight events [data-replicator-issues]", async () => {
   const replicator = new DataReplicatorService({
     sourceRegionId: "us-east-1",
     targetRegionIds: ["us-west-2"],
@@ -255,7 +255,7 @@ test("data-replicator-2197: pendingCount should track in-flight events", async (
   // pendingCount tracks events in flight, not errors
 });
 
-test("data-replicator-2197: pendingCount reflects only events that remain unconfirmed", async () => {
+test("data-replicator-2197: pendingCount reflects only events that remain unconfirmed [data-replicator-issues]", async () => {
   const replicator = new DataReplicatorService({
     sourceRegionId: "us-east-1",
     targetRegionIds: ["us-west-2"],
@@ -292,7 +292,7 @@ test("data-replicator-2197: pendingCount reflects only events that remain unconf
 // Issue #2198: Retry causes sequence double count
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("data-replicator-2198: retry logic increments sequence incorrectly", async () => {
+test("data-replicator-2198: retry logic increments sequence incorrectly [data-replicator-issues]", async () => {
   const replicator = new DataReplicatorService({
     sourceRegionId: "us-east-1",
     targetRegionIds: ["us-west-2"],
@@ -348,7 +348,7 @@ test("data-replicator-2198: retry logic increments sequence incorrectly", async 
   // so we can't easily reproduce this in unit test
 });
 
-test("data-replicator-2198: sequence counting should not double count on retry", async () => {
+test("data-replicator-2198: sequence counting should not double count on retry [data-replicator-issues]", async () => {
   const replicator = new DataReplicatorService({
     sourceRegionId: "us-east-1",
     targetRegionIds: ["us-west-2"],
@@ -377,7 +377,7 @@ test("data-replicator-2198: sequence counting should not double count on retry",
   assert.equal(result.lastSequence, 3);
 });
 
-test("data-replicator-2198: successful retry increments lastSequence only once", async () => {
+test("data-replicator-2198: successful retry increments lastSequence only once [data-replicator-issues]", async () => {
   const replicator = new DataReplicatorService({
     sourceRegionId: "us-east-1",
     targetRegionIds: ["us-west-2"],
@@ -415,7 +415,7 @@ test("data-replicator-2198: successful retry increments lastSequence only once",
 // Additional tests for ReplicationEventBuffer
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("ReplicationEventBuffer: add and flush cycle", () => {
+test("ReplicationEventBuffer: add and flush cycle [data-replicator-issues]", () => {
   const buffer = new ReplicationEventBuffer(100, 60000);
 
   const event: ReplicationEvent = {
@@ -437,7 +437,7 @@ test("ReplicationEventBuffer: add and flush cycle", () => {
   assert.equal(buffer.size(), 0);
 });
 
-test("ReplicationEventBuffer: maxSize triggers flush", () => {
+test("ReplicationEventBuffer: maxSize triggers flush [data-replicator-issues]", () => {
   const buffer = new ReplicationEventBuffer(2, 60000);
 
   buffer.add({
@@ -468,7 +468,7 @@ test("ReplicationEventBuffer: maxSize triggers flush", () => {
   assert.equal(result, true);
 });
 
-test("computeChecksum: unsupported algorithms fail closed", () => {
+test("computeChecksum: unsupported algorithms fail closed [data-replicator-issues]", () => {
   const payload = { data: "test" };
 
   assert.throws(() => computeChecksum(payload, "md5" as never), /data_replicator\.unsupported_checksum_algorithm:md5/);

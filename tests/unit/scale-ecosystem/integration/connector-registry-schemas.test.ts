@@ -5,7 +5,7 @@ import {
   ConnectorManifestSchema,
 } from "../../../../src/scale-ecosystem/integration/connector-registry/index.js";
 
-test("ConnectorManifestSchema parses valid manifest with all fields", () => {
+test("ConnectorManifestSchema parses valid manifest with all fields [connector-registry-schemas]", () => {
   const result = ConnectorManifestSchema.parse({
     connectorId: "slack-connector",
     provider: "Slack Inc",
@@ -25,7 +25,7 @@ test("ConnectorManifestSchema parses valid manifest with all fields", () => {
   assert.equal(result.lifecycleState, "enabled");
 });
 
-test("ConnectorManifestSchema parses manifest with minimal fields", () => {
+test("ConnectorManifestSchema parses manifest with minimal fields [connector-registry-schemas]", () => {
   const result = ConnectorManifestSchema.parse({
     connectorId: "minimal-connector",
     provider: "Minimal Corp",
@@ -40,7 +40,7 @@ test("ConnectorManifestSchema parses manifest with minimal fields", () => {
   assert.deepEqual(result.supportedEvents, []);
 });
 
-test("ConnectorManifestSchema accepts all lifecycle states", () => {
+test("ConnectorManifestSchema accepts all lifecycle states [connector-registry-schemas]", () => {
   const states = ["registered", "configured", "verified", "enabled", "disabled", "revoked"] as const;
 
   for (const lifecycleState of states) {
@@ -53,7 +53,7 @@ test("ConnectorManifestSchema accepts all lifecycle states", () => {
   }
 });
 
-test("ConnectorManifestSchema rejects missing connectorId", () => {
+test("ConnectorManifestSchema rejects missing connectorId [connector-registry-schemas]", () => {
   assert.throws(() => {
     ConnectorManifestSchema.parse({
       provider: "Test Provider",
@@ -62,7 +62,7 @@ test("ConnectorManifestSchema rejects missing connectorId", () => {
   });
 });
 
-test("ConnectorManifestSchema rejects empty connectorId", () => {
+test("ConnectorManifestSchema rejects empty connectorId [connector-registry-schemas]", () => {
   assert.throws(() => {
     ConnectorManifestSchema.parse({
       connectorId: "",
@@ -72,7 +72,7 @@ test("ConnectorManifestSchema rejects empty connectorId", () => {
   });
 });
 
-test("ConnectorManifestSchema rejects missing provider", () => {
+test("ConnectorManifestSchema rejects missing provider [connector-registry-schemas]", () => {
   assert.throws(() => {
     ConnectorManifestSchema.parse({
       connectorId: "test-connector",
@@ -81,7 +81,7 @@ test("ConnectorManifestSchema rejects missing provider", () => {
   });
 });
 
-test("ConnectorManifestSchema rejects empty provider", () => {
+test("ConnectorManifestSchema rejects empty provider [connector-registry-schemas]", () => {
   assert.throws(() => {
     ConnectorManifestSchema.parse({
       connectorId: "test-connector",
@@ -91,7 +91,7 @@ test("ConnectorManifestSchema rejects empty provider", () => {
   });
 });
 
-test("ConnectorManifestSchema rejects invalid lifecycleState", () => {
+test("ConnectorManifestSchema rejects invalid lifecycleState [connector-registry-schemas]", () => {
   assert.throws(() => {
     ConnectorManifestSchema.parse({
       connectorId: "test-connector",
@@ -101,7 +101,7 @@ test("ConnectorManifestSchema rejects invalid lifecycleState", () => {
   });
 });
 
-test("ConnectorManifestSchema rejects negative rateLimit values", () => {
+test("ConnectorManifestSchema rejects negative rateLimit values [connector-registry-schemas]", () => {
   assert.throws(() => {
     ConnectorManifestSchema.parse({
       connectorId: "test-connector",
@@ -112,7 +112,7 @@ test("ConnectorManifestSchema rejects negative rateLimit values", () => {
   });
 });
 
-test("ConnectorManifestSchema accepts zero rateLimit values", () => {
+test("ConnectorManifestSchema accepts zero rateLimit values [connector-registry-schemas]", () => {
   const result = ConnectorManifestSchema.parse({
     connectorId: "test-connector",
     provider: "Test Provider",
@@ -123,7 +123,7 @@ test("ConnectorManifestSchema accepts zero rateLimit values", () => {
   assert.equal(result.rateLimits.perMinute, 0);
 });
 
-test("ConnectorManifestSchema accepts different authMode values", () => {
+test("ConnectorManifestSchema accepts different authMode values [connector-registry-schemas]", () => {
   const authModes = ["oauth2", "apikey", "basic", "bearer", "custom"] as const;
 
   for (const authMode of authModes) {
@@ -137,7 +137,7 @@ test("ConnectorManifestSchema accepts different authMode values", () => {
   }
 });
 
-test("ConnectorManifestSchema accepts any string as authMode (no enum validation)", () => {
+test("ConnectorManifestSchema accepts any string as authMode (no enum validation) [connector-registry-schemas]", () => {
   // authMode is z.string() not z.enum(), so any string is accepted
   const result = ConnectorManifestSchema.parse({
     connectorId: "test-connector",
@@ -148,7 +148,7 @@ test("ConnectorManifestSchema accepts any string as authMode (no enum validation
   assert.equal(result.authMode, "unknown_auth");
 });
 
-test("ConnectorManifestSchema default capabilities is empty array", () => {
+test("ConnectorManifestSchema default capabilities is empty array [connector-registry-schemas]", () => {
   const result = ConnectorManifestSchema.parse({
     connectorId: "test-connector",
     provider: "Test Provider",
@@ -158,7 +158,7 @@ test("ConnectorManifestSchema default capabilities is empty array", () => {
   assert.deepEqual(result.capabilities, []);
 });
 
-test("ConnectorManifestSchema default rateLimits is empty object", () => {
+test("ConnectorManifestSchema default rateLimits is empty object [connector-registry-schemas]", () => {
   const result = ConnectorManifestSchema.parse({
     connectorId: "test-connector",
     provider: "Test Provider",
@@ -168,7 +168,7 @@ test("ConnectorManifestSchema default rateLimits is empty object", () => {
   assert.deepEqual(result.rateLimits, {});
 });
 
-test("ConnectorManifestSchema default supportedEvents is empty array", () => {
+test("ConnectorManifestSchema default supportedEvents is empty array [connector-registry-schemas]", () => {
   const result = ConnectorManifestSchema.parse({
     connectorId: "test-connector",
     provider: "Test Provider",

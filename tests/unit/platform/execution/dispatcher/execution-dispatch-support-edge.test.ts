@@ -29,22 +29,22 @@ import type { AuthoritativeTaskStore } from "../../../../../src/platform/five-pl
 // normalizeStringArray edge cases
 // ---------------------------------------------------------------------------
 
-test("normalizeStringArray handles strings with only whitespace", () => {
+test("normalizeStringArray handles strings with only whitespace [execution-dispatch-support-edge]", () => {
   const result = normalizeStringArray(["   ", "\t", "\n"]);
   assert.deepStrictEqual(result, []);
 });
 
-test("normalizeStringArray handles mixed whitespace and valid strings", () => {
+test("normalizeStringArray handles mixed whitespace and valid strings [execution-dispatch-support-edge]", () => {
   const result = normalizeStringArray(["  alpha  ", " beta", "gamma", "  "]);
   assert.deepStrictEqual(result, ["alpha", "beta", "gamma"]);
 });
 
-test("normalizeStringArray handles duplicates with different whitespace", () => {
+test("normalizeStringArray handles duplicates with different whitespace [execution-dispatch-support-edge]", () => {
   const result = normalizeStringArray(["alpha", " alpha", "alpha ", "  alpha  "]);
   assert.deepStrictEqual(result, ["alpha"]);
 });
 
-test("normalizeStringArray handles single character strings", () => {
+test("normalizeStringArray handles single character strings [execution-dispatch-support-edge]", () => {
   const result = normalizeStringArray(["a", "b", "a", "c"]);
   assert.deepStrictEqual(result, ["a", "b", "c"]);
 });
@@ -53,45 +53,45 @@ test("normalizeStringArray handles single character strings", () => {
 // parseJsonArray edge cases
 // ---------------------------------------------------------------------------
 
-test("parseJsonArray handles JSON array with escaped characters", () => {
+test("parseJsonArray handles JSON array with escaped characters [execution-dispatch-support-edge]", () => {
   // Note: JSON.parse normalizes escaped quotes, so "a\"b" becomes 'a"b'
   const result = parseJsonArray('["a\\"b", "c"]');
   assert.deepStrictEqual(result, ["a\"b", "c"]);
 });
 
-test("parseJsonArray handles JSON array with numbers", () => {
+test("parseJsonArray handles JSON array with numbers [execution-dispatch-support-edge]", () => {
   const result = parseJsonArray('["a", 1, 2, "b"]');
   assert.deepStrictEqual(result, ["a", "b"]);
 });
 
-test("parseJsonArray handles JSON array with booleans", () => {
+test("parseJsonArray handles JSON array with booleans [execution-dispatch-support-edge]", () => {
   const result = parseJsonArray('["a", true, false, "b"]');
   assert.deepStrictEqual(result, ["a", "b"]);
 });
 
-test("parseJsonArray handles JSON array with null", () => {
+test("parseJsonArray handles JSON array with null [execution-dispatch-support-edge]", () => {
   const result = parseJsonArray('["a", null, "b"]');
   assert.deepStrictEqual(result, ["a", "b"]);
 });
 
-test("parseJsonArray handles JSON array with objects", () => {
+test("parseJsonArray handles JSON array with objects [execution-dispatch-support-edge]", () => {
   const result = parseJsonArray('["a", {}, "b"]');
   assert.deepStrictEqual(result, ["a", "b"]);
 });
 
-test("parseJsonArray calls onError with correct message on parse failure", () => {
+test("parseJsonArray calls onError with correct message on parse failure [execution-dispatch-support-edge]", () => {
   const errors: string[] = [];
   parseJsonArray("not valid json at all", (msg) => errors.push(msg));
   assert.equal(errors.length, 1);
   assert.ok(errors[0]!.length > 0);
 });
 
-test("parseJsonArray handles empty JSON array string", () => {
+test("parseJsonArray handles empty JSON array string [execution-dispatch-support-edge]", () => {
   const result = parseJsonArray("[]");
   assert.deepStrictEqual(result, []);
 });
 
-test("parseJsonArray handles JSON primitives", () => {
+test("parseJsonArray handles JSON primitives [execution-dispatch-support-edge]", () => {
   assert.deepStrictEqual(parseJsonArray('"just a string"'), []);
   assert.deepStrictEqual(parseJsonArray("123"), []);
   assert.deepStrictEqual(parseJsonArray("true"), []);
@@ -101,11 +101,11 @@ test("parseJsonArray handles JSON primitives", () => {
 // resolveDispatchTarget edge cases
 // ---------------------------------------------------------------------------
 
-test("resolveDispatchTarget returns any for empty string", () => {
+test("resolveDispatchTarget returns any for empty string [execution-dispatch-support-edge]", () => {
   assert.equal(resolveDispatchTarget("" as DispatchTarget), "any");
 });
 
-test("resolveDispatchTarget returns any for numeric input cast", () => {
+test("resolveDispatchTarget returns any for numeric input cast [execution-dispatch-support-edge]", () => {
   assert.equal(resolveDispatchTarget("any" as DispatchTarget), "any");
 });
 
@@ -113,11 +113,11 @@ test("resolveDispatchTarget returns any for numeric input cast", () => {
 // resolveRequiredIsolationLevel edge cases
 // ---------------------------------------------------------------------------
 
-test("resolveRequiredIsolationLevel returns standard for unknown string", () => {
+test("resolveRequiredIsolationLevel returns standard for unknown string [execution-dispatch-support-edge]", () => {
   assert.equal(resolveRequiredIsolationLevel("unknown" as WorkerIsolationLevel), "standard");
 });
 
-test("resolveRequiredIsolationLevel returns standard for empty string", () => {
+test("resolveRequiredIsolationLevel returns standard for empty string [execution-dispatch-support-edge]", () => {
   assert.equal(resolveRequiredIsolationLevel("" as WorkerIsolationLevel), "standard");
 });
 
@@ -125,19 +125,19 @@ test("resolveRequiredIsolationLevel returns standard for empty string", () => {
 // resolveRequiredRepoVersion edge cases
 // ---------------------------------------------------------------------------
 
-test("resolveRequiredRepoVersion handles string with only spaces", () => {
+test("resolveRequiredRepoVersion handles string with only spaces [execution-dispatch-support-edge]", () => {
   assert.equal(resolveRequiredRepoVersion("   "), null);
 });
 
-test("resolveRequiredRepoVersion handles string with tabs and newlines", () => {
+test("resolveRequiredRepoVersion handles string with tabs and newlines [execution-dispatch-support-edge]", () => {
   assert.equal(resolveRequiredRepoVersion("\t\n  "), null);
 });
 
-test("resolveRequiredRepoVersion handles single character version", () => {
+test("resolveRequiredRepoVersion handles single character version [execution-dispatch-support-edge]", () => {
   assert.equal(resolveRequiredRepoVersion("v"), "v");
 });
 
-test("resolveRequiredRepoVersion preserves version with leading zeros", () => {
+test("resolveRequiredRepoVersion preserves version with leading zeros [execution-dispatch-support-edge]", () => {
   assert.equal(resolveRequiredRepoVersion("v01.02.03"), "v01.02.03");
 });
 
@@ -145,15 +145,15 @@ test("resolveRequiredRepoVersion preserves version with leading zeros", () => {
 // meetsIsolationRequirement edge cases
 // ---------------------------------------------------------------------------
 
-test("meetsIsolationRequirement strict >= strict", () => {
+test("meetsIsolationRequirement strict >= strict [execution-dispatch-support-edge]", () => {
   assert.equal(meetsIsolationRequirement("strict", "strict"), true);
 });
 
-test("meetsIsolationRequirement standard !>= strict", () => {
+test("meetsIsolationRequirement standard !>= strict [execution-dispatch-support-edge]", () => {
   assert.equal(meetsIsolationRequirement("standard", "strict"), false);
 });
 
-test("meetsIsolationRequirement hardened !>= strict", () => {
+test("meetsIsolationRequirement hardened !>= strict [execution-dispatch-support-edge]", () => {
   assert.equal(meetsIsolationRequirement("hardened", "strict"), false);
 });
 
@@ -181,22 +181,22 @@ function makeEvaluation(placement: WorkerPlacement, accepted: boolean, rejection
   };
 }
 
-test("resolveRemoteAvailability returns healthy for single accepted remote", () => {
+test("resolveRemoteAvailability returns healthy for single accepted remote [execution-dispatch-support-edge]", () => {
   const evaluations = [makeEvaluation("remote", true)];
   assert.equal(resolveRemoteAvailability("prefer_remote", evaluations), "healthy");
 });
 
-test("resolveRemoteAvailability returns degraded for untrusted rejection", () => {
+test("resolveRemoteAvailability returns degraded for untrusted rejection [execution-dispatch-support-edge]", () => {
   const evaluations = [makeEvaluation("remote", false, "worker_untrusted")];
   assert.equal(resolveRemoteAvailability("prefer_remote", evaluations), "degraded");
 });
 
-test("resolveRemoteAvailability returns degraded for session_unready rejection", () => {
+test("resolveRemoteAvailability returns degraded for session_unready rejection [execution-dispatch-support-edge]", () => {
   const evaluations = [makeEvaluation("remote", false, "worker_remote_session_unready")];
   assert.equal(resolveRemoteAvailability("prefer_remote", evaluations), "degraded");
 });
 
-test("resolveRemoteAvailability returns degraded when mix of degraded and unavailable", () => {
+test("resolveRemoteAvailability returns degraded when mix of degraded and unavailable [execution-dispatch-support-edge]", () => {
   const evaluations = [
     makeEvaluation("remote", false, "worker_untrusted"),
     makeEvaluation("remote", false, "worker_unavailable"),
@@ -204,7 +204,7 @@ test("resolveRemoteAvailability returns degraded when mix of degraded and unavai
   assert.equal(resolveRemoteAvailability("prefer_remote", evaluations), "degraded");
 });
 
-test("resolveRemoteAvailability returns partial_available for mix of accepted and untrusted", () => {
+test("resolveRemoteAvailability returns partial_available for mix of accepted and untrusted [execution-dispatch-support-edge]", () => {
   const evaluations = [
     makeEvaluation("remote", true),
     makeEvaluation("remote", false, "worker_untrusted"),
@@ -212,7 +212,7 @@ test("resolveRemoteAvailability returns partial_available for mix of accepted an
   assert.equal(resolveRemoteAvailability("prefer_remote", evaluations), "partial_available");
 });
 
-test("resolveRemoteAvailability skips placement_mismatch and returns unavailable", () => {
+test("resolveRemoteAvailability skips placement_mismatch and returns unavailable [execution-dispatch-support-edge]", () => {
   const evaluations = [
     makeEvaluation("remote", false, "worker_placement_mismatch"),
     makeEvaluation("remote", false, "worker_placement_mismatch"),
@@ -220,7 +220,7 @@ test("resolveRemoteAvailability skips placement_mismatch and returns unavailable
   assert.equal(resolveRemoteAvailability("require_remote", evaluations), "unavailable");
 });
 
-test("resolveRemoteAvailability handles mixed remote and local evaluations", () => {
+test("resolveRemoteAvailability handles mixed remote and local evaluations [execution-dispatch-support-edge]", () => {
   const evaluations = [
     makeEvaluation("local", true),
     makeEvaluation("remote", true),
@@ -233,12 +233,12 @@ test("resolveRemoteAvailability handles mixed remote and local evaluations", () 
 // resolveRemoteRepoVersionReason comprehensive edge cases
 // ---------------------------------------------------------------------------
 
-test("resolveRemoteRepoVersionReason returns null for empty evaluations", () => {
+test("resolveRemoteRepoVersionReason returns null for empty evaluations [execution-dispatch-support-edge]", () => {
   const evaluations: DispatchWorkerEvaluation[] = [];
   assert.equal(resolveRemoteRepoVersionReason("require_remote", evaluations, "v1"), null);
 });
 
-test("resolveRemoteRepoVersionReason returns null when some accepted despite all mismatch", () => {
+test("resolveRemoteRepoVersionReason returns null when some accepted despite all mismatch [execution-dispatch-support-edge]", () => {
   const evaluations = [
     makeEvaluation("remote", true),
     makeEvaluation("remote", false, "worker_repo_version_mismatch"),
@@ -246,13 +246,13 @@ test("resolveRemoteRepoVersionReason returns null when some accepted despite all
   assert.equal(resolveRemoteRepoVersionReason("require_remote", evaluations, "v1"), null);
 });
 
-test("resolveRemoteRepoVersionReason returns null for any target", () => {
+test("resolveRemoteRepoVersionReason returns null for any target [execution-dispatch-support-edge]", () => {
   const evaluations = [makeEvaluation("remote", false, "worker_repo_version_mismatch")];
   assert.equal(resolveRemoteRepoVersionReason("any", evaluations, "v1"), null);
   assert.equal(resolveRemoteRepoVersionReason("local_only", evaluations, "v1"), null);
 });
 
-test("resolveRemoteRepoVersionReason returns null when no required version", () => {
+test("resolveRemoteRepoVersionReason returns null when no required version [execution-dispatch-support-edge]", () => {
   const evaluations = [makeEvaluation("remote", false, "worker_repo_version_mismatch")];
   assert.equal(resolveRemoteRepoVersionReason("require_remote", evaluations, null), null);
 });
@@ -261,12 +261,12 @@ test("resolveRemoteRepoVersionReason returns null when no required version", () 
 // resolveRemoteSessionReason comprehensive edge cases
 // ---------------------------------------------------------------------------
 
-test("resolveRemoteSessionReason returns null for empty evaluations", () => {
+test("resolveRemoteSessionReason returns null for empty evaluations [execution-dispatch-support-edge]", () => {
   const evaluations: DispatchWorkerEvaluation[] = [];
   assert.equal(resolveRemoteSessionReason("require_remote", evaluations), null);
 });
 
-test("resolveRemoteSessionReason returns null when some accepted despite all unready", () => {
+test("resolveRemoteSessionReason returns null when some accepted despite all unready [execution-dispatch-support-edge]", () => {
   const evaluations = [
     makeEvaluation("remote", true),
     makeEvaluation("remote", false, "worker_remote_session_unready"),
@@ -274,7 +274,7 @@ test("resolveRemoteSessionReason returns null when some accepted despite all unr
   assert.equal(resolveRemoteSessionReason("require_remote", evaluations), null);
 });
 
-test("resolveRemoteSessionReason returns null for local_only target", () => {
+test("resolveRemoteSessionReason returns null for local_only target [execution-dispatch-support-edge]", () => {
   const evaluations = [makeEvaluation("remote", false, "worker_remote_session_unready")];
   assert.equal(resolveRemoteSessionReason("local_only", evaluations), null);
 });
@@ -283,12 +283,12 @@ test("resolveRemoteSessionReason returns null for local_only target", () => {
 // resolveRemoteTrustReason comprehensive edge cases
 // ---------------------------------------------------------------------------
 
-test("resolveRemoteTrustReason returns null for empty evaluations", () => {
+test("resolveRemoteTrustReason returns null for empty evaluations [execution-dispatch-support-edge]", () => {
   const evaluations: DispatchWorkerEvaluation[] = [];
   assert.equal(resolveRemoteTrustReason("require_remote", evaluations), null);
 });
 
-test("resolveRemoteTrustReason returns null when some accepted despite all untrusted", () => {
+test("resolveRemoteTrustReason returns null when some accepted despite all untrusted [execution-dispatch-support-edge]", () => {
   const evaluations = [
     makeEvaluation("remote", true),
     makeEvaluation("remote", false, "worker_untrusted"),
@@ -296,7 +296,7 @@ test("resolveRemoteTrustReason returns null when some accepted despite all untru
   assert.equal(resolveRemoteTrustReason("require_remote", evaluations), null);
 });
 
-test("resolveRemoteTrustReason returns null for any target", () => {
+test("resolveRemoteTrustReason returns null for any target [execution-dispatch-support-edge]", () => {
   const evaluations = [makeEvaluation("remote", false, "worker_untrusted")];
   assert.equal(resolveRemoteTrustReason("any", evaluations), null);
   assert.equal(resolveRemoteTrustReason("local_only", evaluations), null);
@@ -306,7 +306,7 @@ test("resolveRemoteTrustReason returns null for any target", () => {
 // selectWorkersForDispatch comprehensive edge cases
 // ---------------------------------------------------------------------------
 
-test("selectWorkersForDispatch prefer_remote with only remote workers", () => {
+test("selectWorkersForDispatch prefer_remote with only remote workers [execution-dispatch-support-edge]", () => {
   const workers = [
     { workerId: "r1", placement: "remote" as const },
     { workerId: "r2", placement: "remote" as const },
@@ -316,7 +316,7 @@ test("selectWorkersForDispatch prefer_remote with only remote workers", () => {
   assert.equal(result.fallbackApplied, false);
 });
 
-test("selectWorkersForDispatch prefer_remote with only local workers and all reasons null", () => {
+test("selectWorkersForDispatch prefer_remote with only local workers and all reasons null [execution-dispatch-support-edge]", () => {
   const workers = [{ workerId: "l1", placement: "local" as const }];
   const result = selectWorkersForDispatch("prefer_remote", workers as any, null, null, null, null);
   assert.equal(result.workers.length, 1);
@@ -324,13 +324,13 @@ test("selectWorkersForDispatch prefer_remote with only local workers and all rea
   assert.equal(result.reasonCode, null);
 });
 
-test("selectWorkersForDispatch prefer_remote priority of reasons: trust > session > repo > availability", () => {
+test("selectWorkersForDispatch prefer_remote priority of reasons: trust > session > repo > availability [execution-dispatch-support-edge]", () => {
   const workers = [{ workerId: "l1", placement: "local" as const }];
   const result = selectWorkersForDispatch("prefer_remote", workers as any, "available" as RemoteAvailability, "remote.untrusted", "remote.session_unready", "remote.repo_version_mismatch");
   assert.equal(result.reasonCode, "remote.untrusted");
 });
 
-test("selectWorkersForDispatch require_remote returns all workers (no filtering)", () => {
+test("selectWorkersForDispatch require_remote returns all workers (no filtering) [execution-dispatch-support-edge]", () => {
   const workers = [
     { workerId: "l1", placement: "local" as const },
     { workerId: "r1", placement: "remote" as const },
@@ -341,7 +341,7 @@ test("selectWorkersForDispatch require_remote returns all workers (no filtering)
   assert.equal(result.fallbackApplied, false);
 });
 
-test("selectWorkersForDispatch any returns all workers unchanged", () => {
+test("selectWorkersForDispatch any returns all workers unchanged [execution-dispatch-support-edge]", () => {
   const workers = [
     { workerId: "l1", placement: "local" as const },
     { workerId: "r1", placement: "remote" as const },
@@ -356,7 +356,7 @@ test("selectWorkersForDispatch any returns all workers unchanged", () => {
 // isElevatedPriority edge cases
 // ---------------------------------------------------------------------------
 
-test("isElevatedPriority returns false for unknown priority", () => {
+test("isElevatedPriority returns false for unknown priority [execution-dispatch-support-edge]", () => {
   assert.equal(isElevatedPriority("unknown" as TaskPriority), false);
 });
 
@@ -364,7 +364,7 @@ test("isElevatedPriority returns false for unknown priority", () => {
 // isRemoteSessionReadyForDispatch comprehensive edge cases
 // ---------------------------------------------------------------------------
 
-test("isRemoteSessionReadyForDispatch returns false for remote with viewer_only status", () => {
+test("isRemoteSessionReadyForDispatch returns false for remote with viewer_only status [execution-dispatch-support-edge]", () => {
   const worker = {
     workerId: "w1",
     placement: "remote" as const,
@@ -376,7 +376,7 @@ test("isRemoteSessionReadyForDispatch returns false for remote with viewer_only 
   assert.equal(isRemoteSessionReadyForDispatch(worker as any), false);
 });
 
-test("isRemoteSessionReadyForDispatch returns false for remote with disconnected status", () => {
+test("isRemoteSessionReadyForDispatch returns false for remote with disconnected status [execution-dispatch-support-edge]", () => {
   const worker = {
     workerId: "w1",
     placement: "remote" as const,
@@ -388,7 +388,7 @@ test("isRemoteSessionReadyForDispatch returns false for remote with disconnected
   assert.equal(isRemoteSessionReadyForDispatch(worker as any), false);
 });
 
-test("isRemoteSessionReadyForDispatch returns false for remote with connecting status", () => {
+test("isRemoteSessionReadyForDispatch returns false for remote with connecting status [execution-dispatch-support-edge]", () => {
   const worker = {
     workerId: "w1",
     placement: "remote" as const,
@@ -400,7 +400,7 @@ test("isRemoteSessionReadyForDispatch returns false for remote with connecting s
   assert.equal(isRemoteSessionReadyForDispatch(worker as any), false);
 });
 
-test("isRemoteSessionReadyForDispatch returns false for remote with session_reconnecting status", () => {
+test("isRemoteSessionReadyForDispatch returns false for remote with session_reconnecting status [execution-dispatch-support-edge]", () => {
   const worker = {
     workerId: "w1",
     placement: "remote" as const,
@@ -416,43 +416,43 @@ test("isRemoteSessionReadyForDispatch returns false for remote with session_reco
 // resolveDispatchBackpressureReason comprehensive edge cases
 // ---------------------------------------------------------------------------
 
-test("resolveDispatchBackpressureReason returns null for high priority with pause_non_critical", () => {
+test("resolveDispatchBackpressureReason returns null for high priority with pause_non_critical [execution-dispatch-support-edge]", () => {
   const ticket = { priority: "high" as TaskPriority } as ExecutionTicketRecord;
   const snapshot = { degradationMode: "pause_non_critical", queueGovernance: { starvationDetected: false } };
   assert.equal(resolveDispatchBackpressureReason(ticket, snapshot as any), null);
 });
 
-test("resolveDispatchBackpressureReason returns null for urgent priority with pause_non_critical", () => {
+test("resolveDispatchBackpressureReason returns null for urgent priority with pause_non_critical [execution-dispatch-support-edge]", () => {
   const ticket = { priority: "urgent" as TaskPriority } as ExecutionTicketRecord;
   const snapshot = { degradationMode: "pause_non_critical", queueGovernance: { starvationDetected: false } };
   assert.equal(resolveDispatchBackpressureReason(ticket, snapshot as any), null);
 });
 
-test("resolveDispatchBackpressureReason returns null for high priority with queue_only no starvation", () => {
+test("resolveDispatchBackpressureReason returns null for high priority with queue_only no starvation [execution-dispatch-support-edge]", () => {
   const ticket = { priority: "high" as TaskPriority } as ExecutionTicketRecord;
   const snapshot = { degradationMode: "queue_only", queueGovernance: { starvationDetected: false } };
   assert.equal(resolveDispatchBackpressureReason(ticket, snapshot as any), null);
 });
 
-test("resolveDispatchBackpressureReason returns null for urgent priority with queue_only starvation", () => {
+test("resolveDispatchBackpressureReason returns null for urgent priority with queue_only starvation [execution-dispatch-support-edge]", () => {
   const ticket = { priority: "urgent" as TaskPriority } as ExecutionTicketRecord;
   const snapshot = { degradationMode: "queue_only", queueGovernance: { starvationDetected: true } };
   assert.equal(resolveDispatchBackpressureReason(ticket, snapshot as any), null);
 });
 
-test("resolveDispatchBackpressureReason returns backpressure.starvation_protection for low priority", () => {
+test("resolveDispatchBackpressureReason returns backpressure.starvation_protection for low priority [execution-dispatch-support-edge]", () => {
   const ticket = { priority: "low" as TaskPriority } as ExecutionTicketRecord;
   const snapshot = { degradationMode: "queue_only", queueGovernance: { starvationDetected: true } };
   assert.equal(resolveDispatchBackpressureReason(ticket, snapshot as any), "backpressure.starvation_protection");
 });
 
-test("resolveDispatchBackpressureReason returns backpressure.queue_only for normal priority", () => {
+test("resolveDispatchBackpressureReason returns backpressure.queue_only for normal priority [execution-dispatch-support-edge]", () => {
   const ticket = { priority: "normal" as TaskPriority } as ExecutionTicketRecord;
   const snapshot = { degradationMode: "queue_only", queueGovernance: { starvationDetected: false } };
   assert.equal(resolveDispatchBackpressureReason(ticket, snapshot as any), "backpressure.queue_only");
 });
 
-test("resolveDispatchBackpressureReason returns backpressure.pause_non_critical for low priority", () => {
+test("resolveDispatchBackpressureReason returns backpressure.pause_non_critical for low priority [execution-dispatch-support-edge]", () => {
   const ticket = { priority: "low" as TaskPriority } as ExecutionTicketRecord;
   const snapshot = { degradationMode: "pause_non_critical", queueGovernance: { starvationDetected: false } };
   assert.equal(resolveDispatchBackpressureReason(ticket, snapshot as any), "backpressure.pause_non_critical");
@@ -500,7 +500,7 @@ function createMockExecution(id = "exec-1"): Record<string, unknown> {
   };
 }
 
-test("buildDispatchAgentExecutionRecord handles null lastDecisionJson explicitly", () => {
+test("buildDispatchAgentExecutionRecord handles null lastDecisionJson explicitly [execution-dispatch-support-edge]", () => {
   const store = createMockStoreForBuildRecord(null);
   const execution = createMockExecution();
   const occurredAt = new Date().toISOString();
@@ -512,7 +512,7 @@ test("buildDispatchAgentExecutionRecord handles null lastDecisionJson explicitly
   assert.equal(record.lastDecisionJson, null);
 });
 
-test("buildDispatchAgentExecutionRecord handles null progressMessage explicitly", () => {
+test("buildDispatchAgentExecutionRecord handles null progressMessage explicitly [execution-dispatch-support-edge]", () => {
   const store = createMockStoreForBuildRecord(null);
   const execution = createMockExecution();
   const occurredAt = new Date().toISOString();
@@ -524,7 +524,7 @@ test("buildDispatchAgentExecutionRecord handles null progressMessage explicitly"
   assert.equal(record.progressMessage, null);
 });
 
-test("buildDispatchAgentExecutionRecord preserves existing record when updates only contain taskId", () => {
+test("buildDispatchAgentExecutionRecord preserves existing record when updates only contain taskId [execution-dispatch-support-edge]", () => {
   const existingRecord = {
     executionId: "exec-1",
     taskId: "task-1",
@@ -561,7 +561,7 @@ test("buildDispatchAgentExecutionRecord preserves existing record when updates o
   assert.equal(record.restartGeneration, 2);
 });
 
-test("buildDispatchAgentExecutionRecord handles existing record with null fields", () => {
+test("buildDispatchAgentExecutionRecord handles existing record with null fields [execution-dispatch-support-edge]", () => {
   const existingRecord = {
     executionId: "exec-1",
     taskId: "task-1",
@@ -599,7 +599,7 @@ test("buildDispatchAgentExecutionRecord handles existing record with null fields
   assert.equal(record.roleId, "role-1");
 });
 
-test("buildDispatchAgentExecutionRecord computes retryCount from execution attempt", () => {
+test("buildDispatchAgentExecutionRecord computes retryCount from execution attempt [execution-dispatch-support-edge]", () => {
   const store = createMockStoreForBuildRecord(null);
   const execution = createMockExecution();
   execution.attempt = 1;
@@ -611,7 +611,7 @@ test("buildDispatchAgentExecutionRecord computes retryCount from execution attem
   assert.equal(record.retryCount, 0); // attempt - 1 = 0
 });
 
-test("buildDispatchAgentExecutionRecord computes retryCount from execution attempt 5", () => {
+test("buildDispatchAgentExecutionRecord computes retryCount from execution attempt 5 [execution-dispatch-support-edge]", () => {
   const store = createMockStoreForBuildRecord(null);
   const execution = createMockExecution();
   execution.attempt = 5;
@@ -627,7 +627,7 @@ test("buildDispatchAgentExecutionRecord computes retryCount from execution attem
 // toWorkerEvaluation additional edge cases
 // ---------------------------------------------------------------------------
 
-test("toWorkerEvaluation handles all worker fields null", () => {
+test("toWorkerEvaluation handles all worker fields null [execution-dispatch-support-edge]", () => {
   const worker = {
     workerId: "w1",
     status: "idle",
@@ -648,7 +648,7 @@ test("toWorkerEvaluation handles all worker fields null", () => {
   assert.equal(evaluation.queueAffinity, null);
 });
 
-test("toWorkerEvaluation preserves all numeric fields", () => {
+test("toWorkerEvaluation preserves all numeric fields [execution-dispatch-support-edge]", () => {
   const worker = {
     workerId: "w1",
     status: "idle",
@@ -676,15 +676,15 @@ test("toWorkerEvaluation preserves all numeric fields", () => {
 // Additional coverage for exported constants
 // ---------------------------------------------------------------------------
 
-test("AFFINITY_SELECTION_BONUS is 0.35", () => {
+test("AFFINITY_SELECTION_BONUS is 0.35 [execution-dispatch-support-edge]", () => {
   assert.equal(AFFINITY_SELECTION_BONUS, 0.35);
 });
 
-test("LOAD_SKEW_SELECTION_PENALTY is 0.75", () => {
+test("LOAD_SKEW_SELECTION_PENALTY is 0.75 [execution-dispatch-support-edge]", () => {
   assert.equal(LOAD_SKEW_SELECTION_PENALTY, 0.75);
 });
 
-test("DEFAULT_RUNTIME_BACKPRESSURE_HEALTH_OPTIONS has correct defaults", () => {
+test("DEFAULT_RUNTIME_BACKPRESSURE_HEALTH_OPTIONS has correct defaults [execution-dispatch-support-edge]", () => {
   assert.equal(DEFAULT_RUNTIME_BACKPRESSURE_HEALTH_OPTIONS.memoryHighWatermarkMb, Number.POSITIVE_INFINITY);
   assert.equal(DEFAULT_RUNTIME_BACKPRESSURE_HEALTH_OPTIONS.eventLoopLagThresholdMs, Number.POSITIVE_INFINITY);
 });
@@ -693,29 +693,29 @@ test("DEFAULT_RUNTIME_BACKPRESSURE_HEALTH_OPTIONS has correct defaults", () => {
 // Additional remote availability edge cases
 // ---------------------------------------------------------------------------
 
-test("resolveRemoteAvailability returns partial_available for capacity_full rejection", () => {
+test("resolveRemoteAvailability returns partial_available for capacity_full rejection [execution-dispatch-support-edge]", () => {
   const evaluations = [
     makeEvaluation("remote", false, "worker_capacity_full"),
   ];
   assert.equal(resolveRemoteAvailability("prefer_remote", evaluations), "partial_available");
 });
 
-test("resolveRemoteAvailability handles empty evaluations for prefer_remote", () => {
+test("resolveRemoteAvailability handles empty evaluations for prefer_remote [execution-dispatch-support-edge]", () => {
   const evaluations: DispatchWorkerEvaluation[] = [];
   assert.equal(resolveRemoteAvailability("prefer_remote", evaluations), "unavailable");
 });
 
-test("resolveRemoteAvailability handles empty evaluations for require_remote", () => {
+test("resolveRemoteAvailability handles empty evaluations for require_remote [execution-dispatch-support-edge]", () => {
   const evaluations: DispatchWorkerEvaluation[] = [];
   assert.equal(resolveRemoteAvailability("require_remote", evaluations), "unavailable");
 });
 
-test("resolveRemoteAvailability returns null for any target", () => {
+test("resolveRemoteAvailability returns null for any target [execution-dispatch-support-edge]", () => {
   const evaluations = [makeEvaluation("remote", true)];
   assert.equal(resolveRemoteAvailability("any", evaluations), null);
 });
 
-test("resolveRemoteAvailability returns null for local_only target", () => {
+test("resolveRemoteAvailability returns null for local_only target [execution-dispatch-support-edge]", () => {
   const evaluations = [makeEvaluation("remote", true)];
   assert.equal(resolveRemoteAvailability("local_only", evaluations), null);
 });
@@ -724,12 +724,12 @@ test("resolveRemoteAvailability returns null for local_only target", () => {
 // Additional parseJsonArray edge cases
 // ---------------------------------------------------------------------------
 
-test("parseJsonArray handles JSON array with mixed whitespace", () => {
+test("parseJsonArray handles JSON array with mixed whitespace [execution-dispatch-support-edge]", () => {
   const result = parseJsonArray('  ["a", "b"]  ');
   assert.deepStrictEqual(result, ["a", "b"]);
 });
 
-test("parseJsonArray handles JSON with trailing comma", () => {
+test("parseJsonArray handles JSON with trailing comma [execution-dispatch-support-edge]", () => {
   // JSON.parse would fail on trailing comma, but our filter handles it
   const result = parseJsonArray('["a", "b",]');
   // JSON.parse would fail here, so we get empty array
@@ -740,7 +740,7 @@ test("parseJsonArray handles JSON with trailing comma", () => {
 // Additional selectWorkersForDispatch edge cases
 // ---------------------------------------------------------------------------
 
-test("selectWorkersForDispatch local_only returns all workers (no filtering)", () => {
+test("selectWorkersForDispatch local_only returns all workers (no filtering) [execution-dispatch-support-edge]", () => {
   const workers = [
     { workerId: "w1", placement: "local" as const },
     { workerId: "w2", placement: "remote" as const },
@@ -751,7 +751,7 @@ test("selectWorkersForDispatch local_only returns all workers (no filtering)", (
   assert.equal(result.fallbackApplied, false);
 });
 
-test("selectWorkersForDispatch prefer_remote returns empty when no workers", () => {
+test("selectWorkersForDispatch prefer_remote returns empty when no workers [execution-dispatch-support-edge]", () => {
   const workers: any[] = [];
   const result = selectWorkersForDispatch("prefer_remote", workers, null, null, null, null);
   assert.equal(result.workers.length, 0);
@@ -759,7 +759,7 @@ test("selectWorkersForDispatch prefer_remote returns empty when no workers", () 
   assert.equal(result.reasonCode, null);
 });
 
-test("selectWorkersForDispatch require_remote returns all workers even when no remote", () => {
+test("selectWorkersForDispatch require_remote returns all workers even when no remote [execution-dispatch-support-edge]", () => {
   const workers = [{ workerId: "w1", placement: "local" as const }];
   const result = selectWorkersForDispatch("require_remote", workers as any, null, null, null, null);
   // require_remote does not filter - returns all workers
@@ -768,13 +768,13 @@ test("selectWorkersForDispatch require_remote returns all workers even when no r
   assert.equal(result.fallbackApplied, false);
 });
 
-test("selectWorkersForDispatch prefer_remote uses first reason in priority chain", () => {
+test("selectWorkersForDispatch prefer_remote uses first reason in priority chain [execution-dispatch-support-edge]", () => {
   const workers = [{ workerId: "l1", placement: "local" as const }];
   const result = selectWorkersForDispatch("prefer_remote", workers as any, "partial_available" as RemoteAvailability, null, "remote.session_unready", null);
   assert.equal(result.reasonCode, "remote.session_unready");
 });
 
-test("selectWorkersForDispatch prefer_remote uses availability when no specific reasons", () => {
+test("selectWorkersForDispatch prefer_remote uses availability when no specific reasons [execution-dispatch-support-edge]", () => {
   const workers = [{ workerId: "l1", placement: "local" as const }];
   const result = selectWorkersForDispatch("prefer_remote", workers as any, "partial_available" as RemoteAvailability, null, null, null);
   assert.equal(result.reasonCode, "remote.fallback_local.partial_available");

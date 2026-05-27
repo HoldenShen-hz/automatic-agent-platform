@@ -3,7 +3,7 @@ import test from "node:test";
 import { createTempWorkspace, cleanupPath, createFile } from "../../../../helpers/fs.js";
 import { createWorkspaceWritePolicy } from "../../../../../src/platform/five-plane-control-plane/iam/sandbox-policy.js";
 
-test("sandbox: blocked status returned when command attempts to escape workspace root", async () => {
+test("sandbox: blocked status returned when command attempts to escape workspace root [sandbox]", async () => {
   const workspace = createTempWorkspace("aa-sandbox-");
   const outside = createTempWorkspace("aa-sandbox-outside-");
 
@@ -32,7 +32,7 @@ test("sandbox: blocked status returned when command attempts to escape workspace
   }
 });
 
-test("sandbox: declared read path outside workspace is blocked", async () => {
+test("sandbox: declared read path outside workspace is blocked [sandbox]", async () => {
   const workspace = createTempWorkspace("aa-sandbox-read-");
   const outside = createTempWorkspace("aa-sandbox-read-outside-");
 
@@ -62,7 +62,7 @@ test("sandbox: declared read path outside workspace is blocked", async () => {
   }
 });
 
-test("sandbox: declared write path outside workspace is blocked", async () => {
+test("sandbox: declared write path outside workspace is blocked [sandbox]", async () => {
   const workspace = createTempWorkspace("aa-sandbox-write-");
   const outside = createTempWorkspace("aa-sandbox-write-outside-");
 
@@ -92,7 +92,7 @@ test("sandbox: declared write path outside workspace is blocked", async () => {
   }
 });
 
-test("sandbox: command arguments with null-byte injection are blocked", async () => {
+test("sandbox: command arguments with null-byte injection are blocked [sandbox]", async () => {
   const workspace = createTempWorkspace("aa-sandbox-nullbyte-");
 
   try {
@@ -123,7 +123,7 @@ test("sandbox: command arguments with null-byte injection are blocked", async ()
   }
 });
 
-test("sandbox: timeout results in timed_out status with retryable flag set", async () => {
+test("sandbox: timeout results in timed_out status with retryable flag set [sandbox]", async () => {
   const workspace = createTempWorkspace("aa-sandbox-timeout-");
 
   try {
@@ -152,7 +152,7 @@ test("sandbox: timeout results in timed_out status with retryable flag set", asy
   }
 });
 
-test("sandbox: cancellation via AbortSignal yields cancelled status", async () => {
+test("sandbox: cancellation via AbortSignal yields cancelled status [sandbox]", async () => {
   const workspace = createTempWorkspace("aa-sandbox-cancel-");
 
   try {
@@ -187,7 +187,7 @@ test("sandbox: cancellation via AbortSignal yields cancelled status", async () =
   }
 });
 
-test("sandbox: execution result includes injection risk metadata", async () => {
+test("sandbox: execution result includes injection risk metadata [sandbox]", async () => {
   const workspace = createTempWorkspace("aa-sandbox-injection-");
 
   try {
@@ -214,7 +214,7 @@ test("sandbox: execution result includes injection risk metadata", async () => {
   }
 });
 
-test("sandbox: successful command execution returns succeeded status with sanitized output", async () => {
+test("sandbox: successful command execution returns succeeded status with sanitized output [sandbox]", async () => {
   const workspace = createTempWorkspace("aa-sandbox-success-");
 
   try {
@@ -244,7 +244,7 @@ test("sandbox: successful command execution returns succeeded status with saniti
   }
 });
 
-test("sandbox: artifact is created when output exceeds persisted message limit", async () => {
+test("sandbox: artifact is created when output exceeds persisted message limit [sandbox]", async () => {
   const workspace = createTempWorkspace("aa-sandbox-artifact-");
   const scriptPath = `${workspace}/large.js`;
 
@@ -279,7 +279,7 @@ test("sandbox: artifact is created when output exceeds persisted message limit",
   }
 });
 
-test("sandbox: process limit exceeded blocks with tool.process_limit_exceeded", async () => {
+test("sandbox: process limit exceeded blocks with tool.process_limit_exceeded [sandbox]", async () => {
   const workspace = createTempWorkspace("aa-sandbox-proclimit-");
 
   try {
@@ -313,7 +313,7 @@ test("sandbox: process limit exceeded blocks with tool.process_limit_exceeded", 
   }
 });
 
-test("sandbox: read-only workspace mode blocks write operations", async () => {
+test("sandbox: read-only workspace mode blocks write operations [sandbox]", async () => {
   const workspace = createTempWorkspace("aa-sandbox-readonly-");
 
   try {
@@ -340,7 +340,7 @@ test("sandbox: read-only workspace mode blocks write operations", async () => {
   }
 });
 
-test("sandbox: command execution populates data.injectionRisk and matchedInjectionRules", async () => {
+test("sandbox: command execution populates data.injectionRisk and matchedInjectionRules [sandbox]", async () => {
   const workspace = createTempWorkspace("aa-sandbox-injectionrisk-");
 
   try {
@@ -368,7 +368,7 @@ test("sandbox: command execution populates data.injectionRisk and matchedInjecti
   }
 });
 
-test("sandbox: command failure with non-zero exit code returns failed status", async () => {
+test("sandbox: command failure with non-zero exit code returns failed status [sandbox]", async () => {
   const workspace = createTempWorkspace("aa-sandbox-fail-");
 
   try {
@@ -397,7 +397,7 @@ test("sandbox: command failure with non-zero exit code returns failed status", a
   }
 });
 
-test("sandbox: output sanitization removes ANSI escape sequences", async () => {
+test("sandbox: output sanitization removes ANSI escape sequences [sandbox]", async () => {
   const workspace = createTempWorkspace("aa-sandbox-ansi-");
   const scriptPath = `${workspace}/ansi.js`;
 
@@ -431,7 +431,7 @@ test("sandbox: output sanitization removes ANSI escape sequences", async () => {
   }
 });
 
-test("sandbox: secret redaction is applied to output containing API keys", async () => {
+test("sandbox: secret redaction is applied to output containing API keys [sandbox]", async () => {
   const workspace = createTempWorkspace("aa-sandbox-secret-");
   const scriptPath = `${workspace}/secret.js`;
 
@@ -467,7 +467,7 @@ test("sandbox: secret redaction is applied to output containing API keys", async
   }
 });
 
-test("sandbox: path scope enforcement blocks commands when cwd is outside allowedPathRoots", async () => {
+test("sandbox: path scope enforcement blocks commands when cwd is outside allowedPathRoots [sandbox]", async () => {
   const workspace = createTempWorkspace("aa-sandbox-pathscope-");
   const scopedDir = `${workspace}/scoped`;
   const outsideDir = `${workspace}/outside`;

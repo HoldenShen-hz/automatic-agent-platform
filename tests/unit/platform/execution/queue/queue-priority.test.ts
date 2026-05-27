@@ -15,7 +15,7 @@ function createTestHarness(prefix: string) {
   return { workspace, db };
 }
 
-test("higher priority jobs are dequeued first", () => {
+test("higher priority jobs are dequeued first [queue-priority]", () => {
   const h = createTestHarness("aa-pri-higher-");
   try {
     const adapter = new SqliteQueueAdapter(h.db);
@@ -45,7 +45,7 @@ test("higher priority jobs are dequeued first", () => {
   }
 });
 
-test("default priority is zero", () => {
+test("default priority is zero [queue-priority]", () => {
   const h = createTestHarness("aa-pri-default-");
   try {
     const adapter = new SqliteQueueAdapter(h.db);
@@ -60,7 +60,7 @@ test("default priority is zero", () => {
   }
 });
 
-test("negative priority jobs are processed after zero priority", () => {
+test("negative priority jobs are processed after zero priority [queue-priority]", () => {
   const h = createTestHarness("aa-pri-negative-");
   try {
     const adapter = new SqliteQueueAdapter(h.db);
@@ -88,7 +88,7 @@ test("negative priority jobs are processed after zero priority", () => {
   }
 });
 
-test("same priority jobs are ordered by createdAt (FIFO)", () => {
+test("same priority jobs are ordered by createdAt (FIFO) [queue-priority]", () => {
   const h = createTestHarness("aa-pri-fifo-");
   try {
     const adapter = new SqliteQueueAdapter(h.db);
@@ -116,7 +116,7 @@ test("same priority jobs are ordered by createdAt (FIFO)", () => {
   }
 });
 
-test("priority ordering is preserved across dequeue/ack cycles", () => {
+test("priority ordering is preserved across dequeue/ack cycles [queue-priority]", () => {
   const h = createTestHarness("aa-pri-cycle-");
   try {
     const adapter = new SqliteQueueAdapter(h.db);
@@ -146,7 +146,7 @@ test("priority ordering is preserved across dequeue/ack cycles", () => {
   }
 });
 
-test("priority works with delayed jobs", () => {
+test("priority works with delayed jobs [queue-priority]", () => {
   const h = createTestHarness("aa-pri-delayed-");
   try {
     const adapter = new SqliteQueueAdapter(h.db);
@@ -169,7 +169,7 @@ test("priority works with delayed jobs", () => {
   }
 });
 
-test("priority with maxAttempts", () => {
+test("priority with maxAttempts [queue-priority]", () => {
   const h = createTestHarness("aa-pri-maxattempts-");
   try {
     const adapter = new SqliteQueueAdapter(h.db);
@@ -192,7 +192,7 @@ test("priority with maxAttempts", () => {
   }
 });
 
-test("priority ordering with multiple queues", () => {
+test("priority ordering with multiple queues [queue-priority]", () => {
   const h = createTestHarness("aa-pri-multiqueue-");
   try {
     const adapter = new SqliteQueueAdapter(h.db);
@@ -220,7 +220,7 @@ test("priority ordering with multiple queues", () => {
   }
 });
 
-test("listJobs returns jobs in priority order", () => {
+test("listJobs returns jobs in priority order [queue-priority]", () => {
   const h = createTestHarness("aa-pri-listjobs-");
   try {
     const adapter = new SqliteQueueAdapter(h.db);
@@ -239,7 +239,7 @@ test("listJobs returns jobs in priority order", () => {
   }
 });
 
-test("listJobs with status filter maintains priority order", () => {
+test("listJobs with status filter maintains priority order [queue-priority]", () => {
   const h = createTestHarness("aa-pri-listjobs-filter-");
   try {
     const adapter = new SqliteQueueAdapter(h.db);
@@ -263,7 +263,7 @@ test("listJobs with status filter maintains priority order", () => {
   }
 });
 
-test("retryJob preserves priority", () => {
+test("retryJob preserves priority [queue-priority]", () => {
   const h = createTestHarness("aa-pri-retry-");
   try {
     const adapter = new SqliteQueueAdapter(h.db);
@@ -289,7 +289,7 @@ test("retryJob preserves priority", () => {
   }
 });
 
-test("moveToDeadLetter preserves job data including priority", () => {
+test("moveToDeadLetter preserves job data including priority [queue-priority]", () => {
   const h = createTestHarness("aa-pri-movetodl-");
   try {
     const adapter = new SqliteQueueAdapter(h.db);
@@ -307,7 +307,7 @@ test("moveToDeadLetter preserves job data including priority", () => {
   }
 });
 
-test("stats reflects priority ordering in waiting count", () => {
+test("stats reflects priority ordering in waiting count [queue-priority]", () => {
   const h = createTestHarness("aa-pri-stats-");
   try {
     const adapter = new SqliteQueueAdapter(h.db);
@@ -330,7 +330,7 @@ test("stats reflects priority ordering in waiting count", () => {
   }
 });
 
-test("very high priority values are handled correctly", () => {
+test("very high priority values are handled correctly [queue-priority]", () => {
   const h = createTestHarness("aa-pri-veryhigh-");
   try {
     const adapter = new SqliteQueueAdapter(h.db);
@@ -352,7 +352,7 @@ test("very high priority values are handled correctly", () => {
   }
 });
 
-test("very low priority values are handled correctly", () => {
+test("very low priority values are handled correctly [queue-priority]", () => {
   const h = createTestHarness("aa-pri-verylow-");
   try {
     const adapter = new SqliteQueueAdapter(h.db);
@@ -374,7 +374,7 @@ test("very low priority values are handled correctly", () => {
   }
 });
 
-test("priority score calculation for Redis uses correct formula", () => {
+test("priority score calculation for Redis uses correct formula [queue-priority]", () => {
   // This test verifies the priority * 1e13 + timestamp formula
   // Higher priority = higher score = dequeued first (since we use ZRANGE with REV)
   const h = createTestHarness("aa-pri-formula-");

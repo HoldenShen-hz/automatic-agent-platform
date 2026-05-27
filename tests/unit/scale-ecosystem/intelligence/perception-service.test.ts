@@ -41,7 +41,7 @@ function createMockDb() {
   };
 }
 
-test("PerceptionService registers a perception source", () => {
+test("PerceptionService registers a perception source [perception-service]", () => {
   const service = new PerceptionService(createMockDb() as any, createMockStore() as any);
 
   const input: RegisterPerceptionSourceInput = {
@@ -56,7 +56,7 @@ test("PerceptionService registers a perception source", () => {
   assert.ok(source.sourceId);
 });
 
-test("PerceptionService registers source with custom id", () => {
+test("PerceptionService registers source with custom id [perception-service]", () => {
   const service = new PerceptionService(createMockDb() as any, createMockStore() as any);
 
   const source = service.registerSource({
@@ -68,7 +68,7 @@ test("PerceptionService registers source with custom id", () => {
   assert.equal(source.sourceId, "custom_source_id");
 });
 
-test("PerceptionService registers source with priority", () => {
+test("PerceptionService registers source with priority [perception-service]", () => {
   const service = new PerceptionService(createMockDb() as any, createMockStore() as any);
 
   const source = service.registerSource({
@@ -80,7 +80,7 @@ test("PerceptionService registers source with priority", () => {
   assert.equal(source.priority, 10);
 });
 
-test("PerceptionService registers disabled source", () => {
+test("PerceptionService registers disabled source [perception-service]", () => {
   const service = new PerceptionService(createMockDb() as any, createMockStore() as any);
 
   const source = service.registerSource({
@@ -92,7 +92,7 @@ test("PerceptionService registers disabled source", () => {
   assert.equal(source.enabled, 0);
 });
 
-test("PerceptionService ingests intel items", () => {
+test("PerceptionService ingests intel items [perception-service]", () => {
   const mockStore = createMockStore();
   const source = { sourceId: "src_1", tenantId: null, type: "api" as const, name: "Test", enabled: 1, scheduleJson: null, filtersJson: null, priority: 0, createdAt: "", updatedAt: "" };
   mockStore.intelligence.getPerceptionSource = () => source;
@@ -117,7 +117,7 @@ test("PerceptionService ingests intel items", () => {
   assert.equal(result.skippedDuplicateCount, 0);
 });
 
-test("PerceptionService skips duplicate intel items", () => {
+test("PerceptionService skips duplicate intel items [perception-service]", () => {
   const mockStore = createMockStore();
   const source = { sourceId: "src_1", tenantId: null, type: "api" as const, name: "Test", enabled: 1, scheduleJson: null, filtersJson: null, priority: 0, createdAt: "", updatedAt: "" };
   mockStore.intelligence.getPerceptionSource = () => source;
@@ -142,7 +142,7 @@ test("PerceptionService skips duplicate intel items", () => {
   assert.equal(result.skippedDuplicateCount, 1);
 });
 
-test("PerceptionService builds intel brief", () => {
+test("PerceptionService builds intel brief [perception-service]", () => {
   const mockStore = createMockStore();
   mockStore.intelligence.listIntelItems = () => [
     {
@@ -171,7 +171,7 @@ test("PerceptionService builds intel brief", () => {
   assert.equal(result.recommendedActions.length, 1);
 });
 
-test("PerceptionService proposes actions from brief", () => {
+test("PerceptionService proposes actions from brief [perception-service]", () => {
   const mockStore = createMockStore();
   mockStore.intelligence.listActionProposalsByBrief = () => []; // No existing proposals
   mockStore.intelligence.getIntelBrief = () => ({
@@ -197,7 +197,7 @@ test("PerceptionService proposes actions from brief", () => {
   assert.equal(proposals[0]!.status, "proposed");
 });
 
-test("PerceptionService returns existing proposals idempotently", () => {
+test("PerceptionService returns existing proposals idempotently [perception-service]", () => {
   const mockStore = createMockStore();
   const existingProposals = [{ proposalId: "prop_1", briefId: "brief_1" }] as any;
   mockStore.intelligence.listActionProposalsByBrief = () => existingProposals;
@@ -220,7 +220,7 @@ test("PerceptionService returns existing proposals idempotently", () => {
   assert.equal(proposals, existingProposals);
 });
 
-test("PerceptionService lists sources", () => {
+test("PerceptionService lists sources [perception-service]", () => {
   const mockStore = createMockStore();
   mockStore.intelligence.listPerceptionSources = (enabledOnly?: boolean) => {
     const sources = [
@@ -239,7 +239,7 @@ test("PerceptionService lists sources", () => {
   assert.equal(enabledSources.length, 1);
 });
 
-test("PerceptionService lists briefs", () => {
+test("PerceptionService lists briefs [perception-service]", () => {
   const mockStore = createMockStore();
   mockStore.intelligence.listIntelBriefs = () => [
     { briefId: "brief_1" } as any,
@@ -252,7 +252,7 @@ test("PerceptionService lists briefs", () => {
   assert.equal(briefs.length, 2);
 });
 
-test("PerceptionService normalizes tags", () => {
+test("PerceptionService normalizes tags [perception-service]", () => {
   const mockStore = createMockStore();
   const source = { sourceId: "src_1", tenantId: null, type: "api" as const, name: "Test", enabled: 1, scheduleJson: null, filtersJson: null, priority: 0, createdAt: "", updatedAt: "" };
   mockStore.intelligence.getPerceptionSource = () => source;
@@ -279,7 +279,7 @@ test("PerceptionService normalizes tags", () => {
   assert.ok(tags.includes("security"));
 });
 
-test("PerceptionService validates title length", () => {
+test("PerceptionService validates title length [perception-service]", () => {
   const mockStore = createMockStore();
   const source = { sourceId: "src_1", tenantId: null, type: "api" as const, name: "Test", enabled: 1, scheduleJson: null, filtersJson: null, priority: 0, createdAt: "", updatedAt: "" };
   mockStore.intelligence.getPerceptionSource = () => source;
@@ -302,7 +302,7 @@ test("PerceptionService validates title length", () => {
   });
 });
 
-test("PerceptionService validates summary length", () => {
+test("PerceptionService validates summary length [perception-service]", () => {
   const mockStore = createMockStore();
   const source = { sourceId: "src_1", tenantId: null, type: "api" as const, name: "Test", enabled: 1, scheduleJson: null, filtersJson: null, priority: 0, createdAt: "", updatedAt: "" };
   mockStore.intelligence.getPerceptionSource = () => source;
@@ -325,7 +325,7 @@ test("PerceptionService validates summary length", () => {
   });
 });
 
-test("PerceptionService validates score range", () => {
+test("PerceptionService validates score range [perception-service]", () => {
   const mockStore = createMockStore();
   const source = { sourceId: "src_1", tenantId: null, type: "api" as const, name: "Test", enabled: 1, scheduleJson: null, filtersJson: null, priority: 0, createdAt: "", updatedAt: "" };
   mockStore.intelligence.getPerceptionSource = () => source;
@@ -348,7 +348,7 @@ test("PerceptionService validates score range", () => {
   });
 });
 
-test("PerceptionService derives correct action types", () => {
+test("PerceptionService derives correct action types [perception-service]", () => {
   const mockStore = createMockStore();
   mockStore.intelligence.listIntelItems = () => [
     {
@@ -406,7 +406,7 @@ test("PerceptionService derives correct action types", () => {
   assert.equal(result.recommendedActions.length, 3);
 });
 
-test("PerceptionService respects limit parameter in buildBrief", () => {
+test("PerceptionService respects limit parameter in buildBrief [perception-service]", () => {
   const mockStore = createMockStore();
   mockStore.intelligence.listIntelItems = () => Array(10).fill(null).map((_, i) => ({
     intelId: `intel_${i}`,
@@ -433,7 +433,7 @@ test("PerceptionService respects limit parameter in buildBrief", () => {
   assert.ok(result.items.length >= 5);
 });
 
-test("PerceptionService filters expired items", () => {
+test("PerceptionService filters expired items [perception-service]", () => {
   const mockStore = createMockStore();
   const now = new Date();
   mockStore.intelligence.listIntelItems = () => [

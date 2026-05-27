@@ -179,7 +179,7 @@ function createMockDb(): AuthoritativeSqlDatabase {
 // preview() tests
 // ---------------------------------------------------------------------------
 
-test("OrphanCleanupService.preview returns report with empty issues when no orphans", () => {
+test("OrphanCleanupService.preview returns report with empty issues when no orphans [orphan-cleanup-service]", () => {
   const store = createMockStore({});
   const service = new OrphanCleanupService(createMockDb(), store);
   const report = service.preview();
@@ -189,7 +189,7 @@ test("OrphanCleanupService.preview returns report with empty issues when no orph
   assert.ok(report.checkedAt.length > 0);
 });
 
-test("OrphanCleanupService.preview detects orphan_session issues", () => {
+test("OrphanCleanupService.preview detects orphan_session issues [orphan-cleanup-service]", () => {
   const store = createMockStore({
     orphanSessions: [
       { sessionId: "sess-1", taskId: "task-1", sessionStatus: "streaming", taskStatus: "done" },
@@ -203,7 +203,7 @@ test("OrphanCleanupService.preview detects orphan_session issues", () => {
   assert.equal(report.issues[0]!.entityId, "sess-1");
 });
 
-test("OrphanCleanupService.preview detects orphan_queue_claim issues", () => {
+test("OrphanCleanupService.preview detects orphan_queue_claim issues [orphan-cleanup-service]", () => {
   const store = createMockStore({
     dispatchReconciliationIssues: [
       { ticketId: "ticket-1", taskId: "task-1", executionId: "exec-1", status: "claimed" },
@@ -218,7 +218,7 @@ test("OrphanCleanupService.preview detects orphan_queue_claim issues", () => {
   assert.ok(Array.isArray(report.issues));
 });
 
-test("OrphanCleanupService.preview uses custom checkedAt timestamp", () => {
+test("OrphanCleanupService.preview uses custom checkedAt timestamp [orphan-cleanup-service]", () => {
   const store = createMockStore({});
   const service = new OrphanCleanupService(createMockDb(), store);
   const customTime = "2026-04-24T12:00:00.000Z";
@@ -231,7 +231,7 @@ test("OrphanCleanupService.preview uses custom checkedAt timestamp", () => {
 // enforce() tests
 // ---------------------------------------------------------------------------
 
-test("OrphanCleanupService.enforce returns report with issues and applied array", () => {
+test("OrphanCleanupService.enforce returns report with issues and applied array [orphan-cleanup-service]", () => {
   const store = createMockStore({});
   const service = new OrphanCleanupService(createMockDb(), store);
   const report = service.enforce();
@@ -240,7 +240,7 @@ test("OrphanCleanupService.enforce returns report with issues and applied array"
   assert.ok(Array.isArray(report.applied));
 });
 
-test("OrphanCleanupService.enforce applies close_orphan_session for orphan sessions", () => {
+test("OrphanCleanupService.enforce applies close_orphan_session for orphan sessions [orphan-cleanup-service]", () => {
   const sessions = new Map([
     ["sess-close-1", { id: "sess-close-1", taskId: "task-1", status: "streaming" }],
   ]);
@@ -259,7 +259,7 @@ test("OrphanCleanupService.enforce applies close_orphan_session for orphan sessi
   assert.equal(applied!.applied, true);
 });
 
-test("OrphanCleanupService.enforce marks applied false when session already terminal", () => {
+test("OrphanCleanupService.enforce marks applied false when session already terminal [orphan-cleanup-service]", () => {
   const sessions = new Map([
     ["sess-term", { id: "sess-term", taskId: "task-1", status: "completed" }],
   ]);
@@ -278,7 +278,7 @@ test("OrphanCleanupService.enforce marks applied false when session already term
   assert.equal(applied!.detail, "session already terminal");
 });
 
-test("OrphanCleanupService.enforce applies requeue_ticket for orphan queue claims", () => {
+test("OrphanCleanupService.enforce applies requeue_ticket for orphan queue claims [orphan-cleanup-service]", () => {
   // This depends on dispatch reconciliation service internals
   const store = createMockStore({
     dispatchReconciliationIssues: [
@@ -291,7 +291,7 @@ test("OrphanCleanupService.enforce applies requeue_ticket for orphan queue claim
   assert.ok(report.applied);
 });
 
-test("OrphanCleanupService.enforce applies clean_worker_execution_refs for worker orphans", () => {
+test("OrphanCleanupService.enforce applies clean_worker_execution_refs for worker orphans [orphan-cleanup-service]", () => {
   // Set up worker snapshots with orphan execution references
   const executions = new Map([
     ["exec-dead", { id: "exec-dead", taskId: "task-dead", status: "succeeded" }], // terminal
@@ -318,7 +318,7 @@ test("OrphanCleanupService.enforce applies clean_worker_execution_refs for worke
 // Worker execution reference orphan detection
 // ---------------------------------------------------------------------------
 
-test("OrphanCleanupService detects execution_missing orphan", () => {
+test("OrphanCleanupService detects execution_missing orphan [orphan-cleanup-service]", () => {
   const executions = new Map<string, MockExecution>(); // exec-orphan not found
   const snapshots: MockWorkerSnapshot[] = [
     {
@@ -341,7 +341,7 @@ test("OrphanCleanupService detects execution_missing orphan", () => {
   assert.equal(orphanRef!.reasonCode, "execution_missing");
 });
 
-test("OrphanCleanupService detects execution_terminal orphan", () => {
+test("OrphanCleanupService detects execution_terminal orphan [orphan-cleanup-service]", () => {
   const executions = new Map([
     ["exec-terminal", { id: "exec-terminal", taskId: "task-1", status: "failed" }],
   ]);
@@ -367,7 +367,7 @@ test("OrphanCleanupService detects execution_terminal orphan", () => {
   assert.equal(orphanRef!.executionStatus, "failed");
 });
 
-test("OrphanCleanupService detects missing_active_lease orphan", () => {
+test("OrphanCleanupService detects missing_active_lease orphan [orphan-cleanup-service]", () => {
   const executions = new Map([
     ["exec-no-lease", { id: "exec-no-lease", taskId: "task-1", status: "executing" }],
   ]);
@@ -392,7 +392,7 @@ test("OrphanCleanupService detects missing_active_lease orphan", () => {
   assert.equal(orphanRef!.reasonCode, "missing_active_lease");
 });
 
-test("OrphanCleanupService detects owned_by_another_worker orphan", () => {
+test("OrphanCleanupService detects owned_by_another_worker orphan [orphan-cleanup-service]", () => {
   const executions = new Map([
     ["exec-stolen", { id: "exec-stolen", taskId: "task-1", status: "executing" }],
   ]);
@@ -420,7 +420,7 @@ test("OrphanCleanupService detects owned_by_another_worker orphan", () => {
   assert.equal(orphanRef!.activeLeaseWorkerId, "other-worker");
 });
 
-test("OrphanCleanupService does not flag valid execution references", () => {
+test("OrphanCleanupService does not flag valid execution references [orphan-cleanup-service]", () => {
   const executions = new Map([
     ["exec-valid", { id: "exec-valid", taskId: "task-1", status: "executing" }],
   ]);
@@ -449,7 +449,7 @@ test("OrphanCleanupService does not flag valid execution references", () => {
 // cleanWorkerExecutionRefs helper (via enforce)
 // ---------------------------------------------------------------------------
 
-test("OrphanCleanupService cleans multiple orphan refs in single worker", () => {
+test("OrphanCleanupService cleans multiple orphan refs in single worker [orphan-cleanup-service]", () => {
   const executions = new Map([
     ["exec-dead-1", { id: "exec-dead-1", taskId: "task-1", status: "failed" }],
     ["exec-dead-2", { id: "exec-dead-2", taskId: "task-2", status: "succeeded" }],
@@ -473,7 +473,7 @@ test("OrphanCleanupService cleans multiple orphan refs in single worker", () => 
   assert.equal(applied!.applied, true);
 });
 
-test("OrphanCleanupService reports no action needed when worker already clean", () => {
+test("OrphanCleanupService reports no action needed when worker already clean [orphan-cleanup-service]", () => {
   // Set up a worker with no orphan refs - valid execution with lease
   const executions = new Map([
     ["exec-clean", { id: "exec-clean", taskId: "task-1", status: "executing" }],
@@ -502,7 +502,7 @@ test("OrphanCleanupService reports no action needed when worker already clean", 
 // JSON parsing edge cases
 // ---------------------------------------------------------------------------
 
-test("OrphanCleanupService handles malformed runningExecutionsJson", () => {
+test("OrphanCleanupService handles malformed runningExecutionsJson [orphan-cleanup-service]", () => {
   const snapshots: MockWorkerSnapshot[] = [
     {
       workerId: "worker-bad-json",
@@ -522,7 +522,7 @@ test("OrphanCleanupService handles malformed runningExecutionsJson", () => {
   assert.equal(workerIssue, undefined);
 });
 
-test("OrphanCleanupService handles empty runningExecutionsJson", () => {
+test("OrphanCleanupService handles empty runningExecutionsJson [orphan-cleanup-service]", () => {
   const snapshots: MockWorkerSnapshot[] = [
     {
       workerId: "worker-empty",
@@ -545,7 +545,7 @@ test("OrphanCleanupService handles empty runningExecutionsJson", () => {
 // Multiple issue types combined
 // ---------------------------------------------------------------------------
 
-test("OrphanCleanupService.preview combines all issue types", () => {
+test("OrphanCleanupService.preview combines all issue types [orphan-cleanup-service]", () => {
   const executions = new Map([
     ["exec-terminal", { id: "exec-terminal", taskId: "task-1", status: "failed" }],
   ]);

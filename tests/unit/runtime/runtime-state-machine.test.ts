@@ -5,7 +5,7 @@ import { WorkflowStateError } from "../../../src/platform/contracts/errors.js";
 import { createPlatformFactEvent } from "../../../src/platform/contracts/executable-contracts/index.js";
 import { RuntimeStateMachine } from "../../../src/platform/five-plane-execution/runtime-state-machine.js";
 
-test("RuntimeStateMachine can be instantiated and emit fact events", () => {
+test("RuntimeStateMachine can be instantiated and emit fact events [runtime-state-machine]", () => {
   const persisted: string[] = [];
   const machine = new RuntimeStateMachine({
     persistEvent: (event) => {
@@ -29,7 +29,7 @@ test("RuntimeStateMachine can be instantiated and emit fact events", () => {
   assert.deepEqual(persisted, ["platform.test.emitted"]);
 });
 
-test("RuntimeStateMachine validates and applies a harness-run created -> admitted transition", () => {
+test("RuntimeStateMachine validates and applies a harness-run created -> admitted transition [runtime-state-machine]", () => {
   const persisted: string[] = [];
   const machine = new RuntimeStateMachine({
     persistEvent: (event) => {
@@ -60,7 +60,7 @@ test("RuntimeStateMachine validates and applies a harness-run created -> admitte
   assert.equal(persisted[0]?.startsWith("platform.harness_run.status_changed"), true);
 });
 
-test("RuntimeStateMachine rejects noop and invalid harness-run transitions", () => {
+test("RuntimeStateMachine rejects noop and invalid harness-run transitions [runtime-state-machine]", () => {
   const machine = new RuntimeStateMachine({ persistEvent: () => undefined });
   const aggregate = machine.createHarnessRunAggregate("harness-run-2");
 
@@ -84,7 +84,7 @@ test("RuntimeStateMachine rejects noop and invalid harness-run transitions", () 
   assert.equal(machine.validateTransition(aggregate, "running", "created"), false);
 });
 
-test("RuntimeStateMachine applies a node-run created -> ready transition", () => {
+test("RuntimeStateMachine applies a node-run created -> ready transition [runtime-state-machine]", () => {
   const machine = new RuntimeStateMachine({ persistEvent: () => undefined });
   const aggregate = {
     ...machine.createNodeRunAggregate("node-run-1", "harness-run-1"),

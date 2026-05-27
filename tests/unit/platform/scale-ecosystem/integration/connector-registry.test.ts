@@ -6,7 +6,7 @@ import {
   type ConnectorManifest,
 } from "../../../../../src/scale-ecosystem/integration/connector-registry/index.js";
 
-test("listEnabledConnectors returns only enabled connectors", () => {
+test("listEnabledConnectors returns only enabled connectors [connector-registry]", () => {
   const connectors: ConnectorManifest[] = [
     { connectorId: "conn-1", provider: "aws", capabilities: [], lifecycleState: "enabled" },
     { connectorId: "conn-2", provider: "gcp", capabilities: [], lifecycleState: "disabled" },
@@ -20,7 +20,7 @@ test("listEnabledConnectors returns only enabled connectors", () => {
   assert.strictEqual(result[1]!.connectorId, "conn-3");
 });
 
-test("listEnabledConnectors returns empty array when none enabled", () => {
+test("listEnabledConnectors returns empty array when none enabled [connector-registry]", () => {
   const connectors: ConnectorManifest[] = [
     { connectorId: "conn-1", provider: "aws", capabilities: [], lifecycleState: "disabled" },
     { connectorId: "conn-2", provider: "gcp", capabilities: [], lifecycleState: "revoked" },
@@ -31,7 +31,7 @@ test("listEnabledConnectors returns empty array when none enabled", () => {
   assert.strictEqual(result.length, 0);
 });
 
-test("listEnabledConnectors returns empty array for empty input", () => {
+test("listEnabledConnectors returns empty array for empty input [connector-registry]", () => {
   const connectors: readonly ConnectorManifest[] = [];
 
   const result = listEnabledConnectors(connectors);
@@ -39,7 +39,7 @@ test("listEnabledConnectors returns empty array for empty input", () => {
   assert.strictEqual(result.length, 0);
 });
 
-test("ConnectorManifestSchema validates valid manifest", () => {
+test("ConnectorManifestSchema validates valid manifest [connector-registry]", () => {
   const manifest = {
     connectorId: "conn-1",
     provider: "aws",
@@ -55,7 +55,7 @@ test("ConnectorManifestSchema validates valid manifest", () => {
   assert.strictEqual(result.success, true);
 });
 
-test("ConnectorManifestSchema applies default values", () => {
+test("ConnectorManifestSchema applies default values [connector-registry]", () => {
   const minimalManifest = {
     connectorId: "conn-1",
     provider: "aws",
@@ -74,7 +74,7 @@ test("ConnectorManifestSchema applies default values", () => {
   }
 });
 
-test("ConnectorManifestSchema rejects empty connectorId", () => {
+test("ConnectorManifestSchema rejects empty connectorId [connector-registry]", () => {
   const manifest = {
     connectorId: "",
     provider: "aws",
@@ -85,7 +85,7 @@ test("ConnectorManifestSchema rejects empty connectorId", () => {
   assert.strictEqual(result.success, false);
 });
 
-test("ConnectorManifestSchema rejects empty provider", () => {
+test("ConnectorManifestSchema rejects empty provider [connector-registry]", () => {
   const manifest = {
     connectorId: "conn-1",
     provider: "",
@@ -96,7 +96,7 @@ test("ConnectorManifestSchema rejects empty provider", () => {
   assert.strictEqual(result.success, false);
 });
 
-test("ConnectorManifestSchema rejects invalid lifecycleState", () => {
+test("ConnectorManifestSchema rejects invalid lifecycleState [connector-registry]", () => {
   const manifest = {
     connectorId: "conn-1",
     provider: "aws",
@@ -108,7 +108,7 @@ test("ConnectorManifestSchema rejects invalid lifecycleState", () => {
   assert.strictEqual(result.success, false);
 });
 
-test("ConnectorManifestSchema allows valid lifecycleState values", () => {
+test("ConnectorManifestSchema allows valid lifecycleState values [connector-registry]", () => {
   const states = ["registered", "configured", "verified", "enabled", "disabled", "revoked"];
 
   for (const state of states) {
@@ -124,7 +124,7 @@ test("ConnectorManifestSchema allows valid lifecycleState values", () => {
   }
 });
 
-test("ConnectorManifestSchema rejects negative rate limits", () => {
+test("ConnectorManifestSchema rejects negative rate limits [connector-registry]", () => {
   const manifest = {
     connectorId: "conn-1",
     provider: "aws",
@@ -136,7 +136,7 @@ test("ConnectorManifestSchema rejects negative rate limits", () => {
   assert.strictEqual(result.success, false);
 });
 
-test("listEnabledConnectors filters by exact lifecycleState match", () => {
+test("listEnabledConnectors filters by exact lifecycleState match [connector-registry]", () => {
   const connectors: ConnectorManifest[] = [
     { connectorId: "conn-1", provider: "aws", capabilities: [], lifecycleState: "enabled" },
     { connectorId: "conn-2", provider: "gcp", capabilities: [], lifecycleState: "configured" },
@@ -150,7 +150,7 @@ test("listEnabledConnectors filters by exact lifecycleState match", () => {
   assert.ok(result.every((c) => c.lifecycleState === "enabled"));
 });
 
-test("listEnabledConnectors handles readonly array", () => {
+test("listEnabledConnectors handles readonly array [connector-registry]", () => {
   const connectors: readonly ConnectorManifest[] = [
     { connectorId: "conn-1", provider: "aws", capabilities: [], lifecycleState: "enabled" },
   ];
@@ -160,7 +160,7 @@ test("listEnabledConnectors handles readonly array", () => {
   assert.strictEqual(result.length, 1);
 });
 
-test("ConnectorManifestSchema rejects missing connectorId", () => {
+test("ConnectorManifestSchema rejects missing connectorId [connector-registry]", () => {
   const manifest = {
     provider: "aws",
   };
@@ -170,7 +170,7 @@ test("ConnectorManifestSchema rejects missing connectorId", () => {
   assert.strictEqual(result.success, false);
 });
 
-test("ConnectorManifestSchema rejects missing provider", () => {
+test("ConnectorManifestSchema rejects missing provider [connector-registry]", () => {
   const manifest = {
     connectorId: "conn-1",
   };
@@ -180,7 +180,7 @@ test("ConnectorManifestSchema rejects missing provider", () => {
   assert.strictEqual(result.success, false);
 });
 
-test("ConnectorManifestSchema allows zero rate limit values", () => {
+test("ConnectorManifestSchema allows zero rate limit values [connector-registry]", () => {
   const manifest = {
     connectorId: "conn-1",
     provider: "aws",

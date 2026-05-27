@@ -3,7 +3,7 @@ import test from "node:test";
 import { summarizeImprovementTracking, ImprovementTrackingRecordSchema } from "../../../../../src/scale-ecosystem/feedback-loop/improvement-tracker/index.js";
 import type { ImprovementTrackingRecord } from "../../../../../src/scale-ecosystem/feedback-loop/improvement-tracker/index.js";
 
-test("summarizeImprovementTracking counts by status", () => {
+test("summarizeImprovementTracking counts by status [index]", () => {
   const records: ImprovementTrackingRecord[] = [
     { candidateId: "c1", sourceSignalIds: ["s1"], status: "proposed", owner: "system" },
     { candidateId: "c2", sourceSignalIds: ["s2"], status: "proposed", owner: "system" },
@@ -16,13 +16,13 @@ test("summarizeImprovementTracking counts by status", () => {
   assert.equal(summary["approved"], 1);
 });
 
-test("summarizeImprovementTracking handles empty array", () => {
+test("summarizeImprovementTracking handles empty array [index]", () => {
   const summary = summarizeImprovementTracking([]);
 
   assert.deepEqual(summary, {});
 });
 
-test("summarizeImprovementTracking handles all statuses", () => {
+test("summarizeImprovementTracking handles all statuses [index]", () => {
   const records: ImprovementTrackingRecord[] = [
     { candidateId: "c1", sourceSignalIds: [], status: "proposed", owner: "a" },
     { candidateId: "c2", sourceSignalIds: [], status: "reviewing", owner: "b" },
@@ -40,7 +40,7 @@ test("summarizeImprovementTracking handles all statuses", () => {
   assert.equal(summary["released"], 1);
 });
 
-test("ImprovementTrackingRecordSchema applies defaults", () => {
+test("ImprovementTrackingRecordSchema applies defaults [index]", () => {
   const result = ImprovementTrackingRecordSchema.safeParse({
     candidateId: "c1",
     status: "proposed",

@@ -9,7 +9,7 @@ import {
   type RecoveryCadencePhaseConfig,
 } from "../../../../../src/platform/five-plane-execution/recovery/recovery-cadence.js";
 
-test("RecoveryCadencePhase type accepts all valid phases", () => {
+test("RecoveryCadencePhase type accepts all valid phases [recovery-cadence]", () => {
   const phases: RecoveryCadencePhase[] = [
     "immediate_retry",
     "backoff_retry",
@@ -20,7 +20,7 @@ test("RecoveryCadencePhase type accepts all valid phases", () => {
   assert.equal(phases.length, 5);
 });
 
-test("RecoveryCadencePhaseConfig interface structure", () => {
+test("RecoveryCadencePhaseConfig interface structure [recovery-cadence]", () => {
   const config: RecoveryCadencePhaseConfig = {
     phase: "immediate_retry",
     maxAttempts: 2,
@@ -34,7 +34,7 @@ test("RecoveryCadencePhaseConfig interface structure", () => {
   assert.equal(config.action, "resume_same_worker");
 });
 
-test("RecoveryCadence interface structure", () => {
+test("RecoveryCadence interface structure [recovery-cadence]", () => {
   const phases: RecoveryCadencePhaseConfig[] = [
     {
       phase: "immediate_retry",
@@ -54,7 +54,7 @@ test("RecoveryCadence interface structure", () => {
   assert.equal(cadence.escalateAfterAttempts, 3);
 });
 
-test("createRecoveryCadence with default configuration", () => {
+test("createRecoveryCadence with default configuration [recovery-cadence]", () => {
   const cadence = createRecoveryCadence({
     resumeSameWorkerMaxAttempts: 2,
     retryNewTicketMaxAttempts: 5,
@@ -67,7 +67,7 @@ test("createRecoveryCadence with default configuration", () => {
   assert.equal(cadence.escalateAfterAttempts, 8);
 });
 
-test("createRecoveryCadence first phase is immediate_retry", () => {
+test("createRecoveryCadence first phase is immediate_retry [recovery-cadence]", () => {
   const cadence = createRecoveryCadence({
     resumeSameWorkerMaxAttempts: 2,
     retryNewTicketMaxAttempts: 5,
@@ -82,7 +82,7 @@ test("createRecoveryCadence first phase is immediate_retry", () => {
   assert.equal(firstPhase.action, "resume_same_worker");
 });
 
-test("createRecoveryCadence second phase is backoff_retry", () => {
+test("createRecoveryCadence second phase is backoff_retry [recovery-cadence]", () => {
   const cadence = createRecoveryCadence({
     resumeSameWorkerMaxAttempts: 2,
     retryNewTicketMaxAttempts: 5,
@@ -97,7 +97,7 @@ test("createRecoveryCadence second phase is backoff_retry", () => {
   assert.equal(secondPhase.action, "retry_new_ticket");
 });
 
-test("createRecoveryCadence third phase is dead_letter", () => {
+test("createRecoveryCadence third phase is dead_letter [recovery-cadence]", () => {
   const cadence = createRecoveryCadence({
     resumeSameWorkerMaxAttempts: 2,
     retryNewTicketMaxAttempts: 5,
@@ -112,7 +112,7 @@ test("createRecoveryCadence third phase is dead_letter", () => {
   assert.equal(thirdPhase.action, "move_dead_letter");
 });
 
-test("createRecoveryCadence fourth phase is escalate", () => {
+test("createRecoveryCadence fourth phase is escalate [recovery-cadence]", () => {
   const cadence = createRecoveryCadence({
     resumeSameWorkerMaxAttempts: 2,
     retryNewTicketMaxAttempts: 5,
@@ -127,7 +127,7 @@ test("createRecoveryCadence fourth phase is escalate", () => {
   assert.equal(fourthPhase.action, "escalate_takeover");
 });
 
-test("createRecoveryCadence with zero retryNewTicketMaxAttempts", () => {
+test("createRecoveryCadence with zero retryNewTicketMaxAttempts [recovery-cadence]", () => {
   const cadence = createRecoveryCadence({
     resumeSameWorkerMaxAttempts: 2,
     retryNewTicketMaxAttempts: 0,
@@ -140,7 +140,7 @@ test("createRecoveryCadence with zero retryNewTicketMaxAttempts", () => {
   assert.equal(secondPhase.maxAttempts, 0);
 });
 
-test("createRecoveryCadence when retryNewTicketMaxAttempts less than resumeSameWorkerMaxAttempts", () => {
+test("createRecoveryCadence when retryNewTicketMaxAttempts less than resumeSameWorkerMaxAttempts [recovery-cadence]", () => {
   const cadence = createRecoveryCadence({
     resumeSameWorkerMaxAttempts: 5,
     retryNewTicketMaxAttempts: 3,
@@ -153,7 +153,7 @@ test("createRecoveryCadence when retryNewTicketMaxAttempts less than resumeSameW
   assert.equal(secondPhase.maxAttempts, 0);
 });
 
-test("createRecoveryCadence with same values for all thresholds", () => {
+test("createRecoveryCadence with same values for all thresholds [recovery-cadence]", () => {
   const cadence = createRecoveryCadence({
     resumeSameWorkerMaxAttempts: 3,
     retryNewTicketMaxAttempts: 3,
@@ -166,7 +166,7 @@ test("createRecoveryCadence with same values for all thresholds", () => {
   assert.equal(thirdPhase.maxAttempts, 0);
 });
 
-test("nextPhase returns next phase when not at end", () => {
+test("nextPhase returns next phase when not at end [recovery-cadence]", () => {
   const cadence = createRecoveryCadence({
     resumeSameWorkerMaxAttempts: 2,
     retryNewTicketMaxAttempts: 5,
@@ -181,7 +181,7 @@ test("nextPhase returns next phase when not at end", () => {
   assert.equal(next!.action, "retry_new_ticket");
 });
 
-test("nextPhase returns second next phase from index 1", () => {
+test("nextPhase returns second next phase from index 1 [recovery-cadence]", () => {
   const cadence = createRecoveryCadence({
     resumeSameWorkerMaxAttempts: 2,
     retryNewTicketMaxAttempts: 5,
@@ -196,7 +196,7 @@ test("nextPhase returns second next phase from index 1", () => {
   assert.equal(next!.action, "move_dead_letter");
 });
 
-test("nextPhase returns third next phase from index 2", () => {
+test("nextPhase returns third next phase from index 2 [recovery-cadence]", () => {
   const cadence = createRecoveryCadence({
     resumeSameWorkerMaxAttempts: 2,
     retryNewTicketMaxAttempts: 5,
@@ -211,7 +211,7 @@ test("nextPhase returns third next phase from index 2", () => {
   assert.equal(next!.action, "escalate_takeover");
 });
 
-test("nextPhase returns null when at last phase", () => {
+test("nextPhase returns null when at last phase [recovery-cadence]", () => {
   const cadence = createRecoveryCadence({
     resumeSameWorkerMaxAttempts: 2,
     retryNewTicketMaxAttempts: 5,
@@ -224,7 +224,7 @@ test("nextPhase returns null when at last phase", () => {
   assert.equal(next, null);
 });
 
-test("nextPhase returns null when index exceeds phases", () => {
+test("nextPhase returns null when index exceeds phases [recovery-cadence]", () => {
   const cadence = createRecoveryCadence({
     resumeSameWorkerMaxAttempts: 2,
     retryNewTicketMaxAttempts: 5,
@@ -237,7 +237,7 @@ test("nextPhase returns null when index exceeds phases", () => {
   assert.equal(next, null);
 });
 
-test("nextPhase returns null when index equals phases length minus one", () => {
+test("nextPhase returns null when index equals phases length minus one [recovery-cadence]", () => {
   const cadence = createRecoveryCadence({
     resumeSameWorkerMaxAttempts: 2,
     retryNewTicketMaxAttempts: 5,
@@ -250,7 +250,7 @@ test("nextPhase returns null when index equals phases length minus one", () => {
   assert.equal(next, null);
 });
 
-test("createRecoveryCadence totalMaxAttempts matches escalateTakeoverMinAttempts", () => {
+test("createRecoveryCadence totalMaxAttempts matches escalateTakeoverMinAttempts [recovery-cadence]", () => {
   const escalateTakeover = 10;
   const cadence = createRecoveryCadence({
     resumeSameWorkerMaxAttempts: 2,
@@ -262,7 +262,7 @@ test("createRecoveryCadence totalMaxAttempts matches escalateTakeoverMinAttempts
   assert.equal(cadence.totalMaxAttempts, escalateTakeover);
 });
 
-test("createRecoveryCadence escalateAfterAttempts matches moveToDeadLetterMinAttempts", () => {
+test("createRecoveryCadence escalateAfterAttempts matches moveToDeadLetterMinAttempts [recovery-cadence]", () => {
   const moveToDeadLetter = 8;
   const cadence = createRecoveryCadence({
     resumeSameWorkerMaxAttempts: 2,
@@ -274,7 +274,7 @@ test("createRecoveryCadence escalateAfterAttempts matches moveToDeadLetterMinAtt
   assert.equal(cadence.escalateAfterAttempts, moveToDeadLetter);
 });
 
-test("all phases have valid actions", () => {
+test("all phases have valid actions [recovery-cadence]", () => {
   const cadence = createRecoveryCadence({
     resumeSameWorkerMaxAttempts: 2,
     retryNewTicketMaxAttempts: 5,

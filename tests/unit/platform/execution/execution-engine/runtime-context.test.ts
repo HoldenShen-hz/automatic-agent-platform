@@ -16,7 +16,7 @@ import {
   type RuntimeContextSnapshot,
 } from "../../../../../src/platform/five-plane-execution/execution-engine/runtime-context.js";
 
-test("provideContext establishes context for synchronous function", () => {
+test("provideContext establishes context for synchronous function [runtime-context]", () => {
   const snapshot: RuntimeContextSnapshot = {
     traceId: "trace_123",
     taskId: "task_456",
@@ -30,7 +30,7 @@ test("provideContext establishes context for synchronous function", () => {
   assert.equal(result, "trace_123", "should return traceId from context");
 });
 
-test("provideContext establishes context for async function", async () => {
+test("provideContext establishes context for async function [runtime-context]", async () => {
   const snapshot: RuntimeContextSnapshot = {
     traceId: "trace_async",
     taskId: "task_async",
@@ -44,7 +44,7 @@ test("provideContext establishes context for async function", async () => {
   assert.equal(result, "trace_async", "should return traceId from async context");
 });
 
-test("getContext returns current context snapshot", () => {
+test("getContext returns current context snapshot [runtime-context]", () => {
   const snapshot: RuntimeContextSnapshot = {
     traceId: "trace_get",
     taskId: "task_get",
@@ -59,7 +59,7 @@ test("getContext returns current context snapshot", () => {
   });
 });
 
-test("getContext throws when called outside provideContext", () => {
+test("getContext throws when called outside provideContext [runtime-context]", () => {
   assert.throws(
     () => getContext(),
     /runtime_context.missing/,
@@ -67,12 +67,12 @@ test("getContext throws when called outside provideContext", () => {
   );
 });
 
-test("getContextOrNull returns null outside provideContext", () => {
+test("getContextOrNull returns null outside provideContext [runtime-context]", () => {
   const ctx = getContextOrNull();
   assert.equal(ctx, null, "getContextOrNull should return null outside context");
 });
 
-test("getContextOrNull returns context inside provideContext", () => {
+test("getContextOrNull returns context inside provideContext [runtime-context]", () => {
   const snapshot: RuntimeContextSnapshot = {
     traceId: "trace_null",
     taskId: "task_null",
@@ -85,7 +85,7 @@ test("getContextOrNull returns context inside provideContext", () => {
   });
 });
 
-test("withContextPatch merges patch into existing context", () => {
+test("withContextPatch merges patch into existing context [runtime-context]", () => {
   const snapshot: RuntimeContextSnapshot = {
     traceId: "trace_original",
     taskId: "task_original",
@@ -105,7 +105,7 @@ test("withContextPatch merges patch into existing context", () => {
   });
 });
 
-test("withContextPatch throws when called outside provideContext", () => {
+test("withContextPatch throws when called outside provideContext [runtime-context]", () => {
   assert.throws(
     () => withContextPatch({ taskId: "new_task" }, () => "result"),
     /runtime_context.missing/,
@@ -113,7 +113,7 @@ test("withContextPatch throws when called outside provideContext", () => {
   );
 });
 
-test("assertContext returns context when all keys present", () => {
+test("assertContext returns context when all keys present [runtime-context]", () => {
   const snapshot: RuntimeContextSnapshot = {
     traceId: "trace_assert",
     taskId: "task_assert",
@@ -128,7 +128,7 @@ test("assertContext returns context when all keys present", () => {
   });
 });
 
-test("assertContext throws when keys are missing", () => {
+test("assertContext throws when keys are missing [runtime-context]", () => {
   const snapshot: RuntimeContextSnapshot = {
     traceId: "trace_missing",
     taskId: "",
@@ -144,7 +144,7 @@ test("assertContext throws when keys are missing", () => {
   });
 });
 
-test("assertContext throws with empty string", () => {
+test("assertContext throws with empty string [runtime-context]", () => {
   const snapshot: RuntimeContextSnapshot = {
     traceId: "trace_empty",
     taskId: "", // empty string should fail assertion
@@ -159,7 +159,7 @@ test("assertContext throws with empty string", () => {
   });
 });
 
-test("getTenantId returns tenant ID when set", () => {
+test("getTenantId returns tenant ID when set [runtime-context]", () => {
   const snapshot: RuntimeContextSnapshot = {
     traceId: "trace_tenant",
     taskId: "task_tenant",
@@ -172,7 +172,7 @@ test("getTenantId returns tenant ID when set", () => {
   });
 });
 
-test("getTenantId returns null when not set", () => {
+test("getTenantId returns null when not set [runtime-context]", () => {
   const snapshot: RuntimeContextSnapshot = {
     traceId: "trace_no_tenant",
     taskId: "task_no_tenant",
@@ -184,7 +184,7 @@ test("getTenantId returns null when not set", () => {
   });
 });
 
-test("getTenantIdOrNull is alias for getTenantId", () => {
+test("getTenantIdOrNull is alias for getTenantId [runtime-context]", () => {
   const snapshot: RuntimeContextSnapshot = {
     traceId: "trace_alias",
     taskId: "task_alias",
@@ -196,7 +196,7 @@ test("getTenantIdOrNull is alias for getTenantId", () => {
   });
 });
 
-test("getWorkspaceId returns workspace ID when set", () => {
+test("getWorkspaceId returns workspace ID when set [runtime-context]", () => {
   const snapshot: RuntimeContextSnapshot = {
     traceId: "trace_workspace",
     taskId: "task_workspace",
@@ -209,7 +209,7 @@ test("getWorkspaceId returns workspace ID when set", () => {
   });
 });
 
-test("getWorkspaceId returns null when not set", () => {
+test("getWorkspaceId returns null when not set [runtime-context]", () => {
   const snapshot: RuntimeContextSnapshot = {
     traceId: "trace_no_workspace",
     taskId: "task_no_workspace",
@@ -221,7 +221,7 @@ test("getWorkspaceId returns null when not set", () => {
   });
 });
 
-test("getWorkspaceIdOrNull is alias for getWorkspaceId", () => {
+test("getWorkspaceIdOrNull is alias for getWorkspaceId [runtime-context]", () => {
   const snapshot: RuntimeContextSnapshot = {
     traceId: "trace_ws_alias",
     taskId: "task_ws_alias",
@@ -233,7 +233,7 @@ test("getWorkspaceIdOrNull is alias for getWorkspaceId", () => {
   });
 });
 
-test("hasTenantContext returns true when tenantId is set", () => {
+test("hasTenantContext returns true when tenantId is set [runtime-context]", () => {
   const snapshot: RuntimeContextSnapshot = {
     traceId: "trace_has_tenant",
     taskId: "task_has_tenant",
@@ -245,7 +245,7 @@ test("hasTenantContext returns true when tenantId is set", () => {
   });
 });
 
-test("hasTenantContext returns false when tenantId is null", () => {
+test("hasTenantContext returns false when tenantId is null [runtime-context]", () => {
   const snapshot: RuntimeContextSnapshot = {
     traceId: "trace_null_tenant",
     taskId: "task_null_tenant",
@@ -257,7 +257,7 @@ test("hasTenantContext returns false when tenantId is null", () => {
   });
 });
 
-test("hasTenantContext returns false when tenantId is empty string", () => {
+test("hasTenantContext returns false when tenantId is empty string [runtime-context]", () => {
   const snapshot: RuntimeContextSnapshot = {
     traceId: "trace_empty_tenant",
     taskId: "task_empty_tenant",
@@ -269,7 +269,7 @@ test("hasTenantContext returns false when tenantId is empty string", () => {
   });
 });
 
-test("hasWorkspaceContext returns true when workspaceId is set", () => {
+test("hasWorkspaceContext returns true when workspaceId is set [runtime-context]", () => {
   const snapshot: RuntimeContextSnapshot = {
     traceId: "trace_has_workspace",
     taskId: "task_has_workspace",
@@ -281,7 +281,7 @@ test("hasWorkspaceContext returns true when workspaceId is set", () => {
   });
 });
 
-test("hasWorkspaceContext returns false when workspaceId is null", () => {
+test("hasWorkspaceContext returns false when workspaceId is null [runtime-context]", () => {
   const snapshot: RuntimeContextSnapshot = {
     traceId: "trace_null_workspace",
     taskId: "task_null_workspace",
@@ -293,7 +293,7 @@ test("hasWorkspaceContext returns false when workspaceId is null", () => {
   });
 });
 
-test("hasWorkspaceContext returns false when workspaceId is empty string", () => {
+test("hasWorkspaceContext returns false when workspaceId is empty string [runtime-context]", () => {
   const snapshot: RuntimeContextSnapshot = {
     traceId: "trace_empty_workspace",
     taskId: "task_empty_workspace",
@@ -305,7 +305,7 @@ test("hasWorkspaceContext returns false when workspaceId is empty string", () =>
   });
 });
 
-test("provideContext preserves all context fields", () => {
+test("provideContext preserves all context fields [runtime-context]", () => {
   const fullSnapshot: RuntimeContextSnapshot = {
     traceId: "trace_full",
     spanId: "span_123",
@@ -346,7 +346,7 @@ test("provideContext preserves all context fields", () => {
   });
 });
 
-test("provideContext nests correctly", async () => {
+test("provideContext nests correctly [runtime-context]", async () => {
   const snapshot1: RuntimeContextSnapshot = {
     traceId: "trace_outer",
     taskId: "task_outer",
@@ -375,7 +375,7 @@ test("provideContext nests correctly", async () => {
   });
 });
 
-test("provideContext returns promise for async function", async () => {
+test("provideContext returns promise for async function [runtime-context]", async () => {
   const snapshot: RuntimeContextSnapshot = {
     traceId: "trace_promise",
     taskId: "task_promise",

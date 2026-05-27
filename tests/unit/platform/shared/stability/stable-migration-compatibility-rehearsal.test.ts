@@ -20,7 +20,7 @@ function createTempDir(): string {
   return dir;
 }
 
-test("runStableMigrationCompatibilityRehearsal executes all scenarios successfully", async () => {
+test("runStableMigrationCompatibilityRehearsal executes all scenarios successfully [stable-migration-compatibility-rehearsal]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableMigrationCompatibilityRehearsal({ outputDir });
@@ -42,7 +42,7 @@ test("runStableMigrationCompatibilityRehearsal executes all scenarios successful
   }
 });
 
-test("migration_plan_passes_pg_portability_rules scenario exists and has valid structure", async () => {
+test("migration_plan_passes_pg_portability_rules scenario exists and has valid structure [stable-migration-compatibility-rehearsal]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableMigrationCompatibilityRehearsal({ outputDir });
@@ -70,7 +70,7 @@ test("migration_plan_passes_pg_portability_rules scenario exists and has valid s
   }
 });
 
-test("sqlite_migration_bootstrap_reaches_latest_schema scenario exists and has valid structure", async () => {
+test("sqlite_migration_bootstrap_reaches_latest_schema scenario exists and has valid structure [stable-migration-compatibility-rehearsal]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableMigrationCompatibilityRehearsal({ outputDir });
@@ -95,7 +95,7 @@ test("sqlite_migration_bootstrap_reaches_latest_schema scenario exists and has v
   }
 });
 
-test("report contains valid startedAt and finishedAt timestamps", async () => {
+test("report contains valid startedAt and finishedAt timestamps [stable-migration-compatibility-rehearsal]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableMigrationCompatibilityRehearsal({ outputDir });
@@ -114,7 +114,7 @@ test("report contains valid startedAt and finishedAt timestamps", async () => {
   }
 });
 
-test("report outputDir matches options", async () => {
+test("report outputDir matches options [stable-migration-compatibility-rehearsal]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableMigrationCompatibilityRehearsal({ outputDir });
@@ -127,7 +127,7 @@ test("report outputDir matches options", async () => {
   }
 });
 
-test("writeStableMigrationCompatibilityRehearsalReport writes valid JSON", async () => {
+test("writeStableMigrationCompatibilityRehearsalReport writes valid JSON [stable-migration-compatibility-rehearsal]", async () => {
   const outputDir = createTempDir();
   const reportPath = join(outputDir, "report.json");
   try {
@@ -155,7 +155,7 @@ test("writeStableMigrationCompatibilityRehearsalReport writes valid JSON", async
   }
 });
 
-test("portability scenario details include compatibility information", async () => {
+test("portability scenario details include compatibility information [stable-migration-compatibility-rehearsal]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableMigrationCompatibilityRehearsal({ outputDir });
@@ -187,7 +187,7 @@ test("portability scenario details include compatibility information", async () 
   }
 });
 
-test("sqlite bootstrap scenario details include schema status", async () => {
+test("sqlite bootstrap scenario details include schema status [stable-migration-compatibility-rehearsal]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableMigrationCompatibilityRehearsal({ outputDir });

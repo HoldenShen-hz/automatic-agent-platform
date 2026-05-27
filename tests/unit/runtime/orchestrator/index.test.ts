@@ -38,18 +38,18 @@ function cleanupDb(dbPath: string): void {
 // Re-export Verification Tests
 // =============================================================================
 
-test("orchestrator index exports runMultiStepOrchestration", async () => {
+test("orchestrator index exports runMultiStepOrchestration [index]", async () => {
   const orchestrator = await import(orchestratorModulePath);
   assert.ok("runMultiStepOrchestration" in orchestrator, "should export runMultiStepOrchestration");
   assert.strictEqual(typeof orchestrator.runMultiStepOrchestration, "function");
 });
 
-test("orchestrator index exports executeMultiStepToolCallForTests", async () => {
+test("orchestrator index exports executeMultiStepToolCallForTests [index]", async () => {
   const orchestrator = await import(orchestratorModulePath);
   assert.ok("executeMultiStepToolCallForTests" in orchestrator, "should export executeMultiStepToolCallForTests");
 });
 
-test("orchestrator index exports resetMultiStepToolRegistryForTests", async () => {
+test("orchestrator index exports resetMultiStepToolRegistryForTests [index]", async () => {
   const orchestrator = await import(orchestratorModulePath);
   assert.ok("resetMultiStepToolRegistryForTests" in orchestrator, "should export resetMultiStepToolRegistryForTests");
 });
@@ -58,17 +58,17 @@ test("orchestrator index exports resetMultiStepToolRegistryForTests", async () =
 // Type Re-export Tests
 // =============================================================================
 
-test("orchestrator index re-exports MultiStepOrchestrationResult type", () => {
+test("orchestrator index re-exports MultiStepOrchestrationResult type [index]", () => {
   const result = {} as MultiStepOrchestrationResult;
   assert.equal(typeof result, "object");
 });
 
-test("orchestrator index re-exports MultiStepToolExecutionInput type", () => {
+test("orchestrator index re-exports MultiStepToolExecutionInput type [index]", () => {
   const input = {} as MultiStepToolExecutionInput;
   assert.equal(typeof input, "object");
 });
 
-test("orchestrator index re-exports StepFailurePlan type", () => {
+test("orchestrator index re-exports StepFailurePlan type [index]", () => {
   const plan = {} as StepFailurePlan;
   assert.equal(typeof plan, "object");
 });
@@ -77,7 +77,7 @@ test("orchestrator index re-exports StepFailurePlan type", () => {
 // runMultiStepOrchestration Integration Tests
 // =============================================================================
 
-test("runMultiStepOrchestration creates task in storage", async () => {
+test("runMultiStepOrchestration creates task in storage [index]", async () => {
   const dbPath = createTestDbPath("task-creation");
   cleanupDb(dbPath);
 
@@ -99,7 +99,7 @@ test("runMultiStepOrchestration creates task in storage", async () => {
   }
 });
 
-test("runMultiStepOrchestration accepts custom taskId for deterministic testing", async () => {
+test("runMultiStepOrchestration accepts custom taskId for deterministic testing [index]", async () => {
   const dbPath = createTestDbPath("custom-task-id");
   cleanupDb(dbPath);
 
@@ -121,7 +121,7 @@ test("runMultiStepOrchestration accepts custom taskId for deterministic testing"
   }
 });
 
-test("runMultiStepOrchestration returns routing information", async () => {
+test("runMultiStepOrchestration returns routing information [index]", async () => {
   const dbPath = createTestDbPath("routing-info");
   cleanupDb(dbPath);
 
@@ -143,7 +143,7 @@ test("runMultiStepOrchestration returns routing information", async () => {
   }
 });
 
-test("runMultiStepOrchestration returns planned workflow", async () => {
+test("runMultiStepOrchestration returns planned workflow [index]", async () => {
   const dbPath = createTestDbPath("planned-workflow");
   cleanupDb(dbPath);
 
@@ -165,7 +165,7 @@ test("runMultiStepOrchestration returns planned workflow", async () => {
   }
 });
 
-test("runMultiStepOrchestration includes harnessRunId when not provided", async () => {
+test("runMultiStepOrchestration includes harnessRunId when not provided [index]", async () => {
   const dbPath = createTestDbPath("harness-run-id");
   cleanupDb(dbPath);
 
@@ -185,7 +185,7 @@ test("runMultiStepOrchestration includes harnessRunId when not provided", async 
   }
 });
 
-test("runMultiStepOrchestration accepts tenantId for multi-tenant scenarios", async () => {
+test("runMultiStepOrchestration accepts tenantId for multi-tenant scenarios [index]", async () => {
   const dbPath = createTestDbPath("tenant-context");
   cleanupDb(dbPath);
 
@@ -205,7 +205,7 @@ test("runMultiStepOrchestration accepts tenantId for multi-tenant scenarios", as
   }
 });
 
-test("runMultiStepOrchestration accepts pre-allocated budgetLedgerId", async () => {
+test("runMultiStepOrchestration accepts pre-allocated budgetLedgerId [index]", async () => {
   const dbPath = createTestDbPath("budget-ledger");
   cleanupDb(dbPath);
 
@@ -225,7 +225,7 @@ test("runMultiStepOrchestration accepts pre-allocated budgetLedgerId", async () 
   }
 });
 
-test("runMultiStepOrchestration returns streamFrames array", async () => {
+test("runMultiStepOrchestration returns streamFrames array [index]", async () => {
   const dbPath = createTestDbPath("stream-frames");
   cleanupDb(dbPath);
 
@@ -244,7 +244,7 @@ test("runMultiStepOrchestration returns streamFrames array", async () => {
   }
 });
 
-test("runMultiStepOrchestration returns null compaction initially", async () => {
+test("runMultiStepOrchestration returns null compaction initially [index]", async () => {
   const dbPath = createTestDbPath("compaction-null");
   cleanupDb(dbPath);
 
@@ -264,13 +264,13 @@ test("runMultiStepOrchestration returns null compaction initially", async () => 
   }
 });
 
-test("orchestrator index can be imported as ES module", async () => {
+test("orchestrator index can be imported as ES module [index]", async () => {
   const orchestrator = await import(orchestratorModulePath);
   assert.ok(orchestrator, "orchestrator module should be importable");
   assert.ok(typeof orchestrator.runMultiStepOrchestration === "function", "runMultiStepOrchestration should be a function");
 });
 
-test("orchestrator index re-exports are stable across multiple imports", async () => {
+test("orchestrator index re-exports are stable across multiple imports [index]", async () => {
   const orchestrator1 = await import(orchestratorModulePath);
   const orchestrator2 = await import(orchestratorModulePath);
 

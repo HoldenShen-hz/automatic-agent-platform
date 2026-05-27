@@ -12,7 +12,7 @@ import { FineTuningExporter } from "../../../../src/scale-ecosystem/feedback-loo
 import { FeedbackQualityGrader } from "../../../../src/scale-ecosystem/feedback-loop/quality-grader.js";
 import { FeedbackImprovementService } from "../../../../src/scale-ecosystem/feedback-loop/feedback-improvement-service.js";
 
-test("exportFromImprovementService exports released prompt_tuning candidates", () => {
+test("exportFromImprovementService exports released prompt_tuning candidates [fine-tuning-exporter-from-service]", () => {
   const exporter = new FineTuningExporter();
   const grader = new FeedbackQualityGrader();
   const service = new FeedbackImprovementService();
@@ -44,7 +44,7 @@ test("exportFromImprovementService exports released prompt_tuning candidates", (
   assert.ok(dataset.examples.some((ex) => ex.feedbackType === "user_correction"));
 });
 
-test("exportFromImprovementService skips non-released candidates", () => {
+test("exportFromImprovementService skips non-released candidates [fine-tuning-exporter-from-service]", () => {
   const exporter = new FineTuningExporter();
   const grader = new FeedbackQualityGrader();
   const service = new FeedbackImprovementService();
@@ -71,7 +71,7 @@ test("exportFromImprovementService skips non-released candidates", () => {
   assert.equal(dataset.totalExamples, 0);
 });
 
-test("exportFromImprovementService skips rejected candidates", () => {
+test("exportFromImprovementService skips rejected candidates [fine-tuning-exporter-from-service]", () => {
   const exporter = new FineTuningExporter();
   const grader = new FeedbackQualityGrader();
   const service = new FeedbackImprovementService();
@@ -100,7 +100,7 @@ test("exportFromImprovementService skips rejected candidates", () => {
   assert.equal(dataset.totalExamples, 0);
 });
 
-test("exportFromImprovementService respects maxExamples option", () => {
+test("exportFromImprovementService respects maxExamples option [fine-tuning-exporter-from-service]", () => {
   const exporter = new FineTuningExporter();
   const grader = new FeedbackQualityGrader();
   const service = new FeedbackImprovementService();
@@ -133,7 +133,7 @@ test("exportFromImprovementService respects maxExamples option", () => {
   assert.ok(dataset.totalExamples <= 3);
 });
 
-test("exportFromImprovementService maps risk assessment to confidence", () => {
+test("exportFromImprovementService maps risk assessment to confidence [fine-tuning-exporter-from-service]", () => {
   const exporter = new FineTuningExporter();
   const grader = new FeedbackQualityGrader();
   const service = new FeedbackImprovementService();
@@ -191,7 +191,7 @@ test("exportFromImprovementService maps risk assessment to confidence", () => {
   assert.ok(lowRiskExample!.confidence > highRiskExample!.confidence);
 });
 
-test("exportFromImprovementService handles empty candidate list", () => {
+test("exportFromImprovementService handles empty candidate list [fine-tuning-exporter-from-service]", () => {
   const exporter = new FineTuningExporter();
   const grader = new FeedbackQualityGrader();
   const service = new FeedbackImprovementService();
@@ -202,7 +202,7 @@ test("exportFromImprovementService handles empty candidate list", () => {
   assert.deepEqual(dataset.examples, []);
 });
 
-test("exportFromImprovementService only processes prompt_tuning type", () => {
+test("exportFromImprovementService only processes prompt_tuning type [fine-tuning-exporter-from-service]", () => {
   const exporter = new FineTuningExporter();
   const grader = new FeedbackQualityGrader();
   const service = new FeedbackImprovementService();

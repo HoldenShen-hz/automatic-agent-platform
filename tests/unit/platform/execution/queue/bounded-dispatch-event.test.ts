@@ -7,7 +7,7 @@ import {
   type BoundedDispatchEvent,
 } from "../../../../../src/platform/five-plane-execution/queue/bounded-dispatch-event.js";
 
-test("BoundedDispatchQueueEventFactory.create returns accepted event when queue has capacity", () => {
+test("BoundedDispatchQueueEventFactory.create returns accepted event when queue has capacity [bounded-dispatch-event]", () => {
   const factory = new BoundedDispatchQueueEventFactory();
   const snapshot: BoundedDispatchQueueSnapshot = {
     queueName: "test-queue",
@@ -31,7 +31,7 @@ test("BoundedDispatchQueueEventFactory.create returns accepted event when queue 
   assert.equal(event.queue_class, "test-queue");
 });
 
-test("BoundedDispatchQueueEventFactory.create returns rejected event when queue is at max depth", () => {
+test("BoundedDispatchQueueEventFactory.create returns rejected event when queue is at max depth [bounded-dispatch-event]", () => {
   const factory = new BoundedDispatchQueueEventFactory();
   const snapshot: BoundedDispatchQueueSnapshot = {
     queueName: "full-queue",
@@ -48,7 +48,7 @@ test("BoundedDispatchQueueEventFactory.create returns rejected event when queue 
   assert.equal(event.maxQueueDepth, 10);
 });
 
-test("BoundedDispatchQueueEventFactory.create returns rejected when queue exceeds max depth", () => {
+test("BoundedDispatchQueueEventFactory.create returns rejected when queue exceeds max depth [bounded-dispatch-event]", () => {
   const factory = new BoundedDispatchQueueEventFactory();
   const snapshot: BoundedDispatchQueueSnapshot = {
     queueName: "overflow-queue",
@@ -64,7 +64,7 @@ test("BoundedDispatchQueueEventFactory.create returns rejected when queue exceed
   assert.equal(event.queueDepthBefore, 15);
 });
 
-test("BoundedDispatchQueueEventFactory.create includes optional harnessRunId and executionId", () => {
+test("BoundedDispatchQueueEventFactory.create includes optional harnessRunId and executionId [bounded-dispatch-event]", () => {
   const factory = new BoundedDispatchQueueEventFactory();
   const snapshot: BoundedDispatchQueueSnapshot = {
     queueName: "test-queue",
@@ -79,7 +79,7 @@ test("BoundedDispatchQueueEventFactory.create includes optional harnessRunId and
   assert.equal(event.executionId, "exec-1");
 });
 
-test("BoundedDispatchQueueEventFactory.create handles zero queue depth", () => {
+test("BoundedDispatchQueueEventFactory.create handles zero queue depth [bounded-dispatch-event]", () => {
   const factory = new BoundedDispatchQueueEventFactory();
   const snapshot: BoundedDispatchQueueSnapshot = {
     queueName: "empty-queue",
@@ -94,7 +94,7 @@ test("BoundedDispatchQueueEventFactory.create handles zero queue depth", () => {
   assert.equal(event.reasonCode, "queue.accepted");
 });
 
-test("BoundedDispatchQueueEventFactory.create uses queueName as queue_class", () => {
+test("BoundedDispatchQueueEventFactory.create uses queueName as queue_class [bounded-dispatch-event]", () => {
   const factory = new BoundedDispatchQueueEventFactory();
   const snapshot: BoundedDispatchQueueSnapshot = {
     queueName: "priority-queue",
@@ -108,7 +108,7 @@ test("BoundedDispatchQueueEventFactory.create uses queueName as queue_class", ()
   assert.equal(event.queue_class, "priority-queue");
 });
 
-test("BoundedDispatchQueueSnapshot type accepts valid values", () => {
+test("BoundedDispatchQueueSnapshot type accepts valid values [bounded-dispatch-event]", () => {
   const snapshot: BoundedDispatchQueueSnapshot = {
     queueName: "test",
     queueDepthBefore: 5,
@@ -121,7 +121,7 @@ test("BoundedDispatchQueueSnapshot type accepts valid values", () => {
   assert.equal(snapshot.maxQueueDepth, 10);
 });
 
-test("BoundedDispatchEvent reasonCode is either accepted or max_depth_exceeded", () => {
+test("BoundedDispatchEvent reasonCode is either accepted or max_depth_exceeded [bounded-dispatch-event]", () => {
   const factory = new BoundedDispatchQueueEventFactory();
 
   const acceptedSnapshot: BoundedDispatchQueueSnapshot = {

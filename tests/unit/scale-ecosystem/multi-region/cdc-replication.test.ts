@@ -9,7 +9,7 @@ import {
   type RegionReplicationConfig,
 } from "../../../../src/scale-ecosystem/multi-region/cdc-replication-service.js";
 
-test("CDCReplicationService exports CDC_EVENT_TYPES", () => {
+test("CDCReplicationService exports CDC_EVENT_TYPES [cdc-replication]", () => {
   assert.ok(Array.isArray(CDC_EVENT_TYPES));
   assert.ok(CDC_EVENT_TYPES.includes("cdc:replication_started"));
   assert.ok(CDC_EVENT_TYPES.includes("cdc:replication_completed"));
@@ -18,7 +18,7 @@ test("CDCReplicationService exports CDC_EVENT_TYPES", () => {
   assert.equal(CDC_EVENT_TYPES.length, 4);
 });
 
-test("CDCReplicationService prepareBatch returns null when checkpoint not found", () => {
+test("CDCReplicationService prepareBatch returns null when checkpoint not found [cdc-replication]", () => {
   const service = new CDCReplicationService();
 
   const events = [
@@ -29,7 +29,7 @@ test("CDCReplicationService prepareBatch returns null when checkpoint not found"
   assert.equal(batch, null);
 });
 
-test("CDCReplicationService getStatus returns syncing when batches are queued", () => {
+test("CDCReplicationService getStatus returns syncing when batches are queued [cdc-replication]", () => {
   const service = new CDCReplicationService();
 
   service.registerReplication({
@@ -58,7 +58,7 @@ test("CDCReplicationService getStatus returns syncing when batches are queued", 
   assert.equal(status, "syncing");
 });
 
-test("CDCReplicationService confirmBatch updates lastEventId correctly", () => {
+test("CDCReplicationService confirmBatch updates lastEventId correctly [cdc-replication]", () => {
   const service = new CDCReplicationService();
 
   service.registerReplication({
@@ -86,7 +86,7 @@ test("CDCReplicationService confirmBatch updates lastEventId correctly", () => {
   assert.equal(checkpoint?.lastEventSequence, 3);
 });
 
-test("CDCReplicationService prepareBatch respects batch size limit", () => {
+test("CDCReplicationService prepareBatch respects batch size limit [cdc-replication]", () => {
   const service = new CDCReplicationService();
 
   service.registerReplication({
@@ -114,7 +114,7 @@ test("CDCReplicationService prepareBatch respects batch size limit", () => {
   assert.equal(batch.endSequence, 2);
 });
 
-test("CDCReplicationService prepareBatch skips already processed events", () => {
+test("CDCReplicationService prepareBatch skips already processed events [cdc-replication]", () => {
   const service = new CDCReplicationService();
 
   service.registerReplication({
@@ -149,7 +149,7 @@ test("CDCReplicationService prepareBatch skips already processed events", () => 
   assert.equal(batch2.endSequence, 3);
 });
 
-test("CDCReplicationService recordFailure logs error", () => {
+test("CDCReplicationService recordFailure logs error [cdc-replication]", () => {
   const service = new CDCReplicationService();
 
   service.registerReplication({
@@ -172,14 +172,14 @@ test("CDCReplicationService recordFailure logs error", () => {
   service.recordFailure("us-east", "eu-west", batch, "Network timeout");
 });
 
-test("CDCReplicationService getReplicationLag returns totalSourceEvents when no checkpoint", () => {
+test("CDCReplicationService getReplicationLag returns totalSourceEvents when no checkpoint [cdc-replication]", () => {
   const service = new CDCReplicationService();
 
   const lag = service.getReplicationLag("us-east", "eu-west", 100);
   assert.equal(lag, 100);
 });
 
-test("CDCReplicationService getReplicationLag returns 0 when caught up", () => {
+test("CDCReplicationService getReplicationLag returns 0 when caught up [cdc-replication]", () => {
   const service = new CDCReplicationService();
 
   service.registerReplication({
@@ -208,7 +208,7 @@ test("CDCReplicationService getReplicationLag returns 0 when caught up", () => {
   assert.equal(lag, 0);
 });
 
-test("MultiRegionReplicationCoordinator registers with CDC service", () => {
+test("MultiRegionReplicationCoordinator registers with CDC service [cdc-replication]", () => {
   const coordinator = new MultiRegionReplicationCoordinator();
 
   coordinator.setupRegionReplication("us-east", [
@@ -219,7 +219,7 @@ test("MultiRegionReplicationCoordinator registers with CDC service", () => {
   assert.ok(cdcService.isEnabled("us-east", "eu-west"));
 });
 
-test("MultiRegionReplicationCoordinator setup uses defaults", () => {
+test("MultiRegionReplicationCoordinator setup uses defaults [cdc-replication]", () => {
   const coordinator = new MultiRegionReplicationCoordinator();
 
   coordinator.setupRegionReplication("us-east", [
@@ -232,14 +232,14 @@ test("MultiRegionReplicationCoordinator setup uses defaults", () => {
   assert.equal(replications[0]!.replicationIntervalMs, 5000); // Default
 });
 
-test("MultiRegionReplicationCoordinator getRegionReplications returns empty for unknown region", () => {
+test("MultiRegionReplicationCoordinator getRegionReplications returns empty for unknown region [cdc-replication]", () => {
   const coordinator = new MultiRegionReplicationCoordinator();
 
   const replications = coordinator.getRegionReplications("us-east");
   assert.equal(replications.length, 0);
 });
 
-test("MultiRegionReplicationCoordinator getCDCService returns same instance", () => {
+test("MultiRegionReplicationCoordinator getCDCService returns same instance [cdc-replication]", () => {
   const coordinator = new MultiRegionReplicationCoordinator();
 
   const cdc1 = coordinator.getCDCService();
@@ -247,7 +247,7 @@ test("MultiRegionReplicationCoordinator getCDCService returns same instance", ()
   assert.strictEqual(cdc1, cdc2);
 });
 
-test("CDCReplicationService handles empty events array", () => {
+test("CDCReplicationService handles empty events array [cdc-replication]", () => {
   const service = new CDCReplicationService();
 
   service.registerReplication({
@@ -263,7 +263,7 @@ test("CDCReplicationService handles empty events array", () => {
   assert.equal(batch, null);
 });
 
-test("CDCReplicationService handles checkpoint after all events processed", () => {
+test("CDCReplicationService handles checkpoint after all events processed [cdc-replication]", () => {
   const service = new CDCReplicationService();
 
   service.registerReplication({
@@ -289,7 +289,7 @@ test("CDCReplicationService handles checkpoint after all events processed", () =
   assert.equal(batch2, null);
 });
 
-test("CDCReplicationService getRegisteredRegionPairs returns correct format", () => {
+test("CDCReplicationService getRegisteredRegionPairs returns correct format [cdc-replication]", () => {
   const service = new CDCReplicationService();
 
   service.registerReplication({
@@ -307,7 +307,7 @@ test("CDCReplicationService getRegisteredRegionPairs returns correct format", ()
   assert.equal(pairs[0]!.targetRegionId, "eu-west");
 });
 
-test("CDCReplicationService confirmBatch with empty events handles null lastEvent", () => {
+test("CDCReplicationService confirmBatch with empty events handles null lastEvent [cdc-replication]", () => {
   const service = new CDCReplicationService();
 
   service.registerReplication({
@@ -336,7 +336,7 @@ test("CDCReplicationService confirmBatch with empty events handles null lastEven
   assert.equal(checkpoint?.lastEventSequence, 0);
 });
 
-test("MultiRegionReplicationCoordinator setup multiple targets for same source", () => {
+test("MultiRegionReplicationCoordinator setup multiple targets for same source [cdc-replication]", () => {
   const coordinator = new MultiRegionReplicationCoordinator();
 
   coordinator.setupRegionReplication("us-east", [
@@ -354,14 +354,14 @@ test("MultiRegionReplicationCoordinator setup multiple targets for same source",
   assert.ok(cdcService.isEnabled("us-east", "us-west"));
 });
 
-test("CDCReplicationService getConfig returns undefined for unregistered pair", () => {
+test("CDCReplicationService getConfig returns undefined for unregistered pair [cdc-replication]", () => {
   const service = new CDCReplicationService();
 
   const config = service.getConfig("us-east", "eu-west");
   assert.equal(config, undefined);
 });
 
-test("CDCReplicationService getCheckpoint returns undefined for unregistered pair", () => {
+test("CDCReplicationService getCheckpoint returns undefined for unregistered pair [cdc-replication]", () => {
   const service = new CDCReplicationService();
 
   const checkpoint = service.getCheckpoint("us-east", "eu-west");

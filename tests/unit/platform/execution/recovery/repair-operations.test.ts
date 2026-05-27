@@ -46,7 +46,7 @@ function createMockStore(overrides: {
 // Repair Pipeline Tests
 // =============================================================================
 
-test("RepairPipeline initializes with plan stage", () => {
+test("RepairPipeline initializes with plan stage [repair-operations]", () => {
   const card = createTestTaskCard();
   const pipeline = new RepairPipeline(card);
   const state = pipeline.getState();
@@ -55,24 +55,24 @@ test("RepairPipeline initializes with plan stage", () => {
   assert.equal(state.escalated, false);
 });
 
-test("RepairPipeline.isComplete returns false initially", () => {
+test("RepairPipeline.isComplete returns false initially [repair-operations]", () => {
   const pipeline = new RepairPipeline(createTestTaskCard());
   assert.equal(pipeline.isComplete(), false);
 });
 
-test("RepairPipeline.isComplete returns true when completed", () => {
+test("RepairPipeline.isComplete returns true when completed [repair-operations]", () => {
   const pipeline = new RepairPipeline(createTestTaskCard());
   pipeline.complete();
   assert.equal(pipeline.isComplete(), true);
 });
 
-test("RepairPipeline.isComplete returns true when failed", () => {
+test("RepairPipeline.isComplete returns true when failed [repair-operations]", () => {
   const pipeline = new RepairPipeline(createTestTaskCard());
   pipeline.fail("test failure");
   assert.equal(pipeline.isComplete(), true);
 });
 
-test("RepairPipeline.transitionTo updates currentStage and stageHistory", () => {
+test("RepairPipeline.transitionTo updates currentStage and stageHistory [repair-operations]", () => {
   const pipeline = new RepairPipeline(createTestTaskCard());
   pipeline.transitionTo("build");
   const state = pipeline.getState();
@@ -80,19 +80,19 @@ test("RepairPipeline.transitionTo updates currentStage and stageHistory", () => 
   assert.deepEqual(state.stageHistory, ["build"]);
 });
 
-test("RepairPipeline.complete sets currentStage to completed", () => {
+test("RepairPipeline.complete sets currentStage to completed [repair-operations]", () => {
   const pipeline = new RepairPipeline(createTestTaskCard());
   pipeline.complete();
   assert.equal(pipeline.getState().currentStage, "completed");
 });
 
-test("RepairPipeline.fail sets currentStage to failed", () => {
+test("RepairPipeline.fail sets currentStage to failed [repair-operations]", () => {
   const pipeline = new RepairPipeline(createTestTaskCard());
   pipeline.fail("intentional failure");
   assert.equal(pipeline.getState().currentStage, "failed");
 });
 
-test("RepairPipeline.escalate sets escalated true and currentStage to escalated", () => {
+test("RepairPipeline.escalate sets escalated true and currentStage to escalated [repair-operations]", () => {
   const pipeline = new RepairPipeline(createTestTaskCard());
   pipeline.escalate("test escalation");
   const state = pipeline.getState();
@@ -100,7 +100,7 @@ test("RepairPipeline.escalate sets escalated true and currentStage to escalated"
   assert.equal(state.currentStage, "escalated");
 });
 
-test("RepairPipeline.incrementRepairRound increments repairRound and sets stage to repair", () => {
+test("RepairPipeline.incrementRepairRound increments repairRound and sets stage to repair [repair-operations]", () => {
   const pipeline = new RepairPipeline(createTestTaskCard());
   pipeline.incrementRepairRound();
   const state = pipeline.getState();
@@ -108,12 +108,12 @@ test("RepairPipeline.incrementRepairRound increments repairRound and sets stage 
   assert.equal(state.currentStage, "repair");
 });
 
-test("RepairPipeline.shouldRepair returns true when auto repair enabled and budget available", () => {
+test("RepairPipeline.shouldRepair returns true when auto repair enabled and budget available [repair-operations]", () => {
   const pipeline = new RepairPipeline(createTestTaskCard());
   assert.equal(pipeline.shouldRepair(), true);
 });
 
-test("RepairPipeline.shouldRepair returns false when repair budget exhausted", () => {
+test("RepairPipeline.shouldRepair returns false when repair budget exhausted [repair-operations]", () => {
   const card = createTaskCard({
     taskId: "task-test-2",
     title: "Test",
@@ -125,18 +125,18 @@ test("RepairPipeline.shouldRepair returns false when repair budget exhausted", (
   assert.equal(pipeline.shouldRepair(), false);
 });
 
-test("RepairPipeline.shouldRepair returns false when automatic repair disabled", () => {
+test("RepairPipeline.shouldRepair returns false when automatic repair disabled [repair-operations]", () => {
   const pipeline = new RepairPipeline(createTestTaskCard(), { enableAutomaticRepair: false });
   assert.equal(pipeline.shouldRepair(), false);
 });
 
-test("RepairPipeline.shouldRepair respects maxRepairRounds option", () => {
+test("RepairPipeline.shouldRepair respects maxRepairRounds option [repair-operations]", () => {
   const pipeline = new RepairPipeline(createTestTaskCard(), { maxRepairRounds: 1 });
   pipeline.incrementRepairRound();
   assert.equal(pipeline.shouldRepair(), false);
 });
 
-test("PipelineStage type accepts all valid stages", () => {
+test("PipelineStage type accepts all valid stages [repair-operations]", () => {
   const stages: PipelineStage[] = [
     "plan", "build", "review", "validate", "repair",
     "re_validate", "release", "escalated", "completed", "failed",
@@ -148,7 +148,7 @@ test("PipelineStage type accepts all valid stages", () => {
 // Validation Repair Loop Tests
 // =============================================================================
 
-test("ValidationRepairLoopService.buildRepairEvidencePackage creates correct package", () => {
+test("ValidationRepairLoopService.buildRepairEvidencePackage creates correct package [repair-operations]", () => {
   const service = new ValidationRepairLoopService();
   const input: ValidationLoopInput = {
     taskId: "task-1",
@@ -171,7 +171,7 @@ test("ValidationRepairLoopService.buildRepairEvidencePackage creates correct pac
   assert.equal(result.repairRound, 1);
 });
 
-test("ValidationRepairLoopService.decide returns released when review and validation passed", () => {
+test("ValidationRepairLoopService.decide returns released when review and validation passed [repair-operations]", () => {
   const service = new ValidationRepairLoopService();
   const input: ValidationLoopInput = {
     taskId: "task-1",
@@ -193,7 +193,7 @@ test("ValidationRepairLoopService.decide returns released when review and valida
   assert.equal(result.requiresEscalation, false);
 });
 
-test("ValidationRepairLoopService.decide returns failed_repairable when validation fails within budget", () => {
+test("ValidationRepairLoopService.decide returns failed_repairable when validation fails within budget [repair-operations]", () => {
   const service = new ValidationRepairLoopService();
   const input: ValidationLoopInput = {
     taskId: "task-1",
@@ -215,7 +215,7 @@ test("ValidationRepairLoopService.decide returns failed_repairable when validati
   assert.equal(result.requiresEscalation, false);
 });
 
-test("ValidationRepairLoopService.decide returns escalated when repair budget exhausted", () => {
+test("ValidationRepairLoopService.decide returns escalated when repair budget exhausted [repair-operations]", () => {
   const service = new ValidationRepairLoopService();
   const input: ValidationLoopInput = {
     taskId: "task-1",
@@ -237,7 +237,7 @@ test("ValidationRepairLoopService.decide returns escalated when repair budget ex
   assert.equal(result.requiresEscalation, true);
 });
 
-test("ValidationRepairLoopService.decide returns failed_blocking when forbidden scope touched", () => {
+test("ValidationRepairLoopService.decide returns failed_blocking when forbidden scope touched [repair-operations]", () => {
   const service = new ValidationRepairLoopService();
   const input: ValidationLoopInput = {
     taskId: "task-1",
@@ -261,7 +261,7 @@ test("ValidationRepairLoopService.decide returns failed_blocking when forbidden 
   assert.equal(result.reasonCode, "validation.forbidden_scope_touched");
 });
 
-test("ValidationRepairLoopService.decide returns failed_repairable when review fails within budget", () => {
+test("ValidationRepairLoopService.decide returns failed_repairable when review fails within budget [repair-operations]", () => {
   const service = new ValidationRepairLoopService();
   const input: ValidationLoopInput = {
     taskId: "task-1",
@@ -286,7 +286,7 @@ test("ValidationRepairLoopService.decide returns failed_repairable when review f
 // Stalled Execution Detector Tests
 // =============================================================================
 
-test("StalledExecutionDetector.detect returns empty when executions are active", () => {
+test("StalledExecutionDetector.detect returns empty when executions are active [repair-operations]", () => {
   const store = createMockStore({
     listActiveExecutionActivity: () => [
       {
@@ -308,7 +308,7 @@ test("StalledExecutionDetector.detect returns empty when executions are active",
   assert.equal(findings.length, 0);
 });
 
-test("StalledExecutionDetector.detect returns finding when no recent progress", () => {
+test("StalledExecutionDetector.detect returns finding when no recent progress [repair-operations]", () => {
   const oldTimestamp = new Date(Date.now() - 10 * 60000).toISOString();
   const store = createMockStore({
     listActiveExecutionActivity: () => [
@@ -334,7 +334,7 @@ test("StalledExecutionDetector.detect returns finding when no recent progress", 
   assert.equal(findings[0]!.recommendedAction, "lease_reclaim");
 });
 
-test("StalledExecutionDetector.detect returns no_progress when heartbeat exists but no progress", () => {
+test("StalledExecutionDetector.detect returns no_progress when heartbeat exists but no progress [repair-operations]", () => {
   const oldTimestamp = new Date(Date.now() - 10 * 60000).toISOString();
   const recentHeartbeat = new Date(Date.now() - 10000).toISOString(); // 10 seconds ago - within 30s grace
   const store = createMockStore({
@@ -360,7 +360,7 @@ test("StalledExecutionDetector.detect returns no_progress when heartbeat exists 
   assert.equal(findings[0]!.recommendedAction, "restart_or_escalate");
 });
 
-test("StalledExecutionDetector.detect with custom staleAfterMs", () => {
+test("StalledExecutionDetector.detect with custom staleAfterMs [repair-operations]", () => {
   const oldTimestamp = new Date(Date.now() - 120 * 60000).toISOString();
   const store = createMockStore({
     listActiveExecutionActivity: () => [
@@ -384,7 +384,7 @@ test("StalledExecutionDetector.detect with custom staleAfterMs", () => {
   assert.equal(findings.length, 1);
 });
 
-test("StalledExecutionDetector.detect returns empty list when no active executions", () => {
+test("StalledExecutionDetector.detect returns empty list when no active executions [repair-operations]", () => {
   const store = createMockStore({
     listActiveExecutionActivity: () => [],
   });

@@ -12,7 +12,7 @@ import {
   type PlatformFailureCategory,
 } from "../../../../../src/platform/five-plane-execution/recovery/failure-classification.js";
 
-test("FAILURE_CLASSIFICATION contains all categories", () => {
+test("FAILURE_CLASSIFICATION contains all categories [failure-classification]", () => {
   const categories: FailureCategory[] = [
     "schema_error",
     "type_error",
@@ -36,7 +36,7 @@ test("FAILURE_CLASSIFICATION contains all categories", () => {
   assert.equal(categories.length, Object.keys(FAILURE_CLASSIFICATION).length);
 });
 
-test("classifyFailure returns correct context for L1 category", () => {
+test("classifyFailure returns correct context for L1 category [failure-classification]", () => {
   const result = classifyFailure("unit_test_failure", 0);
 
   assert.equal(result.category, "unit_test_failure");
@@ -49,7 +49,7 @@ test("classifyFailure returns correct context for L1 category", () => {
   assert.equal(result.surface, "coding_agent");
 });
 
-test("classifyFailure returns correct context for schema_error as platform exception", () => {
+test("classifyFailure returns correct context for schema_error as platform exception [failure-classification]", () => {
   const result = classifyFailure("schema_error", 0);
 
   assert.equal(result.category, "schema_error");
@@ -58,7 +58,7 @@ test("classifyFailure returns correct context for schema_error as platform excep
   assert.equal(result.surface, "platform");
 });
 
-test("classifyFailure returns correct context for L2 category", () => {
+test("classifyFailure returns correct context for L2 category [failure-classification]", () => {
   const result = classifyFailure("complex_repair_failure", 1);
 
   assert.equal(result.category, "complex_repair_failure");
@@ -69,7 +69,7 @@ test("classifyFailure returns correct context for L2 category", () => {
   assert.equal(result.repairBudgetUsed, 1);
 });
 
-test("classifyFailure returns correct context for L3 category", () => {
+test("classifyFailure returns correct context for L3 category [failure-classification]", () => {
   const result = classifyFailure("secret_exposure", 0);
 
   assert.equal(result.category, "secret_exposure");
@@ -80,7 +80,7 @@ test("classifyFailure returns correct context for L3 category", () => {
   assert.equal(result.repairBudgetUsed, 0);
 });
 
-test("shouldEscalate returns true for L3 failures", () => {
+test("shouldEscalate returns true for L3 failures [failure-classification]", () => {
   const l3Failure: FailureContext = {
     category: "forbidden_path",
     level: "L3",
@@ -96,7 +96,7 @@ test("shouldEscalate returns true for L3 failures", () => {
   assert.equal(shouldEscalate(l3Failure, 3), true);
 });
 
-test("shouldEscalate returns true for L2 failures after one repair", () => {
+test("shouldEscalate returns true for L2 failures after one repair [failure-classification]", () => {
   const l2Failure: FailureContext = {
     category: "complex_repair_failure",
     level: "L2",
@@ -112,7 +112,7 @@ test("shouldEscalate returns true for L2 failures after one repair", () => {
   assert.equal(shouldEscalate(l2Failure, 3), true);
 });
 
-test("shouldEscalate returns false for L2 failures before repair", () => {
+test("shouldEscalate returns false for L2 failures before repair [failure-classification]", () => {
   const l2Failure: FailureContext = {
     category: "complex_repair_failure",
     level: "L2",
@@ -128,7 +128,7 @@ test("shouldEscalate returns false for L2 failures before repair", () => {
   assert.equal(shouldEscalate(l2Failure, 3), false);
 });
 
-test("shouldEscalate returns true when repair budget exhausted", () => {
+test("shouldEscalate returns true when repair budget exhausted [failure-classification]", () => {
   const l1Failure: FailureContext = {
     category: "unit_test_failure",
     level: "L1",
@@ -144,7 +144,7 @@ test("shouldEscalate returns true when repair budget exhausted", () => {
   assert.equal(shouldEscalate(l1Failure, 2), true);
 });
 
-test("shouldEscalate returns false when L1 has budget remaining", () => {
+test("shouldEscalate returns false when L1 has budget remaining [failure-classification]", () => {
   const l1Failure: FailureContext = {
     category: "unit_test_failure",
     level: "L1",
@@ -160,7 +160,7 @@ test("shouldEscalate returns false when L1 has budget remaining", () => {
   assert.equal(shouldEscalate(l1Failure, 3), false);
 });
 
-test("L1 categories have autoRepairable true", () => {
+test("L1 categories have autoRepairable true [failure-classification]", () => {
   const l1Categories: FailureCategory[] = [
     "schema_error",
     "type_error",
@@ -176,7 +176,7 @@ test("L1 categories have autoRepairable true", () => {
   }
 });
 
-test("L2 categories require model upgrade", () => {
+test("L2 categories require model upgrade [failure-classification]", () => {
   const l2Categories: FailureCategory[] = [
     "complex_repair_failure",
     "review_validate_conflict",
@@ -190,7 +190,7 @@ test("L2 categories require model upgrade", () => {
   }
 });
 
-test("L3 categories require human escalation", () => {
+test("L3 categories require human escalation [failure-classification]", () => {
   const l3Categories: FailureCategory[] = [
     "forbidden_path",
     "secret_exposure",
@@ -208,17 +208,17 @@ test("L3 categories require human escalation", () => {
 });
 
 // R8-14: schema_error and type_error are platform exceptions, not coding-agent specific
-test("schema_error and type_error are platform exceptions per §9.6", () => {
+test("schema_error and type_error are platform exceptions per §9.6 [failure-classification]", () => {
   assert.equal(FAILURE_CLASSIFICATION.schema_error.isPlatformException, true, "schema_error should be a platform exception");
   assert.equal(FAILURE_CLASSIFICATION.type_error.isPlatformException, true, "type_error should be a platform exception");
 });
 
-test("lint_error and unit_test_failure are NOT platform exceptions (coding-agent specific)", () => {
+test("lint_error and unit_test_failure are NOT platform exceptions (coding-agent specific) [failure-classification]", () => {
   assert.equal(FAILURE_CLASSIFICATION.lint_error.isPlatformException, false, "lint_error should NOT be a platform exception");
   assert.equal(FAILURE_CLASSIFICATION.unit_test_failure.isPlatformException, false, "unit_test_failure should NOT be a platform exception");
 });
 
-test("all categories have isPlatformException defined", () => {
+test("all categories have isPlatformException defined [failure-classification]", () => {
   const categories: FailureCategory[] = [
     "schema_error",
     "type_error",
@@ -243,14 +243,14 @@ test("all categories have isPlatformException defined", () => {
   }
 });
 
-test("platform classifier surface excludes coding-agent-only categories", () => {
+test("platform classifier surface excludes coding-agent-only categories [failure-classification]", () => {
   const categories = Object.keys(PLATFORM_FAILURE_CLASSIFICATION) as PlatformFailureCategory[];
   assert.ok(!categories.includes("unit_test_failure" as PlatformFailureCategory));
   assert.ok(!categories.includes("lint_error" as PlatformFailureCategory));
   assert.ok(!categories.includes("simple_logic_bug" as PlatformFailureCategory));
 });
 
-test("classifyPlatformFailure only returns platform/shared categories", () => {
+test("classifyPlatformFailure only returns platform/shared categories [failure-classification]", () => {
   const result = classifyPlatformFailure("schema_error", 2);
   assert.equal(result.category, "schema_error");
   assert.equal(result.surface, "platform");

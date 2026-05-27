@@ -192,14 +192,14 @@ function createNode(overrides: Partial<CoordinatorNode> = {}): CoordinatorNode {
 // Tests: Construction
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("HaCoordinatorServiceAsync - creation with defaults", () => {
+test("HaCoordinatorServiceAsync - creation with defaults [ha-coordinator-service-async]", () => {
   const repo = createMockRepo();
   const service = new HaCoordinatorServiceAsync(repo);
 
   assert.equal(service instanceof HaCoordinatorServiceAsync, true);
 });
 
-test("HaCoordinatorServiceAsync - creation with custom options", () => {
+test("HaCoordinatorServiceAsync - creation with custom options [ha-coordinator-service-async]", () => {
   const repo = createMockRepo();
   const service = new HaCoordinatorServiceAsync(repo, {
     defaultTtlMs: 30_000,
@@ -210,7 +210,7 @@ test("HaCoordinatorServiceAsync - creation with custom options", () => {
   assert.equal(service instanceof HaCoordinatorServiceAsync, true);
 });
 
-test("HaCoordinatorServiceAsync - constants are exported correctly", () => {
+test("HaCoordinatorServiceAsync - constants are exported correctly [ha-coordinator-service-async]", () => {
   assert.equal(DEFAULT_LEASE_TTL_MS, 15_000);
   assert.equal(MAX_LEASE_TTL_MS, 60_000);
   assert.equal(MIN_LEASE_TTL_MS, 5_000);
@@ -220,7 +220,7 @@ test("HaCoordinatorServiceAsync - constants are exported correctly", () => {
 // Tests: Node Management
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("HaCoordinatorServiceAsync - registerNode adds a new node", async () => {
+test("HaCoordinatorServiceAsync - registerNode adds a new node [ha-coordinator-service-async]", async () => {
   const repo = createMockRepo();
   const service = new HaCoordinatorServiceAsync(repo);
 
@@ -232,7 +232,7 @@ test("HaCoordinatorServiceAsync - registerNode adds a new node", async () => {
   assert.equal(node.isLeader, false);
 });
 
-test("HaCoordinatorServiceAsync - registerNode updates existing node", async () => {
+test("HaCoordinatorServiceAsync - registerNode updates existing node [ha-coordinator-service-async]", async () => {
   const repo = createMockRepo();
   (repo as any)._state.nodes.set("node-1", createNode({ nodeId: "node-1", isLeader: true }));
 
@@ -245,7 +245,7 @@ test("HaCoordinatorServiceAsync - registerNode updates existing node", async () 
   assert.equal(node.isLeader, true);
 });
 
-test("HaCoordinatorServiceAsync - registerNode with metadata", async () => {
+test("HaCoordinatorServiceAsync - registerNode with metadata [ha-coordinator-service-async]", async () => {
   const repo = createMockRepo();
   const service = new HaCoordinatorServiceAsync(repo);
 
@@ -254,7 +254,7 @@ test("HaCoordinatorServiceAsync - registerNode with metadata", async () => {
   assert.deepEqual(node.metadata, { priority: 1 });
 });
 
-test("HaCoordinatorServiceAsync - getNode returns node when exists", async () => {
+test("HaCoordinatorServiceAsync - getNode returns node when exists [ha-coordinator-service-async]", async () => {
   const repo = createMockRepo();
   (repo as any)._state.nodes.set("node-1", createNode({ nodeId: "node-1" }));
 
@@ -265,7 +265,7 @@ test("HaCoordinatorServiceAsync - getNode returns node when exists", async () =>
   assert.equal(node!.nodeId, "node-1");
 });
 
-test("HaCoordinatorServiceAsync - getNode returns null when not exists", async () => {
+test("HaCoordinatorServiceAsync - getNode returns null when not exists [ha-coordinator-service-async]", async () => {
   const repo = createMockRepo();
   const service = new HaCoordinatorServiceAsync(repo);
 
@@ -274,7 +274,7 @@ test("HaCoordinatorServiceAsync - getNode returns null when not exists", async (
   assert.equal(node, null);
 });
 
-test("HaCoordinatorServiceAsync - listNodes returns all nodes", async () => {
+test("HaCoordinatorServiceAsync - listNodes returns all nodes [ha-coordinator-service-async]", async () => {
   const repo = createMockRepo();
   (repo as any)._state.nodes.set("node-1", createNode({ nodeId: "node-1" }));
   (repo as any)._state.nodes.set("node-2", createNode({ nodeId: "node-2" }));
@@ -285,7 +285,7 @@ test("HaCoordinatorServiceAsync - listNodes returns all nodes", async () => {
   assert.equal(nodes.length, 2);
 });
 
-test("HaCoordinatorServiceAsync - listNodes filters by status", async () => {
+test("HaCoordinatorServiceAsync - listNodes filters by status [ha-coordinator-service-async]", async () => {
   const repo = createMockRepo();
   (repo as any)._state.nodes.set("node-1", createNode({ nodeId: "node-1", status: "active" }));
   (repo as any)._state.nodes.set("node-2", createNode({ nodeId: "node-2", status: "offline" }));
@@ -297,7 +297,7 @@ test("HaCoordinatorServiceAsync - listNodes filters by status", async () => {
   assert.equal(activeNodes[0]!.nodeId, "node-1");
 });
 
-test("HaCoordinatorServiceAsync - updateNodeHeartbeat updates timestamp", async () => {
+test("HaCoordinatorServiceAsync - updateNodeHeartbeat updates timestamp [ha-coordinator-service-async]", async () => {
   const repo = createMockRepo();
   const oldTimestamp = new Date(Date.now() - 10000).toISOString(); // 10 seconds ago
   const originalNode = createNode({ nodeId: "node-1", lastHeartbeatAt: oldTimestamp });
@@ -310,7 +310,7 @@ test("HaCoordinatorServiceAsync - updateNodeHeartbeat updates timestamp", async 
   assert.notEqual(updated!.lastHeartbeatAt, oldTimestamp);
 });
 
-test("HaCoordinatorServiceAsync - removeNode deletes node", async () => {
+test("HaCoordinatorServiceAsync - removeNode deletes node [ha-coordinator-service-async]", async () => {
   const repo = createMockRepo();
   (repo as any)._state.nodes.set("node-1", createNode({ nodeId: "node-1" }));
 
@@ -321,7 +321,7 @@ test("HaCoordinatorServiceAsync - removeNode deletes node", async () => {
   assert.equal(node, null);
 });
 
-test("HaCoordinatorServiceAsync - removeNode demotes leader first", async () => {
+test("HaCoordinatorServiceAsync - removeNode demotes leader first [ha-coordinator-service-async]", async () => {
   const repo = createMockRepo();
   const leaderNode = createNode({ nodeId: "node-1", isLeader: true });
   (repo as any)._state.nodes.set("node-1", leaderNode);
@@ -351,7 +351,7 @@ test("HaCoordinatorServiceAsync - removeNode demotes leader first", async () => 
 // Tests: Leadership Acquisition
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("HaCoordinatorServiceAsync - acquireLeadership succeeds for registered node", async () => {
+test("HaCoordinatorServiceAsync - acquireLeadership succeeds for registered node [ha-coordinator-service-async]", async () => {
   const repo = createMockRepo();
   (repo as any)._state.nodes.set("node-1", createNode({ nodeId: "node-1" }));
 
@@ -365,7 +365,7 @@ test("HaCoordinatorServiceAsync - acquireLeadership succeeds for registered node
   assert.ok(result.fencingToken >= 1);
 });
 
-test("HaCoordinatorServiceAsync - acquireLeadership throws for unregistered node", async () => {
+test("HaCoordinatorServiceAsync - acquireLeadership throws for unregistered node [ha-coordinator-service-async]", async () => {
   const repo = createMockRepo();
   const service = new HaCoordinatorServiceAsync(repo);
 
@@ -375,7 +375,7 @@ test("HaCoordinatorServiceAsync - acquireLeadership throws for unregistered node
   );
 });
 
-test("HaCoordinatorServiceAsync - acquireLeadership fails when another leader exists", async () => {
+test("HaCoordinatorServiceAsync - acquireLeadership fails when another leader exists [ha-coordinator-service-async]", async () => {
   const repo = createMockRepo();
   (repo as any)._state.nodes.set("node-1", createNode({ nodeId: "node-1", isLeader: true }));
   (repo as any)._state.nodes.set("node-2", createNode({ nodeId: "node-2" }));
@@ -396,7 +396,7 @@ test("HaCoordinatorServiceAsync - acquireLeadership fails when another leader ex
   assert.equal(result.cause, "leadership_held_by_another_node");
 });
 
-test("HaCoordinatorServiceAsync - acquireLeadership succeeds with forceAcquire", async () => {
+test("HaCoordinatorServiceAsync - acquireLeadership succeeds with forceAcquire [ha-coordinator-service-async]", async () => {
   const repo = createMockRepo();
   (repo as any)._state.nodes.set("node-1", createNode({ nodeId: "node-1", isLeader: true }));
   (repo as any)._state.nodes.set("node-2", createNode({ nodeId: "node-2" }));
@@ -416,7 +416,7 @@ test("HaCoordinatorServiceAsync - acquireLeadership succeeds with forceAcquire",
   assert.equal(result.acquired, true);
 });
 
-test("HaCoordinatorServiceAsync - acquireLeadership clamps TTL to valid range", async () => {
+test("HaCoordinatorServiceAsync - acquireLeadership clamps TTL to valid range [ha-coordinator-service-async]", async () => {
   const repo = createMockRepo();
   (repo as any)._state.nodes.set("node-1", createNode({ nodeId: "node-1" }));
 
@@ -431,7 +431,7 @@ test("HaCoordinatorServiceAsync - acquireLeadership clamps TTL to valid range", 
   assert.equal(result2.lease!.ttlMs, MAX_LEASE_TTL_MS);
 });
 
-test("HaCoordinatorServiceAsync - acquireLeadership increments epoch", async () => {
+test("HaCoordinatorServiceAsync - acquireLeadership increments epoch [ha-coordinator-service-async]", async () => {
   const repo = createMockRepo();
   (repo as any)._state.nodes.set("node-1", createNode({ nodeId: "node-1" }));
 
@@ -448,7 +448,7 @@ test("HaCoordinatorServiceAsync - acquireLeadership increments epoch", async () 
 // Tests: Leadership Renewal
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("HaCoordinatorServiceAsync - renewLeadership succeeds for current leader", async () => {
+test("HaCoordinatorServiceAsync - renewLeadership succeeds for current leader [ha-coordinator-service-async]", async () => {
   const repo = createMockRepo();
   (repo as any)._state.nodes.set("node-1", createNode({ nodeId: "node-1", isLeader: true }));
   (repo as any)._state.leases.set("lease-1", {
@@ -468,7 +468,7 @@ test("HaCoordinatorServiceAsync - renewLeadership succeeds for current leader", 
   assert.ok(result.lease !== null);
 });
 
-test("HaCoordinatorServiceAsync - renewLeadership fails for unregistered node", async () => {
+test("HaCoordinatorServiceAsync - renewLeadership fails for unregistered node [ha-coordinator-service-async]", async () => {
   const repo = createMockRepo();
   const service = new HaCoordinatorServiceAsync(repo);
 
@@ -478,7 +478,7 @@ test("HaCoordinatorServiceAsync - renewLeadership fails for unregistered node", 
   assert.equal(result.lease, null);
 });
 
-test("HaCoordinatorServiceAsync - renewLeadership fails when not current leader", async () => {
+test("HaCoordinatorServiceAsync - renewLeadership fails when not current leader [ha-coordinator-service-async]", async () => {
   const repo = createMockRepo();
   (repo as any)._state.nodes.set("node-1", createNode({ nodeId: "node-1" }));
   (repo as any)._state.nodes.set("node-2", createNode({ nodeId: "node-2" }));
@@ -502,7 +502,7 @@ test("HaCoordinatorServiceAsync - renewLeadership fails when not current leader"
 // Tests: Leadership Release
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("HaCoordinatorServiceAsync - releaseLeadership succeeds for leader", async () => {
+test("HaCoordinatorServiceAsync - releaseLeadership succeeds for leader [ha-coordinator-service-async]", async () => {
   const repo = createMockRepo();
   (repo as any)._state.nodes.set("node-1", createNode({ nodeId: "node-1", isLeader: true }));
   (repo as any)._state.leases.set("lease-1", {
@@ -524,7 +524,7 @@ test("HaCoordinatorServiceAsync - releaseLeadership succeeds for leader", async 
   assert.equal(node!.isLeader, false);
 });
 
-test("HaCoordinatorServiceAsync - releaseLeadership fails for non-leader", async () => {
+test("HaCoordinatorServiceAsync - releaseLeadership fails for non-leader [ha-coordinator-service-async]", async () => {
   const repo = createMockRepo();
   (repo as any)._state.nodes.set("node-1", createNode({ nodeId: "node-1", isLeader: false }));
 
@@ -538,7 +538,7 @@ test("HaCoordinatorServiceAsync - releaseLeadership fails for non-leader", async
 // Tests: Leadership Query
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("HaCoordinatorServiceAsync - getCurrentLeader returns leader node", async () => {
+test("HaCoordinatorServiceAsync - getCurrentLeader returns leader node [ha-coordinator-service-async]", async () => {
   const repo = createMockRepo();
   (repo as any)._state.nodes.set("node-1", createNode({ nodeId: "node-1", isLeader: true }));
 
@@ -549,7 +549,7 @@ test("HaCoordinatorServiceAsync - getCurrentLeader returns leader node", async (
   assert.equal(leader!.nodeId, "node-1");
 });
 
-test("HaCoordinatorServiceAsync - getCurrentLeader returns null when no leader", async () => {
+test("HaCoordinatorServiceAsync - getCurrentLeader returns null when no leader [ha-coordinator-service-async]", async () => {
   const repo = createMockRepo();
   const service = new HaCoordinatorServiceAsync(repo);
 
@@ -558,7 +558,7 @@ test("HaCoordinatorServiceAsync - getCurrentLeader returns null when no leader",
   assert.equal(leader, null);
 });
 
-test("HaCoordinatorServiceAsync - queryLeadership returns correct structure", async () => {
+test("HaCoordinatorServiceAsync - queryLeadership returns correct structure [ha-coordinator-service-async]", async () => {
   const repo = createMockRepo();
   (repo as any)._state.nodes.set("node-1", createNode({ nodeId: "node-1", isLeader: true }));
   (repo as any)._state.leases.set("lease-1", {
@@ -581,7 +581,7 @@ test("HaCoordinatorServiceAsync - queryLeadership returns correct structure", as
   assert.ok(result.fencingToken >= 0);
 });
 
-test("HaCoordinatorServiceAsync - queryLeadership detects expired lease", async () => {
+test("HaCoordinatorServiceAsync - queryLeadership detects expired lease [ha-coordinator-service-async]", async () => {
   const repo = createMockRepo();
   (repo as any)._state.nodes.set("node-1", createNode({ nodeId: "node-1", isLeader: true }));
   (repo as any)._state.leases.set("lease-1", {
@@ -605,7 +605,7 @@ test("HaCoordinatorServiceAsync - queryLeadership detects expired lease", async 
 // Tests: Action Authorization
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("HaCoordinatorServiceAsync - authorizeAction with 'any' authority always succeeds", async () => {
+test("HaCoordinatorServiceAsync - authorizeAction with 'any' authority always succeeds [ha-coordinator-service-async]", async () => {
   const repo = createMockRepo();
   (repo as any)._state.nodes.set("node-1", createNode({ nodeId: "node-1" }));
 
@@ -616,7 +616,7 @@ test("HaCoordinatorServiceAsync - authorizeAction with 'any' authority always su
   assert.equal(result.reasonCode, "ok");
 });
 
-test("HaCoordinatorServiceAsync - authorizeAction with 'follower_allowed' always succeeds", async () => {
+test("HaCoordinatorServiceAsync - authorizeAction with 'follower_allowed' always succeeds [ha-coordinator-service-async]", async () => {
   const repo = createMockRepo();
   (repo as any)._state.nodes.set("node-1", createNode({ nodeId: "node-1", isLeader: true }));
   (repo as any)._state.nodes.set("node-2", createNode({ nodeId: "node-2", isLeader: false }));
@@ -628,7 +628,7 @@ test("HaCoordinatorServiceAsync - authorizeAction with 'follower_allowed' always
   assert.equal(result.reasonCode, "follower_allowed");
 });
 
-test("HaCoordinatorServiceAsync - authorizeAction with 'leader_only' succeeds for leader", async () => {
+test("HaCoordinatorServiceAsync - authorizeAction with 'leader_only' succeeds for leader [ha-coordinator-service-async]", async () => {
   const repo = createMockRepo();
   (repo as any)._state.nodes.set("node-1", createNode({ nodeId: "node-1", isLeader: true }));
   (repo as any)._state.leases.set("lease-1", {
@@ -648,7 +648,7 @@ test("HaCoordinatorServiceAsync - authorizeAction with 'leader_only' succeeds fo
   assert.equal(result.reasonCode, "ok");
 });
 
-test("HaCoordinatorServiceAsync - authorizeAction with 'leader_only' fails when not leader", async () => {
+test("HaCoordinatorServiceAsync - authorizeAction with 'leader_only' fails when not leader [ha-coordinator-service-async]", async () => {
   const repo = createMockRepo();
   (repo as any)._state.nodes.set("node-1", createNode({ nodeId: "node-1", isLeader: true }));
   (repo as any)._state.nodes.set("node-2", createNode({ nodeId: "node-2", isLeader: false }));
@@ -660,7 +660,7 @@ test("HaCoordinatorServiceAsync - authorizeAction with 'leader_only' fails when 
   assert.equal(result.reasonCode, "not_current_leader");
 });
 
-test("HaCoordinatorServiceAsync - authorizeAction with 'leader_only' fails when no leader", async () => {
+test("HaCoordinatorServiceAsync - authorizeAction with 'leader_only' fails when no leader [ha-coordinator-service-async]", async () => {
   const repo = createMockRepo();
   (repo as any)._state.nodes.set("node-1", createNode({ nodeId: "node-1" }));
 
@@ -671,7 +671,7 @@ test("HaCoordinatorServiceAsync - authorizeAction with 'leader_only' fails when 
   assert.equal(result.reasonCode, "no_active_leader");
 });
 
-test("HaCoordinatorServiceAsync - authorizeAction fails for unknown node", async () => {
+test("HaCoordinatorServiceAsync - authorizeAction fails for unknown node [ha-coordinator-service-async]", async () => {
   const repo = createMockRepo();
   const service = new HaCoordinatorServiceAsync(repo);
 
@@ -685,7 +685,7 @@ test("HaCoordinatorServiceAsync - authorizeAction fails for unknown node", async
 // Tests: Epoch Management
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("HaCoordinatorServiceAsync - getLatestEpoch returns current epoch", async () => {
+test("HaCoordinatorServiceAsync - getLatestEpoch returns current epoch [ha-coordinator-service-async]", async () => {
   const repo = createMockRepo();
   (repo as any)._state.nodes.set("node-1", createNode({ nodeId: "node-1" }));
 
@@ -698,7 +698,7 @@ test("HaCoordinatorServiceAsync - getLatestEpoch returns current epoch", async (
   assert.equal(epoch.leaderNodeId, "node-1");
 });
 
-test("HaCoordinatorServiceAsync - getLatestEpoch returns default when no epochs", async () => {
+test("HaCoordinatorServiceAsync - getLatestEpoch returns default when no epochs [ha-coordinator-service-async]", async () => {
   const repo = createMockRepo();
   const service = new HaCoordinatorServiceAsync(repo);
 
@@ -708,7 +708,7 @@ test("HaCoordinatorServiceAsync - getLatestEpoch returns default when no epochs"
   assert.equal(epoch.leaderNodeId, null);
 });
 
-test("HaCoordinatorServiceAsync - listEpochs returns epochs in descending order", async () => {
+test("HaCoordinatorServiceAsync - listEpochs returns epochs in descending order [ha-coordinator-service-async]", async () => {
   const repo = createMockRepo();
   (repo as any)._state.nodes.set("node-1", createNode({ nodeId: "node-1" }));
 
@@ -727,7 +727,7 @@ test("HaCoordinatorServiceAsync - listEpochs returns epochs in descending order"
 // Tests: Failover
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("HaCoordinatorServiceAsync - triggerFailover with forceNodeId", async () => {
+test("HaCoordinatorServiceAsync - triggerFailover with forceNodeId [ha-coordinator-service-async]", async () => {
   const repo = createMockRepo();
   (repo as any)._state.nodes.set("node-1", createNode({ nodeId: "node-1", isLeader: true }));
   (repo as any)._state.nodes.set("node-2", createNode({ nodeId: "node-2" }));
@@ -748,7 +748,7 @@ test("HaCoordinatorServiceAsync - triggerFailover with forceNodeId", async () =>
   assert.equal(decision.newLeaderNodeId, "node-2");
 });
 
-test("HaCoordinatorServiceAsync - triggerFailover without candidates", async () => {
+test("HaCoordinatorServiceAsync - triggerFailover without candidates [ha-coordinator-service-async]", async () => {
   const repo = createMockRepo();
   (repo as any)._state.nodes.set("node-1", createNode({ nodeId: "node-1", isLeader: true }));
   (repo as any)._state.leases.set("lease-1", {
@@ -768,7 +768,7 @@ test("HaCoordinatorServiceAsync - triggerFailover without candidates", async () 
   assert.equal(decision.newLeaderNodeId, null);
 });
 
-test("HaCoordinatorServiceAsync - triggerFailover records decision", async () => {
+test("HaCoordinatorServiceAsync - triggerFailover records decision [ha-coordinator-service-async]", async () => {
   const repo = createMockRepo();
   (repo as any)._state.nodes.set("node-1", createNode({ nodeId: "node-1", isLeader: true }));
   (repo as any)._state.nodes.set("node-2", createNode({ nodeId: "node-2" }));
@@ -791,7 +791,7 @@ test("HaCoordinatorServiceAsync - triggerFailover records decision", async () =>
   assert.equal(history[0]!.outcome, "leader_changed");
 });
 
-test("HaCoordinatorServiceAsync - getFailoverHistory respects limit", async () => {
+test("HaCoordinatorServiceAsync - getFailoverHistory respects limit [ha-coordinator-service-async]", async () => {
   const repo = createMockRepo();
   (repo as any)._state.nodes.set("node-1", createNode({ nodeId: "node-1", isLeader: true }));
   (repo as any)._state.nodes.set("node-2", createNode({ nodeId: "node-2" }));
@@ -823,7 +823,7 @@ test("HaCoordinatorServiceAsync - getFailoverHistory respects limit", async () =
 // Tests: Write Authority Verification
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("HaCoordinatorServiceAsync - verifyWriteAuthority accepts valid token", () => {
+test("HaCoordinatorServiceAsync - verifyWriteAuthority accepts valid token [ha-coordinator-service-async]", () => {
   const repo = createMockRepo();
   const service = new HaCoordinatorServiceAsync(repo);
 
@@ -833,7 +833,7 @@ test("HaCoordinatorServiceAsync - verifyWriteAuthority accepts valid token", () 
   assert.equal(result, true);
 });
 
-test("HaCoordinatorServiceAsync - verifyWriteAuthority rejects stale token", () => {
+test("HaCoordinatorServiceAsync - verifyWriteAuthority rejects stale token [ha-coordinator-service-async]", () => {
   const repo = createMockRepo();
   const service = new HaCoordinatorServiceAsync(repo);
 
@@ -850,7 +850,7 @@ test("HaCoordinatorServiceAsync - verifyWriteAuthority rejects stale token", () 
 // Tests: Cleanup
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("HaCoordinatorServiceAsync - purgeExpiredLeases updates expired leases", async () => {
+test("HaCoordinatorServiceAsync - purgeExpiredLeases updates expired leases [ha-coordinator-service-async]", async () => {
   const repo = createMockRepo();
   (repo as any)._state.leases.set("lease-1", {
     leaseId: "lease-1",
@@ -869,7 +869,7 @@ test("HaCoordinatorServiceAsync - purgeExpiredLeases updates expired leases", as
   assert.equal((repo as any)._state.leases.get("lease-1")!.status, "expired");
 });
 
-test("HaCoordinatorServiceAsync - purgeExpiredLeases returns 0 when no expired leases", async () => {
+test("HaCoordinatorServiceAsync - purgeExpiredLeases returns 0 when no expired leases [ha-coordinator-service-async]", async () => {
   const repo = createMockRepo();
   (repo as any)._state.leases.set("lease-1", {
     leaseId: "lease-1",
@@ -887,7 +887,7 @@ test("HaCoordinatorServiceAsync - purgeExpiredLeases returns 0 when no expired l
   assert.equal(count, 0);
 });
 
-test("HaCoordinatorServiceAsync - purgeOldFailoverDecisions returns 0", async () => {
+test("HaCoordinatorServiceAsync - purgeOldFailoverDecisions returns 0 [ha-coordinator-service-async]", async () => {
   const repo = createMockRepo();
   const service = new HaCoordinatorServiceAsync(repo);
 

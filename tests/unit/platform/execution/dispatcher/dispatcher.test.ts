@@ -24,20 +24,20 @@ test.afterEach(() => {
 // Singleton behavior tests
 // ---------------------------------------------------------------------------
 
-test("getToolRegistry returns consistent singleton", () => {
+test("getToolRegistry returns consistent singleton [dispatcher]", () => {
   const registry1 = getToolRegistry();
   const registry2 = getToolRegistry();
   assert.strictEqual(registry1, registry2);
 });
 
-test("resetToolRegistry clears singleton instance", () => {
+test("resetToolRegistry clears singleton instance [dispatcher]", () => {
   const registry1 = getToolRegistry();
   resetToolRegistry();
   const registry2 = getToolRegistry();
   assert.notStrictEqual(registry1, registry2);
 });
 
-test("resetMultiStepToolRegistryForTests clears singleton (test export)", () => {
+test("resetMultiStepToolRegistryForTests clears singleton (test export) [dispatcher]", () => {
   const registry1 = getToolRegistry();
   resetMultiStepToolRegistryForTests();
   const registry2 = getToolRegistry();
@@ -48,7 +48,7 @@ test("resetMultiStepToolRegistryForTests clears singleton (test export)", () => 
 // MultiStepToolDefinition type export
 // ---------------------------------------------------------------------------
 
-test("MultiStepToolDefinition type is exported and usable", () => {
+test("MultiStepToolDefinition type is exported and usable [dispatcher]", () => {
   const toolDef: MultiStepToolDefinition = {
     name: "test_tool",
     description: "A test tool definition",
@@ -71,7 +71,7 @@ test("MultiStepToolDefinition type is exported and usable", () => {
 // question tool (no-op/skipped implementation)
 // ---------------------------------------------------------------------------
 
-test("executeToolCall for question tool returns skipped status", async () => {
+test("executeToolCall for question tool returns skipped status [dispatcher]", async () => {
   const result = await executeMultiStepToolCallForTests("question", JSON.stringify({
     question: "What is 2+2?",
     context: "testing",
@@ -84,7 +84,7 @@ test("executeToolCall for question tool returns skipped status", async () => {
   assert.equal(parsed.durationMs, 0);
 });
 
-test("executeToolCall question tool handles empty args", async () => {
+test("executeToolCall question tool handles empty args [dispatcher]", async () => {
   const result = await executeMultiStepToolCallForTests("question", "{}");
   const parsed = JSON.parse(result);
   assert.equal(parsed.success, true);
@@ -95,7 +95,7 @@ test("executeToolCall question tool handles empty args", async () => {
 // web_search tool validation
 // ---------------------------------------------------------------------------
 
-test("executeToolCall web_search requires query parameter", async () => {
+test("executeToolCall web_search requires query parameter [dispatcher]", async () => {
   const result = await executeMultiStepToolCallForTests("web_search", "{}");
   const parsed = JSON.parse(result);
   assert.equal(parsed.success, false);
@@ -103,14 +103,14 @@ test("executeToolCall web_search requires query parameter", async () => {
   assert.equal(parsed.errorCode, "MISSING_QUERY");
 });
 
-test("executeToolCall web_search handles empty query string", async () => {
+test("executeToolCall web_search handles empty query string [dispatcher]", async () => {
   const result = await executeMultiStepToolCallForTests("web_search", JSON.stringify({ query: "" }));
   const parsed = JSON.parse(result);
   assert.equal(parsed.success, false);
   assert.equal(parsed.error, "query is required");
 });
 
-test("executeToolCall web_search accepts valid query", async () => {
+test("executeToolCall web_search accepts valid query [dispatcher]", async () => {
   const result = await executeMultiStepToolCallForTests("web_search", JSON.stringify({
     query: "test search",
     limit: 5,
@@ -124,7 +124,7 @@ test("executeToolCall web_search accepts valid query", async () => {
 // web_fetch tool validation
 // ---------------------------------------------------------------------------
 
-test("executeToolCall web_fetch requires url parameter", async () => {
+test("executeToolCall web_fetch requires url parameter [dispatcher]", async () => {
   const result = await executeMultiStepToolCallForTests("web_fetch", "{}");
   const parsed = JSON.parse(result);
   assert.equal(parsed.success, false);
@@ -132,14 +132,14 @@ test("executeToolCall web_fetch requires url parameter", async () => {
   assert.equal(parsed.errorCode, "MISSING_URL");
 });
 
-test("executeToolCall web_fetch handles empty url string", async () => {
+test("executeToolCall web_fetch handles empty url string [dispatcher]", async () => {
   const result = await executeMultiStepToolCallForTests("web_fetch", JSON.stringify({ url: "" }));
   const parsed = JSON.parse(result);
   assert.equal(parsed.success, false);
   assert.equal(parsed.error, "url is required");
 });
 
-test("executeToolCall web_fetch accepts valid url", async () => {
+test("executeToolCall web_fetch accepts valid url [dispatcher]", async () => {
   const result = await executeMultiStepToolCallForTests("web_fetch", JSON.stringify({
     url: "https://example.com",
   }));
@@ -152,7 +152,7 @@ test("executeToolCall web_fetch accepts valid url", async () => {
 // git tool validation
 // ---------------------------------------------------------------------------
 
-test("executeToolCall git requires args parameter", async () => {
+test("executeToolCall git requires args parameter [dispatcher]", async () => {
   const result = await executeMultiStepToolCallForTests("git", "{}");
   const parsed = JSON.parse(result);
   assert.equal(parsed.success, false);
@@ -160,14 +160,14 @@ test("executeToolCall git requires args parameter", async () => {
   assert.equal(parsed.errorCode, "MISSING_GIT_ARGS");
 });
 
-test("executeToolCall git handles empty args array", async () => {
+test("executeToolCall git handles empty args array [dispatcher]", async () => {
   const result = await executeMultiStepToolCallForTests("git", JSON.stringify({ args: [] }));
   const parsed = JSON.parse(result);
   assert.equal(parsed.success, false);
   assert.equal(parsed.error, "git args are required");
 });
 
-test("executeToolCall git accepts valid args", async () => {
+test("executeToolCall git accepts valid args [dispatcher]", async () => {
   const result = await executeMultiStepToolCallForTests("git", JSON.stringify({
     args: ["status"],
     cwd: process.cwd(),
@@ -180,7 +180,7 @@ test("executeToolCall git accepts valid args", async () => {
 // repo-map tool validation
 // ---------------------------------------------------------------------------
 
-test("executeToolCall repo-map requires non-empty query", async () => {
+test("executeToolCall repo-map requires non-empty query [dispatcher]", async () => {
   const result = await executeMultiStepToolCallForTests("repo-map", JSON.stringify({ query: "" }));
   const parsed = JSON.parse(result);
   assert.equal(parsed.success, false);
@@ -188,14 +188,14 @@ test("executeToolCall repo-map requires non-empty query", async () => {
   assert.equal(parsed.errorCode, "MISSING_QUERY");
 });
 
-test("executeToolCall repo-map rejects whitespace-only query", async () => {
+test("executeToolCall repo-map rejects whitespace-only query [dispatcher]", async () => {
   const result = await executeMultiStepToolCallForTests("repo-map", JSON.stringify({ query: "   " }));
   const parsed = JSON.parse(result);
   assert.equal(parsed.success, false);
   assert.equal(parsed.error, "query is required");
 });
 
-test("executeToolCall repo-map accepts valid query", async () => {
+test("executeToolCall repo-map accepts valid query [dispatcher]", async () => {
   const result = await executeMultiStepToolCallForTests("repo-map", JSON.stringify({
     query: "test function",
     limit: 10,
@@ -208,7 +208,7 @@ test("executeToolCall repo-map accepts valid query", async () => {
 // spawn-agent tool
 // ---------------------------------------------------------------------------
 
-test("executeToolCall spawn-agent creates new agent and returns result", async () => {
+test("executeToolCall spawn-agent creates new agent and returns result [dispatcher]", async () => {
   const result = await executeMultiStepToolCallForTests("spawn-agent", JSON.stringify({
     agentId: "new-agent-123",
     request: "Initial request",
@@ -224,7 +224,7 @@ test("executeToolCall spawn-agent creates new agent and returns result", async (
   assert.ok(typeof parsed.updatedAt === "string");
 });
 
-test("executeToolCall spawn-agent returns existing agent state for duplicate agentId", async () => {
+test("executeToolCall spawn-agent returns existing agent state for duplicate agentId [dispatcher]", async () => {
   // Create first agent
   const result1 = await executeMultiStepToolCallForTests("spawn-agent", JSON.stringify({
     agentId: "duplicate-agent-test",
@@ -244,7 +244,7 @@ test("executeToolCall spawn-agent returns existing agent state for duplicate age
   assert.equal(parsed2.messageCount, messageCount1);
 });
 
-test("executeToolCall spawn-agent with minimal args", async () => {
+test("executeToolCall spawn-agent with minimal args [dispatcher]", async () => {
   const result = await executeMultiStepToolCallForTests("spawn-agent", JSON.stringify({
     request: "Minimal request",
   }));
@@ -257,7 +257,7 @@ test("executeToolCall spawn-agent with minimal args", async () => {
 // wait-agent tool validation
 // ---------------------------------------------------------------------------
 
-test("executeToolCall wait-agent requires agentId", async () => {
+test("executeToolCall wait-agent requires agentId [dispatcher]", async () => {
   const result = await executeMultiStepToolCallForTests("wait-agent", "{}");
   const parsed = JSON.parse(result);
   assert.equal(parsed.success, false);
@@ -265,7 +265,7 @@ test("executeToolCall wait-agent requires agentId", async () => {
   assert.equal(parsed.errorCode, "MISSING_AGENT_ID");
 });
 
-test("executeToolCall wait-agent returns error for nonexistent agent", async () => {
+test("executeToolCall wait-agent returns error for nonexistent agent [dispatcher]", async () => {
   const result = await executeMultiStepToolCallForTests("wait-agent", JSON.stringify({
     agentId: "definitely-does-not-exist-12345",
   }));
@@ -275,7 +275,7 @@ test("executeToolCall wait-agent returns error for nonexistent agent", async () 
   assert.equal(parsed.errorCode, "AGENT_NOT_FOUND");
 });
 
-test("executeToolCall wait-agent returns state for existing spawned agent", async () => {
+test("executeToolCall wait-agent returns state for existing spawned agent [dispatcher]", async () => {
   // First spawn an agent
   await executeMultiStepToolCallForTests("spawn-agent", JSON.stringify({
     agentId: "wait-test-agent",
@@ -295,7 +295,7 @@ test("executeToolCall wait-agent returns state for existing spawned agent", asyn
 // send-message tool validation
 // ---------------------------------------------------------------------------
 
-test("executeToolCall send-message requires both agentId and message", async () => {
+test("executeToolCall send-message requires both agentId and message [dispatcher]", async () => {
   const result = await executeMultiStepToolCallForTests("send-message", JSON.stringify({
     agentId: "some-agent",
   }));
@@ -305,7 +305,7 @@ test("executeToolCall send-message requires both agentId and message", async () 
   assert.equal(parsed.errorCode, "MISSING_ARGS");
 });
 
-test("executeToolCall send-message requires message", async () => {
+test("executeToolCall send-message requires message [dispatcher]", async () => {
   const result = await executeMultiStepToolCallForTests("send-message", JSON.stringify({
     message: "Hello",
   }));
@@ -315,7 +315,7 @@ test("executeToolCall send-message requires message", async () => {
   assert.equal(parsed.errorCode, "MISSING_ARGS");
 });
 
-test("executeToolCall send-message returns error for nonexistent agent", async () => {
+test("executeToolCall send-message returns error for nonexistent agent [dispatcher]", async () => {
   const result = await executeMultiStepToolCallForTests("send-message", JSON.stringify({
     agentId: "nonexistent-msg-agent",
     message: "Hello there",
@@ -326,7 +326,7 @@ test("executeToolCall send-message returns error for nonexistent agent", async (
   assert.equal(parsed.errorCode, "AGENT_NOT_FOUND");
 });
 
-test("executeToolCall send-message updates existing agent and returns result", async () => {
+test("executeToolCall send-message updates existing agent and returns result [dispatcher]", async () => {
   // Create agent first
   await executeMultiStepToolCallForTests("spawn-agent", JSON.stringify({
     agentId: "msg-test-agent",
@@ -347,7 +347,7 @@ test("executeToolCall send-message updates existing agent and returns result", a
 // batch-tool validation
 // ---------------------------------------------------------------------------
 
-test("executeToolCall batch-tool requires non-empty toolCalls array", async () => {
+test("executeToolCall batch-tool requires non-empty toolCalls array [dispatcher]", async () => {
   const result = await executeMultiStepToolCallForTests("batch-tool", JSON.stringify({
     toolCalls: [],
   }));
@@ -357,7 +357,7 @@ test("executeToolCall batch-tool requires non-empty toolCalls array", async () =
   assert.equal(parsed.errorCode, "MISSING_TOOL_CALLS");
 });
 
-test("executeToolCall batch-tool rejects non-array toolCalls", async () => {
+test("executeToolCall batch-tool rejects non-array toolCalls [dispatcher]", async () => {
   const result = await executeMultiStepToolCallForTests("batch-tool", JSON.stringify({
     toolCalls: "not-an-array",
   }));
@@ -366,7 +366,7 @@ test("executeToolCall batch-tool rejects non-array toolCalls", async () => {
   assert.equal(parsed.error, "toolCalls array is required");
 });
 
-test("executeToolCall batch-tool executes in serial mode by default", async () => {
+test("executeToolCall batch-tool executes in serial mode by default [dispatcher]", async () => {
   const result = await executeMultiStepToolCallForTests("batch-tool", JSON.stringify({
     toolCalls: [
       { toolName: "question", arguments: { question: "Test 1" } },
@@ -381,7 +381,7 @@ test("executeToolCall batch-tool executes in serial mode by default", async () =
   assert.equal(parsed.results.length, 2);
 });
 
-test("executeToolCall batch-tool executes in parallel mode when specified", async () => {
+test("executeToolCall batch-tool executes in parallel mode when specified [dispatcher]", async () => {
   const result = await executeMultiStepToolCallForTests("batch-tool", JSON.stringify({
     toolCalls: [
       { toolName: "question", arguments: { question: "Parallel 1" } },
@@ -399,7 +399,7 @@ test("executeToolCall batch-tool executes in parallel mode when specified", asyn
 // unknown tool handling
 // ---------------------------------------------------------------------------
 
-test("executeToolCall returns error for unknown tool", async () => {
+test("executeToolCall returns error for unknown tool [dispatcher]", async () => {
   const result = await executeMultiStepToolCallForTests("nonexistent_tool_123", "{}");
   const parsed = JSON.parse(result);
   assert.equal(parsed.success, false);
@@ -407,7 +407,7 @@ test("executeToolCall returns error for unknown tool", async () => {
   assert.equal(parsed.errorCode, "UNKNOWN_TOOL");
 });
 
-test("executeToolCall handles tool name with special characters", async () => {
+test("executeToolCall handles tool name with special characters [dispatcher]", async () => {
   const result = await executeMultiStepToolCallForTests("tool-with-dashes_underscores", "{}");
   const parsed = JSON.parse(result);
   assert.equal(parsed.success, false);
@@ -418,7 +418,7 @@ test("executeToolCall handles tool name with special characters", async () => {
 // Invalid JSON argument handling
 // ---------------------------------------------------------------------------
 
-test("executeToolCall handles completely invalid JSON", async () => {
+test("executeToolCall handles completely invalid JSON [dispatcher]", async () => {
   const result = await executeMultiStepToolCallForTests("question", "this is not json at all");
   const parsed = JSON.parse(result);
   // Should still process using raw value approach
@@ -426,14 +426,14 @@ test("executeToolCall handles completely invalid JSON", async () => {
   assert.equal(parsed.status, "skipped");
 });
 
-test("executeToolCall handles partial JSON", async () => {
+test("executeToolCall handles partial JSON [dispatcher]", async () => {
   const result = await executeMultiStepToolCallForTests("question", '{invalid');
   const parsed = JSON.parse(result);
   assert.equal(parsed.success, true);
   assert.equal(parsed.status, "skipped");
 });
 
-test("executeToolCall handles empty string JSON", async () => {
+test("executeToolCall handles empty string JSON [dispatcher]", async () => {
   const result = await executeMultiStepToolCallForTests("question", "");
   const parsed = JSON.parse(result);
   // Should handle gracefully
@@ -444,7 +444,7 @@ test("executeToolCall handles empty string JSON", async () => {
 // todo_write tool basic tests
 // ---------------------------------------------------------------------------
 
-test("executeToolCall todo_write with valid operation", async () => {
+test("executeToolCall todo_write with valid operation [dispatcher]", async () => {
   const result = await executeMultiStepToolCallForTests("todo_write", JSON.stringify({
     operation: "create",
     title: "Test Todo",
@@ -454,7 +454,7 @@ test("executeToolCall todo_write with valid operation", async () => {
   assert.ok(typeof parsed === "object");
 });
 
-test("executeToolCall todo_write with list operation", async () => {
+test("executeToolCall todo_write with list operation [dispatcher]", async () => {
   const result = await executeMultiStepToolCallForTests("todo_write", JSON.stringify({
     operation: "list",
     filterStatus: "pending",
@@ -463,7 +463,7 @@ test("executeToolCall todo_write with list operation", async () => {
   assert.ok(typeof parsed === "object");
 });
 
-test("executeToolCall todo_write with get operation", async () => {
+test("executeToolCall todo_write with get operation [dispatcher]", async () => {
   const result = await executeMultiStepToolCallForTests("todo_write", JSON.stringify({
     operation: "get",
     todoId: "todo-123",
@@ -472,7 +472,7 @@ test("executeToolCall todo_write with get operation", async () => {
   assert.ok(typeof parsed === "object");
 });
 
-test("executeToolCall todo_write with update operation", async () => {
+test("executeToolCall todo_write with update operation [dispatcher]", async () => {
   const result = await executeMultiStepToolCallForTests("todo_write", JSON.stringify({
     operation: "update",
     todoId: "todo-123",
@@ -482,7 +482,7 @@ test("executeToolCall todo_write with update operation", async () => {
   assert.ok(typeof parsed === "object");
 });
 
-test("executeToolCall todo_write with delete operation", async () => {
+test("executeToolCall todo_write with delete operation [dispatcher]", async () => {
   const result = await executeMultiStepToolCallForTests("todo_write", JSON.stringify({
     operation: "delete",
     todoId: "todo-123",

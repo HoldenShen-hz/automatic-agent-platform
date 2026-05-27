@@ -49,7 +49,7 @@ function createMockDb(rows: RawRow[] = []): AuthoritativeSqlDatabase {
   } as unknown as AuthoritativeSqlDatabase;
 }
 
-test("enqueue creates job with waiting status", () => {
+test("enqueue creates job with waiting status [enqueue]", () => {
   const db = createMockDb();
   const adapter = new SqliteQueueAdapter(db);
   const job = adapter.enqueue({ queueName: "tasks", payload: { taskId: "t1" } });
@@ -60,28 +60,28 @@ test("enqueue creates job with waiting status", () => {
   assert.ok(job.id.startsWith("qjob_"));
 });
 
-test("enqueue sets custom priority", () => {
+test("enqueue sets custom priority [enqueue]", () => {
   const db = createMockDb();
   const adapter = new SqliteQueueAdapter(db);
   const job = adapter.enqueue({ queueName: "q", payload: "data", priority: 10 });
   assert.equal(job.priority, 10);
 });
 
-test("enqueue sets custom maxAttempts", () => {
+test("enqueue sets custom maxAttempts [enqueue]", () => {
   const db = createMockDb();
   const adapter = new SqliteQueueAdapter(db);
   const job = adapter.enqueue({ queueName: "q", payload: "data", maxAttempts: 5 });
   assert.equal(job.maxAttempts, 5);
 });
 
-test("enqueue serializes payload to JSON string", () => {
+test("enqueue serializes payload to JSON string [enqueue]", () => {
   const db = createMockDb();
   const adapter = new SqliteQueueAdapter(db);
   const job = adapter.enqueue({ queueName: "q", payload: { nested: { value: 123 } } });
   assert.equal(job.payload, JSON.stringify({ nested: { value: 123 } }));
 });
 
-test("enqueue with delayUntil sets status to delayed", () => {
+test("enqueue with delayUntil sets status to delayed [enqueue]", () => {
   const db = createMockDb();
   const adapter = new SqliteQueueAdapter(db);
   const futureDate = new Date(Date.now() + 10_000).toISOString();
@@ -90,7 +90,7 @@ test("enqueue with delayUntil sets status to delayed", () => {
   assert.equal(job.delayUntil, futureDate);
 });
 
-test("enqueue without delay sets status to waiting", () => {
+test("enqueue without delay sets status to waiting [enqueue]", () => {
   const db = createMockDb();
   const adapter = new SqliteQueueAdapter(db);
   const job = adapter.enqueue({ queueName: "q", payload: "data" });
@@ -98,7 +98,7 @@ test("enqueue without delay sets status to waiting", () => {
   assert.equal(job.delayUntil, null);
 });
 
-test("enqueue with idempotencyKey returns existing job if duplicate", () => {
+test("enqueue with idempotencyKey returns existing job if duplicate [enqueue]", () => {
   const db = createMockDb();
   const adapter = new SqliteQueueAdapter(db);
   const job1 = adapter.enqueue({ queueName: "q", payload: "first", idempotencyKey: "key-1" });
@@ -107,7 +107,7 @@ test("enqueue with idempotencyKey returns existing job if duplicate", () => {
   assert.equal(job1.queueName, job2.queueName);
 });
 
-test("enqueue returns job with all timestamps", () => {
+test("enqueue returns job with all timestamps [enqueue]", () => {
   const db = createMockDb();
   const adapter = new SqliteQueueAdapter(db);
   const job = adapter.enqueue({ queueName: "q", payload: "data" });
@@ -116,14 +116,14 @@ test("enqueue returns job with all timestamps", () => {
   assert.equal(job.completedAt, null);
 });
 
-test("enqueue accepts null idempotencyKey", () => {
+test("enqueue accepts null idempotencyKey [enqueue]", () => {
   const db = createMockDb();
   const adapter = new SqliteQueueAdapter(db);
   const job = adapter.enqueue({ queueName: "q", payload: "data", idempotencyKey: null });
   assert.equal(job.idempotencyKey, null);
 });
 
-test("enqueue accepts null delayUntil", () => {
+test("enqueue accepts null delayUntil [enqueue]", () => {
   const db = createMockDb();
   const adapter = new SqliteQueueAdapter(db);
   const job = adapter.enqueue({ queueName: "q", payload: "data", delayUntil: null });
@@ -131,7 +131,7 @@ test("enqueue accepts null delayUntil", () => {
   assert.equal(job.status, "waiting");
 });
 
-test("enqueue stores lastError as null initially", () => {
+test("enqueue stores lastError as null initially [enqueue]", () => {
   const db = createMockDb();
   const adapter = new SqliteQueueAdapter(db);
   const job = adapter.enqueue({ queueName: "q", payload: "data" });

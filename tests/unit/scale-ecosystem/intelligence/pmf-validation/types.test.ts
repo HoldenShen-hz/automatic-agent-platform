@@ -20,7 +20,7 @@ import type {
 } from "../../../../../src/scale-ecosystem/intelligence/pmf-validation/types.js";
 
 describe("PmfValidationThresholds", () => {
-  test("has correct structure with all required fields", () => {
+  test("has correct structure with all required fields [types]", () => {
     const thresholds: PmfValidationThresholds = {
       minTaskCount: 5,
       minSessionCount: 3,
@@ -42,7 +42,7 @@ describe("PmfValidationThresholds", () => {
     assert.equal(thresholds.maxP95StepDurationMs, 60000);
   });
 
-  test("accepts boundary values for percentages", () => {
+  test("accepts boundary values for percentages [types]", () => {
     const thresholds: PmfValidationThresholds = {
       minTaskCount: 0,
       minSessionCount: 0,
@@ -58,7 +58,7 @@ describe("PmfValidationThresholds", () => {
     assert.equal(thresholds.minActivationRatePct, 100);
   });
 
-  test("accepts large values for durations and counts", () => {
+  test("accepts large values for durations and counts [types]", () => {
     const thresholds: PmfValidationThresholds = {
       minTaskCount: 1000000,
       minSessionCount: 500000,
@@ -75,7 +75,7 @@ describe("PmfValidationThresholds", () => {
 });
 
 describe("PmfValidationWindow", () => {
-  test("has correct structure", () => {
+  test("has correct structure [types]", () => {
     const window: PmfValidationWindow = {
       start: "2026-04-01T00:00:00Z",
       end: "2026-04-14T00:00:00Z",
@@ -87,7 +87,7 @@ describe("PmfValidationWindow", () => {
     assert.equal(window.days, 14);
   });
 
-  test("supports different window sizes", () => {
+  test("supports different window sizes [types]", () => {
     const window7: PmfValidationWindow = {
       start: "2026-04-01T00:00:00Z",
       end: "2026-04-08T00:00:00Z",
@@ -106,7 +106,7 @@ describe("PmfValidationWindow", () => {
 });
 
 describe("PmfMetricCheck", () => {
-  test("accepts all valid checkId values", () => {
+  test("accepts all valid checkId values [types]", () => {
     const checkIds: PmfMetricCheck["checkId"][] = [
       "sample_size",
       "task_success_rate",
@@ -130,7 +130,7 @@ describe("PmfMetricCheck", () => {
     }
   });
 
-  test("accepts all valid status values", () => {
+  test("accepts all valid status values [types]", () => {
     const statuses: PmfCheckStatus[] = ["pass", "warn", "fail"];
 
     for (const status of statuses) {
@@ -146,7 +146,7 @@ describe("PmfMetricCheck", () => {
     }
   });
 
-  test("accepts all valid unit values", () => {
+  test("accepts all valid unit values [types]", () => {
     const units: PmfMetricCheck["unit"][] = ["count", "pct", "usd", "ms"];
 
     for (const unit of units) {
@@ -162,7 +162,7 @@ describe("PmfMetricCheck", () => {
     }
   });
 
-  test("allows null observed and threshold for insufficient data", () => {
+  test("allows null observed and threshold for insufficient data [types]", () => {
     const check: PmfMetricCheck = {
       checkId: "sample_size",
       status: "fail",
@@ -178,7 +178,7 @@ describe("PmfMetricCheck", () => {
 });
 
 describe("PmfValidationReport", () => {
-  test("has correct structure with all required fields", () => {
+  test("has correct structure with all required fields [types]", () => {
     const report: PmfValidationReport = {
       reportId: "rpt-001",
       profileName: "phase3_default",
@@ -276,7 +276,7 @@ describe("PmfValidationReport", () => {
     assert.equal(report.metrics.successfulTaskCount, 750);
   });
 
-  test("supports different verdict values", () => {
+  test("supports different verdict values [types]", () => {
     const verdicts: PmfValidationReport["verdict"][] = ["pass", "warn", "fail"];
 
     for (const verdict of verdicts) {
@@ -304,7 +304,7 @@ describe("PmfValidationReport", () => {
     }
   });
 
-  test("supports divisionId as string", () => {
+  test("supports divisionId as string [types]", () => {
     const report: PmfValidationReport = {
       reportId: "rpt-001",
       profileName: "test",
@@ -331,7 +331,7 @@ describe("PmfValidationReport", () => {
 });
 
 describe("PmfValidationRunOptions", () => {
-  test("has correct structure with optional fields", () => {
+  test("has correct structure with optional fields [types]", () => {
     const options: PmfValidationRunOptions = {
       profileName: "custom_profile",
       divisionId: "division-beta",
@@ -349,7 +349,7 @@ describe("PmfValidationRunOptions", () => {
     assert.equal(options.thresholds?.minTaskCount, 10);
   });
 
-  test("accepts minimal options with no fields", () => {
+  test("accepts minimal options with no fields [types]", () => {
     const options: PmfValidationRunOptions = {};
 
     assert.equal(options.profileName, undefined);
@@ -357,7 +357,7 @@ describe("PmfValidationRunOptions", () => {
     assert.equal(options.windowDays, undefined);
   });
 
-  test("allows null divisionId", () => {
+  test("allows null divisionId [types]", () => {
     const options: PmfValidationRunOptions = {
       divisionId: null,
     };
@@ -367,7 +367,7 @@ describe("PmfValidationRunOptions", () => {
 });
 
 describe("PmfValidationRunResult", () => {
-  test("has correct structure", () => {
+  test("has correct structure [types]", () => {
     const result: PmfValidationRunResult = {
       report: {
         reportId: "rpt-001",
@@ -406,7 +406,7 @@ describe("PmfValidationRunResult", () => {
 });
 
 describe("PmfValidationExportResult", () => {
-  test("extends PmfValidationRunResult with artifact references", () => {
+  test("extends PmfValidationRunResult with artifact references [types]", () => {
     const result: PmfValidationExportResult = {
       report: {
         reportId: "rpt-001",
@@ -463,7 +463,7 @@ describe("PmfValidationExportResult", () => {
 });
 
 describe("SqlFilterClause", () => {
-  test("has correct structure", () => {
+  test("has correct structure [types]", () => {
     const clause: SqlFilterClause = {
       whereClause: "division_id = ? AND status = ?",
       parameters: ["division-1", "active"],
@@ -473,7 +473,7 @@ describe("SqlFilterClause", () => {
     assert.deepEqual(clause.parameters, ["division-1", "active"]);
   });
 
-  test("supports empty parameters", () => {
+  test("supports empty parameters [types]", () => {
     const clause: SqlFilterClause = {
       whereClause: "1=1",
       parameters: [],
@@ -483,7 +483,7 @@ describe("SqlFilterClause", () => {
     assert.deepEqual(clause.parameters, []);
   });
 
-  test("supports null in parameters", () => {
+  test("supports null in parameters [types]", () => {
     const clause: SqlFilterClause = {
       whereClause: "division_id = ? OR parent_id = ?",
       parameters: ["division-1", null],

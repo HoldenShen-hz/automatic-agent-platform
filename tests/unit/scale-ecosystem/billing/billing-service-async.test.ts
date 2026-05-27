@@ -126,7 +126,7 @@ function createMockDb() {
   };
 }
 
-test("BillingServiceAsync createAccount returns Promise", async () => {
+test("BillingServiceAsync createAccount returns Promise [billing-service-async]", async () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new BillingServiceAsync(db, store, { planCatalog: mockPlanCatalog });
@@ -143,7 +143,7 @@ test("BillingServiceAsync createAccount returns Promise", async () => {
   assert.equal(account.planId, "plan_basic");
 });
 
-test("BillingServiceAsync createAccount with custom id", async () => {
+test("BillingServiceAsync createAccount with custom id [billing-service-async]", async () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new BillingServiceAsync(db, store, { planCatalog: mockPlanCatalog });
@@ -158,7 +158,7 @@ test("BillingServiceAsync createAccount with custom id", async () => {
   assert.equal(account.planId, "plan_pro");
 });
 
-test("BillingServiceAsync evaluateEntitlement returns Promise", async () => {
+test("BillingServiceAsync evaluateEntitlement returns Promise [billing-service-async]", async () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new BillingServiceAsync(db, store, { planCatalog: mockPlanCatalog });
@@ -176,7 +176,7 @@ test("BillingServiceAsync evaluateEntitlement returns Promise", async () => {
   assert.equal(entitlement.decision.decisionType, "allow");
 });
 
-test("BillingServiceAsync evaluateEntitlement denies feature not in plan", async () => {
+test("BillingServiceAsync evaluateEntitlement denies feature not in plan [billing-service-async]", async () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new BillingServiceAsync(db, store, { planCatalog: mockPlanCatalog });
@@ -191,7 +191,7 @@ test("BillingServiceAsync evaluateEntitlement denies feature not in plan", async
   assert.equal(result.decision.decisionType, "deny");
 });
 
-test("BillingServiceAsync recordUsage returns Promise", async () => {
+test("BillingServiceAsync recordUsage returns Promise [billing-service-async]", async () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new BillingServiceAsync(db, store, { planCatalog: mockPlanCatalog });
@@ -212,7 +212,7 @@ test("BillingServiceAsync recordUsage returns Promise", async () => {
   assert.equal(usageResult.usageEvent.quantity, 10);
 });
 
-test("BillingServiceAsync recordUsage accumulates quota", async () => {
+test("BillingServiceAsync recordUsage accumulates quota [billing-service-async]", async () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new BillingServiceAsync(db, store, { planCatalog: mockPlanCatalog });
@@ -236,7 +236,7 @@ test("BillingServiceAsync recordUsage accumulates quota", async () => {
   assert.equal(result.quotaCounter.usedQuantity, 15);
 });
 
-test("BillingServiceAsync evaluateEntitlement with metric quota check", async () => {
+test("BillingServiceAsync evaluateEntitlement with metric quota check [billing-service-async]", async () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new BillingServiceAsync(db, store, { planCatalog: mockPlanCatalog });
@@ -255,7 +255,7 @@ test("BillingServiceAsync evaluateEntitlement with metric quota check", async ()
   assert.ok(result.projectedQuantity !== null);
 });
 
-test("BillingServiceAsync multiple operations in sequence", async () => {
+test("BillingServiceAsync multiple operations in sequence [billing-service-async]", async () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new BillingServiceAsync(db, store, { planCatalog: mockPlanCatalog });
@@ -291,7 +291,7 @@ test("BillingServiceAsync multiple operations in sequence", async () => {
   assert.ok(entitlement2.remainingQuantity < entitlement1.remainingQuantity);
 });
 
-test("BillingServiceAsync throws for non-existent account", async () => {
+test("BillingServiceAsync throws for non-existent account [billing-service-async]", async () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new BillingServiceAsync(db, store, { planCatalog: mockPlanCatalog });
@@ -304,7 +304,7 @@ test("BillingServiceAsync throws for non-existent account", async () => {
   );
 });
 
-test("BillingServiceAsync createAccount with optional fields", async () => {
+test("BillingServiceAsync createAccount with optional fields [billing-service-async]", async () => {
   const store = createMockStore();
   const db = createMockDb();
   const service = new BillingServiceAsync(db, store, { planCatalog: mockPlanCatalog });

@@ -16,7 +16,7 @@ import type {
 } from "../../../../src/scale-ecosystem/marketplace/enterprise-capability-matrix-service.js";
 import type { EnvironmentName, DeploymentMode, EnvironmentReadinessComponentType } from "../../../../src/platform/contracts/types/domain.js";
 
-test("LicenseTier accepts all valid values", () => {
+test("LicenseTier accepts all valid values [enterprise-capability-matrix-service-types]", () => {
   const tiers: LicenseTier[] = ["community", "professional", "enterprise"];
   assert.equal(tiers.length, 3);
 
@@ -26,17 +26,17 @@ test("LicenseTier accepts all valid values", () => {
   }
 });
 
-test("EnvironmentName accepts all valid values", () => {
+test("EnvironmentName accepts all valid values [enterprise-capability-matrix-service-types]", () => {
   const names: EnvironmentName[] = ["dev", "test", "staging", "pre-prod", "prod"];
   assert.equal(names.length, 5);
 });
 
-test("DeploymentMode accepts all valid values", () => {
+test("DeploymentMode accepts all valid values [enterprise-capability-matrix-service-types]", () => {
   const modes: DeploymentMode[] = ["cloud_shared", "private_cloud", "on_prem"];
   assert.equal(modes.length, 3);
 });
 
-test("EnvironmentReadinessComponentType accepts all valid values", () => {
+test("EnvironmentReadinessComponentType accepts all valid values [enterprise-capability-matrix-service-types]", () => {
   const types: EnvironmentReadinessComponentType[] = [
     "provider",
     "gateway",
@@ -47,7 +47,7 @@ test("EnvironmentReadinessComponentType accepts all valid values", () => {
   assert.equal(types.length, 5);
 });
 
-test("RegisterEnvironmentReadinessInput structure is correct", () => {
+test("RegisterEnvironmentReadinessInput structure is correct [enterprise-capability-matrix-service-types]", () => {
   const input: RegisterEnvironmentReadinessInput = {
     readinessId: "ready_123",
     environment: "prod",
@@ -68,7 +68,7 @@ test("RegisterEnvironmentReadinessInput structure is correct", () => {
   assert.equal(input.isActive, true);
 });
 
-test("RegisterEnvironmentReadinessInput allows minimal definition", () => {
+test("RegisterEnvironmentReadinessInput allows minimal definition [enterprise-capability-matrix-service-types]", () => {
   const input: RegisterEnvironmentReadinessInput = {
     environment: "staging",
     componentType: "gateway",
@@ -83,7 +83,7 @@ test("RegisterEnvironmentReadinessInput allows minimal definition", () => {
   assert.equal(input.notes, undefined);
 });
 
-test("CapabilityRequirementRef structure is correct", () => {
+test("CapabilityRequirementRef structure is correct [enterprise-capability-matrix-service-types]", () => {
   const ref: CapabilityRequirementRef = {
     componentType: "sandbox",
     componentId: "sandbox_primary",
@@ -94,7 +94,7 @@ test("CapabilityRequirementRef structure is correct", () => {
   assert.equal(ref.gateKey, "isolation");
 });
 
-test("CapabilityRequirementRef allows minimal definition", () => {
+test("CapabilityRequirementRef allows minimal definition [enterprise-capability-matrix-service-types]", () => {
   const ref: CapabilityRequirementRef = {
     componentType: "worker_fleet",
     componentId: "workers_primary",
@@ -104,7 +104,7 @@ test("CapabilityRequirementRef allows minimal definition", () => {
   assert.equal(ref.gateKey, undefined);
 });
 
-test("EnterpriseCapabilityDefinition structure is correct", () => {
+test("EnterpriseCapabilityDefinition structure is correct [enterprise-capability-matrix-service-types]", () => {
   const def: EnterpriseCapabilityDefinition = {
     capabilityKey: "admin_console",
     displayName: "Admin Console",
@@ -122,7 +122,7 @@ test("EnterpriseCapabilityDefinition structure is correct", () => {
   assert.equal(def.readinessRequirements.length, 2);
 });
 
-test("EnterpriseCapabilityMatrixEntry structure is correct", () => {
+test("EnterpriseCapabilityMatrixEntry structure is correct [enterprise-capability-matrix-service-types]", () => {
   const entry: EnterpriseCapabilityMatrixEntry = {
     capabilityKey: "sso",
     displayName: "Single Sign-On",
@@ -147,7 +147,7 @@ test("EnterpriseCapabilityMatrixEntry structure is correct", () => {
   assert.equal(entry.readiness.length, 1);
 });
 
-test("EnterpriseCapabilityMatrixEntry status accepts all valid values", () => {
+test("EnterpriseCapabilityMatrixEntry status accepts all valid values [enterprise-capability-matrix-service-types]", () => {
   const statuses: EnterpriseCapabilityMatrixEntry["status"][] = [
     "available",
     "degraded",
@@ -168,7 +168,7 @@ test("EnterpriseCapabilityMatrixEntry status accepts all valid values", () => {
   }
 });
 
-test("EnterpriseCapabilitySummary structure is correct", () => {
+test("EnterpriseCapabilitySummary structure is correct [enterprise-capability-matrix-service-types]", () => {
   const summary: EnterpriseCapabilitySummary = {
     available: 7,
     degraded: 2,
@@ -183,7 +183,7 @@ test("EnterpriseCapabilitySummary structure is correct", () => {
   assert.equal(summary.overallVerdict, "partial");
 });
 
-test("EnterpriseCapabilitySummary overallVerdict accepts all valid values", () => {
+test("EnterpriseCapabilitySummary overallVerdict accepts all valid values [enterprise-capability-matrix-service-types]", () => {
   const verdicts: EnterpriseCapabilitySummary["overallVerdict"][] = [
     "ready",
     "partial",
@@ -202,7 +202,7 @@ test("EnterpriseCapabilitySummary overallVerdict accepts all valid values", () =
   }
 });
 
-test("EnterpriseCapabilityMatrixReport structure is correct", () => {
+test("EnterpriseCapabilityMatrixReport structure is correct [enterprise-capability-matrix-service-types]", () => {
   const report: EnterpriseCapabilityMatrixReport = {
     reportId: "report_cap_123",
     generatedAt: "2026-04-14T00:00:00.000Z",
@@ -228,7 +228,7 @@ test("EnterpriseCapabilityMatrixReport structure is correct", () => {
   assert.equal(report.summary.overallVerdict, "partial");
 });
 
-test("EnterpriseCapabilityMatrixRunInput structure is correct", () => {
+test("EnterpriseCapabilityMatrixRunInput structure is correct [enterprise-capability-matrix-service-types]", () => {
   const input: EnterpriseCapabilityMatrixRunInput = {
     accountId: "acc_xyz",
     workspaceId: "ws_123",
@@ -243,7 +243,7 @@ test("EnterpriseCapabilityMatrixRunInput structure is correct", () => {
   assert.equal(input.deploymentMode, "private_cloud");
 });
 
-test("EnterpriseCapabilityMatrixRunInput allows minimal definition", () => {
+test("EnterpriseCapabilityMatrixRunInput allows minimal definition [enterprise-capability-matrix-service-types]", () => {
   const input: EnterpriseCapabilityMatrixRunInput = {
     environment: "staging",
     deploymentMode: "on_prem",
@@ -253,7 +253,7 @@ test("EnterpriseCapabilityMatrixRunInput allows minimal definition", () => {
   assert.equal(input.tenantId, undefined);
 });
 
-test("EnterpriseCapabilityMatrixServiceOptions structure is correct", () => {
+test("EnterpriseCapabilityMatrixServiceOptions structure is correct [enterprise-capability-matrix-service-types]", () => {
   const options: EnterpriseCapabilityMatrixServiceOptions = {
     artifactStoreOptions: {
       rootDir: "/var/capabilities/artifacts",
@@ -265,7 +265,7 @@ test("EnterpriseCapabilityMatrixServiceOptions structure is correct", () => {
   assert.equal(options.artifactStoreOptions?.rootDir, "/var/capabilities/artifacts");
 });
 
-test("EnterpriseCapabilityMatrixServiceOptions allows empty options", () => {
+test("EnterpriseCapabilityMatrixServiceOptions allows empty options [enterprise-capability-matrix-service-types]", () => {
   const options: EnterpriseCapabilityMatrixServiceOptions = {};
   assert.equal(options.artifactStoreOptions, undefined);
   assert.equal(options.capabilityDefinitions, undefined);

@@ -21,18 +21,18 @@ import {
   type CertificationEvidence,
 } from "../../../../../src/scale-ecosystem/marketplace/certification/index.js";
 
-test("CertificationGateService is constructable", () => {
+test("CertificationGateService is constructable [certification-gate-service]", () => {
   const service = new CertificationGateService();
   assert.ok(service != null);
 });
 
-test("getCertificationGateService returns singleton", () => {
+test("getCertificationGateService returns singleton [certification-gate-service]", () => {
   const service1 = getCertificationGateService();
   const service2 = getCertificationGateService();
   assert.ok(service1 === service2);
 });
 
-test("validateAgentCertification returns not found when no certification exists", () => {
+test("validateAgentCertification returns not found when no certification exists [certification-gate-service]", () => {
   const service = new CertificationGateService();
   const result = service.validateAgentCertification("non-existent-agent");
 
@@ -43,7 +43,7 @@ test("validateAgentCertification returns not found when no certification exists"
   assert.equal(result.certificationId, null);
 });
 
-test("validatePackCertification returns not found when no certification exists", () => {
+test("validatePackCertification returns not found when no certification exists [certification-gate-service]", () => {
   const service = new CertificationGateService();
   const result = service.validatePackCertification("non-existent-pack");
 
@@ -54,7 +54,7 @@ test("validatePackCertification returns not found when no certification exists",
   assert.equal(result.certificationId, null);
 });
 
-test("checkSecurityScanStatus returns pending for non-existent artifact", () => {
+test("checkSecurityScanStatus returns pending for non-existent artifact [certification-gate-service]", () => {
   const service = new CertificationGateService();
   const result = service.checkSecurityScanStatus("non-existent-artifact");
 
@@ -64,7 +64,7 @@ test("checkSecurityScanStatus returns pending for non-existent artifact", () => 
   assert.equal(result.scanId, "");
 });
 
-test("CertificationGateService type exports are correct", () => {
+test("CertificationGateService type exports are correct [certification-gate-service]", () => {
   const result: CertificationResult = {
     success: true,
     allowed: true,
@@ -79,7 +79,7 @@ test("CertificationGateService type exports are correct", () => {
   assert.equal(result.certificationId, "cert-001");
 });
 
-test("SecurityScanStatus type exports are correct", () => {
+test("SecurityScanStatus type exports are correct [certification-gate-service]", () => {
   const status: SecurityScanStatus = {
     artifactId: "artifact-001",
     scanId: "scan-001",
@@ -95,7 +95,7 @@ test("SecurityScanStatus type exports are correct", () => {
   assert.equal(status.findingsCount, 0);
 });
 
-test("checkSecurityScanStatus type structure is correct", () => {
+test("checkSecurityScanStatus type structure is correct [certification-gate-service]", () => {
   const service = new CertificationGateService();
   const result = service.checkSecurityScanStatus("test-artifact");
 
@@ -108,7 +108,7 @@ test("checkSecurityScanStatus type structure is correct", () => {
   assert.ok(result.hasOwnProperty("expiresAt"));
 });
 
-test("CertificationResult blockedBy can be empty", () => {
+test("CertificationResult blockedBy can be empty [certification-gate-service]", () => {
   const result: CertificationResult = {
     success: true,
     allowed: true,
@@ -121,7 +121,7 @@ test("CertificationResult blockedBy can be empty", () => {
   assert.deepEqual(result.blockedBy, []);
 });
 
-test("CertificationResult expiresAt can be null", () => {
+test("CertificationResult expiresAt can be null [certification-gate-service]", () => {
   const result: CertificationResult = {
     success: false,
     allowed: false,

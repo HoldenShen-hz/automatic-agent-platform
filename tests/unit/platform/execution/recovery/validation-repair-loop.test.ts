@@ -26,7 +26,7 @@ function makeValidationLoopInput(overrides: Partial<ValidationLoopInput> = {}): 
   };
 }
 
-test("ValidationRepairLoopService.buildRepairEvidencePackage returns correct package", () => {
+test("ValidationRepairLoopService.buildRepairEvidencePackage returns correct package [validation-repair-loop]", () => {
   const service = new ValidationRepairLoopService();
 
   const failedChecks: ValidationFailureRecord[] = [
@@ -54,7 +54,7 @@ test("ValidationRepairLoopService.buildRepairEvidencePackage returns correct pac
   assert.equal(result.repairRound, 1);
 });
 
-test("ValidationRepairLoopService.buildRepairEvidencePackage creates copy of arrays", () => {
+test("ValidationRepairLoopService.buildRepairEvidencePackage creates copy of arrays [validation-repair-loop]", () => {
   const service = new ValidationRepairLoopService();
 
   const input = makeValidationLoopInput({
@@ -68,7 +68,7 @@ test("ValidationRepairLoopService.buildRepairEvidencePackage creates copy of arr
   assert.equal(result.changedFiles[0], "file1.ts");
 });
 
-test("ValidationRepairLoopService.decide returns released when review and validation pass", () => {
+test("ValidationRepairLoopService.decide returns released when review and validation pass [validation-repair-loop]", () => {
   const service = new ValidationRepairLoopService();
 
   const input = makeValidationLoopInput({
@@ -84,7 +84,7 @@ test("ValidationRepairLoopService.decide returns released when review and valida
   assert.equal(decision.requiresEscalation, false);
 });
 
-test("ValidationRepairLoopService.decide escalates when touched forbidden scope", () => {
+test("ValidationRepairLoopService.decide escalates when touched forbidden scope [validation-repair-loop]", () => {
   const service = new ValidationRepairLoopService();
 
   const input = makeValidationLoopInput({
@@ -99,7 +99,7 @@ test("ValidationRepairLoopService.decide escalates when touched forbidden scope"
   assert.equal(decision.requiresEscalation, true);
 });
 
-test("ValidationRepairLoopService.decide escalates after max repair rounds for review failure", () => {
+test("ValidationRepairLoopService.decide escalates after max repair rounds for review failure [validation-repair-loop]", () => {
   const service = new ValidationRepairLoopService();
 
   const input = makeValidationLoopInput({
@@ -116,7 +116,7 @@ test("ValidationRepairLoopService.decide escalates after max repair rounds for r
   assert.equal(decision.requiresEscalation, true);
 });
 
-test("ValidationRepairLoopService.decide returns failed_repairable for review failure within budget", () => {
+test("ValidationRepairLoopService.decide returns failed_repairable for review failure within budget [validation-repair-loop]", () => {
   const service = new ValidationRepairLoopService();
 
   const input = makeValidationLoopInput({
@@ -133,7 +133,7 @@ test("ValidationRepairLoopService.decide returns failed_repairable for review fa
   assert.equal(decision.requiresEscalation, false);
 });
 
-test("ValidationRepairLoopService.decide escalates after max repair rounds for validation failure", () => {
+test("ValidationRepairLoopService.decide escalates after max repair rounds for validation failure [validation-repair-loop]", () => {
   const service = new ValidationRepairLoopService();
 
   const input = makeValidationLoopInput({
@@ -151,7 +151,7 @@ test("ValidationRepairLoopService.decide escalates after max repair rounds for v
   assert.equal(decision.requiresEscalation, true);
 });
 
-test("ValidationRepairLoopService.decide returns failed_repairable for validation failure within budget", () => {
+test("ValidationRepairLoopService.decide returns failed_repairable for validation failure within budget [validation-repair-loop]", () => {
   const service = new ValidationRepairLoopService();
 
   const input = makeValidationLoopInput({
@@ -169,7 +169,7 @@ test("ValidationRepairLoopService.decide returns failed_repairable for validatio
   assert.equal(decision.requiresEscalation, false);
 });
 
-test("ValidationRepairLoopService.decide prefers review failure over validation failure", () => {
+test("ValidationRepairLoopService.decide prefers review failure over validation failure [validation-repair-loop]", () => {
   const service = new ValidationRepairLoopService();
 
   // Both failing but review check takes precedence
@@ -183,7 +183,7 @@ test("ValidationRepairLoopService.decide prefers review failure over validation 
   assert.equal(decision.reasonCode, "validation.review_failed");
 });
 
-test("ValidationLoopStage type accepts all valid values", () => {
+test("ValidationLoopStage type accepts all valid values [validation-repair-loop]", () => {
   const stages: ValidationLoopStage[] = [
     "planned",
     "built",
@@ -199,7 +199,7 @@ test("ValidationLoopStage type accepts all valid values", () => {
   assert.equal(stages.length, 9);
 });
 
-test("ValidationDecision has correct structure for all outcomes", () => {
+test("ValidationDecision has correct structure for all outcomes [validation-repair-loop]", () => {
   const service = new ValidationRepairLoopService();
 
   // Test released
@@ -218,7 +218,7 @@ test("ValidationDecision has correct structure for all outcomes", () => {
   assert.equal(blocking.stage, "failed_blocking");
 });
 
-test("ValidationRepairLoopService handles edge case when repairRound equals maxRepairRounds - 1", () => {
+test("ValidationRepairLoopService handles edge case when repairRound equals maxRepairRounds - 1 [validation-repair-loop]", () => {
   const service = new ValidationRepairLoopService();
 
   // This is the last round before escalation
@@ -235,7 +235,7 @@ test("ValidationRepairLoopService handles edge case when repairRound equals maxR
   assert.equal(decision.requiresEscalation, false);
 });
 
-test("ValidationRepairLoopService.decide with reviewFailed at round 0 triggers failed_repairable", () => {
+test("ValidationRepairLoopService.decide with reviewFailed at round 0 triggers failed_repairable [validation-repair-loop]", () => {
   const service = new ValidationRepairLoopService();
 
   const input = makeValidationLoopInput({
@@ -252,7 +252,7 @@ test("ValidationRepairLoopService.decide with reviewFailed at round 0 triggers f
   assert.equal(decision.requiresEscalation, false);
 });
 
-test("ValidationRepairLoopService.decide with validationFailed at max rounds triggers escalated", () => {
+test("ValidationRepairLoopService.decide with validationFailed at max rounds triggers escalated [validation-repair-loop]", () => {
   const service = new ValidationRepairLoopService();
 
   const input = makeValidationLoopInput({
@@ -270,7 +270,7 @@ test("ValidationRepairLoopService.decide with validationFailed at max rounds tri
   assert.equal(decision.requiresEscalation, true);
 });
 
-test("ValidationRepairLoopService.decide with reviewFailed at max rounds triggers escalated", () => {
+test("ValidationRepairLoopService.decide with reviewFailed at max rounds triggers escalated [validation-repair-loop]", () => {
   const service = new ValidationRepairLoopService();
 
   const input = makeValidationLoopInput({
@@ -288,7 +288,7 @@ test("ValidationRepairLoopService.decide with reviewFailed at max rounds trigger
   assert.equal(decision.requiresEscalation, true);
 });
 
-test("ValidationRepairLoopService.decide with touchedForbiddenScope overrides reviewPassed", () => {
+test("ValidationRepairLoopService.decide with touchedForbiddenScope overrides reviewPassed [validation-repair-loop]", () => {
   const service = new ValidationRepairLoopService();
 
   // Even with reviewPassed true, forbidden scope touch takes precedence
@@ -306,7 +306,7 @@ test("ValidationRepairLoopService.decide with touchedForbiddenScope overrides re
   assert.equal(decision.requiresEscalation, true);
 });
 
-test("ValidationRepairLoopService.decide with touchedForbiddenScope overrides validation failure", () => {
+test("ValidationRepairLoopService.decide with touchedForbiddenScope overrides validation failure [validation-repair-loop]", () => {
   const service = new ValidationRepairLoopService();
 
   const input = makeValidationLoopInput({
@@ -321,7 +321,7 @@ test("ValidationRepairLoopService.decide with touchedForbiddenScope overrides va
   assert.equal(decision.reasonCode, "validation.forbidden_scope_touched");
 });
 
-test("ValidationRepairLoopService.decide with touchedForbiddenScope overrides review failure", () => {
+test("ValidationRepairLoopService.decide with touchedForbiddenScope overrides review failure [validation-repair-loop]", () => {
   const service = new ValidationRepairLoopService();
 
   const input = makeValidationLoopInput({
@@ -336,7 +336,7 @@ test("ValidationRepairLoopService.decide with touchedForbiddenScope overrides re
   assert.equal(decision.reasonCode, "validation.forbidden_scope_touched");
 });
 
-test("ValidationRepairLoopService.decide with all failures and touchedForbiddenScope", () => {
+test("ValidationRepairLoopService.decide with all failures and touchedForbiddenScope [validation-repair-loop]", () => {
   const service = new ValidationRepairLoopService();
 
   const input = makeValidationLoopInput({
@@ -351,7 +351,7 @@ test("ValidationRepairLoopService.decide with all failures and touchedForbiddenS
   assert.equal(decision.reasonCode, "validation.forbidden_scope_touched");
 });
 
-test("ValidationRepairLoopService.buildRepairEvidencePackage preserves all fields", () => {
+test("ValidationRepairLoopService.buildRepairEvidencePackage preserves all fields [validation-repair-loop]", () => {
   const service = new ValidationRepairLoopService();
 
   const failedChecks: ValidationFailureRecord[] = [
@@ -380,7 +380,7 @@ test("ValidationRepairLoopService.buildRepairEvidencePackage preserves all field
   assert.equal(result.repairRound, 2);
 });
 
-test("ValidationRepairLoopService.buildRepairEvidencePackage creates independent copy of arrays", () => {
+test("ValidationRepairLoopService.buildRepairEvidencePackage creates independent copy of arrays [validation-repair-loop]", () => {
   const service = new ValidationRepairLoopService();
 
   const input = makeValidationLoopInput({
@@ -399,7 +399,7 @@ test("ValidationRepairLoopService.buildRepairEvidencePackage creates independent
   assert.equal(input.changedFiles.length, 1);
 });
 
-test("ValidationRepairLoopService handles zero maxRepairRounds", () => {
+test("ValidationRepairLoopService handles zero maxRepairRounds [validation-repair-loop]", () => {
   const service = new ValidationRepairLoopService();
 
   const input = makeValidationLoopInput({
@@ -416,7 +416,7 @@ test("ValidationRepairLoopService handles zero maxRepairRounds", () => {
   assert.equal(decision.requiresEscalation, true);
 });
 
-test("ValidationRepairLoopService handles repairRound greater than maxRepairRounds", () => {
+test("ValidationRepairLoopService handles repairRound greater than maxRepairRounds [validation-repair-loop]", () => {
   const service = new ValidationRepairLoopService();
 
   const input = makeValidationLoopInput({
@@ -432,7 +432,7 @@ test("ValidationRepairLoopService handles repairRound greater than maxRepairRoun
   assert.equal(decision.requiresEscalation, true);
 });
 
-test("ValidationRepairLoopService handles validation failure at repairRound 0", () => {
+test("ValidationRepairLoopService handles validation failure at repairRound 0 [validation-repair-loop]", () => {
   const service = new ValidationRepairLoopService();
 
   const input = makeValidationLoopInput({
@@ -449,7 +449,7 @@ test("ValidationRepairLoopService handles validation failure at repairRound 0", 
   assert.equal(decision.requiresEscalation, false);
 });
 
-test("ValidationFailureRecord has correct structure", () => {
+test("ValidationFailureRecord has correct structure [validation-repair-loop]", () => {
   const record: ValidationFailureRecord = {
     check: "typecheck",
     details: "Cannot find name 'foo'",
@@ -459,7 +459,7 @@ test("ValidationFailureRecord has correct structure", () => {
   assert.equal(record.details, "Cannot find name 'foo'");
 });
 
-test("RepairEvidencePackage has correct structure", () => {
+test("RepairEvidencePackage has correct structure [validation-repair-loop]", () => {
   const pkg: RepairEvidencePackage = {
     taskId: "task-1",
     failedChecks: [],
@@ -479,7 +479,7 @@ test("RepairEvidencePackage has correct structure", () => {
   assert.ok("repairRound" in pkg);
 });
 
-test("ValidationDecision has correct structure", () => {
+test("ValidationDecision has correct structure [validation-repair-loop]", () => {
   const decision: ValidationDecision = {
     stage: "released",
     reasonCode: "validation.released",
@@ -493,7 +493,7 @@ test("ValidationDecision has correct structure", () => {
   assert.ok("requiresEscalation" in decision);
 });
 
-test("ValidationLoopInput can have optional touchedForbiddenScope", () => {
+test("ValidationLoopInput can have optional touchedForbiddenScope [validation-repair-loop]", () => {
   const service = new ValidationRepairLoopService();
 
   // Without touchedForbiddenScope
@@ -516,7 +516,7 @@ test("ValidationLoopInput can have optional touchedForbiddenScope", () => {
   assert.equal(decision2.stage, "released");
 });
 
-test("ValidationRepairLoopService handles maxRepairRounds of 1", () => {
+test("ValidationRepairLoopService handles maxRepairRounds of 1 [validation-repair-loop]", () => {
   const service = new ValidationRepairLoopService();
 
   // At round 0 with max 1, should allow repair

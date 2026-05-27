@@ -25,22 +25,22 @@ import type { AuthoritativeTaskStore } from "../../../../../src/platform/five-pl
 // normalizeStringArray
 // ---------------------------------------------------------------------------
 
-test("normalizeStringArray trims whitespace and removes empty strings", () => {
+test("normalizeStringArray trims whitespace and removes empty strings [execution-dispatch-support]", () => {
   const result = normalizeStringArray(["  alpha  ", "beta", "  gamma", "delta", "  "]);
   assert.deepStrictEqual(result, ["alpha", "beta", "delta", "gamma"]);
 });
 
-test("normalizeStringArray returns sorted unique values", () => {
+test("normalizeStringArray returns sorted unique values [execution-dispatch-support]", () => {
   const result = normalizeStringArray(["z", "a", "m", "a", "z"]);
   assert.deepStrictEqual(result, ["a", "m", "z"]);
 });
 
-test("normalizeStringArray handles empty array", () => {
+test("normalizeStringArray handles empty array [execution-dispatch-support]", () => {
   const result = normalizeStringArray([]);
   assert.deepStrictEqual(result, []);
 });
 
-test("normalizeStringArray handles all empty strings", () => {
+test("normalizeStringArray handles all empty strings [execution-dispatch-support]", () => {
   const result = normalizeStringArray(["  ", "", "   "]);
   assert.deepStrictEqual(result, []);
 });
@@ -49,33 +49,33 @@ test("normalizeStringArray handles all empty strings", () => {
 // parseJsonArray
 // ---------------------------------------------------------------------------
 
-test("parseJsonArray parses valid JSON array", () => {
+test("parseJsonArray parses valid JSON array [execution-dispatch-support]", () => {
   const result = parseJsonArray('["a", "b", "c"]');
   assert.deepStrictEqual(result, ["a", "b", "c"]);
 });
 
-test("parseJsonArray filters non-string elements", () => {
+test("parseJsonArray filters non-string elements [execution-dispatch-support]", () => {
   const result = parseJsonArray('["a", 123, true, null, "b"]');
   assert.deepStrictEqual(result, ["a", "b"]);
 });
 
-test("parseJsonArray returns empty array for invalid JSON", () => {
+test("parseJsonArray returns empty array for invalid JSON [execution-dispatch-support]", () => {
   const result = parseJsonArray("not json");
   assert.deepStrictEqual(result, []);
 });
 
-test("parseJsonArray returns empty array for non-array JSON", () => {
+test("parseJsonArray returns empty array for non-array JSON [execution-dispatch-support]", () => {
   const result = parseJsonArray('{"key": "value"}');
   assert.deepStrictEqual(result, []);
 });
 
-test("parseJsonArray calls onError callback on parse failure", () => {
+test("parseJsonArray calls onError callback on parse failure [execution-dispatch-support]", () => {
   const errors: string[] = [];
   parseJsonArray("invalid", (msg) => errors.push(msg));
   assert.equal(errors.length, 1);
 });
 
-test("parseJsonArray handles empty string", () => {
+test("parseJsonArray handles empty string [execution-dispatch-support]", () => {
   const result = parseJsonArray("");
   assert.deepStrictEqual(result, []);
 });
@@ -84,19 +84,19 @@ test("parseJsonArray handles empty string", () => {
 // resolveDispatchTarget
 // ---------------------------------------------------------------------------
 
-test("resolveDispatchTarget returns local_only for local_only", () => {
+test("resolveDispatchTarget returns local_only for local_only [execution-dispatch-support]", () => {
   assert.equal(resolveDispatchTarget("local_only"), "local_only");
 });
 
-test("resolveDispatchTarget returns prefer_remote for prefer_remote", () => {
+test("resolveDispatchTarget returns prefer_remote for prefer_remote [execution-dispatch-support]", () => {
   assert.equal(resolveDispatchTarget("prefer_remote"), "prefer_remote");
 });
 
-test("resolveDispatchTarget returns require_remote for require_remote", () => {
+test("resolveDispatchTarget returns require_remote for require_remote [execution-dispatch-support]", () => {
   assert.equal(resolveDispatchTarget("require_remote"), "require_remote");
 });
 
-test("resolveDispatchTarget defaults to any for unknown values", () => {
+test("resolveDispatchTarget defaults to any for unknown values [execution-dispatch-support]", () => {
   assert.equal(resolveDispatchTarget(undefined), "any");
   assert.equal(resolveDispatchTarget(null), "any");
   assert.equal(resolveDispatchTarget("any" as DispatchTarget), "any");
@@ -106,20 +106,20 @@ test("resolveDispatchTarget defaults to any for unknown values", () => {
 // resolveRequiredIsolationLevel
 // ---------------------------------------------------------------------------
 
-test("resolveRequiredIsolationLevel returns hardened for hardened", () => {
+test("resolveRequiredIsolationLevel returns hardened for hardened [execution-dispatch-support]", () => {
   assert.equal(resolveRequiredIsolationLevel("hardened"), "hardened");
 });
 
-test("resolveRequiredIsolationLevel returns strict for strict", () => {
+test("resolveRequiredIsolationLevel returns strict for strict [execution-dispatch-support]", () => {
   assert.equal(resolveRequiredIsolationLevel("strict"), "strict");
 });
 
-test("resolveRequiredIsolationLevel defaults to standard for null/undefined", () => {
+test("resolveRequiredIsolationLevel defaults to standard for null/undefined [execution-dispatch-support]", () => {
   assert.equal(resolveRequiredIsolationLevel(null), "standard");
   assert.equal(resolveRequiredIsolationLevel(undefined), "standard");
 });
 
-test("resolveRequiredIsolationLevel defaults to standard for unknown values", () => {
+test("resolveRequiredIsolationLevel defaults to standard for unknown values [execution-dispatch-support]", () => {
   assert.equal(resolveRequiredIsolationLevel("standard"), "standard");
 });
 
@@ -127,16 +127,16 @@ test("resolveRequiredIsolationLevel defaults to standard for unknown values", ()
 // resolveRequiredRepoVersion
 // ---------------------------------------------------------------------------
 
-test("resolveRequiredRepoVersion returns trimmed non-empty string", () => {
+test("resolveRequiredRepoVersion returns trimmed non-empty string [execution-dispatch-support]", () => {
   assert.equal(resolveRequiredRepoVersion("  v1.0.0  "), "v1.0.0");
 });
 
-test("resolveRequiredRepoVersion returns null for empty string", () => {
+test("resolveRequiredRepoVersion returns null for empty string [execution-dispatch-support]", () => {
   assert.equal(resolveRequiredRepoVersion(""), null);
   assert.equal(resolveRequiredRepoVersion("   "), null);
 });
 
-test("resolveRequiredRepoVersion returns null for non-string", () => {
+test("resolveRequiredRepoVersion returns null for non-string [execution-dispatch-support]", () => {
   assert.equal(resolveRequiredRepoVersion(null), null);
   assert.equal(resolveRequiredRepoVersion(undefined), null);
 });
@@ -145,31 +145,31 @@ test("resolveRequiredRepoVersion returns null for non-string", () => {
 // meetsIsolationRequirement
 // ---------------------------------------------------------------------------
 
-test("meetsIsolationRequirement standard >= standard", () => {
+test("meetsIsolationRequirement standard >= standard [execution-dispatch-support]", () => {
   assert.equal(meetsIsolationRequirement("standard", "standard"), true);
 });
 
-test("meetsIsolationRequirement hardened >= standard", () => {
+test("meetsIsolationRequirement hardened >= standard [execution-dispatch-support]", () => {
   assert.equal(meetsIsolationRequirement("hardened", "standard"), true);
 });
 
-test("meetsIsolationRequirement strict >= standard", () => {
+test("meetsIsolationRequirement strict >= standard [execution-dispatch-support]", () => {
   assert.equal(meetsIsolationRequirement("strict", "standard"), true);
 });
 
-test("meetsIsolationRequirement standard !>= hardened", () => {
+test("meetsIsolationRequirement standard !>= hardened [execution-dispatch-support]", () => {
   assert.equal(meetsIsolationRequirement("standard", "hardened"), false);
 });
 
-test("meetsIsolationRequirement hardened >= hardened", () => {
+test("meetsIsolationRequirement hardened >= hardened [execution-dispatch-support]", () => {
   assert.equal(meetsIsolationRequirement("hardened", "hardened"), true);
 });
 
-test("meetsIsolationRequirement strict >= hardened", () => {
+test("meetsIsolationRequirement strict >= hardened [execution-dispatch-support]", () => {
   assert.equal(meetsIsolationRequirement("strict", "hardened"), true);
 });
 
-test("meetsIsolationRequirement hardened !>= strict", () => {
+test("meetsIsolationRequirement hardened !>= strict [execution-dispatch-support]", () => {
   assert.equal(meetsIsolationRequirement("hardened", "strict"), false);
 });
 
@@ -197,19 +197,19 @@ function makeEvaluation(placement: WorkerPlacement, accepted: boolean, rejection
   };
 }
 
-test("resolveRemoteAvailability returns null for non-remote dispatch targets", () => {
+test("resolveRemoteAvailability returns null for non-remote dispatch targets [execution-dispatch-support]", () => {
   const evaluations = [makeEvaluation("local", true)];
   assert.equal(resolveRemoteAvailability("any", evaluations), null);
   assert.equal(resolveRemoteAvailability("local_only", evaluations), null);
 });
 
-test("resolveRemoteAvailability returns unavailable when no remote evaluations", () => {
+test("resolveRemoteAvailability returns unavailable when no remote evaluations [execution-dispatch-support]", () => {
   const evaluations = [makeEvaluation("local", true)];
   assert.equal(resolveRemoteAvailability("prefer_remote", evaluations), "unavailable");
   assert.equal(resolveRemoteAvailability("require_remote", evaluations), "unavailable");
 });
 
-test("resolveRemoteAvailability returns healthy when all remote accepted", () => {
+test("resolveRemoteAvailability returns healthy when all remote accepted [execution-dispatch-support]", () => {
   const evaluations = [
     makeEvaluation("remote", true),
     makeEvaluation("remote", true),
@@ -217,7 +217,7 @@ test("resolveRemoteAvailability returns healthy when all remote accepted", () =>
   assert.equal(resolveRemoteAvailability("prefer_remote", evaluations), "healthy");
 });
 
-test("resolveRemoteAvailability returns partial_available when some remote accepted", () => {
+test("resolveRemoteAvailability returns partial_available when some remote accepted [execution-dispatch-support]", () => {
   const evaluations = [
     makeEvaluation("remote", true),
     makeEvaluation("remote", false, "worker_degraded_filtered"),
@@ -225,14 +225,14 @@ test("resolveRemoteAvailability returns partial_available when some remote accep
   assert.equal(resolveRemoteAvailability("prefer_remote", evaluations), "partial_available");
 });
 
-test("resolveRemoteAvailability returns degraded when any degraded rejection", () => {
+test("resolveRemoteAvailability returns degraded when any degraded rejection [execution-dispatch-support]", () => {
   const evaluations = [
     makeEvaluation("remote", false, "worker_degraded_filtered"),
   ];
   assert.equal(resolveRemoteAvailability("prefer_remote", evaluations), "degraded");
 });
 
-test("resolveRemoteAvailability returns unavailable when all rejected with unavailable/draining/offline/quarantined", () => {
+test("resolveRemoteAvailability returns unavailable when all rejected with unavailable/draining/offline/quarantined [execution-dispatch-support]", () => {
   const evaluations = [
     makeEvaluation("remote", false, "worker_unavailable"),
     makeEvaluation("remote", false, "worker_draining"),
@@ -240,7 +240,7 @@ test("resolveRemoteAvailability returns unavailable when all rejected with unava
   assert.equal(resolveRemoteAvailability("prefer_remote", evaluations), "unavailable");
 });
 
-test("resolveRemoteAvailability skips placement_mismatch rejections", () => {
+test("resolveRemoteAvailability skips placement_mismatch rejections [execution-dispatch-support]", () => {
   const evaluations = [
     makeEvaluation("remote", false, "worker_placement_mismatch"),
   ];
@@ -251,17 +251,17 @@ test("resolveRemoteAvailability skips placement_mismatch rejections", () => {
 // resolveRemoteRepoVersionReason
 // ---------------------------------------------------------------------------
 
-test("resolveRemoteRepoVersionReason returns null when no required version", () => {
+test("resolveRemoteRepoVersionReason returns null when no required version [execution-dispatch-support]", () => {
   const evaluations = [makeEvaluation("remote", true)];
   assert.equal(resolveRemoteRepoVersionReason("prefer_remote", evaluations, null), null);
 });
 
-test("resolveRemoteRepoVersionReason returns null when not prefer/require remote", () => {
+test("resolveRemoteRepoVersionReason returns null when not prefer/require remote [execution-dispatch-support]", () => {
   const evaluations = [makeEvaluation("remote", true)];
   assert.equal(resolveRemoteRepoVersionReason("any", evaluations, "v1"), null);
 });
 
-test("resolveRemoteRepoVersionReason returns null when some accepted", () => {
+test("resolveRemoteRepoVersionReason returns null when some accepted [execution-dispatch-support]", () => {
   const evaluations = [
     makeEvaluation("remote", true),
     makeEvaluation("remote", false, "worker_repo_version_mismatch"),
@@ -269,7 +269,7 @@ test("resolveRemoteRepoVersionReason returns null when some accepted", () => {
   assert.equal(resolveRemoteRepoVersionReason("prefer_remote", evaluations, "v1"), null);
 });
 
-test("resolveRemoteRepoVersionReason returns null when not all repo_version_mismatch", () => {
+test("resolveRemoteRepoVersionReason returns null when not all repo_version_mismatch [execution-dispatch-support]", () => {
   const evaluations = [
     makeEvaluation("remote", false, "worker_repo_version_mismatch"),
     makeEvaluation("remote", false, "worker_unavailable"),
@@ -277,7 +277,7 @@ test("resolveRemoteRepoVersionReason returns null when not all repo_version_mism
   assert.equal(resolveRemoteRepoVersionReason("prefer_remote", evaluations, "v1"), null);
 });
 
-test("resolveRemoteRepoVersionReason returns remote.repo_version_mismatch for require_remote", () => {
+test("resolveRemoteRepoVersionReason returns remote.repo_version_mismatch for require_remote [execution-dispatch-support]", () => {
   const evaluations = [
     makeEvaluation("remote", false, "worker_repo_version_mismatch"),
     makeEvaluation("remote", false, "worker_repo_version_mismatch"),
@@ -285,7 +285,7 @@ test("resolveRemoteRepoVersionReason returns remote.repo_version_mismatch for re
   assert.equal(resolveRemoteRepoVersionReason("require_remote", evaluations, "v1"), "remote.repo_version_mismatch");
 });
 
-test("resolveRemoteRepoVersionReason returns remote.fallback_local.repo_version_mismatch for prefer_remote", () => {
+test("resolveRemoteRepoVersionReason returns remote.fallback_local.repo_version_mismatch for prefer_remote [execution-dispatch-support]", () => {
   const evaluations = [
     makeEvaluation("remote", false, "worker_repo_version_mismatch"),
     makeEvaluation("remote", false, "worker_repo_version_mismatch"),
@@ -297,12 +297,12 @@ test("resolveRemoteRepoVersionReason returns remote.fallback_local.repo_version_
 // resolveRemoteSessionReason
 // ---------------------------------------------------------------------------
 
-test("resolveRemoteSessionReason returns null when not prefer/require remote", () => {
+test("resolveRemoteSessionReason returns null when not prefer/require remote [execution-dispatch-support]", () => {
   const evaluations = [makeEvaluation("remote", true)];
   assert.equal(resolveRemoteSessionReason("any", evaluations), null);
 });
 
-test("resolveRemoteSessionReason returns null when some accepted", () => {
+test("resolveRemoteSessionReason returns null when some accepted [execution-dispatch-support]", () => {
   const evaluations = [
     makeEvaluation("remote", true),
     makeEvaluation("remote", false, "worker_remote_session_unready"),
@@ -310,7 +310,7 @@ test("resolveRemoteSessionReason returns null when some accepted", () => {
   assert.equal(resolveRemoteSessionReason("prefer_remote", evaluations), null);
 });
 
-test("resolveRemoteSessionReason returns remote.session_unready for require_remote", () => {
+test("resolveRemoteSessionReason returns remote.session_unready for require_remote [execution-dispatch-support]", () => {
   const evaluations = [
     makeEvaluation("remote", false, "worker_remote_session_unready"),
     makeEvaluation("remote", false, "worker_remote_session_unready"),
@@ -318,7 +318,7 @@ test("resolveRemoteSessionReason returns remote.session_unready for require_remo
   assert.equal(resolveRemoteSessionReason("require_remote", evaluations), "remote.session_unready");
 });
 
-test("resolveRemoteSessionReason returns remote.fallback_local.session_unready for prefer_remote", () => {
+test("resolveRemoteSessionReason returns remote.fallback_local.session_unready for prefer_remote [execution-dispatch-support]", () => {
   const evaluations = [
     makeEvaluation("remote", false, "worker_remote_session_unready"),
     makeEvaluation("remote", false, "worker_remote_session_unready"),
@@ -330,12 +330,12 @@ test("resolveRemoteSessionReason returns remote.fallback_local.session_unready f
 // resolveRemoteTrustReason
 // ---------------------------------------------------------------------------
 
-test("resolveRemoteTrustReason returns null for non-remote dispatch targets", () => {
+test("resolveRemoteTrustReason returns null for non-remote dispatch targets [execution-dispatch-support]", () => {
   const evaluations = [makeEvaluation("remote", false, "worker_untrusted")];
   assert.equal(resolveRemoteTrustReason("any", evaluations), null);
 });
 
-test("resolveRemoteTrustReason returns null when some accepted", () => {
+test("resolveRemoteTrustReason returns null when some accepted [execution-dispatch-support]", () => {
   const evaluations = [
     makeEvaluation("remote", true),
     makeEvaluation("remote", false, "worker_untrusted"),
@@ -343,7 +343,7 @@ test("resolveRemoteTrustReason returns null when some accepted", () => {
   assert.equal(resolveRemoteTrustReason("prefer_remote", evaluations), null);
 });
 
-test("resolveRemoteTrustReason returns remote.untrusted for require_remote", () => {
+test("resolveRemoteTrustReason returns remote.untrusted for require_remote [execution-dispatch-support]", () => {
   const evaluations = [
     makeEvaluation("remote", false, "worker_untrusted"),
     makeEvaluation("remote", false, "worker_untrusted"),
@@ -351,7 +351,7 @@ test("resolveRemoteTrustReason returns remote.untrusted for require_remote", () 
   assert.equal(resolveRemoteTrustReason("require_remote", evaluations), "remote.untrusted");
 });
 
-test("resolveRemoteTrustReason returns remote.fallback_local.untrusted for prefer_remote", () => {
+test("resolveRemoteTrustReason returns remote.fallback_local.untrusted for prefer_remote [execution-dispatch-support]", () => {
   const evaluations = [
     makeEvaluation("remote", false, "worker_untrusted"),
     makeEvaluation("remote", false, "worker_untrusted"),
@@ -363,7 +363,7 @@ test("resolveRemoteTrustReason returns remote.fallback_local.untrusted for prefe
 // selectWorkersForDispatch
 // ---------------------------------------------------------------------------
 
-test("selectWorkersForDispatch returns all workers for non-prefer_remote", () => {
+test("selectWorkersForDispatch returns all workers for non-prefer_remote [execution-dispatch-support]", () => {
   const workers = [
     { workerId: "w1", placement: "local" as const },
     { workerId: "w2", placement: "remote" as const },
@@ -373,7 +373,7 @@ test("selectWorkersForDispatch returns all workers for non-prefer_remote", () =>
   assert.equal(result.fallbackApplied, false);
 });
 
-test("selectWorkersForDispatch returns remote workers when available for prefer_remote", () => {
+test("selectWorkersForDispatch returns remote workers when available for prefer_remote [execution-dispatch-support]", () => {
   const workers = [
     { workerId: "w1", placement: "local" as const },
     { workerId: "w2", placement: "remote" as const },
@@ -384,7 +384,7 @@ test("selectWorkersForDispatch returns remote workers when available for prefer_
   assert.equal(result.fallbackApplied, false);
 });
 
-test("selectWorkersForDispatch falls back to local when no remote workers for prefer_remote", () => {
+test("selectWorkersForDispatch falls back to local when no remote workers for prefer_remote [execution-dispatch-support]", () => {
   const workers = [
     { workerId: "w1", placement: "local" as const },
     { workerId: "w2", placement: "local" as const },
@@ -394,7 +394,7 @@ test("selectWorkersForDispatch falls back to local when no remote workers for pr
   assert.equal(result.fallbackApplied, true);
 });
 
-test("selectWorkersForDispatch uses remoteTrustReason when provided", () => {
+test("selectWorkersForDispatch uses remoteTrustReason when provided [execution-dispatch-support]", () => {
   const workers = [
     { workerId: "w1", placement: "local" as const },
   ];
@@ -402,7 +402,7 @@ test("selectWorkersForDispatch uses remoteTrustReason when provided", () => {
   assert.equal(result.reasonCode, "remote.untrusted");
 });
 
-test("selectWorkersForDispatch uses remoteSessionReason when trust reason not available", () => {
+test("selectWorkersForDispatch uses remoteSessionReason when trust reason not available [execution-dispatch-support]", () => {
   const workers = [
     { workerId: "w1", placement: "local" as const },
   ];
@@ -410,7 +410,7 @@ test("selectWorkersForDispatch uses remoteSessionReason when trust reason not av
   assert.equal(result.reasonCode, "remote.session_unready");
 });
 
-test("selectWorkersForDispatch uses remoteAvailability when no specific reason", () => {
+test("selectWorkersForDispatch uses remoteAvailability when no specific reason [execution-dispatch-support]", () => {
   const workers = [
     { workerId: "w1", placement: "local" as const },
   ];
@@ -418,7 +418,7 @@ test("selectWorkersForDispatch uses remoteAvailability when no specific reason",
   assert.equal(result.reasonCode, "remote.fallback_local.degraded");
 });
 
-test("selectWorkersForDispatch returns null reasonCode when no local workers", () => {
+test("selectWorkersForDispatch returns null reasonCode when no local workers [execution-dispatch-support]", () => {
   const workers: any[] = [];
   const result = selectWorkersForDispatch("prefer_remote", workers, null, null, null, null);
   assert.equal(result.workers.length, 0);
@@ -430,19 +430,19 @@ test("selectWorkersForDispatch returns null reasonCode when no local workers", (
 // isElevatedPriority
 // ---------------------------------------------------------------------------
 
-test("isElevatedPriority returns true for high", () => {
+test("isElevatedPriority returns true for high [execution-dispatch-support]", () => {
   assert.equal(isElevatedPriority("high"), true);
 });
 
-test("isElevatedPriority returns true for urgent", () => {
+test("isElevatedPriority returns true for urgent [execution-dispatch-support]", () => {
   assert.equal(isElevatedPriority("urgent"), true);
 });
 
-test("isElevatedPriority returns false for normal", () => {
+test("isElevatedPriority returns false for normal [execution-dispatch-support]", () => {
   assert.equal(isElevatedPriority("normal"), false);
 });
 
-test("isElevatedPriority returns false for low", () => {
+test("isElevatedPriority returns false for low [execution-dispatch-support]", () => {
   assert.equal(isElevatedPriority("low"), false);
 });
 
@@ -450,7 +450,7 @@ test("isElevatedPriority returns false for low", () => {
 // isRemoteSessionReadyForDispatch
 // ---------------------------------------------------------------------------
 
-test("isRemoteSessionReadyForDispatch returns true for local placement", () => {
+test("isRemoteSessionReadyForDispatch returns true for local placement [execution-dispatch-support]", () => {
   const worker = {
     workerId: "w1",
     placement: "local" as const,
@@ -462,7 +462,7 @@ test("isRemoteSessionReadyForDispatch returns true for local placement", () => {
   assert.equal(isRemoteSessionReadyForDispatch(worker as any), true);
 });
 
-test("isRemoteSessionReadyForDispatch returns true for remote with connected status and no block reason", () => {
+test("isRemoteSessionReadyForDispatch returns true for remote with connected status and no block reason [execution-dispatch-support]", () => {
   const worker = {
     workerId: "w1",
     placement: "remote" as const,
@@ -474,7 +474,7 @@ test("isRemoteSessionReadyForDispatch returns true for remote with connected sta
   assert.equal(isRemoteSessionReadyForDispatch(worker as any), true);
 });
 
-test("isRemoteSessionReadyForDispatch returns false for remote with viewer_only status", () => {
+test("isRemoteSessionReadyForDispatch returns false for remote with viewer_only status [execution-dispatch-support]", () => {
   const worker = {
     workerId: "w1",
     placement: "remote" as const,
@@ -486,7 +486,7 @@ test("isRemoteSessionReadyForDispatch returns false for remote with viewer_only 
   assert.equal(isRemoteSessionReadyForDispatch(worker as any), false);
 });
 
-test("isRemoteSessionReadyForDispatch returns false for remote with consistency mismatch", () => {
+test("isRemoteSessionReadyForDispatch returns false for remote with consistency mismatch [execution-dispatch-support]", () => {
   const worker = {
     workerId: "w1",
     placement: "remote" as const,
@@ -498,7 +498,7 @@ test("isRemoteSessionReadyForDispatch returns false for remote with consistency 
   assert.equal(isRemoteSessionReadyForDispatch(worker as any), false);
 });
 
-test("isRemoteSessionReadyForDispatch returns false for remote with workspace sync conflict", () => {
+test("isRemoteSessionReadyForDispatch returns false for remote with workspace sync conflict [execution-dispatch-support]", () => {
   const worker = {
     workerId: "w1",
     placement: "remote" as const,
@@ -510,7 +510,7 @@ test("isRemoteSessionReadyForDispatch returns false for remote with workspace sy
   assert.equal(isRemoteSessionReadyForDispatch(worker as any), false);
 });
 
-test("isRemoteSessionReadyForDispatch returns false for remote with missing stream offset", () => {
+test("isRemoteSessionReadyForDispatch returns false for remote with missing stream offset [execution-dispatch-support]", () => {
   const worker = {
     workerId: "w1",
     placement: "remote" as const,
@@ -526,48 +526,48 @@ test("isRemoteSessionReadyForDispatch returns false for remote with missing stre
 // resolveDispatchBackpressureReason
 // ---------------------------------------------------------------------------
 
-test("resolveDispatchBackpressureReason returns null when snapshot is null", () => {
+test("resolveDispatchBackpressureReason returns null when snapshot is null [execution-dispatch-support]", () => {
   const ticket = { priority: "low" as const } as ExecutionTicketRecord;
   assert.equal(resolveDispatchBackpressureReason(ticket, null), null);
 });
 
-test("resolveDispatchBackpressureReason returns null when degradationMode is ok", () => {
+test("resolveDispatchBackpressureReason returns null when degradationMode is ok [execution-dispatch-support]", () => {
   const ticket = { priority: "low" as const } as ExecutionTicketRecord;
   const snapshot = { degradationMode: "ok", queueGovernance: { starvationDetected: false } };
   assert.equal(resolveDispatchBackpressureReason(ticket, snapshot as any), null);
 });
 
-test("resolveDispatchBackpressureReason returns read_only_mode for read_only_operations_only", () => {
+test("resolveDispatchBackpressureReason returns read_only_mode for read_only_operations_only [execution-dispatch-support]", () => {
   const ticket = { priority: "low" as const } as ExecutionTicketRecord;
   const snapshot = { degradationMode: "read_only_operations_only", queueGovernance: { starvationDetected: false } };
   assert.equal(resolveDispatchBackpressureReason(ticket, snapshot as any), "backpressure.read_only_mode");
 });
 
-test("resolveDispatchBackpressureReason returns pause_non_critical for elevated priority with pause_non_critical", () => {
+test("resolveDispatchBackpressureReason returns pause_non_critical for elevated priority with pause_non_critical [execution-dispatch-support]", () => {
   const ticket = { priority: "urgent" as const } as ExecutionTicketRecord;
   const snapshot = { degradationMode: "pause_non_critical", queueGovernance: { starvationDetected: false } };
   assert.equal(resolveDispatchBackpressureReason(ticket, snapshot as any), null);
 });
 
-test("resolveDispatchBackpressureReason returns pause_non_critical for non-elevated priority with pause_non_critical", () => {
+test("resolveDispatchBackpressureReason returns pause_non_critical for non-elevated priority with pause_non_critical [execution-dispatch-support]", () => {
   const ticket = { priority: "normal" as const } as ExecutionTicketRecord;
   const snapshot = { degradationMode: "pause_non_critical", queueGovernance: { starvationDetected: false } };
   assert.equal(resolveDispatchBackpressureReason(ticket, snapshot as any), "backpressure.pause_non_critical");
 });
 
-test("resolveDispatchBackpressureReason returns starvation_protection for low priority with queue_only and starvation", () => {
+test("resolveDispatchBackpressureReason returns starvation_protection for low priority with queue_only and starvation [execution-dispatch-support]", () => {
   const ticket = { priority: "low" as const } as ExecutionTicketRecord;
   const snapshot = { degradationMode: "queue_only", queueGovernance: { starvationDetected: true } };
   assert.equal(resolveDispatchBackpressureReason(ticket, snapshot as any), "backpressure.starvation_protection");
 });
 
-test("resolveDispatchBackpressureReason returns queue_only for non-elevated priority with queue_only and no starvation", () => {
+test("resolveDispatchBackpressureReason returns queue_only for non-elevated priority with queue_only and no starvation [execution-dispatch-support]", () => {
   const ticket = { priority: "normal" as const } as ExecutionTicketRecord;
   const snapshot = { degradationMode: "queue_only", queueGovernance: { starvationDetected: false } };
   assert.equal(resolveDispatchBackpressureReason(ticket, snapshot as any), "backpressure.queue_only");
 });
 
-test("resolveDispatchBackpressureReason returns null for elevated priority with queue_only and no starvation", () => {
+test("resolveDispatchBackpressureReason returns null for elevated priority with queue_only and no starvation [execution-dispatch-support]", () => {
   const ticket = { priority: "high" as const } as ExecutionTicketRecord;
   const snapshot = { degradationMode: "queue_only", queueGovernance: { starvationDetected: false } };
   assert.equal(resolveDispatchBackpressureReason(ticket, snapshot as any), null);
@@ -617,7 +617,7 @@ function createMockExecution(id = "exec-1"): ExecutionRecord {
   };
 }
 
-test("buildDispatchAgentExecutionRecord creates new record when no existing record", () => {
+test("buildDispatchAgentExecutionRecord creates new record when no existing record [execution-dispatch-support]", () => {
   const store = createMockStoreForBuildRecord(null);
   const execution = createMockExecution();
   const occurredAt = new Date().toISOString();
@@ -637,7 +637,7 @@ test("buildDispatchAgentExecutionRecord creates new record when no existing reco
   assert.equal(record.retryCount, 0);
 });
 
-test("buildDispatchAgentExecutionRecord preserves existing values when no updates", () => {
+test("buildDispatchAgentExecutionRecord preserves existing values when no updates [execution-dispatch-support]", () => {
   const existingRecord: AgentExecutionRecord = {
     executionId: "exec-1",
     taskId: "task-1",
@@ -676,7 +676,7 @@ test("buildDispatchAgentExecutionRecord preserves existing values when no update
   assert.equal(record.currentStepId, "step-5");
 });
 
-test("buildDispatchAgentExecutionRecord applies status update", () => {
+test("buildDispatchAgentExecutionRecord applies status update [execution-dispatch-support]", () => {
   const store = createMockStoreForBuildRecord(null);
   const execution = createMockExecution();
   const occurredAt = new Date().toISOString();
@@ -687,7 +687,7 @@ test("buildDispatchAgentExecutionRecord applies status update", () => {
   assert.equal(record.status, "completed");
 });
 
-test("buildDispatchAgentExecutionRecord applies planJson update", () => {
+test("buildDispatchAgentExecutionRecord applies planJson update [execution-dispatch-support]", () => {
   const store = createMockStoreForBuildRecord(null);
   const execution = createMockExecution();
   const occurredAt = new Date().toISOString();
@@ -698,7 +698,7 @@ test("buildDispatchAgentExecutionRecord applies planJson update", () => {
   assert.equal(record.planJson, '{"new":"plan"}');
 });
 
-test("buildDispatchAgentExecutionRecord applies lastDecisionJson update", () => {
+test("buildDispatchAgentExecutionRecord applies lastDecisionJson update [execution-dispatch-support]", () => {
   const store = createMockStoreForBuildRecord(null);
   const execution = createMockExecution();
   const occurredAt = new Date().toISOString();
@@ -709,7 +709,7 @@ test("buildDispatchAgentExecutionRecord applies lastDecisionJson update", () => 
   assert.equal(record.lastDecisionJson, '{"decision":"new"}');
 });
 
-test("buildDispatchAgentExecutionRecord applies progressMessage update", () => {
+test("buildDispatchAgentExecutionRecord applies progressMessage update [execution-dispatch-support]", () => {
   const store = createMockStoreForBuildRecord(null);
   const execution = createMockExecution();
   const occurredAt = new Date().toISOString();
@@ -720,7 +720,7 @@ test("buildDispatchAgentExecutionRecord applies progressMessage update", () => {
   assert.equal(record.progressMessage, "new progress");
 });
 
-test("buildDispatchAgentExecutionRecord uses existing startedAt when present", () => {
+test("buildDispatchAgentExecutionRecord uses existing startedAt when present [execution-dispatch-support]", () => {
   const existingRecord: AgentExecutionRecord = {
     executionId: "exec-1",
     taskId: "task-1",
@@ -755,7 +755,7 @@ test("buildDispatchAgentExecutionRecord uses existing startedAt when present", (
   assert.equal(record.startedAt, "2024-01-01T00:00:00.000Z");
 });
 
-test("buildDispatchAgentExecutionRecord sets retryCount from execution attempt", () => {
+test("buildDispatchAgentExecutionRecord sets retryCount from execution attempt [execution-dispatch-support]", () => {
   const store = createMockStoreForBuildRecord(null);
   const execution = createMockExecution();
   execution.attempt = 3;

@@ -18,18 +18,18 @@ function baseContext(overrides: Partial<RuntimeContextSnapshot> = {}): RuntimeCo
   };
 }
 
-test("getContext throws when called outside provideContext", () => {
+test("getContext throws when called outside provideContext [runtime-context]", () => {
   assert.throws(
     () => getContext(),
     (err: Error) => err.message.includes("runtime_context.missing"),
   );
 });
 
-test("getContextOrNull returns null outside provideContext", () => {
+test("getContextOrNull returns null outside provideContext [runtime-context]", () => {
   assert.equal(getContextOrNull(), null);
 });
 
-test("provideContext makes context available via getContext", () => {
+test("provideContext makes context available via getContext [runtime-context]", () => {
   const ctx = baseContext({ executionId: "exec_1" });
   provideContext(ctx, () => {
     const retrieved = getContext();
@@ -39,7 +39,7 @@ test("provideContext makes context available via getContext", () => {
   });
 });
 
-test("nested async calls preserve context", async () => {
+test("nested async calls preserve context [runtime-context]", async () => {
   const ctx = baseContext({ sessionId: "sess_1" });
   await provideContext(ctx, async () => {
     const inner = await nestedAsyncRead();
@@ -53,7 +53,7 @@ async function nestedAsyncRead(): Promise<RuntimeContextSnapshot> {
   return getContext();
 }
 
-test("concurrent tasks do not leak context between each other", async () => {
+test("concurrent tasks do not leak context between each other [runtime-context]", async () => {
   const results: string[] = [];
 
   const task1 = provideContext(baseContext({ taskId: "task_A" }), async () => {
@@ -73,7 +73,7 @@ test("concurrent tasks do not leak context between each other", async () => {
   assert.equal(results.length, 2);
 });
 
-test("withContextPatch merges partial fields without losing existing context", () => {
+test("withContextPatch merges partial fields without losing existing context [runtime-context]", () => {
   const ctx = baseContext({
     executionId: "exec_1",
     sessionId: "sess_1",
@@ -96,21 +96,21 @@ test("withContextPatch merges partial fields without losing existing context", (
   });
 });
 
-test("withContextPatch throws when called outside provideContext", () => {
+test("withContextPatch throws when called outside provideContext [runtime-context]", () => {
   assert.throws(
     () => withContextPatch({ executionId: "exec_x" }, () => {}),
     (err: Error) => err.message.includes("runtime_context.missing"),
   );
 });
 
-test("assertContext passes when all required keys are present", () => {
+test("assertContext passes when all required keys are present [runtime-context]", () => {
   provideContext(baseContext({ executionId: "exec_1", sessionId: "sess_1" }), () => {
     const ctx = assertContext("traceId", "taskId", "executionId");
     assert.equal(ctx.traceId, "trace_test");
   });
 });
 
-test("assertContext throws listing missing keys", () => {
+test("assertContext throws listing missing keys [runtime-context]", () => {
   provideContext(baseContext(), () => {
     assert.throws(
       () => assertContext("traceId", "executionId", "agentId"),
@@ -121,7 +121,7 @@ test("assertContext throws listing missing keys", () => {
   });
 });
 
-test("detached task without explicit context fails on getContext", async () => {
+test("detached task without explicit context fails on getContext [runtime-context]", async () => {
   let detachedError: Error | null = null;
 
   provideContext(baseContext(), () => {
@@ -142,7 +142,7 @@ test("detached task without explicit context fails on getContext", async () => {
   assert.ok(detachedError.message.includes("runtime_context.missing"));
 });
 
-test("recovery execution refreshes executionId while preserving taskId and traceId lineage", () => {
+test("recovery execution refreshes executionId while preserving taskId and traceId lineage [runtime-context]", () => {
   const originalCtx = baseContext({
     executionId: "exec_original",
     sessionId: "sess_1",

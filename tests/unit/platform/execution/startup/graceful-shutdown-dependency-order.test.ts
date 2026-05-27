@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { GracefulShutdown } from "../../../../../src/platform/five-plane-execution/startup/graceful-shutdown.js";
 
-test("graceful shutdown executes handlers using dependsOn ordering", async () => {
+test("graceful shutdown executes handlers using dependsOn ordering [graceful-shutdown-dependency-order]", async () => {
   const callOrder: string[] = [];
   const shutdown = new GracefulShutdown({
     registerSignalHandlers: false,

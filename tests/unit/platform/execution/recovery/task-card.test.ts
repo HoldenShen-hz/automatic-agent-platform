@@ -9,7 +9,7 @@ import {
   type TaskStage,
 } from "../../../../../src/platform/five-plane-execution/recovery/task-card.js";
 
-test("createTaskCard creates card with defaults", () => {
+test("createTaskCard creates card with defaults [task-card]", () => {
   const card = createTaskCard({
     taskId: "task_1",
     title: "Test Task",
@@ -31,7 +31,7 @@ test("createTaskCard creates card with defaults", () => {
   assert.ok(card.createdAt);
 });
 
-test("createTaskCard applies risk-based defaults for low risk", () => {
+test("createTaskCard applies risk-based defaults for low risk [task-card]", () => {
   const card = createTaskCard({
     taskId: "task_1",
     title: "Test Task",
@@ -47,7 +47,7 @@ test("createTaskCard applies risk-based defaults for low risk", () => {
   assert.equal(card.releaseStrategy.requireHumanGate, false);
 });
 
-test("createTaskCard applies risk-based defaults for medium risk", () => {
+test("createTaskCard applies risk-based defaults for medium risk [task-card]", () => {
   const card = createTaskCard({
     taskId: "task_1",
     title: "Test Task",
@@ -63,7 +63,7 @@ test("createTaskCard applies risk-based defaults for medium risk", () => {
   assert.equal(card.releaseStrategy.requireHumanGate, false);
 });
 
-test("createTaskCard applies risk-based defaults for high risk", () => {
+test("createTaskCard applies risk-based defaults for high risk [task-card]", () => {
   const card = createTaskCard({
     taskId: "task_1",
     title: "Test Task",
@@ -79,7 +79,7 @@ test("createTaskCard applies risk-based defaults for high risk", () => {
   assert.equal(card.releaseStrategy.requireHumanGate, true);
 });
 
-test("createTaskCard applies risk-based defaults for critical risk", () => {
+test("createTaskCard applies risk-based defaults for critical risk [task-card]", () => {
   const card = createTaskCard({
     taskId: "task_1",
     title: "Test Task",
@@ -95,7 +95,7 @@ test("createTaskCard applies risk-based defaults for critical risk", () => {
   assert.equal(card.releaseStrategy.requireHumanGate, true);
 });
 
-test("createTaskCard allows custom overrides", () => {
+test("createTaskCard allows custom overrides [task-card]", () => {
   const card = createTaskCard({
     taskId: "task_1",
     title: "Test Task",
@@ -117,7 +117,7 @@ test("createTaskCard allows custom overrides", () => {
   assert.equal(card.maxRepairRounds, 3);
 });
 
-test("createTaskCard includes deadline when provided", () => {
+test("createTaskCard includes deadline when provided [task-card]", () => {
   const deadline = "2025-12-31T23:59:59.000Z";
   const card = createTaskCard({
     taskId: "task_1",
@@ -130,7 +130,7 @@ test("createTaskCard includes deadline when provided", () => {
   assert.equal(card.deadlineAt, deadline);
 });
 
-test("validateTaskCard returns valid for correct card", () => {
+test("validateTaskCard returns valid for correct card [task-card]", () => {
   const card: TaskCard = {
     taskId: "task_1",
     title: "Test",
@@ -156,7 +156,7 @@ test("validateTaskCard returns valid for correct card", () => {
   assert.deepEqual(result.errors, []);
 });
 
-test("validateTaskCard returns errors for missing fields", () => {
+test("validateTaskCard returns errors for missing fields [task-card]", () => {
   const card: TaskCard = {
     taskId: "",
     title: "Test",
@@ -182,7 +182,7 @@ test("validateTaskCard returns errors for missing fields", () => {
   assert.ok(result.errors.length > 0);
 });
 
-test("validateTaskCard returns errors for invalid numbers", () => {
+test("validateTaskCard returns errors for invalid numbers [task-card]", () => {
   const card: TaskCard = {
     taskId: "task_1",
     title: "Test",
@@ -208,7 +208,7 @@ test("validateTaskCard returns errors for invalid numbers", () => {
   assert.ok(result.errors.some(e => e.includes("maxChangedFiles")));
 });
 
-test("validateTaskCard returns errors for negative repair rounds", () => {
+test("validateTaskCard returns errors for negative repair rounds [task-card]", () => {
   const card: TaskCard = {
     taskId: "task_1",
     title: "Test",
@@ -234,12 +234,12 @@ test("validateTaskCard returns errors for negative repair rounds", () => {
   assert.ok(result.errors.some(e => e.includes("maxRepairRounds")));
 });
 
-test("TaskRiskLevel type accepts all valid values", () => {
+test("TaskRiskLevel type accepts all valid values [task-card]", () => {
   const levels: TaskRiskLevel[] = ["low", "medium", "high", "critical"];
   assert.equal(levels.length, 4);
 });
 
-test("TaskStage type accepts all valid values", () => {
+test("TaskStage type accepts all valid values [task-card]", () => {
   const stages: TaskStage[] = ["plan", "build", "review", "validate", "release"];
   assert.equal(stages.length, 5);
 });

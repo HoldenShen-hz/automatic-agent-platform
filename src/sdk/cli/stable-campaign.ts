@@ -8,9 +8,9 @@
  * gate evaluation and regression analysis.
  *
  * See Also:
- *   - {@link https://github.com/anomalyco/automatic-agent/blob/main/docs_zh/contracts/quality_engineering_and_chaos_testing_contract.md | Quality Engineering And Chaos Testing Contract}
- *   - {@link https://github.com/anomalyco/automatic-agent/blob/main/docs_zh/governance/glossary_and_terminology.md | Glossary And Terminology}
- *   - {@link https://github.com/anomalyco/automatic-agent/blob/main/docs_zh/architecture/00-platform-architecture.md | Architecture And Technical Design}
+ *   - {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/contracts/quality_engineering_and_chaos_testing_contract.md | Quality Engineering And Chaos Testing Contract}
+ *   - {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/governance/glossary_and_terminology.md | Glossary And Terminology}
+ *   - {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/architecture/00-platform-architecture.md | Architecture And Technical Design}
  *
  * Environment Variables:
  *   AA_STABLE_CAMPAIGN_PROFILE              - Set to "smoke", "24h", or "72h" (defaults to "smoke")

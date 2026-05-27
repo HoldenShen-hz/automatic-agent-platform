@@ -11,22 +11,22 @@ import type {
  * This file re-exports process tracker from five-plane-execution/resource/process-tracker.
  * Coverage: 0% (all statements/skipped)
  */
-test("process-tracker re-exports ProcessTracker class", async () => {
+test("process-tracker re-exports ProcessTracker class [process-tracker]", async () => {
   const mod = await import("../../../src/core/runtime/process-tracker.js");
   assert.ok("ProcessTracker" in mod, "should export ProcessTracker class");
 });
 
-test("process-tracker exports ProcessOwner type", () => {
+test("process-tracker exports ProcessOwner type [process-tracker]", () => {
   const owner: ProcessOwner = "bash-tool";
   assert.equal(owner, "bash-tool");
 });
 
-test("process-tracker exports TrackedProcessState type", () => {
+test("process-tracker exports TrackedProcessState type [process-tracker]", () => {
   const state: TrackedProcessState = "running";
   assert.equal(state, "running");
 });
 
-test("process-tracker exports TrackedProcess interface", () => {
+test("process-tracker exports TrackedProcess interface [process-tracker]", () => {
   const tracked: TrackedProcess = {
     pid: 1,
     command: "node",
@@ -41,22 +41,22 @@ test("process-tracker exports TrackedProcess interface", () => {
   assert.equal(tracked.command, "node");
 });
 
-test("process-tracker exports getProcessTracker function", async () => {
+test("process-tracker exports getProcessTracker function [process-tracker]", async () => {
   const mod = await import("../../../src/core/runtime/process-tracker.js");
   assert.ok("getProcessTracker" in mod, "should export getProcessTracker function");
 });
 
-test("process-tracker exports resetProcessTracker function", async () => {
+test("process-tracker exports resetProcessTracker function [process-tracker]", async () => {
   const mod = await import("../../../src/core/runtime/process-tracker.js");
   assert.ok("resetProcessTracker" in mod, "should export resetProcessTracker function");
 });
 
-test("process-tracker exports spawnTracked function", async () => {
+test("process-tracker exports spawnTracked function [process-tracker]", async () => {
   const mod = await import("../../../src/core/runtime/process-tracker.js");
   assert.ok("spawnTracked" in mod, "should export spawnTracked function");
 });
 
-test("ProcessTracker is instantiable", async () => {
+test("ProcessTracker is instantiable [process-tracker]", async () => {
   const mod = await import("../../../src/core/runtime/process-tracker.js");
   if ("ProcessTracker" in mod && typeof mod.ProcessTracker === "function") {
     // @ts-ignore - testing runtime behavior

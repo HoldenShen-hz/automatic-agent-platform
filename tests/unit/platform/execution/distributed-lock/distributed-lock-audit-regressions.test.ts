@@ -44,7 +44,7 @@ function createSharedRedisMock(shared: {
   };
 }
 
-test("RedisLockAdapter shares a Redis-backed monotonic fencing counter across adapter instances", async () => {
+test("RedisLockAdapter shares a Redis-backed monotonic fencing counter across adapter instances [distributed-lock-audit-regressions]", async () => {
   const shared = {
     counter: 0,
     setCalls: [] as Array<Array<string | number>>,
@@ -62,7 +62,7 @@ test("RedisLockAdapter shares a Redis-backed monotonic fencing counter across ad
   assert.equal(stolen.fencingToken, 3);
 });
 
-test("RedisLockAdapter extendAsync writes back updated ttlMs and preserves a PX TTL update path", async () => {
+test("RedisLockAdapter extendAsync writes back updated ttlMs and preserves a PX TTL update path [distributed-lock-audit-regressions]", async () => {
   const shared = {
     counter: 0,
     script: "",
@@ -86,7 +86,7 @@ test("RedisLockAdapter extendAsync writes back updated ttlMs and preserves a PX 
   assert.equal(shared.script?.includes("pexpire"), false);
 });
 
-test("RedisLockAdapter forceStealAsync no longer depends on XX and succeeds when the old lock is already absent", async () => {
+test("RedisLockAdapter forceStealAsync no longer depends on XX and succeeds when the old lock is already absent [distributed-lock-audit-regressions]", async () => {
   const shared = {
     counter: 0,
     setCalls: [] as Array<Array<string | number>>,
@@ -101,7 +101,7 @@ test("RedisLockAdapter forceStealAsync no longer depends on XX and succeeds when
   assert.equal(shared.setCalls.some((args) => args.includes("XX")), false);
 });
 
-test("PgAdvisoryLockAdapter lockKeyToAdvisoryKey is not truncated to a 32-bit hash", () => {
+test("PgAdvisoryLockAdapter lockKeyToAdvisoryKey is not truncated to a 32-bit hash [distributed-lock-audit-regressions]", () => {
   const adapter = new PgAdvisoryLockAdapter({ dsn: "postgresql://test:test@localhost/test" });
   const advisoryKey = (adapter as unknown as { lockKeyToAdvisoryKey: (key: string) => bigint }).lockKeyToAdvisoryKey(
     "tenant/region/service/workflow/lock-key-with-enough-entropy-to-cross-32-bit",

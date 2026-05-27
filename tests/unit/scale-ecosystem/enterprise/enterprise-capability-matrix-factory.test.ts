@@ -23,23 +23,23 @@ describe("createEnterpriseCapabilityMatrixService factory", () => {
   // The factory creates a real AuthoritativeTaskStore which cannot be easily mocked.
   // These tests verify the factory structure and exports exist.
 
-  test("createEnterpriseCapabilityMatrixService is exported and callable", () => {
+  test("createEnterpriseCapabilityMatrixService is exported and callable [enterprise-capability-matrix-factory]", () => {
     assert.equal(typeof createEnterpriseCapabilityMatrixService, "function");
   });
 
-  test("EnterpriseCapabilityMatrixService is exported and constructor is available", () => {
+  test("EnterpriseCapabilityMatrixService is exported and constructor is available [enterprise-capability-matrix-factory]", () => {
     assert.equal(typeof EnterpriseCapabilityMatrixService, "function");
   });
 });
 
 describe("DEFAULT_ENTERPRISE_CAPABILITIES validation", () => {
-  test("all capability keys are unique", () => {
+  test("all capability keys are unique [enterprise-capability-matrix-factory]", () => {
     const keys = DEFAULT_ENTERPRISE_CAPABILITIES.map((c) => c.capabilityKey);
     const uniqueKeys = new Set(keys);
     assert.equal(keys.length, uniqueKeys.size, "Duplicate capability keys found");
   });
 
-  test("all capabilities have valid tier levels", () => {
+  test("all capabilities have valid tier levels [enterprise-capability-matrix-factory]", () => {
     const validTiers: LicenseTier[] = ["community", "professional", "enterprise"];
     for (const cap of DEFAULT_ENTERPRISE_CAPABILITIES) {
       assert.ok(
@@ -49,13 +49,13 @@ describe("DEFAULT_ENTERPRISE_CAPABILITIES validation", () => {
     }
   });
 
-  test("all capabilities have non-empty display names", () => {
+  test("all capabilities have non-empty display names [enterprise-capability-matrix-factory]", () => {
     for (const cap of DEFAULT_ENTERPRISE_CAPABILITIES) {
       assert.ok(cap.displayName.length > 0, `Empty displayName for ${cap.capabilityKey}`);
     }
   });
 
-  test("all capabilities have at least one supported deployment mode", () => {
+  test("all capabilities have at least one supported deployment mode [enterprise-capability-matrix-factory]", () => {
     for (const cap of DEFAULT_ENTERPRISE_CAPABILITIES) {
       assert.ok(
         cap.supportedDeploymentModes.length > 0,
@@ -64,7 +64,7 @@ describe("DEFAULT_ENTERPRISE_CAPABILITIES validation", () => {
     }
   });
 
-  test("readiness requirements have valid component types", () => {
+  test("readiness requirements have valid component types [enterprise-capability-matrix-factory]", () => {
     for (const cap of DEFAULT_ENTERPRISE_CAPABILITIES) {
       for (const req of cap.readinessRequirements) {
         assert.ok(req.componentType.length > 0, `Empty componentType for ${cap.capabilityKey}`);
@@ -73,7 +73,7 @@ describe("DEFAULT_ENTERPRISE_CAPABILITIES validation", () => {
     }
   });
 
-  test("capability keys match expected set", () => {
+  test("capability keys match expected set [enterprise-capability-matrix-factory]", () => {
     const expectedKeys = [
       "admin_console",
       "audit_export",
@@ -122,7 +122,7 @@ describe("EnterpriseCapabilityMatrixService with mocked store", () => {
     };
   }
 
-  test("service can be instantiated with custom capability definitions", () => {
+  test("service can be instantiated with custom capability definitions [enterprise-capability-matrix-factory]", () => {
     const customCapabilities: readonly EnterpriseCapabilityDefinition[] = [
       {
         capabilityKey: "admin_console",
@@ -149,7 +149,7 @@ describe("EnterpriseCapabilityMatrixService with mocked store", () => {
     assert.equal(result.report.entries[0]!.capabilityKey, "admin_console");
   });
 
-  test("report includes all scope fields (accountId, workspaceId, tenantId)", () => {
+  test("report includes all scope fields (accountId, workspaceId, tenantId) [enterprise-capability-matrix-factory]", () => {
     const mockStore = createMockStore();
     mockStore.billing.getBillingAccount = () => ({
       accountId: "acct_123",
@@ -175,7 +175,7 @@ describe("EnterpriseCapabilityMatrixService with mocked store", () => {
     assert.equal(result.report.tenantId, "tenant_789");
   });
 
-  test("report generatedAt is set from input or defaults to now", () => {
+  test("report generatedAt is set from input or defaults to now [enterprise-capability-matrix-factory]", () => {
     const service = new EnterpriseCapabilityMatrixService(
       createMockDb() as any,
       createMockStore() as any
@@ -191,7 +191,7 @@ describe("EnterpriseCapabilityMatrixService with mocked store", () => {
     assert.equal(result.report.generatedAt, customTime);
   });
 
-  test("record is persisted when building matrix", () => {
+  test("record is persisted when building matrix [enterprise-capability-matrix-factory]", () => {
     const mockStore = createMockStore();
     let insertCount = 0;
     mockStore.release.insertEnterpriseCapabilityReport = () => {
@@ -211,7 +211,7 @@ describe("EnterpriseCapabilityMatrixService with mocked store", () => {
     assert.equal(insertCount, 1);
   });
 
-  test("buildMatrix throws when accountId provided but account not found", () => {
+  test("buildMatrix throws when accountId provided but account not found [enterprise-capability-matrix-factory]", () => {
     const mockStore = createMockStore();
     mockStore.billing.getBillingAccount = () => null;
 
@@ -232,7 +232,7 @@ describe("EnterpriseCapabilityMatrixService with mocked store", () => {
     );
   });
 
-  test("environment readiness record persistence", () => {
+  test("environment readiness record persistence [enterprise-capability-matrix-factory]", () => {
     const mockStore = createMockStore();
     let upsertCount = 0;
     mockStore.release.upsertEnvironmentReadinessRecord = () => {

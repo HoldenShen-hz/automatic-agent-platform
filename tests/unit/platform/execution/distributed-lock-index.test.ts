@@ -21,37 +21,37 @@ import type {
 import { lockLogger, defaultPostgresFactory, inferPgSslFromDsn } from "../../../../src/platform/five-plane-execution/distributed-lock/locking-support.js";
 
 // Verify all expected exports are available
-test("distributed-lock index exports SqliteLockAdapter", () => {
+test("distributed-lock index exports SqliteLockAdapter [distributed-lock-index]", () => {
   assert.ok(typeof SqliteLockAdapter === "function");
 });
 
-test("distributed-lock index exports PgAdvisoryLockAdapter", () => {
+test("distributed-lock index exports PgAdvisoryLockAdapter [distributed-lock-index]", () => {
   assert.ok(typeof PgAdvisoryLockAdapter === "function");
 });
 
-test("distributed-lock index exports RedisLockAdapter", () => {
+test("distributed-lock index exports RedisLockAdapter [distributed-lock-index]", () => {
   assert.ok(typeof RedisLockAdapter === "function");
 });
 
-test("distributed-lock index exports createLockAdapter factory", () => {
+test("distributed-lock index exports createLockAdapter factory [distributed-lock-index]", () => {
   assert.ok(typeof createLockAdapter === "function");
 });
 
-test("distributed-lock index exports lockLogger", () => {
+test("distributed-lock index exports lockLogger [distributed-lock-index]", () => {
   assert.ok(lockLogger !== undefined);
   assert.equal(typeof lockLogger.log, "function");
 });
 
-test("distributed-lock index exports defaultPostgresFactory", () => {
+test("distributed-lock index exports defaultPostgresFactory [distributed-lock-index]", () => {
   assert.ok(typeof defaultPostgresFactory === "function");
 });
 
-test("distributed-lock index exports inferPgSslFromDsn", () => {
+test("distributed-lock index exports inferPgSslFromDsn [distributed-lock-index]", () => {
   assert.ok(typeof inferPgSslFromDsn === "function");
 });
 
 // Type exports verification
-test("DistributedLockAdapter type is exported and usable", () => {
+test("DistributedLockAdapter type is exported and usable [distributed-lock-index]", () => {
   const mockAdapter: ExportedLockAdapter = {
     backendKind: "test",
     acquire: () => ({ acquired: false }),
@@ -63,12 +63,12 @@ test("DistributedLockAdapter type is exported and usable", () => {
   assert.equal(mockAdapter.backendKind, "test");
 });
 
-test("LockBackendKind type is exported correctly", () => {
+test("LockBackendKind type is exported correctly [distributed-lock-index]", () => {
   const kinds: LockBackendKind[] = ["sqlite", "pg_advisory", "redis"];
   assert.equal(kinds.length, 3);
 });
 
-test("LockRecord type is exported correctly", () => {
+test("LockRecord type is exported correctly [distributed-lock-index]", () => {
   const record: LockRecord = {
     lockKey: "test",
     owner: "owner",
@@ -81,7 +81,7 @@ test("LockRecord type is exported correctly", () => {
   assert.ok(record.lockKey === "test");
 });
 
-test("AcquireLockInput type is exported correctly", () => {
+test("AcquireLockInput type is exported correctly [distributed-lock-index]", () => {
   const input: AcquireLockInput = {
     lockKey: "test",
     owner: "owner",
@@ -91,7 +91,7 @@ test("AcquireLockInput type is exported correctly", () => {
   assert.equal(input.ttlMs, 30000);
 });
 
-test("AcquireLockResult type is exported correctly", () => {
+test("AcquireLockResult type is exported correctly [distributed-lock-index]", () => {
   const result: AcquireLockResult = {
     acquired: true,
     lock: {
@@ -108,7 +108,7 @@ test("AcquireLockResult type is exported correctly", () => {
   assert.ok(result.lock !== undefined);
 });
 
-test("PgAdvisoryLockConfig type is exported and usable", () => {
+test("PgAdvisoryLockConfig type is exported and usable [distributed-lock-index]", () => {
   const config: PgAdvisoryLockConfig = {
     dsn: "postgresql://localhost/db",
     poolMin: 1,
@@ -118,7 +118,7 @@ test("PgAdvisoryLockConfig type is exported and usable", () => {
   assert.equal(config.dsn, "postgresql://localhost/db");
 });
 
-test("RedisLockConfig type is exported and usable", () => {
+test("RedisLockConfig type is exported and usable [distributed-lock-index]", () => {
   const config: RedisLockConfig = {
     host: "localhost",
     port: 6379,

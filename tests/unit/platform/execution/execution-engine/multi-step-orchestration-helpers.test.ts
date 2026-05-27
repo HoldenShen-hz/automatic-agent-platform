@@ -23,7 +23,7 @@ interface PlanStep {
   retryPolicy: { maxRetries: number };
 }
 
-test("isOapeflirPlanRequest returns true for oapeflir plan prefix", () => {
+test("isOapeflirPlanRequest returns true for oapeflir plan prefix [multi-step-orchestration-helpers]", () => {
   // Since isOapeflirPlanRequest is a private function, we test its behavior
   // through the public API by checking if an oapeflir://plan request is
   // processed correctly
@@ -39,7 +39,7 @@ test("isOapeflirPlanRequest returns true for oapeflir plan prefix", () => {
   assert.ok(!nonOapeflirRequest.startsWith(prefix), "Regular request should not start with prefix");
 });
 
-test("isOapeflirPlanRequest returns false for non-oapeflir requests", () => {
+test("isOapeflirPlanRequest returns false for non-oapeflir requests [multi-step-orchestration-helpers]", () => {
   const prefix = "oapeflir://plan ";
 
   assert.ok(!"Hello world".startsWith(prefix));
@@ -47,7 +47,7 @@ test("isOapeflirPlanRequest returns false for non-oapeflir requests", () => {
   assert.ok(!"oapeflir://plan".startsWith(prefix + "[")); // incomplete plan
 });
 
-test("deserializeOapeflirPlan parses valid JSON plan steps", () => {
+test("deserializeOapeflirPlan parses valid JSON plan steps [multi-step-orchestration-helpers]", () => {
   const planSteps: PlanStep[] = [
     {
       stepId: "step_1",
@@ -75,7 +75,7 @@ test("deserializeOapeflirPlan parses valid JSON plan steps", () => {
   assert.deepEqual(parsed[1]!.dependencies, ["step_1"]);
 });
 
-test("deserializeOapeflirPlan throws on invalid JSON", () => {
+test("deserializeOapeflirPlan throws on invalid JSON [multi-step-orchestration-helpers]", () => {
   const invalidJson = "oapeflir://plan {invalid json}";
   const json = invalidJson.slice("oapeflir://plan ".length);
 
@@ -85,7 +85,7 @@ test("deserializeOapeflirPlan throws on invalid JSON", () => {
   );
 });
 
-test("oapeflirStepToMinimalStep maps PlanStep to MinimalWorkflowStep", () => {
+test("oapeflirStepToMinimalStep maps PlanStep to MinimalWorkflowStep [multi-step-orchestration-helpers]", () => {
   const planStep: PlanStep = {
     stepId: "step_a",
     dependencies: ["step_before"],
@@ -106,7 +106,7 @@ test("oapeflirStepToMinimalStep maps PlanStep to MinimalWorkflowStep", () => {
   assert.deepEqual(planStep.dependencies, ["step_before"]);
 });
 
-test("oapeflirStepToMinimalStep uses first output as default outputKey", () => {
+test("oapeflirStepToMinimalStep uses first output as default outputKey [multi-step-orchestration-helpers]", () => {
   const planStep: PlanStep = {
     stepId: "step_x",
     dependencies: [],
@@ -119,7 +119,7 @@ test("oapeflirStepToMinimalStep uses first output as default outputKey", () => {
   assert.equal(outputKey, "primary_output");
 });
 
-test("oapeflirStepToMinimalStep falls back to output_{stepId} when no outputs", () => {
+test("oapeflirStepToMinimalStep falls back to output_{stepId} when no outputs [multi-step-orchestration-helpers]", () => {
   const planStep: PlanStep = {
     stepId: "step_y",
     dependencies: [],
@@ -131,7 +131,7 @@ test("oapeflirStepToMinimalStep falls back to output_{stepId} when no outputs", 
   assert.equal(outputKey, "output_step_y");
 });
 
-test("buildOapeflirPlannedWorkflow creates workflow with correct structure", () => {
+test("buildOapeflirPlannedWorkflow creates workflow with correct structure [multi-step-orchestration-helpers]", () => {
   const planSteps: PlanStep[] = [
     {
       stepId: "step_1",
@@ -173,7 +173,7 @@ test("buildOapeflirPlannedWorkflow creates workflow with correct structure", () 
   assert.equal(workflowDef.steps[1]!.dependsOnStepIds[0], "step_1");
 });
 
-test("buildOapeflirPlannedWorkflow maps executionSteps correctly", () => {
+test("buildOapeflirPlannedWorkflow maps executionSteps correctly [multi-step-orchestration-helpers]", () => {
   const planSteps: PlanStep[] = [
     {
       stepId: "step_a",
@@ -209,7 +209,7 @@ test("buildOapeflirPlannedWorkflow maps executionSteps correctly", () => {
   assert.deepEqual(executionSteps[0]!.dependencyTypes, {});
 });
 
-test("buildOapeflirPlannedWorkflow sets planReason correctly", () => {
+test("buildOapeflirPlannedWorkflow sets planReason correctly [multi-step-orchestration-helpers]", () => {
   const planId = "reason-plan-789";
   const planReason = `oapeflir_bridge: ${planId}`;
 
@@ -217,7 +217,7 @@ test("buildOapeflirPlannedWorkflow sets planReason correctly", () => {
   assert.ok(planReason.startsWith("oapeflir_bridge:"));
 });
 
-test("createContext builds TransitionAuditContext correctly", () => {
+test("createContext builds TransitionAuditContext correctly [multi-step-orchestration-helpers]", () => {
   // Mock trace context creation
   const mockSpan = {
     traceId: "trace-abc-123",
@@ -245,7 +245,7 @@ test("createContext builds TransitionAuditContext correctly", () => {
   assert.ok((context as Record<string, unknown>).correlationId, "correlationId should be set");
 });
 
-test("createContext handles missing optional span fields", () => {
+test("createContext handles missing optional span fields [multi-step-orchestration-helpers]", () => {
   const mockSpan = {
     traceId: "trace-only",
     parentSpanId: null as string | null,
@@ -269,7 +269,7 @@ test("createContext handles missing optional span fields", () => {
   assert.ok(!("correlationId" in context), "correlationId should not be set when null");
 });
 
-test("resolveOapeflirRoleId returns general_executor for any step", () => {
+test("resolveOapeflirRoleId returns general_executor for any step [multi-step-orchestration-helpers]", () => {
   const planStep: PlanStep = {
     stepId: "any-step",
     dependencies: [],
@@ -281,7 +281,7 @@ test("resolveOapeflirRoleId returns general_executor for any step", () => {
   assert.equal(roleId, "general_executor");
 });
 
-test("OAPEFLIR plan roundtrip - serialize and deserialize", () => {
+test("OAPEFLIR plan roundtrip - serialize and deserialize [multi-step-orchestration-helpers]", () => {
   const originalSteps: PlanStep[] = [
     {
       stepId: "serialize_test",
@@ -302,7 +302,7 @@ test("OAPEFLIR plan roundtrip - serialize and deserialize", () => {
   assert.equal(deserialized[0]!.retryPolicy.maxRetries, 5);
 });
 
-test("Priority and dependency mapping in workflow", () => {
+test("Priority and dependency mapping in workflow [multi-step-orchestration-helpers]", () => {
   const planSteps: PlanStep[] = [
     {
       stepId: "high_priority",
@@ -331,7 +331,7 @@ test("Priority and dependency mapping in workflow", () => {
   assert.equal(workflow.steps[0]!.inputKeys.length, 0);
 });
 
-test("compensationModel is preserved when present in step", () => {
+test("compensationModel is preserved when present in step [multi-step-orchestration-helpers]", () => {
   const planSteps: PlanStep[] = [
     {
       stepId: "compensate_step",

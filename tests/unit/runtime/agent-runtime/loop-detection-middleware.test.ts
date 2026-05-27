@@ -6,7 +6,7 @@ import {
   createLoopDetectionMiddlewareFull,
 } from "../../../../src/platform/five-plane-execution/execution-engine/loop-detection.js";
 
-test("SequenceLoopDetector records actions and detects loops", () => {
+test("SequenceLoopDetector records actions and detects loops [loop-detection-middleware]", () => {
   const detector = new SequenceLoopDetector({ windowSize: 3, repeatThreshold: 2 });
 
   // Record a sequence
@@ -24,7 +24,7 @@ test("SequenceLoopDetector records actions and detects loops", () => {
   assert.equal(result3.count, 2);
 });
 
-test("SequenceLoopDetector getHistory returns action history", () => {
+test("SequenceLoopDetector getHistory returns action history [loop-detection-middleware]", () => {
   const detector = new SequenceLoopDetector({ windowSize: 5 });
 
   detector.recordAction("step_1");
@@ -35,7 +35,7 @@ test("SequenceLoopDetector getHistory returns action history", () => {
   assert.deepEqual(history, ["step_1", "step_2", "step_3"]);
 });
 
-test("SequenceLoopDetector reset clears state", () => {
+test("SequenceLoopDetector reset clears state [loop-detection-middleware]", () => {
   const detector = new SequenceLoopDetector({ windowSize: 3 });
 
   detector.recordAction("a");
@@ -50,7 +50,7 @@ test("SequenceLoopDetector reset clears state", () => {
   assert.deepEqual(detector.getHistory(), []);
 });
 
-test("createLoopDetectionMiddleware returns middleware and state", () => {
+test("createLoopDetectionMiddleware returns middleware and state [loop-detection-middleware]", () => {
   const result = createLoopDetectionMiddleware({ warnThreshold: 2, escalateThreshold: 5 });
 
   assert.ok(result.middleware);
@@ -58,7 +58,7 @@ test("createLoopDetectionMiddleware returns middleware and state", () => {
   assert.equal(result.middleware.name, "loop_detection");
 });
 
-test("createLoopDetectionMiddlewareFull returns beforeAgent and wrapToolCall hooks", () => {
+test("createLoopDetectionMiddlewareFull returns beforeAgent and wrapToolCall hooks [loop-detection-middleware]", () => {
   const result = createLoopDetectionMiddlewareFull({ warnThreshold: 2, escalateThreshold: 5 });
 
   assert.ok(result.beforeAgent);
@@ -68,7 +68,7 @@ test("createLoopDetectionMiddlewareFull returns beforeAgent and wrapToolCall hoo
   assert.equal(result.wrapToolCall.name, "loop_detection_wrap_tool_call");
 });
 
-test("createLoopDetectionMiddlewareFull beforeAgent hook escalates when pattern is already escalated", async () => {
+test("createLoopDetectionMiddlewareFull beforeAgent hook escalates when pattern is already escalated [loop-detection-middleware]", async () => {
   const { beforeAgent, state } = createLoopDetectionMiddlewareFull({ warnThreshold: 1, escalateThreshold: 1 });
   const LoopDetectionStateCtor = (await import("../../../../src/platform/five-plane-execution/execution-engine/loop-detection.js")).LoopDetectionState;
   assert.equal(state instanceof LoopDetectionStateCtor, true);
@@ -90,7 +90,7 @@ test("createLoopDetectionMiddlewareFull beforeAgent hook escalates when pattern 
   assert.ok(middlewareResult.error?.code.includes("escalated"));
 });
 
-test("createLoopDetectionMiddlewareFull wrapToolCall records tool calls", async () => {
+test("createLoopDetectionMiddlewareFull wrapToolCall records tool calls [loop-detection-middleware]", async () => {
   const { wrapToolCall, state } = createLoopDetectionMiddlewareFull({ warnThreshold: 3, escalateThreshold: 5 });
 
   await wrapToolCall.run(
@@ -109,7 +109,7 @@ test("createLoopDetectionMiddlewareFull wrapToolCall records tool calls", async 
   assert.equal(state.getRepeatCount("test_tool", { x: 1 }), 1);
 });
 
-test("createLoopDetectionMiddlewareFull wrapToolCall throws on escalation", async () => {
+test("createLoopDetectionMiddlewareFull wrapToolCall throws on escalation [loop-detection-middleware]", async () => {
   const { wrapToolCall, state } = createLoopDetectionMiddlewareFull({ warnThreshold: 1, escalateThreshold: 1 });
 
   // Force escalation - record enough calls to trigger escalation

@@ -12,59 +12,59 @@ import {
 import type { SessionRecord, TaskRecord } from "../../../../../src/platform/contracts/types/domain.js";
 import type { SessionStatus, TaskStatus } from "../../../../../src/platform/contracts/types/status.js";
 
-test("isSessionTerminalStatus returns true for completed", () => {
+test("isSessionTerminalStatus returns true for completed [session-lifecycle]", () => {
   assert.equal(isSessionTerminalStatus("completed"), true, "completed should be terminal");
 });
 
-test("isSessionTerminalStatus returns true for failed", () => {
+test("isSessionTerminalStatus returns true for failed [session-lifecycle]", () => {
   assert.equal(isSessionTerminalStatus("failed"), true, "failed should be terminal");
 });
 
-test("isSessionTerminalStatus returns true for cancelled", () => {
+test("isSessionTerminalStatus returns true for cancelled [session-lifecycle]", () => {
   assert.equal(isSessionTerminalStatus("cancelled"), true, "cancelled should be terminal");
 });
 
-test("isSessionTerminalStatus returns false for open", () => {
+test("isSessionTerminalStatus returns false for open [session-lifecycle]", () => {
   assert.equal(isSessionTerminalStatus("open"), false, "open should not be terminal");
 });
 
-test("isSessionTerminalStatus returns false for streaming", () => {
+test("isSessionTerminalStatus returns false for streaming [session-lifecycle]", () => {
   assert.equal(isSessionTerminalStatus("streaming"), false, "streaming should not be terminal");
 });
 
-test("isSessionTerminalStatus returns false for paused", () => {
+test("isSessionTerminalStatus returns false for paused [session-lifecycle]", () => {
   assert.equal(isSessionTerminalStatus("paused"), false, "paused should not be terminal");
 });
 
-test("isTaskActiveStatus returns true for queued", () => {
+test("isTaskActiveStatus returns true for queued [session-lifecycle]", () => {
   assert.equal(isTaskActiveStatus("queued"), true, "queued should be active");
 });
 
-test("isTaskActiveStatus returns true for pending", () => {
+test("isTaskActiveStatus returns true for pending [session-lifecycle]", () => {
   assert.equal(isTaskActiveStatus("pending"), true, "pending should be active");
 });
 
-test("isTaskActiveStatus returns true for in_progress", () => {
+test("isTaskActiveStatus returns true for in_progress [session-lifecycle]", () => {
   assert.equal(isTaskActiveStatus("in_progress"), true, "in_progress should be active");
 });
 
-test("isTaskActiveStatus returns true for awaiting_decision", () => {
+test("isTaskActiveStatus returns true for awaiting_decision [session-lifecycle]", () => {
   assert.equal(isTaskActiveStatus("awaiting_decision"), true, "awaiting_decision should be active");
 });
 
-test("isTaskActiveStatus returns false for done", () => {
+test("isTaskActiveStatus returns false for done [session-lifecycle]", () => {
   assert.equal(isTaskActiveStatus("done"), false, "done should not be active");
 });
 
-test("isTaskActiveStatus returns false for failed", () => {
+test("isTaskActiveStatus returns false for failed [session-lifecycle]", () => {
   assert.equal(isTaskActiveStatus("failed"), false, "failed should not be active");
 });
 
-test("isTaskActiveStatus returns false for cancelled", () => {
+test("isTaskActiveStatus returns false for cancelled [session-lifecycle]", () => {
   assert.equal(isTaskActiveStatus("cancelled"), false, "cancelled should not be active");
 });
 
-test("createRecoverySession creates new session with open status", () => {
+test("createRecoverySession creates new session with open status [session-lifecycle]", () => {
   const originalSession: SessionRecord = {
     id: "sess_original_123",
     taskId: "task_123",
@@ -87,7 +87,7 @@ test("createRecoverySession creates new session with open status", () => {
   assert.equal(recoverySession.updatedAt, occurredAt, "updatedAt should be occurrence time");
 });
 
-test("createRecoverySession generates valid session ID", () => {
+test("createRecoverySession generates valid session ID [session-lifecycle]", () => {
   const session: SessionRecord = {
     id: "sess_abc",
     taskId: "task_123",
@@ -103,7 +103,7 @@ test("createRecoverySession generates valid session ID", () => {
   assert.ok(recoverySession.id.startsWith("sess_"), "recovery session ID should start with sess_");
 });
 
-test("createRecoverySession preserves channel for different channels", () => {
+test("createRecoverySession preserves channel for different channels [session-lifecycle]", () => {
   const channels = ["cli", "api", "webhook", "websocket"] as const;
 
   for (const channel of channels) {
@@ -122,7 +122,7 @@ test("createRecoverySession preserves channel for different channels", () => {
   }
 });
 
-test("SessionTerminalStatus type correctly extracts terminal statuses", () => {
+test("SessionTerminalStatus type correctly extracts terminal statuses [session-lifecycle]", () => {
   const terminalStatuses: SessionTerminalStatus[] = ["completed", "failed", "cancelled"];
 
   for (const status of terminalStatuses) {
@@ -131,7 +131,7 @@ test("SessionTerminalStatus type correctly extracts terminal statuses", () => {
   }
 });
 
-test("TaskActiveStatus type correctly extracts active statuses", () => {
+test("TaskActiveStatus type correctly extracts active statuses [session-lifecycle]", () => {
   const activeStatuses: TaskActiveStatus[] = ["queued", "pending", "in_progress", "awaiting_decision"];
 
   for (const status of activeStatuses) {
@@ -140,7 +140,7 @@ test("TaskActiveStatus type correctly extracts active statuses", () => {
   }
 });
 
-test("isSessionTerminalStatus handles all SessionStatus values", () => {
+test("isSessionTerminalStatus handles all SessionStatus values [session-lifecycle]", () => {
   const allStatuses: SessionStatus[] = ["open", "streaming", "paused", "completed", "failed", "cancelled"];
 
   for (const status of allStatuses) {
@@ -153,7 +153,7 @@ test("isSessionTerminalStatus handles all SessionStatus values", () => {
   }
 });
 
-test("isTaskActiveStatus handles all TaskStatus values", () => {
+test("isTaskActiveStatus handles all TaskStatus values [session-lifecycle]", () => {
   const allStatuses: TaskStatus[] = ["queued", "pending", "in_progress", "awaiting_decision", "done", "failed", "cancelled"];
 
   for (const status of allStatuses) {
@@ -166,7 +166,7 @@ test("isTaskActiveStatus handles all TaskStatus values", () => {
   }
 });
 
-test("createRecoverySession with different original statuses", () => {
+test("createRecoverySession with different original statuses [session-lifecycle]", () => {
   const statuses = ["failed", "cancelled", "completed"] as const;
 
   for (const status of statuses) {
@@ -187,7 +187,7 @@ test("createRecoverySession with different original statuses", () => {
   }
 });
 
-test("createRecoverySession handles null externalSessionId", () => {
+test("createRecoverySession handles null externalSessionId [session-lifecycle]", () => {
   const session: SessionRecord = {
     id: "sess_original",
     taskId: "task_123",
@@ -203,7 +203,7 @@ test("createRecoverySession handles null externalSessionId", () => {
   assert.equal(recoverySession.externalSessionId, null, "null externalSessionId should be preserved");
 });
 
-test("isSessionTerminalStatus is a type guard", () => {
+test("isSessionTerminalStatus is a type guard [session-lifecycle]", () => {
   function checkTerminal(status: SessionStatus): boolean {
     if (isSessionTerminalStatus(status)) {
       // Within this block, TypeScript should know status is SessionTerminalStatus
@@ -218,7 +218,7 @@ test("isSessionTerminalStatus is a type guard", () => {
   assert.equal(checkTerminal("open"), false);
 });
 
-test("isTaskActiveStatus is a type guard", () => {
+test("isTaskActiveStatus is a type guard [session-lifecycle]", () => {
   function checkActive(status: TaskStatus): boolean {
     if (isTaskActiveStatus(status)) {
       // Within this block, TypeScript should know status is TaskActiveStatus

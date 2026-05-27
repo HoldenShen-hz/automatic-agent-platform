@@ -11,7 +11,7 @@ import test from "node:test";
 
 import { DeploymentInventoryService } from "../../../../../src/platform/shared/stability/deployment-inventory-service.js";
 
-test("DeploymentInventoryService lists all deployments", () => {
+test("DeploymentInventoryService lists all deployments [deployment-inventory-service-additional]", () => {
   const service = new DeploymentInventoryService();
   const deployments = service.listDeployments();
 
@@ -19,7 +19,7 @@ test("DeploymentInventoryService lists all deployments", () => {
   assert.ok(deployments.every((d) => d.deploymentId.length > 0));
 });
 
-test("DeploymentInventoryService deployments have valid environments", () => {
+test("DeploymentInventoryService deployments have valid environments [deployment-inventory-service-additional]", () => {
   const service = new DeploymentInventoryService();
   const deployments = service.listDeployments();
 
@@ -27,7 +27,7 @@ test("DeploymentInventoryService deployments have valid environments", () => {
   assert.ok(deployments.every((d) => validEnvironments.includes(d.environment)));
 });
 
-test("DeploymentInventoryService deployments have valid rollout strategies", () => {
+test("DeploymentInventoryService deployments have valid rollout strategies [deployment-inventory-service-additional]", () => {
   const service = new DeploymentInventoryService();
   const deployments = service.listDeployments();
 
@@ -35,7 +35,7 @@ test("DeploymentInventoryService deployments have valid rollout strategies", () 
   assert.ok(deployments.every((d) => validStrategies.includes(d.rolloutStrategy)));
 });
 
-test("DeploymentInventoryService deployments have valid readiness statuses", () => {
+test("DeploymentInventoryService deployments have valid readiness statuses [deployment-inventory-service-additional]", () => {
   const service = new DeploymentInventoryService();
   const deployments = service.listDeployments();
 
@@ -43,14 +43,14 @@ test("DeploymentInventoryService deployments have valid readiness statuses", () 
   assert.ok(deployments.every((d) => validStatuses.includes(d.readinessStatus)));
 });
 
-test("DeploymentInventoryService deployments have required drills", () => {
+test("DeploymentInventoryService deployments have required drills [deployment-inventory-service-additional]", () => {
   const service = new DeploymentInventoryService();
   const deployments = service.listDeployments();
 
   assert.ok(deployments.every((d) => d.requiredDrills.length > 0));
 });
 
-test("DeploymentInventoryService buildSummary computes correct totals", () => {
+test("DeploymentInventoryService buildSummary computes correct totals [deployment-inventory-service-additional]", () => {
   const service = new DeploymentInventoryService();
   const summary = service.buildSummary();
 
@@ -60,7 +60,7 @@ test("DeploymentInventoryService buildSummary computes correct totals", () => {
   assert.ok(summary.blocked >= 0);
 });
 
-test("DeploymentInventoryService buildSummary sums to total", () => {
+test("DeploymentInventoryService buildSummary sums to total [deployment-inventory-service-additional]", () => {
   const service = new DeploymentInventoryService();
   const summary = service.buildSummary();
 
@@ -70,7 +70,7 @@ test("DeploymentInventoryService buildSummary sums to total", () => {
   );
 });
 
-test("DeploymentInventoryService buildSummary counts contract_only deployments", () => {
+test("DeploymentInventoryService buildSummary counts contract_only deployments [deployment-inventory-service-additional]", () => {
   const service = new DeploymentInventoryService();
   const summary = service.buildSummary();
 
@@ -80,7 +80,7 @@ test("DeploymentInventoryService buildSummary counts contract_only deployments",
   assert.equal(summary.contractOnly, contractOnlyCount);
 });
 
-test("DeploymentInventoryService dev deployment requires no live infra", () => {
+test("DeploymentInventoryService dev deployment requires no live infra [deployment-inventory-service-additional]", () => {
   const service = new DeploymentInventoryService();
   const deployments = service.listDeployments();
 
@@ -88,7 +88,7 @@ test("DeploymentInventoryService dev deployment requires no live infra", () => {
   assert.ok(devDeployments.every((d) => d.requiresLiveInfra === false));
 });
 
-test("DeploymentInventoryService prod deployment does not require live infra for contract", () => {
+test("DeploymentInventoryService prod deployment does not require live infra for contract [deployment-inventory-service-additional]", () => {
   const service = new DeploymentInventoryService();
   const deployments = service.listDeployments();
 
@@ -97,7 +97,7 @@ test("DeploymentInventoryService prod deployment does not require live infra for
   assert.ok(prodDeployments.every((d) => d.s4Mode === "contract_only"));
 });
 
-test("DeploymentInventoryService returns defensive copy of deployments", () => {
+test("DeploymentInventoryService returns defensive copy of deployments [deployment-inventory-service-additional]", () => {
   const service = new DeploymentInventoryService();
   const deployments1 = service.listDeployments();
   const deployments2 = service.listDeployments();

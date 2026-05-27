@@ -20,7 +20,7 @@ import {
 // Issue #2196: Replication queue grows unbounded
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("cdc-replication-2196: replication queue has no size limit", () => {
+test("cdc-replication-2196: replication queue has no size limit [cdc-replication-issues]", () => {
   const service = new CDCReplicationService();
 
   service.registerReplication({
@@ -59,7 +59,7 @@ test("cdc-replication-2196: replication queue has no size limit", () => {
   assert.equal(status, "syncing"); // Queue has pending work
 });
 
-test("cdc-replication-2196: batch confirmation should drain queue", () => {
+test("cdc-replication-2196: batch confirmation should drain queue [cdc-replication-issues]", () => {
   const service = new CDCReplicationService();
 
   service.registerReplication({
@@ -97,7 +97,7 @@ test("cdc-replication-2196: batch confirmation should drain queue", () => {
   assert.equal(status, "idle");
 });
 
-test("cdc-replication-2196: large batches cause queue buildup", () => {
+test("cdc-replication-2196: large batches cause queue buildup [cdc-replication-issues]", () => {
   const service = new CDCReplicationService();
 
   service.registerReplication({
@@ -133,7 +133,7 @@ test("cdc-replication-2196: large batches cause queue buildup", () => {
   assert.equal(batch.events.length, 10);
 });
 
-test("cdc-replication-2196: unbounded queue memory growth", () => {
+test("cdc-replication-2196: unbounded queue memory growth [cdc-replication-issues]", () => {
   const service = new CDCReplicationService();
 
   service.registerReplication({
@@ -171,7 +171,7 @@ test("cdc-replication-2196: unbounded queue memory growth", () => {
   // The fix should add a max queue size that triggers backpressure
 });
 
-test("cdc-replication-2196: queue should have max size limit", () => {
+test("cdc-replication-2196: queue should have max size limit [cdc-replication-issues]", () => {
   const service = new CDCReplicationService();
 
   // Issue #2196: The fix should add a configurable maxQueueSize
@@ -185,7 +185,7 @@ test("cdc-replication-2196: queue should have max size limit", () => {
   assert.ok(maxQueueSize > 0); // This is what should be enforced
 });
 
-test("cdc-replication-2196: replication lag indicates queue buildup", () => {
+test("cdc-replication-2196: replication lag indicates queue buildup [cdc-replication-issues]", () => {
   const service = new CDCReplicationService();
 
   service.registerReplication({
@@ -225,7 +225,7 @@ test("cdc-replication-2196: replication lag indicates queue buildup", () => {
   // Issue #2196: This lag indicates queue is not keeping up
 });
 
-test("cdc-replication-2196: backpressure mechanism missing", () => {
+test("cdc-replication-2196: backpressure mechanism missing [cdc-replication-issues]", () => {
   const service = new CDCReplicationService();
 
   // Issue #2196: Should have backpressure when queue is full
@@ -239,7 +239,7 @@ test("cdc-replication-2196: backpressure mechanism missing", () => {
   assert.ok(true); // Documenting the missing feature
 });
 
-test("cdc-replication-2196: queue growth over time without confirmation", () => {
+test("cdc-replication-2196: queue growth over time without confirmation [cdc-replication-issues]", () => {
   const service = new CDCReplicationService();
 
   service.registerReplication({

@@ -9,12 +9,12 @@ import {
   type RecoveryReportSummary,
 } from "../../../../../src/platform/five-plane-execution/recovery/recovery-report.js";
 
-test("RecoveryReportStatus type accepts all valid values", () => {
+test("RecoveryReportStatus type accepts all valid values [recovery-report]", () => {
   const statuses: RecoveryReportStatus[] = ["success", "failure", "skipped", "escalated"];
   assert.equal(statuses.length, 4);
 });
 
-test("RecoveryReport interface structure", () => {
+test("RecoveryReport interface structure [recovery-report]", () => {
   const report: RecoveryReport = {
     reportId: "report-123",
     executionId: "exec-456",
@@ -48,7 +48,7 @@ test("RecoveryReport interface structure", () => {
   assert.equal(report.durationMs, 1000);
 });
 
-test("RecoveryReportSummary interface structure", () => {
+test("RecoveryReportSummary interface structure [recovery-report]", () => {
   const summary: RecoveryReportSummary = {
     totalAttempts: 10,
     successfulRecoveries: 6,
@@ -66,7 +66,7 @@ test("RecoveryReportSummary interface structure", () => {
   assert.equal(summary.averageDurationMs, 1500);
 });
 
-test("createRecoveryReport calculates durationMs when completedAt is provided", () => {
+test("createRecoveryReport calculates durationMs when completedAt is provided [recovery-report]", () => {
   const report = createRecoveryReport({
     reportId: "report-123",
     executionId: "exec-456",
@@ -86,7 +86,7 @@ test("createRecoveryReport calculates durationMs when completedAt is provided", 
   assert.equal(report.durationMs, 2500);
 });
 
-test("createRecoveryReport sets durationMs to null when completedAt is null", () => {
+test("createRecoveryReport sets durationMs to null when completedAt is null [recovery-report]", () => {
   const report = createRecoveryReport({
     reportId: "report-123",
     executionId: "exec-456",
@@ -106,7 +106,7 @@ test("createRecoveryReport sets durationMs to null when completedAt is null", ()
   assert.equal(report.durationMs, null);
 });
 
-test("createRecoveryReport preserves all fields correctly", () => {
+test("createRecoveryReport preserves all fields correctly [recovery-report]", () => {
   const report = createRecoveryReport({
     reportId: "report-abc",
     executionId: "exec-xyz",
@@ -137,7 +137,7 @@ test("createRecoveryReport preserves all fields correctly", () => {
   assert.equal(report.durationMs, 3000);
 });
 
-test("summarizeRecoveryReports returns zeros for empty array", () => {
+test("summarizeRecoveryReports returns zeros for empty array [recovery-report]", () => {
   const summary = summarizeRecoveryReports([]);
 
   assert.equal(summary.totalAttempts, 0);
@@ -148,7 +148,7 @@ test("summarizeRecoveryReports returns zeros for empty array", () => {
   assert.equal(summary.averageDurationMs, null);
 });
 
-test("summarizeRecoveryReports counts all success statuses", () => {
+test("summarizeRecoveryReports counts all success statuses [recovery-report]", () => {
   const reports: RecoveryReport[] = [
     createReport("r1", "success", 1000),
     createReport("r2", "success", 2000),
@@ -165,7 +165,7 @@ test("summarizeRecoveryReports counts all success statuses", () => {
   assert.equal(summary.averageDurationMs, 1500); // (1000 + 2000 + 1500) / 3
 });
 
-test("summarizeRecoveryReports counts all failure statuses", () => {
+test("summarizeRecoveryReports counts all failure statuses [recovery-report]", () => {
   const reports: RecoveryReport[] = [
     createReport("r1", "failure", 500),
     createReport("r2", "failure", 800),
@@ -181,7 +181,7 @@ test("summarizeRecoveryReports counts all failure statuses", () => {
   assert.equal(summary.averageDurationMs, 650); // (500 + 800) / 2
 });
 
-test("summarizeRecoveryReports counts all skipped statuses", () => {
+test("summarizeRecoveryReports counts all skipped statuses [recovery-report]", () => {
   const reports: RecoveryReport[] = [
     createReport("r1", "skipped", null),
     createReport("r2", "skipped", null),
@@ -198,7 +198,7 @@ test("summarizeRecoveryReports counts all skipped statuses", () => {
   assert.equal(summary.averageDurationMs, null); // No reports have duration
 });
 
-test("summarizeRecoveryReports counts all escalated statuses", () => {
+test("summarizeRecoveryReports counts all escalated statuses [recovery-report]", () => {
   const reports: RecoveryReport[] = [
     createReport("r1", "escalated", 3000),
   ];
@@ -213,7 +213,7 @@ test("summarizeRecoveryReports counts all escalated statuses", () => {
   assert.equal(summary.averageDurationMs, 3000);
 });
 
-test("summarizeRecoveryReports calculates correct average with mixed durations", () => {
+test("summarizeRecoveryReports calculates correct average with mixed durations [recovery-report]", () => {
   const reports: RecoveryReport[] = [
     createReport("r1", "success", 1000),
     createReport("r2", "failure", null), // No duration
@@ -226,7 +226,7 @@ test("summarizeRecoveryReports calculates correct average with mixed durations",
   assert.equal(summary.averageDurationMs, 2000);
 });
 
-test("summarizeRecoveryReports with mixed statuses", () => {
+test("summarizeRecoveryReports with mixed statuses [recovery-report]", () => {
   const reports: RecoveryReport[] = [
     createReport("r1", "success", 1000),
     createReport("r2", "failure", 500),
@@ -251,7 +251,7 @@ test("summarizeRecoveryReports with mixed statuses", () => {
   assert.equal(summary.averageDurationMs, 1625);
 });
 
-test("summarizeRecoveryReports averageDurationMs is null when no reports have duration", () => {
+test("summarizeRecoveryReports averageDurationMs is null when no reports have duration [recovery-report]", () => {
   const reports: RecoveryReport[] = [
     createReport("r1", "success", null),
     createReport("r2", "failure", null),
@@ -264,7 +264,7 @@ test("summarizeRecoveryReports averageDurationMs is null when no reports have du
   assert.equal(summary.averageDurationMs, null);
 });
 
-test("summarizeRecoveryReports handles single report", () => {
+test("summarizeRecoveryReports handles single report [recovery-report]", () => {
   const reports: RecoveryReport[] = [
     createReport("r1", "success", 1500),
   ];
@@ -279,7 +279,7 @@ test("summarizeRecoveryReports handles single report", () => {
   assert.equal(summary.averageDurationMs, 1500);
 });
 
-test("summarizeRecoveryReports with all status types in single report", () => {
+test("summarizeRecoveryReports with all status types in single report [recovery-report]", () => {
   // Test each status type individually
   const successSummary = summarizeRecoveryReports([createReport("r1", "success", 1000)]);
   assert.equal(successSummary.successfulRecoveries, 1);

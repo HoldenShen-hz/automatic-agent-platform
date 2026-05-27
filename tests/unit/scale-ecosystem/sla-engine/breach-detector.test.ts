@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { detectSlaBreach, SlaObservation, SlaCommitment } from "../../../../src/scale-ecosystem/sla-engine/breach-detector/index.js";
 
-test("detectSlaBreach returns empty array when no breach", () => {
+test("detectSlaBreach returns empty array when no breach [breach-detector]", () => {
   const observation: SlaObservation = {
     latencyMs: 50,
     successRate: 0.999,
@@ -20,7 +20,7 @@ test("detectSlaBreach returns empty array when no breach", () => {
   assert.deepEqual(breaches, []);
 });
 
-test("detectSlaBreach detects latency breach", () => {
+test("detectSlaBreach detects latency breach [breach-detector]", () => {
   const observation: SlaObservation = {
     latencyMs: 150,
     successRate: 0.999,
@@ -38,7 +38,7 @@ test("detectSlaBreach detects latency breach", () => {
   assert.equal(breaches.length, 1);
 });
 
-test("detectSlaBreach detects success rate breach", () => {
+test("detectSlaBreach detects success rate breach [breach-detector]", () => {
   const observation: SlaObservation = {
     latencyMs: 50,
     successRate: 0.95,
@@ -56,7 +56,7 @@ test("detectSlaBreach detects success rate breach", () => {
   assert.equal(breaches.length, 1);
 });
 
-test("detectSlaBreach detects queue wait breach", () => {
+test("detectSlaBreach detects queue wait breach [breach-detector]", () => {
   const observation: SlaObservation = {
     latencyMs: 50,
     successRate: 0.999,
@@ -74,7 +74,7 @@ test("detectSlaBreach detects queue wait breach", () => {
   assert.equal(breaches.length, 1);
 });
 
-test("detectSlaBreach detects multiple breaches", () => {
+test("detectSlaBreach detects multiple breaches [breach-detector]", () => {
   const observation: SlaObservation = {
     latencyMs: 200,
     successRate: 0.95,
@@ -94,7 +94,7 @@ test("detectSlaBreach detects multiple breaches", () => {
   assert.ok(breaches.includes("sla.queue_wait_breach"));
 });
 
-test("detectSlaBreach handles boundary values", () => {
+test("detectSlaBreach handles boundary values [breach-detector]", () => {
   const observation: SlaObservation = {
     latencyMs: 100, // exactly at max
     successRate: 0.99, // exactly at min

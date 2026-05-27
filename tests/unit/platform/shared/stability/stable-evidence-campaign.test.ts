@@ -31,7 +31,7 @@ function createTempDir(): string {
 clearDefaultDivisionRegistryCacheForTests();
 const _registry = getDefaultDivisionRegistry();
 
-test("runStableEvidenceCampaign executes with minimal options", async () => {
+test("runStableEvidenceCampaign executes with minimal options [stable-evidence-campaign]", async () => {
   const outputDir = createTempDir();
   try {
     const options: StableEvidenceCampaignOptions = {
@@ -56,7 +56,7 @@ test("runStableEvidenceCampaign executes with minimal options", async () => {
   }
 });
 
-test("runStableEvidenceCampaign creates segments after execution", async () => {
+test("runStableEvidenceCampaign creates segments after execution [stable-evidence-campaign]", async () => {
   const outputDir = createTempDir();
   try {
     const options: StableEvidenceCampaignOptions = {
@@ -79,7 +79,7 @@ test("runStableEvidenceCampaign creates segments after execution", async () => {
   }
 });
 
-test("runStableEvidenceCampaign sets correct duration mode", async () => {
+test("runStableEvidenceCampaign sets correct duration mode [stable-evidence-campaign]", async () => {
   const outputDir = createTempDir();
   try {
     const options: StableEvidenceCampaignOptions = {
@@ -98,7 +98,7 @@ test("runStableEvidenceCampaign sets correct duration mode", async () => {
   }
 });
 
-test("runStableEvidenceCampaign segment has valid structure", async () => {
+test("runStableEvidenceCampaign segment has valid structure [stable-evidence-campaign]", async () => {
   const outputDir = createTempDir();
   try {
     const options: StableEvidenceCampaignOptions = {
@@ -144,7 +144,7 @@ test("runStableEvidenceCampaign segment has valid structure", async () => {
   }
 });
 
-test("runStableEvidenceCampaign tracks accumulated duration", async () => {
+test("runStableEvidenceCampaign tracks accumulated duration [stable-evidence-campaign]", async () => {
   const outputDir = createTempDir();
   try {
     const options: StableEvidenceCampaignOptions = {
@@ -170,7 +170,7 @@ test("runStableEvidenceCampaign tracks accumulated duration", async () => {
   }
 });
 
-test("runStableEvidenceCampaign sets profile correctly", async () => {
+test("runStableEvidenceCampaign sets profile correctly [stable-evidence-campaign]", async () => {
   const outputDir = createTempDir();
   try {
     const options: StableEvidenceCampaignOptions = {
@@ -192,7 +192,7 @@ test("runStableEvidenceCampaign sets profile correctly", async () => {
   }
 });
 
-test("runStableEvidenceCampaign marks completed when duration is satisfied", async () => {
+test("runStableEvidenceCampaign marks completed when duration is satisfied [stable-evidence-campaign]", async () => {
   const outputDir = createTempDir();
   try {
     const options: StableEvidenceCampaignOptions = {
@@ -216,7 +216,7 @@ test("runStableEvidenceCampaign marks completed when duration is satisfied", asy
   }
 });
 
-test("runStableEvidenceCampaign report has correct startedAt and updatedAt", async () => {
+test("runStableEvidenceCampaign report has correct startedAt and updatedAt [stable-evidence-campaign]", async () => {
   const outputDir = createTempDir();
   try {
     const options: StableEvidenceCampaignOptions = {
@@ -242,7 +242,7 @@ test("runStableEvidenceCampaign report has correct startedAt and updatedAt", asy
   }
 });
 
-test("runStableEvidenceCampaign second run resumes from state", async () => {
+test("runStableEvidenceCampaign second run resumes from state [stable-evidence-campaign]", async () => {
   const outputDir = createTempDir();
   try {
     const options: StableEvidenceCampaignOptions = {
@@ -268,7 +268,7 @@ test("runStableEvidenceCampaign second run resumes from state", async () => {
   }
 });
 
-test("runStableEvidenceCampaign finalEvidenceReport is null when not completed", async () => {
+test("runStableEvidenceCampaign finalEvidenceReport is null when not completed [stable-evidence-campaign]", async () => {
   const outputDir = createTempDir();
   try {
     const options: StableEvidenceCampaignOptions = {

@@ -43,19 +43,19 @@ function createMockTicket(overrides: Partial<ExecutionTicketRecord> = {}): Execu
 // sortTicketsForDeterministicDispatch tests
 // ---------------------------------------------------------------------------
 
-test("sortTicketsForDeterministicDispatch: empty array returns empty array", () => {
+test("sortTicketsForDeterministicDispatch: empty array returns empty array [execution-dispatch-ordering]", () => {
   const result = sortTicketsForDeterministicDispatch([]);
   assert.deepEqual(result, []);
 });
 
-test("sortTicketsForDeterministicDispatch: single ticket returns same ticket", () => {
+test("sortTicketsForDeterministicDispatch: single ticket returns same ticket [execution-dispatch-ordering]", () => {
   const ticket = createMockTicket({ id: "ticket-1", priority: "high" });
   const result = sortTicketsForDeterministicDispatch([ticket]);
   assert.equal(result.length, 1);
   assert.equal(result[0]?.id, "ticket-1");
 });
 
-test("sortTicketsForDeterministicDispatch: orders by priority descending (critical first)", () => {
+test("sortTicketsForDeterministicDispatch: orders by priority descending (critical first) [execution-dispatch-ordering]", () => {
   const tickets = [
     createMockTicket({ id: "low", priority: "low" }),
     createMockTicket({ id: "critical", priority: "critical" }),
@@ -73,7 +73,7 @@ test("sortTicketsForDeterministicDispatch: orders by priority descending (critic
   assert.equal(result[4]?.id, "low");
 });
 
-test("sortTicketsForDeterministicDispatch: uses criticalPathRank as secondary sort when priorities equal", () => {
+test("sortTicketsForDeterministicDispatch: uses criticalPathRank as secondary sort when priorities equal [execution-dispatch-ordering]", () => {
   const tickets = [
     createMockTicket({ id: "rank-0", priority: "high", criticalPathRank: 0 }),
     createMockTicket({ id: "rank-10", priority: "high", criticalPathRank: 10 }),
@@ -87,7 +87,7 @@ test("sortTicketsForDeterministicDispatch: uses criticalPathRank as secondary so
   assert.equal(result[2]?.id, "rank-0");
 });
 
-test("sortTicketsForDeterministicDispatch: uses riskClass as tertiary sort when priority and rank equal", () => {
+test("sortTicketsForDeterministicDispatch: uses riskClass as tertiary sort when priority and rank equal [execution-dispatch-ordering]", () => {
   const tickets = [
     createMockTicket({ id: "risk-low", priority: "high", criticalPathRank: 5, riskClass: "low" }),
     createMockTicket({ id: "risk-critical", priority: "high", criticalPathRank: 5, riskClass: "critical" }),
@@ -103,7 +103,7 @@ test("sortTicketsForDeterministicDispatch: uses riskClass as tertiary sort when 
   assert.equal(result[3]?.id, "risk-low");
 });
 
-test("sortTicketsForDeterministicDispatch: uses schedulerSeed as final sort tiebreaker", () => {
+test("sortTicketsForDeterministicDispatch: uses schedulerSeed as final sort tiebreaker [execution-dispatch-ordering]", () => {
   const tickets = [
     createMockTicket({ id: "seed-ccc", priority: "high", criticalPathRank: 5, riskClass: "low", schedulerSeed: "ccc" }),
     createMockTicket({ id: "seed-aaa", priority: "high", criticalPathRank: 5, riskClass: "low", schedulerSeed: "aaa" }),
@@ -117,7 +117,7 @@ test("sortTicketsForDeterministicDispatch: uses schedulerSeed as final sort tieb
   assert.equal(result[2]?.id, "seed-ccc");
 });
 
-test("sortTicketsForDeterministicDispatch: handles undefined/null criticalPathRank", () => {
+test("sortTicketsForDeterministicDispatch: handles undefined/null criticalPathRank [execution-dispatch-ordering]", () => {
   const tickets = [
     createMockTicket({ id: "rank-undefined", priority: "normal", criticalPathRank: undefined }),
     createMockTicket({ id: "rank-null", priority: "normal", criticalPathRank: null }),
@@ -131,7 +131,7 @@ test("sortTicketsForDeterministicDispatch: handles undefined/null criticalPathRa
   assert.equal(result[0]?.id, "rank-5");
 });
 
-test("sortTicketsForDeterministicDispatch: handles undefined/null riskClass", () => {
+test("sortTicketsForDeterministicDispatch: handles undefined/null riskClass [execution-dispatch-ordering]", () => {
   const tickets = [
     createMockTicket({ id: "risk-undefined", priority: "normal", riskClass: undefined }),
     createMockTicket({ id: "risk-null", priority: "normal", riskClass: null }),
@@ -144,7 +144,7 @@ test("sortTicketsForDeterministicDispatch: handles undefined/null riskClass", ()
   assert.equal(result[0]?.id, "risk-high");
 });
 
-test("sortTicketsForDeterministicDispatch: handles undefined/null schedulerSeed", () => {
+test("sortTicketsForDeterministicDispatch: handles undefined/null schedulerSeed [execution-dispatch-ordering]", () => {
   const tickets = [
     createMockTicket({ id: "seed-undefined", priority: "normal", schedulerSeed: undefined }),
     createMockTicket({ id: "seed-null", priority: "normal", schedulerSeed: null }),
@@ -161,7 +161,7 @@ test("sortTicketsForDeterministicDispatch: handles undefined/null schedulerSeed"
   assert.equal(result[2]?.id, "seed-apple");
 });
 
-test("sortTicketsForDeterministicDispatch: full deterministic ordering with all factors", () => {
+test("sortTicketsForDeterministicDispatch: full deterministic ordering with all factors [execution-dispatch-ordering]", () => {
   const tickets = [
     createMockTicket({ id: "t1", priority: "low", criticalPathRank: 1, riskClass: "low", schedulerSeed: "aaa" }),
     createMockTicket({ id: "t2", priority: "critical", criticalPathRank: 0, riskClass: "low", schedulerSeed: "aaa" }),
@@ -187,7 +187,7 @@ test("sortTicketsForDeterministicDispatch: full deterministic ordering with all 
   assert.equal(result[4]?.id, "t1");
 });
 
-test("sortTicketsForDeterministicDispatch: does not mutate original array", () => {
+test("sortTicketsForDeterministicDispatch: does not mutate original array [execution-dispatch-ordering]", () => {
   const tickets = [
     createMockTicket({ id: "t1", priority: "low" }),
     createMockTicket({ id: "t2", priority: "high" }),
@@ -203,19 +203,19 @@ test("sortTicketsForDeterministicDispatch: does not mutate original array", () =
 // interleaveTicketsByTenant tests
 // ---------------------------------------------------------------------------
 
-test("interleaveTicketsByTenant: empty array returns empty array", () => {
+test("interleaveTicketsByTenant: empty array returns empty array [execution-dispatch-ordering]", () => {
   const result = interleaveTicketsByTenant([]);
   assert.deepEqual(result, []);
 });
 
-test("interleaveTicketsByTenant: single ticket returns same ticket", () => {
+test("interleaveTicketsByTenant: single ticket returns same ticket [execution-dispatch-ordering]", () => {
   const ticket = createMockTicket({ id: "ticket-1", tenantId: "tenant-1" });
   const result = interleaveTicketsByTenant([ticket]);
   assert.equal(result.length, 1);
   assert.equal(result[0]?.id, "ticket-1");
 });
 
-test("interleaveTicketsByTenant: single tenant returns tickets in original order", () => {
+test("interleaveTicketsByTenant: single tenant returns tickets in original order [execution-dispatch-ordering]", () => {
   const tickets = [
     createMockTicket({ id: "t1", tenantId: "tenant-1" }),
     createMockTicket({ id: "t2", tenantId: "tenant-1" }),
@@ -230,7 +230,7 @@ test("interleaveTicketsByTenant: single tenant returns tickets in original order
   assert.ok(result.every(t => t.tenantId === "tenant-1"));
 });
 
-test("interleaveTicketsByTenant: interleaves two tenants with default maxBurst=3", () => {
+test("interleaveTicketsByTenant: interleaves two tenants with default maxBurst=3 [execution-dispatch-ordering]", () => {
   const tickets = [
     createMockTicket({ id: "t1a", tenantId: "tenant-a" }),
     createMockTicket({ id: "t1b", tenantId: "tenant-a" }),
@@ -252,7 +252,7 @@ test("interleaveTicketsByTenant: interleaves two tenants with default maxBurst=3
   assert.equal(result[5]?.id, "t1d");
 });
 
-test("interleaveTicketsByTenant: respects custom maxBurstPerTenant", () => {
+test("interleaveTicketsByTenant: respects custom maxBurstPerTenant [execution-dispatch-ordering]", () => {
   const tickets = [
     createMockTicket({ id: "t1a", tenantId: "tenant-a" }),
     createMockTicket({ id: "t1b", tenantId: "tenant-a" }),
@@ -273,7 +273,7 @@ test("interleaveTicketsByTenant: respects custom maxBurstPerTenant", () => {
   assert.equal(result[5]?.id, "t1d");
 });
 
-test("interleaveTicketsByTenant: handles maxBurstPerTenant=1 (round-robin)", () => {
+test("interleaveTicketsByTenant: handles maxBurstPerTenant=1 (round-robin) [execution-dispatch-ordering]", () => {
   const tickets = [
     createMockTicket({ id: "t1a", tenantId: "tenant-a" }),
     createMockTicket({ id: "t1b", tenantId: "tenant-a" }),
@@ -288,7 +288,7 @@ test("interleaveTicketsByTenant: handles maxBurstPerTenant=1 (round-robin)", () 
   assert.equal(result[2]?.id, "t1b");
 });
 
-test("interleaveTicketsByTenant: handles null/undefined tenantId as 'default'", () => {
+test("interleaveTicketsByTenant: handles null/undefined tenantId as 'default' [execution-dispatch-ordering]", () => {
   const tickets = [
     createMockTicket({ id: "t1", tenantId: "tenant-1" }),
     createMockTicket({ id: "t2", tenantId: null as unknown as string }),
@@ -302,7 +302,7 @@ test("interleaveTicketsByTenant: handles null/undefined tenantId as 'default'", 
   assert.equal(result.length, 4);
 });
 
-test("interleaveTicketsByTenant: handles three tenants", () => {
+test("interleaveTicketsByTenant: handles three tenants [execution-dispatch-ordering]", () => {
   const tickets = [
     createMockTicket({ id: "t1a", tenantId: "tenant-a" }),
     createMockTicket({ id: "t1b", tenantId: "tenant-a" }),
@@ -322,7 +322,7 @@ test("interleaveTicketsByTenant: handles three tenants", () => {
   assert.equal(result[4]?.id, "t3b");
 });
 
-test("interleaveTicketsByTenant: does not mutate original array", () => {
+test("interleaveTicketsByTenant: does not mutate original array [execution-dispatch-ordering]", () => {
   const tickets = [
     createMockTicket({ id: "t1", tenantId: "tenant-1" }),
     createMockTicket({ id: "t2", tenantId: "tenant-2" }),
@@ -338,25 +338,25 @@ test("interleaveTicketsByTenant: does not mutate original array", () => {
 // hashDispatchSeed tests
 // ---------------------------------------------------------------------------
 
-test("hashDispatchSeed: empty string returns 0", () => {
+test("hashDispatchSeed: empty string returns 0 [execution-dispatch-ordering]", () => {
   const result = hashDispatchSeed("");
   assert.equal(result, 0);
 });
 
-test("hashDispatchSeed: same seed produces same hash", () => {
+test("hashDispatchSeed: same seed produces same hash [execution-dispatch-ordering]", () => {
   const seed = "test-seed-123";
   const result1 = hashDispatchSeed(seed);
   const result2 = hashDispatchSeed(seed);
   assert.equal(result1, result2);
 });
 
-test("hashDispatchSeed: different seeds produce different hashes", () => {
+test("hashDispatchSeed: different seeds produce different hashes [execution-dispatch-ordering]", () => {
   const hash1 = hashDispatchSeed("seed-a");
   const hash2 = hashDispatchSeed("seed-b");
   assert.notEqual(hash1, hash2);
 });
 
-test("hashDispatchSeed: returns non-negative integer", () => {
+test("hashDispatchSeed: returns non-negative integer [execution-dispatch-ordering]", () => {
   const seeds = ["", "a", "abc", "longer-seed-string-with-many-characters", "special!@#$%^&*()chars"];
   for (const seed of seeds) {
     const hash = hashDispatchSeed(seed);
@@ -365,7 +365,7 @@ test("hashDispatchSeed: returns non-negative integer", () => {
   }
 });
 
-test("hashDispatchSeed: hash is consistent and deterministic", () => {
+test("hashDispatchSeed: hash is consistent and deterministic [execution-dispatch-ordering]", () => {
   const seed = "deterministic-seed";
   const hashes: number[] = [];
   for (let i = 0; i < 100; i++) {
@@ -375,7 +375,7 @@ test("hashDispatchSeed: hash is consistent and deterministic", () => {
   assert.ok(hashes.every(h => h === hashes[0]), "Hash should be consistent across calls");
 });
 
-test("hashDispatchSeed: longer strings produce different hashes", () => {
+test("hashDispatchSeed: longer strings produce different hashes [execution-dispatch-ordering]", () => {
   const short = hashDispatchSeed("ab");
   const medium = hashDispatchSeed("abc");
   const long = hashDispatchSeed("abcd");
@@ -383,7 +383,7 @@ test("hashDispatchSeed: longer strings produce different hashes", () => {
   assert.notEqual(medium, long);
 });
 
-test("hashDispatchSeed: character order matters", () => {
+test("hashDispatchSeed: character order matters [execution-dispatch-ordering]", () => {
   const hash1 = hashDispatchSeed("abc");
   const hash2 = hashDispatchSeed("cba");
   const hash3 = hashDispatchSeed("bac");
@@ -392,13 +392,13 @@ test("hashDispatchSeed: character order matters", () => {
   assert.notEqual(hash1, hash3);
 });
 
-test("hashDispatchSeed: unicode characters handled", () => {
+test("hashDispatchSeed: unicode characters handled [execution-dispatch-ordering]", () => {
   const hash1 = hashDispatchSeed("seed");
   const hash2 = hashDispatchSeed("séed"); // 'séed' with accented e
   assert.notEqual(hash1, hash2);
 });
 
-test("hashDispatchSeed: numeric strings work", () => {
+test("hashDispatchSeed: numeric strings work [execution-dispatch-ordering]", () => {
   const hash1 = hashDispatchSeed("123");
   const hash2 = hashDispatchSeed("321");
   const hash3 = hashDispatchSeed("1234");
@@ -413,7 +413,7 @@ test("hashDispatchSeed: numeric strings work", () => {
 // Integration scenarios
 // ---------------------------------------------------------------------------
 
-test("sortTicketsForDeterministicDispatch + interleaveTicketsByTenant: fair tenant dispatch", () => {
+test("sortTicketsForDeterministicDispatch + interleaveTicketsByTenant: fair tenant dispatch [execution-dispatch-ordering]", () => {
   // Create tickets for two tenants with different priorities
   const tickets = [
     createMockTicket({ id: "t1-critical", tenantId: "tenant-a", priority: "critical", criticalPathRank: 10 }),

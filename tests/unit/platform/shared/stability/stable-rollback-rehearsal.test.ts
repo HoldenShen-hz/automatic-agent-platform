@@ -7,7 +7,7 @@ import {
 } from "../../../../../src/platform/shared/stability/stable-rollback-rehearsal.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 
-test("buildStableRollbackPlaybook covers required rollback targets, owners, and evidence", () => {
+test("buildStableRollbackPlaybook covers required rollback targets, owners, and evidence [stable-rollback-rehearsal]", () => {
   const workspace = createTempWorkspace("aa-stable-rollback-playbook-");
 
   try {
@@ -56,7 +56,7 @@ test("buildStableRollbackPlaybook covers required rollback targets, owners, and 
   }
 });
 
-test("buildStableRollbackPlaybook handles failed scenario and records it in evidence", () => {
+test("buildStableRollbackPlaybook handles failed scenario and records it in evidence [stable-rollback-rehearsal]", () => {
   const workspace = createTempWorkspace("aa-stable-rollback-failed-");
 
   try {
@@ -96,7 +96,7 @@ test("buildStableRollbackPlaybook handles failed scenario and records it in evid
   }
 });
 
-test("buildStableRollbackPlaybook handles all scenarios failing", () => {
+test("buildStableRollbackPlaybook handles all scenarios failing [stable-rollback-rehearsal]", () => {
   const workspace = createTempWorkspace("aa-stable-rollback-all-fail-");
 
   try {

@@ -43,7 +43,7 @@ function createRequest(
   };
 }
 
-test("SLA-2123: lower-priority tier does not report itself at the preemption cap", () => {
+test("SLA-2123: lower-priority tier does not report itself at the preemption cap [sla-tier-preemption-cap]", () => {
   const service = new SlaOperationsService();
   const tiers = [
     createTier({ tierId: "low", preemptionPriority: 1 }),
@@ -55,7 +55,7 @@ test("SLA-2123: lower-priority tier does not report itself at the preemption cap
   assert.equal(decision.preemptionCapApplied, false);
 });
 
-test("SLA-2123: highest-priority tier reports that it is already at the preemption cap", () => {
+test("SLA-2123: highest-priority tier reports that it is already at the preemption cap [sla-tier-preemption-cap]", () => {
   const service = new SlaOperationsService();
   const tiers = [
     createTier({ tierId: "low", preemptionPriority: 1 }),
@@ -67,7 +67,7 @@ test("SLA-2123: highest-priority tier reports that it is already at the preempti
   assert.equal(decision.preemptionCapApplied, true);
 });
 
-test("SLA-2123: equal-priority tiers do not report a cap because no stricter tier exists", () => {
+test("SLA-2123: equal-priority tiers do not report a cap because no stricter tier exists [sla-tier-preemption-cap]", () => {
   const service = new SlaOperationsService();
   const tiers = [
     createTier({ tierId: "tier-a", preemptionPriority: 5 }),

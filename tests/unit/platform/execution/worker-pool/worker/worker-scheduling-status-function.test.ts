@@ -9,42 +9,42 @@ import { toWorkerSchedulingStatus } from "../../../../../../src/platform/five-pl
 
 import type { WorkerStatus } from "../../../../../../src/platform/contracts/types/domain.js";
 
-test("toWorkerSchedulingStatus returns degraded for degraded status", () => {
+test("toWorkerSchedulingStatus returns degraded for degraded status [worker-scheduling-status-function]", () => {
   const result = toWorkerSchedulingStatus("degraded");
   assert.equal(result, "degraded");
 });
 
-test("toWorkerSchedulingStatus returns draining for draining status", () => {
+test("toWorkerSchedulingStatus returns draining for draining status [worker-scheduling-status-function]", () => {
   const result = toWorkerSchedulingStatus("draining");
   assert.equal(result, "draining");
 });
 
-test("toWorkerSchedulingStatus returns quarantined for quarantined status", () => {
+test("toWorkerSchedulingStatus returns quarantined for quarantined status [worker-scheduling-status-function]", () => {
   const result = toWorkerSchedulingStatus("quarantined");
   assert.equal(result, "quarantined");
 });
 
-test("toWorkerSchedulingStatus returns offline for offline status", () => {
+test("toWorkerSchedulingStatus returns offline for offline status [worker-scheduling-status-function]", () => {
   const result = toWorkerSchedulingStatus("offline");
   assert.equal(result, "offline");
 });
 
-test("toWorkerSchedulingStatus returns unavailable for unavailable status", () => {
+test("toWorkerSchedulingStatus returns unavailable for unavailable status [worker-scheduling-status-function]", () => {
   const result = toWorkerSchedulingStatus("unavailable");
   assert.equal(result, "unavailable");
 });
 
-test("toWorkerSchedulingStatus returns healthy for idle status", () => {
+test("toWorkerSchedulingStatus returns healthy for idle status [worker-scheduling-status-function]", () => {
   const result = toWorkerSchedulingStatus("idle");
   assert.equal(result, "healthy");
 });
 
-test("toWorkerSchedulingStatus returns healthy for busy status", () => {
+test("toWorkerSchedulingStatus returns healthy for busy status [worker-scheduling-status-function]", () => {
   const result = toWorkerSchedulingStatus("busy");
   assert.equal(result, "healthy");
 });
 
-test("toWorkerSchedulingStatus returns healthy for unknown status (default case)", () => {
+test("toWorkerSchedulingStatus returns healthy for unknown status (default case) [worker-scheduling-status-function]", () => {
   const result = toWorkerSchedulingStatus("idle" as WorkerStatus);
   assert.equal(result, "healthy");
 });

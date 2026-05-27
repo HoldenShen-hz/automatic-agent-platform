@@ -12,147 +12,147 @@ import {
   type ExceptionRecoveryConfig,
 } from "../../../../../src/platform/five-plane-execution/recovery/exception-recovery-types.js";
 
-test("ERROR_CLASS_TO_EXCEPTION_TYPE maps ValidationError", () => {
+test("ERROR_CLASS_TO_EXCEPTION_TYPE maps ValidationError [exception-recovery-types]", () => {
   const result = ERROR_CLASS_TO_EXCEPTION_TYPE["ValidationError"];
   assert.equal(result, "validation_error");
 });
 
-test("ERROR_CLASS_TO_EXCEPTION_TYPE maps PolicyDeniedError", () => {
+test("ERROR_CLASS_TO_EXCEPTION_TYPE maps PolicyDeniedError [exception-recovery-types]", () => {
   const result = ERROR_CLASS_TO_EXCEPTION_TYPE["PolicyDeniedError"];
   assert.equal(result, "policy_denied");
 });
 
-test("ERROR_CLASS_TO_EXCEPTION_TYPE maps AuthError", () => {
+test("ERROR_CLASS_TO_EXCEPTION_TYPE maps AuthError [exception-recovery-types]", () => {
   const result = ERROR_CLASS_TO_EXCEPTION_TYPE["AuthError"];
   assert.equal(result, "auth_error");
 });
 
-test("ERROR_CLASS_TO_EXCEPTION_TYPE maps TransientExternalError", () => {
+test("ERROR_CLASS_TO_EXCEPTION_TYPE maps TransientExternalError [exception-recovery-types]", () => {
   const result = ERROR_CLASS_TO_EXCEPTION_TYPE["TransientExternalError"];
   assert.equal(result, "transient_external_error");
 });
 
-test("ERROR_CLASS_TO_EXCEPTION_TYPE maps PermanentExternalError", () => {
+test("ERROR_CLASS_TO_EXCEPTION_TYPE maps PermanentExternalError [exception-recovery-types]", () => {
   const result = ERROR_CLASS_TO_EXCEPTION_TYPE["PermanentExternalError"];
   assert.equal(result, "permanent_external_error");
 });
 
-test("ERROR_CLASS_TO_EXCEPTION_TYPE maps ProviderError", () => {
+test("ERROR_CLASS_TO_EXCEPTION_TYPE maps ProviderError [exception-recovery-types]", () => {
   const result = ERROR_CLASS_TO_EXCEPTION_TYPE["ProviderError"];
   assert.equal(result, "provider_error");
 });
 
-test("ERROR_CLASS_TO_EXCEPTION_TYPE maps ToolExecutionError", () => {
+test("ERROR_CLASS_TO_EXCEPTION_TYPE maps ToolExecutionError [exception-recovery-types]", () => {
   const result = ERROR_CLASS_TO_EXCEPTION_TYPE["ToolExecutionError"];
   assert.equal(result, "tool_execution_error");
 });
 
-test("ERROR_CLASS_TO_EXCEPTION_TYPE maps SandboxError", () => {
+test("ERROR_CLASS_TO_EXCEPTION_TYPE maps SandboxError [exception-recovery-types]", () => {
   const result = ERROR_CLASS_TO_EXCEPTION_TYPE["SandboxError"];
   assert.equal(result, "sandbox_error");
 });
 
-test("ERROR_CLASS_TO_EXCEPTION_TYPE maps StorageError", () => {
+test("ERROR_CLASS_TO_EXCEPTION_TYPE maps StorageError [exception-recovery-types]", () => {
   const result = ERROR_CLASS_TO_EXCEPTION_TYPE["StorageError"];
   assert.equal(result, "storage_error");
 });
 
-test("ERROR_CLASS_TO_EXCEPTION_TYPE maps WorkflowStateError", () => {
+test("ERROR_CLASS_TO_EXCEPTION_TYPE maps WorkflowStateError [exception-recovery-types]", () => {
   const result = ERROR_CLASS_TO_EXCEPTION_TYPE["WorkflowStateError"];
   assert.equal(result, "workflow_state_error");
 });
 
-test("ERROR_CLASS_TO_EXCEPTION_TYPE maps TenantBoundaryError", () => {
+test("ERROR_CLASS_TO_EXCEPTION_TYPE maps TenantBoundaryError [exception-recovery-types]", () => {
   const result = ERROR_CLASS_TO_EXCEPTION_TYPE["TenantBoundaryError"];
   assert.equal(result, "tenant_boundary_error");
 });
 
-test("ERROR_CLASS_TO_EXCEPTION_TYPE maps MonetizationError", () => {
+test("ERROR_CLASS_TO_EXCEPTION_TYPE maps MonetizationError [exception-recovery-types]", () => {
   const result = ERROR_CLASS_TO_EXCEPTION_TYPE["MonetizationError"];
   assert.equal(result, "monetization_error");
 });
 
-test("ERROR_CLASS_TO_EXCEPTION_TYPE maps InternalAppError", () => {
+test("ERROR_CLASS_TO_EXCEPTION_TYPE maps InternalAppError [exception-recovery-types]", () => {
   const result = ERROR_CLASS_TO_EXCEPTION_TYPE["InternalAppError"];
   assert.equal(result, "internal_error");
 });
 
-test("ERROR_CLASS_TO_EXCEPTION_TYPE maps LockingError", () => {
+test("ERROR_CLASS_TO_EXCEPTION_TYPE maps LockingError [exception-recovery-types]", () => {
   const result = ERROR_CLASS_TO_EXCEPTION_TYPE["LockingError"];
   assert.equal(result, "locking_error");
 });
 
-test("ERROR_CLASS_TO_EXCEPTION_TYPE maps MemoryError", () => {
+test("ERROR_CLASS_TO_EXCEPTION_TYPE maps MemoryError [exception-recovery-types]", () => {
   const result = ERROR_CLASS_TO_EXCEPTION_TYPE["MemoryError"];
   assert.equal(result, "memory_error");
 });
 
-test("ERROR_CLASS_TO_EXCEPTION_TYPE maps RuntimeError", () => {
+test("ERROR_CLASS_TO_EXCEPTION_TYPE maps RuntimeError [exception-recovery-types]", () => {
   const result = ERROR_CLASS_TO_EXCEPTION_TYPE["RuntimeError"];
   assert.equal(result, "runtime_error");
 });
 
-test("CATEGORY_TO_EXCEPTION_TYPE maps validation", () => {
+test("CATEGORY_TO_EXCEPTION_TYPE maps validation [exception-recovery-types]", () => {
   const result = CATEGORY_TO_EXCEPTION_TYPE["validation"];
   assert.equal(result, "validation_error");
 });
 
-test("CATEGORY_TO_EXCEPTION_TYPE maps policy", () => {
+test("CATEGORY_TO_EXCEPTION_TYPE maps policy [exception-recovery-types]", () => {
   const result = CATEGORY_TO_EXCEPTION_TYPE["policy"];
   assert.equal(result, "policy_denied");
 });
 
-test("CATEGORY_TO_EXCEPTION_TYPE maps auth", () => {
+test("CATEGORY_TO_EXCEPTION_TYPE maps auth [exception-recovery-types]", () => {
   const result = CATEGORY_TO_EXCEPTION_TYPE["auth"];
   assert.equal(result, "auth_error");
 });
 
-test("CATEGORY_TO_EXCEPTION_TYPE maps provider", () => {
+test("CATEGORY_TO_EXCEPTION_TYPE maps provider [exception-recovery-types]", () => {
   const result = CATEGORY_TO_EXCEPTION_TYPE["provider"];
   assert.equal(result, "provider_error");
 });
 
-test("CATEGORY_TO_EXCEPTION_TYPE maps tool", () => {
+test("CATEGORY_TO_EXCEPTION_TYPE maps tool [exception-recovery-types]", () => {
   const result = CATEGORY_TO_EXCEPTION_TYPE["tool"];
   assert.equal(result, "tool_execution_error");
 });
 
-test("CATEGORY_TO_EXCEPTION_TYPE maps sandbox", () => {
+test("CATEGORY_TO_EXCEPTION_TYPE maps sandbox [exception-recovery-types]", () => {
   const result = CATEGORY_TO_EXCEPTION_TYPE["sandbox"];
   assert.equal(result, "sandbox_error");
 });
 
-test("CATEGORY_TO_EXCEPTION_TYPE maps storage", () => {
+test("CATEGORY_TO_EXCEPTION_TYPE maps storage [exception-recovery-types]", () => {
   const result = CATEGORY_TO_EXCEPTION_TYPE["storage"];
   assert.equal(result, "storage_error");
 });
 
-test("CATEGORY_TO_EXCEPTION_TYPE maps workflow", () => {
+test("CATEGORY_TO_EXCEPTION_TYPE maps workflow [exception-recovery-types]", () => {
   const result = CATEGORY_TO_EXCEPTION_TYPE["workflow"];
   assert.equal(result, "workflow_state_error");
 });
 
-test("CATEGORY_TO_EXCEPTION_TYPE maps tenant", () => {
+test("CATEGORY_TO_EXCEPTION_TYPE maps tenant [exception-recovery-types]", () => {
   const result = CATEGORY_TO_EXCEPTION_TYPE["tenant"];
   assert.equal(result, "tenant_boundary_error");
 });
 
-test("CATEGORY_TO_EXCEPTION_TYPE maps monetization", () => {
+test("CATEGORY_TO_EXCEPTION_TYPE maps monetization [exception-recovery-types]", () => {
   const result = CATEGORY_TO_EXCEPTION_TYPE["monetization"];
   assert.equal(result, "monetization_error");
 });
 
-test("CATEGORY_TO_EXCEPTION_TYPE maps external", () => {
+test("CATEGORY_TO_EXCEPTION_TYPE maps external [exception-recovery-types]", () => {
   const result = CATEGORY_TO_EXCEPTION_TYPE["external"];
   assert.equal(result, "unknown_error");
 });
 
-test("CATEGORY_TO_EXCEPTION_TYPE maps internal", () => {
+test("CATEGORY_TO_EXCEPTION_TYPE maps internal [exception-recovery-types]", () => {
   const result = CATEGORY_TO_EXCEPTION_TYPE["internal"];
   assert.equal(result, "internal_error");
 });
 
-test("ExceptionType type accepts all valid values", () => {
+test("ExceptionType type accepts all valid values [exception-recovery-types]", () => {
   const types: ExceptionType[] = [
     "validation_error",
     "policy_denied",
@@ -176,12 +176,12 @@ test("ExceptionType type accepts all valid values", () => {
   assert.equal(types.length, 17);
 });
 
-test("RiskLevel type accepts all valid values", () => {
+test("RiskLevel type accepts all valid values [exception-recovery-types]", () => {
   const levels: RiskLevel[] = ["low", "medium", "high", "critical"];
   assert.equal(levels.length, 4);
 });
 
-test("ExceptionStrategy interface structure", () => {
+test("ExceptionStrategy interface structure [exception-recovery-types]", () => {
   const strategy: ExceptionStrategy = {
     retryable: true,
     action: "retry_new_ticket",
@@ -197,7 +197,7 @@ test("ExceptionStrategy interface structure", () => {
   assert.equal(strategy.initialDelayMs, 1000);
 });
 
-test("ExceptionStrategy without optional fields", () => {
+test("ExceptionStrategy without optional fields [exception-recovery-types]", () => {
   const strategy: ExceptionStrategy = {
     retryable: false,
     action: "cancel",
@@ -211,7 +211,7 @@ test("ExceptionStrategy without optional fields", () => {
   assert.equal(strategy.initialDelayMs, undefined);
 });
 
-test("RiskLevelStrategy interface structure", () => {
+test("RiskLevelStrategy interface structure [exception-recovery-types]", () => {
   const strategy: RiskLevelStrategy = {
     autoRecover: true,
     notifyOnFailure: false,
@@ -221,7 +221,7 @@ test("RiskLevelStrategy interface structure", () => {
   assert.equal(strategy.notifyOnFailure, false);
 });
 
-test("AttemptThresholds interface structure", () => {
+test("AttemptThresholds interface structure [exception-recovery-types]", () => {
   const thresholds: AttemptThresholds = {
     resumeSameWorkerMaxAttempts: 2,
     retryNewTicketMaxAttempts: 3,
@@ -235,7 +235,7 @@ test("AttemptThresholds interface structure", () => {
   assert.equal(thresholds.moveToDeadLetterMinAttempts, 2);
 });
 
-test("ExceptionRecoveryConfig interface structure", () => {
+test("ExceptionRecoveryConfig interface structure [exception-recovery-types]", () => {
   const config: ExceptionRecoveryConfig = {
     recoveryStrategyTable: {
       byExceptionType: {
@@ -283,7 +283,7 @@ test("ExceptionRecoveryConfig interface structure", () => {
   assert.ok(config.recoveryStrategyTable.byAttemptThreshold);
 });
 
-test("ERROR_CLASS_TO_EXCEPTION_TYPE has expected number of entries", () => {
+test("ERROR_CLASS_TO_EXCEPTION_TYPE has expected number of entries [exception-recovery-types]", () => {
   const expectedKeys = [
     "ValidationError",
     "PolicyDeniedError",
@@ -306,7 +306,7 @@ test("ERROR_CLASS_TO_EXCEPTION_TYPE has expected number of entries", () => {
   assert.equal(Object.keys(ERROR_CLASS_TO_EXCEPTION_TYPE).length, expectedKeys.length);
 });
 
-test("CATEGORY_TO_EXCEPTION_TYPE has expected number of entries", () => {
+test("CATEGORY_TO_EXCEPTION_TYPE has expected number of entries [exception-recovery-types]", () => {
   const expectedKeys = [
     "validation",
     "policy",

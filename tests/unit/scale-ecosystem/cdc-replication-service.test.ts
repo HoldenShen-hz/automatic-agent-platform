@@ -40,7 +40,7 @@ function createReplicationConfig(overrides: Partial<RegionReplicationConfig> = {
 // CDCReplicationService Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("CDCReplicationService.registerReplication adds config and initializes checkpoint", () => {
+test("CDCReplicationService.registerReplication adds config and initializes checkpoint [cdc-replication-service]", () => {
   const service = new CDCReplicationService();
   const config = createReplicationConfig({ sourceRegionId: "us-west-2", targetRegionId: "eu-west-1" });
 
@@ -52,7 +52,7 @@ test("CDCReplicationService.registerReplication adds config and initializes chec
   assert.equal(retrieved!.targetRegionId, "eu-west-1");
 });
 
-test("CDCReplicationService.registerReplication initializes checkpoint on first registration", () => {
+test("CDCReplicationService.registerReplication initializes checkpoint on first registration [cdc-replication-service]", () => {
   const service = new CDCReplicationService();
   const config = createReplicationConfig();
 
@@ -64,7 +64,7 @@ test("CDCReplicationService.registerReplication initializes checkpoint on first 
   assert.equal(checkpoint!.lastEventId, null);
 });
 
-test("CDCReplicationService.getConfig returns undefined for unregistered pair", () => {
+test("CDCReplicationService.getConfig returns undefined for unregistered pair [cdc-replication-service]", () => {
   const service = new CDCReplicationService();
 
   const config = service.getConfig("unknown-source", "unknown-target");
@@ -72,7 +72,7 @@ test("CDCReplicationService.getConfig returns undefined for unregistered pair", 
   assert.equal(config, undefined);
 });
 
-test("CDCReplicationService.getCheckpoint returns undefined for unregistered pair", () => {
+test("CDCReplicationService.getCheckpoint returns undefined for unregistered pair [cdc-replication-service]", () => {
   const service = new CDCReplicationService();
 
   const checkpoint = service.getCheckpoint("unknown-source", "unknown-target");
@@ -80,7 +80,7 @@ test("CDCReplicationService.getCheckpoint returns undefined for unregistered pai
   assert.equal(checkpoint, undefined);
 });
 
-test("CDCReplicationService.prepareBatch returns null when no checkpoint exists", () => {
+test("CDCReplicationService.prepareBatch returns null when no checkpoint exists [cdc-replication-service]", () => {
   const service = new CDCReplicationService();
   const events = [createReplicationEvent()];
 
@@ -89,7 +89,7 @@ test("CDCReplicationService.prepareBatch returns null when no checkpoint exists"
   assert.equal(batch, null);
 });
 
-test("CDCReplicationService.prepareBatch returns null when no events after checkpoint", () => {
+test("CDCReplicationService.prepareBatch returns null when no events after checkpoint [cdc-replication-service]", () => {
   const service = new CDCReplicationService();
   service.registerReplication(createReplicationConfig({ sourceRegionId: "us-west-2", targetRegionId: "eu-west-1" }));
   const events = [
@@ -103,7 +103,7 @@ test("CDCReplicationService.prepareBatch returns null when no events after check
   assert.equal(batch, null);
 });
 
-test("CDCReplicationService.prepareBatch creates batch for events after checkpoint", () => {
+test("CDCReplicationService.prepareBatch creates batch for events after checkpoint [cdc-replication-service]", () => {
   const service = new CDCReplicationService();
   service.registerReplication(createReplicationConfig({ sourceRegionId: "us-west-2", targetRegionId: "eu-west-1" }));
   const events = [
@@ -122,7 +122,7 @@ test("CDCReplicationService.prepareBatch creates batch for events after checkpoi
   assert.equal(batch!.endSequence, 3);
 });
 
-test("CDCReplicationService.prepareBatch respects batch size limit", () => {
+test("CDCReplicationService.prepareBatch respects batch size limit [cdc-replication-service]", () => {
   const service = new CDCReplicationService();
   service.registerReplication(createReplicationConfig({ sourceRegionId: "us-west-2", targetRegionId: "eu-west-1", batchSize: 2 }));
   const events = [
@@ -139,7 +139,7 @@ test("CDCReplicationService.prepareBatch respects batch size limit", () => {
   assert.equal(batch!.endSequence, 2);
 });
 
-test("CDCReplicationService.confirmBatch updates checkpoint with batch end sequence", () => {
+test("CDCReplicationService.confirmBatch updates checkpoint with batch end sequence [cdc-replication-service]", () => {
   const service = new CDCReplicationService();
   service.registerReplication(createReplicationConfig());
   const events = [
@@ -156,7 +156,7 @@ test("CDCReplicationService.confirmBatch updates checkpoint with batch end seque
   assert.equal(checkpoint!.lastEventId, "event-2");
 });
 
-test("CDCReplicationService.recordFailure logs error without throwing", () => {
+test("CDCReplicationService.recordFailure logs error without throwing [cdc-replication-service]", () => {
   const service = new CDCReplicationService();
   const events = [createReplicationEvent()];
   const batch: CDCReplicationBatch = {
@@ -176,7 +176,7 @@ test("CDCReplicationService.recordFailure logs error without throwing", () => {
   assert.ok(true);
 });
 
-test("CDCReplicationService.getStatus returns idle when no queue", () => {
+test("CDCReplicationService.getStatus returns idle when no queue [cdc-replication-service]", () => {
   const service = new CDCReplicationService();
 
   const status = service.getStatus("us-west-2", "eu-west-1");
@@ -184,7 +184,7 @@ test("CDCReplicationService.getStatus returns idle when no queue", () => {
   assert.equal(status, "idle");
 });
 
-test("CDCReplicationService.getStatus returns idle when queue is empty", () => {
+test("CDCReplicationService.getStatus returns idle when queue is empty [cdc-replication-service]", () => {
   const service = new CDCReplicationService();
   service.registerReplication(createReplicationConfig());
   // RegisterReplication initializes queue as empty
@@ -194,7 +194,7 @@ test("CDCReplicationService.getStatus returns idle when queue is empty", () => {
   assert.equal(status, "idle");
 });
 
-test("CDCReplicationService.getStatus returns syncing when queue has pending batches", () => {
+test("CDCReplicationService.getStatus returns syncing when queue has pending batches [cdc-replication-service]", () => {
   const service = new CDCReplicationService();
   service.registerReplication(createReplicationConfig());
   const events = [createReplicationEvent({ id: "event-1", sequence: 1 })];
@@ -205,7 +205,7 @@ test("CDCReplicationService.getStatus returns syncing when queue has pending bat
   assert.equal(status, "syncing");
 });
 
-test("CDCReplicationService.getRegisteredRegionPairs returns all registered pairs", () => {
+test("CDCReplicationService.getRegisteredRegionPairs returns all registered pairs [cdc-replication-service]", () => {
   const service = new CDCReplicationService();
   service.registerReplication(createReplicationConfig({ sourceRegionId: "us-west-2", targetRegionId: "eu-west-1" }));
   service.registerReplication(createReplicationConfig({ sourceRegionId: "us-west-2", targetRegionId: "cn-north-1" }));
@@ -217,7 +217,7 @@ test("CDCReplicationService.getRegisteredRegionPairs returns all registered pair
   assert.ok(pairs.some((p) => p.targetRegionId === "cn-north-1"));
 });
 
-test("CDCReplicationService.isEnabled returns true when enabled", () => {
+test("CDCReplicationService.isEnabled returns true when enabled [cdc-replication-service]", () => {
   const service = new CDCReplicationService();
   service.registerReplication(createReplicationConfig({ enabled: true }));
 
@@ -226,7 +226,7 @@ test("CDCReplicationService.isEnabled returns true when enabled", () => {
   assert.equal(enabled, true);
 });
 
-test("CDCReplicationService.isEnabled returns false when disabled", () => {
+test("CDCReplicationService.isEnabled returns false when disabled [cdc-replication-service]", () => {
   const service = new CDCReplicationService();
   service.registerReplication(createReplicationConfig({ enabled: false }));
 
@@ -235,7 +235,7 @@ test("CDCReplicationService.isEnabled returns false when disabled", () => {
   assert.equal(enabled, false);
 });
 
-test("CDCReplicationService.isEnabled returns false for unregistered pair", () => {
+test("CDCReplicationService.isEnabled returns false for unregistered pair [cdc-replication-service]", () => {
   const service = new CDCReplicationService();
 
   const enabled = service.isEnabled("unknown", "unknown");
@@ -243,7 +243,7 @@ test("CDCReplicationService.isEnabled returns false for unregistered pair", () =
   assert.equal(enabled, false);
 });
 
-test("CDCReplicationService.getReplicationLag returns total events when no checkpoint", () => {
+test("CDCReplicationService.getReplicationLag returns total events when no checkpoint [cdc-replication-service]", () => {
   const service = new CDCReplicationService();
 
   const lag = service.getReplicationLag("unknown", "unknown", 100);
@@ -251,7 +251,7 @@ test("CDCReplicationService.getReplicationLag returns total events when no check
   assert.equal(lag, 100);
 });
 
-test("CDCReplicationService.getReplicationLag calculates correct lag", () => {
+test("CDCReplicationService.getReplicationLag calculates correct lag [cdc-replication-service]", () => {
   const service = new CDCReplicationService();
   service.registerReplication(createReplicationConfig());
   // Confirm a batch that processed events up to sequence 50
@@ -271,7 +271,7 @@ test("CDCReplicationService.getReplicationLag calculates correct lag", () => {
   assert.equal(lag, 50);
 });
 
-test("CDCReplicationService.getReplicationLag returns zero when caught up", () => {
+test("CDCReplicationService.getReplicationLag returns zero when caught up [cdc-replication-service]", () => {
   const service = new CDCReplicationService();
   service.registerReplication(createReplicationConfig());
 
@@ -284,20 +284,20 @@ test("CDCReplicationService.getReplicationLag returns zero when caught up", () =
 // MultiRegionReplicationCoordinator Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("MultiRegionReplicationCoordinator.constructor creates CDC service", () => {
+test("MultiRegionReplicationCoordinator.constructor creates CDC service [cdc-replication-service]", () => {
   const coordinator = new MultiRegionReplicationCoordinator();
 
   assert.ok(coordinator.getCDCService() instanceof CDCReplicationService);
 });
 
-test("MultiRegionReplicationCoordinator.constructor accepts CDC service", () => {
+test("MultiRegionReplicationCoordinator.constructor accepts CDC service [cdc-replication-service]", () => {
   const cdcService = new CDCReplicationService();
   const coordinator = new MultiRegionReplicationCoordinator(cdcService);
 
   assert.equal(coordinator.getCDCService(), cdcService);
 });
 
-test("MultiRegionReplicationCoordinator.setupRegionReplication registers multiple configs", () => {
+test("MultiRegionReplicationCoordinator.setupRegionReplication registers multiple configs [cdc-replication-service]", () => {
   const coordinator = new MultiRegionReplicationCoordinator();
 
   coordinator.setupRegionReplication("us-west-2", [
@@ -309,7 +309,7 @@ test("MultiRegionReplicationCoordinator.setupRegionReplication registers multipl
   assert.equal(replications.length, 2);
 });
 
-test("MultiRegionReplicationCoordinator.setupRegionReplication uses custom batch size and interval", () => {
+test("MultiRegionReplicationCoordinator.setupRegionReplication uses custom batch size and interval [cdc-replication-service]", () => {
   const coordinator = new MultiRegionReplicationCoordinator();
 
   coordinator.setupRegionReplication("us-west-2", [
@@ -321,7 +321,7 @@ test("MultiRegionReplicationCoordinator.setupRegionReplication uses custom batch
   assert.equal(replications[0]!.replicationIntervalMs, 3000);
 });
 
-test("MultiRegionReplicationCoordinator.setupRegionReplication sets defaults for optional params", () => {
+test("MultiRegionReplicationCoordinator.setupRegionReplication sets defaults for optional params [cdc-replication-service]", () => {
   const coordinator = new MultiRegionReplicationCoordinator();
 
   coordinator.setupRegionReplication("us-west-2", [{ targetRegionId: "eu-west-1" }]);
@@ -332,7 +332,7 @@ test("MultiRegionReplicationCoordinator.setupRegionReplication sets defaults for
   assert.equal(replications[0]!.enabled, true);
 });
 
-test("MultiRegionReplicationCoordinator.getRegionReplications returns empty for unknown region", () => {
+test("MultiRegionReplicationCoordinator.getRegionReplications returns empty for unknown region [cdc-replication-service]", () => {
   const coordinator = new MultiRegionReplicationCoordinator();
 
   const replications = coordinator.getRegionReplications("unknown-region");
@@ -340,7 +340,7 @@ test("MultiRegionReplicationCoordinator.getRegionReplications returns empty for 
   assert.deepEqual(replications, []);
 });
 
-test("MultiRegionReplicationCoordinator.getRegionReplications returns all configs for source region", () => {
+test("MultiRegionReplicationCoordinator.getRegionReplications returns all configs for source region [cdc-replication-service]", () => {
   const coordinator = new MultiRegionReplicationCoordinator();
   coordinator.setupRegionReplication("us-west-2", [
     { targetRegionId: "eu-west-1" },

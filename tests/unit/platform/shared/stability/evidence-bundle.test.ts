@@ -35,7 +35,7 @@ function createTempDb(): { db: SqliteDatabase; store: AuthoritativeTaskStore; cl
   };
 }
 
-test("STABLE_EVIDENCE_PROFILES contains smoke, 24h, and 72h profiles", () => {
+test("STABLE_EVIDENCE_PROFILES contains smoke, 24h, and 72h profiles [evidence-bundle]", () => {
   if (!STABLE_EVIDENCE_PROFILES["smoke"]) {
     throw new Error("Missing smoke profile");
   }
@@ -47,7 +47,7 @@ test("STABLE_EVIDENCE_PROFILES contains smoke, 24h, and 72h profiles", () => {
   }
 });
 
-test("smoke profile has quick iteration settings", () => {
+test("smoke profile has quick iteration settings [evidence-bundle]", () => {
   const profile = STABLE_EVIDENCE_PROFILES["smoke"];
 
   if (profile.validationIterations !== 2) {
@@ -58,7 +58,7 @@ test("smoke profile has quick iteration settings", () => {
   }
 });
 
-test("24h profile has full day soak settings", () => {
+test("24h profile has full day soak settings [evidence-bundle]", () => {
   const profile = STABLE_EVIDENCE_PROFILES["24h"];
 
   if (profile.validationIterations !== 5) {
@@ -69,7 +69,7 @@ test("24h profile has full day soak settings", () => {
   }
 });
 
-test("resolveStableEvidenceProfile returns default smoke profile", () => {
+test("resolveStableEvidenceProfile returns default smoke profile [evidence-bundle]", () => {
   const profile = resolveStableEvidenceProfile();
 
   if (profile.name !== "smoke") {
@@ -77,7 +77,7 @@ test("resolveStableEvidenceProfile returns default smoke profile", () => {
   }
 });
 
-test("resolveStableEvidenceProfile applies overrides correctly", () => {
+test("resolveStableEvidenceProfile applies overrides correctly [evidence-bundle]", () => {
   const profile = resolveStableEvidenceProfile("smoke", {
     validationIterations: 10,
     soakDurationMs: 60_000,
@@ -95,7 +95,7 @@ test("resolveStableEvidenceProfile applies overrides correctly", () => {
   }
 });
 
-test("seedTakeoverEvidenceScenario creates task, execution, and session", () => {
+test("seedTakeoverEvidenceScenario creates task, execution, and session [evidence-bundle]", () => {
   const { db, store, cleanup } = createTempDb();
   try {
     const result = seedTakeoverEvidenceScenario(db, store);
@@ -132,7 +132,7 @@ test("seedTakeoverEvidenceScenario creates task, execution, and session", () => 
   }
 });
 
-test("seedTakeoverEvidenceScenario task has correct initial status", () => {
+test("seedTakeoverEvidenceScenario task has correct initial status [evidence-bundle]", () => {
   const { db, store, cleanup } = createTempDb();
   try {
     const result = seedTakeoverEvidenceScenario(db, store);
@@ -152,7 +152,7 @@ test("seedTakeoverEvidenceScenario task has correct initial status", () => {
   }
 });
 
-test("seedTakeoverEvidenceScenario execution is in executing status", () => {
+test("seedTakeoverEvidenceScenario execution is in executing status [evidence-bundle]", () => {
   const { db, store, cleanup } = createTempDb();
   try {
     const result = seedTakeoverEvidenceScenario(db, store);
@@ -169,7 +169,7 @@ test("seedTakeoverEvidenceScenario execution is in executing status", () => {
   }
 });
 
-test("seedTakeoverEvidenceScenario session is open", () => {
+test("seedTakeoverEvidenceScenario session is open [evidence-bundle]", () => {
   const { db, store, cleanup } = createTempDb();
   try {
     const result = seedTakeoverEvidenceScenario(db, store);
@@ -186,7 +186,7 @@ test("seedTakeoverEvidenceScenario session is open", () => {
   }
 });
 
-test("72h profile has extended stress test settings", () => {
+test("72h profile has extended stress test settings [evidence-bundle]", () => {
   const profile = STABLE_EVIDENCE_PROFILES["72h"];
 
   if (profile.validationIterations !== 8) {
@@ -200,7 +200,7 @@ test("72h profile has extended stress test settings", () => {
   }
 });
 
-test("resolveStableEvidenceProfile preserves profile name", () => {
+test("resolveStableEvidenceProfile preserves profile name [evidence-bundle]", () => {
   const profile24h = resolveStableEvidenceProfile("24h");
 
   if (profile24h.name !== "24h") {
@@ -208,7 +208,7 @@ test("resolveStableEvidenceProfile preserves profile name", () => {
   }
 });
 
-test("resolveStableEvidenceProfile 72h with overrides", () => {
+test("resolveStableEvidenceProfile 72h with overrides [evidence-bundle]", () => {
   const profile = resolveStableEvidenceProfile("72h", {
     soakDurationMs: 36 * 60 * 60 * 1000, // Half of 72h
   });

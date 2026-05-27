@@ -88,7 +88,7 @@ function createMockTicket(priority: TaskPriority = "normal"): ExecutionTicketRec
 // ExecutionPriorityPreemptionServiceAsync construction
 // ---------------------------------------------------------------------------
 
-test("ExecutionPriorityPreemptionServiceAsync can be instantiated", () => {
+test("ExecutionPriorityPreemptionServiceAsync can be instantiated [execution-priority-preemption-service-async]", () => {
   const db = createMockDb();
   const store = createMockStore();
   const service = new ExecutionPriorityPreemptionServiceAsync(db, store);
@@ -99,7 +99,7 @@ test("ExecutionPriorityPreemptionServiceAsync can be instantiated", () => {
 // ExecutionPriorityPreemptionServiceAsync.preemptForUrgentTicket returns Promise
 // ---------------------------------------------------------------------------
 
-test("ExecutionPriorityPreemptionServiceAsync.preemptForUrgentTicket returns a Promise", () => {
+test("ExecutionPriorityPreemptionServiceAsync.preemptForUrgentTicket returns a Promise [execution-priority-preemption-service-async]", () => {
   const db = createMockDb();
   const store = createMockStore();
   const service = new ExecutionPriorityPreemptionServiceAsync(db, store);
@@ -119,7 +119,7 @@ test("ExecutionPriorityPreemptionServiceAsync.preemptForUrgentTicket returns a P
   assert.ok(result instanceof Promise);
 });
 
-test("ExecutionPriorityPreemptionServiceAsync.preemptForUrgentTicket resolves with not_preempted for non-urgent", async () => {
+test("ExecutionPriorityPreemptionServiceAsync.preemptForUrgentTicket resolves with not_preempted for non-urgent [execution-priority-preemption-service-async]", async () => {
   const db = createMockDb();
   const store = createMockStore();
   const service = new ExecutionPriorityPreemptionServiceAsync(db, store);
@@ -140,7 +140,7 @@ test("ExecutionPriorityPreemptionServiceAsync.preemptForUrgentTicket resolves wi
   assert.equal(decision.trace.reasonCode, "ticket_not_urgent");
 });
 
-test("ExecutionPriorityPreemptionServiceAsync.preemptForUrgentTicket resolves with not_preempted when no candidate", async () => {
+test("ExecutionPriorityPreemptionServiceAsync.preemptForUrgentTicket resolves with not_preempted when no candidate [execution-priority-preemption-service-async]", async () => {
   const db = createMockDb();
   const store = createMockStore();
   const service = new ExecutionPriorityPreemptionServiceAsync(db, store);
@@ -162,7 +162,7 @@ test("ExecutionPriorityPreemptionServiceAsync.preemptForUrgentTicket resolves wi
   assert.equal(decision.trace.reasonCode, "no_safe_preemption_candidate");
 });
 
-test("ExecutionPriorityPreemptionServiceAsync.preemptForUrgentTicket preserves trace properties", async () => {
+test("ExecutionPriorityPreemptionServiceAsync.preemptForUrgentTicket preserves trace properties [execution-priority-preemption-service-async]", async () => {
   const db = createMockDb();
   const store = createMockStore();
   const service = new ExecutionPriorityPreemptionServiceAsync(db, store);
@@ -189,7 +189,7 @@ test("ExecutionPriorityPreemptionServiceAsync.preemptForUrgentTicket preserves t
   assert.equal(decision.trace.recoveryStepId, null);
 });
 
-test("ExecutionPriorityPreemptionServiceAsync preemptForUrgentTicket with high priority ticket", async () => {
+test("ExecutionPriorityPreemptionServiceAsync preemptForUrgentTicket with high priority ticket [execution-priority-preemption-service-async]", async () => {
   const db = createMockDb();
   const store = createMockStore();
   const service = new ExecutionPriorityPreemptionServiceAsync(db, store);
@@ -215,7 +215,7 @@ test("ExecutionPriorityPreemptionServiceAsync preemptForUrgentTicket with high p
 // Verify Promise resolution order is preserved
 // ---------------------------------------------------------------------------
 
-test("ExecutionPriorityPreemptionServiceAsync returns Promise that resolves in correct order", async () => {
+test("ExecutionPriorityPreemptionServiceAsync returns Promise that resolves in correct order [execution-priority-preemption-service-async]", async () => {
   const db = createMockDb();
   const store = createMockStore();
   const service = new ExecutionPriorityPreemptionServiceAsync(db, store);

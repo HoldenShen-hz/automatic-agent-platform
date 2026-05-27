@@ -12,6 +12,7 @@
 
 import { createHash } from "node:crypto";
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
+import { parseSafeOutboundUrl } from "../../platform/five-plane-control-plane/iam/outbound-url-policy.js";
 
 export interface SecurityScanInput {
   packId: string;
@@ -110,6 +111,11 @@ interface OsvQueryResponse {
     }>;
   }>;
 }
+
+const DEFAULT_OSV_VULNERABILITY_API_URL = parseSafeOutboundUrl("https://api.osv.dev/v1/query", {
+  invalid: "pack_security.invalid_vulnerability_api_url",
+  blocked: "pack_security.blocked_vulnerability_api_url",
+}).toString();
 
 const CRITICAL_VULNERABILITY_PATTERNS = [
   { pattern: /exec\s*\(\s*user/i, code: "SAND001", message: "User-controlled exec detected" },
@@ -325,7 +331,7 @@ export class PackSecurityService {
 
   public constructor(options: PackSecurityServiceOptions = {}) {
     this.vulnerabilitySource = options.vulnerabilitySource ?? new OsvDependencyVulnerabilitySource({
-      vulnerabilityApiUrl: options.vulnerabilityApiUrl ?? "https://api.osv.dev/v1/query",
+      vulnerabilityApiUrl: options.vulnerabilityApiUrl ?? DEFAULT_OSV_VULNERABILITY_API_URL,
       vulnerabilityEcosystem: options.vulnerabilityEcosystem ?? "npm",
       fetchImpl: options.fetchImpl ?? fetch,
     });

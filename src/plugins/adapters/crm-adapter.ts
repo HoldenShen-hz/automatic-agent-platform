@@ -10,6 +10,7 @@
 import type { ExternalAdapterPlugin } from "../../domains/registry/plugin-spi.js";
 import { PolicyDeniedError, type ErrorCode } from "../../platform/contracts/errors.js";
 import { NetworkEgressPolicyService } from "../../platform/five-plane-control-plane/iam/network-egress-policy.js";
+import { parseSafeOutboundUrl } from "../../platform/five-plane-control-plane/iam/outbound-url-policy.js";
 import {
   buildHashedCredentialFingerprint,
   createZeroableCredentialSecret,
@@ -43,8 +44,16 @@ function requireString(value: unknown, field: string): string {
   return value.trim();
 }
 
+function normalizeCrmApiBaseUrl(value: string | undefined): string {
+  const parsed = parseSafeOutboundUrl((value ?? "https://api.hubspot.com").trim(), {
+    invalid: "crm_adapter.invalid_api_base_url",
+    blocked: "crm_adapter.blocked_api_base_url",
+  });
+  return parsed.toString().replace(/\/+$/, "");
+}
+
 export function createCrmAdapterPlugin(options: CrmAdapterPluginOptions = {}): ExternalAdapterPlugin {
-  const apiBaseUrl = (options.apiBaseUrl ?? "https://api.hubspot.com").replace(/\/+$/, "");
+  const apiBaseUrl = normalizeCrmApiBaseUrl(options.apiBaseUrl);
   const crmType = options.crmType ?? "hubspot";
   const policy = options.policy ?? new NetworkEgressPolicyService({
     mode: "enforce",

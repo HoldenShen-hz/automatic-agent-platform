@@ -13,7 +13,7 @@ import { getEventTier } from "./event-types.js";
  * - Producer service that emits the event
  * - Consumers that must receive and acknowledge the event
  *
- * @see {@link https://github.com/automatic-agent/automatic_agent_platform/blob/main/docs_zh/contracts/event_registry_and_ops_threshold_contract.md | Event Registry Contract}
+ * @see {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/contracts/event_registry_and_ops_threshold_contract.md | Event Registry Contract}
  */
 export interface EventSchemaDefinition {
   type: string;
@@ -69,7 +69,7 @@ interface RawEventSchemaDefinition {
  * - Canonical truth facts live under `platform.*` and are described through
  *   `RUNTIME_EVENT_REPLAY_METADATA` / `getEventSchema()`.
  *
- * @see {@link https://github.com/automatic-agent/automatic_agent_platform/blob/main/docs_zh/contracts/event_registry_and_ops_threshold_contract.md | Event Registry Contract}
+ * @see {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/contracts/event_registry_and_ops_threshold_contract.md | Event Registry Contract}
  */
 const RAW_EVENT_SCHEMA_REGISTRY = {
   "task:status_changed": {
@@ -558,6 +558,12 @@ const RAW_EVENT_SCHEMA_REGISTRY = {
     tier: "tier_2",
     producer: "config_drift_reconciler",
     consumers: ["inspect_projection"],
+  },
+  "system.health.changed": {
+    type: "system.health.changed",
+    tier: "tier_2",
+    producer: "system_health_monitor",
+    consumers: ["dashboard_projection", "inspect_projection", "alerting"],
   },
   "domain:registered": {
     type: "domain:registered",

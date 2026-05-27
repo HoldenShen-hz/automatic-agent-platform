@@ -32,7 +32,7 @@ function makeSignal(overrides: Partial<WorkerLoadSignal> = {}): WorkerLoadSignal
 // Constants
 // ---------------------------------------------------------------------------
 
-test("MAX_RECOMMENDED_STICKY_SHARE is 0.6", () => {
+test("MAX_RECOMMENDED_STICKY_SHARE is 0.6 [worker-load-balancing]", () => {
   assert.equal(MAX_RECOMMENDED_STICKY_SHARE, 0.6);
 });
 
@@ -40,22 +40,22 @@ test("MAX_RECOMMENDED_STICKY_SHARE is 0.6", () => {
 // computeEffectiveActiveLeaseCount
 // ---------------------------------------------------------------------------
 
-test("computeEffectiveActiveLeaseCount returns activeLeaseCount when greater", () => {
+test("computeEffectiveActiveLeaseCount returns activeLeaseCount when greater [worker-load-balancing]", () => {
   const signal = makeSignal({ activeLeaseCount: 5, runningExecutionCount: 3 });
   assert.equal(computeEffectiveActiveLeaseCount(signal), 5);
 });
 
-test("computeEffectiveActiveLeaseCount returns runningExecutionCount when greater", () => {
+test("computeEffectiveActiveLeaseCount returns runningExecutionCount when greater [worker-load-balancing]", () => {
   const signal = makeSignal({ activeLeaseCount: 2, runningExecutionCount: 7 });
   assert.equal(computeEffectiveActiveLeaseCount(signal), 7);
 });
 
-test("computeEffectiveActiveLeaseCount returns either when equal", () => {
+test("computeEffectiveActiveLeaseCount returns either when equal [worker-load-balancing]", () => {
   const signal = makeSignal({ activeLeaseCount: 3, runningExecutionCount: 3 });
   assert.equal(computeEffectiveActiveLeaseCount(signal), 3);
 });
 
-test("computeEffectiveActiveLeaseCount handles zero values", () => {
+test("computeEffectiveActiveLeaseCount handles zero values [worker-load-balancing]", () => {
   assert.equal(computeEffectiveActiveLeaseCount(makeSignal({ activeLeaseCount: 0, runningExecutionCount: 0 })), 0);
   assert.equal(computeEffectiveActiveLeaseCount(makeSignal({ activeLeaseCount: 0, runningExecutionCount: 1 })), 1);
   assert.equal(computeEffectiveActiveLeaseCount(makeSignal({ activeLeaseCount: 1, runningExecutionCount: 0 })), 1);
@@ -65,67 +65,67 @@ test("computeEffectiveActiveLeaseCount handles zero values", () => {
 // computeWorkerLoadScore - basic scoring
 // ---------------------------------------------------------------------------
 
-test("computeWorkerLoadScore returns 0 for idle worker", () => {
+test("computeWorkerLoadScore returns 0 for idle worker [worker-load-balancing]", () => {
   const signal = makeSignal({ activeLeaseCount: 0, runningExecutionCount: 0 });
   assert.equal(computeWorkerLoadScore(signal), 0);
 });
 
-test("computeWorkerLoadScore increases with active leases", () => {
+test("computeWorkerLoadScore increases with active leases [worker-load-balancing]", () => {
   const signal1 = makeSignal({ maxConcurrency: 4, activeLeaseCount: 1, runningExecutionCount: 1 });
   const signal2 = makeSignal({ maxConcurrency: 4, activeLeaseCount: 2, runningExecutionCount: 2 });
   assert.ok(computeWorkerLoadScore(signal2) > computeWorkerLoadScore(signal1));
 });
 
-test("computeWorkerLoadScore increases with running executions", () => {
+test("computeWorkerLoadScore increases with running executions [worker-load-balancing]", () => {
   const signal1 = makeSignal({ maxConcurrency: 4, activeLeaseCount: 0, runningExecutionCount: 1 });
   const signal2 = makeSignal({ maxConcurrency: 4, activeLeaseCount: 0, runningExecutionCount: 2 });
   assert.ok(computeWorkerLoadScore(signal2) > computeWorkerLoadScore(signal1));
 });
 
-test("computeWorkerLoadScore uses saturation when provided", () => {
+test("computeWorkerLoadScore uses saturation when provided [worker-load-balancing]", () => {
   const withoutSaturation = makeSignal({ maxConcurrency: 4, activeLeaseCount: 1, saturation: null });
   const withHighSaturation = makeSignal({ maxConcurrency: 4, activeLeaseCount: 1, saturation: 0.9 });
   assert.ok(computeWorkerLoadScore(withHighSaturation) >= computeWorkerLoadScore(withoutSaturation));
 });
 
-test("computeWorkerLoadScore uses saturation over activeLeaseRatio when higher", () => {
+test("computeWorkerLoadScore uses saturation over activeLeaseRatio when higher [worker-load-balancing]", () => {
   // When saturation is very high, it should dominate the score
   const signal = makeSignal({ maxConcurrency: 4, activeLeaseCount: 1, runningExecutionCount: 1, saturation: 0.95 });
   const score = computeWorkerLoadScore(signal);
   assert.ok(score >= 0.9);
 });
 
-test("computeWorkerLoadScore penalizes backlog", () => {
+test("computeWorkerLoadScore penalizes backlog [worker-load-balancing]", () => {
   const withoutBacklog = makeSignal({ maxConcurrency: 4, toolBacklogCount: 0 });
   const withBacklog = makeSignal({ maxConcurrency: 4, toolBacklogCount: 8 });
   assert.ok(computeWorkerLoadScore(withBacklog) > computeWorkerLoadScore(withoutBacklog));
 });
 
-test("computeWorkerLoadScore penalizes high CPU", () => {
+test("computeWorkerLoadScore penalizes high CPU [worker-load-balancing]", () => {
   const withoutCpu = makeSignal({ maxConcurrency: 4, cpuPct: null });
   const withHighCpu = makeSignal({ maxConcurrency: 4, cpuPct: 90 });
   assert.ok(computeWorkerLoadScore(withHighCpu) >= computeWorkerLoadScore(withoutCpu));
 });
 
-test("computeWorkerLoadScore ignores negative CPU", () => {
+test("computeWorkerLoadScore ignores negative CPU [worker-load-balancing]", () => {
   const signal = makeSignal({ maxConcurrency: 4, cpuPct: -10 });
   const score = computeWorkerLoadScore(signal);
   assert.ok(score >= 0);
 });
 
-test("computeWorkerLoadScore caps CPU at 100", () => {
+test("computeWorkerLoadScore caps CPU at 100 [worker-load-balancing]", () => {
   const signal = makeSignal({ maxConcurrency: 4, cpuPct: 150 });
   const score = computeWorkerLoadScore(signal);
   assert.ok(score >= 0);
 });
 
-test("computeWorkerLoadScore handles maxConcurrency of 0 by using 1", () => {
+test("computeWorkerLoadScore handles maxConcurrency of 0 by using 1 [worker-load-balancing]", () => {
   const signal = makeSignal({ maxConcurrency: 0, activeLeaseCount: 5 });
   const score = computeWorkerLoadScore(signal);
   assert.ok(score > 0);
 });
 
-test("computeWorkerLoadScore never returns negative score", () => {
+test("computeWorkerLoadScore never returns negative score [worker-load-balancing]", () => {
   const signal = makeSignal({
     maxConcurrency: 4,
     activeLeaseCount: 0,
@@ -142,7 +142,7 @@ test("computeWorkerLoadScore never returns negative score", () => {
 // summarizeWorkerLoadSkew - edge cases
 // ---------------------------------------------------------------------------
 
-test("summarizeWorkerLoadSkew returns not detected for empty array", () => {
+test("summarizeWorkerLoadSkew returns not detected for empty array [worker-load-balancing]", () => {
   const result = summarizeWorkerLoadSkew([]);
   assert.equal(result.detected, false);
   assert.equal(result.dominantWorkerId, null);
@@ -151,14 +151,14 @@ test("summarizeWorkerLoadSkew returns not detected for empty array", () => {
   assert.equal(result.totalActiveLeaseCount, 0);
 });
 
-test("summarizeWorkerLoadSkew returns not detected for single worker", () => {
+test("summarizeWorkerLoadSkew returns not detected for single worker [worker-load-balancing]", () => {
   const signals = [makeSignal({ workerId: "worker-1", activeLeaseCount: 5, runningExecutionCount: 5 })];
   const result = summarizeWorkerLoadSkew(signals);
   assert.equal(result.detected, false);
   assert.equal(result.dominantWorkerId, null);
 });
 
-test("summarizeWorkerLoadSkew returns not detected when total leases below threshold", () => {
+test("summarizeWorkerLoadSkew returns not detected when total leases below threshold [worker-load-balancing]", () => {
   const signals = [
     makeSignal({ workerId: "worker-1", activeLeaseCount: 1, runningExecutionCount: 1 }),
     makeSignal({ workerId: "worker-2", activeLeaseCount: 1, runningExecutionCount: 1 }),
@@ -167,7 +167,7 @@ test("summarizeWorkerLoadSkew returns not detected when total leases below thres
   assert.equal(result.detected, false);
 });
 
-test("summarizeWorkerLoadSkew returns not detected when dominant share is below threshold", () => {
+test("summarizeWorkerLoadSkew returns not detected when dominant share is below threshold [worker-load-balancing]", () => {
   const signals = [
     makeSignal({ workerId: "worker-1", activeLeaseCount: 3, runningExecutionCount: 3, maxConcurrency: 4, availableSlots: 1 }),
     makeSignal({ workerId: "worker-2", activeLeaseCount: 3, runningExecutionCount: 3, maxConcurrency: 4, availableSlots: 1 }),
@@ -181,7 +181,7 @@ test("summarizeWorkerLoadSkew returns not detected when dominant share is below 
 // summarizeWorkerLoadSkew - detection
 // ---------------------------------------------------------------------------
 
-test("summarizeWorkerLoadSkew detects skew when one worker has too many leases", () => {
+test("summarizeWorkerLoadSkew detects skew when one worker has too many leases [worker-load-balancing]", () => {
   const signals = [
     makeSignal({ workerId: "worker-1", activeLeaseCount: 6, runningExecutionCount: 6, maxConcurrency: 4, availableSlots: 0 }),
     makeSignal({ workerId: "worker-2", activeLeaseCount: 1, runningExecutionCount: 1, maxConcurrency: 4, availableSlots: 3 }),
@@ -196,7 +196,7 @@ test("summarizeWorkerLoadSkew detects skew when one worker has too many leases",
   assert.equal(result.totalActiveLeaseCount, 8);
 });
 
-test("summarizeWorkerLoadSkew does not detect skew if alternative capacity does not exist", () => {
+test("summarizeWorkerLoadSkew does not detect skew if alternative capacity does not exist [worker-load-balancing]", () => {
   const signals = [
     makeSignal({ workerId: "worker-1", activeLeaseCount: 6, runningExecutionCount: 6, maxConcurrency: 4, availableSlots: 0 }),
     makeSignal({ workerId: "worker-2", activeLeaseCount: 6, runningExecutionCount: 6, maxConcurrency: 4, availableSlots: 0 }),
@@ -205,7 +205,7 @@ test("summarizeWorkerLoadSkew does not detect skew if alternative capacity does 
   assert.equal(result.detected, false);
 });
 
-test("summarizeWorkerLoadSkew ignores workers with no active leases when no alternative capacity", () => {
+test("summarizeWorkerLoadSkew ignores workers with no active leases when no alternative capacity [worker-load-balancing]", () => {
   const signals = [
     makeSignal({ workerId: "worker-1", activeLeaseCount: 6, runningExecutionCount: 6, maxConcurrency: 4, availableSlots: 0 }),
     makeSignal({ workerId: "worker-2", activeLeaseCount: 0, runningExecutionCount: 0, maxConcurrency: 4, availableSlots: 0 }),
@@ -215,7 +215,7 @@ test("summarizeWorkerLoadSkew ignores workers with no active leases when no alte
   assert.equal(result.totalActiveLeaseCount, 6);
 });
 
-test("summarizeWorkerLoadSkew uses runningExecutionCount when higher than activeLeaseCount", () => {
+test("summarizeWorkerLoadSkew uses runningExecutionCount when higher than activeLeaseCount [worker-load-balancing]", () => {
   const signals = [
     makeSignal({ workerId: "worker-1", activeLeaseCount: 2, runningExecutionCount: 10, maxConcurrency: 4, availableSlots: 0 }),
     makeSignal({ workerId: "worker-2", activeLeaseCount: 1, runningExecutionCount: 1, maxConcurrency: 4, availableSlots: 3 }),
@@ -227,7 +227,7 @@ test("summarizeWorkerLoadSkew uses runningExecutionCount when higher than active
   assert.equal(result.totalActiveLeaseCount, 12);
 });
 
-test("summarizeWorkerLoadSkew result includes maxRecommendedStickyShare", () => {
+test("summarizeWorkerLoadSkew result includes maxRecommendedStickyShare [worker-load-balancing]", () => {
   const signals = [
     makeSignal({ workerId: "worker-1", activeLeaseCount: 6, runningExecutionCount: 6, maxConcurrency: 4, availableSlots: 0 }),
     makeSignal({ workerId: "worker-2", activeLeaseCount: 1, runningExecutionCount: 1, maxConcurrency: 4, availableSlots: 3 }),
@@ -238,7 +238,7 @@ test("summarizeWorkerLoadSkew result includes maxRecommendedStickyShare", () => 
   assert.equal(result.maxRecommendedStickyShare, 0.6);
 });
 
-test("summarizeWorkerLoadSkew dominant worker is selected by lease count then load score", () => {
+test("summarizeWorkerLoadSkew dominant worker is selected by lease count then load score [worker-load-balancing]", () => {
   const signals = [
     makeSignal({ workerId: "worker-1", activeLeaseCount: 6, runningExecutionCount: 6, maxConcurrency: 4, availableSlots: 0, saturation: 0.9 }),
     makeSignal({ workerId: "worker-2", activeLeaseCount: 1, runningExecutionCount: 1, maxConcurrency: 4, availableSlots: 3, saturation: 0.3 }),
@@ -248,7 +248,7 @@ test("summarizeWorkerLoadSkew dominant worker is selected by lease count then lo
   assert.equal(result.dominantWorkerId, "worker-1");
 });
 
-test("summarizeWorkerLoadSkew dominant worker is determined by workerId when counts are equal", () => {
+test("summarizeWorkerLoadSkew dominant worker is determined by workerId when counts are equal [worker-load-balancing]", () => {
   // Both workers have same lease count and same load score
   // Without alternative capacity the summary intentionally does not report a dominant worker.
   const signals = [
@@ -260,7 +260,7 @@ test("summarizeWorkerLoadSkew dominant worker is determined by workerId when cou
   assert.equal(result.dominantWorkerId, null);
 });
 
-test("summarizeWorkerLoadSkew detects skew at exact threshold when alternative capacity exists", () => {
+test("summarizeWorkerLoadSkew detects skew at exact threshold when alternative capacity exists [worker-load-balancing]", () => {
   // total = 5, dominant share = 3/5 = 0.6 exactly at threshold
   // Skew should be detected if there's alternative capacity
   const signals = [

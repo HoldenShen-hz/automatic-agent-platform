@@ -20,6 +20,7 @@ export * from "./five-plane-startup-plan.js";
 export * from "./architecture/index.js";
 export * from "./platform-mainline-bootstrap.js";
 export * from "./platform-module-catalog.js";
+export { requireValidStartupEnv } from "./five-plane-control-plane/config-center/startup-env-schema.js";
 export { buildInterfacePlaneBootstrap } from "./five-plane-interface/interface-plane-bootstrap.js";
 export { WebhookIngressService } from "./five-plane-interface/webhook/index.js";
 export { WebhookOutboxDispatchService } from "./five-plane-interface/webhook/webhook-outbox-dispatch-service.js";
@@ -32,6 +33,7 @@ export {
   TransitionService,
   executeToolCall,
   resetToolRegistry,
+  runSingleTaskExecution,
 } from "./five-plane-execution/index.js";
 export {
   HitlApprovalOrchestrationService,

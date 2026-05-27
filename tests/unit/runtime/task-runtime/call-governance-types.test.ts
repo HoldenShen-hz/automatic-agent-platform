@@ -16,7 +16,7 @@ import type {
   CircuitBreakerSnapshot,
 } from "../../../../src/platform/five-plane-execution/execution-engine/call-governance-types.js";
 
-test("LimiterConfig structure", () => {
+test("LimiterConfig structure [call-governance-types]", () => {
   const config: LimiterConfig = {
     maxCalls: 100,
     windowMs: 1000,
@@ -28,7 +28,7 @@ test("LimiterConfig structure", () => {
   assert.equal(typeof config.keyGenerator, "function");
 });
 
-test("LimiterConfig without optional keyGenerator", () => {
+test("LimiterConfig without optional keyGenerator [call-governance-types]", () => {
   const config: LimiterConfig = {
     maxCalls: 50,
     windowMs: 500,
@@ -39,7 +39,7 @@ test("LimiterConfig without optional keyGenerator", () => {
   assert.equal(config.keyGenerator, undefined);
 });
 
-test("LimiterContext structure", () => {
+test("LimiterContext structure [call-governance-types]", () => {
   const ctx: LimiterContext = {
     provider: "anthropic",
     model: "claude-sonnet-4",
@@ -55,13 +55,13 @@ test("LimiterContext structure", () => {
   assert.equal(ctx.endpoint, "/v1/messages");
 });
 
-test("LimiterContext with only required fields", () => {
+test("LimiterContext with only required fields [call-governance-types]", () => {
   const ctx: LimiterContext = {};
   assert.equal(ctx.provider, undefined);
   assert.equal(ctx.model, undefined);
 });
 
-test("CircuitState type accepts all valid states", () => {
+test("CircuitState type accepts all valid states [call-governance-types]", () => {
   const closed: CircuitState = "closed";
   const open: CircuitState = "open";
   const half_open: CircuitState = "half_open";
@@ -71,7 +71,7 @@ test("CircuitState type accepts all valid states", () => {
   assert.equal(half_open, "half_open");
 });
 
-test("BreakerConfig structure", () => {
+test("BreakerConfig structure [call-governance-types]", () => {
   const config: BreakerConfig = {
     failureThreshold: 5,
     successThreshold: 2,
@@ -85,7 +85,7 @@ test("BreakerConfig structure", () => {
   assert.equal(config.halfOpenMaxCalls, 3);
 });
 
-test("BreakerConfig without optional halfOpenMaxCalls", () => {
+test("BreakerConfig without optional halfOpenMaxCalls [call-governance-types]", () => {
   const config: BreakerConfig = {
     failureThreshold: 10,
     successThreshold: 3,
@@ -95,7 +95,7 @@ test("BreakerConfig without optional halfOpenMaxCalls", () => {
   assert.equal(config.halfOpenMaxCalls, undefined);
 });
 
-test("RetryConfig structure with all fields", () => {
+test("RetryConfig structure with all fields [call-governance-types]", () => {
   const config: RetryConfig = {
     maxAttempts: 5,
     baseDelayMs: 100,
@@ -119,7 +119,7 @@ test("RetryConfig structure with all fields", () => {
   assert.equal(typeof config.onRetry, "function");
 });
 
-test("RetryConfig with minimal fields", () => {
+test("RetryConfig with minimal fields [call-governance-types]", () => {
   const config: RetryConfig = {
     maxAttempts: 3,
     baseDelayMs: 200,
@@ -132,7 +132,7 @@ test("RetryConfig with minimal fields", () => {
   assert.equal(config.retryableCodes, undefined);
 });
 
-test("CallResult success structure", () => {
+test("CallResult success structure [call-governance-types]", () => {
   const result: CallResult<string> = {
     success: true,
     data: "response_data",
@@ -149,7 +149,7 @@ test("CallResult success structure", () => {
   assert.equal(result.metadata?.circuitState, "closed");
 });
 
-test("CallResult error structure", () => {
+test("CallResult error structure [call-governance-types]", () => {
   const result: CallResult<null> = {
     success: false,
     error: {
@@ -171,7 +171,7 @@ test("CallResult error structure", () => {
   assert.equal(result.error?.retryAfterMs, 5000);
 });
 
-test("CallPolicy structure", () => {
+test("CallPolicy structure [call-governance-types]", () => {
   const policy: CallPolicy = {
     limiter: { maxCalls: 100, windowMs: 1000 },
     breaker: { failureThreshold: 5, successThreshold: 2, resetTimeoutMs: 30000 },
@@ -183,7 +183,7 @@ test("CallPolicy structure", () => {
   assert.ok(policy.retry != null);
 });
 
-test("PolicyStats structure", () => {
+test("PolicyStats structure [call-governance-types]", () => {
   const stats: PolicyStats = {
     totalCalls: 1000,
     successfulCalls: 950,
@@ -202,7 +202,7 @@ test("PolicyStats structure", () => {
   assert.equal(stats.lastFailure, "ERR_TIMEOUT");
 });
 
-test("DistributedRateLimiterLike interface", () => {
+test("DistributedRateLimiterLike interface [call-governance-types]", () => {
   const limiter: DistributedRateLimiterLike = {
     checkAndConsume: async (key: string) => {
       return { allowed: true };
@@ -216,7 +216,7 @@ test("DistributedRateLimiterLike interface", () => {
   assert.equal(typeof limiter.reset, "function");
 });
 
-test("DistributedRateLimiterLike without optional reset", () => {
+test("DistributedRateLimiterLike without optional reset [call-governance-types]", () => {
   const limiter: DistributedRateLimiterLike = {
     checkAndConsume: async (key: string) => {
       return { allowed: false, retryAfterMs: 1000 };
@@ -227,7 +227,7 @@ test("DistributedRateLimiterLike without optional reset", () => {
   assert.equal(limiter.reset, undefined);
 });
 
-test("CallGovernanceOptions structure", () => {
+test("CallGovernanceOptions structure [call-governance-types]", () => {
   const options: CallGovernanceOptions = {
     distributedRateLimiter: null,
   };
@@ -235,7 +235,7 @@ test("CallGovernanceOptions structure", () => {
   assert.equal(options.distributedRateLimiter, null);
 });
 
-test("LimiterEntry structure", () => {
+test("LimiterEntry structure [call-governance-types]", () => {
   const entry: LimiterEntry = {
     count: 50,
     windowStart: Date.now(),
@@ -245,7 +245,7 @@ test("LimiterEntry structure", () => {
   assert.ok(entry.windowStart > 0);
 });
 
-test("BreakerEntry structure", () => {
+test("BreakerEntry structure [call-governance-types]", () => {
   const entry: BreakerEntry = {
     failures: 3,
     successes: 10,
@@ -260,7 +260,7 @@ test("BreakerEntry structure", () => {
   assert.equal(entry.halfOpenCalls, 2);
 });
 
-test("CircuitBreakerSnapshot structure", () => {
+test("CircuitBreakerSnapshot structure [call-governance-types]", () => {
   const snapshot: CircuitBreakerSnapshot = {
     failures: 5,
     state: "open",

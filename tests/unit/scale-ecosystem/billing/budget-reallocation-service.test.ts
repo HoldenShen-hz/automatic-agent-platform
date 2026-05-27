@@ -4,7 +4,7 @@ import test from "node:test";
 import { BudgetReallocationService } from "../../../../src/scale-ecosystem/billing/budget-reallocation-service.js";
 import { MonetizationError } from "../../../../src/platform/contracts/errors.js";
 
-test("BudgetReallocationService.reallocate - successful reallocation between accounts", (t) => {
+test("BudgetReallocationService.reallocate - successful reallocation between accounts [budget-reallocation-service]", (t) => {
   const service = new BudgetReallocationService();
   // Pre-fund source account
   (service as any).balances.set("acc_source", {
@@ -32,7 +32,7 @@ test("BudgetReallocationService.reallocate - successful reallocation between acc
   assert.strictEqual(result.targetBalanceSnapshot.creditUsd, 250);
 });
 
-test("BudgetReallocationService.reallocate - creates pending record then completes", (t) => {
+test("BudgetReallocationService.reallocate - creates pending record then completes [budget-reallocation-service]", (t) => {
   const service = new BudgetReallocationService();
   (service as any).balances.set("acc_source", {
     accountId: "acc_source",
@@ -57,7 +57,7 @@ test("BudgetReallocationService.reallocate - creates pending record then complet
   assert.ok(record?.completedAt);
 });
 
-test("BudgetReallocationService.reallocate - throws on duplicate idempotency key", (t) => {
+test("BudgetReallocationService.reallocate - throws on duplicate idempotency key [budget-reallocation-service]", (t) => {
   const service = new BudgetReallocationService();
   (service as any).balances.set("acc_source", {
     accountId: "acc_source",
@@ -93,7 +93,7 @@ test("BudgetReallocationService.reallocate - throws on duplicate idempotency key
   );
 });
 
-test("BudgetReallocationService.reallocate - prunes expired idempotency keys", () => {
+test("BudgetReallocationService.reallocate - prunes expired idempotency keys [budget-reallocation-service]", () => {
   const service = new BudgetReallocationService({ idempotencyKeyTtlMs: 1 });
   (service as any).balances.set("acc_source", {
     accountId: "acc_source",
@@ -123,7 +123,7 @@ test("BudgetReallocationService.reallocate - prunes expired idempotency keys", (
   });
 });
 
-test("BudgetReallocationService.reallocate - throws on insufficient credit", (t) => {
+test("BudgetReallocationService.reallocate - throws on insufficient credit [budget-reallocation-service]", (t) => {
   const service = new BudgetReallocationService();
   (service as any).balances.set("acc_source", {
     accountId: "acc_source",
@@ -150,7 +150,7 @@ test("BudgetReallocationService.reallocate - throws on insufficient credit", (t)
   );
 });
 
-test("BudgetReallocationService.reallocate - creates new account balances on first use", (t) => {
+test("BudgetReallocationService.reallocate - creates new account balances on first use [budget-reallocation-service]", (t) => {
   const service = new BudgetReallocationService();
   // Pre-fund both accounts since new accounts start with 0 credit
   (service as any).balances.set("acc_new_source", {
@@ -179,7 +179,7 @@ test("BudgetReallocationService.reallocate - creates new account balances on fir
   assert.strictEqual(result.targetBalanceSnapshot.creditUsd, 100);
 });
 
-test("BudgetReallocationService.reallocate - uses custom requestedAt when provided", (t) => {
+test("BudgetReallocationService.reallocate - uses custom requestedAt when provided [budget-reallocation-service]", (t) => {
   const service = new BudgetReallocationService();
   (service as any).balances.set("acc_source", {
     accountId: "acc_source",
@@ -202,7 +202,7 @@ test("BudgetReallocationService.reallocate - uses custom requestedAt when provid
   assert.strictEqual(result.reallocation.requestedAt, customDate);
 });
 
-test("BudgetReallocationService.getReallocation - returns record by id", (t) => {
+test("BudgetReallocationService.getReallocation - returns record by id [budget-reallocation-service]", (t) => {
   const service = new BudgetReallocationService();
   (service as any).balances.set("acc_source", {
     accountId: "acc_source",
@@ -226,7 +226,7 @@ test("BudgetReallocationService.getReallocation - returns record by id", (t) => 
   assert.strictEqual(retrieved?.reallocationId, result.reallocation.reallocationId);
 });
 
-test("BudgetReallocationService.getReallocation - returns null for unknown id", (t) => {
+test("BudgetReallocationService.getReallocation - returns null for unknown id [budget-reallocation-service]", (t) => {
   const service = new BudgetReallocationService();
 
   const result = service.getReallocation("unknown_realloc_id");
@@ -234,7 +234,7 @@ test("BudgetReallocationService.getReallocation - returns null for unknown id", 
   assert.strictEqual(result, null);
 });
 
-test("BudgetReallocationService.listReallocations - returns reallocations for source account", (t) => {
+test("BudgetReallocationService.listReallocations - returns reallocations for source account [budget-reallocation-service]", (t) => {
   const service = new BudgetReallocationService();
   (service as any).balances.set("acc_source", {
     accountId: "acc_source",
@@ -279,7 +279,7 @@ test("BudgetReallocationService.listReallocations - returns reallocations for so
   assert.strictEqual(reallocations.length, 2);
 });
 
-test("BudgetReallocationService.listReallocations - returns reallocations for target account", (t) => {
+test("BudgetReallocationService.listReallocations - returns reallocations for target account [budget-reallocation-service]", (t) => {
   const service = new BudgetReallocationService();
   (service as any).balances.set("acc_source", {
     accountId: "acc_source",
@@ -303,7 +303,7 @@ test("BudgetReallocationService.listReallocations - returns reallocations for ta
   assert.strictEqual(reallocations[0].targetAccountId, "acc_target");
 });
 
-test("BudgetReallocationService.listReallocations - respects limit parameter", (t) => {
+test("BudgetReallocationService.listReallocations - respects limit parameter [budget-reallocation-service]", (t) => {
   const service = new BudgetReallocationService();
   (service as any).balances.set("acc_source", {
     accountId: "acc_source",
@@ -328,7 +328,7 @@ test("BudgetReallocationService.listReallocations - respects limit parameter", (
   assert.strictEqual(reallocations.length, 5);
 });
 
-test("BudgetReallocationService.listReallocations - returns empty array for account with no reallocations", (t) => {
+test("BudgetReallocationService.listReallocations - returns empty array for account with no reallocations [budget-reallocation-service]", (t) => {
   const service = new BudgetReallocationService();
 
   const reallocations = service.listReallocations("acc_nonexistent");
@@ -336,7 +336,7 @@ test("BudgetReallocationService.listReallocations - returns empty array for acco
   assert.deepStrictEqual(reallocations, []);
 });
 
-test("BudgetReallocationService.reallocate - records version numbers in reallocation record", (t) => {
+test("BudgetReallocationService.reallocate - records version numbers in reallocation record [budget-reallocation-service]", (t) => {
   const service = new BudgetReallocationService();
   (service as any).balances.set("acc_source", {
     accountId: "acc_source",
@@ -364,7 +364,7 @@ test("BudgetReallocationService.reallocate - records version numbers in realloca
   assert.strictEqual(result.reallocation.targetVersion, 10);
 });
 
-test("BudgetReallocationService.reallocate - error case preserves failed status in record", (t) => {
+test("BudgetReallocationService.reallocate - error case preserves failed status in record [budget-reallocation-service]", (t) => {
   const service = new BudgetReallocationService();
   (service as any).balances.set("acc_source", {
     accountId: "acc_source",

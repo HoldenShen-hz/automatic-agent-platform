@@ -11,7 +11,7 @@ import {
 } from "../../../src/platform/five-plane-state-evidence/checkpoints/workflow-step-checkpoint.js";
 import { cleanupPath, createTempWorkspace } from "../../helpers/fs.js";
 
-test("workflow step checkpoint builder preserves recovery-critical fields", () => {
+test("workflow step checkpoint builder preserves recovery-critical fields [workflow-step-checkpoint]", () => {
   const checkpoint = createWorkflowStepCheckpoint({
     taskId: "task-1",
     executionId: "exec-1",
@@ -60,7 +60,7 @@ test("workflow step checkpoint builder preserves recovery-critical fields", () =
   assert.deepEqual(summary.outputKeys, ["triage", "draft"]);
 });
 
-test("workflow step checkpoint reader ignores malformed artifacts", () => {
+test("workflow step checkpoint reader ignores malformed artifacts [workflow-step-checkpoint]", () => {
   const workspace = createTempWorkspace("aa-step-checkpoint-");
 
   try {
@@ -90,7 +90,7 @@ test("workflow step checkpoint reader ignores malformed artifacts", () => {
   }
 });
 
-test("workflow step checkpoint reader reads valid checkpoint", () => {
+test("workflow step checkpoint reader reads valid checkpoint [workflow-step-checkpoint]", () => {
   const workspace = createTempWorkspace("aa-step-checkpoint-valid-");
 
   try {
@@ -147,7 +147,7 @@ test("workflow step checkpoint reader reads valid checkpoint", () => {
   }
 });
 
-test("workflow step checkpoint reader returns null for missing file", () => {
+test("workflow step checkpoint reader returns null for missing file [workflow-step-checkpoint]", () => {
   const workspace = createTempWorkspace("aa-step-checkpoint-missing-");
 
   try {

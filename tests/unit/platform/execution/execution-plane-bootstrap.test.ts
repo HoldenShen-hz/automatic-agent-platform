@@ -9,7 +9,7 @@ import {
 } from "../../../../src/platform/five-plane-execution/execution-plane-bootstrap.js";
 import { ServiceRegistry } from "../../../../src/platform/shared/lifecycle/service-registry.js";
 
-test("execution plane bootstrap exposes canonical execution services", () => {
+test("execution plane bootstrap exposes canonical execution services [execution-plane-bootstrap]", () => {
   const bootstrap = buildExecutionPlaneBootstrap();
   assert.equal(bootstrap.planeId, "execution");
   assert.deepEqual(bootstrap.registeredServiceIds, [
@@ -20,7 +20,7 @@ test("execution plane bootstrap exposes canonical execution services", () => {
   assert.equal(bootstrap.catalog.some((item) => item.capabilityId === "tool-executor"), true);
 });
 
-test("execution plane bootstrap registers execution services in the service registry", async () => {
+test("execution plane bootstrap registers execution services in the service registry [execution-plane-bootstrap]", async () => {
   const registry = ServiceRegistry.getInstance();
   try {
     const bootstrap = registerExecutionPlaneBootstrap(registry);

@@ -32,14 +32,14 @@ function createSqliteBackend(): any {
 // Tests: Basic functionality
 // ---------------------------------------------------------------------------
 
-test("createExecutionLeaseService returns ExecutionLeaseServiceAsync for sqlite backend", () => {
+test("createExecutionLeaseService returns ExecutionLeaseServiceAsync for sqlite backend [execution-lease-factory]", () => {
   const backend = createSqliteBackend();
   const service = createExecutionLeaseService(backend);
 
   assert.ok(service instanceof ExecutionLeaseServiceAsync);
 });
 
-test("createExecutionLeaseService creates a working service instance", () => {
+test("createExecutionLeaseService creates a working service instance [execution-lease-factory]", () => {
   const backend = createSqliteBackend();
   const service = createExecutionLeaseService(backend);
 
@@ -56,7 +56,7 @@ test("createExecutionLeaseService creates a working service instance", () => {
 // Tests: Service is properly initialized
 // ---------------------------------------------------------------------------
 
-test("createExecutionLeaseService initializes with repo from createLeaseRepository", () => {
+test("createExecutionLeaseService initializes with repo from createLeaseRepository [execution-lease-factory]", () => {
   const backend = createSqliteBackend();
 
   // The factory should use createLeaseRepository internally
@@ -66,7 +66,7 @@ test("createExecutionLeaseService initializes with repo from createLeaseReposito
   assert.ok(service != null);
 });
 
-test("createExecutionLeaseService works with different SQLite backend instances", () => {
+test("createExecutionLeaseService works with different SQLite backend instances [execution-lease-factory]", () => {
   const backend1 = createSqliteBackend();
   const backend2 = createSqliteBackend();
 
@@ -83,7 +83,7 @@ test("createExecutionLeaseService works with different SQLite backend instances"
 // Tests: Service type compatibility
 // ---------------------------------------------------------------------------
 
-test("ExecutionLeaseServiceAsync returned by factory has all required async methods", () => {
+test("ExecutionLeaseServiceAsync returned by factory has all required async methods [execution-lease-factory]", () => {
   const backend = createSqliteBackend();
   const service = createExecutionLeaseService(backend);
 
@@ -94,7 +94,7 @@ test("ExecutionLeaseServiceAsync returned by factory has all required async meth
   assert.equal(typeof service.handoverLease, "function");
 });
 
-test("ExecutionLeaseServiceAsync returned by factory has validateWriteAccess method", () => {
+test("ExecutionLeaseServiceAsync returned by factory has validateWriteAccess method [execution-lease-factory]", () => {
   const backend = createSqliteBackend();
   const service = createExecutionLeaseService(backend);
 
@@ -102,7 +102,7 @@ test("ExecutionLeaseServiceAsync returned by factory has validateWriteAccess met
   assert.equal(typeof service.validateWriteAccess, "function");
 });
 
-test("ExecutionLeaseServiceAsync returned by factory has reclaimExpiredLeases method", () => {
+test("ExecutionLeaseServiceAsync returned by factory has reclaimExpiredLeases method [execution-lease-factory]", () => {
   const backend = createSqliteBackend();
   const service = createExecutionLeaseService(backend);
 
@@ -114,7 +114,7 @@ test("ExecutionLeaseServiceAsync returned by factory has reclaimExpiredLeases me
 // Tests: Multiple service instances
 // ---------------------------------------------------------------------------
 
-test("createExecutionLeaseService creates independent service instances", () => {
+test("createExecutionLeaseService creates independent service instances [execution-lease-factory]", () => {
   const backend = createSqliteBackend();
 
   const service1 = createExecutionLeaseService(backend);
@@ -130,7 +130,7 @@ test("createExecutionLeaseService creates independent service instances", () => 
 // Tests: Backend validation (factory requires sync-compatible backend)
 // ---------------------------------------------------------------------------
 
-test("createExecutionLeaseService validates backend is sync-compatible for SQLite", () => {
+test("createExecutionLeaseService validates backend is sync-compatible for SQLite [execution-lease-factory]", () => {
   const backend = createSqliteBackend();
 
   // This should not throw since SQLite is sync-compatible
@@ -142,7 +142,7 @@ test("createExecutionLeaseService validates backend is sync-compatible for SQLit
 // Tests: Service operations work correctly (integration-style tests)
 // ---------------------------------------------------------------------------
 
-test("createExecutionLeaseService creates service where validateWriteAccess method exists and is callable", () => {
+test("createExecutionLeaseService creates service where validateWriteAccess method exists and is callable [execution-lease-factory]", () => {
   const backend = createSqliteBackend();
   const service = createExecutionLeaseService(backend);
 
@@ -150,7 +150,7 @@ test("createExecutionLeaseService creates service where validateWriteAccess meth
   assert.equal(typeof service.validateWriteAccess, "function");
 });
 
-test("createExecutionLeaseService creates service where reclaimExpiredLeases method exists and is callable", () => {
+test("createExecutionLeaseService creates service where reclaimExpiredLeases method exists and is callable [execution-lease-factory]", () => {
   const backend = createSqliteBackend();
   const service = createExecutionLeaseService(backend);
 

@@ -18,7 +18,7 @@ import {
   resolveScaleCapabilityBaseline,
 } from "../../../src/scale-ecosystem/scale-baseline-catalog.js";
 
-test("scale baseline catalog covers ecosystem and scale capabilities", () => {
+test("scale baseline catalog covers ecosystem and scale capabilities [scale-baseline-catalog]", () => {
   const baselines = listScaleCapabilityBaselines();
   assert.equal(baselines.length, 11);
   assert.ok(resolveScaleCapabilityBaseline("marketplace").baselineServices.includes("MarketplaceGovernanceService"));
@@ -30,7 +30,7 @@ test("scale baseline catalog covers ecosystem and scale capabilities", () => {
   assert.ok(resolveScaleCapabilityBaseline("integration").baselineServices.includes("ConnectorFrameworkService"));
 });
 
-test("scale baseline services resolve from canonical submodule and root exports", () => {
+test("scale baseline services resolve from canonical submodule and root exports [scale-baseline-catalog]", () => {
   const rootExports = scaleRoot as Record<string, unknown>;
   const submodulesByEntryModule: Record<string, Record<string, unknown>> = {
     "src/scale-ecosystem/billing/index.ts": billing as Record<string, unknown>,

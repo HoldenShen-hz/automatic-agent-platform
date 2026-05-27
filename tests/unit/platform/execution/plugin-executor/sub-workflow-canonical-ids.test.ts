@@ -31,7 +31,7 @@ const definition: SubWorkflowDefinition = {
   ],
 };
 
-test("SubWorkflowExecutor uses subWorkflowRunId as primary run identifier while preserving executionId alias", async () => {
+test("SubWorkflowExecutor uses subWorkflowRunId as primary run identifier while preserving executionId alias [sub-workflow-canonical-ids]", async () => {
   const executor = new SubWorkflowExecutor({ enableCheckpointing: false });
   const subWorkflowRunId = executor.createWorkflow(definition, context);
   const result = await executor.executeWorkflow(subWorkflowRunId);

@@ -10,7 +10,7 @@ const traceExplorerFeature = createFeatureModule({
   group: "Observability",
   path: "/observability/trace-explorer",
   permission: "authenticated",
-  status: "Implemented/Contracted",
+  status: "Planned",
   summary: featureCopy.summary,
   render: TraceExplorerWebView,
 });

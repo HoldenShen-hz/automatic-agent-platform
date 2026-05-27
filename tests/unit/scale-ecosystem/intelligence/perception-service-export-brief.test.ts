@@ -84,7 +84,7 @@ function makeItem(overrides: Partial<IntelItemRecord> = {}): IntelItemRecord {
 }
 
 describe("PerceptionService exportBrief", () => {
-  test("exportBrief returns brief, items, and artifact refs", () => {
+  test("exportBrief returns brief, items, and artifact refs [perception-service-export-brief]", () => {
     const mockStore = createMockStore();
     const brief = makeBrief({
       briefId: "brief_test_1",
@@ -107,7 +107,7 @@ describe("PerceptionService exportBrief", () => {
     assert.ok(result.markdownArtifact);
   });
 
-  test("exportBrief returns jsonArtifact with correct kind", () => {
+  test("exportBrief returns jsonArtifact with correct kind [perception-service-export-brief]", () => {
     const mockStore = createMockStore();
     const brief = makeBrief({ briefId: "brief_json_test" });
     mockStore.intelligence.getIntelBrief = () => brief;
@@ -124,7 +124,7 @@ describe("PerceptionService exportBrief", () => {
     assert.ok(result.jsonArtifact.sizeBytes > 0);
   });
 
-  test("exportBrief returns markdownArtifact with correct kind", () => {
+  test("exportBrief returns markdownArtifact with correct kind [perception-service-export-brief]", () => {
     const mockStore = createMockStore();
     const brief = makeBrief({ briefId: "brief_md_test" });
     mockStore.intelligence.getIntelBrief = () => brief;
@@ -138,7 +138,7 @@ describe("PerceptionService exportBrief", () => {
     assert.ok(result.markdownArtifact.artifactId);
   });
 
-  test("exportBrief includes recommendedActions in result", () => {
+  test("exportBrief includes recommendedActions in result [perception-service-export-brief]", () => {
     const mockStore = createMockStore();
     const brief = makeBrief({
       briefId: "brief_actions_test",
@@ -159,7 +159,7 @@ describe("PerceptionService exportBrief", () => {
     assert.equal(result.recommendedActions[1]!.title, "Notify Team");
   });
 
-  test("exportBrief calls insertArtifact for both artifacts", () => {
+  test("exportBrief calls insertArtifact for both artifacts [perception-service-export-brief]", () => {
     const mockStore = createMockStore();
     const brief = makeBrief({ briefId: "brief_artifacts_test" });
     mockStore.intelligence.getIntelBrief = () => brief;
@@ -173,7 +173,7 @@ describe("PerceptionService exportBrief", () => {
     assert.equal(mockStore._artifacts.length, 2);
   });
 
-  test("exportBrief sorts items by itemIds order", () => {
+  test("exportBrief sorts items by itemIds order [perception-service-export-brief]", () => {
     const mockStore = createMockStore();
     const brief = makeBrief({
       briefId: "brief_sort_test",
@@ -193,7 +193,7 @@ describe("PerceptionService exportBrief", () => {
     assert.equal(result.items[2]!.intelId, "intel_b");
   });
 
-  test("exportBrief with tenantId passes tenant to proposeActions", () => {
+  test("exportBrief with tenantId passes tenant to proposeActions [perception-service-export-brief]", () => {
     const mockStore = createMockStore();
     const brief = makeBrief({ briefId: "brief_tenant_test", tenantId: "tenant_xyz" });
     mockStore.intelligence.getIntelBrief = () => brief;
@@ -206,7 +206,7 @@ describe("PerceptionService exportBrief", () => {
     assert.equal(result.brief.tenantId, "tenant_xyz");
   });
 
-  test("exportBrief with accountId passes account to proposeActions", () => {
+  test("exportBrief with accountId passes account to proposeActions [perception-service-export-brief]", () => {
     const mockStore = createMockStore();
     const brief = makeBrief({ briefId: "brief_account_test" });
     mockStore.intelligence.getIntelBrief = () => brief;
@@ -219,7 +219,7 @@ describe("PerceptionService exportBrief", () => {
     assert.ok(result.brief);
   });
 
-  test("exportBrief returns proposals from proposeActions", () => {
+  test("exportBrief returns proposals from proposeActions [perception-service-export-brief]", () => {
     const mockStore = createMockStore();
     const brief = makeBrief({
       briefId: "brief_proposals_test",
@@ -238,7 +238,7 @@ describe("PerceptionService exportBrief", () => {
     assert.ok(Array.isArray(result.proposals));
   });
 
-  test("exportBrief throws for non-existent brief", () => {
+  test("exportBrief throws for non-existent brief [perception-service-export-brief]", () => {
     const mockStore = createMockStore();
     mockStore.intelligence.getIntelBrief = () => null;
 
@@ -249,7 +249,7 @@ describe("PerceptionService exportBrief", () => {
     });
   });
 
-  test("exportBrief artifact lineage contains briefId and source", () => {
+  test("exportBrief artifact lineage contains briefId and source [perception-service-export-brief]", () => {
     const mockStore = createMockStore();
     const brief = makeBrief({ briefId: "brief_lineage_test" });
     mockStore.intelligence.getIntelBrief = () => brief;

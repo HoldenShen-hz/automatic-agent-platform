@@ -7,7 +7,7 @@ import test from "node:test";
 import { RedisQueueAdapter } from "../../../../../src/platform/five-plane-execution/queue/redis-queue-adapter.js";
 import type { EnqueueInput, QueueJobRecord } from "../../../../../src/platform/five-plane-execution/queue/queue-adapter-types.js";
 
-test("RedisQueueAdapter enqueue returns a job record with correct structure", () => {
+test("RedisQueueAdapter enqueue returns a job record with correct structure [redis-queue-adapter-async]", () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
   const job = adapter.enqueue({ queueName: "test-queue", payload: { data: "test" } });
 
@@ -20,7 +20,7 @@ test("RedisQueueAdapter enqueue returns a job record with correct structure", ()
   assert.ok(job.updatedAt);
 });
 
-test("RedisQueueAdapter enqueue respects priority and maxAttempts options", () => {
+test("RedisQueueAdapter enqueue respects priority and maxAttempts options [redis-queue-adapter-async]", () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
   const job = adapter.enqueue({
     queueName: "priority-queue",
@@ -33,7 +33,7 @@ test("RedisQueueAdapter enqueue respects priority and maxAttempts options", () =
   assert.equal(job.maxAttempts, 5);
 });
 
-test("RedisQueueAdapter enqueue sets delayed status for future delayUntil", () => {
+test("RedisQueueAdapter enqueue sets delayed status for future delayUntil [redis-queue-adapter-async]", () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
   const futureDate = new Date(Date.now() + 3600_000).toISOString();
   const job = adapter.enqueue({
@@ -46,7 +46,7 @@ test("RedisQueueAdapter enqueue sets delayed status for future delayUntil", () =
   assert.equal(job.delayUntil, futureDate);
 });
 
-test("RedisQueueAdapter enqueue sets waiting status for past delayUntil", () => {
+test("RedisQueueAdapter enqueue sets waiting status for past delayUntil [redis-queue-adapter-async]", () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
   const pastDate = new Date(Date.now() - 1000).toISOString();
   const job = adapter.enqueue({
@@ -58,18 +58,18 @@ test("RedisQueueAdapter enqueue sets waiting status for past delayUntil", () => 
   assert.equal(job.status, "waiting");
 });
 
-test("RedisQueueAdapter enqueue uses default priority when not specified", () => {
+test("RedisQueueAdapter enqueue uses default priority when not specified [redis-queue-adapter-async]", () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
   const job = adapter.enqueue({ queueName: "q", payload: "test" });
   assert.equal(job.priority, 0);
 });
 
-test("RedisQueueAdapter backendKind is redis", () => {
+test("RedisQueueAdapter backendKind is redis [redis-queue-adapter-async]", () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
   assert.equal(adapter.backendKind, "redis");
 });
 
-test("RedisQueueAdapter sync methods throw sync_not_supported errors", () => {
+test("RedisQueueAdapter sync methods throw sync_not_supported errors [redis-queue-adapter-async]", () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
 
   const methods = [
@@ -93,7 +93,7 @@ test("RedisQueueAdapter sync methods throw sync_not_supported errors", () => {
   }
 });
 
-test("RedisQueueAdapter requires host and defaults port to 6379", () => {
+test("RedisQueueAdapter requires host and defaults port to 6379 [redis-queue-adapter-async]", () => {
   assert.throws(
     () => new RedisQueueAdapter({}),
     (error: unknown) => error instanceof Error && "code" in error && error.code === "redis.host_required",
@@ -103,7 +103,7 @@ test("RedisQueueAdapter requires host and defaults port to 6379", () => {
   assert.equal(adapter.backendKind, "redis");
 });
 
-test("RedisQueueAdapter mapRedisToJobRecord handles missing optional fields", () => {
+test("RedisQueueAdapter mapRedisToJobRecord handles missing optional fields [redis-queue-adapter-async]", () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 }) as any;
   // Access private method via any cast to test edge cases
   const result = adapter.mapRedisToJobRecord({
@@ -133,7 +133,7 @@ test("RedisQueueAdapter mapRedisToJobRecord handles missing optional fields", ()
   assert.equal(result.completedAt, null);
 });
 
-test("RedisQueueAdapter mapRedisToJobRecord parses integer fields correctly", () => {
+test("RedisQueueAdapter mapRedisToJobRecord parses integer fields correctly [redis-queue-adapter-async]", () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 }) as any;
   const result = adapter.mapRedisToJobRecord({
     id: "job-2",
@@ -159,7 +159,7 @@ test("RedisQueueAdapter mapRedisToJobRecord parses integer fields correctly", ()
   assert.equal(result.idempotencyKey, "idem-key");
 });
 
-test("RedisQueueAdapter mapRedisToJobRecord defaults missing fields to sensible values", () => {
+test("RedisQueueAdapter mapRedisToJobRecord defaults missing fields to sensible values [redis-queue-adapter-async]", () => {
   const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 }) as any;
   const result = adapter.mapRedisToJobRecord({});
 

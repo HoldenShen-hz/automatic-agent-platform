@@ -31,99 +31,99 @@ import { cleanupPath, createTempWorkspace, createFile } from "../../../../helper
 // skill-execution-support.ts utility function tests
 // =============================================================================
 
-test("normalizeAttempts returns 1 for undefined maxAttempts with fail mode", () => {
+test("normalizeAttempts returns 1 for undefined maxAttempts with fail mode [skill-execution-extended]", () => {
   const result = normalizeAttempts({ maxAttempts: undefined, onFailure: "fail" });
   assert.equal(result, 1);
 });
 
-test("normalizeAttempts returns 2 for undefined maxAttempts with retry mode", () => {
+test("normalizeAttempts returns 2 for undefined maxAttempts with retry mode [skill-execution-extended]", () => {
   const result = normalizeAttempts({ maxAttempts: undefined, onFailure: "retry" });
   assert.equal(result, 2);
 });
 
-test("normalizeAttempts returns max of 1 and truncated value", () => {
+test("normalizeAttempts returns max of 1 and truncated value [skill-execution-extended]", () => {
   const result = normalizeAttempts({ maxAttempts: 0, onFailure: "fail" });
   assert.equal(result, 1);
 });
 
-test("normalizeAttempts returns max of 1 and truncated value for 0.9", () => {
+test("normalizeAttempts returns max of 1 and truncated value for 0.9 [skill-execution-extended]", () => {
   const result = normalizeAttempts({ maxAttempts: 0.9, onFailure: "fail" });
   assert.equal(result, 1);
 });
 
-test("normalizeAttempts uses maxAttempts when provided", () => {
+test("normalizeAttempts uses maxAttempts when provided [skill-execution-extended]", () => {
   const result = normalizeAttempts({ maxAttempts: 5, onFailure: "fail" });
   assert.equal(result, 5);
 });
 
-test("defaultSummary returns completion message for succeeded status", () => {
+test("defaultSummary returns completion message for succeeded status [skill-execution-extended]", () => {
   const result = defaultSummary({ stepId: "step1", resolvedToolName: "read" }, "succeeded");
   assert.equal(result, "Skill step step1 completed via read.");
 });
 
-test("defaultSummary returns partial success message", () => {
+test("defaultSummary returns partial success message [skill-execution-extended]", () => {
   const result = defaultSummary({ stepId: "step1", resolvedToolName: "read" }, "partial_success");
   assert.equal(result, "Skill step step1 failed via read but continued.");
 });
 
-test("defaultSummary returns failure message", () => {
+test("defaultSummary returns failure message [skill-execution-extended]", () => {
   const result = defaultSummary({ stepId: "step1", resolvedToolName: "read" }, "failed");
   assert.equal(result, "Skill step step1 failed via read.");
 });
 
-test("stableSerialize handles null", () => {
+test("stableSerialize handles null [skill-execution-extended]", () => {
   const result = stableSerialize(null);
   assert.equal(result, "null");
 });
 
-test("stableSerialize handles undefined", () => {
+test("stableSerialize handles undefined [skill-execution-extended]", () => {
   const result = stableSerialize(undefined);
   assert.equal(result, "undefined");
 });
 
-test("stableSerialize handles number", () => {
+test("stableSerialize handles number [skill-execution-extended]", () => {
   const result = stableSerialize(42);
   assert.equal(result, "42");
 });
 
-test("stableSerialize handles string", () => {
+test("stableSerialize handles string [skill-execution-extended]", () => {
   const result = stableSerialize("hello");
   assert.equal(result, '"hello"');
 });
 
-test("stableSerialize handles array", () => {
+test("stableSerialize handles array [skill-execution-extended]", () => {
   const result = stableSerialize([1, 2, 3]);
   assert.equal(result, "[1,2,3]");
 });
 
-test("stableSerialize handles object with sorted keys", () => {
+test("stableSerialize handles object with sorted keys [skill-execution-extended]", () => {
   const result = stableSerialize({ b: 2, a: 1 });
   // Keys should be sorted alphabetically
   assert.ok(result.includes("a") && result.includes("b"));
 });
 
-test("stableSerialize handles nested structures", () => {
+test("stableSerialize handles nested structures [skill-execution-extended]", () => {
   const result = stableSerialize({ arr: [1, 2], obj: { nested: true } });
   assert.ok(result.includes("arr"));
   assert.ok(result.includes("obj"));
 });
 
-test("normalizeWorkingDirectory returns null for null input", () => {
+test("normalizeWorkingDirectory returns null for null input [skill-execution-extended]", () => {
   const result = normalizeWorkingDirectory(null);
   assert.equal(result, null);
 });
 
-test("normalizeWorkingDirectory returns null for undefined input", () => {
+test("normalizeWorkingDirectory returns null for undefined input [skill-execution-extended]", () => {
   const result = normalizeWorkingDirectory(undefined);
   assert.equal(result, null);
 });
 
-test("normalizeWorkingDirectory returns null for empty string", () => {
+test("normalizeWorkingDirectory returns null for empty string [skill-execution-extended]", () => {
   const result = normalizeWorkingDirectory("   ");
   assert.equal(result, null);
 });
 
-test("normalizeWorkingDirectory resolves valid path", () => {
+test("normalizeWorkingDirectory resolves valid path [skill-execution-extended]", () => {
   const workspace = createTempWorkspace("aa-norm-wd-");
   try {
     const result = normalizeWorkingDirectory(workspace);
@@ -178,22 +178,22 @@ const createMockStoreWithConnection = () => {
   };
 };
 
-test("computeSkillHealth returns 0.5 for zero executions", () => {
+test("computeSkillHealth returns 0.5 for zero executions [skill-execution-extended]", () => {
   const health = computeSkillHealth(0, 0.8);
   assert.equal(health, 0.5);
 });
 
-test("computeSkillHealth returns success rate when executions below 100", () => {
+test("computeSkillHealth returns success rate when executions below 100 [skill-execution-extended]", () => {
   const health = computeSkillHealth(50, 0.9);
   assert.equal(health, 0.8846153846153846);
 });
 
-test("computeSkillHealth returns success rate when executions exactly 100", () => {
+test("computeSkillHealth returns success rate when executions exactly 100 [skill-execution-extended]", () => {
   const health = computeSkillHealth(100, 0.85);
   assert.equal(health, 0.8431372549019608);
 });
 
-test("SkillGovernanceService.registerSkill returns true", () => {
+test("SkillGovernanceService.registerSkill returns true [skill-execution-extended]", () => {
   const service = new SkillGovernanceService(createMockStoreWithConnection() as unknown as import("../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js").AuthoritativeTaskStore);
 
   const metadata: SkillMetadata = {
@@ -220,7 +220,7 @@ test("SkillGovernanceService.registerSkill returns true", () => {
   assert.equal(result, true);
 });
 
-test("SkillGovernanceService.updateLifecycle returns true", () => {
+test("SkillGovernanceService.updateLifecycle returns true [skill-execution-extended]", () => {
   const service = new SkillGovernanceService(createMockStoreWithConnection() as unknown as import("../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js").AuthoritativeTaskStore);
 
   const request: UpdateSkillLifecycleRequest = {
@@ -233,7 +233,7 @@ test("SkillGovernanceService.updateLifecycle returns true", () => {
   assert.equal(result, true);
 });
 
-test("SkillGovernanceService.setExecutionPolicy returns true", () => {
+test("SkillGovernanceService.setExecutionPolicy returns true [skill-execution-extended]", () => {
   const service = new SkillGovernanceService(createMockStoreWithConnection() as unknown as import("../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js").AuthoritativeTaskStore);
 
   const policy: SkillExecutionPolicy = {
@@ -250,7 +250,7 @@ test("SkillGovernanceService.setExecutionPolicy returns true", () => {
   assert.equal(result, true);
 });
 
-test("SkillGovernanceService.authorizeExecution returns authorized when allowed", () => {
+test("SkillGovernanceService.authorizeExecution returns authorized when allowed [skill-execution-extended]", () => {
   const service = new SkillGovernanceService(createMockStoreWithConnection() as unknown as import("../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js").AuthoritativeTaskStore);
   service.setExecutionPolicy({
     skillId: "test-skill",
@@ -274,14 +274,14 @@ test("SkillGovernanceService.authorizeExecution returns authorized when allowed"
   assert.equal(result.authorized, true);
 });
 
-test("SkillGovernanceService.archiveOldDeprecatedSkills returns number", () => {
+test("SkillGovernanceService.archiveOldDeprecatedSkills returns number [skill-execution-extended]", () => {
   const service = new SkillGovernanceService(createMockStoreWithConnection() as unknown as import("../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js").AuthoritativeTaskStore);
 
   const result = service.archiveOldDeprecatedSkills(30);
   assert.equal(typeof result, "number");
 });
 
-test("SkillGovernanceService.validateSkill produces warnings for long cache TTL", () => {
+test("SkillGovernanceService.validateSkill produces warnings for long cache TTL [skill-execution-extended]", () => {
   const service = new SkillGovernanceService(createMockStoreWithConnection() as unknown as import("../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js").AuthoritativeTaskStore);
 
   const result = service.validateSkill({
@@ -297,7 +297,7 @@ test("SkillGovernanceService.validateSkill produces warnings for long cache TTL"
   assert.ok(result.warnings.some((w) => w.includes("cacheTtlSeconds")));
 });
 
-test("SkillGovernanceService.validateSkill produces warnings for empty requiredTools", () => {
+test("SkillGovernanceService.validateSkill produces warnings for empty requiredTools [skill-execution-extended]", () => {
   const service = new SkillGovernanceService(createMockStoreWithConnection() as unknown as import("../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js").AuthoritativeTaskStore);
 
   const result = service.validateSkill({
@@ -313,7 +313,7 @@ test("SkillGovernanceService.validateSkill produces warnings for empty requiredT
   assert.ok(result.warnings.some((w) => w.includes("no required tools")));
 });
 
-test("SkillGovernanceService.validateSkill rejects description over 500 chars", () => {
+test("SkillGovernanceService.validateSkill rejects description over 500 chars [skill-execution-extended]", () => {
   const service = new SkillGovernanceService(createMockStoreWithConnection() as unknown as import("../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js").AuthoritativeTaskStore);
 
   const result = service.validateSkill({
@@ -329,7 +329,7 @@ test("SkillGovernanceService.validateSkill rejects description over 500 chars", 
   assert.ok(result.errors.some((e) => e.includes("description")));
 });
 
-test("SkillGovernanceService.validateSkill rejects name over 100 chars", () => {
+test("SkillGovernanceService.validateSkill rejects name over 100 chars [skill-execution-extended]", () => {
   const service = new SkillGovernanceService(createMockStoreWithConnection() as unknown as import("../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js").AuthoritativeTaskStore);
 
   const result = service.validateSkill({
@@ -349,7 +349,7 @@ test("SkillGovernanceService.validateSkill rejects name over 100 chars", () => {
 // semantic-repo-map-service.ts extended tests
 // =============================================================================
 
-test("extractImports extracts from complex content", () => {
+test("extractImports extracts from complex content [skill-execution-extended]", () => {
   const content = `
     import { useState } from 'react';
     import React, { useEffect } from 'react';
@@ -363,7 +363,7 @@ test("extractImports extracts from complex content", () => {
   assert.ok(dynamicImports.includes("./lazy"));
 });
 
-test("extractSymbols does not extract const inside function", () => {
+test("extractSymbols does not extract const inside function [skill-execution-extended]", () => {
   const content = `
     function outer() {
       const inner = 1;
@@ -376,7 +376,7 @@ test("extractSymbols does not extract const inside function", () => {
   assert.ok(constSymbols.some((s) => s.name === "topLevel"));
 });
 
-test("computeFileRelevance boosts current file dependencies", () => {
+test("computeFileRelevance boosts current file dependencies [skill-execution-extended]", () => {
   const file: RepoFileNode = {
     filePath: "/test/dep.ts",
     fileName: "dep.ts",
@@ -393,7 +393,7 @@ test("computeFileRelevance boosts current file dependencies", () => {
   assert.ok(score > 0);
 });
 
-test("computeSymbolRelevance handles multiple references", () => {
+test("computeSymbolRelevance handles multiple references [skill-execution-extended]", () => {
   const symbol: RepoSymbol = {
     name: "Service",
     kind: "class",
@@ -412,7 +412,7 @@ test("computeSymbolRelevance handles multiple references", () => {
   assert.ok(score >= 0.5);
 });
 
-test("SemanticRepoMapService.search returns results for matching query", () => {
+test("SemanticRepoMapService.search returns results for matching query [skill-execution-extended]", () => {
   const workspace = createTempWorkspace("aa-repo-map-search-");
   try {
     createFile(join(workspace, "test.ts"), "export function test() {}");
@@ -427,7 +427,7 @@ test("SemanticRepoMapService.search returns results for matching query", () => {
   }
 });
 
-test("SemanticRepoMapService.search respects limit parameter", () => {
+test("SemanticRepoMapService.search respects limit parameter [skill-execution-extended]", () => {
   const workspace = createTempWorkspace("aa-repo-map-limit-");
   try {
     createFile(join(workspace, "a.ts"), "function a() {}");
@@ -444,7 +444,7 @@ test("SemanticRepoMapService.search respects limit parameter", () => {
   }
 });
 
-test("SemanticRepoMapService.getSymbol returns symbol by name", () => {
+test("SemanticRepoMapService.getSymbol returns symbol by name [skill-execution-extended]", () => {
   const workspace = createTempWorkspace("aa-repo-map-symbol-");
   try {
     createFile(join(workspace, "myFunc.ts"), "export function myFunc() {}");
@@ -459,7 +459,7 @@ test("SemanticRepoMapService.getSymbol returns symbol by name", () => {
   }
 });
 
-test("SemanticRepoMapService.getSymbol returns null for non-existent symbol", () => {
+test("SemanticRepoMapService.getSymbol returns null for non-existent symbol [skill-execution-extended]", () => {
   const workspace = createTempWorkspace("aa-repo-map-symbol-null-");
   try {
     createFile(join(workspace, "existing.ts"), "function existing() {}");
@@ -473,7 +473,7 @@ test("SemanticRepoMapService.getSymbol returns null for non-existent symbol", ()
   }
 });
 
-test("SemanticRepoMapService.getFileDependencies returns empty for non-existent file", () => {
+test("SemanticRepoMapService.getFileDependencies returns empty for non-existent file [skill-execution-extended]", () => {
   const workspace = createTempWorkspace("aa-repo-map-deps-");
   try {
     const service = new SemanticRepoMapService(workspace, 0);
@@ -485,7 +485,7 @@ test("SemanticRepoMapService.getFileDependencies returns empty for non-existent 
   }
 });
 
-test("SemanticRepoMapService.getFileDependents returns empty for non-existent file", () => {
+test("SemanticRepoMapService.getFileDependents returns empty for non-existent file [skill-execution-extended]", () => {
   const workspace = createTempWorkspace("aa-repo-map-reverse-");
   try {
     const service = new SemanticRepoMapService(workspace, 0);
@@ -497,7 +497,7 @@ test("SemanticRepoMapService.getFileDependents returns empty for non-existent fi
   }
 });
 
-test("SemanticRepoMapService.buildMap caches and returns same map on subsequent calls", () => {
+test("SemanticRepoMapService.buildMap caches and returns same map on subsequent calls [skill-execution-extended]", () => {
   const workspace = createTempWorkspace("aa-repo-map-cache-");
   try {
     createFile(join(workspace, "file.ts"), "function test() {}");
@@ -513,7 +513,7 @@ test("SemanticRepoMapService.buildMap caches and returns same map on subsequent 
   }
 });
 
-test("SemanticRepoMapService.buildMap rebuilds after cache expiry", async () => {
+test("SemanticRepoMapService.buildMap rebuilds after cache expiry [skill-execution-extended]", async () => {
   const workspace = createTempWorkspace("aa-repo-map-rebuild-");
   try {
     createFile(join(workspace, "file.ts"), "function test() {}");
@@ -534,7 +534,7 @@ test("SemanticRepoMapService.buildMap rebuilds after cache expiry", async () => 
   }
 });
 
-test("SemanticRepoMapService.getStatistics returns correct file type counts", () => {
+test("SemanticRepoMapService.getStatistics returns correct file type counts [skill-execution-extended]", () => {
   const workspace = createTempWorkspace("aa-repo-map-stats-");
   try {
     createFile(join(workspace, "file1.ts"), "function test() {}");
@@ -551,7 +551,7 @@ test("SemanticRepoMapService.getStatistics returns correct file type counts", ()
   }
 });
 
-test("SemanticRepoMapService.getStatistics returns correct symbol kind counts", () => {
+test("SemanticRepoMapService.getStatistics returns correct symbol kind counts [skill-execution-extended]", () => {
   const workspace = createTempWorkspace("aa-repo-map-symbol-stats-");
   try {
     createFile(join(workspace, "kinds.ts"), `
@@ -573,7 +573,7 @@ test("SemanticRepoMapService.getStatistics returns correct symbol kind counts", 
   }
 });
 
-test("SemanticRepoMapService ignores node_modules and dist directories", () => {
+test("SemanticRepoMapService ignores node_modules and dist directories [skill-execution-extended]", () => {
   const workspace = createTempWorkspace("aa-repo-map-ignore-");
   try {
     createFile(join(workspace, "valid.ts"), "function valid() {}");
@@ -591,7 +591,7 @@ test("SemanticRepoMapService ignores node_modules and dist directories", () => {
   }
 });
 
-test("SemanticRepoMapService handles file read errors gracefully", () => {
+test("SemanticRepoMapService handles file read errors gracefully [skill-execution-extended]", () => {
   const workspace = createTempWorkspace("aa-repo-map-error-");
   try {
     // Create a file with special characters that might cause issues
@@ -606,7 +606,7 @@ test("SemanticRepoMapService handles file read errors gracefully", () => {
   }
 });
 
-test("extractSymbols returns empty array for content with no symbols", () => {
+test("extractSymbols returns empty array for content with no symbols [skill-execution-extended]", () => {
   const content = `
     // Just a comment
     const x = 1;
@@ -618,7 +618,7 @@ test("extractSymbols returns empty array for content with no symbols", () => {
   assert.ok(Array.isArray(symbols));
 });
 
-test("computeFileRelevance returns 0 for non-matching query", () => {
+test("computeFileRelevance returns 0 for non-matching query [skill-execution-extended]", () => {
   const file: RepoFileNode = {
     filePath: "/test/service.ts",
     fileName: "service.ts",
@@ -634,7 +634,7 @@ test("computeFileRelevance returns 0 for non-matching query", () => {
   assert.equal(score, 0);
 });
 
-test("computeSymbolRelevance returns 0 for non-matching query", () => {
+test("computeSymbolRelevance returns 0 for non-matching query [skill-execution-extended]", () => {
   const symbol: RepoSymbol = {
     name: "Service",
     kind: "class",
@@ -648,7 +648,7 @@ test("computeSymbolRelevance returns 0 for non-matching query", () => {
   assert.equal(score, 0);
 });
 
-test("extractImports handles multiline import statements", () => {
+test("extractImports handles multiline import statements [skill-execution-extended]", () => {
   const content = `
     import {
       useState,
@@ -660,7 +660,7 @@ test("extractImports handles multiline import statements", () => {
   assert.ok(imports.includes("react"));
 });
 
-test("extractImports handles import with type keyword", () => {
+test("extractImports handles import with type keyword [skill-execution-extended]", () => {
   const content = `
     import type { SomeType } from './types';
     import { useState } from 'react';

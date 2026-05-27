@@ -27,7 +27,7 @@ function createLedger(): BudgetLedger {
   };
 }
 
-test("BudgetAllocator applies recommendation-derived cap when present", () => {
+test("BudgetAllocator applies recommendation-derived cap when present [budget-allocator-recommendation]", () => {
   const allocator = new BudgetAllocator();
   const registry = new BudgetRecommendationRegistry();
   registry.onRecommendations([{

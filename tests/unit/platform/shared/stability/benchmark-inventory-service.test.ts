@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { BenchmarkInventoryService } from "../../../../../src/platform/shared/stability/benchmark-inventory-service.js";
 
-test("BenchmarkInventoryService lists all benchmarks", () => {
+test("BenchmarkInventoryService lists all benchmarks [benchmark-inventory-service]", () => {
   const service = new BenchmarkInventoryService();
   const records = service.listBenchmarks();
 
@@ -16,7 +16,7 @@ test("BenchmarkInventoryService lists all benchmarks", () => {
   assert.ok(records.some((r) => r.benchmarkId === "bench.evidence.campaign"));
 });
 
-test("BenchmarkInventoryService listBenchmarks returns a copy", () => {
+test("BenchmarkInventoryService listBenchmarks returns a copy [benchmark-inventory-service]", () => {
   const service = new BenchmarkInventoryService();
   const first = service.listBenchmarks();
   const second = service.listBenchmarks();
@@ -28,14 +28,14 @@ test("BenchmarkInventoryService listBenchmarks returns a copy", () => {
   assert.equal(second.length, 6);
 });
 
-test("BenchmarkInventoryService buildSummary returns correct total", () => {
+test("BenchmarkInventoryService buildSummary returns correct total [benchmark-inventory-service]", () => {
   const service = new BenchmarkInventoryService();
   const summary = service.buildSummary();
 
   assert.equal(summary.total, 6);
 });
 
-test("BenchmarkInventoryService buildSummary groups by architecture section", () => {
+test("BenchmarkInventoryService buildSummary groups by architecture section [benchmark-inventory-service]", () => {
   const service = new BenchmarkInventoryService();
   const summary = service.buildSummary();
 
@@ -45,7 +45,7 @@ test("BenchmarkInventoryService buildSummary groups by architecture section", ()
   assert.equal(summary.bySection["§32"], 1);
 });
 
-test("BenchmarkInventoryService buildSummary groups by target scale", () => {
+test("BenchmarkInventoryService buildSummary groups by target scale [benchmark-inventory-service]", () => {
   const service = new BenchmarkInventoryService();
   const summary = service.buildSummary();
 
@@ -55,14 +55,14 @@ test("BenchmarkInventoryService buildSummary groups by target scale", () => {
   assert.equal(summary.byTargetScale.S4_contract_only, 1);
 });
 
-test("BenchmarkInventoryService buildSummary returns zero counts for missing scales", () => {
+test("BenchmarkInventoryService buildSummary returns zero counts for missing scales [benchmark-inventory-service]", () => {
   const service = new BenchmarkInventoryService();
   const summary = service.buildSummary();
 
   assert.equal(summary.byTargetScale.S1, 1);
 });
 
-test("BenchmarkInventoryService buildSummary is idempotent", () => {
+test("BenchmarkInventoryService buildSummary is idempotent [benchmark-inventory-service]", () => {
   const service = new BenchmarkInventoryService();
   const first = service.buildSummary();
   const second = service.buildSummary();
@@ -70,7 +70,7 @@ test("BenchmarkInventoryService buildSummary is idempotent", () => {
   assert.deepEqual(first, second);
 });
 
-test("BenchmarkInventoryService categories include performance, stable_rehearsal, and quality_gate", () => {
+test("BenchmarkInventoryService categories include performance, stable_rehearsal, and quality_gate [benchmark-inventory-service]", () => {
   const service = new BenchmarkInventoryService();
   const records = service.listBenchmarks();
 

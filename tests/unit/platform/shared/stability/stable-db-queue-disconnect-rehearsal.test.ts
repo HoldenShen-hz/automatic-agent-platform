@@ -20,7 +20,7 @@ function createTempDir(): string {
   return join("/tmp", `db-queue-disconnect-test-${Date.now()}-${Math.random().toString(16).slice(2)}`);
 }
 
-test("runStableDbQueueDisconnectRehearsal executes all three scenarios successfully", async () => {
+test("runStableDbQueueDisconnectRehearsal executes all three scenarios successfully [stable-db-queue-disconnect-rehearsal]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableDbQueueDisconnectRehearsal({ outputDir });
@@ -39,7 +39,7 @@ test("runStableDbQueueDisconnectRehearsal executes all three scenarios successfu
   }
 });
 
-test("queue_disconnect_degrades_without_silent_drop scenario passes", async () => {
+test("queue_disconnect_degrades_without_silent_drop scenario passes [stable-db-queue-disconnect-rehearsal]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableDbQueueDisconnectRehearsal({ outputDir });
@@ -56,7 +56,7 @@ test("queue_disconnect_degrades_without_silent_drop scenario passes", async () =
   }
 });
 
-test("missing_dispatch_ticket_rebuilt_after_queue_reconnect scenario passes", async () => {
+test("missing_dispatch_ticket_rebuilt_after_queue_reconnect scenario passes [stable-db-queue-disconnect-rehearsal]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableDbQueueDisconnectRehearsal({ outputDir });
@@ -75,7 +75,7 @@ test("missing_dispatch_ticket_rebuilt_after_queue_reconnect scenario passes", as
   }
 });
 
-test("authoritative_writeback_failure_fails_closed_until_store_recovers scenario passes", async () => {
+test("authoritative_writeback_failure_fails_closed_until_store_recovers scenario passes [stable-db-queue-disconnect-rehearsal]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableDbQueueDisconnectRehearsal({ outputDir });
@@ -96,7 +96,7 @@ test("authoritative_writeback_failure_fails_closed_until_store_recovers scenario
   }
 });
 
-test("writeStableDbQueueDisconnectRehearsalReport writes valid JSON", async () => {
+test("writeStableDbQueueDisconnectRehearsalReport writes valid JSON [stable-db-queue-disconnect-rehearsal]", async () => {
   const outputDir = createTempDir();
   const reportPath = join(outputDir, "report.json");
   try {
@@ -118,7 +118,7 @@ test("writeStableDbQueueDisconnectRehearsalReport writes valid JSON", async () =
   }
 });
 
-test("report contains valid startedAt and finishedAt timestamps", async () => {
+test("report contains valid startedAt and finishedAt timestamps [stable-db-queue-disconnect-rehearsal]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableDbQueueDisconnectRehearsal({ outputDir });
@@ -137,7 +137,7 @@ test("report contains valid startedAt and finishedAt timestamps", async () => {
   }
 });
 
-test("report outputDir matches options", async () => {
+test("report outputDir matches options [stable-db-queue-disconnect-rehearsal]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableDbQueueDisconnectRehearsal({ outputDir });
@@ -150,7 +150,7 @@ test("report outputDir matches options", async () => {
   }
 });
 
-test("each scenario has durationMs greater than zero", async () => {
+test("each scenario has durationMs greater than zero [stable-db-queue-disconnect-rehearsal]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableDbQueueDisconnectRehearsal({ outputDir });

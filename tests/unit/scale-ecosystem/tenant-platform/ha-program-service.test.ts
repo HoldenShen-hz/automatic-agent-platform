@@ -61,7 +61,7 @@ function createMockStore(readinessRecords: MockEnvironmentReadinessRecord[] = []
   };
 }
 
-test("HaProgramInput interface accepts valid input", () => {
+test("HaProgramInput interface accepts valid input [ha-program-service]", () => {
   const input: HaProgramInput = {
     environment: "staging",
     generatedAt: "2026-04-26T00:00:00.000Z",
@@ -70,7 +70,7 @@ test("HaProgramInput interface accepts valid input", () => {
   assert.equal(input.generatedAt, "2026-04-26T00:00:00.000Z");
 });
 
-test("HaProgramInput allows optional generatedAt", () => {
+test("HaProgramInput allows optional generatedAt [ha-program-service]", () => {
   const input: HaProgramInput = {
     environment: "production",
   };
@@ -78,7 +78,7 @@ test("HaProgramInput allows optional generatedAt", () => {
   assert.equal(input.generatedAt, undefined);
 });
 
-test("HaProgramComponent interface structure", () => {
+test("HaProgramComponent interface structure [ha-program-service]", () => {
   const component: HaProgramComponent = {
     componentId: "coordinator",
     currentMode: "single_node_runtime",
@@ -91,7 +91,7 @@ test("HaProgramComponent interface structure", () => {
   assert.deepEqual(component.blockers, []);
 });
 
-test("HaProgramComponent with blockers shows blocking issues", () => {
+test("HaProgramComponent with blockers shows blocking issues [ha-program-service]", () => {
   const component: HaProgramComponent = {
     componentId: "postgres",
     currentMode: "sqlite_authoritative",
@@ -104,7 +104,7 @@ test("HaProgramComponent with blockers shows blocking issues", () => {
   assert.equal(component.blockers[0], "postgres readiness missing");
 });
 
-test("HaProgramReport interface structure", () => {
+test("HaProgramReport interface structure [ha-program-service]", () => {
   const report: HaProgramReport = {
     reportId: "ha_report_123",
     generatedAt: "2026-04-26T00:00:00.000Z",
@@ -122,7 +122,7 @@ test("HaProgramReport interface structure", () => {
   assert.equal(report.rolloutPhases.length, 3);
 });
 
-test("HaProgramReport overallStatus accepts warning, fail, pass", () => {
+test("HaProgramReport overallStatus accepts warning, fail, pass [ha-program-service]", () => {
   const passReport: HaProgramReport = {
     reportId: "report_pass",
     generatedAt: "2026-04-26T00:00:00.000Z",
@@ -142,7 +142,7 @@ test("HaProgramReport overallStatus accepts warning, fail, pass", () => {
   assert.equal(failReport.overallStatus, "fail");
 });
 
-test("HaProgramExportResult interface structure", () => {
+test("HaProgramExportResult interface structure [ha-program-service]", () => {
   const result: HaProgramExportResult = {
     report: {
       reportId: "export_report",
@@ -178,7 +178,7 @@ test("HaProgramExportResult interface structure", () => {
   assert.equal(result.markdownArtifact.artifactId, "art_md");
 });
 
-test("HaProgramComponent componentId accepts all valid values", () => {
+test("HaProgramComponent componentId accepts all valid values [ha-program-service]", () => {
   const validIds: HaProgramComponent["componentId"][] = [
     "coordinator",
     "postgres",
@@ -197,7 +197,7 @@ test("HaProgramComponent componentId accepts all valid values", () => {
   }
 });
 
-test("HaProgramReport rolloutPhases contains all three phases", () => {
+test("HaProgramReport rolloutPhases contains all three phases [ha-program-service]", () => {
   const report: HaProgramReport = {
     reportId: "report_phases",
     generatedAt: "2026-04-26T00:00:00.000Z",
@@ -218,7 +218,7 @@ test("HaProgramReport rolloutPhases contains all three phases", () => {
   assert.ok(report.rolloutPhases[2]!.includes("Redis"));
 });
 
-test("Mock store correctly calculates active workers (non-offline)", () => {
+test("Mock store correctly calculates active workers (non-offline) [ha-program-service]", () => {
   const workers = [
     { workerId: "w1", status: "active" },
     { workerId: "w2", status: "busy" },
@@ -229,7 +229,7 @@ test("Mock store correctly calculates active workers (non-offline)", () => {
   assert.equal(activeCount, 3);
 });
 
-test("Mock store correctly filters leases by status", () => {
+test("Mock store correctly filters leases by status [ha-program-service]", () => {
   const leases = [
     { leaseId: "l1", status: "active" },
     { leaseId: "l2", status: "active" },
@@ -240,7 +240,7 @@ test("Mock store correctly filters leases by status", () => {
   assert.equal(activeLeases.length, 2);
 });
 
-test("Readiness record format for HA components", () => {
+test("Readiness record format for HA components [ha-program-service]", () => {
   const record: MockEnvironmentReadinessRecord = {
     componentType: "external_service",
     componentId: "ha_coordinator",
@@ -265,7 +265,7 @@ function createMockStoreWithReadiness(readinessRecords: MockEnvironmentReadiness
 }
 
 // Test overallStatus determination logic
-test("overallStatus returns pass when all components are ready", () => {
+test("overallStatus returns pass when all components are ready [ha-program-service]", () => {
   const readinessRecords: MockEnvironmentReadinessRecord[] = [
     { componentType: "external_service", componentId: "ha_coordinator", status: "ready" },
     { componentType: "external_service", componentId: "postgres_primary", status: "ready" },
@@ -283,7 +283,7 @@ test("overallStatus returns pass when all components are ready", () => {
   assert.ok(readinessIds.has("external_service:distributed_lock"));
 });
 
-test("overallStatus returns fail when coordinator is not ready", () => {
+test("overallStatus returns fail when coordinator is not ready [ha-program-service]", () => {
   const readinessRecords: MockEnvironmentReadinessRecord[] = [
     { componentType: "external_service", componentId: "postgres_primary", status: "ready" },
     { componentType: "external_service", componentId: "redis_queue", status: "ready" },
@@ -296,7 +296,7 @@ test("overallStatus returns fail when coordinator is not ready", () => {
   assert.ok(readinessIds.has("external_service:postgres_primary"));
 });
 
-test("overallStatus returns fail when postgres is not ready", () => {
+test("overallStatus returns fail when postgres is not ready [ha-program-service]", () => {
   const readinessRecords: MockEnvironmentReadinessRecord[] = [
     { componentType: "external_service", componentId: "ha_coordinator", status: "ready" },
     { componentType: "external_service", componentId: "redis_queue", status: "ready" },
@@ -308,7 +308,7 @@ test("overallStatus returns fail when postgres is not ready", () => {
   assert.ok(readinessIds.has("external_service:ha_coordinator"));
 });
 
-test("overallStatus returns warning when only non-critical components are not ready", () => {
+test("overallStatus returns warning when only non-critical components are not ready [ha-program-service]", () => {
   const readinessRecords: MockEnvironmentReadinessRecord[] = [
     { componentType: "external_service", componentId: "ha_coordinator", status: "ready" },
     { componentType: "external_service", componentId: "postgres_primary", status: "ready" },
@@ -323,7 +323,7 @@ test("overallStatus returns warning when only non-critical components are not re
   assert.ok(!readinessIds.has("external_service:distributed_lock"));
 });
 
-test("critical components are coordinator and postgres", () => {
+test("critical components are coordinator and postgres [ha-program-service]", () => {
   const criticalComponents = ["coordinator", "postgres"];
   const nonCriticalComponents = ["redis_queue", "distributed_lock"];
   // Verify componentId classification

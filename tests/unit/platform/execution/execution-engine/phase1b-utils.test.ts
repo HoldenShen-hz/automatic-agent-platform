@@ -31,15 +31,15 @@ import {
 // Function alias tests
 // =============================================================================
 
-test("runPhase1BOrchestration is identical to runMultiStepOrchestration", () => {
+test("runPhase1BOrchestration is identical to runMultiStepOrchestration [phase1b-utils]", () => {
   assert.strictEqual(runPhase1BOrchestration, runMultiStepOrchestration);
 });
 
-test("executePhase1BToolCallForTests is identical to executeMultiStepToolCallForTests", () => {
+test("executePhase1BToolCallForTests is identical to executeMultiStepToolCallForTests [phase1b-utils]", () => {
   assert.strictEqual(executePhase1BToolCallForTests, executeMultiStepToolCallForTests);
 });
 
-test("resetPhase1BToolRegistryForTests is identical to resetMultiStepToolRegistryForTests", () => {
+test("resetPhase1BToolRegistryForTests is identical to resetMultiStepToolRegistryForTests [phase1b-utils]", () => {
   assert.strictEqual(resetPhase1BToolRegistryForTests, resetMultiStepToolRegistryForTests);
 });
 
@@ -47,7 +47,7 @@ test("resetPhase1BToolRegistryForTests is identical to resetMultiStepToolRegistr
 // Type alias tests
 // =============================================================================
 
-test("Phase1BOrchestrationResult is identical to MultiStepOrchestrationResult", () => {
+test("Phase1BOrchestrationResult is identical to MultiStepOrchestrationResult [phase1b-utils]", () => {
   // Both types should be compatible - verify through assignment
   const result: MultiStepOrchestrationResult = {
     success: true,
@@ -59,7 +59,7 @@ test("Phase1BOrchestrationResult is identical to MultiStepOrchestrationResult", 
   assert.ok(phase1bResult);
 });
 
-test("Phase1BOrchestrationInput is identical to MultiStepOrchestrationInput", () => {
+test("Phase1BOrchestrationInput is identical to MultiStepOrchestrationInput [phase1b-utils]", () => {
   // Both types should be compatible - verify through assignment
   const input: MultiStepToolExecutionInput = {
     taskId: "test-task",
@@ -75,7 +75,7 @@ test("Phase1BOrchestrationInput is identical to MultiStepOrchestrationInput", ()
 // Type structure tests (compile-time validation)
 // =============================================================================
 
-test("Phase1BOrchestrationResult can hold valid result structure", () => {
+test("Phase1BOrchestrationResult can hold valid result structure [phase1b-utils]", () => {
   const result: Phase1BOrchestrationResult = {
     success: true,
     stepsCompleted: 3,
@@ -87,7 +87,7 @@ test("Phase1BOrchestrationResult can hold valid result structure", () => {
   assert.equal(result.stepsCompleted, 3);
 });
 
-test("Phase1BOrchestrationInput can hold valid input structure", () => {
+test("Phase1BOrchestrationInput can hold valid input structure [phase1b-utils]", () => {
   const input: Phase1BOrchestrationInput = {
     taskId: "task-123",
     request: "Execute test task",
@@ -104,7 +104,7 @@ test("Phase1BOrchestrationInput can hold valid input structure", () => {
 // Backward compatibility tests
 // =============================================================================
 
-test("Type re-exports allow old Phase1B code to work", () => {
+test("Type re-exports allow old Phase1B code to work [phase1b-utils]", () => {
   // This tests that the type exports work correctly for backward compatibility
   type OldPhase1BResult = Phase1BOrchestrationResult;
   type OldPhase1BInput = Phase1BOrchestrationInput;

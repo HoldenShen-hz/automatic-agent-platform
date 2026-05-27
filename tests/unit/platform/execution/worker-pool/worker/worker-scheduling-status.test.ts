@@ -4,45 +4,45 @@ import test from "node:test";
 import { toWorkerSchedulingStatus } from "../../../../../../src/platform/five-plane-execution/worker-pool/worker/worker-scheduling-status.js";
 import type { WorkerStatus } from "../../../../../../src/platform/contracts/types/domain.js";
 
-test("toWorkerSchedulingStatus maps degraded to degraded", () => {
+test("toWorkerSchedulingStatus maps degraded to degraded [worker-scheduling-status]", () => {
   assert.equal(toWorkerSchedulingStatus("degraded"), "degraded");
 });
 
-test("toWorkerSchedulingStatus maps draining to draining", () => {
+test("toWorkerSchedulingStatus maps draining to draining [worker-scheduling-status]", () => {
   assert.equal(toWorkerSchedulingStatus("draining"), "draining");
 });
 
-test("toWorkerSchedulingStatus maps quarantined to quarantined", () => {
+test("toWorkerSchedulingStatus maps quarantined to quarantined [worker-scheduling-status]", () => {
   assert.equal(toWorkerSchedulingStatus("quarantined"), "quarantined");
 });
 
-test("toWorkerSchedulingStatus maps offline to offline", () => {
+test("toWorkerSchedulingStatus maps offline to offline [worker-scheduling-status]", () => {
   assert.equal(toWorkerSchedulingStatus("offline"), "offline");
 });
 
-test("toWorkerSchedulingStatus maps unavailable to unavailable", () => {
+test("toWorkerSchedulingStatus maps unavailable to unavailable [worker-scheduling-status]", () => {
   assert.equal(toWorkerSchedulingStatus("unavailable"), "unavailable");
 });
 
-test("toWorkerSchedulingStatus maps idle to healthy", () => {
+test("toWorkerSchedulingStatus maps idle to healthy [worker-scheduling-status]", () => {
   assert.equal(toWorkerSchedulingStatus("idle"), "healthy");
 });
 
-test("toWorkerSchedulingStatus maps busy to healthy", () => {
+test("toWorkerSchedulingStatus maps busy to healthy [worker-scheduling-status]", () => {
   assert.equal(toWorkerSchedulingStatus("busy"), "healthy");
 });
 
-test("toWorkerSchedulingStatus maps unknown to healthy", () => {
+test("toWorkerSchedulingStatus maps unknown to healthy [worker-scheduling-status]", () => {
   assert.equal(toWorkerSchedulingStatus("unknown" as WorkerStatus), "healthy");
 });
 
-test("toWorkerSchedulingStatus handles high priority status as healthy", () => {
+test("toWorkerSchedulingStatus handles high priority status as healthy [worker-scheduling-status]", () => {
   // high and urgent are execution states, not worker statuses
   assert.equal(toWorkerSchedulingStatus("idle"), "healthy");
   assert.equal(toWorkerSchedulingStatus("busy"), "healthy");
 });
 
-test("toWorkerSchedulingStatus default case returns healthy", () => {
+test("toWorkerSchedulingStatus default case returns healthy [worker-scheduling-status]", () => {
   assert.equal(toWorkerSchedulingStatus("degraded"), "degraded");
   assert.equal(toWorkerSchedulingStatus("draining"), "draining");
   assert.equal(toWorkerSchedulingStatus("quarantined"), "quarantined");
@@ -52,21 +52,21 @@ test("toWorkerSchedulingStatus default case returns healthy", () => {
   assert.equal(toWorkerSchedulingStatus("busy"), "healthy");
 });
 
-test("toWorkerSchedulingStatus healthy statuses include idle and busy", () => {
+test("toWorkerSchedulingStatus healthy statuses include idle and busy [worker-scheduling-status]", () => {
   const healthyStatuses: WorkerStatus[] = ["idle", "busy"];
   for (const status of healthyStatuses) {
     assert.equal(toWorkerSchedulingStatus(status), "healthy", `${status} should map to healthy`);
   }
 });
 
-test("toWorkerSchedulingStatus administrative statuses preserve their names", () => {
+test("toWorkerSchedulingStatus administrative statuses preserve their names [worker-scheduling-status]", () => {
   const adminStatuses: WorkerStatus[] = ["draining", "quarantined", "offline", "unavailable", "degraded"];
   for (const status of adminStatuses) {
     assert.equal(toWorkerSchedulingStatus(status), status, `${status} should preserve its name`);
   }
 });
 
-test("toWorkerSchedulingStatus all worker statuses are handled", () => {
+test("toWorkerSchedulingStatus all worker statuses are handled [worker-scheduling-status]", () => {
   const allStatuses: WorkerStatus[] = ["idle", "busy", "degraded", "draining", "quarantined", "offline", "unavailable"];
   for (const status of allStatuses) {
     const result = toWorkerSchedulingStatus(status);

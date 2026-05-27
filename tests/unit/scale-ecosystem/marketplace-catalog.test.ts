@@ -38,7 +38,7 @@ function createCatalogEntry(overrides: Partial<MarketplaceCatalogEntry> = {}): M
 // sortMarketplaceCatalog Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("sortMarketplaceCatalog orders internal before verified", () => {
+test("sortMarketplaceCatalog orders internal before verified [marketplace-catalog]", () => {
   const entries = [
     createCatalogEntry({ listingId: "verified-entry", trustLevel: "verified" }),
     createCatalogEntry({ listingId: "internal-entry", trustLevel: "internal" }),
@@ -50,7 +50,7 @@ test("sortMarketplaceCatalog orders internal before verified", () => {
   assert.equal(sorted[1]!.listingId, "verified-entry");
 });
 
-test("sortMarketplaceCatalog orders verified before community", () => {
+test("sortMarketplaceCatalog orders verified before community [marketplace-catalog]", () => {
   const entries = [
     createCatalogEntry({ listingId: "community-entry", trustLevel: "community" }),
     createCatalogEntry({ listingId: "verified-entry", trustLevel: "verified" }),
@@ -62,7 +62,7 @@ test("sortMarketplaceCatalog orders verified before community", () => {
   assert.equal(sorted[1]!.listingId, "community-entry");
 });
 
-test("sortMarketplaceCatalog sorts by quality score within same trust level", () => {
+test("sortMarketplaceCatalog sorts by quality score within same trust level [marketplace-catalog]", () => {
   const entries = [
     createCatalogEntry({ listingId: "low-quality", trustLevel: "verified", qualityMetrics: { reliabilityScore: 0.3, usabilityScore: 0.3, supportScore: 0.3 } }),
     createCatalogEntry({ listingId: "high-quality", trustLevel: "verified", qualityMetrics: { reliabilityScore: 0.9, usabilityScore: 0.9, supportScore: 0.9 } }),
@@ -74,7 +74,7 @@ test("sortMarketplaceCatalog sorts by quality score within same trust level", ()
   assert.equal(sorted[1]!.listingId, "low-quality");
 });
 
-test("sortMarketplaceCatalog does not mutate original array", () => {
+test("sortMarketplaceCatalog does not mutate original array [marketplace-catalog]", () => {
   const entries = [
     createCatalogEntry({ listingId: "entry-a", trustLevel: "community" }),
     createCatalogEntry({ listingId: "entry-b", trustLevel: "internal" }),
@@ -86,13 +86,13 @@ test("sortMarketplaceCatalog does not mutate original array", () => {
   assert.equal(entries[0]!.listingId, original[0]!.listingId);
 });
 
-test("sortMarketplaceCatalog handles empty array", () => {
+test("sortMarketplaceCatalog handles empty array [marketplace-catalog]", () => {
   const sorted = sortMarketplaceCatalog([]);
 
   assert.deepEqual(sorted, []);
 });
 
-test("sortMarketplaceCatalog handles single entry", () => {
+test("sortMarketplaceCatalog handles single entry [marketplace-catalog]", () => {
   const entries = [createCatalogEntry({ listingId: "only" })];
   const sorted = sortMarketplaceCatalog(entries);
 
@@ -100,7 +100,7 @@ test("sortMarketplaceCatalog handles single entry", () => {
   assert.equal(sorted[0]!.listingId, "only");
 });
 
-test("sortMarketplaceCatalog handles all same trust level with different quality", () => {
+test("sortMarketplaceCatalog handles all same trust level with different quality [marketplace-catalog]", () => {
   const entries = [
     createCatalogEntry({ listingId: "a", trustLevel: "community", qualityMetrics: { reliabilityScore: 0.5, usabilityScore: 0.5, supportScore: 0.5 } }),
     createCatalogEntry({ listingId: "b", trustLevel: "community", qualityMetrics: { reliabilityScore: 0.9, usabilityScore: 0.9, supportScore: 0.9 } }),
@@ -114,7 +114,7 @@ test("sortMarketplaceCatalog handles all same trust level with different quality
   assert.equal(sorted[2]!.listingId, "c");
 });
 
-test("sortMarketplaceCatalog handles mixed trust levels and quality", () => {
+test("sortMarketplaceCatalog handles mixed trust levels and quality [marketplace-catalog]", () => {
   const entries = [
     createCatalogEntry({ listingId: "community-high", trustLevel: "community", qualityMetrics: { reliabilityScore: 0.95, usabilityScore: 0.95, supportScore: 0.95 } }),
     createCatalogEntry({ listingId: "verified-low", trustLevel: "verified", qualityMetrics: { reliabilityScore: 0.3, usabilityScore: 0.3, supportScore: 0.3 } }),
@@ -132,7 +132,7 @@ test("sortMarketplaceCatalog handles mixed trust levels and quality", () => {
 // MarketplaceCatalogEntrySchema Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("MarketplaceCatalogEntrySchema parses valid entry", () => {
+test("MarketplaceCatalogEntrySchema parses valid entry [marketplace-catalog]", () => {
   const result = MarketplaceCatalogEntrySchema.safeParse({
     listingId: "listing-123",
     title: "My Marketplace Listing",
@@ -152,7 +152,7 @@ test("MarketplaceCatalogEntrySchema parses valid entry", () => {
   }
 });
 
-test("MarketplaceCatalogEntrySchema accepts all trust levels", () => {
+test("MarketplaceCatalogEntrySchema accepts all trust levels [marketplace-catalog]", () => {
   for (const trustLevel of ["internal", "verified", "community", "unknown"]) {
     const result = MarketplaceCatalogEntrySchema.safeParse({
       listingId: "test",
@@ -164,7 +164,7 @@ test("MarketplaceCatalogEntrySchema accepts all trust levels", () => {
   }
 });
 
-test("MarketplaceCatalogEntrySchema accepts all lifecycle states", () => {
+test("MarketplaceCatalogEntrySchema accepts all lifecycle states [marketplace-catalog]", () => {
   for (const lifecycleState of ["active", "deprecated", "sunset", "removed"]) {
     const result = MarketplaceCatalogEntrySchema.safeParse({
       listingId: "test",
@@ -176,7 +176,7 @@ test("MarketplaceCatalogEntrySchema accepts all lifecycle states", () => {
   }
 });
 
-test("MarketplaceCatalogEntrySchema accepts default quality metrics", () => {
+test("MarketplaceCatalogEntrySchema accepts default quality metrics [marketplace-catalog]", () => {
   const result = MarketplaceCatalogEntrySchema.safeParse({
     listingId: "test",
     title: "Test",
@@ -192,7 +192,7 @@ test("MarketplaceCatalogEntrySchema accepts default quality metrics", () => {
   }
 });
 
-test("MarketplaceCatalogEntrySchema rejects empty listingId", () => {
+test("MarketplaceCatalogEntrySchema rejects empty listingId [marketplace-catalog]", () => {
   const result = MarketplaceCatalogEntrySchema.safeParse({
     listingId: "",
     title: "Test",
@@ -203,7 +203,7 @@ test("MarketplaceCatalogEntrySchema rejects empty listingId", () => {
   assert.equal(result.success, false);
 });
 
-test("MarketplaceCatalogEntrySchema rejects empty title", () => {
+test("MarketplaceCatalogEntrySchema rejects empty title [marketplace-catalog]", () => {
   const result = MarketplaceCatalogEntrySchema.safeParse({
     listingId: "test",
     title: "",
@@ -214,7 +214,7 @@ test("MarketplaceCatalogEntrySchema rejects empty title", () => {
   assert.equal(result.success, false);
 });
 
-test("MarketplaceCatalogEntrySchema rejects invalid trust level", () => {
+test("MarketplaceCatalogEntrySchema rejects invalid trust level [marketplace-catalog]", () => {
   const result = MarketplaceCatalogEntrySchema.safeParse({
     listingId: "test",
     title: "Test",
@@ -225,7 +225,7 @@ test("MarketplaceCatalogEntrySchema rejects invalid trust level", () => {
   assert.equal(result.success, false);
 });
 
-test("MarketplaceCatalogEntrySchema rejects invalid lifecycle state", () => {
+test("MarketplaceCatalogEntrySchema rejects invalid lifecycle state [marketplace-catalog]", () => {
   const result = MarketplaceCatalogEntrySchema.safeParse({
     listingId: "test",
     title: "Test",
@@ -236,7 +236,7 @@ test("MarketplaceCatalogEntrySchema rejects invalid lifecycle state", () => {
   assert.equal(result.success, false);
 });
 
-test("MarketplaceCatalogEntrySchema rejects reliability score below 0", () => {
+test("MarketplaceCatalogEntrySchema rejects reliability score below 0 [marketplace-catalog]", () => {
   const result = MarketplaceCatalogEntrySchema.safeParse({
     listingId: "test",
     title: "Test",
@@ -248,7 +248,7 @@ test("MarketplaceCatalogEntrySchema rejects reliability score below 0", () => {
   assert.equal(result.success, false);
 });
 
-test("MarketplaceCatalogEntrySchema rejects reliability score above 1", () => {
+test("MarketplaceCatalogEntrySchema rejects reliability score above 1 [marketplace-catalog]", () => {
   const result = MarketplaceCatalogEntrySchema.safeParse({
     listingId: "test",
     title: "Test",
@@ -260,7 +260,7 @@ test("MarketplaceCatalogEntrySchema rejects reliability score above 1", () => {
   assert.equal(result.success, false);
 });
 
-test("checkReverseDependencies blocks deprecation when other listings still depend on target", () => {
+test("checkReverseDependencies blocks deprecation when other listings still depend on target [marketplace-catalog]", () => {
   const core = createCatalogEntry({
     listingId: "core-plugin",
     version: "1.0.0",
@@ -277,7 +277,7 @@ test("checkReverseDependencies blocks deprecation when other listings still depe
   assert.equal(result.dependentEntries[0]?.listingId, "dependent-plugin");
 });
 
-test("MarketplaceCatalogEntrySchema accepts boundary values 0 and 1 for quality scores", () => {
+test("MarketplaceCatalogEntrySchema accepts boundary values 0 and 1 for quality scores [marketplace-catalog]", () => {
   const result = MarketplaceCatalogEntrySchema.safeParse({
     listingId: "test",
     title: "Test",
@@ -289,7 +289,7 @@ test("MarketplaceCatalogEntrySchema accepts boundary values 0 and 1 for quality 
   assert.equal(result.success, true);
 });
 
-test("validateListingDependencies enforces semver version ranges", () => {
+test("validateListingDependencies enforces semver version ranges [marketplace-catalog]", () => {
   const listing = createCatalogEntry({
     listingId: "parent",
     version: "1.0.0",
@@ -311,7 +311,7 @@ test("validateListingDependencies enforces semver version ranges", () => {
   assert.deepEqual(result.versionMismatches, ["dep-a: need ^2.1.0, got 2.0.0"]);
 });
 
-test("analyzeDependencyGraph detects transitive dependency cycles", () => {
+test("analyzeDependencyGraph detects transitive dependency cycles [marketplace-catalog]", () => {
   const root = createCatalogEntry({
     listingId: "root",
     version: "1.0.0",
@@ -335,7 +335,7 @@ test("analyzeDependencyGraph detects transitive dependency cycles", () => {
   assert.deepEqual(result.cycles[0], ["dep-a", "dep-b", "dep-a"]);
 });
 
-test("calculateUpgradePathForEntry returns stepwise upgrade path and breaking-change flag", () => {
+test("calculateUpgradePathForEntry returns stepwise upgrade path and breaking-change flag [marketplace-catalog]", () => {
   const listing = createCatalogEntry({
     listingId: "upgrade-target",
     version: "1.2.3",
@@ -351,7 +351,7 @@ test("calculateUpgradePathForEntry returns stepwise upgrade path and breaking-ch
   assert.equal(result.path.at(-1), "2.0.0");
 });
 
-test("detectBreakingChanges distinguishes patch upgrades from major upgrades", () => {
+test("detectBreakingChanges distinguishes patch upgrades from major upgrades [marketplace-catalog]", () => {
   assert.equal(detectBreakingChanges("1.2.3", "1.2.4"), false);
   assert.equal(detectBreakingChanges("1.2.3", "2.0.0"), true);
 });

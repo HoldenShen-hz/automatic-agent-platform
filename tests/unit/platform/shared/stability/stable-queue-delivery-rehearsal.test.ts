@@ -19,7 +19,7 @@ function createTempDir(): string {
   return join("/tmp", `queue-delivery-test-${Date.now()}`);
 }
 
-test("runStableQueueDeliveryRehearsal executes all two scenarios successfully", async () => {
+test("runStableQueueDeliveryRehearsal executes all two scenarios successfully [stable-queue-delivery-rehearsal]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableQueueDeliveryRehearsal({ outputDir });
@@ -38,7 +38,7 @@ test("runStableQueueDeliveryRehearsal executes all two scenarios successfully", 
   }
 });
 
-test("queue_replay_rebuilds_dispatchable_ticket scenario passes", async () => {
+test("queue_replay_rebuilds_dispatchable_ticket scenario passes [stable-queue-delivery-rehearsal]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableQueueDeliveryRehearsal({ outputDir });
@@ -55,7 +55,7 @@ test("queue_replay_rebuilds_dispatchable_ticket scenario passes", async () => {
   }
 });
 
-test("duplicate_delivery_blocked_and_reconciled scenario passes", async () => {
+test("duplicate_delivery_blocked_and_reconciled scenario passes [stable-queue-delivery-rehearsal]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableQueueDeliveryRehearsal({ outputDir });
@@ -72,7 +72,7 @@ test("duplicate_delivery_blocked_and_reconciled scenario passes", async () => {
   }
 });
 
-test("writeStableQueueDeliveryRehearsalReport writes valid JSON", async () => {
+test("writeStableQueueDeliveryRehearsalReport writes valid JSON [stable-queue-delivery-rehearsal]", async () => {
   const outputDir = createTempDir();
   const reportPath = join(outputDir, "report.json");
   try {
@@ -94,7 +94,7 @@ test("writeStableQueueDeliveryRehearsalReport writes valid JSON", async () => {
   }
 });
 
-test("report contains valid startedAt and finishedAt timestamps", async () => {
+test("report contains valid startedAt and finishedAt timestamps [stable-queue-delivery-rehearsal]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableQueueDeliveryRehearsal({ outputDir });
@@ -113,7 +113,7 @@ test("report contains valid startedAt and finishedAt timestamps", async () => {
   }
 });
 
-test("report outputDir matches options", async () => {
+test("report outputDir matches options [stable-queue-delivery-rehearsal]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableQueueDeliveryRehearsal({ outputDir });
@@ -126,7 +126,7 @@ test("report outputDir matches options", async () => {
   }
 });
 
-test("each scenario has durationMs greater than zero", async () => {
+test("each scenario has durationMs greater than zero [stable-queue-delivery-rehearsal]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableQueueDeliveryRehearsal({ outputDir });

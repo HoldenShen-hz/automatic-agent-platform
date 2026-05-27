@@ -20,13 +20,13 @@ import { StorageError } from "../../../src/platform/contracts/errors.js";
 // Minimal Workflow Definitions Tests
 // ---------------------------------------------------------------------------
 
-test("SINGLE_AGENT_MINIMAL_WORKFLOW has correct structure", () => {
+test("SINGLE_AGENT_MINIMAL_WORKFLOW has correct structure [workflow-execution]", () => {
   assert.equal(SINGLE_AGENT_MINIMAL_WORKFLOW.workflowId, "single_agent_minimal");
   assert.equal(SINGLE_AGENT_MINIMAL_WORKFLOW.divisionId, "general_ops");
   assert.equal(SINGLE_AGENT_MINIMAL_WORKFLOW.steps.length, 1);
 });
 
-test("SINGLE_AGENT_MINIMAL_WORKFLOW has correct step configuration", () => {
+test("SINGLE_AGENT_MINIMAL_WORKFLOW has correct step configuration [workflow-execution]", () => {
   const step = SINGLE_AGENT_MINIMAL_WORKFLOW.steps[0];
   assert.ok(step != null, "should have at least one step");
   assert.equal(step.stepId, "analyze_request");
@@ -37,13 +37,13 @@ test("SINGLE_AGENT_MINIMAL_WORKFLOW has correct step configuration", () => {
   assert.equal(step.compensationModel, "idempotent_replay");
 });
 
-test("PHASE_1B_SINGLE_DIVISION_WORKFLOW has correct structure", () => {
+test("PHASE_1B_SINGLE_DIVISION_WORKFLOW has correct structure [workflow-execution]", () => {
   assert.equal(PHASE_1B_SINGLE_DIVISION_WORKFLOW.workflowId, "single_division_multi_step_orchestration");
   assert.equal(PHASE_1B_SINGLE_DIVISION_WORKFLOW.divisionId, "general_ops");
   assert.equal(PHASE_1B_SINGLE_DIVISION_WORKFLOW.steps.length, 3);
 });
 
-test("PHASE_1B_SINGLE_DIVISION_WORKFLOW has correct step dependencies", () => {
+test("PHASE_1B_SINGLE_DIVISION_WORKFLOW has correct step dependencies [workflow-execution]", () => {
   const steps = PHASE_1B_SINGLE_DIVISION_WORKFLOW.steps;
   assert.ok(steps.length === 3, "should have 3 steps");
 
@@ -60,7 +60,7 @@ test("PHASE_1B_SINGLE_DIVISION_WORKFLOW has correct step dependencies", () => {
   assert.deepEqual(steps[2]!.dependsOnStepIds, ["draft_solution"]);
 });
 
-test("PHASE_1B_SINGLE_DIVISION_WORKFLOW has correct input/output keys", () => {
+test("PHASE_1B_SINGLE_DIVISION_WORKFLOW has correct input/output keys [workflow-execution]", () => {
   const steps = PHASE_1B_SINGLE_DIVISION_WORKFLOW.steps;
   assert.ok(steps.length === 3, "should have 3 steps");
 
@@ -81,30 +81,30 @@ test("PHASE_1B_SINGLE_DIVISION_WORKFLOW has correct input/output keys", () => {
 // WORKFLOW_DEFINITIONS Registry Tests
 // ---------------------------------------------------------------------------
 
-test("WORKFLOW_DEFINITIONS contains built-in workflows", () => {
+test("WORKFLOW_DEFINITIONS contains built-in workflows [workflow-execution]", () => {
   assert.ok(WORKFLOW_DEFINITIONS.size >= 2);
   assert.ok(WORKFLOW_DEFINITIONS.has("single_agent_minimal"));
   assert.ok(WORKFLOW_DEFINITIONS.has("single_division_multi_step_orchestration"));
 });
 
-test("WORKFLOW_DEFINITIONS returns correct workflow by ID", () => {
+test("WORKFLOW_DEFINITIONS returns correct workflow by ID [workflow-execution]", () => {
   const workflow = WORKFLOW_DEFINITIONS.get("single_agent_minimal");
   assert.ok(workflow != null);
   assert.equal(workflow.workflowId, "single_agent_minimal");
 });
 
-test("getWorkflowDefinition returns null for unknown workflow ID", () => {
+test("getWorkflowDefinition returns null for unknown workflow ID [workflow-execution]", () => {
   const workflow = getWorkflowDefinition("nonexistent_workflow");
   assert.equal(workflow, null);
 });
 
-test("getWorkflowDefinition returns built-in workflow by ID", () => {
+test("getWorkflowDefinition returns built-in workflow by ID [workflow-execution]", () => {
   const workflow = getWorkflowDefinition("single_agent_minimal");
   assert.ok(workflow != null);
   assert.equal(workflow.workflowId, "single_agent_minimal");
 });
 
-test("getWorkflowDefinition returns phase_1b workflow", () => {
+test("getWorkflowDefinition returns phase_1b workflow [workflow-execution]", () => {
   const workflow = getWorkflowDefinition("single_division_multi_step_orchestration");
   assert.ok(workflow != null);
   assert.equal(workflow.steps.length, 3);
@@ -114,12 +114,12 @@ test("getWorkflowDefinition returns phase_1b workflow", () => {
 // WorkflowPlanner Tests
 // ---------------------------------------------------------------------------
 
-test("WorkflowPlanner can be instantiated", () => {
+test("WorkflowPlanner can be instantiated [workflow-execution]", () => {
   const planner = new WorkflowPlanner();
   assert.ok(planner instanceof WorkflowPlanner);
 });
 
-test("WorkflowPlanner.plan() creates planned workflow for single_agent", () => {
+test("WorkflowPlanner.plan() creates planned workflow for single_agent [workflow-execution]", () => {
   const planner = new WorkflowPlanner();
   const input: WorkflowPlannerInput = {
     workflowId: "single_agent_minimal",
@@ -134,7 +134,7 @@ test("WorkflowPlanner.plan() creates planned workflow for single_agent", () => {
   assert.ok(planned.dependencyEdges.length >= 0);
 });
 
-test("WorkflowPlanner.plan() creates planned workflow for multi-step", () => {
+test("WorkflowPlanner.plan() creates planned workflow for multi-step [workflow-execution]", () => {
   const planner = new WorkflowPlanner();
   const input: WorkflowPlannerInput = {
     workflowId: "single_division_multi_step_orchestration",
@@ -148,7 +148,7 @@ test("WorkflowPlanner.plan() creates planned workflow for multi-step", () => {
   assert.equal(planned.planReason, "workflow.requires_multi_step_orchestration");
 });
 
-test("WorkflowPlanner.plan() throws StorageError for unknown workflow", () => {
+test("WorkflowPlanner.plan() throws StorageError for unknown workflow [workflow-execution]", () => {
   const planner = new WorkflowPlanner();
   const input: WorkflowPlannerInput = {
     workflowId: "unknown_workflow",
@@ -161,7 +161,7 @@ test("WorkflowPlanner.plan() throws StorageError for unknown workflow", () => {
   );
 });
 
-test("WorkflowPlanner.plan() assigns correct agent IDs to execution steps", () => {
+test("WorkflowPlanner.plan() assigns correct agent IDs to execution steps [workflow-execution]", () => {
   const planner = new WorkflowPlanner();
   const input: WorkflowPlannerInput = {
     workflowId: "single_agent_minimal",
@@ -175,7 +175,7 @@ test("WorkflowPlanner.plan() assigns correct agent IDs to execution steps", () =
   assert.ok(step!.agentId.includes(step!.roleId));
 });
 
-test("WorkflowPlanner.plan() computes correct dependency edges", () => {
+test("WorkflowPlanner.plan() computes correct dependency edges [workflow-execution]", () => {
   const planner = new WorkflowPlanner();
   const input: WorkflowPlannerInput = {
     workflowId: "single_division_multi_step_orchestration",
@@ -199,7 +199,7 @@ test("WorkflowPlanner.plan() computes correct dependency edges", () => {
   assert.ok(draftToFinal != null);
 });
 
-test("WorkflowPlanner.plan() preserves step division ID", () => {
+test("WorkflowPlanner.plan() preserves step division ID [workflow-execution]", () => {
   const planner = new WorkflowPlanner();
   const input: WorkflowPlannerInput = {
     workflowId: "single_agent_minimal",
@@ -214,7 +214,7 @@ test("WorkflowPlanner.plan() preserves step division ID", () => {
   }
 });
 
-test("WorkflowPlanner.plan() computes correct timeoutMs and maxAttempts", () => {
+test("WorkflowPlanner.plan() computes correct timeoutMs and maxAttempts [workflow-execution]", () => {
   const planner = new WorkflowPlanner();
   const input: WorkflowPlannerInput = {
     workflowId: "single_agent_minimal",
@@ -228,7 +228,7 @@ test("WorkflowPlanner.plan() computes correct timeoutMs and maxAttempts", () => 
   assert.equal(step!.maxAttempts, 1);
 });
 
-test("WorkflowPlanner.plan() handles step with no dependencies", () => {
+test("WorkflowPlanner.plan() handles step with no dependencies [workflow-execution]", () => {
   const planner = new WorkflowPlanner();
   const input: WorkflowPlannerInput = {
     workflowId: "single_agent_minimal",
@@ -241,7 +241,7 @@ test("WorkflowPlanner.plan() handles step with no dependencies", () => {
   assert.deepEqual(step!.dependsOnStepIds, []);
 });
 
-test("WorkflowPlanner.plan() uses single_step_execution reason for single step", () => {
+test("WorkflowPlanner.plan() uses single_step_execution reason for single step [workflow-execution]", () => {
   const planner = new WorkflowPlanner();
   const input: WorkflowPlannerInput = {
     workflowId: "single_agent_minimal",
@@ -253,7 +253,7 @@ test("WorkflowPlanner.plan() uses single_step_execution reason for single step",
   assert.equal(planned.planReason, "workflow.single_step_execution");
 });
 
-test("WorkflowPlanner.plan() uses requires_multi_step_orchestration reason for multi-step", () => {
+test("WorkflowPlanner.plan() uses requires_multi_step_orchestration reason for multi-step [workflow-execution]", () => {
   const planner = new WorkflowPlanner();
   const input: WorkflowPlannerInput = {
     workflowId: "single_division_multi_step_orchestration",
@@ -265,7 +265,7 @@ test("WorkflowPlanner.plan() uses requires_multi_step_orchestration reason for m
   assert.equal(planned.planReason, "workflow.requires_multi_step_orchestration");
 });
 
-test("WorkflowPlanner.plan() sets dependencyTypes to hard by default", () => {
+test("WorkflowPlanner.plan() sets dependencyTypes to hard by default [workflow-execution]", () => {
   const planner = new WorkflowPlanner();
   const input: WorkflowPlannerInput = {
     workflowId: "single_division_multi_step_orchestration",
@@ -284,7 +284,7 @@ test("WorkflowPlanner.plan() sets dependencyTypes to hard by default", () => {
 // PlannedExecutionStep Structure Tests
 // ---------------------------------------------------------------------------
 
-test("PlannedExecutionStep has all required fields", () => {
+test("PlannedExecutionStep has all required fields [workflow-execution]", () => {
   const planner = new WorkflowPlanner();
   const input: WorkflowPlannerInput = {
     workflowId: "single_agent_minimal",
@@ -307,7 +307,7 @@ test("PlannedExecutionStep has all required fields", () => {
   assert.ok(typeof step!.dependencyTypes === "object");
 });
 
-test("PlannedExecutionStep agentId follows naming convention", () => {
+test("PlannedExecutionStep agentId follows naming convention [workflow-execution]", () => {
   const planner = new WorkflowPlanner();
   const input: WorkflowPlannerInput = {
     workflowId: "single_agent_minimal",
@@ -322,7 +322,7 @@ test("PlannedExecutionStep agentId follows naming convention", () => {
   assert.equal(step!.agentId, `agent_${step!.roleId}`);
 });
 
-test("PlannedExecutionStep outputSchemaPath can be null", () => {
+test("PlannedExecutionStep outputSchemaPath can be null [workflow-execution]", () => {
   const planner = new WorkflowPlanner();
   const input: WorkflowPlannerInput = {
     workflowId: "single_agent_minimal",
@@ -341,7 +341,7 @@ test("PlannedExecutionStep outputSchemaPath can be null", () => {
 // Edge Case Tests
 // ---------------------------------------------------------------------------
 
-test("WorkflowPlanner.plan() throws with correct error code for missing workflow", () => {
+test("WorkflowPlanner.plan() throws with correct error code for missing workflow [workflow-execution]", () => {
   const planner = new WorkflowPlanner();
   const input: WorkflowPlannerInput = {
     workflowId: "definitely_does_not_exist",
@@ -358,7 +358,7 @@ test("WorkflowPlanner.plan() throws with correct error code for missing workflow
   }
 });
 
-test("WorkflowPlanner.plan() preserves all step information for complex workflow", () => {
+test("WorkflowPlanner.plan() preserves all step information for complex workflow [workflow-execution]", () => {
   const planner = new WorkflowPlanner();
   const input: WorkflowPlannerInput = {
     workflowId: "single_division_multi_step_orchestration",

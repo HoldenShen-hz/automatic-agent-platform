@@ -4,7 +4,7 @@ import test from "node:test";
 import { RecoveryOrchestratorService } from "../../../../../src/platform/five-plane-execution/ha/recovery-orchestrator-service.js";
 import type { RecoveryWorker } from "../../../../../src/platform/contracts/types/recovery-cadence.js";
 
-test("RecoveryOrchestratorService orders workers by priority and interval", async () => {
+test("RecoveryOrchestratorService orders workers by priority and interval [recovery-orchestrator-service]", async () => {
   const calls: string[] = [];
   const createWorker = (
     workerId: string,

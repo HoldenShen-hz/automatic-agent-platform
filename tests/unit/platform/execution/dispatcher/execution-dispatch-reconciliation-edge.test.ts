@@ -115,7 +115,7 @@ function createMockDb(): AuthoritativeSqlDatabase {
 // Edge cases for repair with requeue_ticket
 // ---------------------------------------------------------------------------
 
-test("ExecutionDispatchReconciliationService repair handles orphan_queue_claim with requeue", () => {
+test("ExecutionDispatchReconciliationService repair handles orphan_queue_claim with requeue [execution-dispatch-reconciliation-edge]", () => {
   const tickets: MockTicket[] = [
     { id: "ticket-1", executionId: "exec-1", status: "claimed", leaseId: "lease-1", assignedWorkerId: "worker-1" },
   ];
@@ -138,7 +138,7 @@ test("ExecutionDispatchReconciliationService repair handles orphan_queue_claim w
   assert.ok(result.applied[0]!.replacementTicketId != null);
 });
 
-test("ExecutionDispatchReconciliationService repair handles missing active lease with requeue", () => {
+test("ExecutionDispatchReconciliationService repair handles missing active lease with requeue [execution-dispatch-reconciliation-edge]", () => {
   const tickets: MockTicket[] = [
     { id: "ticket-1", executionId: "exec-1", status: "claimed", leaseId: "lease-1", assignedWorkerId: "worker-1" },
   ];
@@ -155,7 +155,7 @@ test("ExecutionDispatchReconciliationService repair handles missing active lease
   assert.equal(result.issues[0]!.reasonCode, "missing_active_lease");
 });
 
-test("ExecutionDispatchReconciliationService repair handles lease_ticket_mismatch with requeue", () => {
+test("ExecutionDispatchReconciliationService repair handles lease_ticket_mismatch with requeue [execution-dispatch-reconciliation-edge]", () => {
   const tickets: MockTicket[] = [
     { id: "ticket-1", executionId: "exec-1", status: "claimed", leaseId: "different-lease", assignedWorkerId: "worker-1" },
   ];
@@ -179,7 +179,7 @@ test("ExecutionDispatchReconciliationService repair handles lease_ticket_mismatc
 // repairTicket with orphan_queue_claim
 // ---------------------------------------------------------------------------
 
-test("ExecutionDispatchReconciliationService repairTicket applies requeue for orphan claim", () => {
+test("ExecutionDispatchReconciliationService repairTicket applies requeue for orphan claim [execution-dispatch-reconciliation-edge]", () => {
   const tickets: MockTicket[] = [
     { id: "ticket-1", executionId: "exec-1", status: "claimed", leaseId: "lease-1", assignedWorkerId: "worker-1" },
   ];
@@ -204,7 +204,7 @@ test("ExecutionDispatchReconciliationService repairTicket applies requeue for or
 // Multiple tickets with different issues
 // ---------------------------------------------------------------------------
 
-test("ExecutionDispatchReconciliationService scan detects multiple issues across tickets", () => {
+test("ExecutionDispatchReconciliationService scan detects multiple issues across tickets [execution-dispatch-reconciliation-edge]", () => {
   const tickets: MockTicket[] = [
     { id: "ticket-terminal", executionId: "exec-1", status: "pending", leaseId: null, assignedWorkerId: null },
     { id: "ticket-orphan", executionId: "exec-2", status: "claimed", leaseId: "lease-1", assignedWorkerId: "worker-1" },
@@ -227,7 +227,7 @@ test("ExecutionDispatchReconciliationService scan detects multiple issues across
 // repair with terminal_execution_ticket
 // ---------------------------------------------------------------------------
 
-test("ExecutionDispatchReconciliationService repair applies invalidate for terminal execution", () => {
+test("ExecutionDispatchReconciliationService repair applies invalidate for terminal execution [execution-dispatch-reconciliation-edge]", () => {
   const tickets: MockTicket[] = [
     { id: "ticket-1", executionId: "exec-1", status: "pending", leaseId: null, assignedWorkerId: null },
   ];
@@ -245,7 +245,7 @@ test("ExecutionDispatchReconciliationService repair applies invalidate for termi
   assert.equal(result.applied[0]!.replacementTicketId, null);
 });
 
-test("ExecutionDispatchReconciliationService repair applies invalidate for cancelled execution", () => {
+test("ExecutionDispatchReconciliationService repair applies invalidate for cancelled execution [execution-dispatch-reconciliation-edge]", () => {
   const tickets: MockTicket[] = [
     { id: "ticket-1", executionId: "exec-1", status: "pending", leaseId: null, assignedWorkerId: null },
   ];
@@ -261,7 +261,7 @@ test("ExecutionDispatchReconciliationService repair applies invalidate for cance
   assert.equal(result.applied[0]!.resolutionAction, "invalidate_ticket");
 });
 
-test("ExecutionDispatchReconciliationService repair applies invalidate for superseded execution", () => {
+test("ExecutionDispatchReconciliationService repair applies invalidate for superseded execution [execution-dispatch-reconciliation-edge]", () => {
   const tickets: MockTicket[] = [
     { id: "ticket-1", executionId: "exec-1", status: "pending", leaseId: null, assignedWorkerId: null },
   ];
@@ -281,7 +281,7 @@ test("ExecutionDispatchReconciliationService repair applies invalidate for super
 // Issue details are correctly populated
 // ---------------------------------------------------------------------------
 
-test("ExecutionDispatchReconciliationService issue contains correct executionId and taskId", () => {
+test("ExecutionDispatchReconciliationService issue contains correct executionId and taskId [execution-dispatch-reconciliation-edge]", () => {
   const tickets: MockTicket[] = [
     { id: "ticket-1", executionId: "exec-123", status: "pending", leaseId: null, assignedWorkerId: null, taskId: "task-456" },
   ];
@@ -299,7 +299,7 @@ test("ExecutionDispatchReconciliationService issue contains correct executionId 
   assert.equal(issues[0]!.executionStatus, "succeeded");
 });
 
-test("ExecutionDispatchReconciliationService repair result contains correct fields", () => {
+test("ExecutionDispatchReconciliationService repair result contains correct fields [execution-dispatch-reconciliation-edge]", () => {
   const tickets: MockTicket[] = [
     { id: "ticket-1", executionId: "exec-1", status: "pending", leaseId: null, assignedWorkerId: null },
   ];
@@ -320,7 +320,7 @@ test("ExecutionDispatchReconciliationService repair result contains correct fiel
 // Edge case: execution not found during repair
 // ---------------------------------------------------------------------------
 
-test("ExecutionDispatchReconciliationService repair handles execution not found", () => {
+test("ExecutionDispatchReconciliationService repair handles execution not found [execution-dispatch-reconciliation-edge]", () => {
   const tickets: MockTicket[] = [
     { id: "ticket-1", executionId: "nonexistent", status: "pending", leaseId: null, assignedWorkerId: null },
   ];
@@ -338,7 +338,7 @@ test("ExecutionDispatchReconciliationService repair handles execution not found"
 // Edge case: scan with expired and valid leases mixed
 // ---------------------------------------------------------------------------
 
-test("ExecutionDispatchReconciliationService scan distinguishes expired from valid leases", () => {
+test("ExecutionDispatchReconciliationService scan distinguishes expired from valid leases [execution-dispatch-reconciliation-edge]", () => {
   const tickets: MockTicket[] = [
     { id: "ticket-expired", executionId: "exec-1", status: "claimed", leaseId: "lease-1", assignedWorkerId: "worker-1" },
     { id: "ticket-valid", executionId: "exec-2", status: "claimed", leaseId: "lease-2", assignedWorkerId: "worker-2" },
@@ -367,7 +367,7 @@ test("ExecutionDispatchReconciliationService scan distinguishes expired from val
 // Edge case: scan only processes pending and claimed
 // ---------------------------------------------------------------------------
 
-test("ExecutionDispatchReconciliationService scan ignores expired tickets", () => {
+test("ExecutionDispatchReconciliationService scan ignores expired tickets [execution-dispatch-reconciliation-edge]", () => {
   const tickets: MockTicket[] = [
     { id: "ticket-pending", executionId: "exec-1", status: "pending", leaseId: null, assignedWorkerId: null },
     { id: "ticket-expired", executionId: "exec-2", status: "expired", leaseId: null, assignedWorkerId: null },
@@ -388,7 +388,7 @@ test("ExecutionDispatchReconciliationService scan ignores expired tickets", () =
 // Edge case: terminal execution with various statuses
 // ---------------------------------------------------------------------------
 
-test("ExecutionDispatchReconciliationService handles all terminal statuses", () => {
+test("ExecutionDispatchReconciliationService handles all terminal statuses [execution-dispatch-reconciliation-edge]", () => {
   const terminalStatuses = ["succeeded", "failed", "cancelled", "superseded"] as const;
 
   for (const status of terminalStatuses) {
@@ -412,7 +412,7 @@ test("ExecutionDispatchReconciliationService handles all terminal statuses", () 
 // Edge case: findIssueByTicketId returns null for expired ticket
 // ---------------------------------------------------------------------------
 
-test("ExecutionDispatchReconciliationService findIssueByTicketId returns null for expired status", () => {
+test("ExecutionDispatchReconciliationService findIssueByTicketId returns null for expired status [execution-dispatch-reconciliation-edge]", () => {
   const tickets: MockTicket[] = [
     { id: "ticket-1", executionId: "exec-1", status: "expired", leaseId: null, assignedWorkerId: null },
   ];
@@ -428,7 +428,7 @@ test("ExecutionDispatchReconciliationService findIssueByTicketId returns null fo
 // Edge case: findIssueByTicketId returns null for invalidated ticket
 // ---------------------------------------------------------------------------
 
-test("ExecutionDispatchReconciliationService findIssueByTicketId returns null for invalidated status", () => {
+test("ExecutionDispatchReconciliationService findIssueByTicketId returns null for invalidated status [execution-dispatch-reconciliation-edge]", () => {
   const tickets: MockTicket[] = [
     { id: "ticket-1", executionId: "exec-1", status: "invalidated", leaseId: null, assignedWorkerId: null },
   ];
@@ -443,7 +443,7 @@ test("ExecutionDispatchReconciliationService findIssueByTicketId returns null fo
 // Edge case: repair with ticket that no longer exists
 // ---------------------------------------------------------------------------
 
-test("ExecutionDispatchReconciliationService repairTicket returns not applied when ticket gone", () => {
+test("ExecutionDispatchReconciliationService repairTicket returns not applied when ticket gone [execution-dispatch-reconciliation-edge]", () => {
   const tickets: MockTicket[] = [];
   const executions = new Map([
     ["exec-1", { id: "exec-1", taskId: "task-1", status: "succeeded" }],
@@ -459,7 +459,7 @@ test("ExecutionDispatchReconciliationService repairTicket returns not applied wh
 // Edge case: scan with no executions in map
 // ---------------------------------------------------------------------------
 
-test("ExecutionDispatchReconciliationService scan handles ticket with missing execution", () => {
+test("ExecutionDispatchReconciliationService scan handles ticket with missing execution [execution-dispatch-reconciliation-edge]", () => {
   const tickets: MockTicket[] = [
     { id: "ticket-1", executionId: "exec-1", status: "pending", leaseId: null, assignedWorkerId: null },
   ];
@@ -476,7 +476,7 @@ test("ExecutionDispatchReconciliationService scan handles ticket with missing ex
 // Edge case: valid claimed ticket with valid lease
 // ---------------------------------------------------------------------------
 
-test("ExecutionDispatchReconciliationService scan returns no issue for valid claimed ticket", () => {
+test("ExecutionDispatchReconciliationService scan returns no issue for valid claimed ticket [execution-dispatch-reconciliation-edge]", () => {
   const tickets: MockTicket[] = [
     { id: "ticket-1", executionId: "exec-1", status: "claimed", leaseId: "lease-1", assignedWorkerId: "worker-1" },
   ];

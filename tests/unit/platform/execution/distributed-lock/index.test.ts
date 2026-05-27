@@ -17,7 +17,7 @@ import {
   type CreateLockAdapter,
 } from "../../../../../src/platform/five-plane-execution/distributed-lock/index.js";
 
-test("DistributedLockAdapter interface structure", () => {
+test("DistributedLockAdapter interface structure [index]", () => {
   const mockAdapter: DistributedLockAdapter = {
     backendKind: "test",
     acquire: () => ({ acquired: false }),
@@ -34,12 +34,12 @@ test("DistributedLockAdapter interface structure", () => {
   assert.equal(typeof mockAdapter.inspect, "function");
 });
 
-test("LockBackendKind type accepts valid values", () => {
+test("LockBackendKind type accepts valid values [index]", () => {
   const kinds: LockBackendKind[] = ["sqlite", "pg_advisory", "redis"];
   assert.equal(kinds.length, 3);
 });
 
-test("LockRecord structure is correct", () => {
+test("LockRecord structure is correct [index]", () => {
   const record: LockRecord = {
     lockKey: "test-lock",
     owner: "owner-1",
@@ -57,7 +57,7 @@ test("LockRecord structure is correct", () => {
   assert.equal(record.metadata, null);
 });
 
-test("LockRecord with metadata", () => {
+test("LockRecord with metadata [index]", () => {
   const record: LockRecord = {
     lockKey: "test-lock",
     owner: "owner-1",
@@ -70,7 +70,7 @@ test("LockRecord with metadata", () => {
   assert.equal(record.metadata, '{"reason":"manual"}');
 });
 
-test("AcquireLockInput structure is correct", () => {
+test("AcquireLockInput structure is correct [index]", () => {
   const input: AcquireLockInput = {
     lockKey: "test-lock",
     owner: "owner-1",
@@ -81,7 +81,7 @@ test("AcquireLockInput structure is correct", () => {
   assert.equal(input.ttlMs, 30000);
 });
 
-test("AcquireLockInput without ttlMs is valid", () => {
+test("AcquireLockInput without ttlMs is valid [index]", () => {
   const input: AcquireLockInput = {
     lockKey: "test-lock",
     owner: "owner-1",
@@ -89,7 +89,7 @@ test("AcquireLockInput without ttlMs is valid", () => {
   assert.equal(input.ttlMs, undefined);
 });
 
-test("AcquireLockResult structure for successful acquisition", () => {
+test("AcquireLockResult structure for successful acquisition [index]", () => {
   const result: AcquireLockResult = {
     acquired: true,
     lock: {
@@ -107,7 +107,7 @@ test("AcquireLockResult structure for successful acquisition", () => {
   assert.equal(result.lock!.lockKey, "test-lock");
 });
 
-test("AcquireLockResult structure for failed acquisition", () => {
+test("AcquireLockResult structure for failed acquisition [index]", () => {
   const result: AcquireLockResult = {
     acquired: false,
   };
@@ -115,7 +115,7 @@ test("AcquireLockResult structure for failed acquisition", () => {
   assert.equal(result.lock, undefined);
 });
 
-test("PgAdvisoryLockConfig structure is correct", () => {
+test("PgAdvisoryLockConfig structure is correct [index]", () => {
   const config: PgAdvisoryLockConfig = {
     dsn: "postgres://localhost:5432/testdb",
     poolMin: 1,
@@ -128,7 +128,7 @@ test("PgAdvisoryLockConfig structure is correct", () => {
   assert.equal(config.poolMax, 10);
 });
 
-test("PgAdvisoryLockConfig with SSL", () => {
+test("PgAdvisoryLockConfig with SSL [index]", () => {
   const config: PgAdvisoryLockConfig = {
     dsn: "postgres://localhost:5432/testdb",
     ssl: {
@@ -139,7 +139,7 @@ test("PgAdvisoryLockConfig with SSL", () => {
   assert.equal(config.ssl.rejectUnauthorized, true);
 });
 
-test("RedisLockConfig structure is correct", () => {
+test("RedisLockConfig structure is correct [index]", () => {
   const config: RedisLockConfig = {
     host: "localhost",
     port: 6379,
@@ -148,7 +148,7 @@ test("RedisLockConfig structure is correct", () => {
   assert.equal(config.port, 6379);
 });
 
-test("RedisLockConfig with optional fields", () => {
+test("RedisLockConfig with optional fields [index]", () => {
   const config: RedisLockConfig = {
     host: "redis.example.com",
     port: 6380,
@@ -161,7 +161,7 @@ test("RedisLockConfig with optional fields", () => {
   assert.equal(config.connectTimeoutMs, 5000);
 });
 
-test("LockData structure is correct", () => {
+test("LockData structure is correct [index]", () => {
   const data: LockData = {
     id: "lock_abc123",
     owner: "owner-1",
@@ -177,12 +177,12 @@ test("LockData structure is correct", () => {
   assert.equal(data.metadata, null);
 });
 
-test("DISTRIBUTED_LOCKS_DDL is a non-empty string", () => {
+test("DISTRIBUTED_LOCKS_DDL is a non-empty string [index]", () => {
   assert.ok(typeof DISTRIBUTED_LOCKS_DDL === "string");
   assert.ok(DISTRIBUTED_LOCKS_DDL.length > 0);
   assert.ok(DISTRIBUTED_LOCKS_DDL.includes("CREATE TABLE"));
 });
 
-test("CreateLockAdapter type is a function", () => {
+test("CreateLockAdapter type is a function [index]", () => {
   assert.equal(typeof null, "object"); // Placeholder - CreateLockAdapter is a type not a value
 });

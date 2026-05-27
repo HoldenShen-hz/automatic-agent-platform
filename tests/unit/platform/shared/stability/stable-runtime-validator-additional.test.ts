@@ -60,7 +60,7 @@ function createBaseline(
   };
 }
 
-test("compareStableValidationToBaseline returns baseline_created when no baseline exists", () => {
+test("compareStableValidationToBaseline returns baseline_created when no baseline exists [stable-runtime-validator-additional]", () => {
   const result = compareStableValidationToBaseline(
     { failedRuns: 0, integrityFailures: 0, backupFailures: 0, averageDurationMs: 100, maxDurationMs: 200, caseSummaries: [] },
     null,
@@ -72,7 +72,7 @@ test("compareStableValidationToBaseline returns baseline_created when no baselin
   assert.equal(result.regressionDetected, false);
 });
 
-test("compareStableValidationToBaseline detects regression when failed runs increase", () => {
+test("compareStableValidationToBaseline detects regression when failed runs increase [stable-runtime-validator-additional]", () => {
   const baseline = createBaseline(0, 100, 200, [{ caseId: "case1", averageDurationMs: 100 }]);
 
   const result = compareStableValidationToBaseline(
@@ -92,7 +92,7 @@ test("compareStableValidationToBaseline detects regression when failed runs incr
   assert.ok(result.failedRunsDelta > 0);
 });
 
-test("compareStableValidationToBaseline detects regression when integrity failures increase", () => {
+test("compareStableValidationToBaseline detects regression when integrity failures increase [stable-runtime-validator-additional]", () => {
   const baseline = createBaseline(0, 100, 200, [{ caseId: "case1", averageDurationMs: 100 }]);
 
   const result = compareStableValidationToBaseline(
@@ -112,7 +112,7 @@ test("compareStableValidationToBaseline detects regression when integrity failur
   assert.ok(result.integrityFailuresDelta > 0);
 });
 
-test("compareStableValidationToBaseline detects regression when backup failures increase", () => {
+test("compareStableValidationToBaseline detects regression when backup failures increase [stable-runtime-validator-additional]", () => {
   const baseline = createBaseline(0, 100, 200, [{ caseId: "case1", averageDurationMs: 100 }]);
 
   const result = compareStableValidationToBaseline(
@@ -132,7 +132,7 @@ test("compareStableValidationToBaseline detects regression when backup failures 
   assert.ok(result.backupFailuresDelta > 0);
 });
 
-test("compareStableValidationToBaseline detects duration drift when average duration increases 250%", () => {
+test("compareStableValidationToBaseline detects duration drift when average duration increases 250% [stable-runtime-validator-additional]", () => {
   const baseline = createBaseline(0, 100, 200, [{ caseId: "case1", averageDurationMs: 100 }]);
 
   const result = compareStableValidationToBaseline(
@@ -153,7 +153,7 @@ test("compareStableValidationToBaseline detects duration drift when average dura
   assert.ok(result.averageDurationDeltaPct > 0);
 });
 
-test("compareStableValidationToBaseline marks drift when max duration exceeds threshold", () => {
+test("compareStableValidationToBaseline marks drift when max duration exceeds threshold [stable-runtime-validator-additional]", () => {
   const baseline = createBaseline(0, 100, 200, [{ caseId: "case1", averageDurationMs: 100 }]);
 
   const result = compareStableValidationToBaseline(
@@ -173,7 +173,7 @@ test("compareStableValidationToBaseline marks drift when max duration exceeds th
   assert.ok(result.maxDurationDeltaPct > 0);
 });
 
-test("summarizeStableValidationRuns groups runs by caseId", () => {
+test("summarizeStableValidationRuns groups runs by caseId [stable-runtime-validator-additional]", () => {
   const runs: StableValidationRun[] = [
     createValidationRun("case1", true, 100),
     createValidationRun("case1", true, 120),
@@ -194,7 +194,7 @@ test("summarizeStableValidationRuns groups runs by caseId", () => {
   assert.equal(case2Summary!.totalRuns, 1);
 });
 
-test("summarizeStableValidationRuns computes average and max duration", () => {
+test("summarizeStableValidationRuns computes average and max duration [stable-runtime-validator-additional]", () => {
   const runs: StableValidationRun[] = [
     createValidationRun("case1", true, 100),
     createValidationRun("case1", true, 200),
@@ -208,13 +208,13 @@ test("summarizeStableValidationRuns computes average and max duration", () => {
   assert.equal(summary.maxDurationMs, 300);
 });
 
-test("summarizeStableValidationRuns handles empty runs array", () => {
+test("summarizeStableValidationRuns handles empty runs array [stable-runtime-validator-additional]", () => {
   const summaries = summarizeStableValidationRuns([]);
 
   assert.deepEqual(summaries, []);
 });
 
-test("mergeStableValidationReports combines multiple reports", () => {
+test("mergeStableValidationReports combines multiple reports [stable-runtime-validator-additional]", () => {
   const report1: StableValidationReport = {
     startedAt: "2026-04-07T00:00:00.000Z",
     finishedAt: "2026-04-07T00:01:00.000Z",
@@ -285,7 +285,7 @@ test("mergeStableValidationReports combines multiple reports", () => {
   assert.equal(merged.runs.length, 4);
 });
 
-test("mergeStableValidationReports uses first report timestamps", () => {
+test("mergeStableValidationReports uses first report timestamps [stable-runtime-validator-additional]", () => {
   const report1: StableValidationReport = {
     startedAt: "2026-04-07T00:00:00.000Z",
     finishedAt: "2026-04-07T00:01:00.000Z",
@@ -352,7 +352,7 @@ test("mergeStableValidationReports uses first report timestamps", () => {
   assert.equal(merged.finishedAt, "2026-04-07T00:03:00.000Z");
 });
 
-test("buildStableValidationBaseline creates correct baseline structure", () => {
+test("buildStableValidationBaseline creates correct baseline structure [stable-runtime-validator-additional]", () => {
   const report: StableValidationReport = {
     startedAt: "2026-04-07T00:00:00.000Z",
     finishedAt: "2026-04-07T00:01:00.000Z",

@@ -9,114 +9,114 @@ import {
 } from "../../../../../src/platform/five-plane-execution/worker-pool/execution-worker-handshake-support.js";
 import type { WorkerSnapshotRecord } from "../../../../../src/platform/contracts/types/domain.js";
 
-test("parseJsonArray parses valid JSON array", () => {
+test("parseJsonArray parses valid JSON array [execution-worker-handshake-support]", () => {
   const result = parseJsonArray('["a", "b", "c"]');
   assert.deepEqual(result, ["a", "b", "c"]);
 });
 
-test("parseJsonArray returns empty array for invalid JSON", () => {
+test("parseJsonArray returns empty array for invalid JSON [execution-worker-handshake-support]", () => {
   const result = parseJsonArray("not json");
   assert.deepEqual(result, []);
 });
 
-test("parseJsonArray returns empty array for non-array JSON", () => {
+test("parseJsonArray returns empty array for non-array JSON [execution-worker-handshake-support]", () => {
   const result = parseJsonArray('{"key": "value"}');
   assert.deepEqual(result, []);
 });
 
-test("parseJsonArray filters out non-string items", () => {
+test("parseJsonArray filters out non-string items [execution-worker-handshake-support]", () => {
   const result = parseJsonArray('["a", 123, true, null, "b"]');
   assert.deepEqual(result, ["a", "b"]);
 });
 
-test("parseJsonArray handles empty array", () => {
+test("parseJsonArray handles empty array [execution-worker-handshake-support]", () => {
   const result = parseJsonArray("[]");
   assert.deepEqual(result, []);
 });
 
-test("parseJsonArray handles empty string", () => {
+test("parseJsonArray handles empty string [execution-worker-handshake-support]", () => {
   const result = parseJsonArray("");
   assert.deepEqual(result, []);
 });
 
-test("mergeExecutionIds combines and sorts unique IDs", () => {
+test("mergeExecutionIds combines and sorts unique IDs [execution-worker-handshake-support]", () => {
   const result = mergeExecutionIds(["a", "c"], "b");
   assert.deepEqual(result, ["a", "b", "c"]);
 });
 
-test("mergeExecutionIds does not duplicate existing IDs", () => {
+test("mergeExecutionIds does not duplicate existing IDs [execution-worker-handshake-support]", () => {
   const result = mergeExecutionIds(["a", "b"], "b");
   assert.deepEqual(result, ["a", "b"]);
 });
 
-test("mergeExecutionIds handles empty existing array", () => {
+test("mergeExecutionIds handles empty existing array [execution-worker-handshake-support]", () => {
   const result = mergeExecutionIds([], "a");
   assert.deepEqual(result, ["a"]);
 });
 
-test("toWorkerStatus returns unavailable when snapshot is unavailable", () => {
+test("toWorkerStatus returns unavailable when snapshot is unavailable [execution-worker-handshake-support]", () => {
   const snapshot = { status: "unavailable" } as WorkerSnapshotRecord;
   assert.equal(toWorkerStatus(snapshot, []), "unavailable");
 });
 
-test("toWorkerStatus returns quarantined when snapshot is quarantined", () => {
+test("toWorkerStatus returns quarantined when snapshot is quarantined [execution-worker-handshake-support]", () => {
   const snapshot = { status: "quarantined" } as WorkerSnapshotRecord;
   assert.equal(toWorkerStatus(snapshot, []), "quarantined");
 });
 
-test("toWorkerStatus returns offline when snapshot is offline", () => {
+test("toWorkerStatus returns offline when snapshot is offline [execution-worker-handshake-support]", () => {
   const snapshot = { status: "offline" } as WorkerSnapshotRecord;
   assert.equal(toWorkerStatus(snapshot, []), "offline");
 });
 
-test("toWorkerStatus returns draining when snapshot is draining", () => {
+test("toWorkerStatus returns draining when snapshot is draining [execution-worker-handshake-support]", () => {
   const snapshot = { status: "draining" } as WorkerSnapshotRecord;
   assert.equal(toWorkerStatus(snapshot, []), "draining");
 });
 
-test("toWorkerStatus returns degraded when snapshot is degraded", () => {
+test("toWorkerStatus returns degraded when snapshot is degraded [execution-worker-handshake-support]", () => {
   const snapshot = { status: "degraded" } as WorkerSnapshotRecord;
   assert.equal(toWorkerStatus(snapshot, []), "degraded");
 });
 
-test("toWorkerStatus returns busy when running executions exist", () => {
+test("toWorkerStatus returns busy when running executions exist [execution-worker-handshake-support]", () => {
   const snapshot = { status: "idle" } as WorkerSnapshotRecord;
   assert.equal(toWorkerStatus(snapshot, ["exec_1", "exec_2"]), "busy");
 });
 
-test("toWorkerStatus returns idle when no running executions", () => {
+test("toWorkerStatus returns idle when no running executions [execution-worker-handshake-support]", () => {
   const snapshot = { status: "idle" } as WorkerSnapshotRecord;
   assert.equal(toWorkerStatus(snapshot, []), "idle");
 });
 
-test("normalizeLeaseReason returns lease_not_found as-is", () => {
+test("normalizeLeaseReason returns lease_not_found as-is [execution-worker-handshake-support]", () => {
   assert.equal(normalizeLeaseReason("lease_not_found"), "lease_not_found");
 });
 
-test("normalizeLeaseReason returns lease_not_active as-is", () => {
+test("normalizeLeaseReason returns lease_not_active as-is [execution-worker-handshake-support]", () => {
   assert.equal(normalizeLeaseReason("lease_not_active"), "lease_not_active");
 });
 
-test("normalizeLeaseReason returns lease_expired as-is", () => {
+test("normalizeLeaseReason returns lease_expired as-is [execution-worker-handshake-support]", () => {
   assert.equal(normalizeLeaseReason("lease_expired"), "lease_expired");
 });
 
-test("normalizeLeaseReason returns worker_mismatch as-is", () => {
+test("normalizeLeaseReason returns worker_mismatch as-is [execution-worker-handshake-support]", () => {
   assert.equal(normalizeLeaseReason("worker_mismatch"), "worker_mismatch");
 });
 
-test("normalizeLeaseReason returns no_active_lease as-is", () => {
+test("normalizeLeaseReason returns no_active_lease as-is [execution-worker-handshake-support]", () => {
   assert.equal(normalizeLeaseReason("no_active_lease"), "no_active_lease");
 });
 
-test("normalizeLeaseReason returns stale_fencing_token as-is", () => {
+test("normalizeLeaseReason returns stale_fencing_token as-is [execution-worker-handshake-support]", () => {
   assert.equal(normalizeLeaseReason("stale_fencing_token"), "stale_fencing_token");
 });
 
-test("normalizeLeaseReason returns null for unknown reason codes", () => {
+test("normalizeLeaseReason returns null for unknown reason codes [execution-worker-handshake-support]", () => {
   assert.equal(normalizeLeaseReason("unknown_code"), null);
 });
 
-test("normalizeLeaseReason returns null for null input", () => {
+test("normalizeLeaseReason returns null for null input [execution-worker-handshake-support]", () => {
   assert.equal(normalizeLeaseReason(null), null);
 });

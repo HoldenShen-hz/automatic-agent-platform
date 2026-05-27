@@ -66,7 +66,7 @@ function createPreemptionCandidate(overrides: Partial<PreemptionCandidate> = {})
   };
 }
 
-test("FairSchedulingService.schedule returns decision with queue ordering", () => {
+test("FairSchedulingService.schedule returns decision with queue ordering [fair-scheduling-service]", () => {
   const service = new FairSchedulingService();
   const queueItems: FairQueueItem[] = [
     createQueueItem({ itemId: "low", priority: 1, ageMs: 0 }),
@@ -87,7 +87,7 @@ test("FairSchedulingService.schedule returns decision with queue ordering", () =
   assert.equal(decision.queue.orderedItemIds[1], "high");
 });
 
-test("FairSchedulingService.schedule identifies starved items at 15 minutes", () => {
+test("FairSchedulingService.schedule identifies starved items at 15 minutes [fair-scheduling-service]", () => {
   const service = new FairSchedulingService();
   const queueItems: FairQueueItem[] = [
     createQueueItem({ itemId: "fresh", ageMs: 5 * 60_000 }),
@@ -106,7 +106,7 @@ test("FairSchedulingService.schedule identifies starved items at 15 minutes", ()
   assert.deepEqual(decision.queue.starvedItemIds, ["starved"]);
 });
 
-test("FairSchedulingService.schedule does not preempt when quota not exceeded", () => {
+test("FairSchedulingService.schedule does not preempt when quota not exceeded [fair-scheduling-service]", () => {
   const service = new FairSchedulingService();
   const request: FairSchedulingRequest = {
     quotaPolicy: createQuotaPolicy({ currentUsage: 50, hardLimit: 100 }),
@@ -123,7 +123,7 @@ test("FairSchedulingService.schedule does not preempt when quota not exceeded", 
   assert.equal(decision.preemption.reason, null);
 });
 
-test("FairSchedulingService.schedule preempts when quota exceeded with victim", () => {
+test("FairSchedulingService.schedule preempts when quota exceeded with victim [fair-scheduling-service]", () => {
   const service = new FairSchedulingService();
   const candidates: PreemptionCandidate[] = [
     createPreemptionCandidate({ executionId: "high-prio", priority: 10, progressPercent: 80 }),
@@ -145,7 +145,7 @@ test("FairSchedulingService.schedule preempts when quota exceeded with victim", 
   assert.equal(decision.preemption.reason, "resource_manager.quota_exceeded_preempt_low_priority");
 });
 
-test("FairSchedulingService.schedule handles quota exceeded without victim", () => {
+test("FairSchedulingService.schedule handles quota exceeded without victim [fair-scheduling-service]", () => {
   const service = new FairSchedulingService();
   const request: FairSchedulingRequest = {
     quotaPolicy: createQuotaPolicy({ currentUsage: 100, hardLimit: 80, burstLimit: 100 }),
@@ -161,7 +161,7 @@ test("FairSchedulingService.schedule handles quota exceeded without victim", () 
   assert.equal(decision.preemption.reason, "resource_manager.quota_exceeded_without_victim");
 });
 
-test("orderFairQueue orders by priority and age score", () => {
+test("orderFairQueue orders by priority and age score [fair-scheduling-service]", () => {
   const items: FairQueueItem[] = [
     createQueueItem({ itemId: "low-prio", priority: 1, ageMs: 0 }),
     createQueueItem({ itemId: "high-prio", priority: 10, ageMs: 0 }),
@@ -175,7 +175,7 @@ test("orderFairQueue orders by priority and age score", () => {
   assert.equal(ordered[2]!.itemId, "high-prio");
 });
 
-test("choosePreemptionVictim selects lowest priority", () => {
+test("choosePreemptionVictim selects lowest priority [fair-scheduling-service]", () => {
   const candidates: PreemptionCandidate[] = [
     createPreemptionCandidate({ executionId: "high", priority: 10 }),
     createPreemptionCandidate({ executionId: "low", priority: 1 }),
@@ -187,12 +187,12 @@ test("choosePreemptionVictim selects lowest priority", () => {
   assert.equal(victim?.executionId, "low");
 });
 
-test("choosePreemptionVictim returns null for empty array", () => {
+test("choosePreemptionVictim returns null for empty array [fair-scheduling-service]", () => {
   const victim = choosePreemptionVictim([]);
   assert.equal(victim, null);
 });
 
-test("isQuotaExceeded returns true when usage exceeds burst", () => {
+test("isQuotaExceeded returns true when usage exceeds burst [fair-scheduling-service]", () => {
   const policy = createQuotaPolicy({ currentUsage: 100, hardLimit: 80, burstLimit: 100 });
 
   const exceeded = isQuotaExceeded(policy, 10);
@@ -200,7 +200,7 @@ test("isQuotaExceeded returns true when usage exceeds burst", () => {
   assert.equal(exceeded, true);
 });
 
-test("isQuotaExceeded returns false when within limits", () => {
+test("isQuotaExceeded returns false when within limits [fair-scheduling-service]", () => {
   const policy = createQuotaPolicy({ currentUsage: 50, hardLimit: 100 });
 
   const exceeded = isQuotaExceeded(policy, 10);
@@ -208,7 +208,7 @@ test("isQuotaExceeded returns false when within limits", () => {
   assert.equal(exceeded, false);
 });
 
-test("evaluateQuota returns correct decision fields", () => {
+test("evaluateQuota returns correct decision fields [fair-scheduling-service]", () => {
   // currentUsage=70, requested=20, projected=90
   // hardLimit=80, softLimit=60, burstLimit=100
   // exceeded = 90 > 100 = false
@@ -225,7 +225,7 @@ test("evaluateQuota returns correct decision fields", () => {
   assert.equal(decision.remainingUnits, 10);
 });
 
-test("QuotaPolicySchema parses valid policy", () => {
+test("QuotaPolicySchema parses valid policy [fair-scheduling-service]", () => {
   const result = QuotaPolicySchema.safeParse({
     scopeId: "tenant-1",
     hardLimit: 100,
@@ -239,7 +239,7 @@ test("QuotaPolicySchema parses valid policy", () => {
   }
 });
 
-test("QuotaPolicySchema rejects empty scopeId", () => {
+test("QuotaPolicySchema rejects empty scopeId [fair-scheduling-service]", () => {
   const result = QuotaPolicySchema.safeParse({
     scopeId: "",
     hardLimit: 100,
@@ -249,7 +249,7 @@ test("QuotaPolicySchema rejects empty scopeId", () => {
   assert.equal(result.success, false);
 });
 
-test("FairSchedulingService.schedule excludes preemption victims with active leases", () => {
+test("FairSchedulingService.schedule excludes preemption victims with active leases [fair-scheduling-service]", () => {
   const service = new FairSchedulingService();
   const request: FairSchedulingRequest = {
     quotaPolicy: createQuotaPolicy({ currentUsage: 100, hardLimit: 80, burstLimit: 100 }),
@@ -268,7 +268,7 @@ test("FairSchedulingService.schedule excludes preemption victims with active lea
   assert.equal(decision.preemption.victimExecutionId, "safe-victim");
 });
 
-test("FairSchedulingService.schedule softens hard quota enforcement when region quorum is not met", () => {
+test("FairSchedulingService.schedule softens hard quota enforcement when region quorum is not met [fair-scheduling-service]", () => {
   const service = new FairSchedulingService();
   const request: FairSchedulingRequest = {
     quotaPolicy: createQuotaPolicy({ currentUsage: 100, hardLimit: 80, burstLimit: 100 }),

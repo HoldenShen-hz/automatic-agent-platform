@@ -42,7 +42,7 @@ function createService(
   return { workspace, db, store, service };
 }
 
-test("getCacheEntry returns null for missing keys", () => {
+test("getCacheEntry returns null for missing keys [skill-execution-cache-methods]", () => {
   const { workspace, db, service } = createService(async () => ({ success: true }));
   try {
     const result = service.getCacheEntry("missing-key", "2026-04-24T00:00:00.000Z");
@@ -53,7 +53,7 @@ test("getCacheEntry returns null for missing keys", () => {
   }
 });
 
-test("resolveCacheLookup and storeCacheEntry work together to cache and retrieve entries", async () => {
+test("resolveCacheLookup and storeCacheEntry work together to cache and retrieve entries [skill-execution-cache-methods]", async () => {
   const { workspace, db, service } = createService(async () => ({ success: true }));
   try {
     const skill: SkillDefinition = {
@@ -111,7 +111,7 @@ test("resolveCacheLookup and storeCacheEntry work together to cache and retrieve
   }
 });
 
-test("resolveCacheLookup returns miss for expired cached entries", async () => {
+test("resolveCacheLookup returns miss for expired cached entries [skill-execution-cache-methods]", async () => {
   const { workspace, db, service } = createService(async () => ({ success: true }));
   try {
     const skill: SkillDefinition = {
@@ -170,7 +170,7 @@ test("resolveCacheLookup returns miss for expired cached entries", async () => {
   }
 });
 
-test("publishEvent dispatches events through the event bus", () => {
+test("publishEvent dispatches events through the event bus [skill-execution-cache-methods]", () => {
   const { workspace, db, store, service } = createService(async () => ({ success: true }));
   try {
     let publishedEvent: unknown = null;
@@ -208,7 +208,7 @@ test("publishEvent dispatches events through the event bus", () => {
   }
 });
 
-test("upsertAgentExecutionRecord creates new record when none exists", () => {
+test("upsertAgentExecutionRecord creates new record when none exists [skill-execution-cache-methods]", () => {
   const { workspace, db, store, service } = createService(async () => ({ success: true }));
   try {
     const execution = store.dispatch.getExecution("exec-cache-methods")!;
@@ -242,7 +242,7 @@ test("upsertAgentExecutionRecord creates new record when none exists", () => {
   }
 });
 
-test("upsertAgentExecutionRecord merges tool call counts when existing record found", () => {
+test("upsertAgentExecutionRecord merges tool call counts when existing record found [skill-execution-cache-methods]", () => {
   const { workspace, db, store, service } = createService(async () => ({ success: true }));
   try {
     const execution = store.dispatch.getExecution("exec-cache-methods")!;
@@ -291,7 +291,7 @@ test("upsertAgentExecutionRecord merges tool call counts when existing record fo
   }
 });
 
-test("buildCachedStepResult calculates retryCount from attempts", () => {
+test("buildCachedStepResult calculates retryCount from attempts [skill-execution-cache-methods]", () => {
   const { workspace, db, service } = createService(async () => ({ success: true }));
   try {
     const result = service.buildCachedStepResult({
@@ -322,7 +322,7 @@ test("buildCachedStepResult calculates retryCount from attempts", () => {
   }
 });
 
-test("buildCachedStepResult marks continuedAfterFailure for partial_success status", () => {
+test("buildCachedStepResult marks continuedAfterFailure for partial_success status [skill-execution-cache-methods]", () => {
   const { workspace, db, service } = createService(async () => ({ success: true }));
   try {
     const result = service.buildCachedStepResult({
@@ -351,7 +351,7 @@ test("buildCachedStepResult marks continuedAfterFailure for partial_success stat
   }
 });
 
-test("buildStepOutput embeds skill metadata in dataJson", () => {
+test("buildStepOutput embeds skill metadata in dataJson [skill-execution-cache-methods]", () => {
   const { workspace, db, service } = createService(async () => ({ success: true }));
   try {
     const skill: SkillDefinition = {
@@ -411,7 +411,7 @@ test("buildStepOutput embeds skill metadata in dataJson", () => {
   }
 });
 
-test("finalizeResourceLimitFailure records failure and updates execution record", async () => {
+test("finalizeResourceLimitFailure records failure and updates execution record [skill-execution-cache-methods]", async () => {
   const { workspace, db, store, service } = createService(async () => ({ success: true }));
   try {
     const execution = store.dispatch.getExecution("exec-cache-methods")!;
@@ -486,7 +486,7 @@ test("finalizeResourceLimitFailure records failure and updates execution record"
   }
 });
 
-test("storeCacheEntry respects cacheMaxEntries when evicting oldest entry", async () => {
+test("storeCacheEntry respects cacheMaxEntries when evicting oldest entry [skill-execution-cache-methods]", async () => {
   const { workspace, db, service } = createService(async () => ({ success: true }));
   try {
     const skill: SkillDefinition = {

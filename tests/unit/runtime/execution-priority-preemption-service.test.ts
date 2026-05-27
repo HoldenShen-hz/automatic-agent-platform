@@ -145,7 +145,7 @@ function seedPreemptionFixture(
   };
 }
 
-test("execution priority preemption service requeues a safe low-priority execution for an urgent ticket", () => {
+test("execution priority preemption service requeues a safe low-priority execution for an urgent ticket [execution-priority-preemption-service]", () => {
   const workspace = createTempWorkspace("aa-preemption-unit-");
   const dbPath = join(workspace, "execution-priority-preemption.db");
 
@@ -207,7 +207,7 @@ test("execution priority preemption service requeues a safe low-priority executi
   }
 });
 
-test("execution priority preemption service refuses to preempt when the worker is not at a resumable step boundary", () => {
+test("execution priority preemption service refuses to preempt when the worker is not at a resumable step boundary [execution-priority-preemption-service]", () => {
   const workspace = createTempWorkspace("aa-preemption-unit-");
   const dbPath = join(workspace, "execution-priority-preemption-boundary.db");
 
@@ -255,7 +255,7 @@ test("execution priority preemption service refuses to preempt when the worker i
   }
 });
 
-test("execution priority preemption service ignores non-urgent source tickets", () => {
+test("execution priority preemption service ignores non-urgent source tickets [execution-priority-preemption-service]", () => {
   const workspace = createTempWorkspace("aa-preemption-unit-");
   const dbPath = join(workspace, "execution-priority-preemption-non-urgent.db");
 

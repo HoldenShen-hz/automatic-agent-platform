@@ -18,12 +18,12 @@ import type {
 // Note: createHotUpgradeService requires a real storage backend handle
 // so we test the factory function signature and type output here
 
-test("HotUpgradeService can be imported and instantiated", () => {
+test("HotUpgradeService can be imported and instantiated [hot-upgrade-factory]", () => {
   // This would need a real DB to use fully, but we test type exports
   assert.ok(HotUpgradeService !== undefined);
 });
 
-test("HOT_UPGRADE_DDL contains all required tables", () => {
+test("HOT_UPGRADE_DDL contains all required tables [hot-upgrade-factory]", () => {
   assert.ok(HOT_UPGRADE_DDL.includes("upgrade_plans"));
   assert.ok(HOT_UPGRADE_DDL.includes("upgrade_batches"));
   assert.ok(HOT_UPGRADE_DDL.includes("rollback_triggers"));
@@ -31,7 +31,7 @@ test("HOT_UPGRADE_DDL contains all required tables", () => {
   assert.ok(HOT_UPGRADE_DDL.includes("upgrade_audit"));
 });
 
-test("HOT_UPGRADE_DDL creates proper indexes", () => {
+test("HOT_UPGRADE_DDL creates proper indexes [hot-upgrade-factory]", () => {
   assert.ok(HOT_UPGRADE_DDL.includes("idx_upgrade_plans_upgrade"));
   assert.ok(HOT_UPGRADE_DDL.includes("idx_upgrade_plans_status"));
   assert.ok(HOT_UPGRADE_DDL.includes("idx_upgrade_batches_upgrade"));
@@ -40,7 +40,7 @@ test("HOT_UPGRADE_DDL creates proper indexes", () => {
   assert.ok(HOT_UPGRADE_DDL.includes("idx_upgrade_audit_upgrade"));
 });
 
-test("HOT_UPGRADE_DDL has proper column definitions", () => {
+test("HOT_UPGRADE_DDL has proper column definitions [hot-upgrade-factory]", () => {
   assert.ok(HOT_UPGRADE_DDL.includes("plan_id TEXT PRIMARY KEY"));
   assert.ok(HOT_UPGRADE_DDL.includes("upgrade_id TEXT NOT NULL"));
   assert.ok(HOT_UPGRADE_DDL.includes("targets_json TEXT NOT NULL"));
@@ -50,7 +50,7 @@ test("HOT_UPGRADE_DDL has proper column definitions", () => {
   assert.ok(HOT_UPGRADE_DDL.includes("status TEXT NOT NULL"));
 });
 
-test("HotUpgradeRepository interface exists", () => {
+test("HotUpgradeRepository interface exists [hot-upgrade-factory]", () => {
   // Verify interface can be referenced as a type
   const methods: (keyof HotUpgradeRepository)[] = [
     "upsertVersionCompatibility",
@@ -73,20 +73,20 @@ test("HotUpgradeRepository interface exists", () => {
   assert.ok(methods.length >= 14);
 });
 
-test("createHotUpgradeService is exported and callable", () => {
+test("createHotUpgradeService is exported and callable [hot-upgrade-factory]", () => {
   // The function exists and is exported
   assert.ok(createHotUpgradeService !== undefined);
   assert.ok(typeof createHotUpgradeService === "function");
 });
 
-test("HotUpgradeService types are exported from index", async () => {
+test("HotUpgradeService types are exported from index [hot-upgrade-factory]", async () => {
   const indexModule = await import("../../../../../src/platform/five-plane-execution/hot-upgrade/index.js");
 
   assert.ok(indexModule.HotUpgradeService !== undefined);
   assert.ok(indexModule.createHotUpgradeService !== undefined);
 });
 
-test("UpgradeAuditEntry interface structure", () => {
+test("UpgradeAuditEntry interface structure [hot-upgrade-factory]", () => {
   const entry: UpgradeAuditEntry = {
     id: "audit-1",
     upgradeId: "upgrade-1",
@@ -104,11 +104,11 @@ test("UpgradeAuditEntry interface structure", () => {
   assert.deepEqual(entry.details, { key: "value" });
 });
 
-test("HOT_UPGRADE_DDL links child tables by upgrade_id columns", () => {
+test("HOT_UPGRADE_DDL links child tables by upgrade_id columns [hot-upgrade-factory]", () => {
   assert.ok(HOT_UPGRADE_DDL.includes("CREATE TABLE IF NOT EXISTS upgrade_batches"));
   assert.ok(HOT_UPGRADE_DDL.includes("upgrade_id TEXT NOT NULL"));
 });
 
-test("HOT_UPGRADE_DDL includes proper constraints", () => {
+test("HOT_UPGRADE_DDL includes proper constraints [hot-upgrade-factory]", () => {
   assert.ok(HOT_UPGRADE_DDL.includes("UNIQUE(from_version, to_version)"));
 });

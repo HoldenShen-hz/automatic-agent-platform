@@ -19,14 +19,14 @@ import {
 // Type exports
 // ---------------------------------------------------------------------------
 
-test("RuntimeServices type is exported", () => {
+test("RuntimeServices type is exported [runtime-factory]", () => {
   // This is a type-only test - if the type compiles, the test passes
   // We use unknown to avoid actual implementation requirements
   const services = {} as RuntimeServices;
   assert.ok(services, "RuntimeServices should be a valid type");
 });
 
-test("AnyStorageBackendHandle type is exported", () => {
+test("AnyStorageBackendHandle type is exported [runtime-factory]", () => {
   // This is a union type, we just verify it exists
   const handle: AnyStorageBackendHandle | undefined = undefined;
   assert.ok(handle === undefined, "AnyStorageBackendHandle should be a valid type");
@@ -36,7 +36,7 @@ test("AnyStorageBackendHandle type is exported", () => {
 // ExecutionDispatchServiceAsync is exported
 // ---------------------------------------------------------------------------
 
-test("ExecutionDispatchServiceAsync is exported from runtime-factory", () => {
+test("ExecutionDispatchServiceAsync is exported from runtime-factory [runtime-factory]", () => {
   assert.ok(ExecutionDispatchServiceAsync, "ExecutionDispatchServiceAsync should be exported");
   assert.equal(typeof ExecutionDispatchServiceAsync, "function", "Should be a constructor");
 });
@@ -45,7 +45,7 @@ test("ExecutionDispatchServiceAsync is exported from runtime-factory", () => {
 // ExecutionWorkerHandshakeServiceAsync is exported
 // ---------------------------------------------------------------------------
 
-test("ExecutionWorkerHandshakeServiceAsync is exported from runtime-factory", () => {
+test("ExecutionWorkerHandshakeServiceAsync is exported from runtime-factory [runtime-factory]", () => {
   assert.ok(ExecutionWorkerHandshakeServiceAsync, "ExecutionWorkerHandshakeServiceAsync should be exported");
   assert.equal(typeof ExecutionWorkerHandshakeServiceAsync, "function", "Should be a constructor");
 });
@@ -54,7 +54,7 @@ test("ExecutionWorkerHandshakeServiceAsync is exported from runtime-factory", ()
 // ExecutionWorkerWritebackServiceAsync is exported
 // ---------------------------------------------------------------------------
 
-test("ExecutionWorkerWritebackServiceAsync is exported from runtime-factory", () => {
+test("ExecutionWorkerWritebackServiceAsync is exported from runtime-factory [runtime-factory]", () => {
   assert.ok(ExecutionWorkerWritebackServiceAsync, "ExecutionWorkerWritebackServiceAsync should be exported");
   assert.equal(typeof ExecutionWorkerWritebackServiceAsync, "function", "Should be a constructor");
 });
@@ -63,7 +63,7 @@ test("ExecutionWorkerWritebackServiceAsync is exported from runtime-factory", ()
 // ExecutionPriorityPreemptionServiceAsync is exported
 // ---------------------------------------------------------------------------
 
-test("ExecutionPriorityPreemptionServiceAsync is exported from runtime-factory", () => {
+test("ExecutionPriorityPreemptionServiceAsync is exported from runtime-factory [runtime-factory]", () => {
   assert.ok(ExecutionPriorityPreemptionServiceAsync, "ExecutionPriorityPreemptionServiceAsync should be exported");
   assert.equal(typeof ExecutionPriorityPreemptionServiceAsync, "function", "Should be a constructor");
 });
@@ -72,37 +72,37 @@ test("ExecutionPriorityPreemptionServiceAsync is exported from runtime-factory",
 // runtimeFactories object structure
 // ---------------------------------------------------------------------------
 
-test("runtimeFactories has createHaCoordinatorService", () => {
+test("runtimeFactories has createHaCoordinatorService [runtime-factory]", () => {
   assert.ok(runtimeFactories, "runtimeFactories should exist");
   assert.equal(typeof runtimeFactories.createHaCoordinatorService, "function", "Should have createHaCoordinatorService");
 });
 
-test("runtimeFactories has createExecutionLeaseService", () => {
+test("runtimeFactories has createExecutionLeaseService [runtime-factory]", () => {
   assert.ok(runtimeFactories.createExecutionLeaseService, "Should have createExecutionLeaseService");
   assert.equal(typeof runtimeFactories.createExecutionLeaseService, "function");
 });
 
-test("runtimeFactories has createHotUpgradeService", () => {
+test("runtimeFactories has createHotUpgradeService [runtime-factory]", () => {
   assert.ok(runtimeFactories.createHotUpgradeService, "Should have createHotUpgradeService");
   assert.equal(typeof runtimeFactories.createHotUpgradeService, "function");
 });
 
-test("runtimeFactories has createDispatchService", () => {
+test("runtimeFactories has createDispatchService [runtime-factory]", () => {
   assert.ok(runtimeFactories.createDispatchService, "Should have createDispatchService");
   assert.equal(typeof runtimeFactories.createDispatchService, "function");
 });
 
-test("runtimeFactories has createHandshakeService", () => {
+test("runtimeFactories has createHandshakeService [runtime-factory]", () => {
   assert.ok(runtimeFactories.createHandshakeService, "Should have createHandshakeService");
   assert.equal(typeof runtimeFactories.createHandshakeService, "function");
 });
 
-test("runtimeFactories has createWritebackService", () => {
+test("runtimeFactories has createWritebackService [runtime-factory]", () => {
   assert.ok(runtimeFactories.createWritebackService, "Should have createWritebackService");
   assert.equal(typeof runtimeFactories.createWritebackService, "function");
 });
 
-test("runtimeFactories has createPreemptionService", () => {
+test("runtimeFactories has createPreemptionService [runtime-factory]", () => {
   assert.ok(runtimeFactories.createPreemptionService, "Should have createPreemptionService");
   assert.equal(typeof runtimeFactories.createPreemptionService, "function");
 });
@@ -111,7 +111,7 @@ test("runtimeFactories has createPreemptionService", () => {
 // createRuntimeServices requires proper backend
 // ---------------------------------------------------------------------------
 
-test("createRuntimeServices throws with missing backend", () => {
+test("createRuntimeServices throws with missing backend [runtime-factory]", () => {
   // Passing null or undefined should throw an error
   assert.throws(
     () => createRuntimeServices(null as unknown as AnyStorageBackendHandle),
@@ -119,7 +119,7 @@ test("createRuntimeServices throws with missing backend", () => {
   );
 });
 
-test("createRuntimeServices throws with undefined backend", () => {
+test("createRuntimeServices throws with undefined backend [runtime-factory]", () => {
   assert.throws(
     () => createRuntimeServices(undefined as unknown as AnyStorageBackendHandle),
     "Should throw error about requiring postgres shadow sqlite",
@@ -130,25 +130,25 @@ test("createRuntimeServices throws with undefined backend", () => {
 // Individual factory functions throw with invalid backends
 // ---------------------------------------------------------------------------
 
-test("runtimeFactories.createDispatchService throws with invalid backend", () => {
+test("runtimeFactories.createDispatchService throws with invalid backend [runtime-factory]", () => {
   assert.throws(
     () => runtimeFactories.createDispatchService(null as unknown as AnyStorageBackendHandle),
   );
 });
 
-test("runtimeFactories.createHandshakeService throws with invalid backend", () => {
+test("runtimeFactories.createHandshakeService throws with invalid backend [runtime-factory]", () => {
   assert.throws(
     () => runtimeFactories.createHandshakeService(null as unknown as AnyStorageBackendHandle),
   );
 });
 
-test("runtimeFactories.createWritebackService throws with invalid backend", () => {
+test("runtimeFactories.createWritebackService throws with invalid backend [runtime-factory]", () => {
   assert.throws(
     () => runtimeFactories.createWritebackService(null as unknown as AnyStorageBackendHandle),
   );
 });
 
-test("runtimeFactories.createPreemptionService throws with invalid backend", () => {
+test("runtimeFactories.createPreemptionService throws with invalid backend [runtime-factory]", () => {
   assert.throws(
     () => runtimeFactories.createPreemptionService(null as unknown as AnyStorageBackendHandle),
   );
@@ -158,61 +158,61 @@ test("runtimeFactories.createPreemptionService throws with invalid backend", () 
 // Additional factory function tests - null/undefined handling
 // ---------------------------------------------------------------------------
 
-test("runtimeFactories.createHaCoordinatorService throws with null backend", () => {
+test("runtimeFactories.createHaCoordinatorService throws with null backend [runtime-factory]", () => {
   assert.throws(
     () => runtimeFactories.createHaCoordinatorService(null as unknown as AnyStorageBackendHandle),
   );
 });
 
-test("runtimeFactories.createHaCoordinatorService throws with undefined backend", () => {
+test("runtimeFactories.createHaCoordinatorService throws with undefined backend [runtime-factory]", () => {
   assert.throws(
     () => runtimeFactories.createHaCoordinatorService(undefined as unknown as AnyStorageBackendHandle),
   );
 });
 
-test("runtimeFactories.createExecutionLeaseService throws with null backend", () => {
+test("runtimeFactories.createExecutionLeaseService throws with null backend [runtime-factory]", () => {
   assert.throws(
     () => runtimeFactories.createExecutionLeaseService(null as unknown as AnyStorageBackendHandle),
   );
 });
 
-test("runtimeFactories.createExecutionLeaseService throws with undefined backend", () => {
+test("runtimeFactories.createExecutionLeaseService throws with undefined backend [runtime-factory]", () => {
   assert.throws(
     () => runtimeFactories.createExecutionLeaseService(undefined as unknown as AnyStorageBackendHandle),
   );
 });
 
-test("runtimeFactories.createHotUpgradeService throws with null backend", () => {
+test("runtimeFactories.createHotUpgradeService throws with null backend [runtime-factory]", () => {
   assert.throws(
     () => runtimeFactories.createHotUpgradeService(null as unknown as AnyStorageBackendHandle),
   );
 });
 
-test("runtimeFactories.createHotUpgradeService throws with undefined backend", () => {
+test("runtimeFactories.createHotUpgradeService throws with undefined backend [runtime-factory]", () => {
   assert.throws(
     () => runtimeFactories.createHotUpgradeService(undefined as unknown as AnyStorageBackendHandle),
   );
 });
 
-test("runtimeFactories.createDispatchService throws with undefined backend", () => {
+test("runtimeFactories.createDispatchService throws with undefined backend [runtime-factory]", () => {
   assert.throws(
     () => runtimeFactories.createDispatchService(undefined as unknown as AnyStorageBackendHandle),
   );
 });
 
-test("runtimeFactories.createHandshakeService throws with undefined backend", () => {
+test("runtimeFactories.createHandshakeService throws with undefined backend [runtime-factory]", () => {
   assert.throws(
     () => runtimeFactories.createHandshakeService(undefined as unknown as AnyStorageBackendHandle),
   );
 });
 
-test("runtimeFactories.createWritebackService throws with undefined backend", () => {
+test("runtimeFactories.createWritebackService throws with undefined backend [runtime-factory]", () => {
   assert.throws(
     () => runtimeFactories.createWritebackService(undefined as unknown as AnyStorageBackendHandle),
   );
 });
 
-test("runtimeFactories.createPreemptionService throws with undefined backend", () => {
+test("runtimeFactories.createPreemptionService throws with undefined backend [runtime-factory]", () => {
   assert.throws(
     () => runtimeFactories.createPreemptionService(undefined as unknown as AnyStorageBackendHandle),
   );
@@ -222,14 +222,14 @@ test("runtimeFactories.createPreemptionService throws with undefined backend", (
 // createRuntimeServices validates backend properly
 // ---------------------------------------------------------------------------
 
-test("createRuntimeServices validates backend is an object", () => {
+test("createRuntimeServices validates backend is an object [runtime-factory]", () => {
   // Should throw about postgres shadow sqlite since null doesn't have driver property
   assert.throws(
     () => createRuntimeServices("invalid" as unknown as AnyStorageBackendHandle),
   );
 });
 
-test("createRuntimeServices validates backend has valid driver", () => {
+test("createRuntimeServices validates backend has valid driver [runtime-factory]", () => {
   // Backend with invalid driver should fail
   const invalidBackend = {
     driver: "mongodb", // Invalid driver
@@ -244,13 +244,13 @@ test("createRuntimeServices validates backend has valid driver", () => {
 // Type guard function tests
 // ---------------------------------------------------------------------------
 
-test("AnyStorageBackendHandle accepts sqlite driver type", () => {
+test("AnyStorageBackendHandle accepts sqlite driver type [runtime-factory]", () => {
   // This tests the type is correctly a union of SQLite and Postgres handles
   const handle = { driver: "sqlite" } as AnyStorageBackendHandle;
   assert.equal(handle.driver, "sqlite");
 });
 
-test("AnyStorageBackendHandle accepts postgres driver type", () => {
+test("AnyStorageBackendHandle accepts postgres driver type [runtime-factory]", () => {
   // This tests the type is correctly a union of SQLite and Postgres handles
   const handle = { driver: "postgres" } as AnyStorageBackendHandle;
   assert.equal(handle.driver, "postgres");
@@ -260,7 +260,7 @@ test("AnyStorageBackendHandle accepts postgres driver type", () => {
 // RuntimeServices interface structure validation
 // ---------------------------------------------------------------------------
 
-test("RuntimeServices interface has all required service properties", () => {
+test("RuntimeServices interface has all required service properties [runtime-factory]", () => {
   // Verify that a complete RuntimeServices object can be constructed
   // with all required properties
   const services: RuntimeServices = {
@@ -287,7 +287,7 @@ test("RuntimeServices interface has all required service properties", () => {
 // Individual factory functions are distinct
 // ---------------------------------------------------------------------------
 
-test("Each runtimeFactories function is distinct", () => {
+test("Each runtimeFactories function is distinct [runtime-factory]", () => {
   // Each factory function should be a separate reference
   const factories = [
     runtimeFactories.createHaCoordinatorService,
@@ -308,7 +308,7 @@ test("Each runtimeFactories function is distinct", () => {
 // runtimeFactories object is frozen (as const)
 // ---------------------------------------------------------------------------
 
-test("runtimeFactories object methods are all functions", () => {
+test("runtimeFactories object methods are all functions [runtime-factory]", () => {
   // Verify all properties in runtimeFactories are functions
   assert.equal(typeof runtimeFactories.createHaCoordinatorService, "function");
   assert.equal(typeof runtimeFactories.createExecutionLeaseService, "function");
@@ -323,19 +323,19 @@ test("runtimeFactories object methods are all functions", () => {
 // Service constructor exports are classes/functions
 // ---------------------------------------------------------------------------
 
-test("ExecutionDispatchServiceAsync is a constructor function", () => {
+test("ExecutionDispatchServiceAsync is a constructor function [runtime-factory]", () => {
   assert.equal(typeof ExecutionDispatchServiceAsync, "function");
 });
 
-test("ExecutionWorkerHandshakeServiceAsync is a constructor function", () => {
+test("ExecutionWorkerHandshakeServiceAsync is a constructor function [runtime-factory]", () => {
   assert.equal(typeof ExecutionWorkerHandshakeServiceAsync, "function");
 });
 
-test("ExecutionWorkerWritebackServiceAsync is a constructor function", () => {
+test("ExecutionWorkerWritebackServiceAsync is a constructor function [runtime-factory]", () => {
   assert.equal(typeof ExecutionWorkerWritebackServiceAsync, "function");
 });
 
-test("ExecutionPriorityPreemptionServiceAsync is a constructor function", () => {
+test("ExecutionPriorityPreemptionServiceAsync is a constructor function [runtime-factory]", () => {
   assert.equal(typeof ExecutionPriorityPreemptionServiceAsync, "function");
 });
 
@@ -343,18 +343,18 @@ test("ExecutionPriorityPreemptionServiceAsync is a constructor function", () => 
 // Type re-exports from runtime-factory
 // ---------------------------------------------------------------------------
 
-test("HaCoordinatorServiceAsync type is re-exported from runtime-factory", () => {
+test("HaCoordinatorServiceAsync type is re-exported from runtime-factory [runtime-factory]", () => {
   // The type should be available for import
   const typeName: import("../../../../../src/platform/five-plane-execution/execution-engine/runtime-factory.js").HaCoordinatorServiceAsync = {} as never;
   assert.ok(typeName !== null);
 });
 
-test("ExecutionLeaseServiceAsync type is re-exported from runtime-factory", () => {
+test("ExecutionLeaseServiceAsync type is re-exported from runtime-factory [runtime-factory]", () => {
   const typeName: import("../../../../../src/platform/five-plane-execution/execution-engine/runtime-factory.js").ExecutionLeaseServiceAsync = {} as never;
   assert.ok(typeName !== null);
 });
 
-test("HotUpgradeServiceAsync type is re-exported from runtime-factory", () => {
+test("HotUpgradeServiceAsync type is re-exported from runtime-factory [runtime-factory]", () => {
   const typeName: import("../../../../../src/platform/five-plane-execution/execution-engine/runtime-factory.js").HotUpgradeServiceAsync = {} as never;
   assert.ok(typeName !== null);
 });
@@ -363,7 +363,7 @@ test("HotUpgradeServiceAsync type is re-exported from runtime-factory", () => {
 // createRuntimeServices error codes are specific
 // ---------------------------------------------------------------------------
 
-test("createRuntimeServices throws with specific error code for missing shadow sqlite", () => {
+test("createRuntimeServices throws with specific error code for missing shadow sqlite [runtime-factory]", () => {
   // Create a postgres backend without shadow sqlite - should throw specific error
   const postgresBackend = {
     driver: "postgres",

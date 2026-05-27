@@ -10,7 +10,7 @@
  * - High-risk objects: provider profile, prompt bundle, policy rule, feature flag
  * - Audit trail: all overrides produce logs and evidence
  *
- * @see {@link https://github.com/anomalyco/automatic_agent/blob/main/docs_zh/contracts/environment_and_configuration_governance_contract.md}
+ * @see {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/contracts/environment_and_configuration_governance_contract.md}
  *
  * @packageDocumentation
  */

@@ -20,7 +20,7 @@ function createTempDir(): string {
   return join("/tmp", `worker-writeback-test-${Date.now()}`);
 }
 
-test("runStableWorkerWritebackRehearsal executes all three scenarios successfully", async () => {
+test("runStableWorkerWritebackRehearsal executes all three scenarios successfully [worker-writeback-rehearsal]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableWorkerWritebackRehearsal({ outputDir });
@@ -39,7 +39,7 @@ test("runStableWorkerWritebackRehearsal executes all three scenarios successfull
   }
 });
 
-test("worker_writeback_completes_execution scenario passes", async () => {
+test("worker_writeback_completes_execution scenario passes [worker-writeback-rehearsal]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableWorkerWritebackRehearsal({ outputDir });
@@ -56,7 +56,7 @@ test("worker_writeback_completes_execution scenario passes", async () => {
   }
 });
 
-test("duplicate_writeback_rejected scenario passes", async () => {
+test("duplicate_writeback_rejected scenario passes [worker-writeback-rehearsal]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableWorkerWritebackRehearsal({ outputDir });
@@ -73,7 +73,7 @@ test("duplicate_writeback_rejected scenario passes", async () => {
   }
 });
 
-test("stale_fencing_writeback_rejected scenario passes", async () => {
+test("stale_fencing_writeback_rejected scenario passes [worker-writeback-rehearsal]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableWorkerWritebackRehearsal({ outputDir });
@@ -90,7 +90,7 @@ test("stale_fencing_writeback_rejected scenario passes", async () => {
   }
 });
 
-test("writeStableWorkerWritebackRehearsalReport writes valid JSON", async () => {
+test("writeStableWorkerWritebackRehearsalReport writes valid JSON [worker-writeback-rehearsal]", async () => {
   const outputDir = createTempDir();
   const reportPath = join(outputDir, "report.json");
   try {
@@ -112,7 +112,7 @@ test("writeStableWorkerWritebackRehearsalReport writes valid JSON", async () => 
   }
 });
 
-test("report contains valid startedAt and finishedAt timestamps", async () => {
+test("report contains valid startedAt and finishedAt timestamps [worker-writeback-rehearsal]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableWorkerWritebackRehearsal({ outputDir });
@@ -131,7 +131,7 @@ test("report contains valid startedAt and finishedAt timestamps", async () => {
   }
 });
 
-test("report outputDir matches options", async () => {
+test("report outputDir matches options [worker-writeback-rehearsal]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableWorkerWritebackRehearsal({ outputDir });
@@ -144,7 +144,7 @@ test("report outputDir matches options", async () => {
   }
 });
 
-test("each scenario has durationMs greater than zero", async () => {
+test("each scenario has durationMs greater than zero [worker-writeback-rehearsal]", async () => {
   const outputDir = createTempDir();
   try {
     const report = await runStableWorkerWritebackRehearsal({ outputDir });

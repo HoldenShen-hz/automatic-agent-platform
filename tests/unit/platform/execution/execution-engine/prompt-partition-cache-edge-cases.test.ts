@@ -6,7 +6,7 @@ import {
   type PromptPartitionInput,
 } from "../../../../../src/platform/five-plane-execution/execution-engine/prompt-partition-cache.js";
 
-test("partitionPromptForCache same static but different dynamic produces different dynamicCacheKey", () => {
+test("partitionPromptForCache same static but different dynamic produces different dynamicCacheKey [prompt-partition-cache-edge-cases]", () => {
   const input1: PromptPartitionInput = {
     messages: [
       { role: "system", content: "Static" },
@@ -29,7 +29,7 @@ test("partitionPromptForCache same static but different dynamic produces differe
   assert.notEqual(result1.dynamicDigest, result2.dynamicDigest);
 });
 
-test("partitionPromptForCache different static content produces different staticCacheKey", () => {
+test("partitionPromptForCache different static content produces different staticCacheKey [prompt-partition-cache-edge-cases]", () => {
   const input1: PromptPartitionInput = {
     messages: [
       { role: "system", content: "Static A" },
@@ -51,7 +51,7 @@ test("partitionPromptForCache different static content produces different static
   assert.notEqual(result1.staticCacheKey, result2.staticCacheKey);
 });
 
-test("partitionPromptForCache handles multi-byte UTF-8 characters in bytes calculation", () => {
+test("partitionPromptForCache handles multi-byte UTF-8 characters in bytes calculation [prompt-partition-cache-edge-cases]", () => {
   const input: PromptPartitionInput = {
     messages: [
       { role: "system", content: "你好世界" },
@@ -66,7 +66,7 @@ test("partitionPromptForCache handles multi-byte UTF-8 characters in bytes calcu
   assert.ok(result.stablePrefixBytes >= 12);
 });
 
-test("partitionPromptForCache assistant role is treated as dynamic", () => {
+test("partitionPromptForCache assistant role is treated as dynamic [prompt-partition-cache-edge-cases]", () => {
   const input: PromptPartitionInput = {
     messages: [
       { role: "system", content: "System" },
@@ -81,7 +81,7 @@ test("partitionPromptForCache assistant role is treated as dynamic", () => {
   assert.equal(result.dynamicMessageCount, 2);
 });
 
-test("partitionPromptForCache tool role is treated as dynamic", () => {
+test("partitionPromptForCache tool role is treated as dynamic [prompt-partition-cache-edge-cases]", () => {
   const input: PromptPartitionInput = {
     messages: [
       { role: "system", content: "System" },
@@ -95,7 +95,7 @@ test("partitionPromptForCache tool role is treated as dynamic", () => {
   assert.equal(result.dynamicMessageCount, 1);
 });
 
-test("partitionPromptForCache hash_prefix strategy generates consistent cache keys", () => {
+test("partitionPromptForCache hash_prefix strategy generates consistent cache keys [prompt-partition-cache-edge-cases]", () => {
   const input: PromptPartitionInput = {
     kvCache: {
       enabled: true,
@@ -115,7 +115,7 @@ test("partitionPromptForCache hash_prefix strategy generates consistent cache ke
   assert.equal(result.fixedPrefixCacheKey, result2.fixedPrefixCacheKey);
 });
 
-test("partitionPromptForCache exact_match strategy produces different cache key than hash_prefix", () => {
+test("partitionPromptForCache exact_match strategy produces different cache key than hash_prefix [prompt-partition-cache-edge-cases]", () => {
   const input: PromptPartitionInput = {
     kvCache: {
       enabled: true,
@@ -132,7 +132,7 @@ test("partitionPromptForCache exact_match strategy produces different cache key 
   assert.ok(result.fixedPrefixCacheKey.length > 0);
 });
 
-test("partitionPromptForCache preserves message order in partitioning", () => {
+test("partitionPromptForCache preserves message order in partitioning [prompt-partition-cache-edge-cases]", () => {
   const input1: PromptPartitionInput = {
     messages: [
       { role: "system", content: "System" },
@@ -156,7 +156,7 @@ test("partitionPromptForCache preserves message order in partitioning", () => {
   assert.notEqual(result1.dynamicDigest, result2.dynamicDigest);
 });
 
-test("partitionPromptForCache multiple system messages all in static prefix", () => {
+test("partitionPromptForCache multiple system messages all in static prefix [prompt-partition-cache-edge-cases]", () => {
   const input: PromptPartitionInput = {
     messages: [
       { role: "system", content: "System 1" },
@@ -172,7 +172,7 @@ test("partitionPromptForCache multiple system messages all in static prefix", ()
   assert.equal(result.dynamicMessageCount, 1);
 });
 
-test("partitionPromptForCache non-system role after system stops static partition", () => {
+test("partitionPromptForCache non-system role after system stops static partition [prompt-partition-cache-edge-cases]", () => {
   const input: PromptPartitionInput = {
     messages: [
       { role: "system", content: "System" },
@@ -187,7 +187,7 @@ test("partitionPromptForCache non-system role after system stops static partitio
   assert.equal(result.dynamicMessageCount, 2);
 });
 
-test("partitionPromptForCache empty string role is not static", () => {
+test("partitionPromptForCache empty string role is not static [prompt-partition-cache-edge-cases]", () => {
   const input: PromptPartitionInput = {
     messages: [
       { role: "", content: "Empty role" },
@@ -201,7 +201,7 @@ test("partitionPromptForCache empty string role is not static", () => {
   assert.equal(result.dynamicMessageCount, 2);
 });
 
-test("partitionPromptForCache kvCache defaults when not provided", () => {
+test("partitionPromptForCache kvCache defaults when not provided [prompt-partition-cache-edge-cases]", () => {
   const input: PromptPartitionInput = {
     messages: [
       { role: "system", content: "System" },
@@ -214,7 +214,7 @@ test("partitionPromptForCache kvCache defaults when not provided", () => {
   assert.equal(result.cacheKeyStrategy, "hash_prefix");
 });
 
-test("partitionPromptForCache kvCache defaults when null", () => {
+test("partitionPromptForCache kvCache defaults when null [prompt-partition-cache-edge-cases]", () => {
   const input: PromptPartitionInput = {
     kvCache: null,
     messages: [
@@ -228,7 +228,7 @@ test("partitionPromptForCache kvCache defaults when null", () => {
   assert.equal(result.cacheKeyStrategy, "hash_prefix");
 });
 
-test("partitionPromptForCache kvCache undefined uses defaults", () => {
+test("partitionPromptForCache kvCache undefined uses defaults [prompt-partition-cache-edge-cases]", () => {
   const input: PromptPartitionInput = {
     messages: [
       { role: "system", content: "System" },

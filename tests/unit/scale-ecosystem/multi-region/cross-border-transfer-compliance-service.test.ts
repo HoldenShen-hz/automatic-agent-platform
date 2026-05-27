@@ -10,7 +10,7 @@ import {
   type CrossBorderTransferRequest,
 } from "../../../../src/scale-ecosystem/multi-region/cross-border-transfer-compliance-service.js";
 
-test("CrossBorderTransferComplianceService: allows non-cross-border transfers within same jurisdiction", () => {
+test("CrossBorderTransferComplianceService: allows non-cross-border transfers within same jurisdiction [cross-border-transfer-compliance-service]", () => {
   const service = new CrossBorderTransferComplianceService();
   const request: CrossBorderTransferRequest = {
     sourceRegionId: "us-east-1",
@@ -29,7 +29,7 @@ test("CrossBorderTransferComplianceService: allows non-cross-border transfers wi
   assert.equal(assessment.mechanismSelection.mechanism, "none_required");
 });
 
-test("CrossBorderTransferComplianceService: blocks cross-border transfer when dataResidencyPolicy is local_only", () => {
+test("CrossBorderTransferComplianceService: blocks cross-border transfer when dataResidencyPolicy is local_only [cross-border-transfer-compliance-service]", () => {
   const service = new CrossBorderTransferComplianceService();
   const request: CrossBorderTransferRequest = {
     sourceRegionId: "us-west-1",
@@ -49,7 +49,7 @@ test("CrossBorderTransferComplianceService: blocks cross-border transfer when da
   assert.ok(assessment.transferImpactAssessment.reasons.includes("local_only_residency_policy"));
 });
 
-test("CrossBorderTransferComplianceService: assigns high risk for cross-border transfers with PII", () => {
+test("CrossBorderTransferComplianceService: assigns high risk for cross-border transfers with PII [cross-border-transfer-compliance-service]", () => {
   const service = new CrossBorderTransferComplianceService();
   const request: CrossBorderTransferRequest = {
     sourceRegionId: "us-east-1",
@@ -68,7 +68,7 @@ test("CrossBorderTransferComplianceService: assigns high risk for cross-border t
   assert.ok(assessment.transferImpactAssessment.reasons.includes("multi_region.contains_pii"));
 });
 
-test("CrossBorderTransferComplianceService: assigns medium risk for cross-border transfers without PII", () => {
+test("CrossBorderTransferComplianceService: assigns medium risk for cross-border transfers without PII [cross-border-transfer-compliance-service]", () => {
   const service = new CrossBorderTransferComplianceService();
   const request: CrossBorderTransferRequest = {
     sourceRegionId: "us-east-1",
@@ -85,7 +85,7 @@ test("CrossBorderTransferComplianceService: assigns medium risk for cross-border
   assert.equal(assessment.transferImpactAssessment.riskLevel, "medium");
 });
 
-test("CrossBorderTransferComplianceService: blocks high-risk transfer without preferred mechanism", () => {
+test("CrossBorderTransferComplianceService: blocks high-risk transfer without preferred mechanism [cross-border-transfer-compliance-service]", () => {
   const service = new CrossBorderTransferComplianceService();
   const request: CrossBorderTransferRequest = {
     sourceRegionId: "us-east-1",
@@ -103,7 +103,7 @@ test("CrossBorderTransferComplianceService: blocks high-risk transfer without pr
   assert.equal(assessment.mechanismSelection.mechanism, "blocked");
 });
 
-test("CrossBorderTransferComplianceService: uses preferred mechanism when specified", () => {
+test("CrossBorderTransferComplianceService: uses preferred mechanism when specified [cross-border-transfer-compliance-service]", () => {
   const service = new CrossBorderTransferComplianceService();
   const request: CrossBorderTransferRequest = {
     sourceRegionId: "us-east-1",
@@ -121,7 +121,7 @@ test("CrossBorderTransferComplianceService: uses preferred mechanism when specif
   assert.equal(assessment.mechanismSelection.mechanism, "dpf");
 });
 
-test("CrossBorderTransferComplianceService: minimizes payload based on allowedDataFields", () => {
+test("CrossBorderTransferComplianceService: minimizes payload based on allowedDataFields [cross-border-transfer-compliance-service]", () => {
   const service = new CrossBorderTransferComplianceService();
   const request: CrossBorderTransferRequest = {
     sourceRegionId: "us-east-1",
@@ -149,7 +149,7 @@ test("CrossBorderTransferComplianceService: minimizes payload based on allowedDa
   assert.ok(!Object.keys(assessment.dataMinimizer.minimizedPayload).includes("name"));
 });
 
-test("CrossBorderTransferComplianceService: detects high-risk identifiers in payload", () => {
+test("CrossBorderTransferComplianceService: detects high-risk identifiers in payload [cross-border-transfer-compliance-service]", () => {
   const service = new CrossBorderTransferComplianceService();
   const request: CrossBorderTransferRequest = {
     sourceRegionId: "us-east-1",
@@ -171,7 +171,7 @@ test("CrossBorderTransferComplianceService: detects high-risk identifiers in pay
   assert.ok(assessment.outputScanner.blockedFindings.includes("multi_region.high_risk_identifier_present"));
 });
 
-test("CrossBorderTransferComplianceService: detects PII without minimization", () => {
+test("CrossBorderTransferComplianceService: detects PII without minimization [cross-border-transfer-compliance-service]", () => {
   const service = new CrossBorderTransferComplianceService();
   const request: CrossBorderTransferRequest = {
     sourceRegionId: "us-east-1",
@@ -190,7 +190,7 @@ test("CrossBorderTransferComplianceService: detects PII without minimization", (
   assert.ok(assessment.outputScanner.blockedFindings.includes("multi_region.pii_without_minimization"));
 });
 
-test("CrossBorderTransferComplianceService: creates transfer log entry for each assessment", () => {
+test("CrossBorderTransferComplianceService: creates transfer log entry for each assessment [cross-border-transfer-compliance-service]", () => {
   const service = new CrossBorderTransferComplianceService();
   const request: CrossBorderTransferRequest = {
     sourceRegionId: "us-east-1",
@@ -210,7 +210,7 @@ test("CrossBorderTransferComplianceService: creates transfer log entry for each 
   assert.ok(log[0]!.transferLogId.startsWith("transfer_log_"));
 });
 
-test("CrossBorderTransferComplianceService: handles regional dataResidencyPolicy (not blocked)", () => {
+test("CrossBorderTransferComplianceService: handles regional dataResidencyPolicy (not blocked) [cross-border-transfer-compliance-service]", () => {
   const service = new CrossBorderTransferComplianceService();
   const request: CrossBorderTransferRequest = {
     sourceRegionId: "us-east-1",
@@ -229,7 +229,7 @@ test("CrossBorderTransferComplianceService: handles regional dataResidencyPolicy
   assert.equal(assessment.mechanismSelection.mechanism, "scc");
 });
 
-test("CrossBorderTransferComplianceService: handles global dataResidencyPolicy", () => {
+test("CrossBorderTransferComplianceService: handles global dataResidencyPolicy [cross-border-transfer-compliance-service]", () => {
   const service = new CrossBorderTransferComplianceService();
   const request: CrossBorderTransferRequest = {
     sourceRegionId: "us-east-1",
@@ -247,7 +247,7 @@ test("CrossBorderTransferComplianceService: handles global dataResidencyPolicy",
   assert.equal(assessment.allowed, true);
 });
 
-test("CrossBorderTransferComplianceService: records mechanism in transfer log", () => {
+test("CrossBorderTransferComplianceService: records mechanism in transfer log [cross-border-transfer-compliance-service]", () => {
   const service = new CrossBorderTransferComplianceService();
   const request: CrossBorderTransferRequest = {
     sourceRegionId: "us-east-1",
@@ -266,7 +266,7 @@ test("CrossBorderTransferComplianceService: records mechanism in transfer log", 
   assert.equal(log[0]!.mechanism, "bcr");
 });
 
-test("CrossBorderTransferComplianceService: passes when no blocked findings", () => {
+test("CrossBorderTransferComplianceService: passes when no blocked findings [cross-border-transfer-compliance-service]", () => {
   const service = new CrossBorderTransferComplianceService();
   const request: CrossBorderTransferRequest = {
     sourceRegionId: "us-east-1",
@@ -286,13 +286,13 @@ test("CrossBorderTransferComplianceService: passes when no blocked findings", ()
   assert.equal(assessment.allowed, true);
 });
 
-test("CrossBorderTransferComplianceService: getTransferLog returns empty array when no assessments", () => {
+test("CrossBorderTransferComplianceService: getTransferLog returns empty array when no assessments [cross-border-transfer-compliance-service]", () => {
   const service = new CrossBorderTransferComplianceService();
   const log = service.getTransferLog();
   assert.equal(log.length, 0);
 });
 
-test("CrossBorderTransferComplianceService: getTransferLog returns copy of transfer log", () => {
+test("CrossBorderTransferComplianceService: getTransferLog returns copy of transfer log [cross-border-transfer-compliance-service]", () => {
   const service = new CrossBorderTransferComplianceService();
   const request: CrossBorderTransferRequest = {
     sourceRegionId: "us-east-1",
@@ -312,7 +312,7 @@ test("CrossBorderTransferComplianceService: getTransferLog returns copy of trans
   assert.ok(!Object.isFrozen(log));
 });
 
-test("CrossBorderTransferComplianceService: set allowed to false when blocked", () => {
+test("CrossBorderTransferComplianceService: set allowed to false when blocked [cross-border-transfer-compliance-service]", () => {
   const service = new CrossBorderTransferComplianceService();
   const request: CrossBorderTransferRequest = {
     sourceRegionId: "us-west-1",
@@ -331,7 +331,7 @@ test("CrossBorderTransferComplianceService: set allowed to false when blocked", 
   assert.equal(assessment.transferLog.allowed, false);
 });
 
-test("CrossBorderTransferComplianceService: includes block reason in blocked findings", () => {
+test("CrossBorderTransferComplianceService: includes block reason in blocked findings [cross-border-transfer-compliance-service]", () => {
   const service = new CrossBorderTransferComplianceService();
   const request: CrossBorderTransferRequest = {
     sourceRegionId: "us-west-1",

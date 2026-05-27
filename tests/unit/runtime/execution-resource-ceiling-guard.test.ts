@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { ExecutionResourceCeilingGuard } from "../../../src/platform/five-plane-execution/dispatcher/execution-resource-ceiling-guard.js";
 
-test("execution resource ceiling guard reports tool, memory, and elapsed limit breaches", () => {
+test("execution resource ceiling guard reports tool, memory, and elapsed limit breaches [execution-resource-ceiling-guard]", () => {
   const guard = new ExecutionResourceCeilingGuard({
     maxToolCalls: 2,
     maxMemoryMb: 128,
@@ -36,7 +36,7 @@ test("execution resource ceiling guard reports tool, memory, and elapsed limit b
   assert.equal(findings[2]?.limit, 5_000);
 });
 
-test("execution resource ceiling guard returns no findings when usage remains within limits", () => {
+test("execution resource ceiling guard returns no findings when usage remains within limits [execution-resource-ceiling-guard]", () => {
   const guard = new ExecutionResourceCeilingGuard({
     maxToolCalls: 4,
     maxMemoryMb: 512,
@@ -69,7 +69,7 @@ test("execution resource ceiling guard returns no findings when usage remains wi
   );
 });
 
-test("execution resource ceiling guard boundary: exactly at tool call limit", () => {
+test("execution resource ceiling guard boundary: exactly at tool call limit [execution-resource-ceiling-guard]", () => {
   // Tests boundary at DEFAULT_MAX_TOOL_CALLS = 64
   const guard = new ExecutionResourceCeilingGuard({
     maxToolCalls: 64, // exactly at default
@@ -103,7 +103,7 @@ test("execution resource ceiling guard boundary: exactly at tool call limit", ()
   assert.equal(findingsOverLimit[0]?.reasonCode, "agent.resource_limit.tool_calls_exceeded");
 });
 
-test("execution resource ceiling guard boundary: exactly at memory limit", () => {
+test("execution resource ceiling guard boundary: exactly at memory limit [execution-resource-ceiling-guard]", () => {
   // Tests boundary at DEFAULT_MAX_MEMORY_MB = 2048
   const guard = new ExecutionResourceCeilingGuard({
     maxToolCalls: 64,
@@ -137,7 +137,7 @@ test("execution resource ceiling guard boundary: exactly at memory limit", () =>
   assert.equal(findingsOverLimit[0]?.reasonCode, "agent.resource_limit.memory_exceeded");
 });
 
-test("execution resource ceiling guard boundary: exactly at elapsed limit", () => {
+test("execution resource ceiling guard boundary: exactly at elapsed limit [execution-resource-ceiling-guard]", () => {
   // Tests boundary at DEFAULT_MAX_ELAPSED_MS = 900000 (15 minutes)
   const guard = new ExecutionResourceCeilingGuard({
     maxToolCalls: 64,
@@ -171,7 +171,7 @@ test("execution resource ceiling guard boundary: exactly at elapsed limit", () =
   assert.equal(findingsOverLimit[0]?.reasonCode, "agent.resource_limit.elapsed_exceeded");
 });
 
-test("execution resource ceiling guard firstFinding returns first breach", () => {
+test("execution resource ceiling guard firstFinding returns first breach [execution-resource-ceiling-guard]", () => {
   const guard = new ExecutionResourceCeilingGuard({
     maxToolCalls: 2,
     maxMemoryMb: 128,
@@ -193,7 +193,7 @@ test("execution resource ceiling guard firstFinding returns first breach", () =>
   assert.equal(finding.reasonCode, "agent.resource_limit.tool_calls_exceeded");
 });
 
-test("execution resource ceiling guard returns no findings when at zero usage", () => {
+test("execution resource ceiling guard returns no findings when at zero usage [execution-resource-ceiling-guard]", () => {
   const guard = new ExecutionResourceCeilingGuard();
   const findings = guard.evaluate({
     executionId: "exec-zero",
@@ -209,7 +209,7 @@ test("execution resource ceiling guard returns no findings when at zero usage", 
   assert.deepEqual(findings, []);
 });
 
-test("execution resource ceiling guard loads defaults from centralized env parsing", () => {
+test("execution resource ceiling guard loads defaults from centralized env parsing [execution-resource-ceiling-guard]", () => {
   const previousToolCalls = process.env.AA_MAX_AGENT_TOOL_CALLS;
   const previousMemory = process.env.AA_MAX_AGENT_MEMORY_MB;
   const previousElapsed = process.env.AA_MAX_AGENT_ELAPSED_MS;

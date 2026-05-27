@@ -6,7 +6,7 @@ import test from "node:test";
 
 import { FencingTokenService } from "../../../../src/scale-ecosystem/multi-region/fencing-token-service.js";
 
-test("FencingTokenService persists epoch and released leadership across restart", () => {
+test("FencingTokenService persists epoch and released leadership across restart [fencing-token-service]", () => {
   const workspace = mkdtempSync(join(tmpdir(), "aa-fencing-token-service-"));
   const storagePath = join(workspace, "fencing-state.json");
 
@@ -27,7 +27,7 @@ test("FencingTokenService persists epoch and released leadership across restart"
   }
 });
 
-test("FencingTokenService keeps epochs monotonic after restart and rejects stale tokens", () => {
+test("FencingTokenService keeps epochs monotonic after restart and rejects stale tokens [fencing-token-service]", () => {
   const workspace = mkdtempSync(join(tmpdir(), "aa-fencing-token-epoch-"));
   const storagePath = join(workspace, "fencing-state.json");
 
@@ -50,7 +50,7 @@ test("FencingTokenService keeps epochs monotonic after restart and rejects stale
   }
 });
 
-test("FencingTokenService rejects stale token ids even when region and epoch match", () => {
+test("FencingTokenService rejects stale token ids even when region and epoch match [fencing-token-service]", () => {
   const workspace = mkdtempSync(join(tmpdir(), "aa-fencing-token-id-"));
   const storagePath = join(workspace, "fencing-state.json");
 
@@ -71,7 +71,7 @@ test("FencingTokenService rejects stale token ids even when region and epoch mat
   }
 });
 
-test("FencingTokenService refuses leadership mutation while persistence lock is held", () => {
+test("FencingTokenService refuses leadership mutation while persistence lock is held [fencing-token-service]", () => {
   const workspace = mkdtempSync(join(tmpdir(), "aa-fencing-token-lock-"));
   const storagePath = join(workspace, "fencing-state.json");
 

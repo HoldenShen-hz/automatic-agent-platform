@@ -11,7 +11,7 @@ import {
 // Additional edge cases for ExecutionResourceCeilingGuard
 // ---------------------------------------------------------------------------
 
-test("ExecutionResourceCeilingGuard evaluate handles very large tool call count", () => {
+test("ExecutionResourceCeilingGuard evaluate handles very large tool call count [execution-resource-ceiling-guard-edge]", () => {
   const guard = new ExecutionResourceCeilingGuard({ maxToolCalls: 10 });
   const sample: ExecutionResourceUsageSample = {
     executionId: "exec-1",
@@ -26,7 +26,7 @@ test("ExecutionResourceCeilingGuard evaluate handles very large tool call count"
   assert.equal(findings[0]!.dimension, "tool_calls");
 });
 
-test("ExecutionResourceCeilingGuard evaluate handles very large memory value", () => {
+test("ExecutionResourceCeilingGuard evaluate handles very large memory value [execution-resource-ceiling-guard-edge]", () => {
   const guard = new ExecutionResourceCeilingGuard({ maxMemoryMb: 512 });
   const sample: ExecutionResourceUsageSample = {
     executionId: "exec-1",
@@ -41,7 +41,7 @@ test("ExecutionResourceCeilingGuard evaluate handles very large memory value", (
   assert.equal(findings[0]!.dimension, "memory_mb");
 });
 
-test("ExecutionResourceCeilingGuard evaluate handles very old startedAt date", () => {
+test("ExecutionResourceCeilingGuard evaluate handles very old startedAt date [execution-resource-ceiling-guard-edge]", () => {
   const guard = new ExecutionResourceCeilingGuard({ maxElapsedMs: 1000 }); // 1 second
   const veryOldDate = new Date(0).toISOString(); // Unix epoch
   const sample: ExecutionResourceUsageSample = {
@@ -57,7 +57,7 @@ test("ExecutionResourceCeilingGuard evaluate handles very old startedAt date", (
   assert.equal(findings[0]!.dimension, "elapsed_ms");
 });
 
-test("ExecutionResourceCeilingGuard evaluate handles future startedAt date", () => {
+test("ExecutionResourceCeilingGuard evaluate handles future startedAt date [execution-resource-ceiling-guard-edge]", () => {
   const guard = new ExecutionResourceCeilingGuard({ maxElapsedMs: 1 });
   const futureDate = new Date(Date.now() + 100000).toISOString();
   const sample: ExecutionResourceUsageSample = {
@@ -73,7 +73,7 @@ test("ExecutionResourceCeilingGuard evaluate handles future startedAt date", () 
   assert.equal(findings.length, 0);
 });
 
-test("ExecutionResourceCeilingGuard evaluate handles negative elapsed (clock skew)", () => {
+test("ExecutionResourceCeilingGuard evaluate handles negative elapsed (clock skew) [execution-resource-ceiling-guard-edge]", () => {
   const guard = new ExecutionResourceCeilingGuard({ maxElapsedMs: 1000 });
   const sample: ExecutionResourceUsageSample = {
     executionId: "exec-1",
@@ -88,7 +88,7 @@ test("ExecutionResourceCeilingGuard evaluate handles negative elapsed (clock ske
   assert.equal(findings.length, 0);
 });
 
-test("ExecutionResourceCeilingGuard evaluate finds all three violations simultaneously", () => {
+test("ExecutionResourceCeilingGuard evaluate finds all three violations simultaneously [execution-resource-ceiling-guard-edge]", () => {
   const guard = new ExecutionResourceCeilingGuard({
     maxToolCalls: 5,
     maxMemoryMb: 256,
@@ -112,7 +112,7 @@ test("ExecutionResourceCeilingGuard evaluate finds all three violations simultan
   assert.ok(dimensions.includes("elapsed_ms"));
 });
 
-test("ExecutionResourceCeilingGuard firstFinding returns memory when tool calls not exceeded", () => {
+test("ExecutionResourceCeilingGuard firstFinding returns memory when tool calls not exceeded [execution-resource-ceiling-guard-edge]", () => {
   const guard = new ExecutionResourceCeilingGuard({
     maxToolCalls: 100,
     maxMemoryMb: 256,
@@ -131,7 +131,7 @@ test("ExecutionResourceCeilingGuard firstFinding returns memory when tool calls 
   assert.equal(finding.dimension, "memory_mb");
 });
 
-test("ExecutionResourceCeilingGuard firstFinding returns elapsed when neither tool nor memory exceeded", () => {
+test("ExecutionResourceCeilingGuard firstFinding returns elapsed when neither tool nor memory exceeded [execution-resource-ceiling-guard-edge]", () => {
   const guard = new ExecutionResourceCeilingGuard({
     maxToolCalls: 100,
     maxMemoryMb: 4096,
@@ -152,7 +152,7 @@ test("ExecutionResourceCeilingGuard firstFinding returns elapsed when neither to
   assert.equal(finding.dimension, "elapsed_ms");
 });
 
-test("ExecutionResourceCeilingGuard finding message format for tool calls", () => {
+test("ExecutionResourceCeilingGuard finding message format for tool calls [execution-resource-ceiling-guard-edge]", () => {
   const guard = new ExecutionResourceCeilingGuard({ maxToolCalls: 10 });
   const sample: ExecutionResourceUsageSample = {
     executionId: "exec-abc-123",
@@ -170,7 +170,7 @@ test("ExecutionResourceCeilingGuard finding message format for tool calls", () =
   assert.ok(msg.includes("tool-call"));
 });
 
-test("ExecutionResourceCeilingGuard finding message format for memory", () => {
+test("ExecutionResourceCeilingGuard finding message format for memory [execution-resource-ceiling-guard-edge]", () => {
   const guard = new ExecutionResourceCeilingGuard({ maxMemoryMb: 512 });
   const sample: ExecutionResourceUsageSample = {
     executionId: "exec-1",
@@ -187,7 +187,7 @@ test("ExecutionResourceCeilingGuard finding message format for memory", () => {
   assert.ok(msg.includes("1024MB > 512MB"));
 });
 
-test("ExecutionResourceCeilingGuard finding message format for elapsed", () => {
+test("ExecutionResourceCeilingGuard finding message format for elapsed [execution-resource-ceiling-guard-edge]", () => {
   const guard = new ExecutionResourceCeilingGuard({ maxElapsedMs: 60000 });
   const sample: ExecutionResourceUsageSample = {
     executionId: "exec-elapsed",
@@ -204,7 +204,7 @@ test("ExecutionResourceCeilingGuard finding message format for elapsed", () => {
   assert.ok(msg.includes("ms"));
 });
 
-test("ExecutionResourceCeilingGuard evaluate handles zero values as boundary case", () => {
+test("ExecutionResourceCeilingGuard evaluate handles zero values as boundary case [execution-resource-ceiling-guard-edge]", () => {
   const guard = new ExecutionResourceCeilingGuard({ maxToolCalls: 0 });
   const sample: ExecutionResourceUsageSample = {
     executionId: "exec-1",
@@ -219,7 +219,7 @@ test("ExecutionResourceCeilingGuard evaluate handles zero values as boundary cas
   assert.equal(findings.length, 0);
 });
 
-test("ExecutionResourceCeilingGuard evaluate handles undefined toolCallCount vs null", () => {
+test("ExecutionResourceCeilingGuard evaluate handles undefined toolCallCount vs null [execution-resource-ceiling-guard-edge]", () => {
   const guard = new ExecutionResourceCeilingGuard({ maxToolCalls: 10 });
   const sampleWithUndefined: ExecutionResourceUsageSample = {
     executionId: "exec-1",
@@ -244,7 +244,7 @@ test("ExecutionResourceCeilingGuard evaluate handles undefined toolCallCount vs 
   assert.equal(findingsNull.length, 0);
 });
 
-test("ExecutionResourceCeilingGuard evaluate handles undefined memoryMb vs null", () => {
+test("ExecutionResourceCeilingGuard evaluate handles undefined memoryMb vs null [execution-resource-ceiling-guard-edge]", () => {
   const guard = new ExecutionResourceCeilingGuard({ maxMemoryMb: 512 });
   const sampleWithUndefined: ExecutionResourceUsageSample = {
     executionId: "exec-1",
@@ -268,7 +268,7 @@ test("ExecutionResourceCeilingGuard evaluate handles undefined memoryMb vs null"
   assert.equal(findingsNull.length, 0);
 });
 
-test("ExecutionResourceCeilingGuard evaluate handles undefined startedAt vs null", () => {
+test("ExecutionResourceCeilingGuard evaluate handles undefined startedAt vs null [execution-resource-ceiling-guard-edge]", () => {
   const guard = new ExecutionResourceCeilingGuard({ maxElapsedMs: 1000 });
   const sampleWithUndefined: ExecutionResourceUsageSample = {
     executionId: "exec-1",
@@ -291,7 +291,7 @@ test("ExecutionResourceCeilingGuard evaluate handles undefined startedAt vs null
   assert.equal(findingsNull.length, 0);
 });
 
-test("ExecutionResourceCeilingGuard finding includes all required fields", () => {
+test("ExecutionResourceCeilingGuard finding includes all required fields [execution-resource-ceiling-guard-edge]", () => {
   const guard = new ExecutionResourceCeilingGuard({ maxToolCalls: 10 });
   const sample: ExecutionResourceUsageSample = {
     executionId: "exec-test",
@@ -320,7 +320,7 @@ test("ExecutionResourceCeilingGuard finding includes all required fields", () =>
   assert.equal(finding.unit, "count");
 });
 
-test("ExecutionResourceCeilingGuard finding reasonCode is correct for each dimension", () => {
+test("ExecutionResourceCeilingGuard finding reasonCode is correct for each dimension [execution-resource-ceiling-guard-edge]", () => {
   const elapsedStartedAt = new Date(Date.now() - 10000).toISOString();
 
   const toolFinding = new ExecutionResourceCeilingGuard({ maxToolCalls: 1 }).evaluate({
@@ -339,7 +339,7 @@ test("ExecutionResourceCeilingGuard finding reasonCode is correct for each dimen
   assert.equal(elapsedFinding.reasonCode, "agent.resource_limit.elapsed_exceeded");
 });
 
-test("ExecutionResourceCeilingGuard firstFinding returns null for empty findings", () => {
+test("ExecutionResourceCeilingGuard firstFinding returns null for empty findings [execution-resource-ceiling-guard-edge]", () => {
   const guard = new ExecutionResourceCeilingGuard({ maxToolCalls: 100 });
   const sample: ExecutionResourceUsageSample = {
     executionId: "exec-1",
@@ -353,7 +353,7 @@ test("ExecutionResourceCeilingGuard firstFinding returns null for empty findings
   assert.equal(finding, null);
 });
 
-test("ExecutionResourceCeilingGuard constructor uses default when undefined passed", () => {
+test("ExecutionResourceCeilingGuard constructor uses default when undefined passed [execution-resource-ceiling-guard-edge]", () => {
   // Passing undefined should use defaults
   const guard = new ExecutionResourceCeilingGuard({
     maxToolCalls: undefined,
@@ -375,7 +375,7 @@ test("ExecutionResourceCeilingGuard constructor uses default when undefined pass
   assert.equal(findings.length, 0);
 });
 
-test("ExecutionResourceCeilingGuard evaluate uses default now when not provided", () => {
+test("ExecutionResourceCeilingGuard evaluate uses default now when not provided [execution-resource-ceiling-guard-edge]", () => {
   const guard = new ExecutionResourceCeilingGuard({ maxToolCalls: 10 });
   const sample: ExecutionResourceUsageSample = {
     executionId: "exec-1",

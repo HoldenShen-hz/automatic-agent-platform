@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { evaluateEditStages } from "../../../../../../src/platform/five-plane-execution/tool-executor/edit-replacement/edit-replacement-stage-support.js";
 
-test("evaluateEditStages returns exact match on first stage", () => {
+test("evaluateEditStages returns exact match on first stage [edit-replacement-stage-support]", () => {
   const content = "hello world";
   const request = { oldString: "hello", newString: "hi" };
 
@@ -15,7 +15,7 @@ test("evaluateEditStages returns exact match on first stage", () => {
   assert.equal(result.errorCode, null);
 });
 
-test("evaluateEditStages proceeds to whitespace_normalized when exact fails", () => {
+test("evaluateEditStages proceeds to whitespace_normalized when exact fails [edit-replacement-stage-support]", () => {
   const content = "hello   world";
   const request = { oldString: "hello world", newString: "hi" };
 
@@ -25,7 +25,7 @@ test("evaluateEditStages proceeds to whitespace_normalized when exact fails", ()
   assert.equal(result.attempts[1]!.attemptLevel, "whitespace_normalized");
 });
 
-test("evaluateEditStages proceeds to indentation_normalized when whitespace fails", () => {
+test("evaluateEditStages proceeds to indentation_normalized when whitespace fails [edit-replacement-stage-support]", () => {
   const content = "  hello\n  world";
   const request = { oldString: "hello\nworld", newString: "hi" };
 
@@ -35,7 +35,7 @@ test("evaluateEditStages proceeds to indentation_normalized when whitespace fail
   assert.equal(result.attempts[2]!.attemptLevel, "indentation_normalized");
 });
 
-test("evaluateEditStages returns multiple_candidates error when multiple exact matches", () => {
+test("evaluateEditStages returns multiple_candidates error when multiple exact matches [edit-replacement-stage-support]", () => {
   const content = "foo hello bar foo hello baz";
   const request = { oldString: "hello", newString: "hi" };
 
@@ -47,7 +47,7 @@ test("evaluateEditStages returns multiple_candidates error when multiple exact m
   assert.equal(result.attempts[0]!.attemptLevel, "exact");
 });
 
-test("evaluateEditStages returns not_found when no match exists anywhere", () => {
+test("evaluateEditStages returns not_found when no match exists anywhere [edit-replacement-stage-support]", () => {
   const content = "foo bar baz";
   const request = { oldString: "xyz", newString: "hi" };
 
@@ -57,7 +57,7 @@ test("evaluateEditStages returns not_found when no match exists anywhere", () =>
   assert.equal(result.errorCode, "tool.edit_target_not_found");
 });
 
-test("evaluateEditStages returns similarity_too_low when content is too different", () => {
+test("evaluateEditStages returns similarity_too_low when content is too different [edit-replacement-stage-support]", () => {
   const content = "completely different text here";
   const request = { oldString: "nonexistent content", newString: "hi" };
 
@@ -67,7 +67,7 @@ test("evaluateEditStages returns similarity_too_low when content is too differen
   assert.ok(["tool.edit_similarity_too_low", "tool.edit_target_not_found"].includes(result.errorCode ?? ""));
 });
 
-test("evaluateEditStages works with empty content", () => {
+test("evaluateEditStages works with empty content [edit-replacement-stage-support]", () => {
   const content = "";
   const request = { oldString: "hello", newString: "hi" };
 
@@ -76,7 +76,7 @@ test("evaluateEditStages works with empty content", () => {
   assert.equal(result.matchedCandidate, null);
 });
 
-test("evaluateEditStages proceeds through all stages when content is somewhat similar", () => {
+test("evaluateEditStages proceeds through all stages when content is somewhat similar [edit-replacement-stage-support]", () => {
   const content = "foo bar baz";
   const request = { oldString: "foo baz", newString: "hi" };
 
@@ -86,7 +86,7 @@ test("evaluateEditStages proceeds through all stages when content is somewhat si
   assert.ok(result.attempts.length >= 3);
 });
 
-test("evaluateEditStages exact match returns immediately", () => {
+test("evaluateEditStages exact match returns immediately [edit-replacement-stage-support]", () => {
   const content = "prefix hello suffix";
   const request = { oldString: "hello", newString: "hi" };
 
@@ -97,7 +97,7 @@ test("evaluateEditStages exact match returns immediately", () => {
   assert.equal(result.errorCode, null);
 });
 
-test("evaluateEditStages with multiline content", () => {
+test("evaluateEditStages with multiline content [edit-replacement-stage-support]", () => {
   const content = "line1\nline2\nline3";
   const request = { oldString: "line2", newString: "new" };
 

@@ -47,7 +47,7 @@ function createMockLlmResult(content: string, toolCalls: LlmModelCallResult["too
 // AgentRoundLoopResult Structure and Interface Tests
 // ---------------------------------------------------------------------------
 
-test("AgentRoundLoopResult stop finishReason has correct structure", () => {
+test("AgentRoundLoopResult stop finishReason has correct structure [multi-step-agent-round-loop-comprehensive]", () => {
   const result: AgentRoundLoopResult = {
     summary: "Task completed successfully",
     result: "The workflow executed as expected",
@@ -64,7 +64,7 @@ test("AgentRoundLoopResult stop finishReason has correct structure", () => {
   assert.ok(Array.isArray(result.toolCalls));
 });
 
-test("AgentRoundLoopResult max_iterations has correct structure", () => {
+test("AgentRoundLoopResult max_iterations has correct structure [multi-step-agent-round-loop-comprehensive]", () => {
   const result: AgentRoundLoopResult = {
     summary: "Partial result due to iteration limit",
     result: "The workflow reached the maximum iteration count",
@@ -78,7 +78,7 @@ test("AgentRoundLoopResult max_iterations has correct structure", () => {
   assert.equal(result.iterations, 10);
 });
 
-test("AgentRoundLoopResult error has correct structure", () => {
+test("AgentRoundLoopResult error has correct structure [multi-step-agent-round-loop-comprehensive]", () => {
   const result: AgentRoundLoopResult = {
     summary: "Error occurred during execution",
     result: "An error was caught and handled gracefully",
@@ -92,7 +92,7 @@ test("AgentRoundLoopResult error has correct structure", () => {
   assert.equal(result.iterations, 3);
 });
 
-test("AgentRoundLoopResult with tool calls has correct structure", () => {
+test("AgentRoundLoopResult with tool calls has correct structure [multi-step-agent-round-loop-comprehensive]", () => {
   const toolCalls: ToolCallResult[] = [
     { toolCallId: "call_1", toolName: "web_search", result: '{"found": true}', success: true },
     { toolCallId: "call_2", toolName: "todo_write", result: '{"id": "123"}', success: true },
@@ -116,7 +116,7 @@ test("AgentRoundLoopResult with tool calls has correct structure", () => {
 // ToolCallResult Structure Tests
 // ---------------------------------------------------------------------------
 
-test("ToolCallResult with success true has correct structure", () => {
+test("ToolCallResult with success true has correct structure [multi-step-agent-round-loop-comprehensive]", () => {
   const toolResult: ToolCallResult = {
     toolCallId: "call_abc123",
     toolName: "code_analysis",
@@ -130,7 +130,7 @@ test("ToolCallResult with success true has correct structure", () => {
   assert.ok(toolResult.result.includes("lines"));
 });
 
-test("ToolCallResult with success false has correct structure", () => {
+test("ToolCallResult with success false has correct structure [multi-step-agent-round-loop-comprehensive]", () => {
   const toolResult: ToolCallResult = {
     toolCallId: "call_def456",
     toolName: "file_read",
@@ -142,7 +142,7 @@ test("ToolCallResult with success false has correct structure", () => {
   assert.ok(toolResult.result.includes("File not found"));
 });
 
-test("ToolCallResult empty result is valid", () => {
+test("ToolCallResult empty result is valid [multi-step-agent-round-loop-comprehensive]", () => {
   const toolResult: ToolCallResult = {
     toolCallId: "call_empty",
     toolName: "noop_tool",
@@ -157,7 +157,7 @@ test("ToolCallResult empty result is valid", () => {
 // LlmModelCallResult Structure Tests
 // ---------------------------------------------------------------------------
 
-test("LlmModelCallResult with content has correct structure", () => {
+test("LlmModelCallResult with content has correct structure [multi-step-agent-round-loop-comprehensive]", () => {
   const llmResult = createMockLlmResult("Analysis complete. Found 3 issues.");
 
   assert.ok(llmResult.id.startsWith("msg_"));
@@ -167,7 +167,7 @@ test("LlmModelCallResult with content has correct structure", () => {
   assert.equal(llmResult.usage.totalTokens, 30);
 });
 
-test("LlmModelCallResult with tool calls has correct structure", () => {
+test("LlmModelCallResult with tool calls has correct structure [multi-step-agent-round-loop-comprehensive]", () => {
   const llmResult = createMockLlmResult("", [
     { id: "tool_1", type: "function", function: { name: "web_search", arguments: '{"query": "test"}' } },
   ]);
@@ -177,7 +177,7 @@ test("LlmModelCallResult with tool calls has correct structure", () => {
   assert.equal(llmResult.toolCalls[0].function.name, "web_search");
 });
 
-test("LlmModelCallResult with multiple tool calls", () => {
+test("LlmModelCallResult with multiple tool calls [multi-step-agent-round-loop-comprehensive]", () => {
   const llmResult = createMockLlmResult("", [
     { id: "tool_1", type: "function", function: { name: "tool1", arguments: "{}" } },
     { id: "tool_2", type: "function", function: { name: "tool2", arguments: "{}" } },
@@ -187,7 +187,7 @@ test("LlmModelCallResult with multiple tool calls", () => {
   assert.equal(llmResult.toolCalls.length, 3);
 });
 
-test("LlmModelCallResult usage tracking is accurate", () => {
+test("LlmModelCallResult usage tracking is accurate [multi-step-agent-round-loop-comprehensive]", () => {
   const llmResult = createMockLlmResult("Response content");
   assert.equal(llmResult.usage.promptTokens, 10);
   assert.equal(llmResult.usage.completionTokens, 20);
@@ -198,7 +198,7 @@ test("LlmModelCallResult usage tracking is accurate", () => {
 // BuildStepOutput Input/Output Tests
 // ---------------------------------------------------------------------------
 
-test("buildStepOutput returns expected keys with fallback", async () => {
+test("buildStepOutput returns expected keys with fallback [multi-step-agent-round-loop-comprehensive]", async () => {
   resetModelCallProvider();
   initializeModelCallProvider({});
 
@@ -217,7 +217,7 @@ test("buildStepOutput returns expected keys with fallback", async () => {
   // llmResult, toolCalls, iterations should only be present if truthy
 });
 
-test("buildStepOutput returns result with priorSummaries", async () => {
+test("buildStepOutput returns result with priorSummaries [multi-step-agent-round-loop-comprehensive]", async () => {
   resetModelCallProvider();
   initializeModelCallProvider({});
 
@@ -237,7 +237,7 @@ test("buildStepOutput returns result with priorSummaries", async () => {
   assert.ok(result.result.length > 0);
 });
 
-test("buildStepOutput handles intake_triage step type", async () => {
+test("buildStepOutput handles intake_triage step type [multi-step-agent-round-loop-comprehensive]", async () => {
   resetModelCallProvider();
   initializeModelCallProvider({});
 
@@ -254,7 +254,7 @@ test("buildStepOutput handles intake_triage step type", async () => {
   assert.ok(result.summary.includes("triaged") || result.summary.includes("intake_triage"));
 });
 
-test("buildStepOutput handles draft_solution step type", async () => {
+test("buildStepOutput handles draft_solution step type [multi-step-agent-round-loop-comprehensive]", async () => {
   resetModelCallProvider();
   initializeModelCallProvider({});
 
@@ -271,7 +271,7 @@ test("buildStepOutput handles draft_solution step type", async () => {
   assert.ok(result.summary.includes("Draft") || result.summary.includes("draft_solution"));
 });
 
-test("buildStepOutput handles final_review step type", async () => {
+test("buildStepOutput handles final_review step type [multi-step-agent-round-loop-comprehensive]", async () => {
   resetModelCallProvider();
   initializeModelCallProvider({});
 
@@ -288,7 +288,7 @@ test("buildStepOutput handles final_review step type", async () => {
   assert.ok(result.summary.includes("Final") || result.summary.includes("final_review"));
 });
 
-test("buildStepOutput with empty priorSummaries", async () => {
+test("buildStepOutput with empty priorSummaries [multi-step-agent-round-loop-comprehensive]", async () => {
   resetModelCallProvider();
   initializeModelCallProvider({});
 
@@ -306,7 +306,7 @@ test("buildStepOutput with empty priorSummaries", async () => {
   assert.ok(typeof result.result === "string");
 });
 
-test("buildStepOutput with maxIterations specified in underlying call", async () => {
+test("buildStepOutput with maxIterations specified in underlying call [multi-step-agent-round-loop-comprehensive]", async () => {
   resetModelCallProvider();
   initializeModelCallProvider({});
 
@@ -330,7 +330,7 @@ test("buildStepOutput with maxIterations specified in underlying call", async ()
 // executeAgentRoundLoop Various Input Combinations
 // ---------------------------------------------------------------------------
 
-test("executeAgentRoundLoop with all standard step IDs", async () => {
+test("executeAgentRoundLoop with all standard step IDs [multi-step-agent-round-loop-comprehensive]", async () => {
   resetModelCallProvider();
   initializeModelCallProvider({});
 
@@ -353,7 +353,7 @@ test("executeAgentRoundLoop with all standard step IDs", async () => {
   }
 });
 
-test("executeAgentRoundLoop with various role IDs", async () => {
+test("executeAgentRoundLoop with various role IDs [multi-step-agent-round-loop-comprehensive]", async () => {
   resetModelCallProvider();
   initializeModelCallProvider({});
 
@@ -373,7 +373,7 @@ test("executeAgentRoundLoop with various role IDs", async () => {
   }
 });
 
-test("executeAgentRoundLoop with varying priorSummaries lengths", async () => {
+test("executeAgentRoundLoop with varying priorSummaries lengths [multi-step-agent-round-loop-comprehensive]", async () => {
   resetModelCallProvider();
   initializeModelCallProvider({});
 
@@ -395,7 +395,7 @@ test("executeAgentRoundLoop with varying priorSummaries lengths", async () => {
   }
 });
 
-test("executeAgentRoundLoop with special characters in request", async () => {
+test("executeAgentRoundLoop with special characters in request [multi-step-agent-round-loop-comprehensive]", async () => {
   resetModelCallProvider();
   initializeModelCallProvider({});
 
@@ -412,7 +412,7 @@ test("executeAgentRoundLoop with special characters in request", async () => {
   assert.ok(typeof result.result === "string");
 });
 
-test("executeAgentRoundLoop with Unicode in request", async () => {
+test("executeAgentRoundLoop with Unicode in request [multi-step-agent-round-loop-comprehensive]", async () => {
   resetModelCallProvider();
   initializeModelCallProvider({});
 
@@ -428,7 +428,7 @@ test("executeAgentRoundLoop with Unicode in request", async () => {
   assert.ok(typeof result.result === "string");
 });
 
-test("executeAgentRoundLoop with very long request", async () => {
+test("executeAgentRoundLoop with very long request [multi-step-agent-round-loop-comprehensive]", async () => {
   resetModelCallProvider();
   initializeModelCallProvider({});
 
@@ -444,7 +444,7 @@ test("executeAgentRoundLoop with very long request", async () => {
   assert.ok(typeof result.summary === "string");
 });
 
-test("executeAgentRoundLoop with empty routingReason", async () => {
+test("executeAgentRoundLoop with empty routingReason [multi-step-agent-round-loop-comprehensive]", async () => {
   resetModelCallProvider();
   initializeModelCallProvider({});
 
@@ -460,7 +460,7 @@ test("executeAgentRoundLoop with empty routingReason", async () => {
   assert.ok(typeof result.result === "string");
 });
 
-test("executeAgentRoundLoop with various maxIterations values", async () => {
+test("executeAgentRoundLoop with various maxIterations values [multi-step-agent-round-loop-comprehensive]", async () => {
   resetModelCallProvider();
   initializeModelCallProvider({});
 
@@ -482,7 +482,7 @@ test("executeAgentRoundLoop with various maxIterations values", async () => {
   }
 });
 
-test("executeAgentRoundLoop with maxIterations of 1", async () => {
+test("executeAgentRoundLoop with maxIterations of 1 [multi-step-agent-round-loop-comprehensive]", async () => {
   resetModelCallProvider();
   initializeModelCallProvider({});
 
@@ -502,7 +502,7 @@ test("executeAgentRoundLoop with maxIterations of 1", async () => {
   assert.ok(["stop", "max_iterations", "error"].includes(result.finishReason));
 });
 
-test("executeAgentRoundLoop with tools and no provider uses fallback", async () => {
+test("executeAgentRoundLoop with tools and no provider uses fallback [multi-step-agent-round-loop-comprehensive]", async () => {
   resetModelCallProvider();
   initializeModelCallProvider({});
 
@@ -530,7 +530,7 @@ test("executeAgentRoundLoop with tools and no provider uses fallback", async () 
 // parseStepOutput Additional Edge Cases
 // ---------------------------------------------------------------------------
 
-test("parseStepOutput with complex JSON structure", () => {
+test("parseStepOutput with complex JSON structure [multi-step-agent-round-loop-comprehensive]", () => {
   const content = JSON.stringify({
     summary: "Complex analysis complete",
     result: { status: "success", data: { items: [1, 2, 3] } },
@@ -544,7 +544,7 @@ test("parseStepOutput with complex JSON structure", () => {
   assert.ok(typeof result.result === "object" && result.result !== null);
 });
 
-test("parseStepOutput with nested JSON in result field", () => {
+test("parseStepOutput with nested JSON in result field [multi-step-agent-round-loop-comprehensive]", () => {
   const content = JSON.stringify({
     summary: "Step completed",
     result: { nested: { deep: { value: "found" } } },
@@ -556,7 +556,7 @@ test("parseStepOutput with nested JSON in result field", () => {
   assert.ok(typeof result.result === "object" && result.result !== null);
 });
 
-test("parseStepOutput with boolean values", () => {
+test("parseStepOutput with boolean values [multi-step-agent-round-loop-comprehensive]", () => {
   const content = JSON.stringify({
     summary: "Boolean test",
     result: true,
@@ -566,7 +566,7 @@ test("parseStepOutput with boolean values", () => {
   assert.equal(result.summary, "Boolean test");
 });
 
-test("parseStepOutput with array in result field", () => {
+test("parseStepOutput with array in result field [multi-step-agent-round-loop-comprehensive]", () => {
   const content = JSON.stringify({
     summary: "Array result",
     result: ["item1", "item2", "item3"],
@@ -579,7 +579,7 @@ test("parseStepOutput with array in result field", () => {
   assert.ok(typeof result.result === "object" || typeof result.result === "string");
 });
 
-test("parseStepOutput with number values in JSON", () => {
+test("parseStepOutput with number values in JSON [multi-step-agent-round-loop-comprehensive]", () => {
   const content = JSON.stringify({
     summary: "Numeric result",
     result: 42,
@@ -589,14 +589,14 @@ test("parseStepOutput with number values in JSON", () => {
   assert.equal(result.summary, "Numeric result");
 });
 
-test("parseStepOutput with whitespace before JSON brace", () => {
+test("parseStepOutput with whitespace before JSON brace [multi-step-agent-round-loop-comprehensive]", () => {
   const content = "   \n  " + JSON.stringify({ summary: "WS test", result: "Result" });
 
   const result = parseStepOutput(content, "ws_step");
   assert.equal(result.summary, "WS test");
 });
 
-test("parseStepOutput with tab characters in content", () => {
+test("parseStepOutput with tab characters in content [multi-step-agent-round-loop-comprehensive]", () => {
   const content = "Summary\tTab\n\tIndented result";
 
   const result = parseStepOutput(content, "tab_step");
@@ -607,28 +607,28 @@ test("parseStepOutput with tab characters in content", () => {
   assert.ok(result.result.includes("Indented") || result.result.includes("result"));
 });
 
-test("parseStepOutput with carriage return", () => {
+test("parseStepOutput with carriage return [multi-step-agent-round-loop-comprehensive]", () => {
   const content = "Summary line\r\nSecond line\r\nThird line";
 
   const result = parseStepOutput(content, "cr_step");
   assert.ok(result.result.includes("\r") || result.result.includes("Second"));
 });
 
-test("parseStepOutput with Windows line endings", () => {
+test("parseStepOutput with Windows line endings [multi-step-agent-round-loop-comprehensive]", () => {
   const content = "First line\r\n\r\nThird line";
 
   const result = parseStepOutput(content, "crlf_step");
   assert.ok(result.result.length > 0);
 });
 
-test("parseStepOutput with only whitespace lines", () => {
+test("parseStepOutput with only whitespace lines [multi-step-agent-round-loop-comprehensive]", () => {
   const content = "   \n\n   \n\n   ";
 
   const result = parseStepOutput(content, "whitespace_step");
   assert.equal(result.summary, "Step whitespace_step completed");
 });
 
-test("parseStepOutput with code block markers", () => {
+test("parseStepOutput with code block markers [multi-step-agent-round-loop-comprehensive]", () => {
   const content = "```\nCode summary\n```\nResult content";
 
   const result = parseStepOutput(content, "code_step");
@@ -636,7 +636,7 @@ test("parseStepOutput with code block markers", () => {
   assert.ok(result.result.length > 0);
 });
 
-test("parseStepOutput with emoji in content", () => {
+test("parseStepOutput with emoji in content [multi-step-agent-round-loop-comprehensive]", () => {
   const content = "Summary with emoji 🚀\nResult with emoji 🎯";
 
   const result = parseStepOutput(content, "emoji_step");
@@ -644,7 +644,7 @@ test("parseStepOutput with emoji in content", () => {
   assert.ok(result.result.includes("🎯"));
 });
 
-test("parseStepOutput with very long summary line", () => {
+test("parseStepOutput with very long summary line [multi-step-agent-round-loop-comprehensive]", () => {
   const longSummary = "A".repeat(1000);
   const content = `${longSummary}\nShort result`;
 
@@ -652,7 +652,7 @@ test("parseStepOutput with very long summary line", () => {
   assert.equal(result.summary, longSummary);
 });
 
-test("parseStepOutput with all bullet styles", () => {
+test("parseStepOutput with all bullet styles [multi-step-agent-round-loop-comprehensive]", () => {
   const content = "- dash bullet\n+ plus bullet\n* asterisk bullet\n  Result";
 
   const result = parseStepOutput(content, "bullet_step");
@@ -663,7 +663,7 @@ test("parseStepOutput with all bullet styles", () => {
 // fallbackStepOutput Additional Edge Cases
 // ---------------------------------------------------------------------------
 
-test("fallbackStepOutput intake_triage preserves routing reason", () => {
+test("fallbackStepOutput intake_triage preserves routing reason [multi-step-agent-round-loop-comprehensive]", () => {
   const input: AgentRoundLoopInput = {
     stepId: "intake_triage",
     roleId: "triage_agent",
@@ -677,7 +677,7 @@ test("fallbackStepOutput intake_triage preserves routing reason", () => {
   assert.ok(result.result.includes("complex_routing_decision"));
 });
 
-test("fallbackStepOutput draft_solution with multiple prior summaries", () => {
+test("fallbackStepOutput draft_solution with multiple prior summaries [multi-step-agent-round-loop-comprehensive]", () => {
   const input: AgentRoundLoopInput = {
     stepId: "draft_solution",
     roleId: "draft_agent",
@@ -692,7 +692,7 @@ test("fallbackStepOutput draft_solution with multiple prior summaries", () => {
   assert.ok(result.result.includes("Summary 5"));
 });
 
-test("fallbackStepOutput final_review with empty prior summaries", () => {
+test("fallbackStepOutput final_review with empty prior summaries [multi-step-agent-round-loop-comprehensive]", () => {
   const input: AgentRoundLoopInput = {
     stepId: "final_review",
     roleId: "reviewer",
@@ -708,7 +708,7 @@ test("fallbackStepOutput final_review with empty prior summaries", () => {
   assert.ok(result.result.includes("Final answer synthesized from workflow outputs: "));
 });
 
-test("fallbackStepOutput unknown step preserves all input details", () => {
+test("fallbackStepOutput unknown step preserves all input details [multi-step-agent-round-loop-comprehensive]", () => {
   const input: AgentRoundLoopInput = {
     stepId: "custom_special_step",
     roleId: "special_role",
@@ -724,7 +724,7 @@ test("fallbackStepOutput unknown step preserves all input details", () => {
   // routingReason is not included in the unknown step result - only roleId and request
 });
 
-test("fallbackStepOutput step order is deterministic", () => {
+test("fallbackStepOutput step order is deterministic [multi-step-agent-round-loop-comprehensive]", () => {
   const input1: AgentRoundLoopInput = {
     stepId: "intake_triage",
     roleId: "triage",
@@ -762,7 +762,7 @@ test("fallbackStepOutput step order is deterministic", () => {
 // AgentRoundLoopInput Interface Tests
 // ---------------------------------------------------------------------------
 
-test("AgentRoundLoopInput with minimal required fields", () => {
+test("AgentRoundLoopInput with minimal required fields [multi-step-agent-round-loop-comprehensive]", () => {
   const input: AgentRoundLoopInput = {
     stepId: "test",
     roleId: "role",
@@ -775,7 +775,7 @@ test("AgentRoundLoopInput with minimal required fields", () => {
   assert.ok(input.maxIterations === undefined);
 });
 
-test("AgentRoundLoopInput with all optional fields", () => {
+test("AgentRoundLoopInput with all optional fields [multi-step-agent-round-loop-comprehensive]", () => {
   const input: AgentRoundLoopInput = {
     stepId: "test",
     roleId: "role",
@@ -790,7 +790,7 @@ test("AgentRoundLoopInput with all optional fields", () => {
   assert.equal(input.maxIterations, 20);
 });
 
-test("AgentRoundLoopInput tools array can be empty", () => {
+test("AgentRoundLoopInput tools array can be empty [multi-step-agent-round-loop-comprehensive]", () => {
   const input: AgentRoundLoopInput = {
     stepId: "test",
     roleId: "role",
@@ -808,7 +808,7 @@ test("AgentRoundLoopInput tools array can be empty", () => {
 // BuildStepOutputResult Interface Tests
 // ---------------------------------------------------------------------------
 
-test("BuildStepOutputResult has required fields", () => {
+test("BuildStepOutputResult has required fields [multi-step-agent-round-loop-comprehensive]", () => {
   const result: BuildStepOutputResult = {
     summary: "Summary",
     result: "Result",
@@ -821,7 +821,7 @@ test("BuildStepOutputResult has required fields", () => {
   assert.ok(result.iterations === undefined);
 });
 
-test("BuildStepOutputResult with all optional fields", () => {
+test("BuildStepOutputResult with all optional fields [multi-step-agent-round-loop-comprehensive]", () => {
   const mockLlm: LlmModelCallResult = createMockLlmResult("content");
   const toolCalls: ToolCallResult[] = [
     { toolCallId: "c1", toolName: "t1", result: "r1", success: true },
@@ -844,7 +844,7 @@ test("BuildStepOutputResult with all optional fields", () => {
 // Iteration and Escalation Tests
 // ---------------------------------------------------------------------------
 
-test("executeAgentRoundLoop result iterations is always non-negative", async () => {
+test("executeAgentRoundLoop result iterations is always non-negative [multi-step-agent-round-loop-comprehensive]", async () => {
   resetModelCallProvider();
   initializeModelCallProvider({});
 
@@ -862,7 +862,7 @@ test("executeAgentRoundLoop result iterations is always non-negative", async () 
   assert.ok(result.iterations >= 0);
 });
 
-test("executeAgentRoundLoop result finishReason is always valid", async () => {
+test("executeAgentRoundLoop result finishReason is always valid [multi-step-agent-round-loop-comprehensive]", async () => {
   resetModelCallProvider();
   initializeModelCallProvider({});
 
@@ -879,7 +879,7 @@ test("executeAgentRoundLoop result finishReason is always valid", async () => {
   assert.ok(["stop", "max_iterations", "error"].includes(result.finishReason));
 });
 
-test("executeAgentRoundLoop with extreme maxIterations value", async () => {
+test("executeAgentRoundLoop with extreme maxIterations value [multi-step-agent-round-loop-comprehensive]", async () => {
   resetModelCallProvider();
   initializeModelCallProvider({});
 
@@ -901,7 +901,7 @@ test("executeAgentRoundLoop with extreme maxIterations value", async () => {
 // Multi-step Workflow Integration Tests
 // ---------------------------------------------------------------------------
 
-test("simulated multi-step workflow with triage then draft then review", async () => {
+test("simulated multi-step workflow with triage then draft then review [multi-step-agent-round-loop-comprehensive]", async () => {
   resetModelCallProvider();
   initializeModelCallProvider({});
 
@@ -939,7 +939,7 @@ test("simulated multi-step workflow with triage then draft then review", async (
   assert.ok(reviewResult.summary.includes("Final") || reviewResult.summary.includes("final_review"));
 });
 
-test("workflow with prior summaries properly concatenated in result", async () => {
+test("workflow with prior summaries properly concatenated in result [multi-step-agent-round-loop-comprehensive]", async () => {
   resetModelCallProvider();
   initializeModelCallProvider({});
 
@@ -958,7 +958,7 @@ test("workflow with prior summaries properly concatenated in result", async () =
   assert.ok(result.result.length > 0);
 });
 
-test("workflow with many prior summaries does not break", async () => {
+test("workflow with many prior summaries does not break [multi-step-agent-round-loop-comprehensive]", async () => {
   resetModelCallProvider();
   initializeModelCallProvider({});
 
@@ -985,7 +985,7 @@ test("workflow with many prior summaries does not break", async () => {
 // Error Recovery and Edge Case Handling
 // ---------------------------------------------------------------------------
 
-test("executeAgentRoundLoop result can be used in subsequent calls", async () => {
+test("executeAgentRoundLoop result can be used in subsequent calls [multi-step-agent-round-loop-comprehensive]", async () => {
   resetModelCallProvider();
   initializeModelCallProvider({});
 
@@ -1014,7 +1014,7 @@ test("executeAgentRoundLoop result can be used in subsequent calls", async () =>
   assert.notEqual(result1.summary, result2.summary);
 });
 
-test("executeAgentRoundLoop returns consistent results for same input", async () => {
+test("executeAgentRoundLoop returns consistent results for same input [multi-step-agent-round-loop-comprehensive]", async () => {
   resetModelCallProvider();
   initializeModelCallProvider({});
 
@@ -1034,7 +1034,7 @@ test("executeAgentRoundLoop returns consistent results for same input", async ()
   assert.equal(result1.iterations, result2.iterations);
 });
 
-test("executeAgentRoundLoop with JSON parseable request content", async () => {
+test("executeAgentRoundLoop with JSON parseable request content [multi-step-agent-round-loop-comprehensive]", async () => {
   resetModelCallProvider();
   initializeModelCallProvider({});
 
@@ -1050,7 +1050,7 @@ test("executeAgentRoundLoop with JSON parseable request content", async () => {
   assert.ok(typeof result.result === "string");
 });
 
-test("executeAgentRoundLoop with deeply nested prior summaries", async () => {
+test("executeAgentRoundLoop with deeply nested prior summaries [multi-step-agent-round-loop-comprehensive]", async () => {
   resetModelCallProvider();
   initializeModelCallProvider({});
 

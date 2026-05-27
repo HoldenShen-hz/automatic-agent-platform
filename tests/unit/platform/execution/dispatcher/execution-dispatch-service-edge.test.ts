@@ -234,7 +234,7 @@ function workerToSnapshot(worker: RegisteredWorkerView): WorkerSnapshotRecord {
 // dispatchNext - untrusted remote worker
 // ---------------------------------------------------------------------------
 
-test("dispatchNext skips untrusted remote workers", () => {
+test("dispatchNext skips untrusted remote workers [execution-dispatch-service-edge]", () => {
   const mockTicket = createMockTicket("ticket-1", "exec-1", "task-1");
   const trustedRemoteWorker = createMockWorker("worker-trusted", {
     placement: "remote",
@@ -296,7 +296,7 @@ test("dispatchNext skips untrusted remote workers", () => {
 // dispatchNext - require_remote with only local workers
 // ---------------------------------------------------------------------------
 
-test("dispatchNext require_remote blocked by local_only placement", () => {
+test("dispatchNext require_remote blocked by local_only placement [execution-dispatch-service-edge]", () => {
   const mockTicket = createMockTicket("ticket-1", "exec-1", "task-1");
   mockTicket.dispatchTarget = "require_remote";
 
@@ -341,7 +341,7 @@ test("dispatchNext require_remote blocked by local_only placement", () => {
 // dispatchNext - multiple tickets with first one blocked
 // ---------------------------------------------------------------------------
 
-test("dispatchNext skips blocked ticket and processes next", () => {
+test("dispatchNext skips blocked ticket and processes next [execution-dispatch-service-edge]", () => {
   const blockedTicket = createMockTicket("ticket-1", "exec-1", "task-1", "low");
   const workingTicket = createMockTicket("ticket-2", "exec-2", "task-2", "normal");
   const worker = createMockWorker("worker-1", { availableSlots: 5 });
@@ -400,7 +400,7 @@ test("dispatchNext skips blocked ticket and processes next", () => {
 // dispatchNext - degraded mode with includeDegraded
 // ---------------------------------------------------------------------------
 
-test("dispatchNext with includeDegraded allows degraded workers", () => {
+test("dispatchNext with includeDegraded allows degraded workers [execution-dispatch-service-edge]", () => {
   const mockTicket = createMockTicket("ticket-1", "exec-1", "task-1");
   const degradedWorker = createMockWorker("worker-1", { status: "degraded", availableSlots: 5 });
 
@@ -451,7 +451,7 @@ test("dispatchNext with includeDegraded allows degraded workers", () => {
 // dispatchNext - worker remote session unready
 // ---------------------------------------------------------------------------
 
-test("dispatchNext skips workers with remote session unready", () => {
+test("dispatchNext skips workers with remote session unready [execution-dispatch-service-edge]", () => {
   const mockTicket = createMockTicket("ticket-1", "exec-1", "task-1");
   const readyWorker = createMockWorker("worker-ready", {
     placement: "remote",
@@ -512,7 +512,7 @@ test("dispatchNext skips workers with remote session unready", () => {
 // dispatchNext - missing capabilities
 // ---------------------------------------------------------------------------
 
-test("dispatchNext skips workers missing required capabilities", () => {
+test("dispatchNext skips workers missing required capabilities [execution-dispatch-service-edge]", () => {
   const mockTicket = createMockTicket("ticket-1", "exec-1", "task-1");
   mockTicket.requiredCapabilitiesJson = JSON.stringify(["gpu", "large_memory"]);
   const workerWithGpu = createMockWorker("worker-gpu", { capabilities: ["gpu"], availableSlots: 5 });
@@ -570,7 +570,7 @@ test("dispatchNext skips workers missing required capabilities", () => {
 // dispatchNext - preferredWorkerId with matching worker not in list
 // ---------------------------------------------------------------------------
 
-test("dispatchNext preferredWorkerId not in worker list returns no_worker", () => {
+test("dispatchNext preferredWorkerId not in worker list returns no_worker [execution-dispatch-service-edge]", () => {
   const mockTicket = createMockTicket("ticket-1", "exec-1", "task-1");
   const otherWorker = createMockWorker("other-worker", { availableSlots: 5 });
 
@@ -616,7 +616,7 @@ test("dispatchNext preferredWorkerId not in worker list returns no_worker", () =
 // createTicket - with dispatchAfter
 // ---------------------------------------------------------------------------
 
-test("createTicket creates ticket with dispatchAfter", () => {
+test("createTicket creates ticket with dispatchAfter [execution-dispatch-service-edge]", () => {
   const mockExecution = createMockExecution("exec-1", "task-1");
   const mockTask = createMockTask("task-1");
   const dispatchAfter = new Date(Date.now() + 60000).toISOString();
@@ -647,7 +647,7 @@ test("createTicket creates ticket with dispatchAfter", () => {
 // createTicket - with all options
 // ---------------------------------------------------------------------------
 
-test("createTicket creates ticket with all options specified", () => {
+test("createTicket creates ticket with all options specified [execution-dispatch-service-edge]", () => {
   const mockExecution = createMockExecution("exec-1", "task-1");
   const mockTask = createMockTask("task-1", "low");
 
@@ -692,7 +692,7 @@ test("createTicket creates ticket with all options specified", () => {
 // dispatchNext - read_only_operations_only backpressure blocks all
 // ---------------------------------------------------------------------------
 
-test("dispatchNext with read_only_operations_only backpressure blocks ticket", () => {
+test("dispatchNext with read_only_operations_only backpressure blocks ticket [execution-dispatch-service-edge]", () => {
   const mockTicket = createMockTicket("ticket-1", "exec-1", "task-1");
   const worker = createMockWorker("worker-1", { availableSlots: 5 });
 
@@ -739,7 +739,7 @@ test("dispatchNext with read_only_operations_only backpressure blocks ticket", (
 // dispatchNext - elevated priority not blocked by queue_only
 // ---------------------------------------------------------------------------
 
-test("dispatchNext high priority not blocked by queue_only", () => {
+test("dispatchNext high priority not blocked by queue_only [execution-dispatch-service-edge]", () => {
   const mockTicket = createMockTicket("ticket-1", "exec-1", "task-1", "high");
   const worker = createMockWorker("worker-1", { availableSlots: 5 });
 
@@ -790,7 +790,7 @@ test("dispatchNext high priority not blocked by queue_only", () => {
 // dispatchNext - urgent priority not blocked by pause_non_critical
 // ---------------------------------------------------------------------------
 
-test("dispatchNext urgent priority not blocked by pause_non_critical", () => {
+test("dispatchNext urgent priority not blocked by pause_non_critical [execution-dispatch-service-edge]", () => {
   const mockTicket = createMockTicket("ticket-1", "exec-1", "task-1", "urgent");
   const worker = createMockWorker("worker-1", { availableSlots: 5 });
 
@@ -841,7 +841,7 @@ test("dispatchNext urgent priority not blocked by pause_non_critical", () => {
 // dispatchNext - starvation protection for low priority
 // ---------------------------------------------------------------------------
 
-test("dispatchNext low priority blocked by starvation protection", () => {
+test("dispatchNext low priority blocked by starvation protection [execution-dispatch-service-edge]", () => {
   const mockTicket = createMockTicket("ticket-1", "exec-1", "task-1", "low");
   const worker = createMockWorker("worker-1", { availableSlots: 5 });
 

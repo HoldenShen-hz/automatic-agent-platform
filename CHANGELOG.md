@@ -2,7 +2,14 @@
 
 ## [Unreleased]
 
-- Pending post-`0.1.0` repository hygiene, contract-governance, and review taxonomy updates that are not yet a packaged release.
+- Pending follow-up changes after `0.2.0`.
+
+## [0.2.0] - 2026-05-27
+
+- Hardened SQLite-to-Postgres migration and checkpoint/snapshot cleanup paths against identifier injection and file-system race windows.
+- Removed pack publish fallback to placeholder registry domains and replaced legacy contract placeholder URLs with repository-local documentation pointers.
+- Reclassified long-running script and governance tests into integration scope, removed fixture-local placeholder tests, and tightened Stryker to a dedicated non-UI tsconfig.
+- Deleted unreferenced audit/curation scripts and advanced the repository release baseline.
 
 ## [0.1.0] - 2026-05-14
 

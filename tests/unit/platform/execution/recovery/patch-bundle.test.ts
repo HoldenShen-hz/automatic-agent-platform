@@ -9,7 +9,7 @@ import {
   type ChangedFile,
 } from "../../../../../src/platform/five-plane-execution/recovery/patch-bundle.js";
 
-test("createPatchBundle creates bundle with calculated totalDiffLines", () => {
+test("createPatchBundle creates bundle with calculated totalDiffLines [patch-bundle]", () => {
   const changedFiles: readonly ChangedFile[] = [
     {
       path: "/src/index.ts",
@@ -54,7 +54,7 @@ test("createPatchBundle creates bundle with calculated totalDiffLines", () => {
   assert.ok(bundle.createdAt);
 });
 
-test("createPatchBundle handles empty changedFiles", () => {
+test("createPatchBundle handles empty changedFiles [patch-bundle]", () => {
   const bundle = createPatchBundle({
     bundleId: "bundle_1",
     taskId: "task_1",
@@ -66,7 +66,7 @@ test("createPatchBundle handles empty changedFiles", () => {
   assert.equal(bundle.changedFiles.length, 0);
 });
 
-test("validatePatchBundle returns valid for compliant bundle", () => {
+test("validatePatchBundle returns valid for compliant bundle [patch-bundle]", () => {
   const bundle: PatchBundle = {
     bundleId: "bundle_1",
     taskId: "task_1",
@@ -88,7 +88,7 @@ test("validatePatchBundle returns valid for compliant bundle", () => {
   assert.deepEqual(result.errors, []);
 });
 
-test("validatePatchBundle returns error for too many changed files", () => {
+test("validatePatchBundle returns error for too many changed files [patch-bundle]", () => {
   const bundle: PatchBundle = {
     bundleId: "bundle_1",
     taskId: "task_1",
@@ -116,7 +116,7 @@ test("validatePatchBundle returns error for too many changed files", () => {
   assert.ok(result.errors.some(e => e.includes("exceeds maximum")));
 });
 
-test("validatePatchBundle returns error for too many diff lines", () => {
+test("validatePatchBundle returns error for too many diff lines [patch-bundle]", () => {
   const bundle: PatchBundle = {
     bundleId: "bundle_1",
     taskId: "task_1",
@@ -138,7 +138,7 @@ test("validatePatchBundle returns error for too many diff lines", () => {
   assert.ok(result.errors.some(e => e.includes("Total diff lines")));
 });
 
-test("validatePatchBundle returns error for forbidden paths", () => {
+test("validatePatchBundle returns error for forbidden paths [patch-bundle]", () => {
   const bundle: PatchBundle = {
     bundleId: "bundle_1",
     taskId: "task_1",
@@ -162,7 +162,7 @@ test("validatePatchBundle returns error for forbidden paths", () => {
   assert.ok(result.errors.some(e => e.includes("forbidden")));
 });
 
-test("validatePatchBundle returns warning at 80% of diff limit", () => {
+test("validatePatchBundle returns warning at 80% of diff limit [patch-bundle]", () => {
   const bundle: PatchBundle = {
     bundleId: "bundle_1",
     taskId: "task_1",
@@ -184,7 +184,7 @@ test("validatePatchBundle returns warning at 80% of diff limit", () => {
   assert.ok(result.warnings.some(w => w.includes("80%")));
 });
 
-test("validatePatchBundle rejects forbidden path with ** glob", () => {
+test("validatePatchBundle rejects forbidden path with ** glob [patch-bundle]", () => {
   const bundle: PatchBundle = {
     bundleId: "bundle_1",
     taskId: "task_1",
@@ -208,12 +208,12 @@ test("validatePatchBundle rejects forbidden path with ** glob", () => {
   assert.ok(result.errors.some(e => e.includes("forbidden")));
 });
 
-test("PatchStatus type accepts all valid values", () => {
+test("PatchStatus type accepts all valid values [patch-bundle]", () => {
   const statuses: PatchStatus[] = ["pending", "applied", "rejected", "rolled_back"];
   assert.equal(statuses.length, 4);
 });
 
-test("ChangedFile operation type accepts all valid values", () => {
+test("ChangedFile operation type accepts all valid values [patch-bundle]", () => {
   const operations: ChangedFile["operation"][] = ["create", "modify", "delete", "rename"];
   assert.equal(operations.length, 4);
 });

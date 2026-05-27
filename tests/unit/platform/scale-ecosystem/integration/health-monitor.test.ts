@@ -6,7 +6,7 @@ import {
   type ConnectorHealthReport,
 } from "../../../../../src/scale-ecosystem/integration/health-monitor/index.js";
 
-test("summarizeConnectorHealth returns healthy when all reports healthy", () => {
+test("summarizeConnectorHealth returns healthy when all reports healthy [health-monitor]", () => {
   const reports: ConnectorHealthReport[] = [
     { connectorId: "conn-1", status: "healthy", latencyMs: 50, checkedAt: "2024-01-01T00:00:00Z" },
     { connectorId: "conn-2", status: "healthy", latencyMs: 60, checkedAt: "2024-01-01T00:00:00Z" },
@@ -17,7 +17,7 @@ test("summarizeConnectorHealth returns healthy when all reports healthy", () => 
   assert.strictEqual(result, "healthy");
 });
 
-test("summarizeConnectorHealth returns degraded when any report degraded", () => {
+test("summarizeConnectorHealth returns degraded when any report degraded [health-monitor]", () => {
   const reports: ConnectorHealthReport[] = [
     { connectorId: "conn-1", status: "healthy", latencyMs: 50, checkedAt: "2024-01-01T00:00:00Z" },
     { connectorId: "conn-2", status: "degraded", latencyMs: 500, checkedAt: "2024-01-01T00:00:00Z" },
@@ -28,7 +28,7 @@ test("summarizeConnectorHealth returns degraded when any report degraded", () =>
   assert.strictEqual(result, "degraded");
 });
 
-test("summarizeConnectorHealth returns failed when any report failed", () => {
+test("summarizeConnectorHealth returns failed when any report failed [health-monitor]", () => {
   const reports: ConnectorHealthReport[] = [
     { connectorId: "conn-1", status: "healthy", latencyMs: 50, checkedAt: "2024-01-01T00:00:00Z" },
     { connectorId: "conn-2", status: "failed", latencyMs: 0, checkedAt: "2024-01-01T00:00:00Z" },
@@ -39,7 +39,7 @@ test("summarizeConnectorHealth returns failed when any report failed", () => {
   assert.strictEqual(result, "failed");
 });
 
-test("summarizeConnectorHealth returns failed even with mix of healthy and degraded when failed present", () => {
+test("summarizeConnectorHealth returns failed even with mix of healthy and degraded when failed present [health-monitor]", () => {
   const reports: ConnectorHealthReport[] = [
     { connectorId: "conn-1", status: "healthy", latencyMs: 50, checkedAt: "2024-01-01T00:00:00Z" },
     { connectorId: "conn-2", status: "degraded", latencyMs: 500, checkedAt: "2024-01-01T00:00:00Z" },
@@ -51,7 +51,7 @@ test("summarizeConnectorHealth returns failed even with mix of healthy and degra
   assert.strictEqual(result, "failed");
 });
 
-test("summarizeConnectorHealth handles single healthy report", () => {
+test("summarizeConnectorHealth handles single healthy report [health-monitor]", () => {
   const reports: ConnectorHealthReport[] = [
     { connectorId: "conn-1", status: "healthy", latencyMs: 50, checkedAt: "2024-01-01T00:00:00Z" },
   ];
@@ -61,7 +61,7 @@ test("summarizeConnectorHealth handles single healthy report", () => {
   assert.strictEqual(result, "healthy");
 });
 
-test("summarizeConnectorHealth handles single degraded report", () => {
+test("summarizeConnectorHealth handles single degraded report [health-monitor]", () => {
   const reports: ConnectorHealthReport[] = [
     { connectorId: "conn-1", status: "degraded", latencyMs: 500, checkedAt: "2024-01-01T00:00:00Z" },
   ];
@@ -71,7 +71,7 @@ test("summarizeConnectorHealth handles single degraded report", () => {
   assert.strictEqual(result, "degraded");
 });
 
-test("summarizeConnectorHealth handles single failed report", () => {
+test("summarizeConnectorHealth handles single failed report [health-monitor]", () => {
   const reports: ConnectorHealthReport[] = [
     { connectorId: "conn-1", status: "failed", latencyMs: 0, checkedAt: "2024-01-01T00:00:00Z" },
   ];
@@ -81,7 +81,7 @@ test("summarizeConnectorHealth handles single failed report", () => {
   assert.strictEqual(result, "failed");
 });
 
-test("summarizeConnectorHealth returns healthy for empty array", () => {
+test("summarizeConnectorHealth returns healthy for empty array [health-monitor]", () => {
   const reports: readonly ConnectorHealthReport[] = [];
 
   const result = summarizeConnectorHealth(reports);
@@ -89,7 +89,7 @@ test("summarizeConnectorHealth returns healthy for empty array", () => {
   assert.strictEqual(result, "healthy");
 });
 
-test("ConnectorHealthReportSchema validates valid report", () => {
+test("ConnectorHealthReportSchema validates valid report [health-monitor]", () => {
   const validReport = {
     connectorId: "conn-1",
     status: "healthy",
@@ -102,7 +102,7 @@ test("ConnectorHealthReportSchema validates valid report", () => {
   assert.strictEqual(result.success, true);
 });
 
-test("ConnectorHealthReportSchema rejects empty connectorId", () => {
+test("ConnectorHealthReportSchema rejects empty connectorId [health-monitor]", () => {
   const invalidReport = {
     connectorId: "",
     status: "healthy",
@@ -115,7 +115,7 @@ test("ConnectorHealthReportSchema rejects empty connectorId", () => {
   assert.strictEqual(result.success, false);
 });
 
-test("ConnectorHealthReportSchema rejects negative latency", () => {
+test("ConnectorHealthReportSchema rejects negative latency [health-monitor]", () => {
   const invalidReport = {
     connectorId: "conn-1",
     status: "healthy",
@@ -128,7 +128,7 @@ test("ConnectorHealthReportSchema rejects negative latency", () => {
   assert.strictEqual(result.success, false);
 });
 
-test("ConnectorHealthReportSchema rejects invalid status", () => {
+test("ConnectorHealthReportSchema rejects invalid status [health-monitor]", () => {
   const invalidReport = {
     connectorId: "conn-1",
     status: "unknown",
@@ -141,7 +141,7 @@ test("ConnectorHealthReportSchema rejects invalid status", () => {
   assert.strictEqual(result.success, false);
 });
 
-test("ConnectorHealthReportSchema rejects empty checkedAt", () => {
+test("ConnectorHealthReportSchema rejects empty checkedAt [health-monitor]", () => {
   const invalidReport = {
     connectorId: "conn-1",
     status: "healthy",
@@ -154,7 +154,7 @@ test("ConnectorHealthReportSchema rejects empty checkedAt", () => {
   assert.strictEqual(result.success, false);
 });
 
-test("ConnectorHealthReportSchema allows zero latency", () => {
+test("ConnectorHealthReportSchema allows zero latency [health-monitor]", () => {
   const validReport = {
     connectorId: "conn-1",
     status: "healthy",
@@ -167,7 +167,7 @@ test("ConnectorHealthReportSchema allows zero latency", () => {
   assert.strictEqual(result.success, true);
 });
 
-test("summarizeConnectorHealth prioritizes failed over degraded", () => {
+test("summarizeConnectorHealth prioritizes failed over degraded [health-monitor]", () => {
   const reports: ConnectorHealthReport[] = [
     { connectorId: "conn-1", status: "degraded", latencyMs: 500, checkedAt: "2024-01-01T00:00:00Z" },
     { connectorId: "conn-2", status: "failed", latencyMs: 0, checkedAt: "2024-01-01T00:00:00Z" },
@@ -179,7 +179,7 @@ test("summarizeConnectorHealth prioritizes failed over degraded", () => {
   assert.strictEqual(result, "failed");
 });
 
-test("summarizeConnectorHealth treats all degraded as degraded", () => {
+test("summarizeConnectorHealth treats all degraded as degraded [health-monitor]", () => {
   const reports: ConnectorHealthReport[] = [
     { connectorId: "conn-1", status: "degraded", latencyMs: 500, checkedAt: "2024-01-01T00:00:00Z" },
     { connectorId: "conn-2", status: "degraded", latencyMs: 600, checkedAt: "2024-01-01T00:00:00Z" },

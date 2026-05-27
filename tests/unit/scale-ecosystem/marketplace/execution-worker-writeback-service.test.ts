@@ -9,6 +9,6 @@ import test from "node:test";
 
 import * as ExecutionWorkerWritebackService from "../../../../src/scale-ecosystem/marketplace/execution-worker-writeback-service.js";
 
-test("execution-worker-writeback-service exports ExecutionWorkerWritebackService", () => {
+test("execution-worker-writeback-service exports ExecutionWorkerWritebackService [execution-worker-writeback-service]", () => {
   assert.ok(ExecutionWorkerWritebackService.ExecutionWorkerWritebackService !== undefined);
 });

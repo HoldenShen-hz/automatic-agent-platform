@@ -15,7 +15,7 @@ import { StateTransitionMachine } from "../../../../src/platform/five-plane-exec
 // StateTransitionMachine Tests
 // ---------------------------------------------------------------------------
 
-test("StateTransitionMachine: accepts valid transitions", () => {
+test("StateTransitionMachine: accepts valid transitions [state-transition-machine]", () => {
   const transitions: Record<string, readonly string[]> = {
     pending: ["in_progress", "done", "failed"],
     in_progress: ["done", "failed", "cancelled"],
@@ -35,7 +35,7 @@ test("StateTransitionMachine: accepts valid transitions", () => {
   machine.assertTransition("in_progress", "cancelled");
 });
 
-test("StateTransitionMachine: rejects invalid transitions", () => {
+test("StateTransitionMachine: rejects invalid transitions [state-transition-machine]", () => {
   const transitions: Record<string, readonly string[]> = {
     pending: ["in_progress", "done", "failed"],
     in_progress: ["done", "failed", "cancelled"],
@@ -66,7 +66,7 @@ test("StateTransitionMachine: rejects invalid transitions", () => {
   );
 });
 
-test("StateTransitionMachine: allows no-op transitions", () => {
+test("StateTransitionMachine: allows no-op transitions [state-transition-machine]", () => {
   const transitions: Record<string, readonly string[]> = {
     pending: ["in_progress"],
     in_progress: ["done"],
@@ -83,7 +83,7 @@ test("StateTransitionMachine: allows no-op transitions", () => {
   machine.assertTransition("done", "done");
 });
 
-test("StateTransitionMachine: uses entity kind in error messages", () => {
+test("StateTransitionMachine: uses entity kind in error messages [state-transition-machine]", () => {
   const transitions: Record<string, readonly string[]> = {
     open: ["closed"],
     closed: [],
@@ -104,7 +104,7 @@ test("StateTransitionMachine: uses entity kind in error messages", () => {
   assert.ok(error.code.includes("workflow"));
 });
 
-test("StateTransitionMachine: different entity kinds have independent state machines", () => {
+test("StateTransitionMachine: different entity kinds have independent state machines [state-transition-machine]", () => {
   // Task transitions
   const taskTransitions: Record<string, readonly string[]> = {
     pending: ["in_progress"],
@@ -140,7 +140,7 @@ test("StateTransitionMachine: different entity kinds have independent state mach
   );
 });
 
-test("StateTransitionMachine: empty allowed transitions means no valid outgoing transitions", () => {
+test("StateTransitionMachine: empty allowed transitions means no valid outgoing transitions [state-transition-machine]", () => {
   const transitions: Record<string, readonly string[]> = {
     active: [],
     stopped: [],
@@ -155,7 +155,7 @@ test("StateTransitionMachine: empty allowed transitions means no valid outgoing 
   );
 });
 
-test("StateTransitionMachine: handles single-state transitions", () => {
+test("StateTransitionMachine: handles single-state transitions [state-transition-machine]", () => {
   const transitions: Record<string, readonly string[]> = {
     running: ["succeeded", "failed"],
     succeeded: [],
@@ -174,7 +174,7 @@ test("StateTransitionMachine: handles single-state transitions", () => {
   );
 });
 
-test("StateTransitionMachine: error details include current and next state", () => {
+test("StateTransitionMachine: error details include current and next state [state-transition-machine]", () => {
   const transitions: Record<string, readonly string[]> = {
     init: ["ready"],
     ready: [],
@@ -198,7 +198,7 @@ test("StateTransitionMachine: error details include current and next state", () 
   }
 });
 
-test("StateTransitionMachine: generic type works with various state string types", () => {
+test("StateTransitionMachine: generic type works with various state string types [state-transition-machine]", () => {
   type TaskState = "created" | "running" | "completed";
 
   const transitions: Record<TaskState, readonly TaskState[]> = {

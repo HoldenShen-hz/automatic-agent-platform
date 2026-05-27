@@ -20,7 +20,7 @@ import type { TransitionAuditContext } from "../../../../src/platform/contracts/
 // BLOCKED APPROVAL REQUEST DEFINITION TESTS
 // =============================================================================
 
-test("BlockedApprovalRequestDefinition accepts valid risk levels", () => {
+test("BlockedApprovalRequestDefinition accepts valid risk levels [transition-service-model]", () => {
   const validRiskLevels: Array<"low" | "medium" | "high" | "critical"> = [
     "low",
     "medium",
@@ -41,7 +41,7 @@ test("BlockedApprovalRequestDefinition accepts valid risk levels", () => {
   }
 });
 
-test("BlockedApprovalRequestDefinition accepts all timeout policies", () => {
+test("BlockedApprovalRequestDefinition accepts all timeout policies [transition-service-model]", () => {
   const policies: Array<"reject" | "approve" | "remain_pending"> = [
     "reject",
     "approve",
@@ -61,7 +61,7 @@ test("BlockedApprovalRequestDefinition accepts all timeout policies", () => {
   }
 });
 
-test("BlockedApprovalRequestDefinition allows optional approvalId and createdAt", () => {
+test("BlockedApprovalRequestDefinition allows optional approvalId and createdAt [transition-service-model]", () => {
   // Without optional fields
   const definition1: BlockedApprovalRequestDefinition = {
     sourceAgentId: "agent-1",
@@ -89,7 +89,7 @@ test("BlockedApprovalRequestDefinition allows optional approvalId and createdAt"
   assert.equal(definition2.createdAt, "2025-01-01T00:00:00.000Z");
 });
 
-test("BlockedApprovalRequestDefinition context can hold arbitrary data", () => {
+test("BlockedApprovalRequestDefinition context can hold arbitrary data [transition-service-model]", () => {
   const definition: BlockedApprovalRequestDefinition = {
     sourceAgentId: "agent-1",
     reason: "Test reason",
@@ -113,7 +113,7 @@ test("BlockedApprovalRequestDefinition context can hold arbitrary data", () => {
 // BLOCKED FOR APPROVAL TRANSITION COMMAND TESTS
 // =============================================================================
 
-test("BlockedForApprovalTransitionCommand structure validation", () => {
+test("BlockedForApprovalTransitionCommand structure validation [transition-service-model]", () => {
   const mockContext: TransitionAuditContext = {
     reasonCode: "APPROVAL_REQUIRED",
     traceId: "trace-123",
@@ -150,7 +150,7 @@ test("BlockedForApprovalTransitionCommand structure validation", () => {
   assert.equal(command.context.traceId, "trace-123");
 });
 
-test("BlockedForApprovalTransitionCommand accepts all valid status values", () => {
+test("BlockedForApprovalTransitionCommand accepts all valid status values [transition-service-model]", () => {
   const validStatuses: [TaskStatus, WorkflowStatus, SessionStatus, ExecutionStatus] = [
     "in_progress",
     "running",
@@ -194,7 +194,7 @@ test("BlockedForApprovalTransitionCommand accepts all valid status values", () =
 // BLOCKED FOR APPROVAL TRANSITION RESULT TESTS
 // =============================================================================
 
-test("BlockedForApprovalTransitionResult contains approvalId and createdAt", () => {
+test("BlockedForApprovalTransitionResult contains approvalId and createdAt [transition-service-model]", () => {
   const result: BlockedForApprovalTransitionResult = {
     approvalId: "approval-new-456",
     createdAt: "2025-06-15T10:30:00.000Z",
@@ -208,7 +208,7 @@ test("BlockedForApprovalTransitionResult contains approvalId and createdAt", () 
 // TASK TERMINAL TRANSITION INPUT TESTS
 // =============================================================================
 
-test("TaskTerminalTransitionInput structure for done terminal status", () => {
+test("TaskTerminalTransitionInput structure for done terminal status [transition-service-model]", () => {
   const input: TaskTerminalTransitionInput = {
     taskId: "task-terminal-1",
     sessionId: "session-terminal-1",
@@ -234,7 +234,7 @@ test("TaskTerminalTransitionInput structure for done terminal status", () => {
   assert.ok(input.expectedWorkflowStepIndex === undefined);
 });
 
-test("TaskTerminalTransitionInput structure for failed terminal status", () => {
+test("TaskTerminalTransitionInput structure for failed terminal status [transition-service-model]", () => {
   const input: TaskTerminalTransitionInput = {
     taskId: "task-failed-1",
     sessionId: "session-failed-1",
@@ -257,7 +257,7 @@ test("TaskTerminalTransitionInput structure for failed terminal status", () => {
   assert.equal(input.terminalStatus, "failed");
 });
 
-test("TaskTerminalTransitionInput structure for cancelled terminal status", () => {
+test("TaskTerminalTransitionInput structure for cancelled terminal status [transition-service-model]", () => {
   const input: TaskTerminalTransitionInput = {
     taskId: "task-cancelled-1",
     sessionId: "session-cancelled-1",
@@ -281,7 +281,7 @@ test("TaskTerminalTransitionInput structure for cancelled terminal status", () =
   assert.equal(input.taskOutputJson, "{}");
 });
 
-test("TaskTerminalTransitionInput accepts all TaskTerminalStatus values", () => {
+test("TaskTerminalTransitionInput accepts all TaskTerminalStatus values [transition-service-model]", () => {
   const terminalStatuses: TaskTerminalStatus[] = ["done", "failed", "cancelled"];
 
   for (const status of terminalStatuses) {
@@ -307,7 +307,7 @@ test("TaskTerminalTransitionInput accepts all TaskTerminalStatus values", () => 
   }
 });
 
-test("TaskTerminalTransitionInput optional expected fields", () => {
+test("TaskTerminalTransitionInput optional expected fields [transition-service-model]", () => {
   const input: TaskTerminalTransitionInput = {
     taskId: "task-1",
     sessionId: "session-1",
@@ -337,7 +337,7 @@ test("TaskTerminalTransitionInput optional expected fields", () => {
   assert.equal(input.expectedExecutionUpdatedAt, "2025-01-01T01:00:00.000Z");
 });
 
-test("TaskTerminalTransitionInput workflow step index validation", () => {
+test("TaskTerminalTransitionInput workflow step index validation [transition-service-model]", () => {
   const input: TaskTerminalTransitionInput = {
     taskId: "task-steps",
     sessionId: "session-steps",

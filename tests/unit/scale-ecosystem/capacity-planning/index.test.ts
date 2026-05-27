@@ -11,7 +11,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import * as capacityPlanning from "../../../../src/scale-ecosystem/capacity-planning/index.js";
 
-test("capacity-planning re-exports CapacityPlanningService", () => {
+test("capacity-planning re-exports CapacityPlanningService [index]", () => {
   assert.ok(
     "CapacityPlanningService" in capacityPlanning,
     "should export CapacityPlanningService"
@@ -23,7 +23,7 @@ test("capacity-planning re-exports CapacityPlanningService", () => {
   );
 });
 
-test("capacity-planning CapacityPlanningService is instantiable", () => {
+test("capacity-planning CapacityPlanningService is instantiable [index]", () => {
   const Service = capacityPlanning.CapacityPlanningService;
   const instance = new Service();
   assert.ok(instance != null, "should create instance");
@@ -34,7 +34,7 @@ test("capacity-planning CapacityPlanningService is instantiable", () => {
   assert.strictEqual(typeof instance.compareForecastToActual, "function", "should have compareForecastToActual method");
 });
 
-test("capacity-planning has only one runtime export", () => {
+test("capacity-planning has only one runtime export [index]", () => {
   // Type-only exports are not visible at runtime
   const keys = Object.keys(capacityPlanning);
   assert.deepEqual(keys, ["CapacityPlanningService"], "should only have CapacityPlanningService as runtime export");

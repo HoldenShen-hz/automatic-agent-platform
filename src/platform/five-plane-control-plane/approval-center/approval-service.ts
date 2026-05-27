@@ -10,10 +10,10 @@
  * ## Key Concepts
  *
  * - **HITL (Human In The Loop)**: Decision step requiring human explicit participation
- *   * See: {@link https://github.com/automatic-agent/automatic_agent_platform/blob/main/docs_zh/governance/glossary_and_terminology.md | Glossary: HITL}
+ *   * See: {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/governance/glossary_and_terminology.md | Glossary: HITL}
  *
  * - **Break-glass**: High-risk emergency pass-through with strong audit
- *   * See: {@link https://github.com/automatic-agent/automatic_agent_platform/blob/main/docs_zh/governance/glossary_and_terminology.md | Glossary: break-glass}
+ *   * See: {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/governance/glossary_and_terminology.md | Glossary: break-glass}
  *
  * ## Approval Flow
  *

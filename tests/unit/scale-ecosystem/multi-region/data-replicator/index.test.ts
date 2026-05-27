@@ -7,7 +7,7 @@ import {
   shouldReplicateToRegion,
 } from "../../../../../src/scale-ecosystem/multi-region/data-replicator/index.js";
 
-test("ReplicationEventBuffer adds events and triggers flush on max size", () => {
+test("ReplicationEventBuffer adds events and triggers flush on max size [index]", () => {
   const buffer = new ReplicationEventBuffer(3, 60000);
 
   const result = buffer.add({ eventId: "e1", sourceRegionId: "us", targetRegionId: "eu", aggregateType: "task", aggregateId: "a1", payload: {}, timestamp: "now", checksum: "c1" });
@@ -21,7 +21,7 @@ test("ReplicationEventBuffer adds events and triggers flush on max size", () => 
   assert.equal(shouldFlush, true); // flush triggered at max size
 });
 
-test("ReplicationEventBuffer flush returns all events and clears", () => {
+test("ReplicationEventBuffer flush returns all events and clears [index]", () => {
   const buffer = new ReplicationEventBuffer(100, 60000);
 
   buffer.add({ eventId: "e1", sourceRegionId: "us", targetRegionId: "eu", aggregateType: "task", aggregateId: "a1", payload: {}, timestamp: "now", checksum: "c1" });
@@ -33,7 +33,7 @@ test("ReplicationEventBuffer flush returns all events and clears", () => {
   assert.equal(buffer.size(), 0);
 });
 
-test("ReplicationEventBuffer shouldFlush returns false for new buffer", () => {
+test("ReplicationEventBuffer shouldFlush returns false for new buffer [index]", () => {
   const buffer = new ReplicationEventBuffer(1000, 60000); // long interval
 
   buffer.add({ eventId: "e1", sourceRegionId: "us", targetRegionId: "eu", aggregateType: "task", aggregateId: "a1", payload: {}, timestamp: "now", checksum: "c1" });
@@ -43,7 +43,7 @@ test("ReplicationEventBuffer shouldFlush returns false for new buffer", () => {
   assert.equal(result, false); // interval hasn't elapsed since construction
 });
 
-test("computeChecksum generates consistent checksums", () => {
+test("computeChecksum generates consistent checksums [index]", () => {
   const payload = { data: "test" };
 
   const sha256 = computeChecksum(payload, "sha256");
@@ -53,13 +53,13 @@ test("computeChecksum generates consistent checksums", () => {
   assert.equal(sha256, repeatedSha256);
 });
 
-test("computeChecksum rejects md5 inputs", () => {
+test("computeChecksum rejects md5 inputs [index]", () => {
   const payload = { data: "test" };
 
   assert.throws(() => computeChecksum(payload, "md5" as never), /data_replicator\.unsupported_checksum_algorithm:md5/);
 });
 
-test("computeChecksum produces same result for same payload", () => {
+test("computeChecksum produces same result for same payload [index]", () => {
   const payload = { key: "value" };
 
   const checksum1 = computeChecksum(payload);
@@ -68,7 +68,7 @@ test("computeChecksum produces same result for same payload", () => {
   assert.equal(checksum1, checksum2);
 });
 
-test("shouldReplicateToRegion respects blocked residency mode", () => {
+test("shouldReplicateToRegion respects blocked residency mode [index]", () => {
   const policy = ReplicationPolicySchema.parse({
     sourceRegionId: "us",
     targetRegionIds: ["eu", "ap"],
@@ -79,7 +79,7 @@ test("shouldReplicateToRegion respects blocked residency mode", () => {
   assert.equal(shouldReplicateToRegion(policy, "ap"), false);
 });
 
-test("shouldReplicateToRegion allows replication when not blocked", () => {
+test("shouldReplicateToRegion allows replication when not blocked [index]", () => {
   const policy = ReplicationPolicySchema.parse({
     sourceRegionId: "us",
     targetRegionIds: ["eu"],
@@ -89,7 +89,7 @@ test("shouldReplicateToRegion allows replication when not blocked", () => {
   assert.equal(shouldReplicateToRegion(policy, "eu"), true);
 });
 
-test("shouldReplicateToRegion only allows configured target regions", () => {
+test("shouldReplicateToRegion only allows configured target regions [index]", () => {
   const policy = ReplicationPolicySchema.parse({
     sourceRegionId: "us",
     targetRegionIds: ["eu"],
@@ -100,7 +100,7 @@ test("shouldReplicateToRegion only allows configured target regions", () => {
   assert.equal(shouldReplicateToRegion(policy, "ap"), false);
 });
 
-test("ReplicationPolicySchema applies defaults", () => {
+test("ReplicationPolicySchema applies defaults [index]", () => {
   const result = ReplicationPolicySchema.safeParse({
     sourceRegionId: "us",
     targetRegionIds: ["eu"],

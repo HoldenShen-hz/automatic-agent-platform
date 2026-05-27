@@ -4,7 +4,7 @@ import test from "node:test";
 import { createBudgetLedger, createNodeRun } from "../../../../src/platform/contracts/executable-contracts/index.js";
 import { RuntimeStateMachine } from "../../../../src/platform/five-plane-execution/runtime-state-machine.js";
 
-test("RuntimeStateMachine requires auditRef before applying audited transitions", () => {
+test("RuntimeStateMachine requires auditRef before applying audited transitions [runtime-state-machine]", () => {
   const machine = new RuntimeStateMachine({ persistEvent: () => {} });
   const nodeRun = createNodeRun({
     harnessRunId: "run-1",
@@ -36,7 +36,7 @@ test("RuntimeStateMachine requires auditRef before applying audited transitions"
   );
 });
 
-test("RuntimeStateMachine surfaces persistence_required once audit and fencing prerequisites are satisfied", () => {
+test("RuntimeStateMachine surfaces persistence_required once audit and fencing prerequisites are satisfied [runtime-state-machine]", () => {
   const machine = new RuntimeStateMachine({ persistEvent: null });
   const ledger = createBudgetLedger({
     budgetLedgerId: "ledger-persist",
@@ -71,7 +71,7 @@ test("RuntimeStateMachine surfaces persistence_required once audit and fencing p
   );
 });
 
-test("RuntimeStateMachine persists an event and increments version on success", () => {
+test("RuntimeStateMachine persists an event and increments version on success [runtime-state-machine]", () => {
   const persisted: string[] = [];
   const machine = new RuntimeStateMachine({
     persistEvent: (event) => {
@@ -110,7 +110,7 @@ test("RuntimeStateMachine persists an event and increments version on success", 
   assert.deepEqual(persisted, ["platform.budget_ledger.status_changed"]);
 });
 
-test("RuntimeStateMachine keeps terminalReason on terminal NodeRun transitions when reasonCode is supplied", () => {
+test("RuntimeStateMachine keeps terminalReason on terminal NodeRun transitions when reasonCode is supplied [runtime-state-machine]", () => {
   const machine = new RuntimeStateMachine({ persistEvent: () => {} });
   const nodeRun = createNodeRun({
     harnessRunId: "run-1",
@@ -141,7 +141,7 @@ test("RuntimeStateMachine keeps terminalReason on terminal NodeRun transitions w
   assert.equal(result.aggregate.terminalReason, "node.failed");
 });
 
-test("RuntimeStateMachine marks successful NodeRun transitions as terminal", () => {
+test("RuntimeStateMachine marks successful NodeRun transitions as terminal [runtime-state-machine]", () => {
   const machine = new RuntimeStateMachine({ persistEvent: () => {} });
   const nodeRun = createNodeRun({
     harnessRunId: "run-1",

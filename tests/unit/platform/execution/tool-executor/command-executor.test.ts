@@ -76,7 +76,7 @@ function createCommandHarness(prefix: string): {
   return { workspace, db, store, executor };
 }
 
-test("command executor blocks inline code execution", async () => {
+test("command executor blocks inline code execution [command-executor]", async () => {
   const workspace = createTempWorkspace("aa-command-");
 
   try {
@@ -101,7 +101,7 @@ test("command executor blocks inline code execution", async () => {
   }
 });
 
-test("command executor respects timeout", async () => {
+test("command executor respects timeout [command-executor]", async () => {
   const workspace = createTempWorkspace("aa-command-");
 
   try {
@@ -126,7 +126,7 @@ test("command executor respects timeout", async () => {
   }
 });
 
-test("command executor fails closed when stdout and stderr exceed the capture budget", async () => {
+test("command executor fails closed when stdout and stderr exceed the capture budget [command-executor]", async () => {
   const workspace = createTempWorkspace("aa-command-");
   const oversizedLog = join(workspace, "oversized.log");
 
@@ -153,7 +153,7 @@ test("command executor fails closed when stdout and stderr exceed the capture bu
   }
 });
 
-test("command executor succeeds for safe command inside workspace", async () => {
+test("command executor succeeds for safe command inside workspace [command-executor]", async () => {
   const workspace = createTempWorkspace("aa-command-");
 
   try {
@@ -183,7 +183,7 @@ test("command executor succeeds for safe command inside workspace", async () => 
   }
 });
 
-test("command executor falls back to tool metadata timeout when the request omits one", async () => {
+test("command executor falls back to tool metadata timeout when the request omits one [command-executor]", async () => {
   const workspace = createTempWorkspace("aa-command-");
 
   try {
@@ -208,7 +208,7 @@ test("command executor falls back to tool metadata timeout when the request omit
   }
 });
 
-test("command executor blocks declared writes outside the execution path scope allowlist", async () => {
+test("command executor blocks declared writes outside the execution path scope allowlist [command-executor]", async () => {
   const workspace = createTempWorkspace("aa-command-");
   const scopedDir = join(workspace, "scoped");
   const outsideScopedPath = join(workspace, "outside.txt");
@@ -240,7 +240,7 @@ test("command executor blocks declared writes outside the execution path scope a
   }
 });
 
-test("command executor blocks execution-scoped tool calls outside the allowed tool set", async () => {
+test("command executor blocks execution-scoped tool calls outside the allowed tool set [command-executor]", async () => {
   const harness = createCommandHarness("aa-command-auth-");
 
   harness.db.connection.prepare(`UPDATE executions SET allowed_tools_json = ? WHERE id = ?`).run(
@@ -271,7 +271,7 @@ test("command executor blocks execution-scoped tool calls outside the allowed to
   }
 });
 
-test("command executor honors execution path roots when the request omits an explicit allowlist", async () => {
+test("command executor honors execution path roots when the request omits an explicit allowlist [command-executor]", async () => {
   const harness = createCommandHarness("aa-command-auth-");
   const scopedDir = join(harness.workspace, "scoped");
   const outsideScopedPath = join(harness.workspace, "outside.txt");
@@ -308,7 +308,7 @@ test("command executor honors execution path roots when the request omits an exp
   }
 });
 
-test("command executor fail-closes when execution allowed tools contain malformed entries", async () => {
+test("command executor fail-closes when execution allowed tools contain malformed entries [command-executor]", async () => {
   const harness = createCommandHarness("aa-command-auth-");
 
   harness.db.connection.prepare(`UPDATE executions SET allowed_tools_json = ? WHERE id = ?`).run(
@@ -339,7 +339,7 @@ test("command executor fail-closes when execution allowed tools contain malforme
   }
 });
 
-test("command executor fail-closes when execution allowed paths contain malformed entries", async () => {
+test("command executor fail-closes when execution allowed paths contain malformed entries [command-executor]", async () => {
   const harness = createCommandHarness("aa-command-auth-");
 
   harness.db.connection.prepare(`UPDATE executions SET allowed_paths_json = ? WHERE id = ?`).run(
@@ -370,7 +370,7 @@ test("command executor fail-closes when execution allowed paths contain malforme
   }
 });
 
-test("command executor exposes a stable tool call envelope for blocked executions", async () => {
+test("command executor exposes a stable tool call envelope for blocked executions [command-executor]", async () => {
   const workspace = createTempWorkspace("aa-command-");
 
   try {
@@ -400,7 +400,7 @@ test("command executor exposes a stable tool call envelope for blocked execution
   }
 });
 
-test("command executor propagates cancellation to the child process", async () => {
+test("command executor propagates cancellation to the child process [command-executor]", async () => {
   const workspace = createTempWorkspace("aa-command-");
 
   try {
@@ -432,7 +432,7 @@ test("command executor propagates cancellation to the child process", async () =
   }
 });
 
-test("command executor blocks shell meta syntax in arguments", async () => {
+test("command executor blocks shell meta syntax in arguments [command-executor]", async () => {
   const workspace = createTempWorkspace("aa-command-");
 
   try {
@@ -457,7 +457,7 @@ test("command executor blocks shell meta syntax in arguments", async () => {
   }
 });
 
-test("command executor blocks invalid command arity for signed commands", async () => {
+test("command executor blocks invalid command arity for signed commands [command-executor]", async () => {
   const workspace = createTempWorkspace("aa-command-");
 
   try {
@@ -482,7 +482,7 @@ test("command executor blocks invalid command arity for signed commands", async 
   }
 });
 
-test("command executor blocks unknown commands before spawning a process", async () => {
+test("command executor blocks unknown commands before spawning a process [command-executor]", async () => {
   const workspace = createTempWorkspace("aa-command-");
 
   try {
@@ -507,7 +507,7 @@ test("command executor blocks unknown commands before spawning a process", async
   }
 });
 
-test("command executor blocks interpreter flags that bypass script-file mode", async () => {
+test("command executor blocks interpreter flags that bypass script-file mode [command-executor]", async () => {
   const workspace = createTempWorkspace("aa-command-");
 
   try {
@@ -532,7 +532,7 @@ test("command executor blocks interpreter flags that bypass script-file mode", a
   }
 });
 
-test("command executor allows interpreter script-file mode inside the sandbox", async () => {
+test("command executor allows interpreter script-file mode inside the sandbox [command-executor]", async () => {
   const workspace = createTempWorkspace("aa-command-");
   const scriptPath = join(workspace, "script.js");
 
@@ -560,7 +560,7 @@ test("command executor allows interpreter script-file mode inside the sandbox", 
   }
 });
 
-test("command safety classifier keeps a cached restrictive unknown-command decision until ttl expiry", () => {
+test("command safety classifier keeps a cached restrictive unknown-command decision until ttl expiry [command-executor]", () => {
   let now = 1_000;
   const policies = createDefaultCommandPolicies();
   const classifier = new CommandSafetyClassifier({
@@ -586,7 +586,7 @@ test("command safety classifier keeps a cached restrictive unknown-command decis
   assert.equal(third.riskLevel, "low");
 });
 
-test("command executor externalizes oversized sanitized output into an artifact and keeps a truncated message", async () => {
+test("command executor externalizes oversized sanitized output into an artifact and keeps a truncated message [command-executor]", async () => {
   const workspace = createTempWorkspace("aa-command-");
   const scriptPath = join(workspace, "large-output.js");
 
@@ -629,7 +629,7 @@ test("command executor externalizes oversized sanitized output into an artifact 
   }
 });
 
-test("command executor externalizes redacted oversized output without persisting raw secrets", async () => {
+test("command executor externalizes redacted oversized output without persisting raw secrets [command-executor]", async () => {
   const workspace = createTempWorkspace("aa-command-");
   const scriptPath = join(workspace, "large-secret-output.js");
   const secret = "sk-abcdefghijklmnopqrstuvwxyz123456";

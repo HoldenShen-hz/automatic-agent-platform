@@ -9,6 +9,6 @@ import test from "node:test";
 
 import * as ExecutionWorkerHandshakeService from "../../../../src/scale-ecosystem/marketplace/execution-worker-handshake-service.js";
 
-test("execution-worker-handshake-service exports ExecutionWorkerHandshakeService", () => {
+test("execution-worker-handshake-service exports ExecutionWorkerHandshakeService [execution-worker-handshake-service]", () => {
   assert.ok(ExecutionWorkerHandshakeService.ExecutionWorkerHandshakeService !== undefined);
 });

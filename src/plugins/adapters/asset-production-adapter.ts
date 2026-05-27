@@ -9,7 +9,18 @@
 import type { ExternalAdapterPlugin } from "../../domains/registry/plugin-spi.js";
 import { PolicyDeniedError, type ErrorCode } from "../../platform/contracts/errors.js";
 import { NetworkEgressPolicyService } from "../../platform/five-plane-control-plane/iam/network-egress-policy.js";
+import { parseSafeOutboundUrl } from "../../platform/five-plane-control-plane/iam/outbound-url-policy.js";
 import { createHash } from "node:crypto";
+
+function defineAdapterEndpoint(url: string, key: string): string {
+  return parseSafeOutboundUrl(url, {
+    invalid: `asset_production_adapter.invalid_${key}`,
+    blocked: `asset_production_adapter.blocked_${key}`,
+  }).toString().replace(/\/$/, "");
+}
+
+const FIGMA_FILES_URL = defineAdapterEndpoint("https://api.figma.com/v1/files", "figma_files_url");
+const FIGMA_CDN_URL = defineAdapterEndpoint("https://cdn.figma.com", "figma_cdn_url");
 
 export function createAssetProductionAdapterPlugin(): ExternalAdapterPlugin {
   const assetProductionPolicy = new NetworkEgressPolicyService({
@@ -26,9 +37,9 @@ export function createAssetProductionAdapterPlugin(): ExternalAdapterPlugin {
       // Figma API credentials would be validated here
     },
     healthCheck() {
-      return assetProductionPolicy.evaluate("https://api.figma.com/v1/files").allowed
+      return assetProductionPolicy.evaluate(FIGMA_FILES_URL).allowed
         && credentialFingerprint != null
-        && assetProductionPolicy.evaluate("https://cdn.figma.com").allowed;
+        && assetProductionPolicy.evaluate(FIGMA_CDN_URL).allowed;
     },
     async shutdown() {
       credentialFingerprint = null;
@@ -51,7 +62,7 @@ export function createAssetProductionAdapterPlugin(): ExternalAdapterPlugin {
       };
 
       // R28-14 fix: enforce egress policy
-      const targetUrl = action.startsWith("cdn_") ? "https://cdn.figma.com" : "https://api.figma.com/v1/files";
+      const targetUrl = action.startsWith("cdn_") ? FIGMA_CDN_URL : FIGMA_FILES_URL;
       const decision = await assetProductionPolicy.evaluate(targetUrl);
       if (!decision.allowed) {
         throw new PolicyDeniedError("egress.denied" as ErrorCode, "Asset production adapter: egress denied");

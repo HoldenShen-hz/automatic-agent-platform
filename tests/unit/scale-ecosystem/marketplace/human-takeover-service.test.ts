@@ -9,6 +9,6 @@ import test from "node:test";
 
 import * as HumanTakeoverService from "../../../../src/scale-ecosystem/marketplace/human-takeover-service.js";
 
-test("human-takeover-service exports HumanTakeoverService", () => {
+test("human-takeover-service exports HumanTakeoverService [human-takeover-service]", () => {
   assert.ok(HumanTakeoverService.HumanTakeoverService !== undefined);
 });

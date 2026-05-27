@@ -98,7 +98,7 @@ function writeSmokeEvidence(root: string): void {
   );
 }
 
-test("platform operator service builds an execution-plane summary with readiness and evidence verdicts", () => {
+test("platform operator service builds an execution-plane summary with readiness and evidence verdicts [platform-operator-service]", () => {
   const harness = createHarness("aa-platform-operator-unit-");
   const generatedAt = "2026-04-08T10:00:00.000Z";
   try {
@@ -336,7 +336,7 @@ test("platform operator service builds an execution-plane summary with readiness
   }
 });
 
-test("platform operator service handles empty store gracefully", () => {
+test("platform operator service handles empty store gracefully [platform-operator-service]", () => {
   const harness = createHarness("aa-platform-operator-empty-");
   const generatedAt = "2026-04-08T10:00:00.000Z";
   try {

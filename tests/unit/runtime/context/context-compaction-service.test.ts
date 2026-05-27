@@ -12,12 +12,12 @@ import { createHash } from "node:crypto";
 // Module Export Tests
 // =============================================================================
 
-test("ContextCompactionService module exports the class", () => {
+test("ContextCompactionService module exports the class [context-compaction-service]", () => {
   assert.ok("ContextCompactionService" in { ContextCompactionService });
   assert.strictEqual(typeof ContextCompactionService, "function");
 });
 
-test("ContextCompactionOptions has expected shape", () => {
+test("ContextCompactionOptions has expected shape [context-compaction-service]", () => {
   const options: ContextCompactionOptions = {
     taskId: "task_compaction_test",
     sessionId: "session_compaction_test",
@@ -29,7 +29,7 @@ test("ContextCompactionOptions has expected shape", () => {
   assert.equal(options.maxContextTokens, 100000);
 });
 
-test("CompactedContextMessage structure validation", () => {
+test("CompactedContextMessage structure validation [context-compaction-service]", () => {
   const message: CompactedContextMessage = {
     messageId: "msg_test",
     direction: "system",
@@ -49,7 +49,7 @@ test("CompactedContextMessage structure validation", () => {
   assert.equal(message.protected, true);
 });
 
-test("ContextCompactionResult structure validation", () => {
+test("ContextCompactionResult structure validation [context-compaction-service]", () => {
   const result: ContextCompactionResult = {
     usageBeforeTokens: 80000,
     usageAfterStage1Tokens: 60000,
@@ -79,25 +79,25 @@ function clampRatio(value: number, fallback: number): number {
   return Number.isFinite(value) && value > 0 ? value : fallback;
 }
 
-test("clampRatio returns value when positive and finite", () => {
+test("clampRatio returns value when positive and finite [context-compaction-service]", () => {
   assert.equal(clampRatio(0.8, 0.7), 0.8);
   assert.equal(clampRatio(0.5, 0.7), 0.5);
   assert.equal(clampRatio(1.0, 0.7), 1.0);
 });
 
-test("clampRatio returns fallback when value is 0", () => {
+test("clampRatio returns fallback when value is 0 [context-compaction-service]", () => {
   assert.equal(clampRatio(0, 0.7), 0.7);
 });
 
-test("clampRatio returns fallback when value is negative", () => {
+test("clampRatio returns fallback when value is negative [context-compaction-service]", () => {
   assert.equal(clampRatio(-0.1, 0.7), 0.7);
 });
 
-test("clampRatio returns fallback when value is NaN", () => {
+test("clampRatio returns fallback when value is NaN [context-compaction-service]", () => {
   assert.equal(clampRatio(NaN, 0.7), 0.7);
 });
 
-test("clampRatio returns fallback when value is Infinity", () => {
+test("clampRatio returns fallback when value is Infinity [context-compaction-service]", () => {
   assert.equal(clampRatio(Infinity, 0.7), 0.7);
 });
 
@@ -105,26 +105,26 @@ function excerpt(content: string, maxLength: number = 80): string {
   return content.replace(/\s+/g, " ").trim().slice(0, maxLength);
 }
 
-test("excerpt truncates long content", () => {
+test("excerpt truncates long content [context-compaction-service]", () => {
   const longContent = "This is a very long piece of content that should be truncated when it exceeds the maximum length limit";
   const result = excerpt(longContent, 40);
   assert.equal(result.length, 40);
   assert.equal(result, "This is a very long piece of content tha");
 });
 
-test("excerpt normalizes whitespace", () => {
+test("excerpt normalizes whitespace [context-compaction-service]", () => {
   const contentWithWhitespace = "  This   has    irregular   \t\nwhitespace  ";
   const result = excerpt(contentWithWhitespace);
   assert.equal(result, "This has irregular whitespace");
 });
 
-test("excerpt returns full content when within limit", () => {
+test("excerpt returns full content when within limit [context-compaction-service]", () => {
   const shortContent = "Short content";
   const result = excerpt(shortContent, 80);
   assert.equal(result, "Short content");
 });
 
-test("excerpt defaults to 80 characters", () => {
+test("excerpt defaults to 80 characters [context-compaction-service]", () => {
   const longContent = "a".repeat(100);
   const result = excerpt(longContent);
   assert.equal(result.length, 80);
@@ -134,7 +134,7 @@ test("excerpt defaults to 80 characters", () => {
 // Message Protection Logic Tests
 // =============================================================================
 
-test("isProtectedMessage returns true for protected message types", () => {
+test("isProtectedMessage returns true for protected message types [context-compaction-service]", () => {
   const protectedTypes = [
     "user_request",
     "assistant_plan",
@@ -151,7 +151,7 @@ test("isProtectedMessage returns true for protected message types", () => {
   }
 });
 
-test("isProtectedMessage returns false for non-protected message types", () => {
+test("isProtectedMessage returns false for non-protected message types [context-compaction-service]", () => {
   const messageType = "tool_result";
   const protectedTypes = [
     "user_request",
@@ -170,17 +170,17 @@ test("isProtectedMessage returns false for non-protected message types", () => {
 // Stage Trigger Ratio Logic Tests
 // =============================================================================
 
-test("stage1TriggerRatio defaults to 0.7", () => {
+test("stage1TriggerRatio defaults to 0.7 [context-compaction-service]", () => {
   const defaultRatio = clampRatio(0.7, 0.7);
   assert.equal(defaultRatio, 0.7);
 });
 
-test("stage2TriggerRatio defaults to 0.85", () => {
+test("stage2TriggerRatio defaults to 0.85 [context-compaction-service]", () => {
   const defaultRatio = clampRatio(0.85, 0.85);
   assert.equal(defaultRatio, 0.85);
 });
 
-test("trigger calculation with ratio threshold", () => {
+test("trigger calculation with ratio threshold [context-compaction-service]", () => {
   const usableBudgetTokens = 100000;
   const stage1TriggerRatio = 0.7;
   const usageBeforeTokens = 75000;
@@ -189,7 +189,7 @@ test("trigger calculation with ratio threshold", () => {
   assert.equal(stage1Triggered, true);
 });
 
-test("trigger does not fire when under threshold", () => {
+test("trigger does not fire when under threshold [context-compaction-service]", () => {
   const usableBudgetTokens = 100000;
   const stage1TriggerRatio = 0.7;
   const usageBeforeTokens = 50000;
@@ -206,16 +206,16 @@ function estimateTokenCount(text: string): number {
   return Math.ceil(text.length / 4);
 }
 
-test("estimateTokenCount calculates based on character length", () => {
+test("estimateTokenCount calculates based on character length [context-compaction-service]", () => {
   assert.equal(estimateTokenCount("test"), 1);
   assert.equal(estimateTokenCount("testing123456789"), 4);
 });
 
-test("estimateTokenCount handles empty string", () => {
+test("estimateTokenCount handles empty string [context-compaction-service]", () => {
   assert.equal(estimateTokenCount(""), 0);
 });
 
-test("estimateTokenCount handles long content", () => {
+test("estimateTokenCount handles long content [context-compaction-service]", () => {
   const content = "x".repeat(1000);
   assert.equal(estimateTokenCount(content), 250);
 });
@@ -224,7 +224,7 @@ test("estimateTokenCount handles long content", () => {
 // KV Cache Fixed Prefix Logic Tests
 // =============================================================================
 
-test("fixedPrefixEndIndex identifies system messages at start", () => {
+test("fixedPrefixEndIndex identifies system messages at start [context-compaction-service]", () => {
   const messages = [
     { id: "sys_1", direction: "system" as const, messageType: "system_prompt", content: "fixed prefix 1", partsJson: null },
     { id: "sys_2", direction: "system" as const, messageType: "system_reminder", content: "fixed prefix 2", partsJson: null },
@@ -243,7 +243,7 @@ test("fixedPrefixEndIndex identifies system messages at start", () => {
   assert.equal(fixedPrefixEndIndex, 2);
 });
 
-test("fixedPrefixEndIndex is 0 when first message is not system", () => {
+test("fixedPrefixEndIndex is 0 when first message is not system [context-compaction-service]", () => {
   const messages = [
     { id: "user_1", direction: "inbound" as const, messageType: "user_request", content: "user message", partsJson: null },
     { id: "sys_1", direction: "system" as const, messageType: "system_prompt", content: "fixed prefix", partsJson: null },
@@ -265,7 +265,7 @@ test("fixedPrefixEndIndex is 0 when first message is not system", () => {
 // SHA256 Hash Generation Tests
 // =============================================================================
 
-test("SHA256 hash generation produces consistent output", () => {
+test("SHA256 hash generation produces consistent output [context-compaction-service]", () => {
   const content = "test content for hashing";
   const hash1 = createHash("sha256").update(content, "utf8").digest("hex");
   const hash2 = createHash("sha256").update(content, "utf8").digest("hex");
@@ -274,7 +274,7 @@ test("SHA256 hash generation produces consistent output", () => {
   assert.equal(hash1.length, 64);
 });
 
-test("SHA256 hash produces different output for different content", () => {
+test("SHA256 hash produces different output for different content [context-compaction-service]", () => {
   const hash1 = createHash("sha256").update("content 1", "utf8").digest("hex");
   const hash2 = createHash("sha256").update("content 2", "utf8").digest("hex");
 
@@ -298,7 +298,7 @@ function applyRedaction(value: unknown, redactPatterns: string[], replacementMas
   return redacted;
 }
 
-test("applyRedaction redacts matching patterns", () => {
+test("applyRedaction redacts matching patterns [context-compaction-service]", () => {
   const value = "api_key=secret123 token=abc123";
   const patterns = ["api_key", "token"];
   const result = applyRedaction(value, patterns) as string;
@@ -307,7 +307,7 @@ test("applyRedaction redacts matching patterns", () => {
   assert.ok(result.includes("token: ***"));
 });
 
-test("applyRedaction preserves non-matching content", () => {
+test("applyRedaction preserves non-matching content [context-compaction-service]", () => {
   const value = "username=user123 password=pass456";
   const patterns = ["api_key"];
   const result = applyRedaction(value, patterns) as string;
@@ -316,7 +316,7 @@ test("applyRedaction preserves non-matching content", () => {
   assert.ok(result.includes("password=pass456"));
 });
 
-test("applyRedaction handles non-string values", () => {
+test("applyRedaction handles non-string values [context-compaction-service]", () => {
   const value = { key: "value" };
   const patterns = ["api_key"];
   const result = applyRedaction(value, patterns);
@@ -324,7 +324,7 @@ test("applyRedaction handles non-string values", () => {
   assert.deepEqual(result, value);
 });
 
-test("applyRedaction uses custom replacement mask", () => {
+test("applyRedaction uses custom replacement mask [context-compaction-service]", () => {
   const value = "api_key=secret";
   const patterns = ["api_key"];
   const result = applyRedaction(value, patterns, "REDACTED") as string;
@@ -345,7 +345,7 @@ function detectTaint(valueStr: string, blockedPatterns: string[]): boolean {
   return false;
 }
 
-test("detectTaint returns true when blocked pattern is found", () => {
+test("detectTaint returns true when blocked pattern is found [context-compaction-service]", () => {
   const value = "__import__('os').system('ls')";
   const patterns = ["__import__", "<script", "javascript:"];
   const result = detectTaint(value, patterns);
@@ -353,7 +353,7 @@ test("detectTaint returns true when blocked pattern is found", () => {
   assert.equal(result, true);
 });
 
-test("detectTaint returns false when no blocked pattern is found", () => {
+test("detectTaint returns false when no blocked pattern is found [context-compaction-service]", () => {
   const value = "This is a normal response";
   const patterns = ["__import__", "<script", "javascript:"];
   const result = detectTaint(value, patterns);
@@ -361,7 +361,7 @@ test("detectTaint returns false when no blocked pattern is found", () => {
   assert.equal(result, false);
 });
 
-test("detectTaint is case-sensitive", () => {
+test("detectTaint is case-sensitive [context-compaction-service]", () => {
   const value = "api_key=secret123";
   const patterns = ["api_key"];
   const result = detectTaint(value, patterns);

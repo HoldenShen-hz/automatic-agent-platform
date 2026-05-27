@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { WorkerServiceIdentityRegistry } from "../../../../../src/platform/five-plane-execution/worker-pool/worker-service-identity.js";
 
-test("WorkerServiceIdentityRegistry.register stores identity", () => {
+test("WorkerServiceIdentityRegistry.register stores identity [worker-service-identity]", () => {
   const registry = new WorkerServiceIdentityRegistry();
   const identity = {
     workerId: "worker-1",
@@ -15,7 +15,7 @@ test("WorkerServiceIdentityRegistry.register stores identity", () => {
   assert.equal(result.workerId, "worker-1");
 });
 
-test("WorkerServiceIdentityRegistry.evaluateClaim returns accepted for valid claim", () => {
+test("WorkerServiceIdentityRegistry.evaluateClaim returns accepted for valid claim [worker-service-identity]", () => {
   const registry = new WorkerServiceIdentityRegistry();
   registry.register({
     workerId: "worker-1",
@@ -34,7 +34,7 @@ test("WorkerServiceIdentityRegistry.evaluateClaim returns accepted for valid cla
   assert.equal(decision.reasonCode, "worker_identity.accepted");
 });
 
-test("WorkerServiceIdentityRegistry.evaluateClaim returns worker_unknown for unregistered worker", () => {
+test("WorkerServiceIdentityRegistry.evaluateClaim returns worker_unknown for unregistered worker [worker-service-identity]", () => {
   const registry = new WorkerServiceIdentityRegistry();
   const decision = registry.evaluateClaim({
     workerId: "unknown-worker",
@@ -47,7 +47,7 @@ test("WorkerServiceIdentityRegistry.evaluateClaim returns worker_unknown for unr
   assert.equal(decision.reasonCode, "worker_identity.worker_unknown");
 });
 
-test("WorkerServiceIdentityRegistry.evaluateClaim returns service_identity_mismatch", () => {
+test("WorkerServiceIdentityRegistry.evaluateClaim returns service_identity_mismatch [worker-service-identity]", () => {
   const registry = new WorkerServiceIdentityRegistry();
   registry.register({
     workerId: "worker-1",
@@ -66,7 +66,7 @@ test("WorkerServiceIdentityRegistry.evaluateClaim returns service_identity_misma
   assert.equal(decision.reasonCode, "worker_identity.service_identity_mismatch");
 });
 
-test("WorkerServiceIdentityRegistry.evaluateClaim returns mtls_mismatch", () => {
+test("WorkerServiceIdentityRegistry.evaluateClaim returns mtls_mismatch [worker-service-identity]", () => {
   const registry = new WorkerServiceIdentityRegistry();
   registry.register({
     workerId: "worker-1",
@@ -85,7 +85,7 @@ test("WorkerServiceIdentityRegistry.evaluateClaim returns mtls_mismatch", () => 
   assert.equal(decision.reasonCode, "worker_identity.mtls_mismatch");
 });
 
-test("WorkerServiceIdentityRegistry.evaluateClaim returns tenant_not_allowed", () => {
+test("WorkerServiceIdentityRegistry.evaluateClaim returns tenant_not_allowed [worker-service-identity]", () => {
   const registry = new WorkerServiceIdentityRegistry();
   registry.register({
     workerId: "worker-1",
@@ -104,7 +104,7 @@ test("WorkerServiceIdentityRegistry.evaluateClaim returns tenant_not_allowed", (
   assert.equal(decision.reasonCode, "worker_identity.tenant_not_allowed");
 });
 
-test("WorkerServiceIdentityRegistry.register returns the registered identity", () => {
+test("WorkerServiceIdentityRegistry.register returns the registered identity [worker-service-identity]", () => {
   const registry = new WorkerServiceIdentityRegistry();
   const identity = {
     workerId: "worker-1",
@@ -116,7 +116,7 @@ test("WorkerServiceIdentityRegistry.register returns the registered identity", (
   assert.deepEqual(result, identity);
 });
 
-test("WorkerServiceIdentityRegistry can register multiple workers", () => {
+test("WorkerServiceIdentityRegistry can register multiple workers [worker-service-identity]", () => {
   const registry = new WorkerServiceIdentityRegistry();
   registry.register({
     workerId: "worker-1",
@@ -150,7 +150,7 @@ test("WorkerServiceIdentityRegistry can register multiple workers", () => {
   assert.equal(decision2.accepted, true);
 });
 
-test("WorkerServiceIdentityRegistry.register fails closed when durable persistence fails", () => {
+test("WorkerServiceIdentityRegistry.register fails closed when durable persistence fails [worker-service-identity]", () => {
   const registry = new WorkerServiceIdentityRegistry({
     worker: {
       upsertWorkerIdentity() {
@@ -180,7 +180,7 @@ test("WorkerServiceIdentityRegistry.register fails closed when durable persisten
   assert.equal(decision.reasonCode, "worker_identity.worker_unknown");
 });
 
-test("WorkerServiceIdentityRegistry.evaluateClaim rejects invalid durable tenant payload", () => {
+test("WorkerServiceIdentityRegistry.evaluateClaim rejects invalid durable tenant payload [worker-service-identity]", () => {
   const registry = new WorkerServiceIdentityRegistry({
     worker: {
       getWorkerIdentity() {

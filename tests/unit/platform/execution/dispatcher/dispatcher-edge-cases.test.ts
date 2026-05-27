@@ -18,32 +18,32 @@ import type { ExecutionStatus } from "../../../../../src/platform/contracts/type
 // normalizeStringArray
 // ---------------------------------------------------------------------------
 
-test("normalizeStringArray returns empty array for empty input", () => {
+test("normalizeStringArray returns empty array for empty input [dispatcher-edge-cases]", () => {
   const result = normalizeStringArray([]);
   assert.deepStrictEqual(result, []);
 });
 
-test("normalizeStringArray trims whitespace and sorts", () => {
+test("normalizeStringArray trims whitespace and sorts [dispatcher-edge-cases]", () => {
   const result = normalizeStringArray([" banana", "apple ", "  cherry"]);
   assert.deepStrictEqual(result, ["apple", "banana", "cherry"]);
 });
 
-test("normalizeStringArray removes duplicates", () => {
+test("normalizeStringArray removes duplicates [dispatcher-edge-cases]", () => {
   const result = normalizeStringArray(["a", " b ", "a", "b", "  a  "]);
   assert.deepStrictEqual(result, ["a", "b"]);
 });
 
-test("normalizeStringArray removes empty strings", () => {
+test("normalizeStringArray removes empty strings [dispatcher-edge-cases]", () => {
   const result = normalizeStringArray(["a", "", "  ", "b"]);
   assert.deepStrictEqual(result, ["a", "b"]);
 });
 
-test("normalizeStringArray handles all whitespace strings", () => {
+test("normalizeStringArray handles all whitespace strings [dispatcher-edge-cases]", () => {
   const result = normalizeStringArray([" ", "\t", "\n", "a"]);
   assert.deepStrictEqual(result, ["a"]);
 });
 
-test("normalizeStringArray returns empty for all empty strings", () => {
+test("normalizeStringArray returns empty for all empty strings [dispatcher-edge-cases]", () => {
   const result = normalizeStringArray(["", "  ", "\t", "\n"]);
   assert.deepStrictEqual(result, []);
 });
@@ -52,44 +52,44 @@ test("normalizeStringArray returns empty for all empty strings", () => {
 // parseJsonArray
 // ---------------------------------------------------------------------------
 
-test("parseJsonArray parses valid JSON array", () => {
+test("parseJsonArray parses valid JSON array [dispatcher-edge-cases]", () => {
   const result = parseJsonArray('["a", "b", "c"]');
   assert.deepStrictEqual(result, ["a", "b", "c"]);
 });
 
-test("parseJsonArray returns empty for invalid JSON", () => {
+test("parseJsonArray returns empty for invalid JSON [dispatcher-edge-cases]", () => {
   const result = parseJsonArray("not json");
   assert.deepStrictEqual(result, []);
 });
 
-test("parseJsonArray returns empty for non-array JSON", () => {
+test("parseJsonArray returns empty for non-array JSON [dispatcher-edge-cases]", () => {
   const result = parseJsonArray('{"key": "value"}');
   assert.deepStrictEqual(result, []);
 });
 
-test("parseJsonArray filters non-string elements", () => {
+test("parseJsonArray filters non-string elements [dispatcher-edge-cases]", () => {
   const result = parseJsonArray('["a", 1, null, "b", true, "c"]');
   assert.deepStrictEqual(result, ["a", "b", "c"]);
 });
 
-test("parseJsonArray calls onError callback on parse failure", () => {
+test("parseJsonArray calls onError callback on parse failure [dispatcher-edge-cases]", () => {
   let errorMessage = "";
   parseJsonArray("invalid", (msg) => { errorMessage = msg; });
   assert.ok(errorMessage.length > 0);
 });
 
-test("parseJsonArray does not call onError on valid JSON", () => {
+test("parseJsonArray does not call onError on valid JSON [dispatcher-edge-cases]", () => {
   let errorCalled = false;
   parseJsonArray('["a"]', () => { errorCalled = true; });
   assert.equal(errorCalled, false);
 });
 
-test("parseJsonArray handles empty array", () => {
+test("parseJsonArray handles empty array [dispatcher-edge-cases]", () => {
   const result = parseJsonArray("[]");
   assert.deepStrictEqual(result, []);
 });
 
-test("parseJsonArray handles array with empty strings", () => {
+test("parseJsonArray handles array with empty strings [dispatcher-edge-cases]", () => {
   const result = parseJsonArray('["a", "", "b"]');
   assert.deepStrictEqual(result, ["a", "", "b"]);
 });
@@ -98,27 +98,27 @@ test("parseJsonArray handles array with empty strings", () => {
 // resolveDispatchTarget
 // ---------------------------------------------------------------------------
 
-test("resolveDispatchTarget returns local_only for local_only", () => {
+test("resolveDispatchTarget returns local_only for local_only [dispatcher-edge-cases]", () => {
   assert.equal(resolveDispatchTarget("local_only"), "local_only");
 });
 
-test("resolveDispatchTarget returns prefer_remote for prefer_remote", () => {
+test("resolveDispatchTarget returns prefer_remote for prefer_remote [dispatcher-edge-cases]", () => {
   assert.equal(resolveDispatchTarget("prefer_remote"), "prefer_remote");
 });
 
-test("resolveDispatchTarget returns require_remote for require_remote", () => {
+test("resolveDispatchTarget returns require_remote for require_remote [dispatcher-edge-cases]", () => {
   assert.equal(resolveDispatchTarget("require_remote"), "require_remote");
 });
 
-test("resolveDispatchTarget returns any for undefined", () => {
+test("resolveDispatchTarget returns any for undefined [dispatcher-edge-cases]", () => {
   assert.equal(resolveDispatchTarget(undefined), "any");
 });
 
-test("resolveDispatchTarget returns any for null", () => {
+test("resolveDispatchTarget returns any for null [dispatcher-edge-cases]", () => {
   assert.equal(resolveDispatchTarget(null), "any");
 });
 
-test("resolveDispatchTarget returns any for invalid value", () => {
+test("resolveDispatchTarget returns any for invalid value [dispatcher-edge-cases]", () => {
   assert.equal(resolveDispatchTarget("invalid" as any), "any");
 });
 
@@ -126,23 +126,23 @@ test("resolveDispatchTarget returns any for invalid value", () => {
 // resolveRequiredIsolationLevel
 // ---------------------------------------------------------------------------
 
-test("resolveRequiredIsolationLevel returns hardened for hardened", () => {
+test("resolveRequiredIsolationLevel returns hardened for hardened [dispatcher-edge-cases]", () => {
   assert.equal(resolveRequiredIsolationLevel("hardened"), "hardened");
 });
 
-test("resolveRequiredIsolationLevel returns strict for strict", () => {
+test("resolveRequiredIsolationLevel returns strict for strict [dispatcher-edge-cases]", () => {
   assert.equal(resolveRequiredIsolationLevel("strict"), "strict");
 });
 
-test("resolveRequiredIsolationLevel returns standard for undefined", () => {
+test("resolveRequiredIsolationLevel returns standard for undefined [dispatcher-edge-cases]", () => {
   assert.equal(resolveRequiredIsolationLevel(undefined), "standard");
 });
 
-test("resolveRequiredIsolationLevel returns standard for null", () => {
+test("resolveRequiredIsolationLevel returns standard for null [dispatcher-edge-cases]", () => {
   assert.equal(resolveRequiredIsolationLevel(null), "standard");
 });
 
-test("resolveRequiredIsolationLevel returns standard for invalid value", () => {
+test("resolveRequiredIsolationLevel returns standard for invalid value [dispatcher-edge-cases]", () => {
   assert.equal(resolveRequiredIsolationLevel("invalid" as any), "standard");
 });
 
@@ -150,27 +150,27 @@ test("resolveRequiredIsolationLevel returns standard for invalid value", () => {
 // resolveRequiredRepoVersion
 // ---------------------------------------------------------------------------
 
-test("resolveRequiredRepoVersion returns trimmed non-empty string", () => {
+test("resolveRequiredRepoVersion returns trimmed non-empty string [dispatcher-edge-cases]", () => {
   assert.equal(resolveRequiredRepoVersion("  v1.0.0  "), "v1.0.0");
 });
 
-test("resolveRequiredRepoVersion returns null for undefined", () => {
+test("resolveRequiredRepoVersion returns null for undefined [dispatcher-edge-cases]", () => {
   assert.equal(resolveRequiredRepoVersion(undefined), null);
 });
 
-test("resolveRequiredRepoVersion returns null for null", () => {
+test("resolveRequiredRepoVersion returns null for null [dispatcher-edge-cases]", () => {
   assert.equal(resolveRequiredRepoVersion(null), null);
 });
 
-test("resolveRequiredRepoVersion returns null for empty string", () => {
+test("resolveRequiredRepoVersion returns null for empty string [dispatcher-edge-cases]", () => {
   assert.equal(resolveRequiredRepoVersion(""), null);
 });
 
-test("resolveRequiredRepoVersion returns null for whitespace only", () => {
+test("resolveRequiredRepoVersion returns null for whitespace only [dispatcher-edge-cases]", () => {
   assert.equal(resolveRequiredRepoVersion("   "), null);
 });
 
-test("resolveRequiredRepoVersion returns null for non-string", () => {
+test("resolveRequiredRepoVersion returns null for non-string [dispatcher-edge-cases]", () => {
   assert.equal(resolveRequiredRepoVersion(123 as any), null);
 });
 
@@ -178,39 +178,39 @@ test("resolveRequiredRepoVersion returns null for non-string", () => {
 // meetsIsolationRequirement
 // ---------------------------------------------------------------------------
 
-test("meetsIsolationRequirement standard worker meets standard requirement", () => {
+test("meetsIsolationRequirement standard worker meets standard requirement [dispatcher-edge-cases]", () => {
   assert.equal(meetsIsolationRequirement("standard", "standard"), true);
 });
 
-test("meetsIsolationRequirement hardened worker meets standard requirement", () => {
+test("meetsIsolationRequirement hardened worker meets standard requirement [dispatcher-edge-cases]", () => {
   assert.equal(meetsIsolationRequirement("hardened", "standard"), true);
 });
 
-test("meetsIsolationRequirement strict worker meets standard requirement", () => {
+test("meetsIsolationRequirement strict worker meets standard requirement [dispatcher-edge-cases]", () => {
   assert.equal(meetsIsolationRequirement("strict", "standard"), true);
 });
 
-test("meetsIsolationRequirement hardened worker meets hardened requirement", () => {
+test("meetsIsolationRequirement hardened worker meets hardened requirement [dispatcher-edge-cases]", () => {
   assert.equal(meetsIsolationRequirement("hardened", "hardened"), true);
 });
 
-test("meetsIsolationRequirement strict worker meets hardened requirement", () => {
+test("meetsIsolationRequirement strict worker meets hardened requirement [dispatcher-edge-cases]", () => {
   assert.equal(meetsIsolationRequirement("strict", "hardened"), true);
 });
 
-test("meetsIsolationRequirement standard worker does not meet hardened requirement", () => {
+test("meetsIsolationRequirement standard worker does not meet hardened requirement [dispatcher-edge-cases]", () => {
   assert.equal(meetsIsolationRequirement("standard", "hardened"), false);
 });
 
-test("meetsIsolationRequirement standard worker does not meet strict requirement", () => {
+test("meetsIsolationRequirement standard worker does not meet strict requirement [dispatcher-edge-cases]", () => {
   assert.equal(meetsIsolationRequirement("standard", "strict"), false);
 });
 
-test("meetsIsolationRequirement hardened worker does not meet strict requirement", () => {
+test("meetsIsolationRequirement hardened worker does not meet strict requirement [dispatcher-edge-cases]", () => {
   assert.equal(meetsIsolationRequirement("hardened", "strict"), false);
 });
 
-test("meetsIsolationRequirement strict worker meets strict requirement", () => {
+test("meetsIsolationRequirement strict worker meets strict requirement [dispatcher-edge-cases]", () => {
   assert.equal(meetsIsolationRequirement("strict", "strict"), true);
 });
 
@@ -218,19 +218,19 @@ test("meetsIsolationRequirement strict worker meets strict requirement", () => {
 // isElevatedPriority
 // ---------------------------------------------------------------------------
 
-test("isElevatedPriority returns true for high", () => {
+test("isElevatedPriority returns true for high [dispatcher-edge-cases]", () => {
   assert.equal(isElevatedPriority("high"), true);
 });
 
-test("isElevatedPriority returns true for urgent", () => {
+test("isElevatedPriority returns true for urgent [dispatcher-edge-cases]", () => {
   assert.equal(isElevatedPriority("urgent"), true);
 });
 
-test("isElevatedPriority returns false for normal", () => {
+test("isElevatedPriority returns false for normal [dispatcher-edge-cases]", () => {
   assert.equal(isElevatedPriority("normal"), false);
 });
 
-test("isElevatedPriority returns false for low", () => {
+test("isElevatedPriority returns false for low [dispatcher-edge-cases]", () => {
   assert.equal(isElevatedPriority("low"), false);
 });
 
@@ -238,7 +238,7 @@ test("isElevatedPriority returns false for low", () => {
 // isRemoteSessionReadyForDispatch - local placement always ready
 // ---------------------------------------------------------------------------
 
-test("isRemoteSessionReadyForDispatch local placement returns true", () => {
+test("isRemoteSessionReadyForDispatch local placement returns true [dispatcher-edge-cases]", () => {
   const worker = {
     workerId: "w1",
     placement: "local" as const,
@@ -279,7 +279,7 @@ test("isRemoteSessionReadyForDispatch local placement returns true", () => {
   assert.equal(isRemoteSessionReadyForDispatch(worker), true);
 });
 
-test("isRemoteSessionReadyForDispatch remote without connected status returns false", () => {
+test("isRemoteSessionReadyForDispatch remote without connected status returns false [dispatcher-edge-cases]", () => {
   const worker = {
     workerId: "w1",
     placement: "remote" as const,
@@ -320,7 +320,7 @@ test("isRemoteSessionReadyForDispatch remote without connected status returns fa
   assert.equal(isRemoteSessionReadyForDispatch(worker), false);
 });
 
-test("isRemoteSessionReadyForDispatch remote with null session status returns false", () => {
+test("isRemoteSessionReadyForDispatch remote with null session status returns false [dispatcher-edge-cases]", () => {
   const worker = {
     workerId: "w1",
     placement: "remote" as const,

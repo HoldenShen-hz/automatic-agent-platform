@@ -51,13 +51,13 @@ function makeCandidateWithCheckpoint(overrides: Partial<PreemptionCandidate> = {
 // choosePreemptionVictim Tests - Core Behavior
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("choosePreemptionVictim returns null when no candidates", () => {
+test("choosePreemptionVictim returns null when no candidates [choose-preemption-victim]", () => {
   const result = choosePreemptionVictim([]);
 
   assert.equal(result, null);
 });
 
-test("choosePreemptionVictim only considers candidates with valid checkpoints", () => {
+test("choosePreemptionVictim only considers candidates with valid checkpoints [choose-preemption-victim]", () => {
   const candidates = [
     makeCandidate({ executionId: "no-checkpoint" }), // no checkpointTimestampMs
     makeCandidateWithCheckpoint({ executionId: "has-checkpoint" }),
@@ -68,7 +68,7 @@ test("choosePreemptionVictim only considers candidates with valid checkpoints", 
   assert.equal(result?.executionId, "has-checkpoint");
 });
 
-test("choosePreemptionVictim returns null when all candidates lack checkpoints", () => {
+test("choosePreemptionVictim returns null when all candidates lack checkpoints [choose-preemption-victim]", () => {
   const candidates = [
     makeCandidate({ executionId: "e1" }),
     makeCandidate({ executionId: "e2" }),
@@ -79,7 +79,7 @@ test("choosePreemptionVictim returns null when all candidates lack checkpoints",
   assert.equal(result, null);
 });
 
-test("choosePreemptionVictim selects lowest priority candidate", () => {
+test("choosePreemptionVictim selects lowest priority candidate [choose-preemption-victim]", () => {
   const candidates = [
     makeCandidateWithCheckpoint({ executionId: "high-priority", priority: 10 }),
     makeCandidateWithCheckpoint({ executionId: "low-priority", priority: 1 }),
@@ -92,7 +92,7 @@ test("choosePreemptionVictim selects lowest priority candidate", () => {
   assert.equal(result?.executionId, "low-priority");
 });
 
-test("choosePreemptionVictim breaks ties by progressPercent", () => {
+test("choosePreemptionVictim breaks ties by progressPercent [choose-preemption-victim]", () => {
   const candidates = [
     makeCandidateWithCheckpoint({ executionId: "more-progress", priority: 1, progressPercent: 80 }),
     makeCandidateWithCheckpoint({ executionId: "less-progress", priority: 1, progressPercent: 20 }),
@@ -104,7 +104,7 @@ test("choosePreemptionVictim breaks ties by progressPercent", () => {
   assert.equal(result?.executionId, "more-progress");
 });
 
-test("choosePreemptionVictim prefers lower priority over lower progress", () => {
+test("choosePreemptionVictim prefers lower priority over lower progress [choose-preemption-victim]", () => {
   const candidates = [
     makeCandidateWithCheckpoint({ executionId: "low-priority-high-progress", priority: 2, progressPercent: 10 }),
     makeCandidateWithCheckpoint({ executionId: "lower-priority", priority: 1, progressPercent: 90 }),
@@ -116,7 +116,7 @@ test("choosePreemptionVictim prefers lower priority over lower progress", () => 
   assert.equal(result?.executionId, "lower-priority");
 });
 
-test("choosePreemptionVictim does not mutate original array", () => {
+test("choosePreemptionVictim does not mutate original array [choose-preemption-victim]", () => {
   const candidates = [
     makeCandidateWithCheckpoint({ executionId: "e1" }),
     makeCandidateWithCheckpoint({ executionId: "e2" }),
@@ -129,7 +129,7 @@ test("choosePreemptionVictim does not mutate original array", () => {
   assert.equal(candidates[1]?.executionId, original[1]?.executionId);
 });
 
-test("choosePreemptionVictim handles single checkpointed candidate", () => {
+test("choosePreemptionVictim handles single checkpointed candidate [choose-preemption-victim]", () => {
   const candidates = [
     makeCandidateWithCheckpoint({ executionId: "only", priority: 5, progressPercent: 50 }),
   ];
@@ -139,7 +139,7 @@ test("choosePreemptionVictim handles single checkpointed candidate", () => {
   assert.equal(result?.executionId, "only");
 });
 
-test("choosePreemptionVictim prioritizes among many checkpointed candidates", () => {
+test("choosePreemptionVictim prioritizes among many checkpointed candidates [choose-preemption-victim]", () => {
   const candidates = Array.from({ length: 20 }, (_, i) =>
     makeCandidateWithCheckpoint({
       executionId: `exec-${i}`,
@@ -155,7 +155,7 @@ test("choosePreemptionVictim prioritizes among many checkpointed candidates", ()
   assert.ok(result.executionId.startsWith("exec-"));
 });
 
-test("choosePreemptionVictim with mixed checkpoint status", () => {
+test("choosePreemptionVictim with mixed checkpoint status [choose-preemption-victim]", () => {
   const candidates = [
     makeCandidateWithCheckpoint({ executionId: "ckpt-low-priority", priority: 3 }),
     makeCandidate({ executionId: "no-ckpt-lower-priority" }), // no checkpoint
@@ -169,7 +169,7 @@ test("choosePreemptionVictim with mixed checkpoint status", () => {
   assert.equal(result?.executionId, "ckpt-medium-priority");
 });
 
-test("choosePreemptionVictim ignores candidates with old checkpoints", () => {
+test("choosePreemptionVictim ignores candidates with old checkpoints [choose-preemption-victim]", () => {
   const candidates = [
     makeCandidate({ executionId: "old-checkpoint", priority: 1, lastCheckpointTimestampMs: Date.now() - 600000 }), // 10 minutes old
     makeCandidateWithCheckpoint({ executionId: "recent-checkpoint", priority: 2 }),
@@ -181,7 +181,7 @@ test("choosePreemptionVictim ignores candidates with old checkpoints", () => {
   assert.equal(result?.executionId, "recent-checkpoint");
 });
 
-test("choosePreemptionVictim handles edge case of all same values", () => {
+test("choosePreemptionVictim handles edge case of all same values [choose-preemption-victim]", () => {
   const candidates = [
     makeCandidateWithCheckpoint({ executionId: "a", priority: 5, progressPercent: 50 }),
     makeCandidateWithCheckpoint({ executionId: "b", priority: 5, progressPercent: 50 }),
@@ -194,7 +194,7 @@ test("choosePreemptionVictim handles edge case of all same values", () => {
   assert.ok(["a", "b", "c"].includes(result?.executionId ?? ""));
 });
 
-test("choosePreemptionVictim respects protectedFromPreemption flag", () => {
+test("choosePreemptionVictim respects protectedFromPreemption flag [choose-preemption-victim]", () => {
   const candidates = [
     makeCandidateWithCheckpoint({ executionId: "protected", priority: 1, protectedFromPreemption: true }),
     makeCandidateWithCheckpoint({ executionId: "not-protected", priority: 2 }),
@@ -206,7 +206,7 @@ test("choosePreemptionVictim respects protectedFromPreemption flag", () => {
   assert.equal(result?.executionId, "not-protected");
 });
 
-test("choosePreemptionVictim respects priority thresholds", () => {
+test("choosePreemptionVictim respects priority thresholds [choose-preemption-victim]", () => {
   const candidates = [
     makeCandidateWithCheckpoint({ executionId: "too-low-priority", priority: -1 }), // below MIN_PREEMPTABLE_PRIORITY (0)
     makeCandidateWithCheckpoint({ executionId: "valid-priority", priority: 50 }),
@@ -218,7 +218,7 @@ test("choosePreemptionVictim respects priority thresholds", () => {
   assert.equal(result?.executionId, "valid-priority");
 });
 
-test("choosePreemptionVictim with custom maxCheckpointAgeMs", () => {
+test("choosePreemptionVictim with custom maxCheckpointAgeMs [choose-preemption-victim]", () => {
   const candidates = [
     makeCandidate({ executionId: "old-checkpoint", priority: 1, lastCheckpointTimestampMs: Date.now() - 120000 }), // 2 minutes old
   ];

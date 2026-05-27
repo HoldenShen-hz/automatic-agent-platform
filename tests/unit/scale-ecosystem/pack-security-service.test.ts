@@ -32,7 +32,7 @@ function createDependencyInfo(overrides: Partial<DependencyInfo> = {}): Dependen
 // runSecurityScan Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("PackSecurityService.runSecurityScan returns passed when no issues", async () => {
+test("PackSecurityService.runSecurityScan returns passed when no issues [pack-security-service]", async () => {
   const service = new PackSecurityService();
   const input = createSecurityScanInput({
     sourceUri: "inline:console.log('hello')",
@@ -49,7 +49,7 @@ test("PackSecurityService.runSecurityScan returns passed when no issues", async 
   assert.ok(result.scanId.startsWith("scan_"));
 });
 
-test("PackSecurityService.runSecurityScan detects invalid checksum format", async () => {
+test("PackSecurityService.runSecurityScan detects invalid checksum format [pack-security-service]", async () => {
   const service = new PackSecurityService();
   const input = createSecurityScanInput({
     manifestChecksum: "not-a-valid-sha256",
@@ -61,7 +61,7 @@ test("PackSecurityService.runSecurityScan detects invalid checksum format", asyn
   assert.ok(result.issues.some((i) => i.code === "PKG001"));
 });
 
-test("PackSecurityService.runSecurityScan detects checksum mismatch for inline source", async () => {
+test("PackSecurityService.runSecurityScan detects checksum mismatch for inline source [pack-security-service]", async () => {
   const service = new PackSecurityService();
   const input = createSecurityScanInput({
     sourceUri: "inline:correct content",
@@ -74,7 +74,7 @@ test("PackSecurityService.runSecurityScan detects checksum mismatch for inline s
   assert.ok(result.issues.some((i) => i.code === "PKG002"));
 });
 
-test("PackSecurityService.runSecurityScan passes with valid sha256 hex", async () => {
+test("PackSecurityService.runSecurityScan passes with valid sha256 hex [pack-security-service]", async () => {
   const service = new PackSecurityService();
   const content = "console.log('test')";
   const crypto = await import("node:crypto");
@@ -92,7 +92,7 @@ test("PackSecurityService.runSecurityScan passes with valid sha256 hex", async (
   assert.ok(!result.issues.some((i) => i.code === "PKG001" || i.code === "PKG002"));
 });
 
-test("PackSecurityService.runSecurityScan detects high-risk permissions", async () => {
+test("PackSecurityService.runSecurityScan detects high-risk permissions [pack-security-service]", async () => {
   const service = new PackSecurityService();
   const input = createSecurityScanInput({
     permissions: ["file:write", "exec:bash"],
@@ -104,7 +104,7 @@ test("PackSecurityService.runSecurityScan detects high-risk permissions", async 
   assert.ok(result.issues.some((i) => i.category === "permission_escalation" && i.code === "PERM001"));
 });
 
-test("PackSecurityService.runSecurityScan detects user-controlled exec pattern", async () => {
+test("PackSecurityService.runSecurityScan detects user-controlled exec pattern [pack-security-service]", async () => {
   const service = new PackSecurityService();
   const input = createSecurityScanInput({
     sourceUri: "inline:exec(userInput)",
@@ -118,7 +118,7 @@ test("PackSecurityService.runSecurityScan detects user-controlled exec pattern",
   assert.ok(result.issues.some((i) => i.code === "SAND001"));
 });
 
-test("PackSecurityService.runSecurityScan detects user-controlled eval pattern", async () => {
+test("PackSecurityService.runSecurityScan detects user-controlled eval pattern [pack-security-service]", async () => {
   const service = new PackSecurityService();
   const input = createSecurityScanInput({
     sourceUri: "inline:eval(userData)",
@@ -132,7 +132,7 @@ test("PackSecurityService.runSecurityScan detects user-controlled eval pattern",
   assert.ok(result.issues.some((i) => i.code === "SAND002"));
 });
 
-test("PackSecurityService.runSecurityScan detects broad environment access", async () => {
+test("PackSecurityService.runSecurityScan detects broad environment access [pack-security-service]", async () => {
   const service = new PackSecurityService();
   const input = createSecurityScanInput({
     sourceUri: "inline:const token = process.env.AA_SECRET_AUTH_TOKEN",
@@ -146,7 +146,7 @@ test("PackSecurityService.runSecurityScan detects broad environment access", asy
   assert.ok(result.issues.some((i) => i.code === "SAND003"));
 });
 
-test("PackSecurityService.runSecurityScan detects shell execution in child process", async () => {
+test("PackSecurityService.runSecurityScan detects shell execution in child process [pack-security-service]", async () => {
   const service = new PackSecurityService();
   const input = createSecurityScanInput({
     sourceUri: "inline:child_process.spawn('ls', {shell: true})",
@@ -160,7 +160,7 @@ test("PackSecurityService.runSecurityScan detects shell execution in child proce
   assert.ok(result.issues.some((i) => i.code === "SAND004"));
 });
 
-test("PackSecurityService.runSecurityScan detects exec capability with bash permission", async () => {
+test("PackSecurityService.runSecurityScan detects exec capability with bash permission [pack-security-service]", async () => {
   const service = new PackSecurityService();
   const input = createSecurityScanInput({
     capabilities: ["exec"],
@@ -174,7 +174,7 @@ test("PackSecurityService.runSecurityScan detects exec capability with bash perm
   assert.ok(result.issues.some((i) => i.code === "SAND010"));
 });
 
-test("PackSecurityService.runSecurityScan detects over-provisioned dangerous capabilities", async () => {
+test("PackSecurityService.runSecurityScan detects over-provisioned dangerous capabilities [pack-security-service]", async () => {
   const service = new PackSecurityService();
   const input = createSecurityScanInput({
     capabilities: ["exec", "file_write", "sql_execute", "network_egress"],
@@ -188,7 +188,7 @@ test("PackSecurityService.runSecurityScan detects over-provisioned dangerous cap
   assert.ok(result.issues.some((i) => i.code === "CAP001"));
 });
 
-test("PackSecurityService.runSecurityScan returns failed for critical severity issues", async () => {
+test("PackSecurityService.runSecurityScan returns failed for critical severity issues [pack-security-service]", async () => {
   const service = new PackSecurityService();
   const input = createSecurityScanInput({
     sourceUri: "inline:exec(userInput)",
@@ -202,7 +202,7 @@ test("PackSecurityService.runSecurityScan returns failed for critical severity i
   assert.equal(result.status, "failed");
 });
 
-test("PackSecurityService.runSecurityScan returns warning for high severity issues only", async () => {
+test("PackSecurityService.runSecurityScan returns warning for high severity issues only [pack-security-service]", async () => {
   const service = new PackSecurityService();
   const crypto = await import("node:crypto");
   const source = "exec(userInput)";
@@ -218,7 +218,7 @@ test("PackSecurityService.runSecurityScan returns warning for high severity issu
   assert.equal(result.status, "warning");
 });
 
-test("PackSecurityService.runSecurityScan includes scan duration", async () => {
+test("PackSecurityService.runSecurityScan includes scan duration [pack-security-service]", async () => {
   const service = new PackSecurityService();
   const input = createSecurityScanInput();
 
@@ -231,7 +231,7 @@ test("PackSecurityService.runSecurityScan includes scan duration", async () => {
 // detectDependencyConflicts Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("PackSecurityService.detectDependencyConflicts returns resolved when no conflicts", () => {
+test("PackSecurityService.detectDependencyConflicts returns resolved when no conflicts [pack-security-service]", () => {
   const service = new PackSecurityService();
   const deps = [createDependencyInfo({ packId: "new-pack", version: "2.0.0", capabilities: ["storage"] })];
   const existing = [createDependencyInfo({ packId: "other-pack", version: "1.0.0", capabilities: ["compute"] })];
@@ -242,7 +242,7 @@ test("PackSecurityService.detectDependencyConflicts returns resolved when no con
   assert.deepEqual(result.conflicts, []);
 });
 
-test("PackSecurityService.detectDependencyConflicts detects same pack different version", () => {
+test("PackSecurityService.detectDependencyConflicts detects same pack different version [pack-security-service]", () => {
   const service = new PackSecurityService();
   const deps = [createDependencyInfo({ packId: "shared-pack", version: "2.0.0", capabilities: ["storage", "compute"] })];
   const existing = [createDependencyInfo({ packId: "shared-pack", version: "1.0.0", capabilities: ["storage"] })];
@@ -254,7 +254,7 @@ test("PackSecurityService.detectDependencyConflicts detects same pack different 
   assert.equal(result.conflicts[0]!.conflictType, "capability_overlap");
 });
 
-test("PackSecurityService.detectDependencyConflicts detects capability overlap", () => {
+test("PackSecurityService.detectDependencyConflicts detects capability overlap [pack-security-service]", () => {
   const service = new PackSecurityService();
   const deps = [createDependencyInfo({ packId: "dep-a", version: "2.0.0", capabilities: ["storage", "compute"] })];
   const existing = [createDependencyInfo({ packId: "dep-a", version: "1.0.0", capabilities: ["compute"] })];
@@ -264,7 +264,7 @@ test("PackSecurityService.detectDependencyConflicts detects capability overlap",
   assert.ok(result.conflicts.some((c) => c.conflictType === "capability_overlap"));
 });
 
-test("PackSecurityService.detectDependencyConflicts provides resolution suggestions", () => {
+test("PackSecurityService.detectDependencyConflicts provides resolution suggestions [pack-security-service]", () => {
   const service = new PackSecurityService();
   const deps = [createDependencyInfo({ packId: "conflict-pack", version: "2.0.0", capabilities: ["storage"] })];
   const existing = [createDependencyInfo({ packId: "conflict-pack", version: "1.0.0", capabilities: ["storage"] })];
@@ -275,7 +275,7 @@ test("PackSecurityService.detectDependencyConflicts provides resolution suggesti
   assert.ok(result.suggestions[0]!.includes("conflict-pack"));
 });
 
-test("PackSecurityService.detectDependencyConflicts handles multiple dependencies", () => {
+test("PackSecurityService.detectDependencyConflicts handles multiple dependencies [pack-security-service]", () => {
   const service = new PackSecurityService();
   const deps = [
     createDependencyInfo({ packId: "dep-a", version: "2.0.0", capabilities: ["storage"] }),
@@ -290,7 +290,7 @@ test("PackSecurityService.detectDependencyConflicts handles multiple dependencie
   assert.ok(result.conflicts.length >= 1);
 });
 
-test("PackSecurityService.detectDependencyConflicts handles same version (no conflict)", () => {
+test("PackSecurityService.detectDependencyConflicts handles same version (no conflict) [pack-security-service]", () => {
   const service = new PackSecurityService();
   const deps = [createDependencyInfo({ packId: "same-pack", version: "1.0.0", capabilities: ["storage"] })];
   const existing = [createDependencyInfo({ packId: "same-pack", version: "1.0.0", capabilities: ["compute"] })];
@@ -300,7 +300,7 @@ test("PackSecurityService.detectDependencyConflicts handles same version (no con
   assert.equal(result.resolved, true);
 });
 
-test("PackSecurityService.detectDependencyConflicts handles empty dependencies", () => {
+test("PackSecurityService.detectDependencyConflicts handles empty dependencies [pack-security-service]", () => {
   const service = new PackSecurityService();
   const existing = [createDependencyInfo({ packId: "existing-pack", version: "1.0.0", capabilities: ["storage"] })];
 
@@ -309,7 +309,7 @@ test("PackSecurityService.detectDependencyConflicts handles empty dependencies",
   assert.equal(result.resolved, true);
 });
 
-test("PackSecurityService.detectDependencyConflicts handles empty existing packs", () => {
+test("PackSecurityService.detectDependencyConflicts handles empty existing packs [pack-security-service]", () => {
   const service = new PackSecurityService();
   const deps = [createDependencyInfo({ packId: "new-pack", version: "1.0.0", capabilities: ["storage"] })];
 
@@ -318,7 +318,7 @@ test("PackSecurityService.detectDependencyConflicts handles empty existing packs
   assert.equal(result.resolved, true);
 });
 
-test("PackSecurityService.detectDependencyConflicts includes packId and version in result", () => {
+test("PackSecurityService.detectDependencyConflicts includes packId and version in result [pack-security-service]", () => {
   const service = new PackSecurityService();
   const result = service.detectDependencyConflicts("my-pack", "3.0.0", [], []);
 

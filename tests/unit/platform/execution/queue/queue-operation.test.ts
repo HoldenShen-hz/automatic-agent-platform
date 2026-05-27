@@ -17,7 +17,7 @@ function createTestHarness(prefix: string) {
   return { workspace, db };
 }
 
-test("enqueue creates a job with waiting status", () => {
+test("enqueue creates a job with waiting status [queue-operation]", () => {
   const h = createTestHarness("aa-op-enqueue-");
   try {
     const adapter = new SqliteQueueAdapter(h.db);
@@ -35,7 +35,7 @@ test("enqueue creates a job with waiting status", () => {
   }
 });
 
-test("enqueue respects maxAttempts parameter", () => {
+test("enqueue respects maxAttempts parameter [queue-operation]", () => {
   const h = createTestHarness("aa-op-maxattempts-");
   try {
     const adapter = new SqliteQueueAdapter(h.db);
@@ -48,7 +48,7 @@ test("enqueue respects maxAttempts parameter", () => {
   }
 });
 
-test("enqueue handles delayed jobs with future delayUntil", () => {
+test("enqueue handles delayed jobs with future delayUntil [queue-operation]", () => {
   const h = createTestHarness("aa-op-delayed-");
   try {
     const adapter = new SqliteQueueAdapter(h.db);
@@ -63,7 +63,7 @@ test("enqueue handles delayed jobs with future delayUntil", () => {
   }
 });
 
-test("enqueue handles immediate jobs with past delayUntil", () => {
+test("enqueue handles immediate jobs with past delayUntil [queue-operation]", () => {
   const h = createTestHarness("aa-op-immediate-");
   try {
     const adapter = new SqliteQueueAdapter(h.db);
@@ -77,7 +77,7 @@ test("enqueue handles immediate jobs with past delayUntil", () => {
   }
 });
 
-test("dequeue returns null when queue is empty", () => {
+test("dequeue returns null when queue is empty [queue-operation]", () => {
   const h = createTestHarness("aa-op-empty-");
   try {
     const adapter = new SqliteQueueAdapter(h.db);
@@ -89,7 +89,7 @@ test("dequeue returns null when queue is empty", () => {
   }
 });
 
-test("dequeue returns job and increments attempts", () => {
+test("dequeue returns job and increments attempts [queue-operation]", () => {
   const h = createTestHarness("aa-op-dequeue-");
   try {
     const adapter = new SqliteQueueAdapter(h.db);
@@ -107,7 +107,7 @@ test("dequeue returns job and increments attempts", () => {
   }
 });
 
-test("ack marks job as completed", () => {
+test("ack marks job as completed [queue-operation]", () => {
   const h = createTestHarness("aa-op-ack-");
   try {
     const adapter = new SqliteQueueAdapter(h.db);
@@ -125,7 +125,7 @@ test("ack marks job as completed", () => {
   }
 });
 
-test("nack without error requeues job when under maxAttempts", () => {
+test("nack without error requeues job when under maxAttempts [queue-operation]", () => {
   const h = createTestHarness("aa-op-nack-");
   try {
     const adapter = new SqliteQueueAdapter(h.db);
@@ -145,7 +145,7 @@ test("nack without error requeues job when under maxAttempts", () => {
   }
 });
 
-test("nack with error records lastError", () => {
+test("nack with error records lastError [queue-operation]", () => {
   const h = createTestHarness("aa-op-nack-error-");
   try {
     const adapter = new SqliteQueueAdapter(h.db);
@@ -164,7 +164,7 @@ test("nack with error records lastError", () => {
   }
 });
 
-test("nack moves job to dead_letter when maxAttempts exceeded", () => {
+test("nack moves job to dead_letter when maxAttempts exceeded [queue-operation]", () => {
   const h = createTestHarness("aa-op-deadletter-");
   try {
     const adapter = new SqliteQueueAdapter(h.db);
@@ -183,7 +183,7 @@ test("nack moves job to dead_letter when maxAttempts exceeded", () => {
   }
 });
 
-test("getJob returns null for nonexistent job", () => {
+test("getJob returns null for nonexistent job [queue-operation]", () => {
   const h = createTestHarness("aa-op-getjob-");
   try {
     const adapter = new SqliteQueueAdapter(h.db);
@@ -195,7 +195,7 @@ test("getJob returns null for nonexistent job", () => {
   }
 });
 
-test("getJob returns correct job data", () => {
+test("getJob returns correct job data [queue-operation]", () => {
   const h = createTestHarness("aa-op-getjob-data-");
   try {
     const adapter = new SqliteQueueAdapter(h.db);
@@ -212,7 +212,7 @@ test("getJob returns correct job data", () => {
   }
 });
 
-test("listJobs returns all jobs for queue", () => {
+test("listJobs returns all jobs for queue [queue-operation]", () => {
   const h = createTestHarness("aa-op-listjobs-");
   try {
     const adapter = new SqliteQueueAdapter(h.db);
@@ -228,7 +228,7 @@ test("listJobs returns all jobs for queue", () => {
   }
 });
 
-test("listJobs filters by status", () => {
+test("listJobs filters by status [queue-operation]", () => {
   const h = createTestHarness("aa-op-listjobs-status-");
   try {
     const adapter = new SqliteQueueAdapter(h.db);
@@ -251,7 +251,7 @@ test("listJobs filters by status", () => {
   }
 });
 
-test("listJobs respects limit parameter", () => {
+test("listJobs respects limit parameter [queue-operation]", () => {
   const h = createTestHarness("aa-op-listjobs-limit-");
   try {
     const adapter = new SqliteQueueAdapter(h.db);
@@ -267,7 +267,7 @@ test("listJobs respects limit parameter", () => {
   }
 });
 
-test("moveToDeadLetter manually moves job to dead letter", () => {
+test("moveToDeadLetter manually moves job to dead letter [queue-operation]", () => {
   const h = createTestHarness("aa-op-movetodl-");
   try {
     const adapter = new SqliteQueueAdapter(h.db);
@@ -283,7 +283,7 @@ test("moveToDeadLetter manually moves job to dead letter", () => {
   }
 });
 
-test("retryJob resets dead letter job to waiting", () => {
+test("retryJob resets dead letter job to waiting [queue-operation]", () => {
   const h = createTestHarness("aa-op-retry-");
   try {
     const adapter = new SqliteQueueAdapter(h.db);
@@ -304,7 +304,7 @@ test("retryJob resets dead letter job to waiting", () => {
   }
 });
 
-test("retryJob returns null for non-dead-letter job", () => {
+test("retryJob returns null for non-dead-letter job [queue-operation]", () => {
   const h = createTestHarness("aa-op-retry-invalid-");
   try {
     const adapter = new SqliteQueueAdapter(h.db);
@@ -320,7 +320,7 @@ test("retryJob returns null for non-dead-letter job", () => {
   }
 });
 
-test("retryJob returns null for nonexistent job", () => {
+test("retryJob returns null for nonexistent job [queue-operation]", () => {
   const h = createTestHarness("aa-op-retry-nonexistent-");
   try {
     const adapter = new SqliteQueueAdapter(h.db);
@@ -332,7 +332,7 @@ test("retryJob returns null for nonexistent job", () => {
   }
 });
 
-test("purge removes old completed jobs", () => {
+test("purge removes old completed jobs [queue-operation]", () => {
   const h = createTestHarness("aa-op-purge-");
   try {
     const adapter = new SqliteQueueAdapter(h.db);
@@ -352,7 +352,7 @@ test("purge removes old completed jobs", () => {
   }
 });
 
-test("purge removes old dead letter jobs", () => {
+test("purge removes old dead letter jobs [queue-operation]", () => {
   const h = createTestHarness("aa-op-purge-dl-");
   try {
     const adapter = new SqliteQueueAdapter(h.db);
@@ -372,7 +372,7 @@ test("purge removes old dead letter jobs", () => {
   }
 });
 
-test("purge does not remove waiting jobs", () => {
+test("purge does not remove waiting jobs [queue-operation]", () => {
   const h = createTestHarness("aa-op-purge-waiting-");
   try {
     const adapter = new SqliteQueueAdapter(h.db);
@@ -390,7 +390,7 @@ test("purge does not remove waiting jobs", () => {
   }
 });
 
-test("purge does not remove active jobs", () => {
+test("purge does not remove active jobs [queue-operation]", () => {
   const h = createTestHarness("aa-op-purge-active-");
   try {
     const adapter = new SqliteQueueAdapter(h.db);
@@ -409,7 +409,7 @@ test("purge does not remove active jobs", () => {
   }
 });
 
-test("purge returns 0 when nothing to purge", () => {
+test("purge returns 0 when nothing to purge [queue-operation]", () => {
   const h = createTestHarness("aa-op-purge-empty-");
   try {
     const adapter = new SqliteQueueAdapter(h.db);
@@ -422,7 +422,7 @@ test("purge returns 0 when nothing to purge", () => {
   }
 });
 
-test("stats returns correct counts", () => {
+test("stats returns correct counts [queue-operation]", () => {
   const h = createTestHarness("aa-op-stats-");
   try {
     const adapter = new SqliteQueueAdapter(h.db);
@@ -445,7 +445,7 @@ test("stats returns correct counts", () => {
   }
 });
 
-test("stats returns zeros for empty queue", () => {
+test("stats returns zeros for empty queue [queue-operation]", () => {
   const h = createTestHarness("aa-op-stats-empty-");
   try {
     const adapter = new SqliteQueueAdapter(h.db);
@@ -462,7 +462,7 @@ test("stats returns zeros for empty queue", () => {
   }
 });
 
-test("stats counts delayed jobs correctly", () => {
+test("stats counts delayed jobs correctly [queue-operation]", () => {
   const h = createTestHarness("aa-op-stats-delayed-");
   try {
     const adapter = new SqliteQueueAdapter(h.db);
@@ -479,7 +479,7 @@ test("stats counts delayed jobs correctly", () => {
   }
 });
 
-test("stats counts dead letter jobs correctly", () => {
+test("stats counts dead letter jobs correctly [queue-operation]", () => {
   const h = createTestHarness("aa-op-stats-dl-");
   try {
     const adapter = new SqliteQueueAdapter(h.db);
@@ -495,7 +495,7 @@ test("stats counts dead letter jobs correctly", () => {
   }
 });
 
-test("listQueues returns distinct queue names", () => {
+test("listQueues returns distinct queue names [queue-operation]", () => {
   const h = createTestHarness("aa-op-listqueues-");
   try {
     const adapter = new SqliteQueueAdapter(h.db);
@@ -513,7 +513,7 @@ test("listQueues returns distinct queue names", () => {
   }
 });
 
-test("listQueues returns empty array when no queues exist", () => {
+test("listQueues returns empty array when no queues exist [queue-operation]", () => {
   const h = createTestHarness("aa-op-listqueues-empty-");
   try {
     const adapter = new SqliteQueueAdapter(h.db);
@@ -525,7 +525,7 @@ test("listQueues returns empty array when no queues exist", () => {
   }
 });
 
-test("idempotencyKey prevents duplicate enqueue", () => {
+test("idempotencyKey prevents duplicate enqueue [queue-operation]", () => {
   const h = createTestHarness("aa-op-idempotent-");
   try {
     const adapter = new SqliteQueueAdapter(h.db);
@@ -540,7 +540,7 @@ test("idempotencyKey prevents duplicate enqueue", () => {
   }
 });
 
-test("idempotencyKey is queue-specific", () => {
+test("idempotencyKey is queue-specific [queue-operation]", () => {
   const h = createTestHarness("aa-op-idempotent-queue-");
   try {
     const adapter = new SqliteQueueAdapter(h.db);
@@ -556,7 +556,7 @@ test("idempotencyKey is queue-specific", () => {
   }
 });
 
-test("job payload is preserved as JSON", () => {
+test("job payload is preserved as JSON [queue-operation]", () => {
   const h = createTestHarness("aa-op-payload-");
   try {
     const adapter = new SqliteQueueAdapter(h.db);
@@ -571,7 +571,7 @@ test("job payload is preserved as JSON", () => {
   }
 });
 
-test("dequeue processes delayed jobs after delayUntil passes", () => {
+test("dequeue processes delayed jobs after delayUntil passes [queue-operation]", () => {
   const h = createTestHarness("aa-op-delay-");
   try {
     const adapter = new SqliteQueueAdapter(h.db);
@@ -588,7 +588,7 @@ test("dequeue processes delayed jobs after delayUntil passes", () => {
   }
 });
 
-test("dequeue does not return future delayed jobs", () => {
+test("dequeue does not return future delayed jobs [queue-operation]", () => {
   const h = createTestHarness("aa-op-delay-future-");
   try {
     const adapter = new SqliteQueueAdapter(h.db);

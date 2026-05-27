@@ -18,12 +18,12 @@ import { X1_FABRIC_BOOTSTRAP_SERVICE_ID } from "../../../src/platform/five-plane
 // Test Setup
 // ---------------------------------------------------------------------------
 
-test("FivePlaneRuntimeOrchestrator can be instantiated", () => {
+test("FivePlaneRuntimeOrchestrator can be instantiated [five-plane-runtime-orchestrator]", () => {
   const orchestrator = new FivePlaneRuntimeOrchestrator();
   assert.ok(orchestrator instanceof FivePlaneRuntimeOrchestrator);
 });
 
-test("FivePlaneRuntimeOrchestrator accepts custom registry", () => {
+test("FivePlaneRuntimeOrchestrator accepts custom registry [five-plane-runtime-orchestrator]", () => {
   const registry = ServiceRegistry.getInstance();
   const orchestrator = new FivePlaneRuntimeOrchestrator(registry);
   assert.ok(orchestrator instanceof FivePlaneRuntimeOrchestrator);
@@ -33,7 +33,7 @@ test("FivePlaneRuntimeOrchestrator accepts custom registry", () => {
 // FivePlaneRuntimeOrchestrator.prepare()
 // ---------------------------------------------------------------------------
 
-test("prepare returns startupPlan and runtimeCatalog", () => {
+test("prepare returns startupPlan and runtimeCatalog [five-plane-runtime-orchestrator]", () => {
   const orchestrator = new FivePlaneRuntimeOrchestrator();
   const { startupPlan, runtimeCatalog } = orchestrator.prepare();
 
@@ -50,7 +50,7 @@ test("prepare returns startupPlan and runtimeCatalog", () => {
   assert.ok(Array.isArray(runtimeCatalog.stateEvidencePlane));
 });
 
-test("prepare registers all five planes in startupPlan", () => {
+test("prepare registers all five planes in startupPlan [five-plane-runtime-orchestrator]", () => {
   const orchestrator = new FivePlaneRuntimeOrchestrator();
   const { startupPlan } = orchestrator.prepare();
 
@@ -64,7 +64,7 @@ test("prepare registers all five planes in startupPlan", () => {
   assert.ok(stepIds.includes("state-evidence"));
 });
 
-test("prepare registers planes in correct dependency order", () => {
+test("prepare registers planes in correct dependency order [five-plane-runtime-orchestrator]", () => {
   const orchestrator = new FivePlaneRuntimeOrchestrator();
   const { startupPlan } = orchestrator.prepare();
 
@@ -85,7 +85,7 @@ test("prepare registers planes in correct dependency order", () => {
   assert.ok(executionIdx < stateEvidenceIdx, "execution should come before state-evidence");
 });
 
-test("prepare registers steps with correct bootstrapServiceId", () => {
+test("prepare registers steps with correct bootstrapServiceId [five-plane-runtime-orchestrator]", () => {
   const orchestrator = new FivePlaneRuntimeOrchestrator();
   const { startupPlan } = orchestrator.prepare();
 
@@ -104,7 +104,7 @@ test("prepare registers steps with correct bootstrapServiceId", () => {
   assert.equal(controlPlaneStep.bootstrapServiceId, CONTROL_PLANE_BOOTSTRAP_SERVICE_ID);
 });
 
-test("prepare calculates totalCapabilityCount correctly", () => {
+test("prepare calculates totalCapabilityCount correctly [five-plane-runtime-orchestrator]", () => {
   const orchestrator = new FivePlaneRuntimeOrchestrator();
   const { startupPlan } = orchestrator.prepare();
 
@@ -116,7 +116,7 @@ test("prepare calculates totalCapabilityCount correctly", () => {
 // FivePlaneRuntimeOrchestrator.startup()
 // ---------------------------------------------------------------------------
 
-test("startup returns FivePlaneRuntimeStartupResult", () => {
+test("startup returns FivePlaneRuntimeStartupResult [five-plane-runtime-orchestrator]", () => {
   const orchestrator = new FivePlaneRuntimeOrchestrator();
   const result = orchestrator.startup();
 
@@ -127,7 +127,7 @@ test("startup returns FivePlaneRuntimeStartupResult", () => {
   assert.ok(result.runtimeCatalog);
 });
 
-test("startup returns steps with correct structure", () => {
+test("startup returns steps with correct structure [five-plane-runtime-orchestrator]", () => {
   const orchestrator = new FivePlaneRuntimeOrchestrator();
   const result = orchestrator.startup();
 
@@ -140,7 +140,7 @@ test("startup returns steps with correct structure", () => {
   }
 });
 
-test("startup reports correct initialized status for registered services", () => {
+test("startup reports correct initialized status for registered services [five-plane-runtime-orchestrator]", () => {
   const orchestrator = new FivePlaneRuntimeOrchestrator();
   const result = orchestrator.startup();
 
@@ -156,7 +156,7 @@ test("startup reports correct initialized status for registered services", () =>
 // FivePlaneRuntimeOrchestrator.snapshotReadiness()
 // ---------------------------------------------------------------------------
 
-test("snapshotReadiness returns FivePlaneRuntimeReadinessSnapshot", () => {
+test("snapshotReadiness returns FivePlaneRuntimeReadinessSnapshot [five-plane-runtime-orchestrator]", () => {
   const orchestrator = new FivePlaneRuntimeOrchestrator();
   const snapshot = orchestrator.snapshotReadiness();
 
@@ -166,7 +166,7 @@ test("snapshotReadiness returns FivePlaneRuntimeReadinessSnapshot", () => {
   assert.ok(Array.isArray(snapshot.planeReadiness));
 });
 
-test("snapshotReadiness includes all planes in planeReadiness", () => {
+test("snapshotReadiness includes all planes in planeReadiness [five-plane-runtime-orchestrator]", () => {
   const orchestrator = new FivePlaneRuntimeOrchestrator();
   const snapshot = orchestrator.snapshotReadiness();
 
@@ -180,7 +180,7 @@ test("snapshotReadiness includes all planes in planeReadiness", () => {
   assert.ok(planeStepIds.includes("state-evidence"));
 });
 
-test("snapshotReadiness planeReadiness entries have correct structure", () => {
+test("snapshotReadiness planeReadiness entries have correct structure [five-plane-runtime-orchestrator]", () => {
   const orchestrator = new FivePlaneRuntimeOrchestrator();
   const snapshot = orchestrator.snapshotReadiness();
 
@@ -195,7 +195,7 @@ test("snapshotReadiness planeReadiness entries have correct structure", () => {
 // Dependency Resolution
 // ---------------------------------------------------------------------------
 
-test("prepare resolves correct dependency service IDs for each step", () => {
+test("prepare resolves correct dependency service IDs for each step [five-plane-runtime-orchestrator]", () => {
   const orchestrator = new FivePlaneRuntimeOrchestrator();
   const { startupPlan } = orchestrator.prepare();
 
@@ -229,7 +229,7 @@ test("prepare resolves correct dependency service IDs for each step", () => {
 // FivePlaneRuntimeStartupStep structure
 // ---------------------------------------------------------------------------
 
-test("startupOrder matches step order in startupPlan", () => {
+test("startupOrder matches step order in startupPlan [five-plane-runtime-orchestrator]", () => {
   const orchestrator = new FivePlaneRuntimeOrchestrator();
   const { startupPlan } = orchestrator.prepare();
   const result = orchestrator.startup();
@@ -237,7 +237,7 @@ test("startupOrder matches step order in startupPlan", () => {
   assert.deepEqual(result.startupOrder, startupPlan.startupOrder);
 });
 
-test("steps contain bootstrapServiceIds for all planes", () => {
+test("steps contain bootstrapServiceIds for all planes [five-plane-runtime-orchestrator]", () => {
   const orchestrator = new FivePlaneRuntimeOrchestrator();
   const result = orchestrator.startup();
 

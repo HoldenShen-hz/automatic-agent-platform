@@ -48,7 +48,7 @@ function createTargetRegion(overrides: Partial<{
 // Cross-Region Event Replication Service Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("registerTargetRegion adds region to target list", () => {
+test("registerTargetRegion adds region to target list [cross-region-event-replication-service]", () => {
   const publisher = createMockPublisher();
   const service = new CrossRegionEventReplicationService(publisher, "region-a");
 
@@ -61,7 +61,7 @@ test("registerTargetRegion adds region to target list", () => {
   assert.ok(targets.some((t) => t.regionId === "region-c"));
 });
 
-test("removeTargetRegion removes region from target list", () => {
+test("removeTargetRegion removes region from target list [cross-region-event-replication-service]", () => {
   const publisher = createMockPublisher();
   const service = new CrossRegionEventReplicationService(publisher, "region-a");
 
@@ -75,7 +75,7 @@ test("removeTargetRegion removes region from target list", () => {
   assert.ok(!targets.some((t) => t.regionId === "region-b"));
 });
 
-test("replicate throws error when no target regions configured", () => {
+test("replicate throws error when no target regions configured [cross-region-event-replication-service]", () => {
   const publisher = createMockPublisher();
   const service = new CrossRegionEventReplicationService(publisher, "region-a");
 
@@ -85,7 +85,7 @@ test("replicate throws error when no target regions configured", () => {
   );
 });
 
-test("replicate replicates event to all registered targets", () => {
+test("replicate replicates event to all registered targets [cross-region-event-replication-service]", () => {
   const publisher = createMockPublisher();
   const service = new CrossRegionEventReplicationService(publisher, "region-a");
 
@@ -100,7 +100,7 @@ test("replicate replicates event to all registered targets", () => {
   assert.ok(events.every((e) => e.eventType === "task.created" as TypedEventType));
 });
 
-test("replicate replicates to specific target region when targetRegionIds provided", () => {
+test("replicate replicates to specific target region when targetRegionIds provided [cross-region-event-replication-service]", () => {
   const publisher = createMockPublisher();
   const service = new CrossRegionEventReplicationService(publisher, "region-a");
 
@@ -114,7 +114,7 @@ test("replicate replicates to specific target region when targetRegionIds provid
   assert.equal(events.length, 2);
 });
 
-test("getReplicationStatus returns null for unknown event", () => {
+test("getReplicationStatus returns null for unknown event [cross-region-event-replication-service]", () => {
   const publisher = createMockPublisher();
   const service = new CrossRegionEventReplicationService(publisher, "region-a");
 
@@ -122,7 +122,7 @@ test("getReplicationStatus returns null for unknown event", () => {
   assert.equal(result, null);
 });
 
-test("getReplicationStatus returns status for replicated event", () => {
+test("getReplicationStatus returns status for replicated event [cross-region-event-replication-service]", () => {
   const publisher = createMockPublisher();
   const service = new CrossRegionEventReplicationService(publisher, "region-a");
 
@@ -135,7 +135,7 @@ test("getReplicationStatus returns status for replicated event", () => {
   assert.ok(["pending", "replicating", "completed"].includes(result.status));
 });
 
-test("getMetrics returns correct counts for empty service", () => {
+test("getMetrics returns correct counts for empty service [cross-region-event-replication-service]", () => {
   const publisher = createMockPublisher();
   const service = new CrossRegionEventReplicationService(publisher, "region-a");
 
@@ -148,7 +148,7 @@ test("getMetrics returns correct counts for empty service", () => {
   assert.equal(metrics.averageLatencyMs, 0);
 });
 
-test("getMetrics returns correct counts after replication", () => {
+test("getMetrics returns correct counts after replication [cross-region-event-replication-service]", () => {
   const publisher = createMockPublisher();
   const service = new CrossRegionEventReplicationService(publisher, "region-a");
 
@@ -159,7 +159,7 @@ test("getMetrics returns correct counts after replication", () => {
   assert.ok(metrics.totalEvents >= 1);
 });
 
-test("pruneCompleted returns 0 when no records match", () => {
+test("pruneCompleted returns 0 when no records match [cross-region-event-replication-service]", () => {
   const publisher = createMockPublisher();
   const service = new CrossRegionEventReplicationService(publisher, "region-a");
 
@@ -167,7 +167,7 @@ test("pruneCompleted returns 0 when no records match", () => {
   assert.equal(pruned, 0);
 });
 
-test("pruneCompleted clears old completed records", () => {
+test("pruneCompleted clears old completed records [cross-region-event-replication-service]", () => {
   const publisher = createMockPublisher();
   const service = new CrossRegionEventReplicationService(publisher, "region-a");
 
@@ -181,7 +181,7 @@ test("pruneCompleted clears old completed records", () => {
   assert.ok(pruned >= 0);
 });
 
-test("triggerReplication processes pending events", () => {
+test("triggerReplication processes pending events [cross-region-event-replication-service]", () => {
   const publisher = createMockPublisher();
   const service = new CrossRegionEventReplicationService(publisher, "region-a");
 
@@ -195,7 +195,7 @@ test("triggerReplication processes pending events", () => {
   assert.ok(events.length >= 1);
 });
 
-test("createCrossRegionEventReplicationService factory works", () => {
+test("createCrossRegionEventReplicationService factory works [cross-region-event-replication-service]", () => {
   const publisher = createMockPublisher();
   const service = createCrossRegionEventReplicationService(publisher, "region-a");
 
@@ -205,7 +205,7 @@ test("createCrossRegionEventReplicationService factory works", () => {
   assert.ok(true); // No throw
 });
 
-test("replication with custom config uses provided values", () => {
+test("replication with custom config uses provided values [cross-region-event-replication-service]", () => {
   const publisher = createMockPublisher();
   const service = new CrossRegionEventReplicationService(publisher, "region-a", {
     maxRetries: 5,
@@ -224,7 +224,7 @@ test("replication with custom config uses provided values", () => {
   assert.ok(["pending", "replicating", "completed"].includes(result.status));
 });
 
-test("replication status becomes partial when some targets fail", () => {
+test("replication status becomes partial when some targets fail [cross-region-event-replication-service]", () => {
   const publisher = createMockPublisher();
   const service = new CrossRegionEventReplicationService(publisher, "region-a");
 
@@ -240,7 +240,7 @@ test("replication status becomes partial when some targets fail", () => {
   assert.ok(["pending", "replicating", "partial", "completed", "failed"].includes(result.status));
 });
 
-test("multiple replicates to same target region accumulate", async () => {
+test("multiple replicates to same target region accumulate [cross-region-event-replication-service]", async () => {
   const publisher = createMockPublisher();
   const service = new CrossRegionEventReplicationService(publisher, "region-a");
 
@@ -254,7 +254,7 @@ test("multiple replicates to same target region accumulate", async () => {
   assert.ok(events.length >= 2);
 });
 
-test("getTargetRegions returns empty array initially", () => {
+test("getTargetRegions returns empty array initially [cross-region-event-replication-service]", () => {
   const publisher = createMockPublisher();
   const service = new CrossRegionEventReplicationService(publisher, "region-a");
 
@@ -262,7 +262,7 @@ test("getTargetRegions returns empty array initially", () => {
   assert.equal(targets.length, 0);
 });
 
-test("replicate event with different payload types", async () => {
+test("replicate event with different payload types [cross-region-event-replication-service]", async () => {
   const publisher = createMockPublisher();
   const service = new CrossRegionEventReplicationService(publisher, "region-a");
 
@@ -276,7 +276,7 @@ test("replicate event with different payload types", async () => {
   assert.equal(events.length, 2);
 });
 
-test("metrics averageLatencyMs is 0 when no completed events", () => {
+test("metrics averageLatencyMs is 0 when no completed events [cross-region-event-replication-service]", () => {
   const publisher = createMockPublisher();
   const service = new CrossRegionEventReplicationService(publisher, "region-a");
 
@@ -284,7 +284,7 @@ test("metrics averageLatencyMs is 0 when no completed events", () => {
   assert.equal(metrics.averageLatencyMs, 0);
 });
 
-test("metrics replicationRatePerSecond is 0 when no completed events", () => {
+test("metrics replicationRatePerSecond is 0 when no completed events [cross-region-event-replication-service]", () => {
   const publisher = createMockPublisher();
   const service = new CrossRegionEventReplicationService(publisher, "region-a");
 
@@ -292,7 +292,7 @@ test("metrics replicationRatePerSecond is 0 when no completed events", () => {
   assert.equal(metrics.replicationRatePerSecond, 0);
 });
 
-test("replication retries asynchronous publish failures instead of dropping the plan", async () => {
+test("replication retries asynchronous publish failures instead of dropping the plan [cross-region-event-replication-service]", async () => {
   let attempt = 0;
   const publisher = {
     publish() {

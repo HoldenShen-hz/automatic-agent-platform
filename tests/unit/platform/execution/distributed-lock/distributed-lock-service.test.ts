@@ -16,7 +16,7 @@ import {
   type LockData,
 } from "../../../../../src/platform/five-plane-execution/distributed-lock/distributed-lock-service.js";
 
-test("DistributedLockAdapter interface structure", () => {
+test("DistributedLockAdapter interface structure [distributed-lock-service]", () => {
   // This validates the interface exists and has the expected shape
   // Create a mock object that satisfies the interface
   const mockAdapter: DistributedLockAdapter = {
@@ -35,12 +35,12 @@ test("DistributedLockAdapter interface structure", () => {
   assert.equal(typeof mockAdapter.inspect, "function");
 });
 
-test("LockBackendKind type accepts valid values", () => {
+test("LockBackendKind type accepts valid values [distributed-lock-service]", () => {
   const kinds: LockBackendKind[] = ["sqlite", "pg_advisory", "redis"];
   assert.equal(kinds.length, 3);
 });
 
-test("LockRecord structure is correct", () => {
+test("LockRecord structure is correct [distributed-lock-service]", () => {
   const record: LockRecord = {
     lockKey: "test-lock",
     owner: "owner-1",
@@ -58,7 +58,7 @@ test("LockRecord structure is correct", () => {
   assert.equal(record.metadata, null);
 });
 
-test("LockRecord with metadata", () => {
+test("LockRecord with metadata [distributed-lock-service]", () => {
   const record: LockRecord = {
     lockKey: "test-lock",
     owner: "owner-1",
@@ -71,7 +71,7 @@ test("LockRecord with metadata", () => {
   assert.equal(record.metadata, '{"reason":"manual"}');
 });
 
-test("AcquireLockInput structure is correct", () => {
+test("AcquireLockInput structure is correct [distributed-lock-service]", () => {
   const input: AcquireLockInput = {
     lockKey: "test-lock",
     owner: "owner-1",
@@ -82,7 +82,7 @@ test("AcquireLockInput structure is correct", () => {
   assert.equal(input.ttlMs, 30000);
 });
 
-test("AcquireLockInput without ttlMs is valid", () => {
+test("AcquireLockInput without ttlMs is valid [distributed-lock-service]", () => {
   const input: AcquireLockInput = {
     lockKey: "test-lock",
     owner: "owner-1",
@@ -90,7 +90,7 @@ test("AcquireLockInput without ttlMs is valid", () => {
   assert.equal(input.ttlMs, undefined);
 });
 
-test("AcquireLockResult structure for successful acquisition", () => {
+test("AcquireLockResult structure for successful acquisition [distributed-lock-service]", () => {
   const result: AcquireLockResult = {
     acquired: true,
     lock: {
@@ -108,7 +108,7 @@ test("AcquireLockResult structure for successful acquisition", () => {
   assert.equal(result.lock!.lockKey, "test-lock");
 });
 
-test("AcquireLockResult structure for failed acquisition", () => {
+test("AcquireLockResult structure for failed acquisition [distributed-lock-service]", () => {
   const result: AcquireLockResult = {
     acquired: false,
   };
@@ -116,7 +116,7 @@ test("AcquireLockResult structure for failed acquisition", () => {
   assert.equal(result.lock, undefined);
 });
 
-test("PgAdvisoryLockConfig structure is correct", () => {
+test("PgAdvisoryLockConfig structure is correct [distributed-lock-service]", () => {
   const config: PgAdvisoryLockConfig = {
     dsn: "postgres://localhost:5432/testdb",
     poolMin: 1,
@@ -129,7 +129,7 @@ test("PgAdvisoryLockConfig structure is correct", () => {
   assert.equal(config.poolMax, 10);
 });
 
-test("PgAdvisoryLockConfig with SSL", () => {
+test("PgAdvisoryLockConfig with SSL [distributed-lock-service]", () => {
   const config: PgAdvisoryLockConfig = {
     dsn: "postgres://localhost:5432/testdb",
     ssl: {
@@ -140,7 +140,7 @@ test("PgAdvisoryLockConfig with SSL", () => {
   assert.equal(config.ssl.rejectUnauthorized, true);
 });
 
-test("PgAdvisoryLockConfig with custom postgresFactory", () => {
+test("PgAdvisoryLockConfig with custom postgresFactory [distributed-lock-service]", () => {
   const mockFactory: PostgresFactory = (_dsn, _options) => {
     return {} as PostgresSqlDriver;
   };
@@ -150,7 +150,7 @@ test("PgAdvisoryLockConfig with custom postgresFactory", () => {
   assert.equal(typeof config.postgresFactory, "function");
 });
 
-test("RedisLockConfig structure is correct", () => {
+test("RedisLockConfig structure is correct [distributed-lock-service]", () => {
   const config: RedisLockConfig = {
     host: "localhost",
     port: 6379,
@@ -159,7 +159,7 @@ test("RedisLockConfig structure is correct", () => {
   assert.equal(config.port, 6379);
 });
 
-test("RedisLockConfig with optional fields", () => {
+test("RedisLockConfig with optional fields [distributed-lock-service]", () => {
   const config: RedisLockConfig = {
     host: "redis.example.com",
     port: 6380,
@@ -172,7 +172,7 @@ test("RedisLockConfig with optional fields", () => {
   assert.equal(config.connectTimeoutMs, 5000);
 });
 
-test("LockData structure is correct", () => {
+test("LockData structure is correct [distributed-lock-service]", () => {
   const data: LockData = {
     id: "lock_abc123",
     owner: "owner-1",
@@ -188,7 +188,7 @@ test("LockData structure is correct", () => {
   assert.equal(data.metadata, null);
 });
 
-test("DISTRIBUTED_LOCKS_DDL is a non-empty string", () => {
+test("DISTRIBUTED_LOCKS_DDL is a non-empty string [distributed-lock-service]", () => {
   assert.ok(typeof DISTRIBUTED_LOCKS_DDL === "string");
   assert.ok(DISTRIBUTED_LOCKS_DDL.length > 0);
   assert.ok(DISTRIBUTED_LOCKS_DDL.includes("CREATE TABLE"));

@@ -10,7 +10,7 @@ import {
 } from "../../../../src/scale-ecosystem/marketplace/billing/utils.js";
 import type { BillingAccountSummary } from "../../../../src/scale-ecosystem/marketplace/billing/types.js";
 
-test("assertIdentifier accepts valid identifiers", () => {
+test("assertIdentifier accepts valid identifiers [billing-utils]", () => {
   assert.equal(assertIdentifier("valid", "test.invalid"), "valid");
   assert.equal(assertIdentifier("valid_name", "test.invalid"), "valid_name");
   assert.equal(assertIdentifier("valid-name", "test.invalid"), "valid-name");
@@ -20,7 +20,7 @@ test("assertIdentifier accepts valid identifiers", () => {
   assert.equal(assertIdentifier("a1", "test.invalid"), "a1"); // min 2 chars
 });
 
-test("assertIdentifier throws for invalid identifiers", () => {
+test("assertIdentifier throws for invalid identifiers [billing-utils]", () => {
   assert.throws(
     () => assertIdentifier("", "test.invalid"),
     (e: any) => e.code === "test.invalid"
@@ -43,7 +43,7 @@ test("assertIdentifier throws for invalid identifiers", () => {
   );
 });
 
-test("assertIdentifier throws for invalid special characters", () => {
+test("assertIdentifier throws for invalid special characters [billing-utils]", () => {
   // Space is not allowed
   assert.throws(
     () => assertIdentifier("invalid name", "test.invalid"),
@@ -61,21 +61,21 @@ test("assertIdentifier throws for invalid special characters", () => {
   );
 });
 
-test("assertPositiveNumber accepts positive numbers", () => {
+test("assertPositiveNumber accepts positive numbers [billing-utils]", () => {
   assert.equal(assertPositiveNumber(1, "test.invalid"), 1);
   assert.equal(assertPositiveNumber(0.5, "test.invalid"), 0.5);
   assert.equal(assertPositiveNumber(100, "test.invalid"), 100);
   assert.equal(assertPositiveNumber(0.001, "test.invalid"), 0.001);
 });
 
-test("assertPositiveNumber throws for zero", () => {
+test("assertPositiveNumber throws for zero [billing-utils]", () => {
   assert.throws(
     () => assertPositiveNumber(0, "test.invalid"),
     (e: any) => e.code === "test.invalid"
   );
 });
 
-test("assertPositiveNumber throws for negative numbers", () => {
+test("assertPositiveNumber throws for negative numbers [billing-utils]", () => {
   assert.throws(
     () => assertPositiveNumber(-1, "test.invalid"),
     (e: any) => e.code === "test.invalid"
@@ -86,7 +86,7 @@ test("assertPositiveNumber throws for negative numbers", () => {
   );
 });
 
-test("assertPositiveNumber throws for non-finite values", () => {
+test("assertPositiveNumber throws for non-finite values [billing-utils]", () => {
   assert.throws(
     () => assertPositiveNumber(Infinity, "test.invalid"),
     (e: any) => e.code === "test.invalid"
@@ -101,39 +101,39 @@ test("assertPositiveNumber throws for non-finite values", () => {
   );
 });
 
-test("roundCurrency rounds to 4 decimal places", () => {
+test("roundCurrency rounds to 4 decimal places [billing-utils]", () => {
   assert.equal(roundCurrency(1.12345), 1.1235);
   assert.equal(roundCurrency(1.12344), 1.1234);
   assert.equal(roundCurrency(1.123456789), 1.1235);
 });
 
-test("roundCurrency handles integers", () => {
+test("roundCurrency handles integers [billing-utils]", () => {
   assert.equal(roundCurrency(100), 100);
 });
 
-test("roundCurrency handles negative numbers", () => {
+test("roundCurrency handles negative numbers [billing-utils]", () => {
   assert.equal(roundCurrency(-1.12345), -1.1234);
 });
 
-test("roundCurrency handles zero", () => {
+test("roundCurrency handles zero [billing-utils]", () => {
   assert.equal(roundCurrency(0), 0);
 });
 
-test("monthWindow parses valid timestamp", () => {
+test("monthWindow parses valid timestamp [billing-utils]", () => {
   const result = monthWindow("2026-04-14T00:00:00.000Z");
   assert.equal(result.periodId, "2026-04");
   assert.ok(result.start.includes("2026-04-01"));
   assert.ok(result.end.includes("2026-05-01"));
 });
 
-test("monthWindow handles month boundary", () => {
+test("monthWindow handles month boundary [billing-utils]", () => {
   const result = monthWindow("2026-12-15T00:00:00.000Z");
   assert.equal(result.periodId, "2026-12");
   assert.ok(result.start.includes("2026-12-01"));
   assert.ok(result.end.includes("2027-01-01"));
 });
 
-test("monthWindow throws for invalid timestamp", () => {
+test("monthWindow throws for invalid timestamp [billing-utils]", () => {
   assert.throws(
     () => monthWindow("invalid"),
     (e: any) => e.code === "billing.invalid_timestamp"
@@ -144,7 +144,7 @@ test("monthWindow throws for invalid timestamp", () => {
   );
 });
 
-test("buildBillingMarkdown generates correct markdown", () => {
+test("buildBillingMarkdown generates correct markdown [billing-utils]", () => {
   const summary: BillingAccountSummary = {
     account: {
       accountId: "bill_acct_123",
@@ -183,7 +183,7 @@ test("buildBillingMarkdown generates correct markdown", () => {
   assert.ok(markdown.includes("45")); // totalBilledUsd
 });
 
-test("buildBillingMarkdown includes quota details", () => {
+test("buildBillingMarkdown includes quota details [billing-utils]", () => {
   const summary: BillingAccountSummary = {
     account: {
       accountId: "bill_acct_123",

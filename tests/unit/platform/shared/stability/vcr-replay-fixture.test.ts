@@ -9,7 +9,7 @@ import {
 } from "../../../../../src/platform/shared/stability/vcr-replay-fixture.js";
 import { ValidationError } from "../../../../../src/platform/contracts/errors.js";
 
-test("VcrFixtureStore records and replays interactions", () => {
+test("VcrFixtureStore records and replays interactions [vcr-replay-fixture]", () => {
   const store = new VcrFixtureStore([], "vcr_replay");
 
   // Use createInteraction to ensure fingerprint matches what replay will compute
@@ -36,7 +36,7 @@ test("VcrFixtureStore records and replays interactions", () => {
   assert.equal(replayed.responsePayload.completion, "Hi there!");
 });
 
-test("VcrFixtureStore replay throws when fixture missing in vcr_replay mode", () => {
+test("VcrFixtureStore replay throws when fixture missing in vcr_replay mode [vcr-replay-fixture]", () => {
   const store = new VcrFixtureStore([], "vcr_replay");
 
   const request: VcrReplayRequest = {
@@ -51,7 +51,7 @@ test("VcrFixtureStore replay throws when fixture missing in vcr_replay mode", ()
   );
 });
 
-test("VcrFixtureStore createInteraction generates correct fingerprint", () => {
+test("VcrFixtureStore createInteraction generates correct fingerprint [vcr-replay-fixture]", () => {
   const store = new VcrFixtureStore([], "vcr_replay");
 
   const interaction = store.createInteraction({
@@ -72,7 +72,7 @@ test("VcrFixtureStore createInteraction generates correct fingerprint", () => {
   assert.ok(interaction.requestFingerprint.length > 0);
 });
 
-test("VcrFixtureStore createInteraction includes tool signature in fingerprint", () => {
+test("VcrFixtureStore createInteraction includes tool signature in fingerprint [vcr-replay-fixture]", () => {
   const store = new VcrFixtureStore([], "vcr_replay");
 
   const interaction1 = store.createInteraction({
@@ -101,7 +101,7 @@ test("VcrFixtureStore createInteraction includes tool signature in fingerprint",
   assert.notEqual(interaction1.requestFingerprint, interaction2.requestFingerprint);
 });
 
-test("VcrFixtureStore createInteraction normalizes tools order for fingerprint", () => {
+test("VcrFixtureStore createInteraction normalizes tools order for fingerprint [vcr-replay-fixture]", () => {
   const store = new VcrFixtureStore([], "vcr_replay");
 
   const interaction1 = store.createInteraction({
@@ -130,7 +130,7 @@ test("VcrFixtureStore createInteraction normalizes tools order for fingerprint",
   assert.equal(interaction1.requestFingerprint, interaction2.requestFingerprint);
 });
 
-test("VcrFixtureStore loadFixture accepts array directly", () => {
+test("VcrFixtureStore loadFixture accepts array directly [vcr-replay-fixture]", () => {
   const interactions: RecordedInteraction[] = [
     {
       interactionId: "inter_load_1",
@@ -152,7 +152,7 @@ test("VcrFixtureStore loadFixture accepts array directly", () => {
   assert.equal(loaded[0]!.interactionId, "inter_load_1");
 });
 
-test("VcrFixtureStore loadFixture accepts object with interactions property", () => {
+test("VcrFixtureStore loadFixture accepts object with interactions property [vcr-replay-fixture]", () => {
   const fixture = {
     interactions: [
       {
@@ -176,7 +176,7 @@ test("VcrFixtureStore loadFixture accepts object with interactions property", ()
   assert.equal(loaded[0]!.interactionId, "inter_load_2");
 });
 
-test("VcrFixtureStore loadFixture throws on invalid input", () => {
+test("VcrFixtureStore loadFixture throws on invalid input [vcr-replay-fixture]", () => {
   assert.throws(
     () => VcrFixtureStore.loadFixture(null),
     (err: unknown) => err instanceof ValidationError && err.code === "vcr.fixture_schema_invalid",
@@ -193,7 +193,7 @@ test("VcrFixtureStore loadFixture throws on invalid input", () => {
   );
 });
 
-test("VcrFixtureStore loadFixture validates each interaction", () => {
+test("VcrFixtureStore loadFixture validates each interaction [vcr-replay-fixture]", () => {
   const invalidInteractions = [
     {
       // Missing required fields
@@ -207,7 +207,7 @@ test("VcrFixtureStore loadFixture validates each interaction", () => {
   );
 });
 
-test("buildRequestFingerprint produces consistent SHA-256 hex string", () => {
+test("buildRequestFingerprint produces consistent SHA-256 hex string [vcr-replay-fixture]", () => {
   const request: VcrReplayRequest = {
     provider: "anthropic",
     model: "claude-opus-4-5",
@@ -230,7 +230,7 @@ test("buildRequestFingerprint produces consistent SHA-256 hex string", () => {
   assert.ok(/^[a-f0-9]+$/.test(fingerprint1));
 });
 
-test("buildRequestFingerprint differs for different requests", () => {
+test("buildRequestFingerprint differs for different requests [vcr-replay-fixture]", () => {
   const request1: VcrReplayRequest = {
     provider: "anthropic",
     model: "claude-opus-4-5",
@@ -249,7 +249,7 @@ test("buildRequestFingerprint differs for different requests", () => {
   assert.notEqual(fingerprint1, fingerprint2);
 });
 
-test("buildRequestFingerprint includes provider in hash", () => {
+test("buildRequestFingerprint includes provider in hash [vcr-replay-fixture]", () => {
   const request1: VcrReplayRequest = {
     provider: "anthropic",
     model: "claude-opus-4-5",
@@ -265,7 +265,7 @@ test("buildRequestFingerprint includes provider in hash", () => {
   assert.notEqual(buildRequestFingerprint(request1), buildRequestFingerprint(request2));
 });
 
-test("buildRequestFingerprint includes model in hash", () => {
+test("buildRequestFingerprint includes model in hash [vcr-replay-fixture]", () => {
   const request1: VcrReplayRequest = {
     provider: "anthropic",
     model: "claude-opus-4-5",
@@ -281,7 +281,7 @@ test("buildRequestFingerprint includes model in hash", () => {
   assert.notEqual(buildRequestFingerprint(request1), buildRequestFingerprint(request2));
 });
 
-test("VcrFixtureStore mode vcr_record does not throw on missing fixture", () => {
+test("VcrFixtureStore mode vcr_record does not throw on missing fixture [vcr-replay-fixture]", () => {
   const store = new VcrFixtureStore([], "vcr_record");
 
   const request: VcrReplayRequest = {
@@ -299,7 +299,7 @@ test("VcrFixtureStore mode vcr_record does not throw on missing fixture", () => 
   );
 });
 
-test("VcrFixtureStore mode fixture_only uses only stored fixtures", () => {
+test("VcrFixtureStore mode fixture_only uses only stored fixtures [vcr-replay-fixture]", () => {
   const store = new VcrFixtureStore([], "fixture_only");
 
   // Use createInteraction to ensure fingerprint is computed correctly from request
@@ -326,7 +326,7 @@ test("VcrFixtureStore mode fixture_only uses only stored fixtures", () => {
   assert.equal(replayed.interactionId, "inter_fixture");
 });
 
-test("VcrFixtureStore initializes with provided interactions", () => {
+test("VcrFixtureStore initializes with provided interactions [vcr-replay-fixture]", () => {
   // Create properly formatted interactions using createInteraction to ensure correct fingerprints
   const store = new VcrFixtureStore([], "vcr_replay");
 
@@ -353,7 +353,7 @@ test("VcrFixtureStore initializes with provided interactions", () => {
   assert.equal(replayed.interactionId, "inter_init");
 });
 
-test("VcrFixtureStore recordInteraction validates and stores interaction", () => {
+test("VcrFixtureStore recordInteraction validates and stores interaction [vcr-replay-fixture]", () => {
   const store = new VcrFixtureStore([], "vcr_replay");
 
   const interaction: RecordedInteraction = {
@@ -375,7 +375,7 @@ test("VcrFixtureStore recordInteraction validates and stores interaction", () =>
   assert.equal(recorded.requestFingerprint, "fingerprint_validate");
 });
 
-test("VcrFixtureStore recordInteraction overwrites existing fingerprint", () => {
+test("VcrFixtureStore recordInteraction overwrites existing fingerprint [vcr-replay-fixture]", () => {
   const store = new VcrFixtureStore([], "vcr_replay");
 
   // Create first interaction - this will compute fingerprint from "First" content

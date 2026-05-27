@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { PgAdvisoryLockAdapter } from "../../../../../src/platform/five-plane-execution/distributed-lock/pg-advisory-lock-adapter.js";
 
-test("PgAdvisoryLockAdapter acquire() throws pg_async_required", () => {
+test("PgAdvisoryLockAdapter acquire() throws pg_async_required [pg-advisory-lock-adapter]", () => {
   const adapter = new PgAdvisoryLockAdapter();
 
   assert.throws(
@@ -14,7 +14,7 @@ test("PgAdvisoryLockAdapter acquire() throws pg_async_required", () => {
   );
 });
 
-test("PgAdvisoryLockAdapter release() throws pg_async_required", () => {
+test("PgAdvisoryLockAdapter release() throws pg_async_required [pg-advisory-lock-adapter]", () => {
   const adapter = new PgAdvisoryLockAdapter();
 
   assert.throws(
@@ -25,7 +25,7 @@ test("PgAdvisoryLockAdapter release() throws pg_async_required", () => {
   );
 });
 
-test("PgAdvisoryLockAdapter forceSteal() throws advisory_cannot_force_steal", () => {
+test("PgAdvisoryLockAdapter forceSteal() throws advisory_cannot_force_steal [pg-advisory-lock-adapter]", () => {
   const adapter = new PgAdvisoryLockAdapter();
 
   assert.throws(
@@ -36,7 +36,7 @@ test("PgAdvisoryLockAdapter forceSteal() throws advisory_cannot_force_steal", ()
   );
 });
 
-test("PgAdvisoryLockAdapter inspect() returns null", () => {
+test("PgAdvisoryLockAdapter inspect() returns null [pg-advisory-lock-adapter]", () => {
   const adapter = new PgAdvisoryLockAdapter();
 
   const result = adapter.inspect("test-key");
@@ -44,7 +44,7 @@ test("PgAdvisoryLockAdapter inspect() returns null", () => {
   assert.equal(result, null);
 });
 
-test("PgAdvisoryLockAdapter extend() refreshes held lock metadata for the owner", () => {
+test("PgAdvisoryLockAdapter extend() refreshes held lock metadata for the owner [pg-advisory-lock-adapter]", () => {
   const adapter = new PgAdvisoryLockAdapter();
   (adapter as any).heldLocks.set("test-key", {
     lockKey: "test-key",
@@ -63,7 +63,7 @@ test("PgAdvisoryLockAdapter extend() refreshes held lock metadata for the owner"
   assert.equal(result!.owner, "test-owner");
 });
 
-test("PgAdvisoryLockAdapter backendKind is pg_advisory", () => {
+test("PgAdvisoryLockAdapter backendKind is pg_advisory [pg-advisory-lock-adapter]", () => {
   const adapter = new PgAdvisoryLockAdapter();
 
   assert.equal(adapter.backendKind, "pg_advisory");
@@ -99,7 +99,7 @@ function createAdapterWithMockDriver(mockDriver: MockPostgresDriver): PgAdvisory
   return adapter;
 }
 
-test("PgAdvisoryLockAdapter acquireAsync returns lock when successful", async () => {
+test("PgAdvisoryLockAdapter acquireAsync returns lock when successful [pg-advisory-lock-adapter]", async () => {
   const mockDriver = createMockDriver({
     queryFn: async () => [{ acquired: true, fencing_token: 42 }],
   });
@@ -115,7 +115,7 @@ test("PgAdvisoryLockAdapter acquireAsync returns lock when successful", async ()
   assert.equal(result.lock!.fencingToken, 42);
 });
 
-test("PgAdvisoryLockAdapter acquireAsync returns false when lock not acquired", async () => {
+test("PgAdvisoryLockAdapter acquireAsync returns false when lock not acquired [pg-advisory-lock-adapter]", async () => {
   const mockDriver = createMockDriver({
     queryFn: async () => [{ acquired: false }],
   });
@@ -127,7 +127,7 @@ test("PgAdvisoryLockAdapter acquireAsync returns false when lock not acquired", 
   assert.equal(result.lock, undefined);
 });
 
-test("PgAdvisoryLockAdapter acquireAsync throws when pg module not found", async () => {
+test("PgAdvisoryLockAdapter acquireAsync throws when pg module not found [pg-advisory-lock-adapter]", async () => {
   // Pass a custom postgresFactory that throws module not found error
   const adapter = new PgAdvisoryLockAdapter({
     dsn: "postgresql://test:test@localhost/test",
@@ -144,7 +144,7 @@ test("PgAdvisoryLockAdapter acquireAsync throws when pg module not found", async
   );
 });
 
-test("PgAdvisoryLockAdapter acquireAsync returns false on connection error", async () => {
+test("PgAdvisoryLockAdapter acquireAsync returns false on connection error [pg-advisory-lock-adapter]", async () => {
   // Throw a non-module, non-ECONNREFUSED error so code returns { acquired: false }
   const mockDriver = createMockDriver({
     queryFn: async () => {
@@ -158,7 +158,7 @@ test("PgAdvisoryLockAdapter acquireAsync returns false on connection error", asy
   assert.equal(result.acquired, false);
 });
 
-test("PgAdvisoryLockAdapter releaseAsync returns true when successful", async () => {
+test("PgAdvisoryLockAdapter releaseAsync returns true when successful [pg-advisory-lock-adapter]", async () => {
   const mockDriver = createMockDriver({
     queryFn: async () => [{ released: true }],
   });
@@ -178,7 +178,7 @@ test("PgAdvisoryLockAdapter releaseAsync returns true when successful", async ()
   assert.equal(result, true);
 });
 
-test("PgAdvisoryLockAdapter releaseAsync returns false for owner mismatch", async () => {
+test("PgAdvisoryLockAdapter releaseAsync returns false for owner mismatch [pg-advisory-lock-adapter]", async () => {
   const mockDriver = createMockDriver({
     queryFn: async () => [{ released: true }],
   });
@@ -198,7 +198,7 @@ test("PgAdvisoryLockAdapter releaseAsync returns false for owner mismatch", asyn
   assert.equal(result, false);
 });
 
-test("PgAdvisoryLockAdapter releaseAsync throws when pg module not found", async () => {
+test("PgAdvisoryLockAdapter releaseAsync throws when pg module not found [pg-advisory-lock-adapter]", async () => {
   // Pass a custom postgresFactory that throws module not found error
   const adapter = new PgAdvisoryLockAdapter({
     dsn: "postgresql://test:test@localhost/test",
@@ -224,7 +224,7 @@ test("PgAdvisoryLockAdapter releaseAsync throws when pg module not found", async
   );
 });
 
-test("PgAdvisoryLockAdapter releaseAsync returns false on error", async () => {
+test("PgAdvisoryLockAdapter releaseAsync returns false on error [pg-advisory-lock-adapter]", async () => {
   const mockDriver = createMockDriver({
     queryFn: async () => {
       throw new Error("some database error");
@@ -237,7 +237,7 @@ test("PgAdvisoryLockAdapter releaseAsync returns false on error", async () => {
   assert.equal(result, false);
 });
 
-test("PgAdvisoryLockAdapter close calls sql.end() when connected", async () => {
+test("PgAdvisoryLockAdapter close calls sql.end() when connected [pg-advisory-lock-adapter]", async () => {
   let endCalled = false;
   const mockDriver = createMockDriver({
     endFn: async () => { endCalled = true; },
@@ -249,7 +249,7 @@ test("PgAdvisoryLockAdapter close calls sql.end() when connected", async () => {
   assert.equal(endCalled, true);
 });
 
-test("PgAdvisoryLockAdapter close does nothing when not connected", async () => {
+test("PgAdvisoryLockAdapter close does nothing when not connected [pg-advisory-lock-adapter]", async () => {
   const adapter = new PgAdvisoryLockAdapter({ dsn: "postgresql://test:test@localhost/test" });
   // sql is null, connected is false
 
@@ -257,7 +257,7 @@ test("PgAdvisoryLockAdapter close does nothing when not connected", async () => 
   await adapter.close();
 });
 
-test("PgAdvisoryLockAdapter lockKeyToAdvisoryKey produces consistent bigint", () => {
+test("PgAdvisoryLockAdapter lockKeyToAdvisoryKey produces consistent bigint [pg-advisory-lock-adapter]", () => {
   const adapter = new PgAdvisoryLockAdapter({ dsn: "postgresql://test:test@localhost/test" });
 
   // Access private method via casting to any
@@ -268,7 +268,7 @@ test("PgAdvisoryLockAdapter lockKeyToAdvisoryKey produces consistent bigint", ()
   assert.equal(typeof key1, "bigint");
 });
 
-test("PgAdvisoryLockAdapter lockKeyToAdvisoryKey produces different keys for different inputs", () => {
+test("PgAdvisoryLockAdapter lockKeyToAdvisoryKey produces different keys for different inputs [pg-advisory-lock-adapter]", () => {
   const adapter = new PgAdvisoryLockAdapter({ dsn: "postgresql://test:test@localhost/test" });
 
   const key1 = (adapter as any).lockKeyToAdvisoryKey("key-a");
@@ -281,7 +281,7 @@ test("PgAdvisoryLockAdapter lockKeyToAdvisoryKey produces different keys for dif
 // Constructor config override tests
 // =============================================================================
 
-test("PgAdvisoryLockAdapter constructor uses config.dsn when provided", () => {
+test("PgAdvisoryLockAdapter constructor uses config.dsn when provided [pg-advisory-lock-adapter]", () => {
   // Create adapter with explicit dsn
   const adapter = new PgAdvisoryLockAdapter({ dsn: "postgresql://custom:custom@custom-host:5433/customdb" });
 
@@ -289,7 +289,7 @@ test("PgAdvisoryLockAdapter constructor uses config.dsn when provided", () => {
   assert.equal((adapter as any).dsn, "postgresql://custom:custom@custom-host:5433/customdb");
 });
 
-test("PgAdvisoryLockAdapter constructor uses config.ssl when provided as object", () => {
+test("PgAdvisoryLockAdapter constructor uses config.ssl when provided as object [pg-advisory-lock-adapter]", () => {
   const adapter = new PgAdvisoryLockAdapter({
     dsn: "postgresql://test:test@localhost/test",
     ssl: { rejectUnauthorized: true },
@@ -298,7 +298,7 @@ test("PgAdvisoryLockAdapter constructor uses config.ssl when provided as object"
   assert.deepEqual((adapter as any).ssl, { rejectUnauthorized: true });
 });
 
-test("PgAdvisoryLockAdapter constructor uses config.ssl when provided as false", () => {
+test("PgAdvisoryLockAdapter constructor uses config.ssl when provided as false [pg-advisory-lock-adapter]", () => {
   const adapter = new PgAdvisoryLockAdapter({
     dsn: "postgresql://test:test@localhost/test",
     ssl: false,
@@ -307,7 +307,7 @@ test("PgAdvisoryLockAdapter constructor uses config.ssl when provided as false",
   assert.equal((adapter as any).ssl, false);
 });
 
-test("PgAdvisoryLockAdapter constructor uses config.env when provided", () => {
+test("PgAdvisoryLockAdapter constructor uses config.env when provided [pg-advisory-lock-adapter]", () => {
   const customEnv = {
     AA_LOCK_POSTGRES_DSN: "postgresql://env:env@env-host:5432/envdb",
     AA_LOCK_POSTGRES_POOL_MIN: "2",
@@ -327,7 +327,7 @@ test("PgAdvisoryLockAdapter constructor uses config.env when provided", () => {
   assert.deepEqual((adapter as any).ssl, { rejectUnauthorized: true });
 });
 
-test("PgAdvisoryLockAdapter constructor uses config.postgresFactory when provided", () => {
+test("PgAdvisoryLockAdapter constructor uses config.postgresFactory when provided [pg-advisory-lock-adapter]", () => {
   const customFactory = (_dsn: string, _options: Record<string, unknown>) => createMockDriver();
 
   const adapter = new PgAdvisoryLockAdapter({
@@ -339,7 +339,7 @@ test("PgAdvisoryLockAdapter constructor uses config.postgresFactory when provide
   assert.equal((adapter as any).postgresFactory, customFactory);
 });
 
-test("PgAdvisoryLockAdapter ensureConnected throws connection error", () => {
+test("PgAdvisoryLockAdapter ensureConnected throws connection error [pg-advisory-lock-adapter]", () => {
   const adapter = new PgAdvisoryLockAdapter({
     dsn: "postgresql://test:test@localhost/test",
     postgresFactory: () => {
@@ -357,7 +357,7 @@ test("PgAdvisoryLockAdapter ensureConnected throws connection error", () => {
   );
 });
 
-test("PgAdvisoryLockAdapter ensureConnected reuses existing connection", () => {
+test("PgAdvisoryLockAdapter ensureConnected reuses existing connection [pg-advisory-lock-adapter]", () => {
   const mockDriver = createMockDriver();
   const adapter = createAdapterWithMockDriver(mockDriver);
 

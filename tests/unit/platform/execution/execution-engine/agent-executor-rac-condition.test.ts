@@ -58,7 +58,7 @@ function createTestInput(context: AgentExecutorContext = createTestContext()): A
 // Race condition protection tests (C-01)
 // ---------------------------------------------------------------------------
 
-test("initializeAgentExecutor does not throw on concurrent calls after first completes", () => {
+test("initializeAgentExecutor does not throw on concurrent calls after first completes [agent-executor-rac-condition]", () => {
   // First initialization should succeed
   const ctx1 = initializeAgentExecutor({});
   assert.ok(ctx1, "First initialization should succeed");
@@ -68,7 +68,7 @@ test("initializeAgentExecutor does not throw on concurrent calls after first com
   assert.strictEqual(ctx1, ctx2, "Should return same singleton instance");
 });
 
-test("AgentExecutor instance uses singleton context", () => {
+test("AgentExecutor instance uses singleton context [agent-executor-rac-condition]", () => {
   const executor1 = new AgentExecutor();
   const executor2 = new AgentExecutor();
 
@@ -79,7 +79,7 @@ test("AgentExecutor instance uses singleton context", () => {
   assert.deepEqual(hooks1, hooks2, "Both executors should have same registered hooks");
 });
 
-test("getAgentExecutorContext returns same chain as getGlobalAgentMiddlewareChain", () => {
+test("getAgentExecutorContext returns same chain as getGlobalAgentMiddlewareChain [agent-executor-rac-condition]", () => {
   initializeAgentExecutor({});
 
   const ctx = getAgentExecutorContext();
@@ -93,7 +93,7 @@ test("getAgentExecutorContext returns same chain as getGlobalAgentMiddlewareChai
 // Loop detection configuration tests
 // ---------------------------------------------------------------------------
 
-test("AgentExecutor with loop detection returns loop detection in result", async () => {
+test("AgentExecutor with loop detection returns loop detection in result [agent-executor-rac-condition]", async () => {
   const loopConfig: LoopDetectionConfig = {
     warnThreshold: 2,
     escalateThreshold: 4,
@@ -110,7 +110,7 @@ test("AgentExecutor with loop detection returns loop detection in result", async
   assert.ok(typeof result.loopDetection!.escalated === "boolean", "escalated should be a boolean");
 });
 
-test("AgentExecutor with null loop config still has loop detection from singleton", async () => {
+test("AgentExecutor with null loop config still has loop detection from singleton [agent-executor-rac-condition]", async () => {
   // Note: Due to singleton pattern, the executorContext is shared across tests.
   // When loop detection was enabled in a prior test, subsequent executors will
   // still have access to the same loop detection state regardless of their options.
@@ -130,7 +130,7 @@ test("AgentExecutor with null loop config still has loop detection from singleto
   }
 });
 
-test("AgentExecutor loopDetection patterns is callable multiple times", () => {
+test("AgentExecutor loopDetection patterns is callable multiple times [agent-executor-rac-condition]", () => {
   const executor = new AgentExecutor({
     loopDetection: { warnThreshold: 1, escalateThreshold: 3 },
   });
@@ -142,7 +142,7 @@ test("AgentExecutor loopDetection patterns is callable multiple times", () => {
   assert.ok(Array.isArray(patterns1), "Should return an array");
 });
 
-test("AgentExecutor resetLoopDetection works when loop detection is enabled", () => {
+test("AgentExecutor resetLoopDetection works when loop detection is enabled [agent-executor-rac-condition]", () => {
   const executor = new AgentExecutor({
     loopDetection: { warnThreshold: 2, escalateThreshold: 4 },
   });
@@ -150,7 +150,7 @@ test("AgentExecutor resetLoopDetection works when loop detection is enabled", ()
   assert.doesNotThrow(() => executor.resetLoopDetection(), "resetLoopDetection should not throw");
 });
 
-test("AgentExecutor resetLoopDetection works when loop detection is null", () => {
+test("AgentExecutor resetLoopDetection works when loop detection is null [agent-executor-rac-condition]", () => {
   const executor = new AgentExecutor({ loopDetection: null });
 
   assert.doesNotThrow(() => executor.resetLoopDetection(), "resetLoopDetection should not throw when loop detection is null");
@@ -160,7 +160,7 @@ test("AgentExecutor resetLoopDetection works when loop detection is null", () =>
 // AgentExecutorResult structure tests
 // ---------------------------------------------------------------------------
 
-test("AgentExecutorResult contains all warning arrays", async () => {
+test("AgentExecutorResult contains all warning arrays [agent-executor-rac-condition]", async () => {
   const executor = new AgentExecutor();
   const input = createTestInput();
 
@@ -176,7 +176,7 @@ test("AgentExecutorResult contains all warning arrays", async () => {
   assert.ok("promptCache" in result, "Should have promptCache property");
 });
 
-test("AgentExecutorResult warnings are all arrays", async () => {
+test("AgentExecutorResult warnings are all arrays [agent-executor-rac-condition]", async () => {
   const executor = new AgentExecutor();
   const input = createTestInput();
 
@@ -190,7 +190,7 @@ test("AgentExecutorResult warnings are all arrays", async () => {
   assert.ok(Array.isArray(result.afterAgentWarnings), "afterAgentWarnings should be an array");
 });
 
-test("AgentExecutorResult promptCache can be null", async () => {
+test("AgentExecutorResult promptCache can be null [agent-executor-rac-condition]", async () => {
   const executor = new AgentExecutor();
   const input = createTestInput(createTestContext({ agentRound: 0 }));
 
@@ -206,7 +206,7 @@ test("AgentExecutorResult promptCache can be null", async () => {
 // Logger behavior tests
 // ---------------------------------------------------------------------------
 
-test("AgentExecutor with custom logger does not throw", () => {
+test("AgentExecutor with custom logger does not throw [agent-executor-rac-condition]", () => {
   const logger = (code: string, msg: string, ctx: MiddlewareContext) => {
     // Verify logger receives expected parameters
     assert.ok(typeof code === "string", "code should be a string");
@@ -218,7 +218,7 @@ test("AgentExecutor with custom logger does not throw", () => {
   assert.ok(executor instanceof AgentExecutor, "Should create executor with custom logger");
 });
 
-test("AgentExecutor with failOpen true does not throw on middleware issues", async () => {
+test("AgentExecutor with failOpen true does not throw on middleware issues [agent-executor-rac-condition]", async () => {
   const executor = new AgentExecutor({ failOpen: true });
   const input = createTestInput();
 
@@ -228,7 +228,7 @@ test("AgentExecutor with failOpen true does not throw on middleware issues", asy
   assert.ok(result, "Should complete without throwing when failOpen is true");
 });
 
-test("AgentExecutor with logger and failOpen options", () => {
+test("AgentExecutor with logger and failOpen options [agent-executor-rac-condition]", () => {
   const logger = (code: string, msg: string) => {
     // Logger implementation
   };
@@ -245,21 +245,21 @@ test("AgentExecutor with logger and failOpen options", () => {
 // Middleware chain integration tests
 // ---------------------------------------------------------------------------
 
-test("AgentExecutor registers tool_argument_coercion middleware", () => {
+test("AgentExecutor registers tool_argument_coercion middleware [agent-executor-rac-condition]", () => {
   const executor = new AgentExecutor();
   const hooks = executor.getRegisteredHooks();
 
   assert.ok(hooks.wrapToolCall.includes("tool_argument_coercion"), "Should register tool_argument_coercion middleware");
 });
 
-test("AgentExecutor registers cache-governance middleware", () => {
+test("AgentExecutor registers cache-governance middleware [agent-executor-rac-condition]", () => {
   const executor = new AgentExecutor();
   const hooks = executor.getRegisteredHooks();
 
   assert.ok(hooks.wrapToolCall.includes("cache-governance"), "Should register cache-governance middleware");
 });
 
-test("AgentExecutor registers cache-summary middleware", () => {
+test("AgentExecutor registers cache-summary middleware [agent-executor-rac-condition]", () => {
   const executor = new AgentExecutor();
   const hooks = executor.getRegisteredHooks();
 
@@ -270,7 +270,7 @@ test("AgentExecutor registers cache-summary middleware", () => {
 // executeAgentRound edge case tests
 // ---------------------------------------------------------------------------
 
-test("executeAgentRound with multiple agent rounds increments internal counter", async () => {
+test("executeAgentRound with multiple agent rounds increments internal counter [agent-executor-rac-condition]", async () => {
   const executor = new AgentExecutor();
 
   const input1 = createTestInput(createTestContext({ agentRound: 0 }));
@@ -288,7 +288,7 @@ test("executeAgentRound with multiple agent rounds increments internal counter",
   assert.ok(true, "Multiple rounds should execute successfully");
 });
 
-test("executeAgentRound with model parameter passes it correctly", async () => {
+test("executeAgentRound with model parameter passes it correctly [agent-executor-rac-condition]", async () => {
   const executor = new AgentExecutor();
   const input: AgentExecutorInput = {
     request: "test",
@@ -304,7 +304,7 @@ test("executeAgentRound with model parameter passes it correctly", async () => {
   assert.ok(result, "Should handle model parameter");
 });
 
-test("executeAgentRound with sessionId in context", async () => {
+test("executeAgentRound with sessionId in context [agent-executor-rac-condition]", async () => {
   const executor = new AgentExecutor();
   const input: AgentExecutorInput = {
     request: "test",
@@ -321,7 +321,7 @@ test("executeAgentRound with sessionId in context", async () => {
   assert.ok(result, "Should handle sessionId in context");
 });
 
-test("executeAgentRound response reflects model output", async () => {
+test("executeAgentRound response reflects model output [agent-executor-rac-condition]", async () => {
   const executor = new AgentExecutor();
   const input = createTestInput();
 
@@ -337,7 +337,7 @@ test("executeAgentRound response reflects model output", async () => {
 // createAgentExecutor factory tests
 // ---------------------------------------------------------------------------
 
-test("createAgentExecutor creates independent executors with same options", () => {
+test("createAgentExecutor creates independent executors with same options [agent-executor-rac-condition]", () => {
   const options: AgentExecutorOptions = {
     failOpen: true,
     loopDetection: { warnThreshold: 2, escalateThreshold: 4 },
@@ -360,7 +360,7 @@ test("createAgentExecutor creates independent executors with same options", () =
 // Edge case: initializeAgentExecutor with null loop config
 // ---------------------------------------------------------------------------
 
-test("initializeAgentExecutor with null loop config returns valid context", () => {
+test("initializeAgentExecutor with null loop config returns valid context [agent-executor-rac-condition]", () => {
   // Note: Due to singleton pattern, the context is shared across tests.
   // Once initialized with loop detection, subsequent calls return the cached context.
   const ctx = initializeAgentExecutor({ loopDetection: null });
@@ -374,7 +374,7 @@ test("initializeAgentExecutor with null loop config returns valid context", () =
   // The state may or may not be null depending on whether a prior test initialized with loop detection
 });
 
-test("initializeAgentExecutor with explicit empty loop config enables loop detection", () => {
+test("initializeAgentExecutor with explicit empty loop config enables loop detection [agent-executor-rac-condition]", () => {
   const ctx = initializeAgentExecutor({ loopDetection: {} });
 
   assert.ok(ctx, "Should return context with empty loop config");

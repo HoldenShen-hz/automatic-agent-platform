@@ -8,21 +8,21 @@ import {
   type HappyPathInput,
 } from "../../../../src/platform/five-plane-execution/execution-engine/single-task-happy-path-support.js";
 
-test("DEFAULT_SINGLE_TASK_MAX_RETRIES is 2", () => {
+test("DEFAULT_SINGLE_TASK_MAX_RETRIES is 2 [single-task-happy-path-support]", () => {
   assert.equal(DEFAULT_SINGLE_TASK_MAX_RETRIES, 2);
 });
 
-test("DEFAULT_SINGLE_TASK_RETRY_BACKOFF is linear", () => {
+test("DEFAULT_SINGLE_TASK_RETRY_BACKOFF is linear [single-task-happy-path-support]", () => {
   assert.equal(DEFAULT_SINGLE_TASK_RETRY_BACKOFF, "linear");
 });
 
-test("DEFAULT_RUNTIME_BACKPRESSURE_HEALTH_OPTIONS has correct defaults", () => {
+test("DEFAULT_RUNTIME_BACKPRESSURE_HEALTH_OPTIONS has correct defaults [single-task-happy-path-support]", () => {
   assert.equal(DEFAULT_RUNTIME_BACKPRESSURE_HEALTH_OPTIONS.memoryHighWatermarkMb, Number.POSITIVE_INFINITY);
   assert.equal(DEFAULT_RUNTIME_BACKPRESSURE_HEALTH_OPTIONS.eventLoopLagThresholdMs, Number.POSITIVE_INFINITY);
   assert.equal(DEFAULT_RUNTIME_BACKPRESSURE_HEALTH_OPTIONS.tier1AckDegradedThreshold, 100);
 });
 
-test("HappyPathInput structure with all fields", () => {
+test("HappyPathInput structure with all fields [single-task-happy-path-support]", () => {
   const input: HappyPathInput = {
     dbPath: "/tmp/test.db",
     title: "Test Task",
@@ -46,7 +46,7 @@ test("HappyPathInput structure with all fields", () => {
   assert.equal(typeof input.logger?.log, "function");
 });
 
-test("HappyPathInput structure with minimal fields", () => {
+test("HappyPathInput structure with minimal fields [single-task-happy-path-support]", () => {
   const input: HappyPathInput = {
     dbPath: "/tmp/test.db",
     title: "Minimal Task",
@@ -60,7 +60,7 @@ test("HappyPathInput structure with minimal fields", () => {
   assert.equal(input.crashInjection, undefined);
 });
 
-test("createContext builds TransitionAuditContext from root trace", () => {
+test("createContext builds TransitionAuditContext from root trace [single-task-happy-path-support]", () => {
   const rootTrace = {
     traceId: "trace_root_123",
     spanId: "span_parent_123",
@@ -82,7 +82,7 @@ test("createContext builds TransitionAuditContext from root trace", () => {
   assert.ok(result.occurredAt != null);
 });
 
-test("createContext handles missing optional trace fields", () => {
+test("createContext handles missing optional trace fields [single-task-happy-path-support]", () => {
   const rootTrace = {
     traceId: "trace_simple",
     spanId: undefined,
@@ -100,7 +100,7 @@ test("createContext handles missing optional trace fields", () => {
   assert.equal(result.correlationId, "trace_simple");
 });
 
-test("createContext generates valid ISO timestamp", () => {
+test("createContext generates valid ISO timestamp [single-task-happy-path-support]", () => {
   const rootTrace = {
     traceId: "trace_time_test",
     parentSpanId: null,

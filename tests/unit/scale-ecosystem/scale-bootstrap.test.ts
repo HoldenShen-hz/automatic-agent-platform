@@ -9,7 +9,7 @@ import {
 } from "../../../src/scale-ecosystem/scale-bootstrap.js";
 import { ServiceRegistry } from "../../../src/platform/shared/lifecycle/service-registry.js";
 
-test("scale bootstrap exposes canonical W4 scale services", () => {
+test("scale bootstrap exposes canonical W4 scale services [scale-bootstrap]", () => {
   const bootstrap = buildScaleBootstrap();
   assert.equal(bootstrap.capabilityGroupId, "scale-ecosystem");
   assert.deepEqual(bootstrap.registeredServiceIds, [
@@ -19,7 +19,7 @@ test("scale bootstrap exposes canonical W4 scale services", () => {
   assert.equal(bootstrap.catalog.length, 11);
 });
 
-test("scale bootstrap registers services in the service registry", async () => {
+test("scale bootstrap registers services in the service registry [scale-bootstrap]", async () => {
   const registry = ServiceRegistry.getInstance();
   try {
     const bootstrap = registerScaleBootstrap(registry);

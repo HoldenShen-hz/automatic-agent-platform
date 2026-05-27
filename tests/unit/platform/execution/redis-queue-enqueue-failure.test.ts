@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 
 import { RedisQueueAdapter } from "../../../../src/platform/five-plane-execution/queue/redis-queue-adapter.js";
 
-test("[SYS-REL-2.4] Redis queue enqueue hmset failure should propagate (currently swallows)", () => {
+test("[SYS-REL-2.4] Redis queue enqueue hmset failure should propagate (currently swallows) [redis-queue-enqueue-failure]", () => {
   const mockRedis = new EventEmitter();
   const client = new RedisQueueAdapter({
     host: "localhost",
@@ -19,7 +19,7 @@ test("[SYS-REL-2.4] Redis queue enqueue hmset failure should propagate (currentl
   assert.ok(true, "Documenting: hmset error would be silently swallowed due to .catch(() => {})");
 });
 
-test("[SYS-REL-2.4] All 5 catch(() => {}) locations in enqueue should propagate errors", () => {
+test("[SYS-REL-2.4] All 5 catch(() => {}) locations in enqueue should propagate errors [redis-queue-enqueue-failure]", () => {
   // Lines 212, 213, 214, 216, 218 in redis-queue-adapter.ts
   const catchLocations = [
     "hmset(...).catch(() => {})",
@@ -35,7 +35,7 @@ test("[SYS-REL-2.4] All 5 catch(() => {}) locations in enqueue should propagate 
   // that either propagates the error or returns failure status
 });
 
-test("[SYS-REL-2.4] Redis queue should use transaction for enqueue atomicity", () => {
+test("[SYS-REL-2.4] Redis queue should use transaction for enqueue atomicity [redis-queue-enqueue-failure]", () => {
   // After fix, enqueue should use MULTI/EXEC to ensure atomicity
   // All operations should either succeed or fail together
   assert.ok(
@@ -44,7 +44,7 @@ test("[SYS-REL-2.4] Redis queue should use transaction for enqueue atomicity", (
   );
 });
 
-test("[SYS-REL-2.4] Redis queue enqueue zadd failure should propagate", () => {
+test("[SYS-REL-2.4] Redis queue enqueue zadd failure should propagate [redis-queue-enqueue-failure]", () => {
   const mockRedis = new EventEmitter();
   const client = new RedisQueueAdapter({
     host: "localhost",

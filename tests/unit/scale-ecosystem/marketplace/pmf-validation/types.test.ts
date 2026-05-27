@@ -17,7 +17,7 @@ import type {
 } from "../../../../../src/scale-ecosystem/marketplace/pmf-validation/types.js";
 import type { ArtifactRef } from "../../../../../src/platform/contracts/types/domain/task-types.js";
 
-test("PmfCheckStatus accepts all valid values", () => {
+test("PmfCheckStatus accepts all valid values [types]", () => {
   const statuses: PmfCheckStatus[] = ["pass", "warn", "fail"];
   assert.equal(statuses.length, 3);
   assert.equal(statuses[0], "pass");
@@ -25,7 +25,7 @@ test("PmfCheckStatus accepts all valid values", () => {
   assert.equal(statuses[2], "fail");
 });
 
-test("PmfValidationThresholds structure is correct", () => {
+test("PmfValidationThresholds structure is correct [types]", () => {
   const thresholds: PmfValidationThresholds = {
     minTaskCount: 5,
     minSessionCount: 3,
@@ -47,7 +47,7 @@ test("PmfValidationThresholds structure is correct", () => {
   assert.equal(thresholds.maxP95StepDurationMs, 60000);
 });
 
-test("PmfValidationWindow structure is correct", () => {
+test("PmfValidationWindow structure is correct [types]", () => {
   const window: PmfValidationWindow = {
     start: "2026-04-01T00:00:00.000Z",
     end: "2026-04-14T00:00:00.000Z",
@@ -59,7 +59,7 @@ test("PmfValidationWindow structure is correct", () => {
   assert.equal(window.days, 14);
 });
 
-test("PmfMetricCheck checkId accepts all valid values", () => {
+test("PmfMetricCheck checkId accepts all valid values [types]", () => {
   const checkIds: PmfMetricCheck["checkId"][] = [
     "sample_size",
     "task_success_rate",
@@ -85,7 +85,7 @@ test("PmfMetricCheck checkId accepts all valid values", () => {
   }
 });
 
-test("PmfMetricCheck unit accepts all valid values", () => {
+test("PmfMetricCheck unit accepts all valid values [types]", () => {
   const units: PmfMetricCheck["unit"][] = ["count", "pct", "usd", "ms"];
   assert.equal(units.length, 4);
 
@@ -102,7 +102,7 @@ test("PmfMetricCheck unit accepts all valid values", () => {
   }
 });
 
-test("PmfMetricCheck structure is correct", () => {
+test("PmfMetricCheck structure is correct [types]", () => {
   const check: PmfMetricCheck = {
     checkId: "task_success_rate",
     status: "pass",
@@ -120,7 +120,7 @@ test("PmfMetricCheck structure is correct", () => {
   assert.equal(check.unit, "pct");
 });
 
-test("PmfMetricCheck allows null observed and threshold", () => {
+test("PmfMetricCheck allows null observed and threshold [types]", () => {
   const check: PmfMetricCheck = {
     checkId: "sample_size",
     status: "warn",
@@ -135,7 +135,7 @@ test("PmfMetricCheck allows null observed and threshold", () => {
   assert.equal(check.status, "warn");
 });
 
-test("PmfValidationRunOptions structure is correct with all fields", () => {
+test("PmfValidationRunOptions structure is correct with all fields [types]", () => {
   const options: PmfValidationRunOptions = {
     profileName: "custom_profile",
     divisionId: "sales_ops",
@@ -154,7 +154,7 @@ test("PmfValidationRunOptions structure is correct with all fields", () => {
   assert.equal(options.thresholds?.minTaskCount, 10);
 });
 
-test("PmfValidationRunOptions allows minimal definition", () => {
+test("PmfValidationRunOptions allows minimal definition [types]", () => {
   const options: PmfValidationRunOptions = {};
 
   assert.equal(options.profileName, undefined);
@@ -164,7 +164,7 @@ test("PmfValidationRunOptions allows minimal definition", () => {
   assert.equal(options.thresholds, undefined);
 });
 
-test("PmfValidationRunOptions allows null divisionId", () => {
+test("PmfValidationRunOptions allows null divisionId [types]", () => {
   const options: PmfValidationRunOptions = {
     divisionId: null,
   };
@@ -172,7 +172,7 @@ test("PmfValidationRunOptions allows null divisionId", () => {
   assert.equal(options.divisionId, null);
 });
 
-test("PmfValidationRunOptions allows partial thresholds", () => {
+test("PmfValidationRunOptions allows partial thresholds [types]", () => {
   const options: PmfValidationRunOptions = {
     thresholds: {
       minTaskSuccessRatePct: 80,
@@ -184,7 +184,7 @@ test("PmfValidationRunOptions allows partial thresholds", () => {
   assert.equal(options.thresholds.minTaskCount, undefined);
 });
 
-test("SqlFilterClause structure is correct", () => {
+test("SqlFilterClause structure is correct [types]", () => {
   const clause: SqlFilterClause = {
     whereClause: "WHERE tasks.created_at >= ? AND tasks.created_at <= ? AND tasks.division_id = ?",
     parameters: ["2026-04-01T00:00:00.000Z", "2026-04-14T00:00:00.000Z", "engineering_ops"],
@@ -196,7 +196,7 @@ test("SqlFilterClause structure is correct", () => {
   assert.equal(clause.parameters[2], "engineering_ops");
 });
 
-test("SqlFilterClause allows empty parameters", () => {
+test("SqlFilterClause allows empty parameters [types]", () => {
   const clause: SqlFilterClause = {
     whereClause: "WHERE 1=1",
     parameters: [],
@@ -205,7 +205,7 @@ test("SqlFilterClause allows empty parameters", () => {
   assert.equal(clause.parameters.length, 0);
 });
 
-test("SqlFilterClause allows null in parameters", () => {
+test("SqlFilterClause allows null in parameters [types]", () => {
   const clause: SqlFilterClause = {
     whereClause: "WHERE division_id = ?",
     parameters: [null],
@@ -214,7 +214,7 @@ test("SqlFilterClause allows null in parameters", () => {
   assert.equal(clause.parameters[0], null);
 });
 
-test("SqlFilterClause allows number in parameters", () => {
+test("SqlFilterClause allows number in parameters [types]", () => {
   const clause: SqlFilterClause = {
     whereClause: "WHERE task_count >= ?",
     parameters: [10],
@@ -223,7 +223,7 @@ test("SqlFilterClause allows number in parameters", () => {
   assert.equal(clause.parameters[0], 10);
 });
 
-test("PmfMetricCheck with fail status carries correct data", () => {
+test("PmfMetricCheck with fail status carries correct data [types]", () => {
   const check: PmfMetricCheck = {
     checkId: "task_success_rate",
     status: "fail",
@@ -238,7 +238,7 @@ test("PmfMetricCheck with fail status carries correct data", () => {
   assert.ok(check.observed < check.threshold!);
 });
 
-test("PmfMetricCheck with warn status carries correct data", () => {
+test("PmfMetricCheck with warn status carries correct data [types]", () => {
   const check: PmfMetricCheck = {
     checkId: "sample_size",
     status: "warn",
@@ -252,7 +252,7 @@ test("PmfMetricCheck with warn status carries correct data", () => {
   assert.equal(check.observed, 5);
 });
 
-test("PmfValidationThresholds all fields are required numbers", () => {
+test("PmfValidationThresholds all fields are required numbers [types]", () => {
   const thresholds: PmfValidationThresholds = {
     minTaskCount: 0,
     minSessionCount: 0,
@@ -268,7 +268,7 @@ test("PmfValidationThresholds all fields are required numbers", () => {
   assert.equal(thresholds.maxAverageSuccessfulTaskCostUsd, 0);
 });
 
-test("ArtifactRef structure matches expected interface", () => {
+test("ArtifactRef structure matches expected interface [types]", () => {
   const ref: ArtifactRef = {
     artifactId: "artifact_001",
     kind: "pmf_validation_report",
@@ -281,7 +281,7 @@ test("ArtifactRef structure matches expected interface", () => {
   assert.ok(ref.uri.startsWith("artifacts://"));
 });
 
-test("PmfValidationWindow days must be positive", () => {
+test("PmfValidationWindow days must be positive [types]", () => {
   const window1: PmfValidationWindow = {
     start: "2026-03-01T00:00:00.000Z",
     end: "2026-03-31T00:00:00.000Z",
@@ -298,7 +298,7 @@ test("PmfValidationWindow days must be positive", () => {
   assert.ok(window2.days > 0);
 });
 
-test("PmfMetricCheck checkId is a specific union type", () => {
+test("PmfMetricCheck checkId is a specific union type [types]", () => {
   const validCheckIds = [
     "sample_size",
     "task_success_rate",
@@ -322,7 +322,7 @@ test("PmfMetricCheck checkId is a specific union type", () => {
   }
 });
 
-test("PmfMetricCheck unit is a specific union type", () => {
+test("PmfMetricCheck unit is a specific union type [types]", () => {
   const validUnits = ["count", "pct", "usd", "ms"] as const;
 
   for (const unit of validUnits) {
@@ -338,7 +338,7 @@ test("PmfMetricCheck unit is a specific union type", () => {
   }
 });
 
-test("SqlFilterClause parameters accepts string or number or null", () => {
+test("SqlFilterClause parameters accepts string or number or null [types]", () => {
   const clause: SqlFilterClause = {
     whereClause: "WHERE id = ? AND count >= ? AND value IS ?",
     parameters: ["test_id", 42, null],
@@ -349,7 +349,7 @@ test("SqlFilterClause parameters accepts string or number or null", () => {
   assert.equal(clause.parameters[2], null);
 });
 
-test("PmfValidationThresholds max values are higher than min values", () => {
+test("PmfValidationThresholds max values are higher than min values [types]", () => {
   const thresholds: PmfValidationThresholds = {
     minTaskCount: 5,
     minSessionCount: 3,

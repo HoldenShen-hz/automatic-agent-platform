@@ -12,35 +12,35 @@ import { UNREACHABLE_LOOPBACK_BASE_URL } from "../../../helpers/network-test-con
 
 const callbackEndpoint = (path: string): string => `${UNREACHABLE_LOOPBACK_BASE_URL}${path}`;
 
-test("index exports ConnectorFrameworkService", () => {
+test("index exports ConnectorFrameworkService [integration-index]", () => {
   assert.ok("ConnectorFrameworkService" in integration);
 });
 
-test("index exports connector-registry exports", () => {
+test("index exports connector-registry exports [integration-index]", () => {
   assert.ok("ConnectorManifestSchema" in integration);
   assert.ok("listEnabledConnectors" in integration);
 });
 
-test("index exports connector-runtime exports", () => {
+test("index exports connector-runtime exports [integration-index]", () => {
   assert.ok("ConnectorExecutionRequestSchema" in integration);
   assert.ok("ConnectorExecutionResultSchema" in integration);
   assert.ok("buildConnectorExecutionKey" in integration);
   assert.ok("invokeCallback" in integration);
 });
 
-test("index exports connector classes", () => {
+test("index exports connector classes [integration-index]", () => {
   assert.ok("GitHubConnector" in integration);
   assert.ok("JiraConnector" in integration);
   assert.ok("ServiceNowConnector" in integration);
   assert.ok("SlackConnector" in integration);
 });
 
-test("index exports health-monitor exports", () => {
+test("index exports health-monitor exports [integration-index]", () => {
   assert.ok("ConnectorHealthReportSchema" in integration);
   assert.ok("summarizeConnectorHealth" in integration);
 });
 
-test("index exports ConnectorBinding interface type", () => {
+test("index exports ConnectorBinding interface type [integration-index]", () => {
   // ConnectorBinding is an interface export - check via type import
   // We verify it's exported by checking the service has the type
   const binding = {
@@ -54,11 +54,11 @@ test("index exports ConnectorBinding interface type", () => {
   assert.ok("ConnectorBinding" in integration || true); // Type is exported
 });
 
-test("invokeCallback is a function", () => {
+test("invokeCallback is a function [integration-index]", () => {
   assert.equal(typeof integration.invokeCallback, "function");
 });
 
-test("invokeCallback returns true for successful callback", async () => {
+test("invokeCallback returns true for successful callback [integration-index]", async () => {
   // Create a simple test server using a local fetch
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 5000);
@@ -77,7 +77,7 @@ test("invokeCallback returns true for successful callback", async () => {
   }
 });
 
-test("invokeCallback returns false when fetch fails", async () => {
+test("invokeCallback returns false when fetch fails [integration-index]", async () => {
   const result = await integration.invokeCallback(callbackEndpoint("/nonexistent"), {
     connectorId: "test",
     success: false,
@@ -87,7 +87,7 @@ test("invokeCallback returns false when fetch fails", async () => {
   assert.equal(result, false);
 });
 
-test("invokeCallback sends correct JSON body", async () => {
+test("invokeCallback sends correct JSON body [integration-index]", async () => {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 5000);
 
@@ -104,7 +104,7 @@ test("invokeCallback sends correct JSON body", async () => {
   }
 });
 
-test("invokeCallback handles timeout gracefully", async () => {
+test("invokeCallback handles timeout gracefully [integration-index]", async () => {
   // Use an unreachable address with very short timeout
   const result = await integration.invokeCallback("http://10.255.255.1:1/callback", {
     connectorId: "timeout-test",
@@ -116,7 +116,7 @@ test("invokeCallback handles timeout gracefully", async () => {
   assert.equal(result, false);
 });
 
-test("buildConnectorExecutionKey works with exported function", () => {
+test("buildConnectorExecutionKey works with exported function [integration-index]", () => {
   const key = integration.buildConnectorExecutionKey({
     connectorId: "github",
     capability: "create_pr",
@@ -127,7 +127,7 @@ test("buildConnectorExecutionKey works with exported function", () => {
   assert.equal(key, "github:create_pr");
 });
 
-test("ConnectorHealthReportSchema is exported and works", () => {
+test("ConnectorHealthReportSchema is exported and works [integration-index]", () => {
   const report = integration.ConnectorHealthReportSchema.parse({
     connectorId: "test-conn",
     status: "healthy",
@@ -139,7 +139,7 @@ test("ConnectorHealthReportSchema is exported and works", () => {
   assert.equal(report.status, "healthy");
 });
 
-test("summarizeConnectorHealth works with exported function", () => {
+test("summarizeConnectorHealth works with exported function [integration-index]", () => {
   const result = integration.summarizeConnectorHealth([
     { connectorId: "c1", status: "healthy", latencyMs: 10, checkedAt: "2026-01-01T00:00:00.000Z" },
     { connectorId: "c2", status: "degraded", latencyMs: 500, checkedAt: "2026-01-01T00:00:00.000Z" },
@@ -148,7 +148,7 @@ test("summarizeConnectorHealth works with exported function", () => {
   assert.equal(result, "degraded");
 });
 
-test("listEnabledConnectors exported function filters correctly", () => {
+test("listEnabledConnectors exported function filters correctly [integration-index]", () => {
   const connectors = [
     { connectorId: "c1", provider: "p1", lifecycleState: "enabled" as const },
     { connectorId: "c2", provider: "p2", lifecycleState: "disabled" as const },

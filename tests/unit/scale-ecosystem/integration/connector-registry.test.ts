@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { listEnabledConnectors, ConnectorManifest } from "../../../../src/scale-ecosystem/integration/connector-registry/index.js";
 
-test("listEnabledConnectors returns only enabled connectors", () => {
+test("listEnabledConnectors returns only enabled connectors [connector-registry]", () => {
   const connectors: ConnectorManifest[] = [
     { connectorId: "c1", provider: "aws", lifecycleState: "enabled" },
     { connectorId: "c2", provider: "gcp", lifecycleState: "disabled" },
@@ -17,7 +17,7 @@ test("listEnabledConnectors returns only enabled connectors", () => {
   assert.ok(enabled.every((c: any) => c.lifecycleState === "enabled"));
 });
 
-test("listEnabledConnectors returns empty for all disabled", () => {
+test("listEnabledConnectors returns empty for all disabled [connector-registry]", () => {
   const connectors: ConnectorManifest[] = [
     { connectorId: "c1", provider: "aws", lifecycleState: "disabled" },
     { connectorId: "c2", provider: "gcp", lifecycleState: "revoked" },
@@ -28,12 +28,12 @@ test("listEnabledConnectors returns empty for all disabled", () => {
   assert.deepEqual(enabled, []);
 });
 
-test("listEnabledConnectors returns empty for empty input", () => {
+test("listEnabledConnectors returns empty for empty input [connector-registry]", () => {
   const enabled = listEnabledConnectors([]);
   assert.deepEqual(enabled, []);
 });
 
-test("ConnectorManifestSchema parses valid manifest", () => {
+test("ConnectorManifestSchema parses valid manifest [connector-registry]", () => {
   const result = {
     connectorId: "slack",
     provider: "slack-inc",
@@ -48,7 +48,7 @@ test("ConnectorManifestSchema parses valid manifest", () => {
   assert.equal(enabled.length, 0); // not enabled
 });
 
-test("listEnabledConnectors handles all lifecycle states", () => {
+test("listEnabledConnectors handles all lifecycle states [connector-registry]", () => {
   const connectors: ConnectorManifest[] = [
     { connectorId: "c1", provider: "p1", lifecycleState: "registered" },
     { connectorId: "c2", provider: "p2", lifecycleState: "configured" },

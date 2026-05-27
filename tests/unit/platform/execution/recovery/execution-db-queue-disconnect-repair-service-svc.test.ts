@@ -73,7 +73,7 @@ function createMockStore(overrides: {
   } as unknown as AuthoritativeTaskStore;
 }
 
-test("ExecutionDbQueueDisconnectRepairService can be instantiated", () => {
+test("ExecutionDbQueueDisconnectRepairService can be instantiated [execution-db-queue-disconnect-repair-service-svc]", () => {
   const db = createMockDb();
   const store = createMockStore();
   const service = new ExecutionDbQueueDisconnectRepairService(db, store);
@@ -81,7 +81,7 @@ test("ExecutionDbQueueDisconnectRepairService can be instantiated", () => {
   assert.ok(service != null);
 });
 
-test("ExecutionDbQueueDisconnectRepairService.scan returns empty when no executions", () => {
+test("ExecutionDbQueueDisconnectRepairService.scan returns empty when no executions [execution-db-queue-disconnect-repair-service-svc]", () => {
   const db = createMockDb();
   const store = createMockStore({ executions: [] });
   const service = new ExecutionDbQueueDisconnectRepairService(db, store);
@@ -91,7 +91,7 @@ test("ExecutionDbQueueDisconnectRepairService.scan returns empty when no executi
   assert.deepEqual(issues, []);
 });
 
-test("ExecutionDbQueueDisconnectRepairService.scan returns empty when all executions have tickets", () => {
+test("ExecutionDbQueueDisconnectRepairService.scan returns empty when all executions have tickets [execution-db-queue-disconnect-repair-service-svc]", () => {
   const db = createMockDb();
   const store = createMockStore({
     executions: [
@@ -111,7 +111,7 @@ test("ExecutionDbQueueDisconnectRepairService.scan returns empty when all execut
   assert.deepEqual(issues, []);
 });
 
-test("ExecutionDbQueueDisconnectRepairService.scan returns empty when executions have active leases", () => {
+test("ExecutionDbQueueDisconnectRepairService.scan returns empty when executions have active leases [execution-db-queue-disconnect-repair-service-svc]", () => {
   const db = createMockDb();
   const store = createMockStore({
     executions: [
@@ -131,7 +131,7 @@ test("ExecutionDbQueueDisconnectRepairService.scan returns empty when executions
   assert.deepEqual(issues, []);
 });
 
-test("ExecutionDbQueueDisconnectRepairService.scan returns empty when task is terminal", () => {
+test("ExecutionDbQueueDisconnectRepairService.scan returns empty when task is terminal [execution-db-queue-disconnect-repair-service-svc]", () => {
   const db = createMockDb();
   const store = createMockStore({
     executions: [
@@ -153,7 +153,7 @@ test("ExecutionDbQueueDisconnectRepairService.scan returns empty when task is te
   assert.deepEqual(issues, []);
 });
 
-test("ExecutionDbQueueDisconnectRepairService.scan detects execution with missing ticket", () => {
+test("ExecutionDbQueueDisconnectRepairService.scan detects execution with missing ticket [execution-db-queue-disconnect-repair-service-svc]", () => {
   const db = createMockDb();
   const store = createMockStore({
     executions: [
@@ -180,7 +180,7 @@ test("ExecutionDbQueueDisconnectRepairService.scan detects execution with missin
   assert.equal(issues[0]!.repairTemplate.priority, "high");
 });
 
-test("ExecutionDbQueueDisconnectRepairService.scan recovers template from agent execution plan", () => {
+test("ExecutionDbQueueDisconnectRepairService.scan recovers template from agent execution plan [execution-db-queue-disconnect-repair-service-svc]", () => {
   const db = createMockDb();
   const store = createMockStore({
     executions: [
@@ -218,7 +218,7 @@ test("ExecutionDbQueueDisconnectRepairService.scan recovers template from agent 
   assert.equal(issues[0]!.repairTemplate.requiredIsolationLevel, "strict");
 });
 
-test("ExecutionDbQueueDisconnectRepairService.scan handles prechecking status", () => {
+test("ExecutionDbQueueDisconnectRepairService.scan handles prechecking status [execution-db-queue-disconnect-repair-service-svc]", () => {
   const db = createMockDb();
   const store = createMockStore({
     executions: [
@@ -241,7 +241,7 @@ test("ExecutionDbQueueDisconnectRepairService.scan handles prechecking status", 
   assert.equal(issues[0]!.executionStatus, "prechecking");
 });
 
-test("ExecutionDbQueueDisconnectRepairService.scan handles blocked status", () => {
+test("ExecutionDbQueueDisconnectRepairService.scan handles blocked status [execution-db-queue-disconnect-repair-service-svc]", () => {
   const db = createMockDb();
   const store = createMockStore({
     executions: [
@@ -264,7 +264,7 @@ test("ExecutionDbQueueDisconnectRepairService.scan handles blocked status", () =
   assert.equal(issues[0]!.executionStatus, "blocked");
 });
 
-test("ExecutionDbQueueDisconnectRepairService.scan detects multiple disconnected executions", () => {
+test("ExecutionDbQueueDisconnectRepairService.scan detects multiple disconnected executions [execution-db-queue-disconnect-repair-service-svc]", () => {
   const db = createMockDb();
   const store = createMockStore({
     executions: [
@@ -294,7 +294,7 @@ test("ExecutionDbQueueDisconnectRepairService.scan detects multiple disconnected
   assert.equal(issues.length, 3);
 });
 
-test("ExecutionDbQueueDisconnectRepairService.scan returns empty when view task is missing", () => {
+test("ExecutionDbQueueDisconnectRepairService.scan returns empty when view task is missing [execution-db-queue-disconnect-repair-service-svc]", () => {
   const db = createMockDb();
   const store = createMockStore({
     executions: [
@@ -314,7 +314,7 @@ test("ExecutionDbQueueDisconnectRepairService.scan returns empty when view task 
   assert.deepEqual(issues, []);
 });
 
-test("ExecutionDbQueueDisconnectRepairService.scan filters failed and cancelled tasks", () => {
+test("ExecutionDbQueueDisconnectRepairService.scan filters failed and cancelled tasks [execution-db-queue-disconnect-repair-service-svc]", () => {
   const db = createMockDb();
   const store = createMockStore({
     executions: [
@@ -343,7 +343,7 @@ test("ExecutionDbQueueDisconnectRepairService.scan filters failed and cancelled 
   assert.deepEqual(issues, []);
 });
 
-test("ExecutionDbQueueDisconnectRepairService.scan handles empty planJson", () => {
+test("ExecutionDbQueueDisconnectRepairService.scan handles empty planJson [execution-db-queue-disconnect-repair-service-svc]", () => {
   const db = createMockDb();
   const store = createMockStore({
     executions: [
@@ -371,7 +371,7 @@ test("ExecutionDbQueueDisconnectRepairService.scan handles empty planJson", () =
   assert.equal(issues[0]!.repairTemplate.priority, "normal");
 });
 
-test("ExecutionDbQueueDisconnectRepairService.scan handles malformed planJson", () => {
+test("ExecutionDbQueueDisconnectRepairService.scan handles malformed planJson [execution-db-queue-disconnect-repair-service-svc]", () => {
   const db = createMockDb();
   const store = createMockStore({
     executions: [
@@ -399,7 +399,7 @@ test("ExecutionDbQueueDisconnectRepairService.scan handles malformed planJson", 
   assert.equal(issues[0]!.repairTemplate.priority, "low");
 });
 
-test("ExecutionDbQueueDisconnectRepairService.scan handles missing agent execution record", () => {
+test("ExecutionDbQueueDisconnectRepairService.scan handles missing agent execution record [execution-db-queue-disconnect-repair-service-svc]", () => {
   const db = createMockDb();
   const store = createMockStore({
     executions: [

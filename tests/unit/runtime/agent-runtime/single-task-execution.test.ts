@@ -10,7 +10,7 @@ function createTempDbPath(): string {
   return join(workspace, "test.db");
 }
 
-test("runSingleTaskExecution with stepOutputOverride produces synthetic output", async () => {
+test("runSingleTaskExecution with stepOutputOverride produces synthetic output [single-task-execution]", async () => {
   const dbPath = createTempDbPath();
 
   try {
@@ -37,7 +37,7 @@ test("runSingleTaskExecution with stepOutputOverride produces synthetic output",
   }
 });
 
-test("runSingleTaskExecution creates task with correct properties", async () => {
+test("runSingleTaskExecution creates task with correct properties [single-task-execution]", async () => {
   const dbPath = createTempDbPath();
 
   try {
@@ -59,7 +59,7 @@ test("runSingleTaskExecution creates task with correct properties", async () => 
   }
 });
 
-test("runSingleTaskExecution creates execution record", async () => {
+test("runSingleTaskExecution creates execution record [single-task-execution]", async () => {
   const dbPath = createTempDbPath();
 
   try {
@@ -80,7 +80,7 @@ test("runSingleTaskExecution creates execution record", async () => {
   }
 });
 
-test("runSingleTaskExecution creates session record", async () => {
+test("runSingleTaskExecution creates session record [single-task-execution]", async () => {
   const dbPath = createTempDbPath();
 
   try {
@@ -100,7 +100,7 @@ test("runSingleTaskExecution creates session record", async () => {
   }
 });
 
-test("runSingleTaskExecution with crashInjection point step_started", async () => {
+test("runSingleTaskExecution with crashInjection point step_started [single-task-execution]", async () => {
   const dbPath = createTempDbPath();
 
   try {
@@ -126,7 +126,7 @@ test("runSingleTaskExecution with crashInjection point step_started", async () =
   }
 });
 
-test("runSingleTaskExecution with custom tenantId", async () => {
+test("runSingleTaskExecution with custom tenantId [single-task-execution]", async () => {
   const dbPath = createTempDbPath();
 
   try {
@@ -146,7 +146,7 @@ test("runSingleTaskExecution with custom tenantId", async () => {
   }
 });
 
-test("runSingleTaskExecution with custom logger", async () => {
+test("runSingleTaskExecution with custom logger [single-task-execution]", async () => {
   const dbPath = createTempDbPath();
   const logger = new StructuredLogger({ retentionLimit: 10 });
 
@@ -166,7 +166,7 @@ test("runSingleTaskExecution with custom logger", async () => {
   }
 });
 
-test("HappyPathInput type structure", () => {
+test("HappyPathInput type structure [single-task-execution]", () => {
   const input: HappyPathInput = {
     dbPath: "/tmp/test.db",
     title: "Test",
@@ -178,7 +178,7 @@ test("HappyPathInput type structure", () => {
   assert.equal(input.request, "Test request");
 });
 
-test("runSingleTaskExecution runPhase1AHappyPath alias works", async () => {
+test("runSingleTaskExecution runPhase1AHappyPath alias works [single-task-execution]", async () => {
   const dbPath = createTempDbPath();
 
   try {
@@ -197,7 +197,7 @@ test("runSingleTaskExecution runPhase1AHappyPath alias works", async () => {
   }
 });
 
-test("runSingleTaskExecution precheck record is created", async () => {
+test("runSingleTaskExecution precheck record is created [single-task-execution]", async () => {
   const dbPath = createTempDbPath();
 
   try {
@@ -221,7 +221,7 @@ test("runSingleTaskExecution precheck record is created", async () => {
   }
 });
 
-test("runSingleTaskExecution multiple runs produce unique IDs", async () => {
+test("runSingleTaskExecution multiple runs produce unique IDs [single-task-execution]", async () => {
   const dbPath = createTempDbPath();
 
   try {
@@ -248,7 +248,7 @@ test("runSingleTaskExecution multiple runs produce unique IDs", async () => {
   }
 });
 
-test("runSingleTaskExecution creates workflow record", async () => {
+test("runSingleTaskExecution creates workflow record [single-task-execution]", async () => {
   const dbPath = createTempDbPath();
 
   try {
@@ -268,7 +268,7 @@ test("runSingleTaskExecution creates workflow record", async () => {
   }
 });
 
-test("runSingleTaskExecution with admissionPolicy", async () => {
+test("runSingleTaskExecution with admissionPolicy [single-task-execution]", async () => {
   const dbPath = createTempDbPath();
 
   try {

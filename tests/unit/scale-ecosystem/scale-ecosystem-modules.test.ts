@@ -215,7 +215,7 @@ function createScheduleRequest(overrides: Partial<FairSchedulingRequest> = {}): 
 // 1. Multi-region routing tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("selectPreferredRegion returns lowest latency active region", () => {
+test("selectPreferredRegion returns lowest latency active region [scale-ecosystem-modules]", () => {
   const regions = [
     createRegion({ regionId: "us-east", latencyScore: 50 }),
     createRegion({ regionId: "us-west", latencyScore: 30 }),
@@ -227,7 +227,7 @@ test("selectPreferredRegion returns lowest latency active region", () => {
   assert.equal(selected?.regionId, "us-west");
 });
 
-test("selectPreferredRegion excludes draining regions", () => {
+test("selectPreferredRegion excludes draining regions [scale-ecosystem-modules]", () => {
   const regions = [
     createRegion({ regionId: "us-east", latencyScore: 10, status: "draining" }),
     createRegion({ regionId: "eu-west", latencyScore: 50, status: "active" }),
@@ -238,7 +238,7 @@ test("selectPreferredRegion excludes draining regions", () => {
   assert.equal(selected?.regionId, "eu-west");
 });
 
-test("selectPreferredRegion excludes regions with residencyAllowed false", () => {
+test("selectPreferredRegion excludes regions with residencyAllowed false [scale-ecosystem-modules]", () => {
   const regions = [
     createRegion({ regionId: "us-east", latencyScore: 10, residencyAllowed: false }),
     createRegion({ regionId: "eu-west", latencyScore: 50, residencyAllowed: true }),
@@ -249,12 +249,12 @@ test("selectPreferredRegion excludes regions with residencyAllowed false", () =>
   assert.equal(selected?.regionId, "eu-west");
 });
 
-test("selectPreferredRegion returns null for empty array", () => {
+test("selectPreferredRegion returns null for empty array [scale-ecosystem-modules]", () => {
   const selected = selectPreferredRegion([]);
   assert.equal(selected, null);
 });
 
-test("CrossRegionRoutingService.route selects lowest latency region", () => {
+test("CrossRegionRoutingService.route selects lowest latency region [scale-ecosystem-modules]", () => {
   const service = new CrossRegionRoutingService();
   const regions = [
     createRegion({ regionId: "us-east", latencyScore: 30 }),
@@ -272,7 +272,7 @@ test("CrossRegionRoutingService.route selects lowest latency region", () => {
   assert.equal(decision.residencyDecision, "allowed");
 });
 
-test("CrossRegionRoutingService.route respects blockedRegionIds", () => {
+test("CrossRegionRoutingService.route respects blockedRegionIds [scale-ecosystem-modules]", () => {
   const service = new CrossRegionRoutingService();
   const regions = [
     createRegion({ regionId: "us-east", latencyScore: 10 }),
@@ -290,7 +290,7 @@ test("CrossRegionRoutingService.route respects blockedRegionIds", () => {
   assert.equal(decision.selectedRegionId, "eu-west");
 });
 
-test("CrossRegionRoutingService.route respects allowedJurisdictions", () => {
+test("CrossRegionRoutingService.route respects allowedJurisdictions [scale-ecosystem-modules]", () => {
   const regions = [
     createRegion({ regionId: "us-east", jurisdiction: "US", latencyScore: 10 }),
     createRegion({ regionId: "cn-north", jurisdiction: "CN", latencyScore: 5 }),
@@ -307,7 +307,7 @@ test("CrossRegionRoutingService.route respects allowedJurisdictions", () => {
   assert.equal(decision.selectedRegionId, "us-east");
 });
 
-test("CrossRegionRoutingService.route requires capabilities when specified", () => {
+test("CrossRegionRoutingService.route requires capabilities when specified [scale-ecosystem-modules]", () => {
   const regions = [
     createRegion({ regionId: "us-east", capabilities: ["llm", "storage"] }),
     createRegion({ regionId: "eu-west", capabilities: ["storage"] }),
@@ -324,7 +324,7 @@ test("CrossRegionRoutingService.route requires capabilities when specified", () 
   assert.equal(decision.selectedRegionId, "us-east");
 });
 
-test("CrossRegionRoutingService.route blocks unhealthy primary", () => {
+test("CrossRegionRoutingService.route blocks unhealthy primary [scale-ecosystem-modules]", () => {
   const regions = [
     createRegion({ regionId: "us-east", latencyScore: 10 }),
     createRegion({ regionId: "eu-west", latencyScore: 20 }),
@@ -341,7 +341,7 @@ test("CrossRegionRoutingService.route blocks unhealthy primary", () => {
   assert.equal(decision.selectedRegionId, "eu-west");
 });
 
-test("CrossRegionRoutingService.route returns blocked when no valid region", () => {
+test("CrossRegionRoutingService.route returns blocked when no valid region [scale-ecosystem-modules]", () => {
   const regions = [
     createRegion({ regionId: "cn-north", jurisdiction: "CN", status: "disabled" }),
   ];
@@ -357,7 +357,7 @@ test("CrossRegionRoutingService.route returns blocked when no valid region", () 
   assert.equal(decision.selectedRegionId, null);
 });
 
-test("CrossRegionRoutingService.route uses preferredRegionId over latency", () => {
+test("CrossRegionRoutingService.route uses preferredRegionId over latency [scale-ecosystem-modules]", () => {
   const regions = [
     createRegion({ regionId: "us-east", latencyScore: 10 }),
     createRegion({ regionId: "eu-west", latencyScore: 5 }),
@@ -374,7 +374,7 @@ test("CrossRegionRoutingService.route uses preferredRegionId over latency", () =
   assert.equal(decision.selectedRegionId, "eu-west");
 });
 
-test("resolveRegionFailover returns no failover when primary healthy", () => {
+test("resolveRegionFailover returns no failover when primary healthy [scale-ecosystem-modules]", () => {
   const decision = resolveRegionFailover({
     primaryHealthy: true,
     candidateRegionIds: ["eu-west"],
@@ -384,7 +384,7 @@ test("resolveRegionFailover returns no failover when primary healthy", () => {
   assert.equal(decision.rationale, "multi_region.primary_within_threshold");
 });
 
-test("resolveRegionFailover triggers failover on unhealthy primary", () => {
+test("resolveRegionFailover triggers failover on unhealthy primary [scale-ecosystem-modules]", () => {
   const decision = resolveRegionFailover({
     primaryHealthy: false,
     candidateRegionIds: ["eu-west"],
@@ -395,7 +395,7 @@ test("resolveRegionFailover triggers failover on unhealthy primary", () => {
   assert.equal(decision.rationale, "multi_region.primary_unhealthy");
 });
 
-test("resolveRegionFailover triggers on latency breach", () => {
+test("resolveRegionFailover triggers on latency breach [scale-ecosystem-modules]", () => {
   const decision = resolveRegionFailover({
     primaryHealthy: true,
     primaryLatencyMs: 300,
@@ -407,7 +407,7 @@ test("resolveRegionFailover triggers on latency breach", () => {
   assert.equal(decision.rationale, "multi_region.primary_latency_breached");
 });
 
-test("resolveRegionFailover triggers on error rate breach", () => {
+test("resolveRegionFailover triggers on error rate breach [scale-ecosystem-modules]", () => {
   const decision = resolveRegionFailover({
     primaryHealthy: true,
     primaryErrorRate: 0.1,
@@ -419,7 +419,7 @@ test("resolveRegionFailover triggers on error rate breach", () => {
   assert.equal(decision.rationale, "multi_region.primary_error_rate_breached");
 });
 
-test("resolveRegionFailover uses preferredRegionId when available", () => {
+test("resolveRegionFailover uses preferredRegionId when available [scale-ecosystem-modules]", () => {
   const decision = resolveRegionFailover({
     primaryHealthy: false,
     candidateRegionIds: ["eu-west", "ap-south"],
@@ -429,7 +429,7 @@ test("resolveRegionFailover uses preferredRegionId when available", () => {
   assert.equal(decision.targetRegionId, "ap-south");
 });
 
-test("resolveRegionFailover returns no candidate when candidates empty", () => {
+test("resolveRegionFailover returns no candidate when candidates empty [scale-ecosystem-modules]", () => {
   const decision = resolveRegionFailover({
     primaryHealthy: false,
     candidateRegionIds: [],
@@ -439,7 +439,7 @@ test("resolveRegionFailover returns no candidate when candidates empty", () => {
   assert.equal(decision.rationale, "multi_region.no_candidate_available");
 });
 
-test("getNextFencingEpoch increments on each call", () => {
+test("getNextFencingEpoch increments on each call [scale-ecosystem-modules]", () => {
   const first = getNextFencingEpoch();
   const second = getNextFencingEpoch();
   const third = getNextFencingEpoch();
@@ -448,7 +448,7 @@ test("getNextFencingEpoch increments on each call", () => {
   assert.ok(third > second);
 });
 
-test("shouldReplicateToRegion respects blocked residency mode", () => {
+test("shouldReplicateToRegion respects blocked residency mode [scale-ecosystem-modules]", () => {
   const policy = { sourceRegionId: "us-east", targetRegionIds: ["eu-west"], residencyMode: "blocked" as const };
 
   const result = shouldReplicateToRegion(policy, "eu-west");
@@ -456,7 +456,7 @@ test("shouldReplicateToRegion respects blocked residency mode", () => {
   assert.equal(result, false);
 });
 
-test("shouldReplicateToRegion allows replication when not blocked", () => {
+test("shouldReplicateToRegion allows replication when not blocked [scale-ecosystem-modules]", () => {
   const policy = { sourceRegionId: "us-east", targetRegionIds: ["eu-west"], residencyMode: "allowed_cross_border" as const };
 
   const result = shouldReplicateToRegion(policy, "eu-west");
@@ -464,7 +464,7 @@ test("shouldReplicateToRegion allows replication when not blocked", () => {
   assert.equal(result, true);
 });
 
-test("shouldReplicateToRegion returns false for non-target region", () => {
+test("shouldReplicateToRegion returns false for non-target region [scale-ecosystem-modules]", () => {
   const policy = { sourceRegionId: "us-east", targetRegionIds: ["eu-west"], residencyMode: "same_jurisdiction" as const };
 
   const result = shouldReplicateToRegion(policy, "ap-south");
@@ -476,7 +476,7 @@ test("shouldReplicateToRegion returns false for non-target region", () => {
 // 2. Fair scheduling tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("FairSchedulingService.schedule orders queue by priority and age", () => {
+test("FairSchedulingService.schedule orders queue by priority and age [scale-ecosystem-modules]", () => {
   const service = new FairSchedulingService();
   const queueItems = [
     createQueueItem({ itemId: "low", priority: 1, ageMs: 0 }),
@@ -491,7 +491,7 @@ test("FairSchedulingService.schedule orders queue by priority and age", () => {
   assert.equal(decision.queue.orderedItemIds[2], "high");
 });
 
-test("FairSchedulingService.schedule identifies starved items at 15 minutes", () => {
+test("FairSchedulingService.schedule identifies starved items at 15 minutes [scale-ecosystem-modules]", () => {
   const service = new FairSchedulingService();
   const queueItems = [
     createQueueItem({ itemId: "fresh", ageMs: 5 * 60_000 }),
@@ -504,7 +504,7 @@ test("FairSchedulingService.schedule identifies starved items at 15 minutes", ()
   assert.ok(!decision.queue.starvedItemIds.includes("fresh"));
 });
 
-test("FairSchedulingService.schedule does not preempt when within quota", () => {
+test("FairSchedulingService.schedule does not preempt when within quota [scale-ecosystem-modules]", () => {
   const service = new FairSchedulingService();
   const request = createScheduleRequest({
     quotaPolicy: createQuotaPolicy({ currentUsage: 50, hardLimit: 100 }),
@@ -517,7 +517,7 @@ test("FairSchedulingService.schedule does not preempt when within quota", () => 
   assert.equal(decision.preemption.shouldPreempt, false);
 });
 
-test("FairSchedulingService.schedule preempts when quota exceeded", () => {
+test("FairSchedulingService.schedule preempts when quota exceeded [scale-ecosystem-modules]", () => {
   const service = new FairSchedulingService();
   const candidates = [
     createPreemptionCandidate({ executionId: "high-prio", priority: 10 }),
@@ -535,7 +535,7 @@ test("FairSchedulingService.schedule preempts when quota exceeded", () => {
   assert.equal(decision.preemption.victimExecutionId, "low-prio");
 });
 
-test("FairSchedulingService.schedule reports quota exceeded without victim", () => {
+test("FairSchedulingService.schedule reports quota exceeded without victim [scale-ecosystem-modules]", () => {
   const service = new FairSchedulingService();
   // currentUsage 95 + requestedUnits 10 = 105 > burstLimit 100
   const decision = service.schedule(createScheduleRequest({
@@ -548,7 +548,7 @@ test("FairSchedulingService.schedule reports quota exceeded without victim", () 
   assert.equal(decision.preemption.reason, "resource_manager.quota_exceeded_without_victim");
 });
 
-test("orderFairQueue sorts by effective priority score", () => {
+test("orderFairQueue sorts by effective priority score [scale-ecosystem-modules]", () => {
   const items = [
     createQueueItem({ itemId: "low", priority: 1 }),
     createQueueItem({ itemId: "high", priority: 10 }),
@@ -562,7 +562,7 @@ test("orderFairQueue sorts by effective priority score", () => {
   assert.equal(ordered[2]!.itemId, "high");
 });
 
-test("orderFairQueue considers age in scoring with cap at 99 minutes", () => {
+test("orderFairQueue considers age in scoring with cap at 99 minutes [scale-ecosystem-modules]", () => {
   const items = [
     createQueueItem({ itemId: "new-high", priority: 5, ageMs: 0 }),
     createQueueItem({ itemId: "old-medium", priority: 4, ageMs: 10 * 60_000 }),
@@ -573,12 +573,12 @@ test("orderFairQueue considers age in scoring with cap at 99 minutes", () => {
   assert.equal(ordered[0]!.itemId, "old-medium");
 });
 
-test("orderFairQueue handles empty array", () => {
+test("orderFairQueue handles empty array [scale-ecosystem-modules]", () => {
   const ordered = orderFairQueue([]);
   assert.deepEqual(ordered, []);
 });
 
-test("orderFairQueue does not modify original array", () => {
+test("orderFairQueue does not modify original array [scale-ecosystem-modules]", () => {
   const items = [
     createQueueItem({ itemId: "first", priority: 1 }),
     createQueueItem({ itemId: "second", priority: 2 }),
@@ -590,17 +590,17 @@ test("orderFairQueue does not modify original array", () => {
   assert.equal(items[0]!.itemId, original[0]!.itemId);
 });
 
-test("isQuotaExceeded returns false when within burst limit", () => {
+test("isQuotaExceeded returns false when within burst limit [scale-ecosystem-modules]", () => {
   const policy = createQuotaPolicy({ currentUsage: 50, hardLimit: 100, burstLimit: 120 });
   assert.equal(isQuotaExceeded(policy, 10), false);
 });
 
-test("isQuotaExceeded returns true when exceeds burst limit", () => {
+test("isQuotaExceeded returns true when exceeds burst limit [scale-ecosystem-modules]", () => {
   const policy = createQuotaPolicy({ currentUsage: 100, hardLimit: 80, burstLimit: 100 });
   assert.equal(isQuotaExceeded(policy, 10), true);
 });
 
-test("evaluateQuota returns correct remaining units", () => {
+test("evaluateQuota returns correct remaining units [scale-ecosystem-modules]", () => {
   const policy = createQuotaPolicy({ currentUsage: 50, hardLimit: 80, burstLimit: 100 });
   const decision = evaluateQuota(policy, 30);
 
@@ -609,7 +609,7 @@ test("evaluateQuota returns correct remaining units", () => {
   assert.equal(decision.remainingUnits, 20);
 });
 
-test("evaluateQuota usesBurst when between hard and burst limits", () => {
+test("evaluateQuota usesBurst when between hard and burst limits [scale-ecosystem-modules]", () => {
   const policy = createQuotaPolicy({ currentUsage: 70, softLimit: 60, hardLimit: 80, burstLimit: 100 });
   const decision = evaluateQuota(policy, 20);
 
@@ -618,7 +618,7 @@ test("evaluateQuota usesBurst when between hard and burst limits", () => {
   assert.equal(decision.usesBurst, true);
 });
 
-test("choosePreemptionVictim selects lowest priority", () => {
+test("choosePreemptionVictim selects lowest priority [scale-ecosystem-modules]", () => {
   const candidates = [
     createPreemptionCandidate({ executionId: "high", priority: 10 }),
     createPreemptionCandidate({ executionId: "low", priority: 1 }),
@@ -629,7 +629,7 @@ test("choosePreemptionVictim selects lowest priority", () => {
   assert.equal(victim?.executionId, "low");
 });
 
-test("choosePreemptionVictim breaks tie by higher progressPercent", () => {
+test("choosePreemptionVictim breaks tie by higher progressPercent [scale-ecosystem-modules]", () => {
   const candidates = [
     createPreemptionCandidate({ executionId: "more-progress", priority: 5, progressPercent: 80 }),
     createPreemptionCandidate({ executionId: "less-progress", priority: 5, progressPercent: 20 }),
@@ -640,12 +640,12 @@ test("choosePreemptionVictim breaks tie by higher progressPercent", () => {
   assert.equal(victim?.executionId, "more-progress");
 });
 
-test("choosePreemptionVictim returns null for empty array", () => {
+test("choosePreemptionVictim returns null for empty array [scale-ecosystem-modules]", () => {
   const victim = choosePreemptionVictim([]);
   assert.equal(victim, null);
 });
 
-test("evaluateMultiDimensionalQuota fails dimension that exceeds hard limit", () => {
+test("evaluateMultiDimensionalQuota fails dimension that exceeds hard limit [scale-ecosystem-modules]", () => {
   const policy = createQuotaPolicy({
     currentUsage: 50,
     hardLimit: 100,
@@ -674,7 +674,7 @@ test("evaluateMultiDimensionalQuota fails dimension that exceeds hard limit", ()
   assert.ok(result.failedDimensions.includes("worker_concurrency"));
 });
 
-test("ResourcePoolService.allocate grants within capacity", () => {
+test("ResourcePoolService.allocate grants within capacity [scale-ecosystem-modules]", () => {
   const service = new ResourcePoolService();
   service.registerPool(createResourcePool());
 
@@ -684,7 +684,7 @@ test("ResourcePoolService.allocate grants within capacity", () => {
   assert.equal(allocation.poolId, "pool-1");
 });
 
-test("ResourcePoolService.allocate denies when exceeded", () => {
+test("ResourcePoolService.allocate denies when exceeded [scale-ecosystem-modules]", () => {
   const service = new ResourcePoolService();
   service.registerPool(createResourcePool({ allocatedUnits: 90 }));
 
@@ -694,7 +694,7 @@ test("ResourcePoolService.allocate denies when exceeded", () => {
   assert.ok(allocation.reasonCodes.includes("resource_pool.capacity_exceeded"));
 });
 
-test("ResourcePoolService.release reduces allocated units", () => {
+test("ResourcePoolService.release reduces allocated units [scale-ecosystem-modules]", () => {
   const service = new ResourcePoolService();
   service.registerPool(createResourcePool({ allocatedUnits: 50 }));
 
@@ -703,7 +703,7 @@ test("ResourcePoolService.release reduces allocated units", () => {
   assert.equal(updated.allocatedUnits, 30);
 });
 
-test("ResourcePoolService.release does not go below zero", () => {
+test("ResourcePoolService.release does not go below zero [scale-ecosystem-modules]", () => {
   const service = new ResourcePoolService();
   service.registerPool(createResourcePool({ allocatedUnits: 10 }));
 
@@ -716,7 +716,7 @@ test("ResourcePoolService.release does not go below zero", () => {
 // 3. SLA tracking tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("SlaOperationsService selects highest priority tier when no tier selected", () => {
+test("SlaOperationsService selects highest priority tier when no tier selected [scale-ecosystem-modules]", () => {
   const service = new SlaOperationsService();
   const decision = service.evaluate({
     tiers: [
@@ -732,7 +732,7 @@ test("SlaOperationsService selects highest priority tier when no tier selected",
   assert.equal(decision.selectedTierId, "enterprise");
 });
 
-test("SlaOperationsService uses selected tier when provided", () => {
+test("SlaOperationsService uses selected tier when provided [scale-ecosystem-modules]", () => {
   const service = new SlaOperationsService();
   const decision = service.evaluate({
     tiers: [
@@ -749,7 +749,7 @@ test("SlaOperationsService uses selected tier when provided", () => {
   assert.equal(decision.selectedTierId, "standard");
 });
 
-test("SlaOperationsService records breach when observation exceeds commitment", () => {
+test("SlaOperationsService records breach when observation exceeds commitment [scale-ecosystem-modules]", () => {
   const service = new SlaOperationsService();
   const decision = service.evaluate({
     tiers: [createSlaTierProfile({ tierId: "standard", targetLatencyMs: 200, targetSuccessRate: 0.95 })],
@@ -765,7 +765,7 @@ test("SlaOperationsService records breach when observation exceeds commitment", 
   assert.ok(decision.breachRecords[0]!.breachCodes.includes("sla.queue_wait_breach"));
 });
 
-test("SlaOperationsService applies workflow class latency multiplier", () => {
+test("SlaOperationsService applies workflow class latency multiplier [scale-ecosystem-modules]", () => {
   const service = new SlaOperationsService();
   const tiers = [createSlaTierProfile({ tierId: "standard", targetLatencyMs: 200, priority: 1 })];
 
@@ -783,7 +783,7 @@ test("SlaOperationsService applies workflow class latency multiplier", () => {
   assert.ok(!decision.breachRecords.some(r => r.breachCodes.includes("sla.latency_breach")));
 });
 
-test("SlaOperationsService returns null tier when no tiers provided", () => {
+test("SlaOperationsService returns null tier when no tiers provided [scale-ecosystem-modules]", () => {
   const service = new SlaOperationsService();
   const decision = service.evaluate({
     tiers: [],
@@ -797,7 +797,7 @@ test("SlaOperationsService returns null tier when no tiers provided", () => {
   assert.equal(decision.routingHint, null);
 });
 
-test("detectSlaBreach returns empty array when no breaches", () => {
+test("detectSlaBreach returns empty array when no breaches [scale-ecosystem-modules]", () => {
   const observation: SlaObservation = { latencyMs: 100, successRate: 0.99, queueWaitMs: 500 };
   const commitment: SlaCommitment = { maxLatencyMs: 200, minSuccessRate: 0.95, maxQueueWaitMs: 1000 };
 
@@ -806,7 +806,7 @@ test("detectSlaBreach returns empty array when no breaches", () => {
   assert.deepEqual(breaches, []);
 });
 
-test("detectSlaBreach detects latency breach", () => {
+test("detectSlaBreach detects latency breach [scale-ecosystem-modules]", () => {
   const observation: SlaObservation = { latencyMs: 300, successRate: 0.99, queueWaitMs: 500 };
   const commitment: SlaCommitment = { maxLatencyMs: 200, minSuccessRate: 0.95, maxQueueWaitMs: 1000 };
 
@@ -815,7 +815,7 @@ test("detectSlaBreach detects latency breach", () => {
   assert.ok(breaches.includes("sla.latency_breach"));
 });
 
-test("detectSlaBreach detects success rate breach", () => {
+test("detectSlaBreach detects success rate breach [scale-ecosystem-modules]", () => {
   const observation: SlaObservation = { latencyMs: 100, successRate: 0.90, queueWaitMs: 500 };
   const commitment: SlaCommitment = { maxLatencyMs: 200, minSuccessRate: 0.95, maxQueueWaitMs: 1000 };
 
@@ -824,7 +824,7 @@ test("detectSlaBreach detects success rate breach", () => {
   assert.ok(breaches.includes("sla.success_rate_breach"));
 });
 
-test("detectSlaBreach detects queue wait breach", () => {
+test("detectSlaBreach detects queue wait breach [scale-ecosystem-modules]", () => {
   const observation: SlaObservation = { latencyMs: 100, successRate: 0.99, queueWaitMs: 1500 };
   const commitment: SlaCommitment = { maxLatencyMs: 200, minSuccessRate: 0.95, maxQueueWaitMs: 1000 };
 
@@ -833,7 +833,7 @@ test("detectSlaBreach detects queue wait breach", () => {
   assert.ok(breaches.includes("sla.queue_wait_breach"));
 });
 
-test("detectSlaBreach returns multiple breaches", () => {
+test("detectSlaBreach returns multiple breaches [scale-ecosystem-modules]", () => {
   const observation: SlaObservation = { latencyMs: 300, successRate: 0.90, queueWaitMs: 1500 };
   const commitment: SlaCommitment = { maxLatencyMs: 200, minSuccessRate: 0.95, maxQueueWaitMs: 1000 };
 
@@ -842,7 +842,7 @@ test("detectSlaBreach returns multiple breaches", () => {
   assert.equal(breaches.length, 3);
 });
 
-test("resolveHighestPriorityTier returns highest priority tier", () => {
+test("resolveHighestPriorityTier returns highest priority tier [scale-ecosystem-modules]", () => {
   const tiers = [
     createSlaTierProfile({ tierId: "basic", priority: 0 }),
     createSlaTierProfile({ tierId: "standard", priority: 2 }),
@@ -854,12 +854,12 @@ test("resolveHighestPriorityTier returns highest priority tier", () => {
   assert.equal(result?.tierId, "premium");
 });
 
-test("resolveHighestPriorityTier returns null for empty array", () => {
+test("resolveHighestPriorityTier returns null for empty array [scale-ecosystem-modules]", () => {
   const result = resolveHighestPriorityTier([]);
   assert.equal(result, null);
 });
 
-test("allocateReservedCapacity calculates correct allocation", () => {
+test("allocateReservedCapacity calculates correct allocation [scale-ecosystem-modules]", () => {
   const allocations: ReservedCapacityAllocation[] = [
     { tierId: "enterprise", reservedPercent: 40 },
     { tierId: "standard", reservedPercent: 20 },
@@ -871,7 +871,7 @@ test("allocateReservedCapacity calculates correct allocation", () => {
   assert.equal(result["standard"], 20);
 });
 
-test("allocateReservedCapacity handles zero total units", () => {
+test("allocateReservedCapacity handles zero total units [scale-ecosystem-modules]", () => {
   const allocations: ReservedCapacityAllocation[] = [{ tierId: "enterprise", reservedPercent: 40 }];
 
   const result = allocateReservedCapacity(0, allocations);
@@ -879,7 +879,7 @@ test("allocateReservedCapacity handles zero total units", () => {
   assert.equal(result["enterprise"], 0);
 });
 
-test("allocateReservedCapacity returns empty for empty allocations", () => {
+test("allocateReservedCapacity returns empty for empty allocations [scale-ecosystem-modules]", () => {
   const result = allocateReservedCapacity(100, []);
   assert.deepEqual(result, {});
 });
@@ -888,7 +888,7 @@ test("allocateReservedCapacity returns empty for empty allocations", () => {
 // 4. Connector tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("ConnectorFrameworkService.register stores manifest", () => {
+test("ConnectorFrameworkService.register stores manifest [scale-ecosystem-modules]", () => {
   const service = new ConnectorFrameworkService();
   const manifest = createManifest("enabled");
 
@@ -898,7 +898,7 @@ test("ConnectorFrameworkService.register stores manifest", () => {
   assert.equal(service.getManifest(manifest.connectorId)?.connectorId, manifest.connectorId);
 });
 
-test("ConnectorFrameworkService.bind creates binding for prod with verified connector", () => {
+test("ConnectorFrameworkService.bind creates binding for prod with verified connector [scale-ecosystem-modules]", () => {
   const service = new ConnectorFrameworkService();
   service.register(createManifest("verified"));
 
@@ -909,7 +909,7 @@ test("ConnectorFrameworkService.bind creates binding for prod with verified conn
   assert.equal(binding.environment, "prod");
 });
 
-test("ConnectorFrameworkService.bind throws for prod with non-verified connector", () => {
+test("ConnectorFrameworkService.bind throws for prod with non-verified connector [scale-ecosystem-modules]", () => {
   const service = new ConnectorFrameworkService();
   service.register(createManifest("configured"));
 
@@ -918,7 +918,7 @@ test("ConnectorFrameworkService.bind throws for prod with non-verified connector
   }, /connector_framework\.prod_requires_verified/);
 });
 
-test("ConnectorFrameworkService.execute returns failed for missing secretBindings", async () => {
+test("ConnectorFrameworkService.execute returns failed for missing secretBindings [scale-ecosystem-modules]", async () => {
   const service = new ConnectorFrameworkService();
   service.register(createManifest("enabled"));
 
@@ -935,7 +935,7 @@ test("ConnectorFrameworkService.execute returns failed for missing secretBinding
   assert.equal(result.status, "failed");
 });
 
-test("ConnectorFrameworkService.execute returns failed for unsupported event type", async () => {
+test("ConnectorFrameworkService.execute returns failed for unsupported event type [scale-ecosystem-modules]", async () => {
   const service = new ConnectorFrameworkService();
   service.register(createManifest("enabled", { supportedEvents: ["event.a"] }));
 
@@ -954,7 +954,7 @@ test("ConnectorFrameworkService.execute returns failed for unsupported event typ
   assert.equal(result.status, "failed");
 });
 
-test("ConnectorFrameworkService.execute returns failed for connector with failed health", async () => {
+test("ConnectorFrameworkService.execute returns failed for connector with failed health [scale-ecosystem-modules]", async () => {
   const service = new ConnectorFrameworkService();
   service.register(createManifest("enabled"));
   service.recordHealth({
@@ -978,7 +978,7 @@ test("ConnectorFrameworkService.execute returns failed for connector with failed
   assert.equal(result.status, "failed");
 });
 
-test("ConnectorFrameworkService.execute returns succeeded for healthy verified connector", async () => {
+test("ConnectorFrameworkService.execute returns succeeded for healthy verified connector [scale-ecosystem-modules]", async () => {
   const service = new ConnectorFrameworkService();
   service.register(createManifest("verified"));
   service.recordHealth({
@@ -1002,7 +1002,7 @@ test("ConnectorFrameworkService.execute returns succeeded for healthy verified c
   assert.equal(result.status, "succeeded");
 });
 
-test("ConnectorFrameworkService.execute returns deferred for degraded connector", async () => {
+test("ConnectorFrameworkService.execute returns deferred for degraded connector [scale-ecosystem-modules]", async () => {
   const service = new ConnectorFrameworkService();
   service.register(createManifest("enabled"));
   service.recordHealth({
@@ -1026,7 +1026,7 @@ test("ConnectorFrameworkService.execute returns deferred for degraded connector"
   assert.equal(result.status, "deferred");
 });
 
-test("ConnectorFrameworkService.listBindings filters by connectorId", () => {
+test("ConnectorFrameworkService.listBindings filters by connectorId [scale-ecosystem-modules]", () => {
   const service = new ConnectorFrameworkService();
   service.register(createManifest("verified"));
   service.register(createManifest("verified", { connectorId: "other_connector" }));
@@ -1040,7 +1040,7 @@ test("ConnectorFrameworkService.listBindings filters by connectorId", () => {
   assert.ok(bindings.every(b => b.connectorId === "test_connector"));
 });
 
-test("ConnectorFrameworkService.listBindings filters by tenantId", () => {
+test("ConnectorFrameworkService.listBindings filters by tenantId [scale-ecosystem-modules]", () => {
   const service = new ConnectorFrameworkService();
   service.register(createManifest("verified"));
   service.bind("test_connector", "tenant-1", "dev");
@@ -1052,7 +1052,7 @@ test("ConnectorFrameworkService.listBindings filters by tenantId", () => {
   assert.equal(bindings[0]!.tenantId, "tenant-1");
 });
 
-test("ConnectorFrameworkService.listBindings filters by environment", () => {
+test("ConnectorFrameworkService.listBindings filters by environment [scale-ecosystem-modules]", () => {
   const service = new ConnectorFrameworkService();
   service.register(createManifest("verified"));
   service.bind("test_connector", "tenant-1", "dev");
@@ -1064,7 +1064,7 @@ test("ConnectorFrameworkService.listBindings filters by environment", () => {
   assert.equal(bindings[0]!.environment, "prod");
 });
 
-test("ConnectorManifestSchema parses valid manifest", () => {
+test("ConnectorManifestSchema parses valid manifest [scale-ecosystem-modules]", () => {
   const result = ConnectorManifestSchema.safeParse({
     connectorId: "test",
     provider: "provider",
@@ -1078,7 +1078,7 @@ test("ConnectorManifestSchema parses valid manifest", () => {
   }
 });
 
-test("ConnectorManifestSchema rejects invalid lifecycleState", () => {
+test("ConnectorManifestSchema rejects invalid lifecycleState [scale-ecosystem-modules]", () => {
   const result = ConnectorManifestSchema.safeParse({
     connectorId: "test",
     provider: "provider",
@@ -1089,7 +1089,7 @@ test("ConnectorManifestSchema rejects invalid lifecycleState", () => {
   assert.equal(result.success, false);
 });
 
-test("listEnabledConnectors filters to only enabled connectors", () => {
+test("listEnabledConnectors filters to only enabled connectors [scale-ecosystem-modules]", () => {
   const connectors = [
     createManifest("enabled"),
     createManifest("registered"),
@@ -1102,7 +1102,7 @@ test("listEnabledConnectors filters to only enabled connectors", () => {
   assert.equal(enabled[0]!.lifecycleState, "enabled");
 });
 
-test("buildConnectorExecutionKey creates correct key format", () => {
+test("buildConnectorExecutionKey creates correct key format [scale-ecosystem-modules]", () => {
   const key = buildConnectorExecutionKey({
     connectorId: "my_connector",
     capability: "sync",
@@ -1113,7 +1113,7 @@ test("buildConnectorExecutionKey creates correct key format", () => {
   assert.equal(key, "my_connector:sync");
 });
 
-test("ConnectorExecutionRequestSchema parses valid request", () => {
+test("ConnectorExecutionRequestSchema parses valid request [scale-ecosystem-modules]", () => {
   const result = ConnectorExecutionRequestSchema.safeParse({
     connectorId: "test",
     capability: "sync",
@@ -1124,7 +1124,7 @@ test("ConnectorExecutionRequestSchema parses valid request", () => {
   assert.equal(result.success, true);
 });
 
-test("ConnectorExecutionRequestSchema provides defaults for optional fields", () => {
+test("ConnectorExecutionRequestSchema provides defaults for optional fields [scale-ecosystem-modules]", () => {
   const result = ConnectorExecutionRequestSchema.safeParse({
     connectorId: "test",
     capability: "sync",
@@ -1137,7 +1137,7 @@ test("ConnectorExecutionRequestSchema provides defaults for optional fields", ()
   }
 });
 
-test("summarizeConnectorHealth returns failed when any report is failed", () => {
+test("summarizeConnectorHealth returns failed when any report is failed [scale-ecosystem-modules]", () => {
   const reports: ConnectorHealthReport[] = [
     { connectorId: "c1", status: "healthy", latencyMs: 100, checkedAt: "2026-04-20T00:00:00.000Z" },
     { connectorId: "c1", status: "failed", latencyMs: 1000, checkedAt: "2026-04-20T00:01:00.000Z" },
@@ -1148,7 +1148,7 @@ test("summarizeConnectorHealth returns failed when any report is failed", () => 
   assert.equal(result, "failed");
 });
 
-test("summarizeConnectorHealth returns degraded when any report is degraded", () => {
+test("summarizeConnectorHealth returns degraded when any report is degraded [scale-ecosystem-modules]", () => {
   const reports: ConnectorHealthReport[] = [
     { connectorId: "c1", status: "healthy", latencyMs: 100, checkedAt: "2026-04-20T00:00:00.000Z" },
     { connectorId: "c1", status: "degraded", latencyMs: 500, checkedAt: "2026-04-20T00:01:00.000Z" },
@@ -1159,7 +1159,7 @@ test("summarizeConnectorHealth returns degraded when any report is degraded", ()
   assert.equal(result, "degraded");
 });
 
-test("summarizeConnectorHealth returns healthy when all reports are healthy", () => {
+test("summarizeConnectorHealth returns healthy when all reports are healthy [scale-ecosystem-modules]", () => {
   const reports: ConnectorHealthReport[] = [
     { connectorId: "c1", status: "healthy", latencyMs: 100, checkedAt: "2026-04-20T00:00:00.000Z" },
     { connectorId: "c1", status: "healthy", latencyMs: 90, checkedAt: "2026-04-20T00:01:00.000Z" },
@@ -1170,7 +1170,7 @@ test("summarizeConnectorHealth returns healthy when all reports are healthy", ()
   assert.equal(result, "healthy");
 });
 
-test("summarizeConnectorHealth handles empty array", () => {
+test("summarizeConnectorHealth handles empty array [scale-ecosystem-modules]", () => {
   const result = summarizeConnectorHealth([]);
   assert.equal(result, "healthy");
 });

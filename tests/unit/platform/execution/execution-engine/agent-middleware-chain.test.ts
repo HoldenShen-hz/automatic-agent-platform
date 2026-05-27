@@ -50,17 +50,17 @@ function createPassThroughHook(name: string, priority = 0): BeforeAgentHook {
 // AgentMiddlewareChain construction
 // ---------------------------------------------------------------------------
 
-test("AgentMiddlewareChain can be instantiated", () => {
+test("AgentMiddlewareChain can be instantiated [agent-middleware-chain]", () => {
   const chain = new AgentMiddlewareChain();
   assert.ok(chain instanceof AgentMiddlewareChain, "Should create instance");
 });
 
-test("AgentMiddlewareChain accepts failOpen option", () => {
+test("AgentMiddlewareChain accepts failOpen option [agent-middleware-chain]", () => {
   const chain = new AgentMiddlewareChain({ failOpen: true });
   assert.ok(chain instanceof AgentMiddlewareChain);
 });
 
-test("AgentMiddlewareChain accepts custom logger option", () => {
+test("AgentMiddlewareChain accepts custom logger option [agent-middleware-chain]", () => {
   const logger = (code: string, msg: string, ctx: MiddlewareContext) => {
     // Custom logger
   };
@@ -68,7 +68,7 @@ test("AgentMiddlewareChain accepts custom logger option", () => {
   assert.ok(chain instanceof AgentMiddlewareChain);
 });
 
-test("AgentMiddlewareChain accepts both failOpen and logger options", () => {
+test("AgentMiddlewareChain accepts both failOpen and logger options [agent-middleware-chain]", () => {
   const logger = (code: string, msg: string, ctx: MiddlewareContext) => {};
   const chain = new AgentMiddlewareChain({ failOpen: false, logger });
   assert.ok(chain instanceof AgentMiddlewareChain);
@@ -78,12 +78,12 @@ test("AgentMiddlewareChain accepts both failOpen and logger options", () => {
 // createMiddlewareChain factory
 // ---------------------------------------------------------------------------
 
-test("createMiddlewareChain creates new chain instance", () => {
+test("createMiddlewareChain creates new chain instance [agent-middleware-chain]", () => {
   const chain = createMiddlewareChain();
   assert.ok(chain instanceof AgentMiddlewareChain);
 });
 
-test("createMiddlewareChain accepts options", () => {
+test("createMiddlewareChain accepts options [agent-middleware-chain]", () => {
   const chain = createMiddlewareChain({ failOpen: true });
   assert.ok(chain instanceof AgentMiddlewareChain);
 });
@@ -92,7 +92,7 @@ test("createMiddlewareChain accepts options", () => {
 // Hook registration - beforeAgent
 // ---------------------------------------------------------------------------
 
-test("registerBeforeAgent adds hook to chain", async () => {
+test("registerBeforeAgent adds hook to chain [agent-middleware-chain]", async () => {
   const chain = new AgentMiddlewareChain();
   const hook = createPassThroughHook("test-before-agent");
   chain.registerBeforeAgent(hook);
@@ -101,7 +101,7 @@ test("registerBeforeAgent adds hook to chain", async () => {
   assert.ok(hooks.beforeAgent.includes("test-before-agent"));
 });
 
-test("registerBeforeAgent sorts hooks by priority (ascending)", async () => {
+test("registerBeforeAgent sorts hooks by priority (ascending) [agent-middleware-chain]", async () => {
   const chain = new AgentMiddlewareChain();
   chain.registerBeforeAgent(createPassThroughHook("low", 10));
   chain.registerBeforeAgent(createPassThroughHook("high", 1));
@@ -117,7 +117,7 @@ test("registerBeforeAgent sorts hooks by priority (ascending)", async () => {
 // Hook registration - beforeModel
 // ---------------------------------------------------------------------------
 
-test("registerBeforeModel adds hook to chain", () => {
+test("registerBeforeModel adds hook to chain [agent-middleware-chain]", () => {
   const chain = new AgentMiddlewareChain();
   const hook: BeforeModelHook = {
     name: "test-before-model",
@@ -134,7 +134,7 @@ test("registerBeforeModel adds hook to chain", () => {
 // Hook registration - afterModel
 // ---------------------------------------------------------------------------
 
-test("registerAfterModel adds hook to chain", () => {
+test("registerAfterModel adds hook to chain [agent-middleware-chain]", () => {
   const chain = new AgentMiddlewareChain();
   const hook: AfterModelHook = {
     name: "test-after-model",
@@ -151,7 +151,7 @@ test("registerAfterModel adds hook to chain", () => {
 // Hook registration - wrapModelCall
 // ---------------------------------------------------------------------------
 
-test("registerWrapModelCall adds hook to chain", () => {
+test("registerWrapModelCall adds hook to chain [agent-middleware-chain]", () => {
   const chain = new AgentMiddlewareChain();
   const hook: WrapModelCallHook = {
     name: "test-wrap-model",
@@ -168,7 +168,7 @@ test("registerWrapModelCall adds hook to chain", () => {
 // Hook registration - wrapToolCall
 // ---------------------------------------------------------------------------
 
-test("registerWrapToolCall adds hook to chain", () => {
+test("registerWrapToolCall adds hook to chain [agent-middleware-chain]", () => {
   const chain = new AgentMiddlewareChain();
   const hook: WrapToolCallHook = {
     name: "test-wrap-tool",
@@ -185,7 +185,7 @@ test("registerWrapToolCall adds hook to chain", () => {
 // Hook registration - afterAgent
 // ---------------------------------------------------------------------------
 
-test("registerAfterAgent adds hook to chain", () => {
+test("registerAfterAgent adds hook to chain [agent-middleware-chain]", () => {
   const chain = new AgentMiddlewareChain();
   const hook: AfterAgentHook = {
     name: "test-after-agent",
@@ -202,7 +202,7 @@ test("registerAfterAgent adds hook to chain", () => {
 // reset - clears all hooks
 // ---------------------------------------------------------------------------
 
-test("reset clears all hooks from chain", () => {
+test("reset clears all hooks from chain [agent-middleware-chain]", () => {
   const chain = new AgentMiddlewareChain();
   chain.registerBeforeAgent(createPassThroughHook("hook1"));
   chain.registerAfterAgent({
@@ -222,7 +222,7 @@ test("reset clears all hooks from chain", () => {
 // getRegisteredHooks - returns all registered hooks
 // ---------------------------------------------------------------------------
 
-test("getRegisteredHooks returns empty arrays when no hooks registered", () => {
+test("getRegisteredHooks returns empty arrays when no hooks registered [agent-middleware-chain]", () => {
   const chain = new AgentMiddlewareChain();
   const hooks = chain.getRegisteredHooks();
 
@@ -240,7 +240,7 @@ test("getRegisteredHooks returns empty arrays when no hooks registered", () => {
   assert.equal(hooks.afterAgent.length, 0);
 });
 
-test("getRegisteredHooks returns hook names in priority order", () => {
+test("getRegisteredHooks returns hook names in priority order [agent-middleware-chain]", () => {
   const chain = new AgentMiddlewareChain();
   chain.registerBeforeAgent(createPassThroughHook("first", 1));
   chain.registerBeforeAgent(createPassThroughHook("second", 2));
@@ -254,7 +254,7 @@ test("getRegisteredHooks returns hook names in priority order", () => {
 // beforeAgent - executes hooks and returns warnings
 // ---------------------------------------------------------------------------
 
-test("beforeAgent executes hooks and returns input with warnings", async () => {
+test("beforeAgent executes hooks and returns input with warnings [agent-middleware-chain]", async () => {
   const chain = new AgentMiddlewareChain();
   chain.registerBeforeAgent(createPassThroughHook("pass-through"));
 
@@ -268,7 +268,7 @@ test("beforeAgent executes hooks and returns input with warnings", async () => {
   assert.ok(Array.isArray(result.warnings));
 });
 
-test("beforeAgent uses opts.agentRound for context", async () => {
+test("beforeAgent uses opts.agentRound for context [agent-middleware-chain]", async () => {
   const chain = new AgentMiddlewareChain();
   const ctx = createMockMiddlewareContext();
 
@@ -280,7 +280,7 @@ test("beforeAgent uses opts.agentRound for context", async () => {
   assert.ok(result.input);
 });
 
-test("beforeAgent accepts stepId option", async () => {
+test("beforeAgent accepts stepId option [agent-middleware-chain]", async () => {
   const chain = new AgentMiddlewareChain();
   const result = await chain.beforeAgent(
     { request: "test", history: [] },
@@ -294,7 +294,7 @@ test("beforeAgent accepts stepId option", async () => {
 // wrapToolCall - wraps tool execution with hooks
 // ---------------------------------------------------------------------------
 
-test("wrapToolCall executes hooks around tool call", async () => {
+test("wrapToolCall executes hooks around tool call [agent-middleware-chain]", async () => {
   const chain = new AgentMiddlewareChain();
   let hookCalled = false;
   chain.registerWrapToolCall({
@@ -315,7 +315,7 @@ test("wrapToolCall executes hooks around tool call", async () => {
   assert.equal(result.result, "tool result");
 });
 
-test("wrapToolCall propagates errors from tool call", async () => {
+test("wrapToolCall propagates errors from tool call [agent-middleware-chain]", async () => {
   const chain = new AgentMiddlewareChain();
   const error = new Error("tool failed");
   chain.registerWrapToolCall({
@@ -337,7 +337,7 @@ test("wrapToolCall propagates errors from tool call", async () => {
 // wrapModelCall - wraps model calls with hooks
 // ---------------------------------------------------------------------------
 
-test("wrapModelCall executes hooks around model call", async () => {
+test("wrapModelCall executes hooks around model call [agent-middleware-chain]", async () => {
   const chain = new AgentMiddlewareChain();
   let hookCalled = false;
   chain.registerWrapModelCall({
@@ -358,7 +358,7 @@ test("wrapModelCall executes hooks around model call", async () => {
   assert.equal(result.result, "model result");
 });
 
-test("wrapModelCall propagates errors from model call", async () => {
+test("wrapModelCall propagates errors from model call [agent-middleware-chain]", async () => {
   const chain = new AgentMiddlewareChain();
   const error = new Error("model failed");
   chain.registerWrapModelCall({
@@ -380,7 +380,7 @@ test("wrapModelCall propagates errors from model call", async () => {
 // afterAgent - executes hooks after agent round
 // ---------------------------------------------------------------------------
 
-test("afterAgent executes hooks and returns warnings", async () => {
+test("afterAgent executes hooks and returns warnings [agent-middleware-chain]", async () => {
   const chain = new AgentMiddlewareChain();
   chain.registerAfterAgent({
     name: "test-hook",
@@ -400,11 +400,11 @@ test("afterAgent executes hooks and returns warnings", async () => {
 // globalMiddlewareChain singleton
 // ---------------------------------------------------------------------------
 
-test("globalMiddlewareChain is exported and is an AgentMiddlewareChain", () => {
+test("globalMiddlewareChain is exported and is an AgentMiddlewareChain [agent-middleware-chain]", () => {
   assert.ok(globalMiddlewareChain instanceof AgentMiddlewareChain);
 });
 
-test("globalMiddlewareChain has failOpen set to true by default", () => {
+test("globalMiddlewareChain has failOpen set to true by default [agent-middleware-chain]", () => {
   // The global chain should be configured with failOpen: true
   assert.ok(globalMiddlewareChain instanceof AgentMiddlewareChain);
 });
@@ -413,12 +413,12 @@ test("globalMiddlewareChain has failOpen set to true by default", () => {
 // MiddlewareResult type structure
 // ---------------------------------------------------------------------------
 
-test("MiddlewareResult can be created with success: true", () => {
+test("MiddlewareResult can be created with success: true [agent-middleware-chain]", () => {
   const result: MiddlewareResult = { success: true };
   assert.equal(result.success, true);
 });
 
-test("MiddlewareResult can be created with success: false and error", () => {
+test("MiddlewareResult can be created with success: false and error [agent-middleware-chain]", () => {
   const result: MiddlewareResult = {
     success: false,
     error: {
@@ -432,7 +432,7 @@ test("MiddlewareResult can be created with success: false and error", () => {
   assert.equal(result.error?.warning, true);
 });
 
-test("MiddlewareResult can include modified input", () => {
+test("MiddlewareResult can include modified input [agent-middleware-chain]", () => {
   const result: MiddlewareResult = {
     success: true,
     input: { modified: "value" },
@@ -444,7 +444,7 @@ test("MiddlewareResult can include modified input", () => {
 // Hook interface types
 // ---------------------------------------------------------------------------
 
-test("BeforeAgentHook has required name and priority", () => {
+test("BeforeAgentHook has required name and priority [agent-middleware-chain]", () => {
   const hook: BeforeAgentHook = {
     name: "test",
     priority: 1,
@@ -454,7 +454,7 @@ test("BeforeAgentHook has required name and priority", () => {
   assert.equal(hook.priority, 1);
 });
 
-test("WrapToolCallHook receives tool input and calls next", async () => {
+test("WrapToolCallHook receives tool input and calls next [agent-middleware-chain]", async () => {
   const hook: WrapToolCallHook = {
     name: "test",
     priority: 0,
@@ -471,7 +471,7 @@ test("WrapToolCallHook receives tool input and calls next", async () => {
 // Edge cases
 // ---------------------------------------------------------------------------
 
-test("beforeAgent handles empty history", async () => {
+test("beforeAgent handles empty history [agent-middleware-chain]", async () => {
   const chain = new AgentMiddlewareChain();
   const result = await chain.beforeAgent({
     request: "test",
@@ -480,7 +480,7 @@ test("beforeAgent handles empty history", async () => {
   assert.ok(result.input);
 });
 
-test("wrapToolCall returns warnings array (empty on success)", async () => {
+test("wrapToolCall returns warnings array (empty on success) [agent-middleware-chain]", async () => {
   const chain = new AgentMiddlewareChain();
   const result = await chain.wrapToolCall(
     { toolName: "test", args: {} },
@@ -489,7 +489,7 @@ test("wrapToolCall returns warnings array (empty on success)", async () => {
   assert.ok(Array.isArray(result.warnings));
 });
 
-test("multiple hooks of different types can be registered", () => {
+test("multiple hooks of different types can be registered [agent-middleware-chain]", () => {
   const chain = new AgentMiddlewareChain();
   chain.registerBeforeAgent(createPassThroughHook("ba"));
   chain.registerAfterAgent({

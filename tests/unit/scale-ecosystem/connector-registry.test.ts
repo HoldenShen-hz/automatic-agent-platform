@@ -12,7 +12,7 @@ import {
   type ConnectorManifest,
 } from "../../../src/scale-ecosystem/integration/connector-registry/index.js";
 
-test("ConnectorManifestSchema validates correct manifest", () => {
+test("ConnectorManifestSchema validates correct manifest [connector-registry]", () => {
   const valid = {
     connectorId: "slack-app",
     provider: "slack",
@@ -27,7 +27,7 @@ test("ConnectorManifestSchema validates correct manifest", () => {
   assert.equal(result.success, true, "should accept valid manifest");
 });
 
-test("ConnectorManifestSchema requires connectorId", () => {
+test("ConnectorManifestSchema requires connectorId [connector-registry]", () => {
   const invalid = {
     provider: "slack",
     capabilities: [],
@@ -38,7 +38,7 @@ test("ConnectorManifestSchema requires connectorId", () => {
   assert.equal(result.success, false, "should reject manifest without connectorId");
 });
 
-test("ConnectorManifestSchema requires provider", () => {
+test("ConnectorManifestSchema requires provider [connector-registry]", () => {
   const invalid = {
     connectorId: "slack-app",
     capabilities: [],
@@ -49,7 +49,7 @@ test("ConnectorManifestSchema requires provider", () => {
   assert.equal(result.success, false, "should reject manifest without provider");
 });
 
-test("ConnectorManifestSchema validates lifecycleState enum", () => {
+test("ConnectorManifestSchema validates lifecycleState enum [connector-registry]", () => {
   const valid = {
     connectorId: "test",
     provider: "test",
@@ -60,7 +60,7 @@ test("ConnectorManifestSchema validates lifecycleState enum", () => {
   assert.equal(result.success, true, "should accept valid lifecycle state");
 });
 
-test("ConnectorManifestSchema rejects invalid lifecycleState", () => {
+test("ConnectorManifestSchema rejects invalid lifecycleState [connector-registry]", () => {
   const invalid = {
     connectorId: "test",
     provider: "test",
@@ -71,13 +71,13 @@ test("ConnectorManifestSchema rejects invalid lifecycleState", () => {
   assert.equal(result.success, false, "should reject invalid lifecycle state");
 });
 
-test("ConnectorManifestSchema defaults are present in schema definition", () => {
+test("ConnectorManifestSchema defaults are present in schema definition [connector-registry]", () => {
   // Check that the schema has definition with defaults
   const schemaDef = ConnectorManifestSchema._def;
   assert.ok(schemaDef, "schema should have definition");
 });
 
-test("listEnabledConnectors returns only enabled connectors", () => {
+test("listEnabledConnectors returns only enabled connectors [connector-registry]", () => {
   const connectors: ConnectorManifest[] = [
     {
       connectorId: "slack",
@@ -102,7 +102,7 @@ test("listEnabledConnectors returns only enabled connectors", () => {
   assert.equal(enabled[0]?.connectorId, "slack");
 });
 
-test("listEnabledConnectors returns empty array when none enabled", () => {
+test("listEnabledConnectors returns empty array when none enabled [connector-registry]", () => {
   const connectors: ConnectorManifest[] = [
     {
       connectorId: "jira",
@@ -121,12 +121,12 @@ test("listEnabledConnectors returns empty array when none enabled", () => {
   assert.equal(enabled.length, 0);
 });
 
-test("listEnabledConnectors handles empty array", () => {
+test("listEnabledConnectors handles empty array [connector-registry]", () => {
   const enabled = listEnabledConnectors([]);
   assert.equal(enabled.length, 0);
 });
 
-test("listEnabledConnectors handles all enabled connectors", () => {
+test("listEnabledConnectors handles all enabled connectors [connector-registry]", () => {
   const connectors: ConnectorManifest[] = [
     { connectorId: "slack", provider: "slack", lifecycleState: "enabled" },
     { connectorId: "jira", provider: "jira", lifecycleState: "enabled" },

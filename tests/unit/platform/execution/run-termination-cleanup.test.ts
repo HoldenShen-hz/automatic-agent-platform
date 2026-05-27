@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { RunTerminationCleanup, type CleanupCallback } from "../../../../src/platform/five-plane-execution/run-termination-cleanup.js";
 
-test("RunTerminationCleanup includes callback in cleanup order", async () => {
+test("RunTerminationCleanup includes callback in cleanup order [run-termination-cleanup]", async () => {
   // R4-22 fix: callback is now a valid CleanupResourceKind
   const cleanup = new RunTerminationCleanup();
   const cleanedIds: string[] = [];
@@ -50,7 +50,7 @@ test("RunTerminationCleanup includes callback in cleanup order", async () => {
   assert.equal(result.cleanupStatus, "complete");
 });
 
-test("RunTerminationCleanup executes callback handler for pending callbacks cleanup", async () => {
+test("RunTerminationCleanup executes callback handler for pending callbacks cleanup [run-termination-cleanup]", async () => {
   const cleanup = new RunTerminationCleanup();
   let callbackInvoked = false;
 

@@ -52,7 +52,7 @@ function noopHandler(name: string): () => Promise<void> {
 // Tests - GracefulShutdown class
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("GracefulShutdown - creation with defaults", () => {
+test("GracefulShutdown - creation with defaults [graceful-shutdown]", () => {
   const shutdown = new GracefulShutdown();
 
   assert.equal(shutdown.isShuttingDownState(), false);
@@ -61,7 +61,7 @@ test("GracefulShutdown - creation with defaults", () => {
   shutdown.reset();
 });
 
-test("GracefulShutdown - creation with custom options", () => {
+test("GracefulShutdown - creation with custom options [graceful-shutdown]", () => {
   const shutdown = new GracefulShutdown({
     timeoutMs: 5000,
     forceKillAfterTimeout: false,
@@ -72,7 +72,7 @@ test("GracefulShutdown - creation with custom options", () => {
   shutdown.reset();
 });
 
-test("GracefulShutdown - addHandler adds to the list", () => {
+test("GracefulShutdown - addHandler adds to the list [graceful-shutdown]", () => {
   const shutdown = new GracefulShutdown();
 
   const handler: ShutdownHandler = {
@@ -85,7 +85,7 @@ test("GracefulShutdown - addHandler adds to the list", () => {
   shutdown.reset();
 });
 
-test("GracefulShutdown - addHandler throws while shutting down", () => {
+test("GracefulShutdown - addHandler throws while shutting down [graceful-shutdown]", () => {
   const shutdown = new GracefulShutdown({
     registerSignalHandlers: false,
   });
@@ -120,7 +120,7 @@ test("GracefulShutdown - addHandler throws while shutting down", () => {
   shutdown.reset();
 });
 
-test("GracefulShutdown - registerSignalHandlers registers listeners", () => {
+test("GracefulShutdown - registerSignalHandlers registers listeners [graceful-shutdown]", () => {
   const signalBus = createMockSignalBus();
 
   const shutdown = new GracefulShutdown({
@@ -138,7 +138,7 @@ test("GracefulShutdown - registerSignalHandlers registers listeners", () => {
   shutdown.reset();
 });
 
-test("GracefulShutdown - registerSignalHandlers is idempotent", () => {
+test("GracefulShutdown - registerSignalHandlers is idempotent [graceful-shutdown]", () => {
   const signalBus = createMockSignalBus();
 
   const shutdown = new GracefulShutdown({
@@ -157,7 +157,7 @@ test("GracefulShutdown - registerSignalHandlers is idempotent", () => {
   shutdown.reset();
 });
 
-test("GracefulShutdown - unregisterSignalHandlers removes listeners", () => {
+test("GracefulShutdown - unregisterSignalHandlers removes listeners [graceful-shutdown]", () => {
   const signalBus = createMockSignalBus();
 
   const shutdown = new GracefulShutdown({
@@ -174,7 +174,7 @@ test("GracefulShutdown - unregisterSignalHandlers removes listeners", () => {
   shutdown.reset();
 });
 
-test("GracefulShutdown - shutdown executes handlers in reverse order", async () => {
+test("GracefulShutdown - shutdown executes handlers in reverse order [graceful-shutdown]", async () => {
   const callOrder: string[] = [];
 
   const shutdown = new GracefulShutdown({
@@ -214,7 +214,7 @@ test("GracefulShutdown - shutdown executes handlers in reverse order", async () 
   shutdown.reset();
 });
 
-test("GracefulShutdown - shutdown reports failures", async () => {
+test("GracefulShutdown - shutdown reports failures [graceful-shutdown]", async () => {
   const shutdown = new GracefulShutdown({
     registerSignalHandlers: false,
     timeoutMs: 5000,
@@ -241,7 +241,7 @@ test("GracefulShutdown - shutdown reports failures", async () => {
   shutdown.reset();
 });
 
-test("GracefulShutdown - aborts timed out handlers to avoid zombie async work", async () => {
+test("GracefulShutdown - aborts timed out handlers to avoid zombie async work [graceful-shutdown]", async () => {
   let aborted = false;
   const shutdown = new GracefulShutdown({
     registerSignalHandlers: false,
@@ -266,7 +266,7 @@ test("GracefulShutdown - aborts timed out handlers to avoid zombie async work", 
   shutdown.reset();
 });
 
-test("GracefulShutdown - shutdown is idempotent", async () => {
+test("GracefulShutdown - shutdown is idempotent [graceful-shutdown]", async () => {
   const shutdown = new GracefulShutdown({
     registerSignalHandlers: false,
     timeoutMs: 5000,
@@ -287,7 +287,7 @@ test("GracefulShutdown - shutdown is idempotent", async () => {
   shutdown.reset();
 });
 
-test("GracefulShutdown - initiateShutdown triggers shutdown", async () => {
+test("GracefulShutdown - initiateShutdown triggers shutdown [graceful-shutdown]", async () => {
   const shutdown = new GracefulShutdown({
     registerSignalHandlers: false,
     timeoutMs: 5000,
@@ -306,7 +306,7 @@ test("GracefulShutdown - initiateShutdown triggers shutdown", async () => {
   shutdown.reset();
 });
 
-test("GracefulShutdown - handler timeout works", async () => {
+test("GracefulShutdown - handler timeout works [graceful-shutdown]", async () => {
   const shutdown = new GracefulShutdown({
     registerSignalHandlers: false,
     timeoutMs: 50, // Very short timeout
@@ -329,7 +329,7 @@ test("GracefulShutdown - handler timeout works", async () => {
   shutdown.reset();
 });
 
-test("GracefulShutdown - reset clears state", async () => {
+test("GracefulShutdown - reset clears state [graceful-shutdown]", async () => {
   const signalBus = createMockSignalBus();
 
   const shutdown = new GracefulShutdown({
@@ -352,7 +352,7 @@ test("GracefulShutdown - reset clears state", async () => {
   assert.equal(shutdown.getLastShutdownResult(), null);
 });
 
-test("GracefulShutdown - getLastShutdownResult returns result after shutdown", async () => {
+test("GracefulShutdown - getLastShutdownResult returns result after shutdown [graceful-shutdown]", async () => {
   const shutdown = new GracefulShutdown({
     registerSignalHandlers: false,
     timeoutMs: 5000,
@@ -372,7 +372,7 @@ test("GracefulShutdown - getLastShutdownResult returns result after shutdown", a
   shutdown.reset();
 });
 
-test("GracefulShutdown - SIGTERM signal triggers shutdown", async () => {
+test("GracefulShutdown - SIGTERM signal triggers shutdown [graceful-shutdown]", async () => {
   const signalBus = createMockSignalBus();
   let exitCode: number | undefined;
 
@@ -402,7 +402,7 @@ test("GracefulShutdown - SIGTERM signal triggers shutdown", async () => {
   shutdown.reset();
 });
 
-test("GracefulShutdown - SIGINT signal triggers shutdown", async () => {
+test("GracefulShutdown - SIGINT signal triggers shutdown [graceful-shutdown]", async () => {
   const signalBus = createMockSignalBus();
   let exitCode: number | undefined;
 
@@ -432,7 +432,7 @@ test("GracefulShutdown - SIGINT signal triggers shutdown", async () => {
   shutdown.reset();
 });
 
-test("GracefulShutdown - shutdown with critical handler failure still runs all handlers", async () => {
+test("GracefulShutdown - shutdown with critical handler failure still runs all handlers [graceful-shutdown]", async () => {
   const callOrder: string[] = [];
 
   const shutdown = new GracefulShutdown({
@@ -473,7 +473,7 @@ test("GracefulShutdown - shutdown with critical handler failure still runs all h
   shutdown.reset();
 });
 
-test("GracefulShutdown - durationMs is tracked", async () => {
+test("GracefulShutdown - durationMs is tracked [graceful-shutdown]", async () => {
   const shutdown = new GracefulShutdown({
     registerSignalHandlers: false,
     timeoutMs: 5000,
@@ -493,7 +493,7 @@ test("GracefulShutdown - durationMs is tracked", async () => {
   shutdown.reset();
 });
 
-test("createGracefulShutdown factory creates instance", () => {
+test("createGracefulShutdown factory creates instance [graceful-shutdown]", () => {
   const shutdown = createGracefulShutdown({
     timeoutMs: 10000,
   });
@@ -504,7 +504,7 @@ test("createGracefulShutdown factory creates instance", () => {
   shutdown.reset();
 });
 
-test("getGlobalGracefulShutdown returns singleton", () => {
+test("getGlobalGracefulShutdown returns singleton [graceful-shutdown]", () => {
   const instance1 = getGlobalGracefulShutdown();
   const instance2 = getGlobalGracefulShutdown();
 

@@ -17,7 +17,7 @@ import type {
   BillingPaymentSessionRecord,
 } from "../../../../src/platform/contracts/types/domain.js";
 
-test("CreateBillingCheckoutSessionInput structure is correct", () => {
+test("CreateBillingCheckoutSessionInput structure is correct [billing-payment-gateway-types]", () => {
   const input: CreateBillingCheckoutSessionInput = {
     invoice: {
       invoiceId: "inv_123",
@@ -53,7 +53,7 @@ test("CreateBillingCheckoutSessionInput structure is correct", () => {
   assert.equal(input.account.accountId, "acc_456");
 });
 
-test("BillingCheckoutSessionDefinition structure is correct", () => {
+test("BillingCheckoutSessionDefinition structure is correct [billing-payment-gateway-types]", () => {
   const definition: BillingCheckoutSessionDefinition = {
     gatewayKind: "stripe",
     gatewaySessionRef: "cs_test_123",
@@ -67,7 +67,7 @@ test("BillingCheckoutSessionDefinition structure is correct", () => {
   assert.ok(definition.expiresAt !== null);
 });
 
-test("BillingCheckoutSessionDefinition allows null expiresAt", () => {
+test("BillingCheckoutSessionDefinition allows null expiresAt [billing-payment-gateway-types]", () => {
   const definition: BillingCheckoutSessionDefinition = {
     gatewayKind: "manual",
     gatewaySessionRef: "manual_inv_123",
@@ -79,7 +79,7 @@ test("BillingCheckoutSessionDefinition allows null expiresAt", () => {
   assert.equal(definition.expiresAt, null);
 });
 
-test("BillingPaymentSessionStatusSnapshot structure is correct", () => {
+test("BillingPaymentSessionStatusSnapshot structure is correct [billing-payment-gateway-types]", () => {
   const snapshot: BillingPaymentSessionStatusSnapshot = {
     gatewayKind: "stripe",
     gatewaySessionRef: "cs_test_456",
@@ -94,7 +94,7 @@ test("BillingPaymentSessionStatusSnapshot structure is correct", () => {
   assert.equal(snapshot.failureCode, null);
 });
 
-test("BillingPaymentSessionStatusSnapshot accepts all valid status values", () => {
+test("BillingPaymentSessionStatusSnapshot accepts all valid status values [billing-payment-gateway-types]", () => {
   const statuses: BillingPaymentSessionStatusSnapshot["status"][] = [
     "pending",
     "paid",
@@ -114,7 +114,7 @@ test("BillingPaymentSessionStatusSnapshot accepts all valid status values", () =
   }
 });
 
-test("BillingPaymentSessionStatusSnapshot allows optional failureCode", () => {
+test("BillingPaymentSessionStatusSnapshot allows optional failureCode [billing-payment-gateway-types]", () => {
   const snapshotWithCode: BillingPaymentSessionStatusSnapshot = {
     gatewayKind: "stripe",
     gatewaySessionRef: "cs_test_fail",
@@ -135,12 +135,12 @@ test("BillingPaymentSessionStatusSnapshot allows optional failureCode", () => {
   assert.equal(snapshotWithoutCode.failureCode, undefined);
 });
 
-test("BillingPaymentGatewayKind type accepts all valid values", () => {
+test("BillingPaymentGatewayKind type accepts all valid values [billing-payment-gateway-types]", () => {
   const kinds: BillingPaymentGatewayKind[] = ["stripe", "manual", "paddle"];
   assert.equal(kinds.length, 3);
 });
 
-test("ManualBillingPaymentGatewayOptions structure is correct", () => {
+test("ManualBillingPaymentGatewayOptions structure is correct [billing-payment-gateway-types]", () => {
   const options: ManualBillingPaymentGatewayOptions = {
     baseUrl: "https://payments.example.com/manual",
   };
@@ -148,12 +148,12 @@ test("ManualBillingPaymentGatewayOptions structure is correct", () => {
   assert.equal(options.baseUrl, "https://payments.example.com/manual");
 });
 
-test("ManualBillingPaymentGatewayOptions allows empty options", () => {
+test("ManualBillingPaymentGatewayOptions allows empty options [billing-payment-gateway-types]", () => {
   const options: ManualBillingPaymentGatewayOptions = {};
   assert.equal(options.baseUrl, undefined);
 });
 
-test("StripeBillingPaymentGatewayOptions structure is correct", () => {
+test("StripeBillingPaymentGatewayOptions structure is correct [billing-payment-gateway-types]", () => {
   const options: StripeBillingPaymentGatewayOptions = {
     secretKey: "sk_test_123",
     successUrl: "https://example.com/success",
@@ -167,7 +167,7 @@ test("StripeBillingPaymentGatewayOptions structure is correct", () => {
   assert.equal(options.apiBaseUrl, "https://api.stripe.com");
 });
 
-test("StripeBillingPaymentGatewayOptions allows minimal definition", () => {
+test("StripeBillingPaymentGatewayOptions allows minimal definition [billing-payment-gateway-types]", () => {
   const options: StripeBillingPaymentGatewayOptions = {
     secretKey: "sk_test_456",
     successUrl: "https://example.com/success",
@@ -179,7 +179,7 @@ test("StripeBillingPaymentGatewayOptions allows minimal definition", () => {
   assert.equal(options.fetchFn, undefined);
 });
 
-test("PaddleBillingPaymentGatewayOptions structure is correct", () => {
+test("PaddleBillingPaymentGatewayOptions structure is correct [billing-payment-gateway-types]", () => {
   const options: PaddleBillingPaymentGatewayOptions = {
     apiKey: "paddle_test_789",
     successUrl: "https://example.com/success",
@@ -193,7 +193,7 @@ test("PaddleBillingPaymentGatewayOptions structure is correct", () => {
   assert.equal(options.apiBaseUrl, "https://api.paddle.com");
 });
 
-test("PaddleBillingPaymentGatewayOptions allows minimal definition", () => {
+test("PaddleBillingPaymentGatewayOptions allows minimal definition [billing-payment-gateway-types]", () => {
   const options: PaddleBillingPaymentGatewayOptions = {
     apiKey: "paddle_test_abc",
     successUrl: "https://example.com/success",
@@ -205,7 +205,7 @@ test("PaddleBillingPaymentGatewayOptions allows minimal definition", () => {
   assert.equal(options.fetchFn, undefined);
 });
 
-test("BillingPaymentSessionRecord structure is correct", () => {
+test("BillingPaymentSessionRecord structure is correct [billing-payment-gateway-types]", () => {
   const record: BillingPaymentSessionRecord = {
     sessionId: "session_123",
     invoiceId: "inv_456",
@@ -229,7 +229,7 @@ test("BillingPaymentSessionRecord structure is correct", () => {
   assert.equal(record.settledAt, null);
 });
 
-test("BillingPaymentSessionRecord allows settled status", () => {
+test("BillingPaymentSessionRecord allows settled status [billing-payment-gateway-types]", () => {
   const record: BillingPaymentSessionRecord = {
     sessionId: "session_456",
     invoiceId: "inv_789",
