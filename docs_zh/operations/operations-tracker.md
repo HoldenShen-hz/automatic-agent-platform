@@ -10,6 +10,7 @@
 - 阶段与范围看 [implementation_plan.md](./implementation_plan.md)
 - 开发顺序看 [operations-roadmap.md](./operations-roadmap.md)
 - 发布与编码检查看 [operations-checklist.md](./operations-checklist.md)
+- review 预防与门禁化方案看 [review-prevention-plan.md](./review-prevention-plan.md)
 - review 状态口径与关闭看板看 [review-closure-board.md](./review-closure-board.md)
 - 当前大批次收口表看 [../reviews/platforme-full-review-b.md](../reviews/platforme-full-review-b.md)
 - 最新系统级复核看 [../reviews/system-review-2026-05-26.md](../reviews/system-review-2026-05-26.md)

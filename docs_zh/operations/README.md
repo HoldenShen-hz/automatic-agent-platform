@@ -11,6 +11,7 @@
 | [`project_progress_tracker.md`](./project_progress_tracker.md) | 当前项目进度快照 | 里程碑后 |
 | [`current_todo_list.md`](./current_todo_list.md) | 当前活跃执行清单 | 当前优先级变化时 |
 | [`operations-checklist.md`](./operations-checklist.md) | 编码前检查、发布前检查、文档完成门控 | 发布前 |
+| [`review-prevention-plan.md`](./review-prevention-plan.md) | 把 review 高频问题转成持续门禁的预防方案 | review 模式变化时 |
 | [`operations-tracker.md`](./operations-tracker.md) | 轻量索引页 | 较少更新 |
 | [`runbook.md`](./runbook.md) | 运维总 runbook 入口 | 预案变更时 |
 | [`runbooks/incident-response-playbook.md`](./runbooks/incident-response-playbook.md) | 事件响应 | 预案变更时 |
@@ -33,6 +34,7 @@
 | 看当前允许做什么阶段 | `implementation_plan.md` |
 | 看开发顺序与依赖 | `operations-roadmap.md` |
 | 开始编码前的检查 | `operations-checklist.md` |
+| 看如何避免 review 类问题复发 | `review-prevention-plan.md` |
 | 看运维处理入口 | `runbook.md` |
 | 看测试覆盖基线 | `test_coverage_baseline_gate.md` |
 

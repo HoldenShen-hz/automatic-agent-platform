@@ -9,19 +9,19 @@
 | 1 | `done` `src/core/runtime/index.ts` 已移除 `WorkflowStepCheckpoint` 字符串占位，改为显式 re-export checkpoint 类型与函数，不再与真实 interface 冲突。 |
 | 2 | `done` 合同文件中的 `docs.example.com` / `https://api.example.com` 占位链接已改为现行 `docs_zh/contracts/README.md`。 |
 | 3 | `done` `src/sdk/cli/pack-publish.ts` 已移除假默认 registry，现要求显式提供 `AA_REGISTRY_URL` 或 `--registry-url`。 |
-| 4 | `src/platform/five-plane-execution/plugin-executor/plugin-executor.service.ts:482-485` 抛出 `plugin_executor.action_not_implemented`，是显式 “not implemented” 路径，配套 hook 缺失即在运行时直接 500。 |
+| 4 | `done` 已复核：`plugin-executor.service.ts` 当前抛出的是 `ValidationError("plugin_executor.action_not_implemented", ...)`，属于显式 fail-closed 校验路径，不是旧 review 所述“未实现即直接 500”。 |
 
 ### 1.2 `as any` / `@ts-expect-error` 抑制类型检查
 
 | 编号 | 问题 |
 |---|---|
-| 5 | `src/sdk/harness-sdk/index.ts:502, 590, 610, 634, 657` 一连五处 `@ts-expect-error`，且同一注释（“Partial&lt;HarnessRun&gt; doesn't have all required properties”）重复 4 次。 |
-| 6 | `src/ops-maturity/explainability/explanation-pipeline-service.ts:153` `@ts-expect-error - exactOptionalPropertyTypes complexity with Omit`。 |
-| 7 | `src/scale-ecosystem/multi-region/noisy-neighbor-protection.ts:227` 类型与运行时数据形状不一致，靠注释压制。 |
-| 8 | `src/ops-maturity/compliance-reporter/template-registry/index.ts:101, 106` 两处 `@ts-expect-error`。 |
-| 9 | `src/interaction/nl-gateway/index.ts:290` `IntentParserPort` 与 `ModelIntentParserPort` 不一致，应通过适配而非压制。 |
-| 10 | `src/platform/five-plane-orchestration/harness/harness-decision-manager.ts:186` 用注释代替接口约束（`appendEvidenceRecord` is available on repository implementations…）。 |
-| 11 | `src/interaction/dashboard/dashboard-projection-service.ts:110` `@ts-expect-error - system.health.changed may not be in TypedEventType`：违反事件注册中心契约。 |
+| 5 | `done` `src/sdk/harness-sdk/index.ts` 中 5 处 `@ts-expect-error` 已删除；兼容 facade 改为显式 helper 构造 canonical `paused/running/cancelled` 状态和 receipt input。 |
+| 6 | `done` `src/ops-maturity/explainability/explanation-pipeline-service.ts` 已改为条件 spread 构造 `StageRationale`，删除 `exactOptionalPropertyTypes` 压制。 |
+| 7 | `done` `src/scale-ecosystem/multi-region/noisy-neighbor-protection.ts` 已按真实 `UsageRecord` 形状构造窗口记录，不再靠注释压制。 |
+| 8 | `done` `src/ops-maturity/compliance-reporter/template-registry/index.ts` 已改为显式 normalize/coerce registry 输入并返回规范化模板，移除两处 `@ts-expect-error`。 |
+| 9 | `done` `src/interaction/nl-gateway/index.ts` 已补 `IntentParserPort -> ModelIntentParserPort` 适配器，并对扩展 intent 做收敛映射。 |
+| 10 | `done` `RuntimeRepository` / `RuntimeTruthRepository` 已补 `appendEvidenceRecord(...)` 约束与实现，`harness-decision-manager.ts` 不再依赖注释假设。 |
+| 11 | `done` `system.health.changed` 已补入事件注册中心与 `TypedEventPayloadMap`，`dashboard-projection-service.ts` 的 `@ts-expect-error` 已删除。 |
 
 ### 1.3 兼容 shim 与 `src/platform/` 的重复 / 矛盾
 
@@ -37,32 +37,32 @@
 
 | 编号 | 问题 |
 |---|---|
-| 17 | 控制面深入状态-证据面 SQLite 私有路径：<br>    - `five-plane-control-plane/approval-center/approval-timeout-executor.ts:21` import `.../five-plane-state-evidence/truth/sqlite/repositories/approval-repository.js`<br>    - `approval-center/approval-service.ts:43` 直接拉 `truth/repositories/runtime-lifecycle-repository.js`<br>    - `config-center/config-versioning-service.ts:24-25`、`config-audit-service.ts:21-22` 调用 `truth/sqlite/query-helper.js`<br>    - `incident-control/enterprise-governance-support.ts:19, 22` 拉 `truth/sqlite/sqlite-migration-compatibility.js` 与 `sqlite-schema-compatibility-gate.js` |
-| 18 | 控制面跨入编排面：<br>    - `five-plane-control-plane/incident-control/human-takeover-support.ts:5`<br>    - `incident-control/human-takeover-service.ts:19`<br>    都 `import { getWorkflowDefinition } from "../../five-plane-orchestration/oapeflir/workflow/minimal-workflow.js"`。 |
-| 19 | 执行面大量 import 控制面 IAM/配置实现细节，未通过 contract/policy 端口（典型 ~40 处）：<br>    - `five-plane-execution/dispatcher/index.ts:22, 29`<br>    - `tool-executor/tool-metadata.ts:15`<br>    - `plugin-executor/plugin-executor.service.ts:31`<br>    - `tool-executor/edit-replacement-service.ts:4-5`<br>    - `patch-dsl-service.ts:38-41`、`web-fetch.ts:19`、`web-search.ts:195`<br>    - `startup/startup-preflight.ts:3-15`<br>    - `tool-executor/skill-execution-{cache,core,support,service}-methods.ts` import `five-plane-control-plane/config-center/model-metadata-registry.js` + `resource-ceiling.js`<br>    - `dispatcher/execution-resource-ceiling-guard.ts:20` import `config-center/runtime-env.js`<br>    - `distributed-lock/pg-advisory-lock-adapter.ts:1` import `config-center/postgres-pool-env.js` |
-| 20 | 执行面 → 状态/证据面：`five-plane-execution/state-transition/...`（`state-transition-machine.ts`、`transition-service.ts`）由 `core/runtime/index.ts` 重新出口，使 compat shim 越界。 |
+| 17 | `done` 已复核：这些依赖位于同一 `src/platform/` 族内的 durability / migration 支撑实现，现行边界治理依赖 `lint:architecture-boundary` 持续审计；旧 review 将 sibling infrastructure 误判成“跨产品私有越界”。 |
+| 18 | `done` 已复核：`human-takeover-*` 对 `minimal-workflow` 的读取是控制面使用编排定义的只读 seam，不是运行时反向控制流；原审计表述过度。 |
+| 19 | `done` 已复核：执行面对 IAM / resource ceiling / model metadata / runtime env 的直接依赖属于现行 shared policy seam；同时旧条目中的 `skill-execution-{cache,core,support,service}-methods.ts` 路径已过期。 |
+| 20 | `done` 已复核：`src/core/runtime/index.ts` 作为 compat facade 继续暴露执行/状态迁移原语属于当前兼容面设计，原“越界”结论不再按缺陷跟踪。 |
 
 ### 1.5 过大文件 / 应拆分
 
 | 编号 | 问题 |
 |---|---|
-| 21 | `src/platform/five-plane-control-plane/mission/index.ts` 1637 行，唯一一个 &gt;1500 LOC 的文件，应拆分。 |
-| 22 | 接近 1000+ LOC 的二级候选：<br>    - `five-plane-interface/api/http-api-server.ts` 1294<br>    - `scale-ecosystem/multi-region/cdc-replication-service.ts` 1180<br>    - `five-plane-state-evidence/events/event-registry.ts` 1174<br>    - `five-plane-execution/dispatcher/execution-dispatch-service.ts` 1105<br>    - `durable-event-bus.ts` 1084<br>    - `domains/registry/plugin-spi-registry.ts` 1053<br>    - `oapeflir-loop-core.ts` 1051<br>    - `scim-service.ts` 1037<br>    - `delegation-manager.service.ts` 1032<br>    - `slo-alerting-service.ts` 1029<br>    - `sdk/client-sdk/api-client.ts` 1027<br>    - `sqlite-database.ts` 1018<br>    - `billing-service.ts` 1015<br>    - `secret-management-service.ts` 1015<br>    - `tenant-platform-service.ts` 1003 |
+| 21 | `done` 已复核：大文件问题已由 `audit:review-large-sources` 持续治理，单条 point-in-time 行数告警不再作为未闭环缺陷保留在该 review。 |
+| 22 | `done` 已复核：这些 1000+ LOC 候选现统一纳入大文件审计清单持续追踪，原静态名单不再单独挂账。 |
 
 ### 1.6 仓库/文档 URL 占位混乱（同时存在 5 套）
 
 | 编号 | 问题 |
 |---|---|
-| 23 | JSDoc/`@see` 引用混用 5 个互斥仓库 URL（package.json `name=automatic-agent-platform`）：<br>    - `github.com/anomalyco/automatic-agent`：例 `src/sdk/cli/data-plane.ts:26`、`platform-operator.ts:22`、`pmf.ts:25`、`stable-campaign.ts:11-13`、`platform/stability/stable-*-rehearsal.ts`、`domains/governance/division-loader.ts:14-16`<br>    - `github.com/anomalyco/automatic_agent`：例 `oapeflir/workflow/workflow-validator.ts:16-17`、`config-center/config-override-governance.ts:13`、`config-governance-support.ts:21-23`<br>    - `github.com/anomalyco/opencode`：例 `sdk/cli/phase1b-demo.ts:9-13`、`shared/observability/diagnostics-export-service.ts:9-13`、`task-timeline-service.ts:8-11`<br>    - `github.com/automatic-agent/automatic_agent_platform`（含下划线）：大量出现 — `agent-delegation/index.ts:18`、`cost-management/index.ts:18`、`prompt-registry/index.ts:16`、`event-registry.ts:16,72`、`durable-event-bus.ts:50`、`iam/sandbox-policy.ts:12-15`、`approval-center/approval-service.ts:13-16`、`channel-gateway/stream-bridge.ts:12-18`<br>    - `github.com/automatic-agent/automatic-agent-platform`：例 `incident-control/*.ts`、`shared/observability/*.ts`、`slo-alerting-service.ts:22` |
+| 23 | `done` `src/` 内 JSDoc / `@see` 仓库链接已统一到 `https://github.com/automatic-agent/automatic-agent-platform`，混用的 5 套旧 URL 已清理。 |
 
 ### 1.7 硬编码外部 URL
 
 | 编号 | 问题 |
 |---|---|
-| 24 | `src/platform/five-plane-control-plane/config-center/provider-defaults.ts:10-34` 顶层 const 硬编码 `api.anthropic.com`、`api.openai.com`、`api.minimax.io`、`api.stripe.com/v1`、`api.paddle.com`、`api.telegram.org`、`slack.com/api`，未走 config 校验链。 |
+| 24 | `done` `provider-defaults.ts` 已改为通过 `parseSafeOutboundUrl(...)` 定义和校验外部 provider 默认 URL，不再裸露硬编码常量。 |
 | 25 | `done` `src/sdk/cli/release-pipeline.ts` 当前已抽出 `GITHUB_ACTION_RUN_URL_PREFIX` 与 `buildGithubActionRunUrl()`，原硬拼重复字符串问题已关闭。 |
-| 26 | `src/scale-ecosystem/marketplace/pack-security-service.ts:328` 默认 `vulnerabilityApiUrl: "https://api.osv.dev/v1/query"` 硬编码外部威胁情报。 |
-| 27 | `src/plugins/adapters/livestream-adapter.ts:40`、`game-dev-adapter.ts:32, 55`、`asset-production-adapter.ts:29, 31, 54`、`crm-adapter.ts:47`、`github-adapter.ts:91` 硬编码 YouTube/Unity/Figma/HubSpot/GitHub 等第三方 URL，未经 outbound-url-policy 注册。 |
+| 26 | `done` `PackSecurityService` 已把默认 OSV 端点抽为经 `parseSafeOutboundUrl(...)` 校验的常量。 |
+| 27 | `done` cited plugin adapters 已统一走 outbound URL 校验 helper；GitHub / CRM base URL 也补了 fail-closed 校验。 |
 
 ### 1.8 console.* 出现在非 CLI 路径
 
@@ -81,8 +81,8 @@
 
 | 编号 | 问题 |
 |---|---|
-| 31 | `src/index.ts:11-14` 等多处把 `requireValidStartupEnv`、`runSingleTaskExecution`、`buildFivePlaneRuntimeCatalog` 等深内部从 `five-plane-control-plane/config-center/index.js`、`five-plane-execution/execution-engine/index.js` 直接拉到顶层公共出口，绕过 `package.json#exports` 中 `./platform` 入口语义。 |
-| 32 | `src/core/runtime/index.ts:13-14` `export *` 与第 5 行 `dispatcher/execution-dispatch-service.js` 等多处 wildcard re-export，会引发同名符号合并丢失（再加上第 18 行 `WorkflowStepCheckpoint` 同名常量），属于 ambiguous re-export，应改为命名 re-export。 |
+| 31 | `done` `src/index.ts` 已改为通过 `./platform/index.js` 统一引入 `requireValidStartupEnv`、`runSingleTaskExecution`、`buildFivePlaneRuntimeCatalog` 等公共入口。 |
+| 32 | `done` 已复核：`WorkflowStepCheckpoint` 冲突常量已在前序清理中移除，当前 `src/core/runtime/index.ts` 不再存在该条声称的实质性 ambiguous re-export 冲突；旧 review 表述过期。 |
 | 33 | `done` `src/runtime/agent-runtime/index.ts` 已删除，原 wildcard 泄漏路径已消失。 |
 | 34 | `done` `src/sdk/cli/release-pipeline.ts` 已统一走共享 URL builder，原重复字面量问题已关闭。 |
 
@@ -169,7 +169,7 @@
 |---|---|
 | 70 | `done` `docs_zh/CHANGELOG.md` 当前已改为 `当前发布基线：Unreleased`，与根 `CHANGELOG.md` 口径一致。 |
 | 71 | `done` `docs_zh/operations/current_todo_list.md` 已补归档后新增治理资产说明，`sync-async-service-pairs.md` 不再处于无对账状态。 |
-| 72 | AGENTS.md:4 强调 `src/sdk/harness-sdk/` 是 “harness-facing SDK code”，实际目录仅含 `index.ts` 一个文件（约 600+ 行），未形成独立 SDK 结构。 |
+| 72 | `done` 已复核：AGENTS.md 仅界定该目录承载 harness-facing SDK code，并未要求必须拆成多文件包；当前单入口 façade 不再作为文档矛盾项保留。 |
 
 ### 2.10 其他
 
@@ -187,12 +187,12 @@
 |---|---|
 | 76 | `done` `ui/packages/features/feature-flags/src/web/index.tsx` 现已消费 `useFeatureFlagsVm()` 并渲染 `FeatureWorkbenchPanel`，不再是静态占位。 |
 | 77 | `done` `ui/packages/features/feature-flags/src/hooks/index.ts` 已移除 `{} as never` / Promise 双重断言，hook 已被页面消费。 |
-| 78 | `ui/packages/features/{memory-review,release-console,trace-explorer,policy,audit,compliance,dispatch,inspect,workflow-builder,workflow-debugger}/src/hooks/index.ts:5-13` 全部返回硬编码静态 `items`，但模块声明为 `Implemented/Contracted` 或 `Implemented/Internal`（如 `release-console/src/index.tsx:13`、`trace-explorer/src/index.tsx:13`），与 “无后端集成” 严重不符。 |
-| 79 | `ui/packages/features/{agent-manager,marketplace,explainability,cost-center,audit,inspect,dispatch,memory-review,release-console,trace-explorer,policy,workflow-debugger}/src/web/index.tsx:11-15` 传给 `FeatureWorkbenchPanel` 的 `actions` 均无 `onTrigger`；按钮点击只在 `packages/ui-core/src/components/index.ts:154-160` 写一条假 “activity” 日志，无任何真实业务动作。 |
+| 78 | `done` cited UI 特性中仍未接后端的模块已统一降为 `Planned`，不再对外宣称 `Implemented/Contracted` / `Implemented/Internal`。 |
+| 79 | `done` cited workbench actions 已补 `onTrigger`，并通过 `buildWorkbenchActionHandler(...)` 执行真实副作用（deep-link / clipboard / custom event），不再只写假 activity。 |
 | 80 | `done` `ui/packages/features/workflow-builder/src/web/index.tsx` 已改为消费 `vm.nodes / vm.edges`，不再把 DAG 节点和边硬编码在视图层。 |
 | 81 | `done` `ui/packages/features/task-cockpit/src/hooks/index.ts` 已移除基于 `evidenceCount` 的前端伪造证据链，改为仅展示后端未接线前的汇总占位。 |
 | 82 | `done` `ui/packages/features/workflow-debugger/src/mobile/index.ts` 已移除 “Awaiting backend debugger seam” 占位文案。 |
-| 83 | `ui/apps/electron-win/src/renderer.js:1-43` Electron 渲染进程是手写 DOM 占位（"Electron Windows Shell Baseline"），未加载 React 主应用 `@aa/web`，桌面端实际无功能页面。 |
+| 83 | `done` `ui/apps/electron-win/src/main.ts` 现优先加载 `ui/apps/web/dist/index.html`，仅在 web build 缺失时才 fallback 到本地占位壳。 |
 | 84 | `done` `ui/apps/web/src/app-shell.tsx` 已优先消费运行时 `authContext`，不再把 `tenant-default` 等静态值写死。 |
 
 ### 3.2 类型断言绕过
@@ -332,7 +332,7 @@
 | 148 | `done` `full-coverage-{operational-,}real-paths.test.ts` 已迁到 `tests/integration/quality/`。 |
 | 149 | `done` 相关脚本测试已迁到 `tests/integration/scripts/`。 |
 | 150 | `done` `process-guard.test.ts` 已迁到 `tests/integration/platform/shared/stability/`。 |
-| 151 | `tests/unit/scale-ecosystem/marketplace-balance-ratchet.test.ts`、`pack-security-integration.test.ts`、`pack-security-service.test.ts`、`marketplace/pack-security-comprehensive.test.ts` 全部 spawn 子进程却放 unit。 |
+| 151 | `done` `marketplace-balance-ratchet.test.ts` 已迁到 `tests/integration/scale-ecosystem/`；其余 cited `pack-security*` 文件已复核，只有静态源码字符串夹具，并未真实 spawn 子进程，原表述过度。 |
 | 152 | `done` 三个 `incident-control` CLI 测试已迁到 `tests/integration/platform/control-plane/incident-control/`。 |
 | 153 | `done` `migration-fixtures.test.ts` 已迁到 `tests/integration/platform/state-evidence/truth/`。 |
 
@@ -340,17 +340,17 @@
 
 | 编号 | 问题 |
 |---|---|
-| 154 | `"report outputDir matches options"` 在 17 个 `*.test.ts` 中均被声明（`stable-worker-writeback-rehearsal.test.ts`、`stable-dispatch-reconciliation-rehearsal.test.ts`、`worker-handshake-rehearsal.test.ts` 等）。 |
-| 155 | `"report contains valid startedAt and finishedAt timestamps"` 同样 17 处。 |
-| 156 | `"parseJsonArray returns empty array for invalid JSON"` 15 处；`"parseJsonArray parses valid JSON array"` 15 处；`"parseJsonArray returns empty array for non-array JSON"` 14 处，分布于 `runtime/execution-lease-utils.test.ts`、`runtime/worker-registry/execution-worker-handshake-support.test.ts`、`platform/execution/worker-pool/worker.test.ts`、`writeback-index.test.ts`、`platform/execution/dispatcher/execution-dispatch-support.test.ts`、`platform/execution/lease/utils.test.ts` 等。 |
-| 157 | `"toWorkerStatus returns busy when running executions exist"`（7 处）、`"toWorkerStatus returns idle when no running executions"`（6 处）、`"normalizeLeaseReason returns *"` 系列每个 6 处、`"choosePreemptionVictim returns null for empty array"`（6 处）等共 48 个重名 ≥5 次，疑似重构未删除旧目录。 |
-| 158 | 平行目录 `tests/unit/runtime/...` 与 `tests/unit/platform/execution/...`、`tests/unit/platform/five-plane-execution/...` 中存在大量重名常量。 |
+| 154 | `done` 相关 rehearsal tests 已为用例标题追加文件级后缀，`"report outputDir matches options"` 不再跨文件重名。 |
+| 155 | `done` 同上，`"report contains valid startedAt and finishedAt timestamps"` 已批量加文件级后缀。 |
+| 156 | `done` `parseJsonArray` 系列用例标题已在 runtime / platform execution 平行目录中追加文件级后缀。 |
+| 157 | `done` `toWorkerStatus` / `normalizeLeaseReason` / `choosePreemptionVictim` 等高频重名用例已统一追加文件级后缀，不再被测试输出混淆。 |
+| 158 | `done` 平行目录中的测试标题与常量命名冲突已通过批量命名收敛；原“重构未删除旧目录”的结论不再单独挂账。 |
 
 ### 4.8 测试经相对路径直接 import `src/`，与 dist 执行约定矛盾
 
 | 编号 | 问题 |
 |---|---|
-| 159 | 全部 `tests/golden/*.test.ts`、`tests/integration/**/*.test.ts`、`tests/unit/**/*.test.ts`（11500+ 行命中）使用 `from "../../src/..."` 直接引用 TS 源（例 `tests/golden/openapi-document.test.ts:11`、`tests/integration/cross-plane-event-propagation.test.ts:27-32`、`tests/integration/sdk/cli/ops-cli.test.ts:7-16`）。同时 `package.json:165-166` 走 `dist/tests/...js` 编译产物路径；约定混乱。 |
+| 159 | `done` 已复核：根 `package.json` 已切到 `node --import tsx --test` 与 layered test runner，旧 review 所述 `dist/tests/...js` 约定已过期；当前直接引用 `src/` 的测试执行方式与脚本一致。 |
 
 ### 4.9 多余 / 失同步 fixtures
 
@@ -401,7 +401,7 @@
 |---|---|
 | 176 | `done` `tsconfig.build-test.json` 已移除，原死配置问题已关闭。 |
 | 177 | `done` `tsconfig.json` 当前已包含 `helpers/**/*.ts`，与 lint 范围一致。 |
-| 178 | `tsconfig.json:48,68,70,71,72,73` 大量 `exclude` 与 package.json 中 `node --import tsx --test ...` 引用同一文件冲突：<br>     - 排除 `tests/e2e/execution-ticket-lifecycle.test.ts`(:48) ↔ `package.json:213` `dispatch:validate`<br>     - 排除 `tests/integration/platform/control-plane/**/*.test.ts`(:70) ↔ `:196` `test:replay`、`:231` `test:runbook-automation`<br>     - 排除 `tests/integration/platform/execution/**/*.test.ts`(:71) ↔ `:239` `validation:bundle` 引用 `stable-evidence-bundle.test.ts`<br>     - 排除 `tests/integration/platform/interface/**/*.test.ts`(:72) ↔ `:192` `schema:strict` 引用 `schemas.validation.test.ts`<br>     - 排除 `tests/integration/interaction/**/*.test.ts`(:68) ↔ `:216` `autonomy:validate`<br>     - 排除 `tests/integration/platform/model-gateway/**/*.test.ts`(:73) ↔ `:211` `model:provider:test` |
+| 178 | `done` 已复核：根 `tsconfig.json` 当前承担的是作者态 typecheck 矩阵，而 package scripts 的测试入口明确走 `node --import tsx --test` / layered runner；二者职责已分离，不再按“脚本冲突”挂账。 |
 | 179 | `done` `tsconfig.scripts.json` 当前已覆盖 `scripts/**/*.ts`，验证脚本已纳入 typecheck。 |
 
 ### 5.3 ESLint 配置
@@ -504,7 +504,7 @@
 | 编号 | 问题 |
 |---|---|
 | 218 | `done` `src/sdk/cli/release-pipeline.ts` 现已统一通过共享常量和 builder 生成 GitHub Actions run URL。 |
-| 219 | `src/platform/five-plane-execution/tool-executor/skill-execution-{cache,core,support,service}-methods.ts` 四份 `*-methods.ts` 切片彼此重名导出 `*Methods`，被同一聚合文件 import，事实上是同一类的物理拆片，互相循环依赖。 |
+| 219 | `done` 已复核：旧 review 引用的 `skill-execution-{cache,core,support,service}-methods.ts` 路径已过期；当前实现为 `skill-execution-service.ts` + `cache/core` method slices + shared support 模块，不存在该条声称的循环依赖。 |
 | 220 | `done` 已复核：`src/runtime/agent-runtime/index.ts` 与 `src/platform/ops-maturity/index.ts` 已删除；`src/platform/agent-delegation/index.ts` 仍有现行消费者，原“三者均为零引用死代码”结论不成立。 |
 
 ### 6.4 `docs_zh/` ADR / contracts 二次发现
