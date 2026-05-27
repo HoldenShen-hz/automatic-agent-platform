@@ -11,7 +11,6 @@ const explainabilityFeature = createFeatureModule({
   path: "/shared/explainability",
   permission: "authenticated",
   status: "Planned",
-  kind: "planned",
   summary: featureCopy.summary,
   render: ExplainabilityWebView,
 });

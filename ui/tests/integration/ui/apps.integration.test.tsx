@@ -129,7 +129,7 @@ describe("UI integration: web app-shell with auth context", () => {
       />,
     );
 
-    expect(screen.getByText("Access denied")).toBeInTheDocument();
+    expect(screen.getByText("访问被拒绝")).toBeInTheDocument();
   });
 });
 
@@ -221,7 +221,7 @@ describe("UI integration: error boundary behavior", () => {
 
     render(<WebAppShell features={mockFeatures} router="memory" initialEntries={["/test"]} />);
 
-    expect(screen.getByText("Something went wrong")).toBeInTheDocument();
+    expect(screen.getByText("页面渲染失败")).toBeInTheDocument();
     expect(screen.getByText("Integration test error")).toBeInTheDocument();
   });
 
@@ -238,8 +238,8 @@ describe("UI integration: error boundary behavior", () => {
 
     render(<WebAppShell features={mockFeatures} router="memory" initialEntries={["/test"]} />);
 
-    expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Report Issue" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "重试" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "上报问题" })).toBeInTheDocument();
   });
 });
 

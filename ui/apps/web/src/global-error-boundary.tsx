@@ -1,4 +1,6 @@
 import React from "react";
+import { translateMessage } from "@aa/shared-i18n";
+import { reportUiError } from "./ui-telemetry";
 
 interface GlobalErrorBoundaryState {
   readonly hasError: boolean;
@@ -12,8 +14,7 @@ export class GlobalErrorBoundary extends React.Component<React.PropsWithChildren
   }
 
   public componentDidCatch(error: Error, info: React.ErrorInfo): void {
-    console.error("ui.global_error_boundary", {
-      message: error.message,
+    reportUiError("ui.global_error_boundary", error, {
       componentStack: info.componentStack,
     });
   }
@@ -22,8 +23,8 @@ export class GlobalErrorBoundary extends React.Component<React.PropsWithChildren
     if (this.state.hasError) {
       return (
         <main role="alert" aria-live="assertive" className="app-fallback">
-          <h1>Automatic Agent Platform</h1>
-          <p>The UI hit an unrecoverable error. Refresh the page or contact an operator with the current trace.</p>
+          <h1>{translateMessage("ui.globalError.title")}</h1>
+          <p>{translateMessage("ui.globalError.message")}</p>
         </main>
       );
     }

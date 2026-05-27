@@ -36,7 +36,7 @@ export function DashboardWebView(): ReactElement {
             }}
           >
             <h3 style={{ color: designTokens.color.text, marginTop: 0 }}>
-              Validation Drilldown
+              {translateMessage("ui.dashboard.validationDrilldown")}
             </h3>
             <p style={{ color: designTokens.color.subtle }}>
               {vm.drilldownTrail.join(" -> ")}

@@ -40,7 +40,7 @@
 | 22 | 所有 CLI 统一 bootstrap/teardown 模式 |
 | 23 | Structured logger 支持 JSONL 文件输出 |
 | 24 | AsyncLocalStorage traceId 上下文注入 |
-| 25 | Node 20/22 CI matrix 全绿 |
+| 25 | Node 22 CI pipeline 全绿 |
 
 ---
 

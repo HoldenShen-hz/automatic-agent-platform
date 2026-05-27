@@ -8,6 +8,6 @@
     "noEmit": true,
     "incremental": false
   },
-  "include": ["scripts/**/*.mjs", "eslint.config.js"],
+  "include": ["scripts/**/*.mjs", "scripts/**/*.ts", "eslint.config.js"],
   "exclude": []
 }

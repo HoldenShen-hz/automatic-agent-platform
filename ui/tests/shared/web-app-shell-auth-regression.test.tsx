@@ -159,9 +159,9 @@ describe("web app shell auth regression", () => {
       />,
     );
 
-    expect(screen.getByText("Something went wrong")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Report Issue" })).toBeInTheDocument();
+    expect(screen.getByText("页面渲染失败")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "重试" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "上报问题" })).toBeInTheDocument();
 
     consoleError.mockRestore();
   });

@@ -11,7 +11,6 @@ const analyticsFeature = createFeatureModule({
   path: "/shared/analytics",
   permission: "authenticated",
   status: "Planned",
-  kind: "planned",
   summary: featureCopy.summary,
   render: AnalyticsWebView,
 });

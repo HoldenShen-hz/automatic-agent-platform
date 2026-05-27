@@ -1,5 +1,6 @@
 import { useId, useState, type ReactElement } from "react";
-import { FeatureScaffold, KeyValueTable, ListCard, ThreePaneLayout } from "@aa/ui-core";
+import { FeatureScaffold, KeyValueTable, ListCard, ThreePaneLayout, designTokens } from "@aa/ui-core";
+import { translateMessage } from "@aa/shared-i18n";
 import { useApprovalCenterVm } from "../hooks";
 
 export function ApprovalWebView(): ReactElement {
@@ -14,7 +15,7 @@ export function ApprovalWebView(): ReactElement {
       <ThreePaneLayout
         left={(
           <div>
-            <h3>Approval Queue · {vm.queueDepth}</h3>
+            <h3>{translateMessage("ui.approval.queueTitle")} · {vm.queueDepth}</h3>
             <div style={{ display: "grid", gap: 10 }}>
               {vm.queueItems.map((approval) => (
                 <button
@@ -22,7 +23,14 @@ export function ApprovalWebView(): ReactElement {
                   onClick={() => {
                     vm.selectApproval(approval.id);
                   }}
-                  style={{ textAlign: "left", background: approval.id === selectedApproval?.approvalId ? "#12201a" : "transparent", color: "inherit", border: "1px solid #334155", borderRadius: 12, padding: 12 }}
+                  style={{
+                    textAlign: "left",
+                    background: approval.id === selectedApproval?.approvalId ? designTokens.semantic.color.surfaceSelected : "transparent",
+                    color: "inherit",
+                    border: `1px solid ${designTokens.color.border}`,
+                    borderRadius: 12,
+                    padding: 12,
+                  }}
                   type="button"
                 >
                   <strong>{approval.title}</strong>
@@ -32,28 +40,28 @@ export function ApprovalWebView(): ReactElement {
             </div>
           </div>
         )}
-        center={selectedApproval == null ? <p>No approval selected</p> : (
+        center={selectedApproval == null ? <p>{translateMessage("ui.approval.noSelection")}</p> : (
           <div style={{ display: "grid", gap: 16 }}>
             <p id={approvalActionDescriptionId} style={{ margin: 0 }}>
-              Approve or reject the selected approval request based on the policy summary and current risk context.
+              {translateMessage("ui.approval.guidance")}
             </p>
             <KeyValueTable
               rows={[
                 { key: "Task", value: selectedApproval.taskId },
                 { key: "Risk", value: selectedApproval.riskLevel },
                 { key: "Reason", value: selectedApproval.reasonSummary },
-                { key: "Deadline", value: selectedApproval.deadline ?? "n/a" },
-                { key: "Policy Source", value: selectedApproval.policySource ?? "n/a" },
-                { key: "Recommended Option", value: selectedApproval.recommendedOption ?? "n/a" },
-                { key: "Approval Level", value: selectedApproval.currentLevel != null && selectedApproval.totalLevels != null ? `${selectedApproval.currentLevel}/${selectedApproval.totalLevels}` : "single" },
+                { key: "Deadline", value: selectedApproval.deadline ?? translateMessage("ui.approval.notAvailable") },
+                { key: "Policy Source", value: selectedApproval.policySource ?? translateMessage("ui.approval.notAvailable") },
+                { key: "Recommended Option", value: selectedApproval.recommendedOption ?? translateMessage("ui.approval.notAvailable") },
+                { key: "Approval Level", value: selectedApproval.currentLevel != null && selectedApproval.totalLevels != null ? `${selectedApproval.currentLevel}/${selectedApproval.totalLevels}` : translateMessage("ui.approval.singleLevel") },
               ]}
             />
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <button aria-describedby={approvalActionDescriptionId} onClick={vm.approve} type="button">Approve</button>
-              <button aria-describedby={approvalActionDescriptionId} onClick={vm.reject} type="button">Reject</button>
-              <button onClick={() => { void vm.requestMoreContext(); }} type="button">Request Context</button>
+              <button aria-describedby={approvalActionDescriptionId} onClick={vm.approve} type="button">{translateMessage("ui.approval.approve")}</button>
+              <button aria-describedby={approvalActionDescriptionId} onClick={vm.reject} type="button">{translateMessage("ui.approval.reject")}</button>
+              <button onClick={() => { void vm.requestMoreContext(); }} type="button">{translateMessage("ui.approval.requestContext")}</button>
               <input
-                aria-label="Delegate target"
+                aria-label={translateMessage("ui.approval.delegateTarget")}
                 id={delegateInputId}
                 onChange={(event) => setDelegateTarget(event.target.value)}
                 value={delegateTarget}
@@ -65,7 +73,7 @@ export function ApprovalWebView(): ReactElement {
                 }}
                 type="button"
               >
-                Delegate
+                {translateMessage("ui.approval.delegate")}
               </button>
             </div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -75,7 +83,7 @@ export function ApprovalWebView(): ReactElement {
                 }}
                 type="button"
               >
-                Batch Approve
+                {translateMessage("ui.approval.batchApprove")}
               </button>
               <button
                 onClick={() => {
@@ -83,7 +91,7 @@ export function ApprovalWebView(): ReactElement {
                 }}
                 type="button"
               >
-                Batch Reject
+                {translateMessage("ui.approval.batchReject")}
               </button>
             </div>
           </div>
@@ -91,9 +99,9 @@ export function ApprovalWebView(): ReactElement {
         right={(
           <ListCard
             items={vm.actionHistory.length > 0 ? vm.actionHistory : [
-              { title: "Quick Approve", description: "Low-risk items can be approved directly in the queue." },
-              { title: "Delegate", description: "Critical items can be escalated to domain or org admins." },
-              { title: "Resume Mode", description: "After approval, execution can resume in normal or supervised mode." },
+              { title: translateMessage("ui.approval.quickApprove.title"), description: translateMessage("ui.approval.quickApprove.description") },
+              { title: translateMessage("ui.approval.delegateGuide.title"), description: translateMessage("ui.approval.delegateGuide.description") },
+              { title: translateMessage("ui.approval.resumeGuide.title"), description: translateMessage("ui.approval.resumeGuide.description") },
             ]}
           />
         )}

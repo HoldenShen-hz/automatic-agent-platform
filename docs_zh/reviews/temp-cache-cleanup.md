@@ -14,7 +14,7 @@
 **可安全删除**: 是 - 这些是测试运行时写入磁盘的内存数据库
 
 ```bash
-rm -f /Users/holden/Project/automatic_agent/automatic_agent_platform/:memory:*
+rm -f :memory:*
 ```
 
 ---
@@ -27,7 +27,7 @@ rm -f /Users/holden/Project/automatic_agent/automatic_agent_platform/:memory:*
 **可安全删除**: 是 - 单元/集成测试的产物
 
 ```bash
-rm -rf /Users/holden/Project/automatic_agent/automatic_agent_platform/.test-db/
+rm -rf .test-db/
 ```
 
 ---
@@ -40,7 +40,7 @@ rm -rf /Users/holden/Project/automatic_agent/automatic_agent_platform/.test-db/
 **可安全删除**: 是 - 临时文件
 
 ```bash
-rm -rf /Users/holden/Project/automatic_agent/automatic_agent_platform/.tmp/
+rm -rf .tmp/
 ```
 
 ---
@@ -52,7 +52,7 @@ rm -rf /Users/holden/Project/automatic_agent/automatic_agent_platform/.tmp/
 **可安全删除**: 是 - 审计产物
 
 ```bash
-rm -rf /Users/holden/Project/automatic_agent/automatic_agent_platform/.audit/
+rm -rf .audit/
 ```
 
 ---
@@ -64,7 +64,7 @@ rm -rf /Users/holden/Project/automatic_agent/automatic_agent_platform/.audit/
 **可安全删除**: 是 - 运行时产物
 
 ```bash
-rm -rf /Users/holden/Project/automatic_agent/automatic_agent_platform/.runtime/
+rm -rf .runtime/
 ```
 
 ---
@@ -76,7 +76,7 @@ rm -rf /Users/holden/Project/automatic_agent/automatic_agent_platform/.runtime/
 **可安全删除**: 是 - Claude Code 会话的工具产物
 
 ```bash
-rm -rf /Users/holden/Project/automatic_agent/automatic_agent_platform/.aa-tool-artifacts/
+rm -rf .aa-tool-artifacts/
 ```
 
 ---
@@ -88,7 +88,7 @@ rm -rf /Users/holden/Project/automatic_agent/automatic_agent_platform/.aa-tool-a
 **可安全删除**: 是 - 日志文件
 
 ```bash
-rm -f /Users/holden/Project/automatic_agent/automatic_agent_platform/logs/clamped-files.log
+rm -f logs/clamped-files.log
 ```
 
 ---
@@ -99,7 +99,7 @@ rm -f /Users/holden/Project/automatic_agent/automatic_agent_platform/logs/clampe
 **可安全删除**: 是 - macOS 系统文件
 
 ```bash
-find /Users/holden/Project/automatic_agent/automatic_agent_platform -name ".DS_Store" -delete
+find . -name ".DS_Store" -delete
 ```
 
 ---
@@ -115,7 +115,7 @@ find /Users/holden/Project/automatic_agent/automatic_agent_platform -name ".DS_S
 
 ```bash
 # 试运行先 (确认后去掉 -n 参数)
-cd /Users/holden/Project/automatic_agent/automatic_agent_platform
+cd <repo-root>
 
 # 1. 运行时内存文件 (50 文件, ~100MB)
 rm -f :memory:*

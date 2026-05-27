@@ -3,6 +3,7 @@ FROM node:22-bookworm-slim AS build
 WORKDIR /app
 
 COPY package.json package-lock.json tsconfig.json tsconfig.build.json ./
+COPY ui/tsconfig.json ./ui/tsconfig.json
 COPY scripts ./scripts
 
 RUN npm ci

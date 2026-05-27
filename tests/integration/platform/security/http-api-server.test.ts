@@ -15,6 +15,7 @@ import { AuthoritativeTaskStore } from "../../../../src/platform/five-plane-stat
 import { SqliteDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite-database.js";
 import { runBuiltCliExpectFailure } from "../../../helpers/cli.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
+import { OTEL_TEST_ENDPOINT } from "../../../helpers/network-test-constants.js";
 
 test("console html escapes task titles and inspect endpoints require actor headers", async () => {
   const workspace = createTempWorkspace("aa-http-api-security-");
@@ -155,7 +156,7 @@ test("api-server CLI fail-closes when postgres storage execution is requested", 
     AA_LOG_STDOUT: "1",
     AA_LOG_FILE_MAX_FILES: "5",
     AA_OTEL_ENABLED: "0",
-    AA_OTEL_ENDPOINT: "http://localhost:4318",
+    AA_OTEL_ENDPOINT: OTEL_TEST_ENDPOINT,
     AA_OTEL_SERVICE_NAME: "test-service",
     AA_OTEL_SERVICE_VERSION: "0.0.0",
     AA_STORAGE_DRIVER: "postgres",

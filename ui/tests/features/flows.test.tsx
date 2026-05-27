@@ -21,26 +21,26 @@ describe("feature flows", () => {
   it("processes approval decisions end-to-end", async () => {
     renderWithRuntime(<ApprovalWebView />);
     fireEvent.click(await screen.findByRole("button", { name: /task-2/i }));
-    fireEvent.click(await screen.findByRole("button", { name: "Approve" }));
+    fireEvent.click(await screen.findByRole("button", { name: "批准" }));
     expect(screen.getByText(/Approved/)).toBeInTheDocument();
   });
 
   it("supports takeover and escalation in task cockpit", async () => {
     renderWithRuntime(<TaskCockpitWebView />);
     fireEvent.click(await screen.findByRole("button", { name: /春季营销活动/i }));
-    fireEvent.click(await screen.findByRole("button", { name: "Escalate" }));
-    fireEvent.click(screen.getByRole("button", { name: "L5 Timeline" }));
+    fireEvent.click(await screen.findByRole("button", { name: "升级" }));
+    fireEvent.click(screen.getByRole("button", { name: "L5 时间线" }));
     expect(await screen.findByText(/Escalated · 春季营销活动/)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Take Over" }));
+    fireEvent.click(screen.getByRole("button", { name: "接管" }));
     expect(await screen.findByText(/Take Over · 春季营销活动/)).toBeInTheDocument();
   });
 
   it("supports pause and recover actions in workflow cockpit", async () => {
     renderWithRuntime(<WorkflowCockpitWebView />);
     fireEvent.click(await screen.findByRole("button", { name: /Campaign Launch/i }));
-    fireEvent.click(await screen.findByRole("button", { name: "Recover" }));
+    fireEvent.click(await screen.findByRole("button", { name: "恢复链路" }));
     expect(await screen.findByText(/Recovered · Campaign Launch/)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Release" }));
+    fireEvent.click(screen.getByRole("button", { name: "发布" }));
     expect(await screen.findByText(/Released · Campaign Launch/)).toBeInTheDocument();
   });
 

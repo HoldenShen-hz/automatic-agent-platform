@@ -11,10 +11,12 @@ import {
 } from "react-router-dom";
 import { SystemStatusBar, designTokens, type FeatureModule } from "@aa/ui-core";
 import { createFeatureGuardContext, createRouteGuardChain } from "@aa/shared-domain";
+import { translateMessage } from "@aa/shared-i18n";
 import { PlatformAdapterProvider, createWebPlatformAdapter } from "@aa/shared-platform";
 import { UiRuntimeProvider, useSystemStatus } from "@aa/shared-state";
 import type { FeatureGuardContext } from "@aa/shared-types";
 import type { RESTClient, WSClient } from "@aa/shared-api-client";
+import { reportUiError } from "./ui-telemetry";
 
 export interface AuthContext extends Partial<FeatureGuardContext> {
   readonly userId?: string;
@@ -28,7 +30,7 @@ export interface FeatureSubPage {
 }
 
 type WebFeatureModule = Omit<FeatureModule, "subPages"> & {
-  readonly subPages?: readonly FeatureSubPage[];
+  readonly subPages: readonly FeatureSubPage[];
 };
 
 type ShellLifecyclePhase = "render" | "idle";
@@ -79,23 +81,23 @@ function withAlpha(hexColor: string, alpha: number): string {
 function LoadingFallback(): ReactElement {
   return (
     <div
-      aria-busy="true"
       aria-live="polite"
       role="status"
       style={{ padding: 24, color: designTokens.color.subtle }}
     >
-      Loading...
+      {translateMessage("ui.shell.loading")}
     </div>
   );
 }
 
 function AccessDeniedView({ fallbackPath, reason }: { reason: string | null; fallbackPath: string }): ReactElement {
   const navigate = useNavigate();
+  const resolvedReason = reason ?? translateMessage("ui.shell.accessDenied.reason.default");
 
   return (
     <section aria-live="assertive" role="alert">
-      <p style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>Access denied</p>
-      <p>{reason}</p>
+      <p style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>{translateMessage("ui.shell.accessDenied.title")}</p>
+      <p>{resolvedReason}</p>
       <button
         onClick={() => {
           if (typeof window !== "undefined" && window.history.length > 1) {
@@ -106,7 +108,7 @@ function AccessDeniedView({ fallbackPath, reason }: { reason: string | null; fal
         }}
         type="button"
       >
-        Go Back
+        {translateMessage("ui.shell.accessDenied.back")}
       </button>
     </section>
   );
@@ -125,11 +127,17 @@ class FeatureErrorBoundary extends React.Component<
     return { error, retryKey: 0 };
   }
 
+  public override componentDidCatch(error: Error, info: React.ErrorInfo): void {
+    reportUiError("ui.feature_render_error", error, {
+      componentStack: info.componentStack,
+    });
+  }
+
   public override render(): ReactNode {
     if (this.state.error != null) {
       return (
         <section>
-          <p style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>Something went wrong</p>
+          <p style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>{translateMessage("ui.shell.featureError.title")}</p>
           <p>{this.state.error.message}</p>
           <div style={{ display: "flex", gap: 12 }}>
             <button
@@ -141,15 +149,17 @@ class FeatureErrorBoundary extends React.Component<
               }}
               type="button"
             >
-              Retry
+              {translateMessage("ui.shell.featureError.retry")}
             </button>
             <button
               onClick={() => {
-                console.error("ui.feature_render_error", this.state.error);
+                reportUiError("ui.feature_render_error.report_requested", this.state.error, {
+                  retryKey: this.state.retryKey,
+                });
               }}
               type="button"
             >
-              Report Issue
+              {translateMessage("ui.shell.featureError.report")}
             </button>
           </div>
         </section>
@@ -176,7 +186,7 @@ function FeatureContent({ feature }: { feature: WebFeatureModule }): ReactElemen
   const activeSubPage = subPages.find((subPage) => normalizePath(location.pathname) === `${basePath}/${subPage.path}`) ?? subPages[0] ?? null;
 
   if (activeSubPage == null) {
-    return <section><h2>No sections available</h2></section>;
+    return <section><h2>{translateMessage("ui.shell.noSections")}</h2></section>;
   }
 
   return (
@@ -215,19 +225,22 @@ function GuardedFeatureRoute(
     () => features.find((candidate) => candidate.route.path === feature.route.path) ?? features[0] ?? null,
     [feature.route.path, features],
   );
+  const guard = useMemo(() => {
+    if (resolvedFeature == null) {
+      return null;
+    }
+    return createRouteGuardChain(
+      resolvedFeature.route.permission,
+      resolvedFeature.manifest.kind === "planned" ? resolvedFeature.manifest.id : undefined,
+    );
+  }, [resolvedFeature]);
 
   if (resolvedFeature == null) {
-    return <section><h2>No features available</h2></section>;
+    return <section><h2>{translateMessage("ui.shell.noFeatures")}</h2></section>;
   }
-  const guard = useMemo(() => createRouteGuardChain(
-    resolvedFeature.route.permission,
-    resolvedFeature.manifest.kind === "planned" ? resolvedFeature.manifest.id : undefined,
-  ), [
-    resolvedFeature.manifest.id,
-    resolvedFeature.manifest.kind,
-    resolvedFeature.route.path,
-    resolvedFeature.route.permission,
-  ]);
+  if (guard == null) {
+    return <section><h2>{translateMessage("ui.shell.noFeatures")}</h2></section>;
+  }
   const result = guard.evaluate(authContext);
 
   if (!result.allowed) {
@@ -267,9 +280,9 @@ function AppFrame(
   return (
     <div style={{ minHeight: "100vh", background: designTokens.color.background, color: designTokens.color.text, display: "grid", gridTemplateColumns: "280px 1fr" }}>
       <aside style={{ borderRight: `1px solid ${designTokens.color.border}`, padding: 20 }}>
-        <h1 style={{ fontSize: 20, marginTop: 0 }}>Automatic Agent Platform UI</h1>
+        <h1 style={{ fontSize: 20, marginTop: 0 }}>{translateMessage("ui.app.title")}</h1>
         <div style={{ color: designTokens.color.subtle, fontSize: 12, marginBottom: 16, textTransform: "uppercase" }}>
-          Shell phase: {phase}
+          {translateMessage("ui.shell.phase")}: {phase}
         </div>
         <nav style={{ display: "grid", gap: 16 }}>
           {groupedFeatures.map(([group, groupFeatures]) => (
@@ -305,7 +318,7 @@ function AppFrame(
               padding: 16,
               borderRadius: 12,
               border: `1px solid ${designTokens.color.accent}`,
-              background: "#12201a",
+              background: withAlpha(designTokens.color.accent, 0.16),
             }}
           >
             <strong>{startupBanner.title}</strong>
@@ -316,7 +329,7 @@ function AppFrame(
         {(phase === "render" || phase === "idle") ? (
           features.length === 0 ? (
             <section role="status">
-              <p style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>No features available</p>
+              <p style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>{translateMessage("ui.shell.noFeatures")}</p>
             </section>
           ) : (
             <Routes>
@@ -332,7 +345,7 @@ function AppFrame(
           )
         ) : (
           <section aria-live="polite" role="status">
-            <p style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>Preparing shell</p>
+            <p style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>{translateMessage("ui.shell.preparing")}</p>
             <p>{phase}</p>
           </section>
         )}
@@ -352,18 +365,27 @@ export function WebAppShell(
   };
   const adapter = useMemo(() => createWebPlatformAdapter(), []);
   const [phase, setPhase] = useState<ShellLifecyclePhase>("render");
+  const normalizedFeatures = useMemo(() => features.map(normalizeFeatureModule), [features]);
+  const locationAuthContext = useMemo(() => resolveLocationAuthContext(), []);
+  const resolvedUserId = authContext?.userId ?? locationAuthContext.userId;
+  const resolvedAuthenticated = authContext?.authenticated ?? true;
 
-  const effectiveAuthContext = createFeatureGuardContext({
-    authenticated: true,
-    tenantId: "tenant-default",
-    domainId: "platform",
-    permissions: ["authenticated"],
-    roles: ["operator"],
-    featureFlags: {},
-    featureVisibility: {},
-    mode: "enterprise",
-    ...authContext,
-  });
+  const effectiveAuthContext = {
+    ...createFeatureGuardContext({
+      ...locationAuthContext,
+      ...authContext,
+      authenticated: resolvedAuthenticated,
+    }),
+    ...(resolvedUserId == null ? {} : { userId: resolvedUserId }),
+  };
+  const runtimePermissions = effectiveAuthContext.permissions ?? [];
+  const runtimeRoles = effectiveAuthContext.roles ?? [];
+  const runtimeAuthContext = {
+    ...(resolvedUserId == null ? {} : { userId: resolvedUserId }),
+    ...(effectiveAuthContext.tenantId == null ? {} : { tenantId: effectiveAuthContext.tenantId }),
+    ...(runtimePermissions.length === 0 ? {} : { permissions: runtimePermissions }),
+    ...(runtimeRoles.length === 0 ? {} : { roles: runtimeRoles }),
+  };
 
   useEffect(() => {
     if (phase === "render") {
@@ -373,11 +395,11 @@ export function WebAppShell(
 
   return (
     <PlatformAdapterProvider adapter={adapter}>
-      <UiRuntimeProvider {...runtimeProps}>
+      <UiRuntimeProvider {...runtimeProps} authContext={runtimeAuthContext}>
         <AppRouter router={router} {...(initialEntries == null ? {} : { initialEntries })}>
           <AppFrame
             authContext={effectiveAuthContext}
-            features={features as unknown as readonly WebFeatureModule[]}
+            features={normalizedFeatures}
             phase={phase}
             startupBanner={startupBanner}
           />
@@ -385,4 +407,54 @@ export function WebAppShell(
       </UiRuntimeProvider>
     </PlatformAdapterProvider>
   );
+}
+
+function normalizeFeatureModule(feature: FeatureModule): WebFeatureModule {
+  const subPages = Array.isArray(feature.subPages)
+    ? feature.subPages.filter(isFeatureSubPage)
+    : [];
+  return { ...feature, subPages };
+}
+
+function isFeatureSubPage(value: unknown): value is FeatureSubPage {
+  if (value == null || typeof value !== "object") {
+    return false;
+  }
+  const candidate = value as Partial<FeatureSubPage>;
+  return typeof candidate.id === "string"
+    && typeof candidate.path === "string"
+    && typeof candidate.label === "string"
+    && typeof candidate.Component === "function";
+}
+
+function resolveLocationAuthContext(): Partial<AuthContext> {
+  if (typeof window === "undefined") {
+    return {};
+  }
+  const params = new URLSearchParams(window.location.search);
+  const permissions = readCsvParam(params, "permissions");
+  const roles = readCsvParam(params, "roles");
+  const userId = params.get("user_id");
+  const tenantId = params.get("tenant_id");
+  const domainId = params.get("domain_id");
+  const mode = params.get("mode");
+  const authenticated = userId != null || permissions.length > 0 || roles.length > 0;
+
+  return {
+    ...(userId == null ? {} : { userId }),
+    authenticated,
+    ...(tenantId == null ? {} : { tenantId }),
+    ...(domainId == null ? {} : { domainId }),
+    ...(permissions.length === 0 ? {} : { permissions }),
+    ...(roles.length === 0 ? {} : { roles }),
+    ...(mode === "solo" || mode === "enterprise" ? { mode } : {}),
+  };
+}
+
+function readCsvParam(params: URLSearchParams, key: string): readonly string[] {
+  const raw = params.get(key);
+  if (raw == null || raw.trim().length === 0) {
+    return [];
+  }
+  return raw.split(",").map((item) => item.trim()).filter((item) => item.length > 0);
 }

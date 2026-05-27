@@ -34,7 +34,7 @@ Current repository baseline (from `package.json`):
 
 - `typescript`: first advance to the latest compatible version within the current 5.x range, then evaluate 6.x.
 - `eslint`: first keep the latest compatible version within the 9.x line, and synchronize verification of `typescript-eslint`, `@eslint/js`.
-- `@types/node`: prioritize alignment with the repository's declared `node >=20 <23` support range to avoid type definitions jumping ahead of runtime support.
+- `@types/node`: prioritize alignment with the repository's declared `node >=22 <23` support range to avoid type definitions jumping ahead of runtime support.
 
 Verification threshold:
 

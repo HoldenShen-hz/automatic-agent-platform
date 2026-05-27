@@ -27,10 +27,6 @@ const mockedFetchContractVersion = vi.mocked(fetchContractVersion);
 const mockedCreateRouteGuardChain = vi.mocked(createRouteGuardChain);
 
 vi.mock("../../../../../apps/web/src/feature-registry", () => ({
-  missionControlFeatureContracts: [
-    { id: "alerts", path: "/mission-control/alerts", permission: "platform_sre" },
-    { id: "conversation", group: "Mission Control", path: "/mission-control/conversation" },
-  ],
   featureRegistry: [
     {
       manifest: { id: "dashboard", title: "Dashboard", group: "Mission Control", kind: "implemented", status: "Implemented/Internal" },
@@ -391,7 +387,7 @@ describe("web app-shell guard behavior", () => {
       />,
     );
 
-    expect(screen.getByText("Access denied")).toBeInTheDocument();
+    expect(screen.getByText("访问被拒绝")).toBeInTheDocument();
   });
 
   it("renders the startup mismatch banner when runtime bootstrap detects a contract drift", () => {
@@ -526,9 +522,9 @@ describe("app-shell error boundary", () => {
     render(<WebAppShell features={mockFeatures as never} router="memory" initialEntries={["/error"]} />);
 
     // The error boundary should catch and display error UI
-    expect(screen.getByText("Something went wrong")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Report Issue" })).toBeInTheDocument();
+    expect(screen.getByText("页面渲染失败")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "重试" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "上报问题" })).toBeInTheDocument();
   });
 
   it("retry button resets error state", async () => {
@@ -554,12 +550,12 @@ describe("app-shell error boundary", () => {
 
     render(<WebAppShell features={mockFeatures as never} router="memory" initialEntries={["/error"]} />);
 
-    const retryButton = screen.getByRole("button", { name: "Retry" });
+    const retryButton = screen.getByRole("button", { name: "重试" });
     fireEvent.click(retryButton);
 
     // After retry, error UI should be gone (though error will occur again)
     // The important thing is the button is clickable
-    expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "重试" })).toBeInTheDocument();
   });
 });
 

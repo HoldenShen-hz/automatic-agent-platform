@@ -146,16 +146,16 @@ function extractCoreMetricRegistry(
         .slice(1, -1)
         .map((cell) => cell.trim().replace(/^`|`$/g, ""));
       const [
-        metric,
-        type,
-        formula,
-        window,
-        labels,
-        source,
-        dashboard,
-        alert,
-        owner,
-        target,
+        metric = "",
+        type = "",
+        formula = "",
+        window = "",
+        labels = "",
+        source = "",
+        dashboard = "",
+        alert = "",
+        owner = "",
+        target = "",
       ] = cells;
       return {
         metric,

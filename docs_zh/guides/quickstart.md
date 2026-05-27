@@ -105,4 +105,4 @@
 | 分层开发回归 | `npm run test:layers:dev` | 跑 unit + invariants + golden |
 | 单层测试 | `npm run test:unit` / `npm run test:integration` / `npm run test:e2e` | 按层定位问题 |
 | 构建诊断 | `npm run build 2>&1 | grep error` | 过滤构建错误 |
-| 文档验证 | `npm run docs:lint` | 检查文档链接和格式 |
+| 文档验证 | `npm run docs:markdown-render` | 检查文档渲染与 Markdown 结构 |

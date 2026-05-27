@@ -80,28 +80,28 @@ describe("TaskCockpitWebView", () => {
   it("renders L3-L5 drill-down tabs and their content", () => {
     render(<TaskCockpitWebView />);
 
-    expect(screen.queryByText(/L3 Steps/)).not.toBeNull();
+    expect(screen.queryByText(/L3 步骤/)).not.toBeNull();
     expect(screen.queryByText(/CPU: 62%/)).not.toBeNull();
     expect(screen.queryByText(/Memory: 768 MB/)).not.toBeNull();
     expect(screen.queryByText(/Collect inputs completed · agent-1/)).not.toBeNull();
 
-    fireEvent.click(screen.getByRole("button", { name: "L4 Evidence" }));
+    fireEvent.click(screen.getByRole("button", { name: "L4 证据" }));
     expect(screen.queryByText(/artifact Approval packet/)).not.toBeNull();
 
-    fireEvent.click(screen.getByRole("button", { name: "L5 Timeline" }));
+    fireEvent.click(screen.getByRole("button", { name: "L5 时间线" }));
     expect(screen.queryByText(/Escalated Escalated to domain-admin/)).not.toBeNull();
   });
 
   it("wires takeover, pause, cancel, retry, resume, and escalate controls", () => {
     render(<TaskCockpitWebView />);
 
-    fireEvent.click(screen.getAllByRole("button", { name: "Take Over" })[0]!);
-    fireEvent.click(screen.getByRole("button", { name: "Pause" }));
-    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
-    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
-    fireEvent.click(screen.getByRole("button", { name: "Resume" }));
-    fireEvent.click(screen.getByRole("button", { name: "Supervised Resume" }));
-    fireEvent.click(screen.getByRole("button", { name: "Escalate" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "接管" })[0]!);
+    fireEvent.click(screen.getByRole("button", { name: "暂停" }));
+    fireEvent.click(screen.getByRole("button", { name: "取消" }));
+    fireEvent.click(screen.getByRole("button", { name: "重试" }));
+    fireEvent.click(screen.getByRole("button", { name: "恢复" }));
+    fireEvent.click(screen.getByRole("button", { name: "受监督恢复" }));
+    fireEvent.click(screen.getByRole("button", { name: "升级" }));
 
     expect(mockClaimTask).toHaveBeenCalled();
     expect(mockPauseTask).toHaveBeenCalled();
@@ -116,15 +116,15 @@ describe("TaskCockpitWebView", () => {
     const alertSpy = vi.spyOn(window, "alert").mockImplementation(() => undefined);
     render(<TaskCockpitWebView />);
 
-    fireEvent.change(screen.getAllByPlaceholderText("e.g. platform-sre")[0]!, {
+    fireEvent.change(screen.getAllByPlaceholderText("例如 platform-sre")[0]!, {
       target: { value: "ops<script>" },
     });
-    fireEvent.change(screen.getAllByPlaceholderText("e.g. domain-admin")[0]!, {
+    fireEvent.change(screen.getAllByPlaceholderText("例如 domain-admin")[0]!, {
       target: { value: "domain-admin!!" },
     });
 
-    fireEvent.click(screen.getAllByRole("button", { name: "Take Over" })[0]!);
-    fireEvent.click(screen.getByRole("button", { name: "Escalate" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "接管" })[0]!);
+    fireEvent.click(screen.getByRole("button", { name: "升级" }));
 
     expect(alertSpy).not.toHaveBeenCalled();
     expect(mockClaimTask).toHaveBeenCalledWith("opsscript");

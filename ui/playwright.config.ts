@@ -1,7 +1,8 @@
 import { defineConfig } from "@playwright/test";
+import testTarget from "./test-target.json";
 
-const PORT = Number.parseInt(process.env.PLAYWRIGHT_PORT ?? "4173", 10);
-const HOST = "127.0.0.1";
+const PORT = Number.parseInt(process.env.PLAYWRIGHT_PORT ?? String(testTarget.port), 10);
+const HOST = process.env.PLAYWRIGHT_HOST ?? testTarget.host;
 const BASE_URL = process.env.PLAYWRIGHT_BASE_URL ?? `http://${HOST}:${PORT}`;
 
 export default defineConfig({

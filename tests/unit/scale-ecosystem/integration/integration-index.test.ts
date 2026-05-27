@@ -8,6 +8,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import * as integration from "../../../../src/scale-ecosystem/integration/index.ts";
+import { UNREACHABLE_LOOPBACK_BASE_URL } from "../../../helpers/network-test-constants.js";
+
+const callbackEndpoint = (path: string): string => `${UNREACHABLE_LOOPBACK_BASE_URL}${path}`;
 
 test("index exports ConnectorFrameworkService", () => {
   assert.ok("ConnectorFrameworkService" in integration);
@@ -62,7 +65,7 @@ test("invokeCallback returns true for successful callback", async () => {
 
   try {
     // Use a mock URL that will respond quickly
-    const result = await integration.invokeCallback("http://localhost:9999/callback", {
+    const result = await integration.invokeCallback(callbackEndpoint("/callback"), {
       connectorId: "test",
       success: true,
       status: "succeeded",
@@ -75,7 +78,7 @@ test("invokeCallback returns true for successful callback", async () => {
 });
 
 test("invokeCallback returns false when fetch fails", async () => {
-  const result = await integration.invokeCallback("http://localhost:9999/nonexistent", {
+  const result = await integration.invokeCallback(callbackEndpoint("/nonexistent"), {
     connectorId: "test",
     success: false,
     status: "failed",
@@ -89,7 +92,7 @@ test("invokeCallback sends correct JSON body", async () => {
   const timeout = setTimeout(() => controller.abort(), 5000);
 
   try {
-    const result = await integration.invokeCallback("http://localhost:9999/callback", {
+    const result = await integration.invokeCallback(callbackEndpoint("/callback"), {
       connectorId: "my-connector",
       success: true,
       status: "succeeded",

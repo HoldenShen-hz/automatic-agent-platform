@@ -996,7 +996,7 @@ test("throws when retries equals maxRetries", () => {
 
 ```yaml
 CI (GitHub Actions — .github/workflows/ci.yml)
-├── validate (matrix: Node 20 + 22)
+├── validate (Node 22)
 │   ├── npm ci
 │   ├── npm run lint
 │   ├── npm audit --audit-level=high
@@ -1095,7 +1095,7 @@ CI 自动上传以下 artifacts：
 
 ### 13.5 CI 兼容
 
-- [ ] 测试在 Node 20 和 Node 22 下均通过
+- [ ] 测试在 Node 22 基线下通过
 - [ ] 测试支持 `--test-concurrency=12` 并行运行，无共享状态冲突
 - [ ] 无硬编码绝对路径、端口号、时间戳
 

@@ -4,34 +4,37 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { spawn } from "node:child_process";
 
 import { createProcessGuard, withProcessGuard } from "../../helpers/process-guard.js";
 
 test("createProcessGuard capture records baseline", () => {
   const guard = createProcessGuard();
   guard.capture();
-  // Should not throw
+  assert.equal(typeof guard.assertNoLeaks, "function");
 });
 
 test("createProcessGuard assertNoLeaks passes with no leaks", () => {
   const guard = createProcessGuard();
   guard.capture();
-  guard.assertNoLeaks(); // Should not throw
+  assert.doesNotThrow(() => guard.assertNoLeaks());
 });
 
 test("withProcessGuard runs function and checks for leaks", async () => {
+  let executed = false;
   const wrapped = withProcessGuard(async () => {
-    // Do nothing - no process spawns
+    executed = true;
   });
 
-  await wrapped(); // Should not throw
+  await assert.doesNotReject(() => wrapped());
+  assert.equal(executed, true);
 });
 
-test("withProcessGuard handles synchronous function", () => {
+test("withProcessGuard handles synchronous function", async () => {
+  let callCount = 0;
   const wrapped = withProcessGuard(() => {
-    // Do nothing - no process spawns
+    callCount += 1;
   });
 
-  wrapped(); // Should not throw
+  await assert.doesNotReject(() => wrapped());
+  assert.equal(callCount, 1);
 });

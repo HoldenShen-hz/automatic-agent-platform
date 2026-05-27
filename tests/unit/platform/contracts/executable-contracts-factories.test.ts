@@ -1615,7 +1615,7 @@ test("executable-contracts: assertGraphPatchSafety allows compensated side effec
     operations: [
       {
         operationId: "op-1",
-        operationType: "replace_node",
+        operationType: "append_subgraph",
         targetRef: "existing-node-1",
         payload: {},
       },

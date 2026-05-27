@@ -25,7 +25,7 @@ function createMockStore(): AuthoritativeTaskStore {
       revokeMemory: (id: string, revokedAt: string, reason: string) => {
         const existing = memories.get(id);
         if (existing != null) {
-          memories.set(id, { ...existing, status: "revoked", revokedAt, revocationReason: reason });
+          memories.set(id, { ...existing, status: "archived", revokedAt, revocationReason: reason });
         }
       },
       findMemoryByContentHash: () => null,

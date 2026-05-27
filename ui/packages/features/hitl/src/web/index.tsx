@@ -1,5 +1,5 @@
 import { useState, type ReactElement } from "react";
-import { FeatureScaffold, ListCard } from "@aa/ui-core";
+import { FeatureScaffold, ListCard, designTokens } from "@aa/ui-core";
 import { useHitlVm } from "../hooks";
 
 export function HitlWebView(): ReactElement {
@@ -52,7 +52,7 @@ export function HitlWebView(): ReactElement {
         }))}
         />
         {vm.items.map((item) => (
-          <div key={item.id} style={{ border: "1px solid #334155", borderRadius: 12, padding: 12, display: "grid", gap: 8 }}>
+          <div key={item.id} style={{ border: `1px solid ${designTokens.color.border}`, borderRadius: 12, padding: 12, display: "grid", gap: 8 }}>
             <div>
               <strong>{item.title}</strong>
               <div>{item.description}</div>

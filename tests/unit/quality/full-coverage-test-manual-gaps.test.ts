@@ -121,7 +121,7 @@ const GAP_EVIDENCE: readonly GapEvidence[] = [
   {
     id: "T-GAP-18",
     topic: "Accessibility / i18n / Theme",
-    runtime: ["ui/lighthouserc.json", "ui/packages/shared/i18n/src/index.ts", "ui/packages/ui-core/src/themes/index.ts"],
+    runtime: ["ui/lighthouserc.mjs", "ui/packages/shared/i18n/src/index.ts", "ui/packages/ui-core/src/themes/index.ts"],
     tests: ["ui/tests/a11y/web-accessibility.spec.ts", "ui/tests/shared/accessibility-regression-baseline.test.tsx", "ui/tests/features/feature-i18n.test.ts"],
   },
   {

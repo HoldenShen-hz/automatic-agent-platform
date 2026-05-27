@@ -1,6 +1,7 @@
 import type { ReactElement } from "react";
 import type { WorkflowStepDTO } from "@aa/shared-types";
 import { DAGVisualization, designTokens } from "@aa/ui-core";
+import { translateMessage } from "@aa/shared-i18n";
 
 export interface DAGViewerProps {
   readonly steps: readonly WorkflowStepDTO[];
@@ -18,7 +19,7 @@ function getStageIndex(stage: string): number {
 function getStepColor(status: WorkflowStepDTO["status"]): string {
   switch (status) {
     case "completed": return designTokens.color.accent;
-    case "running": return "#2563eb";
+    case "running": return designTokens.color.info;
     case "failed": return designTokens.color.danger;
     case "pending": return designTokens.color.subtle;
     default: return designTokens.color.subtle;
@@ -29,7 +30,7 @@ export function DAGViewer({ steps, currentStage }: DAGViewerProps): ReactElement
   if (steps.length === 0) {
     return (
       <div style={{ color: designTokens.color.subtle, padding: 16, textAlign: "center" }}>
-        No steps available
+        {translateMessage("ui.workflowDAG.noSteps")}
       </div>
     );
   }
@@ -62,7 +63,7 @@ export function DAGViewer({ steps, currentStage }: DAGViewerProps): ReactElement
         })}
       />
       <div style={{ fontSize: 12, color: designTokens.color.subtle, marginBottom: 4 }}>
-        OAPEFLIR Stage Rail
+        {translateMessage("ui.workflowDAG.stageRail")}
       </div>
       <div style={{ display: "flex", gap: 0, alignItems: "center", overflowX: "auto", padding: "8px 0" }}>
         {STAGE_ORDER.map((stage, stageIdx) => {
@@ -85,7 +86,7 @@ export function DAGViewer({ steps, currentStage }: DAGViewerProps): ReactElement
                   justifyContent: "center",
                   fontSize: 11,
                   fontWeight: 700,
-                  color: isReached ? "#04130a" : designTokens.color.subtle,
+                  color: isReached ? designTokens.primitive.color.ink950 : designTokens.color.subtle,
                   textTransform: "uppercase",
                 }}
               >
@@ -116,7 +117,7 @@ export function DAGViewer({ steps, currentStage }: DAGViewerProps): ReactElement
                         padding: "2px 6px",
                         borderRadius: 4,
                         background: getStepColor(step.status),
-                        color: "#04130a",
+                        color: designTokens.primitive.color.ink950,
                         fontSize: 9,
                         textAlign: "center",
                         whiteSpace: "nowrap",
@@ -136,7 +137,7 @@ export function DAGViewer({ steps, currentStage }: DAGViewerProps): ReactElement
       {/* Step list fallback */}
       {branchGroups.length > 0 && (
         <div style={{ marginTop: 16, borderTop: `1px solid ${designTokens.color.border}`, paddingTop: 12 }}>
-          <div style={{ fontSize: 11, color: designTokens.color.subtle, marginBottom: 8 }}>Parallel Branches</div>
+          <div style={{ fontSize: 11, color: designTokens.color.subtle, marginBottom: 8 }}>{translateMessage("ui.workflowDAG.parallelBranches")}</div>
           {branchGroups.map(([branchId, branchSteps]) => (
             <div key={branchId} style={{ marginBottom: 8 }}>
               <strong style={{ fontSize: 12 }}>{branchId}</strong>
@@ -148,7 +149,7 @@ export function DAGViewer({ steps, currentStage }: DAGViewerProps): ReactElement
         </div>
       )}
       <div style={{ marginTop: 16, borderTop: `1px solid ${designTokens.color.border}`, paddingTop: 12 }}>
-        <div style={{ fontSize: 11, color: designTokens.color.subtle, marginBottom: 8 }}>Step Details</div>
+        <div style={{ fontSize: 11, color: designTokens.color.subtle, marginBottom: 8 }}>{translateMessage("ui.workflowDAG.stepDetails")}</div>
         {steps.map((step, idx) => (
           <div key={step.id} style={{ display: "grid", gridTemplateColumns: "24px 1fr auto", gap: 8, alignItems: "center", padding: "4px 0" }}>
             <span style={{ color: designTokens.color.subtle, fontSize: 10 }}>#{idx + 1}</span>
@@ -162,7 +163,7 @@ export function DAGViewer({ steps, currentStage }: DAGViewerProps): ReactElement
                 padding: "1px 6px",
                 borderRadius: 4,
                 background: getStepColor(step.status),
-                color: "#04130a",
+                color: designTokens.primitive.color.ink950,
               }}
             >
               {step.status}

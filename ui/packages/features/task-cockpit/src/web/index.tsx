@@ -1,5 +1,6 @@
 import { useMemo, useState, type ReactElement } from "react";
 import { FeatureScaffold, KeyValueTable, ListCard, ThreePaneLayout } from "@aa/ui-core";
+import { translateMessage } from "@aa/shared-i18n";
 import { useTaskCockpitVm } from "../hooks";
 
 type DrillTab = "steps" | "evidence" | "timeline";
@@ -38,7 +39,7 @@ export function TaskCockpitWebView(): ReactElement {
       <ThreePaneLayout
         left={(
           <div>
-            <h3>L1-L2 Task List</h3>
+            <h3>{translateMessage("ui.taskCockpit.listTitle")}</h3>
             <div style={{ display: "grid", gap: 10 }}>
               {vm.listItems.map((task) => (
                 <button
@@ -54,38 +55,42 @@ export function TaskCockpitWebView(): ReactElement {
             </div>
           </div>
         )}
-        center={selectedTask == null ? <p>No task selected</p> : (
+        center={selectedTask == null ? <p>{translateMessage("ui.taskCockpit.noTask")}</p> : (
           <div style={{ display: "grid", gap: 16 }}>
-            <h3>L3 Detail</h3>
+            <h3>{translateMessage("ui.taskCockpit.detailTitle")}</h3>
             <KeyValueTable rows={detailRows} />
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <input
+                aria-label={translateMessage("ui.taskCockpit.operatorInput")}
+                name="operator-id"
                 onChange={(event) => setOperator(event.target.value)}
-                placeholder="e.g. platform-sre"
+                placeholder={translateMessage("ui.taskCockpit.operatorPlaceholder")}
                 value={operator}
               />
-              <button onClick={() => { void vm.claimTask(sanitizeInput(operator, "platform-sre")); }} type="button">Take Over</button>
-              <button onClick={() => { void vm.pauseTask(); }} type="button">Pause</button>
-              <button onClick={() => { void vm.cancelTask(); }} type="button">Cancel</button>
-              <button onClick={() => { void vm.retryTask(); }} type="button">Retry</button>
-              <button onClick={() => { void vm.resumeTask("normal"); }} type="button">Resume</button>
-              <button onClick={() => { void vm.resumeTask("supervised"); }} type="button">Supervised Resume</button>
+              <button onClick={() => { void vm.claimTask(sanitizeInput(operator, "platform-sre")); }} type="button">{translateMessage("ui.taskCockpit.takeOver")}</button>
+              <button onClick={() => { void vm.pauseTask(); }} type="button">{translateMessage("ui.taskCockpit.pause")}</button>
+              <button onClick={() => { void vm.cancelTask(); }} type="button">{translateMessage("ui.taskCockpit.cancel")}</button>
+              <button onClick={() => { void vm.retryTask(); }} type="button">{translateMessage("ui.taskCockpit.retry")}</button>
+              <button onClick={() => { void vm.resumeTask("normal"); }} type="button">{translateMessage("ui.taskCockpit.resume")}</button>
+              <button onClick={() => { void vm.resumeTask("supervised"); }} type="button">{translateMessage("ui.taskCockpit.supervisedResume")}</button>
               <input
+                aria-label={translateMessage("ui.taskCockpit.targetInput")}
+                name="target-id"
                 onChange={(event) => setTarget(event.target.value)}
-                placeholder="e.g. domain-admin"
+                placeholder={translateMessage("ui.taskCockpit.targetPlaceholder")}
                 value={target}
               />
-              <button onClick={() => { void vm.escalateTask(sanitizeInput(target, "domain-admin")); }} type="button">Escalate</button>
+              <button onClick={() => { void vm.escalateTask(sanitizeInput(target, "domain-admin")); }} type="button">{translateMessage("ui.taskCockpit.escalate")}</button>
             </div>
           </div>
         )}
-        right={selectedTask == null ? <p>No timeline</p> : (
+        right={selectedTask == null ? <p>{translateMessage("ui.taskCockpit.noTimeline")}</p> : (
           <div style={{ display: "grid", gap: 12 }}>
-            <h3>L4-L5 Drill Down</h3>
+            <h3>{translateMessage("ui.taskCockpit.drillTitle")}</h3>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <button onClick={() => setActiveTab("steps")} type="button">L3 Steps</button>
-              <button onClick={() => setActiveTab("evidence")} type="button">L4 Evidence</button>
-              <button onClick={() => setActiveTab("timeline")} type="button">L5 Timeline</button>
+              <button onClick={() => setActiveTab("steps")} type="button">{translateMessage("ui.taskCockpit.stepsTab")}</button>
+              <button onClick={() => setActiveTab("evidence")} type="button">{translateMessage("ui.taskCockpit.evidenceTab")}</button>
+              <button onClick={() => setActiveTab("timeline")} type="button">{translateMessage("ui.taskCockpit.timelineTab")}</button>
             </div>
             {activeTab === "steps" ? (
               <ListCard

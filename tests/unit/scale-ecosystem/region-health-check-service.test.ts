@@ -337,12 +337,13 @@ test("RegionFailoverOrchestrator requires execution handover confirmation before
   if (!result.success || result.targetRegionId == null) {
     return;
   }
+  const targetRegionId = result.targetRegionId;
 
   assert.throws(
-    () => orchestrator.assertFailoverWithinRto("us-east-1", result.targetRegionId),
+    () => orchestrator.assertFailoverWithinRto("us-east-1", targetRegionId),
     /execution_handover_pending/,
   );
 
-  orchestrator.confirmExecutionHandover("us-east-1", result.targetRegionId);
-  assert.doesNotThrow(() => orchestrator.assertFailoverWithinRto("us-east-1", result.targetRegionId));
+  orchestrator.confirmExecutionHandover("us-east-1", targetRegionId);
+  assert.doesNotThrow(() => orchestrator.assertFailoverWithinRto("us-east-1", targetRegionId));
 });

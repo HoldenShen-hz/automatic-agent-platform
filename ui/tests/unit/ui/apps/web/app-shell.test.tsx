@@ -168,16 +168,16 @@ describe("WebAppShell", () => {
       },
     );
 
-    expect(screen.getByText("Access denied")).toBeInTheDocument();
+    expect(screen.getByText("访问被拒绝")).toBeInTheDocument();
     expect(screen.getByText("Insufficient permissions")).toBeInTheDocument();
     expect(screen.getByRole("alert")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Go Back" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "返回上一页" })).toBeInTheDocument();
   });
 
   it("renders an empty-state shell when no features are registered", () => {
     renderShell([], { initialEntries: ["/"] });
 
-    expect(screen.getByText("No features available")).toBeInTheDocument();
+    expect(screen.getByText("当前没有可用功能")).toBeInTheDocument();
   });
 
   it("catches feature render errors in the error boundary", () => {
@@ -194,10 +194,10 @@ describe("WebAppShell", () => {
       { initialEntries: ["/mock"] },
     );
 
-    expect(screen.getByText("Something went wrong")).toBeInTheDocument();
+    expect(screen.getByText("页面渲染失败")).toBeInTheDocument();
     expect(screen.getByText("Specific error message for testing")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Report Issue" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "重试" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "上报问题" })).toBeInTheDocument();
   });
 
   it("renders the retry affordance in the error boundary", () => {
@@ -214,8 +214,8 @@ describe("WebAppShell", () => {
       { initialEntries: ["/mock"] },
     );
 
-    expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Report Issue" }));
+    expect(screen.getByRole("button", { name: "重试" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "上报问题" }));
   });
 
   it("renders declared feature sub-pages as nested routes", async () => {

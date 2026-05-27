@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { generateBindingsFromOpenApi, generateEndpointBindingModule } from "@aa/codegen";
 import { createPlaywrightScenarioDefinitions, createScenarioChecklist } from "@aa/e2e";
 import { createMockRequestHandler, describePlannedEndpoint, resolveMockRequest } from "@aa/mock-server";
+import testTarget from "../../test-target.json";
 
 describe("ui tooling baselines", () => {
   it("exposes runnable codegen, mock-server and e2e helpers", () => {
@@ -67,7 +68,7 @@ describe("ui tooling baselines", () => {
         },
       },
     });
-    const playwrightDefinitions = createPlaywrightScenarioDefinitions("http://127.0.0.1:4173");
+    const playwrightDefinitions = createPlaywrightScenarioDefinitions(testTarget.baseUrl);
 
     expect(source).toContain('export const tasksPath = "/api/v1/tasks";');
     expect(openApiSource).toContain('export const listTasksPath = { method: "GET", path: "/api/v1/tasks" } as const;');
@@ -78,7 +79,7 @@ describe("ui tooling baselines", () => {
     expect(resolveMockRequest("/api/v1/tasks")).toBeDefined();
     expect(describePlannedEndpoint("analytics").enabled).toBe(false);
     expect(createScenarioChecklist()).toHaveLength(7);
-    expect(playwrightDefinitions[0]?.url.startsWith("http://127.0.0.1:4173/")).toBe(true);
+    expect(playwrightDefinitions[0]?.url.startsWith(`${testTarget.baseUrl}/`)).toBe(true);
   });
 
   it("exposes an http request handler for health and api routes", async () => {

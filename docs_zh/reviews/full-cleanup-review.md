@@ -15,7 +15,7 @@
 **状态**: 全部过期 - 测试中断产生的临时文件
 
 ```bash
-rm -f /Users/holden/Project/automatic_agent/automatic_agent_platform/:memory:*
+rm -f :memory:*
 ```
 
 ---

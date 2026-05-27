@@ -8,6 +8,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
+import { API_SERVER_TEST_BASE_URL, API_SERVER_TEST_PORT, LOOPBACK_HOST, OTEL_TEST_ENDPOINT } from "../../../helpers/network-test-constants.js";
 
 // ---------------------------------------------------------------------------
 // Tests for API server CLI entrypoint
@@ -27,17 +28,17 @@ test("api-server config includes otel settings", () => {
   // The initOtel call uses envConfig.otelEnabled, envConfig.otelEndpoint, etc.
   const envConfig = {
     otelEnabled: true,
-    otelEndpoint: "http://localhost:4318",
+    otelEndpoint: OTEL_TEST_ENDPOINT,
     otelServiceName: "api-server",
     otelServiceVersion: "1.0.0",
   };
   assert.equal(envConfig.otelEnabled, true);
-  assert.ok(envConfig.otelEndpoint.includes("localhost"));
+  assert.ok(envConfig.otelEndpoint.startsWith("http://127.0.0.1:"));
 });
 
 test("api-server resolves host and port from env or defaults", () => {
   // The server resolves host and port from environment or defaults
-  const envConfig = { apiHost: "0.0.0.0", apiPort: 8080 };
+  const envConfig = { apiHost: "0.0.0.0", apiPort: API_SERVER_TEST_PORT };
 
   const startOptions: { host?: string; port?: number } = {};
   if (envConfig.apiHost) {
@@ -48,7 +49,7 @@ test("api-server resolves host and port from env or defaults", () => {
   }
 
   assert.equal(startOptions.host, "0.0.0.0");
-  assert.equal(startOptions.port, 8080);
+  assert.equal(startOptions.port, API_SERVER_TEST_PORT);
 });
 
 test("api-server configures structured logging when logFilePath is set", () => {
@@ -169,9 +170,9 @@ test("api-server graceful shutdown handlers are registered", () => {
 
 test("api-server response includes host, port, baseUrl when started", () => {
   const address = {
-    host: "127.0.0.1",
-    port: 8080,
-    baseUrl: "http://127.0.0.1:8080",
+    host: LOOPBACK_HOST,
+    port: API_SERVER_TEST_PORT,
+    baseUrl: API_SERVER_TEST_BASE_URL,
   };
 
   const response = {
@@ -180,7 +181,7 @@ test("api-server response includes host, port, baseUrl when started", () => {
     baseUrl: address.baseUrl,
   };
 
-  assert.equal(response.host, "127.0.0.1");
-  assert.equal(response.port, 8080);
+  assert.equal(response.host, LOOPBACK_HOST);
+  assert.equal(response.port, API_SERVER_TEST_PORT);
   assert.ok(response.baseUrl.startsWith("http"));
 });

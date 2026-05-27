@@ -1,0 +1,11 @@
+{
+  "host": "127.0.0.1",
+  "port": 4173,
+  "baseUrl": "http://127.0.0.1:4173",
+  "routes": [
+    "/",
+    "/mission-control/dashboard",
+    "/mission-control/tasks",
+    "/governance/approvals"
+  ]
+}

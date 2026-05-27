@@ -1,6 +1,6 @@
 import type { ChangeEvent, ReactElement } from "react";
 import { useWsClient } from "@aa/shared-state";
-import { CodeBlock, FeatureScaffold, FileAttachment, KeyValueTable } from "@aa/ui-core";
+import { CodeBlock, FeatureScaffold, FileAttachment, KeyValueTable, designTokens } from "@aa/ui-core";
 import { translateFeatureCopy } from "@aa/shared-i18n";
 import { useConversationVm } from "../hooks";
 
@@ -56,7 +56,7 @@ export function ConversationWebView(): ReactElement {
         {vm.attachments.length > 0 && <FileAttachment files={vm.attachments} />}
         <div style={{ display: "grid", gap: 12 }}>
           {vm.messages.map((message, index) => (
-            <div key={message.id ?? `${message.role}-${index}`} style={{ border: "1px solid #334155", borderRadius: 12, padding: 12 }}>
+            <div key={message.id ?? `${message.role}-${index}`} style={{ border: `1px solid ${designTokens.color.border}`, borderRadius: 12, padding: 12 }}>
               <strong>{`${message.role} · ${index + 1}`}</strong>
               <div>{renderMessageContent(message.content)}</div>
             </div>

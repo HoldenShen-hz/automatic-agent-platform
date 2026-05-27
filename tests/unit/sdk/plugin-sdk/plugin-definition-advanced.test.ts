@@ -434,8 +434,8 @@ test("definePlugin with SBOM that has critical vulnerabilities rejects asynchron
   writeFileSync(TEMP_SBOM_FILE, sbom);
 
   try {
-    await assert.rejects(
-      definePlugin({
+    assert.throws(
+      () => definePlugin({
         pluginId: "sbom-critical-test",
         name: "SBOM Critical Test",
         version: "1.0.0",

@@ -119,10 +119,10 @@ export function registerGlobalShortcuts(mainWindow?: BrowserWindowHandle): void 
     mainWindow?.webContents.send("command-palette:open");
   });
   globalShortcut.register("CommandOrControl+N", () => {
-    void openSecondaryWindow("/shared/settings");
+    openSecondaryWindow("/shared/settings");
   });
   globalShortcut.register("Shift+CommandOrControl+D", () => {
-    void showPlatformNotification("Diagnostics", "Desktop diagnostics shortcut triggered");
+    showPlatformNotification("Diagnostics", "Desktop diagnostics shortcut triggered");
   });
 }
 

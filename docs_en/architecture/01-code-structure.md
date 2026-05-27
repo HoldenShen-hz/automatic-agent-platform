@@ -35,9 +35,9 @@ This review is based on actual directory measurements in the current workspace, 
 
 ### 1.2 Recent Structure Sync (2026-05-26)
 
-This round did not change the seven-layer main skeleton, but the latest batch of code closures has affected the formal口径 for "how the structure should be understood":
+This round did not change the seven-layer main skeleton, but the latest batch of code closures has affected the formal authority for "how the structure should be understood":
 
-| Sync Topic | Current Code Facts | Documentation口径 |
+| Sync Topic | Current Code Facts | Documentation Authority |
 | ------ | ------------ | -------- |
 | P1 Public Query Interface | `dashboard-routes.ts` has supplemented `/v1/workers`, `/v1/queues`, `/v1/agents`, `/v1/dashboard/metrics`, `/v1/explanations`, `/v1/meta/contract-version` | UI/HTTP public queries default to reading Layer C `/v1/*`, no longer treating `/admin/*` as public data plane |
 | P1 Pack / Knowledge / Builder Public Interface | `pack-routes.ts`, `plane-routes.ts`, `task-routes.ts` have supplemented `/v1/marketplace`, `/v1/knowledge`, `/v1/packs/:packId/versions`, `/v1/workflows/builder` | `platform/five-plane-interface/api/http-server/` is the current authoritative public export surface |

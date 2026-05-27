@@ -11,6 +11,7 @@ import {
   createDefaultApiRateLimiter,
   deriveApiRateLimitDefaultsFromChannelProviders,
 } from "../../../../../src/platform/five-plane-interface/api/http-api-server.js";
+import { LOOPBACK_HOST } from "../../../../helpers/network-test-constants.js";
 import { ConfigRolloutService } from "../../../../../src/platform/five-plane-control-plane/config-center/config-rollout-service.js";
 import { TenantBoundaryRegistryService } from "../../../../../src/platform/five-plane-control-plane/tenant/index.js";
 import { CostReportService } from "../../../../../src/platform/five-plane-interface/api/cost-report-service.js";
@@ -1691,12 +1692,13 @@ test("server starts and stops correctly", async () => {
       };
     }
   ).server;
+  const assignedPort = 43123;
   let listening = false;
   rawServer.listen = (_port, _host, callback) => {
     listening = true;
     callback();
   };
-  rawServer.address = () => ({ address: "127.0.0.1", port: 43123 });
+  rawServer.address = () => ({ address: LOOPBACK_HOST, port: assignedPort });
   rawServer.close = (callback) => {
     listening = false;
     callback();
@@ -1707,9 +1709,9 @@ test("server starts and stops correctly", async () => {
   });
 
   try {
-    const address = await server.start({ host: "127.0.0.1", port: 0 });
-    assert.equal(address.port, 43123);
-    assert.equal(address.baseUrl, "http://127.0.0.1:43123");
+    const address = await server.start({ host: LOOPBACK_HOST, port: 0 });
+    assert.equal(address.port, assignedPort);
+    assert.equal(address.baseUrl, `http://${LOOPBACK_HOST}:${assignedPort}`);
     assert.equal(listening, true);
   } finally {
     await server.stop();

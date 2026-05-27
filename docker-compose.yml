@@ -16,11 +16,11 @@ services:
       NODE_ENV: production
       AA_DB_PATH: /app/data/automatic-agent.db
       AA_STORAGE_DRIVER: ${AA_STORAGE_DRIVER:-sqlite}
-      AA_PG_DSN: ${AA_PG_DSN:-}
+      AA_STORAGE_POSTGRES_DSN: ${AA_STORAGE_POSTGRES_DSN:-}
       AA_REDIS_HOST: redis
       AA_REDIS_PORT: "6379"
     volumes:
-      - phase1a-data:/app/data
+      - automatic-agent-data:/app/data
     read_only: true
     tmpfs:
       - /tmp:size=64m,mode=1777
@@ -127,7 +127,7 @@ services:
       - automatic-agent-network
 
 volumes:
-  phase1a-data:
+  automatic-agent-data:
     driver: local
   automatic-agent-postgres:
     driver: local

@@ -35,8 +35,8 @@
 
 ### 当前实现证据入口
 
-1. 系统级审查与修复回写：[/Users/holden/Project/automatic_agent/automatic_agent_platform/docs_zh/reviews/system-review-2026-05-26.md](/Users/holden/Project/automatic_agent/automatic_agent_platform/docs_zh/reviews/system-review-2026-05-26.md)
-2. 当前架构目录索引：[/Users/holden/Project/automatic_agent/automatic_agent_platform/docs_zh/architecture/README.md](/Users/holden/Project/automatic_agent/automatic_agent_platform/docs_zh/architecture/README.md)
+1. 系统级审查与修复回写：[system-review-2026-05-26.md](../../reviews/system-review-2026-05-26.md)
+2. 当前架构目录索引：[README.md](../README.md)
 3. 当前公共 API 与路由导出面：`src/platform/five-plane-interface/api/http-server/`、`src/platform/five-plane-interface/api/openapi-document.ts`
 
 ---

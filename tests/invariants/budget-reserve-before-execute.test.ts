@@ -81,12 +81,12 @@ test("INV-BUDGET-001: Budget reservation must precede cost operations", async ()
     context: lockedContext,
   });
 
-  const overspentSettlement = allocator.settle({
+  const overspentSettlement = await Promise.resolve(allocator.settle({
     ledger: reserved2.ledger,
     reservation: reserved2.reservation,
     actualAmount: 11,
     context,
-  });
+  }));
   assert.equal(overspentSettlement.overspendDetected, true);
   assert.equal(overspentSettlement.overspendAmount, 1);
   assert.equal(overspentSettlement.ledger.settledAmount, 11);

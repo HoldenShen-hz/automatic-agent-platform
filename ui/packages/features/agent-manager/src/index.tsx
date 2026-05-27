@@ -11,7 +11,6 @@ const agentManagerFeature = createFeatureModule({
   path: "/extended/agents",
   permission: "domain_admin+",
   status: "Planned",
-  kind: "planned",
   summary: featureCopy.summary,
   render: AgentManagerWebView,
 });

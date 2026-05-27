@@ -6,7 +6,7 @@ function AuditTrailViewer({ entries }: { entries: readonly { id: string; action:
   return createElement(
     "div",
     { style: { marginTop: 24 } },
-    createElement("h3", { style: { margin: "0 0 12px", color: "var(--color-text)" } }, "Audit Trail"),
+    createElement("h3", { style: { margin: "0 0 12px", color: "var(--aa-color-text)" } }, "Audit Trail"),
     createElement(
       "div",
       { style: { display: "grid", gap: 8 } },

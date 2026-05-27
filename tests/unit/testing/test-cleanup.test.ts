@@ -7,6 +7,7 @@ import test from "node:test";
 
 import { resetAllSingletons } from "../../helpers/test-cleanup.js";
 
-test("resetAllSingletons does not throw", () => {
-  resetAllSingletons();
+test("resetAllSingletons completes without throwing", () => {
+  assert.doesNotThrow(() => resetAllSingletons());
+  assert.equal(resetAllSingletons(), undefined);
 });

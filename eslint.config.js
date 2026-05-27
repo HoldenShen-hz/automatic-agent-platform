@@ -1,18 +1,39 @@
 // @ts-check
 import js from "@eslint/js";
+import globals from "globals";
 import tseslint from "typescript-eslint";
 
-export default [
+const typedFiles = [
+  "src/**/*.ts",
+  "tests/**/*.ts",
+  "helpers/**/*.ts",
+  "scripts/**/*.ts",
+];
+
+export default tseslint.config(
+  {
+    ignores: ["dist/**", "node_modules/**", "ui/**"],
+  },
   js.configs.recommended,
-  ...tseslint.configs.recommended,
+  ...tseslint.configs.recommendedTypeChecked,
   {
     files: [
       "src/**/*.ts",
+      "src/**/*.tsx",
       "scripts/**/*.mjs",
+      "scripts/**/*.ts",
       "tests/**/*.ts",
       "helpers/**/*.ts",
-      "deploy/**/*.mjs",
     ],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+      },
+      parserOptions: {
+        projectService: true,
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
     rules: {
       "@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_" }],
       "@typescript-eslint/no-explicit-any": "error",
@@ -22,7 +43,7 @@ export default [
     },
   },
   {
-    files: ["src/**/*.ts", "tests/**/*.ts", "scripts/**/*.mjs"],
+    files: ["src/**/*.ts", "tests/**/*.ts", "helpers/**/*.ts", "scripts/**/*.mjs", "scripts/**/*.ts"],
     linterOptions: {
       reportUnusedDisableDirectives: "error",
     },
@@ -35,5 +56,16 @@ export default [
       "@typescript-eslint/no-unsafe-member-access": "warn",
     },
   },
-  { ignores: ["dist/", "node_modules/", "ui/**"] },
-];
+  {
+    files: typedFiles,
+    languageOptions: {
+      globals: {
+        ...globals.node,
+      },
+      parserOptions: {
+        projectService: true,
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+  },
+);

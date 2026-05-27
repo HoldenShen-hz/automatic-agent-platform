@@ -1,5 +1,8 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { defaultMockApiShape } from "@aa/shared-api-client";
+import testTarget from "../../../test-target.json";
+
+const LOOPBACK_HOST = testTarget.host;
 
 export function createMockServerSnapshot() {
   return defaultMockApiShape;
@@ -81,7 +84,7 @@ export async function createMockHttpServer(port = 0): Promise<MockHttpServer> {
   const server = createServer(createMockRequestHandler());
 
   await new Promise<void>((resolve) => {
-    server.listen(port, "127.0.0.1", resolve);
+    server.listen(port, LOOPBACK_HOST, resolve);
   });
 
   const address = server.address();
@@ -89,7 +92,7 @@ export async function createMockHttpServer(port = 0): Promise<MockHttpServer> {
   return {
     server,
     port: resolvedPort,
-    url: `http://127.0.0.1:${resolvedPort}`,
+    url: `http://${LOOPBACK_HOST}:${resolvedPort}`,
     close: () =>
       new Promise<void>((resolve, reject) => {
         server.close((error) => {

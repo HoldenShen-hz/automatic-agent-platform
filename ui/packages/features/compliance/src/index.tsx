@@ -11,7 +11,6 @@ const complianceFeature = createFeatureModule({
   path: "/governance/compliance",
   permission: "domain_admin+",
   status: "Planned",
-  kind: "planned",
   summary: featureCopy.summary,
   render: ComplianceWebView,
 });

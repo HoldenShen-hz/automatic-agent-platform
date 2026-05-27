@@ -56,10 +56,11 @@ Upper layers:
 
 - Authoritative storage lives under `src/platform/five-plane-state-evidence/truth/`
 - Durable events live under `src/platform/five-plane-state-evidence/events/`
-- Workflow checkpoints and artifacts live under `src/platform/five-plane-state-evidence/checkpoints/` and `src/platform/five-plane-state-evidence/artifacts/`
+- Workflow checkpoints, artifacts, knowledge, and memory live under `src/platform/five-plane-state-evidence/`
 
 ## Important Notes
 
 - `src/core/runtime/` is compatibility-only; do not add new canonical runtime logic there.
+- `src/runtime/agent-runtime/` is a legacy compat shim surface and must not become a new canonical entrypoint.
 - All imports use ESM `.js` extensions.
 - If you change an architectural boundary, update ADR / contract / tests together.

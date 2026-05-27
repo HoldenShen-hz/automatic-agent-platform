@@ -90,11 +90,11 @@ test("buildInteractionGovernanceRuntimeCatalog governance array rejects mutation
 
   assert.throws(
     () => {
-      (catalog.governance as { push: (value: unknown) => number }).push({ capabilityId: "unexpected" });
+      (catalog.governance as unknown as { push: (value: unknown) => number }).push({ capabilityId: "unexpected" });
     },
     /object is not extensible|Cannot add property|read only/i,
   );
-  assert.equal(catalog.governance.some((item) => item.capabilityId === "unexpected"), false);
+  assert.equal(catalog.governance.some((item) => String(item.capabilityId) === "unexpected"), false);
 });
 
 test("buildInteractionGovernanceRuntimeCatalog interaction baselines have valid architecture sections", async () => {

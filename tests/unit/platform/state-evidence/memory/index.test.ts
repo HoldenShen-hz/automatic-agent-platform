@@ -43,6 +43,7 @@ test("MemoryConsolidationSummary type can be referenced", () => {
       recentHistory: [],
       longTermBackground: [],
       facts: [],
+      metadata: {},
     },
     lossReport: {
       consolidatedMemoryCount: 1,

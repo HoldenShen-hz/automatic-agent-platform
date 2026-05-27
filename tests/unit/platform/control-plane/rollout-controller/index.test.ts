@@ -73,6 +73,8 @@ test("TrafficShiftRecord structure is correct", () => {
     id: "shift_1",
     fromSlot: "blue",
     toSlot: "green",
+    fromVersion: "v1.0.0",
+    toVersion: "v1.1.0",
     fromWeight: 100,
     toWeight: 0,
     status: "completed",

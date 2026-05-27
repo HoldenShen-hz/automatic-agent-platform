@@ -11,7 +11,6 @@ const workflowBuilderFeature = createFeatureModule({
   path: "/extended/workflow-builder",
   permission: "pack_developer+",
   status: "Planned",
-  kind: "planned",
   summary: featureCopy.summary,
   render: WorkflowBuilderWebView,
 });

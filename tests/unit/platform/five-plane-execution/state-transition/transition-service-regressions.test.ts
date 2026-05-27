@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import type { StatementSync } from "node:sqlite";
 import test from "node:test";
 
 import type { EventRecord, WorkflowStateRecord } from "../../../../../src/platform/contracts/types/domain.js";
@@ -19,7 +20,7 @@ function createDatabaseMock() {
     backendType: "sqlite",
     connection: {
       exec: () => {},
-      prepare: (sql: string) => ({
+      prepare: ((sql: string) => ({
         get: (value: string) => {
           if (sql.includes("SELECT 1 FROM executions WHERE id = ? LIMIT 1")) {
             return value.startsWith("exec-") ? { 1: 1 } : undefined;
@@ -35,7 +36,7 @@ function createDatabaseMock() {
           }
           throw new Error(`unexpected_sql:${sql}`);
         },
-      }),
+      }) as unknown as StatementSync),
     },
     migrate: () => {},
     getSchemaStatus: () => ({

@@ -15,7 +15,7 @@
 **Status**: All expired - temporary files from interrupted tests
 
 ```bash
-rm -f /Users/holden/Project/automatic_agent/automatic_agent_platform/:memory:*
+rm -f :memory:*
 ```
 
 ---

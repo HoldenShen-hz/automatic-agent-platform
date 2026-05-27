@@ -20,23 +20,18 @@ import settings from "@aa/feature-settings";
 import workers from "@aa/feature-workers";
 import queues from "@aa/feature-queues";
 import workflowBuilder from "@aa/feature-workflow-builder";
-import workflowDebugger from "@aa/feature-workflow-debugger";
+import workflowDebuggerFeature from "@aa/feature-workflow-debugger";
 import agentManager from "@aa/feature-agent-manager";
 import explainability from "@aa/feature-explainability";
 import governanceCompliance from "@aa/feature-governance-compliance";
 import costCenter from "@aa/feature-cost-center";
 import marketplace from "@aa/feature-marketplace";
 import analytics from "@aa/feature-analytics";
-import featureFlags from "../../../packages/features/feature-flags/src/index";
-import memoryReview from "../../../packages/features/memory-review/src/index";
-import releaseConsole from "../../../packages/features/release-console/src/index";
-import traceExplorer from "../../../packages/features/trace-explorer/src/index";
+import featureFlags from "@aa/feature-feature-flags";
+import memoryReview from "@aa/feature-memory-review";
+import releaseConsole from "@aa/feature-release-console";
+import traceExplorer from "@aa/feature-trace-explorer";
 import type { FeatureModule } from "@aa/ui-core";
-
-export const missionControlFeatureContracts = [
-  { id: "alerts", path: "/mission-control/alerts", permission: "platform_sre" },
-  { id: "conversation", group: "Mission Control", path: "/mission-control/conversation" },
-] as const;
 
 export const featureRegistry: readonly FeatureModule[] = [
   dashboard,
@@ -61,7 +56,7 @@ export const featureRegistry: readonly FeatureModule[] = [
   workers,
   queues,
   workflowBuilder,
-  workflowDebugger,
+  workflowDebuggerFeature,
   agentManager,
   explainability,
   featureFlags,
@@ -73,5 +68,3 @@ export const featureRegistry: readonly FeatureModule[] = [
   releaseConsole,
   traceExplorer,
 ];
-
-export const LazyFeatureDashboard = dashboard;

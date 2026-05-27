@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { featureRegistry, LazyFeatureDashboard } from "../../../../../apps/web/src/feature-registry";
+import { featureRegistry } from "../../../../../apps/web/src/feature-registry";
 import type { FeatureModule } from "@aa/ui-core";
 
 describe("feature-registry", () => {
@@ -168,11 +168,6 @@ describe("feature-registry", () => {
   it("contains feature-flags feature", () => {
     const featureFlags = featureRegistry.find((f) => f.manifest.id === "feature-flags");
     expect(featureFlags).toBeDefined();
-  });
-
-  it("LazyFeatureDashboard is exported", () => {
-    expect(LazyFeatureDashboard).toBeDefined();
-    expect(typeof LazyFeatureDashboard).toBe("object"); // Lazy component
   });
 });
 

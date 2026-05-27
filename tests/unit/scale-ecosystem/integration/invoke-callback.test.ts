@@ -8,9 +8,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { invokeCallback } from "../../../../src/scale-ecosystem/integration/connector-runtime/index.ts";
+import { UNREACHABLE_LOOPBACK_BASE_URL } from "../../../helpers/network-test-constants.js";
+
+const callbackEndpoint = (path: string): string => `${UNREACHABLE_LOOPBACK_BASE_URL}${path}`;
 
 test("invokeCallback returns false when server is unreachable", async () => {
-  const result = await invokeCallback("http://localhost:9999/callback", {
+  const result = await invokeCallback(callbackEndpoint("/callback"), {
     connectorId: "test",
     success: true,
     status: "succeeded",
@@ -20,7 +23,7 @@ test("invokeCallback returns false when server is unreachable", async () => {
 });
 
 test("invokeCallback returns false on connection refused", async () => {
-  const result = await invokeCallback("http://localhost:80/callback", {
+  const result = await invokeCallback(callbackEndpoint("/callback"), {
     connectorId: "test",
     success: false,
     status: "failed",
@@ -31,7 +34,7 @@ test("invokeCallback returns false on connection refused", async () => {
 
 test("invokeCallback sends correct headers", async () => {
   // This will fail but demonstrates the function attempts with correct structure
-  const result = await invokeCallback("http://localhost:9999/test", {
+  const result = await invokeCallback(callbackEndpoint("/test"), {
     connectorId: "my-connector",
     success: true,
     status: "succeeded",
@@ -43,7 +46,7 @@ test("invokeCallback sends correct headers", async () => {
 });
 
 test("invokeCallback handles result with executionId", async () => {
-  const result = await invokeCallback("http://localhost:9999/callback", {
+  const result = await invokeCallback(callbackEndpoint("/callback"), {
     connectorId: "test",
     executionId: "exec-123",
     success: true,
@@ -54,7 +57,7 @@ test("invokeCallback handles result with executionId", async () => {
 });
 
 test("invokeCallback handles failed status", async () => {
-  const result = await invokeCallback("http://localhost:9999/callback", {
+  const result = await invokeCallback(callbackEndpoint("/callback"), {
     connectorId: "test",
     success: false,
     status: "failed",
@@ -64,7 +67,7 @@ test("invokeCallback handles failed status", async () => {
 });
 
 test("invokeCallback handles deferred status", async () => {
-  const result = await invokeCallback("http://localhost:9999/callback", {
+  const result = await invokeCallback(callbackEndpoint("/callback"), {
     connectorId: "test",
     success: false,
     status: "deferred",
@@ -74,7 +77,7 @@ test("invokeCallback handles deferred status", async () => {
 });
 
 test("invokeCallback handles empty resultPayload", async () => {
-  const result = await invokeCallback("http://localhost:9999/callback", {
+  const result = await invokeCallback(callbackEndpoint("/callback"), {
     connectorId: "test",
     success: true,
     status: "succeeded",

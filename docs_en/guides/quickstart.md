@@ -105,4 +105,4 @@ Content not to do ahead of time:
 | Layered dev regression | `npm run test:layers:dev` | Run unit + invariants + golden |
 | Single layer test | `npm run test:unit` / `npm run test:integration` / `npm run test:e2e` | Locate problems by layer |
 | Build diagnostics | `npm run build 2>&1 | grep error` | Filter build errors |
-| Document validation | `npm run docs:lint` | Check document links and format |
+| Document validation | `npm run docs:markdown-render` | Check document rendering and Markdown structure |

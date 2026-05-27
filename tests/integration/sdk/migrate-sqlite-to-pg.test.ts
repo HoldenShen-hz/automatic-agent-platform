@@ -21,6 +21,7 @@ import {
 import { SqliteDatabase } from "../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 import { createTestPgDatabase, shouldRunPgIntegration, resetPgTables } from "../../helpers/pg-test-helper.js";
 import { cleanupPath, createTempWorkspace } from "../../helpers/fs.js";
+import { TEST_POSTGRES_DSN } from "../../helpers/network-test-constants.js";
 
 // Check if PG integration tests can run
 const pgCheck = shouldRunPgIntegration();
@@ -138,7 +139,7 @@ test("2279: parseMigrateSqliteToPgArgs does not leak credentials in error messag
 });
 
 test("2279: parseMigrateSqliteToPgArgs correctly parses DSN without leaking", () => {
-  const dsnWithPassword = "postgresql://user:secretpassword123@localhost:5432/testdb";
+  const dsnWithPassword = TEST_POSTGRES_DSN;
   const options = parseMigrateSqliteToPgArgs([
     "--sqlite",
     "/tmp/test.db",
@@ -151,7 +152,7 @@ test("2279: parseMigrateSqliteToPgArgs correctly parses DSN without leaking", ()
 
   // Verify the error message doesn't leak when we have all required args
   const errorMessage = JSON.stringify(options);
-  assert.ok(!errorMessage.includes("secretpassword123") || errorMessage.includes(dsnWithPassword));
+    assert.ok(!errorMessage.includes("test-password") || errorMessage.includes(dsnWithPassword));
 });
 
 test("2279: migrateSqliteToPg output does not contain credentials in dry-run mode", async () => {

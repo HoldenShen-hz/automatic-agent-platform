@@ -10,13 +10,14 @@ import {
   startOAuthLogin,
 } from "../../../../src/sdk/cli/login.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
+import { OAUTH_CALLBACK_URL } from "../../../helpers/network-test-constants.js";
 
 test("2286: loadOAuthPkceConfig requires canonical OAuth PKCE env", () => {
   const config = loadOAuthPkceConfig({
     AA_OAUTH_AUTHORIZATION_URL: "https://idp.example.com/authorize",
     AA_OAUTH_TOKEN_URL: "https://idp.example.com/token",
     AA_OAUTH_CLIENT_ID: "cli-client",
-    AA_OAUTH_REDIRECT_URI: "http://127.0.0.1:8787/callback",
+    AA_OAUTH_REDIRECT_URI: OAUTH_CALLBACK_URL,
     AA_OAUTH_SCOPES: "openid profile email",
   });
 
@@ -31,7 +32,7 @@ test("2286: startOAuthLogin persists PKCE verifier and returns authorization URL
     AA_OAUTH_AUTHORIZATION_URL: "https://idp.example.com/authorize",
     AA_OAUTH_TOKEN_URL: "https://idp.example.com/token",
     AA_OAUTH_CLIENT_ID: "cli-client",
-    AA_OAUTH_REDIRECT_URI: "http://127.0.0.1:8787/callback",
+    AA_OAUTH_REDIRECT_URI: OAUTH_CALLBACK_URL,
     AA_OAUTH_SCOPES: "openid profile email",
   };
 
@@ -45,7 +46,7 @@ test("2286: startOAuthLogin persists PKCE verifier and returns authorization URL
     assert.ok(result.state.length > 0);
     assert.ok(result.authorizationUrl.includes("code_challenge="));
     assert.ok(result.authorizationUrl.includes("client_id=cli-client"));
-    assert.ok(result.authorizationUrl.includes("redirect_uri=http%3A%2F%2F127.0.0.1%3A8787%2Fcallback"));
+    assert.ok(result.authorizationUrl.includes(encodeURIComponent(OAUTH_CALLBACK_URL)));
     assert.equal(stateRecord.state, result.state);
     assert.ok(stateRecord.verifier.length > 10);
   } finally {
@@ -60,7 +61,7 @@ test("2286: finishOAuthLogin exchanges code, saves credentials, and clears pendi
     AA_OAUTH_AUTHORIZATION_URL: "https://idp.example.com/authorize",
     AA_OAUTH_TOKEN_URL: "https://idp.example.com/token",
     AA_OAUTH_CLIENT_ID: "cli-client",
-    AA_OAUTH_REDIRECT_URI: "http://127.0.0.1:8787/callback",
+    AA_OAUTH_REDIRECT_URI: OAUTH_CALLBACK_URL,
     AA_OAUTH_SCOPES: "openid profile email",
     AA_OAUTH_AUTH_CODE: "code-123",
     AA_OAUTH_CALLBACK_STATE: "",
@@ -118,7 +119,7 @@ test("2286: finishOAuthLogin requires encrypted credential storage", async () =>
           AA_OAUTH_AUTHORIZATION_URL: "https://idp.example.com/authorize",
     AA_OAUTH_TOKEN_URL: "https://idp.example.com/token",
     AA_OAUTH_CLIENT_ID: "cli-client",
-    AA_OAUTH_REDIRECT_URI: "http://127.0.0.1:8787/callback",
+    AA_OAUTH_REDIRECT_URI: OAUTH_CALLBACK_URL,
     AA_OAUTH_SCOPES: "openid profile email",
     AA_OAUTH_AUTH_CODE: "code-123",
     AA_OAUTH_CALLBACK_STATE: "missing-state",
@@ -138,7 +139,7 @@ test("2286: finishOAuthLogin accepts auth code from file and clears state on tok
     AA_OAUTH_AUTHORIZATION_URL: "https://idp.example.com/authorize",
     AA_OAUTH_TOKEN_URL: "https://idp.example.com/token",
     AA_OAUTH_CLIENT_ID: "cli-client",
-    AA_OAUTH_REDIRECT_URI: "http://127.0.0.1:8787/callback",
+    AA_OAUTH_REDIRECT_URI: OAUTH_CALLBACK_URL,
     AA_OAUTH_SCOPES: "openid profile email",
     AA_OAUTH_AUTH_CODE_FILE: authCodePath,
     AA_OAUTH_CALLBACK_STATE: "",
@@ -175,7 +176,7 @@ test("2286: finishOAuthLogin rejects short credential encryption keys", async ()
           AA_OAUTH_AUTHORIZATION_URL: "https://idp.example.com/authorize",
           AA_OAUTH_TOKEN_URL: "https://idp.example.com/token",
           AA_OAUTH_CLIENT_ID: "cli-client",
-          AA_OAUTH_REDIRECT_URI: "http://127.0.0.1:8787/callback",
+          AA_OAUTH_REDIRECT_URI: OAUTH_CALLBACK_URL,
           AA_OAUTH_SCOPES: "openid profile email",
           AA_OAUTH_AUTH_CODE: "code-123",
           AA_OAUTH_CALLBACK_STATE: "state-short",
@@ -195,7 +196,7 @@ test("2286: finishOAuthLogin rejects callback state mismatch and clears pending 
     AA_OAUTH_AUTHORIZATION_URL: "https://idp.example.com/authorize",
     AA_OAUTH_TOKEN_URL: "https://idp.example.com/token",
     AA_OAUTH_CLIENT_ID: "cli-client",
-    AA_OAUTH_REDIRECT_URI: "http://127.0.0.1:8787/callback",
+          AA_OAUTH_REDIRECT_URI: OAUTH_CALLBACK_URL,
     AA_OAUTH_SCOPES: "openid profile email",
     AA_OAUTH_AUTH_CODE: "code-123",
     AA_OAUTH_CALLBACK_STATE: "wrong-state",

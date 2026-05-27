@@ -11,7 +11,6 @@ const marketplaceFeature = createFeatureModule({
   path: "/shared/marketplace",
   permission: "authenticated",
   status: "Planned",
-  kind: "planned",
   summary: featureCopy.summary,
   render: MarketplaceWebView,
 });

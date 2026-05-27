@@ -11,7 +11,6 @@ const workflowDebuggerFeature = createFeatureModule({
   path: "/extended/debugger",
   permission: "pack_developer+",
   status: "Planned",
-  kind: "planned",
   summary: featureCopy.summary,
   render: WorkflowDebuggerWebView,
 });

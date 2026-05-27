@@ -1,9 +1,9 @@
 # Automatic Agent Platform — Module Framework Diagram Collection
 
-> **Version**: v1.2
-> **Date**: 2026-04-20
+> **Version**: v1.5
+> **Date**: 2026-05-26
 > **Companion Docs**: `00-platform-architecture.md` v2.7 · `01-code-structure.md` · `02-code-architecture-reference.md`
-> **Description**: This document presents system-wide views and internal structure/interaction relationships of each layer and module in ASCII framework diagram format.
+> **Description**: This document presents system-wide views and internal structure/interaction relationships of each layer and module in ASCII framework diagram format. v1.5 has synchronized recent interface layer, federation governance, Mission/UI contracts, and execution/state evidence facade layer writeback.
 
 ### Diagram Type Conventions
 
@@ -31,7 +31,14 @@ The following names are used consistently across this document, `01-code-structu
 
 ### Statistics Scope Declaration
 
-> All statistics in this document are **planning-level** figures, not final file counts; include migration mappings and new placeholder module estimates.
+> Historical diagrams in this document still retain some planning-level figures; v1.5 new or rewritten statistics are **2026-05-26 current workspace structure snapshots**. Accurate file counts should follow subsequent structure inventory scripts.
+
+### This Round Diagram Sync Focus (2026-05-26)
+
+1. P1 has continued to converge from "only admin/internal queries" to "public Layer C `/v1/*` query surface + admin/internal management surface coexisting".
+2. `scale-ecosystem/federation/` is now viewed as persistent governance capability, no longer understood as pure in-memory spec diagram.
+3. `ui/` Electron bridge has entered formal compatibility contract, not just shell placeholder.
+4. P3/P4/P5 have been supplemented with actual implemented module authority for `full-trajectory-evaluator`, `tool-gateway`, `sandbox-provider`, `memory-gateway`, `receipts`, `shared/reliability`, etc.
 
 ---
 
@@ -63,6 +70,8 @@ The following names are used consistently across this document, `01-code-structu
 | §22 | Structure diagram | Old system modules → new platform landing diagram |
 | §23 | Sequence diagram | Migration wave roadmap |
 | §24 | Data flow diagram | Interaction · Governance · Platform three-axis collaboration diagram |
+| §25 | Structure diagram + Constraint diagram | Cross-platform UI Monorepo and frontend/backend boundary |
+| §26 | Structure diagram | Mission · Yono · Test/Deployment support incremental diagram |
 
 ---
 
@@ -1667,7 +1676,7 @@ Three-axis collaboration invariants:
 
 ## Appendix C: Diagram Index
 
-| Section | Diagram Type | v1.2 Change Description |
+| Section | Diagram Type | v1.5 Change Description |
 |---------|--------------|------------------------|
 | §1 | Structure diagram | Corrected visual weight; divided into three visual bands |
 | §2 | Data flow diagram | Annotated AI operations as parallel support |
@@ -1688,3 +1697,115 @@ Three-axis collaboration invariants:
 | §22 | Structure diagram | **New**: Old system → new platform landing diagram |
 | §23 | Sequence diagram | **New**: Migration wave roadmap |
 | §24 | Data flow diagram | **New**: Three-axis collaboration diagram |
+| §25 | Structure diagram + Constraint diagram | **New**: Cross-platform UI Monorepo and frontend/backend boundary |
+| §26 | Structure diagram | **New**: Mission · Yono · Test/Deployment support incremental diagram |
+| §25 | Structure diagram + Constraint diagram | **New**: Cross-platform UI Monorepo and frontend/backend boundary |
+| §26 | Structure diagram | **New**: Mission · Yono · Test/Deployment support incremental diagram |
+
+---
+
+## §25 Cross-platform UI Monorepo and Frontend/Backend Boundary
+
+> **Diagram type: Structure diagram + Constraint diagram** — Expresses the `ui/` monorepo internal structure and the strict boundary between frontend and backend. Does not express runtime communication protocols.
+
+```text
+ui/ Monorepo Structure
+═══════════════════════════════════════════════════════════════════
+┌─────────────────────────────────────────────────────────────────┐
+│ ui/                                                              │
+│                                                                  │
+│  ┌─────────────┐  ┌──────────────────┐  ┌─────────────────────┐  │
+│  │    apps/    │  │   packages/     │  │       tools/        │  │
+│  │             │  │                  │  │                     │  │
+│  │ web/       │  │ shared/         │  │ codegen/            │  │
+│  │ electron-w │  │   platform/      │  │ mock-server/        │  │
+│  │ electron-m │  │   api-client/    │  │                     │  │
+│  │ tauri-win  │  │   hooks/         │  └─────────────────────┘  │
+│  │ tauri-mac  │  │   utils/         │                          │
+│  │ react-native│  │   ui-kit/        │  ┌─────────────────────┐  │
+│  │            │  │   constants/     │  │       tests/       │  │
+│  │            │  │                  │  │                     │  │
+│  │            │  ├──────────────────┤  │ unit/               │  │
+│  │            │  │   features/      │  │ integration/        │  │
+│  │            │  │                  │  │ e2e/                │  │
+│  │            │  │  dashboard/     │  │ features/           │  │
+│  │            │  │  mission-ctl/   │  │ apps/               │  │
+│  │            │  │  workflow-bldr/ │  │ a11y/               │  │
+│  │            │  │  evaluations/   │  │ playwright/         │  │
+│  │            │  │  settings/      │  │                     │  │
+│  └─────────────┘  │  ...           │  └─────────────────────┘  │
+│                  └──────────────────┘                           │
+└─────────────────────────────────────────────────────────────────┘
+
+Frontend/Backend Boundary Rules:
+  ui/ ──allowed──▶ public API / OpenAPI / generated schemas / typed mock seam
+  ui/ ──forbidden──▶ src/platform/* internal implementation, truth store, worker runtime, private services
+  feature ──allowed──▶ shared/api-client + hooks returning ViewModel
+  feature ──forbidden──▶ directly consuming backend DTOs or directly calling Electron/Tauri/RN APIs
+```
+
+---
+
+## §26 Mission · Yono · Test/Deployment Support Incremental Diagram
+
+> **Diagram type: Structure diagram** — Expresses the new authoritative modules discovered during v1.3 code structure review, and their ownership relationship with the original seven layers/five planes.
+
+```text
+v1.3 Incremental Structure
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  Mission Long-term Goal Governance                                          │
+│                                                                              │
+│  platform/contracts/mission/             platform/five-plane-control-plane/mission/
+│  ┌──────────────────────────┐            ┌──────────────────────────────┐  │
+│  │ MissionRecord            │            │ MissionLifecycleService       │  │
+│  │ MissionMembership        │            │ MissionResolver               │  │
+│  │ ContextSnapshot          │◀──────────▶│ MissionGovernanceService      │  │
+│  │ BudgetEnvelope           │            │ MissionBudgetService          │  │
+│  │ Error/Event payload      │            │ MissionLiveGuard / Handoff    │  │
+│  └──────────────────────────┘            └──────────────────────────────┘  │
+│            │                                            │                   │
+│            │ missionRef / snapshotRef                    │ fail-close        │
+│            ▼                                            ▼                   │
+│      P3 Harness / PlanGraph ───────────────▶ P4 NodeRun / Tool / Provider   │
+│                                                                              │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  Yono Business Domain Instance                                              │
+│                                                                              │
+│  domains/yono/                                                               │
+│  ┌──────────────────────────┐                                                │
+│  │ DomainDescriptor          │──▶ registry/                                  │
+│  │ workflow/risk/eval/SLA    │──▶ platform/P3/P4                             │
+│  │ tool bundle / ownership   │──▶ org-governance + control-plane             │
+│  └──────────────────────────┘                                                │
+│                                                                              │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  Test and Deployment Support                                                │
+│                                                                              │
+│  src/testing/        tests/invariants/       tests/leaks/                    │
+│  Test Common Fac.   Arch.Invariant Guard   Memory/Handle Leak Detection   │
+│                                                                              │
+│  src/benchmarks/     tests/performance/     deploy/                          │
+│  Performance Entry  Capacity/Benchmark     Helm · Terraform · Prometheus · Chaos │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Appendix A: Module Statistics Summary
+
+> Statistics scope: 2026-05-18 current workspace structure snapshot; detailed figures see `01-code-structure.md` v1.3. Historical planning estimates no longer used as acceptance criteria.
+
+| Top-level Directory | Layer | Current Structure Status | Key Additions/Calibration |
+|---------------------|-------|-------------------------|---------------------------|
+| `platform/` | Layer 1-2 | Authoritative core area | Mission, outbox, side-effect-ledger, reconciliation, degradation |
+| `domains/` | Layer 3 | Expanded | `yono/` as business domain instance |
+| `interaction/` | Layer 4 | Expanded | dashboard/autonomy/goal/nl/proactive/ux |
+| `org-governance/` | Layer 5 | Expanded | approval-routing, SSO/SCIM, delegated governance |
+| `scale-ecosystem/` | Layer 6 | Expanded | marketplace, billing, SLA, multi-region, runtime-services |
+| `ops-maturity/` | Layer 7 | Expanded | chaos, capacity, edge, debugger, explainability |
+| `plugins/` | Cross-layer | Stable | Plugin ecosystem |
+| `sdk/` | Cross-layer | Expanded | CLI, admin/harness/workbench SDK |
+| `apps/` | Entry | Stable | Backend composition startup |
+| `ui/` | Frontend | New authoritative area | Web/Electron/Tauri/Mobile + packages/features/shared |
+| `tests/` | Testing | Expanded | unit/integration/e2e/golden/performance/invariants/leaks |
+| `src/testing/` / `src/benchmarks/` | Support | New/Calibrated | Test infrastructure and performance entry |

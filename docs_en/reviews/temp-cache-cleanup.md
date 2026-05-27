@@ -14,7 +14,7 @@
 **Safe to delete**: Yes - these are in-memory databases written to disk during test runtime
 
 ```bash
-rm -f /Users/holden/Project/automatic_agent/automatic_agent_platform/:memory:*
+rm -f :memory:*
 ```
 
 ---
@@ -27,7 +27,7 @@ rm -f /Users/holden/Project/automatic_agent/automatic_agent_platform/:memory:*
 **Safe to delete**: Yes - unit/integration test artifacts
 
 ```bash
-rm -rf /Users/holden/Project/automatic_agent/automatic_agent_platform/.test-db/
+rm -rf .test-db/
 ```
 
 ---
@@ -40,7 +40,7 @@ rm -rf /Users/holden/Project/automatic_agent/automatic_agent_platform/.test-db/
 **Safe to delete**: Yes - temporary files
 
 ```bash
-rm -rf /Users/holden/Project/automatic_agent/automatic_agent_platform/.tmp/
+rm -rf .tmp/
 ```
 
 ---
@@ -52,7 +52,7 @@ rm -rf /Users/holden/Project/automatic_agent/automatic_agent_platform/.tmp/
 **Safe to delete**: Yes - audit artifacts
 
 ```bash
-rm -rf /Users/holden/Project/automatic_agent/automatic_agent_platform/.audit/
+rm -rf .audit/
 ```
 
 ---
@@ -64,7 +64,7 @@ rm -rf /Users/holden/Project/automatic_agent/automatic_agent_platform/.audit/
 **Safe to delete**: Yes - runtime artifacts
 
 ```bash
-rm -rf /Users/holden/Project/automatic_agent/automatic_agent_platform/.runtime/
+rm -rf .runtime/
 ```
 
 ---
@@ -76,7 +76,7 @@ rm -rf /Users/holden/Project/automatic_agent/automatic_agent_platform/.runtime/
 **Safe to delete**: Yes - Claude Code session tool artifacts
 
 ```bash
-rm -rf /Users/holden/Project/automatic_agent/automatic_agent_platform/.aa-tool-artifacts/
+rm -rf .aa-tool-artifacts/
 ```
 
 ---
@@ -88,7 +88,7 @@ rm -rf /Users/holden/Project/automatic_agent/automatic_agent_platform/.aa-tool-a
 **Safe to delete**: Yes - log files
 
 ```bash
-rm -f /Users/holden/Project/automatic_agent/automatic_agent_platform/logs/clamped-files.log
+rm -f logs/clamped-files.log
 ```
 
 ---
@@ -99,7 +99,7 @@ rm -f /Users/holden/Project/automatic_agent/automatic_agent_platform/logs/clampe
 **Safe to delete**: Yes - macOS system files
 
 ```bash
-find /Users/holden/Project/automatic_agent/automatic_agent_platform -name ".DS_Store" -delete
+find . -name ".DS_Store" -delete
 ```
 
 ---
@@ -115,7 +115,7 @@ find /Users/holden/Project/automatic_agent/automatic_agent_platform -name ".DS_S
 
 ```bash
 # Dry run first (remove -n after confirmation)
-cd /Users/holden/Project/automatic_agent/automatic_agent_platform
+cd <repo-root>
 
 # 1. Runtime in-memory files (50 files, ~100MB)
 rm -f :memory:*

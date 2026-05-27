@@ -988,7 +988,7 @@ test("throws when retries equals maxRetries", () => {
 
 ```yaml
 CI (GitHub Actions — .github/workflows/ci.yml)
-├── validate (matrix: Node 20 + 22)
+├── validate (Node 22)
 │   ├── npm ci
 │   ├── npm run lint
 │   ├── npm audit --audit-level=high

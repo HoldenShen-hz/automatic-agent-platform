@@ -1,7 +1,7 @@
 # Platform Architecture Implementation Consistency Audit Round
 
 > 2026-04-29 per-number re-audit results are available at:
-> [platform-architecture-implementation-consistency-audit_round_reaudit.md](/Users/holden/Project/automatic_agent/automatic_agent_platform/docs_zh/reviews/platform-architecture-implementation-consistency-audit_round_reaudit.md)
+> [platform-architecture-implementation-consistency-audit_round_reaudit.md](../../docs_zh/reviews/platform-architecture-implementation-consistency-audit_round_reaudit.md)
 >
 > Note:
 > - This file is preserved as an append-only historical snapshot and does not directly represent the current active defect list.

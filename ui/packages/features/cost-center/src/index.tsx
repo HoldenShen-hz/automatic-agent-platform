@@ -11,7 +11,6 @@ const costCenterFeature = createFeatureModule({
   path: "/shared/costs",
   permission: "domain_admin+",
   status: "Planned",
-  kind: "planned",
   summary: featureCopy.summary,
   render: CostCenterWebView,
 });

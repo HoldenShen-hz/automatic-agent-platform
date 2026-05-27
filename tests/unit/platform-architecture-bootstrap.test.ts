@@ -96,8 +96,22 @@ test("assertStartupOrderEnforced rejects duplicate startup target kinds", () => 
   assert.throws(
     () =>
       assertStartupOrderEnforced([
-        { targetKind: "api", label: "API", entryModule: "src/apps/api.ts", description: "api" },
-        { targetKind: "api", label: "API 2", entryModule: "src/apps/api-2.ts", description: "duplicate" },
+        {
+          targetKind: "api",
+          rootEntryModule: "src/apps/api.ts",
+          description: "api",
+          requiredLayers: [],
+          startupCommand: null,
+          appManifest: null,
+        },
+        {
+          targetKind: "api",
+          rootEntryModule: "src/apps/api-2.ts",
+          description: "duplicate",
+          requiredLayers: [],
+          startupCommand: null,
+          appManifest: null,
+        },
       ]),
     /Duplicate startup target kind: api/,
   );
