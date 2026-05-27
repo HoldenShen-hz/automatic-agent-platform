@@ -38,7 +38,7 @@ export function createExecutionPlan(_input: {
 process.emitWarning(
   "[DEPRECATED] execution-plan/ is deprecated. " +
   "Use PlanGraphBundle from src/platform/contracts/executable-contracts instead. " +
-  "See: https://docs.example.com/platform/contracts#execution-plan-migration",
+  "See: docs_zh/contracts/README.md",
   { code: "AA_LEGACY_EXECUTION_PLAN" },
 );
 

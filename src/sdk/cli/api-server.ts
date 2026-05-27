@@ -148,9 +148,9 @@ async function main(): Promise<void> {
       pluginRegistry,
       eventPublisher,
       semanticVectorStore,
-      snapshotStore: new KnowledgeSnapshotStore({
-        snapshotPath: join(dataRoot, "knowledge", "knowledge-plane.snapshot.json"),
-      }),
+                snapshotStore: new KnowledgeSnapshotStore({
+                    snapshotPath: join("data", "knowledge", "knowledge-plane.snapshot.json"),
+                }),
     });
     for (const namespace of registryBootstrap.knowledgeNamespaces) {
       domainRegistry.registerKnowledgeNamespace(namespace.path, namespace.ownerDomainId);

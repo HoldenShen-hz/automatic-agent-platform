@@ -7,9 +7,6 @@
 
 import { existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
-import { createRequire } from "node:module";
-
-const require = createRequire(import.meta.url);
 
 // ---------------------------------------------------------------------------
 // Types
@@ -243,19 +240,14 @@ export class DirectoryConventionValidator {
     }
 
     try {
-      const denoRuntime = globalThis as typeof globalThis & {
-        Deno?: { readDirSync?: (path: string) => Iterable<{ isDirectory(): boolean; name: string }> };
-      };
-      const entries = denoRuntime.Deno?.readDirSync?.(fullPath) ?? require("node:fs").readdirSync(fullPath, { withFileTypes: true });
-      if (Array.isArray(entries)) {
-        return entries
-          .filter((entry: { isDirectory: () => boolean; name: string }) => entry.isDirectory() && !entry.name.startsWith("_") && !entry.name.startsWith("."))
-          .map((entry: { name: string }) => join(relativePath, entry.name));
-      }
-    } catch {
-      // ignore
+      return readdirSync(fullPath, { withFileTypes: true })
+        .filter((entry) => entry.isDirectory() && !entry.name.startsWith("_") && !entry.name.startsWith("."))
+        .map((entry) => join(relativePath, entry.name));
+    } catch (error) {
+      throw new Error(
+        `platform_structure.list_module_dirs_failed:${relativePath}:${error instanceof Error ? error.message : String(error)}`,
+      );
     }
-    return [];
   }
 }
 

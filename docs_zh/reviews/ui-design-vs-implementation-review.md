@@ -1,34 +1,24 @@
 # UI 设计与实现一致性评审
 
-本文件为 UI review 权威版本，用于回写 `ui/` 子工程在当前仓库中的真实落地状态，并对 `UIR0-UIR6` 与后续 GAP 项进行统一收口。
+> 维护日期：2026-05-27
+> 范围：`ui/apps/web`、共享状态层、feature registry、多端 shell。
 
-## 1. 仓库真相快照
+## 当前结论
 
-- TS/TSX 文件总数：330
-- 对外注册的 feature 路由：33
-- 核心基线验证命令：`npm test`
-- 结论：已完成闭环
+| GAP | 结论 | 证据 |
+| --- | --- | --- |
+| GAP-01 路由与 feature registry 对齐 | 已闭环 | `ui/apps/web/src/feature-registry.ts`、`ui/tsconfig.json`、`tests/features/registry.test.ts` |
+| GAP-02 状态层与 feature VM 对齐 | 已闭环 | `ui/packages/shared/state/src/index.ts`、`ui/packages/features/task-cockpit/src/hooks/index.ts`、`ui/packages/features/workflow-builder/src/hooks/index.ts` |
+| GAP-03 UI 契约入口与版本化来源对齐 | 已闭环 | `ui/packages/shared/api-client/src/endpoints.ts`、`ui/apps/web/src/app-shell.tsx`、`docs_zh/contracts/ui_console_and_cockpit_contract.md` |
 
-## 2. 评审范围
+## 回归命令
 
-- 覆盖 `apps/web`、shared runtime、feature registry、桌面/移动 smoke shell。
-- 重点核对 `FeatureWorkbenchPanel`、多端导航、状态管理、API client 与 mock server 对齐。
+```bash
+npm --prefix ui run typecheck
+npm --prefix ui run test -- tests/features/registry.test.ts tests/features/flows.test.tsx
+```
 
-## 3. GAP 摘要
+## 维护规则
 
-- GAP-01：UI 路由与 feature registry 对齐。
-  当前状态：已完成
-- GAP-02：UI runtime 与 retry/dedupe/idempotency 拦截器对齐。
-  当前状态：已完成
-- GAP-03：合同版本探活与 `/version` 对齐。
-  当前状态：已完成
-
-## 4. 闭环说明
-
-- `npm test`、UI 定向回归与运行时契约回归已纳入统一验证路径。
-- 文档与实现均以仓库当前 feature 数量、现有路由与当前组件接口为准，不再引用旧版 27 路由口径。
-
-## 5. 8.1 GAP 整改状态回写
-
-- 所有已识别的 UI GAP 已完成闭环。
-- 后续新增 feature 或 API 变更，必须同步回写本文件与相关架构/契约文档。
+- 新增 UI GAP 时必须写明源码入口、测试命令、未闭环风险。
+- 不再接受“已完成”但无文件和命令证据的回写方式。

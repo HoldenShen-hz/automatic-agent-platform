@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-05-19T02:22:29.425Z",
+  "generatedAt": "2026-05-27T04:34:07.825Z",
   "latestVersion": 46,
   "snapshots": [
     {
@@ -12,13 +12,13 @@
       "version": 5,
       "name": "0005_remote_fallback_routing",
       "path": "v5-snapshot.db",
-      "sizeBytes": 1052672
+      "sizeBytes": 1056768
     },
     {
       "version": 10,
       "name": "0010_remote_log_aggregation",
       "path": "v10-snapshot.db",
-      "sizeBytes": 1052672
+      "sizeBytes": 1056768
     },
     {
       "version": 20,
@@ -30,13 +30,13 @@
       "version": 30,
       "name": "0030_workflow_dispatch_receipt_audit",
       "path": "v30-snapshot.db",
-      "sizeBytes": 1277952
+      "sizeBytes": 1544192
     },
     {
       "version": 46,
       "name": "0046_config_rollout_persistence",
       "path": "v46-snapshot.db",
-      "sizeBytes": 2150400
+      "sizeBytes": 2187264
     }
   ]
 }

@@ -170,7 +170,7 @@ interface Citation {
 - [ADR-016 OAPEFLIR 八阶段认知循环模型](./016-oapeflir-loop-model.md)
 - [ADR-017 Knowledge 架构重构](./017-knowledge-architecture-refactor.md)
 - [ADR-080 Learn Hub](./080-learn-hub-pattern-detection.md)
-- `src/core/knowledge/` 模块
+- `src/platform/five-plane-state-evidence/knowledge/` 模块
 
 ## 来源章节
 

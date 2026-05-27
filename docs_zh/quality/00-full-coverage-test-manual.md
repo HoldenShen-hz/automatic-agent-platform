@@ -3903,7 +3903,7 @@ Yono Business 作为业务域加入系统后，不能只验证配置文件存在
 
 为避免 v4.1 补充章停留在人工清单，本轮新增 `tests/unit/quality/full-coverage-test-manual-gaps.test.ts` 作为手册落地守护测试。该测试不替代各专项测试本身，而是验证手册中的每个测试缺口都有可定位的运行时代码证据和自动化测试证据。
 
-同时新增 `tests/unit/quality/full-coverage-real-paths.test.ts` 与 `tests/unit/quality/full-coverage-operational-real-paths.test.ts`，直接执行 Mission、Yono Business、Prompt Guard、Budget Guard、Startup Env Schema、Prometheus Exporter、Fixture Redactor、Chaos Scheduler、Supply-chain Audit Script、部署/DR/告警资产等生产模块或真实仓库配置，作为 Part V 的最小可执行产品级与运营级覆盖基线。
+同时新增 `tests/integration/quality/full-coverage-real-paths.test.ts` 与 `tests/integration/quality/full-coverage-operational-real-paths.test.ts`，直接执行 Mission、Yono Business、Prompt Guard、Budget Guard、Startup Env Schema、Prometheus Exporter、Fixture Redactor、Chaos Scheduler、Supply-chain Audit Script、部署/DR/告警资产等生产模块或真实仓库配置，作为 Part V 的最小可执行产品级与运营级覆盖基线。
 
 | 守护对象 | 自动化断言 |
 | -------- | ---------- |

@@ -38,8 +38,8 @@
 
 ### 新增文件
 
-- `src/core/knowledge/knowledge-query-service.ts`（已实现）：三级查询服务。
-- `src/core/knowledge/indexing/embedding-provider.ts`：Embedding provider 抽象（部分实现）。
+- `src/platform/five-plane-state-evidence/knowledge/knowledge-query-service.ts`（已实现）：三级查询服务。
+- `src/platform/five-plane-state-evidence/knowledge/indexing/embedding-provider.ts`：Embedding provider 抽象（部分实现）。
 
 ## 后果
 

@@ -45,7 +45,7 @@ interface HandoffSerializer {
 
 ### 当前实现状态
 
-- `src/core/agent-loop/handoff-model.ts`：有类型定义，无实际序列化逻辑。
+- `src/platform/five-plane-orchestration/agent-delegation/handoff-model.ts`：有类型定义，无实际序列化逻辑。
 - GAP-V2-05（Handoff 四层协议）待实现。
 
 ## 后果

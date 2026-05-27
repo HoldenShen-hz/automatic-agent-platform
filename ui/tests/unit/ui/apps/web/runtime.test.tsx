@@ -1,12 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen, cleanup, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, cleanup, fireEvent } from "@testing-library/react";
 import type { ReactElement } from "react";
 import React from "react";
 import {
   createAuthInterceptor,
   createTenantInterceptor,
-  createDedupeInterceptor,
-  createRetryInterceptor,
   DEFAULT_ACCEPT_VERSIONS,
   fetchContractVersion,
 } from "@aa/shared-api-client";

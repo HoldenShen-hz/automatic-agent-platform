@@ -1,6 +1,7 @@
 import { createGzip } from "node:zlib";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { Writable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 
 const distRoot = join(process.cwd(), "apps/web/dist/assets");
@@ -27,11 +28,16 @@ if (!existsSync(distRoot)) {
 async function gzipSize(filePath) {
   const { createReadStream } = await import("node:fs");
   const chunks = [];
-  await pipeline(createReadStream(filePath), createGzip(), async function* (source) {
-    for await (const chunk of source) {
-      chunks.push(chunk);
-    }
-  });
+  await pipeline(
+    createReadStream(filePath),
+    createGzip(),
+    new Writable({
+      write(chunk, _encoding, callback) {
+        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+        callback();
+      },
+    }),
+  );
   return Buffer.concat(chunks).length;
 }
 
@@ -63,11 +69,13 @@ function loadLighthouseSummaries() {
   }
 }
 
-const assets = readdirSync(distRoot).map((file) => ({
-  file,
-  bytes: statSync(join(distRoot, file)).size,
-  gzipBytes: null as number | null,
-}));
+const assets = readdirSync(distRoot)
+  .filter((file) => !file.endsWith(".map"))
+  .map((file) => ({
+    file,
+    bytes: statSync(join(distRoot, file)).size,
+    gzipBytes: null,
+  }));
 
 for (const asset of assets) {
   try {

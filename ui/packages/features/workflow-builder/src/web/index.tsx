@@ -7,15 +7,8 @@ const LazyFlowCanvas = lazy(async () => import("./flow-canvas").then((module) =>
 
 export function WorkflowBuilderWebView(): ReactElement {
   const vm = useWorkflowBuilderVm();
-  const nodes: FlowCanvasProps["nodes"] = [
-    { id: "observe", position: { x: 0, y: 20 }, data: { label: "Observe" }, type: "default" },
-    { id: "plan", position: { x: 180, y: 20 }, data: { label: "Plan" }, type: "default" },
-    { id: "execute", position: { x: 360, y: 20 }, data: { label: "Execute" }, type: "default" },
-  ];
-  const edges: FlowCanvasProps["edges"] = [
-    { id: "e1", source: "observe", target: "plan" },
-    { id: "e2", source: "plan", target: "execute" },
-  ];
+  const nodes: FlowCanvasProps["nodes"] = vm.nodes;
+  const edges: FlowCanvasProps["edges"] = vm.edges;
   return (
     <FeatureScaffold title="Workflow Builder" summary="可视化工作流构建器" status="Planned">
       <div style={{ height: 280, marginBottom: 16, border: `1px solid ${designTokens.color.border}`, borderRadius: 12, overflow: "hidden" }}>

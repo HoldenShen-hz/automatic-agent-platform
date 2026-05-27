@@ -328,8 +328,8 @@ test("StableReleasePackageReport runbookRefs contains expected documentation", (
     });
 
     assert.ok(report.runbookRefs.length > 0);
-    const hasReleaseReadiness = report.runbookRefs.some((ref) => ref.includes("release_readiness"));
-    assert.ok(hasReleaseReadiness, "Expected runbook reference to include release_readiness");
+    const hasReleaseChecklist = report.runbookRefs.some((ref) => ref.includes("01-release-checklist"));
+    assert.ok(hasReleaseChecklist, "Expected runbook reference to include the release checklist");
   } finally {
     rmSync(workspace, { recursive: true, force: true });
   }

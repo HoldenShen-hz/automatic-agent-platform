@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AuthService, TokenManager } from "@aa/shared-auth";
-import type { AuthIdentity } from "@aa/shared-auth";
 
 describe("AuthService", () => {
   afterEach(() => {

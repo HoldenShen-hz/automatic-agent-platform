@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { RESTClient } from "@aa/shared-api-client";
+import type { ApprovalDTO } from "@aa/shared-types";
 
 import { createApprovalMobileCards } from "../../../../../../packages/features/approval/src/mobile/index";
 
@@ -17,7 +18,7 @@ describe("createApprovalMobileCards", () => {
       patch: vi.fn(),
       delete: vi.fn(),
     } as unknown as RESTClient;
-    const approvals = [
+    const approvals: ApprovalDTO[] = [
       {
         approvalId: "approval-1",
         taskId: "task-production-rollout",
@@ -27,7 +28,7 @@ describe("createApprovalMobileCards", () => {
     ];
     const { approveApproval, rejectApproval } = await import("@aa/shared-api-client");
 
-    const cards = createApprovalMobileCards(approvals as any, client);
+    const cards = createApprovalMobileCards(approvals, client);
 
     expect(cards).toHaveLength(2);
     expect(cards[0]?.actionType).toBe("approve");
@@ -54,14 +55,14 @@ describe("createApprovalMobileCards", () => {
       patch: vi.fn(),
       delete: vi.fn(),
     } as unknown as RESTClient;
-    const approvals = Array.from({ length: 6 }, (_, index) => ({
+    const approvals: ApprovalDTO[] = Array.from({ length: 6 }, (_, index) => ({
       approvalId: `approval-${index + 1}`,
       taskId: `task-${index + 1}`,
       riskLevel: "medium",
       reasonSummary: `Reason ${index + 1}`,
     }));
 
-    const cards = createApprovalMobileCards(approvals as any, client);
+    const cards = createApprovalMobileCards(approvals, client);
 
     expect(cards).toHaveLength(10);
     expect(cards.some((card) => card.id.startsWith("approval-6:"))).toBe(false);

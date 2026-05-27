@@ -64,7 +64,7 @@ describe("R14-33: Priority sorted queue", () => {
 
   it("handles unknown severity values by placing them last", () => {
     const incidents: IncidentDTO[] = [
-      { id: "unknown", severity: "unknown-severity" as any, title: "Unknown", summary: "desc", createdAt: "2026-05-09T09:00:00.000Z" },
+      { id: "unknown", severity: "unknown-severity" as unknown as IncidentDTO["severity"], title: "Unknown", summary: "desc", createdAt: "2026-05-09T09:00:00.000Z" },
       { id: "critical", severity: "critical", title: "Critical", summary: "desc", createdAt: "2026-05-09T08:00:00.000Z" },
     ];
 

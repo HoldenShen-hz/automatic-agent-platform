@@ -8,6 +8,9 @@ const mockPatch = vi.fn(async () => undefined);
 const mockOverride = vi.fn(async () => undefined);
 
 vi.mock("@aa/ui-core", () => ({
+  designTokens: {
+    color: { border: "#d0d7de" },
+  },
   FeatureScaffold: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   ListCard: ({ items }: { items: Array<{ title: string; description: string }> }) => (
     <div>

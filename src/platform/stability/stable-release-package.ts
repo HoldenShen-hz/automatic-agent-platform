@@ -34,13 +34,18 @@ const SUPPORTED_PROFILES: StableEvidenceProfileName[] = ["smoke", "24h", "72h"];
 
 /** Runbook references for stable release procedures */
 const RUNBOOK_REFS = [
-  "docs_zh/operations/release_readiness_checklist.md",
-  "docs_zh/operations/stable_launch_execution_plan.md",
-  "docs_zh/operations/stable_runtime_validation_plan.md",
+  "docs_zh/operations/operations-checklist.md",
+  "docs_zh/quality/01-release-checklist.md",
+  "docs_zh/operations/runbook.md",
+  "docs_zh/operations/disaster-recovery-runbook.md",
   "docs_zh/contracts/architecture_governance_and_versioning_contract.md",
   "docs_zh/contracts/release_rollout_and_rollback_contract.md",
   "docs_zh/contracts/remote_coordination_and_disaster_recovery_contract.md",
 ];
+
+function resolveDefaultEvidenceRootDir(): string {
+  return join(process.cwd(), "data", "stable-evidence");
+}
 
 /** Options for creating a release package */
 export interface StableReleasePackageOptions {
@@ -560,6 +565,7 @@ export function createStableReleasePackage(
   options: StableReleasePackageOptions,
 ): StableReleasePackageReport {
   mkdirSync(options.outputDir, { recursive: true });
+  const evidenceRootDir = options.evidenceRootDir ?? resolveDefaultEvidenceRootDir();
 
   const artifacts = {
     packageReportPath: join(options.outputDir, "stable-release-package-report.json"),
@@ -570,13 +576,13 @@ export function createStableReleasePackage(
 
   // Build gate report
   const gate = buildStableReleaseGateReport({
-    evidenceRootDir: options.evidenceRootDir,
+    evidenceRootDir,
     ...(options.targetStatus ? { targetStatus: options.targetStatus } : {}),
   });
   writeStableReleaseGateReport(artifacts.gateReportPath, gate);
 
   // Collect profile summaries
-  const profiles = collectProfiles(options.evidenceRootDir);
+  const profiles = collectProfiles(evidenceRootDir);
   const missingRequiredProfiles = gate.requiredProfiles.filter(
     (profile) => !profiles.some((item) => item.profile === profile && item.present),
   );
@@ -592,7 +598,7 @@ export function createStableReleasePackage(
     packageId: `stable_release_package_${gate.checkedAt}`,
     componentId: "stable_core",
     createdAt: gate.checkedAt,
-    evidenceRootDir: options.evidenceRootDir,
+    evidenceRootDir,
     outputDir: options.outputDir,
     targetStatus: gate.targetStatus,
     overallVerdict: gate.overallVerdict,

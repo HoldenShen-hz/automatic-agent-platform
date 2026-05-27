@@ -17,4 +17,11 @@
 - `已处理（归并）`: 已复核并归并到修复簇、重复问题或治理边界。
 - `治理项`: 不是单次小补丁能完成的结构改造，必须后续拆分实施。
 
+## 当前入口
+
+- `platforme-full-review-b.md`：当前持续收口的大表
+- `platforme-full-review-a.md`：前一批次问题总表
+- `platforme-full-review.md`：历史长表与复核结论归档
+- `issues-table.md`：design review 行级证据表
+
 运营入口见 `docs_zh/operations/review-closure-board.md`。

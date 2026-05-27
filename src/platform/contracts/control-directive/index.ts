@@ -248,7 +248,7 @@ export function createControlDirective(input: {
   throw new ValidationError(
     "control_directive.legacy_contract_forbidden",
     `ControlDirective is deprecated per §4.3. Use OperationalDirective or DecisionDirective instead. ` +
-    `See: https://docs.example.com/platform/contracts#control-directive-migration`,
+    `See: docs_zh/contracts/README.md`,
     { userMessage: "Legacy ControlDirective contract is forbidden. Use OperationalDirective or DecisionDirective." },
   );
 }

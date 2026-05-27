@@ -1,6 +1,5 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { fireEvent, render, screen, cleanup } from "@testing-library/react";
-import type { ReactElement } from "react";
 import React from "react";
 import { createMobilePlatformAdapter } from "@aa/shared-platform";
 import { MobileApp } from "../../../../../apps/mobile/src/App";

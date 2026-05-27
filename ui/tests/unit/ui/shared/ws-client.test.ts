@@ -4,7 +4,6 @@ import {
   BrowserWSClient,
   SharedWorkerWSClient,
   createRuntimeWSClient,
-  type WebSocketFactory,
   type WSEventEnvelope,
 } from "@aa/shared-api-client";
 
@@ -431,10 +430,9 @@ describe("BrowserWSClient", () => {
   });
 
   it("ignores inbound events that carry untrusted replay ids", async () => {
-    let socketRef: InvalidReplaySocket | null = null;
-
     class InvalidReplaySocket {
       public static readonly OPEN = 1;
+      public static lastInstance: InvalidReplaySocket | null = null;
       public readyState = InvalidReplaySocket.OPEN;
       public onopen: (() => void) | null = null;
       public onmessage: ((event: { data: string }) => void) | null = null;
@@ -443,7 +441,7 @@ describe("BrowserWSClient", () => {
       public readonly sent: string[] = [];
 
       public constructor(_url: string, _protocols?: string | string[]) {
-        socketRef = this;
+        InvalidReplaySocket.lastInstance = this;
         queueMicrotask(() => this.onopen?.());
       }
 
@@ -460,8 +458,8 @@ describe("BrowserWSClient", () => {
     client.connect("ws://example.com/ws", "token");
 
     await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(socketRef).not.toBeNull();
-    const socket = socketRef!;
+    expect(InvalidReplaySocket.lastInstance).not.toBeNull();
+    const socket = InvalidReplaySocket.lastInstance!;
     socket.onmessage?.({
       data: JSON.stringify({
         channel: "updates",

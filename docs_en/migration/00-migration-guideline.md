@@ -957,7 +957,7 @@ Each dual-write object must have an assigned owner, and "dual-write consistency 
 
 ### 9.1 Current Status Analysis
 
-`AuthoritativeTaskStore` (`src/core/storage/authoritative-task-store.ts`) is the global data access facade of the current system:
+`AuthoritativeTaskStore` (`src/platform/five-plane-state-evidence/truth/sqlite/authoritative-task-store-core.ts` and its split modules in the same directory) is the global data access facade of the current system:
 
 | Metric | Value |
 |--------|-------|

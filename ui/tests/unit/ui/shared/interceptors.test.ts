@@ -13,6 +13,9 @@ import {
   type RestClientResponse,
 } from "@aa/shared-api-client";
 
+type RequestWithDedupeKey = RestClientRequest & { dedupeKey?: string };
+type ResponseWithDedupeKey = RestClientResponse<unknown> & { dedupeKey?: string };
+
 function createMockRequest(
   method: RestClientRequest["method"] = "GET",
   extraHeaders: Record<string, string> = {},
@@ -316,7 +319,7 @@ describe("createDedupeInterceptor", () => {
     await interceptor.onRequest!(request1);
     const result2 = await interceptor.onRequest!(request2);
 
-    expect((result2 as any).dedupeKey).toBeDefined();
+    expect((result2 as RequestWithDedupeKey).dedupeKey).toBeDefined();
   });
 
   it("clears dedupe key on response", async () => {
@@ -328,7 +331,7 @@ describe("createDedupeInterceptor", () => {
 
     const result = await interceptor.onResponse!(response);
 
-    expect((result as any).dedupeKey).toBeUndefined();
+    expect((result as ResponseWithDedupeKey).dedupeKey).toBeUndefined();
   });
 
   it("differentiates by method", async () => {
@@ -343,8 +346,8 @@ describe("createDedupeInterceptor", () => {
 
     // First request doesn't get dedupeKey (it's the original)
     // Second request (duplicate) gets dedupeKey attached
-    expect((result1 as any).dedupeKey).toBeUndefined();
-    expect((result2 as any).dedupeKey).toBeDefined();
-    expect((result2 as any).dedupeKey).toContain("POST:/api/v1/test");
+    expect((result1 as RequestWithDedupeKey).dedupeKey).toBeUndefined();
+    expect((result2 as RequestWithDedupeKey).dedupeKey).toBeDefined();
+    expect((result2 as RequestWithDedupeKey).dedupeKey).toContain("POST:/api/v1/test");
   });
 });

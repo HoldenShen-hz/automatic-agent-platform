@@ -7,7 +7,7 @@ import type { OperationalDirective, DecisionDirective } from "../control-directi
 process.emitWarning(
   "[DEPRECATED] request-envelope/ is deprecated. " +
   "Use RequestEnvelope from src/platform/contracts/executable-contracts instead. " +
-  "See: https://docs.example.com/platform/contracts#request-envelope-migration",
+  "See: docs_zh/contracts/README.md",
   { code: "AA_LEGACY_REQUEST_ENVELOPE" },
 );
 

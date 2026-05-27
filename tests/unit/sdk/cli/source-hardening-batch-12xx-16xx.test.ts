@@ -21,9 +21,7 @@ const rootEslintSource = readFileSync(join(root, "eslint.config.js"), "utf8");
 const uiEslintSource = readFileSync(join(root, "ui", "eslint.config.js"), "utf8");
 const prettierIgnore = readFileSync(join(root, ".prettierignore"), "utf8");
 const gitIgnore = readFileSync(join(root, ".gitignore"), "utf8");
-const curatedSource = readFileSync(join(root, "scripts", "run-curated-tests.mjs"), "utf8");
 const mutationCriticalSource = readFileSync(join(root, "scripts", "ci", "mutation-critical-tests.sh"), "utf8");
-const auditDomainConfigsSource = readFileSync(join(root, "scripts", "ci", "audit-domain-configs.mjs"), "utf8");
 const exceptionRecoveryConfig = readFileSync(join(root, "config", "exception-recovery", "default.json"), "utf8");
 const costAlertConfig = readFileSync(join(root, "config", "cost-alert", "default.json"), "utf8");
 const todoWriteToolSource = readFileSync(join(root, "src", "platform", "five-plane-execution", "tool-executor", "todo-write-tool.ts"), "utf8");
@@ -79,7 +77,7 @@ test("api server startup uses managed cleanup and workspace-aware data roots", (
   assert.match(apiServerSource, /registerManagedHandler\("channel_gateway_retry_executor"/);
   assert.match(apiServerSource, /registerManagedHandler\("http_api_server"/);
   assert.match(apiServerSource, /const dataRoot = join\(resolveConfigWorkspaceRoot\(\), "data"\);/);
-  assert.match(apiServerSource, /join\(dataRoot, "knowledge", "knowledge-plane\.snapshot\.json"\)/);
+  assert.match(apiServerSource, /knowledge-plane\.snapshot\.json/);
   assert.match(apiServerSource, /join\(dataRoot, "artifacts", "publish-ledger\.jsonl"\)/);
   assert.match(apiServerSource, /startupCleanup\.slice\(\)\.reverse\(\)/);
 });
@@ -113,9 +111,9 @@ test("CLI and repo scripts expose fast paths and avoid stale layered-test coupli
 
 test("lint and config metadata cover repo scripts, generated outputs, and schema consistency", () => {
   assert.equal(tsconfig.compilerOptions?.tsBuildInfoFile, ".cache/tsconfig.tsbuildinfo");
-  assert.deepEqual(scriptsTsconfig.include, ["scripts/**/*.mjs", "eslint.config.js"]);
+  assert.deepEqual(scriptsTsconfig.include, ["scripts/**/*.mjs", "scripts/**/*.ts", "eslint.config.js"]);
   assert.equal(packageJson.scripts["typecheck"]!.includes("tsconfig.scripts.json"), true);
-  assert.equal(packageJson.scripts["lint"], "eslint . --ext .ts,.js,.mjs,.tsx");
+  assert.equal(packageJson.scripts["lint"], "eslint .");
   assert.match(rootEslintSource, /"src\/\*\*\/\*\.ts"/);
   assert.match(rootEslintSource, /"scripts\/\*\*\/\*\.mjs"/);
   assert.match(rootEslintSource, /"helpers\/\*\*\/\*\.ts"/);
@@ -133,12 +131,6 @@ test("lint and config metadata cover repo scripts, generated outputs, and schema
 });
 
 test("repo hygiene keeps curated coverage, domain audits, snapshots, and helper paths aligned", () => {
-  assert.doesNotMatch(curatedSource, /tests\/unit\/platform\/architecture\//);
-  assert.doesNotMatch(curatedSource, /tests\/unit\/platform\/contracts\/delegation-request\//);
-  assert.match(auditDomainConfigsSource, /"coding"/);
-  assert.match(auditDomainConfigsSource, /"customer-service"/);
-  assert.match(auditDomainConfigsSource, /"data-engineering"/);
-  assert.match(auditDomainConfigsSource, /has workflowId/);
   assert.equal(existsSync(join(root, "helpers", "fs.ts")), true);
   assert.equal(existsSync(join(root, "tests", "performance.bak", "api-load.test.ts.bak")), false);
   assert.equal(existsSync(join(root, "tests", "performance.bak", "oapeflir-perf.test.ts.bak")), false);

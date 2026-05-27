@@ -90,14 +90,17 @@ export class PgAdvisoryLockAdapter implements DistributedLockAdapter {
     const { lockKey, owner } = input;
     const now = new Date().toISOString();
     const ttlMs = input.ttlMs ?? 30000;
+    let advisoryKey: bigint | null = null;
+    let sessionLockHeld = false;
     try {
       this.ensureConnected();
       const driver = this.sql!;
-      const advisoryKey = this.lockKeyToAdvisoryKey(lockKey);
+      advisoryKey = this.lockKeyToAdvisoryKey(lockKey);
       interface AcquireRow extends Record<string, unknown> { acquired: boolean; fencing_token?: number }
       const rows = await driver<AcquireRow>`SELECT pg_try_advisory_lock(${advisoryKey}) as acquired, txid_current()::bigint as fencing_token`;
       const result = rows[0];
       if (result?.acquired) {
+        sessionLockHeld = true;
         const fencingToken = Number(result.fencing_token);
         const lock = { lockKey, owner, fencingToken, status: "held", acquiredAt: now, ttlMs, metadata: null } satisfies LockRecord;
         this.heldLocks.set(lockKey, lock);
@@ -112,6 +115,14 @@ export class PgAdvisoryLockAdapter implements DistributedLockAdapter {
         throw new LockingError("lock.pg_advisory_not_implemented", "lock.pg_advisory_not_implemented: PostgreSQL advisory lock backend requires pg driver");
       }
       return { acquired: false };
+    } finally {
+      if (sessionLockHeld && advisoryKey != null && this.sql != null && !this.heldLocks.has(lockKey)) {
+        try {
+          await this.sql`SELECT pg_advisory_unlock(${advisoryKey}) as released`;
+        } catch {
+          // Best-effort unlock for throw paths after advisory lock acquisition.
+        }
+      }
     }
   }
 

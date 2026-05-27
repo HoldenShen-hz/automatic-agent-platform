@@ -18,7 +18,14 @@ check("ci npm audit sarif pipeline", /npm audit --audit-level=high --omit=dev --
 check("ci typecheck", /npm run typecheck/.test(ci), "CI runs typecheck");
 check("ci coverage gate", /npm run coverage:gate/.test(ci), "CI runs coverage gate");
 check("ci codeql", /github\/codeql-action\/analyze@v3/.test(ci), "CI runs CodeQL");
-check("ci trivy", /aquasecurity\/trivy-action@0\.32\.0/.test(ci) && /image-ref:\s*automatic-agent/.test(ci) && /CRITICAL,HIGH/.test(ci), "CI scans image for critical/high vulnerabilities with pinned Trivy action");
+check(
+  "ci trivy",
+  /aquasecurity\/trivy-action@0\.32\.0/.test(ci)
+    && /IMAGE_REPOSITORY:\s*automatic-agent-platform/.test(ci)
+    && /image-ref:\s*\$\{\{\s*env\.IMAGE_REGISTRY\s*\}\}\/\$\{\{\s*env\.IMAGE_REPOSITORY\s*\}\}:\$\{\{\s*env\.IMAGE_TAG\s*\}\}/.test(ci)
+    && /CRITICAL,HIGH/.test(ci),
+  "CI scans the same fully-qualified image naming surface used for release promotion",
+);
 
 const publish = read(".github/workflows/publish-image.yml");
 check("publish environment approval", /environment:\s*\$\{\{/.test(publish), "publish job binds GitHub environment");

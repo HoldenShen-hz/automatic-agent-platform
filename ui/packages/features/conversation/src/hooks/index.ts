@@ -127,18 +127,19 @@ function loadPersistedState(): PersistedConversationState | null {
 }
 
 function createConversationClient(persisted: PersistedConversationState | null): ConversationClient {
+  const initialMessages = persisted?.messages.map((message) => ({
+    id: message.id,
+    role: message.role,
+    content: message.content,
+  }));
   return new ConversationClient({
-    initialMessages: persisted?.messages.map((message) => ({
-      id: message.id,
-      role: message.role,
-      content: message.content,
-    })),
+    ...(initialMessages == null ? {} : { initialMessages }),
     onStateChange: (snapshot: ConversationClientSnapshot) => {
       for (const listener of conversationClientListeners) {
         listener(snapshot);
       }
     },
-  } as never);
+  });
 }
 
 function getSharedConversationClient(persisted: PersistedConversationState | null): ConversationClient {

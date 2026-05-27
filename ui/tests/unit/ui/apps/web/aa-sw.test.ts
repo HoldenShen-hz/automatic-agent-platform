@@ -5,7 +5,8 @@ import { fileURLToPath } from "node:url";
 import vm from "node:vm";
 import { it } from "vitest";
 
-type ListenerMap = Record<string, (event: any) => void>;
+type WorkerEventHandler = (event: unknown) => void;
+type ListenerMap = Record<string, WorkerEventHandler>;
 
 const currentDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(currentDir, "../../../../../../");
@@ -39,7 +40,7 @@ function loadServiceWorker(overrides: {
     caches: overrides.caches,
     fetch: overrides.fetch,
     self: {
-      addEventListener(type: string, handler: (event: any) => void) {
+      addEventListener(type: string, handler: WorkerEventHandler) {
         listeners[type] = handler;
       },
       skipWaiting() {

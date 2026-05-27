@@ -1,6 +1,61 @@
 {
   "divisions": [
     {
+      "divisionId": "academic-research",
+      "family": "research",
+      "scope": "academic_knowledge_workflows"
+    },
+    {
+      "divisionId": "advertising",
+      "family": "growth",
+      "scope": "paid_media_campaigns"
+    },
+    {
+      "divisionId": "analytics",
+      "family": "analytics",
+      "scope": "metrics_analysis"
+    },
+    {
+      "divisionId": "coding",
+      "family": "engineering",
+      "scope": "software_delivery"
+    },
+    {
+      "divisionId": "content",
+      "family": "content",
+      "scope": "editorial_production"
+    },
+    {
+      "divisionId": "content-moderation",
+      "family": "safety",
+      "scope": "moderation_review"
+    },
+    {
+      "divisionId": "customer-service",
+      "family": "customer-ops",
+      "scope": "support_resolution"
+    },
+    {
+      "divisionId": "data-engineering",
+      "family": "data",
+      "scope": "pipelines_storage"
+    },
+    {
+      "divisionId": "design",
+      "family": "product",
+      "scope": "design_systems"
+    },
+    {
+      "divisionId": "devops",
+      "family": "operations",
+      "scope": "infra_automation"
+    },
+    {
+      "divisionId": "ecommerce",
+      "family": "commerce",
+      "scope": "catalog_orders"
+    },
+    {
       "divisionId": "qa",
       "family": "quality",
       "scope": "smoke_validation_alias",
@@ -17,9 +72,34 @@
       "scope": "build_release_delivery"
     },
     {
+      "divisionId": "finance-accounting",
+      "family": "finance",
+      "scope": "bookkeeping_reporting"
+    },
+    {
+      "divisionId": "financial-services",
+      "family": "finance",
+      "scope": "regulated_financial_ops"
+    },
+    {
       "divisionId": "general_ops",
       "family": "operations",
       "scope": "generic_operator_fallback"
+    },
+    {
+      "divisionId": "healthcare",
+      "family": "healthcare",
+      "scope": "clinical_ops_support"
+    },
+    {
+      "divisionId": "human-resources",
+      "family": "people",
+      "scope": "workforce_processes"
+    },
+    {
+      "divisionId": "industry-research",
+      "family": "research",
+      "scope": "market_industry_research"
     },
     {
       "divisionId": "operations",
@@ -30,6 +110,56 @@
       "divisionId": "it-operations",
       "family": "operations",
       "scope": "workstation_identity_operations"
+    },
+    {
+      "divisionId": "knowledge-base",
+      "family": "knowledge",
+      "scope": "internal_knowledge_ops"
+    },
+    {
+      "divisionId": "legal",
+      "family": "legal",
+      "scope": "legal_review"
+    },
+    {
+      "divisionId": "live-streaming",
+      "family": "media",
+      "scope": "live_stream_operations"
+    },
+    {
+      "divisionId": "product-management",
+      "family": "product",
+      "scope": "roadmap_product_ops"
+    },
+    {
+      "divisionId": "project-management",
+      "family": "delivery",
+      "scope": "project_execution"
+    },
+    {
+      "divisionId": "quant-trading",
+      "family": "finance",
+      "scope": "market_execution"
+    },
+    {
+      "divisionId": "research",
+      "family": "research",
+      "scope": "generic_research_fallback"
+    },
+    {
+      "divisionId": "security",
+      "family": "security",
+      "scope": "security_operations"
+    },
+    {
+      "divisionId": "support",
+      "family": "customer-ops",
+      "scope": "generic_support_fallback"
+    },
+    {
+      "divisionId": "user-operations",
+      "family": "customer-ops",
+      "scope": "user_lifecycle_operations"
     }
   ]
 }

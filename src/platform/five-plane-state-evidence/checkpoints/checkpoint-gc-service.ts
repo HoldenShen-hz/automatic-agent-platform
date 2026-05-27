@@ -10,7 +10,7 @@
  * R23-10 Fix: CheckpointGC implementation
  */
 
-import { existsSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { closeSync, constants as fsConstants, existsSync, fstatSync, lstatSync, openSync, readFileSync, readdirSync, rmSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { nowIso } from "../../contracts/types/ids.js";
@@ -181,8 +181,7 @@ export class CheckpointGCService {
       for (const candidate of candidates) {
         try {
           this.removeCandidateFromManifests(candidate);
-          if (existsSync(candidate.storagePath)) {
-            rmSync(candidate.storagePath, { force: true });
+          if (this.unlinkCheckpointFileIfUnchanged(candidate.storagePath)) {
             deletedCount++;
             bytesFreed += candidate.sizeBytes;
 
@@ -217,6 +216,35 @@ export class CheckpointGCService {
       this.gcInProgress = false;
       if (lockAcquired) {
         this.releaseRunLock();
+      }
+    }
+  }
+
+  private unlinkCheckpointFileIfUnchanged(filePath: string): boolean {
+    if (!existsSync(filePath)) {
+      return false;
+    }
+    let fd: number | null = null;
+    try {
+      const expectedStat = lstatSync(filePath);
+      if (!expectedStat.isFile()) {
+        throw new Error(`checkpoint_gc.invalid_candidate_file:${filePath}`);
+      }
+      fd = openSync(filePath, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW);
+      const actualStat = fstatSync(fd);
+      if (actualStat.dev !== expectedStat.dev || actualStat.ino !== expectedStat.ino) {
+        throw new Error(`checkpoint_gc.candidate_changed_during_delete:${filePath}`);
+      }
+      unlinkSync(filePath);
+      return true;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+        return false;
+      }
+      throw error;
+    } finally {
+      if (fd != null) {
+        closeSync(fd);
       }
     }
   }

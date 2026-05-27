@@ -29,6 +29,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: dr-validation-${{ github.workflow }}-${{ github.ref || github.run_id }}
+  cancel-in-progress: false
+
 jobs:
   dr-drill:
     runs-on: ubuntu-latest

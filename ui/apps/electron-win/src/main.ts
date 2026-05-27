@@ -95,6 +95,20 @@ export function isShellCommandAllowed(command: string): boolean {
   return ALLOWED_SHELL_COMMANDS.has(command.trim());
 }
 
+function reportWindowLoadFailure(error: unknown): void {
+  const message = error instanceof Error ? error.message : String(error);
+  process.stderr.write(`electron.window_load_failed: ${message}\n`);
+}
+
+function loadWindowFile(windowHandle: BrowserWindowHandle, hash?: string): void {
+  const pendingLoad = hash == null
+    ? windowHandle.loadFile(rendererHtmlPath)
+    : windowHandle.loadFile(rendererHtmlPath, { hash });
+  if (pendingLoad != null && typeof (pendingLoad as Promise<unknown>).catch === "function") {
+    void (pendingLoad as Promise<unknown>).catch(reportWindowLoadFailure);
+  }
+}
+
 export function createMainWindow(): BrowserWindowHandle {
   const mainWindow = constructOrCall(BrowserWindow, createBrowserWindowOptions());
   mainWindow.once("ready-to-show", () => {
@@ -104,13 +118,13 @@ export function createMainWindow(): BrowserWindowHandle {
     void shell.openExternal(url);
     return { action: "deny" };
   });
-  void mainWindow.loadFile(rendererHtmlPath);
+  loadWindowFile(mainWindow);
   return mainWindow;
 }
 
 export function openSecondaryWindow(routePath: string): BrowserWindowHandle {
   const secondaryWindow = constructOrCall(BrowserWindow, createBrowserWindowOptions());
-  void secondaryWindow.loadFile(rendererHtmlPath, { hash: routePath });
+  loadWindowFile(secondaryWindow, routePath);
   return secondaryWindow;
 }
 

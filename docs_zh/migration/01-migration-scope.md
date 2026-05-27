@@ -97,7 +97,7 @@
 当前文档体系：
 
 - `docs_zh/architecture/` — 5 个架构文档
-- `docs_zh/contracts/` — 113 个契约文档
-- `docs_zh/adr/` — 38 个 ADR 文档
+- `docs_zh/contracts/` — 151 个契约文档
+- `docs_zh/adr/` — 120 个 ADR 文档
 - `docs_zh/operations/` — 16 个运维文档
 - `docs_zh/reviews/` — 架构与实现差异评审

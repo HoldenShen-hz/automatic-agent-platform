@@ -1,6 +1,0 @@
-{
-  "deterministicOnly": "deterministic_hot_path_only",
-  "humanAccountable": "human_accountable",
-  "advisoryOnly": "advisory_only",
-  "fullyAutonomous": "fully_autonomous"
-}

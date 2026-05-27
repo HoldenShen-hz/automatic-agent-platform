@@ -7,7 +7,7 @@
 
 | Number | Title | Status | Decision Date |
 |------|------|------|----------|
-| [001](./001-three-layer-architecture.md) | Three-Layer Separation Architecture | Accepted | 2026-04-02 |
+| [001](./001-three-layer-architecture.md) | Three-Layer Separation Architecture | Partially Superseded by v4.3 Five-Plane Baseline | 2026-04-02 |
 | [002](./002-division-system.md) | Division System | Accepted | 2026-04-02 |
 | [003A](./003-memory-six-layers.md) | Six-Layer Memory Model and KV Cache Fixed Prefix | Superseded by ADR-020 | 2026-04-02 |
 | [003B](./003-memory-seven-layers.md) | Seven-Layer Memory Model (Historical Alias / Jump Page) | Superseded by ADR-020 | 2026-04-02 |
@@ -40,8 +40,8 @@
 | [030](./030-runtime-execution-plane.md) | Runtime Execution Plane | Accepted | 2026-04-03 |
 | [031](./031-disaster-recovery-and-high-availability.md) | Disaster Recovery and High Availability Architecture | Accepted | 2026-04-03 |
 | [032](./032-deployment-architecture.md) | Deployment Architecture | Accepted | 2026-04-03 |
-| [033](./033-phased-roadmap.md) | Phased Roadmap | Accepted | 2026-04-17 |
-| [034](./034-adr-freeze-recommendation.md) | ADR Freeze Recommendation | Accepted | 2026-04-17 |
+| [033](./033-phased-roadmap.md) | Phased Roadmap | Superseded by ADR-112 | 2026-04-17 |
+| [034](./034-adr-freeze-recommendation.md) | ADR Freeze Recommendation | Historical Context | 2026-04-17 |
 | [035](./035-recommended-code-directory-structure.md) | Recommended Code Directory | Accepted | 2026-04-17 |
 | [036](./036-risk-constraints-and-success-criteria.md) | Risk, Constraints, and Success Criteria | Accepted | 2026-04-17 |
 | [037](./037-domain-modeling-and-onboarding.md) | Business Domain Modeling and Onboarding Architecture | Accepted | 2026-04-20 |
@@ -76,9 +76,9 @@
 | [071](./071-plugin-spi-framework.md) | Plugin SPI Interface System and Lifecycle | Accepted | 2026-04-17 |
 | [067](./067-capacity-planning-and-cost-prediction.md) | Capacity Planning and Cost Prediction Engine | Accepted | 2026-04-20 |
 | [068](./068-multimodal-capability-architecture.md) | Multimodal Capability Architecture | Accepted | 2026-04-20 |
-| [069](./069-platform-self-operating-agent.md) | Platform Self-Ops Agent Architecture | Partially Superseded | 2026-04-20 |
+| [069](./069-platform-self-operating-agent.md) | Platform Self-Ops Agent Architecture | Partially Superseded by v4.3 control-plane and runtime authority ADRs | 2026-04-20 |
 | [070](./070-conclusion.md) | Conclusion | Superseded by ADR-109 to ADR-113 | 2026-04-20 |
-| [072](./072-oapeflir-testing-strategy.md) | OAPEFLIR Testing Strategy and New Module Test Matrix | Partially Superseded | 2026-04-17 |
+| [072](./072-oapeflir-testing-strategy.md) | OAPEFLIR Testing Strategy and New Module Test Matrix | Partially Superseded by current layered test matrix and runtime contract tests | 2026-04-17 |
 | [073](./073-unified-resource-model.md) | ADR-073: Unified Agent Resource Model | Accepted | 2026-04-13 |
 | [075](./075-controlled-rollout-release.md) | Six-Level Controlled Release and Rollout State Machine | Accepted | 2026-04-17 |
 | [078](./078-knowledge-plane-architecture.md) | Knowledge Plane Architecture and Trust Model | Partially Superseded | 2026-04-17 |

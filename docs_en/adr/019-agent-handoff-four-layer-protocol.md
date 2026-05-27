@@ -45,7 +45,7 @@ Total budget: 10000 tokens
 
 ### Current Implementation Status
 
-- `src/core/agent-loop/handoff-model.ts`: Has type definitions, no actual serialization logic.
+- `src/platform/five-plane-orchestration/agent-delegation/handoff-model.ts`: Has type definitions, no actual serialization logic.
 - GAP-V2-05 (Handoff four-layer protocol) pending implementation.
 
 ## Consequences

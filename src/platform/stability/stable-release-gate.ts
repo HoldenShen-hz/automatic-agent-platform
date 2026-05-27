@@ -105,7 +105,18 @@ export interface StableReleaseGateReport {
 const GRAY_PROFILES: StableEvidenceProfileName[] = ["smoke"];
 const PRODUCTION_PROFILES: StableEvidenceProfileName[] = ["smoke", "24h", "72h"];
 const CANARY_PROFILES: StableEvidenceProfileName[] = ["smoke"];
-const DEFAULT_EVIDENCE_ROOT_DIR = join(process.cwd(), "data", "stable-evidence");
+const REQUIRED_RUNBOOK_REFS = [
+  "docs_zh/operations/operations-checklist.md",
+  "docs_zh/quality/01-release-checklist.md",
+  "docs_zh/operations/runbook.md",
+  "docs_zh/operations/disaster-recovery-runbook.md",
+  "docs_zh/contracts/architecture_governance_and_versioning_contract.md",
+  "docs_zh/contracts/remote_coordination_and_disaster_recovery_contract.md",
+] as const;
+
+function resolveDefaultEvidenceRootDir(): string {
+  return join(process.cwd(), "data", "stable-evidence");
+}
 
 /** Base criteria that are always required regardless of target status */
 const BASE_REQUIRED_CRITERION_IDS = new Set<StableGateCriterionId>([
@@ -259,7 +270,7 @@ export function buildStableReleaseGateReport(options: StableReleaseGateOptions):
   const targetStatus = options.targetStatus ?? "canary";
   const requiredCriterionIds = resolveRequiredCriterionIds(targetStatus);
   const requiredProfiles = resolveRequiredProfiles(targetStatus);
-  const reports = collectEvidenceReports(options.evidenceRootDir ?? DEFAULT_EVIDENCE_ROOT_DIR, requiredProfiles);
+  const reports = collectEvidenceReports(options.evidenceRootDir ?? resolveDefaultEvidenceRootDir(), requiredProfiles);
   const checkedAt = new Date().toISOString();
 
   // Index reports by presence and status
@@ -305,6 +316,8 @@ export function buildStableReleaseGateReport(options: StableReleaseGateOptions):
   );
   const acceptancePassed = acceptanceSnapshots.some((snapshot) => snapshot.status === "pass");
   const acceptanceAvailable = acceptanceSnapshots.length > 0;
+  const documentedRunbooks = REQUIRED_RUNBOOK_REFS.filter((ref) => existsSync(ref));
+  const missingRunbooks = REQUIRED_RUNBOOK_REFS.filter((ref) => !existsSync(ref));
   const acceptanceDetail =
     acceptancePassed
       ? acceptanceSnapshots.find((snapshot) => snapshot.status === "pass")?.detail ?? "stable acceptance line passed"
@@ -321,7 +334,7 @@ export function buildStableReleaseGateReport(options: StableReleaseGateOptions):
       evidenceRefs: [
         "docs_zh/contracts/platform_promote_criteria_contract.md",
         "docs_zh/contracts/release_rollout_and_rollback_contract.md",
-        "docs_zh/operations/stable_launch_execution_plan.md",
+        "docs_zh/operations/operations-checklist.md",
       ],
     },
     {
@@ -607,15 +620,12 @@ export function buildStableReleaseGateReport(options: StableReleaseGateOptions):
     },
     {
       criterionId: "runbooks_documented",
-      status: "pass",
-      detail: "release, stable launch, readiness, and disaster recovery documents exist locally",
-      evidenceRefs: [
-        "docs_zh/operations/release_readiness_checklist.md",
-        "docs_zh/operations/stable_runtime_validation_plan.md",
-        "docs_zh/operations/stable_launch_execution_plan.md",
-        "docs_zh/contracts/architecture_governance_and_versioning_contract.md",
-        "docs_zh/contracts/remote_coordination_and_disaster_recovery_contract.md",
-      ],
+      status: missingRunbooks.length === 0 ? "pass" : "fail",
+      detail:
+        missingRunbooks.length === 0
+          ? "release, readiness, runtime, and disaster recovery documents exist locally"
+          : `missing required release/runbook documents: ${missingRunbooks.join(", ")}`,
+      evidenceRefs: documentedRunbooks,
     },
     {
       criterionId: "rollback_tested",

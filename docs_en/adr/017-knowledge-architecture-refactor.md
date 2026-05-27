@@ -38,8 +38,8 @@ Fallback: AA_KNOWLEDGE_EMBEDDING_PROVIDER=hash can fall back to pseudo-vector mo
 
 ### New Files
 
-- src/core/knowledge/knowledge-query-service.ts (implemented): Three-level query service.
-- src/core/knowledge/indexing/embedding-provider.ts: Embedding provider abstraction (partially implemented).
+- `src/platform/five-plane-state-evidence/knowledge/knowledge-query-service.ts` (implemented): Three-level query service.
+- `src/platform/five-plane-state-evidence/knowledge/indexing/embedding-provider.ts`: Embedding provider abstraction (partially implemented).
 
 ## Consequences
 

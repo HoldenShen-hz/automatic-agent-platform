@@ -83,13 +83,6 @@ function resolveRefName(ref: string): string {
   return toTypeName(ref.split("/").pop() ?? "GeneratedType");
 }
 
-function indentLines(source: string, level = 1): string {
-  return source
-    .split("\n")
-    .map((line) => `${"  ".repeat(level)}${line}`)
-    .join("\n");
-}
-
 function jsonLiteral(value: unknown): string {
   return JSON.stringify(value);
 }

@@ -4,7 +4,7 @@
       "domainId": "coding",
       "name": "Coding",
       "description": "Coding workflows, tools, and plugin bindings.",
-      "version": "1.0.0",
+      "version": 1,
       "planGraph": {
         "planGraphId": "coding.default",
         "entryNodeId": "analyze",

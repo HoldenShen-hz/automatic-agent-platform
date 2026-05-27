@@ -40,3 +40,4 @@
 - 新增 review 修复必须回写 `docs_zh/reviews/issues-table.md` 的状态、结论、根因和证据列。
 - 历史全量测试失败基线只作为对账材料，不能替代当前定向验证证据。
 - 长期批次记录进入 `docs_zh/operations/archive/`，主文件保持为短索引，避免再次膨胀。
+- 2026-05-26 之后新增的治理文档（如 `docs_zh/architecture/sync-async-service-pairs.md`）属于归档后补充资产，统一进入当前 review/architecture 索引，不回填为历史 A/B 活跃批次。

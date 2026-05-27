@@ -5,8 +5,19 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 const { mockRestClient } = vi.hoisted(() => ({
   mockRestClient: {},
 }));
+const { mockApproveApproval, mockRejectApproval, mockDelegateApproval, mockRequestMoreContextApproval, mockUpdatePreferences } = vi.hoisted(() => ({
+  mockApproveApproval: vi.fn().mockResolvedValue(undefined),
+  mockRejectApproval: vi.fn().mockResolvedValue(undefined),
+  mockDelegateApproval: vi.fn().mockResolvedValue(undefined),
+  mockRequestMoreContextApproval: vi.fn().mockResolvedValue(undefined),
+  mockUpdatePreferences: vi.fn().mockResolvedValue(undefined),
+}));
 
 vi.mock("@aa/ui-core", () => ({
+  designTokens: {
+    color: { border: "#d0d7de" },
+    semantic: { color: { surfaceSelected: "#f3f4f6" } },
+  },
   FeatureScaffold: ({ children, title }: { children: ReactNode; title: string }) => (
     <section>
       <h2>{title}</h2>
@@ -88,12 +99,12 @@ vi.mock("@aa/shared-state", () => ({
 }));
 
 vi.mock("@aa/shared-api-client", () => ({
-  approveApproval: vi.fn().mockResolvedValue(undefined),
-  rejectApproval: vi.fn().mockResolvedValue(undefined),
-  delegateApproval: vi.fn().mockResolvedValue(undefined),
-  requestMoreContextApproval: vi.fn().mockResolvedValue(undefined),
+  approveApproval: mockApproveApproval,
+  rejectApproval: mockRejectApproval,
+  delegateApproval: mockDelegateApproval,
+  requestMoreContextApproval: mockRequestMoreContextApproval,
   createRESTClient: vi.fn().mockReturnValue(mockRestClient),
-  updatePreferences: vi.fn().mockResolvedValue(undefined),
+  updatePreferences: mockUpdatePreferences,
 }));
 
 import { ApprovalWebView } from "../../packages/features/approval/src/web";
@@ -109,8 +120,8 @@ describe("web app interaction smoke", () => {
 
     expect(await screen.findByText("Approval Center")).toBeInTheDocument();
     fireEvent.click(await screen.findByRole("button", { name: /task-2/i }));
-    fireEvent.click(screen.getByRole("button", { name: "Approve" }));
-    expect(screen.getByText(/Approved/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "批准" }));
+    expect(mockApproveApproval).toHaveBeenCalledWith(mockRestClient, "approval-2");
   });
 
   it("loads settings view and persists visible save state", async () => {

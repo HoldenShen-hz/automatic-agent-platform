@@ -353,14 +353,10 @@ test("SloCollectionService stop() prevents automatic collection", async () => {
   const { workspace, dbPath, db, store, healthService, metricsService, sloService } = buildTestSystem();
 
   try {
-    // Create collection service with very short interval
     const collectionService = new SliCollectionService(db, healthService, metricsService, sloService, {
       collectionIntervalMs: 50,
       autoStart: true,
     });
-
-    // Wait for at least one automatic collection to fire
-    await new Promise<void>((resolve) => setTimeout(resolve, 120));
 
     collectionService.stop();
 

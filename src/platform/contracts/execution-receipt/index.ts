@@ -15,7 +15,7 @@ export {
 process.emitWarning(
   "[DEPRECATED] execution-receipt/ is deprecated. " +
   "Use NodeAttemptReceipt from src/platform/contracts/executable-contracts instead. " +
-  "See: https://docs.example.com/platform/contracts#execution-receipt-migration",
+  "See: docs_zh/contracts/README.md",
   { code: "AA_LEGACY_EXECUTION_RECEIPT" },
 );
 

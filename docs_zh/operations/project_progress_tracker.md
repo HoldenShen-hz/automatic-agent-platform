@@ -4,9 +4,10 @@
 
 ## 当前状态
 
-- `R0` 已启动：`current_todo_list` 已切换到 `R0-R6` 结构。
-- `R1-R3` 正在推进：Harness 基础契约、ACP、ModelGateway 补口、领域元模型、Recipe 扩展、canonical domain ID 收敛。
-- `R4-R6` 仍待继续收口。
+- 历史 `A1-B7` 批次已全部归档，主入口以 `current_todo_list.md` 和 `issues-table.md` 为准。
+- 当前活跃收口入口是 `docs_zh/reviews/platforme-full-review-b.md`。
+- `R1-R3` 代表持续治理主题，不等同于历史批次仍处于未归档状态。
+- `R4-R6` 保留为后续治理占位，未单独作为当前权威 backlog 主入口。
 
 ## 跟踪规则
 

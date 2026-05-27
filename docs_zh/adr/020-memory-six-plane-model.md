@@ -61,11 +61,11 @@ interface MemoryPromotionEngine {
 
 ### 当前实现状态
 
-- `src/core/memory/memory-service.ts`：L1-L3 已实现。
-- `src/core/memory/memory-layer-model.ts`：待创建（层级定义）。
-- `src/core/memory/memory-promotion-engine.ts`：待创建（晋升引擎）。
-- `src/core/memory/project-memory-store.ts`：待创建（L4）。
-- `src/core/memory/user-memory-store.ts`：待创建（L5）。
+- `src/platform/five-plane-state-evidence/memory/memory-service.ts`：L1-L3 已实现。
+- `src/platform/five-plane-state-evidence/memory/memory-layer-model.ts`：待创建（层级定义）。
+- `src/platform/five-plane-state-evidence/memory/memory-promotion-engine.ts`：待创建（晋升引擎）。
+- `src/platform/five-plane-state-evidence/memory/project-memory-store.ts`：待创建（L4）。
+- `src/platform/five-plane-state-evidence/memory/user-memory-store.ts`：待创建（L5）。
 
 ## 后果
 

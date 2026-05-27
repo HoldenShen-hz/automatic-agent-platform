@@ -1,5 +1,0 @@
-{
-  "enabled": true,
-  "failureThreshold": 5,
-  "resetTimeoutMs": 30000
-}

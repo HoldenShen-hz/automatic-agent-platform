@@ -9,6 +9,33 @@ import {
   type TouchableOpacityProps,
 } from "react-native";
 
+export const mobileDesignTokens = {
+  color: {
+    primary: "#0066CC",
+    primaryText: "#FFFFFF",
+    secondarySurface: "#F0F0F0",
+    secondaryText: "#333333",
+    danger: "#CC0000",
+    surface: "#FFFFFF",
+    border: "#E0E0E0",
+    borderSubtle: "#F0F0F0",
+    text: "#333333",
+    textMuted: "#666666",
+    textSubtle: "#999999",
+    notificationSurface: "#FFF8E1",
+    notificationTitle: "#6B4F00",
+    notificationBody: "#7A6412",
+    biometricSurface: "#EEF7F1",
+    biometricTitle: "#0F5132",
+    biometricBody: "#146C43",
+    widgetSurface: "#F6F7FB",
+    widgetTitle: "#475467",
+    widgetValue: "#101828",
+    widgetDetail: "#667085",
+    shadow: "#000000",
+  },
+} as const;
+
 export interface MobileScreenDescriptor {
   readonly featureId: string;
   readonly tab: "home" | "tasks" | "approvals" | "dashboard" | "more";
@@ -212,13 +239,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   button_primary: {
-    backgroundColor: "#0066CC",
+    backgroundColor: mobileDesignTokens.color.primary,
   },
   button_secondary: {
-    backgroundColor: "#F0F0F0",
+    backgroundColor: mobileDesignTokens.color.secondarySurface,
   },
   button_danger: {
-    backgroundColor: "#CC0000",
+    backgroundColor: mobileDesignTokens.color.danger,
   },
   button_small: {
     paddingVertical: 6,
@@ -236,13 +263,13 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   buttonText_primary: {
-    color: "#FFFFFF",
+    color: mobileDesignTokens.color.primaryText,
   },
   buttonText_secondary: {
-    color: "#333333",
+    color: mobileDesignTokens.color.secondaryText,
   },
   buttonText_danger: {
-    color: "#FFFFFF",
+    color: mobileDesignTokens.color.primaryText,
   },
   buttonText_small: {
     fontSize: 12,
@@ -254,10 +281,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   card: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: mobileDesignTokens.color.surface,
     borderRadius: 12,
     padding: 16,
-    shadowColor: "#000",
+    shadowColor: mobileDesignTokens.color.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -271,29 +298,29 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#333333",
+    color: mobileDesignTokens.color.text,
   },
   cardSubtitle: {
     fontSize: 14,
-    color: "#666666",
+    color: mobileDesignTokens.color.textMuted,
     marginTop: 4,
   },
   badge: {
-    backgroundColor: "#0066CC",
+    backgroundColor: mobileDesignTokens.color.primary,
     borderRadius: 10,
     paddingHorizontal: 8,
     paddingVertical: 2,
   },
   badgeText: {
-    color: "#FFFFFF",
+    color: mobileDesignTokens.color.primaryText,
     fontSize: 12,
     fontWeight: "600",
   },
   tabBar: {
     flexDirection: "row",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: mobileDesignTokens.color.surface,
     borderTopWidth: 1,
-    borderTopColor: "#E0E0E0",
+    borderTopColor: mobileDesignTokens.color.border,
     paddingBottom: 20,
     paddingTop: 8,
   },
@@ -304,27 +331,27 @@ const styles = StyleSheet.create({
   },
   tabActive: {
     borderBottomWidth: 2,
-    borderBottomColor: "#0066CC",
+    borderBottomColor: mobileDesignTokens.color.primary,
   },
   tabText: {
     fontSize: 14,
-    color: "#666666",
+    color: mobileDesignTokens.color.textMuted,
   },
   tabTextActive: {
-    color: "#0066CC",
+    color: mobileDesignTokens.color.primary,
     fontWeight: "600",
   },
   tabBadge: {
     position: "absolute",
     top: 2,
     right: "20%",
-    backgroundColor: "#CC0000",
+    backgroundColor: mobileDesignTokens.color.danger,
     borderRadius: 8,
     paddingHorizontal: 5,
     paddingVertical: 1,
   },
   tabBadgeText: {
-    color: "#FFFFFF",
+    color: mobileDesignTokens.color.primaryText,
     fontSize: 10,
     fontWeight: "600",
   },
@@ -332,36 +359,36 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: mobileDesignTokens.color.surface,
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
+    borderBottomColor: mobileDesignTokens.color.borderSubtle,
   },
   listItemLeft: {
     flex: 1,
   },
   listItemTitle: {
     fontSize: 16,
-    color: "#333333",
+    color: mobileDesignTokens.color.text,
   },
   listItemSubtitle: {
     fontSize: 14,
-    color: "#666666",
+    color: mobileDesignTokens.color.textMuted,
     marginTop: 2,
   },
   listItemRight: {
     fontSize: 14,
-    color: "#999999",
+    color: mobileDesignTokens.color.textSubtle,
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: mobileDesignTokens.color.surface,
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#E0E0E0",
+    borderBottomColor: mobileDesignTokens.color.border,
   },
   headerLeft: {
     width: 60,
@@ -377,65 +404,65 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: "600",
-    color: "#333333",
+    color: mobileDesignTokens.color.text,
   },
   headerSubtitle: {
     fontSize: 12,
-    color: "#666666",
+    color: mobileDesignTokens.color.textMuted,
     marginTop: 2,
   },
   headerAction: {
     fontSize: 16,
-    color: "#0066CC",
+    color: mobileDesignTokens.color.primary,
   },
   notificationCard: {
     borderRadius: 12,
     padding: 12,
-    backgroundColor: "#FFF8E1",
+    backgroundColor: mobileDesignTokens.color.notificationSurface,
   },
   notificationTitle: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#6B4F00",
+    color: mobileDesignTokens.color.notificationTitle,
   },
   notificationBody: {
     marginTop: 4,
     fontSize: 13,
-    color: "#7A6412",
+    color: mobileDesignTokens.color.notificationBody,
   },
   biometricCard: {
     borderRadius: 12,
     padding: 12,
-    backgroundColor: "#EEF7F1",
+    backgroundColor: mobileDesignTokens.color.biometricSurface,
   },
   biometricTitle: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#0F5132",
+    color: mobileDesignTokens.color.biometricTitle,
   },
   biometricStatus: {
     marginTop: 4,
     fontSize: 13,
-    color: "#146C43",
+    color: mobileDesignTokens.color.biometricBody,
   },
   widgetCard: {
     borderRadius: 12,
     padding: 14,
-    backgroundColor: "#F6F7FB",
+    backgroundColor: mobileDesignTokens.color.widgetSurface,
   },
   widgetTitle: {
     fontSize: 13,
-    color: "#475467",
+    color: mobileDesignTokens.color.widgetTitle,
   },
   widgetValue: {
     marginTop: 6,
     fontSize: 20,
     fontWeight: "700",
-    color: "#101828",
+    color: mobileDesignTokens.color.widgetValue,
   },
   widgetDetail: {
     marginTop: 4,
     fontSize: 12,
-    color: "#667085",
+    color: mobileDesignTokens.color.widgetDetail,
   },
 });

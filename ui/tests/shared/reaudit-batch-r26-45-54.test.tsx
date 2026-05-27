@@ -16,8 +16,6 @@ import {
   createRealtimeStore,
   createSyncStore,
   createUiStore,
-  useAuthState,
-  useSyncState,
   useUiState,
 } from "@aa/shared-state";
 

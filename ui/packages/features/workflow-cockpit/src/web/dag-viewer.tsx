@@ -68,7 +68,6 @@ export function DAGViewer({ steps, currentStage }: DAGViewerProps): ReactElement
       <div style={{ display: "flex", gap: 0, alignItems: "center", overflowX: "auto", padding: "8px 0" }}>
         {STAGE_ORDER.map((stage, stageIdx) => {
           const isReached = stageIdx <= currentIdx;
-          const isCurrent = stageIdx === currentIdx;
           const stageSteps = steps.filter((s) => s.phase?.toLowerCase().includes(stage));
           const hasSteps = stageSteps.length > 0;
 

@@ -9,6 +9,10 @@ const mockRecoverWorkflow = vi.fn();
 const mockReleaseWorkflow = vi.fn();
 
 vi.mock("@aa/ui-core", () => ({
+  designTokens: {
+    color: { border: "#d0d7de" },
+    semantic: { color: { surfaceSelected: "#f3f4f6" } },
+  },
   FeatureScaffold: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   KeyValueTable: ({ rows }: { rows: Array<{ key: string; value: string }> }) => (
     <div>{rows.map((row) => <div key={row.key}>{`${row.key}: ${row.value}`}</div>)}</div>
@@ -57,8 +61,8 @@ describe("WorkflowCockpitWebView", () => {
     render(<WorkflowCockpitWebView />);
 
     expect(screen.queryByText("DAG execute 1")).not.toBeNull();
-    expect(screen.queryByText(/Approval Nodes: 1/)).not.toBeNull();
-    expect(screen.queryByText(/Evidence Refs: 1/)).not.toBeNull();
+    expect(screen.queryByText(/审批节点: 1/)).not.toBeNull();
+    expect(screen.queryByText(/证据引用: 1/)).not.toBeNull();
     expect(screen.queryByText(/Risk Review pending · domain-admin/)).not.toBeNull();
     expect(screen.queryByText(/artifact Launch plan/)).not.toBeNull();
   });
@@ -67,11 +71,11 @@ describe("WorkflowCockpitWebView", () => {
     const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
     render(<WorkflowCockpitWebView />);
 
-    fireEvent.click(screen.getAllByRole("button", { name: "Cancel" })[0]!);
-    fireEvent.click(screen.getAllByRole("button", { name: "Pause" })[0]!);
-    fireEvent.click(screen.getAllByRole("button", { name: "Resume" })[0]!);
-    fireEvent.click(screen.getAllByRole("button", { name: "Recover" })[0]!);
-    fireEvent.click(screen.getAllByRole("button", { name: "Release" })[0]!);
+    fireEvent.click(screen.getAllByRole("button", { name: "取消" })[0]!);
+    fireEvent.click(screen.getAllByRole("button", { name: "暂停" })[0]!);
+    fireEvent.click(screen.getAllByRole("button", { name: "恢复" })[0]!);
+    fireEvent.click(screen.getAllByRole("button", { name: "恢复链路" })[0]!);
+    fireEvent.click(screen.getAllByRole("button", { name: "发布" })[0]!);
 
     expect(mockCancelWorkflow).toHaveBeenCalled();
     expect(mockPauseWorkflow).toHaveBeenCalled();

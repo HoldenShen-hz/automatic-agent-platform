@@ -95,9 +95,14 @@
 
 ## 4. Release Readiness Checklist
 
-来源: `release_readiness_checklist.md`
+来源: `../quality/01-release-checklist.md`
 
 完整版本发布前必须通过，见 [../quality/01-release-checklist.md](../quality/01-release-checklist.md)。
+
+当前发布状态（2026-05-27）：
+
+- `canary / tenant_gray`：已具备 smoke 证据，可通过稳定门禁。
+- `production_ready`：除 `24h` / `72h` 长稳证据外，其余门禁项已通过；当前剩余阻断仅为长稳证据缺失。
 
 ---
 

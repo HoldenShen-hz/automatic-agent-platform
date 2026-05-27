@@ -199,7 +199,7 @@ describe("shared api-client runtime regressions", () => {
       filter: "status:running",
     });
 
-    expect(capturedPath).toBe("/tasks?page=2&pageSize=50&sort=updatedAt%3Adesc&filter=status%3Arunning");
+    expect(capturedPath).toBe("/v1/tasks?page=2&pageSize=50&sort=updatedAt%3Adesc&filter=status%3Arunning");
   });
 
   it("maps 401/403/429 HTTP failures to explicit UI actions instead of throwing only a generic Error", async () => {

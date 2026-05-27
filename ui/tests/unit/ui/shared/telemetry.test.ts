@@ -1,10 +1,12 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   startWebVitalsCollection,
   TelemetrySink,
   InMemoryTelemetryExporter,
   OtlpHttpTelemetryExporter,
   createTelemetrySink,
+  type TelemetryEvent,
+  type TelemetryExporter,
 } from "@aa/shared-telemetry";
 
 describe("TelemetrySink", () => {
@@ -55,7 +57,8 @@ describe("TelemetrySink", () => {
       const events = sink.list();
       expect(events.length).toBe(1);
 
-      (events as any).length = 0;
+      const mutableEvents = [...events];
+      mutableEvents.length = 0;
       expect(sink.list().length).toBe(1);
     });
 
@@ -98,8 +101,8 @@ describe("TelemetrySink", () => {
 
     it("flush re-queues events on export failure", async () => {
       let failFirst = true;
-      const failingExporter = {
-        async export(_events: any) {
+      const failingExporter: TelemetryExporter = {
+        async export(_events: readonly TelemetryEvent[]) {
           if (failFirst) {
             failFirst = false;
             throw new Error("Export failed");
@@ -107,7 +110,7 @@ describe("TelemetrySink", () => {
         },
       };
 
-      const sink = new TelemetrySink([failingExporter as any]);
+      const sink = new TelemetrySink([failingExporter]);
       sink.record("event.1", {});
       sink.record("event.2", {});
 
@@ -124,13 +127,13 @@ describe("TelemetrySink", () => {
       const exporter2Batches: string[][] = [];
       let failFirst = true;
 
-      const exporter1 = {
-        async export(events: any[]) {
+      const exporter1: TelemetryExporter = {
+        async export(events: readonly TelemetryEvent[]) {
           exporter1Batches.push(events.map((event) => event.name));
         },
       };
-      const exporter2 = {
-        async export(events: any[]) {
+      const exporter2: TelemetryExporter = {
+        async export(events: readonly TelemetryEvent[]) {
           exporter2Batches.push(events.map((event) => event.name));
           if (failFirst) {
             failFirst = false;
@@ -139,7 +142,7 @@ describe("TelemetrySink", () => {
         },
       };
 
-      const sink = new TelemetrySink([exporter1 as any, exporter2 as any], { maxRetryAttempts: 2 });
+      const sink = new TelemetrySink([exporter1, exporter2], { maxRetryAttempts: 2 });
       sink.record("event.1", {});
 
       await sink.flush();
@@ -154,13 +157,13 @@ describe("TelemetrySink", () => {
     });
 
     it("moves events to dead letters after retry budget is exhausted", async () => {
-      const failingExporter = {
-        async export(_events: any[]) {
+      const failingExporter: TelemetryExporter = {
+        async export(_events: readonly TelemetryEvent[]) {
           throw new Error("permanent exporter failure");
         },
       };
 
-      const sink = new TelemetrySink([failingExporter as any], { maxRetryAttempts: 1 });
+      const sink = new TelemetrySink([failingExporter], { maxRetryAttempts: 1 });
       sink.record("event.1", { important: true });
 
       await sink.flush();
@@ -285,7 +288,7 @@ describe("InMemoryTelemetryExporter", () => {
 
 describe("OtlpHttpTelemetryExporter", () => {
   it("formats events correctly", async () => {
-    let capturedBody: any = null;
+    let capturedBody: Record<string, unknown> | null = null;
     const mockFetch: typeof fetch = async (_input, init) => {
       capturedBody = JSON.parse((init?.body as string | undefined) ?? "{}");
       return new Response("{}", { status: 200 });
@@ -306,9 +309,12 @@ describe("OtlpHttpTelemetryExporter", () => {
     ]);
 
     expect(capturedBody).not.toBeNull();
-    expect(Array.isArray(capturedBody.resourceLogs)).toBe(true);
-    expect(capturedBody.resourceLogs[0]!.resource.attributes[0]!.key).toBe("service.name");
-    expect(capturedBody.resourceLogs[0]!.resource.attributes[0]!.value.stringValue).toBe("automatic-agent-platform-ui");
+    const resourceLogs = (capturedBody as unknown as {
+      resourceLogs: Array<{ resource: { attributes: Array<{ key: string; value: { stringValue?: string } }> } }>;
+    }).resourceLogs;
+    expect(Array.isArray(resourceLogs)).toBe(true);
+    expect(resourceLogs[0]!.resource.attributes[0]!.key).toBe("service.name");
+    expect(resourceLogs[0]!.resource.attributes[0]!.value.stringValue).toBe("automatic-agent-platform-ui");
   });
 
   it("skip export when events array is empty", async () => {

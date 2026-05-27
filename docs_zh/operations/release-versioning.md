@@ -15,6 +15,7 @@
 - 发布工作流必须使用调用方传入的 `image_tag`。
 - 镜像发布同时生成 `sha-<commit>` 标签，便于回滚和追踪。
 - 部署工作流只部署显式传入的镜像 tag，不使用 floating latest。
+- 版本发布前的硬门禁检查见 [operations-checklist.md](./operations-checklist.md) 的 `Pre-Launch Top 20 Hard Checklist`。
 
 ## 分支策略
 
@@ -27,3 +28,8 @@
 - 提交标题使用短祈使句，描述具体行为变化，例如 `Add worker handshake lifecycle`。
 - 禁止使用无语义标题作为最终提交说明，例如 `chore: sync`、`update`、`fix`。
 - 一次提交只覆盖一个问题簇；若同时修改运行时代码和文档，提交说明必须点名验证命令或证据文件。
+
+## 关联文档
+
+- 发布前检查清单：[operations-checklist.md](./operations-checklist.md)
+- 权威版本记录：[../../CHANGELOG.md](../../CHANGELOG.md)

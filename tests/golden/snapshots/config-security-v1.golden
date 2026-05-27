@@ -1,6 +1,0 @@
-{
-  "approvalMode": "supervised",
-  "sandboxMode": "workspace_write",
-  "allowDestructiveActions": false,
-  "hasRemoteWorkerRegistration": true
-}

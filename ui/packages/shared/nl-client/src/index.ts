@@ -21,6 +21,7 @@ export interface ConversationSnapshot {
 }
 
 export interface ConversationClientOptions {
+  readonly initialMessages?: readonly ConversationMessage[];
   readonly transport?: {
     subscribe(channel: string, handler: (event: { type: string; payload: unknown }) => void): () => void;
   };
@@ -36,6 +37,13 @@ export class ConversationClient {
   private readonly unsubscribers: Array<() => void> = [];
 
   public constructor(private readonly options: ConversationClientOptions = {}) {
+    if (Array.isArray(options.initialMessages) && options.initialMessages.length > 0) {
+      this.messages.push(...options.initialMessages.map((message) => ({
+        id: message.id,
+        role: message.role,
+        content: message.content,
+      })));
+    }
     if (options.transport != null && options.userId != null) {
       this.isStreaming = true;
       this.unsubscribers.push(

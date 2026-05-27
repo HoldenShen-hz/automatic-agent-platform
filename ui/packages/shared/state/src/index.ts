@@ -40,8 +40,7 @@ import { createAuthStore, type AuthStoreState } from "./stores/auth-store";
 import { createRealtimeStore } from "./stores/realtime-store";
 import { createSyncStore, type SyncStoreState } from "./stores/sync-store";
 import { createUiStore, type UiStoreState } from "./stores/ui-store";
-import { createNotificationStore, type NotificationStoreState, type Notification, type NotificationKind } from "./stores/notification-store";
-import { createThemeStore, type ThemeStoreState, type ThemeMode, type ResolvedThemeName } from "./stores/theme-store";
+import { createThemeStore, type ThemeStoreState } from "./stores/theme-store";
 export * from "./query-cache-persistence";
 
 export type { AuthStoreState } from "./stores/auth-store";
@@ -52,8 +51,9 @@ export type { RealtimeStoreState } from "./stores/realtime-store";
 export { createRealtimeStore } from "./stores/realtime-store";
 export type { SyncStoreState } from "./stores/sync-store";
 export { createSyncStore } from "./stores/sync-store";
-export { createNotificationStore, createThemeStore } from "./stores/index";
+export { createNotificationStore } from "./stores/notification-store";
 export type { NotificationStoreState, Notification, NotificationKind } from "./stores/notification-store";
+export { createThemeStore } from "./stores/theme-store";
 export type { ThemeStoreState, ThemeMode, ResolvedThemeName } from "./stores/theme-store";
 export {
   CACHE_TIER_STALE_TIME,
@@ -312,9 +312,12 @@ export function useDashboardSnapshotQuery() {
   return useQuery(createDashboardSnapshotQuery(client));
 }
 
-export function useTasksQuery() {
+export function useTasksQuery(options?: { refetchInterval?: number | false }) {
   const client = useRestClient();
-  return useQuery(createTasksQuery(client));
+  return useQuery({
+    ...createTasksQuery(client),
+    ...(options == null ? {} : options),
+  });
 }
 
 export function useWorkflowsQuery() {

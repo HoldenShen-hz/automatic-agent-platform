@@ -1,0 +1,13 @@
+{
+  "task": "lint",
+  "command": [
+    "eslint",
+    "packages/**/*.{ts,tsx}",
+    "apps/**/*.{ts,tsx}",
+    "tools/**/*.{ts,mjs}",
+    "tests/**/*.{ts,tsx}",
+    "scripts/**/*.mjs"
+  ],
+  "startedAt": "2026-05-27T02:49:06.398Z",
+  "completedAt": "2026-05-27T02:49:08.185Z"
+}

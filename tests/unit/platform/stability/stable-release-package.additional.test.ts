@@ -363,6 +363,84 @@ describe("stable-release-package additional tests", () => {
       }
     });
 
+    test("falls back to the default evidence root when evidenceRootDir is omitted", () => {
+      const workspace = mkdtempSync(join(tmpdir(), "stable-release-pkg-default-root-"));
+      const outputDir = join(workspace, "output");
+      const evidenceRootDir = join(workspace, "data", "stable-evidence");
+      const smokeDir = join(evidenceRootDir, "smoke");
+      const previousCwd = process.cwd();
+
+      try {
+        mkdirSync(smokeDir, { recursive: true });
+        writeFileSync(
+          join(smokeDir, "stable-evidence-report.json"),
+          JSON.stringify({
+            startedAt: new Date().toISOString(),
+            finishedAt: new Date().toISOString(),
+            outputDir: smokeDir,
+            profile: { name: "smoke", validationIterations: 2, soakDurationMs: 5000, soakIntervalMs: 500, soakIterationsPerCycle: 1 },
+            artifacts: {
+              chaosReportPath: join(smokeDir, "chaos.json"),
+              concurrencyReportPath: join(smokeDir, "concurrency.json"),
+              leaseReportPath: join(smokeDir, "lease.json"),
+              doctorReportPath: join(smokeDir, "doctor.json"),
+              migrationCompatibilityReportPath: join(smokeDir, "migration.json"),
+              backupRestoreReportPath: join(smokeDir, "backup.json"),
+              rollbackReportPath: join(smokeDir, "rollback.json"),
+              maintenanceReportPath: join(smokeDir, "maintenance.json"),
+              grayReleaseReportPath: join(smokeDir, "gray.json"),
+              dbQueueDisconnectReportPath: join(smokeDir, "db-queue.json"),
+              dbWritabilityReportPath: join(smokeDir, "db-write.json"),
+              queueDeliveryReportPath: join(smokeDir, "queue.json"),
+              acceptanceReportPath: join(smokeDir, "acceptance.json"),
+            },
+            summary: {
+              passed: true,
+              doctorStatus: "ok",
+              chaosPassed: true,
+              concurrencyPassed: true,
+              leasePassed: true,
+              migrationCompatibilityPassed: true,
+              backupRestorePassed: true,
+              rollbackPassed: true,
+              maintenancePassed: true,
+              grayReleasePassed: true,
+              dbQueueDisconnectPassed: true,
+              dbWritabilityPassed: true,
+              queueDeliveryPassed: true,
+              rollingUpgradePassed: true,
+            },
+            acceptanceLine: {
+              status: "partial",
+              detail: "long_run_evidence:partial",
+              criteria: [
+                {
+                  criterionId: "long_run_evidence",
+                  status: "partial",
+                  detail: "long_run_evidence:partial",
+                },
+              ],
+              observed: {
+                soakDurationMs: 5000,
+              },
+            },
+          } satisfies StableEvidenceBundleReport),
+        );
+
+        process.chdir(workspace);
+        const report = createStableReleasePackage({
+          outputDir,
+          targetStatus: "production_ready",
+        });
+
+        assert.ok(report.evidenceRootDir.endsWith("/data/stable-evidence"));
+        assert.equal(report.profiles[0]?.present, true);
+      } finally {
+        process.chdir(previousCwd);
+        rmSync(workspace, { recursive: true, force: true });
+      }
+    });
+
     test("creates markdown summary file", () => {
       const evidenceRootDir = mkdtempSync(join(tmpdir(), "stable-release-pkg-md-"));
       const outputDir = mkdtempSync(join(tmpdir(), "stable-release-pkg-md-out-"));

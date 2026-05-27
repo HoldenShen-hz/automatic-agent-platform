@@ -9,7 +9,6 @@ type MutableDraft<T> =
 
 type DraftUpdater<T> = (draft: MutableDraft<T>) => void;
 type StateUpdater<T> = (state: MutableDraft<T>) => T | Partial<T> | void;
-type DraftCapablePartial<T> = T | Partial<T> | DraftUpdater<T> | StateUpdater<T>;
 type DraftSetState<T> = {
   (partial: T | Partial<T>, replace?: boolean): void;
   (partial: DraftUpdater<T> | StateUpdater<T>, replace?: boolean): void;

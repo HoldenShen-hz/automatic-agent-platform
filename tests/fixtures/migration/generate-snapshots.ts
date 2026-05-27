@@ -16,14 +16,13 @@
  *   - latest: Current head schema
  */
 
-import { mkdirSync, writeFileSync, statSync } from "node:fs";
+import { mkdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
-import { DatabaseSync } from "node:sqlite";
 
 import {
   SQLITE_MIGRATIONS,
-  SQLITE_MIGRATION_LEDGER_SQL,
 } from "../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-migration-plan.js";
+import { SqliteDatabase } from "../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 
 const OUTPUT_DIR = process.argv[2] ?? join(process.cwd(), "tests", "fixtures", "migration", "snapshots");
 
@@ -31,12 +30,6 @@ const OUTPUT_DIR = process.argv[2] ?? join(process.cwd(), "tests", "fixtures", "
 export const SNAPSHOT_VERSIONS = [...new Set([1, 5, 10, 20, 30, SQLITE_MIGRATIONS.at(-1)?.version ?? 0])]
   .filter((version) => version > 0)
   .sort((left, right) => left - right);
-
-function isCompatibleFixtureSkip(message: string): boolean {
-  return message.includes("duplicate column name")
-    || message.includes("no such column: organization_id")
-    || message.includes("no such column: status");
-}
 
 interface SnapshotResult {
   version: number;
@@ -46,40 +39,16 @@ interface SnapshotResult {
 }
 
 /**
- * Applies all migrations up to (and including) the specified version.
- */
-function applyMigrationsUpTo(db: DatabaseSync, maxVersion: number): void {
-  db.exec(SQLITE_MIGRATION_LEDGER_SQL);
-
-  const insertStmt = db.prepare(
-    "INSERT OR IGNORE INTO schema_migrations (version, name, checksum, applied_at) VALUES (?, ?, ?, ?)",
-  );
-
-  const appliedMigrations = SQLITE_MIGRATIONS.filter((m) => m.version <= maxVersion);
-  for (const migration of appliedMigrations) {
-    try {
-      db.exec(migration.sql);
-      insertStmt.run(migration.version, migration.name, migration.checksum, new Date().toISOString());
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      if (isCompatibleFixtureSkip(message)) {
-        continue;
-      }
-      throw error;
-    }
-  }
-}
-
-/**
  * Generates a snapshot database at the specified version.
  */
 function generateSnapshot(version: number): SnapshotResult {
   const dbPath = join(OUTPUT_DIR, `v${version}-snapshot.db`);
+  rmSync(dbPath, { force: true });
 
-  const db = new DatabaseSync(dbPath);
-
-  applyMigrationsUpTo(db, version);
-
+  const db = new SqliteDatabase(dbPath, {
+    migrationPlan: SQLITE_MIGRATIONS.filter((migration) => migration.version <= version),
+  });
+  db.migrate();
   db.close();
 
   let sizeBytes = 0;

@@ -180,9 +180,20 @@ export function parseMigrateSqliteToPgArgs(argv: string[]): MigrateSqliteToPgOpt
 }
 
 const VALID_TABLES = new Set(TABLES);
+const SQL_IDENTIFIER_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/u;
+
+function validateSqlIdentifier(identifier: string, kind: "table" | "column"): string {
+  if (!SQL_IDENTIFIER_PATTERN.test(identifier)) {
+    throw new ValidationError(
+      "migrate_sqlite_to_pg.invalid_identifier",
+      `Invalid ${kind} identifier: ${identifier}`,
+    );
+  }
+  return identifier;
+}
 
 export function validateTableName(table: string): void {
-  if (!VALID_TABLES.has(table as (typeof TABLES)[number])) {
+  if (!VALID_TABLES.has(validateSqlIdentifier(table, "table") as (typeof TABLES)[number])) {
     throw new ValidationError("migrate_sqlite_to_pg.invalid_table", `Invalid table name: ${table}`);
   }
 }
@@ -231,7 +242,9 @@ export async function migrateSqliteToPg(options: MigrateSqliteToPgOptions): Prom
         migrated.push({ table, migrated: 0 });
         continue;
       }
-      const columns = [...new Set(rows.flatMap((row) => Object.keys(row)))].sort();
+      const columns = [...new Set(rows.flatMap((row) => Object.keys(row)))]
+        .map((column) => validateSqlIdentifier(column, "column"))
+        .sort();
       const placeholders = columns.map((_, index) => `$${index + 1}`).join(", ");
       const sql = `INSERT INTO ${table} (${columns.join(", ")}) VALUES (${placeholders}) ON CONFLICT DO NOTHING`;
       let count = 0;

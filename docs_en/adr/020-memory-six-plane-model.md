@@ -61,11 +61,11 @@ interface MemoryPromotionEngine {
 
 ### Current Implementation Status
 
-- `src/core/memory/memory-service.ts`: L1-L3 implemented.
-- `src/core/memory/memory-layer-model.ts`: To be created (layer definitions).
-- `src/core/memory/memory-promotion-engine.ts`: To be created (promotion engine).
-- `src/core/memory/project-memory-store.ts`: To be created (L4).
-- `src/core/memory/user-memory-store.ts`: To be created (L5).
+- `src/platform/five-plane-state-evidence/memory/memory-service.ts`: L1-L3 implemented.
+- `src/platform/five-plane-state-evidence/memory/memory-layer-model.ts`: To be created (layer definitions).
+- `src/platform/five-plane-state-evidence/memory/memory-promotion-engine.ts`: To be created (promotion engine).
+- `src/platform/five-plane-state-evidence/memory/project-memory-store.ts`: To be created (L4).
+- `src/platform/five-plane-state-evidence/memory/user-memory-store.ts`: To be created (L5).
 
 ## Consequences
 

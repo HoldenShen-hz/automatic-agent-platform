@@ -7,7 +7,7 @@ process.emitWarning(
   "[DEPRECATED] StateCommand from state-command/ is deprecated. " +
   "Use inter-plane commands (EventAppendCommand, AuditAppendCommand, ArtifactWriteCommand) " +
   "from src/platform/contracts/executable-contracts instead. " +
-  "See: https://docs.example.com/platform/contracts#state-command-migration",
+  "See: docs_zh/contracts/README.md",
   { code: "AA_LEGACY_STATE_COMMAND" },
 );
 

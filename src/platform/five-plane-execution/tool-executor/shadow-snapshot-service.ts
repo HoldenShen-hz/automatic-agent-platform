@@ -16,7 +16,7 @@
  */
 
 import { execFileSync } from "node:child_process";
-import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, renameSync, statSync, writeFileSync } from "node:fs";
+import { closeSync, constants as fsConstants, existsSync, fsyncSync, lstatSync, mkdirSync, openSync, readdirSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, resolve, sep } from "node:path";
 import { randomUUID } from "node:crypto";
 
@@ -188,8 +188,31 @@ function ensureExistingPathChainIsNotSymlink(targetPath: string): void {
 
 function writeJsonAtomically(path: string, value: unknown): void {
   const tempPath = `${path}.${randomUUID()}.tmp`;
-  writeFileSync(tempPath, JSON.stringify(value, null, 2), "utf8");
-  renameSync(tempPath, path);
+  let fd: number | null = null;
+  try {
+    ensureExistingPathChainIsNotSymlink(dirname(path));
+    if (existsSync(path) && lstatSync(path).isSymbolicLink()) {
+      throw new PolicyDeniedError("shadow_snapshot.shadow_root_symlink_denied", "shadow_snapshot.shadow_root_symlink_denied", {
+        details: { shadowRoot: path, symlinkPath: path },
+      });
+    }
+    fd = openSync(tempPath, fsConstants.O_WRONLY | fsConstants.O_CREAT | fsConstants.O_EXCL | fsConstants.O_NOFOLLOW, 0o600);
+    writeFileSync(fd, JSON.stringify(value, null, 2), "utf8");
+    fsyncSync(fd);
+    closeSync(fd);
+    fd = null;
+    renameSync(tempPath, path);
+  } catch (error) {
+    if (fd != null) {
+      closeSync(fd);
+    }
+    try {
+      unlinkSync(tempPath);
+    } catch {
+      // Best effort cleanup of an incomplete temp file.
+    }
+    throw error;
+  }
 }
 
 /**

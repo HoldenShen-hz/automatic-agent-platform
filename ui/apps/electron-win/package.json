@@ -9,7 +9,7 @@
     "smoke": "node ./src/index.ts"
   },
   "devDependencies": {
-    "electron": "^42.1.0",
+    "electron": "^31.0.0",
     "electron-updater": "^6.6.2"
   },
   "build": {

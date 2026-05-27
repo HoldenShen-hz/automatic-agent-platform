@@ -171,7 +171,7 @@ Disadvantages: Vector retrieval performance lower than dedicated vector database
 - [ADR-016 OAPEFLIR Eight-Stage Cognitive Loop Model](./016-oapeflir-loop-model.md)
 - [ADR-017 Knowledge Architecture Refactor](./017-knowledge-architecture-refactor.md)
 - [ADR-080 Learn Hub](./080-learn-hub-pattern-detection.md)
-- `src/core/knowledge/` module
+- `src/platform/five-plane-state-evidence/knowledge/` module
 
 ## Source Sections
 

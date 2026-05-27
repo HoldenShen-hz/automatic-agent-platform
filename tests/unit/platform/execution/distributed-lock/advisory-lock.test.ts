@@ -162,6 +162,35 @@ test("PgAdvisoryLockAdapter: acquireAsync sets acquiredAt timestamp", async () =
   assert.ok(result.lock!.acquiredAt <= after);
 });
 
+test("PgAdvisoryLockAdapter: acquireAsync releases the advisory lock when bookkeeping throws after acquisition", async () => {
+  const queries: string[] = [];
+  const mockDriver = createMockDriver({
+    queryFn: async (strings) => {
+      const query = strings.join("?");
+      queries.push(query);
+      if (query.includes("pg_try_advisory_lock")) {
+        return [{ acquired: true, fencing_token: 7 }];
+      }
+      if (query.includes("pg_advisory_unlock")) {
+        return [{ released: true }];
+      }
+      return [];
+    },
+  });
+  const adapter = createAdapterWithMockDriver(mockDriver);
+  const heldLocks = (adapter as unknown as { heldLocks: Map<string, unknown> }).heldLocks;
+  const originalSet = heldLocks.set.bind(heldLocks);
+  heldLocks.set = (() => {
+    throw new Error("forced bookkeeping failure");
+  }) as typeof heldLocks.set;
+
+  const result = await adapter.acquireAsync({ lockKey: "test-key", owner: "test-owner" });
+
+  heldLocks.set = originalSet;
+  assert.equal(result.acquired, false);
+  assert.equal(queries.some((query) => query.includes("pg_advisory_unlock")), true);
+});
+
 test("PgAdvisoryLockAdapter: acquireAsync throws when postgres module not found", async () => {
   const adapter = new PgAdvisoryLockAdapter({
     dsn: "postgresql://test:test@localhost/test",

@@ -7,7 +7,7 @@
 
 | 编号 | 标题 | 状态 | 决策日期 |
 |------|------|------|----------|
-| [001](./001-three-layer-architecture.md) | 三层分权架构 | Accepted | 2026-04-02 |
+| [001](./001-three-layer-architecture.md) | 三层分权架构 | Partially Superseded by v4.3 Five-Plane Baseline | 2026-04-02 |
 | [002](./002-division-system.md) | 事业部系统 | Accepted | 2026-04-02 |
 | [003A](./003-memory-six-layers.md) | 六层记忆模型与 KV Cache 固定前缀 | Superseded by ADR-020 | 2026-04-02 |
 | [003B](./003-memory-seven-layers.md) | 七层记忆模型（历史别名 / 跳转页） | Superseded by ADR-020 | 2026-04-02 |
@@ -40,8 +40,8 @@
 | [030](./030-runtime-execution-plane.md) | Runtime 执行面 | Accepted | 2026-04-03 |
 | [031](./031-disaster-recovery-and-high-availability.md) | 容灾与高可用架构 | Accepted | 2026-04-03 |
 | [032](./032-deployment-architecture.md) | 部署架构 | Accepted | 2026-04-03 |
-| [033](./033-phased-roadmap.md) | 分阶段落地路线 | Accepted | 2026-04-17 |
-| [034](./034-adr-freeze-recommendation.md) | ADR 冻结建议 | Accepted | 2026-04-17 |
+| [033](./033-phased-roadmap.md) | 分阶段落地路线 | Superseded by ADR-112 | 2026-04-17 |
+| [034](./034-adr-freeze-recommendation.md) | ADR 冻结建议 | Historical Context | 2026-04-17 |
 | [035](./035-recommended-code-directory-structure.md) | 推荐代码目录 | Accepted | 2026-04-17 |
 | [036](./036-risk-constraints-and-success-criteria.md) | 风险、约束与成功标准 | Accepted | 2026-04-17 |
 | [037](./037-domain-modeling-and-onboarding.md) | 业务域建模与接入架构 | Accepted | 2026-04-20 |
@@ -76,9 +76,9 @@
 | [071](./071-plugin-spi-framework.md) | Plugin SPI 接口体系与生命周期 | Accepted | 2026-04-17 |
 | [067](./067-capacity-planning-and-cost-prediction.md) | 容量规划与成本预测引擎 | Accepted | 2026-04-20 |
 | [068](./068-multimodal-capability-architecture.md) | 多模态能力架构 | Accepted | 2026-04-20 |
-| [069](./069-platform-self-operating-agent.md) | 平台自运维 Agent 架构 | Partially Superseded | 2026-04-20 |
+| [069](./069-platform-self-operating-agent.md) | 平台自运维 Agent 架构 | Partially Superseded by v4.3 control-plane and runtime authority ADRs | 2026-04-20 |
 | [070](./070-conclusion.md) | 结论 | Superseded by ADR-109 to ADR-113 | 2026-04-20 |
-| [072](./072-oapeflir-testing-strategy.md) | OAPEFLIR 测试策略与新模块测试矩阵 | Partially Superseded | 2026-04-17 |
+| [072](./072-oapeflir-testing-strategy.md) | OAPEFLIR 测试策略与新模块测试矩阵 | Partially Superseded by current layered test matrix and runtime contract tests | 2026-04-17 |
 | [073](./073-unified-resource-model.md) | ADR-073: Unified Agent Resource Model | Accepted | 2026-04-13 |
 | [075](./075-controlled-rollout-release.md) | 六级受控发布与 Rollout 状态机 | Accepted | 2026-04-17 |
 | [078](./078-knowledge-plane-architecture.md) | Knowledge Plane 架构与信任模型 | Partially Superseded | 2026-04-17 |

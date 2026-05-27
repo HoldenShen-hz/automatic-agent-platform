@@ -12,6 +12,7 @@
 
 | 文档 | 用途 |
 | --- | --- |
+| `docs_zh/reviews/platforme-full-review-b.md` | 当前持续收口的大表与问题状态入口 |
 | `docs_zh/reviews/platforme-full-review-a.md` | 当前批次问题总表 |
 | `docs_zh/reviews/platforme-full-review.md` | 历史大表，现已补充“已复核关闭”状态轴 |
 | `docs_zh/operations/operations-tracker.md` | 运维/交付入口索引 |

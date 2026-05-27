@@ -59,22 +59,22 @@ export interface EndpointDefinition<
 export type EndpointResponse<TEndpoint extends EndpointDefinition> =
   TEndpoint extends EndpointDefinition<infer TResponse, never, never, never>
     ? TResponse
-    : TEndpoint extends EndpointDefinition<infer TResponse, infer _TRequestBody, infer _TPathParams, infer _TQueryParams>
+    : TEndpoint extends EndpointDefinition<infer TResponse, unknown, unknown, unknown>
       ? TResponse
       : never;
 
 export type EndpointRequestBody<TEndpoint extends EndpointDefinition> =
-  TEndpoint extends EndpointDefinition<infer _TResponse, infer TRequestBody, infer _TPathParams, infer _TQueryParams>
+  TEndpoint extends EndpointDefinition<unknown, infer TRequestBody, unknown, unknown>
     ? TRequestBody
     : never;
 
 export type EndpointPathParams<TEndpoint extends EndpointDefinition> =
-  TEndpoint extends EndpointDefinition<infer _TResponse, infer _TRequestBody, infer TPathParams, infer _TQueryParams>
+  TEndpoint extends EndpointDefinition<unknown, unknown, infer TPathParams, unknown>
     ? TPathParams
     : never;
 
 export type EndpointQueryParams<TEndpoint extends EndpointDefinition> =
-  TEndpoint extends EndpointDefinition<infer _TResponse, infer _TRequestBody, infer _TPathParams, infer TQueryParams>
+  TEndpoint extends EndpointDefinition<unknown, unknown, unknown, infer TQueryParams>
     ? TQueryParams
     : never;
 

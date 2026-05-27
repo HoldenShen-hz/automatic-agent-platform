@@ -3,23 +3,23 @@ kind: Deployment
 metadata:
   name: automatic-agent-smoke
   labels:
-    app.kubernetes.io/name: automatic-agent
+    app.kubernetes.io/name: automatic-agent-platform
     app.kubernetes.io/component: smoke
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app.kubernetes.io/name: automatic-agent
+      app.kubernetes.io/name: automatic-agent-platform
       app.kubernetes.io/component: smoke
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: automatic-agent
+        app.kubernetes.io/name: automatic-agent-platform
         app.kubernetes.io/component: smoke
     spec:
       containers:
         - name: api
-          image: ghcr.io/holdenshen-hz/automatic-agent-platform:latest
+          image: ghcr.io/automatic-agent/automatic-agent-platform:latest
           ports:
             - containerPort: 3000
           env:
@@ -34,7 +34,7 @@ metadata:
   name: automatic-agent-smoke
 spec:
   selector:
-    app.kubernetes.io/name: automatic-agent
+    app.kubernetes.io/name: automatic-agent-platform
     app.kubernetes.io/component: smoke
   ports:
     - name: http

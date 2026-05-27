@@ -8,10 +8,11 @@
 
 相关文档：
 
-- `doc/operations/operations-checklist.md`
-- `release_rollout_and_rollback_contract.md`
-- `slo_alerting_and_runbook_contract.md`
-- `quality_engineering_and_chaos_testing_contract.md`
+- `docs_zh/operations/operations-checklist.md`
+- `docs_zh/quality/01-release-checklist.md`
+- `docs_zh/contracts/release_rollout_and_rollback_contract.md`
+- `docs_zh/contracts/slo_alerting_and_runbook_contract.md`
+- `docs_zh/contracts/quality_engineering_and_chaos_testing_contract.md`
 
 ## 2. 目标
 

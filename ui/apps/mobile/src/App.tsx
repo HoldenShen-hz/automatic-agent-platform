@@ -1,7 +1,7 @@
 import { useState, type ReactElement } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { createMobilePlatformAdapter } from "@aa/shared-platform";
-import { Button, Card, Header, ListItem, TabBar } from "@aa/ui-mobile";
+import { Button, Card, Header, ListItem, TabBar, mobileDesignTokens } from "@aa/ui-mobile";
 import { mobileNavigation, resolveMobileScreen } from "./navigation";
 
 function detectPlatform(): "android" | "ios" {
@@ -97,10 +97,10 @@ const styles = StyleSheet.create({
     display: "flex",
     gap: 12,
     padding: 16,
-    backgroundColor: "#F7F8FA",
+    backgroundColor: mobileDesignTokens.color.widgetSurface,
   },
   caption: {
-    color: "#4B5563",
+    color: mobileDesignTokens.color.widgetTitle,
   },
   section: {
     display: "flex",

@@ -1,4 +1,4 @@
-import { createElement, type ReactElement } from "react";
+import type { ReactElement } from "react";
 import { FeatureScaffold, FeatureWorkbenchPanel } from "@aa/ui-core";
 import { useAlertsVm } from "../hooks";
 

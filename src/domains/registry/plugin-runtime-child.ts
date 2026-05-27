@@ -126,6 +126,10 @@ function installStdioProtocolConsoleRedirection(): void {
   if (process.send) {
     return;
   }
+  const directEntry = process.argv[1];
+  if (directEntry == null || resolve(directEntry) !== runtimeChildEntryPath) {
+    return;
+  }
   const writeStructuredLine = (level: "debug" | "info" | "warn" | "error", ...args: unknown[]): void => {
     const message = format(...args);
     const requestId = currentRequest?.requestId;
@@ -158,7 +162,18 @@ function installStdioProtocolConsoleRedirection(): void {
 }
 
 function logProtocolError(message: string, error: unknown): void {
-  console.error("%s: %s", message, error instanceof Error ? error.message : String(error));
+  const entry = logger.log({
+    level: "error",
+    message: `${message}: ${error instanceof Error ? error.message : String(error)}`,
+    traceId: bootCorrelationId,
+    correlationId: bootCorrelationId,
+    data: {
+      pluginId: currentRequest?.pluginId ?? process.env.AA_PLUGIN_RUNTIME_PLUGIN_ID ?? currentPluginId,
+      action: currentRequest?.action ?? null,
+      domainId: currentRequest?.context?.domainId ?? null,
+    },
+  });
+  process.stderr.write(`${JSON.stringify(entry)}\n`);
 }
 
 export function bootstrapPluginRuntimeChild(): void {

@@ -3953,7 +3953,7 @@ Objects suitable for introducing fuzz/property-based testing:
 
 To avoid v4.1 supplement chapter remaining as manual checklist, this round adds `tests/unit/quality/full-coverage-test-manual-gaps.test.ts` as manual implementation guardian test. This test does not replace each special test itself, but verifies every test gap in the manual has locatable runtime artifact evidence and automated test artifact evidence.
 
-Also adds `tests/unit/quality/full-coverage-real-paths.test.ts` and `tests/unit/quality/full-coverage-operational-real-paths.test.ts`, directly executing Mission, Yono Business, Prompt Guard, Budget Guard, Startup Env Schema, Prometheus Exporter, Fixture Redactor, Chaos Scheduler, Supply-chain Audit Script, deployment/DR/alert assets etc., as the minimum executable product-level and operational-level coverage baseline for Part V.
+Also adds `tests/integration/quality/full-coverage-real-paths.test.ts` and `tests/integration/quality/full-coverage-operational-real-paths.test.ts`, directly executing Mission, Yono Business, Prompt Guard, Budget Guard, Startup Env Schema, Prometheus Exporter, Fixture Redactor, Chaos Scheduler, Supply-chain Audit Script, deployment/DR/alert assets etc., as the minimum executable product-level and operational-level coverage baseline for Part V.
 
 | Guarded Object       | Automated Assertion                                                                                     |
 | ------------------- | ------------------------------------------------------------------------------------------------------- |

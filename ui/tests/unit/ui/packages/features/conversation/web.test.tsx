@@ -10,6 +10,9 @@ const mockRequestClarification = vi.fn();
 const mockSetDraft = vi.fn();
 
 vi.mock("@aa/ui-core", () => ({
+  designTokens: {
+    color: { border: "#d0d7de" },
+  },
   CodeBlock: ({ code }: { code: string }) => <div>{`CODE:${code}`}</div>,
   FeatureScaffold: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   FileAttachment: ({ files }: { files: Array<{ name: string; sizeLabel: string }> }) => (

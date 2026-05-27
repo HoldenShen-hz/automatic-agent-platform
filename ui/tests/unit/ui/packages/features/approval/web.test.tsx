@@ -8,6 +8,10 @@ const mockRequestMoreContext = vi.fn(async () => undefined);
 const mockSelectApproval = vi.fn();
 
 vi.mock("@aa/ui-core", () => ({
+  designTokens: {
+    color: { border: "#d0d7de" },
+    semantic: { color: { surfaceSelected: "#f3f4f6" } },
+  },
   FeatureScaffold: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   KeyValueTable: ({ rows }: { rows: Array<{ key: string; value: string }> }) => (
     <div>
@@ -69,9 +73,9 @@ describe("ApprovalWebView", () => {
   it("supports request-context and decision actions", () => {
     render(<ApprovalWebView />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Approve" }));
-    fireEvent.click(screen.getByRole("button", { name: "Reject" }));
-    fireEvent.click(screen.getByRole("button", { name: "Request Context" }));
+    fireEvent.click(screen.getByRole("button", { name: "批准" }));
+    fireEvent.click(screen.getByRole("button", { name: "拒绝" }));
+    fireEvent.click(screen.getByRole("button", { name: "请求上下文" }));
 
     expect(mockApprove).toHaveBeenCalled();
     expect(mockReject).toHaveBeenCalled();

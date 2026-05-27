@@ -1,21 +1,27 @@
-# Platform Architecture Index
+# Platform Architecture 权威入口
 
-> 2026-05-14 复核：历史 711KB 单体架构文档已归档到 `docs_zh/architecture/archive/00-platform-architecture-monolith-2026-05-14.md`。本文件保留为短索引，避免架构入口继续承载不可审计的超大正文。
->
-> 2026-05-26 同步：接口层、联邦治理、事件可靠性、Electron/UI 契约已按当前代码回写到正式文档；最新系统级证据见 `docs_zh/reviews/system-review-2026-05-26.md`。
+> 2026-05-27 复核：本文件是“架构入口索引”，不是回退到单体大文档的占位 stub。
 
-## 当前阅读入口
+## 1. 当前权威矩阵
 
-- 架构目录说明：`docs_zh/architecture/README.md`
-- Design review 问题表：`docs_zh/reviews/issues-table.md`
-- 实现一致性审计：`docs_zh/reviews/platform-architecture-implementation-consistency-audit.md`
-- 合同文档：`docs_zh/contracts/`
-- ADR：`docs_zh/adr/`
+| 你要确认的问题 | 权威入口 |
+| --- | --- |
+| 平台总览、阅读顺序 | [README.md](./README.md) |
+| 模块结构与平面边界 | [01-code-structure.md](./01-code-structure.md)、[03-module-diagrams.md](./03-module-diagrams.md) |
+| 运行时时序 | [04-runtime-sequence.md](./04-runtime-sequence.md) |
+| UI / 多端边界 | [05-cross-platform-ui-architecture.md](./05-cross-platform-ui-architecture.md) |
+| 规范对象与协议边界 | [../contracts/README.md](../contracts/README.md) |
+| 历史与决策演进 | [../adr/README.md](../adr/README.md) |
+| 当前差距与整改状态 | [../reviews/platforme-full-review-b.md](../reviews/platforme-full-review-b.md) |
 
-## 维护规则
+## 2. 当前工程命名基线
 
-- 新增架构内容优先落到专题文档或 ADR，不再扩写本索引为单体文档。
-- 需要引用历史全文时，链接归档文件并在 review 表记录原因。
-- 架构实现闭环以 `issues-table.md` 行级证据和 `scripts/ci/audit-review-batch-resource-contracts.mjs` 审计结果为准。
-- 历史 `five-plane-*` 目录名、旧 “CEO/VP/事业部” 叙事和 v2.x 分层表述只作为兼容检索入口；当前工程命名以 `P1-P5 + X1`、`DomainDescriptor`、`HarnessRun/NodeRun` 为准。
-- 当前公共 UI 数据源以 Layer C `/v1/*` 契约为准，不再把 `/admin/*` 当作默认前端公共接口。
+- 平台主核：`five-plane-interface`、`five-plane-control-plane`、`five-plane-orchestration`、`five-plane-execution`、`five-plane-state-evidence`
+- 横切能力：`shared`、`contracts`、`model-gateway`、`prompt-engine`、`compliance`
+- 上层能力：`domains`、`interaction`、`org-governance`、`scale-ecosystem`、`ops-maturity`
+
+## 3. 使用规则
+
+- 需要“大图”时先读本入口，再跳转到专题文档，不再把单一文件当作全量事实源。
+- 当前实现闭环必须回到 review 表或 contract/ADR，不在入口页重复维护行级问题。
+- 历史单体架构文档只保留在 archive，用于追溯，不作为当前权威入口。

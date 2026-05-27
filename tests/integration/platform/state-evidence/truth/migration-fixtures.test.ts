@@ -9,25 +9,16 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { DatabaseSync } from "node:sqlite";
 import { join } from "node:path";
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { copyFileSync, existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 
 import {
   SQLITE_MIGRATIONS,
   SQLITE_MIGRATION_LEDGER_SQL,
   getLatestSqliteMigrationVersion,
-} from "../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-migration-plan.js";
-import { SNAPSHOT_VERSIONS } from "./generate-snapshots.js";
-
-function isCompatibleFixtureSkip(message: string): boolean {
-  return message.includes("duplicate column name") || message.includes("no such column: organization_id");
-}
-
-function getCompatibilitySkipBudget(): number {
-  // Keep this as an explicit ceiling for the current known legacy backfills.
-  // A percentage-based budget would hide newly introduced migration regressions.
-  return 6;
-}
+} from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-migration-plan.js";
+import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import { SNAPSHOT_VERSIONS } from "../../../../fixtures/migration/generate-snapshots.js";
 
 test("SQLite migrations array has contiguous versions from 1 to latest", () => {
   const versions = SQLITE_MIGRATIONS.map((m) => m.version);
@@ -62,48 +53,15 @@ test("applying all migrations populates the ledger with correct entries", () => 
   const tmp = mkdtempSync(join(tmpdir(), "aa-migr-"));
   try {
     const dbPath = join(tmp, "full.db");
-    const db = new DatabaseSync(dbPath);
-    db.exec(SQLITE_MIGRATION_LEDGER_SQL);
+    const db = new SqliteDatabase(dbPath);
+    db.migrate();
 
-    const insertStmt = db.prepare(
-      "INSERT OR IGNORE INTO schema_migrations (version, name, checksum, applied_at) VALUES (?, ?, ?, ?)",
-    );
-
-    let appliedCount = 0;
-    let skippedCount = 0;
-    for (const migration of SQLITE_MIGRATIONS) {
-      try {
-        db.exec(migration.sql);
-        insertStmt.run(migration.version, migration.name, migration.checksum, new Date().toISOString());
-        appliedCount++;
-      } catch (err: unknown) {
-        // Skip duplicate-column errors from corrective migrations that backfill
-        // columns already present in the initial schema
-        const msg = err instanceof Error ? err.message : String(err);
-        if (isCompatibleFixtureSkip(msg)) {
-          skippedCount++;
-          continue;
-        }
-        throw err;
-      }
-    }
-
-    const rows = db.prepare("SELECT version, name FROM schema_migrations ORDER BY version").all() as {
+    const rows = db.connection.prepare("SELECT version, name FROM schema_migrations ORDER BY version").all() as {
       version: number;
       name: string;
     }[];
 
-    const compatibilitySkipBudget = getCompatibilitySkipBudget();
-    assert.equal(rows.length, appliedCount, "Ledger row count should match successfully applied migrations");
-    assert.equal(
-      appliedCount + skippedCount,
-      SQLITE_MIGRATIONS.length,
-      "Every migration should either apply successfully or be skipped as a known compatibility backfill",
-    );
-    assert.ok(
-      skippedCount <= compatibilitySkipBudget,
-      `Expected at most ${compatibilitySkipBudget} compatibility skips (got ${skippedCount})`,
-    );
+    assert.equal(rows.length, SQLITE_MIGRATIONS.length, "Ledger row count should match the full migration plan");
 
     // Verify first migration is version 1 with phase1a_init
     assert.equal(rows[0]!.version, 1);
@@ -161,59 +119,32 @@ test("migration names are prefixed with zero-padded version number", () => {
   }
 });
 
-test("migrations can be applied incrementally in order", () => {
-  const tmp = mkdtempSync(join(tmpdir(), "aa-migr-"));
+test("migrations upgrade checked-in snapshots to the latest version", () => {
   try {
-    const dbPath = join(tmp, "incremental.db");
-    const db = new DatabaseSync(dbPath);
-    db.exec(SQLITE_MIGRATION_LEDGER_SQL);
+    const latestVersion = getLatestSqliteMigrationVersion();
+    const snapshotsDir = join(process.cwd(), "tests", "fixtures", "migration", "snapshots");
+    const manifest = JSON.parse(readFileSync(join(snapshotsDir, "manifest.json"), "utf8")) as {
+      snapshots: Array<{ version: number; path: string }>;
+    };
 
-    const insertStmt = db.prepare(
-      "INSERT OR IGNORE INTO schema_migrations (version, name, checksum, applied_at) VALUES (?, ?, ?, ?)",
-    );
-
-    // Apply migrations one by one (simulating incremental upgrade)
-    // Some migrations may fail with "duplicate column name" if the initial schema
-    // already includes the column (these are corrective migrations for pre-existing DBs)
-    const failedMigrations: { version: number; name: string; error: string }[] = [];
-    let appliedCount = 0;
-    for (const migration of SQLITE_MIGRATIONS) {
+    for (const snapshot of manifest.snapshots.filter((entry) => entry.version < latestVersion)) {
+      const tmp = mkdtempSync(join(tmpdir(), "aa-migr-"));
       try {
-        db.exec(migration.sql);
-        insertStmt.run(migration.version, migration.name, migration.checksum, new Date().toISOString());
-        appliedCount++;
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : String(err);
-        // Skip duplicate-column errors — these indicate the column already exists
-        // from a prior migration or initial schema, which is expected for some
-        // corrective migrations that backfill columns on pre-existing databases
-        if (isCompatibleFixtureSkip(msg)) {
-          failedMigrations.push({ version: migration.version, name: migration.name, error: msg });
-          continue;
-        }
-        throw err;
+        const dbPath = join(tmp, "upgrade.db");
+        copyFileSync(join(snapshotsDir, snapshot.path), dbPath);
+        const db = new SqliteDatabase(dbPath);
+        db.migrate();
+        const appliedRows = db.connection.prepare("SELECT COUNT(*) AS count FROM schema_migrations").get() as { count: number };
+        const latestRow = db.connection.prepare("SELECT MAX(version) AS version FROM schema_migrations").get() as { version: number };
+        assert.equal(appliedRows.count, SQLITE_MIGRATIONS.length, `snapshot v${snapshot.version} should apply all migrations`);
+        assert.equal(latestRow.version, latestVersion, `snapshot v${snapshot.version} should upgrade to latest`);
+        db.close();
+      } finally {
+        rmSync(tmp, { recursive: true, force: true });
       }
     }
-
-    // Report which migrations were skipped due to duplicate columns
-    const compatibilitySkipBudget = getCompatibilitySkipBudget();
-    assert.ok(
-      failedMigrations.length <= compatibilitySkipBudget,
-      `Expected at most ${compatibilitySkipBudget} compatibility skips (got ${failedMigrations.length}): ${JSON.stringify(failedMigrations)}`,
-    );
-
-    assert.ok(
-      appliedCount >= SQLITE_MIGRATIONS.length - failedMigrations.length,
-      `Should have applied most migrations (applied ${appliedCount}/${SQLITE_MIGRATIONS.length})`,
-    );
-
-    // Verify most expected tables exist
-    const tableCount = (db.prepare("SELECT COUNT(*) as c FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").all() as { c: number }[])[0]!.c;
-    assert.ok(tableCount > 10, `Should have more than 10 tables after all migrations, got ${tableCount}`);
-
-    db.close();
   } finally {
-    rmSync(tmp, { recursive: true, force: true });
+    // no-op
   }
 });
 

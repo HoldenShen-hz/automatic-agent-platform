@@ -1,5 +1,5 @@
 apiVersion: v2
-name: automatic-agent
+name: automatic-agent-platform
 description: AI Agent Task Execution Platform
 type: application
 version: 0.1.0

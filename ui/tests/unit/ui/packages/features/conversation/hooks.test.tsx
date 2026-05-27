@@ -1,6 +1,19 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+type MockConversationMessage = {
+  readonly role: "user" | "assistant" | "system";
+  readonly content: string;
+};
+
+type MockConversationSnapshot = {
+  readonly messages: readonly MockConversationMessage[];
+  readonly status: string;
+  readonly planReady: boolean;
+  readonly executionReady: boolean;
+  readonly isStreaming: boolean;
+};
+
 const conversationState = vi.hoisted(() => ({
   sendSpy: vi.fn(),
   requestClarificationSpy: vi.fn(),
@@ -8,10 +21,13 @@ const conversationState = vi.hoisted(() => ({
 
 vi.mock("@aa/shared-nl-client", () => ({
   ConversationClient: class MockConversationClient {
-    private snapshot;
-    private readonly onStateChange: ((snapshot: any) => void) | undefined;
+    private snapshot: MockConversationSnapshot;
+    private readonly onStateChange: ((snapshot: MockConversationSnapshot) => void) | undefined;
 
-    constructor(options: { initialMessages?: any[]; onStateChange?: (snapshot: any) => void }) {
+    constructor(options: {
+      initialMessages?: readonly MockConversationMessage[];
+      onStateChange?: (snapshot: MockConversationSnapshot) => void;
+    }) {
       this.onStateChange = options.onStateChange;
       this.snapshot = {
         messages: options.initialMessages ?? [],

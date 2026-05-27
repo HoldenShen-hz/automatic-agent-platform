@@ -4,7 +4,7 @@
  * Publishes a validated pack to the platform registry per §22.3.
  *
  * Usage:
- *   npm run pack-publish -- --manifest ./pack.json --registry-url https://api.example.com
+ *   AA_REGISTRY_URL=https://registry.internal.example npm run pack-publish -- --manifest ./pack.json
  */
 
 import { readFileSync } from "node:fs";
@@ -55,6 +55,14 @@ interface PublishResult {
   dryRun: boolean;
 }
 
+function resolveRegistryUrl(opts: PackPublishOptions): string {
+  const registryUrl = opts.registryUrl ?? process.env["AA_REGISTRY_URL"] ?? "";
+  if (registryUrl.trim().length === 0) {
+    throw new Error("missing_registry_url:set AA_REGISTRY_URL or pass --registry-url");
+  }
+  return registryUrl;
+}
+
 function parseArgsFromValues(args: readonly string[]): PackPublishOptions {
   const opts: PackPublishOptions = { manifest: "", dryRun: false };
   for (let i = 0; i < args.length; i++) {
@@ -96,7 +104,7 @@ export async function publishPack(args = process.argv.slice(2)): Promise<Publish
       return result;
     }
 
-    const registryUrl = opts.registryUrl ?? process.env["AA_REGISTRY_URL"] ?? "https://api.platform.example.com";
+    const registryUrl = resolveRegistryUrl(opts);
     const apiVersion = opts.apiVersion ?? "v1";
     const bearerToken = opts.bearerToken ?? process.env["AA_BEARER_TOKEN"] ?? "";
 

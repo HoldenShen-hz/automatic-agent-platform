@@ -10,6 +10,7 @@ Maintenance notes:
 
 import os
 import re
+import time
 import translators as ts
 
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -135,6 +136,8 @@ FILES = [
 ]
 
 CHINESE_PATTERN = re.compile(r'[\u4e00-\u9fff]')
+TRANSLATION_MAX_ATTEMPTS = 3
+TRANSLATION_BASE_BACKOFF_SECONDS = 1.0
 
 def has_chinese(text):
     return bool(CHINESE_PATTERN.search(text))
@@ -161,12 +164,27 @@ def translate_chunk(chunk):
     """Translate a chunk of text, preserving empty strings."""
     if not chunk.strip():
         return chunk
-    try:
-        result = ts.translate_text(chunk, translator='google', from_lang='zh', to_lang='en')
-        return result
-    except Exception as e:
-        print(f"  Translation error: {e}")
-        return chunk
+    for attempt in range(1, TRANSLATION_MAX_ATTEMPTS + 1):
+        try:
+            return ts.translate_text(chunk, translator='google', from_lang='zh', to_lang='en')
+        except Exception as e:
+            if attempt == TRANSLATION_MAX_ATTEMPTS:
+                print(f"  Translation error after {attempt} attempts: {e}")
+                return chunk
+            backoff_seconds = TRANSLATION_BASE_BACKOFF_SECONDS * (2 ** (attempt - 1))
+            print(f"  Translation retry {attempt}/{TRANSLATION_MAX_ATTEMPTS - 1} in {backoff_seconds:.1f}s: {e}")
+            time.sleep(backoff_seconds)
+
+
+def flush_segment(parts, lines, translate):
+    """Flush a text or code segment into parts."""
+    if not lines:
+        return
+    segment = '\n'.join(lines)
+    if translate and has_chinese(segment):
+        parts.append(translate_chunk(segment))
+    else:
+        parts.append(segment)
 
 def translate_file(filepath):
     """Read, translate, and write a file."""
@@ -180,43 +198,25 @@ def translate_file(filepath):
     # We'll translate only text segments, leaving markdown structure intact
     parts = []
     in_code_block = False
-    current = ""
+    current_lines = []
 
     for line in content.split('\n'):
         if line.strip().startswith('```'):
             if in_code_block:
-                # End of code block - translate accumulated text first
-                if has_chinese(current):
-                    translated = translate_chunk(current)
-                    parts.append(translated)
-                else:
-                    parts.append(current)
-                parts.append(line)
-                current = ""
+                current_lines.append(line)
+                flush_segment(parts, current_lines, translate=False)
+                current_lines = []
                 in_code_block = False
             else:
-                # Start of code block
-                if has_chinese(current):
-                    translated = translate_chunk(current)
-                    parts.append(translated)
-                else:
-                    parts.append(current)
-                parts.append(line)
-                current = ""
+                flush_segment(parts, current_lines, translate=True)
+                current_lines = [line]
                 in_code_block = True
-        elif in_code_block:
-            parts.append(line + '\n')
         else:
-            current += line + '\n'
+            current_lines.append(line)
 
-    if current:
-        if has_chinese(current):
-            translated = translate_chunk(current)
-            parts.append(translated)
-        else:
-            parts.append(current)
+    flush_segment(parts, current_lines, translate=not in_code_block)
 
-    result = ''.join(parts)
+    result = '\n'.join(parts)
 
     with open(filepath, 'w', encoding='utf-8') as f:
         f.write(result)

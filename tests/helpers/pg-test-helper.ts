@@ -4,9 +4,20 @@ import { PgDatabase } from "../../src/platform/five-plane-state-evidence/truth/p
 
 const require = createRequire(import.meta.url);
 const DEFAULT_PG_TEST_DSN = "postgresql:///agent_company_os";
+const PG_TEST_DSN_KEYS = ["AA_TEST_PG_DSN", "AA_STORAGE_POSTGRES_DSN", "AA_PG_DSN", "DATABASE_URL"] as const;
+
+function readConfiguredPgDsn(): string | null {
+  for (const key of PG_TEST_DSN_KEYS) {
+    const value = process.env[key];
+    if (value != null && value.length > 0) {
+      return value;
+    }
+  }
+  return null;
+}
 
 export function resolvePgTestDsn(): string {
-  return process.env["AA_TEST_PG_DSN"] ?? DEFAULT_PG_TEST_DSN;
+  return readConfiguredPgDsn() ?? DEFAULT_PG_TEST_DSN;
 }
 
 export function shouldRunPgIntegration(): { enabled: boolean; reason: string | null } {
@@ -15,20 +26,14 @@ export function shouldRunPgIntegration(): { enabled: boolean; reason: string | n
   } catch {
     return { enabled: false, reason: "postgres runtime dependency is not installed" };
   }
-  if (
-    !process.env["AA_TEST_PG_DSN"]
-    && !process.env["PGHOST"]
-    && !process.env["PGDATABASE"]
-    && !process.env["PGUSER"]
-    && !process.env["PGPORT"]
-  ) {
+  if (readConfiguredPgDsn() == null && !process.env["PGHOST"] && !process.env["PGDATABASE"] && !process.env["PGUSER"] && !process.env["PGPORT"]) {
     return { enabled: false, reason: "PostgreSQL test connection is not configured" };
   }
   return { enabled: true, reason: null };
 }
 
 export async function createTestPgDatabase(): Promise<PgDatabase> {
-  if (!process.env["AA_TEST_PG_DSN"] && !process.env["PGHOST"]) {
+  if (readConfiguredPgDsn() == null && !process.env["PGHOST"]) {
     process.env["PGHOST"] = "/tmp";
   }
   const dsn = resolvePgTestDsn();

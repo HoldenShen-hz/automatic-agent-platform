@@ -54,10 +54,7 @@ export function mapTasksToVm(tasks: readonly TaskDTO[]): readonly { id: string; 
 
 export function useTaskCockpitVm(): TaskCockpitVm {
   const client = useRestClient();
-  const taskQuery = (useTasksQuery as unknown as (
-    query?: unknown,
-    options?: { refetchInterval?: number },
-  ) => ReturnType<typeof useTasksQuery>)(undefined, { refetchInterval: 5000 });
+  const taskQuery = useTasksQuery({ refetchInterval: 5000 });
   const tasks = taskQuery.data ?? [];
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [drillDownSteps, setDrillDownSteps] = useState<readonly WorkflowRunStepDTO[]>([]);
@@ -79,11 +76,14 @@ export function useTaskCockpitVm(): TaskCockpitVm {
     if (selectedTask == null) {
       return [];
     }
-    return Array.from({ length: Math.max(1, selectedTask.evidenceCount ?? 0) }, (_value, index) => ({
-      id: `evidence-${selectedTask.id}-${index + 1}`,
-      type: "artifact",
-      description: index === 0 ? "Approval packet" : `Evidence item ${index + 1}`,
-    }));
+    if ((selectedTask.evidenceCount ?? 0) <= 0) {
+      return [];
+    }
+    return [{
+      id: `evidence-summary-${selectedTask.id}`,
+      type: "summary",
+      description: `该任务当前登记 ${selectedTask.evidenceCount} 条证据引用，详情需通过后端证据接口加载。`,
+    }];
   }, [selectedTask]);
 
   const timelineEvents = useMemo(

@@ -81,9 +81,13 @@ test("runtime index re-exports WorkerRegistryService", async () => {
   assert.ok("WorkerRegistryService" in runtime, "should export WorkerRegistryService");
 });
 
-test("runtime index re-exports WorkflowStepCheckpoint constant", async () => {
+test("runtime index re-exports workflow step checkpoint schema version", async () => {
   const runtime = await import("../../../src/core/runtime/index.js");
-  assert.equal(runtime.WorkflowStepCheckpoint, "WorkflowStepCheckpoint", "should export WorkflowStepCheckpoint constant");
+  assert.equal(
+    runtime.WORKFLOW_STEP_CHECKPOINT_SCHEMA_VERSION,
+    "workflow_step_checkpoint.v1",
+    "should export workflow step checkpoint schema version",
+  );
 });
 
 test("runtime index re-exports createWorkflowStepCheckpoint", async () => {

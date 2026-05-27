@@ -40,7 +40,7 @@ Source: `pre_launch_top20_hard_checklist.md`
 | 22 | All CLIs use unified bootstrap/teardown mode |
 | 23 | Structured logger supports JSONL file output |
 | 24 | AsyncLocalStorage traceId context injection |
-| 25 | Node 20/22 CI matrix all green |
+| 25 | Node 22 CI pipeline all green |
 
 ---
 
@@ -95,9 +95,14 @@ Documentation required before core module completion:
 
 ## 4. Release Readiness Checklist
 
-Source: `release_readiness_checklist.md`
+Source: `../quality/01-release-checklist.md`
 
 Must pass before full version release, see [../quality/01-release-checklist.md](../quality/01-release-checklist.md).
+
+Current release status (2026-05-27):
+
+- `canary / tenant_gray`: smoke evidence is present and the stable gate can approve promotion.
+- `production_ready`: every gate item except the `24h` / `72h` long-run evidence is currently passing; the remaining blocker is long-run evidence only.
 
 ---
 

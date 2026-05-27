@@ -1,6 +1,6 @@
 # Release Rollout And Rollback Contract
 
-> **OAPEFLIR 相关**：本 contract 定义 OAPEFLIR Improve Hub 的受控发布与回滚机制，对应 ADR-075 和 ADR-018。
+> **OAPEFLIR 相关**：本 contract 定义 OAPEFLIR Improve Hub 的受控发布与回滚机制。当前执行依据是 ADR-075；ADR-018 只保留为历史背景。
 > **更新日期**：2026-04-17
 
 ## 1. Scope
@@ -50,7 +50,7 @@ Related documents:
 
 ### 4.2 Rollout 状态机
 
-完整状态机（见 ADR-018 和 ADR-075 §2）：
+完整状态机以 ADR-075 §2 为执行依据；ADR-018 仅用于解释历史命名来源：
 
 ```
 candidate_created

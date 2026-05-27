@@ -1,6 +1,6 @@
 # Division Catalog
 
-本目录用于收敛容易混淆的 division 家族，避免把“名称相近”误读成“职责相同”。
+本目录用于维护 `divisions/` 的权威 family map。它既覆盖容易混淆的别名家族，也覆盖其余单体 division 的归属，避免把“名称相近”误读成“职责相同”，也避免目录已存在但 catalog 缺席。
 
 ## 质量家族
 
@@ -22,6 +22,12 @@
 
 - `config/quality/division-catalog.json`
 - `scripts/ci/audit-division-workflows.mjs`
+
+## 当前覆盖原则
+
+- `divisions/` 目录中的活跃 division 都必须在 catalog 中登记。
+- 只有 `qa -> quality-assurance` 这类显式 alias 才使用 `canonicalDivisionId`。
+- 其余 division 至少要声明 `family` 与 `scope`，用于治理和审计分组。
 
 ## 维护规则
 

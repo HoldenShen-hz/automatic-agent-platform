@@ -1692,7 +1692,7 @@ test("server starts and stops correctly", async () => {
       };
     }
   ).server;
-  const assignedPort = 43123;
+  const assignedPort = 30_000 + Math.floor(Math.random() * 10_000);
   let listening = false;
   rawServer.listen = (_port, _host, callback) => {
     listening = true;

@@ -45,7 +45,7 @@ describe("useTaskCockpitVm", () => {
   it("keeps selection empty until the operator explicitly picks a task and enables polling", () => {
     const { result } = renderHook(() => useTaskCockpitVm());
 
-    expect(mocks.mockUseTasksQuery).toHaveBeenCalledWith(undefined, { refetchInterval: 5000 });
+    expect(mocks.mockUseTasksQuery).toHaveBeenCalledWith({ refetchInterval: 5000 });
     expect(result.current.selectedId).toBeNull();
     expect(result.current.selectedTask).toBeNull();
   });
