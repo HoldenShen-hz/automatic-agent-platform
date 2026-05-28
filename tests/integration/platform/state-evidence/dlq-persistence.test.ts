@@ -1,9 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
 import { DeadLetterQueueRetryWorker, DeadLetterQueueService } from "../../../../src/platform/five-plane-state-evidence/dlq/index.js";
 import { SqliteDeadLetterQueueRepository } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite/repositories/dlq-repository.js";
+import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 
 function createInMemoryDb(): DatabaseSync {
   const db = new DatabaseSync(":memory:");
@@ -461,45 +463,48 @@ test("[SYS-REL-2.3] DLQ retry worker gracefully handles callback errors", async 
 test("[SYS-REL-2.3] DLQ persistence verified via file-based SQLite", () => {
   // This test uses a file-based database to ensure persistence works
   // beyond in-memory scenarios that could be compiler-optimized away
-  const tempFile = "/tmp/dlq-persistence-test-" + Date.now() + ".db";
+  const workspace = createTempWorkspace("dlq-persistence-test-");
+  const tempFile = join(workspace, "dlq-persistence.db");
+
   const db = new DatabaseSync(tempFile);
-  db.exec(`
-    CREATE TABLE dlq_records (
-      dead_letter_id TEXT PRIMARY KEY,
-      source_event_id TEXT NOT NULL,
-      consumer_id TEXT NOT NULL,
-      error_code TEXT NOT NULL,
-      payload_json TEXT NOT NULL,
-      status TEXT NOT NULL,
-      retry_count INTEGER NOT NULL,
-      next_retry_at TEXT NULL,
-      created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL,
-      original_timestamp TEXT NULL,
-      failure_category TEXT NULL,
-      retry_exhausted_at TEXT NULL
-    )
-  `);
+  try {
+    db.exec(`
+      CREATE TABLE dlq_records (
+        dead_letter_id TEXT PRIMARY KEY,
+        source_event_id TEXT NOT NULL,
+        consumer_id TEXT NOT NULL,
+        error_code TEXT NOT NULL,
+        payload_json TEXT NOT NULL,
+        status TEXT NOT NULL,
+        retry_count INTEGER NOT NULL,
+        next_retry_at TEXT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        original_timestamp TEXT NULL,
+        failure_category TEXT NULL,
+        retry_exhausted_at TEXT NULL
+      )
+    `);
 
-  const dlq1 = new DeadLetterQueueService(new SqliteDeadLetterQueueRepository(db));
-
-  dlq1.enqueue({
-    sourceEventId: "evt-file-001",
-    consumerId: "consumer-file",
-    errorCode: "file_error",
-    payloadJson: '{"taskId":"t-file"}',
-  });
-
-  // Close and reopen database (simulating process restart with file-based storage)
-  db.close();
+    const dlq1 = new DeadLetterQueueService(new SqliteDeadLetterQueueRepository(db));
+    dlq1.enqueue({
+      sourceEventId: "evt-file-001",
+      consumerId: "consumer-file",
+      errorCode: "file_error",
+      payloadJson: '{"taskId":"t-file"}',
+    });
+  } finally {
+    db.close();
+  }
 
   const db2 = new DatabaseSync(tempFile);
-  const dlq2 = new DeadLetterQueueService(new SqliteDeadLetterQueueRepository(db2));
-
-  const records = dlq2.listAll();
-  assert.equal(records.length, 1, "Records must persist across file-based database close/reopen");
-  assert.equal(records[0]?.sourceEventId, "evt-file-001", "Record data must be intact");
-
-  // Cleanup
-  db2.close();
+  try {
+    const dlq2 = new DeadLetterQueueService(new SqliteDeadLetterQueueRepository(db2));
+    const records = dlq2.listAll();
+    assert.equal(records.length, 1, "Records must persist across file-based database close/reopen");
+    assert.equal(records[0]?.sourceEventId, "evt-file-001", "Record data must be intact");
+  } finally {
+    db2.close();
+    cleanupPath(workspace);
+  }
 });

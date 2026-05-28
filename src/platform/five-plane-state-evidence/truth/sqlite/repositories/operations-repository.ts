@@ -55,6 +55,28 @@ function areAuthoritativeWatermarksEqual(
   );
 }
 
+function collapseSqlWhitespace(sql: string): string {
+  return sql.replace(/\s+/g, " ").trim();
+}
+
+function escapeRegex(source: string): string {
+  return source.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function isSupportedRuntimeRecoveryWhereClause(whereClause: string): boolean {
+  const normalized = collapseSqlWhitespace(whereClause);
+  const approvalExists = escapeRegex("EXISTS ( SELECT 1 FROM approvals a WHERE a.execution_id = e.id AND a.status = 'requested' )");
+  const heartbeatMax = escapeRegex("COALESCE( ( SELECT MAX(h.sampled_at) FROM heartbeat_snapshots h WHERE h.execution_id = e.id ), e.updated_at ) < ?");
+  const patterns = [
+    /^e\.task_id = \?( AND t\.tenant_id = \?)?$/,
+    /^e\.status IN \((?:\?|'[^']+')(?:, (?:\?|'[^']+'))*\)( AND t\.division_id IS NULL| AND t\.division_id = \?)?$/,
+    /^e\.status IN \('created', 'prechecking', 'executing', 'blocked'\) AND e\.created_at <= \?( AND t\.tenant_id = \?)?$/,
+    new RegExp(`^e\\.status = 'blocked'( AND t\\.tenant_id = \\?)? AND ${approvalExists}$`),
+    new RegExp(`^e\\.status IN \\('created', 'prechecking', 'executing', 'blocked'\\)( AND t\\.tenant_id = \\?)? AND ${heartbeatMax}$`),
+  ];
+  return patterns.some((pattern) => pattern.test(normalized));
+}
+
 /**
  * Standalone repository boundary for analytics / archive / replay / data-movement
  * records plus runtime consistency and recovery read models.
@@ -896,8 +918,8 @@ export class OperationsRepository {
   }
 
   public listRuntimeRecoveryRecords(whereClause: string, params: string[] = []): RuntimeRecoveryRecord[] {
-    if (/;|--|\/\*/.test(whereClause)) {
-      throw new Error("listRuntimeRecoveryRecords: whereClause contains forbidden SQL tokens");
+    if (!isSupportedRuntimeRecoveryWhereClause(whereClause)) {
+      throw new Error("listRuntimeRecoveryRecords: whereClause is not in the supported predicate allowlist");
     }
     const placeholderCount = (whereClause.match(/\?/g) ?? []).length;
     if (placeholderCount !== params.length) {

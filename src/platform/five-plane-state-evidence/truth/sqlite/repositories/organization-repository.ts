@@ -7,8 +7,28 @@ import type {
   WorkspaceMembershipRecord,
   WorkspaceRecord,
 } from "../sqlite-repository-contracts.js";
+import { resolveTenantScope } from "../authoritative-task-store-types.js";
 import type { AuthoritativeSqlDatabase } from "../sqlite-database.js";
 import { execute, queryAll, queryOne } from "../query-helper.js";
+
+interface OrganizationListOptions {
+  readonly limit?: number;
+  readonly tenantId?: string | null;
+  readonly cursor?: string | null;
+}
+
+interface OrganizationCursorState {
+  readonly updatedAt: string;
+  readonly organizationId: string;
+}
+
+function decodeOrganizationCursor(cursor: string): OrganizationCursorState {
+  const parsed = JSON.parse(cursor) as Partial<OrganizationCursorState>;
+  if (typeof parsed.updatedAt !== "string" || typeof parsed.organizationId !== "string" || parsed.updatedAt.length === 0 || parsed.organizationId.length === 0) {
+    throw new Error("organization.invalid_cursor");
+  }
+  return parsed as OrganizationCursorState;
+}
 
 /**
  * Standalone repository boundary for workspace / organization / tenant /
@@ -270,8 +290,27 @@ export class OrganizationRepository {
     ) ?? null;
   }
 
-  public listOrganizationRecords(limit = 50): OrganizationRecord[] {
-    const safeLimit = Number.isFinite(limit) ? Math.max(1, Math.trunc(limit)) : 50;
+  public listOrganizationRecords(limit: number | OrganizationListOptions = 50): OrganizationRecord[] {
+    const options = typeof limit === "object" && limit != null ? limit : { limit };
+    const cursorState = options.cursor == null ? null : decodeOrganizationCursor(options.cursor);
+    const safeLimit = Number.isFinite(options.limit) ? Math.max(1, Math.trunc(options.limit ?? 50)) : 50;
+    const scopedTenantId = resolveTenantScope(options.tenantId);
+    const params: Array<string | number | null> = [];
+    const where: string[] = [];
+    if (scopedTenantId !== undefined) {
+      where.push(`EXISTS (
+        SELECT 1
+        FROM tenants tenant_scope
+        WHERE tenant_scope.organization_id = organizations.organization_id
+          AND tenant_scope.tenant_id = ?
+      )`);
+      params.push(scopedTenantId);
+    }
+    if (cursorState != null) {
+      where.push("(updated_at < ? OR (updated_at = ? AND organization_id > ?))");
+      params.push(cursorState.updatedAt, cursorState.updatedAt, cursorState.organizationId);
+    }
+    params.push(safeLimit);
     return queryAll<OrganizationRecord>(
       this.db.connection,
       `SELECT
@@ -282,9 +321,10 @@ export class OrganizationRepository {
          created_at AS createdAt,
          updated_at AS updatedAt
        FROM organizations
+       ${where.length > 0 ? `WHERE ${where.join(" AND ")}` : ""}
        ORDER BY updated_at DESC, organization_id ASC
        LIMIT ?`,
-      safeLimit,
+      ...params,
     );
   }
 

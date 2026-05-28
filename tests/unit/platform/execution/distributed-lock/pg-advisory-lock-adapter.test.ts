@@ -144,8 +144,7 @@ test("PgAdvisoryLockAdapter acquireAsync throws when pg module not found [pg-adv
   );
 });
 
-test("PgAdvisoryLockAdapter acquireAsync returns false on connection error [pg-advisory-lock-adapter]", async () => {
-  // Throw a non-module, non-ECONNREFUSED error so code returns { acquired: false }
+test("PgAdvisoryLockAdapter acquireAsync throws unavailable on connection error [pg-advisory-lock-adapter]", async () => {
   const mockDriver = createMockDriver({
     queryFn: async () => {
       throw new Error("Connection reset by peer");
@@ -153,9 +152,12 @@ test("PgAdvisoryLockAdapter acquireAsync returns false on connection error [pg-a
   });
   const adapter = createAdapterWithMockDriver(mockDriver);
 
-  const result = await adapter.acquireAsync({ lockKey: "test-key", owner: "test-owner" });
-
-  assert.equal(result.acquired, false);
+  await assert.rejects(
+    adapter.acquireAsync({ lockKey: "test-key", owner: "test-owner" }),
+    (error: unknown) =>
+      (error as any)?.code === "E7lock.pg_advisory_unavailable"
+      && (error as Error).message.includes("Connection reset by peer"),
+  );
 });
 
 test("PgAdvisoryLockAdapter releaseAsync returns true when successful [pg-advisory-lock-adapter]", async () => {

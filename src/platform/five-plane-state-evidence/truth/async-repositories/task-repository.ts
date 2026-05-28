@@ -7,6 +7,19 @@ import type { AsyncSqlConnection } from "../async-sql-database.js";
 import { asyncExecute, asyncQueryAll, asyncQueryOne } from "../async-query-helper.js";
 import { resolveTenantScope } from "../sqlite/authoritative-task-store-types.js";
 
+interface TaskCursor {
+  readonly updatedAt: string;
+  readonly id: string;
+}
+
+function decodeTaskCursor(cursor: string): TaskCursor {
+  const parsed = JSON.parse(cursor) as Partial<TaskCursor>;
+  if (typeof parsed.updatedAt !== "string" || typeof parsed.id !== "string" || parsed.updatedAt.length === 0 || parsed.id.length === 0) {
+    throw new Error("task.invalid_cursor");
+  }
+  return parsed as TaskCursor;
+}
+
 export class AsyncTaskRepository {
   public constructor(private readonly conn: AsyncSqlConnection) {}
 
@@ -58,6 +71,7 @@ export class AsyncTaskRepository {
 
   public async listTasks(limit?: number, tenantId?: string | null, cursor?: string | null): Promise<TaskRecord[]> {
     const scopedTenantId = resolveTenantScope(tenantId);
+    const cursorState = cursor == null ? null : decodeTaskCursor(cursor);
     let sql = `SELECT id, parent_id AS "parentId", root_id AS "rootId", division_id AS "divisionId",
           tenant_id AS "tenantId", title, status, source, priority,
           input_json AS "inputJson", normalized_input_json AS "normalizedInputJson",
@@ -71,9 +85,12 @@ export class AsyncTaskRepository {
       whereClauses.push(`tenant_id = $${params.length + 1}`);
       params.push(scopedTenantId);
     }
-    if (cursor !== undefined && cursor !== null) {
-      whereClauses.push(`updated_at < $${params.length + 1}`);
-      params.push(cursor);
+    if (cursorState != null) {
+      const updatedAtIndex = params.length + 1;
+      const repeatedUpdatedAtIndex = params.length + 2;
+      const idIndex = params.length + 3;
+      whereClauses.push(`(updated_at < $${updatedAtIndex} OR (updated_at = $${repeatedUpdatedAtIndex} AND id < $${idIndex}))`);
+      params.push(cursorState.updatedAt, cursorState.updatedAt, cursorState.id);
     }
     if (whereClauses.length > 0) {
       sql += ` WHERE ${whereClauses.join(" AND ")}`;

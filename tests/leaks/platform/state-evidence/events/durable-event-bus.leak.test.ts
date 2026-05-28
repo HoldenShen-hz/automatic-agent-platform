@@ -5,7 +5,7 @@ import { DurableEventBus } from "../../../../../src/platform/five-plane-state-ev
 import { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
-import { forceFullGc, formatMegabytes, heapUsedBytes } from "../../../../helpers/memory-leak.js";
+import { forceFullGc, formatMegabytes, heapUsedBytes, rssBytes } from "../../../../helpers/memory-leak.js";
 
 function createTestBus(round: number): { bus: DurableEventBus; db: SqliteDatabase; workspace: string } {
   const workspace = createTempWorkspace(`event-bus-leak-${round}-`);
@@ -32,13 +32,18 @@ async function exerciseBusLifecycle(round: number): Promise<void> {
   }
 }
 
-test("leak guard: DurableEventBus does not retain subscribers or polling timers across disposal cycles", async () => {
+test("leak guard: DurableEventBus does not retain subscribers or polling timers across disposal cycles", async (t) => {
+  if (typeof (globalThis as { gc?: unknown }).gc !== "function") {
+    t.skip("memory leak guardrails require Node to run with --expose-gc");
+    return;
+  }
   for (let round = 0; round < 2; round += 1) {
     await exerciseBusLifecycle(round);
   }
 
   await forceFullGc();
   const baselineHeap = heapUsedBytes();
+  const baselineRss = rssBytes();
 
   for (let round = 2; round < 22; round += 1) {
     await exerciseBusLifecycle(round);
@@ -46,12 +51,19 @@ test("leak guard: DurableEventBus does not retain subscribers or polling timers 
   }
 
   const finalHeap = heapUsedBytes();
+  const finalRss = rssBytes();
   const retainedBytes = Math.max(0, finalHeap - baselineHeap);
+  const retainedRssBytes = Math.max(0, finalRss - baselineRss);
   const retainedThresholdBytes = 10 * 1024 * 1024;
 
   assert.ok(
     retainedBytes < retainedThresholdBytes,
     `retained heap ${formatMegabytes(retainedBytes)} exceeded ${formatMegabytes(retainedThresholdBytes)} ` +
       `after repeated event bus disposal (baseline=${formatMegabytes(baselineHeap)}, final=${formatMegabytes(finalHeap)})`,
+  );
+  assert.ok(
+    retainedRssBytes < retainedThresholdBytes,
+    `retained rss ${formatMegabytes(retainedRssBytes)} exceeded ${formatMegabytes(retainedThresholdBytes)} ` +
+      `after repeated event bus disposal (baseline=${formatMegabytes(baselineRss)}, final=${formatMegabytes(finalRss)})`,
   );
 });

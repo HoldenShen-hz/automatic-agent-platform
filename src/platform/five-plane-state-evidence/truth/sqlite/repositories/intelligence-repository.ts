@@ -8,6 +8,25 @@ import type { AuthoritativeSqlDatabase } from "../sqlite-database.js";
 import { execute, queryAll, queryOne } from "../query-helper.js";
 import { resolveTenantScope } from "../authoritative-task-store-types.js";
 
+interface IntelBriefListOptions {
+  readonly limit?: number;
+  readonly tenantId?: string | null;
+  readonly cursor?: string | null;
+}
+
+interface IntelBriefCursorState {
+  readonly generatedAt: string;
+  readonly briefId: string;
+}
+
+function decodeIntelBriefCursor(cursor: string): IntelBriefCursorState {
+  const parsed = JSON.parse(cursor) as Partial<IntelBriefCursorState>;
+  if (typeof parsed.generatedAt !== "string" || typeof parsed.briefId !== "string" || parsed.generatedAt.length === 0 || parsed.briefId.length === 0) {
+    throw new Error("intel_brief.invalid_cursor");
+  }
+  return parsed as IntelBriefCursorState;
+}
+
 /**
  * Standalone repository boundary for perception / intel-item / intel-brief /
  * action-proposal records.
@@ -347,9 +366,16 @@ export class IntelligenceRepository {
     ) ?? null;
   }
 
-  public listIntelBriefs(limit = 20, tenantId?: string | null): IntelBriefRecord[] {
-    const safeLimit = Number.isFinite(limit) ? Math.max(1, Math.trunc(limit)) : 20;
-    const scopedTenantId = resolveTenantScope(tenantId);
+  public listIntelBriefs(limit: number | IntelBriefListOptions = 20, tenantId?: string | null): IntelBriefRecord[] {
+    const options: IntelBriefListOptions = typeof limit === "object" && limit != null
+      ? limit
+      : {
+          ...(limit !== undefined ? { limit } : {}),
+          ...(tenantId !== undefined ? { tenantId } : {}),
+        };
+    const cursorState = options.cursor == null ? null : decodeIntelBriefCursor(options.cursor);
+    const safeLimit = Number.isFinite(options.limit) ? Math.max(1, Math.trunc(options.limit ?? 20)) : 20;
+    const scopedTenantId = resolveTenantScope(options.tenantId);
     const sql = `SELECT
          brief_id AS briefId,
          tenant_id AS tenantId,
@@ -361,17 +387,22 @@ export class IntelligenceRepository {
          recommended_actions_json AS recommendedActionsJson,
          generated_at AS generatedAt
        FROM intel_briefs`;
+    const cursorClause = cursorState == null
+      ? ""
+      : `${scopedTenantId === undefined ? " WHERE" : " AND"} (generated_at < ? OR (generated_at = ? AND brief_id > ?))`;
     if (scopedTenantId === undefined) {
       return queryAll<IntelBriefRecord>(
         this.db.connection,
-        `${sql} ORDER BY generated_at DESC LIMIT ?`,
+        `${sql}${cursorClause} ORDER BY generated_at DESC, brief_id ASC LIMIT ?`,
+        ...(cursorState == null ? [] : [cursorState.generatedAt, cursorState.generatedAt, cursorState.briefId]),
         safeLimit,
       );
     }
     return queryAll<IntelBriefRecord>(
       this.db.connection,
-      `${sql} WHERE tenant_id = ? ORDER BY generated_at DESC LIMIT ?`,
+      `${sql} WHERE tenant_id = ?${cursorClause} ORDER BY generated_at DESC, brief_id ASC LIMIT ?`,
       scopedTenantId,
+      ...(cursorState == null ? [] : [cursorState.generatedAt, cursorState.generatedAt, cursorState.briefId]),
       safeLimit,
     );
   }

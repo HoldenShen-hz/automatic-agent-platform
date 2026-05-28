@@ -682,7 +682,7 @@ test("OperationsRepository listRuntimeRecoveryRecords validates SQL injection", 
     // Attempt SQL injection should throw
     assert.throws(() => {
       repo.listRuntimeRecoveryRecords("task_id = '1'; DROP TABLE tasks;--", []);
-    }, /forbidden SQL tokens/);
+    }, /supported predicate allowlist/);
 
   } finally {
     cleanupPath(workspace);
@@ -701,7 +701,7 @@ test("OperationsRepository listRuntimeRecoveryRecords validates placeholder coun
     // Mismatched placeholder count should throw
     assert.throws(() => {
       repo.listRuntimeRecoveryRecords("task_id = ? AND status = ?", ["task-1"]);
-    }, /placeholder\/param count mismatch/);
+    }, /supported predicate allowlist/);
 
   } finally {
     cleanupPath(workspace);

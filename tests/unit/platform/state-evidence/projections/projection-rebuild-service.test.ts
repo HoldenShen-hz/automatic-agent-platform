@@ -224,6 +224,37 @@ test("ProjectionRebuildService supports shadow build, compare, and cutover", () 
   assert.equal(service.getProjectionSnapshotStatus("shadow_projection").shadow, null);
 });
 
+test("ProjectionRebuildService cutover rejects stale active snapshot token", () => {
+  const service = new ProjectionRebuildService({
+    listAllEvents: () => [],
+  } as any);
+  (service as any).activeSnapshots.set("shadow_projection", {
+    versionId: "active-version",
+    projectionName: "shadow_projection",
+    builtAt: "2024-01-01T00:00:00Z",
+    sourceEventCount: 1,
+    stateHash: "hash-active",
+    state: { a: 1 },
+    stale: false,
+    staleReason: null,
+  });
+  (service as any).shadowSnapshots.set("shadow_projection", {
+    versionId: "shadow-version",
+    projectionName: "shadow_projection",
+    builtAt: "2024-01-02T00:00:00Z",
+    sourceEventCount: 1,
+    stateHash: "hash-shadow",
+    state: { a: 2 },
+    stale: false,
+    staleReason: null,
+  });
+
+  const cutover = service.cutoverShadowProjection("shadow_projection", "wrong-version");
+
+  assert.equal(cutover, null);
+  assert.equal(service.getProjectionSnapshotStatus("shadow_projection").active?.versionId, "active-version");
+});
+
 test("Custom projection handler registration", () => {
   // Mock event repository
   const mockEventRepo = {} as any;

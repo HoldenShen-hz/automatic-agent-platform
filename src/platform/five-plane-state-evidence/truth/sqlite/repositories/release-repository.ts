@@ -11,6 +11,48 @@ import type {
 import type { AuthoritativeSqlDatabase } from "../sqlite-database.js";
 import { execute, queryAll, queryOne } from "../query-helper.js";
 
+interface CursorPageOptions {
+  readonly limit?: number;
+  readonly cursor?: string | null;
+}
+
+interface ReportCursorPageOptions extends CursorPageOptions {
+  readonly tenantId?: string | null;
+}
+
+interface TimestampCursorState {
+  readonly timestamp: string;
+  readonly id: string;
+}
+
+function normalizeCursorPage(input: number | CursorPageOptions | undefined): CursorPageOptions {
+  if (input == null) {
+    return {};
+  }
+  if (typeof input === "number") {
+    return { limit: input };
+  }
+  return input;
+}
+
+function normalizeReportCursorPage(input: number | ReportCursorPageOptions | undefined): ReportCursorPageOptions {
+  if (input == null) {
+    return {};
+  }
+  if (typeof input === "number") {
+    return { limit: input };
+  }
+  return input;
+}
+
+function decodeTimestampCursor(cursor: string): TimestampCursorState {
+  const parsed = JSON.parse(cursor) as Partial<TimestampCursorState>;
+  if (typeof parsed.timestamp !== "string" || typeof parsed.id !== "string" || parsed.timestamp.length === 0 || parsed.id.length === 0) {
+    throw new Error("release.invalid_cursor");
+  }
+  return parsed as TimestampCursorState;
+}
+
 /**
  * Standalone repository boundary for release / deployment / environment readiness
  * and enterprise rollout evidence records.
@@ -608,8 +650,21 @@ export class ReleaseRepository {
     );
   }
 
-  public listEnterpriseCapabilityReports(limit = 20): EnterpriseCapabilityReportRecord[] {
-    const safeLimit = Number.isFinite(limit) ? Math.max(1, Math.trunc(limit)) : 20;
+  public listEnterpriseCapabilityReports(limit: number | ReportCursorPageOptions = 20): EnterpriseCapabilityReportRecord[] {
+    const page = normalizeReportCursorPage(limit);
+    const cursorState = page.cursor == null ? null : decodeTimestampCursor(page.cursor);
+    const safeLimit = Number.isFinite(page.limit) ? Math.max(1, Math.trunc(page.limit ?? 20)) : 20;
+    const params: Array<string | number | null> = [];
+    const where: string[] = [];
+    if (page.tenantId !== undefined) {
+      where.push("tenant_id = ?");
+      params.push(page.tenantId ?? null);
+    }
+    if (cursorState != null) {
+      where.push("(generated_at < ? OR (generated_at = ? AND report_id > ?))");
+      params.push(cursorState.timestamp, cursorState.timestamp, cursorState.id);
+    }
+    params.push(safeLimit);
     return queryAll<EnterpriseCapabilityReportRecord>(
       this.db.connection,
       `SELECT
@@ -623,14 +678,24 @@ export class ReleaseRepository {
          report_json AS reportJson,
          generated_at AS generatedAt
        FROM enterprise_capability_reports
-       ORDER BY generated_at DESC
+       ${where.length > 0 ? `WHERE ${where.join(" AND ")}` : ""}
+       ORDER BY generated_at DESC, report_id ASC
        LIMIT ?`,
-      safeLimit,
+      ...params,
     );
   }
 
-  public listIncidentHandoffRecords(limit = 20): IncidentHandoffRecord[] {
-    const safeLimit = Number.isFinite(limit) ? Math.max(1, Math.trunc(limit)) : 20;
+  public listIncidentHandoffRecords(limit: number | CursorPageOptions = 20): IncidentHandoffRecord[] {
+    const page = normalizeCursorPage(limit);
+    const cursorState = page.cursor == null ? null : decodeTimestampCursor(page.cursor);
+    const safeLimit = Number.isFinite(page.limit) ? Math.max(1, Math.trunc(page.limit ?? 20)) : 20;
+    const params: Array<string | number> = [];
+    const where: string[] = [];
+    if (cursorState != null) {
+      where.push("(created_at < ? OR (created_at = ? AND handoff_id > ?))");
+      params.push(cursorState.timestamp, cursorState.timestamp, cursorState.id);
+    }
+    params.push(safeLimit);
     return queryAll<IncidentHandoffRecord>(
       this.db.connection,
       `SELECT
@@ -645,14 +710,24 @@ export class ReleaseRepository {
          handoff_json AS handoffJson,
          created_at AS createdAt
        FROM incident_handoff_records
-       ORDER BY created_at DESC
+       ${where.length > 0 ? `WHERE ${where.join(" AND ")}` : ""}
+       ORDER BY created_at DESC, handoff_id ASC
        LIMIT ?`,
-      safeLimit,
+      ...params,
     );
   }
 
-  public listEnterpriseGovernanceReports(limit = 20): EnterpriseGovernanceReportRecord[] {
-    const safeLimit = Number.isFinite(limit) ? Math.max(1, Math.trunc(limit)) : 20;
+  public listEnterpriseGovernanceReports(limit: number | CursorPageOptions = 20): EnterpriseGovernanceReportRecord[] {
+    const page = normalizeCursorPage(limit);
+    const cursorState = page.cursor == null ? null : decodeTimestampCursor(page.cursor);
+    const safeLimit = Number.isFinite(page.limit) ? Math.max(1, Math.trunc(page.limit ?? 20)) : 20;
+    const params: Array<string | number> = [];
+    const where: string[] = [];
+    if (cursorState != null) {
+      where.push("(generated_at < ? OR (generated_at = ? AND report_id > ?))");
+      params.push(cursorState.timestamp, cursorState.timestamp, cursorState.id);
+    }
+    params.push(safeLimit);
     return queryAll<EnterpriseGovernanceReportRecord>(
       this.db.connection,
       `SELECT
@@ -666,9 +741,10 @@ export class ReleaseRepository {
          generated_at AS generatedAt,
          handoff_id AS handoffId
        FROM enterprise_governance_reports
-       ORDER BY generated_at DESC
+       ${where.length > 0 ? `WHERE ${where.join(" AND ")}` : ""}
+       ORDER BY generated_at DESC, report_id ASC
        LIMIT ?`,
-      safeLimit,
+      ...params,
     );
   }
 }

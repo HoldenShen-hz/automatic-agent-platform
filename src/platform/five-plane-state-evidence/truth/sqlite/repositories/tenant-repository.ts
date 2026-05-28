@@ -201,7 +201,15 @@ export class InMemoryTenantRepository implements TenantRepository {
   }
 
   public async listAll(limit: number, offset: number): Promise<TenantRecord[]> {
-    return [...this.tenants.values()].slice(offset, offset + limit);
+    return [...this.tenants.values()]
+      .sort((left, right) => {
+        const updatedAtOrder = right.updatedAt.localeCompare(left.updatedAt);
+        if (updatedAtOrder !== 0) {
+          return updatedAtOrder;
+        }
+        return left.tenantId.localeCompare(right.tenantId);
+      })
+      .slice(offset, offset + limit);
   }
 }
 

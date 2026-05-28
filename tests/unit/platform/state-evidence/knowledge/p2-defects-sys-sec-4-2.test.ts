@@ -10,6 +10,9 @@
  */
 
 import assert from "node:assert/strict";
+import { rmSync } from "node:fs";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 import test from "node:test";
 
 import { KnowledgeSnapshotStore } from "../../../../../src/platform/five-plane-state-evidence/knowledge/archive/knowledge-snapshot-store.js";
@@ -60,7 +63,7 @@ test("[SYS-SEC-4.2] knowledge snapshot store accepts valid relative path", () =>
 
 test("[SYS-SEC-4.2] knowledge snapshot store accepts absolute path within /tmp/aa-sandbox", () => {
   // Absolute path within sandbox should work
-  const sandboxPath = "/tmp/aa-sandbox/test-snapshot-" + Date.now() + ".json";
+  const sandboxPath = join(tmpdir(), "aa-sandbox", "test-snapshot-" + Date.now() + ".json");
   const store = new KnowledgeSnapshotStore({ snapshotPath: sandboxPath });
   assert.ok(store != null, "Absolute path within sandbox should be accepted");
 });
@@ -68,7 +71,7 @@ test("[SYS-SEC-4.2] knowledge snapshot store accepts absolute path within /tmp/a
 test("[SYS-SEC-4.2] knowledge snapshot store accepts nested path within sandbox", () => {
   // Nested absolute path within sandbox should work
   const store = new KnowledgeSnapshotStore({
-    snapshotPath: "/tmp/aa-sandbox/subdir/nested/test.json",
+    snapshotPath: join(tmpdir(), "aa-sandbox", "subdir", "nested", "test.json"),
   });
   assert.ok(store != null, "Nested path within sandbox should be accepted");
 });
@@ -76,7 +79,7 @@ test("[SYS-SEC-4.2] knowledge snapshot store accepts nested path within sandbox"
 test("[SYS-SEC-4.2] knowledge snapshot store accepts paths within system temp dir", () => {
   // Paths within system temp directory should work
   const store = new KnowledgeSnapshotStore({
-    snapshotPath: process.env.TMPDIR + "test-snapshot-" + Date.now() + ".json",
+    snapshotPath: join(tmpdir(), "test-snapshot-" + Date.now() + ".json"),
   });
   assert.ok(store != null, "Path within system temp dir should be accepted");
 });
@@ -110,14 +113,17 @@ test("[SYS-SEC-4.2] knowledge snapshot store rejects /root/.ssh/authorized_keys"
 
 test("[SYS-SEC-4.2] knowledge snapshot store save/load works with valid sandbox path", () => {
   // Verify that valid paths actually work for save/load operations
-  const sandboxPath = "/tmp/aa-sandbox/valid-test-" + Date.now() + ".json";
-  const store = new KnowledgeSnapshotStore({ snapshotPath: sandboxPath });
+  const sandboxPath = join(tmpdir(), "aa-sandbox", "valid-test-" + Date.now() + ".json");
+  try {
+    const store = new KnowledgeSnapshotStore({ snapshotPath: sandboxPath });
+    const saved = store.save({ namespaces: [], records: [] });
+    assert.ok(saved.generatedAt != null, "Save should succeed with valid path");
 
-  const saved = store.save({ namespaces: [], records: [] });
-  assert.ok(saved.generatedAt != null, "Save should succeed with valid path");
-
-  const loaded = store.load();
-  assert.ok(loaded !== null, "Load should succeed with valid path");
-  assert.equal(loaded!.namespaces.length, 0, "Loaded namespaces should be empty as saved");
-  assert.equal(loaded!.records.length, 0, "Loaded records should be empty as saved");
+    const loaded = store.load();
+    assert.ok(loaded !== null, "Load should succeed with valid path");
+    assert.equal(loaded!.namespaces.length, 0, "Loaded namespaces should be empty as saved");
+    assert.equal(loaded!.records.length, 0, "Loaded records should be empty as saved");
+  } finally {
+    rmSync(sandboxPath, { force: true });
+  }
 });

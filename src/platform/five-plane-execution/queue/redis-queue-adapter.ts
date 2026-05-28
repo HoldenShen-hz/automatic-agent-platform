@@ -542,7 +542,7 @@ class RedisQueueClient {
     const jobKeyPrefix = String(args[2] ?? "");
     const updatedAt = String(args[3] ?? nowIso());
     const ids = await this.redis.zrangebyscore(waitingKey, "-inf", "+inf");
-    for (let index = ids.length - 1; index >= 0; index -= 1) {
+    for (let index = 0; index < ids.length; index += 1) {
       const jobId = ids[index]!;
       const job = await this.redis.hgetall(`${jobKeyPrefix}${jobId}`);
       if (!job.id) {
@@ -588,7 +588,7 @@ local activeKey = KEYS[2]
 local jobKeyPrefix = ARGV[1]
 local updatedAt = ARGV[2]
 local ids = redis.call('ZRANGE', waitingKey, 0, -1)
-for index = #ids, 1, -1 do
+for index = 1, #ids do
   local jobId = ids[index]
   local jobKey = jobKeyPrefix .. jobId
   local raw = redis.call('HGETALL', jobKey)

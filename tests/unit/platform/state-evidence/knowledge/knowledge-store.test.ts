@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { rmSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
+import { tmpdir } from "node:os";
 
 import { KnowledgeSnapshotStore } from "../../../../../src/platform/five-plane-state-evidence/knowledge/archive/knowledge-snapshot-store.js";
 import type { ArchivedKnowledgeRecord } from "../../../../../src/platform/five-plane-state-evidence/knowledge/archive/knowledge-archive.js";
@@ -12,9 +13,7 @@ import type { KnowledgeNamespace } from "../../../../../src/platform/five-plane-
 // =============================================================================
 
 function createTempPath(suffix: string): string {
-  // Use /tmp/aa-sandbox/ as the temp directory since KnowledgeSnapshotStore
-  // only allows absolute paths within /tmp/aa-sandbox/
-  return join("/tmp/aa-sandbox", `ktest_${suffix}_${Date.now()}`);
+  return join(tmpdir(), "aa-sandbox", `ktest_${suffix}_${Date.now()}`);
 }
 
 function createMinimalNamespace(overrides: Partial<KnowledgeNamespace> = {}): KnowledgeNamespace {
@@ -113,7 +112,7 @@ test("KnowledgeSnapshotStore constructor rejects absolute path outside /tmp/aa-s
 });
 
 test("KnowledgeSnapshotStore constructor accepts path within /tmp/aa-sandbox", () => {
-  const path = "/tmp/aa-sandbox/knowledge-snapshot.json";
+  const path = join(tmpdir(), "aa-sandbox", "knowledge-snapshot.json");
   const store = new KnowledgeSnapshotStore({ snapshotPath: path });
   assert.ok(store);
 });
@@ -245,14 +244,14 @@ test("load overwrites previously loaded data after save", () => {
 test("constructor rejects path with .. even if other checks would pass", () => {
   // This tests the additional validation layer beyond checkToolPathScope
   assert.throws(
-    () => new KnowledgeSnapshotStore({ snapshotPath: "/tmp/aa-sandbox/../etc/malicious" }),
+    () => new KnowledgeSnapshotStore({ snapshotPath: `${tmpdir()}/aa-sandbox/../etc/malicious` }),
     /path_traversal_denied/,
   );
 });
 
 test("constructor accepts nested path within /tmp/aa-sandbox", () => {
   const store = new KnowledgeSnapshotStore({
-    snapshotPath: "/tmp/aa-sandbox/nested/deep/snapshot.json",
+    snapshotPath: join(tmpdir(), "aa-sandbox", "nested", "deep", "snapshot.json"),
   });
   assert.ok(store);
 });

@@ -184,10 +184,14 @@ test("PgAdvisoryLockAdapter: acquireAsync releases the advisory lock when bookke
     throw new Error("forced bookkeeping failure");
   }) as typeof heldLocks.set;
 
-  const result = await adapter.acquireAsync({ lockKey: "test-key", owner: "test-owner" });
-
-  heldLocks.set = originalSet;
-  assert.equal(result.acquired, false);
+  try {
+    await assert.rejects(
+      adapter.acquireAsync({ lockKey: "test-key", owner: "test-owner" }),
+      /lock\.pg_advisory_unavailable|forced bookkeeping failure/,
+    );
+  } finally {
+    heldLocks.set = originalSet;
+  }
   assert.equal(queries.some((query) => query.includes("pg_advisory_unlock")), true);
 });
 
@@ -207,7 +211,7 @@ test("PgAdvisoryLockAdapter: acquireAsync throws when postgres module not found 
   );
 });
 
-test("PgAdvisoryLockAdapter: acquireAsync returns acquired=false on generic database errors [advisory-lock]", async () => {
+test("PgAdvisoryLockAdapter: acquireAsync throws unavailable on generic database errors [advisory-lock]", async () => {
   const mockDriver = createMockDriver({
     queryFn: async () => {
       throw new Error("Connection reset by peer");
@@ -215,9 +219,12 @@ test("PgAdvisoryLockAdapter: acquireAsync returns acquired=false on generic data
   });
   const adapter = createAdapterWithMockDriver(mockDriver);
 
-  const result = await adapter.acquireAsync({ lockKey: "test-key", owner: "test-owner" });
-
-  assert.equal(result.acquired, false);
+  await assert.rejects(
+    adapter.acquireAsync({ lockKey: "test-key", owner: "test-owner" }),
+    (error: unknown) =>
+      (error as { code?: string }).code === "E7lock.pg_advisory_unavailable"
+      && (error as Error).message.includes("Connection reset by peer"),
+  );
 });
 
 // ---------------------------------------------------------------------------

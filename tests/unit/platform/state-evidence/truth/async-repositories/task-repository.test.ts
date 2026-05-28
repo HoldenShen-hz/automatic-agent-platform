@@ -149,12 +149,16 @@ test("AsyncTaskRepository listTasks respects cursor", async () => {
   const task = taskRecord();
   const { connection, calls } = createConnection({ queryRows: [[task]] });
   const repo = new AsyncTaskRepository(connection);
+  const cursor = JSON.stringify({
+    updatedAt: "2026-04-22T00:00:00.000Z",
+    id: "task-2",
+  });
 
-  const result = await repo.listTasks(undefined, undefined, "2026-04-22T00:00:00.000Z");
+  const result = await repo.listTasks(undefined, undefined, cursor);
 
   assert.deepEqual(result, [task]);
-  assert.match(calls[0]!.sql, /updated_at < \$1/);
-  assert.deepEqual(calls[0]!.params, ["2026-04-22T00:00:00.000Z"]);
+  assert.match(calls[0]!.sql, /updated_at < \$1 OR \(updated_at = \$2 AND id < \$3\)/);
+  assert.deepEqual(calls[0]!.params, ["2026-04-22T00:00:00.000Z", "2026-04-22T00:00:00.000Z", "task-2"]);
 });
 
 test("AsyncTaskRepository updateTaskStatus updates task status", async () => {

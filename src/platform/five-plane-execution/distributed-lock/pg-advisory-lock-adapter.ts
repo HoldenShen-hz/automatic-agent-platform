@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import { loadPostgresPoolEnv } from "../../five-plane-control-plane/config-center/index.js";
 import { LockingError } from "../../contracts/errors.js";
 import { defaultPostgresFactory, inferPgSslFromDsn } from "./locking-support.js";
@@ -29,18 +31,44 @@ export class PgAdvisoryLockAdapter implements DistributedLockAdapter {
   }
 
   private lockKeyToAdvisoryKey(lockKey: string): bigint {
-    const encoder = new TextEncoder();
-    const bytes = encoder.encode(lockKey);
-    let hash = 0xcbf29ce484222325n;
-    const prime = 0x100000001b3n;
-    const maxSigned63Bit = 0x7FFFFFFFFFFFFFFFn;
+    const digest = createHash("sha256").update(lockKey, "utf8").digest();
+    const advisoryKey = digest.readBigUInt64BE(0) & 0x7FFFFFFFFFFFFFFFn;
+    return advisoryKey === 0n ? 1n : advisoryKey;
+  }
 
-    for (const byte of bytes) {
-      hash ^= BigInt(byte);
-      hash = (hash * prime) & maxSigned63Bit;
+  private normalizeTtlMs(inputTtlMs: number | undefined): number {
+    const ttlMs = inputTtlMs ?? 30000;
+    if (!Number.isFinite(ttlMs) || ttlMs <= 0) {
+      throw new LockingError("lock.invalid_ttl", "lock.invalid_ttl: advisory lock ttl must be a positive finite number");
     }
+    return Math.trunc(ttlMs);
+  }
 
-    return hash === 0n ? 1n : hash;
+  private parseFencingToken(value: unknown): number {
+    const bigintValue = typeof value === "bigint"
+      ? value
+      : typeof value === "number"
+        ? BigInt(value)
+        : BigInt(String(value ?? "0"));
+    if (bigintValue > BigInt(Number.MAX_SAFE_INTEGER) || bigintValue < 0n) {
+      throw new LockingError("lock.invalid_fencing_token", "lock.invalid_fencing_token: fencing token exceeded safe integer range");
+    }
+    return Number(bigintValue);
+  }
+
+  private normalizeDriverError(error: unknown): LockingError {
+    if (error instanceof LockingError) {
+      return error;
+    }
+    if (error instanceof ReferenceError || (error instanceof Error && (error.message.includes("postgres") || error.message.includes("Cannot find module")))) {
+      return new LockingError("lock.pg_advisory_not_implemented", "lock.pg_advisory_not_implemented: PostgreSQL advisory lock backend requires pg driver");
+    }
+    const code = error != null && typeof error === "object" && "code" in error ? String((error as { code?: unknown }).code ?? "") : "";
+    const message = error instanceof Error ? error.message : String(error);
+    return new LockingError("lock.pg_advisory_unavailable", `lock.pg_advisory_unavailable: ${code || message}`, {
+      retryable: true,
+      ...(error instanceof Error ? { cause: error } : {}),
+    });
   }
 
   private ensureConnected(): void {
@@ -73,9 +101,14 @@ export class PgAdvisoryLockAdapter implements DistributedLockAdapter {
     if (current == null || current.owner !== owner) {
       return null;
     }
+    if (!Number.isFinite(additionalMs) || additionalMs <= 0) {
+      throw new LockingError("lock.invalid_ttl_extension", "lock.invalid_ttl_extension: advisory lock extension must be a positive finite number");
+    }
+    // PostgreSQL advisory locks are session-scoped without a server-side TTL. `extend`
+    // only refreshes the client-visible lease metadata used by higher-level recovery logic.
     const next: LockRecord = {
       ...current,
-      ttlMs: current.ttlMs + additionalMs,
+      ttlMs: Math.trunc(current.ttlMs + additionalMs),
       acquiredAt: new Date().toISOString(),
     };
     this.heldLocks.set(lockKey, next);
@@ -89,32 +122,26 @@ export class PgAdvisoryLockAdapter implements DistributedLockAdapter {
   async acquireAsync(input: AcquireLockInput): Promise<AcquireLockResult> {
     const { lockKey, owner } = input;
     const now = new Date().toISOString();
-    const ttlMs = input.ttlMs ?? 30000;
+    const ttlMs = this.normalizeTtlMs(input.ttlMs);
     let advisoryKey: bigint | null = null;
     let sessionLockHeld = false;
     try {
       this.ensureConnected();
       const driver = this.sql!;
       advisoryKey = this.lockKeyToAdvisoryKey(lockKey);
-      interface AcquireRow extends Record<string, unknown> { acquired: boolean; fencing_token?: number }
+      interface AcquireRow extends Record<string, unknown> { acquired: boolean; fencing_token?: string | number | bigint }
       const rows = await driver<AcquireRow>`SELECT pg_try_advisory_lock(${advisoryKey}) as acquired, txid_current()::bigint as fencing_token`;
       const result = rows[0];
       if (result?.acquired) {
         sessionLockHeld = true;
-        const fencingToken = Number(result.fencing_token);
+        const fencingToken = this.parseFencingToken(result.fencing_token ?? 0);
         const lock = { lockKey, owner, fencingToken, status: "held", acquiredAt: now, ttlMs, metadata: null } satisfies LockRecord;
         this.heldLocks.set(lockKey, lock);
         return { acquired: true, lock };
       }
       return { acquired: false };
     } catch (error) {
-      const isModuleError = error instanceof ReferenceError ||
-        (error instanceof Error && (error.message.includes("postgres") || error.message.includes("Cannot find module")));
-      const isConnectionError = error instanceof Error && (error as { code?: string }).code === "ECONNREFUSED";
-      if (isModuleError || isConnectionError) {
-        throw new LockingError("lock.pg_advisory_not_implemented", "lock.pg_advisory_not_implemented: PostgreSQL advisory lock backend requires pg driver");
-      }
-      return { acquired: false };
+      throw this.normalizeDriverError(error);
     } finally {
       if (sessionLockHeld && advisoryKey != null && this.sql != null && !this.heldLocks.has(lockKey)) {
         try {
@@ -140,10 +167,7 @@ export class PgAdvisoryLockAdapter implements DistributedLockAdapter {
       }
       return released;
     } catch (error) {
-      if (error instanceof ReferenceError || (error instanceof Error && (error.message.includes("postgres") || error.message.includes("Cannot find module")))) {
-        throw new LockingError("lock.pg_advisory_not_implemented", "lock.pg_advisory_not_implemented: PostgreSQL advisory lock backend requires pg driver");
-      }
-      return false;
+      throw this.normalizeDriverError(error);
     }
   }
 

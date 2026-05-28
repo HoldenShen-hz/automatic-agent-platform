@@ -17,6 +17,23 @@ import type { SqliteConnection } from "../query-helper.js";
 import { queryAll, queryOne, execute } from "../query-helper.js";
 import { resolveTenantScope } from "../authoritative-task-store-types.js";
 
+interface TaskCursor {
+  readonly updatedAt: string;
+  readonly id: string;
+}
+
+function encodeTaskCursor(cursor: TaskCursor): string {
+  return JSON.stringify(cursor);
+}
+
+function decodeTaskCursor(cursor: string): TaskCursor {
+  const parsed = JSON.parse(cursor) as Partial<TaskCursor>;
+  if (typeof parsed.updatedAt !== "string" || typeof parsed.id !== "string" || parsed.updatedAt.length === 0 || parsed.id.length === 0) {
+    throw new Error("task.invalid_cursor");
+  }
+  return parsed as TaskCursor;
+}
+
 export class TaskRepository {
   public constructor(private readonly conn: SqliteConnection) {}
 
@@ -95,6 +112,7 @@ export class TaskRepository {
    */
   public listTasks(limit?: number, tenantId?: string | null, cursor?: string | null): TaskRecord[] {
     const scopedTenantId = resolveTenantScope(tenantId);
+    const cursorState = cursor == null ? null : decodeTaskCursor(cursor);
     let sql = `SELECT
           id, parent_id AS parentId, root_id AS rootId, division_id AS divisionId,
           tenant_id AS tenantId, title, status, source, priority,
@@ -109,13 +127,13 @@ export class TaskRepository {
       sql += ` WHERE tenant_id = ?`;
       params.push(scopedTenantId);
     }
-    if (cursor !== undefined && cursor !== null) {
+    if (cursorState != null) {
       if (scopedTenantId !== undefined) {
-        sql += ` AND updated_at < ?`;
+        sql += ` AND (updated_at < ? OR (updated_at = ? AND id < ?))`;
       } else {
-        sql += ` WHERE updated_at < ?`;
+        sql += ` WHERE (updated_at < ? OR (updated_at = ? AND id < ?))`;
       }
-      params.push(cursor);
+      params.push(cursorState.updatedAt, cursorState.updatedAt, cursorState.id);
     }
     sql += ` ORDER BY updated_at DESC, id DESC`;
     if (typeof limit === "number") {
@@ -123,6 +141,10 @@ export class TaskRepository {
       params.push(limit);
     }
     return queryAll<TaskRecord>(this.conn, sql, ...params);
+  }
+
+  public static encodeCursor(task: Pick<TaskRecord, "updatedAt" | "id">): string {
+    return encodeTaskCursor({ updatedAt: task.updatedAt, id: task.id });
   }
 
   /**

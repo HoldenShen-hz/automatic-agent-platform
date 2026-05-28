@@ -276,12 +276,15 @@ export class ProjectionRebuildService {
     };
   }
 
-  public cutoverShadowProjection(projectionName: string): ProjectionSnapshot | null {
+  public cutoverShadowProjection(projectionName: string, expectedActiveVersionId?: string | null): ProjectionSnapshot | null {
     const shadow = this.shadowSnapshots.get(projectionName) ?? null;
     if (shadow == null) {
       return null;
     }
     const currentActive = this.activeSnapshots.get(projectionName);
+    if (expectedActiveVersionId !== undefined && (currentActive?.versionId ?? null) !== expectedActiveVersionId) {
+      return null;
+    }
     if (currentActive != null) {
       this.previousSnapshots.set(projectionName, currentActive);
     }

@@ -213,9 +213,9 @@ test("TaskRepository listTasks with cursor pagination", () => {
     const firstPage = repo.listTasks(2);
     assert.equal(firstPage.length, 2);
 
-    // Use the last task's updatedAt as cursor
-    const cursor = firstPage[1]?.updatedAt;
-    if (cursor) {
+    const cursorTask = firstPage[1];
+    if (cursorTask) {
+      const cursor = TaskRepository.encodeCursor(cursorTask);
       const secondPage = repo.listTasks(2, undefined, cursor);
       assert.ok(secondPage.length >= 1);
     }

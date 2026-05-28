@@ -71,6 +71,18 @@ const BILLING_PAYMENT_SESSION_COLS_PREFIXED = `s.session_id AS sessionId,
         s.settled_at AS settledAt,
         s.failure_code AS failureCode`;
 
+function toSafeChangeCount(value: unknown): number {
+  const bigintValue = typeof value === "bigint"
+    ? value
+    : typeof value === "number"
+      ? BigInt(Math.trunc(value))
+      : BigInt(String(value ?? 0));
+  if (bigintValue > BigInt(Number.MAX_SAFE_INTEGER) || bigintValue < 0n) {
+    throw new Error(`billing.change_count_out_of_range:${bigintValue.toString()}`);
+  }
+  return Number(bigintValue);
+}
+
 export class BillingRepository {
   public constructor(private readonly conn: SqliteConnection) {}
 
@@ -165,7 +177,7 @@ export class BillingRepository {
     const result = this.conn
       .prepare(`DELETE FROM cost_event_wal WHERE wal_status = 'pending'`)
       .run();
-    return typeof result.changes === 'bigint' ? Number(result.changes) : result.changes;
+    return toSafeChangeCount(result.changes);
   }
 
   public listCostEventsByTask(taskId: string, tenantId?: string | null): CostEventRecord[] {

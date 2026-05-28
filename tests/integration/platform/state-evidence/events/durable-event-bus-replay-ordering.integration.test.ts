@@ -1,5 +1,5 @@
 /**
- * Integration Test: Durable Event Bus - Replay Ordering & Cross-Module Flow
+ * Integration Test: Durable Event Bus Replay Ordering & Cross-Module Flow
  *
  * Tests for R5-37 replay ordering fields (aggregateId, runId, sequence)
  * and cross-module event flow patterns using SQLite and temporary workspaces.
