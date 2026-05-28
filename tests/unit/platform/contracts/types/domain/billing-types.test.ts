@@ -10,6 +10,10 @@ import type {
   LedgerEntryRecord,
   EntitlementDecisionRecord,
 } from "../../../../../../src/platform/contracts/types/domain/billing-types.js";
+import {
+  parseBillingInvoiceSummary,
+  stringifyBillingInvoiceSummary,
+} from "../../../../../../src/platform/contracts/types/domain/billing-types.js";
 import type {
   BillingAccountStatus,
   BillingUsageSource,
@@ -106,6 +110,18 @@ test("BillingInvoiceRecord allows paid status with paidAt", () => {
 test("BillingInvoiceStatus accepts all valid values", () => {
   const statuses: BillingInvoiceStatus[] = ["draft", "open", "paid", "void"];
   assert.equal(statuses.length, 4);
+});
+
+test("BillingInvoice summary helpers validate structured JSON", () => {
+  const summaryJson = stringifyBillingInvoiceSummary({
+    generatedAt: "2026-04-14T00:00:00.000Z",
+    totals: { totalBilledUsd: 108.74 },
+  });
+
+  assert.deepEqual(parseBillingInvoiceSummary(summaryJson), {
+    generatedAt: "2026-04-14T00:00:00.000Z",
+    totals: { totalBilledUsd: 108.74 },
+  });
 });
 
 test("BillingPaymentSessionRecord structure is correct", () => {
@@ -222,6 +238,29 @@ test("UsageEventRecord allows null optional fields", () => {
   };
   assert.equal(record.workspaceId, null);
   assert.equal(record.taskId, null);
+});
+
+test("UsageEventRecord allows canonical identifiers without legacy execution fields", () => {
+  const record: UsageEventRecord = {
+    usageId: "usage_canonical",
+    accountId: "acct_canonical",
+    subjectId: "subject_canonical",
+    workspaceId: null,
+    tenantId: null,
+    taskId: "task_canonical",
+    harnessRunId: "hrun_123",
+    nodeRunId: "nrun_456",
+    attemptId: "natt_789",
+    metricType: "task_execution",
+    quantity: 1,
+    source: "runtime",
+    unitPriceUsd: 1,
+    capturedAt: "2026-04-14T00:00:00.000Z",
+  };
+
+  assert.equal(record.executionId, undefined);
+  assert.equal(record.stepId, undefined);
+  assert.equal(record.harnessRunId, "hrun_123");
 });
 
 test("BillingUsageSource accepts all valid values", () => {

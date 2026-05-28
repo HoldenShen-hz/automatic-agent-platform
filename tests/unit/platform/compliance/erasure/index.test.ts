@@ -184,3 +184,31 @@ test("ErasurePlanningService preserves target metadata in steps", () => {
   assert.equal(step.targetRef, "artifact:special");
   assert.equal(step.targetKind, "artifact");
 });
+
+test("ErasurePlanningService persists created plans in the configured store", () => {
+  const service = new ErasurePlanningService();
+  const plan = service.createPlan({
+    subjectRef: "user:stored",
+    requestedBy: "privacy@example.com",
+    slaHours: 24,
+    targets: [{ targetRef: "memory:stored", targetKind: "memory", containsPii: true }],
+  });
+
+  assert.deepEqual(service.getPlan(plan.requestId), plan);
+  assert.equal(service.listPlans().length, 1);
+});
+
+test("ErasurePlanningService computes dueAt from the injected clock", () => {
+  const service = new ErasurePlanningService({
+    now: () => new Date("2026-05-28T00:00:00.000Z"),
+  });
+  const plan = service.createPlan({
+    subjectRef: "user:clocked",
+    requestedBy: "privacy@example.com",
+    slaHours: 6,
+    targets: [{ targetRef: "memory:clocked", targetKind: "memory", containsPii: true }],
+  });
+
+  assert.equal(plan.createdAt, "2026-05-28T00:00:00.000Z");
+  assert.equal(plan.dueAt, "2026-05-28T06:00:00.000Z");
+});

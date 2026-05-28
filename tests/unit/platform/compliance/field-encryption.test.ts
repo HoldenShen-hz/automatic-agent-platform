@@ -16,7 +16,12 @@ function createRule(overrides: Partial<FieldProtectionRule> = {}): FieldProtecti
   };
 }
 
-test("FieldEncryptionService uses AES-256-GCM encryption format", () => {
+function parseEnvelope(ciphertext: string): Record<string, string | number> {
+  assert.ok(ciphertext.startsWith("encv1."));
+  return JSON.parse(Buffer.from(ciphertext.slice("encv1.".length), "base64url").toString("utf8")) as Record<string, string | number>;
+}
+
+test("FieldEncryptionService uses a versioned AES-256-GCM envelope", () => {
   const service = new FieldEncryptionService();
   const record = { secret: "my-password", public: "data" };
   const rules = [createRule({ fieldPath: "secret" })];
@@ -30,34 +35,20 @@ test("FieldEncryptionService uses AES-256-GCM encryption format", () => {
   const protectedSecret = result.protectedRecord.secret;
   assert.notEqual(protectedSecret, "my-password", "secret should be encrypted");
 
-  // Issue #2098: Verify encryption uses AES-256-GCM format with auth tag
-  // The format is: enc:fingerprint:iv:authTag:ciphertext (hex encoded)
-  // This is NOT base64url encoding
   if (typeof protectedSecret !== "string") {
     assert.fail("protected secret should be a string");
   }
 
-  // Should have enc: prefix
-  assert.ok(protectedSecret.startsWith("enc:"), "should have encryption prefix");
-
-  // Should have 5 parts after "enc:" prefix
-  const parts = protectedSecret.split(":");
-  assert.equal(parts.length, 5, "AES-256-GCM format should have 5 parts: fingerprint:iv:authTag:ciphertext");
-
-  // Fingerprint defaults to a 32-hex-character prefix of the keyRef digest.
-  assert.equal(parts[1]?.length, 32, "fingerprint should be 32 hex chars");
-
-  // IV should be 24 hex chars (96 bits / 4 = 24)
-  assert.equal(parts[2]?.length, 24, "IV should be 24 hex chars for 96-bit GCM IV");
-
-  // Auth tag should be 32 hex chars (128 bits / 4 = 32)
-  assert.equal(parts[3]?.length, 32, "authTag should be 32 hex chars for 128-bit GCM tag");
-
-  // Ciphertext should not be empty
-  assert.ok((parts[4]?.length ?? 0) > 0, "ciphertext should not be empty");
+  const envelope = parseEnvelope(protectedSecret);
+  assert.equal(envelope.v, 1);
+  assert.equal(typeof envelope.kf, "string");
+  assert.equal(typeof envelope.s, "string");
+  assert.equal(typeof envelope.i, "string");
+  assert.equal(typeof envelope.t, "string");
+  assert.equal(typeof envelope.c, "string");
 });
 
-test("FieldEncryptionService ciphertext is hex-encoded, not base64url", () => {
+test("FieldEncryptionService ciphertext stores base64url-encoded authenticated parts", () => {
   const service = new FieldEncryptionService();
   const record = { secret: "sensitive data" };
   const rules = [createRule()];
@@ -73,17 +64,10 @@ test("FieldEncryptionService ciphertext is hex-encoded, not base64url", () => {
 
   const ciphertext = protectedField.ciphertext;
 
-  // Extract the ciphertext part (last segment after 4th colon)
-  const parts = ciphertext.split(":");
-  const encryptedHex = parts[4];
-
-  // Verify it's valid hex (only contains 0-9, a-f)
-  assert.ok(/^[0-9a-f]+$/i.test(encryptedHex ?? ""), "ciphertext should be hex encoded, not base64url");
-
-  // base64url would contain A-Z, a-z, 0-9, -, _  characters
-  // hex only contains 0-9, a-f
-  const hasBase64Chars = /[A-Z+\/=]/.test(encryptedHex ?? "");
-  assert.ok(!hasBase64Chars, "ciphertext should NOT contain base64url characters like +, /, =");
+  const envelope = parseEnvelope(ciphertext);
+  assert.match(String(envelope.c), /^[A-Za-z0-9\-_]+$/);
+  assert.match(String(envelope.i), /^[A-Za-z0-9\-_]+$/);
+  assert.match(String(envelope.t), /^[A-Za-z0-9\-_]+$/);
 });
 
 test("FieldEncryptionService revealField decrypts AES-256-GCM ciphertext", () => {
@@ -157,7 +141,7 @@ test("FieldEncryptionService rejects malformed ciphertext envelope", () => {
 
   assert.throws(
     () => service.revealField({ ciphertext: "enc:short", keyRef: "auth_key" }),
-    /enc:fingerprint:iv:authTag:ciphertext format/,
+    /encv1 envelope format/,
   );
 });
 
@@ -179,9 +163,9 @@ test("FieldEncryptionService all classification levels use AES-256-GCM", () => {
     assert.ok(protectedField);
 
     // Verify format for all classification levels
-    assert.ok(protectedField.ciphertext.startsWith("enc:"), `AES-256-GCM format for ${classification}`);
-    const parts = protectedField.ciphertext.split(":");
-    assert.equal(parts.length, 5, `AES-256-GCM format for ${classification}`);
+    assert.ok(protectedField.ciphertext.startsWith("encv1."), `AES-256-GCM format for ${classification}`);
+    const envelope = parseEnvelope(protectedField.ciphertext);
+    assert.equal(envelope.v, 1, `AES-256-GCM format for ${classification}`);
 
     // Verify roundtrip works
     const revealed = service.revealField({

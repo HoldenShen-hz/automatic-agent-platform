@@ -294,11 +294,12 @@ test("AgentMiddlewareChain runAgentRound executes full chain [agent-middleware-c
 });
 
 test("AgentMiddlewareChain fails open by default and logs warnings [agent-middleware-chain]", async () => {
+  const loggedCodes: string[] = [];
   const chain = createMiddlewareChain({
     failOpen: true,
     logger: (code, _msg) => {
       if (code.includes("failing")) {
-        assert.ok(true);
+        loggedCodes.push(code);
       }
     },
   });
@@ -318,14 +319,16 @@ test("AgentMiddlewareChain fails open by default and logs warnings [agent-middle
 
   assert.equal(result.warnings.length, 1);
   assert.ok(result.warnings[0]!.includes("Intentional failure"));
+  assert.deepEqual(loggedCodes, ["middleware.failing.failed: Intentional failure"]);
 });
 
 test("AgentMiddlewareChain catches hook exception and fails open [agent-middleware-chain]", async () => {
+  const loggedCodes: string[] = [];
   const chain = createMiddlewareChain({
     failOpen: true,
     logger: (code, _msg) => {
       if (code.includes("middleware.failing.error")) {
-        assert.ok(true);
+        loggedCodes.push(code);
       }
     },
   });
@@ -345,6 +348,7 @@ test("AgentMiddlewareChain catches hook exception and fails open [agent-middlewa
   // Should have 1 warning from the caught exception
   assert.equal(result.warnings.length, 1);
   assert.ok(result.warnings[0]!.includes("Hook threw an exception"));
+  assert.deepEqual(loggedCodes, ["middleware.failing.error: Hook threw an exception"]);
 });
 
 test("AgentMiddlewareChain throws when failOpen is false and hook throws [agent-middleware-chain]", async () => {

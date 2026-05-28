@@ -64,47 +64,70 @@ function createMockRequestFactory() {
   return { mockRequest, getLastRequest: () => lastRequest };
 }
 
-test("DatadogTransport name is datadog", () => {
+function getDatadogState(transport: DatadogTransport): {
+  batch: StructuredLogEntry[];
+  batchSize: number;
+  flushIntervalMs: number;
+  site: string;
+  source: string;
+  timer: NodeJS.Timeout | null;
+} {
+  return transport as unknown as {
+    batch: StructuredLogEntry[];
+    batchSize: number;
+    flushIntervalMs: number;
+    site: string;
+    source: string;
+    timer: NodeJS.Timeout | null;
+  };
+}
+
+test("DatadogTransport name is datadog", async () => {
   const transport = new DatadogTransport({
     apiKey: "test-api-key",
     service: "test-service",
   });
   assert.equal(transport.name, "datadog");
+  await transport.close();
 });
 
-test("DatadogTransport constructor sets default batchSize to 100", () => {
+test("DatadogTransport constructor sets default batchSize to 100", async () => {
   const transport = new DatadogTransport({
     apiKey: "test-api-key",
     service: "test-service",
   });
-  assert.equal(transport.name, "datadog");
+  assert.equal(getDatadogState(transport).batchSize, 100);
+  await transport.close();
 });
 
-test("DatadogTransport constructor sets default flushIntervalMs to 5000", () => {
+test("DatadogTransport constructor sets default flushIntervalMs to 5000", async () => {
   const transport = new DatadogTransport({
     apiKey: "test-api-key",
     service: "test-service",
   });
-  assert.equal(transport.name, "datadog");
+  assert.equal(getDatadogState(transport).flushIntervalMs, 5000);
+  await transport.close();
 });
 
-test("DatadogTransport constructor sets default site to datadoghq.com", () => {
+test("DatadogTransport constructor sets default site to datadoghq.com", async () => {
   const transport = new DatadogTransport({
     apiKey: "test-api-key",
     service: "test-service",
   });
-  assert.equal(transport.name, "datadog");
+  assert.equal(getDatadogState(transport).site, "datadoghq.com");
+  await transport.close();
 });
 
-test("DatadogTransport constructor sets default source to automatic-agent", () => {
+test("DatadogTransport constructor sets default source to automatic-agent", async () => {
   const transport = new DatadogTransport({
     apiKey: "test-api-key",
     service: "test-service",
   });
-  assert.equal(transport.name, "datadog");
+  assert.equal(getDatadogState(transport).source, "automatic-agent");
+  await transport.close();
 });
 
-test("DatadogTransport constructor accepts custom config", () => {
+test("DatadogTransport constructor accepts custom config", async () => {
   const transport = new DatadogTransport({
     apiKey: "test-api-key",
     service: "custom-service",
@@ -114,34 +137,47 @@ test("DatadogTransport constructor accepts custom config", () => {
     flushIntervalMs: 3000,
   });
   assert.equal(transport.name, "datadog");
+  await transport.close();
 });
 
-test("DatadogTransport.write adds entry to batch", () => {
+test("DatadogTransport.write adds entry to batch", async () => {
+  const { mockRequest } = createMockRequestFactory();
   const transport = new DatadogTransport({
     apiKey: "test-api-key",
     service: "test-service",
     batchSize: 100,
+    requestFactory: mockRequest as never,
   });
 
   transport.write(createTestEntry({ message: "batch entry 1" }));
   transport.write(createTestEntry({ message: "batch entry 2" }));
 
-  // Just verify it doesn't throw
-  assert.ok(true);
+  const state = getDatadogState(transport);
+  assert.equal(state.batch.length, 2);
+  assert.deepEqual(
+    state.batch.map((entry) => entry.message),
+    ["batch entry 1", "batch entry 2"],
+  );
+  await transport.close();
 });
 
-test("DatadogTransport.write does not trigger auto-flush when batch is not full", () => {
+test("DatadogTransport.write does not trigger auto-flush when batch is not full", async () => {
+  const { mockRequest, getLastRequest } = createMockRequestFactory();
   const transport = new DatadogTransport({
     apiKey: "test-api-key",
     service: "test-service",
     batchSize: 100,
+    requestFactory: mockRequest as never,
   });
 
   // Write less than batch size
   transport.write(createTestEntry({ message: "single entry" }));
 
-  // Should not throw
-  assert.ok(true);
+  const state = getDatadogState(transport);
+  assert.equal(state.batch.length, 1);
+  assert.equal(state.batch[0]?.message, "single entry");
+  assert.equal(getLastRequest(), null);
+  await transport.close();
 });
 
 test("DatadogTransport.write triggers auto-flush when batch is full", () => {
@@ -175,8 +211,8 @@ test("DatadogTransport.flushInternal handles empty batch", async () => {
   });
 
   // Flush empty batch should return immediately
-  await transport.flush();
-  assert.ok(true);
+  assert.equal(await transport.flush(), undefined);
+  await transport.close();
 });
 
 test("DatadogTransport.flushInternal sends entries to Datadog API", async () => {
@@ -254,8 +290,7 @@ test("DatadogTransport.close clears timer", async () => {
   });
 
   await transport.close();
-  // Timer should be cleared - close should not throw
-  assert.ok(true);
+  assert.equal(getDatadogState(transport).timer, null);
 });
 
 test("DatadogTransport.close is idempotent", async () => {
@@ -267,7 +302,7 @@ test("DatadogTransport.close is idempotent", async () => {
   await transport.close();
   await transport.close();
 
-  assert.ok(true);
+  assert.equal(getDatadogState(transport).timer, null);
 });
 
 test("DatadogTransport.close flushes remaining batch", async () => {
@@ -308,11 +343,13 @@ test("DatadogTransport batch entries include service and source", async () => {
   assert.equal(body[0].ddsource, "my-source");
 });
 
-test("DatadogTransport handles write with all fields", () => {
+test("DatadogTransport handles write with all fields", async () => {
+  const { mockRequest } = createMockRequestFactory();
   const transport = new DatadogTransport({
     apiKey: "test-api-key",
     service: "test-service",
     batchSize: 100,
+    requestFactory: mockRequest as never,
   });
 
   transport.write({
@@ -330,5 +367,9 @@ test("DatadogTransport handles write with all fields", () => {
     timestamp: "2026-04-23T00:00:00.000Z",
   });
 
-  assert.ok(true);
+  const state = getDatadogState(transport);
+  assert.equal(state.batch.length, 1);
+  assert.equal(state.batch[0]?.traceId, "trace-abc");
+  assert.deepEqual(state.batch[0]?.data, { key: "value" });
+  await transport.close();
 });

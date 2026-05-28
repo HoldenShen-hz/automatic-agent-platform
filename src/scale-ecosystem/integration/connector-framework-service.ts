@@ -114,9 +114,12 @@ export class ConnectorFrameworkService {
 
   public register(manifest: ConnectorManifest): RegisteredConnectorManifest {
     const parsed = ConnectorManifestSchema.parse(manifest) as RegisteredConnectorManifest;
+    if (this.manifests.has(parsed.connectorId)) {
+      throw new Error(`connector_framework.duplicate_connector_id:${parsed.connectorId}`);
+    }
     this.manifests.set(parsed.connectorId, parsed);
     this.registerBuiltInConnectorInstance(parsed);
-    this.persist();
+    this.persistManifests();
     return parsed;
   }
 
@@ -143,23 +146,17 @@ export class ConnectorFrameworkService {
     // Evict LRU connectors' bindings until under capacity
     let totalBindings = Array.from(this.bindings.values()).reduce((sum, arr) => sum + arr.length, 0);
     while (totalBindings > this.maxBindings) {
-      const excess = totalBindings - this.maxBindings;
-      this.evictLRUBindings(excess);
-      // Recalculate after eviction
-      totalBindings = Array.from(this.bindings.values()).reduce((sum, arr) => sum + arr.length, 0);
-      // Safety guard: if no progress, break to avoid infinite loop
-      if (totalBindings > this.maxBindings) {
-        const prevTotal = totalBindings;
-        this.evictLRUBindings(prevTotal - this.maxBindings);
-        totalBindings = Array.from(this.bindings.values()).reduce((sum, arr) => sum + arr.length, 0);
-        if (totalBindings >= prevTotal) break;
+      const removed = this.evictLRUBindings(totalBindings - this.maxBindings);
+      if (removed <= 0) {
+        throw new Error("connector_framework.binding_eviction_stalled");
       }
+      totalBindings -= removed;
     }
 
     // Mark this connectorId as most recently used
     this.bindingsLRU.delete(connectorId);
     this.bindingsLRU.add(connectorId);
-    this.persist();
+    this.persistBindings();
     return binding;
   }
 
@@ -168,7 +165,7 @@ export class ConnectorFrameworkService {
    * bindings have been removed. Iterates LRU set from oldest (first) to newest (last).
    * Removes entire connector entries at once when possible.
    */
-  private evictLRUBindings(count: number): void {
+  private evictLRUBindings(count: number): number {
     let removed = 0;
     for (const connectorId of Array.from(this.bindingsLRU)) {
       if (removed >= count) break;
@@ -186,11 +183,12 @@ export class ConnectorFrameworkService {
           const toRemove = count - removed;
           this.bindings.set(connectorId, bindings.slice(toRemove));
           removed += toRemove;
-          // Note: we do NOT update bindingsLRU here since partial removal doesn't change LRU order
-          // (the connector remains at its current position in LRU order)
+          this.bindingsLRU.delete(connectorId);
+          this.bindingsLRU.add(connectorId);
         }
       }
     }
+    return removed;
   }
 
   public recordHealth(report: ConnectorHealthReport): ConnectorHealthReport {
@@ -208,7 +206,7 @@ export class ConnectorFrameworkService {
     // Mark this connectorId as most recently used
     this.healthLRU.delete(report.connectorId);
     this.healthLRU.add(report.connectorId);
-    this.persist();
+    this.persistHealth();
     return report;
   }
 
@@ -288,7 +286,17 @@ export class ConnectorFrameworkService {
 
     const reports = this.health.get(normalizedRequest.connectorId) ?? [];
     const health = summarizeConnectorHealth(reports);
+    const circuitBreaker = this.circuitBreakers.get(normalizedRequest.connectorId);
     if (health === "failed") {
+      if (circuitBreaker != null) {
+        try {
+          await circuitBreaker.execute(async () => {
+            throw new Error(`connector_framework.health_failed:${normalizedRequest.connectorId}`);
+          });
+        } catch {
+          // The caller receives a failed execution result instead of breaker internals.
+        }
+      }
       const stubResult: ConnectorExecutionResult = {
         connectorId: normalizedRequest.connectorId,
         success: false,
@@ -304,18 +312,11 @@ export class ConnectorFrameworkService {
       };
     }
 
-    const circuitBreaker = this.circuitBreakers.get(normalizedRequest.connectorId);
     const connectorInstance = this.connectorInstances.get(normalizedRequest.connectorId);
     let result: ConnectorExecutionResult;
     if (connectorInstance != null && circuitBreaker != null) {
       try {
-        result = await circuitBreaker.execute(async () => {
-          const executionResult = await Promise.resolve(connectorInstance.execute(normalizedRequest));
-          if (!executionResult.success) {
-            throw new Error(`connector_framework.execution_failed:${normalizedRequest.connectorId}`);
-          }
-          return executionResult;
-        });
+        result = await circuitBreaker.execute(async () => Promise.resolve(connectorInstance.execute(normalizedRequest)));
       } catch {
         result = {
           connectorId: normalizedRequest.connectorId,
@@ -390,7 +391,7 @@ export class ConnectorFrameworkService {
    * connector implementations instead of falling back to generic stub results.
    */
   private createBuiltInConnectorInstance(manifest: RegisteredConnectorManifest): ConnectorExecutor | null {
-    switch (manifest.provider.trim().toLowerCase()) {
+    switch (normalizeConnectorProvider(manifest.provider)) {
       case "github": {
         const connector = new GitHubConnector();
         return { execute: async (request) => connector.execute(request) };
@@ -418,13 +419,6 @@ export class ConnectorFrameworkService {
     this.loadManifests();
     this.loadBindings();
     this.loadHealth();
-  }
-
-  private persist(): void {
-    if (this.storageDir == null) return;
-    this.persistManifests();
-    this.persistBindings();
-    this.persistHealth();
   }
 
   private manifestsPath(): string {
@@ -488,6 +482,7 @@ export class ConnectorFrameworkService {
   }
 
   private persistManifests(): void {
+    if (this.storageDir == null) return;
     const path = this.manifestsPath();
     const dir = dirname(path);
     if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
@@ -495,6 +490,7 @@ export class ConnectorFrameworkService {
   }
 
   private persistBindings(): void {
+    if (this.storageDir == null) return;
     const path = this.bindingsPath();
     const dir = dirname(path);
     if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
@@ -502,9 +498,18 @@ export class ConnectorFrameworkService {
   }
 
   private persistHealth(): void {
+    if (this.storageDir == null) return;
     const path = this.healthPath();
     const dir = dirname(path);
     if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
     writeFileSync(path, JSON.stringify(Array.from(this.health.entries())), "utf-8");
   }
+}
+
+function normalizeConnectorProvider(provider: string): string {
+  const normalized = provider.trim().toLowerCase().replace(/[_\s]+/g, "-");
+  if (normalized === "service-now") {
+    return "servicenow";
+  }
+  return normalized;
 }

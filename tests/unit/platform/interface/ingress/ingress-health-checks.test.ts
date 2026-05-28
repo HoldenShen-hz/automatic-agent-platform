@@ -12,16 +12,39 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { RedisRateLimiter } from "../../../../../src/platform/five-plane-interface/ingress/redis-rate-limiter.js";
 
+function getRedisClient(limiter: RedisRateLimiter): Record<string, unknown> {
+  return (limiter as unknown as { redis: Record<string, unknown> }).redis;
+}
+
+function setRedisStatus(redis: Record<string, unknown>, status: string): void {
+  Object.defineProperty(redis, "status", {
+    value: status,
+    configurable: true,
+    writable: true,
+  });
+}
+
 test.describe("Ingress health checks - RedisRateLimiter connection states", () => {
   test("close handles 'wait' status gracefully", async () => {
     const limiter = new RedisRateLimiter({
       host: "localhost",
       port: 6379,
     });
+    const redis = getRedisClient(limiter);
+    let disconnectCalls = 0;
+    let quitCalls = 0;
+    setRedisStatus(redis, "wait");
+    redis.disconnect = () => {
+      disconnectCalls += 1;
+    };
+    redis.quit = async () => {
+      quitCalls += 1;
+      return "OK";
+    };
 
-    // close should handle wait status without throwing
-    await limiter.close();
-    assert.ok(true);
+    assert.equal(await limiter.close(), undefined);
+    assert.equal(disconnectCalls, 1);
+    assert.equal(quitCalls, 0);
   });
 
   test("close handles 'connecting' status gracefully", async () => {
@@ -29,10 +52,15 @@ test.describe("Ingress health checks - RedisRateLimiter connection states", () =
       host: "localhost",
       port: 6379,
     });
+    const redis = getRedisClient(limiter);
+    let disconnectCalls = 0;
+    setRedisStatus(redis, "connecting");
+    redis.disconnect = () => {
+      disconnectCalls += 1;
+    };
 
-    // close should handle connecting status without throwing
-    await limiter.close();
-    assert.ok(true);
+    assert.equal(await limiter.close(), undefined);
+    assert.equal(disconnectCalls, 1);
   });
 
   test("close handles 'end' status gracefully", async () => {
@@ -40,9 +68,15 @@ test.describe("Ingress health checks - RedisRateLimiter connection states", () =
       host: "localhost",
       port: 6379,
     });
+    const redis = getRedisClient(limiter);
+    let disconnectCalls = 0;
+    setRedisStatus(redis, "end");
+    redis.disconnect = () => {
+      disconnectCalls += 1;
+    };
 
-    await limiter.close();
-    assert.ok(true);
+    assert.equal(await limiter.close(), undefined);
+    assert.equal(disconnectCalls, 1);
   });
 
   test("connect method exists and is callable", async () => {
@@ -50,15 +84,15 @@ test.describe("Ingress health checks - RedisRateLimiter connection states", () =
       host: "localhost",
       port: 6379,
     });
+    const redis = getRedisClient(limiter);
+    let connectCalls = 0;
+    redis.connect = async () => {
+      connectCalls += 1;
+    };
+    redis.disconnect = () => undefined;
 
-    // connect should not throw (even if Redis is not available)
-    try {
-      await limiter.connect();
-    } catch {
-      // Expected if Redis is not running
-    }
-    assert.ok(true);
-
+    assert.equal(await limiter.connect(), undefined);
+    assert.equal(connectCalls, 1);
     await limiter.close();
   });
 });
@@ -265,15 +299,23 @@ test.describe("Ingress health checks - connection resilience", () => {
       host: "localhost",
       port: 6379,
     });
+    const redis = getRedisClient(limiter);
+    const calls: string[] = [];
+    redis.zremrangebyscore = async (key: string, from: number, to: number) => {
+      calls.push(`${key}:${from}:${to}`);
+      return 1;
+    };
+    redis.zcard = async (key: string) => {
+      calls.push(key);
+      return 3;
+    };
+    redis.disconnect = () => undefined;
 
-    // getUsage should handle connection issues gracefully
-    try {
-      await limiter.getUsage("test_key", 1000);
-    } catch {
-      // Expected if Redis is not available
-    }
-    assert.ok(true);
-
+    const usage = await limiter.getUsage("test_key", 1000);
+    assert.equal(usage, 3);
+    assert.equal(calls.length, 2);
+    assert.ok(calls[0]?.startsWith("ratelimit:test_key:0:"));
+    assert.equal(calls[1], "ratelimit:test_key");
     limiter.close();
   });
 
@@ -282,14 +324,16 @@ test.describe("Ingress health checks - connection resilience", () => {
       host: "localhost",
       port: 6379,
     });
+    const redis = getRedisClient(limiter);
+    const deletedKeys: string[] = [];
+    redis.del = async (key: string) => {
+      deletedKeys.push(key);
+      return 1;
+    };
+    redis.disconnect = () => undefined;
 
-    try {
-      await limiter.reset("test_key");
-    } catch {
-      // Expected if Redis is not available
-    }
-    assert.ok(true);
-
+    assert.equal(await limiter.reset("test_key"), undefined);
+    assert.deepEqual(deletedKeys, ["ratelimit:test_key"]);
     limiter.close();
   });
 });

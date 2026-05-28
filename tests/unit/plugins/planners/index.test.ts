@@ -28,22 +28,17 @@ test("PlannersIndex BasicPlannerPlugin has suggestWorkflow method", () => {
 
 test("PlannersIndex BasicPlannerPlugin.initialize is no-op", async () => {
   const plugin = PlannersIndex.createBasicPlannerPlugin();
-  if (plugin.initialize) {
-    const result = await plugin.initialize();
-    assert.equal(result, undefined);
-  } else {
-    assert.ok(true);
-  }
+  assert.equal(typeof plugin.initialize, "function");
+  assert.equal(await plugin.initialize?.(), undefined);
+  assert.equal(await plugin.healthCheck?.(), true);
 });
 
 test("PlannersIndex BasicPlannerPlugin.shutdown is no-op", async () => {
   const plugin = PlannersIndex.createBasicPlannerPlugin();
-  if (plugin.shutdown) {
-    const result = await plugin.shutdown();
-    assert.equal(result, undefined);
-  } else {
-    assert.ok(true);
-  }
+  assert.equal(typeof plugin.shutdown, "function");
+  await plugin.initialize?.();
+  assert.equal(await plugin.shutdown?.(), undefined);
+  assert.equal(await plugin.healthCheck?.(), false);
 });
 
 test("PlannersIndex BasicPlannerPlugin.capabilityIds includes workflow.suggest", () => {

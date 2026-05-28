@@ -1,4 +1,4 @@
-import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
+import { createCipheriv, createDecipheriv, createHash, randomBytes, scryptSync } from "node:crypto";
 
 import { ValidationError } from "../../contracts/errors.js";
 
@@ -18,6 +18,18 @@ export interface FieldProtectionResult {
   protectedRecord: Record<string, unknown>;
   protectedFields: ProtectedField[];
 }
+
+interface EncryptionEnvelope {
+  readonly v: 1;
+  readonly kf: string;
+  readonly s: string;
+  readonly i: string;
+  readonly t: string;
+  readonly c: string;
+}
+
+const ENCRYPTION_ENVELOPE_PREFIX = "encv1.";
+const FIELD_PATH_FORBIDDEN_TOKENS = new Set(["__proto__", "prototype", "constructor"]);
 
 export class FieldEncryptionService {
   public protectRecord(input: {
@@ -50,23 +62,20 @@ export class FieldEncryptionService {
   }
 
   public revealField(input: { ciphertext: string; keyRef: string }): string {
-    const parts = input.ciphertext.split(":");
-    if (parts.length !== 5 || parts[0] !== "enc") {
-      throw new ValidationError("field_encryption.invalid_ciphertext", "Ciphertext must use enc:fingerprint:iv:authTag:ciphertext format.");
-    }
-    const [, fingerprint, ivHex, authTagHex, ciphertextHex] = parts;
-    if (fingerprint == null || ivHex == null || authTagHex == null || ciphertextHex == null) {
-      throw new ValidationError("field_encryption.invalid_ciphertext", "Ciphertext must use enc:fingerprint:iv:authTag:ciphertext format.");
-    }
-    if (fingerprint !== fingerprintKey(input.keyRef, fingerprint.length)) {
+    const envelope = parseEncryptionEnvelope(input.ciphertext);
+    if (envelope.kf !== fingerprintKey(input.keyRef)) {
       throw new ValidationError("field_encryption.key_mismatch", "Ciphertext does not match the provided key reference.");
     }
 
-    const decipher = createDecipheriv("aes-256-gcm", deriveEncryptionKey(input.keyRef), Buffer.from(ivHex!, "hex"));
-    decipher.setAuthTag(Buffer.from(authTagHex!, "hex"));
+    const salt = decodeBase64UrlStrict(envelope.s, "salt");
+    const iv = decodeBase64UrlStrict(envelope.i, "iv");
+    const authTag = decodeBase64UrlStrict(envelope.t, "auth_tag");
+    const ciphertext = decodeBase64UrlStrict(envelope.c, "ciphertext");
+    const decipher = createDecipheriv("aes-256-gcm", deriveEncryptionKey(input.keyRef, salt), iv);
+    decipher.setAuthTag(authTag);
 
     const decrypted = Buffer.concat([
-      decipher.update(Buffer.from(ciphertextHex!, "hex")),
+      decipher.update(ciphertext),
       decipher.final(),
     ]);
     return decrypted.toString("utf8");
@@ -74,22 +83,30 @@ export class FieldEncryptionService {
 }
 
 function protectValue(value: string, keyRef: string): string {
+  const salt = randomBytes(16);
   const iv = randomBytes(12);
-  const cipher = createCipheriv("aes-256-gcm", deriveEncryptionKey(keyRef), iv);
+  const cipher = createCipheriv("aes-256-gcm", deriveEncryptionKey(keyRef, salt), iv);
   const ciphertext = Buffer.concat([
     cipher.update(value, "utf8"),
     cipher.final(),
   ]);
   const authTag = cipher.getAuthTag();
-  return `enc:${fingerprintKey(keyRef)}:${iv.toString("hex")}:${authTag.toString("hex")}:${ciphertext.toString("hex")}`;
+  return serializeEncryptionEnvelope({
+    v: 1,
+    kf: fingerprintKey(keyRef),
+    s: encodeBase64Url(salt),
+    i: encodeBase64Url(iv),
+    t: encodeBase64Url(authTag),
+    c: encodeBase64Url(ciphertext),
+  });
 }
 
-function fingerprintKey(keyRef: string, length = 32): string {
-  return createHash("sha256").update(keyRef).digest("hex").slice(0, length);
+function fingerprintKey(keyRef: string): string {
+  return createHash("sha256").update(keyRef).digest("hex");
 }
 
-function deriveEncryptionKey(keyRef: string): Buffer {
-  return createHash("sha256").update(keyRef).digest();
+function deriveEncryptionKey(keyRef: string, salt: Buffer): Buffer {
+  return scryptSync(keyRef, salt, 32);
 }
 
 function readField(record: Record<string, unknown>, path: string): unknown {
@@ -157,10 +174,16 @@ function writeField(record: Record<string, unknown>, path: string, value: unknow
 }
 
 function tokenizeFieldPath(path: string): Array<string | number> {
+  if (path.trim().length === 0) {
+    throw new ValidationError("field_encryption.invalid_field_path", "Field path must be non-empty.");
+  }
   const tokens: Array<string | number> = [];
   for (const segment of path.split(".")) {
     for (const match of segment.matchAll(/([^[\]]+)|\[(\d+)\]/g)) {
       if (match[1] != null) {
+        if (FIELD_PATH_FORBIDDEN_TOKENS.has(match[1])) {
+          throw new ValidationError("field_encryption.invalid_field_path", `Forbidden field path token: ${match[1]}`);
+        }
         tokens.push(match[1]);
         continue;
       }
@@ -170,4 +193,55 @@ function tokenizeFieldPath(path: string): Array<string | number> {
     }
   }
   return tokens;
+}
+
+function serializeEncryptionEnvelope(envelope: EncryptionEnvelope): string {
+  return `${ENCRYPTION_ENVELOPE_PREFIX}${encodeBase64Url(Buffer.from(JSON.stringify(envelope), "utf8"))}`;
+}
+
+function parseEncryptionEnvelope(ciphertext: string): EncryptionEnvelope {
+  if (!ciphertext.startsWith(ENCRYPTION_ENVELOPE_PREFIX)) {
+    throw new ValidationError("field_encryption.invalid_ciphertext", "Ciphertext must use the encv1 envelope format.");
+  }
+  const encoded = ciphertext.slice(ENCRYPTION_ENVELOPE_PREFIX.length);
+
+  let rawJson: string;
+  try {
+    rawJson = decodeBase64UrlStrict(encoded, "envelope").toString("utf8");
+  } catch {
+    throw new ValidationError("field_encryption.invalid_ciphertext", "Ciphertext must use the encv1 envelope format.");
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(rawJson);
+  } catch {
+    throw new ValidationError("field_encryption.invalid_ciphertext", "Ciphertext must use the encv1 envelope format.");
+  }
+
+  if (
+    typeof parsed !== "object"
+    || parsed == null
+    || (parsed as Partial<EncryptionEnvelope>).v !== 1
+    || typeof (parsed as Partial<EncryptionEnvelope>).kf !== "string"
+    || typeof (parsed as Partial<EncryptionEnvelope>).s !== "string"
+    || typeof (parsed as Partial<EncryptionEnvelope>).i !== "string"
+    || typeof (parsed as Partial<EncryptionEnvelope>).t !== "string"
+    || typeof (parsed as Partial<EncryptionEnvelope>).c !== "string"
+  ) {
+    throw new ValidationError("field_encryption.invalid_ciphertext", "Ciphertext must use the encv1 envelope format.");
+  }
+
+  return parsed as EncryptionEnvelope;
+}
+
+function encodeBase64Url(value: Buffer): string {
+  return value.toString("base64url");
+}
+
+function decodeBase64UrlStrict(value: string, label: string): Buffer {
+  if (!/^[A-Za-z0-9\-_]+$/.test(value)) {
+    throw new ValidationError("field_encryption.invalid_ciphertext", `Ciphertext ${label} must be base64url encoded.`);
+  }
+  return Buffer.from(value, "base64url");
 }

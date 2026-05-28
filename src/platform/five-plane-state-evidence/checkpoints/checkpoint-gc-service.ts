@@ -14,6 +14,7 @@ import { closeSync, constants as fsConstants, existsSync, fstatSync, lstatSync, 
 import { hostname } from "node:os";
 import { join } from "node:path";
 
+import { StorageError, ValidationError } from "../../contracts/errors.js";
 import { nowIso } from "../../contracts/types/ids.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 import type { CheckpointManifest } from "./checkpoint-manifest.js";
@@ -169,7 +170,10 @@ export class CheckpointGCService {
    */
   public runGC(candidates: CheckpointGCCandidate[]): CheckpointGCRunResult {
     if (this.gcInProgress) {
-      throw new Error("checkpoint_gc.concurrent_run_not_allowed");
+      throw new ValidationError(
+        "checkpoint_gc.concurrent_run_not_allowed",
+        "checkpoint_gc.concurrent_run_not_allowed",
+      );
     }
     const lockAcquired = this.acquireRunLock();
     this.gcInProgress = true;
@@ -222,19 +226,22 @@ export class CheckpointGCService {
   }
 
   private unlinkCheckpointFileIfUnchanged(filePath: string): boolean {
-    if (!existsSync(filePath)) {
-      return false;
-    }
     let fd: number | null = null;
     try {
       const expectedStat = lstatSync(filePath);
       if (!expectedStat.isFile()) {
-        throw new Error(`checkpoint_gc.invalid_candidate_file:${filePath}`);
+        throw new ValidationError(
+          `checkpoint_gc.invalid_candidate_file:${filePath}`,
+          `checkpoint_gc.invalid_candidate_file:${filePath}`,
+        );
       }
       fd = openSync(filePath, fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW);
       const actualStat = fstatSync(fd);
       if (actualStat.dev !== expectedStat.dev || actualStat.ino !== expectedStat.ino) {
-        throw new Error(`checkpoint_gc.candidate_changed_during_delete:${filePath}`);
+        throw new StorageError(
+          `checkpoint_gc.candidate_changed_during_delete:${filePath}`,
+          `checkpoint_gc.candidate_changed_during_delete:${filePath}`,
+        );
       }
       unlinkSync(filePath);
       return true;
@@ -538,7 +545,8 @@ export class CheckpointGCService {
           "utf8",
         );
       } catch (error) {
-        throw new Error(
+        throw new StorageError(
+          `checkpoint_gc.manifest_update_failed:${manifestPath}`,
           `checkpoint_gc.manifest_update_failed:${manifestPath}:${error instanceof Error ? error.message : String(error)}`,
         );
       }
@@ -587,7 +595,10 @@ export class CheckpointGCService {
       return true;
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === "EEXIST") {
-        throw new Error("checkpoint_gc.concurrent_run_not_allowed");
+        throw new ValidationError(
+          "checkpoint_gc.concurrent_run_not_allowed",
+          "checkpoint_gc.concurrent_run_not_allowed",
+        );
       }
       throw error;
     }

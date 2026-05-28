@@ -5,14 +5,16 @@ import { PackTestLocalService } from "../../../../src/sdk/pack-sdk/pack-test-loc
 
 test("PackTestLocalService.configureMockLlm sets the configuration", () => {
   const service = new PackTestLocalService();
-
-  service.configureMockLlm({
+  const config = {
     responses: [{ content: "test response" }],
     delayMs: 100,
-  });
+  };
 
-  // The configuration is stored internally - we verify through behavior
-  assert.ok(true); // If we got here without error, the method works
+  assert.equal(service.configureMockLlm(config), undefined);
+  assert.deepEqual(
+    (service as unknown as { mockLlmConfig: typeof config | null }).mockLlmConfig,
+    config,
+  );
 });
 
 test("PackTestLocalService.addMockToolResult stores the result", () => {
@@ -24,10 +26,9 @@ test("PackTestLocalService.addMockToolResult stores the result", () => {
     durationMs: 50,
   };
 
-  service.addMockToolResult(result);
-
-  // The method stores internally - verify it doesn't throw
-  assert.ok(true);
+  assert.equal(service.addMockToolResult(result), undefined);
+  const toolResults = (service as unknown as { mockToolResults: Map<string, typeof result> }).mockToolResults;
+  assert.deepEqual(toolResults.get("test-tool"), result);
 });
 
 test("PackTestLocalService.loadFixtures stores fixtures", () => {
@@ -37,10 +38,9 @@ test("PackTestLocalService.loadFixtures stores fixtures", () => {
     "fixture-2": { mode: "integration", packId: "test-pack", passed: false },
   };
 
-  service.loadFixtures(fixtures);
-
-  // The method stores internally - verify it doesn't throw
-  assert.ok(true);
+  assert.equal(service.loadFixtures(fixtures), undefined);
+  const storedFixtures = (service as unknown as { testFixtures: Map<string, unknown> }).testFixtures;
+  assert.deepEqual(Object.fromEntries(storedFixtures), fixtures);
 });
 
 test("PackTestLocalService.test runs unit tests and returns report", async () => {

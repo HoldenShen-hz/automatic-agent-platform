@@ -3,6 +3,11 @@ import test from "node:test";
 
 import { FieldEncryptionService } from "../../../../../src/platform/compliance/encryption/index.js";
 
+function parseEnvelope(ciphertext: string): Record<string, string | number> {
+  assert.ok(ciphertext.startsWith("encv1."));
+  return JSON.parse(Buffer.from(ciphertext.slice("encv1.".length), "base64url").toString("utf8")) as Record<string, string | number>;
+}
+
 test("FieldEncryptionService protectRecord handles deeply nested paths", () => {
   const service = new FieldEncryptionService();
   const result = service.protectRecord({
@@ -280,8 +285,8 @@ test("FieldEncryptionService key fingerprint is deterministic", () => {
   const cf1 = result1.protectedFields[0]!.ciphertext;
   const cf2 = result2.protectedFields[0]!.ciphertext;
 
-  const prefix1 = cf1.split(":").slice(0, 2).join(":");
-  const prefix2 = cf2.split(":").slice(0, 2).join(":");
+  const prefix1 = parseEnvelope(cf1).kf;
+  const prefix2 = parseEnvelope(cf2).kf;
   assert.equal(prefix1, prefix2, "Same key should produce same fingerprint prefix");
 });
 
@@ -302,8 +307,8 @@ test("FieldEncryptionService different keys produce different fingerprints", () 
   const cf1 = result1.protectedFields[0]!.ciphertext;
   const cf2 = result2.protectedFields[0]!.ciphertext;
 
-  const prefix1 = cf1.split(":").slice(0, 2).join(":");
-  const prefix2 = cf2.split(":").slice(0, 2).join(":");
+  const prefix1 = parseEnvelope(cf1).kf;
+  const prefix2 = parseEnvelope(cf2).kf;
   assert.notEqual(prefix1, prefix2, "Different keys should produce different fingerprints");
 });
 

@@ -413,9 +413,14 @@ test("EscalationManager notifyChannels handles disabled channels", async () => {
     priority: NotificationPriority.NORMAL,
   };
 
-  // Should not throw even for disabled channels
+  const sent: NotificationChannel[] = [];
+  (manager as unknown as {
+    sendNotification: (channel: NotificationChannel, message: NotificationMessage) => Promise<void>;
+  }).sendNotification = async (channel) => {
+    sent.push(channel);
+  };
   await manager.notifyChannels(channels, message);
-  assert.ok(true); // If we get here, the test passed
+  assert.deepEqual(sent, []);
 });
 
 test("EscalationManager notifyChannels handles all channel types", async () => {
@@ -432,9 +437,19 @@ test("EscalationManager notifyChannels handles all channel types", async () => {
     priority: NotificationPriority.HIGH,
   };
 
-  // Should not throw
+  const sent: NotificationChannelType[] = [];
+  (manager as unknown as {
+    sendNotification: (channel: NotificationChannel, message: NotificationMessage) => Promise<void>;
+  }).sendNotification = async (channel) => {
+    sent.push(channel.type);
+  };
   await manager.notifyChannels(channels, message);
-  assert.ok(true);
+  assert.deepEqual(sent, [
+    NotificationChannelType.EMAIL,
+    NotificationChannelType.SLACK,
+    NotificationChannelType.FEISHU,
+    NotificationChannelType.WEBHOOK,
+  ]);
 });
 
 test("EscalationManager handles QUORUM_NOT_MET escalation reason", () => {

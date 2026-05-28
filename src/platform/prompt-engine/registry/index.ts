@@ -1,7 +1,6 @@
-import { createHash } from "node:crypto";
-
 import { ValidationError } from "../../contracts/errors.js";
 import { nowIso } from "../../contracts/types/ids.js";
+import { sha256HexPrefix } from "../../shared/cache/utils/sha256.js";
 
 export type PromptTemplateChannel = "system" | "developer" | "user";
 
@@ -77,7 +76,7 @@ export class PromptTemplateRegistryService {
     const compatibilityTags = dedupeStrings(input.compatibilityTags ?? []);
     const now = nowIso();
 
-    const templateVersions = this.templates.get(templateKey) ?? new Map<string, PromptTemplateRecord>();
+    const templateVersions = new Map(this.templates.get(templateKey) ?? []);
     if (templateVersions.has(version)) {
       throw new ValidationError(
         `prompt_template.version_conflict:${templateKey}:${version}`,
@@ -111,16 +110,26 @@ export class PromptTemplateRegistryService {
   }
 
   public listVersions(templateKey: string): PromptTemplateRecord[] {
-    return [...(this.templates.get(templateKey)?.values() ?? [])].sort((left, right) => left.version.localeCompare(right.version));
+    return [...(this.templates.get(templateKey)?.values() ?? [])].sort((left, right) => comparePromptVersions(left.version, right.version));
   }
 
-  public listTemplates(): PromptTemplateRecord[] {
-    return [...this.templates.values()].flatMap((versions) => [...versions.values()]);
+  public listTemplates(
+    options: {
+      offset?: number;
+      limit?: number;
+    } = {},
+  ): PromptTemplateRecord[] {
+    const offset = Math.max(0, Math.trunc(options.offset ?? 0));
+    const limit = options.limit == null ? Number.POSITIVE_INFINITY : Math.max(0, Math.trunc(options.limit));
+    return [...this.templates.entries()]
+      .sort(([leftKey], [rightKey]) => leftKey.localeCompare(rightKey))
+      .flatMap(([, versions]) => [...versions.values()].sort((left, right) => comparePromptVersions(left.version, right.version)))
+      .slice(offset, offset + limit);
   }
 }
 
 export function hashPromptPrefix(fixedPrefix: string): string {
-  return createHash("sha256").update(fixedPrefix).digest("hex").slice(0, 16);
+  return sha256HexPrefix(fixedPrefix, 32);
 }
 
 function normalizeRequired(value: string | number, field: string): string {
@@ -152,6 +161,29 @@ function dedupeVariableSpecs(specs: readonly PromptTemplateVariableSpec[]): Prom
 
 function dedupeStrings(values: readonly string[]): string[] {
   return [...new Set(values.map((value) => value.trim()).filter((value) => value.length > 0))];
+}
+
+function comparePromptVersions(left: string, right: string): number {
+  const leftParts = normalizeVersionParts(left);
+  const rightParts = normalizeVersionParts(right);
+  const maxLength = Math.max(leftParts.length, rightParts.length);
+  for (let index = 0; index < maxLength; index += 1) {
+    const leftPart = leftParts[index] ?? 0;
+    const rightPart = rightParts[index] ?? 0;
+    if (leftPart !== rightPart) {
+      return leftPart - rightPart;
+    }
+  }
+  return left.localeCompare(right);
+}
+
+function normalizeVersionParts(version: string): number[] {
+  return version
+    .trim()
+    .replace(/^[^\d]*/, "")
+    .split(".")
+    .map((part) => Number.parseInt(part, 10))
+    .map((part) => (Number.isFinite(part) ? part : 0));
 }
 
 export * from "./hierarchical-registry-service.js";

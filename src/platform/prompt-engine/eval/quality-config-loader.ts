@@ -7,6 +7,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { z } from "zod";
+import { ValidationError } from "../../contracts/errors.js";
 import type { QualityGateConfig } from "./types.js";
 
 // Zod schema for quality gate configuration validation
@@ -32,6 +33,26 @@ const QualityGateConfigSchema = z.object({
     artifactKind: z.string(),
     retentionDays: z.number().int().positive(),
   }),
+}).superRefine((value, ctx) => {
+  const totalWeight =
+    value.qualityScoreWeights.successSignal
+    + value.qualityScoreWeights.completionOutcome
+    + value.qualityScoreWeights.failureSignal
+    + value.qualityScoreWeights.partialSignal;
+  if (Math.abs(totalWeight - 1) > 0.0001) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["qualityScoreWeights"],
+      message: "qualityScoreWeights must sum to 1.",
+    });
+  }
+  if (value.actionThresholds.completeMinScore <= value.actionThresholds.approvalRequiredScore) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["actionThresholds", "completeMinScore"],
+      message: "completeMinScore must be greater than approvalRequiredScore.",
+    });
+  }
 });
 
 const DEFAULT_CONFIG_PATH = resolve(process.cwd(), "config/quality/default.json");
@@ -72,30 +93,46 @@ export function loadQualityConfig(configPath: string = DEFAULT_CONFIG_PATH): Qua
     const raw = readFileSync(configPath, "utf-8");
     const parsed = JSON.parse(raw);
 
-    // Validate parsed config against Zod schema
-    const validated = QualityGateConfigSchema.parse(parsed);
+    const validated = QualityGateConfigSchema.safeParse(parsed);
+    if (!validated.success) {
+      throw new ValidationError(
+        "quality_config.invalid",
+        "quality_config.invalid",
+        {
+          retryable: false,
+          details: {
+            configPath,
+            issues: validated.error.issues.map((issue) => ({
+              path: issue.path.join("."),
+              message: issue.message,
+            })),
+          },
+        },
+      );
+    }
+    const resolved = validated.data;
 
     return {
       qualityGate: {
-        defaultPassThreshold: validated.qualityGate.defaultPassThreshold,
-        criticalPassThreshold: validated.qualityGate.criticalPassThreshold,
-        enforcement: validated.qualityGate.enforcement,
+        defaultPassThreshold: resolved.qualityGate.defaultPassThreshold,
+        criticalPassThreshold: resolved.qualityGate.criticalPassThreshold,
+        enforcement: resolved.qualityGate.enforcement,
       },
       qualityScoreWeights: {
-        successSignal: validated.qualityScoreWeights.successSignal,
-        completionOutcome: validated.qualityScoreWeights.completionOutcome,
-        failureSignal: validated.qualityScoreWeights.failureSignal,
-        partialSignal: validated.qualityScoreWeights.partialSignal,
+        successSignal: resolved.qualityScoreWeights.successSignal,
+        completionOutcome: resolved.qualityScoreWeights.completionOutcome,
+        failureSignal: resolved.qualityScoreWeights.failureSignal,
+        partialSignal: resolved.qualityScoreWeights.partialSignal,
       },
       actionThresholds: {
-        completeMinScore: validated.actionThresholds.completeMinScore,
-        approvalRequiredScore: validated.actionThresholds.approvalRequiredScore,
-        retryMaxFailures: validated.actionThresholds.retryMaxFailures,
+        completeMinScore: resolved.actionThresholds.completeMinScore,
+        approvalRequiredScore: resolved.actionThresholds.approvalRequiredScore,
+        retryMaxFailures: resolved.actionThresholds.retryMaxFailures,
       },
       evidence: {
-        enabled: validated.evidence.enabled,
-        artifactKind: validated.evidence.artifactKind,
-        retentionDays: validated.evidence.retentionDays,
+        enabled: resolved.evidence.enabled,
+        artifactKind: resolved.evidence.artifactKind,
+        retentionDays: resolved.evidence.retentionDays,
       },
     };
   } catch (err) {

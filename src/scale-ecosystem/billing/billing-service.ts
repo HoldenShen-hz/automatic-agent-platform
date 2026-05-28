@@ -51,6 +51,7 @@ import type { SandboxPolicy } from "../../platform/five-plane-control-plane/iam/
 import { AuthoritativeTaskStore } from "../../platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import type { AuthoritativeSqlDatabase } from "../../platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
 import { BudgetAllocator } from "../../platform/five-plane-execution/budget-allocator.js";
+import { stringifyBillingInvoiceSummary } from "../../platform/contracts/types/domain/billing-types.js";
 import type {
   BillingAccountRecord,
   BillingInvoiceRecord,
@@ -626,7 +627,7 @@ export class BillingService {
       taxUsd,
       totalUsd: roundCurrency(summary.totals.totalBilledUsd + taxUsd),
       status: "open",
-      summaryJson: JSON.stringify(summary),
+      summaryJson: stringifyBillingInvoiceSummary(summary),
       externalInvoiceRef: input.externalInvoiceRef ?? null,
       dueAt: input.dueAt ?? null,
       createdAt,

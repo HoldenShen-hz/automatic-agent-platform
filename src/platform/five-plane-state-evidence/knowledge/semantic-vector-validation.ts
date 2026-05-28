@@ -1,4 +1,5 @@
 import { newId, nowIso } from "../../contracts/types/ids.js";
+import { ValidationError } from "../../contracts/errors.js";
 import type { AsyncSqlDatabase } from "../truth/async-sql-database.js";
 import { buildSemanticEmbedding, semanticEmbeddingId } from "./semantic-embedding.js";
 import {
@@ -273,7 +274,11 @@ export async function validateSemanticVectorReadiness(
 
 function validateIdentifier(value: string): string {
   if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(value)) {
-    throw new Error(`knowledge.semantic_pgvector_identifier_invalid:${value}`);
+    throw new ValidationError(
+      `knowledge.semantic_pgvector_identifier_invalid:${value}`,
+      `knowledge.semantic_pgvector_identifier_invalid:${value}`,
+      { field: "identifier" },
+    );
   }
   return value;
 }

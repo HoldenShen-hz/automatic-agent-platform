@@ -6,6 +6,11 @@ import { ValidationError } from "../../../../src/platform/contracts/errors.js";
 
 const KEY_REF = "test-key-ref-12345";
 
+function parseEnvelope(ciphertext: string): Record<string, string | number> {
+  assert.ok(ciphertext.startsWith("encv1."));
+  return JSON.parse(Buffer.from(ciphertext.slice("encv1.".length), "base64url").toString("utf8")) as Record<string, string | number>;
+}
+
 function expectValidationErrorCode(error: unknown, code: string): boolean {
   assert.ok(error instanceof ValidationError);
   assert.equal(error.code, code);
@@ -134,7 +139,7 @@ test("FieldEncryptionService revealField throws on malformed ciphertext", (t) =>
   );
   assert.throws(
     () => service.revealField({ ciphertext: "enc:abcd:iv:tag:data", keyRef: KEY_REF }),
-    (error) => expectValidationErrorCode(error, "field_encryption.key_mismatch"),
+    (error) => expectValidationErrorCode(error, "field_encryption.invalid_ciphertext"),
   );
 });
 
@@ -183,17 +188,17 @@ test("FieldEncryptionService protects and reveals array fields", (t) => {
   assert.equal(revealed, "alpha");
 });
 
-test("FieldEncryptionService ciphertext format is enc:fingerprint:iv:authTag:ciphertext", (t) => {
+test("FieldEncryptionService ciphertext format is a versioned envelope", (t) => {
   const service = new FieldEncryptionService();
   const record = { name: "Frank" };
   const rules: FieldProtectionRule[] = [{ fieldPath: "name", classification: "internal" }];
 
   const { protectedFields } = service.protectRecord({ record, rules, keyRef: KEY_REF });
-  const parts = protectedFields[0]!.ciphertext.split(":");
-  assert.equal(parts.length, 5);
-  assert.equal(parts[0]!, "enc");
-  assert.ok(parts[1]!.length > 0); // fingerprint
-  assert.ok(parts[2]!.length > 0); // iv hex
-  assert.ok(parts[3]!.length > 0); // authTag hex
-  assert.ok(parts[4]!.length > 0); // ciphertext hex
+  const envelope = parseEnvelope(protectedFields[0]!.ciphertext);
+  assert.equal(envelope.v, 1);
+  assert.equal(typeof envelope.kf, "string");
+  assert.equal(typeof envelope.s, "string");
+  assert.equal(typeof envelope.i, "string");
+  assert.equal(typeof envelope.t, "string");
+  assert.equal(typeof envelope.c, "string");
 });

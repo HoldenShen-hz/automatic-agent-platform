@@ -3,19 +3,26 @@ import test from "node:test";
 import { IntelligenceRepository } from "../../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/repositories/intelligence-repository.js";
 
 function createMockDb() {
+  const runCalls: unknown[][] = [];
   return {
-    connection: {
-      prepare: () => ({
-        run: () => ({ changes: 1 }),
-        get: () => undefined,
-        all: () => [],
-      }),
+    db: {
+      connection: {
+        prepare: () => ({
+          run: (...args: unknown[]) => {
+            runCalls.push(args);
+            return { changes: 1 };
+          },
+          get: () => undefined,
+          all: () => [],
+        }),
+      },
     },
+    runCalls,
   };
 }
 
 test("IntelligenceRepository has all required methods", () => {
-  const db = createMockDb() as any;
+  const { db } = createMockDb();
   const repo = new IntelligenceRepository(db);
 
   assert.equal(typeof repo.upsertPerceptionSource, "function");
@@ -33,7 +40,7 @@ test("IntelligenceRepository has all required methods", () => {
 });
 
 test("IntelligenceRepository upserts perception source", () => {
-  const db = createMockDb() as any;
+  const { db, runCalls } = createMockDb();
   const repo = new IntelligenceRepository(db);
 
   const now = "2026-04-21T10:00:00.000Z";
@@ -50,8 +57,10 @@ test("IntelligenceRepository upserts perception source", () => {
     updatedAt: now,
   };
 
-  repo.upsertPerceptionSource(source);
-  assert.ok(true);
+  assert.equal(repo.upsertPerceptionSource(source), undefined);
+  assert.equal(runCalls.length, 1);
+  assert.ok(runCalls[0]?.includes(source.sourceId));
+  assert.ok(runCalls[0]?.includes(source.name));
 });
 
 test("IntelligenceRepository gets perception source", () => {
@@ -119,7 +128,7 @@ test("IntelligenceRepository lists enabled perception sources", () => {
 });
 
 test("IntelligenceRepository inserts intel item", () => {
-  const db = createMockDb() as any;
+  const { db, runCalls } = createMockDb();
   const repo = new IntelligenceRepository(db);
 
   const now = "2026-04-21T10:00:00.000Z";
@@ -138,8 +147,10 @@ test("IntelligenceRepository inserts intel item", () => {
     expiresAt: null,
   };
 
-  repo.insertIntelItem(item);
-  assert.ok(true);
+  assert.equal(repo.insertIntelItem(item), undefined);
+  assert.equal(runCalls.length, 1);
+  assert.ok(runCalls[0]?.includes(item.intelId));
+  assert.ok(runCalls[0]?.includes(item.title));
 });
 
 test("IntelligenceRepository gets intel item by source and dedupe key", () => {
@@ -207,7 +218,7 @@ test("IntelligenceRepository lists intel items by ids", () => {
 });
 
 test("IntelligenceRepository lists intel items by ids with empty array", () => {
-  const db = createMockDb() as any;
+  const { db } = createMockDb();
   const repo = new IntelligenceRepository(db);
 
   const result = repo.listIntelItemsByIds([]);
@@ -215,7 +226,7 @@ test("IntelligenceRepository lists intel items by ids with empty array", () => {
 });
 
 test("IntelligenceRepository inserts intel brief", () => {
-  const db = createMockDb() as any;
+  const { db, runCalls } = createMockDb();
   const repo = new IntelligenceRepository(db);
 
   const now = "2026-04-21T10:00:00.000Z";
@@ -231,8 +242,10 @@ test("IntelligenceRepository inserts intel brief", () => {
     generatedAt: now,
   };
 
-  repo.insertIntelBrief(brief);
-  assert.ok(true);
+  assert.equal(repo.insertIntelBrief(brief), undefined);
+  assert.equal(runCalls.length, 1);
+  assert.ok(runCalls[0]?.includes(brief.briefId));
+  assert.ok(runCalls[0]?.includes(brief.overallSummary));
 });
 
 test("IntelligenceRepository gets intel brief", () => {
@@ -268,7 +281,7 @@ test("IntelligenceRepository lists intel briefs", () => {
 });
 
 test("IntelligenceRepository inserts action proposal", () => {
-  const db = createMockDb() as any;
+  const { db, runCalls } = createMockDb();
   const repo = new IntelligenceRepository(db);
 
   const now = "2026-04-21T10:00:00.000Z";
@@ -288,8 +301,10 @@ test("IntelligenceRepository inserts action proposal", () => {
     decidedAt: null,
   };
 
-  repo.insertActionProposal(proposal);
-  assert.ok(true);
+  assert.equal(repo.insertActionProposal(proposal), undefined);
+  assert.equal(runCalls.length, 1);
+  assert.ok(runCalls[0]?.includes(proposal.proposalId));
+  assert.ok(runCalls[0]?.includes(proposal.title));
 });
 
 test("IntelligenceRepository lists action proposals by brief", () => {

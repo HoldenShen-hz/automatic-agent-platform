@@ -229,7 +229,10 @@ export class DlqService {
     }
 
     if (record.retryCount >= record.maxRetries) {
-      throw new Error(`dlq.retry_limit_exceeded: retry ${record.retryCount} exhausted (maxRetries ${record.maxRetries})`);
+      throw new ValidationError(
+        `dlq.retry_limit_exceeded:${record.retryCount}`,
+        `dlq.retry_limit_exceeded: retry ${record.retryCount} exhausted (maxRetries ${record.maxRetries})`,
+      );
     }
 
     const backoffDelay = delayMs ?? DEFAULT_DLQ_RETRY_BACKOFF_MS * Math.pow(2, record.retryCount);

@@ -36,7 +36,7 @@ test("R26-13 and R26-24 field protection and DEK encryption use authenticated en
   });
   const ciphertext = (protectedResult.protectedRecord.customer as Record<string, string>).email;
   assert.ok(ciphertext);
-  assert.match(ciphertext, /^enc:[a-f0-9]+:[a-f0-9]+:[a-f0-9]+:[a-f0-9]+$/);
+  assert.match(ciphertext, /^encv1\.[A-Za-z0-9\-_]+$/);
   assert.equal(encryption.revealField({ ciphertext, keyRef: "kms://tenant-a/key-1" }), "alice@example.com");
 
   const dekManager = new DekManager();

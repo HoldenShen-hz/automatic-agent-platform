@@ -163,9 +163,7 @@ test("HierarchicalConfigLoader.emitConfigChange does not throw without eventBus"
   const oldConfig = { timeout: 30000 };
   const newConfig = { timeout: 60000 };
 
-  // Should not throw
-  loader.emitConfigChange("tenant", "tenant-1", oldConfig, newConfig);
-  assert.ok(true);
+  assert.equal(loader.emitConfigChange("tenant", "tenant-1", oldConfig, newConfig), undefined);
 });
 
 test("HierarchicalConfigLoader.loadConfig returns layerMap with correct layer per key", () => {

@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import * as domainTypes from "../../../../../../src/platform/contracts/types/domain/index.js";
+
 test("domain barrel exports primitive aliases", () => {
   const timestamp: import("../../../../../../src/platform/contracts/types/domain/index.js").Timestamp = "2024-01-15T10:00:00Z";
   const priority: import("../../../../../../src/platform/contracts/types/domain/index.js").TaskPriority = "high";
@@ -29,5 +31,6 @@ test("domain barrel exports record types", () => {
   type _EvolutionProposalRecord = import("../../../../../../src/platform/contracts/types/domain/index.js").EvolutionProposalRecord;
   type _EnvironmentReadinessRecord = import("../../../../../../src/platform/contracts/types/domain/index.js").EnvironmentReadinessRecord;
 
-  assert.ok(true);
+  const exportedTypeModules = Object.keys(domainTypes).sort();
+  assert.deepEqual(exportedTypeModules, []);
 });

@@ -154,7 +154,7 @@ test("performBootstrapHealthCheck.checkedAt is valid ISO timestamp [five-plane-r
 });
 
 test("performBootstrapHealthCheck includes all five plane bootstrap services [five-plane-runtime-bootstrap]", () => {
-  const registry = ServiceRegistry.getInstance();
+  const registry = new ServiceRegistry();
   const healthCheck = performBootstrapHealthCheck(registry);
 
   const expectedServices = [
@@ -165,11 +165,11 @@ test("performBootstrapHealthCheck includes all five plane bootstrap services [fi
     "plane.state-evidence.bootstrap",
   ];
 
-  // The health check should check these services (may or may not be initialized)
-  for (const serviceId of expectedServices) {
-    // Just verify the health check ran without error
-    assert.ok(true);
-  }
+  assert.deepEqual(healthCheck.failedServices, expectedServices);
+  assert.deepEqual(
+    healthCheck.errors,
+    expectedServices.map((serviceId) => `service_not_initialized:${serviceId}`),
+  );
 });
 
 // ---------------------------------------------------------------------------
@@ -198,30 +198,19 @@ test("FivePlaneRuntimeCatalog registers with all plane dependencies [five-plane-
 // ---------------------------------------------------------------------------
 
 test("registerFivePlaneRuntimeCatalog handles missing services gracefully [five-plane-runtime-bootstrap]", () => {
-  // Create a minimal registry without all bootstrap services
   const registry = new ServiceRegistry();
-
-  // Should not throw even if some services aren't initialized
-  try {
-    registerFivePlaneRuntimeCatalog(registry);
-    assert.ok(true);
-  } catch (error) {
-    // Graceful degradation - may throw but should handle it
-    assert.ok(error instanceof Error || error === undefined);
-  }
+  const catalog = registerFivePlaneRuntimeCatalog(registry);
+  assert.ok(registry.isInitialized(FIVE_PLANE_RUNTIME_CATALOG_SERVICE_ID));
+  assert.ok(catalog.interfacePlane.length >= 0);
+  assert.ok(registry.isInitialized(CONTROL_PLANE_BOOTSTRAP_SERVICE_ID));
 });
 
 test("registerX1FabricBootstrap handles initialization failure gracefully [five-plane-runtime-bootstrap]", () => {
   const registry = new ServiceRegistry();
-
-  // Should not throw even on failure
-  try {
-    registerX1FabricBootstrap(registry);
-    assert.ok(true);
-  } catch (error) {
-    // May throw but should be handled gracefully
-    assert.ok(error instanceof Error || error === undefined);
-  }
+  const bootstrap = registerX1FabricBootstrap(registry);
+  assert.equal(bootstrap.capabilityGroupId, "x1-fabric");
+  assert.ok(registry.isInitialized(X1_FABRIC_BOOTSTRAP_SERVICE_ID));
+  assert.ok(registry.isInitialized(MODEL_GATEWAY_BOOTSTRAP_SERVICE_ID));
 });
 
 // ---------------------------------------------------------------------------
@@ -238,10 +227,13 @@ test("FivePlaneRuntimeCatalog has readonly plane arrays [five-plane-runtime-boot
 test("FivePlaneRuntimeCatalog planes contain capability baseline objects [five-plane-runtime-bootstrap]", () => {
   const catalog = buildFivePlaneRuntimeCatalog();
 
-  // Each plane should have baseline objects with expected properties
-  // (even if empty, they should be objects)
-  for (const plane of [catalog.interfacePlane, catalog.controlPlane, catalog.orchestrationPlane,
-                       catalog.executionPlane, catalog.stateEvidencePlane]) {
+  for (const plane of [
+    catalog.interfacePlane,
+    catalog.controlPlane,
+    catalog.orchestrationPlane,
+    catalog.executionPlane,
+    catalog.stateEvidencePlane,
+  ]) {
     assert.ok(Array.isArray(plane));
   }
 });

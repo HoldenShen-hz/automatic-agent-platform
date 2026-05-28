@@ -525,9 +525,9 @@ test("FluentdTransport.handleReconnect sets timer with exponential backoff", () 
   assert.notEqual(reconnectTimer, null);
 
   // Backoff should be min(1000 * 2^(3-1), 30000) = min(4000, 30000) = 4000
-  // We can't directly check the delay, but we can verify the timer was set
   if (reconnectTimer) {
-    assert.ok(true);
+    assert.equal(typeof reconnectTimer.hasRef, "function");
+    assert.equal(reconnectTimer.hasRef(), false);
   }
 
   transport.close();
@@ -689,7 +689,7 @@ test("FluentdTransport flush resolves immediately when no socket", async () => {
 
   // Should resolve immediately
   await result;
-  assert.ok(true);
+  assert.equal((transport as unknown as { socket: EventEmitter | null }).socket, null);
 
   transport.close();
 });
@@ -761,7 +761,8 @@ test("FluentdTransport close is safe when reconnectTimer is not set", async () =
 
   // Close should not throw
   await transport.close();
-  assert.ok(true);
+  assert.equal((transport as unknown as { reconnectTimer: ReturnType<typeof setTimeout> | null }).reconnectTimer, null);
+  assert.equal((transport as unknown as { socket: MockSocket | null }).socket, null);
 });
 
 test("FluentdTransport reconnectAttempts starts at 0", () => {

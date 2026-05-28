@@ -1,4 +1,5 @@
 import { SECONDS_PER_HOUR } from "../../../contracts/constants/time.js";
+import { ValidationError } from "../../../contracts/errors.js";
 import {
   buildPreflightHeaders,
   isOriginAllowed as isOriginAllowedForResponseHardening,
@@ -46,26 +47,45 @@ function validateCorsConfigInternal(config: CorsConfig): void {
     (origin) => origin === "*" || origin === "*.*",
   );
   if (hasWildcard && config.allowCredentials) {
-    throw new Error("cors.security: Wildcard origin '*' is not allowed when credentials are enabled. Specify explicit origins.");
+    throw new ValidationError(
+      "cors.security_wildcard_credentials_forbidden",
+      "cors.security: Wildcard origin '*' is not allowed when credentials are enabled. Specify explicit origins.",
+    );
   }
   for (const origin of config.allowedOrigins) {
     if (origin === "*" || origin === "*.*") {
       continue;
     }
     if (/[\u0000-\u001f\u007f]/u.test(origin)) {
-      throw new Error(`cors.security: Invalid origin '${origin}'. Use explicit http(s) origins only.`);
+      throw new ValidationError(
+        "cors.invalid_origin",
+        `cors.security: Invalid origin '${origin}'. Use explicit http(s) origins only.`,
+        { field: "allowedOrigins" },
+      );
     }
     if (origin === "null" || origin.startsWith("*.")) {
-      throw new Error(`cors.security: Invalid origin '${origin}'. Use explicit http(s) origins only.`);
+      throw new ValidationError(
+        "cors.invalid_origin",
+        `cors.security: Invalid origin '${origin}'. Use explicit http(s) origins only.`,
+        { field: "allowedOrigins" },
+      );
     }
     let parsed: URL;
     try {
       parsed = new URL(origin);
     } catch {
-      throw new Error(`cors.security: Invalid origin '${origin}'. Use explicit http(s) origins only.`);
+      throw new ValidationError(
+        "cors.invalid_origin",
+        `cors.security: Invalid origin '${origin}'. Use explicit http(s) origins only.`,
+        { field: "allowedOrigins" },
+      );
     }
     if ((parsed.protocol !== "http:" && parsed.protocol !== "https:") || parsed.origin !== origin) {
-      throw new Error(`cors.security: Invalid origin '${origin}'. Use explicit http(s) origins only.`);
+      throw new ValidationError(
+        "cors.invalid_origin",
+        `cors.security: Invalid origin '${origin}'. Use explicit http(s) origins only.`,
+        { field: "allowedOrigins" },
+      );
     }
   }
 }

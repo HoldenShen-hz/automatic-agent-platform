@@ -19,6 +19,7 @@ test("R20-50 first-party connectors run through concrete executors and deliver c
   });
 
   const originalFetch = globalThis.fetch;
+  const originalAllowedHosts = process.env.AA_CONNECTOR_CALLBACK_ALLOWED_HOSTS;
   const callbackCalls: Array<{ url: string; body: string | undefined; headers: HeadersInit | undefined }> = [];
   (globalThis as { fetch?: typeof fetch }).fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     callbackCalls.push({
@@ -28,6 +29,7 @@ test("R20-50 first-party connectors run through concrete executors and deliver c
     });
     return { ok: true } as Response;
   }) as typeof fetch;
+  process.env.AA_CONNECTOR_CALLBACK_ALLOWED_HOSTS = "callback.test";
 
   try {
     const result = await service.execute(
@@ -49,6 +51,11 @@ test("R20-50 first-party connectors run through concrete executors and deliver c
     assert.match(String((callbackCalls[0]?.headers as Record<string, string>)["X-Connector-Callback"]), /true/i);
     assert.match(callbackCalls[0]?.body ?? "", /"status":"failed"/);
   } finally {
+    if (originalAllowedHosts == null) {
+      delete process.env.AA_CONNECTOR_CALLBACK_ALLOWED_HOSTS;
+    } else {
+      process.env.AA_CONNECTOR_CALLBACK_ALLOWED_HOSTS = originalAllowedHosts;
+    }
     if (originalFetch == null) {
       delete (globalThis as { fetch?: typeof fetch }).fetch;
     } else {

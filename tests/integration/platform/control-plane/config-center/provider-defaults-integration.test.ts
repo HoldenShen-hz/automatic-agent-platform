@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   ANTHROPIC_API_URL,
+  MANUAL_BILLING_CHECKOUT_URL,
   OPENAI_API_URL,
   MINIMAX_API_URL_GLOBAL,
   MINIMAX_API_URL_CHINA,
@@ -45,6 +46,10 @@ test("Stripe API URL format", () => {
 
 test("Paddle API URL format", () => {
   assert.equal(PADDLE_API_URL, "https://api.paddle.com");
+});
+
+test("Manual billing checkout URL format", () => {
+  assert.equal(MANUAL_BILLING_CHECKOUT_URL, "https://billing.manual.example/checkout");
 });
 
 test("Telegram API URL format", () => {

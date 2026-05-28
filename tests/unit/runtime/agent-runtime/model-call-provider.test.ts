@@ -84,8 +84,8 @@ test("ModelCallProviderService dispose is safe to call multiple times [model-cal
 
   provider.dispose();
   provider.dispose(); // Should not throw
-
-  assert.ok(true);
+  assert.equal(provider.hasAnyProvider(), false);
+  assert.equal(provider.hasAnthropic(), false);
 });
 
 test("createModelCallMiddleware creates a middleware hook [model-call-provider]", () => {
@@ -201,6 +201,6 @@ test("provider dispose clears state [model-call-provider]", () => {
 
   const provider = initializeModelCallProvider({});
   provider.dispose();
-
-  assert.ok(true); // No error means success
+  assert.equal(provider.hasOpenAI(), false);
+  assert.equal(provider.hasMinimax(), false);
 });

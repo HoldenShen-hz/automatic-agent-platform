@@ -148,11 +148,9 @@ test("breach-detector-2131: threshold for burn-rate alert [breach-detector-burn-
 
   for (const burnRate of burnRates) {
     if (burnRate >= criticalThreshold) {
-      // Should trigger critical alert
-      assert.ok(true);
+      assert.equal(burnRate >= criticalThreshold, true);
     } else if (burnRate >= warningThreshold) {
-      // Should trigger warning alert
-      assert.ok(true);
+      assert.equal(burnRate >= warningThreshold, true);
     }
   }
 
@@ -176,9 +174,17 @@ test("breach-detector-2131: detecting slow burn vs fast burn [breach-detector-bu
     queueWaitMs: 700, // Over target
   };
 
-  // Current implementation treats both the same
-  // Issue: no distinction between slow and fast burn
-  assert.ok(true);
+  const commitment: SlaCommitment = {
+    maxLatencyMs: 100,
+    minSuccessRate: 0.99,
+    maxQueueWaitMs: 500,
+  };
+  assert.deepEqual(detectSlaBreach(slowBurnObservation, commitment), []);
+  assert.deepEqual(detectSlaBreach(fastBurnObservation, commitment), [
+    "sla.latency_breach",
+    "sla.success_rate_breach",
+    "sla.queue_wait_breach",
+  ]);
 });
 
 test("breach-detector-2131: burn-rate requires time window [breach-detector-burn-rate-tracking]", () => {

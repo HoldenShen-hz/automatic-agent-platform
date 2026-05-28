@@ -394,7 +394,7 @@ export class BillingRepository {
         event.workspaceId,
         event.tenantId,
         event.taskId,
-        event.executionId,
+        event.executionId ?? null,
         event.metricType,
         event.quantity,
         event.source,

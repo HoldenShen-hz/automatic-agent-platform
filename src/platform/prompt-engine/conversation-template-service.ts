@@ -9,6 +9,8 @@
 
 import { z } from "zod";
 
+import { ValidationError } from "../contracts/errors.js";
+
 /**
  * Conversation template step
  */
@@ -405,7 +407,10 @@ export class ConversationTemplateExecutor {
         : templateIdOrTemplate;
 
     if (!template) {
-      throw new Error(`Template not found: ${templateIdOrTemplate}`);
+      throw new ValidationError(
+        `conversation_template.not_found:${String(templateIdOrTemplate)}`,
+        `Template not found: ${String(templateIdOrTemplate)}`,
+      );
     }
 
     const isComplete = stepIndex >= template.steps.length;

@@ -19,6 +19,8 @@ export interface OutboxRecord {
   retryCount: number;
   lastError: string | null;
   lastAttemptAt: string | null;
+  deadLetteredAt?: string | null;
+  deadLetterReason?: string | null;
 }
 
 export interface OutboxInsertPayload {

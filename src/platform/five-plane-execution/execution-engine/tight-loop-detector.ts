@@ -19,8 +19,8 @@
  * @see AGENT-25: Tighten doom loop / repeat call detection
  */
 
-import { createHash } from "node:crypto";
 import { nowIso } from "../../contracts/types/ids.js";
+import { sha256HexPrefix } from "../../shared/cache/utils/sha256.js";
 
 /**
  * Represents a detected loop pattern.
@@ -77,13 +77,13 @@ function normalizeInputForComparison(input: unknown): string {
   return String(input);
 }
 
-/** Computes a 16-character hash of tool name + normalized input for exact matching. */
+/** Computes a 32-character hash of tool name + normalized input for exact matching. */
 function computeHash(toolName: string, normalizedInput: string): string {
-  return createHash("sha256").update(`${toolName}:${normalizedInput}`).digest("hex").slice(0, 16);
+  return sha256HexPrefix(`${toolName}:${normalizedInput}`, 32);
 }
 
 /**
- * Computes a 12-character hash of the words in normalized input for similarity matching.
+ * Computes a 32-character hash of the words in normalized input for similarity matching.
  *
  * Sorts words alphabetically before hashing so that inputs like "read file X then write"
  * and "write file X then read" produce the same similarity hash, catching loops where
@@ -92,7 +92,7 @@ function computeHash(toolName: string, normalizedInput: string): string {
 function computeSimilarityHash(normalizedInput: string): string {
   const words = normalizedInput.split(/\s+/).filter(Boolean);
   words.sort();
-  return createHash("sha256").update(words.join(":")).digest("hex").slice(0, 12);
+  return sha256HexPrefix(words.join(":"), 32);
 }
 
 /**

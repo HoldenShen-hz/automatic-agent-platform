@@ -207,17 +207,17 @@ test("StructuredLogger.recentByCorrelation returns empty array for non-existent 
 // Test that closeTransports handles empty transport list
 test("StructuredLogger.closeTransports handles empty transport list", async () => {
   // Ensure no transports are registered
+  assert.equal((StructuredLogger as unknown as { transports: unknown[] }).transports.length, 0);
   await StructuredLogger.closeTransports();
 
-  // Should complete without error
-  assert.ok(true);
+  assert.equal((StructuredLogger as unknown as { transports: unknown[] }).transports.length, 0);
 });
 
 // Test that flushTransports handles empty transport list
 test("StructuredLogger.flushTransports handles empty transport list", async () => {
   // Ensure no transports are registered
+  assert.equal((StructuredLogger as unknown as { transports: unknown[] }).transports.length, 0);
   await StructuredLogger.flushTransports();
 
-  // Should complete without error
-  assert.ok(true);
+  assert.equal((StructuredLogger as unknown as { transports: unknown[] }).transports.length, 0);
 });

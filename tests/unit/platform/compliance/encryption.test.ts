@@ -13,6 +13,11 @@ function createRule(overrides: Partial<FieldProtectionRule> = {}): FieldProtecti
   };
 }
 
+function parseEnvelope(ciphertext: string): Record<string, string | number> {
+  assert.ok(ciphertext.startsWith("encv1."));
+  return JSON.parse(Buffer.from(ciphertext.slice("encv1.".length), "base64url").toString("utf8")) as Record<string, string | number>;
+}
+
 test("protectRecord encrypts specified fields", () => {
   const service = new FieldEncryptionService();
   const record = { secret: "my-password", public: "data" };
@@ -29,7 +34,7 @@ test("protectRecord encrypts specified fields", () => {
   if (typeof protectedSecret !== "string") {
     assert.fail("protected secret should be a string");
   }
-  assert.ok(protectedSecret.startsWith("enc:"), "should have encryption prefix");
+  assert.ok(protectedSecret.startsWith("encv1."), "should have encryption prefix");
   assert.equal(result.protectedRecord.public, "data", "unprotected field should remain unchanged");
   assert.equal(result.protectedFields.length, 1);
   const firstProtectedField = result.protectedFields.at(0);
@@ -245,4 +250,21 @@ test("protectRecord uses correct key fingerprint in ciphertext", () => {
     })(),
     "different keys should produce different ciphertext",
   );
+});
+
+test("protectRecord emits a versioned authenticated envelope", () => {
+  const service = new FieldEncryptionService();
+  const result = service.protectRecord({
+    record: { secret: "value" },
+    rules: [createRule()],
+    keyRef: "kms://tenant/versioned-key",
+  });
+
+  const envelope = parseEnvelope(result.protectedFields[0]!.ciphertext);
+  assert.equal(envelope.v, 1);
+  assert.equal(typeof envelope.kf, "string");
+  assert.equal(typeof envelope.s, "string");
+  assert.equal(typeof envelope.i, "string");
+  assert.equal(typeof envelope.t, "string");
+  assert.equal(typeof envelope.c, "string");
 });

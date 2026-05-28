@@ -13,12 +13,16 @@ function createMockOutboxService(overrides: Partial<{
   getPendingCount: () => number;
   getFailedCount: () => number;
   publishEntry: (entry: OutboxRecord) => Promise<boolean>;
+  publishEntriesBatch: (entries: OutboxRecord[]) => Promise<{ published: number; failed: number }>;
+  markDeadLettered: (id: string, error: string, retryCount: number, deadLetteredAt: string) => void;
 }> = {}): OutboxService {
   return {
     getPendingEntries: overrides.getPendingEntries ?? (() => []),
     getPendingCount: overrides.getPendingCount ?? (() => 0),
     getFailedCount: overrides.getFailedCount ?? (() => 0),
     publishEntry: overrides.publishEntry ?? (async () => true),
+    publishEntriesBatch: overrides.publishEntriesBatch,
+    markDeadLettered: overrides.markDeadLettered ?? (() => undefined),
   } as unknown as OutboxService;
 }
 
@@ -35,6 +39,8 @@ function createPendingEntry(overrides: Partial<OutboxRecord> = {}): OutboxRecord
     retryCount: 0,
     lastError: null,
     lastAttemptAt: null,
+    deadLetteredAt: null,
+    deadLetterReason: null,
     ...overrides,
   };
 }
@@ -97,11 +103,15 @@ test("OutboxPollerService poll returns early when disposed", async () => {
 
 test("OutboxPollerService poll skips entries at exact maxRetries boundary", async () => {
   let publishCallCount = 0;
+  let deadLetteredId: string | null = null;
   const mockService = createMockOutboxService({
     getPendingEntries: () => [
       createPendingEntry({ id: "boundary-entry", retryCount: 5 }), // Exactly at maxRetries=5
     ],
     getPendingCount: () => 1,
+    markDeadLettered: (id) => {
+      deadLetteredId = id;
+    },
     publishEntry: async () => {
       publishCallCount++;
       return true;
@@ -114,6 +124,7 @@ test("OutboxPollerService poll skips entries at exact maxRetries boundary", asyn
   // Entry should be skipped (5 >= 5)
   assert.equal(publishCallCount, 0);
   assert.equal(result.failed, 1);
+  assert.equal(deadLetteredId, "boundary-entry");
 });
 
 test("OutboxPollerService poll processes entries below maxRetries boundary", async () => {
@@ -179,7 +190,7 @@ test("OutboxPollerService calculateBackoff respects maxBackoffMs", () => {
 });
 
 test("OutboxPollerService poll with multiple entries processes all", async () => {
-  let publishCallCount = 0;
+  let batchPublishCount = 0;
   const mockService = createMockOutboxService({
     getPendingEntries: () => [
       createPendingEntry({ id: "multi-1" }),
@@ -187,17 +198,48 @@ test("OutboxPollerService poll with multiple entries processes all", async () =>
       createPendingEntry({ id: "multi-3" }),
     ],
     getPendingCount: () => 3,
-    publishEntry: async () => {
-      publishCallCount++;
-      return true;
+    publishEntriesBatch: async (entries) => {
+      batchPublishCount++;
+      return { published: entries.length, failed: 0 };
     },
   });
 
   const poller = new OutboxPollerService(mockService);
   const result = await poller.poll();
 
-  assert.equal(publishCallCount, 3);
+  assert.equal(batchPublishCount, 1);
   assert.equal(result.published, 3);
+  assert.equal(result.failed, 0);
+});
+
+test("OutboxPollerService poll publishes multiple chunks concurrently by configured chunk size", async () => {
+  const publishedChunkSizes: number[] = [];
+  let singlePublishes = 0;
+  const mockService = createMockOutboxService({
+    getPendingEntries: () => [
+      createPendingEntry({ id: "chunk-1" }),
+      createPendingEntry({ id: "chunk-2" }),
+      createPendingEntry({ id: "chunk-3" }),
+      createPendingEntry({ id: "chunk-4" }),
+      createPendingEntry({ id: "chunk-5" }),
+    ],
+    getPendingCount: () => 5,
+    publishEntriesBatch: async (entries) => {
+      publishedChunkSizes.push(entries.length);
+      return { published: entries.length, failed: 0 };
+    },
+    publishEntry: async () => {
+      singlePublishes++;
+      return true;
+    },
+  });
+
+  const poller = new OutboxPollerService(mockService, { maxConcurrentPublishes: 2 });
+  const result = await poller.poll();
+
+  assert.deepEqual(publishedChunkSizes, [2, 2]);
+  assert.equal(singlePublishes, 1);
+  assert.equal(result.published, 5);
   assert.equal(result.failed, 0);
 });
 

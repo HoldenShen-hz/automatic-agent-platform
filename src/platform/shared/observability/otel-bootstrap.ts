@@ -3,6 +3,7 @@ import { createRequire } from "node:module";
 import { StructuredLogger } from "./structured-logger.js";
 import { ServiceRegistry } from "../lifecycle/service-registry.js";
 import { runtimeMetricsRegistry } from "./runtime-metrics-registry.js";
+import { loadOtelModules, type OTelModuleSet } from "./otel-module-loader.js";
 
 export interface OtelBootstrapConfig {
   enabled: boolean;
@@ -15,15 +16,6 @@ export interface OtelBootstrapConfig {
 interface OTelSdkLike {
   start(): void | Promise<void>;
   shutdown(): Promise<void>;
-}
-
-interface OTelModuleSet {
-  NodeSDK: new (options: Record<string, unknown>) => OTelSdkLike;
-  OTLPTraceExporter: new (options: Record<string, unknown>) => unknown;
-  Resource: (new (attributes: Record<string, unknown>) => unknown) | undefined;
-  HttpInstrumentation: (new () => unknown) | undefined;
-  serviceNameKey: string;
-  serviceVersionKey: string;
 }
 
 let logger: StructuredLogger | null = null;
@@ -106,26 +98,6 @@ function getOtelBootstrapManager(): OtelBootstrapManager {
     init: () => new OtelBootstrapManager(),
   });
   return registry.get<OtelBootstrapManager>(OTEL_BOOTSTRAP_SERVICE);
-}
-
-function loadOtelModules(requireFn = createRequire(import.meta.url)): OTelModuleSet | null {
-  try {
-    const sdkNode = requireFn("@opentelemetry/sdk-node") as { NodeSDK: OTelModuleSet["NodeSDK"] };
-    const exporter = requireFn("@opentelemetry/exporter-trace-otlp-http") as { OTLPTraceExporter: OTelModuleSet["OTLPTraceExporter"] };
-    const resources = requireFn("@opentelemetry/resources") as { Resource?: OTelModuleSet["Resource"] };
-    const semantic = requireFn("@opentelemetry/semantic-conventions") as Record<string, string | undefined>;
-    const instrumentationHttp = requireFn("@opentelemetry/instrumentation-http") as { HttpInstrumentation?: OTelModuleSet["HttpInstrumentation"] };
-    return {
-      NodeSDK: sdkNode.NodeSDK,
-      OTLPTraceExporter: exporter.OTLPTraceExporter,
-      Resource: resources.Resource,
-      HttpInstrumentation: instrumentationHttp.HttpInstrumentation,
-      serviceNameKey: semantic["ATTR_SERVICE_NAME"] ?? "service.name",
-      serviceVersionKey: semantic["ATTR_SERVICE_VERSION"] ?? "service.version",
-    };
-  } catch {
-    return null;
-  }
 }
 
 export function isOtelRuntimeAvailable(requireFn = createRequire(import.meta.url)): boolean {

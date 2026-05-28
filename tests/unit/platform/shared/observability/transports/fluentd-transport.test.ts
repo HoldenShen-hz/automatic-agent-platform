@@ -15,6 +15,33 @@ function createTestEntry(overrides: Partial<StructuredLogEntry> = {}): Structure
   };
 }
 
+function getFluentdState(transport: FluentdTransport): {
+  tag: string;
+  reconnectIntervalMs: number;
+  bufferLimit: number;
+  buffer: string[];
+  reconnectTimer: ReturnType<typeof setTimeout> | null;
+  socket: { destroyed?: boolean; writable?: boolean } | null;
+  connect: () => void;
+} {
+  return transport as unknown as {
+    tag: string;
+    reconnectIntervalMs: number;
+    bufferLimit: number;
+    buffer: string[];
+    reconnectTimer: ReturnType<typeof setTimeout> | null;
+    socket: { destroyed?: boolean; writable?: boolean } | null;
+    connect: () => void;
+  };
+}
+
+function disableConnect(transport: FluentdTransport): ReturnType<typeof getFluentdState> {
+  const state = getFluentdState(transport);
+  state.socket = null;
+  state.connect = () => undefined;
+  return state;
+}
+
 test("FluentdTransport has correct name", async () => {
   const transport = new FluentdTransport({
     host: "localhost",
@@ -31,9 +58,9 @@ test("FluentdTransport constructor sets defaults", async () => {
     port: 60000,
     tag: "test",
   });
-  // Constructor should set reconnectIntervalMs to 5000 by default
-  // Constructor should set bufferLimit to 10000 by default
-  assert.equal(transport.name, "fluentd");
+  const state = getFluentdState(transport);
+  assert.equal(state.reconnectIntervalMs, 5000);
+  assert.equal(state.bufferLimit, 10000);
   await transport.close();
 });
 
@@ -62,7 +89,10 @@ test("FluentdTransport.write handles entry without socket", async () => {
 
   // Give time for async reconnect to be scheduled
   await new Promise<void>((resolve) => setTimeout(resolve, 50));
-  assert.ok(true);
+  const state = getFluentdState(transport);
+  assert.equal(state.buffer.length, 1);
+  assert.ok(state.buffer[0]?.includes("buffered message"));
+  assert.ok(state.reconnectTimer != null);
   await transport.close();
 });
 
@@ -72,12 +102,14 @@ test("FluentdTransport.write handles multiple entries", async () => {
     port: 60000,
     tag: "test",
   });
+  const state = disableConnect(transport);
 
   for (let i = 0; i < 5; i++) {
     transport.write(createTestEntry({ message: `message ${i}` }));
   }
 
-  assert.ok(true);
+  assert.equal(state.buffer.length, 5);
+  assert.ok(state.buffer.every((line, index) => line.includes(`message ${index}`)));
   await transport.close();
 });
 
@@ -94,7 +126,15 @@ test("FluentdTransport.write formats entry as fluentd message", async () => {
     message: "error occurred",
   }));
 
-  assert.ok(true);
+  const [tag, timestamp, entry] = JSON.parse(getFluentdState(transport).buffer[0] ?? "[]") as [
+    string,
+    number,
+    StructuredLogEntry,
+  ];
+  assert.equal(tag, "myapp");
+  assert.equal(typeof timestamp, "number");
+  assert.equal(entry.level, "error");
+  assert.equal(entry.message, "error occurred");
   await transport.close();
 });
 
@@ -110,7 +150,12 @@ test("FluentdTransport.write with data payload", async () => {
     data: { taskId: "task-123", durationMs: 500 },
   }));
 
-  assert.ok(true);
+  const [, , entry] = JSON.parse(getFluentdState(transport).buffer[0] ?? "[]") as [
+    string,
+    number,
+    StructuredLogEntry,
+  ];
+  assert.deepEqual(entry.data, { taskId: "task-123", durationMs: 500 });
   await transport.close();
 });
 
@@ -127,7 +172,13 @@ test("FluentdTransport.write with trace context", async () => {
     spanId: "span-def",
   }));
 
-  assert.ok(true);
+  const [, , entry] = JSON.parse(getFluentdState(transport).buffer[0] ?? "[]") as [
+    string,
+    number,
+    StructuredLogEntry,
+  ];
+  assert.equal(entry.traceId, "trace-abc");
+  assert.equal(entry.spanId, "span-def");
   await transport.close();
 });
 
@@ -137,13 +188,14 @@ test("FluentdTransport handles rapid writes", async () => {
     port: 60000,
     tag: "test",
   });
+  const state = disableConnect(transport);
 
   // Rapid writes should not cause issues
   for (let i = 0; i < 100; i++) {
     transport.write(createTestEntry({ message: `rapid ${i}` }));
   }
 
-  assert.ok(true);
+  assert.equal(state.buffer.length, 100);
   await transport.close();
 });
 
@@ -173,7 +225,9 @@ test("FluentdTransport.close clears reconnect timer", async () => {
 
   // Close should not throw
   await transport.close();
-  assert.ok(true);
+  const state = getFluentdState(transport);
+  assert.equal(state.reconnectTimer, null);
+  assert.equal(state.socket, null);
 });
 
 test("FluentdTransport.close is idempotent", async () => {
@@ -185,7 +239,9 @@ test("FluentdTransport.close is idempotent", async () => {
 
   await transport.close();
   await transport.close();
-  assert.ok(true);
+  const state = getFluentdState(transport);
+  assert.equal(state.reconnectTimer, null);
+  assert.equal(state.socket, null);
 });
 
 test("FluentdTransport.close waits for socket drain", async () => {
@@ -196,8 +252,8 @@ test("FluentdTransport.close waits for socket drain", async () => {
   });
 
   // Close should complete even if socket is not writable
-  await transport.close();
-  assert.ok(true);
+  assert.equal(await transport.close(), undefined);
+  assert.equal(getFluentdState(transport).socket, null);
 });
 
 test("FluentdTransport constructor with minimum valid port (0)", async () => {

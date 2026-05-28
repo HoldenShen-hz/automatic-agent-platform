@@ -64,8 +64,9 @@ test("All expected registry modules are exported from index", () => {
 });
 
 test("Index module can be imported without error", () => {
-  // If we got here, the import succeeded
-  assert.ok(true);
+  const keys = Object.keys(RegistryIndex);
+  assert.ok(keys.includes("DomainRegistryService"));
+  assert.ok(keys.includes("SchemaRegistry"));
 });
 
 test("Index exports functions from submodules", () => {

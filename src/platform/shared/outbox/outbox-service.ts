@@ -114,7 +114,7 @@ export class OutboxService {
     const repoEntries = this.repo.listPendingEntries(effectiveLimit);
     const merged = this.mergeEntries(repoEntries);
     return merged
-      .filter((entry) => entry.publishedAt == null)
+      .filter((entry) => entry.publishedAt == null && entry.deadLetteredAt == null)
       .sort((left, right) => left.createdAt.localeCompare(right.createdAt))
       .slice(0, effectiveLimit);
   }
@@ -124,7 +124,7 @@ export class OutboxService {
    */
   public getPendingCount(): number {
     const repoPending = this.repo.listPendingEntries(Number.MAX_SAFE_INTEGER);
-    return this.mergeEntries(repoPending).filter((entry) => entry.publishedAt == null).length;
+    return this.mergeEntries(repoPending).filter((entry) => entry.publishedAt == null && entry.deadLetteredAt == null).length;
   }
 
   /**
@@ -133,7 +133,7 @@ export class OutboxService {
   public getFailedCount(): number {
     const repoFailed = this.repo.listFailedEntries(Number.MAX_SAFE_INTEGER);
     return this.mergeEntries(repoFailed)
-      .filter((entry) => entry.publishedAt == null && entry.retryCount > 0)
+      .filter((entry) => entry.publishedAt == null && entry.deadLetteredAt == null && entry.retryCount > 0)
       .length;
   }
 
@@ -169,6 +169,19 @@ export class OutboxService {
       localEntry.retryCount = retryCount;
       localEntry.lastAttemptAt = lastAttemptAt;
       this.localEntries.set(id, localEntry);
+    }
+  }
+
+  public markDeadLettered(id: string, error: string, retryCount: number, deadLetteredAt: string): void {
+    this.repo.markDeadLettered(id, error, retryCount, deadLetteredAt);
+    const localEntry = this.localEntries.get(id);
+    if (localEntry != null) {
+      localEntry.lastError = error;
+      localEntry.retryCount = retryCount;
+      localEntry.lastAttemptAt = deadLetteredAt;
+      localEntry.deadLetteredAt = deadLetteredAt;
+      localEntry.deadLetterReason = error;
+      this.localEntries.delete(id);
     }
   }
 

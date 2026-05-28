@@ -11,8 +11,8 @@ import test from "node:test";
 import * as indexExports from "../../../../../src/platform/five-plane-state-evidence/events/index.js";
 
 test("event-indexer.ts re-exports from index.js", () => {
-  // The module should exist and have exports from the barrel
-  assert.ok(indexExports !== undefined);
+  assert.ok("EventOpsService" in indexExports);
+  assert.ok("DurableEventBus" in indexExports);
 });
 
 test("event-indexer barrel exports are available", () => {
@@ -30,6 +30,5 @@ test("event-indexer module can be imported without error", async () => {
 
 test("event-indexer re-exports EventRecord types if available", async () => {
   const module = await import("../../../../../src/platform/five-plane-state-evidence/events/event-indexer.js");
-  // Just verify the module loaded - the actual re-export is verified by TypeScript compilation
-  assert.ok(true);
+  assert.deepEqual(Object.keys(module).sort(), Object.keys(indexExports).sort());
 });

@@ -5,8 +5,8 @@
  * Uses PostgreSQL advisory locks for leader election.
  */
 
-import { createHash } from "node:crypto";
 import type { AsyncSqlDatabase } from "../../five-plane-state-evidence/truth/async-sql-database.js";
+import { sha256FoldToSignedBigInt63 } from "../../shared/cache/utils/sha256.js";
 import type { HaRepository, LeaderActionAuditEntry } from "./ha-repository.js";
 import type { CoordinatorNode, CoordinatorNodeStatus, FailoverDecision, LeaderLease, LeadershipEpoch } from "./types.js";
 
@@ -18,8 +18,7 @@ export class PostgresHaRepository implements HaRepository {
     private readonly coordinatorId: string,
     lockNamespace: string = "ha_leader",
   ) {
-    // Deterministic lock ID from namespace (hash to bigint)
-    this.lockId = BigInt("0x" + createHash("sha256").update(lockNamespace).digest("hex").slice(0, 15));
+    this.lockId = sha256FoldToSignedBigInt63(lockNamespace, "utf8");
   }
 
   // Node Management

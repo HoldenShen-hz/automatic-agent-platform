@@ -5,8 +5,10 @@ import {
   DeterministicHotPathGate,
 } from "../../../../../src/platform/model-gateway/degradation/deterministic-hot-path-gate.js";
 import {
-  ResponsibilityBoundaryService,
   resetResponsibilityBoundaryService,
+} from "../../../../../src/platform/contracts/responsibility-boundary-service.js";
+import {
+  ResponsibilityBoundaryService,
 } from "../../../../../src/platform/contracts/types/responsibility-boundary.js";
 
 test("DeterministicHotPathGate blocks AI hot path when responsibility boundary requires human accountability", () => {

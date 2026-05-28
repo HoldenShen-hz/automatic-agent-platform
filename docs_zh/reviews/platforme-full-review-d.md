@@ -119,8 +119,8 @@
 | 100 | src/platform/five-plane-execution/execution-engine/phase1b-orchestration.ts:1-31 兼容文件维持冗余命名 | `done` | 根因是 multi-step 编排收口后仍残留 phase1b 别名文件，公共面没有完全切换到规范命名。 |
 | 101 | src/platform/five-plane-execution/execution-engine/phase1b-tool-definitions.ts & phase1b-utils.ts phase1b 兼容残留 | `done` | 根因是 phase1b 配套工具定义与工具函数沿用旧别名继续转发，导致同一能力维持双文件表述。 |
 | 102 | src/platform/five-plane-execution/recovery/runtime-recovery-service.ts 与 runtime-recovery-service-root.ts 等四对 *-service/*-service-root 双胞胎 | `done` | 根因是 recovery 模块迁移时为兼容旧入口保留了 root 别名文件，源码层形成事实双实现分支。 |
-| 103 | src/platform/five-plane-execution/execution-engine/multi-step-orchestration.ts 581 行单文件违反 AGENTS small modules 原则 | `todo` | 根因是多步编排把上下文装配、运行循环、路由决策和辅助函数长期堆在单文件里，没有按执行阶段拆成独立模块。 |
-| 104 | src/platform/five-plane-execution/execution-engine/multi-step-supervisor.ts 814 行同上 | `todo` | 根因是 supervisor 同时承载审批、升级、循环检测、状态同步等职责，演进中持续加分支但没有做职责拆分。 |
+| 103 | src/platform/five-plane-execution/execution-engine/multi-step-orchestration.ts 581 行单文件违反 AGENTS small modules 原则 | `done` | 根因是多步编排最初把计划解析、bootstrap、HarnessRun 持久化和终态收尾都堆在入口文件；现已拆成 `plan/bootstrap/finalize` 支持模块，入口收敛为 202 行协调器。 |
+| 104 | src/platform/five-plane-execution/execution-engine/multi-step-supervisor.ts 814 行同上 | `done` | 根因是 supervisor 长期把断点处理、失败分支、成功提交和主循环混在一个文件；现已拆成 `breakpoint/failure/success` 三个支持模块，主循环收敛为 358 行。 |
 | 105 | src/platform/five-plane-execution/dispatcher/execution-priority-preemption-service-async.ts:47 ESM 内反向用 CJS require | `done` | 根因是异步封装层曾为复用同步服务偷用了 require 加载同胞模块，没有保持 ESM 静态依赖图。 |
 | 106 | src/platform/five-plane-execution/distributed-lock/locking-support.ts:12 require("postgres") 同步加载，可选依赖耦合 | `done` | 根因是分布式锁支持层曾把后端依赖伪装成运行时 require 分支，依赖关系既不透明也不利于静态分析。 |
 | 107 | src/platform/five-plane-execution/distributed-lock/redis-lock-adapter.ts:67-68 构造期 createRequire+require("ioredis")，缺失依赖即启动崩 | `done` | 根因是 Redis 锁适配器延续了 createRequire 风格的动态装配，依赖加载失败只能在构造期爆炸。 |
@@ -213,31 +213,31 @@
 | 189 | tests/unit/platform/state-evidence/knowledge/p2-defects-sys-sec-4-2.test.ts:63,113 两处 /tmp/aa-sandbox/... 不清理 | `done` | 根因是安全回归测试只关注路径允许/拒绝语义，没有把产物生命周期纳入测试治理。 |
 | 190 | tests/leaks/platform/state-evidence/events/durable-event-bus.leak.test.ts 阈值 10MB 同理且不区 RSS/heapUsed | `done` | 根因是泄漏测试最初只盯 heapUsed，没把 RSS 与无 `--expose-gc` 运行环境分开建模。 |
 | 191 | dashboard-projection-service.ts:110 system.health.changed 未注册到 TypedEventType | `done` | 根因是 review 没有吸收 typed-event-bus / event-registry 的后续补齐；当前 `system.health.changed` 已注册。 |
-| 192 | migrate-sqlite-to-pg.ts 列名/表名直拼 SQL，无白名单（注入风险） | `todo` | 根因是 SQLite→PG 迁移脚本把模式对象名当成可信内部常量处理，没有在 SQL 标识符层做 allowlist/quote 校验。 |
-| 193 | idempotency-key-storage.ts ${this.tableName} 直拼 SQL，构造期未校验 | `todo` | 根因是幂等键存储允许构造期注入自定义表名，却没有在初始化边界限制为安全标识符集合。 |
-| 194 | semantic-vector-store.ts process.env[name] 中 name 来自配置，可读任意 env | `todo` | 根因是向量存储把配置字段直接映射为环境变量名，读取边界没有白名单约束。 |
-| 195 | checkpoint-gc-service.ts fs.stat→fs.unlink TOCTOU 窗口 | `todo` | 根因是 GC 删除路径先检查再删除，默认文件系统对象在两次系统调用之间不会被替换。 |
+| 192 | migrate-sqlite-to-pg.ts 列名/表名直拼 SQL，无白名单（注入风险） | `done` | 根因是迁移脚本早期默认表名和列名都来自可信模式；当前实现已对表名做 allowlist、对列名做标识符校验后再拼接。 |
+| 193 | idempotency-key-storage.ts ${this.tableName} 直拼 SQL，构造期未校验 | `done` | 根因是幂等键存储曾允许不受约束的自定义表名；现已在构造边界强制校验安全 SQL 标识符并用结构化错误 fail-close。 |
+| 194 | semantic-vector-store.ts process.env[name] 中 name 来自配置，可读任意 env | `done` | 根因是该条基于旧实现快照；现行 `semantic-vector-store.ts` 只读取固定的 `AA_KNOWLEDGE_VECTOR_BACKEND` / `AA_KNOWLEDGE_SEMANTIC_BACKEND`，不存在配置驱动的任意 env 读取。 |
+| 195 | checkpoint-gc-service.ts fs.stat→fs.unlink TOCTOU 窗口 | `done` | 根因是 GC 删除路径先做存在性检查再删除；现已改为直接 `lstat/open(O_NOFOLLOW)/fstat/unlink` 绑定对象身份，并在 `ENOENT` 上幂等返回。 |
 | 196 | shadow-snapshot-service.ts lstat→rename 间存在 symlink swap 窗口 | `todo` | 根因是 shadow snapshot 提升路径把 `lstat` 和 `rename` 分开执行，没有把目标身份绑定到单个原子操作。 |
-| 197 | sqlite-database-wrapper.ts:94-114 savepoint 名直拼 exec，未来调用方可注入 | `todo` | 根因是 PG 兼容 wrapper 用字符串拼接 savepoint 名构造 SQL，没有像 SQLite 主实现那样集中做标识符约束。 |
+| 197 | sqlite-database-wrapper.ts:94-114 savepoint 名直拼 exec，未来调用方可注入 | `done` | 根因是 PG 兼容 wrapper 之前把 savepoint 名直接插入 SQL；现已把 savepoint 名收口到受约束生成器并按标识符引用。 |
 | 198 | sqlite-database.ts:143 PRAGMA busy_timeout = ${this.busyTimeoutMs} 拼 SQL，busyTimeoutMs 未做整数校验 | `done` | 根因是 PRAGMA 值虽来自配置层，但没有在数据库边界再次验证为正整数，留下了拼接型配置注入面。 |
-| 199 | pg-advisory-lock-adapter.ts 中 Number(result.fencing_token)、sqlite-lock-adapter.ts:36 Number(result.lastInsertRowid) 超 2^53 精度丢失 | `todo` | 根因是多处数据库 bigint/rowid 回读仍直接强转 JS number，缺少统一的安全整数转换助手。 |
-| 200 | checkpoint-gc-service.ts:171,557、learning-object-model.ts:180,184、risk-register.ts:87,110、invariant-registry.ts:137,165,180、responsibility-boundary.ts:158-308、admin-config-service.ts:66、outbox-repository.ts:117、memory-layer-model.ts:214,549、graphql-adapter-service.ts:294、conversation-template-service.ts:408、approval-policy-engine/version-manager.ts:111、stable-evidence-bundle-support.ts:612,616,732、dlq-service.ts:238、knowledge-snapshot-store.ts:25-48、semantic-vector-validation.ts:276、tool-gateway/index.ts:150,160、idempotency-key-storage.ts:310,338,341、cors.ts:49-68、reliability/timeout.ts:45,54 多处抛裸 Error 而非结构化 AppError/ValidationError | `todo` | 根因是平台不同子模块长期各自抛原生 `Error`，错误分类模型没有在 shared/contracts 层被强制收口。 |
+| 199 | pg-advisory-lock-adapter.ts 中 Number(result.fencing_token)、sqlite-lock-adapter.ts:36 Number(result.lastInsertRowid) 超 2^53 精度丢失 | `done` | 根因是该条对应的两个风险点已消失：PG 适配器现已做安全整数范围校验，SQLite 锁适配器也不再依赖 `lastInsertRowid` 生成 fencing token。 |
+| 200 | checkpoint-gc-service.ts:171,557、learning-object-model.ts:180,184、risk-register.ts:87,110、invariant-registry.ts:137,165,180、responsibility-boundary.ts:158-308、admin-config-service.ts:66、outbox-repository.ts:117、memory-layer-model.ts:214,549、graphql-adapter-service.ts:294、conversation-template-service.ts:408、approval-policy-engine/version-manager.ts:111、stable-evidence-bundle-support.ts:612,616,732、dlq-service.ts:238、knowledge-snapshot-store.ts:25-48、semantic-vector-validation.ts:276、tool-gateway/index.ts:150,160、idempotency-key-storage.ts:310,338,341、cors.ts:49-68、reliability/timeout.ts:45,54 多处抛裸 Error 而非结构化 AppError/ValidationError | `done` | 根因是平台子模块长期各自直接抛原生 `Error`；本批已把仍命中的现存路径收口到 `ValidationError` / `StorageError` / typed error，失效路径也不再对应现行代码。 |
 | 201 | .gitignore 全局 *.db-shm/*.db-wal 不存在，sqlite WAL 残留可被 commit | `done` | 根因是旧 review 基于过期 `.gitignore` 快照；当前仓库已显式忽略 `*.db-shm` 与 `*.db-wal`。 |
 
 ## src/platform/shared
 
 | 编号 | 问题 | 状态 | 问题根因 |
 | --- | --- | --- | --- |
-| 202 | src/platform/stability/ 与 src/platform/shared/stability/ 平行同名目录实现已分歧 | `todo` | 根因是稳定性能力一边作为 authoritative 实现继续演进，一边又在 shared facade 中保留历史复制/二次封装，最终两套目录语义漂移。 |
-| 203 | src/platform/shared/reliability/、shared/stability/reliability/、stability/reliability/ 三处可靠性实现重复 | `todo` | 根因是 reliability 能力经历多次“抽 shared”“再挂 stability facade”的重组，但旧实现目录没有真正下线。 |
-| 204 | src/platform/shared/observability/structured-logger.ts:484-491 每条 fsync 日志 openSync+appendFileSync+fsyncSync+closeSync 串行同步 IO | `todo` | 根因是结构化 logger 把 durable sink 实现成逐条同步刷盘，可靠性优先级压过了吞吐设计。 |
-| 205 | src/platform/shared/observability/structured-logger.ts:153,180 sinkBaseDir=process.cwd()，运行时 chdir 后语义漂移 | `todo` | 根因是 sink 根目录默认绑定进程当前工作目录，而不是进程启动时或显式配置的稳定绝对路径。 |
-| 206 | src/platform/shared/observability/structured-logger.ts:194 mkdirSync 无错误处理，权限不足时 configure 直接抛 | `todo` | 根因是 logger 目录创建把文件系统权限异常当成不会发生的环境前提，没有转换成可诊断的配置错误。 |
-| 207 | src/platform/shared/observability/structured-logger.ts:262 retentionLimit=0 时 buffer 长度 0，所有 log 静默丢弃 | `todo` | 根因是 retention buffer 把 0 解释成“长度为 0 的可用缓存”，而不是“禁用 retention 但仍输出 sink”。 |
-| 208 | src/platform/shared/outbox/outbox-poller-service.ts:193-197 retryCount>=maxRetries 仅 failed++;continue，永不投 DLQ | `todo` | 根因是 outbox poller 只维护重试计数和失败计数，没有把“超过最大重试”接到显式 DLQ 转移路径。 |
-| 209 | src/platform/shared/outbox/outbox-poller-service.ts:188-217 for-await 串行处理，无并发批量发布 | `todo` | 根因是 outbox 发布循环最初按顺序可读性实现，没有抽出批处理并发度控制。 |
-| 210 | src/platform/shared/observability/otel-tracer.ts & otel-bootstrap.ts 各自 loadOtelApi/loadOtelModules，OTel 加载两条路径 | `todo` | 根因是 OTel 初始化在 tracer 和 bootstrap 两侧各自封装了一套模块探测逻辑，没有收口到单一加载器。 |
-| 211 | src/platform/shared/observability/structured-logger.ts:153 sinkBaseDir=process.cwd() 多 worker fork 后各持自身 cwd，路径不一致 | `todo` | 根因是日志 sink 路径解析依赖每个 worker 自己的 `cwd`，多进程环境下缺少统一的绝对路径锚点。 |
+| 202 | src/platform/stability/ 与 src/platform/shared/stability/ 平行同名目录实现已分歧 | `done` | 根因是稳定性能力曾同时保留 authoritative 实现和历史复制 facade；现已把 reliability 子能力统一回收为对 top-level stability 的薄重导出。 |
+| 203 | src/platform/shared/reliability/、shared/stability/reliability/、stability/reliability/ 三处可靠性实现重复 | `done` | 根因是 reliability 目录重组后旧实现没有彻底下线；现行仓库已只保留单一实现，shared/stability 侧仅作 facade。 |
+| 204 | src/platform/shared/observability/structured-logger.ts:484-491 每条 fsync 日志 openSync+appendFileSync+fsyncSync+closeSync 串行同步 IO | `done` | 根因是 durable sink 先前每条日志都重新打开文件；现已复用持久化文件描述符，只在轮转时关闭并重开。 |
+| 205 | src/platform/shared/observability/structured-logger.ts:153,180 sinkBaseDir=process.cwd()，运行时 chdir 后语义漂移 | `done` | 根因是 sink 根目录之前直接绑定 `process.cwd()`；现已固定到模块初始化时解析的稳定绝对基目录，并保留显式覆写入口。 |
+| 206 | src/platform/shared/observability/structured-logger.ts:194 mkdirSync 无错误处理，权限不足时 configure 直接抛 | `done` | 根因是 logger 目录创建曾把文件系统异常外漏给调用方；现已捕获并降级为结构化内部错误，且禁用该 sink。 |
+| 207 | src/platform/shared/observability/structured-logger.ts:262 retentionLimit=0 时 buffer 长度 0，所有 log 静默丢弃 | `done` | 根因是该条基于误判；现实现中 `retentionLimit=0` 只关闭内存保留，不会阻断 file sink 与 transport 输出。 |
+| 208 | src/platform/shared/outbox/outbox-poller-service.ts:193-197 retryCount>=maxRetries 仅 failed++;continue，永不投 DLQ | `done` | 根因是 outbox poller 之前没有终态失败语义；现已为超限记录写入显式 dead-letter 标记并从 pending 集合移除。 |
+| 209 | src/platform/shared/outbox/outbox-poller-service.ts:188-217 for-await 串行处理，无并发批量发布 | `done` | 根因是 outbox 发布循环最初按顺序实现；现已按可配置 chunk 并发发布，并优先走 batch publish。 |
+| 210 | src/platform/shared/observability/otel-tracer.ts & otel-bootstrap.ts 各自 loadOtelApi/loadOtelModules，OTel 加载两条路径 | `done` | 根因是 OTel 模块探测逻辑之前分散在 tracer 与 bootstrap 两处；现已提取到共享 `otel-module-loader.ts` 单一入口。 |
+| 211 | src/platform/shared/observability/structured-logger.ts:153 sinkBaseDir=process.cwd() 多 worker fork 后各持自身 cwd，路径不一致 | `done` | 根因是日志 sink 曾从各 worker 自己的 `cwd` 推导路径；现已统一锚定到启动期解析的绝对基目录。 |
 | 212 | tests/unit/platform/shared/stability/stable-prompt-injection-red-team-additional.test.ts:82,97,111,129,145 5 处 /tmp/... 不可移植 | `done` | 根因是稳定性附加测试直接手写 Unix 临时目录字符串，没有复用统一测试工作区 helper。 |
 | 213 | tests/unit/platform/shared/stability/stable-runtime-validator-additional.test.ts:30 /tmp/${caseId}.backup.db 跨 case 重名互覆盖 | `done` | 根因是 baseline/backup 路径用 caseId 直接拼到共享 `/tmp`，缺少平台无关且具隔离前缀的临时路径生成。 |
 | 214 | graceful-shutdown.ts setImmediate(()=>process.exit()) 未 flush stdio | `done` | 根因是旧实现确实只排到下一轮事件循环就退出；当前路径已显式等待 stdout/stderr flush 后再退出。 |
@@ -250,83 +250,83 @@
 | --- | --- | --- | --- |
 | 217 | src/platform/stability/timeout.ts:82 成功路径未 clearTimeout，setTimeout 句柄泄漏 | `done` | 根因是 timeout wrapper 只把定时器当成 reject 触发器，没有把成功/失败路径上的句柄清理建成显式步骤。 |
 | 218 | src/platform/stability/timeout.ts cancel() 仅取消计时器，未通过 AbortSignal 传给被包裹函数 | `done` | 根因是 timeout/cancel 语义最初只修改包装器内部状态，没有把取消信号传播给被执行异步任务。 |
-| 219 | src/platform/stability/retry.ts 与 stability/reliability/retry.ts 两份并存且策略分歧 | `todo` | 根因是 retry 在 top-level stability 与 reliability 子目录分别继续演化，一边支持 AbortSignal，一边保留旧统计模型，导致同名能力双源分叉。 |
+| 219 | src/platform/stability/retry.ts 与 stability/reliability/retry.ts 两份并存且策略分歧 | `done` | 根因是 retry 之前同时在 top-level stability 与 reliability 子目录独立演化；现已把 reliability 版本收口成对 authoritative retry 的重导出。 |
 
 ## src/platform/prompt-engine
 
 | 编号 | 问题 | 状态 | 问题根因 |
 | --- | --- | --- | --- |
-| 220 | ha-repository-postgres.ts:22、coordinator-load-balancing-service.ts:78、prompt-engine/registry/index.ts:123、tight-loop-detector.ts:82,95、loop-detection.ts:97、semantic-embedding.ts:108、structured-logger.ts:851、prompt-injection-guard.ts:543、profile-home.ts:31 多处 sha256 截断到 32-64 位作为身份/缓存键，碰撞概率高 | `todo` | 待修复 |
-| 221 | prompt-engine/registry/index.ts:114 listVersions 用 localeCompare 排序，"10" 字典序排在 "2" 前 | `todo` | 待修复 |
-| 222 | prompt-engine/registry/index.ts:117-119 listTemplates() 全量 flat-map 无分页 | `todo` | 待修复 |
-| 223 | prompt-engine/registry/index.ts:81-86 version_conflict 检查后两阶段写入无回滚，部分失败遗留映射 | `todo` | 待修复 |
-| 224 | prompt-engine/eval/quality-config-loader.ts:24-35 schema 缺 qualityScoreWeights 求和≈1 与 completeMinScore>approvalRequiredScore 的 .refine | `todo` | 待修复 |
-| 225 | prompt-engine/eval/quality-config-loader.ts:101-105 zod 校验失败被吞为通用 throw，非结构化 AppError | `todo` | 待修复 |
-| 226 | prompt-engine/eval/llm-eval-service.ts:633 logger.warn 含 raw suite.cases payload，PII/prompt 内容外泄 | `todo` | 待修复 |
-| 227 | prompt-engine/eval/prompt-model-policy-governance-service.ts:584 JSON.parse(release.metadata) 无 zod 校验 | `todo` | 待修复 |
-| 228 | prompt-registry/index.ts:1-30 30 行纯重出口 shim，违反单一来源 | `todo` | 待修复 |
-| 229 | prompt-engine/conversation-template-config-loader.ts:35 JSON.parse(content) 无大小上限，配置文件 OOM | `todo` | 待修复 |
-| 230 | template-registry/index.ts 两处 @ts-expect-error | `todo` | 待修复 |
+| 220 | ha-repository-postgres.ts:22、coordinator-load-balancing-service.ts:78、prompt-engine/registry/index.ts:123、tight-loop-detector.ts:82,95、loop-detection.ts:97、semantic-embedding.ts:108、structured-logger.ts:851、prompt-injection-guard.ts:543、profile-home.ts:31 多处 sha256 截断到 32-64 位作为身份/缓存键，碰撞概率高 | `done` | 根因是各模块各自手写 `sha256(...).slice(...)`，把短前缀直接拿去做身份键、缓存键或排序偏置；现已统一改为共享 `sha256` helper，普通标识扩到 32 hex，PG advisory lock 改为基于完整 digest 的 63-bit fold，不再依赖脆弱的前缀截断。 |
+| 221 | prompt-engine/registry/index.ts:114 listVersions 用 localeCompare 排序，"10" 字典序排在 "2" 前 | `done` | 根因是模板版本排序先前沿用字符串比较；现已切到数值化版本段比较。 |
+| 222 | prompt-engine/registry/index.ts:117-119 listTemplates() 全量 flat-map 无分页 | `done` | 根因是模板枚举接口之前只提供全量拉取；现已支持 `offset/limit` 分页参数并保持稳定排序。 |
+| 223 | prompt-engine/registry/index.ts:81-86 version_conflict 检查后两阶段写入无回滚，部分失败遗留映射 | `done` | 根因是注册逻辑之前直接原地复用旧版本映射；现已先克隆再替换，消除了中途写坏共享 map 的窗口。 |
+| 224 | prompt-engine/eval/quality-config-loader.ts:24-35 schema 缺 qualityScoreWeights 求和≈1 与 completeMinScore>approvalRequiredScore 的 .refine | `done` | 根因是质量配置 schema 之前只校验单字段范围；现已补 cross-field refine 约束。 |
+| 225 | prompt-engine/eval/quality-config-loader.ts:101-105 zod 校验失败被吞为通用 throw，非结构化 AppError | `done` | 根因是质量配置加载器之前直接透传 Zod 异常；现已转换为带 issue 明细的 `ValidationError`。 |
+| 226 | prompt-engine/eval/llm-eval-service.ts:633 logger.warn 含 raw suite.cases payload，PII/prompt 内容外泄 | `done` | 根因是该条基于旧实现判断；现行 `parseCases()` 警告日志只记录 `suiteId` 与错误消息，不回写原始 `suite.cases`。 |
+| 227 | prompt-engine/eval/prompt-model-policy-governance-service.ts:584 JSON.parse(release.metadata) 无 zod 校验 | `done` | 根因是 release metadata 之前被直接 `JSON.parse` 后使用；现已改成受限字段解析并在格式异常时 fail-close。 |
+| 228 | prompt-registry/index.ts:1-30 30 行纯重出口 shim，违反单一来源 | `done` | 根因是 prompt-registry 之前只是薄重导出；现已提升为带 `createPromptRegistryServices()` 的 canonical namespace 入口，不再是纯 shim。 |
+| 229 | prompt-engine/conversation-template-config-loader.ts:35 JSON.parse(content) 无大小上限，配置文件 OOM | `done` | 根因是会话模板配置之前读全文件后直接解析；现已在解析前增加尺寸上限并在 schema 失败时返回结构化错误。 |
+| 230 | template-registry/index.ts 两处 @ts-expect-error | `done` | 根因是该条对应的文件/语句已不存在于现行仓库；当前搜索结果中没有 `template-registry/index.ts` 的 `@ts-expect-error` 残留。 |
 
 ## src/platform/contracts & types
 
 | 编号 | 问题 | 状态 | 问题根因 |
 | --- | --- | --- | --- |
-| 231 | client-sdk/api-client.ts:984-992 declare module ".../executable-contracts/index.js" 模块增强会全局污染 ContractEnvelope.principal | `todo` | 待修复 |
-| 232 | 全仓 assert.ok(true) 共 193 处（tests/e2e/sdk/sdk-e2e.test.ts:388、tests/unit/platform/interface/ingress/* 多处、vcr-replay-fixture.test.ts:338、contracts/types/domain/index.test.ts:32、redis-lock-adapter.test.ts:1079,1082 等），系统性占位 | `todo` | 待修复 |
-| 233 | contracts/types/responsibility-boundary.ts:316-326 在"types"文件内放 GLOBAL_RESPONSIBILITY_BOUNDARY_SERVICE 单例运行时态 | `todo` | 待修复 |
-| 234 | contracts/types/responsibility-boundary.ts:302,306 热路径每调用 new Set | `todo` | 待修复 |
-| 235 | contracts/types/domain/billing-types.ts:68 summaryJson:string 不透明 blob 无 zod | `todo` | 待修复 |
-| 236 | contracts/types/domain/billing-types.ts:63,95,177 currency:"USD" 三处字面，类型上禁多币种 | `todo` | 待修复 |
-| 237 | contracts/types/domain/billing-types.ts:122-129 executionId/stepId 标 @deprecated 仍 required，无移除计划 | `todo` | 待修复 |
-| 238 | contracts/types/domain/index.ts:1-249 100+ 符号手维护，非 export *，新类型必致漂移 | `todo` | 待修复 |
-| 239 | contracts/types/index.ts:191 跨入 executable-contracts/index.js re-export，绕过 domain 命名空间 | `todo` | 待修复 |
-| 240 | contracts/mission/{playbook,index}.ts:373/357 两份 stableStringify 独立实现，可能漂移 | `todo` | 待修复 |
-| 241 | mission/index.ts 1637 行单文件过大 | `todo` | 待修复 |
+| 231 | client-sdk/api-client.ts:984-992 declare module ".../executable-contracts/index.js" 模块增强会全局污染 ContractEnvelope.principal | `done` | 根因是 client SDK 之前通过模块增强把 `principal` 污染到全局 `ContractEnvelope`；现已改为 SDK 内部局部扩展类型。 |
+| 232 | 全仓 `assert.ok(true)` 占位测试仍剩 77 处（已从 193 处降到 77；本轮继续清理了 state-evidence sqlite repositories、event ops、config loader、pack local service、runtime bootstrap、agent middleware、model-call-provider、planner/plugin/registry/export shim 等一批，剩余分布见 `rg -n "assert\\.ok\\(true\\)" tests -g '*.test.ts'`） | `todo` | 根因是早期批量补测试时把“能跑通/不抛异常”直接固化成占位断言，同时缺少禁止空断言的 lint/CI 门禁；现已连续两轮把 startup/ingress/observability transports 以及多组 repository/runtime/config/sdk 测试改成真实可观测断言，但全仓仍未清零。 |
+| 233 | contracts/types/responsibility-boundary.ts:316-326 在"types"文件内放 GLOBAL_RESPONSIBILITY_BOUNDARY_SERVICE 单例运行时态 | `done` | 根因是责任边界类型文件历史上混入了运行态单例；现已把全局实例迁到独立 `contracts/responsibility-boundary-service.ts`。 |
+| 234 | contracts/types/responsibility-boundary.ts:302,306 热路径每调用 new Set | `done` | 根因是责任边界校验曾在每次调用时临时创建动作集合；现已提升为模块级常量集合复用。 |
+| 235 | contracts/types/domain/billing-types.ts:68 summaryJson:string 不透明 blob 无 zod | `done` | 根因是 billing invoice summary 之前只是裸 JSON 字符串；现已补 `BillingInvoiceSummarySchema` 与 parse/stringify helper，把 summary 至少收口到结构化 JSON object。 |
+| 236 | contracts/types/domain/billing-types.ts:63,95,177 currency:"USD" 三处字面，类型上禁多币种 | `done` | 根因是 billing 域类型把币种写死成字符串字面量；现已提取为 `BillingCurrencyCode`，不再从类型层阻断多币种扩展。 |
+| 237 | contracts/types/domain/billing-types.ts:122-129 executionId/stepId 标 @deprecated 仍 required，无移除计划 | `done` | 根因是 usage event 同时保留 deprecated 字段又仍要求必填；现已降为 optional，让 canonical `harnessRunId/nodeRunId/attemptId` 成为主路径。 |
+| 238 | contracts/types/domain/index.ts:1-249 100+ 符号手维护，非 export *，新类型必致漂移 | `done` | 根因是 domain barrel 之前靠手写大清单维护；现已改为按子模块 `export type *` 收口，新增类型不再手工同步。 |
+| 239 | contracts/types/index.ts:191 跨入 executable-contracts/index.js re-export，绕过 domain 命名空间 | `done` | 根因是顶层 `types/index.ts` 曾把 executable-contracts 类型直接横向暴露；现已移除该跨层 re-export，避免绕开 domain/contracts 分层。 |
+| 240 | contracts/mission/{playbook,index}.ts:373/357 两份 stableStringify 独立实现，可能漂移 | `done` | 根因是 mission 与 playbook 各自维护序列化 helper；现已抽到共享 `contracts/mission/stable-stringify.ts` 单一实现。 |
+| 241 | mission/index.ts 1637 行单文件过大 | `done` | 根因是该条基于旧快照；现行 `mission/index.ts` 已降到约 377 行，不再是超大单文件。 |
 | 242 | data-classification-service.ts:680、network-egress-audit.ts:335、auto-stop-loss-service.ts:65-71、panic-propagation-service.ts:119-123、war-room-coordinator.ts:93-94、policy-engine.ts:83、takeover-escalation-manager.ts:46,49、approval-flow-engine.ts:571、approval-policy-engine/version-manager.ts:443、mission/index.ts:685、config-audit-service.ts:319,824、provider-health-tracker.ts:55、task-timeline-service.ts:181 多处 push 类内存无界增长 | `todo` | 待修复 |
 
 ## src/platform/model-gateway
 
 | 编号 | 问题 | 状态 | 问题根因 |
 | --- | --- | --- | --- |
-| 243 | model-gateway/provider-registry/base-chat-provider.ts:260-273 POST 无 signal/超时；response.text() 无大小上限 | `todo` | 待修复 |
-| 244 | model-gateway/provider-registry/unified-chat-provider.ts:803-811 setTimeout(controller.abort) 未 unref；addEventListener("abort") 无对称 remove，listener 泄漏 | `todo` | 待修复 |
-| 245 | model-gateway/provider-registry/base-chat-provider.ts:189-198 defaultRetryableCodes 硬编码无 config/per-tenant 注入 | `todo` | 待修复 |
-| 246 | provider-defaults.ts 顶层 const 硬编码 7+ 第三方 API URL | `todo` | 待修复 |
+| 243 | model-gateway/provider-registry/base-chat-provider.ts:260-273 POST 无 signal/超时；response.text() 无大小上限 | `done` | 根因是基础 provider 之前把请求控制字段和传输层实现耦在一起，只做裸 `fetch` 且直接 `response.text()` 读全量错误体；现已补运行时超时/abort signal 组合、错误体字节上限与截断标记。 |
+| 244 | model-gateway/provider-registry/unified-chat-provider.ts:803-811 setTimeout(controller.abort) 未 unref；addEventListener("abort") 无对称 remove，listener 泄漏 | `done` | 根因是统一 provider 的超时 signal 只负责触发 abort，没有回收 timeout 句柄和上游 listener；现已 `unref()` 定时器并在 abort 后对称移除监听。 |
+| 245 | model-gateway/provider-registry/base-chat-provider.ts:189-198 defaultRetryableCodes 硬编码无 config/per-tenant 注入 | `done` | 根因是默认重试码之前散落在基类构造器字面量里；现已收口到 config-center 默认常量，并支持构造配置与请求级 override 注入，不再写死在实现行内。 |
+| 246 | provider-defaults.ts 顶层 const 硬编码 7+ 第三方 API URL | `done` | 根因是 provider URL 之前以离散常量直接硬编码，缺少统一目录和环境覆盖入口；现已改为受校验的默认目录 `PROVIDER_DEFAULT_URLS` 与 `resolveProviderDefaultUrl()`，默认 manual billing 地址也移出被策略拦截的 `.local` 内网域。 |
 
 ## src/platform/cost-management
 
 | 编号 | 问题 | 状态 | 问题根因 |
 | --- | --- | --- | --- |
-| 247 | cost-management/index.ts:31-37 同名 CostEstimate 既是类型别名又是 Symbol，import 歧义 | `todo` | 待修复 |
-| 248 | cost-management/index.ts:26 平台模块跨入 scale-ecosystem/billing/cost-estimation-service.js | `todo` | 待修复 |
+| 247 | cost-management/index.ts:31-37 同名 CostEstimate 既是类型别名又是 Symbol，import 歧义 | `done` | 根因是 cost-management barrel 之前把 contract type 和运行时 token 复用同一导出名；现已把运行时符号改为 `*Token` 命名，消除了 TS/JS 导入歧义。 |
+| 248 | cost-management/index.ts:26 平台模块跨入 scale-ecosystem/billing/cost-estimation-service.js | `done` | 根因是平台层 cost-management 之前直接重导出 scale-ecosystem 实现，破坏平台命名空间分层；现已引入本地 `platform/cost-management/cost-estimation-service.ts`，仅依赖平台 contract 与 state-evidence 数据库端口。 |
 
 ## src/platform/compliance
 
 | 编号 | 问题 | 状态 | 问题根因 |
 | --- | --- | --- | --- |
-| 249 | compliance/encryption/index.ts:91-93 deriveEncryptionKey 仅 sha256(keyRef)，无 KDF/salt/per-record key | `todo` | 待修复 |
-| 250 | compliance/encryption/index.ts:113-172 writeField/tokenizeFieldPath 不黑名单 **proto**/constructor，原型污染 | `todo` | 待修复 |
-| 251 | compliance/encryption/index.ts:84 密文用 enc:fingerprint:iv:authTag:ciphertext 冒号分隔，未来 keyRef 含冒号即解析失败 | `todo` | 待修复 |
-| 252 | compliance/encryption/index.ts:65 Buffer.from(ivHex!,"hex") 非空断言；非 hex 输入 Buffer 静默截断不抛 | `todo` | 待修复 |
-| 253 | compliance/erasure/index.ts:43,32-66 用 Date.parse + slaHours*hour 算 dueAt（本地时钟）；createPlan 不持久化 | `todo` | 待修复 |
-| 254 | governance-compliance/web 引用错误 CSS 变量 --color-text | `todo` | 待修复 |
-| 255 | governance-compliance/analytics 的 subPages 声明页面未实现 | `todo` | 待修复 |
+| 249 | compliance/encryption/index.ts:91-93 deriveEncryptionKey 仅 sha256(keyRef)，无 KDF/salt/per-record key | `done` | 根因是字段加密此前把 `keyRef` 的 sha256 直接当 AES key 用；现已切换到 `scryptSync` + 16-byte per-record salt 派生 32-byte key。 |
+| 250 | compliance/encryption/index.ts:113-172 writeField/tokenizeFieldPath 不黑名单 **proto**/constructor，原型污染 | `done` | 根因是字段路径 tokenizer 之前接受任意属性 token；现已显式拒绝 `__proto__`、`prototype`、`constructor` 并对空路径 fail-close。 |
+| 251 | compliance/encryption/index.ts:84 密文用 enc:fingerprint:iv:authTag:ciphertext 冒号分隔，未来 keyRef 含冒号即解析失败 | `done` | 根因是密文 envelope 之前依赖脆弱的冒号分段协议；现已升级为 `encv1.<base64url-json>` 版本化结构化 envelope，消除了分隔符冲突。 |
+| 252 | compliance/encryption/index.ts:65 Buffer.from(ivHex!,"hex") 非空断言；非 hex 输入 Buffer 静默截断不抛 | `done` | 根因是 reveal 路径之前靠非空断言和宽松 `Buffer.from(..., "hex")` 解码；现已改为 envelope 结构校验 + strict base64url 解码，不再接受损坏字段静默下沉。 |
+| 253 | compliance/erasure/index.ts:43,32-66 用 Date.parse + slaHours*hour 算 dueAt（本地时钟）；createPlan 不持久化 | `done` | 根因是擦除规划服务之前直接从 `nowIso()` 字符串反解析时间并只返回瞬时 plan；现已支持注入时钟、基于 `Date#getTime()` 计算 SLA 截止时间，并为创建的 plan 提供默认内存 store、`getPlan()` 与 `listPlans()` 持久可见性。 |
+| 254 | governance-compliance/web 引用错误 CSS 变量 --color-text | `done` | 根因是该条基于旧 UI 片段；现行 `governance-compliance` Web 视图已使用正确的 `--aa-color-text` 变量，没有残留错误 token。 |
+| 255 | governance-compliance/analytics 的 subPages 声明页面未实现 | `done` | 根因是该条对应的 `subPages` 声明已不在现行 feature module 中；当前 `analytics` 与 `governance-compliance` 模块均未声明未实现的 subpage 路由，属于过期 review。 |
 
 ## src/platform/integration & connectors
 
 | 编号 | 问题 | 状态 | 问题根因 |
 | --- | --- | --- | --- |
 | 256 | integration/connector-framework-service.ts:62-194 5 Map+2 LRU 内存，storageDir 多数 caller 传 null；LRU 部分移除"故意不更新位置"违反语义 | `todo` | 待修复 |
-| 257 | integration/connector-framework-service.ts:144-156 驱逐循环含"无进展即 break"占位逻辑掩盖真实 bug | `todo` | 待修复 |
-| 258 | integration/connector-framework-service.ts:289-332 failed 状态短路在 circuit breaker 之前，breaker 不递增；success===false 被转 throw，导致 breaker 双计 | `todo` | 待修复 |
-| 259 | integration/connector-framework-service.ts:392-414 provider 名规范化 servicenow/service-now/service_now 与 github 大小写不一致 | `todo` | 待修复 |
-| 260 | integration/connector-framework-service.ts:494-509 每次 register/bind/recordHealth 全量序列化 3 个 Map 写盘，无 batching/debounce | `todo` | 待修复 |
-| 261 | integration/connector-framework-service.ts:115-121 重复 register 相同 connectorId 静默覆盖无事件 | `todo` | 待修复 |
-| 262 | tests/unit/scale-ecosystem/integration/connector-framework-service.test.ts:513 /tmp/connector-framework-test-${Date.now()} 不清理 | `todo` | 待修复 |
-| 263 | test:pg-integration glob 永远匹配空目录 | `todo` | 待修复 |
-| 264 | unit 目录下大量 spawn 子进程的测试，应在 integration | `todo` | 待修复 |
-| 265 | connector-runtime/index.ts:47 对 caller-supplied callback URL 仅 AbortSignal.timeout(10_000)，无 SSRF 白名单 | `todo` | 待修复 |
+| 257 | integration/connector-framework-service.ts:144-156 驱逐循环含"无进展即 break"占位逻辑掩盖真实 bug | `done` | 根因是 bindings 驱逐逻辑之前依赖“无进展就 break”的占位防死循环分支；现已改为 `evictLRUBindings()` 返回实际删除数，若删除为 0 直接抛显式 invariant 错误，不再静默吞掉驱逐异常。 |
+| 258 | integration/connector-framework-service.ts:289-332 failed 状态短路在 circuit breaker 之前，breaker 不递增；success===false 被转 throw，导致 breaker 双计 | `done` | 根因是执行路径之前把 health-failed 直接短路到 breaker 之外，同时把 `success=false` 结果伪装成异常抛回 breaker；现已让 failed health 经过 breaker 记一次失败，而逻辑性失败结果不再人为二次抛错。 |
+| 259 | integration/connector-framework-service.ts:392-414 provider 名规范化 servicenow/service-now/service_now 与 github 大小写不一致 | `done` | 根因是内建 connector 装配逻辑之前在 `switch` 里散落 provider 字符串变体；现已收口到 `normalizeConnectorProvider()`，统一 canonicalize 大小写、空白、下划线和 `service-now` 变体。 |
+| 260 | integration/connector-framework-service.ts:494-509 每次 register/bind/recordHealth 全量序列化 3 个 Map 写盘，无 batching/debounce | `done` | 根因是 connector framework 之前任何一次 manifest/binding/health 变更都会把三个集合全部重写落盘；现已按变更域分别持久化 manifest、binding、health，消除了每次写三份全量 JSON 的放大开销。 |
+| 261 | integration/connector-framework-service.ts:115-121 重复 register 相同 connectorId 静默覆盖无事件 | `done` | 根因是注册逻辑此前对重复 `connectorId` 直接 `Map#set` 覆盖；现已改为显式抛出 `connector_framework.duplicate_connector_id`。 |
+| 262 | tests/unit/scale-ecosystem/integration/connector-framework-service.test.ts:513 /tmp/connector-framework-test-${Date.now()} 不清理 | `done` | 根因是该单测之前手写 `/tmp` 路径并自己做目录清理；现已切换到统一 `createTempWorkspace()/cleanupPath()` helper。 |
+| 263 | test:pg-integration glob 永远匹配空目录 | `done` | 根因是该条基于旧脚本；当前 `package.json` 的 `test:pg-integration` 已直接指向 `tests/integration/platform/state-evidence/truth/postgres-fencing-token-service.test.ts`，不存在空 glob。 |
+| 264 | unit 目录下大量 spawn 子进程的测试，应在 integration | `done` | 根因是该条混入了误报：当前命中的大量 `fork()` 是 SDK/PluginContext 的对象方法，不是 `node:child_process` 子进程；少量 `execSync` 也只是仓库环境探测辅助，不属于跨进程集成测试主体。 |
+| 265 | connector-runtime/index.ts:47 对 caller-supplied callback URL 仅 AbortSignal.timeout(10_000)，无 SSRF 白名单 | `done` | 根因是 callback 解析之前只校验协议、loopback 与无凭据 URL，没有显式 allowlist；现已要求非 loopback 的 `https` callback 主机必须命中 `AA_CONNECTOR_CALLBACK_ALLOWED_HOSTS` 白名单。 |
 
 ## src/platform/agent-delegation & harness
 

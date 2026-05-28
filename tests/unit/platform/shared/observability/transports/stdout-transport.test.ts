@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { Writable } from "node:stream";
 
 import { StdoutTransport } from "../../../../../../src/platform/shared/observability/transports/stdout-transport.js";
 import type { StructuredLogEntry } from "../../../../../../src/platform/shared/observability/structured-logger.js";
@@ -16,16 +15,21 @@ function createTestEntry(overrides: Partial<StructuredLogEntry> = {}): Structure
   };
 }
 
-// Create a mock stdout to capture written data
-function createMockStdout(): { output: string[]; stream: Writable } {
+function captureStdout(run: () => void): string[] {
   const output: string[] = [];
-  const stream = new Writable({
-    write(chunk: string | Buffer, _encoding: string, callback: () => void) {
-      output.push(chunk.toString());
-      callback();
-    },
-  });
-  return { output, stream };
+  const originalWrite = process.stdout.write.bind(process.stdout);
+  process.stdout.write = ((chunk: string | Uint8Array, ...args: unknown[]) => {
+    output.push(typeof chunk === "string" ? chunk : Buffer.from(chunk).toString());
+    const callback = args.find((value): value is ((error?: Error | null) => void) => typeof value === "function");
+    callback?.(null);
+    return true;
+  }) as typeof process.stdout.write;
+  try {
+    run();
+  } finally {
+    process.stdout.write = originalWrite;
+  }
+  return output;
 }
 
 test("StdoutTransport name is stdout", () => {
@@ -36,24 +40,31 @@ test("StdoutTransport name is stdout", () => {
 test("StdoutTransport.write writes JSON to stdout", () => {
   const transport = new StdoutTransport();
   const entry = createTestEntry({ message: "write test" });
-  transport.write(entry);
-  // If we get here without throwing, the test passes
-  assert.ok(true);
+  const output = captureStdout(() => {
+    transport.write(entry);
+  });
+  assert.equal(output.length, 1);
+  assert.deepEqual(JSON.parse(output[0] ?? ""), entry);
 });
 
 test("StdoutTransport.write handles all log levels", () => {
   const transport = new StdoutTransport();
   const levels: StructuredLogEntry["level"][] = ["debug", "info", "warn", "error"];
 
-  for (const level of levels) {
-    transport.write(createTestEntry({ level, message: `test ${level}` }));
-  }
-  assert.ok(true);
+  const output = captureStdout(() => {
+    for (const level of levels) {
+      transport.write(createTestEntry({ level, message: `test ${level}` }));
+    }
+  });
+  assert.deepEqual(
+    output.map((line) => JSON.parse(line).level),
+    levels,
+  );
 });
 
 test("StdoutTransport.write handles entry with data", () => {
   const transport = new StdoutTransport();
-  transport.write({
+  const entry = {
     level: "info",
     message: "test with data",
     service: "test-service",
@@ -62,13 +73,16 @@ test("StdoutTransport.write handles entry with data", () => {
     data: { key: "value", count: 42 },
     taskId: "task_123",
     traceId: "trace_abc",
+  } satisfies StructuredLogEntry;
+  const output = captureStdout(() => {
+    transport.write(entry);
   });
-  assert.ok(true);
+  assert.deepEqual(JSON.parse(output[0] ?? ""), entry);
 });
 
 test("StdoutTransport.write handles entry with all optional fields", () => {
   const transport = new StdoutTransport();
-  transport.write({
+  const entry = {
     level: "error",
     message: "full entry",
     service: "test-service",
@@ -83,8 +97,11 @@ test("StdoutTransport.write handles entry with all optional fields", () => {
     parentSpanId: "parent-span-1",
     correlationId: "corr-1",
     data: { nested: { value: 123 } },
+  } satisfies StructuredLogEntry;
+  const output = captureStdout(() => {
+    transport.write(entry);
   });
-  assert.ok(true);
+  assert.deepEqual(JSON.parse(output[0] ?? ""), entry);
 });
 
 test("StdoutTransport.write outputs valid JSON", () => {
@@ -95,22 +112,20 @@ test("StdoutTransport.write outputs valid JSON", () => {
     data: { array: [1, 2, 3], bool: true },
   });
 
-  transport.write(entry);
-
-  // JSON output should be parseable - if not, this would throw
-  assert.ok(true);
+  const output = captureStdout(() => {
+    transport.write(entry);
+  });
+  assert.deepEqual(JSON.parse(output[0] ?? ""), entry);
 });
 
 test("StdoutTransport.flush is a no-op and returns immediately", async () => {
   const transport = new StdoutTransport();
-  await transport.flush();
-  assert.ok(true);
+  assert.equal(await transport.flush(), undefined);
 });
 
 test("StdoutTransport.close is a no-op and returns immediately", async () => {
   const transport = new StdoutTransport();
-  await transport.close();
-  assert.ok(true);
+  assert.equal(await transport.close(), undefined);
 });
 
 test("StdoutTransport implements LogTransport interface", () => {
@@ -124,28 +139,37 @@ test("StdoutTransport implements LogTransport interface", () => {
 
 test("StdoutTransport.write handles empty message", () => {
   const transport = new StdoutTransport();
-  transport.write(createTestEntry({ message: "" }));
-  assert.ok(true);
+  const output = captureStdout(() => {
+    transport.write(createTestEntry({ message: "" }));
+  });
+  assert.equal(JSON.parse(output[0] ?? "").message, "");
 });
 
 test("StdoutTransport.write handles unicode characters", () => {
   const transport = new StdoutTransport();
-  transport.write(createTestEntry({ message: "Hello 世界 🌍 🎉" }));
-  assert.ok(true);
+  const output = captureStdout(() => {
+    transport.write(createTestEntry({ message: "Hello 世界 🌍 🎉" }));
+  });
+  assert.equal(JSON.parse(output[0] ?? "").message, "Hello 世界 🌍 🎉");
 });
 
 test("StdoutTransport.write handles very long message", () => {
   const transport = new StdoutTransport();
   const longMessage = "a".repeat(10000);
-  transport.write(createTestEntry({ message: longMessage }));
-  assert.ok(true);
+  const output = captureStdout(() => {
+    transport.write(createTestEntry({ message: longMessage }));
+  });
+  assert.equal(JSON.parse(output[0] ?? "").message.length, 10000);
 });
 
 test("StdoutTransport.write handles special JSON characters", () => {
   const transport = new StdoutTransport();
-  transport.write(createTestEntry({
+  const entry = createTestEntry({
     message: 'test with "quotes" and \\ backslash',
     data: { with: 'quotes " " and backslash \\' },
-  }));
-  assert.ok(true);
+  });
+  const output = captureStdout(() => {
+    transport.write(entry);
+  });
+  assert.deepEqual(JSON.parse(output[0] ?? ""), entry);
 });

@@ -38,6 +38,7 @@ import { existsSync, mkdirSync, rmSync, writeFileSync, readFileSync } from "node
 import { dirname, join } from "node:path";
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 
+import { StorageError, ValidationError } from "../contracts/errors.js";
 import { DiagnosticsService } from "../shared/observability/diagnostics-service.js";
 import { HealthService } from "../shared/observability/health-service.js";
 import { InspectService } from "../shared/observability/inspect-service.js";
@@ -487,7 +488,7 @@ function getStableEvidenceHmacKey(): string {
   if (existsSync(keyPath)) {
     const persistedKey = readFileSync(keyPath, "utf8").trim();
     if (persistedKey.length === 0) {
-      throw new Error("stable_evidence.hmac_key_invalid");
+      throw new ValidationError("stable_evidence.hmac_key_invalid", "stable_evidence.hmac_key_invalid");
     }
     cachedStableEvidenceHmacKey = persistedKey;
     return persistedKey;
@@ -609,11 +610,17 @@ export function readSignedJson<T>(path: string): { value: T; verified: boolean }
   const result = verifySignedEnvelope(envelope);
 
   if (!result.checked) {
-    throw new Error(`Failed to verify signed evidence at ${path}: ${result.reason}`);
+    throw new StorageError(
+      `stable_evidence.verification_failed:${path}`,
+      `Failed to verify signed evidence at ${path}: ${result.reason}`,
+    );
   }
 
   if (!result.valid) {
-    throw new Error(`Tamper detected: ${result.reason}`);
+    throw new StorageError(
+      "stable_evidence.tamper_detected",
+      `Tamper detected: ${result.reason}`,
+    );
   }
 
   return {
@@ -729,7 +736,8 @@ export function resolveStableEvidenceProfile(
   // R34-14: Explicit runtime validation - reject any override attempting to set name.
   // This is a defense-in-depth measure since TS Omit only works at compile time.
   if (overrides && typeof overrides === "object" && "name" in overrides) {
-    throw new Error(
+    throw new ValidationError(
+      "stable_evidence.profile_name_override_forbidden",
       `Security: profileOverrides.name cannot be changed at runtime. ` +
       `Attempted to override 'name' field on profile '${profileName}'. ` +
       `The name field is always sourced from the base profile.`,

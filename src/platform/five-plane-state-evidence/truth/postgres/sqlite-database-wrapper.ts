@@ -10,6 +10,7 @@
  */
 
 import type { DatabaseSync } from "node:sqlite";
+import { ValidationError } from "../../../contracts/errors.js";
 import type { AuthoritativeSqlDatabase } from "../sqlite/sqlite-database.js";
 
 /**
@@ -91,11 +92,11 @@ export class SqliteDatabaseWrapper implements AuthoritativeSqlDatabase {
   }
 
   public transaction<T>(Work: () => T): T {
-    const savepointName = `aa_sp_${this.transactionDepth + 1}`;
+    const savepointName = buildSavepointName(this.transactionDepth + 1);
     if (this.transactionDepth === 0) {
       this.connection.exec("BEGIN");
     } else {
-      this.connection.exec(`SAVEPOINT ${savepointName}`);
+      this.connection.exec(`SAVEPOINT "${savepointName}"`);
     }
     this.transactionDepth += 1;
     try {
@@ -103,15 +104,15 @@ export class SqliteDatabaseWrapper implements AuthoritativeSqlDatabase {
       if (this.transactionDepth === 1) {
         this.connection.exec("COMMIT");
       } else {
-        this.connection.exec(`RELEASE SAVEPOINT ${savepointName}`);
+        this.connection.exec(`RELEASE SAVEPOINT "${savepointName}"`);
       }
       return result;
     } catch (error) {
       if (this.transactionDepth === 1) {
         this.connection.exec("ROLLBACK");
       } else {
-        this.connection.exec(`ROLLBACK TO SAVEPOINT ${savepointName}`);
-        this.connection.exec(`RELEASE SAVEPOINT ${savepointName}`);
+        this.connection.exec(`ROLLBACK TO SAVEPOINT "${savepointName}"`);
+        this.connection.exec(`RELEASE SAVEPOINT "${savepointName}"`);
       }
       throw error;
     } finally {
@@ -139,4 +140,15 @@ export class SqliteDatabaseWrapper implements AuthoritativeSqlDatabase {
       return false;
     }
   }
+}
+
+function buildSavepointName(depth: number): string {
+  if (!Number.isInteger(depth) || depth < 1) {
+    throw new ValidationError(
+      "storage.postgres_invalid_savepoint_depth",
+      "storage.postgres_invalid_savepoint_depth",
+      { retryable: false, details: { depth } },
+    );
+  }
+  return `aa_sp_${depth}`;
 }

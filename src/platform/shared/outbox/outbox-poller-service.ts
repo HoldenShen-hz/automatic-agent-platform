@@ -20,6 +20,7 @@
 
 import { nowIso } from "../../contracts/types/ids.js";
 import { OutboxService } from "./outbox-service.js";
+import type { OutboxRecord } from "./outbox-types.js";
 import { StructuredLogger } from "../observability/structured-logger.js";
 
 export interface OutboxPollerConfig {
@@ -33,6 +34,8 @@ export interface OutboxPollerConfig {
   initialBackoffMs: number;
   /** Maximum backoff delay in milliseconds (default: 30000ms) */
   maxBackoffMs: number;
+  /** Maximum entries to publish concurrently per poll cycle (default: 8) */
+  maxConcurrentPublishes: number;
 }
 
 const DEFAULT_POLLER_CONFIG: OutboxPollerConfig = {
@@ -41,6 +44,7 @@ const DEFAULT_POLLER_CONFIG: OutboxPollerConfig = {
   maxRetries: 5,
   initialBackoffMs: 1000,
   maxBackoffMs: 30000,
+  maxConcurrentPublishes: 8,
 };
 
 const logger = new StructuredLogger({ retentionLimit: 200 });
@@ -54,6 +58,10 @@ export interface OutboxPollerMetrics {
   pendingCount: number;
   failedCount: number;
   consecutiveEmptyPolls: number;
+}
+
+interface OutboxBatchPublisher {
+  publishEntriesBatch(entries: OutboxRecord[]): Promise<{ published: number; failed: number }>;
 }
 
 export class OutboxPollerService {
@@ -182,6 +190,7 @@ export class OutboxPollerService {
     this.consecutiveEmptyPolls = 0;
 
     const entries = this.outboxService.getPendingEntries(this.config.batchSize);
+    const eligibleEntries: OutboxRecord[] = [];
     let published = 0;
     let failed = 0;
 
@@ -191,7 +200,13 @@ export class OutboxPollerService {
       }
 
       if (entry.retryCount >= this.config.maxRetries) {
-        // Skip entries that have exhausted retries
+        const exhaustedAt = nowIso();
+        this.outboxService.markDeadLettered(
+          entry.id,
+          entry.lastError ?? "outbox.max_retries_exhausted",
+          entry.retryCount,
+          exhaustedAt,
+        );
         failed++;
         continue;
       }
@@ -208,12 +223,16 @@ export class OutboxPollerService {
         }
       }
 
-      const success = await this.outboxService.publishEntry(entry);
-      if (success) {
-        published++;
-      } else {
-        failed++;
+      eligibleEntries.push(entry);
+    }
+
+    for (const chunk of chunkEntries(eligibleEntries, this.config.maxConcurrentPublishes)) {
+      if (this.disposed || this.stopped) {
+        break;
       }
+      const result = await this.publishChunk(chunk);
+      published += result.published;
+      failed += result.failed;
     }
 
     this.lastPollAt = nowIso();
@@ -264,8 +283,32 @@ export class OutboxPollerService {
     const jitter = Math.random() * exponentialDelay * 0.1;
     return Math.round(exponentialDelay + jitter);
   }
+
+  private async publishChunk(entries: readonly OutboxRecord[]): Promise<{ published: number; failed: number }> {
+    if (entries.length === 0) {
+      return { published: 0, failed: 0 };
+    }
+    const batchPublisher = this.outboxService as OutboxService & Partial<OutboxBatchPublisher>;
+    if (typeof batchPublisher.publishEntriesBatch === "function" && entries.length > 1) {
+      return batchPublisher.publishEntriesBatch([...entries]);
+    }
+    const results = await Promise.all(entries.map(async (entry) => this.outboxService.publishEntry(entry)));
+    return {
+      published: results.filter(Boolean).length,
+      failed: results.filter((success) => !success).length,
+    };
+  }
 }
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function chunkEntries<T>(entries: readonly T[], size: number): readonly T[][] {
+  const chunkSize = Math.max(1, Math.trunc(size));
+  const chunks: T[][] = [];
+  for (let index = 0; index < entries.length; index += chunkSize) {
+    chunks.push(entries.slice(index, index + chunkSize));
+  }
+  return chunks;
 }

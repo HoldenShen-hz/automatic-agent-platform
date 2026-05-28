@@ -24,13 +24,13 @@
  * @see Glossary: docs_zh/governance/glossary_and_terminology.md
  */
 
-import { createHash } from "node:crypto";
-import { appendFileSync, closeSync, existsSync, fsyncSync, mkdirSync, openSync, unlinkSync } from "node:fs";
+import { closeSync, existsSync, fsyncSync, mkdirSync, openSync, unlinkSync, writeSync } from "node:fs";
 import { promises as fsPromises } from "node:fs";
 import { basename, dirname, isAbsolute, join, normalize, relative, resolve, sep } from "node:path";
 
 import type { LogTransport } from "./log-transport.js";
 import { getActiveTelemetryContext } from "./otel-tracer.js";
+import { sha256HexPrefix } from "../cache/utils/sha256.js";
 
 export type StructuredPlane = "P1" | "P2" | "P3" | "P4" | "P5" | "X1";
 export type StructuredLogLevel = "debug" | "info" | "warn" | "error" | "fatal";
@@ -147,10 +147,12 @@ function safePath(userPath: string, baseDir: string): string {
  * Used for diagnostics and debugging observability scenarios.
  */
 export class StructuredLogger {
+  private static readonly startupBaseDir = resolve(process.cwd());
   private static globalFileSink: StructuredLoggerFileSink | null = null;
   private static transports: LogTransport[] = [];
   private static rotationStateByPath = new Map<string, { scheduled: boolean; pendingBytes: number }>();
-  private static sinkBaseDir = process.cwd();
+  private static durableFileDescriptors = new Map<string, number>();
+  private static sinkBaseDir = StructuredLogger.startupBaseDir;
 
   private readonly buffer: (StructuredLogEntry | undefined)[];
   private readonly retentionLimit: number;
@@ -163,6 +165,7 @@ export class StructuredLogger {
 
   public static configureGlobalFileSink(filePathOrOptions: string | StructuredLoggerFileSinkOptions | null): void {
     if (filePathOrOptions == null) {
+      StructuredLogger.closeGlobalFileSinkHandle();
       StructuredLogger.globalFileSink = null;
       return;
     }
@@ -171,6 +174,7 @@ export class StructuredLogger {
       ? { filePath: filePathOrOptions }
       : filePathOrOptions;
     if (options.filePath.trim().length === 0) {
+      StructuredLogger.closeGlobalFileSinkHandle();
       StructuredLogger.globalFileSink = null;
       return;
     }
@@ -191,7 +195,18 @@ export class StructuredLogger {
       ? null
       : Math.max(1, Math.trunc(options.maxBytes));
     const maxFiles = Math.max(1, Math.trunc(options.maxFiles ?? 5));
-    mkdirSync(dirname(safeFilePath), { recursive: true });
+    try {
+      mkdirSync(dirname(safeFilePath), { recursive: true });
+    } catch (error) {
+      reportStructuredLoggerInternalError("structured_logger.file_sink_directory_create_failed", error);
+      StructuredLogger.closeGlobalFileSinkHandle();
+      StructuredLogger.globalFileSink = null;
+      return;
+    }
+    const previousPath = StructuredLogger.globalFileSink?.filePath;
+    if (previousPath != null && previousPath !== safeFilePath) {
+      StructuredLogger.closeDurableFileDescriptor(previousPath);
+    }
     StructuredLogger.globalFileSink = {
       filePath: safeFilePath,
       maxBytes,
@@ -206,6 +221,26 @@ export class StructuredLogger {
 
   public static setGlobalFileSinkBaseDir(baseDir: string): void {
     StructuredLogger.sinkBaseDir = resolve(baseDir);
+  }
+
+  private static closeGlobalFileSinkHandle(): void {
+    const filePath = StructuredLogger.globalFileSink?.filePath;
+    if (filePath != null) {
+      StructuredLogger.closeDurableFileDescriptor(filePath);
+    }
+  }
+
+  private static closeDurableFileDescriptor(filePath: string): void {
+    const fd = StructuredLogger.durableFileDescriptors.get(filePath);
+    if (fd == null) {
+      return;
+    }
+    StructuredLogger.durableFileDescriptors.delete(filePath);
+    try {
+      closeSync(fd);
+    } catch (error) {
+      reportStructuredLoggerInternalError("structured_logger.file_sink_close_failed", error);
+    }
   }
 
   /**
@@ -482,13 +517,13 @@ export class StructuredLogger {
   }
 
   private appendFileWithFsync(filePath: string, serialized: string): void {
-    const fd = openSync(filePath, "a");
-    try {
-      appendFileSync(fd, serialized, "utf8");
-      fsyncSync(fd);
-    } finally {
-      closeSync(fd);
+    let fd = StructuredLogger.durableFileDescriptors.get(filePath);
+    if (fd == null) {
+      fd = openSync(filePath, "a");
+      StructuredLogger.durableFileDescriptors.set(filePath, fd);
     }
+    writeSync(fd, serialized, undefined, "utf8");
+    fsyncSync(fd);
   }
 
   private writeToTransports(entry: StructuredLogEntry): void {
@@ -556,6 +591,7 @@ export class StructuredLogger {
 
   private async performRotation(sink: StructuredLoggerFileSink): Promise<void> {
     try {
+      StructuredLogger.closeDurableFileDescriptor(sink.filePath);
       const archiveCount = Math.max(0, sink.maxFiles - 1);
       if (archiveCount === 0) {
         try {
@@ -848,7 +884,7 @@ function hashIdentifier(value: string | undefined): string | undefined {
   if (value == null || value.length === 0) {
     return value;
   }
-  return createHash("sha256").update(value).digest("hex").slice(0, 16);
+  return sha256HexPrefix(value, 32);
 }
 
 function applyHashedIdentifier(

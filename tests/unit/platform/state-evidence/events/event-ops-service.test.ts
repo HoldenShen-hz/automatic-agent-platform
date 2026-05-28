@@ -67,8 +67,12 @@ test("EventOpsService.subscribe registers handler without throwing", () => {
   const workspace = createTempWorkspace("aa-event-ops-");
   try {
     const service = createTestService(workspace);
-    service.subscribe("test_consumer", async () => {});
-    assert.ok(true);
+    const handler = async () => {};
+    assert.equal(service.subscribe("test_consumer", handler), undefined);
+    const subscribers = (
+      service as unknown as { bus: { subscribers: Map<string, { handler: typeof handler }> } }
+    ).bus.subscribers;
+    assert.strictEqual(subscribers.get("test_consumer")?.handler, handler);
   } finally {
     cleanupPath(workspace);
   }
@@ -78,8 +82,12 @@ test("EventOpsService.subscribe accepts handler that returns void", () => {
   const workspace = createTempWorkspace("aa-event-ops-");
   try {
     const service = createTestService(workspace);
-    service.subscribe("test_consumer", () => {});
-    assert.ok(true);
+    const handler = () => {};
+    assert.equal(service.subscribe("test_consumer", handler), undefined);
+    const subscribers = (
+      service as unknown as { bus: { subscribers: Map<string, { handler: typeof handler }> } }
+    ).bus.subscribers;
+    assert.strictEqual(subscribers.get("test_consumer")?.handler, handler);
   } finally {
     cleanupPath(workspace);
   }
@@ -89,10 +97,14 @@ test("EventOpsService.subscribe accepts async handler", () => {
   const workspace = createTempWorkspace("aa-event-ops-");
   try {
     const service = createTestService(workspace);
-    service.subscribe("async_consumer", async () => {
+    const handler = async () => {
       await Promise.resolve();
-    });
-    assert.ok(true);
+    };
+    assert.equal(service.subscribe("async_consumer", handler), undefined);
+    const subscribers = (
+      service as unknown as { bus: { subscribers: Map<string, { handler: typeof handler }> } }
+    ).bus.subscribers;
+    assert.strictEqual(subscribers.get("async_consumer")?.handler, handler);
   } finally {
     cleanupPath(workspace);
   }
@@ -556,9 +568,13 @@ test("EventOpsService subscribe with same consumerId twice does not throw", asyn
     const service = createTestService(workspace);
 
     service.subscribe("double_subscribe_consumer", async () => {});
-    service.subscribe("double_subscribe_consumer", async () => {});
-
-    assert.ok(true);
+    const replacement = async () => {};
+    service.subscribe("double_subscribe_consumer", replacement);
+    const subscribers = (
+      service as unknown as { bus: { subscribers: Map<string, { handler: typeof replacement; generation: number }> } }
+    ).bus.subscribers;
+    assert.strictEqual(subscribers.get("double_subscribe_consumer")?.handler, replacement);
+    assert.equal(subscribers.get("double_subscribe_consumer")?.generation, 2);
   } finally {
     cleanupPath(workspace);
   }

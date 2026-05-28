@@ -18,7 +18,9 @@ const OUTBOX_COLS = `id,
   published_at AS publishedAt,
   retry_count AS retryCount,
   last_error AS lastError,
-  last_attempt_at AS lastAttemptAt`;
+  last_attempt_at AS lastAttemptAt,
+  dead_lettered_at AS deadLetteredAt,
+  dead_letter_reason AS deadLetterReason`;
 const SQLITE_MAX_BATCH_VARIABLES = 900;
 
 export class OutboxRepository {
@@ -37,8 +39,8 @@ export class OutboxRepository {
       .prepare(
         `INSERT INTO outbox (
           id, aggregate_type, aggregate_id, event_type,
-          payload_json, trace_id, created_at, published_at, retry_count, last_error, last_attempt_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, NULL, 0, NULL, NULL)`,
+          payload_json, trace_id, created_at, published_at, retry_count, last_error, last_attempt_at, dead_lettered_at, dead_letter_reason
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, NULL, 0, NULL, NULL, NULL, NULL)`,
       )
       .run(id, aggregateType, aggregateId, eventType, payloadJson, traceId, createdAt);
 
@@ -54,6 +56,8 @@ export class OutboxRepository {
       retryCount: 0,
       lastError: null,
       lastAttemptAt: null,
+      deadLetteredAt: null,
+      deadLetterReason: null,
     };
   }
 
@@ -64,7 +68,7 @@ export class OutboxRepository {
     const records: OutboxRecord[] = [];
 
     // Use bulk INSERT for efficiency when publishing multiple events
-    const placeholders = entries.map(() => "(?, ?, ?, ?, ?, ?, ?, NULL, 0, NULL, NULL)").join(", ");
+    const placeholders = entries.map(() => "(?, ?, ?, ?, ?, ?, ?, NULL, 0, NULL, NULL, NULL, NULL)").join(", ");
     const values: SQLInputValue[] = [];
     for (const entry of entries) {
       const id = newId("outbox");
@@ -89,6 +93,8 @@ export class OutboxRepository {
         retryCount: 0,
         lastError: null,
         lastAttemptAt: null,
+        deadLetteredAt: null,
+        deadLetterReason: null,
       });
     }
 
@@ -96,7 +102,7 @@ export class OutboxRepository {
       .prepare(
         `INSERT INTO outbox (
           id, aggregate_type, aggregate_id, event_type,
-          payload_json, trace_id, created_at, published_at, retry_count, last_error, last_attempt_at
+          payload_json, trace_id, created_at, published_at, retry_count, last_error, last_attempt_at, dead_lettered_at, dead_letter_reason
         ) VALUES ${placeholders}`,
       )
       .run(...values);
@@ -114,14 +120,14 @@ export class OutboxRepository {
   public insertOutboxEntriesBulk(entries: OutboxInsertPayload[], ids: string[]): OutboxRecord[] {
     if (entries.length === 0) return [];
     if (entries.length !== ids.length) {
-      throw new Error("entries and ids must have the same length");
+      throw new TypeError("entries and ids must have the same length");
     }
 
     const now = nowIso();
     const records: OutboxRecord[] = [];
 
     // Use bulk INSERT for efficiency
-    const placeholders = entries.map(() => "(?, ?, ?, ?, ?, ?, ?, NULL, 0, NULL, NULL)").join(", ");
+    const placeholders = entries.map(() => "(?, ?, ?, ?, ?, ?, ?, NULL, 0, NULL, NULL, NULL, NULL)").join(", ");
     const values: SQLInputValue[] = [];
     for (let i = 0; i < entries.length; i++) {
       const entry = entries[i]!;
@@ -147,6 +153,8 @@ export class OutboxRepository {
         retryCount: 0,
         lastError: null,
         lastAttemptAt: null,
+        deadLetteredAt: null,
+        deadLetterReason: null,
       });
     }
 
@@ -154,7 +162,7 @@ export class OutboxRepository {
       .prepare(
         `INSERT INTO outbox (
           id, aggregate_type, aggregate_id, event_type,
-          payload_json, trace_id, created_at, published_at, retry_count, last_error, last_attempt_at
+          payload_json, trace_id, created_at, published_at, retry_count, last_error, last_attempt_at, dead_lettered_at, dead_letter_reason
         ) VALUES ${placeholders}`,
       )
       .run(...values);
@@ -203,12 +211,32 @@ export class OutboxRepository {
     );
   }
 
+  public markDeadLettered(id: string, error: string, retryCount: number, deadLetteredAt: string): void {
+    execute(
+      this.conn,
+      `UPDATE outbox
+       SET last_error = ?,
+           retry_count = ?,
+           last_attempt_at = ?,
+           dead_lettered_at = ?,
+           dead_letter_reason = ?
+       WHERE id = ?`,
+      error,
+      retryCount,
+      deadLetteredAt,
+      deadLetteredAt,
+      error,
+      id,
+    );
+  }
+
   public listPendingEntries(limit: number = 100): OutboxRecord[] {
     return queryAll<OutboxRecord>(
       this.conn,
       `SELECT ${OUTBOX_COLS}
        FROM outbox
        WHERE published_at IS NULL
+         AND dead_lettered_at IS NULL
        ORDER BY created_at ASC
        LIMIT ?`,
       limit,
@@ -221,6 +249,7 @@ export class OutboxRepository {
       `SELECT ${OUTBOX_COLS}
        FROM outbox
        WHERE published_at IS NULL
+         AND dead_lettered_at IS NULL
          AND retry_count > 0
        ORDER BY created_at ASC
        LIMIT ?`,
@@ -233,7 +262,8 @@ export class OutboxRepository {
       this.conn,
       `SELECT COUNT(*) AS count
        FROM outbox
-       WHERE published_at IS NULL`,
+       WHERE published_at IS NULL
+         AND dead_lettered_at IS NULL`,
     );
     return Number(result?.count ?? 0);
   }
@@ -244,6 +274,7 @@ export class OutboxRepository {
       `SELECT COUNT(*) AS count
        FROM outbox
        WHERE published_at IS NULL
+         AND dead_lettered_at IS NULL
          AND retry_count > 0`,
     );
     return Number(result?.count ?? 0);
@@ -261,6 +292,9 @@ export class OutboxRepository {
 
     if (record.publishedAt !== null) {
       return { status: OutboxStatus.PUBLISHED, retryCount: record.retryCount };
+    }
+    if (record.deadLetteredAt !== null) {
+      return { status: OutboxStatus.FAILED, retryCount: record.retryCount };
     }
     if (record.retryCount > 0) {
       return { status: OutboxStatus.FAILED, retryCount: record.retryCount };

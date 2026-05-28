@@ -21,8 +21,14 @@ import {
 } from "./provider-credential-pool.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 import { createPolicyAwareFetch } from "../../five-plane-control-plane/iam/network-egress-policy.js";
+import {
+  DEFAULT_PROVIDER_ERROR_BODY_BYTES,
+  DEFAULT_PROVIDER_REQUEST_TIMEOUT_MS,
+  DEFAULT_PROVIDER_RETRYABLE_STATUS_CODES,
+} from "../../five-plane-control-plane/config-center/provider-defaults.js";
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
+const textDecoder = new TextDecoder();
 
 /**
  * Base API Error shared by all providers.
@@ -133,6 +139,8 @@ export interface BaseChatProviderConfig {
   providerName: string;
   defaultRetryableCodes?: number[];
   ratelimitResetHeaderNames?: string[];
+  requestTimeoutMs?: number;
+  maxErrorBodyBytes?: number;
 }
 
 /**
@@ -146,11 +154,15 @@ export abstract class BaseChatProvider {
   protected readonly providerName: string;
   protected readonly defaultRetryableCodes: number[];
   protected readonly ratelimitResetHeaderNames: string[];
+  protected readonly requestTimeoutMs: number;
+  protected readonly maxErrorBodyBytes: number;
 
   public constructor(config: BaseChatProviderConfig) {
     this.providerName = config.providerName;
-    this.defaultRetryableCodes = config.defaultRetryableCodes ?? [402, 429, 500, 502, 503, 529];
+    this.defaultRetryableCodes = [...(config.defaultRetryableCodes ?? DEFAULT_PROVIDER_RETRYABLE_STATUS_CODES)];
     this.ratelimitResetHeaderNames = config.ratelimitResetHeaderNames ?? ["reset-at", "x-ratelimit-reset"];
+    this.requestTimeoutMs = normalizePositiveInteger(config.requestTimeoutMs, DEFAULT_PROVIDER_REQUEST_TIMEOUT_MS);
+    this.maxErrorBodyBytes = normalizePositiveInteger(config.maxErrorBodyBytes, DEFAULT_PROVIDER_ERROR_BODY_BYTES);
 
     this.credentialPool =
       config.credentialPool
@@ -255,12 +267,18 @@ export abstract class BaseChatProvider {
       triedCredentialIds.push(selection.credentialId);
 
       const headers = this.buildHeaders(selection.apiKey);
-      const body = this.transformRequest(request, stream);
+      const body = this.transformRequest(stripTransportControlFields(request), stream);
+      const runtimeSignal = buildRuntimeSignal(
+        getAbortSignal(request),
+        normalizePositiveInteger(getTimeoutMsOverride(request), this.requestTimeoutMs),
+      );
+      const retryableStatusCodes = getRetryableStatusCodesOverride(request) ?? this.getRetryableStatusCodes();
 
       const response = await this.fetchImpl(url, {
         method: "POST",
         headers,
         body: JSON.stringify(body),
+        ...(runtimeSignal !== undefined ? { signal: runtimeSignal } : {}),
       });
 
       if (response.ok) {
@@ -270,7 +288,8 @@ export abstract class BaseChatProvider {
 
       const retryAfterMs = parseRetryAfterMs(response.headers);
       const resetAt = parseResetAt(response.headers, this.getRatelimitResetHeaderNames());
-      const errorText = await response.text();
+      const { text: errorText, truncated } = await readResponseTextLimited(response, this.maxErrorBodyBytes);
+      const errorSummary = truncated ? `${errorText} [truncated]` : errorText;
 
       let errorType: string | undefined;
       let errorCode: string | null = null;
@@ -299,7 +318,7 @@ export abstract class BaseChatProvider {
       );
 
       if (
-        shouldRetryWithinPool(response.status, this.getRetryableStatusCodes())
+        shouldRetryWithinPool(response.status, retryableStatusCodes)
         && await this.credentialPool.canFailoverAfter({
           statusCode: response.status,
           retryAfterMs,
@@ -313,14 +332,120 @@ export abstract class BaseChatProvider {
       throw this.createApiError({
         statusCode: response.status,
         statusText: response.statusText,
-        message: `${this.providerName} API error: ${response.status} ${response.statusText} - ${errorText}`,
+        message: `${this.providerName} API error: ${response.status} ${response.statusText} - ${errorSummary}`,
         ...(errorType !== undefined && { errorType }),
         errorCode,
         credentialId: selection.credentialId,
         retryAfterMs: retryAfterMs ?? null,
         resetAt: resetAt ?? null,
-        errorText,
+        errorText: errorSummary,
       });
     }
   }
+}
+
+function normalizePositiveInteger(value: number | undefined, fallback: number): number {
+  if (value == null || !Number.isFinite(value) || value <= 0) {
+    return fallback;
+  }
+  return Math.floor(value);
+}
+
+function stripTransportControlFields(request: Record<string, unknown>): Record<string, unknown> {
+  const { signal, abortSignal, timeoutMs, retryableStatusCodes, ...rest } = request;
+  return rest;
+}
+
+function getAbortSignal(request: Record<string, unknown>): AbortSignal | undefined {
+  const candidate = request.signal ?? request.abortSignal;
+  if (
+    typeof candidate === "object"
+    && candidate !== null
+    && "aborted" in candidate
+    && typeof (candidate as AbortSignal).aborted === "boolean"
+  ) {
+    return candidate as AbortSignal;
+  }
+  return undefined;
+}
+
+function getTimeoutMsOverride(request: Record<string, unknown>): number | undefined {
+  const timeoutMs = request.timeoutMs;
+  return typeof timeoutMs === "number" ? timeoutMs : undefined;
+}
+
+function getRetryableStatusCodesOverride(request: Record<string, unknown>): number[] | undefined {
+  const candidate = request.retryableStatusCodes;
+  if (!Array.isArray(candidate)) {
+    return undefined;
+  }
+  const normalized = candidate.filter(
+    (code): code is number => typeof code === "number" && Number.isInteger(code) && code >= 100 && code <= 599,
+  );
+  return normalized.length > 0 ? normalized : undefined;
+}
+
+function buildRuntimeSignal(signal: AbortSignal | undefined, timeoutMs: number): AbortSignal | undefined {
+  if (signal == null && timeoutMs <= 0) {
+    return undefined;
+  }
+  const controller = new AbortController();
+  const timeout = setTimeout(() => {
+    controller.abort(new Error("provider.request_timeout"));
+  }, timeoutMs);
+  timeout.unref?.();
+
+  const onAbort = (): void => {
+    controller.abort(signal?.reason);
+  };
+  signal?.addEventListener("abort", onAbort, { once: true });
+  controller.signal.addEventListener("abort", () => {
+    clearTimeout(timeout);
+    signal?.removeEventListener("abort", onAbort);
+  }, { once: true });
+  return controller.signal;
+}
+
+async function readResponseTextLimited(
+  response: Response,
+  maxBytes: number,
+): Promise<{ text: string; truncated: boolean }> {
+  const reader = response.body?.getReader();
+  if (reader == null) {
+    return { text: "", truncated: false };
+  }
+
+  const chunks: Uint8Array[] = [];
+  let totalBytes = 0;
+  let truncated = false;
+
+  try {
+    while (totalBytes < maxBytes) {
+      const { done, value } = await reader.read();
+      if (done || value == null) {
+        break;
+      }
+      const remaining = maxBytes - totalBytes;
+      if (value.byteLength > remaining) {
+        chunks.push(value.subarray(0, remaining));
+        totalBytes += remaining;
+        truncated = true;
+        break;
+      }
+      chunks.push(value);
+      totalBytes += value.byteLength;
+    }
+
+    if (!truncated) {
+      const next = await reader.read();
+      truncated = !(next.done ?? false);
+    }
+  } finally {
+    await reader.cancel().catch(() => undefined);
+  }
+
+  return {
+    text: textDecoder.decode(Buffer.concat(chunks)),
+    truncated,
+  };
 }

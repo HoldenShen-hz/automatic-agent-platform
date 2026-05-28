@@ -88,10 +88,10 @@ test("DatadogTransport handles request error gracefully", async () => {
   // flushInternal should resolve even if request fails
   // The error handler does: req.on("error", () => resolve());
   await transport.flush();
+  assert.equal((transport as unknown as { batch: StructuredLogEntry[] }).batch.length, 1);
 
-  // If we get here without throwing, the error handling works
   await transport.close();
-  assert.ok(true);
+  assert.equal((transport as unknown as { timer: NodeJS.Timeout | null }).timer, null);
 });
 
 test("DatadogTransport flushInternal transforms entries with service metadata", async () => {
@@ -351,7 +351,8 @@ test("DatadogTransport close is safe to call multiple times", async () => {
   await transport.close();
   await transport.close();
 
-  assert.ok(true);
+  assert.equal((transport as unknown as { timer: NodeJS.Timeout | null }).timer, null);
+  assert.equal((transport as unknown as { batch: StructuredLogEntry[] }).batch.length, 1);
 });
 
 test("DatadogTransport timer is cleared after close", async () => {
@@ -363,8 +364,6 @@ test("DatadogTransport timer is cleared after close", async () => {
 
   await transport.close();
 
-  // The timer should be cleared - we verify this by calling close again
-  // which would fail if timer is not cleared (double clearInterval)
   await transport.close();
-  assert.ok(true);
+  assert.equal((transport as unknown as { timer: NodeJS.Timeout | null }).timer, null);
 });

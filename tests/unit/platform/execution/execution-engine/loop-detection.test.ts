@@ -78,10 +78,10 @@ test("hashToolCall generates different hash for different tool [loop-detection]"
   assert.notEqual(hash1, hash2, "Different tool should produce different hash");
 });
 
-test("hashToolCall returns 16 character hex string [loop-detection]", () => {
+test("hashToolCall returns 32 character hex string [loop-detection]", () => {
   const hash = hashToolCall("test_tool", { arg: "value" });
-  assert.equal(hash.length, 16, "Hash should be 16 characters");
-  assert.match(hash, /^[0-9a-f]{16}$/, "Hash should be hex string");
+  assert.equal(hash.length, 32, "Hash should be 32 characters");
+  assert.match(hash, /^[0-9a-f]{32}$/, "Hash should be hex string");
 });
 
 test("LoopDetectionState records tool call and returns continue [loop-detection]", () => {

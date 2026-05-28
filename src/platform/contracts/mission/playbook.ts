@@ -2,6 +2,8 @@ import { createHash } from "node:crypto";
 
 import { z } from "zod";
 
+import { stableStringify } from "./stable-stringify.js";
+
 const isoString = z.string().min(1);
 const refString = z.string().min(1);
 const comparableValueSchema = z.union([z.number(), z.string(), z.boolean()]);
@@ -368,15 +370,4 @@ export type StageExitDecision = z.infer<typeof StageExitDecisionSchema>;
 
 export function hashExitCriterionExpression(expression: ExitCriterionExpression): string {
   return createHash("sha256").update(stableStringify(expression)).digest("hex");
-}
-
-function stableStringify(value: unknown): string {
-  if (value === null || typeof value !== "object") {
-    return JSON.stringify(value);
-  }
-  if (Array.isArray(value)) {
-    return `[${value.map((item) => stableStringify(item)).join(",")}]`;
-  }
-  const record = value as Record<string, unknown>;
-  return `{${Object.keys(record).sort().map((key) => `${JSON.stringify(key)}:${stableStringify(record[key])}`).join(",")}}`;
 }

@@ -10,6 +10,7 @@
 import type {
   DispatchWorkerRejectionReason,
   DispatchTarget,
+  ExecutionTicketStatus,
   RemoteAvailability,
   TaskPriority,
   WorkerPlacement,
@@ -71,8 +72,6 @@ export interface ExecutionTicketRecord {
   schedulerSeed?: string | null;
 }
 
-export type ExecutionTicketStatus = "pending" | "claimed" | "consumed" | "cancelled" | "expired";
-
 // ---------------------------------------------------------------------------
 // Dispatch worker evaluation
 // ---------------------------------------------------------------------------
@@ -112,6 +111,7 @@ export interface DispatchWorkerEvaluation {
 }
 
 export type { WorkerStatus, WorkerSchedulingStatus };
+export type { ExecutionTicketStatus } from "./primitives.js";
 
 // ---------------------------------------------------------------------------
 // Dispatch decision trace

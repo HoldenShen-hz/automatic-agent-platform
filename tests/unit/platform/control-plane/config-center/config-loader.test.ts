@@ -102,36 +102,35 @@ test("ConfigLoader.loadFromEnv ignores missing env vars", () => {
   assert.equal(config.presentKey, undefined);
 });
 
-test("ConfigLoader.addSource sorts sources by priority", () => {
+test("ConfigLoader.addSource sorts sources by priority", async () => {
   const loader = new ConfigLoader();
 
   loader.addSource({
     name: "default",
     priority: ConfigSourcePriority.DEFAULT,
-    load: async () => ({}),
+    load: async () => ({ key: "default" }),
   });
 
   loader.addSource({
     name: "file",
     priority: ConfigSourcePriority.FILE,
-    load: async () => ({}),
+    load: async () => ({ key: "file" }),
   });
 
   loader.addSource({
     name: "env",
     priority: ConfigSourcePriority.ENVIRONMENT,
-    load: async () => ({}),
+    load: async () => ({ key: "env" }),
   });
 
   loader.addSource({
     name: "remote",
     priority: ConfigSourcePriority.REMOTE,
-    load: async () => ({}),
+    load: async () => ({ key: "remote" }),
   });
 
-  // Sources should be sorted: default (0) < file (40) < env (50) < remote (60)
-  const config = loader.loadConfig();
-  assert.ok(true); // If we get here without error, sorting works
+  const config = await loader.loadConfig();
+  assert.equal(config.key, "remote");
 });
 
 test("ConfigLoader.addSource clears stale cache when source order changes", async () => {
@@ -330,7 +329,7 @@ test("ConfigLoader handles source that returns empty object", async () => {
   assert.deepEqual(config, {});
 });
 
-test("ConfigLoader source priority ordering is correct", () => {
+test("ConfigLoader source priority ordering is correct", async () => {
   const loader = new ConfigLoader();
 
   // Add in non-sorted order
@@ -358,9 +357,8 @@ test("ConfigLoader source priority ordering is correct", () => {
     load: async () => ({ priority: 0 }),
   });
 
-  // The last added source with highest priority should win for same keys
-  // Since we add remote last (but it has highest priority), it sorts to end
-  assert.ok(true);
+  const config = await loader.loadConfig();
+  assert.equal(config.priority, 60);
 });
 
 test("ConfigSourcePriority enum values are correct", () => {

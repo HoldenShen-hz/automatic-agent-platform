@@ -1,8 +1,8 @@
 import { mkdirSync } from "node:fs";
-import { createHash } from "node:crypto";
 import { isAbsolute, join, resolve } from "node:path";
 
 import { ValidationError } from "../../contracts/errors.js";
+import { sha256HexPrefix } from "../../shared/cache/utils/sha256.js";
 
 /**
  * Layout structure for an agent profile home directory.
@@ -28,7 +28,7 @@ const PROFILE_ID_PATTERN = /^[a-zA-Z0-9._-]{1,64}$/;
  * @throws ValidationError if profile ID contains invalid characters or is too long
  */
 function buildManagedDefaultProfileId(cwd: string): string {
-  const digest = createHash("sha256").update(resolve(cwd)).digest("hex").slice(0, 12);
+  const digest = sha256HexPrefix(resolve(cwd), 32);
   return `managed-${digest}`;
 }
 

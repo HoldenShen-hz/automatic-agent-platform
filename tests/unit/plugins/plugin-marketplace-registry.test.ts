@@ -35,9 +35,10 @@ test("PluginMarketplaceRegistry.registerLoader registers a loader", () => {
     loadFromSource: async () => null,
     supportsSource: () => false,
   };
-  registry.registerLoader("test", mockLoader);
-  // No error means success
-  assert.ok(true);
+  assert.equal(registry.registerLoader("test", mockLoader), undefined);
+  const loaders = (registry as unknown as { loaders: Map<string, DynamicPluginLoader> }).loaders;
+  assert.equal(loaders.size, 1);
+  assert.strictEqual(loaders.get("test"), mockLoader);
 });
 
 test("PluginMarketplaceRegistry.registerMarketplaceEntry adds entry", () => {

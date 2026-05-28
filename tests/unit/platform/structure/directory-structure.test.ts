@@ -46,9 +46,9 @@ test("§35: All documented directories have index.ts", () => {
 
 test("§35: cost-management exports contract types", async () => {
   const mod = await import("../../../../src/platform/cost-management/index.js");
-  assert.ok(mod.CostEstimate != null);
-  assert.ok(mod.CostEstimationConfig != null);
-  assert.ok(mod.CostEstimationServicePort != null);
+  assert.ok(mod.CostEstimateToken != null);
+  assert.ok(mod.CostEstimationConfigToken != null);
+  assert.ok(mod.CostEstimationServicePortToken != null);
 });
 
 test("§35: prompt-registry exports prompt registry types", async () => {

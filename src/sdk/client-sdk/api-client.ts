@@ -42,6 +42,16 @@ const DEFAULT_RETRY_CONFIG: RetryConfig = {
   maxBackoffMs: 1000,
 };
 
+type ClientContractPrincipal = {
+  readonly subject?: string;
+  readonly tenantId?: string;
+  readonly roles?: readonly string[];
+};
+
+type ClientContractEnvelope<TPayload> = ContractEnvelope<TPayload> & {
+  readonly principal?: ClientContractPrincipal;
+};
+
 export function parseRetryAfterDelayMs(retryAfterHeader: string | null, nowMs = Date.now()): number | null {
   if (retryAfterHeader == null) {
     return null;
@@ -242,7 +252,7 @@ export class RetryableApiClient {
    * All inter-plane messages must carry schemaVersion/commandId/correlationId/signature
    * per the five-plane boundary contract per §5.5.
    */
-  createEnvelope<TPayload>(payload: TPayload, metadata?: Readonly<Record<string, string>>, ttl?: number | null): ContractEnvelope<TPayload> {
+  createEnvelope<TPayload>(payload: TPayload, metadata?: Readonly<Record<string, string>>, ttl?: number | null): ClientContractEnvelope<TPayload> {
     return createExecutableContractEnvelope({
       payload,
       metadata: metadata ?? {},
@@ -253,14 +263,14 @@ export class RetryableApiClient {
   /**
    * Sign a ContractEnvelope for inter-plane delivery using HMAC-SHA256.
    */
-  signEnvelope<TPayload>(envelope: ContractEnvelope<TPayload>, secretKey: string): ContractEnvelope<TPayload> {
+  signEnvelope<TPayload>(envelope: ClientContractEnvelope<TPayload>, secretKey: string): ClientContractEnvelope<TPayload> {
     return signContractEnvelope(envelope, secretKey);
   }
 
   /**
    * Verify a ContractEnvelope signature for authenticity.
    */
-  verifyEnvelope<TPayload>(envelope: ContractEnvelope<TPayload>, secretKey: string): ContractEnvelopeVerificationResult {
+  verifyEnvelope<TPayload>(envelope: ClientContractEnvelope<TPayload>, secretKey: string): ContractEnvelopeVerificationResult {
     return verifyContractEnvelopeSignature(envelope, secretKey);
   }
 
@@ -269,7 +279,7 @@ export class RetryableApiClient {
    */
   async sendEnvelope<TResponse, TPayload>(
     path: string,
-    envelope: ContractEnvelope<TPayload>,
+    envelope: ClientContractEnvelope<TPayload>,
     secretKey?: string,
   ): Promise<ApiResponse<TResponse>> {
     const signedEnvelope = secretKey ? this.signEnvelope(envelope, secretKey) : envelope;
@@ -407,7 +417,7 @@ export class RetryableApiClient {
    * R8-19 FIX: Wraps request payload in ContractEnvelope per five-plane boundary contract §5.5.
    * Envelope carries schemaVersion/commandId/correlationId/signature for inter-plane messages.
    */
-  private wrapRequestBody<TPayload>(payload: TPayload, idempotencyKey?: string): ContractEnvelope<TPayload> {
+  private wrapRequestBody<TPayload>(payload: TPayload, idempotencyKey?: string): ClientContractEnvelope<TPayload> {
     const metadata: Record<string, string> = {};
     const principalSubject = this.config.principal?.subject?.trim()
       || this.config.principal?.principalId?.trim()
@@ -454,7 +464,7 @@ export class RetryableApiClient {
             ...envelope,
             principal,
           }
-    ) as ContractEnvelope<TPayload>;
+    ) as ClientContractEnvelope<TPayload>;
   }
 
   /**
@@ -470,7 +480,7 @@ export class RetryableApiClient {
       "payload" in data
     ) {
       // This is a ContractEnvelope response - extract the payload
-      const envelope = data as ContractEnvelope<unknown>;
+      const envelope = data as ClientContractEnvelope<unknown>;
       return envelope.payload as TResponse;
     }
     // Not a ContractEnvelope - return as-is
@@ -904,22 +914,22 @@ export function createContractEnvelope<TPayload>(input: {
   signature?: string | null;
   ttl?: number | null;
   metadata?: Readonly<Record<string, string>>;
-}): ContractEnvelope<TPayload> {
+}): ClientContractEnvelope<TPayload> {
   return {
     ...createExecutableContractEnvelope(input),
     ...(input.principal == null ? {} : { principal: input.principal }),
-  } as ContractEnvelope<TPayload>;
+  } as ClientContractEnvelope<TPayload>;
 }
 
 export function wrapInContractEnvelope<TPayload>(
   payload: TPayload,
   principal?: Parameters<typeof createContractEnvelope<TPayload>>[0]["principal"],
   options: Omit<Parameters<typeof createContractEnvelope<TPayload>>[0], "payload" | "principal"> = {},
-): ContractEnvelope<TPayload> {
+): ClientContractEnvelope<TPayload> {
   return createContractEnvelope({ payload, ...(principal == null ? {} : { principal }), ...options });
 }
 
-export function unwrapContractEnvelope<TPayload>(envelope: ContractEnvelope<TPayload>): TPayload {
+export function unwrapContractEnvelope<TPayload>(envelope: ClientContractEnvelope<TPayload>): TPayload {
   return envelope.payload;
 }
 
@@ -992,16 +1002,6 @@ async function parseJsonResponse(response: Response): Promise<Record<string, unk
   return parsed != null && typeof parsed === "object" && !Array.isArray(parsed)
     ? parsed as Record<string, unknown>
     : {};
-}
-
-declare module "../../platform/contracts/executable-contracts/index.js" {
-  interface ContractEnvelope<TPayload = unknown> {
-    readonly principal?: {
-      readonly subject?: string;
-      readonly tenantId?: string;
-      readonly roles?: readonly string[];
-    };
-  }
 }
 
 async function fetchVersionInfo(

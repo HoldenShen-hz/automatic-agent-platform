@@ -4,6 +4,7 @@ import test from "node:test";
 import { ConnectorFrameworkService } from "../../../../src/scale-ecosystem/integration/connector-framework-service.js";
 import type { ConnectorManifest } from "../../../../src/scale-ecosystem/integration/connector-registry/index.js";
 import type { ConnectorHealthReport } from "../../../../src/scale-ecosystem/integration/health-monitor/index.js";
+import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 
 test("ConnectorFrameworkService registers a connector manifest [connector-framework-service]", () => {
   const service = new ConnectorFrameworkService();
@@ -20,6 +21,19 @@ test("ConnectorFrameworkService registers a connector manifest [connector-framew
   const registered = service.register(manifest);
   assert.equal(registered.connectorId, "test-connector");
   assert.equal(registered.provider, "TestProvider");
+});
+
+test("ConnectorFrameworkService rejects duplicate connector registration [connector-framework-service]", () => {
+  const service = new ConnectorFrameworkService();
+  const manifest: ConnectorManifest = {
+    connectorId: "test-connector",
+    provider: "TestProvider",
+    capabilities: [],
+    lifecycleState: "enabled",
+  };
+
+  service.register(manifest);
+  assert.throws(() => service.register(manifest), /connector_framework.duplicate_connector_id/);
 });
 
 test("ConnectorFrameworkService binds a connector to a tenant [connector-framework-service]", () => {
@@ -509,9 +523,7 @@ test("ConnectorFrameworkService health eviction respects healthRetentionCount [c
 });
 
 test("ConnectorFrameworkService loadBindings applies eviction to persisted data [connector-framework-service]", async () => {
-  const { mkdirSync, rmSync } = await import("node:fs");
-  const path = `/tmp/connector-framework-test-${Date.now()}`;
-  mkdirSync(path, { recursive: true });
+  const path = createTempWorkspace("aa-connector-framework-");
   try {
     const service1 = new ConnectorFrameworkService(path, 7 * 24 * 60 * 60 * 1000, 100);
     const manifest: ConnectorManifest = {
@@ -534,6 +546,6 @@ test("ConnectorFrameworkService loadBindings applies eviction to persisted data 
     assert.equal(bindings.length, 1);
     assert.equal(bindings[0]!.tenantId, "tenant-new");
   } finally {
-    rmSync(path, { recursive: true, force: true });
+    cleanupPath(path);
   }
 });

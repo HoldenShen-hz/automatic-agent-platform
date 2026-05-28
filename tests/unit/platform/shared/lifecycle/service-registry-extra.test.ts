@@ -133,7 +133,7 @@ test("ServiceRegistry.reset handles service with failing teardown", async () => 
   // reset should not throw even with failing teardown
   await registry.reset();
 
-  assert.ok(true);
+  assert.equal(registry.isInitialized("fail-teardown"), false);
 });
 
 test("ServiceRegistry.register throws on duplicate registration with different init", () => {
@@ -237,7 +237,7 @@ test("ServiceRegistry.teardownAll handles empty registry", async () => {
 
   await registry.teardownAll();
 
-  assert.ok(true);
+  assert.deepEqual(registry.topologicalSort(), []);
 });
 
 test("ServiceRegistry.initializeAll handles empty registry", async () => {
@@ -245,5 +245,5 @@ test("ServiceRegistry.initializeAll handles empty registry", async () => {
 
   await registry.initializeAll();
 
-  assert.ok(true);
+  assert.deepEqual(registry.topologicalSort(), []);
 });

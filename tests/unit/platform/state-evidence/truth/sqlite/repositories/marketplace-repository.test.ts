@@ -3,19 +3,26 @@ import test from "node:test";
 import { MarketplaceRepository } from "../../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/repositories/marketplace-repository.js";
 
 function createMockDb() {
+  const runCalls: unknown[][] = [];
   return {
-    connection: {
-      prepare: () => ({
-        run: () => ({ changes: 1 }),
-        get: () => undefined,
-        all: () => [],
-      }),
+    db: {
+      connection: {
+        prepare: () => ({
+          run: (...args: unknown[]) => {
+            runCalls.push(args);
+            return { changes: 1 };
+          },
+          get: () => undefined,
+          all: () => [],
+        }),
+      },
     },
+    runCalls,
   };
 }
 
 test("MarketplaceRepository has all required methods", () => {
-  const db = createMockDb() as any;
+  const { db } = createMockDb();
   const repo = new MarketplaceRepository(db);
 
   assert.equal(typeof repo.upsertMarketplaceReview, "function");
@@ -34,7 +41,7 @@ test("MarketplaceRepository has all required methods", () => {
 });
 
 test("MarketplaceRepository upserts marketplace review", () => {
-  const db = createMockDb() as any;
+  const { db, runCalls } = createMockDb();
   const repo = new MarketplaceRepository(db);
 
   const now = "2026-04-21T10:00:00.000Z";
@@ -52,12 +59,14 @@ test("MarketplaceRepository upserts marketplace review", () => {
     decidedAt: null,
   };
 
-  repo.upsertMarketplaceReview(review);
-  assert.ok(true);
+  assert.equal(repo.upsertMarketplaceReview(review), undefined);
+  assert.equal(runCalls.length, 1);
+  assert.ok(runCalls[0]?.includes(review.reviewId));
+  assert.ok(runCalls[0]?.includes(review.packageId));
 });
 
 test("MarketplaceRepository upserts marketplace publication", () => {
-  const db = createMockDb() as any;
+  const { db, runCalls } = createMockDb();
   const repo = new MarketplaceRepository(db);
 
   const now = "2026-04-21T10:00:00.000Z";
@@ -74,12 +83,14 @@ test("MarketplaceRepository upserts marketplace publication", () => {
     updatedAt: now,
   };
 
-  repo.upsertMarketplacePublication(publication);
-  assert.ok(true);
+  assert.equal(repo.upsertMarketplacePublication(publication), undefined);
+  assert.equal(runCalls.length, 1);
+  assert.ok(runCalls[0]?.includes(publication.publicationId));
+  assert.ok(runCalls[0]?.includes(publication.packageId));
 });
 
 test("MarketplaceRepository inserts marketplace governance report", () => {
-  const db = createMockDb() as any;
+  const { db, runCalls } = createMockDb();
   const repo = new MarketplaceRepository(db);
 
   const now = "2026-04-21T10:00:00.000Z";
@@ -91,12 +102,14 @@ test("MarketplaceRepository inserts marketplace governance report", () => {
     generatedAt: now,
   };
 
-  repo.insertMarketplaceGovernanceReport(report);
-  assert.ok(true);
+  assert.equal(repo.insertMarketplaceGovernanceReport(report), undefined);
+  assert.equal(runCalls.length, 1);
+  assert.ok(runCalls[0]?.includes(report.reportId));
+  assert.ok(runCalls[0]?.includes(report.tenantId));
 });
 
 test("MarketplaceRepository upserts extension package", () => {
-  const db = createMockDb() as any;
+  const { db, runCalls } = createMockDb();
   const repo = new MarketplaceRepository(db);
 
   const now = "2026-04-21T10:00:00.000Z";
@@ -121,8 +134,10 @@ test("MarketplaceRepository upserts extension package", () => {
     updatedAt: now,
   };
 
-  repo.upsertExtensionPackage(pkg);
-  assert.ok(true);
+  assert.equal(repo.upsertExtensionPackage(pkg), undefined);
+  assert.equal(runCalls.length, 1);
+  assert.ok(runCalls[0]?.includes(pkg.packageId));
+  assert.ok(runCalls[0]?.includes(pkg.displayName));
 });
 
 test("MarketplaceRepository gets extension package", () => {

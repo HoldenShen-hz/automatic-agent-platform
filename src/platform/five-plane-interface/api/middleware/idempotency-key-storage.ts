@@ -11,6 +11,7 @@ import type { RedisConnectionConfig } from "../../../shared/utils/redis-client-o
 import { buildRedisClientOptions } from "../../../shared/utils/redis-client-options.js";
 import { Redis } from "ioredis";
 import type { AuthoritativeSqlDatabase } from "../../../five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import { ValidationError } from "../../../contracts/errors.js";
 
 /**
  * Idempotency key entry stored in cache.
@@ -415,7 +416,11 @@ export class SqliteIdempotencyStorage implements IdempotencyStorage {
 
 function validateSqlIdentifier(value: string): string {
   if (!/^[A-Za-z_][A-Za-z0-9_]{0,62}$/.test(value)) {
-    throw new Error("SqliteIdempotencyStorage tableName must be a safe SQL identifier");
+    throw new ValidationError(
+      "idempotency_storage.invalid_table_name",
+      "SqliteIdempotencyStorage tableName must be a safe SQL identifier",
+      { retryable: false, details: { tableName: value } },
+    );
   }
   return value;
 }
@@ -443,10 +448,16 @@ export function createIdempotencyStorage(
       return new RedisIdempotencyStorage(config as RedisConnectionConfig);
     case "sqlite":
       if (sqliteConfig == null) {
-        throw new Error("SqliteIdempotencyStorage requires a db option");
+        throw new ValidationError(
+          "idempotency_storage.sqlite_db_required",
+          "SqliteIdempotencyStorage requires a db option",
+        );
       }
       if (sqliteConfig.db == null) {
-        throw new Error("SqliteIdempotencyStorage requires a non-null db option");
+        throw new ValidationError(
+          "idempotency_storage.sqlite_db_required",
+          "SqliteIdempotencyStorage requires a non-null db option",
+        );
       }
       return new SqliteIdempotencyStorage(sqliteConfig.db, sqliteConfig.tableName);
   }

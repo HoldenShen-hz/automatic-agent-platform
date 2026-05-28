@@ -1,8 +1,12 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import { randomBytes } from "node:crypto";
-import { createRequire } from "node:module";
 
 import type { TraceContext } from "../../contracts/types/domain.js";
+import {
+  loadOtelApi,
+  type OtelApiLike,
+  type OtelTelemetrySpanLike as TelemetrySpanLike,
+} from "./otel-module-loader.js";
 
 export interface ActiveTelemetryContext {
   traceId: string;
@@ -10,44 +14,7 @@ export interface ActiveTelemetryContext {
   parentSpanId: string | null;
 }
 
-export interface TelemetrySpanLike {
-  end(): void;
-  recordException(error: unknown): void;
-  setAttribute(key: string, value: unknown): void;
-  setAttributes?(attributes: Record<string, unknown>): void;
-  setStatus(status: { code: number; message?: string }): void;
-  spanContext(): { traceId: string; spanId: string };
-}
-
-interface OtelApiLike {
-  context: {
-    active(): unknown;
-  };
-  trace: {
-    getTracer(name: string): {
-      startActiveSpan<T>(
-        name: string,
-        options: Record<string, unknown>,
-        callback: (span: TelemetrySpanLike) => T,
-      ): T;
-    };
-    getSpan(context: unknown): TelemetrySpanLike | undefined;
-  };
-  SpanStatusCode: {
-    OK: number;
-    ERROR: number;
-  };
-}
-
 const fallbackContextStorage = new AsyncLocalStorage<ActiveTelemetryContext>();
-
-function loadOtelApi(requireFn = createRequire(import.meta.url)): OtelApiLike | null {
-  try {
-    return requireFn("@opentelemetry/api") as OtelApiLike;
-  } catch {
-    return null;
-  }
-}
 
 export function generateTraceId(): string {
   return randomBytes(16).toString("hex");

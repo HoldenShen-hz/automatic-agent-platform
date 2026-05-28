@@ -106,3 +106,13 @@ test("invokeCallback returns false on DNS resolution failure [invoke-callback]",
 
   assert.equal(result, false);
 });
+
+test("invokeCallback rejects non-loopback https callbacks unless explicitly allowlisted [invoke-callback]", async () => {
+  const result = await invokeCallback("https://callback.test/callback", {
+    connectorId: "blocked-https",
+    success: true,
+    status: "succeeded",
+  });
+
+  assert.equal(result, false);
+});

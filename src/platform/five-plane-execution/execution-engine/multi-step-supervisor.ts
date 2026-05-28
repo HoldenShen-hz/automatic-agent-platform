@@ -4,40 +4,36 @@
 
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import type {
-  CostEventRecord,
   ExecutionPrecheckRecord,
   ExecutionRecord,
-  MessageRecord,
-  SessionRecord,
   StepOutputRecord,
-  TransitionAuditContext,
 } from "../../contracts/types/domain.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 import { createChildTraceContext, injectTraceContext } from "../../shared/observability/trace-context.js";
-import { buildRetryRecordParts, buildStructuredToolResultParts, ensureMessagePartsJson, serializeMessageParts } from "../../model-gateway/messages/message-parts.js";
-import type { StreamBridge } from "../../five-plane-interface/channel-gateway/stream-bridge.js";
-import type { AuthoritativeSqlDatabase } from "../../five-plane-state-evidence/truth/authoritative-sql-database.js";
-import type { ArtifactStore } from "../../five-plane-state-evidence/artifacts/artifact-store.js";
-import type { AuthoritativeTaskStore } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
-import { createWorkflowStepCheckpoint } from "../../five-plane-state-evidence/checkpoints/workflow-step-checkpoint.js";
-import { decideWorkflowStepRetry, type WorkflowStepRetryDecision } from "../../five-plane-orchestration/oapeflir/workflow/workflow-step-retry-policy.js";
 import {
   populateMissingRequiredWorkflowStepOutput,
   validateWorkflowStepOutput,
 } from "../../five-plane-orchestration/oapeflir/workflow/output-schema.js";
-import type { ContextCompactionResult } from "./context-compaction-service.js";
 import { buildStepOutput } from "./multi-step-agent-round-loop.js";
-import { estimateActualLlmCallCost, type LlmModelCallResult } from "./model-call-provider-support.js";
 import { getMultiStepToolDefinitions } from "./multi-step-tool-definitions.js";
-import type { MultiStepToolExecutionInput, StepFailurePlan } from "./multi-step-orchestration-types.js";
+import type { StepFailurePlan } from "./multi-step-orchestration-types.js";
 import { maybeInjectWorkflowCrash } from "../recovery/workflow-crash-simulator.js";
+import {
+  pauseForBreakpoint,
+  skipStepForHardBlockers,
+} from "./multi-step-supervisor-breakpoint-support.js";
+import {
+  handlePlannedStepFailure,
+  handleValidationStepFailure,
+} from "./multi-step-supervisor-failure-support.js";
+import { persistSuccessfulStepAttempt } from "./multi-step-supervisor-success-support.js";
 import {
   buildStepFailureSummary,
   normalizeStepErrorCode,
   resolveStepFailurePlan,
-  type ExecutionDeps,
   type StepExecutionResult,
   type StepSupervisorContext,
+  type ExecutionDeps,
 } from "./multi-step-supervisor-types.js";
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
@@ -80,34 +76,19 @@ export async function executeStepLoop(
   const failedStepIds = ctx.failedStepIds;
 
   for (const [index, step] of plannedWorkflow.executionSteps.entries()) {
-    const breakpointScope = planGraphId ?? plannedWorkflow.workflow.workflowId;
-    const matchedPauseBreakpoint = (workflowDebugger?.getActiveBreakpoints(breakpointScope) ?? []).find((breakpoint) => {
-      if (breakpoint.action !== "pause") {
-        return false;
-      }
-      const selector = breakpoint.nodeRunSelector ?? breakpoint.stepSelector;
-      return selector === step.stepId;
-    });
-    if (matchedPauseBreakpoint != null) {
+    if (pauseForBreakpoint({
+      ctx: {
+        planGraphId: planGraphId ?? null,
+        plannedWorkflow,
+        workflowDebugger: workflowDebugger ?? null,
+        taskId,
+        traceId,
+        traceContext,
+      },
+      deps: { db: deps.db, store: deps.store },
+      stepId: step.stepId,
+    })) {
       blockedForDecision = true;
-      deps.db.transaction(() => {
-        deps.store.event.insertEvent({
-          id: newId("evt"),
-          taskId,
-          executionId: null,
-          eventType: "workflow:paused_for_breakpoint",
-          eventTier: "tier_1",
-          payloadJson: JSON.stringify(injectTraceContext({
-            breakpointId: matchedPauseBreakpoint.breakpointId,
-            planGraphId: breakpointScope,
-            workflowId: plannedWorkflow.workflow.workflowId,
-            stepId: step.stepId,
-            reasonCode: "workflow_debugger.pause_breakpoint_hit",
-          }, createChildTraceContext(traceContext))),
-          traceId,
-          createdAt: nowIso(),
-        });
-      });
       break;
     }
     const priorSummaries = stepOutputs.map((item) => item.summary ?? "").filter(Boolean);
@@ -117,60 +98,17 @@ export async function executeStepLoop(
       taskContext: [input.title, input.request, `step:${step.stepId}`, priorSummaries.join("\n")].filter((part) => part.length > 0).join("\n"),
     });
 
-    const hardBlockers = (step.dependsOnStepIds ?? []).filter((depId) => {
-      const depType = step.dependencyTypes[depId] ?? "hard";
-      return depType === "hard" && (failedStepIds.has(depId) || skippedStepIds.has(depId));
-    });
-
-    if (hardBlockers.length > 0) {
-      skippedStepIds.add(step.stepId);
+    if (skipStepForHardBlockers({
+      ctx: { taskId, traceId, traceContext, workflowRetryCount },
+      deps: { db: deps.db, store: deps.store },
+      step,
+      stepOutputs,
+      outputs,
+      index,
+      skippedStepIds,
+      failedStepIds,
+    })) {
       workflowLastErrorCode = null;
-      const skipNow = nowIso();
-      const skipOutput: StepOutputRecord = {
-        id: newId("step"),
-        nodeRunId: newId("step"),
-        taskId,
-        stepId: step.stepId,
-        roleId: step.roleId,
-        status: "skipped",
-        dataJson: JSON.stringify({ reasonCode: "upstream_dependency_failed", blockedBy: hardBlockers }),
-        summary: `Step ${step.stepId} skipped: upstream dependency failed (${hardBlockers.join(", ")})`,
-        artifactsJson: null,
-        tokenCost: 0,
-        durationMs: 0,
-        validationJson: null,
-        producedAt: skipNow,
-      };
-      stepOutputs.push(skipOutput);
-      deps.db.transaction(() => {
-        deps.store.workflow.insertStepOutput(skipOutput);
-        deps.store.event.insertEvent({
-          id: newId("evt"),
-          taskId,
-          executionId: null,
-          eventType: "workflow:step_skipped",
-          eventTier: "tier_1",
-          payloadJson: JSON.stringify(injectTraceContext({
-            stepId: step.stepId,
-            roleId: step.roleId,
-            status: "skipped",
-            reasonCode: "upstream_dependency_failed",
-            blockedBy: hardBlockers,
-          }, createChildTraceContext(traceContext))),
-          traceId,
-          createdAt: skipNow,
-        });
-        deps.store.workflow.updateWorkflowRecoveryState({
-          taskId,
-          status: "running",
-          currentStepIndex: index + 1,
-          outputsJson: JSON.stringify(outputs),
-          updatedAt: skipNow,
-          resumableFromStep: null,
-          retryCount: workflowRetryCount,
-          lastErrorCode: workflowLastErrorCode,
-        });
-      });
       continue;
     }
 
@@ -271,117 +209,26 @@ export async function executeStepLoop(
       const plannedFailure = resolveStepFailurePlan(input, step.stepId, attempt);
 
       if (plannedFailure != null) {
-        const decision = decideWorkflowStepRetry({ errorCode: plannedFailure.errorCode, attempt, maxAttempts: step.maxAttempts });
-        const failedAt = nowIso();
-
-        if (decision.action === "retry") workflowRetryCount += 1;
-        workflowLastErrorCode = plannedFailure.errorCode;
-
-        deps.db.transaction(() => {
-          deps.store.execution.updateExecutionFailure({
-            executionId,
-            status: decision.action === "escalate" ? "blocked" : "failed",
-            updatedAt: failedAt,
-            finishedAt: decision.action === "retry" ? failedAt : null,
-            lastErrorCode: plannedFailure.errorCode,
-            lastErrorMessage: plannedFailure.message ?? plannedFailure.summary ?? null,
-          });
-          deps.store.event.insertEvent({
-            id: newId("evt"),
-            taskId,
-            executionId,
-            eventType: decision.action === "retry" ? "workflow:step_retry_scheduled" : "workflow:step_failed",
-            eventTier: "tier_1",
-            payloadJson: JSON.stringify(injectTraceContext({
-              stepId: step.stepId,
-              roleId: step.roleId,
-              attempt,
-              nextAttempt: decision.action === "retry" ? attempt + 1 : null,
-              errorCode: plannedFailure.errorCode,
-              failureClass: decision.failureClass,
-              action: decision.action,
-              retryDelayMs: decision.retryDelayMs,
-            }, createChildTraceContext(traceContext))),
-            traceId,
-            createdAt: failedAt,
-          });
-          if (decision.action === "retry") {
-            const retryMessage: MessageRecord = {
-              id: newId("msg"),
-              sessionId,
-              direction: "system",
-              messageType: "workflow_retry",
-              content: buildStepFailureSummary(step.stepId, decision),
-              attachmentsJson: null,
-              createdAt: failedAt,
-            };
-            deps.store.session.insertMessage({
-              ...retryMessage,
-              partsJson: serializeMessageParts(buildRetryRecordParts({
-                messageId: retryMessage.id,
-                createdAt: failedAt,
-                attempt,
-                nextAttempt: attempt + 1,
-                errorCode: plannedFailure.errorCode,
-                source: "multi_step_orchestration",
-                retryDelayMs: decision.retryDelayMs,
-                failureClass: decision.failureClass,
-              })),
-            });
-          }
-          deps.store.workflow.updateWorkflowRecoveryState({
-            taskId,
-            status: "running",
-            currentStepIndex: index,
-            outputsJson: JSON.stringify(outputs),
-            updatedAt: failedAt,
-            resumableFromStep: step.stepId,
-            retryCount: workflowRetryCount,
-            lastErrorCode: plannedFailure.errorCode,
-          });
+        const failureResult = handlePlannedStepFailure({
+          ctx: { taskId, sessionId, traceId, traceContext, workflowRetryCount, outputs },
+          deps,
+          step,
+          executionId,
+          attempt,
+          index,
+          plannedFailure,
+          stepOutputs,
+          failedStepIds,
         });
-
-        if (decision.action === "retry") continue;
-
-        if (decision.action === "escalate") {
-          blockedForDecision = true;
-          const escalationContext = deps.createContext(plannedFailure.errorCode);
-          deps.transitions.transitionTaskStatus({ entityKind: "task", entityId: taskId, fromStatus: "in_progress", toStatus: "awaiting_decision", executionId, ...escalationContext });
-          deps.transitions.transitionWorkflowStatus({ entityKind: "workflow", entityId: taskId, fromStatus: "running", toStatus: "paused", currentStepIndex: index, outputsJson: JSON.stringify(outputs), ...escalationContext });
-          deps.transitions.transitionSessionStatus({ entityKind: "session", entityId: sessionId, fromStatus: "streaming", toStatus: "awaiting_user", ...escalationContext });
+        workflowRetryCount = failureResult.workflowRetryCount;
+        workflowLastErrorCode = failureResult.workflowLastErrorCode;
+        blockedForDecision = failureResult.blockedForDecision;
+        if (failureResult.continueAttempts) {
+          continue;
+        }
+        if (failureResult.blockedForDecision) {
           break;
         }
-
-        failedStepIds.add(step.stepId);
-        const failOutput: StepOutputRecord = {
-          id: newId("step"),
-          nodeRunId: executionId,
-          taskId,
-          stepId: step.stepId,
-          roleId: step.roleId,
-          status: "failed",
-          dataJson: JSON.stringify({ reasonCode: plannedFailure.errorCode }),
-          summary: plannedFailure.summary ?? buildStepFailureSummary(step.stepId, decision),
-          artifactsJson: null,
-          tokenCost: 0,
-          durationMs: 0,
-          validationJson: null,
-          producedAt: failedAt,
-        };
-        stepOutputs.push(failOutput);
-        deps.db.transaction(() => {
-          deps.store.workflow.insertStepOutput(failOutput);
-          deps.store.workflow.updateWorkflowRecoveryState({
-            taskId,
-            status: "running",
-            currentStepIndex: index + 1,
-            outputsJson: JSON.stringify(outputs),
-            updatedAt: failedAt,
-            resumableFromStep: step.stepId,
-            retryCount: workflowRetryCount,
-            lastErrorCode: plannedFailure.errorCode,
-          });
-        });
         break;
       }
 
@@ -405,212 +252,25 @@ export async function executeStepLoop(
         validation = validateWorkflowStepOutput(step, stepDataRecord);
       } catch (error) {
         const errorCode = normalizeStepErrorCode(error);
-        const decision = decideWorkflowStepRetry({ errorCode, attempt, maxAttempts: step.maxAttempts });
-        const failedAt = nowIso();
-
-        if (decision.action === "retry") workflowRetryCount += 1;
-
-        deps.db.transaction(() => {
-          deps.store.execution.updateExecutionFailure({
-            executionId,
-            status: "failed",
-            updatedAt: failedAt,
-            finishedAt: failedAt,
-            lastErrorCode: errorCode,
-            lastErrorMessage: error instanceof Error ? error.message : String(error),
-          });
-          deps.store.event.insertEvent({
-            id: newId("evt"),
-            taskId,
-            executionId,
-            eventType: decision.action === "retry" ? "workflow:step_retry_scheduled" : "workflow:step_failed",
-            eventTier: "tier_1",
-            payloadJson: JSON.stringify(injectTraceContext({
-              stepId: step.stepId,
-              roleId: step.roleId,
-              attempt,
-              nextAttempt: decision.action === "retry" ? attempt + 1 : null,
-              errorCode,
-              failureClass: decision.failureClass,
-              action: decision.action,
-              retryDelayMs: decision.retryDelayMs,
-            }, createChildTraceContext(traceContext))),
-            traceId,
-            createdAt: failedAt,
-          });
-          if (decision.action === "retry") {
-            const retryMessage: MessageRecord = {
-              id: newId("msg"),
-              sessionId,
-              direction: "system",
-              messageType: "workflow_retry",
-              content: buildStepFailureSummary(step.stepId, decision),
-              attachmentsJson: null,
-              createdAt: failedAt,
-            };
-            deps.store.session.insertMessage({
-              ...retryMessage,
-              partsJson: serializeMessageParts(buildRetryRecordParts({
-                messageId: retryMessage.id,
-                createdAt: failedAt,
-                attempt,
-                nextAttempt: attempt + 1,
-                errorCode,
-                source: "multi_step_orchestration",
-                retryDelayMs: decision.retryDelayMs,
-                failureClass: decision.failureClass,
-              })),
-            });
-          }
-          deps.store.workflow.updateWorkflowRecoveryState({
-            taskId,
-            status: "running",
-            currentStepIndex: decision.action === "retry" ? index : index + 1,
-            outputsJson: JSON.stringify(outputs),
-            updatedAt: failedAt,
-            resumableFromStep: step.stepId,
-            retryCount: workflowRetryCount,
-            lastErrorCode: errorCode,
-          });
+        const failureResult = handleValidationStepFailure({
+          ctx: { taskId, sessionId, traceId, traceContext, workflowRetryCount, outputs },
+          deps,
+          step,
+          executionId,
+          attempt,
+          index,
+          errorCode,
+          error,
+          stepOutputs,
+          failedStepIds,
         });
-
-        if (decision.action === "retry") {
-          workflowLastErrorCode = errorCode;
+        workflowRetryCount = failureResult.workflowRetryCount;
+        workflowLastErrorCode = failureResult.workflowLastErrorCode;
+        blockedForDecision = failureResult.blockedForDecision;
+        if (failureResult.continueAttempts) {
           continue;
         }
-
-        failedStepIds.add(step.stepId);
-        const failOutput: StepOutputRecord = {
-          id: newId("step"),
-          nodeRunId: executionId,
-          taskId,
-          stepId: step.stepId,
-          roleId: step.roleId,
-          status: "failed",
-          dataJson: JSON.stringify({ reasonCode: errorCode, internalMessage: error instanceof Error ? error.message : String(error) }),
-          summary: buildStepFailureSummary(step.stepId, decision),
-          artifactsJson: null,
-          tokenCost: 0,
-          durationMs: 0,
-          validationJson: null,
-          producedAt: failedAt,
-        };
-        stepOutputs.push(failOutput);
-        deps.db.transaction(() => {
-          deps.store.workflow.insertStepOutput(failOutput);
-          deps.store.workflow.updateWorkflowRecoveryState({
-            taskId,
-            status: "running",
-            currentStepIndex: index + 1,
-            outputsJson: JSON.stringify(outputs),
-            updatedAt: failedAt,
-            resumableFromStep: step.stepId,
-            retryCount: workflowRetryCount,
-            lastErrorCode: errorCode,
-          });
-        });
-        workflowLastErrorCode = errorCode;
         break;
-      }
-
-      const completedStepIds = [...stepOutputs.map((item) => item.nodeRunId), step.stepId];
-      const outputKeys = [...Object.keys(outputs), step.outputKey];
-      const upstreamArtifactRefs = stepOutputs.flatMap((item) => {
-        if (!item.artifactsJson) return [];
-        try {
-          return JSON.parse(item.artifactsJson) as Array<{ artifactId: string; kind: string; uri: string; createdAt: string }>;
-        } catch {
-          return [];
-        }
-      });
-      const stepProducedAt = nowIso();
-      const artifact = deps.artifactStore.writeJsonArtifact({
-        taskId,
-        executionId,
-        stepId: step.stepId,
-        kind: "workflow_step_snapshot",
-        fileName: `${step.stepId}.json`,
-        content: createWorkflowStepCheckpoint({
-          taskId,
-          executionId,
-          workflowId: plannedWorkflow.workflow.workflowId,
-          divisionId: plannedWorkflow.workflow.divisionId,
-          harnessRunId: ctx.harnessRunId,
-          nodeRunId: executionId,
-          planGraphId: plannedWorkflow.workflow.workflowId,
-          stepId: step.stepId,
-          roleId: step.roleId,
-          outputKey: step.outputKey,
-          status: "succeeded",
-          producedAt: stepProducedAt,
-          output: stepDataRecord,
-          decisionContext: {
-            source: "multi_step_orchestration",
-            request: input.request,
-            routeReason: routing.routeReason,
-            priorStepSummaries: priorSummaries,
-            dependsOnStepIds: step.dependsOnStepIds.filter((id): id is string => id !== undefined),
-          },
-          resumeContext: {
-            completedStepIds,
-            nextStepId: plannedWorkflow.executionSteps[index + 1]?.stepId ?? null,
-            outputKeys,
-          },
-          upstreamArtifactRefs,
-          compensationModel: step.compensationModel ?? null,
-        }),
-        lineage: {
-          traceId,
-          workflowId: plannedWorkflow.workflow.workflowId,
-          divisionId: plannedWorkflow.workflow.divisionId,
-          source: "multi_step_orchestration",
-        },
-      });
-
-      const stepOutput: StepOutputRecord = {
-        id: newId("step"),
-        nodeRunId: executionId,
-        taskId,
-        stepId: step.stepId,
-        roleId: step.roleId,
-        status: "succeeded",
-        dataJson: JSON.stringify(stepData),
-        summary: stepData.summary,
-        artifactsJson: JSON.stringify([artifact.ref]),
-        tokenCost: 50 + index,
-        durationMs: 800 + index * 200,
-        validationJson: JSON.stringify(validation),
-        producedAt: stepProducedAt,
-      };
-
-      outputs = { ...outputs, [step.outputKey]: stepData };
-      stepOutputs.push(stepOutput);
-      workflowLastErrorCode = null;
-
-      // R4-28 (INV-COST-001): Write-ahead logging for cost events - persist BEFORE execution
-      // to prevent cost record loss on crash. The cost event is recorded with "pending" status
-      // before execution begins. On success, the event is marked as "committed" inside the
-      // transaction. On crash recovery, uncommitted cost events can be detected and cleaned up.
-      const costEventId = newId("cost");
-      const costEventWAL = llmResult == null
-        ? null
-        : {
-            id: costEventId,
-            ...buildTaskExecutionCostEvent({
-              taskId,
-              sessionId,
-              executionId,
-              agentId: step.agentId,
-              llmResult,
-              fallbackInputTokens: 0,
-              fallbackOutputTokens: 0,
-              fallbackCostUsd: 0,
-              createdAt: nowIso(),
-            }),
-          } satisfies CostEventRecord;
-      if (costEventWAL != null) {
-        // Only write cost WAL when we have real provider usage telemetry.
-        deps.store.billing.insertCostEventWAL(costEventWAL, "pending");
       }
 
       maybeInjectWorkflowCrash(input.crashInjection, {
@@ -621,82 +281,24 @@ export async function executeStepLoop(
         stepId: step.stepId,
       });
 
-      deps.db.transaction(() => {
-        const subtaskCompletedTrace = createChildTraceContext(traceContext);
-        const workflowCompletedTrace = createChildTraceContext(traceContext);
-        deps.store.artifact.insertArtifact(artifact.record);
-        deps.store.workflow.insertStepOutput(stepOutput);
-
-        if (costEventWAL != null) {
-          deps.store.billing.commitCostEventWAL(costEventId);
-        }
-
-        const assistantResponseMessage: MessageRecord = {
-          id: newId("msg"),
-          sessionId,
-          direction: "outbound",
-          messageType: "assistant_response",
-          content: stepData.summary,
-          attachmentsJson: null,
-          createdAt: nowIso(),
-        };
-        deps.store.session.insertMessage({ ...assistantResponseMessage, partsJson: ensureMessagePartsJson(assistantResponseMessage) });
-        const toolResultCreatedAt = nowIso();
-        const toolResultMessage: MessageRecord = {
-          id: newId("msg"),
-          sessionId,
-          direction: "system",
-          messageType: "tool_result",
-          content: stepData.result,
-          attachmentsJson: null,
-          createdAt: toolResultCreatedAt,
-        };
-        deps.store.session.insertMessage({
-          ...toolResultMessage,
-          partsJson: serializeMessageParts(buildStructuredToolResultParts({
-            messageId: toolResultMessage.id,
-            createdAt: toolResultCreatedAt,
-            summaryText: stepData.summary,
-            resultText: stepData.result,
-            artifactRefs: [artifact.ref],
-            metadata: { stepId: step.stepId, roleId: step.roleId },
-          })),
-        });
-        deps.store.workflow.updateWorkflowRecoveryState({
-          taskId,
-          status: "running",
-          currentStepIndex: index + 1,
-          outputsJson: JSON.stringify(outputs),
-          updatedAt: nowIso(),
-          resumableFromStep: null,
-          retryCount: workflowRetryCount,
-          lastErrorCode: null,
-        });
-        const subtaskCompleted = deps.store.event.insertEvent({
-          id: newId("evt"),
-          taskId,
-          executionId,
-          eventType: "subtask:completed",
-          eventTier: "tier_1",
-          payloadJson: JSON.stringify(injectTraceContext({ stepId: step.stepId, roleId: step.roleId, status: stepOutput.status, attempt }, subtaskCompletedTrace)),
-          traceId,
-          createdAt: nowIso(),
-        });
-        const workflowCompleted = deps.store.event.insertEvent({
-          id: newId("evt"),
-          taskId,
-          executionId,
-          eventType: "workflow:step_completed",
-          eventTier: "tier_1",
-          payloadJson: JSON.stringify(injectTraceContext({ stepId: step.stepId, roleId: step.roleId, status: stepOutput.status, attempt }, workflowCompletedTrace)),
-          traceId,
-          createdAt: nowIso(),
-        });
-
-        deps.streamBridge.emitFromEvent({ streamId, channel: "cli", event: subtaskCompleted });
-        deps.streamBridge.emitFromEvent({ streamId, channel: "cli", event: workflowCompleted });
-        deps.streamBridge.emitMessageDelta({ streamId, taskId, channel: "cli", delta: stepData.summary });
+      const successResult = persistSuccessfulStepAttempt({
+        ctx: { taskId, sessionId, traceId, traceContext, harnessRunId: ctx.harnessRunId, input, routing, plannedWorkflow },
+        deps,
+        step,
+        executionId,
+        attempt,
+        index,
+        streamId,
+        stepData: stepDataRecord,
+        stepDataRecord,
+        validation,
+        llmResult,
+        outputs,
+        stepOutputs,
+        workflowRetryCount,
       });
+      outputs = successResult.outputs;
+      workflowLastErrorCode = null;
 
       maybeInjectWorkflowCrash(input.crashInjection, {
         point: "tool_completed",
@@ -706,35 +308,8 @@ export async function executeStepLoop(
         stepId: step.stepId,
       });
 
-      if (index === plannedWorkflow.executionSteps.length - 1) {
-        latestCompaction = deps.contextCompaction.compactContext({
-          taskId,
-          sessionId,
-          maxContextTokens: input.contextBudgetTokens ?? 8_000,
-          providerMaxOutputTokens: 1_024,
-          stage1TriggerRatio: 0.7,
-          stage2TriggerRatio: 0.85,
-          recentToolResultWindow: 2,
-          compactionMaxFrequencyPerSession: 2,
-        });
-        if (latestCompaction.stage1Triggered || latestCompaction.stage2Triggered) {
-          deps.store.billing.insertCostEvent({
-            id: newId("cost"),
-            taskId,
-            sessionId,
-            executionId,
-            agentId: null,
-            provider: "internal",
-            model: "context-compaction",
-            inputTokens: latestCompaction.usageBeforeTokens,
-            outputTokens: latestCompaction.stage2Triggered ? latestCompaction.usageAfterStage2Tokens : latestCompaction.usageAfterStage1Tokens,
-            costUsd: 0.0005,
-            budgetScope: "compaction",
-            providerRequestId: null,
-            pricingVersion: null,
-            createdAt: nowIso(),
-          });
-        }
+      if (successResult.latestCompaction != null) {
+        latestCompaction = successResult.latestCompaction;
       }
 
       deps.transitionExecutionStatus({
@@ -772,37 +347,6 @@ export async function executeStepLoop(
     stepOutputs,
     skippedStepIds,
     failedStepIds,
-  };
-}
-
-function buildTaskExecutionCostEvent(input: {
-  taskId: string;
-  sessionId: string;
-  executionId: string;
-  agentId: string | null;
-  llmResult: LlmModelCallResult | null;
-  fallbackInputTokens: number;
-  fallbackOutputTokens: number;
-  fallbackCostUsd: number;
-  createdAt: string;
-}): Omit<CostEventRecord, "id"> {
-  const promptTokens = input.llmResult?.usage.promptTokens ?? input.fallbackInputTokens;
-  const completionTokens = input.llmResult?.usage.completionTokens ?? input.fallbackOutputTokens;
-  const model = input.llmResult?.model ?? "unattributed";
-  return {
-    taskId: input.taskId,
-    sessionId: input.sessionId,
-    executionId: input.executionId,
-    agentId: input.agentId,
-    provider: input.llmResult?.provider ?? "unattributed",
-    model,
-    inputTokens: promptTokens,
-    outputTokens: completionTokens,
-    costUsd: estimateActualLlmCallCost(input.llmResult, model) ?? input.fallbackCostUsd,
-    budgetScope: "task_execution",
-    providerRequestId: input.llmResult?.id ?? null,
-    pricingVersion: null,
-    createdAt: input.createdAt,
   };
 }
 

@@ -7,6 +7,7 @@
  * @see docs_zh/contracts/responsibility_boundary_contract.md
  */
 
+import { ValidationError } from "../errors.js";
 import { newId, nowIso } from "./ids.js";
 
 /**
@@ -155,7 +156,10 @@ export class ResponsibilityBoundaryService {
   }): ResponsibilityTransfer {
     const boundary = this.boundaries.get(input.boundaryId);
     if (!boundary) {
-      throw new Error(`responsibility_boundary.not_found:${input.boundaryId}`);
+      throw new ValidationError(
+        `responsibility_boundary.not_found:${input.boundaryId}`,
+        `responsibility_boundary.not_found:${input.boundaryId}`,
+      );
     }
     this.assertBoundaryActionAllowed(boundary, input.action, input.toActorType);
 
@@ -183,7 +187,10 @@ export class ResponsibilityBoundaryService {
   public acknowledgeTransfer(transferId: string, acknowledgedBy: string): ResponsibilityTransfer {
     const transfer = this.transfers.get(transferId);
     if (!transfer) {
-      throw new Error(`responsibility_transfer.not_found:${transferId}`);
+      throw new ValidationError(
+        `responsibility_transfer.not_found:${transferId}`,
+        `responsibility_transfer.not_found:${transferId}`,
+      );
     }
 
     const acknowledged: ResponsibilityTransfer = {
@@ -233,7 +240,10 @@ export class ResponsibilityBoundaryService {
   ): AccountabilityRecord {
     const record = this.accountability.get(recordId);
     if (!record) {
-      throw new Error(`accountability_record.not_found:${recordId}`);
+      throw new ValidationError(
+        `accountability_record.not_found:${recordId}`,
+        `accountability_record.not_found:${recordId}`,
+      );
     }
 
     const released: AccountabilityRecord = {
@@ -289,7 +299,10 @@ export class ResponsibilityBoundaryService {
   ): void {
     const boundary = this.boundaries.get(boundaryId);
     if (!boundary) {
-      throw new Error(`responsibility_boundary.not_found:${boundaryId}`);
+      throw new ValidationError(
+        `responsibility_boundary.not_found:${boundaryId}`,
+        `responsibility_boundary.not_found:${boundaryId}`,
+      );
     }
     this.assertBoundaryActionAllowed(boundary, action, actorType);
   }
@@ -299,29 +312,38 @@ export class ResponsibilityBoundaryService {
     action: BoundaryAction,
     actorType: ResponsibilityActorType,
   ): void {
-    const mutatingActions = new Set<BoundaryAction>(["approve", "reject", "override", "patch", "takeover", "resume", "delegate", "execute_ai_action"]);
-    if (boundary.operatingMode === "advisory_only" && mutatingActions.has(action)) {
-      throw new Error(`responsibility_boundary.advisory_only_blocks_action:${action}`);
+    if (boundary.operatingMode === "advisory_only" && MUTATING_BOUNDARY_ACTIONS.has(action)) {
+      throw new ValidationError(
+        `responsibility_boundary.advisory_only_blocks_action:${action}`,
+        `responsibility_boundary.advisory_only_blocks_action:${action}`,
+      );
     }
-    const humanOnlyActions = new Set<BoundaryAction>(["approve", "reject", "override", "patch", "takeover", "resume", "execute_ai_action"]);
-    if (boundary.operatingMode === "human_accountable" && humanOnlyActions.has(action) && actorType !== "human_operator") {
-      throw new Error(`responsibility_boundary.human_accountable_requires_human:${action}`);
+    if (boundary.operatingMode === "human_accountable" && HUMAN_ONLY_BOUNDARY_ACTIONS.has(action) && actorType !== "human_operator") {
+      throw new ValidationError(
+        `responsibility_boundary.human_accountable_requires_human:${action}`,
+        `responsibility_boundary.human_accountable_requires_human:${action}`,
+      );
     }
   }
 }
 
-/**
- * Singleton instance
- */
-let GLOBAL_RESPONSIBILITY_BOUNDARY_SERVICE: ResponsibilityBoundaryService | null = null;
+const MUTATING_BOUNDARY_ACTIONS = new Set<BoundaryAction>([
+  "approve",
+  "reject",
+  "override",
+  "patch",
+  "takeover",
+  "resume",
+  "delegate",
+  "execute_ai_action",
+]);
 
-export function getResponsibilityBoundaryService(): ResponsibilityBoundaryService {
-  if (!GLOBAL_RESPONSIBILITY_BOUNDARY_SERVICE) {
-    GLOBAL_RESPONSIBILITY_BOUNDARY_SERVICE = new ResponsibilityBoundaryService();
-  }
-  return GLOBAL_RESPONSIBILITY_BOUNDARY_SERVICE;
-}
-
-export function resetResponsibilityBoundaryService(): void {
-  GLOBAL_RESPONSIBILITY_BOUNDARY_SERVICE = null;
-}
+const HUMAN_ONLY_BOUNDARY_ACTIONS = new Set<BoundaryAction>([
+  "approve",
+  "reject",
+  "override",
+  "patch",
+  "takeover",
+  "resume",
+  "execute_ai_action",
+]);

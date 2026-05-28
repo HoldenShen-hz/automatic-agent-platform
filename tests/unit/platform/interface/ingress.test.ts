@@ -9,6 +9,16 @@ import test from "node:test";
 import { RedisRateLimiter } from "../../../../src/platform/five-plane-interface/ingress/redis-rate-limiter.js";
 import { DistributedRateLimiter } from "../../../../src/platform/five-plane-interface/ingress/distributed-rate-limiter.js";
 
+function getRedisState(limiter: RedisRateLimiter): {
+  keyPrefix: string;
+  redis: Record<string, unknown>;
+} {
+  return limiter as unknown as {
+    keyPrefix: string;
+    redis: Record<string, unknown>;
+  };
+}
+
 test("RedisRateLimiter constructor accepts config with all options", () => {
   const limiter = new RedisRateLimiter({
     host: "localhost",
@@ -27,7 +37,10 @@ test("RedisRateLimiter constructor uses default keyPrefix when not provided", ()
     port: 6379,
   });
 
-  assert.ok(limiter instanceof RedisRateLimiter);
+  const state = getRedisState(limiter);
+  assert.equal(state.keyPrefix, "ratelimit:");
+  assert.equal(state.redis.options?.keyPrefix, "ratelimit:");
+  state.redis.disconnect?.();
 });
 
 test("RedisRateLimiter config interface accepts keyPrefix", () => {
@@ -45,10 +58,25 @@ test("RedisRateLimiter close does not throw when redis is in ready state", async
     host: "localhost",
     port: 6379,
   });
+  const state = getRedisState(limiter);
+  let quitCalls = 0;
+  let disconnectCalls = 0;
+  Object.defineProperty(state.redis, "status", {
+    value: "ready",
+    configurable: true,
+    writable: true,
+  });
+  state.redis.quit = async () => {
+    quitCalls += 1;
+    return "OK";
+  };
+  state.redis.disconnect = () => {
+    disconnectCalls += 1;
+  };
 
-  // close should handle gracefully even if not connected
-  await limiter.close();
-  assert.ok(true);
+  assert.equal(await limiter.close(), undefined);
+  assert.equal(quitCalls, 1);
+  assert.equal(disconnectCalls, 0);
 });
 
 test("DistributedRateLimiter constructor with Redis config", () => {

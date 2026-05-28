@@ -13,14 +13,13 @@
  * @see HA Coordinator Service: ha-coordinator-service.ts
  */
 
-import { createHash } from "node:crypto";
-
 import { AuthoritativeTaskStore } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
 import type { AuthoritativeSqlDatabase } from "../../five-plane-state-evidence/truth/authoritative-sql-database.js";
 import type { CoordinatorInstanceRecord, CoordinatorInstanceStatus } from "../../contracts/types/domain.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 import { ValidationError } from "../../contracts/errors.js";
+import { sha256HexPrefix } from "../../shared/cache/utils/sha256.js";
 import { computeCanonicalLoadScore } from "../shared/load-score.js";
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
@@ -74,9 +73,8 @@ export interface CoordinatorLoadBalancingSummary {
   hotCoordinatorIds: string[];
 }
 
-function stableHash(input: string): number {
-  const digest = createHash("sha256").update(input, "utf8").digest("hex").slice(0, 8);
-  return Number.parseInt(digest, 16);
+function stableHash(input: string): string {
+  return sha256HexPrefix(input, 32, "utf8");
 }
 
 function normalizeIdentifier(value: string, code: string): string {
@@ -288,7 +286,7 @@ export class CoordinatorLoadBalancingService {
       const leftBias = stableHash(`${left.record.coordinatorId}|${requestBias}`);
       const rightBias = stableHash(`${right.record.coordinatorId}|${requestBias}`);
       if (leftBias !== rightBias) {
-        return leftBias - rightBias;
+        return leftBias.localeCompare(rightBias);
       }
       return left.record.coordinatorId.localeCompare(right.record.coordinatorId);
     });

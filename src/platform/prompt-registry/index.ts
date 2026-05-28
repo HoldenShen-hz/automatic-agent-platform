@@ -1,30 +1,47 @@
 /**
  * Prompt Registry Module
  *
- * Manages storage and retrieval of prompt bundles and templates.
- *
- * ## Overview
- *
- * This module wraps the prompt registry services located in `prompt-engine/registry/`
- * to provide a dedicated namespace per the platform architecture.
- *
- * ## Contents
- *
- * - HierarchicalPromptRegistryService: Multi-level prompt bundle storage
- * - PromptVersionManager: Version control for prompt bundles
- *
- * @see {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/architecture/00-platform-architecture.md}
+ * Provides the canonical prompt registry namespace for higher-level callers.
  */
 
-// Re-export from prompt-engine/registry
-export {
+import {
   HierarchicalPromptRegistryService,
   type HierarchicalPromptRegistryConfig,
 } from "../prompt-engine/registry/hierarchical-registry-service.js";
-
-export {
+import {
   PromptVersionManager,
   type VersionLineage,
   type SemanticVersion,
   type VersionManagerConfig,
 } from "../prompt-engine/registry/prompt-version-manager.js";
+
+export type {
+  HierarchicalPromptRegistryConfig,
+  VersionLineage,
+  SemanticVersion,
+  VersionManagerConfig,
+};
+
+export interface PromptRegistryServices {
+  readonly registry: HierarchicalPromptRegistryService;
+  readonly versionManager: PromptVersionManager;
+}
+
+export interface PromptRegistryModuleConfig {
+  readonly registry?: HierarchicalPromptRegistryConfig;
+  readonly versionManager?: VersionManagerConfig;
+}
+
+export function createPromptRegistryServices(
+  config: PromptRegistryModuleConfig = {},
+): PromptRegistryServices {
+  return {
+    registry: new HierarchicalPromptRegistryService(config.registry),
+    versionManager: new PromptVersionManager(config.versionManager),
+  };
+}
+
+export {
+  HierarchicalPromptRegistryService,
+  PromptVersionManager,
+};

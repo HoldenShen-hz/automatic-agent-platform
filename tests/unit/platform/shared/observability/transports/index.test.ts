@@ -5,44 +5,103 @@ import { StdoutTransport } from "../../../../../../src/platform/shared/observabi
 import { DatadogTransport } from "../../../../../../src/platform/shared/observability/transports/datadog-transport.js";
 import { FluentdTransport } from "../../../../../../src/platform/shared/observability/transports/fluentd-transport.js";
 
+function captureStdout(run: () => void): string[] {
+  const output: string[] = [];
+  const originalWrite = process.stdout.write.bind(process.stdout);
+  process.stdout.write = ((chunk: string | Uint8Array, ...args: unknown[]) => {
+    output.push(typeof chunk === "string" ? chunk : Buffer.from(chunk).toString());
+    const callback = args.find((value): value is ((error?: Error | null) => void) => typeof value === "function");
+    callback?.(null);
+    return true;
+  }) as typeof process.stdout.write;
+  try {
+    run();
+  } finally {
+    process.stdout.write = originalWrite;
+  }
+  return output;
+}
+
+function getDatadogState(transport: DatadogTransport): {
+  batch: unknown[];
+  batchSize: number;
+  flushIntervalMs: number;
+  site: string;
+  source: string;
+  timer: NodeJS.Timeout | null;
+} {
+  return transport as unknown as {
+    batch: unknown[];
+    batchSize: number;
+    flushIntervalMs: number;
+    site: string;
+    source: string;
+    timer: NodeJS.Timeout | null;
+  };
+}
+
+function createMockRequestFactory() {
+  let requestCount = 0;
+  const mockRequest = (_options: unknown, callback: (response: { statusCode: number }) => void) => {
+    const req = {
+      on: (_event: string, _handler: (...args: unknown[]) => void) => req,
+      once: (_event: string, _handler: (...args: unknown[]) => void) => req,
+      end: (_data?: string) => {
+        requestCount += 1;
+        callback({ statusCode: 200 });
+        return req;
+      },
+      write: (_data: string) => req,
+      destroy: () => undefined,
+    };
+    return req;
+  };
+  return { mockRequest, getRequestCount: () => requestCount };
+}
+
 test("StdoutTransport has correct name", () => {
   const transport = new StdoutTransport();
   assert.equal(transport.name, "stdout");
 });
 
-test("StdoutTransport.write writes JSON to stdout", () => {
+test("StdoutTransport.write writes JSON to stdout", async () => {
   const transport = new StdoutTransport();
-  // Should not throw
-  transport.write({
+  const entry = {
     level: "info",
     message: "test message",
     service: "test-service",
     createdAt: "2026-04-22T00:00:00.000Z",
     timestamp: "2026-04-22T00:00:00.000Z",
+  };
+  const output = captureStdout(() => {
+    transport.write(entry);
   });
-  // If we get here without throwing, the test passes
-  assert.ok(true);
+  assert.deepEqual(JSON.parse(output[0] ?? ""), entry);
+  await transport.close();
 });
 
-test("StdoutTransport.write handles all log levels", () => {
+test("StdoutTransport.write handles all log levels", async () => {
   const transport = new StdoutTransport();
   const levels = ["debug", "info", "warn", "error"] as const;
 
-  for (const level of levels) {
-    transport.write({
-      level,
-      message: `test ${level}`,
-      service: "test-service",
-      createdAt: "2026-04-22T00:00:00.000Z",
-      timestamp: "2026-04-22T00:00:00.000Z",
-    });
-  }
-  assert.ok(true);
+  const output = captureStdout(() => {
+    for (const level of levels) {
+      transport.write({
+        level,
+        message: `test ${level}`,
+        service: "test-service",
+        createdAt: "2026-04-22T00:00:00.000Z",
+        timestamp: "2026-04-22T00:00:00.000Z",
+      });
+    }
+  });
+  assert.deepEqual(output.map((line) => JSON.parse(line).level), levels);
+  await transport.close();
 });
 
-test("StdoutTransport.write handles entry with data", () => {
+test("StdoutTransport.write handles entry with data", async () => {
   const transport = new StdoutTransport();
-  transport.write({
+  const entry = {
     level: "info",
     message: "test with data",
     service: "test-service",
@@ -51,43 +110,48 @@ test("StdoutTransport.write handles entry with data", () => {
     data: { key: "value", count: 42 },
     taskId: "task_123",
     traceId: "trace_abc",
+  };
+  const output = captureStdout(() => {
+    transport.write(entry);
   });
-  assert.ok(true);
+  assert.deepEqual(JSON.parse(output[0] ?? ""), entry);
+  await transport.close();
 });
 
 test("StdoutTransport.flush is a no-op", async () => {
   const transport = new StdoutTransport();
-  await transport.flush();
-  assert.ok(true);
+  assert.equal(await transport.flush(), undefined);
+  await transport.close();
 });
 
 test("StdoutTransport.close is a no-op", async () => {
   const transport = new StdoutTransport();
+  assert.equal(await transport.close(), undefined);
+});
+
+test("DatadogTransport has correct name", async () => {
+  const transport = new DatadogTransport({
+    apiKey: "test-api-key",
+    service: "test-service",
+  });
+  assert.equal(transport.name, "datadog");
   await transport.close();
-  assert.ok(true);
 });
 
-test("DatadogTransport has correct name", () => {
+test("DatadogTransport constructor sets defaults", async () => {
   const transport = new DatadogTransport({
     apiKey: "test-api-key",
     service: "test-service",
   });
-  assert.equal(transport.name, "datadog");
+  const state = getDatadogState(transport);
+  assert.equal(state.batchSize, 100);
+  assert.equal(state.flushIntervalMs, 5000);
+  assert.equal(state.site, "datadoghq.com");
+  assert.equal(state.source, "automatic-agent");
+  await transport.close();
 });
 
-test("DatadogTransport constructor sets defaults", () => {
-  const transport = new DatadogTransport({
-    apiKey: "test-api-key",
-    service: "test-service",
-  });
-  // Constructor should set batchSize to 100 by default
-  // Constructor should set flushIntervalMs to 5000 by default
-  // Constructor should set site to datadoghq.com by default
-  // Constructor should set source to automatic-agent by default
-  assert.equal(transport.name, "datadog");
-});
-
-test("DatadogTransport constructor accepts custom config", () => {
+test("DatadogTransport constructor accepts custom config", async () => {
   const transport = new DatadogTransport({
     apiKey: "test-api-key",
     service: "test-service",
@@ -97,13 +161,16 @@ test("DatadogTransport constructor accepts custom config", () => {
     flushIntervalMs: 3000,
   });
   assert.equal(transport.name, "datadog");
+  await transport.close();
 });
 
-test("DatadogTransport.write adds entry to batch", () => {
+test("DatadogTransport.write adds entry to batch", async () => {
+  const { mockRequest, getRequestCount } = createMockRequestFactory();
   const transport = new DatadogTransport({
     apiKey: "test-api-key",
     service: "test-service",
     batchSize: 100, // Large batch size to avoid flush
+    requestFactory: mockRequest as never,
   });
 
   transport.write({
@@ -113,8 +180,11 @@ test("DatadogTransport.write adds entry to batch", () => {
     createdAt: "2026-04-22T00:00:00.000Z",
     timestamp: "2026-04-22T00:00:00.000Z",
   });
-  // If we get here without throwing, the test passes
-  assert.ok(true);
+  const state = getDatadogState(transport);
+  assert.equal(state.batch.length, 1);
+  assert.equal((state.batch[0] as { message: string }).message, "test message");
+  assert.equal(getRequestCount(), 0);
+  await transport.close();
 });
 
 test("DatadogTransport.close clears timer and flushes", async () => {
@@ -123,9 +193,8 @@ test("DatadogTransport.close clears timer and flushes", async () => {
     service: "test-service",
   });
 
-  // Close should not throw
-  await transport.close();
-  assert.ok(true);
+  assert.equal(await transport.close(), undefined);
+  assert.equal(getDatadogState(transport).timer, null);
 });
 
 test("DatadogTransport.close is idempotent", async () => {
@@ -136,7 +205,7 @@ test("DatadogTransport.close is idempotent", async () => {
 
   await transport.close();
   await transport.close();
-  assert.ok(true);
+  assert.equal(getDatadogState(transport).timer, null);
 });
 
 test("DatadogTransport.flush handles empty batch", async () => {
@@ -145,8 +214,8 @@ test("DatadogTransport.flush handles empty batch", async () => {
     service: "test-service",
   });
 
-  await transport.flush();
-  assert.ok(true);
+  assert.equal(await transport.flush(), undefined);
+  await transport.close();
 });
 
 test("FluentdTransport has correct name", () => {

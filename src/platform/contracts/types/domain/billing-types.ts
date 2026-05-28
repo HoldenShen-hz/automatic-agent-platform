@@ -7,6 +7,8 @@
  * Part of the domain.ts split (see src/core/types/domain/index.ts).
  */
 
+import { z } from "zod";
+
 import type {
   BillingAccountStatus,
   BillingUsageSource,
@@ -18,6 +20,30 @@ import type {
   EntitlementDecisionType,
   Timestamp,
 } from "./primitives.js";
+
+const BillingInvoiceSummaryJsonValueSchema: z.ZodType<unknown> = z.lazy(() =>
+  z.union([
+    z.null(),
+    z.boolean(),
+    z.number(),
+    z.string(),
+    z.array(BillingInvoiceSummaryJsonValueSchema),
+    z.record(z.string(), BillingInvoiceSummaryJsonValueSchema),
+  ]),
+);
+
+export const BillingInvoiceSummarySchema = z.object({}).catchall(BillingInvoiceSummaryJsonValueSchema);
+export type BillingInvoiceSummary = z.infer<typeof BillingInvoiceSummarySchema>;
+export type BillingInvoiceSummaryJson = string;
+export type BillingCurrencyCode = string;
+
+export function parseBillingInvoiceSummary(summaryJson: string): BillingInvoiceSummary {
+  return BillingInvoiceSummarySchema.parse(JSON.parse(summaryJson));
+}
+
+export function stringifyBillingInvoiceSummary(summary: unknown): BillingInvoiceSummaryJson {
+  return JSON.stringify(BillingInvoiceSummarySchema.parse(summary));
+}
 
 // ---------------------------------------------------------------------------
 // Billing account record
@@ -60,12 +86,12 @@ export interface BillingInvoiceRecord {
   workspaceId: string | null;
   tenantId: string | null;
   periodId: string;
-  currency: "USD";
+  currency: BillingCurrencyCode;
   subtotalUsd: number;
   taxUsd: number;
   totalUsd: number;
   status: BillingInvoiceStatus;
-  summaryJson: string;
+  summaryJson: BillingInvoiceSummaryJson;
   externalInvoiceRef: string | null;
   dueAt: Timestamp | null;
   createdAt: Timestamp;
@@ -92,7 +118,7 @@ export interface BillingPaymentSessionRecord {
   checkoutUrl: string;
   status: BillingPaymentSessionStatus;
   amountUsd: number;
-  currency: "USD";
+  currency: BillingCurrencyCode;
   expiresAt: Timestamp | null;
   createdAt: Timestamp;
   updatedAt: Timestamp;
@@ -124,9 +150,9 @@ export interface UsageEventRecord {
   nodeRunId?: string | null;
   attemptId?: string | null;
   /** @deprecated legacy projection identifier; use harnessRunId */
-  executionId: string | null;
+  executionId?: string | null;
   /** @deprecated legacy projection identifier; use nodeRunId */
-  stepId: string | null;
+  stepId?: string | null;
   metricType: string;
   quantity: number;
   source: BillingUsageSource;
@@ -174,7 +200,7 @@ export interface LedgerEntryRecord {
   periodId: string;
   entryType: "usage_charge" | "adjustment" | "credit" | "refund";
   amountUsd: number;
-  currency: "USD";
+  currency: BillingCurrencyCode;
   sourceRef: string | null;
   recordedAt: Timestamp;
 }

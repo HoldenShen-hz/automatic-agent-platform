@@ -6,11 +6,11 @@
  * - 5 occurrences: escalate/terminate
  */
 
-import { createHash } from "node:crypto";
 import { nowIso } from "../../contracts/types/ids.js";
 import type { MiddlewareContext, MiddlewareResult, BeforeAgentHook, WrapToolCallHook } from "./agent-middleware-chain.js";
 import { RuntimeError } from "../../contracts/errors.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
+import { sha256HexPrefix } from "../../shared/cache/utils/sha256.js";
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
 
@@ -94,7 +94,7 @@ function normalizeToolInputValue(input: unknown): unknown {
  */
 export function hashToolCall(toolName: string, input: unknown): string {
   const normalized = normalizeToolInputForHash(input);
-  return createHash("sha256").update(`${toolName}:${normalized}`).digest("hex").slice(0, 16);
+  return sha256HexPrefix(`${toolName}:${normalized}`, 32);
 }
 
 /**

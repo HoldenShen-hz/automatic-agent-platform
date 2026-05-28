@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { writeFileSync, unlinkSync, mkdirSync, existsSync } from "fs";
 import { resolve } from "path";
+import { ValidationError } from "../../../../src/platform/contracts/errors.js";
 
 import {
   ConversationTemplateExecutor,
@@ -104,10 +105,10 @@ test("integration: loadConversationTemplateConfig validates schema on load", () 
   writeFileSync(configPath, JSON.stringify(invalidConfig, null, 2), "utf-8");
 
   try {
-    const config = loadConversationTemplateConfig(configPath);
-
-    assert.deepEqual(config.templates, []);
-    assert.equal(config.maxStepsPerTemplate, 10);
+    assert.throws(
+      () => loadConversationTemplateConfig(configPath),
+      (error: unknown) => error instanceof ValidationError && error.code === "conversation_template_config.invalid",
+    );
   } finally {
     unlinkSync(configPath);
   }

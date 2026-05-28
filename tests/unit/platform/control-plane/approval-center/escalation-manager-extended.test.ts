@@ -45,6 +45,36 @@ function createTestContext(overrides: Partial<EscalationContext> = {}): Escalati
   };
 }
 
+function captureNotifications(manager: EscalationManager) {
+  const sent: Array<{ channel: NotificationChannel; message: NotificationMessage }> = [];
+  (manager as unknown as {
+    sendNotification: (channel: NotificationChannel, message: NotificationMessage) => Promise<void>;
+  }).sendNotification = async (channel, message) => {
+    sent.push({ channel, message });
+  };
+  return sent;
+}
+
+function captureWebhooks(manager: EscalationManager) {
+  const sent: Array<{ channel: NotificationChannel; message: NotificationMessage }> = [];
+  (manager as unknown as {
+    sendWebhook: (channel: NotificationChannel, message: NotificationMessage) => Promise<void>;
+  }).sendWebhook = async (channel, message) => {
+    sent.push({ channel, message });
+  };
+  return sent;
+}
+
+function captureEmails(manager: EscalationManager) {
+  const sent: Array<{ channel: NotificationChannel; message: NotificationMessage }> = [];
+  (manager as unknown as {
+    sendEmail: (channel: NotificationChannel, message: NotificationMessage) => Promise<void>;
+  }).sendEmail = async (channel, message) => {
+    sent.push({ channel, message });
+  };
+  return sent;
+}
+
 // ============================================================================
 // TTL Reset Edge Cases
 // ============================================================================
@@ -260,9 +290,10 @@ test("EscalationManager notifyChannels filters disabled channels", async () => {
     priority: NotificationPriority.NORMAL,
   };
 
-  // Should not throw even with disabled channels
+  const sent = captureNotifications(manager);
   await manager.notifyChannels(channels, message);
-  assert.ok(true);
+  assert.equal(sent.length, 1);
+  assert.equal(sent[0]!.channel.address, "enabled@example.com");
 });
 
 test("EscalationManager notifyChannels handles empty channel list", async () => {
@@ -273,8 +304,9 @@ test("EscalationManager notifyChannels handles empty channel list", async () => 
     priority: NotificationPriority.NORMAL,
   };
 
+  const sent = captureNotifications(manager);
   await manager.notifyChannels([], message);
-  assert.ok(true);
+  assert.deepEqual(sent, []);
 });
 
 test("EscalationManager notifyChannels handles FEISHU channel type", async () => {
@@ -288,8 +320,11 @@ test("EscalationManager notifyChannels handles FEISHU channel type", async () =>
     priority: NotificationPriority.HIGH,
   };
 
+  const sent = captureWebhooks(manager);
   await manager.notifyChannels(channels, message);
-  assert.ok(true);
+  assert.equal(sent.length, 1);
+  assert.equal(sent[0]!.channel.type, NotificationChannelType.FEISHU);
+  assert.equal(sent[0]!.message.title, "Escalation");
 });
 
 test("EscalationManager notifyChannels handles WEBHOOK channel type", async () => {
@@ -303,8 +338,11 @@ test("EscalationManager notifyChannels handles WEBHOOK channel type", async () =
     priority: NotificationPriority.HIGH,
   };
 
+  const sent = captureWebhooks(manager);
   await manager.notifyChannels(channels, message);
-  assert.ok(true);
+  assert.equal(sent.length, 1);
+  assert.equal(sent[0]!.channel.type, NotificationChannelType.WEBHOOK);
+  assert.equal(sent[0]!.message.priority, NotificationPriority.HIGH);
 });
 
 test("EscalationManager notifyChannels includes metadata in notification", async () => {
@@ -322,8 +360,13 @@ test("EscalationManager notifyChannels includes metadata in notification", async
     priority: NotificationPriority.HIGH,
   };
 
+  const sent = captureEmails(manager);
   await manager.notifyChannels(channels, message);
-  assert.ok(true);
+  assert.equal(sent.length, 1);
+  assert.deepEqual(sent[0]!.message.metadata, {
+    taskId: "task-123",
+    approvalId: "approval-456",
+  });
 });
 
 // ============================================================================
@@ -578,8 +621,11 @@ test("EscalationManager notifyChannels respects HIGH priority", async () => {
     priority: NotificationPriority.HIGH,
   };
 
+  const sent = captureEmails(manager);
   await manager.notifyChannels(channels, message);
-  assert.ok(true);
+  assert.equal(sent.length, 1);
+  assert.equal(sent[0]!.channel.priority, NotificationPriority.HIGH);
+  assert.equal(sent[0]!.message.priority, NotificationPriority.HIGH);
 });
 
 test("EscalationManager notifyChannels respects LOW priority", async () => {
@@ -593,8 +639,11 @@ test("EscalationManager notifyChannels respects LOW priority", async () => {
     priority: NotificationPriority.LOW,
   };
 
+  const sent = captureEmails(manager);
   await manager.notifyChannels(channels, message);
-  assert.ok(true);
+  assert.equal(sent.length, 1);
+  assert.equal(sent[0]!.channel.priority, NotificationPriority.LOW);
+  assert.equal(sent[0]!.message.priority, NotificationPriority.LOW);
 });
 
 // ============================================================================

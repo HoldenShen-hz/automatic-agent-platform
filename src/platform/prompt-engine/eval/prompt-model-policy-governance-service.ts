@@ -581,10 +581,38 @@ function resolveRecommendedFallbackKey(
   if (release.releaseType !== "model") {
     return release.rollbackVersion;
   }
-  const metadata = JSON.parse(release.metadata) as Partial<ModelReleaseMetadata>;
+  const metadata = parseModelReleaseMetadata(release.metadata);
   return normalizeNullableString(metadata.rollbackProfileName)
     ?? normalizeNullableString(metadata.fallbackProfiles?.[0] ?? null)
     ?? release.rollbackVersion;
+}
+
+function parseModelReleaseMetadata(raw: string): Partial<ModelReleaseMetadata> {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new ValidationError(
+      "prompt_model_policy.invalid_release_metadata",
+      "prompt_model_policy.invalid_release_metadata",
+      { retryable: false },
+    );
+  }
+  if (parsed == null || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new ValidationError(
+      "prompt_model_policy.invalid_release_metadata",
+      "prompt_model_policy.invalid_release_metadata",
+      { retryable: false },
+    );
+  }
+  const record = parsed as Record<string, unknown>;
+  const fallbackProfiles = Array.isArray(record.fallbackProfiles)
+    ? record.fallbackProfiles.filter((value): value is string => typeof value === "string")
+    : undefined;
+  return {
+    ...(typeof record.rollbackProfileName === "string" ? { rollbackProfileName: record.rollbackProfileName } : {}),
+    ...(fallbackProfiles != null ? { fallbackProfiles } : {}),
+  };
 }
 
 /**

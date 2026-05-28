@@ -215,6 +215,22 @@ test("PromptTemplateRegistryService.listVersions returns all versions sorted", (
   assert.equal(versions[1]!.version, "2");
 });
 
+test("PromptTemplateRegistryService.listVersions sorts numeric version segments instead of lexicographic order", () => {
+  const service = new PromptTemplateRegistryService();
+  for (const version of ["v2", "v10", "v3"]) {
+    service.registerTemplate({
+      templateKey: "semver-template",
+      version,
+      owner: "test-owner",
+      fixedPrefix: `Prefix ${version}`,
+      domainBlock: "general",
+    });
+  }
+
+  const versions = service.listVersions("semver-template");
+  assert.deepEqual(versions.map((item) => item.version), ["v2", "v3", "v10"]);
+});
+
 test("PromptTemplateRegistryService.listTemplates returns all templates", () => {
   const service = new PromptTemplateRegistryService();
   service.registerTemplate({
@@ -234,6 +250,23 @@ test("PromptTemplateRegistryService.listTemplates returns all templates", () => 
 
   const templates = service.listTemplates();
   assert.equal(templates.length, 2);
+});
+
+test("PromptTemplateRegistryService.listTemplates supports offset and limit pagination", () => {
+  const service = new PromptTemplateRegistryService();
+  for (const templateKey of ["template-a", "template-b", "template-c"]) {
+    service.registerTemplate({
+      templateKey,
+      version: 1,
+      owner: "test-owner",
+      fixedPrefix: templateKey,
+      domainBlock: "general",
+    });
+  }
+
+  const templates = service.listTemplates({ offset: 1, limit: 1 });
+  assert.equal(templates.length, 1);
+  assert.equal(templates[0]!.templateKey, "template-b");
 });
 
 // =============================================================================

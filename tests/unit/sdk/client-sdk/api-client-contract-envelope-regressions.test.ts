@@ -8,15 +8,23 @@ import {
 } from "../../../../src/sdk/client-sdk/api-client.js";
 import type { ContractEnvelope } from "../../../../src/platform/contracts/executable-contracts/index.js";
 
+type TestClientContractEnvelope<TPayload> = ContractEnvelope<TPayload> & {
+  readonly principal?: {
+    readonly subject?: string;
+    readonly tenantId?: string;
+    readonly roles?: readonly string[];
+  };
+};
+
 const mockPrincipal = {
   subject: "user_123",
   tenantId: "tenant_abc",
   roles: ["admin"],
 };
 
-function requireEnvelope<TPayload>(value: unknown): ContractEnvelope<TPayload> {
+function requireEnvelope<TPayload>(value: unknown): TestClientContractEnvelope<TPayload> {
   assert.ok(value);
-  return value as ContractEnvelope<TPayload>;
+  return value as TestClientContractEnvelope<TPayload>;
 }
 
 function createClient(overrides: Partial<ApiClientConfig> = {}): RetryableApiClient {

@@ -1,5 +1,7 @@
 import { createHash } from "node:crypto";
 
+import { sha256HexPrefix } from "../../shared/cache/utils/sha256.js";
+
 const VECTOR_DIMENSIONS = 32;
 
 const SEMANTIC_SYNONYMS: Record<string, string> = {
@@ -105,7 +107,7 @@ export function semanticEmbeddingId(input: string, extraTerms: readonly string[]
   if (tokens.length === 0) {
     return null;
   }
-  return `local-hash-v1:${createHash("sha256").update(tokens.join("|"), "utf8").digest("hex").slice(0, 16)}`;
+  return `local-hash-v1:${sha256HexPrefix(tokens.join("|"), 32, "utf8")}`;
 }
 
 export function cosineSimilarity(left: readonly number[] | null, right: readonly number[] | null): number {

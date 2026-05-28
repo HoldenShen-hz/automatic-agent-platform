@@ -3,19 +3,26 @@ import test from "node:test";
 import { EvolutionRepository } from "../../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/repositories/evolution-repository.js";
 
 function createMockDb() {
+  const runCalls: unknown[][] = [];
   return {
-    connection: {
-      prepare: () => ({
-        run: () => ({ changes: 1 }),
-        get: () => undefined,
-        all: () => [],
-      }),
+    db: {
+      connection: {
+        prepare: () => ({
+          run: (...args: unknown[]) => {
+            runCalls.push(args);
+            return { changes: 1 };
+          },
+          get: () => undefined,
+          all: () => [],
+        }),
+      },
     },
+    runCalls,
   };
 }
 
 test("EvolutionRepository inserts evolution proposal", () => {
-  const db = createMockDb() as any;
+  const { db, runCalls } = createMockDb();
   const repo = new EvolutionRepository(db);
 
   const now = "2026-04-21T10:00:00.000Z";
@@ -39,12 +46,14 @@ test("EvolutionRepository inserts evolution proposal", () => {
     rolledBackAt: null,
   };
 
-  repo.insertEvolutionProposal(proposal);
-  assert.ok(true);
+  assert.equal(repo.insertEvolutionProposal(proposal), undefined);
+  assert.equal(runCalls.length, 1);
+  assert.ok(runCalls[0]?.includes(proposal.id));
+  assert.ok(runCalls[0]?.includes(proposal.kind));
 });
 
 test("EvolutionRepository updates evolution proposal", () => {
-  const db = createMockDb() as any;
+  const { db, runCalls } = createMockDb();
   const repo = new EvolutionRepository(db);
 
   const now = "2026-04-21T10:00:00.000Z";
@@ -68,8 +77,10 @@ test("EvolutionRepository updates evolution proposal", () => {
     rolledBackAt: null,
   };
 
-  repo.updateEvolutionProposal(proposal);
-  assert.ok(true);
+  assert.equal(repo.updateEvolutionProposal(proposal), undefined);
+  assert.equal(runCalls.length, 1);
+  assert.ok(runCalls[0]?.includes(proposal.id));
+  assert.ok(runCalls[0]?.includes(proposal.status));
 });
 
 test("EvolutionRepository gets evolution proposal by id", () => {
@@ -121,7 +132,7 @@ test("EvolutionRepository lists evolution proposals by status", () => {
 });
 
 test("EvolutionRepository inserts evolution policy", () => {
-  const db = createMockDb() as any;
+  const { db, runCalls } = createMockDb();
   const repo = new EvolutionRepository(db);
 
   const now = "2026-04-21T10:00:00.000Z";
@@ -138,8 +149,10 @@ test("EvolutionRepository inserts evolution policy", () => {
     rolledBackAt: null,
   };
 
-  repo.insertEvolutionPolicy(policy);
-  assert.ok(true);
+  assert.equal(repo.insertEvolutionPolicy(policy), undefined);
+  assert.equal(runCalls.length, 1);
+  assert.ok(runCalls[0]?.includes(policy.id));
+  assert.ok(runCalls[0]?.includes(policy.proposalId));
 });
 
 test("EvolutionRepository gets evolution policy by proposal", () => {
@@ -175,7 +188,7 @@ test("EvolutionRepository lists evolution policies with filters", () => {
 });
 
 test("EvolutionRepository inserts evolution log", () => {
-  const db = createMockDb() as any;
+  const { db, runCalls } = createMockDb();
   const repo = new EvolutionRepository(db);
 
   const now = "2026-04-21T10:00:00.000Z";
@@ -192,8 +205,10 @@ test("EvolutionRepository inserts evolution log", () => {
     createdAt: now,
   };
 
-  repo.insertEvolutionLog(log);
-  assert.ok(true);
+  assert.equal(repo.insertEvolutionLog(log), undefined);
+  assert.equal(runCalls.length, 1);
+  assert.ok(runCalls[0]?.includes(log.id));
+  assert.ok(runCalls[0]?.includes(log.eventType));
 });
 
 test("EvolutionRepository lists evolution logs by proposal", () => {
@@ -213,7 +228,7 @@ test("EvolutionRepository lists evolution logs by proposal", () => {
 });
 
 test("EvolutionRepository inserts PMF validation report", () => {
-  const db = createMockDb() as any;
+  const { db, runCalls } = createMockDb();
   const repo = new EvolutionRepository(db);
 
   const now = "2026-04-21T10:00:00.000Z";
@@ -229,8 +244,10 @@ test("EvolutionRepository inserts PMF validation report", () => {
     generatedAt: now,
   };
 
-  repo.insertPmfValidationReport(report);
-  assert.ok(true);
+  assert.equal(repo.insertPmfValidationReport(report), undefined);
+  assert.equal(runCalls.length, 1);
+  assert.ok(runCalls[0]?.includes(report.id));
+  assert.ok(runCalls[0]?.includes(report.profileName));
 });
 
 test("EvolutionRepository lists PMF validation reports", () => {

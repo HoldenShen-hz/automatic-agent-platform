@@ -1,12 +1,22 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { BaseChatProvider } from "../../../../../src/platform/model-gateway/provider-registry/base-chat-provider.js";
+import {
+  BaseAPIError,
+  BaseChatProvider,
+} from "../../../../../src/platform/model-gateway/provider-registry/base-chat-provider.js";
 import type { BaseChatProviderConfig } from "../../../../../src/platform/model-gateway/provider-registry/base-chat-provider.js";
 import { ProviderCredentialPool } from "../../../../../src/platform/model-gateway/provider-registry/provider-credential-pool.js";
 
 // Concrete implementation for testing
 class TestChatProvider extends BaseChatProvider {
+  public send(request: Record<string, unknown>, stream = false): Promise<{
+    response: Response;
+    selection: unknown;
+  }> {
+    return this.postWithCredentialFailover(request, stream);
+  }
+
   protected getDefaultBaseUrl(): string {
     return "https://test.example.com";
   }
@@ -37,8 +47,7 @@ class TestChatProvider extends BaseChatProvider {
     resetAt: string | null;
     errorText: string;
   }) {
-    // Return a real BaseAPIError for testing
-    return new (require("../../../../../src/platform/model-gateway/provider-registry/base-chat-provider.js").BaseAPIError)({
+    return new BaseAPIError({
       statusCode: options.statusCode,
       statusText: options.statusText,
       message: options.message,
@@ -499,4 +508,41 @@ test("BaseChatProvider builds correct headers with API key", () => {
   const headers = (provider as any).buildHeaders("my-secret-key");
   assert.equal(headers["Authorization"], "Bearer my-secret-key");
   assert.equal(headers["Content-Type"], "application/json");
+});
+
+test("BaseChatProvider passes a runtime signal into fetch and times out hung requests", async () => {
+  let observedSignal: AbortSignal | undefined;
+  const provider = new TestChatProvider({
+    providerName: "test",
+    apiKey: "test-key",
+    requestTimeoutMs: 10,
+    fetchImpl: (_url, init) => {
+      observedSignal = init?.signal as AbortSignal | undefined;
+      return new Promise<Response>((_resolve, reject) => {
+        observedSignal?.addEventListener("abort", () => {
+          reject(observedSignal?.reason);
+        }, { once: true });
+      });
+    },
+  });
+
+  await assert.rejects(() => provider.send({ prompt: "hello" }), /provider\.request_timeout/);
+  assert.ok(observedSignal);
+});
+
+test("BaseChatProvider truncates oversized error bodies", async () => {
+  const provider = new TestChatProvider({
+    providerName: "test",
+    apiKey: "test-key",
+    maxErrorBodyBytes: 32,
+    fetchImpl: async () => new Response("x".repeat(256), { status: 500, statusText: "Internal Error" }),
+  });
+
+  await assert.rejects(
+    () => provider.send({ prompt: "hello" }),
+    (error: unknown) =>
+      error instanceof BaseAPIError
+      && error.message.includes("[truncated]")
+      && !error.message.includes("x".repeat(64)),
+  );
 });

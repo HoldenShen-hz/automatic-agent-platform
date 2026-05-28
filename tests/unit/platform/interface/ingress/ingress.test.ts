@@ -59,9 +59,7 @@ test.describe("ingress module with mocks", () => {
       port: 6379,
     });
 
-    // close should not throw
-    await limiter.close();
-    assert.ok(true);
+    assert.equal(await limiter.close(), undefined);
   });
 
   test("RedisRateLimiter close handles end status gracefully", async () => {
@@ -72,8 +70,7 @@ test.describe("ingress module with mocks", () => {
       port: 6379,
     });
 
-    await limiter.close();
-    assert.ok(true);
+    assert.equal(await limiter.close(), undefined);
   });
 
   test("DistributedRateLimiter uses in-memory when no Redis configured", async () => {

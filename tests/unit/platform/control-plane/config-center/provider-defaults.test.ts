@@ -3,11 +3,13 @@ import test from "node:test";
 
 import {
   ANTHROPIC_API_URL,
+  MANUAL_BILLING_CHECKOUT_URL,
   OPENAI_API_URL,
   MINIMAX_API_URL_GLOBAL,
   MINIMAX_API_URL_CHINA,
   STRIPE_API_URL,
   PADDLE_API_URL,
+  resolveProviderDefaultUrl,
   TELEGRAM_API_URL,
   SLACK_API_URL,
 } from "../../../../../src/platform/five-plane-control-plane/config-center/provider-defaults.js";
@@ -36,6 +38,10 @@ test("PADDLE_API_URL is correct", () => {
   assert.equal(PADDLE_API_URL, "https://api.paddle.com");
 });
 
+test("MANUAL_BILLING_CHECKOUT_URL is correct", () => {
+  assert.equal(MANUAL_BILLING_CHECKOUT_URL, "https://billing.manual.example/checkout");
+});
+
 test("TELEGRAM_API_URL is correct", () => {
   assert.equal(TELEGRAM_API_URL, "https://api.telegram.org");
 });
@@ -59,4 +65,11 @@ test("All URLs use https protocol", () => {
   for (const url of urls) {
     assert.ok(url.startsWith("https://"), `${url} should use https`);
   }
+});
+
+test("resolveProviderDefaultUrl honors explicit environment override", () => {
+  assert.equal(
+    resolveProviderDefaultUrl("openai_api_url", { AA_OPENAI_API_URL: "https://gateway.example.com/openai" }),
+    "https://gateway.example.com/openai",
+  );
 });

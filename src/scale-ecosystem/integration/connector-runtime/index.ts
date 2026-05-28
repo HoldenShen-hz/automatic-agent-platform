@@ -59,10 +59,14 @@ function resolveCallbackUrl(value: string): string | null {
     const isLoopbackHost = endpoint.hostname === "localhost"
       || endpoint.hostname === "127.0.0.1"
       || endpoint.hostname === "::1";
+    const isExplicitlyAllowed = isAllowedCallbackHost(endpoint.hostname);
     if (endpoint.protocol !== "https:" && endpoint.protocol !== "http:") {
       return null;
     }
     if (endpoint.protocol === "http:" && !isLoopbackHost) {
+      return null;
+    }
+    if (endpoint.protocol === "https:" && !isLoopbackHost && !isExplicitlyAllowed) {
       return null;
     }
     if (endpoint.username || endpoint.password) {
@@ -72,4 +76,17 @@ function resolveCallbackUrl(value: string): string | null {
   } catch {
     return null;
   }
+}
+
+function isAllowedCallbackHost(hostname: string): boolean {
+  const raw = process.env.AA_CONNECTOR_CALLBACK_ALLOWED_HOSTS;
+  if (raw == null) {
+    return false;
+  }
+  const allowedHosts = raw
+    .split(",")
+    .map((value) => value.trim().toLowerCase())
+    .filter((value) => value.length > 0);
+  const normalizedHost = hostname.toLowerCase();
+  return allowedHosts.some((allowed) => normalizedHost === allowed || normalizedHost.endsWith(`.${allowed}`));
 }

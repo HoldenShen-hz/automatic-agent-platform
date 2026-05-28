@@ -23,7 +23,7 @@ import type {
   CostEstimationConfig as CostEstimationConfigContract,
   CostEstimationServicePort as CostEstimationServicePortContract,
 } from "../contracts/types/cost.js";
-export { CostEstimationService } from "../../scale-ecosystem/billing/cost-estimation-service.js";
+export { CostEstimationService } from "./cost-estimation-service.js";
 
 // Re-export cost estimation contract types (authoritative per platform architecture).
 // The runtime symbols below make the namespace discoverable in architectural
@@ -32,6 +32,6 @@ export type CostEstimate = CostEstimateContract;
 export type CostEstimationConfig = CostEstimationConfigContract;
 export type CostEstimationServicePort = CostEstimationServicePortContract;
 
-export const CostEstimate = Symbol.for("automatic_agent.cost_management.CostEstimate");
-export const CostEstimationConfig = Symbol.for("automatic_agent.cost_management.CostEstimationConfig");
-export const CostEstimationServicePort = Symbol.for("automatic_agent.cost_management.CostEstimationServicePort");
+export const CostEstimateToken = Symbol.for("automatic_agent.cost_management.CostEstimate");
+export const CostEstimationConfigToken = Symbol.for("automatic_agent.cost_management.CostEstimationConfig");
+export const CostEstimationServicePortToken = Symbol.for("automatic_agent.cost_management.CostEstimationServicePort");

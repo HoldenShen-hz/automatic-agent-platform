@@ -13,12 +13,16 @@ function createMockOutboxService(overrides: Partial<{
   getPendingCount: () => number;
   getFailedCount: () => number;
   publishEntry: (entry: OutboxRecord) => Promise<boolean>;
+  publishEntriesBatch: (entries: OutboxRecord[]) => Promise<{ published: number; failed: number }>;
+  markDeadLettered: (id: string, error: string, retryCount: number, deadLetteredAt: string) => void;
 }> = {}): OutboxService {
   return {
     getPendingEntries: overrides.getPendingEntries ?? (() => []),
     getPendingCount: overrides.getPendingCount ?? (() => 0),
     getFailedCount: overrides.getFailedCount ?? (() => 0),
     publishEntry: overrides.publishEntry ?? (async () => true),
+    publishEntriesBatch: overrides.publishEntriesBatch,
+    markDeadLettered: overrides.markDeadLettered ?? (() => undefined),
   } as unknown as OutboxService;
 }
 
@@ -35,6 +39,8 @@ function createPendingEntry(overrides: Partial<OutboxRecord> = {}): OutboxRecord
     retryCount: 0,
     lastError: null,
     lastAttemptAt: null,
+    deadLetteredAt: null,
+    deadLetterReason: null,
     ...overrides,
   };
 }
@@ -141,7 +147,7 @@ test("OutboxPollerService dispose after stop is safe", async () => {
   await poller.stop(100);
   poller.dispose(); // Should not throw
 
-  assert.ok(true);
+  assert.equal(poller.getMetrics().isRunning, false);
 });
 
 test("OutboxPollerService poll with very old lastAttemptAt processes immediately", async () => {
@@ -338,7 +344,7 @@ test("OutboxPollerService stop before start is safe", async () => {
   // Stop without ever starting
   await poller.stop(100);
 
-  assert.ok(true);
+  assert.equal(poller.getMetrics().isRunning, false);
 });
 
 test("OutboxPollerService dispose multiple times is safe", () => {
@@ -348,7 +354,7 @@ test("OutboxPollerService dispose multiple times is safe", () => {
   poller.dispose();
   poller.dispose(); // Should not throw
 
-  assert.ok(true);
+  assert.equal(poller.getMetrics().isRunning, false);
 });
 
 test("OutboxPollerService start after dispose throws", () => {
@@ -370,7 +376,7 @@ test("OutboxPollerService stop after dispose is safe", async () => {
   poller.dispose();
   await poller.stop(100); // Should not throw
 
-  assert.ok(true);
+  assert.equal(poller.getMetrics().isRunning, false);
 });
 
 test("OutboxPollerService pendingCount from service is accurate", async () => {

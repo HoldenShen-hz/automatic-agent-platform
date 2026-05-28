@@ -803,11 +803,14 @@ export class UnifiedChatProvider {
     const timeout = setTimeout(() => {
       controller.abort(new Error("provider.request_timeout"));
     }, timeoutMs);
-    signal?.addEventListener("abort", () => {
-      controller.abort(signal.reason);
-    }, { once: true });
+    timeout.unref?.();
+    const onAbort = (): void => {
+      controller.abort(signal?.reason);
+    };
+    signal?.addEventListener("abort", onAbort, { once: true });
     controller.signal.addEventListener("abort", () => {
       clearTimeout(timeout);
+      signal?.removeEventListener("abort", onAbort);
     }, { once: true });
     return controller.signal;
   }

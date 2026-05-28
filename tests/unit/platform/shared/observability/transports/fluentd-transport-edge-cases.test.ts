@@ -15,6 +15,35 @@ function createTestEntry(overrides: Partial<StructuredLogEntry> = {}): Structure
   };
 }
 
+function getFluentdState(transport: FluentdTransport): {
+  buffer: string[];
+  reconnectAttempts: number;
+  reconnectIntervalMs: number;
+  reconnectTimer: ReturnType<typeof setTimeout> | null;
+  maxReconnectAttempts: number;
+  handleReconnect: () => void;
+  socket: { destroyed?: boolean; writable?: boolean } | null;
+  connect: () => void;
+} {
+  return transport as unknown as {
+    buffer: string[];
+    reconnectAttempts: number;
+    reconnectIntervalMs: number;
+    reconnectTimer: ReturnType<typeof setTimeout> | null;
+    maxReconnectAttempts: number;
+    handleReconnect: () => void;
+    socket: { destroyed?: boolean; writable?: boolean } | null;
+    connect: () => void;
+  };
+}
+
+function disableConnect(transport: FluentdTransport): ReturnType<typeof getFluentdState> {
+  const state = getFluentdState(transport);
+  state.socket = null;
+  state.connect = () => undefined;
+  return state;
+}
+
 test("FluentdTransport drops messages when buffer exceeds limit", async () => {
   const bufferLimit = 5;
   const transport = new FluentdTransport({
@@ -24,15 +53,16 @@ test("FluentdTransport drops messages when buffer exceeds limit", async () => {
     bufferLimit,
   });
 
+  const state = disableConnect(transport);
   // Write more entries than the buffer can hold
   for (let i = 0; i < bufferLimit + 3; i++) {
     transport.write(createTestEntry({ message: `message ${i}` }));
   }
 
-  // The transport should still be functional after dropping messages
-  // Just verify it doesn't throw and we can close it
+  assert.equal(state.buffer.length, bufferLimit);
+  assert.ok(state.buffer[0]?.includes("message 0"));
+  assert.ok(state.buffer.at(-1)?.includes(`message ${bufferLimit - 1}`));
   await transport.close();
-  assert.ok(true);
 });
 
 test("FluentdTransport respects custom bufferLimit config", async () => {
@@ -44,6 +74,7 @@ test("FluentdTransport respects custom bufferLimit config", async () => {
     bufferLimit: customLimit,
   });
 
+  const state = disableConnect(transport);
   // Write exactly the limit
   for (let i = 0; i < customLimit; i++) {
     transport.write(createTestEntry({ message: `message ${i}` }));
@@ -52,8 +83,9 @@ test("FluentdTransport respects custom bufferLimit config", async () => {
   // Write one more - should be dropped
   transport.write(createTestEntry({ message: "should be dropped" }));
 
+  assert.equal(state.buffer.length, customLimit);
+  assert.ok(state.buffer.every((line) => !line.includes("should be dropped")));
   await transport.close();
-  assert.ok(true);
 });
 
 test("FluentdTransport stops reconnecting after max attempts exhausted", async () => {
@@ -67,21 +99,12 @@ test("FluentdTransport stops reconnecting after max attempts exhausted", async (
   });
   (transport as unknown as { maxReconnectAttempts: number }).maxReconnectAttempts = 2;
 
-  // The maxReconnectAttempts is 10 (hardcoded in source)
-  // With exponential backoff, the total wait time is roughly:
-  // 10 + 20 + 40 + 80 + 160 + 320 + 640 + 1280 + 2560 + 5120 = ~10.2 seconds
-  // But with reconnectIntervalMs = 10, it should be faster since backoff is based on reconnectIntervalMs
-
-  // Write to trigger connection attempts
-  transport.write(createTestEntry({ message: "trigger reconnect" }));
-
-  // Exhaust just two reconnect attempts so the edge case stays covered without a long wall-clock sleep.
-  await new Promise<void>((resolve) => setTimeout(resolve, 80));
-
-  // After exhausting attempts, the transport should have logged an error
-  // We verify by checking that close() works without issues
+  const state = getFluentdState(transport);
+  state.reconnectAttempts = 2;
+  state.handleReconnect();
+  assert.equal(state.reconnectAttempts, 2);
+  assert.equal(state.reconnectTimer, null);
   await transport.close();
-  assert.ok(true);
 });
 
 test("FluentdTransport exponential backoff increases delay", async () => {
@@ -95,22 +118,11 @@ test("FluentdTransport exponential backoff increases delay", async () => {
     reconnectIntervalMs,
   });
 
-  // The backoff values should be:
-  // attempt 1: 100 * 2^0 = 100
-  // attempt 2: 100 * 2^1 = 200
-  // attempt 3: 100 * 2^2 = 400
-  // etc.
-
-  // We can't directly test the backoff timing without mocking, but we can
-  // verify the transport handles rapid reconnection attempts
-  for (let i = 0; i < 5; i++) {
-    transport.write(createTestEntry({ message: `attempt ${i}` }));
-    // Small delay to allow reconnection to start
-    await new Promise<void>((resolve) => setTimeout(resolve, 50));
-  }
-
+  const state = getFluentdState(transport);
+  state.handleReconnect();
+  assert.equal(state.reconnectAttempts, 1);
+  assert.ok(state.reconnectTimer != null);
   await transport.close();
-  assert.ok(true);
 });
 
 test("FluentdTransport handles write when socket is destroyed", async () => {
@@ -120,17 +132,13 @@ test("FluentdTransport handles write when socket is destroyed", async () => {
     tag: "test",
   });
 
-  // Write multiple times to trigger connection and disconnection
-  for (let i = 0; i < 3; i++) {
-    transport.write(createTestEntry({ message: `message ${i}` }));
-    await new Promise<void>((resolve) => setTimeout(resolve, 100));
-  }
-
-  // Write more - should handle destroyed socket gracefully
+  const state = getFluentdState(transport);
+  state.socket = { destroyed: true, writable: false };
   transport.write(createTestEntry({ message: "after multiple disconnects" }));
 
+  assert.equal(state.buffer.length, 1);
+  assert.ok(state.buffer[0]?.includes("after multiple disconnects"));
   await transport.close();
-  assert.ok(true);
 });
 
 test("FluentdTransport close can be called immediately after construction", async () => {
@@ -140,9 +148,8 @@ test("FluentdTransport close can be called immediately after construction", asyn
     tag: "test",
   });
 
-  // close() should not throw even if no connection was ever made
-  await transport.close();
-  assert.ok(true);
+  assert.equal(await transport.close(), undefined);
+  assert.equal(getFluentdState(transport).socket, null);
 });
 
 test("FluentdTransport close after multiple writes", async () => {
@@ -151,15 +158,15 @@ test("FluentdTransport close after multiple writes", async () => {
     port: 59999,
     tag: "test",
   });
+  const state = disableConnect(transport);
 
   // Write several entries
   for (let i = 0; i < 10; i++) {
     transport.write(createTestEntry({ message: `entry ${i}` }));
   }
 
-  // Close should handle pending buffer
+  assert.equal(state.buffer.length, 10);
   await transport.close();
-  assert.ok(true);
 });
 
 test("FluentdTransport write with different log levels", async () => {
@@ -168,6 +175,7 @@ test("FluentdTransport write with different log levels", async () => {
     port: 59999,
     tag: "test",
   });
+  const state = disableConnect(transport);
 
   const levels: StructuredLogEntry["level"][] = ["debug", "info", "warn", "error"];
 
@@ -175,8 +183,11 @@ test("FluentdTransport write with different log levels", async () => {
     transport.write(createTestEntry({ level, message: `test ${level}` }));
   }
 
+  assert.deepEqual(
+    state.buffer.map((line) => (JSON.parse(line) as [string, number, StructuredLogEntry])[2].level),
+    levels,
+  );
   await transport.close();
-  assert.ok(true);
 });
 
 test("FluentdTransport write preserves trace context", async () => {
@@ -193,8 +204,14 @@ test("FluentdTransport write preserves trace context", async () => {
     parentSpanId: "parent-span-ghi789",
   }));
 
+  const [, , entry] = JSON.parse(getFluentdState(transport).buffer[0] ?? "[]") as [
+    string,
+    number,
+    StructuredLogEntry,
+  ];
+  assert.equal(entry.traceId, "trace-abc123");
+  assert.equal(entry.parentSpanId, "parent-span-ghi789");
   await transport.close();
-  assert.ok(true);
 });
 
 test("FluentdTransport write with complex data payload", async () => {
@@ -219,6 +236,12 @@ test("FluentdTransport write with complex data payload", async () => {
     },
   }));
 
+  const [, , entry] = JSON.parse(getFluentdState(transport).buffer[0] ?? "[]") as [
+    string,
+    number,
+    StructuredLogEntry,
+  ];
+  assert.equal((entry.data as { nested: { deeply: { value: number } } }).nested.deeply.value, 42);
+  assert.deepEqual((entry.data as { nested: { deeply: { array: number[] } } }).nested.deeply.array, [1, 2, 3]);
   await transport.close();
-  assert.ok(true);
 });

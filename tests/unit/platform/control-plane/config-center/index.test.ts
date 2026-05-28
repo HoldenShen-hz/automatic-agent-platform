@@ -4,6 +4,7 @@ import test from "node:test";
 // Re-export test for barrel file
 import {
   ANTHROPIC_API_URL,
+  MANUAL_BILLING_CHECKOUT_URL,
   OPENAI_API_URL,
   MINIMAX_API_URL_GLOBAL,
   MINIMAX_API_URL_CHINA,
@@ -39,4 +40,9 @@ test("STRIPE_API_URL is a valid URL", () => {
 test("PADDLE_API_URL is a valid URL", () => {
   assert.equal(PADDLE_API_URL, "https://api.paddle.com");
   assert.ok(PADDLE_API_URL.startsWith("https://"));
+});
+
+test("MANUAL_BILLING_CHECKOUT_URL is a valid URL", () => {
+  assert.equal(MANUAL_BILLING_CHECKOUT_URL, "https://billing.manual.example/checkout");
+  assert.ok(MANUAL_BILLING_CHECKOUT_URL.startsWith("https://"));
 });

@@ -18,7 +18,9 @@ CREATE TABLE IF NOT EXISTS outbox (
   published_at TEXT NULL,
   retry_count INTEGER NOT NULL DEFAULT 0,
   last_error TEXT NULL,
-  last_attempt_at TEXT NULL
+  last_attempt_at TEXT NULL,
+  dead_lettered_at TEXT NULL,
+  dead_letter_reason TEXT NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_outbox_pending ON outbox(created_at)
@@ -28,6 +30,9 @@ CREATE INDEX IF NOT EXISTS idx_outbox_aggregate ON outbox(aggregate_type, aggreg
 
 CREATE INDEX IF NOT EXISTS idx_outbox_retry ON outbox(retry_count)
 WHERE published_at IS NULL AND retry_count > 0;
+
+CREATE INDEX IF NOT EXISTS idx_outbox_dead_lettered ON outbox(dead_lettered_at)
+WHERE dead_lettered_at IS NOT NULL;
 `.trim();
 
 export const OUTBOX_TABLE_CLEANUP_DDL = `
