@@ -516,19 +516,19 @@ test("tierFromScope: user scope maps to personal tier", () => {
   const service = new KnowledgePromotionService();
   const memory = createMemory({ scope: "user" });
   const result = service.evaluatePromotion(memory, "team");
-  // user -> personal, and personal->team rule exists
-  // but quality/default 0 won't pass, so let's just check it doesn't error
-  assert.ok(true);
+  assert.equal(result.canPromote, true);
+  assert.deepEqual(result.blockers, []);
 });
 
 test("tierFromScope: project scope maps to team tier", () => {
   const service = new KnowledgePromotionService();
   const memory = createMemory({ scope: "project" });
-  // project -> team tier, but also project -> company exists
   const result1 = service.evaluatePromotion(memory, "team");
   const result2 = service.evaluatePromotion(memory, "company");
-  // Both should have rules, though thresholds may not be met
-  assert.ok(true);
+  assert.equal(result1.canPromote, false);
+  assert.deepEqual(result1.blockers, ["no_rule_from_team_to_team"]);
+  assert.equal(result2.canPromote, false);
+  assert.ok(result2.blockers.some((blocker) => blocker.includes("hitCount")));
 });
 
 // =============================================================================

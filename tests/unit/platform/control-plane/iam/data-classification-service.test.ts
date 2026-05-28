@@ -330,6 +330,21 @@ test("DataClassificationService getAuditLog respects limit", () => {
   assert.equal(log.length, 5);
 });
 
+test("DataClassificationService evicts oldest audit entries beyond maxAuditLogEntries", () => {
+  const service = new DataClassificationService({ enableAuditTrail: true, maxAuditLogEntries: 3 });
+  for (let i = 0; i < 5; i++) {
+    service.filterForPrompt(`secret api key ${i}`);
+  }
+
+  const log = service.getAuditLog(10);
+  assert.equal(log.length, 3);
+  assert.deepEqual(log.map((entry) => entry.originalContent), [
+    "secret api key 2",
+    "secret api key 3",
+    "secret api key 4",
+  ]);
+});
+
 test("DataClassificationLevel type accepts all valid values", () => {
   const levels: DataClassificationLevel[] = ["public", "internal", "confidential", "restricted"];
   assert.equal(levels.length, 4);

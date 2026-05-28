@@ -105,8 +105,7 @@ test("HumanTakeoverServiceAsync emits events on circuit breaker reset [human-tak
     eventEmitted = true;
   });
   service.resetCircuitBreaker();
-  // Event may be emitted synchronously or asynchronously
-  assert.ok(true); // Verify no throw
+  assert.equal(eventEmitted, true);
 });
 
 test("HumanTakeoverServiceAsync dispose marks service as disposed [human-takeover-service-async]", () => {

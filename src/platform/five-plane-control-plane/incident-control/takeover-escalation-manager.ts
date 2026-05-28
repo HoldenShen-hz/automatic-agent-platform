@@ -42,6 +42,7 @@ interface TakeoverEventEmitter {
  * - Handle session auto-close at max escalation
  */
 export class TakeoverEscalationManager {
+  private static readonly MAX_ESCALATION_HISTORY_ENTRIES = 16;
   /** Active timeout timers keyed by sessionId. */
   private readonly activeTimeouts: Map<string, NodeJS.Timeout> = new Map();
 
@@ -257,6 +258,12 @@ export class TakeoverEscalationManager {
       timestamp: nowIso(),
       target: null,
     });
+    if (policy.escalationHistory.length > TakeoverEscalationManager.MAX_ESCALATION_HISTORY_ENTRIES) {
+      policy.escalationHistory.splice(
+        0,
+        policy.escalationHistory.length - TakeoverEscalationManager.MAX_ESCALATION_HISTORY_ENTRIES,
+      );
+    }
     policy.currentLevel = nextLevel;
 
     const escalationDelayMs = this.getEscalationDelayForLevel(nextLevel);
@@ -359,6 +366,12 @@ export class TakeoverEscalationManager {
         timestamp: now,
         target: operatorId,
       });
+      if (policy.escalationHistory.length > TakeoverEscalationManager.MAX_ESCALATION_HISTORY_ENTRIES) {
+        policy.escalationHistory.splice(
+          0,
+          policy.escalationHistory.length - TakeoverEscalationManager.MAX_ESCALATION_HISTORY_ENTRIES,
+        );
+      }
     }
 
     this.eventEmitter.emit("takeover:acknowledged", {

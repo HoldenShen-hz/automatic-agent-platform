@@ -98,7 +98,10 @@ test("ReplicationEventBuffer.add schedules flush when size threshold met [data-r
     checksum: "abc",
   });
 
-  assert.ok(true); // No error means scheduleFlush didn't fail
+  const internals = buffer as unknown as {
+    timer: ReturnType<typeof setTimeout> | null;
+  };
+  assert.ok(internals.timer);
 });
 
 test("ReplicationEventBuffer.flush clears buffer and returns events [data-replicator]", () => {

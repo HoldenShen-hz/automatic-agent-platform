@@ -157,6 +157,23 @@ test("acknowledgeSession tracks previous status", () => {
   assert.equal(result2.previousStatus, "acknowledged");
 });
 
+test("acknowledgeSession caps escalation history retention", () => {
+  const manager = createManager();
+  manager.startSessionTracking("session-1", "task-1");
+
+  for (let i = 0; i < 20; i++) {
+    manager.acknowledgeSession("session-1", `operator-${i}`, "task-1");
+  }
+
+  const policy = (manager as unknown as {
+    escalationPolicies: Map<string, { escalationHistory: Array<{ target: string | null }> }>;
+  }).escalationPolicies.get("session-1");
+  assert.ok(policy);
+  assert.equal(policy!.escalationHistory.length, 16);
+  assert.equal(policy!.escalationHistory[0]!.target, "operator-4");
+  assert.equal(policy!.escalationHistory.at(-1)!.target, "operator-19");
+});
+
 // =============================================================================
 // Get Acknowledgment Status
 // =============================================================================

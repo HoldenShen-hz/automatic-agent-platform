@@ -273,7 +273,7 @@
 | 编号 | 问题 | 状态 | 问题根因 |
 | --- | --- | --- | --- |
 | 231 | client-sdk/api-client.ts:984-992 declare module ".../executable-contracts/index.js" 模块增强会全局污染 ContractEnvelope.principal | `done` | 根因是 client SDK 之前通过模块增强把 `principal` 污染到全局 `ContractEnvelope`；现已改为 SDK 内部局部扩展类型。 |
-| 232 | 全仓 `assert.ok(true)` 占位测试仍剩 77 处（已从 193 处降到 77；本轮继续清理了 state-evidence sqlite repositories、event ops、config loader、pack local service、runtime bootstrap、agent middleware、model-call-provider、planner/plugin/registry/export shim 等一批，剩余分布见 `rg -n "assert\\.ok\\(true\\)" tests -g '*.test.ts'`） | `todo` | 根因是早期批量补测试时把“能跑通/不抛异常”直接固化成占位断言，同时缺少禁止空断言的 lint/CI 门禁；现已连续两轮把 startup/ingress/observability transports 以及多组 repository/runtime/config/sdk 测试改成真实可观测断言，但全仓仍未清零。 |
+| 232 | 全仓测试代码中的 `assert.ok(true)` 占位断言已清零；本轮补齐了 SDK 握手、API WebSocket 关闭路径、panic scope、region failover listener、CDC/backpressure、outbox/VCR/sqlite repository、repo map/cache、memory/harness、pg advisory lock 等剩余用例。当前 `rg -n "assert\\.ok\\(true\\)" tests -g '*.test.ts'` 仅会命中一条历史说明注释，不再命中真实占位断言。 | `done` | 根因是早期批量补测试时把“能跑通/不抛异常”直接固化成占位断言，同时缺少禁止空断言的 lint/CI 门禁；本次已把剩余占位全部替换为真实状态断言、参数捕获、缓存/计时器内部状态校验、错误码断言和持久化副作用校验，问题已收口。 |
 | 233 | contracts/types/responsibility-boundary.ts:316-326 在"types"文件内放 GLOBAL_RESPONSIBILITY_BOUNDARY_SERVICE 单例运行时态 | `done` | 根因是责任边界类型文件历史上混入了运行态单例；现已把全局实例迁到独立 `contracts/responsibility-boundary-service.ts`。 |
 | 234 | contracts/types/responsibility-boundary.ts:302,306 热路径每调用 new Set | `done` | 根因是责任边界校验曾在每次调用时临时创建动作集合；现已提升为模块级常量集合复用。 |
 | 235 | contracts/types/domain/billing-types.ts:68 summaryJson:string 不透明 blob 无 zod | `done` | 根因是 billing invoice summary 之前只是裸 JSON 字符串；现已补 `BillingInvoiceSummarySchema` 与 parse/stringify helper，把 summary 至少收口到结构化 JSON object。 |
@@ -283,7 +283,7 @@
 | 239 | contracts/types/index.ts:191 跨入 executable-contracts/index.js re-export，绕过 domain 命名空间 | `done` | 根因是顶层 `types/index.ts` 曾把 executable-contracts 类型直接横向暴露；现已移除该跨层 re-export，避免绕开 domain/contracts 分层。 |
 | 240 | contracts/mission/{playbook,index}.ts:373/357 两份 stableStringify 独立实现，可能漂移 | `done` | 根因是 mission 与 playbook 各自维护序列化 helper；现已抽到共享 `contracts/mission/stable-stringify.ts` 单一实现。 |
 | 241 | mission/index.ts 1637 行单文件过大 | `done` | 根因是该条基于旧快照；现行 `mission/index.ts` 已降到约 377 行，不再是超大单文件。 |
-| 242 | data-classification-service.ts:680、network-egress-audit.ts:335、auto-stop-loss-service.ts:65-71、panic-propagation-service.ts:119-123、war-room-coordinator.ts:93-94、policy-engine.ts:83、takeover-escalation-manager.ts:46,49、approval-flow-engine.ts:571、approval-policy-engine/version-manager.ts:443、mission/index.ts:685、config-audit-service.ts:319,824、provider-health-tracker.ts:55、task-timeline-service.ts:181 多处 push 类内存无界增长 | `todo` | 待修复 |
+| 242 | data-classification-service.ts:680、network-egress-audit.ts:335、auto-stop-loss-service.ts:65-71、panic-propagation-service.ts:119-123、war-room-coordinator.ts:93-94、policy-engine.ts:83、takeover-escalation-manager.ts:46,49、approval-flow-engine.ts:571、approval-policy-engine/version-manager.ts:443、mission/index.ts:685、config-audit-service.ts:319,824、provider-health-tracker.ts:55、task-timeline-service.ts:181 多处 push 类内存无界增长 | `done` | 根因是多处控制面服务把审计/生命周期/会话历史长期保存在内存数组或 Map 中，却缺少统一 retention/eviction 策略；现已为 classification audit、egress audit、panic directive、war room、approval/takeover escalation history、policy version history、mission lifecycle、config audit 增加有界保留与自动清理。另有部分引用来自旧快照，`auto-stop-loss`、`policy-engine`、`provider-health-tracker`、`task-timeline` 当前版本已分别具备容量上限、缓存上限或仅为请求级临时聚合，不再构成无界常驻增长。 |
 
 ## src/platform/model-gateway
 

@@ -114,16 +114,26 @@ const PLANE_SCOPE_LEVELS: Record<PlaneName, PanicScopeLevel> = {
   P5: "run",
 };
 
+export interface PanicPropagationServiceOptions {
+  readonly maxRetainedDirectives?: number;
+}
+
 export class PanicPropagationService {
+  private static readonly DEFAULT_MAX_RETAINED_DIRECTIVES = 100;
   private readonly panicService: PlatformPanicService;
+  private readonly maxRetainedDirectives: number;
   private readonly haltingLog = new Map<string, CascadeHaltingEvent[]>();
   private readonly confirmations = new Map<string, DualAdminConfirmation>();
   private readonly pendingReconformation = new Map<string, string>();
   private readonly pendingAcks = new Map<string, NodeJS.Timeout>();
   private readonly sentDirectives = new Map<string, PlaneHaltDirective[]>();
 
-  public constructor(panicService: PlatformPanicService) {
+  public constructor(panicService: PlatformPanicService, options: PanicPropagationServiceOptions = {}) {
     this.panicService = panicService;
+    this.maxRetainedDirectives = Math.max(
+      1,
+      options.maxRetainedDirectives ?? PanicPropagationService.DEFAULT_MAX_RETAINED_DIRECTIVES,
+    );
   }
 
   /**
@@ -145,6 +155,7 @@ export class PanicPropagationService {
     // Initialize halting events for all planes
     const events = this.initializeHaltingEvents(directiveId, directives, activation);
     this.haltingLog.set(directiveId, events);
+    this.enforceDirectiveRetention();
 
     // Send halt directive to each plane and track acknowledgments
     const planeResults: PlaneHaltResult[] = [];
@@ -549,5 +560,37 @@ export class PanicPropagationService {
     const updatedEvents = [...events];
     updatedEvents[idx] = updated;
     this.haltingLog.set(directiveId, updatedEvents);
+  }
+
+  private enforceDirectiveRetention(): void {
+    while (this.haltingLog.size > this.maxRetainedDirectives) {
+      const oldestDirectiveId = this.haltingLog.keys().next().value;
+      if (typeof oldestDirectiveId !== "string") {
+        return;
+      }
+      this.clearDirectiveState(oldestDirectiveId);
+    }
+  }
+
+  private clearDirectiveState(directiveId: string): void {
+    this.haltingLog.delete(directiveId);
+    this.sentDirectives.delete(directiveId);
+
+    const reconfirmationKey = `reconfirm:${directiveId}`;
+    this.pendingReconformation.delete(reconfirmationKey);
+
+    for (const [key, timeout] of this.pendingAcks.entries()) {
+      if (!key.startsWith(`${directiveId}:`)) {
+        continue;
+      }
+      clearTimeout(timeout);
+      this.pendingAcks.delete(key);
+    }
+
+    for (const key of this.confirmations.keys()) {
+      if (key.startsWith(`${directiveId}:`)) {
+        this.confirmations.delete(key);
+      }
+    }
   }
 }

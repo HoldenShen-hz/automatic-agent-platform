@@ -169,11 +169,8 @@ test("CDCReplicationService.recordFailure logs error without throwing [cdc-repli
     createdAt: "2026-04-20T00:00:00.000Z",
   };
 
-  // Should not throw
   service.recordFailure("us-west-2", "eu-west-1", batch, "Test error");
-
-  // No assertion needed - just verify no exception
-  assert.ok(true);
+  assert.equal(service.getStatus("us-west-2", "eu-west-1"), "idle");
 });
 
 test("CDCReplicationService.getStatus returns idle when no queue [cdc-replication-service]", () => {

@@ -241,8 +241,11 @@ test("integration: removeFailoverListener stops notifications", () => {
   orchestrator.addFailoverListener(listener);
   orchestrator.removeFailoverListener(listener);
 
-  // Listener should no longer be in the set
-  assert.ok(true); // No error on removal
+  const listeners = (orchestrator as unknown as {
+    failoverListeners: Set<(source: string, target: string) => void>;
+  }).failoverListeners;
+  assert.equal(listeners.size, 0);
+  assert.equal(callCount, 0);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -65,3 +65,29 @@ test("PanicPropagationService tracks dual-admin acknowledgments and resume direc
   assert.equal(propagation.allPlanesAcknowledged(activation.directive.directiveId), true);
   assert.equal(resumeDirective.relatedPanicDirectiveId, activation.directive.directiveId);
 });
+
+test("PanicPropagationService evicts oldest retained directive state", () => {
+  const panicService = new PlatformPanicService();
+  const propagation = new PanicPropagationService(panicService, { maxRetainedDirectives: 1 });
+
+  const first = panicService.activate({
+    scope: "platform",
+    reasonCode: "security.compromise",
+    activeIncidents: 1,
+    issuedBy: "sre-lead",
+    requiredApprovers: ["sre-lead", "security-lead"],
+  });
+  propagation.cascadeHalt(first);
+
+  const second = panicService.activate({
+    scope: "tenant/tenant-2",
+    reasonCode: "security.compromise",
+    activeIncidents: 1,
+    issuedBy: "sre-lead",
+    requiredApprovers: ["sre-lead", "security-lead"],
+  });
+  propagation.cascadeHalt(second);
+
+  assert.equal(propagation.getHaltingState(first.directive.directiveId).length, 0);
+  assert.equal(propagation.getHaltingState(second.directive.directiveId).length, 5);
+});

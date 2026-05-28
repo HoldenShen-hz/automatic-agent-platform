@@ -216,8 +216,8 @@ test("validateSkillDefinition accepts valid skill definition [skill-execution-co
       steps: [{ stepId: "s1", toolName: "read" }],
     };
 
-    service.validateSkillDefinition(skill);
-    assert.ok(true);
+    assert.equal(service.validateSkillDefinition(skill), undefined);
+    assert.equal(service.resolveSkillSteps(skill, null).length, 1);
   } finally {
     db.close();
     cleanupPath(workspace);
@@ -324,8 +324,8 @@ test("validateResolvedSteps accepts resolved steps with all tools declared [skil
     };
 
     const resolvedSteps = service.resolveSkillSteps(skill, null);
-    service.validateResolvedSteps(skill, resolvedSteps);
-    assert.ok(true);
+    assert.equal(service.validateResolvedSteps(skill, resolvedSteps), undefined);
+    assert.equal(resolvedSteps.length, 2);
   } finally {
     db.close();
     cleanupPath(workspace);
@@ -379,8 +379,8 @@ test("validateAllowedTools accepts when allowedTools contains all required tools
     };
 
     const resolvedSteps = service.resolveSkillSteps(skill, null);
-    service.validateAllowedTools(skill, resolvedSteps, ["read", "edit", "bash"]);
-    assert.ok(true);
+    assert.equal(service.validateAllowedTools(skill, resolvedSteps, ["read", "edit", "bash"]), undefined);
+    assert.deepEqual(resolvedSteps.map((step) => step.resolvedToolName), ["read", "edit"]);
   } finally {
     db.close();
     cleanupPath(workspace);
@@ -432,8 +432,8 @@ test("validateAllowedTools allows null/undefined allowedTools (no restriction) [
     };
 
     const resolvedSteps = service.resolveSkillSteps(skill, null);
-    service.validateAllowedTools(skill, resolvedSteps, undefined);
-    assert.ok(true);
+    assert.equal(service.validateAllowedTools(skill, resolvedSteps, undefined), undefined);
+    assert.equal(resolvedSteps[0]!.resolvedToolName, "read");
   } finally {
     db.close();
     cleanupPath(workspace);

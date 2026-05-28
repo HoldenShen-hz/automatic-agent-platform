@@ -285,6 +285,24 @@ test("PolicyVersionManager getChangeHistory returns history for bundle", () => {
   assert.ok(history.some((h) => h.changeType === "activated"));
 });
 
+test("PolicyVersionManager evicts oldest change history entries beyond maxChangeHistoryEntries", () => {
+  const bundle = createMockBundle({ bundleId: "history-cap", version: "1.0.0" });
+  const manager = new PolicyVersionManager(bundle, { maxChangeHistoryEntries: 3 });
+
+  let currentVersion = "1.0.0";
+  for (let i = 0; i < 3; i++) {
+    const draft = manager.createDraft("history-cap", currentVersion, `user-${i}`);
+    const submitted = manager.submitForApproval(draft, `user-${i}`, `change-${i}`);
+    const approved = manager.approve(submitted, `approver-${i}`, `approval-${i}`);
+    manager.activate("history-cap", approved.version, `admin-${i}`);
+    currentVersion = approved.version;
+  }
+
+  const history = manager.getAllChangeHistory();
+  assert.equal(history.length, 3);
+  assert.equal(history.every((entry) => entry.bundleId === "history-cap"), true);
+});
+
 test("PolicyVersionManager getAllChangeHistory returns all entries", () => {
   const bundle1 = createMockBundle({ bundleId: "bundle-1", version: "1.0.0" });
   const bundle2 = createMockBundle({ bundleId: "bundle-2", version: "1.0.0" });

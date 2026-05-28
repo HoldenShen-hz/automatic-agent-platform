@@ -23,7 +23,7 @@ test("LeaseRepository type can be used in type annotations [index]", () => {
   // LeaseRepository is a type, so we verify it can be used in type annotations
   type TestLeaseRepo = import("../../../../../src/platform/five-plane-execution/lease/index.js").LeaseRepository;
   const _repo: TestLeaseRepo | undefined = undefined;
-  assert.ok(true); // Type check passed
+  assert.equal(_repo, undefined);
 });
 
 test("mergeExecutionIds is exported as function [index]", () => {

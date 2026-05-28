@@ -80,7 +80,10 @@ test("dto type exports are all present", () => {
   const _output: DualChannelStepOutput | undefined = undefined;
   const _feedback: Feedback | undefined = undefined;
   const _learning: LearningSignal | undefined = undefined;
-  assert.ok(true);
+  assert.equal(
+    [_obs, _task, _assess, _plan, _step, _signal, _candidate, _rollout, _output, _feedback, _learning].every((value) => value === undefined),
+    true,
+  );
 });
 
 test("parseTaskSituation validates valid TaskSituation", () => {

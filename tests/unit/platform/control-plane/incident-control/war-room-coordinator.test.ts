@@ -111,6 +111,7 @@ test.describe("WarRoomCoordinator", () => {
     assert.equal(removed, true);
     const retrieved = coordinator.getWarRoom(warRoom.warRoomId);
     assert.equal(retrieved!.participants.length, 0);
+    assert.equal(coordinator.getWarRoomsForUser("ic-1").length, 0);
   });
 
   test("removeParticipant returns false for unknown participant", () => {
@@ -165,6 +166,22 @@ test.describe("WarRoomCoordinator", () => {
     assert.equal(cmd!.command, "restart_database");
     assert.equal(cmd!.target, "primary-db");
     assert.equal(cmd!.result, "Success");
+  });
+
+  test("logCommand evicts oldest command entries beyond maxCommandLogEntries", () => {
+    const coordinator = new WarRoomCoordinator({ maxCommandLogEntries: 2 });
+    const warRoom = coordinator.createWarRoom({
+      incidentId: "incident-011b",
+      initialParticipants: [{ userId: "ic-1", role: "incident_commander" }],
+    });
+    const participantId = warRoom.participants[0]!.participantId;
+
+    coordinator.logCommand(warRoom.warRoomId, participantId, "incident_commander", "cmd-1");
+    coordinator.logCommand(warRoom.warRoomId, participantId, "incident_commander", "cmd-2");
+    coordinator.logCommand(warRoom.warRoomId, participantId, "incident_commander", "cmd-3");
+
+    const retrieved = coordinator.getWarRoom(warRoom.warRoomId);
+    assert.deepEqual(retrieved!.commandLog.map((entry) => entry.command), ["cmd-2", "cmd-3"]);
   });
 
   test("logCommand returns null for unknown war room", () => {
@@ -248,6 +265,23 @@ test.describe("WarRoomCoordinator", () => {
     const rooms = coordinator.getWarRoomsForUser("stranger");
 
     assert.equal(rooms.length, 0);
+  });
+
+  test("closed war rooms are evicted when retention capacity is exceeded", () => {
+    const coordinator = new WarRoomCoordinator({ maxRetainedWarRooms: 2 });
+    const first = coordinator.createWarRoom({
+      incidentId: "incident-020",
+      initialParticipants: [{ userId: "user-1", role: "technical_lead" }],
+    });
+    const second = coordinator.createWarRoom({ incidentId: "incident-021" });
+    coordinator.closeWarRoom(first.warRoomId);
+
+    const third = coordinator.createWarRoom({ incidentId: "incident-022" });
+
+    assert.equal(coordinator.getWarRoom(first.warRoomId), null);
+    assert.ok(coordinator.getWarRoom(second.warRoomId));
+    assert.ok(coordinator.getWarRoom(third.warRoomId));
+    assert.equal(coordinator.getWarRoomsForUser("user-1").length, 0);
   });
 
   test("WarRoomRole type accepts all valid roles", () => {

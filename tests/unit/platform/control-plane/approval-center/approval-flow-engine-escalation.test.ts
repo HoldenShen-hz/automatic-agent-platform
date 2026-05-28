@@ -387,3 +387,28 @@ test("multiple triggerEscalation calls only escalate once when checkEscalation r
   assert.ok(flowState);
   assert.equal(flowState.escalationHistory.length, 1);
 });
+
+test("triggerEscalation caps escalation history retention", async () => {
+  const engine = new ApprovalFlowEngine();
+  const request = createMockApprovalRequest();
+  const config = createSinglePartyFlowConfig();
+  config.timeout.escalateAfterMs = 0;
+  config.escalation.maxEscalationDepth = 100;
+
+  const flow = engine.createFlow(config, request);
+
+  for (let i = 0; i < 30; i++) {
+    const flowState = engine.getFlowStatus(flow.flowId);
+    assert.ok(flowState);
+    flowState.status = FlowStatus.PENDING;
+    flowState.escalationTriggered = false;
+    flowState.updatedAt = new Date(Date.now() - 1000).toISOString();
+
+    const result = await engine.triggerEscalation(flow.flowId);
+    assert.equal(result.success, true);
+  }
+
+  const flowState = engine.getFlowStatus(flow.flowId);
+  assert.ok(flowState);
+  assert.equal(flowState.escalationHistory.length, 25);
+});

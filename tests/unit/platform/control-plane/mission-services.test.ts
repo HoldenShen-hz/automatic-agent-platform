@@ -566,6 +566,27 @@ test("MissionPlaybookRegistry tracks lifecycle events and MissionPlaybookResolve
   assert.equal(resolver.metricsSnapshot().unsafeFallbackBlockedCount, 1);
 });
 
+test("MissionPlaybookRegistry evicts oldest lifecycle events beyond retention limit", () => {
+  const registry = new MissionPlaybookRegistry({
+    metricRefs: ["aa.mission.outcome.quality_score"],
+    eventNames: ["mission.review.failed"],
+    evidenceKinds: ["claim_evidence", "outcome_report"],
+  });
+
+  for (let i = 0; i < 505; i++) {
+    registry.register({
+      ...createResearchPlaybook(),
+      playbookId: `playbook_research_release_${i}`,
+      updatedAt: `2026-01-01T00:00:${String(i % 60).padStart(2, "0")}.000Z`,
+    });
+  }
+
+  const events = registry.listEvents();
+  assert.equal(events.length, 500);
+  assert.equal(events.some((event) => event.playbookId === "playbook_research_release_0"), false);
+  assert.equal(events.at(-1)?.playbookId, "playbook_research_release_504");
+});
+
 test("MissionPlaybookResolver allows safe last-active fallback and migration service requires approval when incompatible", () => {
   const repository = new InMemoryMissionRepository();
   const registry = new MissionPlaybookRegistry({

@@ -28,6 +28,7 @@ import {
   type LlmModelCallResult,
 } from "../../../../../src/platform/five-plane-execution/execution-engine/model-call-provider.js";
 import { globalMiddlewareChain } from "../../../../../src/platform/five-plane-execution/execution-engine/agent-middleware-chain.js";
+import { buildModelGovernanceKey } from "../../../../../src/platform/five-plane-execution/execution-engine/model-call-provider-support.js";
 
 // ---------------------------------------------------------------------------
 // Helper function tests (via resolveCallRateLimit behavior)
@@ -1102,13 +1103,12 @@ test("getModelCallProvider returns same instance as initializeModelCallProvider 
 // ---------------------------------------------------------------------------
 
 test("buildModelGovernanceKey formats key correctly - tested via rate limit [model-call-provider-new]", async () => {
-  // When rate limit is exceeded, the governance key is built using buildModelGovernanceKey
-  // This tests the key format "model:${model}"
-
   const originalKey = process.env.ANTHROPIC_API_KEY;
   process.env.ANTHROPIC_API_KEY = "test-key";
 
   try {
+    assert.equal(buildModelGovernanceKey("test-model"), "model:test-model");
+
     // Create provider with rate limit of 1 call
     const config: ModelCallProviderConfig = {
       callRateLimit: {
@@ -1131,8 +1131,7 @@ test("buildModelGovernanceKey formats key correctly - tested via rate limit [mod
       // Expected - API will reject
     }
 
-    // The governance key format is tested via successful internal operation
-    assert.ok(true);
+    assert.equal(provider.hasAnthropic(), true);
   } finally {
     if (originalKey !== undefined) {
       process.env.ANTHROPIC_API_KEY = originalKey;

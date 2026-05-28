@@ -371,8 +371,10 @@ test("E2E: API Client with version handshake flow", async () => {
 
   // Mock the version endpoint
   const originalFetch = globalThis.fetch;
-  globalThis.fetch = async () =>
-    new Response(JSON.stringify({
+  let requestedUrl: string | null = null;
+  globalThis.fetch = async (input) => {
+    requestedUrl = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+    return new Response(JSON.stringify({
       platformVersion: "v4.3",
       contractVersion: "v4.3",
       minClientVersion: "1.0.0",
@@ -380,12 +382,12 @@ test("E2E: API Client with version handshake flow", async () => {
       status: 200,
       headers: { "content-type": "application/json" },
     });
+  };
 
   try {
 // @ts-ignore
     await client.initialize();
-    // If we get here without throwing, handshake succeeded
-    assert.ok(true);
+    assert.equal(requestedUrl, "https://api.example.com/api/v1/version");
   } finally {
     globalThis.fetch = originalFetch;
   }

@@ -157,10 +157,11 @@ test("clearCache empties L1 cache", () => {
   const service = new KnowledgeQueryService(createMockRetrievalService());
   service.query("clear_me");
   service.clearCache();
-  // After clear, cache miss should return empty for quick query
-  // (but standard query refetches)
   service.clearCache(); // no-op if already empty
-  assert.ok(true);
+  const cache = (service as unknown as {
+    l1Cache: { cache: Map<string, unknown> };
+  }).l1Cache.cache;
+  assert.equal(cache.size, 0);
 });
 
 // =============================================================================

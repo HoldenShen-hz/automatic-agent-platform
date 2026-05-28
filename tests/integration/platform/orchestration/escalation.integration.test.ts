@@ -328,17 +328,26 @@ test("EscalationService handles missing approval service gracefully", () => {
 test("EscalationService triggerPanicStop builds correct scope for tenant", () => {
   const ctx = createIntegrationContext("aa-esc-panic-scope-");
   try {
-    const service = new EscalationService(mockPanicService as any, null);
+    const activations: EscalationRequest[] = [];
+    const service = new EscalationService({
+      panicService: {
+        ...mockPanicService,
+        activate: (request: EscalationRequest) => {
+          activations.push(request);
+          return mockPanicService.activate(request);
+        },
+      },
+    } as any);
     const request = createEscalationRequest({
       tenantId: "tenant_xyz",
       riskLevel: "critical",
       affectsProduction: true,
     });
 
-    service.decide(request);
-
-    // If no exception, test passes - panic service was called correctly
-    assert.ok(true);
+    const decision = service.decide(request);
+    assert.equal(decision.decision, "panic_activate");
+    assert.equal(activations.length, 1);
+    assert.equal(activations[0]?.scope, "tenant/tenant_xyz");
   } finally {
     ctx.cleanup();
   }

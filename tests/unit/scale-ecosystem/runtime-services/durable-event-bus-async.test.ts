@@ -94,7 +94,7 @@ test("DurableEventBusAsync dispose can be called multiple times safely [durable-
   const bus = new DurableEventBusAsync({} as never, {} as never);
   bus.dispose();
   bus.dispose(); // Should not throw
-  assert.ok(true);
+  assert.equal((bus as unknown as { disposed: boolean }).disposed, true);
 });
 
 test("DurableEventBusAsync exports BusMetrics type [durable-event-bus-async]", () => {

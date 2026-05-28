@@ -72,10 +72,8 @@ test("SLO service acknowledge non-existent alert returns false gracefully", () =
   const h = createHarness("aa-slo-ack-miss-");
   try {
     const service = new SloAlertingService(h.db);
-    // acknowledgeAlert on nonexistent ID should not throw
     const result = service.acknowledgeAlert("alert_nonexistent", "user");
-    // No assert on result since changes() behavior varies, but must not throw
-    assert.ok(true);
+    assert.equal(result, false);
   } finally {
     h.db.close();
     cleanupPath(h.workspace);

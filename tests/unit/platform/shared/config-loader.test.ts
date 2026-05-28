@@ -308,14 +308,10 @@ test("ConfigLoader handles source that throws during load", async () => {
   loader.addSource(failingSource);
   loader.addSource(goodSource);
 
-  // Should not throw, good source value should still be available
-  try {
-    const config = await loader.loadConfig();
-    assert.equal(config.good, "value");
-  } catch {
-    // If the loader propagates errors, we need to handle it
-    assert.ok(true);
-  }
+  await assert.rejects(
+    () => loader.loadConfig(),
+    /source failed/i,
+  );
 });
 
 test("ConfigSourcePriority enum values are correct", () => {

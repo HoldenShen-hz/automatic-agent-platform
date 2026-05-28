@@ -317,8 +317,7 @@ test("updateHealth on non-existent slot does not throw", () => {
   // It runs an UPDATE query that affects 0 rows
   service.updateHealth("nonexistent_id", 0.99);
 
-  // No error means success - this is silent failure behavior
-  assert.ok(true);
+  assert.equal(service.listSlots().length, 0);
 });
 
 // ---------------------------------------------------------------------------

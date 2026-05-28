@@ -289,12 +289,11 @@ test("write allows normal keys with self-enhancement patterns in value", () => {
 test("write allows normal keys without self-enhancement patterns", () => {
   const manager = createManager();
 
-  // Should not throw
   manager.write("run", "scope_1", "normal_key", { type: "normal_operation" });
   manager.write("run", "scope_1", "another_key", { action: "normal_action" });
 
-  // These should work
-  assert.ok(true);
+  assert.deepEqual(manager.read("run", "scope_1", "normal_key"), { type: "normal_operation" });
+  assert.deepEqual(manager.read("run", "scope_1", "another_key"), { action: "normal_action" });
 });
 
 // =============================================================================

@@ -1072,15 +1072,10 @@ test("RedisLockAdapter close handles disconnect error gracefully [redis-lock-ada
   });
   const adapter = createAdapterWithMockRedis(mockRedis);
 
-  // disconnect() errors are not caught, but we test the behavior
-  // Note: This may throw in real implementation, testing here for coverage
-  try {
-    await adapter.close();
-    assert.ok(true);
-  } catch {
-    // Some implementations may throw on disconnect error
-    assert.ok(true);
-  }
+  await assert.rejects(
+    () => adapter.close(),
+    /Disconnect failed/,
+  );
 });
 
 // =============================================================================

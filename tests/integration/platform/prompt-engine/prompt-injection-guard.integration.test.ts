@@ -269,12 +269,9 @@ test("Invalid regex object does not crash classifyPromptInjectionRisk", async ()
     mediumConfidenceThreshold: 0.4,
   };
 
-  try {
-    const result = await classifyPromptInjectionRisk("test", 0.5, badConfig as any);
-    assert.ok(result !== undefined);
-  } catch {
-    assert.ok(true);
-  }
+  const result = await classifyPromptInjectionRisk("test", 0.5, badConfig as any);
+  assert.equal(result.threshold, 0.5);
+  assert.equal(typeof result.score, "number");
 });
 
 test("Extremely high threshold - injection detected but score below threshold", async () => {

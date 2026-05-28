@@ -86,17 +86,39 @@ export interface WarRoomCreateOptions {
   objectives?: readonly string[];
 }
 
+export interface WarRoomCoordinatorOptions {
+  maxRetainedWarRooms?: number;
+  maxCommandLogEntries?: number;
+}
+
 /**
  * War Room Coordination Service for SEV1 multi-participant incidents.
  */
 export class WarRoomCoordinator {
+  private static readonly DEFAULT_MAX_RETAINED_WAR_ROOMS = 200;
+  private static readonly DEFAULT_MAX_COMMAND_LOG_ENTRIES = 250;
   private readonly warRooms = new Map<string, WarRoom>();
   private readonly participantWarRooms = new Map<string, Set<string>>();
+  private readonly maxRetainedWarRooms: number;
+  private readonly maxCommandLogEntries: number;
+
+  public constructor(options: WarRoomCoordinatorOptions = {}) {
+    this.maxRetainedWarRooms = Math.max(
+      1,
+      options.maxRetainedWarRooms ?? WarRoomCoordinator.DEFAULT_MAX_RETAINED_WAR_ROOMS,
+    );
+    this.maxCommandLogEntries = Math.max(
+      1,
+      options.maxCommandLogEntries ?? WarRoomCoordinator.DEFAULT_MAX_COMMAND_LOG_ENTRIES,
+    );
+  }
 
   /**
    * Creates a new war room for incident coordination.
    */
   public createWarRoom(options: WarRoomCreateOptions = {}): WarRoom {
+    this.ensureWarRoomCapacity();
+
     const warRoomId = newId("warroom");
     const now = nowIso();
 
@@ -159,6 +181,7 @@ export class WarRoomCoordinator {
 
     warRoom.status = "closed";
     warRoom.closedAt = nowIso();
+    this.ensureWarRoomCapacity();
     return true;
   }
 
@@ -208,6 +231,7 @@ export class WarRoomCoordinator {
 
     // Create new participants array without the removed participant
     warRoom.participants = warRoom.participants.filter((p) => p.participantId !== participantId);
+    this.removeParticipantMapping(participant.userId, warRoomId);
     return true;
   }
 
@@ -263,7 +287,7 @@ export class WarRoomCoordinator {
       result: result ?? null,
     };
 
-    warRoom.commandLog = [...warRoom.commandLog, cmd];
+    warRoom.commandLog = [...warRoom.commandLog, cmd].slice(-this.maxCommandLogEntries);
     return cmd;
   }
 
@@ -309,7 +333,19 @@ export class WarRoomCoordinator {
     if (!warRoomIds) {
       return [];
     }
-    return [...warRoomIds].map((id) => this.warRooms.get(id)).filter((wr): wr is WarRoom => wr !== undefined);
+    const rooms: WarRoom[] = [];
+    for (const warRoomId of [...warRoomIds]) {
+      const warRoom = this.warRooms.get(warRoomId);
+      if (!warRoom) {
+        warRoomIds.delete(warRoomId);
+        continue;
+      }
+      rooms.push(warRoom);
+    }
+    if (warRoomIds.size === 0) {
+      this.participantWarRooms.delete(userId);
+    }
+    return rooms;
   }
 
   private addParticipantMapping(userId: string, warRoomId: string): void {
@@ -319,5 +355,45 @@ export class WarRoomCoordinator {
       this.participantWarRooms.set(userId, warRooms);
     }
     warRooms.add(warRoomId);
+  }
+
+  private removeParticipantMapping(userId: string, warRoomId: string): void {
+    const warRooms = this.participantWarRooms.get(userId);
+    if (!warRooms) {
+      return;
+    }
+    warRooms.delete(warRoomId);
+    if (warRooms.size === 0) {
+      this.participantWarRooms.delete(userId);
+    }
+  }
+
+  private ensureWarRoomCapacity(): void {
+    while (this.warRooms.size >= this.maxRetainedWarRooms) {
+      const removable = [...this.warRooms.values()]
+        .filter((warRoom) => warRoom.status === "closed")
+        .sort((left, right) => {
+          const leftTime = left.closedAt ?? left.createdAt;
+          const rightTime = right.closedAt ?? right.createdAt;
+          return leftTime.localeCompare(rightTime);
+        })[0];
+
+      if (!removable) {
+        throw new Error("war_room.capacity_exceeded");
+      }
+
+      this.removeWarRoom(removable.warRoomId);
+    }
+  }
+
+  private removeWarRoom(warRoomId: string): void {
+    const warRoom = this.warRooms.get(warRoomId);
+    if (!warRoom) {
+      return;
+    }
+    this.warRooms.delete(warRoomId);
+    for (const participant of warRoom.participants) {
+      this.removeParticipantMapping(participant.userId, warRoomId);
+    }
   }
 }

@@ -4,10 +4,15 @@ import test from "node:test";
 import { ReleaseRepository } from "../../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/repositories/release-repository.js";
 
 function createMockDb() {
+  const runCalls: Array<{ sql: string; args: unknown[] }> = [];
   return {
+    runCalls,
     connection: {
-      prepare: () => ({
-        run: () => ({ changes: 1 }),
+      prepare: (sql: string) => ({
+        run: (...args: unknown[]) => {
+          runCalls.push({ sql, args });
+          return { changes: 1 };
+        },
         get: () => undefined,
         all: () => [],
       }),
@@ -31,7 +36,8 @@ test("ReleaseRepository exposes the current release and ops repository surface",
 });
 
 test("ReleaseRepository accepts current release record contracts", () => {
-  const repo = new ReleaseRepository(createMockDb() as never);
+  const db = createMockDb() as never;
+  const repo = new ReleaseRepository(db);
   const now = "2026-04-21T10:00:00.000Z";
 
   repo.insertReleaseBundleRecord({
@@ -119,7 +125,11 @@ test("ReleaseRepository accepts current release record contracts", () => {
     exportedAt: now,
   });
 
-  assert.ok(true);
+  const runCalls = (db as unknown as { runCalls: Array<{ sql: string; args: unknown[] }> }).runCalls;
+  assert.equal(runCalls.length, 3);
+  assert.ok(runCalls[0]?.sql.includes("INSERT INTO release_bundles"));
+  assert.ok(runCalls[1]?.sql.includes("INSERT INTO release_execution_reports"));
+  assert.ok(runCalls[2]?.sql.includes("INSERT INTO deployment_execution_reports"));
 });
 
 test("ReleaseRepository accepts current environment readiness and incident handoff contracts", () => {

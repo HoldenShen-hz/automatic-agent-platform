@@ -131,14 +131,31 @@ test("OpenAIEmbeddingProvider respects custom dimensions", () => {
   assert.equal(provider.dimensions, 1024);
 });
 
-test("OpenAIEmbeddingProvider normalizes baseUrl by removing trailing slash", () => {
-  const provider = new OpenAIEmbeddingProvider({
-    apiKey: "sk-test",
-    baseUrl: "https://api.openai.com/",
-  });
+test("OpenAIEmbeddingProvider normalizes baseUrl by removing trailing slash", async () => {
+  const originalFetch = globalThis.fetch;
+  const calls: string[] = [];
+  globalThis.fetch = (async (input: RequestInfo | URL) => {
+    calls.push(String(input));
+    return {
+      ok: true,
+      json: async () => ({
+        data: [{ index: 0, embedding: [0.1, 0.2] }],
+        usage: { total_tokens: 1 },
+      }),
+    } as Response;
+  }) as typeof fetch;
 
-  // Internal behavior: baseUrl should not have trailing slash
-  assert.ok(true); // Would need to test via embed() call with mocked fetch
+  try {
+    const provider = new OpenAIEmbeddingProvider({
+      apiKey: "sk-test",
+      baseUrl: "https://api.openai.com/",
+    });
+
+    await provider.embed("normalize me");
+    assert.deepEqual(calls, ["https://api.openai.com/v1/embeddings"]);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
 
 test("MiniMaxEmbeddingOptions interface structure", () => {
@@ -162,19 +179,42 @@ test("MiniMaxEmbeddingProvider has correct type and dimensions", () => {
   assert.equal(provider.dimensions, 1024); // embo-01 is 1024-dim
 });
 
-test("MiniMaxEmbeddingProvider normalizes baseUrl", () => {
-  const provider1 = new MiniMaxEmbeddingProvider({
-    apiKey: "mmx-test",
-    baseUrl: "https://api.minimaxi.com/v1",
-  });
+test("MiniMaxEmbeddingProvider normalizes baseUrl", async () => {
+  const originalFetch = globalThis.fetch;
+  const calls: string[] = [];
+  globalThis.fetch = (async (input: RequestInfo | URL) => {
+    calls.push(String(input));
+    return {
+      ok: true,
+      json: async () => ({
+        data: [{ index: 0, embedding: new Array(1024).fill(0.1) }],
+        model: "embo-01",
+      }),
+    } as Response;
+  }) as typeof fetch;
 
-  const provider2 = new MiniMaxEmbeddingProvider({
-    apiKey: "mmx-test",
-    baseUrl: "https://api.minimaxi.com/v1/",
-  });
+  try {
+    const provider1 = new MiniMaxEmbeddingProvider({
+      apiKey: "mmx-test",
+      baseUrl: "https://api.minimaxi.com/v1",
+    });
 
-  // Both should work correctly
-  assert.ok(true);
+    const provider2 = new MiniMaxEmbeddingProvider({
+      apiKey: "mmx-test",
+      baseUrl: "https://api.minimaxi.com/v1/",
+    });
+
+    await Promise.all([
+      provider1.embed("one"),
+      provider2.embed("two"),
+    ]);
+    assert.deepEqual(calls, [
+      "https://api.minimaxi.com/v1/embeddings",
+      "https://api.minimaxi.com/v1/embeddings",
+    ]);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
 
 test("createEmbeddingProviderFromEnv defaults to hash when no provider env var", () => {

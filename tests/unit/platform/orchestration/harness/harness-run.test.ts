@@ -580,7 +580,7 @@ test("runLoop writes guardrail assessment to memory", () => {
     iteration: 1,
   }, 0.9);
 
-  service.runLoop({
+  const run = service.runLoop({
     taskId: "task-memory-001",
     domainId: "coding",
     constraintPack,
@@ -591,8 +591,7 @@ test("runLoop writes guardrail assessment to memory", () => {
     producedEvidenceRefs: [],
   });
 
-  // Memory write should have occurred - verify service state
-  assert.ok(true); // If we got here without error, memory write succeeded
+  assert.ok(service.readMemory(run, "run", "last_guardrail_assessment") != null);
 });
 
 test("runLoop writes evaluator score to domain memory", () => {
@@ -619,7 +618,7 @@ test("runLoop writes evaluator score to domain memory", () => {
     producedEvidenceRefs: [],
   });
 
-  assert.ok(run.loopMetrics != null);
+  assert.equal(service.readMemory(run, "domain", "last_evaluator_score"), 0.85);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

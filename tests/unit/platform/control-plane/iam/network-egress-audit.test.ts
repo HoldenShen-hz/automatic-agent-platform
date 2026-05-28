@@ -197,6 +197,17 @@ test("NetworkEgressAuditService getEvents returns all events", () => {
   assert.equal(events.length, 2);
 });
 
+test("NetworkEgressAuditService evicts oldest events beyond maxEvents", () => {
+  const service = new NetworkEgressAuditService({ maxEvents: 3 });
+  for (let i = 0; i < 5; i++) {
+    service.recordEgress(`https://example${i}.com`, "fetch", true);
+  }
+
+  const events = service.getEvents();
+  assert.equal(events.length, 3);
+  assert.deepEqual(events.map((event) => event.destination), ["example2.com", "example3.com", "example4.com"]);
+});
+
 test("NetworkEgressAuditService getEventsByType filters correctly", () => {
   const service = new NetworkEgressAuditService();
   service.recordEgress("https://example.com", "fetch", true);

@@ -243,5 +243,21 @@ test("data-plane-flow-2192: different-tenant movement should be blocked [data-pl
 });
 
 test("data-plane-flow-2192: assertScopeCompatibility fail-closed behavior is documented by explicit scope requirement [data-plane-flow-issues]", () => {
-  assert.ok(true);
+  const harness = createHarness("aa-data-plane-scope-6-");
+
+  try {
+    assert.throws(() => {
+      harness.tenantPlatform.createDataNamespace({
+        namespaceId: "ns-global-c",
+        plane: "analytics",
+        tenantId: null,
+        workspaceId: null,
+        retentionPolicy: "analytics_180d",
+        encryptionPolicy: "kms:global",
+      });
+    }, /tenant\.namespace_scope_required/);
+  } finally {
+    harness.db.close();
+    cleanupPath(harness.workspace);
+  }
 });

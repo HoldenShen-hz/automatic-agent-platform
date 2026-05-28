@@ -551,6 +551,7 @@ export interface MissionPlaybookValidationResult {
 }
 
 export class MissionPlaybookRegistry {
+  private static readonly MAX_LIFECYCLE_EVENTS = 500;
   private readonly playbooks = new Map<string, MissionPlaybook>();
   private readonly activeByMissionType = new Map<MissionPlaybook["missionType"], string>();
   private readonly lastActiveByMissionType = new Map<MissionPlaybook["missionType"], string>();
@@ -692,6 +693,9 @@ export class MissionPlaybookRegistry {
       payload: input.payload,
       occurredAt: input.occurredAt,
     });
+    if (this.lifecycleEvents.length > MissionPlaybookRegistry.MAX_LIFECYCLE_EVENTS) {
+      this.lifecycleEvents.splice(0, this.lifecycleEvents.length - MissionPlaybookRegistry.MAX_LIFECYCLE_EVENTS);
+    }
   }
 }
 

@@ -109,13 +109,21 @@ test("OutboxRepository.insertOutboxEntriesBulk with empty input returns empty ar
 });
 
 test("OutboxRepository.markPublishedBatch with empty ids returns early", () => {
-  const conn = createMockConnection();
+  let prepareCalls = 0;
+  const conn = {
+    prepare: () => {
+      prepareCalls += 1;
+      return {
+        run: () => ({ changes: 1 }),
+        get: () => null,
+        all: () => [],
+      };
+    },
+  } as unknown as SqliteConnection;
   const repo = new OutboxRepository(conn as SqliteConnection);
 
-  // Should not throw
   repo.markPublishedBatch([], "2026-04-26T00:00:00Z");
-
-  assert.ok(true);
+  assert.equal(prepareCalls, 0);
 });
 
 test("OutboxRepository.listPendingEntries delegates to query", () => {
@@ -289,6 +297,8 @@ test("OutboxRepository.getStatus returns PENDING when not published and no retri
       retryCount: 0,
       lastError: null,
       lastAttemptAt: null,
+      deadLetteredAt: null,
+      deadLetterReason: null,
     },
     allRows: [],
   };

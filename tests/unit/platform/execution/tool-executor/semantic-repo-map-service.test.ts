@@ -183,9 +183,9 @@ test("SemanticRepoMapService.invalidateCache forces rebuild [semantic-repo-map-s
   const service = new SemanticRepoMapService("/test/root", 60_000);
   service.buildMap();
   service.invalidateCache();
-  // After invalidate, the map should be null and next build will be fresh
-  // This is an implementation detail test
-  assert.ok(true); // Just verify no error
+  const internals = service as unknown as { repoMap: unknown; lastBuiltAt: number };
+  assert.equal(internals.repoMap, null);
+  assert.equal(internals.lastBuiltAt, 0);
 });
 
 test("SemanticRepoMapService handles invalid root path gracefully [semantic-repo-map-service]", () => {

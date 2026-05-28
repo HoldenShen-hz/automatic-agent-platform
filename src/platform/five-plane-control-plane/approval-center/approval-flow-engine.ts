@@ -75,6 +75,7 @@ export class ApprovalFlowEngine {
   private readonly logger = new StructuredLogger({ retentionLimit: 50 });
   private readonly flows: Map<string, ApprovalFlowState> = new Map();
   private readonly escalationManager: EscalationManager;
+  private readonly maxEscalationHistoryEntries = 25;
   // C-11: TTL-based eviction to prevent memory leaks
   private readonly MAX_FLOWS = 500;
   private readonly FLOW_TTL_MS = 60 * 60 * 1000; // 1 hour
@@ -576,6 +577,9 @@ export class ApprovalFlowEngine {
       reason: result.newLevel.reason,
       sourceApprovalId: result.newLevel.sourceApprovalId,
     });
+    if (flow.escalationHistory.length > this.maxEscalationHistoryEntries) {
+      flow.escalationHistory.splice(0, flow.escalationHistory.length - this.maxEscalationHistoryEntries);
+    }
     flow.status = FlowStatus.ESCALATED;
     flow.escalationTriggered = true;
     flow.updatedAt = nowIso();

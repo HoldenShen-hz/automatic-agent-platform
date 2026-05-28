@@ -332,10 +332,12 @@ test("VcrFixtureStore.recordInteraction validates and stores", () => {
     recordedAt: new Date().toISOString(),
   };
 
-  store.recordInteraction(interaction);
-
-  // Should not throw - validation passed
-  assert.ok(true);
+  const replayed = store.recordInteraction(interaction);
+  const records = (store as unknown as {
+    interactionsByFingerprint: Map<string, RecordedInteraction>;
+  }).interactionsByFingerprint;
+  assert.equal(replayed.requestFingerprint, "abc123");
+  assert.equal(records.get("abc123")?.interactionId, interaction.interactionId);
 });
 
 test("VcrFixtureStore mode fixture_only allows missing fixture", () => {

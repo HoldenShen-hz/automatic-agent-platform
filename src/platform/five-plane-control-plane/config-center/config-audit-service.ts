@@ -123,6 +123,8 @@ export interface ConfigAuditResult {
 export interface ConfigAuditServiceOptions {
   /** Optional event bus for emitting audit events */
   eventBus?: DurableEventBus | null;
+  /** Maximum number of audit entries retained overall (default: 1000) */
+  maxEntries?: number;
   /** Maximum number of audit entries to retain per config path (default: 1000) */
   maxEntriesPerPath?: number;
   /** Maximum age of audit entries in milliseconds (default: 90 days) */
@@ -147,6 +149,7 @@ export interface ConfigAuditServiceOptions {
  */
 export class ConfigAuditService {
   private readonly eventBus: DurableEventBus | null;
+  private readonly maxEntries: number;
   private readonly maxEntriesPerPath: number;
   private readonly maxEntryAgeMs: number;
   private readonly sqliteDb: SqliteConnection | null;
@@ -157,6 +160,7 @@ export class ConfigAuditService {
 
   public constructor(options: ConfigAuditServiceOptions = {}) {
     this.eventBus = options.eventBus ?? null;
+    this.maxEntries = Math.max(1, options.maxEntries ?? DEFAULT_AUDIT_ENTRY_LIMIT);
     this.maxEntriesPerPath = options.maxEntriesPerPath ?? 1000;
     this.maxEntryAgeMs = options.maxEntryAgeMs ?? 90 * 24 * 60 * 60 * 1000;
     this.sqliteDb = options.sqliteDb ?? null;
@@ -721,6 +725,26 @@ export class ConfigAuditService {
       );
 
       let totalPruned = 0;
+      interface CountRow { cnt: number; }
+      const totalCount = queryOne<CountRow>(
+        this.sqliteDb,
+        `SELECT COUNT(*) as cnt FROM config_audit_entries`,
+      )?.cnt ?? 0;
+      if (totalCount > this.maxEntries) {
+        interface AuditIdRow { audit_id: string; }
+        const idsToDelete = queryAllOrEmpty<AuditIdRow>(
+          this.sqliteDb,
+          `SELECT audit_id FROM config_audit_entries
+           ORDER BY timestamp DESC
+           LIMIT -1 OFFSET ?`,
+          this.maxEntries,
+        );
+        for (const { audit_id } of idsToDelete) {
+          this.deleteEntryFromDb(audit_id);
+          totalPruned++;
+        }
+      }
+
       for (const { path_key } of pathCounts) {
         // Parse path_key back to components
         const parts = path_key.split(':');
@@ -754,20 +778,24 @@ export class ConfigAuditService {
     // In-memory fallback
     const cutoffTime = Date.now() - this.maxEntryAgeMs;
     const toRemove: number[] = [];
+    const retainedPerPath = new Map<string, number>();
 
-    for (let i = 0; i < this.entries.length; i++) {
+    for (let i = this.entries.length - 1; i >= 0; i--) {
       const entry = this.entries[i]!;
       const entryTime = new Date(entry.timestamp).getTime();
-
-      // Count entries for this config path
       const pathKey = this.buildPathKey(entry.configPath, entry.layer, entry.sourceId);
-      const countForPath = this.entries.filter(
-        (e) => this.buildPathKey(e.configPath, e.layer, e.sourceId) === pathKey,
-      ).length;
 
-      if (entryTime < cutoffTime || countForPath > this.maxEntriesPerPath) {
+      if (entryTime < cutoffTime) {
         toRemove.push(i);
+        continue;
       }
+
+      const retainedCount = retainedPerPath.get(pathKey) ?? 0;
+      if (retainedCount >= this.maxEntriesPerPath) {
+        toRemove.push(i);
+        continue;
+      }
+      retainedPerPath.set(pathKey, retainedCount + 1);
     }
 
     // Remove in reverse order to maintain indices
@@ -775,7 +803,14 @@ export class ConfigAuditService {
       this.entries.splice(toRemove[i]!, 1);
     }
 
-    return toRemove.length;
+    let prunedCount = toRemove.length;
+    if (this.entries.length > this.maxEntries) {
+      const overflow = this.entries.length - this.maxEntries;
+      this.entries.splice(0, overflow);
+      prunedCount += overflow;
+    }
+
+    return prunedCount;
   }
 
   /**
@@ -824,8 +859,10 @@ export class ConfigAuditService {
   private addEntry(entry: ConfigAuditEntry): void {
     if (this.useDurableStorage) {
       this.saveEntryToDb(entry);
+    } else {
+      this.entries.push(entry);
     }
-    this.entries.push(entry);
+    this.pruneOldEntries();
     this.emitAuditEvent("config.audit.recorded", entry);
   }
 

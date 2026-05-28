@@ -245,7 +245,8 @@ test("SqliteAsyncAdapter.assertSchemaCurrent() completes when schema is current"
 
     // Should not throw
     await adapter.assertSchemaCurrent();
-    assert.ok(true); // Reached this point without error
+    const status = await adapter.getSchemaStatus();
+    assert.equal(status.upToDate, true);
   } finally {
     harness.db.close();
     cleanupPath(harness.workspace);
@@ -403,10 +404,10 @@ test("SqliteAsyncAdapter.close() closes underlying database", async () => {
     // close() should not throw
     await adapter.close();
 
-    // After close, the database should be closed (further operations would fail)
-    // We verify by checking that subsequent operations would fail
-    // In a real scenario, we'd try to use the db and catch the error
-    assert.ok(true); // Reached this point without error
+    await assert.rejects(
+      () => adapter.asyncConnection.query("SELECT 1"),
+      /closed|not open/i,
+    );
   } finally {
     // Don't close again or cleanup - already closed
     cleanupPath(harness.workspace);

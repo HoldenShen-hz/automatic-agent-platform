@@ -64,8 +64,10 @@ test("HarnessSleepScheduler start and stop are safe to call repeatedly", () => {
   const scheduler = new HarnessSleepScheduler(new DurableHarnessService());
 
   scheduler.start(100);
+  const timer = (scheduler as unknown as { timer: NodeJS.Timeout | null }).timer;
   scheduler.start(100);
   scheduler.stop();
 
-  assert.ok(true);
+  assert.ok(timer != null);
+  assert.equal((scheduler as unknown as { timer: NodeJS.Timeout | null }).timer, null);
 });

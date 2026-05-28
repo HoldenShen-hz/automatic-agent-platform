@@ -54,6 +54,8 @@ export interface PolicyVersionManagerConfig {
   maxDeprecatedVersions?: number;
   /** Whether to require approval for policy changes */
   requireApprovalForChanges?: boolean;
+  /** Maximum number of change history entries retained in memory */
+  maxChangeHistoryEntries?: number;
 }
 
 /**
@@ -82,6 +84,7 @@ export class PolicyVersionManager {
     this.config = {
       maxDeprecatedVersions: config.maxDeprecatedVersions ?? 10,
       requireApprovalForChanges: config.requireApprovalForChanges ?? true,
+      maxChangeHistoryEntries: config.maxChangeHistoryEntries ?? 500,
     };
 
     if (initialBundle) {
@@ -441,6 +444,9 @@ export class PolicyVersionManager {
       changeSummary: `Policy ${changeType} from ${fromVersion} to ${toVersion}`,
     };
     this.changeHistory.push(entry);
+    if (this.changeHistory.length > this.config.maxChangeHistoryEntries) {
+      this.changeHistory.splice(0, this.changeHistory.length - this.config.maxChangeHistoryEntries);
+    }
   }
 
   /**

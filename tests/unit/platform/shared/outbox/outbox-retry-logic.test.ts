@@ -117,11 +117,10 @@ test("OutboxService markFailed updates retryCount correctly", () => {
 test("OutboxService markFailed handles non-existent entry gracefully", () => {
   const mockBus = createMockEventBus();
   const service = new OutboxService(createMockDb(), mockBus as any);
+  const failedBefore = service.getFailedCount();
 
-  // Should not throw
   service.markFailed("nonexistent-id", "Error", 1, new Date().toISOString());
-
-  assert.ok(true); // If we get here, test passed
+  assert.equal(service.getFailedCount(), failedBefore);
 });
 
 test("OutboxService publishEntry returns false on failure", async () => {

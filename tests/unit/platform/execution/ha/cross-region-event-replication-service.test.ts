@@ -200,9 +200,9 @@ test("createCrossRegionEventReplicationService factory works [cross-region-event
   const service = createCrossRegionEventReplicationService(publisher, "region-a");
 
   service.registerTargetRegion(createTargetRegion({ regionId: "region-b" }));
-  service.replicate("task.created" as TypedEventType, { taskId: "test" });
-
-  assert.ok(true); // No throw
+  const eventId = service.replicate("task.created" as TypedEventType, { taskId: "test" });
+  assert.equal(publisher.getPublishedEvents().length, 1);
+  assert.ok(service.getReplicationStatus(eventId) != null);
 });
 
 test("replication with custom config uses provided values [cross-region-event-replication-service]", () => {

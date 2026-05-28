@@ -118,12 +118,15 @@ test.describe("AuthoritativeTaskStoreRuntimeLifecycleRepository", () => {
 test.describe("RetryingRuntimeLifecycleRepository", () => {
   test("delegates successful calls to inner repository", () => {
     const inner = createMockRuntimeLifecycleRepository();
+    let captured: { taskId: string; status: string } | null = null;
+    inner.updateTaskStatus = (taskId, status) => {
+      captured = { taskId, status };
+    };
     const repo = new RetryingRuntimeLifecycleRepository(inner);
 
     repo.updateTaskStatus("task-1", "running", "2026-04-26T10:00:00.000Z", null, null);
 
-    // If it didn't throw, the call succeeded
-    assert.ok(true);
+    assert.deepEqual(captured, { taskId: "task-1", status: "running" });
   });
 
   test("retries on SQLITE_BUSY error", () => {
@@ -217,13 +220,27 @@ test.describe("RetryingRuntimeLifecycleRepository", () => {
 test.describe("ObservedRuntimeLifecycleRepository", () => {
   test("delegates calls to inner repository", () => {
     const inner = createMockRuntimeLifecycleRepository();
-    const logger = { debug: () => {}, warn: () => {}, info: () => {} };
+    let captured: { taskId: string; status: string } | null = null;
+    inner.updateTaskStatus = (taskId, status) => {
+      captured = { taskId, status };
+    };
+    const debugCalls: Array<{ operation: string; ok: boolean }> = [];
+    const logger = {
+      debug: (_message: string, data: { operation: string; ok: boolean }) => {
+        debugCalls.push(data);
+      },
+      warn: () => {},
+      info: () => {},
+    };
     const repo = new ObservedRuntimeLifecycleRepository(inner, logger as any);
 
     repo.updateTaskStatus("task-1", "running", "2026-04-26T10:00:00.000Z", null, null);
 
-    // If it didn't throw, the call succeeded
-    assert.ok(true);
+    assert.deepEqual(captured, { taskId: "task-1", status: "running" });
+    assert.equal(debugCalls.length, 1);
+    assert.equal(debugCalls[0]!.operation, "updateTaskStatus");
+    assert.equal(debugCalls[0]!.ok, true);
+    assert.equal(typeof (debugCalls[0] as { durationMs?: unknown }).durationMs, "number");
   });
 
   test("returns value from inner repository", () => {

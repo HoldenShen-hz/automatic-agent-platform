@@ -225,18 +225,39 @@ test("cdc-replication-2196: replication lag indicates queue buildup [cdc-replica
   // Issue #2196: This lag indicates queue is not keeping up
 });
 
-test("cdc-replication-2196: backpressure mechanism missing [cdc-replication-issues]", () => {
+test("cdc-replication-2196: backpressure mechanism rejects new batches when queue is full [cdc-replication-issues]", () => {
   const service = new CDCReplicationService();
 
-  // Issue #2196: Should have backpressure when queue is full
-  // Options:
-  // 1. Reject new batches when queue full
-  // 2. Drop oldest batches
-  // 3. Apply backpressure to upstream
+  service.registerReplication({
+    sourceRegionId: "us-east-1",
+    targetRegionId: "us-west-2",
+    batchSize: 100,
+    maxQueueDepth: 1,
+    replicationIntervalMs: 5000,
+    enabled: true,
+    retryPolicy: { maxRetries: 3, backoffMs: 1000 },
+  });
 
-  // Current: No backpressure, queue grows unbounded
+  const firstBatch = service.prepareBatch("us-east-1", "us-west-2", [{
+    id: "evt-1",
+    sequence: 1,
+    eventType: "task.created",
+    taskId: "task-1",
+    payloadJson: "{}",
+    createdAt: "2026-04-20T00:00:00.000Z",
+  }]);
+  assert.ok(firstBatch !== null);
 
-  assert.ok(true); // Documenting the missing feature
+  assert.throws(() => {
+    service.prepareBatch("us-east-1", "us-west-2", [{
+      id: "evt-2",
+      sequence: 2,
+      eventType: "task.created",
+      taskId: "task-1",
+      payloadJson: "{}",
+      createdAt: "2026-04-20T00:00:00.000Z",
+    }]);
+  }, /CDC_QUEUE_BACKPRESSURE/);
 });
 
 test("cdc-replication-2196: queue growth over time without confirmation [cdc-replication-issues]", () => {

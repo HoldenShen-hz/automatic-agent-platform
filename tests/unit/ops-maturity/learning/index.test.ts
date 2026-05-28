@@ -193,6 +193,8 @@ describe("Learning Module Integration", () => {
   });
 
   it("should handle multi-round learning cycles", async () => {
+    const initialBenchmarkCalls = mockBenchmarkRunner.run.mock.callCount();
+    const initialReflectionCalls = mockReflectionEngine.reflect.mock.callCount();
     const cycles = 3;
     for (let i = 0; i < cycles; i++) {
       const benchmarkResult = await mockBenchmarkRunner.run();
@@ -201,8 +203,8 @@ describe("Learning Module Integration", () => {
       const reflectionResult = await mockReflectionEngine.reflect();
       assert.ok(Array.isArray(reflectionResult.insights));
     }
-    // All cycles completed without error
-    assert.ok(true);
+    assert.strictEqual(mockBenchmarkRunner.run.mock.callCount(), initialBenchmarkCalls + cycles);
+    assert.strictEqual(mockReflectionEngine.reflect.mock.callCount(), initialReflectionCalls + cycles);
   });
 });
 

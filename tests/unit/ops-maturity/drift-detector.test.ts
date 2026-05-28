@@ -195,8 +195,8 @@ test("SimpleBenchmarkRunner addBenchmarkCase adds test case", () => {
 
   runner.addBenchmarkCase(testCase);
 
-  // Evaluation should now include at least this case
-  assert.ok(true); // If we got here without error, the case was added
+  assert.equal((runner as unknown as { benchmarkCases: BenchmarkCase[] }).benchmarkCases.length, 1);
+  assert.deepEqual((runner as unknown as { benchmarkCases: BenchmarkCase[] }).benchmarkCases[0], testCase);
 });
 
 test("PromotionGate decide rejects frozen system", () => {

@@ -259,6 +259,30 @@ test("getEntriesForConfig returns entries for specific config path", () => {
   assert.ok(entries.every((e) => e.configPath === "platform.timeout"));
 });
 
+test("ConfigAuditService prunes oldest entries automatically when maxEntries is exceeded", () => {
+  const service = new ConfigAuditService({ maxEntries: 3, maxEntriesPerPath: 3 });
+
+  for (let i = 0; i < 5; i++) {
+    service.recordCreate(`platform.test.${i}`, "platform", null, { value: i }, "user", null);
+  }
+
+  const result = service.query({ limit: 10 });
+  assert.equal(result.totalCount, 3);
+  assert.equal(result.entries.some((entry) => entry.configPath === "platform.test.0"), false);
+  assert.equal(result.entries.some((entry) => entry.configPath === "platform.test.4"), true);
+});
+
+test("ConfigAuditService prunes oldest entries per config path automatically", () => {
+  const service = new ConfigAuditService({ maxEntries: 10, maxEntriesPerPath: 2 });
+
+  for (let i = 0; i < 4; i++) {
+    service.recordCreate("platform.timeout", "platform", null, { value: i }, "user", `reason-${i}`);
+  }
+
+  const entries = service.getEntriesForConfig("platform.timeout", "platform", null);
+  assert.equal(entries.length, 2);
+});
+
 test("getEntriesForConfig filters by sourceId", () => {
   const service = new ConfigAuditService();
 

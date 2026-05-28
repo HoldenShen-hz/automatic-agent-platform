@@ -228,8 +228,9 @@ test("evaluateSqliteSchemaCompatibilityGate handles empty statements", () => {
 
   const report = evaluateSqliteSchemaCompatibilityGate(migrations);
 
-  // The empty strings should be filtered out
-  assert.ok(true);
+  assert.equal(report.statementCount, 2);
+  assert.equal(report.issueCount, 1);
+  assert.equal(report.issues[0]?.ruleId, "destructive_drop_table_is_blocked");
 });
 
 test("SqliteSchemaCompatibilityReport structure", () => {

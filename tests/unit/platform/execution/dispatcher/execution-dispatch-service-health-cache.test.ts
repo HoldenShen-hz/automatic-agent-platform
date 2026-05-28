@@ -296,14 +296,13 @@ test("dispatchNext reuses cached HealthService across multiple calls [execution-
 
   const db = createMockDb();
   const service = new ExecutionDispatchService(db, store, null);
+  const initialHealthService = (service as unknown as { healthService: unknown }).healthService;
 
-  // Make multiple dispatchNext calls - HealthService should be cached
   service.dispatchNext({ leaseTtlMs: 30_000 });
   service.dispatchNext({ leaseTtlMs: 30_000 });
   service.dispatchNext({ leaseTtlMs: 30_000 });
 
-  // If we get here without error, the caching works
-  assert.ok(true);
+  assert.strictEqual((service as unknown as { healthService: unknown }).healthService, initialHealthService);
 });
 
 test("dispatchNext uses provided backpressureSnapshot instead of creating HealthService [execution-dispatch-service-health-cache]", () => {

@@ -130,10 +130,18 @@ test("ExecutionRecoveryWorker.runRecoveryCycle handles errors gracefully [execut
 });
 
 test("ExecutionRecoveryWorker.runRecoveryCycle calculates stale threshold correctly [execution-recovery-worker]", async () => {
+  let capturedStartedAt: string | null = null;
+  let capturedStaleBefore: string | null = null;
   const worker = new ExecutionRecoveryWorker({
     recoveryService: {
-      listRecoverableExecutingRuns: (startedAt: string) => [],
-      listStaleRuns: (staleBefore: string) => [],
+      listRecoverableExecutingRuns: (startedAt: string) => {
+        capturedStartedAt = startedAt;
+        return [];
+      },
+      listStaleRuns: (staleBefore: string) => {
+        capturedStaleBefore = staleBefore;
+        return [];
+      },
       listBlockedRunsAwaitingApproval: () => [],
       applyRecoveryDecision: async () => undefined,
     },
@@ -142,11 +150,8 @@ test("ExecutionRecoveryWorker.runRecoveryCycle calculates stale threshold correc
   });
 
   await worker.runRecoveryCycle();
-
-  // The staleBefore should be 1 minute before "2026-04-14T10:00:00.000Z"
-  // which is "2026-04-14T09:59:00.000Z"
-  // We can't directly check the internal call, but we verify it doesn't crash
-  assert.ok(true);
+  assert.equal(capturedStartedAt, "2026-04-14T10:00:00.000Z");
+  assert.equal(capturedStaleBefore, "2026-04-14T09:59:00.000Z");
 });
 
 test("ExecutionRecoveryWorker.runRecoveryCycle with custom stale threshold [execution-recovery-worker]", async () => {

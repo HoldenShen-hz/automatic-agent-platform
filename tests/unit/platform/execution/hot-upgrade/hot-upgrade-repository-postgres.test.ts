@@ -256,22 +256,36 @@ test("PostgresHotUpgradeRepository.insertUpgradeAudit inserts audit record [hot-
 
 test("PostgresHotUpgradeRepository.updateUpgradePlanStatus updates plan status [hot-upgrade-repository-postgres]", async () => {
   const mockDb = createMockAsyncDb() as any;
+  const executeCalls: Array<{ sql: string; args: unknown[] }> = [];
+  const originalExecute = mockDb.asyncConnection.execute;
+  mockDb.asyncConnection.execute = async (sql: string, ...args: unknown[]) => {
+    executeCalls.push({ sql, args });
+    return originalExecute(sql, ...args);
+  };
   const repo = new PostgresHotUpgradeRepository(mockDb);
 
   await repo.updateUpgradePlanStatus("plan-123", "in_progress", {
     startedAt: "2024-01-01T00:00:00.000Z",
   });
 
-  // Verify no errors thrown - the mock just returns { rowCount: 1 }
-  assert.ok(true);
+  assert.equal(executeCalls.length, 1);
+  assert.ok(executeCalls[0]!.sql.includes("UPDATE upgrade_plans SET status = $1, started_at = $2"));
+  assert.deepEqual(executeCalls[0]!.args, ["in_progress", "2024-01-01T00:00:00.000Z", "plan-123"]);
 });
 
 test("PostgresHotUpgradeRepository.updateUpgradeBatch updates batch status [hot-upgrade-repository-postgres]", async () => {
   const mockDb = createMockAsyncDb() as any;
+  const executeCalls: Array<{ sql: string; args: unknown[] }> = [];
+  const originalExecute = mockDb.asyncConnection.execute;
+  mockDb.asyncConnection.execute = async (sql: string, ...args: unknown[]) => {
+    executeCalls.push({ sql, args });
+    return originalExecute(sql, ...args);
+  };
   const repo = new PostgresHotUpgradeRepository(mockDb);
 
   await repo.updateUpgradeBatch("batch-123", "completed", "2024-01-01T00:00:00.000Z", []);
 
-  // Verify no errors thrown - the mock just returns { rowCount: 1 }
-  assert.ok(true);
+  assert.equal(executeCalls.length, 1);
+  assert.ok(executeCalls[0]!.sql.includes("UPDATE upgrade_batches SET status = $1, completed_at = $2, health_checks_json = $3"));
+  assert.deepEqual(executeCalls[0]!.args, ["completed", "2024-01-01T00:00:00.000Z", "[]", "batch-123"]);
 });

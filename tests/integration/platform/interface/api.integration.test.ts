@@ -367,6 +367,7 @@ networkPathTest("HttpApiServer: broadcastTaskEvent does not throw when WebSocket
   await server.start();
 
   try {
+    assert.equal(server.getConnectedClientCount(), 0);
     const event = {
       eventType: "status_changed" as const,
       taskId: "task-123",
@@ -374,9 +375,8 @@ networkPathTest("HttpApiServer: broadcastTaskEvent does not throw when WebSocket
       timestamp: new Date().toISOString(),
     };
 
-    // Should not throw even though WebSocket is disabled
     server.broadcastTaskEvent("task-123", event);
-    assert.ok(true); // If we get here, no exception was thrown
+    assert.equal(server.getConnectedClientCount(), 0);
   } finally {
     await server.stop();
   }

@@ -95,10 +95,8 @@ test("PgAdvisoryLockAdapter accepts config with ssl settings [pg-advisory-lock-a
 test("PgAdvisoryLockAdapter lockKeyToAdvisoryKey produces consistent bigint [pg-advisory-lock-adapter]", () => {
   // Use reflection to test private method behavior indirectly
   const adapter = new PgAdvisoryLockAdapter();
-  const key1 = adapter.acquireAsync({ lockKey: "test-lock", owner: "owner" });
-  // The key should be a bigint, but we can't directly access it
-  // Instead we verify the method doesn't throw
-  assert.ok(key1 !== undefined);
+  const promise = adapter.acquireAsync({ lockKey: "test-lock", owner: "owner" }).catch((error: unknown) => error);
+  assert.ok(promise instanceof Promise);
 });
 
 test("PgAdvisoryLockAdapter acquireAsync returns false when connection fails [pg-advisory-lock-adapter]", async () => {
@@ -106,9 +104,10 @@ test("PgAdvisoryLockAdapter acquireAsync returns false when connection fails [pg
     dsn: "postgresql://invalid:invalid@localhost:99999/db",
   });
 
-  const result = await adapter.acquireAsync({ lockKey: "test", owner: "owner", ttlMs: 1000 });
-  // Should return acquired: false due to connection failure
-  assert.equal(result.acquired, false);
+  await assert.rejects(
+    () => adapter.acquireAsync({ lockKey: "test", owner: "owner", ttlMs: 1000 }),
+    (error: unknown) => (error as LockingError).code === "E7lock.pg_advisory_unavailable",
+  );
 });
 
 test("PgAdvisoryLockAdapter releaseAsync returns false when not connected [pg-advisory-lock-adapter]", async () => {
@@ -137,9 +136,10 @@ test("PgAdvisoryLockAdapter uses default TTL when not specified [pg-advisory-loc
     dsn: "postgresql://invalid:invalid@localhost:99999/db",
   });
 
-  // Even though it will fail to connect, we can verify the method accepts the input
-  const result = await adapter.acquireAsync({ lockKey: "test", owner: "owner" });
-  assert.equal(result.acquired, false);
+  await assert.rejects(
+    () => adapter.acquireAsync({ lockKey: "test", owner: "owner" }),
+    (error: unknown) => (error as LockingError).code === "E7lock.pg_advisory_unavailable",
+  );
 });
 
 test("PgAdvisoryLockAdapter acquireAsync increments fencing counter [pg-advisory-lock-adapter]", async () => {
@@ -147,9 +147,12 @@ test("PgAdvisoryLockAdapter acquireAsync increments fencing counter [pg-advisory
     dsn: "postgresql://invalid:invalid@localhost:99999/db",
   });
 
-  // Multiple attempts should still return false but counter behavior is internal
-  await adapter.acquireAsync({ lockKey: "test1", owner: "owner" });
-  await adapter.acquireAsync({ lockKey: "test2", owner: "owner" });
-  // Just verify no errors thrown
-  assert.ok(true);
+  await assert.rejects(
+    () => adapter.acquireAsync({ lockKey: "test1", owner: "owner" }),
+    (error: unknown) => (error as LockingError).code === "E7lock.pg_advisory_unavailable",
+  );
+  await assert.rejects(
+    () => adapter.acquireAsync({ lockKey: "test2", owner: "owner" }),
+    (error: unknown) => (error as LockingError).code === "E7lock.pg_advisory_unavailable",
+  );
 });

@@ -262,6 +262,9 @@ export interface DataClassificationServiceOptions {
 
   /** If true, maintain an audit log of classification decisions */
   enableAuditTrail?: boolean;
+
+  /** Maximum audit entries retained in memory */
+  maxAuditLogEntries?: number;
 }
 
 /**
@@ -286,9 +289,11 @@ export interface DataClassificationServiceOptions {
  */
 export class DataClassificationService {
   private static readonly MAX_REGEX_CACHE_ENTRIES = 256;
+  private static readonly DEFAULT_MAX_AUDIT_LOG_ENTRIES = 500;
   private readonly strictMode: boolean;
   private readonly autoDetectPii: boolean;
   private readonly enableAuditTrail: boolean;
+  private readonly maxAuditLogEntries: number;
   private readonly rules: Map<string, DataClassificationRule> = new Map();
   private readonly auditLog: ClassificationAuditEntry[] = [];
   private readonly regexCache = new Map<string, RegExp>();
@@ -297,6 +302,7 @@ export class DataClassificationService {
     this.strictMode = options?.strictMode ?? false;
     this.autoDetectPii = options?.autoDetectPii ?? true;
     this.enableAuditTrail = options?.enableAuditTrail ?? true;
+    this.maxAuditLogEntries = Math.max(1, options?.maxAuditLogEntries ?? DataClassificationService.DEFAULT_MAX_AUDIT_LOG_ENTRIES);
   }
 
   // ── Classification ────────────────────────────────────────────────────
@@ -678,6 +684,9 @@ export class DataClassificationService {
       ...entry,
     };
     this.auditLog.push(fullEntry);
+    if (this.auditLog.length > this.maxAuditLogEntries) {
+      this.auditLog.splice(0, this.auditLog.length - this.maxAuditLogEntries);
+    }
   }
 
   /**

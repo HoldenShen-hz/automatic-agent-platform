@@ -3,9 +3,14 @@ import test from "node:test";
 import { ArtifactRepository } from "../../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/repositories/artifact-repository.js";
 
 function createMockConn() {
+  const runCalls: unknown[][] = [];
   return {
+    runCalls,
     prepare: () => ({
-      run: () => ({ changes: 1 }),
+      run: (...args: unknown[]) => {
+        runCalls.push(args);
+        return { changes: 1 };
+      },
       get: () => undefined,
       all: () => [],
     }),
@@ -42,7 +47,21 @@ test("ArtifactRepository inserts artifact", () => {
   };
 
   repo.insertArtifact(artifact);
-  assert.ok(true);
+  assert.equal(mockConn.runCalls.length, 1);
+  assert.deepEqual(mockConn.runCalls[0], [
+    "artifact_1",
+    "task_1",
+    "exec_1",
+    "step_1",
+    "output",
+    "/artifacts/output_1.json",
+    "output_1.json",
+    "application/json",
+    1024,
+    "abc123",
+    "[]",
+    now,
+  ]);
 });
 
 test("ArtifactRepository gets artifact by id", () => {

@@ -130,7 +130,11 @@ test("ExecutionWorkerWritebackServiceAsync batchingEnabled creates batch flush t
     batchingEnabled: true,
     batchFlushIntervalMs: 100,
   });
-  assert.ok(true); // If no throw, timer was set up
+  const internals = service as unknown as {
+    batchFlushTimer: { hasRef?: () => boolean } | null;
+  };
+  assert.ok(internals.batchFlushTimer);
+  service.dispose();
 });
 
 test("ExecutionWorkerWritebackServiceAsync unrefs coalescing and batch timers [execution-worker-writeback-service-async]", () => {

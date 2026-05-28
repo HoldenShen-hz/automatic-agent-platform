@@ -84,6 +84,9 @@ export interface EgressAuditConfig {
 
   /** Filter to only audit specific destination types */
   filterDestinationTypes?: readonly EgressDestinationType[];
+
+  /** Maximum number of in-memory events retained */
+  maxEvents?: number;
 }
 
 /**
@@ -290,6 +293,7 @@ export function createEgressAuditEvent(
  * Maintains an in-memory store of all egress events for the session.
  */
 export class NetworkEgressAuditService {
+  private static readonly DEFAULT_MAX_EVENTS = 1000;
   private events: EgressAuditEvent[] = [];
   private config: Required<EgressAuditConfig>;
 
@@ -300,6 +304,7 @@ export class NetworkEgressAuditService {
       captureResponseBody: config.captureResponseBody ?? false,
       maxBodyCaptureBytes: config.maxBodyCaptureBytes ?? 1024,
       filterDestinationTypes: config.filterDestinationTypes ?? [],
+      maxEvents: Math.max(1, config.maxEvents ?? NetworkEgressAuditService.DEFAULT_MAX_EVENTS),
     };
   }
 
@@ -333,6 +338,9 @@ export class NetworkEgressAuditService {
 
     const event = createEgressAuditEvent(destination, destinationType, action, success, options);
     this.events.push(event);
+    if (this.events.length > this.config.maxEvents) {
+      this.events.splice(0, this.events.length - this.config.maxEvents);
+    }
     return event;
   }
 

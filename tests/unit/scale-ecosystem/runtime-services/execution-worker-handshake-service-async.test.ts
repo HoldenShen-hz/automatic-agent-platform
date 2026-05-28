@@ -116,7 +116,15 @@ test("ExecutionWorkerHandshakeServiceAsync dispose can be called multiple times 
   const service = new ExecutionWorkerHandshakeServiceAsync({} as never, {} as never);
   service.dispose();
   service.dispose(); // Should not throw
-  assert.ok(true);
+  return service.enqueueClaimExecution({
+    ticketId: "ticket-2",
+    workerId: "worker-2",
+    leaseId: "lease-2",
+    fencingToken: 2,
+  }).then(
+    () => assert.fail("Expected rejection"),
+    (err: Error) => assert.ok(err.message.includes("disposed")),
+  );
 });
 
 test("ExecutionWorkerHandshakeServiceAsync batchingEnabled sets up batch flush timer [execution-worker-handshake-service-async]", () => {

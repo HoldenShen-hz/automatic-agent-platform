@@ -176,8 +176,10 @@ test("data-replicator-2194: flushTimer return value not captured [data-replicato
     checksum: "abc",
   });
 
-  // The timer is scheduled but its result is lost
-  assert.ok(true); // Issue is about lost return value
+  const internals = buffer as unknown as {
+    timer: ReturnType<typeof setTimeout> | null;
+  };
+  assert.ok(internals.timer);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -5,6 +5,7 @@ import { NlEntryService } from "../../../src/interaction/nl-gateway/index.js";
 import { GoalDecompositionService } from "../../../src/interaction/goal-decomposer/index.js";
 import { ProactiveAgentService } from "../../../src/interaction/proactive-agent/index.js";
 import { resolveTriggerActionMode } from "../../../src/interaction/proactive-agent/trigger-engine/index.js";
+import { ProgressiveAutonomyService, type AgentTrustProfile } from "../../../src/interaction/autonomy/index.js";
 import { calculateTrustScore, mapTrustLevel } from "../../../src/interaction/autonomy/trust-scorer/index.js";
 import type { CapabilityTrustScore } from "../../../src/interaction/autonomy/index.js";
 import { ConversationHistoryService } from "../../../src/interaction/ux/conversation-history-service.js";
@@ -234,13 +235,28 @@ test("R5-21: mapTrustLevel thresholds remain on the 0-100 scale", () => {
  * Fix: decideLevel() already checks incidentFreeDays for promotion thresholds
  */
 test("R5-22: Promotion requires incident-free time window", () => {
-  // This is tested via progressive-autonomy service tests
-  // The autonomy service's decideLevel function checks:
-  // - full_auto requires 90 days incident-free
-  // - semi_auto requires 60 days incident-free
-  // - supervised requires 30 days incident-free
-  // This is verified via integration tests
-  assert.ok(true); // Placeholder for structural verification
+  const service = new ProgressiveAutonomyService();
+  const profile: AgentTrustProfile = {
+    agentId: "agent_r5_22",
+    domainId: "general_ops",
+    overallTrustLevel: "trusted",
+    lastEvaluation: new Date().toISOString(),
+    capabilityScores: [{
+      capabilityId: "cap_r5_22",
+      currentAutonomy: "suggestion",
+      trustScore: 90,
+      totalExecutions: 500,
+      successfulExecutions: 500,
+      failedExecutions: 0,
+      humanOverrides: 0,
+      incidents: 0,
+      lastIncidentAgeDays: 29,
+    }],
+  };
+
+  const evaluation = service.evaluateProfile(profile);
+  assert.equal(evaluation.capabilityLevels["cap_r5_22"], "suggestion");
+  assert.equal(evaluation.changeEvents.length, 0);
 });
 
 /**
@@ -248,9 +264,29 @@ test("R5-22: Promotion requires incident-free time window", () => {
  * Fix: decideLevel() checks costOverbudgetRatio >= 2.0 and demotes one level
  */
 test("R5-23: Cost overbudget ratio triggers demotion", () => {
-  // R5-23: When costOverbudgetRatio >= 2.0 (200%), agent demotes one level
-  // This is verified via progressive-autonomy tests
-  assert.ok(true); // Placeholder for structural verification
+  const service = new ProgressiveAutonomyService();
+  const profile: AgentTrustProfile = {
+    agentId: "agent_r5_23",
+    domainId: "general_ops",
+    overallTrustLevel: "trusted",
+    lastEvaluation: new Date().toISOString(),
+    capabilityScores: [{
+      capabilityId: "cap_r5_23",
+      currentAutonomy: "semi_auto",
+      trustScore: 92,
+      totalExecutions: 300,
+      successfulExecutions: 300,
+      failedExecutions: 0,
+      humanOverrides: 0,
+      incidents: 0,
+      lastIncidentAgeDays: 120,
+      costOverbudgetRatio: 2.1,
+    }],
+  };
+
+  const evaluation = service.evaluateProfile(profile);
+  assert.equal(evaluation.capabilityLevels["cap_r5_23"], "supervised");
+  assert.equal(evaluation.changeEvents[0]?.eventType, "agent.autonomy.demoted");
 });
 
 /**
