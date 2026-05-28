@@ -116,3 +116,32 @@ test("InMemoryPromptAbTestRepository records lifecycle and results", async () =>
   await repo.delete(abTest.testId);
   assert.equal(await repo.findById(abTest.testId), null);
 });
+
+test("InMemoryPromptBundleRepository rejects invalid JSON-like metadata payloads", async () => {
+  const repo = new InMemoryPromptBundleRepository();
+
+  await assert.rejects(
+    () => repo.create({
+      name: "ops-triage-invalid",
+      version: "v1",
+      domain: "operations",
+      taskType: "incident",
+      systemPromptContent: "Triage incidents.",
+      constraints: { customConstraints: { cyclic: undefined } },
+    }),
+    /prompt_bundle\.invalid_constraints/,
+  );
+});
+
+test("InMemoryPromptVersionRepository rejects invalid traffic allocation payloads", async () => {
+  const repo = new InMemoryPromptVersionRepository();
+
+  await assert.rejects(
+    () => repo.create({
+      bundleId: "bundle-invalid",
+      version: "v3",
+      trafficAllocation: { weight: -1 },
+    }),
+    /prompt_bundle\.invalid_traffic_allocation/,
+  );
+});

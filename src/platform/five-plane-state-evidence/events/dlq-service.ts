@@ -14,6 +14,7 @@ import { newId, nowIso } from "../../contracts/types/ids.js";
 import { ValidationError } from "../../contracts/errors.js";
 import type { SqliteConnection } from "../truth/sqlite/query-helper.js";
 import { SqliteDlqRepository } from "./sqlite-dlq-repository.js";
+import { DEFAULT_DLQ_RETRY_BACKOFF_MS, DEFAULT_MAX_DLQ_RETRIES } from "../dlq/dlq-policy.js";
 
 /**
  * Failure categories for DLQ entries
@@ -121,13 +122,6 @@ export interface DlqRepository {
 /**
  * Default maximum retry attempts
  */
-const DEFAULT_MAX_RETRIES = 5;
-
-/**
- * Default retry backoff base delay in milliseconds
- */
-const DEFAULT_RETRY_BACKOFF_MS = 30_000;
-
 /**
  * DLQ Service - Handles dead letter queue operations with audit trail.
  * R12-06: Uses injected repository for persistence across restarts.
@@ -199,7 +193,7 @@ export class DlqService {
       payloadJson: input.payloadJson,
       status: "pending",
       retryCount: 0,
-      maxRetries: DEFAULT_MAX_RETRIES,
+      maxRetries: DEFAULT_MAX_DLQ_RETRIES,
       nextRetryAt: null,
       createdAt: now,
       updatedAt: now,
@@ -238,7 +232,7 @@ export class DlqService {
       throw new Error(`dlq.retry_limit_exceeded: retry ${record.retryCount} exhausted (maxRetries ${record.maxRetries})`);
     }
 
-    const backoffDelay = delayMs ?? DEFAULT_RETRY_BACKOFF_MS * Math.pow(2, record.retryCount);
+    const backoffDelay = delayMs ?? DEFAULT_DLQ_RETRY_BACKOFF_MS * Math.pow(2, record.retryCount);
     const nextRetryAt = new Date(Date.parse(now) + backoffDelay).toISOString();
 
     const updated: ExtendedDeadLetterRecord = {

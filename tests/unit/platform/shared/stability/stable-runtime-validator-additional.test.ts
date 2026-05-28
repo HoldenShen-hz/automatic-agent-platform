@@ -9,6 +9,8 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 
 import {
   compareStableValidationToBaseline,
@@ -27,7 +29,7 @@ function createValidationRun(caseId: string, passed: boolean, durationMs: number
     durationMs,
     dbIntegrityPassed: passed,
     backupPassed: passed,
-    backupPath: `/tmp/${caseId}.backup.db`,
+    backupPath: join(tmpdir(), `aa-stable-runtime-validator-${caseId}.backup.db`),
   };
 }
 

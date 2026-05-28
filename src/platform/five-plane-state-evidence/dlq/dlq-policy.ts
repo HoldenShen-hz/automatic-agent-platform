@@ -1,0 +1,2 @@
+export const DEFAULT_MAX_DLQ_RETRIES = 5;
+export const DEFAULT_DLQ_RETRY_BACKOFF_MS = 30_000;

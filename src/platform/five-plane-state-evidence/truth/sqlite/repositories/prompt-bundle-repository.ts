@@ -5,7 +5,9 @@
  * Part of §26 storage layer implementation.
  */
 
-import { newId, nowIso } from "../sqlite-repository-contracts.js";
+import { z } from "zod";
+
+import { ValidationError, newId, nowIso } from "../sqlite-repository-contracts.js";
 
 export type PromptBundleStatus = "draft" | "active" | "deprecated";
 
@@ -142,6 +144,52 @@ export interface CreateTestInput {
   metrics: unknown;
 }
 
+const jsonValueSchema: z.ZodType<unknown> = z.lazy(() =>
+  z.union([
+    z.string(),
+    z.number(),
+    z.boolean(),
+    z.null(),
+    z.array(jsonValueSchema),
+    z.record(z.string(), jsonValueSchema),
+  ]),
+);
+
+const promptBundleConstraintsSchema = z.object({
+  maxTokens: z.number().finite().int().positive().optional(),
+  temperature: z.number().finite().min(0).optional(),
+  topP: z.number().finite().min(0).max(1).optional(),
+  stopSequences: z.array(z.string()).optional(),
+  responseFormat: z.enum(["text", "json", "xml", "markdown"]).optional(),
+  customConstraints: z.record(z.string(), jsonValueSchema).optional(),
+});
+
+const trafficAllocationSchema = z.object({
+  weight: z.number().finite().min(0),
+  startTime: z.string().optional(),
+  endTime: z.string().optional(),
+});
+
+const promptBundleMetadataSchema = z.object({
+  owner: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+  compatibilityTags: z.array(z.string()).optional(),
+  trafficAllocation: trafficAllocationSchema.optional(),
+});
+
+const fewShotExamplesSchema = z.array(jsonValueSchema);
+
+function serializeValidatedJson(fieldName: string, value: unknown, schema: z.ZodType<unknown>): string {
+  const parsed = schema.safeParse(value);
+  if (!parsed.success) {
+    throw new ValidationError(
+      `prompt_bundle.invalid_${fieldName}`,
+      `prompt_bundle.invalid_${fieldName}: ${parsed.error.issues.map((issue) => issue.message).join("; ")}`,
+    );
+  }
+  return JSON.stringify(parsed.data);
+}
+
 /**
  * In-memory implementation of PromptBundleRepository.
  */
@@ -161,9 +209,9 @@ export class InMemoryPromptBundleRepository implements PromptBundleRepository {
       packId: input.packId ?? null,
       systemPromptContent: input.systemPromptContent,
       userPromptContent: input.userPromptContent ?? null,
-      fewShotExamplesJson: input.fewShotExamples ? JSON.stringify(input.fewShotExamples) : null,
-      constraintsJson: JSON.stringify(input.constraints),
-      metadataJson: JSON.stringify(input.metadata ?? {}),
+      fewShotExamplesJson: input.fewShotExamples == null ? null : serializeValidatedJson("few_shot_examples", input.fewShotExamples, fewShotExamplesSchema),
+      constraintsJson: serializeValidatedJson("constraints", input.constraints, promptBundleConstraintsSchema),
+      metadataJson: serializeValidatedJson("metadata", input.metadata ?? {}, promptBundleMetadataSchema),
       deprecated: false,
       createdAt: now,
       updatedAt: now,
@@ -199,11 +247,15 @@ export class InMemoryPromptBundleRepository implements PromptBundleRepository {
       ...existing,
       systemPromptContent: input.systemPromptContent ?? existing.systemPromptContent,
       userPromptContent: input.userPromptContent ?? existing.userPromptContent,
-      fewShotExamplesJson: input.fewShotExamples
-        ? JSON.stringify(input.fewShotExamples)
-        : existing.fewShotExamplesJson,
-      constraintsJson: input.constraints ? JSON.stringify(input.constraints) : existing.constraintsJson,
-      metadataJson: input.metadata ? JSON.stringify(input.metadata) : existing.metadataJson,
+      fewShotExamplesJson: input.fewShotExamples == null
+        ? existing.fewShotExamplesJson
+        : serializeValidatedJson("few_shot_examples", input.fewShotExamples, fewShotExamplesSchema),
+      constraintsJson: input.constraints == null
+        ? existing.constraintsJson
+        : serializeValidatedJson("constraints", input.constraints, promptBundleConstraintsSchema),
+      metadataJson: input.metadata == null
+        ? existing.metadataJson
+        : serializeValidatedJson("metadata", input.metadata, promptBundleMetadataSchema),
       updatedAt: nowIso(),
     };
 
@@ -244,7 +296,9 @@ export class InMemoryPromptVersionRepository implements PromptVersionRepository 
       version: input.version,
       isCurrent: input.isCurrent ?? false,
       trafficWeight: input.trafficWeight ?? 100,
-      trafficAllocationJson: input.trafficAllocation ? JSON.stringify(input.trafficAllocation) : null,
+      trafficAllocationJson: input.trafficAllocation == null
+        ? null
+        : serializeValidatedJson("traffic_allocation", input.trafficAllocation, trafficAllocationSchema),
       createdAt: now,
       deprecatedAt: null,
     };
@@ -304,7 +358,7 @@ export class InMemoryPromptAbTestRepository implements PromptAbTestRepository {
       status: "draft",
       startTime: input.startTime ?? null,
       endTime: input.endTime ?? null,
-      metricsJson: JSON.stringify(input.metrics),
+      metricsJson: serializeValidatedJson("metrics", input.metrics, jsonValueSchema),
       resultsJson: null,
       createdAt: now,
       updatedAt: now,
@@ -329,7 +383,7 @@ export class InMemoryPromptAbTestRepository implements PromptAbTestRepository {
   public async updateResults(testId: string, results: unknown): Promise<void> {
     const existing = this.tests.get(testId);
     if (existing) {
-      existing.resultsJson = JSON.stringify(results);
+      existing.resultsJson = serializeValidatedJson("results", results, jsonValueSchema);
       existing.updatedAt = nowIso();
     }
   }

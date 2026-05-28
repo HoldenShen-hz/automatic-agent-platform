@@ -128,7 +128,14 @@ export class GracefulShutdown {
           this.requestSignalExit(1);
           return;
         }
-        void this.handleSignal(signal);
+        void this.handleSignal(signal).catch((error) => {
+          this.logger.log({
+            level: "error",
+            message: "Graceful shutdown signal handler failed",
+            data: { signal, error: error instanceof Error ? error.message : String(error) },
+          });
+          this.requestSignalExit(1);
+        });
       };
       this.signalBus.on(signal, listener);
       this.signalListeners.set(signal, listener);

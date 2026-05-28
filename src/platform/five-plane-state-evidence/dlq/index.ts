@@ -1,14 +1,17 @@
 import { ValidationError } from "../../contracts/errors.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
+import type { EventDeadLetterRecord } from "../../contracts/types/domain.js";
+import { StructuredLogger } from "../../shared/observability/structured-logger.js";
+import { DEFAULT_MAX_DLQ_RETRIES } from "./dlq-policy.js";
 
 export type DeadLetterStatus = "pending" | "retrying" | "discarded" | "resolved";
 
 export interface DeadLetterRecord {
   deadLetterId: string;
-  sourceEventId: string;
-  consumerId: string;
+  sourceEventId: EventDeadLetterRecord["originalEventId"];
+  consumerId: EventDeadLetterRecord["consumerId"];
   errorCode: string;
-  payloadJson: string;
+  payloadJson: EventDeadLetterRecord["payloadJson"];
   status: DeadLetterStatus;
   retryCount: number;
   nextRetryAt: string | null;
@@ -39,6 +42,8 @@ export interface DeadLetterQueueRepository {
   insert(record: DeadLetterRecord): void;
   /** Find a DLQ record by ID */
   findById(deadLetterId: string): DeadLetterRecord | null;
+  /** Find a DLQ record by original event + consumer pair */
+  findBySourceEventAndConsumer(sourceEventId: string, consumerId: string): DeadLetterRecord | null;
   /** Update an existing DLQ record */
   update(record: DeadLetterRecord): void;
   /** List all DLQ records */
@@ -55,13 +60,24 @@ export interface DeadLetterQueueRepository {
  */
 export class InMemoryDeadLetterQueueRepository implements DeadLetterQueueRepository {
   private readonly records = new Map<string, DeadLetterRecord>();
+  private readonly recordsByEventConsumer = new Map<string, string>();
+
+  private makeEventConsumerKey(sourceEventId: string, consumerId: string): string {
+    return `${consumerId}\u0000${sourceEventId}`;
+  }
 
   public insert(record: DeadLetterRecord): void {
     this.records.set(record.deadLetterId, record);
+    this.recordsByEventConsumer.set(this.makeEventConsumerKey(record.sourceEventId, record.consumerId), record.deadLetterId);
   }
 
   public findById(deadLetterId: string): DeadLetterRecord | null {
     return this.records.get(deadLetterId) ?? null;
+  }
+
+  public findBySourceEventAndConsumer(sourceEventId: string, consumerId: string): DeadLetterRecord | null {
+    const deadLetterId = this.recordsByEventConsumer.get(this.makeEventConsumerKey(sourceEventId, consumerId));
+    return deadLetterId == null ? null : this.records.get(deadLetterId) ?? null;
   }
 
   public update(record: DeadLetterRecord): void {
@@ -69,6 +85,7 @@ export class InMemoryDeadLetterQueueRepository implements DeadLetterQueueReposit
       throw new ValidationError(`dlq.not_found:${record.deadLetterId}`, `Dead-letter record ${record.deadLetterId} was not found.`);
     }
     this.records.set(record.deadLetterId, record);
+    this.recordsByEventConsumer.set(this.makeEventConsumerKey(record.sourceEventId, record.consumerId), record.deadLetterId);
   }
 
   public listAll(): DeadLetterRecord[] {
@@ -86,6 +103,13 @@ export class InMemoryDeadLetterQueueRepository implements DeadLetterQueueReposit
   }
 }
 
+let dlqLogger: StructuredLogger | null = null;
+
+function getDlqLogger(): StructuredLogger {
+  dlqLogger ??= new StructuredLogger({ retentionLimit: 100 });
+  return dlqLogger;
+}
+
 export class DeadLetterQueueService {
   private readonly repo: DeadLetterQueueRepository;
   private readonly maxRetries: number;
@@ -96,7 +120,7 @@ export class DeadLetterQueueService {
    */
   public constructor(repo?: DeadLetterQueueRepository, options: { maxRetries?: number } = {}) {
     this.repo = repo ?? new InMemoryDeadLetterQueueRepository();
-    this.maxRetries = Math.max(0, Math.trunc(options.maxRetries ?? 5));
+    this.maxRetries = Math.max(0, Math.trunc(options.maxRetries ?? DEFAULT_MAX_DLQ_RETRIES));
   }
 
   public enqueue(input: {
@@ -107,9 +131,7 @@ export class DeadLetterQueueService {
     originalTimestamp?: string | null;
     failureCategory?: string | null;
   }): DeadLetterRecord {
-    const existing = this.repo
-      .listByConsumer(input.consumerId)
-      .find((record) => record.sourceEventId === input.sourceEventId);
+    const existing = this.repo.findBySourceEventAndConsumer(input.sourceEventId, input.consumerId);
     if (existing != null) {
       return existing;
     }
@@ -280,6 +302,15 @@ export class DeadLetterQueueRetryWorker {
         this.queue.scheduleRetry(record.deadLetterId, decision.delayMs ?? 0);
         result.rescheduled += 1;
       } catch {
+        getDlqLogger().log({
+          level: "warn",
+          message: "dlq.retry_callback_failed",
+          data: {
+            deadLetterId: record.deadLetterId,
+            sourceEventId: record.sourceEventId,
+            consumerId: record.consumerId,
+          },
+        });
         result.failed += 1;
       }
     }

@@ -103,6 +103,28 @@ test("Timeout.cancel marks the timeout as cancelled while the operation is runni
   assert.notEqual(timeout.getState(), TimeoutState.RUNNING);
 });
 
+test("Timeout.cancel aborts the wrapped operation signal", async () => {
+  const timeout = new Timeout({ timeoutMs: 5000, cleanupFn: () => {} });
+  let observedAbort = false;
+
+  const wrapPromise = timeout.wrap(async (signal) => {
+    await new Promise<void>((resolve) => {
+      signal?.addEventListener("abort", () => {
+        observedAbort = true;
+        resolve();
+      }, { once: true });
+    });
+    return "aborted";
+  });
+
+  await new Promise((r) => setTimeout(r, 10));
+  timeout.cancel();
+  const result = await wrapPromise;
+
+  assert.equal(result, "aborted");
+  assert.equal(observedAbort, true);
+});
+
 test("Timeout.getState returns current state", () => {
   const timeout = new Timeout({ timeoutMs: 1000 });
   assert.equal(timeout.getState(), TimeoutState.PENDING);

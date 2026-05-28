@@ -35,6 +35,8 @@ export class Timeout {
   private startTime: number = 0;
   private result: unknown;
   private error: Error | undefined;
+  private abortController: AbortController | null = null;
+  private timeoutId: ReturnType<typeof setTimeout> | null = null;
 
   constructor(options: TimeoutOptions) {
     if (!options.timeoutMs || options.timeoutMs <= 0) {
@@ -45,22 +47,26 @@ export class Timeout {
     this.propagateError = options.propagateError ?? true;
   }
 
-  async wrap<T>(fn: () => Promise<T>): Promise<T> {
+  async wrap<T>(fn: (signal?: AbortSignal) => Promise<T>): Promise<T> {
     if (this.state !== TimeoutState.PENDING) {
       throw new Error(`Cannot start timeout in ${this.state} state`);
     }
 
     this.state = TimeoutState.RUNNING;
     this.startTime = Date.now();
+    this.abortController = new AbortController();
 
     const timeoutPromise = this.createTimeoutPromise();
 
     try {
-      const result = await Promise.race([fn(), timeoutPromise]);
+      const result = await Promise.race([fn(this.abortController.signal), timeoutPromise]);
+      this.clearTimeoutHandle();
       this.state = TimeoutState.COMPLETED;
       this.result = result;
       return result as T;
     } catch (error) {
+      this.clearTimeoutHandle();
+      this.error = error instanceof Error ? error : new Error(String(error));
       if (error instanceof TimeoutError) {
         this.state = TimeoutState.TIMED_OUT;
         if (this.cleanupFn) {
@@ -79,18 +85,30 @@ export class Timeout {
 
   private createTimeoutPromise(): Promise<never> {
     return new Promise((_, reject) => {
-      setTimeout(() => {
-        reject(new TimeoutError(`Operation timed out after ${this.timeoutMs}ms`));
+      this.timeoutId = setTimeout(() => {
+        const timeoutError = new TimeoutError(`Operation timed out after ${this.timeoutMs}ms`);
+        this.abortController?.abort(timeoutError);
+        reject(timeoutError);
       }, this.timeoutMs);
+      this.timeoutId.unref?.();
     });
   }
 
   cancel(): void {
     if (this.state === TimeoutState.RUNNING) {
       this.state = TimeoutState.CANCELLED;
+      this.clearTimeoutHandle();
+      this.abortController?.abort(new Error("Operation cancelled"));
       if (this.cleanupFn) {
         this.cleanupFn();
       }
+    }
+  }
+
+  private clearTimeoutHandle(): void {
+    if (this.timeoutId != null) {
+      clearTimeout(this.timeoutId);
+      this.timeoutId = null;
     }
   }
 
@@ -137,7 +155,8 @@ export function withTimeout<TArgs extends readonly unknown[], TResult>(
       ? { timeoutMs, cleanupFn, propagateError: true }
       : { timeoutMs, propagateError: true };
     const timeout = new Timeout(options);
-    return timeout.wrap(() => fn(...args));
+    const invokeWithOptionalSignal = fn as unknown as (...callArgs: unknown[]) => Promise<TResult>;
+    return timeout.wrap((signal) => invokeWithOptionalSignal(...args, signal));
   };
 }
 

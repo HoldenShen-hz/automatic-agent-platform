@@ -744,3 +744,33 @@ test("EventRepository createTier1StatusEvent downgrades missing executionId cons
     cleanupPath(workspace);
   }
 });
+
+test("EventRepository createTier1StatusEvent rolls back event insert when outbox write fails", () => {
+  const workspace = createTempWorkspace("aa-event-repo-");
+  const dbPath = join(workspace, "event-repo.db");
+
+  try {
+    const db = new SqliteDatabase(dbPath);
+    db.migrate();
+    const repo = new EventRepository(db.connection);
+
+    const now = "2026-04-14T10:00:00.000Z";
+    createTestExecution(db, "exec-tier1-rollback", "task-tier1-rollback", now);
+    db.connection.exec("DROP TABLE outbox;");
+
+    assert.throws(
+      () => repo.createTier1StatusEvent({
+        taskId: "task-tier1-rollback",
+        executionId: "exec-tier1-rollback",
+        eventType: "task:status_changed",
+        traceId: "trace-tier1-rollback",
+        payload: { status: "failed" },
+      }),
+    );
+
+    const events = repo.listEventsForTask("task-tier1-rollback");
+    assert.equal(events.length, 0);
+  } finally {
+    cleanupPath(workspace);
+  }
+});

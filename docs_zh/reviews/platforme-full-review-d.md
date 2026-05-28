@@ -88,7 +88,7 @@
 | --- | --- | --- | --- |
 | 70 | plugin-executor.service.ts:482 显式抛 action_not_implemented，hook 缺失即 500 | `done` | 根因是插件执行器把未实现 hook 当异常路径抛出，而不是回落为结构化 rejected 结果。 |
 | 71 | five-plane-execution/state-transition/* 经 core/runtime/index.ts 重新出口越界 | `done` | 根因是 core/runtime 为兼容旧调用方继续转发执行面状态迁移实现，造成跨层公共面继续膨胀。 |
-| 72 | tests/unit/runtime/、platform/execution/、platform/five-plane-execution/ 平行重复 | `todo` | 待修复 |
+| 72 | tests/unit/runtime/、platform/execution/、platform/five-plane-execution/ 平行重复 | `todo` | 根因是执行面多轮目录重命名后同时保留了 runtime、platform/execution、five-plane-execution 三套测试树，旧目录没有随着 canonical 路径迁移而清退。 |
 | 73 | plugin-executor.service.ts:106 enforceSignatures 默认 false，env 未设时不安全 fail-open | `done` | 根因是插件签名校验最初以联调便利为先，默认走 fail-open，安全默认值没有收紧到外部插件场景。 |
 | 74 | src/platform/five-plane-execution/distributed-lock/sqlite-lock-adapter.ts:55-90 SELECT/DELETE/INSERT 不在事务内，TTL 过期淘汰 TOCTOU；并发夺锁可误删刚获取者 | `done` | 根因是 SQLite 锁适配器早期按逐句脚本拼接实现，没有把过期清理与夺锁收进单事务临界区。 |
 | 75 | src/platform/five-plane-execution/distributed-lock/sqlite-lock-adapter.ts:34-37 distributed_lock_fencing_tokens 仅 INSERT 自增、永不清理，无界增长 | `done` | 根因是 fencing token 设计成 append-only 计数表，却没有同步规划压缩与有界存储策略。 |
@@ -119,8 +119,8 @@
 | 100 | src/platform/five-plane-execution/execution-engine/phase1b-orchestration.ts:1-31 兼容文件维持冗余命名 | `done` | 根因是 multi-step 编排收口后仍残留 phase1b 别名文件，公共面没有完全切换到规范命名。 |
 | 101 | src/platform/five-plane-execution/execution-engine/phase1b-tool-definitions.ts & phase1b-utils.ts phase1b 兼容残留 | `done` | 根因是 phase1b 配套工具定义与工具函数沿用旧别名继续转发，导致同一能力维持双文件表述。 |
 | 102 | src/platform/five-plane-execution/recovery/runtime-recovery-service.ts 与 runtime-recovery-service-root.ts 等四对 *-service/*-service-root 双胞胎 | `done` | 根因是 recovery 模块迁移时为兼容旧入口保留了 root 别名文件，源码层形成事实双实现分支。 |
-| 103 | src/platform/five-plane-execution/execution-engine/multi-step-orchestration.ts 581 行单文件违反 AGENTS small modules 原则 | `todo` | 待修复 |
-| 104 | src/platform/five-plane-execution/execution-engine/multi-step-supervisor.ts 814 行同上 | `todo` | 待修复 |
+| 103 | src/platform/five-plane-execution/execution-engine/multi-step-orchestration.ts 581 行单文件违反 AGENTS small modules 原则 | `todo` | 根因是多步编排把上下文装配、运行循环、路由决策和辅助函数长期堆在单文件里，没有按执行阶段拆成独立模块。 |
+| 104 | src/platform/five-plane-execution/execution-engine/multi-step-supervisor.ts 814 行同上 | `todo` | 根因是 supervisor 同时承载审批、升级、循环检测、状态同步等职责，演进中持续加分支但没有做职责拆分。 |
 | 105 | src/platform/five-plane-execution/dispatcher/execution-priority-preemption-service-async.ts:47 ESM 内反向用 CJS require | `done` | 根因是异步封装层曾为复用同步服务偷用了 require 加载同胞模块，没有保持 ESM 静态依赖图。 |
 | 106 | src/platform/five-plane-execution/distributed-lock/locking-support.ts:12 require("postgres") 同步加载，可选依赖耦合 | `done` | 根因是分布式锁支持层曾把后端依赖伪装成运行时 require 分支，依赖关系既不透明也不利于静态分析。 |
 | 107 | src/platform/five-plane-execution/distributed-lock/redis-lock-adapter.ts:67-68 构造期 createRequire+require("ioredis")，缺失依赖即启动崩 | `done` | 根因是 Redis 锁适配器延续了 createRequire 风格的动态装配，依赖加载失败只能在构造期爆炸。 |
@@ -157,17 +157,17 @@
 | 133 | package.json:223-234 test:receipt-store/tool-gateway/memory-gateway/sandbox-provider 无 aggregator，仅操作员入口 | `done` | 根因是几个底层入口测试被拆成独立脚本后，没有补上面向 CI/批量验证的聚合命令。 |
 | 134 | five-plane-state-evidence/index.ts:1 re-export 不存在的 ./artifacts/index.js，import 即抛 | `done` | 根因是 review 基于 artifacts 目录缺失时的旧快照；当前 `artifacts/index.ts` 已存在且对外导出通过。 |
 | 135 | truth/sqlite/repositories/operations-repository.ts:898 listRuntimeRecoveryRecords 把 caller whereClause 直拼 SQL，仅过滤 ;\\|--\\|/* 仍允许 OR 1=1/子查询 | `done` | 根因是 runtime recovery 查询为了复用多种筛选场景，暴露了自由 SQL 片段接口，却没有收口到受控谓词白名单。 |
-| 136 | truth/sqlite/repositories/event-repository.ts:788-828 insertEvent 与 outbox INSERT 双 prepared 无统一事务，破坏 outbox 原子性 | `todo` | 待修复 |
+| 136 | truth/sqlite/repositories/event-repository.ts:788-828 insertEvent 与 outbox INSERT 双 prepared 无统一事务，破坏 outbox 原子性 | `done` | 根因是 Tier-1 状态事件路径把 event append 与 outbox append 分成了两个独立语句，缺少同一事务或 savepoint 边界。 |
 | 137 | truth/sqlite/repositories/task-repository.ts:96-125 listTasks cursor 仅按 updated_at，无 id tiebreaker，分页可丢行/死循环 | `done` | 根因是任务列表分页游标只保留了时间戳，没有把稳定主键一起编码成复合 cursor。 |
 | 138 | truth/sqlite/repositories/tenant-repository.ts:203-204 listAll 用 [...Map.values()].slice 无稳定排序，跨页结果重排 | `done` | 根因是内存租户仓储直接对 `Map.values()` 切片，默认迭代顺序被误当成分页顺序。 |
 | 139 | truth/sqlite/repositories/release-repository.ts:611,632,654 listEnterprise* 仅 limit=20，无 cursor/offset/tenant 过滤 | `done` | 根因是企业发布类报表最初只按“最新 N 条”运营视图落地，没有同步抽象出稳定分页和租户维度约束。 |
 | 140 | truth/sqlite/repositories/intelligence-repository.ts:350 listIntelBriefs(limit=20) 无 cursor 静默截断 | `done` | 根因是情报简报列表长期只服务最近简报面板，缺少稳定游标分页能力。 |
 | 141 | truth/sqlite/repositories/organization-repository.ts:273 listOrganizationRecords(limit=50) 无租户过滤，跨租户泄漏 | `done` | 根因是组织列表默认站在平台运营视角实现，遗漏了租户视角下的组织可见性约束。 |
 | 142 | truth/sqlite/repositories/worker-repository.ts:63 与 worker-snapshot-repository.ts:276 listCoordinatorInstanceSnapshots 双实现 schema 漂移 | `done` | 根因是 review 基于旧结构快照；当前 `WorkerRepository` 已完全委托给 `WorkerSnapshotRepository`，真实双实现已收口。 |
-| 143 | state-evidence/dlq/index.ts:110-113 enqueue 用线性 listByConsumer 去重，O(n) 每 insert，无索引 | `todo` | 待修复 |
-| 144 | state-evidence/dlq/index.ts:282-284 runDueRetries 空 catch {} 吞错无 logger/telemetry/退避 | `todo` | 待修复 |
-| 145 | state-evidence/dlq/index.ts:99 maxRetries=5 硬编码，与 dlq-service.ts retry policy 冲突 | `todo` | 待修复 |
-| 146 | state-evidence/dlq/index.ts:6-23 DeadLetterRecord 与 contracts/types/domain/session-types.ts EventDeadLetterRecord schema 双源 | `todo` | 待修复 |
+| 143 | state-evidence/dlq/index.ts:110-113 enqueue 用线性 listByConsumer 去重，O(n) 每 insert，无索引 | `done` | 根因是基础 DLQ 仓储接口只暴露了按 consumer 扫描，去重键 `sourceEventId+consumerId` 没有单独查询面也没有持久层索引。 |
+| 144 | state-evidence/dlq/index.ts:282-284 runDueRetries 空 catch {} 吞错无 logger/telemetry/退避 | `done` | 根因是 DLQ retry worker 只统计 failed 计数，没有把失败上下文发到结构化日志或遥测面。 |
+| 145 | state-evidence/dlq/index.ts:99 maxRetries=5 硬编码，与 dlq-service.ts retry policy 冲突 | `done` | 根因是基础 DLQ 与扩展 DLQ 各自维护默认重试常量，没有抽成单一策略源。 |
+| 146 | state-evidence/dlq/index.ts:6-23 DeadLetterRecord 与 contracts/types/domain/session-types.ts EventDeadLetterRecord schema 双源 | `done` | 根因是基础 DLQ 记录独立重写了事件死信字段名和字段类型，没有复用领域合同里的事件死信字段定义。 |
 | 147 | state-evidence/incident/index.ts:127-161 listIncidents/listIncidentsPaginated 全量 Map.values() + sort + findIndex，并发插入下 cursor 失效 | `done` | 根因是 incident 分页游标最初只传 incidentId，没有把排序基准一起编码到 cursor。 |
 | 148 | state-evidence/incident/index.ts:35 linkedEvidenceRefs: input.linkedEvidenceRefs ?? [] 直接存 caller 引用，外部 mutation 污染内部 | `done` | 根因是 incident open 路径直接复用了调用方数组引用，没有做边界拷贝。 |
 | 149 | state-evidence/incident/index.ts:117-121 resolve() 接受任意当前状态，绕过 triaged→mitigating→reviewed→resolved FSM | `done` | 根因是 incident FSM 在 resolve 边上缺少状态守卫，只校验了存在性。 |
@@ -186,71 +186,71 @@
 | 162 | state-evidence/memory/trust-level-service.ts:245-248 MAX=500/TTL=24h/EVICT=60s 硬编码无 config | `done` | 根因是 trust-level service 最初按进程内默认值起步，把容量、TTL、驱逐周期都写死在类里。 |
 | 163 | state-evidence/memory/trust-level-service.ts:280-289 每次驱逐 [...entries].sort O(n log n)，含非空断言吞 OOB | `done` | 根因是超容量驱逐直接走全量排序，既不必要也把空洞情况交给非空断言兜底。 |
 | 164 | state-evidence/memory/trust-level-service.ts:384-385 includes("TODO"/"FIXME") 字面字符串过滤，正常文本误伤 | `done` | 根因是内容质量检查把 TODO/FIXME 当普通子串匹配，没有限定为显式占位标记。 |
-| 165 | truth/sqlite/repositories/prompt-bundle-repository.ts:164-332 8 处 JSON.stringify(input.*) 列写入无 zod 校验 | `todo` | 待修复 |
+| 165 | truth/sqlite/repositories/prompt-bundle-repository.ts:164-332 8 处 JSON.stringify(input.*) 列写入无 zod 校验 | `done` | 根因是 prompt bundle 仓储把 JSON 列当成“存前直接 stringify”的薄包装，没有把 schema 校验放在持久化边界。 |
 | 166 | truth/sqlite/repositories/billing-repository.ts:168 Number(result.changes) BigInt > 2^53 静默截断 | `done` | 根因是 SQLite `run().changes` 被当成普通 number 使用，没有统一的 bigint 安全边界转换。 |
 | 167 | truth/sqlite/repositories/worker-snapshot-repository.ts:249 同一查询按 filter 切换 ORDER BY，cursor 跨 filter 即失效 | `done` | 根因是 review 停留在旧分页假设；当前仓储没有对该列表暴露 cursor 协议，真实风险是排序语义未明确，而不是“cursor 跨 filter”。 |
 | 168 | state-evidence/events/event-ops-service.ts:216-221 setTimeout(...) reject 计时器未 unref；Promise.race 胜者不 clearTimeout | `done` | 根因是 review 停留在旧实现；当前 timeout helper 已同时 `unref()` 并在 `finally` 中 `clearTimeout()`。 |
 | 169 | state-evidence/events/durable-event-bus.ts:9 不同实例化点 retentionLimit:500/100 不一致 | `done` | 根因是旧 review 把不同模块 logger 的 retention 配置混写成 durable-event-bus 自身问题；现行 bus logger 已独立收口。 |
-| 170 | tests/integration/platform/state-evidence/events/transactional-event-appender 与 event-repository.ts:788-828 outbox 拆分两 prepared 调用，SQLite WAL autocommit 下观察方可见部分状态 | `todo` | 待修复 |
+| 170 | tests/integration/platform/state-evidence/events/transactional-event-appender 与 event-repository.ts:788-828 outbox 拆分两 prepared 调用，SQLite WAL autocommit 下观察方可见部分状态 | `done` | 根因是 Tier-1 事件特殊路径绕开了统一的 transactional appender，把 event/outbox 原子性要求重新降回了双语句 autocommit。 |
 | 171 | tests/integration/platform/state-evidence/checkpoints/checkpoint-envelope.ts:178 createdAt:new Date().toISOString() 用本地时钟，不同 TZ 重放产物元数据非确定 | `done` | 根因是 review 引用的旧测试位置已经过期；当前 checkpoint envelope 测试使用固定时间戳样本，不再依赖本地时钟。 |
-| 172 | src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.ts:138 PRAGMA journal_mode=WAL 不断言返回，NFS 等环境静默回退 delete | `todo` | 待修复 |
-| 173 | src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.ts:134 busy_timeout 允许 0，瞬时 SQLITE_BUSY 与并发冲突 | `todo` | 待修复 |
-| 174 | src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.ts:283 Object.values(row) 依赖 wal_checkpoint 列序，缺键名解构 | `todo` | 待修复 |
-| 175 | src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.ts:347-350 close() 不检查 wal_checkpoint busy>0，存帧未刷盘即关 | `todo` | 待修复 |
-| 176 | src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.ts:442-449 通过正则 database is locked\\|busy 识别 BUSY，本地化/errno 改即失效 | `todo` | 待修复 |
-| 177 | src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.ts:323-340 healthCheck 标 async 实仅同步事务，误导调用方 | `todo` | 待修复 |
-| 178 | src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.ts:455-465 applyCompatibleColumnMigrationIfKnown 命中后跳过 migration.sql，索引/约束变更悄然丢 | `todo` | 待修复 |
+| 172 | src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.ts:138 PRAGMA journal_mode=WAL 不断言返回，NFS 等环境静默回退 delete | `done` | 根因是 SQLite 初始化流程此前只“请求 WAL”不“确认 WAL”，把后端实际 journal mode 是否退化留给运行时偶发故障暴露。 |
+| 173 | src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.ts:134 busy_timeout 允许 0，瞬时 SQLITE_BUSY 与并发冲突 | `done` | 根因是 busy timeout 配置只做了数值截断，没有建立最小正整数约束。 |
+| 174 | src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.ts:283 Object.values(row) 依赖 wal_checkpoint 列序，缺键名解构 | `done` | 根因是 WAL checkpoint 结果读取图省事直接拿对象值数组，没有固定绑定 SQLite 返回列名。 |
+| 175 | src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.ts:347-350 close() 不检查 wal_checkpoint busy>0，存帧未刷盘即关 | `done` | 根因是 close 只做 best-effort checkpoint，没有把 busy 或未完全 checkpoint 视为显式关闭失败。 |
+| 176 | src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.ts:442-449 通过正则 database is locked\\|busy 识别 BUSY，本地化/errno 改即失效 | `done` | 根因是 SQLite 写争用识别长期只依赖 message 文本匹配，没有优先消费 sqlite/errno 级别的错误标识。 |
+| 177 | src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.ts:323-340 healthCheck 标 async 实仅同步事务，误导调用方 | `done` | 根因是 SQLite health probe 复制了异步后端接口签名，但内部实际一直走同步连接与同步事务。 |
+| 178 | src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.ts:455-465 applyCompatibleColumnMigrationIfKnown 命中后跳过 migration.sql，索引/约束变更悄然丢 | `todo` | 根因是 SQLite 迁移兼容分支把“补列”当成“完成整个 migration”，导致列之外的索引、约束和其余 DDL 没有单独补齐策略。 |
 | 179 | src/platform/five-plane-state-evidence/knowledge/indexing/embedding-provider.ts:108,233 fetch 无 AbortController/超时 | `done` | 根因是 review 基于旧版本；当前 provider 统一经 `fetchWithTimeout()`，已接入 AbortController 与超时清理。 |
 | 180 | src/platform/five-plane-state-evidence/knowledge/indexing/embedding-provider.ts:121-126,246-251 错误体直接拼到 Error message，潜在日志注入 | `done` | 根因是 provider 错误路径直接拼接上游响应体，没有做换行/长度收敛。 |
 | 181 | src/platform/five-plane-state-evidence/knowledge/indexing/embedding-provider.ts:137,259+ response.json() 无 try/catch | `done` | 根因是 embedding provider 默认信任上游 JSON 结构，没有隔离解析失败。 |
 | 182 | src/platform/five-plane-state-evidence/knowledge/indexing/embedding-provider.ts:142-144 未校验返回 index 范围/重复，序后映射假定一一对应 | `done` | 根因是排序恢复结果时默认信任 provider index 完整且无重复，没有做边界校验。 |
 | 183 | src/platform/five-plane-state-evidence/checkpoints/checkpoint-envelope.ts:226 Buffer.from(payload,"base64") 不校验长度/MIME，损坏 payload 解空 buffer 不报错 | `done` | 根因是 checkpoint payload 解码只依赖 Buffer 宽松行为，没有做 base64 长度与字符集约束。 |
 | 184 | src/platform/five-plane-state-evidence/memory/trust-level-service.ts:384-385 用 content.includes("TODO/FIXME") 当信任级别下调依据，明显误报 | `done` | 根因是质量检查把 TODO/FIXME 视作任意子串，而不是显式占位标记。 |
-| 185 | src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.ts:323-330 healthCheck 在事务内 CREATE/DROP TEMP TABLE，rollback 残留 TEMP 句柄 | `todo` | 待修复 |
-| 186 | src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.ts:283-290 checkpointWal 不区分 busy>0 与 frames=0，运维无法识真实瓶颈 | `todo` | 待修复 |
+| 185 | src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.ts:323-330 healthCheck 在事务内 CREATE/DROP TEMP TABLE，rollback 残留 TEMP 句柄 | `done` | 根因是 health probe 早期用临时表写删来证明可写，副作用验证压过了连接探活本身。 |
+| 186 | src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.ts:283-290 checkpointWal 不区分 busy>0 与 frames=0，运维无法识真实瓶颈 | `done` | 根因是 checkpoint 返回值之前被按位置数组粗读，busy、log frames、checkpointed frames 没被稳定区分为独立信号。 |
 | 187 | tests/integration/platform/state-evidence/dlq-persistence.test.ts:464 /tmp/dlq-persistence-test-${Date.now()}.db 不可移植 Windows 且不在 finally 清理 | `done` | 根因是文件型持久化测试最初按本机 `/tmp` 快速起草，没有复用测试层统一的临时工作区与清理约束。 |
 | 188 | tests/unit/platform/state-evidence/knowledge/knowledge-store.test.ts:17 /tmp/aa-sandbox/ktest_${suffix}_${Date.now()} 集中污染 | `done` | 根因是知识快照测试把 Unix 临时目录常量写死在 helper 里，缺少基于 `tmpdir()` 的平台无关拼接。 |
 | 189 | tests/unit/platform/state-evidence/knowledge/p2-defects-sys-sec-4-2.test.ts:63,113 两处 /tmp/aa-sandbox/... 不清理 | `done` | 根因是安全回归测试只关注路径允许/拒绝语义，没有把产物生命周期纳入测试治理。 |
 | 190 | tests/leaks/platform/state-evidence/events/durable-event-bus.leak.test.ts 阈值 10MB 同理且不区 RSS/heapUsed | `done` | 根因是泄漏测试最初只盯 heapUsed，没把 RSS 与无 `--expose-gc` 运行环境分开建模。 |
 | 191 | dashboard-projection-service.ts:110 system.health.changed 未注册到 TypedEventType | `done` | 根因是 review 没有吸收 typed-event-bus / event-registry 的后续补齐；当前 `system.health.changed` 已注册。 |
-| 192 | migrate-sqlite-to-pg.ts 列名/表名直拼 SQL，无白名单（注入风险） | `todo` | 待修复 |
-| 193 | idempotency-key-storage.ts ${this.tableName} 直拼 SQL，构造期未校验 | `todo` | 待修复 |
-| 194 | semantic-vector-store.ts process.env[name] 中 name 来自配置，可读任意 env | `todo` | 待修复 |
-| 195 | checkpoint-gc-service.ts fs.stat→fs.unlink TOCTOU 窗口 | `todo` | 待修复 |
-| 196 | shadow-snapshot-service.ts lstat→rename 间存在 symlink swap 窗口 | `todo` | 待修复 |
-| 197 | sqlite-database-wrapper.ts:94-114 savepoint 名直拼 exec，未来调用方可注入 | `todo` | 待修复 |
-| 198 | sqlite-database.ts:143 PRAGMA busy_timeout = ${this.busyTimeoutMs} 拼 SQL，busyTimeoutMs 未做整数校验 | `todo` | 待修复 |
-| 199 | pg-advisory-lock-adapter.ts 中 Number(result.fencing_token)、sqlite-lock-adapter.ts:36 Number(result.lastInsertRowid) 超 2^53 精度丢失 | `todo` | 待修复 |
-| 200 | checkpoint-gc-service.ts:171,557、learning-object-model.ts:180,184、risk-register.ts:87,110、invariant-registry.ts:137,165,180、responsibility-boundary.ts:158-308、admin-config-service.ts:66、outbox-repository.ts:117、memory-layer-model.ts:214,549、graphql-adapter-service.ts:294、conversation-template-service.ts:408、approval-policy-engine/version-manager.ts:111、stable-evidence-bundle-support.ts:612,616,732、dlq-service.ts:238、knowledge-snapshot-store.ts:25-48、semantic-vector-validation.ts:276、tool-gateway/index.ts:150,160、idempotency-key-storage.ts:310,338,341、cors.ts:49-68、reliability/timeout.ts:45,54 多处抛裸 Error 而非结构化 AppError/ValidationError | `todo` | 待修复 |
+| 192 | migrate-sqlite-to-pg.ts 列名/表名直拼 SQL，无白名单（注入风险） | `todo` | 根因是 SQLite→PG 迁移脚本把模式对象名当成可信内部常量处理，没有在 SQL 标识符层做 allowlist/quote 校验。 |
+| 193 | idempotency-key-storage.ts ${this.tableName} 直拼 SQL，构造期未校验 | `todo` | 根因是幂等键存储允许构造期注入自定义表名，却没有在初始化边界限制为安全标识符集合。 |
+| 194 | semantic-vector-store.ts process.env[name] 中 name 来自配置，可读任意 env | `todo` | 根因是向量存储把配置字段直接映射为环境变量名，读取边界没有白名单约束。 |
+| 195 | checkpoint-gc-service.ts fs.stat→fs.unlink TOCTOU 窗口 | `todo` | 根因是 GC 删除路径先检查再删除，默认文件系统对象在两次系统调用之间不会被替换。 |
+| 196 | shadow-snapshot-service.ts lstat→rename 间存在 symlink swap 窗口 | `todo` | 根因是 shadow snapshot 提升路径把 `lstat` 和 `rename` 分开执行，没有把目标身份绑定到单个原子操作。 |
+| 197 | sqlite-database-wrapper.ts:94-114 savepoint 名直拼 exec，未来调用方可注入 | `todo` | 根因是 PG 兼容 wrapper 用字符串拼接 savepoint 名构造 SQL，没有像 SQLite 主实现那样集中做标识符约束。 |
+| 198 | sqlite-database.ts:143 PRAGMA busy_timeout = ${this.busyTimeoutMs} 拼 SQL，busyTimeoutMs 未做整数校验 | `done` | 根因是 PRAGMA 值虽来自配置层，但没有在数据库边界再次验证为正整数，留下了拼接型配置注入面。 |
+| 199 | pg-advisory-lock-adapter.ts 中 Number(result.fencing_token)、sqlite-lock-adapter.ts:36 Number(result.lastInsertRowid) 超 2^53 精度丢失 | `todo` | 根因是多处数据库 bigint/rowid 回读仍直接强转 JS number，缺少统一的安全整数转换助手。 |
+| 200 | checkpoint-gc-service.ts:171,557、learning-object-model.ts:180,184、risk-register.ts:87,110、invariant-registry.ts:137,165,180、responsibility-boundary.ts:158-308、admin-config-service.ts:66、outbox-repository.ts:117、memory-layer-model.ts:214,549、graphql-adapter-service.ts:294、conversation-template-service.ts:408、approval-policy-engine/version-manager.ts:111、stable-evidence-bundle-support.ts:612,616,732、dlq-service.ts:238、knowledge-snapshot-store.ts:25-48、semantic-vector-validation.ts:276、tool-gateway/index.ts:150,160、idempotency-key-storage.ts:310,338,341、cors.ts:49-68、reliability/timeout.ts:45,54 多处抛裸 Error 而非结构化 AppError/ValidationError | `todo` | 根因是平台不同子模块长期各自抛原生 `Error`，错误分类模型没有在 shared/contracts 层被强制收口。 |
 | 201 | .gitignore 全局 *.db-shm/*.db-wal 不存在，sqlite WAL 残留可被 commit | `done` | 根因是旧 review 基于过期 `.gitignore` 快照；当前仓库已显式忽略 `*.db-shm` 与 `*.db-wal`。 |
 
 ## src/platform/shared
 
 | 编号 | 问题 | 状态 | 问题根因 |
 | --- | --- | --- | --- |
-| 202 | src/platform/stability/ 与 src/platform/shared/stability/ 平行同名目录实现已分歧 | `todo` | 待修复 |
-| 203 | src/platform/shared/reliability/、shared/stability/reliability/、stability/reliability/ 三处可靠性实现重复 | `todo` | 待修复 |
-| 204 | src/platform/shared/observability/structured-logger.ts:484-491 每条 fsync 日志 openSync+appendFileSync+fsyncSync+closeSync 串行同步 IO | `todo` | 待修复 |
-| 205 | src/platform/shared/observability/structured-logger.ts:153,180 sinkBaseDir=process.cwd()，运行时 chdir 后语义漂移 | `todo` | 待修复 |
-| 206 | src/platform/shared/observability/structured-logger.ts:194 mkdirSync 无错误处理，权限不足时 configure 直接抛 | `todo` | 待修复 |
-| 207 | src/platform/shared/observability/structured-logger.ts:262 retentionLimit=0 时 buffer 长度 0，所有 log 静默丢弃 | `todo` | 待修复 |
-| 208 | src/platform/shared/outbox/outbox-poller-service.ts:193-197 retryCount>=maxRetries 仅 failed++;continue，永不投 DLQ | `todo` | 待修复 |
-| 209 | src/platform/shared/outbox/outbox-poller-service.ts:188-217 for-await 串行处理，无并发批量发布 | `todo` | 待修复 |
-| 210 | src/platform/shared/observability/otel-tracer.ts & otel-bootstrap.ts 各自 loadOtelApi/loadOtelModules，OTel 加载两条路径 | `todo` | 待修复 |
-| 211 | src/platform/shared/observability/structured-logger.ts:153 sinkBaseDir=process.cwd() 多 worker fork 后各持自身 cwd，路径不一致 | `todo` | 待修复 |
-| 212 | tests/unit/platform/shared/stability/stable-prompt-injection-red-team-additional.test.ts:82,97,111,129,145 5 处 /tmp/... 不可移植 | `todo` | 待修复 |
-| 213 | tests/unit/platform/shared/stability/stable-runtime-validator-additional.test.ts:30 /tmp/${caseId}.backup.db 跨 case 重名互覆盖 | `todo` | 待修复 |
-| 214 | graceful-shutdown.ts setImmediate(()=>process.exit()) 未 flush stdio | `todo` | 待修复 |
-| 215 | slo-alerting-channels.ts 在 queueMicrotask 内做同步阻塞 I/O | `todo` | 待修复 |
-| 216 | graceful-shutdown.ts:122 void this.handleSignal(signal) 无 .catch；shutdown 错误成为 unhandled rejection | `todo` | 待修复 |
+| 202 | src/platform/stability/ 与 src/platform/shared/stability/ 平行同名目录实现已分歧 | `todo` | 根因是稳定性能力一边作为 authoritative 实现继续演进，一边又在 shared facade 中保留历史复制/二次封装，最终两套目录语义漂移。 |
+| 203 | src/platform/shared/reliability/、shared/stability/reliability/、stability/reliability/ 三处可靠性实现重复 | `todo` | 根因是 reliability 能力经历多次“抽 shared”“再挂 stability facade”的重组，但旧实现目录没有真正下线。 |
+| 204 | src/platform/shared/observability/structured-logger.ts:484-491 每条 fsync 日志 openSync+appendFileSync+fsyncSync+closeSync 串行同步 IO | `todo` | 根因是结构化 logger 把 durable sink 实现成逐条同步刷盘，可靠性优先级压过了吞吐设计。 |
+| 205 | src/platform/shared/observability/structured-logger.ts:153,180 sinkBaseDir=process.cwd()，运行时 chdir 后语义漂移 | `todo` | 根因是 sink 根目录默认绑定进程当前工作目录，而不是进程启动时或显式配置的稳定绝对路径。 |
+| 206 | src/platform/shared/observability/structured-logger.ts:194 mkdirSync 无错误处理，权限不足时 configure 直接抛 | `todo` | 根因是 logger 目录创建把文件系统权限异常当成不会发生的环境前提，没有转换成可诊断的配置错误。 |
+| 207 | src/platform/shared/observability/structured-logger.ts:262 retentionLimit=0 时 buffer 长度 0，所有 log 静默丢弃 | `todo` | 根因是 retention buffer 把 0 解释成“长度为 0 的可用缓存”，而不是“禁用 retention 但仍输出 sink”。 |
+| 208 | src/platform/shared/outbox/outbox-poller-service.ts:193-197 retryCount>=maxRetries 仅 failed++;continue，永不投 DLQ | `todo` | 根因是 outbox poller 只维护重试计数和失败计数，没有把“超过最大重试”接到显式 DLQ 转移路径。 |
+| 209 | src/platform/shared/outbox/outbox-poller-service.ts:188-217 for-await 串行处理，无并发批量发布 | `todo` | 根因是 outbox 发布循环最初按顺序可读性实现，没有抽出批处理并发度控制。 |
+| 210 | src/platform/shared/observability/otel-tracer.ts & otel-bootstrap.ts 各自 loadOtelApi/loadOtelModules，OTel 加载两条路径 | `todo` | 根因是 OTel 初始化在 tracer 和 bootstrap 两侧各自封装了一套模块探测逻辑，没有收口到单一加载器。 |
+| 211 | src/platform/shared/observability/structured-logger.ts:153 sinkBaseDir=process.cwd() 多 worker fork 后各持自身 cwd，路径不一致 | `todo` | 根因是日志 sink 路径解析依赖每个 worker 自己的 `cwd`，多进程环境下缺少统一的绝对路径锚点。 |
+| 212 | tests/unit/platform/shared/stability/stable-prompt-injection-red-team-additional.test.ts:82,97,111,129,145 5 处 /tmp/... 不可移植 | `done` | 根因是稳定性附加测试直接手写 Unix 临时目录字符串，没有复用统一测试工作区 helper。 |
+| 213 | tests/unit/platform/shared/stability/stable-runtime-validator-additional.test.ts:30 /tmp/${caseId}.backup.db 跨 case 重名互覆盖 | `done` | 根因是 baseline/backup 路径用 caseId 直接拼到共享 `/tmp`，缺少平台无关且具隔离前缀的临时路径生成。 |
+| 214 | graceful-shutdown.ts setImmediate(()=>process.exit()) 未 flush stdio | `done` | 根因是旧实现确实只排到下一轮事件循环就退出；当前路径已显式等待 stdout/stderr flush 后再退出。 |
+| 215 | slo-alerting-channels.ts 在 queueMicrotask 内做同步阻塞 I/O | `done` | 根因是该 review 结论停留在旧实现快照；当前 `slo-alerting-channels.ts` 已无 `queueMicrotask` 包裹的同步阻塞 I/O 路径。 |
+| 216 | graceful-shutdown.ts:122 void this.handleSignal(signal) 无 .catch；shutdown 错误成为 unhandled rejection | `done` | 根因是信号监听器把异步 shutdown 启动成 fire-and-forget，没有在监听器边界消费 rejection。 |
 
 ## src/platform/stability
 
 | 编号 | 问题 | 状态 | 问题根因 |
 | --- | --- | --- | --- |
-| 217 | src/platform/stability/timeout.ts:82 成功路径未 clearTimeout，setTimeout 句柄泄漏 | `todo` | 待修复 |
-| 218 | src/platform/stability/timeout.ts cancel() 仅取消计时器，未通过 AbortSignal 传给被包裹函数 | `todo` | 待修复 |
-| 219 | src/platform/stability/retry.ts 与 stability/reliability/retry.ts 两份并存且策略分歧 | `todo` | 待修复 |
+| 217 | src/platform/stability/timeout.ts:82 成功路径未 clearTimeout，setTimeout 句柄泄漏 | `done` | 根因是 timeout wrapper 只把定时器当成 reject 触发器，没有把成功/失败路径上的句柄清理建成显式步骤。 |
+| 218 | src/platform/stability/timeout.ts cancel() 仅取消计时器，未通过 AbortSignal 传给被包裹函数 | `done` | 根因是 timeout/cancel 语义最初只修改包装器内部状态，没有把取消信号传播给被执行异步任务。 |
+| 219 | src/platform/stability/retry.ts 与 stability/reliability/retry.ts 两份并存且策略分歧 | `todo` | 根因是 retry 在 top-level stability 与 reliability 子目录分别继续演化，一边支持 AbortSignal，一边保留旧统计模型，导致同名能力双源分叉。 |
 
 ## src/platform/prompt-engine
 

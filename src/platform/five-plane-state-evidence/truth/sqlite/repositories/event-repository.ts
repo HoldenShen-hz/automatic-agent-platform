@@ -771,6 +771,7 @@ export class EventRepository {
     traceId: string;
     payload: Record<string, unknown>;
   }): EventRecord {
+    const savepointName = "aa_tier1_status_event";
     // Resolve executionId - if execution doesn't exist but task does, use null instead of failing.
     // This handles cases where an execution was referenced but was never committed to the database.
     let resolvedExecutionId = input.executionId;
@@ -785,48 +786,54 @@ export class EventRepository {
       }
     }
 
-    const eventRecord = this.insertEvent({
-      id: newId("evt"),
-      taskId: input.taskId,
-      sessionId: input.sessionId ?? null,
-      executionId: resolvedExecutionId,
-      eventType: input.eventType,
-      eventTier: "tier_1",
-      payloadJson: JSON.stringify(input.payload),
-      traceId: input.traceId,
-      createdAt: nowIso(),
-    });
+    this.conn.exec(`SAVEPOINT ${savepointName}`);
+    try {
+      const eventRecord = this.insertEvent({
+        id: newId("evt"),
+        taskId: input.taskId,
+        sessionId: input.sessionId ?? null,
+        executionId: resolvedExecutionId,
+        eventType: input.eventType,
+        eventTier: "tier_1",
+        payloadJson: JSON.stringify(input.payload),
+        traceId: input.traceId,
+        createdAt: nowIso(),
+      });
 
-    // Also write to outbox for reliable async delivery
-    // This ensures tier-1 events are delivered via the outbox pattern
-    const outboxId = newId("outbox");
-    const outboxPayload = {
-      eventId: eventRecord.id,
-      eventType: input.eventType,
-      taskId: input.taskId,
-      sessionId: input.sessionId ?? null,
-      executionId: resolvedExecutionId,
-      payload: input.payload,
-    };
-    const aggregateId = input.taskId ?? input.sessionId ?? resolvedExecutionId ?? eventRecord.id;
+      const outboxId = newId("outbox");
+      const outboxPayload = {
+        eventId: eventRecord.id,
+        eventType: input.eventType,
+        taskId: input.taskId,
+        sessionId: input.sessionId ?? null,
+        executionId: resolvedExecutionId,
+        payload: input.payload,
+      };
+      const aggregateId = input.taskId ?? input.sessionId ?? resolvedExecutionId ?? eventRecord.id;
 
-    this.conn
-      .prepare(
-        `INSERT INTO outbox (
-          id, aggregate_type, aggregate_id, event_type,
-          payload_json, trace_id, created_at, published_at, retry_count, last_error, last_attempt_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, NULL, 0, NULL, NULL)`,
-      )
-      .run(
-        outboxId,
-        input.taskId == null ? input.sessionId == null ? "event" : "session" : "task",
-        aggregateId,
-        input.eventType,
-        JSON.stringify(outboxPayload),
-        input.traceId,
-        eventRecord.createdAt,
-      );
+      this.conn
+        .prepare(
+          `INSERT INTO outbox (
+            id, aggregate_type, aggregate_id, event_type,
+            payload_json, trace_id, created_at, published_at, retry_count, last_error, last_attempt_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, NULL, 0, NULL, NULL)`,
+        )
+        .run(
+          outboxId,
+          input.taskId == null ? input.sessionId == null ? "event" : "session" : "task",
+          aggregateId,
+          input.eventType,
+          JSON.stringify(outboxPayload),
+          input.traceId,
+          eventRecord.createdAt,
+        );
 
-    return eventRecord;
+      this.conn.exec(`RELEASE SAVEPOINT ${savepointName}`);
+      return eventRecord;
+    } catch (error) {
+      this.conn.exec(`ROLLBACK TO SAVEPOINT ${savepointName}`);
+      this.conn.exec(`RELEASE SAVEPOINT ${savepointName}`);
+      throw error;
+    }
   }
 }

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { join } from "node:path";
 import test from "node:test";
 
 import {
@@ -8,7 +9,9 @@ import {
   type AuthoritativeSqlDatabase,
   type AppliedSqliteMigrationRecord,
   type SqliteSchemaStatus,
+  SqliteDatabase,
 } from "../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import { cleanupPath, createTempWorkspace } from "../../../../../helpers/fs.js";
 
 test("SqliteWriteContentionError constructor sets properties correctly", () => {
   const error = new SqliteWriteContentionError("/path/to/db.sqlite");
@@ -157,4 +160,41 @@ test("SqliteWriteContentionError has correct retryable and statusCode", () => {
   const error = new SqliteWriteContentionError("/path/to/db.sqlite");
   assert.equal((error as any).retryable, true);
   assert.equal((error as any).statusCode, 503);
+});
+
+test("SqliteDatabase validates busyTimeoutMs as a positive integer", () => {
+  const workspace = createTempWorkspace("aa-sqlite-db-");
+  const dbPath = join(workspace, "invalid-timeout.db");
+  try {
+    assert.throws(() => new SqliteDatabase(dbPath, { busyTimeoutMs: 0 }), /busyTimeoutMs must be a positive integer/);
+    assert.throws(() => new SqliteDatabase(dbPath, { busyTimeoutMs: 1.5 }), /busyTimeoutMs must be a positive integer/);
+  } finally {
+    cleanupPath(workspace);
+  }
+});
+
+test("SqliteDatabase healthCheck is synchronous and returns true for writable database", () => {
+  const workspace = createTempWorkspace("aa-sqlite-db-");
+  const dbPath = join(workspace, "health.db");
+  try {
+    const db = new SqliteDatabase(dbPath);
+    db.migrate();
+    assert.equal(db.healthCheck(), true);
+    db.close();
+  } finally {
+    cleanupPath(workspace);
+  }
+});
+
+test("SqliteDatabase file-backed connections enforce WAL mode", () => {
+  const workspace = createTempWorkspace("aa-sqlite-db-");
+  const dbPath = join(workspace, "wal.db");
+  try {
+    const db = new SqliteDatabase(dbPath);
+    const row = db.connection.prepare("PRAGMA journal_mode;").get() as { journal_mode?: string } | undefined;
+    assert.equal((row?.journal_mode ?? "").toLowerCase(), "wal");
+    db.close();
+  } finally {
+    cleanupPath(workspace);
+  }
 });

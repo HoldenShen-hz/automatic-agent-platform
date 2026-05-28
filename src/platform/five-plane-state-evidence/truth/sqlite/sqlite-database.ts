@@ -44,7 +44,7 @@ export interface AuthoritativeSqlDatabase {
   /** Runs integrity check */
   integrityCheck(): string[];
   /** Checks database writability */
-  healthCheck(): Promise<boolean>;
+  healthCheck(): boolean | Promise<boolean>;
   /** Closes the underlying database connection */
   close(): void;
   /** Executes work within a write transaction */
@@ -124,6 +124,7 @@ export class SqliteDatabase implements AuthoritativeSqlDatabase {
   public readonly connection: DatabaseSync;
   private readonly migrationPlan: readonly SqliteMigrationDefinition[];
   private readonly busyTimeoutMs: number;
+  private readonly journalMode: string;
   private transactionDepth = 0;
   private migrationLedgerEnsured = false;
 
@@ -131,11 +132,11 @@ export class SqliteDatabase implements AuthoritativeSqlDatabase {
     mkdirSync(dirname(filePath), { recursive: true });
     this.connection = new DatabaseSync(filePath);
     this.migrationPlan = options.migrationPlan ?? SQLITE_MIGRATIONS;
-    this.busyTimeoutMs = Math.max(0, Math.trunc(options.busyTimeoutMs ?? 5000));
+    this.busyTimeoutMs = this.normalizeBusyTimeoutMs(options.busyTimeoutMs ?? 5000);
     // Enable foreign key enforcement
     this.connection.exec("PRAGMA foreign_keys = ON;");
     // Enable WAL mode for better concurrency
-    this.connection.exec("PRAGMA journal_mode = WAL;");
+    this.journalMode = this.enableJournalMode();
     // Use NORMAL durability so WAL checkpoints remain crash-safe without the
     // inconsistency of backend-specific default synchronous policies.
     this.connection.exec("PRAGMA synchronous = NORMAL;");
@@ -277,16 +278,23 @@ export class SqliteDatabase implements AuthoritativeSqlDatabase {
     logFrames: number;
     checkpointedFrames: number;
   } {
+    if (this.journalMode !== "wal") {
+      return {
+        mode: "TRUNCATE",
+        busy: 0,
+        logFrames: 0,
+        checkpointedFrames: 0,
+      };
+    }
     const row = this.connection.prepare("PRAGMA wal_checkpoint(TRUNCATE);").get() as
       | Record<string, unknown>
       | undefined;
-    const values = Object.values(row ?? {});
 
     return {
       mode: "TRUNCATE",
-      busy: Number(values[0] ?? 0),
-      logFrames: Number(values[1] ?? 0),
-      checkpointedFrames: Number(values[2] ?? 0),
+      busy: this.readIntegerField(row, ["busy"]),
+      logFrames: this.readIntegerField(row, ["log", "logFrames", "log_frames"]),
+      checkpointedFrames: this.readIntegerField(row, ["checkpointed", "checkpointedFrames", "checkpointed_frames"]),
     };
   }
 
@@ -320,16 +328,24 @@ export class SqliteDatabase implements AuthoritativeSqlDatabase {
    * Checks database writability by creating/deleting a probe table.
    * @returns true if the database is writable
    */
-  public async healthCheck(): Promise<boolean> {
+  public healthCheck(): boolean {
     try {
-      this.transaction(() => {
-        this.connection.exec("CREATE TEMP TABLE IF NOT EXISTS __health_probe (id INTEGER PRIMARY KEY, created_at TEXT NOT NULL);");
-        this.connection.exec("INSERT INTO __health_probe(created_at) VALUES (CURRENT_TIMESTAMP);");
-        this.connection.exec("DELETE FROM __health_probe;");
-        this.connection.exec("DROP TABLE IF EXISTS __health_probe;");
-      });
+      if (this.transactionDepth > 0) {
+        this.connection.prepare("SELECT 1 AS ok").get();
+        return true;
+      }
+      this.connection.exec("BEGIN IMMEDIATE");
+      this.connection.prepare("SELECT 1 AS ok").get();
+      this.connection.exec("ROLLBACK");
       return true;
     } catch (error) {
+      if (this.transactionDepth === 0) {
+        try {
+          this.connection.exec("ROLLBACK");
+        } catch {
+          // Best effort cleanup for failed health probes outside a caller transaction.
+        }
+      }
       sqliteDbLogger.log({
         level: "warn",
         message: "SQLite health check failed",
@@ -345,8 +361,78 @@ export class SqliteDatabase implements AuthoritativeSqlDatabase {
    * to the main database file and prevent FOREIGN KEY constraint failures.
    */
   public close(): void {
-    this.checkpointWal();
+    const checkpoint = this.checkpointWal();
+    if (checkpoint.busy > 0) {
+      throw new StorageError(
+        "sqlite.wal_checkpoint_busy",
+        `sqlite.wal_checkpoint_busy:${this.filePath}`,
+        {
+          retryable: true,
+          details: checkpoint,
+        },
+      );
+    }
+    if (checkpoint.logFrames > 0 && checkpoint.checkpointedFrames < checkpoint.logFrames) {
+      throw new StorageError(
+        "sqlite.wal_checkpoint_incomplete",
+        `sqlite.wal_checkpoint_incomplete:${this.filePath}`,
+        {
+          retryable: true,
+          details: checkpoint,
+        },
+      );
+    }
     this.connection.close();
+  }
+
+  private normalizeBusyTimeoutMs(value: number): number {
+    if (!Number.isFinite(value) || !Number.isInteger(value) || value < 1) {
+      throw new ValidationError(
+        "sqlite.invalid_busy_timeout",
+        "sqlite.invalid_busy_timeout: busyTimeoutMs must be a positive integer.",
+      );
+    }
+    return value;
+  }
+
+  private enableJournalMode(): string {
+    const row = this.connection.prepare("PRAGMA journal_mode = WAL;").get() as Record<string, unknown> | undefined;
+    const journalMode = String(
+      row?.journal_mode
+      ?? row?.mode
+      ?? row?.["journal_mode=WAL"]
+      ?? "",
+    ).toLowerCase();
+    if (journalMode === "wal") {
+      return journalMode;
+    }
+    if (this.filePath === ":memory:") {
+      return journalMode || "memory";
+    }
+    throw new StorageError(
+      "sqlite.journal_mode_unavailable",
+      `sqlite.journal_mode_unavailable:${this.filePath}`,
+      {
+        retryable: false,
+        details: { filePath: this.filePath, requested: "wal", actual: journalMode || "unknown" },
+      },
+    );
+  }
+
+  private readIntegerField(row: Record<string, unknown> | undefined, fieldNames: readonly string[]): number {
+    for (const fieldName of fieldNames) {
+      const candidate = row?.[fieldName];
+      if (typeof candidate === "number" && Number.isFinite(candidate)) {
+        return candidate;
+      }
+      if (typeof candidate === "bigint") {
+        return Number(candidate);
+      }
+      if (typeof candidate === "string" && /^-?\d+$/.test(candidate)) {
+        return Number(candidate);
+      }
+    }
+    return 0;
   }
 
   /**
@@ -444,8 +530,26 @@ export class SqliteDatabase implements AuthoritativeSqlDatabase {
       return false;
     }
 
-    const candidate = error as { code?: unknown; message?: unknown };
-    return candidate.code === "ERR_SQLITE_ERROR" && /database is (?:locked|busy)/i.test(String(candidate.message ?? ""));
+    const candidate = error as {
+      code?: unknown;
+      errno?: unknown;
+      sqliteCode?: unknown;
+      extendedCode?: unknown;
+      message?: unknown;
+    };
+    const normalizedMarkers = [
+      candidate.code,
+      candidate.errno,
+      candidate.sqliteCode,
+      candidate.extendedCode,
+    ]
+      .filter((value) => value != null)
+      .map((value) => String(value).toUpperCase());
+    if (normalizedMarkers.some((value) => value === "SQLITE_BUSY" || value === "SQLITE_LOCKED" || value === "5" || value === "6")) {
+      return true;
+    }
+    return candidate.code === "ERR_SQLITE_ERROR"
+      && /(database is locked|database is busy|SQLITE_BUSY|SQLITE_LOCKED)/i.test(String(candidate.message ?? ""));
   }
 
   /**
@@ -458,7 +562,6 @@ export class SqliteDatabase implements AuthoritativeSqlDatabase {
         this.recordAppliedMigration(migration, migration.appliedChecksum);
         return;
       }
-
       this.connection.exec(migration.sql);
       this.recordAppliedMigration(migration, migration.checksum);
     });
