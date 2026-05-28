@@ -14,6 +14,7 @@ const DISALLOWED_SKIP_PATTERNS = [
   /\bit\.skip\s*\(/g,
   /\bdescribe\.skip\s*\(/g,
   /\bt\.skip\s*\(/g,
+  /\bserialTest\s*\([^,\n]+,\s*["']skip["']/g,
 ];
 
 function listTestFiles(root: string): string[] {

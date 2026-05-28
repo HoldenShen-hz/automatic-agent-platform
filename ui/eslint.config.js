@@ -1,11 +1,14 @@
 import js from "@eslint/js";
 import globals from "globals";
 import tseslint from "typescript-eslint";
+import { fileURLToPath } from "node:url";
+
+const tsconfigRootDir = fileURLToPath(new URL(".", import.meta.url));
 
 const tsFiles = [
   "packages/**/*.{ts,tsx}",
   "apps/**/*.{ts,tsx}",
-  "tools/**/*.ts",
+  "tools/**/src/**/*.ts",
   "tests/**/*.{ts,tsx}",
   "scripts/**/*.mjs",
   "*.config.{ts,mjs,js}",
@@ -24,13 +27,26 @@ const testGlobals = {
 
 export default tseslint.config(
   {
-    ignores: ["node_modules/**", "dist/**", "coverage/**", "apps/web/dist/**", "test-results/**"],
+    ignores: [
+      "node_modules/**",
+      "dist/**",
+      "coverage/**",
+      "apps/web/dist/**",
+      "apps/electron-win/dist/**",
+      "apps/tauri-linux/src-tauri/target/**",
+      "apps/tauri-macos/src-tauri/target/**",
+      "test-results/**",
+    ],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
     files: tsFiles,
     languageOptions: {
+      parserOptions: {
+        projectService: true,
+        tsconfigRootDir,
+      },
       globals: {
         ...globals.browser,
         ...globals.node,
@@ -41,7 +57,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ["tests/**/*.{ts,tsx}"],
+    files: ["tests/**/*.{ts,tsx}", "tools/**/*.spec.ts"],
     languageOptions: {
       globals: {
         ...globals.browser,

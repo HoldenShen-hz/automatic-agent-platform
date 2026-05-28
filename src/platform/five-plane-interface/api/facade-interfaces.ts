@@ -188,9 +188,9 @@ export interface IncidentFacadeService {
     linkedEvidenceRefs?: string[];
     tenantId?: string | null;
   }): IncidentCase;
-  acknowledge(incidentId: string, owner: string): IncidentCase;
-  startMitigation(incidentId: string): IncidentCase;
-  resolve(incidentId: string): IncidentCase;
+  acknowledge(incidentId: string, owner: string, tenantId?: string | null): IncidentCase;
+  startMitigation(incidentId: string, tenantId?: string | null): IncidentCase;
+  resolve(incidentId: string, tenantId?: string | null): IncidentCase;
 }
 
 class IncidentFacadeNotConfiguredError extends Error {
@@ -220,13 +220,13 @@ class NoOpIncidentFacadeService implements IncidentFacadeService {
   public openIncident(input: { severity: IncidentSeverity; title: string; linkedEvidenceRefs?: string[]; tenantId?: string | null }): IncidentCase {
     throw new IncidentFacadeNotConfiguredError();
   }
-  public acknowledge(_incidentId: string, _owner: string): IncidentCase {
+  public acknowledge(_incidentId: string, _owner: string, _tenantId?: string | null): IncidentCase {
     throw new IncidentFacadeNotConfiguredError();
   }
-  public startMitigation(_incidentId: string): IncidentCase {
+  public startMitigation(_incidentId: string, _tenantId?: string | null): IncidentCase {
     throw new IncidentFacadeNotConfiguredError();
   }
-  public resolve(_incidentId: string): IncidentCase {
+  public resolve(_incidentId: string, _tenantId?: string | null): IncidentCase {
     throw new IncidentFacadeNotConfiguredError();
   }
 }

@@ -8,8 +8,7 @@ This directory contains migration snapshot fixtures and generators for testing s
 migration/
 ├── README.md                 # This file
 ├── generate-snapshots.ts    # Script to generate snapshot DBs at key versions
-├── migration-fixtures.test.ts # Tests for migration ledger and snapshot generation
-└── snapshots/               # Generated snapshot databases (not committed)
+└── snapshots/               # Checked-in snapshot databases + manifest
     └── manifest.json        # Generated snapshot metadata
 ```
 
@@ -24,13 +23,12 @@ Snapshots are generated for these key schema versions:
 | v10 | 0010_remote_log_aggregation | Message parts + remote routing |
 | v20 | 0020_perception_mvp | Billing + perception + gateway |
 | v30 | 0030_workflow_dispatch_receipt_audit | Workflow dispatch + LLM eval |
-| v40 | 0040_session_events | Session events (current latest) |
+| latest | Auto-derived from migration plan | Current head schema snapshot |
 
 ## Generating Snapshots
 
 ```bash
-npm run build
-node dist/tests/fixtures/migration/generate-snapshots.js [outputDir]
+node --import tsx tests/fixtures/migration/generate-snapshots.ts [outputDir]
 ```
 
 Output is written to `snapshots/` by default (or the specified output directory).
@@ -38,7 +36,7 @@ Output is written to `snapshots/` by default (or the specified output directory)
 ## Running Tests
 
 ```bash
-npm run test:unit -- tests/fixtures/migration/migration-fixtures.test.js
+node --import tsx --test tests/integration/platform/state-evidence/truth/migration-fixtures.test.ts
 ```
 
 ## What These Fixtures Are For

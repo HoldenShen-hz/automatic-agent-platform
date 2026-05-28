@@ -3,6 +3,7 @@ import { dirname, join, resolve } from "node:path";
 
 const distPath = resolve(process.cwd(), "dist");
 const tsBuildInfoPath = resolve(process.cwd(), ".cache", "tsconfig.tsbuildinfo");
+const dryRun = process.argv.includes("--dry-run");
 const explicitPreserveDist = process.env.AA_PRESERVE_DIST;
 const preserveDist =
   explicitPreserveDist === "1"
@@ -67,6 +68,11 @@ function pruneStaleDistTests() {
 }
 
 if (!preserveDist && existsSync(distPath)) {
+  if (dryRun) {
+    console.log(`[clean-dist] dry-run: would remove ${distPath}`);
+    console.log(`[clean-dist] dry-run: would remove ${tsBuildInfoPath}`);
+    process.exit(0);
+  }
   try {
     rmSync(distPath, { recursive: true, force: true });
   } catch (err) {
@@ -76,5 +82,9 @@ if (!preserveDist && existsSync(distPath)) {
   }
   rmSync(tsBuildInfoPath, { force: true });
 } else if (shouldPruneStaleDistTests) {
+  if (dryRun) {
+    console.log("[clean-dist] dry-run: would prune stale dist tests");
+    process.exit(0);
+  }
   pruneStaleDistTests();
 }

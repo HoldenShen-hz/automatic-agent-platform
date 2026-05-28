@@ -1,3 +1,4 @@
+import { RestHttpError } from "@aa/shared-api-client";
 import { QueryClient } from "@tanstack/react-query";
 
 export const CACHE_TIER_STALE_TIME = {
@@ -14,17 +15,41 @@ export function createTieredQueryClientFactory(tier: QueryCacheTier) {
       queries: {
         staleTime: CACHE_TIER_STALE_TIME[tier],
         gcTime: 5 * 60_000,
-        retry: 3,
+        retry: (failureCount, error) => shouldRetryQuery(failureCount, error),
         refetchOnWindowFocus: true,
         refetchOnReconnect: true,
       },
       mutations: {
-        retry: 2,
+        retry: (failureCount, error) => shouldRetryMutation(failureCount, error),
       },
     },
   });
 }
 
-export function createQueryClientFactory() {
+export function createQueryClient() {
   return createTieredQueryClientFactory("tasks");
+}
+
+export function createQueryClientFactory() {
+  return createQueryClient();
+}
+
+function shouldRetryQuery(failureCount: number, error: unknown): boolean {
+  if (failureCount >= 2) {
+    return false;
+  }
+  if (error instanceof RestHttpError) {
+    return error.status === 429 || error.status >= 500;
+  }
+  return !(error instanceof DOMException && error.name === "AbortError");
+}
+
+function shouldRetryMutation(failureCount: number, error: unknown): boolean {
+  if (failureCount >= 1) {
+    return false;
+  }
+  if (error instanceof RestHttpError) {
+    return error.status === 429 || error.status >= 500;
+  }
+  return !(error instanceof DOMException && error.name === "AbortError");
 }

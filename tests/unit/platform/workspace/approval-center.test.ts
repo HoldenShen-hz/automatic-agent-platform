@@ -206,6 +206,7 @@ test("mergeVotes adds new approver vote", () => {
 test("determineFinalStatus returns approved when quorum met", () => {
   const status = createInitialQuorumStatus();
   status.isQuorumMet = true;
+  status.approvalsReceived = 2;
   const config: QuorumConfig = { minApprovals: 2, minRejectionsToDeny: 2 };
 
   const finalStatus = determineFinalStatus(status, config);
@@ -216,6 +217,7 @@ test("determineFinalStatus returns approved when quorum met", () => {
 test("determineFinalStatus returns rejected when denied", () => {
   const status = createInitialQuorumStatus();
   status.isDenied = true;
+  status.rejectionsReceived = 2;
   const config: QuorumConfig = { minApprovals: 2, minRejectionsToDeny: 2 };
 
   const finalStatus = determineFinalStatus(status, config);

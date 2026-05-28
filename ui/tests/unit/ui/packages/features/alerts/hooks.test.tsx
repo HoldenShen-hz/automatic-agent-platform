@@ -3,6 +3,18 @@ import { describe, expect, it, vi } from "vitest";
 
 const mockClient = {};
 const mutationCalls: Array<{ path: string; payload: { id: string } }> = [];
+const createMutation = (path: ({ id }: { id: string }) => string) => {
+  const mutateAsync = vi.fn(async (payload: { id: string }) => {
+    mutationCalls.push({ path: path(payload), payload });
+  });
+  return {
+    status: "idle",
+    mutate: vi.fn((payload: { id: string }) => {
+      mutationCalls.push({ path: path(payload), payload });
+    }),
+    mutateAsync,
+  };
+};
 
 vi.mock("@aa/shared-state", () => ({
   useAuthState: () => ({
@@ -22,29 +34,25 @@ vi.mock("@aa/shared-state", () => ({
       },
     ],
   }),
-  useMutation: ({ path }: { path: ({ id }: { id: string }) => string }) => ({
-    status: "idle",
-    mutate: vi.fn((payload: { id: string }) => {
-      mutationCalls.push({ path: path(payload), payload });
-    }),
-  }),
+  useMutation: ({ path }: { path: ({ id }: { id: string }) => string }) => createMutation(path),
   useWsClient: () => ({
     subscribe: () => () => undefined,
+    onStatusChange: () => () => undefined,
   }),
 }));
 
 import { mapAlertsToVm, useAlertsVm } from "../../../../../../packages/features/alerts/src/hooks";
 
 describe("useAlertsVm", () => {
-  it("wires acknowledge, snooze, escalate, and dismiss actions to incident mutations", () => {
+  it("wires acknowledge, snooze, escalate, and dismiss actions to incident mutations", async () => {
     mutationCalls.length = 0;
     const { result } = renderHook(() => useAlertsVm());
 
-    act(() => {
-      result.current.onAcknowledge("incident-1");
-      result.current.onSnooze("incident-1");
-      result.current.onEscalate("incident-1");
-      result.current.onDismiss("incident-1");
+    await act(async () => {
+      await result.current.onAcknowledge("incident-1");
+      await result.current.onSnooze("incident-1");
+      await result.current.onEscalate("incident-1");
+      await result.current.onDismiss("incident-1");
     });
 
     expect(mutationCalls).toEqual([
@@ -93,6 +101,7 @@ describe("useAlertsVm", () => {
         onDismiss: vi.fn(),
         onEscalate: vi.fn(),
         onSnooze: vi.fn(),
+        setFilters: vi.fn(),
       },
     );
     expect(allVm.items.map((item) => item.id)).toEqual(["incident-2", "incident-1"]);
@@ -108,6 +117,7 @@ describe("useAlertsVm", () => {
         onDismiss: vi.fn(),
         onEscalate: vi.fn(),
         onSnooze: vi.fn(),
+        setFilters: vi.fn(),
       },
     );
     expect(filteredVm.items.map((item) => item.id)).toEqual(["incident-2"]);

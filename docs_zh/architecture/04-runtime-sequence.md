@@ -143,6 +143,10 @@ Web / Electron / Mobile
 当前实现落点：
 
 - `ui/packages/shared/api-client/src/endpoints.ts`
+- `ui/packages/shared/api-client/src/interceptors.ts`
+- `ui/packages/shared/api-client/src/rest-client.ts`
+- `ui/packages/shared/api-client/src/ws-client.ts`
+- `ui/packages/shared/api-client/src/ws-event-router.ts`
 - `src/platform/five-plane-interface/api/http-server/dashboard-routes.ts`
 - `src/platform/five-plane-interface/api/http-server/plane-routes.ts`
 - `src/platform/five-plane-interface/api/http-server/pack-routes.ts`

@@ -132,19 +132,26 @@ export async function persistQueryClientSnapshot(
   queryClient: QueryClient,
   persister: QueryCachePersister = createIndexedDbQueryCachePersister(),
 ): Promise<void> {
-  await persister.write(dehydrate(queryClient));
+  await persister.write(dehydrate(queryClient, {
+    shouldDehydrateQuery: (query) => shouldPersistQueryKey(query.queryKey),
+  }));
 }
 
 export async function restorePersistedQueryClient(
   queryClient: QueryClient,
   persister: QueryCachePersister = createIndexedDbQueryCachePersister(),
 ): Promise<boolean> {
-  const persistedState = await persister.read();
-  if (persistedState == null) {
+  try {
+    const persistedState = await persister.read();
+    if (persistedState == null) {
+      return false;
+    }
+    hydrate(queryClient, persistedState);
+    return true;
+  } catch {
+    await persister.clear();
     return false;
   }
-  hydrate(queryClient, persistedState);
-  return true;
 }
 
 export function startPersistingQueryClient(
@@ -155,12 +162,18 @@ export function startPersistingQueryClient(
   const debounceMs = options.debounceMs ?? 100;
   let timeoutId: ReturnType<typeof setTimeout> | null = null;
   let disposed = false;
+  let writeChain = Promise.resolve();
 
   const flush = (): void => {
     if (disposed) {
       return;
     }
-    void persistQueryClientSnapshot(queryClient, persister);
+    const snapshot = dehydrate(queryClient, {
+      shouldDehydrateQuery: (query) => shouldPersistQueryKey(query.queryKey),
+    });
+    writeChain = writeChain
+      .then(() => persister.write(snapshot))
+      .catch(() => undefined);
   };
 
   const unsubscribe = queryClient.getQueryCache().subscribe(() => {
@@ -178,4 +191,20 @@ export function startPersistingQueryClient(
     }
     unsubscribe();
   };
+}
+
+function shouldPersistQueryKey(queryKey: readonly unknown[]): boolean {
+  const prefix = String(queryKey[0] ?? "");
+  return new Set([
+    "dashboard",
+    "tasks",
+    "approvals",
+    "workflows",
+    "agents",
+    "analytics",
+    "queues",
+    "incidents",
+    "feature-flags",
+    "domain-configs",
+  ]).has(prefix);
 }

@@ -57,6 +57,8 @@ export interface AnalyticsVm {
   getFilteredMetrics(): readonly AnalyticsMetricDTO[];
 }
 
+export const MAX_ANALYTICS_EXPORT_BYTES = 512 * 1024;
+
 const LAYER_LABELS: Record<KpiLayer, string> = {
   overview: "概览",
   tasks: "任务",
@@ -95,6 +97,36 @@ function toNumericValue(value: string | number): number {
   }
   const parsed = Number.parseFloat(value);
   return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function ensureAnalyticsExportSize(payload: string): string {
+  const bytes = new TextEncoder().encode(payload).byteLength;
+  if (bytes > MAX_ANALYTICS_EXPORT_BYTES) {
+    throw new RangeError(`analytics.export_too_large:${bytes}`);
+  }
+  return payload;
+}
+
+export function buildAnalyticsExportPayload(
+  format: AnalyticsExportFormat,
+  metrics: readonly AnalyticsMetricDTO[],
+  timeSeriesData: readonly AnalyticsTimeSeriesPoint[],
+  breakdowns: readonly AnalyticsBreakdown[],
+  dateRange: AnalyticsVm["dateRange"],
+): string {
+  if (format === "json") {
+    return ensureAnalyticsExportSize(JSON.stringify({ metrics, timeSeriesData, breakdowns, dateRange }, null, 2));
+  }
+
+  return ensureAnalyticsExportSize([
+    "label,value,layer,changePercent",
+    ...metrics.map((metric) => [
+      metric.label,
+      toNumericValue(metric.value),
+      getMetricLayer(metric),
+      metric.changePercent ?? 0,
+    ].join(",")),
+  ].join("\n"));
 }
 
 export function mapAnalyticsToVm(
@@ -207,17 +239,7 @@ export function useAnalyticsVm(): AnalyticsVm {
   }, []);
 
   const exportData = useCallback((format: AnalyticsExportFormat) => {
-    const payload = format === "json"
-      ? JSON.stringify({ metrics, timeSeriesData, breakdowns, dateRange }, null, 2)
-      : [
-        "label,value,layer,changePercent",
-        ...metrics.map((metric) => [
-          metric.label,
-          toNumericValue(metric.value),
-          getMetricLayer(metric),
-          metric.changePercent ?? 0,
-        ].join(",")),
-      ].join("\n");
+    const payload = buildAnalyticsExportPayload(format, metrics, timeSeriesData, breakdowns, dateRange);
 
     const blob = new Blob([payload], {
       type: format === "json" ? "application/json" : "text/csv;charset=utf-8",

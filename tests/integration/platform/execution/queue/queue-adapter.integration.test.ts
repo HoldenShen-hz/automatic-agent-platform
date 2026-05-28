@@ -16,9 +16,12 @@ import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evi
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 import { runConcurrentInvariant } from "../../../../helpers/concurrent-runner.js";
 
+const REDIS_HOST = process.env.AA_REDIS_HOST ?? "127.0.0.1";
+const REDIS_PORT = Number.parseInt(process.env.AA_REDIS_PORT ?? "6379", 10);
+
 const REDIS_MEMORY_CONFIG = {
-  host: "localhost",
-  port: 6379,
+  host: REDIS_HOST,
+  port: REDIS_PORT,
   driver: "memory" as const,
 };
 
@@ -354,7 +357,7 @@ test("RedisQueueAdapter integration: dequeueAsync nack requeues on retry", async
   await result.nack("test error");
 
   const requeued = await adapter.getJobAsync(job.id);
-  assert.equal(requeued?.status, "waiting");
+  assert.equal(requeued?.status, "delayed");
   assert.equal(requeued?.attempts, 1);
   assert.equal(requeued?.lastError, "test error");
 
@@ -409,15 +412,16 @@ test("RedisQueueAdapter integration: listQueuesAsync returns all queue names", a
 test("RedisQueueAdapter integration: retryJobAsync resets failed job", async () => {
   const adapter = new RedisQueueAdapter(REDIS_MEMORY_CONFIG);
 
-  const job = await adapter.enqueueAsync({ queueName: "retry-test", payload: {} });
+  const job = await adapter.enqueueAsync({ queueName: "retry-test", payload: {}, maxAttempts: 3 });
   const result = await adapter.dequeueAsync("retry-test");
-  await result.nack("failed");
+  assert.ok(result);
+  await adapter.moveToDeadLetterAsync(job.id, "failed");
 
   const retried = await adapter.retryJobAsync(job.id);
 
   assert.ok(retried);
   assert.equal(retried?.status, "waiting");
-  assert.equal(retried?.attempts, 0);
+  assert.equal(retried?.attempts, 1);
   assert.equal(retried?.lastError, null);
 
   await adapter.close();

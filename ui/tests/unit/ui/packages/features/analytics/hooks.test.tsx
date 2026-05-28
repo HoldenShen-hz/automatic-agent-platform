@@ -12,7 +12,11 @@ vi.mock("@aa/shared-state", () => ({
   }),
 }));
 
-import { useAnalyticsVm } from "../../../../../../packages/features/analytics/src/hooks";
+import {
+  MAX_ANALYTICS_EXPORT_BYTES,
+  buildAnalyticsExportPayload,
+  useAnalyticsVm,
+} from "../../../../../../packages/features/analytics/src/hooks";
 
 describe("useAnalyticsVm", () => {
   beforeEach(() => {
@@ -47,5 +51,21 @@ describe("useAnalyticsVm", () => {
     expect(createObjectUrlSpy).toHaveBeenCalled();
     expect(clickSpy).toHaveBeenCalled();
     expect(revokeSpy).toHaveBeenCalledWith("blob://analytics");
+  });
+
+  it("rejects oversized analytics exports before creating blobs", () => {
+    expect(() => buildAnalyticsExportPayload(
+      "json",
+      [{ label: "x".repeat(MAX_ANALYTICS_EXPORT_BYTES), value: 12, trend: "up" }],
+      [{ timestamp: "2026-05-08T00:00:00.000Z", value: 12 }],
+      [{
+        dimension: "time",
+        groups: [{ label: "2026-05-08", value: 1 }],
+      }],
+      {
+        startDate: "2026-05-01",
+        endDate: "2026-05-08",
+      },
+    )).toThrow(/analytics\.export_too_large/);
   });
 });

@@ -61,13 +61,23 @@ export interface FairSchedulingDecision {
   readonly promotionBudget: PromotionBudgetDecision;
 }
 
+export interface FairSchedulingServiceOptions {
+  readonly starvationThresholdMs?: number;
+}
+
 export class FairSchedulingService {
+  private readonly starvationThresholdMs: number;
+
+  public constructor(options: FairSchedulingServiceOptions = {}) {
+    this.starvationThresholdMs = options.starvationThresholdMs ?? 15 * 60_000;
+  }
+
   public schedule(request: FairSchedulingRequest): FairSchedulingDecision {
     const ordered = orderFairQueue(request.queueItems);
     const quotaDecision = this.evaluateQuotaDecision(request);
     const quotaExceeded = !quotaDecision.passed;
     const starvedItemIds = request.queueItems
-      .filter((item) => item.ageMs >= 15 * 60_000)
+      .filter((item) => item.ageMs >= this.starvationThresholdMs)
       .map((item) => item.itemId);
     const promotionBudget = this.evaluatePromotionBudget(
       request.claim.schedulingClass.tenantId,
@@ -113,8 +123,8 @@ export class FairSchedulingService {
     const acknowledgedRegionCount = Math.max(0, request.acknowledgedRegionCount ?? 0);
     if (!strictDecision.passed && quorumRegionCount > 0 && acknowledgedRegionCount < quorumRegionCount) {
       return {
-        passed: true,
-        reasonCodes: ["resource_manager.quota_quorum_degraded"],
+        passed: false,
+        reasonCodes: ["resource_manager.quota_exceeded", "resource_manager.quota_quorum_degraded"],
       };
     }
     return {
@@ -135,12 +145,20 @@ export class FairSchedulingService {
     tenantId: string,
     budget: PromotionBudgetPolicy | null,
   ): PromotionBudgetDecision {
-    if (budget == null || budget.tenantId !== tenantId) {
+    if (budget == null) {
       return {
         allowed: true,
         remainingHourlyPromotions: Number.POSITIVE_INFINITY,
         remainingDailyPromotions: Number.POSITIVE_INFINITY,
         reason: null,
+      };
+    }
+    if (budget.tenantId !== tenantId) {
+      return {
+        allowed: false,
+        remainingHourlyPromotions: 0,
+        remainingDailyPromotions: 0,
+        reason: "resource_manager.promotion_budget_tenant_mismatch",
       };
     }
 

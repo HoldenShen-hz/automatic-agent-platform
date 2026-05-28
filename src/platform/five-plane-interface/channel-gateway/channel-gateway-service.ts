@@ -79,6 +79,7 @@ export { GatewayRateLimitError } from "./errors.js";
  * which provides retry logic, dead letter handling, and delivery receipts.
  */
 export class ChannelGatewayService {
+  private static readonly MAX_RESPONSE_BYTES = 64 * 1024;
   private readonly fetchImpl: FetchLike;
   private readonly logger = new StructuredLogger({ retentionLimit: 100 });
   private readonly requestTimeoutMs: number;
@@ -154,8 +155,15 @@ export class ChannelGatewayService {
           agent,
         }, (response) => {
           const chunks: Buffer[] = [];
+          let totalBytes = 0;
           response.on("data", (chunk) => {
-            chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+            const normalizedChunk = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+            totalBytes += normalizedChunk.byteLength;
+            if (totalBytes > ChannelGatewayService.MAX_RESPONSE_BYTES) {
+              request.destroy(new Error("gateway.response_too_large"));
+              return;
+            }
+            chunks.push(normalizedChunk);
           });
           response.on("end", () => {
             resolve(new Response(Buffer.concat(chunks), {

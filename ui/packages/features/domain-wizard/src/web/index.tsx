@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import { FeatureScaffold } from "@aa/ui-core";
+import { FeatureScaffold, Inline, Stack } from "@aa/ui-core";
 import { useDomainWizardVm, type DataClassification, type DomainWizardStepId, type RiskLevel } from "../hooks";
 
 const stepHeadings: Record<DomainWizardStepId, string> = {
@@ -17,7 +17,17 @@ export function DomainWizardWebView(): ReactElement {
 
   return (
     <FeatureScaffold title="Domain Wizard" summary="领域接入向导和 DomainUIConfig 驱动页面。" status="Implemented/Internal">
-      <div style={{ display: "grid", gap: 16 }}>
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (vm.currentStep === "review") {
+            vm.submitConfig();
+            return;
+          }
+          vm.goNext();
+        }}
+      >
+      <Stack gap={16}>
         <ol>
           {vm.steps.map((step) => (
             <li key={step.id}>
@@ -128,12 +138,12 @@ export function DomainWizardWebView(): ReactElement {
           </section>
         )}
 
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <Inline>
           <button disabled={!vm.canGoBack} onClick={vm.goBack} type="button">Back</button>
-          <button disabled={!vm.canGoNext} onClick={vm.goNext} type="button">Next</button>
-          <button onClick={vm.submitConfig} type="button">Submit</button>
-        </div>
-      </div>
+          <button disabled={!vm.canGoNext} type="submit">{vm.currentStep === "review" ? "Submit" : "Next"}</button>
+        </Inline>
+      </Stack>
+      </form>
     </FeatureScaffold>
   );
 }

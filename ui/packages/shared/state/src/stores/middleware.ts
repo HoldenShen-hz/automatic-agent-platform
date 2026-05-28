@@ -16,15 +16,32 @@ type DraftSetState<T> = {
 type DraftStateCreator<T> = (set: DraftSetState<T>, get: () => T, api: StoreApi<T>) => T;
 
 function cloneDraftValue<T>(value: T): T {
+  if (typeof structuredClone === "function") {
+    try {
+      return structuredClone(value);
+    } catch {
+      // Fall through when structured cloning cannot represent the current value.
+    }
+  }
   if (Array.isArray(value)) {
     return value.map((entry) => cloneDraftValue(entry)) as T;
   }
   if (value instanceof Date) {
     return new Date(value.getTime()) as T;
   }
+  if (value instanceof Map) {
+    return new Map(Array.from(value.entries(), ([key, entry]) => [cloneDraftValue(key), cloneDraftValue(entry)])) as T;
+  }
+  if (value instanceof Set) {
+    return new Set(Array.from(value.values(), (entry) => cloneDraftValue(entry))) as T;
+  }
   if (value != null && typeof value === "object") {
-    const clonedEntries = Object.entries(value as Record<string, unknown>).map(([key, entry]) => [key, cloneDraftValue(entry)]);
-    return Object.fromEntries(clonedEntries) as T;
+    const prototype = Object.getPrototypeOf(value);
+    const clone = Object.create(prototype) as Record<PropertyKey, unknown>;
+    for (const key of Reflect.ownKeys(value as object)) {
+      clone[key] = cloneDraftValue(Reflect.get(value as object, key));
+    }
+    return clone as T;
   }
   return value;
 }
@@ -53,9 +70,13 @@ export function withPersistDevtoolsDraft<T>(
   initializer: DraftStateCreator<T>,
   persistOptions: Omit<PersistOptions<T>, "name"> = {},
 ): StateCreator<T, [], []> {
+  const version = persistOptions.version ?? 1;
+  const migrate = persistOptions.migrate ?? ((persistedState: unknown) => persistedState as T);
   return devtools(
     persist(withDraft(initializer), {
       ...persistOptions,
+      version,
+      migrate,
       name,
     }),
     { name },

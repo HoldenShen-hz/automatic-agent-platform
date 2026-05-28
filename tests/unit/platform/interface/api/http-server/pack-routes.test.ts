@@ -6,9 +6,9 @@ import { PackCatalogService } from "../../../../../../src/platform/five-plane-in
 import type { ApiAuthService } from "../../../../../../src/platform/five-plane-interface/api/api-auth-service.js";
 import type { RouteContext, RouteDefinition, ApiResponsePayload } from "../../../../../../src/platform/five-plane-interface/api/http-server/types.js";
 
-function createMockAuthService(roles: string[] = ["viewer"]): ApiAuthService {
+function createMockAuthService(roles: string[] = ["viewer"], tenantId: string | null = null): ApiAuthService {
   return {
-    requireRole: () => ({ actorId: "actor-1", roles: roles as ("viewer" | "operator" | "admin")[], authMethod: "api_key", tenantId: null }),
+    requireRole: () => ({ actorId: "actor-1", roles: roles as ("viewer" | "operator" | "admin")[], authMethod: "api_key", tenantId }),
   } as unknown as ApiAuthService;
 }
 
@@ -116,6 +116,18 @@ test("GET /v1/marketplace returns public marketplace summaries", async () => {
     category: "operations",
     version: "2.0.0",
   });
+});
+
+test("pack routes reject tenant-scoped principals on global catalog surfaces", async () => {
+  const routes = createPackRoutes({
+    authService: createMockAuthService(["viewer"], "tenant-a"),
+    packCatalogService: new PackCatalogService(),
+  });
+
+  await assert.rejects(
+    () => callRoute(routes, createMockContext("/v1/packs", ["v1", "packs"])),
+    /api\.tenant_scope_unsupported|pack catalog/,
+  );
 });
 
 test("GET /v1/packs/:id/versions returns public version history", async () => {

@@ -101,8 +101,14 @@ export async function hydrateDelegationStoresFromRepository(input: {
 
   const delegationRepository = input.delegationRepository;
   const activeStatuses: DelegationStatus[] = ["pending", "pending_approval", "active", "discovery", "bid", "awarded"];
-  const delegationGroups = await Promise.all(activeStatuses.map(async (status) => await delegationRepository.findByStatus(status)));
-  for (const delegations of delegationGroups) {
+  const delegationGroups = await Promise.allSettled(
+    activeStatuses.map(async (status) => await delegationRepository.findByStatus(status)),
+  );
+  for (const result of delegationGroups) {
+    if (result.status !== "fulfilled") {
+      continue;
+    }
+    const delegations = result.value;
     for (const record of delegations) {
       const delegationResult: DelegationResult = {
         delegationId: record.delegationId,

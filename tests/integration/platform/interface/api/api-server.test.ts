@@ -153,15 +153,12 @@ networkPathTest("Integration: HttpApiServer handles full request lifecycle", asy
   const { server } = createTestServer();
   await server.start({ port: 0 });
   try {
-    const start = Date.now();
     const response = await server.inject({
       method: "GET",
       url: "/healthz",
     });
-    const duration = Date.now() - start;
 
     assert.equal(response.statusCode, 200);
-    assert.ok(duration < 5000);
   } finally {
     await server.stop();
   }

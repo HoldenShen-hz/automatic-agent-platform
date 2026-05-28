@@ -6,6 +6,7 @@ export type IncidentStatus = "open" | "acknowledged" | "triaged" | "mitigating" 
 
 export interface IncidentCase {
   incidentId: string;
+  tenantId: string | null;
   severity: IncidentSeverity;
   status: IncidentStatus;
   title: string;
@@ -65,10 +66,12 @@ export class IncidentCaseService {
     severity: IncidentSeverity;
     title: string;
     linkedEvidenceRefs?: string[];
+    tenantId?: string | null;
   }): IncidentCase {
     const now = nowIso();
     const incident: IncidentCase = {
       incidentId: newId("incident"),
+      tenantId: input.tenantId ?? null,
       severity: input.severity,
       status: "open",
       title: input.title,
@@ -87,8 +90,8 @@ export class IncidentCaseService {
    * Transitions incident to triaged status with an assigned owner.
    * §R14-03: Triaged state for incident lifecycle.
    */
-  public triage(incidentId: string, owner: string): IncidentCase {
-    const incident = this.getRequired(incidentId);
+  public triage(incidentId: string, owner: string, tenantId?: string | null): IncidentCase {
+    const incident = this.getRequired(incidentId, tenantId);
     if (incident.status !== "open") {
       throw new ValidationError(
         "incident.must_be_open_for_triage",
@@ -101,8 +104,8 @@ export class IncidentCaseService {
   /**
    * Backward-compatible acknowledgement transition used by the HTTP facade.
    */
-  public acknowledge(incidentId: string, owner: string): IncidentCase {
-    const incident = this.getRequired(incidentId);
+  public acknowledge(incidentId: string, owner: string, tenantId?: string | null): IncidentCase {
+    const incident = this.getRequired(incidentId, tenantId);
     if (incident.status !== "open") {
       throw new ValidationError(
         "incident.must_be_open_for_acknowledge",
@@ -112,8 +115,8 @@ export class IncidentCaseService {
     return this.update(incidentId, { ...incident, status: "acknowledged", owner, updatedAt: nowIso() });
   }
 
-  public startMitigation(incidentId: string): IncidentCase {
-    const incident = this.getRequired(incidentId);
+  public startMitigation(incidentId: string, tenantId?: string | null): IncidentCase {
+    const incident = this.getRequired(incidentId, tenantId);
     if (incident.status !== "acknowledged" && incident.status !== "triaged") {
       throw new ValidationError(
         "incident.must_be_acknowledged_for_mitigation",
@@ -127,8 +130,8 @@ export class IncidentCaseService {
    * Transitions incident to reviewed status after mitigation.
    * §R14-03: Reviewed state for incident lifecycle.
    */
-  public review(incidentId: string): IncidentCase {
-    const incident = this.getRequired(incidentId);
+  public review(incidentId: string, tenantId?: string | null): IncidentCase {
+    const incident = this.getRequired(incidentId, tenantId);
     if (incident.status !== "mitigating") {
       throw new ValidationError(
         "incident.must_be_mitigating_for_review",
@@ -142,8 +145,8 @@ export class IncidentCaseService {
    * Closes a resolved incident.
    * §R14-03: Closed state completes the incident lifecycle.
    */
-  public close(incidentId: string): IncidentCase {
-    const incident = this.getRequired(incidentId);
+  public close(incidentId: string, tenantId?: string | null): IncidentCase {
+    const incident = this.getRequired(incidentId, tenantId);
     if (incident.status !== "reviewed" && incident.status !== "resolved") {
       throw new ValidationError(
         "incident.must_be_resolved_for_closure",
@@ -154,8 +157,8 @@ export class IncidentCaseService {
     return this.update(incidentId, { ...incident, status: "closed", updatedAt: now });
   }
 
-  public resolve(incidentId: string): IncidentCase {
-    const incident = this.getRequired(incidentId);
+  public resolve(incidentId: string, tenantId?: string | null): IncidentCase {
+    const incident = this.getRequired(incidentId, tenantId);
     if (incident.status !== "reviewed") {
       throw new ValidationError(
         "incident.must_be_reviewed_for_resolution",
@@ -166,17 +169,26 @@ export class IncidentCaseService {
     return this.update(incidentId, { ...incident, status: "resolved", updatedAt: now, resolvedAt: now });
   }
 
-  public getIncident(incidentId: string): IncidentCase | null {
-    return this.incidents.get(incidentId) ?? null;
+  public getIncident(incidentId: string, tenantId?: string | null): IncidentCase | null {
+    const incident = this.incidents.get(incidentId) ?? null;
+    if (incident == null) {
+      return null;
+    }
+    if (tenantId != null && incident.tenantId !== tenantId) {
+      return null;
+    }
+    return incident;
   }
 
-  public listIncidents(limit = 50): IncidentCase[] {
-    return this.getSortedIncidents().slice(0, Math.max(0, limit));
+  public listIncidents(limit = 50, tenantId?: string | null): IncidentCase[] {
+    return this.getSortedIncidents()
+      .filter((incident) => tenantId == null || incident.tenantId === tenantId)
+      .slice(0, Math.max(0, limit));
   }
 
   // R20-30: Cursor-based pagination for incidents
-  public listIncidentsPaginated(limit = 50, cursor?: string | null): { incidents: IncidentCase[]; nextToken: string | null } {
-    const sorted = this.getSortedIncidents();
+  public listIncidentsPaginated(limit = 50, tenantId?: string | null, cursor?: string | null): { incidents: IncidentCase[]; nextToken: string | null } {
+    const sorted = this.getSortedIncidents().filter((incident) => tenantId == null || incident.tenantId === tenantId);
 
     let startIndex = 0;
     if (cursor != null) {
@@ -202,8 +214,8 @@ export class IncidentCaseService {
     return { incidents: page, nextToken };
   }
 
-  private getRequired(incidentId: string): IncidentCase {
-    const incident = this.getIncident(incidentId);
+  private getRequired(incidentId: string, tenantId?: string | null): IncidentCase {
+    const incident = this.getIncident(incidentId, tenantId);
     if (incident == null) {
       throw new ValidationError(`incident.not_found:${incidentId}`, `Incident ${incidentId} was not found.`);
     }

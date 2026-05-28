@@ -61,6 +61,33 @@ unregistered → loading → registered → initialized → active ↔ suspended
 - **Resource Limits**: Single plugin execution timeout 30s, memory limit 512MB
 - **Configuration Injection Prevention**: `domain-config.json` must be validated by `PluginConfigValidator`
 
+### 4.1 Version Negotiation
+
+- `manifest.version` only represents the plugin's own semantic version
+- Runtime compatibility must also declare the SPI surface, host platform lower/upper bounds, and pack or marketplace compatibility metadata
+- `PluginSPIRegistry` must not infer compatibility implicitly from a `version` string alone; missing compatibility metadata must fail closed
+
+### 4.2 Sandbox Tiering
+
+- `allowFilesystemWrite`, `allowNetworkEgress`, `allowedKnowledgeNamespaces`, and `runtimeIsolation` jointly define the effective sandbox tier
+- The canonical `runtimeIsolation` tiers are:
+  - `serialized_in_process`
+  - `isolated_process`
+  - `sandboxed_process`
+- Broad manifest permissions must not override stricter host-side runtime policy; effective privileges are the intersection
+
+### 4.3 Taint Tracking
+
+- Plugin output must carry pluginId or label lineage into the unified taint tracker
+- Taint labels are part of the runtime contract, not optional diagnostic metadata
+- Revoked or downgraded plugins must keep their historical taint lineage traceable during replay and export
+
+### 4.4 Container and Subprocess Launch Format
+
+- Launcher input for untrusted plugins must use a structured schema instead of concatenated command strings
+- The host must validate pluginId, sandboxRoot, argv, env allowlist, resource limits, and stdio or IPC channels
+- Container or subprocess launch argument validity is part of the SPI framework contract and must be verified before startup
+
 ### 5. Plugin Loading and Registration
 
 ```typescript
@@ -106,11 +133,11 @@ Disadvantages: Adds runtime overhead (~5-10ms per invoke), requires isolation me
 Note: After v4.3 migration, the original §B/§G appendices have been restructured into modular contract documents. This ADR's related content is now distributed across the following contract documents:
 
 v4.3 valid references:
-- `docs_zh/contracts/plugin_spi_contract.md` Plugin SPI core interfaces
-- `docs_zh/contracts/plugin_spi_contract.md §2.4` 4 core interfaces
-- `docs_zh/contracts/plugin_spi_contract.md §2.7` ExternalAdapterPlugin
-- `docs_zh/contracts/plugin_spi_contract.md §2.11` Plugin lifecycle state machine
-- `docs_zh/contracts/marketplace_contract.md §2` Per-domain tool bundles
+- `docs_en/contracts/plugin_spi_contract.md` Plugin SPI core interfaces
+- `docs_en/contracts/plugin_spi_contract.md §2.4` 4 core interfaces
+- `docs_en/contracts/plugin_spi_contract.md §2.7` ExternalAdapterPlugin
+- `docs_en/contracts/plugin_spi_contract.md §2.11` Plugin lifecycle state machine
+- `docs_en/contracts/marketplace_catalog_and_revenue_contract.md §2` Per-domain tool bundles
 
 ## v4.3 ADR Remediation
 

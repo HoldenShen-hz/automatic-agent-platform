@@ -12,6 +12,8 @@ import {
   submitApprovalTextInput,
 } from "@aa/shared-api-client";
 
+const HITL_TEXT_INPUT_MAX_BYTES = 8 * 1024;
+
 export interface HitlItem {
   readonly id: string;
   readonly type: "approval" | "resume";
@@ -39,10 +41,11 @@ export interface HitlVm {
 }
 
 function toHitlItems(approvals: readonly ApprovalDTO[]): readonly HitlItem[] {
+  const now = Date.now();
   return approvals.map((approval) => {
     const secondsRemaining = approval.deadline == null
       ? undefined
-      : Math.max(0, Math.floor((new Date(approval.deadline).getTime() - Date.now()) / 1000));
+      : Math.max(0, Math.floor((new Date(approval.deadline).getTime() - now) / 1000));
     return {
       id: approval.approvalId,
       type: "approval",
@@ -61,6 +64,7 @@ export function useHitlVm(): HitlVm {
   const [approvals, setApprovals] = useState<readonly ApprovalDTO[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [pendingOperations, setPendingOperations] = useState(0);
+  const [countdownTick, setCountdownTick] = useState(0);
 
   useEffect(() => {
     let mounted = true;
@@ -85,7 +89,14 @@ export function useHitlVm(): HitlVm {
     };
   }, [client, wsClient]);
 
-  const items = useMemo(() => toHitlItems(approvals), [approvals]);
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCountdownTick((current) => current + 1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const items = useMemo(() => toHitlItems(approvals), [approvals, countdownTick]);
 
   const withPending = useCallback(async (operation: () => Promise<void>) => {
     setPendingOperations((current) => current + 1);
@@ -116,14 +127,14 @@ export function useHitlVm(): HitlVm {
 
   const patch = useCallback(async (approvalId: string, patchPayload: Record<string, unknown>) => {
     await withPending(async () => {
-      await submitApprovalTextInput(client, approvalId, JSON.stringify({ action: "patch", patch: patchPayload }));
+      await submitApprovalTextInput(client, approvalId, encodeTextInputPayload({ action: "patch", patch: patchPayload }));
       removeApproval(approvalId);
     });
   }, [client, removeApproval, withPending]);
 
   const override = useCallback(async (approvalId: string, overridePayload: Record<string, unknown>) => {
     await withPending(async () => {
-      await submitApprovalTextInput(client, approvalId, JSON.stringify({ action: "override", override: overridePayload }));
+      await submitApprovalTextInput(client, approvalId, encodeTextInputPayload({ action: "override", override: overridePayload }));
       removeApproval(approvalId);
     });
   }, [client, removeApproval, withPending]);
@@ -181,4 +192,12 @@ export function useHitlVm(): HitlVm {
     bulkApprove,
     bulkReject,
   };
+}
+
+function encodeTextInputPayload(payload: Record<string, unknown>): string {
+  const serialized = JSON.stringify(payload);
+  if (new TextEncoder().encode(serialized).byteLength > HITL_TEXT_INPUT_MAX_BYTES) {
+    throw new Error("hitl.patch_payload_too_large");
+  }
+  return serialized;
 }

@@ -23,7 +23,9 @@ export interface RiskEvaluationProvider {
 
 export class DefaultRiskEvaluationProvider implements RiskEvaluationProvider {
   public evaluate(input: { taskId: string; factors: RiskFactors }): RiskEvaluationDecision {
-    void input.taskId;
+    if (input.taskId.trim().length === 0) {
+      throw new Error("risk_evaluation.task_id_required");
+    }
     const confidencePenalty =
       input.factors.evidenceConfidence === "low"
         ? 0.12

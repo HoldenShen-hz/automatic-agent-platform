@@ -139,3 +139,25 @@ test("ShadowSnapshotService generates normalized snapshot ids when one is not pr
     cleanupPath(shadowRoot);
   }
 });
+
+test("ShadowSnapshotService rejects duplicate snapshot ids instead of replacing existing metadata [shadow-snapshot-service]", () => {
+  const workspace = createTempWorkspace("aa-shadow-workspace-");
+  const shadowRoot = createTempWorkspace("aa-shadow-root-");
+
+  try {
+    createFile(join(workspace, "src", "index.ts"), "export const value = 1;\n");
+    const service = new ShadowSnapshotService({
+      workspaceRoot: workspace,
+      shadowRoot,
+    });
+
+    service.createSnapshot({ snapshotId: "snapshot-duplicate" });
+    assert.throws(
+      () => service.createSnapshot({ snapshotId: "snapshot-duplicate" }),
+      /shadow_snapshot\.snapshot_id_conflict/,
+    );
+  } finally {
+    cleanupPath(workspace);
+    cleanupPath(shadowRoot);
+  }
+});

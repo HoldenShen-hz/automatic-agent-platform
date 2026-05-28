@@ -4,13 +4,24 @@ import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const { app, BrowserWindow, globalShortcut, Notification, shell } = electron;
+const {
+  app,
+  BrowserWindow,
+  clipboard,
+  globalShortcut,
+  ipcMain,
+  Notification,
+  session,
+  shell,
+} = electron;
 
 const currentDir = dirname(fileURLToPath(import.meta.url));
-const rendererHtmlPath = join(currentDir, "../dist/index.html");
+const rendererHtmlPath = join(currentDir, "index.html");
 const webAppHtmlPath = join(currentDir, "../../web/dist/index.html");
 const preloadScriptPath = join(currentDir, "preload.js");
-const ALLOWED_SHELL_COMMANDS = new Set(["status", "health", "version"]);
+const ALLOWED_EXTERNAL_PROTOCOLS = new Set(["https:", "mailto:"]);
+const secureStore = new Map();
+let analyticsConsent = false;
 
 type Constructable<TValue, TArgs extends readonly unknown[]> = new(...args: TArgs) => TValue;
 type CallableFactory<TValue, TArgs extends readonly unknown[]> = (...args: TArgs) => TValue;
@@ -93,8 +104,16 @@ function createBrowserWindowOptions() {
   };
 }
 
-export function isShellCommandAllowed(command: string): boolean {
-  return ALLOWED_SHELL_COMMANDS.has(command.trim());
+function isAllowedExternalUrl(urlString: string): boolean {
+  try {
+    const url = new URL(urlString);
+    if (ALLOWED_EXTERNAL_PROTOCOLS.has(url.protocol)) {
+      return true;
+    }
+    return url.protocol === "http:" && (url.hostname === "localhost" || url.hostname === "127.0.0.1");
+  } catch {
+    return false;
+  }
 }
 
 function reportWindowLoadFailure(error: unknown): void {
@@ -116,15 +135,41 @@ function loadWindowFile(windowHandle: BrowserWindowHandle, hash?: string): void 
   }
 }
 
+function applyElectronCsp(): void {
+  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    const headers = details.responseHeaders ?? {};
+    headers["Content-Security-Policy"] = [
+      "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; worker-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; object-src 'none'; report-uri /csp-report",
+    ];
+    callback({ responseHeaders: headers });
+  });
+}
+
+function protectNavigation(windowHandle: BrowserWindowHandle): void {
+  windowHandle.webContents.setWindowOpenHandler(({ url }) => {
+    if (isAllowedExternalUrl(url)) {
+      void shell.openExternal(url);
+    }
+    return { action: "deny" };
+  });
+  windowHandle.webContents.on("will-navigate", (event, url) => {
+    const currentUrl = windowHandle.webContents.getURL();
+    if (url === currentUrl || url.startsWith("file://")) {
+      return;
+    }
+    event.preventDefault();
+    if (isAllowedExternalUrl(url)) {
+      void shell.openExternal(url);
+    }
+  });
+}
+
 export function createMainWindow(): BrowserWindowHandle {
   const mainWindow = constructOrCall(BrowserWindow, createBrowserWindowOptions());
   mainWindow.once("ready-to-show", () => {
     mainWindow.show();
   });
-  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    void shell.openExternal(url);
-    return { action: "deny" };
-  });
+  protectNavigation(mainWindow);
   loadWindowFile(mainWindow);
   return mainWindow;
 }
@@ -136,15 +181,22 @@ export function openSecondaryWindow(routePath: string): BrowserWindowHandle {
 }
 
 export function registerGlobalShortcuts(mainWindow?: BrowserWindowHandle): void {
-  globalShortcut.register("CommandOrControl+K", () => {
+  registerGlobalShortcut("CommandOrControl+K", () => {
     mainWindow?.webContents.send("command-palette:open");
   });
-  globalShortcut.register("CommandOrControl+N", () => {
+  registerGlobalShortcut("CommandOrControl+N", () => {
     openSecondaryWindow("/shared/settings");
   });
-  globalShortcut.register("Shift+CommandOrControl+D", () => {
+  registerGlobalShortcut("Shift+CommandOrControl+D", () => {
     showPlatformNotification("Diagnostics", "Desktop diagnostics shortcut triggered");
   });
+}
+
+function registerGlobalShortcut(accelerator: string, action: () => void): void {
+  const registered = globalShortcut.register(accelerator, action);
+  if (registered === false) {
+    reportWindowLoadFailure(new Error(`electron.global_shortcut_registration_failed:${accelerator}`));
+  }
 }
 
 export function configureWindowsDesktopIntegrations(): void {
@@ -177,9 +229,103 @@ export function showPlatformNotification(title: string, body: string): boolean {
   return true;
 }
 
+function getFocusedWindow(mainWindow: BrowserWindowHandle): BrowserWindowHandle {
+  return BrowserWindow.getFocusedWindow() ?? mainWindow;
+}
+
+export function registerIpcHandlers(mainWindow: BrowserWindowHandle): void {
+  const currentWindow = () => getFocusedWindow(mainWindow);
+
+  ipcMain.handle("shell:openExternal", async (_event, url: string) => {
+    if (!isAllowedExternalUrl(url)) {
+      throw new Error("electron.shell.external_url_denied");
+    }
+    await shell.openExternal(url);
+  });
+  ipcMain.handle("window:minimize", async () => {
+    currentWindow().minimize();
+  });
+  ipcMain.handle("window:maximize", async () => {
+    const windowHandle = currentWindow();
+    if (windowHandle.isMaximized()) {
+      windowHandle.unmaximize();
+      return;
+    }
+    windowHandle.maximize();
+  });
+  ipcMain.handle("window:open", async (_event, path: string) => {
+    openSecondaryWindow(path);
+  });
+  ipcMain.handle("deep-link:open", async (_event, url: string) => {
+    if (!isAllowedExternalUrl(url)) {
+      throw new Error("electron.deep_link_denied");
+    }
+    await shell.openExternal(url);
+  });
+  ipcMain.handle("secure-store:read", async (_event, key: string) => secureStore.get(key) ?? null);
+  ipcMain.handle("secure-store:write", async (_event, key: string, value: string) => {
+    secureStore.set(key, value);
+  });
+  ipcMain.handle("secure-store:delete", async (_event, key: string) => {
+    secureStore.delete(key);
+  });
+  ipcMain.handle("privacy:getAnalyticsConsent", async () => analyticsConsent);
+  ipcMain.handle("privacy:setAnalyticsConsent", async (_event, enabled: boolean) => {
+    analyticsConsent = enabled;
+  });
+  ipcMain.handle("privacy:enableScreenSecurity", async (_event, enabled: boolean) => {
+    currentWindow().setContentProtection(enabled);
+  });
+  ipcMain.handle("clipboard:writeText", async (_event, value: string) => {
+    clipboard.writeText(value);
+  });
+}
+
+async function wireAutoUpdater(): Promise<void> {
+  try {
+    const updaterModule = await import("electron-updater");
+    await updaterModule.autoUpdater.checkForUpdatesAndNotify();
+  } catch (error) {
+    reportWindowLoadFailure(error);
+  }
+}
+
 export async function bootstrapElectronShell(): Promise<void> {
+  if (!app.requestSingleInstanceLock()) {
+    app.quit();
+    return;
+  }
   await app.whenReady();
+  applyElectronCsp();
   const mainWindow = createMainWindow();
+  registerIpcHandlers(mainWindow);
   registerGlobalShortcuts(mainWindow);
   configureWindowsDesktopIntegrations();
+  await wireAutoUpdater();
+
+  app.on("second-instance", () => {
+    const windowHandle = getFocusedWindow(mainWindow);
+    if (!windowHandle.isDestroyed()) {
+      windowHandle.show();
+      windowHandle.focus();
+    }
+  });
+  app.on("activate", () => {
+    if (BrowserWindow.getAllWindows().length === 0) {
+      createMainWindow();
+    }
+  });
+  app.on("will-quit", () => {
+    globalShortcut.unregisterAll();
+  });
+  app.on("window-all-closed", () => {
+    if (process.platform !== "darwin") {
+      app.quit();
+    }
+  });
+}
+
+const isDirectElectronEntrypoint = process.argv[1] != null && fileURLToPath(import.meta.url) === process.argv[1];
+if (isDirectElectronEntrypoint) {
+  void bootstrapElectronShell();
 }

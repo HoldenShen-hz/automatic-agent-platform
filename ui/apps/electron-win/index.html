@@ -5,12 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; object-src 'none'"
+      content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; worker-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; object-src 'none'; report-uri /csp-report"
     />
     <title>Automatic Agent Platform - Electron Windows Shell</title>
   </head>
   <body>
-    <div id="root">正在加载 Automatic Agent Platform Electron Shell...</div>
+    <div id="root">正在加载 Automatic Agent Platform Electron Windows Shell...</div>
     <script type="module" src="./src/renderer.js"></script>
   </body>
 </html>

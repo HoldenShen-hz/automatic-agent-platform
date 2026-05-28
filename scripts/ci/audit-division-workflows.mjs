@@ -30,23 +30,36 @@ for (const divisionId of readdirSync(divisionsRoot).sort()) {
   const source = readText(divisionFile);
   const declaredId = extractYamlScalar(source, "id");
   const defaultWorkflow = extractYamlScalar(source, "default_workflow");
+  const orchestrationWorkflow = extractYamlScalar(source, "orchestration_workflow");
   const workflowDir = join(divisionDir, "workflows");
   const workflowFiles = existsSync(workflowDir) ? readdirSync(workflowDir).filter((name) => name.endsWith(".yaml")) : [];
   const workflowIds = workflowFiles.map((name) => extractYamlScalar(readText(join(workflowDir, name)), "id")).filter(Boolean);
 
   check(`${divisionId} declares id`, declaredId != null && declaredId.length > 0, divisionFile);
+  check(`${divisionId} declared id matches directory`, declaredId === divisionId, `${declaredId ?? "missing"} vs ${divisionId}`);
   check(`${divisionId} declares default_workflow`, defaultWorkflow != null && defaultWorkflow.length > 0, divisionFile);
   check(
     `${divisionId} default workflow id exists`,
     defaultWorkflow != null && workflowIds.includes(defaultWorkflow),
     defaultWorkflow ?? "missing default_workflow",
   );
+  if (orchestrationWorkflow != null) {
+    check(
+      `${divisionId} orchestration workflow id exists`,
+      workflowIds.includes(orchestrationWorkflow),
+      orchestrationWorkflow,
+    );
+  }
 }
 
 for (const entry of divisionCatalog.divisions) {
   const divisionDir = join(divisionsRoot, entry.divisionId);
   const divisionFile = join(divisionDir, "division.yaml");
   check(`${entry.divisionId} catalog entry exists`, existsSync(divisionFile), divisionFile);
+  if (existsSync(divisionFile)) {
+    const source = readText(divisionFile);
+    check(`${entry.divisionId} catalog id matches declared id`, extractYamlScalar(source, "id") === entry.divisionId, divisionFile);
+  }
   if (entry.canonicalDivisionId != null) {
     check(
       `${entry.divisionId} canonical division exists`,

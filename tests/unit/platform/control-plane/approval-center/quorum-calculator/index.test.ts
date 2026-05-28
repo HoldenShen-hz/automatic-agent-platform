@@ -192,13 +192,13 @@ test("createVote with metadata", () => {
 });
 
 test("determineFinalStatus returns approved when quorum met", () => {
-  const status = { ...createInitialQuorumStatus(), isQuorumMet: true };
+  const status = { ...createInitialQuorumStatus(), isQuorumMet: true, approvalsReceived: 2 };
   const config: QuorumConfig = { minApprovals: 2, minRejectionsToDeny: 3 };
   assert.equal(determineFinalStatus(status, config), "approved");
 });
 
 test("determineFinalStatus returns rejected when denied", () => {
-  const status = { ...createInitialQuorumStatus(), isDenied: true };
+  const status = { ...createInitialQuorumStatus(), isDenied: true, rejectionsReceived: 3 };
   const config: QuorumConfig = { minApprovals: 2, minRejectionsToDeny: 3 };
   assert.equal(determineFinalStatus(status, config), "rejected");
 });

@@ -24,6 +24,7 @@ import type {
 } from "@aa/shared-types";
 import { defaultMockApiShape, type MockApiShape } from "./mock-data.js";
 import type { RestClientInterceptor, RestClientRequest, RestClientResponse } from "./interceptors.js";
+import { generateStableId } from "./runtime-support.js";
 
 export interface TransportResponse<T> {
   readonly status: number;
@@ -361,7 +362,7 @@ export class HttpTransport {
             method: request.method,
             headers: requestHeaders,
             body: requestBody,
-            credentials: this.options.credentials ?? "include",
+            credentials: this.options.credentials ?? "same-origin",
             mode: this.options.mode ?? "cors",
             signal: abortController.signal,
           });
@@ -396,7 +397,7 @@ export class HttpTransport {
     }
 
     this.recordFailure();
-    if (this.fallbackTransport != null) {
+    if (this.fallbackTransport != null && !(lastError instanceof RestHttpError)) {
       return this.fallbackTransport.send(request);
     }
     throw lastError;
@@ -439,7 +440,7 @@ export class HttpTransport {
     }
     const idempotencyKey = request.headers.get("Idempotency-Key") ?? request.headers.get("x-idempotency-key") ?? undefined;
     return {
-      envelopeId: `env_${crypto.randomUUID()}`,
+      envelopeId: generateStableId("env_"),
       schemaVersion: "v4.3",
       payload: request.body,
       ...(idempotencyKey == null ? {} : { idempotencyKey }),

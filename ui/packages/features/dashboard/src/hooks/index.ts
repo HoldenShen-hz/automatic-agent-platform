@@ -6,6 +6,7 @@ import {
   useQueuesQuery,
   useWorkersQuery,
 } from "@aa/shared-state";
+import { translateMessage } from "@aa/shared-i18n";
 import type {
   AgentDTO,
   AnalyticsMetricDTO,
@@ -14,6 +15,7 @@ import type {
   QueueDTO,
   WorkerDTO,
 } from "@aa/shared-types";
+import { useMemo } from "react";
 
 export interface DashboardPanel {
   readonly id: string;
@@ -54,21 +56,38 @@ function formatMs(value?: number | null): string {
 }
 
 function formatRatio(value: number): string {
-  return `${(value * 100).toFixed(0)}%`;
+  const normalized = Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : 0;
+  return `${(normalized * 100).toFixed(0)}%`;
 }
 
 function formatMetricValue(metric: AnalyticsMetricDTO | undefined): string {
   if (metric == null) {
     return "--";
   }
-  return String(metric.value);
+  if (typeof metric.value === "string" || typeof metric.value === "number") {
+    return String(metric.value);
+  }
+  return JSON.stringify(metric.value);
 }
 
 function findMetric(
   metrics: readonly AnalyticsMetricDTO[],
-  label: string,
+  key: "queue-throughput" | "approval-sla" | "workflow-completion",
 ): AnalyticsMetricDTO | undefined {
-  return metrics.find((metric) => metric.label === label);
+  const aliases: Record<typeof key, readonly string[]> = {
+    "queue-throughput": ["queue-throughput", "queue throughput", "队列吞吐"],
+    "approval-sla": ["approval-sla", "approval sla", "审批 sla"],
+    "workflow-completion": ["workflow-completion", "workflow completion", "工作流完成率"],
+  };
+  const candidates = aliases[key];
+  return metrics.find((metric) => {
+    const normalizedId = normalizeMetricSelector(metric.id);
+    const normalizedLabel = normalizeMetricSelector(metric.label);
+    return candidates.some((candidate) => {
+      const normalizedCandidate = normalizeMetricSelector(candidate);
+      return normalizedId === normalizedCandidate || normalizedLabel === normalizedCandidate;
+    });
+  });
 }
 
 function buildPanelGroups(
@@ -119,199 +138,197 @@ function buildPanelGroups(
   return [
     {
       id: "executive",
-      title: "总览层",
-      description: "系统健康、待办积压与值班关注点。",
+      title: translateMessage("ui.dashboard.group.executive.title"),
+      description: translateMessage("ui.dashboard.group.executive.description"),
       panels: [
         {
           id: "overall-health",
-          title: "总体健康",
+          title: translateMessage("ui.dashboard.panel.overall-health.title"),
           value: snapshot.overallHealth,
-          description: "Mission Control 汇总状态。",
+          description: translateMessage("ui.dashboard.panel.overall-health.description"),
         },
         {
           id: "success-rate",
-          title: "成功率",
+          title: translateMessage("ui.dashboard.panel.success-rate.title"),
           value: formatPercent(snapshot.successRate),
-          description: "任务与执行主链的成功比例。",
+          description: translateMessage("ui.dashboard.panel.success-rate.description"),
         },
         {
           id: "active-executions",
-          title: "活跃执行",
+          title: translateMessage("ui.dashboard.panel.active-executions.title"),
           value: String(snapshot.activeExecutions),
-          description: "当前正在运行的执行单元。",
+          description: translateMessage("ui.dashboard.panel.active-executions.description"),
         },
         {
           id: "active-agents",
-          title: "活跃代理",
+          title: translateMessage("ui.dashboard.panel.active-agents.title"),
           value: String(snapshot.activeAgents ?? agents.length),
-          description: "当前参与任务的代理数量。",
+          description: translateMessage("ui.dashboard.panel.active-agents.description"),
         },
         {
           id: "approval-backlog",
-          title: "审批积压",
+          title: translateMessage("ui.dashboard.panel.approval-backlog.title"),
           value: String(snapshot.approvalBacklog),
-          description: "等待人工批准的积压数量。",
+          description: translateMessage("ui.dashboard.panel.approval-backlog.description"),
         },
         {
           id: "uptime",
-          title: "运行可用率",
+          title: translateMessage("ui.dashboard.panel.uptime.title"),
           value: formatPercent(snapshot.uptimePercent),
-          description: "Mission Control 汇总 uptime 百分比。",
+          description: translateMessage("ui.dashboard.panel.uptime.description"),
         },
         {
           id: "alerts",
-          title: "告警摘要",
+          title: translateMessage("ui.dashboard.panel.alerts.title"),
           value: snapshot.alertSummary,
-          description: "值班视角的一句话风险提示。",
+          description: translateMessage("ui.dashboard.panel.alerts.description"),
         },
       ],
     },
     {
       id: "execution",
-      title: "执行层",
-      description: "延迟、队列压力与执行吞吐。",
+      title: translateMessage("ui.dashboard.group.execution.title"),
+      description: translateMessage("ui.dashboard.group.execution.description"),
       panels: [
         {
           id: "queue-depth",
-          title: "队列深度",
+          title: translateMessage("ui.dashboard.panel.queue-depth.title"),
           value: String(snapshot.queueDepth),
-          description: "聚合等待队列深度。",
+          description: translateMessage("ui.dashboard.panel.queue-depth.description"),
         },
         {
           id: "avg-duration",
-          title: "平均耗时",
+          title: translateMessage("ui.dashboard.panel.avg-duration.title"),
           value: formatMs(snapshot.avgDurationMs),
-          description: "任务或步骤的平均完成耗时。",
+          description: translateMessage("ui.dashboard.panel.avg-duration.description"),
         },
         {
           id: "p50-latency",
-          title: "P50 延迟",
+          title: translateMessage("ui.dashboard.panel.p50-latency.title"),
           value: formatMs(snapshot.p50LatencyMs),
-          description: "中位延迟。",
+          description: translateMessage("ui.dashboard.panel.p50-latency.description"),
         },
         {
           id: "p99-latency",
-          title: "P99 延迟",
+          title: translateMessage("ui.dashboard.panel.p99-latency.title"),
           value: formatMs(snapshot.p99LatencyMs),
-          description: "高尾延迟。",
+          description: translateMessage("ui.dashboard.panel.p99-latency.description"),
         },
         {
           id: "queue-ready",
-          title: "待消费任务",
+          title: translateMessage("ui.dashboard.panel.queue-ready.title"),
           value: String(queueReady),
-          description: "全部队列中 ready 状态任务总数。",
+          description: translateMessage("ui.dashboard.panel.queue-ready.description"),
         },
         {
           id: "queue-inflight",
-          title: "处理中任务",
+          title: translateMessage("ui.dashboard.panel.queue-inflight.title"),
           value: String(queueInFlight),
-          description: "全部队列中 in-flight 任务总数。",
+          description: translateMessage("ui.dashboard.panel.queue-inflight.description"),
         },
         {
           id: "throughput",
-          title: "队列吞吐",
-          value: formatMetricValue(findMetric(analytics, "Queue Throughput")),
-          description: "来自分析层的队列吞吐指标。",
+          title: translateMessage("ui.dashboard.panel.throughput.title"),
+          value: formatMetricValue(findMetric(analytics, "queue-throughput")),
+          description: translateMessage("ui.dashboard.panel.throughput.description"),
         },
       ],
     },
     {
       id: "reliability",
-      title: "稳定性层",
-      description: "事件压力、Worker 稳定度与降级容量。",
+      title: translateMessage("ui.dashboard.group.reliability.title"),
+      description: translateMessage("ui.dashboard.group.reliability.description"),
       panels: [
         {
           id: "incident-count",
-          title: "事件总数",
+          title: translateMessage("ui.dashboard.panel.incident-count.title"),
           value: String(incidents.length),
-          description: "当前稳定性事件数量。",
+          description: translateMessage("ui.dashboard.panel.incident-count.description"),
         },
         {
           id: "critical-incidents",
-          title: "严重事件",
+          title: translateMessage("ui.dashboard.panel.critical-incidents.title"),
           value: String(criticalIncidents),
-          description: "critical 优先级事件数量。",
+          description: translateMessage("ui.dashboard.panel.critical-incidents.description"),
         },
         {
           id: "degraded-agents",
-          title: "降级代理",
+          title: translateMessage("ui.dashboard.panel.degraded-agents.title"),
           value: String(degradedAgents),
-          description: "状态为 degraded 的代理数量。",
+          description: translateMessage("ui.dashboard.panel.degraded-agents.description"),
         },
         {
           id: "draining-workers",
-          title: "Draining Workers",
+          title: translateMessage("ui.dashboard.panel.draining-workers.title"),
           value: String(drainingWorkers),
-          description: "正在退出流量的 Worker 数量。",
+          description: translateMessage("ui.dashboard.panel.draining-workers.description"),
         },
         {
           id: "worker-lag",
-          title: "最大心跳延迟",
+          title: translateMessage("ui.dashboard.panel.worker-lag.title"),
           value: formatMs(maxWorkerLag),
-          description: "Worker 心跳延迟上界。",
+          description: translateMessage("ui.dashboard.panel.worker-lag.description"),
         },
         {
           id: "error-rate",
-          title: "错误率",
+          title: translateMessage("ui.dashboard.panel.error-rate.title"),
           value: formatPercent(snapshot.errorRate),
-          description: "Mission Control 汇总错误率。",
+          description: translateMessage("ui.dashboard.panel.error-rate.description"),
         },
         {
           id: "dlq",
-          title: "DLQ 总量",
+          title: translateMessage("ui.dashboard.panel.dlq.title"),
           value: String(totalDlq),
-          description: "全部队列死信数量。",
+          description: translateMessage("ui.dashboard.panel.dlq.description"),
         },
       ],
     },
     {
       id: "economics",
-      title: "预算风险层",
-      description: "预算姿态、审批负载与领域负荷信号。",
+      title: translateMessage("ui.dashboard.group.economics.title"),
+      description: translateMessage("ui.dashboard.group.economics.description"),
       panels: [
         {
           id: "budget-utilization",
-          title: "预算利用率",
+          title: translateMessage("ui.dashboard.panel.budget-utilization.title"),
           value: formatPercent(snapshot.budgetUtilizationPercent),
-          description: "当前预算消耗占比。",
+          description: translateMessage("ui.dashboard.panel.budget-utilization.description"),
         },
         {
           id: "avg-agent-load",
-          title: "平均代理负荷",
+          title: translateMessage("ui.dashboard.panel.avg-agent-load.title"),
           value: formatRatio(averageAgentLoad),
-          description: "代理平均负荷。",
+          description: translateMessage("ui.dashboard.panel.avg-agent-load.description"),
         },
         {
           id: "max-agent-load",
-          title: "峰值代理负荷",
+          title: translateMessage("ui.dashboard.panel.max-agent-load.title"),
           value: formatRatio(maxAgentLoad),
-          description: "代理峰值负荷。",
+          description: translateMessage("ui.dashboard.panel.max-agent-load.description"),
         },
         {
           id: "approval-sla",
-          title: "审批 SLA",
-          value: formatMetricValue(findMetric(analytics, "Approval SLA")),
-          description: "审批链路的 SLA 指标。",
+          title: translateMessage("ui.dashboard.panel.approval-sla.title"),
+          value: formatMetricValue(findMetric(analytics, "approval-sla")),
+          description: translateMessage("ui.dashboard.panel.approval-sla.description"),
         },
         {
           id: "workflow-completion",
-          title: "工作流完成率",
-          value: formatMetricValue(
-            findMetric(analytics, "Workflow Completion"),
-          ),
-          description: "工作流完成率趋势。",
+          title: translateMessage("ui.dashboard.panel.workflow-completion.title"),
+          value: formatMetricValue(findMetric(analytics, "workflow-completion")),
+          description: translateMessage("ui.dashboard.panel.workflow-completion.description"),
         },
         {
           id: "queue-retries",
-          title: "重试总量",
+          title: translateMessage("ui.dashboard.panel.queue-retries.title"),
           value: String(queueRetries),
-          description: "全部队列累计重试次数。",
+          description: translateMessage("ui.dashboard.panel.queue-retries.description"),
         },
         {
           id: "healthy-agent-ratio",
-          title: "健康代理占比",
+          title: translateMessage("ui.dashboard.panel.healthy-agent-ratio.title"),
           value: formatRatio(healthyAgentRatio),
-          description: "healthy 状态代理占比。",
+          description: translateMessage("ui.dashboard.panel.healthy-agent-ratio.description"),
         },
       ],
     },
@@ -340,25 +357,25 @@ export function mapDashboardSnapshotToVm(
       "Evidence/Artifact",
     ],
     operatorWorkflowChecks: [
-      "Mission filter",
-      "Task drilldown",
-      "PlanGraph DAG",
-      "NodeRun receipt and evidence",
-      "HITL decision",
-      "P0 alert to runbook",
-      "Projection degraded warning",
-      "Offline reconnect replay",
+      translateMessage("ui.dashboard.check.mission-filter"),
+      translateMessage("ui.dashboard.check.task-drilldown"),
+      translateMessage("ui.dashboard.check.plan-graph"),
+      translateMessage("ui.dashboard.check.node-run"),
+      translateMessage("ui.dashboard.check.hitl-decision"),
+      translateMessage("ui.dashboard.check.p0-runbook"),
+      translateMessage("ui.dashboard.check.projection-warning"),
+      translateMessage("ui.dashboard.check.offline-replay"),
     ],
     trendValues:
       snapshot == null
         ? []
         : [
-            snapshot.successRate ?? 0,
-            snapshot.queueDepth,
-            snapshot.activeExecutions,
-            snapshot.approvalBacklog,
-            snapshot.errorRate ?? 0,
-            snapshot.budgetUtilizationPercent ?? 0,
+            clampPercent(snapshot.successRate),
+            clampPercent(snapshot.uptimePercent),
+            clampPercent(snapshot.budgetUtilizationPercent),
+            clampPercent(snapshot.errorRate != null ? 100 - snapshot.errorRate : undefined),
+            clampPercent(agents.length === 0 ? 100 : (agents.filter((agent) => agent.status === "healthy").length / agents.length) * 100),
+            clampPercent((snapshot.activeExecutions / Math.max(1, snapshot.activeExecutions + snapshot.queueDepth)) * 100),
           ],
     metrics:
       snapshot == null
@@ -389,17 +406,36 @@ export function mapDashboardSnapshotToVm(
 
 export function useDashboardVm(): DashboardVm {
   const snapshot = useDashboardSnapshotQuery().data ?? null;
-  const analytics = useAnalyticsQuery().data ?? [];
-  const incidents = useIncidentsQuery().data ?? [];
-  const workers = useWorkersQuery().data ?? [];
-  const queues = useQueuesQuery().data ?? [];
-  const agents = useAgentsQuery().data ?? [];
-  return mapDashboardSnapshotToVm(
+  const detailQueriesEnabled = snapshot != null;
+  const analytics = useAnalyticsQuery({ enabled: detailQueriesEnabled }).data ?? [];
+  const incidents = useIncidentsQuery({ enabled: detailQueriesEnabled }).data ?? [];
+  const workers = useWorkersQuery({ enabled: detailQueriesEnabled }).data ?? [];
+  const queues = useQueuesQuery({ enabled: detailQueriesEnabled }).data ?? [];
+  const agents = useAgentsQuery({ enabled: detailQueriesEnabled }).data ?? [];
+  return useMemo(() => mapDashboardSnapshotToVm(
     snapshot,
     analytics,
     incidents,
     workers,
     queues,
     agents,
-  );
+  ), [
+    agents,
+    analytics,
+    incidents,
+    queues,
+    snapshot,
+    workers,
+  ]);
+}
+
+function normalizeMetricSelector(value: string): string {
+  return value.trim().toLowerCase().replace(/[_\s]+/g, "-");
+}
+
+function clampPercent(value: number | null | undefined): number {
+  if (value == null || !Number.isFinite(value)) {
+    return 0;
+  }
+  return Math.max(0, Math.min(100, value));
 }

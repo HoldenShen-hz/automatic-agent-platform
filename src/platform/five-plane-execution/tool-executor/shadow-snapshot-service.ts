@@ -16,9 +16,8 @@
  */
 
 import { execFileSync } from "node:child_process";
-import { closeSync, constants as fsConstants, existsSync, fsyncSync, lstatSync, mkdirSync, openSync, readdirSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync } from "node:fs";
+import { closeSync, constants as fsConstants, existsSync, fsyncSync, lstatSync, mkdirSync, openSync, readdirSync, readFileSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import { basename, dirname, join, resolve, sep } from "node:path";
-import { randomUUID } from "node:crypto";
 
 import { PolicyDeniedError, SandboxError, StorageError, ValidationError } from "../../contracts/errors.js";
 import { newId } from "../../contracts/types/ids.js";
@@ -191,7 +190,6 @@ function ensureExistingPathChainIsNotSymlink(targetPath: string): void {
 }
 
 function writeJsonAtomically(path: string, value: unknown): void {
-  const tempPath = `${path}.${randomUUID()}.tmp`;
   let fd: number | null = null;
   try {
     ensureExistingPathChainIsNotSymlink(dirname(path));
@@ -200,20 +198,29 @@ function writeJsonAtomically(path: string, value: unknown): void {
         details: { shadowRoot: path, symlinkPath: path },
       });
     }
-    fd = openSync(tempPath, fsConstants.O_WRONLY | fsConstants.O_CREAT | fsConstants.O_EXCL | fsConstants.O_NOFOLLOW, 0o600);
+    fd = openSync(path, fsConstants.O_WRONLY | fsConstants.O_CREAT | fsConstants.O_EXCL | fsConstants.O_NOFOLLOW, 0o600);
     writeFileSync(fd, JSON.stringify(value, null, 2), "utf8");
     fsyncSync(fd);
     closeSync(fd);
     fd = null;
-    renameSync(tempPath, path);
   } catch (error) {
     if (fd != null) {
       closeSync(fd);
     }
-    try {
-      unlinkSync(tempPath);
-    } catch {
-      // Best effort cleanup of an incomplete temp file.
+    const errorCode = (error as NodeJS.ErrnoException | undefined)?.code;
+    if (errorCode !== "EEXIST" && existsSync(path)) {
+      try {
+        unlinkSync(path);
+      } catch {
+        // Best effort cleanup of a partially written snapshot record.
+      }
+    }
+    if (errorCode === "EEXIST") {
+      throw new ValidationError(
+        "shadow_snapshot.snapshot_id_conflict",
+        "shadow_snapshot.snapshot_id_conflict",
+        { details: { path } },
+      );
     }
     throw error;
   }

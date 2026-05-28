@@ -22,13 +22,15 @@ describe("shared platform adapter", () => {
     const adapter = createDesktopPlatformAdapter("windows");
     expect(adapter.platform).toBe("windows");
     expect(adapter.getDebugState().screenSecurityEnabled).toBe(true);
-    expect((await adapter.runShell("echo desktop")).stdout).toContain("echo desktop");
+    expect((await adapter.runShell("echo desktop")).code).toBe(1);
+    expect((await adapter.runShell("health")).stdout).toContain("health");
     expect((await adapter.spawnProcess("worker", ["--once"])).pid).toBeGreaterThan(0);
   });
 
   it("uses the electron bridge when present", async () => {
     const calls: string[] = [];
-    window.AA_ELECTRON = {
+    window.AA_ELECTRON = Object.freeze({
+      __aaBridgeSignature: "aa-electron-bridge-v1",
       async readSecureValue() { return "token"; },
       async writeSecureValue() { calls.push("write"); },
       async deleteSecureValue() { calls.push("delete"); },
@@ -44,7 +46,7 @@ describe("shared platform adapter", () => {
       async enableScreenSecurity(enabled) { calls.push(`screen:${String(enabled)}`); },
       onForeground() { return () => undefined; },
       onBackground() { return () => undefined; },
-    };
+    });
 
     const adapter = createDesktopPlatformAdapter("windows");
     await adapter.copyToClipboard("hello");

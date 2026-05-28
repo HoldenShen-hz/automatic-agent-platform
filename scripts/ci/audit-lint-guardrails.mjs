@@ -96,6 +96,8 @@ function findCycles(graph) {
 
 const files = walk("src", (path) => path.endsWith(".ts"));
 const cycles = findCycles(buildRelativeImportGraph(files));
+const rootEslintConfig = readFileSync("eslint.config.js", "utf8");
+const uiEslintConfig = readFileSync("ui/eslint.config.js", "utf8");
 const secretRoots = ["config", "deploy", ".github"];
 const secretPatterns = [
   /gh[pousr]_[A-Za-z0-9]{16,}/,
@@ -120,7 +122,22 @@ if (cycles.length > 0) {
 if (secretHits.length > 0) {
   console.error(`secret-like literal detected: ${secretHits.join(", ")}`);
 }
+if (!rootEslintConfig.includes('projectService: true') || !uiEslintConfig.includes('projectService: true')) {
+  console.error("eslint guardrail drift: type-aware parserOptions.projectService must stay enabled in both root and ui configs");
+}
+if (!rootEslintConfig.includes('scripts/**/*.mjs') || !uiEslintConfig.includes('scripts/**/*.mjs')) {
+  console.error("eslint guardrail drift: scripts/**/*.mjs must stay covered in both root and ui configs");
+}
 if (cycles.length > 0 || secretHits.length > 0) {
+  process.exit(1);
+}
+
+if (
+  !rootEslintConfig.includes('projectService: true')
+  || !uiEslintConfig.includes('projectService: true')
+  || !rootEslintConfig.includes('scripts/**/*.mjs')
+  || !uiEslintConfig.includes('scripts/**/*.mjs')
+) {
   process.exit(1);
 }
 

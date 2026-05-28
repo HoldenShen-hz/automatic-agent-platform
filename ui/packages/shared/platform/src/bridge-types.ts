@@ -10,6 +10,7 @@ export interface SpawnedProcessHandle {
 }
 
 export interface ElectronBridge {
+  readonly __aaBridgeSignature?: "aa-electron-bridge-v1";
   readSecureValue(key: string): Promise<string | null>;
   writeSecureValue(key: string, value: string): Promise<void>;
   deleteSecureValue(key: string): Promise<void>;

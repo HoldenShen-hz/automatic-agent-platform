@@ -6,6 +6,6 @@
     "/",
     "/mission-control/dashboard",
     "/mission-control/tasks",
-    "/governance/approvals"
+    "/mission-control/approvals"
   ]
 }

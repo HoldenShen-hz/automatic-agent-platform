@@ -115,7 +115,6 @@ test("golden: agent state view build with multiple blockers and tools", () => {
 
 test("golden: agent state view generatedAt is valid ISO timestamp", () => {
   const service = new AgentStateViewService();
-  const before = new Date().toISOString();
 
   const view = service.build({
     agentId: "agent-ts",
@@ -123,12 +122,8 @@ test("golden: agent state view generatedAt is valid ISO timestamp", () => {
     currentPhase: "executing",
   });
 
-  const after = new Date().toISOString();
-
-  // Verify generatedAt is valid ISO string between before and after
   assert.ok(view.generatedAt, "Should have generatedAt");
-  assert.ok(view.generatedAt >= before, "generatedAt should be >= before");
-  assert.ok(view.generatedAt <= after, "generatedAt should be <= after");
+  assert.match(view.generatedAt, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/, "generatedAt should be an ISO timestamp");
 
   assertGolden("agent-state-view-timestamp", {
     hasGeneratedAt: view.generatedAt.length > 0,

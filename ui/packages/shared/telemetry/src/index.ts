@@ -50,6 +50,7 @@ export class TelemetrySink {
   private autoFlushQueued = false;
   private readonly flushTimer: ReturnType<typeof setInterval> | null;
   private flushPromise: Promise<void> | null = null;
+  private flushingEntries: BufferedTelemetryEvent[] = [];
   private disposed = false;
 
   public constructor(
@@ -87,7 +88,12 @@ export class TelemetrySink {
     });
 
     if (this.exporters.length === 0 && this.events.length >= this.maxBufferSize) {
-      this.events.splice(0, this.events.length - 1);
+      const overflow = this.events.splice(0, this.events.length - this.maxBufferSize + 1);
+      this.deadLetters.push(...overflow.map((entry) => ({
+        event: entry.event,
+        reason: "telemetry.buffer_overflow_no_exporter",
+        failedAt: new Date().toISOString(),
+      })));
       return;
     }
 
@@ -130,25 +136,29 @@ export class TelemetrySink {
     return this.flushPromise;
   }
 
-  public dispose(): void {
+  public async dispose(): Promise<void> {
     if (this.disposed) {
       return;
     }
-    this.disposed = true;
     if (this.flushTimer != null) {
       clearInterval(this.flushTimer);
     }
-    void this.flush().catch(() => undefined);
+    this.disposed = true;
+    await this.flush().catch(() => undefined);
   }
 
   private async flushInternal(): Promise<void> {
-    if (this.events.length === 0 || this.exporters.length === 0) {
+    if ((this.events.length === 0 && this.flushingEntries.length === 0) || this.exporters.length === 0) {
       return;
     }
 
-    while (this.events.length > 0) {
-      const batch = this.events.splice(0, this.events.length);
+    while (this.events.length > 0 || this.flushingEntries.length > 0) {
+      const batch = this.flushingEntries.length > 0
+        ? this.flushingEntries
+        : this.events.splice(0, this.events.length);
+      this.flushingEntries = batch;
       const survivors = await this.deliverBatch(batch);
+      this.flushingEntries = [];
       if (survivors.length > 0) {
         this.events.unshift(...survivors);
         break;
@@ -230,7 +240,7 @@ export class OtlpHttpTelemetryExporter implements TelemetryExporter {
     private readonly headers: Readonly<Record<string, string>> = {},
     options: { readonly timeoutMs?: number } = {},
   ) {
-    if ((this.headers.authorization ?? "").length === 0) {
+    if (resolveAuthorizationHeader(this.headers).length === 0) {
       throw new Error("telemetry.authorization_required:OTLP exports requires authorization header or VITE_OTLP_AUTH_TOKEN");
     }
     this.timeoutMs = options.timeoutMs ?? 5_000;
@@ -294,15 +304,22 @@ export function createTelemetrySink(exporters: readonly TelemetryExporter[] = []
 
 export function measureDuration(name: string, fn: () => void | Promise<void>): void | Promise<void> {
   performance.mark(`${name}:start`);
-  const result = fn();
-  if (result instanceof Promise) {
-    return result.finally(() => {
-      performance.mark(`${name}:end`);
-      performance.measure(name, `${name}:start`, `${name}:end`);
-    });
+  try {
+    const result = fn();
+    if (result instanceof Promise) {
+      return result.finally(() => {
+        performance.mark(`${name}:end`);
+        performance.measure(name, `${name}:start`, `${name}:end`);
+      });
+    }
+    performance.mark(`${name}:end`);
+    performance.measure(name, `${name}:start`, `${name}:end`);
+    return result;
+  } catch (error) {
+    performance.mark(`${name}:end`);
+    performance.measure(name, `${name}:start`, `${name}:end`);
+    throw error;
   }
-  performance.mark(`${name}:end`);
-  performance.measure(name, `${name}:start`, `${name}:end`);
 }
 
 export type VitalName = "LCP" | "FID" | "CLS" | "INP" | "TTFB" | "FCP";
@@ -398,9 +415,23 @@ function observePerformanceType(
     const observer = new PerformanceObserver(callback);
     observer.observe({ type, buffered: true } as PerformanceObserverInit);
     dispose.push(() => observer.disconnect());
-  } catch {
+  } catch (error) {
+    const reporter = globalThis.console;
+    reporter?.warn?.("telemetry.performance_observer_unsupported", {
+      type,
+      error: error instanceof Error ? error.message : String(error),
+    });
     return;
   }
+}
+
+function resolveAuthorizationHeader(headers: Readonly<Record<string, string>>): string {
+  for (const [key, value] of Object.entries(headers)) {
+    if (key.toLowerCase() === "authorization") {
+      return value;
+    }
+  }
+  return "";
 }
 
 function serializeAttributeValue(value: unknown): Record<string, unknown> {

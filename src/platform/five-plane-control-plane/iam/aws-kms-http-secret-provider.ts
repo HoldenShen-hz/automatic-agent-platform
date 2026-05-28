@@ -384,7 +384,7 @@ export class AwsKmsHttpSecretProvider implements ManagedSecretProvider {
     // Extract plaintext from response
     const plaintext = (result as Record<string, string | { B?: number[] }>).Plaintext;
     const plaintextStr = typeof plaintext === "string"
-      ? plaintext
+      ? Buffer.from(plaintext, "base64").toString("utf8")
       : plaintext?.B != null
         ? Buffer.from(plaintext.B).toString("utf8")
         : null;

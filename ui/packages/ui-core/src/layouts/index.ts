@@ -1,6 +1,48 @@
 import { createElement, type PropsWithChildren, type ReactElement, type ReactNode } from "react";
 import { createPanelStyle, designTokens } from "../design-tokens";
 
+export function Stack(
+  {
+    gap = 12,
+    children,
+    align = "stretch",
+  }: PropsWithChildren<{ gap?: number; align?: "stretch" | "start" | "center" | "end" }>,
+): ReactElement {
+  return createElement(
+    "div",
+    {
+      style: {
+        display: "grid",
+        gap,
+        alignItems: align,
+      },
+    },
+    children,
+  );
+}
+
+export function Inline(
+  {
+    gap = 8,
+    children,
+    align = "center",
+    wrap = true,
+  }: PropsWithChildren<{ gap?: number; align?: "stretch" | "start" | "center" | "end"; wrap?: boolean }>,
+): ReactElement {
+  return createElement(
+    "div",
+    {
+      style: {
+        display: "flex",
+        gap,
+        flexWrap: wrap ? "wrap" : "nowrap",
+        alignItems: align,
+      },
+    },
+    children,
+  );
+}
+
 export function LayoutFrame(
   { title, subtitle, children, aside }: PropsWithChildren<{ title: string; subtitle: string; aside?: ReactNode }>,
 ): ReactElement {
@@ -23,7 +65,7 @@ export function LayoutFrame(
 }
 
 export function ThreePaneLayout(
-  { left, center, right: rightPane }: { left: ReactNode; center: ReactNode; right: ReactNode; viewportWidth?: number },
+  { left, center, right: rightPane }: { left: ReactNode; center: ReactNode; right: ReactNode },
 ): ReactElement {
   return createElement(
     "div",
@@ -35,8 +77,8 @@ export function ThreePaneLayout(
         alignItems: "start",
       },
     },
-    createElement("div", undefined, left),
-    createElement("div", undefined, center),
-    createElement("div", undefined, rightPane),
+    createElement("aside", { "aria-label": "Left panel" }, left),
+    createElement("main", { "aria-label": "Main content" }, center),
+    createElement("aside", { "aria-label": "Right panel" }, rightPane),
   );
 }

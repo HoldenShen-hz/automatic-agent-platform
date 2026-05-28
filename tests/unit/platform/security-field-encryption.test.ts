@@ -41,11 +41,9 @@ test("R23-20/R23-29: FieldEncryptionService uses authenticated encryption and lo
   });
 
   const ciphertext = result.protectedFields[0]!.ciphertext;
-  const parts = ciphertext.split(":");
-  assert.equal(parts[0]!, "enc");
-  assert.equal(parts.length, 5);
-  assert.ok(parts[1]!.length >= 32);
-  assert.notEqual(parts[4]!, Buffer.from("top-secret", "utf8").toString("base64"));
+  assert.equal(ciphertext.startsWith("encv1."), true);
+  assert.ok(ciphertext.length > "encv1.".length + 32);
+  assert.notEqual(ciphertext, Buffer.from("top-secret", "utf8").toString("base64"));
   assert.equal(service.revealField({ ciphertext, keyRef: "kms-key-ref" }), "top-secret");
 });
 
@@ -180,7 +178,7 @@ test("R23-31: EditSnapshotService bounds per-step and per-session history", () =
   for (let i = 0; i < 250; i++) {
     service.recordEdit({
       stepId: "step-hot",
-      filePath: `/tmp/${i}.ts`,
+      filePath: `workspace/step-hot/${i}.ts`,
       previousContent: `old-${i}`,
       newContent: `new-${i}`,
     });
@@ -191,7 +189,7 @@ test("R23-31: EditSnapshotService bounds per-step and per-session history", () =
   for (let i = 0; i < 105; i++) {
     service.recordEdit({
       stepId: `step-${i}`,
-      filePath: `/tmp/step-${i}.ts`,
+      filePath: `workspace/history/step-${i}.ts`,
       previousContent: "old",
       newContent: "new",
     });

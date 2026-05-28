@@ -1,5 +1,5 @@
 import { QueryClient } from "@tanstack/react-query";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   createMemoryQueryCachePersister,
@@ -40,5 +40,35 @@ describe("query cache persistence", () => {
     const restoredClient = new QueryClient();
     await restorePersistedQueryClient(restoredClient, persister);
     expect(restoredClient.getQueryData(["dashboard"])).toEqual({ ok: true, source: "live" });
+  });
+
+  it("ignores corrupted persisted snapshots and clears the broken cache entry", async () => {
+    const persister = {
+      read: async () => {
+        throw new Error("corrupted");
+      },
+      write: async () => undefined,
+      clear: vi.fn(async () => undefined),
+    };
+    const client = new QueryClient();
+
+    const restored = await restorePersistedQueryClient(client, persister);
+
+    expect(restored).toBe(false);
+    expect(persister.clear).toHaveBeenCalledTimes(1);
+  });
+
+  it("persists only allowlisted query keys", async () => {
+    const persister = createMemoryQueryCachePersister();
+    const client = new QueryClient();
+    client.setQueryData(["tasks"], [{ id: "task-1" }]);
+    client.setQueryData(["auth"], { accessToken: "secret" });
+
+    await persistQueryClientSnapshot(client, persister);
+
+    const restoredClient = new QueryClient();
+    await restorePersistedQueryClient(restoredClient, persister);
+    expect(restoredClient.getQueryData(["tasks"])).toEqual([{ id: "task-1" }]);
+    expect(restoredClient.getQueryData(["auth"])).toBeUndefined();
   });
 });

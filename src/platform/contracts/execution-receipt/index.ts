@@ -1,6 +1,5 @@
 import { ValidationError } from "../errors.js";
 import { newId, nowIso } from "../types/ids.js";
-import { assertNotDeprecated } from "../index.js";
 
 // =============================================================================
 // Re-export canonical NodeAttemptReceipt from executable-contracts
@@ -61,13 +60,21 @@ type LegacyExecutionReceiptInput = Pick<ExecutionReceipt, "planId" | "status" | 
  * Use NodeAttemptReceipt from executable-contracts instead.
  */
 export function createExecutionReceipt(input: LegacyExecutionReceiptInput): ExecutionReceipt {
-  void input;
-  void normalizeNullable;
-  void newId;
-  void nowIso;
+  const summary = {
+    planId: normalizeNullable(input.planId),
+    taskId: normalizeNullable(input.taskId),
+    harnessRunId: normalizeNullable(input.harnessRunId),
+    nodeRunId: normalizeNullable(input.nodeRunId),
+    attemptId: normalizeNullable(input.attemptId),
+    tenantId: normalizeNullable(input.tenantId),
+    status: input.status,
+    receiptId: normalizeNullable(input.receiptId) ?? newId("receipt"),
+    createdAt: input.createdAt ?? nowIso(),
+  };
   throw new ValidationError(
     "execution_receipt.legacy_contract_forbidden",
     "ExecutionReceipt is deprecated. Use NodeAttemptReceipt from executable-contracts instead.",
+    { details: summary },
   );
 }
 

@@ -268,7 +268,7 @@ test("FairSchedulingService.schedule excludes preemption victims with active lea
   assert.equal(decision.preemption.victimExecutionId, "safe-victim");
 });
 
-test("FairSchedulingService.schedule softens hard quota enforcement when region quorum is not met [fair-scheduling-service]", () => {
+test("FairSchedulingService.schedule records degraded quorum without silently bypassing quota [fair-scheduling-service]", () => {
   const service = new FairSchedulingService();
   const request: FairSchedulingRequest = {
     quotaPolicy: createQuotaPolicy({ currentUsage: 100, hardLimit: 80, burstLimit: 100 }),
@@ -281,7 +281,8 @@ test("FairSchedulingService.schedule softens hard quota enforcement when region 
 
   const decision = service.schedule(request);
 
-  assert.equal(decision.queue.quotaExceeded, false);
+  assert.equal(decision.queue.quotaExceeded, true);
   assert.equal(decision.preemption.shouldPreempt, false);
+  assert.ok(decision.queue.reasonCodes.includes("resource_manager.quota_exceeded"));
   assert.ok(decision.queue.reasonCodes.includes("resource_manager.quota_quorum_degraded"));
 });

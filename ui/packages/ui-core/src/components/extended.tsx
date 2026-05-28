@@ -1,4 +1,4 @@
-import React, { createElement, useState, type CSSProperties, type PropsWithChildren, type ReactElement, type ReactNode } from "react";
+import React, { createElement, useEffect, useId, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type PropsWithChildren, type ReactElement, type ReactNode } from "react";
 import { animation, designTokens } from "../design-tokens";
 
 const baseSurfaceStyle: CSSProperties = {
@@ -6,6 +6,18 @@ const baseSurfaceStyle: CSSProperties = {
   border: `1px solid ${designTokens.semantic.color.border}`,
   borderRadius: designTokens.semantic.radius.card,
   color: designTokens.semantic.color.text,
+};
+
+const hiddenAccessibleTextStyle: CSSProperties = {
+  position: "absolute",
+  width: 1,
+  height: 1,
+  padding: 0,
+  margin: -1,
+  overflow: "hidden",
+  clip: "rect(0, 0, 0, 0)",
+  whiteSpace: "nowrap",
+  border: 0,
 };
 
 export function Card({ children, style }: PropsWithChildren<{ style?: CSSProperties }>): ReactElement {
@@ -115,15 +127,20 @@ export function ProgressBar({ value, max = 100, label }: { value: number; max?: 
 }
 
 export function Skeleton({ width = "100%", height = 16 }: { width?: number | string; height?: number | string }): ReactElement {
-  return createElement("div", {
-    "aria-hidden": true,
-    style: {
-      width,
-      height,
-      borderRadius: 8,
-      background: `linear-gradient(90deg, ${designTokens.semantic.color.surfaceElevated}, ${designTokens.semantic.color.surfaceHover}, ${designTokens.semantic.color.surfaceElevated})`,
-    },
-  });
+  return createElement(React.Fragment, null,
+    createElement("style", null, "@keyframes aa-ui-core-skeleton-pulse { 0% { opacity: 0.72; background-position: 0% 50%; } 50% { opacity: 1; } 100% { opacity: 0.72; background-position: 100% 50%; } }"),
+    createElement("div", {
+      "aria-hidden": true,
+      style: {
+        width,
+        height,
+        borderRadius: 8,
+        background: `linear-gradient(90deg, ${designTokens.semantic.color.surfaceElevated}, ${designTokens.semantic.color.surfaceHover}, ${designTokens.semantic.color.surfaceElevated})`,
+        backgroundSize: "200% 100%",
+        animation: "aa-ui-core-skeleton-pulse 1.4s ease-in-out infinite",
+      },
+    }),
+  );
 }
 
 export function EmptyState({ title, description, action }: { title: string; description: string; action?: ReactNode }): ReactElement {
@@ -161,16 +178,42 @@ export function Pagination({
   totalPages: number;
   onChange?: (page: number) => void;
 }): ReactElement {
+  const pageItems = buildPaginationItems(page, totalPages);
   return createElement("nav", { "aria-label": "Pagination" },
     createElement("div", { style: { display: "flex", gap: 8 } },
-      Array.from({ length: totalPages }, (_, index) => createElement("button", {
-        key: `page-${index + 1}`,
-        type: "button",
-        "aria-current": page === index + 1 ? "page" : undefined,
-        onClick: () => onChange?.(index + 1),
-      }, index + 1)),
+      pageItems.map((item, index) => item === "ellipsis"
+        ? createElement("span", { key: `ellipsis-${index}`, "aria-hidden": true, style: { alignSelf: "center" } }, "…")
+        : createElement("button", {
+          key: `page-${item}`,
+          type: "button",
+          "aria-current": page === item ? "page" : undefined,
+          onClick: () => onChange?.(item),
+        }, item)),
     ),
   );
+}
+
+function buildPaginationItems(page: number, totalPages: number): readonly (number | "ellipsis")[] {
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, index) => index + 1);
+  }
+
+  const current = Math.min(Math.max(page, 1), totalPages);
+  const windowStart = Math.max(2, current - 1);
+  const windowEnd = Math.min(totalPages - 1, current + 1);
+  const items: Array<number | "ellipsis"> = [1];
+
+  if (windowStart > 2) {
+    items.push("ellipsis");
+  }
+  for (let next = windowStart; next <= windowEnd; next += 1) {
+    items.push(next);
+  }
+  if (windowEnd < totalPages - 1) {
+    items.push("ellipsis");
+  }
+  items.push(totalPages);
+  return items;
 }
 
 export function Tabs({
@@ -180,19 +223,58 @@ export function Tabs({
   tabs: readonly { id: string; label: string; panel: ReactNode }[];
   initialTabId?: string;
 }): ReactElement {
+  const tabListId = useId();
   const [activeTab, setActiveTab] = useState(initialTabId ?? tabs[0]?.id ?? "");
   const current = tabs.find((tab) => tab.id === activeTab) ?? tabs[0];
+  const currentIndex = tabs.findIndex((tab) => tab.id === current?.id);
+
+  function selectRelativeTab(delta: number): void {
+    if (tabs.length === 0) {
+      return;
+    }
+    const nextIndex = currentIndex < 0
+      ? 0
+      : (currentIndex + delta + tabs.length) % tabs.length;
+    setActiveTab(tabs[nextIndex]?.id ?? "");
+  }
+
   return createElement("div", null,
     createElement("div", { role: "tablist", "aria-label": "Tabs", style: { display: "flex", gap: 8 } },
       tabs.map((tab) => createElement("button", {
         key: tab.id,
+        id: `${tabListId}-${tab.id}-tab`,
         role: "tab",
+        tabIndex: current?.id === tab.id ? 0 : -1,
         "aria-selected": current?.id === tab.id,
+        "aria-controls": `${tabListId}-${tab.id}-panel`,
         onClick: () => setActiveTab(tab.id),
+        onKeyDown: (event: KeyboardEvent<HTMLButtonElement>) => {
+          if (event.key === "ArrowRight") {
+            event.preventDefault();
+            selectRelativeTab(1);
+          }
+          if (event.key === "ArrowLeft") {
+            event.preventDefault();
+            selectRelativeTab(-1);
+          }
+          if (event.key === "Home") {
+            event.preventDefault();
+            setActiveTab(tabs[0]?.id ?? "");
+          }
+          if (event.key === "End") {
+            event.preventDefault();
+            setActiveTab(tabs.at(-1)?.id ?? "");
+          }
+        },
         type: "button",
       }, tab.label)),
     ),
-    current ? createElement("div", { role: "tabpanel", style: { marginTop: 12 } }, current.panel) : null,
+    current ? createElement("div", {
+      id: `${tabListId}-${current.id}-panel`,
+      role: "tabpanel",
+      "aria-labelledby": `${tabListId}-${current.id}-tab`,
+      style: { marginTop: 12 },
+    }, current.panel) : null,
   );
 }
 
@@ -201,37 +283,119 @@ export function Accordion({
 }: {
   items: readonly { id: string; title: string; content: ReactNode }[];
 }): ReactElement {
+  const accordionId = useId();
   const [openId, setOpenId] = useState<string | null>(items[0]?.id ?? null);
   return createElement("div", { style: { display: "grid", gap: 8 } },
     items.map((item) => createElement(Card, { key: item.id },
+      (() => {
+        const panelId = `${accordionId}-${item.id}-panel`;
+        const buttonId = `${accordionId}-${item.id}-button`;
+        return createElement(React.Fragment, null,
       createElement("button", {
+        id: buttonId,
         type: "button",
         "aria-expanded": openId === item.id,
+        "aria-controls": panelId,
         onClick: () => setOpenId(openId === item.id ? null : item.id),
       }, item.title),
-      openId === item.id ? createElement("div", { style: { marginTop: 10 } }, item.content) : null,
+      openId === item.id ? createElement("div", {
+        id: panelId,
+        role: "region",
+        "aria-labelledby": buttonId,
+        style: { marginTop: 10 },
+      }, item.content) : null,
+        );
+      })(),
     )),
   );
 }
 
 export function Tooltip({ label, children }: PropsWithChildren<{ label: string }>): ReactElement {
-  return createElement("span", { title: label, "aria-label": label }, children);
+  return createElement("span", { title: label, "aria-label": label, tabIndex: 0, style: { display: "inline-flex" } }, children);
 }
 
-export function Drawer({ open, title, children }: PropsWithChildren<{ open: boolean; title: string }>): ReactElement | null {
+function listFocusableElements(container: HTMLElement): HTMLElement[] {
+  return Array.from(container.querySelectorAll<HTMLElement>(
+    "button, [href], input, select, textarea, [tabindex]:not([tabindex='-1'])",
+  )).filter((element) => !element.hasAttribute("disabled"));
+}
+
+export function Drawer({
+  open,
+  title,
+  onClose,
+  children,
+}: PropsWithChildren<{ open: boolean; title: string; onClose?: () => void }>): ReactElement | null {
+  const drawerRef = useRef<HTMLElement | null>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    previousFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const drawer = drawerRef.current;
+    const focusable = drawer == null ? [] : listFocusableElements(drawer);
+    (focusable[0] ?? drawer)?.focus();
+
+    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onClose?.();
+        return;
+      }
+      if (event.key !== "Tab" || drawer == null) {
+        return;
+      }
+      const ordered = listFocusableElements(drawer);
+      if (ordered.length === 0) {
+        event.preventDefault();
+        drawer.focus();
+        return;
+      }
+      const first = ordered[0]!;
+      const last = ordered[ordered.length - 1]!;
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      }
+      if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      previousFocusRef.current?.focus();
+    };
+  }, [onClose, open]);
+
   if (!open) return null;
-  return createElement("aside", {
+  return createElement("div", {
+    style: { position: "fixed", inset: 0, display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto", zIndex: 20 },
+  },
+  createElement("button", {
+    "aria-label": `${title} overlay`,
+    onClick: () => onClose?.(),
+    style: { border: "none", background: "rgba(15, 23, 42, 0.24)", cursor: onClose == null ? "default" : "pointer" },
+    type: "button",
+  }),
+  createElement("aside", {
+    ref: drawerRef,
     role: "dialog",
+    tabIndex: -1,
     "aria-modal": true,
     "aria-label": title,
-    style: { position: "fixed", insetInlineEnd: 0, top: 0, bottom: 0, width: 360, padding: 20, ...baseSurfaceStyle },
-  }, children);
+    style: { position: "relative", insetInlineEnd: 0, top: 0, bottom: 0, width: 360, padding: 20, overflowY: "auto", boxShadow: designTokens.semantic.shadows.overlay, ...baseSurfaceStyle },
+  }, children));
 }
 
 export function Toast({ message, tone = "info" }: { message: string; tone?: "info" | "success" | "warning" | "danger" }): ReactElement {
   return createElement("div", {
-    role: "status",
-    "aria-live": tone === "danger" ? "assertive" : "polite",
+    role: tone === "danger" ? "alert" : "status",
+    "aria-live": tone === "danger" ? undefined : "polite",
     style: { ...baseSurfaceStyle, padding: 12 },
   }, message);
 }
@@ -263,12 +427,27 @@ export function DescriptionList({ rows }: { rows: readonly { term: string; detai
 }
 
 export function Stepper({ steps, activeStep }: { steps: readonly string[]; activeStep: number }): ReactElement {
-  return createElement("ol", { style: { display: "flex", gap: 12, listStyle: "none", padding: 0, margin: 0 } },
+  return createElement("ol", { "aria-label": "Progress steps", role: "list", style: { display: "flex", gap: 12, listStyle: "none", padding: 0, margin: 0 } },
     steps.map((step, index) => createElement("li", {
       key: `${step}-${index}`,
-      "aria-current": activeStep === index ? "step" : undefined,
+      role: "listitem",
       style: { fontWeight: activeStep === index ? 700 : 400 },
-    }, step)),
+    },
+    createElement("button", {
+      type: "button",
+      disabled: index > activeStep,
+      "aria-current": activeStep === index ? "step" : "false",
+      "aria-disabled": index > activeStep,
+        tabIndex: activeStep >= index ? 0 : -1,
+      style: {
+        border: "none",
+        background: "transparent",
+        color: "inherit",
+        cursor: index > activeStep ? "not-allowed" : "default",
+        font: "inherit",
+        padding: 0,
+      },
+    }, step))),
   );
 }
 
@@ -335,13 +514,37 @@ export function SegmentedControl({
   value: string;
   onChange?: (value: string) => void;
 }): ReactElement {
+  const activeIndex = Math.max(0, options.findIndex((option) => option.value === value));
+  const optionCount = Math.max(options.length, 1);
+
+  function handleKeyDown(event: KeyboardEvent<HTMLButtonElement>, index: number): void {
+    if (event.key === "ArrowRight" || event.key === "ArrowDown") {
+      event.preventDefault();
+      onChange?.(options[(index + 1) % optionCount]?.value ?? value);
+    }
+    if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
+      event.preventDefault();
+      onChange?.(options[(index - 1 + optionCount) % optionCount]?.value ?? value);
+    }
+    if (event.key === "Home") {
+      event.preventDefault();
+      onChange?.(options[0]?.value ?? value);
+    }
+    if (event.key === "End") {
+      event.preventDefault();
+      onChange?.(options.at(-1)?.value ?? value);
+    }
+  }
+
   return createElement("div", { role: "radiogroup", style: { display: "inline-flex", gap: 6, padding: 4, ...baseSurfaceStyle } },
-    options.map((option) => createElement("button", {
+    options.map((option, index) => createElement("button", {
       key: option.value,
       role: "radio",
       type: "button",
+      tabIndex: activeIndex === index ? 0 : -1,
       "aria-checked": value === option.value,
       onClick: () => onChange?.(option.value),
+      onKeyDown: (event: KeyboardEvent<HTMLButtonElement>) => handleKeyDown(event, index),
       style: {
         padding: "6px 12px",
         borderRadius: 999,
@@ -389,6 +592,7 @@ export function PieChart({
 }: {
   slices: readonly { label: string; value: number; color?: string }[];
 }): ReactElement {
+  const chartId = useId();
   const total = slices.reduce((sum, slice) => sum + Math.max(slice.value, 0), 0);
   const palette = [
     designTokens.semantic.color.accent,
@@ -397,19 +601,27 @@ export function PieChart({
     designTokens.semantic.color.success,
     designTokens.semantic.color.danger,
   ];
-  let currentPercent = 0;
+  let accumulatedPercent = 0;
   const gradientStops = slices.map((slice, index) => {
-    const safeValue = total === 0 ? 0 : (Math.max(slice.value, 0) / total) * 100;
-    const start = currentPercent;
-    const end = currentPercent + safeValue;
-    currentPercent = end;
+    const ratio = total === 0 ? 0 : Math.max(slice.value, 0) / total;
+    const start = accumulatedPercent;
+    const end = index === slices.length - 1
+      ? 100
+      : Math.min(100, accumulatedPercent + ratio * 100);
+    accumulatedPercent = end;
     const color = slice.color ?? palette[index % palette.length]!;
-    return `${color} ${start}% ${end}%`;
+    return `${color} ${start.toFixed(4)}% ${end.toFixed(4)}%`;
   });
+  const sliceSummary = slices.map((slice) => {
+    const share = total === 0 ? 0 : (Math.max(slice.value, 0) / total) * 100;
+    return `${slice.label}: ${slice.value} (${share.toFixed(1)}%)`;
+  }).join(", ");
 
   return createElement("div", { style: { display: "grid", gap: 12, alignItems: "center", justifyItems: "center" } },
     createElement("div", {
-      "aria-label": "Pie chart",
+      role: "img",
+      "aria-labelledby": `${chartId}-title`,
+      "aria-describedby": `${chartId}-summary`,
       style: {
         width: 144,
         height: 144,
@@ -420,6 +632,8 @@ export function PieChart({
         border: `1px solid ${designTokens.semantic.color.border}`,
       },
     }),
+    createElement("span", { id: `${chartId}-title`, style: hiddenAccessibleTextStyle }, "Pie chart"),
+    createElement("span", { id: `${chartId}-summary`, style: hiddenAccessibleTextStyle }, sliceSummary),
     createElement("div", { style: { display: "grid", gap: 6, width: "100%" } },
       slices.map((slice, index) => createElement("div", {
         key: `${slice.label}-${index}`,
@@ -436,7 +650,11 @@ function formatRemainingDuration(deadline: string, now: number): {
   readonly label: string;
   readonly tone: "danger" | "warning" | "success";
 } {
-  const diff = new Date(deadline).getTime() - now;
+  const parsedDeadline = new Date(deadline).getTime();
+  if (!Number.isFinite(parsedDeadline)) {
+    return { label: "Unknown deadline", tone: "warning" };
+  }
+  const diff = parsedDeadline - now;
   if (diff <= 0) {
     return { label: "Expired", tone: "danger" };
   }
@@ -521,7 +739,16 @@ export function DAGVisualization({
   };
 
   return createElement("div", { style: { display: "grid", gap: 12 } },
-    createElement("div", { style: { display: "grid", gridTemplateColumns: `repeat(${Math.max(stages.length, 1)}, minmax(0, 1fr))`, gap: 12 } },
+    createElement("div", {
+      style: {
+        display: "grid",
+        gridAutoFlow: "column",
+        gridAutoColumns: `minmax(${Math.min(Math.max(220, stages.length * 12), 320)}px, 1fr)`,
+        gap: 12,
+        overflowX: "auto",
+        paddingBottom: 4,
+      },
+    },
       stages.map((stage) => createElement("div", {
         key: stage.id,
         style: {

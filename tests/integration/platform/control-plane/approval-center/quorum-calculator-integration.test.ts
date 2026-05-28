@@ -148,6 +148,7 @@ test("quorum calculator: mergeVotes adds new approver vote", () => {
 test("quorum calculator: determineFinalStatus returns approved when quorum met", () => {
   const status = createInitialQuorumStatus();
   status.isQuorumMet = true;
+  status.approvalsReceived = 1;
   const config: QuorumConfig = { minApprovals: 1, minRejectionsToDeny: 1 };
   const finalStatus = determineFinalStatus(status, config);
 
@@ -157,6 +158,7 @@ test("quorum calculator: determineFinalStatus returns approved when quorum met",
 test("quorum calculator: determineFinalStatus returns rejected when denied", () => {
   const status = createInitialQuorumStatus();
   status.isDenied = true;
+  status.rejectionsReceived = 1;
   const config: QuorumConfig = { minApprovals: 1, minRejectionsToDeny: 1 };
   const finalStatus = determineFinalStatus(status, config);
 

@@ -3,9 +3,28 @@
   "command": [
     "vitest",
     "run",
-    "tests/unit/ui/apps/web/app-shell.test.tsx",
-    "tests/unit/ui/apps/web/vite-config.test.ts"
+    "tests/unit/ui/packages/ui-core/layout-and-component-baseline.test.tsx",
+    "tests/shared/ui-core-chart-regressions.test.tsx",
+    "tests/unit/ui/shared/interceptors.test.ts",
+    "tests/unit/ui/shared/ws-client.test.ts",
+    "tests/unit/ui/shared/ws-event-router.test.ts",
+    "tests/unit/ui/shared/auth-service.test.ts",
+    "tests/unit/ui/shared/offline-queue.test.ts",
+    "tests/unit/ui/shared/sync-coordinator.test.ts",
+    "tests/unit/ui/shared/state-store-middleware.test.ts",
+    "tests/unit/ui/shared/mutations.test.tsx",
+    "tests/shared/query-cache-persistence.test.ts",
+    "tests/shared/api-client-runtime-regressions.test.ts",
+    "tests/shared/api-client.test.ts",
+    "tests/shared/auth-sync-state.test.ts",
+    "tests/shared/sso-login-flow-regression.test.ts",
+    "tests/shared/state-normalization.test.ts",
+    "tests/shared/reaudit-batch-r26-45-54.test.tsx",
+    "tests/shared/reaudit-batch-r26-56-61-65.test.ts",
+    "tests/shared/web-runtime-auth-regression.test.ts",
+    "tests/shared/ws-runtime-connect-regression.test.tsx",
+    "tests/unit/ui/apps/web/runtime.test.tsx"
   ],
-  "startedAt": "2026-05-27T09:50:32.023Z",
-  "completedAt": "2026-05-27T09:50:33.002Z"
+  "startedAt": "2026-05-28T13:11:12.679Z",
+  "completedAt": "2026-05-28T13:11:19.222Z"
 }

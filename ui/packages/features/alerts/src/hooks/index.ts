@@ -27,15 +27,16 @@ export interface AlertsVm {
   readonly history: readonly AlertHistoryEntry[];
   readonly streamStatus: "idle" | "live";
   readonly pendingOperations: number;
+  setFilters(next: Partial<AlertsVm["filters"]>): void;
   // R14-34: acknowledge/dismiss/escalate are the three core actions per §4.7
-  readonly onAcknowledge: (id: string) => void;
-  readonly onDismiss: (id: string) => void;
-  readonly onEscalate: (id: string) => void;
+  readonly onAcknowledge: (id: string) => Promise<void>;
+  readonly onDismiss: (id: string) => Promise<void>;
+  readonly onEscalate: (id: string) => Promise<void>;
   // Additional actions for alert lifecycle management
-  readonly onSnooze: (id: string) => void;
+  readonly onSnooze: (id: string) => Promise<void>;
   // Legacy aliases for backward compatibility with existing tests (R14-34)
-  readonly acknowledgeAlert: (id: string) => void;
-  readonly dismissAlert: (id: string) => void;
+  readonly acknowledgeAlert: (id: string) => Promise<void>;
+  readonly dismissAlert: (id: string) => Promise<void>;
 }
 
 const SEVERITY_ORDER: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
@@ -68,13 +69,20 @@ function buildHistoryEntry(action: string, incident: IncidentDTO): AlertHistoryE
   };
 }
 
+interface LiveIncidentEntry {
+  readonly incident: IncidentDTO;
+  readonly receivedAt: number;
+}
+
+const LIVE_INCIDENT_TTL_MS = 15 * 60 * 1000;
+
 export function buildAlertsVm(
   incidents: readonly IncidentDTO[],
   filters: AlertsVm["filters"],
   history: readonly AlertHistoryEntry[],
   streamStatus: AlertsVm["streamStatus"],
   pendingOperations: number,
-  actions: Pick<AlertsVm, "onAcknowledge" | "onDismiss" | "onEscalate" | "onSnooze">,
+  actions: Pick<AlertsVm, "onAcknowledge" | "onDismiss" | "onEscalate" | "onSnooze" | "setFilters">,
 ): AlertsVm {
   const filtered = incidents.filter((incident) => {
     if (filters.severity !== "all" && incident.severity !== filters.severity) {
@@ -115,35 +123,36 @@ export function useAlertsVm(): AlertsVm {
   const auth = useAuthState();
   const client = useRestClient();
   const wsClient = useWsClient();
-  const [filters] = useState<AlertsVm["filters"]>({
+  const [filters, setFiltersState] = useState<AlertsVm["filters"]>({
     severity: "all",
     domain: "all",
     timeRange: "all",
   });
-  const [liveIncidents, setLiveIncidents] = useState<readonly IncidentDTO[]>([]);
+  const [liveIncidents, setLiveIncidents] = useState<readonly LiveIncidentEntry[]>([]);
   const [dismissed, setDismissed] = useState<ReadonlySet<string>>(new Set());
   const [snoozedUntil, setSnoozedUntil] = useState<ReadonlyMap<string, number>>(new Map());
   const [history, setHistory] = useState<readonly AlertHistoryEntry[]>([]);
   const [streamStatus, setStreamStatus] = useState<AlertsVm["streamStatus"]>("idle");
+  const [pendingOperations, setPendingOperations] = useState(0);
   const incidents = useIncidentsQuery().data ?? [];
   const scopedIncidents = auth.permissions.includes(ALERTS_REQUIRED_PERMISSION) ? incidents : [];
 
-  const { mutate: acknowledgeMutate, status: acknowledgeStatus } = useMutation({
+  const { mutateAsync: acknowledgeMutateAsync } = useMutation({
     client,
     method: "POST",
     path: ({ id }: { id: string }) => `/alerts/${id}/acknowledge`,
   });
-  const { mutate: dismissMutate, status: dismissStatus } = useMutation({
+  const { mutateAsync: dismissMutateAsync } = useMutation({
     client,
     method: "POST",
     path: ({ id }: { id: string }) => `/alerts/${id}/dismiss`,
   });
-  const { mutate: snoozeMutate, status: snoozeStatus } = useMutation({
+  const { mutateAsync: snoozeMutateAsync } = useMutation({
     client,
     method: "POST",
     path: ({ id }: { id: string }) => `/alerts/${id}/snooze`,
   });
-  const { mutate: escalateMutate, status: escalateStatus } = useMutation({
+  const { mutateAsync: escalateMutateAsync } = useMutation({
     client,
     method: "POST",
     path: ({ id }: { id: string }) => `/alerts/${id}/escalate`,
@@ -159,11 +168,34 @@ export function useAlertsVm(): AlertsVm {
         return;
       }
       setStreamStatus("live");
-      setLiveIncidents((current) => mergeIncidents(current, payload.incident!));
+      setLiveIncidents((current) => {
+        const merged = mergeIncidents(current.map((entry) => entry.incident), payload.incident!);
+        const receivedAt = Date.now();
+        return merged.map((incident) => ({
+          incident,
+          receivedAt: incident.id === payload.incident!.id
+            ? receivedAt
+            : current.find((entry) => entry.incident.id === incident.id)?.receivedAt ?? receivedAt,
+        }));
+      });
       setHistory((current) => [buildHistoryEntry("Stream update", payload.incident!), ...current].slice(0, 8));
     });
-    return unsubscribe;
+    const unsubscribeStatus = wsClient.onStatusChange((nextStatus) => {
+      setStreamStatus(nextStatus === "connected" ? "live" : "idle");
+    });
+    return () => {
+      unsubscribe();
+      unsubscribeStatus();
+    };
   }, [wsClient]);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const cutoff = Date.now() - LIVE_INCIDENT_TTL_MS;
+      setLiveIncidents((current) => current.filter((entry) => entry.receivedAt >= cutoff));
+    }, 60_000);
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     if (snoozedUntil.size === 0) {
@@ -199,8 +231,11 @@ export function useAlertsVm(): AlertsVm {
     for (const incident of scopedIncidents) {
       merged.set(incident.id, incident);
     }
-    for (const incident of liveIncidents) {
-      merged.set(incident.id, incident);
+    const cutoff = Date.now() - LIVE_INCIDENT_TTL_MS;
+    for (const entry of liveIncidents) {
+      if (entry.receivedAt >= cutoff) {
+        merged.set(entry.incident.id, entry.incident);
+      }
     }
     const now = Date.now();
     return sortIncidents([...merged.values()]).filter((incident) => {
@@ -226,59 +261,104 @@ export function useAlertsVm(): AlertsVm {
 
   const findIncident = useCallback((id: string) => dedupedIncidents.find((incident) => incident.id === id) ?? null, [dedupedIncidents]);
 
-  const onAcknowledge = useCallback((id: string) => {
-    acknowledgeMutate({ id });
-    const incident = findIncident(id);
-    if (incident != null) {
-      appendHistory(buildHistoryEntry("Acknowledged", incident));
+  const withPending = useCallback(async (operation: () => Promise<void>) => {
+    setPendingOperations((current) => current + 1);
+    try {
+      await operation();
+    } finally {
+      setPendingOperations((current) => Math.max(0, current - 1));
     }
-  }, [acknowledgeMutate, appendHistory, findIncident]);
+  }, []);
 
-  const onDismiss = useCallback((id: string) => {
-    dismissMutate({ id });
+  const onAcknowledge = useCallback(async (id: string) => {
+    const incident = findIncident(id);
+    await withPending(async () => {
+      await acknowledgeMutateAsync({ id });
+      if (incident != null) {
+        appendHistory(buildHistoryEntry("Acknowledged", incident));
+      }
+    });
+  }, [acknowledgeMutateAsync, appendHistory, findIncident, withPending]);
+
+  const onDismiss = useCallback(async (id: string) => {
+    const incident = findIncident(id);
     setDismissed((current) => new Set([...current, id]));
-    const incident = findIncident(id);
-    if (incident != null) {
-      appendHistory(buildHistoryEntry("Dismissed", incident));
+    try {
+      await withPending(async () => {
+        await dismissMutateAsync({ id });
+        if (incident != null) {
+          appendHistory(buildHistoryEntry("Dismissed", incident));
+        }
+      });
+    } catch (error) {
+      setDismissed((current) => {
+        const next = new Set(current);
+        next.delete(id);
+        return next;
+      });
+      throw error;
     }
-  }, [appendHistory, dismissMutate, findIncident]);
+  }, [appendHistory, dismissMutateAsync, findIncident, withPending]);
 
-  const onSnooze = useCallback((id: string) => {
-    snoozeMutate({ id });
+  const onSnooze = useCallback(async (id: string) => {
+    const expiry = Date.now() + 30 * 60 * 1000;
+    const incident = findIncident(id);
     setSnoozedUntil((current) => {
       const next = new Map(current);
-      next.set(id, Date.now() + 30 * 60 * 1000);
+      next.set(id, expiry);
       return next;
     });
-    const incident = findIncident(id);
-    if (incident != null) {
-      appendHistory(buildHistoryEntry("Snoozed 30m", incident));
+    try {
+      await withPending(async () => {
+        await snoozeMutateAsync({ id });
+        if (incident != null) {
+          appendHistory(buildHistoryEntry("Snoozed 30m", incident));
+        }
+      });
+    } catch (error) {
+      setSnoozedUntil((current) => {
+        const next = new Map(current);
+        next.delete(id);
+        return next;
+      });
+      throw error;
     }
-  }, [appendHistory, findIncident, snoozeMutate]);
+  }, [appendHistory, findIncident, snoozeMutateAsync, withPending]);
 
-  const onEscalate = useCallback((id: string) => {
-    escalateMutate({ id });
+  const onEscalate = useCallback(async (id: string) => {
     const incident = findIncident(id);
-    if (incident != null) {
-      appendHistory(buildHistoryEntry("Escalated", incident));
-    }
-  }, [appendHistory, escalateMutate, findIncident]);
+    await withPending(async () => {
+      await escalateMutateAsync({ id });
+      if (incident != null) {
+        appendHistory(buildHistoryEntry("Escalated", incident));
+      }
+    });
+  }, [appendHistory, escalateMutateAsync, findIncident, withPending]);
 
-  const pendingOperations = [acknowledgeStatus, dismissStatus, snoozeStatus, escalateStatus]
-    .filter((status) => status === "pending")
-    .length;
-
-  return buildAlertsVm(
+  return useMemo(() => buildAlertsVm(
     dedupedIncidents,
     filters,
     history,
     streamStatus,
     pendingOperations,
     {
+      setFilters(next) {
+        setFiltersState((current) => ({ ...current, ...next }));
+      },
       onAcknowledge,
       onDismiss,
       onEscalate,
       onSnooze,
     },
-  );
+  ), [
+    dedupedIncidents,
+    filters,
+    history,
+    onAcknowledge,
+    onDismiss,
+    onEscalate,
+    onSnooze,
+    pendingOperations,
+    streamStatus,
+  ]);
 }

@@ -57,6 +57,7 @@ export { createThemeStore } from "./stores/theme-store";
 export type { ThemeStoreState, ThemeMode, ResolvedThemeName } from "./stores/theme-store";
 export {
   CACHE_TIER_STALE_TIME,
+  createQueryClient,
   createQueryClientFactory,
   createTieredQueryClientFactory,
   type QueryCacheTier,
@@ -330,24 +331,36 @@ export function useApprovalsQuery() {
   return useQuery(createApprovalsQuery(client));
 }
 
-export function useIncidentsQuery() {
+export function useIncidentsQuery(options?: { readonly enabled?: boolean }) {
   const client = useRestClient();
-  return useQuery(createIncidentsQuery(client));
+  return useQuery({
+    ...createIncidentsQuery(client),
+    ...(options == null ? {} : options),
+  });
 }
 
-export function useWorkersQuery() {
+export function useWorkersQuery(options?: { readonly enabled?: boolean }) {
   const client = useRestClient();
-  return useQuery(createWorkersQuery(client));
+  return useQuery({
+    ...createWorkersQuery(client),
+    ...(options == null ? {} : options),
+  });
 }
 
-export function useQueuesQuery() {
+export function useQueuesQuery(options?: { readonly enabled?: boolean }) {
   const client = useRestClient();
-  return useQuery(createQueuesQuery(client));
+  return useQuery({
+    ...createQueuesQuery(client),
+    ...(options == null ? {} : options),
+  });
 }
 
-export function useAgentsQuery() {
+export function useAgentsQuery(options?: { readonly enabled?: boolean }) {
   const client = useRestClient();
-  return useQuery(createAgentsQuery(client));
+  return useQuery({
+    ...createAgentsQuery(client),
+    ...(options == null ? {} : options),
+  });
 }
 
 export function useMissionsQuery() {
@@ -355,9 +368,12 @@ export function useMissionsQuery() {
   return useQuery(createMissionsQuery(client));
 }
 
-export function useAnalyticsQuery() {
+export function useAnalyticsQuery(options?: { readonly enabled?: boolean }) {
   const client = useRestClient();
-  return useQuery(createAnalyticsQuery(client));
+  return useQuery({
+    ...createAnalyticsQuery(client),
+    ...(options == null ? {} : options),
+  });
 }
 
 export function useCostReportsQuery() {

@@ -6,9 +6,9 @@ import { createIncidentRoutes } from "../../../../../../src/platform/five-plane-
 import type { ApiAuthService } from "../../../../../../src/platform/five-plane-interface/api/api-auth-service.js";
 import type { RouteContext, RouteDefinition, ApiResponsePayload } from "../../../../../../src/platform/five-plane-interface/api/http-server/types.js";
 
-function createMockAuthService(roles: string[] = ["viewer"]): ApiAuthService {
+function createMockAuthService(roles: string[] = ["viewer"], tenantId: string | null = null): ApiAuthService {
   return {
-    requireRole: () => ({ actorId: "actor-1", roles: roles as ("viewer" | "operator" | "admin")[], authMethod: "api_key", tenantId: null }),
+    requireRole: () => ({ actorId: "actor-1", roles: roles as ("viewer" | "operator" | "admin")[], authMethod: "api_key", tenantId }),
   } as unknown as ApiAuthService;
 }
 
@@ -119,6 +119,21 @@ test("GET /v1/incidents lists incidents from service", async () => {
   if (!response) throw new Error("handler returned null");
   assert.equal(response.statusCode, 200);
   assert.ok(response.body.includes("Database latency"));
+});
+
+test("GET /v1/incidents only returns incidents for the caller tenant", async () => {
+  const incidentService = new IncidentCaseService();
+  incidentService.openIncident({ severity: "high", title: "Tenant A latency", tenantId: "tenant-a" });
+  incidentService.openIncident({ severity: "critical", title: "Tenant B outage", tenantId: "tenant-b" });
+  const routes = createIncidentRoutes({
+    authService: createMockAuthService(["viewer"], "tenant-a"),
+    incidentService,
+  });
+
+  const response = await callRoute(routes, createMockContext("/v1/incidents", ["v1", "incidents"]));
+  if (!response) throw new Error("handler returned null");
+  const body = JSON.parse(response.body) as { data: { incidents: Array<{ title: string }> } };
+  assert.deepEqual(body.data.incidents.map((incident) => incident.title), ["Tenant A latency"]);
 });
 
 test("POST /v1/incidents creates a new incident", async () => {

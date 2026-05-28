@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import type { Connect, Plugin, PluginOption } from "vite";
 
 import viteConfig from "../../../../../apps/web/vite.config";
+import testTarget from "../../../../../test-target.json";
 
 function flattenPlugins(plugins: PluginOption[] | undefined): Plugin[] {
   const resolved = plugins ?? [];
@@ -22,16 +23,16 @@ describe("web vite config", () => {
     expect(config.build?.sourcemap).toBe(true);
   });
 
-  it("uses stable localhost ports for dev and preview", async () => {
+  it("uses shared target ports for dev and preview", async () => {
     const config = await viteConfig({ command: "serve", mode: "development", isSsrBuild: false, isPreview: false });
     expect(config.server).toMatchObject({
-      host: "localhost",
-      port: 5173,
+      host: testTarget.host,
+      port: testTarget.port + 1000,
       strictPort: true,
     });
     expect(config.preview).toMatchObject({
-      host: "localhost",
-      port: 4173,
+      host: testTarget.host,
+      port: testTarget.port,
       strictPort: true,
     });
   });

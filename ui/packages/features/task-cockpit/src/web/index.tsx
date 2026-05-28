@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactElement } from "react";
-import { FeatureScaffold, KeyValueTable, ListCard, ThreePaneLayout } from "@aa/ui-core";
+import { FeatureScaffold, Inline, KeyValueTable, ListCard, Stack, ThreePaneLayout } from "@aa/ui-core";
 import { translateMessage } from "@aa/shared-i18n";
 import { useTaskCockpitVm } from "../hooks";
 
@@ -40,7 +40,7 @@ export function TaskCockpitWebView(): ReactElement {
         left={(
           <div>
             <h3>{translateMessage("ui.taskCockpit.listTitle")}</h3>
-            <div style={{ display: "grid", gap: 10 }}>
+            <Stack gap={10}>
               {vm.listItems.map((task) => (
                 <button
                   key={task.id}
@@ -52,14 +52,20 @@ export function TaskCockpitWebView(): ReactElement {
                   <div>{task.subtitle}</div>
                 </button>
               ))}
-            </div>
+            </Stack>
           </div>
         )}
         center={selectedTask == null ? <p>{translateMessage("ui.taskCockpit.noTask")}</p> : (
-          <div style={{ display: "grid", gap: 16 }}>
+          <Stack gap={16}>
             <h3>{translateMessage("ui.taskCockpit.detailTitle")}</h3>
             <KeyValueTable rows={detailRows} />
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                void vm.claimTask(sanitizeInput(operator, "platform-sre"));
+              }}
+            >
+              <Inline>
               <input
                 aria-label={translateMessage("ui.taskCockpit.operatorInput")}
                 name="operator-id"
@@ -67,12 +73,21 @@ export function TaskCockpitWebView(): ReactElement {
                 placeholder={translateMessage("ui.taskCockpit.operatorPlaceholder")}
                 value={operator}
               />
-              <button onClick={() => { void vm.claimTask(sanitizeInput(operator, "platform-sre")); }} type="button">{translateMessage("ui.taskCockpit.takeOver")}</button>
+              <button type="submit">{translateMessage("ui.taskCockpit.takeOver")}</button>
               <button onClick={() => { void vm.pauseTask(); }} type="button">{translateMessage("ui.taskCockpit.pause")}</button>
               <button onClick={() => { void vm.cancelTask(); }} type="button">{translateMessage("ui.taskCockpit.cancel")}</button>
               <button onClick={() => { void vm.retryTask(); }} type="button">{translateMessage("ui.taskCockpit.retry")}</button>
               <button onClick={() => { void vm.resumeTask("normal"); }} type="button">{translateMessage("ui.taskCockpit.resume")}</button>
               <button onClick={() => { void vm.resumeTask("supervised"); }} type="button">{translateMessage("ui.taskCockpit.supervisedResume")}</button>
+              </Inline>
+            </form>
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                void vm.escalateTask(sanitizeInput(target, "domain-admin"));
+              }}
+            >
+              <Inline>
               <input
                 aria-label={translateMessage("ui.taskCockpit.targetInput")}
                 name="target-id"
@@ -80,18 +95,19 @@ export function TaskCockpitWebView(): ReactElement {
                 placeholder={translateMessage("ui.taskCockpit.targetPlaceholder")}
                 value={target}
               />
-              <button onClick={() => { void vm.escalateTask(sanitizeInput(target, "domain-admin")); }} type="button">{translateMessage("ui.taskCockpit.escalate")}</button>
-            </div>
-          </div>
+              <button type="submit">{translateMessage("ui.taskCockpit.escalate")}</button>
+              </Inline>
+            </form>
+          </Stack>
         )}
         right={selectedTask == null ? <p>{translateMessage("ui.taskCockpit.noTimeline")}</p> : (
-          <div style={{ display: "grid", gap: 12 }}>
+          <Stack>
             <h3>{translateMessage("ui.taskCockpit.drillTitle")}</h3>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <Inline>
               <button onClick={() => setActiveTab("steps")} type="button">{translateMessage("ui.taskCockpit.stepsTab")}</button>
               <button onClick={() => setActiveTab("evidence")} type="button">{translateMessage("ui.taskCockpit.evidenceTab")}</button>
               <button onClick={() => setActiveTab("timeline")} type="button">{translateMessage("ui.taskCockpit.timelineTab")}</button>
-            </div>
+            </Inline>
             {activeTab === "steps" ? (
               <ListCard
                 items={vm.stepViewer.steps.map((step) => ({
@@ -116,7 +132,7 @@ export function TaskCockpitWebView(): ReactElement {
                 }))}
               />
             ) : null}
-          </div>
+          </Stack>
         )}
       />
     </FeatureScaffold>

@@ -155,11 +155,11 @@ export function createIncidentRoutes(deps: IncidentRouteDeps): RouteDefinition[]
 
         let updated: IncidentCase;
         if (payload.status === "acknowledged" && incident.status === "open") {
-          updated = deps.incidentService.acknowledge(incidentId, payload.owner ?? "unknown");
+          updated = deps.incidentService.acknowledge(incidentId, payload.owner ?? principal.actorId, tenantId);
         } else if (payload.status === "mitigating") {
-          updated = deps.incidentService.startMitigation(incidentId);
+          updated = deps.incidentService.startMitigation(incidentId, tenantId);
         } else if (payload.status === "resolved") {
-          updated = deps.incidentService.resolve(incidentId);
+          updated = deps.incidentService.resolve(incidentId, tenantId);
         } else {
           throw new ApiError(400, "incident.invalid_transition", `Cannot transition from ${incident.status} to ${payload.status}.`);
         }

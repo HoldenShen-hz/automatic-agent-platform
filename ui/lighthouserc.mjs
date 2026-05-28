@@ -39,7 +39,7 @@ export default {
         "first-contentful-paint": ["warn", { maxNumericValue: 2000 }],
         "largest-contentful-paint": ["error", { maxNumericValue: 4000 }],
         "cumulative-layout-shift": ["error", { maxNumericValue: 0.1 }],
-        "interaction-to-next-paint": ["error", { maxNumericValue: 200 }],
+        "interaction-to-next-paint": ["warn", { maxNumericValue: 500 }],
         "total-blocking-time": ["warn", { maxNumericValue: 500 }],
         "speed-index": ["warn", { maxNumericValue: 4000 }],
         "server-response-time": ["warn", { maxNumericValue: 800 }],

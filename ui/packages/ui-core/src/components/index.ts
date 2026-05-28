@@ -1,19 +1,20 @@
-import { createElement, useEffect, useMemo, useState, type PropsWithChildren, type ReactElement, type ReactNode } from "react";
+import { createElement, useEffect, useMemo, useState, type ChangeEvent, type KeyboardEvent, type PropsWithChildren, type ReactElement, type ReactNode } from "react";
 import type { ImplementationStatus } from "@aa/shared-types";
 import { createPanelStyle, designTokens } from "../design-tokens";
-import { LayoutFrame, ThreePaneLayout } from "../layouts";
+import { Inline, LayoutFrame, Stack, ThreePaneLayout } from "../layouts";
 export { CodeBlock, DAGVisualization, FileAttachment, Timeline } from "./extended";
-export { LayoutFrame, ThreePaneLayout } from "../layouts";
+export { Inline, LayoutFrame, Stack, ThreePaneLayout } from "../layouts";
 
 export function StatusPill({ status }: { status: ImplementationStatus }): ReactElement {
   const background = status === "Planned" ? designTokens.color.planned : designTokens.color.accent;
+  const color = status === "Planned" ? designTokens.color.text : designTokens.color.text;
   return createElement(
     "span",
     {
       style: {
         background,
         borderRadius: 999,
-        color: "#04130a",
+        color,
         padding: "4px 10px",
         fontSize: 12,
         fontWeight: 700,
@@ -40,10 +41,10 @@ export function KeyValueTable({ rows }: { rows: readonly { key: string; value: R
   return createElement(
     "div",
     { style: { display: "grid", gap: 10 } },
-    ...rows.map((row) => createElement(
+    ...rows.map((row, index) => createElement(
       "div",
       {
-        key: row.key,
+        key: `${row.key}-${index}`,
         style: { display: "grid", gridTemplateColumns: "120px 1fr", gap: 12, borderBottom: `1px solid ${designTokens.color.border}`, paddingBottom: 8 },
       },
       createElement("strong", { style: { color: designTokens.color.subtle } }, row.key),
@@ -163,11 +164,11 @@ export function FeatureWorkbench(
   const [activities, setActivities] = useState<readonly { title: string; description: string }[]>([]);
 
   const filteredItems = useMemo(() => items.filter((item) => {
-    const normalizedFilter = filter.trim().toLowerCase();
+    const normalizedFilter = filter.trim().toLocaleLowerCase();
     if (normalizedFilter.length === 0) {
       return true;
     }
-    return item.title.toLowerCase().includes(normalizedFilter) || item.description.toLowerCase().includes(normalizedFilter);
+    return item.title.toLocaleLowerCase().includes(normalizedFilter) || item.description.toLocaleLowerCase().includes(normalizedFilter);
   }), [filter, items]);
 
   useEffect(() => {
@@ -183,12 +184,20 @@ export function FeatureWorkbench(
   const selectedItem = filteredItems.find((item) => item.id === selectedId) ?? null;
 
   async function triggerAction(action: FeatureWorkbenchAction): Promise<void> {
-    await action.onTrigger?.(selectedItem);
-    const activity = action.buildActivity?.(selectedItem) ?? {
-      title: `${action.label} completed`,
-      description: selectedItem == null ? "A system-level action has been recorded." : `${selectedItem.title} has entered the ${action.label} flow.`,
-    };
-    setActivities((current) => [activity, ...current].slice(0, 6));
+    try {
+      await action.onTrigger?.(selectedItem);
+      const activity = action.buildActivity?.(selectedItem) ?? {
+        title: `${action.label} completed`,
+        description: selectedItem == null ? "A system-level action has been recorded." : `${selectedItem.title} has entered the ${action.label} flow.`,
+      };
+      setActivities((current) => [activity, ...current].slice(0, 6));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setActivities((current) => [{
+        title: `${action.label} failed`,
+        description: message,
+      }, ...current].slice(0, 6));
+    }
   }
 
   function moveSelection(delta: number): void {
@@ -224,8 +233,8 @@ export function FeatureWorkbench(
       { style: { display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" } },
       createElement("input", {
         "aria-label": resolvedLabels.filterLabel,
-        onChange: (event: Event) => {
-          setFilter((event.target as HTMLInputElement).value);
+        onChange: (event: ChangeEvent<HTMLInputElement>) => {
+          setFilter(event.target.value);
         },
         placeholder: resolvedLabels.filterPlaceholder,
         style: {
@@ -261,13 +270,11 @@ export function FeatureWorkbench(
         ? createElement("p", { style: { color: designTokens.color.subtle } }, resolvedLabels.emptyState)
         : createElement(
           "div",
-          { role: "listbox", "aria-label": "Workbench items", style: { display: "grid", gap: 10 } },
-          ...filteredItems.map((item) => createElement("button", {
-            key: item.id,
-            onClick: () => {
-              setSelectedId(item.id);
-            },
-            onKeyDown: (event: KeyboardEvent) => {
+          {
+            role: "listbox",
+            "aria-label": "Workbench items",
+            "aria-activedescendant": selectedId == null ? undefined : `feature-workbench-option-${selectedId}`,
+            onKeyDown: (event: KeyboardEvent<HTMLDivElement>) => {
               if (event.key === "ArrowDown") {
                 event.preventDefault();
                 moveSelection(1);
@@ -285,6 +292,15 @@ export function FeatureWorkbench(
                 setSelectedId(filteredItems.at(-1)?.id ?? null);
               }
             },
+            style: { display: "grid", gap: 10 },
+            tabIndex: 0,
+          },
+          ...filteredItems.map((item) => createElement("div", {
+            key: item.id,
+            id: `feature-workbench-option-${item.id}`,
+            onClick: () => {
+              setSelectedId(item.id);
+            },
             role: "option",
             "aria-selected": item.id === selectedId,
             style: {
@@ -295,7 +311,6 @@ export function FeatureWorkbench(
               cursor: "pointer",
               textAlign: "left",
             },
-            type: "button",
           },
           createElement("strong", undefined, item.title),
           createElement("div", { style: { color: designTokens.color.subtle, marginTop: 8 } }, item.description))),
@@ -317,7 +332,7 @@ export function FeatureWorkbench(
       right: createElement(
         "div",
         { style: { display: "grid", gap: 12 } },
-        createElement("div", { role: "log", "aria-live": "polite", "aria-relevant": "additions text", style: createPanelStyle(designTokens.color.border) },
+        createElement("div", { role: "log", "aria-live": "polite", "aria-relevant": "additions removals text", style: createPanelStyle(designTokens.color.border) },
           createElement("h3", { style: { marginTop: 0, color: designTokens.color.text } }, resolvedLabels.activityLogTitle),
           activities.length === 0
             ? createElement("p", { style: { color: designTokens.color.subtle, marginBottom: 0 } }, resolvedLabels.activityLogEmpty)

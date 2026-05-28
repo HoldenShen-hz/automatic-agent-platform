@@ -51,13 +51,13 @@ test("R20-30 incident routes return and consume cursor pagination", async () => 
   backingService.openIncident({ severity: "high", title: "Incident B" });
   backingService.openIncident({ severity: "high", title: "Incident C" });
   const incidentService: IncidentFacadeService = {
-    listIncidents: (limit) => backingService.listIncidents(limit),
-    listIncidentsPaginated: (limit, _tenantId, cursor) => backingService.listIncidentsPaginated(limit, cursor),
-    getIncident: (incidentId) => backingService.getIncident(incidentId),
+    listIncidents: (limit, tenantId) => backingService.listIncidents(limit, tenantId),
+    listIncidentsPaginated: (limit, tenantId, cursor) => backingService.listIncidentsPaginated(limit, tenantId, cursor),
+    getIncident: (incidentId, tenantId) => backingService.getIncident(incidentId, tenantId),
     openIncident: (input) => backingService.openIncident(input),
-    acknowledge: (incidentId, owner) => backingService.acknowledge(incidentId, owner),
-    startMitigation: (incidentId) => backingService.startMitigation(incidentId),
-    resolve: (incidentId) => backingService.resolve(incidentId),
+    acknowledge: (incidentId, owner, tenantId) => backingService.acknowledge(incidentId, owner, tenantId),
+    startMitigation: (incidentId, tenantId) => backingService.startMitigation(incidentId, tenantId),
+    resolve: (incidentId, tenantId) => backingService.resolve(incidentId, tenantId),
   };
 
   const routes = createIncidentRoutes({

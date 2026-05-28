@@ -44,6 +44,7 @@ export interface ConnectorFrameworkServiceOptions {
   readonly healthRetentionCount?: number;
   readonly maxBindings?: number;
   readonly maxHealthConnectors?: number;
+  readonly maxConnectors?: number;
   readonly executors?: Readonly<Record<string, (request: ConnectorExecutionRequest) => Promise<ConnectorExecutionResult> | ConnectorExecutionResult>>;
 }
 
@@ -73,6 +74,8 @@ export class ConnectorFrameworkService {
   private readonly maxBindings: number;
   /** Maximum number of connectors with health reports (LRU eviction). */
   private readonly maxHealthConnectors: number;
+  /** Maximum number of registered connectors/executors retained in memory. */
+  private readonly maxConnectors: number;
   /** LRU tracking for bindings map entries (connectorId -> true when accessed). */
   private readonly bindingsLRU = new Set<string>();
   /** LRU tracking for health map entries. */
@@ -91,6 +94,7 @@ export class ConnectorFrameworkService {
     healthRetentionCount = 100,
     maxBindings = 10_000,
     maxHealthConnectors = 1_000,
+    maxConnectors = 1_000,
   ) {
     const options = typeof storageDirOrOptions === "object" && storageDirOrOptions !== null
       ? storageDirOrOptions
@@ -104,6 +108,7 @@ export class ConnectorFrameworkService {
     this.healthRetentionCount = options?.healthRetentionCount ?? healthRetentionCount;
     this.maxBindings = options?.maxBindings ?? maxBindings;
     this.maxHealthConnectors = options?.maxHealthConnectors ?? maxHealthConnectors;
+    this.maxConnectors = options?.maxConnectors ?? maxConnectors;
     if (this.storageDir != null) {
       this.load();
     }
@@ -117,6 +122,7 @@ export class ConnectorFrameworkService {
     if (this.manifests.has(parsed.connectorId)) {
       throw new Error(`connector_framework.duplicate_connector_id:${parsed.connectorId}`);
     }
+    this.ensureConnectorCapacity(parsed.connectorId);
     this.manifests.set(parsed.connectorId, parsed);
     this.registerBuiltInConnectorInstance(parsed);
     this.persistManifests();
@@ -154,8 +160,7 @@ export class ConnectorFrameworkService {
     }
 
     // Mark this connectorId as most recently used
-    this.bindingsLRU.delete(connectorId);
-    this.bindingsLRU.add(connectorId);
+    this.touchBinding(connectorId);
     this.persistBindings();
     return binding;
   }
@@ -203,9 +208,7 @@ export class ConnectorFrameworkService {
     }
 
     this.health.set(report.connectorId, updated);
-    // Mark this connectorId as most recently used
-    this.healthLRU.delete(report.connectorId);
-    this.healthLRU.add(report.connectorId);
+    this.touchHealth(report.connectorId);
     this.persistHealth();
     return report;
   }
@@ -223,6 +226,7 @@ export class ConnectorFrameworkService {
   }
 
   public registerConnectorInstance(connectorId: string, instance: ConnectorExecutor): void {
+    this.ensureConnectorCapacity(connectorId);
     this.connectorInstances.set(connectorId, instance);
     if (!this.circuitBreakers.has(connectorId)) {
       this.circuitBreakers.set(connectorId, new CircuitBreaker(ConnectorFrameworkService.DEFAULT_CIRCUIT_BREAKER_OPTIONS));
@@ -285,6 +289,7 @@ export class ConnectorFrameworkService {
     }
 
     const reports = this.health.get(normalizedRequest.connectorId) ?? [];
+    this.touchHealth(normalizedRequest.connectorId);
     const health = summarizeConnectorHealth(reports);
     const circuitBreaker = this.circuitBreakers.get(normalizedRequest.connectorId);
     if (health === "failed") {
@@ -353,6 +358,9 @@ export class ConnectorFrameworkService {
     tenantId?: string;
     environment?: ConnectorBinding["environment"];
   } = {}): ConnectorBinding[] {
+    if (options.connectorId != null && this.bindings.has(options.connectorId)) {
+      this.touchBinding(options.connectorId);
+    }
     const allBindings = Array.from(this.bindings.values()).flatMap((items) => items);
     return allBindings.filter((binding) => {
       if (options.connectorId != null && binding.connectorId !== options.connectorId) {
@@ -438,7 +446,7 @@ export class ConnectorFrameworkService {
     if (!existsSync(path)) return;
     try {
       const raw = readFileSync(path, "utf-8");
-      const entries = JSON.parse(raw) as Array<[string, RegisteredConnectorManifest]>;
+      const entries = (JSON.parse(raw) as Array<[string, RegisteredConnectorManifest]>).slice(-this.maxConnectors);
       for (const [id, manifest] of entries) {
         this.manifests.set(id, manifest);
         this.registerBuiltInConnectorInstance(manifest);
@@ -456,10 +464,14 @@ export class ConnectorFrameworkService {
       const entries = JSON.parse(raw) as Array<[string, ConnectorBinding[]]>;
       const cutoff = Date.now() - this.maxBindingAgeMs;
       for (const [connectorId, bindings] of entries) {
+        if (!this.manifests.has(connectorId)) {
+          continue;
+        }
         // Apply age-based eviction on load to prevent unbounded growth from persisted data
         const filtered = bindings.filter((b) => new Date(b.boundAt).getTime() >= cutoff);
         if (filtered.length > 0) {
           this.bindings.set(connectorId, filtered);
+          this.touchBinding(connectorId);
         }
       }
     } catch (error) {
@@ -474,7 +486,11 @@ export class ConnectorFrameworkService {
       const raw = readFileSync(path, "utf-8");
       const entries = JSON.parse(raw) as Array<[string, ConnectorHealthReport[]]>;
       for (const [connectorId, reports] of entries) {
-        this.health.set(connectorId, reports);
+        if (!this.manifests.has(connectorId)) {
+          continue;
+        }
+        this.health.set(connectorId, reports.slice(-this.healthRetentionCount));
+        this.touchHealth(connectorId);
       }
     } catch (error) {
       process.stderr.write(`connector_framework.load_health_failed:${error instanceof Error ? error.message : String(error)}\n`);
@@ -503,6 +519,25 @@ export class ConnectorFrameworkService {
     const dir = dirname(path);
     if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
     writeFileSync(path, JSON.stringify(Array.from(this.health.entries())), "utf-8");
+  }
+
+  private ensureConnectorCapacity(connectorId: string): void {
+    if (this.manifests.has(connectorId) || this.connectorInstances.has(connectorId)) {
+      return;
+    }
+    if (this.manifests.size >= this.maxConnectors || this.connectorInstances.size >= this.maxConnectors) {
+      throw new Error(`connector_framework.connector_capacity_exceeded:${connectorId}`);
+    }
+  }
+
+  private touchBinding(connectorId: string): void {
+    this.bindingsLRU.delete(connectorId);
+    this.bindingsLRU.add(connectorId);
+  }
+
+  private touchHealth(connectorId: string): void {
+    this.healthLRU.delete(connectorId);
+    this.healthLRU.add(connectorId);
   }
 }
 

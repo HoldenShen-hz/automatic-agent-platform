@@ -330,6 +330,7 @@ describe("service worker registration", () => {
 describe("web App component", () => {
   afterEach(() => {
     cleanup();
+    vi.clearAllMocks();
   });
 
   it("renders without crashing", () => {
@@ -357,6 +358,7 @@ describe("web App component", () => {
 describe("web app-shell guard behavior", () => {
   afterEach(() => {
     cleanup();
+    vi.clearAllMocks();
   });
 
   it("renders access denied when guard rejects", () => {
@@ -443,9 +445,10 @@ describe("web app-shell guard behavior", () => {
 describe("app-shell feature rendering", () => {
   afterEach(() => {
     cleanup();
+    vi.clearAllMocks();
   });
 
-  it("renders first feature as default for wildcard route", () => {
+  it("renders a 404 fallback for unknown routes", () => {
     const mockFeatures = [
       {
         manifest: {
@@ -464,7 +467,7 @@ describe("app-shell feature rendering", () => {
 
     render(<WebAppShell features={mockFeatures as never} router="memory" initialEntries={["/some-unknown-route"]} />);
 
-    expect(screen.getByTestId("dashboard-component")).toBeInTheDocument();
+    expect(screen.getByText("404")).toBeInTheDocument();
   });
 
   it("renders feature groups in navigation", () => {
@@ -507,6 +510,7 @@ describe("app-shell feature rendering", () => {
 describe("app-shell error boundary", () => {
   afterEach(() => {
     cleanup();
+    vi.clearAllMocks();
   });
 
   it("catches rendering errors and shows retry button", () => {
@@ -538,9 +542,13 @@ describe("app-shell error boundary", () => {
     expect(screen.getByRole("button", { name: "上报问题" })).toBeInTheDocument();
   });
 
-  it("retry button resets error state", async () => {
+  it("retry button retries rendering and restores content when the next render succeeds", async () => {
+    let shouldRecover = false;
     const ErrorThrowingComponent = () => {
-      throw new Error("Test error");
+      if (!shouldRecover) {
+        throw new Error("Test error");
+      }
+      return <div>Recovered feature</div>;
     };
 
     const mockFeatures = [
@@ -562,11 +570,11 @@ describe("app-shell error boundary", () => {
     render(<WebAppShell features={mockFeatures as never} router="memory" initialEntries={["/error"]} />);
 
     const retryButton = screen.getByRole("button", { name: "重试" });
+    shouldRecover = true;
     fireEvent.click(retryButton);
 
-    // After retry, error UI should be gone (though error will occur again)
-    // The important thing is the button is clickable
-    expect(screen.getByRole("button", { name: "重试" })).toBeInTheDocument();
+    expect(screen.getByText("Recovered feature")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "重试" })).toBeNull();
   });
 });
 
@@ -633,6 +641,7 @@ describe("runtime security behaviors", () => {
 describe("app-shell auth context passthrough", () => {
   afterEach(() => {
     cleanup();
+    vi.clearAllMocks();
   });
 
   it("passes null authContext when not provided", () => {

@@ -13,7 +13,7 @@ export const DEFAULT_CORS_CONFIG: CorsConfig = {
   allowedOrigins: [],
   allowedMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["content-type", "authorization", "x-request-id", "x-api-key"],
-  exposedHeaders: ["x-request-id", "x-trace-id", "x-api-version", "x-app-version"],
+  exposedHeaders: ["x-request-id", "x-trace-id", "x-api-version", "x-app-version", "x-build-commit"],
   maxAgeSeconds: 86_400,
   credentials: false,
 };
@@ -115,6 +115,7 @@ export function decorateResponseHeaders(
     ...DEFAULT_SECURITY_HEADERS,
     "x-api-version": payload.headers["x-api-version"] ?? "v1",
     "x-app-version": process.env["AA_BUILD_VERSION"] ?? "0.1.0",
+    ...(process.env["AA_BUILD_COMMIT"] != null ? { "x-build-commit": process.env["AA_BUILD_COMMIT"] } : {}),
     "cache-control": payload.headers["cache-control"] ?? "private, no-store, max-age=0",
     pragma: payload.headers.pragma ?? "no-cache",
     ...(traceId != null ? { "x-trace-id": traceId } : {}),

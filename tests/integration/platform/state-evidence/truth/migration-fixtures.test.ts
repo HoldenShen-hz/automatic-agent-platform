@@ -8,9 +8,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { DatabaseSync } from "node:sqlite";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { copyFileSync, existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
+import { fileURLToPath } from "node:url";
 
 import {
   SQLITE_MIGRATIONS,
@@ -19,6 +20,9 @@ import {
 } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-migration-plan.js";
 import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 import { SNAPSHOT_VERSIONS } from "../../../../fixtures/migration/generate-snapshots.js";
+
+const currentDir = dirname(fileURLToPath(import.meta.url));
+const snapshotsDir = join(currentDir, "../../../../fixtures/migration/snapshots");
 
 test("SQLite migrations array has contiguous versions from 1 to latest", () => {
   const versions = SQLITE_MIGRATIONS.map((m) => m.version);
@@ -122,7 +126,6 @@ test("migration names are prefixed with zero-padded version number", () => {
 test("migrations upgrade checked-in snapshots to the latest version", () => {
   try {
     const latestVersion = getLatestSqliteMigrationVersion();
-    const snapshotsDir = join(process.cwd(), "tests", "fixtures", "migration", "snapshots");
     const manifest = JSON.parse(readFileSync(join(snapshotsDir, "manifest.json"), "utf8")) as {
       snapshots: Array<{ version: number; path: string }>;
     };
@@ -172,7 +175,6 @@ test("snapshot generation script can generate manifest structure", () => {
 });
 
 test("checked-in migration snapshot manifest references existing snapshot databases", () => {
-  const snapshotsDir = join(process.cwd(), "tests", "fixtures", "migration", "snapshots");
   const manifestPath = join(snapshotsDir, "manifest.json");
 
   assert.ok(existsSync(manifestPath), "migration snapshot manifest should exist");
@@ -182,6 +184,11 @@ test("checked-in migration snapshot manifest references existing snapshot databa
   };
 
   assert.ok(manifest.snapshots.length > 0, "manifest should contain at least one snapshot");
+  assert.deepEqual(
+    manifest.snapshots.map((snapshot) => snapshot.version),
+    SNAPSHOT_VERSIONS,
+    "checked-in manifest should stay in lockstep with the generator snapshot version plan",
+  );
   for (const snapshot of manifest.snapshots) {
     assert.ok(snapshot.version > 0, "snapshot version should be positive");
     assert.ok(existsSync(join(snapshotsDir, snapshot.path)), `snapshot file should exist: ${snapshot.path}`);

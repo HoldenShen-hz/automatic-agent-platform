@@ -3,7 +3,7 @@
 | 字段 | 内容 |
 |---|---|
 | 文档版本 | v1.9 |
-| 扫描日期 | 2026-05-26 |
+| 扫描日期 | 2026-05-28 |
 | 扫描方式 | 自动扫描（`scripts/scan-current-codebase-gap.mjs`） |
 | 适用文档 | `docs_zh/reference/automatic_agent_system_harness_improvement_plan_v1_9_architecture_release.md` |
 | 结论 | 现有系统与 v1.9 方向无顶层架构冲突；应以复用、包装、扩展现有实现为主，禁止按目标名词平行新建第二套子系统 |
@@ -58,7 +58,7 @@
 
 | 能力 | 当前实现证据 | 当前状态 | 推荐动作 | 风险 | 工作量 | 结论 |
 |---|---|---|---|---|---|---|
-| Tool execution / registry boundary | `src/platform/five-plane-execution/tool-executor/、src/platform/five-plane-orchestration/harness/toolbelt/` | partial | wrap | medium | L | 不应先新建第二套执行栈；应在现有 tool-executor 前加 facade / contract。 |
+| Tool execution / registry boundary | `src/platform/five-plane-execution/tool-executor、src/platform/five-plane-orchestration/harness/toolbelt` | partial | wrap | medium | L | 不应先新建第二套执行栈；应在现有 tool-executor 前加 facade / contract。 |
 | Policy / Approval / Risk | `src/platform/five-plane-control-plane/risk-control/、src/platform/five-plane-control-plane/approval-center/、src/org-governance/approval-routing/` | partial | extend | medium | L | 以现有风控、审批、路由收敛为主。 |
 | Event Bus / Outbox / Receipt | `src/platform/five-plane-state-evidence/events/、src/platform/shared/outbox/、src/platform/five-plane-state-evidence/side-effect-ledger/` | partial | extend | medium | L | 应补齐统一 receipt contract，不应先拆新 receipt 子系统。 |
 | Authoritative Task Store / Truth | `src/platform/five-plane-state-evidence/truth/、src/platform/five-plane-state-evidence/truth/authoritative-task-store.ts` | implemented | keep | low | M | 不允许复制第二套任务真源。 |
@@ -83,7 +83,7 @@
 ## 5. 越层导入候选
 
 1. tool executor 越层导入候选：0
-2. memory 越层导入候选：12
+2. memory 越层导入候选：11
 3. stable release gate 越层导入候选：0
 
 说明：这是启发式扫描结果，用于后续 `lint:architecture-boundary` 脚本落地前的初筛，不等同最终违规判定。

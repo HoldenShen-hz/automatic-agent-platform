@@ -6,12 +6,14 @@
  */
 
 import assert from "node:assert/strict";
+import { join } from "node:path";
 import test from "node:test";
 
 import { HrRoleGovernanceService, type HrGapAnalysisRequest } from "../../../../src/domains/governance/hr-role-governance-service.js";
 import type { DivisionRegistry, LoadedDivisionDefinition } from "../../../../src/domains/governance/division-loader.js";
 
 function makeDivision(overrides: Partial<LoadedDivisionDefinition> & Pick<LoadedDivisionDefinition, "id" | "roles">): LoadedDivisionDefinition {
+  const safeDivisionId = overrides.id.replace(/[^a-z0-9_-]/gi, "_");
   return {
     id: overrides.id,
     version: "1.0.0",
@@ -23,7 +25,7 @@ function makeDivision(overrides: Partial<LoadedDivisionDefinition> & Pick<Loaded
     orchestrationWorkflowId: overrides.orchestrationWorkflowId ?? null,
     roles: overrides.roles,
     workflows: overrides.workflows ?? [],
-    rootPath: overrides.rootPath ?? `/tmp/${overrides.id}`,
+    rootPath: overrides.rootPath ?? join("/virtual/divisions", safeDivisionId),
   };
 }
 
@@ -36,7 +38,7 @@ function createDivisionRegistry(): DivisionRegistry {
           {
             id: "code_reviewer",
             name: "Code Reviewer",
-            promptPath: "/tmp/engineering/code-reviewer.prompt.md",
+            promptPath: "/virtual/divisions/engineering/code-reviewer.prompt.md",
             promptText: "Reviews code for quality and correctness.",
             model: "balanced",
             tools: ["read", "question"],
@@ -45,7 +47,7 @@ function createDivisionRegistry(): DivisionRegistry {
           {
             id: "deploy_engineer",
             name: "Deploy Engineer",
-            promptPath: "/tmp/engineering/deploy-engineer.prompt.md",
+            promptPath: "/virtual/divisions/engineering/deploy-engineer.prompt.md",
             promptText: "Deploys and releases production services safely.",
             model: "coding",
             tools: ["read", "apply_patch"],
@@ -59,7 +61,7 @@ function createDivisionRegistry(): DivisionRegistry {
           {
             id: "security_analyst",
             name: "Security Analyst",
-            promptPath: "/tmp/security/security-analyst.prompt.md",
+            promptPath: "/virtual/divisions/security/security-analyst.prompt.md",
             promptText: "Performs security audits and vulnerability scans.",
             model: "balanced",
             tools: ["read", "scan", "question"],

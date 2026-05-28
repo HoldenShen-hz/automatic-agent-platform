@@ -1,5 +1,6 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { getSharedTranslationService, resetSharedTranslationService } from "@aa/shared-i18n";
 
 type MockConversationMessage = {
   readonly role: "user" | "assistant" | "system";
@@ -91,6 +92,8 @@ describe("useConversationVm", () => {
     vi.clearAllMocks();
     sessionStorage.clear();
     conversationVmQueryClient.clear();
+    resetSharedTranslationService();
+    getSharedTranslationService().setLocale("en-US");
   });
 
   it("sends prompts directly and restores persisted history across remounts", async () => {
@@ -114,7 +117,9 @@ describe("useConversationVm", () => {
     unmount();
 
     const remounted = renderHook(() => useConversationVm());
-    expect(remounted.result.current.messages.length).toBe(2);
+    await waitFor(() => {
+      expect(remounted.result.current.messages.length).toBe(2);
+    });
     expect(conversationVmQueryClient.getQueryData(conversationVmQueryKey)).toMatchObject({
       status: "waiting_clarification",
       isStreaming: false,

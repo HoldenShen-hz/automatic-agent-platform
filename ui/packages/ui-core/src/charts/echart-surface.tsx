@@ -1,4 +1,4 @@
-import { Suspense, lazy, type ReactElement } from "react";
+import React, { Suspense, lazy, type ReactElement, type ReactNode } from "react";
 import { designTokens, type CoreDesignTokens } from "../design-tokens";
 
 export interface EChartSurfaceProps {
@@ -9,6 +9,27 @@ export interface EChartSurfaceProps {
 }
 
 const LazyEChartSurfaceRuntime = lazy(async () => import("./echart-surface-runtime").then((module) => ({ default: module.EChartSurfaceRuntime })));
+
+class ChartRuntimeErrorBoundary extends React.Component<
+  { readonly children: ReactNode; readonly fallback: ReactElement },
+  { readonly failed: boolean }
+> {
+  public constructor(props: { readonly children: ReactNode; readonly fallback: ReactElement }) {
+    super(props);
+    this.state = { failed: false };
+  }
+
+  public static getDerivedStateFromError(): { readonly failed: boolean } {
+    return { failed: true };
+  }
+
+  public override render(): ReactNode {
+    if (this.state.failed) {
+      return this.props.fallback;
+    }
+    return this.props.children;
+  }
+}
 
 function ChartTableFallback({ title, values }: { title: string; values: readonly number[] }): ReactElement {
   return (
@@ -32,26 +53,27 @@ function ChartTableFallback({ title, values }: { title: string; values: readonly
 }
 
 export function EChartSurface({ title, values, showTableFallback = false, theme = designTokens }: EChartSurfaceProps): ReactElement {
+  const chartFallback = (
+    <div>
+      <div style={{ color: theme.color.subtle, marginBottom: 8 }}>{title}</div>
+      <div
+        aria-label={`${title}: ${values.join(", ")}`}
+        style={{
+          height: 220,
+          border: `1px solid ${theme.color.border}`,
+          borderRadius: theme.radius.md,
+          background: theme.color.surfaceElevated,
+        }}
+      />
+    </div>
+  );
   return (
     <div>
-      <Suspense
-        fallback={(
-          <div>
-            <div style={{ color: theme.color.subtle, marginBottom: 8 }}>{title}</div>
-            <div
-              aria-label={`${title}: ${values.join(", ")}`}
-              style={{
-                height: 220,
-                border: `1px solid ${theme.color.border}`,
-                borderRadius: theme.radius.md,
-                background: theme.color.surfaceElevated,
-              }}
-            />
-          </div>
-        )}
-      >
-        <LazyEChartSurfaceRuntime title={title} values={values} theme={theme} />
-      </Suspense>
+      <ChartRuntimeErrorBoundary fallback={chartFallback}>
+        <Suspense fallback={chartFallback}>
+          <LazyEChartSurfaceRuntime title={title} values={values} theme={theme} />
+        </Suspense>
+      </ChartRuntimeErrorBoundary>
       {showTableFallback ? <ChartTableFallback title={title} values={values} /> : null}
     </div>
   );

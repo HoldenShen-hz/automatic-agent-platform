@@ -53,7 +53,7 @@ export function createGeneratedBinding(id: string, source: string): GeneratedBin
 
 export function generateEndpointBindingModule(endpoints: readonly { readonly id: string; readonly path: string }[]): string {
   return endpoints
-    .map((endpoint) => `export const ${endpoint.id}Path = "${endpoint.path}";`)
+    .map((endpoint) => `export const ${endpoint.id}Path = ${jsonLiteral(endpoint.path)};`)
     .join("\n");
 }
 
@@ -77,6 +77,31 @@ function toTypeName(input: string): string {
     .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
     .join("")
     .replace(/^[0-9]/, (digit) => `Type${digit}`);
+}
+
+function sortedEntries<TValue>(record: Record<string, TValue> | undefined): readonly [string, TValue][] {
+  return Object.entries(record ?? {}).sort(([left], [right]) => left.localeCompare(right));
+}
+
+function isIdentifierName(value: string): boolean {
+  return /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(value);
+}
+
+function toPropertyName(propertyName: string): string {
+  return isIdentifierName(propertyName) ? propertyName : jsonLiteral(propertyName);
+}
+
+function createOperationKey(method: string, path: string): string {
+  return `${method.toUpperCase()} ${path}`;
+}
+
+function createOperationSuffix(method: string, path: string): string {
+  let hash = 0;
+  const input = createOperationKey(method, path);
+  for (let index = 0; index < input.length; index += 1) {
+    hash = (hash * 31 + input.charCodeAt(index)) >>> 0;
+  }
+  return hash.toString(36).padStart(6, "0");
 }
 
 function resolveRefName(ref: string): string {
@@ -112,7 +137,10 @@ function buildSchemaDeclaration(name: string, schema: OpenApiSchema, declaration
 }
 
 function isInterfaceLikeSchema(schema: OpenApiSchema): boolean {
-  if (schema.enum != null || schema.oneOf != null || schema.anyOf != null || schema.allOf != null) {
+  if (schema.oneOf != null || schema.anyOf != null || schema.allOf != null) {
+    return false;
+  }
+  if (schema.enum != null) {
     return false;
   }
   if (schema.$ref != null) {
@@ -126,9 +154,9 @@ function isInterfaceLikeSchema(schema: OpenApiSchema): boolean {
 
 function buildObjectMembers(schema: OpenApiSchema, declarations: string[]): string[] {
   const required = new Set(schema.required ?? []);
-  const members = Object.entries(schema.properties ?? {}).map(([propertyName, propertySchema]) => {
+  const members = sortedEntries(schema.properties).map(([propertyName, propertySchema]) => {
     const optionalMarker = required.has(propertyName) ? "" : "?";
-    return `  ${propertyName}${optionalMarker}: ${schemaToType(propertySchema, declarations)};`;
+    return `  ${toPropertyName(propertyName)}${optionalMarker}: ${schemaToType(propertySchema, declarations)};`;
   });
 
   if (typeof schema.additionalProperties === "object") {
@@ -149,16 +177,22 @@ function schemaToType(schema: OpenApiSchema, declarations: string[]): string {
     return schema.enum.map((value) => jsonLiteral(value)).join(" | ");
   }
 
+  const baseObjectMembers = buildObjectMembers(schema, declarations);
+  const baseObjectType = baseObjectMembers.length > 0 ? `{\n${baseObjectMembers.join("\n")}\n}` : null;
+
   if (schema.oneOf != null && schema.oneOf.length > 0) {
-    return normalizeSchemaArray(schema.oneOf).map((item) => schemaToType(item, declarations)).join(" | ");
+    const variants = normalizeSchemaArray(schema.oneOf).map((item) => schemaToType(item, declarations)).join(" | ");
+    return baseObjectType == null ? variants : `${baseObjectType} & (${variants})`;
   }
 
   if (schema.anyOf != null && schema.anyOf.length > 0) {
-    return normalizeSchemaArray(schema.anyOf).map((item) => schemaToType(item, declarations)).join(" | ");
+    const variants = normalizeSchemaArray(schema.anyOf).map((item) => schemaToType(item, declarations)).join(" | ");
+    return baseObjectType == null ? variants : `${baseObjectType} & (${variants})`;
   }
 
   if (schema.allOf != null && schema.allOf.length > 0) {
-    return normalizeSchemaArray(schema.allOf).map((item) => schemaToType(item, declarations)).join(" & ");
+    const variants = normalizeSchemaArray(schema.allOf).map((item) => schemaToType(item, declarations)).join(" & ");
+    return baseObjectType == null ? variants : `${baseObjectType} & ${variants}`;
   }
 
   const rawType = Array.isArray(schema.type) ? schema.type : schema.type == null ? [] : [schema.type];
@@ -193,11 +227,10 @@ function schemaToType(schema: OpenApiSchema, declarations: string[]): string {
         return "Record<string, unknown>";
       }
 
-      const members = buildObjectMembers(schema, declarations);
-      if (members.length === 0) {
+      if (baseObjectMembers.length === 0) {
         return "Record<string, unknown>";
       }
-      return `{\n${members.join("\n")}\n}`;
+      return baseObjectType ?? "Record<string, unknown>";
     }
   }
 }
@@ -256,19 +289,26 @@ export function generateBindingsFromOpenApi(document: string | OpenApiDocument):
   const endpointDeclarations: string[] = [];
   const schemaDeclarations: string[] = [];
   const operationTypeDeclarations: string[] = [];
+  const usedOperationNames = new Map<string, string>();
 
-  for (const [schemaName, schema] of Object.entries(openApiDocument.components?.schemas ?? {})) {
+  for (const [schemaName, schema] of sortedEntries(openApiDocument.components?.schemas)) {
     appendSchemaDeclaration(toTypeName(schemaName), schema, schemaDeclarations);
   }
 
-  for (const [path, methods] of Object.entries(openApiDocument.paths)) {
-    for (const [method, operation] of Object.entries(methods)) {
+  for (const [path, methods] of sortedEntries(openApiDocument.paths)) {
+    for (const [method, operation] of sortedEntries(methods)) {
       const operationId = operation.operationId ?? `${method}-${path}`;
-      const operationName = toTypeName(operationId);
+      const operationKey = createOperationKey(method, path);
+      const baseOperationName = toTypeName(operationId);
+      const duplicateOwner = usedOperationNames.get(baseOperationName);
+      const operationName = duplicateOwner == null || duplicateOwner === operationKey
+        ? baseOperationName
+        : `${baseOperationName}${createOperationSuffix(method, path)}`;
+      usedOperationNames.set(operationName, operationKey);
       const endpointId = `${toConstantName(operationId)}Path`;
 
       endpointDeclarations.push(
-        `export const ${endpointId} = { method: "${method.toUpperCase()}", path: "${path}" } as const;`,
+        `export const ${endpointId} = { method: "${method.toUpperCase()}", path: ${jsonLiteral(path)} } as const;`,
       );
 
       const requestSchema = pickSchemaFromContent(operation.requestBody?.content);

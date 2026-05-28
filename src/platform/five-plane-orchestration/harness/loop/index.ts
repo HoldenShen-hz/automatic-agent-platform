@@ -27,6 +27,12 @@ const BACKOFF_BASE_MS = DEFAULT_BACKOFF_BASE_MS; // 1 second base
 const BACKOFF_MAX_MS = DEFAULT_BACKOFF_MAX_MS; // 60 seconds max
 const JITTER_FACTOR = 0.1; // 10% jitter
 
+function computeDeterministicJitter(seed: number, cappedDelay: number, factor: number): number {
+  const normalizedSeed = Math.abs(Math.trunc(seed)) >>> 0;
+  const mixed = (normalizedSeed * 1_664_525 + 1_013_904_223) >>> 0;
+  return cappedDelay * factor * (mixed / 0xffff_ffff);
+}
+
 export interface HarnessLoopProgress {
   readonly shouldContinue: boolean;
   readonly violation: string | null;
@@ -90,7 +96,7 @@ export class HarnessLoopController {
   public getBackoffMs(): number {
     const exponentialDelay = BACKOFF_BASE_MS * Math.pow(DEFAULT_EXPONENTIAL_BACKOFF_MULTIPLIER, this.state.retryAttempt - 1);
     const cappedDelay = Math.min(exponentialDelay, BACKOFF_MAX_MS);
-    const jitter = cappedDelay * JITTER_FACTOR * Math.random();
+    const jitter = computeDeterministicJitter(this.state.startedAt + this.state.retryAttempt, cappedDelay, JITTER_FACTOR);
     return Math.min(BACKOFF_MAX_MS, Math.floor(cappedDelay + jitter));
   }
 

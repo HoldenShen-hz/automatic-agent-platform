@@ -2,25 +2,29 @@ const root = document.getElementById("root");
 
 if (root != null) {
   const bridge = globalThis.AA_ELECTRON;
+  const locale = document.documentElement.lang.toLowerCase();
+  const useChinese = locale.startsWith("zh");
   const capabilities = [
-    ["Shell runtime", "Electron"],
-    ["Secure bridge", typeof bridge === "object" && bridge !== null ? "ready" : "unavailable"],
+    [useChinese ? "桌面运行时" : "Desktop Runtime", "Electron"],
+    [useChinese ? "安全桥接" : "Secure Bridge", typeof bridge === "object" && bridge !== null ? (useChinese ? "已就绪" : "ready") : (useChinese ? "不可用" : "unavailable")],
     [
-      "Screen security",
-      typeof bridge?.privacy?.enableScreenSecurity === "function" ? "supported" : "not-exposed",
+      useChinese ? "屏幕安全" : "Screen Security",
+      typeof bridge?.enableScreenSecurity === "function" ? (useChinese ? "已支持" : "supported") : (useChinese ? "未暴露" : "not-exposed"),
     ],
   ];
 
   root.replaceChildren();
 
   const container = document.createElement("main");
-  container.setAttribute("aria-label", "Electron shell runtime");
+  container.setAttribute("aria-label", "Electron shell runtime fallback");
   container.style.display = "grid";
   container.style.gap = "12px";
   container.style.padding = "20px";
 
   const title = document.createElement("h1");
-  title.textContent = "Automatic Agent Platform Electron Shell";
+  title.textContent = useChinese
+    ? "Automatic Agent Platform Electron 桌面回退壳"
+    : "Automatic Agent Platform Electron Fallback Shell";
   container.appendChild(title);
 
   const list = document.createElement("dl");

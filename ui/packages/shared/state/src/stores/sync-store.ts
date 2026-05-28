@@ -51,7 +51,14 @@ export function createSyncStore() {
         setPendingMutations(pendingMutations) {
           set((draft: SyncStoreDraft) => {
             draft.pendingMutations = pendingMutations;
-            draft.syncStatus = pendingMutations > 0 ? "queued" : draft.syncStatus;
+            draft.syncStatus = pendingMutations > 0
+              ? "queued"
+              : draft.conflicts.length > 0
+                ? "queued"
+                : "idle";
+            if (pendingMutations === 0) {
+              draft.lastError = null;
+            }
           });
         },
         markFlushed(lastFlushedAt) {
@@ -91,12 +98,11 @@ export function createSyncStore() {
             const nextLookup = { ...draft.conflictLookup };
             delete nextLookup[conflictId];
             draft.conflictLookup = nextLookup;
-            if (resolution === "local") {
-              draft.strategy = "local_wins";
+            if (draft.syncStatus !== "syncing") {
+              draft.syncStatus = draft.pendingMutations > 0 || draft.conflicts.length > 0 ? "queued" : "idle";
             }
-            if (resolution === "server") {
-              draft.strategy = "server_wins";
-            }
+            draft.lastError = null;
+            void resolution;
           });
         },
         markSyncError(lastError) {

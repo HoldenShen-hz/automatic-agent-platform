@@ -17,6 +17,9 @@
 # =============================================================================
 set -euo pipefail
 
+CIPHER="aes-256-cbc"
+CHECKSUM_PATH=""
+
 DB_PATH="${AA_DB_PATH:-data/sqlite/automatic-agent.db}"
 BACKUP_DIR="${BACKUP_DIR:-backups}"
 RETENTION_DAYS="${RETENTION_DAYS:-7}"
@@ -43,7 +46,7 @@ trap 'rm -rf "$LOCK_DIR"' EXIT
 # SQLite online backup (WAL-safe — does not require db lock)
 echo "Starting backup: $DB_PATH -> $BACKUP_PATH"
 ESCAPED_BACKUP_PATH=${BACKUP_PATH//\'/\'\'}
-sqlite3 "$DB_PATH" ".backup '$ESCAPED_BACKUP_PATH'" || {
+sqlite3 "$DB_PATH" ".timeout 5000" ".backup '$ESCAPED_BACKUP_PATH'" || {
   echo "ERROR: SQLite backup command failed." >&2
   rm -f "$BACKUP_PATH"
   exit 1
@@ -71,7 +74,7 @@ if [ -n "${AA_BACKUP_ENCRYPTION_KEY_FILE:-}" ]; then
     rm -f "$BACKUP_PATH"
     exit 1
   fi
-  openssl enc -aes-256-gcm -salt -pbkdf2 -iter 200000 \
+  openssl enc -"${CIPHER}" -salt -pbkdf2 -iter 200000 -md sha256 \
     -pass "file:${AA_BACKUP_ENCRYPTION_KEY_FILE}" \
     -in "$BACKUP_PATH" \
     -out "$ENCRYPTED_BACKUP_PATH"
@@ -82,20 +85,44 @@ if [ -n "${AA_BACKUP_ENCRYPTION_KEY_FILE:-}" ]; then
   echo "Encrypted backup created: $BACKUP_PATH ($BACKUP_SIZE)"
 fi
 
+if command -v shasum >/dev/null 2>&1; then
+  CHECKSUM_PATH="${BACKUP_PATH}.sha256"
+  shasum -a 256 "$BACKUP_PATH" > "$CHECKSUM_PATH"
+elif command -v sha256sum >/dev/null 2>&1; then
+  CHECKSUM_PATH="${BACKUP_PATH}.sha256"
+  sha256sum "$BACKUP_PATH" > "$CHECKSUM_PATH"
+else
+  echo "WARN: no SHA-256 tool available; checksum sidecar not written" >&2
+fi
+
 if [ -n "${AA_BACKUP_REMOTE_URI:-}" ]; then
+  upload_failed=0
   if command -v rclone >/dev/null 2>&1; then
-    rclone copyto "$BACKUP_PATH" "${AA_BACKUP_REMOTE_URI%/}/$(basename "$BACKUP_PATH")"
+    rclone copyto "$BACKUP_PATH" "${AA_BACKUP_REMOTE_URI%/}/$(basename "$BACKUP_PATH")" || upload_failed=1
+    if [ -n "$CHECKSUM_PATH" ]; then
+      rclone copyto "$CHECKSUM_PATH" "${AA_BACKUP_REMOTE_URI%/}/$(basename "$CHECKSUM_PATH")" || upload_failed=1
+    fi
   elif command -v aws >/dev/null 2>&1 && [[ "$AA_BACKUP_REMOTE_URI" == s3://* ]]; then
     if [ -n "${AA_BACKUP_S3_KMS_KEY_ID:-}" ]; then
       aws s3 cp "$BACKUP_PATH" "${AA_BACKUP_REMOTE_URI%/}/$(basename "$BACKUP_PATH")" \
         --sse aws:kms \
-        --sse-kms-key-id "$AA_BACKUP_S3_KMS_KEY_ID"
+        --sse-kms-key-id "$AA_BACKUP_S3_KMS_KEY_ID" || upload_failed=1
     else
       aws s3 cp "$BACKUP_PATH" "${AA_BACKUP_REMOTE_URI%/}/$(basename "$BACKUP_PATH")" \
-        --sse AES256
+        --sse AES256 || upload_failed=1
+    fi
+    if [ -n "$CHECKSUM_PATH" ]; then
+      aws s3 cp "$CHECKSUM_PATH" "${AA_BACKUP_REMOTE_URI%/}/$(basename "$CHECKSUM_PATH")" \
+        --sse AES256 || upload_failed=1
     fi
   else
     echo "ERROR: remote backup requested but neither rclone nor compatible aws s3 is available" >&2
+    rm -f "$BACKUP_PATH" "$CHECKSUM_PATH"
+    exit 1
+  fi
+  if [ "$upload_failed" -ne 0 ]; then
+    echo "ERROR: remote backup upload failed; removing incomplete local backup artifact" >&2
+    rm -f "$BACKUP_PATH" "$CHECKSUM_PATH"
     exit 1
   fi
   echo "Remote backup copied to: ${AA_BACKUP_REMOTE_URI%/}/$(basename "$BACKUP_PATH")"

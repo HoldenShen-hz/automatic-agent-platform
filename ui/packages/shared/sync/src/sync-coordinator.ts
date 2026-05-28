@@ -106,6 +106,7 @@ export class FetchSyncMutationDispatcher implements SyncMutationDispatcher {
       method: mutation.method,
       headers: {
         "content-type": "application/json",
+        ...(mutation.headers ?? {}),
       },
       ...(mutation.body == null ? {} : { body: JSON.stringify(mutation.body) }),
     });

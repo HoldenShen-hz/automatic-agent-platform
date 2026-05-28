@@ -2,16 +2,29 @@ import type { OfflineMutation, OfflineMutationStore } from "./types.js";
 
 const DEFAULT_MAX_CAPACITY = 100;
 
+export interface OfflineQueueOptions {
+  readonly maxCapacity?: number;
+  readonly onEvict?: (mutation: OfflineMutation) => void;
+}
+
 export class OfflineQueue {
   private readonly queue: OfflineMutation[] = [];
   private readonly stagedBeforeReady: OfflineMutation[] = [];
   private ready = false;
   private readonly readyPromise: Promise<void>;
+  private readonly maxCapacity: number;
+  private readonly onEvict?: (mutation: OfflineMutation) => void;
 
   public constructor(
     private readonly store: OfflineMutationStore = createMemoryOfflineMutationStore(),
-    private readonly maxCapacity = DEFAULT_MAX_CAPACITY,
+    maxCapacityOrOptions: number | OfflineQueueOptions = DEFAULT_MAX_CAPACITY,
   ) {
+    if (typeof maxCapacityOrOptions === "number") {
+      this.maxCapacity = maxCapacityOrOptions;
+    } else {
+      this.maxCapacity = maxCapacityOrOptions.maxCapacity ?? DEFAULT_MAX_CAPACITY;
+      this.onEvict = maxCapacityOrOptions.onEvict;
+    }
     this.readyPromise = this.store.readAll()
       .catch(() => [])
       .then((mutations) => {
@@ -81,7 +94,10 @@ export class OfflineQueue {
 
   private trimToCapacity(target: OfflineMutation[]): void {
     while (target.length > this.maxCapacity) {
-      target.shift();
+      const evicted = target.shift();
+      if (evicted != null) {
+        this.onEvict?.(evicted);
+      }
     }
   }
 

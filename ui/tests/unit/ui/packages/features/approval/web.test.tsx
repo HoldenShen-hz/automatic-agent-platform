@@ -1,5 +1,5 @@
-import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockApprove = vi.fn(async () => undefined);
 const mockReject = vi.fn(async () => undefined);
@@ -62,6 +62,17 @@ vi.mock("../../../../../../packages/features/approval/src/hooks", () => ({
 import { ApprovalWebView } from "../../../../../../packages/features/approval/src/web";
 
 describe("ApprovalWebView", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-05-28T00:00:00.000Z"));
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.useRealTimers();
+    vi.clearAllMocks();
+  });
+
   it("renders deadline, policy source, and recommended option", () => {
     render(<ApprovalWebView />);
 
@@ -73,9 +84,16 @@ describe("ApprovalWebView", () => {
   it("supports request-context and decision actions", () => {
     render(<ApprovalWebView />);
 
-    fireEvent.click(screen.getByRole("button", { name: "批准" }));
-    fireEvent.click(screen.getByRole("button", { name: "拒绝" }));
-    fireEvent.click(screen.getByRole("button", { name: "请求上下文" }));
+    const approveButton = screen.getByRole("button", { name: "Approve" });
+    const rejectButton = screen.getByRole("button", { name: "Reject" });
+    const contextButton = screen.getByRole("button", { name: "Request context" });
+
+    fireEvent.pointerDown(approveButton);
+    fireEvent.click(approveButton);
+    fireEvent.pointerDown(rejectButton);
+    fireEvent.click(rejectButton);
+    fireEvent.pointerDown(contextButton);
+    fireEvent.click(contextButton);
 
     expect(mockApprove).toHaveBeenCalled();
     expect(mockReject).toHaveBeenCalled();

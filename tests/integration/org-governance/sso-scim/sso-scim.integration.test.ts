@@ -29,9 +29,6 @@ function createTestOidcService(): OidcIdentityService {
 test("OIDC and SCIM integration - user provisioned after successful OIDC auth", async () => {
   const oidcService = createTestOidcService();
   const scimService = new ScimProvisionService();
-  const originalEnv = process.env.NODE_ENV;
-  process.env.NODE_ENV = "development";
-
   try {
     // User authenticates via OIDC
     const { state } = oidcService.initiateFlow("https://app.example.com/callback");
@@ -61,17 +58,12 @@ test("OIDC and SCIM integration - user provisioned after successful OIDC auth", 
     const session = oidcService.validateAccessToken(tokens!.accessToken);
     assert.ok(session);
     assert.equal(session!.userId, userInfo!.sub);
-  } finally {
-    process.env.NODE_ENV = originalEnv;
-  }
+  } finally {}
 });
 
 test("OIDC and SCIM integration - user lookup after OIDC session creation", async () => {
   const oidcService = createTestOidcService();
   const scimService = new ScimProvisionService();
-  const originalEnv = process.env.NODE_ENV;
-  process.env.NODE_ENV = "development";
-
   try {
     // Create OIDC session
     const { state } = oidcService.initiateFlow("https://app.example.com/callback");
@@ -93,17 +85,12 @@ test("OIDC and SCIM integration - user lookup after OIDC session creation", asyn
     const lookedUp = scimService.getUser(scimUser.id);
     assert.ok(lookedUp);
     assert.equal(lookedUp!.userName, scimUser.userName);
-  } finally {
-    process.env.NODE_ENV = originalEnv;
-  }
+  } finally {}
 });
 
 test("SCIM user provisioning with OIDC groups integration", async () => {
   const oidcService = createTestOidcService();
   const scimService = new ScimProvisionService();
-  const originalEnv = process.env.NODE_ENV;
-  process.env.NODE_ENV = "development";
-
   try {
     // Create OIDC session with groups
     const { state } = oidcService.initiateFlow("https://app.example.com/callback");
@@ -133,17 +120,12 @@ test("SCIM user provisioning with OIDC groups integration", async () => {
     const group = scimService.getGroupByName("engineers");
     assert.ok(group);
     assert.ok(group!.members.some(m => m.value === scimUser.id));
-  } finally {
-    process.env.NODE_ENV = originalEnv;
-  }
+  } finally {}
 });
 
 test("OIDC session management with SCIM user lifecycle", async () => {
   const oidcService = createTestOidcService();
   const scimService = new ScimProvisionService();
-  const originalEnv = process.env.NODE_ENV;
-  process.env.NODE_ENV = "development";
-
   try {
     // Create multiple users
     for (let i = 0; i < 3; i++) {
@@ -174,17 +156,12 @@ test("OIDC session management with SCIM user lifecycle", async () => {
 
     // Session count should decrease
     // Note: This depends on the actual userId returned by fetchUserInfo
-  } finally {
-    process.env.NODE_ENV = originalEnv;
-  }
+  } finally {}
 });
 
 test("SCIM bulk operations with OIDC token validation", async () => {
   const oidcService = createTestOidcService();
   const scimService = new ScimProvisionService();
-  const originalEnv = process.env.NODE_ENV;
-  process.env.NODE_ENV = "development";
-
   try {
     // Create OIDC session first
     const { state } = oidcService.initiateFlow("https://app.example.com/callback");
@@ -212,17 +189,12 @@ test("SCIM bulk operations with OIDC token validation", async () => {
     const group = scimService.getGroupByName("Engineering");
     assert.ok(group);
     assert.ok(group!.members.length > 0);
-  } finally {
-    process.env.NODE_ENV = originalEnv;
-  }
+  } finally {}
 });
 
 test("OIDC refresh token flow with SCIM user update", async () => {
   const oidcService = createTestOidcService();
   const scimService = new ScimProvisionService();
-  const originalEnv = process.env.NODE_ENV;
-  process.env.NODE_ENV = "development";
-
   try {
     // Create initial session
     const { state } = oidcService.initiateFlow("https://app.example.com/callback");
@@ -249,17 +221,12 @@ test("OIDC refresh token flow with SCIM user update", async () => {
     assert.ok(updatedUser);
 
     // Note: In real scenario, the user's displayName might be updated from refreshed userInfo
-  } finally {
-    process.env.NODE_ENV = originalEnv;
-  }
+  } finally {}
 });
 
 test("SCIM provision events tracking with OIDC session events", async () => {
   const oidcService = createTestOidcService();
   const scimService = new ScimProvisionService();
-  const originalEnv = process.env.NODE_ENV;
-  process.env.NODE_ENV = "development";
-
   try {
     // Create users
     const { state } = oidcService.initiateFlow("https://app.example.com/callback");
@@ -281,7 +248,5 @@ test("SCIM provision events tracking with OIDC session events", async () => {
 
     // Should have user_created event
     assert.ok(events.some(e => e.action === "user_created"));
-  } finally {
-    process.env.NODE_ENV = originalEnv;
-  }
+  } finally {}
 });

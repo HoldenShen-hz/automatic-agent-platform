@@ -1,5 +1,5 @@
 import { useId, useState, type ReactElement } from "react";
-import { FeatureScaffold, KeyValueTable, ListCard, ThreePaneLayout, designTokens } from "@aa/ui-core";
+import { FeatureScaffold, Inline, KeyValueTable, ListCard, Stack, ThreePaneLayout, designTokens } from "@aa/ui-core";
 import { translateMessage } from "@aa/shared-i18n";
 import { useApprovalCenterVm } from "../hooks";
 
@@ -9,6 +9,7 @@ export function ApprovalWebView(): ReactElement {
   const selectedApproval = vm.selectedApproval;
   const delegateInputId = useId();
   const approvalActionDescriptionId = useId();
+  const delegateActionDescriptionId = useId();
 
   return (
     <FeatureScaffold title="Approval Center" summary="审批队列、委派与恢复动作闭环" status="Implemented/Contracted">
@@ -16,7 +17,7 @@ export function ApprovalWebView(): ReactElement {
         left={(
           <div>
             <h3>{translateMessage("ui.approval.queueTitle")} · {vm.queueDepth}</h3>
-            <div style={{ display: "grid", gap: 10 }}>
+            <Stack gap={10}>
               {vm.queueItems.map((approval) => (
                 <button
                   key={approval.id}
@@ -37,11 +38,11 @@ export function ApprovalWebView(): ReactElement {
                   <div>{approval.subtitle}</div>
                 </button>
               ))}
-            </div>
+            </Stack>
           </div>
         )}
         center={selectedApproval == null ? <p>{translateMessage("ui.approval.noSelection")}</p> : (
-          <div style={{ display: "grid", gap: 16 }}>
+          <Stack gap={16}>
             <p id={approvalActionDescriptionId} style={{ margin: 0 }}>
               {translateMessage("ui.approval.guidance")}
             </p>
@@ -56,27 +57,36 @@ export function ApprovalWebView(): ReactElement {
                 { key: "Approval Level", value: selectedApproval.currentLevel != null && selectedApproval.totalLevels != null ? `${selectedApproval.currentLevel}/${selectedApproval.totalLevels}` : translateMessage("ui.approval.singleLevel") },
               ]}
             />
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <Inline>
               <button aria-describedby={approvalActionDescriptionId} onClick={vm.approve} type="button">{translateMessage("ui.approval.approve")}</button>
               <button aria-describedby={approvalActionDescriptionId} onClick={vm.reject} type="button">{translateMessage("ui.approval.reject")}</button>
               <button onClick={() => { void vm.requestMoreContext(); }} type="button">{translateMessage("ui.approval.requestContext")}</button>
+            </Inline>
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                void vm.delegate(delegateTarget);
+              }}
+            >
+              <Inline>
               <input
                 aria-label={translateMessage("ui.approval.delegateTarget")}
                 id={delegateInputId}
                 onChange={(event) => setDelegateTarget(event.target.value)}
                 value={delegateTarget}
               />
+              <span id={delegateActionDescriptionId} style={{ display: "none" }}>
+                {translateMessage("ui.approval.delegateGuide.description")}
+              </span>
               <button
-                aria-describedby={delegateInputId}
-                onClick={() => {
-                  void vm.delegate(delegateTarget);
-                }}
-                type="button"
+                aria-describedby={delegateActionDescriptionId}
+                type="submit"
               >
                 {translateMessage("ui.approval.delegate")}
               </button>
-            </div>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              </Inline>
+            </form>
+            <Inline>
               <button
                 onClick={() => {
                   void vm.approveBatch(vm.approvals.map((approval) => approval.approvalId));
@@ -93,8 +103,8 @@ export function ApprovalWebView(): ReactElement {
               >
                 {translateMessage("ui.approval.batchReject")}
               </button>
-            </div>
-          </div>
+            </Inline>
+          </Stack>
         )}
         right={(
           <ListCard

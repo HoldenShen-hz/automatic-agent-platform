@@ -29,15 +29,26 @@ const RETRY_BACKOFF_MAX_MS = 60_000; // 60 second cap
 const RETRY_MAX_ATTEMPTS = 5; // Max retries before escalation
 const RETRY_JITTER_FACTOR = 0.1; // 10% jitter per §9.3
 
+function computeDeterministicJitter(seed: number, cappedDelay: number, factor: number): number {
+  const normalizedSeed = Math.abs(Math.trunc(seed)) >>> 0;
+  const mixed = (normalizedSeed * 1_664_525 + 1_013_904_223) >>> 0;
+  return cappedDelay * factor * (mixed / 0xffff_ffff);
+}
+
 /**
  * Computes exponential backoff delay with cap and jitter per §9.3.
  * delay = min(maxDelay, base * 2^(attempt - 1)) + jitter
  */
-function computeBackoffDelayMs(attempt: number): number {
+function computeBackoffDelayMs(attempt: number, seed = attempt): number {
   const exponentialDelay = RETRY_BACKOFF_BASE_MS * 2 ** Math.max(0, attempt - 1);
   const cappedDelay = Math.min(exponentialDelay, RETRY_BACKOFF_MAX_MS);
-  const jitter = cappedDelay * RETRY_JITTER_FACTOR * Math.random();
+  const jitter = computeDeterministicJitter(seed, cappedDelay, RETRY_JITTER_FACTOR);
   return Math.min(RETRY_BACKOFF_MAX_MS, Math.floor(cappedDelay + jitter));
+}
+
+function buildBackoffSeed(run: HarnessRunRuntimeState, attempt: number): number {
+  const startedAtMs = Date.parse(run.createdAt);
+  return Number.isFinite(startedAtMs) ? startedAtMs + attempt : attempt;
 }
 
 export class RecoveryController {
@@ -190,10 +201,10 @@ export class RecoveryController {
           scope: "node",
           action: "retry_same_plan",
           attempt: currentAttempt + 1,
-          delayMs: computeBackoffDelayMs(currentAttempt + 1),
+          delayMs: computeBackoffDelayMs(currentAttempt + 1, buildBackoffSeed(run, currentAttempt + 1)),
         });
 
-        const delayMs = computeBackoffDelayMs(currentAttempt + 1);
+        const delayMs = computeBackoffDelayMs(currentAttempt + 1, buildBackoffSeed(run, currentAttempt + 1));
         const resumeAt = new Date(Date.now() + delayMs).toISOString();
         // R13-16 fix: use node scope for llm_provider_unavailable (retry_same_plan semantics)
         const sleeping = this.runtime.sleep(recovering, `llm_provider_unavailable_retry`, resumeAt, currentAttempt + 1);
@@ -274,7 +285,7 @@ export class RecoveryController {
           return escalated;
         }
 
-        const delayMs = computeBackoffDelayMs(currentAttempt + 1);
+        const delayMs = computeBackoffDelayMs(currentAttempt + 1, buildBackoffSeed(run, currentAttempt + 1));
         this.emitRecoveryEvent("recovery:repair_applied", run.runId, "platform_panic", {
           scope: "graph",
           action: "replan",
@@ -315,7 +326,7 @@ export class RecoveryController {
         }
 
         // R9-22 fix: emit recovery event for worker_crash graph-level retry
-        const delayMs = computeBackoffDelayMs(currentAttempt + 1);
+        const delayMs = computeBackoffDelayMs(currentAttempt + 1, buildBackoffSeed(run, currentAttempt + 1));
         this.emitRecoveryEvent("recovery:repair_applied", run.runId, "worker_crash", {
           scope: "graph",
           action: "replan",

@@ -1,3 +1,4 @@
+import { generateStableId } from "@aa/shared-api-client";
 import { createStore } from "zustand/vanilla";
 import { withPersistDevtoolsDraft } from "./middleware";
 
@@ -30,7 +31,7 @@ export interface NotificationStoreState {
 }
 
 function generateId(): string {
-  return `notif-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+  return generateStableId("notif-");
 }
 
 export function createNotificationStore() {

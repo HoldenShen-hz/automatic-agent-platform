@@ -19,15 +19,15 @@ test("NoOpIncidentFacadeService mutation paths throw the not-configured error", 
     { message: "incident_facade.not_configured" },
   );
   assert.throws(
-    () => service.acknowledge("incident_abc", "owner_user"),
+    () => service.acknowledge("incident_abc", "owner_user", "tenant_123"),
     { message: "incident_facade.not_configured" },
   );
   assert.throws(
-    () => service.startMitigation("incident_abc"),
+    () => service.startMitigation("incident_abc", "tenant_123"),
     { message: "incident_facade.not_configured" },
   );
   assert.throws(
-    () => service.resolve("incident_abc"),
+    () => service.resolve("incident_abc", "tenant_123"),
     { message: "incident_facade.not_configured" },
   );
 });

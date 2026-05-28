@@ -5,7 +5,7 @@
  * These snapshots are used for testing upgrade/rollback migration paths.
  *
  * Usage:
- *   npm run build && node dist/tests/fixtures/migration/generate-snapshots.js [outputDir]
+ *   node --import tsx tests/fixtures/migration/generate-snapshots.ts [outputDir]
  *
  * Key versions for snapshots:
  *   - v1:  Initial phase1a schema (baseline)

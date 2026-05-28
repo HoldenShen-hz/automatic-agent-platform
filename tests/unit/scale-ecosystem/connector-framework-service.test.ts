@@ -136,6 +136,26 @@ test("ConnectorFrameworkService evicts LRU connector's bindings when maxBindings
   assert.equal(allBindings.filter((b) => b.connectorId === "crm_sync").length, 2, "crm_sync should have 2 bindings after eviction");
 });
 
+test("ConnectorFrameworkService binding lookup refreshes LRU order before eviction [connector-framework-service]", () => {
+  const service = new ConnectorFrameworkService({
+    maxBindings: 2,
+    maxConnectors: 3,
+  });
+  service.register(manifest("enabled"));
+  service.register({ ...manifest("enabled"), connectorId: "erp_sync" });
+  service.register({ ...manifest("enabled"), connectorId: "jira_sync" });
+
+  service.bind("crm_sync", "tenant_A1", "dev");
+  service.bind("erp_sync", "tenant_B1", "dev");
+  service.listBindings({ connectorId: "crm_sync" });
+  service.bind("jira_sync", "tenant_C1", "dev");
+
+  const allBindings = service.listBindings();
+  assert.equal(allBindings.some((binding) => binding.connectorId === "crm_sync"), true);
+  assert.equal(allBindings.some((binding) => binding.connectorId === "erp_sync"), false);
+  assert.equal(allBindings.some((binding) => binding.connectorId === "jira_sync"), true);
+});
+
 test("ConnectorFrameworkService evicts LRU health entry when maxHealthConnectors is exceeded [connector-framework-service]", () => {
   // Use maxHealthConnectors = 3 to force eviction after 3 connectors report health
   const service = new ConnectorFrameworkService(null, 30 * 24 * 60 * 60 * 1000, 100, 10_000, 3);
@@ -161,4 +181,15 @@ test("ConnectorFrameworkService evicts LRU health entry when maxHealthConnectors
   assert.ok(service["health"].has("erp_sync"), "erp_sync should have health entry");
   assert.ok(!service["health"].has("crm_sync"), "LRU entry (crm_sync) should be evicted");
   assert.equal(service["health"].size, 3, "Health map should have exactly 3 entries");
+});
+
+test("ConnectorFrameworkService rejects registrations beyond maxConnectors [connector-framework-service]", () => {
+  const service = new ConnectorFrameworkService({ maxConnectors: 2 });
+  service.register(manifest("enabled"));
+  service.register({ ...manifest("enabled"), connectorId: "erp_sync" });
+
+  assert.throws(
+    () => service.register({ ...manifest("enabled"), connectorId: "jira_sync" }),
+    /connector_framework\.connector_capacity_exceeded/,
+  );
 });

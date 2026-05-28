@@ -85,3 +85,12 @@ interface RiskPreview {
 代价：
 
 - NLU 模型
+- 歧义澄清可能延迟简单任务
+
+## 交叉引用
+
+- [ADR-040 目标分解引擎架构](./040-goal-decomposition-engine.md)
+
+## 来源章节
+
+- Section 39

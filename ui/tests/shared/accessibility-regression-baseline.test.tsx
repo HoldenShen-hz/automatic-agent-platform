@@ -10,6 +10,7 @@ import { MobileApp } from "../../apps/mobile/src/App";
 import { mobileGlobals } from "../helpers/mobile-bridge";
 
 vi.mock("react-native", () => ({
+  Platform: { OS: "ios" },
   View: ({ children, style }: { children?: React.ReactNode; style?: unknown }) => React.createElement("div", { style }, children),
   Text: ({ children, style }: { children?: React.ReactNode; style?: unknown }) => React.createElement("span", { style }, children),
   TouchableOpacity: ({
@@ -61,10 +62,6 @@ describe("accessibility regression baseline", () => {
 
   it("keeps native shell controls reachable by accessible names", () => {
     mobileGlobals().__AA_MOBILE__ = mockMobileBridge;
-    Object.defineProperty(window.navigator, "userAgent", {
-      configurable: true,
-      value: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)",
-    });
 
     render(<MobileApp />);
 

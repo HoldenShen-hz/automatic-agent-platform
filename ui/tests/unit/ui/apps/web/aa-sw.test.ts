@@ -25,6 +25,7 @@ function loadServiceWorker(overrides: {
   const context = vm.createContext({
     console,
     URL,
+    Headers,
     Request,
     Response,
     AbortController,
@@ -57,7 +58,7 @@ function loadServiceWorker(overrides: {
   return listeners;
 }
 
-it("service worker install pre-caches app shell and offline fallback", async () => {
+it("service worker install pre-caches the root app shell", async () => {
   const cachedAssets: string[][] = [];
   const listeners = loadServiceWorker({
     caches: {
@@ -77,7 +78,7 @@ it("service worker install pre-caches app shell and offline fallback", async () 
   });
   await installPromise;
 
-  assert.deepEqual(cachedAssets.map((assets) => [...assets]), [["/", "/offline"]]);
+  assert.deepEqual(cachedAssets.map((assets) => [...assets]), [["/"]]);
 });
 
 it("service worker activate removes stale aa-ui caches and keeps current version", async () => {
@@ -100,10 +101,10 @@ it("service worker activate removes stale aa-ui caches and keeps current version
   });
   await activatePromise;
 
-  assert.deepEqual(deletedCaches, ["aa-ui-runtime-v1"]);
+  assert.deepEqual(deletedCaches, ["aa-ui-runtime-v2", "aa-ui-runtime-v1"]);
 });
 
-it("service worker fetch normalizes cache keys by stripping query strings", async () => {
+it("service worker fetch preserves query strings when caching assets", async () => {
   const matchedKeys: string[] = [];
   const storedKeys: string[] = [];
   const listeners = loadServiceWorker({
@@ -130,8 +131,8 @@ it("service worker fetch normalizes cache keys by stripping query strings", asyn
   });
   await responsePromise;
 
-  assert.deepEqual(matchedKeys, ["https://example.com/assets/app.js"]);
-  assert.deepEqual(storedKeys, ["https://example.com/assets/app.js"]);
+  assert.deepEqual(matchedKeys, ["https://example.com/assets/app.js?v=123"]);
+  assert.deepEqual(storedKeys, ["https://example.com/assets/app.js?v=123"]);
 });
 
 it("service worker bypasses caching for API GET requests", () => {
@@ -160,13 +161,13 @@ it("service worker bypasses caching for API GET requests", () => {
   assert.equal(cacheOpened, false);
 });
 
-it("service worker falls back to the offline route when network fetch times out", async () => {
+it("service worker falls back to the cached app shell for document navigations when network fetch fails", async () => {
   const listeners = loadServiceWorker({
     caches: {
       open: async () => ({
         match: async (request: Request | string) => {
-          if (typeof request === "string" ? request === "/offline" : request.url.endsWith("/offline")) {
-            return new Response("offline-page", { status: 200 });
+          if (typeof request === "string" ? request === "/" : request.url.endsWith("/")) {
+            return new Response("cached-shell", { status: 200 });
           }
           return undefined;
         },
@@ -180,19 +181,90 @@ it("service worker falls back to the offline route when network fetch times out"
 
   let responsePromise: Promise<Response> | undefined;
   listeners.fetch?.({
-    request: new Request("https://example.com/assets/app.js", { method: "GET" }),
+    request: new Request("https://example.com/dashboard", {
+      method: "GET",
+      headers: { accept: "text/html" },
+    }),
     respondWith(promise: Promise<Response>) {
       responsePromise = promise;
     },
   });
 
   const response = await responsePromise;
-  assert.equal(await response?.text(), "offline-page");
+  assert.equal(await response?.text(), "cached-shell");
 });
 
 it("service worker sync replays offline queue and deletes successfully synced mutations", async () => {
   const deletedIds: string[] = [];
+  const updatedMutations: unknown[] = [];
   const fetchCalls: Array<{ endpoint: string; method: string; body: string | null }> = [];
+  function createTransaction(mode: string) {
+    const transaction: {
+      error?: Error;
+      oncomplete?: () => void;
+      onerror?: () => void;
+      onabort?: () => void;
+      objectStore(): {
+        getAll?: () => unknown;
+        delete?: (id: string) => void;
+        put?: (value: unknown) => void;
+      };
+    } = {
+      objectStore() {
+        if (mode === "readonly") {
+          return {
+            getAll() {
+              const request: {
+                error?: Error;
+                result?: unknown[];
+                onsuccess?: () => void;
+                onerror?: () => void;
+              } = {};
+              queueMicrotask(() => {
+                request.result = [
+                  {
+                    id: "mutation-1",
+                    endpoint: "/api/v1/tasks",
+                    method: "POST",
+                    headers: {
+                      authorization: "Bearer token",
+                      "x-csrf-token": "csrf-token",
+                      "idempotency-key": "idem-1",
+                    },
+                    body: { ok: true },
+                  },
+                  {
+                    id: "mutation-2",
+                    endpoint: "/api/v1/preferences",
+                    method: "PUT",
+                    headers: {
+                      authorization: "Bearer token",
+                      "x-csrf-token": "csrf-token",
+                      "idempotency-key": "idem-2",
+                    },
+                    body: { theme: "light" },
+                  },
+                ];
+                request.onsuccess?.();
+              });
+              return request;
+            },
+          };
+        }
+        return {
+          delete(id: string) {
+            deletedIds.push(id);
+            queueMicrotask(() => transaction.oncomplete?.());
+          },
+          put(value: unknown) {
+            updatedMutations.push(value);
+            queueMicrotask(() => transaction.oncomplete?.());
+          },
+        };
+      },
+    };
+    return transaction;
+  }
   const db = {
     objectStoreNames: {
       contains(_name: string) {
@@ -203,35 +275,7 @@ it("service worker sync replays offline queue and deletes successfully synced mu
       return undefined;
     },
     transaction(_name: string, mode: string) {
-      return {
-        objectStore() {
-          if (mode === "readonly") {
-            return {
-              getAll() {
-                const request: {
-                  error?: Error;
-                  result?: unknown[];
-                  onsuccess?: () => void;
-                  onerror?: () => void;
-                } = {};
-                queueMicrotask(() => {
-                  request.result = [
-                    { id: "mutation-1", endpoint: "/api/v1/tasks", method: "POST", body: { ok: true } },
-                    { id: "mutation-2", endpoint: "/api/v1/preferences", method: "PUT", body: { theme: "light" } },
-                  ];
-                  request.onsuccess?.();
-                });
-                return request;
-              },
-            };
-          }
-          return {
-            delete(id: string) {
-              deletedIds.push(id);
-            },
-          };
-        },
-      };
+      return createTransaction(mode);
     },
   };
 
@@ -279,4 +323,5 @@ it("service worker sync replays offline queue and deletes successfully synced mu
     { endpoint: "/api/v1/preferences", method: "PUT", body: JSON.stringify({ theme: "light" }) },
   ]);
   assert.deepEqual(deletedIds, ["mutation-1", "mutation-2"]);
+  assert.deepEqual(updatedMutations, []);
 });

@@ -28,11 +28,17 @@ const SELF_ENHANCEMENT_PATTERNS = [
 
 const PROMOTION_THRESHOLD = 10;
 const DEMOTION_THRESHOLD = 5;
-const TIER_MAX_SIZE: Record<MemoryTier, number> = {
+const DEFAULT_TIER_MAX_SIZE: Record<MemoryTier, number> = {
   working: 100,
   long_term: 500,
   shared: 1000,
 };
+const DEFAULT_DEMOTION_IDLE_MS = 30 * 60 * 1000;
+
+export interface HarnessMemoryManagerOptions {
+  readonly tierMaxSize?: Partial<Record<MemoryTier, number>>;
+  readonly demotionIdleMs?: number;
+}
 
 export class HarnessMemoryManager {
   private readonly namespaces = {
@@ -42,6 +48,17 @@ export class HarnessMemoryManager {
   } satisfies Record<HarnessMemoryNamespace, Map<string, Map<string, unknown>>>;
 
   private readonly memoryRecords = new Map<string, InternalMemoryRecord>();
+  private readonly tierMaxSize: Record<MemoryTier, number>;
+  private readonly demotionIdleMs: number;
+
+  public constructor(options: HarnessMemoryManagerOptions = {}) {
+    this.tierMaxSize = {
+      working: options.tierMaxSize?.working ?? DEFAULT_TIER_MAX_SIZE.working,
+      long_term: options.tierMaxSize?.long_term ?? DEFAULT_TIER_MAX_SIZE.long_term,
+      shared: options.tierMaxSize?.shared ?? DEFAULT_TIER_MAX_SIZE.shared,
+    };
+    this.demotionIdleMs = options.demotionIdleMs ?? DEFAULT_DEMOTION_IDLE_MS;
+  }
 
   public write(namespace: HarnessMemoryNamespace, scopeId: string, key: string, value: unknown): void {
     // Anti-self-enhancement check
@@ -58,7 +75,7 @@ export class HarnessMemoryManager {
     // promotion. This could cause unbounded growth if records weren't promoted.
     // Now we check capacity and evict oldest if needed BEFORE writing.
     const initialTier = existing?.tier ?? this.inferInitialTier(namespace);
-    if (!existing && this.countTierRecords(initialTier) >= TIER_MAX_SIZE[initialTier]) {
+    if (!existing && this.countTierRecords(initialTier) >= this.tierMaxSize[initialTier]) {
       this.evictOldestFromTier(initialTier);
     }
 
@@ -165,7 +182,7 @@ export class HarnessMemoryManager {
     // Check demotion (for working tier only, and if not accessed recently)
     if (record.tier === "working") {
       const lastAccessAge = Date.now() - new Date(record.lastAccessedAt).getTime();
-      if (lastAccessAge > 30 * 60 * 1000 && updatedRecord.demotionScore >= DEMOTION_THRESHOLD) {
+      if (lastAccessAge > this.demotionIdleMs && updatedRecord.demotionScore >= DEMOTION_THRESHOLD) {
         this.demote(recordKey, updatedRecord);
         return;
       }
@@ -190,7 +207,7 @@ export class HarnessMemoryManager {
     }
 
     // Check tier capacity
-    if (this.countTierRecords(newTier) >= TIER_MAX_SIZE[newTier]) {
+    if (this.countTierRecords(newTier) >= this.tierMaxSize[newTier]) {
       // Evict oldest from target tier
       this.evictOldestFromTier(newTier);
     }

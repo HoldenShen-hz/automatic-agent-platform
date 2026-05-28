@@ -154,6 +154,13 @@ export class HarnessDecisionManager {
       content: {
         decisionId: decision.harnessDecisionId,
         decisionInputBundleId: decision.decisionInputBundleId,
+        decisionInput: {
+          harnessRunId: inputBundle.harnessRunId,
+          nodeRunId: inputBundle.nodeRunId ?? null,
+          decisionKind: inputBundle.decisionKind,
+          constraintPackRef: inputBundle.policy.constraintPackRef,
+          policyIds: inputBundle.policy.policyIds,
+        },
         decisionKind: decision.decisionKind,
         decision: decision.decision,
         deciderType: decision.deciderType,
@@ -179,10 +186,10 @@ export class HarnessDecisionManager {
         deciderType: decision.deciderType,
         decisionKind: decision.decisionKind,
         action: decision.decision,
+        riskClass: inputBundle.riskClass,
       },
     });
 
-    void inputBundle;
     this.runtimeTruthRepository.appendEvidenceRecord(evidenceRecord);
   }
 

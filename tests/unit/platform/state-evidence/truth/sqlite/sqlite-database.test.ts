@@ -11,6 +11,7 @@ import {
   type SqliteSchemaStatus,
   SqliteDatabase,
 } from "../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
+import { SQLITE_MIGRATIONS } from "../../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-migration-plan.js";
 import { cleanupPath, createTempWorkspace } from "../../../../../helpers/fs.js";
 
 test("SqliteWriteContentionError constructor sets properties correctly", () => {
@@ -181,6 +182,40 @@ test("SqliteDatabase healthCheck is synchronous and returns true for writable da
     db.migrate();
     assert.equal(db.healthCheck(), true);
     db.close();
+  } finally {
+    cleanupPath(workspace);
+  }
+});
+
+test("SqliteDatabase compatible migration path still applies supplemental DDL for migration 11", () => {
+  const workspace = createTempWorkspace("aa-sqlite-db-");
+  const dbPath = join(workspace, "compatible-migration-11.db");
+  const baselinePlan = SQLITE_MIGRATIONS.filter((migration) => migration.version <= 10);
+
+  try {
+    const baselineDb = new SqliteDatabase(dbPath, { migrationPlan: baselinePlan });
+    baselineDb.migrate();
+    baselineDb.connection.exec(`
+ALTER TABLE worker_snapshots ADD COLUMN registration_verified_at TEXT NULL;
+ALTER TABLE worker_snapshots ADD COLUMN registration_challenge_id TEXT NULL;
+`);
+    baselineDb.close();
+
+    const migratedDb = new SqliteDatabase(dbPath);
+    migratedDb.migrate();
+
+    const challengeTable = migratedDb.connection.prepare(`
+SELECT name FROM sqlite_master
+WHERE type = 'table' AND name = 'worker_registration_challenges'
+`).get() as { name?: string } | undefined;
+    const challengeIndex = migratedDb.connection.prepare(`
+SELECT name FROM sqlite_master
+WHERE type = 'index' AND name = 'idx_worker_registration_challenges_worker_created_at'
+`).get() as { name?: string } | undefined;
+
+    assert.equal(challengeTable?.name, "worker_registration_challenges");
+    assert.equal(challengeIndex?.name, "idx_worker_registration_challenges_worker_created_at");
+    migratedDb.close();
   } finally {
     cleanupPath(workspace);
   }

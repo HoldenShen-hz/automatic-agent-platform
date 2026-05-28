@@ -9,6 +9,7 @@
  * storage and retrieval in the Knowledge Plane.
  */
 
+import { createHash } from "node:crypto";
 import { z } from "zod";
 import { type LearningObject } from "./learning-object-model.js";
 
@@ -65,18 +66,7 @@ export async function createLearningArtifact(
     evidenceRefs: learningObject.evidenceRefs,
   });
 
-  let checksum: string;
-  try {
-    const { createHash } = await import("node:crypto");
-    checksum = createHash("sha256").update(content).digest("hex");
-  } catch {
-    // R29-01 fix: Hash the objectId to produce a valid hex string instead of
-    // using the objectId directly, which may contain underscores and lowercase
-    // letters outside the [0-9a-f] range required for a SHA-256 hex checksum.
-    const { createHash: fallbackHash } = await import("node:crypto");
-    const objectId = learningObject.learningObjectId ?? "";
-    checksum = fallbackHash("sha256").update(objectId).digest("hex");
-  }
+  const checksum = createHash("sha256").update(content).digest("hex");
 
   const objectId = learningObject.learningObjectId ?? "";
   const title = learningObject.title ?? "";

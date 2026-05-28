@@ -35,6 +35,37 @@ function compareTrees(leftRoot, rightRoot, label) {
     missingInRight.length > 0 ? `missing in ${rightRoot}: ${missingInRight.join(", ")}` : null,
     missingInLeft.length > 0 ? `missing in ${leftRoot}: ${missingInLeft.join(", ")}` : null,
   ].filter(Boolean).join(" | ") || `${left.length} files` );
+
+  for (const entry of left) {
+    if (!right.includes(entry)) {
+      continue;
+    }
+    compareDocumentShape(join(leftRoot, entry), join(rightRoot, entry), `${label}:${entry}`);
+  }
+}
+
+function summarizeMarkdown(source) {
+  const lines = source.split(/\r?\n/);
+  const nonEmptyLines = lines.filter((line) => line.trim().length > 0).length;
+  const headingCount = lines.filter((line) => /^#{1,6}\s/.test(line)).length;
+  const fenceCount = lines.filter((line) => line.trimStart().startsWith("```")).length;
+  return { nonEmptyLines, headingCount, fenceCount };
+}
+
+function compareDocumentShape(leftPath, rightPath, label) {
+  const left = summarizeMarkdown(readFileSync(leftPath, "utf8"));
+  const right = summarizeMarkdown(readFileSync(rightPath, "utf8"));
+  const lineDelta = Math.abs(left.nonEmptyLines - right.nonEmptyLines);
+  const larger = Math.max(left.nonEmptyLines, right.nonEmptyLines, 1);
+  const lineDrift = lineDelta > 40 && lineDelta / larger > 0.4;
+  const headingDrift = left.headingCount !== right.headingCount;
+  const fenceDrift = left.fenceCount !== right.fenceCount;
+
+  check(
+    `${label} markdown shape stays aligned`,
+    !(lineDrift || headingDrift || fenceDrift),
+    `zh=${left.nonEmptyLines}/${left.headingCount}/${left.fenceCount} en=${right.nonEmptyLines}/${right.headingCount}/${right.fenceCount}`,
+  );
 }
 
 function parseAdrIndex(path) {

@@ -22,5 +22,5 @@ This file is a lightweight engineering memory for the current repository layout.
 
 - Full build: `npm run build`
 - Full regression: `npm test`
-- Docs health: `node --test dist/tests/unit/docs/documentation-health.test.js`
-- Contract integration: `node --test dist/tests/integration/platform/contracts/v2-7-extension-contracts.test.js`
+- Docs health: `node --import tsx --test tests/unit/docs/documentation-health.test.ts`
+- Contract integration: `node --import tsx --test tests/integration/platform/contracts/v2-7-extension-contracts.test.ts`

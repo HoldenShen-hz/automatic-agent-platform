@@ -25,15 +25,16 @@ import {
   startWebVitalsCollection,
   type TelemetrySink,
 } from "@aa/shared-telemetry";
+import { reportUiError } from "./ui-telemetry";
 
 export interface WebRuntimeConfig {
   readonly apiBaseUrl?: string;
   readonly wsUrl?: string;
-  readonly authToken?: string;
   readonly tenantId?: string;
   readonly tokenManager?: TokenManager;
   readonly telemetryEndpoint?: string;
   readonly telemetryAuthToken?: string;
+  readonly authToken?: string;
 }
 
 export interface StartupBanner {
@@ -52,7 +53,6 @@ const runtimeFetch: typeof fetch = (...args) => globalThis.fetch(...args);
 export function createWebRuntimeConfig(env: Record<string, string | boolean | undefined>): WebRuntimeConfig {
   const apiBaseUrl = normalizeOptionalEnv(env.VITE_API_BASE_URL);
   const wsUrl = normalizeOptionalEnv(env.VITE_WS_URL);
-  const authToken = normalizeOptionalEnv(env.VITE_AUTH_TOKEN);
   const tenantId = normalizeOptionalEnv(env.VITE_TENANT_ID);
   const telemetryEndpoint = normalizeOptionalEnv(env.VITE_OTLP_ENDPOINT);
   const telemetryAuthToken = normalizeOptionalEnv(env.VITE_OTLP_AUTH_TOKEN);
@@ -60,11 +60,15 @@ export function createWebRuntimeConfig(env: Record<string, string | boolean | un
   return {
     ...(apiBaseUrl == null ? {} : { apiBaseUrl }),
     ...(wsUrl == null ? {} : { wsUrl }),
-    ...(authToken == null ? {} : { authToken }),
     ...(tenantId == null ? {} : { tenantId }),
     ...(telemetryEndpoint == null ? {} : { telemetryEndpoint }),
     ...(telemetryAuthToken == null ? {} : { telemetryAuthToken }),
   };
+}
+
+export function readBootstrapAuthToken(doc: Document = document): string | undefined {
+  const metaToken = doc.querySelector('meta[name="aa-auth-token"]')?.getAttribute("content");
+  return normalizeOptionalEnv(metaToken);
 }
 
 function normalizeOptionalEnv(value: string | boolean | undefined): string | undefined {
@@ -84,18 +88,10 @@ function constructOrCall<TValue, TArgs extends readonly unknown[]>(
   factory: Constructable<TValue, TArgs> | CallableFactory<TValue, TArgs>,
   ...args: TArgs
 ): TValue {
-  const callableFactory = factory as CallableFactory<TValue, TArgs>;
-  if ("mock" in factory) {
-    return callableFactory(...args);
+  if (typeof factory !== "function" || !/^class\s/.test(Function.prototype.toString.call(factory))) {
+    return (factory as CallableFactory<TValue, TArgs>)(...args);
   }
-  try {
-    return new (factory as Constructable<TValue, TArgs>)(...args);
-  } catch (error) {
-    if (error instanceof TypeError && error.message.includes("is not a constructor")) {
-      return callableFactory(...args);
-    }
-    throw error;
-  }
+  return Reflect.construct(factory, args) as TValue;
 }
 
 export function startWebRuntimeTelemetry(config: Pick<WebRuntimeConfig, "telemetryEndpoint" | "telemetryAuthToken">): WebRuntimeTelemetry | null {
@@ -127,11 +123,32 @@ function seedTokenManager(tokenManager: TokenManager, authToken: string): void {
   if (typeof tokenManager.setSession !== "function") {
     return;
   }
+  const expiresAt = readJwtExpiry(authToken) ?? NON_EXPIRING_BOOTSTRAP_SESSION_EXPIRY;
   tokenManager.setSession({
     accessToken: authToken,
     refreshToken: STATIC_BOOTSTRAP_SESSION_REFRESH_TOKEN,
-    expiresAt: NON_EXPIRING_BOOTSTRAP_SESSION_EXPIRY,
+    expiresAt,
   });
+}
+
+function readJwtExpiry(token: string): number | null {
+  const parts = token.split(".");
+  if (parts.length < 2) {
+    return null;
+  }
+  try {
+    const encodedPayload = parts[1]!.replace(/-/g, "+").replace(/_/g, "/");
+    const decodedPayload = typeof globalThis.atob === "function"
+      ? globalThis.atob(encodedPayload)
+      : Buffer.from(encodedPayload, "base64").toString("utf8");
+    const payload = JSON.parse(decodedPayload) as { exp?: unknown };
+    if (typeof payload.exp !== "number" || !Number.isFinite(payload.exp) || payload.exp <= 0) {
+      return null;
+    }
+    return payload.exp * 1000;
+  } catch {
+    return null;
+  }
 }
 
 export function createWebRuntimeClients(
@@ -188,26 +205,31 @@ export async function registerWebServiceWorker(): Promise<ServiceWorkerRegistrat
   if (typeof window === "undefined" || "serviceWorker" in navigator === false) {
     return null;
   }
-  const baseUrl = (import.meta as ImportMeta & { readonly env?: { readonly BASE_URL?: string } }).env?.BASE_URL ?? "/";
-  const registration = await navigator.serviceWorker.register(`${baseUrl}aa-sw.js`);
-  const notifyUpdateAvailable = () => {
-    window.dispatchEvent(new CustomEvent("aa-sw-update-available", {
-      detail: { registration },
-    }));
-  };
+  try {
+    const baseUrl = (import.meta as ImportMeta & { readonly env?: { readonly BASE_URL?: string } }).env?.BASE_URL ?? "/";
+    const registration = await navigator.serviceWorker.register(`${baseUrl}aa-sw.js`);
+    const notifyUpdateAvailable = () => {
+      window.dispatchEvent(new CustomEvent("aa-sw-update-available", {
+        detail: { registration },
+      }));
+    };
 
-  if (registration.waiting != null) {
-    notifyUpdateAvailable();
-  }
+    if (registration.waiting != null) {
+      notifyUpdateAvailable();
+    }
 
-  registration.addEventListener?.("updatefound", () => {
-    const installing = registration.installing;
-    installing?.addEventListener?.("statechange", () => {
-      if (installing.state === "installed" && navigator.serviceWorker.controller != null) {
-        notifyUpdateAvailable();
-      }
+    registration.addEventListener?.("updatefound", () => {
+      const installing = registration.installing;
+      installing?.addEventListener?.("statechange", () => {
+        if (installing.state === "installed" && navigator.serviceWorker.controller != null) {
+          notifyUpdateAvailable();
+        }
+      });
     });
-  });
 
-  return registration;
+    return registration;
+  } catch (error) {
+    reportUiError("ui.service_worker_registration_failed", error);
+    throw error;
+  }
 }

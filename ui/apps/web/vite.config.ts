@@ -1,7 +1,9 @@
 import { createHash } from "node:crypto";
+import { fileURLToPath } from "node:url";
 import { defineConfig, loadEnv, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import tsconfigPaths from "vite-tsconfig-paths";
+import testTarget from "../../test-target.json";
 import {
   selectManualChunk,
   WEB_BUILD_TARGET,
@@ -22,7 +24,7 @@ function resolveConnectSrcOrigins(env: Record<string, string | undefined>): read
   return Array.from(new Set(candidates));
 }
 
-function buildCspHeader(env: Record<string, string | undefined>): string {
+export function buildCspHeader(env: Record<string, string | undefined>): string {
   const connectSrc = ["'self'", ...resolveConnectSrcOrigins(env)].join(" ");
   return [
     "default-src 'self'",
@@ -31,6 +33,10 @@ function buildCspHeader(env: Record<string, string | undefined>): string {
     "img-src 'self' data: blob:",
     "font-src 'self' data:",
     "worker-src 'self' blob:",
+    "child-src 'self' blob:",
+    "manifest-src 'self'",
+    "form-action 'self'",
+    "frame-src 'none'",
     `connect-src ${connectSrc}`,
     "frame-ancestors 'none'",
     "base-uri 'self'",
@@ -82,6 +88,10 @@ export function applySubresourceIntegrity(bundle: Record<string, { type: "asset"
   );
 }
 
+function attachCspHeader(response: { setHeader(name: string, value: string): void }, cspHeader: string): void {
+  response.setHeader("Content-Security-Policy", cspHeader);
+}
+
 function createCspHeadersPlugin(cspHeader: string): Plugin {
   return {
     name: "csp-headers",
@@ -97,9 +107,15 @@ function createCspHeadersPlugin(cspHeader: string): Plugin {
         ].join("\n"),
       });
     },
+    configureServer(server) {
+      server.middlewares.use((_request, response, next) => {
+        attachCspHeader(response, cspHeader);
+        next();
+      });
+    },
     configurePreviewServer(server) {
       server.middlewares.use((_request, response, next) => {
-        response.setHeader("Content-Security-Policy", cspHeader);
+        attachCspHeader(response, cspHeader);
         next();
       });
     },
@@ -109,21 +125,27 @@ function createCspHeadersPlugin(cspHeader: string): Plugin {
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
   const cspHeader = buildCspHeader(env);
+  const uiHost = env.AA_UI_HOST ?? testTarget.host;
+  const uiPreviewPort = Number.parseInt(env.AA_UI_PORT ?? String(testTarget.port), 10);
+  const uiDevPort = Number.parseInt(env.AA_UI_DEV_PORT ?? String(uiPreviewPort + 1000), 10);
   return {
     plugins: [react(), tsconfigPaths(), createCspHeadersPlugin(cspHeader)],
+    define: {
+      "process.env": "{}",
+    },
     resolve: {
       alias: {
-        "react-native": new URL("./src/react-native-web-stub.tsx", import.meta.url).pathname,
+        "react-native": fileURLToPath(new URL("./src/react-native-web-stub.tsx", import.meta.url)),
       },
     },
     server: {
-      host: "localhost",
-      port: 5173,
+      host: uiHost,
+      port: uiDevPort,
       strictPort: true,
     },
     preview: {
-      host: "localhost",
-      port: 4173,
+      host: uiHost,
+      port: uiPreviewPort,
       strictPort: true,
     },
     build: {

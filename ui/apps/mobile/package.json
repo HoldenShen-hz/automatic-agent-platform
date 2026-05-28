@@ -3,11 +3,22 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "license": "UNLICENSED",
   "dependencies": {
     "react": "^19.1.0",
     "react-native": ">=0.79 <1"
   },
   "scripts": {
-    "smoke": "node ./src/index.ts"
+    "start": "react-native start",
+    "android": "react-native run-android",
+    "ios": "react-native run-ios",
+    "build:android": "react-native bundle --platform android --dev false --entry-file ./src/index.ts --bundle-output ./dist/index.android.bundle --assets-dest ./dist/android",
+    "build:ios": "react-native bundle --platform ios --dev false --entry-file ./src/index.ts --bundle-output ./dist/index.ios.bundle --assets-dest ./dist/ios",
+    "smoke": "node --import tsx ./src/index.ts"
+  },
+  "devDependencies": {
+    "@react-native/metro-config": "^0.79.0",
+    "metro-config": "^0.82.0",
+    "tsx": "^4.20.6"
   }
 }

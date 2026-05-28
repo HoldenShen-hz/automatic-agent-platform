@@ -1,5 +1,5 @@
 import { useState, type ReactElement } from "react";
-import { FeatureScaffold, KeyValueTable, ListCard, MetricGrid, ThreePaneLayout } from "@aa/ui-core";
+import { FeatureScaffold, Inline, KeyValueTable, ListCard, MetricGrid, Stack, ThreePaneLayout } from "@aa/ui-core";
 import { translateFeatureCopy, translateMessage } from "@aa/shared-i18n";
 import { useSettingsVm } from "../hooks";
 import SettingsApiKeys from "../sub-pages/api-keys";
@@ -12,19 +12,25 @@ export function SettingsWebView(): ReactElement {
   return (
     <FeatureScaffold title={featureCopy.title} summary={featureCopy.summary} status="Implemented/Internal">
       <MetricGrid metrics={vm.metrics} />
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 16 }}>
+      <Inline gap={8}>
         {vm.sectionItems.map((section) => (
           <button key={section.id} onClick={() => setActiveSection(section.id)} type="button">
             {section.title}
           </button>
         ))}
-      </div>
+      </Inline>
       <div style={{ marginTop: 16 }}>
         <ThreePaneLayout
           left={<ListCard items={activeSection === "general" ? vm.leftItems : vm.sectionItems.map((item) => ({ title: item.title, description: item.description }))} />}
           center={vm.loading ? <p>{translateMessage("ui.settings.loading")}</p> : (
-            <div style={{ display: "grid", gap: 16 }}>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <Stack gap={16}>
+              <form
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  vm.save();
+                }}
+              >
+                <Inline gap={8}>
                 <select onChange={(event) => vm.setDraftTheme(event.target.value as "light" | "dark" | "high-contrast")} value={vm.draftTheme}>
                   <option value="light">{translateMessage("ui.settings.theme.light")}</option>
                   <option value="dark">{translateMessage("ui.settings.theme.dark")}</option>
@@ -37,12 +43,13 @@ export function SettingsWebView(): ReactElement {
                     </option>
                   ))}
                 </select>
-                <button onClick={vm.save} type="button">{translateMessage("ui.settings.save")}</button>
-              </div>
+                  <button type="submit">{translateMessage("ui.settings.save")}</button>
+                </Inline>
+              </form>
               {activeSection === "general" ? <KeyValueTable rows={vm.centerRows} /> : null}
               {activeSection === "api-keys" ? <SettingsApiKeys /> : null}
               {activeSection === "notifications" ? <SettingsNotifications /> : null}
-            </div>
+            </Stack>
           )}
           right={<ListCard items={vm.activityItems.length > 0 ? vm.activityItems : vm.rightItems} />}
         />

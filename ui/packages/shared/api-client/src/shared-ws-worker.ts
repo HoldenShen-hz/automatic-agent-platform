@@ -174,6 +174,7 @@ function scheduleReconnect(): void {
   const delay = calculateBackoffDelay();
   reconnectAttempt += 1;
   reconnectTimer = setTimeout(() => {
+    reconnectTimer = null;
     if (currentUrl != null && currentToken != null && ports.size > 0) {
       connectSocket(currentUrl, currentToken);
     }
@@ -204,55 +205,63 @@ function rememberEvent(event: WorkerSocketEvent): void {
   replayBufferByChannel.set(event.channel, nextBuffer);
 }
 
-self.onconnect = (connectionEvent: SharedWorkerConnectEvent) => {
-  const port = connectionEvent.ports[0];
-  if (port == null) {
-    return;
-  }
-  ports.add(port);
-  port.start();
-  port.postMessage({ type: "status", status: socket?.readyState === WebSocket.OPEN ? "connected" : "disconnected" } satisfies WorkerOutboundMessage);
+export function installSharedWorkerSocketRuntime(
+  sharedWorkerGlobal: typeof self = self,
+): void {
+  sharedWorkerGlobal.onconnect = (connectionEvent: SharedWorkerConnectEvent) => {
+    const port = connectionEvent.ports[0];
+    if (port == null) {
+      return;
+    }
+    ports.add(port);
+    port.start();
+    port.postMessage({ type: "status", status: socket?.readyState === WebSocket.OPEN ? "connected" : "disconnected" } satisfies WorkerOutboundMessage);
 
-  port.onmessage = (event: MessageEvent<WorkerCommand>) => {
-    const message = event.data;
-    if (message.action === "connect") {
-      if (socket == null || currentUrl !== message.url || currentToken !== message.token) {
-        connectSocket(message.url, message.token);
+    port.onmessage = (event: MessageEvent<WorkerCommand>) => {
+      const message = event.data;
+      if (message.action === "connect") {
+        if (socket == null || currentUrl !== message.url || currentToken !== message.token) {
+          connectSocket(message.url, message.token);
+        }
+        return;
       }
-      return;
-    }
-    if (message.action === "disconnect") {
-      ports.delete(port);
-      if (ports.size === 0) {
-        disconnectSocket();
+      if (message.action === "disconnect") {
+        ports.delete(port);
+        if (ports.size === 0) {
+          disconnectSocket();
+        }
+        return;
       }
-      return;
-    }
-    if (message.action === "subscribe") {
-      subscribedChannels.add(message.channel);
-      if (socket != null && socket.readyState === WebSocket.OPEN) {
-        socket.send(JSON.stringify({
-          action: "subscribe",
-          channel: message.channel,
-          ...(lastEventIdByChannel.get(message.channel) == null
-            ? {}
-            : { lastEventId: lastEventIdByChannel.get(message.channel) }),
-        }));
+      if (message.action === "subscribe") {
+        subscribedChannels.add(message.channel);
+        if (socket != null && socket.readyState === WebSocket.OPEN) {
+          socket.send(JSON.stringify({
+            action: "subscribe",
+            channel: message.channel,
+            ...(lastEventIdByChannel.get(message.channel) == null
+              ? {}
+              : { lastEventId: lastEventIdByChannel.get(message.channel) }),
+          }));
+        }
+        for (const replayEvent of replayBufferByChannel.get(message.channel) ?? []) {
+          port.postMessage({ type: "event", event: replayEvent } satisfies WorkerOutboundMessage);
+        }
+        return;
       }
-      for (const replayEvent of replayBufferByChannel.get(message.channel) ?? []) {
-        port.postMessage({ type: "event", event: replayEvent } satisfies WorkerOutboundMessage);
+      if (message.action === "publish") {
+        rememberEvent(message.event);
+        broadcast({ type: "event", event: message.event });
+        return;
       }
-      return;
-    }
-    if (message.action === "publish") {
-      rememberEvent(message.event);
-      broadcast({ type: "event", event: message.event });
-      return;
-    }
-    if (message.action === "useSseFallback") {
-      setStatus("sse-fallback");
-    }
+      if (message.action === "useSseFallback") {
+        setStatus("sse-fallback");
+      }
+    };
   };
-};
+}
+
+if ("onconnect" in self) {
+  installSharedWorkerSocketRuntime();
+}
 
 export {};

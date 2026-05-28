@@ -43,6 +43,7 @@ export interface MutationOptions<TData, TError, TVariables> {
   readonly method: "POST" | "PUT" | "PATCH" | "DELETE";
   readonly path: string | ((variables: TVariables) => string);
   readonly client: RESTClient;
+  readonly body?: unknown | ((variables: TVariables) => unknown);
   readonly onMutate?: (variables: TVariables) => Promise<SnapshotResult[] | SnapshotResult | undefined> | void;
   readonly onError?: (error: TError, variables: TVariables, context?: { previousData: SnapshotResult[] }) => void | Promise<void>;
   readonly onSettled?: (data: TData | undefined, error: TError | null, variables: TVariables) => void | Promise<void>;
@@ -51,10 +52,10 @@ export interface MutationOptions<TData, TError, TVariables> {
 /**
  * Captures current cache state for one or more query keys.
  */
-export async function snapshotCache(
+export function snapshotCache(
   queryClient: QueryClient,
   queryKeys: readonly unknown[][],
-): Promise<SnapshotResult[]> {
+): SnapshotResult[] {
   return queryKeys.map((queryKey) => {
     const query = queryClient.getQueryData(queryKey);
     return { queryKey, data: query };
@@ -85,9 +86,14 @@ export async function patchCache<T>(
   queryClient: QueryClient,
   queryKey: readonly unknown[],
   updater: (current: T | undefined) => T,
-): Promise<void> {
+): Promise<SnapshotResult> {
+  const snapshot: SnapshotResult = {
+    queryKey,
+    data: queryClient.getQueryData(queryKey),
+  };
   await queryClient.cancelQueries({ queryKey });
   queryClient.setQueryData<T>(queryKey, updater(queryClient.getQueryData<T>(queryKey)));
+  return snapshot;
 }
 
 /**
@@ -101,6 +107,7 @@ export function createOptimisticMutationOptions<TData, TError, TVariables>({
   method,
   path,
   client,
+  body,
   onMutate,
   onError,
   onSettled,
@@ -108,13 +115,18 @@ export function createOptimisticMutationOptions<TData, TError, TVariables>({
   return {
     mutationFn: async (variables: TVariables) => {
       const resolvedPath = typeof path === "function" ? path(variables) : path;
+      const resolvedBody = body === undefined
+        ? variables
+        : typeof body === "function"
+          ? body(variables)
+          : body;
       switch (method) {
         case "POST":
-          return client.post<TData>(resolvedPath, variables);
+          return client.post<TData>(resolvedPath, resolvedBody);
         case "PUT":
-          return client.put<TData>(resolvedPath, variables);
+          return client.put<TData>(resolvedPath, resolvedBody);
         case "PATCH":
-          return client.patch<TData>(resolvedPath, variables);
+          return client.patch<TData>(resolvedPath, resolvedBody);
         case "DELETE":
           return client.delete<TData>(resolvedPath);
       }
@@ -126,7 +138,7 @@ export function createOptimisticMutationOptions<TData, TError, TVariables>({
       return undefined;
     },
     onError: (error: TError, variables: TVariables, context: { previousData: SnapshotResult[] } | undefined) => {
-      if (onError && context?.previousData) {
+      if (onError) {
         onError(error, variables, context);
       }
     },

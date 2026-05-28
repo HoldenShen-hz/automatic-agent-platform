@@ -157,8 +157,20 @@ test("getRemainingVotes helper returns correct values", () => {
 });
 
 test("determineFinalStatus returns correct status", () => {
-  assert.equal(determineFinalStatus({ ...createInitialQuorumStatus(), isQuorumMet: true }, { minApprovals: 1, minRejectionsToDeny: 1 }), "approved");
-  assert.equal(determineFinalStatus({ ...createInitialQuorumStatus(), isDenied: true }, { minApprovals: 1, minRejectionsToDeny: 1 }), "rejected");
+  assert.equal(
+    determineFinalStatus(
+      { ...createInitialQuorumStatus(), isQuorumMet: true, approvalsReceived: 1 },
+      { minApprovals: 1, minRejectionsToDeny: 1 },
+    ),
+    "approved",
+  );
+  assert.equal(
+    determineFinalStatus(
+      { ...createInitialQuorumStatus(), isDenied: true, rejectionsReceived: 1 },
+      { minApprovals: 1, minRejectionsToDeny: 1 },
+    ),
+    "rejected",
+  );
   assert.equal(determineFinalStatus(createInitialQuorumStatus(), { minApprovals: 1, minRejectionsToDeny: 1 }), "pending");
 });
 

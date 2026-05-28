@@ -1,1 +1,10 @@
-{ "name": "@aa/mock-server", "version": "0.1.0", "private": true, "type": "module" }
+{
+  "name": "@aa/mock-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@aa/shared-api-client": "0.1.0"
+  }
+}

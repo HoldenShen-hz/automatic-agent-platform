@@ -6,11 +6,17 @@ vi.mock("electron", () => ({
     whenReady: vi.fn(async () => undefined),
     quit: vi.fn(),
     setUserTasks: vi.fn(),
+    requestSingleInstanceLock: vi.fn(() => true),
+  },
+  clipboard: {
+    writeText: vi.fn(),
   },
   BrowserWindow: Object.assign(
     vi.fn(() => ({
       once: vi.fn(),
       show: vi.fn(),
+      focus: vi.fn(),
+      isDestroyed: vi.fn(() => false),
       on: vi.fn(),
       loadFile: vi.fn(),
       minimize: vi.fn(),
@@ -20,11 +26,14 @@ vi.mock("electron", () => ({
       setContentProtection: vi.fn(),
       webContents: {
         setWindowOpenHandler: vi.fn(),
+        on: vi.fn(),
+        getURL: vi.fn(() => "file:///index.html"),
         send: vi.fn(),
       },
     })),
     {
       getAllWindows: vi.fn(() => []),
+      getFocusedWindow: vi.fn(() => null),
     },
   ),
   shell: {
@@ -36,6 +45,13 @@ vi.mock("electron", () => ({
   globalShortcut: {
     register: vi.fn(),
     unregisterAll: vi.fn(),
+  },
+  session: {
+    defaultSession: {
+      webRequest: {
+        onHeadersReceived: vi.fn(),
+      },
+    },
   },
   Notification: Object.assign(
     vi.fn(() => ({
@@ -65,12 +81,12 @@ import {
   electronGlobalShortcuts,
   electronMainBaseline,
   electronBridgeCapabilities,
-  isShellCommandAllowed,
   openSecondaryWindow,
   registerGlobalShortcuts,
+  registerIpcHandlers,
   showPlatformNotification,
 } from "../../../../../apps/electron-win/src/main";
-import { app, globalShortcut, Notification } from "electron";
+import { app, globalShortcut, ipcMain, Notification, shell } from "electron";
 
 describe("electronMainBaseline", () => {
   const channelNames = electronMainBaseline.channels.map((channel) => channel.name);
@@ -123,20 +139,22 @@ describe("electronBridgeCapabilities", () => {
   });
 });
 
-describe("isShellCommandAllowed", () => {
-  it("only allows the predefined diagnostic commands", () => {
-    expect(isShellCommandAllowed("status")).toBe(true);
-    expect(isShellCommandAllowed("health")).toBe(true);
-    expect(isShellCommandAllowed("version")).toBe(true);
-    expect(isShellCommandAllowed("powershell -Command whoami")).toBe(false);
-  });
-});
-
 describe("createMainWindow", () => {
   it("loads the packaged electron html shell and keeps preload isolated", () => {
     const windowHandle = createMainWindow();
 
     expect(windowHandle.loadFile).toHaveBeenCalledWith(expect.stringContaining("index.html"));
+  });
+
+  it("denies arbitrary external window opens and only forwards allowlisted URLs", async () => {
+    const windowHandle = createMainWindow();
+    const openHandler = vi.mocked(windowHandle.webContents.setWindowOpenHandler).mock.calls[0]?.[0];
+
+    expect(openHandler?.({ url: "javascript:alert(1)" } as never)).toEqual({ action: "deny" });
+    expect(shell.openExternal).not.toHaveBeenCalled();
+
+    expect(openHandler?.({ url: "https://example.com" } as never)).toEqual({ action: "deny" });
+    expect(shell.openExternal).toHaveBeenCalledWith("https://example.com");
   });
 });
 
@@ -175,5 +193,18 @@ describe("desktop integrations", () => {
     expect(windowHandle.loadFile).toHaveBeenCalledWith(expect.stringContaining("index.html"), {
       hash: "/shared/settings",
     });
+  });
+
+  it("registers the preload-exposed IPC handlers", () => {
+    const mainWindow = createMainWindow();
+    registerIpcHandlers(mainWindow);
+
+    expect(ipcMain.handle).toHaveBeenCalledWith("shell:openExternal", expect.any(Function));
+    expect(ipcMain.handle).toHaveBeenCalledWith("window:minimize", expect.any(Function));
+    expect(ipcMain.handle).toHaveBeenCalledWith("window:maximize", expect.any(Function));
+    expect(ipcMain.handle).toHaveBeenCalledWith("window:open", expect.any(Function));
+    expect(ipcMain.handle).toHaveBeenCalledWith("privacy:getAnalyticsConsent", expect.any(Function));
+    expect(ipcMain.handle).toHaveBeenCalledWith("privacy:setAnalyticsConsent", expect.any(Function));
+    expect(ipcMain.handle).toHaveBeenCalledWith("privacy:enableScreenSecurity", expect.any(Function));
   });
 });

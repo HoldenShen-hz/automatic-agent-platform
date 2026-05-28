@@ -5,6 +5,7 @@ export interface OfflineMutation {
   readonly body: unknown;
   readonly createdAt: string;
   readonly tenantId?: string;
+  readonly headers?: Readonly<Record<string, string>>;
   readonly traceId?: string;
   readonly principal?: {
     readonly principalId: string;

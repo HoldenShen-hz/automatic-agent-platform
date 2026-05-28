@@ -13,7 +13,7 @@ export default {
   },
   testRunner: "command",
   commandRunner: {
-    command: "sh scripts/ci/mutation-critical-tests.sh",
+    command: "bash scripts/ci/mutation-critical-tests.sh",
   },
   reporters: ["html", "clear-text", "progress"],
   coverageAnalysis: "off",

@@ -13,6 +13,8 @@ const packageJson = JSON.parse(
     "utf-8",
   ),
 ) as {
+  main?: string;
+  scripts?: Record<string, string>;
   devDependencies?: Record<string, string>;
   build?: {
     win?: Record<string, unknown>;
@@ -23,12 +25,15 @@ test("electron shell html defines a restrictive CSP meta tag", () => {
   assert.ok(html.includes("Content-Security-Policy"));
   assert.ok(html.includes("default-src 'self'"));
   assert.ok(html.includes("script-src 'self'"));
+  assert.ok(html.includes("worker-src 'self'"));
   assert.ok(html.includes("frame-ancestors 'none'"));
 });
 
 test("electron shell package declares runtime and signing build metadata", () => {
-  assert.equal(packageJson.devDependencies?.electron, "^42.1.0");
+  assert.equal(packageJson.main, "dist/main.js");
+  assert.equal(packageJson.scripts?.build, "tsc -p tsconfig.json && node ./scripts/prepare-shell-assets.mjs");
+  assert.equal(packageJson.devDependencies?.electron, "^31.0.0");
   assert.equal(packageJson.devDependencies?.["electron-updater"], "^6.6.2");
   assert.equal(packageJson.build?.win?.verifyUpdateCodeSignature, true);
-  assert.equal(packageJson.build?.win?.signAndEditExecutable, true);
+  assert.equal(packageJson.build?.win?.signAndEditExecutable, false);
 });

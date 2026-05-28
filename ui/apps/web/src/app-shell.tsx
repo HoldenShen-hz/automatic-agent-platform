@@ -29,11 +29,7 @@ export interface FeatureSubPage {
   readonly Component: () => ReactElement;
 }
 
-type WebFeatureModule = Omit<FeatureModule, "subPages"> & {
-  readonly subPages: readonly FeatureSubPage[];
-};
-
-type ShellLifecyclePhase = "render" | "idle";
+type ShellLifecyclePhase = "booting" | "ready";
 
 export interface WebAppShellProps {
   readonly features: readonly FeatureModule[];
@@ -51,17 +47,6 @@ export interface WebAppShellProps {
   };
 }
 
-const LOCAL_DEV_HOSTS = new Set(["localhost", "127.0.0.1", "::1", "0.0.0.0"]);
-const LOCAL_DEV_PERMISSIONS = [
-  "authenticated",
-  "platform_sre",
-  "domain_admin+",
-  "org_admin+",
-  "admin+",
-  "pack_developer+",
-] as const;
-const LOCAL_DEV_ROLES = ["platform-admin", "operator", "developer"] as const;
-
 function AppRouter(
   { children, initialEntries, router }: { children: ReactElement; initialEntries?: readonly string[]; router: "browser" | "memory" },
 ): ReactElement {
@@ -72,7 +57,18 @@ function AppRouter(
 }
 
 function normalizePath(path: string): string {
-  return path.replace(/\/+$/, "");
+  const segments: string[] = [];
+  for (const segment of path.split("/")) {
+    if (segment.length === 0 || segment === ".") {
+      continue;
+    }
+    if (segment === "..") {
+      segments.pop();
+      continue;
+    }
+    segments.push(segment);
+  }
+  return `/${segments.join("/")}`;
 }
 
 function withAlpha(hexColor: string, alpha: number): string {
@@ -111,7 +107,11 @@ function AccessDeniedView({ fallbackPath, reason }: { reason: string | null; fal
       <p>{resolvedReason}</p>
       <button
         onClick={() => {
-          if (typeof window !== "undefined" && window.history.length > 1) {
+          if (
+            typeof window !== "undefined"
+            && document.referrer.length > 0
+            && new URL(document.referrer).origin === window.location.origin
+          ) {
             navigate(-1);
             return;
           }
@@ -134,8 +134,8 @@ class FeatureErrorBoundary extends React.Component<
     this.state = { error: null, retryKey: 0 };
   }
 
-  public static getDerivedStateFromError(error: Error) {
-    return { error, retryKey: 0 };
+  public static getDerivedStateFromError(error: Error): Pick<{ readonly error: Error | null; readonly retryKey: number }, "error"> {
+    return { error };
   }
 
   public override componentDidCatch(error: Error, info: React.ErrorInfo): void {
@@ -149,7 +149,7 @@ class FeatureErrorBoundary extends React.Component<
       return (
         <section>
           <p style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>{translateMessage("ui.shell.featureError.title")}</p>
-          <p>{this.state.error.message}</p>
+          <p>{translateMessage("ui.globalError.message")}</p>
           <div style={{ display: "flex", gap: 12 }}>
             <button
               onClick={() => {
@@ -181,9 +181,16 @@ class FeatureErrorBoundary extends React.Component<
   }
 }
 
-function FeatureContent({ feature }: { feature: WebFeatureModule }): ReactElement {
+function FeatureContent({ feature }: { feature: FeatureModule }): ReactElement {
   const location = useLocation();
-  const subPages = feature.subPages ?? [];
+  const subPages = useMemo(() => resolveFeatureSubPages(feature.subPages), [feature.subPages]);
+  const basePath = useMemo(() => normalizePath(feature.route.path), [feature.route.path]);
+  const currentPath = useMemo(() => normalizePath(location.pathname), [location.pathname]);
+  const activeSubPage = useMemo(
+    () => subPages.find((subPage) => currentPath === normalizePath(`${basePath}/${subPage.path}`)) ?? null,
+    [basePath, currentPath, subPages],
+  );
+  const activeSubPageBackground = useMemo(() => withAlpha(designTokens.color.accent, 0.12), []);
 
   if (subPages.length === 0) {
     return (
@@ -193,18 +200,8 @@ function FeatureContent({ feature }: { feature: WebFeatureModule }): ReactElemen
     );
   }
 
-  const basePath = normalizePath(feature.route.path);
-  const activeSubPage = subPages.find((subPage) => normalizePath(location.pathname) === `${basePath}/${subPage.path}`) ?? subPages[0] ?? null;
-
-  if (activeSubPage == null) {
-    return <section><h2>{translateMessage("ui.shell.noSections")}</h2></section>;
-  }
-
   return (
     <div style={{ display: "grid", gap: 16 }}>
-      <Suspense fallback={<LoadingFallback />}>
-        <feature.Component />
-      </Suspense>
       <nav aria-label={`${feature.manifest.title} sections`} style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
         {subPages.map((subPage) => (
           <NavLink
@@ -214,7 +211,7 @@ function FeatureContent({ feature }: { feature: WebFeatureModule }): ReactElemen
               textDecoration: "none",
               padding: "8px 10px",
               borderRadius: 10,
-              background: isActive ? withAlpha(designTokens.color.accent, 0.12) : "transparent",
+              background: isActive ? activeSubPageBackground : "transparent",
             })}
             to={`${feature.route.path}/${subPage.path}`}
           >
@@ -223,14 +220,23 @@ function FeatureContent({ feature }: { feature: WebFeatureModule }): ReactElemen
         ))}
       </nav>
       <Suspense fallback={<LoadingFallback />}>
-        <activeSubPage.Component />
+        {activeSubPage == null ? <feature.Component /> : <activeSubPage.Component />}
       </Suspense>
     </div>
   );
 }
 
+function NotFoundRoute(): ReactElement {
+  return (
+    <section role="alert">
+      <p style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>{translateMessage("ui.shell.noFeatures")}</p>
+      <p>404</p>
+    </section>
+  );
+}
+
 function GuardedFeatureRoute(
-  { features, feature, authContext }: { features: readonly WebFeatureModule[]; feature: WebFeatureModule; authContext: FeatureGuardContext },
+  { features, feature, authContext }: { features: readonly FeatureModule[]; feature: FeatureModule; authContext: FeatureGuardContext },
 ): ReactElement {
   const resolvedFeature = useMemo(
     () => features.find((candidate) => candidate.route.path === feature.route.path) ?? features[0] ?? null,
@@ -272,13 +278,18 @@ function AppFrame(
     phase,
     startupBanner,
   }: {
-    features: readonly WebFeatureModule[];
+    features: readonly FeatureModule[];
     authContext: FeatureGuardContext;
     phase: ShellLifecyclePhase;
     startupBanner?: WebAppShellProps["startupBanner"];
   },
 ): ReactElement {
   const systemStatus = useSystemStatus();
+  const isNarrowLayout = typeof window !== "undefined" ? window.matchMedia("(max-width: 960px)").matches : false;
+  const navigationTone = useMemo(() => ({
+    activeBackground: withAlpha(designTokens.color.accent, 0.12),
+    bannerBackground: withAlpha(designTokens.color.accent, 0.16),
+  }), []);
   const groupedFeatures = Object.entries(
     features.reduce<Record<string, WebFeatureModule[]>>((groups, feature) => {
       const bucket = groups[feature.manifest.group] ?? [];
@@ -289,13 +300,21 @@ function AppFrame(
   );
 
   return (
-    <div style={{ minHeight: "100vh", background: designTokens.color.background, color: designTokens.color.text, display: "grid", gridTemplateColumns: "280px 1fr" }}>
+    <div
+      style={{
+        minHeight: "100vh",
+        background: designTokens.color.background,
+        color: designTokens.color.text,
+        display: "grid",
+        gridTemplateColumns: isNarrowLayout ? "minmax(0, 1fr)" : "minmax(220px, 280px) minmax(0, 1fr)",
+      }}
+    >
       <aside style={{ borderRight: `1px solid ${designTokens.color.border}`, padding: 20 }}>
         <h1 style={{ fontSize: 20, marginTop: 0 }}>{translateMessage("ui.app.title")}</h1>
         <div style={{ color: designTokens.color.subtle, fontSize: 12, marginBottom: 16, textTransform: "uppercase" }}>
           {translateMessage("ui.shell.phase")}: {phase}
         </div>
-        <nav style={{ display: "grid", gap: 16 }}>
+        <nav aria-label="Primary navigation" style={{ display: "grid", gap: 16 }}>
           {groupedFeatures.map(([group, groupFeatures]) => (
             <section key={group} style={{ display: "grid", gap: 8 }}>
               <div style={{ color: designTokens.color.subtle, fontSize: 12, fontWeight: 700, letterSpacing: 0.6, textTransform: "uppercase" }}>
@@ -309,7 +328,7 @@ function AppFrame(
                     textDecoration: "none",
                     padding: "8px 10px",
                     borderRadius: 10,
-                    background: isActive ? withAlpha(designTokens.color.accent, 0.12) : "transparent",
+                    background: isActive ? navigationTone.activeBackground : "transparent",
                   })}
                   to={feature.route.path}
                 >
@@ -329,7 +348,7 @@ function AppFrame(
               padding: 16,
               borderRadius: 12,
               border: `1px solid ${designTokens.color.accent}`,
-              background: withAlpha(designTokens.color.accent, 0.16),
+              background: navigationTone.bannerBackground,
             }}
           >
             <strong>{startupBanner.title}</strong>
@@ -337,7 +356,7 @@ function AppFrame(
           </section>
         )}
         <SystemStatusBar status={systemStatus} />
-        {(phase === "render" || phase === "idle") ? (
+        {phase === "ready" ? (
           features.length === 0 ? (
             <section role="status">
               <p style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>{translateMessage("ui.shell.noFeatures")}</p>
@@ -351,7 +370,7 @@ function AppFrame(
                   path={feature.subPages != null && feature.subPages.length > 0 ? `${feature.route.path}/*` : feature.route.path}
                 />
               ))}
-              <Route element={<GuardedFeatureRoute authContext={authContext} feature={features[0]!} features={features} />} path="*" />
+              <Route element={<NotFoundRoute />} path="*" />
             </Routes>
           )
         ) : (
@@ -375,20 +394,20 @@ export function WebAppShell(
     ...(wsToken == null ? {} : { wsToken }),
   };
   const adapter = useMemo(() => createWebPlatformAdapter(), []);
-  const [phase, setPhase] = useState<ShellLifecyclePhase>("render");
+  const [phase, setPhase] = useState<ShellLifecyclePhase>("booting");
   const normalizedFeatures = useMemo(() => features.map(normalizeFeatureModule), [features]);
   const locationAuthContext = useMemo(() => resolveLocationAuthContext(), []);
   const resolvedUserId = authContext?.userId ?? locationAuthContext.userId;
-  const resolvedAuthenticated = authContext?.authenticated ?? true;
+  const resolvedAuthenticated = authContext?.authenticated ?? locationAuthContext.authenticated ?? false;
 
-  const effectiveAuthContext = {
+  const effectiveAuthContext = useMemo(() => ({
     ...createFeatureGuardContext({
       ...locationAuthContext,
       ...authContext,
       authenticated: resolvedAuthenticated,
     }),
     ...(resolvedUserId == null ? {} : { userId: resolvedUserId }),
-  };
+  }), [authContext, locationAuthContext, resolvedAuthenticated, resolvedUserId]);
   const runtimePermissions = effectiveAuthContext.permissions ?? [];
   const runtimeRoles = effectiveAuthContext.roles ?? [];
   const runtimeAuthContext = {
@@ -399,9 +418,9 @@ export function WebAppShell(
   };
 
   useEffect(() => {
-    if (phase === "render") {
-      setPhase("idle");
-    }
+      if (phase === "booting") {
+        setPhase("ready");
+      }
   }, [phase]);
 
   return (
@@ -420,11 +439,19 @@ export function WebAppShell(
   );
 }
 
-function normalizeFeatureModule(feature: FeatureModule): WebFeatureModule {
-  const subPages = Array.isArray(feature.subPages)
-    ? feature.subPages.filter(isFeatureSubPage)
-    : [];
+function normalizeFeatureModule(feature: FeatureModule): FeatureModule {
+  const subPages = resolveFeatureSubPages(feature.subPages);
+  if (subPages.length === 0) {
+    return feature;
+  }
   return { ...feature, subPages };
+}
+
+function resolveFeatureSubPages(subPages: FeatureModule["subPages"]): readonly FeatureSubPage[] {
+  if (!Array.isArray(subPages)) {
+    return [];
+  }
+  return subPages.filter(isFeatureSubPage);
 }
 
 function isFeatureSubPage(value: unknown): value is FeatureSubPage {
@@ -450,19 +477,6 @@ function resolveLocationAuthContext(): Partial<AuthContext> {
   const domainId = params.get("domain_id");
   const mode = params.get("mode");
   const hasExplicitAuth = userId != null || permissions.length > 0 || roles.length > 0;
-
-  if (!hasExplicitAuth && LOCAL_DEV_HOSTS.has(window.location.hostname)) {
-    return {
-      userId: "local-dev-operator",
-      authenticated: true,
-      tenantId: tenantId ?? "tenant-default",
-      domainId: domainId ?? "platform",
-      permissions: [...LOCAL_DEV_PERMISSIONS],
-      roles: [...LOCAL_DEV_ROLES],
-      ...(mode === "solo" || mode === "enterprise" ? { mode } : { mode: "enterprise" }),
-    };
-  }
-
   const authenticated = hasExplicitAuth;
 
   return {

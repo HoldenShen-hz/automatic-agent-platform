@@ -52,7 +52,7 @@ const QUERY_EVENT_MAP = {
 type QueryMappedRealtimeEventType = keyof typeof QUERY_EVENT_MAP;
 
 export class WSEventRouter {
-  private readonly cleanup: Array<() => void> = [];
+  private readonly cleanupByChannel = new Map<string, () => void>();
 
   public constructor(
     private readonly client: WSClient,
@@ -65,18 +65,20 @@ export class WSEventRouter {
   }
 
   public disconnect(): void {
-    for (const dispose of this.cleanup.splice(0, this.cleanup.length)) {
+    for (const dispose of this.cleanupByChannel.values()) {
       dispose();
     }
+    this.cleanupByChannel.clear();
     this.client.disconnect();
   }
 
   public subscribe(channel: string): void {
-    this.cleanup.push(
-      this.client.subscribe(channel, (event) => {
-        this.route(event);
-      }),
-    );
+    if (this.cleanupByChannel.has(channel)) {
+      return;
+    }
+    this.cleanupByChannel.set(channel, this.client.subscribe(channel, (event) => {
+      this.route(event);
+    }));
   }
 
   public route(event: WSEventEnvelope): RoutedRealtimeEvent {

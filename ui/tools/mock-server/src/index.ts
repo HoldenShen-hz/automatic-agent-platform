@@ -1,8 +1,10 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
-import { defaultMockApiShape } from "@aa/shared-api-client";
+import { DEFAULT_ACCEPT_VERSIONS, defaultMockApiShape } from "@aa/shared-api-client";
 import testTarget from "../../../test-target.json";
 
 const LOOPBACK_HOST = testTarget.host;
+
+const PRIMARY_CONTRACT_VERSION = DEFAULT_ACCEPT_VERSIONS[0];
 
 export function createMockServerSnapshot() {
   return defaultMockApiShape;
@@ -25,9 +27,9 @@ export function resolveMockRequest(path: string) {
       accepted: true,
       apiVersion: "v1",
       platformVersion: "0.1.0",
-      contractVersion: "1.0",
-      minServerVersion: "1.0",
-      supportedVersions: ["1.0"],
+      contractVersion: PRIMARY_CONTRACT_VERSION,
+      minServerVersion: PRIMARY_CONTRACT_VERSION,
+      supportedVersions: [...DEFAULT_ACCEPT_VERSIONS],
     };
   }
   if (pathname === "/api/v1/dashboard/snapshot") {
@@ -68,6 +70,9 @@ function resolveRequestPath(request: IncomingMessage): string {
 export function createMockRequestHandler() {
   return (request: IncomingMessage, response: ServerResponse) => {
     const path = resolveRequestPath(request);
+    if (request.method === "POST" || request.method === "PUT" || request.method === "PATCH") {
+      request.resume();
+    }
     if (path === "/healthz") {
       writeJson(response, 200, { ok: true });
       return;
@@ -83,8 +88,18 @@ export function createMockRequestHandler() {
 export async function createMockHttpServer(port = 0): Promise<MockHttpServer> {
   const server = createServer(createMockRequestHandler());
 
-  await new Promise<void>((resolve) => {
-    server.listen(port, LOOPBACK_HOST, resolve);
+  await new Promise<void>((resolve, reject) => {
+    const handleError = (error: Error) => {
+      server.off("listening", handleListening);
+      reject(error);
+    };
+    const handleListening = () => {
+      server.off("error", handleError);
+      resolve();
+    };
+    server.once("error", handleError);
+    server.once("listening", handleListening);
+    server.listen(port, LOOPBACK_HOST);
   });
 
   const address = server.address();

@@ -19,9 +19,10 @@ vi.hoisted(() => {
   });
 });
 
-import { EChartSurface } from "../../packages/ui-core/src/charts/echart-surface";
+import { BarChart, EChartSurface, GaugeChart, HeatmapGrid, ScatterPlot } from "../../packages/ui-core/src/charts";
 import { EChartSurfaceRuntime } from "../../packages/ui-core/src/charts/echart-surface-runtime";
 import { MetricGrid, MiniTrendBars } from "../../packages/ui-core/src/charts";
+import { PieChart } from "../../packages/ui-core/src/components/extended";
 import { designTokens } from "../../packages/ui-core/src/design-tokens";
 
 const chartApi = {
@@ -71,7 +72,9 @@ describe("ui-core chart regressions", () => {
   it("configures data zoom, theme-aware colors, and ResizeObserver-based reflow in chart runtime", () => {
     const observe = vi.fn();
     const disconnect = vi.fn();
-    const resizeObserver = vi.fn(() => ({ observe, disconnect }));
+    const resizeObserver = vi.fn(function ResizeObserverMock() {
+      return { observe, disconnect };
+    });
     vi.stubGlobal("ResizeObserver", resizeObserver as unknown as typeof ResizeObserver);
     const originalUserAgent = window.navigator.userAgent;
     Object.defineProperty(window.navigator, "userAgent", {
@@ -123,7 +126,9 @@ describe("ui-core chart regressions", () => {
   it("reuses the same chart instance and appends series data for append-only updates", () => {
     const observe = vi.fn();
     const disconnect = vi.fn();
-    const resizeObserver = vi.fn(() => ({ observe, disconnect }));
+    const resizeObserver = vi.fn(function ResizeObserverMock() {
+      return { observe, disconnect };
+    });
     vi.stubGlobal("ResizeObserver", resizeObserver as unknown as typeof ResizeObserver);
     const originalUserAgent = window.navigator.userAgent;
     Object.defineProperty(window.navigator, "userAgent", {
@@ -149,7 +154,9 @@ describe("ui-core chart regressions", () => {
   it("re-renders the chart when theme colors change across rerenders", () => {
     const observe = vi.fn();
     const disconnect = vi.fn();
-    const resizeObserver = vi.fn(() => ({ observe, disconnect }));
+    const resizeObserver = vi.fn(function ResizeObserverMock() {
+      return { observe, disconnect };
+    });
     vi.stubGlobal("ResizeObserver", resizeObserver as unknown as typeof ResizeObserver);
     const originalUserAgent = window.navigator.userAgent;
     Object.defineProperty(window.navigator, "userAgent", {
@@ -208,7 +215,9 @@ describe("ui-core chart regressions", () => {
   it("recomputes aria metadata when the title changes across rerenders", () => {
     const observe = vi.fn();
     const disconnect = vi.fn();
-    const resizeObserver = vi.fn(() => ({ observe, disconnect }));
+    const resizeObserver = vi.fn(function ResizeObserverMock() {
+      return { observe, disconnect };
+    });
     vi.stubGlobal("ResizeObserver", resizeObserver as unknown as typeof ResizeObserver);
     const originalUserAgent = window.navigator.userAgent;
     Object.defineProperty(window.navigator, "userAgent", {
@@ -228,5 +237,30 @@ describe("ui-core chart regressions", () => {
       configurable: true,
       value: originalUserAgent,
     });
+  });
+
+  it("renders accessible data tables for svg and div chart primitives", () => {
+    render(
+      <div>
+        <BarChart points={[{ label: "A", value: 3, tone: "javascript:alert(1)" }]} />
+        <ScatterPlot points={[{ label: "Q1", x: -4, y: 6 }]} />
+        <GaugeChart label="Readiness" value={42} max={100} />
+        <HeatmapGrid rows={["North"]} columns={["Open"]} values={[[3]]} />
+      </div>,
+    );
+
+    expect(screen.getByText("Bar chart data")).toBeInTheDocument();
+    expect(screen.getByText("Scatter plot data")).toBeInTheDocument();
+    expect(screen.getByText("Readiness gauge data")).toBeInTheDocument();
+    expect(screen.getByText("Heatmap data")).toBeInTheDocument();
+    expect(screen.getByTitle("North / Open: 3")).toBeInTheDocument();
+  });
+
+  it("describes pie slices and keeps conic gradient stops numerically stable", () => {
+    render(<PieChart slices={Array.from({ length: 128 }, (_, index) => ({ label: `Slice ${index + 1}`, value: 1 }))} />);
+
+    const chart = screen.getByRole("img", { name: "Pie chart" });
+    expect(chart).toHaveAccessibleDescription(/Slice 1: 1/);
+    expect((chart as HTMLElement).style.background).toContain("100.0000%");
   });
 });

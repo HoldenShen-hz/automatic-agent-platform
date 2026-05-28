@@ -20,7 +20,11 @@ export class TokenManager {
   public constructor(private readonly options: TokenManagerOptions = {}) {}
 
   public setSession(session: AuthSession): void {
-    this.session = session;
+    this.session = {
+      ...session,
+      roles: session.roles == null ? undefined : [...session.roles],
+      permissions: session.permissions == null ? undefined : [...session.permissions],
+    };
   }
 
   public getSession(): AuthSession | null {

@@ -1,7 +1,19 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import type { ElectronBridge } from "@aa/shared-platform";
 
-const exposeInMainWorld = vi.fn();
+const electronMocks = vi.hoisted(() => ({
+  exposeInMainWorld: vi.fn(),
+  invoke: vi.fn(),
+}));
+
+vi.mock("electron", () => ({
+  contextBridge: {
+    exposeInMainWorld: electronMocks.exposeInMainWorld,
+  },
+  ipcRenderer: {
+    invoke: electronMocks.invoke,
+  },
+}));
 
 import {
   electronPreloadApi,
@@ -49,13 +61,13 @@ describe("electronPreloadApi", () => {
 
 describe("installElectronBridge", () => {
   beforeEach(() => {
-    exposeInMainWorld.mockClear();
+    electronMocks.exposeInMainWorld.mockClear();
     (
       globalThis as typeof globalThis & {
         __AA_ELECTRON_CONTEXT_BRIDGE__?: { exposeInMainWorld(name: string, api: unknown): void };
       }
     ).__AA_ELECTRON_CONTEXT_BRIDGE__ = {
-      exposeInMainWorld,
+      exposeInMainWorld: electronMocks.exposeInMainWorld,
     };
   });
 
@@ -65,8 +77,7 @@ describe("installElectronBridge", () => {
 
     installElectronBridge(targetWindow, bridge);
 
-    expect(exposeInMainWorld).toHaveBeenCalledWith("AA_ELECTRON", bridge);
-    expect(exposeInMainWorld).toHaveBeenCalledWith("__AA_ELECTRON__", bridge);
+    expect(electronMocks.exposeInMainWorld).toHaveBeenCalledWith("AA_ELECTRON", expect.objectContaining(bridge));
     expect(Object.prototype.hasOwnProperty.call(targetWindow, "__AA_ELECTRON__")).toBe(false);
   });
 });

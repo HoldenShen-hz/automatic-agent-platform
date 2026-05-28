@@ -44,12 +44,7 @@ import { createWorkspaceWritePolicy } from "../../platform/five-plane-control-pl
 import { SecretManagementService } from "../../platform/five-plane-control-plane/iam/secret-management-service.js";
 import type { EnvironmentName } from "../../platform/contracts/types/domain.js";
 import { loadReleasePipelineCliEnv } from "../../platform/five-plane-control-plane/config-center/release-pipeline-env.js";
-
-const GITHUB_ACTION_RUN_URL_PREFIX = "https://github.com/automatic-agent/automatic-agent-platform/actions/runs/";
-
-function buildGithubActionRunUrl(runId: string | null): string {
-  return `${GITHUB_ACTION_RUN_URL_PREFIX}${runId}`;
-}
+import { buildGithubActionRunUrl } from "./github-actions-url.js";
 
 /**
  * Retrieves a required environment variable value mapped from CLI config.

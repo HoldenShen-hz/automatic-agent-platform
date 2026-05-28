@@ -17,6 +17,8 @@ test("createFeatureModule enables codeSplit by default", () => {
 
 test("ThreePaneLayout uses responsive auto-fit columns instead of a fixed 720px minimum", () => {
   assert.match(uiCoreLayoutsSource, /gridTemplateColumns:\s*"repeat\(auto-fit, minmax\(200px, 1fr\)\)"/);
+  assert.match(uiCoreLayoutsSource, /createElement\("main", \{ "aria-label": "Main content" \}/);
+  assert.match(uiCoreLayoutsSource, /createElement\("aside", \{ "aria-label": "Left panel" \}/);
 });
 
 test("darkTheme defines explicit semantic colors needed for dark-mode contrast", () => {
@@ -33,7 +35,7 @@ test("EChartSurface forwards an explicit theme into the runtime chart", () => {
 
 test("EChartSurfaceRuntime re-renders when theme colors change", () => {
   assert.match(uiCoreChartRuntimeSource, /readonly theme\?: CoreDesignTokens/);
-  assert.match(uiCoreChartRuntimeSource, /\[values, chartTheme\.accent, chartTheme\.border\]/);
+  assert.match(uiCoreChartRuntimeSource, /\[title, values, chartTheme\.accent, chartTheme\.border, chartTheme\.surfaceElevated\]/);
 });
 
 test("current chart feature entrypoints pass resolved theme into EChartSurface", () => {

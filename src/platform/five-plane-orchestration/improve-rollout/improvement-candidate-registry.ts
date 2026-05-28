@@ -33,9 +33,18 @@ export interface CandidateTtlConfig {
   maxSize: number;
 }
 
+export interface ImprovementCandidateRegistryOptions extends Partial<CandidateTtlConfig> {
+  store?: CandidatePersistenceStore;
+  now?: () => number;
+}
+
 const DEFAULT_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days default TTL
 const DEFAULT_MAX_SIZE = 100;
 const improvementCandidateRegistryLogger = new StructuredLogger({ retentionLimit: 100 });
+
+function toEpochMs(value: string | number): number {
+  return typeof value === "number" ? value : Date.parse(value);
+}
 
 export class ImprovementCandidateRegistry {
   private readonly candidates = new Map<string, ImprovementCandidate>();
@@ -46,18 +55,20 @@ export class ImprovementCandidateRegistry {
   /** R23-45 fix: TTL in milliseconds */
   private readonly ttlMs: number;
   private readonly maxSize: number;
+  private readonly now: () => number;
 
-  public constructor(options?: number | (Partial<CandidateTtlConfig> & { store?: CandidatePersistenceStore })) {
+  public constructor(options?: number | ImprovementCandidateRegistryOptions) {
     const normalizedOptions = typeof options === "number" ? { maxSize: options } : options;
     this.ttlMs = normalizedOptions?.ttlMs ?? DEFAULT_TTL_MS;
     this.maxSize = normalizedOptions?.maxSize ?? DEFAULT_MAX_SIZE;
     this.persistenceStore = normalizedOptions?.store;
+    this.now = normalizedOptions?.now ?? Date.now;
     // R23-45 fix: Load persisted candidates on startup
     if (this.persistenceStore) {
       for (const candidate of this.persistenceStore.loadCandidates()) {
         this.candidates.set(candidate.candidateId, candidate);
         this.accessOrder.add(candidate.candidateId);
-        this.createdAt.set(candidate.candidateId, new Date(candidate.createdAt).getTime());
+        this.createdAt.set(candidate.candidateId, toEpochMs(candidate.createdAt));
       }
     }
   }
@@ -90,7 +101,7 @@ export class ImprovementCandidateRegistry {
       updatedAt: timestamp,
     });
     this.candidates.set(candidate.candidateId, candidate);
-    this.createdAt.set(candidate.candidateId, Date.now());
+    this.createdAt.set(candidate.candidateId, toEpochMs(candidate.createdAt));
     this.touch(candidate.candidateId);
     this.evictIfNeeded();
     // R23-45 fix: Persist to durable store after registration
@@ -137,14 +148,14 @@ export class ImprovementCandidateRegistry {
     if (created == null) {
       return false;
     }
-    return Date.now() - created < this.ttlMs;
+    return this.now() - created < this.ttlMs;
   }
 
   /**
    * R23-45 fix: Evict all expired entries.
    */
   private evictExpired(): void {
-    const now = Date.now();
+    const now = this.now();
     const expiredIds: string[] = [];
     for (const [candidateId, created] of this.createdAt.entries()) {
       if (now - created >= this.ttlMs) {

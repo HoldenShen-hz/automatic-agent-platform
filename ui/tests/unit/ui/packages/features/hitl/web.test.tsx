@@ -1,5 +1,5 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 const mockApprove = vi.fn(async () => undefined);
 const mockReject = vi.fn(async () => undefined);
@@ -39,12 +39,23 @@ vi.mock("../../../../../../packages/features/hitl/src/hooks", () => ({
 import { HitlWebView } from "../../../../../../packages/features/hitl/src/web";
 
 describe("HitlWebView", () => {
+  afterEach(() => {
+    cleanup();
+    vi.clearAllMocks();
+  });
+
   it("renders interactive actions instead of a static list", async () => {
     render(<HitlWebView />);
 
-    fireEvent.click(screen.getAllByRole("button", { name: "Approve" })[0]!);
-    fireEvent.click(screen.getAllByRole("button", { name: "Reject" })[0]!);
-    fireEvent.click(screen.getByRole("button", { name: "Resume" }));
+    const approveButton = screen.getAllByRole("button", { name: "Approve" })[0]!;
+    const rejectButton = screen.getAllByRole("button", { name: "Reject" })[0]!;
+    const resumeButton = screen.getByRole("button", { name: "Resume" });
+    fireEvent.pointerDown(approveButton);
+    fireEvent.click(approveButton);
+    fireEvent.pointerDown(rejectButton);
+    fireEvent.click(rejectButton);
+    fireEvent.pointerDown(resumeButton);
+    fireEvent.click(resumeButton);
 
     expect(mockApprove).toHaveBeenCalledWith("approval-1");
     expect(mockReject).toHaveBeenCalledWith("approval-1");
@@ -53,23 +64,31 @@ describe("HitlWebView", () => {
 
   it("opens patch and override editors and applies JSON payloads", async () => {
     render(<HitlWebView />);
+    const textbox = () => screen.getByRole("textbox");
+    const applyButton = () => screen.getByRole("button", { name: "Apply" });
 
     await act(async () => {
-      fireEvent.click(screen.getAllByRole("button", { name: "Patch" })[0]!);
+      const patchButton = screen.getAllByRole("button", { name: "Patch" })[0]!;
+      fireEvent.pointerDown(patchButton);
+      fireEvent.click(patchButton);
     });
     await act(async () => {
-      fireEvent.change(screen.getByRole("textbox"), { target: { value: "{\"field\":\"value\"}" } });
-      fireEvent.click(screen.getByRole("button", { name: "Apply" }));
+      fireEvent.change(textbox(), { target: { value: "{\"field\":\"value\"}" } });
+      fireEvent.pointerDown(applyButton());
+      fireEvent.click(applyButton());
     });
 
     expect(mockPatch).toHaveBeenCalledWith("approval-1", { field: "value" });
 
     await act(async () => {
-      fireEvent.click(screen.getAllByRole("button", { name: "Override" })[0]!);
+      const overrideButton = screen.getAllByRole("button", { name: "Override" })[0]!;
+      fireEvent.pointerDown(overrideButton);
+      fireEvent.click(overrideButton);
     });
     await act(async () => {
-      fireEvent.change(screen.getByRole("textbox"), { target: { value: "{\"mode\":\"full\"}" } });
-      fireEvent.click(screen.getByRole("button", { name: "Apply" }));
+      fireEvent.change(textbox(), { target: { value: "{\"mode\":\"full\"}" } });
+      fireEvent.pointerDown(applyButton());
+      fireEvent.click(applyButton());
     });
 
     expect(mockOverride).toHaveBeenCalledWith("approval-1", { mode: "full" });

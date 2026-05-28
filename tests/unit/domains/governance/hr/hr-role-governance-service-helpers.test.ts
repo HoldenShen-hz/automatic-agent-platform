@@ -6,6 +6,7 @@
  */
 
 import assert from "node:assert/strict";
+import { join } from "node:path";
 import test from "node:test";
 
 import {
@@ -30,6 +31,7 @@ function makeMockDivision(
   }>,
   divisionId = "test_division",
 ): DivisionRegistry {
+  const divisionRoot = join("/virtual/divisions", divisionId);
   return {
     divisions: new Map([
       [
@@ -37,7 +39,7 @@ function makeMockDivision(
         {
           id: divisionId,
           name: "Test Division",
-          rootPath: "/tmp/test",
+          rootPath: divisionRoot,
           version: "1",
           description: "Test division description",
           priority: 100,
@@ -47,7 +49,7 @@ function makeMockDivision(
           roles: roles.map((r) => ({
             id: r.id,
             name: r.name,
-            promptPath: `/tmp/test/roles/${r.id}.prompt.md`,
+            promptPath: join(divisionRoot, "roles", `${r.id}.prompt.md`),
             promptText: r.promptText ?? `Role ${r.name}`,
             model: "balanced",
             tools: r.tools,

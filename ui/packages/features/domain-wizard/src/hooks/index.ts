@@ -85,10 +85,7 @@ function readStoredDraft(): DomainWizardPersistedDraft {
     return createDefaultDraft();
   }
   try {
-    return {
-      ...createDefaultDraft(),
-      ...(JSON.parse(raw) as Partial<DomainWizardPersistedDraft>),
-    };
+    return validateStoredDraft(JSON.parse(raw));
   } catch {
     return createDefaultDraft();
   }
@@ -294,4 +291,35 @@ export function useDomainWizardVm(): DomainWizardVm {
       setSubmissionMessage("Domain configuration submitted");
     },
   };
+}
+
+function validateStoredDraft(value: unknown): DomainWizardPersistedDraft {
+  const fallback = createDefaultDraft();
+  if (value == null || typeof value !== "object") {
+    return fallback;
+  }
+  const parsed = value as Record<string, unknown>;
+  return {
+    currentStep: isStepId(parsed.currentStep) ? parsed.currentStep : fallback.currentStep,
+    selectedDomainId: typeof parsed.selectedDomainId === "string" || parsed.selectedDomainId === null ? parsed.selectedDomainId : fallback.selectedDomainId,
+    riskLevel: isRiskLevel(parsed.riskLevel) ? parsed.riskLevel : fallback.riskLevel,
+    dataClassification: isDataClassification(parsed.dataClassification) ? parsed.dataClassification : fallback.dataClassification,
+    hasExternalIntegration: typeof parsed.hasExternalIntegration === "boolean" ? parsed.hasExternalIntegration : fallback.hasExternalIntegration,
+    maxConcurrentTasks: normalizePositiveInt(typeof parsed.maxConcurrentTasks === "number" ? parsed.maxConcurrentTasks : fallback.maxConcurrentTasks, fallback.maxConcurrentTasks),
+    allowedDrillDepth: Math.min(5, normalizePositiveInt(typeof parsed.allowedDrillDepth === "number" ? parsed.allowedDrillDepth : fallback.allowedDrillDepth, fallback.allowedDrillDepth)),
+    enableAutoRollback: typeof parsed.enableAutoRollback === "boolean" ? parsed.enableAutoRollback : fallback.enableAutoRollback,
+    savedAt: typeof parsed.savedAt === "string" ? parsed.savedAt : fallback.savedAt,
+  };
+}
+
+function isStepId(value: unknown): value is DomainWizardStepId {
+  return value === "domain-select" || value === "risk-profile" || value === "capability-config" || value === "review";
+}
+
+function isRiskLevel(value: unknown): value is RiskLevel {
+  return value === "low" || value === "medium" || value === "high" || value === "critical";
+}
+
+function isDataClassification(value: unknown): value is DataClassification {
+  return value === "public" || value === "internal" || value === "confidential" || value === "restricted";
 }

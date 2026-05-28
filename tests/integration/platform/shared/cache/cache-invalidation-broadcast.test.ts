@@ -13,6 +13,9 @@ import test from "node:test";
 
 import { CacheInvalidationBroadcast } from "../../../../../src/platform/shared/cache/cache-invalidation-broadcast.js";
 
+const REDIS_HOST = process.env.AA_REDIS_HOST ?? "127.0.0.1";
+const REDIS_PORT = Number.parseInt(process.env.AA_REDIS_PORT ?? "6379", 10);
+
 // Test message structure validation
 test("CacheInvalidationMessage type is correctly structured for tag invalidation", () => {
   const message: { type: "tag"; tag: string; origin: string } = {
@@ -43,8 +46,8 @@ test("CacheInvalidationBroadcast can be instantiated with config and callback", 
   // Use a mock config that won't actually connect
   const broadcast = new CacheInvalidationBroadcast(
     {
-      host: "localhost",
-      port: 6379,
+      host: REDIS_HOST,
+      port: REDIS_PORT,
     },
     async () => {},
   );
@@ -144,7 +147,7 @@ test("Instance IDs are unique across generations", () => {
 // Validate that close can be called safely multiple times
 test("CacheInvalidationBroadcast close is idempotent", async () => {
   const broadcast = new CacheInvalidationBroadcast(
-    { host: "localhost", port: 6379 },
+    { host: REDIS_HOST, port: REDIS_PORT },
     async () => {},
   );
 

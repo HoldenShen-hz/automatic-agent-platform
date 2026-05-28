@@ -39,15 +39,48 @@ export interface ResourcePoolHealthObservation {
   readonly sampleCount: number;
 }
 
+export interface ResourcePoolStateStore {
+  load(): readonly ResourcePool[];
+  save(pools: readonly ResourcePool[]): void;
+}
+
+export interface ResourcePoolServiceOptions {
+  readonly defaultFailureRateThreshold?: number;
+  readonly defaultMinSampleSize?: number;
+  readonly recoveryCooldownMs?: number;
+  readonly stateStore?: ResourcePoolStateStore;
+}
+
 export class ResourcePoolService {
   private readonly pools = new Map<string, ResourcePool>();
   /** Per-consumer allocation tracking: poolId -> consumerId -> allocatedUnits */
   private readonly consumerAllocations = new Map<string, Map<string, number>>();
+  private readonly recoveryCooldownMs: number;
+  private readonly defaultFailureRateThreshold: number;
+  private readonly defaultMinSampleSize: number;
+  private readonly stateStore: ResourcePoolStateStore | undefined;
+  private readonly isolationChangedAt = new Map<string, number>();
+
+  public constructor(options: ResourcePoolServiceOptions = {}) {
+    this.defaultFailureRateThreshold = options.defaultFailureRateThreshold ?? 0.3;
+    this.defaultMinSampleSize = options.defaultMinSampleSize ?? 20;
+    this.recoveryCooldownMs = options.recoveryCooldownMs ?? 60_000;
+    this.stateStore = options.stateStore;
+    for (const pool of options.stateStore?.load() ?? []) {
+      this.pools.set(pool.poolId, pool);
+      this.consumerAllocations.set(pool.poolId, new Map());
+    }
+  }
 
   public registerPool(pool: ResourcePool): ResourcePool {
-    const parsed = ResourcePoolSchema.parse(pool);
+    const parsed = ResourcePoolSchema.parse({
+      ...pool,
+      failureRateThreshold: pool.failureRateThreshold ?? this.defaultFailureRateThreshold,
+      minSampleSize: pool.minSampleSize ?? this.defaultMinSampleSize,
+    });
     this.pools.set(parsed.poolId, parsed);
     this.consumerAllocations.set(parsed.poolId, new Map());
+    this.persistState();
     return parsed;
   }
 
@@ -79,6 +112,7 @@ export class ResourcePoolService {
     // Track per-consumer allocation
     const poolConsumers = this.consumerAllocations.get(poolId)!;
     poolConsumers.set(consumerId, (poolConsumers.get(consumerId) ?? 0) + units);
+    this.persistState();
     return {
       poolId,
       consumerId,
@@ -116,20 +150,31 @@ export class ResourcePoolService {
       allocatedUnits,
     };
     this.pools.set(poolId, updated);
+    this.persistState();
     return updated;
   }
 
   public recordHealthObservation(poolId: string, observation: ResourcePoolHealthObservation): ResourcePool {
     const pool = this.requirePool(poolId);
+    const now = Date.now();
     const shouldIsolate = observation.sampleCount >= pool.minSampleSize
       && observation.failureRate > pool.failureRateThreshold;
+    const lastChangedAt = this.isolationChangedAt.get(poolId) ?? 0;
+    const shouldRemainIsolated = pool.isolationStatus === "isolated"
+      && !shouldIsolate
+      && now - lastChangedAt < this.recoveryCooldownMs;
+    const isolationStatus = shouldIsolate || shouldRemainIsolated ? "isolated" : "active";
     const updated: ResourcePool = {
       ...pool,
       failureRate: observation.failureRate,
       sampleCount: observation.sampleCount,
-      isolationStatus: shouldIsolate ? "isolated" : "active",
+      isolationStatus,
     };
     this.pools.set(poolId, updated);
+    if (updated.isolationStatus !== pool.isolationStatus) {
+      this.isolationChangedAt.set(poolId, now);
+    }
+    this.persistState();
     return updated;
   }
 
@@ -174,5 +219,9 @@ export class ResourcePoolService {
       throw new Error(`resource_pool.not_found:${poolId}`);
     }
     return pool;
+  }
+
+  private persistState(): void {
+    this.stateStore?.save([...this.pools.values()]);
   }
 }

@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 
 const checks = [];
+const MAX_SOURCE_LINES = 1000;
 
 function lineCount(path) {
   return readFileSync(path, "utf8").split("\n").length;
@@ -18,28 +19,28 @@ const harnessIndexLines = lineCount("src/platform/five-plane-orchestration/harne
 const executableContractsIndexLines = lineCount("src/platform/contracts/executable-contracts/index.ts");
 
 check(
-  "runtime-truth-repository below 1000 lines",
-  runtimeTruthRepositoryLines < 1000,
+  `runtime-truth-repository below ${MAX_SOURCE_LINES} lines`,
+  runtimeTruthRepositoryLines < MAX_SOURCE_LINES,
   `runtime-truth-repository.ts=${runtimeTruthRepositoryLines}`,
 );
 check(
-  "mission-repository below 1000 lines",
-  missionRepositoryLines < 1000,
+  `mission-repository below ${MAX_SOURCE_LINES} lines`,
+  missionRepositoryLines < MAX_SOURCE_LINES,
   `mission-repository.ts=${missionRepositoryLines}`,
 );
 check(
-  "runtime-physical-schema below 1000 lines",
-  runtimePhysicalSchemaLines < 1000,
+  `runtime-physical-schema below ${MAX_SOURCE_LINES} lines`,
+  runtimePhysicalSchemaLines < MAX_SOURCE_LINES,
   `runtime-physical-schema.ts=${runtimePhysicalSchemaLines}`,
 );
 check(
-  "platform index below 1000 lines",
-  platformIndexLines < 1000,
+  `platform index below ${MAX_SOURCE_LINES} lines`,
+  platformIndexLines < MAX_SOURCE_LINES,
   `platform/index.ts=${platformIndexLines}`,
 );
 check(
-  "remaining giant source files stay below 1000 lines",
-  harnessIndexLines <= 1000 && executableContractsIndexLines <= 1000,
+  `remaining giant source files stay below ${MAX_SOURCE_LINES} lines`,
+  harnessIndexLines <= MAX_SOURCE_LINES && executableContractsIndexLines <= MAX_SOURCE_LINES,
   `harness/index.ts=${harnessIndexLines}, executable-contracts/index.ts=${executableContractsIndexLines}`,
 );
 

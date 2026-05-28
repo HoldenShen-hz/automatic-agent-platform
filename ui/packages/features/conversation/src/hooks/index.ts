@@ -1,7 +1,7 @@
 import { ConversationClient, type ConversationMessage, type ConversationStatus } from "@aa/shared-nl-client";
-import { QueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { translateMessage } from "@aa/shared-i18n";
 import type { WSClient, WSEventEnvelope } from "@aa/shared-api-client";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 export interface Message {
   readonly id: string;
@@ -30,7 +30,7 @@ export interface ConversationVm {
   buildPlan(): Promise<void>;
   confirmPlan(): void;
   executePlan(): Promise<void>;
-  requestClarification(): void;
+  requestClarification(content?: string): void;
   disconnect(): void;
 }
 
@@ -43,10 +43,6 @@ interface PersistedConversationState {
   readonly isStreaming: boolean;
 }
 
-const STORAGE_KEY = "aa.conversation.vm";
-export const conversationVmQueryKey = ["conversation", "vm"] as const;
-export const conversationVmQueryClient = new QueryClient();
-
 type ConversationClientSnapshot = {
   messages?: readonly ConversationMessage[];
   status?: ConversationVm["status"];
@@ -55,12 +51,36 @@ type ConversationClientSnapshot = {
   isStreaming?: boolean;
 };
 
-const conversationClientListeners = new Set<(snapshot: ConversationClientSnapshot) => void>();
-let sharedConversationClient: ConversationClient | null = null;
-let sharedConversationClientRefCount = 0;
+const STORAGE_KEY = "aa.conversation.vm";
+export const conversationVmQueryKey = ["conversation", "vm"] as const;
+
+class ConversationVmCache {
+  private value: PersistedConversationState | null = null;
+
+  public setQueryData(_key: typeof conversationVmQueryKey, nextValue: PersistedConversationState): void {
+    this.value = nextValue;
+  }
+
+  public getQueryData<T>(_key: typeof conversationVmQueryKey): T | undefined {
+    return this.value as T | undefined;
+  }
+
+  public clear(): void {
+    this.value = null;
+  }
+}
+
+export const conversationVmQueryClient = new ConversationVmCache();
 
 function normalizeMessageRole(role: Message["role"] | undefined): Message["role"] {
   return role ?? "assistant";
+}
+
+function createMessageId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `msg-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
 }
 
 function createMessage(
@@ -69,7 +89,7 @@ function createMessage(
   timestamp = new Date().toISOString(),
 ): Message {
   return {
-    id: crypto.randomUUID(),
+    id: createMessageId(),
     role: normalizeMessageRole(role),
     content: content ?? "",
     timestamp,
@@ -95,38 +115,58 @@ function mapConversationMessages(messages: readonly ConversationMessage[]): read
   }));
 }
 
+function createDefaultPersistedState(): PersistedConversationState {
+  return {
+    messages: [],
+    attachments: [],
+    status: "idle",
+    planReady: false,
+    executionReady: false,
+    isStreaming: false,
+  };
+}
+
 function persistState(state: PersistedConversationState): void {
   conversationVmQueryClient.setQueryData(conversationVmQueryKey, state);
-  if (typeof sessionStorage === "undefined") {
+  if (typeof window === "undefined") {
     return;
   }
   try {
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   } catch {
-    // Keep the query cache authoritative when browser session storage is unavailable.
+    // Query cache remains authoritative when browser storage is unavailable.
   }
 }
 
-function loadPersistedState(): PersistedConversationState | null {
+function readPersistedState(): PersistedConversationState | null {
   const cached = conversationVmQueryClient.getQueryData<PersistedConversationState>(conversationVmQueryKey);
   if (cached != null) {
     return cached;
   }
-  if (typeof sessionStorage === "undefined") {
+  if (typeof window === "undefined") {
     return null;
   }
-  const raw = sessionStorage.getItem(STORAGE_KEY);
+  const raw = window.sessionStorage.getItem(STORAGE_KEY);
   if (raw == null) {
     return null;
   }
   try {
-    return JSON.parse(raw) as PersistedConversationState;
+    const parsed = JSON.parse(raw) as Partial<PersistedConversationState>;
+    return {
+      ...createDefaultPersistedState(),
+      ...(Array.isArray(parsed.messages) ? { messages: parsed.messages } : {}),
+      ...(Array.isArray(parsed.attachments) ? { attachments: parsed.attachments } : {}),
+      ...(typeof parsed.status === "string" ? { status: parsed.status as PersistedConversationState["status"] } : {}),
+      ...(typeof parsed.planReady === "boolean" ? { planReady: parsed.planReady } : {}),
+      ...(typeof parsed.executionReady === "boolean" ? { executionReady: parsed.executionReady } : {}),
+      ...(typeof parsed.isStreaming === "boolean" ? { isStreaming: parsed.isStreaming } : {}),
+    };
   } catch {
     return null;
   }
 }
 
-function createConversationClient(persisted: PersistedConversationState | null): ConversationClient {
+function createConversationClient(persisted: PersistedConversationState | null, onStateChange: (snapshot: ConversationClientSnapshot) => void): ConversationClient {
   const initialMessages = persisted?.messages.map((message) => ({
     id: message.id,
     role: message.role,
@@ -134,123 +174,82 @@ function createConversationClient(persisted: PersistedConversationState | null):
   }));
   return new ConversationClient({
     ...(initialMessages == null ? {} : { initialMessages }),
-    onStateChange: (snapshot: ConversationClientSnapshot) => {
-      for (const listener of conversationClientListeners) {
-        listener(snapshot);
-      }
-    },
+    onStateChange,
   });
 }
 
-function getSharedConversationClient(persisted: PersistedConversationState | null): ConversationClient {
-  if (sharedConversationClient == null) {
-    sharedConversationClient = createConversationClient(persisted);
+function resolveClientSnapshot(client: ConversationClient, fallbackStatus: ConversationVm["status"]): ConversationClientSnapshot {
+  if (typeof (client as { getSnapshot?: () => ConversationClientSnapshot; }).getSnapshot === "function") {
+    return (client as { getSnapshot: () => ConversationClientSnapshot; }).getSnapshot();
   }
-  return sharedConversationClient;
-}
-
-function subscribeConversationClient(listener: (snapshot: ConversationClientSnapshot) => void): () => void {
-  conversationClientListeners.add(listener);
-  return () => {
-    conversationClientListeners.delete(listener);
+  return {
+    messages: typeof (client as { listMessages?: () => readonly ConversationMessage[]; }).listMessages === "function"
+      ? (client as { listMessages: () => readonly ConversationMessage[]; }).listMessages()
+      : [],
+    status: typeof (client as { getStatus?: () => ConversationVm["status"]; }).getStatus === "function"
+      ? (client as { getStatus: () => ConversationVm["status"]; }).getStatus()
+      : fallbackStatus,
   };
 }
 
-function disposeSharedConversationClient(): void {
-  if (sharedConversationClientRefCount > 0) {
-    sharedConversationClientRefCount -= 1;
-  }
-  if (sharedConversationClientRefCount > 0) {
-    return;
-  }
-  if (sharedConversationClient != null && typeof (sharedConversationClient as { dispose?: () => void; }).dispose === "function") {
-    (sharedConversationClient as { dispose: () => void; }).dispose();
-  }
-  sharedConversationClient = null;
-}
-
 export function useConversationVm(wsClient?: WSClient | null): ConversationVm {
-  const [persisted] = useState(() => loadPersistedState());
-  const [messages, setMessages] = useState<readonly Message[]>(persisted?.messages ?? []);
-  const [attachments, setAttachments] = useState<readonly AttachmentItem[]>(persisted?.attachments ?? []);
-  const [status, setStatus] = useState<ConversationVm["status"]>(persisted?.status ?? "idle");
-  const [draft, setDraft] = useState("Help me plan the next operation");
-  const [planReady, setPlanReady] = useState(persisted?.planReady ?? false);
-  const [executionReady, setExecutionReady] = useState(persisted?.executionReady ?? false);
-  const [isStreaming, setIsStreaming] = useState(persisted?.isStreaming ?? false);
+  const defaultDraft = translateMessage("ui.conversation.defaultDraft");
+  const [messages, setMessages] = useState<readonly Message[]>([]);
+  const [attachments, setAttachments] = useState<readonly AttachmentItem[]>([]);
+  const [status, setStatus] = useState<ConversationVm["status"]>("idle");
+  const [draft, setDraft] = useState(defaultDraft);
+  const [planReady, setPlanReady] = useState(false);
+  const [executionReady, setExecutionReady] = useState(false);
+  const [isStreaming, setIsStreaming] = useState(false);
   const persistTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const unsubscribeRef = useRef<(() => void) | null>(null);
+  const stateRef = useRef<PersistedConversationState>(createDefaultPersistedState());
+  const clientRef = useRef<ConversationClient | null>(null);
+  const unsubscribeEventRef = useRef<(() => void) | null>(null);
   const unsubscribeStatusRef = useRef<(() => void) | null>(null);
-  const stateRef = useRef<PersistedConversationState>({
-    messages: persisted?.messages ?? [],
-    attachments: persisted?.attachments ?? [],
-    status: persisted?.status ?? "idle",
-    planReady: persisted?.planReady ?? false,
-    executionReady: persisted?.executionReady ?? false,
-    isStreaming: persisted?.isStreaming ?? false,
-  });
-  const client = getSharedConversationClient(persisted);
 
-  useEffect(() => {
-    sharedConversationClientRefCount += 1;
-    return () => {
-      disposeSharedConversationClient();
-    };
+  const syncPersistedSnapshot = useCallback((updater: (current: PersistedConversationState) => PersistedConversationState) => {
+    const nextState = updater(stateRef.current);
+    stateRef.current = nextState;
+    persistState(nextState);
   }, []);
 
-  const syncFromClient = useCallback((overrides?: Partial<PersistedConversationState>) => {
-    const snapshot = typeof (client as { getSnapshot?: () => {
-      messages?: readonly ConversationMessage[];
-      status?: ConversationVm["status"];
-      planReady?: boolean;
-      executionReady?: boolean;
-      isStreaming?: boolean;
-    }; }).getSnapshot === "function"
-      ? (client as { getSnapshot: () => {
-        messages?: readonly ConversationMessage[];
-        status?: ConversationVm["status"];
-        planReady?: boolean;
-        executionReady?: boolean;
-        isStreaming?: boolean;
-      }; }).getSnapshot()
-      : {
-        messages: typeof (client as { listMessages?: () => readonly ConversationMessage[]; }).listMessages === "function"
-          ? (client as { listMessages: () => readonly ConversationMessage[]; }).listMessages()
-          : [],
-        status: typeof (client as { getStatus?: () => ConversationVm["status"]; }).getStatus === "function"
-          ? (client as { getStatus: () => ConversationVm["status"]; }).getStatus()
-          : stateRef.current.status,
-      };
-
+  const syncFromClient = useCallback((client: ConversationClient, overrides?: Partial<PersistedConversationState>) => {
+    const snapshot = resolveClientSnapshot(client, stateRef.current.status);
     const currentState = stateRef.current;
     const nextMessages = snapshot.messages != null ? mapConversationMessages(snapshot.messages) : currentState.messages;
-    const nextStatus = snapshot.status === "idle" && currentState.status !== "idle" && currentState.messages.length > 0
-      ? currentState.status
-      : (snapshot.status ?? currentState.status);
-    const nextPlanReady = snapshot.planReady ?? currentState.planReady;
-    const nextExecutionReady = snapshot.executionReady ?? currentState.executionReady;
-    const nextIsStreaming = snapshot.isStreaming ?? currentState.isStreaming;
+    const nextStatus = overrides?.status ?? snapshot.status ?? currentState.status;
+    const nextPlanReady = overrides?.planReady ?? snapshot.planReady ?? currentState.planReady;
+    const nextExecutionReady = overrides?.executionReady ?? snapshot.executionReady ?? currentState.executionReady;
+    const nextIsStreaming = overrides?.isStreaming ?? snapshot.isStreaming ?? currentState.isStreaming;
     const nextState: PersistedConversationState = {
       messages: nextMessages,
       attachments: currentState.attachments,
-      status: overrides?.status ?? nextStatus,
-      planReady: overrides?.planReady ?? nextPlanReady,
-      executionReady: overrides?.executionReady ?? nextExecutionReady,
-      isStreaming: overrides?.isStreaming ?? nextIsStreaming,
+      status: nextStatus,
+      planReady: nextPlanReady,
+      executionReady: nextExecutionReady,
+      isStreaming: nextIsStreaming,
     };
-
     setMessages(nextMessages);
     setStatus(nextStatus);
     setPlanReady(nextPlanReady);
     setExecutionReady(nextExecutionReady);
     setIsStreaming(nextIsStreaming);
-
     stateRef.current = nextState;
     persistState(nextState);
-  }, [client]);
+  }, []);
 
   useEffect(() => {
-    const unsubscribeClient = subscribeConversationClient((snapshot) => {
+    const persisted = readPersistedState();
+    if (persisted != null) {
+      setMessages(persisted.messages);
+      setAttachments(persisted.attachments);
+      setStatus(persisted.status);
+      setPlanReady(persisted.planReady);
+      setExecutionReady(persisted.executionReady);
+      setIsStreaming(persisted.isStreaming);
+      stateRef.current = persisted;
+    }
+    const client = createConversationClient(persisted, (snapshot) => {
       if (snapshot.messages != null) {
         setMessages(mapConversationMessages(snapshot.messages));
       }
@@ -267,15 +266,26 @@ export function useConversationVm(wsClient?: WSClient | null): ConversationVm {
         setIsStreaming(snapshot.isStreaming);
       }
     });
-    syncFromClient();
-    return unsubscribeClient;
+    clientRef.current = client;
+    if (persisted == null) {
+      syncFromClient(client);
+    } else {
+      persistState(stateRef.current);
+    }
+    return () => {
+      if (persistTimeoutRef.current != null) {
+        clearTimeout(persistTimeoutRef.current);
+        persistTimeoutRef.current = null;
+      }
+      persistState(stateRef.current);
+      try {
+        (client as { dispose?: () => void; }).dispose?.();
+      } catch {
+        // Disposal is best-effort and should not break unmount cleanup.
+      }
+      clientRef.current = null;
+    };
   }, [syncFromClient]);
-
-  const syncPersistedSnapshot = useCallback((updater: (current: PersistedConversationState) => PersistedConversationState) => {
-    const nextState = updater(stateRef.current);
-    stateRef.current = nextState;
-    persistState(nextState);
-  }, []);
 
   useEffect(() => {
     const nextState = { messages, attachments, status, planReady, executionReady, isStreaming };
@@ -299,7 +309,7 @@ export function useConversationVm(wsClient?: WSClient | null): ConversationVm {
     if (wsClient == null) {
       return;
     }
-    unsubscribeRef.current = wsClient.subscribe("conversation", (event: WSEventEnvelope) => {
+    unsubscribeEventRef.current = wsClient.subscribe("conversation", (event: WSEventEnvelope) => {
       const payload = event.payload as { role?: "assistant" | "system" | "user"; content?: string; delta?: string; status?: ConversationVm["status"] };
       if (payload.delta != null) {
         setMessages((current) => {
@@ -313,51 +323,45 @@ export function useConversationVm(wsClient?: WSClient | null): ConversationVm {
             syncPersistedSnapshot((snapshot) => ({ ...snapshot, messages: nextMessages, isStreaming: true }));
             return nextMessages;
           }
-          const nextMessages = [
-            ...current,
-            createMessage("assistant", payload.delta, timestamp),
-          ];
+          const nextMessages = [...current, createMessage("assistant", payload.delta, timestamp)];
           syncPersistedSnapshot((snapshot) => ({ ...snapshot, messages: nextMessages, isStreaming: true }));
           return nextMessages;
         });
         setIsStreaming(true);
       } else if (payload.content != null) {
         setMessages((current) => {
-          const nextMessages = [
-            ...current,
-            createMessage(payload.role, payload.content),
-          ];
+          const nextMessages = [...current, createMessage(payload.role, payload.content)];
           syncPersistedSnapshot((snapshot) => ({ ...snapshot, messages: nextMessages }));
           return nextMessages;
         });
       }
       if (payload.status != null) {
         const nextStatus = payload.status;
+        const nextStreaming = nextStatus === "parsing" || nextStatus === "building";
         setStatus(nextStatus);
-        if (nextStatus !== "running" && nextStatus !== "connected") {
-          setIsStreaming(nextStatus === "parsing" || nextStatus === "building");
-        }
+        setIsStreaming(nextStreaming);
         syncPersistedSnapshot((snapshot) => ({
           ...snapshot,
           status: nextStatus,
-          isStreaming: nextStatus === "parsing" || nextStatus === "building",
+          isStreaming: nextStreaming,
         }));
       }
     });
     unsubscribeStatusRef.current = wsClient.onStatusChange((wsStatus) => {
-      setStatus(wsStatus === "connected" ? "connected" : "disconnected");
+      const nextStatus = wsStatus === "connected" ? "connected" : "disconnected";
+      setStatus(nextStatus);
       if (wsStatus !== "connected") {
         setIsStreaming(false);
       }
       syncPersistedSnapshot((snapshot) => ({
         ...snapshot,
-        status: wsStatus === "connected" ? "connected" : "disconnected",
+        status: nextStatus,
         isStreaming: wsStatus === "connected" ? snapshot.isStreaming : false,
       }));
     });
     return () => {
-      unsubscribeRef.current?.();
-      unsubscribeRef.current = null;
+      unsubscribeEventRef.current?.();
+      unsubscribeEventRef.current = null;
       unsubscribeStatusRef.current?.();
       unsubscribeStatusRef.current = null;
     };
@@ -368,7 +372,7 @@ export function useConversationVm(wsClient?: WSClient | null): ConversationVm {
     setAttachments((current) => [
       ...current,
       ...normalizedFiles.map((file) => ({
-        id: crypto.randomUUID(),
+        id: createMessageId(),
         name: file.name,
         sizeLabel: formatSize(file.size),
       })),
@@ -376,7 +380,8 @@ export function useConversationVm(wsClient?: WSClient | null): ConversationVm {
   }, []);
 
   const sendPrompt = useCallback(async () => {
-    if (draft.trim().length === 0) {
+    const client = clientRef.current;
+    if (client == null || draft.trim().length === 0) {
       return;
     }
     wsClient?.publish({
@@ -388,67 +393,82 @@ export function useConversationVm(wsClient?: WSClient | null): ConversationVm {
       },
     });
     client.send(draft);
-    syncFromClient({ planReady: false, executionReady: false, isStreaming: false });
-  }, [attachments, client, draft, syncFromClient, wsClient]);
+    syncFromClient(client, { planReady: false, executionReady: false, isStreaming: false });
+  }, [attachments, draft, syncFromClient, wsClient]);
 
   const buildPlan = useCallback(async () => {
+    const client = clientRef.current;
+    if (client == null) {
+      return;
+    }
     wsClient?.publish({
       channel: "conversation",
       type: "build_plan",
       payload: { draft },
     });
-    client.buildPlan("已生成执行计划：创建活动、拉取素材、等待审批、投放并回收指标。");
-    syncFromClient({ planReady: true, executionReady: false, isStreaming: true, status: "building" });
-  }, [client, draft, syncFromClient, wsClient]);
+    client.buildPlan(translateMessage("ui.conversation.generatedPlan"));
+    syncFromClient(client, { planReady: true, executionReady: false, isStreaming: true, status: "building" });
+  }, [draft, syncFromClient, wsClient]);
 
   const confirmPlan = useCallback(() => {
-    client.confirm("用户已确认计划，系统进入执行前检查。");
-    syncFromClient({ planReady: true, executionReady: true, isStreaming: false, status: "confirming" });
-  }, [client, syncFromClient]);
+    const client = clientRef.current;
+    if (client == null) {
+      return;
+    }
+    client.confirm(translateMessage("ui.conversation.confirmedPlan"));
+    syncFromClient(client, { planReady: true, executionReady: true, isStreaming: false, status: "confirming" });
+  }, [syncFromClient]);
 
-  const requestClarification = useCallback((content = "预算上限和投放时区还不清楚，请确认。") => {
+  const requestClarification = useCallback((content = translateMessage("ui.conversation.requestClarification.default")) => {
+    const client = clientRef.current;
+    if (client == null) {
+      return;
+    }
     wsClient?.publish({
       channel: "conversation",
       type: "clarification",
       payload: { content },
     });
     client.requestClarification(content);
-    syncFromClient({ status: "waiting_clarification", isStreaming: false });
-  }, [client, syncFromClient, wsClient]);
+    syncFromClient(client, { status: "waiting_clarification", isStreaming: false });
+  }, [syncFromClient, wsClient]);
 
   const executePlan = useCallback(async () => {
-    // Local in-memory simulation bypasses the intake pipeline and must stay disabled offline.
+    const client = clientRef.current;
+    if (client == null) {
+      return;
+    }
     if (wsClient == null) {
-      requestClarification("执行需要与后端建立连接。当前离线状态下无法执行任务，请检查网络连接后重试。");
+      requestClarification(translateMessage("ui.conversation.execute.requiresConnection"));
       return;
     }
     if (!executionReady) {
       requestClarification();
       return;
     }
-    wsClient?.publish({
+    wsClient.publish({
       channel: "conversation",
       type: "execute_plan",
       payload: {
         attachments: attachments.map((attachment) => attachment.name),
       },
     });
-    client.execute("任务已进入执行态，开始创建 campaign 并分配预算。");
+    client.execute(translateMessage("ui.conversation.execute.started"));
     if (typeof (client as { pushAssistant?: (content: string) => unknown; }).pushAssistant === "function") {
-      (client as { pushAssistant: (content: string) => unknown; }).pushAssistant("执行完成：活动草案已创建，指标回传已接通。");
+      (client as { pushAssistant: (content: string) => unknown; }).pushAssistant(translateMessage("ui.conversation.execute.completed"));
     }
-    syncFromClient({ planReady: true, executionReady: true, isStreaming: false, status: "running" });
-  }, [attachments, client, executionReady, requestClarification, syncFromClient, wsClient]);
+    syncFromClient(client, { planReady: true, executionReady: true, isStreaming: false, status: "running" });
+  }, [attachments, executionReady, requestClarification, syncFromClient, wsClient]);
 
   const disconnect = useCallback(() => {
-    unsubscribeRef.current?.();
-    unsubscribeRef.current = null;
+    unsubscribeEventRef.current?.();
+    unsubscribeEventRef.current = null;
     unsubscribeStatusRef.current?.();
     unsubscribeStatusRef.current = null;
     wsClient?.disconnect();
   }, [wsClient]);
 
-  return {
+  return useMemo(() => ({
     messages,
     attachments,
     status: status ?? "idle",
@@ -464,5 +484,20 @@ export function useConversationVm(wsClient?: WSClient | null): ConversationVm {
     executePlan,
     requestClarification,
     disconnect,
-  };
+  }), [
+    attachments,
+    attachFiles,
+    buildPlan,
+    confirmPlan,
+    disconnect,
+    draft,
+    executePlan,
+    executionReady,
+    isStreaming,
+    messages,
+    planReady,
+    requestClarification,
+    sendPrompt,
+    status,
+  ]);
 }

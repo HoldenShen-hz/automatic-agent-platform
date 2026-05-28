@@ -1,4 +1,5 @@
 import type { OfflineQueue } from "@aa/shared-sync";
+import { generateStableId, stableSerialize } from "./runtime-support.js";
 
 export interface RestClientRequest {
   readonly path: string;
@@ -46,7 +47,7 @@ export const DEFAULT_ACCEPT_VERSIONS = ["2026-04-01", "2026-01-01"] as const;
 export function createTraceInterceptor(): RestClientInterceptor {
   return {
     onRequest(request) {
-      request.headers.set("x-request-id", crypto.randomUUID());
+      request.headers.set("x-request-id", generateStableId("req_"));
       return request;
     },
   };
@@ -188,17 +189,25 @@ export interface OfflineQueueRequest extends RestClientRequest {
 export function createOfflineQueueInterceptor(queue: OfflineQueue): RestClientInterceptor {
   return {
     onRequest(request) {
-      if (request.method !== "GET" && typeof navigator !== "undefined" && navigator.onLine === false) {
+      if (
+        request.method !== "GET"
+        && request.method !== "HEAD"
+        && request.method !== "OPTIONS"
+        && typeof navigator !== "undefined"
+        && navigator.onLine === false
+      ) {
         const tenantId = request.headers.get("x-tenant-id") ?? "default-tenant";
         const principalId = request.headers.get("x-principal-id") ?? "ui-operator";
         queue.enqueue({
-          id: crypto.randomUUID(),
+          id: generateStableId("offline_"),
           endpoint: request.path,
           method: request.method as "POST" | "PUT" | "PATCH" | "DELETE",
           body: request.body,
           createdAt: new Date().toISOString(),
           tenantId,
-          traceId: request.headers.get("x-request-id") ?? crypto.randomUUID(),
+          traceId: request.headers.get("x-request-id") ?? generateStableId("trace_"),
+          headers: extractReplayHeaders(request.headers),
+          idempotencyKey: request.headers.get("Idempotency-Key") ?? request.headers.get("x-idempotency-key") ?? undefined,
           principal: {
             principalId,
             tenantId,
@@ -226,7 +235,7 @@ export function createIdempotencyKeyInterceptor(): RestClientInterceptor {
       if (request.method !== "GET") {
         const idempotencyKey = request.headers.get("Idempotency-Key")
           ?? request.headers.get("x-idempotency-key")
-          ?? crypto.randomUUID();
+          ?? generateStableId("idem_");
         request.headers.set("Idempotency-Key", idempotencyKey);
         request.headers.set("x-idempotency-key", idempotencyKey);
       }
@@ -256,7 +265,7 @@ export function createRetryInterceptor(
           return await next(request);
         } catch (error) {
           lastError = error;
-          if (attempt >= maxRetries) {
+          if (attempt >= maxRetries || !shouldRetryRequest(error, request)) {
             break;
           }
           await new Promise((resolve) => setTimeout(resolve, baseDelayMs * (attempt + 1)));
@@ -279,11 +288,7 @@ export function createDedupeInterceptor(
   const observed = new Set<string>();
 
   function buildKey(request: RestClientRequest): string {
-    return JSON.stringify({
-      method: request.method,
-      path: request.path,
-      body: request.body ?? null,
-    });
+    return `${request.method}:${request.path}:${stableSerialize(request.body ?? null)}`;
   }
 
   return {
@@ -291,8 +296,8 @@ export function createDedupeInterceptor(
       if (!methods.has(request.method)) {
         return request;
       }
-      const key = `${request.method}:${request.path}:${JSON.stringify(request.body ?? null)}`;
-      if (observed.has(key)) {
+      const key = buildKey(request);
+      if (observed.has(key) || inflight.has(key)) {
         return {
           ...request,
           dedupeKey: key,
@@ -321,4 +326,38 @@ export function createDedupeInterceptor(
       return pending;
     },
   };
+}
+
+function shouldRetryRequest(error: unknown, request: RestClientRequest): boolean {
+  if (error instanceof DOMException && error.name === "AbortError") {
+    return false;
+  }
+  if (error instanceof Error && "status" in error && typeof (error as { status?: unknown }).status === "number") {
+    const status = (error as { status: number }).status;
+    if (status !== 429 && status < 500) {
+      return false;
+    }
+  }
+  return request.method === "GET"
+    || request.method === "HEAD"
+    || request.method === "OPTIONS"
+    || request.headers.has("Idempotency-Key")
+    || request.headers.has("x-idempotency-key");
+}
+
+function extractReplayHeaders(headers: Headers): Record<string, string> {
+  const replayHeaders = [
+    "authorization",
+    "x-csrf-token",
+    "x-tenant-id",
+    "x-principal-id",
+    "idempotency-key",
+    "x-idempotency-key",
+  ];
+  return Object.fromEntries(
+    replayHeaders.flatMap((name) => {
+      const value = headers.get(name);
+      return value == null ? [] : [[name, value] as const];
+    }),
+  );
 }

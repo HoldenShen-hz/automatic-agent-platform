@@ -33,6 +33,7 @@ import {
 import { EnvSecretProvider } from "../../platform/five-plane-control-plane/iam/env-secret-provider.js";
 import { SecretManagementService } from "../../platform/five-plane-control-plane/iam/secret-management-service.js";
 import { createWorkspaceWritePolicy } from "../../platform/five-plane-control-plane/iam/sandbox-policy.js";
+import { buildGithubActionRunUrl } from "./github-actions-url.js";
 
 /**
  * Simulated deployment command runner for testing without actual GitHub Actions.
@@ -50,7 +51,7 @@ class SimulatedDeploymentCommandRunner {
       args: [...request.args],
       executed: true,
       exitCode: 0,
-      stdout: `Created workflow_dispatch event\nhttps://github.com/automatic-agent/automatic-agent-platform/actions/runs/${runId}`,
+      stdout: `Created workflow_dispatch event\n${buildGithubActionRunUrl(runId)}`,
       stderr: "",
       durationMs: 1,
     };

@@ -23,7 +23,7 @@ describe("desktop shell security configs", () => {
     expect(html).toContain("default-src 'self'");
     expect(html).toContain("frame-ancestors 'none'");
     expect(html).toContain('<script type="module" src="./src/renderer.js"></script>');
-    expect(readFileSync(electronRendererPath, "utf8")).toContain("Automatic Agent Platform Electron Shell");
+    expect(readFileSync(electronRendererPath, "utf8")).toContain("Automatic Agent Platform Electron");
   });
 
   it("tauri macos config enables the security section and CSP", () => {
@@ -33,11 +33,12 @@ describe("desktop shell security configs", () => {
     const firstWindow = ((config.app as { windows?: Array<Record<string, unknown>> }).windows ?? [])[0] ?? {};
 
     expect(security.csp).toContain("default-src 'self'");
+    expect(security.csp).toContain("worker-src 'self'");
     expect(security.dangerousDisableAssetCspModification).toBe(false);
     expect(firstWindow.minWidth).toBe(1180);
     expect(firstWindow.minHeight).toBe(760);
-    expect(((plugins.updater as Record<string, unknown>).endpoints as string[])[0]).toContain("updates.automatic-agent.example");
-    expect((plugins.shell as Record<string, unknown>).open).toBe(true);
+    expect((plugins.updater as Record<string, unknown>).active).toBe(false);
+    expect((plugins.shell as Record<string, unknown>).open).toBe(false);
   });
 
   it("tauri linux config enables the security section and CSP", () => {
@@ -46,9 +47,10 @@ describe("desktop shell security configs", () => {
     const plugins = config.plugins as Record<string, unknown>;
 
     expect(security.csp).toContain("default-src 'self'");
+    expect(security.csp).toContain("worker-src 'self'");
     expect(security.dangerousDisableAssetCspModification).toBe(false);
-    expect(((plugins.updater as Record<string, unknown>).endpoints as string[])[0]).toContain("updates.automatic-agent.example");
-    expect((plugins.notification as Record<string, unknown>).all).toBe(true);
+    expect((plugins.updater as Record<string, unknown>).active).toBe(false);
+    expect((plugins.notification as Record<string, unknown>).all).toBe(false);
   });
 
   it("R12-29 CSP does not contain unsafe-inline for styles", () => {

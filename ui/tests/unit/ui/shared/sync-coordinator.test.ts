@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { ConflictResolver, SyncCoordinator, createMemoryOfflineMutationStore, OfflineQueue } from "@aa/shared-sync";
+import { ConflictResolver, FetchSyncMutationDispatcher, SyncCoordinator, createMemoryOfflineMutationStore, OfflineQueue } from "@aa/shared-sync";
 import type { OfflineMutation, SyncMutationDispatcher } from "@aa/shared-sync";
 
 function createMutation(id: string): OfflineMutation {
@@ -34,5 +34,33 @@ describe("SyncCoordinator", () => {
     expect(result.mutations.map((mutation) => mutation.id)).toEqual(["m1", "m2"]);
     expect(result.flushedAt).toBe("2026-05-01T12:00:00.000Z");
     expect(coordinator.pendingCount()).toBe(0);
+  });
+
+  it("replays stored auth and idempotency headers during flush", async () => {
+    const fetchImplementation = vi.fn(async () => new Response(JSON.stringify({ ok: true }), { status: 200 }));
+    const queue = new OfflineQueue(createMemoryOfflineMutationStore([{
+      ...createMutation("m3"),
+      headers: {
+        authorization: "Bearer token-1",
+        "x-csrf-token": "csrf-1",
+        "idempotency-key": "idem-1",
+        "x-tenant-id": "tenant-1",
+      },
+    }]));
+    await queue.whenReady();
+    const coordinator = new SyncCoordinator(
+      queue,
+      new ConflictResolver(),
+      new FetchSyncMutationDispatcher(fetchImplementation as typeof fetch),
+    );
+
+    await coordinator.flush("2026-05-01T12:05:00.000Z");
+
+    const requestInit = fetchImplementation.mock.calls[0]?.[1] as RequestInit;
+    const headers = new Headers(requestInit.headers);
+    expect(headers.get("authorization")).toBe("Bearer token-1");
+    expect(headers.get("x-csrf-token")).toBe("csrf-1");
+    expect(headers.get("idempotency-key")).toBe("idem-1");
+    expect(headers.get("x-tenant-id")).toBe("tenant-1");
   });
 });

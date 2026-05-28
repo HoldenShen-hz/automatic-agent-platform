@@ -204,10 +204,32 @@ describe("AuthService", () => {
   it("handleSsoCallback redirects to authorization server - does NOT accept token in URL (Issue #2069)", async () => {
     const tokenManager = new TokenManager();
     const authService = new AuthService(tokenManager);
+    const replaceState = vi.spyOn(window.history, "replaceState");
 
     const paramsWithTokens = new URLSearchParams("access_token=leaked-token&refresh_token=leaked-refresh");
 
     await expect(authService.handleSsoCallback(paramsWithTokens)).rejects.toThrow(/auth.redirecting/);
+    expect(replaceState).toHaveBeenCalled();
+  });
+
+  it("handleSsoCallback delegates code callbacks to the PKCE exchange flow and clears callback params from history", async () => {
+    const tokenManager = new TokenManager();
+    const replaceState = vi.spyOn(window.history, "replaceState");
+    const authService = new AuthService(tokenManager, {
+      exchangeCodeForTokens: async () => ({
+        accessToken: "issued-access-token",
+        refreshToken: "issued-refresh-token",
+        expiresAt: Date.now() + 3600 * 1000,
+      }),
+    });
+
+    const authUrl = await authService.initiateCodeFlow("https://app.example.com/auth/callback");
+    const state = new URLSearchParams(authUrl.split("?")[1]!).get("state")!;
+
+    const session = await authService.handleSsoCallback(new URLSearchParams(`state=${state}&code=callback-code`));
+
+    expect(session.accessToken).toBe("issued-access-token");
+    expect(replaceState).toHaveBeenCalled();
   });
 
   it("handleAuthorizationCallback rejects authorization error from server", async () => {

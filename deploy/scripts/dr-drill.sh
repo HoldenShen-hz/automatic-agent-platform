@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # DR Drill Automation Script
 #
@@ -12,6 +12,9 @@
 
 set -euo pipefail
 
+EXIT_USAGE=64
+EXIT_RUNTIME=70
+
 # === Configuration ===
 DR_CONFIG_DIR="${DR_CONFIG_DIR:-config/dr}"
 DR_OUTPUT_DIR="${DR_OUTPUT_DIR:-.dr-reports}"
@@ -21,12 +24,6 @@ DR_LOG_DIR="${DR_LOG_DIR:-.dr-logs}"
 # DR thresholds from config
 DR_RTO_SECONDS="${DR_RTO_SECONDS:-3600}"  # 1 hour default RTO
 DR_RPO_SECONDS="${DR_RPO_SECONDS:-300}"    # 5 minutes default RPO
-
-# Dry run
-if [[ "${DRY_RUN:-false}" == "true" ]] || [[ "${1:-}" == "--dry-run" ]]; then
-  echo "[DRY RUN] Would run DR drill with args: $@"
-  exit 0
-fi
 
 # === Colors for output ===
 RED='\033[0;31m'
@@ -56,18 +53,26 @@ log_error() {
 MODE="full"
 COMPONENT="all"
 OUTPUT_DIR=""
+DRY_RUN_FLAG=0
 
 while [[ $# -gt 0 ]]; do
   case $1 in
+    --dry-run)
+      DRY_RUN_FLAG=1
+      shift
+      ;;
     --mode)
+      [[ $# -lt 2 ]] && { log_error "--mode requires a value"; exit "${EXIT_USAGE}"; }
       MODE="$2"
       shift 2
       ;;
     --component)
+      [[ $# -lt 2 ]] && { log_error "--component requires a value"; exit "${EXIT_USAGE}"; }
       COMPONENT="$2"
       shift 2
       ;;
     --output-dir)
+      [[ $# -lt 2 ]] && { log_error "--output-dir requires a value"; exit "${EXIT_USAGE}"; }
       OUTPUT_DIR="$2"
       shift 2
       ;;
@@ -88,15 +93,33 @@ while [[ $# -gt 0 ]]; do
       ;;
     *)
       log_error "Unknown option: $1"
-      exit 1
+      exit "${EXIT_USAGE}"
       ;;
   esac
 done
+
+if [[ ! "${MODE}" =~ ^(full|incremental|verify)$ ]]; then
+  log_error "Unsupported mode: ${MODE}"
+  exit "${EXIT_USAGE}"
+fi
+
+if [[ ! "${COMPONENT}" =~ ^(all|events|truth|projections)$ ]]; then
+  log_error "Unsupported component: ${COMPONENT}"
+  exit "${EXIT_USAGE}"
+fi
 
 # Use provided output dir or generate timestamped one
 if [[ -z "$OUTPUT_DIR" ]]; then
   TIMESTAMP=$(date '+%Y%m%d_%H%M%S')
   OUTPUT_DIR="${DR_OUTPUT_DIR}/drill_${TIMESTAMP}"
+fi
+
+if [[ "${DRY_RUN:-false}" == "true" ]] || [[ "${DRY_RUN_FLAG}" -eq 1 ]]; then
+  echo "[DRY RUN] Would run DR drill"
+  echo "  mode=${MODE}"
+  echo "  component=${COMPONENT}"
+  echo "  output_dir=${OUTPUT_DIR}"
+  exit 0
 fi
 
 # === Setup ===

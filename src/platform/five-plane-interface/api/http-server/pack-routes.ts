@@ -11,7 +11,7 @@
 
 import type { RouteDefinition } from "./types.js";
 import { readValidatedJsonBody } from "../middleware/input-validation.js";
-import { buildJsonResponse, requirePrincipal, resolveTenantScope, readLimit } from "./utils.js";
+import { assertGlobalTenantScopeSupported, buildJsonResponse, requirePrincipal, readLimit } from "./utils.js";
 import type { ApiAuthService } from "../api-auth-service.js";
 import { AppError } from "../../../contracts/errors.js";
 import { z } from "zod";
@@ -101,10 +101,9 @@ export function createPackRoutes(deps: PackRouteDeps): RouteDefinition[] {
       pathname: "/v1/packs",
       handler: (ctx) => {
         const principal = requirePrincipal(ctx.request, deps.authService, "viewer");
-        const tenantId = resolveTenantScope(principal, undefined);
+        assertGlobalTenantScopeSupported(principal, "pack catalog");
         const limit = readLimit(ctx.request, 50);
 
-        void tenantId;
         return buildJsonResponse(ctx.requestId, 200, {
           packs: deps.packCatalogService.listPacks(limit),
           total: deps.packCatalogService.listPacks(Number.MAX_SAFE_INTEGER).length,
@@ -116,9 +115,8 @@ export function createPackRoutes(deps: PackRouteDeps): RouteDefinition[] {
       pathname: "/v1/marketplace",
       handler: (ctx) => {
         const principal = requirePrincipal(ctx.request, deps.authService, "viewer");
-        const tenantId = resolveTenantScope(principal, undefined);
+        assertGlobalTenantScopeSupported(principal, "marketplace catalog");
         const limit = readLimit(ctx.request, 50);
-        void tenantId;
         return buildJsonResponse(ctx.requestId, 200, deps.packCatalogService.listPacks(limit).map((pack) => ({
           id: pack.packId,
           name: pack.name,
@@ -138,9 +136,8 @@ export function createPackRoutes(deps: PackRouteDeps): RouteDefinition[] {
         }
 
         const principal = requirePrincipal(ctx.request, deps.authService, "viewer");
+        assertGlobalTenantScopeSupported(principal, "pack catalog");
         const packId = segments[2]!;
-
-        void principal;
         const pack = deps.packCatalogService.getPack(packId);
         if (pack == null) {
           throw new ApiError(404, "pack.not_found", `Pack ${packId} not found.`);
@@ -157,7 +154,8 @@ export function createPackRoutes(deps: PackRouteDeps): RouteDefinition[] {
         if (segments[0] !== "v1" || segments[1] !== "packs" || segments.length !== 4 || segments[3] !== "versions") {
           return null;
         }
-        requirePrincipal(ctx.request, deps.authService, "viewer");
+        const principal = requirePrincipal(ctx.request, deps.authService, "viewer");
+        assertGlobalTenantScopeSupported(principal, "pack version catalog");
         const packId = segments[2]!;
         const pack = deps.packCatalogService.getPack(packId);
         if (pack == null) {
@@ -176,10 +174,9 @@ export function createPackRoutes(deps: PackRouteDeps): RouteDefinition[] {
       pathname: "/v1/packs",
       handler: (ctx) => {
         const principal = requirePrincipal(ctx.request, deps.authService, "operator");
+        assertGlobalTenantScopeSupported(principal, "pack catalog mutation");
         const payload = readValidatedJsonBody(ctx.request.body, createPackSchema.parse);
-        const tenantId = resolveTenantScope(principal, undefined);
 
-        void tenantId;
         const pack = deps.packCatalogService.createPack({
           packId: payload.packId,
           name: payload.name,

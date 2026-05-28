@@ -10,7 +10,7 @@ import {
   type MultiResourceQuotaVector,
 } from "../../../../src/scale-ecosystem/resource-manager/quota-enforcer/index.js";
 
-const STATE_FILE = `/private/tmp/aa-quota-enforcer-state-r13-${process.pid}.json`;
+const STATE_FILE = join(tmpdir(), `aa-quota-enforcer-state-r13-${process.pid}.json`);
 
 function makeQuotaVector(scopeId: string): Omit<MultiResourceQuotaVector, "scope" | "scopeId"> {
   return {

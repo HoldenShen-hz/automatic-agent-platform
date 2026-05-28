@@ -132,9 +132,9 @@ function preferMostRecent<T>(serverValue: T, localValue: T): T {
   const serverOrder = resolveVersionOrder(serverValue);
   const localOrder = resolveVersionOrder(localValue);
   if (serverOrder != null && localOrder != null) {
-    return localOrder >= serverOrder ? localValue : serverValue;
+    return localOrder > serverOrder ? localValue : serverValue;
   }
-  return localValue;
+  return serverValue;
 }
 
 function resolveVersionOrder(value: unknown): number | null {
@@ -151,7 +151,7 @@ function resolveVersionOrder(value: unknown): number | null {
     const candidate = value[key];
     if (typeof candidate === "string") {
       const parsed = Date.parse(candidate);
-      if (!Number.isNaN(parsed)) {
+      if (!Number.isNaN(parsed) && parsed <= Date.now() + 5 * 60_000) {
         return parsed;
       }
     }

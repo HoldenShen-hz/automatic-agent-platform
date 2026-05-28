@@ -25,6 +25,7 @@
  * @see docs_zh/contracts/perception_contract.md for perception system contracts
  */
 
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
 import { ArtifactStore, type ArtifactStoreOptions } from "../../platform/five-plane-state-evidence/artifacts/artifact-store.js";
@@ -43,6 +44,9 @@ import type {
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
 import { MonetizationError, PolicyDeniedError, StorageError, ValidationError } from "../../platform/contracts/errors.js";
 import { BillingService } from "../billing/billing-service.js";
+
+const INTERNAL_AUTOMATION_DIVISION_ID = "operations";
+const INTERNAL_AUTOMATION_SOURCE = "system";
 
 /** Input for registering a new perception source */
 export interface RegisterPerceptionSourceInput {
@@ -247,13 +251,27 @@ function deriveRecommendedActions(items: readonly IntelItemRecord[]): Recommende
   });
 }
 
-function parseJsonArray<T>(value: string): T[] {
+function parseJsonArray<T>(value: string, code: string): T[] {
   try {
     const parsed = JSON.parse(value) as unknown;
-    return Array.isArray(parsed) ? parsed as T[] : [];
-  } catch {
-    return [];
+    if (!Array.isArray(parsed)) {
+      throw new ValidationError(code, code);
+    }
+    return parsed as T[];
+  } catch (error) {
+    if (error instanceof ValidationError) {
+      throw error;
+    }
+    throw new ValidationError(code, code);
   }
+}
+
+function escapeMarkdownInline(value: string): string {
+  return value
+    .replaceAll("\\", "\\\\")
+    .replaceAll("`", "\\`")
+    .replaceAll("|", "\\|")
+    .replaceAll("<", "&lt;");
 }
 
 /** Builds Markdown-formatted intel brief for human review */
@@ -262,7 +280,10 @@ function buildBriefMarkdown(
   items: readonly IntelItemRecord[],
   proposals: readonly ActionProposalRecord[],
 ): string {
-  const recommendedActions = parseJsonArray<RecommendedPerceptionAction>(brief.recommendedActionsJson);
+  const recommendedActions = parseJsonArray<RecommendedPerceptionAction>(
+    brief.recommendedActionsJson,
+    "perception.invalid_recommended_actions_json",
+  );
   const lines = [
     "# Intel Brief",
     "",
@@ -278,16 +299,16 @@ function buildBriefMarkdown(
     "",
     ...items.map(
       (item) =>
-        `- [${item.sourceId}] ${item.title} | importance=${item.importance} | relevance=${item.relevanceScore} | rawRef=${item.rawRef}`,
+        `- [${escapeMarkdownInline(item.sourceId)}] ${escapeMarkdownInline(item.title)} | importance=${item.importance} | relevance=${item.relevanceScore} | rawRef=${escapeMarkdownInline(item.rawRef)}`,
     ),
     "",
     "## Recommended Actions",
     "",
-    ...recommendedActions.map((action) => `- ${action.actionType}: ${action.title} (${action.intelId})`),
+    ...recommendedActions.map((action) => `- ${action.actionType}: ${escapeMarkdownInline(action.title)} (${escapeMarkdownInline(action.intelId)})`),
     "",
     "## Action Proposals",
     "",
-    ...proposals.map((proposal) => `- ${proposal.status}: ${proposal.title} (${proposal.actionType})`),
+    ...proposals.map((proposal) => `- ${proposal.status}: ${escapeMarkdownInline(proposal.title)} (${proposal.actionType})`),
   ];
   return lines.join("\n");
 }
@@ -306,10 +327,10 @@ export class PerceptionService {
     private readonly db: AuthoritativeSqlDatabase,
     private readonly store: AuthoritativeTaskStore,
     options: PerceptionServiceOptions = {},
-  ) {
-    const defaultArtifactRoot = typeof db.filePath === "string" && db.filePath.length > 0
+    ) {
+    const defaultArtifactRoot = typeof db.filePath === "string" && db.filePath.length > 0 && db.filePath !== ":memory:"
       ? join(dirname(db.filePath), "artifacts")
-      : join(process.cwd(), "data", "artifacts");
+      : join(tmpdir(), "automatic-agent-perception-artifacts");
     this.artifactStore = new ArtifactStore(
       options.artifactStoreOptions ?? {
         rootDir: defaultArtifactRoot,
@@ -460,7 +481,10 @@ export class PerceptionService {
       return existing;
     }
 
-    const recommendedActions = parseJsonArray<RecommendedPerceptionAction>(brief.recommendedActionsJson);
+    const recommendedActions = parseJsonArray<RecommendedPerceptionAction>(
+      brief.recommendedActionsJson,
+      "perception.invalid_recommended_actions_json",
+    );
     const proposals = recommendedActions.map((action) => {
       const createdAt = nowIso();
       return {
@@ -494,7 +518,7 @@ export class PerceptionService {
   public exportBrief(briefId: string, accountId?: string | null, tenantId?: string | null): ExportIntelBriefResult {
     this.assertFeatureEnabled(accountId ?? null);
     const brief = this.requireBrief(briefId, tenantId ?? undefined);
-    const itemIds = parseJsonArray<string>(brief.itemIdsJson);
+    const itemIds = parseJsonArray<string>(brief.itemIdsJson, "perception.invalid_item_ids_json");
 
     // Retrieve and sort items to match the brief order
     const items = this.store
@@ -507,7 +531,10 @@ export class PerceptionService {
       ...(tenantId !== undefined ? { tenantId } : {}),
       ...(accountId !== undefined ? { accountId } : {}),
     });
-    const recommendedActions = parseJsonArray<RecommendedPerceptionAction>(brief.recommendedActionsJson);
+    const recommendedActions = parseJsonArray<RecommendedPerceptionAction>(
+      brief.recommendedActionsJson,
+      "perception.invalid_recommended_actions_json",
+    );
 
     this.ensurePerceptionArtifactTask(brief.generatedAt);
 
@@ -648,10 +675,10 @@ export class PerceptionService {
       id: "perception_reporting",
       parentId: null,
       rootId: "perception_reporting",
-      divisionId: "system_admin",
+      divisionId: INTERNAL_AUTOMATION_DIVISION_ID,
       title: "Perception reporting",
       status: "done",
-      source: "system",
+      source: INTERNAL_AUTOMATION_SOURCE,
       priority: "normal",
       inputJson: JSON.stringify({ purpose: "perception_brief_export" }),
       normalizedInputJson: JSON.stringify({ purpose: "perception_brief_export" }),

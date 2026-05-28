@@ -18,25 +18,23 @@
     }
   },
   "security": {
-    "csp": "default-src 'self'; img-src 'self' data: https:; connect-src 'self' https://updates.automatic-agent.example https://telemetry.automatic-agent.example; style-src 'self'; script-src 'self'; frame-ancestors 'none'; base-uri 'self'; object-src 'none'",
+    "csp": "default-src 'self'; img-src 'self' data:; font-src 'self'; media-src 'self'; worker-src 'self'; connect-src 'self'; style-src 'self'; script-src 'self'; frame-ancestors 'none'; base-uri 'self'; object-src 'none'; report-uri /csp-report",
     "dangerousDisableAssetCspModification": false
   },
   "plugins": {
     "updater": {
-      "active": true,
-      "endpoints": [
-        "https://updates.automatic-agent.example/macos/{{target}}/{{current_version}}"
-      ],
-      "pubkey": "macos-demo-public-key"
+      "active": false,
+      "endpoints": [],
+      "pubkey": ""
     },
     "shell": {
-      "open": true
+      "open": false
     },
     "notification": {
-      "all": true
+      "all": false
     },
     "os": {
-      "all": true
+      "all": false
     }
   }
 }

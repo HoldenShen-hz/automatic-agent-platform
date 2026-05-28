@@ -9,14 +9,40 @@ const generatedAt = new Date().toISOString();
 const packageJson = readJson("package.json");
 const workflows = listFiles(".github/workflows", (file) => file.endsWith(".yml"));
 
+function discoverRelativePathsByName(baseDir, targetName, kind = "directory") {
+  const searchRoot = join(root, baseDir);
+  if (!existsSync(searchRoot)) {
+    return [];
+  }
+  const matches = [];
+  const pending = [searchRoot];
+  while (pending.length > 0) {
+    const current = pending.pop();
+    for (const entry of readdirSync(current, { withFileTypes: true })) {
+      const fullPath = join(current, entry.name);
+      if (entry.isDirectory()) {
+        if (kind === "directory" && entry.name === targetName) {
+          matches.push(relative(root, fullPath));
+        }
+        pending.push(fullPath);
+        continue;
+      }
+      if (kind === "file" && entry.name === targetName) {
+        matches.push(relative(root, fullPath));
+      }
+    }
+  }
+  return matches.sort((left, right) => left.localeCompare(right));
+}
+
 const capabilitySpecs = [
   {
     capability: "tool-execution-registry-boundary",
     label: "Tool execution / registry boundary",
     expectedPath: "logical Tool Gateway facade over existing execution stack",
     actualPaths: [
-      "src/platform/five-plane-execution/tool-executor/",
-      "src/platform/five-plane-orchestration/harness/toolbelt/"
+      ...discoverRelativePathsByName("src/platform", "tool-executor"),
+      ...discoverRelativePathsByName("src/platform", "toolbelt")
     ],
     testPaths: [
       "tests/unit/platform/execution/tool-executor/",

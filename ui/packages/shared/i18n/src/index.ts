@@ -27,8 +27,37 @@ export interface FeatureTranslationCopy {
   readonly summary: string;
 }
 
+export interface MissingTranslationEvent {
+  readonly key: string;
+  readonly locale: string;
+  readonly fallbackChain: readonly string[];
+}
+
+export interface TranslationFormatErrorEvent {
+  readonly key: string;
+  readonly locale: string;
+  readonly message: string;
+}
+
+export interface TranslationDiagnosticsReporter {
+  onMissingTranslation?(event: MissingTranslationEvent): void;
+  onFormatError?(event: TranslationFormatErrorEvent): void;
+}
+
 type CatalogLoader = () => Promise<TranslationCatalog>;
 type LocaleChangeListener = (locale: string, direction: TextDirection) => void;
+type DocumentRef = Pick<Document, "documentElement">;
+
+interface AppliedDocumentSnapshot {
+  readonly documentRef: DocumentRef;
+  readonly previousLang: string;
+  readonly previousDir: string;
+}
+
+interface TranslationLookupResult {
+  readonly value: string | null;
+  readonly chain: readonly string[];
+}
 
 export class TranslationService {
   private readonly catalogs = new Map<string, TranslationCatalog>();
@@ -36,7 +65,15 @@ export class TranslationService {
   private readonly directions = new Map<string, TextDirection>();
   private readonly nativeLabels = new Map<string, string>();
   private readonly listeners = new Set<LocaleChangeListener>();
+  private readonly formatterCache = new Map<string, IntlMessageFormat>();
+  private readonly diagnosticsReporter: TranslationDiagnosticsReporter | null;
+  private appliedDocumentSnapshot: AppliedDocumentSnapshot | null = null;
   private currentLocale = "en-US";
+
+  public constructor(options: { readonly locale?: string; readonly diagnosticsReporter?: TranslationDiagnosticsReporter | null; } = {}) {
+    this.currentLocale = options.locale ?? "en-US";
+    this.diagnosticsReporter = options.diagnosticsReporter ?? null;
+  }
 
   public register(catalog: TranslationCatalog, registration: LocaleRegistration = {}): void {
     this.catalogs.set(catalog.locale, catalog);
@@ -71,7 +108,7 @@ export class TranslationService {
     return catalog;
   }
 
-  public setLocale(locale: string, documentRef?: Pick<Document, "documentElement">): void {
+  public setLocale(locale: string, documentRef?: DocumentRef): void {
     this.currentLocale = locale;
     this.applyLocaleToDocument(documentRef);
     const direction = this.getDirection(locale);
@@ -108,13 +145,32 @@ export class TranslationService {
     return () => this.listeners.delete(listener);
   }
 
-  public applyLocaleToDocument(documentRef?: Pick<Document, "documentElement">): void {
+  public applyLocaleToDocument(documentRef?: DocumentRef): void {
     const resolvedDocument = documentRef ?? (typeof document !== "undefined" ? document : undefined);
     if (resolvedDocument == null) {
       return;
     }
+    if (this.appliedDocumentSnapshot?.documentRef !== resolvedDocument) {
+      this.appliedDocumentSnapshot = {
+        documentRef: resolvedDocument,
+        previousLang: resolvedDocument.documentElement.lang,
+        previousDir: resolvedDocument.documentElement.dir,
+      };
+    }
     resolvedDocument.documentElement.lang = this.currentLocale;
     resolvedDocument.documentElement.dir = this.getDirection(this.currentLocale);
+  }
+
+  public dispose(documentRef?: DocumentRef): void {
+    const resolvedDocument = documentRef ?? this.appliedDocumentSnapshot?.documentRef;
+    const appliedSnapshot = this.appliedDocumentSnapshot;
+    if (resolvedDocument != null && appliedSnapshot?.documentRef === resolvedDocument) {
+      resolvedDocument.documentElement.lang = appliedSnapshot.previousLang;
+      resolvedDocument.documentElement.dir = appliedSnapshot.previousDir;
+    }
+    this.appliedDocumentSnapshot = null;
+    this.listeners.clear();
+    this.formatterCache.clear();
   }
 
   public translate(
@@ -123,23 +179,54 @@ export class TranslationService {
     fallbackLocale = "en-US",
     values?: Readonly<Record<string, unknown>>,
   ): string {
-    const chain = [locale];
-    const catalog = this.catalogs.get(locale);
-    if (catalog?.fallbackLocales != null) {
-      chain.push(...catalog.fallbackLocales);
+    const lookup = this.lookupMessage(key, locale, fallbackLocale);
+    if (lookup.value == null) {
+      this.diagnosticsReporter?.onMissingTranslation?.({
+        key,
+        locale,
+        fallbackChain: lookup.chain,
+      });
+      return key;
     }
-    chain.push(fallbackLocale);
-    for (const candidate of chain) {
-      const resolved = this.catalogs.get(candidate);
-      const message = resolved?.messages[key];
-      if (message != null) {
-        if (values == null || Object.keys(values).length === 0) {
-          return message;
-        }
-        return new IntlMessageFormat(message, candidate).format(values) as string;
+    if (values == null || Object.keys(values).length === 0) {
+      return lookup.value;
+    }
+    try {
+      const formatterKey = `${locale}::${lookup.value}`;
+      let formatter = this.formatterCache.get(formatterKey);
+      if (formatter == null) {
+        formatter = new IntlMessageFormat(lookup.value, locale);
+        this.formatterCache.set(formatterKey, formatter);
+      }
+      return formatIntlMessage(formatter.format(values));
+    } catch (error) {
+      this.diagnosticsReporter?.onFormatError?.({
+        key,
+        locale,
+        message: error instanceof Error ? error.message : String(error),
+      });
+      return lookup.value;
+    }
+  }
+
+  public translateMany(
+    keys: readonly string[],
+    locale = this.currentLocale,
+    fallbackLocale = "en-US",
+  ): Readonly<Record<string, string>> {
+    const resolved: Record<string, string> = {};
+    for (const key of keys) {
+      const lookup = this.lookupMessage(key, locale, fallbackLocale);
+      resolved[key] = lookup.value ?? key;
+      if (lookup.value == null) {
+        this.diagnosticsReporter?.onMissingTranslation?.({
+          key,
+          locale,
+          fallbackChain: lookup.chain,
+        });
       }
     }
-    return key;
+    return resolved;
   }
 
   public detectLocale(preferredLocales: readonly string[]): string {
@@ -150,7 +237,10 @@ export class TranslationService {
       if (this.loaders.has(locale)) {
         return locale;
       }
-      const baseLanguage = locale.split("-")[0];
+      const baseLanguage = locale.split("-")[0]?.trim();
+      if (baseLanguage == null || baseLanguage.length === 0) {
+        continue;
+      }
       const matchedLocale = this.listSupportedLocales().find((item) => item.locale.split("-")[0] === baseLanguage);
       if (matchedLocale != null) {
         return matchedLocale.locale;
@@ -158,10 +248,35 @@ export class TranslationService {
     }
     return this.currentLocale;
   }
+
+  private lookupMessage(key: string, locale: string, fallbackLocale: string): TranslationLookupResult {
+    const chain = this.buildFallbackChain(locale, fallbackLocale);
+    for (const candidate of chain) {
+      const resolved = this.catalogs.get(candidate);
+      const message = resolved?.messages[key];
+      if (message != null) {
+        return { value: message, chain };
+      }
+    }
+    return { value: null, chain };
+  }
+
+  private buildFallbackChain(locale: string, fallbackLocale: string): readonly string[] {
+    const chain = new Set<string>();
+    const catalog = this.catalogs.get(locale);
+    for (const candidate of [locale, ...(catalog?.fallbackLocales ?? []), fallbackLocale]) {
+      if (candidate.trim().length > 0) {
+        chain.add(candidate);
+      }
+    }
+    return [...chain];
+  }
 }
 
 export function createDefaultTranslationService(): TranslationService {
-  const service = new TranslationService();
+  const service = new TranslationService({
+    locale: detectPreferredLocale(),
+  });
   service.register(enUsCatalog, {
     direction: "ltr",
     nativeLabel: "English (US)",
@@ -182,7 +297,6 @@ export function createDefaultTranslationService(): TranslationService {
     direction: "rtl",
     nativeLabel: "العربية",
   });
-  service.setLocale("zh-CN");
   return service;
 }
 
@@ -195,6 +309,11 @@ export function getSharedTranslationService(): TranslationService {
   return sharedTranslationService;
 }
 
+export function resetSharedTranslationService(documentRef?: DocumentRef): void {
+  sharedTranslationService?.dispose(documentRef);
+  sharedTranslationService = null;
+}
+
 export function translateMessage(
   key: string,
   values?: Readonly<Record<string, unknown>>,
@@ -204,16 +323,38 @@ export function translateMessage(
 }
 
 export function translateFeatureCopy(featureId: string): FeatureTranslationCopy {
+  const service = getSharedTranslationService();
   const defaultTitle = featureId
     .split("-")
     .filter((part) => part.length > 0)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
   const defaultSummary = `${defaultTitle || "Feature"} workspace`;
-  const title = translateMessage(`ui.feature.${featureId}.title`);
-  const summary = translateMessage(`ui.feature.${featureId}.summary`);
+  const titleKey = `ui.feature.${featureId}.title`;
+  const summaryKey = `ui.feature.${featureId}.summary`;
+  const resolved = service.translateMany([titleKey, summaryKey], service.getLocale(), "en-US");
+  const title = resolved[titleKey] ?? titleKey;
+  const summary = resolved[summaryKey] ?? summaryKey;
   return {
-    title: title === `ui.feature.${featureId}.title` ? defaultTitle : title,
-    summary: summary === `ui.feature.${featureId}.summary` ? defaultSummary : summary,
+    title: title === titleKey ? defaultTitle : title,
+    summary: summary === summaryKey ? defaultSummary : summary,
   };
+}
+
+function detectPreferredLocale(): string {
+  if (typeof navigator === "undefined") {
+    return "en-US";
+  }
+  const candidates = [
+    ...(Array.isArray(navigator.languages) ? navigator.languages : []),
+    navigator.language,
+  ].filter((value): value is string => typeof value === "string" && value.trim().length > 0);
+  return candidates[0] ?? "en-US";
+}
+
+function formatIntlMessage(value: unknown): string {
+  if (Array.isArray(value)) {
+    return value.map((entry) => typeof entry === "string" ? entry : String(entry)).join("");
+  }
+  return typeof value === "string" ? value : String(value ?? "");
 }

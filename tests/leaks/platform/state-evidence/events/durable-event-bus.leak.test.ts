@@ -5,7 +5,7 @@ import { DurableEventBus } from "../../../../../src/platform/five-plane-state-ev
 import { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
-import { forceFullGc, formatMegabytes, heapUsedBytes, rssBytes } from "../../../../helpers/memory-leak.js";
+import { forceFullGc, formatMegabytes, heapUsedBytes, isExplicitGcAvailable, rssBytes } from "../../../../helpers/memory-leak.js";
 
 function createTestBus(round: number): { bus: DurableEventBus; db: SqliteDatabase; workspace: string } {
   const workspace = createTempWorkspace(`event-bus-leak-${round}-`);
@@ -33,7 +33,7 @@ async function exerciseBusLifecycle(round: number): Promise<void> {
 }
 
 test("leak guard: DurableEventBus does not retain subscribers or polling timers across disposal cycles", async (t) => {
-  if (typeof (globalThis as { gc?: unknown }).gc !== "function") {
+  if (!isExplicitGcAvailable()) {
     t.skip("memory leak guardrails require Node to run with --expose-gc");
     return;
   }

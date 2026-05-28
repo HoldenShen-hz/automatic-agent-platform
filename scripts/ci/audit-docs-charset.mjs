@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 
-const roots = ["docs_zh/contracts", "docs_en/contracts"];
+const roots = ["docs_zh", "docs_en", "divisions"];
 const failures = [];
 
 function walk(path, visitor) {
@@ -18,8 +18,11 @@ function walk(path, visitor) {
 }
 
 for (const root of roots) {
+  if (!existsSync(root)) {
+    continue;
+  }
   walk(root, (path) => {
-    if (!path.endsWith(".md")) {
+    if (!path.endsWith(".md") && !path.endsWith(".prompt.md")) {
       return;
     }
     const source = readFileSync(path, "utf8");
@@ -27,6 +30,13 @@ for (const root of roots) {
       failures.push(path);
     }
   });
+}
+
+if (existsSync("AGENTS.md")) {
+  const source = readFileSync("AGENTS.md", "utf8");
+  if (source.includes("�")) {
+    failures.push("AGENTS.md");
+  }
 }
 
 for (const path of failures) {

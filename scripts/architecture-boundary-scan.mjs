@@ -10,6 +10,10 @@ const artifactPath = join(
   root,
   "artifacts/validation/architecture/architecture-boundary-scan-report.json"
 );
+const sarifArtifactPath = join(
+  root,
+  "artifacts/validation/architecture/architecture-boundary-scan-report.sarif"
+);
 
 const rules = [
   {
@@ -111,6 +115,7 @@ const report = {
 
 mkdirSync(dirname(artifactPath), { recursive: true });
 writeFileSync(artifactPath, `${JSON.stringify(report, null, 2)}\n`, "utf8");
+writeFileSync(sarifArtifactPath, `${JSON.stringify(buildSarifReport(report), null, 2)}\n`, "utf8");
 
 if (findings.length === 0) {
   console.log(`architecture boundary scan passed: ${artifactPath}`);
@@ -124,6 +129,48 @@ for (const finding of findings) {
 
 if (mode === "enforce") {
   process.exit(1);
+}
+
+function buildSarifReport(scanReport) {
+  return {
+    $schema: "https://json.schemastore.org/sarif-2.1.0.json",
+    version: "2.1.0",
+    runs: [
+      {
+        tool: {
+          driver: {
+            name: "architecture-boundary-scan",
+            informationUri: "https://github.com/HoldenShen-hz/automatic-agent-platform",
+            rules: rules.map((rule) => ({
+              id: rule.id,
+              shortDescription: {
+                text: rule.title,
+              },
+              properties: {
+                severity: rule.severity,
+              },
+            })),
+          },
+        },
+        results: scanReport.findings.map((finding) => ({
+          ruleId: finding.ruleId,
+          level: finding.severity === "critical" ? "error" : "warning",
+          message: {
+            text: finding.title,
+          },
+          locations: [
+            {
+              physicalLocation: {
+                artifactLocation: {
+                  uri: finding.file,
+                },
+              },
+            },
+          ],
+        })),
+      },
+    ],
+  };
 }
 
 function normalizeMode(value) {

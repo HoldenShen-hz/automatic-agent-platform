@@ -246,8 +246,15 @@ export function determineFinalStatus(
   status: QuorumStatus,
   config: QuorumConfig,
 ): "approved" | "rejected" | "pending" {
-  void config;
-  if (status.isQuorumMet) {
+  const approvalsMeetThreshold = status.approvalsReceived >= config.minApprovals;
+  const rejectionsMeetThreshold = status.rejectionsReceived >= config.minRejectionsToDeny;
+  if (status.isQuorumMet && !approvalsMeetThreshold) {
+    throw new ValidationError("approval.invalid_quorum_state", "approval.invalid_quorum_state: quorum flag set without enough approvals");
+  }
+  if (status.isDenied && !rejectionsMeetThreshold) {
+    throw new ValidationError("approval.invalid_quorum_state", "approval.invalid_quorum_state: deny flag set without enough rejections");
+  }
+  if (status.isQuorumMet && approvalsMeetThreshold) {
     return "approved";
   }
   if (status.isDenied || (status.isVotingWindowExpired && !status.isQuorumMet)) {

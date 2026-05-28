@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "license": "UNLICENSED",
   "main": "./src/index.tsx",
   "module": "./src/index.tsx",
   "types": "./src/index.d.ts",

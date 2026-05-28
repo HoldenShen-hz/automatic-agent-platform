@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
 import { existsSync, readdirSync } from "node:fs";
+import { availableParallelism } from "node:os";
 import { join, relative, resolve } from "node:path";
 
 const workspaceRoot = process.cwd();
@@ -49,7 +50,10 @@ const PRESET_DEFINITIONS = {
 };
 
 function readRecommendedRegularConcurrency() {
-  return 12;
+  if (typeof availableParallelism !== "function") {
+    return 1;
+  }
+  return Math.max(1, Math.ceil(availableParallelism() / 2));
 }
 
 function readConcurrency(envName, fallback) {
@@ -84,6 +88,7 @@ function readOptionalPositiveInteger(envName, fallback) {
 function listFilesRecursively(rootPath) {
   const results = [];
   const pending = [rootPath];
+  const skippedDirectories = new Set(["node_modules", ".git", "dist", "coverage", ".cache"]);
 
   while (pending.length > 0) {
     const current = pending.pop();
@@ -94,6 +99,9 @@ function listFilesRecursively(rootPath) {
     for (const entry of readdirSync(current, { withFileTypes: true })) {
       const fullPath = join(current, entry.name);
       if (entry.isDirectory()) {
+        if (skippedDirectories.has(entry.name)) {
+          continue;
+        }
         pending.push(fullPath);
         continue;
       }
@@ -170,10 +178,27 @@ function buildNodeArgsForLayer(layerName, extraNodeArgs) {
     "--import",
     "tsx",
     "--test",
-    "--test-force-exit",
     `--test-concurrency=${LAYER_DEFINITIONS[layerName].concurrency}`,
     ...extraNodeArgs,
   ];
+}
+
+function buildChildEnv() {
+  const blockedEnvPatterns = [
+    /(^|_)TOKEN$/i,
+    /(^|_)SECRET$/i,
+    /(^|_)PASSWORD$/i,
+    /(^|_)API_KEY$/i,
+    /(^|_)KEY$/i,
+    /^AA_API_KEYS_JSON$/i,
+  ];
+  const env = { ...process.env };
+  for (const key of Object.keys(env)) {
+    if (blockedEnvPatterns.some((pattern) => pattern.test(key))) {
+      delete env[key];
+    }
+  }
+  return env;
 }
 
 function runLayer(layerName, files, extraNodeArgs) {
@@ -186,18 +211,22 @@ function runLayer(layerName, files, extraNodeArgs) {
   const heapLabel = testMaxOldSpaceSizeMb == null ? "disabled" : `${testMaxOldSpaceSizeMb}MB`;
   console.log(`[test-layer] ${layerName}: ${files.length} files, concurrency=${concurrency}, max-old-space-size=${heapLabel}`);
 
-  return new Promise((resolvePromise) => {
+  return new Promise((resolvePromise, rejectPromise) => {
     const child = spawn(
       process.execPath,
       [...buildNodeArgsForLayer(layerName, extraNodeArgs), ...files],
       {
         cwd: process.cwd(),
-        env: process.env,
+        env: buildChildEnv(),
         stdio: "inherit",
       },
     );
 
-    child.on("exit", (code, signal) => {
+    child.once("error", (error) => {
+      rejectPromise(error);
+    });
+
+    child.once("close", (code, signal) => {
       if (signal != null) {
         process.kill(process.pid, signal);
         return;
@@ -214,7 +243,7 @@ if (!existsSync(testsRoot)) {
 
 const { layers: requestedLayers, extraNodeArgs } = resolveArguments(process.argv.slice(2));
 const allTestFiles = listFilesRecursively(testsRoot)
-  .filter((filePath) => filePath.endsWith(".test.ts"))
+  .filter((filePath) => /\.(test|spec)\.(ts|tsx|mts)$/.test(filePath))
   .map(normalizeRelativePath)
   .sort((left, right) => left.localeCompare(right));
 

@@ -159,7 +159,7 @@ Return a JSON array of LearningObjects, one per signal.`;
       validatedBy: "none",
       promotionStatus: "draft",
       status: "created",
-      createdAt: String(Date.now()),
+      createdAt: new Date().toISOString(),
     };
   }
 
@@ -187,7 +187,7 @@ Return a JSON array of LearningObjects, one per signal.`;
         validatedBy: "none",
         promotionStatus: "draft",
         status: "created",
-        createdAt: String(signal.generatedAt),
+        createdAt: new Date(signal.generatedAt).toISOString(),
       };
     });
   }

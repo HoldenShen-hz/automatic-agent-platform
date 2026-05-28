@@ -68,7 +68,7 @@ export class RolloutStateMachine {
       toLevel: nextLevel,
       strategyVersionId: options.strategyVersionId ?? null,
       status: targetStatus,
-      transitionedAt: Date.now(),
+      transitionedAt: new Date().toISOString(),
       approvedBy: options.approvedBy,
       triggeredBy: options.triggeredBy ?? (options.approvedBy == null ? "scheduler" : "human"),
       triggerReason: options.triggerReason,

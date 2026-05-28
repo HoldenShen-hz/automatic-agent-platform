@@ -21,6 +21,7 @@ export interface RealtimeStoreState {
   readonly criticalIncidentCount: number;
   setWsStatus(status: string): void;
   triggerPanic(): void;
+  clearPanic(): void;
   setOfflineQueueSize(size: number): void;
   setSyncStatus(status: "idle" | "queued" | "syncing"): void;
   subscribe(channel: string): void;
@@ -55,6 +56,11 @@ export function createRealtimeStore() {
         triggerPanic() {
           set((draft: RealtimeStoreDraft) => {
             draft.panicActivated = true;
+          });
+        },
+        clearPanic() {
+          set((draft: RealtimeStoreDraft) => {
+            draft.panicActivated = false;
           });
         },
         setOfflineQueueSize(offlineQueueSize) {
@@ -117,6 +123,22 @@ export function createRealtimeStore() {
           });
         },
       }),
+      {
+        version: 2,
+        partialize: (state) => ({
+          wsStatus: state.wsStatus,
+          panicActivated: false,
+          offlineQueueSize: state.offlineQueueSize,
+          syncStatus: state.syncStatus,
+          activeSubscriptions: state.activeSubscriptions,
+          subscriptionLookup: state.subscriptionLookup,
+          pendingApprovalCount: state.pendingApprovalCount,
+          activeIncidents: state.activeIncidents,
+          activeIncidentLookup: state.activeIncidentLookup,
+          incidentCount: state.incidentCount,
+          criticalIncidentCount: state.criticalIncidentCount,
+        }),
+      },
     ),
   );
 }

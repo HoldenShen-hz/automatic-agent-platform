@@ -11,19 +11,20 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { join } from "node:path";
-import { rmSync } from "node:fs";
 import { performance } from "node:perf_hooks";
 import { reportSoftPerformanceMiss } from "../helpers/performance.js";
 
 import { SqliteDatabase } from "../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 import { AuthoritativeTaskStore } from "../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import { newId, nowIso } from "../../src/platform/contracts/types/ids.js";
+import { cleanupPath, createTempWorkspace } from "../helpers/fs.js";
 
-function createTempDb(): SqliteDatabase {
-  const dbPath = join(".tmp", `event-indexing-perf-${process.pid}-${Date.now()}.db`);
+function createTempDb(): { db: SqliteDatabase; workspace: string } {
+  const workspace = createTempWorkspace("event-indexing-perf-");
+  const dbPath = join(workspace, "event-indexing.db");
   const db = new SqliteDatabase(dbPath);
   db.migrate();
-  return db;
+  return { db, workspace };
 }
 
 function createTaskAndExecution(db: SqliteDatabase, store: AuthoritativeTaskStore): { taskId: string; executionId: string } {
@@ -116,7 +117,7 @@ function createEventRecord(
 // ============================================================================
 
 test("performance: EventStore.insertEvent() throughput >500 ops/sec", (t) => {
-  const db = createTempDb();
+  const { db, workspace } = createTempDb();
   const store = new AuthoritativeTaskStore(db);
 
   try {
@@ -147,12 +148,12 @@ test("performance: EventStore.insertEvent() throughput >500 ops/sec", (t) => {
     }
   } finally {
     db.close();
-    rmSync(join(".tmp", `event-indexing-perf-${process.pid}-${Date.now()}.db`), { force: true });
+    cleanupPath(workspace);
   }
 });
 
 test("performance: EventStore.insertEvent() P99 latency <10ms", (t) => {
-  const db = createTempDb();
+  const { db, workspace } = createTempDb();
   const store = new AuthoritativeTaskStore(db);
 
   try {
@@ -191,7 +192,7 @@ test("performance: EventStore.insertEvent() P99 latency <10ms", (t) => {
     }
   } finally {
     db.close();
-    rmSync(join(".tmp", `event-indexing-perf-${process.pid}-${Date.now()}.db`), { force: true });
+    cleanupPath(workspace);
   }
 });
 
@@ -200,7 +201,7 @@ test("performance: EventStore.insertEvent() P99 latency <10ms", (t) => {
 // ============================================================================
 
 test("performance: Bulk event insertion (100 events) <200ms", (t) => {
-  const db = createTempDb();
+  const { db, workspace } = createTempDb();
   const store = new AuthoritativeTaskStore(db);
 
   try {
@@ -230,12 +231,12 @@ test("performance: Bulk event insertion (100 events) <200ms", (t) => {
     }
   } finally {
     db.close();
-    rmSync(join(".tmp", `event-indexing-perf-${process.pid}-${Date.now()}.db`), { force: true });
+    cleanupPath(workspace);
   }
 });
 
 test("performance: Bulk event insertion throughput >1000 events/sec", (t) => {
-  const db = createTempDb();
+  const { db, workspace } = createTempDb();
   const store = new AuthoritativeTaskStore(db);
 
   try {
@@ -266,7 +267,7 @@ test("performance: Bulk event insertion throughput >1000 events/sec", (t) => {
     }
   } finally {
     db.close();
-    rmSync(join(".tmp", `event-indexing-perf-${process.pid}-${Date.now()}.db`), { force: true });
+    cleanupPath(workspace);
   }
 });
 
@@ -275,7 +276,7 @@ test("performance: Bulk event insertion throughput >1000 events/sec", (t) => {
 // ============================================================================
 
 test("performance: EventStore.listEventsForTask() throughput >2000 ops/sec", (t) => {
-  const db = createTempDb();
+  const { db, workspace } = createTempDb();
   const store = new AuthoritativeTaskStore(db);
 
   try {
@@ -311,12 +312,12 @@ test("performance: EventStore.listEventsForTask() throughput >2000 ops/sec", (t)
     }
   } finally {
     db.close();
-    rmSync(join(".tmp", `event-indexing-perf-${process.pid}-${Date.now()}.db`), { force: true });
+    cleanupPath(workspace);
   }
 });
 
 test("performance: EventStore.listEventsForTask() P99 latency <5ms", (t) => {
-  const db = createTempDb();
+  const { db, workspace } = createTempDb();
   const store = new AuthoritativeTaskStore(db);
 
   try {
@@ -360,12 +361,12 @@ test("performance: EventStore.listEventsForTask() P99 latency <5ms", (t) => {
     }
   } finally {
     db.close();
-    rmSync(join(".tmp", `event-indexing-perf-${process.pid}-${Date.now()}.db`), { force: true });
+    cleanupPath(workspace);
   }
 });
 
 test("performance: EventStore.listEventsForExecution() throughput >2000 ops/sec", (t) => {
-  const db = createTempDb();
+  const { db, workspace } = createTempDb();
   const store = new AuthoritativeTaskStore(db);
 
   try {
@@ -401,7 +402,7 @@ test("performance: EventStore.listEventsForExecution() throughput >2000 ops/sec"
     }
   } finally {
     db.close();
-    rmSync(join(".tmp", `event-indexing-perf-${process.pid}-${Date.now()}.db`), { force: true });
+    cleanupPath(workspace);
   }
 });
 
@@ -410,7 +411,7 @@ test("performance: EventStore.listEventsForExecution() throughput >2000 ops/sec"
 // ============================================================================
 
 test("performance: EventStore.markEventDelivered() throughput >1000 ops/sec", (t) => {
-  const db = createTempDb();
+  const { db, workspace } = createTempDb();
   const store = new AuthoritativeTaskStore(db);
 
   try {
@@ -448,6 +449,6 @@ test("performance: EventStore.markEventDelivered() throughput >1000 ops/sec", (t
     }
   } finally {
     db.close();
-    rmSync(join(".tmp", `event-indexing-perf-${process.pid}-${Date.now()}.db`), { force: true });
+    cleanupPath(workspace);
   }
 });

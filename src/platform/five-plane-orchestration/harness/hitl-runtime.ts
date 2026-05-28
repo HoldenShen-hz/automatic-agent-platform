@@ -462,7 +462,7 @@ export class HitlRuntime {
     beforeRef?: string,
     afterRef?: string,
   ): HumanResponsibilityRecord {
-    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(); // 30 days
+    const expiresAt = this.computeExpiryIso(nowIso());
     const record: HumanResponsibilityRecord = {
       recordId: newId("hrr"),
       requestId: request.requestId,

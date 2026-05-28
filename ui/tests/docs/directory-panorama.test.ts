@@ -1,10 +1,13 @@
 import { existsSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+
+const currentDir = dirname(fileURLToPath(import.meta.url));
+const uiRoot = resolve(currentDir, "../..");
 
 describe("ui directory panorama", () => {
   it("matches the key 3.4 directory panorama structure", () => {
-    const root = process.cwd();
     const requiredPaths = [
       "packages/shared/api-client/src/types",
       "packages/shared/auth/src/auth-service.ts",
@@ -33,7 +36,7 @@ describe("ui directory panorama", () => {
     ];
 
     for (const requiredPath of requiredPaths) {
-      expect(existsSync(join(root, requiredPath))).toBe(true);
+      expect(existsSync(join(uiRoot, requiredPath))).toBe(true);
     }
   });
 });

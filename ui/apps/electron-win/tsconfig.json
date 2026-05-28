@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM"],
+    "allowImportingTsExtensions": false,
+    "types": ["node"]
+  },
+  "include": ["src/main.ts", "src/preload.ts", "src/bridge-contract.ts"]
+}

@@ -22,3 +22,16 @@ test("IncidentCaseService enforces acknowledge before mitigation and reviewed be
   assert.equal(reviewed.status, "reviewed");
   assert.equal(resolved.status, "resolved");
 });
+
+test("IncidentCaseService enforces tenant scoping on reads and mutations", () => {
+  const service = new IncidentCaseService();
+  const incident = service.openIncident({
+    severity: "critical",
+    title: "tenant scoped incident",
+    tenantId: "tenant-a",
+  });
+
+  assert.equal(service.getIncident(incident.incidentId, "tenant-b"), null);
+  assert.deepEqual(service.listIncidents(10, "tenant-b"), []);
+  assert.throws(() => service.acknowledge(incident.incidentId, "owner@example.com", "tenant-b"));
+});

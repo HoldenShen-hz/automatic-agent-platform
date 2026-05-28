@@ -1,5 +1,11 @@
-import { describe, expect, it } from "vitest";
+// @vitest-environment jsdom
+
+import { afterEach, describe, expect, it } from "vitest";
 import { createWebPlatformAdapter } from "@aa/shared-platform";
+
+afterEach(() => {
+  window.localStorage.clear();
+});
 
 describe("web platform security regressions", () => {
   it("stores secure values outside localStorage", async () => {

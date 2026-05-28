@@ -3,7 +3,7 @@ import test from "node:test";
 
 import type { CacheMeta } from "../../../../../src/platform/shared/cache/cache-types.js";
 import { MemoryCacheStore } from "../../../../../src/platform/shared/cache/stores/memory-cache-store.js";
-import { forceFullGc, formatMegabytes, heapUsedBytes } from "../../../../helpers/memory-leak.js";
+import { forceFullGc, formatMegabytes, heapUsedBytes, isExplicitGcAvailable } from "../../../../helpers/memory-leak.js";
 
 function createCacheMeta(): CacheMeta {
   const now = Date.now();
@@ -37,7 +37,11 @@ async function populateAndClearNamespace(store: MemoryCacheStore, round: number)
   assert.equal(store.size, 0, "cache should be empty after namespace invalidation");
 }
 
-test("leak guard: MemoryCacheStore does not retain heap after repeated invalidation cycles", async () => {
+test("leak guard: MemoryCacheStore does not retain heap after repeated invalidation cycles", async (t) => {
+  if (!isExplicitGcAvailable()) {
+    t.skip("memory leak guardrails require Node to run with --expose-gc");
+    return;
+  }
   const store = new MemoryCacheStore(2_000);
 
   for (let round = 0; round < 3; round += 1) {
@@ -54,7 +58,7 @@ test("leak guard: MemoryCacheStore does not retain heap after repeated invalidat
 
   const finalHeap = heapUsedBytes();
   const retainedBytes = Math.max(0, finalHeap - baselineHeap);
-  const retainedThresholdBytes = 8 * 1024 * 1024;
+  const retainedThresholdBytes = 3 * 1024 * 1024;
 
   assert.ok(
     retainedBytes < retainedThresholdBytes,

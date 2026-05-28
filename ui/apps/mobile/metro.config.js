@@ -1,9 +1,10 @@
-const path = require("node:path");
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-const projectRoot = __dirname;
+const projectRoot = path.dirname(fileURLToPath(import.meta.url));
 const workspaceRoot = path.resolve(projectRoot, "../..");
 
-module.exports = {
+const metroConfig = {
   projectRoot,
   watchFolders: [workspaceRoot],
   resolver: {
@@ -12,7 +13,9 @@ module.exports = {
       path.join(projectRoot, "node_modules"),
       path.join(workspaceRoot, "node_modules"),
     ],
-    unstable_enablePackageExports: true,
+    unstable_enablePackageExports: false,
   },
   transformer: {},
 };
+
+export default metroConfig;

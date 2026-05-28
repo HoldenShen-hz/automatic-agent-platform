@@ -1,4 +1,4 @@
-import type { ReactElement } from "react";
+import React, { createElement, type ReactElement, type ReactNode } from "react";
 import type { AppRoute, FeatureGroup, ImplementationStatus, PlatformFeatureManifest, PlatformId } from "@aa/shared-types";
 import { createRouteGuardChain } from "@aa/shared-domain";
 import { FeatureScaffold } from "./components";
@@ -27,7 +27,7 @@ export {
 } from "./charts";
 export { createPanelStyle, designTokens } from "./design-tokens";
 export { CodeBlock, DAGVisualization, FileAttachment, Timeline } from "./components/extended";
-export { LayoutFrame, ThreePaneLayout } from "./layouts";
+export { Inline, LayoutFrame, Stack, ThreePaneLayout } from "./layouts";
 export { applyResolvedTheme, darkTheme, highContrastTheme, lightTheme, resolveTheme, type ThemeRuntimeBridge } from "./themes";
 
 export interface FeatureModule {
@@ -35,6 +35,46 @@ export interface FeatureModule {
   readonly route: AppRoute;
   readonly Component: () => ReactElement;
   readonly subPages?: readonly unknown[];
+}
+
+class FeatureModuleErrorBoundary extends React.Component<
+  {
+    readonly title: string;
+    readonly summary: string;
+    readonly status: ImplementationStatus;
+    readonly children: ReactNode;
+  },
+  { readonly error: Error | null }
+> {
+  public constructor(props: {
+    readonly title: string;
+    readonly summary: string;
+    readonly status: ImplementationStatus;
+    readonly children: ReactNode;
+  }) {
+    super(props);
+    this.state = { error: null };
+  }
+
+  public static getDerivedStateFromError(error: Error): { readonly error: Error } {
+    return { error };
+  }
+
+  public override render(): ReactNode {
+    if (this.state.error == null) {
+      return this.props.children;
+    }
+
+    const message = this.state.error.message;
+    return (
+      <FeatureScaffold title={this.props.title} summary={this.props.summary} status={this.props.status}>
+        <div role="alert">
+          <strong>组件渲染失败</strong>
+          <p style={{ marginBottom: 0 }}>{message}</p>
+        </div>
+      </FeatureScaffold>
+    );
+  }
 }
 
 export function createFeatureModule(config: {
@@ -58,21 +98,16 @@ export function createFeatureModule(config: {
       </p>
     </FeatureScaffold>
   ));
-  const Component = () => {
-    try {
-      return renderFeature();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      return (
-        <FeatureScaffold title={config.title} summary={config.summary} status={config.status}>
-          <div role="alert">
-            <strong>组件渲染失败</strong>
-            <p style={{ marginBottom: 0 }}>{message}</p>
-          </div>
-        </FeatureScaffold>
-      );
-    }
-  };
+  const RenderFeature = (): ReactElement => renderFeature();
+  const Component = () => createElement(
+    FeatureModuleErrorBoundary,
+    {
+      title: config.title,
+      summary: config.summary,
+      status: config.status,
+    },
+    createElement(RenderFeature),
+  );
 
   return {
     manifest: {

@@ -5,7 +5,12 @@ import { createMobilePlatformAdapter } from "@aa/shared-platform";
 import { MobileApp } from "../../../../../apps/mobile/src/App";
 import { mobileGlobals } from "../../../../helpers/mobile-bridge";
 
+const mobileTestState = vi.hoisted(() => ({
+  platform: { OS: "android" as "android" | "ios" | "web" },
+}));
+
 vi.mock("react-native", () => ({
+  Platform: mobileTestState.platform,
   View: ({ children, style }: { children?: React.ReactNode; style?: unknown }) => React.createElement("div", { style }, children),
   Text: ({ children, style }: { children?: React.ReactNode; style?: unknown }) => React.createElement("span", { style }, children),
   TouchableOpacity: ({
@@ -55,6 +60,7 @@ const mockMobileBridge = {
 describe("MobileApp component", () => {
   beforeEach(() => {
     mobileGlobals().__AA_MOBILE__ = mockMobileBridge;
+    mobileTestState.platform.OS = "android";
     Object.defineProperty(window.navigator, "userAgent", {
       configurable: true,
       value: "Mozilla/5.0 (Linux; Android 14; Pixel 8)",
@@ -103,6 +109,7 @@ describe("MobileApp component", () => {
 describe("createMobilePlatformAdapter invocation (Issue #2169)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mobileTestState.platform.OS = "android";
     Object.defineProperty(window.navigator, "userAgent", {
       configurable: true,
       value: "Mozilla/5.0 (Linux; Android 14; Pixel 8)",
@@ -121,6 +128,7 @@ describe("createMobilePlatformAdapter invocation (Issue #2169)", () => {
   });
 
   it("detects ios user agents instead of hardcoding android", () => {
+    mobileTestState.platform.OS = "web";
     Object.defineProperty(window.navigator, "userAgent", {
       configurable: true,
       value: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)",
@@ -132,6 +140,13 @@ describe("createMobilePlatformAdapter invocation (Issue #2169)", () => {
     expect(callArgs).toBeDefined();
     expect(callArgs?.[0]).toBe("ios");
     expect(screen.getByText(/Platform: ios/)).toBeInTheDocument();
+  });
+
+  it("memoizes the platform adapter across rerenders", () => {
+    const { rerender } = render(<MobileApp />);
+    rerender(<MobileApp />);
+
+    expect(createMobilePlatformAdapter).toHaveBeenCalledTimes(1);
   });
 });
 

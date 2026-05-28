@@ -1,16 +1,23 @@
 import type { PlatformId } from "@aa/shared-types";
-import { DefaultPlatformAdapter } from "./base-platform-adapter.js";
+import { DefaultPlatformAdapter, type PlatformAdapterFactoryOptions } from "./base-platform-adapter.js";
 import type { ElectronBridge, TauriBridge } from "./bridge-types.js";
 
 export class DesktopPlatformAdapter extends DefaultPlatformAdapter {
-  public constructor(platform: Extract<PlatformId, "windows" | "macos" | "linux">) {
-    super(platform, { screenSecurityDefault: true });
+  public constructor(
+    platform: Extract<PlatformId, "windows" | "macos" | "linux">,
+    options: Omit<PlatformAdapterFactoryOptions, "platform"> = {},
+  ) {
+    super(platform, {
+      screenSecurityDefault: true,
+      allowedShellCommands: options.allowedShellCommands ?? ["health", "doctor", "version"],
+      analyticsConsentDefault: options.analyticsConsentDefault,
+    });
   }
 }
 
 export class ElectronPlatformAdapter extends DesktopPlatformAdapter {
   public constructor(
-    private readonly bridge: ElectronBridge | undefined = globalThis.window?.__AA_ELECTRON__ ?? globalThis.window?.AA_ELECTRON,
+    private readonly bridge: ElectronBridge | undefined = resolveTrustedElectronBridge(globalThis.window?.AA_ELECTRON),
   ) {
     super("windows");
   }
@@ -83,7 +90,12 @@ export class ElectronPlatformAdapter extends DesktopPlatformAdapter {
   }
 
   public override async runShell(command: string): Promise<{ code: number; stdout: string; stderr: string }> {
-    return this.bridge?.runShell(command) ?? super.runShell(command);
+    const normalizedCommand = command.trim();
+    const fallback = await super.runShell(normalizedCommand);
+    if (fallback.code !== 0 || this.bridge == null) {
+      return fallback;
+    }
+    return this.bridge.runShell(normalizedCommand);
   }
 
   public override async spawnProcess(command: string, args: readonly string[]): Promise<{ pid: number; kill(): Promise<void> }> {
@@ -111,6 +123,40 @@ export class ElectronPlatformAdapter extends DesktopPlatformAdapter {
     }
     await super.enableScreenSecurity(enabled);
   }
+}
+
+function resolveTrustedElectronBridge(candidate: unknown): ElectronBridge | undefined {
+  if (candidate == null || typeof candidate !== "object") {
+    return undefined;
+  }
+  if (!Object.isFrozen(candidate)) {
+    return undefined;
+  }
+  const bridge = candidate as Partial<ElectronBridge>;
+  const requiredMethods: Array<keyof ElectronBridge> = [
+    "readSecureValue",
+    "writeSecureValue",
+    "deleteSecureValue",
+    "readFile",
+    "writeFile",
+    "copyToClipboard",
+    "openDeepLink",
+    "openWindow",
+    "runShell",
+    "spawnProcess",
+    "getAnalyticsConsent",
+    "setAnalyticsConsent",
+    "enableScreenSecurity",
+    "onForeground",
+    "onBackground",
+  ];
+  if (bridge.__aaBridgeSignature !== "aa-electron-bridge-v1") {
+    return undefined;
+  }
+  if (requiredMethods.some((key) => typeof bridge[key] !== "function")) {
+    return undefined;
+  }
+  return bridge as ElectronBridge;
 }
 
 export class TauriPlatformAdapter extends DesktopPlatformAdapter {

@@ -1,12 +1,19 @@
-import { render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { App } from "../../apps/web/src/App";
+import { featureRegistry } from "../../apps/web/src/feature-registry";
 
 describe("web app", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
   it("renders the ui shell and default dashboard route", () => {
     render(<App />);
+    const dashboardTitle = featureRegistry.find((feature) => feature.manifest.id === "dashboard")?.manifest.title;
     expect(screen.getByText("Automatic Agent Platform UI")).toBeInTheDocument();
-    expect(screen.getAllByText("总览驾驶舱").length).toBeGreaterThan(0);
+    expect(dashboardTitle).toBeTruthy();
+    expect(screen.getAllByText(dashboardTitle!).length).toBeGreaterThan(0);
     expect(screen.getByText("WS")).toBeInTheDocument();
     expect(screen.getByText("Offline Queue")).toBeInTheDocument();
   });

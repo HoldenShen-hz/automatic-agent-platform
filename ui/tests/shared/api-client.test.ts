@@ -1,5 +1,5 @@
 import { QueryClient } from "@tanstack/react-query";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import {
   BrowserWSClient,
   DefaultRESTClient,
@@ -34,6 +34,10 @@ import {
 } from "@aa/shared-api-client";
 
 describe("shared api-client", () => {
+  afterEach(() => {
+    document.head.innerHTML = "";
+  });
+
   it("fetches dashboard and tasks through the mock REST client", async () => {
     const client = new DefaultRESTClient((request) => new MockTransport().send(request));
 

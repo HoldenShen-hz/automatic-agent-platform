@@ -209,7 +209,7 @@ describe("TelemetrySink", () => {
 
       sink.record("event.before.dispose", {});
 
-      sink.dispose();
+      await sink.dispose();
 
       expect(exporter.list().length).toBe(1);
       expect(sink.list().length).toBe(0);
@@ -353,13 +353,13 @@ describe("createTelemetrySink", () => {
 });
 
 describe("TelemetrySink disposal", () => {
-  it("can be disposed multiple times safely", () => {
+  it("can be disposed multiple times safely", async () => {
     const exporter = new InMemoryTelemetryExporter();
     const sink = new TelemetrySink([exporter]);
 
     sink.record("event", {});
-    sink.dispose();
-    sink.dispose();
+    await sink.dispose();
+    await sink.dispose();
 
     expect(true).toBe(true);
   });

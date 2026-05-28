@@ -63,7 +63,7 @@ export class AuthService {
   }
 
   public async initiateCodeFlow(redirectUri: string): Promise<string> {
-    const state = crypto.randomUUID();
+    const state = generateId();
     const codeVerifier = createCodeVerifier();
     const codeChallenge = await deriveCodeChallenge(codeVerifier);
     this.persistPendingCodeFlow({
@@ -120,7 +120,13 @@ export class AuthService {
 
   public async handleSsoCallback(params: URLSearchParams): Promise<AuthSession> {
     if (params.has("access_token") || params.has("refresh_token")) {
+      clearAuthorizationArtifactsFromHistory();
       throw new Error("auth.redirecting");
+    }
+    if (params.has("code") || params.has("state") || params.has("error")) {
+      const session = await this.handleAuthorizationCallback(params);
+      clearAuthorizationArtifactsFromHistory();
+      return session;
     }
     throw new Error("auth.redirecting");
   }
@@ -182,13 +188,13 @@ export class AuthService {
 }
 
 async function deriveCodeChallenge(codeVerifier: string): Promise<string> {
-  const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(codeVerifier)));
+  const digest = new Uint8Array(await getCryptoApi().subtle.digest("SHA-256", new TextEncoder().encode(codeVerifier)));
   return base64UrlEncodeBytes(digest);
 }
 
 function createCodeVerifier(): string {
   const bytes = new Uint8Array(48);
-  crypto.getRandomValues(bytes);
+  getCryptoApi().getRandomValues(bytes);
   return base64UrlEncodeBytes(bytes);
 }
 
@@ -209,4 +215,33 @@ function getSessionStorage(): Storage | null {
   } catch {
     return null;
   }
+}
+
+function getCryptoApi(): Crypto {
+  if (globalThis.crypto == null) {
+    throw new Error("auth.crypto_unavailable");
+  }
+  return globalThis.crypto;
+}
+
+function generateId(): string {
+  const cryptoApi = getCryptoApi();
+  if (typeof cryptoApi.randomUUID === "function") {
+    return cryptoApi.randomUUID();
+  }
+  const bytes = new Uint8Array(16);
+  cryptoApi.getRandomValues(bytes);
+  return Array.from(bytes, (value) => value.toString(16).padStart(2, "0")).join("");
+}
+
+function clearAuthorizationArtifactsFromHistory(): void {
+  if (typeof window === "undefined" || typeof window.history?.replaceState !== "function") {
+    return;
+  }
+  const url = new URL(window.location.href);
+  url.hash = "";
+  for (const key of ["code", "state", "session_state", "access_token", "refresh_token", "error", "error_description"]) {
+    url.searchParams.delete(key);
+  }
+  window.history.replaceState(null, document.title, `${url.pathname}${url.search}`);
 }

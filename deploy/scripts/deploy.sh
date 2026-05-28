@@ -1,15 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+EXIT_USAGE=64
+EXIT_DEPENDENCY=69
+EXIT_DEPLOYMENT=70
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 HELM_DIR="${PROJECT_ROOT}/deploy/helm/automatic-agent"
-
-# Dry run
-if [[ "${DRY_RUN:-false}" == "true" ]] || [[ "${1:-}" == "--dry-run" ]]; then
-  echo "[DRY RUN] Would deploy with args: $@"
-  exit 0
-fi
 
 # Deploy Automatic Agent Platform to Kubernetes using Helm
 #
@@ -19,11 +17,6 @@ fi
 #   ./deploy.sh dev abc1234 rolling
 #   ./deploy.sh staging v1.2.3 canary
 #   ./deploy.sh prod v1.2.3 blue_green
-
-# Default values
-ENVIRONMENT="${1:-}"
-IMAGE_TAG="${2:-}"
-ROLLOUT_STRATEGY="${3:-rolling}"
 
 # Colors
 RED='\033[0;31m'
@@ -45,7 +38,7 @@ usage() {
   echo "Examples:"
   echo "  $0 dev abc1234 rolling"
   echo "  $0 staging v1.2.3 canary"
-  exit 1
+  exit "${EXIT_USAGE}"
 }
 
 info() {
@@ -59,6 +52,22 @@ warn() {
 error() {
   echo -e "${RED}[ERROR]${NC} $1" >&2
 }
+
+# Parse dry-run anywhere in argv before validation.
+DRY_RUN_FLAG=0
+POSITIONAL_ARGS=()
+for arg in "$@"; do
+  if [[ "$arg" == "--dry-run" ]]; then
+    DRY_RUN_FLAG=1
+    continue
+  fi
+  POSITIONAL_ARGS+=("$arg")
+done
+set -- "${POSITIONAL_ARGS[@]}"
+
+ENVIRONMENT="${1:-}"
+IMAGE_TAG="${2:-}"
+ROLLOUT_STRATEGY="${3:-rolling}"
 
 # Validate inputs
 if [[ -z "${ENVIRONMENT}" ]] || [[ -z "${IMAGE_TAG}" ]]; then
@@ -80,11 +89,19 @@ fi
 NAMESPACE="automatic-agent-${ENVIRONMENT}"
 DEPLOY_DOMAIN="${AA_DEPLOY_DOMAIN:-}"
 
+if [[ "${DRY_RUN:-false}" == "true" ]] || [[ "${DRY_RUN_FLAG}" -eq 1 ]]; then
+  echo "[DRY RUN] Would deploy automatic-agent"
+  echo "  environment=${ENVIRONMENT}"
+  echo "  image_tag=${IMAGE_TAG}"
+  echo "  rollout_strategy=${ROLLOUT_STRATEGY}"
+  exit 0
+fi
+
 # Production deployment guard
 if [[ "${ENVIRONMENT}" == "prod" ]]; then
   if [[ -z "${DEPLOY_DOMAIN}" ]]; then
     error "AA_DEPLOY_DOMAIN must be set for production deployments"
-    exit 1
+    exit "${EXIT_USAGE}"
   fi
   echo ""
   echo -e "${RED}WARNING: You are about to deploy to PRODUCTION${NC}"
@@ -110,7 +127,7 @@ if [[ "${ENVIRONMENT}" == "prod" ]]; then
         fi
         if [[ $i -eq 10 ]]; then
           error "Canary health check failed after 10 attempts"
-          exit 1
+          exit "${EXIT_DEPLOYMENT}"
         fi
         sleep 5
       done
@@ -122,7 +139,7 @@ fi
 VALUES_FILE="${HELM_DIR}/values-${ENVIRONMENT}.yaml"
 if [[ ! -f "${VALUES_FILE}" ]]; then
   error "Values file not found: ${VALUES_FILE}"
-  exit 1
+  exit "${EXIT_USAGE}"
 fi
 
 info "Deploying automatic-agent to ${ENVIRONMENT}"
@@ -133,13 +150,13 @@ info "  Rollout strategy: ${ROLLOUT_STRATEGY}"
 # Check if helm is installed
 if ! command -v helm &> /dev/null; then
   error "Helm is not installed. Install from: https://helm.sh/docs/intro/install/"
-  exit 1
+  exit "${EXIT_DEPENDENCY}"
 fi
 
 # Check if kubectl is configured
 if ! kubectl cluster-info &> /dev/null; then
   error "kubectl is not configured or not connected to a cluster"
-  exit 1
+  exit "${EXIT_DEPENDENCY}"
 fi
 
 # Create namespace if it doesn't exist
@@ -213,7 +230,7 @@ if ! kubectl rollout status deployment/${DEPLOYMENT_NAME} \
   --namespace "${NAMESPACE}" \
   --timeout=300s; then
   error "Deployment rollout failed"
-  exit 1
+  exit "${EXIT_DEPLOYMENT}"
 fi
 
 # Verify deployment
@@ -253,6 +270,16 @@ if [[ "${ROLLOUT_STRATEGY}" == "canary" ]]; then
     --wait --timeout 10m
   helm uninstall automatic-agent-canary --namespace "${NAMESPACE}" >/dev/null 2>&1 || true
 elif [[ "${ROLLOUT_STRATEGY}" == "blue_green" ]]; then
+  EXPECTED_REPLICAS=$(kubectl get deployment "${DEPLOYMENT_NAME}" \
+    --namespace "${NAMESPACE}" \
+    --output jsonpath='{.spec.replicas}')
+  READY_REPLICAS=$(kubectl get deployment "${DEPLOYMENT_NAME}" \
+    --namespace "${NAMESPACE}" \
+    --output jsonpath='{.status.readyReplicas}')
+  if [[ "${READY_REPLICAS:-0}" != "${EXPECTED_REPLICAS:-0}" ]]; then
+    error "Refusing service switch: ${DEPLOYMENT_NAME} ready replicas ${READY_REPLICAS:-0}/${EXPECTED_REPLICAS:-0}"
+    exit "${EXIT_DEPLOYMENT}"
+  fi
   info "Switching stable service selector to ${DEPLOYMENT_NAME}"
   kubectl patch svc automatic-agent --namespace "${NAMESPACE}" --type merge \
     -p "{\"spec\":{\"selector\":{\"app.kubernetes.io/name\":\"automatic-agent\",\"app.kubernetes.io/instance\":\"${DEPLOYMENT_NAME}\"}}}"

@@ -96,9 +96,6 @@ function createResizeObserver(handler: () => void): ResizeObserver | null {
   if (typeof ResizeObserver !== "function") {
     return null;
   }
-  if ("mock" in (ResizeObserver as unknown as Record<string, unknown>)) {
-    return (ResizeObserver as unknown as (callback: ResizeObserverCallback) => ResizeObserver)(handler as ResizeObserverCallback);
-  }
   try {
     return new ResizeObserver(handler);
   } catch (error) {
@@ -116,30 +113,25 @@ export function EChartSurfaceRuntime({ title, values, theme = designTokens }: EC
   const previousValuesRef = useRef<readonly number[]>([]);
   const initializedRef = useRef(false);
   const chartTheme = theme.color;
-  const chartColorDeps = [values, chartTheme.accent, chartTheme.border] as const;
   const fallbackLabel = useMemo(() => `${title}: ${values.join(", ")}`, [title, values]);
   const chartOption = useMemo(
     () => buildChartOption(title, values, theme),
-    [title, ...chartColorDeps, chartTheme.surfaceElevated],
+    [title, values, chartTheme.accent, chartTheme.border, chartTheme.surfaceElevated],
   );
 
   useEffect(() => {
     const container = containerRef.current;
-    const userAgent = container?.ownerDocument.defaultView?.navigator.userAgent ?? "";
-    if (container == null || userAgent.includes("jsdom") || initializedRef.current) {
+    if (container == null || initializedRef.current) {
       return;
     }
     initializedRef.current = true;
 
     const chart = init(container);
-    const resize = () => chart.resize();
     const resizeObserver = createResizeObserver(() => chart.resize());
     resizeObserver?.observe(container);
-    container.ownerDocument.defaultView?.addEventListener("resize", resize);
     chartRef.current = chart;
     cleanupRef.current = () => {
       resizeObserver?.disconnect();
-      container.ownerDocument.defaultView?.removeEventListener("resize", resize);
     };
 
     return () => {
@@ -163,15 +155,17 @@ export function EChartSurfaceRuntime({ title, values, theme = designTokens }: EC
       && values.length > previousValues.length
       && previousValues.every((value, index) => values[index] === value);
 
-    chart.setOption(chartOption);
     if (isAppendOnly) {
+      chart.setOption(buildChartOption(title, previousValues, theme));
       chart.appendData({
         seriesIndex: 0,
         data: values.slice(previousValues.length),
       });
+    } else {
+      chart.setOption(chartOption);
     }
     previousValuesRef.current = [...values];
-  }, [chartOption, values]);
+  }, [chartOption, theme, title, values]);
 
   return (
     <div>

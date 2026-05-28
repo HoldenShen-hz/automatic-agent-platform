@@ -25,6 +25,14 @@ export class GlobalErrorBoundary extends React.Component<React.PropsWithChildren
         <main role="alert" aria-live="assertive" className="app-fallback">
           <h1>{translateMessage("ui.globalError.title")}</h1>
           <p>{translateMessage("ui.globalError.message")}</p>
+          <button
+            onClick={() => {
+              this.setState({ hasError: false });
+            }}
+            type="button"
+          >
+            {translateMessage("ui.shell.featureError.retry")}
+          </button>
         </main>
       );
     }

@@ -20,6 +20,7 @@ import {
 import { assertGolden } from "../helpers/golden.js";
 
 test("golden: RolloutRecord schema produces correct structure", () => {
+  const transitionedAt = 1714500000;
   const validRecord = {
     recordId: "rollout_001",
     candidateId: "candidate_test_001",
@@ -29,8 +30,8 @@ test("golden: RolloutRecord schema produces correct structure", () => {
     toLevel: "L2_canary",
     strategyVersionId: "v1.2.3",
     status: "canary_5",
-    transitionedAt: 1714500000,
-    createdAt: new Date(1714500000).toISOString(),
+    transitionedAt,
+    createdAt: new Date(transitionedAt * 1000).toISOString(),
     approvedBy: "admin@example.com",
     guardrailReasonCodes: ["GR_001", "GR_002"],
     evidence: ["evidence_1", "evidence_2"],
@@ -181,14 +182,15 @@ test("golden: RolloutRecord schema rejects invalid data", () => {
 });
 
 test("golden: RolloutRecord with minimal required fields", () => {
+  const transitionedAt = 1714000000;
   const minimalRecord = {
     recordId: "rollout_minimal",
     candidateId: "candidate_min",
     level: "L2_canary",
     fromLevel: "L0_off",
     toLevel: "L2_canary",
-    transitionedAt: 1714000000,
-    createdAt: new Date(1714000000).toISOString(),
+    transitionedAt,
+    createdAt: new Date(transitionedAt * 1000).toISOString(),
   };
 
   const parsed = RolloutRecordSchema.parse(minimalRecord);

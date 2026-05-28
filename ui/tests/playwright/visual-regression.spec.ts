@@ -17,7 +17,7 @@ test("dashboard shell keeps a stable visual baseline", async ({ page }) => {
 });
 
 test("approval center keeps a stable visual baseline", async ({ page }) => {
-  await page.goto("/governance/approvals", { waitUntil: "networkidle" });
+  await page.goto("/mission-control/approvals", { waitUntil: "networkidle" });
   await prepareStableUi(page);
   await expect(page.getByRole("heading", { name: "Approval Center" })).toBeVisible();
   await expect(page.getByRole("navigation")).toBeVisible();

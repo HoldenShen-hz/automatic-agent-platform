@@ -47,33 +47,32 @@ function removeApproval(
 export function useApprovalCenterVm(): ApprovalCenterVm {
   const client = useRestClient();
   const queryApprovals = useApprovalsQuery().data ?? [];
-  const approvalFeedVersion = queryApprovals
-    .map((approval) => [
-      approval.approvalId,
-      approval.taskId,
-      approval.riskLevel,
-      approval.reasonSummary,
-      approval.deadline ?? "",
-      approval.policySource ?? "",
-      approval.recommendedOption ?? "",
-      String(approval.currentLevel ?? ""),
-      String(approval.totalLevels ?? ""),
-    ].join(":"))
-    .join("|");
-  const [approvals, setApprovals] = useState<readonly ApprovalDTO[]>(queryApprovals);
-  const [selectedId, setSelectedId] = useState<string | null>(queryApprovals[0]?.approvalId ?? null);
+  const approvalFeedVersion = JSON.stringify(queryApprovals.map((approval) => ({
+    approvalId: approval.approvalId,
+    taskId: approval.taskId,
+    riskLevel: approval.riskLevel,
+    reasonSummary: approval.reasonSummary,
+    deadline: approval.deadline ?? null,
+    policySource: approval.policySource ?? null,
+    recommendedOption: approval.recommendedOption ?? null,
+    currentLevel: approval.currentLevel ?? null,
+    totalLevels: approval.totalLevels ?? null,
+  })));
+  const syncedQueryApprovals = useMemo(() => queryApprovals, [approvalFeedVersion]);
+  const [approvals, setApprovals] = useState<readonly ApprovalDTO[]>(syncedQueryApprovals);
+  const [selectedId, setSelectedId] = useState<string | null>(syncedQueryApprovals[0]?.approvalId ?? null);
   const [actionHistory, setActionHistory] = useState<readonly { title: string; description: string }[]>([]);
   const [pendingOperations, setPendingOperations] = useState(0);
 
   useEffect(() => {
-    setApprovals(queryApprovals);
+    setApprovals(syncedQueryApprovals);
     setSelectedId((current) => {
-      if (current != null && queryApprovals.some((approval) => approval.approvalId === current)) {
+      if (current != null && syncedQueryApprovals.some((approval) => approval.approvalId === current)) {
         return current;
       }
-      return queryApprovals[0]?.approvalId ?? null;
+      return syncedQueryApprovals[0]?.approvalId ?? null;
     });
-  }, [approvalFeedVersion]);
+  }, [approvalFeedVersion, syncedQueryApprovals]);
 
   const baseVm = useMemo(() => mapApprovalsToVm(approvals), [approvals]);
   const selectedApproval = approvals.find((approval) => approval.approvalId === selectedId) ?? approvals[0] ?? null;
@@ -147,15 +146,22 @@ export function useApprovalCenterVm(): ApprovalCenterVm {
     if (selectedApproval == null) {
       return;
     }
+    const snapshot = approvals;
+    const snapshotSelectedId = selectedApproval.approvalId;
     applyOptimisticRemoval(
       selectedApproval.approvalId,
       `Delegated · ${selectedApproval.taskId}`,
       `Approval was delegated to ${target} for supervised decision.`,
     );
     await withPending(async () => {
-      await delegateApproval(client, selectedApproval.approvalId, target);
+      try {
+        await delegateApproval(client, selectedApproval.approvalId, target);
+      } catch (error) {
+        restoreApprovals(snapshot, snapshotSelectedId);
+        throw error;
+      }
     });
-  }, [applyOptimisticRemoval, client, selectedApproval, withPending]);
+  }, [approvals, applyOptimisticRemoval, client, restoreApprovals, selectedApproval, withPending]);
 
   const requestMoreContext = useCallback(async () => {
     if (selectedApproval == null) {
@@ -175,15 +181,29 @@ export function useApprovalCenterVm(): ApprovalCenterVm {
 
   const approveBatch = useCallback(async (approvalIds: readonly string[]) => {
     await withPending(async () => {
-      await Promise.all(approvalIds.map((approvalId) => approveApproval(client, approvalId)));
-      setApprovals((current) => current.filter((approval) => !approvalIds.includes(approval.approvalId)));
+      const results = await Promise.allSettled(approvalIds.map((approvalId) => approveApproval(client, approvalId)));
+      const succeeded = approvalIds.filter((_approvalId, index) => results[index]?.status === "fulfilled");
+      const failed = results.filter((result): result is PromiseRejectedResult => result.status === "rejected");
+      if (succeeded.length > 0) {
+        setApprovals((current) => current.filter((approval) => !succeeded.includes(approval.approvalId)));
+      }
+      if (failed.length > 0) {
+        throw new AggregateError(failed.map((result) => result.reason), "approval.batch_approve_partial_failure");
+      }
     });
   }, [client, withPending]);
 
   const rejectBatch = useCallback(async (approvalIds: readonly string[]) => {
     await withPending(async () => {
-      await Promise.all(approvalIds.map((approvalId) => rejectApproval(client, approvalId)));
-      setApprovals((current) => current.filter((approval) => !approvalIds.includes(approval.approvalId)));
+      const results = await Promise.allSettled(approvalIds.map((approvalId) => rejectApproval(client, approvalId)));
+      const succeeded = approvalIds.filter((_approvalId, index) => results[index]?.status === "fulfilled");
+      const failed = results.filter((result): result is PromiseRejectedResult => result.status === "rejected");
+      if (succeeded.length > 0) {
+        setApprovals((current) => current.filter((approval) => !succeeded.includes(approval.approvalId)));
+      }
+      if (failed.length > 0) {
+        throw new AggregateError(failed.map((result) => result.reason), "approval.batch_reject_partial_failure");
+      }
     });
   }, [client, withPending]);
 

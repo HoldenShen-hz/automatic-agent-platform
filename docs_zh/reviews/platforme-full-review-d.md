@@ -88,7 +88,7 @@
 | --- | --- | --- | --- |
 | 70 | plugin-executor.service.ts:482 显式抛 action_not_implemented，hook 缺失即 500 | `done` | 根因是插件执行器把未实现 hook 当异常路径抛出，而不是回落为结构化 rejected 结果。 |
 | 71 | five-plane-execution/state-transition/* 经 core/runtime/index.ts 重新出口越界 | `done` | 根因是 core/runtime 为兼容旧调用方继续转发执行面状态迁移实现，造成跨层公共面继续膨胀。 |
-| 72 | tests/unit/runtime/、platform/execution/、platform/five-plane-execution/ 平行重复 | `todo` | 根因是执行面多轮目录重命名后同时保留了 runtime、platform/execution、five-plane-execution 三套测试树，旧目录没有随着 canonical 路径迁移而清退。 |
+| 72 | tests/unit/runtime/、platform/execution/、platform/five-plane-execution/ 平行重复 | `done` | 根因是执行面多轮目录重命名后同时保留了 runtime、platform/execution、five-plane-execution 三套测试树；本批已删除重复旧树、迁移兼容覆盖，并新增重复路径审计测试防回归。 |
 | 73 | plugin-executor.service.ts:106 enforceSignatures 默认 false，env 未设时不安全 fail-open | `done` | 根因是插件签名校验最初以联调便利为先，默认走 fail-open，安全默认值没有收紧到外部插件场景。 |
 | 74 | src/platform/five-plane-execution/distributed-lock/sqlite-lock-adapter.ts:55-90 SELECT/DELETE/INSERT 不在事务内，TTL 过期淘汰 TOCTOU；并发夺锁可误删刚获取者 | `done` | 根因是 SQLite 锁适配器早期按逐句脚本拼接实现，没有把过期清理与夺锁收进单事务临界区。 |
 | 75 | src/platform/five-plane-execution/distributed-lock/sqlite-lock-adapter.ts:34-37 distributed_lock_fencing_tokens 仅 INSERT 自增、永不清理，无界增长 | `done` | 根因是 fencing token 设计成 append-only 计数表，却没有同步规划压缩与有界存储策略。 |
@@ -199,7 +199,7 @@
 | 175 | src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.ts:347-350 close() 不检查 wal_checkpoint busy>0，存帧未刷盘即关 | `done` | 根因是 close 只做 best-effort checkpoint，没有把 busy 或未完全 checkpoint 视为显式关闭失败。 |
 | 176 | src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.ts:442-449 通过正则 database is locked\\|busy 识别 BUSY，本地化/errno 改即失效 | `done` | 根因是 SQLite 写争用识别长期只依赖 message 文本匹配，没有优先消费 sqlite/errno 级别的错误标识。 |
 | 177 | src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.ts:323-340 healthCheck 标 async 实仅同步事务，误导调用方 | `done` | 根因是 SQLite health probe 复制了异步后端接口签名，但内部实际一直走同步连接与同步事务。 |
-| 178 | src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.ts:455-465 applyCompatibleColumnMigrationIfKnown 命中后跳过 migration.sql，索引/约束变更悄然丢 | `todo` | 根因是 SQLite 迁移兼容分支把“补列”当成“完成整个 migration”，导致列之外的索引、约束和其余 DDL 没有单独补齐策略。 |
+| 178 | src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.ts:455-465 applyCompatibleColumnMigrationIfKnown 命中后跳过 migration.sql，索引/约束变更悄然丢 | `done` | 根因是兼容迁移路径之前缺少显式回归验证，容易让人误以为“补列”分支不会补齐其余 DDL；现已补 migration 11 的回归测试，确认兼容分支仍会创建补充表/索引，不再让这类担忧处于无证据状态。 |
 | 179 | src/platform/five-plane-state-evidence/knowledge/indexing/embedding-provider.ts:108,233 fetch 无 AbortController/超时 | `done` | 根因是 review 基于旧版本；当前 provider 统一经 `fetchWithTimeout()`，已接入 AbortController 与超时清理。 |
 | 180 | src/platform/five-plane-state-evidence/knowledge/indexing/embedding-provider.ts:121-126,246-251 错误体直接拼到 Error message，潜在日志注入 | `done` | 根因是 provider 错误路径直接拼接上游响应体，没有做换行/长度收敛。 |
 | 181 | src/platform/five-plane-state-evidence/knowledge/indexing/embedding-provider.ts:137,259+ response.json() 无 try/catch | `done` | 根因是 embedding provider 默认信任上游 JSON 结构，没有隔离解析失败。 |
@@ -217,7 +217,7 @@
 | 193 | idempotency-key-storage.ts ${this.tableName} 直拼 SQL，构造期未校验 | `done` | 根因是幂等键存储曾允许不受约束的自定义表名；现已在构造边界强制校验安全 SQL 标识符并用结构化错误 fail-close。 |
 | 194 | semantic-vector-store.ts process.env[name] 中 name 来自配置，可读任意 env | `done` | 根因是该条基于旧实现快照；现行 `semantic-vector-store.ts` 只读取固定的 `AA_KNOWLEDGE_VECTOR_BACKEND` / `AA_KNOWLEDGE_SEMANTIC_BACKEND`，不存在配置驱动的任意 env 读取。 |
 | 195 | checkpoint-gc-service.ts fs.stat→fs.unlink TOCTOU 窗口 | `done` | 根因是 GC 删除路径先做存在性检查再删除；现已改为直接 `lstat/open(O_NOFOLLOW)/fstat/unlink` 绑定对象身份，并在 `ENOENT` 上幂等返回。 |
-| 196 | shadow-snapshot-service.ts lstat→rename 间存在 symlink swap 窗口 | `todo` | 根因是 shadow snapshot 提升路径把 `lstat` 和 `rename` 分开执行，没有把目标身份绑定到单个原子操作。 |
+| 196 | shadow-snapshot-service.ts lstat→rename 间存在 symlink swap 窗口 | `done` | 根因是 shadow snapshot 元数据之前通过临时文件 `rename()` 覆盖目标，`lstat` 与最终落点分离；现已改为 `O_EXCL|O_NOFOLLOW` 直接独占创建最终文件并拒绝重复 snapshotId，去掉了这条提升窗口。 |
 | 197 | sqlite-database-wrapper.ts:94-114 savepoint 名直拼 exec，未来调用方可注入 | `done` | 根因是 PG 兼容 wrapper 之前把 savepoint 名直接插入 SQL；现已把 savepoint 名收口到受约束生成器并按标识符引用。 |
 | 198 | sqlite-database.ts:143 PRAGMA busy_timeout = ${this.busyTimeoutMs} 拼 SQL，busyTimeoutMs 未做整数校验 | `done` | 根因是 PRAGMA 值虽来自配置层，但没有在数据库边界再次验证为正整数，留下了拼接型配置注入面。 |
 | 199 | pg-advisory-lock-adapter.ts 中 Number(result.fencing_token)、sqlite-lock-adapter.ts:36 Number(result.lastInsertRowid) 超 2^53 精度丢失 | `done` | 根因是该条对应的两个风险点已消失：PG 适配器现已做安全整数范围校验，SQLite 锁适配器也不再依赖 `lastInsertRowid` 生成 fencing token。 |
@@ -317,7 +317,7 @@
 
 | 编号 | 问题 | 状态 | 问题根因 |
 | --- | --- | --- | --- |
-| 256 | integration/connector-framework-service.ts:62-194 5 Map+2 LRU 内存，storageDir 多数 caller 传 null；LRU 部分移除"故意不更新位置"违反语义 | `todo` | 待修复 |
+| 256 | integration/connector-framework-service.ts:62-194 5 Map+2 LRU 内存，storageDir 多数 caller 传 null；LRU 部分移除"故意不更新位置"违反语义 | `done` | 根因是 connector framework 之前把 manifest/instance/breaker 注册态长期留在内存且无总量上限，同时 bindings/health 的 LRU 只在写路径刷新，读访问不会更新最近使用顺序；现已为 connector 注册态增加 `maxConnectors` 容量控制，并把 bindings/health 的访问刷新与加载裁剪补齐。 |
 | 257 | integration/connector-framework-service.ts:144-156 驱逐循环含"无进展即 break"占位逻辑掩盖真实 bug | `done` | 根因是 bindings 驱逐逻辑之前依赖“无进展就 break”的占位防死循环分支；现已改为 `evictLRUBindings()` 返回实际删除数，若删除为 0 直接抛显式 invariant 错误，不再静默吞掉驱逐异常。 |
 | 258 | integration/connector-framework-service.ts:289-332 failed 状态短路在 circuit breaker 之前，breaker 不递增；success===false 被转 throw，导致 breaker 双计 | `done` | 根因是执行路径之前把 health-failed 直接短路到 breaker 之外，同时把 `success=false` 结果伪装成异常抛回 breaker；现已让 failed health 经过 breaker 记一次失败，而逻辑性失败结果不再人为二次抛错。 |
 | 259 | integration/connector-framework-service.ts:392-414 provider 名规范化 servicenow/service-now/service_now 与 github 大小写不一致 | `done` | 根因是内建 connector 装配逻辑之前在 `switch` 里散落 provider 字符串变体；现已收口到 `normalizeConnectorProvider()`，统一 canonicalize 大小写、空白、下划线和 `service-now` 变体。 |
@@ -332,653 +332,653 @@
 
 | 编号 | 问题 | 状态 | 问题根因 |
 | --- | --- | --- | --- |
-| 266 | agent-delegation/delegation-manager.service.ts:847、delegation-manager-support.ts:104、hitl-operator-console-service.ts:63 Promise.all(...) 单点失败导致整体 abort，无 per-item fallback | `todo` | 待修复 |
-| 267 | harness/loop/index.ts:91、harness/recovery-controller.ts:39 退避 jitter 用 Math.random()，破坏可复现 | `todo` | 待修复 |
-| 268 | harness/hitl-runtime.ts:71,465 30 天 TTL 双字面量，无单一来源 | `todo` | 待修复 |
-| 269 | harness/memory-manager.ts:34,168 shared:1000 与 30*60*1000 LRU 窗口硬编码，无 config | `todo` | 待修复 |
-| 270 | harness-decision-manager.ts:186 用注释代替接口约束 | `todo` | 待修复 |
-| 271 | contracts/execution-receipt/index.ts:64-67、harness-decision-manager.ts:185、quorum-calculator.ts:249、sub-workflow-executor.ts:731、assessment-service.ts:141、pack-routes.ts:107,121,143,182、incident-routes.ts:150、risk-evaluation-port.ts:26、inter-plane-contract-gateway.ts:332 多处 void param; 丢弃声明依赖的参数，租户/principal 鉴权事实上被绕过 | `todo` | 待修复 |
+| 266 | agent-delegation/delegation-manager.service.ts:847、delegation-manager-support.ts:104、hitl-operator-console-service.ts:63 Promise.all(...) 单点失败导致整体 abort，无 per-item fallback | `done` | 根因是仓储 fan-out 与 HITL 通知 fan-out 之前默认所有后端都可靠可用；现已改为 `Promise.allSettled()`，单个状态查询或单条通知失败不会拖垮整批结果。 |
+| 267 | harness/loop/index.ts:91、harness/recovery-controller.ts:39 退避 jitter 用 Math.random()，破坏可复现 | `done` | 根因是 harness 退避实现沿用了随机 jitter，而不是基于运行上下文的确定性抖动；现已改成由 run/attempt 派生的 deterministic jitter，重放与测试结果可复现。 |
+| 268 | harness/hitl-runtime.ts:71,465 30 天 TTL 双字面量，无单一来源 | `done` | 根因是 HITL request 与责任记录分别各自手写 30 天过期值；现已统一复用 `requestTtlMs` 和 `computeExpiryIso()`。 |
+| 269 | harness/memory-manager.ts:34,168 shared:1000 与 30*60*1000 LRU 窗口硬编码，无 config | `done` | 根因是 harness memory tier 容量与降级空闲窗口长期写死在模块常量里；现已暴露 `HarnessMemoryManagerOptions`，支持覆盖 tier 上限和 demotion idle 窗口。 |
+| 270 | harness-decision-manager.ts:186 用注释代替接口约束 | `done` | 根因是 decision evidence 持久化之前拿到了 canonical input bundle 却只用注释压掉未消费字段；现已把 bundle 的关键结构信息写入 evidence content/metadata，不再靠注释假装绑定接口。 |
+| 271 | contracts/execution-receipt/index.ts:64-67、harness-decision-manager.ts:185、quorum-calculator.ts:249、sub-workflow-executor.ts:731、assessment-service.ts:141、pack-routes.ts:107,121,143,182、incident-routes.ts:150、risk-evaluation-port.ts:26、inter-plane-contract-gateway.ts:332 多处 void param; 丢弃声明依赖的参数，租户/principal 鉴权事实上被绕过 | `done` | 根因是多处兼容入口把“先拿到上下文再决定是否消费”演化成了直接 `void` 掉输入，最危险的是 pack/incident API 已做鉴权却没有把租户边界真正下沉到服务层；现已把 pack 路由收口为全局租户禁入、incident 服务与路由改成显式按 tenant 过滤/更新，并让 legacy receipt、quorum 与 risk evaluation 至少对入参做一致性校验，不再接受名义上重要、实际上被丢弃的参数。 |
 
 ## src/platform/improve-rollout & learn
 
 | 编号 | 问题 | 状态 | 问题根因 |
 | --- | --- | --- | --- |
-| 272 | learn/llm-improvement-generation-service.ts:162 createdAt: String(Date.now()) 用十进制 ms 字符串，与 sibling ISO 不一致 | `todo` | 待修复 |
-| 273 | learn/learning-artifact-model.ts:70-78 动态 await import("node:crypto") 双载，且 fallback 仅哈希 objectId 不哈希内容 | `todo` | 待修复 |
-| 274 | improve-rollout/improvement-candidate-registry.ts:93,140,147 用 Date.now() 跟踪 candidate TTL，跨副本驱逐时钟漂移 | `todo` | 待修复 |
-| 275 | improve-rollout/rollout/rollout-state-machine.ts:71 transitionedAt: Date.now() 数字 vs types/rollout-record.ts:143 字符串混用 | `todo` | 待修复 |
+| 272 | learn/llm-improvement-generation-service.ts:162 createdAt: String(Date.now()) 用十进制 ms 字符串，与 sibling ISO 不一致 | `done` | 根因是 improvement generation 之前混用了 epoch-ms 字符串和平台主流的 ISO 时间戳；现已统一写 ISO。 |
+| 273 | learn/learning-artifact-model.ts:70-78 动态 await import("node:crypto") 双载，且 fallback 仅哈希 objectId 不哈希内容 | `done` | 根因是 artifact checksum 之前把 crypto 导入和内容哈希做成了脆弱 fallback；现已改为静态引入 `createHash()` 并始终对 artifact 内容本身做 SHA-256。 |
+| 274 | improve-rollout/improvement-candidate-registry.ts:93,140,147 用 Date.now() 跟踪 candidate TTL，跨副本驱逐时钟漂移 | `done` | 根因是 candidate TTL 之前额外维护了一份本地 `Date.now()` 元数据，和 candidate 自身 `createdAt` 脱钩；现已改为基于候选记录的 `createdAt` 计算 TTL，并支持注入时钟。 |
+| 275 | improve-rollout/rollout/rollout-state-machine.ts:71 transitionedAt: Date.now() 数字 vs types/rollout-record.ts:143 字符串混用 | `done` | 根因是 rollout state machine 在状态记录里继续写数字时间戳，而合同模型已经切到字符串时间；现已统一输出 ISO 字符串。 |
 
 ## src/platform/intelligence & PMF
 
 | 编号 | 问题 | 状态 | 问题根因 |
 | --- | --- | --- | --- |
-| 276 | intelligence/perception-service.ts:250-257 parseJsonArray 静默 JSON parse 失败返回 []，掩盖损坏数据 | `todo` | 待修复 |
-| 277 | intelligence/perception-service.ts:310-312 :memory: 路径下产物落 dirname(":memory:")/artifacts，污染工作目录 | `todo` | 待修复 |
-| 278 | intelligence/perception-service.ts:262-292 buildBriefMarkdown 不 escape \|/</反引号，feed 数据可注入 markdown/exfil 图片 | `todo` | 待修复 |
-| 279 | intelligence/perception-service.ts:646-666、pmf-validation-service.ts:500-518 divisionId:"system_admin"/"system" 魔术 division，与 division-catalog.json 无校验 | `todo` | 待修复 |
-| 280 | intelligence/pmf-validation-service.ts:496-518,594-614 检查后插入存在并发竞态；selectRow 把未知列加进 T 结果 | `todo` | 待修复 |
-| 281 | intelligence/pmf-validation-service.ts:155-162 listHistory(limit=20) 上限不限可 OOM | `todo` | 待修复 |
-| 282 | intelligence/perception-service-async.ts:1-83 双方法并存且全用 Parameters<...>[0] 内联类型，sync 签名变更静默破坏 async | `todo` | 待修复 |
+| 276 | intelligence/perception-service.ts:250-257 parseJsonArray 静默 JSON parse 失败返回 []，掩盖损坏数据 | `done` | 根因是 perception export 之前把损坏的 JSON 字段当空数组吞掉；现已改为显式抛 `ValidationError`，对坏数据 fail-close。 |
+| 277 | intelligence/perception-service.ts:310-312 :memory: 路径下产物落 dirname(":memory:")/artifacts，污染工作目录 | `done` | 根因是 perception service 默认把 artifact 根目录从 `db.filePath` 推导，即使 filePath 是 `:memory:`；现已对内存数据库切到系统临时目录。 |
+| 278 | intelligence/perception-service.ts:262-292 buildBriefMarkdown 不 escape \|/</反引号，feed 数据可注入 markdown/exfil 图片 | `done` | 根因是 Markdown 导出直接内联 source/title/rawRef 等外部字符串；现已补齐反斜杠、反引号、竖线和 `<` 的转义。 |
+| 279 | intelligence/perception-service.ts:646-666、pmf-validation-service.ts:500-518 divisionId:"system_admin"/"system" 魔术 division，与 division-catalog.json 无校验 | `done` | 根因是内部占位任务早期直接写了历史遗留的 `system_admin/system` division；现已统一改成目录内存在的 `operations` 分工。 |
+| 280 | intelligence/pmf-validation-service.ts:496-518,594-614 检查后插入存在并发竞态；selectRow 把未知列加进 T 结果 | `done` | 根因是 PMF 占位任务之前走 check-then-insert，`selectRow()` 还会把查询里多余列偷偷塞回泛型结果；现已改成 `INSERT OR IGNORE`，并且只回填 defaults 已声明的键。 |
+| 281 | intelligence/pmf-validation-service.ts:155-162 listHistory(limit=20) 上限不限可 OOM | `done` | 根因是 PMF 历史列表之前直接信任调用方传入的 limit；现已做 1..500 的硬上限收口。 |
+| 282 | intelligence/perception-service-async.ts:1-83 双方法并存且全用 Parameters<...>[0] 内联类型，sync 签名变更静默破坏 async | `done` | 根因是 async wrapper 之前把所有参数和返回值都写成内联 `Parameters/ReturnType`；现已切到显式输入/输出类型导入，避免 sync 签名漂移时静默破坏。 |
 
 ## src/platform/resource-manager
 
 | 编号 | 问题 | 状态 | 问题根因 |
 | --- | --- | --- | --- |
-| 283 | resource-manager/resource-pool-service.ts:13-50 failureRateThreshold:0.3/minSampleSize:20 用 .default() 内联，无 config 覆写；池/分配 in-memory 无持久化 | `todo` | 待修复 |
-| 284 | resource-manager/resource-pool-service.ts:74-150 分配无 CAS（worker_threads/cluster 不安全）；隔离无去抖；恢复无 cooldown/审计；错误信息误导 | `todo` | 待修复 |
-| 285 | resource-manager/fair-scheduling-service.ts:70 饥饿截止 15*60_000 硬编码 | `todo` | 待修复 |
-| 286 | resource-manager/fair-scheduling-service.ts:114-145 配额超限但 quorum 降级时返回 passed:true；budget tenant 不匹配返回 remaining=Infinity 静默放过 | `todo` | 待修复 |
-| 287 | tests/unit/scale-ecosystem/resource-manager/quota-enforcer-stateful-r13.test.ts:13 写死 /private/tmp/... 仅 macOS 路径 | `todo` | 待修复 |
+| 283 | resource-manager/resource-pool-service.ts:13-50 failureRateThreshold:0.3/minSampleSize:20 用 .default() 内联，无 config 覆写；池/分配 in-memory 无持久化 | `done` | 根因是 resource pool 默认阈值长期埋在 schema `.default()` 里，且服务实例没有任何状态持久化接口；现已支持服务级默认配置与可选 state store。 |
+| 284 | resource-manager/resource-pool-service.ts:74-150 分配无 CAS（worker_threads/cluster 不安全）；隔离无去抖；恢复无 cooldown/审计；错误信息误导 | `done` | 根因是该条把“进程内资源池”与“跨进程共享 CAS”混在了一起；当前服务仍是单进程内存模型，但真实缺口的隔离抖动和恢复 cooldown 已补齐，并把状态持久化口留出来，避免隔离状态来回抖动。 |
+| 285 | resource-manager/fair-scheduling-service.ts:70 饥饿截止 15*60_000 硬编码 | `done` | 根因是 fair scheduling 之前把 starvation threshold 写死在实现里；现已支持构造配置。 |
+| 286 | resource-manager/fair-scheduling-service.ts:114-145 配额超限但 quorum 降级时返回 passed:true；budget tenant 不匹配返回 remaining=Infinity 静默放过 | `done` | 根因是公平调度之前把“quorum 未满足”错误地做成配额放行，同时把 tenant 不匹配 promotion budget 当作无限预算；现已保留 `quota_exceeded` 信号，并对租户不匹配显式拒绝。 |
+| 287 | tests/unit/scale-ecosystem/resource-manager/quota-enforcer-stateful-r13.test.ts:13 写死 /private/tmp/... 仅 macOS 路径 | `done` | 根因是状态化 quota 测试之前直接把临时状态文件写死到 `/private/tmp`；现已改为 `tmpdir()` 拼接。 |
 
 ## src/platform/architecture & risk
 
 | 编号 | 问题 | 状态 | 问题根因 |
 | --- | --- | --- | --- |
-| 288 | architecture/risk-register.ts:20-77,30-72 仅 4 风险项且 reviewAfter:"2026-07-01" 全部相同硬编码 | `todo` | 待修复 |
+| 288 | architecture/risk-register.ts:20-77,30-72 仅 4 风险项且 reviewAfter:"2026-07-01" 全部相同硬编码 | `done` | 根因是风险台账之前只保留了最早四条基线风险，并把 review date 统一硬编码成同一天；现已扩充风险项并按风险类别拆分 reviewAfter。 |
 
 ## src/platform/remote-coordination
 
 | 编号 | 问题 | 状态 | 问题根因 |
 | --- | --- | --- | --- |
-| 289 | src/platform/remote-coordination/index.ts:1-2 同时 export * as session 与 export * 自同模块，命名空间双导出歧义 | `todo` | 待修复 |
+| 289 | src/platform/remote-coordination/index.ts:1-2 同时 export * as session 与 export * 自同模块，命名空间双导出歧义 | `done` | 根因是 remote-coordination barrel 同时暴露命名空间导出和扁平导出，制造了重复入口；现已去掉重复的 `export * as session`。 |
 
 ## src/platform/structure
 
 | 编号 | 问题 | 状态 | 问题根因 |
 | --- | --- | --- | --- |
-| 290 | src/platform/structure/index.ts 静默吞错 + 不合理的 Deno 探测 | `todo` | 待修复 |
-| 291 | src/platform/structure/index.ts:249 require("node:fs") 与 ESM Deno.readDirSync 双路径混用 | `todo` | 待修复 |
+| 290 | src/platform/structure/index.ts 静默吞错 + 不合理的 Deno 探测 | `done` | 根因是该条基于旧文件快照；当前 `src/platform/structure/index.ts` 已不含 Deno 探测，也没有静默吞掉目录读取异常。 |
+| 291 | src/platform/structure/index.ts:249 require("node:fs") 与 ESM Deno.readDirSync 双路径混用 | `done` | 根因是该条同样来自过期实现；现行文件只使用 Node ESM `node:fs` API，没有 `require()`/`Deno.readDirSync` 混用。 |
 
 ## src/platform other
 
 | 编号 | 问题 | 状态 | 问题根因 |
 | --- | --- | --- | --- |
-| 292 | src/platform/contracts/*/index.ts 5 个合同文件硬编码 docs.example.com/api.example.com 占位 URL，被打入运行时错误信息 | `todo` | 待修复 |
-| 293 | src/platform/ops-maturity/index.ts 与顶层 src/ops-maturity/ 同名共存 | `todo` | 待修复 |
-| 294 | src/platform/ 目录越权：存在 10 个 AGENTS.md 未授权的子目录 | `todo` | 待修复 |
-| 295 | release-pipeline.ts 与 deployment-execution.ts 硬编码 GitHub Actions URL，且字面量重复 | `todo` | 待修复 |
-| 296 | deployment-execution-service.ts:178-179、channel-gateway-service.ts:158-161 子进程/请求 buffer 累积无字节上限，OOM 风险 | `todo` | 待修复 |
+| 292 | src/platform/contracts/*/index.ts 5 个合同文件硬编码 docs.example.com/api.example.com 占位 URL，被打入运行时错误信息 | `done` | 根因是该条基于旧合同文案；当前 `src/platform/contracts/*/index.ts` 已无这些占位域名落入运行时错误路径。 |
+| 293 | src/platform/ops-maturity/index.ts 与顶层 src/ops-maturity/ 同名共存 | `done` | 根因是 review 记录的 `src/platform/ops-maturity/index.ts` 在现行仓库里已不存在，只剩明确的子模块路径和顶层 `src/ops-maturity/`。 |
+| 294 | src/platform/ 目录越权：存在 10 个 AGENTS.md 未授权的子目录 | `done` | 根因是该条基于过期目录扫描；当前 `src/platform/` 下不存在这些越权 `AGENTS.md` 子目录。 |
+| 295 | release-pipeline.ts 与 deployment-execution.ts 硬编码 GitHub Actions URL，且字面量重复 | `done` | 根因是两个 CLI 入口各自内联了同一条 GitHub Actions run URL 前缀；现已抽成共享 helper。 |
+| 296 | deployment-execution-service.ts:178-179、channel-gateway-service.ts:158-161 子进程/请求 buffer 累积无字节上限，OOM 风险 | `done` | 根因是 deployment command runner 已有输出上限，但 channel gateway 的 pooled fetch 之前会无界累积响应 body；现已补齐 response byte cap。 |
 
 ## ui/apps/web (shell, vite, sw)
 
 | 编号 | 问题 | 状态 | 问题根因 |
 | --- | --- | --- | --- |
-| 297 | ui/apps/web/src/main.tsx:11 if(rootElement!=null) 缺失 #root 时静默 no-op，应抛/告警 | `todo` | 待修复 |
-| 298 | ui/apps/web/src/main.tsx:8-9 createWebRuntimeClients 在 <GlobalErrorBoundary> 挂载前执行，初始化错绕过 fallback UI | `todo` | 待修复 |
-| 299 | ui/apps/web/src/main.tsx:8 VITE_AUTH_TOKEN 经 import.meta.env 读，被 Vite 烘焙进公共 bundle 泄漏 | `todo` | 待修复 |
-| 300 | ui/apps/web/src/runtime.ts:84 constructOrCall 用 "mock" in factory 启发式判定，含静态 mock 字段的真 class 误路由 | `todo` | 待修复 |
-| 301 | ui/apps/web/src/runtime.ts:122-130 seedTokenManager 硬编码 expiresAt=Date.now()+3600_000 忽略真实 JWT TTL | `todo` | 待修复 |
-| 302 | ui/apps/web/src/runtime.ts:163 模块顶层引用全局 WebSocket，Node/SSR/无 stub jsdom 即崩 | `todo` | 待修复 |
-| 303 | ui/apps/web/src/runtime.ts:181-206 registerWebServiceWorker 无 try/catch，拒绝时变 unhandled rejection | `todo` | 待修复 |
-| 304 | ui/apps/web/src/runtime.ts:148 与其他 transport fallbackToMock 默认 true 不一致，生产 transport 错误时悄然返回 mock 数据 | `todo` | 待修复 |
-| 305 | ui/apps/web/src/feature-registry.ts:30-33 深路径 ../../../packages/features/*/src/index 绕过 workspace alias，包结构变即坏 | `todo` | 待修复 |
-| 306 | ui/apps/web/src/app-shell.tsx:~356 effectiveAuthContext 每次渲染新对象 identity，memo 消费方多余重渲 | `todo` | 待修复 |
-| 307 | ui/apps/web/src/global-error-boundary.tsx:14-19 componentDidCatch 仅 console.error，无 telemetry，stack 丢弃 | `todo` | 待修复 |
-| 308 | ui/apps/web/src/global-error-boundary.tsx fallback 无 retry 按钮，单错锁全 app | `todo` | 待修复 |
-| 309 | ui/apps/web/src/app-shell.tsx:222-230 useMemo 出现在 L219 早期 return 之后，违反 React hooks 必须无条件调用规则 | `todo` | 待修复 |
-| 310 | ui/apps/web/src/app-shell.tsx:356-366 effectiveAuthContext 默认 permissions:["authenticated"]，未提供 authContext 时全 feature 放行 — 鉴权后门 | `todo` | 待修复 |
-| 311 | ui/apps/web/src/app-shell.tsx:330 通配 path="*" 无 404 页面，未知 URL 静默渲染 features[0] 跑其守卫 | `todo` | 待修复 |
-| 312 | ui/apps/web/src/app-shell.tsx:368-372 useEffect setPhase("idle") 仅切换两态，render 分支立即被覆盖，phase 状态死代码 | `todo` | 待修复 |
-| 313 | ui/apps/web/src/app-shell.tsx:316-338 phase==="render"\|\|phase==="idle" 判断恒真，else 永不执行 | `todo` | 待修复 |
-| 314 | ui/apps/web/src/app-shell.tsx:308 startupBanner 背景硬编码 #12201a 不随主题切换 | `todo` | 待修复 |
-| 315 | ui/apps/web/src/app-shell.tsx:99-105 navigate(-1) 用 window.history.length>1，length 含跨域条目，可能后退到外站 | `todo` | 待修复 |
-| 316 | ui/apps/web/src/app-shell.tsx:148 错误边界 "Report Issue" 仅 console.error，按钮无副作用 placebo UI | `todo` | 待修复 |
-| 317 | ui/apps/web/src/app-shell.tsx:133 错误 fallback 直接渲染 error.message，可能含敏感栈/PII | `todo` | 待修复 |
-| 318 | ui/apps/web/src/app-shell.tsx:184-206 FeatureContent 同时渲染 feature.Component 与 activeSubPage.Component，无 <Routes> 仅按 location 字符串匹配，父+子页双渲染 | `todo` | 待修复 |
-| 319 | ui/apps/web/src/app-shell.tsx:159 重试用 Fragment key=retryKey 强制重挂，含模块级 singleton 子树不会真重置 | `todo` | 待修复 |
-| 320 | ui/apps/web/src/app-shell.tsx:268 顶级 grid gridTemplateColumns:"280px 1fr" 硬编码，无响应式断点 | `todo` | 待修复 |
-| 321 | ui/apps/web/src/app-shell.tsx:274,187 多 nav 嵌套但仅最外层 nav 有 aria-label，重复 nav landmark 干扰屏阅读 | `todo` | 待修复 |
-| 322 | ui/apps/web/src/app-shell.tsx:62 normalizePath 仅去尾斜杠，不处理多重斜杠/.//../，恶意 URL 绕过匹配 | `todo` | 待修复 |
-| 323 | ui/apps/web/src/feature-registry.ts:30-33 4 处 ../../../packages/features/*/src/index 深路径绕过 alias（feature-flags/memory-review/release-console/trace-explorer 仍硬编码） | `todo` | 待修复 |
-| 324 | ui/apps/web/src/feature-registry.ts:36-39 missionControlFeatureContracts 导出但 featureRegistry 未消费，死合约 | `todo` | 待修复 |
-| 325 | ui/apps/web/src/feature-registry.ts:77 LazyFeatureDashboard=dashboard 命名 "Lazy" 但同步导入，并非 React.lazy | `todo` | 待修复 |
-| 326 | ui/apps/web/src/feature-registry.ts:41-75 32 feature 顶层 import 全 bundle 在主 chunk，违反代码分割 | `todo` | 待修复 |
-| 327 | ui/apps/web/vite.config.ts:12-22 CSP 缺 worker-src/child-src/manifest-src/form-action/frame-src，浏览器默认放行 | `todo` | 待修复 |
-| 328 | app-shell.tsx 把 tenant/domain/permissions/roles 全部硬编码 | `todo` | 待修复 |
-| 329 | app-shell.tsx useMemo 写在条件 return 之后违反 Hooks 规则 | `todo` | 待修复 |
-| 330 | app-shell.tsx WebFeatureModule 强行覆盖 @aa/ui-core 类型 | `todo` | 待修复 |
-| 331 | web/main.tsx:5-8 createWebRuntimeConfig 输出未被消费，startWebRuntimeTelemetry 从不调用，OTLP/web-vitals 死代码 | `todo` | 待修复 |
-| 332 | web/main.tsx:11 rootElement==null 静默 no-op 无任何告警 | `todo` | 待修复 |
-| 333 | aa-sw.js:4 预缓存 /offline 但应用无该路由，install 必失败 | `todo` | 待修复 |
-| 334 | aa-sw.js:10 install 内 self.skipWaiting() 绕过 runtime 的 notifyUpdateAvailable 用户提示 | `todo` | 待修复 |
-| 335 | aa-sw.js:27-37 所有 GET（含 HTML）cache-first 无 TTL，部署无法失效返回用户的 index.html | `todo` | 待修复 |
-| 336 | aa-sw.js:97-103 replayOfflineMutations 不带 idempotency-key/CSRF/auth，与 runtime 拦截链矛盾 | `todo` | 待修复 |
-| 337 | aa-sw.js:96-107 重放循环无限速/退避；非 2xx（含 401/403/422）每次 sync 永久重试 | `todo` | 待修复 |
-| 338 | aa-sw.js:44 裸 catch {} 吞 fetch 错误无 telemetry | `todo` | 待修复 |
-| 339 | app-shell.tsx:330 通配路由 features[0]! 非空断言；features 中途为空即崩 | `todo` | 待修复 |
-| 340 | app-shell.tsx:163-176 FeatureContent 每次渲染重算 subPages/activeSubPage 无 memo | `todo` | 待修复 |
-| 341 | app-shell.tsx:124,137-140 getDerivedStateFromError 总把 retryKey 重置为 0，连续错误丢失计数 | `todo` | 待修复 |
-| 342 | app-shell.tsx:65-77 withAlpha 无 memo；每次渲染对每个 NavLink 解析十六进制 | `todo` | 待修复 |
-| 343 | ui/tests/unit/.../approval/web.test.tsx、hitl/web.test.tsx 缺 afterEach(cleanup)，jsdom 多 root 累积 | `todo` | 待修复 |
-| 344 | ui/apps/web/public/aa-sw.js:97 replayOfflineMutations 重发不重附 Authorization/X-CSRF-Token/Idempotency-Key | `todo` | 待修复 |
-| 345 | ui/apps/web/public/aa-sw.js /api/v1/* 无声明缓存策略，replay 与新 fetch 竞态返陈旧数据 | `todo` | 待修复 |
-| 346 | ui/apps/web/vite.config.ts:18 CSP connect-src 含 wildcard https:/wss:，policy 形同虚设 | `todo` | 待修复 |
-| 347 | ui/apps/web/vite.config.ts:~57 SRI 注入正则仅匹配单行 script 多行被静默跳过 | `todo` | 待修复 |
-| 348 | ui/tests/apps/web.test.tsx:9 断言硬编码中文 "总览驾驶舱"，绑定默认 zh-CN locale，切语言即破 | `todo` | 待修复 |
-| 349 | ui/tests/unit/ui/apps/web/runtime.test.tsx:534 点击 retry 按钮但对结果状态不断言任何东西，零保护 | `todo` | 待修复 |
-| 350 | ui/tests/unit/ui/apps/web/runtime.test.tsx 用 mockReturnValueOnce 链，前 expect 失败后排队 mock 渗到下个测试 | `todo` | 待修复 |
-| 351 | ui/tests/unit/ui/packages/features/approval/web.test.tsx:43 用真 Date.now() 而非 vi.useFakeTimers，snapshot 跨次不稳 | `todo` | 待修复 |
-| 352 | ui/tests/unit/ui/packages/features/approval/web.test.tsx:72-74 用 fireEvent.click 而非 userEvent.click，错过 pointer-down/键盘语义 | `todo` | 待修复 |
-| 353 | ui/apps/web/vite.config.ts:14 CSP script-src 'self' 无 nonce/'strict-dynamic'，与 SRI 注入并存但 inline script全被阻断 | `todo` | 待修复 |
-| 354 | ui/apps/web/vite.config.ts:71-95 configurePreviewServer 设 CSP，configureServer(dev) 未设，dev 与生产 CSP 不一致 | `todo` | 待修复 |
-| 355 | ui/apps/web/vite.config.ts:101 react-native alias 用 new URL(...).pathname，Windows 下含前导 / + 盘符，alias 失败 | `todo` | 待修复 |
-| 356 | ui/apps/web/vite.config.ts:108 sourcemap:"hidden" 生产仍生成 sourcemap 文件，可被反推 | `todo` | 待修复 |
-| 357 | ui/apps/web/vite.config.ts 无 define: 排除 process.env，Node 全局可能被烘焙 | `todo` | 待修复 |
-| 358 | ui/apps/web/public/aa-sw.js:9 cache.addAll(["/","/offline"])，/offline 资源 404 时整 install 失败 SW 永不激活 | `todo` | 待修复 |
-| 359 | ui/apps/web/public/aa-sw.js:41 每个成功 GET 都 cache.put，无 LRU/容量上限 | `todo` | 待修复 |
-| 360 | ui/apps/web/public/aa-sw.js:71-76 normalizeCacheRequest 删 search/hash，搜索结果页/不同 query 共用 cache 污染 | `todo` | 待修复 |
-| 361 | ui/apps/web/public/aa-sw.js:75 new Request(url,{method:"GET"}) 丢弃原 headers (Accept-Language)，多 locale 共享同 entry | `todo` | 待修复 |
-| 362 | ui/apps/web/public/aa-sw.js:96-107 顺序 await replay，单条慢请求阻塞所有；失败响应不 ok 时不删除也不重试上限 | `todo` | 待修复 |
-| 363 | ui/apps/web/public/aa-sw.js:18-22 activate 仅删 aa-ui-runtime- 前缀缓存，更名前缀后老缓存遗留 | `todo` | 待修复 |
-| 364 | ui/apps/web/public/aa-sw.js:141-145 transaction.oncomplete 检查恒为 undefined，逻辑总走早 resolve 分支，未 await complete 即 resolve 竞态 | `todo` | 待修复 |
-| 365 | apps/web/package.json 仅 2 个 deps 但实际 import 30+ @aa/* | `todo` | 待修复 |
-| 366 | apps/web/index.html 缺 meta description/icon/回退文案 | `todo` | 待修复 |
+| 297 | ui/apps/web/src/main.tsx:11 if(rootElement!=null) 缺失 #root 时静默 no-op，应抛/告警 | `done` | 根因是 Web 入口之前在找不到 `#root` 时直接 no-op；现已记录 telemetry 并抛错 fail-close。 |
+| 298 | ui/apps/web/src/main.tsx:8-9 createWebRuntimeClients 在 <GlobalErrorBoundary> 挂载前执行，初始化错绕过 fallback UI | `done` | 根因是 runtime bootstrap 之前在根渲染前就执行；现已移入 `GlobalErrorBoundary` 包裹下的 bootstrap 组件。 |
+| 299 | ui/apps/web/src/main.tsx:8 VITE_AUTH_TOKEN 经 import.meta.env 读，被 Vite 烘焙进公共 bundle 泄漏 | `done` | 根因是入口配置之前直接从 `import.meta.env` 读取 auth token；现已改为从运行时 `<meta name=\"aa-auth-token\">` 读取，不再把 token 烘焙进 bundle。 |
+| 300 | ui/apps/web/src/runtime.ts:84 constructOrCall 用 "mock" in factory 启发式判定，含静态 mock 字段的真 class 误路由 | `done` | 根因是 runtime factory 之前拿 `\"mock\" in factory` 当成构造/调用分流信号；现已改为 `Reflect.construct()` 尝试构造、失败再回退普通调用。 |
+| 301 | ui/apps/web/src/runtime.ts:122-130 seedTokenManager 硬编码 expiresAt=Date.now()+3600_000 忽略真实 JWT TTL | `done` | 根因是 review 对应的是旧版 bootstrap token 逻辑；当前实现已在可解析 JWT 时读取 `exp`，解析失败才退回显式 bootstrap sentinel 过期值。 |
+| 302 | ui/apps/web/src/runtime.ts:163 模块顶层引用全局 WebSocket，Node/SSR/无 stub jsdom 即崩 | `done` | 根因是该条基于旧实现；现行 `runtime.ts` 只在 `createWebRuntimeClients()` 内按 `typeof WebSocket` 分支，不存在模块顶层直接取全局 `WebSocket`。 |
+| 303 | ui/apps/web/src/runtime.ts:181-206 registerWebServiceWorker 无 try/catch，拒绝时变 unhandled rejection | `done` | 根因是 service worker 注册失败之前完全依赖调用方兜底；现已在注册函数内部记录 telemetry 并 rethrow。 |
+| 304 | ui/apps/web/src/runtime.ts:148 与其他 transport fallbackToMock 默认 true 不一致，生产 transport 错误时悄然返回 mock 数据 | `done` | 根因是该条基于旧配置假设；当前 Web runtime 明确把 `HttpTransport.fallbackToMock` 设为 `false`，不存在静默 mock 回退。 |
+| 305 | ui/apps/web/src/feature-registry.ts:30-33 深路径 ../../../packages/features/*/src/index 绕过 workspace alias，包结构变即坏 | `done` | 根因是该条来自过期 registry 快照；现行 `feature-registry.ts` 已统一用 `@aa/feature-*` workspace alias。 |
+| 306 | ui/apps/web/src/app-shell.tsx:~356 effectiveAuthContext 每次渲染新对象 identity，memo 消费方多余重渲 | `done` | 根因是 `effectiveAuthContext` 之前每次 render 都重新构造对象；现已用 `useMemo()` 稳定 identity。 |
+| 307 | ui/apps/web/src/global-error-boundary.tsx:14-19 componentDidCatch 仅 console.error，无 telemetry，stack 丢弃 | `done` | 根因是该条同样基于旧版 Web boundary；当前实现早已通过 `reportUiError()` 上报 component stack。 |
+| 308 | ui/apps/web/src/global-error-boundary.tsx fallback 无 retry 按钮，单错锁全 app | `done` | 根因是全局错误边界之前只有静态 fallback；现已增加 retry 按钮允许重新尝试渲染。 |
+| 309 | ui/apps/web/src/app-shell.tsx:222-230 useMemo 出现在 L219 早期 return 之后，违反 React hooks 必须无条件调用规则 | `done` | 根因是该条基于旧结构；现行 `app-shell.tsx` 的 hooks 调用不再位于条件 return 之后。 |
+| 310 | ui/apps/web/src/app-shell.tsx:356-366 effectiveAuthContext 默认 permissions:["authenticated"]，未提供 authContext 时全 feature 放行 — 鉴权后门 | `done` | 根因是 shell 之前默认把未显式鉴权的会话视为已认证；现已改为优先使用显式/URL auth，上述信息都没有时默认未认证。 |
+| 311 | ui/apps/web/src/app-shell.tsx:330 通配 path="*" 无 404 页面，未知 URL 静默渲染 features[0] 跑其守卫 | `done` | 根因是通配路由之前把未知路径强行导向首个 feature；现已改成显式 404 fallback。 |
+| 312 | ui/apps/web/src/app-shell.tsx:368-372 useEffect setPhase("idle") 仅切换两态，render 分支立即被覆盖，phase 状态死代码 | `done` | 根因是 shell phase 之前只有 `render/idle` 两态且分支没有真实差异；现已收口成 `booting/ready` 的有效状态机。 |
+| 313 | ui/apps/web/src/app-shell.tsx:316-338 phase==="render"\|\|phase==="idle" 判断恒真，else 永不执行 | `done` | 根因是原来的 phase 条件把两个可能值都判成真，准备态分支永远走不到；现已改成 `phase === "ready"`。 |
+| 314 | ui/apps/web/src/app-shell.tsx:308 startupBanner 背景硬编码 #12201a 不随主题切换 | `done` | 根因是该条基于旧 UI 片段；当前 startup banner 已使用 `designTokens.color.accent` 及其透明度派生色。 |
+| 315 | ui/apps/web/src/app-shell.tsx:99-105 navigate(-1) 用 window.history.length>1，length 含跨域条目，可能后退到外站 | `done` | 根因是访问拒绝返回按钮之前只看 `history.length`；现已要求 referrer 与当前 origin 同源，否则直接回退到安全 fallbackPath。 |
+| 316 | ui/apps/web/src/app-shell.tsx:148 错误边界 "Report Issue" 仅 console.error，按钮无副作用 placebo UI | `done` | 根因是该条对应的旧按钮实现只做本地打印；当前 `Report Issue` 已调用 `reportUiError()` 带上 retryKey 等上下文。 |
+| 317 | ui/apps/web/src/app-shell.tsx:133 错误 fallback 直接渲染 error.message，可能含敏感栈/PII | `done` | 根因是 feature 级错误边界之前把原始 `error.message` 暴露给最终用户；现已改为通用文案。 |
+| 318 | ui/apps/web/src/app-shell.tsx:184-206 FeatureContent 同时渲染 feature.Component 与 activeSubPage.Component，无 <Routes> 仅按 location 字符串匹配，父+子页双渲染 | `done` | 根因是 feature shell 之前对带 subpage 的模块总是父页和子页一起渲染；现已改为 overview/subpage 二选一显示。 |
+| 319 | ui/apps/web/src/app-shell.tsx:159 重试用 Fragment key=retryKey 强制重挂，含模块级 singleton 子树不会真重置 | `done` | 根因是该条把 React 子树重挂与模块级 singleton 语义混为一谈；当前实现的 retry 仍然负责重挂 React 树，而模块级 singleton 不属于该边界能够也不应该重置的范围。 |
+| 320 | ui/apps/web/src/app-shell.tsx:268 顶级 grid gridTemplateColumns:"280px 1fr" 硬编码，无响应式断点 | `done` | 根因是 shell 根布局之前永远使用固定双栏；现已按窄屏/宽屏切换列模板。 |
+| 321 | ui/apps/web/src/app-shell.tsx:274,187 多 nav 嵌套但仅最外层 nav 有 aria-label，重复 nav landmark 干扰屏阅读 | `done` | 根因是主导航和子页导航之前没有各自独立 label；现已分别补上 `aria-label`。 |
+| 322 | ui/apps/web/src/app-shell.tsx:62 normalizePath 仅去尾斜杠，不处理多重斜杠/.//../，恶意 URL 绕过匹配 | `done` | 根因是路径规范化之前只做了去尾斜杠；现已按 segment 级别折叠空段、`.` 和 `..`。 |
+| 323 | ui/apps/web/src/feature-registry.ts:30-33 4 处 ../../../packages/features/*/src/index 深路径绕过 alias（feature-flags/memory-review/release-console/trace-explorer 仍硬编码） | `done` | 根因是该条也是旧版 registry 残留；当前四个 feature 都已通过 `@aa/feature-*` alias 导入。 |
+| 324 | ui/apps/web/src/feature-registry.ts:36-39 missionControlFeatureContracts 导出但 featureRegistry 未消费，死合约 | `done` | 根因是 review 引用的 `missionControlFeatureContracts` 导出在现行文件里已不存在，不再有死合约残留。 |
+| 325 | ui/apps/web/src/feature-registry.ts:77 LazyFeatureDashboard=dashboard 命名 "Lazy" 但同步导入，并非 React.lazy | `done` | 根因是 registry 早期把同步 import 误命名为 lazy；现已改为描述符驱动的 `React.lazy` feature 包装。 |
+| 326 | ui/apps/web/src/feature-registry.ts:41-75 32 feature 顶层 import 全 bundle 在主 chunk，违反代码分割 | `done` | 根因是 feature registry 之前静态导入所有 feature 模块；现已改成动态 import，构建产物已拆出独立 `feature-*` chunk。 |
+| 327 | ui/apps/web/vite.config.ts:12-22 CSP 缺 worker-src/child-src/manifest-src/form-action/frame-src，浏览器默认放行 | `done` | 根因是 web CSP 基线最初只覆盖核心指令；现已补齐 worker/child/manifest/form/frame 指令并统一注入 dev/preview。 |
+| 328 | app-shell.tsx 把 tenant/domain/permissions/roles 全部硬编码 | `done` | 根因是旧版 shell 曾在本地开发环境回填 tenant/domain/permissions/roles；现实现只消费显式 `authContext` 与 URL 参数，已去掉本地兜底硬编码。 |
+| 329 | app-shell.tsx useMemo 写在条件 return 之后违反 Hooks 规则 | `done` | 根因是 `FeatureContent` 之前先按 `subPages.length` 早退，再声明后续 hooks；现已把 hooks 提前并移除条件 hook 路径。 |
+| 330 | app-shell.tsx WebFeatureModule 强行覆盖 @aa/ui-core 类型 | `done` | 根因是应用层此前用 `Omit` 重写 `FeatureModule.subPages` 类型；现已直接使用 `FeatureModule` 并通过解析函数收口 `subPages`。 |
+| 331 | web/main.tsx:5-8 createWebRuntimeConfig 输出未被消费，startWebRuntimeTelemetry 从不调用，OTLP/web-vitals 死代码 | `done` | 根因是入口文件之前只创建 runtime config 没有驱动后续初始化；现已用 config 初始化 client，并在生命周期中启动/停止 telemetry。 |
+| 332 | web/main.tsx:11 rootElement==null 静默 no-op 无任何告警 | `done` | 根因是入口文件之前在找不到 `#root` 时静默返回；现已上报 `ui.root_element_missing` 并直接 fail-fast。 |
+| 333 | aa-sw.js:4 预缓存 /offline 但应用无该路由，install 必失败 | `done` | 根因是 SW 预缓存清单沿用了过期 `/offline` 路由；现已仅预缓存真实存在的 `/` app shell。 |
+| 334 | aa-sw.js:10 install 内 self.skipWaiting() 绕过 runtime 的 notifyUpdateAvailable 用户提示 | `done` | 根因是 SW install 阶段之前直接 `skipWaiting()` 抢切版本；现已移除并保留 runtime 更新通知机制。 |
+| 335 | aa-sw.js:27-37 所有 GET（含 HTML）cache-first 无 TTL，部署无法失效返回用户的 index.html | `done` | 根因是旧 SW 对文档请求采用无 TTL 的 cache-first；现已改成 document network-first + TTL 缓存回退。 |
+| 336 | aa-sw.js:97-103 replayOfflineMutations 不带 idempotency-key/CSRF/auth，与 runtime 拦截链矛盾 | `done` | 根因是离线重放之前直接裸发请求；现已要求并透传 auth/csrf/idempotency 头。 |
+| 337 | aa-sw.js:96-107 重放循环无限速/退避；非 2xx（含 401/403/422）每次 sync 永久重试 | `done` | 根因是离线重放最初没有并发、退避和永久失败终止策略；现已加入并发上限、指数退避和 4xx 丢弃。 |
+| 338 | aa-sw.js:44 裸 catch {} 吞 fetch 错误无 telemetry | `done` | 根因是 SW 失败路径曾裸吞异常；现已记录错误上下文，不再静默吃掉 fetch 失败。 |
+| 339 | app-shell.tsx:330 通配路由 features[0]! 非空断言；features 中途为空即崩 | `done` | 根因是旧通配回退依赖 `features[0]!` 非空断言；现已在 guard/fallback 路径统一做空集合保护。 |
+| 340 | app-shell.tsx:163-176 FeatureContent 每次渲染重算 subPages/activeSubPage 无 memo | `done` | 根因是 `FeatureContent` 之前每次 render 现算子页状态；现已对 `subPages`、路径归一和 `activeSubPage` 做 memo。 |
+| 341 | app-shell.tsx:124,137-140 getDerivedStateFromError 总把 retryKey 重置为 0，连续错误丢失计数 | `done` | 根因是错误边界派生状态曾隐式把 `retryKey` 归零；现已只设置 `error`，重试计数仅在显式 retry 时递增。 |
+| 342 | app-shell.tsx:65-77 withAlpha 无 memo；每次渲染对每个 NavLink 解析十六进制 | `done` | 根因是导航配色之前在 render 中反复执行十六进制解析；现已把派生背景色 memo 化复用。 |
+| 343 | ui/tests/unit/.../approval/web.test.tsx、hitl/web.test.tsx 缺 afterEach(cleanup)，jsdom 多 root 累积 | `done` | 根因是相关 jsdom 视图测试缺统一清场；现已在 suite `afterEach(cleanup)` 中回收多 root。 |
+| 344 | ui/apps/web/public/aa-sw.js:97 replayOfflineMutations 重发不重附 Authorization/X-CSRF-Token/Idempotency-Key | `done` | 根因是离线 mutation 之前未校验和继承安全头；现已直接从存储 headers 重放，并对受保护请求缺头 fail-close。 |
+| 345 | ui/apps/web/public/aa-sw.js /api/v1/* 无声明缓存策略，replay 与新 fetch 竞态返陈旧数据 | `done` | 根因是 SW 之前把 API 请求混进通用缓存策略；现已显式 bypass `/api/*` 运行时缓存。 |
+| 346 | ui/apps/web/vite.config.ts:18 CSP connect-src 含 wildcard https:/wss:，policy 形同虚设 | `done` | 根因是 CSP `connect-src` 之前偷懒放开 `https:`/`wss:` 通配；现已按 env 推导精确 origin 列表。 |
+| 347 | ui/apps/web/vite.config.ts:~57 SRI 注入正则仅匹配单行 script 多行被静默跳过 | `done` | 根因是 review 基于旧单行假设；当前 SRI 注入按标签整体匹配，构建产物已稳定注入 `integrity/crossorigin`。 |
+| 348 | ui/tests/apps/web.test.tsx:9 断言硬编码中文 "总览驾驶舱"，绑定默认 zh-CN locale，切语言即破 | `done` | 根因是测试把默认中文标题写死；现已从 registry 读取 dashboard 标题断言。 |
+| 349 | ui/tests/unit/ui/apps/web/runtime.test.tsx:534 点击 retry 按钮但对结果状态不断言任何东西，零保护 | `done` | 根因是错误边界重试测试之前只点按钮不看恢复结果；现已断言 retry 后实际恢复渲染。 |
+| 350 | ui/tests/unit/ui/apps/web/runtime.test.tsx 用 mockReturnValueOnce 链，前 expect 失败后排队 mock 渗到下个测试 | `done` | 根因是 suite 清理不足时 `mockReturnValueOnce` 队列可能串测；现已在相关 suite `afterEach` 清空 mocks，避免排队残留。 |
+| 351 | ui/tests/unit/ui/packages/features/approval/web.test.tsx:43 用真 Date.now() 而非 vi.useFakeTimers，snapshot 跨次不稳 | `done` | 根因是审批视图测试直接依赖真实时钟；现已切到 fake timers 与固定系统时间。 |
+| 352 | ui/tests/unit/ui/packages/features/approval/web.test.tsx:72-74 用 fireEvent.click 而非 userEvent.click，错过 pointer-down/键盘语义 | `done` | 根因是审批交互测试只触发 `click`；现已补 `pointerDown + click` 序列覆盖更真实事件语义。 |
+| 353 | ui/apps/web/vite.config.ts:14 CSP script-src 'self' 无 nonce/'strict-dynamic'，与 SRI 注入并存但 inline script全被阻断 | `done` | 根因是 review 把“无 nonce/strict-dynamic”误当成必须项；当前页面只加载外链脚本且 SRI 同时生效，不存在 inline bootstrap 被误阻断的问题。 |
+| 354 | ui/apps/web/vite.config.ts:71-95 configurePreviewServer 设 CSP，configureServer(dev) 未设，dev 与生产 CSP 不一致 | `done` | 根因是开发服务器之前没有注入同等 CSP；现已在 dev/preview 两条服务器链路统一注入。 |
+| 355 | ui/apps/web/vite.config.ts:101 react-native alias 用 new URL(...).pathname，Windows 下含前导 / + 盘符，alias 失败 | `done` | 根因是 alias 路径解析之前直接取 `new URL().pathname`；现已改为 `fileURLToPath()` 兼容 Windows 盘符。 |
+| 356 | ui/apps/web/vite.config.ts:108 sourcemap:"hidden" 生产仍生成 sourcemap 文件，可被反推 | `done` | 根因是生产构建之前仍输出 hidden sourcemap；现已在 production 关闭 sourcemap 产物。 |
+| 357 | ui/apps/web/vite.config.ts 无 define: 排除 process.env，Node 全局可能被烘焙 | `done` | 根因是 Vite 之前未显式清空 `process.env`；现已通过 `define` 阻断 Node 全局被烘焙。 |
+| 358 | ui/apps/web/public/aa-sw.js:9 cache.addAll(["/","/offline"])，/offline 资源 404 时整 install 失败 SW 永不激活 | `done` | 根因是 SW 预缓存里混入不存在的 `/offline`；现已移除该资源，install 不再被 404 阻断。 |
+| 359 | ui/apps/web/public/aa-sw.js:41 每个成功 GET 都 cache.put，无 LRU/容量上限 | `done` | 根因是静态缓存之前只有 `cache.put` 没有容量治理；现已加入最大条目数裁剪。 |
+| 360 | ui/apps/web/public/aa-sw.js:71-76 normalizeCacheRequest 删 search/hash，搜索结果页/不同 query 共用 cache 污染 | `done` | 根因是旧缓存 key 归一化会抹掉 query/hash；现实现直接按原始 `Request` 建 key，不再污染不同查询页。 |
+| 361 | ui/apps/web/public/aa-sw.js:75 new Request(url,{method:"GET"}) 丢弃原 headers (Accept-Language)，多 locale 共享同 entry | `done` | 根因是旧实现重建 `Request` 时丢 header；现已直接缓存原始请求，保留 `Accept-Language` 等变体头。 |
+| 362 | ui/apps/web/public/aa-sw.js:96-107 顺序 await replay，单条慢请求阻塞所有；失败响应不 ok 时不删除也不重试上限 | `done` | 根因是离线 replay 之前串行执行且无终止条件；现已按批并发重放并设置失败上限。 |
+| 363 | ui/apps/web/public/aa-sw.js:18-22 activate 仅删 aa-ui-runtime- 前缀缓存，更名前缀后老缓存遗留 | `done` | 根因是激活阶段之前只按单一前缀删除旧缓存；现已清理所有 `aa-ui-` 历史缓存并保留当前 shell cache。 |
+| 364 | ui/apps/web/public/aa-sw.js:141-145 transaction.oncomplete 检查恒为 undefined，逻辑总走早 resolve 分支，未 await complete 即 resolve 竞态 | `done` | 根因是 IndexedDB 事务等待之前错误地提前 resolve；现已统一等待 `transaction.oncomplete/onerror/onabort`。 |
+| 365 | apps/web/package.json 仅 2 个 deps 但实际 import 30+ @aa/* | `done` | 根因是 review 基于早期最小 package 清单；当前 web app 已显式声明 shared/react/router 等实际依赖，不再是“仅 2 个 deps”。 |
+| 366 | apps/web/index.html 缺 meta description/icon/回退文案 | `done` | 根因是旧 HTML 骨架缺少说明元信息与加载回退；现已补 `description`、icon 与加载文案。 |
 
 ## ui/apps/electron-win
 
 | 编号 | 问题 | 状态 | 问题根因 |
 | --- | --- | --- | --- |
-| 367 | electron-win/package.json:9 smoke 直跑 node ./src/index.ts，无 --import tsx/build，纯 Node 22 必失败 | `todo` | 待修复 |
-| 368 | ui/apps/electron-win/src/main.ts:103 window.open 外链无 origin allowlist | `todo` | 待修复 |
-| 369 | ui/apps/electron-win/src/main.ts:~162 globalShortcut 注册后未在 quit 前 unregisterAll，重启泄漏 | `todo` | 待修复 |
-| 370 | ui/apps/electron-win/src/preload.ts:34-35 桥同时暴露 AA_ELECTRON 与私有 **AA_ELECTRON**，后者无完整性校验 | `todo` | 待修复 |
-| 371 | ui/apps/electron-win/src/preload.ts preload 暴露的 IPC 通道在 main.ts 未 wire，调用静默失败而非 typed error | `todo` | 待修复 |
-| 372 | ui/apps/electron-win/package.json:7 main:"src/main.ts" 但 Electron 不解析 TS，无 build:tsc 步骤，electron . 启动失败 | `todo` | 待修复 |
-| 373 | ui/apps/electron-win/src/main.ts 模块定义 bootstrapElectronShell 但全包入口未调用，app.whenReady 永不触发 | `todo` | 待修复 |
-| 374 | ui/apps/electron-win/src/main.ts:11,94 ALLOWED_SHELL_COMMANDS/isShellCommandAllowed 导出但无 IPC handler 调用，allowlist 死代码 | `todo` | 待修复 |
-| 375 | ui/apps/electron-win/src/main.ts 缺 app.requestSingleInstanceLock，多次启动产生重复进程 | `todo` | 待修复 |
-| 376 | ui/apps/electron-win/src/main.ts:103-106 setWindowOpenHandler shell.openExternal(url) 接受任意 URL 未限 protocol，file:///javascript: 可注入 | `todo` | 待修复 |
-| 377 | ui/apps/electron-win/src/main.ts webContents 未注册 will-navigate 守卫，渲染层重定向到外域绕过沙箱 | `todo` | 待修复 |
-| 378 | ui/apps/electron-win/src/main.ts 无 session.defaultSession.webRequest CSP 头注入 | `todo` | 待修复 |
-| 379 | ui/apps/electron-win/src/main.ts 缺 autoUpdater 接线（package.json 依赖 electron-updater 但更新无入口） | `todo` | 待修复 |
-| 380 | ui/apps/electron-win/src/main.ts 缺 app.on('window-all-closed') 处理，macOS 退出语义错 | `todo` | 待修复 |
-| 381 | ui/apps/electron-win/src/preload.ts:34-35 AA_ELECTRON 与 **AA_ELECTRON** 同对象引用，渲染层覆写其一即同时污染另一 | `todo` | 待修复 |
-| 382 | ui/apps/electron-win/src/preload.ts:27 installElectronBridge(target,bridge) 第一参 target:Window 仅占位 (void target)，API 误导 | `todo` | 待修复 |
-| 383 | ui/apps/electron-win/src/renderer.js:1-43 桌面 splash 全英文硬编码，无 i18n/RTL，与 web 主壳脱节 | `todo` | 待修复 |
-| 384 | electron-win/renderer.js 手写 DOM 占位，未加载 React 主应用 | `todo` | 待修复 |
-| 385 | electron-win/index.html "Electron Windows Shell Baseline" 占位文案直交付 | `todo` | 待修复 |
-| 386 | electron-win/package.json electron@^42.1.0 不存在 | `todo` | 待修复 |
-| 387 | electron-win/main.ts:9 rendererHtmlPath = "../dist/index.html"，但包无 build 脚本产生该文件，生产启动 404 | `todo` | 待修复 |
-| 388 | electron-win/main.ts:118-126 globalShortcut.register 返回值丢弃；冲突静默 | `todo` | 待修复 |
-| 389 | electron-win/main.ts:159-164 无 will-quit/window-all-closed 与 globalShortcut.unregisterAll()，OS 级快捷键泄漏 | `todo` | 待修复 |
-| 390 | electron-win/preload.ts:34-35 同时以 AA_ELECTRON 和 **AA_ELECTRON** 两个名字暴露 bridge | `todo` | 待修复 |
-| 391 | electron-win/preload.ts:27-28 installElectronBridge(target,...) 立即 void target; 丢弃参数 | `todo` | 待修复 |
-| 392 | electron-win/index.html:8 Electron CSP 缺 worker-src 与 report-uri | `todo` | 待修复 |
-| 393 | electron-win/package.json:15-19 build.win.signAndEditExecutable: true 但仓库无签名配置，CI 必失败 | `todo` | 待修复 |
-| 394 | ui/eslint.config.js:25 不 ignore apps/electron-win/dist/** 与 tauri 构建产物 | `todo` | 待修复 |
+| 367 | electron-win/package.json:9 smoke 直跑 node ./src/index.ts，无 --import tsx/build，纯 Node 22 必失败 | `done` | 根因是 smoke 脚本之前直接用裸 Node 执行 TS；现已改为 `node --import tsx ./src/index.ts`。 |
+| 368 | ui/apps/electron-win/src/main.ts:103 window.open 外链无 origin allowlist | `done` | 根因是外链打开之前未做 URL allowlist；现已限制到 `https:`/`mailto:` 与本地开发 HTTP。 |
+| 369 | ui/apps/electron-win/src/main.ts:~162 globalShortcut 注册后未在 quit 前 unregisterAll，重启泄漏 | `done` | 根因是全局快捷键生命周期之前没有 quit 清理；现已在 `will-quit` 统一 `unregisterAll()`。 |
+| 370 | ui/apps/electron-win/src/preload.ts:34-35 桥同时暴露 AA_ELECTRON 与私有 **AA_ELECTRON**，后者无完整性校验 | `done` | 根因是 preload 之前双名暴露公私 bridge；现已只暴露冻结后的 `AA_ELECTRON` 单一对象。 |
+| 371 | ui/apps/electron-win/src/preload.ts preload 暴露的 IPC 通道在 main.ts 未 wire，调用静默失败而非 typed error | `done` | 根因是 preload 与 main 的 IPC 契约曾不同步；现已为暴露的 channel 全部注册 `ipcMain.handle`。 |
+| 372 | ui/apps/electron-win/package.json:7 main:"src/main.ts" 但 Electron 不解析 TS，无 build:tsc 步骤，electron . 启动失败 | `done` | 根因是 Electron 包此前把 `main` 指向 TS 源文件且无编译步骤；现已改为 `dist/main.js` 并补 `tsc` 构建。 |
+| 373 | ui/apps/electron-win/src/main.ts 模块定义 bootstrapElectronShell 但全包入口未调用，app.whenReady 永不触发 | `done` | 根因是主进程模块定义了 bootstrap 但没有直接入口接线；现已在 direct-entry 分支自动调用 `bootstrapElectronShell()`。 |
+| 374 | ui/apps/electron-win/src/main.ts:11,94 ALLOWED_SHELL_COMMANDS/isShellCommandAllowed 导出但无 IPC handler 调用，allowlist 死代码 | `done` | 根因是早期把诊断命令 allowlist 留成未消费导出；现已删除这段死代码，避免制造“受限 shell”假象。 |
+| 375 | ui/apps/electron-win/src/main.ts 缺 app.requestSingleInstanceLock，多次启动产生重复进程 | `done` | 根因是桌面壳之前缺少单实例锁；现已在启动阶段请求 `app.requestSingleInstanceLock()`。 |
+| 376 | ui/apps/electron-win/src/main.ts:103-106 setWindowOpenHandler shell.openExternal(url) 接受任意 URL 未限 protocol，file:///javascript: 可注入 | `done` | 根因是窗口外链之前未限制协议；现已只允许 allowlist URL，其余统一 deny。 |
+| 377 | ui/apps/electron-win/src/main.ts webContents 未注册 will-navigate 守卫，渲染层重定向到外域绕过沙箱 | `done` | 根因是 webContents 之前缺少 `will-navigate` 防护；现已拦截跨域导航并改走 allowlisted external open。 |
+| 378 | ui/apps/electron-win/src/main.ts 无 session.defaultSession.webRequest CSP 头注入 | `done` | 根因是 Electron 响应头之前没有注入 CSP；现已通过 `session.defaultSession.webRequest.onHeadersReceived` 注入。 |
+| 379 | ui/apps/electron-win/src/main.ts 缺 autoUpdater 接线（package.json 依赖 electron-updater 但更新无入口） | `done` | 根因是 `electron-updater` 依赖已声明但未接线；现已在壳启动时动态导入并执行 `checkForUpdatesAndNotify()`。 |
+| 380 | ui/apps/electron-win/src/main.ts 缺 app.on('window-all-closed') 处理，macOS 退出语义错 | `done` | 根因是桌面壳之前漏掉 `window-all-closed` 平台语义；现已补 darwin 例外与非 darwin 退出逻辑。 |
+| 381 | ui/apps/electron-win/src/preload.ts:34-35 AA_ELECTRON 与 **AA_ELECTRON** 同对象引用，渲染层覆写其一即同时污染另一 | `done` | 根因是旧 preload 双重暴露导致两个全局名共享同一引用；现已收口为单一冻结 bridge，不再存在联动污染面。 |
+| 382 | ui/apps/electron-win/src/preload.ts:27 installElectronBridge(target,bridge) 第一参 target:Window 仅占位 (void target)，API 误导 | `done` | 根因是 `installElectronBridge(target, ...)` 之前把 target 当占位参数；现实现已在无 `contextBridge` 时真正把 bridge 安装到传入 target。 |
+| 383 | ui/apps/electron-win/src/renderer.js:1-43 桌面 splash 全英文硬编码，无 i18n/RTL，与 web 主壳脱节 | `done` | 根因是 Electron fallback 文案之前只有英文常量；现已按 `document.lang` 输出中英文本地化文案。 |
+| 384 | electron-win/renderer.js 手写 DOM 占位，未加载 React 主应用 | `done` | 根因是 review 基于仅有 fallback shell 的旧状态；当前主窗口优先加载 `../../web/dist/index.html`，手写 DOM 仅作为 web 构建缺失时的回退壳。 |
+| 385 | electron-win/index.html "Electron Windows Shell Baseline" 占位文案直交付 | `done` | 根因是交付页标题曾是 baseline 占位；现已改为正式产品标题与加载文案。 |
+| 386 | electron-win/package.json electron@^42.1.0 不存在 | `done` | 根因是 review 记录停留在不存在的 `electron@^42.1.0`；当前包版本已是可安装的 `^31.0.0`。 |
+| 387 | electron-win/main.ts:9 rendererHtmlPath = "../dist/index.html"，但包无 build 脚本产生该文件，生产启动 404 | `done` | 根因是 Electron build 之前只编译 TS，不复制 fallback shell 资源；现已在构建阶段生成 `dist/index.html` 与 `dist/renderer.js`，主进程 fallback 路径不再悬空。 |
+| 388 | electron-win/main.ts:118-126 globalShortcut.register 返回值丢弃；冲突静默 | `done` | 根因是快捷键注册之前只调用 `globalShortcut.register()` 不消费返回值；现已在注册失败时显式记录错误。 |
+| 389 | electron-win/main.ts:159-164 无 will-quit/window-all-closed 与 globalShortcut.unregisterAll()，OS 级快捷键泄漏 | `done` | 根因是桌面壳早期没把快捷键注销纳入生命周期；现已在 `will-quit` 注销并补齐 `window-all-closed` 退出语义。 |
+| 390 | electron-win/preload.ts:34-35 同时以 AA_ELECTRON 和 **AA_ELECTRON** 两个名字暴露 bridge | `done` | 根因是 preload 之前保留了 legacy 私有别名；现已收口成单一冻结后的 `AA_ELECTRON` bridge。 |
+| 391 | electron-win/preload.ts:27-28 installElectronBridge(target,...) 立即 void target; 丢弃参数 | `done` | 根因是 preload 安装函数最初把 `target` 仅当占位参数；现已在无 `contextBridge` 时真正把 bridge 安装到传入窗口对象。 |
+| 392 | electron-win/index.html:8 Electron CSP 缺 worker-src 与 report-uri | `done` | 根因是 Electron 壳的 CSP 只覆盖了最基础指令；现已补充 `worker-src` 与 `report-uri`，并同步到主进程响应头注入。 |
+| 393 | electron-win/package.json:15-19 build.win.signAndEditExecutable: true 但仓库无签名配置，CI 必失败 | `done` | 根因是 Windows 打包配置沿用了需要签名物料的开关，但仓库并未提供签名链路；现已默认关闭 `signAndEditExecutable`。 |
+| 394 | ui/eslint.config.js:25 不 ignore apps/electron-win/dist/** 与 tauri 构建产物 | `done` | 根因是 lint ignore 列表只覆盖了 web dist，未覆盖 Electron/Tauri 产物目录；现已补齐桌面壳构建产物忽略规则。 |
 
 ## ui/apps/tauri-*
 
 | 编号 | 问题 | 状态 | 问题根因 |
 | --- | --- | --- | --- |
-| 395 | ui/apps/tauri-linux/src/index.ts 同 mobile 的 adapter-per-render 反模式 | `todo` | 待修复 |
-| 396 | ui/apps/tauri-linux/src-tauri/tauri.conf.json:16 CSP img-src 'self' data: https: https: 通配等同任意外站；缺 worker-src/font-src/media-src | `todo` | 待修复 |
-| 397 | tauri-macos/src-tauri/tauri.conf.json:30 pubkey: "macos-demo-public-key" 占位，updater 接受伪造更新 | `todo` | 待修复 |
-| 398 | tauri-macos/src-tauri/tauri.conf.json:21、tauri-linux/src-tauri/tauri.conf.json:23 updater 端点 automatic-agent.example 假 TLD | `todo` | 待修复 |
-| 399 | tauri-linux/src-tauri/tauri.conf.json 无 pubkey 字段，签名校验未配 | `todo` | 待修复 |
-| 400 | tauri-macos/src-tauri/tauri.conf.json:33 plugins.shell.open: true 无 scope 白名单 | `todo` | 待修复 |
-| 401 | ui/apps/tauri-linux/src-tauri/tauri.conf.json:26-34 shell.open:true os.all:true notification.all:true 过宽 capability | `todo` | 待修复 |
-| 402 | ui/apps/tauri-linux/src-tauri/tauri.conf.json:20-25 updater 无 pubkey，Linux updater 签名不校验 | `todo` | 待修复 |
-| 403 | ui/apps/tauri-linux/src-tauri/tauri.conf.json:23 updater endpoint .example 占位指向死域名 | `todo` | 待修复 |
-| 404 | ui/apps/tauri-macos/src-tauri/tauri.conf.json:25 pubkey:"macos-demo-public-key" 占位，验签必 fail | `todo` | 待修复 |
-| 405 | ui/apps/tauri-macos/src-tauri/tauri.conf.json:31-39 同 linux 的 os.all/shell.open/notification.all 过宽 | `todo` | 待修复 |
+| 395 | ui/apps/tauri-linux/src/index.ts 同 mobile 的 adapter-per-render 反模式 | `done` | 根因是该条 review 误把 React 壳问题投到了纯适配器工厂文件；`src/index.ts` 仅暴露适配器工厂与 manifest，不存在 render 时重建适配器路径。 |
+| 396 | ui/apps/tauri-linux/src-tauri/tauri.conf.json:16 CSP img-src 'self' data: https: https: 通配等同任意外站；缺 worker-src/font-src/media-src | `done` | 根因是 Linux Tauri CSP 之前图省事放开了 `https:` 通配且漏了 worker/font/media；现已收紧为本地资源并补全缺失指令。 |
+| 397 | tauri-macos/src-tauri/tauri.conf.json:30 pubkey: "macos-demo-public-key" 占位，updater 接受伪造更新 | `done` | 根因是 macOS updater 一直处于“占位接线”状态却仍默认激活；现已默认关闭 updater，避免带着假公钥上线。 |
+| 398 | tauri-macos/src-tauri/tauri.conf.json:21、tauri-linux/src-tauri/tauri.conf.json:23 updater 端点 automatic-agent.example 假 TLD | `done` | 根因是桌面壳配置曾硬编码示例域名作为发布端点；现已关闭默认 updater 并移除占位端点。 |
+| 399 | tauri-linux/src-tauri/tauri.conf.json 无 pubkey 字段，签名校验未配 | `done` | 根因是 Linux updater 之前被默认开启，但没有任何签名校验配置；现已默认停用 updater，避免无验签通道暴露。 |
+| 400 | tauri-macos/src-tauri/tauri.conf.json:33 plugins.shell.open: true 无 scope 白名单 | `done` | 根因是 Tauri shell capability 之前直接全开；现已默认关闭 shell open。 |
+| 401 | ui/apps/tauri-linux/src-tauri/tauri.conf.json:26-34 shell.open:true os.all:true notification.all:true 过宽 capability | `done` | 根因是 Linux Tauri capabilities 最初以“全部可用”占位；现已把 shell/os/notification 全部默认收紧。 |
+| 402 | ui/apps/tauri-linux/src-tauri/tauri.conf.json:20-25 updater 无 pubkey，Linux updater 签名不校验 | `done` | 根因是 Linux updater 配置处于半接线状态，只配 endpoint 不配 pubkey；现已默认关闭 updater。 |
+| 403 | ui/apps/tauri-linux/src-tauri/tauri.conf.json:23 updater endpoint .example 占位指向死域名 | `done` | 根因是 Linux updater 使用了示例域名占位；现已清空默认端点并停用 updater。 |
+| 404 | ui/apps/tauri-macos/src-tauri/tauri.conf.json:25 pubkey:"macos-demo-public-key" 占位，验签必 fail | `done` | 根因是 macOS updater 之前保留了演示公钥；现已默认关闭 updater，而不是带着假密钥发布。 |
+| 405 | ui/apps/tauri-macos/src-tauri/tauri.conf.json:31-39 同 linux 的 os.all/shell.open/notification.all 过宽 | `done` | 根因是 macOS Tauri 配置与 Linux 一样沿用了广开 capability 的占位值；现已同步收紧。 |
 
 ## ui/apps/mobile
 
 | 编号 | 问题 | 状态 | 问题根因 |
 | --- | --- | --- | --- |
-| 406 | apps/mobile/src/App.tsx:13 createMobilePlatformAdapter(detectPlatform()) 无 useMemo，每次渲染重建适配器 | `todo` | 待修复 |
-| 407 | apps/mobile/src/App.tsx:8 detectPlatform() 依赖 navigator.userAgent，纯 RN 环境会 fall-through 到 android | `todo` | 待修复 |
-| 408 | apps/mobile/src/App.tsx:19,20 mobileNavigation.tabs[0]!、settingsSubRoutes[0]! 非空断言无 fallback UI | `todo` | 待修复 |
-| 409 | ui/apps/mobile/src/App.tsx:13 createMobilePlatformAdapter() 内联渲染无 useMemo，每次重建 adapter | `todo` | 待修复 |
-| 410 | apps/mobile/metro.config.js:1 CJS 写法但父 package.json:5 "type":"module" | `todo` | 待修复 |
-| 411 | apps/mobile/app.json:1-4 仅 name/displayName，缺 expo/scheme/version/orientation | `todo` | 待修复 |
-| 412 | ui/apps/mobile/app.json:1-4 仅 name/displayName，缺 expo/iOS bundleIdentifier/Android package/icons/permissions，无法构建发布 | `todo` | 待修复 |
-| 413 | ui/apps/mobile/package.json:11 仅 smoke 脚本，缺 start/android/ios/build；react-native 依赖却无 metro bundler 依赖声明 | `todo` | 待修复 |
-| 414 | ui/apps/mobile/metro.config.js:11 unstable_enablePackageExports:true 但 monorepo packages 未声明 exports 字段，运行时解析失败 | `todo` | 待修复 |
+| 406 | apps/mobile/src/App.tsx:13 createMobilePlatformAdapter(detectPlatform()) 无 useMemo，每次渲染重建适配器 | `done` | 根因是 mobile 壳之前在 render 阶段直接创建 adapter；现已把平台探测和 adapter 构造都收进 `useMemo`。 |
+| 407 | apps/mobile/src/App.tsx:8 detectPlatform() 依赖 navigator.userAgent，纯 RN 环境会 fall-through 到 android | `done` | 根因是平台探测最初只依赖浏览器 UA；现已优先读取 React Native `Platform.OS`，再回退到 UA。 |
+| 408 | apps/mobile/src/App.tsx:19,20 mobileNavigation.tabs[0]!、settingsSubRoutes[0]! 非空断言无 fallback UI | `done` | 根因是 mobile 壳之前默认导航配置永不为空；现已移除非空断言并加入显式 fallback UI。 |
+| 409 | ui/apps/mobile/src/App.tsx:13 createMobilePlatformAdapter() 内联渲染无 useMemo，每次重建 adapter | `done` | 根因是与 406 相同，适配器创建逻辑直接内联在组件体；现已 memo 化。 |
+| 410 | apps/mobile/metro.config.js:1 CJS 写法但父 package.json:5 "type":"module" | `done` | 根因是 Metro 配置沿用了 CommonJS 模板，但 workspace 已切到 ESM；现已改为 ESM 配置文件。 |
+| 411 | apps/mobile/app.json:1-4 仅 name/displayName，缺 expo/scheme/version/orientation | `done` | 根因是移动端 app manifest 只有最小占位字段；现已补齐 Expo 基础元数据。 |
+| 412 | ui/apps/mobile/app.json:1-4 仅 name/displayName，缺 expo/iOS bundleIdentifier/Android package/icons/permissions，无法构建发布 | `done` | 根因是发布侧移动端元信息长期缺席；现已补齐 iOS/Android 标识、图标占位资源与权限声明。 |
+| 413 | ui/apps/mobile/package.json:11 仅 smoke 脚本，缺 start/android/ios/build；react-native 依赖却无 metro bundler 依赖声明 | `done` | 根因是 mobile workspace 只保留了 smoke 占位脚本，没有真实开发/打包命令；现已补齐 start/android/ios/build 脚本与 Metro 依赖。 |
+| 414 | ui/apps/mobile/metro.config.js:11 unstable_enablePackageExports:true 但 monorepo packages 未声明 exports 字段，运行时解析失败 | `done` | 根因是 Metro 解析器曾过早启用 package exports 模式，但 monorepo 并未全面声明 `exports`；现已默认关闭该开关。 |
 
 ## ui/packages/ui-core (components, charts, layouts)
 
 | 编号 | 问题 | 状态 | 问题根因 |
 | --- | --- | --- | --- |
-| 415 | ui/packages/ui-core/src/index.tsx:53-66 createFeatureModule Component 仅 try/catch 同步渲染错误，hooks 内异步抛错不被捕获 | `todo` | 待修复 |
-| 416 | ui/packages/ui-core/src/components/FeatureScaffold.stories.tsx 仅 1 个 Basic story，Card/Panel/Tabs/Drawer/Accordion/Stepper/PieChart 等 30+ 组件零故事 | `todo` | 待修复 |
-| 417 | ui/packages/ui-core/src/components/extended.tsx:217-219 Tooltip 仅给 span 设 title+aria-label 无 keyboard focusable，触发不了 hover 显示 | `todo` | 待修复 |
-| 418 | ui/packages/ui-core/src/components/extended.tsx:221-228 Drawer 无 focus trap/ESC 关闭/overlay/focus return，违反 dialog WAI-ARIA | `todo` | 待修复 |
-| 419 | ui/packages/ui-core/src/components/extended.tsx:233-236 Toast role="status" 与 aria-live="assertive" 角色/活区双指令冲突 | `todo` | 待修复 |
-| 420 | ui/packages/ui-core/src/components/extended.tsx:166-173 Pagination 直接渲染 totalPages 个按钮，10⁴ 页 DOM 爆炸 | `todo` | 待修复 |
-| 421 | ui/packages/ui-core/src/components/extended.tsx:185-196 Tabs 缺左右箭头键导航/aria-controls/tabindex 管理 | `todo` | 待修复 |
-| 422 | ui/packages/ui-core/src/components/extended.tsx:199-215 Accordion 按钮无 aria-controls 指向内容，内容 div 无 id/role=region | `todo` | 待修复 |
-| 423 | ui/packages/ui-core/src/components/extended.tsx:329-353 SegmentedControl role=radiogroup 但无方向键导航与 roving tabindex | `todo` | 待修复 |
-| 424 | ui/packages/ui-core/src/components/extended.tsx:439-453 formatRemainingDuration new Date(deadline) 无效字符串得 NaN，输出 "NaNm remaining" | `todo` | 待修复 |
-| 425 | ui/packages/ui-core/src/components/extended.tsx:117-127 Skeleton 用 aria-hidden 但无 motion 动画，loading 状态对低视力用户不可感知 | `todo` | 待修复 |
-| 426 | ui/packages/ui-core/src/components/extended.tsx:8-9,16 StatusPill 文字色硬编码 #04130a，主题切换后对比度无法保证 WCAG AA | `todo` | 待修复 |
-| 427 | ui/packages/ui-core/src/components/extended.tsx:265-272 Stepper 仅活跃步显 aria-current="step"，其他步缺 aria-disabled/aria-current="false" 且无 role="list" 关系 | `todo` | 待修复 |
-| 428 | ui/packages/ui-core/src/components/index.ts:195 FeatureWorkbench onChange:(event:Event)=>... 用 DOM Event 而非 React.ChangeEvent | `todo` | 待修复 |
-| 429 | ui/packages/ui-core/src/components/index.ts:238 onKeyDown:(event:KeyboardEvent)=> 用 DOM 类型而非 React 合成事件 | `todo` | 待修复 |
-| 430 | ui/packages/ui-core/src/components/index.ts:153-160 triggerAction await action.onTrigger?.(item) 无 try/catch，用户回调抛错变 unhandled rejection | `todo` | 待修复 |
-| 431 | ui/packages/ui-core/src/components/index.ts:46-52 KeyValueTable key:row.key 作 React key，两行同 key 即冲突 | `todo` | 待修复 |
-| 432 | ui/packages/ui-core/src/components/index.ts:138 filter.toLowerCase() 而非 toLocaleLowerCase，土耳其 i/I locale 折叠失败 | `todo` | 待修复 |
-| 433 | ui/packages/ui-core/src/components/index.ts:230-269 Workbench 列表 <button role=option>，listbox 缺 aria-activedescendant/单 tabstop | `todo` | 待修复 |
-| 434 | ui/packages/ui-core/src/components/index.ts:288 aria-relevant="additions text" 缺 removals，活动日志删除条目无通报 | `todo` | 待修复 |
-| 435 | ui/packages/ui-core/src/charts/echart-surface-runtime.tsx:99-101 "mock" in ResizeObserver 启发式判断，含 mock 字段的真 class 误走 callable 路径 | `todo` | 待修复 |
-| 436 | ui/packages/ui-core/src/charts/echart-surface-runtime.tsx:119,123 useMemo 依赖数组含 ...chartColorDeps 不定长，违反 React hooks 静态依赖契约 | `todo` | 待修复 |
-| 437 | ui/packages/ui-core/src/charts/echart-surface-runtime.tsx:153 初始化 useEffect 依赖 [] 但闭包捕获 theme/buildChartOption，主题运行时切换不重建 chart | `todo` | 待修复 |
-| 438 | ui/packages/ui-core/src/charts/echart-surface-runtime.tsx:166-172 setOption 已替换数据后再 appendData 重复尾部，序列出现重影 | `todo` | 待修复 |
-| 439 | ui/packages/ui-core/src/charts/echart-surface-runtime.tsx:128-129 userAgent.includes("jsdom") 字符串嗅探，自定义 UA 即误判跳过初始化 | `todo` | 待修复 |
-| 440 | ui/packages/ui-core/src/charts/echart-surface-runtime.tsx:138 addEventListener("resize") 绑到 mount 时 defaultView，容器移植到新 window 不再触发 | `todo` | 待修复 |
-| 441 | ui/packages/ui-core/src/charts/index.tsx:160 HeatmapGrid 颜色硬编码 rgba(34,197,94,a)，无法跟随 theme 变化 | `todo` | 待修复 |
-| 442 | ui/packages/ui-core/src/charts/index.tsx:80-81 ScatterPlot 仅取 maxX/maxY，负值与零基线散点跑出 viewBox | `todo` | 待修复 |
-| 443 | ui/packages/ui-core/src/charts/index.tsx:63 BarChart 直接将外部 point.tone 字符串塞 background，未做 CSS 值白名单 | `todo` | 待修复 |
-| 444 | ui/packages/ui-core/src/charts/index.tsx:55,83,111,140 chart 用 role="img" aria-label 隐藏数据，未提供 table 可展开 SR 文本 | `todo` | 待修复 |
-| 445 | ui/packages/ui-core/src/charts/index.tsx:142 <span /> 空 placeholder 无 aria-hidden，屏读器读出空 cell | `todo` | 待修复 |
-| 446 | ui/packages/ui-core/src/charts/echart-surface.tsx:11 lazy(()=>import(...)) 无错误边界包裹，Suspense fallback 不处理 chunk load failure | `todo` | 待修复 |
-| 447 | ui/packages/ui-core/src/layouts/index.ts:26 ThreePaneLayout 接 viewportWidth prop 但 26-41 完全不使用，死参 | `todo` | 待修复 |
-| 448 | ui/packages/ui-core/src/layouts/index.ts:25-41 三栏无 aside/main/aside landmark，左中右皆 <div> 无 aria-label | `todo` | 待修复 |
-| 449 | ui/packages/ui-core/src/components/extended.tsx:401-408 PieChart gradientStops 累积 percent 浮点累加，1000+ 切片精度漂移产生裂缝 | `todo` | 待修复 |
-| 450 | ui/packages/ui-core/src/components/extended.tsx:411-422 PieChart 仅 aria-label="Pie chart" 未声明 role，screen reader 不读切片明细 | `todo` | 待修复 |
-| 451 | ui/packages/ui-core/src/components/extended.tsx:524-541 DAGVisualization repeat(stages.length,1fr) 单行布局，20+ stage 时列宽<阅读阈值且无横向滚动 | `todo` | 待修复 |
-| 452 | ui/packages/ui-core/src/components/extended.tsx:265-272 Stepper 用 <ol> 但内部 <li> 无 role/链接，键盘 tab 跳过整序列 | `todo` | 待修复 |
-| 453 | ui/.storybook/main.ts:5 stories glob 仅扫 packages/ui-core/**，所有 packages/features/* 与 packages/shared/ui/* 故事零覆盖 | `todo` | 待修复 |
+| 415 | ui/packages/ui-core/src/index.tsx:53-66 createFeatureModule Component 仅 try/catch 同步渲染错误，hooks 内异步抛错不被捕获 | `done` | 根因是 feature module 之前用函数级 `try/catch` 冒充错误边界；现已改成真正的 React error boundary 包装 feature 子树。 |
+| 416 | ui/packages/ui-core/src/components/FeatureScaffold.stories.tsx 仅 1 个 Basic story，Card/Panel/Tabs/Drawer/Accordion/Stepper/PieChart 等 30+ 组件零故事 | `done` | 根因是 Storybook 只保留了 `FeatureScaffold` 最小故事；现已新增 extended 组件与图表展示故事，覆盖交互原语与数据可视化基线。 |
+| 417 | ui/packages/ui-core/src/components/extended.tsx:217-219 Tooltip 仅给 span 设 title+aria-label 无 keyboard focusable，触发不了 hover 显示 | `done` | 根因是 tooltip 容器之前不可聚焦；现已让 wrapper 可聚焦，键盘用户也能触发提示。 |
+| 418 | ui/packages/ui-core/src/components/extended.tsx:221-228 Drawer 无 focus trap/ESC 关闭/overlay/focus return，违反 dialog WAI-ARIA | `done` | 根因是 Drawer 早期只是固定定位的侧栏容器；现已补 focus trap、ESC、overlay 和焦点回退。 |
+| 419 | ui/packages/ui-core/src/components/extended.tsx:233-236 Toast role="status" 与 aria-live="assertive" 角色/活区双指令冲突 | `done` | 根因是 Toast 之前把危险态继续渲染成 `status`；现已把危险态改为 `alert`，其余保持 `status/polite`。 |
+| 420 | ui/packages/ui-core/src/components/extended.tsx:166-173 Pagination 直接渲染 totalPages 个按钮，10⁴ 页 DOM 爆炸 | `done` | 根因是分页控件以前按页数全量展开；现已改为窗口化分页与省略号。 |
+| 421 | ui/packages/ui-core/src/components/extended.tsx:185-196 Tabs 缺左右箭头键导航/aria-controls/tabindex 管理 | `done` | 根因是 Tabs 之前只有点击切换；现已补齐箭头键、`aria-controls` 与 roving tabindex。 |
+| 422 | ui/packages/ui-core/src/components/extended.tsx:199-215 Accordion 按钮无 aria-controls 指向内容，内容 div 无 id/role=region | `done` | 根因是 Accordion 之前只切显示状态，不建语义关联；现已为 trigger/panel 建立 id 与 region 关系。 |
+| 423 | ui/packages/ui-core/src/components/extended.tsx:329-353 SegmentedControl role=radiogroup 但无方向键导航与 roving tabindex | `done` | 根因是分段控件之前只声明了 radiogroup 语义，没实现键盘行为；现已补方向键与 roving tabindex。 |
+| 424 | ui/packages/ui-core/src/components/extended.tsx:439-453 formatRemainingDuration new Date(deadline) 无效字符串得 NaN，输出 "NaNm remaining" | `done` | 根因是 SLA 倒计时之前默认任何字符串都能转成合法时间；现已对非法时间返回明确 fallback 文案。 |
+| 425 | ui/packages/ui-core/src/components/extended.tsx:117-127 Skeleton 用 aria-hidden 但无 motion 动画，loading 状态对低视力用户不可感知 | `done` | 根因是骨架屏之前只有静态渐变块；现已补 shimmer 动画。 |
+| 426 | ui/packages/ui-core/src/components/extended.tsx:8-9,16 StatusPill 文字色硬编码 #04130a，主题切换后对比度无法保证 WCAG AA | `done` | 根因是状态胶囊颜色之前硬编码在组件里；现已改用 design token 文本色，而不是固定十六进制。 |
+| 427 | ui/packages/ui-core/src/components/extended.tsx:265-272 Stepper 仅活跃步显 aria-current="step"，其他步缺 aria-disabled/aria-current="false" 且无 role="list" 关系 | `done` | 根因是 Stepper 之前只是视觉列表；现已补 list/listitem 关系和当前/禁用状态语义。 |
+| 428 | ui/packages/ui-core/src/components/index.ts:195 FeatureWorkbench onChange:(event:Event)=>... 用 DOM Event 而非 React.ChangeEvent | `done` | 根因是 workbench 输入框事件类型之前沿用了原生 DOM `Event`；现已改为 React 合成事件类型。 |
+| 429 | ui/packages/ui-core/src/components/index.ts:238 onKeyDown:(event:KeyboardEvent)=> 用 DOM 类型而非 React 合成事件 | `done` | 根因是 workbench 键盘事件类型之前也写成了 DOM `KeyboardEvent`；现已统一为 React 键盘事件。 |
+| 430 | ui/packages/ui-core/src/components/index.ts:153-160 triggerAction await action.onTrigger?.(item) 无 try/catch，用户回调抛错变 unhandled rejection | `done` | 根因是 workbench action 之前直接 await 外部回调；现已补结构化失败捕获，避免未处理 rejection。 |
+| 431 | ui/packages/ui-core/src/components/index.ts:46-52 KeyValueTable key:row.key 作 React key，两行同 key 即冲突 | `done` | 根因是 KeyValueTable 之前假定业务 key 全局唯一；现已改成 key+index 复合键。 |
+| 432 | ui/packages/ui-core/src/components/index.ts:138 filter.toLowerCase() 而非 toLocaleLowerCase，土耳其 i/I locale 折叠失败 | `done` | 根因是 workbench 过滤逻辑之前只做 ASCII 小写化；现已切到 locale-aware lowercasing。 |
+| 433 | ui/packages/ui-core/src/components/index.ts:230-269 Workbench 列表 <button role=option>，listbox 缺 aria-activedescendant/单 tabstop | `done` | 根因是 workbench 列表之前把每个 option 都做成独立 button；现已改成单 tabstop listbox + `aria-activedescendant` 模式。 |
+| 434 | ui/packages/ui-core/src/components/index.ts:288 aria-relevant="additions text" 缺 removals，活动日志删除条目无通报 | `done` | 根因是活动日志 live region 之前只通报新增；现已把 removals 纳入 `aria-relevant`。 |
+| 435 | ui/packages/ui-core/src/charts/echart-surface-runtime.tsx:99-101 "mock" in ResizeObserver 启发式判断，含 mock 字段的真 class 误走 callable 路径 | `done` | 根因是 ResizeObserver 构造分支之前依赖 `mock` 字段启发式；现已删掉该分支，只保留受控 constructor fallback。 |
+| 436 | ui/packages/ui-core/src/charts/echart-surface-runtime.tsx:119,123 useMemo 依赖数组含 ...chartColorDeps 不定长，违反 React hooks 静态依赖契约 | `done` | 根因是图表 option memo 之前展开了不定长依赖数组；现已改成显式静态依赖列表。 |
+| 437 | ui/packages/ui-core/src/charts/echart-surface-runtime.tsx:153 初始化 useEffect 依赖 [] 但闭包捕获 theme/buildChartOption，主题运行时切换不重建 chart | `done` | 根因是 review 关注的是图表主题更新无法生效；现实现已把主题变化收进 option 更新 effect，运行时换肤会重新 setOption。 |
+| 438 | ui/packages/ui-core/src/charts/echart-surface-runtime.tsx:166-172 setOption 已替换数据后再 appendData 重复尾部，序列出现重影 | `done` | 根因是 append-only 更新之前先对全量数据 `setOption`，再 append 尾段；现已在追加模式下只对旧序列 setOption，再 append 新尾段。 |
+| 439 | ui/packages/ui-core/src/charts/echart-surface-runtime.tsx:128-129 userAgent.includes("jsdom") 字符串嗅探，自定义 UA 即误判跳过初始化 | `done` | 根因是图表初始化之前通过 UA 嗅探跳过 jsdom；现已去掉该字符串嗅探。 |
+| 440 | ui/packages/ui-core/src/charts/echart-surface-runtime.tsx:138 addEventListener("resize") 绑到 mount 时 defaultView，容器移植到新 window 不再触发 | `done` | 根因是图表尺寸更新之前同时依赖 mount 时的 window resize 监听；现已收口为容器级 ResizeObserver。 |
+| 441 | ui/packages/ui-core/src/charts/index.tsx:160 HeatmapGrid 颜色硬编码 rgba(34,197,94,a)，无法跟随 theme 变化 | `done` | 根因是热力图颜色之前写死为绿色 RGBA；现已改用 design token accent 色并动态注入透明度。 |
+| 442 | ui/packages/ui-core/src/charts/index.tsx:80-81 ScatterPlot 仅取 maxX/maxY，负值与零基线散点跑出 viewBox | `done` | 根因是散点图坐标映射之前只按最大值归一；现已按 min/max 区间共同归一。 |
+| 443 | ui/packages/ui-core/src/charts/index.tsx:63 BarChart 直接将外部 point.tone 字符串塞 background，未做 CSS 值白名单 | `done` | 根因是柱状图之前把外部 `tone` 当任意 CSS 值直塞样式；现已改为 allowlist 映射。 |
+| 444 | ui/packages/ui-core/src/charts/index.tsx:55,83,111,140 chart 用 role="img" aria-label 隐藏数据，未提供 table 可展开 SR 文本 | `done` | 根因是轻量图表之前只暴露概要 aria-label；现已为 bar/scatter/gauge/heatmap 加入可展开数据表。 |
+| 445 | ui/packages/ui-core/src/charts/index.tsx:142 <span /> 空 placeholder 无 aria-hidden，屏读器读出空 cell | `done` | 根因是热力图左上角空占位单元格之前没有 `aria-hidden`；现已显式隐藏。 |
+| 446 | ui/packages/ui-core/src/charts/echart-surface.tsx:11 lazy(()=>import(...)) 无错误边界包裹，Suspense fallback 不处理 chunk load failure | `done` | 根因是 EChart lazy runtime 之前只有 Suspense fallback，没有 chunk load error boundary；现已增加运行时错误边界。 |
+| 447 | ui/packages/ui-core/src/layouts/index.ts:26 ThreePaneLayout 接 viewportWidth prop 但 26-41 完全不使用，死参 | `done` | 根因是三栏布局曾遗留未消费的 `viewportWidth` 占位参数；现已移除死参，避免错误 API 暗示。 |
+| 448 | ui/packages/ui-core/src/layouts/index.ts:25-41 三栏无 aside/main/aside landmark，左中右皆 <div> 无 aria-label | `done` | 根因是早期布局只做视觉栅格，没把信息架构映射到 landmark；现已改为 `aside/main/aside` 并补 `aria-label`。 |
+| 449 | ui/packages/ui-core/src/components/extended.tsx:401-408 PieChart gradientStops 累积 percent 浮点累加，1000+ 切片精度漂移产生裂缝 | `done` | 根因是饼图渐变起止百分比之前反复切片求和，累计浮点误差；现改为单次累加并对末片收口到 `100%`。 |
+| 450 | ui/packages/ui-core/src/components/extended.tsx:411-422 PieChart 仅 aria-label="Pie chart" 未声明 role，screen reader 不读切片明细 | `done` | 根因是饼图之前只有粗粒度标签；现已补 `role="img"` 的标题/描述关联，读屏可读取切片明细。 |
+| 451 | ui/packages/ui-core/src/components/extended.tsx:524-541 DAGVisualization repeat(stages.length,1fr) 单行布局，20+ stage 时列宽<阅读阈值且无横向滚动 | `done` | 根因是 DAG 卡片宽度此前线性挤压在单行等分列中；现改为最小列宽 + 横向滚动，长流水线可读。 |
+| 452 | ui/packages/ui-core/src/components/extended.tsx:265-272 Stepper 用 <ol> 但内部 <li> 无 role/链接，键盘 tab 跳过整序列 | `done` | 根因是 Stepper 之前只保留视觉序列，没有稳定的可聚焦语义；现已补列表项语义并放开已到达步骤的 tab 访问。 |
+| 453 | ui/.storybook/main.ts:5 stories glob 仅扫 packages/ui-core/**，所有 packages/features/* 与 packages/shared/ui/* 故事零覆盖 | `done` | 根因是 Storybook 配置只覆盖 `ui-core`；现已扩展到 `features/*` 与 `shared/*` 的 stories。 |
 
 ## ui/packages/shared/api-client (rest, ws, interceptors)
 
 | 编号 | 问题 | 状态 | 问题根因 |
 | --- | --- | --- | --- |
-| 454 | ui/packages/shared/api-client/src/rest-client.ts:~398 fallbackTransport 在 401/403 重试失败后悄然返回 mock，遮蔽 auth 失败 | `todo` | 待修复 |
-| 455 | ui/packages/shared/api-client/src/rest-client.ts:255-327 重试循环把 4xx 当 transient，无效重试放大限流 | `todo` | 待修复 |
-| 456 | ui/packages/shared/api-client/src/rest-client.ts 默认 credentials:"include" 跨域请求，CSRF/cookie 泄漏 | `todo` | 待修复 |
-| 457 | ui/packages/shared/api-client/src/rest-client.ts 直接 crypto.randomUUID() 无 globalThis guard，jsdom/旧 Node 失败 | `todo` | 待修复 |
-| 458 | ui/packages/shared/api-client/src/interceptors.ts:49 createTraceInterceptor 同样 crypto.randomUUID() 无 fallback | `todo` | 待修复 |
-| 459 | ui/packages/shared/api-client/src/interceptors.ts:243 createRetryInterceptor 重试一切错（含 4xx/AbortError），无 status allowlist | `todo` | 待修复 |
-| 460 | ui/packages/shared/api-client/src/interceptors.ts:274 createDedupeInterceptor 模块级单例状态，跨 vitest 文件泄漏 | `todo` | 待修复 |
-| 461 | ui/packages/shared/api-client/src/interceptors.ts:294 dedupe key 用 JSON.stringify(body)，对象键序不稳即缓存失效 | `todo` | 待修复 |
-| 462 | ui/packages/shared/api-client/src/interceptors.ts:188 createOfflineQueueInterceptor 把 HEAD/OPTIONS 也入队，replay 风暴 | `todo` | 待修复 |
-| 463 | ui/packages/shared/api-client/src/interceptors.ts:294 vs 312 两站点 dedupe key 格式不同，跨站点查找永不命中 | `todo` | 待修复 |
-| 464 | ui/packages/shared/api-client/src/ws-client.ts:48 eventId 正则 ^evt[-_][A-Za-z0-9:-]{1,}$ 比 contract 窄，合法 id 在 252 行被丢 | `todo` | 待修复 |
-| 465 | ui/packages/shared/api-client/src/ws-client.ts:218 token 走 Sec-WebSocket-Protocol 子协议传输，被代理/访问日志记录 | `todo` | 待修复 |
-| 466 | ui/packages/shared/api-client/src/ws-client.ts:336 重连 jitter 用 Math.random() 无可注入种子，测试不可复现 | `todo` | 待修复 |
-| 467 | ui/packages/shared/api-client/src/shared-ws-worker.ts:207 self.onconnect=… 模块顶层执行，被任意 import 即在错误 global 上挂 handler | `todo` | 待修复 |
-| 468 | ui/packages/shared/api-client/src/shared-ws-worker.ts:172 reconnectTimer 调度新 setTimeout 前未置空，可叠多个定时器 | `todo` | 待修复 |
-| 469 | ui/packages/shared/api-client/src/ws-event-router.ts:74 subscribe 不去重 handler，重复注册触发两次 | `todo` | 待修复 |
-| 470 | ui/packages/shared/api-client/src/ws-event-router.ts disconnect() 不清 listener registry，重连后路由到上次 ghost handler | `todo` | 待修复 |
-| 471 | 04-runtime-sequence.md:145 引用需复核的 ui/packages/shared/api-client/... | `todo` | 待修复 |
-| 472 | ui/vitest.config.ts jsdom 环境未 polyfill crypto.randomUUID/crypto.subtle，导入即用的 interceptors/ws-client 在单测崩溃 | `todo` | 待修复 |
-| 473 | ui/tests/shared/api-client.test.ts:193 mutate document.head.innerHTML，QueryClient 永不释放，跨 spec 泄漏定时器 | `todo` | 待修复 |
-| 474 | ui/tests/unit/ui/shared/ws-client.test.ts:158 依赖 setTimeout(…,10) 排断言序，慢 CI 即 flake | `todo` | 待修复 |
-| 475 | ui/tests/unit/ui/shared/ws-client.test.ts:269 单 it 内 vi.spyOn(Math,"random") 无 per-test mockRestore，后续 it 继承 spy 至 afterEach | `todo` | 待修复 |
-| 476 | shared/api-client interceptor 组合 createIdempotencyKeyInterceptor 注册早于 createRetryInterceptor，重试时重新生成 idempotency key 击穿服务端去重 | `todo` | 待修复 |
+| 454 | ui/packages/shared/api-client/src/rest-client.ts:~398 fallbackTransport 在 401/403 重试失败后悄然返回 mock，遮蔽 auth 失败 | `done` | 根因是 fallback 逻辑此前不区分 HTTP 语义错误与网络错误；现只在非 `RestHttpError` 场景允许 fallback，不再吞掉鉴权失败。 |
+| 455 | ui/packages/shared/api-client/src/rest-client.ts:255-327 重试循环把 4xx 当 transient，无效重试放大限流 | `done` | 根因是重试判定曾把客户端错误也视作可恢复；现仅对 `429/5xx` 和允许重试的请求放行。 |
+| 456 | ui/packages/shared/api-client/src/rest-client.ts 默认 credentials:"include" 跨域请求，CSRF/cookie 泄漏 | `done` | 根因是 HTTP transport 默认值过宽；现默认收敛为 `same-origin`，跨域 cookie 不再自动外带。 |
+| 457 | ui/packages/shared/api-client/src/rest-client.ts 直接 crypto.randomUUID() 无 globalThis guard，jsdom/旧 Node 失败 | `done` | 根因是请求 envelope id 直接依赖 `crypto.randomUUID()`；现统一走带 fallback 的 `generateStableId()`。 |
+| 458 | ui/packages/shared/api-client/src/interceptors.ts:49 createTraceInterceptor 同样 crypto.randomUUID() 无 fallback | `done` | 根因是 trace id 生成与 transport 一样直接绑死浏览器 crypto；现复用稳定 id 生成器，测试环境可运行。 |
+| 459 | ui/packages/shared/api-client/src/interceptors.ts:243 createRetryInterceptor 重试一切错（含 4xx/AbortError），无 status allowlist | `done` | 根因是拦截器级重试曾缺少错误类型和幂等边界；现已排除 `4xx/AbortError` 并要求请求本身可安全重试。 |
+| 460 | ui/packages/shared/api-client/src/interceptors.ts:274 createDedupeInterceptor 模块级单例状态，跨 vitest 文件泄漏 | `done` | 根因是 dedupe 观测态曾设计得过宽；现状态仅封装在 interceptor 实例内，并在响应后清理，不跨实例泄漏。 |
+| 461 | ui/packages/shared/api-client/src/interceptors.ts:294 dedupe key 用 JSON.stringify(body)，对象键序不稳即缓存失效 | `done` | 根因是 dedupe key 之前直接 `JSON.stringify`，对象键序不同即视为不同请求；现改为稳定序列化。 |
+| 462 | ui/packages/shared/api-client/src/interceptors.ts:188 createOfflineQueueInterceptor 把 HEAD/OPTIONS 也入队，replay 风暴 | `done` | 根因是离线入队条件此前仅排除了 `GET`；现显式排除 `HEAD/OPTIONS`，避免无意义 replay。 |
+| 463 | ui/packages/shared/api-client/src/interceptors.ts:294 vs 312 两站点 dedupe key 格式不同，跨站点查找永不命中 | `done` | 根因是去重 key 在 `onRequest` 与 `intercept` 两处各自拼接；现统一复用同一个 `buildKey()`。 |
+| 464 | ui/packages/shared/api-client/src/ws-client.ts:48 eventId 正则 ^evt[-_][A-Za-z0-9:-]{1,}$ 比 contract 窄，合法 id 在 252 行被丢 | `done` | 根因是 replay event id 校验过窄；现已放宽到契约允许的字符集，不再误丢合法事件。 |
+| 465 | ui/packages/shared/api-client/src/ws-client.ts:218 token 走 Sec-WebSocket-Protocol 子协议传输，被代理/访问日志记录 | `done` | 根因是早期 WS 鉴权设计曾混淆 token 与子协议；当前实现已固定子协议名，token 仅在首条 auth message 中发送。 |
+| 466 | ui/packages/shared/api-client/src/ws-client.ts:336 重连 jitter 用 Math.random() 无可注入种子，测试不可复现 | `done` | 根因是重连退避此前硬绑 `Math.random()`；现通过 options 注入随机源，测试可复现。 |
+| 467 | ui/packages/shared/api-client/src/shared-ws-worker.ts:207 self.onconnect=… 模块顶层执行，被任意 import 即在错误 global 上挂 handler | `done` | 根因是 SharedWorker 运行时之前在模块顶层直接安装 handler；现改为显式安装函数并带运行环境 guard。 |
+| 468 | ui/packages/shared/api-client/src/shared-ws-worker.ts:172 reconnectTimer 调度新 setTimeout 前未置空，可叠多个定时器 | `done` | 根因是 worker 重连 timer 在回调触发后未复位；现先置空再重连，避免计时器叠加。 |
+| 469 | ui/packages/shared/api-client/src/ws-event-router.ts:74 subscribe 不去重 handler，重复注册触发两次 | `done` | 根因是事件路由器之前只追加 cleanup，没有按 channel 去重；现以 channel 维度维护订阅表。 |
+| 470 | ui/packages/shared/api-client/src/ws-event-router.ts disconnect() 不清 listener registry，重连后路由到上次 ghost handler | `done` | 根因是断开连接时过去只调用 dispose，不清内部 registry；现 disconnect 会一并清空 channel cleanup 表。 |
+| 471 | 04-runtime-sequence.md:145 引用需复核的 ui/packages/shared/api-client/... | `done` | 根因是运行时时序文档只列了 endpoint 落点，漏掉 `interceptors/rest/ws/router`；现已同步补齐引用。 |
+| 472 | ui/vitest.config.ts jsdom 环境未 polyfill crypto.randomUUID/crypto.subtle，导入即用的 interceptors/ws-client 在单测崩溃 | `done` | 根因是测试启动文件未补浏览器 crypto 能力；现 `ui/tests/setup.ts` 已兜底 `webcrypto/randomUUID`。 |
+| 473 | ui/tests/shared/api-client.test.ts:193 mutate document.head.innerHTML，QueryClient 永不释放，跨 spec 泄漏定时器 | `done` | 根因是共享 API 测试此前直接污染 `document.head` 且未统一清场；现 suite 结束后显式清理 DOM 侧状态。 |
+| 474 | ui/tests/unit/ui/shared/ws-client.test.ts:158 依赖 setTimeout(…,10) 排断言序，慢 CI 即 flake | `done` | 根因是 WS 单测曾靠真实时间片排顺序；现改为 fake timers / tick 驱动，CI 不再脆弱。 |
+| 475 | ui/tests/unit/ui/shared/ws-client.test.ts:269 单 it 内 vi.spyOn(Math,"random") 无 per-test mockRestore，后续 it 继承 spy 至 afterEach | `done` | 根因是测试之前直接全局 spy `Math.random()`；现改为给 `BrowserWSClient` 注入随机源，不再污染全局。 |
+| 476 | shared/api-client interceptor 组合 createIdempotencyKeyInterceptor 注册早于 createRetryInterceptor，重试时重新生成 idempotency key 击穿服务端去重 | `done` | 根因是 review 基于旧重试假设；当前 idempotency key 在 `onRequest` 阶段生成一次，重试复用同一 request/header，不会重生 key。 |
 
 ## ui/packages/shared/auth & token
 
 | 编号 | 问题 | 状态 | 问题根因 |
 | --- | --- | --- | --- |
-| 477 | ui/packages/shared/auth/src/auth-service.ts:121-126 handleSsoCallback 永抛 "auth.redirecting"，文档 happy path 是死代码 | `todo` | 待修复 |
-| 478 | ui/packages/shared/auth/src/auth-service.ts SSO callback 解析 fragment 后未从 window.history 清除，token 留在浏览器历史/后退栈 | `todo` | 待修复 |
-| 479 | ui/packages/shared/auth/src/token-manager.ts access/refresh token 明文写 localStorage，XSS 即泄露 | `todo` | 待修复 |
-| 480 | api-auth-service.ts:228-231 verificationSecrets.some(...) 短路比较泄露 timing | `todo` | 待修复 |
-| 481 | shared/auth (AuthSession) vs shared/state/auth-store (AuthStoreState) 两套会话模型字段重叠，漂移静默 | `todo` | 待修复 |
+| 477 | ui/packages/shared/auth/src/auth-service.ts:121-126 handleSsoCallback 永抛 "auth.redirecting"，文档 happy path 是死代码 | `done` | 根因是 SSO callback 入口之前只保留 fail-close redirect；现 code/state 回调已委托到 PKCE token exchange，happy path 可达。 |
+| 478 | ui/packages/shared/auth/src/auth-service.ts SSO callback 解析 fragment 后未从 window.history 清除，token 留在浏览器历史/后退栈 | `done` | 根因是认证回调清场步骤缺失；现回调结束统一 `history.replaceState()` 清除 code/token/error 参数。 |
+| 479 | ui/packages/shared/auth/src/token-manager.ts access/refresh token 明文写 localStorage，XSS 即泄露 | `done` | 根因是会话持久化边界曾与 token 管理混淆；当前 `TokenManager` 保持内存态，auth store 持久化也已剔除 access/refresh token。 |
+| 480 | api-auth-service.ts:228-231 verificationSecrets.some(...) 短路比较泄露 timing | `done` | 根因是 review 指向了已下线的旧 `api-auth-service.ts` 实现；当前 shared/auth 路径已无该短路比较风险面。 |
+| 481 | shared/auth (AuthSession) vs shared/state/auth-store (AuthStoreState) 两套会话模型字段重叠，漂移静默 | `done` | 根因是 shared/auth 与 shared/state 之前各自维护会话字段；现 auth store 会话类型直接对齐 shared/auth 会话模型。 |
 
 ## ui/packages/shared/sync
 
 | 编号 | 问题 | 状态 | 问题根因 |
 | --- | --- | --- | --- |
-| 482 | ui/packages/shared/sync/src/offline-queue.ts:82 trimToCapacity 溢出丢最旧无 telemetry/DLQ/caller 信号 | `todo` | 待修复 |
-| 483 | ui/packages/shared/sync/src/sync-coordinator.ts:107 replay 漏附 Authorization/X-CSRF-Token/Idempotency-Key/tenant header，refresh 后 401/403 风暴 | `todo` | 待修复 |
-| 484 | ui/packages/shared/sync/src/conflict-resolver.ts:137 preferMostRecent 在时间戳缺/相等时回退 localValue，与文档 server_wins 默认相悖 | `todo` | 待修复 |
-| 485 | ui/packages/shared/sync/src/conflict-resolver.ts 不校验 lastModified，伪造未来时间戳即每次胜 | `todo` | 待修复 |
-| 486 | ui/tests/unit/ui/shared/sync-coordinator.test.ts:11 固定真未来日期 2026-05-01T00:00:00.000Z，比 Date.now() 类断言随时钟漂移 | `todo` | 待修复 |
+| 482 | ui/packages/shared/sync/src/offline-queue.ts:82 trimToCapacity 溢出丢最旧无 telemetry/DLQ/caller 信号 | `done` | 根因是离线队列超容时此前直接 `shift()` 丢弃；现支持 `onEvict` 回调，把丢弃事件暴露给调用方/telemetry。 |
+| 483 | ui/packages/shared/sync/src/sync-coordinator.ts:107 replay 漏附 Authorization/X-CSRF-Token/Idempotency-Key/tenant header，refresh 后 401/403 风暴 | `done` | 根因是离线 mutation 类型之前未保留受保护请求头；现入队时持久化必要 headers，flush 时完整回放。 |
+| 484 | ui/packages/shared/sync/src/conflict-resolver.ts:137 preferMostRecent 在时间戳缺/相等时回退 localValue，与文档 server_wins 默认相悖 | `done` | 根因是缺元数据时的兜底策略之前偏向 local；现改为仅当 local 时间严格更新时才取 local，其余回落 server。 |
+| 485 | ui/packages/shared/sync/src/conflict-resolver.ts 不校验 lastModified，伪造未来时间戳即每次胜 | `done` | 根因是时间戳比较之前无合理时钟漂移上限；现超前时间会被视为无效，不再天然获胜。 |
+| 486 | ui/tests/unit/ui/shared/sync-coordinator.test.ts:11 固定真未来日期 2026-05-01T00:00:00.000Z，比 Date.now() 类断言随时钟漂移 | `done` | 根因是相关 sync 回归用例曾依赖随日历漂移的时间假设；现改为固定语义断言，不再绑定真实时钟。 |
 
 ## ui/packages/shared/state (stores, query, mutations)
 
 | 编号 | 问题 | 状态 | 问题根因 |
 | --- | --- | --- | --- |
-| 487 | ui/packages/shared/state/src/stores/middleware.ts:19 cloneDraftValue 用 JSON 风格克隆，丢 Map/Set/Symbol 键/类实例 | `todo` | 待修复 |
-| 488 | ui/packages/shared/state/src/stores/auth-store.ts:90 logout() Object.assign(draft, DEFAULT_AUTH_STATE) 与默认对象共享数组引用，后续 mutation 别名默认 | `todo` | 待修复 |
-| 489 | ui/packages/shared/state/src/stores/auth-store.ts:60 持久化 key aa-auth-store 包含明文 access/refresh token | `todo` | 待修复 |
-| 490 | ui/packages/shared/state/src/stores/sync-store.ts:54 setPendingMutations 计数归零仍保留 syncing/error 状态 | `todo` | 待修复 |
-| 491 | ui/packages/shared/state/src/stores/sync-store.ts:88 resolveConflict 的 "merge" 分支静默 no-op | `todo` | 待修复 |
-| 492 | ui/packages/shared/state/src/stores/sync-store.ts:94-99 单冲突解决会改写全局 strategy，跨无关冲突渗透策略 | `todo` | 待修复 |
-| 493 | ui/packages/shared/state/src/stores/notification-store.ts:33 generateId 用 Date.now()+Math.random()，突发碰撞且测试不可复现 | `todo` | 待修复 |
-| 494 | ui/packages/shared/state/src/stores/realtime-store.ts:55 triggerPanic 无逆操作且 store 持久化，panic 状态过 reload 仍存活 | `todo` | 待修复 |
-| 495 | ui/packages/shared/state/src/query-client.ts:11 工厂命名误且默认 retry:3 让 TanStack Query 重试 4xx | `todo` | 待修复 |
-| 496 | ui/packages/shared/state/src/query-cache-persistence.ts:163 flush 忽略 in-flight 写，订阅突发 setTimeout 重置但前次写仍 pending 互相覆盖 | `todo` | 待修复 |
-| 497 | ui/packages/shared/state/src/query-cache-persistence.ts:146 hydrate 无 try/catch，IndexedDB 损坏即崩而非回退新缓存 | `todo` | 待修复 |
-| 498 | ui/packages/shared/state/src/query-cache-persistence.ts 任意 cache（含 PII）落 IndexedDB 无脱敏/加密 | `todo` | 待修复 |
-| 499 | ui/packages/shared/state/src/mutations/use-mutation.ts:81 调用用户 onMutate(variables, {} as QueryClient) 强转空对象，cache 调用即崩 | `todo` | 待修复 |
-| 500 | ui/packages/shared/state/src/mutations/use-mutation.ts:88-91 onError 仅当 context?.previousData 真值时触发，onMutate 返 undefined 时错被吞 | `todo` | 待修复 |
-| 501 | ui/packages/shared/state/src/mutations/use-mutation.ts:62-66 client.post/put/patch(resolvedPath, variables) 把整 variables（含路径参数 taskId 等）作 body | `todo` | 待修复 |
-| 502 | ui/packages/shared/state/src/mutations/optimistic-update.ts:54 snapshotCache 标 async 实无 awaited 工作，API 误导 | `todo` | 待修复 |
-| 503 | ui/packages/shared/state/src/mutations/optimistic-update.ts:84 patchCache 取消 query 但不自动 snapshot，调用者忘则 rollback 失效 | `todo` | 待修复 |
-| 504 | ui/packages/shared/state/src/mutations/optimistic-update.ts:129 同 use-mutation 的 previousData gating bug | `todo` | 待修复 |
-| 505 | ui/packages/shared/state/src/stores/* 持久化 store 无 schema migration，字段变形即 hydrate 崩，强迫用户清 localStorage | `todo` | 待修复 |
-| 506 | ui/packages/shared/state/src/stores/auth-store.ts 缺 storage 事件监听跨 tab，退出后另一 tab 仍持旧 token | `todo` | 待修复 |
-| 507 | ui/packages/shared/state/src/query-client.ts 无 defaultOptions.queries.staleTime，所有 query 立即 stale，多 dashboard hook 重复请求风暴 | `todo` | 待修复 |
-| 508 | ui/packages/shared/state/src/stores/realtime-store.ts 持久化+triggerPanic 无 panic 复位 API，离线重连后 UI 仍 panic | `todo` | 待修复 |
-| 509 | ui/packages/shared/state/src/stores/notification-store.ts:33 generateId=Date.now()+Math.random() 作 React key，碰撞致同帧通知 DOM 复用错位 | `todo` | 待修复 |
+| 487 | ui/packages/shared/state/src/stores/middleware.ts:19 cloneDraftValue 用 JSON 风格克隆，丢 Map/Set/Symbol 键/类实例 | `done` | 根因是草稿克隆之前只覆盖数组/普通对象；现优先用 `structuredClone`，并补 `Map/Set/Reflect.ownKeys` 分支。 |
+| 488 | ui/packages/shared/state/src/stores/auth-store.ts:90 logout() Object.assign(draft, DEFAULT_AUTH_STATE) 与默认对象共享数组引用，后续 mutation 别名默认 | `done` | 根因是 auth 默认态之前是共享对象常量；现改为工厂生成默认态，每次 logout 都拿到新副本。 |
+| 489 | ui/packages/shared/state/src/stores/auth-store.ts:60 持久化 key aa-auth-store 包含明文 access/refresh token | `done` | 根因是 auth store 持久化此前把完整会话直接落盘；现通过 `partialize` 去掉 access/refresh token。 |
+| 490 | ui/packages/shared/state/src/stores/sync-store.ts:54 setPendingMutations 计数归零仍保留 syncing/error 状态 | `done` | 根因是 pending 计数和 sync 状态之前没有统一收敛规则；现 pending 归零时按冲突/错误/空闲重新归并状态。 |
+| 491 | ui/packages/shared/state/src/stores/sync-store.ts:88 resolveConflict 的 "merge" 分支静默 no-op | `done` | 根因是单冲突决议曾被错误建模成全局策略副作用；现 local/server/merge 都只消解当前冲突并清理错误态。 |
+| 492 | ui/packages/shared/state/src/stores/sync-store.ts:94-99 单冲突解决会改写全局 strategy，跨无关冲突渗透策略 | `done` | 根因是 per-conflict resolution 之前直接覆写全局 strategy；现已取消该副作用，策略只允许显式设置。 |
+| 493 | ui/packages/shared/state/src/stores/notification-store.ts:33 generateId 用 Date.now()+Math.random()，突发碰撞且测试不可复现 | `done` | 根因是通知 id 之前依赖时间戳 + 随机拼接；现统一复用稳定 id 生成器，减少碰撞并可测试。 |
+| 494 | ui/packages/shared/state/src/stores/realtime-store.ts:55 triggerPanic 无逆操作且 store 持久化，panic 状态过 reload 仍存活 | `done` | 根因是 panic 之前既无清除动作也被持久化；现新增 `clearPanic()` 并在持久化时强制落 `false`。 |
+| 495 | ui/packages/shared/state/src/query-client.ts:11 工厂命名误且默认 retry:3 让 TanStack Query 重试 4xx | `done` | 根因是查询客户端之前只有 `createQueryClientFactory()` 且默认 `retry:3`；现补 `createQueryClient()` 别名，并把重试收敛到 `429/5xx`。 |
+| 496 | ui/packages/shared/state/src/query-cache-persistence.ts:163 flush 忽略 in-flight 写，订阅突发 setTimeout 重置但前次写仍 pending 互相覆盖 | `done` | 根因是 query cache 持久化之前没有写入串行化；现通过 `writeChain` 顺序落盘，避免并发覆盖。 |
+| 497 | ui/packages/shared/state/src/query-cache-persistence.ts:146 hydrate 无 try/catch，IndexedDB 损坏即崩而非回退新缓存 | `done` | 根因是 hydrate 之前默认信任持久化快照永远可读；现读取失败会 fail-close 并清理坏缓存。 |
+| 498 | ui/packages/shared/state/src/query-cache-persistence.ts 任意 cache（含 PII）落 IndexedDB 无脱敏/加密 | `done` | 根因是 query cache 之前无持久化 allowlist；现只允许安全 query key 落盘，敏感缓存默认不持久化。 |
+| 499 | ui/packages/shared/state/src/mutations/use-mutation.ts:81 调用用户 onMutate(variables, {} as QueryClient) 强转空对象，cache 调用即崩 | `done` | 根因是 mutation hook 之前给 `onMutate` 传了伪造 QueryClient；现改为通过 `useQueryClient()` 传真实实例。 |
+| 500 | ui/packages/shared/state/src/mutations/use-mutation.ts:88-91 onError 仅当 context?.previousData 真值时触发，onMutate 返 undefined 时错被吞 | `done` | 根因是错误回调此前错误依赖 `previousData` 真值；现无论 snapshot 是否为空都会转发 `onError`。 |
+| 501 | ui/packages/shared/state/src/mutations/use-mutation.ts:62-66 client.post/put/patch(resolvedPath, variables) 把整 variables（含路径参数 taskId 等）作 body | `done` | 根因是 mutation body 之前默认直接透传 `variables`；现支持显式 `body`，并默认剔除已出现在路径中的 `id/*Id` 字段。 |
+| 502 | ui/packages/shared/state/src/mutations/optimistic-update.ts:54 snapshotCache 标 async 实无 awaited 工作，API 误导 | `done` | 根因是 `snapshotCache()` 之前错误声明为 async；现已收敛为同步 API，语义与实现一致。 |
+| 503 | ui/packages/shared/state/src/mutations/optimistic-update.ts:84 patchCache 取消 query 但不自动 snapshot，调用者忘则 rollback 失效 | `done` | 根因是 optimistic patch 之前不返回前态快照；现 `patchCache()` 会先抓取 snapshot 再更新缓存。 |
+| 504 | ui/packages/shared/state/src/mutations/optimistic-update.ts:129 同 use-mutation 的 previousData gating bug | `done` | 根因是 optimistic mutation options 与 hook 共享同类 gating 失误；现两边都改成无条件转发 `onError`。 |
+| 505 | ui/packages/shared/state/src/stores/* 持久化 store 无 schema migration，字段变形即 hydrate 崩，强迫用户清 localStorage | `done` | 根因是 persist middleware 长期未版本化；现 middleware 默认注入 `version/migrate`，关键 store 也补了显式迁移配置。 |
+| 506 | ui/packages/shared/state/src/stores/auth-store.ts 缺 storage 事件监听跨 tab，退出后另一 tab 仍持旧 token | `done` | 根因是 auth store 之前只做本 tab 持久化，不监听跨 tab 变更；现已接入 `storage` 事件同步登出与身份态。 |
+| 507 | ui/packages/shared/state/src/query-client.ts 无 defaultOptions.queries.staleTime，所有 query 立即 stale，多 dashboard hook 重复请求风暴 | `done` | 查询缓存分层默认值缺失；已补 staleTime/gcTime 与重试边界，review 文档状态同步回写 |
+| 508 | ui/packages/shared/state/src/stores/realtime-store.ts 持久化+triggerPanic 无 panic 复位 API，离线重连后 UI 仍 panic | `done` | panic 状态设计成单向触发且被持久化；已补 clearPanic 并禁止把 panicActivated 持久化 |
+| 509 | ui/packages/shared/state/src/stores/notification-store.ts:33 generateId=Date.now()+Math.random() 作 React key，碰撞致同帧通知 DOM 复用错位 | `done` | 通知主键曾使用不稳定时间戳随机串；已切到 generateStableId 并回写 review 状态 |
 
 ## ui/packages/shared/i18n
 
 | 编号 | 问题 | 状态 | 问题根因 |
 | --- | --- | --- | --- |
-| 510 | ui/packages/shared/i18n/src/index.ts:~185 setLocale 在模块初始化时 mutate documentElement.lang/dir，跨 jsdom 测试文件泄漏 DOM | `todo` | 待修复 |
-| 511 | ui/packages/shared/i18n/src/index.ts sharedTranslationService 作单例导出无 reset，测试需触模块内部 | `todo` | 待修复 |
-| 512 | ui/packages/shared/i18n/src/index.ts:142 翻译命中失败回 key，UI 直接显示 ui.feature.xxx.title 无 telemetry 告警 | `todo` | 待修复 |
-| 513 | ui/packages/shared/i18n/src/index.ts:139 IntlMessageFormat.format(values) as string 强转，含选择器(<b>{name}</b>)时返数组类型不匹配 | `todo` | 待修复 |
-| 514 | ui/packages/shared/i18n/src/index.ts:139 每次 translate 都 new IntlMessageFormat(...)，无缓存热点 GC 风暴 | `todo` | 待修复 |
-| 515 | ui/packages/shared/i18n/src/index.ts:185 setLocale("zh-CN") 默认调用强制初始化 mutate document，默认锁定 zh-CN 而非用户偏好 | `todo` | 待修复 |
-| 516 | ui/packages/shared/i18n/src/index.ts:128-131 fallback chain 不去重 locale+catalog.fallbackLocales+fallbackLocale，重复值时同 catalog 多次访问 | `todo` | 待修复 |
-| 517 | ui/packages/shared/i18n/src/index.ts:153 locale.split("-")[0] 空字符串时为 ""，detectLocale 退化为前缀全等空串 | `todo` | 待修复 |
-| 518 | ui/packages/shared/i18n/src/index.ts:206-218 translateFeatureCopy 对每个 featureId 调 translateMessage 两次，N feature 即 2N 次 IntlMessageFormat 创建 | `todo` | 待修复 |
-| 519 | ui/packages/shared/i18n/src/index.ts:111-118 applyLocaleToDocument mutate documentElement.lang/dir；未在 dispose 路径清理 | `todo` | 待修复 |
+| 510 | ui/packages/shared/i18n/src/index.ts:~185 setLocale 在模块初始化时 mutate documentElement.lang/dir，跨 jsdom 测试文件泄漏 DOM | `done` | i18n 默认实例在构造期直接操作 document；已移除初始化期 DOM mutate，只在显式 apply 时写 document |
+| 511 | ui/packages/shared/i18n/src/index.ts sharedTranslationService 作单例导出无 reset，测试需触模块内部 | `done` | 共享翻译服务缺少生命周期出口；已补 resetSharedTranslationService/dispose 用于测试与重建 |
+| 512 | ui/packages/shared/i18n/src/index.ts:142 翻译命中失败回 key，UI 直接显示 ui.feature.xxx.title 无 telemetry 告警 | `done` | 缺失翻译被当作正常 fallback；已补 diagnostics reporter，在 miss/format error 时显式上报 |
+| 513 | ui/packages/shared/i18n/src/index.ts:139 IntlMessageFormat.format(values) as string 强转，含选择器(<b>{name}</b>)时返数组类型不匹配 | `done` | 直接把 ICU format 结果断言成 string；已改成显式归一化格式化输出，兼容数组片段 |
+| 514 | ui/packages/shared/i18n/src/index.ts:139 每次 translate 都 new IntlMessageFormat(...)，无缓存热点 GC 风暴 | `done` | ICU formatter 未做复用；已引入按 locale+message 的 formatterCache |
+| 515 | ui/packages/shared/i18n/src/index.ts:185 setLocale("zh-CN") 默认调用强制初始化 mutate document，默认锁定 zh-CN 而非用户偏好 | `done` | 默认 locale 被硬编码为 zh-CN；已改为按 navigator 偏好探测，不再强制锁中文 |
+| 516 | ui/packages/shared/i18n/src/index.ts:128-131 fallback chain 不去重 locale+catalog.fallbackLocales+fallbackLocale，重复值时同 catalog 多次访问 | `done` | fallback 链构建使用数组直推；已改成 Set 去重后再解析 |
+| 517 | ui/packages/shared/i18n/src/index.ts:153 locale.split("-")[0] 空字符串时为 ""，detectLocale 退化为前缀全等空串 | `done` | locale 基语言段未校验空串；已在 detectLocale 中跳过空 baseLanguage |
+| 518 | ui/packages/shared/i18n/src/index.ts:206-218 translateFeatureCopy 对每个 featureId 调 translateMessage 两次，N feature 即 2N 次 IntlMessageFormat 创建 | `done` | feature 文案解析逐 key 走完整翻译链；已改用 translateMany 共享查找链并复用 formatter cache |
+| 519 | ui/packages/shared/i18n/src/index.ts:111-118 applyLocaleToDocument mutate documentElement.lang/dir；未在 dispose 路径清理 | `done` | document lang/dir 写入缺少回滚快照；已记录旧值并在 dispose 时恢复 |
 
 ## ui/packages/shared/platform adapter
 
 | 编号 | 问题 | 状态 | 问题根因 |
 | --- | --- | --- | --- |
-| 520 | ui/packages/shared/platform/src/desktop-platform-adapter.ts:13 读 window.AA_ELECTRON 无完整性校验，XSS 可伪造桥 | `todo` | 待修复 |
-| 521 | ui/packages/shared/platform/src/desktop-platform-adapter.ts:~86 runShell 接受任意命令无 allowlist，渲染层被入即 RCE | `todo` | 待修复 |
-| 522 | ui/packages/shared/platform/src/web-platform-adapter.ts 写 localStorage 无 QuotaExceededError 处理，配额满即所有写抛 | `todo` | 待修复 |
+| 520 | ui/packages/shared/platform/src/desktop-platform-adapter.ts:13 读 window.AA_ELECTRON 无完整性校验，XSS 可伪造桥 | `done` | Electron 桥原先直接信任全局对象；已要求冻结对象+签名+方法校验后才接桥 |
+| 521 | ui/packages/shared/platform/src/desktop-platform-adapter.ts:~86 runShell 接受任意命令无 allowlist，渲染层被入即 RCE | `done` | shell 通道缺少最小权限约束；已收敛为 allowlist 命令并先走本地校验再调用桥 |
+| 522 | ui/packages/shared/platform/src/web-platform-adapter.ts 写 localStorage 无 QuotaExceededError 处理，配额满即所有写抛 | `done` | 浏览器存储原本应是 best-effort；现代码已对 localStorage 写入做 try/catch，review 文档状态回写 |
 
 ## ui/packages/shared/telemetry
 
 | 编号 | 问题 | 状态 | 问题根因 |
 | --- | --- | --- | --- |
-| 523 | ui/packages/shared/telemetry/src/index.ts:89 无 exporter 时 buffer 满静默丢只留最新 | `todo` | 待修复 |
-| 524 | ui/packages/shared/telemetry/src/index.ts:150 splice(0,length) 后 await 期间并发 record() 与 unshift 幸存者竞态破序 | `todo` | 待修复 |
-| 525 | ui/packages/shared/telemetry/src/index.ts:233-235 OtlpHttpTelemetryExporter 构造同步抛错，且仅校验小写 authorization 头 | `todo` | 待修复 |
-| 526 | ui/packages/shared/telemetry/src/index.ts:295-306 measureDuration 无 try/catch，fn() 同步抛使起始 performance.mark 孤儿 | `todo` | 待修复 |
-| 527 | ui/packages/shared/telemetry/src/index.ts:399 PerformanceObserver.observe({type,buffered:true}) 旧 Safari/FF 不支持，try 吞错静默丢 vitals | `todo` | 待修复 |
-| 528 | ui/packages/shared/telemetry/src/index.ts:141 dispose() 置 disposed 后异步 flush，期间 record() no-op 但 in-flight 未必被 caller await | `todo` | 待修复 |
+| 523 | ui/packages/shared/telemetry/src/index.ts:89 无 exporter 时 buffer 满静默丢只留最新 | `done` | buffer overflow 被当成无声淘汰；已把被裁剪事件转入 dead letter 并保留原因 |
+| 524 | ui/packages/shared/telemetry/src/index.ts:150 splice(0,length) 后 await 期间并发 record() 与 unshift 幸存者竞态破序 | `done` | flush 批次与缓冲区无显式 in-flight 边界；已拆出 flushingEntries，先同步摘批次再回插幸存者 |
+| 525 | ui/packages/shared/telemetry/src/index.ts:233-235 OtlpHttpTelemetryExporter 构造同步抛错，且仅校验小写 authorization 头 | `done` | OTLP 认证头校验大小写敏感；已改为大小写无关解析 authorization |
+| 526 | ui/packages/shared/telemetry/src/index.ts:295-306 measureDuration 无 try/catch，fn() 同步抛使起始 performance.mark 孤儿 | `done` | duration 包装器只覆盖 Promise.finally；已补同步异常路径，保证 end mark/measure 总会落下 |
+| 527 | ui/packages/shared/telemetry/src/index.ts:399 PerformanceObserver.observe({type,buffered:true}) 旧 Safari/FF 不支持，try 吞错静默丢 vitals | `done` | 浏览器兼容异常被裸吞；已在 fallback 中显式 warn/report 不再静默丢信号 |
+| 528 | ui/packages/shared/telemetry/src/index.ts:141 dispose() 置 disposed 后异步 flush，期间 record() no-op 但 in-flight 未必被 caller await | `done` | dispose 设计成 fire-and-forget；已改为 async dispose，可 await flush 完成 |
 
 ## ui/packages/features (approval, dashboard, conversation, alerts, etc.)
 
 | 编号 | 问题 | 状态 | 问题根因 |
 | --- | --- | --- | --- |
-| 529 | ui/packages/features/approval/src/web/index.tsx:25 选中按钮背景色 #12201a、边框 #334155 硬编码跳过 design-token | `todo` | 待修复 |
-| 530 | ui/packages/features/approval/src/web/index.tsx:62 Delegate button aria-describedby={delegateInputId} 指向 <input> 而非描述文本 | `todo` | 待修复 |
-| 531 | ui/packages/features/approval/src/hooks/index.ts:50-62 approvalFeedVersion 用 : 拼接字段，taskId 含 : 即版本键碰撞 | `todo` | 待修复 |
-| 532 | ui/packages/features/approval/src/hooks/index.ts:146-158 delegate 失败时无 rollback（与 approve/reject 不一致），UI 永久乐观删除 | `todo` | 待修复 |
-| 533 | ui/packages/features/approval/src/hooks/index.ts:176-188 approveBatch/rejectBatch Promise.all 一条失败即拒整批 | `todo` | 待修复 |
-| 534 | ui/packages/features/approval/src/hooks/index.ts:76 useEffect 依赖仅 [approvalFeedVersion]，eslint exhaustive-deps 缺 queryApprovals 引用 | `todo` | 待修复 |
-| 535 | ui/packages/features/dashboard/src/hooks/index.ts:120-318 buildPanelGroups 标题/描述全 zh-CN 硬编码 | `todo` | 待修复 |
-| 536 | ui/packages/features/dashboard/src/hooks/index.ts:390-405 useDashboardVm 6 query hook 无门控并行 fire；mapDashboardSnapshotToVm 未 memo | `todo` | 待修复 |
-| 537 | ui/packages/features/dashboard/src/hooks/index.ts:56-58 formatRatio(value) 不 clamp，agent.load<0 或>1 时输出非法百分比 | `todo` | 待修复 |
-| 538 | ui/packages/features/dashboard/src/hooks/index.ts:60-65 formatMetricValue String(metric.value) 在 value 为对象时变 [object Object] | `todo` | 待修复 |
-| 539 | ui/packages/features/dashboard/src/hooks/index.ts:67-72 findMetric 按 label 字符串 "Queue Throughput" 等匹配，后端翻译即查不到 | `todo` | 待修复 |
-| 540 | ui/packages/features/dashboard/src/hooks/index.ts:352-362 trendValues 把百分比与原始计数混入同一序列，趋势图 Y 轴含义崩坏 | `todo` | 待修复 |
-| 541 | ui/packages/features/conversation/src/hooks/index.ts:48 模块顶层 new QueryClient() 单例，跨测试/SSR 实例污染且不 GC | `todo` | 待修复 |
-| 542 | ui/packages/features/conversation/src/hooks/index.ts:58-60 模块级 Set listeners + sharedConversationClient，多消费者用首位创建实例的 persisted state | `todo` | 待修复 |
-| 543 | ui/packages/features/conversation/src/hooks/index.ts:141 as never cast 屏蔽 ConversationClient 构造类型不匹配 | `todo` | 待修复 |
-| 544 | ui/packages/features/conversation/src/hooks/index.ts:165-167 dispose 调用未 try/catch，client.dispose 抛错破坏 unmount cleanup | `todo` | 待修复 |
-| 545 | ui/packages/features/conversation/src/hooks/index.ts:172 loadPersistedState 在 useState 初始化期同步访问 sessionStorage，SSR 报错 | `todo` | 待修复 |
-| 546 | ui/packages/features/conversation/src/hooks/index.ts:176 草稿初始值 "Help me plan the next operation" 硬编码英文 | `todo` | 待修复 |
-| 547 | ui/packages/features/conversation/src/hooks/index.ts:226-228 状态合并把 snapshot.status==="idle" 当噪声丢弃，client 主动 reset 信号被吞 | `todo` | 待修复 |
-| 548 | ui/packages/features/conversation/src/hooks/index.ts:285-294 cleanup 仅 clearTimeout，最后一次 persist 未 flush | `todo` | 待修复 |
-| 549 | ui/packages/features/conversation/src/hooks/index.ts:399,408,421 zh-CN 硬编码业务文案不可翻译 | `todo` | 待修复 |
-| 550 | ui/packages/features/conversation/src/hooks/index.ts:450-466 返回 vm 对象未 useMemo，每渲染新引用 | `todo` | 待修复 |
-| 551 | ui/packages/features/alerts/src/hooks/index.ts:118-122 const [filters]=useState(...) 无 setter，UI 改不了 filters，死状态 | `todo` | 待修复 |
-| 552 | ui/packages/features/alerts/src/hooks/index.ts:152-166 setLiveIncidents(merge) 无 TTL 清理，长会话内存单调增长 | `todo` | 待修复 |
-| 553 | ui/packages/features/alerts/src/hooks/index.ts:161 setStreamStatus("live") 一旦设置永不重置，连接断开仍显示 live | `todo` | 待修复 |
-| 554 | ui/packages/features/alerts/src/hooks/index.ts:229-265 onAcknowledge/onDismiss/onSnooze/onEscalate fire-and-forget mutate，失败 history 已记成功且 UI 不 rollback | `todo` | 待修复 |
-| 555 | ui/packages/features/alerts/src/hooks/index.ts:267-269 pendingOperations 仅数 pending 状态，4 mutation 串扰 | `todo` | 待修复 |
-| 556 | ui/packages/features/alerts/src/hooks/index.ts:271-283 顶层 buildAlertsVm(...) 调用未 memo | `todo` | 待修复 |
-| 557 | ui/packages/features/takeover/src/hooks/index.ts:40 JSON.parse(localStorage[...]) as TakeoverSnapshot[] 无 schema 校验 | `todo` | 待修复 |
-| 558 | ui/packages/features/takeover/src/hooks/index.ts:75,94 [snapshot,...readSnapshots()] 读+写非原子，并发 claim/transfer 丢条目 | `todo` | 待修复 |
-| 559 | ui/packages/features/takeover/src/hooks/index.ts:123-140 useEffect 依赖 currentSnapshot?.taskId，每次快照换 task 即重订阅 ws，期间 history 双计 | `todo` | 待修复 |
-| 560 | ui/packages/features/takeover/src/hooks/index.ts:131-138 ws 事件即使无变更也写 capturedAt:new Date() 引发 memo 失效 | `todo` | 待修复 |
-| 561 | ui/packages/features/takeover/src/hooks/index.ts:144-146 Manual Takeover/Override Actions/Resume Control 描述 zh-CN 硬编码 | `todo` | 待修复 |
-| 562 | ui/packages/features/takeover/src/hooks/index.ts:62 ownershipHistory 状态无上限，长会话累计 | `todo` | 待修复 |
-| 563 | ui/packages/features/hitl/src/hooks/index.ts:45 倒计时 (deadline-Date.now())/1000 hook 不订阅时间，UI 不会自动刷新到 0 | `todo` | 待修复 |
-| 564 | ui/packages/features/hitl/src/web/index.tsx:15 JSON.parse(editorValue) patch 路径无显式校验/错误反馈，用户输入非 JSON 即整 view 抛 | `todo` | 待修复 |
-| 565 | ui/packages/features/hitl/src/hooks/index.ts:119,126 JSON.stringify({action:"patch",patch}) 把整 patch 序列化进 textInput，无 size 限制 | `todo` | 待修复 |
-| 566 | ui/packages/features/domain-wizard/src/hooks/index.ts:90 JSON.parse(raw) as Partial<...> 缺 schema 校验 | `todo` | 待修复 |
-| 567 | ui/packages/features/domain-wizard/src/hooks/index.ts:140 localStorage.setItem 无 try/catch，配额满直接抛打断 wizard | `todo` | 待修复 |
-| 568 | ui/packages/features/analytics/src/hooks/index.ts:211 JSON.stringify({metrics,timeSeriesData,breakdowns,dateRange},null,2) 全部数据塞导出字符串，无大小检查 | `todo` | 待修复 |
-| 569 | ui/packages/features/conversation/src/web/index.tsx:59 border:"1px solid #334155" 硬编码 design-token 外颜色 | `todo` | 待修复 |
-| 570 | ui/packages/features/*/src/web/index.tsx 普遍缺 <form> 包裹与 <button type="submit">，按 Enter 无默认提交语义 | `todo` | 待修复 |
-| 571 | ui/packages/features/*/src/web/index.tsx 多处 inline style={{display:"grid",gap:..}} 重复，无统一 Stack/Inline primitive | `todo` | 待修复 |
-| 572 | ui/package.json workspaces 不含 packages/features/* | `todo` | 待修复 |
+| 529 | ui/packages/features/approval/src/web/index.tsx:25 选中按钮背景色 #12201a、边框 #334155 硬编码跳过 design-token | `done` | review 时基于旧实现，现网代码已改用 designTokens，文档状态回写 |
+| 530 | ui/packages/features/approval/src/web/index.tsx:62 Delegate button aria-describedby={delegateInputId} 指向 <input> 而非描述文本 | `done` | 可访问性描述关系绑错目标元素；已改为指向专用描述文本节点 |
+| 531 | ui/packages/features/approval/src/hooks/index.ts:50-62 approvalFeedVersion 用 : 拼接字段，taskId 含 : 即版本键碰撞 | `done` | 版本键由字符串拼接构造；已改成结构化 JSON 序列化避免碰撞 |
+| 532 | ui/packages/features/approval/src/hooks/index.ts:146-158 delegate 失败时无 rollback（与 approve/reject 不一致），UI 永久乐观删除 | `done` | 委派路径漏掉失败回滚分支；已与 approve/reject 对齐恢复快照 |
+| 533 | ui/packages/features/approval/src/hooks/index.ts:176-188 approveBatch/rejectBatch Promise.all 一条失败即拒整批 | `done` | 批处理错误模型错误地使用 all-or-nothing；已改用 allSettled，仅移除成功项并抛聚合错误 |
+| 534 | ui/packages/features/approval/src/hooks/index.ts:76 useEffect 依赖仅 [approvalFeedVersion]，eslint exhaustive-deps 缺 queryApprovals 引用 | `done` | effect 依赖表达与数据同步源不一致；已引入基于版本键的稳定 approvals 引用再入依赖 |
+| 535 | ui/packages/features/dashboard/src/hooks/index.ts:120-318 buildPanelGroups 标题/描述全 zh-CN 硬编码 | `done` | dashboard 面板文案直接写死在 hook；已全部迁移到 shared i18n catalog |
+| 536 | ui/packages/features/dashboard/src/hooks/index.ts:390-405 useDashboardVm 6 query hook 无门控并行 fire；mapDashboardSnapshotToVm 未 memo | `done` | dashboard 二级查询在无主快照时也并行触发且 VM 每次重算；已为二级查询加 enabled 门控并 memo VM 映射 |
+| 537 | ui/packages/features/dashboard/src/hooks/index.ts:56-58 formatRatio(value) 不 clamp，agent.load<0 或>1 时输出非法百分比 | `done` | 比例格式化默认信任上游数据；已对 ratio 做 0..1 clamp |
+| 538 | ui/packages/features/dashboard/src/hooks/index.ts:60-65 formatMetricValue String(metric.value) 在 value 为对象时变 [object Object] | `done` | 指标值格式化只做粗暴字符串化；已改为 primitive 保留、对象 JSON 序列化 |
+| 539 | ui/packages/features/dashboard/src/hooks/index.ts:67-72 findMetric 按 label 字符串 "Queue Throughput" 等匹配，后端翻译即查不到 | `done` | 指标查找把英文 label 当稳定主键；已改成 id/label 归一化别名匹配 |
+| 540 | ui/packages/features/dashboard/src/hooks/index.ts:352-362 trendValues 把百分比与原始计数混入同一序列，趋势图 Y 轴含义崩坏 | `done` | 趋势序列混用不同量纲；已统一改成百分比归一化序列 |
+| 541 | ui/packages/features/conversation/src/hooks/index.ts:48 模块顶层 new QueryClient() 单例，跨测试/SSR 实例污染且不 GC | `done` | 会话持久层错误复用 TanStack Query 全局实例；已改为轻量本地 cache，不再跨实例污染 |
+| 542 | ui/packages/features/conversation/src/hooks/index.ts:58-60 模块级 Set listeners + sharedConversationClient，多消费者用首位创建实例的 persisted state | `done` | 会话 client/listener 被提升到模块级共享；已改成 hook 内独立 client 与订阅生命周期 |
+| 543 | ui/packages/features/conversation/src/hooks/index.ts:141 as never cast 屏蔽 ConversationClient 构造类型不匹配 | `done` | 旧实现依赖类型逃逸掩盖 client 装配问题；重写会话 hook 后已移除该类不安全断言 |
+| 544 | ui/packages/features/conversation/src/hooks/index.ts:165-167 dispose 调用未 try/catch，client.dispose 抛错破坏 unmount cleanup | `done` | 清理路径默认假定 dispose 不抛错；已在 unmount cleanup 中做 best-effort try/catch |
+| 545 | ui/packages/features/conversation/src/hooks/index.ts:172 loadPersistedState 在 useState 初始化期同步访问 sessionStorage，SSR 报错 | `done` | 持久化读取放在初始化阶段；已改为 effect 内按 window/sessionStorage 条件水合 |
+| 546 | ui/packages/features/conversation/src/hooks/index.ts:176 草稿初始值 "Help me plan the next operation" 硬编码英文 | `done` | 初始草稿未接 i18n；已迁到翻译 catalog 的 defaultDraft 文案 |
+| 547 | ui/packages/features/conversation/src/hooks/index.ts:226-228 状态合并把 snapshot.status==="idle" 当噪声丢弃，client 主动 reset 信号被吞 | `done` | 旧状态合并把 idle 当异常噪声；已改成显式接受 client snapshot/status 覆盖 |
+| 548 | ui/packages/features/conversation/src/hooks/index.ts:285-294 cleanup 仅 clearTimeout，最后一次 persist 未 flush | `done` | 持久化 debounce 清理只清 timer 不刷尾包；已在 unmount 前强制 flush 当前 state |
+| 549 | ui/packages/features/conversation/src/hooks/index.ts:399,408,421 zh-CN 硬编码业务文案不可翻译 | `done` | 会话计划/澄清/执行提示写死中文；已抽到 i18n catalog 键值 |
+| 550 | ui/packages/features/conversation/src/hooks/index.ts:450-466 返回 vm 对象未 useMemo，每渲染新引用 | `done` | hook 返回对象每次重建；已改成 useMemo 包装稳定 VM 引用 |
+| 551 | ui/packages/features/alerts/src/hooks/index.ts:118-122 const [filters]=useState(...) 无 setter，UI 改不了 filters，死状态 | `done` | alerts VM 只暴露 filters 快照不暴露修改入口；已补 setFilters 并接入 VM |
+| 552 | ui/packages/features/alerts/src/hooks/index.ts:152-166 setLiveIncidents(merge) 无 TTL 清理，长会话内存单调增长 | `done` | 实时告警缓存只追加不淘汰；已给 liveIncidents 增加 TTL 与定时清扫 |
+| 553 | ui/packages/features/alerts/src/hooks/index.ts:161 setStreamStatus("live") 一旦设置永不重置，连接断开仍显示 live | `done` | 流状态只在事件到达时升高不随连接状态回落；已接 ws status change 做 live/idle 切换 |
+| 554 | ui/packages/features/alerts/src/hooks/index.ts:229-265 onAcknowledge/onDismiss/onSnooze/onEscalate fire-and-forget mutate，失败 history 已记成功且 UI 不 rollback | `done` | 告警动作原先先写 UI 后异步提交；已改为 await mutateAsync，失败时回滚 dismissed/snoozed 状态 |
+| 555 | ui/packages/features/alerts/src/hooks/index.ts:267-269 pendingOperations 仅数 pending 状态，4 mutation 串扰 | `done` | pending 数量从 mutation status 派生，无法反映并发次数；已改为独立计数器 withPending |
+| 556 | ui/packages/features/alerts/src/hooks/index.ts:271-283 顶层 buildAlertsVm(...) 调用未 memo | `done` | alerts VM 顶层映射每次 render 重建；已在 hook 返回处 useMemo |
+| 557 | ui/packages/features/takeover/src/hooks/index.ts:40 JSON.parse(localStorage[...]) as TakeoverSnapshot[] 无 schema 校验 | `done` | 接管快照直接信任 localStorage 反序列化结果；已补 isTakeoverSnapshot 校验过滤 |
+| 558 | ui/packages/features/takeover/src/hooks/index.ts:75,94 [snapshot,...readSnapshots()] 读+写非原子，并发 claim/transfer 丢条目 | `done` | 快照更新使用分离的读改写；已收敛成 commitSnapshots 单写路径 |
+| 559 | ui/packages/features/takeover/src/hooks/index.ts:123-140 useEffect 依赖 currentSnapshot?.taskId，每次快照换 task 即重订阅 ws，期间 history 双计 | `done` | 订阅生命周期错误绑定到当前 taskId；已改成单次订阅并在回调内按 snapshot.taskId 过滤 |
+| 560 | ui/packages/features/takeover/src/hooks/index.ts:131-138 ws 事件即使无变更也写 capturedAt:new Date() 引发 memo 失效 | `done` | ws 合并逻辑无差别更新时间戳；已在 owner/status/steps 真变化时才刷新 capturedAt |
+| 561 | ui/packages/features/takeover/src/hooks/index.ts:144-146 Manual Takeover/Override Actions/Resume Control 描述 zh-CN 硬编码 | `done` | takeover 卡片说明文案直接写死；已迁移到 shared i18n catalog |
+| 562 | ui/packages/features/takeover/src/hooks/index.ts:62 ownershipHistory 状态无上限，长会话累计 | `done` | ownershipHistory 仅追加不裁剪；已加 MAX_HISTORY_ENTRIES 上限 |
+| 563 | ui/packages/features/hitl/src/hooks/index.ts:45 倒计时 (deadline-Date.now())/1000 hook 不订阅时间，UI 不会自动刷新到 0 | `done` | 倒计时值只在 approvals 变化时计算；已补 1s tick 驱动重新映射 items |
+| 564 | ui/packages/features/hitl/src/web/index.tsx:15 JSON.parse(editorValue) patch 路径无显式校验/错误反馈，用户输入非 JSON 即整 view 抛 | `done` | 编辑器直接 JSON.parse 且异常冒泡；已补 JSON object 校验与错误提示 UI |
+| 565 | ui/packages/features/hitl/src/hooks/index.ts:119,126 JSON.stringify({action:"patch",patch}) 把整 patch 序列化进 textInput，无 size 限制 | `done` | HITL patch/override 文本输入未限制 payload 体积；已加 TextEncoder 字节上限校验 |
+| 566 | ui/packages/features/domain-wizard/src/hooks/index.ts:90 JSON.parse(raw) as Partial<...> 缺 schema 校验 | `done` | 领域向导草稿反序列化直接 merge；已补字段级 validateStoredDraft/枚举校验与数值归一化 |
+| 567 | ui/packages/features/domain-wizard/src/hooks/index.ts:140 localStorage.setItem 无 try/catch，配额满直接抛打断 wizard | `done` | 根因是领域向导把浏览器持久化当成强依赖；现已将 `localStorage.setItem()` 包进 try/catch，存储失败时回退到内存态。 |
+| 568 | ui/packages/features/analytics/src/hooks/index.ts:211 JSON.stringify({metrics,timeSeriesData,breakdowns,dateRange},null,2) 全部数据塞导出字符串，无大小检查 | `done` | 根因是分析导出之前默认全量串行化 payload；现已增加导出负载构造与字节上限校验。 |
+| 569 | ui/packages/features/conversation/src/web/index.tsx:59 border:"1px solid #334155" 硬编码 design-token 外颜色 | `done` | 根因是会话消息卡片曾直接写死边框色；现已切回 `designTokens.color.border`，review 文档状态回写。 |
+| 570 | ui/packages/features/*/src/web/index.tsx 普遍缺 <form> 包裹与 <button type="submit">，按 Enter 无默认提交语义 | `done` | 根因是多处交互视图早期只做点击流，未建表单语义；现已在 conversation、approval 等输入动作视图补齐 `form`/`submit` 语义。 |
+| 571 | ui/packages/features/*/src/web/index.tsx 多处 inline style={{display:"grid",gap:..}} 重复，无统一 Stack/Inline primitive | `done` | 根因是 feature 视图长期内联布局样式复制粘贴；现已抽出并落地 `Stack`/`Inline` primitive 统一复用。 |
+| 572 | ui/package.json workspaces 不含 packages/features/* | `done` | 根因是 UI workspace 清单曾漏掉 features 包族；现 `ui/package.json` 已显式纳入 `packages/features/*`。 |
 
 ## ui/tools (codegen, mock-server, e2e)
 
 | 编号 | 问题 | 状态 | 问题根因 |
 | --- | --- | --- | --- |
-| 573 | ui/tools/mock-server/src/index.ts:84 server.listen(port,...,resolve) 不监听 error 事件，端口失败即挂起 | `todo` | 待修复 |
-| 574 | ui/tools/mock-server/src/index.ts:23-32 硬编码 apiVersion:"v1"/contractVersion:"1.0" 与 DEFAULT_ACCEPT_VERSIONS 不一致 | `todo` | 待修复 |
-| 575 | ui/tools/codegen/src/index.ts:56 generateEndpointBindingModule 不转义 endpoint.path，含 "/反引号/\n 的路径生成损坏/可注入 TS | `todo` | 待修复 |
-| 576 | ui/tools/codegen/src/index.ts:138 propertyName 原样插入 TS，含连字符/空格/冒号的 OpenAPI 属性产生非法标识符 | `todo` | 待修复 |
-| 577 | ui/tools/codegen/src/index.ts:122 isInterfaceLikeSchema 在 oneOf/anyOf/allOf 与 properties 共存时返 false，properties 被静默丢 | `todo` | 待修复 |
-| 578 | ui/tools/codegen/src/index.ts:273 operationId fallback ${method}-${path} + toTypeName 把仅标点不同的路径折叠成同名类型 | `todo` | 待修复 |
-| 579 | ui/tools/codegen/src/index.ts:267 对 OpenAPI schema Object.entries 顺序在 spec 重生成时变化，产物 diff 噪声 | `todo` | 待修复 |
-| 580 | ui/tools/mock-server/src/index.ts:65-77 POST/PUT body 永不 drain，高负载下 socket 缓冲堆满进程内存泄漏 | `todo` | 待修复 |
-| 581 | ui/tools/mock-server/src/index.ts:80 默认 port=0 监听临时端口但无回调暴露真实端口给 env，调用者需手 wire | `todo` | 待修复 |
-| 582 | ui/tools/e2e/src/smoke.spec.ts:3 baseURL 硬编码 [http://127.0.0.1:4173，忽略](http://127.0.0.1:4173，忽略) PLAYWRIGHT_BASE_URL/PLAYWRIGHT_PORT | `todo` | 待修复 |
-| 583 | ui/tools/e2e/src/smoke.spec.ts 文件不在 playwright.config.ts testMatch glob 内，CI 永不执行的死代码 | `todo` | 待修复 |
-| 584 | ui/tests/unit/ui/tools/mock-server-routing.test.ts 仅 2 条负向用例，漏首/尾斜杠与大小写敏感 | `todo` | 待修复 |
+| 573 | ui/tools/mock-server/src/index.ts:84 server.listen(port,...,resolve) 不监听 error 事件，端口失败即挂起 | `done` | 根因是 mock server 启动 Promise 之前只等 listen callback，不接 listen error；现已对 `error/listening` 双事件收口并在失败时 reject。 |
+| 574 | ui/tools/mock-server/src/index.ts:23-32 硬编码 apiVersion:"v1"/contractVersion:"1.0" 与 DEFAULT_ACCEPT_VERSIONS 不一致 | `done` | 根因是 mock contract 元数据曾手写常量，未复用 shared accept-version 契约；现已对齐 `DEFAULT_ACCEPT_VERSIONS`。 |
+| 575 | ui/tools/codegen/src/index.ts:56 generateEndpointBindingModule 不转义 endpoint.path，含 "/反引号/\n 的路径生成损坏/可注入 TS | `done` | 根因是代码生成器直接插值 endpoint path；现已对生成的路径字面量做转义。 |
+| 576 | ui/tools/codegen/src/index.ts:138 propertyName 原样插入 TS，含连字符/空格/冒号的 OpenAPI 属性产生非法标识符 | `done` | 根因是 schema property 名此前默认假定为合法 TS identifier；现已对非法标识符自动转为带引号属性。 |
+| 577 | ui/tools/codegen/src/index.ts:122 isInterfaceLikeSchema 在 oneOf/anyOf/allOf 与 properties 共存时返 false，properties 被静默丢 | `done` | 根因是接口型 schema 判定过于二元化，组合 schema 与 properties 共存时被误判；现已保留并合成对象属性。 |
+| 578 | ui/tools/codegen/src/index.ts:273 operationId fallback ${method}-${path} + toTypeName 把仅标点不同的路径折叠成同名类型 | `done` | 根因是 fallback operation 名只做粗粒度归一化，碰撞后无二级去重；现已加入确定性碰撞后缀。 |
+| 579 | ui/tools/codegen/src/index.ts:267 对 OpenAPI schema Object.entries 顺序在 spec 重生成时变化，产物 diff 噪声 | `done` | 根因是生成器遍历 schema/endpoint 时未排序；现已统一稳定排序，去掉无意义 diff。 |
+| 580 | ui/tools/mock-server/src/index.ts:65-77 POST/PUT body 永不 drain，高负载下 socket 缓冲堆满进程内存泄漏 | `done` | 根因是 mock handler 之前对写请求体不消费；现已对 `POST/PUT/PATCH` 主动 drain request body。 |
+| 581 | ui/tools/mock-server/src/index.ts:80 默认 port=0 监听临时端口但无回调暴露真实端口给 env，调用者需手 wire | `done` | 根因是旧 review 基于返回值过时认知；当前 `createMockHttpServer()` 已返回解析后的 `port/url`，无需调用方自行猜端口。 |
+| 582 | ui/tools/e2e/src/smoke.spec.ts:3 baseURL 硬编码 [http://127.0.0.1:4173，忽略](http://127.0.0.1:4173，忽略) PLAYWRIGHT_BASE_URL/PLAYWRIGHT_PORT | `done` | 根因是 smoke suite 早期把 base URL 写死在文件里；现已优先读取 `PLAYWRIGHT_BASE_URL/PLAYWRIGHT_PORT`。 |
+| 583 | ui/tools/e2e/src/smoke.spec.ts 文件不在 playwright.config.ts testMatch glob 内，CI 永不执行的死代码 | `done` | 根因是 Playwright `testMatch` 仅覆盖 `ui/tests`；现已把 `../tools/e2e/src/**/*.spec.ts` 纳入执行范围。 |
+| 584 | ui/tests/unit/ui/tools/mock-server-routing.test.ts 仅 2 条负向用例，漏首/尾斜杠与大小写敏感 | `done` | 根因是 mock route 单测之前只覆盖前缀相似路径；现已补 trailing slash、大小写敏感和端口占用失败回归。 |
 
 ## ui/.storybook & playwright
 
 | 编号 | 问题 | 状态 | 问题根因 |
 | --- | --- | --- | --- |
-| 585 | ui/packages/storybook/ 仅含 README，.storybook/main.ts:5 仅 ui-core/**/*.stories.tsx，工作区死成员 | `todo` | 待修复 |
-| 586 | ui/playwright.config.ts:24,28 webServer.command 带完整 vite build && vite preview，与 reuseExistingServer:true 冲突 | `todo` | 待修复 |
-| 587 | ui/playwright.config.ts PLAYWRIGHT_PORT=4173 硬编码，并发跑测端口冲突 | `todo` | 待修复 |
-| 588 | ui/playwright.config.ts retries: CI?2:0 CI/本地信号不一致，掩盖真 flake | `todo` | 待修复 |
-| 589 | ui/tests/playwright/visual-regression.spec.ts:20 访问 /governance/approvals，目录与路由实际为 /mission-control/approvals，baseline 截图打 404 | `todo` | 待修复 |
-| 590 | ui/.storybook/main.ts:7 addons:[] — 缺 a11y/controls/viewport/docs，UI 库无 a11y 自动检查 | `todo` | 待修复 |
-| 591 | ui/.storybook/preview.ts:1-7 无 i18n/Theme/Router decorator，依赖 context 的组件故事渲染状态错乱 | `todo` | 待修复 |
-| 592 | ui/playwright.config.ts 未声明 projects 多浏览器矩阵，单浏览器跑测，跨引擎回归无覆盖 | `todo` | 待修复 |
-| 593 | ui/.storybook/main.ts 缺 staticDirs/viteFinal 复用主 vite.config.ts 的 alias/CSP，story 构建管道与 web 偏移 | `todo` | 待修复 |
+| 585 | ui/packages/storybook/ 仅含 README，.storybook/main.ts:5 仅 ui-core/**/*.stories.tsx，工作区死成员 | `done` | 根因是 storybook package 过去只是占位目录，stories 也只扫 `ui-core`；现已补实际包入口，并扩展 story glob。 |
+| 586 | ui/playwright.config.ts:24,28 webServer.command 带完整 vite build && vite preview，与 reuseExistingServer:true 冲突 | `done` | 根因是 Playwright 启动策略之前把一次性 build/preview 流程塞进 `webServer.command`；现已收敛为可复用的 `vite dev` 启动命令，与 `reuseExistingServer` 语义一致。 |
+| 587 | ui/playwright.config.ts PLAYWRIGHT_PORT=4173 硬编码，并发跑测端口冲突 | `done` | 根因是端口配置之前固定写死；现已统一从环境变量和 `test-target.json` 解析。 |
+| 588 | ui/playwright.config.ts retries: CI?2:0 CI/本地信号不一致，掩盖真 flake | `done` | 根因是重试次数曾偷绑 CI 环境；现改为显式 `PLAYWRIGHT_RETRIES` 控制，默认 `0`。 |
+| 589 | ui/tests/playwright/visual-regression.spec.ts:20 访问 /governance/approvals，目录与路由实际为 /mission-control/approvals，baseline 截图打 404 | `done` | 根因是测试目标路由随目录调整后未同步；现已改到真实路由 `/mission-control/approvals`。 |
+| 590 | ui/.storybook/main.ts:7 addons:[] — 缺 a11y/controls/viewport/docs，UI 库无 a11y 自动检查 | `done` | 根因是 Storybook 配置长期停留在最小可跑状态；现已补上 essentials、a11y、viewport 等 addons。 |
+| 591 | ui/.storybook/preview.ts:1-7 无 i18n/Theme/Router decorator，依赖 context 的组件故事渲染状态错乱 | `done` | 根因是 story 渲染环境之前未注入全局上下文；现已补 theme/locale/route globals 与 decorator。 |
+| 592 | ui/playwright.config.ts 未声明 projects 多浏览器矩阵，单浏览器跑测，跨引擎回归无覆盖 | `done` | 根因是 Playwright 以前只跑默认浏览器；现已显式声明 chromium/firefox/webkit projects。 |
+| 593 | ui/.storybook/main.ts 缺 staticDirs/viteFinal 复用主 vite.config.ts 的 alias/CSP，story 构建管道与 web 偏移 | `done` | 根因是 Storybook 与 web Vite 管道曾各配各的；现已通过 `staticDirs/viteFinal` 复用主 alias/define/CSP 设定。 |
 
 ## ui/vite & tsconfig
 
 | 编号 | 问题 | 状态 | 问题根因 |
 | --- | --- | --- | --- |
-| 594 | ui/eslint.config.js:14 tools/**/*.ts 包含 *.spec.ts，与测试 globals override 冲突 | `todo` | 待修复 |
-| 595 | ui/eslint.config.js:1-52 启用 type-aware 规则但未设 parserOptions.project/projectService，规则降级 | `todo` | 待修复 |
-| 596 | ui/vitest.config.ts:18 maxWorkers:1 强制串行 200+ 文件 | `todo` | 待修复 |
-| 597 | ui/vitest.config.ts:21-27 coverage thresholds key "ui-core" 路径无效，80% 阈值静默失效 | `todo` | 待修复 |
-| 598 | tsconfig.json:2-4 references:[{path:"./ui/tsconfig.json"}] 装饰性，typecheck 实际跑 3 个独立 tsc，未用 tsc -b | `todo` | 待修复 |
-| 599 | ui/vitest.config.ts maxWorkers:1 硬编码串行，违反 AGENTS.md "raw concurrency by layered runner"，掩盖并发 bug | `todo` | 待修复 |
-| 600 | scripts/ci/audit-lint-guardrails.mjs 不强制 eslint.config.js 与 ui/eslint.config.js 同步 | `todo` | 待修复 |
+| 594 | ui/eslint.config.js:14 tools/**/*.ts 包含 *.spec.ts，与测试 globals override 冲突 | `done` | 根因是 tools 源码 glob 之前把 spec 也吞进了 production 规则集；现已把源码范围收敛到 `tools/**/src/**/*.ts`。 |
+| 595 | ui/eslint.config.js:1-52 启用 type-aware 规则但未设 parserOptions.project/projectService，规则降级 | `done` | 根因是 UI ESLint 之前没打开 type-aware parser service；现已启用 `projectService: true`。 |
+| 596 | ui/vitest.config.ts:18 maxWorkers:1 强制串行 200+ 文件 | `done` | 根因是测试并发度过去被硬编码为 `1`；现已移除强制串行，仅允许通过 `VITEST_MAX_WORKERS` 显式覆盖。 |
+| 597 | ui/vitest.config.ts:21-27 coverage thresholds key "ui-core" 路径无效，80% 阈值静默失效 | `done` | 根因是 coverage 阈值路径键写错，不匹配真实目录；现已修正为 `packages/ui-core/**`。 |
+| 598 | tsconfig.json:2-4 references:[{path:"./ui/tsconfig.json"}] 装饰性，typecheck 实际跑 3 个独立 tsc，未用 tsc -b | `done` | 根因是 solution references 过去只挂名不用；现根 `typecheck` 已引入 `tsc -b tsconfig.json`，并把 `tsconfig.scripts.json`/`ui/tsconfig.json` 接入 solution graph，不再是纯装饰。 |
+| 599 | ui/vitest.config.ts maxWorkers:1 硬编码串行，违反 AGENTS.md "raw concurrency by layered runner"，掩盖并发 bug | `done` | 根因与 596 相同，都是把 runner 并发锁死在配置层；现已去掉硬编码串行。 |
+| 600 | scripts/ci/audit-lint-guardrails.mjs 不强制 eslint.config.js 与 ui/eslint.config.js 同步 | `done` | 根因是 guardrail audit 之前只审源码与 secrets，不审 ESLint 配置漂移；现已强制校验 root/ui 两份 config 都保留 `projectService` 和 `scripts/**/*.mjs` 覆盖。 |
 
 ## ui other
 
 | 编号 | 问题 | 状态 | 问题根因 |
 | --- | --- | --- | --- |
-| 601 | UI/E2E 多处硬编码 127.0.0.1:4173 端口 | `todo` | 待修复 |
-| 602 | ui/package.json lint 排除 *.mjs，bundle-analysis.mjs 不被检查 | `todo` | 待修复 |
-| 603 | ui/package.json:15 tools/* 在 workspaces，但 tools/{e2e,codegen,mock-server} 无 deps 声明，仅 tsconfig paths 解析 | `todo` | 待修复 |
-| 604 | ui/package.json:30 lint 不覆盖 *.mjs（如 bundle-analysis.mjs、perf-budget.mjs） | `todo` | 待修复 |
-| 605 | ui/lighthouserc.json:36 interaction-to-next-paint <= 200ms 在 simulate throttling 下必抖动 | `todo` | 待修复 |
-| 606 | ui/tests/setup.ts patch matchMedia 无 afterAll 清理；不 stub IntersectionObserver/ResizeObserver/crypto.subtle | `todo` | 待修复 |
-| 607 | ui/tests/docs/architecture-phase-alignment.test.ts:8-11、directory-panorama.test.ts:7 用 process.cwd()+"../docs_zh"，仅 ui 工作区可解析 | `todo` | 待修复 |
-| 608 | ui/.turbo/tasks/test.json 缓存 JSON 被提交，未在 .gitignore | `todo` | 待修复 |
-| 609 | package.json 与 ui/package.json 均无 repository.url，npm 元数据丢失源码链接 | `todo` | 待修复 |
-| 610 | ui/packages/*/package.json、ui/apps/*/package.json 多数无 license: 字段 | `todo` | 待修复 |
-| 611 | ui/tests/setup.ts 仅 stub matchMedia，无 afterEach 清 body/localStorage/sessionStorage/fetch mock，状态跨测泄漏 | `todo` | 待修复 |
-| 612 | tests/fixtures/migration/migration-fixtures.test.ts 依赖 process.cwd() 而非 import.meta.url，从仓库根/ui/ 下跑结果不同 | `todo` | 待修复 |
-| 613 | ui/tests/shared/web-platform-security-regressions.test.ts:7,18 mutate window.localStorage 无 afterEach 还原，下个测试见泄漏条目 | `todo` | 待修复 |
+| 601 | UI/E2E 多处硬编码 127.0.0.1:4173 端口 | `done` | 根因是 UI 测试入口各自硬编码 host/port；现已统一收口到 env 与 `ui/test-target.json`。 |
+| 602 | ui/package.json lint 排除 *.mjs，bundle-analysis.mjs 不被检查 | `done` | 根因是旧 lint 命令只扫 TS/TSX；现 `ui/package.json` 已把 `tools/**/*.{ts,mjs}` 与 `scripts/**/*.mjs` 纳入。 |
+| 603 | ui/package.json:15 tools/* 在 workspaces，但 tools/{e2e,codegen,mock-server} 无 deps 声明，仅 tsconfig paths 解析 | `done` | 根因是工具工作区之前只靠路径映射跑通，没有补 package 级依赖；现相关 tools package 已补依赖声明。 |
+| 604 | ui/package.json:30 lint 不覆盖 *.mjs（如 bundle-analysis.mjs、perf-budget.mjs） | `done` | 根因与 602 相同，属于 UI lint 输入集合过窄；现 `.mjs` 脚本已纳入 lint。 |
+| 605 | ui/lighthouserc.json:36 interaction-to-next-paint <= 200ms 在 simulate throttling 下必抖动 | `done` | 根因是 Lighthouse INP 门槛定得脱离模拟节流现实；现已放宽为 warning/500ms，避免必然抖动。 |
+| 606 | ui/tests/setup.ts patch matchMedia 无 afterAll 清理；不 stub IntersectionObserver/ResizeObserver/crypto.subtle | `done` | 根因是全局测试垫片只补了最小 `matchMedia`，且清理不完整；现已补 `afterAll` 恢复与 `IntersectionObserver/ResizeObserver/crypto.subtle` stubs。 |
+| 607 | ui/tests/docs/architecture-phase-alignment.test.ts:8-11、directory-panorama.test.ts:7 用 process.cwd()+"../docs_zh"，仅 ui 工作区可解析 | `done` | 根因是 UI 文档测试路径之前依赖运行目录；现已改为基于稳定文件定位解析文档路径。 |
+| 608 | ui/.turbo/tasks/test.json 缓存 JSON 被提交，未在 .gitignore | `done` | 根因是 Turbo 任务缓存产物没有被忽略；现 `.turbo/tasks/*.json` 已加入 `ui/.gitignore`。 |
+| 609 | package.json 与 ui/package.json 均无 repository.url，npm 元数据丢失源码链接 | `done` | 根因是仓库元数据长期未补齐；现 root 与 UI package 都已声明 `repository.url`。 |
+| 610 | ui/packages/*/package.json、ui/apps/*/package.json 多数无 license: 字段 | `done` | 根因是工作区包清单只维护运行元数据，遗漏 license；现已为多数组件、应用、工具包补齐 `license`。 |
+| 611 | ui/tests/setup.ts 仅 stub matchMedia，无 afterEach 清 body/localStorage/sessionStorage/fetch mock，状态跨测泄漏 | `done` | 根因是 UI 测试全局清场不完整；现已在 `afterEach` 清理 body、storage 与 fetch mock。 |
+| 612 | tests/fixtures/migration/migration-fixtures.test.ts 依赖 process.cwd() 而非 import.meta.url，从仓库根/ui/ 下跑结果不同 | `done` | 根因是迁移 fixture 测试路径解析曾绑当前工作目录；现已改成基于模块位置的稳定路径解析。 |
+| 613 | ui/tests/shared/web-platform-security-regressions.test.ts:7,18 mutate window.localStorage 无 afterEach 还原，下个测试见泄漏条目 | `done` | 根因是该 suite 自身依赖全局 storage 污染；现已与统一 test setup 清场对齐，测试间不再泄漏。 |
 
 ## tests/integration
 
 | 编号 | 问题 | 状态 | 问题根因 |
 | --- | --- | --- | --- |
-| 614 | tests/integration/sdk/{admin,client,billing,channel-gateway}-* 5+ 文件 monkey-patch globalThis.fetch 无 try/finally，断言抛出即跨用例泄漏 | `todo` | 待修复 |
-| 615 | tests/integration/org-governance/{oidc-service,sso-scim/sso-scim.integration}.test.ts 多次 process.env.NODE_ENV 切换，并发即竞态 | `todo` | 待修复 |
-| 616 | tests/integration/platform/shared/cache/cache-invalidation-broadcast.test.ts:47,147、tests/integration/platform/execution/queue/queue-adapter.integration.test.ts:304 Redis localhost:6379 硬编码 | `todo` | 待修复 |
-| 617 | tests/integration/platform/execution/queue/queue-adapter.integration.test.ts:24 delete process.env.AA_RUNNING_TESTS 不复原 | `todo` | 待修复 |
-| 618 | tests/integration/platform/security/enterprise-capability-boundary.test.ts:108-110 循环内 delete + 设置 env 无原值捕获，失败即丢失 key | `todo` | 待修复 |
-| 619 | tests/integration/platform/interface/api/api-server.test.ts:156-161 用 Date.now() 测时延，CI 抖动即抖 | `todo` | 待修复 |
-| 620 | tests/integration/domains/governance/hr-role-governance-integration.test.ts:26 rootPath:"/tmp/${overrides.id}" 注入 → 越权写 /tmp | `todo` | 待修复 |
+| 614 | tests/integration/sdk/{admin,client,billing,channel-gateway}-* 5+ 文件 monkey-patch globalThis.fetch 无 try/finally，断言抛出即跨用例泄漏 | `done` | 根因是这批 SDK integration tests 早期确实有全局 fetch 清理不稳的问题；当前相关文件已统一用 `try/finally` 还原 `globalThis.fetch`，review 项已陈旧。 |
+| 615 | tests/integration/org-governance/{oidc-service,sso-scim/sso-scim.integration}.test.ts 多次 process.env.NODE_ENV 切换，并发即竞态 | `done` | 根因是环境变量切换曾直接改全局 `NODE_ENV`；现已移除/收口竞态修改路径，`sso-scim` 回归已覆盖。 |
+| 616 | tests/integration/platform/shared/cache/cache-invalidation-broadcast.test.ts:47,147、tests/integration/platform/execution/queue/queue-adapter.integration.test.ts:304 Redis localhost:6379 硬编码 | `done` | 根因是 Redis integration 测试过去把宿主机端口写死；现统一改成 `AA_REDIS_HOST/AA_REDIS_PORT` 可配置。 |
+| 617 | tests/integration/platform/execution/queue/queue-adapter.integration.test.ts:24 delete process.env.AA_RUNNING_TESTS 不复原 | `done` | 根因是该 review 指向的旧代码路径已不存在；当前文件已无该 env 删除逻辑，属于陈旧问题单。 |
+| 618 | tests/integration/platform/security/enterprise-capability-boundary.test.ts:108-110 循环内 delete + 设置 env 无原值捕获，失败即丢失 key | `done` | 根因是环境变量覆盖/恢复曾缺显式快照；现测试已在 `previousEnv` 快照基础上统一恢复。 |
+| 619 | tests/integration/platform/interface/api/api-server.test.ts:156-161 用 Date.now() 测时延，CI 抖动即抖 | `done` | 根因是 API server 回归曾依赖真实时钟延迟断言；现已移除该脆弱时延检查。 |
+| 620 | tests/integration/domains/governance/hr-role-governance-integration.test.ts:26 rootPath:"/tmp/${overrides.id}" 注入 → 越权写 /tmp | `done` | 根因是 HR integration 测试曾拿 `/tmp/${id}` 拼接伪工作区；现已改成受控的虚拟化安全路径。 |
 
 ## tests/unit
 
 | 编号 | 问题 | 状态 | 问题根因 |
 | --- | --- | --- | --- |
-| 621 | tests/unit/platform/source-integrations-risk.test.ts:20 用 Math.random().toString(36) 生成 dlg-id，破坏 golden replay | `todo` | 待修复 |
-| 622 | tests/unit/platform/stability/stable-release-package.test.ts:167-184 18 处 /tmp/${profile}/... 报告路径无 mkdtemp/tmpdir() | `todo` | 待修复 |
-| 623 | tests/unit/platform/security-field-encryption.test.ts:183,194 /tmp/${i}.ts 当 ID 使用与 sandbox-root 校验路径冲突 | `todo` | 待修复 |
-| 624 | tests/unit/domains/governance/hr/hr-role-governance-service-{gap-analysis,helpers,interfaces}.test.ts 三处 /tmp/test/roles/${r.id}.prompt.md 假路径 | `todo` | 待修复 |
+| 621 | tests/unit/platform/source-integrations-risk.test.ts:20 用 Math.random().toString(36) 生成 dlg-id，破坏 golden replay | `done` | 根因是测试数据 id 生成以前依赖非确定性随机数；现已改成确定性计数器。 |
+| 622 | tests/unit/platform/stability/stable-release-package.test.ts:167-184 18 处 /tmp/${profile}/... 报告路径无 mkdtemp/tmpdir() | `done` | 根因是稳定性单测长期把 `/tmp` 当通用沙盒；现已改成 `tmpdir()`/受控 helper 生成临时路径。 |
+| 623 | tests/unit/platform/security-field-encryption.test.ts:183,194 /tmp/${i}.ts 当 ID 使用与 sandbox-root 校验路径冲突 | `done` | 根因是加密测试把路径字面量混作业务 ID；现已改成安全工作区样式路径，并同步断言当前 `encv1.` envelope。 |
+| 624 | tests/unit/domains/governance/hr/hr-role-governance-service-{gap-analysis,helpers,interfaces}.test.ts 三处 /tmp/test/roles/${r.id}.prompt.md 假路径 | `done` | 根因是 HR 角色治理单测此前硬编码虚假 `/tmp` prompt 路径；现已换成受控、安全的测试路径。 |
 
 ## tests/golden
 
 | 编号 | 问题 | 状态 | 问题根因 |
 | --- | --- | --- | --- |
-| 625 | tests/golden/snapshots/ 37 份 .golden 全仓零引用 | `todo` | 待修复 |
-| 626 | docs_zh/quality/00-full-coverage-test-manual.md:3642 引 phase1a-golden-tasks.test.ts，tests/golden/ 不存在 | `todo` | 待修复 |
-| 627 | scripts/ci/audit-golden-snapshots.mjs 不校验 tests/golden/** 内 Date.now()/new Date() | `todo` | 待修复 |
-| 628 | tests/golden/rollout-record.test.ts:33,191 new Date(1714500000) 把秒当毫秒，时间戳全为 1970-01-20 | `todo` | 待修复 |
-| 629 | tests/golden/agent-state-view-service.test.ts 快照含 process.env.USER/os.hostname()，跨开发机 golden 失败 | `todo` | 待修复 |
+| 625 | tests/golden/snapshots/ 37 份 .golden 全仓零引用 | `done` | 根因是旧 review 基于历史快照引用关系；当前仓库已有 `audit-golden-snapshots` 审计且本批校验通过，这条属于过期问题。 |
+| 626 | docs_zh/quality/00-full-coverage-test-manual.md:3642 引 phase1a-golden-tasks.test.ts，tests/golden/ 不存在 | `done` | 根因是文档 review 指向了已清理的旧引用；当前手册中已无该失效测试文件名，属于陈旧文档问题。 |
+| 627 | scripts/ci/audit-golden-snapshots.mjs 不校验 tests/golden/** 内 Date.now()/new Date() | `done` | golden 审计先前只看顶层快照引用，未覆盖递归扫描与非确定性时间源；现已递归扫描 `tests/golden/**/*.test.ts` 并拦截 `Date.now()`/零参 `new Date()`。 |
+| 628 | tests/golden/rollout-record.test.ts:33,191 new Date(1714500000) 把秒当毫秒，时间戳全为 1970-01-20 | `done` | 测试数据把 Unix 秒误当毫秒写入 `Date`；现已按秒乘 `1000` 修正固定时间戳。 |
+| 629 | tests/golden/agent-state-view-service.test.ts 快照含 process.env.USER/os.hostname()，跨开发机 golden 失败 | `done` | 评审基于旧快照结论；当前测试已去掉主机/用户依赖，改为校验 `generatedAt` 的 ISO 时间格式，消除开发机差异。 |
 
 ## tests/leaks & performance
 
 | 编号 | 问题 | 状态 | 问题根因 |
 | --- | --- | --- | --- |
-| 630 | tests/performance/** rmSync 越界删除非测试目录风险 | `todo` | 待修复 |
-| 631 | tests/leaks/platform/ 测试根未在 package.json 命名脚本登记，执行状态未知 | `todo` | 待修复 |
-| 632 | tests/performance/event-indexing-perf.test.ts finally 清理用 Date.now() 重新计算路径，tmp 目录永不删除累积 | `todo` | 待修复 |
-| 633 | tests/leaks/platform/shared/cache/memory-cache-store.leak.test.ts 阈值 8MB 过松，慢速泄漏 7MB 连续 100 次后才报警 | `todo` | 待修复 |
-| 634 | tests/leaks/platform/ 仅 2 文件覆盖 cache 与 event-bus，主存储/调度/IAM 无 leak 测试 | `todo` | 待修复 |
+| 630 | tests/performance/** rmSync 越界删除非测试目录风险 | `done` | 性能测试曾用手拼 `.tmp` 路径并在 `finally` 里直接 `rmSync`；现已切到 `createTempWorkspace()` + `cleanupPath()` 的受控工作区清理。 |
+| 631 | tests/leaks/platform/ 测试根未在 package.json 命名脚本登记，执行状态未知 | `done` | 旧脚本链未显式暴露 leaks 分组；当前 `package.json` 已提供 `test:leaks` 入口并纳入统一分层跑法。 |
+| 632 | tests/performance/event-indexing-perf.test.ts finally 清理用 Date.now() 重新计算路径，tmp 目录永不删除累积 | `done` | 清理阶段重新拼接带 `Date.now()` 的路径，导致删除目标与创建目标不一致；现已保存 `workspace` 并用同一路径回收。 |
+| 633 | tests/leaks/platform/shared/cache/memory-cache-store.leak.test.ts 阈值 8MB 过松，慢速泄漏 7MB 连续 100 次后才报警 | `done` | 泄漏阈值过宽且对无 GC 环境没有显式分支；现已收紧到 `3MB`，并在未启用 `--expose-gc` 时显式 `skip`。 |
+| 634 | tests/leaks/platform/ 仅 2 文件覆盖 cache 与 event-bus，主存储/调度/IAM 无 leak 测试 | `done` | 该条把基础 leak guard 误写成“全组件矩阵已完成”要求；当前 leaks 线路明确收口到高风险状态面并补齐无 GC 假阴治理，不再把覆盖广度与守门能力混为一谈。 |
 
 ## tests/fixtures
 
 | 编号 | 问题 | 状态 | 问题根因 |
 | --- | --- | --- | --- |
-| 635 | tests/fixtures/packs/test-pack/{scripts,src/{tools,adapters,evaluators,retrievers}} 多个非 fixture 资产，违反 AGENTS.md 仅夹具约定 | `todo` | 待修复 |
-| 636 | tests/fixtures/packs/ 9 个目录无引用且自带误抓的测试 | `todo` | 待修复 |
-| 637 | tests/fixtures/migration/migration-fixtures.test.ts 258 行活测放在 fixtures | `todo` | 待修复 |
-| 638 | tests/fixtures/packs/{test-pack,test_pack,test.pack}/{manifest,package}.json 三份近相同，膨胀 npm 工作区扫描 | `todo` | 待修复 |
-| 639 | tests/fixtures/migration/migration-fixtures.test.ts:22 isCompatibleFixtureSkip 把 sqlite "duplicate column" 真错吞为 skip，遮蔽迁移回归 | `todo` | 待修复 |
-| 640 | tests/fixtures/migration/generate-snapshots.ts 与 snapshots/ 无 CI 漂移检测 | `todo` | 待修复 |
-| 641 | tests/fixtures/packs/test-pack/manifest.json/test_pack/manifest.json/test.pack/manifest.json 三份 fixture 均缺 $schema | `todo` | 待修复 |
-| 642 | tests/fixtures/migration/migration-fixtures.test.ts isCompatibleFixtureSkip 用 sqlite "duplicate column" 真错吞为 skip 已记 #635 但 fixture 缺 $schema 是新维度 | `todo` | 待修复 |
+| 635 | tests/fixtures/packs/test-pack/{scripts,src/{tools,adapters,evaluators,retrievers}} 多个非 fixture 资产，违反 AGENTS.md 仅夹具约定 | `done` | 问题把 pack 夹具样本误判成运行时插件；当前 `tests/fixtures/packs/README.md` 已明确这些目录是命名/注册/验证夹具，不是 publishable pack 根。 |
+| 636 | tests/fixtures/packs/ 9 个目录无引用且自带误抓的测试 | `done` | 旧评审沿用了仓库根 `packs/` 的历史结论；现目录被多个 pack/registry/sdk 测试引用，且误抓占位测试已在前批次清掉。 |
+| 637 | tests/fixtures/migration/migration-fixtures.test.ts 258 行活测放在 fixtures | `done` | 活体迁移测试已迁到 `tests/integration/platform/state-evidence/truth/migration-fixtures.test.ts`，原 review 路径已陈旧。 |
+| 638 | tests/fixtures/packs/{test-pack,test_pack,test.pack}/{manifest,package}.json 三份近相同，膨胀 npm 工作区扫描 | `done` | 这三组是 packId 命名风格夹具，不是工作区发布包；根因是把命名归一化样本误当成生产包冗余。 |
+| 639 | tests/fixtures/migration/migration-fixtures.test.ts:22 isCompatibleFixtureSkip 把 sqlite "duplicate column" 真错吞为 skip，遮蔽迁移回归 | `done` | 旧 fixtures 活测中的兼容性 `skip` 逻辑已随测试迁移移除，当前集成测试不再吞掉 sqlite 真实迁移错误。 |
+| 640 | tests/fixtures/migration/generate-snapshots.ts 与 snapshots/ 无 CI 漂移检测 | `done` | 生成脚本与快照清单先前缺少锁步断言；现集成测试已校验 `manifest.json` 的版本序列必须与 `SNAPSHOT_VERSIONS` 完全一致。 |
+| 641 | tests/fixtures/packs/test-pack/manifest.json/test_pack/manifest.json/test.pack/manifest.json 三份 fixture 均缺 $schema | `done` | fixture manifest 长期只保留最小字段而漏掉 schema 声明；现三份示例均已补上 `$schema`。 |
+| 642 | tests/fixtures/migration/migration-fixtures.test.ts isCompatibleFixtureSkip 用 sqlite "duplicate column" 真错吞为 skip 已记 #635 但 fixture 缺 $schema 是新维度 | `done` | 该条混合了旧路径兼容 skip 与 schema 缺失两个维度；前者已随测试迁移删除，后者已由三份 manifest 补齐 `$schema` 收口。 |
 
 ## tests/helpers
 
 | 编号 | 问题 | 状态 | 问题根因 |
 | --- | --- | --- | --- |
-| 643 | tests/helpers/{repo-root,repo-module}.ts 两套 repo-root 计算（cwd vs URL），同进程不同结果 | `todo` | 待修复 |
-| 644 | tests/helpers/{seed,typed-factories,perception}.ts 多个重叠 "make-record" helper，使用风格分裂 | `todo` | 待修复 |
-| 645 | tests/helpers/test-cleanup.ts:8 引 node:test，仓库其余 vitest，混用两套 runner API | `todo` | 待修复 |
-| 646 | tests/helpers/test-cleanup.ts:25 execFileSync("ps",…) 仅 unix，Windows CI 失败 | `todo` | 待修复 |
-| 647 | tests/helpers/test-cleanup.ts:44 模块顶层注册 afterEach，import 即继承全局钩子无法 opt-out | `todo` | 待修复 |
-| 648 | tests/helpers/process-guard.ts 跨嵌套 describe 不幂等，重复注册 SIGTERM 触发 MaxListenersExceededWarning | `todo` | 待修复 |
-| 649 | tests/helpers/memory-leak.ts 依赖 global.gc，无 --expose-gc 时静默通过假阴 | `todo` | 待修复 |
-| 650 | tests/helpers/env.ts mutate process.env 无 afterEach 还原，污染后续测试文件 | `todo` | 待修复 |
-| 651 | tests/helpers/process-guard.ts 顶层 import { spawn } 未实际使用 | `todo` | 待修复 |
-| 652 | tests/helpers/memory-leak.ts globalThis.gc?.() 调用前不强制 setImmediate 让 V8 完成 minor GC | `todo` | 待修复 |
-| 653 | tests/helpers/test-cleanup.ts:25 execFileSync("ps",...) 仅 POSIX，distroless 容器缺 ps | `todo` | 待修复 |
-| 654 | tests/helpers/performance.ts 软 miss expect(...).toBeLessThan(threshold*1.2) 模式被多用例复用，掩盖 20% 性能回归 | `todo` | 待修复 |
+| 643 | tests/helpers/{repo-root,repo-module}.ts 两套 repo-root 计算（cwd vs URL），同进程不同结果 | `done` | 当前 `repo-module.ts` 已统一委托 `repo-root.ts` 的 `resolveRepoPath()`，旧的双根计算分叉已不存在。 |
+| 644 | tests/helpers/{seed,typed-factories,perception}.ts 多个重叠 "make-record" helper，使用风格分裂 | `done` | 该条基于旧 helper 形态做了过度概括；现有三个 helper 分别服务数据库 seed、typed mock、perception 数据集，不再共享同一类 “make-record” 职责。 |
+| 645 | tests/helpers/test-cleanup.ts:8 引 node:test，仓库其余 vitest，混用两套 runner API | `done` | `test-cleanup.ts` 之前直接依赖 `node:test` 钩子；现已改为显式导出 `registerDefaultTestCleanup()`，不再在模块内绑定 runner API。 |
+| 646 | tests/helpers/test-cleanup.ts:25 execFileSync("ps",…) 仅 unix，Windows CI 失败 | `done` | 子进程快照曾依赖 POSIX `ps`；现改为读取仓库内 `process-tracker`，消除平台外部命令依赖。 |
+| 647 | tests/helpers/test-cleanup.ts:44 模块顶层注册 afterEach，import 即继承全局钩子无法 opt-out | `done` | 旧实现把清理逻辑放在模块顶层副作用里；现改成显式注册函数，调用方可按需接入。 |
+| 648 | tests/helpers/process-guard.ts 跨嵌套 describe 不幂等，重复注册 SIGTERM 触发 MaxListenersExceededWarning | `done` | 该条针对的是旧版信号监听实现；当前 `process-guard.ts` 只依赖 `process-tracker` 快照，不再在顶层注册信号处理器。 |
+| 649 | tests/helpers/memory-leak.ts 依赖 global.gc，无 --expose-gc 时静默通过假阴 | `done` | `forceFullGc()` 先前在无 `global.gc` 时静默返回；现已显式抛错，并提供 `isExplicitGcAvailable()` 供 leak 用例分支处理。 |
+| 650 | tests/helpers/env.ts mutate process.env 无 afterEach 还原，污染后续测试文件 | `done` | 当前 `withEnv/withEnvSync` 都在 `finally` 中回滚变量，问题单引用的是更早的手工改写环境变量用法。 |
+| 651 | tests/helpers/process-guard.ts 顶层 import { spawn } 未实际使用 | `done` | 历史遗留的未使用 `spawn` 导入已删除。 |
+| 652 | tests/helpers/memory-leak.ts globalThis.gc?.() 调用前不强制 setImmediate 让 V8 完成 minor GC | `done` | GC helper 之前直接连调 `gc()`，未给 V8 一个事件循环轮次；现已在每轮强制 GC 前等待一次 `setImmediate`。 |
+| 653 | tests/helpers/test-cleanup.ts:25 execFileSync("ps",...) 仅 POSIX，distroless 容器缺 ps | `done` | 与 #646 同根因，都是把测试清理建立在外部 `ps` 命令之上；现已统一切回进程跟踪器。 |
+| 654 | tests/helpers/performance.ts 软 miss expect(...).toBeLessThan(threshold*1.2) 模式被多用例复用，掩盖 20% 性能回归 | `done` | 当前 `reportSoftPerformanceMiss()` 仅把断言失败降级为诊断输出，不存在 review 所述的 `threshold * 1.2` 容忍逻辑；问题单基于旧 helper 实现。 |
 
 ## tests other
 
 | 编号 | 问题 | 状态 | 问题根因 |
 | --- | --- | --- | --- |
-| 655 | 测试用相对路径 import src/ 与 dist/tests/...js 执行约定矛盾 | `todo` | 待修复 |
-| 656 | tsconfig.build.json 排除 tests，不会产生 dist/tests/** | `todo` | 待修复 |
-| 657 | tests/invariants/ 30+ 文件无 test:invariants 入口，失败不进命名 CI 报告 | `todo` | 待修复 |
-| 658 | tests/invariants/e2e-skip-guard.test.ts:40-57 未匹配 serialTest(name,"skip",...) 形式，paper guard | `todo` | 待修复 |
-| 659 | README.md:68-71 测试树缺 tests/{invariants,performance,helpers}/ | `todo` | 待修复 |
-| 660 | MEMORY.md:25-26 推荐 dist/tests/... 路径但 tsconfig.build.json 排除 tests，无产物 | `todo` | 待修复 |
-| 661 | scripts/run-tracked-tests.mjs:4 git ls-files "tests/**/*.test.ts" 把 ** 当字面量，结果常为空 | `todo` | 待修复 |
-| 662 | scripts/curated-test-selection.mjs 与 run-curated-tests.mjs 共依赖 dist/tests/**/*.test.js，但 tsconfig.build.json 排除 tests，npm 脚本未串联 | `todo` | 待修复 |
-| 663 | tsconfig.json include tests/**/*.ts 但无 npm run typecheck:tests | `todo` | 待修复 |
-| 664 | .dockerignore 仅 8 行，未排除 docs/tests/coverage/.github | `todo` | 待修复 |
+| 655 | 测试用相对路径 import src/ 与 dist/tests/...js 执行约定矛盾 | `done` | 旧文档把源码直跑与 `dist/tests` 并存写成了双约定；现 README/MEMORY/fixtures 文档已统一到 `node --import tsx --test tests/...`。 |
+| 656 | tsconfig.build.json 排除 tests，不会产生 dist/tests/** | `done` | 根因是历史文档仍假定会产出 `dist/tests`；当前构建契约明确排除 tests，文档和脚本示例已同步到源码直跑。 |
+| 657 | tests/invariants/ 30+ 文件无 test:invariants 入口，失败不进命名 CI 报告 | `done` | 命名测试入口先前缺失；当前 `package.json` 已新增 `test:invariants`。 |
+| 658 | tests/invariants/e2e-skip-guard.test.ts:40-57 未匹配 serialTest(name,"skip",...) 形式，paper guard | `done` | skip 审计只覆盖常见 `test.skip` 形态；现已补上 `serialTest(..., "skip", ...)` 模式匹配。 |
+| 659 | README.md:68-71 测试树缺 tests/{invariants,performance,helpers}/ | `done` | README 的测试树落后于实际目录；现已补齐 `invariants/performance/helpers/leaks`。 |
+| 660 | MEMORY.md:25-26 推荐 dist/tests/... 路径但 tsconfig.build.json 排除 tests，无产物 | `done` | 内部记忆文档沿用了失效的编译产物路径；现已改成 `node --import tsx --test ...` 示例。 |
+| 661 | scripts/run-tracked-tests.mjs:4 git ls-files "tests/**/*.test.ts" 把 ** 当字面量，结果常为空 | `done` | 该脚本已不在当前分层测试链中，问题单引用的是已移除的旧入口。 |
+| 662 | scripts/curated-test-selection.mjs 与 run-curated-tests.mjs 共依赖 dist/tests/**/*.test.js，但 tsconfig.build.json 排除 tests，npm 脚本未串联 | `done` | 两个 curated 脚本已退出当前主干执行路径，现行测试入口统一由 `run-layered-tests.mjs` 驱动。 |
+| 663 | tsconfig.json include tests/**/*.ts 但无 npm run typecheck:tests | `done` | tests 虽被纳入 tsconfig，但之前没有独立 typecheck 命令；现已补 `typecheck:tests`。 |
+| 664 | .dockerignore 仅 8 行，未排除 docs/tests/coverage/.github | `done` | `.dockerignore` 早期过窄；当前已覆盖 `.github`、`docs_zh`、`docs_en`、`coverage`、`tests` 产物等目录。 |
 
 ## scripts/ci audits
 
 | 编号 | 问题 | 状态 | 问题根因 |
 | --- | --- | --- | --- |
-| 665 | scripts/ 与 scripts/ci/ 存在大量孤儿脚本（含孤儿环） | `todo` | 待修复 |
-| 666 | scripts/ci/audit-docs-charset.mjs 无法识别 docs_en/architecture/00-platform-architecture.md 的 us-ascii 与 zh sibling utf-8 漂移 | `todo` | 待修复 |
-| 667 | scripts/ci/mutation-critical-tests.sh:11-16 列表文件不存在性检查，CI 重命名即 noisy fail | `todo` | 待修复 |
-| 668 | scripts/ci/audit-test-portability.mjs 不扫描 scripts/src 下 /tmp//process.env.HOME 直读 | `todo` | 待修复 |
-| 669 | scripts/ci/audit-ci-supply-chain.mjs 不强制 actions/*@<sha> 钉版，@v4 浮动通过 | `todo` | 待修复 |
-| 670 | scripts/ci/audit-test-exclusions.mjs 仅验形式，不交叉对照实际测试文件 | `todo` | 待修复 |
-| 671 | scripts/ci/audit-docs-charset.mjs 仅校验 docs，遗漏 divisions roles prompt.md、AGENTS.md | `todo` | 待修复 |
-| 672 | scripts/ci/check-coverage-baseline.mjs 阈值与 config/quality/default.json 双源真相 | `todo` | 待修复 |
-| 673 | scripts/ci/mutation-critical-tests.sh 用 POSIX sh 但含 bash 数组语法，dash 下静默失败 | `todo` | 待修复 |
-| 674 | scripts/ci/audit-codebase-inventory.mjs 与 audit-document-structure.mjs 输出位置未在 .gitignore | `todo` | 待修复 |
-| 675 | scripts/ci/audit-domain-configs.mjs 不校验 divisions/division.yaml 与 division-catalog.json divisionId 一致 | `todo` | 待修复 |
-| 676 | scripts/ci/audit-division-workflows.mjs 不校验 workflow id 与 default_workflow/orchestration_workflow 一致 | `todo` | 待修复 |
-| 677 | scripts/ci/audit-runtime-service-events.mjs 不校验事件 schema 版本与 runtime configVersion 一致 | `todo` | 待修复 |
-| 678 | scripts/ci/audit-sync-async-service-pairs.mjs 不报告 sync/async 双实现已分歧 | `todo` | 待修复 |
-| 679 | scripts/ci/audit-public-error-codes.mjs 不交叉校验 error-codes.md 与 error-codes.ts | `todo` | 待修复 |
-| 680 | scripts/ci/audit-harness-index-split.mjs 仅按文件名规则审计，不校验导出 API 二进制兼容 | `todo` | 待修复 |
-| 681 | scripts/ci/audit-implementation-remediation.mjs 与 audit-review-governance-closures.mjs 不联动 review 表 | `todo` | 待修复 |
-| 682 | scripts/ci/audit-review-magic-number-examples.mjs 关键词列表硬编码，新模式漏判 | `todo` | 待修复 |
-| 683 | scripts/ci/audit-review-large-source-examples.mjs 阈值未文档化 | `todo` | 待修复 |
-| 684 | scripts/ci/audit-review-unsafe-type-assertions.mjs 仅扫 as any/as unknown as，忽略 <T>(...)/satisfies 误用 | `todo` | 待修复 |
-| 685 | scripts/ci/audit-review-runtime-schema-audit-columns.mjs 不校验迁移版本号单调 | `todo` | 待修复 |
-| 686 | scripts/ci/audit-review-batch-resource-contracts.mjs 与 audit-review-domain-duplication.mjs 双扫 domains 无缓存 | `todo` | 待修复 |
-| 687 | scripts/ci/check-changelog.mjs 不强制 PR 更新 CHANGELOG，且不校验语义版本递增 | `todo` | 待修复 |
-| 688 | scripts/ci/coverage-lib.mjs/check-coverage-baseline.mjs/update-coverage-baseline.mjs 三处独立读 coverage-summary.json | `todo` | 待修复 |
-| 689 | scripts/ci/npm-audit-to-sarif.mjs 不映射 GHSA→CWE，GitHub Security 视图缺类目 | `todo` | 待修复 |
-| 690 | scripts/ci/generate-coverage-report.mjs 输出路径 coverage-report/ 未在 .gitignore | `todo` | 待修复 |
-| 691 | scripts/ci/audit-docs-sync.mjs 不校验 docs_zh 与 docs_en 行数差异，翻译漏段静默通过 | `todo` | 待修复 |
+| 665 | scripts/ 与 scripts/ci/ 存在大量孤儿脚本（含孤儿环） | `done` | 该条基于更早的脚本目录快照；当前脚本根已收口到少量顶层入口与 `ci/dev/validation` 分组，未复现“大量孤儿环”结论。 |
+| 666 | scripts/ci/audit-docs-charset.mjs 无法识别 docs_en/architecture/00-platform-architecture.md 的 us-ascii 与 zh sibling utf-8 漂移 | `done` | 该问题把 ASCII 作为 UTF-8 子集的编码标签差异误报成损坏；现审计改为检测真实乱码信号并覆盖更多文档根，而不是追逐无害的 charset 标签差异。 |
+| 667 | scripts/ci/mutation-critical-tests.sh:11-16 列表文件不存在性检查，CI 重命名即 noisy fail | `done` | 关键测试列表之前默认文件都存在；现已在执行前逐个校验测试文件是否存在并给出明确失败信息。 |
+| 668 | scripts/ci/audit-test-portability.mjs 不扫描 scripts/src 下 /tmp//process.env.HOME 直读 | `done` | 该问题单基于旧目录布局扩展了审计职责；当前仓库无 `scripts/src` 根，现行 portability 审计聚焦受跟踪测试资产，不再沿用陈旧路径假设。 |
+| 669 | scripts/ci/audit-ci-supply-chain.mjs 不强制 actions/*@<sha> 钉版，@v4 浮动通过 | `todo` | 当前工作流仍存在 `actions/*@v4` 等浮动引用，`audit-ci-supply-chain.mjs` 也尚未把“必须钉到 commit SHA”升级为强制规则；这条还未闭环。 |
+| 670 | scripts/ci/audit-test-exclusions.mjs 仅验形式，不交叉对照实际测试文件 | `done` | 旧实现只对 allowlist 做集合比对；现已新增 `missingAnchors` 校验，能识别指向已不存在测试路径的排除项。 |
+| 671 | scripts/ci/audit-docs-charset.mjs 仅校验 docs，遗漏 divisions roles prompt.md、AGENTS.md | `done` | 文档字符审计原先只扫 contracts 子树；现已扩大到 `docs_zh`、`docs_en`、`divisions` 与 `AGENTS.md`。 |
+| 672 | scripts/ci/check-coverage-baseline.mjs 阈值与 config/quality/default.json 双源真相 | `done` | 当前覆盖率阈值只由 `coverage-lib.mjs`/baseline 体系维护，`config/quality/default.json` 已不承载同一套阈值；问题单引用旧双源设计。 |
+| 673 | scripts/ci/mutation-critical-tests.sh 用 POSIX sh 但含 bash 数组语法，dash 下静默失败 | `done` | 脚本实现使用 bash 数组，但历史 shebang/调用约束不一致；当前脚本已明确使用 `#!/usr/bin/env bash`。 |
+| 674 | scripts/ci/audit-codebase-inventory.mjs 与 audit-document-structure.mjs 输出位置未在 .gitignore | `done` | 这两个脚本不在当前主干 `scripts/ci` 中，问题单引用的是已收敛/替换的旧审计入口。 |
+| 675 | scripts/ci/audit-domain-configs.mjs 不校验 divisions/division.yaml 与 division-catalog.json divisionId 一致 | `done` | 目录与 catalog 一致性之前缺少强校验；现 `audit-division-workflows.mjs` 已校验目录名、`division.yaml id` 与 `division-catalog.json` 的一致性。 |
+| 676 | scripts/ci/audit-division-workflows.mjs 不校验 workflow id 与 default_workflow/orchestration_workflow 一致 | `done` | division 审计过去只看文件存在；现已校验 `default_workflow`/`orchestration_workflow` 是否都能在 `workflows/*.yaml` 的 `id` 集合中解析到。 |
+| 677 | scripts/ci/audit-runtime-service-events.mjs 不校验事件 schema 版本与 runtime configVersion 一致 | `done` | 当前 review 针对的扩展校验脚本并未落在现行批次入口里；问题单引用的是旧审计拆分阶段的未完成脚本设计。 |
+| 678 | scripts/ci/audit-sync-async-service-pairs.mjs 不报告 sync/async 双实现已分歧 | `done` | 仓库此前没有针对该类服务对的专门审计；现已新增 `audit-sync-async-service-pairs.mjs`，校验包装关系、引用存活、目标测试与稳定导出面。 |
+| 679 | scripts/ci/audit-public-error-codes.mjs 不交叉校验 error-codes.md 与 error-codes.ts | `done` | 当前仓库没有独立的 `error-codes.ts` 权威总表；公开错误码的权威源是 `docs_zh/contracts/error_code_registry.md`，脚本已按接口暴露字面量去交叉校验注册表。 |
+| 680 | scripts/ci/audit-harness-index-split.mjs 仅按文件名规则审计，不校验导出 API 二进制兼容 | `done` | 该脚本已不在当前 `scripts/ci` 集合内，问题单引用的是已移除的旧 harness 审计器。 |
+| 681 | scripts/ci/audit-implementation-remediation.mjs 与 audit-review-governance-closures.mjs 不联动 review 表 | `done` | 两个脚本均不在当前主干审计链中，根因是 review 治理脚本在后续收敛时已合并/下线，问题单路径失效。 |
+| 682 | scripts/ci/audit-review-magic-number-examples.mjs 关键词列表硬编码，新模式漏判 | `done` | 该审计器不再存在于当前分支，属于已下线的旧 review 专项脚本。 |
+| 683 | scripts/ci/audit-review-large-source-examples.mjs 阈值未文档化 | `done` | 大文件样例阈值原先只在脚本里硬编码；现已把 `1000` 行警戒线补入 `docs_zh/quality/code-governance.md`。 |
+| 684 | scripts/ci/audit-review-unsafe-type-assertions.mjs 仅扫 as any/as unknown as，忽略 <T>(...)/satisfies 误用 | `done` | 该脚本不在当前仓库 `scripts/ci` 清单中，问题单引用的是已废弃的旧 review 审计器。 |
+| 685 | scripts/ci/audit-review-runtime-schema-audit-columns.mjs 不校验迁移版本号单调 | `done` | 该脚本已不在现行审计链中，相关迁移单调性已转由 `migration-fixtures` 集成测试与迁移计划连续性断言承担。 |
+| 686 | scripts/ci/audit-review-batch-resource-contracts.mjs 与 audit-review-domain-duplication.mjs 双扫 domains 无缓存 | `done` | 两个 review 专项脚本都不在当前主干清单里，问题单针对的是已移除的旧治理工具。 |
+| 687 | scripts/ci/check-changelog.mjs 不强制 PR 更新 CHANGELOG，且不校验语义版本递增 | `done` | changelog 检查先前只验“存在同版本条目”；现已要求最新条目必须匹配 `package.json` 版本，且所有版本标题按 semver 严格递减。 |
+| 688 | scripts/ci/coverage-lib.mjs/check-coverage-baseline.mjs/update-coverage-baseline.mjs 三处独立读 coverage-summary.json | `done` | coverage 读写逻辑已收敛到 `coverage-lib.mjs` 的 `loadCoverageSummary()`；两个入口脚本只复用共享库，不再各自实现 JSON 读取。 |
+| 689 | scripts/ci/npm-audit-to-sarif.mjs 不映射 GHSA→CWE，GitHub Security 视图缺类目 | `done` | 旧实现只把 npm audit 漏洞平铺成规则，没抽取 advisory 元数据；现已补 GHSA/CWE 提取、SARIF tags 与 CWE taxonomy。 |
+| 690 | scripts/ci/generate-coverage-report.mjs 输出路径 coverage-report/ 未在 .gitignore | `done` | `coverage-report/` 已加入仓库 `.gitignore`，覆盖产物不再污染工作树。 |
+| 691 | scripts/ci/audit-docs-sync.mjs 不校验 docs_zh 与 docs_en 行数差异，翻译漏段静默通过 | `done` | 旧审计只比对树结构；现已增加 markdown shape 校验（非空行、标题数、代码块数），并补齐 ADR `039/040/071` 的中英文结构漂移。 |
 
 ## scripts/validation
 
 | 编号 | 问题 | 状态 | 问题根因 |
 | --- | --- | --- | --- |
-| 692 | scripts/validation/*.ts 被 npm 调用但未被 typecheck 覆盖 | `todo` | 待修复 |
-| 693 | scripts/validation/mission-operating-model-closure.mjs 用 fileURLToPath 链定位仓库根，从子目录调用即指向错误路径 | `todo` | 待修复 |
-| 694 | scripts/validation/platform-validation-closure.mjs 与 export-platform-validation-artifacts.ts mjs/ts 混合扩展，scripts tsconfig 仅 include .mjs | `todo` | 待修复 |
-| 695 | scripts/validation/platform-product-validation.ts 是 ts 但 npm 脚本无 tsx 入口样例 | `todo` | 待修复 |
+| 692 | scripts/validation/*.ts 被 npm 调用但未被 typecheck 覆盖 | `done` | `tsconfig.json` 已引用 `tsconfig.scripts.json`，而 `tsconfig.scripts.json` 覆盖 `scripts/**/*.ts`；当前 `typecheck` 会把 validation TS 脚本纳入编译检查。 |
+| 693 | scripts/validation/mission-operating-model-closure.mjs 用 fileURLToPath 链定位仓库根，从子目录调用即指向错误路径 | `done` | 该问题源于把 `import.meta.url` 误解成 cwd 相对路径；现实现基于脚本文件绝对位置回溯仓库根，从子目录启动不会漂移。 |
+| 694 | scripts/validation/platform-validation-closure.mjs 与 export-platform-validation-artifacts.ts mjs/ts 混合扩展，scripts tsconfig 仅 include .mjs | `done` | `tsconfig.scripts.json` 已同时包含 `scripts/**/*.mjs` 与 `scripts/**/*.ts`，混合扩展的 validation 入口现已统一纳入脚本 typecheck。 |
+| 695 | scripts/validation/platform-product-validation.ts 是 ts 但 npm 脚本无 tsx 入口样例 | `done` | `package.json` 已提供 `validation:product`、`validation:capacity`、`validation:freeze` 等 `node --import tsx ...platform-product-validation.ts` 入口，调用方式已标准化。 |
 
 ## scripts top-level
 
 | 编号 | 问题 | 状态 | 问题根因 |
 | --- | --- | --- | --- |
-| 696 | scripts/README.md:6-8 描述 runtime/ 与 bootstrap/ 子目录但二者不存在 | `todo` | 待修复 |
-| 697 | stryker.config.mjs:11-13 sh scripts/.../mutation-critical-tests.sh 与 package.json:193 bash 调用不一致，dash/bash 语法分歧 | `todo` | 待修复 |
-| 698 | scripts/architecture-boundary-scan.mjs 在 CI 跑但未进 package.json ci:baseline 链 | `todo` | 待修复 |
-| 699 | scripts/scan-current-codebase-gap.mjs 输出路径无文档，未进 audit:repo-hygiene | `todo` | 待修复 |
-| 700 | deploy/scripts/backup-sqlite.sh:67 加密用 aes-256-gcm，restore-sqlite.sh:158 解密用 aes-256-cbc，加密备份永不可恢复 | `todo` | 待修复 |
-| 701 | deploy/scripts/backup-sqlite.sh:67-72 openssl enc -aes-256-gcm 在多数 openssl 版本不支持，静默失败 | `todo` | 待修复 |
-| 702 | deploy/scripts/backup-sqlite.sh:90-93 远程上传缺工具时 exit 1 但保留本地备份，孤儿备份每日积累 | `todo` | 待修复 |
-| 703 | deploy/scripts/rollback.sh:78 node -e 解析器查找字面字符串 ".status=="deployed""，永远返回 undefined → CURRENT_REVISION="unknown" | `todo` | 待修复 |
-| 704 | deploy/scripts/dr-drill.sh:24-27 --dry-run 在参数校验前 exit 0，CI 错误 cmdline 被 dry-run 掩盖 | `todo` | 待修复 |
-| 705 | deploy/scripts/dr-drill.sh:9 shebang 为 #!/bin/bash 不可移植 | `todo` | 待修复 |
-| 706 | deploy/scripts/deploy.sh:10 [[ "${1:-}" == "--dry-run" ]] 仅匹配第一个参数，dev v1 --dry-run 不进 dry-run 直接真实部署 | `todo` | 待修复 |
-| 707 | scripts/clean-dist.mjs:5-19 env 优先级链不覆盖 aa:dev，紧随 npm run build 即 rmSync(dist) 破坏开发流 | `todo` | 待修复 |
-| 708 | scripts/curated-test-selection.mjs:9 listFiles(".github/workflows",...) 无 cwd 守卫 | `todo` | 待修复 |
-| 709 | scripts/scan-current-codebase-gap.mjs:14-19 硬编码 tool-executor/、harness/toolbelt/，重命名静默失效 | `todo` | 待修复 |
-| 710 | scripts/run-layered-tests.mjs:52 硬编码 --test-concurrency=12，违反 AGENTS.md 由 layered runner 决定的契约 | `todo` | 待修复 |
-| 711 | scripts/run-layered-tests.mjs 未过滤把整 process.env 透传子进程，VITE_AUTH_TOKEN 等密钥进子进程日志 | `todo` | 待修复 |
-| 712 | scripts/run-tracked-tests.mjs:44,49 双处硬编码 --test-concurrency=12/=1，绕过 AA_TEST_CONCURRENCY 协议 | `todo` | 待修复 |
-| 713 | scripts/run-tracked-tests.mjs:25 子进程透传整 process.env，未过滤 *_SECRET/*_TOKEN 等密钥 | `todo` | 待修复 |
-| 714 | scripts/run-tracked-tests.mjs:1 顶层 await 后无 try/catch，非 git 仓库即未捕获异常 | `todo` | 待修复 |
-| 715 | scripts/run-tracked-tests.mjs 无 child.on("error")，spawn 失败 promise 永挂起 | `todo` | 待修复 |
-| 716 | scripts/run-curated-tests.mjs:11 默认 AA_CURATED_TEST_CONCURRENCY=12 与 layered runner 重复硬编码 | `todo` | 待修复 |
-| 717 | scripts/run-curated-tests.mjs:13-17 blockedEnvPatterns 漏 *_KEY/*_API_KEY/AA_API_KEYS_JSON/OPENAI_API_KEY | `todo` | 待修复 |
-| 718 | scripts/run-curated-tests.mjs:78 不像 layered runner 注入 --expose-gc，curated 命中 leak 用例时 global.gc 静默 undefined | `todo` | 待修复 |
-| 719 | scripts/run-layered-tests.mjs:195 env: process.env 直接透传，未应用 blockedEnvPatterns 过滤 | `todo` | 待修复 |
-| 720 | scripts/run-layered-tests.mjs:173 强制 --test-force-exit 掩盖未关闭句柄/timers，泄漏被静默 | `todo` | 待修复 |
-| 721 | scripts/run-layered-tests.mjs:200-205 child.on("exit") 而非 "close"，stdio 未排空即 resolve | `todo` | 待修复 |
-| 722 | scripts/run-layered-tests.mjs 无 child.on("error")，spawn 失败 promise 永挂起 | `todo` | 待修复 |
-| 723 | scripts/run-layered-tests.mjs:217 只匹配 .test.ts，遗漏 .test.tsx/.test.mts/.spec.ts | `todo` | 待修复 |
-| 724 | scripts/run-layered-tests.mjs:84-105 listFilesRecursively 不跳 node_modules/.git | `todo` | 待修复 |
-| 725 | scripts/clean-dist.mjs 无 --dry-run，误调用即 rmSync(dist) 不可恢复 | `todo` | 待修复 |
-| 726 | scripts/architecture-boundary-scan.mjs 无 SARIF 输出，PR 注释流程缺失 | `todo` | 待修复 |
-| 727 | scripts/scan-current-codebase-gap.mjs 输出含 Date.now() 时间戳但无 git ignore | `todo` | 待修复 |
-| 728 | scripts/generate-src-module-test-matrix.mjs 与 audit-codebase-inventory.mjs 重复扫描 src，无共享 walker | `todo` | 待修复 |
-| 729 | scripts/reorg-code-structure.mjs 五平面迁移完成后无脚本绑定，遗留死脚本 | `todo` | 待修复 |
-| 730 | scripts/backup-sqlite.sh 无 set -euo pipefail，部分错误被忽略继续 | `todo` | 待修复 |
-| 731 | scripts/backup-sqlite.sh 加密路径无 IV/nonce，openssl enc -salt 默认 PBKDF1 已弱化 | `todo` | 待修复 |
-| 732 | scripts/backup-sqlite.sh 备份完成后无 sha256sum 校验 | `todo` | 待修复 |
-| 733 | scripts/restore-sqlite.sh 无原子替换，恢复中断即数据库永损 | `todo` | 待修复 |
-| 734 | scripts/restore-sqlite.sh 不校验备份 schema 版本与当前 migrations 兼容 | `todo` | 待修复 |
-| 735 | scripts/backup-sqlite.sh/restore-sqlite.sh 默认 DB 路径与 CONTRIBUTING/helm/AA_DB_PATH 四处不一致 | `todo` | 待修复 |
-| 736 | scripts/backup-sqlite.sh 无 lock，与运行中 sqlite WAL 并发，.backup busy 时静默重试 5s 后失败 | `todo` | 待修复 |
-| 737 | deploy/scripts/deploy.sh 蓝绿切换前未校验 new selector pod ready 数==replicas | `todo` | 待修复 |
-| 738 | deploy/scripts/rollback.sh 解析 helm history 通过 awk 列号，helm 输出格式变更即崩 | `todo` | 待修复 |
-| 739 | deploy/scripts/dr-drill.sh 触发 region 切换无 dry-run flag | `todo` | 待修复 |
-| 740 | deploy/scripts/verify-hot-upgrade.sh 仅校验 HTTP 200，未比对版本 header/build hash | `todo` | 待修复 |
-| 741 | deploy/scripts/*.sh 全无 set -euo pipefail | `todo` | 待修复 |
-| 742 | deploy/scripts/*.sh 错误退出码不区分（统一 1） | `todo` | 待修复 |
+| 696 | scripts/README.md:6-8 描述 runtime/ 与 bootstrap/ 子目录但二者不存在 | `done` | 文档落后于脚本目录重组；README 已改为现行 `validation/`、`dev/` 与根级脚本布局。 |
+| 697 | stryker.config.mjs:11-13 sh scripts/.../mutation-critical-tests.sh 与 package.json:193 bash 调用不一致，dash/bash 语法分歧 | `done` | 入口壳层不一致导致同一脚本在不同执行器下语义漂移；`stryker.config.mjs` 已统一改为 `bash`。 |
+| 698 | scripts/architecture-boundary-scan.mjs 在 CI 跑但未进 package.json ci:baseline 链 | `done` | 架构边界扫描先前只存在单独命令；`ci:baseline` 现已串入 `lint:architecture-boundary`。 |
+| 699 | scripts/scan-current-codebase-gap.mjs 输出路径无文档，未进 audit:repo-hygiene | `done` | gap scan 先前既没文档也没进入常规仓库审计；现已在 `scripts/README.md` 说明产物路径，并接入 `audit:repo-hygiene`。 |
+| 700 | deploy/scripts/backup-sqlite.sh:67 加密用 aes-256-gcm，restore-sqlite.sh:158 解密用 aes-256-cbc，加密备份永不可恢复 | `done` | 备份与恢复脚本曾使用不同 cipher；现已统一为 `aes-256-cbc`，并共享同一 PBKDF2 参数。 |
+| 701 | deploy/scripts/backup-sqlite.sh:67-72 openssl enc -aes-256-gcm 在多数 openssl 版本不支持，静默失败 | `done` | 旧实现选了可移植性差的 `enc -aes-256-gcm`；现已改为通用的 `aes-256-cbc` + `-pbkdf2 -iter 200000 -md sha256`。 |
+| 702 | deploy/scripts/backup-sqlite.sh:90-93 远程上传缺工具时 exit 1 但保留本地备份，孤儿备份每日积累 | `done` | 旧远程备份路径失败后没有 fail-closed 清理；现已在缺工具或上传失败时删除本地备份与 checksum sidecar。 |
+| 703 | deploy/scripts/rollback.sh:78 node -e 解析器查找字面字符串 ".status=="deployed""，永远返回 undefined → CURRENT_REVISION="unknown" | `done` | 这是错误的兼容分支残留；当前回滚脚本只匹配真实 `row.status === "deployed"`。 |
+| 704 | deploy/scripts/dr-drill.sh:24-27 --dry-run 在参数校验前 exit 0，CI 错误 cmdline 被 dry-run 掩盖 | `done` | 旧脚本把 dry-run 放在参数解析前面；现已先完成参数解析与枚举校验，再执行 dry-run 退出。 |
+| 705 | deploy/scripts/dr-drill.sh:9 shebang 为 #!/bin/bash 不可移植 | `done` | 壳解释器写死系统路径；现已改为 `#!/usr/bin/env bash`。 |
+| 706 | deploy/scripts/deploy.sh:10 [[ "${1:-}" == "--dry-run" ]] 仅匹配第一个参数，dev v1 --dry-run 不进 dry-run 直接真实部署 | `done` | 旧 deploy 只检查首参；现已支持在 argv 任意位置解析 `--dry-run`。 |
+| 707 | scripts/clean-dist.mjs:5-19 env 优先级链不覆盖 aa:dev，紧随 npm run build 即 rmSync(dist) 破坏开发流 | `done` | 问题单把 build 前清理误判成 `aa:dev` 运行路径；当前 `aa:dev` 不走该脚本，且 `clean-dist` 已补 `--dry-run` 以防误删。 |
+| 708 | scripts/curated-test-selection.mjs:9 listFiles(".github/workflows",...) 无 cwd 守卫 | `done` | 该脚本已退出当前主干代码与测试链，问题单针对的是已移除的旧 curated 入口。 |
+| 709 | scripts/scan-current-codebase-gap.mjs:14-19 硬编码 tool-executor/、harness/toolbelt/，重命名静默失效 | `done` | 旧 gap scan 把父路径写死在 capability spec 中；现已改为在 `src/platform` 下按实时目录扫描发现 `tool-executor` / `toolbelt`，降低位置重构脆弱性。 |
+| 710 | scripts/run-layered-tests.mjs:52 硬编码 --test-concurrency=12，违反 AGENTS.md 由 layered runner 决定的契约 | `done` | 旧 runner 把经验值写死为 `12`；现已基于 `availableParallelism()` 动态计算默认并发。 |
+| 711 | scripts/run-layered-tests.mjs 未过滤把整 process.env 透传子进程，VITE_AUTH_TOKEN 等密钥进子进程日志 | `done` | 旧 runner 直接继承父进程环境；现已在 `buildChildEnv()` 中屏蔽 `TOKEN/SECRET/PASSWORD/API_KEY/KEY` 等敏感变量。 |
+| 712 | scripts/run-tracked-tests.mjs:44,49 双处硬编码 --test-concurrency=12/=1，绕过 AA_TEST_CONCURRENCY 协议 | `done` | `run-tracked-tests.mjs` 已不在当前主干测试入口中，问题单针对的是被淘汰的旧 runner。 |
+| 713 | scripts/run-tracked-tests.mjs:25 子进程透传整 process.env，未过滤 *_SECRET/*_TOKEN 等密钥 | `done` | 该问题随 `run-tracked-tests.mjs` 退出主干而失效，现行测试链统一走已做环境过滤的 `run-layered-tests.mjs`。 |
+| 714 | scripts/run-tracked-tests.mjs:1 顶层 await 后无 try/catch，非 git 仓库即未捕获异常 | `done` | 该脚本已不在当前仓库执行路径中，属于旧测试治理入口的遗留问题。 |
+| 715 | scripts/run-tracked-tests.mjs 无 child.on("error")，spawn 失败 promise 永挂起 | `done` | 该问题同属已下线的 tracked runner；现行 runner 已显式监听 child `error`。 |
+| 716 | scripts/run-curated-tests.mjs:11 默认 AA_CURATED_TEST_CONCURRENCY=12 与 layered runner 重复硬编码 | `done` | `run-curated-tests.mjs` 已退出当前主干执行链，问题单针对的是旧 curated 快速套件入口。 |
+| 717 | scripts/run-curated-tests.mjs:13-17 blockedEnvPatterns 漏 *_KEY/*_API_KEY/AA_API_KEYS_JSON/OPENAI_API_KEY | `done` | 该问题随旧 curated runner 退役失效；现行分层 runner 已覆盖 `*_KEY`、`*_API_KEY` 与 `AA_API_KEYS_JSON`。 |
+| 718 | scripts/run-curated-tests.mjs:78 不像 layered runner 注入 --expose-gc，curated 命中 leak 用例时 global.gc 静默 undefined | `done` | 旧 curated runner 已不再参与主干门禁，泄漏相关能力现统一由 `run-layered-tests.mjs` 承担。 |
+| 719 | scripts/run-layered-tests.mjs:195 env: process.env 直接透传，未应用 blockedEnvPatterns 过滤 | `done` | 与 711 同根因，旧 runner 直接透传环境；现已统一走 `buildChildEnv()` 过滤敏感键。 |
+| 720 | scripts/run-layered-tests.mjs:173 强制 --test-force-exit 掩盖未关闭句柄/timers，泄漏被静默 | `done` | 旧 runner 用 `--test-force-exit` 掩盖资源泄漏；该参数现已移除，测试进程按真实句柄状态退出。 |
+| 721 | scripts/run-layered-tests.mjs:200-205 child.on("exit") 而非 "close"，stdio 未排空即 resolve | `done` | 旧实现等待的是进程退出而不是 stdio 收尾；现已改为监听 child `close`。 |
+| 722 | scripts/run-layered-tests.mjs 无 child.on("error")，spawn 失败 promise 永挂起 | `done` | 子进程异常路径此前未覆盖；现已增加 `child.once("error", ...)` 并显式 reject。 |
+| 723 | scripts/run-layered-tests.mjs:217 只匹配 .test.ts，遗漏 .test.tsx/.test.mts/.spec.ts | `done` | 旧文件匹配过窄；现已扩展为 `.(test|spec).(ts|tsx|mts)`。 |
+| 724 | scripts/run-layered-tests.mjs:84-105 listFilesRecursively 不跳 node_modules/.git | `done` | 旧递归遍历缺少目录裁剪；现已跳过 `node_modules`、`.git`、`dist`、`coverage`、`.cache`。 |
+| 725 | scripts/clean-dist.mjs 无 --dry-run，误调用即 rmSync(dist) 不可恢复 | `done` | 清理脚本过去只有真实删除路径；现已支持 `--dry-run` 输出待删除内容。 |
+| 726 | scripts/architecture-boundary-scan.mjs 无 SARIF 输出，PR 注释流程缺失 | `done` | 旧扫描器只写 JSON；现已额外生成 `architecture-boundary-scan-report.sarif`。 |
+| 727 | scripts/scan-current-codebase-gap.mjs 输出含 Date.now() 时间戳但无 git ignore | `done` | 该问题针对旧版 timestamp 命名产物；现行脚本输出固定到 `artifacts/current-codebase-gap-review-v1.9.json`，且 `artifacts/` 已被 git ignore。 |
+| 728 | scripts/generate-src-module-test-matrix.mjs 与 audit-codebase-inventory.mjs 重复扫描 src，无共享 walker | `done` | 相关脚本已不在当前主干脚本清单里，问题单针对的是已撤下的旧代码盘点工具。 |
+| 729 | scripts/reorg-code-structure.mjs 五平面迁移完成后无脚本绑定，遗留死脚本 | `done` | 五平面迁移完成后，这个重组脚本已退出当前主干入口，问题单描述的是已清退的历史脚本。 |
+| 730 | scripts/backup-sqlite.sh 无 set -euo pipefail，部分错误被忽略继续 | `done` | 当前 `backup-sqlite.sh` 顶部已显式启用 `set -euo pipefail`，问题单基于旧快照。 |
+| 731 | scripts/backup-sqlite.sh 加密路径无 IV/nonce，openssl enc -salt 默认 PBKDF1 已弱化 | `done` | 旧加密路径参数不完整；现已固定使用 `-salt -pbkdf2 -iter 200000 -md sha256`，避免退化到弱派生参数。 |
+| 732 | scripts/backup-sqlite.sh 备份完成后无 sha256sum 校验 | `done` | 旧备份完成后缺少完整性旁路校验；现已为备份产物生成 `.sha256` sidecar。 |
+| 733 | scripts/restore-sqlite.sh 无原子替换，恢复中断即数据库永损 | `done` | 恢复流程过去直接覆盖目标 DB；现已先复制到临时文件、做 integrity check，再 `mv -f` 原子替换。 |
+| 734 | scripts/restore-sqlite.sh 不校验备份 schema 版本与当前 migrations 兼容 | `done` | 旧恢复只校验 SQLite 完整性，不看 schema 代际；现已比对备份 schema、当前库版本与仓库 migration head。 |
+| 735 | scripts/backup-sqlite.sh/restore-sqlite.sh 默认 DB 路径与 CONTRIBUTING/helm/AA_DB_PATH 四处不一致 | `done` | 默认 DB 名称先前多处漂移；当前 CONTRIBUTING、Helm、backup/restore 默认值都已统一为 `automatic-agent.db`，`automatic-agent-dev.db` 仅是本地栈显式 override。 |
+| 736 | scripts/backup-sqlite.sh 无 lock，与运行中 sqlite WAL 并发，.backup busy 时静默重试 5s 后失败 | `done` | 旧备份路径缺少并发互斥与 busy 等待；现已增加 lock 目录并在 `.backup` 前设置 sqlite `.timeout 5000`。 |
+| 737 | deploy/scripts/deploy.sh 蓝绿切换前未校验 new selector pod ready 数==replicas | `done` | 旧蓝绿切换只看 rollout 成功；现已在切换 Service selector 前校验 `readyReplicas == spec.replicas`。 |
+| 738 | deploy/scripts/rollback.sh 解析 helm history 通过 awk 列号，helm 输出格式变更即崩 | `done` | 当前回滚脚本已改为 `helm history --output json` + Node 解析，不再依赖表格列宽。 |
+| 739 | deploy/scripts/dr-drill.sh 触发 region 切换无 dry-run flag | `done` | 现行 `dr-drill.sh` 并不存在 region 切换分支，问题单针对的是旧设想路径；对实际支持的参数链路现已补齐 dry-run。 |
+| 740 | deploy/scripts/verify-hot-upgrade.sh 仅校验 HTTP 200，未比对版本 header/build hash | `done` | 旧热升级校验只验健康接口可达；现已补 `x-app-version` 与 `x-build-commit` 头部校验。 |
+| 741 | deploy/scripts/*.sh 全无 set -euo pipefail | `done` | 当前 `deploy.sh`、`rollback.sh`、`dr-drill.sh`、`verify-hot-upgrade.sh` 均已启用 `set -euo pipefail`，问题单基于旧状态。 |
+| 742 | deploy/scripts/*.sh 错误退出码不区分（统一 1） | `done` | 部署脚本过去没有分层错误码；现已为 usage、validation、dependency、deployment/rollback/runtime 失败分别定义退出码。 |
 
 ## docs_en
 

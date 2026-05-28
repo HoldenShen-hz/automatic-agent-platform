@@ -187,5 +187,22 @@ describe("OfflineQueue", () => {
       const remaining = queue.peek();
       expect(remaining.some((m) => m.id === "m1")).toBe(false);
     });
+
+    it("emits a caller-visible signal when capacity eviction drops queued mutations", async () => {
+      const evicted: string[] = [];
+      const store = createMemoryOfflineMutationStore([]);
+      const queue = new OfflineQueue(store, {
+        maxCapacity: 2,
+        onEvict(mutation) {
+          evicted.push(mutation.id);
+        },
+      });
+
+      await queue.enqueue(createMutation("m1"));
+      await queue.enqueue(createMutation("m2"));
+      await queue.enqueue(createMutation("m3"));
+
+      expect(evicted).toEqual(["m1"]);
+    });
   });
 });

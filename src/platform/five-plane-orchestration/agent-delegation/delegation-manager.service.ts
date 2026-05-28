@@ -844,7 +844,16 @@ export class DelegationManagerService {
     if (!this.delegationRepository) {
       return [];
     }
-    return await Promise.all(statuses.map(async (status) => await this.delegationRepository!.findByStatus(status)));
+    const settled = await Promise.allSettled(
+      statuses.map(async (status) => await this.delegationRepository!.findByStatus(status)),
+    );
+    const records: DelegationRecord[][] = [];
+    for (const result of settled) {
+      if (result.status === "fulfilled") {
+        records.push(result.value);
+      }
+    }
+    return records;
   }
 
   private async createDelegationRecord(

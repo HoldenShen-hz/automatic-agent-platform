@@ -1,5 +1,5 @@
 import { useState, type ReactElement } from "react";
-import { FeatureScaffold, ListCard, designTokens } from "@aa/ui-core";
+import { FeatureScaffold, Inline, ListCard, Stack, designTokens } from "@aa/ui-core";
 import { useHitlVm } from "../hooks";
 
 export function HitlWebView(): ReactElement {
@@ -7,26 +7,43 @@ export function HitlWebView(): ReactElement {
   const [editorMode, setEditorMode] = useState<"patch" | "override" | null>(null);
   const [editorTargetId, setEditorTargetId] = useState<string | null>(null);
   const [editorValue, setEditorValue] = useState("{}");
+  const [editorError, setEditorError] = useState<string | null>(null);
 
   async function applyEditor(): Promise<void> {
     if (editorTargetId == null || editorMode == null) {
       return;
     }
-    const parsed = JSON.parse(editorValue) as Record<string, unknown>;
-    if (editorMode === "patch") {
-      await vm.patch(editorTargetId, parsed);
-    } else {
-      await vm.override(editorTargetId, parsed);
+    let parsed: Record<string, unknown>;
+    try {
+      const candidate = JSON.parse(editorValue);
+      if (candidate == null || typeof candidate !== "object" || Array.isArray(candidate)) {
+        setEditorError("Editor payload must be a JSON object.");
+        return;
+      }
+      parsed = candidate as Record<string, unknown>;
+    } catch {
+      setEditorError("Editor payload must be valid JSON.");
+      return;
     }
-    setEditorMode(null);
-    setEditorTargetId(null);
-    setEditorValue("{}");
+    try {
+      if (editorMode === "patch") {
+        await vm.patch(editorTargetId, parsed);
+      } else {
+        await vm.override(editorTargetId, parsed);
+      }
+      setEditorError(null);
+      setEditorMode(null);
+      setEditorTargetId(null);
+      setEditorValue("{}");
+    } catch (error) {
+      setEditorError(error instanceof Error ? error.message : String(error));
+    }
   }
 
   return (
     <FeatureScaffold title="HITL" summary="人工介入、Inspect、Takeover、Resume 的统一入口" status="Implemented/Partial">
-      <div style={{ display: "grid", gap: 12 }}>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+      <Stack>
+        <Inline>
           <button
             disabled={vm.items.length === 0}
             onClick={() => {
@@ -45,7 +62,7 @@ export function HitlWebView(): ReactElement {
           >
             Bulk Reject
           </button>
-        </div>
+        </Inline>
         <ListCard items={vm.items.map((item) => ({
           title: item.title,
           description: item.description,
@@ -60,13 +77,14 @@ export function HitlWebView(): ReactElement {
               {item.escalationTarget != null && <div>{`Escalation: ${item.escalationTarget}`}</div>}
             </div>
             {item.type === "approval" ? (
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <Inline>
                 <button onClick={() => { void vm.approve(item.id); }} type="button">Approve</button>
                 <button onClick={() => { void vm.reject(item.id); }} type="button">Reject</button>
                 <button
                   onClick={() => {
                     setEditorMode("patch");
                     setEditorTargetId(item.id);
+                    setEditorError(null);
                   }}
                   type="button"
                 >
@@ -76,24 +94,33 @@ export function HitlWebView(): ReactElement {
                   onClick={() => {
                     setEditorMode("override");
                     setEditorTargetId(item.id);
+                    setEditorError(null);
                   }}
                   type="button"
                 >
                   Override
                 </button>
-              </div>
+              </Inline>
             ) : (
               <button onClick={() => { void vm.resume(item.id, "normal"); }} type="button">Resume</button>
             )}
           </div>
         ))}
         {editorMode != null && (
-          <div style={{ display: "grid", gap: 8 }}>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              void applyEditor();
+            }}
+          >
+            <Stack gap={8}>
             <textarea onChange={(event) => setEditorValue(event.target.value)} value={editorValue} />
-            <button onClick={() => { void applyEditor(); }} type="button">Apply</button>
-          </div>
+            {editorError != null ? <p role="alert">{editorError}</p> : null}
+            <button type="submit">Apply</button>
+            </Stack>
+          </form>
         )}
-      </div>
+      </Stack>
     </FeatureScaffold>
   );
 }

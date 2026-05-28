@@ -153,7 +153,7 @@ export class PmfValidationService {
 
   /** Lists historical PMF validation reports, most recent first */
   public listHistory(limit = 20): PmfValidationReportRecord[] {
-    return this.store.operations.listPmfValidationReports(limit);
+    return this.store.operations.listPmfValidationReports(Math.max(1, Math.min(500, Math.trunc(limit))));
   }
 
   /** Gets the most recent PMF validation report, optionally filtered by profile */
@@ -494,28 +494,26 @@ export class PmfValidationService {
    * Required because artifacts reference a task_id.
    */
   private ensurePmfArtifactTask(createdAt: string): void {
-    if (this.store.task.getTask("pmf_validation") != null) {
-      return;
-    }
-    this.store.task.insertTask({
-      id: "pmf_validation",
-      parentId: null,
-      rootId: "pmf_validation",
-      divisionId: "system",
-      title: "PMF validation evidence",
-      status: "done",
-      source: "system",
-      priority: "normal",
-      inputJson: "{}",
-      normalizedInputJson: "{}",
-      outputJson: null,
-      estimatedCostUsd: 0,
-      actualCostUsd: 0,
-      errorCode: null,
+    this.db.connection.prepare(`
+INSERT OR IGNORE INTO tasks (
+  id, parent_id, root_id, division_id, title, status, source, priority,
+  input_json, normalized_input_json, output_json, estimated_cost_usd, actual_cost_usd,
+  error_code, created_at, updated_at, completed_at
+) VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 0, 0, NULL, ?, ?, ?)
+`).run(
+      "pmf_validation",
+      "pmf_validation",
+      "operations",
+      "PMF validation evidence",
+      "done",
+      "system",
+      "normal",
+      "{}",
+      "{}",
       createdAt,
-      updatedAt: createdAt,
-      completedAt: createdAt,
-    });
+      createdAt,
+      createdAt,
+    );
   }
 
   /** Builds SQL filter for task queries with optional division scope */
@@ -603,7 +601,8 @@ export class PmfValidationService {
     }
 
     const normalized: Record<string, unknown> = { ...defaults };
-    for (const [key, value] of Object.entries(row)) {
+    for (const key of Object.keys(defaults)) {
+      const value = row[key];
       normalized[key] = value == null
         ? defaults[key]
         : typeof value === "number" && !Number.isFinite(value)

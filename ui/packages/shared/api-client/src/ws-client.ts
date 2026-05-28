@@ -32,6 +32,7 @@ export interface BrowserWSClientOptions {
   readonly heartbeatIntervalMs?: number;
   readonly heartbeatTimeoutMs?: number;
   readonly replayBufferSize?: number;
+  readonly random?: () => number;
 }
 
 type WorkerMessage =
@@ -45,7 +46,7 @@ function detachTimer(timer: ReturnType<typeof setTimeout> | ReturnType<typeof se
 }
 
 function isTrustedReplayEventId(value: unknown): value is string {
-  return typeof value === "string" && /^evt[-_][A-Za-z0-9:-]{1,}$/.test(value);
+  return typeof value === "string" && /^evt[-_][A-Za-z0-9:_-]{1,}$/.test(value);
 }
 
 function resolveTrustedReplayEventId(event: WSEventEnvelope): string | null {
@@ -333,7 +334,7 @@ export class BrowserWSClient implements WSClient {
     if (this.reconnectAttempts === 0) {
       return exponentialDelay;
     }
-    const jitter = exponentialDelay * Math.random() * 0.3;
+    const jitter = exponentialDelay * (this.options.random?.() ?? Math.random()) * 0.3;
     return Math.min(this.maxReconnectDelayMs, Math.floor(exponentialDelay + jitter));
   }
 
@@ -347,6 +348,7 @@ export class BrowserWSClient implements WSClient {
     }
     const delay = this.calculateReconnectDelay();
     this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = null;
       this.reconnectAttempts += 1;
       if (this.currentUrl != null && this.currentToken != null) {
         this.establishConnection(this.currentUrl, this.currentToken);

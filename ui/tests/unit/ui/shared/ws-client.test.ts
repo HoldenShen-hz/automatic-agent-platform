@@ -124,6 +124,7 @@ describe("BrowserWSClient", () => {
   });
 
   it("sends auth token in first message after connection, not in URL (Issue #2070)", async () => {
+    vi.useFakeTimers();
     let capturedUrl = "";
     let capturedProtocols: string | string[] | undefined;
     const sentMessages: string[] = [];
@@ -153,19 +154,14 @@ describe("BrowserWSClient", () => {
 
     const client = new BrowserWSClient(TestSocket as unknown as typeof WebSocket, new InMemoryWSClient());
     client.connect("ws://secure.example.com/events", "token-should-not-be-in-url");
+    await vi.advanceTimersByTimeAsync(10);
 
-    await new Promise<void>((resolve) => {
-      setTimeout(() => {
-        expect(capturedUrl).not.toContain("token-should-not-be-in-url");
-        expect(capturedProtocols?.toString()).toContain("v1.auth.token");
+    expect(capturedUrl).not.toContain("token-should-not-be-in-url");
+    expect(capturedProtocols?.toString()).toContain("v1.auth.token");
 
-        const authMessage = sentMessages.find((m) => m.includes("auth"));
-        expect(authMessage).toBeDefined();
-        expect(authMessage).toContain("token-should-not-be-in-url");
-
-        resolve();
-      }, 10);
-    });
+    const authMessage = sentMessages.find((m) => m.includes("auth"));
+    expect(authMessage).toBeDefined();
+    expect(authMessage).toContain("token-should-not-be-in-url");
   });
 
   it("resets fallback client state before reconnecting", () => {
@@ -230,6 +226,7 @@ describe("BrowserWSClient", () => {
   });
 
   it("disconnect clears all state and closes socket", async () => {
+    vi.useFakeTimers();
     class TestSocket {
       public static readonly OPEN = 1;
       public readyState = TestSocket.OPEN;
@@ -249,23 +246,16 @@ describe("BrowserWSClient", () => {
     }
 
     const client = new BrowserWSClient(TestSocket as unknown as typeof WebSocket, new InMemoryWSClient());
+    await vi.advanceTimersByTimeAsync(10);
+    client.disconnect();
 
-    await new Promise<void>((resolve) => {
-      setTimeout(() => {
-        client.disconnect();
-
-        const debugState = client as unknown as BrowserWSClientDebugState;
-        expect(debugState.currentUrl).toBeNull();
-        expect(debugState.currentToken).toBeNull();
-
-        resolve();
-      }, 10);
-    });
+    const debugState = client as unknown as BrowserWSClientDebugState;
+    expect(debugState.currentUrl).toBeNull();
+    expect(debugState.currentToken).toBeNull();
   });
 
   it("sends heartbeat ping frames and reconnects when pong is missing", async () => {
     vi.useFakeTimers();
-    vi.spyOn(Math, "random").mockReturnValue(0.5);
     const sockets: HeartbeatSocket[] = [];
 
     class HeartbeatSocket {
@@ -295,7 +285,7 @@ describe("BrowserWSClient", () => {
     const client = new BrowserWSClient(
       HeartbeatSocket as unknown as typeof WebSocket,
       new InMemoryWSClient(),
-      { heartbeatIntervalMs: 50, heartbeatTimeoutMs: 25 },
+      { heartbeatIntervalMs: 50, heartbeatTimeoutMs: 25, random: () => 0.5 },
     );
     client.connect("ws://example.com/ws", "heartbeat-token");
 
@@ -430,6 +420,7 @@ describe("BrowserWSClient", () => {
   });
 
   it("ignores inbound events that carry untrusted replay ids", async () => {
+    vi.useFakeTimers();
     class InvalidReplaySocket {
       public static readonly OPEN = 1;
       public static lastInstance: InvalidReplaySocket | null = null;
@@ -456,8 +447,7 @@ describe("BrowserWSClient", () => {
     const seen: WSEventEnvelope[] = [];
     client.subscribe("updates", (event) => seen.push(event));
     client.connect("ws://example.com/ws", "token");
-
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await vi.runAllTicks();
     expect(InvalidReplaySocket.lastInstance).not.toBeNull();
     const socket = InvalidReplaySocket.lastInstance!;
     socket.onmessage?.({
@@ -468,7 +458,7 @@ describe("BrowserWSClient", () => {
         payload: { status: "ok" },
       }),
     });
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await vi.runAllTicks();
 
     expect(seen).toHaveLength(0);
     const subscribeMessage = socket.sent.find((message: string) => message.includes('"action":"subscribe"'));

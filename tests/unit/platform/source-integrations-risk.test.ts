@@ -15,9 +15,11 @@ import type { DelegationEvent, DelegationResult } from "../../../src/platform/fi
 import { ExecutionOutcomeEvaluator } from "../../../src/platform/prompt-engine/eval/execution-outcome-evaluator.js";
 import { ServiceRegistry } from "../../../src/platform/shared/lifecycle/service-registry.js";
 
+let delegationCounter = 0;
+
 function createDelegationResult(overrides: Partial<DelegationResult> = {}): DelegationResult {
   return {
-    delegationId: `dlg-${Math.random().toString(36).slice(2)}`,
+    delegationId: `dlg-${String(delegationCounter++).padStart(4, "0")}`,
     parentAgentId: "parent-agent",
     childAgentId: "child-agent",
     depth: 1,

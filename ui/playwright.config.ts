@@ -7,10 +7,10 @@ const BASE_URL = process.env.PLAYWRIGHT_BASE_URL ?? `http://${HOST}:${PORT}`;
 
 export default defineConfig({
   testDir: "./tests",
-  testMatch: ["a11y/**/*.spec.ts", "playwright/**/*.spec.ts"],
+  testMatch: ["a11y/**/*.spec.ts", "playwright/**/*.spec.ts", "../tools/e2e/src/**/*.spec.ts"],
   timeout: 30_000,
   fullyParallel: true,
-  retries: process.env.CI ? 2 : 0,
+  retries: Number.parseInt(process.env.PLAYWRIGHT_RETRIES ?? "0", 10),
   reporter: [["list"], ["html", { open: "never" }]],
   use: {
     baseURL: BASE_URL,
@@ -22,7 +22,7 @@ export default defineConfig({
     { name: "webkit", use: { browserName: "webkit" } },
   ],
   webServer: {
-    command: `npm --workspace @aa/web run build && npm --workspace @aa/web run preview -- --host ${HOST} --port ${PORT} --strictPort`,
+    command: `npm --workspace @aa/web run dev -- --host ${HOST} --port ${PORT} --strictPort`,
     port: PORT,
     reuseExistingServer: true,
     timeout: 120_000,
