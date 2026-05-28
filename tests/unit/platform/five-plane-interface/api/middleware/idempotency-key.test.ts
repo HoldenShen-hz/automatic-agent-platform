@@ -71,6 +71,18 @@ test("IdempotencyKeyMiddleware returns cached response for duplicate", async () 
   assert.deepEqual(result.cachedResponse?.body, { id: 1 });
 });
 
+test("IdempotencyKeyMiddleware blocks duplicate request while original request is in flight", async () => {
+  const middleware = new IdempotencyKeyMiddleware();
+  const first = await middleware.check({ method: "POST", idempotencyKey: "key-in-flight", tenantId: "tenant-1" });
+  const second = await middleware.check({ method: "POST", idempotencyKey: "key-in-flight", tenantId: "tenant-1" });
+
+  assert.equal(first.allowed, true);
+  assert.equal(second.allowed, false);
+  assert.equal(second.isDuplicate, true);
+  assert.equal(second.requestInFlight, true);
+  assert.equal(second.error?.statusCode, 409);
+});
+
 test("IdempotencyKeyMiddleware detects method conflict with same key", async () => {
   const middleware = new IdempotencyKeyMiddleware();
   await middleware.check({ method: "POST", idempotencyKey: "key-123", tenantId: "tenant-1" });
@@ -79,6 +91,7 @@ test("IdempotencyKeyMiddleware detects method conflict with same key", async () 
   const result = await middleware.check({ method: "PUT", idempotencyKey: "key-123", tenantId: "tenant-1" });
   assert.equal(result.allowed, false);
   assert.equal(result.error?.statusCode, 409);
+  assert.equal(result.error?.message.includes("key-123"), false);
 });
 
 test("IdempotencyKeyMiddleware generates per-tenant storage key", async () => {
@@ -127,6 +140,16 @@ test("InMemoryIdempotencyStorage evicts oldest entry when maxEntries is reached"
 
   assert.equal(await storage.get("old"), null);
   assert.equal((await storage.get("new"))?.statusCode, 201);
+});
+
+test("InMemoryIdempotencyStorage reserves a pending key atomically", async () => {
+  const storage = new InMemoryIdempotencyStorage();
+  const first = await storage.reservePending("pending", "POST", 60_000);
+  const second = await storage.reservePending("pending", "POST", 60_000);
+
+  assert.equal(first.acquired, true);
+  assert.equal(second.acquired, false);
+  assert.equal(second.entry?.statusCode, 0);
 });
 
 test("extractIdempotencyKey returns header value", () => {

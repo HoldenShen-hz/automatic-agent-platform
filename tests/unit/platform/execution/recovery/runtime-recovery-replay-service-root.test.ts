@@ -8,7 +8,7 @@ import {
   type RecoveryReplayDecision,
   type RecoveryReplayRepair,
   type RecoveryReplayTimelineEvent,
-} from "../../../../../src/platform/five-plane-execution/recovery/runtime-recovery-replay-service-root.js";
+} from "../../../../../src/platform/five-plane-execution/recovery/runtime-recovery-replay-service.js";
 
 // Mock store helper - minimal mock for basic tests
 function createMockStore(overrides: {

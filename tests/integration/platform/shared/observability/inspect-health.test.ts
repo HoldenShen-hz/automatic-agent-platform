@@ -4,7 +4,7 @@ import { join } from "node:path";
 
 import { ApprovalService } from "../../../../../src/platform/five-plane-control-plane/approval-center/approval-service.js";
 import { ExecutionDispatchService } from "../../../../../src/platform/five-plane-execution/dispatcher/execution-dispatch-service.js";
-import { runSingleTaskExecution } from "../../../../../src/platform/five-plane-execution/execution-engine/single-task-execution.js";
+import { runSingleTaskExecution } from "../../../../../src/platform/five-plane-execution/execution-engine/single-task-happy-path.js";
 import { WorkerRegistryService } from "../../../../../src/platform/five-plane-execution/worker-pool/worker-registry-service.js";
 import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 import { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";

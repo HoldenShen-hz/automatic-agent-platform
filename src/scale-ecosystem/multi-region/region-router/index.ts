@@ -4,10 +4,10 @@ export const RegionDescriptorSchema = z.object({
   regionId: z.string().min(1),
   provider: z.string().min(1).default("unknown"),
   endpoints: z.object({
-    api: z.string().url().default("https://example.invalid"),
+    api: z.string().url().optional(),
     grpc: z.string().url().optional(),
     metrics: z.string().url().optional(),
-  }).default({ api: "https://example.invalid" }),
+  }).default({}),
   dataResidencyPolicy: z.enum(["local_only", "regional", "global"]).default("regional"),
   countryCode: z.string().min(2).default("XX"),
   jurisdiction: z.string().min(1),

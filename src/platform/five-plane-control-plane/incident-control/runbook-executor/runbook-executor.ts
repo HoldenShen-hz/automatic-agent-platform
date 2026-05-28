@@ -16,6 +16,8 @@
  * 3. Return execution result
  */
 
+import { spawn } from "node:child_process";
+
 import { newId, nowIso } from "../incident-platform-support.js";
 import type {
   ParsedRunbook,
@@ -32,6 +34,21 @@ import { parseRunbookMarkdown } from "./markdown-parser.js";
 
 const READ_ONLY_KUBECTL_SUBCOMMANDS = new Set(["get", "describe", "logs", "top", "api-resources", "api-versions", "cluster-info", "config", "version"]);
 const READ_ONLY_DOCKER_SUBCOMMANDS = new Set(["ps", "images", "inspect", "logs", "events", "stats", "version", "info"]);
+const COMMAND_LIKE_EXECUTABLES = new Set([
+  "cat",
+  "curl",
+  "df",
+  "docker",
+  "echo",
+  "free",
+  "git",
+  "grep",
+  "kubectl",
+  "ls",
+  "ps",
+  "pwd",
+  "top",
+]);
 
 function isReadOnlyDiagnosticCommand(command: string): boolean {
   const trimmed = command.trim();
@@ -62,6 +79,67 @@ function isReadOnlyDiagnosticCommand(command: string): boolean {
   return false;
 }
 
+function isCommandLike(command: string): boolean {
+  const trimmed = command.trim();
+  if (trimmed.length === 0) {
+    return false;
+  }
+  const executable = trimmed.split(/\s+/u, 1)[0]?.toLowerCase();
+  if (executable == null) {
+    return false;
+  }
+  return executable.startsWith("./")
+    || executable.startsWith("/")
+    || COMMAND_LIKE_EXECUTABLES.has(executable);
+}
+
+function tokenizeCommand(command: string): string[] {
+  const tokens: string[] = [];
+  let current = "";
+  let quote: "'" | "\"" | null = null;
+  let escaping = false;
+
+  for (const char of command) {
+    if (escaping) {
+      current += char;
+      escaping = false;
+      continue;
+    }
+    if (char === "\\") {
+      escaping = true;
+      continue;
+    }
+    if (quote != null) {
+      if (char === quote) {
+        quote = null;
+      } else {
+        current += char;
+      }
+      continue;
+    }
+    if (char === "'" || char === "\"") {
+      quote = char;
+      continue;
+    }
+    if (/\s/u.test(char)) {
+      if (current.length > 0) {
+        tokens.push(current);
+        current = "";
+      }
+      continue;
+    }
+    current += char;
+  }
+
+  if (escaping || quote != null) {
+    throw new Error("runbook.command_parse_failed");
+  }
+  if (current.length > 0) {
+    tokens.push(current);
+  }
+  return tokens;
+}
+
 /**
  * Result of a single step execution.
  */
@@ -83,6 +161,7 @@ export interface StepExecutionOutput {
 export class RunbookExecutor {
   private readonly config: RunbookExecutorConfig;
   private currentExecution: RunbookExecutionResult | null = null;
+  private readonly commandRunner: (command: string, timeoutMs: number) => Promise<StepExecutionOutput>;
 
   public constructor(config: Partial<RunbookExecutorConfig> = {}) {
     this.config = {
@@ -90,7 +169,9 @@ export class RunbookExecutor {
       stepTimeoutMs: config.stepTimeoutMs ?? 300_000,
       continueOnFailure: config.continueOnFailure ?? false,
       executeVerification: config.executeVerification ?? true,
+      ...(config.commandRunner != null ? { commandRunner: config.commandRunner } : {}),
     };
+    this.commandRunner = config.commandRunner ?? executeReadOnlyCommand;
   }
 
   /**
@@ -187,9 +268,6 @@ export class RunbookExecutor {
 
   /**
    * Executes a step and returns the result.
-   *
-   * In a real implementation, this would execute actual commands.
-   * Here we simulate execution for testing purposes.
    */
   public async executeStep(
     executionId: string,
@@ -224,9 +302,7 @@ export class RunbookExecutor {
     stepResult.startedAt = nowIso();
 
     try {
-      // Simulate command execution
-      // In a real implementation, this would spawn a child process
-      const result = await this.simulateStepExecution(step.command, simulatedResult);
+      const result = await this.executeStepCommand(step.command, simulatedResult);
 
       stepResult.status = result.success ? "completed" : "failed";
       stepResult.output = result.output ?? "";
@@ -251,29 +327,33 @@ export class RunbookExecutor {
     return stepResult;
   }
 
-  /**
-   * Simulates step execution for testing.
-   * In production, this would actually execute commands.
-   */
-  private async simulateStepExecution(
+  private async executeStepCommand(
     command: string,
     simulatedResult?: { success: boolean; output?: string },
   ): Promise<{ success: boolean; output?: string }> {
-    // Simulate async execution delay
-    await new Promise((resolve) => setTimeout(resolve, 10));
-
     if (simulatedResult) {
       return simulatedResult;
     }
 
-    // Default: assume success for diagnostic/read-only commands
-    const isReadOnly = isReadOnlyDiagnosticCommand(command);
+    if (isReadOnlyDiagnosticCommand(command)) {
+      const result = await this.commandRunner(command, this.config.stepTimeoutMs);
+      const output = [result.stdout.trim(), result.stderr.trim()].filter((value) => value.length > 0).join("\n");
+      return {
+        success: result.exitCode === 0,
+        output: output.length > 0 ? output : `[OK] Command exited with code ${result.exitCode}`,
+      };
+    }
+
+    if (isCommandLike(command)) {
+      return {
+        success: false,
+        output: `[Blocked] Non-read-only command requires operator approval or an explicit simulated result: ${command}`,
+      };
+    }
 
     return {
       success: true,
-      output: isReadOnly
-        ? `[Simulated] Executed: ${command}\n[OK] Command completed successfully`
-        : `[Simulated] Executed: ${command}\n[OK] Action completed`,
+      output: `[Recorded] Step acknowledged without shell execution: ${command}`,
     };
   }
 
@@ -440,4 +520,58 @@ export class RunbookExecutor {
 
     return lines.filter((l) => l !== null).join("\n");
   }
+}
+
+async function executeReadOnlyCommand(command: string, timeoutMs: number): Promise<StepExecutionOutput> {
+  const tokens = tokenizeCommand(command);
+  if (tokens.length === 0) {
+    throw new Error("runbook.command_parse_failed");
+  }
+
+  return new Promise<StepExecutionOutput>((resolve, reject) => {
+    const child = spawn(tokens[0]!, tokens.slice(1), {
+      shell: false,
+      stdio: ["ignore", "pipe", "pipe"],
+      env: process.env,
+    });
+
+    let stdout = "";
+    let stderr = "";
+    let settled = false;
+    const timeout = setTimeout(() => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      child.kill("SIGKILL");
+      reject(new Error("runbook.command_timeout"));
+    }, timeoutMs);
+
+    child.stdout.on("data", (chunk) => {
+      stdout += String(chunk);
+    });
+    child.stderr.on("data", (chunk) => {
+      stderr += String(chunk);
+    });
+    child.once("error", (error) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      clearTimeout(timeout);
+      reject(error);
+    });
+    child.once("close", (exitCode) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      clearTimeout(timeout);
+      resolve({
+        stdout,
+        stderr,
+        exitCode: exitCode ?? 1,
+      });
+    });
+  });
 }

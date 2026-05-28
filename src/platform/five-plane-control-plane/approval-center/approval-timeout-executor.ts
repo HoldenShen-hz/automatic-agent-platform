@@ -18,7 +18,7 @@ import { StructuredLogger } from "../../shared/observability/structured-logger.j
 import type { ApprovalRecord } from "../../contracts/types/domain.js";
 import type { AuthoritativeSqlDatabase } from "../../five-plane-state-evidence/truth/authoritative-sql-database.js";
 import type { AuthoritativeTaskStore } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
-import { ApprovalRepository } from "../../five-plane-state-evidence/truth/sqlite/repositories/approval-repository.js";
+import { ApprovalRepository } from "../../five-plane-state-evidence/truth/index.js";
 
 /** Default timeout per policy in milliseconds (24 hours). */
 const DEFAULT_TIMEOUT_MS = 24 * 60 * 60 * 1000;

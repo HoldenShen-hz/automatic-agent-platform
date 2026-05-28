@@ -21,7 +21,7 @@ import {
 
 test("integration: gRPC adapter service lifecycle", async () => {
   const adapter = new GrpcAdapterService({
-    host: "0.0.0.0",
+    host: "127.0.0.1",
     port: 50051,
     packageName: "platform.v1",
     serviceName: "TaskService",
@@ -44,7 +44,7 @@ test("integration: gRPC adapter service lifecycle", async () => {
 
 test("integration: gRPC adapter service registration and method calls", async () => {
   const adapter = new GrpcAdapterService({
-    host: "0.0.0.0",
+    host: "127.0.0.1",
     port: 50052,
     packageName: "platform.v1",
     serviceName: "TaskService",
@@ -142,7 +142,7 @@ test("integration: gRPC adapter service registration and method calls", async ()
 
 test("integration: gRPC adapter handles unknown service and method errors", async () => {
   const adapter = new GrpcAdapterService({
-    host: "0.0.0.0",
+    host: "127.0.0.1",
     port: 50053,
     packageName: "test",
     serviceName: "TestService",
@@ -175,7 +175,7 @@ test("integration: gRPC adapter handles unknown service and method errors", asyn
 
 test("integration: gRPC adapter handles handler errors", async () => {
   const adapter = new GrpcAdapterService({
-    host: "0.0.0.0",
+    host: "127.0.0.1",
     port: 50054,
     packageName: "test",
     serviceName: "FailingService",
@@ -204,7 +204,7 @@ test("integration: gRPC adapter handles handler errors", async () => {
 
 test("integration: gRPC adapter metadata handling", async () => {
   const adapter = new GrpcAdapterService({
-    host: "0.0.0.0",
+    host: "127.0.0.1",
     port: 50055,
     packageName: "test",
     serviceName: "MetadataService",
@@ -334,7 +334,7 @@ test("integration: gRPC adapter getServerAddress and getConfig", () => {
 
 test("integration: gRPC adapter multiple service registrations", () => {
   const adapter = new GrpcAdapterService({
-    host: "0.0.0.0",
+    host: "127.0.0.1",
     port: 50056,
     packageName: "platform",
     serviceName: "MainService",

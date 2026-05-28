@@ -15,10 +15,10 @@ import { ExecutionResourceCeilingGuard } from "../../../../../src/platform/five-
 import {
   buildEnvironmentProviderReadinessProbe,
 } from "../../../../../src/platform/five-plane-execution/startup/startup-preflight.js";
-import { RuntimeRecoveryService } from "../../../../../src/platform/five-plane-execution/recovery/runtime-recovery-service-root.js";
+import { RuntimeRecoveryService } from "../../../../../src/platform/five-plane-execution/recovery/runtime-recovery-service.js";
 import { StalledExecutionDetector } from "../../../../../src/platform/five-plane-execution/recovery/stalled-execution-detector.js";
 import { StalledExecutionEscalationService } from "../../../../../src/platform/five-plane-execution/recovery/stalled-execution-escalation-service.js";
-import { runSingleTaskExecution } from "../../../../../src/platform/five-plane-execution/execution-engine/single-task-execution.js";
+import { runSingleTaskExecution } from "../../../../../src/platform/five-plane-execution/execution-engine/single-task-happy-path.js";
 import { StartupConsistencyChecker } from "../../../../../src/platform/five-plane-execution/startup/startup-consistency-checker.js";
 import { WorkerRegistryService } from "../../../../../src/platform/five-plane-execution/worker-pool/worker-registry-service.js";
 import { StorageQuotaService } from "../../../../../src/platform/five-plane-state-evidence/truth/storage-quota-service.js";

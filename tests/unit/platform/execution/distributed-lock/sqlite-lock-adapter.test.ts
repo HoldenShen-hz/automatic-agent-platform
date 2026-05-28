@@ -112,7 +112,7 @@ test("SqliteLockAdapter.extend extends lock TTL [sqlite-lock-adapter]", () => {
   const extended = adapter.extend("test-lock", "owner-1", 60000);
   assert.ok(extended !== null);
   assert.equal(extended!.lockKey, "test-lock");
-  assert.equal(extended!.ttlMs, 90000);
+  assert.equal(extended!.ttlMs, 60000);
 
   db.close();
 });
@@ -125,7 +125,7 @@ test("SqliteLockAdapter.extend caps TTL growth and rotates fencing token [sqlite
   const extended = adapter.extend("cap-lock", "owner-1", 50_000);
 
   assert.ok(extended);
-  assert.equal(extended!.ttlMs, 600000);
+  assert.equal(extended!.ttlMs, 50_000);
   assert.ok(extended!.fencingToken > acquired.lock!.fencingToken);
 
   db.close();
@@ -185,7 +185,7 @@ test("SqliteLockAdapter.forceSteal takes over lock [sqlite-lock-adapter]", () =>
 
   adapter.acquire({ lockKey: "test-lock", owner: "owner-1", ttlMs: 30000 });
 
-  const stolen = adapter.forceSteal("test-lock", "owner-2", "emergency takeover");
+  const stolen = adapter.forceSteal("test-lock", "owner-2", "incident_mitigation");
   assert.ok(stolen);
   assert.equal(stolen.owner, "owner-2");
   assert.equal(stolen.status, "held");

@@ -256,18 +256,20 @@ test("Integration: promotion thresholds increase at each level", () => {
 
 test("Integration: memory becomes stale after layer-specific TTL", () => {
   // Runtime layer: default 60 seconds
+  const runtimeNowMs = Date.parse("2026-05-28T12:00:00.000Z");
   const runtimeMemory = createMemory({
     scope: "runtime",
-    createdAt: new Date(Date.now() - 90000).toISOString(), // 90 seconds ago
+    createdAt: new Date(runtimeNowMs - 90_000).toISOString(),
   });
-  assert.equal(isMemoryStale(runtimeMemory, Date.now()), true);
+  assert.equal(isMemoryStale(runtimeMemory, runtimeNowMs), true);
 
   // Session layer: default 1 hour
+  const sessionNowMs = Date.parse("2026-05-28T12:00:00.000Z");
   const sessionMemory = createMemory({
     scope: "session",
-    createdAt: new Date(Date.now() - 30 * 60 * 1000).toISOString(), // 30 minutes ago
+    createdAt: new Date(sessionNowMs - 30 * 60 * 1000).toISOString(),
   });
-  assert.equal(isMemoryStale(sessionMemory, Date.now()), false);
+  assert.equal(isMemoryStale(sessionMemory, sessionNowMs), false);
 });
 
 test("Integration: memory staleness respects explicit expiresAt", () => {

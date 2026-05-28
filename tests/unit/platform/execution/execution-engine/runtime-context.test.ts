@@ -14,7 +14,7 @@ import {
   hasTenantContext,
   hasWorkspaceContext,
   type RuntimeContextSnapshot,
-} from "../../../../../src/platform/five-plane-execution/execution-engine/runtime-context.js";
+} from "../../../../../src/platform/shared/context/runtime-context.js";
 
 test("provideContext establishes context for synchronous function [runtime-context]", () => {
   const snapshot: RuntimeContextSnapshot = {

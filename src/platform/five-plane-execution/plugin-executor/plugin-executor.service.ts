@@ -28,7 +28,7 @@ import {
   type SandboxPolicy,
   type SandboxMode,
   type SandboxModeLike,
-} from "../../five-plane-control-plane/iam/sandbox-policy.js";
+} from "../../five-plane-control-plane/iam/index.js";
 import { ArtifactStore } from "../../five-plane-state-evidence/artifacts/artifact-store.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import {
@@ -97,13 +97,13 @@ export class PluginExecutorService {
   private readonly sandboxPolicy: SandboxPolicy;
   private readonly artifactStore: ArtifactStore;
   private readonly pluginDir: string;
-  private readonly enforceSignatures: boolean;
+  private readonly enforceSignatures: boolean | null;
 
   public constructor(options: PluginExecutorOptions = {}) {
     this.pluginDir = options.pluginDir ?? join(process.cwd(), "plugins");
     this.sandboxPolicy = options.sandboxPolicy ?? createWorkspaceWritePolicy(process.cwd());
     this.artifactStore = options.artifactStore ?? new ArtifactStore();
-    this.enforceSignatures = options.enforceSignatures ?? process.env.AA_ENFORCE_PLUGIN_SIGNATURES === "1";
+    this.enforceSignatures = options.enforceSignatures ?? null;
   }
 
   // ── Registry Operations ────────────────────────────────────────────────────
@@ -185,7 +185,7 @@ export class PluginExecutorService {
 
     const context = this.buildContext(pluginId, instance.manifest);
 
-    if (this.enforceSignatures) {
+    if (this.shouldEnforceSignature(instance.manifest)) {
       enforcePluginSignature(toPluginDefinition(instance.manifest));
     }
 
@@ -479,10 +479,12 @@ export class PluginExecutorService {
         : { ...params, context };
       return handler.call(hooks, executionContext);
     }
-    throw new ValidationError(
-      "plugin_executor.action_not_implemented",
-      `Action ${action} not implemented`,
-    );
+    return {
+      status: "rejected",
+      errorCode: "plugin_executor.action_not_implemented",
+      action,
+      pluginExecutionId: context.executionId,
+    };
   }
 
   private async executeWithTimeout<T>(
@@ -540,6 +542,13 @@ export class PluginExecutorService {
       // Artifact writing is best-effort; don't fail execution
       return undefined;
     }
+  }
+
+  private shouldEnforceSignature(manifest: PluginManifest): boolean {
+    if (this.enforceSignatures != null) {
+      return this.enforceSignatures;
+    }
+    return manifest.extensionKind === "external_adapter" || manifest.trustLevel !== "internal";
   }
 }
 

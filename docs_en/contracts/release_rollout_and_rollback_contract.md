@@ -1,6 +1,6 @@
 # Release Rollout And Rollback Contract
 
-> **OAPEFLIR Related**: This contract defines controlled release and rollback mechanisms for OAPEFLIR Improve Hub, corresponding to ADR-075 and ADR-018.
+> **OAPEFLIR Related**: This contract defines controlled release and rollback mechanisms for OAPEFLIR Improve Hub. ADR-075 is the implementation authority; ADR-018 is retained only as historical background.
 > **Updated**: 2026-04-17
 
 ## 1. Scope
@@ -50,7 +50,7 @@ Corresponds to ADR-075 §1:
 
 ### 4.2 Rollout State Machine
 
-Complete state machine (see ADR-018 and ADR-075 §2):
+The complete state machine is governed by ADR-075 §2; ADR-018 is referenced only to explain historical naming:
 
 ```
 candidate_created

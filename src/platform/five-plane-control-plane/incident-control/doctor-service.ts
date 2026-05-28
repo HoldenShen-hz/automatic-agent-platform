@@ -33,7 +33,10 @@ import {
   resolveConfigRoot,
   resolveExpectedProtectedGovernanceVersion,
 } from "../config-center/runtime-env.js";
-import { SqliteReliabilityService, type SqliteBackupReport } from "../../five-plane-state-evidence/truth/sqlite/sqlite-reliability-service.js";
+import {
+  SqliteReliabilityService,
+  type SqliteBackupReport,
+} from "../../five-plane-state-evidence/truth/index.js";
 import type { AuthoritativeTaskStore } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
 import { nowIso } from "../../contracts/types/ids.js";
 import type { ObservabilityRetentionReport } from "../../shared/observability/observability-retention-service.js";

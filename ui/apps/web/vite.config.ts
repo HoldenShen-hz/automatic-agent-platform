@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { defineConfig, type Plugin } from "vite";
+import { defineConfig, loadEnv, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import tsconfigPaths from "vite-tsconfig-paths";
 import {
@@ -9,23 +9,34 @@ import {
   WEB_MINIFY_MODE,
 } from "./build-config";
 
-const CSP_HEADER = [
-  "default-src 'self'",
-  "script-src 'self'",
-  "style-src 'self'",
-  "img-src 'self' data: blob:",
-  "font-src 'self' data:",
-  "connect-src 'self' https: ws: wss:",
-  "frame-ancestors 'none'",
-  "base-uri 'self'",
-  "object-src 'none'",
-].join("; ");
+function resolveConnectSrcOrigins(env: Record<string, string | undefined>): readonly string[] {
+  const candidates = [env.VITE_API_BASE_URL, env.VITE_WS_URL, env.VITE_OTLP_ENDPOINT]
+    .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
+    .map((value) => {
+      const url = new URL(value);
+      if (url.protocol === "ws:" || url.protocol === "wss:") {
+        return `${url.protocol}//${url.host}`;
+      }
+      return url.origin;
+    });
+  return Array.from(new Set(candidates));
+}
 
-const REPORT_TO_HEADER = JSON.stringify({
-  group: "csp-endpoint",
-  max_age: 10886400,
-  endpoints: [{ url: "/api/csp-report" }],
-});
+function buildCspHeader(env: Record<string, string | undefined>): string {
+  const connectSrc = ["'self'", ...resolveConnectSrcOrigins(env)].join(" ");
+  return [
+    "default-src 'self'",
+    "script-src 'self'",
+    "style-src 'self'",
+    "img-src 'self' data: blob:",
+    "font-src 'self' data:",
+    "worker-src 'self' blob:",
+    `connect-src ${connectSrc}`,
+    "frame-ancestors 'none'",
+    "base-uri 'self'",
+    "object-src 'none'",
+  ].join("; ");
+}
 
 function resolveBundleAssetPath(value: string): string {
   return value.replace(/^\.?\//, "");
@@ -56,6 +67,9 @@ export function applySubresourceIntegrity(bundle: Record<string, { type: "asset"
   indexHtml.source = indexHtml.source.replace(
     /<(script|link)\b([^>]*?)\b(src|href)="([^"]+)"([^>]*)>/g,
     (full, tagName: string, before: string, attributeName: string, assetPath: string, after: string) => {
+      if (/\bintegrity=/.test(before) || /\bintegrity=/.test(after)) {
+        return full;
+      }
       const resolvedAssetPath = resolveBundleAssetPath(assetPath);
       const integrity = integrityLookup.get(resolvedAssetPath);
       if (integrity == null) {
@@ -68,7 +82,7 @@ export function applySubresourceIntegrity(bundle: Record<string, { type: "asset"
   );
 }
 
-function createCspHeadersPlugin(): Plugin {
+function createCspHeadersPlugin(cspHeader: string): Plugin {
   return {
     name: "csp-headers",
     generateBundle(_, bundle) {
@@ -78,38 +92,50 @@ function createCspHeadersPlugin(): Plugin {
         fileName: "_headers",
         source: [
           "/*",
-          `  Content-Security-Policy: ${CSP_HEADER}`,
-          `  Report-To: ${REPORT_TO_HEADER}`,
+          `  Content-Security-Policy: ${cspHeader}`,
           "",
         ].join("\n"),
       });
     },
     configurePreviewServer(server) {
       server.middlewares.use((_request, response, next) => {
-        response.setHeader("Content-Security-Policy", CSP_HEADER);
-        response.setHeader("Report-To", REPORT_TO_HEADER);
+        response.setHeader("Content-Security-Policy", cspHeader);
         next();
       });
     },
   };
 }
 
-export default defineConfig(({ mode }) => ({
-  plugins: [react(), tsconfigPaths(), createCspHeadersPlugin()],
-  resolve: {
-    alias: {
-      "react-native": new URL("./src/react-native-web-stub.tsx", import.meta.url).pathname,
-    },
-  },
-  build: {
-    target: WEB_BUILD_TARGET,
-    minify: WEB_MINIFY_MODE,
-    chunkSizeWarningLimit: WEB_CHUNK_WARNING_LIMIT_KB,
-    sourcemap: mode === "production" ? "hidden" : true,
-    rollupOptions: {
-      output: {
-        manualChunks: selectManualChunk,
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), "");
+  const cspHeader = buildCspHeader(env);
+  return {
+    plugins: [react(), tsconfigPaths(), createCspHeadersPlugin(cspHeader)],
+    resolve: {
+      alias: {
+        "react-native": new URL("./src/react-native-web-stub.tsx", import.meta.url).pathname,
       },
     },
-  },
-}));
+    server: {
+      host: "localhost",
+      port: 5173,
+      strictPort: true,
+    },
+    preview: {
+      host: "localhost",
+      port: 4173,
+      strictPort: true,
+    },
+    build: {
+      target: WEB_BUILD_TARGET,
+      minify: WEB_MINIFY_MODE,
+      chunkSizeWarningLimit: WEB_CHUNK_WARNING_LIMIT_KB,
+      sourcemap: mode === "production" ? false : true,
+      rollupOptions: {
+        output: {
+          manualChunks: selectManualChunk,
+        },
+      },
+    },
+  };
+});

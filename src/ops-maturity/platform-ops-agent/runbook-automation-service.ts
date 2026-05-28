@@ -32,28 +32,34 @@ export interface RunbookExecutionContext {
   readonly dryRun: boolean;
 }
 
+function getDeterministicDuration(stepIndex: number): number {
+  return 50 + stepIndex * 25;
+}
+
+function shouldFailStep(stepName: string): boolean {
+  return /(^|[-_])(fail|error|abort)([-_]|$)/i.test(stepName);
+}
+
 function executeStep(stepName: string, stepIndex: number, isDryRun: boolean): RunbookStepResult {
-  const simulatedDelay = 50 + Math.random() * 150;
+  const simulatedDelay = getDeterministicDuration(stepIndex);
 
   if (isDryRun) {
     return {
       stepId: `step_${stepIndex}`,
       stepName,
       status: "skipped",
-      output: `[DRY RUN] Would execute: \${stepName}`,
-      durationMs: Math.round(simulatedDelay),
+      output: `[DRY RUN] Would execute: ${stepName}`,
+      durationMs: simulatedDelay,
     };
   }
 
-  const success = Math.random() > 0.05;
-
-  if (success) {
+  if (!shouldFailStep(stepName)) {
     return {
       stepId: `step_${stepIndex}`,
       stepName,
       status: "success",
-      output: `Successfully executed: \${stepName}`,
-      durationMs: Math.round(simulatedDelay),
+      output: `Successfully executed: ${stepName}`,
+      durationMs: simulatedDelay,
     };
   }
 
@@ -61,8 +67,8 @@ function executeStep(stepName: string, stepIndex: number, isDryRun: boolean): Ru
     stepId: `step_${stepIndex}`,
     stepName,
     status: "failed",
-    error: `Step failed: \${stepName} - simulated failure for testing`,
-    durationMs: Math.round(simulatedDelay),
+    error: `Step failed: ${stepName} - deterministic guard failure`,
+    durationMs: simulatedDelay,
   };
 }
 

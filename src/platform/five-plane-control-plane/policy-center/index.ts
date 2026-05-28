@@ -279,7 +279,7 @@ export class PolicyCenterService {
       return {
         constraints: { mode: "no_write", breakGlass: true, operatorAckRequired: true },
         denyReason: null,
-        requiresApproval: input.subjectType !== "system",
+        requiresApproval: true,
         matchedRuleRefs: ["mode.emergency"],
         explainSummary: "Emergency mode enables break-glass procedures with operator acknowledgment.",
       };

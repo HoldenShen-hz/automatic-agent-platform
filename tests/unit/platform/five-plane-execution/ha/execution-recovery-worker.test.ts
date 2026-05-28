@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { ExecutionRecoveryWorker } from "../../../../../src/platform/five-plane-execution/ha/execution-recovery-worker.js";
-import type { RuntimeRecoveryCandidate } from "../../../../../src/platform/five-plane-execution/recovery/runtime-recovery-service-root.js";
+import type { RuntimeRecoveryCandidate } from "../../../../../src/platform/five-plane-execution/recovery/runtime-recovery-service.js";
 
 function createCandidate(overrides: Partial<RuntimeRecoveryCandidate> = {}): RuntimeRecoveryCandidate {
   return {

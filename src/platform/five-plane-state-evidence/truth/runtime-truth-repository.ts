@@ -20,6 +20,7 @@ import {
   type RuntimeTransitionResult,
 } from "../../shared/runtime-state-machine.js";
 import type { RuntimeStatus } from "../../shared/runtime-state-machine-model.js";
+import { stableStringify } from "../../shared/cache/utils/stable-stringify.js";
 
 /** R11-12: Snapshot version for CAS operations */
 export interface SnapshotVersion {
@@ -243,7 +244,7 @@ export class RuntimeTruthRepository implements RuntimeRepository {
       budgetReservations: [...this.state.budgetReservations.entries()].sort((a, b) => a[0].localeCompare(b[0])),
     };
 
-    const stateJson = JSON.stringify(normalizedState);
+    const stateJson = stableStringify(normalizedState);
     return createHash("sha256").update(stateJson).digest("hex");
   }
 

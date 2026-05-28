@@ -26,11 +26,17 @@ import { type CasService, createSqliteCasService } from "../events/cas/cas-servi
 import { SqliteCasRepository } from "../events/cas/sqlite-cas-repository.js";
 
 const require = createRequire(import.meta.url);
+const STORAGE_BACKEND_RUNTIME_SPECIFIERS = ["postgres", "./postgres/pg-database.js"] as const;
 
-function runtimeRequire(specifier: string): unknown {
-  const override = globalThis.require as NodeJS.Require | undefined;
-  if (override != null && (override as NodeJS.Require & { __aaMockOverride?: boolean }).__aaMockOverride === true) {
-    return override(specifier);
+type StorageBackendRuntimeSpecifier = (typeof STORAGE_BACKEND_RUNTIME_SPECIFIERS)[number];
+
+function resolveRuntimeModule(
+  specifier: StorageBackendRuntimeSpecifier,
+  runtimeModules: Partial<Record<StorageBackendRuntimeSpecifier, unknown>> | undefined,
+): unknown {
+  const override = runtimeModules?.[specifier];
+  if (override !== undefined) {
+    return override;
   }
   return require(specifier);
 }
@@ -49,6 +55,8 @@ export interface AuthoritativeStorageBackendOptions {
   sandboxPolicy?: SandboxPolicy;
   /** SQLite-specific options */
   sqliteOptions?: SqliteDatabaseOptions;
+  /** Explicit runtime module overrides for locked specifiers, used by tests and controlled embedding environments. */
+  runtimeModules?: Partial<Record<StorageBackendRuntimeSpecifier, unknown>>;
 }
 
 /**
@@ -425,7 +433,7 @@ export async function openPostgresAuthoritativeStorageBackend(
   try {
     // Using require to check if the module is available
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    runtimeRequire("postgres");
+    resolveRuntimeModule("postgres", options.runtimeModules);
   } catch (error) {
     throw new StorageError(
       "storage.postgres_driver_not_installed",
@@ -435,7 +443,7 @@ export async function openPostgresAuthoritativeStorageBackend(
 
   // Driver is available - import and use the PgDatabase implementation
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { PgDatabase } = runtimeRequire("./postgres/pg-database.js") as {
+  const { PgDatabase } = resolveRuntimeModule("./postgres/pg-database.js", options.runtimeModules) as {
     PgDatabase: typeof import("./postgres/pg-database.js").PgDatabase;
   };
 

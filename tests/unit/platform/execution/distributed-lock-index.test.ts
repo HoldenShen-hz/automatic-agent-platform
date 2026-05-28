@@ -4,7 +4,7 @@ import test from "node:test";
 import { SqliteLockAdapter } from "../../../../src/platform/five-plane-execution/distributed-lock/sqlite-lock-adapter.js";
 import { PgAdvisoryLockAdapter } from "../../../../src/platform/five-plane-execution/distributed-lock/pg-advisory-lock-adapter.js";
 import { RedisLockAdapter } from "../../../../src/platform/five-plane-execution/distributed-lock/redis-lock-adapter.js";
-import { createLockAdapter } from "../../../../src/platform/five-plane-execution/distributed-lock/distributed-lock-factory.js";
+import { createLockAdapter } from "../../../../src/platform/five-plane-execution/distributed-lock/distributed-lock-service.js";
 import type { DistributedLockAdapter } from "../../../../src/platform/five-plane-execution/distributed-lock/distributed-lock-types.js";
 
 // Re-export the types to verify they are exported correctly

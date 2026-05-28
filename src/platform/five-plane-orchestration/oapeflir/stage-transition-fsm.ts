@@ -52,6 +52,15 @@ export interface StageEntryCondition {
 const STAGE_ORDER: readonly OapeflirStage[] = OAPEFLIR_STAGES;
 const FEEDBACK_REENTRY_TARGETS: readonly OapeflirStage[] = ["observe", "assess", "plan", "execute"];
 
+function createMonotonicTimestampSource(startMs = Date.now()): () => number {
+  let lastMs = startMs;
+  return () => {
+    const nowMs = Date.now();
+    lastMs = nowMs > lastMs ? nowMs : lastMs + 1;
+    return lastMs;
+  };
+}
+
 const VALID_PREDECESSORS: ReadonlyMap<OapeflirStage, readonly OapeflirStage[]> = new Map([
   ["observe", []],
   ["assess", ["observe"]],
@@ -80,6 +89,7 @@ export class StageTransitionFSM {
   private readonly stageStatuses = new Map<OapeflirStage, StageStatus>();
   private readonly stageTimestamps = new Map<OapeflirStage, number>();
   private readonly skippedReasonCodes = new Map<OapeflirStage, string>();
+  private readonly nextTimestamp = createMonotonicTimestampSource();
 
   public constructor() {
     for (const stage of STAGE_ORDER) {
@@ -186,12 +196,12 @@ export class StageTransitionFSM {
   public recordStageEntry(stage: OapeflirStage, status: StageStatus = "pending"): void {
     this.currentStageIndex = STAGE_ORDER.indexOf(stage);
     this.stageStatuses.set(stage, status);
-    this.stageTimestamps.set(stage, Date.now());
+    this.stageTimestamps.set(stage, this.nextTimestamp());
   }
 
   public recordStageCompletion(stage: OapeflirStage): void {
     this.stageStatuses.set(stage, "completed");
-    this.stageTimestamps.set(stage, Date.now());
+    this.stageTimestamps.set(stage, this.nextTimestamp());
 
     const stageIndex = STAGE_ORDER.indexOf(stage);
     if (stageIndex >= this.currentStageIndex) {
@@ -201,7 +211,7 @@ export class StageTransitionFSM {
 
   public recordStageSkipped(stage: OapeflirStage, reasonCode: string): void {
     this.stageStatuses.set(stage, "skipped");
-    this.stageTimestamps.set(stage, Date.now());
+    this.stageTimestamps.set(stage, this.nextTimestamp());
     this.skippedReasonCodes.set(stage, reasonCode);
 
     const stageIndex = STAGE_ORDER.indexOf(stage);
@@ -220,7 +230,7 @@ export class StageTransitionFSM {
 
   public recordStageError(stage: OapeflirStage): void {
     this.stageStatuses.set(stage, "error");
-    this.stageTimestamps.set(stage, Date.now());
+    this.stageTimestamps.set(stage, this.nextTimestamp());
   }
 
   public getNextStage(): OapeflirStage | null {

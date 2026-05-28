@@ -133,7 +133,7 @@ export class SessionDualStorageService {
     const sessionPath = this.getSessionJsonlPath(event.sessionId);
     const taskIndexPath = this.getTaskIndexPath(event.taskId);
 
-    const line = JSON.stringify(event) + "\n";
+    const line = serializeSessionEvent(event) + "\n";
 
     const sessionFd = openSync(sessionPath, "a");
     const sessionSizeBeforeWrite = fstatSync(sessionFd).size;
@@ -499,6 +499,32 @@ export class SessionDualStorageService {
       issues,
     };
   }
+}
+
+function serializeSessionEvent(event: SessionEvent): string {
+  return JSON.stringify(normalizeJsonlValue(event));
+}
+
+function normalizeJsonlValue(value: unknown): unknown {
+  if (Buffer.isBuffer(value)) {
+    return {
+      $type: "Buffer",
+      encoding: "base64",
+      data: value.toString("base64"),
+    };
+  }
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => normalizeJsonlValue(item));
+  }
+  if (value != null && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, nestedValue]) => [key, normalizeJsonlValue(nestedValue)]),
+    );
+  }
+  return value;
 }
 
 function collectPluginIds(value: unknown): string[] {

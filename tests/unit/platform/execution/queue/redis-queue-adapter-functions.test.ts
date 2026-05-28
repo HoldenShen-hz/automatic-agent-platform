@@ -14,7 +14,7 @@
  * - ping, close (connection management)
  * - sync enqueue (pipeline behavior)
  *
- * Uses mock Redis client to test behavior without live Redis connection.
+ * Uses mock Redis client or the explicit in-memory driver to test behavior without live Redis connection.
  */
 
 import assert from "node:assert/strict";
@@ -22,6 +22,12 @@ import test from "node:test";
 
 import { RedisQueueAdapter } from "../../../../../src/platform/five-plane-execution/queue/redis-queue-adapter.js";
 import type { QueueJobStatus } from "../../../../../src/platform/five-plane-execution/queue/queue-adapter-types.js";
+
+const MEMORY_CONFIG = {
+  host: "localhost",
+  port: 6379,
+  driver: "memory" as const,
+};
 
 // Helper to create adapter with mock redis client
 function createAdapterWithMockRedis(mockRedis: any): RedisQueueAdapter {
@@ -91,78 +97,35 @@ test("RedisQueueAdapter has backendKind of redis [redis-queue-adapter-functions]
   assert.equal(adapter.backendKind, "redis");
 });
 
-test("RedisQueueAdapter uses in-memory redis when AA_RUNNING_TESTS is enabled [redis-queue-adapter-functions]", async () => {
-  const previousRunningTests = process.env.AA_RUNNING_TESTS;
-  const previousNodeEnv = process.env.NODE_ENV;
-  process.env.AA_RUNNING_TESTS = "1";
-  process.env.NODE_ENV = "test";
-
-  try {
-    const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
-    assert.equal(await adapter.ping(), "PONG");
-    await adapter.close();
-  } finally {
-    if (previousRunningTests == null) {
-      delete process.env.AA_RUNNING_TESTS;
-    } else {
-      process.env.AA_RUNNING_TESTS = previousRunningTests;
-    }
-    if (previousNodeEnv == null) {
-      delete process.env.NODE_ENV;
-    } else {
-      process.env.NODE_ENV = previousNodeEnv;
-    }
-  }
+test("RedisQueueAdapter uses explicit memory driver when configured [redis-queue-adapter-functions]", async () => {
+  const adapter = new RedisQueueAdapter(MEMORY_CONFIG);
+  assert.equal(await adapter.ping(), "PONG");
+  await adapter.close();
 });
 
 test("RedisQueueAdapter in-memory client covers default config and empty-store branches [redis-queue-adapter-functions]", async () => {
-  const previousRunningTests = process.env.AA_RUNNING_TESTS;
-  const previousNodeEnv = process.env.NODE_ENV;
-  process.env.AA_RUNNING_TESTS = "1";
-  process.env.NODE_ENV = "test";
-
-  try {
-    const adapter = new RedisQueueAdapter({ host: "localhost" });
-    assert.equal(await adapter.getJobAsync("missing-job"), null);
-    assert.deepEqual(await adapter.listQueuesAsync(), []);
-    assert.deepEqual(await adapter.statsAsync("missing-queue"), {
-      queueName: "missing-queue",
-      waiting: 0,
-      delayed: 0,
-      active: 0,
-      completed: 0,
-      failed: 0,
-      deadLetter: 0,
-    });
-    await adapter.close();
-  } finally {
-    if (previousRunningTests == null) {
-      delete process.env.AA_RUNNING_TESTS;
-    } else {
-      process.env.AA_RUNNING_TESTS = previousRunningTests;
-    }
-    if (previousNodeEnv == null) {
-      delete process.env.NODE_ENV;
-    } else {
-      process.env.NODE_ENV = previousNodeEnv;
-    }
-  }
+  const adapter = new RedisQueueAdapter({ ...MEMORY_CONFIG, host: "localhost" });
+  assert.equal(await adapter.getJobAsync("missing-job"), null);
+  assert.deepEqual(await adapter.listQueuesAsync(), []);
+  assert.deepEqual(await adapter.statsAsync("missing-queue"), {
+    queueName: "missing-queue",
+    waiting: 0,
+    delayed: 0,
+    active: 0,
+    completed: 0,
+    failed: 0,
+    deadLetter: 0,
+  });
+  await adapter.close();
 });
 
-test("RedisQueueAdapter forbids in-memory redis in production test mode [redis-queue-adapter-functions]", () => {
-  const previousRunningTests = process.env.AA_RUNNING_TESTS;
+test("RedisQueueAdapter forbids memory driver in production mode [redis-queue-adapter-functions]", () => {
   const previousNodeEnv = process.env.NODE_ENV;
-  process.env.AA_RUNNING_TESTS = "1";
   process.env.NODE_ENV = "production";
 
   try {
-    assert.throws(() => new RedisQueueAdapter({ host: "localhost", port: 6379 }), /queue.redis_test_memory_forbidden_in_production/);
+    assert.throws(() => new RedisQueueAdapter(MEMORY_CONFIG), /queue.redis_memory_forbidden_in_production/);
   } finally {
-    if (previousRunningTests == null) {
-      delete process.env.AA_RUNNING_TESTS;
-    } else {
-      process.env.AA_RUNNING_TESTS = previousRunningTests;
-    }
     if (previousNodeEnv == null) {
       delete process.env.NODE_ENV;
     } else {
@@ -460,7 +423,7 @@ test("RedisQueueAdapter dequeueAsync ack completes job and cleans up [redis-queu
   assert.ok(saddCalled, "sadd should be called for completed set");
 });
 
-test("RedisQueueAdapter dequeueAsync nack requeues when under maxAttempts [redis-queue-adapter-functions]", async () => {
+test("RedisQueueAdapter dequeueAsync nack requeues with delayed status when under maxAttempts [redis-queue-adapter-functions]", async () => {
   let hmsetCalls: Array<Record<string, string>> = [];
   let zaddCalled = false;
 
@@ -496,7 +459,8 @@ test("RedisQueueAdapter dequeueAsync nack requeues when under maxAttempts [redis
   const result = await adapter.dequeueAsync("test-queue");
   await result!.nack("temporary failure");
 
-  assert.ok(hmsetCalls.some((c) => c.status === "waiting"));
+  assert.ok(hmsetCalls.some((c) => c.status === "delayed"));
+  assert.ok(hmsetCalls.some((c) => typeof c.delay_until === "string" && c.delay_until.length > 0));
   assert.ok(zaddCalled, "zadd should be called to requeue");
 });
 
@@ -856,7 +820,7 @@ test("RedisQueueAdapter retryJobAsync returns null for active job [redis-queue-a
   assert.equal(result, null);
 });
 
-test("RedisQueueAdapter retryJobAsync resets failed job to waiting [redis-queue-adapter-functions]", async () => {
+test("RedisQueueAdapter retryJobAsync returns null when failed job exhausted attempts [redis-queue-adapter-functions]", async () => {
   let hmsetData: Record<string, string> = {};
   let sremCalledForActive = false;
   let sremCalledForDl = false;
@@ -893,15 +857,13 @@ test("RedisQueueAdapter retryJobAsync resets failed job to waiting [redis-queue-
 
   const result = await adapter.retryJobAsync("retry-job");
 
-  assert.ok(result);
-  assert.equal(hmsetData.status, "waiting");
-  assert.equal(hmsetData.attempts, "0");
-  assert.equal(hmsetData.last_error, "");
-  assert.ok(sremCalledForActive);
-  assert.ok(sremCalledForDl);
+  assert.equal(result, null);
+  assert.deepEqual(hmsetData, {});
+  assert.equal(sremCalledForActive, false);
+  assert.equal(sremCalledForDl, false);
 });
 
-test("RedisQueueAdapter retryJobAsync resets dead_letter job to waiting [redis-queue-adapter-functions]", async () => {
+test("RedisQueueAdapter retryJobAsync returns null when dead_letter job exhausted attempts [redis-queue-adapter-functions]", async () => {
   let hgetallCalls = 0;
 
   const mockRedis = createMockRedisClient({
@@ -950,8 +912,8 @@ test("RedisQueueAdapter retryJobAsync resets dead_letter job to waiting [redis-q
 
   const result = await adapter.retryJobAsync("retry-dl");
 
-  assert.ok(result);
-  assert.equal(result!.status, "waiting");
+  assert.equal(result, null);
+  assert.equal(hgetallCalls, 1);
 });
 
 // =============================================================================

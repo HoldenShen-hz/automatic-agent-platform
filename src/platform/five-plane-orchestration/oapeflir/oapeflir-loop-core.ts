@@ -79,6 +79,15 @@ const DEFAULT_ASSESSMENT_RESOURCE_ALLOCATION = Object.freeze({
 });
 const DEFAULT_SANDBOX_TIMEOUT_MS = 300_000;
 
+function createMonotonicTimestampGenerator(startMs = Date.now()): () => number {
+  let lastMs = startMs;
+  return () => {
+    const nextMs = Date.now();
+    lastMs = nextMs > lastMs ? nextMs : lastMs + 1;
+    return lastMs;
+  };
+}
+
 export interface OapeflirLoopInput {
   taskId: string;
   objective: string;
@@ -176,6 +185,7 @@ export class OapeflirLoopService extends OapeflirLoopSupport {
   private readonly executionBudgetRegistry: ExecutionBudgetRegistry | null;
   // R4-25 (INV-BUDGET-001) fix: Store dbPath for budget reservation before bridge execution
   protected readonly dbPath: string | undefined;
+  private readonly nextFallbackTimestamp = createMonotonicTimestampGenerator();
 
   constructor(options: OapeflirLoopServiceOptions = {}) {
     super();
@@ -286,7 +296,7 @@ export class OapeflirLoopService extends OapeflirLoopSupport {
         });
         return {
           taskId: input.taskId,
-          timestamp: Date.now(),
+          timestamp: this.nextFallbackTimestamp(),
           objective: input.objective,
           currentPhase: "planning",
           userIntent: {
@@ -296,7 +306,7 @@ export class OapeflirLoopService extends OapeflirLoopSupport {
           },
           blockers: [],
           codebaseSnapshot: { rootPath: ".", fileCount: 0, relevantFiles: [] },
-          environmentContext: { nodeVersion: process.version, platform: process.platform, workingDirectory: process.cwd(), availableTools: [] },
+          environmentContext: { nodeVersion: "redacted", platform: "redacted", workingDirectory: "redacted", availableTools: [] },
           historicalContext: { previousTaskIds: [], relatedMemoryRefs: [], lastExecutionOutcome: undefined },
           relevantMemory: [],
           fileRefs: input.fileRefs ?? [],
@@ -336,7 +346,7 @@ export class OapeflirLoopService extends OapeflirLoopSupport {
         });
         return {
           taskId: input.taskId,
-          timestamp: Date.now(),
+          timestamp: this.nextFallbackTimestamp(),
           situationRef: `assessment:${input.taskId}:fallback`,
           phase: "pre-execution",
           complexity: "moderate",

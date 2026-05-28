@@ -26,7 +26,7 @@ import {
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 
 import { PolicyDeniedError, SandboxError, ValidationError } from "../../contracts/errors.js";
-import { checkSandboxPath, createWorkspaceWritePolicy } from "../../five-plane-control-plane/iam/sandbox-policy.js";
+import { checkSandboxPath, createWorkspaceWritePolicy } from "../../five-plane-control-plane/iam/index.js";
 import type {
   SkillLifecycle,
   SkillMetadata,

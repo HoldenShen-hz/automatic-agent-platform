@@ -12,12 +12,11 @@ import { join } from "node:path";
 const SRC_ROOT = join(process.cwd(), "src");
 
 /**
- * Documents the 5 directories that were missing per §35 review.
+ * Documents the remaining architecture directories that still need explicit wrappers.
  * These are now created as namespace wrappers per the architecture doc.
  */
 const DOCUMENTED_DIRECTORIES = [
   "platform/cost-management",
-  "platform/agent-delegation",
   "platform/prompt-registry",
   "testing",
   "benchmarks",
@@ -50,12 +49,6 @@ test("§35: cost-management exports contract types", async () => {
   assert.ok(mod.CostEstimate != null);
   assert.ok(mod.CostEstimationConfig != null);
   assert.ok(mod.CostEstimationServicePort != null);
-});
-
-test("§35: agent-delegation exports delegation types", async () => {
-  const mod = await import("../../../../src/platform/agent-delegation/index.js");
-  assert.ok(mod.DelegationManagerService != null);
-  assert.ok(mod.TopologyValidator != null);
 });
 
 test("§35: prompt-registry exports prompt registry types", async () => {

@@ -15,17 +15,15 @@ coverage/
 .aa-tool-artifacts/
 .audit/
 .cache/
-.claude/scheduled_tasks.json
 .stryker-tmp/
 dist-test/
 .test-db/
 .tmp/
 .runtime/
-
-# TypeScript compiled output
-dist/**/*.js
-dist/**/*.js.map
-dist/**/*.d.ts
+.dr-reports/
+.vitest-temp/
+coverage-report/
+dist-types/
 
 # Generated/test directories
 artifacts/

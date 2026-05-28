@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 
-import { runSingleTaskExecution } from "../../../../src/platform/five-plane-execution/execution-engine/single-task-execution.js";
+import { runSingleTaskExecution } from "../../../../src/platform/five-plane-execution/execution-engine/single-task-happy-path.js";
 import { runMultiStepOrchestration } from "../../../../src/platform/five-plane-execution/execution-engine/multi-step-orchestration.js";
 import { SqliteDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 import { AuthoritativeTaskStore } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";

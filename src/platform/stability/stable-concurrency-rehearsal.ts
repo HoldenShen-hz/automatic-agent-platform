@@ -28,7 +28,7 @@
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
-import { RuntimeRepairService } from "../five-plane-execution/recovery/runtime-repair-service-root.js";
+import { RuntimeRepairService } from "../five-plane-execution/recovery/runtime-repair-service.js";
 import { StartupConsistencyChecker } from "../five-plane-execution/startup/startup-consistency-checker.js";
 import { AuthoritativeTaskStore } from "../five-plane-state-evidence/truth/authoritative-task-store.js";
 import { isSqliteWriteContentionError, SqliteDatabase } from "../five-plane-state-evidence/truth/sqlite-database.js";

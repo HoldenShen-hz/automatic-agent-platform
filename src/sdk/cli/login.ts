@@ -131,7 +131,7 @@ function saveOAuthTokens(tokens: {
 
   const salt = randomBytes(16);
   const iv = randomBytes(12);
-  const key = scryptSync(encryptionKey, salt, 32);
+  const key = scryptSync(encryptionKey, salt, 32, { N: 1 << 15, r: 8, p: 1, maxmem: 64 * 1024 * 1024 });
   const cipher = createCipheriv("aes-256-gcm", key, iv);
   const ciphertext = Buffer.concat([cipher.update(payload, "utf8"), cipher.final()]);
   const envelope = {

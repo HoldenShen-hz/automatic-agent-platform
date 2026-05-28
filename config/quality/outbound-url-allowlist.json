@@ -1,0 +1,70 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "file": "src/platform/five-plane-control-plane/config-center/provider-defaults.ts",
+      "fragment": "MANUAL_BILLING_CHECKOUT_URL",
+      "reason": "manual billing checkout placeholder remains centralized with provider defaults"
+    },
+    {
+      "file": "src/platform/five-plane-control-plane/iam/aws-kms-http-secret-provider.ts",
+      "fragment": "https://kms.${region}.amazonaws.com",
+      "reason": "AWS KMS regional endpoint template"
+    },
+    {
+      "file": "src/platform/five-plane-control-plane/iam/gcp-secret-manager-http-secret-provider.ts",
+      "fragment": "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token",
+      "reason": "GCP metadata token endpoint"
+    },
+    {
+      "file": "src/platform/five-plane-control-plane/iam/gcp-secret-manager-http-secret-provider.ts",
+      "fragment": "https://secretmanager.googleapis.com/v1/projects/${project}/secrets/${secret}/versions/${version}:access",
+      "reason": "GCP Secret Manager access endpoint"
+    },
+    {
+      "file": "src/platform/five-plane-execution/tool-executor/web-search.ts",
+      "fragment": "DUCKDUCKGO_HTML_URL",
+      "reason": "web search tool endpoint constant"
+    },
+    {
+      "file": "src/platform/five-plane-state-evidence/knowledge/indexing/embedding-provider.ts",
+      "fragment": "https://api.openai.com",
+      "reason": "OpenAI embedding provider default base URL"
+    },
+    {
+      "file": "src/platform/five-plane-state-evidence/knowledge/indexing/embedding-provider.ts",
+      "fragment": "env.MINIMAX_API_BASE ?? \"https://api.minimaxi.com/v1\"",
+      "reason": "MiniMax embedding provider env default"
+    },
+    {
+      "file": "src/platform/five-plane-state-evidence/knowledge/indexing/embedding-provider.ts",
+      "fragment": "options.baseUrl ?? \"https://api.minimaxi.com/v1\"",
+      "reason": "MiniMax embedding provider constructor default"
+    },
+    {
+      "file": "src/platform/shared/observability/slo-alerting-channels.ts",
+      "fragment": "PAGERDUTY_DEFAULT_ENDPOINT",
+      "reason": "PagerDuty default alert endpoint"
+    },
+    {
+      "file": "src/platform/shared/observability/slo-alerting-channels.ts",
+      "fragment": "https://api.opsgenie.com/v2/alerts",
+      "reason": "OpsGenie default alert endpoint"
+    },
+    {
+      "file": "src/plugins/adapters/livestream-adapter.ts",
+      "fragment": "https://www.googleapis.com/youtube/v3/liveBroadcasts",
+      "reason": "YouTube livestream endpoint defined through adjacent adapter helper"
+    },
+    {
+      "file": "src/sdk/cli/deployment-execution.ts",
+      "fragment": "https://github.com/automatic-agent/automatic-agent-platform/actions/runs/${runId}",
+      "reason": "CLI output link to workflow run"
+    },
+    {
+      "file": "src/sdk/cli/release-pipeline.ts",
+      "fragment": "GITHUB_ACTION_RUN_URL_PREFIX",
+      "reason": "workflow run URL prefix for CLI/operator output"
+    }
+  ]
+}

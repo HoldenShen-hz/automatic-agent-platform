@@ -5,7 +5,7 @@ import test from "node:test";
 import { ApiAuthService } from "../../../../src/platform/five-plane-interface/api/api-auth-service.js";
 import { HttpApiServer, type InjectResponse } from "../../../../src/platform/five-plane-interface/api/http-api-server.js";
 import { CoordinatorLoadBalancingService } from "../../../../src/platform/five-plane-execution/ha/coordinator-load-balancing-service.js";
-import { runSingleTaskExecution } from "../../../../src/platform/five-plane-execution/execution-engine/single-task-execution.js";
+import { runSingleTaskExecution } from "../../../../src/platform/five-plane-execution/execution-engine/single-task-happy-path.js";
 import { createSeededApiContext } from "../../../helpers/api.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 

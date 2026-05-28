@@ -77,12 +77,40 @@ test("RunbookExecutor executeStep does not classify destructive kubectl/docker c
 docker rm old-container
 `);
   const execution = executor.initializeExecution(runbook, "tester");
-  const stepResult = await executor.executeStep(execution.executionId, "Mitigation", 0);
+  const stepResult = await executor.executeStep(execution.executionId, "Mitigation", 1);
 
   assert.ok(stepResult);
+  assert.equal(stepResult!.status, "failed");
+  assert.match(stepResult!.output, /\[Blocked\] Non-read-only command/);
+});
+
+test("RunbookExecutor executeStep routes read-only commands through controlled runner", async () => {
+  const invocations: string[] = [];
+  const executor = new RunbookExecutor({
+    autoExecute: true,
+    commandRunner: async (command) => {
+      invocations.push(command);
+      return {
+        stdout: "pods listed",
+        stderr: "",
+        exitCode: 0,
+      };
+    },
+  });
+  const runbook = parseRunbookMarkdown(`# Test Runbook
+
+## Diagnosis
+
+1. Inspect pods
+kubectl get pods
+`);
+  const execution = executor.initializeExecution(runbook, "tester");
+  const stepResult = await executor.executeStep(execution.executionId, "Diagnosis", 1);
+
+  assert.deepEqual(invocations, ["kubectl get pods"]);
+  assert.ok(stepResult);
   assert.equal(stepResult!.status, "completed");
-  assert.match(stepResult!.output, /\[OK\] Action completed/);
-  assert.doesNotMatch(stepResult!.output, /Command completed successfully/);
+  assert.equal(stepResult!.output, "pods listed");
 });
 
 test("RunbookExecutor parse handles checkbox items", () => {

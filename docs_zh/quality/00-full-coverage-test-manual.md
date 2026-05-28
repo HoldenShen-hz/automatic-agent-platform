@@ -3639,7 +3639,7 @@ test("[SYS-QUAL-7.6] as-any cast count does not increase", () => {
 | `session-summary.test.ts`      | 会话摘要结构          |
 | `release-plan-output.test.ts`  | 发布计划 Markdown     |
 | `workflow-validation.test.ts`  | 工作流校验            |
-| `phase1a-golden-tasks.test.ts` | Phase 1a 黄金任务套件 |
+| `golden-tasks.test.ts` | 黄金任务套件 |
 | `domain-baseline.test.ts`      | 域基线快照            |
 | `config-schema.test.ts`        | 配置 Schema 快照      |
 | `harness-protocol.test.ts`     | Harness 协议快照      |

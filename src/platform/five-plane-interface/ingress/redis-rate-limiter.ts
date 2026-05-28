@@ -84,7 +84,8 @@ export class RedisRateLimiter {
     if (count > limit) {
       // Over limit - find when the oldest entry expires
       const oldest = await this.redis.zrange(fullKey, 0, 0, "WITHSCORES");
-      const oldestTime = oldest.length >= 2 && oldest[1] != null ? parseFloat(oldest[1]) : now;
+      const parsedOldestTime = oldest.length >= 2 && oldest[1] != null ? Number.parseFloat(oldest[1]) : NaN;
+      const oldestTime = Number.isFinite(parsedOldestTime) ? parsedOldestTime : now;
       const retryAfterMs = Math.max(0, oldestTime + windowMs - now);
 
       // Remove the entry we just added since it was rejected

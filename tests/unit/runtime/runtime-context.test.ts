@@ -8,7 +8,7 @@ import {
   withContextPatch,
   assertContext,
   type RuntimeContextSnapshot,
-} from "../../../src/platform/five-plane-execution/execution-engine/runtime-context.js";
+} from "../../../src/platform/shared/context/runtime-context.js";
 
 function baseContext(overrides: Partial<RuntimeContextSnapshot> = {}): RuntimeContextSnapshot {
   return {

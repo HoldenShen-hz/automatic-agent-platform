@@ -69,10 +69,12 @@ describe("reaudit batch R26-56 / 58 / 59 / 60 / 61 / 65", () => {
     expect(source).toContain('join(process.cwd(), ".turbo", "tasks"');
   });
 
-  it("R26-59 web vite config uses hidden sourcemaps only for production builds", () => {
+  it("R26-59 web vite config disables production sourcemaps and keeps CSP inline with explicit connect origins", () => {
     const source = readFileSync(resolve(process.cwd(), "apps/web/vite.config.ts"), "utf8");
 
-    expect(source).toContain('sourcemap: mode === "production" ? "hidden" : true');
+    expect(source).toContain('sourcemap: mode === "production" ? false : true');
+    expect(source).toContain("worker-src 'self' blob:");
+    expect(source).toContain("resolveConnectSrcOrigins");
     expect(source).toContain('name: "csp-headers"');
   });
 

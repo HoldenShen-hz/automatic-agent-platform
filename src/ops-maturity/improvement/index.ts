@@ -1,3 +1,3 @@
-export * from "../drift-detection/learning/proposal-engine.js";
-export * from "../drift-detection/learning/promotion-gate.js";
-export * from "../drift-detection/learning/rollout-manager.js";
+export * from "./proposal-engine.js";
+export * from "./promotion-gate.js";
+export * from "./rollout-manager.js";

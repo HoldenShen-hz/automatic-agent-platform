@@ -198,7 +198,7 @@ test("SubWorkflowExecutor cancelWorkflow throws for unknown execution", async ()
   );
 });
 
-test("SubWorkflowExecutor cancelWorkflow performs automatic rollback", async () => {
+test("SubWorkflowExecutor cancelWorkflow without completed steps does not invent rollback history", async () => {
   const executor = new SubWorkflowExecutor();
   const definition = createTestWorkflow({ rollbackPolicy: "automatic" });
   const context = createTestContext();
@@ -208,7 +208,7 @@ test("SubWorkflowExecutor cancelWorkflow performs automatic rollback", async () 
 
   const steps = executor.getSteps(executionId);
   const rolledBackSteps = steps.filter((s) => s.status === "rolled_back");
-  assert.ok(rolledBackSteps.length > 0);
+  assert.equal(rolledBackSteps.length, 0);
 });
 
 test("SubWorkflowExecutor getStep returns step by ID", () => {

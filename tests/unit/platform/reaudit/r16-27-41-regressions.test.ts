@@ -131,13 +131,8 @@ test("R16-36 active subscriber poll interval is no longer 10ms", () => {
 });
 
 test("R16-40 redis queue adapter keeps in-memory runtime path reachable for queue coverage gates", async () => {
-  const previousRunningTests = process.env.AA_RUNNING_TESTS;
-  const previousNodeEnv = process.env.NODE_ENV;
-  process.env.AA_RUNNING_TESTS = "1";
-  process.env.NODE_ENV = "test";
-
   try {
-    const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
+    const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379, driver: "memory" });
     const job = await adapter.enqueueAsync({
       queueName: "reaudit-queue",
       payload: { taskId: "task-r16-40" },
@@ -154,16 +149,7 @@ test("R16-40 redis queue adapter keeps in-memory runtime path reachable for queu
 
     await adapter.close();
   } finally {
-    if (previousRunningTests == null) {
-      delete process.env.AA_RUNNING_TESTS;
-    } else {
-      process.env.AA_RUNNING_TESTS = previousRunningTests;
-    }
-    if (previousNodeEnv == null) {
-      delete process.env.NODE_ENV;
-    } else {
-      process.env.NODE_ENV = previousNodeEnv;
-    }
+    // No environment cleanup needed; the memory path is explicit config now.
   }
 });
 

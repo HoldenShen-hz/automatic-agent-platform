@@ -11,6 +11,7 @@ import {
 import { BuiltInMemoryProvider } from "../memory/builtin-memory-provider.js";
 import { ExperienceCacheService } from "../memory/experience-cache-service.js";
 import { parseStructuredMemoryContent, type StructuredMemoryContent } from "../memory/memory-schema.js";
+import { stableStringify } from "../../shared/cache/utils/stable-stringify.js";
 
 export { MemoryService, type ConsolidateMemoriesInput, type RememberMemoryInput } from "../memory/memory-service.js";
 export { BuiltInMemoryProvider } from "../memory/builtin-memory-provider.js";
@@ -144,6 +145,8 @@ export interface MemoryGatewayProjectionInput {
 }
 
 const HIGHER_LAYER_SET = new Set<ManagedMemoryLayer>(["L4", "L5", "L6", "L7"]);
+const CANONICAL_MANAGED_LAYER_METADATA_KEY = "canonicalManagedLayer";
+const MAX_MEMORY_VERSION = 1_000_000;
 
 export class MemoryGateway {
   public constructor(private readonly memoryService: MemoryService) {}
@@ -200,6 +203,7 @@ export class MemoryGateway {
   ): { decision: MemoryCommitDecision; memory: ManagedMemoryMinimal } {
     const record = this.memoryService.remember({
       ...input.remember,
+      content: decorateManagedMemoryContent(input.remember.content, input.proposal.proposedLayer),
       memoryLayer: mapManagedMemoryLayerToRuntimeMemoryLayer(input.proposal.proposedLayer),
     });
     const decision: MemoryCommitDecision = {
@@ -245,13 +249,16 @@ export class MemoryGateway {
   }
 
   public buildProjection(input: MemoryGatewayProjectionInput): MemoryProjection {
+    const sortedMemoryIds = [...new Set(input.memoryIds)].sort();
+    const sortedEvidenceIds = [...new Set(input.evidenceIds ?? [])].sort();
+    const sortedLayers = [...new Set(input.allowedLayers)].sort();
     const projectionHash = createHash("sha256")
-      .update(JSON.stringify({
+      .update(stableStringify({
         missionId: input.missionId,
         tenantId: input.tenantId,
-        memoryIds: [...input.memoryIds],
-        evidenceIds: [...(input.evidenceIds ?? [])],
-        allowedLayers: [...input.allowedLayers],
+        memoryIds: sortedMemoryIds,
+        evidenceIds: sortedEvidenceIds,
+        allowedLayers: sortedLayers,
         tokenBudget: input.tokenBudget,
         redactionApplied: input.redactionApplied ?? false,
       }))
@@ -260,9 +267,9 @@ export class MemoryGateway {
       projectionId: newId("mem_proj"),
       missionId: input.missionId,
       tenantId: input.tenantId,
-      memoryIds: [...input.memoryIds],
-      evidenceIds: [...(input.evidenceIds ?? [])],
-      allowedLayers: [...input.allowedLayers],
+      memoryIds: sortedMemoryIds,
+      evidenceIds: sortedEvidenceIds,
+      allowedLayers: sortedLayers,
       tokenBudget: input.tokenBudget,
       redactionApplied: input.redactionApplied ?? false,
       projectionHash,
@@ -311,9 +318,13 @@ export function toManagedMemoryMinimal(
 ): ManagedMemoryMinimal {
   const content = parseStructuredMemoryContent(record.contentJson);
   const metadata = content.metadata;
+  const canonicalManagedLayer = typeof metadata[CANONICAL_MANAGED_LAYER_METADATA_KEY] === "string"
+    ? metadata[CANONICAL_MANAGED_LAYER_METADATA_KEY] as ManagedMemoryLayer
+    : null;
+  const version = normalizeManagedMemoryVersion(metadata["version"]);
   return {
     memoryId: record.id,
-    layer: mapRuntimeMemoryLayerToManagedMemoryLayer(record.memoryLayer),
+    layer: canonicalManagedLayer ?? mapRuntimeMemoryLayerToManagedMemoryLayer(record.memoryLayer),
     tenantId: context.tenantId,
     scope: context.scope ?? mapRuntimeScopeToManagedScope(record.scope),
     status: mapMemoryStatus(record),
@@ -325,7 +336,7 @@ export function toManagedMemoryMinimal(
     sensitivity: context.sensitivity ?? inferSensitivity(record.classification),
     createdBy: inferCreatedBy(metadata["createdBy"]),
     validFrom: record.createdAt,
-    version: Number.isFinite(Number(metadata["version"])) ? Number(metadata["version"]) : 1,
+    version,
     accessPolicyId: context.accessPolicyId ?? "memory.default.access",
     retentionPolicyId: context.retentionPolicyId ?? "memory.default.retention",
     ...(context.approvedBy != null ? { approvedBy: context.approvedBy } : {}),
@@ -396,6 +407,34 @@ function readStringArray(value: unknown): string[] {
     return [];
   }
   return value.filter((item): item is string => typeof item === "string" && item.trim().length > 0);
+}
+
+function decorateManagedMemoryContent(content: RememberMemoryInput["content"], layer: ManagedMemoryLayer): RememberMemoryInput["content"] {
+  if (typeof content === "string") {
+    return {
+      facts: [{ content, source: "memory_gateway.commitProposal" }],
+      metadata: {
+        [CANONICAL_MANAGED_LAYER_METADATA_KEY]: layer,
+      },
+    };
+  }
+  const record = content as Record<string, unknown>;
+  const metadata = record["metadata"] != null && typeof record["metadata"] === "object" && !Array.isArray(record["metadata"])
+    ? { ...(record["metadata"] as Record<string, unknown>) }
+    : {};
+  metadata[CANONICAL_MANAGED_LAYER_METADATA_KEY] = layer;
+  return {
+    ...record,
+    metadata,
+  };
+}
+
+function normalizeManagedMemoryVersion(value: unknown): number {
+  const parsed = typeof value === "number" ? value : Number.parseInt(String(value ?? ""), 10);
+  if (!Number.isInteger(parsed) || parsed < 1 || parsed > MAX_MEMORY_VERSION) {
+    return 1;
+  }
+  return parsed;
 }
 
 function buildManagedMemoryContext(

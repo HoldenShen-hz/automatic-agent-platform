@@ -44,7 +44,7 @@ import { SINGLE_AGENT_MINIMAL_WORKFLOW } from "../../five-plane-orchestration/oa
 import { validateWorkflowStepOutput } from "../../five-plane-orchestration/oapeflir/workflow/output-schema.js";
 import { assertWorkflowValid } from "../../five-plane-orchestration/oapeflir/workflow/workflow-validator.js";
 import { ArtifactStore } from "../../five-plane-state-evidence/artifacts/artifact-store.js";
-import { createWorkspaceWritePolicy } from "../../five-plane-control-plane/iam/sandbox-policy.js";
+import { createWorkspaceWritePolicy } from "../../five-plane-control-plane/iam/index.js";
 import { RoleToolExposureService } from "../tool-executor/role-tool-exposure-service.js";
 import { maybeInjectWorkflowCrash } from "../recovery/workflow-crash-simulator.js";
 import { createWorkflowStepCheckpoint } from "../../five-plane-state-evidence/checkpoints/workflow-step-checkpoint.js";
@@ -52,7 +52,7 @@ import {
   AdmissionController,
 } from "../dispatcher/admission-controller.js";
 import { TransitionService } from "../state-transition/transition-service.js";
-import { provideContext, withContextPatch } from "./runtime-context.js";
+import { provideContext, withContextPatch } from "../../shared/context/runtime-context.js";
 import { initializeMiddleware, getGlobalMiddlewareChain } from "./middleware-init.js";
 import {
   initializeModelCallProvider,
@@ -663,8 +663,6 @@ export async function runSingleTaskExecution(input: HappyPathInput) {
     storage.close();
   }
 }
-
-export const runPhase1AHappyPath = runSingleTaskExecution;
 
 function buildExecutionCostEvent(input: {
   taskId: string;

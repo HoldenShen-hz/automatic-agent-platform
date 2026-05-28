@@ -726,6 +726,11 @@ export class SecretManagementService {
    * @returns A timer handle that can be used to stop the scheduler
    */
   public startDailyRotationScheduler(intervalMs: number = 24 * 60 * 60 * 1000): NodeJS.Timeout {
+    const existingScheduler = this.activeRotationSchedulers.values().next().value;
+    if (existingScheduler != null) {
+      return existingScheduler;
+    }
+
     const runRotationSweep = (phase: RotationSchedulerPhase, timer?: NodeJS.Timeout): void => {
       if (this.rotationSweepInFlight) {
         logger.warn("secret:rotation_scheduler_overlap", { phase });
@@ -761,11 +766,6 @@ export class SecretManagementService {
         this.rotationSweepInFlight = false;
       }
     };
-
-    for (const timer of this.activeRotationSchedulers) {
-      clearInterval(timer);
-      this.activeRotationSchedulers.delete(timer);
-    }
 
     runRotationSweep("initial");
 
@@ -967,8 +967,9 @@ export class SecretManagementService {
   private requireRegistryRecord(secretRef: string): SecretRegistryRecord {
     const registry = this.store.secret.getSecretRegistryRecord(secretRef);
     if (registry == null) {
-      throw new StorageError(`secret.registry_not_found:${secretRef}`, `secret.registry_not_found:${secretRef}`, {
-        details: { secretRef },
+      const redactedSecretRef = secretRef.replace(/(?<=secret:\/\/[^/]+\/).+/u, "<redacted>");
+      throw new StorageError("secret.registry_not_found", "secret.registry_not_found", {
+        details: { secretRef: redactedSecretRef },
       });
     }
     return registry;

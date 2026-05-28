@@ -14,7 +14,7 @@ import type { FileLockRecord, WorkflowStateRecord } from "../../contracts/types/
 
 import { getRegisteredConsumers, hasEventSchema } from "../../five-plane-state-evidence/events/event-registry.js";
 import { ExecutionDispatchReconciliationService } from "../dispatcher/execution-dispatch-reconciliation-service.js";
-import type { ConfigBundle } from "../../five-plane-control-plane/config-center/config-governance-service.js";
+import type { ConfigBundle } from "../../five-plane-control-plane/config-center/index.js";
 import { getWorkflowDefinition } from "../../five-plane-orchestration/oapeflir/workflow/minimal-workflow.js";
 import { AuthoritativeTaskStore } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
 import type { AuthoritativeSqlDatabase } from "../../five-plane-state-evidence/truth/authoritative-sql-database.js";

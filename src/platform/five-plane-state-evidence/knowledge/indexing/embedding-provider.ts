@@ -16,6 +16,48 @@ import { buildSemanticEmbedding, semanticEmbeddingId } from "../semantic-embeddi
 
 export const EMBEDDING_PROVIDER_TYPES = ["hash", "openai", "minimax"] as const;
 export type EmbeddingProviderType = (typeof EMBEDDING_PROVIDER_TYPES)[number];
+const EMBEDDING_REQUEST_TIMEOUT_MS = 10_000;
+
+async function fetchWithTimeout(input: string, init: RequestInit, timeoutMs = EMBEDDING_REQUEST_TIMEOUT_MS): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  timeout.unref?.();
+  try {
+    return await fetch(input, {
+      ...init,
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function sanitizeErrorBody(body: string): string {
+  return body.replace(/[\r\n\t]+/g, " ").slice(0, 200);
+}
+
+function parseJsonResponse<T>(response: Response, provider: string): Promise<T> {
+  return response.json().catch((error) => {
+    throw new Error(`embedding.${provider}.invalid_json:${error instanceof Error ? error.message : String(error)}`);
+  }) as Promise<T>;
+}
+
+function validateEmbeddingIndexes(
+  data: ReadonlyArray<{ index: number; embedding: number[] }>,
+  expectedCount: number,
+  provider: string,
+): void {
+  const seen = new Set<number>();
+  for (const item of data) {
+    if (!Number.isInteger(item.index) || item.index < 0 || item.index >= expectedCount) {
+      throw new Error(`embedding.${provider}.invalid_index:${item.index}`);
+    }
+    if (seen.has(item.index)) {
+      throw new Error(`embedding.${provider}.duplicate_index:${item.index}`);
+    }
+    seen.add(item.index);
+  }
+}
 
 export interface EmbeddingResult {
   /** 32-dim (hash) or provider-native-dim vector, normalised to [0,1] */
@@ -105,7 +147,7 @@ export class OpenAIEmbeddingProvider implements EmbeddingProvider {
   }
 
   async #fetch(texts: string[]): Promise<EmbeddingResult[]> {
-    const response = await fetch(`${this.#baseUrl}/v1/embeddings`, {
+    const response = await fetchWithTimeout(`${this.#baseUrl}/v1/embeddings`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -121,7 +163,7 @@ export class OpenAIEmbeddingProvider implements EmbeddingProvider {
     if (!response.ok) {
       const body = await response.text().catch(() => "");
       throw new Error(
-        `embedding.openai.request_failed:${response.status}:${body}`,
+        `embedding.openai.request_failed:${response.status}:${sanitizeErrorBody(body)}`,
       );
     }
 
@@ -134,7 +176,8 @@ export class OpenAIEmbeddingProvider implements EmbeddingProvider {
       usage: { total_tokens: number };
     }
 
-    const json = (await response.json()) as OpenAIEmbeddingResponse;
+    const json = await parseJsonResponse<OpenAIEmbeddingResponse>(response, "openai");
+    validateEmbeddingIndexes(json.data, texts.length, "openai");
     return json.data
       .slice()
       .sort((a, b) => a.index - b.index)
@@ -230,7 +273,7 @@ export class MiniMaxEmbeddingProvider implements EmbeddingProvider {
   }
 
   async #fetch(texts: string[]): Promise<EmbeddingResult[]> {
-    const response = await fetch(`${this.#baseUrl}/embeddings`, {
+    const response = await fetchWithTimeout(`${this.#baseUrl}/embeddings`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -246,7 +289,7 @@ export class MiniMaxEmbeddingProvider implements EmbeddingProvider {
     if (!response.ok) {
       const body = await response.text().catch(() => "");
       throw new Error(
-        `embedding.minimax.request_failed:${response.status}:${body}`,
+        `embedding.minimax.request_failed:${response.status}:${sanitizeErrorBody(body)}`,
       );
     }
 
@@ -259,7 +302,8 @@ export class MiniMaxEmbeddingProvider implements EmbeddingProvider {
       model: string;
     }
 
-    const json = (await response.json()) as MiniMaxEmbeddingResponse;
+    const json = await parseJsonResponse<MiniMaxEmbeddingResponse>(response, "minimax");
+    validateEmbeddingIndexes(json.data, texts.length, "minimax");
     return json.data
       .slice()
       .sort((a, b) => a.index - b.index)

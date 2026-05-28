@@ -9,13 +9,13 @@ import * as runtimeIndex from "../../../../src/core/runtime/index.js";
 
 test("core/runtime index re-exports platform execution engine types", () => {
   assert.ok(runtimeIndex);
-  // Should re-export dispatcher, execution-engine, state-transition, lease, worker-registry, checkpoints
-  assert.ok(typeof runtimeIndex.TransitionService !== "undefined" || runtimeIndex.runMultiStepOrchestration != null);
+  // Should re-export dispatcher, execution-engine, lease, worker-registry, checkpoints
+  assert.ok(runtimeIndex.runMultiStepOrchestration != null);
 });
 
-test("core/runtime re-exports state transition components", () => {
-  // The module should re-export TransitionService and StateTransitionMachine
-  assert.ok(typeof runtimeIndex.TransitionService !== "undefined" || runtimeIndex.StateTransitionMachine != null);
+test("core/runtime no longer re-exports state transition components", () => {
+  assert.equal("TransitionService" in runtimeIndex, false);
+  assert.equal("StateTransitionMachine" in runtimeIndex, false);
 });
 
 test("core/runtime re-exports execution lease service", () => {

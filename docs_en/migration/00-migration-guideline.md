@@ -580,7 +580,7 @@ Grouped by test category:
 | `openapi-document.test.ts` | 187 | Green A | OpenAPI document snapshot |
 | `release-plan-output.test.ts` | 202 | Green A | Release plan Markdown snapshot |
 | `session-summary.test.ts` | 148 | Green A | Session summary snapshot |
-| `phase1a-golden-tasks.test.ts` | 30 | Green A | Phase1a golden tasks |
+| `golden-tasks.test.ts` | 30 | Green A | Golden tasks |
 | `prompt-assembly.test.ts` | 220 | Green A | Prompt partitioning/cache key snapshots |
 | `workflow-validation.test.ts` | 145 | Green A | Workflow validation snapshot |
 | `cli-help-text.test.ts` | 238 | Yellow B | CLI help text snapshot. Need to adapt to new CLI command list |

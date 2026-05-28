@@ -146,12 +146,21 @@ function parseLegacyApiKeys(raw: string | null): ApiKeyRecord[] {
   }));
 }
 
+function looksLikeJsonArray(raw: string): boolean {
+  const trimmed = raw.trim();
+  return trimmed.startsWith("[");
+}
+
 function parseApiKeysFromEnv(env: NodeJS.ProcessEnv): ApiKeyRecord[] {
+  const apiKeys = readTrimmedEnv(env, "AA_API_KEYS");
+  if (apiKeys != null && looksLikeJsonArray(apiKeys)) {
+    return parseApiKeysJson(apiKeys);
+  }
   const apiKeysJson = readTrimmedEnv(env, "AA_API_KEYS_JSON");
   if (apiKeysJson != null) {
     return parseApiKeysJson(apiKeysJson);
   }
-  return parseLegacyApiKeys(readTrimmedEnv(env, "AA_API_KEYS"));
+  return parseLegacyApiKeys(apiKeys);
 }
 
 /**

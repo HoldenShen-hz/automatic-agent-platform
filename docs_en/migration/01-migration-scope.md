@@ -97,7 +97,7 @@ Migration is complete. Current `src/platform/` is the authoritative code directo
 Current document system:
 
 - `docs_zh/architecture/` — 5 architecture documents
-- `docs_zh/contracts/` — 113 contract documents
-- `docs_zh/adr/` — 38 ADR documents
+- `docs_zh/contracts/` — 151 contract documents
+- `docs_zh/adr/` — 120 ADR documents
 - `docs_zh/operations/` — 16 operations documents
 - `docs_zh/reviews/` — Architecture and implementation diff reviews

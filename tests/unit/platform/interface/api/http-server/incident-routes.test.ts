@@ -70,6 +70,8 @@ test("IncidentCaseService resolves incident", () => {
   const service = new IncidentCaseService();
   const incident = service.openIncident({ severity: "high", title: "Test" });
   service.acknowledge(incident.incidentId, "operator-1");
+  service.startMitigation(incident.incidentId);
+  service.review(incident.incidentId);
 
   const resolved = service.resolve(incident.incidentId);
 

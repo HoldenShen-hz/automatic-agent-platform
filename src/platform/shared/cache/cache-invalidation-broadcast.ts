@@ -65,7 +65,11 @@ export class CacheInvalidationBroadcast {
     await this.sub.subscribe(this.channel);
     this.isSubscribed = true;
     this.sub.on("message", (_channel: string, raw: string) => {
-      void this.handleIncomingMessage(raw);
+      void this.handleIncomingMessage(raw).catch((error: unknown) => {
+        logger.error("cache_invalidation_broadcast.handle_incoming_message_failed", {
+          err: error instanceof Error ? error.message : String(error),
+        });
+      });
     });
 
     this.isStarted = true;

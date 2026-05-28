@@ -13,7 +13,7 @@ import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evi
 import { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 import { newId, nowIso } from "../../../../../src/platform/contracts/types/ids.js";
-import { RuntimeRecoveryService } from "../../../../../src/platform/five-plane-execution/recovery/runtime-recovery-service-root.js";
+import { RuntimeRecoveryService } from "../../../../../src/platform/five-plane-execution/recovery/runtime-recovery-service.js";
 import { RepairPipeline } from "../../../../../src/platform/five-plane-execution/recovery/repair-pipeline.js";
 import { createTaskCard, type TaskCard, type TaskRiskLevel } from "../../../../../src/platform/five-plane-execution/recovery/task-card.js";
 import { createPatchBundle, type PatchBundle } from "../../../../../src/platform/five-plane-execution/recovery/patch-bundle.js";

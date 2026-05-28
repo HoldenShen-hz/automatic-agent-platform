@@ -76,31 +76,33 @@ export interface StorageQuotaServiceOptions {
   sandboxPolicy?: SandboxPolicy;
   /** Category configurations (defaults to standard categories) */
   categories?: readonly StorageQuotaCategoryConfig[];
+  /** Explicit workspace root for default category resolution */
+  workspaceRoot?: string;
 }
 
 /**
  * Returns the default storage quota categories.
  * These define artifact storage, debug evidence, and backup storage limits.
  */
-function defaultCategories(): StorageQuotaCategoryConfig[] {
+function defaultCategories(workspaceRoot: string): StorageQuotaCategoryConfig[] {
   return [
     {
       categoryId: "artifact",
-      roots: [join(process.cwd(), "data", "artifacts")],
+      roots: [join(workspaceRoot, "data", "artifacts")],
       maxBytes: 250 * 1024 * 1024,
       cleanupEnabled: true,
       pinnedPaths: [],
     },
     {
       categoryId: "debug",
-      roots: [join(process.cwd(), "data", "stable-evidence"), join(process.cwd(), "data", "debug")],
+      roots: [join(workspaceRoot, "data", "stable-evidence"), join(workspaceRoot, "data", "debug")],
       maxBytes: 150 * 1024 * 1024,
       cleanupEnabled: true,
       pinnedPaths: [],
     },
     {
       categoryId: "backup",
-      roots: [join(process.cwd(), "data", "sqlite"), join(process.cwd(), "data", "backups")],
+      roots: [join(workspaceRoot, "data", "sqlite"), join(workspaceRoot, "data", "backups")],
       maxBytes: 200 * 1024 * 1024,
       cleanupEnabled: true,
       pinnedPaths: [],
@@ -121,8 +123,10 @@ export class StorageQuotaService {
   private readonly categories: readonly StorageQuotaCategoryConfig[];
 
   public constructor(options: StorageQuotaServiceOptions = {}) {
-    this.sandboxPolicy = options.sandboxPolicy ?? createWorkspaceWritePolicy(process.cwd());
-    this.categories = options.categories ?? defaultCategories();
+    const sandboxPolicy = options.sandboxPolicy ?? createWorkspaceWritePolicy(process.cwd());
+    const workspaceRoot = options.workspaceRoot ?? sandboxPolicy.allowedRoots[0] ?? process.cwd();
+    this.sandboxPolicy = sandboxPolicy;
+    this.categories = options.categories ?? defaultCategories(workspaceRoot);
   }
 
   /**

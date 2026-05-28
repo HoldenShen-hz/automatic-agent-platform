@@ -2,10 +2,10 @@ import assert from "node:assert/strict";
 import { join } from "node:path";
 import test from "node:test";
 
-import { runSingleTaskExecution } from "../../../../src/platform/five-plane-execution/execution-engine/single-task-execution.js";
+import { runSingleTaskExecution } from "../../../../src/platform/five-plane-execution/execution-engine/single-task-happy-path.js";
 import { runMultiStepOrchestration } from "../../../../src/platform/five-plane-execution/execution-engine/multi-step-orchestration.js";
-import { RuntimeRecoveryService } from "../../../../src/platform/five-plane-execution/recovery/runtime-recovery-service-root.js";
-import { RuntimeRepairService } from "../../../../src/platform/five-plane-execution/recovery/runtime-repair-service-root.js";
+import { RuntimeRecoveryService } from "../../../../src/platform/five-plane-execution/recovery/runtime-recovery-service.js";
+import { RuntimeRepairService } from "../../../../src/platform/five-plane-execution/recovery/runtime-repair-service.js";
 import { StartupConsistencyChecker } from "../../../../src/platform/five-plane-execution/startup/startup-consistency-checker.js";
 import {
   InjectedWorkflowCrashError,

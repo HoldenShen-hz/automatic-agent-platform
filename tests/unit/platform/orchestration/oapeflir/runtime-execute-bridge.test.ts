@@ -43,7 +43,7 @@ test("MockExecuteBridge.executeStep returns successful result", async () => {
 
   assert.equal(result.stepId, "step_test");
   assert.equal(result.status, "succeeded");
-  assert.equal(result.modelId, "local-simulated");
+  assert.equal(result.modelId, "runtime");
   assert.ok(result.durationMs > 0);
   assert.ok(result.tokenCost > 0);
 });

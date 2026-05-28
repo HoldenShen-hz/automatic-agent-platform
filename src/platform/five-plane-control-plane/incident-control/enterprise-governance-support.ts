@@ -16,10 +16,8 @@ import type { IndustrialOpsProgramReport } from "./industrial-ops-program-servic
 import type { OperationsGovernanceReport, RunbookSeverity } from "./operations-governance-service.js";
 import type {
   SqliteMigrationCompatibilityReport,
-} from "../../five-plane-state-evidence/truth/sqlite/sqlite-migration-compatibility.js";
-import type {
   SqliteSchemaCompatibilityReport,
-} from "../../five-plane-state-evidence/truth/sqlite/sqlite-schema-compatibility-gate.js";
+} from "../../five-plane-state-evidence/truth/index.js";
 
 export type EnterpriseGovernanceStatus = "pass" | "warning" | "fail";
 export type IncidentHandoffStatus = "ready" | "warning" | "blocked";

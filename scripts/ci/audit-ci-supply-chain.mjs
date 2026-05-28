@@ -20,7 +20,7 @@ check("ci coverage gate", /npm run coverage:gate/.test(ci), "CI runs coverage ga
 check("ci codeql", /github\/codeql-action\/analyze@v3/.test(ci), "CI runs CodeQL");
 check(
   "ci trivy",
-  /aquasecurity\/trivy-action@0\.32\.0/.test(ci)
+  /aquasecurity\/trivy-action@(?:0\.32\.0|[0-9a-f]{40})/.test(ci)
     && /IMAGE_REPOSITORY:\s*automatic-agent-platform/.test(ci)
     && /image-ref:\s*\$\{\{\s*env\.IMAGE_REGISTRY\s*\}\}\/\$\{\{\s*env\.IMAGE_REPOSITORY\s*\}\}:\$\{\{\s*env\.IMAGE_TAG\s*\}\}/.test(ci)
     && /CRITICAL,HIGH/.test(ci),

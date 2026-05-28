@@ -426,6 +426,29 @@ test("SessionDualStorageService appendSessionEvent appends raw event", () => {
   }
 });
 
+test("SessionDualStorageService serializes Buffer payloads as compact base64 records", () => {
+  const { storage, rootDir } = createTestStorage();
+  try {
+    storage.appendSessionEvent({
+      eventType: "message_added",
+      sessionId: "session-buffer",
+      taskId: "task-buffer",
+      timestamp: "2026-04-08T00:00:00.000Z",
+      payload: {
+        binary: Buffer.from("hello world"),
+      },
+    });
+
+    const sessionFile = join(rootDir, "session-session-buffer.jsonl");
+    const raw = readFileSync(sessionFile, "utf8");
+    assert.match(raw, /"\$type":"Buffer"/);
+    assert.match(raw, /"encoding":"base64"/);
+    assert.equal(raw.includes('"data":[104,101,108,108,111,32,119,111,114,108,100]'), false);
+  } finally {
+    cleanup(rootDir);
+  }
+});
+
 test("SessionDualStorageService handles special characters in session IDs", () => {
   const { storage, rootDir } = createTestStorage();
   try {

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { join } from "node:path";
 import test from "node:test";
 
-import { RuntimeRepairService } from "../../../../src/platform/five-plane-execution/recovery/runtime-repair-service-root.js";
+import { RuntimeRepairService } from "../../../../src/platform/five-plane-execution/recovery/runtime-repair-service.js";
 import { StartupConsistencyChecker } from "../../../../src/platform/five-plane-execution/startup/startup-consistency-checker.js";
 import { AuthoritativeTaskStore } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import { SqliteDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";

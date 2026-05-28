@@ -60,6 +60,7 @@ Stable script overview:
 - `docs_zh/migration/README.md` — migration rules and E2E workflow migration index
 - `docs_zh/adr/` — architectural decisions
 - `docs_zh/contracts/` — authoritative contracts
+- `docs_zh/contracts/oapeflir_loop_contract.md` — OAPEFLIR loop contract and runtime-evidence boundary
 - `docs_zh/reference/docs-sync.md` — zh/en sync rules and delayed-translation policy
 - `docs_zh/reference/division-catalog.md` — division family map, canonical surfaces, and legacy aliases
 - `translate_docs.py` — legacy translation helper with maintenance notes in its module docstring

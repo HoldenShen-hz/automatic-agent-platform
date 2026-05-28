@@ -6,7 +6,7 @@ import {
 } from "../../contracts/types/recovery-cadence.js";
 import { RuntimeError, ValidationError } from "../../contracts/errors.js";
 import { nowIso } from "../../contracts/types/ids.js";
-import type { RuntimeRecoveryReplayService } from "../recovery/runtime-recovery-replay-service-root.js";
+import type { RuntimeRecoveryReplayService } from "../recovery/runtime-recovery-replay-service.js";
 import { ReplayBoundaryGuard, type ReplayOperation, type ReplayMode } from "../recovery/replay-boundary-guard.js";
 
 export interface ReplayWorkerOptions {

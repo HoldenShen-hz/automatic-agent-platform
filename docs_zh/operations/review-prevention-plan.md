@@ -53,6 +53,13 @@
 
 ### 4.1 P0：一周内补齐
 
+- 已落地（2026-05-27）：
+  - `scripts/ci/audit-type-suppressions.mjs`
+  - `scripts/ci/audit-outbound-urls.mjs`
+  - `scripts/ci/audit-public-entrypoints.mjs`
+  - `scripts/ci/audit-duplicate-test-titles.mjs`
+  - 已接入 `npm run audit:repo-hygiene`
+  - 当前采用“存量基线 + 禁止回升”策略；后续治理目标不是放宽基线，而是持续下压并回写基线
 - 类型抑制审计：
   - 扫描新增 `@ts-expect-error`、`@ts-ignore`、`as any`、`as unknown as`。
   - 默认新增即失败；存量必须白名单化并逐步归零。

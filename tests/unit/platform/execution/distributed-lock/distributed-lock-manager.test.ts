@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { inferPgSslFromDsn } from "../../../../../src/platform/five-plane-execution/distributed-lock/distributed-lock-manager.js";
+import { inferPgSslFromDsn } from "../../../../../src/platform/five-plane-execution/distributed-lock/locking-support.js";
 
 test("inferPgSslFromDsn returns null for invalid DSN [distributed-lock-manager]", () => {
   assert.equal(inferPgSslFromDsn("not-a-url"), null);

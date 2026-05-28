@@ -44,6 +44,10 @@ export interface StartupBanner {
 
 type Constructable<TValue, TArgs extends readonly unknown[]> = new(...args: TArgs) => TValue;
 type CallableFactory<TValue, TArgs extends readonly unknown[]> = (...args: TArgs) => TValue;
+const STATIC_BOOTSTRAP_SESSION_REFRESH_TOKEN = "bootstrap-session";
+const NON_EXPIRING_BOOTSTRAP_SESSION_EXPIRY = Number.MAX_SAFE_INTEGER;
+
+const runtimeFetch: typeof fetch = (...args) => globalThis.fetch(...args);
 
 export function createWebRuntimeConfig(env: Record<string, string | boolean | undefined>): WebRuntimeConfig {
   const apiBaseUrl = normalizeOptionalEnv(env.VITE_API_BASE_URL);
@@ -100,7 +104,7 @@ export function startWebRuntimeTelemetry(config: Pick<WebRuntimeConfig, "telemet
   }
 
   const sink = createTelemetrySink([
-    new OtlpHttpTelemetryExporter(config.telemetryEndpoint, globalThis.fetch.bind(globalThis), {
+    new OtlpHttpTelemetryExporter(config.telemetryEndpoint, runtimeFetch, {
       authorization: config.telemetryAuthToken,
     }),
   ]);
@@ -125,8 +129,8 @@ function seedTokenManager(tokenManager: TokenManager, authToken: string): void {
   }
   tokenManager.setSession({
     accessToken: authToken,
-    refreshToken: "",
-    expiresAt: Date.now() + 3600_000,
+    refreshToken: STATIC_BOOTSTRAP_SESSION_REFRESH_TOKEN,
+    expiresAt: NON_EXPIRING_BOOTSTRAP_SESSION_EXPIRY,
   });
 }
 
@@ -160,7 +164,9 @@ export function createWebRuntimeClients(
     ],
   );
 
-  const wsClient = constructOrCall(BrowserWSClient, WebSocket, constructOrCall(InMemoryWSClient));
+  const wsClient = config.wsUrl == null || typeof WebSocket === "undefined"
+    ? constructOrCall(InMemoryWSClient)
+    : constructOrCall(BrowserWSClient, WebSocket, constructOrCall(InMemoryWSClient));
 
   return { client, wsClient, offlineQueue, tokenManager };
 }

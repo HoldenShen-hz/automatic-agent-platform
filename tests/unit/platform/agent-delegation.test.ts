@@ -10,28 +10,28 @@ import {
   DelegationFanoutExceededError,
   DelegationCycleDetectedError,
   type TopologyValidatorConfig,
-} from "../../../src/platform/agent-delegation/index.js";
+} from "../../../src/platform/five-plane-orchestration/agent-delegation/index.js";
 
 import {
   ContextIsolator,
   createContextIsolator,
   IsolationLevel,
   type IsolatedContext,
-} from "../../../src/platform/agent-delegation/index.js";
+} from "../../../src/platform/five-plane-orchestration/agent-delegation/index.js";
 
 import {
   DelegationTracker,
   createDelegationTracker,
   type DelegationTreeNode,
   type DelegationMetrics,
-} from "../../../src/platform/agent-delegation/index.js";
+} from "../../../src/platform/five-plane-orchestration/agent-delegation/index.js";
 
 import {
   DelegationManagerService,
   createDelegationManager,
   type DelegationExpirationConfig,
   type ExpirationScanResult,
-} from "../../../src/platform/agent-delegation/index.js";
+} from "../../../src/platform/five-plane-orchestration/agent-delegation/index.js";
 
 import type {
   AgentContext,
@@ -39,7 +39,7 @@ import type {
   DelegationSpec,
   DelegationResult,
   DelegationOptions,
-} from "../../../src/platform/agent-delegation/index.js";
+} from "../../../src/platform/five-plane-orchestration/agent-delegation/index.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TopologyValidator Tests

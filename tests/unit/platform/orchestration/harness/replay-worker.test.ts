@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { ReplayWorker, type ReplaySandboxPolicy } from "../../../../../src/platform/five-plane-execution/ha/replay-worker.js";
 import { ReplayBoundaryGuard } from "../../../../../src/platform/five-plane-execution/recovery/replay-boundary-guard.js";
-import type { RuntimeRecoveryReplayService } from "../../../../../src/platform/five-plane-execution/recovery/runtime-recovery-replay-service-root.js";
+import type { RuntimeRecoveryReplayService } from "../../../../../src/platform/five-plane-execution/recovery/runtime-recovery-replay-service.js";
 
 // Mock RuntimeRecoveryReplayService for testing
 function createMockReplayService(): Pick<RuntimeRecoveryReplayService, "buildTaskReplayReport"> {

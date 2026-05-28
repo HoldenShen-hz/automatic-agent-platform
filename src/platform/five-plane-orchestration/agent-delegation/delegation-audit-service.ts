@@ -19,9 +19,6 @@ import { StructuredLogger } from "../../shared/observability/structured-logger.j
 const delegationAuditLogger = new StructuredLogger({ retentionLimit: 100 });
 const AUDIT_LOCK_TIMEOUT_MS = 250;
 
-/** Default directory for delegation audit events */
-const DEFAULT_AUDIT_DIR = process.env.AA_DELEGATION_AUDIT_DIR?.trim() || join(process.cwd(), ".audit", "delegation");
-
 function isNodeTestRunner(): boolean {
   return process.env.NODE_TEST_CONTEXT === "child-v8";
 }
@@ -150,9 +147,9 @@ export class DelegationAuditService {
   private eventFilePath: string;
   private readonly eventLockPath: string;
 
-  public constructor(auditDir: string = DEFAULT_AUDIT_DIR) {
+  public constructor(auditDir: string = resolveDefaultAuditDir()) {
     this.auditDir = auditDir;
-    this.persistent = auditDir !== DEFAULT_AUDIT_DIR || !isNodeTestRunner();
+    this.persistent = auditDir !== resolveDefaultAuditDir() || !isNodeTestRunner();
     this.eventFilePath = join(this.auditDir, "delegation-audit-events.json");
     this.eventLockPath = `${this.eventFilePath}.lock`;
     if (this.persistent) {
@@ -375,6 +372,10 @@ export class DelegationAuditService {
   public listEvents(): DelegationAuditEvent[] {
     return [...this.events];
   }
+}
+
+function resolveDefaultAuditDir(): string {
+  return process.env.AA_DELEGATION_AUDIT_DIR?.trim() || join(process.cwd(), ".audit", "delegation");
 }
 
 export const delegationAuditService = new DelegationAuditService();

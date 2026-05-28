@@ -8,10 +8,8 @@ export * from "../../platform/five-plane-execution/startup/graceful-shutdown.js"
 export * from "../../platform/five-plane-execution/execution-engine/loop-detection.js";
 export * from "./orchestrator/index.js";
 export * from "../../platform/five-plane-execution/execution-engine/output-continuation-service.js";
-export * from "../../platform/five-plane-execution/execution-engine/runtime-context.js";
+export * from "../../platform/shared/context/runtime-context.js";
 export * from "../../platform/five-plane-execution/execution-engine/runtime-factory.js";
-export * from "../../platform/five-plane-execution/state-transition/state-transition-machine.js";
-export * from "../../platform/five-plane-execution/state-transition/transition-service.js";
 export * from "../../platform/five-plane-execution/worker-pool/worker-registry-service.js";
 export {
   WORKFLOW_STEP_CHECKPOINT_SCHEMA_VERSION,

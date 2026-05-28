@@ -5,8 +5,8 @@ import { resolve } from "node:path";
 import type {
   ModelMetadataRegistry,
   ModelProfileMetadata,
-} from "../../five-plane-control-plane/config-center/model-metadata-registry.js";
-import type { ResourceCeilingGuard } from "../../five-plane-control-plane/config-center/resource-ceiling.js";
+  ResourceCeilingGuard,
+} from "../../five-plane-control-plane/config-center/index.js";
 import type { StepOutputRecord } from "../../contracts/types/domain.js";
 import type { ToolCallErrorSource, ToolCallStatus } from "./tool-call-result.js";
 import type { ToolExecutionMetadata, ToolRecoveryStrategy } from "./tool-metadata.js";

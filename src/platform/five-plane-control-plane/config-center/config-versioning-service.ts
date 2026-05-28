@@ -21,8 +21,11 @@ import {
   stableStringify,
   type ConfigDiffEntry,
 } from "./config-governance-support.js";
-import type { SqliteConnection } from "../../five-plane-state-evidence/truth/sqlite/query-helper.js";
-import { queryAllOrEmpty, execute } from "../../five-plane-state-evidence/truth/sqlite/query-helper.js";
+import {
+  execute,
+  queryAllOrEmpty,
+  type SqliteConnection,
+} from "../../five-plane-state-evidence/truth/index.js";
 
 /**
  * Represents a configuration version snapshot.

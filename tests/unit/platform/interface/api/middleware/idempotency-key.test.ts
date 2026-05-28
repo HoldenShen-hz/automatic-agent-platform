@@ -85,8 +85,9 @@ describe("IdempotencyKeyMiddleware", () => {
         method: "POST",
         idempotencyKey: "key-123",
       });
-      strictEqual(result.allowed, true);
+      strictEqual(result.allowed, false);
       strictEqual(result.isDuplicate, true);
+      strictEqual(result.requestInFlight, true);
     });
 
     it("should return cached response for duplicate", async () => {
@@ -122,6 +123,7 @@ describe("IdempotencyKeyMiddleware", () => {
       strictEqual(result.allowed, false);
       strictEqual(result.error?.statusCode, 409);
       strictEqual(result.error?.code, "api.idempotency_key_conflict");
+      strictEqual(result.error?.message.includes("key-123"), false);
     });
 
     it("should isolate per tenant when perTenant enabled", async () => {

@@ -152,9 +152,16 @@ function buildRiskSummary(goal: Goal, matchedTemplate: string | null): RiskPrevi
   };
 }
 
+const GOAL_CONSTRAINT_SCAN_LIMIT = 4096;
+const BUDGET_CONSTRAINT_REGEX = /(?:budget|预算|费用)\D*(\d+(?:\.\d+)?)/i;
+
+function truncateConstraintScanWindow(raw: string): string {
+  return raw.length <= GOAL_CONSTRAINT_SCAN_LIMIT ? raw : raw.slice(0, GOAL_CONSTRAINT_SCAN_LIMIT);
+}
+
 function parseConstraintEnvelope(goal: Goal): GoalConstraintEnvelope {
-  const rawConstraints = [goal.description, ...goal.constraints].join(" ");
-  const budgetMatch = /(?:budget|预算|费用)\D*(\d+(?:\.\d+)?)/i.exec(rawConstraints);
+  const rawConstraints = truncateConstraintScanWindow([goal.description, ...goal.constraints].join(" "));
+  const budgetMatch = BUDGET_CONSTRAINT_REGEX.exec(rawConstraints);
   const requiredPermissions = [
     ...( /(deploy|release|publish|上线|发布|部署)/i.test(rawConstraints) ? ["deployment:write"] : []),
     ...( /(delete|drop|remove|删除|清空)/i.test(rawConstraints) ? ["destructive:write"] : []),

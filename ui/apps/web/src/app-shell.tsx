@@ -51,6 +51,17 @@ export interface WebAppShellProps {
   };
 }
 
+const LOCAL_DEV_HOSTS = new Set(["localhost", "127.0.0.1", "::1", "0.0.0.0"]);
+const LOCAL_DEV_PERMISSIONS = [
+  "authenticated",
+  "platform_sre",
+  "domain_admin+",
+  "org_admin+",
+  "admin+",
+  "pack_developer+",
+] as const;
+const LOCAL_DEV_ROLES = ["platform-admin", "operator", "developer"] as const;
+
 function AppRouter(
   { children, initialEntries, router }: { children: ReactElement; initialEntries?: readonly string[]; router: "browser" | "memory" },
 ): ReactElement {
@@ -438,7 +449,21 @@ function resolveLocationAuthContext(): Partial<AuthContext> {
   const tenantId = params.get("tenant_id");
   const domainId = params.get("domain_id");
   const mode = params.get("mode");
-  const authenticated = userId != null || permissions.length > 0 || roles.length > 0;
+  const hasExplicitAuth = userId != null || permissions.length > 0 || roles.length > 0;
+
+  if (!hasExplicitAuth && LOCAL_DEV_HOSTS.has(window.location.hostname)) {
+    return {
+      userId: "local-dev-operator",
+      authenticated: true,
+      tenantId: tenantId ?? "tenant-default",
+      domainId: domainId ?? "platform",
+      permissions: [...LOCAL_DEV_PERMISSIONS],
+      roles: [...LOCAL_DEV_ROLES],
+      ...(mode === "solo" || mode === "enterprise" ? { mode } : { mode: "enterprise" }),
+    };
+  }
+
+  const authenticated = hasExplicitAuth;
 
   return {
     ...(userId == null ? {} : { userId }),

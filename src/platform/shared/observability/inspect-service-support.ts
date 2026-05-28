@@ -29,7 +29,7 @@ import type {
 import { buildStepResultEnvelope, type ResultEnvelope } from "../../contracts/result-envelope/result-envelope.js";
 import type { TaskSnapshot } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
 import { AuthoritativeTaskStore } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
-import { type TaskRuntimeRecoveryView } from "../../five-plane-execution/recovery/runtime-recovery-service-root.js";
+import { type TaskRuntimeRecoveryView } from "../../five-plane-execution/recovery/runtime-recovery-service.js";
 import { StructuredLogger } from "./structured-logger.js";
 
 const inspectLogger = new StructuredLogger({ retentionLimit: 50 });

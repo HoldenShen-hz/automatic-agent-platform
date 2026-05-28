@@ -15,7 +15,7 @@ import { TaskTimelineService } from "../../../../../src/platform/shared/observab
 import { ExecutionDispatchService } from "../../../../../src/platform/five-plane-execution/dispatcher/execution-dispatch-service.js";
 import { ExecutionLeaseService } from "../../../../../src/platform/five-plane-execution/lease/execution-lease-service.js";
 import { ExecutionWorkerHandshakeService } from "../../../../../src/platform/five-plane-execution/worker-pool/execution-worker-handshake-service.js";
-import { runSingleTaskExecution } from "../../../../../src/platform/five-plane-execution/execution-engine/single-task-execution.js";
+import { runSingleTaskExecution } from "../../../../../src/platform/five-plane-execution/execution-engine/single-task-happy-path.js";
 import { WorkerRegistryService } from "../../../../../src/platform/five-plane-execution/worker-pool/worker-registry-service.js";
 import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 import { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";

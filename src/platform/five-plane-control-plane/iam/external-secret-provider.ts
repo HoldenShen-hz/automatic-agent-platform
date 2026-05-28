@@ -223,7 +223,7 @@ async function securelyReadSecretsFile(filePath: string, code: string): Promise<
     });
   } finally {
     if (fd != null) {
-      void fd.close();
+      await fd.close();
     }
   }
 }

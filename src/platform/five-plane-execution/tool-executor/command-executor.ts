@@ -24,7 +24,7 @@ import { ArtifactStore } from "../../five-plane-state-evidence/artifacts/artifac
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 
 const commandExecutorLogger = new StructuredLogger({ retentionLimit: 100 });
-import { checkSandboxPath } from "../../five-plane-control-plane/iam/sandbox-policy.js";
+import { checkSandboxPath } from "../../five-plane-control-plane/iam/index.js";
 import { AuthoritativeTaskStore } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
 import { sanitizeToolOutput, type SanitizedToolOutput } from "./tool-output-sanitizer.js";
 import { assessCommand } from "./command-security.js";

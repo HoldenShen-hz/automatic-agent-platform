@@ -14,7 +14,7 @@
  * @see {@link docs_zh/contracts/} for stability and repair-related contracts
  */
 import { withCliStorageAsync } from "./authoritative-storage.js";
-import { RuntimeRepairService } from "../../platform/five-plane-execution/recovery/runtime-repair-service-root.js";
+import { RuntimeRepairService } from "../../platform/five-plane-execution/recovery/runtime-repair-service.js";
 import { StartupConsistencyChecker } from "../../platform/five-plane-execution/startup/startup-consistency-checker.js";
 
 /**

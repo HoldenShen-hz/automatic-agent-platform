@@ -18,8 +18,48 @@ export interface IncidentCase {
 
 export class IncidentCaseService {
   private readonly incidents = new Map<string, IncidentCase>();
-  private readonly incidentOrder = new Map<string, number>();
-  private nextIncidentOrder = 1;
+  private readonly incidentOrder = new Map<string, bigint>();
+
+  private encodeCursor(incident: IncidentCase): string {
+    return Buffer.from(JSON.stringify({
+      createdAt: incident.createdAt,
+      incidentId: incident.incidentId,
+      sortOrder: (this.incidentOrder.get(incident.incidentId) ?? 0n).toString(),
+    }), "utf8").toString("base64url");
+  }
+
+  private decodeCursor(cursor: string): { createdAt: string; incidentId: string; sortOrder: bigint } | null {
+    try {
+      const parsed = JSON.parse(Buffer.from(cursor, "base64url").toString("utf8")) as {
+        createdAt?: unknown;
+        incidentId?: unknown;
+        sortOrder?: unknown;
+      };
+      if (typeof parsed.createdAt !== "string" || typeof parsed.incidentId !== "string" || typeof parsed.sortOrder !== "string") {
+        return null;
+      }
+      return { createdAt: parsed.createdAt, incidentId: parsed.incidentId, sortOrder: BigInt(parsed.sortOrder) };
+    } catch {
+      return null;
+    }
+  }
+
+  private compareIncidents(left: IncidentCase, right: IncidentCase): number {
+    const createdAtOrder = right.createdAt.localeCompare(left.createdAt);
+    if (createdAtOrder !== 0) {
+      return createdAtOrder;
+    }
+    const leftOrder = this.incidentOrder.get(left.incidentId) ?? 0n;
+    const rightOrder = this.incidentOrder.get(right.incidentId) ?? 0n;
+    if (leftOrder !== rightOrder) {
+      return rightOrder > leftOrder ? 1 : -1;
+    }
+    return right.incidentId.localeCompare(left.incidentId);
+  }
+
+  private getSortedIncidents(): IncidentCase[] {
+    return [...this.incidents.values()].sort((left, right) => this.compareIncidents(left, right));
+  }
 
   public openIncident(input: {
     severity: IncidentSeverity;
@@ -32,14 +72,14 @@ export class IncidentCaseService {
       severity: input.severity,
       status: "open",
       title: input.title,
-      linkedEvidenceRefs: input.linkedEvidenceRefs ?? [],
+      linkedEvidenceRefs: [...(input.linkedEvidenceRefs ?? [])],
       owner: null,
       createdAt: now,
       updatedAt: now,
       resolvedAt: null,
     };
     this.incidents.set(incident.incidentId, incident);
-    this.incidentOrder.set(incident.incidentId, this.nextIncidentOrder++);
+    this.incidentOrder.set(incident.incidentId, process.hrtime.bigint());
     return incident;
   }
 
@@ -116,6 +156,12 @@ export class IncidentCaseService {
 
   public resolve(incidentId: string): IncidentCase {
     const incident = this.getRequired(incidentId);
+    if (incident.status !== "reviewed") {
+      throw new ValidationError(
+        "incident.must_be_reviewed_for_resolution",
+        "Incident must be in reviewed state before it can be resolved.",
+      );
+    }
     const now = nowIso();
     return this.update(incidentId, { ...incident, status: "resolved", updatedAt: now, resolvedAt: now });
   }
@@ -125,38 +171,34 @@ export class IncidentCaseService {
   }
 
   public listIncidents(limit = 50): IncidentCase[] {
-    return [...this.incidents.values()]
-      .sort((left, right) => {
-        const createdAtOrder = right.createdAt.localeCompare(left.createdAt);
-        if (createdAtOrder !== 0) {
-          return createdAtOrder;
-        }
-        return (this.incidentOrder.get(right.incidentId) ?? 0) - (this.incidentOrder.get(left.incidentId) ?? 0);
-      })
-      .slice(0, Math.max(0, limit));
+    return this.getSortedIncidents().slice(0, Math.max(0, limit));
   }
 
   // R20-30: Cursor-based pagination for incidents
   public listIncidentsPaginated(limit = 50, cursor?: string | null): { incidents: IncidentCase[]; nextToken: string | null } {
-    const sorted = [...this.incidents.values()]
-      .sort((left, right) => {
-        const createdAtOrder = right.createdAt.localeCompare(left.createdAt);
-        if (createdAtOrder !== 0) {
-          return createdAtOrder;
-        }
-        return (this.incidentOrder.get(right.incidentId) ?? 0) - (this.incidentOrder.get(left.incidentId) ?? 0);
-      });
+    const sorted = this.getSortedIncidents();
 
     let startIndex = 0;
     if (cursor != null) {
-      const cursorIndex = sorted.findIndex((incident) => incident.incidentId === cursor);
-      if (cursorIndex !== -1) {
-        startIndex = cursorIndex + 1;
+      const decodedCursor = this.decodeCursor(cursor);
+      if (decodedCursor != null) {
+        startIndex = sorted.findIndex((incident) =>
+          incident.createdAt < decodedCursor.createdAt
+          || (
+            incident.createdAt === decodedCursor.createdAt
+            && (this.incidentOrder.get(incident.incidentId) ?? 0n) < decodedCursor.sortOrder
+          )
+        );
+        if (startIndex < 0) {
+          startIndex = sorted.length;
+        }
       }
     }
 
     const page = sorted.slice(startIndex, startIndex + Math.max(0, limit));
-    const nextToken = startIndex + limit < sorted.length ? page[page.length - 1]?.incidentId ?? null : null;
+    const nextToken = startIndex + limit < sorted.length && page.length > 0
+      ? this.encodeCursor(page[page.length - 1]!)
+      : null;
     return { incidents: page, nextToken };
   }
 

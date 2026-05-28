@@ -12,17 +12,14 @@
  * @see ExecutionPriorityPreemptionService for the sync implementation
  */
 
-import { createRequire } from "node:module";
-
 import { SyncBackedAsyncService } from "../../shared/async/sync-backed-async-service.js";
 import type { AuthoritativeSqlDatabase } from "../../five-plane-state-evidence/truth/authoritative-sql-database.js";
 import type { AuthoritativeTaskStore } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
-import type {
-  PriorityPreemptionDecision,
-  PriorityPreemptionRequest,
+import {
+  ExecutionPriorityPreemptionService,
+  type PriorityPreemptionDecision,
+  type PriorityPreemptionRequest,
 } from "./execution-priority-preemption-service.js";
-
-const require = createRequire(import.meta.url);
 
 /**
  * Async Execution Priority Preemption Service
@@ -32,9 +29,7 @@ const require = createRequire(import.meta.url);
  * This async version provides the same functionality as ExecutionPriorityPreemptionService
  * but with async/await interface for modern async contexts.
  */
-type ExecutionPriorityPreemptionServiceSync = import("./execution-priority-preemption-service.js").ExecutionPriorityPreemptionService;
-
-export class ExecutionPriorityPreemptionServiceAsync extends SyncBackedAsyncService<ExecutionPriorityPreemptionServiceSync> {
+export class ExecutionPriorityPreemptionServiceAsync extends SyncBackedAsyncService<ExecutionPriorityPreemptionService> {
 
   /**
    * Creates a new ExecutionPriorityPreemptionServiceAsync instance.
@@ -43,10 +38,7 @@ export class ExecutionPriorityPreemptionServiceAsync extends SyncBackedAsyncServ
    * @param store - AuthoritativeTaskStore for data access
    */
   public constructor(db: AuthoritativeSqlDatabase, store: AuthoritativeTaskStore) {
-    super(() => {
-      const { ExecutionPriorityPreemptionService } = require("./execution-priority-preemption-service.js");
-      return new ExecutionPriorityPreemptionService(db, store);
-    });
+    super(() => new ExecutionPriorityPreemptionService(db, store));
   }
 
   /**
@@ -56,6 +48,3 @@ export class ExecutionPriorityPreemptionServiceAsync extends SyncBackedAsyncServ
     return this.asPromise((sync) => sync.preemptForUrgentTicket(input));
   }
 }
-
-// Re-export types
-export type { PriorityPreemptionDecision, PriorityPreemptionRequest } from "./execution-priority-preemption-service.js";

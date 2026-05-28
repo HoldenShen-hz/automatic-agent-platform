@@ -1,29 +1,26 @@
 /**
- * Unit Tests: Phase1A Happy Path barrel
- *
- * Tests that phase1a-happy-path barrel exports correctly re-export
- * runSingleTaskExecution and runPhase1AHappyPath alias.
+ * Unit Tests: Single-task happy path public surface
  */
 
 import assert from "node:assert/strict";
 import test from "node:test";
 
-test("phase1a-happy-path exports runSingleTaskExecution [phase1a-happy-path]", async () => {
-  const mod = await import("../../../../../src/platform/five-plane-execution/execution-engine/phase1a-happy-path.js");
+test("single-task-happy-path exports runSingleTaskExecution [phase1a-happy-path]", async () => {
+  const mod = await import("../../../../../src/platform/five-plane-execution/execution-engine/single-task-happy-path.js");
   assert.equal(typeof mod.runSingleTaskExecution, "function");
 });
 
-test("phase1a-happy-path exports runPhase1AHappyPath alias [phase1a-happy-path]", async () => {
-  const mod = await import("../../../../../src/platform/five-plane-execution/execution-engine/phase1a-happy-path.js");
-  assert.equal(typeof mod.runPhase1AHappyPath, "function");
+test("single-task-happy-path does not export removed Phase1A alias [phase1a-happy-path]", async () => {
+  const mod = await import("../../../../../src/platform/five-plane-execution/execution-engine/single-task-happy-path.js");
+  assert.equal("runPhase1AHappyPath" in mod, false);
 });
 
-test("runPhase1AHappyPath is identical to runSingleTaskExecution [phase1a-happy-path]", async () => {
-  const mod = await import("../../../../../src/platform/five-plane-execution/execution-engine/phase1a-happy-path.js");
-  assert.strictEqual(mod.runPhase1AHappyPath, mod.runSingleTaskExecution);
+test("single-task-happy-path exposes the canonical entrypoint only [phase1a-happy-path]", async () => {
+  const mod = await import("../../../../../src/platform/five-plane-execution/execution-engine/single-task-happy-path.js");
+  assert.equal(typeof mod.runSingleTaskExecution, "function");
 });
 
-test("phase1a-happy-path exports HappyPathInput type [phase1a-happy-path]", async () => {
-  const mod = await import("../../../../../src/platform/five-plane-execution/execution-engine/phase1a-happy-path.js");
+test("single-task-happy-path exports HappyPathInput type [phase1a-happy-path]", async () => {
+  const mod = await import("../../../../../src/platform/five-plane-execution/execution-engine/single-task-happy-path.js");
   assert.ok("HappyPathInput" in mod || mod.runSingleTaskExecution != null);
 });

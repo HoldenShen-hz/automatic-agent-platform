@@ -1,4 +1,5 @@
-import { createRequire } from "node:module";
+import { randomUUID } from "node:crypto";
+import IORedis from "ioredis";
 
 import { LockingError } from "../../contracts/errors.js";
 import { buildRedisClientOptions, RedisConnectionConfig } from "../../shared/utils/redis-client-options.js";
@@ -64,8 +65,6 @@ export class RedisLockAdapter implements DistributedLockAdapter {
     this.port = config?.port ?? 6379;
     this.cliPath = config?.cliPath ?? "redis-cli";
     this.connectTimeoutMs = config?.connectTimeoutMs ?? 500;
-    const require = createRequire(import.meta.url);
-    const RedisCtor = require("ioredis") as new (options: Record<string, unknown>) => RedisLockAdapter["redis"];
     const effectiveConfig = {
       host: this.host,
       port: this.port,
@@ -83,7 +82,7 @@ export class RedisLockAdapter implements DistributedLockAdapter {
       sentinels: config?.sentinels,
       sentinelPassword: config?.sentinelPassword,
     };
-    this.redis = new RedisCtor(buildRedisClientOptions(
+    this.redis = new (IORedis as unknown as new (options: Record<string, unknown>) => RedisLockAdapter["redis"])(buildRedisClientOptions(
       Object.fromEntries(
         Object.entries(effectiveConfig).filter(([, v]) => v !== undefined)
       ) as RedisConnectionConfig,
@@ -164,7 +163,7 @@ export class RedisLockAdapter implements DistributedLockAdapter {
     const lockKey = `lock:${input.lockKey}`;
     const fencingToken = await this.nextFencingToken();
     const lockData: LockData = {
-      id: `lock_${Date.now()}_${fencingToken}`,
+      id: `lock_${fencingToken}_${randomUUID()}`,
       owner: input.owner,
       fencingToken,
       ttlMs,
@@ -183,7 +182,15 @@ export class RedisLockAdapter implements DistributedLockAdapter {
 
   public async releaseAsync(lockKey: string, owner: string): Promise<boolean> {
     await this.ensureConnected();
-    const script = "local current=redis.call('GET',KEYS[1]) if not current then return -1 end local data=cjson.decode(current) if data.owner~=ARGV[1] then return 0 end return redis.call('DEL',KEYS[1])";
+    const script = `
+local current = redis.call('GET', KEYS[1])
+if not current then return -1 end
+local decoded = pcall(cjson.decode, current)
+if not decoded or type(decoded) ~= 'table' then return -2 end
+local data = decoded
+if data.owner ~= ARGV[1] then return 0 end
+return redis.call('DEL', KEYS[1])
+`;
     return Number(await this.redis.eval(script, 1, `lock:${lockKey}`, owner)) === 1;
   }
 
@@ -223,7 +230,7 @@ return updated`;
     const fencingToken = await this.nextFencingToken();
     const ttlMs = 30_000;
     const lockData: LockData = {
-      id: `lock_${Date.now()}_${fencingToken}`,
+      id: `lock_${fencingToken}_${randomUUID()}`,
       owner: newOwner,
       fencingToken,
       ttlMs,
@@ -264,8 +271,9 @@ return updated`;
     const prefixLen = lockPrefix.length;
 
     do {
-      const [nextCursor, keys] = await this.redis.scan(cursor, 'COUNT', 100);
-      cursor = parseInt(nextCursor, 10);
+      const [nextCursor, keys] = await this.redis.scan(cursor, "MATCH", `${lockPrefix}*`, "COUNT", 100);
+      const parsedCursor = Number.parseInt(nextCursor, 10);
+      cursor = Number.isFinite(parsedCursor) && parsedCursor >= 0 ? parsedCursor : 0;
 
       if (keys.length > 0) {
         const values = await this.redis.mget(...keys);

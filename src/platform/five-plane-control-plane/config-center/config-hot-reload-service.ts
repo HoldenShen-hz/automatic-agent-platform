@@ -10,12 +10,26 @@
 
 import { watch, type FSWatcher } from "node:fs";
 import { stat } from "node:fs/promises";
+import { createHash } from "node:crypto";
 
 import { DurableEventBus } from "../../five-plane-state-evidence/events/durable-event-bus.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
+
+function stableSerializeConfig(value: unknown): string {
+  if (value == null || typeof value !== "object") {
+    return JSON.stringify(value);
+  }
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => stableSerializeConfig(item)).join(",")}]`;
+  }
+  const entries = Object.entries(value as Record<string, unknown>)
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([key, entryValue]) => `${JSON.stringify(key)}:${stableSerializeConfig(entryValue)}`);
+  return `{${entries.join(",")}}`;
+}
 
 /**
  * Severity level for config change notifications.
@@ -265,7 +279,12 @@ export class ConfigHotReloadService {
    */
   public watchFile(filePath: string): void {
     this.watchedFiles.add(filePath);
-    void this.initializeWatchedFileVersion(filePath);
+    void this.initializeWatchedFileVersion(filePath).catch((error: unknown) => {
+      logger.warn("config_hot_reload.initial_version_failed", {
+        filePath,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    });
     this.startNativeWatcher(filePath);
   }
 
@@ -447,14 +466,7 @@ export class ConfigHotReloadService {
    * Computes a simple version hash from config content.
    */
   private computeVersion(config: Record<string, unknown>): string {
-    const str = JSON.stringify(config, Object.keys(config).sort());
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      const char = str.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash;
-    }
-    return Math.abs(hash).toString(16);
+    return createHash("sha256").update(stableSerializeConfig(config), "utf8").digest("hex");
   }
 
   private async initializeWatchedFileVersion(filePath: string): Promise<void> {
@@ -503,7 +515,12 @@ export class ConfigHotReloadService {
     }
     try {
       const watcher = watch(filePath, { persistent: false }, () => {
-        void this.queueFileReload(filePath);
+        void this.queueFileReload(filePath).catch((error: unknown) => {
+          logger.warn("config_hot_reload.file_reload_failed", {
+            filePath,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        });
       });
       watcher.unref?.();
       this.nativeWatchers.set(filePath, watcher);

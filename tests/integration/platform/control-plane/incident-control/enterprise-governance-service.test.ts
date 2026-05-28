@@ -17,7 +17,7 @@ import { DoctorService } from "../../../../../src/platform/five-plane-control-pl
 import { EnterpriseGovernanceService } from "../../../../../src/platform/five-plane-control-plane/incident-control/enterprise-governance-service.js";
 import { OperationsGovernanceService } from "../../../../../src/platform/five-plane-control-plane/incident-control/operations-governance-service.js";
 import { ExecutionResourceMonitor } from "../../../../../src/platform/five-plane-execution/dispatcher/execution-resource-monitor.js";
-import { RuntimeRecoveryService } from "../../../../../src/platform/five-plane-execution/recovery/runtime-recovery-service-root.js";
+import { RuntimeRecoveryService } from "../../../../../src/platform/five-plane-execution/recovery/runtime-recovery-service.js";
 import { StalledExecutionDetector } from "../../../../../src/platform/five-plane-execution/recovery/stalled-execution-detector.js";
 import { StalledExecutionEscalationService } from "../../../../../src/platform/five-plane-execution/recovery/stalled-execution-escalation-service.js";
 import { createDefaultStartupConsistencyCheckerOptions } from "../../../../../src/platform/five-plane-execution/startup/startup-preflight.js";
@@ -35,7 +35,7 @@ const repoRoot = fileURLToPath(new URL("../../../..", import.meta.url));
 
 function seedHappyPathDb(dbPath: string): void {
   const script = `
-    import { runSingleTaskExecution } from ${JSON.stringify(new URL("../../../../../src/platform/five-plane-execution/execution-engine/single-task-execution.js", import.meta.url).href)};
+    import { runSingleTaskExecution } from ${JSON.stringify(new URL("../../../../../src/platform/five-plane-execution/execution-engine/single-task-happy-path.js", import.meta.url).href)};
     await runSingleTaskExecution({
       dbPath: ${JSON.stringify(dbPath)},
       title: "Enterprise governance task",

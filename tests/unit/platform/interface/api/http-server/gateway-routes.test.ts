@@ -250,6 +250,28 @@ test("POST /v1/gateway/webhooks/receive throws on invalid JSON", async () => {
   }
 });
 
+test("POST /v1/gateway/webhooks/receive rejects non-string raw body", async () => {
+  const deps = {
+    authService: createMockAuthService(),
+    gatewayTargetDirectoryService: createMockTargetDirectoryService(),
+    channelGatewayService: createMockChannelGatewayService(),
+    channelGatewayDeliveryService: createMockDeliveryService(),
+    webhookSecret: null,
+  };
+  const routes = createGatewayRoutes(deps);
+  const route = routes.find((r) => r.pathname === "/v1/gateway/webhooks/receive")!;
+  const ctx = {
+    ...createMockContext("/v1/gateway/webhooks/receive", "POST"),
+    request: { method: "POST", url: "/v1/gateway/webhooks/receive", headers: {}, body: { targetId: "tgt-1" } } as never,
+  };
+  await assert.rejects(
+    async () => {
+      await route.handler(ctx);
+    },
+    /raw text/i,
+  );
+});
+
 test("POST /v1/gateway/messages/send rejects dangerous JSON keys", async () => {
   const deps = {
     authService: createMockAuthService(),

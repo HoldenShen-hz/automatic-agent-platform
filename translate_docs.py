@@ -138,6 +138,8 @@ FILES = [
 CHINESE_PATTERN = re.compile(r'[\u4e00-\u9fff]')
 TRANSLATION_MAX_ATTEMPTS = 3
 TRANSLATION_BASE_BACKOFF_SECONDS = 1.0
+TRANSLATION_MIN_INTERVAL_SECONDS = 0.5
+_last_translation_started_at = 0.0
 
 def has_chinese(text):
     return bool(CHINESE_PATTERN.search(text))
@@ -164,8 +166,13 @@ def translate_chunk(chunk):
     """Translate a chunk of text, preserving empty strings."""
     if not chunk.strip():
         return chunk
+    global _last_translation_started_at
     for attempt in range(1, TRANSLATION_MAX_ATTEMPTS + 1):
         try:
+            wait_seconds = TRANSLATION_MIN_INTERVAL_SECONDS - (time.time() - _last_translation_started_at)
+            if wait_seconds > 0:
+                time.sleep(wait_seconds)
+            _last_translation_started_at = time.time()
             return ts.translate_text(chunk, translator='google', from_lang='zh', to_lang='en')
         except Exception as e:
             if attempt == TRANSLATION_MAX_ATTEMPTS:
@@ -217,6 +224,8 @@ def translate_file(filepath):
     flush_segment(parts, current_lines, translate=not in_code_block)
 
     result = '\n'.join(parts)
+    if content.endswith('\n') and not result.endswith('\n'):
+        result += '\n'
 
     with open(filepath, 'w', encoding='utf-8') as f:
         f.write(result)

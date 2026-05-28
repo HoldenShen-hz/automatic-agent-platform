@@ -50,6 +50,7 @@ type ApprovalActionAlias =
 
 const MAX_APPROVAL_ID_LENGTH = 128;
 const APPROVAL_ID_PATTERN = /^[a-zA-Z0-9_-]+$/;
+const MAX_APPROVAL_REQUEST_JSON_BYTES = 64 * 1024;
 
 function validateApprovalId(approvalId: string | undefined): string {
   if (!approvalId || typeof approvalId !== "string") {
@@ -67,6 +68,9 @@ function validateApprovalId(approvalId: string | undefined): string {
 function parseAllowedActorIds(approvalView: unknown): readonly string[] {
   const requestJson = (approvalView as { approval?: { requestJson?: unknown } })?.approval?.requestJson;
   if (typeof requestJson !== "string" || requestJson.trim().length === 0) {
+    return [];
+  }
+  if (Buffer.byteLength(requestJson, "utf8") > MAX_APPROVAL_REQUEST_JSON_BYTES) {
     return [];
   }
   try {

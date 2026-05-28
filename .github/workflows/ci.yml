@@ -23,6 +23,10 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      IMAGE_REGISTRY: ${{ format('{0}/{1}', vars.CONTAINER_REGISTRY_HOST != '' && vars.CONTAINER_REGISTRY_HOST || 'ghcr.io', vars.CONTAINER_REGISTRY_NAMESPACE != '' && vars.CONTAINER_REGISTRY_NAMESPACE || github.repository_owner) }}
+      IMAGE_REPOSITORY: automatic-agent-platform
+      IMAGE_TAG: ci-${{ github.sha }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -48,6 +52,9 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Build Docker image for downstream security scan
+        run: docker build -t "${IMAGE_REGISTRY}/${IMAGE_REPOSITORY}:${IMAGE_TAG}" .
+
       - name: Changelog Gate
         run: npm run changelog:check
 
@@ -70,6 +77,8 @@ jobs:
           {
             find test-results coverage -type f -print0 2>/dev/null | xargs -0 shasum -a 256
           } > test-results/artifact-sha256.txt || true
+          docker save "${IMAGE_REGISTRY}/${IMAGE_REPOSITORY}:${IMAGE_TAG}" -o test-results/container-image.tar
+          shasum -a 256 test-results/container-image.tar >> test-results/artifact-sha256.txt
 
       - name: Upload test results
         if: always()
@@ -109,7 +118,6 @@ jobs:
         env:
           AA_TEST_PG_DSN: postgresql://test:test@127.0.0.1:5433/aa_test
           AA_STORAGE_POSTGRES_DSN: postgresql://test:test@127.0.0.1:5433/aa_test
-          AA_PG_DSN: postgresql://test:test@127.0.0.1:5433/aa_test
 
   mutation-test:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -176,6 +184,7 @@ jobs:
             npm-audit.sarif
 
   trivy-scan:
+    needs: validate
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
@@ -183,10 +192,14 @@ jobs:
       IMAGE_REPOSITORY: automatic-agent-platform
       IMAGE_TAG: ci-${{ github.sha }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Download validated image artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: test-results-node-22
+          path: test-results
 
-      - name: Build Docker image
-        run: docker build -t "${IMAGE_REGISTRY}/${IMAGE_REPOSITORY}:${IMAGE_TAG}" .
+      - name: Load validated Docker image
+        run: docker load --input test-results/container-image.tar
 
       - name: Scan Docker image with Trivy
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25

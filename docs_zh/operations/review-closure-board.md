@@ -18,6 +18,15 @@
 | `docs_zh/reviews/platforme-full-review.md` | 历史大表，现已补充“已复核关闭”状态轴 |
 | `docs_zh/operations/operations-tracker.md` | 运维/交付入口索引 |
 
+## 已门禁化
+
+| 类别 | 状态 | 说明 |
+| --- | --- | --- |
+| 类型压制回升 | `已解决（本轮落地）` | `audit-type-suppressions.mjs` 已接入 `audit:repo-hygiene`，按基线阻止回升 |
+| 裸 URL 回升 | `已解决（本轮落地）` | `audit-outbound-urls.mjs` 已接入 `audit:repo-hygiene`，新例外必须显式 allowlist |
+| 公共入口 deep import 漂移 | `已解决（本轮落地）` | `audit-public-entrypoints.mjs` 已接入 `audit:repo-hygiene`，`src/index.ts` 已回收至公开 barrel |
+| 重复测试标题回升 | `已解决（本轮落地）` | `audit-duplicate-test-titles.mjs` 已接入 `audit:repo-hygiene`，按存量基线阻止继续恶化 |
+
 ## 维护规则
 
 - 不能再把“复核收口”“设计取舍”“未来演进”写成 `已解决`。

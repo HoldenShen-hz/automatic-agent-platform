@@ -22,7 +22,11 @@ import { randomUUID } from "node:crypto";
 
 import { PolicyDeniedError, SandboxError, StorageError, ValidationError } from "../../contracts/errors.js";
 import { newId } from "../../contracts/types/ids.js";
-import { checkSandboxPath, createWorkspaceWritePolicy, type SandboxPolicy } from "../../five-plane-control-plane/iam/sandbox-policy.js";
+import {
+  checkSandboxPath,
+  createWorkspaceWritePolicy,
+  type SandboxPolicy,
+} from "../../five-plane-control-plane/iam/index.js";
 
 /**
  * Configuration options for the shadow snapshot service.

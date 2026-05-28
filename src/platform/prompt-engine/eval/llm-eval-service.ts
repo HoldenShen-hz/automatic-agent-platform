@@ -849,12 +849,27 @@ function bootstrapConfidenceInterval(
  */
 function resampleWithReplacement(values: number[]): number[] {
   if (values.length === 0) return [];
+  const random = createDeterministicSampler(values);
   const result: number[] = [];
   for (const v of values) {
-    const randomIndex = Math.floor(Math.random() * values.length);
+    const randomIndex = Math.floor(random() * values.length);
     result.push(values[randomIndex] as number);
   }
   return result;
+}
+
+function createDeterministicSampler(values: readonly number[]): () => number {
+  const material = values.join(",");
+  let seed = 2166136261;
+  for (let index = 0; index < material.length; index += 1) {
+    seed ^= material.charCodeAt(index);
+    seed = Math.imul(seed, 16777619);
+  }
+  let state = seed >>> 0;
+  return () => {
+    state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
+    return state / 0x100000000;
+  };
 }
 
 /**

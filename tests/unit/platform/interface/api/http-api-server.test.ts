@@ -471,43 +471,14 @@ test("HttpApiServer.stop clears stale worker incident cache even when server nev
 });
 
 test("HttpApiServer requires explicit env opt-in for local rate limiter fallback in production", () => {
-  const previousNodeEnv = process.env["NODE_ENV"];
-  const previousFallback = process.env["AA_API_RATE_LIMIT_ALLOW_LOCAL_FALLBACK"];
-  const previousRedis = process.env["AA_API_RATE_LIMIT_REDIS_URL"];
-  const previousDisabled = process.env["AA_API_RATE_LIMIT_DISABLED"];
-
-  process.env["NODE_ENV"] = "production";
-  delete process.env["AA_API_RATE_LIMIT_ALLOW_LOCAL_FALLBACK"];
-  delete process.env["AA_API_RATE_LIMIT_REDIS_URL"];
-  delete process.env["AA_API_RATE_LIMIT_DISABLED"];
-
-  try {
-    assert.throws(
-      () => createTestServer(),
-      (error: unknown) => error instanceof Error && error.message === "rate_limiter.redis_required_in_production",
-    );
-  } finally {
-    if (previousNodeEnv == null) {
-      delete process.env["NODE_ENV"];
-    } else {
-      process.env["NODE_ENV"] = previousNodeEnv;
-    }
-    if (previousFallback == null) {
-      delete process.env["AA_API_RATE_LIMIT_ALLOW_LOCAL_FALLBACK"];
-    } else {
-      process.env["AA_API_RATE_LIMIT_ALLOW_LOCAL_FALLBACK"] = previousFallback;
-    }
-    if (previousRedis == null) {
-      delete process.env["AA_API_RATE_LIMIT_REDIS_URL"];
-    } else {
-      process.env["AA_API_RATE_LIMIT_REDIS_URL"] = previousRedis;
-    }
-    if (previousDisabled == null) {
-      delete process.env["AA_API_RATE_LIMIT_DISABLED"];
-    } else {
-      process.env["AA_API_RATE_LIMIT_DISABLED"] = previousDisabled;
-    }
-  }
+  assert.throws(
+    () => createTestServer({
+      env: {
+        NODE_ENV: "production",
+      },
+    }),
+    (error: unknown) => error instanceof Error && error.message === "rate_limiter.redis_required_in_production",
+  );
 });
 
 test("HttpApiServer derives default API limiter from strictest downstream provider quota", async () => {

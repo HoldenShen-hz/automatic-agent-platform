@@ -177,6 +177,25 @@ test("storage quota service skips symlink roots that are neither direct files no
   }
 });
 
+test("storage quota service derives default roots from sandbox policy instead of process cwd", () => {
+  const workspace = createTempWorkspace("aa-storage-quota-policy-root-");
+
+  try {
+    const report = new StorageQuotaService({
+      sandboxPolicy: createWorkspaceWritePolicy(workspace),
+    }).enforce();
+
+    assert.equal(report.categories.length, 3);
+    for (const category of report.categories) {
+      for (const root of category.roots) {
+        assert.equal(root.startsWith(workspace), true);
+      }
+    }
+  } finally {
+    cleanupPath(workspace);
+  }
+});
+
 test("storage quota service fail-closes symlink escapes discovered during directory walk", () => {
   const workspace = createTempWorkspace("aa-storage-quota-symlink-escape-");
   const artifactRoot = join(workspace, "artifacts");

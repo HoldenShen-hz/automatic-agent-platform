@@ -16,7 +16,7 @@ import { StructuredLogger } from "../../shared/observability/structured-logger.j
 import {
   isBlockedOutboundHostname,
   isInternalNetworkUrl,
-} from "../../five-plane-control-plane/iam/outbound-url-policy.js";
+} from "../../five-plane-control-plane/iam/index.js";
 
 export interface WebFetchRequest {
   /** URL to fetch */

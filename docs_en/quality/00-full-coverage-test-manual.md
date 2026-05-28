@@ -3689,7 +3689,7 @@ A stub file is considered "implemented" when:
 | `session-summary.test.ts`     | Session summary structure |
 | `release-plan-output.test.ts` | Release plan Markdown    |
 | `workflow-validation.test.ts` | Workflow validation      |
-| `phase1a-golden-tasks.test.ts`| Phase 1a golden task suite |
+| `golden-tasks.test.ts`| Golden task suite |
 | `domain-baseline.test.ts`     | Domain baseline snapshot  |
 | `config-schema.test.ts`       | Config schema snapshot    |
 | `harness-protocol.test.ts`    | Harness protocol snapshot |

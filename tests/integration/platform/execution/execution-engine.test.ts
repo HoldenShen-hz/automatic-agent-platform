@@ -11,8 +11,10 @@ import test from "node:test";
 
 import { SqliteDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 import { AuthoritativeTaskStore } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
-import { getMultiStepToolDefinitions } from "../../../../src/platform/five-plane-execution/execution-engine/multi-step-tool-definitions.js";
-import { getPhase1BToolDefinitions, PHASE1B_TOOL_DEFINITIONS } from "../../../../src/platform/five-plane-execution/execution-engine/phase1b-tool-definitions.js";
+import {
+  MULTI_STEP_TOOL_DEFINITIONS,
+  getMultiStepToolDefinitions,
+} from "../../../../src/platform/five-plane-execution/execution-engine/multi-step-tool-definitions.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 import { newId, nowIso } from "../../../../src/platform/contracts/types/ids.js";
 import { AgentExecutor } from "../../../../src/platform/five-plane-execution/execution-engine/agent-executor.js";
@@ -56,8 +58,8 @@ test("getMultiStepToolDefinitions returns empty array for unknown tools", () => 
   assert.equal(tools.length, 0);
 });
 
-test("PHASE1B_TOOL_DEFINITIONS contains expected tools", () => {
-  const toolNames = PHASE1B_TOOL_DEFINITIONS.map((t: { name: string }) => t.name);
+test("MULTI_STEP_TOOL_DEFINITIONS contains expected tools", () => {
+  const toolNames = MULTI_STEP_TOOL_DEFINITIONS.map((t: { name: string }) => t.name);
   assert.ok(toolNames.includes("git"));
   assert.ok(toolNames.includes("edit_replace"));
   assert.ok(toolNames.includes("read"));
@@ -66,9 +68,9 @@ test("PHASE1B_TOOL_DEFINITIONS contains expected tools", () => {
   assert.ok(toolNames.includes("todo_write"));
 });
 
-test("getPhase1BToolDefinitions returns all Phase1B tools", () => {
+test("getMultiStepToolDefinitions returns all requested tools", () => {
   const toolNames = ["git", "edit_replace", "read", "glob", "grep", "todo_write"];
-  const tools = getPhase1BToolDefinitions(toolNames);
+  const tools = getMultiStepToolDefinitions(toolNames);
   assert.ok(Array.isArray(tools));
   assert.equal(tools.length, toolNames.length);
 });

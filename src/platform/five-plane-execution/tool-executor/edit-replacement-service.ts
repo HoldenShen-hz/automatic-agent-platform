@@ -1,8 +1,7 @@
 
 import { readFileSync, writeFileSync } from "node:fs";
 
-import { checkSandboxPath } from "../../five-plane-control-plane/iam/sandbox-policy.js";
-import type { SandboxPolicy } from "../../five-plane-control-plane/iam/sandbox-policy.js";
+import { checkSandboxPath, type SandboxPolicy } from "../../five-plane-control-plane/iam/index.js";
 import { AuthoritativeTaskStore } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
 import type { AuthoritativeSqlDatabase } from "../../five-plane-state-evidence/truth/authoritative-sql-database.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";

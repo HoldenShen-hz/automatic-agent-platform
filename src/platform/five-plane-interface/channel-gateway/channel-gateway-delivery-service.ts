@@ -254,11 +254,11 @@ export class ChannelGatewayDeliveryService {
     }
 
     if (timestamp) {
-      const timestampNum = parseInt(timestamp, 10);
+      const timestampNum = Number.parseInt(timestamp, 10);
       const now = Math.floor(Date.now() / 1000);
       const tolerance = config.toleranceSeconds ?? 300; // 5 minutes default
 
-      if (isNaN(timestampNum)) {
+      if (!Number.isFinite(timestampNum)) {
         return { valid: false, error: "invalid_timestamp_format", timestamp, signature };
       }
 

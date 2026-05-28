@@ -7,8 +7,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createDelegationManager } from "../../../../src/platform/agent-delegation/index.js";
-import type { AgentContext, DelegationSpec, PermissionSet } from "../../../../src/platform/agent-delegation/index.js";
+import { createDelegationManager } from "../../../../src/platform/five-plane-orchestration/agent-delegation/index.js";
+import type { AgentContext, DelegationSpec, PermissionSet } from "../../../../src/platform/five-plane-orchestration/agent-delegation/index.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Test Fixtures

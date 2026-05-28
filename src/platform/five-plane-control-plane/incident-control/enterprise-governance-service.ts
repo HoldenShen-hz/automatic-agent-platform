@@ -26,8 +26,10 @@ import { resolve } from "node:path";
 import { ArtifactStore } from "../../five-plane-state-evidence/artifacts/artifact-store.js";
 import { StorageError, ValidationError } from "../../contracts/errors.js";
 import type { AuthoritativeTaskStore } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
-import { evaluateSqliteMigrationCompatibility } from "../../five-plane-state-evidence/truth/sqlite/sqlite-migration-compatibility.js";
-import { evaluateSqliteSchemaCompatibilityGate } from "../../five-plane-state-evidence/truth/sqlite/sqlite-schema-compatibility-gate.js";
+import {
+  evaluateSqliteMigrationCompatibility,
+  evaluateSqliteSchemaCompatibilityGate,
+} from "../../five-plane-state-evidence/truth/index.js";
 import type {
   EnterpriseGovernanceReportRecord,
   EnvironmentName,

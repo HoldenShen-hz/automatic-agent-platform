@@ -5,7 +5,7 @@ import {
   type RecoveryWorker,
 } from "../../contracts/types/recovery-cadence.js";
 import { nowIso } from "../../contracts/types/ids.js";
-import type { RuntimeRepairService } from "../recovery/runtime-repair-service-root.js";
+import type { RuntimeRepairService } from "../recovery/runtime-repair-service.js";
 import type { StartupConsistencyChecker, StartupConsistencyOptions } from "../startup/startup-consistency-checker.js";
 
 export interface WorkflowRepairWorkerOptions {

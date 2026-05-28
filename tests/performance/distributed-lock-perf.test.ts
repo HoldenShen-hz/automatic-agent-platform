@@ -16,7 +16,7 @@ import { performance } from "node:perf_hooks";
 import { reportSoftPerformanceMiss } from "../helpers/performance.js";
 
 import { SqliteDatabase } from "../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
-import { createLockAdapter } from "../../src/platform/five-plane-execution/distributed-lock/distributed-lock-factory.js";
+import { createLockAdapter } from "../../src/platform/five-plane-execution/distributed-lock/distributed-lock-service.js";
 import { newId } from "../../src/platform/contracts/types/ids.js";
 
 function createTempDb(): SqliteDatabase {

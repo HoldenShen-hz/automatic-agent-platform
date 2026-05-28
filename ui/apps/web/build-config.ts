@@ -20,7 +20,7 @@ export function selectManualChunk(id: string): string | undefined {
     return "query";
   }
   if (id.includes("/packages/features/")) {
-    const match = id.match(/feature[-/](\w+)/);
+    const match = id.match(/\/packages\/features\/([^/]+)\//);
     if (match) {
       return `feature-${match[1]}`;
     }

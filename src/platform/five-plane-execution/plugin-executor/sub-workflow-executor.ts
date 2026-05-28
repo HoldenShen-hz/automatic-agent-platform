@@ -13,7 +13,7 @@
 
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import { ValidationError } from "../../contracts/errors.js";
-import type { SandboxModeLike } from "../../five-plane-control-plane/iam/sandbox-policy.js";
+import type { SandboxModeLike } from "../../five-plane-control-plane/iam/index.js";
 import { isDeepStrictEqual } from "node:util";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -105,6 +105,45 @@ export interface SubWorkflowExecutorOptions {
   maxNestedDepth?: number;
   enableCheckpointing?: boolean;
   workflowTimeoutMs?: number;
+  stepExecutor?: StepExecutor;
+  rollbackExecutor?: RollbackExecutor;
+}
+
+export interface StepExecutionRequest {
+  executionId: string;
+  context: Readonly<SubWorkflowContext>;
+  step: Readonly<WorkflowStep>;
+  definition: Readonly<WorkflowStepDefinition>;
+  timeoutMs: number;
+  completedOutputs: ReadonlyMap<string, unknown>;
+}
+
+export interface StepExecutionResult {
+  output: unknown;
+  rollbackToken?: unknown;
+}
+
+export interface RollbackExecutionRequest {
+  executionId: string;
+  context: Readonly<SubWorkflowContext>;
+  step: Readonly<WorkflowStep>;
+  definition: Readonly<WorkflowStepDefinition>;
+  rollbackPlanRef?: ArtifactRefLike;
+  rollbackToken?: unknown;
+}
+
+export interface RollbackExecutionResult {
+  success: boolean;
+  error?: string;
+}
+
+export type StepExecutor = (request: StepExecutionRequest) => Promise<StepExecutionResult>;
+export type RollbackExecutor = (request: RollbackExecutionRequest) => Promise<RollbackExecutionResult>;
+
+interface ArtifactRefLike {
+  artifactId?: string;
+  uri?: string;
+  kind?: string;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -114,6 +153,7 @@ export interface SubWorkflowExecutorOptions {
 interface WorkflowExecution {
   executionId: string;
   definition: SubWorkflowDefinition;
+  stepDefinitions: Map<string, WorkflowStepDefinition>;
   context: SubWorkflowContext;
   allowCreatedPause: boolean;
   status: WorkflowStatus;
@@ -130,6 +170,8 @@ interface RollbackHistoryEntry {
   timestamp: string;
   action: string;
   input: Record<string, unknown>;
+  rollbackPlanRef?: ArtifactRefLike;
+  rollbackToken?: unknown;
   output?: unknown;
 }
 
@@ -144,6 +186,79 @@ function canonicalStepId(input: { readonly nodeId?: string | null; readonly step
   return input.nodeId?.trim() || input.stepId;
 }
 
+function cloneValue<T>(value: T): T {
+  if (typeof structuredClone === "function") {
+    return structuredClone(value);
+  }
+  return JSON.parse(JSON.stringify(value)) as T;
+}
+
+async function delayMs(durationMs: number): Promise<void> {
+  if (durationMs <= 0) {
+    return;
+  }
+  await new Promise<void>((resolve) => {
+    const timer = setTimeout(resolve, durationMs);
+    timer.unref?.();
+  });
+}
+
+async function defaultStepExecutor(request: StepExecutionRequest): Promise<StepExecutionResult> {
+  const action = request.definition.action.trim().toLowerCase();
+  if (action === "fail" || action.startsWith("fail:")) {
+    throw new ValidationError(
+      "subworkflow_executor.step_execution_failed",
+      `subworkflow_executor.step_execution_failed: Step ${request.step.nodeId} requested failure`,
+      { details: { action: request.definition.action, executionId: request.executionId, stepId: request.step.nodeId } },
+    );
+  }
+
+  if (action.startsWith("delay:")) {
+    const requestedDelay = Number.parseInt(action.slice("delay:".length), 10);
+    if (Number.isFinite(requestedDelay) && requestedDelay > 0) {
+      await delayMs(Math.min(requestedDelay, request.timeoutMs));
+    }
+  }
+
+  if (action === "return_input") {
+    return {
+      output: cloneValue(request.step.input),
+      rollbackToken: { kind: "return_input", stepId: request.step.nodeId },
+    };
+  }
+
+  if (action.startsWith("return_json:")) {
+    const raw = request.definition.action.slice("return_json:".length).trim();
+    return {
+      output: JSON.parse(raw),
+      rollbackToken: { kind: "return_json", stepId: request.step.nodeId },
+    };
+  }
+
+  return {
+    output: { result: `Step ${request.step.name} completed successfully` },
+    rollbackToken: {
+      kind: "default_success",
+      action: request.definition.action,
+      stepId: request.step.nodeId,
+    },
+  };
+}
+
+async function defaultRollbackExecutor(request: RollbackExecutionRequest): Promise<RollbackExecutionResult> {
+  const action = request.definition.action.trim().toLowerCase();
+  if (action.startsWith("irreversible:") || request.step.input["rollbackSupported"] === false) {
+    return {
+      success: false,
+      error: `subworkflow_executor.rollback_not_supported:${request.step.nodeId}`,
+    };
+  }
+  if (request.rollbackPlanRef != null || request.rollbackToken != null || action.startsWith("reverse_") || action.startsWith("undo_")) {
+    return { success: true };
+  }
+  return { success: true };
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Sub-Workflow Executor
 // ─────────────────────────────────────────────────────────────────────────────
@@ -153,6 +268,8 @@ export class SubWorkflowExecutor {
   private readonly maxNestedDepth: number;
   private readonly enableCheckpointing: boolean;
   private readonly workflowTimeoutMs: number;
+  private readonly stepExecutor: StepExecutor;
+  private readonly rollbackExecutor: RollbackExecutor;
   private legacyCreatedPauseConsumed = false;
   private readonly executions = new Map<string, WorkflowExecution>();
   private readonly executionResults: SubWorkflowExecutionResult[] = [];
@@ -162,6 +279,8 @@ export class SubWorkflowExecutor {
     this.maxNestedDepth = options.maxNestedDepth ?? 3;
     this.enableCheckpointing = options.enableCheckpointing ?? true;
     this.workflowTimeoutMs = options.workflowTimeoutMs ?? 5 * 60 * 1000;
+    this.stepExecutor = options.stepExecutor ?? defaultStepExecutor;
+    this.rollbackExecutor = options.rollbackExecutor ?? defaultRollbackExecutor;
   }
 
   // ── Workflow Management ───────────────────────────────────────────────────
@@ -196,6 +315,7 @@ export class SubWorkflowExecutor {
 
     const executionId = newId("swf");
     const steps = new Map<string, WorkflowStep>();
+    const stepDefinitions = new Map<string, WorkflowStepDefinition>();
     const stepOrder: string[] = [];
 
     // Initialize steps from definition
@@ -212,12 +332,14 @@ export class SubWorkflowExecutor {
         maxRetries: stepDef.maxRetries,
       };
       steps.set(nodeId, step);
+      stepDefinitions.set(nodeId, stepDef);
       stepOrder.push(nodeId);
     }
 
     const execution: WorkflowExecution = {
       executionId,
       definition,
+      stepDefinitions,
       context: normalizedContext,
       allowCreatedPause,
       status: "created",
@@ -564,12 +686,10 @@ export class SubWorkflowExecutor {
 
   private async executeSteps(execution: WorkflowExecution): Promise<string[]> {
     const completedSteps: string[] = [];
-    const stepDefinitions = execution.definition.steps;
-    const stepDefMap = new Map(stepDefinitions.map((s) => [canonicalStepId(s), s]));
 
     for (const nodeId of execution.stepOrder) {
       const step = execution.steps.get(nodeId)!;
-      const stepDef = stepDefMap.get(nodeId);
+      const stepDef = execution.stepDefinitions.get(nodeId);
 
       if (!stepDef) continue;
       if (step.status === "completed" || step.status === "skipped" || step.status === "rolled_back") {
@@ -635,11 +755,33 @@ export class SubWorkflowExecutor {
     step.startedAt = nowIso();
 
     try {
-      const timeout = this.getStepTimeout(step);
-      await this.simulateStepExecution(step, timeout);
+      const timeout = this.getStepTimeout(execution, step);
+      const definition = execution.stepDefinitions.get(step.nodeId);
+      if (!definition) {
+        throw new ValidationError(
+          "subworkflow_executor.step_definition_missing",
+          `subworkflow_executor.step_definition_missing: Step definition ${step.nodeId} not found`,
+          { details: { executionId: execution.executionId, stepId: step.nodeId } },
+        );
+      }
+      const completedOutputs = new Map<string, unknown>();
+      for (const nodeId of execution.stepOrder) {
+        const candidate = execution.steps.get(nodeId);
+        if (candidate?.status === "completed" && candidate.output !== undefined) {
+          completedOutputs.set(nodeId, cloneValue(candidate.output));
+        }
+      }
+      const result = await this.stepExecutor({
+        executionId: execution.executionId,
+        context: execution.context,
+        step: cloneValue(step),
+        definition: cloneValue(definition),
+        timeoutMs: timeout,
+        completedOutputs,
+      });
 
       step.status = "completed";
-      step.output = { result: `Step ${step.name} completed successfully` };
+      step.output = cloneValue(result.output);
       step.completedAt = nowIso();
 
       // Record for potential rollback
@@ -647,8 +789,9 @@ export class SubWorkflowExecutor {
         nodeId: step.nodeId,
         timestamp: nowIso(),
         action: step.action,
-        input: step.input,
-        output: step.output,
+        input: cloneValue(step.input),
+        rollbackToken: cloneValue(result.rollbackToken),
+        output: cloneValue(step.output),
       });
     } catch (error) {
       step.status = "failed";
@@ -657,24 +800,9 @@ export class SubWorkflowExecutor {
     }
   }
 
-  private getStepTimeout(step: WorkflowStep): number {
-    const definition = this.findStepDefinition(step);
+  private getStepTimeout(execution: WorkflowExecution, step: WorkflowStep): number {
+    const definition = execution?.stepDefinitions.get(step.nodeId);
     return definition?.timeout ?? this.defaultTimeout;
-  }
-
-  private findStepDefinition(step: WorkflowStep): WorkflowStepDefinition | undefined {
-    const execution = [...this.executions.values()].find((e) =>
-      e.steps.has(step.nodeId),
-    );
-    return execution?.definition.steps.find((s) => canonicalStepId(s) === step.nodeId);
-  }
-
-  private async simulateStepExecution(step: WorkflowStep, timeout: number): Promise<void> {
-    return new Promise((resolve) => {
-      const timer = setTimeout(() => {
-        resolve();
-      }, Math.min(timeout, 50)); // Simulated
-    });
   }
 
   private createCheckpoint(execution: WorkflowExecution): string {
@@ -688,8 +816,8 @@ export class SubWorkflowExecutor {
       stepStatuses: Object.fromEntries(
         execution.stepOrder.map((id) => [id, execution.steps.get(id)?.status]),
       ),
-      rollbackHistory: execution.rollbackHistory,
-      steps: execution.stepOrder.map((id) => execution.steps.get(id)),
+      rollbackHistory: cloneValue(execution.rollbackHistory),
+      steps: execution.stepOrder.map((id) => cloneValue(execution.steps.get(id))),
     };
 
     const record: CheckpointRecord = {
@@ -706,30 +834,39 @@ export class SubWorkflowExecutor {
   private async performRollback(execution: WorkflowExecution): Promise<void> {
     const completedSteps = [...execution.rollbackHistory].reverse();
     if (completedSteps.length === 0) {
-      for (const step of execution.steps.values()) {
-        step.status = "rolled_back";
-      }
       return;
     }
 
     for (const entry of completedSteps) {
       const step = execution.steps.get(entry.nodeId);
       if (!step) continue;
+      const definition = execution.stepDefinitions.get(entry.nodeId);
+      if (!definition) {
+        step.status = "failed";
+        step.error = `subworkflow_executor.rollback_definition_missing:${entry.nodeId}`;
+        continue;
+      }
 
       try {
-        await this.simulateRollback(entry);
+        const rollback = await this.rollbackExecutor({
+          executionId: execution.executionId,
+          context: execution.context,
+          step: cloneValue(step),
+          definition: cloneValue(definition),
+          ...(entry.rollbackPlanRef != null ? { rollbackPlanRef: entry.rollbackPlanRef } : {}),
+          ...(entry.rollbackToken !== undefined ? { rollbackToken: cloneValue(entry.rollbackToken) } : {}),
+        });
+        if (!rollback.success) {
+          step.status = "failed";
+          step.error = rollback.error ?? `subworkflow_executor.rollback_failed:${entry.nodeId}`;
+          continue;
+        }
         step.status = "rolled_back";
       } catch (error) {
         step.status = "failed";
         step.error = error instanceof Error ? error.message : String(error);
       }
     }
-  }
-
-  private async simulateRollback(entry: RollbackHistoryEntry): Promise<void> {
-    // Simulated rollback - in real implementation would call rollback handlers
-    void entry;
-    await Promise.resolve();
   }
 
   private buildResult(
@@ -832,7 +969,7 @@ export class SubWorkflowExecutor {
     }
     const rollbackHistory = state["rollbackHistory"];
     if (Array.isArray(rollbackHistory)) {
-      execution.rollbackHistory = rollbackHistory as RollbackHistoryEntry[];
+      execution.rollbackHistory = cloneValue(rollbackHistory as RollbackHistoryEntry[]);
     }
   }
 }

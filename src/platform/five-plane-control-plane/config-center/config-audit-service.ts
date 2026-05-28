@@ -18,8 +18,12 @@ import {
   stableStringify,
   type ConfigDiffEntry,
 } from "./config-governance-support.js";
-import type { SqliteConnection } from "../../five-plane-state-evidence/truth/sqlite/query-helper.js";
-import { queryAllOrEmpty, queryOne, execute } from "../../five-plane-state-evidence/truth/sqlite/query-helper.js";
+import {
+  execute,
+  queryAllOrEmpty,
+  queryOne,
+  type SqliteConnection,
+} from "../../five-plane-state-evidence/truth/index.js";
 
 const DEFAULT_AUDIT_ENTRY_LIMIT = 1000;
 

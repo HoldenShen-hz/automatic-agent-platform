@@ -41,6 +41,7 @@ import {
   MissionGovernanceService,
   MissionResolver,
 } from "../../../five-plane-control-plane/mission/index.js";
+import { stableStringify } from "../../../shared/cache/utils/stable-stringify.js";
 
 class ApiError extends AppError {
   public constructor(statusCode: number, code: string, message: string) {
@@ -337,7 +338,7 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
             source: payload.source ?? "user",
             priority: payload.priority ?? "normal",
             inputJson: payload.inputJson ?? "{}",
-            normalizedInputJson: JSON.stringify(result.taskDraft.normalizedIntent ?? null),
+            normalizedInputJson: stableStringify(result.taskDraft.normalizedIntent ?? null),
             outputJson: null,
             estimatedCostUsd: result.requestEnvelope.budgetIntent.amount,
             actualCostUsd: 0,
@@ -354,7 +355,7 @@ export function createTaskRoutes(deps: TaskRouteDeps): RouteDefinition[] {
               executionId: null,
               eventType: event.eventType,
               eventTier: "tier_2",
-              payloadJson: JSON.stringify(event.payload),
+              payloadJson: stableStringify(event.payload),
               traceId: ctx.request.headers["x-correlation-id"] ?? event.traceId,
               createdAt: event.occurredAt,
               schemaVersion: String(event.schemaVersion),

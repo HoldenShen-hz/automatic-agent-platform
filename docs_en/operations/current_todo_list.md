@@ -40,3 +40,4 @@
 - New review fixes must write back status, conclusions, root cause, and evidence columns to `docs_zh/reviews/issues-table.md`.
 - Historical full test failure baseline only serves as reconciliation material, cannot replace current targeted verification evidence.
 - Long-term batch records enter `docs_zh/operations/archive/`, main file stays as short index to avoid re-inflation.
+- Governance documents added after 2026-05-26, such as `docs_zh/architecture/sync-async-service-pairs.md`, belong to the current review and architecture indexes instead of being backfilled into historical A/B active batches.

@@ -1,5 +1,6 @@
 import { nowIso } from "../../contracts/types/ids.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
+import { ValidationError } from "../../contracts/errors.js";
 import type {
   PlanEdge,
   PlanGraphBundle,
@@ -16,6 +17,31 @@ import type {
 } from "./execute-bridge.js";
 
 const runtimeExecuteBridgeLogger = new StructuredLogger({ retentionLimit: 100 });
+const DEFAULT_RUNTIME_MODEL_ID = "framework-default";
+
+function createSimulatedSnapshot(plan: Plan): { snapshot: { executionRecord: { stepOutputs: StepOutputRecord[] } } } {
+  return {
+    snapshot: {
+      executionRecord: {
+        stepOutputs: plan.steps.map((step, index) => ({
+          id: `sor:${plan.planId}:${step.stepId}`,
+          stepId: step.stepId,
+          taskId: plan.taskId,
+          roleId: "mock-executor",
+          status: "succeeded",
+          dataJson: "{}",
+          artifactsJson: JSON.stringify((step.outputs ?? []).map((output) => `artifact:${output}`)),
+          summary: `Completed ${step.action} for ${step.stepId}`,
+          durationMs: 100 + index * 50,
+          tokenCost: 200 + index * 75,
+          validationJson: JSON.stringify({ valid: true }),
+          producedAt: nowIso(),
+          nodeRunId: `node_run:${plan.planId}:${step.stepId}`,
+        })),
+      },
+    },
+  };
+}
 
 function parseJsonWithWarning<T>(raw: string, fallback: T, field: string, stepId: string): T {
   try {
@@ -179,7 +205,7 @@ function inferNodeType(stepId: string, roleId: string | undefined): PlanNode["no
 export class RuntimeExecuteBridge implements ExecuteBridge {
   public constructor(
     private readonly dbPath: string,
-    private readonly defaultModelId = "MiniMax-M2.7",
+    private readonly defaultModelId = DEFAULT_RUNTIME_MODEL_ID,
     private readonly executor?: (plan: Plan, context: ExecutionContext) => Promise<{ snapshot?: unknown }>,
   ) {}
 
@@ -191,7 +217,7 @@ export class RuntimeExecuteBridge implements ExecuteBridge {
       assessmentRef: `assessment:${context.taskId}`,
       strategy: "linear",
       steps: [step],
-      createdAt: Date.now(),
+      createdAt: Date.parse(nowIso()),
     } as Plan, context);
     return result.results[0] ?? {
       stepId: step.stepId,
@@ -220,19 +246,10 @@ export class RuntimeExecuteBridge implements ExecuteBridge {
       const results = records.map(mapStepOutputRecord);
       return buildExecutionResult(normalizedPlan.planId, results);
     }
-    const results = normalizedPlan.steps.map((step, index) => ({
-      stepId: step.stepId,
-      status: "succeeded" as const,
-      durationMs: 100 + index * 50,
-      tokenCost: 200 + index * 75,
-      summary: `Completed ${step.action} for ${step.stepId}`,
-      outputs: {},
-      artifacts: (step.outputs ?? []).map((output) => `artifact:${output}`),
-      modelId: this.defaultModelId,
-      retryCount: 0,
-      validationPassed: true,
-    }));
-    return buildExecutionResult(normalizedPlan.planId, results);
+    throw new ValidationError(
+      "oapeflir.runtime_executor_unavailable",
+      "oapeflir.runtime_executor_unavailable",
+    );
   }
 
   public toDualChannelStepOutputs(result: ExecutionResult): DualChannelStepOutput[] {
@@ -261,7 +278,7 @@ export class RuntimeExecuteBridge implements ExecuteBridge {
       assessmentRef: `assessment:${context.taskId}`,
       strategy: "linear",
       steps: subgraph,
-      createdAt: Date.now(),
+      createdAt: Date.parse(nowIso()),
     } as Plan, context);
   }
 
@@ -272,7 +289,7 @@ export class RuntimeExecuteBridge implements ExecuteBridge {
 
 export class MockExecuteBridge extends RuntimeExecuteBridge {
   public constructor() {
-    super("mock://runtime", "local-simulated");
+    super("memory://oapeflir-runtime", "mock-runtime", async (plan) => createSimulatedSnapshot(plan));
   }
 }
 
@@ -313,7 +330,7 @@ function normalizeExecutablePlan(plan: Plan | PlanGraphBundle, context: Executio
       assessmentRef: plan.validationReport.valid ? `assessment:${plan.planGraphBundleId}` : `assessment:invalid:${plan.planGraphBundleId}`,
       strategy: "linear",
       steps: plan.graph.nodes.map(planNodeToPlanStep),
-      createdAt: Date.parse(plan.createdAt) || Date.now(),
+      createdAt: Date.parse(plan.createdAt) || Date.parse(nowIso()),
     };
   }
   return plan;

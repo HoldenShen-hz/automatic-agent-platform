@@ -19,7 +19,7 @@ import { createPatchBundle, type PatchBundle, type ChangedFile } from "../../../
 import { createValidationReport, type ValidationReport, type CheckResult } from "../../../../../src/platform/five-plane-execution/recovery/validation-report.js";
 import { createReviewReport, type ReviewReport, type ReviewIssue } from "../../../../../src/platform/five-plane-execution/recovery/review-report.js";
 import { classifyFailure, shouldEscalate, type FailureCategory } from "../../../../../src/platform/five-plane-execution/recovery/failure-classification.js";
-import { RuntimeRecoveryService } from "../../../../../src/platform/five-plane-execution/recovery/runtime-recovery-service-root.js";
+import { RuntimeRecoveryService } from "../../../../../src/platform/five-plane-execution/recovery/runtime-recovery-service.js";
 import type { ApprovalRecord } from "../../../../../src/platform/contracts/types/domain.js";
 
 // Helper to create a test task card

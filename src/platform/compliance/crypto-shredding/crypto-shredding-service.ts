@@ -18,7 +18,7 @@
  * @see docs_zh/contracts/compliance_contract.md
  */
 
-import { AppError } from "../../contracts/errors.js";
+import { AppError, ValidationError } from "../../contracts/errors.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 import type { DekMetadata } from "./dek-manager.js";
@@ -348,6 +348,9 @@ export class CryptoShreddingService {
    */
   private readField(record: Record<string, unknown>, path: string): unknown {
     return path.split(".").reduce<unknown>((cursor, segment) => {
+      if (isUnsafeObjectPathSegment(segment)) {
+        return undefined;
+      }
       if (cursor == null || typeof cursor !== "object") {
         return undefined;
       }
@@ -356,9 +359,16 @@ export class CryptoShreddingService {
       if (arrayMatch) {
         const key = arrayMatch[1]!;
         const index = arrayMatch[2]!;
+        if (isUnsafeObjectPathSegment(key)) {
+          return undefined;
+        }
+        const parsedIndex = Number.parseInt(index, 10);
+        if (!Number.isFinite(parsedIndex) || parsedIndex < 0) {
+          return undefined;
+        }
         const obj = (cursor as Record<string, unknown>)[key];
         if (Array.isArray(obj)) {
-          return obj[parseInt(index, 10)];
+          return obj[parsedIndex];
         }
         return undefined;
       }
@@ -375,11 +385,21 @@ export class CryptoShreddingService {
 
     for (let i = 0; i < segments.length - 1; i++) {
       const segment = segments[i]!;
+      if (isUnsafeObjectPathSegment(segment)) {
+        throw new ValidationError("crypto_shredding.invalid_field_path", `crypto_shredding.invalid_field_path:${path}`);
+      }
       // Handle array access like "items[0]"
       const arrayMatch = segment.match(/^([^\[]+)\[(\d+)\]$/);
       if (arrayMatch) {
         const key = arrayMatch[1]!;
         const index = arrayMatch[2]!;
+        if (isUnsafeObjectPathSegment(key)) {
+          throw new ValidationError("crypto_shredding.invalid_field_path", `crypto_shredding.invalid_field_path:${path}`);
+        }
+        const parsedIndex = Number.parseInt(index, 10);
+        if (!Number.isFinite(parsedIndex) || parsedIndex < 0) {
+          throw new ValidationError("crypto_shredding.invalid_field_path", `crypto_shredding.invalid_field_path:${path}`);
+        }
         const nextSegment = segments[i + 1]!;
         const nextIsArray = /^\d+$/.test(nextSegment) || nextSegment.includes("[");
         let arr: unknown[] = (cursor as Record<string, unknown>)[key] as unknown[];
@@ -389,16 +409,19 @@ export class CryptoShreddingService {
         }
         if (nextIsArray) {
           // Need to drill deeper into array
-          const arrIndex = parseInt(nextSegment.match(/^(\d+)/)?.[1] ?? "0", 10);
+          const arrIndex = Number.parseInt(nextSegment.match(/^(\d+)/)?.[1] ?? "0", 10);
+          if (!Number.isFinite(arrIndex) || arrIndex < 0) {
+            throw new ValidationError("crypto_shredding.invalid_field_path", `crypto_shredding.invalid_field_path:${path}`);
+          }
           while (arr.length <= arrIndex) {
             arr.push({});
           }
           cursor = arr[arrIndex] as Record<string, unknown>;
         } else {
-          if (arr[parseInt(index, 10)] == null) {
-            arr[parseInt(index, 10)] = {};
+          if (arr[parsedIndex] == null) {
+            arr[parsedIndex] = {};
           }
-          cursor = arr[parseInt(index, 10)] as Record<string, unknown>;
+          cursor = arr[parsedIndex] as Record<string, unknown>;
         }
       } else {
         if (cursor[segment] == null) {
@@ -409,19 +432,33 @@ export class CryptoShreddingService {
     }
 
     const lastSegment = segments.at(-1)!;
+    if (isUnsafeObjectPathSegment(lastSegment)) {
+      throw new ValidationError("crypto_shredding.invalid_field_path", `crypto_shredding.invalid_field_path:${path}`);
+    }
     // Handle array access in last segment
     const lastArrayMatch = lastSegment.match(/^([^\[]+)\[(\d+)\]$/);
     if (lastArrayMatch) {
       const key = lastArrayMatch[1]!;
       const index = lastArrayMatch[2]!;
+      if (isUnsafeObjectPathSegment(key)) {
+        throw new ValidationError("crypto_shredding.invalid_field_path", `crypto_shredding.invalid_field_path:${path}`);
+      }
+      const parsedIndex = Number.parseInt(index, 10);
+      if (!Number.isFinite(parsedIndex) || parsedIndex < 0) {
+        throw new ValidationError("crypto_shredding.invalid_field_path", `crypto_shredding.invalid_field_path:${path}`);
+      }
       const arr = (cursor[key] as unknown[]) ?? [];
-      while (arr.length <= parseInt(index, 10)) {
+      while (arr.length <= parsedIndex) {
         arr.push(null);
       }
-      arr[parseInt(index, 10)] = value;
+      arr[parsedIndex] = value;
       (cursor as Record<string, unknown>)[key] = arr;
     } else {
       cursor[lastSegment] = value;
     }
   }
+}
+
+function isUnsafeObjectPathSegment(segment: string): boolean {
+  return segment === "__proto__" || segment === "prototype" || segment === "constructor";
 }

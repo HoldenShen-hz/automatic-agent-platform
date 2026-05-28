@@ -268,6 +268,10 @@ export interface ExportRequirement {
 
 import { readFileSync } from "node:fs";
 
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 export class ExportSurfaceValidator {
   private readonly rootPath: string;
 
@@ -298,7 +302,7 @@ export class ExportSurfaceValidator {
     }
 
     for (const expected of expectedExports) {
-      const exportPattern = new RegExp(`export\\s+.*\\b${expected}\\b|export\\s*\\{[^}]*\\b${expected}\\b[^}]*\\}`, "g");
+      const exportPattern = new RegExp(`export\\s+.*\\b${escapeRegExp(expected)}\\b|export\\s*\\{[^}]*\\b${escapeRegExp(expected)}\\b[^}]*\\}`, "g");
       if (!exportPattern.test(content)) {
         errors.push({
           modulePath,

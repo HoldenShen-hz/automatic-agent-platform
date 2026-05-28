@@ -44,6 +44,7 @@ export interface AgentHandoff {
   planDelta: PlanDelta;
   primaryRefs: string[];
   historyRefs: string[];
+  compactionLedger?: string[];
 }
 
 export interface HandoffBudgetOptions {
@@ -53,7 +54,9 @@ export interface HandoffBudgetOptions {
 }
 
 function estimatedTokens(value: unknown): number {
-  return Math.ceil(JSON.stringify(value).length / 4);
+  const serialized = JSON.stringify(value);
+  const utf8Bytes = Buffer.byteLength(serialized, "utf8");
+  return Math.ceil(Math.max(serialized.length / 4, utf8Bytes / 3));
 }
 
 function resolveBudget(options: HandoffBudgetOptions): number {
@@ -85,6 +88,7 @@ export function compactAgentHandoff(
 ): AgentHandoff {
   const clone = structuredClone(handoff);
   clone.contextSummary ??= clone.state.latestSummary;
+  clone.compactionLedger = [];
   const budget = resolveBudget(options);
   let size = estimatedTokens(clone);
   if (size <= budget) {
@@ -92,12 +96,14 @@ export function compactAgentHandoff(
   }
 
   clone.historyRefs = [];
+  clone.compactionLedger.push("historyRefs");
   size = estimatedTokens(clone);
   if (size <= budget) {
     return clone;
   }
 
   clone.fact.toolCallRecords = [];
+  clone.compactionLedger.push("fact.toolCallRecords");
   size = estimatedTokens(clone);
   if (size <= budget) {
     return clone;
@@ -106,6 +112,7 @@ export function compactAgentHandoff(
   clone.planDelta.removedSteps = [];
   clone.planDelta.changedSteps = [];
   clone.planDelta.addedSteps = [];
+  clone.compactionLedger.push("planDelta");
   size = estimatedTokens(clone);
   if (size <= budget) {
     return clone;
@@ -116,6 +123,7 @@ export function compactAgentHandoff(
     latestSummary: clone.contextSummary,
     blockers: clone.state.blockers.slice(0, 3),
   };
+  clone.compactionLedger.push("state.blockers");
   size = estimatedTokens(clone);
   if (size <= budget) {
     return clone;
@@ -123,6 +131,7 @@ export function compactAgentHandoff(
 
   clone.primaryRefs = clone.primaryRefs.slice(0, 3);
   clone.fact.artifactRefs = clone.fact.artifactRefs.slice(0, 3);
+  clone.compactionLedger.push("primaryRefs", "fact.artifactRefs");
   size = estimatedTokens(clone);
   if (size <= budget) {
     return clone;
@@ -132,5 +141,6 @@ export function compactAgentHandoff(
   clone.fact.artifactRefs = [];
   clone.state.blockers = [];
   clone.state.latestSummary = clone.contextSummary.slice(0, Math.max(0, budget * 4));
+  clone.compactionLedger.push("state.latestSummary");
   return clone;
 }

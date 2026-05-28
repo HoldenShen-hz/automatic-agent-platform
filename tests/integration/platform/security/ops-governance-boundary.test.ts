@@ -14,7 +14,7 @@ import { ProtectedGovernanceIntegrityService } from "../../../../src/platform/fi
 import { OperationsGovernanceService } from "../../../../src/platform/five-plane-control-plane/incident-control/operations-governance-service.js";
 import { DoctorService } from "../../../../src/platform/five-plane-control-plane/incident-control/doctor-service.js";
 import { ExecutionResourceMonitor } from "../../../../src/platform/five-plane-execution/dispatcher/execution-resource-monitor.js";
-import { RuntimeRecoveryService } from "../../../../src/platform/five-plane-execution/recovery/runtime-recovery-service-root.js";
+import { RuntimeRecoveryService } from "../../../../src/platform/five-plane-execution/recovery/runtime-recovery-service.js";
 import { StalledExecutionDetector } from "../../../../src/platform/five-plane-execution/recovery/stalled-execution-detector.js";
 import { StalledExecutionEscalationService } from "../../../../src/platform/five-plane-execution/recovery/stalled-execution-escalation-service.js";
 import { createDefaultStartupConsistencyCheckerOptions } from "../../../../src/platform/five-plane-execution/startup/startup-preflight.js";

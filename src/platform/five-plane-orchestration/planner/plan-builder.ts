@@ -15,6 +15,7 @@ import {
 } from "../../contracts/executable-contracts/index.js";
 import { createHash } from "node:crypto";
 import type { PlanStep } from "../oapeflir/types/index.js";
+import { stableStringify } from "../../shared/cache/utils/stable-stringify.js";
 
 const DEFAULT_PLAN_STEP_TIMEOUT_MS = 60_000;
 const DEFAULT_PLAN_RETRY_BACKOFF_BASE_MS = 250;
@@ -191,7 +192,7 @@ export class PlanBuilder {
 
     // Compute graph hash
     const graphHash = createHash("sha256")
-      .update(JSON.stringify({ harnessRunId: input.harnessRunId ?? null, nodes, edges }))
+      .update(stableStringify({ harnessRunId: input.harnessRunId ?? null, nodes, edges }))
       .digest("hex");
 
     const harnessRunId = input.harnessRunId ?? newId("hr");

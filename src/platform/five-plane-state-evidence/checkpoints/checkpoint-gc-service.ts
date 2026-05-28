@@ -11,6 +11,7 @@
  */
 
 import { closeSync, constants as fsConstants, existsSync, fstatSync, lstatSync, openSync, readFileSync, readdirSync, rmSync, statSync, unlinkSync, writeFileSync } from "node:fs";
+import { hostname } from "node:os";
 import { join } from "node:path";
 
 import { nowIso } from "../../contracts/types/ids.js";
@@ -575,7 +576,11 @@ export class CheckpointGCService {
 
   private acquireRunLock(): boolean {
     try {
-      writeFileSync(this.gcLockPath, JSON.stringify({ acquiredAt: nowIso() }), {
+      writeFileSync(this.gcLockPath, JSON.stringify({
+        acquiredAt: nowIso(),
+        pid: process.pid,
+        host: hostname(),
+      }), {
         encoding: "utf8",
         flag: "wx",
       });

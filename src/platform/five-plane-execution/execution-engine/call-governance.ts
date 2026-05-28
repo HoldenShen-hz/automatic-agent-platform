@@ -606,7 +606,12 @@ export class CallGovernance {
   /** Resets all governance state for a key (rate limiter, circuit breaker, history). */
   public reset(key: string): void {
     this.rateLimiter.reset(key);
-    void this.distributedRateLimiter?.reset?.(key);
+    const resetResult = this.distributedRateLimiter?.reset?.(key);
+    if (resetResult instanceof Promise) {
+      void resetResult.catch(() => {
+        // Best-effort distributed cleanup must not block the local reset path.
+      });
+    }
     this.circuitBreaker.reset(key);
     this.historyRecorder.reset(key);
   }

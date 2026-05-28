@@ -70,7 +70,7 @@ export {
   type ExecutionResult,
   type PluginExecutorOptions,
 } from "./plugin-executor.service.js";
-export type { SandboxMode } from "../../five-plane-control-plane/iam/sandbox-policy.js";
+export type { SandboxMode } from "../../five-plane-control-plane/iam/index.js";
 
 // ─── Scoped External Access Sandbox ─────────────────────────────────────────
 

@@ -11,7 +11,7 @@
  */
 
 import { nowIso } from "../../contracts/types/ids.js";
-import { getContext, type RuntimeContextSnapshot } from "./runtime-context.js";
+import { getContext, type RuntimeContextSnapshot } from "../../shared/context/runtime-context.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 import { RuntimeError } from "../../contracts/errors.js";
 import type {

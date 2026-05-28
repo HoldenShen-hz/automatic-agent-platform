@@ -5,12 +5,12 @@ import { join } from "node:path";
 import { ExecutionDispatchService } from "../../../../src/platform/five-plane-execution/dispatcher/execution-dispatch-service.js";
 import { ExecutionLeaseService } from "../../../../src/platform/five-plane-execution/lease/execution-lease-service.js";
 import { ExecutionWorkerHandshakeService } from "../../../../src/platform/five-plane-execution/worker-pool/execution-worker-handshake-service.js";
-import { runSingleTaskExecution } from "../../../../src/platform/five-plane-execution/execution-engine/single-task-execution.js";
+import { runSingleTaskExecution } from "../../../../src/platform/five-plane-execution/execution-engine/single-task-happy-path.js";
 import {
   buildDefaultStartupConfigValidator,
   buildEnvironmentProviderReadinessProbe,
 } from "../../../../src/platform/five-plane-execution/startup/startup-preflight.js";
-import { RuntimeRepairService } from "../../../../src/platform/five-plane-execution/recovery/runtime-repair-service-root.js";
+import { RuntimeRepairService } from "../../../../src/platform/five-plane-execution/recovery/runtime-repair-service.js";
 import { StartupConsistencyChecker } from "../../../../src/platform/five-plane-execution/startup/startup-consistency-checker.js";
 import { createWorkspaceWritePolicy } from "../../../../src/platform/five-plane-control-plane/iam/sandbox-policy.js";
 import { WorkerRegistryService } from "../../../../src/platform/five-plane-execution/worker-pool/worker-registry-service.js";

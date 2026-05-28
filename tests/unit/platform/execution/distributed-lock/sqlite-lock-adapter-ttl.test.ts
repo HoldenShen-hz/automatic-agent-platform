@@ -75,37 +75,25 @@ test("Lock expired (past TTL) - new owner can acquire [sqlite-lock-adapter-ttl]"
 // TTL = 0 treated as no-expiry (infinite)
 // ---------------------------------------------------------------------------
 
-test("TTL = 0 treated as no-expiry (infinite) [sqlite-lock-adapter-ttl]", () => {
+test("TTL = 0 is rejected by minimum TTL guard [sqlite-lock-adapter-ttl]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
-  // Acquire with TTL = 0 (should be treated as infinite/no-expiry)
-  const result = adapter.acquire({ lockKey: "test-lock", owner: "owner-1", ttlMs: 0 });
-  assert.equal(result.acquired, true);
-
-  // Manually set acquired_at to very old
-  const veryOldTime = new Date(Date.now() - 100000).toISOString();
-  db.prepare(`UPDATE distributed_locks SET acquired_at = ? WHERE lock_key = ?`)
-    .run(veryOldTime, "test-lock");
-
-  // Another owner trying to acquire - should be rejected because TTL=0 means no expiry
-  const result2 = adapter.acquire({ lockKey: "test-lock", owner: "owner-2", ttlMs: 0 });
-  assert.equal(result2.acquired, false);
+  assert.throws(() => {
+    adapter.acquire({ lockKey: "test-lock", owner: "owner-1", ttlMs: 0 });
+  }, /lock\.invalid_ttl/);
 
   db.close();
 });
 
-test("TTL = 0 stored correctly and does not cause division by zero [sqlite-lock-adapter-ttl]", () => {
+test("TTL = 0 does not create lock records [sqlite-lock-adapter-ttl]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
-  // Acquire with TTL = 0
-  adapter.acquire({ lockKey: "test-lock", owner: "owner-1", ttlMs: 0 });
-
-  // Inspect should return the lock with ttlMs = 0
-  const record = adapter.inspect("test-lock");
-  assert.ok(record !== null);
-  assert.equal(record!.ttlMs, 0);
+  assert.throws(() => {
+    adapter.acquire({ lockKey: "test-lock", owner: "owner-1", ttlMs: 0 });
+  }, /lock\.invalid_ttl/);
+  assert.equal(adapter.inspect("test-lock"), null);
 
   db.close();
 });
@@ -180,7 +168,7 @@ test("Extended lock can still be force stolen after extension [sqlite-lock-adapt
   adapter.extend("test-lock", "owner-1", 60000);
 
   // Force steal should work
-  const stolen = adapter.forceSteal("test-lock", "owner-2", "emergency");
+  const stolen = adapter.forceSteal("test-lock", "owner-2", "incident_mitigation");
   assert.equal(stolen.owner, "owner-2");
 
   db.close();
@@ -198,14 +186,14 @@ test("Force steal clears previous owner's TTL [sqlite-lock-adapter-ttl]", () => 
   adapter.acquire({ lockKey: "test-lock", owner: "owner-1", ttlMs: 30000 });
 
   // Force steal
-  const stolen = adapter.forceSteal("test-lock", "owner-2", "takeover");
+  const stolen = adapter.forceSteal("test-lock", "owner-2", "operator_override");
   assert.equal(stolen.owner, "owner-2");
 
   // Verify the new lock has default TTL (30000) and new timestamps
   const record = adapter.inspect("test-lock");
   assert.ok(record !== null);
   assert.equal(record!.owner, "owner-2");
-  assert.equal(record!.ttlMs, 30000); // Default TTL from forceSteal
+  assert.equal(record!.ttlMs, 30000); // Reuses the existing lock TTL
 
   // The previous owner's TTL should not affect the new owner
   db.close();
@@ -224,7 +212,7 @@ test("Force steal creates fresh TTL, ignoring previous expiration [sqlite-lock-a
     .run(pastTime, "test-lock");
 
   // Force steal
-  const stolen = adapter.forceSteal("test-lock", "owner-2", "takeover");
+  const stolen = adapter.forceSteal("test-lock", "owner-2", "stale_owner_recovery");
   assert.equal(stolen.owner, "owner-2");
 
   // Even though the old lock was "expired", force steal works

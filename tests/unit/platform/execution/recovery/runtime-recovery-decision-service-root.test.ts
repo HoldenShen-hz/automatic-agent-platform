@@ -5,8 +5,8 @@ import {
   RuntimeRecoveryDecisionService,
   type RecoveryDecisionRecord,
   type RecoveryDecisionApplyResult,
-} from "../../../../../src/platform/five-plane-execution/recovery/runtime-recovery-decision-service-root.js";
-import type { RuntimeRecoveryCandidate } from "../../../../../src/platform/five-plane-execution/recovery/runtime-recovery-service-root.js";
+} from "../../../../../src/platform/five-plane-execution/recovery/runtime-recovery-decision-service.js";
+import type { RuntimeRecoveryCandidate } from "../../../../../src/platform/five-plane-execution/recovery/runtime-recovery-service.js";
 import type { AuthoritativeSqlDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-sql-database.js";
 import type { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 

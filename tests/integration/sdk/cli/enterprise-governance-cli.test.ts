@@ -58,7 +58,7 @@ function writeDependencyFixtures(workspace: string): { manifestPath: string; loc
 function seedOpsDb(workspace: string): { dbPath: string; taskId: string; manifestPath: string; lockfilePath: string } {
   const dbPath = join(workspace, "enterprise-governance-cli.db");
   const script = `
-    import { runSingleTaskExecution } from ${JSON.stringify(new URL("../../../../src/platform/five-plane-execution/execution-engine/single-task-execution.js", import.meta.url).href)};
+    import { runSingleTaskExecution } from ${JSON.stringify(new URL("../../../../src/platform/five-plane-execution/execution-engine/single-task-happy-path.js", import.meta.url).href)};
     await runSingleTaskExecution({
       dbPath: ${JSON.stringify(dbPath)},
       title: "Enterprise governance CLI task",

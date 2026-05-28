@@ -4,8 +4,8 @@ import test from "node:test";
 
 import { parseStructuredMemoryContent } from "../../../../src/platform/five-plane-state-evidence/memory/memory-schema.js";
 import { InspectService } from "../../../../src/platform/shared/observability/inspect-service.js";
-import { RuntimeRecoveryDecisionService } from "../../../../src/platform/five-plane-execution/recovery/runtime-recovery-decision-service-root.js";
-import { RuntimeRecoveryService } from "../../../../src/platform/five-plane-execution/recovery/runtime-recovery-service-root.js";
+import { RuntimeRecoveryDecisionService } from "../../../../src/platform/five-plane-execution/recovery/runtime-recovery-decision-service.js";
+import { RuntimeRecoveryService } from "../../../../src/platform/five-plane-execution/recovery/runtime-recovery-service.js";
 import { AuthoritativeTaskStore } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import { SqliteDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";

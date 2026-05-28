@@ -4,8 +4,10 @@
  */
 
 import assert from "node:assert/strict";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import test from "node:test";
-import { resolve } from "node:path";
+import { join, resolve } from "node:path";
 
 import {
   normalizeSandboxMode,
@@ -61,13 +63,16 @@ test("resolveSandboxPath returns resolved path when realpath disabled", () => {
 });
 
 test("resolveSandboxPath resolves symlinks when realpath enabled", () => {
-  // When realpathEnforced is true and path exists, should resolve symlinks.
-  // On macOS /tmp is a symlink to /private/tmp, so realpath resolves it.
-  const path = "/tmp/test-file-" + Date.now();
-  const result = resolveSandboxPath(path, true);
-  // Should not throw, and should return a string path
-  assert.ok(typeof result === "string");
-  assert.ok(result.length > 0);
+  const workspace = mkdtempSync(join(tmpdir(), "aa-sandbox-policy-"));
+  const path = join(workspace, "test-file.txt");
+  writeFileSync(path, "sandbox");
+  try {
+    const result = resolveSandboxPath(path, true);
+    assert.ok(typeof result === "string");
+    assert.ok(result.length > 0);
+  } finally {
+    rmSync(workspace, { recursive: true, force: true });
+  }
 });
 
 test("resolveSandboxPath throws for permission errors", () => {

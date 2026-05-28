@@ -5,6 +5,7 @@
  */
 
 import { parse as parseUrl } from "node:url";
+import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import type { ApiRequestLike, ApiResponsePayload } from "./types.js";
 import { AppError } from "../../../contracts/errors.js";
 import type { ApiAuthService, ApiPrincipal, ApiRole } from "../api-auth-service.js";
@@ -36,6 +37,7 @@ const INTERNAL_ROUTE_AUDIENCE_ALIASES: Readonly<Record<string, readonly string[]
   costs: ["costs", "cost"],
   incidents: ["incidents", "incident"],
 });
+const OPAQUE_CURSOR_SIGNING_SECRET = randomBytes(32);
 
 export function readRequestId(request: ApiRequestLike): string {
   const candidate = request.headers["x-request-id"];
@@ -336,15 +338,35 @@ export function buildTextResponse(text: string): ApiResponsePayload {
 }
 
 export function encodeOpaqueCursor(payload: Record<string, unknown>): string {
-  return Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
+  const payloadText = Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
+  const signature = signOpaqueCursorPayload(payloadText);
+  return `${payloadText}.${signature}`;
 }
 
 export function decodeOpaqueCursor<T>(cursor: string, code = "api.invalid_cursor"): T {
   try {
-    return JSON.parse(Buffer.from(cursor, "base64url").toString("utf8")) as T;
+    const separatorIndex = cursor.lastIndexOf(".");
+    if (separatorIndex <= 0 || separatorIndex >= cursor.length - 1) {
+      throw new Error("cursor signature missing");
+    }
+    const payloadText = cursor.slice(0, separatorIndex);
+    const signature = cursor.slice(separatorIndex + 1);
+    const expectedSignature = signOpaqueCursorPayload(payloadText);
+    const actualBuffer = Buffer.from(signature, "base64url");
+    const expectedBuffer = Buffer.from(expectedSignature, "base64url");
+    if (actualBuffer.length !== expectedBuffer.length || !timingSafeEqual(actualBuffer, expectedBuffer)) {
+      throw new Error("cursor signature invalid");
+    }
+    return JSON.parse(Buffer.from(payloadText, "base64url").toString("utf8")) as T;
   } catch {
     throw new ApiError(400, code, "cursor is invalid.");
   }
+}
+
+function signOpaqueCursorPayload(payloadText: string): string {
+  return createHmac("sha256", OPAQUE_CURSOR_SIGNING_SECRET)
+    .update(payloadText, "utf8")
+    .digest("base64url");
 }
 
 /**

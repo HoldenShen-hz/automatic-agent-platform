@@ -23,6 +23,7 @@ import type { EventRepository } from "../truth/sqlite/repositories/event-reposit
 import type { ProjectionRecord } from "./index.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 import { createBackgroundTaskTraceContext } from "../../shared/observability/background-task-trace.js";
+import { stableStringify } from "../../shared/cache/utils/stable-stringify.js";
 
 const projectionLogger = new StructuredLogger({ retentionLimit: 500 });
 
@@ -263,7 +264,7 @@ export class ProjectionRebuildService {
     const activeKeys = new Set(Object.keys(active.state));
     const shadowKeys = new Set(Object.keys(shadow.state));
     const mismatchKeys = [...new Set([...activeKeys, ...shadowKeys])]
-      .filter((key) => JSON.stringify(active.state[key]) !== JSON.stringify(shadow.state[key]));
+      .filter((key) => stableStringify(active.state[key]) !== stableStringify(shadow.state[key]));
     return {
       matches: active.stateHash === shadow.stateHash,
       activeVersionId: active.versionId,
@@ -426,7 +427,7 @@ export class ProjectionRebuildService {
   ): ProjectionSnapshot {
     const normalizedState = sortRecord(state) as Record<string, unknown>;
     const builtAt = new Date().toISOString();
-    const stateHash = createHash("sha256").update(JSON.stringify(normalizedState)).digest("hex");
+    const stateHash = createHash("sha256").update(stableStringify(normalizedState)).digest("hex");
     return {
       versionId: `${projectionName}:${builtAt}`,
       projectionName,

@@ -19,14 +19,18 @@ import { createWebSearchTool } from "../tool-executor/web-search.js";
 import { CommandExecutor } from "../tool-executor/command-executor.js";
 import { SemanticRepoMapService } from "../tool-executor/semantic-repo-map-service.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
-import { createWorkspaceWritePolicy } from "../../five-plane-control-plane/iam/sandbox-policy.js";
+import { createWorkspaceWritePolicy } from "../../five-plane-control-plane/iam/index.js";
 import { BudgetGuard, type BudgetPolicy } from "../../model-gateway/cost-tracker/budget-guard.js";
 
 import type { LlmModelCallResult } from "../execution-engine/model-call-provider.js";
 import { executeAgentRoundLoop } from "../execution-engine/multi-step-agent-round-loop.js";
 import { getMultiStepToolDefinitions } from "../execution-engine/multi-step-tool-definitions.js";
 import { parseOptionalStringArray, resolveMultiStepToolPath, safeParseToolResult } from "../execution-engine/multi-step-utils.js";
-import { PolicyEngine, mapToolRiskToPolicyCategory, type PolicyDecisionRequest } from "../../five-plane-control-plane/iam/policy-engine.js";
+import {
+  PolicyEngine,
+  mapToolRiskToPolicyCategory,
+  type PolicyDecisionRequest,
+} from "../../five-plane-control-plane/iam/index.js";
 import { createSideEffectRecord, type SideEffectRecord } from "../../contracts/executable-contracts/index.js";
 import { SideEffectManager } from "../side-effect-manager.js";
 

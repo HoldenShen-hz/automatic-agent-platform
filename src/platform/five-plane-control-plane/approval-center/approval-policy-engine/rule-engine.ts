@@ -48,6 +48,8 @@ const require = createRequire(import.meta.url);
  * Evaluates approval policies against a policy decision context.
  */
 export class ApprovalPolicyEngine {
+  private static readonly PROHIBITED_FIELD_PATH_PARTS = new Set(["__proto__", "constructor", "prototype"]);
+
   private readonly bundle: ApprovalPolicyBundle;
 
   public constructor(bundle: ApprovalPolicyBundle) {
@@ -122,10 +124,17 @@ export class ApprovalPolicyEngine {
     let value: unknown = context;
 
     for (const part of parts) {
+      if (ApprovalPolicyEngine.PROHIBITED_FIELD_PATH_PARTS.has(part)) {
+        return undefined;
+      }
       if (value == null || typeof value !== "object") {
         return undefined;
       }
-      value = (value as Record<string, unknown>)[part];
+      const record = value as Record<string, unknown>;
+      if (!Object.hasOwn(record, part)) {
+        return undefined;
+      }
+      value = record[part];
     }
 
     return value;

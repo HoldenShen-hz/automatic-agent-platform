@@ -1,4 +1,4 @@
-import type { ReactElement } from "react";
+import { memo, useMemo, type ReactElement } from "react";
 import ReactFlow, { Background, Controls, MiniMap } from "reactflow";
 import "reactflow/dist/style.css";
 
@@ -16,12 +16,15 @@ export interface FlowCanvasProps {
   }[];
 }
 
-export function FlowCanvas({ nodes, edges }: FlowCanvasProps): ReactElement {
+export const FlowCanvas = memo(function FlowCanvas({ nodes, edges }: FlowCanvasProps): ReactElement {
+  const resolvedNodes = useMemo(() => Array.from(nodes), [nodes]);
+  const resolvedEdges = useMemo(() => Array.from(edges), [edges]);
+
   return (
-    <ReactFlow fitView edges={[...edges]} nodes={[...nodes]}>
+    <ReactFlow fitView edges={resolvedEdges} nodes={resolvedNodes}>
       <Background />
       <MiniMap />
       <Controls />
     </ReactFlow>
   );
-}
+});

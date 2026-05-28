@@ -200,7 +200,7 @@ test("WebhookIngressService deletes endpoints", () => {
   assert.equal(retrieved, null);
 });
 
-test("WebhookIngressService records delivery failure and disables after 50 failures", () => {
+test("WebhookIngressService records delivery failure and disables after configured threshold", () => {
   const service = new WebhookIngressService();
   service.registerEndpoint({
     endpointId: "flaky",
@@ -210,16 +210,38 @@ test("WebhookIngressService records delivery failure and disables after 50 failu
     enabled: true,
     allowedEventTypes: [],
     algorithm: "none",
+    maxConsecutiveFailures: 3,
   });
 
-  for (let i = 0; i < 49; i++) {
+  for (let i = 0; i < 2; i++) {
     service.recordDeliveryFailure("flaky");
   }
-  assert.equal(service.getFailureCount("flaky"), 49);
+  assert.equal(service.getFailureCount("flaky"), 2);
   assert.ok(service.getEndpoint("flaky")?.enabled === true);
 
   service.recordDeliveryFailure("flaky");
   assert.ok(service.getEndpoint("flaky")?.enabled === false);
+});
+
+test("WebhookIngressService can reactivate a disabled endpoint", () => {
+  const service = new WebhookIngressService();
+  service.registerEndpoint({
+    endpointId: "reactivate-test",
+    source: "source",
+    tenantId: null,
+    workspaceId: null,
+    enabled: true,
+    allowedEventTypes: [],
+    algorithm: "none",
+    maxConsecutiveFailures: 1,
+  });
+
+  service.recordDeliveryFailure("reactivate-test");
+  assert.equal(service.getEndpoint("reactivate-test")?.enabled, false);
+
+  const reactivated = service.reactivateEndpoint("reactivate-test");
+  assert.equal(reactivated?.enabled, true);
+  assert.equal(service.getFailureCount("reactivate-test"), 0);
 });
 
 test("WebhookIngressService resets failure count", () => {
@@ -286,6 +308,77 @@ test("WebhookIngressService rollbacks accepted envelope", () => {
   service.rollbackAcceptedEnvelope("rollback-test", "id-1", envelope.envelopeId);
 
   assert.equal(service.listAcceptedEnvelopes().length, 0);
+});
+
+test("WebhookIngressService rejects oversized payloads before parsing", () => {
+  const service = new WebhookIngressService({ maxPayloadBytes: 32 });
+  service.registerEndpoint({
+    endpointId: "payload-limit",
+    source: "source",
+    tenantId: null,
+    workspaceId: null,
+    enabled: true,
+    allowedEventTypes: [],
+    algorithm: "none",
+  });
+
+  assert.throws(() => {
+    service.receive({
+      endpointId: "payload-limit",
+      headers: {},
+      body: JSON.stringify({ eventType: "event.1", eventId: "evt-1", body: "x".repeat(128) }),
+    });
+  }, /payload_too_large/);
+});
+
+test("WebhookIngressService rejects malformed hexadecimal signatures", () => {
+  const service = new WebhookIngressService();
+  registerSignedEndpoint(service, {
+    endpointId: "strict-hex",
+    source: "github",
+    allowedEventTypes: ["pull_request.opened"],
+  });
+  const body = JSON.stringify({
+    eventType: "pull_request.opened",
+    eventId: "evt-hex",
+  });
+
+  assert.throws(() => {
+    service.receive({
+      endpointId: "strict-hex",
+      headers: {
+        "idempotency-key": "evt-hex",
+        "x-aa-signature": "sha256=zzzz",
+      },
+      body,
+    });
+  }, /signature_invalid/);
+});
+
+test("WebhookIngressService enforces bounded accepted envelope retention", () => {
+  const service = new WebhookIngressService({ maxAcceptedEnvelopes: 1 });
+  registerSignedEndpoint(service, {
+    endpointId: "bounded-accepted",
+    source: "source",
+  });
+
+  const body1 = JSON.stringify({ eventType: "event.1", eventId: "id-1" });
+  const body2 = JSON.stringify({ eventType: "event.2", eventId: "id-2" });
+
+  service.receive({
+    endpointId: "bounded-accepted",
+    headers: createSignedWebhookHeaders(body1, { idempotencyKey: "id-1" }),
+    body: body1,
+  });
+  service.receive({
+    endpointId: "bounded-accepted",
+    headers: createSignedWebhookHeaders(body2, { idempotencyKey: "id-2" }),
+    body: body2,
+  });
+
+  const envelopes = service.listAcceptedEnvelopes();
+  assert.equal(envelopes.length, 1);
+  assert.equal(envelopes[0]?.idempotencyKey, "id-2");
 });
 
 test("WebhookIngressService requires signing secret for hmac algorithm", () => {

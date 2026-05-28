@@ -201,7 +201,7 @@ describe("web runtime clients creation", () => {
     const config = createWebRuntimeConfig({});
     const result = createWebRuntimeClients(config);
     expect(result.client).toBeDefined();
-    expect(result.wsClient).toBeDefined();
+    expect(result.wsClient).toEqual({ kind: "memory-ws" });
     expect(result.offlineQueue).toBeDefined();
   });
 
@@ -218,7 +218,7 @@ describe("web runtime clients creation", () => {
       VITE_WS_URL: "wss://custom-ws.example.com",
     });
     const result = createWebRuntimeClients(config);
-    expect(result.wsClient).toBeDefined();
+    expect(result.wsClient).toEqual({ kind: "browser-ws" });
   });
 
   it("uses TokenManager when provided in config", () => {
@@ -246,6 +246,19 @@ describe("web runtime clients creation", () => {
     });
     expect(result.client).toBeDefined();
     expect(mockedCreateTenantInterceptor).toHaveBeenCalledWith("tenant-123");
+  });
+
+  it("seeds static auth tokens as non-expiring bootstrap sessions", () => {
+    const result = createWebRuntimeClients({
+      authToken: "bootstrap-token",
+    });
+    const session = result.tokenManager.getSession();
+
+    expect(session).toMatchObject({
+      accessToken: "bootstrap-token",
+      refreshToken: "bootstrap-session",
+      expiresAt: Number.MAX_SAFE_INTEGER,
+    });
   });
 });
 

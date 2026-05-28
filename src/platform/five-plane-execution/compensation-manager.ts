@@ -80,6 +80,13 @@ export interface CompensationContext {
   readonly reason: string;
 }
 
+export interface CompensationExecutionAdapters {
+  reverseEffect: (step: CompensationStep, context: CompensationContext) => boolean;
+  compensateAction: (step: CompensationStep, context: CompensationContext) => boolean;
+  notify: (step: CompensationStep, context: CompensationContext) => boolean;
+  rollback: (step: CompensationStep, context: CompensationContext) => boolean;
+}
+
 function resolveCompensationNodeRunId(step: CompensationStep): string {
   return step.nodeRunId;
 }
@@ -91,6 +98,17 @@ function resolveCompensationNodeRunId(step: CompensationStep): string {
  * with external systems to ensure auditability and traceability.
  */
 export class CompensationManager {
+  private readonly adapters: CompensationExecutionAdapters;
+
+  public constructor(adapters: Partial<CompensationExecutionAdapters> = {}) {
+    this.adapters = {
+      reverseEffect: adapters.reverseEffect ?? this.defaultReverseExternalEffect,
+      compensateAction: adapters.compensateAction ?? this.defaultCompensateAction,
+      notify: adapters.notify ?? this.defaultNotificationAction,
+      rollback: adapters.rollback ?? this.defaultRollbackAction,
+    };
+  }
+
   /**
    * Create a compensation record for a side effect.
    */
@@ -283,22 +301,14 @@ export class CompensationManager {
     step: CompensationStep,
     context: CompensationContext,
   ): boolean {
-    // R8-02 FIX: Actual execution logic for compensation steps
-    // In a real implementation, this would call external systems,
-    // invoke reversal APIs, send compensation notifications, etc.
     switch (step.stepType) {
       case "reverse":
-        // Reverse the external effect by calling the appropriate reversal endpoint
         return this.reverseExternalEffect(step, context);
       case "compensate":
-        // Execute a compensating action (e.g., credit back, undo charge)
         return this.executeCompensateAction(step, context);
       case "notify":
-        // Send notification about the compensation
-        this.sendCompensationNotification(step, context);
-        return true;
+        return this.sendCompensationNotification(step, context);
       case "rollback":
-        // Rollback to a previous state
         return this.executeRollback(step, context);
       default:
         return false;
@@ -313,10 +323,7 @@ export class CompensationManager {
     step: CompensationStep,
     context: CompensationContext,
   ): boolean {
-    // In production, this would call the external system to reverse the effect
-    // For now, we simulate successful reversal
-    // The actual implementation would use step.targetRef to identify what to reverse
-    return true;
+    return this.adapters.reverseEffect(step, context);
   }
 
   /**
@@ -327,9 +334,7 @@ export class CompensationManager {
     step: CompensationStep,
     context: CompensationContext,
   ): boolean {
-    // In production, this would execute the actual compensation action
-    // For now, we simulate successful compensation
-    return true;
+    return this.adapters.compensateAction(step, context);
   }
 
   /**
@@ -339,8 +344,8 @@ export class CompensationManager {
   private sendCompensationNotification(
     step: CompensationStep,
     context: CompensationContext,
-  ): void {
-    // In production, this would send notifications via email, webhook, etc.
+  ): boolean {
+    return this.adapters.notify(step, context);
   }
 
   /**
@@ -351,8 +356,7 @@ export class CompensationManager {
     step: CompensationStep,
     context: CompensationContext,
   ): boolean {
-    // In production, this would execute the actual rollback using rollbackPlanRef
-    return true;
+    return this.adapters.rollback(step, context);
   }
 
   /**
@@ -374,6 +378,22 @@ export class CompensationManager {
     };
 
     return [baseStep];
+  }
+
+  private defaultReverseExternalEffect(step: CompensationStep, _context: CompensationContext): boolean {
+    return step.targetRef.trim().length > 0 && !step.action.trim().toLowerCase().startsWith("irreversible:");
+  }
+
+  private defaultCompensateAction(step: CompensationStep, context: CompensationContext): boolean {
+    return step.action.trim().length > 0 && context.reason.trim().length > 0;
+  }
+
+  private defaultNotificationAction(step: CompensationStep, context: CompensationContext): boolean {
+    return step.targetRef.trim().length > 0 && context.operatorId.trim().length > 0;
+  }
+
+  private defaultRollbackAction(step: CompensationStep, _context: CompensationContext): boolean {
+    return step.rollbackPlanRef != null || step.targetRef.startsWith("rollback://");
   }
 }
 

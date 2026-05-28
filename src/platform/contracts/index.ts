@@ -10,6 +10,8 @@
 // -----------------------------------------------------------------------------
 // Canonical Contracts (executable-contracts) - USE THESE FIRST
 // -----------------------------------------------------------------------------
+import { ValidationError } from "./errors.js";
+
 export * as executableContracts from "./executable-contracts/index.js";
 export * as requestEnvelopeContract from "./request-envelope/index.js";
 
@@ -166,10 +168,15 @@ export function emitDeprecationWarning(contractName: string, importPath?: string
  */
 export function assertNotDeprecated(contractName: string): void {
   if (LEGACY_CONTRACT_NAMES.includes(contractName as LegacyContractName)) {
-    throw new Error(
-      `Contract "${contractName}" is deprecated per §4 and §5.3. ` +
-      `Use canonical executable-contracts instead. ` +
-      `See LEGACY_CONTRACT_NAMES in platform/contracts/index.ts.`,
+    throw new ValidationError(
+      "contract.deprecated_name",
+      `contract.deprecated_name:${contractName}`,
+      {
+        details: {
+          contractName,
+          guidance: "Use canonical executable-contracts instead.",
+        },
+      },
     );
   }
 }

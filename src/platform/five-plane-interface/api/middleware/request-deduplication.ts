@@ -45,6 +45,8 @@ export interface DeduplicationConfig {
   includeBody?: boolean;
   /** Whether to enable per-tenant deduplication */
   perTenant?: boolean;
+  /** Whether this middleware is running in a production-like environment */
+  isProduction?: boolean;
   /** Explicitly allow process-local memory storage in production-like deployments */
   allowInMemoryInProduction?: boolean;
 }
@@ -79,7 +81,7 @@ export class DeduplicationMiddleware {
   private requestCounter = 0;
 
   constructor(config: DeduplicationConfig) {
-    if (process.env["NODE_ENV"] === "production" && config.allowInMemoryInProduction !== true) {
+    if (config.isProduction === true && config.allowInMemoryInProduction !== true) {
       throw new Error("request_deduplication.distributed_store_required_in_production");
     }
     this.windowMs = config.windowMs;

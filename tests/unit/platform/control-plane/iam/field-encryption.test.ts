@@ -4,7 +4,7 @@ import test from "node:test";
 import { decryptField, encryptField } from "../../../../../src/platform/five-plane-control-plane/iam/field-encryption.js";
 
 test("field encryption round-trips plaintext", () => {
-  const key = "production-encryption-key";
+  const key = "production-encryption-key-32-bytes!!";
   const ciphertext = encryptField("secret-value", key);
   assert.notEqual(ciphertext, "secret-value");
   assert.equal(decryptField(ciphertext, key), "secret-value");
@@ -17,10 +17,10 @@ test("field encryption accepts raw 32-byte keys", () => {
 });
 
 test("field encryption rejects malformed payload", () => {
-  assert.throws(() => decryptField("abc", "valid-16-byte-key-!!"), /security\.invalid_encrypted_payload/);
+  assert.throws(() => decryptField("abc", "valid-32-byte-encryption-key-!!!!"), /security\.invalid_encrypted_payload/);
 });
 
 test("field encryption rejects legacy payloads without version delimiter", () => {
   const legacyPayload = Buffer.from("legacy-ciphertext", "utf8").toString("base64");
-  assert.throws(() => decryptField(legacyPayload, "valid-16-byte-key-!!"), /security\.invalid_encrypted_payload/);
+  assert.throws(() => decryptField(legacyPayload, "valid-32-byte-encryption-key-!!!!"), /security\.invalid_encrypted_payload/);
 });

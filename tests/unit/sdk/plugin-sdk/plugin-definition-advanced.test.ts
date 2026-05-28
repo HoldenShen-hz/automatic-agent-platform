@@ -292,6 +292,20 @@ test("DefaultSbomScanner handles malformed JSON", async () => {
   }
 });
 
+test("DefaultSbomScanner rejects oversized SBOM payloads", async () => {
+  writeFileSync(TEMP_SBOM_FILE, "x".repeat(1024 * 1024 + 1));
+
+  try {
+    const scanner = new DefaultSbomScanner();
+    const result = await scanner.scan(`file://${TEMP_SBOM_FILE}`);
+
+    assert.equal(result.valid, false);
+    assert.ok(result.scanErrors.some((error) => error.includes("maximum supported size")));
+  } finally {
+    unlinkSync(TEMP_SBOM_FILE);
+  }
+});
+
 test("DefaultSbomScanner respects minSeverity option", async () => {
   const sbom = JSON.stringify({
     components: [
@@ -434,15 +448,15 @@ test("definePlugin with SBOM that has critical vulnerabilities rejects asynchron
   writeFileSync(TEMP_SBOM_FILE, sbom);
 
   try {
-    assert.throws(
-      () => definePlugin({
+    await assert.rejects(
+      Promise.resolve(definePlugin({
         pluginId: "sbom-critical-test",
         name: "SBOM Critical Test",
         version: "1.0.0",
         type: "tool",
         capabilities: [{ name: "execute", description: "Test", inputSchema: {}, outputSchema: {} }],
         sbomRef: `file://${TEMP_SBOM_FILE}`,
-      }),
+      })),
       (error: unknown) =>
         error instanceof Error
         && "code" in error

@@ -122,7 +122,10 @@ export function createGatewayRoutes(deps: GatewayRouteDeps): RouteDefinition[] {
         }
 
         const body = ctx.request.body ?? "";
-        const payloadText = typeof body === "string" ? body : JSON.stringify(body);
+        if (typeof body !== "string") {
+          throw new ApiError(400, "gateway.raw_body_required", "Webhook request body must remain raw text for signature verification.");
+        }
+        const payloadText = body;
 
         const signature = ctx.request.headers["x-webhook-signature"] as string | undefined ?? null;
         const timestamp = ctx.request.headers["x-webhook-timestamp"] as string | undefined ?? null;

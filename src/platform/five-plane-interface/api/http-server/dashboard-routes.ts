@@ -317,6 +317,8 @@ function normalizeAgentStatus(status: string): "healthy" | "degraded" | "offline
   return "degraded";
 }
 
+const MAX_APPROVAL_REQUEST_JSON_BYTES = 64 * 1024;
+
 function parseApprovalTitle(requestJson: string): string {
   return readApprovalField(requestJson, "title", "Approval required");
 }
@@ -340,6 +342,9 @@ function toAttentionPriority(
 }
 
 function readApprovalField(requestJson: string, field: string, fallback: string): string {
+  if (Buffer.byteLength(requestJson, "utf8") > MAX_APPROVAL_REQUEST_JSON_BYTES) {
+    return fallback;
+  }
   try {
     const parsed = JSON.parse(requestJson) as Record<string, unknown>;
     const value = parsed[field];

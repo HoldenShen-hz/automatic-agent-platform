@@ -16,14 +16,14 @@ import type { MissionControlService } from "../mission-control-service.js";
 import { buildOpenApiDocument } from "../openapi-document.js";
 
 const PLATFORM_API_VERSION = "v1";
-const PLATFORM_VERSION = process.env["AA_BUILD_VERSION"] ?? "0.1.0";
-const CONTRACT_VERSION = process.env["AA_CONTRACT_VERSION"] ?? "2026-04-01";
-const MIN_CLIENT_VERSION = process.env["AA_MIN_CLIENT_VERSION"] ?? "0.1.0";
-const OPENAPI_PUBLIC_OPT_IN_ENV = "AA_OPENAPI_PUBLIC";
 
 export interface HealthRouteDeps {
   missionControlService: MissionControlService;
   isShuttingDown?: () => boolean;
+  platformVersion?: string;
+  contractVersion?: string;
+  minClientVersion?: string;
+  openApiPublic?: boolean;
 }
 
 function healthStatusCode(report: { status?: unknown }, shuttingDown: boolean): number {
@@ -80,7 +80,7 @@ export function createHealthRoutes(deps: HealthRouteDeps): RouteDefinition[] {
       method: "GET",
       pathname: "/v1/openapi.json",
       handler: (ctx) => {
-        if (process.env[OPENAPI_PUBLIC_OPT_IN_ENV] !== "1" && ctx.principal == null) {
+        if (deps.openApiPublic !== true && ctx.principal == null) {
           return buildJsonErrorResponse(ctx.requestId, 401, {
             code: "api.openapi_auth_required",
             message: "Authentication is required to access the OpenAPI document.",
@@ -95,9 +95,9 @@ export function createHealthRoutes(deps: HealthRouteDeps): RouteDefinition[] {
       handler: async (ctx) => buildJsonResponse(ctx.requestId, 200, {
         accepted: true,
         apiVersion: PLATFORM_API_VERSION,
-        platformVersion: PLATFORM_VERSION,
-        contractVersion: CONTRACT_VERSION,
-        minClientVersion: MIN_CLIENT_VERSION,
+        platformVersion: deps.platformVersion ?? "0.1.0",
+        contractVersion: deps.contractVersion ?? "2026-04-01",
+        minClientVersion: deps.minClientVersion ?? "0.1.0",
       }),
     },
     {
@@ -106,9 +106,9 @@ export function createHealthRoutes(deps: HealthRouteDeps): RouteDefinition[] {
       handler: async (ctx) => buildJsonResponse(ctx.requestId, 200, {
         accepted: true,
         apiVersion: PLATFORM_API_VERSION,
-        platformVersion: PLATFORM_VERSION,
-        contractVersion: CONTRACT_VERSION,
-        minClientVersion: MIN_CLIENT_VERSION,
+        platformVersion: deps.platformVersion ?? "0.1.0",
+        contractVersion: deps.contractVersion ?? "2026-04-01",
+        minClientVersion: deps.minClientVersion ?? "0.1.0",
       }),
     },
   ];

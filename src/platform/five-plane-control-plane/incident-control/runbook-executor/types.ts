@@ -160,6 +160,12 @@ export interface RunbookExecutorConfig {
   continueOnFailure: boolean;
   /** Whether to execute verification steps */
   executeVerification: boolean;
+  /** Optional injection seam for controlled command execution. */
+  commandRunner?: (command: string, timeoutMs: number) => Promise<{
+    stdout: string;
+    stderr: string;
+    exitCode: number;
+  }>;
 }
 
 /**

@@ -3,12 +3,9 @@
   "command": [
     "vitest",
     "run",
-    "tests/features/registry.test.ts",
-    "tests/features/memory-review.test.tsx",
-    "tests/features/release-console.test.tsx",
-    "tests/features/trace-explorer.test.tsx",
-    "tests/features/flows.test.tsx"
+    "tests/unit/ui/apps/web/app-shell.test.tsx",
+    "tests/unit/ui/apps/web/vite-config.test.ts"
   ],
-  "startedAt": "2026-05-27T06:23:10.338Z",
-  "completedAt": "2026-05-27T06:23:12.655Z"
+  "startedAt": "2026-05-27T09:50:32.023Z",
+  "completedAt": "2026-05-27T09:50:33.002Z"
 }

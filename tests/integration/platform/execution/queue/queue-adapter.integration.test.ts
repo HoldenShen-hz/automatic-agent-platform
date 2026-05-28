@@ -16,16 +16,11 @@ import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evi
 import { cleanupPath, createTempWorkspace } from "../../../../helpers/fs.js";
 import { runConcurrentInvariant } from "../../../../helpers/concurrent-runner.js";
 
-// Set test mode to use in-memory Redis mock
-const previousRunningTests = process.env.AA_RUNNING_TESTS;
-process.env.AA_RUNNING_TESTS = "1";
-test.after(() => {
-  if (previousRunningTests === undefined) {
-    delete process.env.AA_RUNNING_TESTS;
-    return;
-  }
-  process.env.AA_RUNNING_TESTS = previousRunningTests;
-});
+const REDIS_MEMORY_CONFIG = {
+  host: "localhost",
+  port: 6379,
+  driver: "memory" as const,
+};
 
 function createSqliteHarness(prefix: string) {
   const workspace = createTempWorkspace(prefix);
@@ -301,7 +296,7 @@ test("SqliteQueueAdapter integration: dead letter after max retries", () => {
 // RedisQueueAdapter Integration Tests
 
 test("RedisQueueAdapter integration: enqueueAsync creates job record", async () => {
-  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
+  const adapter = new RedisQueueAdapter(REDIS_MEMORY_CONFIG);
 
   const job = await adapter.enqueueAsync({
     queueName: "test-queue",
@@ -316,7 +311,7 @@ test("RedisQueueAdapter integration: enqueueAsync creates job record", async () 
 });
 
 test("RedisQueueAdapter integration: dequeueAsync returns waiting job", async () => {
-  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
+  const adapter = new RedisQueueAdapter(REDIS_MEMORY_CONFIG);
 
   await adapter.enqueueAsync({ queueName: "dequeue-test", payload: { order: 1 } });
   await adapter.enqueueAsync({ queueName: "dequeue-test", payload: { order: 2 } });
@@ -330,7 +325,7 @@ test("RedisQueueAdapter integration: dequeueAsync returns waiting job", async ()
 });
 
 test("RedisQueueAdapter integration: dequeueAsync ack marks job completed", async () => {
-  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
+  const adapter = new RedisQueueAdapter(REDIS_MEMORY_CONFIG);
 
   await adapter.enqueueAsync({ queueName: "ack-test", payload: { done: true } });
   const result = await adapter.dequeueAsync("ack-test");
@@ -346,7 +341,7 @@ test("RedisQueueAdapter integration: dequeueAsync ack marks job completed", asyn
 });
 
 test("RedisQueueAdapter integration: dequeueAsync nack requeues on retry", async () => {
-  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
+  const adapter = new RedisQueueAdapter(REDIS_MEMORY_CONFIG);
 
   const job = await adapter.enqueueAsync({
     queueName: "nack-test",
@@ -367,7 +362,7 @@ test("RedisQueueAdapter integration: dequeueAsync nack requeues on retry", async
 });
 
 test("RedisQueueAdapter integration: moveToDeadLetterAsync marks job dead_letter", async () => {
-  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
+  const adapter = new RedisQueueAdapter(REDIS_MEMORY_CONFIG);
 
   const job = await adapter.enqueueAsync({ queueName: "dlq-test", payload: { dead: true } });
   await adapter.moveToDeadLetterAsync(job.id, "max_retries_exceeded");
@@ -380,7 +375,7 @@ test("RedisQueueAdapter integration: moveToDeadLetterAsync marks job dead_letter
 });
 
 test("RedisQueueAdapter integration: statsAsync returns correct counts", async () => {
-  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
+  const adapter = new RedisQueueAdapter(REDIS_MEMORY_CONFIG);
 
   await adapter.enqueueAsync({ queueName: "stats-test", payload: { a: 1 } });
   await adapter.enqueueAsync({ queueName: "stats-test", payload: { b: 2 } });
@@ -397,7 +392,7 @@ test("RedisQueueAdapter integration: statsAsync returns correct counts", async (
 });
 
 test("RedisQueueAdapter integration: listQueuesAsync returns all queue names", async () => {
-  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
+  const adapter = new RedisQueueAdapter(REDIS_MEMORY_CONFIG);
 
   await adapter.enqueueAsync({ queueName: "queue-a", payload: {} });
   await adapter.enqueueAsync({ queueName: "queue-b", payload: {} });
@@ -412,7 +407,7 @@ test("RedisQueueAdapter integration: listQueuesAsync returns all queue names", a
 });
 
 test("RedisQueueAdapter integration: retryJobAsync resets failed job", async () => {
-  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
+  const adapter = new RedisQueueAdapter(REDIS_MEMORY_CONFIG);
 
   const job = await adapter.enqueueAsync({ queueName: "retry-test", payload: {} });
   const result = await adapter.dequeueAsync("retry-test");
@@ -429,7 +424,7 @@ test("RedisQueueAdapter integration: retryJobAsync resets failed job", async () 
 });
 
 test("RedisQueueAdapter integration: idempotency key returns existing job", async () => {
-  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
+  const adapter = new RedisQueueAdapter(REDIS_MEMORY_CONFIG);
 
   const first = await adapter.enqueueAsync({
     queueName: "idempotent-test",
@@ -449,7 +444,7 @@ test("RedisQueueAdapter integration: idempotency key returns existing job", asyn
 });
 
 test("RedisQueueAdapter integration: priority orders correctly", async () => {
-  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
+  const adapter = new RedisQueueAdapter(REDIS_MEMORY_CONFIG);
 
   await adapter.enqueueAsync({ queueName: "priority-test", payload: { n: 1 }, priority: 1 });
   await adapter.enqueueAsync({ queueName: "priority-test", payload: { n: 2 }, priority: 10 });
@@ -531,7 +526,7 @@ test("SqliteQueueAdapter concurrent idempotency integration", async () => {
 });
 
 test("RedisQueueAdapter concurrent enqueue integration", async () => {
-  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
+  const adapter = new RedisQueueAdapter(REDIS_MEMORY_CONFIG);
 
   const result = await runConcurrentInvariant(async (workerId: number) => {
     return adapter.enqueueAsync({
@@ -550,7 +545,7 @@ test("RedisQueueAdapter concurrent enqueue integration", async () => {
 });
 
 test("RedisQueueAdapter concurrent dequeue integration", async () => {
-  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
+  const adapter = new RedisQueueAdapter(REDIS_MEMORY_CONFIG);
 
   for (let i = 0; i < 20; i++) {
     await adapter.enqueueAsync({ queueName: "race-queue", payload: { index: i } });
@@ -567,7 +562,7 @@ test("RedisQueueAdapter concurrent dequeue integration", async () => {
 });
 
 test("RedisQueueAdapter concurrent mixed operations integration", async () => {
-  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
+  const adapter = new RedisQueueAdapter(REDIS_MEMORY_CONFIG);
 
   const enqueueResult = await runConcurrentInvariant(async (workerId: number) => {
     return adapter.enqueueAsync({

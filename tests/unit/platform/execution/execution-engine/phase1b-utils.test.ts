@@ -1,120 +1,40 @@
 /**
- * Unit Tests: Phase1B Utils
- *
- * Tests for Phase1B aliases in phase1b-utils.ts:
- * - runPhase1BOrchestration (alias for runMultiStepOrchestration)
- * - executePhase1BToolCallForTests (alias for executeMultiStepToolCallForTests)
- * - resetPhase1BToolRegistryForTests (alias for resetMultiStepToolRegistryForTests)
- * - Phase1BOrchestrationResult type (alias for MultiStepOrchestrationResult)
- * - Phase1BOrchestrationInput type (alias for MultiStepToolExecutionInput)
+ * Unit Tests: Multi-step utility functions
  */
 
 import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  runMultiStepOrchestration,
-  executeMultiStepToolCallForTests,
-  resetMultiStepToolRegistryForTests,
-  type MultiStepOrchestrationResult,
-  type MultiStepToolExecutionInput,
-} from "../../../../../src/platform/five-plane-execution/execution-engine/multi-step-orchestration.js";
-import {
-  runPhase1BOrchestration,
-  executePhase1BToolCallForTests,
-  resetPhase1BToolRegistryForTests,
-  type Phase1BOrchestrationResult,
-  type Phase1BOrchestrationInput,
-} from "../../../../../src/platform/five-plane-execution/execution-engine/phase1b-utils.js";
+  parseOptionalPositiveInteger,
+  parseOptionalStringArray,
+  resolveMultiStepToolPath,
+  safeParseToolResult,
+} from "../../../../../src/platform/five-plane-execution/execution-engine/multi-step-utils.js";
 
-// =============================================================================
-// Function alias tests
-// =============================================================================
-
-test("runPhase1BOrchestration is identical to runMultiStepOrchestration [phase1b-utils]", () => {
-  assert.strictEqual(runPhase1BOrchestration, runMultiStepOrchestration);
+test("parseOptionalPositiveInteger accepts positive finite numbers [phase1b-utils]", () => {
+  assert.equal(parseOptionalPositiveInteger(42), 42);
+  assert.equal(parseOptionalPositiveInteger(1.9), 1);
+  assert.equal(parseOptionalPositiveInteger(0), undefined);
+  assert.equal(parseOptionalPositiveInteger(-1), undefined);
+  assert.equal(parseOptionalPositiveInteger("42"), undefined);
 });
 
-test("executePhase1BToolCallForTests is identical to executeMultiStepToolCallForTests [phase1b-utils]", () => {
-  assert.strictEqual(executePhase1BToolCallForTests, executeMultiStepToolCallForTests);
+test("parseOptionalStringArray normalizes nested arrays [phase1b-utils]", () => {
+  assert.deepEqual(parseOptionalStringArray([" a ", ["b", "", 1], "c"]), ["a", "b", "c"]);
+  assert.deepEqual(parseOptionalStringArray("not-an-array"), []);
 });
 
-test("resetPhase1BToolRegistryForTests is identical to resetMultiStepToolRegistryForTests [phase1b-utils]", () => {
-  assert.strictEqual(resetPhase1BToolRegistryForTests, resetMultiStepToolRegistryForTests);
+test("resolveMultiStepToolPath rejects parent traversal [phase1b-utils]", () => {
+  assert.throws(() => resolveMultiStepToolPath("/tmp/workspace", "../escape"));
 });
 
-// =============================================================================
-// Type alias tests
-// =============================================================================
-
-test("Phase1BOrchestrationResult is identical to MultiStepOrchestrationResult [phase1b-utils]", () => {
-  // Both types should be compatible - verify through assignment
-  const result: MultiStepOrchestrationResult = {
-    success: true,
-    stepsCompleted: 0,
-    finalOutput: undefined,
-  } as MultiStepOrchestrationResult;
-
-  const phase1bResult: Phase1BOrchestrationResult = result;
-  assert.ok(phase1bResult);
+test("resolveMultiStepToolPath resolves in-workspace paths [phase1b-utils]", () => {
+  const resolved = resolveMultiStepToolPath("/tmp/workspace", "folder/file.txt");
+  assert.equal(resolved, "/tmp/workspace/folder/file.txt");
 });
 
-test("Phase1BOrchestrationInput is identical to MultiStepOrchestrationInput [phase1b-utils]", () => {
-  // Both types should be compatible - verify through assignment
-  const input: MultiStepToolExecutionInput = {
-    taskId: "test-task",
-    request: "test request",
-    agentId: "test-agent",
-  } as MultiStepToolExecutionInput;
-
-  const phase1bInput: Phase1BOrchestrationInput = input;
-  assert.ok(phase1bInput);
-});
-
-// =============================================================================
-// Type structure tests (compile-time validation)
-// =============================================================================
-
-test("Phase1BOrchestrationResult can hold valid result structure [phase1b-utils]", () => {
-  const result: Phase1BOrchestrationResult = {
-    success: true,
-    stepsCompleted: 3,
-    finalOutput: { message: "done" },
-    toolCalls: [],
-  } as Phase1BOrchestrationResult;
-
-  assert.equal(result.success, true);
-  assert.equal(result.stepsCompleted, 3);
-});
-
-test("Phase1BOrchestrationInput can hold valid input structure [phase1b-utils]", () => {
-  const input: Phase1BOrchestrationInput = {
-    taskId: "task-123",
-    request: "Execute test task",
-    agentId: "agent-456",
-    context: {},
-    maxIterations: 10,
-  } as Phase1BOrchestrationInput;
-
-  assert.equal(input.taskId, "task-123");
-  assert.equal(input.request, "Execute test task");
-});
-
-// =============================================================================
-// Backward compatibility tests
-// =============================================================================
-
-test("Type re-exports allow old Phase1B code to work [phase1b-utils]", () => {
-  // This tests that the type exports work correctly for backward compatibility
-  type OldPhase1BResult = Phase1BOrchestrationResult;
-  type OldPhase1BInput = Phase1BOrchestrationInput;
-
-  // Verify the types can be used in type annotations
-  const mockInput: OldPhase1BInput = {
-    taskId: "legacy-task",
-    request: "legacy request",
-    agentId: "legacy-agent",
-  } as OldPhase1BInput;
-
-  assert.equal(mockInput.taskId, "legacy-task");
+test("safeParseToolResult parses JSON and falls back to raw string [phase1b-utils]", () => {
+  assert.deepEqual(safeParseToolResult("{\"key\":\"value\"}"), { key: "value" });
+  assert.equal(safeParseToolResult("not json"), "not json");
 });

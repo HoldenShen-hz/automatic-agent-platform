@@ -116,10 +116,6 @@ const SERVER_HEADERS_TIMEOUT_MS = SERVER_REQUEST_TIMEOUT_MS + SERVER_HEADERS_TIM
 const SERVER_MAX_HEADERS_COUNT = 2_000;
 const SERVER_MAX_REQUESTS_PER_SOCKET = 1_000;
 const SHUTDOWN_DRAIN_TIMEOUT_MS = 10_000;
-const SDK_HANDSHAKE_PLATFORM_VERSION = process.env["AA_BUILD_VERSION"] ?? "0.1.0";
-const SDK_HANDSHAKE_CONTRACT_VERSION = process.env["AA_CONTRACT_VERSION"] ?? "2026-04-01";
-const SDK_HANDSHAKE_MINIMUM_SDK_VERSION = process.env["AA_MIN_CLIENT_VERSION"] ?? "0.1.0";
-const SDK_HANDSHAKE_RECOMMENDED_SDK_VERSION = process.env["AA_RECOMMENDED_CLIENT_VERSION"] ?? SDK_HANDSHAKE_MINIMUM_SDK_VERSION;
 
 export type {
   HttpApiServerOptions,
@@ -145,9 +141,10 @@ export class HttpApiServer {
   private readonly adminRuntimeDirectiveService: AdminRuntimeDirectiveService;
   private readonly promptRegistryService: HierarchicalPromptRegistryService;
   private readonly sdkVersionHandshake: SdkVersionHandshakeService;
+  private readonly env: NodeJS.ProcessEnv;
   private readonly apiDefaultTimeoutMs: number;
   private readonly apiMaxTimeoutMs: number;
-  private readonly requestDeduplication = createDeduplicationMiddleware({ allowInMemoryInProduction: true });
+  private readonly requestDeduplication: ReturnType<typeof createDeduplicationMiddleware>;
   private readonly idempotencyMiddleware = createIdempotencyKeyMiddleware();
   private workerHeartbeatSweepTimer: NodeJS.Timeout | null = null;
   private readonly staleWorkerIncidentIds = new Set<string>();
@@ -157,9 +154,10 @@ export class HttpApiServer {
   private readonly activeRequestDrainResolvers = new Set<() => void>();
 
   public constructor(private readonly options: HttpApiServerOptions) {
+    this.env = options.env ?? {};
     this.divisionRegistry = options.divisionRegistry ?? safeLoadDivisionRegistry();
     this.rateLimiter = options.rateLimiter === undefined
-      ? createDefaultApiRateLimiter(process.env)
+      ? createDefaultApiRateLimiter(this.env)
       : options.rateLimiter;
     this.incidentService = options.incidentService ?? createNoOpIncidentFacadeService();
     this.packCatalogService = options.packCatalogService ?? new PackCatalogService();
@@ -169,17 +167,22 @@ export class HttpApiServer {
     this.adminConfigService = options.adminConfigService ?? new AdminConfigService();
     this.adminRuntimeDirectiveService = options.adminRuntimeDirectiveService ?? new AdminRuntimeDirectiveService();
     this.promptRegistryService = options.promptRegistryService ?? new HierarchicalPromptRegistryService();
+    const minimumSdkVersion = options.minimumSdkVersion ?? this.env["AA_MIN_CLIENT_VERSION"] ?? "0.1.0";
     this.sdkVersionHandshake = new SdkVersionHandshakeService({
-      platformVersion: SDK_HANDSHAKE_PLATFORM_VERSION,
-      contractVersion: SDK_HANDSHAKE_CONTRACT_VERSION,
-      minimumSdkVersion: SDK_HANDSHAKE_MINIMUM_SDK_VERSION,
-      recommendedSdkVersion: SDK_HANDSHAKE_RECOMMENDED_SDK_VERSION,
+      platformVersion: options.buildVersion ?? this.env["AA_BUILD_VERSION"] ?? "0.1.0",
+      contractVersion: options.contractVersion ?? this.env["AA_CONTRACT_VERSION"] ?? "2026-04-01",
+      minimumSdkVersion,
+      recommendedSdkVersion: options.recommendedSdkVersion ?? this.env["AA_RECOMMENDED_CLIENT_VERSION"] ?? minimumSdkVersion,
     });
     this.apiDefaultTimeoutMs = normalizeApiTimeout(options.apiDefaultTimeoutMs, 5_000, 5_000);
     this.apiMaxTimeoutMs = normalizeApiTimeout(options.apiMaxTimeoutMs, 30_000, 30_000);
-    const envOrigins = process.env["AA_API_ALLOWED_ORIGINS"] != null
-      ? parseAllowedOrigins(process.env["AA_API_ALLOWED_ORIGINS"])
+    const envOrigins = this.env["AA_API_ALLOWED_ORIGINS"] != null
+      ? parseAllowedOrigins(this.env["AA_API_ALLOWED_ORIGINS"])
       : [];
+    this.requestDeduplication = createDeduplicationMiddleware({
+      allowInMemoryInProduction: true,
+      isProduction: this.env["NODE_ENV"] === "production",
+    });
     const allowedOrigins = (options.cors?.allowedOrigins ?? envOrigins);
     const hasOrigins = allowedOrigins.length > 0;
     const corsConfigInput: Partial<CorsConfig> = {};
@@ -902,6 +905,10 @@ export class HttpApiServer {
       ...createHealthRoutes({
         missionControlService: this.options.missionControlService,
         isShuttingDown: () => this.isShuttingDown,
+        platformVersion: this.options.buildVersion ?? this.env["AA_BUILD_VERSION"] ?? "0.1.0",
+        contractVersion: this.options.contractVersion ?? this.env["AA_CONTRACT_VERSION"] ?? "2026-04-01",
+        minClientVersion: this.options.minimumSdkVersion ?? this.env["AA_MIN_CLIENT_VERSION"] ?? "0.1.0",
+        openApiPublic: this.options.openApiPublic ?? this.env["AA_OPENAPI_PUBLIC"] === "1",
       }),
       ...createMetricsRoutes({
         prometheusMetricsExporter: this.options.prometheusMetricsExporter ?? null,
@@ -1280,6 +1287,7 @@ export function createDefaultApiRateLimiter(env: NodeJS.ProcessEnv): Distributed
   return new DistributedRateLimiter({
     maxCalls,
     windowMs,
+    isProduction: env["NODE_ENV"] === "production",
     allowLocalFallbackInProduction: env["AA_API_RATE_LIMIT_ALLOW_LOCAL_FALLBACK"] === "1",
     ...(redis != null ? { redis } : {}),
   });

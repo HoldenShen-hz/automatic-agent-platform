@@ -8,7 +8,7 @@
  * - Layer 3: Context-aware authorization
  */
 
-import { createHash, randomBytes } from "node:crypto";
+import { createHmac, randomBytes } from "node:crypto";
 import { ValidationError } from "../../contracts/errors.js";
 import { assertInMemoryStoreAllowed } from "./in-memory-store-guard.js";
 
@@ -21,6 +21,7 @@ const REFRESH_TOKEN_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const TOKEN_SIZE = 32;
 const MAX_SESSION_STORE_ENTRIES = 10_000;
 const MAX_TOKEN_INDEX_ENTRIES = 20_000;
+const TOKEN_LOOKUP_HMAC_KEY = randomBytes(32);
 
 // ============================================================================
 // Session Types
@@ -162,9 +163,7 @@ function generateTokenId(): string {
 }
 
 function hashToken(token: string): string {
-  // Use a simple hash for index lookup (not for password storage)
-  // In production, use a proper HMAC-based token storage
-  return createHash("sha256").update(token).digest("base64url");
+  return createHmac("sha256", TOKEN_LOOKUP_HMAC_KEY).update(token).digest("base64url");
 }
 
 function deriveTokenLookupKey(token: string): string {

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { join } from "node:path";
-import { runSingleTaskExecution, type HappyPathInput } from "../../../../src/platform/five-plane-execution/execution-engine/single-task-execution.js";
+import { runSingleTaskExecution, type HappyPathInput } from "../../../../src/platform/five-plane-execution/execution-engine/single-task-happy-path.js";
 import { StructuredLogger } from "../../../../src/platform/shared/observability/structured-logger.js";
 import { createTempWorkspace, cleanupPath } from "../../../helpers/fs.js";
 

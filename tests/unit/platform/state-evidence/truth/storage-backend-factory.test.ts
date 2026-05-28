@@ -15,28 +15,12 @@ import {
 } from "../../../../../src/platform/five-plane-state-evidence/truth/storage-backend-factory.js";
 import { cleanupPath, createFile, createTempWorkspace } from "../../../../helpers/fs.js";
 
-type MockRequire = (specifier: string) => unknown;
-
 interface MockPgDatabase {
   filePath: string;
   connection: object;
   migrate(): Promise<void>;
   close(): Promise<void>;
   healthCheck(): Promise<boolean>;
-}
-
-function installMockRequire(mockRequire: MockRequire): () => void {
-  const previousRequire = globalThis.require as MockRequire | undefined;
-  const taggedRequire = mockRequire as NodeJS.Require & { __aaMockOverride?: boolean };
-  taggedRequire.__aaMockOverride = true;
-  globalThis.require = taggedRequire;
-  return () => {
-    if (previousRequire == null) {
-      Reflect.deleteProperty(globalThis, "require");
-      return;
-    }
-    globalThis.require = previousRequire as NodeJS.Require;
-  };
 }
 
 test("storage backend factory opens sqlite by default", () => {
@@ -444,23 +428,6 @@ test("storage backend factory postgres opener exposes shadow sqlite compatibilit
     },
   };
 
-  const restoreRequire = installMockRequire((specifier) => {
-    if (specifier === "postgres") {
-      return {};
-    }
-    if (specifier === "./postgres/pg-database.js") {
-      return {
-        PgDatabase: {
-          async open(options: Record<string, unknown>): Promise<MockPgDatabase> {
-            openOptions = options;
-            return fakePgDb;
-          },
-        },
-      };
-    }
-    throw new Error(`unexpected require: ${specifier}`);
-  });
-
   try {
     createFile(shadowPath, "");
 
@@ -468,6 +435,17 @@ test("storage backend factory postgres opener exposes shadow sqlite compatibilit
       dbPath,
       environment: "staging",
       env,
+      runtimeModules: {
+        postgres: {},
+        "./postgres/pg-database.js": {
+          PgDatabase: {
+            async open(options: Record<string, unknown>): Promise<MockPgDatabase> {
+              openOptions = options;
+              return fakePgDb;
+            },
+          },
+        },
+      },
     });
 
     assert.equal(storage.driver, "postgres");
@@ -490,7 +468,6 @@ test("storage backend factory postgres opener exposes shadow sqlite compatibilit
     assert.equal(calls.migrate, 1);
     assert.equal(calls.close, 1);
   } finally {
-    restoreRequire();
     cleanupPath(workspace);
   }
 });
@@ -510,34 +487,6 @@ test("storage backend factory async postgres context wires shadow sqlite lifecyc
     migrate: 0,
     close: 0,
   };
-  const restoreRequire = installMockRequire((specifier) => {
-    if (specifier === "postgres") {
-      return {};
-    }
-    if (specifier === "./postgres/pg-database.js") {
-      return {
-        PgDatabase: {
-          async open(): Promise<MockPgDatabase> {
-            return {
-              filePath: "postgres://fake/agent_company_os",
-              connection: { dialect: "postgres" },
-              async migrate(): Promise<void> {
-                calls.migrate += 1;
-              },
-              async close(): Promise<void> {
-                calls.close += 1;
-              },
-              async healthCheck(): Promise<boolean> {
-                return true;
-              },
-            };
-          },
-        },
-      };
-    }
-    throw new Error(`unexpected require: ${specifier}`);
-  });
-
   try {
     createFile(shadowPath, "");
 
@@ -545,6 +494,28 @@ test("storage backend factory async postgres context wires shadow sqlite lifecyc
       dbPath,
       environment: "staging",
       env,
+      runtimeModules: {
+        postgres: {},
+        "./postgres/pg-database.js": {
+          PgDatabase: {
+            async open(): Promise<MockPgDatabase> {
+              return {
+                filePath: "postgres://fake/agent_company_os",
+                connection: { dialect: "postgres" },
+                async migrate(): Promise<void> {
+                  calls.migrate += 1;
+                },
+                async close(): Promise<void> {
+                  calls.close += 1;
+                },
+                async healthCheck(): Promise<boolean> {
+                  return true;
+                },
+              };
+            },
+          },
+        },
+      },
     });
 
     assert.equal(context.driver, "postgres");
@@ -578,7 +549,6 @@ test("storage backend factory async postgres context wires shadow sqlite lifecyc
     assert.equal(calls.migrate, 1);
     assert.equal(calls.close, 1);
   } finally {
-    restoreRequire();
     cleanupPath(workspace);
   }
 });
@@ -601,27 +571,21 @@ test("storage backend factory postgres opener exposes unsupported sync facade wi
     },
   };
 
-  const restoreRequire = installMockRequire((specifier) => {
-    if (specifier === "postgres") {
-      return {};
-    }
-    if (specifier === "./postgres/pg-database.js") {
-      return {
-        PgDatabase: {
-          async open(): Promise<MockPgDatabase> {
-            return fakePgDb;
-          },
-        },
-      };
-    }
-    throw new Error(`unexpected require: ${specifier}`);
-  });
-
   try {
     const storage = await openPostgresAuthoritativeStorageBackend({
       dbPath,
       environment: "dev",
       env,
+      runtimeModules: {
+        postgres: {},
+        "./postgres/pg-database.js": {
+          PgDatabase: {
+            async open(): Promise<MockPgDatabase> {
+              return fakePgDb;
+            },
+          },
+        },
+      },
     });
 
     assert.equal(storage.shadowSqlite, undefined);
@@ -635,7 +599,6 @@ test("storage backend factory postgres opener exposes unsupported sync facade wi
     await assert.doesNotReject(() => storage.sql.healthCheck());
     await storage.close();
   } finally {
-    restoreRequire();
     cleanupPath(workspace);
   }
 });

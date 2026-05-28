@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
+import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { dirname, extname, join } from "node:path";
+import { dirname, join } from "node:path";
 
 import { CLI_ENTRYPOINTS } from "./index.js";
 
@@ -37,15 +38,16 @@ async function main(): Promise<void> {
   }
 
   const moduleDir = dirname(fileURLToPath(import.meta.url));
-  const sourceExtension = extname(fileURLToPath(import.meta.url));
-  const runtimeExtension = sourceExtension === ".ts" ? "ts" : "js";
-  const childEntrypoint = join(moduleDir, `${command}.${runtimeExtension}`);
-  if (extname(childEntrypoint) !== `.${runtimeExtension}`) {
+  const sourceChildEntrypoint = join(moduleDir, `${command}.ts`);
+  const compiledChildEntrypoint = join(moduleDir, `${command}.js`);
+  const useSourceEntrypoint = existsSync(sourceChildEntrypoint);
+  const childEntrypoint = useSourceEntrypoint ? sourceChildEntrypoint : compiledChildEntrypoint;
+  if (!existsSync(childEntrypoint)) {
     process.stderr.write(`Invalid aa command target: ${command}\n`);
     process.exitCode = 1;
     return;
   }
-  const childArgs = sourceExtension === ".ts"
+  const childArgs = useSourceEntrypoint
     ? ["--import", "tsx", childEntrypoint, ...args]
     : [childEntrypoint, ...args];
   const child = spawn(process.execPath, childArgs, {

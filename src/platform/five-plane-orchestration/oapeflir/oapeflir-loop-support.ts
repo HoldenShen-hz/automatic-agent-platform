@@ -90,6 +90,15 @@ function normalizeOapeflirStageName(stage: string): string {
   return stage.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "") || "unknown";
 }
 
+function createMonotonicTimestampGenerator(startMs = Date.now()): () => number {
+  let lastMs = startMs;
+  return () => {
+    const nextMs = Date.now();
+    lastMs = nextMs > lastMs ? nextMs : lastMs + 1;
+    return lastMs;
+  };
+}
+
 export abstract class OapeflirLoopSupport {
   protected abstract readonly observationAggregator: ObservationAggregator;
   protected abstract readonly planBuilder: OapeflirPlanBuilder;
@@ -98,6 +107,7 @@ export abstract class OapeflirLoopSupport {
   protected abstract readonly eventPublisher: import("../../five-plane-state-evidence/events/typed-event-publisher.js").TypedEventPublisher | undefined;
   protected abstract readonly dbPath: string | undefined;
   public abstract loopController: HarnessLoopController | null;
+  private readonly nextFeedbackTimestamp = createMonotonicTimestampGenerator();
 
   protected buildExecutionContext(
     input: OapeflirLoopInput,
@@ -321,7 +331,7 @@ export abstract class OapeflirLoopSupport {
         },
         stepOutputRefs: [nodeRunId ?? output.stepId],
         ...(nodeRunId != null ? { nodeRunId } : {}),
-        timestamp: Date.now() + index,
+        timestamp: this.nextFeedbackTimestamp(),
         feedbackTrustScore: 0.5,
         trustFactors: {
           sourceReliability: 0.5,

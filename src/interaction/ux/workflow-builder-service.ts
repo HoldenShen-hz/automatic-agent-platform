@@ -256,7 +256,10 @@ function parseStoredWorkflowBuilderRecord(
     readonly updatedAt: string;
   },
 ): WorkflowBuilderRecord | null {
-  const envelope = JSON.parse(workflowState.outputsJson) as Record<string, unknown>;
+  const envelope = safeParseObject(workflowState.outputsJson);
+  if (envelope == null) {
+    return null;
+  }
   if (
     typeof envelope["draftId"] !== "string"
     || typeof envelope["builderJson"] !== "string"
@@ -264,7 +267,7 @@ function parseStoredWorkflowBuilderRecord(
   ) {
     return null;
   }
-  const parsedBuilder = JSON.parse(envelope["builderJson"]);
+  const parsedBuilder = safeParseObject(envelope["builderJson"]);
   if (!isVisualWorkflowBuilder(parsedBuilder)) {
     return null;
   }
@@ -295,6 +298,15 @@ function categorizeComponents(components: readonly DraggableComponent[]): Compon
     category,
     components: items,
   }));
+}
+
+function safeParseObject(raw: string): Record<string, unknown> | null {
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    return typeof parsed === "object" && parsed != null ? parsed as Record<string, unknown> : null;
+  } catch {
+    return null;
+  }
 }
 
 function getTemplateStepId(step: InteractionTemplate["steps"][number], index: number): string {

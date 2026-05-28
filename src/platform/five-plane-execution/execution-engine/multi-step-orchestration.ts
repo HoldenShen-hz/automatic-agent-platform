@@ -14,7 +14,7 @@ import type {
 } from "../../contracts/types/domain.js";
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import { createHarnessRun } from "../../contracts/executable-contracts/index.js";
-import { createWorkspaceWritePolicy } from "../../five-plane-control-plane/iam/sandbox-policy.js";
+import { createWorkspaceWritePolicy } from "../../five-plane-control-plane/iam/index.js";
 import { ContextCompactionService, type ContextCompactionResult } from "./context-compaction-service.js";
 import {
   AdmissionController,
@@ -22,7 +22,7 @@ import {
   type AdmissionPolicy,
 } from "../dispatcher/admission-controller.js";
 import { executeMultiStepToolCallForTests, resetMultiStepToolRegistryForTests } from "../dispatcher/index.js";
-import { provideContext } from "./runtime-context.js";
+import { provideContext } from "../../shared/context/runtime-context.js";
 import { TransitionService } from "../state-transition/transition-service.js";
 import { ArtifactStore } from "../../five-plane-state-evidence/artifacts/artifact-store.js";
 import { openAuthoritativeStorageContext } from "../../five-plane-state-evidence/truth/storage-backend-factory.js";

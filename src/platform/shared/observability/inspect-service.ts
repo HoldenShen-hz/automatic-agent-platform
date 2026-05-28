@@ -14,7 +14,7 @@ import type {
 } from "../../contracts/types/domain.js";
 import { ValidationError } from "../../contracts/errors.js";
 import { AuthoritativeTaskStore } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";
-import { RuntimeRecoveryService } from "../../five-plane-execution/recovery/runtime-recovery-service-root.js";
+import { RuntimeRecoveryService } from "../../five-plane-execution/recovery/runtime-recovery-service.js";
 import { toWorkerSchedulingStatus } from "../../five-plane-execution/worker-pool/worker-scheduling-status.js";
 import { buildTaskResultEnvelope } from "../../contracts/result-envelope/result-envelope.js";
 import {

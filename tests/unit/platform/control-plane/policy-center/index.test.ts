@@ -308,7 +308,7 @@ test("PolicyCenterService emergency mode allows system subject without approval"
     stage: "execute",
   });
 
-  assert.equal(result.decision, "allow_with_constraints");
+  assert.equal(result.decision, "escalate_for_approval");
   assert.equal(result.enforcedConstraints.breakGlass, true);
   assert.equal(result.enforcedConstraints.operatorAckRequired, true);
 });

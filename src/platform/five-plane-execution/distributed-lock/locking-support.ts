@@ -1,16 +1,12 @@
-import { createRequire } from "node:module";
+import postgres from "postgres";
 
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 import type { PostgresFactory, PostgresSqlDriver } from "./distributed-lock-types.js";
 
 export const lockLogger = new StructuredLogger({ retentionLimit: 100 });
 
-const require = createRequire(import.meta.url);
-
 export function defaultPostgresFactory(dsn: string, options: Record<string, unknown>): PostgresSqlDriver {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const postgres = require("postgres") as PostgresFactory;
-  return postgres(dsn, options);
+  return (postgres as unknown as PostgresFactory)(dsn, options);
 }
 
 export function inferPgSslFromDsn(dsn: string): false | { rejectUnauthorized: true } | null {

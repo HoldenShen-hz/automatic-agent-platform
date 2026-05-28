@@ -221,7 +221,8 @@ test("createHarnessRunsRoutes - GET /v1/harness-runs/:id/events returns events a
   assert.strictEqual(eventsResult.statusCode, 200);
   const body = parseResponseData(eventsResult);
   assert.deepStrictEqual(body.harnessRunId, harnessRunId);
-  assert.deepStrictEqual(body.events, []);
+  assert.equal(Array.isArray(body.events), true);
+  assert.equal(body.events.length > 0, true);
 });
 
 test("createHarnessRunsRoutes - pagination with cursor", async () => {
@@ -255,6 +256,49 @@ test("createHarnessRunsRoutes - pagination with cursor", async () => {
   assert.ok(secondResult != null);
   const secondBody = parseResponseData(secondResult);
   assert.strictEqual(secondBody.harnessRuns.length, 2);
+});
+
+test("createHarnessRunsRoutes - rejects invalid cursor with 400", async () => {
+  const routes = createHarnessRunsRoutes({ authService: createMockAuthServiceViewer() });
+  const ctx = createMockContext("/v1/harness-runs?cursor=%%%bad%%%", ["v1", "harness-runs"]);
+
+  await assert.rejects(
+    async () => callRoute(routes, ctx),
+    (err: unknown) => err instanceof Error && "code" in (err as Record<string, unknown>) && (err as { code?: string }).code === "api.invalid_cursor",
+  );
+});
+
+test("createHarnessRunsRoutes - rejects invalid risk level", async () => {
+  const routes = createHarnessRunsRoutes({ authService: createMockAuthService() });
+  const ctx = createMockContext("/v1/harness-runs", ["v1", "harness-runs"], {}, JSON.stringify({
+    tenantId: "tenant:test",
+    domainId: "test-domain",
+    riskLevel: "extreme",
+  }));
+
+  await assert.rejects(
+    async () => callRoute(routes, ctx, "POST"),
+    (err: unknown) => err instanceof HarnessRunsApiError && err.statusCode === 400 && err.code === "api.invalid_risk_level",
+  );
+});
+
+test("createHarnessRunsRoutes - PATCH rejects non-whitelisted fields", async () => {
+  const routes = createHarnessRunsRoutes({ authService: createMockAuthService() });
+  const createCtx = createMockContext("/v1/harness-runs", ["v1", "harness-runs"], {}, JSON.stringify({ domainId: "domain:patch-whitelist" }));
+  const createResult = await callRoute(routes, createCtx, "POST");
+  const harnessRunId = parseResponseData(createResult!).harnessRunId;
+
+  const patchCtx = createMockContext(
+    `/v1/harness-runs/${harnessRunId}`,
+    ["v1", "harness-runs", harnessRunId],
+    {},
+    JSON.stringify({ tenantId: "other-tenant" }),
+  );
+
+  await assert.rejects(
+    async () => callRoute(routes, patchCtx, "PATCH"),
+    (err: unknown) => err instanceof HarnessRunsApiError && err.statusCode === 400 && err.code === "api.invalid_harness_run_patch_field",
+  );
 });
 
 test("createHarnessRunsRoutes - uses default values when optional fields not provided", async () => {

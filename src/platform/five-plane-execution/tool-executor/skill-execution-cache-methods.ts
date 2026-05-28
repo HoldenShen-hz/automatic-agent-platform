@@ -4,14 +4,12 @@ import { realpathSync } from "node:fs";
 import { resolve } from "node:path";
 
 import {
+  createDefaultResourceCeilingGuard,
   DEFAULT_MODEL_METADATA_REGISTRY,
   type ModelMetadataRegistry,
   type ModelProfileMetadata,
-} from "../../five-plane-control-plane/config-center/model-metadata-registry.js";
-import {
-  createDefaultResourceCeilingGuard,
   type ResourceCeilingGuard,
-} from "../../five-plane-control-plane/config-center/resource-ceiling.js";
+} from "../../five-plane-control-plane/config-center/index.js";
 import { ValidationError } from "../../contracts/errors.js";
 import { TypedEventBus, type SkillEventType, type TypedEventPayloadMap } from "../../five-plane-state-evidence/events/typed-event-bus.js";
 import { AuthoritativeTaskStore } from "../../five-plane-state-evidence/truth/authoritative-task-store.js";

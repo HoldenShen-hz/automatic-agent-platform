@@ -241,27 +241,35 @@ export function canTransitionTrustLevel(
  */
 export class TrustLevelService {
   private readonly learningObjects: Map<string, LearningObject> = new Map();
-  // C-11: TTL-based eviction to prevent memory leaks
-  private readonly MAX_LEARNING_OBJECTS = 500;
-  private readonly OBJECT_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+  private readonly maxLearningObjects: number;
+  private readonly objectTtlMs: number;
   private lastEvictionTime = 0;
-  private readonly EVICTION_INTERVAL_MS = 60 * 1000; // Once per minute
+  private readonly evictionIntervalMs: number;
 
   public constructor(
     private readonly trustRules: readonly TrustTransitionRule[] = DEFAULT_TRUST_TRANSITION_RULES,
-  ) {}
+    options: {
+      maxLearningObjects?: number;
+      objectTtlMs?: number;
+      evictionIntervalMs?: number;
+    } = {},
+  ) {
+    this.maxLearningObjects = Math.max(1, options.maxLearningObjects ?? 500);
+    this.objectTtlMs = Math.max(1_000, options.objectTtlMs ?? 24 * 60 * 60 * 1000);
+    this.evictionIntervalMs = Math.max(1_000, options.evictionIntervalMs ?? 60 * 1000);
+  }
 
   /**
    * C-11: Evict expired learning objects to prevent memory leaks.
    */
   private evictExpiredObjects(): void {
     const now = Date.now();
-    if (now - this.lastEvictionTime < this.EVICTION_INTERVAL_MS) {
+    if (now - this.lastEvictionTime < this.evictionIntervalMs) {
       return;
     }
     this.lastEvictionTime = now;
 
-    const expiryThreshold = now - this.OBJECT_TTL_MS;
+    const expiryThreshold = now - this.objectTtlMs;
     const entriesToDelete: string[] = [];
 
     for (const [id, obj] of this.learningObjects) {
@@ -276,17 +284,20 @@ export class TrustLevelService {
     }
 
     // If still over capacity, remove oldest objects
-    if (this.learningObjects.size > this.MAX_LEARNING_OBJECTS) {
-      const sortedEntries = [...this.learningObjects.entries()].sort((a, b) => {
-        const aTime = new Date(a[1].updatedAt).getTime();
-        const bTime = new Date(b[1].updatedAt).getTime();
-        return aTime - bTime;
-      });
-
-      const toRemove = this.learningObjects.size - this.MAX_LEARNING_OBJECTS;
-      for (let i = 0; i < toRemove; i++) {
-        this.learningObjects.delete(sortedEntries[i]![0]);
+    while (this.learningObjects.size > this.maxLearningObjects) {
+      let oldestId: string | null = null;
+      let oldestUpdatedAt = Number.POSITIVE_INFINITY;
+      for (const [id, obj] of this.learningObjects) {
+        const updatedAt = new Date(obj.updatedAt).getTime();
+        if (updatedAt < oldestUpdatedAt) {
+          oldestUpdatedAt = updatedAt;
+          oldestId = id;
+        }
       }
+      if (oldestId == null) {
+        break;
+      }
+      this.learningObjects.delete(oldestId);
     }
   }
 
@@ -378,11 +389,12 @@ export class TrustLevelService {
     }
 
     // Calculate validation score based on content
+    const containsTodoMarker = /^\s*(?:[-*]\s*)?(?:TODO|FIXME)\b/m.test(obj.content);
     const qualityIndicators = [
       obj.content.includes("."),
       obj.content.includes(" "),
-      !obj.content.includes("TODO"),
-      !obj.content.includes("FIXME"),
+      !containsTodoMarker,
+      !containsTodoMarker,
     ];
 
     const qualityCount = qualityIndicators.filter(Boolean).length;

@@ -116,6 +116,23 @@ const OUTPUT_SUSPICIOUS_PATTERNS: readonly PromptInjectionSignal[] = [
 
 const ZERO_WIDTH_PATTERN = /[\u200B-\u200F\u2060\uFEFF]/g;
 const CONTROL_PATTERN = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g;
+const REMOTE_ASSESSMENT_TIMEOUT_MS = 5_000;
+
+async function fetchJsonWithTimeout(endpoint: string, body: unknown): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REMOTE_ASSESSMENT_TIMEOUT_MS);
+  timeout.unref?.();
+  try {
+    return await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
 
 function normalizePromptInput(input: string): string {
   return input.normalize("NFKC").replace(ZERO_WIDTH_PATTERN, "").replace(CONTROL_PATTERN, "");
@@ -166,11 +183,7 @@ async function fetchMLSemanticAssessment(
 ): Promise<{ score: number; signals: string[]; blocked: boolean } | null> {
   try {
     const endpoint = resolveRemoteAssessmentEndpoint(mlModelEndpoint, "mlModelEndpoint");
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ input }),
-    });
+    const response = await fetchJsonWithTimeout(endpoint, { input });
     if (!response.ok) {
       return null;
     }
@@ -275,11 +288,7 @@ async function fetchLLMJudgeAssessment(
 ): Promise<{ score: number; signals: string[]; blocked: boolean } | null> {
   try {
     const endpoint = resolveRemoteAssessmentEndpoint(llmJudgeEndpoint, "llmJudgeEndpoint");
-    const response = await fetch(endpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ input }),
-    });
+    const response = await fetchJsonWithTimeout(endpoint, { input });
     if (!response.ok) {
       return null;
     }

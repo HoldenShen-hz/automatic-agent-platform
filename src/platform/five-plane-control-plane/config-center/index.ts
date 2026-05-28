@@ -11,6 +11,7 @@ export * from "./config-versioning-service.js";
 export * from "./hierarchical-config-loader.js";
 export * from "./model-metadata-registry.js";
 export * from "./profile-home.js";
+export * from "./postgres-pool-env.js";
 export * from "./protected-governance-integrity-service.js";
 export * from "./provider-defaults.js";
 export * from "./resource-ceiling.js";

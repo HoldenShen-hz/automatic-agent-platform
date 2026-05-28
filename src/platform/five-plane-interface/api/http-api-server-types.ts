@@ -67,6 +67,12 @@ export interface HttpApiServerOptions {
   apiMaxTimeoutMs?: number;
   workerHeartbeatSweepIntervalMs?: number;
   workerHeartbeatTtlMs?: number;
+  env?: NodeJS.ProcessEnv;
+  buildVersion?: string;
+  contractVersion?: string;
+  minimumSdkVersion?: string;
+  recommendedSdkVersion?: string;
+  openApiPublic?: boolean;
 }
 
 export interface StartServerOptions {

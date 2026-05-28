@@ -5,13 +5,13 @@ import { dirname, join } from "node:path";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 
-import { runPhase1AHappyPath, type HappyPathInput } from "../../../../../src/platform/five-plane-execution/execution-engine/phase1a-happy-path.js";
+import { runSingleTaskExecution, type HappyPathInput } from "../../../../../src/platform/five-plane-execution/execution-engine/single-task-happy-path.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-test("phase1a-happy-path exports runPhase1AHappyPath function [happy-path]", () => {
-  assert.equal(typeof runPhase1AHappyPath, "function");
+test("single-task-happy-path exports runSingleTaskExecution function [happy-path]", () => {
+  assert.equal(typeof runSingleTaskExecution, "function");
 });
 
 test("phase1a-happy-path happy path execution completes task lifecycle [happy-path]", async () => {
@@ -29,7 +29,7 @@ test("phase1a-happy-path happy path execution completes task lifecycle [happy-pa
       },
     };
 
-    const snapshot = await runPhase1AHappyPath(input);
+    const snapshot = await runSingleTaskExecution(input);
 
     assert.ok(snapshot, "Should return a task snapshot");
     assert.ok(snapshot.task, "Snapshot should contain task record");
@@ -57,7 +57,7 @@ test("phase1a-happy-path creates task and workflow records [happy-path]", async 
       },
     };
 
-    const snapshot = await runPhase1AHappyPath(input);
+    const snapshot = await runSingleTaskExecution(input);
 
     assert.ok(snapshot.task, "Should have task record");
     assert.ok(snapshot.workflow, "Should have workflow record");
@@ -85,7 +85,7 @@ test("phase1a-happy-path step output contains expected data [happy-path]", async
       },
     };
 
-    const snapshot = await runPhase1AHappyPath(input);
+    const snapshot = await runSingleTaskExecution(input);
 
     const stepOutput = snapshot.stepOutputs[0];
     assert.ok(stepOutput, "Should have step output");
@@ -112,7 +112,7 @@ test("phase1a-happy-path uses synthetic output when no LLM provider [happy-path]
       // No stepOutputOverride and no LLM provider - should use synthetic output
     };
 
-    const snapshot = await runPhase1AHappyPath(input);
+    const snapshot = await runSingleTaskExecution(input);
 
     assert.ok(snapshot.task, "Should have task record");
     // Without stepOutputOverride and no LLM provider, should still complete

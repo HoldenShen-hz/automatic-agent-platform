@@ -18,7 +18,12 @@ export interface AuditRecord {
 }
 
 export class AuditTrailService {
+  private readonly maxRecords: number;
   private readonly records: AuditRecord[] = [];
+
+  public constructor(options: { maxRecords?: number } = {}) {
+    this.maxRecords = Math.max(1, options.maxRecords ?? 10_000);
+  }
 
   public record(input: Omit<AuditRecord, "auditId" | "createdAt"> & { createdAt?: string }): AuditRecord {
     const record: AuditRecord = {
@@ -27,6 +32,10 @@ export class AuditTrailService {
       createdAt: input.createdAt ?? nowIso(),
     };
     this.records.push(record);
+    const overflow = this.records.length - this.maxRecords;
+    if (overflow > 0) {
+      this.records.splice(0, overflow);
+    }
     return record;
   }
 

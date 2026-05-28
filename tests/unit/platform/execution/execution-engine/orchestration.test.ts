@@ -6,18 +6,16 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 
 import {
-  runPhase1BOrchestration,
   runMultiStepOrchestration,
   type MultiStepOrchestrationInput,
   type MultiStepOrchestrationResult,
-} from "../../../../../src/platform/five-plane-execution/execution-engine/phase1b-orchestration.js";
+} from "../../../../../src/platform/five-plane-execution/execution-engine/multi-step-orchestration.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-test("phase1b-orchestration exports runPhase1BOrchestration function [orchestration]", () => {
-  assert.equal(typeof runPhase1BOrchestration, "function");
-  assert.equal(runPhase1BOrchestration, runMultiStepOrchestration);
+test("multi-step-orchestration exports runMultiStepOrchestration function [orchestration]", () => {
+  assert.equal(typeof runMultiStepOrchestration, "function");
 });
 
 test("phase1b-orchestration runs basic multi-step workflow [orchestration]", async () => {
@@ -31,7 +29,7 @@ test("phase1b-orchestration runs basic multi-step workflow [orchestration]", asy
       request: "Read file test.txt and write summary to summary.txt",
     };
 
-    const result = await runPhase1BOrchestration(input);
+    const result = await runMultiStepOrchestration(input);
 
     assert.ok(result, "Should return orchestration result");
     assert.ok(result.plannedWorkflow, "Should have planned workflow");
@@ -53,7 +51,7 @@ test("phase1b-orchestration planned workflow contains steps [orchestration]", as
       request: "Read file test.txt and write summary to summary.txt",
     };
 
-    const result = await runPhase1BOrchestration(input);
+    const result = await runMultiStepOrchestration(input);
 
     assert.ok(result.plannedWorkflow.executionSteps, "Should have execution steps");
     assert.ok(result.plannedWorkflow.executionSteps.length > 0, "Should have at least one step");
@@ -75,7 +73,7 @@ test("phase1b-orchestration routing is computed [orchestration]", async () => {
       request: "Read file test.txt",
     };
 
-    const result = await runPhase1BOrchestration(input);
+    const result = await runMultiStepOrchestration(input);
 
     assert.ok(result.routing.workflowId, "Should have workflow ID in routing");
     assert.ok(result.routing.routeReason, "Should have route reason");
@@ -102,7 +100,7 @@ test("phase1b-orchestration admission rejected handled [orchestration]", async (
       },
     };
 
-    const result = await runPhase1BOrchestration(input);
+    const result = await runMultiStepOrchestration(input);
 
     // Should still return a result even with admission rejection
     assert.ok(result, "Should return result even when admission rejected");
@@ -123,7 +121,7 @@ test("phase1b-orchestration task snapshot has required fields [orchestration]", 
       request: "Read file test.txt",
     };
 
-    const result = await runPhase1BOrchestration(input);
+    const result = await runMultiStepOrchestration(input);
 
     const snapshot = result.snapshot;
     assert.ok(snapshot.task, "Should have task");

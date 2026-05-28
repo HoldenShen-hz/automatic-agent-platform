@@ -5,6 +5,8 @@ This document defines the minimal release version scope for the current reposito
 ## NPM / Source Code Version
 
 - `version` in `package.json` is the source package version authoritative source.
+- `CHANGELOG.md` must maintain both `Unreleased` and the latest published version, so unpublished commits are never rewritten as if they were already released.
+- The repository is still in the `0.x` pre-GA phase: frequent contract and documentation changes do not require bumping `package.json` on every commit, but every package or image release must write back to the changelog.
 - Version changes must be accompanied by a changelog gate.
 - Node/npm support range is declared by the `engines` field in `package.json`.
 
@@ -13,6 +15,7 @@ This document defines the minimal release version scope for the current reposito
 - Release workflow must use the `image_tag` passed by the caller.
 - Image release also generates a `sha-<commit>` tag for rollback and traceability.
 - Deploy workflow only deploys explicitly passed image tags; no floating latest.
+- The hard pre-release gate is defined by the `Pre-Launch Top 20 Hard Checklist` in [operations-checklist.md](./operations-checklist.md).
 
 ## Branch Strategy
 
@@ -25,3 +28,8 @@ This document defines the minimal release version scope for the current reposito
 - Commit titles use short imperative mood, describing specific behavioral changes, e.g., `Add worker handshake lifecycle`.
 - Semanticless titles are prohibited as final commit descriptions, e.g., `chore: sync`, `update`, `fix`.
 - Each commit covers only one issue cluster; if runtime code and documentation are modified simultaneously, the commit description must name the verification command or evidence file.
+
+## Related Documents
+
+- Pre-release checklist: [operations-checklist.md](./operations-checklist.md)
+- Authoritative version history: [../../CHANGELOG.md](../../CHANGELOG.md)

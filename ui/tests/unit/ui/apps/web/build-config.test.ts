@@ -17,7 +17,9 @@ describe("web build config", () => {
   });
 
   it("splits feature and vendor modules instead of falling back to a single unmatched chunk", () => {
-    expect(selectManualChunk("/workspace/ui/packages/features/feature-dashboard/index.tsx")).toBe("feature-dashboard");
+    expect(selectManualChunk("/workspace/ui/packages/features/dashboard/src/index.tsx")).toBe("feature-dashboard");
+    expect(selectManualChunk("/workspace/ui/packages/features/workflow-builder/src/index.tsx")).toBe("feature-workflow-builder");
+    expect(selectManualChunk("/workspace/ui/packages/features/workflow-cockpit/src/index.tsx")).toBe("feature-workflow-cockpit");
     expect(selectManualChunk("/workspace/ui/node_modules/lodash-es/index.js")).toBe("vendor-lodash-es");
     expect(selectManualChunk("/workspace/ui/node_modules/@scope/pkg/index.js")).toBe("vendor-scope-pkg");
   });

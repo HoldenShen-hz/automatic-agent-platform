@@ -124,20 +124,18 @@ test("core/runtime index exports runtime-factory", async () => {
   assert.ok(runtime.runtimeFactories, "Should export runtimeFactories");
 });
 
-// Test 15: index.ts re-exports state-transition-machine
-test("core/runtime index exports state-transition-machine class", async () => {
+// Test 15: index.ts no longer re-exports state-transition-machine
+test("core/runtime index no longer exports state-transition-machine class", async () => {
   const runtime = await import("../../../../src/core/runtime/index.js");
 
-  // StateTransitionMachine is a class
-  assert.ok(typeof runtime.StateTransitionMachine === "function", "Should export StateTransitionMachine class");
+  assert.equal("StateTransitionMachine" in runtime, false, "Should not export StateTransitionMachine");
 });
 
-// Test 16: index.ts re-exports transition-service
-test("core/runtime index exports transition-service class", async () => {
+// Test 16: index.ts no longer re-exports transition-service
+test("core/runtime index no longer exports transition-service class", async () => {
   const runtime = await import("../../../../src/core/runtime/index.js");
 
-  // TransitionService is a class
-  assert.ok(typeof runtime.TransitionService === "function", "Should export TransitionService class");
+  assert.equal("TransitionService" in runtime, false, "Should not export TransitionService");
 });
 
 // Test 17: index.ts re-exports worker-registry-service

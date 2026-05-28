@@ -36,7 +36,7 @@ cp .env.example .env
 ```
 
 Key environment variables:
-- `AA_DB_PATH` — SQLite database path (default: `data/sqlite/phase1a-demo.db`)
+- `AA_DB_PATH` — SQLite database path (default: `data/sqlite/automatic-agent.db`)
 - `AA_API_JWT_SECRET` — JWT signing secret (required for API server)
 - `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` — LLM provider API keys
 

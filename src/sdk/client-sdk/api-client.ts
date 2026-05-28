@@ -199,10 +199,9 @@ export class RetryableApiClient {
       headers: response.headers,
       nextCursor: nextCursor as string | null,
     };
-    if (totalCount !== undefined) {
-      (result as { totalCount?: number }).totalCount = totalCount;
-    }
-    return result;
+    return totalCount === undefined
+      ? result
+      : { ...result, totalCount };
   }
 
   async listHarnessRuns<T>(pagination?: PaginationSpec): Promise<PaginatedResponse<T>> {
@@ -380,7 +379,7 @@ export class RetryableApiClient {
     };
 
     // Start connection
-    connect();
+    void connect();
 
     return {
       unsubscribe() {

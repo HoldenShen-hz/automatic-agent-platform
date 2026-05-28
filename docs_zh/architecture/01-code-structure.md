@@ -1542,7 +1542,7 @@ tests/
 │   ├── openapi-document.test.ts
 │   ├── release-plan-output.test.ts
 │   ├── session-summary.test.ts
-│   ├── phase1a-golden-tasks.test.ts
+│   ├── golden-tasks.test.ts
 │   ├── prompt-assembly.test.ts
 │   ├── workflow-validation.test.ts
 │   ├── cli-help-text.test.ts

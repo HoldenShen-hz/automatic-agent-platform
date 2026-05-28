@@ -12,7 +12,7 @@
 
 import { newId, nowIso } from "../../contracts/types/ids.js";
 import { ValidationError } from "../../contracts/errors.js";
-import type { SandboxModeLike } from "../../five-plane-control-plane/iam/sandbox-policy.js";
+import type { SandboxModeLike } from "../../five-plane-control-plane/iam/index.js";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Public Types

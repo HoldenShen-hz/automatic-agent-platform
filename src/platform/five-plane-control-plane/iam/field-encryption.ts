@@ -1,4 +1,4 @@
-import { createCipheriv, createDecipheriv, pbkdf2Sync, randomBytes } from "node:crypto";
+import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
 
 import { ValidationError } from "../../contracts/errors.js";
 
@@ -6,28 +6,16 @@ const AES_256_GCM = "aes-256-gcm";
 const IV_BYTES = 12;
 const AUTH_TAG_BYTES = 16;
 
-// R10-05: PBKDF2 parameters for proper key derivation (RFC 8018)
-const PBKDF2_ITERATIONS = 100000;
-const PBKDF2_KEY_LENGTH = 32;
-const PBKDF2_DIGEST = "sha256";
+const DERIVED_KEY_LENGTH = 32;
 const SALT_LENGTH = 16;
-const MIN_PASSPHRASE_BYTES = 16;
+const MIN_KEY_BYTES = 32;
 const ENVELOPE_VERSION = "fe1";
 const FIELD_ENCRYPTION_KEY_ENV = "AA_FIELD_ENCRYPTION_KEY";
-
-/**
- * R10-05: Derives a cryptographic key from a password using PBKDF2 (RFC 8018).
- * Replaces custom SHA-256 hashing with Node.js crypto.pbkdf2Sync for
- * proper key derivation from arbitrary-length passwords.
- */
-function deriveKeyWithPbkdf2(password: Buffer, salt: Buffer): Buffer {
-  return pbkdf2Sync(password, salt, PBKDF2_ITERATIONS, PBKDF2_KEY_LENGTH, PBKDF2_DIGEST);
-}
+const BASE64_PAYLOAD_PATTERN = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
 
 function normalizeKeyInput(key: Buffer | string): Buffer {
   const buffer = Buffer.isBuffer(key) ? key : Buffer.from(key, "utf8");
-  const minimumLength = Buffer.isBuffer(key) ? 16 : MIN_PASSPHRASE_BYTES;
-  if (buffer.length < minimumLength) {
+  if (buffer.length < MIN_KEY_BYTES) {
     throw new ValidationError("security.encryption_key_too_weak", "security.encryption_key_too_weak");
   }
   return buffer;
@@ -42,11 +30,16 @@ export function loadFieldEncryptionKeyFromEnv(env: NodeJS.ProcessEnv = process.e
 }
 
 function decodeBase64Payload(value: string): Buffer {
-  try {
-    return Buffer.from(value, "base64");
-  } catch {
+  const trimmed = value.trim();
+  if (trimmed.length === 0 || !BASE64_PAYLOAD_PATTERN.test(trimmed)) {
     throw new ValidationError("security.invalid_encrypted_payload", "security.invalid_encrypted_payload");
   }
+  const normalized = trimmed.padEnd(trimmed.length + ((4 - trimmed.length % 4) % 4), "=");
+  const decoded = Buffer.from(normalized, "base64");
+  if (decoded.length === 0 || decoded.toString("base64") !== normalized) {
+    throw new ValidationError("security.invalid_encrypted_payload", "security.invalid_encrypted_payload");
+  }
+  return decoded;
 }
 
 function parseEnvelope(ciphertext: string): { salt: Buffer; iv: Buffer; tag: Buffer; encrypted: Buffer } {
@@ -86,16 +79,17 @@ function parseEnvelope(ciphertext: string): { salt: Buffer; iv: Buffer; tag: Buf
 
 function deriveEncryptionKey(key: Buffer | string, salt: Buffer): Buffer {
   const normalizedKey = normalizeKeyInput(key);
-  if (salt.length === 0 && normalizedKey.length === PBKDF2_KEY_LENGTH) {
-    return normalizedKey;
-  }
-  return deriveKeyWithPbkdf2(normalizedKey, salt);
+  return createHash("sha256")
+    .update("automatic-agent.field-encryption.v2", "utf8")
+    .update(normalizedKey)
+    .update(salt)
+    .digest()
+    .subarray(0, DERIVED_KEY_LENGTH);
 }
 
 export function encryptField(plaintext: string, key: Buffer | string): string {
-  const normalizedKey = normalizeKeyInput(key);
   const salt = randomBytes(SALT_LENGTH);
-  const encryptionKey = deriveKeyWithPbkdf2(normalizedKey, salt);
+  const encryptionKey = deriveEncryptionKey(key, salt);
   const iv = randomBytes(IV_BYTES);
   const cipher = createCipheriv(AES_256_GCM, encryptionKey, iv);
   const encrypted = Buffer.concat([cipher.update(plaintext, "utf8"), cipher.final()]);

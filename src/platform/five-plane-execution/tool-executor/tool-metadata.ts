@@ -12,7 +12,7 @@
  * @see {@link https://github.com/automatic-agent/automatic-agent-platform/blob/main/docs_zh/architecture/00-platform-architecture.md}
  */
 
-import type { SandboxPolicy } from "../../five-plane-control-plane/iam/sandbox-policy.js";
+import type { SandboxPolicy } from "../../five-plane-control-plane/iam/index.js";
 import type { ToolCallErrorSource, ToolCallStatus } from "./tool-call-result.js";
 
 /**

@@ -52,14 +52,12 @@ test.describe("RunbookAutomationService", () => {
 
     test("stops execution on first failure", () => {
       const service = new RunbookAutomationService();
-      const runbook = createRunbook({ steps: ["step_a", "step_b", "step_c"] });
+      const runbook = createRunbook({ steps: ["step_a", "step_fail", "step_c"] });
 
       const execution = service.execute(runbook);
 
-      // Execution may succeed or fail randomly, but if it fails it should stop
-      if (execution.status === "failed") {
-        assert.ok(execution.completedSteps.length < runbook.steps.length);
-      }
+      assert.equal(execution.status, "failed");
+      assert.deepEqual(execution.completedSteps, ["step_a"]);
     });
 
     test("calculates totalDurationMs from step results", () => {
@@ -293,15 +291,14 @@ test.describe("RunbookAutomationService", () => {
 
     test("counts failed executions", () => {
       const service = new RunbookAutomationService();
-      // Execute multiple times to likely get at least one failure
-      for (let i = 0; i < 20; i++) {
-        service.execute(createRunbook());
-      }
+      service.execute(createRunbook({ runbookId: "success-path" }));
+      service.execute(createRunbook({ runbookId: "failed-path", steps: ["prepare", "step_fail", "cleanup"] }));
 
       const stats = service.getStatistics();
 
-      // successCount + failureCount should equal completed executions
-      assert.ok(stats.totalExecutions >= stats.successCount + stats.failureCount);
+      assert.equal(stats.totalExecutions, 2);
+      assert.equal(stats.successCount, 1);
+      assert.equal(stats.failureCount, 1);
     });
 
     test("calculates average duration", () => {

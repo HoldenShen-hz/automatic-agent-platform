@@ -1,4 +1,4 @@
-import type { ReactElement } from "react";
+import { useMemo, type ReactElement } from "react";
 import type { WorkflowStepDTO } from "@aa/shared-types";
 import { DAGVisualization, designTokens } from "@aa/ui-core";
 import { translateMessage } from "@aa/shared-i18n";
@@ -27,6 +27,33 @@ function getStepColor(status: WorkflowStepDTO["status"]): string {
 }
 
 export function DAGViewer({ steps, currentStage }: DAGViewerProps): ReactElement {
+  const currentIdx = getStageIndex(currentStage ?? "");
+  const branchGroups = useMemo(
+    () => Object.entries(
+      steps.reduce<Record<string, WorkflowStepDTO[]>>((groups, step) => {
+        if (step.branchId == null || step.branchId.length === 0) {
+          return groups;
+        }
+        groups[step.branchId] ??= [];
+        groups[step.branchId]?.push(step);
+        return groups;
+      }, {}),
+    ),
+    [steps],
+  );
+  const stageStepsByStage = useMemo(
+    () => STAGE_ORDER.reduce<Record<(typeof STAGE_ORDER)[number], readonly WorkflowStepDTO[]>>((accumulator, stage) => ({
+      ...accumulator,
+      [stage]: steps.filter((step) => step.phase?.toLowerCase().includes(stage)),
+    }), {
+      plan: [],
+      review: [],
+      execute: [],
+      recover: [],
+      release: [],
+    }),
+    [steps],
+  );
   if (steps.length === 0) {
     return (
       <div style={{ color: designTokens.color.subtle, padding: 16, textAlign: "center" }}>
@@ -35,23 +62,11 @@ export function DAGViewer({ steps, currentStage }: DAGViewerProps): ReactElement
     );
   }
 
-  const currentIdx = getStageIndex(currentStage ?? "");
-  const branchGroups = Object.entries(
-    steps.reduce<Record<string, WorkflowStepDTO[]>>((groups, step) => {
-      if (step.branchId == null || step.branchId.length === 0) {
-        return groups;
-      }
-      groups[step.branchId] ??= [];
-      groups[step.branchId]?.push(step);
-      return groups;
-    }, {}),
-  );
-
   return (
     <div style={{ display: "grid", gap: 12 }}>
       <DAGVisualization
         stages={STAGE_ORDER.map((stage) => {
-          const stageSteps = steps.filter((step) => step.phase?.toLowerCase().includes(stage));
+          const stageSteps = stageStepsByStage[stage];
           const failedStep = stageSteps.find((step) => step.status === "failed");
           const runningStep = stageSteps.find((step) => step.status === "running");
           return {
@@ -65,69 +80,70 @@ export function DAGViewer({ steps, currentStage }: DAGViewerProps): ReactElement
       <div style={{ fontSize: 12, color: designTokens.color.subtle, marginBottom: 4 }}>
         {translateMessage("ui.workflowDAG.stageRail")}
       </div>
-      <div style={{ display: "flex", gap: 0, alignItems: "center", overflowX: "auto", padding: "8px 0" }}>
+      <div style={{ display: "flex", gap: 0, alignItems: "stretch", overflowX: "auto", padding: "8px 0" }}>
         {STAGE_ORDER.map((stage, stageIdx) => {
           const isReached = stageIdx <= currentIdx;
-          const stageSteps = steps.filter((s) => s.phase?.toLowerCase().includes(stage));
+          const stageSteps = stageStepsByStage[stage];
           const hasSteps = stageSteps.length > 0;
 
           return (
-            <div key={stage} style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: 1 }}>
-              <div
-                style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: "50%",
-                  background: isReached ? designTokens.color.accent : "transparent",
-                  border: `2px solid ${isReached ? designTokens.color.accent : designTokens.color.subtle}`,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: 11,
-                  fontWeight: 700,
-                  color: isReached ? designTokens.primitive.color.ink950 : designTokens.color.subtle,
-                  textTransform: "uppercase",
-                }}
-              >
-                {stage[0]}
+            <div key={stage} style={{ display: "flex", alignItems: "flex-start", flex: 1 }}>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: 1, position: "relative" }}>
+                <div
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: "50%",
+                    background: isReached ? designTokens.color.accent : "transparent",
+                    border: `2px solid ${isReached ? designTokens.color.accent : designTokens.color.subtle}`,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: isReached ? designTokens.primitive.color.ink950 : designTokens.color.subtle,
+                    textTransform: "uppercase",
+                  }}
+                >
+                  {stage[0]}
+                </div>
+                <div style={{ fontSize: 10, color: designTokens.color.subtle, marginTop: 4, textAlign: "center" }}>
+                  {stage}
+                </div>
+                {hasSteps && (
+                  <div style={{ display: "grid", gap: 4, marginTop: 8, width: "100%" }}>
+                    {stageSteps.slice(0, 3).map((step) => (
+                      <div
+                        key={step.id}
+                        style={{
+                          padding: "2px 6px",
+                          borderRadius: 4,
+                          background: getStepColor(step.status),
+                          color: designTokens.primitive.color.ink950,
+                          fontSize: 9,
+                          textAlign: "center",
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                        }}
+                      >
+                        {step.title}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
               {stageIdx < STAGE_ORDER.length - 1 && (
                 <div
+                  aria-hidden="true"
                   style={{
-                    position: "absolute",
-                    left: "50%",
-                    width: "100%",
+                    alignSelf: "flex-start",
                     height: 2,
-                    background: isReached && stageIdx < currentIdx ? designTokens.color.accent : designTokens.color.border,
+                    flex: 1,
                     marginTop: 15,
-                    zIndex: -1,
+                    background: isReached && stageIdx < currentIdx ? designTokens.color.accent : designTokens.color.border,
                   }}
                 />
-              )}
-              <div style={{ fontSize: 10, color: designTokens.color.subtle, marginTop: 4, textAlign: "center" }}>
-                {stage}
-              </div>
-              {hasSteps && (
-                <div style={{ display: "grid", gap: 4, marginTop: 8, width: "100%" }}>
-                  {stageSteps.slice(0, 3).map((step) => (
-                    <div
-                      key={step.id}
-                      style={{
-                        padding: "2px 6px",
-                        borderRadius: 4,
-                        background: getStepColor(step.status),
-                        color: designTokens.primitive.color.ink950,
-                        fontSize: 9,
-                        textAlign: "center",
-                        whiteSpace: "nowrap",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                      }}
-                    >
-                      {step.title}
-                    </div>
-                  ))}
-                </div>
               )}
             </div>
           );
@@ -137,8 +153,8 @@ export function DAGViewer({ steps, currentStage }: DAGViewerProps): ReactElement
       {branchGroups.length > 0 && (
         <div style={{ marginTop: 16, borderTop: `1px solid ${designTokens.color.border}`, paddingTop: 12 }}>
           <div style={{ fontSize: 11, color: designTokens.color.subtle, marginBottom: 8 }}>{translateMessage("ui.workflowDAG.parallelBranches")}</div>
-          {branchGroups.map(([branchId, branchSteps]) => (
-            <div key={branchId} style={{ marginBottom: 8 }}>
+          {branchGroups.map(([branchId, branchSteps], branchIndex) => (
+            <div key={`${branchId}-${branchIndex}`} style={{ marginBottom: 8 }}>
               <strong style={{ fontSize: 12 }}>{branchId}</strong>
               <div style={{ fontSize: 11, color: designTokens.color.subtle }}>
                 {branchSteps.map((step) => `${step.title}:${step.status}`).join(" · ")}

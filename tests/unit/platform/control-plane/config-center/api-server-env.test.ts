@@ -155,6 +155,19 @@ test("loadApiServerEnv prefers AA_API_KEYS_JSON over AA_API_KEYS", () => {
   assert.equal(config.apiKeys[0]?.apiKey, "json-key");
 });
 
+test("loadApiServerEnv accepts structured API key records in AA_API_KEYS", () => {
+  const config = loadApiServerEnv({
+    AA_API_KEYS: JSON.stringify([
+      { apiKey: "env-key", actorId: "env-actor", roles: ["viewer"] },
+    ]),
+    AA_API_JWT_SECRET: "StrongSecret1234567890!StrongSecret",
+  });
+
+  assert.equal(config.apiKeys.length, 1);
+  assert.equal(config.apiKeys[0]?.apiKey, "env-key");
+  assert.equal(config.apiKeys[0]?.actorId, "env-actor");
+});
+
 test("loadApiServerEnv parses metrics and otel settings", () => {
   const config = loadApiServerEnv({
     AA_METRICS_PORT: "9090",

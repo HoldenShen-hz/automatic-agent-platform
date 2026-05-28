@@ -7,8 +7,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { ReplayWorker, type ReplaySandboxPolicy } from "../../../../../src/platform/five-plane-execution/ha/replay-worker.js";
-import type { RuntimeRecoveryReplayService } from "../../../../../src/platform/five-plane-execution/recovery/runtime-recovery-replay-service-root.js";
-import type { TaskRecoveryReplayReport } from "../../../../../../src/platform/five-plane-execution/recovery/runtime-recovery-replay-service-root.js";
+import type { RuntimeRecoveryReplayService } from "../../../../../src/platform/five-plane-execution/recovery/runtime-recovery-replay-service.js";
+import type { TaskRecoveryReplayReport } from "../../../../../../src/platform/five-plane-execution/recovery/runtime-recovery-replay-service.js";
 
 function createMockReplayService(fixtures: {
   reports?: Map<string, TaskRecoveryReplayReport>;

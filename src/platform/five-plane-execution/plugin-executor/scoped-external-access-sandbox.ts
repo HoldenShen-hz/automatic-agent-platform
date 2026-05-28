@@ -295,7 +295,10 @@ export class ScopedExternalAccessSandbox {
 
     if (request.body && ["POST", "PUT", "PATCH"].includes(request.method)) {
       options.body = typeof request.body === "string" ? request.body : JSON.stringify(request.body);
-      headers["Content-Type"] = headers["Content-Type"] ?? "application/json";
+      const hasContentType = Object.keys(headers).some((key) => key.toLowerCase() === "content-type");
+      if (!hasContentType) {
+        headers["Content-Type"] = "application/json";
+      }
     }
 
     let response: Response;
@@ -305,23 +308,60 @@ export class ScopedExternalAccessSandbox {
       clearTimeout(timeout);
     }
 
-    const bodyBuffer = Buffer.from(await response.arrayBuffer());
-    if (bodyBuffer.byteLength > this.config.maxResponseSizeBytes) {
-      return {
-        status: 413,
-        headers: {},
-        body: { error: "Response too large" },
-        blocked: true,
-        blockedReason: "response_size_exceeded",
-      };
+    const chunks: Buffer[] = [];
+    let totalBytes = 0;
+    const reader = response.body?.getReader();
+    if (reader) {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) {
+          break;
+        }
+        const chunk = Buffer.from(value);
+        totalBytes += chunk.byteLength;
+        if (totalBytes > this.config.maxResponseSizeBytes) {
+          await reader.cancel();
+          return {
+            status: 413,
+            headers: {},
+            body: { error: "Response too large" },
+            blocked: true,
+            blockedReason: "response_size_exceeded",
+          };
+        }
+        chunks.push(chunk);
+      }
+    } else {
+      const bodyBuffer = Buffer.from(await response.arrayBuffer());
+      if (bodyBuffer.byteLength > this.config.maxResponseSizeBytes) {
+        return {
+          status: 413,
+          headers: {},
+          body: { error: "Response too large" },
+          blocked: true,
+          blockedReason: "response_size_exceeded",
+        };
+      }
+      chunks.push(bodyBuffer);
     }
+    const bodyBuffer = Buffer.concat(chunks);
 
     let body: unknown;
-    const contentType = response.headers.get("content-type") ?? "";
+    const contentType = (response.headers.get("content-type") ?? "").toLowerCase();
     const bodyText = bodyBuffer.toString("utf8");
 
     if (contentType.includes("application/json")) {
-      body = JSON.parse(bodyText);
+      try {
+        body = JSON.parse(bodyText);
+      } catch {
+        return {
+          status: 502,
+          headers: {},
+          body: { error: "Invalid JSON response" },
+          blocked: true,
+          blockedReason: "invalid_json_response",
+        };
+      }
     } else {
       body = bodyText;
     }

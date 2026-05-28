@@ -192,7 +192,7 @@ export interface WebSearchOptions {
 }
 
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
-import { createPolicyAwareFetch } from "../../five-plane-control-plane/iam/network-egress-policy.js";
+import { createPolicyAwareFetch } from "../../five-plane-control-plane/iam/index.js";
 
 const webSearchLogger = new StructuredLogger({ retentionLimit: 100 });
 

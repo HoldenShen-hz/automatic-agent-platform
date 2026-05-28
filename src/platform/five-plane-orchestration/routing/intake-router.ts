@@ -441,20 +441,19 @@ export class IntakeRouter {
     routeTrace: string[],
   ): LoadedDivisionDefinition {
     const totalWeight = candidates.reduce((sum, c) => sum + c.division.priority, 0);
+    const randomFraction = computeStableSelectionFraction("weighted", candidates, routeTrace);
 
     if (totalWeight === 0) {
-      // Equal weights if all priorities are zero
-      const index = Math.floor(Math.random() * candidates.length);
+      const index = Math.floor(randomFraction * candidates.length);
       const selected = candidates[index];
       if (selected == null) {
         throw new Error("intake_router.weighted_random_selection_missing");
       }
-      routeTrace.push(`lb_weighted:random_index=${index}`);
+      routeTrace.push(`lb_weighted:stable_index=${index}`);
       return selected.division;
     }
 
-    // Weighted random selection
-    let random = Math.random() * totalWeight;
+    let random = randomFraction * totalWeight;
     for (const candidate of candidates) {
       random -= candidate.division.priority;
       if (random <= 0) {
@@ -479,7 +478,8 @@ export class IntakeRouter {
     candidates: Array<{ division: LoadedDivisionDefinition; matchedTrigger: string }>,
     routeTrace: string[],
   ): LoadedDivisionDefinition {
-    const index = Math.floor(Math.random() * candidates.length);
+    const randomFraction = computeStableSelectionFraction("random", candidates, routeTrace);
+    const index = Math.floor(randomFraction * candidates.length);
     const selected = candidates[index];
     if (selected == null) {
       throw new Error("intake_router.random_selection_missing");
@@ -511,6 +511,7 @@ export class IntakeRouter {
 
     const capacities = candidates.map((c) => getCapacity(c.division));
     const totalCapacity = capacities.reduce((sum, cap) => sum + cap, 0);
+    const randomFraction = computeStableSelectionFraction("capacity", candidates, routeTrace);
 
     if (totalCapacity === 0) {
       // All capacities are zero or null - fall back to priority-based selection
@@ -523,8 +524,7 @@ export class IntakeRouter {
       return selected.division;
     }
 
-    // Weighted random selection based on capacity
-    let random = Math.random() * totalCapacity;
+    let random = randomFraction * totalCapacity;
     for (let i = 0; i < candidates.length; i++) {
       const capacity = capacities[i] ?? 0;
       random -= capacity;
@@ -603,6 +603,28 @@ export class IntakeRouter {
       matchedSkills: best.matchedKeywords,
     };
   }
+}
+
+function computeStableSelectionFraction(
+  strategy: string,
+  candidates: Array<{ division: LoadedDivisionDefinition; matchedTrigger: string }>,
+  routeTrace: readonly string[],
+): number {
+  const material = JSON.stringify({
+    strategy,
+    candidates: candidates.map((candidate) => ({
+      id: candidate.division.id,
+      priority: candidate.division.priority,
+      matchedTrigger: candidate.matchedTrigger,
+    })),
+    routeTrace,
+  });
+  let hash = 2166136261;
+  for (let index = 0; index < material.length; index += 1) {
+    hash ^= material.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0) / 0x100000000;
 }
 
 function materializePipelineContext(

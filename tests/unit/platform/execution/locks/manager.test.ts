@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { DatabaseSync } from "node:sqlite";
 
-import { createLockAdapter } from "../../../../../src/platform/five-plane-execution/distributed-lock/distributed-lock-factory.js";
+import { createLockAdapter } from "../../../../../src/platform/five-plane-execution/distributed-lock/distributed-lock-service.js";
 import { DISTRIBUTED_LOCKS_DDL } from "../../../../../src/platform/five-plane-execution/distributed-lock/distributed-lock-types.js";
 import { SqliteLockAdapter } from "../../../../../src/platform/five-plane-execution/distributed-lock/sqlite-lock-adapter.js";
 import { PgAdvisoryLockAdapter } from "../../../../../src/platform/five-plane-execution/distributed-lock/pg-advisory-lock-adapter.js";

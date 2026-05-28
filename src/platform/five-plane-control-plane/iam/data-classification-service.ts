@@ -777,6 +777,9 @@ export class DataClassificationService {
     if (pattern.length === 0 || pattern.length > 512) {
       return false;
     }
+    if (hasUnsafeRegexShape(pattern)) {
+      return false;
+    }
     try {
       void new RegExp(pattern);
       return true;
@@ -853,4 +856,11 @@ export class DataClassificationService {
     this.regexCache.set(cacheKey, compiled);
     return compiled;
   }
+}
+
+function hasUnsafeRegexShape(pattern: string): boolean {
+  const nestedQuantifier = /\((?:[^()]|\\.)*[+*](?:[^()]|\\.)*\)[+*{]/;
+  const repeatedWildcard = /(?:\.\*|\.\+){2,}/;
+  const backReference = /\\[1-9]/;
+  return nestedQuantifier.test(pattern) || repeatedWildcard.test(pattern) || backReference.test(pattern);
 }

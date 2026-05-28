@@ -12,7 +12,7 @@ import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
 import { buildRuntimeVersionSnapshot, type RuntimeVersionSnapshot } from "../five-plane-control-plane/incident-control/runtime-version-snapshot.js";
-import { runSingleTaskExecution } from "../five-plane-execution/execution-engine/single-task-execution.js";
+import { runSingleTaskExecution } from "../five-plane-execution/execution-engine/single-task-happy-path.js";
 import { SqliteDatabase } from "../five-plane-state-evidence/truth/sqlite-database.js";
 import {
   SqliteReliabilityService,

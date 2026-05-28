@@ -35,12 +35,36 @@ import type { EventRecord } from "../../contracts/types/domain.js";
 
 const DEVELOPMENT_AUDIT_INTEGRITY_HMAC_KEY = "audit-integrity-secret-key-32-bytes!";
 
+export interface AuditIntegrityConfig {
+  hmacKey?: string | null;
+  isProduction?: boolean;
+}
+
+let auditIntegrityConfig: Required<AuditIntegrityConfig> = {
+  hmacKey: null,
+  isProduction: false,
+};
+
+export function configureAuditIntegrity(config: AuditIntegrityConfig): void {
+  auditIntegrityConfig = {
+    hmacKey: config.hmacKey?.trim() || null,
+    isProduction: config.isProduction === true,
+  };
+}
+
+export function loadAuditIntegrityConfigFromEnv(env: NodeJS.ProcessEnv): AuditIntegrityConfig {
+  return {
+    hmacKey: env["AA_AUDIT_INTEGRITY_HMAC_KEY"] ?? null,
+    isProduction: env["NODE_ENV"] === "production",
+  };
+}
+
 function resolveAuditIntegrityHmacKey(): string {
-  const configured = process.env["AA_AUDIT_INTEGRITY_HMAC_KEY"]?.trim();
+  const configured = auditIntegrityConfig.hmacKey;
   if (configured != null && configured.length >= 32) {
     return configured;
   }
-  if (process.env["NODE_ENV"] === "production") {
+  if (auditIntegrityConfig.isProduction) {
     throw new Error("audit_integrity.hmac_key_required");
   }
   return DEVELOPMENT_AUDIT_INTEGRITY_HMAC_KEY;

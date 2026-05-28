@@ -36,7 +36,7 @@ import { dirname, join } from "node:path";
 import { ApprovalService } from "../five-plane-control-plane/approval-center/approval-service.js";
 import { ExecutionDispatchService } from "../five-plane-execution/dispatcher/execution-dispatch-service.js";
 import { ExecutionLeaseService } from "../five-plane-execution/lease/execution-lease-service.js";
-import { RuntimeRepairService } from "../five-plane-execution/recovery/runtime-repair-service-root.js";
+import { RuntimeRepairService } from "../five-plane-execution/recovery/runtime-repair-service.js";
 import { StartupConsistencyChecker } from "../five-plane-execution/startup/startup-consistency-checker.js";
 import { WorkerRegistryService } from "../five-plane-execution/worker-pool/worker-registry-service.js";
 import { AuthoritativeTaskStore } from "../five-plane-state-evidence/truth/authoritative-task-store.js";

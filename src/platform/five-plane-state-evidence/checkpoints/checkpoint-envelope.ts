@@ -25,6 +25,7 @@ const asyncGzip = promisify(gzip);
 const asyncGunzip = promisify(gunzip);
 
 const logger = new StructuredLogger({ retentionLimit: 100 });
+const BASE64_PAYLOAD_PATTERN = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/u;
 
 /**
  * Checkpoint envelope schema versions.
@@ -129,6 +130,47 @@ function createChecksum(data: Buffer): string {
   return createHash("sha256").update(data).digest("hex");
 }
 
+function estimateJsonSize(value: unknown, seen = new Set<unknown>()): number {
+  if (value == null) {
+    return 4;
+  }
+  if (typeof value === "boolean") {
+    return value ? 4 : 5;
+  }
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? String(value).length : 4;
+  }
+  if (typeof value === "string") {
+    return Buffer.byteLength(JSON.stringify(value), "utf8");
+  }
+  if (typeof value === "bigint") {
+    return Buffer.byteLength(JSON.stringify(value.toString()), "utf8");
+  }
+  if (typeof value === "object") {
+    if (seen.has(value)) {
+      throw new CheckpointEnvelopeInvalidError("Checkpoint payload contains circular references");
+    }
+    seen.add(value);
+    if (Array.isArray(value)) {
+      const total = value.reduce((sum, item, index) => sum + estimateJsonSize(item, seen) + (index > 0 ? 1 : 0), 2);
+      seen.delete(value);
+      return total;
+    }
+    const total = Object.entries(value as Record<string, unknown>).reduce((sum, [key, item], index) =>
+      sum + Buffer.byteLength(JSON.stringify(key), "utf8") + 1 + estimateJsonSize(item, seen) + (index > 0 ? 1 : 0), 2);
+    seen.delete(value);
+    return total;
+  }
+  return Buffer.byteLength(JSON.stringify(String(value)), "utf8");
+}
+
+function decodeBase64Payload(payload: string): Buffer {
+  if (payload.length === 0 || payload.length % 4 !== 0 || !BASE64_PAYLOAD_PATTERN.test(payload)) {
+    throw new CheckpointEnvelopeInvalidError("Failed to decode base64 payload");
+  }
+  return Buffer.from(payload, "base64");
+}
+
 /**
  * Creates a checkpoint envelope with compression and metadata.
  *
@@ -144,6 +186,14 @@ export async function createCheckpointEnvelope<T = unknown>(
   options: CreateCheckpointEnvelopeOptions = {},
 ): Promise<CheckpointEnvelope> {
   const maxSizeBytes = options.maxSizeBytes ?? resolveCheckpointMaxSizeBytes(options.domainId);
+  const estimatedSizeBytes = estimateJsonSize(checkpointData);
+  if (estimatedSizeBytes > maxSizeBytes) {
+    throw new CheckpointSizeExceededError(
+      estimatedSizeBytes,
+      maxSizeBytes,
+      `Estimated size ${estimatedSizeBytes} exceeds limit ${maxSizeBytes}`,
+    );
+  }
   const jsonPayload = JSON.stringify(checkpointData);
   const uncompressedBuffer = Buffer.from(jsonPayload, "utf8");
   const originalSizeBytes = uncompressedBuffer.length;
@@ -223,7 +273,7 @@ export async function unpackCheckpointEnvelope<T = unknown>(
   // Decode base64 payload
   let compressedBuffer: Buffer;
   try {
-    compressedBuffer = Buffer.from(envelope.payload, "base64");
+    compressedBuffer = decodeBase64Payload(envelope.payload);
   } catch {
     throw new CheckpointEnvelopeInvalidError("Failed to decode base64 payload");
   }

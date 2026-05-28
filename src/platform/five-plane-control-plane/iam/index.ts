@@ -18,6 +18,12 @@ export * as trustedContextScanner from "./trusted-context-scanner.js";
 export * as vaultHttpSecretProvider from "./vault-http-secret-provider.js";
 export * as awsKmsHttpSecretProvider from "./aws-kms-http-secret-provider.js";
 export * as gcpSecretManagerHttpSecretProvider from "./gcp-secret-manager-http-secret-provider.js";
+export * from "./file-freshness.js";
+export * from "./network-egress-policy.js";
+export * from "./outbound-url-policy.js";
+export * from "./policy-engine.js";
+export * from "./sandbox-policy.js";
+export * from "./trusted-context-scanner.js";
 
 export {
   EnvSecretProvider,

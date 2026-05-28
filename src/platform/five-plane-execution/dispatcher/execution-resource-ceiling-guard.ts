@@ -17,7 +17,7 @@
  * @see Resource Monitor: execution-resource-monitor.ts
  */
 
-import { loadExecutionResourceCeilingEnv } from "../../five-plane-control-plane/config-center/runtime-env.js";
+import { loadExecutionResourceCeilingEnv } from "../../five-plane-control-plane/config-center/index.js";
 import type { ExecutionStatus } from "../../contracts/types/status.js";
 
 /**

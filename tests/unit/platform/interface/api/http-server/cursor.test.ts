@@ -83,6 +83,20 @@ test("decodeOpaqueCursor uses custom error code on failure", () => {
   }
 });
 
+test("decodeOpaqueCursor rejects tampered cursor payload", () => {
+  const encoded = encodeOpaqueCursor({ taskId: "task-1" });
+  const [payload, signature] = encoded.split(".");
+  const tamperedPayload = Buffer.from(JSON.stringify({ taskId: "task-2" }), "utf8").toString("base64url");
+  const tampered = `${tamperedPayload}.${signature}`;
+
+  try {
+    decodeOpaqueCursor(tampered);
+    assert.fail("Expected error");
+  } catch (error: any) {
+    assert.ok(error.code?.includes("api.invalid_cursor") || error.code?.includes("cursor is invalid"));
+  }
+});
+
 test("encodeOpaqueCursor is reversible for nested objects", () => {
   const original = {
     user: {

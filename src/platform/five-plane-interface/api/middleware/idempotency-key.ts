@@ -53,6 +53,8 @@ export const DEFAULT_IDEMPOTENCY_KEY_CONFIG: IdempotencyKeyConfig = {
   storageType: "memory",
 };
 
+const MAX_CACHED_RESPONSE_BYTES = 512 * 1024;
+
 /**
  * Idempotency key enforcement decision.
  */
@@ -187,9 +189,10 @@ export class IdempotencyKeyMiddleware {
 
       // Check for duplicate idempotency key
       const storageKey = this.generateStorageKey(idempotencyKey, tenantId);
-      const existing = await this.storage.get(storageKey);
+      const reservation = await this.storage.reservePending(storageKey, method, this.config.ttlMs);
+      const existing = reservation.entry;
 
-      if (existing && Date.now() < existing.expiresAt) {
+      if (!reservation.acquired && existing && Date.now() < existing.expiresAt) {
         // Check if the method matches first (same key with different method = conflict)
         if (existing.method !== method) {
           return {
@@ -198,20 +201,20 @@ export class IdempotencyKeyMiddleware {
             error: {
               statusCode: 409,
               code: "api.idempotency_key_conflict",
-              message: `Idempotency-Key '${idempotencyKey}' was already used for a ${existing.method} request.`,
+              message: "Idempotency-Key has already been used for a different request method.",
             },
           };
         }
 
         if (existing.statusCode === 0) {
           return {
-            allowed: true,
+            allowed: false,
             isDuplicate: true,
             requestInFlight: true,
             error: {
               statusCode: 409,
               code: "api.idempotency_request_in_flight",
-              message: `Idempotency-Key '${idempotencyKey}' is already processing another ${existing.method} request.`,
+              message: "Idempotency-Key is already processing another request.",
             },
           };
         }
@@ -219,6 +222,17 @@ export class IdempotencyKeyMiddleware {
         // Same method - return cached response
         let body: unknown;
         if (existing.responseBody != null) {
+          if (Buffer.byteLength(existing.responseBody, "utf8") > MAX_CACHED_RESPONSE_BYTES) {
+            return {
+              allowed: false,
+              isDuplicate: true,
+              error: {
+                statusCode: 500,
+                code: "api.idempotency_cached_response_too_large",
+                message: "Cached idempotent response is too large to replay safely.",
+              },
+            };
+          }
           try {
             body = JSON.parse(existing.responseBody);
           } catch {
@@ -228,7 +242,7 @@ export class IdempotencyKeyMiddleware {
               error: {
                 statusCode: 500,
                 code: "api.idempotency_cached_response_corrupt",
-                message: `Cached idempotent response for '${idempotencyKey}' is corrupt and cannot be replayed safely.`,
+                message: "Cached idempotent response is corrupt and cannot be replayed safely.",
               },
             };
           }
@@ -245,14 +259,6 @@ export class IdempotencyKeyMiddleware {
           },
         };
       }
-
-      // New idempotency key or expired - store pending entry
-      await this.storage.set(storageKey, {
-        method,
-        statusCode: 0, // Will be updated when request completes
-        responseBody: null,
-        requestHash: null,
-      }, this.config.ttlMs);
 
       return { allowed: true, isDuplicate: false };
     }

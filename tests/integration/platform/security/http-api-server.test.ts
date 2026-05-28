@@ -10,7 +10,7 @@ import { GatewayTargetDirectoryService } from "../../../../src/platform/five-pla
 import { HealthService } from "../../../../src/platform/shared/observability/health-service.js";
 import { InspectService } from "../../../../src/platform/shared/observability/inspect-service.js";
 import { MetricsService } from "../../../../src/platform/shared/observability/metrics-service.js";
-import { runSingleTaskExecution } from "../../../../src/platform/five-plane-execution/execution-engine/single-task-execution.js";
+import { runSingleTaskExecution } from "../../../../src/platform/five-plane-execution/execution-engine/single-task-happy-path.js";
 import { AuthoritativeTaskStore } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import { SqliteDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite-database.js";
 import { runBuiltCliExpectFailure } from "../../../helpers/cli.js";

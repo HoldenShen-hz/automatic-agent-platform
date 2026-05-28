@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { join } from "node:path";
 
-import { provideContext, getContext, getContextOrNull, getTenantId, getWorkspaceId } from "../../../../../src/platform/five-plane-execution/execution-engine/runtime-context.js";
+import { provideContext, getContext, getContextOrNull, getTenantId, getWorkspaceId } from "../../../../../src/platform/shared/context/runtime-context.js";
 import { AuthoritativeTaskStore } from "../../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import { SqliteDatabase } from "../../../../../src/platform/five-plane-state-evidence/truth/sqlite-database.js";
 import { newId, nowIso } from "../../../../../src/platform/contracts/types/ids.js";

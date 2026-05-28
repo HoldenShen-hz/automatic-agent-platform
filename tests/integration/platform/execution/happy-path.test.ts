@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { join } from "node:path";
 
-import { runSingleTaskExecution } from "../../../../src/platform/five-plane-execution/execution-engine/single-task-execution.js";
+import { runSingleTaskExecution } from "../../../../src/platform/five-plane-execution/execution-engine/single-task-happy-path.js";
 import { AuthoritativeTaskStore } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import { SqliteDatabase } from "../../../../src/platform/five-plane-state-evidence/truth/sqlite/sqlite-database.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";

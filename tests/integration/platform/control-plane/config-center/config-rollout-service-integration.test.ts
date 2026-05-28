@@ -311,10 +311,11 @@ test("rollout integration: autoProgressRollouts does not progress non-auto stage
 test("rollout integration: cleanupRollouts removes old completed rollouts", () => {
   const service = new ConfigRolloutService();
   const rollout = service.startRollout("runtime.timeout", "platform", null);
+  const olderThanOneDayMs = 25 * 60 * 60 * 1000;
 
   // Manually set to FULL and old
   rollout.stage = { phase: RolloutPhase.FULL, percentage: 100, minDurationMs: 0, autoProgress: false };
-  rollout.updatedAt = new Date(Date.now() - 90000000).toISOString(); // 25 hours ago
+  rollout.updatedAt = new Date(Date.now() - olderThanOneDayMs).toISOString();
 
   const cleaned = service.cleanupRollouts(86400000); // 24 hours
 
@@ -326,10 +327,11 @@ test("rollout integration: cleanupRollouts removes old cancelled rollouts", () =
   const service = new ConfigRolloutService();
   const rollout = service.startRollout("runtime.timeout", "platform", null);
   const cancelled = service.cancelRollout(rollout.rolloutId);
+  const olderThanOneDayMs = 25 * 60 * 60 * 1000;
 
   // Manually set updatedAt to old
   assert.ok(cancelled);
-  cancelled!.updatedAt = new Date(Date.now() - 90000000).toISOString(); // 25 hours ago
+  cancelled!.updatedAt = new Date(Date.now() - olderThanOneDayMs).toISOString();
 
   const cleaned = service.cleanupRollouts(86400000);
 
@@ -350,9 +352,10 @@ test("rollout integration: cleanupRollouts keeps recent rollouts", () => {
 test("rollout integration: cleanupRollouts does not remove PENDING rollouts", () => {
   const service = new ConfigRolloutService();
   const rollout = service.startRollout("runtime.timeout", "platform", null, 0);
+  const olderThanOneDayMs = 25 * 60 * 60 * 1000;
 
   // Manually set updatedAt to old
-  rollout.updatedAt = new Date(Date.now() - 90000000).toISOString();
+  rollout.updatedAt = new Date(Date.now() - olderThanOneDayMs).toISOString();
 
   const cleaned = service.cleanupRollouts(86400000);
 

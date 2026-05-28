@@ -13,6 +13,8 @@ import { MS_PER_SECOND } from "../../contracts/constants/time.js";
 export interface RateLimiterConfig {
   /** Redis configuration for distributed rate limiting */
   redis?: RedisRateLimiterConfig;
+  /** Whether this limiter should enforce production-only Redis requirements */
+  isProduction?: boolean;
   /** Explicitly allow local fallback in production-like deployments */
   allowLocalFallbackInProduction?: boolean;
   /** In-memory fallback limit (used when Redis is not configured) */
@@ -44,7 +46,7 @@ export class DistributedRateLimiter {
     if (config.redis) {
       this.redisLimiter = new RedisRateLimiter(config.redis);
     } else {
-      if (process.env["NODE_ENV"] === "production" && config.allowLocalFallbackInProduction !== true) {
+      if (config.isProduction === true && config.allowLocalFallbackInProduction !== true) {
         throw new Error("rate_limiter.redis_required_in_production");
       }
       this.redisLimiter = null;

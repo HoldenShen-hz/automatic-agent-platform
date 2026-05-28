@@ -130,6 +130,7 @@ export class VaultHttpSecretProvider implements ManagedSecretProvider {
   private async fetchWithTimeout(url: string, init?: RequestInit): Promise<Response> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.timeoutMs);
+    timer.unref?.();
     try {
       return await fetch(url, { signal: controller.signal, ...init });
     } finally {

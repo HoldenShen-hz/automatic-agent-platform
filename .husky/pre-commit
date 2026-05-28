@@ -1,5 +1,9 @@
 #!/usr/bin/env sh
 set -eu
 
+if [ -f "$(dirname -- "$0")/_/husky.sh" ]; then
+  . "$(dirname -- "$0")/_/husky.sh"
+fi
+
 npx lint-staged
 npm run typecheck

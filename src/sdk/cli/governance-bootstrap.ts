@@ -25,7 +25,7 @@ import { DiagnosticsService } from "../../platform/shared/observability/diagnost
 import { ObservabilityRetentionService } from "../../platform/shared/observability/observability-retention-service.js";
 import { StructuredLogger } from "../../platform/shared/observability/structured-logger.js";
 import { ExecutionResourceMonitor } from "../../platform/five-plane-execution/dispatcher/execution-resource-monitor.js";
-import { RuntimeRecoveryService } from "../../platform/five-plane-execution/recovery/runtime-recovery-service-root.js";
+import { RuntimeRecoveryService } from "../../platform/five-plane-execution/recovery/runtime-recovery-service.js";
 import { StalledExecutionDetector } from "../../platform/five-plane-execution/recovery/stalled-execution-detector.js";
 import { StalledExecutionEscalationService } from "../../platform/five-plane-execution/recovery/stalled-execution-escalation-service.js";
 import { createDefaultStartupConsistencyCheckerOptions } from "../../platform/five-plane-execution/startup/startup-preflight.js";

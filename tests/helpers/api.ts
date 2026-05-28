@@ -14,7 +14,7 @@ import { BillingService } from "../../src/scale-ecosystem/marketplace/billing-se
 import { PerceptionService } from "../../src/scale-ecosystem/marketplace/perception-service.js";
 import { PMF_EVALUATED_AT, seedPmfValidationDataset } from "./pmf.js";
 import { PmfValidationService } from "../../src/scale-ecosystem/marketplace/pmf-validation-service.js";
-import { runSingleTaskExecution } from "../../src/platform/five-plane-execution/execution-engine/single-task-execution.js";
+import { runSingleTaskExecution } from "../../src/platform/five-plane-execution/execution-engine/single-task-happy-path.js";
 import { AuthoritativeTaskStore } from "../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import { SqliteDatabase } from "../../src/platform/five-plane-state-evidence/truth/sqlite-database.js";
 import { ArtifactPlaneService } from "../../src/platform/five-plane-state-evidence/artifacts/artifact-plane-service.js";

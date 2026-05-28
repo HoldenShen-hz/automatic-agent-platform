@@ -10,7 +10,7 @@ import type {
   RecoverySuggestedAction,
   RuntimeRecoveryCandidate,
   RuntimeRecoveryService,
-} from "../recovery/runtime-recovery-service-root.js";
+} from "../recovery/runtime-recovery-service.js";
 
 export interface ExecutionRecoveryWorkerOptions {
   readonly recoveryService: Pick<RuntimeRecoveryService, "listBlockedRunsAwaitingApproval" | "listRecoverableExecutingRuns" | "listStaleRuns"> & {

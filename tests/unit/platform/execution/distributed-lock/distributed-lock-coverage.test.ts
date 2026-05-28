@@ -15,7 +15,7 @@ import {
   type DistributedLockAdapter,
   type LockBackendKind,
 } from "../../../../../src/platform/five-plane-execution/distributed-lock/distributed-lock-types.js";
-import * as DistributedLock from "../../../../../src/platform/five-plane-execution/distributed-lock/index.js";
+import * as DistributedLock from "../../../../../src/platform/five-plane-execution/distributed-lock/distributed-lock-service.js";
 
 // =============================================================================
 // SqliteLockAdapter edge case tests

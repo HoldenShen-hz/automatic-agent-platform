@@ -7,6 +7,8 @@
 
 系统早期架构基于"三层分权架构"（控制 / 运行时 / 学习 / 数据）组织。随着 HarnessRuntime 成为唯一执行入口，平台需要一套受控认知框架来解释和约束认知循环，而不是再引入第二个执行运行时。OAPEFLIR（Observe → Assess → Plan → Execute → Feedback → Learn → Improve → Release）因此被保留为认知/治理语义框架。
 
+关联 contract：`docs_zh/contracts/oapeflir_loop_contract.md`
+
 ## 决策
 
 ### OAPEFLIR 八阶段模型

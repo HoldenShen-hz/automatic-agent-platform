@@ -1,8 +1,7 @@
 /**
  * RedisQueueAdapter Unit Tests
  *
- * Tests core functionality and concurrency per §17.1.
- * Uses AA_RUNNING_TESTS=1 to enable in-memory mock Redis.
+ * Tests core functionality and concurrency per §17.1 using the explicit in-memory driver.
  */
 
 import assert from "node:assert/strict";
@@ -11,24 +10,23 @@ import test from "node:test";
 import { RedisQueueAdapter } from "../../../../../src/platform/five-plane-execution/queue/redis-queue-adapter.js";
 import { runConcurrentInvariant } from "../../../../helpers/concurrent-runner.js";
 
-// Set test mode to use in-memory Redis mock
-const previousRunningTests = process.env.AA_RUNNING_TESTS;
-process.env.AA_RUNNING_TESTS = "1";
-test.after(() => {
-  if (previousRunningTests === undefined) {
-    delete process.env.AA_RUNNING_TESTS;
-    return;
-  }
-  process.env.AA_RUNNING_TESTS = previousRunningTests;
-});
+const TEST_MEMORY_CONFIG = {
+  host: "localhost",
+  port: 6379,
+  driver: "memory" as const,
+};
+
+function createMemoryAdapter(overrides: Partial<typeof TEST_MEMORY_CONFIG> & Record<string, unknown> = {}): RedisQueueAdapter {
+  return new RedisQueueAdapter({ ...TEST_MEMORY_CONFIG, ...overrides });
+}
 
 test("RedisQueueAdapter backendKind is redis [redis-queue-adapter.unit]", () => {
-  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
+  const adapter = createMemoryAdapter();
   assert.equal(adapter.backendKind, "redis");
 });
 
 test("RedisQueueAdapter enqueue returns a job record without throwing [redis-queue-adapter.unit]", () => {
-  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
+  const adapter = createMemoryAdapter();
   const job = adapter.enqueue({ queueName: "test-queue", payload: { taskId: "t1" } });
 
   assert.ok(job.id.startsWith("qjob_"));
@@ -38,7 +36,7 @@ test("RedisQueueAdapter enqueue returns a job record without throwing [redis-que
 });
 
 test("RedisQueueAdapter enqueue accepts all input options [redis-queue-adapter.unit]", () => {
-  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
+  const adapter = createMemoryAdapter();
   const job = adapter.enqueue({
     queueName: "priority-queue",
     payload: { data: "test" },
@@ -54,7 +52,7 @@ test("RedisQueueAdapter enqueue accepts all input options [redis-queue-adapter.u
 });
 
 test("RedisQueueAdapter enqueue handles delayed jobs [redis-queue-adapter.unit]", () => {
-  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
+  const adapter = createMemoryAdapter();
   const futureDate = new Date(Date.now() + 3600000).toISOString();
   const job = adapter.enqueue({
     queueName: "delayed-queue",
@@ -67,7 +65,7 @@ test("RedisQueueAdapter enqueue handles delayed jobs [redis-queue-adapter.unit]"
 });
 
 test("RedisQueueAdapter enqueue job structure is complete [redis-queue-adapter.unit]", () => {
-  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
+  const adapter = createMemoryAdapter();
   const job = adapter.enqueue({ queueName: "q", payload: { test: true } });
 
   assert.ok(job.id);
@@ -78,52 +76,52 @@ test("RedisQueueAdapter enqueue job structure is complete [redis-queue-adapter.u
 });
 
 test("RedisQueueAdapter sync dequeue throws not-supported error [redis-queue-adapter.unit]", () => {
-  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
+  const adapter = createMemoryAdapter();
   assert.throws(() => adapter.dequeue("q"), /sync_dequeue_not_supported/);
 });
 
 test("RedisQueueAdapter sync getJob throws not-supported error [redis-queue-adapter.unit]", () => {
-  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
+  const adapter = createMemoryAdapter();
   assert.throws(() => adapter.getJob("x"), /sync_getJob_not_supported/);
 });
 
 test("RedisQueueAdapter sync listJobs throws not-supported error [redis-queue-adapter.unit]", () => {
-  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
+  const adapter = createMemoryAdapter();
   assert.throws(() => adapter.listJobs("q"), /sync_listJobs_not_supported/);
 });
 
 test("RedisQueueAdapter sync moveToDeadLetter throws not-supported error [redis-queue-adapter.unit]", () => {
-  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
+  const adapter = createMemoryAdapter();
   assert.throws(() => adapter.moveToDeadLetter("x", "r"), /sync_moveToDeadLetter_not_supported/);
 });
 
 test("RedisQueueAdapter sync retryJob throws not-supported error [redis-queue-adapter.unit]", () => {
-  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
+  const adapter = createMemoryAdapter();
   assert.throws(() => adapter.retryJob("x"), /sync_retryJob_not_supported/);
 });
 
 test("RedisQueueAdapter sync purge throws not-supported error [redis-queue-adapter.unit]", () => {
-  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
+  const adapter = createMemoryAdapter();
   assert.throws(() => adapter.purge("q", "2026-01-01"), /sync_purge_not_supported/);
 });
 
 test("RedisQueueAdapter sync stats throws not-supported error [redis-queue-adapter.unit]", () => {
-  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
+  const adapter = createMemoryAdapter();
   assert.throws(() => adapter.stats("q"), /sync_stats_not_supported/);
 });
 
 test("RedisQueueAdapter sync listQueues throws not-supported error [redis-queue-adapter.unit]", () => {
-  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
+  const adapter = createMemoryAdapter();
   assert.throws(() => adapter.listQueues(), /sync_listQueues_not_supported/);
 });
 
 test("RedisQueueAdapter config defaults [redis-queue-adapter.unit]", () => {
-  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
+  const adapter = createMemoryAdapter();
   assert.equal(adapter.backendKind, "redis");
 });
 
 test("RedisQueueAdapter config with all options [redis-queue-adapter.unit]", () => {
-  const adapter = new RedisQueueAdapter({
+  const adapter = createMemoryAdapter({
     host: "redis.example.com",
     port: 6380,
     password: "secret",
@@ -137,7 +135,7 @@ test("RedisQueueAdapter config with all options [redis-queue-adapter.unit]", () 
 // §17.1 Concurrency Tests for RedisQueueAdapter
 
 test("RedisQueueAdapter concurrent enqueues maintain data integrity [redis-queue-adapter.unit]", async () => {
-  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
+  const adapter = createMemoryAdapter();
 
   const result = await runConcurrentInvariant(async (workerId: number) => {
     return adapter.enqueue({
@@ -151,7 +149,7 @@ test("RedisQueueAdapter concurrent enqueues maintain data integrity [redis-queue
 });
 
 test("RedisQueueAdapter concurrent enqueue idempotency check [redis-queue-adapter.unit]", async () => {
-  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
+  const adapter = createMemoryAdapter();
 
   // First enqueue with idempotency key
   const first = await adapter.enqueueAsync({
@@ -180,13 +178,13 @@ test("RedisQueueAdapter concurrent enqueue idempotency check [redis-queue-adapte
 });
 
 test("RedisQueueAdapter async dequeue returns null for empty queue [redis-queue-adapter.unit]", async () => {
-  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
+  const adapter = createMemoryAdapter();
   const result = await adapter.dequeueAsync("nonexistent");
   assert.equal(result, null);
 });
 
 test("RedisQueueAdapter async enqueue and dequeue workflow [redis-queue-adapter.unit]", async () => {
-  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
+  const adapter = createMemoryAdapter();
 
   const job = await adapter.enqueueAsync({
     queueName: "workflow-test",
@@ -202,7 +200,7 @@ test("RedisQueueAdapter async enqueue and dequeue workflow [redis-queue-adapter.
 });
 
 test("RedisQueueAdapter async dequeue ack marks job completed [redis-queue-adapter.unit]", async () => {
-  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
+  const adapter = createMemoryAdapter();
 
   await adapter.enqueueAsync({ queueName: "ack-test", payload: { done: true } });
   const result = await adapter.dequeueAsync("ack-test");
@@ -218,7 +216,7 @@ test("RedisQueueAdapter async dequeue ack marks job completed [redis-queue-adapt
 });
 
 test("RedisQueueAdapter async dequeue nack requeues on retry [redis-queue-adapter.unit]", async () => {
-  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
+  const adapter = createMemoryAdapter();
 
   const job = await adapter.enqueueAsync({
     queueName: "nack-test",
@@ -231,15 +229,16 @@ test("RedisQueueAdapter async dequeue nack requeues on retry [redis-queue-adapte
   await result.nack("test error");
 
   const requeued = await adapter.getJobAsync(job.id);
-  assert.equal(requeued?.status, "waiting");
+  assert.equal(requeued?.status, "delayed");
   assert.equal(requeued?.attempts, 1);
   assert.equal(requeued?.lastError, "test error");
+  assert.ok(requeued?.delayUntil);
 
   await adapter.close();
 });
 
 test("RedisQueueAdapter async moveToDeadLetter marks job dead_letter [redis-queue-adapter.unit]", async () => {
-  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
+  const adapter = createMemoryAdapter();
 
   const job = await adapter.enqueueAsync({ queueName: "dlq-test", payload: { dead: true } });
   await adapter.moveToDeadLetterAsync(job.id, "max_retries_exceeded");
@@ -252,7 +251,7 @@ test("RedisQueueAdapter async moveToDeadLetter marks job dead_letter [redis-queu
 });
 
 test("RedisQueueAdapter async stats returns correct counts [redis-queue-adapter.unit]", async () => {
-  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
+  const adapter = createMemoryAdapter();
 
   await adapter.enqueueAsync({ queueName: "stats-test", payload: { a: 1 } });
   await adapter.enqueueAsync({ queueName: "stats-test", payload: { b: 2 } });
@@ -268,7 +267,7 @@ test("RedisQueueAdapter async stats returns correct counts [redis-queue-adapter.
 });
 
 test("RedisQueueAdapter async listQueues returns all queue names [redis-queue-adapter.unit]", async () => {
-  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
+  const adapter = createMemoryAdapter();
 
   await adapter.enqueueAsync({ queueName: "queue-a", payload: {} });
   await adapter.enqueueAsync({ queueName: "queue-b", payload: {} });
@@ -282,12 +281,11 @@ test("RedisQueueAdapter async listQueues returns all queue names [redis-queue-ad
   await adapter.close();
 });
 
-test("RedisQueueAdapter async retryJob resets failed job [redis-queue-adapter.unit]", async () => {
-  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
+test("RedisQueueAdapter async retryJob requeues dead-letter job without resetting attempts [redis-queue-adapter.unit]", async () => {
+  const adapter = createMemoryAdapter();
 
   const job = await adapter.enqueueAsync({ queueName: "retry-test", payload: {} });
-  const result = await adapter.dequeueAsync("retry-test");
-  await result.nack("failed");
+  await adapter.moveToDeadLetterAsync(job.id, "manual triage");
 
   const retried = await adapter.retryJobAsync(job.id);
   assert.ok(retried);
@@ -299,7 +297,7 @@ test("RedisQueueAdapter async retryJob resets failed job [redis-queue-adapter.un
 });
 
 test("RedisQueueAdapter async with idempotency key returns existing job [redis-queue-adapter.unit]", async () => {
-  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
+  const adapter = createMemoryAdapter();
 
   const first = await adapter.enqueueAsync({
     queueName: "idempotent-test",
@@ -319,7 +317,7 @@ test("RedisQueueAdapter async with idempotency key returns existing job [redis-q
 });
 
 test("RedisQueueAdapter async with priority orders correctly [redis-queue-adapter.unit]", async () => {
-  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
+  const adapter = createMemoryAdapter();
 
   await adapter.enqueueAsync({ queueName: "priority-test", payload: { n: 1 }, priority: 1 });
   await adapter.enqueueAsync({ queueName: "priority-test", payload: { n: 2 }, priority: 10 });
@@ -333,18 +331,14 @@ test("RedisQueueAdapter async with priority orders correctly [redis-queue-adapte
   await adapter.close();
 });
 
-test("RedisQueueAdapter async dequeue nack after max attempts moves to dead letter [redis-queue-adapter.unit]", async () => {
-  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
+test("RedisQueueAdapter async dequeue nack dead-letters when retry budget is exhausted [redis-queue-adapter.unit]", async () => {
+  const adapter = createMemoryAdapter();
 
-  const job = await adapter.enqueueAsync({ queueName: "tasks", payload: {}, maxAttempts: 2 });
+  const job = await adapter.enqueueAsync({ queueName: "tasks", payload: {}, maxAttempts: 1 });
 
   const r1 = await adapter.dequeueAsync("tasks");
   assert.ok(r1);
   await r1.nack();
-
-  const r2 = await adapter.dequeueAsync("tasks");
-  assert.ok(r2);
-  await r2.nack();
 
   const dlqJob = await adapter.getJobAsync(job.id);
   assert.equal(dlqJob?.status, "dead_letter");
@@ -353,7 +347,7 @@ test("RedisQueueAdapter async dequeue nack after max attempts moves to dead lett
 });
 
 test("RedisQueueAdapter concurrent async enqueue and dequeue operations [redis-queue-adapter.unit]", async () => {
-  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
+  const adapter = createMemoryAdapter();
 
   // Enqueue 10 jobs concurrently
   const enqueueResult = await runConcurrentInvariant(async (workerId: number) => {
@@ -376,14 +370,14 @@ test("RedisQueueAdapter concurrent async enqueue and dequeue operations [redis-q
 });
 
 test("RedisQueueAdapter ping returns PONG [redis-queue-adapter.unit]", async () => {
-  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
+  const adapter = createMemoryAdapter();
   const result = await adapter.ping();
   assert.equal(result, "PONG");
   await adapter.close();
 });
 
 test("RedisQueueAdapter close succeeds without error [redis-queue-adapter.unit]", async () => {
-  const adapter = new RedisQueueAdapter({ host: "localhost", port: 6379 });
+  const adapter = createMemoryAdapter();
   await adapter.close();
   assert.ok(true, "Close should not throw");
 });

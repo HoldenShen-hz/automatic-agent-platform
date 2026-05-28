@@ -136,9 +136,16 @@ function assertJsonDepthWithinLimit(
   }
 }
 
+const GOAL_BUDGET_SCAN_LIMIT = 4096;
+const GOAL_BUDGET_REGEX = /(?:budget|预算|费用)\D*(\d+(?:\.\d+)?)/i;
+
+function truncateGoalBudgetWindow(raw: string): string {
+  return raw.length <= GOAL_BUDGET_SCAN_LIMIT ? raw : raw.slice(0, GOAL_BUDGET_SCAN_LIMIT);
+}
+
 function parseGoalBudgetEnvelope(goal: Goal): GoalBudgetEnvelope {
-  const raw = [goal.description, ...goal.constraints].join(" ");
-  const budgetMatch = /(?:budget|预算|费用)\D*(\d+(?:\.\d+)?)/i.exec(raw);
+  const raw = truncateGoalBudgetWindow([goal.description, ...goal.constraints].join(" "));
+  const budgetMatch = GOAL_BUDGET_REGEX.exec(raw);
   return {
     totalBudgetUsd: budgetMatch == null ? null : Number.parseFloat(budgetMatch[1]!),
     requiresApproval: /(approval|审批|deploy|release|publish|delete|删除)/i.test(raw),

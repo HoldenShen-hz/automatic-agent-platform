@@ -151,6 +151,30 @@ describe("WebAppShell", () => {
     );
   });
 
+  it("grants a local development operator profile when no explicit auth context is provided on localhost", () => {
+    renderShell(
+      [
+        createMockFeature({
+          route: { ...createMockRoute("/admin/takeover"), permission: "platform_sre" },
+        }),
+      ],
+      {
+        initialEntries: ["/admin/takeover"],
+      },
+    );
+
+    expect(sharedDomainMocks.createFeatureGuardContext).toHaveBeenCalledWith(
+      expect.objectContaining({
+        authenticated: true,
+        userId: "local-dev-operator",
+        tenantId: "tenant-default",
+        domainId: "platform",
+        permissions: expect.arrayContaining(["authenticated", "platform_sre", "admin+"]),
+        roles: expect.arrayContaining(["platform-admin", "operator"]),
+      }),
+    );
+  });
+
   it("shows access denied when route guard rejects", () => {
     sharedDomainMocks.createRouteGuardChain.mockReturnValueOnce({
       evaluate: () => ({ allowed: false, reason: "Insufficient permissions" }),

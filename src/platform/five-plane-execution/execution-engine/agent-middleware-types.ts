@@ -1,4 +1,4 @@
-import type { RuntimeContextSnapshot } from "./runtime-context.js";
+import type { RuntimeContextSnapshot } from "../../shared/context/runtime-context.js";
 
 export interface MiddlewareResult {
   success: boolean;

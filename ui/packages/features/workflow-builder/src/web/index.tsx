@@ -11,7 +11,16 @@ export function WorkflowBuilderWebView(): ReactElement {
   const edges: FlowCanvasProps["edges"] = vm.edges;
   return (
     <FeatureScaffold title="Workflow Builder" summary="可视化工作流构建器" status="Planned">
-      <div style={{ height: 280, marginBottom: 16, border: `1px solid ${designTokens.color.border}`, borderRadius: 12, overflow: "hidden" }}>
+      <div
+        style={{
+          minHeight: 360,
+          height: "clamp(360px, 55vh, 560px)",
+          marginBottom: 16,
+          border: `1px solid ${designTokens.color.border}`,
+          borderRadius: 12,
+          overflow: "visible",
+        }}
+      >
         <Suspense fallback={<div style={{ padding: 16 }}>正在加载工作流画布...</div>}>
           <LazyFlowCanvas edges={edges} nodes={nodes} />
         </Suspense>

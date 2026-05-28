@@ -34,11 +34,24 @@ interface RedisLike {
   on(event: "error", listener: (error: unknown) => void): void;
   pipeline(): {
     hmset(key: string, data: Record<string, string>): unknown;
+    hgetall(key: string): unknown;
+    del(key: string): unknown;
     expire(key: string, seconds: number): unknown;
     sadd(key: string, member: string): unknown;
     zadd(key: string, score: number, member: string): unknown;
+    srem(key: string, member: string): unknown;
     exec(): Promise<Array<[unknown, unknown]>>;
   };
+  eval?(
+    script: string,
+    numberOfKeys: number,
+    ...args: Array<string | number>
+  ): Promise<unknown>;
+}
+
+function parseIntegerOrDefault(value: string | null | undefined, fallback: number): number {
+  const parsed = Number.parseInt(value ?? "", 10);
+  return Number.isFinite(parsed) ? parsed : fallback;
 }
 
 class InMemoryRedisLike extends LocalTypedEventEmitter<Record<string, unknown>> implements RedisLike {
@@ -168,6 +181,14 @@ class InMemoryRedisLike extends LocalTypedEventEmitter<Record<string, unknown>> 
         operations.push(() => this.hmset(key, data));
         return pipeline;
       },
+      hgetall: (key: string) => {
+        operations.push(() => this.hgetall(key));
+        return pipeline;
+      },
+      del: (key: string) => {
+        operations.push(() => this.del(key));
+        return pipeline;
+      },
       expire: (key: string, seconds: number) => {
         operations.push(() => this.expire(key, seconds));
         return pipeline;
@@ -180,6 +201,10 @@ class InMemoryRedisLike extends LocalTypedEventEmitter<Record<string, unknown>> 
         operations.push(() => this.zadd(key, score, member));
         return pipeline;
       },
+      srem: (key: string, member: string) => {
+        operations.push(() => this.srem(key, member));
+        return pipeline;
+      },
       exec: async () => {
         const results: Array<[unknown, unknown]> = [];
         for (const operation of operations) {
@@ -189,6 +214,55 @@ class InMemoryRedisLike extends LocalTypedEventEmitter<Record<string, unknown>> 
       },
     };
     return pipeline;
+  }
+
+  async eval(
+    script: string,
+    _numberOfKeys: number,
+    ...args: Array<string | number>
+  ): Promise<unknown> {
+    if (script.includes("redis_queue_claim_waiting_job")) {
+      const waitingKey = String(args[0] ?? "");
+      const activeKey = String(args[1] ?? "");
+      const jobKeyPrefix = String(args[2] ?? "");
+      const updatedAt = String(args[3] ?? nowIso());
+      const zset = this.sortedSets.get(waitingKey) ?? new Map<string, number>();
+      const orderedIds = [...zset.entries()]
+        .sort((left, right) => left[1] - right[1])
+        .map(([member]) => member);
+      for (let index = orderedIds.length - 1; index >= 0; index -= 1) {
+        const jobId = orderedIds[index]!;
+        const jobKey = `${jobKeyPrefix}${jobId}`;
+        const job = await this.hgetall(jobKey);
+        if (!job.id) {
+          await this.zrem(waitingKey, jobId);
+          continue;
+        }
+        if (job.status !== "waiting") {
+          if (job.status !== "delayed") {
+            await this.zrem(waitingKey, jobId);
+          }
+          continue;
+        }
+        const attempts = parseIntegerOrDefault(job.attempts, 0) + 1;
+        await this.hmset(jobKey, {
+          status: "active",
+          attempts: String(attempts),
+          last_error: "",
+          updated_at: updatedAt,
+        });
+        await this.sadd(activeKey, jobId);
+        await this.zrem(waitingKey, jobId);
+        return JSON.stringify({
+          ...job,
+          status: "active",
+          attempts: String(attempts),
+          updated_at: updatedAt,
+        });
+      }
+      return null;
+    }
+    throw new Error("queue.eval_not_supported");
   }
 
   private ensureHash(key: string): Map<string, string> {
@@ -252,11 +326,11 @@ class RedisQueueClient {
     this.password = config.password;
     this.db = config.db ?? 0;
     this.prefix = config.prefix ?? "aa:";
-    if (process.env.AA_RUNNING_TESTS === "1") {
+    if (config.driver === "memory") {
       if (process.env.NODE_ENV === "production") {
         throw new StorageError(
-          "queue.redis_test_memory_forbidden_in_production",
-          "queue.redis_test_memory_forbidden_in_production",
+          "queue.redis_memory_forbidden_in_production",
+          "queue.redis_memory_forbidden_in_production",
           { retryable: false },
         );
       }
@@ -383,12 +457,121 @@ class RedisQueueClient {
 
   pipeline(): {
     hmset(key: string, data: Record<string, string>): unknown;
+    hgetall(key: string): unknown;
+    del(key: string): unknown;
     expire(key: string, seconds: number): unknown;
     sadd(key: string, member: string): unknown;
     zadd(key: string, score: number, member: string): unknown;
+    srem(key: string, member: string): unknown;
     exec(): Promise<Array<[unknown, unknown]>>;
   } {
-    return this.redis.pipeline();
+    if (typeof this.redis.pipeline === "function") {
+      return this.redis.pipeline();
+    }
+    const operations: Array<() => Promise<unknown>> = [];
+    const pipeline = {
+      hmset: (key: string, data: Record<string, string>) => {
+        operations.push(() => this.redis.hmset(this.key(key), data));
+        return pipeline;
+      },
+      hgetall: (key: string) => {
+        operations.push(() => this.redis.hgetall(this.key(key)));
+        return pipeline;
+      },
+      del: (key: string) => {
+        operations.push(() => this.redis.del(this.key(key)));
+        return pipeline;
+      },
+      expire: (key: string, seconds: number) => {
+        operations.push(() => this.redis.expire(this.key(key), seconds));
+        return pipeline;
+      },
+      sadd: (key: string, member: string) => {
+        operations.push(() => this.redis.sadd(this.key(key), member));
+        return pipeline;
+      },
+      zadd: (key: string, score: number, member: string) => {
+        operations.push(() => this.redis.zadd(this.key(key), score, member));
+        return pipeline;
+      },
+      srem: (key: string, member: string) => {
+        operations.push(() => this.redis.srem(this.key(key), member));
+        return pipeline;
+      },
+      exec: async () => {
+        const results: Array<[unknown, unknown]> = [];
+        for (const operation of operations) {
+          results.push([null, await operation()]);
+        }
+        return results;
+      },
+    };
+    return pipeline;
+  }
+
+  async eval(
+    script: string,
+    numberOfKeys: number,
+    ...args: Array<string | number>
+  ): Promise<unknown> {
+    await this.ensureConnected();
+    const prefixedArgs = args.map((value, index) => (
+      index < numberOfKeys ? this.key(String(value)) : value
+    ));
+    const redisWithEval = this.redis as RedisLike & {
+      eval?: (
+        script: string,
+        numberOfKeys: number,
+        ...args: Array<string | number>
+      ) => Promise<unknown>;
+    };
+    if (typeof redisWithEval.eval === "function") {
+      return redisWithEval.eval(script, numberOfKeys, ...prefixedArgs);
+    }
+    if (script.includes("redis_queue_claim_waiting_job")) {
+      return this.claimWaitingJobWithoutEval(prefixedArgs);
+    }
+    throw new StorageError("queue.redis_eval_unavailable", "queue.redis_eval_unavailable", {
+      retryable: true,
+    });
+  }
+
+  private async claimWaitingJobWithoutEval(args: Array<string | number>): Promise<string | null> {
+    const waitingKey = String(args[0] ?? "");
+    const activeKey = String(args[1] ?? "");
+    const jobKeyPrefix = String(args[2] ?? "");
+    const updatedAt = String(args[3] ?? nowIso());
+    const ids = await this.redis.zrangebyscore(waitingKey, "-inf", "+inf");
+    for (let index = ids.length - 1; index >= 0; index -= 1) {
+      const jobId = ids[index]!;
+      const job = await this.redis.hgetall(`${jobKeyPrefix}${jobId}`);
+      if (!job.id) {
+        await this.redis.zrem(waitingKey, jobId);
+        continue;
+      }
+      if (job.status !== "waiting") {
+        if (job.status !== "delayed") {
+          await this.redis.zrem(waitingKey, jobId);
+        }
+        continue;
+      }
+      const attempts = parseIntegerOrDefault(job.attempts, 0) + 1;
+      await this.redis.hmset(`${jobKeyPrefix}${jobId}`, {
+        status: "active",
+        attempts: String(attempts),
+        last_error: "",
+        updated_at: updatedAt,
+      });
+      await this.redis.sadd(activeKey, jobId);
+      await this.redis.zrem(waitingKey, jobId);
+      return JSON.stringify({
+        ...job,
+        status: "active",
+        attempts: String(attempts),
+        updated_at: updatedAt,
+      });
+    }
+    return null;
   }
 }
 
@@ -396,6 +579,47 @@ export class RedisQueueAdapter implements QueueAdapter {
   readonly backendKind: QueueBackendKind = "redis";
   private readonly client: RedisQueueClient;
   private readonly jobTtlSeconds = 86400 * 7;
+  private readonly completedJobTtlSeconds = 3600;
+
+  private static readonly CLAIM_WAITING_JOB_LUA = `
+-- redis_queue_claim_waiting_job
+local waitingKey = KEYS[1]
+local activeKey = KEYS[2]
+local jobKeyPrefix = ARGV[1]
+local updatedAt = ARGV[2]
+local ids = redis.call('ZRANGE', waitingKey, 0, -1)
+for index = #ids, 1, -1 do
+  local jobId = ids[index]
+  local jobKey = jobKeyPrefix .. jobId
+  local raw = redis.call('HGETALL', jobKey)
+  if #raw == 0 then
+    redis.call('ZREM', waitingKey, jobId)
+  else
+    local job = {}
+    for i = 1, #raw, 2 do
+      job[raw[i]] = raw[i + 1]
+    end
+    if job['status'] == 'waiting' then
+      local attempts = tonumber(job['attempts'] or '0') + 1
+      redis.call('HSET', jobKey,
+        'status', 'active',
+        'attempts', tostring(attempts),
+        'last_error', '',
+        'updated_at', updatedAt)
+      redis.call('SADD', activeKey, jobId)
+      redis.call('ZREM', waitingKey, jobId)
+      job['status'] = 'active'
+      job['attempts'] = tostring(attempts)
+      job['updated_at'] = updatedAt
+      return cjson.encode(job)
+    end
+    if job['status'] ~= 'delayed' then
+      redis.call('ZREM', waitingKey, jobId)
+    end
+  end
+end
+return nil
+`;
 
   constructor(private readonly config: RedisQueueConfig) {
     this.client = new RedisQueueClient(config);
@@ -407,6 +631,12 @@ export class RedisQueueAdapter implements QueueAdapter {
   private completedKey(queueName: string): string { return `queue:${queueName}:completed`; }
   private deadLetterKey(queueName: string): string { return `queue:${queueName}:dead_letter`; }
   private queueSetKey(): string { return "queues"; }
+
+  private retryBackoffMs(attempts: number): number {
+    const exponent = Math.max(attempts - 1, 0);
+    const backoff = DEFAULT_RETRY_POLICY.backoffMs * (DEFAULT_RETRY_POLICY.backoffMultiplier ** exponent);
+    return Math.min(backoff, 60_000);
+  }
 
   enqueue(input: EnqueueInput): QueueJobRecord {
     const now = nowIso();
@@ -552,31 +782,43 @@ export class RedisQueueAdapter implements QueueAdapter {
     for (const jobId of delayedJobs) {
       const jobData = await this.client.hgetall(this.jobKey(jobId));
       if (jobData.status === "delayed") {
-        await this.client.hmset(this.jobKey(jobId), { status: "waiting", delay_until: "" });
+        await this.client.hmset(this.jobKey(jobId), {
+          status: "waiting",
+          delay_until: "",
+          updated_at: nowIso(),
+        });
         const priority = Number.parseInt(jobData.priority || "0", 10);
-        await this.client.zadd(this.waitingKey(queueName), priority * 1e13 + Date.now(), jobId);
+        await this.client.zadd(
+          this.waitingKey(queueName),
+          priority * 1e13 + Date.parse(jobData.created_at ?? nowIso()),
+          jobId,
+        );
       }
     }
-    const waitingJobs = await this.client.zrangebyscore(this.waitingKey(queueName), "-inf", "+inf");
-    if (waitingJobs.length === 0) return null;
-    const jobId = waitingJobs[waitingJobs.length - 1] ?? "";
-    const jobData = await this.client.hgetall(this.jobKey(jobId));
-    if (!jobData.id || jobData.status === "delayed") return null;
-    if (jobData.status !== "waiting") {
-      await this.client.zrem(this.waitingKey(queueName), jobId);
+    const claimed = await this.client.eval(
+      RedisQueueAdapter.CLAIM_WAITING_JOB_LUA,
+      2,
+      this.waitingKey(queueName),
+      this.activeKey(queueName),
+      `${this.client.key(this.jobKey(""))}`,
+      nowIso(),
+    );
+    if (typeof claimed !== "string" || claimed.length === 0) {
       return null;
     }
-    const attempts = await this.client.hincrby(this.jobKey(jobId), "attempts", 1);
-    const maxAttempts = parseInt(jobData.max_attempts || "3", 10);
-    await this.client.hmset(this.jobKey(jobId), { status: "active", last_error: "" });
-    await this.client.sadd(this.activeKey(queueName), jobId);
-    await this.client.zrem(this.waitingKey(queueName), jobId);
+    const jobData = JSON.parse(claimed) as Record<string, string>;
+    const jobId = jobData.id;
+    if (jobId == null || jobId.length === 0) {
+      return null;
+    }
+    const attempts = parseIntegerOrDefault(jobData.attempts, 0);
+    const maxAttempts = parseIntegerOrDefault(jobData.max_attempts, 3);
     const job: QueueJobRecord = {
-      id: jobData.id,
+      id: jobId,
       queueName: jobData.queue_name ?? queueName,
       payload: jobData.payload ?? "",
       status: "active",
-      priority: parseInt(jobData.priority || "0", 10),
+      priority: parseIntegerOrDefault(jobData.priority, 0),
       attempts,
       maxAttempts,
       lastError: null,
@@ -589,24 +831,41 @@ export class RedisQueueAdapter implements QueueAdapter {
     return {
       job,
       ack: async () => {
-        await this.client.hmset(this.jobKey(jobId), { status: "completed", completed_at: nowIso() });
+        const completedAt = nowIso();
+        await this.client.hmset(this.jobKey(jobId), {
+          status: "completed",
+          completed_at: completedAt,
+          updated_at: completedAt,
+        });
         await this.client.srem(this.activeKey(queueName), jobId);
         await this.client.sadd(this.completedKey(queueName), jobId);
         await this.client.zrem(this.waitingKey(queueName), jobId);
-        await this.client.expire(this.jobKey(jobId), 3600);
+        await this.client.expire(this.jobKey(jobId), this.completedJobTtlSeconds);
       },
       nack: async (error?: string) => {
-        const currentAttempts = parseInt((await this.client.hget(this.jobKey(jobId), "attempts")) || "0", 10);
-        const currentMaxAttempts = parseInt((await this.client.hget(this.jobKey(jobId), "max_attempts")) || "3", 10);
+        const current = await this.client.hgetall(this.jobKey(jobId));
+        const currentAttempts = parseIntegerOrDefault(current.attempts, 0);
+        const currentMaxAttempts = parseIntegerOrDefault(current.max_attempts, 3);
+        const updatedAt = nowIso();
         if (currentAttempts >= currentMaxAttempts) {
-          await this.client.hmset(this.jobKey(jobId), { status: "dead_letter", last_error: error ?? "max_attempts_exceeded" });
+          await this.client.hmset(this.jobKey(jobId), {
+            status: "dead_letter",
+            last_error: error ?? "max_attempts_exceeded",
+            updated_at: updatedAt,
+          });
           await this.client.srem(this.activeKey(queueName), jobId);
           await this.client.sadd(this.deadLetterKey(queueName), jobId);
+          await this.client.expire(this.jobKey(jobId), this.jobTtlSeconds);
         } else {
-          await this.client.hmset(this.jobKey(jobId), { status: "waiting", last_error: error ?? "" });
+          const retryAtMs = Date.now() + this.retryBackoffMs(currentAttempts);
+          await this.client.hmset(this.jobKey(jobId), {
+            status: "delayed",
+            delay_until: new Date(retryAtMs).toISOString(),
+            last_error: error ?? "",
+            updated_at: updatedAt,
+          });
           await this.client.srem(this.activeKey(queueName), jobId);
-          const score = parseInt(jobData.priority || "0", 10) * 1e13 + Date.now();
-          await this.client.zadd(this.waitingKey(queueName), score, jobId);
+          await this.client.zadd(this.waitingKey(queueName), retryAtMs, jobId);
         }
       },
     };
@@ -624,9 +883,9 @@ export class RedisQueueAdapter implements QueueAdapter {
       queueName: data.queue_name ?? "",
       payload: data.payload ?? "",
       status: (data.status ?? "waiting") as QueueJobStatus,
-      priority: parseInt(data.priority || "0", 10),
-      attempts: parseInt(data.attempts || "0", 10),
-      maxAttempts: parseInt(data.max_attempts || "3", 10),
+      priority: parseIntegerOrDefault(data.priority, 0),
+      attempts: parseIntegerOrDefault(data.attempts, 0),
+      maxAttempts: parseIntegerOrDefault(data.max_attempts, 3),
       lastError: data.last_error || null,
       delayUntil: data.delay_until || null,
       idempotencyKey: data.idempotency_key || null,
@@ -665,32 +924,60 @@ export class RedisQueueAdapter implements QueueAdapter {
     const job = await this.getJobAsync(jobId);
     const retryableWaiting = job?.status === "waiting" && (job.attempts > 0 || job.lastError != null);
     if (!job || (job.status !== "failed" && job.status !== "dead_letter" && !retryableWaiting)) return null;
-    await this.client.hmset(this.jobKey(jobId), { status: "waiting", attempts: "0", last_error: "" });
+    if (job.attempts >= job.maxAttempts) {
+      return null;
+    }
+    await this.client.hmset(this.jobKey(jobId), {
+      status: "waiting",
+      delay_until: "",
+      last_error: "",
+      updated_at: nowIso(),
+    });
     await this.client.srem(this.activeKey(job.queueName), jobId);
     await this.client.srem(this.deadLetterKey(job.queueName), jobId);
-    await this.client.zadd(this.waitingKey(job.queueName), job.priority * 1e13 + Date.now(), jobId);
+    await this.client.zadd(
+      this.waitingKey(job.queueName),
+      job.priority * 1e13 + Date.parse(job.createdAt),
+      jobId,
+    );
     return this.getJobAsync(jobId);
   }
 
   async purgeAsync(queueName: string, olderThan: string): Promise<number> {
     const cutoff = new Date(olderThan).getTime();
     let purged = 0;
-    for (const id of await this.client.smembers(this.completedKey(queueName))) {
-      const job = await this.getJobAsync(id);
-      if (job?.completedAt && new Date(job.completedAt).getTime() < cutoff) {
-        await this.client.del(this.jobKey(id));
-        await this.client.srem(this.completedKey(queueName), id);
-        purged += 1;
+    const purgeBySet = async (setKey: string, timestampField: "completed_at" | "updated_at"): Promise<number> => {
+      const ids = await this.client.smembers(setKey);
+      if (ids.length === 0) {
+        return 0;
       }
-    }
-    for (const id of await this.client.smembers(this.deadLetterKey(queueName))) {
-      const job = await this.getJobAsync(id);
-      if (job?.updatedAt && new Date(job.updatedAt).getTime() < cutoff) {
-        await this.client.del(this.jobKey(id));
-        await this.client.srem(this.deadLetterKey(queueName), id);
-        purged += 1;
+      const readPipeline = this.client.pipeline();
+      for (const id of ids) {
+        readPipeline.hgetall(this.jobKey(id));
       }
-    }
+      const rows = await readPipeline.exec();
+      const deletePipeline = this.client.pipeline();
+      let deleted = 0;
+      for (let index = 0; index < ids.length; index += 1) {
+        const id = ids[index]!;
+        const row = rows[index]?.[1] as Record<string, string> | undefined;
+        if (!row?.id) {
+          continue;
+        }
+        const timestamp = row[timestampField];
+        if (timestamp && new Date(timestamp).getTime() < cutoff) {
+          deletePipeline.del(this.jobKey(id));
+          deletePipeline.srem(setKey, id);
+          deleted += 1;
+        }
+      }
+      if (deleted > 0) {
+        await deletePipeline.exec();
+      }
+      return deleted;
+    };
+    purged += await purgeBySet(this.completedKey(queueName), "completed_at");
+    purged += await purgeBySet(this.deadLetterKey(queueName), "updated_at");
     return purged;
   }
 

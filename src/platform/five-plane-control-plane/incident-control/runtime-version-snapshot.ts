@@ -18,7 +18,7 @@ import { ConfigGovernanceService } from "../config-center/config-governance-serv
 import { resolveAgentProfileHome } from "../config-center/profile-home.js";
 import { readTrimmedEnv } from "../config-center/runtime-env.js";
 import { EnabledExtensionsSchema, FeatureFlagsSchema } from "../config-center/startup-env-schema.js";
-import type { SqliteSchemaStatus } from "../../five-plane-state-evidence/truth/sqlite-database.js";
+import type { SqliteSchemaStatus } from "../../five-plane-state-evidence/truth/index.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
 
 function getRuntimeVersionSnapshotLogger(): StructuredLogger {

@@ -15,18 +15,12 @@ test("core/runtime index exports module", () => {
   assert.ok(typeof runtimeIndex === "object", "Module should be an object");
 });
 
-test("core/runtime index re-exports TransitionService", () => {
-  // TransitionService is re-exported via state-transition/transition-service.js
-  const keys = Object.keys(runtimeIndex);
-  assert.ok(keys.length > 0, "Module should export some keys");
-  assert.ok(keys.includes("TransitionService") || "TransitionService" in runtimeIndex,
-    "Should re-export TransitionService");
+test("core/runtime index no longer re-exports TransitionService", () => {
+  assert.equal("TransitionService" in runtimeIndex, false);
 });
 
-test("core/runtime index re-exports StateTransitionMachine", () => {
-  const keys = Object.keys(runtimeIndex);
-  assert.ok(keys.includes("StateTransitionMachine") || "StateTransitionMachine" in runtimeIndex,
-    "Should re-export StateTransitionMachine");
+test("core/runtime index no longer re-exports StateTransitionMachine", () => {
+  assert.equal("StateTransitionMachine" in runtimeIndex, false);
 });
 
 test("core/runtime index re-exports ExecutionLeaseService", () => {
@@ -67,10 +61,9 @@ test("core/runtime index re-exports orchestrator via sub-module", () => {
   assert.ok(runtimeIndex !== undefined, "Should re-export orchestrator");
 });
 
-test("core/runtime index re-exports state-transition components", () => {
-  const keys = Object.keys(runtimeIndex);
-  assert.ok(keys.includes("TransitionService") || keys.includes("StateTransitionMachine"),
-    "Should re-export state transition components");
+test("core/runtime index excludes state-transition components", () => {
+  assert.equal("TransitionService" in runtimeIndex, false);
+  assert.equal("StateTransitionMachine" in runtimeIndex, false);
 });
 
 test("core/runtime index re-exports workflow-step-checkpoint runtime helpers", () => {

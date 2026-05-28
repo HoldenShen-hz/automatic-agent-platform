@@ -6,7 +6,11 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { PolicyDeniedError } from "../../contracts/errors.js";
-import { checkSandboxPath, createConfigReadPolicy, type SandboxPolicy } from "../../five-plane-control-plane/iam/sandbox-policy.js";
+import {
+  checkSandboxPath,
+  createConfigReadPolicy,
+  type SandboxPolicy,
+} from "../../five-plane-control-plane/iam/index.js";
 import type { ExceptionRecoveryConfig } from "./exception-recovery-types.js";
 export type { ExceptionRecoveryConfig } from "./exception-recovery-types.js";
 

@@ -25,7 +25,7 @@ import { CLI_EXIT_SUCCESS, runCliMain } from "./cli-exit.js";
 import { ValidationError } from "../../platform/contracts/errors.js";
 import { loadReplayRecoveryCliEnv } from "../../platform/five-plane-control-plane/config-center/ops-cli-env.js";
 import { readTrimmedEnv } from "../../platform/five-plane-control-plane/config-center/runtime-env.js";
-import { RuntimeRecoveryReplayService } from "../../platform/five-plane-execution/recovery/runtime-recovery-replay-service-root.js";
+import { RuntimeRecoveryReplayService } from "../../platform/five-plane-execution/recovery/runtime-recovery-replay-service.js";
 
 function printHelp(): void {
   process.stdout.write(

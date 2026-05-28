@@ -44,6 +44,24 @@ function sanitizeInput(value: string | undefined, fallback: string): string {
   return normalized.length > 0 ? normalized : fallback;
 }
 
+function areTasksEquivalent(left: readonly TaskDTO[], right: readonly TaskDTO[]): boolean {
+  if (left.length !== right.length) {
+    return false;
+  }
+  const rightById = new Map(right.map((task) => [task.id, task]));
+  return left.every((task) => {
+    const candidate = rightById.get(task.id);
+    return candidate != null
+      && candidate.title === task.title
+      && candidate.status === task.status
+      && candidate.domainId === task.domainId
+      && candidate.currentStep === task.currentStep
+      && candidate.owner === task.owner
+      && candidate.evidenceCount === task.evidenceCount
+      && candidate.timelineDepth === task.timelineDepth;
+  });
+}
+
 export function mapTasksToVm(tasks: readonly TaskDTO[]): readonly { id: string; title: string; subtitle: string }[] {
   return tasks.map((task) => ({
     id: task.id,
@@ -66,8 +84,13 @@ export function useTaskCockpitVm(): TaskCockpitVm {
 
   const [optimisticTasks, setOptimisticTasks] = useState<readonly TaskDTO[] | null>(null);
   useEffect(() => {
-    setOptimisticTasks(null);
-  }, [taskQuery.data]);
+    if (optimisticTasks == null || taskQuery.data == null) {
+      return;
+    }
+    if (areTasksEquivalent(optimisticTasks, taskQuery.data)) {
+      setOptimisticTasks(null);
+    }
+  }, [optimisticTasks, taskQuery.data]);
 
   const visibleTasks = optimisticTasks ?? tasks;
   const selectedTask = (visibleTasks.find((task) => task.id === selectedId) as TaskCockpitVm["selectedTask"] | undefined) ?? null;
@@ -76,14 +99,31 @@ export function useTaskCockpitVm(): TaskCockpitVm {
     if (selectedTask == null) {
       return [];
     }
-    if ((selectedTask.evidenceCount ?? 0) <= 0) {
+    const evidenceRefs = (selectedTask as TaskDTO & {
+      readonly evidenceRefs?: ReadonlyArray<{
+        readonly id?: string;
+        readonly type?: string;
+        readonly description?: string;
+        readonly uri?: string;
+      } | string>;
+    }).evidenceRefs;
+    if (evidenceRefs == null || evidenceRefs.length === 0) {
       return [];
     }
-    return [{
-      id: `evidence-summary-${selectedTask.id}`,
-      type: "summary",
-      description: `该任务当前登记 ${selectedTask.evidenceCount} 条证据引用，详情需通过后端证据接口加载。`,
-    }];
+    return evidenceRefs.map((entry, index) => {
+      if (typeof entry === "string") {
+        return {
+          id: `${selectedTask.id}-evidence-${index + 1}`,
+          type: "reference",
+          description: entry,
+        };
+      }
+      return {
+        id: entry.id ?? `${selectedTask.id}-evidence-${index + 1}`,
+        type: entry.type ?? "reference",
+        description: entry.description ?? entry.uri ?? `evidence:${index + 1}`,
+      };
+    });
   }, [selectedTask]);
 
   const timelineEvents = useMemo(

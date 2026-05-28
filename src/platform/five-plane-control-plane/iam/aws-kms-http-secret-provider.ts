@@ -42,6 +42,24 @@ import { StructuredLogger } from "../../shared/observability/structured-logger.j
 
 const kmsLogger = new StructuredLogger({ retentionLimit: 50 });
 
+function decodeStrictBase64(value: string, code: string, details: Record<string, unknown>): Buffer {
+  const normalized = value.trim();
+  if (!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(normalized)) {
+    throw new ProviderError(code, code, {
+      details,
+      retryable: false,
+    });
+  }
+  const buffer = Buffer.from(normalized, "base64");
+  if (buffer.length === 0 || buffer.toString("base64") !== normalized) {
+    throw new ProviderError(code, code, {
+      details,
+      retryable: false,
+    });
+  }
+  return buffer;
+}
+
 /**
  * Configuration options for AWS KMS provider.
  */
@@ -209,6 +227,7 @@ export class AwsKmsHttpSecretProvider implements ManagedSecretProvider {
   private async fetchWithTimeout(url: string, init?: RequestInit): Promise<Response> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.timeoutMs);
+    timer.unref?.();
     try {
       return await fetch(url, { signal: controller.signal, ...init });
     } finally {
@@ -355,13 +374,17 @@ export class AwsKmsHttpSecretProvider implements ManagedSecretProvider {
     }
 
     // Decrypt using KMS
-    const ciphertextBlob = Buffer.from(ciphertextRef, "base64");
+    const ciphertextBlob = decodeStrictBase64(
+      ciphertextRef,
+      `kms.invalid_ciphertext:${secretRef}`,
+      { secretRef, ciphertextEnvKey },
+    );
     const result = await this.awsRequest("POST", "Decrypt", { CiphertextBlob: ciphertextBlob.toString("base64") });
 
     // Extract plaintext from response
     const plaintext = (result as Record<string, string | { B?: number[] }>).Plaintext;
     const plaintextStr = typeof plaintext === "string"
-      ? Buffer.from(plaintext, "base64").toString("utf8")
+      ? plaintext
       : plaintext?.B != null
         ? Buffer.from(plaintext.B).toString("utf8")
         : null;

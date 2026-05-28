@@ -13,7 +13,7 @@ import { dirname, join } from "node:path";
 
 import { HumanTakeoverService } from "../five-plane-control-plane/incident-control/human-takeover-service.js";
 import { buildRuntimeVersionSnapshot, type RuntimeVersionSnapshot } from "../five-plane-control-plane/incident-control/runtime-version-snapshot.js";
-import { RuntimeRepairService } from "../five-plane-execution/recovery/runtime-repair-service-root.js";
+import { RuntimeRepairService } from "../five-plane-execution/recovery/runtime-repair-service.js";
 import { StartupConsistencyChecker } from "../five-plane-execution/startup/startup-consistency-checker.js";
 import { AuthoritativeTaskStore } from "../five-plane-state-evidence/truth/authoritative-task-store.js";
 import { SqliteDatabase } from "../five-plane-state-evidence/truth/sqlite-database.js";

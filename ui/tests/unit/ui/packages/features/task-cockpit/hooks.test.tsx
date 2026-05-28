@@ -9,7 +9,16 @@ const mocks = vi.hoisted(() => ({
   ]),
   mockUseTasksQuery: vi.fn(),
 }));
-const taskData = [
+let taskData: Array<{
+  id: string;
+  title: string;
+  status: string;
+  domainId: string;
+  currentStep: string;
+  owner: string;
+  evidenceCount: number;
+  timelineDepth: number;
+}> = [
   {
     id: "task-1",
     title: "Spring campaign",
@@ -20,7 +29,7 @@ const taskData = [
     evidenceCount: 2,
     timelineDepth: 5,
   },
-] as const;
+];
 
 vi.mock("@aa/shared-state", () => ({
   useRestClient: () => mocks.mockClient,
@@ -37,9 +46,21 @@ import { useTaskCockpitVm } from "../../../../../../packages/features/task-cockp
 describe("useTaskCockpitVm", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.mockUseTasksQuery.mockReturnValue({
+    taskData = [
+      {
+        id: "task-1",
+        title: "Spring campaign",
+        status: "blocked",
+        domainId: "marketing",
+        currentStep: "workflow-run-1",
+        owner: "growth-ops",
+        evidenceCount: 2,
+        timelineDepth: 5,
+      },
+    ];
+    mocks.mockUseTasksQuery.mockImplementation(() => ({
       data: taskData,
-    });
+    }));
   });
 
   it("keeps selection empty until the operator explicitly picks a task and enables polling", () => {
@@ -78,6 +99,16 @@ describe("useTaskCockpitVm", () => {
     });
   });
 
+  it("does not fabricate evidence records from the evidence count alone", () => {
+    const { result } = renderHook(() => useTaskCockpitVm());
+
+    act(() => {
+      result.current.selectTask("task-1");
+    });
+
+    expect(result.current.evidenceViewer.evidenceChain).toEqual([]);
+  });
+
   it("rolls back optimistic task mutations when the backend call fails", async () => {
     mocks.mockUpdateTask.mockRejectedValueOnce(new Error("network-failed"));
     const { result } = renderHook(() => useTaskCockpitVm());
@@ -93,5 +124,38 @@ describe("useTaskCockpitVm", () => {
     expect(result.current.selectedTask?.owner).toBe("growth-ops");
     expect(result.current.selectedTask?.status).toBe("blocked");
     expect(result.current.timelineItems).toHaveLength(0);
+  });
+
+  it("keeps optimistic task state across polling until the server catches up", async () => {
+    const { result, rerender } = renderHook(() => useTaskCockpitVm());
+
+    act(() => {
+      result.current.selectTask("task-1");
+    });
+
+    await act(async () => {
+      await result.current.claimTask("platform-sre");
+    });
+
+    expect(result.current.selectedTask?.owner).toBe("platform-sre");
+    expect(result.current.selectedTask?.status).toBe("running");
+
+    taskData = [{
+      ...taskData[0]!,
+      owner: "growth-ops",
+      status: "blocked",
+    }];
+    rerender();
+    expect(result.current.selectedTask?.owner).toBe("platform-sre");
+    expect(result.current.selectedTask?.status).toBe("running");
+
+    taskData = [{
+      ...taskData[0]!,
+      owner: "platform-sre",
+      status: "running",
+    }];
+    rerender();
+    expect(result.current.selectedTask?.owner).toBe("platform-sre");
+    expect(result.current.selectedTask?.status).toBe("running");
   });
 });

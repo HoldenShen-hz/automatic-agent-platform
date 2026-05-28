@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "entries": {
+    "src/platform/index.ts": [
+      "./shared/lifecycle/index.js",
+      "./shared/observability/index.js",
+      "./five-plane-control-plane/config-center/startup-env-schema.js",
+      "./five-plane-interface/interface-plane-bootstrap.js",
+      "./five-plane-interface/webhook/index.js",
+      "./five-plane-interface/webhook/webhook-outbox-dispatch-service.js",
+      "./model-gateway/model-gateway-bootstrap.js",
+      "./five-plane-orchestration/harness/index.js",
+      "./prompt-engine/registry/index.js"
+    ],
+    "src/sdk/index.ts": [
+      "./pack-sdk/pack-scaffold-service.js",
+      "./pack-sdk/pack-manifest.js",
+      "./pack-sdk/pack-lifecycle-orchestration-service.js",
+      "./pack-sdk/pack-plugin-compatibility-service.js",
+      "./plugin-sdk/plugin-test-harness.js",
+      "./plugin-sdk/plugin-definition.js",
+      "./plugin-sdk/plugin-context.js"
+    ]
+  }
+}

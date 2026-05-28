@@ -38,6 +38,14 @@ export interface IdempotencyStorage {
    */
   get(key: string): Promise<IdempotencyEntry | null>;
   /**
+   * Atomically reserve a key with a pending marker.
+   * Returns the existing entry when the reservation cannot be acquired.
+   */
+  reservePending(key: string, method: string, ttlMs: number): Promise<{
+    acquired: boolean;
+    entry: IdempotencyEntry | null;
+  }>;
+  /**
    * Set an idempotency entry.
    * @param key - The idempotency key
    * @param entry - The entry to store
@@ -74,6 +82,30 @@ export class InMemoryIdempotencyStorage implements IdempotencyStorage {
       return null;
     }
     return entry;
+  }
+
+  async reservePending(
+    key: string,
+    method: string,
+    ttlMs: number,
+  ): Promise<{ acquired: boolean; entry: IdempotencyEntry | null }> {
+    const now = Date.now();
+    this.cleanupExpired(now);
+    const existing = this.entries.get(key) ?? null;
+    if (existing != null) {
+      return { acquired: false, entry: existing };
+    }
+    if (!this.entries.has(key) && this.entries.size >= this.maxEntries) {
+      this.evictOldestEntry();
+    }
+    this.entries.set(key, {
+      method,
+      statusCode: 0,
+      responseBody: null,
+      expiresAt: now + ttlMs,
+      requestHash: null,
+    });
+    return { acquired: true, entry: null };
   }
 
   async set(key: string, entry: Omit<IdempotencyEntry, "expiresAt">, ttlMs: number): Promise<void> {
@@ -172,6 +204,26 @@ export class RedisIdempotencyStorage implements IdempotencyStorage {
     }
   }
 
+  async reservePending(
+    key: string,
+    method: string,
+    ttlMs: number,
+  ): Promise<{ acquired: boolean; entry: IdempotencyEntry | null }> {
+    const fullKey = this.buildKey(key);
+    const data = JSON.stringify({
+      method,
+      statusCode: 0,
+      responseBody: null,
+      expiresAt: Date.now() + ttlMs,
+      requestHash: null,
+    } satisfies IdempotencyEntry);
+    const acquired = await this.redis.set(fullKey, data, "PX", ttlMs, "NX");
+    if (acquired === "OK") {
+      return { acquired: true, entry: null };
+    }
+    return { acquired: false, entry: await this.get(key) };
+  }
+
   async set(key: string, entry: Omit<IdempotencyEntry, "expiresAt">, ttlMs: number): Promise<void> {
     const fullKey = this.buildKey(key);
     const data = JSON.stringify({
@@ -250,6 +302,62 @@ export class SqliteIdempotencyStorage implements IdempotencyStorage {
         responseBody: row.response_body,
         expiresAt: expiresAtMs,
         requestHash: row.request_hash,
+      };
+    });
+  }
+
+  async reservePending(
+    key: string,
+    method: string,
+    ttlMs: number,
+  ): Promise<{ acquired: boolean; entry: IdempotencyEntry | null }> {
+    return this.db.transaction(() => {
+      const nowMs = Date.now();
+      const nowIso = new Date(nowMs).toISOString();
+      this.db.connection.prepare(`
+        DELETE FROM ${this.tableName}
+        WHERE key = ?
+          AND ((typeof(expires_at) = 'integer' AND expires_at <= ?)
+            OR (typeof(expires_at) != 'integer' AND expires_at <= ?))
+      `).run(key, nowMs, nowIso);
+      const insert = this.db.connection.prepare(`
+        INSERT OR IGNORE INTO ${this.tableName}
+        (key, method, status_code, response_body, request_hash, expires_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `).run(
+        key,
+        method,
+        0,
+        null,
+        null,
+        new Date(nowMs + ttlMs).toISOString(),
+      );
+      if (Number(insert.changes) > 0) {
+        return { acquired: true, entry: null };
+      }
+      const row = this.db.connection.prepare(`
+        SELECT method, status_code, response_body, request_hash, expires_at
+        FROM ${this.tableName}
+        WHERE key = ?
+      `).get(key) as {
+        method: string;
+        status_code: number;
+        response_body: string | null;
+        request_hash: string | null;
+        expires_at: number | string;
+      } | undefined;
+      if (row == null) {
+        return { acquired: false, entry: null };
+      }
+      return {
+        acquired: false,
+        entry: {
+          method: row.method,
+          statusCode: row.status_code,
+          responseBody: row.response_body,
+          expiresAt: parseSqliteExpiresAt(row.expires_at),
+          requestHash: row.request_hash,
+        },
       };
     });
   }

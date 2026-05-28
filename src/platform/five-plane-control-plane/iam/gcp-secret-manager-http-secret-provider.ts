@@ -37,6 +37,24 @@ import { StructuredLogger } from "../../shared/observability/structured-logger.j
 const gcpLogger = new StructuredLogger({ retentionLimit: 50 });
 const GCP_SAFE_RESOURCE_SEGMENT = /^[A-Za-z0-9_-]+$/;
 
+function decodeStrictBase64(value: string, secretRef: string): string {
+  const normalized = value.trim();
+  if (!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(normalized)) {
+    throw new ProviderError(`gcp.invalid_secret_payload:${secretRef}`, `gcp.invalid_secret_payload:${secretRef}`, {
+      details: { secretRef },
+      retryable: false,
+    });
+  }
+  const decoded = Buffer.from(normalized, "base64");
+  if (decoded.length === 0 || decoded.toString("base64") !== normalized) {
+    throw new ProviderError(`gcp.invalid_secret_payload:${secretRef}`, `gcp.invalid_secret_payload:${secretRef}`, {
+      details: { secretRef },
+      retryable: false,
+    });
+  }
+  return decoded.toString("utf8");
+}
+
 /**
  * Configuration options for GCP Secret Manager provider.
  */
@@ -101,6 +119,7 @@ export class GcpSecretManagerHttpSecretProvider implements ManagedSecretProvider
   private async fetchWithTimeout(url: string, init?: RequestInit): Promise<Response> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.timeoutMs);
+    timer.unref?.();
     try {
       return await fetch(url, { signal: controller.signal, ...init });
     } finally {
@@ -253,7 +272,7 @@ export class GcpSecretManagerHttpSecretProvider implements ManagedSecretProvider
     }
 
     // Decode base64-encoded secret value
-    const decoded = Buffer.from(secretValue, "base64").toString("utf8");
+    const decoded = decodeStrictBase64(secretValue, secretRef);
     return {
       secretRef,
       envName: `projects/${project}/secrets/${secret}`,

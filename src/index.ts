@@ -13,12 +13,12 @@ import {
   buildFivePlaneStartupPlan,
   requireValidStartupEnv,
   runSingleTaskExecution,
+  ServiceRegistry,
+  StructuredLogger,
 } from "./platform/index.js";
 import { buildPlatformArchitectureBootstrapSummary } from "./platform-architecture-bootstrap.js";
 import { getPlatformApplicationKernel } from "./platform-application-kernel.js";
 import type { PlatformAppKind, PlatformStartupTargetKind } from "./platform-architecture-types.js";
-import { ServiceRegistry } from "./platform/shared/lifecycle/service-registry.js";
-import { StructuredLogger } from "./platform/shared/observability/structured-logger.js";
 import { buildScaleOpsRuntimeCatalog } from "./scale-ops-runtime-catalog.js";
 import { buildScaleOpsStartupPlan } from "./scale-ops-startup-plan.js";
 import type {
@@ -43,10 +43,12 @@ export { buildDomainsStartupPlan } from "./domains-startup-plan.js";
 export { buildInteractionGovernanceRuntimeCatalog } from "./interaction-governance-runtime-catalog.js";
 export { buildInteractionGovernanceStartupPlan } from "./interaction-governance-startup-plan.js";
 export { getPlatformApplicationKernel } from "./platform-application-kernel.js";
-export { buildAiOperationsRuntimeCatalog } from "./platform/ai-operations-runtime-catalog.js";
-export { buildAiOperationsStartupPlan } from "./platform/ai-operations-startup-plan.js";
-export { buildFivePlaneRuntimeCatalog } from "./platform/five-plane-runtime-bootstrap.js";
-export { buildFivePlaneStartupPlan } from "./platform/five-plane-startup-plan.js";
+export {
+  buildAiOperationsRuntimeCatalog,
+  buildAiOperationsStartupPlan,
+  buildFivePlaneRuntimeCatalog,
+  buildFivePlaneStartupPlan,
+} from "./platform/index.js";
 export { buildPlatformArchitectureBootstrapSummary } from "./platform-architecture-bootstrap.js";
 export type { PlatformAppKind, PlatformStartupTargetKind } from "./platform-architecture-types.js";
 export { buildScaleOpsRuntimeCatalog } from "./scale-ops-runtime-catalog.js";

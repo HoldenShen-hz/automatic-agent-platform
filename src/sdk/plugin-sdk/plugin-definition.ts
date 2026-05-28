@@ -5,7 +5,7 @@
  */
 
 import { createVerify, verify as verifyDetached } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { readFileSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { ValidationError } from "../../platform/contracts/errors.js";
 import { normalizeSandboxMode, type SandboxMode, type SandboxModeLike } from "../../platform/five-plane-control-plane/iam/sandbox-policy.js";
@@ -146,6 +146,8 @@ const KNOWN_VULNERABILITIES: readonly SbomVulnerability[] = [
     description: "SSRF vulnerability in axios proxy handling.",
   },
 ];
+
+const MAX_SBOM_BYTES = 1024 * 1024;
 
 /**
  * Converts a plugin signing algorithm string to a Node.js crypto algorithm name.
@@ -512,7 +514,17 @@ export class DefaultSbomScanner implements SbomScanner {
           scanErrors: ["Remote SBOM scanning requires a supplied SBOM fetcher; heuristic package inference is disabled."],
         };
       }
-      const packages = normalizePackageRecords(JSON.parse(readFileSync(fileURLToPath(parsed), "utf8")));
+      const sbomPath = fileURLToPath(parsed);
+      const fileSize = statSync(sbomPath).size;
+      if (!Number.isFinite(fileSize) || fileSize < 0 || fileSize > MAX_SBOM_BYTES) {
+        return {
+          valid: false,
+          scannedAt,
+          vulnerabilities: [],
+          scanErrors: [`SBOM exceeds maximum supported size of ${MAX_SBOM_BYTES} bytes.`],
+        };
+      }
+      const packages = normalizePackageRecords(JSON.parse(readFileSync(sbomPath, "utf8")));
       const vulnerabilities = filterVulnerabilities(packages, minSeverity(options.minSeverity));
       return {
         valid: vulnerabilities.length === 0,

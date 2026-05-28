@@ -61,10 +61,16 @@ export class PromptVersionManager {
       );
     }
 
-    const major = parseInt(match[1]!, 10);
-    const minor = parseInt(match[2]!, 10);
+    const major = Number.parseInt(match[1]!, 10);
+    const minor = Number.parseInt(match[2]!, 10);
     const patchMatch = match[3];
-    const patch = patchMatch !== undefined ? parseInt(patchMatch, 10) : undefined;
+    const patch = patchMatch !== undefined ? Number.parseInt(patchMatch, 10) : undefined;
+    if (!Number.isFinite(major) || !Number.isFinite(minor) || (patch !== undefined && !Number.isFinite(patch))) {
+      throw new ValidationError(
+        "prompt_version.invalid_numeric_parts",
+        `Version "${version}" contains invalid numeric parts`,
+      );
+    }
     const result: SemanticVersion = { major, minor };
     if (patch !== undefined) {
       result.patch = patch;
@@ -80,7 +86,14 @@ export class PromptVersionManager {
     if (typeof version === "number") {
       return version;
     }
-    return parseInt(version.trim(), 10);
+    const parsed = Number.parseInt(version.trim(), 10);
+    if (!Number.isFinite(parsed)) {
+      throw new ValidationError(
+        "prompt_version.invalid_integer_version",
+        `Version "${version}" is not a finite integer value`,
+      );
+    }
+    return parsed;
   }
 
   private normalizeComparableVersion(version: string | number): number {

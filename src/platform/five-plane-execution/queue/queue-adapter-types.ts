@@ -103,6 +103,7 @@ export interface QueueBackendConfig {
 
 export interface RedisQueueConfig extends RedisConnectionConfig {
   prefix?: string;
+  driver?: "redis" | "memory";
 }
 
 export type QueueAdapterFactory = (config: QueueBackendConfig, db?: AuthoritativeSqlDatabase) => QueueAdapter;
