@@ -5,12 +5,20 @@
  * fingerprint comparison, and cross-agent analysis.
  */
 
-import { timingSafeEqual } from "node:crypto";
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
 
 import { BehaviorFingerprintBuilder } from "./fingerprint-builder/index.js";
-import { ChangepointDetectorService, type DriftDetectorConfig, type DriftSample, type DriftSignal } from "./changepoint-detector/index.js";
+import { ChangepointDetectorService } from "./changepoint-detector/index.js";
 import { CrossAgentAnalyzerService, type CrossAgentDriftAlert } from "./cross-agent-analyzer/index.js";
+import {
+  CANONICAL_DRIFT_WINDOWS,
+  DEFAULT_DRIFT_DETECTOR_CONFIG,
+  type CanonicalDriftDimension,
+  type DriftDetectorConfig,
+  type DriftSample,
+  type DriftSignal,
+  type DriftWindowType,
+} from "./drift-types.js";
 
 import type {
   IDriftDetector,
@@ -28,9 +36,24 @@ export interface DriftDetectorServiceOptions {
     readonly medium: number;
     readonly high: number;
   };
-  readonly analyzedWindows?: readonly import("./changepoint-detector/index.js").DriftWindowType[];
-  readonly fingerprintWindowToDriftWindow?: Readonly<Record<string, import("./changepoint-detector/index.js").DriftWindowType>>;
+  readonly analyzedWindows?: readonly DriftWindowType[];
+  readonly fingerprintWindowToDriftWindow?: Readonly<Record<string, DriftWindowType>>;
 }
+
+const DEFAULT_FINGERPRINT_DRIFT_THRESHOLDS = {
+  low: 0.1,
+  medium: 0.2,
+  high: 0.4,
+} as const;
+
+const DEFAULT_FINGERPRINT_WINDOW_TO_DRIFT_WINDOW: Readonly<Record<string, DriftWindowType>> = {
+  "1h": "1h",
+  "6h": "6h",
+  "24h": "24h",
+  "7d": "7d",
+  "30d": "30d",
+  "90d": "90d",
+};
 
 /**
  * §63: DriftDetectorService coordinates all drift detection mechanisms.
@@ -42,49 +65,21 @@ export class DriftDetectorService implements IDriftDetector {
   private readonly fingerprintBuilder: BehaviorFingerprintBuilder;
   private readonly crossAgentAnalyzer: CrossAgentAnalyzerService;
   private readonly fingerprintDriftThresholds: { readonly low: number; readonly medium: number; readonly high: number };
-  private readonly analyzedWindows: readonly import("./changepoint-detector/index.js").DriftWindowType[];
-  private readonly fingerprintWindowToDriftWindow: Readonly<Record<string, import("./changepoint-detector/index.js").DriftWindowType>>;
+  private readonly analyzedWindows: readonly DriftWindowType[];
+  private readonly fingerprintWindowToDriftWindow: Readonly<Record<string, DriftWindowType>>;
 
   public constructor(options: DriftDetectorConfig | DriftDetectorServiceOptions = {}) {
     const resolvedOptions = isChangepointConfig(options) ? { changepointConfig: options } : options;
     const config = resolvedOptions.changepointConfig ?? {
+      ...DEFAULT_DRIFT_DETECTOR_CONFIG,
       minSampleSize: 10,
-      samplesPerHour: 1,
-      zscoreThreshold: 2.0,
-      zscoreHighSeverity: 4.0,
-      zscoreMediumSeverity: 3.0,
-      cusumBoundaryMultiplier: 5.0,
-      cusumSlackMultiplier: 0.5,
-      cusumHighSeverityMultiplier: 3.0,
-      cusumMediumSeverityMultiplier: 2.0,
-      bayesianConfidenceLevel: 0.95,
-      bayesianHighSeverity: 0.01,
-      bayesianMediumSeverity: 0.03,
-      kljsDivergenceThreshold: 0.1,
-      kljsHighSeverity: 0.3,
-      kljsMediumSeverity: 0.2,
-      distributionAssumption: "normal" as const,
-      falsePositiveRate: 0.05,
-      falsePositiveWindowSize: 100,
-      minSamplesBetweenAlerts: 5,
     };
     this.changepointDetector = new ChangepointDetectorService(config);
     this.fingerprintBuilder = new BehaviorFingerprintBuilder();
     this.crossAgentAnalyzer = new CrossAgentAnalyzerService();
-    this.fingerprintDriftThresholds = resolvedOptions.fingerprintDriftThresholds ?? {
-      low: 0.1,
-      medium: 0.2,
-      high: 0.4,
-    };
-    this.analyzedWindows = resolvedOptions.analyzedWindows ?? ["1h", "6h", "24h", "7d"];
-    this.fingerprintWindowToDriftWindow = resolvedOptions.fingerprintWindowToDriftWindow ?? {
-      "1h": "1h",
-      "6h": "6h",
-      "24h": "24h",
-      "7d": "7d",
-      "30d": "7d",
-      "90d": "7d",
-    };
+    this.fingerprintDriftThresholds = resolvedOptions.fingerprintDriftThresholds ?? DEFAULT_FINGERPRINT_DRIFT_THRESHOLDS;
+    this.analyzedWindows = resolvedOptions.analyzedWindows ?? [...CANONICAL_DRIFT_WINDOWS];
+    this.fingerprintWindowToDriftWindow = resolvedOptions.fingerprintWindowToDriftWindow ?? DEFAULT_FINGERPRINT_WINDOW_TO_DRIFT_WINDOW;
   }
 
   /**
@@ -95,7 +90,7 @@ export class DriftDetectorService implements IDriftDetector {
     const detectedAt = nowIso();
 
     // 1. Run changepoint detection on drift samples
-    const windowResults = this.changepointDetector.detectAll(input.driftSamples);
+    const windowResults = this.changepointDetector.detectAll(input.driftSamples, [...this.analyzedWindows]);
     const fingerprintSignal = input.baselineFingerprints[0] == null
       ? null
       : this.detectFingerprintDrift(input.currentFingerprint, input.baselineFingerprints[0]!);
@@ -161,7 +156,7 @@ export class DriftDetectorService implements IDriftDetector {
     if (current.normalizedFeatures.length === 0 || baseline.normalizedFeatures.length === 0) {
       return {
         signalId: newId("drift_sig"),
-        subjectId: current.fingerprintId.split(":")[2] ?? current.fingerprintId,
+        subjectId: resolveFingerprintSubject(current),
         subjectType: current.subjectType,
         detectedAt: nowIso(),
         driftScore: 1,
@@ -170,6 +165,7 @@ export class DriftDetectorService implements IDriftDetector {
         baselineRef: baseline.fingerprintId,
         reasonCode: "drift.fingerprint_features_missing",
         recommendedAction: "require_review",
+        metadata: { dimension: "behavioral_drift" },
       };
     }
 
@@ -189,7 +185,7 @@ export class DriftDetectorService implements IDriftDetector {
 
     return {
       signalId: newId("drift_sig"),
-      subjectId: current.fingerprintId.split(":")[2] ?? current.fingerprintId,
+      subjectId: resolveFingerprintSubject(current),
       subjectType: current.subjectType,
       detectedAt: nowIso(),
       driftScore,
@@ -198,6 +194,7 @@ export class DriftDetectorService implements IDriftDetector {
       baselineRef: baseline.fingerprintId,
       reasonCode: "drift.fingerprint_mismatch",
       recommendedAction: this.severityToAction(severity),
+      metadata: { dimension: "behavioral_drift" },
     };
   }
 
@@ -270,15 +267,19 @@ export class DriftDetectorService implements IDriftDetector {
 
     return {
       signalId: newId("drift_sig"),
-      subjectId: fingerprintId.split(":")[1] ?? fingerprintId,
+      subjectId: parseFingerprintIdentity(fingerprintId).subjectId,
       subjectType: "agent",
       detectedAt: nowIso(),
       driftScore: Math.abs(primary.relativeShift),
       severity: primary.severity,
-      windowType: this.inferWindowType(primary),
+      windowType: primary.windowType,
       baselineRef: null,
       reasonCode: primary.reasonCode,
       recommendedAction: primary.recommendedAction,
+      metadata: {
+        canonicalDimension: this.selectDominantCanonicalDimension(primary.evaluatedDimensions),
+        dimension: this.mapCanonicalDimensionToAlertDimension(this.selectDominantCanonicalDimension(primary.evaluatedDimensions)),
+      },
     };
   }
 
@@ -295,20 +296,12 @@ export class DriftDetectorService implements IDriftDetector {
     return this.worseSeverity(left.severity, right.severity) === right.severity ? right : left;
   }
 
-  private inferWindowType(result: import("./changepoint-detector/index.js").ChangepointDetectionResult): import("./changepoint-detector/index.js").DriftWindowType {
-    if (result.reasonCode.includes("cusum")) return "1h";
-    if (result.reasonCode.includes("bayesian")) return "7d";
-    return "24h";
-  }
-
   /**
-   * Maps FingerprintWindowSize ("1h" | "7d" | "30d" | "90d") to DriftWindowType ("1h" | "6h" | "24h" | "7d").
-   * Fingerprint windows are longer-term for historical comparison, while DriftWindowTypes are used
-   * for real-time changepoint detection.
+   * Maps FingerprintWindowSize to the closest drift-analysis window used for alert routing.
    */
   private mapFingerprintWindowToDriftWindow(
     window: import("./fingerprint-builder/index.js").BehaviorFingerprint["window"],
-  ): import("./changepoint-detector/index.js").DriftWindowType {
+  ): DriftWindowType {
     if (window == null) {
       return "24h";
     }
@@ -316,10 +309,21 @@ export class DriftDetectorService implements IDriftDetector {
   }
 
   private inferDimension(signal: DriftSignal): DriftDimension {
-    if (signal.reasonCode.includes("input")) return "input_drift";
-    if (signal.reasonCode.includes("output")) return "output_drift";
-    if (signal.reasonCode.includes("quality")) return "quality_drift";
-    return "behavioral_drift";
+    const explicit = signal.metadata?.["dimension"];
+    if (explicit === "input_drift" || explicit === "output_drift" || explicit === "quality_drift" || explicit === "behavioral_drift") {
+      return explicit;
+    }
+    const canonicalDimension = signal.metadata?.["canonicalDimension"];
+    if (
+      canonicalDimension === "success_rate_drop"
+      || canonicalDimension === "override_rate_spike"
+      || canonicalDimension === "cost_spike"
+      || canonicalDimension === "tool_usage_shift"
+      || canonicalDimension === "incident_count"
+    ) {
+      return this.mapCanonicalDimensionToAlertDimension(canonicalDimension);
+    }
+    return signal.reasonCode === "drift.fingerprint_mismatch" ? "behavioral_drift" : "quality_drift";
   }
 
   private severityToAction(severity: DriftSignal["severity"]): DriftSignal["recommendedAction"] {
@@ -367,17 +371,20 @@ export class DriftDetectorService implements IDriftDetector {
     if (union.size === 0) {
       return 0;
     }
-    let differences = 0;
+    let weightedUnion = 0;
+    let weightedDifference = 0;
     for (const feature of union) {
+      const weight = featureWeight(feature);
+      weightedUnion += weight;
       if (!(set1.has(feature) && set2.has(feature))) {
-        differences++;
+        weightedDifference += weight;
       }
     }
-    return differences / union.size;
+    return weightedUnion <= 0 ? 0 : weightedDifference / weightedUnion;
   }
 
   private getAnalyzedWindows(results: readonly import("./changepoint-detector/index.js").ChangepointDetectionResult[]): readonly import("./changepoint-detector/index.js").DriftWindowType[] {
-    const inferredWindows = results.map((result) => this.inferWindowType(result));
+    const inferredWindows = results.map((result) => result.windowType);
     return inferredWindows.length > 0 ? [...new Set(inferredWindows)] : [...this.analyzedWindows];
   }
 
@@ -393,19 +400,79 @@ export class DriftDetectorService implements IDriftDetector {
       .filter((value) => value > 0);
     return durations.length > 0 ? Math.max(...durations) : 0;
   }
+
+  private selectDominantCanonicalDimension(
+    evaluatedDimensions: Record<CanonicalDriftDimension, number>,
+  ): CanonicalDriftDimension {
+    const ordered: readonly CanonicalDriftDimension[] = [
+      "success_rate_drop",
+      "override_rate_spike",
+      "cost_spike",
+      "tool_usage_shift",
+      "incident_count",
+    ];
+    const initial = ordered[0]!;
+    return ordered.reduce((best, candidate) =>
+      evaluatedDimensions[candidate] > evaluatedDimensions[best] ? candidate : best, initial);
+  }
+
+  private mapCanonicalDimensionToAlertDimension(dimension: CanonicalDriftDimension): DriftDimension {
+    switch (dimension) {
+      case "tool_usage_shift":
+        return "behavioral_drift";
+      case "success_rate_drop":
+      case "override_rate_spike":
+      case "cost_spike":
+      case "incident_count":
+      default:
+        return "quality_drift";
+    }
+  }
 }
 
 function safeHashEquals(left: string, right: string): boolean {
-  // Fingerprints are not secrets, but keeping comparisons constant-time avoids
-  // turning this helper into a future footgun when reused for signed hashes.
-  if (left.length !== right.length) {
-    return false;
-  }
-  const leftBuffer = Buffer.from(left, "utf8");
-  const rightBuffer = Buffer.from(right, "utf8");
-  return timingSafeEqual(leftBuffer, rightBuffer);
+  return left === right;
 }
 
 function isChangepointConfig(value: DriftDetectorConfig | DriftDetectorServiceOptions): value is DriftDetectorConfig {
   return "minSampleSize" in value;
+}
+
+function featureWeight(feature: string): number {
+  if (feature.startsWith("tool_usage:") || feature.startsWith("risk_distribution:")) {
+    return 2;
+  }
+  if (feature.startsWith("latency_bucket:") || feature.startsWith("cost_bucket:") || feature.startsWith("success_rate:")) {
+    return 1.5;
+  }
+  return 1;
+}
+
+function parseFingerprintIdentity(fingerprintId: string): {
+  subjectType: string;
+  subjectId: string;
+  baselineRef: string | null;
+  window: string | null;
+} {
+  const parts = fingerprintId.split(":");
+  if (parts.length < 5 || parts[0] !== "fingerprint") {
+    return {
+      subjectType: "agent",
+      subjectId: fingerprintId,
+      baselineRef: null,
+      window: null,
+    };
+  }
+  return {
+    subjectType: parts[1] ?? "agent",
+    subjectId: parts[2] ?? fingerprintId,
+    baselineRef: parts[3] != null && parts[3] !== "none" ? parts[3] : null,
+    window: parts[4] != null && parts[4] !== "none" ? parts[4] : null,
+  };
+}
+
+function resolveFingerprintSubject(
+  fingerprint: import("./fingerprint-builder/index.js").BehaviorFingerprint & { subjectId?: string },
+): string {
+  return fingerprint.subjectId ?? parseFingerprintIdentity(fingerprint.fingerprintId).subjectId;
 }

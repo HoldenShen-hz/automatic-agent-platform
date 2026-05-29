@@ -4,138 +4,40 @@
  *
  * Legacy 6h/24h relative-threshold windows remain supported for compatibility.
  */
+import {
+  CANONICAL_DRIFT_WINDOWS,
+  DEFAULT_DRIFT_DETECTOR_CONFIG,
+  type CanonicalDriftDimension,
+  type CanonicalDriftMetricSnapshot,
+  type ChangepointDetectionResult,
+  type DriftDetectionAlgorithm,
+  type DriftDetectorConfig,
+  type DriftResponseActionType,
+  type DriftResponsePlan,
+  type DriftSample,
+  type DriftTrendDirection,
+  type DriftWindowType,
+} from "../drift-types.js";
 
-export interface CanonicalDriftMetricSnapshot {
-  successRate: number;
-  overrideRate: number;
-  averageCostUsd: number;
-  toolUsageShift: number;
-  incidentCount: number;
-}
-
-export interface DriftSample {
-  observedAt: string;
-  score: number;
-  metrics?: Partial<CanonicalDriftMetricSnapshot>;
-}
-
-export type CanonicalDriftDimension =
-  | "success_rate_drop"
-  | "override_rate_spike"
-  | "cost_spike"
-  | "tool_usage_shift"
-  | "incident_count";
-
-export type DriftWindowType = "1h" | "6h" | "24h" | "7d" | "30d" | "90d";
-export type DriftDetectionAlgorithm =
-  | "z_score"
-  | "cusum"
-  | "bayesian_online"
-  | "kl_js_divergence"
-  | "relative_threshold";
-export type DriftResponseActionType =
-  | "observe"
-  | "require_review"
-  | "pause_agent"
-  | "throttle"
-  | "downgrade"
-  | "rollback"
-  | "freeze"
-  | "none";
-
-export interface ChangepointDetectionResult {
-  detected: boolean;
-  baselineMean: number;
-  recentMean: number;
-  absoluteShift: number;
-  relativeShift: number;
-  reasonCode: string;
-  severity: "low" | "medium" | "high" | "none";
-  recommendedAction: DriftResponseActionType;
-  sampleSize: number;
-  minSampleSize: number;
-  distributionAssumption: DriftDetectorConfig["distributionAssumption"];
-  falsePositiveRate: number;
-  windowType: DriftWindowType;
-  algorithm: DriftDetectionAlgorithm;
-  algorithmScore: number;
-  evaluatedDimensions: Record<CanonicalDriftDimension, number>;
-}
-
-export type DriftSignal = {
-  signalId: string;
-  subjectId: string;
-  subjectType: string;
-  detectedAt: string;
-  driftScore: number;
-  severity: "none" | "low" | "medium" | "high";
-  windowType: DriftWindowType;
-  baselineRef: string | null;
-  reasonCode: string;
-  recommendedAction: DriftResponseActionType;
-  metadata?: Record<string, unknown>;
-};
-
-export type DriftResponsePlan = {
-  planId: string;
-  subjectId: string;
-  subjectType: string;
-  generatedAt: string;
-  linkedSignalId: string | null;
-  baselineRef: string | null;
-  primaryAction: DriftResponseActionType;
-  fallbackActions: readonly DriftResponseActionType[];
-  guardrails: readonly string[];
-};
-
-export type DriftDetectorConfig = {
-  minSampleSize: number;
-  samplesPerHour: number;
-  zscoreThreshold: number;
-  zscoreHighSeverity: number;
-  zscoreMediumSeverity: number;
-  cusumBoundaryMultiplier: number;
-  cusumSlackMultiplier: number;
-  cusumHighSeverityMultiplier: number;
-  cusumMediumSeverityMultiplier: number;
-  bayesianConfidenceLevel: number;
-  bayesianHighSeverity: number;
-  bayesianMediumSeverity: number;
-  kljsDivergenceThreshold: number;
-  kljsHighSeverity: number;
-  kljsMediumSeverity: number;
-  distributionAssumption: "normal" | "poisson" | "exponential";
-  falsePositiveRate: number;
-  falsePositiveWindowSize: number;
-  minSamplesBetweenAlerts: number;
-};
-
-export const DEFAULT_DRIFT_DETECTOR_CONFIG: DriftDetectorConfig = {
-  minSampleSize: 1,
-  samplesPerHour: 1,
-  zscoreThreshold: 2.0,
-  zscoreHighSeverity: 4.0,
-  zscoreMediumSeverity: 3.0,
-  cusumBoundaryMultiplier: 5.0,
-  cusumSlackMultiplier: 0.5,
-  cusumHighSeverityMultiplier: 3.0,
-  cusumMediumSeverityMultiplier: 2.0,
-  bayesianConfidenceLevel: 0.95,
-  bayesianHighSeverity: 0.01,
-  bayesianMediumSeverity: 0.03,
-  kljsDivergenceThreshold: 0.1,
-  kljsHighSeverity: 0.3,
-  kljsMediumSeverity: 0.2,
-  distributionAssumption: "normal",
-  falsePositiveRate: 0.05,
-  falsePositiveWindowSize: 100,
-  minSamplesBetweenAlerts: 5,
-};
+export type {
+  CanonicalDriftDimension,
+  CanonicalDriftMetricSnapshot,
+  ChangepointDetectionResult,
+  DriftDetectionAlgorithm,
+  DriftDetectorConfig,
+  DriftResponseActionType,
+  DriftResponsePlan,
+  DriftSample,
+  DriftSignal,
+  DriftTrendDirection,
+  DriftWindowType,
+} from "../drift-types.js";
 
 const LEGACY_BASELINE_WINDOW_HOURS = 24;
 const LEGACY_RECENT_WINDOW_HOURS = 3;
 const LEGACY_DRIFT_THRESHOLD_RELATIVE = -0.10;
 const EPSILON = 1e-9;
+const BAYESIAN_BASELINE_NOISE_FLOOR_RATIO = 0.05;
 
 export const DRIFT_DETECTION_WINDOWS: Record<
   DriftWindowType,
@@ -193,7 +95,7 @@ export const DRIFT_DETECTION_WINDOWS: Record<
 
 export class ChangepointDetectorService {
   private readonly config: DriftDetectorConfig;
-  private lastAlertSampleIndex: number | null = null;
+  private readonly recentAlertState = new Map<string, { observedAtMs: number; oldestObservedAt: string }>();
 
   public constructor(config: Partial<DriftDetectorConfig> = {}) {
     this.config = {
@@ -215,7 +117,7 @@ export class ChangepointDetectorService {
 
   public detectAll(
     samples: DriftSample[],
-    windowTypes: DriftWindowType[] = ["1h", "6h", "24h", "7d"],
+    windowTypes: DriftWindowType[] = [...CANONICAL_DRIFT_WINDOWS],
   ): readonly ChangepointDetectionResult[] {
     return windowTypes.map((windowType) => {
       const windowConfig = DRIFT_DETECTION_WINDOWS[windowType];
@@ -236,13 +138,13 @@ export class ChangepointDetectorService {
       return this.aggregateResults(this.detectAll(samples, [...baselineWindowOrWindows]));
     }
 
-    const effectiveBaselineWindow = Math.min(
-      Math.max(1, Math.floor(baselineWindowOrWindows as number)),
-      Math.max(samples.length - Math.max(1, recentWindow), 0),
-    );
-    const effectiveRecentWindow = Math.max(1, Math.floor(recentWindow));
-    const baseline = samples.slice(0, effectiveBaselineWindow);
-    const recent = samples.slice(-effectiveRecentWindow);
+    const requestedBaselineWindow = validateWindowSampleCount(baselineWindowOrWindows as number, "baselineWindow");
+    const requestedRecentWindow = validateWindowSampleCount(recentWindow, "recentWindow");
+    const recentStartIndex = Math.max(samples.length - requestedRecentWindow, 0);
+    const effectiveBaselineWindow = Math.min(requestedBaselineWindow, recentStartIndex);
+    const baselineStartIndex = Math.max(recentStartIndex - effectiveBaselineWindow, 0);
+    const baseline = samples.slice(baselineStartIndex, recentStartIndex);
+    const recent = samples.slice(recentStartIndex);
     const metrics = this.buildSharedMetrics(samples, baseline, recent, windowType);
 
     if (baseline.length === 0 || recent.length === 0) {
@@ -250,19 +152,25 @@ export class ChangepointDetectorService {
     }
 
     if (
-      baseline.length < effectiveRecentWindow
-      || samples.length < Math.max(this.config.minSampleSize, effectiveRecentWindow + 1)
+      baseline.length < requestedRecentWindow
+      || recent.length < requestedRecentWindow
+      || samples.length < Math.max(this.config.minSampleSize, requestedRecentWindow + 1)
     ) {
       return this.buildUndetectedResult(metrics, "drift.insufficient_data");
     }
 
     const algorithmEvaluation = this.evaluateWindowAlgorithm(windowType, baseline, recent, threshold, metrics);
-    const suppressedByWindow = algorithmEvaluation.detected
-      && this.lastAlertSampleIndex != null
-      && (samples.length - this.lastAlertSampleIndex) < this.config.minSamplesBetweenAlerts;
+    const suppressionKey = `${windowType}:${samples[0]?.observedAt ?? "empty"}`;
+    const suppressedByWindow = algorithmEvaluation.detected && this.shouldSuppressDetection(suppressionKey, samples);
     const finalDetected = algorithmEvaluation.detected && !suppressedByWindow;
     if (finalDetected) {
-      this.lastAlertSampleIndex = samples.length;
+      const observedAtMs = safeObservedAtMs(samples.at(-1)?.observedAt);
+      if (observedAtMs != null) {
+        this.recentAlertState.set(suppressionKey, {
+          observedAtMs,
+          oldestObservedAt: samples[0]?.observedAt ?? "",
+        });
+      }
     }
 
     return {
@@ -311,7 +219,7 @@ export class ChangepointDetectorService {
       fallbackActions.push("observe", "require_review");
     }
     return {
-      planId: `drift_plan:${input.subjectType}:${input.subjectId}:${input.generatedAt}`,
+      planId: `drift_plan:${input.subjectType}:${input.subjectId}:${sanitizeIdentifierSegment(input.generatedAt)}`,
       subjectId: input.subjectId,
       subjectType: input.subjectType,
       generatedAt: input.generatedAt,
@@ -348,7 +256,6 @@ export class ChangepointDetectorService {
     const selected = ranked[0]!;
     return {
       ...selected,
-      reasonCode: selected.detected ? "drift.multi_window_aggregate_detected" : "drift.multi_window_aggregate_stable",
     };
   }
 
@@ -401,7 +308,7 @@ export class ChangepointDetectorService {
     const baselineMean = average(baseline.map((sample) => sample.score));
     const recentMean = average(recent.map((sample) => sample.score));
     const absoluteShift = recentMean - baselineMean;
-    const relativeShift = baselineMean !== 0 ? absoluteShift / baselineMean : 0;
+    const relativeShift = calculateRelativeShift(baselineMean, recentMean);
     return {
       baselineMean,
       recentMean,
@@ -423,17 +330,20 @@ export class ChangepointDetectorService {
       recentMean: number;
       absoluteShift: number;
       relativeShift: number;
+      evaluatedDimensions?: Record<CanonicalDriftDimension, number>;
     },
   ): { detected: boolean; severity: ChangepointDetectionResult["severity"]; algorithmScore: number } {
     const baselineScores = baseline.map((sample) => sample.score);
     const recentScores = recent.map((sample) => sample.score);
     const baselineStdDev = standardDeviation(baselineScores);
     const windowConfig = DRIFT_DETECTION_WINDOWS[windowType];
+    const worseningDirection = inferWorseningDirection(samplesDirection(samplesFromGroups(baseline, recent)), metrics);
+    const degradeComparison = compareWorseningDirection(metrics.absoluteShift, worseningDirection);
 
     switch (windowConfig.algorithm) {
       case "z_score": {
         const zScore = baselineStdDev > EPSILON ? Math.abs(metrics.recentMean - metrics.baselineMean) / baselineStdDev : 0;
-        const detected = metrics.recentMean < metrics.baselineMean && zScore >= this.config.zscoreThreshold;
+        const detected = degradeComparison && zScore >= this.config.zscoreThreshold;
         return {
           detected,
           severity: detected
@@ -449,10 +359,10 @@ export class ChangepointDetectorService {
       case "cusum": {
         const slack = Math.max(EPSILON, baselineStdDev * this.config.cusumSlackMultiplier);
         const cusum = recentScores.reduce((sum, score) =>
-          Math.max(0, sum + (metrics.baselineMean - score - slack)),
+          Math.max(0, sum + directionalDeviation(metrics.baselineMean, score, worseningDirection) - slack),
         0);
         const boundary = Math.max(EPSILON, baselineStdDev * this.config.cusumBoundaryMultiplier);
-        const detected = metrics.recentMean < metrics.baselineMean && cusum >= boundary;
+        const detected = degradeComparison && cusum >= boundary;
         return {
           detected,
           severity: detected
@@ -466,9 +376,11 @@ export class ChangepointDetectorService {
         };
       }
       case "bayesian_online": {
-        const posteriorChangeProbability = 1 - Math.exp(-Math.abs(metrics.absoluteShift) / Math.max(EPSILON, baselineStdDev + Math.abs(metrics.baselineMean) * 0.05));
+        const posteriorChangeProbability = 1 - Math.exp(
+          -Math.abs(metrics.absoluteShift) / Math.max(EPSILON, baselineStdDev + Math.abs(metrics.baselineMean) * BAYESIAN_BASELINE_NOISE_FLOOR_RATIO),
+        );
         const noChangeProbability = 1 - posteriorChangeProbability;
-        const detected = metrics.recentMean < metrics.baselineMean && posteriorChangeProbability >= this.config.bayesianConfidenceLevel;
+        const detected = degradeComparison && posteriorChangeProbability >= this.config.bayesianConfidenceLevel;
         return {
           detected,
           severity: detected
@@ -483,7 +395,7 @@ export class ChangepointDetectorService {
       }
       case "kl_js_divergence": {
         const divergence = jensenShannonDivergence(baselineScores, recentScores);
-        const detected = metrics.recentMean < metrics.baselineMean && divergence >= this.config.kljsDivergenceThreshold;
+        const detected = degradeComparison && divergence >= this.config.kljsDivergenceThreshold;
         return {
           detected,
           severity: detected
@@ -499,20 +411,40 @@ export class ChangepointDetectorService {
       case "relative_threshold":
       default: {
         const effectiveThreshold = threshold ?? windowConfig.defaultThreshold;
-        const detected = metrics.relativeShift <= effectiveThreshold + EPSILON;
+        const directionAdjustedShift = worseningDirection === "increase"
+          ? metrics.relativeShift
+          : -metrics.relativeShift;
+        const directionAdjustedThreshold = Math.abs(effectiveThreshold);
+        const detected = directionAdjustedShift >= directionAdjustedThreshold - EPSILON;
         return {
           detected,
           severity: detected
-            ? metrics.relativeShift <= windowConfig.severityThresholds.high
+            ? directionAdjustedShift >= Math.abs(windowConfig.severityThresholds.high)
               ? "high"
-              : metrics.relativeShift <= windowConfig.severityThresholds.medium
+              : directionAdjustedShift >= Math.abs(windowConfig.severityThresholds.medium)
                 ? "medium"
                 : "low"
             : "none",
-          algorithmScore: Number(Math.abs(metrics.relativeShift).toFixed(4)),
+          algorithmScore: Number(directionAdjustedShift.toFixed(4)),
         };
       }
     }
+  }
+
+  private shouldSuppressDetection(suppressionKey: string, samples: readonly DriftSample[]): boolean {
+    const state = this.recentAlertState.get(suppressionKey);
+    if (state == null) {
+      return false;
+    }
+    if (state.oldestObservedAt !== (samples[0]?.observedAt ?? "")) {
+      this.recentAlertState.delete(suppressionKey);
+      return false;
+    }
+    const newSamples = samples.filter((sample) => {
+      const observedAtMs = safeObservedAtMs(sample.observedAt);
+      return observedAtMs != null && observedAtMs > state.observedAtMs;
+    }).length;
+    return newSamples < this.config.minSamplesBetweenAlerts;
   }
 }
 
@@ -556,7 +488,7 @@ function severityToAction(severity: ChangepointDetectionResult["severity"]): Dri
     case "medium":
       return "downgrade";
     case "low":
-      return "observe";
+      return "require_review";
     case "none":
     default:
       return "none";
@@ -614,20 +546,15 @@ function evaluateDirectionalMetricShift(
   }
   const baselineMean = average(baselineValues);
   const recentMean = average(recentValues);
-  if (Math.abs(baselineMean) <= EPSILON) {
-    return Number(Math.max(0, recentMean).toFixed(4));
-  }
-  const relativeShift = (recentMean - baselineMean) / baselineMean;
+  const relativeShift = calculateRelativeShift(baselineMean, recentMean);
   const directionalShift = direction === "increase" ? relativeShift : -relativeShift;
   return Number(Math.max(0, directionalShift).toFixed(4));
 }
 
-function bucketize(values: readonly number[], bucketCount = 10): number[] {
+function bucketize(values: readonly number[], min: number, max: number, bucketCount = 10): number[] {
   if (values.length === 0) {
     return Array.from({ length: bucketCount }, () => 0);
   }
-  const min = Math.min(...values);
-  const max = Math.max(...values);
   if (Math.abs(max - min) <= EPSILON) {
     const histogram = Array.from({ length: bucketCount }, () => 0);
     histogram[0] = 1;
@@ -655,8 +582,85 @@ function klDivergence(p: readonly number[], q: readonly number[]): number {
 }
 
 function jensenShannonDivergence(baselineValues: readonly number[], recentValues: readonly number[]): number {
-  const baselineDistribution = bucketize(baselineValues);
-  const recentDistribution = bucketize(recentValues);
+  const combinedValues = [...baselineValues, ...recentValues];
+  const min = combinedValues.length === 0 ? 0 : Math.min(...combinedValues);
+  const max = combinedValues.length === 0 ? 0 : Math.max(...combinedValues);
+  const baselineDistribution = bucketize(baselineValues, min, max);
+  const recentDistribution = bucketize(recentValues, min, max);
   const midpoint = baselineDistribution.map((value, index) => (value + (recentDistribution[index] ?? 0)) / 2);
   return (klDivergence(baselineDistribution, midpoint) + klDivergence(recentDistribution, midpoint)) / 2;
+}
+
+function validateWindowSampleCount(value: number, label: "baselineWindow" | "recentWindow"): number {
+  if (!Number.isFinite(value) || Math.floor(value) < 1) {
+    throw new RangeError(`drift.invalid_${label}`);
+  }
+  return Math.floor(value);
+}
+
+function calculateRelativeShift(baselineMean: number, recentMean: number): number {
+  const absoluteShift = recentMean - baselineMean;
+  if (Math.abs(baselineMean) <= EPSILON) {
+    if (Math.abs(recentMean) <= EPSILON) {
+      return 0;
+    }
+    return absoluteShift / Math.max(Math.abs(recentMean), EPSILON);
+  }
+  return absoluteShift / baselineMean;
+}
+
+function samplesDirection(direction: DriftTrendDirection | null): DriftTrendDirection | null {
+  return direction;
+}
+
+function samplesFromGroups(
+  baseline: readonly DriftSample[],
+  recent: readonly DriftSample[],
+): DriftTrendDirection | null {
+  const direction = [...recent, ...baseline]
+    .map((sample) => sample.degradationDirection)
+    .find((value): value is DriftTrendDirection => value === "increase" || value === "decrease");
+  return direction ?? null;
+}
+
+function inferWorseningDirection(
+  explicitDirection: DriftTrendDirection | null,
+  metrics: { absoluteShift: number; evaluatedDimensions?: Record<CanonicalDriftDimension, number> },
+): DriftTrendDirection {
+  if (explicitDirection != null) {
+    return explicitDirection;
+  }
+  const dimensions = metrics.evaluatedDimensions;
+  if (dimensions != null) {
+    const increaseScore = Math.max(
+      dimensions.override_rate_spike,
+      dimensions.cost_spike,
+      dimensions.tool_usage_shift,
+      dimensions.incident_count,
+    );
+    if (increaseScore > Math.max(dimensions.success_rate_drop, 0)) {
+      return "increase";
+    }
+  }
+  return "decrease";
+}
+
+function compareWorseningDirection(absoluteShift: number, worseningDirection: DriftTrendDirection): boolean {
+  return worseningDirection === "increase" ? absoluteShift > EPSILON : absoluteShift < -EPSILON;
+}
+
+function directionalDeviation(baselineMean: number, score: number, worseningDirection: DriftTrendDirection): number {
+  return worseningDirection === "increase" ? score - baselineMean : baselineMean - score;
+}
+
+function sanitizeIdentifierSegment(value: string): string {
+  return value.replace(/[^A-Za-z0-9_-]/g, "-");
+}
+
+function safeObservedAtMs(value: string | undefined): number | null {
+  if (value == null) {
+    return null;
+  }
+  const observedAtMs = Date.parse(value);
+  return Number.isFinite(observedAtMs) ? observedAtMs : null;
 }

@@ -79,16 +79,12 @@ test("ChangepointDetectorService keeps relative shift at zero when baseline mean
   assert.equal(result.relativeShift, 0);
 });
 
-test("ChangepointDetectorService reports insufficient data when recent window is effectively empty", () => {
+test("ChangepointDetectorService rejects invalid recent windows instead of silently coercing them", () => {
   const service = new ChangepointDetectorService();
-  const result = service.detect([
-    { observedAt: "2026-04-20T00:00:00.000Z", score: 0.9 },
-  ], 1, -1);
 
-  assert.equal(result.detected, false);
-  assert.equal(result.reasonCode, "drift.insufficient_data");
-  assert.ok(result.baselineMean >= 0);
-  assert.ok(result.recentMean >= 0);
+  assert.throws(() => service.detect([
+    { observedAt: "2026-04-20T00:00:00.000Z", score: 0.9 },
+  ], 1, -1), /drift\.invalid_recentWindow/);
 });
 
 test("ChangepointDetectorService exposes sample-size and distribution metadata", () => {
@@ -165,7 +161,7 @@ test("ChangepointDetectorService uses downgrade/throttle actions for medium drif
   assert.deepEqual(plan?.fallbackActions, ["throttle", "require_review"]);
 });
 
-test("ChangepointDetectorService detectAll evaluates the default 1h/6h/24h/7d windows", () => {
+test("ChangepointDetectorService detectAll evaluates the canonical default windows", () => {
   const service = new ChangepointDetectorService({ samplesPerHour: 0.05, minSampleSize: 20 });
   const samples = Array.from({ length: 120 }, (_, index) => ({
     observedAt: new Date(Date.UTC(2026, 0, 1, index)).toISOString(),
@@ -181,7 +177,7 @@ test("ChangepointDetectorService detectAll evaluates the default 1h/6h/24h/7d wi
 
   const results = service.detectAll(samples);
 
-  assert.deepEqual(results.map((result) => result.windowType), ["1h", "6h", "24h", "7d"]);
+  assert.deepEqual(results.map((result) => result.windowType), ["1h", "6h", "24h", "7d", "30d", "90d"]);
   assert.ok(results.every((result) => typeof result.algorithmScore === "number"));
   assert.ok(results.every((result) => "success_rate_drop" in result.evaluatedDimensions));
 });

@@ -69,7 +69,7 @@ test("drift detector uses configurable thresholds, real baseline spans, and miss
   });
   const drift = service.detectFingerprintDrift(current, baseline);
   assert.ok(drift != null);
-  assert.equal(drift?.windowType, "7d");
+  assert.equal(drift?.windowType, "30d");
 
   const missingFeatureDrift = service.detectFingerprintDrift({
     ...current,

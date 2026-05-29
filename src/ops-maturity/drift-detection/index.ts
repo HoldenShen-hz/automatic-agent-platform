@@ -9,20 +9,22 @@
  */
 
 // Core MVP service (existing)
-export * from './evolution-mvp-service.js';
+export * from "./evolution-mvp-service.js";
 
-// Learning pipeline components (R13-12: reorganized into learning/ subdirectory)
-export * from './learning/evidence-store.js';
-export * from './learning/reflection-engine.js';
-export * from './learning/proposal-engine.js';
-export * from './learning/benchmark-runner.js';
-export * from './learning/promotion-gate.js';
-export * from './learning/rollout-manager.js';
+// Flat exports route through the sibling wrappers so root consumers have one canonical surface.
+export * from "./evidence-store.js";
+export * from "./reflection-engine.js";
+export * from "./proposal-engine.js";
+export * from "./benchmark-runner.js";
+export * from "./promotion-gate.js";
+export * from "./rollout-manager.js";
+export * from "./rollout-repository.js";
 
 // Central registry
-export * from './evolution-registry.js';
-export * from './changepoint-detector/index.js';
-export * from './cross-agent-analyzer/index.js';
-export * from './drift-detector.js';
-export * from './drift-detector-service.js';
-export * from './fingerprint-builder/index.js';
+export * from "./evolution-registry.js";
+export * from "./changepoint-detector/index.js";
+export * from "./cross-agent-analyzer/index.js";
+export * from "./drift-detector.js";
+export * from "./drift-detector-service.js";
+export * from "./drift-types.js";
+export * from "./fingerprint-builder/index.js";

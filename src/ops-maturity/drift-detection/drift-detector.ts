@@ -6,8 +6,8 @@
  */
 
 import type { BehaviorFingerprint } from "./fingerprint-builder/index.js";
-import type { DriftSignal, DriftSample, ChangepointDetectionResult, DriftWindowType, DriftResponseActionType } from "./changepoint-detector/index.js";
 import type { CrossAgentDriftAlert } from "./cross-agent-analyzer/index.js";
+import type { DriftSignal, DriftSample, ChangepointDetectionResult, DriftWindowType, DriftResponseActionType } from "./drift-types.js";
 
 /**
  * §63: Drift detection input - requires behavior fingerprint + metrics + baseline

@@ -63,6 +63,7 @@ function resolveWindowRange(
 export interface BehaviorFingerprint {
   fingerprintId: string;
   subjectType: string;
+  subjectId: string;
   baselineRef: string | null;
   window: FingerprintWindowPreset | null;
   windowStart: string | null;
@@ -99,6 +100,7 @@ export class BehaviorFingerprintBuilder {
     return {
       fingerprintId: `fingerprint:${subjectType}:${input.agentId}:${baselineRef ?? "none"}:${input.windowPreset ?? "none"}`,
       subjectType,
+      subjectId: input.agentId,
       baselineRef,
       window: windowRange?.preset ?? null,
       windowStart: windowRange?.start ?? null,
