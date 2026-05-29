@@ -8,15 +8,10 @@ import {
 } from "./read-replica-service.js";
 
 /**
- * Consistency level for cross-region reads
- */
-type CrossRegionConsistencyLevel = "eventual" | "session" | "strong";
-
-/**
  * Request options for read routing within cross-region decisions
  */
 export interface ReadReplicaRoutingOptions {
-  readonly consistencyLevel: CrossRegionConsistencyLevel;
+  readonly consistencyLevel: ReadConsistencyLevel;
   readonly routingMode: ReadRoutingMode;
   readonly bypassCache?: boolean;
 }
@@ -62,7 +57,7 @@ export interface CrossRegionRouteDecision {
     readonly replicaId: string | null;
     readonly isPrimaryRoute: boolean;
     readonly waitForReplication: boolean;
-    readonly consistencyLevel: CrossRegionConsistencyLevel;
+    readonly consistencyLevel: ReadConsistencyLevel;
   };
 }
 
@@ -100,12 +95,12 @@ export interface CrossBorderTransferChain {
 }
 
 function includesAllCapabilities(region: RegionDescriptor, requiredCapabilities: readonly string[]): boolean {
-  const capabilities = new Set((region as RegionDescriptor & { capabilities?: readonly string[] }).capabilities ?? []);
+  const capabilities = new Set(region.capabilities ?? []);
   return requiredCapabilities.every((capability) => capabilities.has(capability));
 }
 
 function isSelectableRegion(region: RegionDescriptor): boolean {
-  const status = (region as RegionDescriptor & { status?: string }).status;
+  const status = region.status;
   return status !== "disabled" && status !== "draining";
 }
 
@@ -131,11 +126,11 @@ export class CrossRegionRoutingService {
         operationId: decision.decisionId,
         aggregateType: "cross_region",
         aggregateId: request.policy.policyId,
-        consistencyLevel: readReplicaOptions.consistencyLevel as ReadConsistencyLevel,
-        routingMode: readReplicaOptions.routingMode as ReadRoutingMode,
-        preferredRegionId: request.preferredRegionId === undefined ? null : request.preferredRegionId,
-        bypassCache: readReplicaOptions.bypassCache ?? undefined,
-      } as import("./read-replica-service.js").ReadRoutingRequest);
+        consistencyLevel: readReplicaOptions.consistencyLevel,
+        routingMode: readReplicaOptions.routingMode,
+        preferredRegionId: request.preferredRegionId ?? null,
+        ...(readReplicaOptions.bypassCache === undefined ? {} : { bypassCache: readReplicaOptions.bypassCache }),
+      });
 
       return {
         ...decision,
@@ -160,6 +155,7 @@ export class CrossRegionRoutingService {
     const unhealthyPrimaryRegionId = !request.primaryRegionHealthy ? inferredPrimaryRegionId : null;
     const allowedJurisdictions = new Set(request.policy.allowedJurisdictions);
     const requiredCapabilities = request.policy.requiredCapabilities ?? [];
+    const blockedRegionSet = new Set<string>();
     const blockedRegions = request.regions
       .filter((region) =>
         blockedRegionIds.has(region.regionId)
@@ -168,7 +164,10 @@ export class CrossRegionRoutingService {
         || !region.residencyAllowed
         || !allowedJurisdictions.has(region.jurisdiction)
         || !includesAllCapabilities(region, requiredCapabilities))
-      .map((region) => region.regionId);
+      .map((region) => {
+        blockedRegionSet.add(region.regionId);
+        return region.regionId;
+      });
 
     const candidateDescriptors = request.regions.filter((region) => !blockedRegions.includes(region.regionId));
     const preferredRegion = request.preferredRegionId == null
@@ -177,15 +176,23 @@ export class CrossRegionRoutingService {
     const selectedRegion = operationType === "write"
       ? this.selectWriteRegion(candidateDescriptors, request)
       : preferredRegion ?? selectPreferredRegion(candidateDescriptors);
+    const failoverCandidates = candidateDescriptors
+      .filter((region) =>
+        region.regionId !== selectedRegion?.regionId
+        && region.regionId !== inferredPrimaryRegionId)
+      .map((region) => region.regionId);
     const failover = resolveRegionFailover({
       primaryHealthy: request.primaryRegionHealthy,
       currentLeaderRegionId: request.primaryRegionId ?? null,
       partitionKey: request.policy.policyId,
-      candidateRegionIds: candidateDescriptors
-        .filter((region) => region.regionId !== selectedRegion?.regionId)
-        .map((region) => region.regionId),
+      candidateRegionIds: failoverCandidates,
     });
-    const failoverRegionId = failover.targetRegionId ?? (!request.primaryRegionHealthy ? selectedRegion?.regionId ?? null : null);
+    const failoverRegionId = this.resolveFailoverRegionId({
+      request,
+      inferredPrimaryRegionId,
+      candidateRegionIds: failoverCandidates,
+      preferredFailoverRegionId: failover.targetRegionId ?? null,
+    });
 
     const crossBorderClass = request.policy.crossBorderTransferClass ?? (request.policy.allowCrossBorder === false ? "local_only" : "free_transfer");
     const crossBorderTransferChain = this.buildCrossBorderTransferChain(request, selectedRegion);
@@ -194,6 +201,10 @@ export class CrossRegionRoutingService {
       `operation:${operationType}`,
       `cross_border_class:${crossBorderClass}`,
       `blocked:${blockedRegions.join(",") || "none"}`,
+      ...(request.preferredRegionId != null && preferredRegion == null && blockedRegionSet.has(request.preferredRegionId)
+        ? [`fallback:preferred_region_excluded:${request.preferredRegionId}`]
+        : []),
+      `failover:${failoverRegionId ?? "none"}`,
       ...(crossBorderTransferChain?.auditTrail ?? []),
     ];
     return {
@@ -335,5 +346,25 @@ export class CrossRegionRoutingService {
     return failoverTarget == null
       ? null
       : candidateDescriptors.find((region) => region.regionId === failoverTarget) ?? null;
+  }
+
+  private resolveFailoverRegionId(input: {
+    request: CrossRegionRouteRequest;
+    inferredPrimaryRegionId: string | null;
+    candidateRegionIds: readonly string[];
+    preferredFailoverRegionId: string | null;
+  }): string | null {
+    if (input.request.primaryRegionHealthy) {
+      return null;
+    }
+    const excluded = new Set<string>([
+      ...(input.inferredPrimaryRegionId == null ? [] : [input.inferredPrimaryRegionId]),
+      ...(input.request.policy.blockedRegionIds ?? []),
+    ]);
+    const preferred = input.preferredFailoverRegionId;
+    if (preferred != null && input.candidateRegionIds.includes(preferred) && !excluded.has(preferred)) {
+      return preferred;
+    }
+    return input.candidateRegionIds.find((regionId) => !excluded.has(regionId)) ?? null;
   }
 }

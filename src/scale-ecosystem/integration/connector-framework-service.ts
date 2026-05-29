@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
@@ -264,7 +264,7 @@ export class ConnectorFrameworkService {
         status: "failed",
       };
       if (normalizedRequest.callbackUrl != null) {
-        invokeCallback(normalizedRequest.callbackUrl, stubResult);
+        await this.deliverCallback(normalizedRequest.callbackUrl, stubResult);
       }
       return {
         ...stubResult,
@@ -279,7 +279,7 @@ export class ConnectorFrameworkService {
         status: "failed",
       };
       if (normalizedRequest.callbackUrl != null) {
-        invokeCallback(normalizedRequest.callbackUrl, stubResult);
+        await this.deliverCallback(normalizedRequest.callbackUrl, stubResult);
       }
       return {
         ...stubResult,
@@ -308,7 +308,7 @@ export class ConnectorFrameworkService {
         status: "failed",
       };
       if (normalizedRequest.callbackUrl != null) {
-        invokeCallback(normalizedRequest.callbackUrl, stubResult);
+        await this.deliverCallback(normalizedRequest.callbackUrl, stubResult);
       }
       return {
         ...stubResult,
@@ -344,7 +344,7 @@ export class ConnectorFrameworkService {
     }
 
     if (normalizedRequest.callbackUrl != null) {
-      invokeCallback(normalizedRequest.callbackUrl, result);
+      await this.deliverCallback(normalizedRequest.callbackUrl, result);
     }
 
     return { ...result, executionKey, executedAt: options.executedAt ?? nowIso() };
@@ -458,7 +458,7 @@ export class ConnectorFrameworkService {
         this.registerBuiltInConnectorInstance(manifest);
       }
     } catch (error) {
-      process.stderr.write(`connector_framework.load_manifests_failed:${error instanceof Error ? error.message : String(error)}\n`);
+      this.reportPersistenceError("connector_framework.load_manifests_failed", error);
     }
   }
 
@@ -481,7 +481,7 @@ export class ConnectorFrameworkService {
         }
       }
     } catch (error) {
-      process.stderr.write(`connector_framework.load_bindings_failed:${error instanceof Error ? error.message : String(error)}\n`);
+      this.reportPersistenceError("connector_framework.load_bindings_failed", error);
     }
   }
 
@@ -499,7 +499,7 @@ export class ConnectorFrameworkService {
         this.touchHealth(connectorId);
       }
     } catch (error) {
-      process.stderr.write(`connector_framework.load_health_failed:${error instanceof Error ? error.message : String(error)}\n`);
+      this.reportPersistenceError("connector_framework.load_health_failed", error);
     }
   }
 
@@ -508,7 +508,7 @@ export class ConnectorFrameworkService {
     const path = this.manifestsPath();
     const dir = dirname(path);
     if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-    writeFileSync(path, JSON.stringify(Array.from(this.manifests.entries())), "utf-8");
+    this.writeJsonAtomically(path, Array.from(this.manifests.entries()));
   }
 
   private persistBindings(): void {
@@ -516,7 +516,7 @@ export class ConnectorFrameworkService {
     const path = this.bindingsPath();
     const dir = dirname(path);
     if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-    writeFileSync(path, JSON.stringify(Array.from(this.bindings.entries())), "utf-8");
+    this.writeJsonAtomically(path, Array.from(this.bindings.entries()));
   }
 
   private persistHealth(): void {
@@ -524,7 +524,7 @@ export class ConnectorFrameworkService {
     const path = this.healthPath();
     const dir = dirname(path);
     if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-    writeFileSync(path, JSON.stringify(Array.from(this.health.entries())), "utf-8");
+    this.writeJsonAtomically(path, Array.from(this.health.entries()));
   }
 
   private ensureConnectorCapacity(connectorId: string): void {
@@ -544,6 +544,32 @@ export class ConnectorFrameworkService {
   private touchHealth(connectorId: string): void {
     this.healthLRU.delete(connectorId);
     this.healthLRU.add(connectorId);
+  }
+
+  private async deliverCallback(callbackUrl: string, result: ConnectorExecutionResult): Promise<void> {
+    await invokeCallback(callbackUrl, result);
+  }
+
+  private reportPersistenceError(eventType: string, error: unknown): void {
+    console.error(`${eventType}:${error instanceof Error ? error.message : String(error)}`);
+  }
+
+  private writeJsonAtomically(path: string, payload: unknown): void {
+    const tempPath = `${path}.${Date.now()}.tmp`;
+    let renamed = false;
+    try {
+      writeFileSync(tempPath, JSON.stringify(payload), "utf-8");
+      renameSync(tempPath, path);
+      renamed = true;
+    } finally {
+      if (!renamed) {
+        try {
+          rmSync(tempPath, { force: true });
+        } catch {
+          // Best-effort cleanup after failed atomic persistence.
+        }
+      }
+    }
   }
 }
 

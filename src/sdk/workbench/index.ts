@@ -11,6 +11,7 @@ import {
 
 const VALID_SPI_TYPES = new Set<PluginSpiType>(["tool", "retriever", "validator", "planner", "presenter", "adapter", "evaluator"]);
 const VALID_TRUST_LEVELS = new Set(["internal", "trusted", "community", "unverified"]);
+const VALID_DATA_CLASSIFICATIONS = new Set(["public", "internal", "confidential", "restricted"]);
 
 function normalizeRequiredManifestString(
   value: unknown,
@@ -60,6 +61,9 @@ function normalizePluginManifest(manifest: PluginManifest): PluginManifest {
     trustLevel: typeof raw.trustLevel === "string" && VALID_TRUST_LEVELS.has(raw.trustLevel)
       ? raw.trustLevel
       : "trusted",
+    outputDataClass: typeof raw.outputDataClass === "string" && VALID_DATA_CLASSIFICATIONS.has(raw.outputDataClass)
+      ? raw.outputDataClass
+      : "internal",
     publicSdkSurface: normalizeRequiredManifestString(raw.publicSdkSurface, `${pluginId || "plugin"}.sdk`),
     settingsSchema: raw.settingsSchema != null && typeof raw.settingsSchema === "object" && !Array.isArray(raw.settingsSchema)
       ? raw.settingsSchema as Record<string, unknown>

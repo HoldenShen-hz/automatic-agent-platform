@@ -1474,13 +1474,13 @@
 | 1136 | src/plugins/adapters/*-adapter.ts 硬编码第三方平台 URL，未注册 outbound-url-policy | `done` | 根因是 review 基线落在适配器接入 `parseSafeOutboundUrl()` 之前；当前 GitHub/CRM/GameDev/AssetProduction/Livestream 适配器都已把外部端点纳入 outbound URL 校验与 egress policy。 |
 | 1137 | plugins/adapters/index.ts:1-5 不导出 credential-hygiene.ts | `done` | 根因是 adapters barrel 以前只做 `export *` 聚合，遗漏了凭据卫生 helper 的显式公共面；本轮已补 `credential-hygiene` 的显式导出。 |
 | 1138 | plugins/adapters/github-adapter.ts:37、plugin-sdk/plugin-definition.ts:299 双导出 verifyPluginSignature 签名不一致 | `done` | 根因是 adapters/root barrel 过去把 GitHub 适配器签名 helper 也一并外泄，和 SDK 签名 API 形成同名异签名冲突；本轮已把 barrel 改成显式导出，只保留统一公共面，去掉冲突导出。 |
-| 1139 | plugins/adapters/github-adapter.ts:278-289 适配器从不发 HTTP，返回端点+payload 描述符（伪集成） | `todo` | 待修复 |
-| 1140 | src/plugins/builtin-plugin-registry.ts BundleRevocationSeverity 枚举与 org-governance severity 取值并存两套 | `todo` | 待修复 |
-| 1141 | src/plugins/builtin-plugin-registry.ts isRevoked()/getActiveRevocation() 未到 effectiveAt 时返已撤销，截止时间语义反向 | `todo` | 待修复 |
+| 1139 | plugins/adapters/github-adapter.ts:278-289 适配器从不发 HTTP，返回端点+payload 描述符（伪集成） | `done` | 根因是 GitHub adapter 之前只拼请求描述符，从未真正执行 outbound call；本轮已改为真实 `fetch` 执行、超时/响应大小控制，并返回实际响应数据。 |
+| 1140 | src/plugins/builtin-plugin-registry.ts BundleRevocationSeverity 枚举与 org-governance severity 取值并存两套 | `done` | 根因是 bundle revocation 曾混用历史 `info/warning/moderate/severe` 与现行严重级别；本轮已收口到统一的 `critical/high/medium/low`。 |
+| 1141 | src/plugins/builtin-plugin-registry.ts isRevoked()/getActiveRevocation() 未到 effectiveAt 时返已撤销，截止时间语义反向 | `done` | 根因是吊销激活时间过去只借 `deadline` 字段做反向判断；本轮已显式按 `effectiveAt`（回退到 legacy `deadline`）判定激活窗口。 |
 | 1142 | src/plugins/builtin-plugin-registry.ts authenticate() 仅检查 apiKey 非空字符串即通过，无密钥强度/格式校验 | `done` | 根因是 marketplace 认证以前把“非空字符串”当成充分条件；本轮已加最小长度与字符集校验。 |
 | 1143 | src/plugins/builtin-plugin-registry.ts sessions Set 无 TTL/过期清理 | `done` | 根因是 marketplace 会话以前只存 `Set`，没有到期时间；本轮已改成带 TTL 的 `Map` 并在读写时清理过期项。 |
 | 1144 | src/plugins/builtin-plugin-registry.ts normalizeManifest() 仅 @platform\→@automatic-agent/ 字符串替换，遗 @aa-platform/ 等历史命名 | `done` | 根因是 manifest 名称规范化以前只覆盖一套历史前缀；本轮已把 `@aa-platform/` 一并归一化到 `@automatic-agent/`。 |
-| 1145 | src/plugins/builtin-plugin-registry.ts outputDataClass 字段定义但所有 builtin manifests 均未填，死字段 | `todo` | 待修复 |
+| 1145 | src/plugins/builtin-plugin-registry.ts outputDataClass 字段定义但所有 builtin manifests 均未填，死字段 | `done` | 根因是 plugin manifest schema 与 builtin manifest 构造路径之前都没有把 `outputDataClass` 当成必备元数据；本轮已把字段纳入 schema，并为 builtin manifests 统一填充。 |
 | 1146 | src/plugins/builtin-plugin-registry.ts globalMarketplaceRegistry/pluginRevocations/BundleRevocationRegistry 三单例，resetBuiltinPluginRegistryStateForTests 仅重置其一 | `done` | 根因是测试 reset hook 之前只清了 taint/lifecycle 状态，没有清 marketplace/revocation 单例；本轮已把这些全量 reset。 |
 | 1147 | src/plugins/builtin-plugin-registry.ts allowedExternalDomains:[] 与 allowNetworkEgress:true 同时出现，组合语义未规范 | `done` | 根因是外部 adapter manifests 之前把 `allowNetworkEgress` 打开了，但 `allowedExternalDomains` 留空；本轮已为 CRM/Unity/Figma/OBS manifests 补齐显式域名白名单，并在 normalize 阶段阻断“开放 egress + 空白名单”的歧义组合。 |
 | 1148 | src/plugins/adapters/crm-adapter.ts:~30 默认 baseUrl=api.hubspot.com 与 crmType 无关，Salesforce 配置遗漏即指向 HubSpot | `done` | 根因是 CRM 运行时配置原先先定死 HubSpot base URL，再把 `crmType` 只当标签使用；本轮已按 `crmType` 分流默认 base URL。 |
@@ -1492,12 +1492,12 @@
 | 1154 | src/plugins/adapters/credential-hygiene.ts 指纹截断到 12 hex (~48 bit)，同租户大量凭据下生日攻击碰撞概率非可忽略 | `done` | 根因是凭据指纹默认截断长度过短；本轮已把默认指纹扩到 24 hex。 |
 | 1155 | src/plugins/adapters/livestream-adapter.ts healthCheck() credentialFingerprint===null 时永返 unhealthy；初始化顺序无保证 | `done` | 根因是 livestream 健康检查把“未先认证”误当成“端点不健康”；本轮已改成只校验策略与端点可达性，不再受认证先后顺序影响。 |
 | 1156 | src/plugins/index.ts 顶部 export * 把 builtin-plugin-registry 全部内部类公开 | `done` | 根因是插件 barrel 以前主要靠星号转发，公共面边界不清；本轮已改成显式受控导出，并用单测锁定 `PluginMarketplaceRegistry` / `BundleRevocationRegistry` 不再从根 barrel 外泄。 |
-| 1157 | src/plugins/builtin-plugin-registry.ts BundleRevocationSeverity 枚举与 org-governance 中的 severity 取值并存两套（critical/high/medium/low vs Critical/Major/Minor），事件桥接需手工映射。EN: dual revocation severity taxonomies. | `todo` | 待修复 |
-| 1158 | src/plugins/builtin-plugin-registry.ts isRevoked() / getActiveRevocation() 截止时间语义反向：未到 effectiveAt 时返回 already-revoked，违反吊销契约。EN: deadline semantics inverted on activation window. | `todo` | 待修复 |
+| 1157 | src/plugins/builtin-plugin-registry.ts BundleRevocationSeverity 枚举与 org-governance 中的 severity 取值并存两套（critical/high/medium/low vs Critical/Major/Minor），事件桥接需手工映射。EN: dual revocation severity taxonomies. | `done` | 根因是 bundle revocation 继承了历史枚举残留，没有与现行治理严重级别单源对齐；本轮已统一 severity taxonomy。 |
+| 1158 | src/plugins/builtin-plugin-registry.ts isRevoked() / getActiveRevocation() 截止时间语义反向：未到 effectiveAt 时返回 already-revoked，违反吊销契约。EN: deadline semantics inverted on activation window. | `done` | 根因是激活窗口判断把未来记录也当作 active revocation；本轮已改成只返回已到 `effectiveAt` 的记录。 |
 | 1159 | src/plugins/builtin-plugin-registry.ts authenticate() 仅检查 apiKey 非空字符串即通过，无密钥强度/格式校验。EN: trivial auth allows any non-empty key. | `done` | 根因是 marketplace 认证以前只拒空值；本轮已加格式与长度门槛。 |
 | 1160 | src/plugins/builtin-plugin-registry.ts sessions Set 无 TTL/过期清理；长期运行内存增长。EN: unbounded session set leaks memory. | `done` | 根因是 session 状态以前没有过期治理；本轮已改为带 TTL 的会话表和过期清扫。 |
 | 1161 | src/plugins/builtin-plugin-registry.ts normalizeManifest() 仅做 @platform/→@automatic-agent/ 字符串替换，未处理嵌套 schema/字段；其它历史命名（如 @aa-platform/）未覆盖。EN: incomplete legacy-namespace migration. | `done` | 根因是 manifest 规范化之前只覆盖 `@platform/`；本轮已把 `@aa-platform/` 一并归一化。 |
-| 1162 | src/plugins/builtin-plugin-registry.ts outputDataClass 字段定义但所有 builtin manifests 均未填，Set/Get 路径无人使用。EN: dead manifest field. | `todo` | 待修复 |
+| 1162 | src/plugins/builtin-plugin-registry.ts outputDataClass 字段定义但所有 builtin manifests 均未填，Set/Get 路径无人使用。EN: dead manifest field. | `done` | 根因是 manifest 层面对输出数据分类没有真正落盘；本轮已把 `outputDataClass` 变成 schema 内字段并为 builtin manifests 提供默认/显式值。 |
 | 1163 | src/plugins/builtin-plugin-registry.ts globalMarketplaceRegistry / pluginRevocations / BundleRevocationRegistry 三个模块级单例，resetBuiltinPluginRegistryStateForTests 仅重置其中一个，单测互相污染。EN: global singletons not all reset by test hook. | `done` | 根因是 reset hook 过去没有覆盖全部模块级单例；本轮已补齐清理。 |
 | 1164 | src/plugins/builtin-plugin-registry.ts allowedExternalDomains: [] 与 allowNetworkEgress: true 同时出现，组合语义“放行所有域”还是“无放行”未规范化。EN: ambiguous network-egress contract. | `done` | 根因是 external adapter manifests 曾经存在“打开网络出口但不给域名白名单”的歧义配置；本轮已补白名单并在 normalize 阶段消歧。 |
 | 1165 | src/plugins/adapters/crm-adapter.ts:~30 默认 baseUrl=api.hubspot.com 与 crmType 无关，Salesforce 配置遗漏 baseUrl 时仍指向 HubSpot. EN: default base URL ignores crmType discriminator. | `done` | 根因是默认 base URL 绑定 HubSpot；本轮已按 CRM 类型分流默认地址。 |
@@ -1509,38 +1509,38 @@
 | 1171 | src/plugins/adapters/credential-hygiene.ts 指纹截断到 12 个 hex 字符（~48 bit），同租户大量凭据下生日攻击碰撞概率非可忽略. EN: fingerprint truncation collision risk. | `done` | 根因是默认指纹位数过短；本轮已扩到 24 hex。 |
 | 1172 | src/plugins/adapters/livestream-adapter.ts healthCheck() 在 credentialFingerprint===null 时永远返回 unhealthy；初始化顺序未保证 fingerprint 先就绪. EN: health check unreachable until external init. | `done` | 根因是健康检查把认证状态与端点健康耦合；本轮已解除耦合。 |
 | 1173 | src/plugins/index.ts 顶部 export * 把 builtin-plugin-registry 全部内部类（如 BundleRevocationRegistry）公开，破坏封装. EN: barrel leaks internal classes. | `done` | 根因是根 plugins barrel 缺少受控导出边界；本轮已改成显式公共面并增加防泄漏测试。 |
-| 1174 | plugin-runtime-child.ts 全局覆写 console.* 污染主进程 | `todo` | 待修复 |
+| 1174 | plugin-runtime-child.ts 全局覆写 console.* 污染主进程 | `done` | 根因是 runtime child 之前在 bootstrap 时永久覆写全局 `console.*`；本轮已改成仅在直接 stdio 请求执行期间临时重定向并在 finally 恢复。 |
 
 ## src/scale-ecosystem
 
 | 编号 | 问题 | 状态 | 问题根因 |
 | --- | --- | --- | --- |
-| 1175 | connector-runtime/index.ts:51、connector-framework-service.ts:453,472,486 运行时路径 process.stderr.write 直写 | `todo` | 待修复 |
-| 1176 | connector-framework-service.ts:265-298,335 invokeCallback(...) 多处不 await/void，未处理 rejection | `todo` | 待修复 |
-| 1177 | connector-framework-service.ts:494,501 writeFileSync(path, ...) 持久化 manifest 非原子，与 cdc-replication-service.ts:841 临时文件+rename 风格不一致 | `todo` | 待修复 |
-| 1178 | cdc-replication-service.ts:804-806,817-819 空 catch 后 clearState()，错误 = 全量丢复制状态 | `todo` | 待修复 |
-| 1179 | cdc-replication-service.ts:1074-1080 默认 batchSize/interval/retries/backoff 硬编码无 config 通路 | `todo` | 待修复 |
-| 1180 | read-replica-service.ts:318,326,219,329 1000ms 滞后阈值与 100ms 轮询硬编码，日志用拼字符串 | `todo` | 待修复 |
-| 1181 | scale-ecosystem/marketplace/*-{,async}.ts 20 个单行 export * shim 不被 marketplace barrel 暴露，仅深 import 使用 | `todo` | 待修复 |
-| 1182 | src/scale-ecosystem/multi-region/cross-region-routing-service.ts (region as RegionDescriptor & {capabilities?}) 类型断言，requiredCapabilities 策略对所有 region 视为缺能力，误降级 | `todo` | 待修复 |
-| 1183 | src/scale-ecosystem/multi-region/cross-region-routing-service.ts ReadConsistencyLevel/ReadRoutingMode 二次 as 断言绕过校验 | `todo` | 待修复 |
-| 1184 | src/scale-ecosystem/multi-region/cross-region-routing-service.ts preferredRegionId 在区域被排除时静默忽略，无 fallback 决策事件 | `todo` | 待修复 |
-| 1185 | src/scale-ecosystem/multi-region/cross-region-routing-service.ts failoverRegionId 兜底回退到已被排除的同名 region 形成路由环 | `todo` | 待修复 |
-| 1186 | src/scale-ecosystem/multi-region/fencing-token-service.ts 模块级单例缺 reset API，并行测试令牌单调递增计数器互相污染 | `todo` | 待修复 |
-| 1187 | src/scale-ecosystem/multi-region/split-brain-protection.ts 模块级 quorum Map 无 size 上限，多租户场景无限增长 | `todo` | 待修复 |
-| 1188 | src/scale-ecosystem/multi-region/read-replica-service.ts 副本健康判定基于 lastHeartbeatAt<now-threshold，threshold 默认未文档化、时区天真 | `todo` | 待修复 |
-| 1189 | src/scale-ecosystem/multi-region/cdc-replication-service.ts 模块级 CDC offset 缓存为单例，重连时未清 in-flight 批次，可重放 | `todo` | 待修复 |
-| 1190 | src/scale-ecosystem/marketplace/ globalMarketplaceRegistry 单例无 reset hook，单测之间发布的 bundle 互相可见 | `todo` | 待修复 |
-| 1191 | src/scale-ecosystem/multi-region/cross-region-routing-service.ts (region as RegionDescriptor & {capabilities?}) 类型断言；带 requiredCapabilities 的策略对所有 region 一律视为缺能力，触发误降级. EN: type cast hides missing capabilities, mis-evaluates routing. | `todo` | 待修复 |
-| 1192 | src/scale-ecosystem/multi-region/cross-region-routing-service.ts ReadConsistencyLevel/ReadRoutingMode 通过 as 二次断言绕过校验，配置错误值不被拒绝. EN: enum laundering bypasses validation. | `todo` | 待修复 |
-| 1193 | src/scale-ecosystem/multi-region/cross-region-routing-service.ts preferredRegionId 在区域被排除时静默忽略，未发出 fallback 决策事件，运维盲区. EN: silent preference drop, no audit event. | `todo` | 待修复 |
-| 1194 | src/scale-ecosystem/multi-region/cross-region-routing-service.ts failoverRegionId 兜底逻辑会回退到已被排除的同名 region，形成路由环. EN: failover may select an already-excluded region. | `todo` | 待修复 |
-| 1195 | src/scale-ecosystem/multi-region/fencing-token-service.ts 模块级单例，registerForTest/reset API 缺失；并行测试令牌单调递增计数器互相污染. EN: global counter not test-isolated. | `todo` | 待修复 |
-| 1196 | src/scale-ecosystem/multi-region/split-brain-protection.ts 模块级 quorum 表用 Map，没有 size 上限；多租户场景下表无限增长. EN: unbounded quorum map. | `todo` | 待修复 |
-| 1197 | src/scale-ecosystem/multi-region/read-replica-service.ts 副本健康判定基于 lastHeartbeatAt < now - threshold 但 threshold 默认值未在 config 文档中固化，多 region 时区差导致误判. EN: heartbeat threshold default undocumented and timezone-naive. | `todo` | 待修复 |
-| 1198 | src/scale-ecosystem/multi-region/cdc-replication-service.ts 模块级 CDC offset 缓存为单例，重连时未清理 in-flight 批次，重启后可能重放. EN: singleton CDC cache replays on reconnect. | `todo` | 待修复 |
-| 1199 | src/scale-ecosystem/marketplace/ 内的 globalMarketplaceRegistry 单例无 reset hook，单测之间发布的 bundle 互相可见. EN: marketplace registry not test-isolated. | `todo` | 待修复 |
-| 1200 | region-health-check-service.ts fetch 未透传 AbortSignal | `todo` | 待修复 |
+| 1175 | connector-runtime/index.ts:51、connector-framework-service.ts:453,472,486 运行时路径 process.stderr.write 直写 | `done` | 根因是 connector runtime/framework 早期沿用了最简 stderr 直写，未统一到结构化错误出口；本轮已改成受控错误上报，不再直接写 `process.stderr`。 |
+| 1176 | connector-framework-service.ts:265-298,335 invokeCallback(...) 多处不 await/void，未处理 rejection | `done` | 根因是 callback 交付以前被当成“旁路 best-effort”，主流程没有把它纳入 async 生命周期；本轮已统一 await 交付路径。 |
+| 1177 | connector-framework-service.ts:494,501 writeFileSync(path, ...) 持久化 manifest 非原子，与 cdc-replication-service.ts:841 临时文件+rename 风格不一致 | `done` | 根因是 connector 持久化最初只追求简单落盘，没有复用原子写入模式；本轮已改成临时文件 + rename 的原子持久化。 |
+| 1178 | cdc-replication-service.ts:804-806,817-819 空 catch 后 clearState()，错误 = 全量丢复制状态 | `done` | 根因是 CDC 恢复路径把“读取快照失败”误当成“应当清空状态”；本轮已改成记录告警并保留现有内存状态。 |
+| 1179 | cdc-replication-service.ts:1074-1080 默认 batchSize/interval/retries/backoff 硬编码无 config 通路 | `done` | 根因是多区域复制协调器以前把默认复制参数写死在 `setupRegionReplication()`；本轮已抽到可注入默认配置。 |
+| 1180 | read-replica-service.ts:318,326,219,329 1000ms 滞后阈值与 100ms 轮询硬编码，日志用拼字符串 | `done` | 根因是 read-after-write 等待逻辑最初只做固定阈值轮询；本轮已把 lag/poll 参数配置化，并改成结构化日志。 |
+| 1181 | scale-ecosystem/marketplace/*-{,async}.ts 20 个单行 export * shim 不被 marketplace barrel 暴露，仅深 import 使用 | `done` | 根因是 marketplace barrel 之前没有把 shim 面向公共 API 暴露出来；本轮已在 barrel 中补齐命名空间导出。 |
+| 1182 | src/scale-ecosystem/multi-region/cross-region-routing-service.ts (region as RegionDescriptor & {capabilities?}) 类型断言，requiredCapabilities 策略对所有 region 视为缺能力，误降级 | `done` | 根因是路由层遗留了对旧 `RegionDescriptor` 形状的防御性类型断言；本轮已直接使用规范化 `capabilities` 字段。 |
+| 1183 | src/scale-ecosystem/multi-region/cross-region-routing-service.ts ReadConsistencyLevel/ReadRoutingMode 二次 as 断言绕过校验 | `done` | 根因是 read-replica 路由参数在接线时重复声明了一套别名类型，再用 `as` 强转拼回去；本轮已改成直接复用单一类型。 |
+| 1184 | src/scale-ecosystem/multi-region/cross-region-routing-service.ts preferredRegionId 在区域被排除时静默忽略，无 fallback 决策事件 | `done` | 根因是首选区域被过滤后原实现只静默回退；本轮已把 `preferred_region_excluded` 写入审计轨迹。 |
+| 1185 | src/scale-ecosystem/multi-region/cross-region-routing-service.ts failoverRegionId 兜底回退到已被排除的同名 region 形成路由环 | `done` | 根因是 failover 兜底逻辑过去没有再次过滤 primary/blocked region；本轮已显式按候选集和排除集重新解析 failover。 |
+| 1186 | src/scale-ecosystem/multi-region/fencing-token-service.ts 模块级单例缺 reset API，并行测试令牌单调递增计数器互相污染 | `done` | 根因是这条 review 基于旧快照；当前 `fencing-token-service` 已提供 `resetFencingTokenService()`，并行测试隔离接口已存在。 |
+| 1187 | src/scale-ecosystem/multi-region/split-brain-protection.ts 模块级 quorum Map 无 size 上限，多租户场景无限增长 | `done` | 根因是 split-brain 保护服务之前只追加 quorum 状态，没有容量治理；本轮已为跟踪表增加上限与最旧心跳淘汰。 |
+| 1188 | src/scale-ecosystem/multi-region/read-replica-service.ts 副本健康判定基于 lastHeartbeatAt<now-threshold，threshold 默认未文档化、时区天真 | `done` | 根因是这条问题来自旧实现；当前副本健康已基于显式健康状态与 lag 判定，不再按 `lastHeartbeatAt` 做时区敏感阈值比较。 |
+| 1189 | src/scale-ecosystem/multi-region/cdc-replication-service.ts 模块级 CDC offset 缓存为单例，重连时未清 in-flight 批次，可重放 | `done` | 根因是 review 记录停留在更早的单例缓存实现；当前 CDC 状态已收口为实例级持久化队列与 checkpoint。 |
+| 1190 | src/scale-ecosystem/marketplace/ globalMarketplaceRegistry 单例无 reset hook，单测之间发布的 bundle 互相可见 | `done` | 根因是该单例后来已从 `scale-ecosystem/marketplace` 拆出；当前目录下不再承载这个全局 registry，本条属于旧实现残留。 |
+| 1191 | src/scale-ecosystem/multi-region/cross-region-routing-service.ts (region as RegionDescriptor & {capabilities?}) 类型断言；带 requiredCapabilities 的策略对所有 region 一律视为缺能力，触发误降级. EN: type cast hides missing capabilities, mis-evaluates routing. | `done` | 根因是路由层对旧 region 形状的类型补丁没有被清理；本轮已改成直接读取标准 `capabilities`。 |
+| 1192 | src/scale-ecosystem/multi-region/cross-region-routing-service.ts ReadConsistencyLevel/ReadRoutingMode 通过 as 二次断言绕过校验，配置错误值不被拒绝. EN: enum laundering bypasses validation. | `done` | 根因是 read replica 选项层自己重定义了一层类型再强转；本轮已收口到单一 `ReadConsistencyLevel/ReadRoutingMode`。 |
+| 1193 | src/scale-ecosystem/multi-region/cross-region-routing-service.ts preferredRegionId 在区域被排除时静默忽略，未发出 fallback 决策事件，运维盲区. EN: silent preference drop, no audit event. | `done` | 根因是首选区域落选时只做隐式回退；本轮已补 fallback audit trail。 |
+| 1194 | src/scale-ecosystem/multi-region/cross-region-routing-service.ts failoverRegionId 兜底逻辑会回退到已被排除的同名 region，形成路由环. EN: failover may select an already-excluded region. | `done` | 根因是 failover 候选重算没有排除 primary/blocked region；本轮已改成按候选集显式选择。 |
+| 1195 | src/scale-ecosystem/multi-region/fencing-token-service.ts 模块级单例，registerForTest/reset API 缺失；并行测试令牌单调递增计数器互相污染. EN: global counter not test-isolated. | `done` | 根因是这条 review 基于旧版本；当前实现已提供 `resetFencingTokenService()`。 |
+| 1196 | src/scale-ecosystem/multi-region/split-brain-protection.ts 模块级 quorum 表用 Map，没有 size 上限；多租户场景下表无限增长. EN: unbounded quorum map. | `done` | 根因是 quorum 状态曾经没有回收；本轮已加容量上限与淘汰。 |
+| 1197 | src/scale-ecosystem/multi-region/read-replica-service.ts 副本健康判定基于 lastHeartbeatAt < now - threshold 但 threshold 默认值未在 config 文档中固化，多 region 时区差导致误判. EN: heartbeat threshold default undocumented and timezone-naive. | `done` | 根因是旧版本健康判定走时间戳阈值；当前实现已切到健康状态 + lag，并把 lag 阈值配置化。 |
+| 1198 | src/scale-ecosystem/multi-region/cdc-replication-service.ts 模块级 CDC offset 缓存为单例，重连时未清理 in-flight 批次，重启后可能重放. EN: singleton CDC cache replays on reconnect. | `done` | 根因是 review 落在旧单例缓存阶段；当前实现已是实例级持久化队列。 |
+| 1199 | src/scale-ecosystem/marketplace/ 内的 globalMarketplaceRegistry 单例无 reset hook，单测之间发布的 bundle 互相可见. EN: marketplace registry not test-isolated. | `done` | 根因是问题来源于已拆出的旧 marketplace registry 实现；当前 `scale-ecosystem/marketplace` 目录不再维护该单例。 |
+| 1200 | region-health-check-service.ts fetch 未透传 AbortSignal | `done` | 根因是 review 基于旧实现；当前 `measureNetworkLatency()` 已通过 `AbortSignal.any()` 合并调用方 signal 与超时 signal。 |
 
 ## src/ops-maturity (drift, explainability, platform-ops)
 
@@ -1607,29 +1607,29 @@
 
 | 编号 | 问题 | 状态 | 问题根因 |
 | --- | --- | --- | --- |
-| 1257 | plugin-runtime-host.test.ts 覆盖 process.execArgv 未复原会污染后续 | `todo` | 待修复 |
-| 1258 | plugin-runtime-host.ts:741-742 JSON.parse(env.AA_PLUGIN_RUNTIME_CONTAINER_COMMAND_JSON) 无 schema 即 spread 入 spawn，env 控制命令构造 | `todo` | 待修复 |
-| 1259 | plugin-runtime-host.ts:364 把整个 process.env 传给 spawn 后再 filter，应改为显式白名单 | `todo` | 待修复 |
+| 1257 | plugin-runtime-host.test.ts 覆盖 process.execArgv 未复原会污染后续 | `done` | 根因是旧测试曾直接改写 `process.execArgv`；当前相关用例已经在 `t.after()` 中恢复原值。 |
+| 1258 | plugin-runtime-host.ts:741-742 JSON.parse(env.AA_PLUGIN_RUNTIME_CONTAINER_COMMAND_JSON) 无 schema 即 spread 入 spawn，env 控制命令构造 | `done` | 根因是 container launcher 模板之前只做 JSON 语法校验，没有结构约束；本轮已加入数组长度与元素类型 schema 校验。 |
+| 1259 | plugin-runtime-host.ts:364 把整个 process.env 传给 spawn 后再 filter，应改为显式白名单 | `done` | 根因是这条 review 基于旧实现；当前 runtime host 已在 `buildPluginRuntimeEnvironment()` 中按白名单转发环境变量。 |
 | 1260 | plugin-runtime-child.ts:14、plugin-runtime-host.ts:26、plugin-spi-registry.ts:21、safe-load-division-registry.ts:7、division-loader.ts:51、recipe-executor.ts:6、dashboard-websocket-server.ts:64、stores/index.ts:8、chinese-wall-access-saga.ts:39、evidence-collector.ts:62 模块顶层 new StructuredLogger(...) 创建单例，测试/生命周期隐患 | `todo` | 待修复 |
 | 1261 | domains/index.ts:7-9 re-export ../domains-runtime-*.js 跨出 domains 树（边界倒置） | `todo` | 待修复 |
-| 1262 | src/domains-runtime-catalog.ts WeakMap 缓存 keying registry，resetForTests() 不清 WeakMap，旧 registry 仍持 stale 编排 | `todo` | 待修复 |
-| 1263 | src/domains-runtime-catalog.ts 调用 registerDomainsBootstrap() 未传 registry 参数，永远用全局 registry，scoped registry 被忽略 | `todo` | 待修复 |
-| 1264 | src/domains-runtime-catalog.ts 顶部 import { DomainReadinessRing } 仅类型注释提及，运行时未用，死 import | `todo` | 待修复 |
-| 1265 | src/domains-runtime-orchestrator.ts 默认构造内 ServiceRegistry.createScoped() 每实例新建作用域，跨实例共享状态丢失 | `todo` | 待修复 |
-| 1266 | src/domains-runtime-orchestrator.ts this.startupPlan 在构造与 initialize 中重复赋值，第二次写入覆盖测试期 plan stub | `todo` | 待修复 |
-| 1267 | src/domains-runtime-orchestrator.ts registry.get(SVC_ID) 返回值丢弃但调用为求副作用，依赖 registry 内部 lazy init | `todo` | 待修复 |
+| 1262 | src/domains-runtime-catalog.ts WeakMap 缓存 keying registry，resetForTests() 不清 WeakMap，旧 registry 仍持 stale 编排 | `done` | 根因是 runtime catalog 以前只有 WeakMap 缓存，没有显式 reset 钩子；本轮已补 `resetDomainsRuntimeCatalogForTests()`。 |
+| 1263 | src/domains-runtime-catalog.ts 调用 registerDomainsBootstrap() 未传 registry 参数，永远用全局 registry，scoped registry 被忽略 | `done` | 根因是 `buildDomainsRuntimeCatalog()` 早期偷用了默认全局 registry；本轮已显式透传调用方 registry。 |
+| 1264 | src/domains-runtime-catalog.ts 顶部 import { DomainReadinessRing } 仅类型注释提及，运行时未用，死 import | `done` | 根因是 catalog 文件保留了未使用的类型导入；本轮已清理。 |
+| 1265 | src/domains-runtime-orchestrator.ts 默认构造内 ServiceRegistry.createScoped() 每实例新建作用域，跨实例共享状态丢失 | `done` | 根因是 orchestrator 默认构造路径之前偏向测试隔离，导致运行时实例默认不共享 registry；本轮已改回 `ServiceRegistry.getInstance()`。 |
+| 1266 | src/domains-runtime-orchestrator.ts this.startupPlan 在构造与 initialize 中重复赋值，第二次写入覆盖测试期 plan stub | `done` | 根因是 startup 流程重复回写 `startupPlan`；本轮已去掉冗余二次赋值。 |
+| 1267 | src/domains-runtime-orchestrator.ts registry.get(SVC_ID) 返回值丢弃但调用为求副作用，依赖 registry 内部 lazy init | `done` | 根因是 orchestrator 注册后用裸 `get()` 触发初始化，意图不清；本轮已改成显式 `ensureOrchestratorRegistered()`。 |
 | 1268 | src/domains-startup-plan.ts rings 强制串行，与设计文档中并行 ring 启动表述矛盾 | `todo` | 待修复 |
-| 1269 | src/domains/registry/domain-registry-service.ts register(domainId, manifest) 同 id 二次注册仅 warn-and-replace，无 idempotency token，并发竞态后写覆盖前写 | `todo` | 待修复 |
-| 1270 | src/domains/registry/plugin-spi-registry.ts SPI 表用 plain object 而非 Map，**proto**/constructor 注入风险 | `todo` | 待修复 |
+| 1269 | src/domains/registry/domain-registry-service.ts register(domainId, manifest) 同 id 二次注册仅 warn-and-replace，无 idempotency token，并发竞态后写覆盖前写 | `done` | 根因是这条 review 基于旧实现；当前 `DomainRegistryService.register()` 已对重复 domainId 直接抛出验证错误。 |
+| 1270 | src/domains/registry/plugin-spi-registry.ts SPI 表用 plain object 而非 Map，**proto**/constructor 注入风险 | `done` | 根因是 SPI registry 更早版本使用对象字面量存表；当前实现已经是 `Map<string, RegisteredPluginRecord>`。 |
 | 1271 | src/domains/registry/plugin-runtime-host.ts 主机进程未对 plugin unhandledRejection 隔离，单 plugin 故障污染主进程 | `todo` | 待修复 |
-| 1272 | src/domains-runtime-catalog.ts WeakMap 缓存对 registry 实例 keying，但 resetForTests() 不清理 WeakMap，回收前的旧 registry 仍持有 stale 编排. EN: WeakMap cache survives test reset. | `todo` | 待修复 |
-| 1273 | src/domains-runtime-catalog.ts 调用 registerDomainsBootstrap() 时未传 registry 参数，永远使用全局 registry，scoped registry 被忽略. EN: registry-scope arg missing. | `todo` | 待修复 |
-| 1274 | src/domains-runtime-catalog.ts 顶部 import { DomainReadinessRing } 仅在类型注释中提及，运行时未使用，构成死 import 增加冷启动. EN: dead import. | `todo` | 待修复 |
-| 1275 | src/domains-runtime-orchestrator.ts 默认构造内 ServiceRegistry.createScoped() 每实例新建作用域，跨实例共享状态丢失. EN: per-instance scope breaks shared registry. | `todo` | 待修复 |
-| 1276 | src/domains-runtime-orchestrator.ts this.startupPlan 在构造与 initialize 中重复赋值，第二次写入覆盖测试期 plan stub. EN: redundant reassignment overwrites injected stub. | `todo` | 待修复 |
-| 1277 | src/domains-runtime-orchestrator.ts registry.get(SVC_ID) 返回值被丢弃但调用为求副作用，依赖 registry 内部 lazy init；让阅读者误以为是 noop. EN: side-effect-only get(); intent unclear. | `todo` | 待修复 |
+| 1272 | src/domains-runtime-catalog.ts WeakMap 缓存对 registry 实例 keying，但 resetForTests() 不清理 WeakMap，回收前的旧 registry 仍持有 stale 编排. EN: WeakMap cache survives test reset. | `done` | 根因是 runtime catalog 缓存缺少 reset 钩子；本轮已补显式清理入口。 |
+| 1273 | src/domains-runtime-catalog.ts 调用 registerDomainsBootstrap() 时未传 registry 参数，永远使用全局 registry，scoped registry 被忽略. EN: registry-scope arg missing. | `done` | 根因是 build 路径没有把 scoped registry 贯通到 bootstrap；本轮已修正为显式透传。 |
+| 1274 | src/domains-runtime-catalog.ts 顶部 import { DomainReadinessRing } 仅在类型注释中提及，运行时未使用，构成死 import 增加冷启动. EN: dead import. | `done` | 根因是未清理的死类型导入；本轮已删除。 |
+| 1275 | src/domains-runtime-orchestrator.ts 默认构造内 ServiceRegistry.createScoped() 每实例新建作用域，跨实例共享状态丢失. EN: per-instance scope breaks shared registry. | `done` | 根因是 orchestrator 默认构造使用 scoped registry；本轮已改为共享全局 registry。 |
+| 1276 | src/domains-runtime-orchestrator.ts this.startupPlan 在构造与 initialize 中重复赋值，第二次写入覆盖测试期 plan stub. EN: redundant reassignment overwrites injected stub. | `done` | 根因是重复回写 startup plan；本轮已移除冗余赋值。 |
+| 1277 | src/domains-runtime-orchestrator.ts registry.get(SVC_ID) 返回值被丢弃但调用为求副作用，依赖 registry 内部 lazy init；让阅读者误以为是 noop. EN: side-effect-only get(); intent unclear. | `done` | 根因是依赖 lazy init 的裸 `get()` 调用语义不清；本轮已封装成显式 ensure 方法。 |
 | 1278 | src/domains-startup-plan.ts rings 强制串行执行，与文档中并行 ring 启动表述矛盾. EN: serial rings contradict design doc. | `todo` | 待修复 |
-| 1279 | src/domains/registry/plugin-spi-registry.ts SPI 表使用 plain object 而非 Map，原型链字段 **proto**/constructor 注入风险（若 domainId 来自配置文件）. EN: prototype-pollution via untrusted key. | `todo` | 待修复 |
+| 1279 | src/domains/registry/plugin-spi-registry.ts SPI 表使用 plain object 而非 Map，原型链字段 **proto**/constructor 注入风险（若 domainId 来自配置文件）. EN: prototype-pollution via untrusted key. | `done` | 根因是旧 SPI registry 曾经使用 plain object；当前实现已经改成 `Map`。 |
 | 1280 | src/domains/registry/plugin-runtime-host.ts 主机进程未对 plugin 抛出的 unhandledRejection 做隔离，单 plugin 故障污染主进程. EN: missing per-plugin rejection isolation. | `todo` | 待修复 |
 
 ## src/interaction (NL gateway)
@@ -1638,30 +1638,30 @@
 | --- | --- | --- | --- |
 | 1281 | nl-gateway/index.ts:290 IntentParserPort 与 ModelIntentParserPort 不一致，未做适配 | `todo` | 待修复 |
 | 1282 | proactive-agent/index.ts:167-168、conversation-history-service.ts:323-324,358-359、workflow-builder-service.ts:110-111,792-793、onboarding/index.ts:183-184、intent-parser/index.ts:206,291,301 多处空 catch 静默吞错并返回 null/false | `todo` | 待修复 |
-| 1283 | src/interaction/nl-gateway/intent-parser/index.ts:66 关键词正则含 通行，匹配 通行证/通行规则 等非审批语境 | `todo` | 待修复 |
-| 1284 | src/interaction/nl-gateway/intent-parser/index.ts:70 delete\|remove\|drop 无单词边界，dropdown/removed once 触发 task_modify | `todo` | 待修复 |
-| 1285 | src/interaction/nl-gateway/intent-parser/index.ts:126-135 语种检测顺序使含 kanji 但无 kana 日文混排被识别 zh-CN，德语正则误命中 ä/ö 的瑞典语/芬兰语 | `todo` | 待修复 |
-| 1286 | src/interaction/nl-gateway/intent-parser/index.ts:162 requestPatterns 英文动词无 \b，deploy 命中 redeployment | `todo` | 待修复 |
-| 1287 | src/interaction/nl-gateway/intent-parser/index.ts:196 Array.isArray(parsed)?parsed.filter(Boolean):… 返 [null, valid] 时 primary 取原 index 1 元素行为依赖宿主 | `todo` | 待修复 |
-| 1288 | src/interaction/nl-gateway/intent-parser/index.ts:282 JSON.parse(response) 对 LLM 返回 reasoning/language 字段无大小校验 | `todo` | 待修复 |
-| 1289 | src/interaction/nl-gateway/intent-parser/index.ts:44-52 INTENT_CONFIDENCE_THRESHOLDS 与 IntentConfidenceThresholds 双导出，公共 API 同义双命名易漂移 | `todo` | 待修复 |
-| 1290 | src/interaction/nl-gateway/intent-parser/index.ts:66 关键词正则含 通行，会匹配 通行证/通行规则 等非审批语境，造成误分类. EN: substring approval-keyword false positive. | `todo` | 待修复 |
-| 1291 | src/interaction/nl-gateway/intent-parser/index.ts:70 delete\|remove\|drop 无单词边界，dropdown / removed once 触发 task_modify. EN: missing word boundary causes false positive. | `todo` | 待修复 |
-| 1292 | src/interaction/nl-gateway/intent-parser/index.ts:126-135 语种检测顺序使依赖 kanji 但无 kana 的日文混排消息被识别为 zh-CN；德语正则误命中含 ä/ö 的瑞典语/芬兰语. EN: language-detection order and German regex over-broad. | `todo` | 待修复 |
-| 1293 | src/interaction/nl-gateway/intent-parser/index.ts:162 requestPatterns 英文动词无 \b，deploy 命中 redeployment，状态消息被误判为 task_create. EN: word-boundary missing on English request verbs. | `todo` | 待修复 |
-| 1294 | src/interaction/nl-gateway/intent-parser/index.ts:196 Array.isArray(parsed) ? parsed.filter(Boolean) : … 类型不安全；返回 [null, valid] 时 primary 取到原 index 1 元素行为依赖宿主实现细节. EN: filter(Boolean) typing escape. | `todo` | 待修复 |
-| 1295 | src/interaction/nl-gateway/intent-parser/index.ts:282 JSON.parse(response) 对 LLM 返回的 reasoning/language 字段无大小校验，恶意/异常长返回会无限存储. EN: unbounded LLM response field accepted. | `todo` | 待修复 |
-| 1296 | src/interaction/nl-gateway/intent-parser/index.ts:44-52 INTENT_CONFIDENCE_THRESHOLDS (SCREAMING_SNAKE) 与 IntentConfidenceThresholds interface (camelCase) 双导出，公共 API 同义双命名易漂移. EN: parallel public-API taxonomies. | `todo` | 待修复 |
+| 1283 | src/interaction/nl-gateway/intent-parser/index.ts:66 关键词正则含 通行，匹配 通行证/通行规则 等非审批语境 | `done` | 根因是审批关键词过去把“通过/通行”类子串直接并入正则；本轮已收紧审批模式并补反例测试。 |
+| 1284 | src/interaction/nl-gateway/intent-parser/index.ts:70 delete\|remove\|drop 无单词边界，dropdown/removed once 触发 task_modify | `done` | 根因是英文删除动词正则以前没有边界；本轮已补 `\b` 限制。 |
+| 1285 | src/interaction/nl-gateway/intent-parser/index.ts:126-135 语种检测顺序使含 kanji 但无 kana 日文混排被识别 zh-CN，德语正则误命中 ä/ö 的瑞典语/芬兰语 | `done` | 根因是语言检测以前只用粗粒度字符集启发式；本轮已补日文业务词信号并收紧德语触发条件。 |
+| 1286 | src/interaction/nl-gateway/intent-parser/index.ts:162 requestPatterns 英文动词无 \b，deploy 命中 redeployment | `done` | 根因是英文请求动词过去使用裸子串匹配；本轮已加单词边界。 |
+| 1287 | src/interaction/nl-gateway/intent-parser/index.ts:196 Array.isArray(parsed)?parsed.filter(Boolean):… 返 [null, valid] 时 primary 取原 index 1 元素行为依赖宿主 | `done` | 根因是模型结果归一化以前依赖 `filter(Boolean)` 的宽松行为；本轮已换成显式 `ParsedIntentToken` type guard。 |
+| 1288 | src/interaction/nl-gateway/intent-parser/index.ts:282 JSON.parse(response) 对 LLM 返回 reasoning/language 字段无大小校验 | `done` | 根因是模型 JSON 解析路径只校验类型不校验长度；本轮已加入 reasoning/language 截断与归一化。 |
+| 1289 | src/interaction/nl-gateway/intent-parser/index.ts:44-52 INTENT_CONFIDENCE_THRESHOLDS 与 IntentConfidenceThresholds 双导出，公共 API 同义双命名易漂移 | `done` | 根因是阈值常量过去采用另一套命名风格；本轮已收口到单一 `intentConfidenceThresholds` 公共面。 |
+| 1290 | src/interaction/nl-gateway/intent-parser/index.ts:66 关键词正则含 通行，会匹配 通行证/通行规则 等非审批语境，造成误分类. EN: substring approval-keyword false positive. | `done` | 根因是审批关键词把子串命中也算作审批动作；本轮已收紧模式并加反例测试。 |
+| 1291 | src/interaction/nl-gateway/intent-parser/index.ts:70 delete\|remove\|drop 无单词边界，dropdown / removed once 触发 task_modify. EN: missing word boundary causes false positive. | `done` | 根因是删除动词正则缺少单词边界；本轮已修正。 |
+| 1292 | src/interaction/nl-gateway/intent-parser/index.ts:126-135 语种检测顺序使依赖 kanji 但无 kana 的日文混排消息被识别为 zh-CN；德语正则误命中含 ä/ö 的瑞典语/芬兰语. EN: language-detection order and German regex over-broad. | `done` | 根因是语言启发式过粗；本轮已补日文信号并收紧德语识别。 |
+| 1293 | src/interaction/nl-gateway/intent-parser/index.ts:162 requestPatterns 英文动词无 \b，deploy 命中 redeployment，状态消息被误判为 task_create. EN: word-boundary missing on English request verbs. | `done` | 根因是 requestPatterns 使用裸英文子串；本轮已加边界。 |
+| 1294 | src/interaction/nl-gateway/intent-parser/index.ts:196 Array.isArray(parsed) ? parsed.filter(Boolean) : … 类型不安全；返回 [null, valid] 时 primary 取到原 index 1 元素行为依赖宿主实现细节. EN: filter(Boolean) typing escape. | `done` | 根因是模型输出归一化缺显式类型过滤；本轮已用 type guard。 |
+| 1295 | src/interaction/nl-gateway/intent-parser/index.ts:282 JSON.parse(response) 对 LLM 返回的 reasoning/language 字段无大小校验，恶意/异常长返回会无限存储. EN: unbounded LLM response field accepted. | `done` | 根因是解析路径没有长度限制；本轮已补字段截断。 |
+| 1296 | src/interaction/nl-gateway/intent-parser/index.ts:44-52 INTENT_CONFIDENCE_THRESHOLDS (SCREAMING_SNAKE) 与 IntentConfidenceThresholds interface (camelCase) 双导出，公共 API 同义双命名易漂移. EN: parallel public-API taxonomies. | `done` | 根因是阈值公共 API 曾经并存两套命名；本轮已收口到单一命名。 |
 
 ## src/org-governance
 
 | 编号 | 问题 | 状态 | 问题根因 |
 | --- | --- | --- | --- |
 | 1297 | src/org-governance/approval-routing/approval-routing-service.ts 状态机允许 approved → withdrawn 直接转换，跳过审计 revoked 中间态 | `todo` | 待修复 |
-| 1298 | src/apps/api/index.ts:10 vs src/apps/workers/index.ts:10 requiredLayers 未覆盖 interaction/org-governance，但 worker dispatch 调 approval-routing | `todo` | 待修复 |
+| 1298 | src/apps/api/index.ts:10 vs src/apps/workers/index.ts:10 requiredLayers 未覆盖 interaction/org-governance，但 worker dispatch 调 approval-routing | `done` | 根因是 worker manifest 声明层没有跟上真实依赖面；本轮已把 `interaction` 与 `org-governance` 补回 requiredLayers。 |
 | 1299 | src/org-governance/approval-routing/approval-routing-service.ts 状态机允许 approved → withdrawn 直接转换，跳过审计 revoked 中间态，与契约文档不符. EN: missing intermediate state in approval FSM. | `todo` | 待修复 |
-| 1300 | src/apps/api/index.ts:10 vs src/apps/workers/index.ts:10 requiredLayers 列表未覆盖 interaction/org-governance，但 worker 在 dispatch 中调 approval-routing，声明与运行时依赖不一致. EN: declared layers diverge from runtime imports. | `todo` | 待修复 |
-| 1301 | org-governance/index.ts:1-9 barrel 缺 org-routing/ | `todo` | 待修复 |
+| 1300 | src/apps/api/index.ts:10 vs src/apps/workers/index.ts:10 requiredLayers 列表未覆盖 interaction/org-governance，但 worker 在 dispatch 中调 approval-routing，声明与运行时依赖不一致. EN: declared layers diverge from runtime imports. | `done` | 根因是 worker app manifest 的层声明滞后于运行时导入；本轮已补齐。 |
+| 1301 | org-governance/index.ts:1-9 barrel 缺 org-routing/ | `done` | 根因是 org-governance 顶层 barrel 漏掉 `org-routing` 公共面；本轮已补导出。 |
 
 ## src/core & runtime
 

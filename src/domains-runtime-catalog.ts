@@ -3,7 +3,6 @@ import {
   DOMAINS_BOOTSTRAP_SERVICE_ID,
   registerDomainsBootstrap,
   type DomainBaseline,
-  type DomainReadinessRing,
   DOMAIN_RING_BOOTSTRAP_SERVICE_IDS,
 } from "./domains/domains-bootstrap.js";
 
@@ -15,10 +14,12 @@ export interface DomainsRuntimeCatalog {
   readonly ring3: readonly DomainBaseline[];
 }
 
-const catalogInstances = new WeakMap<ServiceRegistry, DomainsRuntimeCatalog>();
+let catalogInstances = new WeakMap<ServiceRegistry, DomainsRuntimeCatalog>();
 
-export function buildDomainsRuntimeCatalog(): DomainsRuntimeCatalog {
-  const bootstrap = registerDomainsBootstrap();
+export function buildDomainsRuntimeCatalog(
+  registry: ServiceRegistry = ServiceRegistry.getInstance(),
+): DomainsRuntimeCatalog {
+  const bootstrap = registerDomainsBootstrap(registry);
   const ringMap = new Map(bootstrap.rings.map((ring) => [ring.ringId, ring.baselines]));
   return {
     ring1: ringMap.get("ring1") ?? [],
@@ -28,7 +29,7 @@ export function buildDomainsRuntimeCatalog(): DomainsRuntimeCatalog {
 }
 
 export function registerDomainsRuntimeCatalog(
-  registry: ServiceRegistry = ServiceRegistry.createScoped(),
+  registry: ServiceRegistry = ServiceRegistry.getInstance(),
 ): DomainsRuntimeCatalog {
   const existing = catalogInstances.get(registry);
   if (existing != null) {
@@ -49,4 +50,8 @@ export function registerDomainsRuntimeCatalog(
   const catalog = registry.get<DomainsRuntimeCatalog>(DOMAINS_RUNTIME_CATALOG_SERVICE_ID);
   catalogInstances.set(registry, catalog);
   return catalog;
+}
+
+export function resetDomainsRuntimeCatalogForTests(): void {
+  catalogInstances = new WeakMap<ServiceRegistry, DomainsRuntimeCatalog>();
 }

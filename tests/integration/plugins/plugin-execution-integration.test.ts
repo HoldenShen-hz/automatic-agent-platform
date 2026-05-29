@@ -14,6 +14,7 @@ import { tmpdir } from "node:os";
 
 import { PluginSpiRegistry } from "../../../src/domains/registry/plugin-spi-registry.js";
 import { createBuiltinPlugin } from "../../../src/plugins/builtin-plugin-registry.js";
+import { createGithubAdapterPlugin } from "../../../src/plugins/adapters/github-adapter.js";
 import { createOperationsRetrieverPluginWithOptions } from "../../../src/plugins/retrievers/operations-retriever.js";
 
 test("plugin execution integration: coding retriever retrieves knowledge", async () => {
@@ -103,7 +104,14 @@ test("plugin execution integration: coding presenter formats output", async () =
 test("plugin execution integration: github adapter authenticates and executes", async () => {
   const registry = new PluginSpiRegistry();
 
-  const githubAdapter = createBuiltinPlugin("plugin.shared.github_adapter");
+  const githubAdapter = createGithubAdapterPlugin({
+    fetchImplementation: async () => ({
+      ok: true,
+      status: 201,
+      headers: { get: () => null },
+      text: async () => JSON.stringify({ id: 101, number: 42 }),
+    }) as Response,
+  });
   assert.ok(githubAdapter);
   registry.register(githubAdapter, {
     pluginId: "plugin.shared.github_adapter",
@@ -111,7 +119,7 @@ test("plugin execution integration: github adapter authenticates and executes", 
     version: "1.0.0",
     owner: "test",
     domainIds: [],
-    capabilityIds: [],
+    capabilityIds: [...(githubAdapter.capabilityIds ?? [])],
     spiTypes: ["adapter"],
     extensionKind: "external_adapter",
     trustLevel: "trusted",
@@ -150,7 +158,9 @@ test("plugin execution integration: github adapter authenticates and executes", 
   });
 
   assert.ok(result, "should return result");
-  assert.ok("endpoint" in result || "id" in result || "number" in result);
+  assert.ok("endpoint" in result);
+  assert.equal((result as { status: number }).status, 201);
+  assert.deepEqual((result as { data: unknown }).data, { id: 101, number: 42 });
 });
 
 test("plugin execution integration: basic evaluator validates output", async () => {

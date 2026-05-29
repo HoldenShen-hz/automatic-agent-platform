@@ -4,6 +4,8 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { z } from "zod";
+
 import { ValidationError } from "../../platform/contracts/errors.js";
 import { STDERR_TAIL_BUFFER_BYTES } from "../../platform/contracts/constants/io.js";
 import { getProcessTracker } from "../../platform/five-plane-execution/resource/process-tracker.js";
@@ -472,6 +474,8 @@ export interface ContainerizedPluginRuntimeLaunchSpec {
   args: string[];
 }
 
+const ContainerLauncherTemplateSchema = z.array(z.string().max(4096)).min(1).max(64);
+
 interface BuildContainerizedPluginRuntimeLaunchSpecOptions {
   pluginId: string;
   childModulePath: string;
@@ -753,7 +757,8 @@ export function buildContainerizedPluginRuntimeLaunchSpec(
       },
     );
   }
-  if (!Array.isArray(template) || template.some((value) => typeof value !== "string")) {
+  const parsedTemplate = ContainerLauncherTemplateSchema.safeParse(template);
+  if (!parsedTemplate.success) {
     throw new ValidationError(
       "plugin_spi.container_launcher_invalid_shape",
       "plugin_spi.container_launcher_invalid_shape",
@@ -768,7 +773,7 @@ export function buildContainerizedPluginRuntimeLaunchSpec(
 
   validateContainerLaunchPluginId(options.pluginId);
   const rendered = maybeInjectTypeScriptRuntimeLoader(
-    template.map((value) => renderContainerizedToken(value, options)),
+    parsedTemplate.data.map((value) => renderContainerizedToken(value, options)),
     options.childModulePath,
   );
   if (rendered.length === 0 || (rendered[0]?.trim().length ?? 0) === 0) {

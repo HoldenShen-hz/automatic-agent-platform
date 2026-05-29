@@ -124,6 +124,13 @@ export interface CDCReplicationServiceOptions {
   readonly database?: AuthoritativeSqlDatabase;
 }
 
+export interface ReplicationDefaultConfig {
+  readonly batchSize: number;
+  readonly replicationIntervalMs: number;
+  readonly maxRetries: number;
+  readonly backoffMs: number;
+}
+
 /**
  * CDC lag breach error - thrown when replication lag exceeds RPO SLA
  */
@@ -801,8 +808,10 @@ export class CDCReplicationService {
         if (raw.length > 0) {
           this.applySnapshot(raw);
         }
-      } catch {
-        this.clearState();
+      } catch (error) {
+        cdcLogger.warn("cdc_replication.load_database_snapshot_failed", {
+          error: error instanceof Error ? error.message : String(error),
+        });
       }
       return;
     }
@@ -814,8 +823,11 @@ export class CDCReplicationService {
       if (raw.length > 0) {
         this.applySnapshot(raw);
       }
-    } catch {
-      this.clearState();
+    } catch (error) {
+      cdcLogger.warn("cdc_replication.load_file_snapshot_failed", {
+        storagePath: this.storagePath,
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
   }
 
@@ -1053,9 +1065,19 @@ CREATE TABLE IF NOT EXISTS multi_region_cdc_replication_state (
 export class MultiRegionReplicationCoordinator {
   private readonly cdcService: CDCReplicationService;
   private readonly regionConfigs = new Map<string, RegionReplicationConfig[]>();
+  private readonly defaultConfig: ReplicationDefaultConfig;
 
-  public constructor(cdcService?: CDCReplicationService) {
+  public constructor(
+    cdcService?: CDCReplicationService,
+    defaultConfig: Partial<ReplicationDefaultConfig> = {},
+  ) {
     this.cdcService = cdcService ?? new CDCReplicationService();
+    this.defaultConfig = {
+      batchSize: defaultConfig.batchSize ?? 100,
+      replicationIntervalMs: defaultConfig.replicationIntervalMs ?? 5000,
+      maxRetries: defaultConfig.maxRetries ?? 3,
+      backoffMs: defaultConfig.backoffMs ?? 1000,
+    };
   }
 
   /**
@@ -1063,7 +1085,13 @@ export class MultiRegionReplicationCoordinator {
    */
   public setupRegionReplication(
     sourceRegionId: string,
-    targets: readonly { targetRegionId: string; batchSize?: number; intervalMs?: number }[],
+    targets: readonly {
+      targetRegionId: string;
+      batchSize?: number;
+      intervalMs?: number;
+      maxRetries?: number;
+      backoffMs?: number;
+    }[],
   ): void {
     const configs: RegionReplicationConfig[] = [];
 
@@ -1071,12 +1099,12 @@ export class MultiRegionReplicationCoordinator {
       const config: RegionReplicationConfig = {
         sourceRegionId,
         targetRegionId: target.targetRegionId,
-        batchSize: target.batchSize ?? 100,
-        replicationIntervalMs: target.intervalMs ?? 5000,
+        batchSize: target.batchSize ?? this.defaultConfig.batchSize,
+        replicationIntervalMs: target.intervalMs ?? this.defaultConfig.replicationIntervalMs,
         enabled: true,
         retryPolicy: {
-          maxRetries: 3,
-          backoffMs: 1000,
+          maxRetries: target.maxRetries ?? this.defaultConfig.maxRetries,
+          backoffMs: target.backoffMs ?? this.defaultConfig.backoffMs,
         },
       };
 

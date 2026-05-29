@@ -67,7 +67,11 @@ export async function executeStepLoop(
   let outputs = ctx.outputs;
   const stepOutputs = ctx.stepOutputs;
   let latestCompaction = ctx.latestCompaction;
-  let executionAttemptCounter = ctx.executionAttemptCounter;
+  const maxPersistedAttempt = deps.store.execution
+    .listExecutionsByTask(taskId)
+    .filter((execution) => execution.runKind === "task_run")
+    .reduce((maxAttempt, execution) => Math.max(maxAttempt, execution.attempt), 0);
+  let executionAttemptCounter = Math.max(ctx.executionAttemptCounter, maxPersistedAttempt);
   let workflowRetryCount = ctx.workflowRetryCount;
   let workflowLastErrorCode = ctx.workflowLastErrorCode;
   let blockedForDecision = ctx.blockedForDecision;

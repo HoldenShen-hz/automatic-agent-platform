@@ -27,6 +27,10 @@ export function buildConnectorExecutionKey(request: ConnectorExecutionRequest): 
   return `${request.connectorId}:${request.capability}`;
 }
 
+function reportConnectorRuntimeError(eventType: string, error: unknown): void {
+  console.error(`${eventType}:${error instanceof Error ? error.message : String(error)}`);
+}
+
 /**
  * Invokes a callback URL with the connector execution result.
  * Returns true if the callback was delivered successfully, false otherwise.
@@ -48,7 +52,7 @@ export async function invokeCallback(callbackUrl: string, result: ConnectorExecu
     });
     return response.ok;
   } catch (error) {
-    process.stderr.write(`connector_runtime.callback_failed:${error instanceof Error ? error.message : String(error)}\n`);
+    reportConnectorRuntimeError("connector_runtime.callback_failed", error);
     return false;
   }
 }

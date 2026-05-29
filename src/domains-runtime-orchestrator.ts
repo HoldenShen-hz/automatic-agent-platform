@@ -51,7 +51,7 @@ export class DomainsRuntimeOrchestrator {
   private startupPlan: DomainsStartupPlan | undefined;
   private registered = false;
 
-  public constructor(private readonly registry: ServiceRegistry = ServiceRegistry.createScoped()) {}
+  public constructor(private readonly registry: ServiceRegistry = ServiceRegistry.getInstance()) {}
 
   public prepare(): DomainsStartupPlan {
     registerDomainsBootstrap(this.registry);
@@ -63,16 +63,11 @@ export class DomainsRuntimeOrchestrator {
 
   public startup(): DomainsRuntimeStartupResult {
     const startupPlan = this.prepare();
-    this.startupPlan = startupPlan;
     const runtime = executeStartupPlan(this.registry, startupPlan, "w5_startup_plan.missing_dependency");
-
-    const result: DomainsRuntimeStartupResult = {
+    this.ensureOrchestratorRegistered();
+    return {
       ...runtime,
     };
-    this.registerOrchestrator();
-    this.registry.get(DOMAINS_RUNTIME_ORCHESTRATOR_SERVICE_ID);
-
-    return result;
   }
 
   public snapshotReadiness(): DomainsReadinessSnapshot {
@@ -88,25 +83,25 @@ export class DomainsRuntimeOrchestrator {
     };
   }
 
-  private registerOrchestrator(): void {
-    if (this.registered) {
-      return;
+  private ensureOrchestratorRegistered(): DomainsRuntimeOrchestrator {
+    if (!this.registered) {
+      this.registry.register<DomainsRuntimeOrchestrator>(DOMAINS_RUNTIME_ORCHESTRATOR_SERVICE_ID, {
+        init: () => this,
+        dependsOn: [
+          DOMAINS_BOOTSTRAP_SERVICE_ID,
+          ...Object.values(DOMAIN_RING_BOOTSTRAP_SERVICE_IDS),
+          DOMAINS_RUNTIME_CATALOG_SERVICE_ID,
+          DOMAINS_STARTUP_PLAN_SERVICE_ID,
+        ],
+      });
+      this.registered = true;
     }
-    this.registry.register<DomainsRuntimeOrchestrator>(DOMAINS_RUNTIME_ORCHESTRATOR_SERVICE_ID, {
-      init: () => this,
-      dependsOn: [
-        DOMAINS_BOOTSTRAP_SERVICE_ID,
-        ...Object.values(DOMAIN_RING_BOOTSTRAP_SERVICE_IDS),
-        DOMAINS_RUNTIME_CATALOG_SERVICE_ID,
-        DOMAINS_STARTUP_PLAN_SERVICE_ID,
-      ],
-    });
-    this.registered = true;
+    return this.registry.get<DomainsRuntimeOrchestrator>(DOMAINS_RUNTIME_ORCHESTRATOR_SERVICE_ID);
   }
 }
 
 export function registerDomainsRuntimeOrchestrator(
-  registry: ServiceRegistry = ServiceRegistry.createScoped(),
+  registry: ServiceRegistry = ServiceRegistry.getInstance(),
 ): DomainsRuntimeOrchestrator {
   registerDomainsBootstrap(registry);
   registerDomainsRuntimeCatalog(registry);

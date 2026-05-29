@@ -85,6 +85,7 @@ export interface QuorumState {
  * 4. Resolving conflicts through quorum or fencing invalidation
  */
 export class SplitBrainProtectionService {
+  private static readonly MAX_TRACKED_QUORUM_STATES = 256;
   private readonly heartbeatTimers = new Map<string, string>();
   private readonly fencingEpochByRegion = new Map<string, number>();
   private readonly incidents: SplitBrainIncident[] = [];
@@ -94,6 +95,7 @@ export class SplitBrainProtectionService {
    * Record a heartbeat from a region
    */
   public recordHeartbeat(regionId: string): void {
+    this.evictStaleQuorumStateIfNeeded(regionId);
     this.heartbeatTimers.set(regionId, nowIso());
     const existing = this.quorumStates.get(regionId);
     if (existing) {
@@ -342,6 +344,24 @@ export class SplitBrainProtectionService {
    */
   public syncFencingEpochFromFailover(partitionKey: string, epoch: number, leaderRegionId: string): void {
     this.fencingEpochByRegion.set(leaderRegionId, epoch);
+  }
+
+  private evictStaleQuorumStateIfNeeded(regionId: string): void {
+    if (this.quorumStates.has(regionId) || this.quorumStates.size < SplitBrainProtectionService.MAX_TRACKED_QUORUM_STATES) {
+      return;
+    }
+    let oldestRegionId: string | null = null;
+    let oldestHeartbeatAt = Number.POSITIVE_INFINITY;
+    for (const [trackedRegionId, state] of this.quorumStates.entries()) {
+      const heartbeatAt = Date.parse(state.lastHeartbeatAt);
+      if (heartbeatAt < oldestHeartbeatAt) {
+        oldestHeartbeatAt = heartbeatAt;
+        oldestRegionId = trackedRegionId;
+      }
+    }
+    if (oldestRegionId != null) {
+      this.quorumStates.delete(oldestRegionId);
+    }
   }
 }
 

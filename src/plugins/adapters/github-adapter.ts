@@ -250,7 +250,7 @@ async function readResponseTextWithLimit(
   return reader.read().then(function pump(chunk): Promise<string> {
     if (chunk.done) {
       result += decoder.decode();
-      return result;
+      return Promise.resolve(result);
     }
     totalBytes += chunk.value.byteLength;
     if (totalBytes > maxResponseSizeBytes) {

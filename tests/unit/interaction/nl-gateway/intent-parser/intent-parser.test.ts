@@ -9,7 +9,7 @@ import {
   parseIntentTokens,
   parseIntentTokensWithModel,
   LlmIntentParser,
-  INTENT_CONFIDENCE_THRESHOLDS,
+  intentConfidenceThresholds,
   type IntentType,
 } from "../../../../../src/interaction/nl-gateway/intent-parser/index.js";
 
@@ -326,7 +326,7 @@ test("LlmIntentParser returns low confidence when fallback disabled", async () =
   const result = await parser.parseWithLlm("test message");
 
   assert.equal(result.intentType, "task_query");
-  assert.equal(result.confidence, INTENT_CONFIDENCE_THRESHOLDS.FALLBACK_THRESHOLD - 0.1);
+  assert.equal(result.confidence, intentConfidenceThresholds.fallbackThreshold - 0.1);
 });
 
 test("LlmIntentParser preserves reasoning from parsed response", async () => {
@@ -369,9 +369,9 @@ test("LlmIntentParser parses intent type from text when JSON invalid", async () 
   assert.equal(result.intentType, "task_query");
 });
 
-test("INTENT_CONFIDENCE_THRESHOLDS has correct values", () => {
-  assert.equal(INTENT_CONFIDENCE_THRESHOLDS.LLM_ACCEPT_THRESHOLD, 0.75);
-  assert.equal(INTENT_CONFIDENCE_THRESHOLDS.FALLBACK_THRESHOLD, 0.50);
+test("intentConfidenceThresholds has correct values", () => {
+  assert.equal(intentConfidenceThresholds.llmAcceptThreshold, 0.75);
+  assert.equal(intentConfidenceThresholds.fallbackThreshold, 0.50);
 });
 
 test("parseIntentTokens handles Chinese punctuation", () => {

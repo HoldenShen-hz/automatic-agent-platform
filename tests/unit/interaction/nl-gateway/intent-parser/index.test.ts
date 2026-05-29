@@ -4,7 +4,13 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { parseIntentTokens, type ParsedIntentToken } from "../../../../../src/interaction/nl-gateway/intent-parser/index.js";
+import {
+  detectInputLanguage,
+  LlmIntentParser,
+  parseIntentTokens,
+  parseIntentTokensWithModel,
+  type ParsedIntentToken,
+} from "../../../../../src/interaction/nl-gateway/intent-parser/index.js";
 
 // Approval action tests
 test("parseIntentTokens detects approval_action with approve keyword", () => {
@@ -33,6 +39,11 @@ test("parseIntentTokens detects approval_action with mixed case Approve", () => 
 test("parseIntentTokens detects approval_action with Chinese 审批", () => {
   const result = parseIntentTokens("需要你审批一下");
   assert.equal(result[0]!.intentType, "approval_action");
+});
+
+test("parseIntentTokens does not classify 通行证 as approval_action", () => {
+  const result = parseIntentTokens("请更新通行证白名单");
+  assert.notEqual(result[0]!.intentType, "approval_action");
 });
 
 // Status inquiry tests
@@ -90,6 +101,11 @@ test("parseIntentTokens detects task_modify with Chinese 修改", () => {
   assert.equal(result[0]!.intentType, "task_modify");
 });
 
+test("parseIntentTokens does not classify dropdown as task_modify", () => {
+  const result = parseIntentTokens("the dropdown stays visible");
+  assert.notEqual(result[0]!.intentType, "task_modify");
+});
+
 // Task create tests
 test("parseIntentTokens detects task_create with create keyword", () => {
   const result = parseIntentTokens("创建一个新任务");
@@ -115,6 +131,11 @@ test("parseIntentTokens detects task_create with Chinese 创建", () => {
 test("parseIntentTokens detects task_create with Chinese 做一个", () => {
   const result = parseIntentTokens("做一个演示");
   assert.equal(result[0]!.intentType, "task_create");
+});
+
+test("parseIntentTokens does not classify redeployment status as task_create", () => {
+  const result = parseIntentTokens("redeployment done");
+  assert.notEqual(result[0]!.intentType, "task_create");
 });
 
 test("parseIntentTokens detects task_create for long messages", () => {
@@ -189,4 +210,35 @@ test("parseIntentTokens returns ParsedIntentToken with correct shape", () => {
   assert.ok("confidence" in token);
   assert.equal(typeof token.intentType, "string");
   assert.equal(typeof token.confidence, "number");
+});
+
+test("detectInputLanguage recognizes Japanese kanji business phrases", () => {
+  assert.equal(detectInputLanguage("至急 承認 依頼"), "ja-JP");
+});
+
+test("detectInputLanguage does not infer German from unrelated umlauts", () => {
+  assert.equal(detectInputLanguage("smörgåsbord"), "en-US");
+});
+
+test("parseIntentTokensWithModel ignores null entries in array responses", async () => {
+  const result = await parseIntentTokensWithModel("create a task", {
+    parser: {
+      parseWithLlm: async () => [null, { intentType: "task_create", confidence: 0.95 }],
+    },
+  });
+  assert.equal(result[0]!.intentType, "task_create");
+});
+
+test("LlmIntentParser truncates oversized reasoning and language fields", async () => {
+  const parser = new LlmIntentParser({
+    complete: async () => JSON.stringify({
+      intentType: "task_query",
+      confidence: 0.81,
+      reasoning: "x".repeat(3000),
+      language: "ja-JP-with-unbounded-tail".repeat(10),
+    }),
+  });
+  const result = await parser.parseWithLlm("status");
+  assert.ok((result.reasoning?.length ?? 0) <= 1024);
+  assert.ok((result.language?.length ?? 0) <= 32);
 });

@@ -6,4 +6,5 @@ export * from "./governance-baseline-catalog.js";
 export * from "./governance-bootstrap.js";
 export * from "./knowledge-boundary/index.js";
 export * from "./org-model/index.js";
+export * from "./org-routing/index.js";
 export * from "./sso-scim/index.js";

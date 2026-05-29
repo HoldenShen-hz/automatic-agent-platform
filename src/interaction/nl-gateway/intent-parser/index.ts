@@ -41,15 +41,18 @@ export interface IntentConfidenceThresholds {
   readonly fallbackThreshold: number;
 }
 
-export const INTENT_CONFIDENCE_THRESHOLDS = {
-  LLM_ACCEPT_THRESHOLD: 0.75,
-  FALLBACK_THRESHOLD: 0.50,
-} as const;
+export const intentConfidenceThresholds: IntentConfidenceThresholds = {
+  llmAcceptThreshold: 0.75,
+  fallbackThreshold: 0.50,
+};
 
 const DEFAULT_INTENT_CONFIDENCE_THRESHOLDS: IntentConfidenceThresholds = {
-  llmAcceptThreshold: INTENT_CONFIDENCE_THRESHOLDS.LLM_ACCEPT_THRESHOLD,
-  fallbackThreshold: INTENT_CONFIDENCE_THRESHOLDS.FALLBACK_THRESHOLD,
+  llmAcceptThreshold: intentConfidenceThresholds.llmAcceptThreshold,
+  fallbackThreshold: intentConfidenceThresholds.fallbackThreshold,
 };
+
+const MAX_LLM_REASONING_CODE_POINTS = 1_024;
+const MAX_LLM_LANGUAGE_CODE_POINTS = 32;
 
 interface IntentSignal {
   readonly pattern: RegExp;
@@ -63,13 +66,13 @@ interface IntentSignal {
  * Multiple signals can match; the highest-confidence result is used.
  */
 const INTENT_SIGNALS: readonly IntentSignal[] = [
-  { pattern: /(?:approve|审批|审批通过|通过|批准|同意|通行)/i, intent: "approval_action", confidence: 0.92, reasoning: "Approval keyword detected" },
+  { pattern: /(?:\bapprove(?:d)?\b|审批(?:通过)?|批准|同意|通过(?!证|规则|率))/iu, intent: "approval_action", confidence: 0.92, reasoning: "Approval keyword detected" },
   { pattern: /(?:reject|驳回|否决)/i, intent: "approval_action", confidence: 0.90, reasoning: "Rejection keyword detected" },
   { pattern: /(?:status|状态|进度|情况|情况如何)/i, intent: "status_inquiry", confidence: 0.84, reasoning: "Status inquiry keyword detected" },
   { pattern: /(?:summary|摘要|概览|同步)/i, intent: "status_inquiry", confidence: 0.83, reasoning: "Summary request keyword detected" },
-  { pattern: /(?:delete|remove|删除|清空|drop)/i, intent: "task_modify", confidence: 0.80, reasoning: "Deletion keyword detected" },
+  { pattern: /(?:\b(?:delete|remove|drop)\b|删除|清空)/iu, intent: "task_modify", confidence: 0.80, reasoning: "Deletion keyword detected" },
   { pattern: /(?:update|modify|change|修改|更新|调整)/i, intent: "task_modify", confidence: 0.80, reasoning: "Modification keyword detected" },
-  { pattern: /(?:create|make|generate|新建|创建|生成|做一个|做个)/i, intent: "task_create", confidence: 0.88, reasoning: "Creation keyword detected" },
+  { pattern: /(?:\b(?:create|make|generate)\b|新建|创建|生成|做一个|做个)/iu, intent: "task_create", confidence: 0.88, reasoning: "Creation keyword detected" },
   { pattern: /(?:why|为什么|原因|为何)/i, intent: "why", confidence: 0.75, reasoning: "Why question detected" },
 ];
 
@@ -91,6 +94,14 @@ function clampConfidence(value: number): number {
     return DEFAULT_INTENT_CONFIDENCE_THRESHOLDS.fallbackThreshold;
   }
   return Math.max(0, Math.min(1, value));
+}
+
+function isParsedIntentToken(value: unknown): value is ParsedIntentToken {
+  if (typeof value !== "object" || value == null) {
+    return false;
+  }
+  const candidate = value as Partial<ParsedIntentToken>;
+  return isIntentType(candidate.intentType) && typeof candidate.confidence === "number";
 }
 
 function resolveThresholds(overrides?: Partial<IntentConfidenceThresholds>): IntentConfidenceThresholds {
@@ -126,10 +137,16 @@ export function detectInputLanguage(message: string): string {
   if (/[\u3040-\u30ff]/.test(message)) {
     return "ja-JP";
   }
+  if (/(?:確認|対応|申請|承認|依頼|至急|稟議)/u.test(message)) {
+    return "ja-JP";
+  }
   if (/[\u4e00-\u9fff]/.test(message)) {
     return "zh-CN";
   }
-  if (/[äöüß]/i.test(message)) {
+  if (/(?:\b(?:bitte|danke|und|oder|nicht|warum|genehmigen)\b|ß)/iu.test(message)) {
+    return "de-DE";
+  }
+  if (/[äöü]/iu.test(message) && /\b(?:bitte|danke|und|oder|nicht|warum|genehmigen)\b/iu.test(message)) {
     return "de-DE";
   }
   return "en-US";
@@ -159,7 +176,7 @@ export function parseIntentTokens(message: string): ParsedIntentToken[] {
     return [{ intentType: "task_query", confidence: 0.64 }];
   }
 
-  const requestPatterns = /(?:请|请你|帮我|麻烦|需要|想要|安排|执行|修复|排查|处理|run|fix|investigate|deploy|restart|rollback)/i;
+  const requestPatterns = /(?:请|请你|帮我|麻烦|需要|想要|安排|执行|修复|排查|处理|\b(?:run|fix|investigate|deploy|restart|rollback)\b)/iu;
   if (requestPatterns.test(message) || (normalized.length > 20 && entityCount >= 4)) {
     return [{ intentType: "task_create", confidence: normalized.length > 20 ? 0.68 : 0.65 }];
   }
@@ -193,7 +210,11 @@ export async function parseIntentTokensWithModel(
       message,
       locale: options.locale ?? "und",
     });
-    const normalized = Array.isArray(parsed) ? parsed.filter(Boolean) : parsed == null ? [] : [parsed];
+    const normalized = Array.isArray(parsed)
+      ? parsed.filter(isParsedIntentToken)
+      : isParsedIntentToken(parsed)
+        ? [parsed]
+        : [];
     const primary = normalized[0];
     if (primary == null) {
       return heuristic;
@@ -231,6 +252,18 @@ function parseIntentTypeFromText(response: string): IntentType {
     return "task_query";
   }
   return "task_query";
+}
+
+function truncateCodePoints(value: string, limit: number): string {
+  return [...value].slice(0, limit).join("");
+}
+
+function normalizeOptionalText(value: unknown, limit: number): string | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+  const normalized = truncateCodePoints(value, limit).trim();
+  return normalized.length > 0 ? normalized : undefined;
 }
 
 export class LlmIntentParser {
@@ -284,8 +317,9 @@ export class LlmIntentParser {
           return {
             intentType: parsed.intentType,
             confidence: clampConfidence(parsed.confidence),
-            reasoning: parsed.reasoning ?? response,
-            language: parsed.language ?? resolvedLocale,
+            reasoning: normalizeOptionalText(parsed.reasoning, MAX_LLM_REASONING_CODE_POINTS)
+              ?? truncateCodePoints(response, MAX_LLM_REASONING_CODE_POINTS),
+            language: normalizeOptionalText(parsed.language, MAX_LLM_LANGUAGE_CODE_POINTS) ?? resolvedLocale,
           };
         }
       } catch {
@@ -295,7 +329,7 @@ export class LlmIntentParser {
       return {
         intentType: parseIntentTypeFromText(response),
         confidence: this.thresholds.llmAcceptThreshold,
-        reasoning: response,
+        reasoning: truncateCodePoints(response, MAX_LLM_REASONING_CODE_POINTS),
         language: resolvedLocale,
       };
     } catch {

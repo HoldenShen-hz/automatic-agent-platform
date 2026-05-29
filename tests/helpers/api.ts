@@ -199,6 +199,7 @@ export function createSeededApiContext(workspace: string, options: SeededApiCont
     spiTypes: ["retriever"],
     extensionKind: "domain_plugin",
     trustLevel: "trusted",
+    outputDataClass: "internal",
     publicSdkSurface: "tests/mock",
     settingsSchema: {},
     sandbox: {
@@ -232,6 +233,7 @@ export function createSeededApiContext(workspace: string, options: SeededApiCont
     spiTypes: ["presenter"],
     extensionKind: "domain_plugin",
     trustLevel: "trusted",
+    outputDataClass: "internal",
     publicSdkSurface: "tests/mock",
     settingsSchema: {},
     sandbox: {

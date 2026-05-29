@@ -81,6 +81,11 @@ export interface ReadRoutingDecision {
   readonly auditTrail: readonly string[];
 }
 
+export interface ReadReplicaServiceOptions {
+  readonly caughtUpLagThresholdMs?: number;
+  readonly readAfterWritePollIntervalMs?: number;
+}
+
 /**
  * Read-after-write tracking entry
  */
@@ -102,13 +107,19 @@ interface PendingReadEntry {
  * - Read-after-write consistency: waits for replication before serving reads
  */
 export class ReadReplicaService {
+  private static readonly DEFAULT_CAUGHT_UP_LAG_THRESHOLD_MS = 1_000;
+  private static readonly DEFAULT_READ_AFTER_WRITE_POLL_INTERVAL_MS = 100;
   private readonly configs = new Map<string, ReadReplicaConfig>();
   private readonly replicas = new Map<string, ReadReplica>();
   private readonly primaryRegionId: string;
   private readonly pendingReads = new Map<string, PendingReadEntry>();
+  private readonly caughtUpLagThresholdMs: number;
+  private readonly readAfterWritePollIntervalMs: number;
 
-  public constructor(primaryRegionId: string) {
+  public constructor(primaryRegionId: string, options: ReadReplicaServiceOptions = {}) {
     this.primaryRegionId = primaryRegionId;
+    this.caughtUpLagThresholdMs = options.caughtUpLagThresholdMs ?? ReadReplicaService.DEFAULT_CAUGHT_UP_LAG_THRESHOLD_MS;
+    this.readAfterWritePollIntervalMs = options.readAfterWritePollIntervalMs ?? ReadReplicaService.DEFAULT_READ_AFTER_WRITE_POLL_INTERVAL_MS;
   }
 
   /**
@@ -216,7 +227,8 @@ export class ReadReplicaService {
     // Get candidate replicas based on routing mode
     const candidates = this.getCandidateReplicas(request);
     if (candidates.length === 0) {
-      replicaLogger.warn(`No healthy replicas for read operation ${request.operationId}`, {
+      replicaLogger.warn("read_replica.no_healthy_candidates", {
+        operationId: request.operationId,
         aggregateId: request.aggregateId,
       });
       auditTrail.push(`route:no_candidates`);
@@ -315,7 +327,7 @@ export class ReadReplicaService {
           (r) => r.regionId === regionId && !r.isPrimary,
         );
         if (!replica) return true; // No follower for this region, consider it OK
-        return replica.lagMs !== null && replica.lagMs < 1000; // Replica is caught up
+        return replica.lagMs !== null && replica.lagMs < this.caughtUpLagThresholdMs;
       });
 
       if (allReplicated) {
@@ -323,12 +335,14 @@ export class ReadReplicaService {
       }
 
       // Wait a bit before checking again
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, this.readAfterWritePollIntervalMs));
     }
 
-    replicaLogger.warn(`Read-after-write timeout for aggregate ${aggregateId}`, {
+    replicaLogger.warn("read_replica.read_after_write_timeout", {
+      aggregateId,
       targetRegionIds,
       timeoutMs,
+      caughtUpLagThresholdMs: this.caughtUpLagThresholdMs,
     });
     return false;
   }

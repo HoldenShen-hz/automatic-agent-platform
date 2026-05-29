@@ -8,7 +8,7 @@ import {
   detectInputLanguage,
   parseIntentTokensWithModel,
   LlmIntentParser,
-  INTENT_CONFIDENCE_THRESHOLDS,
+  intentConfidenceThresholds,
   type IntentParserModelGateway,
   type ParsedIntentToken,
   type IntentParserContext,
@@ -25,8 +25,8 @@ test("detectInputLanguage returns ja-JP for Japanese text", () => {
 });
 
 test("detectInputLanguage returns de-DE for German text", () => {
-  assert.equal(detectInputLanguage("Ich möchte einen Bericht"), "de-DE");
-  assert.equal(detectInputLanguage("Überprüfung"), "de-DE");
+  assert.equal(detectInputLanguage("Bitte prüfen"), "de-DE");
+  assert.equal(detectInputLanguage("Straße"), "de-DE");
 });
 
 test("detectInputLanguage returns en-US for English text", () => {
@@ -34,9 +34,9 @@ test("detectInputLanguage returns en-US for English text", () => {
   assert.equal(detectInputLanguage("Hello world"), "en-US");
 });
 
-test("INTENT_CONFIDENCE_THRESHOLDS has correct values", () => {
-  assert.equal(INTENT_CONFIDENCE_THRESHOLDS.LLM_ACCEPT_THRESHOLD, 0.75);
-  assert.equal(INTENT_CONFIDENCE_THRESHOLDS.FALLBACK_THRESHOLD, 0.50);
+test("intentConfidenceThresholds has correct values", () => {
+  assert.equal(intentConfidenceThresholds.llmAcceptThreshold, 0.75);
+  assert.equal(intentConfidenceThresholds.fallbackThreshold, 0.50);
 });
 
 test("LlmIntentParser constructor works with null modelGateway", () => {
@@ -58,7 +58,7 @@ test("LlmIntentParser.parseWithLlm uses heuristic when no model gateway", async 
   const result = await parser.parseWithLlm("创建任务");
 
   assert.equal(result.intentType, "task_create");
-  assert.ok(result.confidence >= INTENT_CONFIDENCE_THRESHOLDS.FALLBACK_THRESHOLD);
+  assert.ok(result.confidence >= intentConfidenceThresholds.fallbackThreshold);
   assert.equal(result.language, "zh-CN");
 });
 
@@ -130,7 +130,7 @@ test("LlmIntentParser.parseWithLlm does not fall back when fallbackToRegex is fa
   const result = await parser.parseWithLlm("帮我做一下");
 
   // Should return low confidence without fallback
-  assert.ok(result.confidence < INTENT_CONFIDENCE_THRESHOLDS.FALLBACK_THRESHOLD);
+  assert.ok(result.confidence < intentConfidenceThresholds.fallbackThreshold);
 });
 
 test("LlmIntentParser.parseWithLlm preserves task_create confidence from model output", async () => {
