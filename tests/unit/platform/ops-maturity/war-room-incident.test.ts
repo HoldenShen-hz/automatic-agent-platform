@@ -228,7 +228,7 @@ test("R16-95 active ADR references point to six-layer doc and seven-layer file i
   const evolutionAdr = readFileSync(resolve(process.cwd(), "docs_zh/adr/007-evolution-engine.md"), "utf8");
   const aliasAdr = readFileSync(resolve(process.cwd(), "docs_zh/adr/003-memory-seven-layers.md"), "utf8");
 
-  assert.match(quickstart, /003-memory-six-layers\.md/);
+  assert.match(quickstart, /020-memory-six-plane-model\.md/);
   assert.match(evolutionAdr, /003-memory-six-layers\.md/);
   assert.match(aliasAdr, /历史别名/);
   assert.match(aliasAdr, /003-memory-six-layers\.md/);

@@ -46,6 +46,8 @@ import {
   validatePlanGraphBundle,
 } from "./harness-sdk-support.js";
 
+export { HarnessSdkError } from "./harness-sdk-support.js";
+
 // Lifecycle hook shape remains part of this entry surface:
 // beforeRun?: (input) => void
 // afterRun?: (run) => void

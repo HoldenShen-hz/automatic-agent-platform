@@ -25,7 +25,7 @@ function createService(intentType: "cancel_task" | "create_goal" | "decompress_g
   });
 }
 
-test("NlEntryService exposes ADR create_goal intent type", async () => {
+test("NlEntryService maps ADR create_goal into canonical task_create intent", async () => {
   const service = createService("create_goal");
   const result = await service.parseDetailed({
     tenantId: "tenant_001",
@@ -33,10 +33,10 @@ test("NlEntryService exposes ADR create_goal intent type", async () => {
     message: "Create a quarterly OKR goal for reliability",
   });
 
-  assert.equal(result.detectedIntents[0]?.intentType, "create_goal");
+  assert.equal(result.detectedIntents[0]?.intentType, "task_create");
 });
 
-test("NlEntryService exposes ADR decompress_goal intent type", async () => {
+test("NlEntryService maps ADR decompress_goal into canonical task_query intent", async () => {
   const service = createService("decompress_goal");
   const result = await service.parseDetailed({
     tenantId: "tenant_001",
@@ -44,10 +44,10 @@ test("NlEntryService exposes ADR decompress_goal intent type", async () => {
     message: "Break this goal into weekly milestones",
   });
 
-  assert.equal(result.detectedIntents[0]?.intentType, "decompress_goal");
+  assert.equal(result.detectedIntents[0]?.intentType, "task_query");
 });
 
-test("NlEntryService treats cancel_task as a medium-risk mutation intent", async () => {
+test("NlEntryService maps cancel_task into canonical task_modify with medium mutation risk", async () => {
   const service = createService("cancel_task");
   const result = await service.buildTask({
     tenantId: "tenant_001",
@@ -55,7 +55,7 @@ test("NlEntryService treats cancel_task as a medium-risk mutation intent", async
     message: "Cancel task 123 on 2026-05-12",
   });
 
-  assert.equal(result.taskDraft.intent.intentType, "cancel_task");
+  assert.equal(result.taskDraft.intent.intentType, "task_modify");
   assert.equal(result.riskPreview.overallRisk, "medium");
   assert.equal(result.riskPreview.approvalNeeded, false);
 });

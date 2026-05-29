@@ -47,7 +47,7 @@ test("secret management service throws StorageError when resolving unknown secre
           grantedTo: "test",
           usagePurpose: "test",
         }),
-      (err: any) => err.code === "secret.registry_not_found:secret://system/unknown/secret",
+      (err: any) => err.code === "secret.registry_not_found",
     );
   } finally {
     harness.db.close();

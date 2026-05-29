@@ -1827,7 +1827,7 @@
 | 1444 | web/vite.config.ts:24-28 声明 Report-To csp-endpoint，但服务端无 /api/csp-report 路由 | `done` | Web CSP 曾声明不存在的 Report-To 端点；现已移除该伪上报配置。 |
 | 1445 | web/vite.config.ts:108 生产 sourcemap:"hidden" 与 SRI 注入冲突，任何后处理都会 SRI 失配 | `done` | 生产构建曾同时开启 hidden sourcemap 与 SRI 注入；现已关闭生产 sourcemap，避免摘要漂移。 |
 | 1446 | web/vite.config.ts:56 SRI 正则不感知已存在 integrity=，会双重注入 | `done` | SRI 注入逻辑曾不识别已有 integrity；现已在注入前显式跳过已带 integrity 的标签。 |
-| 1447 | web/build-config.ts:17 manualChunks 正则 feature[-/](\w+) 仅取首段，workflow-builder 与 workflow-cockpit 被并入同一 chunk | `done` | chunk 命名曾按错误正则截首段；现已按 feature 目录名完整拆分模块 chunk。 |
+| 1447 | web/build-config.ts:17 manualChunks 正则 `feature[-/]` 后接单段标识时仅取首段，workflow-builder 与 workflow-cockpit 被并入同一 chunk | `done` | chunk 命名曾按错误正则截首段；现已按 feature 目录名完整拆分模块 chunk。 |
 | 1448 | workflow-builder/web/flow-canvas.tsx:21、web/index.tsx:11-18 每次渲染传新数组给 LazyFlowCanvas，破坏 ReactFlow memo | `done` | workflow builder 曾在父子两层重复创建新数组；现已保持稳定 props，并在画布层按引用缓存。 |
 | 1449 | workflow-cockpit/web/dag-viewer.tsx:107 position:absolute + zIndex:-1 父容器非 relative，连接线视觉跑出面板 | `done` | DAG 连接线曾依赖负 z-index 绝对定位；现已改为正常流式 rail 布局，不再跑出容器。 |
 | 1450 | workflow-cockpit/web/dag-viewer.tsx:38-46 branchGroups 无 useMemo，大 workflow O(n) 重算 | `done` | DAG 分支分组曾在每次渲染重算；现已对 branch groups 和 stage steps 做 memo 化。 |

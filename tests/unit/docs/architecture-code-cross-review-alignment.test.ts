@@ -10,13 +10,14 @@ const REVIEW_DOC = join(
   "architecture-code-cross-review.md",
 );
 
-test("architecture code cross review reflects the 2026-04-25 closure snapshot", () => {
+test("architecture code cross review points to current evidence instead of stale closure claims", () => {
   const review = readFileSync(REVIEW_DOC, "utf8");
 
-  assert.match(review, /2026-04-25/);
-  assert.match(review, /24 项/);
-  assert.match(review, /已关闭|全部关闭|已完成闭环/);
-  assert.match(review, /contracts\/index\.ts/);
-  assert.match(review, /PlatformAdapter/);
-  assert.match(review, /SchemaInventoryService/);
+  assert.match(review, /维护日期：\d{4}-\d{2}-\d{2}/);
+  assert.match(review, /当前收口方式/);
+  assert.match(review, /review 问题闭环/);
+  assert.match(review, /结构性一致性审计/);
+  assert.match(review, /audit-docs-sync\.mjs/);
+  assert.match(review, /不再写“24 项全部关闭”/);
+  assert.match(review, /每个已关闭结论必须能回指到具体文档、命令或源码修复/);
 });

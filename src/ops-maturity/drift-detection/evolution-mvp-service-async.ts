@@ -27,6 +27,8 @@ import { EvolutionMvpService } from "./evolution-mvp-service.js";
 type EvolutionMvpServiceSync = import("./evolution-mvp-service.js").EvolutionMvpService;
 
 export class EvolutionServiceAsync extends SyncBackedAsyncService<EvolutionMvpServiceSync> {
+  private static readonly NOOP_APPROVAL_SERVICE = {} as ApprovalService;
+  private static readonly NOOP_MEMORY_SERVICE = {} as MemoryService;
 
   /**
    * Creates a new EvolutionServiceAsync instance.
@@ -38,8 +40,8 @@ export class EvolutionServiceAsync extends SyncBackedAsyncService<EvolutionMvpSe
     super(() => new EvolutionMvpService(
       db,
       store,
-      undefined as unknown as ApprovalService,
-      undefined as unknown as MemoryService,
+      EvolutionServiceAsync.NOOP_APPROVAL_SERVICE,
+      EvolutionServiceAsync.NOOP_MEMORY_SERVICE,
     ));
   }
 }

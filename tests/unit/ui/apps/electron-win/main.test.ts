@@ -58,15 +58,17 @@ test("electron bridge capabilities keep shell and process disabled", () => {
   }
 });
 
-test("shell command allowlist stays explicit and minimal", () => {
+test("external navigation allowlist stays explicit and shell execution remains unavailable", () => {
   assert.equal(
-    source.includes('new Set(["status", "health", "version"])'),
+    source.includes('const ALLOWED_EXTERNAL_PROTOCOLS = new Set(["https:", "mailto:"]);'),
     true,
   );
+  assert.equal(source.includes('"shell:run"'), false);
+  assert.equal(source.includes('"shell:spawn"'), false);
 });
 
 test("main window forwards external links to the OS shell and denies popup ownership", () => {
-  assert.equal(source.includes('mainWindow.webContents.setWindowOpenHandler(({ url }) => {'), true);
+  assert.equal(source.includes('windowHandle.webContents.setWindowOpenHandler(({ url }) => {'), true);
   assert.equal(source.includes("void shell.openExternal(url);"), true);
   assert.equal(source.includes('return { action: "deny" };'), true);
 });

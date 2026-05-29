@@ -35,7 +35,8 @@ test("electron preload surface only exposes approved namespaces", () => {
 
 test("installElectronBridge relies on contextBridge instead of mutating window", () => {
   assert.equal(preloadSource.includes("__AA_ELECTRON_CONTEXT_BRIDGE__"), true);
-  assert.equal(preloadSource.includes('exposeInMainWorld("AA_ELECTRON", bridge)'), true);
+  assert.equal(preloadSource.includes('exposeInMainWorld("AA_ELECTRON", Object.freeze({ ...bridge }))'), true);
+  assert.equal(preloadSource.includes('Object.defineProperty(target, "AA_ELECTRON", {'), true);
   assert.equal(preloadSource.includes("__AA_ELECTRON__"), false);
 });
 

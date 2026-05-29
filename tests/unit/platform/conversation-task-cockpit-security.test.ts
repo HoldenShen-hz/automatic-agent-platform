@@ -6,15 +6,16 @@ import { resolveRepoPath } from "../../helpers/repo-root.js";
 import { getPlatformArchitectureServices } from "../../../src/platform-architecture-bootstrap.js";
 import { ServiceRegistry } from "../../../src/platform/shared/lifecycle/service-registry.js";
 
-test("R28-45 conversation hook uses a shared ConversationClient instead of per-hook useMemo instantiation", () => {
+test("R28-45 conversation hook uses a ref-backed ConversationClient factory instead of singleton or per-render instantiation", () => {
   const source = readFileSync(
     resolveRepoPath("ui/packages/features/conversation/src/hooks/index.ts"),
     "utf8",
   );
 
-  assert.match(source, /let sharedConversationClient: ConversationClient \| null = null/);
-  assert.match(source, /function getSharedConversationClient/);
+  assert.match(source, /const clientRef = useRef<ConversationClient \| null>\(null\);/);
+  assert.match(source, /function createConversationClient\(/);
   assert.doesNotMatch(source, /useMemo\(\(\) => new ConversationClient/);
+  assert.doesNotMatch(source, /let sharedConversationClient: ConversationClient \| null = null/);
 });
 
 test("R28-47 task cockpit hook rolls back optimistic local mutations when REST updates fail", () => {

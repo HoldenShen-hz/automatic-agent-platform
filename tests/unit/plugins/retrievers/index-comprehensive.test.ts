@@ -59,7 +59,7 @@ test.describe("RetrieversIndex comprehensive tests", () => {
       const plugin = RetrieversIndex.createGameDevRetrieverPlugin();
       assert.ok(plugin !== undefined);
       assert.equal(plugin.pluginId, "plugin.gamedev.retriever");
-      assert.equal(plugin.domainId, "gamedev");
+      assert.equal(plugin.domainId, "game-dev");
       assert.equal(plugin.spiType, "retriever");
       assert.ok(Array.isArray(plugin.capabilityIds));
       assert.ok(plugin.capabilityIds.length > 0);
@@ -79,7 +79,7 @@ test.describe("RetrieversIndex comprehensive tests", () => {
       const plugin = RetrieversIndex.createLivestreamRetrieverPlugin();
       assert.ok(plugin !== undefined);
       assert.equal(plugin.pluginId, "plugin.livestream.retriever");
-      assert.equal(plugin.domainId, "livestream");
+      assert.equal(plugin.domainId, "live-streaming");
       assert.equal(plugin.spiType, "retriever");
       assert.ok(Array.isArray(plugin.capabilityIds));
       assert.ok(plugin.capabilityIds.length > 0);

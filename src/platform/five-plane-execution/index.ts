@@ -1,4 +1,4 @@
-export * as distributedLock from "./distributed-lock/distributed-lock-service.js";
+export * as distributedLock from "./distributed-lock/index.js";
 export * as executionEngine from "./execution-engine/index.js";
 export * as hotUpgrade from "./hot-upgrade/index.js";
 export * as pluginExecutor from "./plugin-executor/index.js";

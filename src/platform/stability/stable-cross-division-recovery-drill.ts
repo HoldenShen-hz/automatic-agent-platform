@@ -227,7 +227,7 @@ async function seedCrossDivisionRecoveryDataset(dbPath: string): Promise<void> {
     agentId: "agent-engineering-drill",
     title: "Engineering dead letter drill task",
     status: "executing",
-    attempt: 2,
+    attempt: 3,
     lastErrorCode: "unexpected_runtime_error",
     lastErrorMessage: "tool crashed twice",
     updatedAt: "2026-04-04T09:20:00.000Z",

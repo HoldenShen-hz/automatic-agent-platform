@@ -236,7 +236,11 @@ export class SqliteLockAdapter implements DistributedLockAdapter {
       this.commitTransaction();
       return { lockKey, owner: newOwner, fencingToken, status: "held", acquiredAt: now, ttlMs, metadata };
     } catch (err) {
-      this.rollbackTransaction();
+      try {
+        this.rollbackTransaction();
+      } catch {
+        // Ignore rollback failures so the canonical lock error is preserved.
+      }
       lockLogger.log({ level: "warn", message: "Lock forceSteal failed", data: { lockKey, newOwner, error: err instanceof Error ? err.message : String(err) } });
       throw new LockingError("lock.force_steal_failed", "Lock force steal operation failed", { details: { lockKey, newOwner } });
     }

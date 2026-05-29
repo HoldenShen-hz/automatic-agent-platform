@@ -37,7 +37,7 @@ describe("SyncCoordinator", () => {
   });
 
   it("replays stored auth and idempotency headers during flush", async () => {
-    const fetchImplementation = vi.fn(async () => new Response(JSON.stringify({ ok: true }), { status: 200 }));
+    const fetchImplementation = vi.fn<typeof fetch>(async () => new Response(JSON.stringify({ ok: true }), { status: 200 }));
     const queue = new OfflineQueue(createMemoryOfflineMutationStore([{
       ...createMutation("m3"),
       headers: {
@@ -57,7 +57,10 @@ describe("SyncCoordinator", () => {
     await coordinator.flush("2026-05-01T12:05:00.000Z");
 
     expect(fetchImplementation).toHaveBeenCalled();
-    const [, requestInit] = fetchImplementation.mock.calls[0] as unknown as [RequestInfo | URL, RequestInit];
+    const requestInit = fetchImplementation.mock.calls[0]?.[1];
+    if (requestInit == null) {
+      throw new Error("Expected fetch request init to be captured.");
+    }
     const headers = new Headers(requestInit.headers);
     expect(headers.get("authorization")).toBe("Bearer token-1");
     expect(headers.get("x-csrf-token")).toBe("csrf-1");

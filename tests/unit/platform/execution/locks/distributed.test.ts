@@ -54,7 +54,7 @@ test("Distributed: SqliteLockAdapter fencing token increments after forceSteal [
   const adapter = new SqliteLockAdapter(db);
 
   adapter.acquire({ lockKey: "test-lock", owner: "owner-1" });
-  adapter.forceSteal("test-lock", "owner-2", "test reason");
+  adapter.forceSteal("test-lock", "owner-2", "operator_override");
   const result = adapter.acquire({ lockKey: "new-lock", owner: "owner-1" });
 
   // Should be 3 because: initial acquire (1) + forceSteal increments (2) + new acquire (3)
@@ -129,7 +129,7 @@ test("Distributed: Force steal allows new owner to take lock immediately [distri
   adapter.acquire({ lockKey: "steal-lock", owner: "owner-1" });
 
   // New owner force-steals
-  const stolen = adapter.forceSteal("steal-lock", "owner-2", "urgent work needed");
+  const stolen = adapter.forceSteal("steal-lock", "owner-2", "operator_override");
   assert.equal(stolen.owner, "owner-2");
   assert.equal(stolen.status, "held");
 
@@ -455,7 +455,7 @@ test("Distributed: Inspect after forceSteal returns new owner [distributed]", ()
   const adapter = new SqliteLockAdapter(db);
 
   adapter.acquire({ lockKey: "steal-inspect", owner: "owner-1" });
-  adapter.forceSteal("steal-inspect", "owner-2", "test");
+  adapter.forceSteal("steal-inspect", "owner-2", "operator_override");
   const inspected = adapter.inspect("steal-inspect");
 
   assert.ok(inspected !== null);

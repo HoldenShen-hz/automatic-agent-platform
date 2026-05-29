@@ -155,8 +155,7 @@ export function withTimeout<TArgs extends readonly unknown[], TResult>(
       ? { timeoutMs, cleanupFn, propagateError: true }
       : { timeoutMs, propagateError: true };
     const timeout = new Timeout(options);
-    const invokeWithOptionalSignal = fn as unknown as (...callArgs: unknown[]) => Promise<TResult>;
-    return timeout.wrap((signal) => invokeWithOptionalSignal(...args, signal));
+    return timeout.wrap(() => fn(...args));
   };
 }
 

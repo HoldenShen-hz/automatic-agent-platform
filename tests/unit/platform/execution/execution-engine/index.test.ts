@@ -5,13 +5,10 @@ import {
   MULTI_STEP_TOOL_DEFINITIONS,
   resolveMultiStepToolPath,
   runMultiStepOrchestration,
-  runPhase1BOrchestration,
 } from "../../../../../src/platform/five-plane-execution/execution-engine/index.js";
 
 test("execution-engine barrel exports orchestration entrypoints [index]", () => {
   assert.equal(typeof runMultiStepOrchestration, "function");
-  assert.equal(typeof runPhase1BOrchestration, "function");
-  assert.equal(runPhase1BOrchestration, runMultiStepOrchestration);
 });
 
 test("execution-engine barrel exports tool definition surface [index]", () => {

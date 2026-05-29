@@ -8,7 +8,7 @@ test.describe("LivestreamRetriever comprehensive tests", () => {
     const plugin = createLivestreamRetrieverPlugin();
     assert.ok(plugin !== undefined);
     assert.equal(plugin.pluginId, "plugin.livestream.retriever");
-    assert.equal(plugin.domainId, "livestream");
+    assert.equal(plugin.domainId, "live-streaming");
     assert.equal(plugin.spiType, "retriever");
   });
 

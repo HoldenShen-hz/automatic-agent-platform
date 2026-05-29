@@ -4,8 +4,8 @@
     "src::as unknown as": 3,
     "tests::@ts-expect-error": 31,
     "tests::@ts-ignore": 614,
-    "tests::as any": 4587,
-    "tests::as unknown as": 1974,
+    "tests::as any": 4567,
+    "tests::as unknown as": 2016,
     "ui::@ts-expect-error": 1,
     "ui::as unknown as": 48
   }

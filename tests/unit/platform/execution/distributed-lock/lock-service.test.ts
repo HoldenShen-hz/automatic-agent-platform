@@ -288,21 +288,14 @@ test("SqliteLockAdapter: non-expired lock blocks new acquisition [lock-service]"
   db.close();
 });
 
-test("SqliteLockAdapter: zero ttl means lock never expires [lock-service]", () => {
+test("SqliteLockAdapter: ttlMs below 1000 is rejected [lock-service]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
-  // Insert a lock with ttl_ms = 0 (infinite)
-  const pastTime = new Date(Date.now() - 1_000_000).toISOString();
-  db.prepare(`
-    INSERT INTO distributed_locks (lock_key, owner, fencing_token, status, acquired_at, ttl_ms)
-    VALUES (?, ?, ?, 'held', ?, ?)
-  `).run("infinite-lock", "owner-a", 1, pastTime, 0);
-
-  // Should NOT be able to acquire because ttl=0 means never expires
-  const result = adapter.acquire({ lockKey: "infinite-lock", owner: "owner-b", ttlMs: 30_000 });
-
-  assert.equal(result.acquired, false);
+  assert.throws(
+    () => adapter.acquire({ lockKey: "invalid-lock", owner: "owner-a", ttlMs: 0 }),
+    /lock\.invalid_ttl/,
+  );
 
   db.close();
 });
@@ -313,7 +306,7 @@ test("SqliteLockAdapter: forceSteal allows takeover regardless of expiry [lock-s
 
   adapter.acquire({ lockKey: "resource-1", owner: "owner-a", ttlMs: 30_000 });
 
-  const stolen = adapter.forceSteal("resource-1", "owner-b", "emergency intervention");
+  const stolen = adapter.forceSteal("resource-1", "owner-b", "incident_mitigation");
 
   assert.equal(stolen.owner, "owner-b");
   assert.equal(stolen.status, "held");
@@ -327,11 +320,11 @@ test("SqliteLockAdapter: forceSteal stores reason in metadata [lock-service]", (
 
   adapter.acquire({ lockKey: "resource-1", owner: "owner-a", ttlMs: 30_000 });
 
-  const stolen = adapter.forceSteal("resource-1", "owner-b", "admin override");
+  const stolen = adapter.forceSteal("resource-1", "owner-b", "operator_override");
 
   assert.ok(stolen.metadata !== null);
   const metadata = JSON.parse(stolen.metadata);
-  assert.equal(metadata.forceStealReason, "admin override");
+  assert.equal(metadata.forceStealReason, "operator_override");
 
   db.close();
 });
@@ -341,7 +334,7 @@ test("SqliteLockAdapter: forceSteal increments fencing token [lock-service]", ()
   const adapter = new SqliteLockAdapter(db);
 
   const r1 = adapter.acquire({ lockKey: "resource-1", owner: "owner-a", ttlMs: 30_000 });
-  const stolen = adapter.forceSteal("resource-1", "owner-b", "takeover");
+  const stolen = adapter.forceSteal("resource-1", "owner-b", "operator_override");
 
   assert.ok(stolen.fencingToken > r1.lock!.fencingToken);
 

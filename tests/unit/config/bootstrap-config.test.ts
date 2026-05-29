@@ -101,7 +101,7 @@ test("bootstrap config maintains existing required fields", () => {
   const config = loadBootstrapConfig();
 
   // Required existing fields
-  assert.equal(config.appName, "automatic-agent-system");
+  assert.equal(config.appName, "automatic-agent-platform");
   assert.equal(config.phase, "ring_1");
   assert.equal(config.stableCoreEnabled, true);
 

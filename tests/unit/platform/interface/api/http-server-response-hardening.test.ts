@@ -15,7 +15,7 @@ test("DEFAULT_CORS_CONFIG has correct structure", () => {
   assert.deepEqual(DEFAULT_CORS_CONFIG.allowedOrigins, []);
   assert.deepEqual(DEFAULT_CORS_CONFIG.allowedMethods, ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]);
   assert.deepEqual(DEFAULT_CORS_CONFIG.allowedHeaders, ["content-type", "authorization", "x-request-id", "x-api-key"]);
-  assert.deepEqual(DEFAULT_CORS_CONFIG.exposedHeaders, ["x-request-id", "x-trace-id", "x-api-version", "x-app-version"]);
+  assert.deepEqual(DEFAULT_CORS_CONFIG.exposedHeaders, ["x-request-id", "x-trace-id", "x-api-version", "x-app-version", "x-build-commit"]);
   assert.equal(DEFAULT_CORS_CONFIG.maxAgeSeconds, 86_400);
   assert.equal(DEFAULT_CORS_CONFIG.credentials, false);
 });

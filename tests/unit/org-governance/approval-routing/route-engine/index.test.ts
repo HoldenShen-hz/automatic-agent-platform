@@ -286,7 +286,7 @@ test("resolveApprovalRoute freezes FX and evidence snapshot", () => {
         quoteCurrency: "CNY",
         rate: 7.1,
         source: "treasury",
-        capturedAt: "2026-04-28T00:00:00.000Z",
+        capturedAt: new Date().toISOString(),
       },
     },
     evidenceRefs: ["evidence://fx", "evidence://sod"],

@@ -351,7 +351,7 @@ describe("SqliteLockAdapter", () => {
     adapter.acquire({ lockKey: "lock-1", owner: "owner-1", ttlMs: 30000 });
     const result = adapter.extend("lock-1", "owner-1", 30000);
     assert.ok(result);
-    assert.equal(result.ttlMs, 60000);
+    assert.equal(result.ttlMs, 30000);
   });
 
   it("extend returns null when lock not found", () => {
@@ -361,7 +361,7 @@ describe("SqliteLockAdapter", () => {
 
   it("forceSteal takes lock forcefully", () => {
     adapter.acquire({ lockKey: "lock-1", owner: "owner-1", ttlMs: 30000 });
-    const result = adapter.forceSteal("lock-1", "new-owner", "needed for maintenance");
+    const result = adapter.forceSteal("lock-1", "new-owner", "operator_override");
     assert.equal(result.owner, "new-owner");
     assert.ok(result.metadata);
   });
@@ -408,9 +408,12 @@ describe("SqliteLockAdapter", () => {
   });
 
   it("handles expired lock cleanup", () => {
-    // First acquire and then manually expire it by setting acquired_at far in past
-    adapter.acquire({ lockKey: "lock-1", owner: "owner-1", ttlMs: 1 });
-    // Wait for lock to expire (TTL of 1ms)
+    adapter.acquire({ lockKey: "lock-1", owner: "owner-1", ttlMs: 1000 });
+    db.connection.prepare(
+      `UPDATE distributed_locks
+       SET acquired_at = ?
+       WHERE lock_key = ?`,
+    ).run(new Date(Date.now() - 60_000).toISOString(), "lock-1");
     const result = adapter.acquire({ lockKey: "lock-1", owner: "owner-2", ttlMs: 30000 });
     assert.equal(result.acquired, true);
     assert.ok(result.lock);

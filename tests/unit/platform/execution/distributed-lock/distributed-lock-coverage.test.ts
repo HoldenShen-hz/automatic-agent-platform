@@ -37,18 +37,14 @@ function createTestDb(): DatabaseSync {
   return db;
 }
 
-test("SqliteLockAdapter handles zero TTL as infinite expiry [distributed-lock-coverage]", () => {
+test("SqliteLockAdapter rejects ttlMs below the 1000ms minimum [distributed-lock-coverage]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
-  // Acquire with zero TTL (infinite)
-  const result = adapter.acquire({ lockKey: "infinite-lock", owner: "owner", ttlMs: 0 });
-  assert.equal(result.acquired, true);
-  assert.equal(result.lock!.ttlMs, 0);
-
-  // Another owner should still be blocked because zero TTL means infinite
-  const result2 = adapter.acquire({ lockKey: "infinite-lock", owner: "other-owner", ttlMs: 5000 });
-  assert.equal(result2.acquired, false);
+  assert.throws(
+    () => adapter.acquire({ lockKey: "invalid-lock", owner: "owner", ttlMs: 0 }),
+    /lock\.invalid_ttl/,
+  );
 
   db.close();
 });
@@ -103,7 +99,7 @@ test("SqliteLockAdapter forceSteal replaces existing lock [distributed-lock-cove
 
   adapter.acquire({ lockKey: "test-lock", owner: "owner-1", ttlMs: 30000 });
 
-  const stolen = adapter.forceSteal("test-lock", "owner-2", "test reason");
+  const stolen = adapter.forceSteal("test-lock", "owner-2", "operator_override");
   assert.equal(stolen.owner, "owner-2");
   assert.ok(stolen.fencingToken > 0);
   assert.ok(stolen.metadata !== null);
@@ -116,7 +112,7 @@ test("SqliteLockAdapter forceSteal creates lock if not exists [distributed-lock-
   const adapter = new SqliteLockAdapter(db);
 
   // Force steal a non-existent lock should create it
-  const stolen = adapter.forceSteal("new-lock", "new-owner", "creating lock");
+  const stolen = adapter.forceSteal("new-lock", "new-owner", "operator_override");
   assert.equal(stolen.owner, "new-owner");
   assert.equal(stolen.lockKey, "new-lock");
 
@@ -206,7 +202,7 @@ test("SqliteLockAdapter handles database error on forceSteal [distributed-lock-c
   db.exec("DROP TABLE distributed_locks");
 
   assert.throws(
-    () => adapter.forceSteal("test-lock", "new-owner", "reason"),
+    () => adapter.forceSteal("test-lock", "new-owner", "operator_override"),
     (error: unknown) => (error as any)?.code === "E7lock.force_steal_failed",
   );
 });

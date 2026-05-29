@@ -693,8 +693,16 @@ export class EnvironmentDeploymentService {
       };
     } catch (error) {
       // Return not registered for known missing/unavailable error codes
+      const code = typeof error === "object" && error != null && "code" in error
+        ? String((error as { code?: unknown }).code ?? "")
+        : "";
       const message = error instanceof Error ? error.message : String(error);
-      if (message.startsWith("secret.registry_not_found:") || message.startsWith("secret.registry_unavailable:")) {
+      if (
+        code === "secret.registry_not_found"
+        || code === "secret.registry_unavailable"
+        || message.startsWith("secret.registry_not_found:")
+        || message.startsWith("secret.registry_unavailable:")
+      ) {
         return {
           registered: false,
           resolved: false,

@@ -52,6 +52,7 @@
 | [042](./042-progressive-autonomy-model.md) | Progressive Autonomy Model | Accepted | 2026-04-20 |
 | [043](./043-unified-operations-dashboard.md) | Unified Operations Dashboard | Accepted | 2026-04-20 |
 | [044](./044-non-technical-user-experience.md) | Non-Technical User Experience Architecture | Accepted | 2026-04-20 |
+| [045](./045-reserved-slot.md) | Reserved Slot | Withdrawn | 2026-04-20 |
 | [046](./046-organization-hierarchy-model.md) | Organization Hierarchy Model | Accepted | 2026-04-20 |
 | [047](./047-organization-approval-routing.md) | Organization Approval Routing | Accepted | 2026-04-20 |
 | [048](./048-enterprise-sso-scim-integration.md) | Enterprise SSO/SCIM Integration Architecture | Accepted | 2026-04-20 |

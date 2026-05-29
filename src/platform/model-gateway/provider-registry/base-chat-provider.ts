@@ -393,7 +393,6 @@ function buildRuntimeSignal(signal: AbortSignal | undefined, timeoutMs: number):
   const timeout = setTimeout(() => {
     controller.abort(new Error("provider.request_timeout"));
   }, timeoutMs);
-  timeout.unref?.();
 
   const onAbort = (): void => {
     controller.abort(signal?.reason);

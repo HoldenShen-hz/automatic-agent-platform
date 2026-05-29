@@ -121,9 +121,8 @@ test("rejects 1-byte key", () => {
   );
 });
 
-test("accepts key at minimum 16 bytes", () => {
-  // Exactly 16 bytes should be accepted (minimum strength threshold)
-  const key = Buffer.alloc(16).fill("a");
+test("accepts key at minimum 32 bytes", () => {
+  const key = Buffer.alloc(32).fill("a");
   const ciphertext = encryptField("secret", key);
   assert.ok(ciphertext);
   assert.equal(decryptField(ciphertext, key), "secret");

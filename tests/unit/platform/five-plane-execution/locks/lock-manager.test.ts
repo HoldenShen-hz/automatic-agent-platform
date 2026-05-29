@@ -119,15 +119,13 @@ test("Lock auto-expires after ttlMs", () => {
   const h = createLockTestHarness("lock-expire-");
 
   try {
-    // Acquire lock with very short TTL (50ms)
-    const result1 = h.adapter.acquire({ lockKey: "expiring-lock", owner: "worker-1", ttlMs: 50 });
-    assert.equal(result1.acquired, true, "Lock should be acquired with short TTL");
-
-    // Wait for lock to expire
-    const start = Date.now();
-    while (Date.now() - start < 150) {
-      // busy wait - in real scenario would use setTimeout but we need sync test
-    }
+    const result1 = h.adapter.acquire({ lockKey: "expiring-lock", owner: "worker-1", ttlMs: 1_000 });
+    assert.equal(result1.acquired, true, "Lock should be acquired with valid TTL");
+    h.db.connection.prepare(
+      `UPDATE distributed_locks
+       SET acquired_at = ?
+       WHERE lock_key = ?`,
+    ).run(new Date(Date.now() - 120_000).toISOString(), "expiring-lock");
 
     // Another worker should be able to acquire after expiration
     const result2 = h.adapter.acquire({ lockKey: "expiring-lock", owner: "worker-2" });
@@ -209,7 +207,7 @@ test("forceSteal allows taking over an existing lock", () => {
     const token1 = result1.lock!.fencingToken;
 
     // Worker 2 steals the lock
-    const stolen = h.adapter.forceSteal("contested-lock", "worker-2", "Worker 1 unresponsive");
+    const stolen = h.adapter.forceSteal("contested-lock", "worker-2", "stale_owner_recovery");
 
     assert.equal(stolen.owner, "worker-2", "New owner should be worker-2");
     assert.ok(stolen.fencingToken > token1, "Stolen lock should have higher fencing token");

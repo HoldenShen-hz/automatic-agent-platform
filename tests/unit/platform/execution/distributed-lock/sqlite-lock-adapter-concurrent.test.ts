@@ -146,7 +146,7 @@ test("[SYS-REL-2.2] concurrent forceSteal on same lock - all steal attempts comp
   // Multiple concurrent steal attempts
   const thieves = ["thief-1", "thief-2", "thief-3"];
   const results = await Promise.allSettled(
-    thieves.map((thief) => Promise.resolve(adapter.forceSteal("steal-lock", thief, "concurrent steal test"))),
+    thieves.map((thief) => Promise.resolve(adapter.forceSteal("steal-lock", thief, "operator_override"))),
   );
 
   // All steals should complete (no throws)
@@ -172,7 +172,7 @@ test("[SYS-REL-2.2] concurrent forceSteal - final state has exactly one owner [s
 
   // Launch all steals concurrently
   await Promise.allSettled(
-    attackers.map((attacker) => Promise.resolve(adapter.forceSteal("contested-steal", attacker, "race test"))),
+    attackers.map((attacker) => Promise.resolve(adapter.forceSteal("contested-steal", attacker, "operator_override"))),
   );
 
   // Verify invariant: exactly one owner
@@ -193,9 +193,9 @@ test("[SYS-REL-2.2] concurrent forceSteal - fencing token is monotonically incre
 
   // Perform multiple concurrent steals
   await Promise.allSettled([
-    adapter.forceSteal("fencing-steal", "stealer-1", "test"),
-    adapter.forceSteal("fencing-steal", "stealer-2", "test"),
-    adapter.forceSteal("fencing-steal", "stealer-3", "test"),
+    adapter.forceSteal("fencing-steal", "stealer-1", "operator_override"),
+    adapter.forceSteal("fencing-steal", "stealer-2", "operator_override"),
+    adapter.forceSteal("fencing-steal", "stealer-3", "operator_override"),
   ]);
 
   const finalFencing = adapter.inspect("fencing-steal")!.fencingToken;
@@ -214,7 +214,7 @@ test("[SYS-REL-2.2] concurrent forceSteal using runConcurrentInvariant [sqlite-l
 
   const result = await runConcurrentInvariant(
     async (workerId: number) => {
-      return adapter.forceSteal("invariant-steal-lock", `worker-${workerId}`, "invariant-test");
+      return adapter.forceSteal("invariant-steal-lock", `worker-${workerId}`, "operator_override");
     },
     { concurrency: 5 },
   );
@@ -242,7 +242,7 @@ test("[SYS-REL-2.2] forceSteal can steal from any owner regardless of ownership 
   adapter.acquire({ lockKey: "stealable-lock", owner: "owner-1", ttlMs: 30000 });
 
   // Owner 2 steals
-  const stealResult = adapter.forceSteal("stealable-lock", "owner-2", "emergency takeover");
+  const stealResult = adapter.forceSteal("stealable-lock", "owner-2", "operator_override");
   assert.ok(stealResult !== null, "Force steal should succeed");
   assert.equal(stealResult.owner, "owner-2", "New owner should be owner-2");
 
@@ -261,9 +261,9 @@ test("[SYS-REL-2.2] concurrent steals followed by inspect shows consistent state
 
   // Do concurrent steals
   await Promise.allSettled([
-    adapter.forceSteal("consistent-state-lock", "stealer-A", "test"),
-    adapter.forceSteal("consistent-state-lock", "stealer-B", "test"),
-    adapter.forceSteal("consistent-state-lock", "stealer-C", "test"),
+    adapter.forceSteal("consistent-state-lock", "stealer-A", "operator_override"),
+    adapter.forceSteal("consistent-state-lock", "stealer-B", "operator_override"),
+    adapter.forceSteal("consistent-state-lock", "stealer-C", "operator_override"),
   ]);
 
   // Immediately inspect
@@ -279,7 +279,7 @@ test("[SYS-REL-2.2] forceSteal on non-existent lock creates new lock [sqlite-loc
   const adapter = new SqliteLockAdapter(db);
 
   // Force steal on non-existent lock should create it
-  const result = adapter.forceSteal("new-lock", "new-owner", "creating new lock");
+  const result = adapter.forceSteal("new-lock", "new-owner", "operator_override");
   assert.ok(result !== null, "Force steal should succeed on non-existent lock");
   assert.equal(result.owner, "new-owner", "Owner should be new-owner");
   assert.equal(result.status, "held", "Status should be held");

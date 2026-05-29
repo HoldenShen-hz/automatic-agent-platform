@@ -343,7 +343,7 @@ export class ExecutionOutcomeEvaluator {
     const baselineRiskClass = planGraphBundle.riskProfile?.riskClass ?? "medium";
     const baselineRiskScore = this.riskClassToScore(baselineRiskClass);
     const evaluated = this.riskEvaluationProvider.evaluate({
-      taskId: planGraphBundle.planGraphBundleId,
+      taskId: this.resolveTaskId(planGraphBundle),
       factors: this.buildRiskFactors(planGraphBundle, feedback),
     });
     const currentRiskScore = evaluated.riskScore;

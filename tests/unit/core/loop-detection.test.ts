@@ -43,9 +43,9 @@ test("hashToolCall produces different hashes for different inputs", () => {
   assert.notEqual(hash1, hash2, "Different inputs should produce different hashes");
 });
 
-test("hashToolCall produces 16-character hex string", () => {
+test("hashToolCall produces 32-character hex string", () => {
   const hash = hashToolCall("test_tool", { arg: "value" });
-  assert.equal(hash.length, 16, "Hash should be 16 characters");
+  assert.equal(hash.length, 32, "Hash should be 32 characters");
   assert.match(hash, /^[0-9a-f]+$/, "Hash should be hex string");
 });
 

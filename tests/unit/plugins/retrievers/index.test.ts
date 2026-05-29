@@ -103,9 +103,9 @@ test("RetrieversIndex OperationsRetriever has correct pluginId", () => {
 test("RetrieversIndex retriever plugins have correct domainId", () => {
   assert.equal(RetrieversIndex.createAssetProductionRetrieverPlugin().domainId, "assetproduction");
   assert.equal(RetrieversIndex.createCodingRetrieverPlugin().domainId, "coding");
-  assert.equal(RetrieversIndex.createGameDevRetrieverPlugin().domainId, "gamedev");
+  assert.equal(RetrieversIndex.createGameDevRetrieverPlugin().domainId, "game-dev");
   assert.equal(RetrieversIndex.createGrowthRetrieverPlugin().domainId, "growth");
-  assert.equal(RetrieversIndex.createLivestreamRetrieverPlugin().domainId, "livestream");
+  assert.equal(RetrieversIndex.createLivestreamRetrieverPlugin().domainId, "live-streaming");
   assert.equal(RetrieversIndex.createOperationsRetrieverPlugin().domainId, "operations");
 });
 

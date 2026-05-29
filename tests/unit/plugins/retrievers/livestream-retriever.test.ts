@@ -12,7 +12,7 @@ test("LivestreamRetriever has correct plugin metadata", () => {
   const plugin = createLivestreamRetrieverPlugin();
 
   assert.equal(plugin.pluginId, "plugin.livestream.retriever");
-  assert.equal(plugin.domainId, "livestream");
+  assert.equal(plugin.domainId, "live-streaming");
   assert.equal(plugin.spiType, "retriever");
 });
 

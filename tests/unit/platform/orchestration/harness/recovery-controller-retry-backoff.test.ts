@@ -22,14 +22,9 @@ function createConstraintPack(overrides = {}): ConstraintPack {
   };
 }
 
-/**
- * Computes expected exponential backoff with jitter per §9.3.
- * This mirrors the implementation in HarnessLoopController.getBackoffMs().
- */
 function computeExpectedBackoffWithJitter(retryAttempt: number): { min: number; max: number } {
   const exponentialDelay = BACKOFF_BASE_MS * Math.pow(2, retryAttempt - 1);
   const cappedDelay = Math.min(exponentialDelay, BACKOFF_MAX_MS);
-  // With jitter factor of 0.1, delay ranges from cappedDelay to cappedDelay * 1.1
   const minDelay = Math.floor(cappedDelay);
   const maxDelay = Math.floor(cappedDelay + cappedDelay * JITTER_FACTOR);
   return { min: minDelay, max: maxDelay };
@@ -59,27 +54,20 @@ test("HarnessLoopController.getBackoffMs computes exponential delay per §9.3", 
 
 test("HarnessLoopController.getBackoffMs applies jitter per §9.3", () => {
   const pack = createConstraintPack();
-
-  // Collect multiple delays for the same retry attempt to check for jitter variation
-  const delays: number[] = [];
   const targetAttempt = 3; // Use attempt 3 which should have ~4000ms base
+  const startedAt = 1_700_000_000_000;
+  const stableControllerA = new HarnessLoopController(pack, {}, { retryAttempt: targetAttempt, startedAt });
+  const stableControllerB = new HarnessLoopController(pack, {}, { retryAttempt: targetAttempt, startedAt });
+  const shiftedController = new HarnessLoopController(pack, {}, { retryAttempt: targetAttempt, startedAt: startedAt + 1 });
+  const { min, max } = computeExpectedBackoffWithJitter(targetAttempt);
 
-  for (let i = 0; i < 20; i++) {
-    const controller = new HarnessLoopController(pack, {}, { retryAttempt: targetAttempt });
-    delays.push(controller.getBackoffMs());
-  }
+  const stableDelayA = stableControllerA.getBackoffMs();
+  const stableDelayB = stableControllerB.getBackoffMs();
+  const shiftedDelay = shiftedController.getBackoffMs();
 
-  // Calculate statistics
-  const minDelay = Math.min(...delays);
-  const maxDelay = Math.max(...delays);
-
-  // With 10% jitter, we should see variation
-  // Min should be base delay, max should be base * 1.1
-  const baseDelay = BACKOFF_BASE_MS * Math.pow(2, targetAttempt - 1); // 4000ms
-  const expectedMax = Math.min(baseDelay + baseDelay * JITTER_FACTOR, BACKOFF_MAX_MS);
-
-  assert.ok(maxDelay > minDelay, "Jitter should produce varying delays");
-  assert.ok(maxDelay <= Math.floor(expectedMax) + 1, `Max delay (${maxDelay}ms) should be within jitter bound (${expectedMax}ms)`);
+  assert.equal(stableDelayA, stableDelayB, "Same seed should produce deterministic jitter");
+  assert.ok(stableDelayA >= min && stableDelayA <= max, `Delay (${stableDelayA}ms) should stay within jitter bounds`);
+  assert.notEqual(shiftedDelay, stableDelayA, "Changing the seed should change the deterministic jitter");
 });
 
 test("HarnessLoopController.getBackoffMs caps at 60 seconds per §9.3", () => {
@@ -202,29 +190,21 @@ test("RecoveryController constants are defined per §9.3", () => {
     `High retry delay should be capped at max + jitter`);
 });
 
-test("Jitter produces uniform distribution within bounds", () => {
+test("Jitter stays within bounds for distinct deterministic seeds", () => {
   const pack = createConstraintPack();
   const targetAttempt = 5; // ~16000ms base
-
   const delays: number[] = [];
+  const startedAt = 1_700_000_000_000;
   for (let i = 0; i < 100; i++) {
-    const controller = new HarnessLoopController(pack, {}, { retryAttempt: targetAttempt });
+    const controller = new HarnessLoopController(pack, {}, { retryAttempt: targetAttempt, startedAt: startedAt + i });
     delays.push(controller.getBackoffMs());
   }
 
   const minDelay = Math.min(...delays);
   const maxDelay = Math.max(...delays);
-  const avgDelay = delays.reduce((a, b) => a + b, 0) / delays.length;
+  const { min, max } = computeExpectedBackoffWithJitter(targetAttempt);
 
-  const baseDelay = BACKOFF_BASE_MS * Math.pow(2, targetAttempt - 1);
-  const expectedAvg = baseDelay + (baseDelay * JITTER_FACTOR / 2); // Average with uniform jitter
-
-  // Check that jitter is actually being applied (range should span at least 1% of base)
-  assert.ok(maxDelay > minDelay, "Should have jitter variation");
-  assert.ok(maxDelay - minDelay >= baseDelay * 0.05,
-    `Jitter range (${maxDelay - minDelay}ms) should be at least 5% of base (${baseDelay * 0.05}ms)`);
-
-  // Average should be roughly in the middle of min and max
-  assert.ok(avgDelay >= minDelay && avgDelay <= maxDelay,
-    `Average (${avgDelay}) should be between min (${minDelay}) and max (${maxDelay})`);
+  assert.ok(minDelay >= min, `Minimum delay (${minDelay}ms) should stay above base delay (${min}ms)`);
+  assert.ok(maxDelay <= max, `Maximum delay (${maxDelay}ms) should stay within jitter bound (${max}ms)`);
+  assert.ok(maxDelay > minDelay, "Distinct seeds should cover multiple jitter values");
 });

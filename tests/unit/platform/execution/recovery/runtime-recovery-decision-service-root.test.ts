@@ -258,9 +258,9 @@ test("RuntimeRecoveryDecisionService.apply handles move_dead_letter action [runt
   const db = createMockDb();
   let deadLetterInserted = false;
   const store = createFullMockStore({
-    executions: [{ id: "exec-1", taskId: "task-1", status: "executing", traceId: "trace-1", lastErrorCode: "E1", lastErrorMessage: "Execution failed", attempt: 2, agentId: "agent-1" }],
+    executions: [{ id: "exec-1", taskId: "task-1", status: "executing", traceId: "trace-1", lastErrorCode: "E1", lastErrorMessage: "Execution failed", attempt: 3, agentId: "agent-1" }],
     tasks: [{ id: "task-1", status: "in_progress", divisionId: "division-1" }],
-    recoveryRecords: [createRecoveryRecord({ latestErrorCode: "E1", attempt: 2 })],
+    recoveryRecords: [createRecoveryRecord({ latestErrorCode: "E1", attempt: 3 })],
     insertDeadLetter: () => { deadLetterInserted = true; },
     updateExecutionFailure: () => {},
   });

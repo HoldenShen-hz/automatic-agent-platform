@@ -3,8 +3,48 @@
   "entries": [
     {
       "file": "src/platform/five-plane-control-plane/config-center/provider-defaults.ts",
-      "fragment": "MANUAL_BILLING_CHECKOUT_URL",
+      "fragment": "anthropic_api_url",
+      "reason": "Anthropic default API base URL remains centralized with provider defaults"
+    },
+    {
+      "file": "src/platform/five-plane-control-plane/config-center/provider-defaults.ts",
+      "fragment": "openai_api_url",
+      "reason": "OpenAI default API base URL remains centralized with provider defaults"
+    },
+    {
+      "file": "src/platform/five-plane-control-plane/config-center/provider-defaults.ts",
+      "fragment": "minimax_api_url_global",
+      "reason": "MiniMax global default API base URL remains centralized with provider defaults"
+    },
+    {
+      "file": "src/platform/five-plane-control-plane/config-center/provider-defaults.ts",
+      "fragment": "minimax_api_url_china",
+      "reason": "MiniMax China default API base URL remains centralized with provider defaults"
+    },
+    {
+      "file": "src/platform/five-plane-control-plane/config-center/provider-defaults.ts",
+      "fragment": "stripe_api_url",
+      "reason": "Stripe default API base URL remains centralized with provider defaults"
+    },
+    {
+      "file": "src/platform/five-plane-control-plane/config-center/provider-defaults.ts",
+      "fragment": "paddle_api_url",
+      "reason": "Paddle default API base URL remains centralized with provider defaults"
+    },
+    {
+      "file": "src/platform/five-plane-control-plane/config-center/provider-defaults.ts",
+      "fragment": "manual_billing_checkout_url",
       "reason": "manual billing checkout placeholder remains centralized with provider defaults"
+    },
+    {
+      "file": "src/platform/five-plane-control-plane/config-center/provider-defaults.ts",
+      "fragment": "telegram_api_url",
+      "reason": "Telegram default API base URL remains centralized with provider defaults"
+    },
+    {
+      "file": "src/platform/five-plane-control-plane/config-center/provider-defaults.ts",
+      "fragment": "slack_api_url",
+      "reason": "Slack default API base URL remains centralized with provider defaults"
     },
     {
       "file": "src/platform/five-plane-control-plane/iam/aws-kms-http-secret-provider.ts",
@@ -57,14 +97,9 @@
       "reason": "YouTube livestream endpoint defined through adjacent adapter helper"
     },
     {
-      "file": "src/sdk/cli/deployment-execution.ts",
-      "fragment": "https://github.com/automatic-agent/automatic-agent-platform/actions/runs/${runId}",
-      "reason": "CLI output link to workflow run"
-    },
-    {
-      "file": "src/sdk/cli/release-pipeline.ts",
+      "file": "src/sdk/cli/github-actions-url.ts",
       "fragment": "GITHUB_ACTION_RUN_URL_PREFIX",
-      "reason": "workflow run URL prefix for CLI/operator output"
+      "reason": "workflow run URL prefix centralized for CLI/operator output"
     }
   ]
 }

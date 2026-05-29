@@ -115,7 +115,7 @@ test("[SYS-REL-2.2] SQLite lock adapter forceSteal evicts existing lock [sqlite-
     const adapter = new SqliteLockAdapter(db);
     adapter.acquire({ lockKey: "test-key", owner: "owner-1", ttlMs: 5000 });
 
-    const stolen = adapter.forceSteal("test-key", "new-owner", "test reason");
+    const stolen = adapter.forceSteal("test-key", "new-owner", "operator_override");
     assert.equal(stolen.owner, "new-owner");
     assert.equal(stolen.status, "held");
 
@@ -179,19 +179,19 @@ test("[SYS-REL-2.2] SQLite lock adapter concurrent acquire returns first winner 
   }
 });
 
-test("[SYS-REL-2.2] SQLite lock adapter ttlMs=0 means infinite TTL (never expires) [sqlite-lock-adapter-robustness]", () => {
+test("[SYS-REL-2.2] SQLite lock adapter ttlMs=0 legacy rows are evicted as expired [sqlite-lock-adapter-robustness]", () => {
   const { path, db } = createTempDb();
   try {
     const adapter = new SqliteLockAdapter(db);
-    // Insert a lock with ttl_ms = 0 (infinite)
+    // Legacy ttl_ms=0 rows are treated as already expired by the current adapter.
     db.prepare(
       `INSERT INTO distributed_locks (lock_key, owner, fencing_token, status, acquired_at, ttl_ms)
        VALUES (?, ?, ?, 'held', ?, 0)`,
     ).run("infinite-key", "some-owner", 1, "2020-01-01T00:00:00.000Z");
 
-    // Even with old timestamp, ttl=0 means it should not be considered expired
     const result = adapter.acquire({ lockKey: "infinite-key", owner: "new-owner", ttlMs: 30000 });
-    assert.equal(result.acquired, false, "ttl=0 lock should not be evicted as it never expires");
+    assert.equal(result.acquired, true, "legacy ttl=0 lock should be evicted and reacquired");
+    assert.equal(result.lock?.owner, "new-owner");
   } finally {
     closeAndCleanup(path, db);
   }

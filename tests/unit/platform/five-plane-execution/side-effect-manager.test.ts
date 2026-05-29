@@ -145,6 +145,8 @@ test("SideEffectManager requires lease and fencing token for compensation transi
       manager.applyReconciliation(
         createSideEffect({
           status: "proposed",
+          leaseId: undefined,
+          fencingToken: undefined,
         }),
         createReconciliation({
           result: "failed",

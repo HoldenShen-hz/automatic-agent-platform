@@ -6,11 +6,30 @@ import { WorkerServiceIdentityRegistry } from "../../../../../src/platform/five-
 import { WorkerDrainPhase, WorkerDrainProtocol } from "../../../../../src/platform/five-plane-execution/worker-pool/worker-drain-protocol.js";
 
 function createMockStore(): AuthoritativeTaskStore {
+  const workerIdentities = new Map<string, {
+    workerId: string;
+    serviceIdentity: string;
+    mtlsPeerFingerprint: string;
+    allowedNodeRunTenantsJson: string;
+    createdAt: string;
+    updatedAt: string;
+  }>();
   return {
     worker: {
       listWorkerSnapshots: () => [],
       getWorkerSnapshot: () => null,
       upsertWorkerSnapshot: () => {},
+      getWorkerIdentity: (workerId: string) => workerIdentities.get(workerId) ?? null,
+      upsertWorkerIdentity: (record: {
+        workerId: string;
+        serviceIdentity: string;
+        mtlsPeerFingerprint: string;
+        allowedNodeRunTenantsJson: string;
+        createdAt: string;
+        updatedAt: string;
+      }) => {
+        workerIdentities.set(record.workerId, record);
+      },
     },
   } as unknown as AuthoritativeTaskStore;
 }

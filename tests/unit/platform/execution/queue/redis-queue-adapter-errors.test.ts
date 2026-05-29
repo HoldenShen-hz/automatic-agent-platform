@@ -154,9 +154,7 @@ test("RedisQueueAdapter mapRedisToJobRecord handles non-numeric priority [redis-
     completed_at: "",
   });
 
-  // parseInt of "not-a-number" returns NaN (|| fallback doesn't convert NaN to 0)
-  // The result may be NaN, which is a known behavior
-  assert.equal(Number.isNaN(result.priority), true);
+  assert.equal(result.priority, 0);
 });
 
 test("RedisQueueAdapter mapRedisToJobRecord handles non-numeric attempts [redis-queue-adapter-errors]", () => {
@@ -177,8 +175,7 @@ test("RedisQueueAdapter mapRedisToJobRecord handles non-numeric attempts [redis-
     completed_at: "",
   });
 
-  // parseInt of "invalid" returns NaN
-  assert.equal(Number.isNaN(result.attempts), true);
+  assert.equal(result.attempts, 0);
 });
 
 test("RedisQueueAdapter mapRedisToJobRecord handles invalid status value [redis-queue-adapter-errors]", () => {

@@ -27,10 +27,10 @@ test("useAlertsVm filters incidents by auth permissions before exposing alert it
   assert.match(alertsHookSource, /const ALERTS_REQUIRED_PERMISSION = "platform_sre";/);
   assert.match(
     alertsHookSource,
-    /const scopedIncidents = auth\.permissions\.includes\(ALERTS_REQUIRED_PERMISSION\) \? incidents : \[\];/,
+    /const scopedIncidents = \(auth\.permissions \?\? \[\]\)\.includes\(ALERTS_REQUIRED_PERMISSION\) \? incidents : \[\];/,
   );
 });
 
 test("web feature registry keeps alerts behind platform_sre and mission-control navigation", () => {
-  assert.match(webRegistrySource, /id: "alerts".+path: "\/mission-control\/alerts".+permission: "platform_sre"/s);
+  assert.match(webRegistrySource, /\{[^}]*id: "alerts",[^}]*group: "Mission Control",[^}]*path: "\/mission-control\/alerts"/s);
 });

@@ -329,7 +329,7 @@ test("RuntimeRepairService.apply handles rebuild_ack for missing event without d
   });
 
   assert.equal(results[0]!.applied, false);
-  assert.equal(results[0]!.detail, "pending acknowledgements drained from 0 to 0");
+  assert.equal(results[0]!.detail, "event_not_found_skipped");
 });
 
 test("RuntimeRepairService applies multiple repair actions in sequence [runtime-repair-service-root]", async () => {

@@ -53,7 +53,7 @@ test("ConflictResolver.merge uses vector clocks instead of unconditional local o
   assert.equal(result.draftOnly, true);
 });
 
-test("ConflictResolver.merge deduplicates arrays by id without replacing server entries wholesale", async () => {
+test("ConflictResolver.merge deduplicates arrays by id while preserving server entries without metadata", async () => {
   const { ConflictResolver } = await loadSyncIndexModule();
   const resolver = new ConflictResolver();
 
@@ -70,7 +70,7 @@ test("ConflictResolver.merge deduplicates arrays by id without replacing server 
   ) as Array<{ id: string; value: string }>;
 
   assert.deepEqual(result, [
-    { id: "existing", value: "local-should-not-overwrite" },
+    { id: "existing", value: "server" },
     { id: "server-only", value: "keep" },
     { id: "local-only", value: "append" },
   ]);

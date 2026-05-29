@@ -34,6 +34,16 @@ function createEvent(channelKind: "webhook" | "pagerduty") {
   };
 }
 
+async function waitForCounter(channel: "webhook" | "pagerduty"): Promise<void> {
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const counters = runtimeMetricsRegistry.getCounters("alert_delivery_failures_total");
+    if (counters.some((series) => series.labels.channel === channel && series.value === 1)) {
+      return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  }
+}
+
 test("[SYS-REL-2.5] WebhookAlertChannel increments runtime failure counter on async delivery failure", async () => {
   runtimeMetricsRegistry.reset();
   const channel = new WebhookAlertChannel({
@@ -43,7 +53,7 @@ test("[SYS-REL-2.5] WebhookAlertChannel increments runtime failure counter on as
   });
 
   channel.deliver(createEvent("webhook"), { url: "https://example.test/hook" });
-  await new Promise((resolve) => setTimeout(resolve, 0));
+  await waitForCounter("webhook");
 
   const counters = runtimeMetricsRegistry.getCounters("alert_delivery_failures_total");
   assert.deepEqual(
@@ -61,7 +71,7 @@ test("[SYS-REL-2.5] PagerDutyAlertChannel increments runtime failure counter on 
   });
 
   channel.deliver(createEvent("pagerduty"), { routingKey: "rk_123" });
-  await new Promise((resolve) => setTimeout(resolve, 0));
+  await waitForCounter("pagerduty");
 
   const counters = runtimeMetricsRegistry.getCounters("alert_delivery_failures_total");
   assert.deepEqual(

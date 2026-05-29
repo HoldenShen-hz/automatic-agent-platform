@@ -11,7 +11,6 @@ test("web runtime config reads explicit env keys and normalizes blank values", (
   for (const envKey of [
     "VITE_API_BASE_URL",
     "VITE_WS_URL",
-    "VITE_AUTH_TOKEN",
     "VITE_TENANT_ID",
     "VITE_OTLP_ENDPOINT",
     "VITE_OTLP_AUTH_TOKEN",
@@ -19,6 +18,8 @@ test("web runtime config reads explicit env keys and normalizes blank values", (
     assert.equal(source.includes(envKey), true, `missing ${envKey}`);
   }
 
+  assert.equal(source.includes("readBootstrapAuthToken"), true);
+  assert.equal(source.includes('meta[name="aa-auth-token"]'), true);
   assert.equal(source.includes("const trimmed = value.trim();"), true);
   assert.equal(source.includes("return trimmed.length > 0 ? trimmed : undefined;"), true);
 });

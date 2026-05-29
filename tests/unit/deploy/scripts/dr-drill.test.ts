@@ -86,7 +86,7 @@ test("DR script exists and is executable", () => {
   assert.ok(existsSync(DR_SCRIPT_PATH), `DR script should exist at ${DR_SCRIPT_PATH}`);
 
   const content = readFileSync(DR_SCRIPT_PATH, "utf-8");
-  assert.ok(content.includes("#!/bin/bash"), "Script should have bash shebang");
+  assert.ok(content.includes("#!/usr/bin/env bash"), "Script should have bash shebang");
   assert.ok(
     content.includes("set -euo pipefail"),
     "Script should use strict error handling"

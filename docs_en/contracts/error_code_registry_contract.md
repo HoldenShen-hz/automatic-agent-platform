@@ -66,6 +66,7 @@ Examples:
 | `api.idempotency_key_required` | `api` | `false` | Idempotency key missing |
 | `api.idempotency_key_conflict` | `api` | `false` | Idempotency key conflicts with historical request |
 | `api.idempotency_request_in_flight` | `api` | `true` | Same idempotency key request still processing |
+| `api.idempotency_cached_response_too_large` | `api` | `true` | Cached idempotent response too large to replay safely |
 | `api.idempotency_cached_response_corrupt` | `api` | `true` | Idempotency cache corrupted |
 | `api.openapi_auth_required` | `api` | `false` | OpenAPI documentation access requires authentication |
 | `api.unsupported_media_type` | `api` | `false` | Request media type not supported |

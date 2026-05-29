@@ -56,7 +56,7 @@ test("plugin runtime child routes console output through structured logger with 
   assert.match(source, /requestId,\s*traceId: requestId,\s*correlationId: requestId/s);
   assert.match(source, /process\.stderr\.write\(`\$\{JSON\.stringify\(entry\)\}\\n`\)/);
   assert.match(source, /function logProtocolError\(message: string, error: unknown\): void/);
-  assert.match(source, /console\.error\("%s: %s", message, error instanceof Error \? error\.message : String\(error\)\)/);
+  assert.match(source, /message: `\$\{message\}: \$\{error instanceof Error \? error\.message : String\(error\)\}`/);
   assert.doesNotMatch(source, /plugin-runtime-child invalid stdio payload: \$\{/);
   assert.doesNotMatch(source, /plugin-runtime-child protocol violation: \$\{/);
 });

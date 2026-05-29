@@ -201,11 +201,11 @@ test("forceSteal - metadata contains forceStealReason as JSON [sqlite-lock-adapt
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
-  const stolen = adapter.forceSteal("test-lock", "new-owner", "emergency takeover");
+  const stolen = adapter.forceSteal("test-lock", "new-owner", "operator_override");
   assert.ok(stolen.metadata !== null);
 
   const metadata = JSON.parse(stolen.metadata!);
-  assert.equal(metadata.forceStealReason, "emergency takeover");
+  assert.equal(metadata.forceStealReason, "operator_override");
 
   db.close();
 });
@@ -215,12 +215,12 @@ test("forceSteal - idempotent when stealing already-owned lock [sqlite-lock-adap
   const adapter = new SqliteLockAdapter(db);
 
   // Force steal from owner-1
-  const stolen1 = adapter.forceSteal("test-lock", "owner-2", "first steal");
+  const stolen1 = adapter.forceSteal("test-lock", "owner-2", "operator_override");
   assert.equal(stolen1.owner, "owner-2");
   const token1 = stolen1.fencingToken;
 
   // Force steal again - should succeed and increment fencing token
-  const stolen2 = adapter.forceSteal("test-lock", "owner-2", "second steal");
+  const stolen2 = adapter.forceSteal("test-lock", "owner-2", "operator_override");
   assert.equal(stolen2.owner, "owner-2");
   assert.ok(stolen2.fencingToken > token1);
 
@@ -296,11 +296,11 @@ test("Fencing tokens increase across forceSteal operations [sqlite-lock-adapter-
   const token1 = result1.lock!.fencingToken;
 
   // Force steal
-  const stolen1 = adapter.forceSteal("test-lock", "owner-2", "reason1");
+  const stolen1 = adapter.forceSteal("test-lock", "owner-2", "operator_override");
   assert.ok(stolen1.fencingToken > token1);
 
   // Force steal again
-  const stolen2 = adapter.forceSteal("test-lock", "owner-3", "reason2");
+  const stolen2 = adapter.forceSteal("test-lock", "owner-3", "stale_owner_recovery");
   assert.ok(stolen2.fencingToken > stolen1.fencingToken);
 
   db.close();

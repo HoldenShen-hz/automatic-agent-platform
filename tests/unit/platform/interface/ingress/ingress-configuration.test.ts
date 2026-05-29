@@ -196,6 +196,7 @@ test.describe("Ingress configuration - Production mode", () => {
     try {
       assert.throws(() => {
         new DistributedRateLimiter({
+          isProduction: true,
           maxCalls: 100,
           windowMs: 1000,
           // No redis config and no allowLocalFallbackInProduction
@@ -212,6 +213,7 @@ test.describe("Ingress configuration - Production mode", () => {
 
     try {
       const limiter = new DistributedRateLimiter({
+        isProduction: true,
         maxCalls: 100,
         windowMs: 1000,
         allowLocalFallbackInProduction: true,

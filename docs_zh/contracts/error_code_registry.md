@@ -70,6 +70,7 @@
 | `api.idempotency_key_required` | `api` | `false` | 缺少幂等键 |
 | `api.idempotency_key_conflict` | `api` | `false` | 幂等键与历史请求冲突 |
 | `api.idempotency_request_in_flight` | `api` | `true` | 相同幂等键请求仍在处理中 |
+| `api.idempotency_cached_response_too_large` | `api` | `true` | 幂等缓存响应过大，无法安全回放 |
 | `api.idempotency_cached_response_corrupt` | `api` | `true` | 幂等缓存损坏 |
 | `api.openapi_auth_required` | `api` | `false` | OpenAPI 文档访问需要鉴权 |
 | `api.unsupported_media_type` | `api` | `false` | 请求媒体类型不支持 |

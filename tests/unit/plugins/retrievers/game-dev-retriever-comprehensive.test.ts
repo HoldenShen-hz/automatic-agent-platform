@@ -10,7 +10,7 @@ test("GameDevRetriever exposes the expected plugin metadata", () => {
   const plugin = createGameDevRetrieverPlugin();
 
   assert.equal(plugin.pluginId, "plugin.gamedev.retriever");
-  assert.equal(plugin.domainId, "gamedev");
+  assert.equal(plugin.domainId, "game-dev");
   assert.equal(plugin.spiType, "retriever");
   assert.deepEqual(plugin.capabilityIds, [
     "knowledge.retrieve",

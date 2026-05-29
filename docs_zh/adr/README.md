@@ -52,6 +52,7 @@
 | [042](./042-progressive-autonomy-model.md) | 渐进式自主权模型 | Accepted | 2026-04-20 |
 | [043](./043-unified-operations-dashboard.md) | Unified Operations Dashboard | Accepted | 2026-04-20 |
 | [044](./044-non-technical-user-experience.md) | 非技术用户体验架构 | Accepted | 2026-04-20 |
+| [045](./045-reserved-slot.md) | 预留号段 | Withdrawn | 2026-04-20 |
 | [046](./046-organization-hierarchy-model.md) | 组织层次模型 | Accepted | 2026-04-20 |
 | [047](./047-organization-approval-routing.md) | 组织架构审批路由 | Accepted | 2026-04-20 |
 | [048](./048-enterprise-sso-scim-integration.md) | 企业 SSO/SCIM 集成架构 | Accepted | 2026-04-20 |

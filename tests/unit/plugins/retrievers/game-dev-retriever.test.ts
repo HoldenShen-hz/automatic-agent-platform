@@ -12,7 +12,7 @@ test("GameDevRetriever has correct plugin metadata", () => {
   const plugin = createGameDevRetrieverPlugin();
 
   assert.equal(plugin.pluginId, "plugin.gamedev.retriever");
-  assert.equal(plugin.domainId, "gamedev");
+  assert.equal(plugin.domainId, "game-dev");
   assert.equal(plugin.spiType, "retriever");
 });
 

@@ -102,7 +102,7 @@ test("release pipeline service lists environment configs and builds immutable bu
 
     assert.equal(bundle.environment, "staging");
     assert.equal(bundle.imageTag, "v1.2.3-abcdef123456");
-    assert.match(bundle.imageRef, /^ghcr\.io\/automatic-agent\/automatic-agent-system:v1\.2\.3-abcdef123456$/);
+    assert.match(bundle.imageRef, /^ghcr\.io\/automatic-agent\/automatic-agent-platform:v1\.2\.3-abcdef123456$/);
     assert.equal(bundle.deployWorkflowPath, ".github/workflows/deploy-environment.yml");
     assert.equal(bundle.registryCredentialRef, "secret://system/registry/ghcr/staging");
     assert.equal(bundle.deploymentCredentialRef, "secret://system/deploy/kubeconfig/staging");
@@ -260,7 +260,7 @@ test("release pipeline service executes image build and publish workflow with re
     assert.equal(executed.report.registrySecret.accessMode, "lease");
     assert.equal(executed.report.registrySecret.leaseStatus, "revoked");
     assert.equal(executed.report.publishWorkflowRunId, "720000001");
-    assert.match(executed.report.publishCommand, /image_repository=automatic-agent-system/);
+    assert.match(executed.report.publishCommand, /image_repository=automatic-agent-platform/);
     const persisted = store.getReleaseBundleRecord(executed.bundle.bundleId);
     assert.equal(persisted?.environment, "staging");
     const persistedExecution = store.getReleaseExecutionReportRecord(executed.report.executionId);
@@ -268,7 +268,7 @@ test("release pipeline service executes image build and publish workflow with re
     assert.equal(persistedExecution?.registrySecretAccessMode, "lease");
     assert.equal(persistedExecution?.registryLeaseStatus, "revoked");
     assert.equal(persistedExecution?.publishWorkflowRunId, "720000001");
-    assert.match(persistedExecution?.publishCommand ?? "", /image_repository=automatic-agent-system/);
+    assert.match(persistedExecution?.publishCommand ?? "", /image_repository=automatic-agent-platform/);
     const leases = store.listSecretLeasesBySecretRef("secret://system/registry/ghcr/staging");
     assert.equal(leases.length, 1);
     assert.equal(leases[0]?.status, "revoked");

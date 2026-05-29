@@ -261,7 +261,7 @@ test("SqliteLockAdapter.forceSteal generates new fencing token [sqlite-lock-adap
   adapter.acquire({ lockKey: "test-lock", owner: "owner-1", ttlMs: 30000 });
   const beforeSteal = adapter.inspect("test-lock")!.fencingToken;
 
-  adapter.forceSteal("test-lock", "owner-2", "emergency");
+  adapter.forceSteal("test-lock", "owner-2", "operator_override");
   const afterSteal = adapter.inspect("test-lock")!.fencingToken;
 
   assert.ok(afterSteal > beforeSteal);
@@ -277,14 +277,14 @@ test("SqliteLockAdapter.forceSteal stores metadata with forceStealReason [sqlite
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
-  adapter.forceSteal("test-lock", "owner-2", "emergency takeover");
+  adapter.forceSteal("test-lock", "owner-2", "operator_override");
 
   const record = adapter.inspect("test-lock");
   assert.ok(record !== null);
   assert.ok(record!.metadata !== null);
 
   const metadata = JSON.parse(record!.metadata!);
-  assert.equal(metadata.forceStealReason, "emergency takeover");
+  assert.equal(metadata.forceStealReason, "operator_override");
 
   db.close();
 });
@@ -305,7 +305,7 @@ test("SqliteLockAdapter.extend preserves existing metadata [sqlite-lock-adapter-
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
-  adapter.forceSteal("test-lock", "owner-1", "initial reason");
+  adapter.forceSteal("test-lock", "owner-1", "operator_override");
   adapter.extend("test-lock", "owner-1", 30000);
 
   const record = adapter.inspect("test-lock");
@@ -384,7 +384,7 @@ test("SqliteLockAdapter.forceSteal sets status to 'held' [sqlite-lock-adapter-le
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
-  adapter.forceSteal("test-lock", "owner-2", "takeover");
+  adapter.forceSteal("test-lock", "owner-2", "operator_override");
 
   const record = adapter.inspect("test-lock");
   assert.equal(record!.status, "held");

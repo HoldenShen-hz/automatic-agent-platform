@@ -260,6 +260,7 @@ describe("DistributedRateLimiter - Comprehensive", () => {
       try {
         assert.throws(() => {
           new DistributedRateLimiter({
+            isProduction: true,
             maxCalls: 100,
             windowMs: 60000,
           });
@@ -275,6 +276,7 @@ describe("DistributedRateLimiter - Comprehensive", () => {
 
       try {
         const limiter = new DistributedRateLimiter({
+          isProduction: true,
           maxCalls: 100,
           windowMs: 60000,
           allowLocalFallbackInProduction: true,

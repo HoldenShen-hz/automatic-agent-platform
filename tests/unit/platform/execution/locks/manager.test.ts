@@ -226,7 +226,7 @@ test("Manager: SqliteLockAdapter forceSteal transfers lock to new owner [manager
   const adapter = new SqliteLockAdapter(db);
 
   adapter.acquire({ lockKey: "steal-lock", owner: "owner-1" });
-  const stolen = adapter.forceSteal("steal-lock", "owner-2", "manager decision");
+  const stolen = adapter.forceSteal("steal-lock", "owner-2", "operator_override");
 
   assert.equal(stolen.owner, "owner-2");
   assert.equal(stolen.status, "held");
@@ -308,21 +308,22 @@ test("Manager: SqliteLockAdapter respects custom TTL [manager]", () => {
   db.close();
 });
 
-test("Manager: SqliteLockAdapter treats zero TTL as infinite [manager]", () => {
+test("Manager: SqliteLockAdapter evicts legacy zero TTL locks as expired [manager]", () => {
   const db = createTestDb();
   const adapter = new SqliteLockAdapter(db);
 
-  // Manually insert a lock with ttl_ms = 0 (infinite)
+  // Legacy zero-TTL rows are treated as immediately expired by current semantics.
   const pastTime = new Date(Date.now() - 60000).toISOString();
   db.prepare(`
     INSERT INTO distributed_locks (lock_key, owner, fencing_token, status, acquired_at, ttl_ms)
     VALUES (?, ?, ?, 'held', ?, ?)
   `).run("infinite-lock", "dead-owner", 1, pastTime, 0);
 
-  // Adapter should NOT evict this lock because ttl=0 means infinite
   const result = adapter.acquire({ lockKey: "infinite-lock", owner: "new-owner" });
 
-  assert.equal(result.acquired, false);
+  assert.equal(result.acquired, true);
+  assert.equal(result.lock?.owner, "new-owner");
+  assert.equal(result.lock?.ttlMs, 30000);
 
   db.close();
 });

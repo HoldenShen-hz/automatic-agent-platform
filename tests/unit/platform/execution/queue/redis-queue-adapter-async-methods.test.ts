@@ -186,32 +186,31 @@ test("RedisQueueAdapter dequeueAsync returns job with ack/nack functions [redis-
 
 test("RedisQueueAdapter dequeueAsync increments attempts counter [redis-queue-adapter-async-methods]", async () => {
   let attemptsIncremented = false;
+  const jobRecord: Record<string, string> = {
+    id: "job-attempts-1",
+    queue_name: "test-queue",
+    payload: "{}",
+    status: "waiting",
+    priority: "0",
+    attempts: "0",
+    max_attempts: "5",
+    last_error: "",
+    delay_until: "",
+    idempotency_key: "",
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    completed_at: "",
+  };
 
   const mockRedis = createMockRedisClient({
     zrangebyscore: async () => ["job-attempts-1"],
-    hgetall: async () => ({
-      id: "job-attempts-1",
-      queue_name: "test-queue",
-      payload: "{}",
-      status: "waiting",
-      priority: "0",
-      attempts: "0",
-      max_attempts: "5",
-      last_error: "",
-      delay_until: "",
-      idempotency_key: "",
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      completed_at: "",
-    }),
-    hincrby: async (key: string, field: string, incr: number) => {
-      if (field === "attempts") {
+    hgetall: async () => jobRecord,
+    hmset: async (key: string, data: Record<string, string>) => {
+      if (data.attempts === "1") {
         attemptsIncremented = true;
-        return 1;
       }
-      return 1;
+      Object.assign(jobRecord, data);
     },
-    hmset: async () => {},
     sadd: async () => 1,
     srem: async () => 1,
     zrem: async () => 1,
@@ -524,26 +523,28 @@ test("RedisQueueAdapter retryJobAsync returns null when job status is not failed
 test("RedisQueueAdapter retryJobAsync resets failed job to waiting [redis-queue-adapter-async-methods]", async () => {
   let hmsetCalled = false;
   let hmsetData: Record<string, string> = {};
+  const jobRecord: Record<string, string> = {
+    id: "retry-job-1",
+    queue_name: "retry-queue",
+    payload: "{}",
+    status: "failed",
+    priority: "5",
+    attempts: "2",
+    max_attempts: "3",
+    last_error: "execution error",
+    delay_until: "",
+    idempotency_key: "",
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    completed_at: "",
+  };
 
   const mockRedis = createMockRedisClient({
-    hgetall: async () => ({
-      id: "retry-job-1",
-      queue_name: "retry-queue",
-      payload: "{}",
-      status: "failed",
-      priority: "5",
-      attempts: "3",
-      max_attempts: "3",
-      last_error: "execution error",
-      delay_until: "",
-      idempotency_key: "",
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      completed_at: "",
-    }),
+    hgetall: async () => jobRecord,
     hmset: async (key: string, data: Record<string, string>) => {
       hmsetCalled = true;
       hmsetData = data;
+      Object.assign(jobRecord, data);
     },
     srem: async () => 1,
     sadd: async () => 1,
@@ -556,32 +557,36 @@ test("RedisQueueAdapter retryJobAsync resets failed job to waiting [redis-queue-
 
   assert.ok(hmsetCalled, "hmset should be called to reset job");
   assert.equal(hmsetData.status, "waiting");
-  assert.equal(hmsetData.attempts, "0");
   assert.equal(hmsetData.last_error, "");
   assert.ok(result, "should return updated job");
+  assert.equal(result?.status, "waiting");
+  assert.equal(result?.attempts, 2);
 });
 
 test("RedisQueueAdapter retryJobAsync resets dead_letter job to waiting [redis-queue-adapter-async-methods]", async () => {
   let sremCalled = false;
   let zaddCalled = false;
+  const jobRecord: Record<string, string> = {
+    id: "dl-retry-job",
+    queue_name: "dl-queue",
+    payload: "{}",
+    status: "dead_letter",
+    priority: "3",
+    attempts: "4",
+    max_attempts: "5",
+    last_error: "max attempts exceeded",
+    delay_until: "",
+    idempotency_key: "",
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    completed_at: "",
+  };
 
   const mockRedis = createMockRedisClient({
-    hgetall: async () => ({
-      id: "dl-retry-job",
-      queue_name: "dl-queue",
-      payload: "{}",
-      status: "dead_letter",
-      priority: "3",
-      attempts: "5",
-      max_attempts: "5",
-      last_error: "max attempts exceeded",
-      delay_until: "",
-      idempotency_key: "",
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      completed_at: "",
-    }),
-    hmset: async () => {},
+    hgetall: async () => jobRecord,
+    hmset: async (key: string, data: Record<string, string>) => {
+      Object.assign(jobRecord, data);
+    },
     srem: async () => {
       sremCalled = true;
       return 1;
@@ -600,6 +605,8 @@ test("RedisQueueAdapter retryJobAsync resets dead_letter job to waiting [redis-q
   assert.ok(sremCalled, "srem should be called for dead letter set");
   assert.ok(zaddCalled, "zadd should be called to add back to waiting queue");
   assert.ok(result, "should return updated job");
+  assert.equal(result?.status, "waiting");
+  assert.equal(result?.attempts, 4);
 });
 
 // =============================================================================
