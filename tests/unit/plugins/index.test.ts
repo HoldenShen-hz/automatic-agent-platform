@@ -5,6 +5,7 @@ import {
   createAssetProductionAdapterPlugin,
   createBasicEvaluatorPlugin,
   createBasicPlannerPlugin,
+  buildHashedCredentialFingerprint,
   createCodingPresenterPlugin,
   createCodingRetrieverPlugin,
   createGithubAdapterPlugin,
@@ -26,6 +27,7 @@ import {
   PluginSandboxPolicySchema,
   PluginSpiTypeSchema,
 } from "../../../src/plugins/index.js";
+import * as PluginsIndex from "../../../src/plugins/index.js";
 
 test("plugins root barrel exposes canonical plugin factories", () => {
   assert.equal(typeof createGithubAdapterPlugin, "function");
@@ -46,6 +48,7 @@ test("plugins root barrel exposes all adapter factories", () => {
   assert.equal(typeof createGameDevAdapterPlugin, "function");
   assert.equal(typeof createAssetProductionAdapterPlugin, "function");
   assert.equal(typeof createLivestreamAdapterPlugin, "function");
+  assert.equal(typeof buildHashedCredentialFingerprint, "function");
 });
 
 test("plugins root barrel exposes all presenter factories", () => {
@@ -88,6 +91,11 @@ test("createBuiltinPlugin returns plugin for known plugin id", () => {
 test("PluginSpiRegistry can be instantiated", () => {
   const registry = new PluginSpiRegistry();
   assert.ok(registry !== undefined);
+});
+
+test("plugins root barrel does not leak builtin registry internals", () => {
+  assert.equal("PluginMarketplaceRegistry" in PluginsIndex, false);
+  assert.equal("BundleRevocationRegistry" in PluginsIndex, false);
 });
 
 test("listBuiltinPluginIds returns all expected plugin ids", () => {

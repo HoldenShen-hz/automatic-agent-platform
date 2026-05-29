@@ -19,6 +19,7 @@ import { createBasicEvaluatorPlugin, createBasicValidatorPlugin } from "./valida
 import { AppError, ValidationError } from "../platform/contracts/errors.js";
 import { DataTaintPropagationService, type DataTaintLabel } from "../platform/five-plane-state-evidence/truth/data-taint-propagation.js";
 import { newId, nowIso } from "../platform/contracts/types/ids.js";
+import type { DataClassificationLevel } from "../platform/contracts/types/data-classification.js";
 import type { PluginLifecycleState } from "../domains/registry/plugin-spi.js";
 
 type PluginFactory = () => RegisteredPlugin;
@@ -118,10 +119,32 @@ const BUILTIN_PLUGIN_FACTORIES = new Map<string, PluginFactory>([
   ["plugin.livestream.obs_adapter", createLivestreamAdapterPlugin],
 ]);
 
+function resolveBuiltinManifestOutputDataClass(input: {
+  extensionKind: PluginManifest["extensionKind"];
+  spiTypes: readonly PluginManifest["spiTypes"][number][];
+}): DataClassificationLevel {
+  if (input.extensionKind === "external_adapter") {
+    return "confidential";
+  }
+  if (input.spiTypes.includes("presenter")) {
+    return "public";
+  }
+  return "internal";
+}
+
+function parseBuiltinPluginManifest(
+  manifest: Omit<PluginManifest, "outputDataClass"> & { outputDataClass?: DataClassificationLevel },
+): PluginManifest {
+  return PluginManifestSchema.parse({
+    ...manifest,
+    outputDataClass: manifest.outputDataClass ?? resolveBuiltinManifestOutputDataClass(manifest),
+  });
+}
+
 // R8-24 FIX: Built-in plugin manifests for proper plugin metadata
 // Using PluginManifestSchema.parse to ensure type safety with exactOptionalPropertyTypes
 const BUILTIN_PLUGIN_MANIFESTS = new Map<string, PluginManifest>([
-  ["plugin.coding.retriever", PluginManifestSchema.parse({
+  ["plugin.coding.retriever", parseBuiltinPluginManifest({
     pluginId: "plugin.coding.retriever",
     name: "Coding Retriever",
     version: "1.0.0",
@@ -147,7 +170,7 @@ const BUILTIN_PLUGIN_MANIFESTS = new Map<string, PluginManifest>([
       rateLimitPerMinute: 60,
     },
   })],
-  ["plugin.coding.presenter", PluginManifestSchema.parse({
+  ["plugin.coding.presenter", parseBuiltinPluginManifest({
     pluginId: "plugin.coding.presenter",
     name: "Coding Presenter",
     version: "1.0.0",
@@ -173,7 +196,7 @@ const BUILTIN_PLUGIN_MANIFESTS = new Map<string, PluginManifest>([
       rateLimitPerMinute: 60,
     },
   })],
-  ["plugin.core.basic-validator", PluginManifestSchema.parse({
+  ["plugin.core.basic-validator", parseBuiltinPluginManifest({
     pluginId: "plugin.core.basic-validator",
     name: "Basic Validator",
     version: "1.0.0",
@@ -199,7 +222,7 @@ const BUILTIN_PLUGIN_MANIFESTS = new Map<string, PluginManifest>([
       rateLimitPerMinute: 60,
     },
   })],
-  ["plugin.core.basic-evaluator", PluginManifestSchema.parse({
+  ["plugin.core.basic-evaluator", parseBuiltinPluginManifest({
     pluginId: "plugin.core.basic-evaluator",
     name: "Basic Evaluator",
     version: "1.0.0",
@@ -226,7 +249,7 @@ const BUILTIN_PLUGIN_MANIFESTS = new Map<string, PluginManifest>([
       rateLimitPerMinute: 60,
     },
   })],
-  ["plugin.core.basic-planner", PluginManifestSchema.parse({
+  ["plugin.core.basic-planner", parseBuiltinPluginManifest({
     pluginId: "plugin.core.basic-planner",
     name: "Basic Planner",
     version: "1.0.0",
@@ -252,7 +275,7 @@ const BUILTIN_PLUGIN_MANIFESTS = new Map<string, PluginManifest>([
       rateLimitPerMinute: 60,
     },
   })],
-  ["plugin.shared.github_adapter", PluginManifestSchema.parse({
+  ["plugin.shared.github_adapter", parseBuiltinPluginManifest({
     pluginId: "plugin.shared.github_adapter",
     name: "GitHub Adapter",
     version: "1.0.0",
@@ -278,7 +301,7 @@ const BUILTIN_PLUGIN_MANIFESTS = new Map<string, PluginManifest>([
       rateLimitPerMinute: 60,
     },
   })],
-  ["plugin.operations.retriever", PluginManifestSchema.parse({
+  ["plugin.operations.retriever", parseBuiltinPluginManifest({
     pluginId: "plugin.operations.retriever",
     name: "Operations Retriever",
     version: "1.0.0",
@@ -304,7 +327,7 @@ const BUILTIN_PLUGIN_MANIFESTS = new Map<string, PluginManifest>([
       rateLimitPerMinute: 60,
     },
   })],
-  ["plugin.operations.presenter", PluginManifestSchema.parse({
+  ["plugin.operations.presenter", parseBuiltinPluginManifest({
     pluginId: "plugin.operations.presenter",
     name: "Operations Presenter",
     version: "1.0.0",
@@ -330,7 +353,7 @@ const BUILTIN_PLUGIN_MANIFESTS = new Map<string, PluginManifest>([
       rateLimitPerMinute: 60,
     },
   })],
-  ["plugin.growth.retriever", PluginManifestSchema.parse({
+  ["plugin.growth.retriever", parseBuiltinPluginManifest({
     pluginId: "plugin.growth.retriever",
     name: "Growth Retriever",
     version: "1.0.0",
@@ -356,7 +379,7 @@ const BUILTIN_PLUGIN_MANIFESTS = new Map<string, PluginManifest>([
       rateLimitPerMinute: 60,
     },
   })],
-  ["plugin.growth.presenter", PluginManifestSchema.parse({
+  ["plugin.growth.presenter", parseBuiltinPluginManifest({
     pluginId: "plugin.growth.presenter",
     name: "Growth Presenter",
     version: "1.0.0",
@@ -382,7 +405,7 @@ const BUILTIN_PLUGIN_MANIFESTS = new Map<string, PluginManifest>([
       rateLimitPerMinute: 60,
     },
   })],
-  ["plugin.growth.crm_adapter", PluginManifestSchema.parse({
+  ["plugin.growth.crm_adapter", parseBuiltinPluginManifest({
     pluginId: "plugin.growth.crm_adapter",
     name: "CRM Adapter",
     version: "1.0.0",
@@ -403,12 +426,12 @@ const BUILTIN_PLUGIN_MANIFESTS = new Map<string, PluginManifest>([
       maxQueuedInvocations: 4,
       runtimeIsolation: "forked_process",
       cooldownMs: 1000,
-      allowedExternalDomains: [],
+      allowedExternalDomains: ["api.hubspot.com", "api.salesforce.com"],
       maxResponseSizeBytes: 5 * 1024 * 1024,
       rateLimitPerMinute: 60,
     },
   })],
-  ["plugin.gamedev.retriever", PluginManifestSchema.parse({
+  ["plugin.gamedev.retriever", parseBuiltinPluginManifest({
     pluginId: "plugin.gamedev.retriever",
     name: "Game Dev Retriever",
     version: "1.0.0",
@@ -434,7 +457,7 @@ const BUILTIN_PLUGIN_MANIFESTS = new Map<string, PluginManifest>([
       rateLimitPerMinute: 60,
     },
   })],
-  ["plugin.gamedev.unity_adapter", PluginManifestSchema.parse({
+  ["plugin.gamedev.unity_adapter", parseBuiltinPluginManifest({
     pluginId: "plugin.gamedev.unity_adapter",
     name: "Unity Adapter",
     version: "1.0.0",
@@ -455,12 +478,12 @@ const BUILTIN_PLUGIN_MANIFESTS = new Map<string, PluginManifest>([
       maxQueuedInvocations: 4,
       runtimeIsolation: "forked_process",
       cooldownMs: 1000,
-      allowedExternalDomains: [],
+      allowedExternalDomains: ["build-api.unity.com"],
       maxResponseSizeBytes: 5 * 1024 * 1024,
       rateLimitPerMinute: 60,
     },
   })],
-  ["plugin.assetproduction.retriever", PluginManifestSchema.parse({
+  ["plugin.assetproduction.retriever", parseBuiltinPluginManifest({
     pluginId: "plugin.assetproduction.retriever",
     name: "Asset Production Retriever",
     version: "1.0.0",
@@ -486,7 +509,7 @@ const BUILTIN_PLUGIN_MANIFESTS = new Map<string, PluginManifest>([
       rateLimitPerMinute: 60,
     },
   })],
-  ["plugin.assetproduction.figma_adapter", PluginManifestSchema.parse({
+  ["plugin.assetproduction.figma_adapter", parseBuiltinPluginManifest({
     pluginId: "plugin.assetproduction.figma_adapter",
     name: "Figma Adapter",
     version: "1.0.0",
@@ -507,12 +530,12 @@ const BUILTIN_PLUGIN_MANIFESTS = new Map<string, PluginManifest>([
       maxQueuedInvocations: 4,
       runtimeIsolation: "forked_process",
       cooldownMs: 1000,
-      allowedExternalDomains: [],
+      allowedExternalDomains: ["api.figma.com", "cdn.figma.com"],
       maxResponseSizeBytes: 5 * 1024 * 1024,
       rateLimitPerMinute: 60,
     },
   })],
-  ["plugin.livestream.retriever", PluginManifestSchema.parse({
+  ["plugin.livestream.retriever", parseBuiltinPluginManifest({
     pluginId: "plugin.livestream.retriever",
     name: "Livestream Retriever",
     version: "1.0.0",
@@ -538,7 +561,7 @@ const BUILTIN_PLUGIN_MANIFESTS = new Map<string, PluginManifest>([
       rateLimitPerMinute: 60,
     },
   })],
-  ["plugin.livestream.obs_adapter", PluginManifestSchema.parse({
+  ["plugin.livestream.obs_adapter", parseBuiltinPluginManifest({
     pluginId: "plugin.livestream.obs_adapter",
     name: "OBS Adapter",
     version: "1.0.0",
@@ -559,7 +582,7 @@ const BUILTIN_PLUGIN_MANIFESTS = new Map<string, PluginManifest>([
       maxQueuedInvocations: 4,
       runtimeIsolation: "forked_process",
       cooldownMs: 1000,
-      allowedExternalDomains: [],
+      allowedExternalDomains: ["api.twitch.tv", "www.googleapis.com"],
       maxResponseSizeBytes: 5 * 1024 * 1024,
       rateLimitPerMinute: 60,
     },
@@ -567,12 +590,19 @@ const BUILTIN_PLUGIN_MANIFESTS = new Map<string, PluginManifest>([
 ]);
 
 function normalizeManifest(manifest: PluginManifest): PluginManifest {
-  if (manifest.publicSdkSurface.startsWith("@automatic-agent/")) {
-    return manifest;
-  }
+  const normalizedPublicSdkSurface = manifest.publicSdkSurface
+    .replace(/^@platform\//, "@automatic-agent/")
+    .replace(/^@aa-platform\//, "@automatic-agent/");
+  const normalizedSandbox = manifest.sandbox.allowNetworkEgress && manifest.sandbox.allowedExternalDomains.length === 0
+    ? {
+      ...manifest.sandbox,
+      allowNetworkEgress: false,
+    }
+    : manifest.sandbox;
   return {
     ...manifest,
-    publicSdkSurface: manifest.publicSdkSurface.replace(/^@platform\//, "@automatic-agent/"),
+    publicSdkSurface: normalizedPublicSdkSurface,
+    sandbox: normalizedSandbox,
   };
 }
 
@@ -636,6 +666,10 @@ export function getPluginTaintTracker(): PluginTaintTracker {
 export function resetBuiltinPluginRegistryStateForTests(): void {
   globalPluginTaintTracker = new PluginTaintTracker();
   pluginLifecycleStates.clear();
+  pluginRevocations.clear();
+  dataTaintIndex.clear();
+  globalMarketplaceRegistry.resetForTests();
+  globalRevocationRegistry.resetForTests();
 }
 
 /**
@@ -655,10 +689,6 @@ export function recordPluginTaint(input: {
  * R2-9: BundleRevocationSeverity - severity levels for plugin bundle revocation
  */
 export enum BundleRevocationSeverity {
-  INFO = "info",
-  WARNING = "warning",
-  MODERATE = "moderate",
-  SEVERE = "severe",
   CRITICAL = "critical",
   HIGH = "high",
   MEDIUM = "medium",
@@ -672,7 +702,12 @@ export interface BundleRevocationRecord {
   affectedPluginIds: readonly string[];
   revokedAt: string;
   deadline: string;
+  effectiveAt?: string;
   metadata?: Record<string, unknown>;
+}
+
+function getBundleRevocationEffectiveAt(record: BundleRevocationRecord): Date {
+  return new Date(record.effectiveAt ?? record.deadline);
 }
 
 class BundleRevocationRegistry {
@@ -689,13 +724,19 @@ class BundleRevocationRegistry {
 
   public isRevoked(bundleId: string, asOfDate: Date = new Date()): boolean {
     const records = this.revocations.get(bundleId) ?? [];
-    return records.some((r) => new Date(r.deadline) <= asOfDate);
+    return records.some((r) => getBundleRevocationEffectiveAt(r) <= asOfDate);
   }
 
   public getActiveRevocation(bundleId: string): BundleRevocationRecord | null {
     const records = this.revocations.get(bundleId) ?? [];
     const now = new Date();
-    return records.find((r) => new Date(r.deadline) > now) ?? null;
+    return records
+      .filter((record) => getBundleRevocationEffectiveAt(record) <= now)
+      .sort((left, right) => getBundleRevocationEffectiveAt(right).getTime() - getBundleRevocationEffectiveAt(left).getTime())[0] ?? null;
+  }
+
+  public resetForTests(): void {
+    this.revocations.clear();
   }
 }
 
@@ -803,7 +844,8 @@ export function hasDataTaintLabel(dataId: string, label: string): boolean {
 export class PluginMarketplaceRegistry {
   private readonly loaders = new Map<string, DynamicPluginLoader>();
   private readonly entries = new Map<string, MarketplacePluginEntry>();
-  private readonly sessions = new Set<string>();
+  private readonly sessions = new Map<string, number>();
+  private readonly sessionTtlMs = 60 * 60 * 1000;
 
   registerLoader(scheme: string, loader: DynamicPluginLoader): void {
     this.loaders.set(scheme, loader);
@@ -830,13 +872,19 @@ export class PluginMarketplaceRegistry {
     if (!apiKey) {
       throw new ValidationError("plugin_marketplace.api_key_required", "Marketplace API key is required");
     }
+    if (!/^[-_A-Za-z0-9]{24,}$/.test(apiKey)) {
+      throw new ValidationError("plugin_marketplace.api_key_invalid", "Marketplace API key format is invalid");
+    }
+    this.pruneExpiredSessions();
     const sessionToken = `session_${newId("marketplace")}`;
-    this.sessions.add(sessionToken);
+    this.sessions.set(sessionToken, Date.now() + this.sessionTtlMs);
     return sessionToken;
   }
 
   isAuthenticated(sessionToken: string): boolean {
-    return this.sessions.has(sessionToken);
+    this.pruneExpiredSessions();
+    const expiresAt = this.sessions.get(sessionToken);
+    return expiresAt != null && expiresAt > Date.now();
   }
 
   async loadPlugin(pluginId: string, source: string, sessionToken?: string): Promise<RegisteredPlugin | null> {
@@ -860,6 +908,21 @@ export class PluginMarketplaceRegistry {
       );
     }
     return loader.loadFromSource(source, sessionToken);
+  }
+
+  public resetForTests(): void {
+    this.loaders.clear();
+    this.entries.clear();
+    this.sessions.clear();
+  }
+
+  private pruneExpiredSessions(): void {
+    const now = Date.now();
+    for (const [sessionToken, expiresAt] of this.sessions.entries()) {
+      if (expiresAt <= now) {
+        this.sessions.delete(sessionToken);
+      }
+    }
   }
 }
 

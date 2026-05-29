@@ -72,6 +72,7 @@ export const PluginManifestSchema = z.object({
   trustLevel: z.enum(["internal", "trusted", "verified", "certified", "community", "unverified"]).default("trusted"),
   publicSdkSurface: z.string().min(1),
   settingsSchema: z.record(z.string(), z.unknown()).default({}),
+  outputDataClass: z.enum(["public", "internal", "confidential", "restricted"]).default("internal"),
   sandbox: PluginSandboxPolicySchema.default({
     timeoutMs: 5000,
     allowFilesystemWrite: false,

@@ -3,6 +3,15 @@ import assert from "node:assert/strict";
 
 import { createGithubAdapterPlugin } from "../../../src/plugins/adapters/github-adapter.js";
 
+function createMockFetch(responseBody: unknown = { ok: true }) {
+  return async (_input: string | URL, _init?: RequestInit) => ({
+    ok: true,
+    status: 200,
+    headers: { get: () => null },
+    text: async () => JSON.stringify(responseBody),
+  }) as Response;
+}
+
 test("createGithubAdapterPlugin returns valid adapter plugin structure", () => {
   const plugin = createGithubAdapterPlugin();
 
@@ -47,7 +56,7 @@ test("createGithubAdapterPlugin.execute throws when not authenticated", async ()
 });
 
 test("createGithubAdapterPlugin.execute builds correct endpoint for create_issue", async () => {
-  const plugin = createGithubAdapterPlugin();
+  const plugin = createGithubAdapterPlugin({ fetchImplementation: createMockFetch({ issueId: 1 }) });
   await plugin.authenticate({ token: "ghp_testtoken123" });
 
   const result = await plugin.execute("create_issue", {
@@ -60,10 +69,11 @@ test("createGithubAdapterPlugin.execute builds correct endpoint for create_issue
   assert.equal(result.repository, "owner/repo");
   assert.ok((result.endpoint as string).includes("/repos/owner/repo/issues"));
   assert.match(result.credentialFingerprint as string, /^token:[a-f0-9]{12}$/);
+  assert.equal(result.status, 200);
 });
 
 test("createGithubAdapterPlugin.execute builds correct endpoint for get_file", async () => {
-  const plugin = createGithubAdapterPlugin();
+  const plugin = createGithubAdapterPlugin({ fetchImplementation: createMockFetch({ content: "ok" }) });
   await plugin.authenticate({ token: "ghp_testtoken" });
 
   const result = await plugin.execute("get_file", {
@@ -73,10 +83,11 @@ test("createGithubAdapterPlugin.execute builds correct endpoint for get_file", a
 
   assert.equal(result.action, "get_file");
   assert.ok((result.endpoint as string).includes("/contents/src/index.ts"));
+  assert.equal("payload" in result, false);
 });
 
 test("createGithubAdapterPlugin.execute builds correct endpoint for dispatch_workflow", async () => {
-  const plugin = createGithubAdapterPlugin();
+  const plugin = createGithubAdapterPlugin({ fetchImplementation: createMockFetch({ workflow: "queued" }) });
   await plugin.authenticate({ token: "ghp_testtoken" });
 
   const result = await plugin.execute("dispatch_workflow", {
@@ -87,10 +98,11 @@ test("createGithubAdapterPlugin.execute builds correct endpoint for dispatch_wor
 
   assert.equal(result.action, "dispatch_workflow");
   assert.ok((result.endpoint as string).includes("/actions/workflows/build.yml/dispatches"));
+  assert.deepEqual(result.payload, { ref: "main", inputs: {} });
 });
 
 test("createGithubAdapterPlugin.execute builds correct endpoint for create_pr_comment", async () => {
-  const plugin = createGithubAdapterPlugin();
+  const plugin = createGithubAdapterPlugin({ fetchImplementation: createMockFetch({ commentId: 42 }) });
   await plugin.authenticate({ token: "ghp_testtoken" });
 
   const result = await plugin.execute("create_pr_comment", {
@@ -101,10 +113,11 @@ test("createGithubAdapterPlugin.execute builds correct endpoint for create_pr_co
 
   assert.equal(result.action, "create_pr_comment");
   assert.ok((result.endpoint as string).includes("/issues/42/comments"));
+  assert.deepEqual(result.payload, { body: "Comment body" });
 });
 
 test("createGithubAdapterPlugin.execute throws for missing required params", async () => {
-  const plugin = createGithubAdapterPlugin();
+  const plugin = createGithubAdapterPlugin({ fetchImplementation: createMockFetch({ issueId: 2 }) });
   await plugin.authenticate({ token: "ghp_testtoken" });
 
   await assert.rejects(
@@ -114,7 +127,7 @@ test("createGithubAdapterPlugin.execute throws for missing required params", asy
 });
 
 test("createGithubAdapterPlugin.execute allows api.github.com even with complex repository path", async () => {
-  const plugin = createGithubAdapterPlugin();
+  const plugin = createGithubAdapterPlugin({ fetchImplementation: createMockFetch({ issueId: 3 }) });
   await plugin.authenticate({ token: "ghp_testtoken" });
 
   // The policy checks hostname, not the path
@@ -131,7 +144,7 @@ test("createGithubAdapterPlugin.execute allows api.github.com even with complex 
 });
 
 test("createGithubAdapterPlugin uses custom apiBaseUrl", async () => {
-  const plugin = createGithubAdapterPlugin({ apiBaseUrl: "https://api.github.com" });
+  const plugin = createGithubAdapterPlugin({ apiBaseUrl: "https://api.github.com", fetchImplementation: createMockFetch({ content: "ok" }) });
   await plugin.authenticate({ token: "ghp_testtoken" });
 
   const result = await plugin.execute("get_file", {
@@ -143,14 +156,14 @@ test("createGithubAdapterPlugin uses custom apiBaseUrl", async () => {
 });
 
 test("createGithubAdapterPlugin.healthCheck returns boolean", async () => {
-  const plugin = createGithubAdapterPlugin();
+  const plugin = createGithubAdapterPlugin({ fetchImplementation: createMockFetch({ workflow: "queued" }) });
   const result = await plugin.healthCheck!();
   // healthCheck returns a boolean from the policy evaluation
   assert.equal(typeof result, "boolean");
 });
 
 test("createGithubAdapterPlugin.execute builds payload for dispatch_workflow with inputs", async () => {
-  const plugin = createGithubAdapterPlugin();
+  const plugin = createGithubAdapterPlugin({ fetchImplementation: createMockFetch({ workflow: "queued" }) });
   await plugin.authenticate({ token: "ghp_testtoken" });
 
   const result = await plugin.execute("dispatch_workflow", {
@@ -161,13 +174,12 @@ test("createGithubAdapterPlugin.execute builds payload for dispatch_workflow wit
   }) as Record<string, unknown>;
 
   const payload = result.payload as Record<string, unknown>;
-  assert.equal(payload.workflowId, "ci.yml");
   assert.equal(payload.ref, "main");
   assert.deepEqual(payload.inputs, { environment: "production" });
 });
 
 test("createGithubAdapterPlugin.execute uses default ref when not provided for get_file", async () => {
-  const plugin = createGithubAdapterPlugin();
+  const plugin = createGithubAdapterPlugin({ fetchImplementation: createMockFetch({ content: "ok" }) });
   await plugin.authenticate({ token: "ghp_testtoken" });
 
   const result = await plugin.execute("get_file", {
@@ -175,12 +187,11 @@ test("createGithubAdapterPlugin.execute uses default ref when not provided for g
     path: "README.md",
   }) as Record<string, unknown>;
 
-  const payload = result.payload as Record<string, unknown>;
-  assert.equal(payload.ref, "main");
+  assert.ok((result.endpoint as string).includes("ref=main"));
 });
 
 test("createGithubAdapterPlugin.execute accepts custom ref for get_file", async () => {
-  const plugin = createGithubAdapterPlugin();
+  const plugin = createGithubAdapterPlugin({ fetchImplementation: createMockFetch({ content: "ok" }) });
   await plugin.authenticate({ token: "ghp_testtoken" });
 
   const result = await plugin.execute("get_file", {
@@ -189,12 +200,11 @@ test("createGithubAdapterPlugin.execute accepts custom ref for get_file", async 
     ref: "v1.0.0",
   }) as Record<string, unknown>;
 
-  const payload = result.payload as Record<string, unknown>;
-  assert.equal(payload.ref, "v1.0.0");
+  assert.ok((result.endpoint as string).includes("ref=v1.0.0"));
 });
 
 test("createGithubAdapterPlugin.execute returns adapter identifier", async () => {
-  const plugin = createGithubAdapterPlugin();
+  const plugin = createGithubAdapterPlugin({ fetchImplementation: createMockFetch({ content: "ok" }) });
   await plugin.authenticate({ token: "ghp_testtoken" });
 
   const result = await plugin.execute("get_file", {

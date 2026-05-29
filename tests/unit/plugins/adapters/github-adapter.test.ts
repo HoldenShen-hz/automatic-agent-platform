@@ -5,6 +5,17 @@ import test from "node:test";
 import { createGithubAdapterPlugin, type GithubAdapterPluginOptions, verifyPluginSignature } from "../../../../src/plugins/adapters/github-adapter.js";
 import type { NetworkEgressPolicyService } from "../../../../src/platform/five-plane-control-plane/iam/network-egress-policy.js";
 
+function createMockFetch(responseBody: unknown = { ok: true }) {
+  return async (input: string | URL, init?: RequestInit) => ({
+    ok: true,
+    status: 200,
+    url: String(input),
+    init,
+    headers: { get: () => null },
+    text: async () => JSON.stringify(responseBody),
+  }) as Response;
+}
+
 function createMockPolicy(allowed: boolean = true): NetworkEgressPolicyService {
   return {
     evaluate: (_url: string) => ({
@@ -78,7 +89,7 @@ test("GithubAdapter.execute throws when not authenticated", async () => {
 });
 
 test("GithubAdapter.execute builds correct endpoint for create_issue", async () => {
-  const adapter = createGithubAdapterPlugin({ policy: createMockPolicy() });
+  const adapter = createGithubAdapterPlugin({ policy: createMockPolicy(), fetchImplementation: createMockFetch({ id: 1 }) });
   await adapter.authenticate({ token: "ghp_test1234567890" });
 
   const result = await adapter.execute("create_issue", {
@@ -94,10 +105,12 @@ test("GithubAdapter.execute builds correct endpoint for create_issue", async () 
   assert.equal(output.timeoutMs, 10000);
   assert.equal(output.rateLimitPerMinute, 60);
   assert.equal(typeof output.idempotencyKey, "string");
+  assert.equal(output.status, 200);
+  assert.deepEqual(output.data, { id: 1 });
 });
 
 test("GithubAdapter.execute builds correct endpoint for create_pr_comment", async () => {
-  const adapter = createGithubAdapterPlugin({ policy: createMockPolicy() });
+  const adapter = createGithubAdapterPlugin({ policy: createMockPolicy(), fetchImplementation: createMockFetch({ id: 2 }) });
   await adapter.authenticate({ token: "ghp_test1234567890" });
 
   const result = await adapter.execute("create_pr_comment", {
@@ -109,10 +122,11 @@ test("GithubAdapter.execute builds correct endpoint for create_pr_comment", asyn
   const output = result as any;
   assert.equal(output.action, "create_pr_comment");
   assert.ok(output.endpoint.includes("/issues/42/comments"));
+  assert.deepEqual(output.payload, { body: "PR comment" });
 });
 
 test("GithubAdapter.execute builds correct endpoint for dispatch_workflow", async () => {
-  const adapter = createGithubAdapterPlugin({ policy: createMockPolicy() });
+  const adapter = createGithubAdapterPlugin({ policy: createMockPolicy(), fetchImplementation: createMockFetch({ workflow: "queued" }) });
   await adapter.authenticate({ token: "ghp_test1234567890" });
 
   const result = await adapter.execute("dispatch_workflow", {
@@ -124,10 +138,11 @@ test("GithubAdapter.execute builds correct endpoint for dispatch_workflow", asyn
   const output = result as any;
   assert.equal(output.action, "dispatch_workflow");
   assert.ok(output.endpoint.includes("/actions/workflows/build.yml/dispatches"));
+  assert.deepEqual(output.payload, { ref: "main", inputs: {} });
 });
 
 test("GithubAdapter.execute builds correct endpoint for get_file", async () => {
-  const adapter = createGithubAdapterPlugin({ policy: createMockPolicy() });
+  const adapter = createGithubAdapterPlugin({ policy: createMockPolicy(), fetchImplementation: createMockFetch({ path: "README.md" }) });
   await adapter.authenticate({ token: "ghp_test1234567890" });
 
   const result = await adapter.execute("get_file", {
@@ -139,6 +154,7 @@ test("GithubAdapter.execute builds correct endpoint for get_file", async () => {
   assert.equal(output.action, "get_file");
   assert.ok(output.endpoint.includes("/contents/README.md"));
   assert.equal(output.idempotencyKey, undefined);
+  assert.equal("payload" in output, false);
 });
 
 test("GithubAdapter.execute throws PolicyDeniedError when egress blocked", async () => {
@@ -171,6 +187,7 @@ test("GithubAdapter uses custom apiBaseUrl when provided", async () => {
   const adapter = createGithubAdapterPlugin({
     apiBaseUrl: "https://github.example.com/api/v3",
     policy: createMockPolicy(),
+    fetchImplementation: createMockFetch({ path: "test.txt" }),
   });
   await adapter.authenticate({ token: "ghp_test1234567890" });
 
@@ -225,7 +242,7 @@ test("GithubAdapter.execute rejects path traversal input", async () => {
 });
 
 test("GithubAdapter.execute rejects workflow path traversal and undeclared action capabilities", async () => {
-  const adapter = createGithubAdapterPlugin({ policy: createMockPolicy() });
+  const adapter = createGithubAdapterPlugin({ policy: createMockPolicy(), fetchImplementation: createMockFetch() });
   await adapter.authenticate({ token: "ghp_test1234567890" });
 
   await assert.rejects(

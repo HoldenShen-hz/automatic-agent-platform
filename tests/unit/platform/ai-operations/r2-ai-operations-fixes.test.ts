@@ -533,6 +533,7 @@ test("R2-9: getBundleRevocation returns active revocation", () => {
     affectedPluginIds: ["plugin.active.v1"],
     revokedAt: new Date().toISOString(),
     deadline: new Date(Date.now() + 86400000).toISOString(),
+    effectiveAt: new Date(Date.now() - 1000).toISOString(),
   };
 
   registerBundleRevocation(record);

@@ -29,9 +29,8 @@ test("LivestreamAdapter.initialize returns undefined", async () => {
   assert.equal(result, undefined);
 });
 
-test("LivestreamAdapter.healthCheck returns true only after authentication", async () => {
+test("LivestreamAdapter.healthCheck returns true when endpoint policy is healthy", async () => {
   const adapter = createLivestreamAdapterPlugin();
-  await adapter.authenticate({ obsToken: "AValidOBSWebSocketToken123" });
   assert.ok(adapter.healthCheck !== undefined);
   const result = await adapter.healthCheck();
   assert.equal(result, true);

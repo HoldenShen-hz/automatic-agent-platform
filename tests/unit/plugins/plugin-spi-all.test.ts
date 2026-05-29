@@ -239,7 +239,14 @@ test("ExternalAdapterPlugin has required lifecycle hooks", () => {
 });
 
 test("GithubAdapter authenticate stores credential fingerprint", async () => {
-  const adapter = createGithubAdapterPlugin();
+  const adapter = createGithubAdapterPlugin({
+    fetchImplementation: async () => ({
+      ok: true,
+      status: 200,
+      headers: { get: () => null },
+      text: async () => JSON.stringify({ issueId: 1 }),
+    }) as Response,
+  });
 
   await adapter.authenticate({ token: "ghp_test_token_12345" });
   // authenticate stores fingerprint but doesn't return it
@@ -252,10 +259,18 @@ test("GithubAdapter authenticate stores credential fingerprint", async () => {
   });
 
   assert.equal(result.endpoint, "https://api.github.com/repos/test/repo/issues");
+  assert.equal(result.status, 200);
 });
 
 test("GithubAdapter execute builds correct endpoint for create_issue", async () => {
-  const adapter = createGithubAdapterPlugin();
+  const adapter = createGithubAdapterPlugin({
+    fetchImplementation: async () => ({
+      ok: true,
+      status: 200,
+      headers: { get: () => null },
+      text: async () => JSON.stringify({ issueId: 2 }),
+    }) as Response,
+  });
 
   await adapter.authenticate({ token: "ghp_test_token" });
   const result = await adapter.execute("create_issue", {
@@ -270,7 +285,14 @@ test("GithubAdapter execute builds correct endpoint for create_issue", async () 
 });
 
 test("GithubAdapter execute builds correct endpoint for get_file", async () => {
-  const adapter = createGithubAdapterPlugin();
+  const adapter = createGithubAdapterPlugin({
+    fetchImplementation: async () => ({
+      ok: true,
+      status: 200,
+      headers: { get: () => null },
+      text: async () => JSON.stringify({ content: "ok" }),
+    }) as Response,
+  });
 
   await adapter.authenticate({ token: "ghp_test_token" });
   const result = await adapter.execute("get_file", {
@@ -280,8 +302,7 @@ test("GithubAdapter execute builds correct endpoint for get_file", async () => {
   });
 
   assert.ok(result.endpoint.includes("/repos/owner/repo/contents/"));
-  assert.equal(result.payload.path, "src/index.ts");
-  assert.equal(result.payload.ref, "main");
+  assert.ok(result.endpoint.includes("ref=main"));
 });
 
 test("GithubAdapter execute throws without authentication", async () => {

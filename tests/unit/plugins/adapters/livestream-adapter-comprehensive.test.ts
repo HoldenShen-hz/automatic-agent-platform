@@ -26,11 +26,11 @@ test.describe("LivestreamAdapter Plugin", () => {
     await adapter.shutdown();
   });
 
-  test("healthCheck returns false before authentication", async () => {
+  test("healthCheck reflects endpoint policy even before authentication", async () => {
     const adapter = createLivestreamAdapterPlugin();
     assert.ok(adapter.healthCheck);
     const result = await adapter.healthCheck();
-    assert.equal(result, false);
+    assert.equal(result, true);
   });
 
   test("healthCheck returns true after authentication", async () => {

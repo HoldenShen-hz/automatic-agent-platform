@@ -7,6 +7,7 @@ import { createAssetProductionAdapterPlugin } from "../../../../src/plugins/adap
 import { createCrmAdapterPlugin } from "../../../../src/plugins/adapters/crm-adapter.js";
 import { createGameDevAdapterPlugin } from "../../../../src/plugins/adapters/game-dev-adapter.js";
 import { createLivestreamAdapterPlugin } from "../../../../src/plugins/adapters/livestream-adapter.js";
+import { NetworkEgressPolicyService } from "../../../../src/platform/five-plane-control-plane/iam/network-egress-policy.js";
 import { ChannelGatewayDeliveryService } from "../../../../src/platform/five-plane-interface/channel-gateway/channel-gateway-delivery-service.js";
 import { PackScaffoldService } from "../../../../src/sdk/pack-sdk/pack-scaffold-service.js";
 
@@ -25,7 +26,11 @@ test("R28-21 adapter healthCheck implementations are not hardcoded to true", asy
 
   const livestreamPlugin = createLivestreamAdapterPlugin();
   assert.ok(livestreamPlugin.healthCheck);
-  assert.equal(await livestreamPlugin.healthCheck(), false);
+  assert.equal(await livestreamPlugin.healthCheck(), true);
+  const deniedLivestreamPlugin = createLivestreamAdapterPlugin({
+    policy: new NetworkEgressPolicyService({ mode: "enforce", allowedDomains: ["example.com"] }),
+  });
+  assert.equal(await deniedLivestreamPlugin.healthCheck(), false);
   await livestreamPlugin.authenticate({ obsToken: "ABCDEFGHIJKLMNOPQRSTUV==" });
   assert.equal(await livestreamPlugin.healthCheck(), true);
 });

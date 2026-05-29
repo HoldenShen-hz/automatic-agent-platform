@@ -282,6 +282,31 @@ test("mapStepOutputRecord handles invalid artifactsJson gracefully", () => {
   assert.deepEqual(result.artifacts, []);
 });
 
+test("mapStepOutputRecord normalizes artifact reference objects to string refs", () => {
+  const record: StepOutputRecord = {
+    id: "sor_artifact_ref_objects",
+    stepId: "step_artifact_ref_objects",
+    taskId: "task_1",
+    roleId: "agent",
+    status: "succeeded",
+    dataJson: "{\"ok\":true}",
+    artifactsJson: JSON.stringify([
+      { artifactId: "artifact_1", uri: "artifact://artifact_1", kind: "json" },
+      { artifactId: "artifact_2" },
+      { ignored: true },
+    ]),
+    summary: "Step completed",
+    durationMs: 80,
+    tokenCost: 150,
+    validationJson: null,
+    producedAt: "2026-04-01T00:00:00.000Z",
+  };
+
+  const result = mapStepOutputRecord(record);
+
+  assert.deepEqual(result.artifacts, ["artifact://artifact_1", "artifact:artifact_2"]);
+});
+
 test("mapStepOutputRecord maps skipped status correctly", () => {
   const record: StepOutputRecord = {
     id: "sor_skip",

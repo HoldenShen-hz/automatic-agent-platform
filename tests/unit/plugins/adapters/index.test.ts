@@ -23,6 +23,11 @@ test("AdaptersIndex exports livestream-adapter", () => {
   assert.ok(AdaptersIndex.createLivestreamAdapterPlugin !== undefined);
 });
 
+test("AdaptersIndex exports credential hygiene helpers", () => {
+  assert.ok(AdaptersIndex.createZeroableCredentialSecret !== undefined);
+  assert.ok(AdaptersIndex.buildHashedCredentialFingerprint !== undefined);
+});
+
 test("AdaptersIndex creates all adapter plugins successfully", async () => {
   const plugins = [
     AdaptersIndex.createAssetProductionAdapterPlugin(),

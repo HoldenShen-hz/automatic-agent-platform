@@ -11,8 +11,17 @@ import { NetworkEgressPolicyService } from "../../../../src/platform/five-plane-
 
 type GithubExecutionEnvelope = Awaited<ReturnType<ReturnType<typeof createGithubAdapterPlugin>["execute"]>> & {
   endpoint: string;
-  payload: Record<string, unknown>;
+  payload?: Record<string, unknown>;
 };
+
+function createMockFetch(responseBody: unknown = { ok: true }) {
+  return async (_input: string | URL, _init?: RequestInit) => ({
+    ok: true,
+    status: 200,
+    headers: { get: () => null },
+    text: async () => JSON.stringify(responseBody),
+  }) as Response;
+}
 
 function createPolicy(allowedDomains: readonly string[] = ["api.github.com", "github.com"]) {
   return new NetworkEgressPolicyService({
@@ -47,6 +56,7 @@ test("github adapter execute returns current endpoint, payload, and idempotency 
     policy: createPolicy(),
     defaultTimeoutMs: 5000,
     defaultRateLimitPerMinute: 30,
+    fetchImplementation: createMockFetch({ issueId: 1 }),
   });
   await adapter.authenticate({ token: "ghp_test1234567890" });
 
@@ -68,18 +78,21 @@ test("github adapter execute returns current endpoint, payload, and idempotency 
     body: "Issue body",
     labels: ["bug"],
   });
+  assert.equal(issue.status, 200);
+  assert.deepEqual(issue.data, { issueId: 1 });
   assert.equal(issue.timeoutMs, 5000);
   assert.equal(issue.rateLimitPerMinute, 30);
   assert.equal(typeof issue.idempotencyKey, "string");
   assert.equal(file.action, "get_file");
   assert.ok(file.endpoint.includes("/contents/README.md"));
   assert.equal("idempotencyKey" in file, false);
-  assert.deepEqual(file.payload, { path: "README.md", ref: "main" });
+  assert.equal("payload" in file, false);
 });
 
 test("github adapter execute sanitizes workflow inputs and enforces repository validation", async () => {
   const adapter = createGithubAdapterPlugin({
     policy: createPolicy(),
+    fetchImplementation: createMockFetch({ workflow: "queued" }),
   });
   await adapter.authenticate({ token: "ghp_test1234567890" });
 
@@ -97,7 +110,6 @@ test("github adapter execute sanitizes workflow inputs and enforces repository v
 
   assert.ok(workflow.endpoint.includes("/actions/workflows/build.yml/dispatches"));
   assert.deepEqual(workflow.payload, {
-    workflowId: "build.yml",
     ref: "main",
     inputs: {
       environment: "prod",
@@ -135,6 +147,7 @@ test("github adapter rejects unauthenticated, policy-denied, and unsupported act
 
   const denied = createGithubAdapterPlugin({
     policy: createPolicy(["example.com"]),
+    fetchImplementation: createMockFetch(),
   });
   await denied.authenticate({ token: "ghp_test1234567890" });
   await assert.rejects(
@@ -154,7 +167,7 @@ test("github adapter rejects unauthenticated, policy-denied, and unsupported act
   );
 
   const restricted = {
-    ...createGithubAdapterPlugin({ policy: createPolicy() }),
+    ...createGithubAdapterPlugin({ policy: createPolicy(), fetchImplementation: createMockFetch() }),
     capabilityIds: ["external.github"],
   };
   await restricted.authenticate({ token: "ghp_test1234567890" });

@@ -17,12 +17,15 @@ test("2282: parseArguments validates retry limit and confirmation", () => {
 test("2282: parseArguments rejects invalid retry-limit", () => {
   assert.throws(
     () => parseArguments({ action: "retry", queue: "jobs", "retry-limit": "abc" }),
-    /Invalid retry-limit/,
+    /Invalid retry_limit/,
   );
 });
 
-test("2282: parseArguments clamps list limit to safe bounds", () => {
-  assert.equal(parseArguments({ action: "list", queue: "gateway", limit: "0" }).limit, 1);
+test("2282: parseArguments rejects non-positive list limit and clamps oversized values", () => {
+  assert.throws(
+    () => parseArguments({ action: "list", queue: "gateway", limit: "0" }),
+    /Invalid limit/,
+  );
   assert.equal(parseArguments({ action: "list", queue: "gateway", limit: "9999" }).limit, 500);
 });
 

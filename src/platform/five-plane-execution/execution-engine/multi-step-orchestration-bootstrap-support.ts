@@ -185,8 +185,27 @@ export function persistOrchestrationBootstrap(params: {
   } = params;
 
   db.transaction(() => {
-    store.task.insertTask(task);
-    store.workflow.insertWorkflowState(workflow);
+    const existingTask = store.task.getTask(taskId);
+    if (existingTask == null) {
+      store.task.insertTask(task);
+    } else {
+      store.task.updateTaskStatus(taskId, "queued", task.updatedAt, null, null);
+    }
+
+    const existingWorkflow = store.workflow.getWorkflowState(taskId);
+    if (existingWorkflow == null) {
+      store.workflow.insertWorkflowState(workflow);
+    } else {
+      store.workflow.updateWorkflowState(
+        taskId,
+        workflow.status,
+        workflow.currentStepIndex,
+        workflow.outputsJson,
+        workflow.updatedAt,
+        workflow.resumableFromStep,
+      );
+    }
+
     store.session.insertSession(session);
 
     const inboundMessage: MessageRecord = {

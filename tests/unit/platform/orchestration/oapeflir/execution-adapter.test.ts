@@ -513,6 +513,23 @@ test("extractStepOutputRecords extracts from valid snapshot", () => {
   assert.equal(extracted[1]?.stepId, "step_2");
 });
 
+test("extractStepOutputRecords extracts from authoritative task snapshot stepOutputs", () => {
+  const records = [
+    createMockStepOutputRecord("step_top_level_1", "succeeded"),
+    createMockStepOutputRecord("step_top_level_2", "skipped"),
+  ];
+
+  const extracted = extractStepOutputRecords({
+    snapshot: {
+      stepOutputs: records,
+    },
+  });
+
+  assert.equal(extracted.length, 2);
+  assert.equal(extracted[0]?.stepId, "step_top_level_1");
+  assert.equal(extracted[1]?.stepId, "step_top_level_2");
+});
+
 test("extractStepOutputRecords returns empty array for null snapshot", () => {
   const extracted = extractStepOutputRecords({ snapshot: null });
 

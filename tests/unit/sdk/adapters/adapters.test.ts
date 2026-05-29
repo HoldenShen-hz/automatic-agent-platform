@@ -13,6 +13,15 @@ import { createGameDevAdapterPlugin } from "../../../../src/plugins/adapters/gam
 import { createGithubAdapterPlugin, verifyPluginSignature } from "../../../../src/plugins/adapters/github-adapter.js";
 import { PolicyDeniedError } from "../../../../src/platform/contracts/errors.js";
 
+function createMockFetch(responseBody: unknown = { ok: true }) {
+  return async (_input: string | URL, _init?: RequestInit) => ({
+    ok: true,
+    status: 200,
+    headers: { get: () => null },
+    text: async () => JSON.stringify(responseBody),
+  }) as Response;
+}
+
 test("CRM adapter execute returns structured response (issue #2008)", async () => {
   const adapter = createCrmAdapterPlugin();
   await adapter.authenticate({ token: "crm-test-token" });
@@ -113,6 +122,7 @@ test("Game Dev adapter execute requires authentication (issue #2014)", async () 
 test("GitHub adapter execute validates repository parameter (issue #2020)", async () => {
   const adapter = createGithubAdapterPlugin({
     apiBaseUrl: "https://api.github.com",
+    fetchImplementation: createMockFetch({ issueId: 1 }),
   });
 
   await adapter.authenticate({ token: "ghp_test_token" });
@@ -131,7 +141,7 @@ test("GitHub adapter execute validates repository parameter (issue #2020)", asyn
 });
 
 test("GitHub adapter execute builds correct endpoint for create_issue (issue #2020)", async () => {
-  const adapter = createGithubAdapterPlugin();
+  const adapter = createGithubAdapterPlugin({ fetchImplementation: createMockFetch({ issueId: 2 }) });
 
   await adapter.authenticate({ token: "ghp_test_token" });
 
@@ -148,7 +158,7 @@ test("GitHub adapter execute builds correct endpoint for create_issue (issue #20
 });
 
 test("GitHub adapter execute builds correct endpoint for get_file (issue #2020)", async () => {
-  const adapter = createGithubAdapterPlugin();
+  const adapter = createGithubAdapterPlugin({ fetchImplementation: createMockFetch({ content: "ok" }) });
 
   await adapter.authenticate({ token: "ghp_test_token" });
 
@@ -180,6 +190,7 @@ test("GitHub adapter execute requires authentication (issue #2020)", async () =>
 test("GitHub adapter execute checks egress policy", async () => {
   const adapter = createGithubAdapterPlugin({
     apiBaseUrl: "https://api.github.com",
+    fetchImplementation: createMockFetch({ issueId: 3 }),
     policy: {
       evaluate: (url: string) => ({
         allowed: url.includes("github.com"),
@@ -198,6 +209,7 @@ test("GitHub adapter execute checks egress policy", async () => {
   });
 
   assert.ok("endpoint" in result);
+  assert.equal((result as { status: number }).status, 200);
 });
 
 test("GitHub adapter execute denies egress to unauthorized domain", async () => {
@@ -218,6 +230,7 @@ test("GitHub adapter execute denies egress to unauthorized domain", async () => 
     async () => adapter.execute("create_issue", {
       repository: "owner/repo",
       title: "Test",
+      body: "Test body",
     }),
     PolicyDeniedError
   );

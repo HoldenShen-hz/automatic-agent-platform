@@ -1,15 +1,3 @@
 {
-  "tasks": [
-    {
-      "id": "c2663d0e",
-      "cron": "*/30 * * * *",
-      "prompt": "解决e2e intergrate 测试出的问题，同时起16个agent解决问题，只有十足的把握才改src，正面解决问题，不能删文件, agent 的个数不能超过20个",
-      "createdAt": 1778867031779,
-      "lastFiredAt": 1778877684394,
-      "recurring": true,
-      "createdBySessionId": "e30e43cf-48d1-403d-9832-d0cec3c567bb",
-      "createdByPid": 2729,
-      "createdByProcStart": "Fri May 15 15:27:49 2026"
-    }
-  ]
+  "tasks": []
 }

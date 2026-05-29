@@ -15,7 +15,7 @@ test("R31-34/R31-40/R31-41/R31-43: destructive CLIs now require explicit confirm
   const shadowSnapshotSource = readFileSync("src/sdk/cli/shadow-snapshot.ts", "utf8");
 
   assert.match(dlqSource, /AA_DLQ_PURGE_CONFIRM/);
-  assert.match(dlqSource, /LIMIT 100/);
+  assert.match(dlqSource, /args\.retryLimit \?\? 100/);
   assert.match(storageAdminSource, /AA_STORAGE_DOWN_CONFIRM/);
   assert.match(shadowSnapshotSource, /Defer environment loading and service creation to main/);
 });

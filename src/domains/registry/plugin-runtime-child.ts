@@ -130,6 +130,16 @@ function installStdioProtocolConsoleRedirection(): void {
   if (directEntry == null || resolve(directEntry) !== runtimeChildEntryPath) {
     return;
   }
+}
+
+function withStructuredConsoleForCurrentRequest<T>(run: () => Promise<T>): Promise<T> {
+  if (process.send) {
+    return run();
+  }
+  const directEntry = process.argv[1];
+  if (directEntry == null || resolve(directEntry) !== runtimeChildEntryPath) {
+    return run();
+  }
   const writeStructuredLine = (level: "debug" | "info" | "warn" | "error", ...args: unknown[]): void => {
     const message = format(...args);
     const requestId = currentRequest?.requestId;
@@ -154,11 +164,25 @@ function installStdioProtocolConsoleRedirection(): void {
     });
     process.stderr.write(`${JSON.stringify(entry)}\n`);
   };
+  const originalConsole = {
+    log: console.log,
+    info: console.info,
+    debug: console.debug,
+    warn: console.warn,
+    error: console.error,
+  };
   console.log = ((...args: unknown[]) => writeStructuredLine("info", ...args)) as typeof console.log;
   console.info = ((...args: unknown[]) => writeStructuredLine("info", ...args)) as typeof console.info;
   console.debug = ((...args: unknown[]) => writeStructuredLine("debug", ...args)) as typeof console.debug;
   console.warn = ((...args: unknown[]) => writeStructuredLine("warn", ...args)) as typeof console.warn;
   console.error = ((...args: unknown[]) => writeStructuredLine("error", ...args)) as typeof console.error;
+  return run().finally(() => {
+    console.log = originalConsole.log;
+    console.info = originalConsole.info;
+    console.debug = originalConsole.debug;
+    console.warn = originalConsole.warn;
+    console.error = originalConsole.error;
+  });
 }
 
 function logProtocolError(message: string, error: unknown): void {
@@ -241,7 +265,7 @@ function handleRuntimeMessage(message: unknown): void {
   }
   const request = payload as PluginRuntimeRequest;
   currentRequest = request;
-  void handleRequest(request)
+  void withStructuredConsoleForCurrentRequest(() => handleRequest(request))
     .then((result) => {
       sendRuntimeMessage({
         type: "response",

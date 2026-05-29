@@ -100,7 +100,7 @@ test("PluginMarketplaceRegistry.listMarketplacePlugins returns all entries", () 
 test("PluginMarketplaceRegistry.authenticate returns session token", async () => {
   const registry = new PluginMarketplaceRegistry();
   const token = await registry.authenticate("https://marketplace.example.com", {
-    apiKey: "test-key",
+    apiKey: "test_api_key_1234567890abcd",
   });
   assert.ok(typeof token === "string");
   assert.ok(token.startsWith("session_"));
@@ -109,7 +109,7 @@ test("PluginMarketplaceRegistry.authenticate returns session token", async () =>
 test("PluginMarketplaceRegistry.isAuthenticated returns true for valid session", async () => {
   const registry = new PluginMarketplaceRegistry();
   const token = await registry.authenticate("https://marketplace.example.com", {
-    apiKey: "test-key",
+    apiKey: "test_api_key_1234567890abcd",
   });
   assert.equal(registry.isAuthenticated(token), true);
 });

@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 
 export interface ZeroableCredentialSecret {
-  reveal(): string;
+  withSecret<T>(consumer: (secret: string) => T): T;
   clear(): void;
 }
 
@@ -12,11 +12,11 @@ class InMemoryZeroableCredentialSecret implements ZeroableCredentialSecret {
     this.bytes = Buffer.from(secret, "utf8");
   }
 
-  public reveal(): string {
+  public withSecret<T>(consumer: (secret: string) => T): T {
     if (this.bytes == null) {
       throw new Error("adapter.credential_unavailable");
     }
-    return this.bytes.toString("utf8");
+    return consumer(this.bytes.toString("utf8"));
   }
 
   public clear(): void {
@@ -29,6 +29,6 @@ export function createZeroableCredentialSecret(secret: string): ZeroableCredenti
   return new InMemoryZeroableCredentialSecret(secret);
 }
 
-export function buildHashedCredentialFingerprint(prefix: string, secret: string, length: number = 12): string {
+export function buildHashedCredentialFingerprint(prefix: string, secret: string, length: number = 24): string {
   return `${prefix}_${createHash("sha256").update(secret).digest("hex").slice(0, Math.max(4, length))}`;
 }

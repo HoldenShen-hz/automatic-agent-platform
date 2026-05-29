@@ -3,6 +3,7 @@ import { PolicyDeniedError } from "../../platform/contracts/errors.js";
 import { NetworkEgressPolicyService } from "../../platform/five-plane-control-plane/iam/network-egress-policy.js";
 import { parseSafeOutboundUrl } from "../../platform/five-plane-control-plane/iam/outbound-url-policy.js";
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
+import { createZeroableCredentialSecret, type ZeroableCredentialSecret } from "./credential-hygiene.js";
 
 // R8-25 FIX: Plugin signature verification for secure plugin loading
 
@@ -12,6 +13,8 @@ export interface GithubAdapterPluginOptions {
   signatureKey?: string;
   defaultTimeoutMs?: number;
   defaultRateLimitPerMinute?: number;
+  fetchImplementation?: typeof fetch;
+  maxResponseSizeBytes?: number;
   healthProbe?: (input: { readonly apiBaseUrl: string; readonly credentialFingerprint: string | null }) => Promise<boolean> | boolean;
 }
 
@@ -211,6 +214,90 @@ function assertActionAllowed(capabilityIds: readonly string[] | undefined, actio
   }
 }
 
+interface GithubRequestDetails {
+  readonly method: "GET" | "POST";
+  readonly endpoint: string;
+  readonly payload?: Record<string, unknown>;
+}
+
+async function readResponseTextWithLimit(
+  response: Partial<Pick<Response, "body" | "headers" | "text">>,
+  maxResponseSizeBytes: number,
+): Promise<string> {
+  const headerLength = typeof response.headers?.get === "function"
+    ? response.headers.get("content-length")
+    : null;
+  if (headerLength != null) {
+    const parsedLength = Number(headerLength);
+    if (Number.isFinite(parsedLength) && parsedLength > maxResponseSizeBytes) {
+      throw new Error("github_adapter.response_too_large");
+    }
+  }
+  if (response.body == null) {
+    if (typeof response.text === "function") {
+      const text = await response.text();
+      if (Buffer.byteLength(text, "utf8") > maxResponseSizeBytes) {
+        throw new Error("github_adapter.response_too_large");
+      }
+      return text;
+    }
+    return "";
+  }
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let totalBytes = 0;
+  let result = "";
+  return reader.read().then(function pump(chunk): Promise<string> {
+    if (chunk.done) {
+      result += decoder.decode();
+      return result;
+    }
+    totalBytes += chunk.value.byteLength;
+    if (totalBytes > maxResponseSizeBytes) {
+      void reader.cancel();
+      throw new Error("github_adapter.response_too_large");
+    }
+    result += decoder.decode(chunk.value, { stream: true });
+    return reader.read().then(pump);
+  });
+}
+
+async function performGithubFetch(params: {
+  fetchImplementation: typeof fetch;
+  request: GithubRequestDetails;
+  credentialSecret: ZeroableCredentialSecret;
+  defaultTimeoutMs: number;
+  maxResponseSizeBytes: number;
+}): Promise<{ readonly status: number; readonly data: unknown }> {
+  const controller = new AbortController();
+  const timeoutHandle = setTimeout(() => controller.abort(new Error("github_adapter.timeout")), params.defaultTimeoutMs);
+  try {
+    const response = await params.credentialSecret.withSecret((token) =>
+      params.fetchImplementation(params.request.endpoint, {
+        method: params.request.method,
+        headers: {
+          "Accept": "application/vnd.github+json",
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json",
+          "X-GitHub-Api-Version": "2022-11-28",
+        },
+        ...(params.request.payload === undefined ? {} : { body: JSON.stringify(params.request.payload) }),
+        signal: controller.signal,
+      }),
+    );
+    const responseText = await readResponseTextWithLimit(response, params.maxResponseSizeBytes);
+    if (!response.ok) {
+      throw new Error(`github_adapter.api_error:${response.status}:${responseText || "unknown"}`);
+    }
+    return {
+      status: response.status,
+      data: responseText.length === 0 ? {} : JSON.parse(responseText) as unknown,
+    };
+  } finally {
+    clearTimeout(timeoutHandle);
+  }
+}
+
 export function createGithubAdapterPlugin(options: GithubAdapterPluginOptions = {}): ExternalAdapterPlugin {
   const apiBaseUrl = normalizeApiBaseUrl(options.apiBaseUrl);
   const policy = options.policy ?? new NetworkEgressPolicyService({
@@ -219,7 +306,9 @@ export function createGithubAdapterPlugin(options: GithubAdapterPluginOptions = 
   });
   const defaultTimeoutMs = options.defaultTimeoutMs ?? 10_000;
   const defaultRateLimitPerMinute = options.defaultRateLimitPerMinute ?? 60;
+  const maxResponseSizeBytes = options.maxResponseSizeBytes ?? 1024 * 1024;
   let credentialFingerprint: string | null = null;
+  let credentialSecret: ZeroableCredentialSecret | null = null;
 
   return {
     pluginId: "plugin.shared.github_adapter",
@@ -243,47 +332,68 @@ export function createGithubAdapterPlugin(options: GithubAdapterPluginOptions = 
     },
     async shutdown() {
       credentialFingerprint = null;
+      credentialSecret?.clear();
+      credentialSecret = null;
     },
     async authenticate(credentials) {
       const token = requireString(credentials["token"] ?? credentials["managedSecretRef"], "token");
+      credentialSecret?.clear();
+      credentialSecret = createZeroableCredentialSecret(token);
       credentialFingerprint = buildCredentialFingerprint(token);
     },
     async execute(action, params) {
-      if (!credentialFingerprint) {
+      if (credentialFingerprint == null || credentialSecret == null) {
         throw new Error("github_adapter.not_authenticated");
       }
       assertActionAllowed(this.capabilityIds, action);
       const repository = requireRepository(params["repository"]);
-      const endpoint = buildEndpoint(apiBaseUrl, action, repository, params);
-      const decision = policy.evaluate(endpoint);
+      const request = buildRequest(apiBaseUrl, action, repository, params);
+      const decision = policy.evaluate(request.endpoint);
       if (!decision.allowed) {
         throw new PolicyDeniedError(
           decision.reasonCode ?? "github_adapter.egress_blocked",
-          `Network egress denied for ${endpoint}`,
+          `Network egress denied for ${request.endpoint}`,
           {
             category: "policy",
             source: "internal",
             details: {
               action,
-              endpoint,
+              endpoint: request.endpoint,
               destination: decision.destination,
               reasonCode: decision.reasonCode,
             },
           },
         );
       }
+      const fetchImplementation = options.fetchImplementation ?? globalThis.fetch;
+      if (typeof fetchImplementation !== "function") {
+        throw new Error("github_adapter.fetch_unavailable");
+      }
       const idempotencyKey = createIdempotencyKey(action, repository, params);
+      const startTime = Date.now();
+      const response = await performGithubFetch({
+        fetchImplementation,
+        request,
+        credentialSecret,
+        defaultTimeoutMs,
+        maxResponseSizeBytes,
+      });
       return {
         adapter: "github",
         action,
         repository,
-        endpoint,
+        method: request.method,
+        endpoint: request.endpoint,
         credentialFingerprint,
         timeoutMs: defaultTimeoutMs,
         rateLimitPerMinute: defaultRateLimitPerMinute,
         retryPolicy: { maxRetries: 3, backoffMs: 250 },
+        ok: true,
+        status: response.status,
+        data: response.data,
+        latencyMs: Date.now() - startTime,
         ...(idempotencyKey === undefined ? {} : { idempotencyKey }),
-        payload: buildPayload(action, params),
+        ...(request.payload === undefined ? {} : { payload: request.payload }),
       };
     },
   };
@@ -300,16 +410,34 @@ function encodeRepositoryPath(path: string): string {
   return segments.map((segment) => encodeURIComponent(segment)).join("/");
 }
 
-function buildEndpoint(apiBaseUrl: string, action: string, repository: string, params: Record<string, unknown>): string {
+function buildRequest(apiBaseUrl: string, action: string, repository: string, params: Record<string, unknown>): GithubRequestDetails {
   switch (action) {
     case "create_issue":
-      return `${apiBaseUrl}/repos/${repository}/issues`;
+      return {
+        method: "POST",
+        endpoint: `${apiBaseUrl}/repos/${repository}/issues`,
+        payload: buildPayload(action, params),
+      };
     case "create_pr_comment":
-      return `${apiBaseUrl}/repos/${repository}/issues/${requireIssueNumber(params["issueNumber"])}/comments`;
+      return {
+        method: "POST",
+        endpoint: `${apiBaseUrl}/repos/${repository}/issues/${requireIssueNumber(params["issueNumber"])}/comments`,
+        payload: buildPayload(action, params),
+      };
     case "dispatch_workflow":
-      return `${apiBaseUrl}/repos/${repository}/actions/workflows/${encodeURIComponent(requirePathSegment(params["workflowId"], "workflowId"))}/dispatches`;
-    case "get_file":
-      return `${apiBaseUrl}/repos/${repository}/contents/${encodeRepositoryPath(requireString(params["path"], "path"))}`;
+      return {
+        method: "POST",
+        endpoint: `${apiBaseUrl}/repos/${repository}/actions/workflows/${encodeURIComponent(requirePathSegment(params["workflowId"], "workflowId"))}/dispatches`,
+        payload: buildPayload(action, params),
+      };
+    case "get_file": {
+      const endpoint = new URL(`${apiBaseUrl}/repos/${repository}/contents/${encodeRepositoryPath(requireString(params["path"], "path"))}`);
+      endpoint.searchParams.set("ref", typeof params["ref"] === "string" ? params["ref"] : "main");
+      return {
+        method: "GET",
+        endpoint: endpoint.toString(),
+      };
+    }
     default:
       throw new Error(`github_adapter.unsupported_action:${action}`);
   }
@@ -325,19 +453,12 @@ function buildPayload(action: string, params: Record<string, unknown>): Record<s
       };
     case "create_pr_comment":
       return {
-        issueNumber: requireIssueNumber(params["issueNumber"]),
         body: requireString(params["body"], "body"),
       };
     case "dispatch_workflow":
       return {
-        workflowId: requireString(params["workflowId"], "workflowId"),
         ref: requireString(params["ref"], "ref"),
         inputs: sanitizeWorkflowInputs(params["inputs"]),
-      };
-    case "get_file":
-      return {
-        path: requireString(params["path"], "path"),
-        ref: typeof params["ref"] === "string" ? params["ref"] : "main",
       };
     default:
       throw new Error(`github_adapter.unsupported_action:${action}`);

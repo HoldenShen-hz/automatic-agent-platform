@@ -1,0 +1,19 @@
+{
+  "totalStatuses": 14,
+  "statuses": [
+    "created",
+    "admitted",
+    "planning",
+    "ready",
+    "running",
+    "pausing",
+    "paused",
+    "resuming",
+    "replanning",
+    "compensating",
+    "completed",
+    "failed",
+    "cancelled",
+    "aborted"
+  ]
+}

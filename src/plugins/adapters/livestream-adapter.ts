@@ -47,9 +47,6 @@ export function createLivestreamAdapterPlugin(options: LivestreamAdapterPluginOp
       // OBS WebSocket credentials would be validated here
     },
     async healthCheck(): Promise<boolean> {
-      if (credentialFingerprint == null) {
-        return false;
-      }
       const [twitchDecision, youtubeDecision] = await Promise.all([
         policy.evaluate(TWITCH_STREAMS_URL),
         policy.evaluate(YOUTUBE_LIVE_BROADCASTS_URL),

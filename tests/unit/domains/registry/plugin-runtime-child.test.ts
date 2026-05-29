@@ -55,8 +55,11 @@ test("plugin runtime child routes console output through structured logger with 
   assert.match(source, /const requestId = currentRequest\?\.requestId;/);
   assert.match(source, /requestId,\s*traceId: requestId,\s*correlationId: requestId/s);
   assert.match(source, /process\.stderr\.write\(`\$\{JSON\.stringify\(entry\)\}\\n`\)/);
+  assert.match(source, /function withStructuredConsoleForCurrentRequest<T>\(run: \(\) => Promise<T>\): Promise<T>/);
+  assert.match(source, /return run\(\)\.finally\(\(\) => \{/);
   assert.match(source, /function logProtocolError\(message: string, error: unknown\): void/);
   assert.match(source, /message: `\$\{message\}: \$\{error instanceof Error \? error\.message : String\(error\)\}`/);
+  assert.match(source, /function installStdioProtocolConsoleRedirection\(\): void \{\s*if \(process\.send\) \{\s*return;\s*\}\s*const directEntry = process\.argv\[1\];/s);
   assert.doesNotMatch(source, /plugin-runtime-child invalid stdio payload: \$\{/);
   assert.doesNotMatch(source, /plugin-runtime-child protocol violation: \$\{/);
 });

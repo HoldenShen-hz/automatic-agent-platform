@@ -124,7 +124,7 @@ test("PluginMarketplaceRegistry.authenticate returns session token", async () =>
   const registry = new PluginMarketplaceRegistry();
 
   const token = await registry.authenticate("https://marketplace.example.com", {
-    apiKey: "test-api-key",
+    apiKey: "test_api_key_1234567890abcd",
   });
 
   assert.ok(typeof token === "string");
@@ -135,7 +135,7 @@ test("PluginMarketplaceRegistry.isAuthenticated returns true for valid session",
   const registry = new PluginMarketplaceRegistry();
 
   const token = await registry.authenticate("https://marketplace.example.com", {
-    apiKey: "test",
+    apiKey: "test_api_key_1234567890abcd",
   });
 
   assert.equal(registry.isAuthenticated(token), true);
@@ -308,52 +308,52 @@ test("hasDataTaintLabel returns false for unknown data ID", () => {
   assert.equal(hasDataTaintLabel("nonexistent-data", "label"), false);
 });
 
-test("revokePluginBundle creates revocation record with INFO severity", () => {
+test("revokePluginBundle creates revocation record with LOW severity", () => {
   const record = revokePluginBundle(
     "plugin.test.info",
-    BundleRevocationSeverity.INFO,
-    "Informational notice",
+    BundleRevocationSeverity.LOW,
+    "Low severity notice",
     ["1.0.0"],
   );
 
   assert.equal(record.pluginId, "plugin.test.info");
-  assert.equal(record.severity, BundleRevocationSeverity.INFO);
-  assert.equal(record.reason, "Informational notice");
+  assert.equal(record.severity, BundleRevocationSeverity.LOW);
+  assert.equal(record.reason, "Low severity notice");
   assert.deepEqual(record.affectedVersions, ["1.0.0"]);
   assert.ok(record.revokedAt.length > 0);
 });
 
-test("revokePluginBundle creates revocation record with WARNING severity", () => {
+test("revokePluginBundle creates revocation record with MEDIUM severity", () => {
   const record = revokePluginBundle(
     "plugin.test.warning",
-    BundleRevocationSeverity.WARNING,
-    "Warning notice",
+    BundleRevocationSeverity.MEDIUM,
+    "Medium severity notice",
   );
 
-  assert.equal(record.severity, BundleRevocationSeverity.WARNING);
+  assert.equal(record.severity, BundleRevocationSeverity.MEDIUM);
   assert.deepEqual(record.affectedVersions, ["*"]);
 });
 
-test("revokePluginBundle creates revocation record with MODERATE severity", () => {
+test("revokePluginBundle creates revocation record with HIGH severity", () => {
   const record = revokePluginBundle(
     "plugin.test.moderate",
-    BundleRevocationSeverity.MODERATE,
-    "Moderate issue",
+    BundleRevocationSeverity.HIGH,
+    "High severity issue",
     ["1.0.0", "1.1.0"],
   );
 
-  assert.equal(record.severity, BundleRevocationSeverity.MODERATE);
+  assert.equal(record.severity, BundleRevocationSeverity.HIGH);
   assert.deepEqual(record.affectedVersions, ["1.0.0", "1.1.0"]);
 });
 
-test("revokePluginBundle creates revocation record with SEVERE severity", () => {
+test("revokePluginBundle accepts CRITICAL severity for blocking revocations", () => {
   const record = revokePluginBundle(
     "plugin.test.severe",
-    BundleRevocationSeverity.SEVERE,
-    "Severe vulnerability",
+    BundleRevocationSeverity.CRITICAL,
+    "Critical vulnerability",
   );
 
-  assert.equal(record.severity, BundleRevocationSeverity.SEVERE);
+  assert.equal(record.severity, BundleRevocationSeverity.CRITICAL);
 });
 
 test("revokePluginBundle creates revocation record with CRITICAL severity", () => {
@@ -367,11 +367,11 @@ test("revokePluginBundle creates revocation record with CRITICAL severity", () =
 });
 
 test("getPluginRevocationStatus returns record for revoked plugin", () => {
-  revokePluginBundle("plugin.status.test", BundleRevocationSeverity.SEVERE, "Test revocation");
+  revokePluginBundle("plugin.status.test", BundleRevocationSeverity.HIGH, "Test revocation");
 
   const status = getPluginRevocationStatus("plugin.status.test");
   assert.ok(status !== null);
-  assert.equal(status!.severity, BundleRevocationSeverity.SEVERE);
+  assert.equal(status!.severity, BundleRevocationSeverity.HIGH);
 });
 
 test("getPluginRevocationStatus returns null for non-revoked plugin", () => {
@@ -380,7 +380,7 @@ test("getPluginRevocationStatus returns null for non-revoked plugin", () => {
 });
 
 test("isPluginRevoked returns true for revoked plugin", () => {
-  revokePluginBundle("plugin.revoked.test", BundleRevocationSeverity.WARNING, "Test");
+  revokePluginBundle("plugin.revoked.test", BundleRevocationSeverity.MEDIUM, "Test");
 
   assert.equal(isPluginRevoked("plugin.revoked.test"), true);
 });
@@ -390,9 +390,9 @@ test("isPluginRevoked returns false for non-revoked plugin", () => {
 });
 
 test("listRevokedPlugins returns all revoked plugins", () => {
-  revokePluginBundle("plugin.list.1", BundleRevocationSeverity.INFO, "One");
-  revokePluginBundle("plugin.list.2", BundleRevocationSeverity.WARNING, "Two");
-  revokePluginBundle("plugin.list.3", BundleRevocationSeverity.SEVERE, "Three");
+  revokePluginBundle("plugin.list.1", BundleRevocationSeverity.LOW, "One");
+  revokePluginBundle("plugin.list.2", BundleRevocationSeverity.MEDIUM, "Two");
+  revokePluginBundle("plugin.list.3", BundleRevocationSeverity.HIGH, "Three");
 
   const revoked = listRevokedPlugins();
   assert.ok(revoked.length >= 3);
@@ -402,7 +402,7 @@ test("listRevokedPlugins returns all revoked plugins", () => {
 });
 
 test("removePluginRevocation returns true and clears revocation", () => {
-  revokePluginBundle("plugin.remove.test", BundleRevocationSeverity.WARNING, "To be removed");
+  revokePluginBundle("plugin.remove.test", BundleRevocationSeverity.MEDIUM, "To be removed");
 
   assert.equal(isPluginRevoked("plugin.remove.test"), true);
 
@@ -417,11 +417,10 @@ test("removePluginRevocation returns false for non-revoked plugin", () => {
 });
 
 test("BundleRevocationSeverity enum has all expected values", () => {
-  assert.equal(BundleRevocationSeverity.INFO, "info");
-  assert.equal(BundleRevocationSeverity.WARNING, "warning");
-  assert.equal(BundleRevocationSeverity.MODERATE, "moderate");
-  assert.equal(BundleRevocationSeverity.SEVERE, "severe");
   assert.equal(BundleRevocationSeverity.CRITICAL, "critical");
+  assert.equal(BundleRevocationSeverity.HIGH, "high");
+  assert.equal(BundleRevocationSeverity.MEDIUM, "medium");
+  assert.equal(BundleRevocationSeverity.LOW, "low");
 });
 
 test("builtin plugin manifest has all required fields", () => {
@@ -437,6 +436,7 @@ test("builtin plugin manifest has all required fields", () => {
   assert.ok(["internal", "trusted", "community", "unverified"].includes(manifest.trustLevel));
   assert.ok(manifest.publicSdkSurface.length > 0);
   assert.ok(typeof manifest.settingsSchema === "object");
+  assert.ok(typeof manifest.outputDataClass === "string");
 });
 
 test("builtin plugin manifest spiTypes match plugin type", () => {

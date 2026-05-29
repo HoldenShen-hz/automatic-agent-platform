@@ -55,11 +55,30 @@ function parseJsonWithWarning<T>(raw: string, fallback: T, field: string, stepId
   }
 }
 
+function normalizeArtifactRef(value: unknown): string | null {
+  if (typeof value === "string" && value.length > 0) {
+    return value;
+  }
+  if (value == null || typeof value !== "object") {
+    return null;
+  }
+  const record = value as { uri?: unknown; artifactId?: unknown };
+  if (typeof record.uri === "string" && record.uri.length > 0) {
+    return record.uri;
+  }
+  if (typeof record.artifactId === "string" && record.artifactId.length > 0) {
+    return record.artifactId.startsWith("artifact:") ? record.artifactId : `artifact:${record.artifactId}`;
+  }
+  return null;
+}
+
 export function mapStepOutputRecord(record: StepOutputRecord): StepResult {
   const stepId = record.stepId ?? record.nodeRunId ?? "unknown";
   const outputs = parseJsonWithWarning<Record<string, unknown>>(record.dataJson, {}, "outputs", stepId);
   const artifacts = record.artifactsJson != null
-    ? parseJsonWithWarning<string[]>(record.artifactsJson, [], "artifacts", stepId)
+    ? parseJsonWithWarning<unknown[]>(record.artifactsJson, [], "artifacts", stepId)
+      .map(normalizeArtifactRef)
+      .filter((artifact): artifact is string => artifact != null)
     : [];
   const validationPassed = record.validationJson != null
     ? parseJsonWithWarning<{ valid?: unknown }>(record.validationJson, {}, "validation", stepId).valid === true
@@ -103,8 +122,11 @@ export function mapToDualChannelStepOutputs(
 }
 
 export function extractStepOutputRecords(result: { snapshot?: unknown }): StepOutputRecord[] {
-  const snapshot = result.snapshot as { executionRecord?: { stepOutputs?: unknown } } | undefined;
-  const stepOutputs = snapshot?.executionRecord?.stepOutputs;
+  const snapshot = result.snapshot as {
+    stepOutputs?: unknown;
+    executionRecord?: { stepOutputs?: unknown };
+  } | undefined;
+  const stepOutputs = snapshot?.stepOutputs ?? snapshot?.executionRecord?.stepOutputs;
   if (!Array.isArray(stepOutputs)) {
     return [];
   }

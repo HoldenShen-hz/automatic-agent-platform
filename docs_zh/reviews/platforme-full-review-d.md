@@ -1389,17 +1389,17 @@
 | 1061 | package.json:7-9 engines.node 无 engineStrict/.npmrc engine-strict，Node 20/24 安装静默成功 | `done` | Node 版本约束只写在 package engines，没有同时在 npm 配置层启用强校验。 |
 | 1062 | package.json:55 prepare 用 .catch(()=>undefined) 吞掉所有 husky bootstrap 错误 | `done` | 根因是旧版 `prepare` 脚本把 husky bootstrap 失败完全吞掉；当前脚本已收敛为只做 husky 初始化并输出告警，不再静默掩盖错误。 |
 | 1063 | package.json:165-166 AA_PRESERVE_DIST=0 紧接 AA_PRESERVE_DIST=1 同行声明，shell 后者覆盖前者 | `done` | 根因是 review 基于旧脚本形态；当前脚本只保留了一套 `AA_PRESERVE_DIST` 语义，不再存在同一行双重覆盖。 |
-| 1064 | tsconfig.coverage-curated.json 1769 行手维护 1700+ 文件 exclude，无自动生成 | `todo` | 待修复 |
+| 1064 | tsconfig.coverage-curated.json 1769 行手维护 1700+ 文件 exclude，无自动生成 | `done` | 根因是 coverage curated tsconfig 之前完全靠人工维护 exclude 列表，新增/删除文件后容易漂移；本轮已补生成脚本并把产物改为自动生成。 |
 | 1065 | tsconfig.build-test.json 被 tsconfig.coverage-curated.json:2 extends，与"死配置"判定矛盾 | `done` | 根因是“死配置”结论来自过时文件图，忽略了 `tsconfig.coverage-curated.json` 仍在继承它；该文件当前仍是 live base config。 |
 | 1066 | tsconfig.scripts.json:11 含 eslint.config.js 不含 stryker.config.mjs，处理不一致 | `done` | 根因是 scripts tsconfig 以前靠手工列举单文件维护，配置脚本新增时容易漏同步；本轮已泛化为 `*.config.{js,cjs,mjs}` 覆盖。 |
 | 1067 | package.json bin/exports 字段未与 dist 实际产物比对 | `done` | 根因是 review 漏看了仓库里已有的 public-entrypoint audit 与 CLI 导出校验；当前 package surface 已有自动比对门。 |
-| 1068 | package.json 多个脚本前缀 npm run build，本地连续运行重复 tsc 浪费 | `todo` | 待修复 |
-| 1069 | package.json 依赖 @prettier/plugin-xml 但仓库无 .xml/.svg，死依赖 | `todo` | 待修复 |
+| 1068 | package.json 多个脚本前缀 npm run build，本地连续运行重复 tsc 浪费 | `done` | 根因是脚本层默认把“需要 dist”简单等同于“每次都先全量 build”；本轮已引入基于时间戳的 `build-if-needed` 门，避免新鲜 `dist/` 重复编译。 |
+| 1069 | package.json 依赖 @prettier/plugin-xml 但仓库无 .xml/.svg，死依赖 | `done` | 根因是依赖清理长期缺少按真实文件类型反查，遗留了未消费的 Prettier XML 插件；本轮已移除无效依赖。 |
 | 1070 | package.json prepare:"npm run build" 在 npm install 时强制构建 | `done` | 根因是 review 使用了旧版 `prepare` 基线；当前 `prepare` 只负责 husky bootstrap，不再在 `npm install` 时强制构建。 |
 | 1071 | package.json engines.node 与 .nvmrc 双源真相未交叉校验 | `done` | 根因是 Node 版本声明过去确实可能各自漂移；当前仓库已补 Node 版本对齐测试，形成交叉校验。 |
 | 1072 | tsconfig.json lib:["ES2023","WebWorker"] 拉入 WebWorker 类型 | `done` | 根因是根 tsconfig 之前把不需要的 `WebWorker` ambient types 带入了服务端类型空间；本轮已移除。 |
-| 1073 | tsconfig.json paths 与 package.json exports 双源 runtime/编译时 resolve 不一致 | `todo` | 待修复 |
-| 1074 | tsconfig.scripts.json 与 tsconfig.build.json allowImportingTsExtensions 不一致 | `todo` | 待修复 |
+| 1073 | tsconfig.json paths 与 package.json exports 双源 runtime/编译时 resolve 不一致 | `done` | 根因是 SDK 子路径别名与 package exports 分别独立维护，编译时与运行时解析面发生了漂移；本轮已把 `plugin-sdk` 等子路径统一到同一命名与导出面。 |
+| 1074 | tsconfig.scripts.json 与 tsconfig.build.json allowImportingTsExtensions 不一致 | `done` | 根因是脚本 tsconfig 与构建 tsconfig 长期独立演化，没有共享导入扩展名策略；本轮已统一为 `false`。 |
 | 1075 | tsconfig.scripts.json:11 include 列表硬编码文件，新增 .mjs 须手工同步 | `done` | 根因是 scripts tsconfig 过去依赖硬编码 include 列表；本轮已用 `*.config.{js,cjs,mjs}` 统一覆盖，新增 `.mjs` 不再手工同步。 |
 | 1076 | eslint.config.js 未配置 *.tsx/*.cjs 规则集 | `done` | 根因是 ESLint type-aware 覆盖此前漏掉了仓库根 `tests/**/*.tsx`，同时 review 还把并不存在的 `.cjs` 源文件当成现存缺口；本轮已补 `tests/**/*.tsx` 规则覆盖。 |
 | 1077 | eslint.config.js 未声明 parserOptions.project，type-aware 规则全静默 no-op | `done` | 根因是 review 基于旧配置快照；当前 flat config 已使用 `projectService: true`，type-aware 规则并非静默 no-op。 |
@@ -1410,8 +1410,8 @@
 | 编号 | 问题 | 状态 | 问题根因 |
 | --- | --- | --- | --- |
 | 1079 | src/sdk/cli/pack-publish.ts 默认 registry URL 为不存在的 api.platform.example.com | `done` | 根因是 review 基于旧版 `pack-publish.ts`，当时仍保留 example.com 占位默认值；当前实现已对缺失 registry URL 直接 fail-close。 |
-| 1080 | src/sdk/harness-sdk/index.ts 5 处 @ts-expect-error 抑制类型检查 | `todo` | 待修复 |
-| 1081 | harness-sdk/index.ts:724,737-739 setTimeout 无 unref；空 catch 后仍触发 onTimeout 无错误上下文 | `todo` | 待修复 |
+| 1080 | src/sdk/harness-sdk/index.ts 5 处 @ts-expect-error 抑制类型检查 | `done` | 根因是 review 采样自旧版本基线；当前 `src/sdk/harness-sdk/index.ts` 已无这些 `@ts-expect-error` 抑制，并加了源码守卫测试防回归。 |
+| 1081 | harness-sdk/index.ts:724,737-739 setTimeout 无 unref；空 catch 后仍触发 onTimeout 无错误上下文 | `done` | 根因是超时兜底路径之前只做 best-effort 清理，没有把 timer 生命周期和 lookup 异常观测纳入正式控制流；本轮已 `unref()` 定时器并通过 `onError` 暴露 lookup failure。 |
 | 1082 | src/sdk/cli/aa.ts 顶层 main() 在 npm bin 软链/Windows process.argv[1] 不一致时 import 即触发 dispatcher | `done` | 根因是 CLI 入口判断原先依赖直接 URL 相等比较，没有复用统一的入口守卫；本轮 `aa.ts` 已切到共享 `isCliEntryPoint()`，并强化了 realpath/resolve 判定。 |
 | 1083 | src/sdk/cli/dlq-manager.ts:112 --limit=abc parseInt→NaN 经 Math.min/Max 仍 NaN，拼到 SQL 抛 SQLite 错误而非校验拒绝 | `done` | 根因是 `--limit` 参数原先只做数值裁剪，没有在 NaN 前置校验；本轮已显式拒绝非法 limit。 |
 | 1084 | src/sdk/cli/dlq-manager.ts:32,104 retryLimit 字段定义且解析，但所有 action 写死 LIMIT 100，flag 静默被忽略 | `done` | 根因是 `retryLimit` 之前只停留在解析层，没有真正贯通到执行路径；本轮已让 `--retry-limit` 驱动批量重试上限。 |
@@ -1429,16 +1429,16 @@
 | 1096 | src/sdk/cli/secret-commands.ts:219 writeFileSync(outputPath, secretValue) 不检查目标是否软链，TOCTOU 可写任意路径 | `done` | 根因是 secret materialization 以前使用普通写文件路径，没有加防跟随约束；本轮已通过安全文件写入路径和 `O_NOFOLLOW` 防止软链穿透。 |
 | 1097 | src/sdk/cli/secret-commands.ts:232,244,256 describe/leases/summary 均未要求认证，元数据泄漏 | `done` | 根因是“只读元数据”曾被误判为低敏感，不要求认证；本轮已把 `describe/leases/summary` 也纳入认证门。 |
 | 1098 | src/sdk/cli/secret-commands.ts:305 错误响应用 error.constructor.name 作 errorCode，泄漏内部类名（如 BetterSqliteError） | `done` | 根因是顶层错误映射原先把内部异常类名直接外露；本轮已统一遮蔽为稳定的 `secret.command_failed`。 |
-| 1099 | src/sdk/cli/migrate-sqlite-to-pg.ts 校验阶段对 SQLite 大表 SELECT * 全量加载入 JS 内存，OOM | `todo` | 待修复 |
-| 1100 | src/sdk/cli/api-server.ts 启动后未注册 SIGTERM/SIGINT graceful 关闭 | `todo` | 待修复 |
-| 1101 | src/sdk/cli/inspect.ts JSON.stringify(snapshot) 对大 snapshot 无截断/流式输出，超出 stdout 高水位丢字段 | `todo` | 待修复 |
-| 1102 | src/sdk/cli/skill-creator.ts 模板渲染字符串拼接而非转义，skill name 含反引号/${...} 时被当模板代码执行 | `todo` | 待修复 |
-| 1103 | src/sdk/cli/pack-publish.ts publish 重试无指数退避，连续失败放大 marketplace 限流封禁 | `todo` | 待修复 |
-| 1104 | src/sdk/cli/release-pipeline.ts rollback 路径仅记录 audit log，不实触发版本回滚 RPC，命名误导 | `todo` | 待修复 |
-| 1105 | src/sdk/cli/login.ts 接受 AA_LOGIN_TOKEN env 但成功后未清空 process.env，子进程继承 token | `todo` | 待修复 |
-| 1106 | src/sdk/cli/cli-exit.ts process.exit(code) 直接调用绕过 unhandled-promise drain，CI 中尾随日志可能丢失 | `todo` | 待修复 |
+| 1099 | src/sdk/cli/migrate-sqlite-to-pg.ts 校验阶段对 SQLite 大表 SELECT * 全量加载入 JS 内存，OOM | `done` | 根因是迁移校验路径把“读取一张表”实现成整表拉入内存，没有分页/批处理边界；本轮已改成 `LIMIT/OFFSET` 分批迁移与校验。 |
+| 1100 | src/sdk/cli/api-server.ts 启动后未注册 SIGTERM/SIGINT graceful 关闭 | `done` | 根因是 API CLI 入口只负责启动服务，没有接入统一 shutdown 注册器；本轮已注册 signal handlers 并复用共享 CLI entrypoint 守卫。 |
+| 1101 | src/sdk/cli/inspect.ts JSON.stringify(snapshot) 对大 snapshot 无截断/流式输出，超出 stdout 高水位丢字段 | `done` | 根因是 inspect 输出以前默认一次性 `JSON.stringify` 并整块写 stdout，没有考虑超大快照与 backpressure；本轮已增加截断序列化和分块输出。 |
+| 1102 | src/sdk/cli/skill-creator.ts 模板渲染字符串拼接而非转义，skill name 含反引号/${...} 时被当模板代码执行 | `done` | 根因是 review 把“把用户输入写入静态文本模板”误判成“把用户输入当模板执行”；当前实现会 slugify 路径、把原文作为惰性文本写入文件，本轮还补了 hostile-name 测试锁定该语义。 |
+| 1103 | src/sdk/cli/pack-publish.ts publish 重试无指数退避，连续失败放大 marketplace 限流封禁 | `done` | 根因是 publish 重试策略此前缺少退避和瞬态错误分类，失败风暴会放大限流压力；本轮已补指数退避重试并收口瞬态失败判定。 |
+| 1104 | src/sdk/cli/release-pipeline.ts rollback 路径仅记录 audit log，不实触发版本回滚 RPC，命名误导 | `done` | 根因是 review 把其他模块中的 rollback 语义投射到了 `release-pipeline` CLI；当前 CLI action 只有 `list/build/export/execute`，不存在名为 rollback 的误导入口。 |
+| 1105 | src/sdk/cli/login.ts 接受 AA_LOGIN_TOKEN env 但成功后未清空 process.env，子进程继承 token | `done` | 根因是登录流程过去只把 env token 当输入读取，没有在成功后做进程级清理；本轮已显式清空 legacy `AA_LOGIN_TOKEN`。 |
+| 1106 | src/sdk/cli/cli-exit.ts process.exit(code) 直接调用绕过 unhandled-promise drain，CI 中尾随日志可能丢失 | `done` | 根因是 review 基于旧实现印象；当前 `runCliMain()` 已使用 `process.exitCode` 而不是硬退出，本轮继续确认并保留该语义。 |
 | 1107 | src/sdk/cli/authoritative-storage.ts 工厂返回 {...storage, close:closeOnce} 浅拷贝丢失 class 原型链，instanceof AuthoritativeStorage 永远 false | `done` | 根因是 authoritative storage 工厂以前通过浅拷贝包 `close`，破坏了 class 原型链与 `instanceof` 语义；本轮已改成原对象原位封装。 |
-| 1108 | src/sdk/index.ts & admin-sdk/index.ts & harness-sdk/index.ts 三公共入口同时 export *，新增类即视作 public API，违反 SDK 收敛 | `todo` | 待修复 |
+| 1108 | src/sdk/index.ts & admin-sdk/index.ts & harness-sdk/index.ts 三公共入口同时 export *，新增类即视作 public API，违反 SDK 收敛 | `done` | 根因是 SDK 根入口之前使用宽泛 barrel export，内部符号会被意外升级成公共 API；本轮已把 `src/sdk/index.ts` 收敛为显式命名导出表面。 |
 | 1109 | src/sdk/cli/aa.ts (top of file main() invocation): CLI 入口未使用 isCliEntryPoint 守卫，对 npm bin 软链/Windows 路径 process.argv[1] 不一致；any import-time side effect runs the dispatcher. EN: top-level main() runs at module import on platforms where the symlink path differs, breaking library reuse. | `done` | 根因是 CLI 入口判断原先依赖直接 URL 比较，没有经过 realpath/resolve 归一化；本轮已复用强化后的 `isCliEntryPoint()`。 |
 | 1110 | src/sdk/cli/dlq-manager.ts:112 Math.max(1, Math.min(500, parseInt(String(values.limit ?? "50"),10))) 当 --limit=abc 时 parseInt→NaN→Math.min/Max 全部 NaN，最终拼接到 SQL 抛 SQLite 错误而非友好校验。EN: NaN propagation injects literal NaN into LIMIT, causing opaque SQL error instead of structured rejection. | `done` | 根因是 limit 处理以前默认 `parseInt` 一定成功，只做边界裁剪；本轮已对非法值做结构化拒绝。 |
 | 1111 | src/sdk/cli/dlq-manager.ts:32,104 retryLimit 字段在接口定义且解析，但所有 action handler 中未使用（200 行 retryDeadLetters 写死 LIMIT 100）。EN: --retry-limit flag is silently ignored; users believe it works. | `done` | 根因是 flag 仅被解析但没有接入执行层；本轮已让 `retryLimit` 真正控制重试批大小。 |
@@ -1456,59 +1456,59 @@
 | 1123 | src/sdk/cli/secret-commands.ts:219 writeFileSync(outputPath, secretValue) 不检查目标是否软链，符号链接 TOCTOU 可让 secret 写入 /etc/passwd 等任意路径。EN: secret-write symlink traversal. | `done` | 根因是 secret 输出路径此前使用普通写文件 API，没有 no-follow 约束；本轮已切到安全写入路径并阻断软链穿透。 |
 | 1124 | src/sdk/cli/secret-commands.ts:232,244,256 describe/leases/summary action 均未要求认证，元数据（secretRef、ttl、owner、leaseHolder）泄漏。EN: metadata-only endpoints leak sensitive operational info without auth. | `done` | 根因是元数据接口过去被误分类为非敏感；本轮已统一要求认证。 |
 | 1125 | src/sdk/cli/secret-commands.ts:305 错误响应使用 error.constructor.name 作为 errorCode，泄漏内部类名（如 BetterSqliteError），违反错误抽象。EN: internal class name leaks via error code. | `done` | 根因是顶层错误编码直接透传内部异常类名；本轮已收敛为稳定的外部错误码 `secret.command_failed`。 |
-| 1126 | src/sdk/cli/migrate-sqlite-to-pg.ts 校验阶段对 SQLite 大表 SELECT * 全量加载入 JS 内存，无分页；OOM 风险. EN: full-table read into memory during migration. | `todo` | 待修复 |
-| 1127 | src/sdk/cli/api-server.ts 启动后未注册 SIGTERM/SIGINT graceful 关闭，容器停机会丢请求中数据. EN: missing signal handlers. | `todo` | 待修复 |
-| 1128 | src/sdk/cli/inspect.ts 输出 JSON 直接 JSON.stringify(snapshot)，对大 snapshot 无截断与流式输出，超出 stdout 高水位时丢字段. EN: blocking stringify for large snapshots. | `todo` | 待修复 |
-| 1129 | src/sdk/cli/skill-creator.ts 模板渲染使用字符串拼接而非转义；用户提供 skill name 含反引号/${...} 时被当模板代码执行（写入文件并由后续模块 require）. EN: template injection via skill name. | `todo` | 待修复 |
-| 1130 | src/sdk/cli/pack-publish.ts example.com 存在缺省 registry 占位（既有审计 #3）；本轮新发现 publish 重试无指数退避，连续失败放大 marketplace 限流封禁概率. EN: missing exponential backoff in publish retry. | `todo` | 待修复 |
-| 1131 | src/sdk/cli/release-pipeline.ts rollback 路径仅记录 audit log，不实际触发版本回滚 RPC，命名误导运维. EN: rollback action only logs, no rollback effect. | `todo` | 待修复 |
-| 1132 | src/sdk/cli/login.ts 接受 AA_LOGIN_TOKEN env 但未在成功后清空 process.env，子进程继承 token. EN: token leaks via inherited environment. | `todo` | 待修复 |
-| 1133 | src/sdk/cli/cli-exit.ts process.exit(code) 直接调用绕过 unhandled-promise drain，CI 中尾随日志可能丢失. EN: hard exit drops trailing log writes. | `todo` | 待修复 |
+| 1126 | src/sdk/cli/migrate-sqlite-to-pg.ts 校验阶段对 SQLite 大表 SELECT * 全量加载入 JS 内存，无分页；OOM 风险. EN: full-table read into memory during migration. | `done` | 同 1099，根因是迁移校验路径缺少分页策略，本轮已改成批处理。 |
+| 1127 | src/sdk/cli/api-server.ts 启动后未注册 SIGTERM/SIGINT graceful 关闭，容器停机会丢请求中数据. EN: missing signal handlers. | `done` | 同 1100，根因是 CLI 没接入统一 shutdown 控制器，本轮已补。 |
+| 1128 | src/sdk/cli/inspect.ts 输出 JSON 直接 JSON.stringify(snapshot)，对大 snapshot 无截断与流式输出，超出 stdout 高水位时丢字段. EN: blocking stringify for large snapshots. | `done` | 同 1101，根因是大快照输出没有 backpressure 与截断控制，本轮已补。 |
+| 1129 | src/sdk/cli/skill-creator.ts 模板渲染使用字符串拼接而非转义；用户提供 skill name 含反引号/${...} 时被当模板代码执行（写入文件并由后续模块 require）. EN: template injection via skill name. | `done` | 同 1102，根因是 review 误把静态文本模板当动态执行模板；本轮已用 hostile-name 测试把现状锁定。 |
+| 1130 | src/sdk/cli/pack-publish.ts example.com 存在缺省 registry 占位（既有审计 #3）；本轮新发现 publish 重试无指数退避，连续失败放大 marketplace 限流封禁概率. EN: missing exponential backoff in publish retry. | `done` | 根因是 registry 占位问题已在前序条目收口，但 publish 重试策略仍缺退避；本轮已补指数退避与瞬态错误重试。 |
+| 1131 | src/sdk/cli/release-pipeline.ts rollback 路径仅记录 audit log，不实际触发版本回滚 RPC，命名误导运维. EN: rollback action only logs, no rollback effect. | `done` | 同 1104，根因是把不存在的 rollback CLI action 误认成现行入口；当前 CLI 并无该误导路径。 |
+| 1132 | src/sdk/cli/login.ts 接受 AA_LOGIN_TOKEN env 但未在成功后清空 process.env，子进程继承 token. EN: token leaks via inherited environment. | `done` | 同 1105，根因是 env 输入清理缺失，本轮已清空。 |
+| 1133 | src/sdk/cli/cli-exit.ts process.exit(code) 直接调用绕过 unhandled-promise drain，CI 中尾随日志可能丢失. EN: hard exit drops trailing log writes. | `done` | 同 1106，根因是 review 基线过旧；当前实现已使用 `process.exitCode`。 |
 | 1134 | src/sdk/cli/authoritative-storage.ts 工厂函数返回 {...storage, close: closeOnce} 浅拷贝丢失 class 原型链，调用 instanceof AuthoritativeStorage 永远 false，下游 instanceof 守卫失效. EN: spread-shim breaks instanceof checks. | `done` | 根因是 storage 工厂此前以浅拷贝方式覆写 `close`，直接打断了原型链和 `instanceof` 守卫；本轮已改为保持原对象/原型链的封装方式。 |
-| 1135 | src/sdk/index.ts & src/sdk/admin-sdk/index.ts & src/sdk/harness-sdk/index.ts 三个公共入口同时 export *，未做 semver-stable 表面控制；新增类即视作 public API，违反 SDK 收敛策略. EN: barrel export leaks unstable surface. | `todo` | 待修复 |
+| 1135 | src/sdk/index.ts & src/sdk/admin-sdk/index.ts & src/sdk/harness-sdk/index.ts 三个公共入口同时 export *，未做 semver-stable 表面控制；新增类即视作 public API，违反 SDK 收敛策略. EN: barrel export leaks unstable surface. | `done` | 同 1108，根因是 SDK barrel surface 过宽；本轮已把根 SDK 入口收敛为显式命名导出。 |
 
 ## src/plugins
 
 | 编号 | 问题 | 状态 | 问题根因 |
 | --- | --- | --- | --- |
-| 1136 | src/plugins/adapters/*-adapter.ts 硬编码第三方平台 URL，未注册 outbound-url-policy | `todo` | 待修复 |
-| 1137 | plugins/adapters/index.ts:1-5 不导出 credential-hygiene.ts | `todo` | 待修复 |
-| 1138 | plugins/adapters/github-adapter.ts:37、plugin-sdk/plugin-definition.ts:299 双导出 verifyPluginSignature 签名不一致 | `todo` | 待修复 |
+| 1136 | src/plugins/adapters/*-adapter.ts 硬编码第三方平台 URL，未注册 outbound-url-policy | `done` | 根因是 review 基线落在适配器接入 `parseSafeOutboundUrl()` 之前；当前 GitHub/CRM/GameDev/AssetProduction/Livestream 适配器都已把外部端点纳入 outbound URL 校验与 egress policy。 |
+| 1137 | plugins/adapters/index.ts:1-5 不导出 credential-hygiene.ts | `done` | 根因是 adapters barrel 以前只做 `export *` 聚合，遗漏了凭据卫生 helper 的显式公共面；本轮已补 `credential-hygiene` 的显式导出。 |
+| 1138 | plugins/adapters/github-adapter.ts:37、plugin-sdk/plugin-definition.ts:299 双导出 verifyPluginSignature 签名不一致 | `done` | 根因是 adapters/root barrel 过去把 GitHub 适配器签名 helper 也一并外泄，和 SDK 签名 API 形成同名异签名冲突；本轮已把 barrel 改成显式导出，只保留统一公共面，去掉冲突导出。 |
 | 1139 | plugins/adapters/github-adapter.ts:278-289 适配器从不发 HTTP，返回端点+payload 描述符（伪集成） | `todo` | 待修复 |
 | 1140 | src/plugins/builtin-plugin-registry.ts BundleRevocationSeverity 枚举与 org-governance severity 取值并存两套 | `todo` | 待修复 |
 | 1141 | src/plugins/builtin-plugin-registry.ts isRevoked()/getActiveRevocation() 未到 effectiveAt 时返已撤销，截止时间语义反向 | `todo` | 待修复 |
-| 1142 | src/plugins/builtin-plugin-registry.ts authenticate() 仅检查 apiKey 非空字符串即通过，无密钥强度/格式校验 | `todo` | 待修复 |
-| 1143 | src/plugins/builtin-plugin-registry.ts sessions Set 无 TTL/过期清理 | `todo` | 待修复 |
-| 1144 | src/plugins/builtin-plugin-registry.ts normalizeManifest() 仅 @platform/→@automatic-agent/ 字符串替换，遗 @aa-platform/ 等历史命名 | `todo` | 待修复 |
+| 1142 | src/plugins/builtin-plugin-registry.ts authenticate() 仅检查 apiKey 非空字符串即通过，无密钥强度/格式校验 | `done` | 根因是 marketplace 认证以前把“非空字符串”当成充分条件；本轮已加最小长度与字符集校验。 |
+| 1143 | src/plugins/builtin-plugin-registry.ts sessions Set 无 TTL/过期清理 | `done` | 根因是 marketplace 会话以前只存 `Set`，没有到期时间；本轮已改成带 TTL 的 `Map` 并在读写时清理过期项。 |
+| 1144 | src/plugins/builtin-plugin-registry.ts normalizeManifest() 仅 @platform\→@automatic-agent/ 字符串替换，遗 @aa-platform/ 等历史命名 | `done` | 根因是 manifest 名称规范化以前只覆盖一套历史前缀；本轮已把 `@aa-platform/` 一并归一化到 `@automatic-agent/`。 |
 | 1145 | src/plugins/builtin-plugin-registry.ts outputDataClass 字段定义但所有 builtin manifests 均未填，死字段 | `todo` | 待修复 |
-| 1146 | src/plugins/builtin-plugin-registry.ts globalMarketplaceRegistry/pluginRevocations/BundleRevocationRegistry 三单例，resetBuiltinPluginRegistryStateForTests 仅重置其一 | `todo` | 待修复 |
-| 1147 | src/plugins/builtin-plugin-registry.ts allowedExternalDomains:[] 与 allowNetworkEgress:true 同时出现，组合语义未规范 | `todo` | 待修复 |
-| 1148 | src/plugins/adapters/crm-adapter.ts:~30 默认 baseUrl=api.hubspot.com 与 crmType 无关，Salesforce 配置遗漏即指向 HubSpot | `todo` | 待修复 |
-| 1149 | src/plugins/adapters/crm-adapter.ts 路径硬编码 /crm/v3/objects/，Salesforce 路径根本不可用 | `todo` | 待修复 |
-| 1150 | src/plugins/adapters/crm-adapter.ts:136,143 把原始 action 而非 normalizedAction 用于 URL/handler 选择，alias 失效 | `todo` | 待修复 |
-| 1151 | src/plugins/adapters/crm-adapter.ts ACTION_ALIASES 全局共享非按 crmType 分组，HubSpot alias 在 Salesforce 同样生效 | `todo` | 待修复 |
-| 1152 | src/plugins/adapters/crm-adapter.ts fetch(...) 无 AbortSignal/timeout、无响应大小上限 | `todo` | 待修复 |
-| 1153 | src/plugins/adapters/credential-hygiene.ts bytes.toString("utf8") 把秘密入不可零化字符串，破坏 zeroize | `todo` | 待修复 |
-| 1154 | src/plugins/adapters/credential-hygiene.ts 指纹截断到 12 hex (~48 bit)，同租户大量凭据下生日攻击碰撞概率非可忽略 | `todo` | 待修复 |
-| 1155 | src/plugins/adapters/livestream-adapter.ts healthCheck() credentialFingerprint===null 时永返 unhealthy；初始化顺序无保证 | `todo` | 待修复 |
-| 1156 | src/plugins/index.ts 顶部 export * 把 builtin-plugin-registry 全部内部类公开 | `todo` | 待修复 |
+| 1146 | src/plugins/builtin-plugin-registry.ts globalMarketplaceRegistry/pluginRevocations/BundleRevocationRegistry 三单例，resetBuiltinPluginRegistryStateForTests 仅重置其一 | `done` | 根因是测试 reset hook 之前只清了 taint/lifecycle 状态，没有清 marketplace/revocation 单例；本轮已把这些全量 reset。 |
+| 1147 | src/plugins/builtin-plugin-registry.ts allowedExternalDomains:[] 与 allowNetworkEgress:true 同时出现，组合语义未规范 | `done` | 根因是外部 adapter manifests 之前把 `allowNetworkEgress` 打开了，但 `allowedExternalDomains` 留空；本轮已为 CRM/Unity/Figma/OBS manifests 补齐显式域名白名单，并在 normalize 阶段阻断“开放 egress + 空白名单”的歧义组合。 |
+| 1148 | src/plugins/adapters/crm-adapter.ts:~30 默认 baseUrl=api.hubspot.com 与 crmType 无关，Salesforce 配置遗漏即指向 HubSpot | `done` | 根因是 CRM 运行时配置原先先定死 HubSpot base URL，再把 `crmType` 只当标签使用；本轮已按 `crmType` 分流默认 base URL。 |
+| 1149 | src/plugins/adapters/crm-adapter.ts 路径硬编码 /crm/v3/objects/，Salesforce 路径根本不可用 | `done` | 根因是 CRM 适配器之前把 HubSpot 路径模板复用于所有平台；本轮已按 HubSpot/Salesforce 分别生成 `/crm/v3/objects/*` 与 `/services/data/v*/sobjects/*` 路径。 |
+| 1150 | src/plugins/adapters/crm-adapter.ts:136,143 把原始 action 而非 normalizedAction 用于 URL/handler 选择，alias 失效 | `done` | 根因是 alias 解析后没有贯通到 dispatch 层；本轮已统一以 `normalizedAction` 选择 URL 和 handler。 |
+| 1151 | src/plugins/adapters/crm-adapter.ts ACTION_ALIASES 全局共享非按 crmType 分组，HubSpot alias 在 Salesforce 同样生效 | `done` | 根因是 action alias 以前是全局表，不区分 CRM 方言；本轮已收敛成按 runtime config 分组的 per-CRM alias。 |
+| 1152 | src/plugins/adapters/crm-adapter.ts fetch(...) 无 AbortSignal/timeout、无响应大小上限 | `done` | 根因是 CRM 请求执行层以前直接裸调 `fetch`；本轮已加入 `AbortController` 超时和响应体大小上限。 |
+| 1153 | src/plugins/adapters/credential-hygiene.ts bytes.toString("utf8") 把秘密入不可零化字符串，破坏 zeroize | `done` | 根因是凭据 helper 之前把秘密以 `reveal()` 长生命周期暴露给调用方；本轮已改成 `withSecret()` 回调式短生命周期暴露，并继续只在内存中持有零化缓冲区。 |
+| 1154 | src/plugins/adapters/credential-hygiene.ts 指纹截断到 12 hex (~48 bit)，同租户大量凭据下生日攻击碰撞概率非可忽略 | `done` | 根因是凭据指纹默认截断长度过短；本轮已把默认指纹扩到 24 hex。 |
+| 1155 | src/plugins/adapters/livestream-adapter.ts healthCheck() credentialFingerprint===null 时永返 unhealthy；初始化顺序无保证 | `done` | 根因是 livestream 健康检查把“未先认证”误当成“端点不健康”；本轮已改成只校验策略与端点可达性，不再受认证先后顺序影响。 |
+| 1156 | src/plugins/index.ts 顶部 export * 把 builtin-plugin-registry 全部内部类公开 | `done` | 根因是插件 barrel 以前主要靠星号转发，公共面边界不清；本轮已改成显式受控导出，并用单测锁定 `PluginMarketplaceRegistry` / `BundleRevocationRegistry` 不再从根 barrel 外泄。 |
 | 1157 | src/plugins/builtin-plugin-registry.ts BundleRevocationSeverity 枚举与 org-governance 中的 severity 取值并存两套（critical/high/medium/low vs Critical/Major/Minor），事件桥接需手工映射。EN: dual revocation severity taxonomies. | `todo` | 待修复 |
 | 1158 | src/plugins/builtin-plugin-registry.ts isRevoked() / getActiveRevocation() 截止时间语义反向：未到 effectiveAt 时返回 already-revoked，违反吊销契约。EN: deadline semantics inverted on activation window. | `todo` | 待修复 |
-| 1159 | src/plugins/builtin-plugin-registry.ts authenticate() 仅检查 apiKey 非空字符串即通过，无密钥强度/格式校验。EN: trivial auth allows any non-empty key. | `todo` | 待修复 |
-| 1160 | src/plugins/builtin-plugin-registry.ts sessions Set 无 TTL/过期清理；长期运行内存增长。EN: unbounded session set leaks memory. | `todo` | 待修复 |
-| 1161 | src/plugins/builtin-plugin-registry.ts normalizeManifest() 仅做 @platform/→@automatic-agent/ 字符串替换，未处理嵌套 schema/字段；其它历史命名（如 @aa-platform/）未覆盖。EN: incomplete legacy-namespace migration. | `todo` | 待修复 |
+| 1159 | src/plugins/builtin-plugin-registry.ts authenticate() 仅检查 apiKey 非空字符串即通过，无密钥强度/格式校验。EN: trivial auth allows any non-empty key. | `done` | 根因是 marketplace 认证以前只拒空值；本轮已加格式与长度门槛。 |
+| 1160 | src/plugins/builtin-plugin-registry.ts sessions Set 无 TTL/过期清理；长期运行内存增长。EN: unbounded session set leaks memory. | `done` | 根因是 session 状态以前没有过期治理；本轮已改为带 TTL 的会话表和过期清扫。 |
+| 1161 | src/plugins/builtin-plugin-registry.ts normalizeManifest() 仅做 @platform/→@automatic-agent/ 字符串替换，未处理嵌套 schema/字段；其它历史命名（如 @aa-platform/）未覆盖。EN: incomplete legacy-namespace migration. | `done` | 根因是 manifest 规范化之前只覆盖 `@platform/`；本轮已把 `@aa-platform/` 一并归一化。 |
 | 1162 | src/plugins/builtin-plugin-registry.ts outputDataClass 字段定义但所有 builtin manifests 均未填，Set/Get 路径无人使用。EN: dead manifest field. | `todo` | 待修复 |
-| 1163 | src/plugins/builtin-plugin-registry.ts globalMarketplaceRegistry / pluginRevocations / BundleRevocationRegistry 三个模块级单例，resetBuiltinPluginRegistryStateForTests 仅重置其中一个，单测互相污染。EN: global singletons not all reset by test hook. | `todo` | 待修复 |
-| 1164 | src/plugins/builtin-plugin-registry.ts allowedExternalDomains: [] 与 allowNetworkEgress: true 同时出现，组合语义“放行所有域”还是“无放行”未规范化。EN: ambiguous network-egress contract. | `todo` | 待修复 |
-| 1165 | src/plugins/adapters/crm-adapter.ts:~30 默认 baseUrl=api.hubspot.com 与 crmType 无关，Salesforce 配置遗漏 baseUrl 时仍指向 HubSpot. EN: default base URL ignores crmType discriminator. | `todo` | 待修复 |
-| 1166 | src/plugins/adapters/crm-adapter.ts 路径硬编码 /crm/v3/objects/，Salesforce REST 路径为 /services/data/vXX.X/sobjects/，根本不可用. EN: HubSpot-specific path applied universally. | `todo` | 待修复 |
-| 1167 | src/plugins/adapters/crm-adapter.ts:136,143 crmRequest(action,…) 把原始 action 而非 normalizedAction 用于 URL/handler 选择，alias 失效. EN: action alias resolution dropped before dispatch. | `todo` | 待修复 |
-| 1168 | src/plugins/adapters/crm-adapter.ts ACTION_ALIASES 表全局共享而非按 crmType 分组，HubSpot 的 alias 在 Salesforce 上同样生效，污染语义. EN: aliases are not per-CRM. | `todo` | 待修复 |
-| 1169 | src/plugins/adapters/crm-adapter.ts fetch(...) 调用无 AbortSignal/timeout、无响应大小上限；恶意/迟缓后端可悬挂 worker. EN: missing fetch timeout & response size cap. | `todo` | 待修复 |
-| 1170 | src/plugins/adapters/credential-hygiene.ts bytes.toString("utf8") 把秘密写入不可零化的 JS 字符串，破坏后续 zeroize 承诺. EN: plaintext copied into immutable string defeats zeroize. | `todo` | 待修复 |
-| 1171 | src/plugins/adapters/credential-hygiene.ts 指纹截断到 12 个 hex 字符（~48 bit），同租户大量凭据下生日攻击碰撞概率非可忽略. EN: fingerprint truncation collision risk. | `todo` | 待修复 |
-| 1172 | src/plugins/adapters/livestream-adapter.ts healthCheck() 在 credentialFingerprint===null 时永远返回 unhealthy；初始化顺序未保证 fingerprint 先就绪. EN: health check unreachable until external init. | `todo` | 待修复 |
-| 1173 | src/plugins/index.ts 顶部 export * 把 builtin-plugin-registry 全部内部类（如 BundleRevocationRegistry）公开，破坏封装. EN: barrel leaks internal classes. | `todo` | 待修复 |
+| 1163 | src/plugins/builtin-plugin-registry.ts globalMarketplaceRegistry / pluginRevocations / BundleRevocationRegistry 三个模块级单例，resetBuiltinPluginRegistryStateForTests 仅重置其中一个，单测互相污染。EN: global singletons not all reset by test hook. | `done` | 根因是 reset hook 过去没有覆盖全部模块级单例；本轮已补齐清理。 |
+| 1164 | src/plugins/builtin-plugin-registry.ts allowedExternalDomains: [] 与 allowNetworkEgress: true 同时出现，组合语义“放行所有域”还是“无放行”未规范化。EN: ambiguous network-egress contract. | `done` | 根因是 external adapter manifests 曾经存在“打开网络出口但不给域名白名单”的歧义配置；本轮已补白名单并在 normalize 阶段消歧。 |
+| 1165 | src/plugins/adapters/crm-adapter.ts:~30 默认 baseUrl=api.hubspot.com 与 crmType 无关，Salesforce 配置遗漏 baseUrl 时仍指向 HubSpot. EN: default base URL ignores crmType discriminator. | `done` | 根因是默认 base URL 绑定 HubSpot；本轮已按 CRM 类型分流默认地址。 |
+| 1166 | src/plugins/adapters/crm-adapter.ts 路径硬编码 /crm/v3/objects/，Salesforce REST 路径为 /services/data/vXX.X/sobjects/，根本不可用. EN: HubSpot-specific path applied universally. | `done` | 根因是路径模板复用了 HubSpot 实现；本轮已拆成平台特定路径生成。 |
+| 1167 | src/plugins/adapters/crm-adapter.ts:136,143 crmRequest(action,…) 把原始 action 而非 normalizedAction 用于 URL/handler 选择，alias 失效. EN: action alias resolution dropped before dispatch. | `done` | 根因是 alias 解析没有贯通到请求执行；本轮已统一使用 `normalizedAction`。 |
+| 1168 | src/plugins/adapters/crm-adapter.ts ACTION_ALIASES 表全局共享而非按 crmType 分组，HubSpot 的 alias 在 Salesforce 上同样生效，污染语义. EN: aliases are not per-CRM. | `done` | 根因是 alias 表以前没有按 CRM 方言隔离；本轮已改成 per-CRM 配置。 |
+| 1169 | src/plugins/adapters/crm-adapter.ts fetch(...) 调用无 AbortSignal/timeout、无响应大小上限；恶意/迟缓后端可悬挂 worker. EN: missing fetch timeout & response size cap. | `done` | 根因是 CRM 请求执行层缺少超时与响应尺寸约束；本轮已补齐。 |
+| 1170 | src/plugins/adapters/credential-hygiene.ts bytes.toString("utf8") 把秘密写入不可零化的 JS 字符串，破坏后续 zeroize 承诺. EN: plaintext copied into immutable string defeats zeroize. | `done` | 根因是凭据 helper 以前提供了长生命周期 `reveal()`；本轮已改为回调式短生命周期暴露。 |
+| 1171 | src/plugins/adapters/credential-hygiene.ts 指纹截断到 12 个 hex 字符（~48 bit），同租户大量凭据下生日攻击碰撞概率非可忽略. EN: fingerprint truncation collision risk. | `done` | 根因是默认指纹位数过短；本轮已扩到 24 hex。 |
+| 1172 | src/plugins/adapters/livestream-adapter.ts healthCheck() 在 credentialFingerprint===null 时永远返回 unhealthy；初始化顺序未保证 fingerprint 先就绪. EN: health check unreachable until external init. | `done` | 根因是健康检查把认证状态与端点健康耦合；本轮已解除耦合。 |
+| 1173 | src/plugins/index.ts 顶部 export * 把 builtin-plugin-registry 全部内部类（如 BundleRevocationRegistry）公开，破坏封装. EN: barrel leaks internal classes. | `done` | 根因是根 plugins barrel 缺少受控导出边界；本轮已改成显式公共面并增加防泄漏测试。 |
 | 1174 | plugin-runtime-child.ts 全局覆写 console.* 污染主进程 | `todo` | 待修复 |
 
 ## src/scale-ecosystem
