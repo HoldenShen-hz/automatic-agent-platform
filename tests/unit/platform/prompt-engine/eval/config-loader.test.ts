@@ -9,6 +9,7 @@ import { writeFileSync, mkdirSync, rmSync } from "node:fs";
 import { resolve } from "node:path";
 
 import { loadQualityConfig } from "../../../../../src/platform/prompt-engine/eval/quality-config-loader.js";
+import { ValidationError } from "../../../../../src/platform/contracts/errors.js";
 import {
   loadConversationTemplateConfig,
   getTemplatesFromConfig,
@@ -66,8 +67,8 @@ test("loadQualityConfig parses valid config file", () => {
         enforcement: "warning",
       },
       qualityScoreWeights: {
-        successSignal: 0.5,
-        completionOutcome: 0.4,
+        successSignal: 0.4,
+        completionOutcome: 0.3,
         failureSignal: 0.2,
         partialSignal: 0.1,
       },
@@ -90,8 +91,8 @@ test("loadQualityConfig parses valid config file", () => {
     assert.equal(config.qualityGate.defaultPassThreshold, 0.7);
     assert.equal(config.qualityGate.criticalPassThreshold, 0.9);
     assert.equal(config.qualityGate.enforcement, "warning");
-    assert.equal(config.qualityScoreWeights.successSignal, 0.5);
-    assert.equal(config.qualityScoreWeights.completionOutcome, 0.4);
+    assert.equal(config.qualityScoreWeights.successSignal, 0.4);
+    assert.equal(config.qualityScoreWeights.completionOutcome, 0.3);
     assert.equal(config.actionThresholds.retryMaxFailures, 5);
     assert.equal(config.evidence.enabled, false);
     assert.equal(config.evidence.artifactKind, "custom_report");
@@ -142,7 +143,12 @@ test("loadQualityConfig exposes Zod validation errors", () => {
 
     writeFileSync(QUALITY_CONFIG_PATH, JSON.stringify(invalidConfig), "utf-8");
 
-    assert.throws(() => loadQualityConfig(QUALITY_CONFIG_PATH), /defaultPassThreshold|Invalid enum value/);
+    assert.throws(
+      () => loadQualityConfig(QUALITY_CONFIG_PATH),
+      (error: unknown) =>
+        error instanceof ValidationError
+        && error.code === "quality_config.invalid",
+    );
   } finally {
     teardown();
   }
@@ -161,8 +167,8 @@ test("loadConversationTemplateConfig parses valid config file", () => {
   try {
     const validConfig = {
       templates: [
-        { templateId: "t1", name: "Template 1", description: "Desc 1", intent: "task_create", steps: [] },
-        { templateId: "t2", name: "Template 2", description: "Desc 2", intent: "task_query", steps: [] },
+        { templateId: "t1", name: "Template 1", description: "Desc 1", intent: "task_create", steps: [], version: "1.0", estimatedDurationMinutes: 5, tags: [], isActive: true },
+        { templateId: "t2", name: "Template 2", description: "Desc 2", intent: "task_query", steps: [], version: "1.0", estimatedDurationMinutes: 5, tags: [], isActive: true },
       ],
       defaultTemplateId: "t1",
       maxStepsPerTemplate: 5,
@@ -181,17 +187,12 @@ test("loadConversationTemplateConfig parses valid config file", () => {
   }
 });
 
-test("loadConversationTemplateConfig returns defaults when config is invalid JSON", () => {
+test("loadConversationTemplateConfig exposes invalid JSON errors", () => {
   setup();
   try {
     writeFileSync(CONVERSATION_CONFIG_PATH, "not valid json", "utf-8");
 
-    const config = loadConversationTemplateConfig(CONVERSATION_CONFIG_PATH);
-
-    // Should return defaults
-    assert.deepEqual(config.templates, []);
-    assert.equal(config.maxStepsPerTemplate, 10);
-    assert.equal(config.enableTemplateAutoSelection, true);
+    assert.throws(() => loadConversationTemplateConfig(CONVERSATION_CONFIG_PATH), SyntaxError);
   } finally {
     teardown();
   }

@@ -366,6 +366,8 @@ test("OutboxRepository.getStatus returns correct status for PENDING entry", () =
         retryCount: 0,
         lastError: null,
         lastAttemptAt: null,
+        deadLetteredAt: null,
+        deadLetterReason: null,
       }),
       all: () => [],
     }),

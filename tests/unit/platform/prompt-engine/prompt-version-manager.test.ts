@@ -131,9 +131,11 @@ test("R28-40 approval web view exposes accessibility labels and descriptions for
     "utf8",
   );
 
-  assert.match(source, /aria-label="Delegate target"/);
+  assert.match(source, /aria-label=\{translateMessage\("ui\.approval\.delegateTarget"\)\}/);
   assert.match(source, /aria-describedby=\{approvalActionDescriptionId\}/);
   assert.match(source, /id=\{approvalActionDescriptionId\}/);
+  assert.match(source, /id=\{delegateActionDescriptionId\}/);
+  assert.match(source, /aria-describedby=\{delegateActionDescriptionId\}/);
 });
 
 test("R28-42 telemetry export failures are retained as dead letters instead of being silently dropped", async () => {

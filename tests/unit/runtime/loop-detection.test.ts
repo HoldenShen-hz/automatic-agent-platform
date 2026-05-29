@@ -237,7 +237,7 @@ test("hashToolCall handles complex inputs [loop-detection]", () => {
   const hash2 = hashToolCall("batch_write", complexInput);
 
   assert.equal(hash1, hash2);
-  assert.equal(hash1.length, 16);
+  assert.equal(hash1.length, 32);
 });
 
 test("createLoopDetectionMiddleware returns middleware and state [loop-detection]", () => {

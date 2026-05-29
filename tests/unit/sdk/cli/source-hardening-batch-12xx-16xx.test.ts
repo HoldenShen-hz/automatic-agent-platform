@@ -101,7 +101,7 @@ test("CLI and repo scripts expose fast paths and avoid stale layered-test coupli
   assert.match(readFileSync(join(root, "src", "sdk", "cli", "pack-publish.ts"), "utf8"), /npm run pack-publish --/);
   assert.match(readFileSync(join(root, "src", "sdk", "cli", "pack-test.ts"), "utf8"), /npm run pack-test --/);
   assert.match(readFileSync(join(root, "src", "sdk", "cli", "pack-validate.ts"), "utf8"), /npm run pack-validate --/);
-  assert.match(aaSource, /sourceExtension === "\.ts"/);
+  assert.match(aaSource, /const useSourceEntrypoint = existsSync\(sourceChildEntrypoint\);/);
   assert.match(aaSource, /"--import", "tsx"/);
   for (const entry of directExecGuardSources) {
     assert.match(entry.source, /pathToFileURL/);

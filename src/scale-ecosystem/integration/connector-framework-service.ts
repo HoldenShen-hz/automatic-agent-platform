@@ -321,7 +321,13 @@ export class ConnectorFrameworkService {
     let result: ConnectorExecutionResult;
     if (connectorInstance != null && circuitBreaker != null) {
       try {
-        result = await circuitBreaker.execute(async () => Promise.resolve(connectorInstance.execute(normalizedRequest)));
+        result = await circuitBreaker.execute(async () => {
+          const executionResult = await Promise.resolve(connectorInstance.execute(normalizedRequest));
+          if (executionResult.success === false || executionResult.status === "failed") {
+            throw new Error(`connector_framework.execution_failed:${normalizedRequest.connectorId}`);
+          }
+          return executionResult;
+        });
       } catch {
         result = {
           connectorId: normalizedRequest.connectorId,

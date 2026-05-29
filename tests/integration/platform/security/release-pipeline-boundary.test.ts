@@ -178,7 +178,7 @@ test("release pipeline fail-closes when secret refs are not registered in secret
           commitSha: "abcdef1234567",
           rolloutStrategy: "canary",
         }),
-      /secret\.registry_not_found:secret:\/\/system\/registry\/ghcr\/staging/,
+      /secret\.registry_not_found/,
     );
   } finally {
     db.close();

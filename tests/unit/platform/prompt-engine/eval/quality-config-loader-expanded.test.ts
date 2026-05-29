@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import test from "node:test";
 
 import { loadQualityConfig } from "../../../../../src/platform/prompt-engine/eval/quality-config-loader.js";
+import { ValidationError } from "../../../../../src/platform/contracts/errors.js";
 import type { QualityGateConfig } from "../../../../../src/platform/prompt-engine/eval/types.js";
 
 function createTempConfigDir(): string {
@@ -90,7 +91,12 @@ test("loadQualityConfig throws when required fields are missing", () => {
       },
     }), "utf-8");
 
-    assert.throws(() => loadQualityConfig(configPath), /criticalPassThreshold/);
+    assert.throws(
+      () => loadQualityConfig(configPath),
+      (error: unknown) =>
+        error instanceof ValidationError
+        && error.code === "quality_config.invalid",
+    );
   } finally {
     cleanup(dir);
   }
@@ -124,7 +130,12 @@ test("loadQualityConfig throws when thresholds are out of range", () => {
       },
     }), "utf-8");
 
-    assert.throws(() => loadQualityConfig(configPath), /defaultPassThreshold/);
+    assert.throws(
+      () => loadQualityConfig(configPath),
+      (error: unknown) =>
+        error instanceof ValidationError
+        && error.code === "quality_config.invalid",
+    );
   } finally {
     cleanup(dir);
   }
@@ -228,7 +239,12 @@ test("loadQualityConfig rejects invalid enforcement value", () => {
       },
     }), "utf-8");
 
-    assert.throws(() => loadQualityConfig(configPath), /enforcement/);
+    assert.throws(
+      () => loadQualityConfig(configPath),
+      (error: unknown) =>
+        error instanceof ValidationError
+        && error.code === "quality_config.invalid",
+    );
   } finally {
     cleanup(dir);
   }

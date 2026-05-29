@@ -126,7 +126,7 @@ test("stable evidence bundle writes local artifacts and passes a short smoke pro
     assert.equal(saved.artifacts.dbQueueDisconnectReportPath, report.artifacts.dbQueueDisconnectReportPath);
     assert.equal(saved.artifacts.dbWritabilityReportPath, report.artifacts.dbWritabilityReportPath);
     assert.equal(saved.artifacts.migrationCompatibilityReportPath, report.artifacts.migrationCompatibilityReportPath);
-    assert.equal(doctorReport.versionSnapshot.applicationVersion, "0.1.0");
+    assert.equal(doctorReport.versionSnapshot.applicationVersion, "0.2.0");
     assert.equal(doctorReport.versionSnapshot.configVersion.length > 0, true);
     assert.equal(doctorReport.versionSnapshot.schemaVersion.upToDate, true);
   } finally {

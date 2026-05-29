@@ -1,6 +1,5 @@
 import { nowIso } from "../../contracts/types/ids.js";
 import { StructuredLogger } from "../../shared/observability/structured-logger.js";
-import { ValidationError } from "../../contracts/errors.js";
 import type {
   PlanEdge,
   PlanGraphBundle,
@@ -235,21 +234,16 @@ export class RuntimeExecuteBridge implements ExecuteBridge {
 
   public async executePlan(plan: Plan, context: ExecutionContext): Promise<ExecutionResult> {
     const normalizedPlan = normalizeExecutablePlan(plan, context);
-    if (this.executor != null) {
-      const executed = await this.executor({
-        ...normalizedPlan,
-        dbPath: this.dbPath,
-        contextBudgetTokens: context.tokenBudget,
-        parentContext: (context as { parentContext?: unknown }).parentContext,
-      } as Plan, context);
-      const records = extractStepOutputRecords(executed);
-      const results = records.map(mapStepOutputRecord);
-      return buildExecutionResult(normalizedPlan.planId, results);
-    }
-    throw new ValidationError(
-      "oapeflir.runtime_executor_unavailable",
-      "oapeflir.runtime_executor_unavailable",
-    );
+    const executor = this.executor ?? createDefaultRuntimeExecutor(this.dbPath);
+    const executed = await executor({
+      ...normalizedPlan,
+      dbPath: this.dbPath,
+      contextBudgetTokens: context.tokenBudget,
+      parentContext: (context as { parentContext?: unknown }).parentContext,
+    } as Plan, context);
+    const records = extractStepOutputRecords(executed);
+    const results = records.map(mapStepOutputRecord);
+    return buildExecutionResult(normalizedPlan.planId, results);
   }
 
   public toDualChannelStepOutputs(result: ExecutionResult): DualChannelStepOutput[] {
@@ -295,6 +289,25 @@ export class MockExecuteBridge extends RuntimeExecuteBridge {
 
 export function runtimeExecuteBridge(dbPath: string, defaultModelId?: string): RuntimeExecuteBridge {
   return new RuntimeExecuteBridge(dbPath, defaultModelId);
+}
+
+function createDefaultRuntimeExecutor(
+  dbPath: string,
+): (plan: Plan, context: ExecutionContext) => Promise<{ snapshot?: unknown }> {
+  return async (plan, context) => {
+    const { runMultiStepOrchestration } = await import("../../five-plane-execution/execution-engine/multi-step-orchestration.js");
+    return runMultiStepOrchestration({
+      dbPath,
+      taskId: plan.taskId,
+      title: plan.planId,
+      request: serialiseOapeflirPlan(
+        plan.steps,
+        (context as { parentContext?: Record<string, unknown> | undefined }).parentContext,
+      ),
+      budgetLedgerId: `bledger:runtime:${plan.planId}`,
+      ...(context.tokenBudget == null ? {} : { contextBudgetTokens: context.tokenBudget }),
+    });
+  };
 }
 
 function buildExecutionResult(planId: string, results: StepResult[]): ExecutionResult {

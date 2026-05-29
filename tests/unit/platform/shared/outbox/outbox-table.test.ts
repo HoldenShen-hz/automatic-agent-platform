@@ -14,12 +14,14 @@ test("OUTBOX_TABLE_DDL contains all required indexes", () => {
   assert.ok(OUTBOX_TABLE_DDL.includes("idx_outbox_pending"));
   assert.ok(OUTBOX_TABLE_DDL.includes("idx_outbox_aggregate"));
   assert.ok(OUTBOX_TABLE_DDL.includes("idx_outbox_retry"));
+  assert.ok(OUTBOX_TABLE_DDL.includes("idx_outbox_dead_lettered"));
 });
 
 test("OUTBOX_TABLE_DDL indexes use IF NOT EXISTS clause", () => {
   assert.ok(OUTBOX_TABLE_DDL.includes("CREATE INDEX IF NOT EXISTS idx_outbox_pending"));
   assert.ok(OUTBOX_TABLE_DDL.includes("CREATE INDEX IF NOT EXISTS idx_outbox_aggregate"));
   assert.ok(OUTBOX_TABLE_DDL.includes("CREATE INDEX IF NOT EXISTS idx_outbox_retry"));
+  assert.ok(OUTBOX_TABLE_DDL.includes("CREATE INDEX IF NOT EXISTS idx_outbox_dead_lettered"));
 });
 
 test("OUTBOX_TABLE_DDL column definitions have correct constraints", () => {
@@ -74,7 +76,7 @@ test("OUTBOX_TABLE_CLEANUP_DDL parameter is properly escaped", () => {
 
 test("OUTBOX_TABLE_DDL can be split into valid separate statements", () => {
   const statements = OUTBOX_TABLE_DDL.split(';').map(s => s.trim()).filter(Boolean);
-  assert.equal(statements.length, 4);
+  assert.equal(statements.length, 5);
 });
 
 test("OUTBOX_TABLE_DDL uses TEXT for id instead of INTEGER for portability", () => {

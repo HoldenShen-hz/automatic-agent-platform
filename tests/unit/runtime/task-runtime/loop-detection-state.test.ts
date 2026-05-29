@@ -135,7 +135,7 @@ test("hashToolCall produces consistent hashes [loop-detection-state]", () => {
   const hash1 = hashToolCall("my_tool", { arg: "value" });
   const hash2 = hashToolCall("my_tool", { arg: "value" });
   assert.equal(hash1, hash2);
-  assert.equal(hash1.length, 16); // sha256 slice to 16 chars
+  assert.equal(hash1.length, 32); // sha256 slice to 32 chars
 });
 
 test("hashToolCall different tool names produce different hashes [loop-detection-state]", () => {

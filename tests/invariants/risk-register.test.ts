@@ -12,7 +12,14 @@ test("RiskRegister turns architecture risk catalog into release-gate records", (
 
   assert.deepEqual(
     risks.map((risk) => risk.riskId),
-    ["RISK-GRAPH-001", "RISK-SIDEEFFECT-001", "RISK-BUDGET-001", "RISK-DOMAIN-001"],
+    [
+      "RISK-GRAPH-001",
+      "RISK-SIDEEFFECT-001",
+      "RISK-BUDGET-001",
+      "RISK-DOMAIN-001",
+      "RISK-RECOVERY-001",
+      "RISK-WEB-001",
+    ],
   );
   registry.assertReleaseGateReady();
   assert.equal(listRiskRegisterRecords().length, risks.length);

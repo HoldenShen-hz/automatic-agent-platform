@@ -314,6 +314,7 @@ async function runCrossDivisionReplayScenario(
         blocked.executions[0]?.suggestedAction === "escalate_takeover" &&
         deadLetter.outcome === "dead_lettered" &&
         deadLetter.executions[0]?.finalOutcome === "dead_lettered" &&
+        deadLetter.executions[0]?.suggestedAction === "move_dead_letter" &&
         deadLetter.executions[0]?.timeline.some((event) => event.eventType === "recovery:dead_lettered") === true,
       summary: "cross-division recovery replay reports deterministic outcomes for stale, manual-handoff, and dead-letter paths",
       details: {

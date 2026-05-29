@@ -10,7 +10,7 @@ import { newId } from "../../../../src/platform/contracts/types/ids.js";
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 import { seedTaskAndExecution } from "../../../helpers/seed.js";
 
-test("runtime recovery replay service builds a deterministic dead-letter replay timeline", () => {
+test("runtime recovery replay service builds a deterministic repair-pending replay timeline", () => {
   const workspace = createTempWorkspace("aa-runtime-recovery-replay-dead-letter-");
 
   try {
@@ -73,19 +73,19 @@ test("runtime recovery replay service builds a deterministic dead-letter replay 
     const executionReport = report.executions[0];
 
     assert.equal(report.generatedAt, "2026-04-04T10:10:00.000Z");
-    assert.equal(report.outcome, "dead_lettered");
+    assert.equal(report.outcome, "repair_pending");
     assert.equal(report.candidateCount, 1);
-    assert.equal(report.deadLetterCount, 1);
-    assert.equal(report.recoveryEventCount, 3);
-    assert.equal(executionReport?.finalOutcome, "dead_lettered");
-    assert.equal(executionReport?.deadLetter?.finalReasonCode, "unexpected_runtime_error");
+    assert.equal(report.deadLetterCount, 0);
+    assert.equal(report.recoveryEventCount, 2);
+    assert.equal(executionReport?.finalOutcome, "repair_pending");
+    assert.equal(executionReport?.deadLetter, null);
     assert.equal(executionReport?.repairs[0]?.repairAction, "requeue_execution");
-    assert.equal(executionReport?.timeline.length, 3);
+    assert.equal(executionReport?.timeline.length, 2);
     assert.deepEqual(
       [...new Set(executionReport?.timeline.map((event) => event.eventType))].sort(),
-      ["recovery:dead_lettered", "recovery:decision_recorded", "recovery:repair_applied"],
+      ["recovery:decision_recorded", "recovery:repair_applied"],
     );
-    assert.equal(executionReport?.decisions[0]?.action, "move_dead_letter");
+    assert.equal(executionReport?.decisions[0]?.action, "retry_new_ticket");
 
     db.close();
   } finally {

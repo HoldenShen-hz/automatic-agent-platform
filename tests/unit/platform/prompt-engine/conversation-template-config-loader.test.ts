@@ -9,6 +9,7 @@ import {
   getTemplatesFromConfig,
   type ConversationTemplateConfig,
 } from "../../../../src/platform/prompt-engine/conversation-template-config-loader.js";
+import { ValidationError } from "../../../../src/platform/contracts/errors.js";
 
 test("loadConversationTemplateConfig returns default config for missing file", () => {
   const config = loadConversationTemplateConfig("/nonexistent/path/config.json");
@@ -88,7 +89,7 @@ test("loadConversationTemplateConfig handles invalid JSON gracefully", () => {
   assert.equal(config.maxStepsPerTemplate, 10);
 });
 
-test("loadConversationTemplateConfig falls back when template payload violates schema", () => {
+test("loadConversationTemplateConfig rejects template payloads that violate schema", () => {
   const tempDir = mkdtempSync(join(tmpdir(), "conversation-template-config-"));
   const configPath = join(tempDir, "templates.json");
   try {
@@ -98,10 +99,12 @@ test("loadConversationTemplateConfig falls back when template payload violates s
       enableTemplateAutoSelection: false,
     }), "utf8");
 
-    const config = loadConversationTemplateConfig(configPath);
-    assert.deepEqual(config.templates, []);
-    assert.equal(config.maxStepsPerTemplate, 10);
-    assert.equal(config.enableTemplateAutoSelection, true);
+    assert.throws(
+      () => loadConversationTemplateConfig(configPath),
+      (error: unknown) =>
+        error instanceof ValidationError
+        && error.code === "conversation_template_config.invalid",
+    );
   } finally {
     rmSync(tempDir, { recursive: true, force: true });
   }

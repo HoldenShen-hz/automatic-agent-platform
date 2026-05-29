@@ -433,7 +433,7 @@ test("executeStepLoop preserves workflowRetryCount on success [multi-step-superv
   assert.equal(result.workflowRetryCount, 5);
 });
 
-test("executeStepLoop does not modify blockedForDecision when already blocked [multi-step-supervisor-comprehensive]", async () => {
+test("executeStepLoop re-evaluates blockedForDecision from the current execution path [multi-step-supervisor-comprehensive]", async () => {
   const ctx = createMockStepSupervisorContext({
     blockedForDecision: true,
     plannedWorkflow: createMockPlannedWorkflow({
@@ -457,7 +457,8 @@ test("executeStepLoop does not modify blockedForDecision when already blocked [m
 
   const result = await executeStepLoop(ctx, deps);
 
-  assert.equal(result.blockedForDecision, true);
+  assert.equal(result.blockedForDecision, false);
+  assert.ok(Array.isArray(result.stepOutputs));
 });
 
 test("executeStepLoop handles step with very long stepId [multi-step-supervisor-comprehensive]", async () => {

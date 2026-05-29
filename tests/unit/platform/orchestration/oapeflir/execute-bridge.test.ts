@@ -32,7 +32,7 @@ test("MockExecuteBridge.executeStep returns succeeded result with defaults", asy
   assert.ok(result.summary.includes("step_1"));
   assert.deepEqual(result.outputs, {});
   assert.deepEqual(result.artifacts, ["artifact:result_1"]);
-  assert.equal(result.modelId, "local-simulated");
+  assert.equal(result.modelId, "runtime");
   assert.equal(result.retryCount, 0);
   assert.equal(result.validationPassed, true);
 });
@@ -192,7 +192,7 @@ test("MockExecuteBridge.toDualChannelStepOutputs converts execution result", asy
   assert.deepEqual(outputs[0]!.userFacingResult.artifacts, ["artifact:artifact_1"]);
   assert.equal(outputs[0]!.systemTelemetry.durationMs, 100);
   assert.equal(outputs[0]!.systemTelemetry.tokensUsed, 200);
-  assert.equal(outputs[0]!.systemTelemetry.modelId, "local-simulated");
+  assert.equal(outputs[0]!.systemTelemetry.modelId, "runtime");
   assert.equal(outputs[0]!.systemTelemetry.retryCount, 0);
   assert.equal(outputs[0]!.systemTelemetry.validationPassed, true);
 });

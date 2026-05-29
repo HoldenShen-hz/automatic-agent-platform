@@ -285,9 +285,10 @@ test("hashPromptPrefix returns different hash for different input", () => {
   assert.notEqual(hash1, hash2);
 });
 
-test("hashPromptPrefix returns 16 character string", () => {
+test("hashPromptPrefix returns 32 character string", () => {
   const hash = hashPromptPrefix("Test input");
-  assert.equal(hash.length, 16);
+  assert.equal(hash.length, 32);
+  assert.match(hash, /^[a-f0-9]+$/);
 });
 
 // =============================================================================

@@ -16,8 +16,8 @@ test("1899..1912: runtime-state-machine, dispatcher, reconciliation, and budget 
   const reconciliationSource = readFileSync("src/platform/five-plane-execution/dispatcher/execution-dispatch-reconciliation-service.ts", "utf8");
   const dispatcherIndexSource = readFileSync("src/platform/five-plane-execution/dispatcher/index.ts", "utf8");
   const budgetAllocatorSource = readFileSync("src/platform/five-plane-execution/budget-allocator.ts", "utf8");
-  const oapeflirSource = readFileSync("src/platform/five-plane-orchestration/oapeflir/oapeflir-loop-service.ts", "utf8");
-  const multiStepSource = readFileSync("src/platform/five-plane-execution/execution-engine/multi-step-orchestration.ts", "utf8");
+  const oapeflirSource = readFileSync("src/platform/five-plane-orchestration/oapeflir/oapeflir-loop-support.ts", "utf8");
+  const oapeflirServiceSource = readFileSync("src/platform/five-plane-orchestration/oapeflir/oapeflir-loop-service.ts", "utf8");
   const happyPathSource = readFileSync("src/platform/five-plane-execution/execution-engine/single-task-happy-path.ts", "utf8");
   const callDepthBudgetSource = readFileSync("src/platform/five-plane-orchestration/agent-delegation/call-depth-budget.ts", "utf8");
 
@@ -52,9 +52,10 @@ test("1899..1912: runtime-state-machine, dispatcher, reconciliation, and budget 
     /request\.currentCallDepth\s*\+\s*[\r\n\s]*request\.goalDecompositionDepth\s*\+\s*[\r\n\s]*request\.delegationDepth/,
   );
 
+  assert.match(oapeflirSource, /budgetAllocator\.reserve\(/);
   assert.match(oapeflirSource, /UPDATE budget_ledgers/);
   assert.match(oapeflirSource, /budget_reservation\.sql_cas_failed/);
-  assert.match(multiStepSource, /UPDATE budget_ledgers/);
+  assert.match(oapeflirServiceSource, /UPDATE budget_ledgers/);
   assert.match(happyPathSource, /UPDATE budget_ledgers/);
 });
 

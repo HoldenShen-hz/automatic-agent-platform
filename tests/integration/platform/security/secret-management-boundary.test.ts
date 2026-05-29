@@ -115,7 +115,7 @@ test("secret-management CLI fail-closes when resolving an unregistered secret", 
           encoding: "utf8",
           stdio: "pipe",
         }),
-      /secret\.registry_not_found:secret:\/\/system\/registry\/ghcr\/prod/,
+      /secret\.registry_not_found/,
     );
   } finally {
     db.close();

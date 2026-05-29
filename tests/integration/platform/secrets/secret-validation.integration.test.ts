@@ -230,7 +230,7 @@ test("resolveSecret rejects unregistered secret", async () => {
           grantedTo: "test.worker",
           usagePurpose: "test",
         }),
-      (e: any) => e.code === "secret.registry_not_found:secret://system/not/registered",
+      (e: any) => e.code === "secret.registry_not_found",
     );
   } finally {
     harness.db.close();
@@ -346,7 +346,7 @@ test("issueSecretLease rejects unregistered secret", async () => {
           usagePurpose: "test",
           ttlMinutes: 30,
         }),
-      (e: any) => e.code === "secret.registry_not_found:secret://system/not/registered",
+      (e: any) => e.code === "secret.registry_not_found",
     );
   } finally {
     harness.db.close();
@@ -539,7 +539,7 @@ test("recordRotationEvent rejects non-existent secret", () => {
           reasonCode: "test",
           requestedBy: "test",
         }),
-      (e: any) => e.code === "secret.registry_not_found:secret://system/not/registered",
+      (e: any) => e.code === "secret.registry_not_found",
     );
   } finally {
     harness.db.close();
@@ -647,7 +647,7 @@ test("buildAuditSummary rejects unregistered secret", () => {
     const service = createService(harness);
     assert.throws(
       () => service.buildAuditSummary("secret://system/not/registered"),
-      (e: any) => e.code === "secret.registry_not_found:secret://system/not/registered",
+      (e: any) => e.code === "secret.registry_not_found",
     );
   } finally {
     harness.db.close();
@@ -661,7 +661,7 @@ test("listSecretLeases rejects unregistered secret", () => {
     const service = createService(harness);
     assert.throws(
       () => service.listSecretLeases("secret://system/not/registered"),
-      (e: any) => e.code === "secret.registry_not_found:secret://system/not/registered",
+      (e: any) => e.code === "secret.registry_not_found",
     );
   } finally {
     harness.db.close();

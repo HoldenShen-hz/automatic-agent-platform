@@ -245,5 +245,5 @@ test("hashPromptPrefix produces consistent short hash", () => {
 
   assert.equal(hash1, hash2);
   assert.notEqual(hash1, hash3);
-  assert.equal(hash1.length, 16);
+  assert.equal(hash1.length, 32);
 });

@@ -94,7 +94,8 @@ export function persistHarnessRunBootstrap(params: {
   });
 
   if (harnessRun.budgetLedgerId) {
-    const budgetHardCap = Math.max(plannedWorkflow.executionSteps.length, 1);
+    // Reserve 1 unit for harness bootstrap plus at least 1 per execution step.
+    const budgetHardCap = Math.max(plannedWorkflow.executionSteps.length + 1, 2);
     db.transaction(() => {
       ensureBudgetLedger({
         connection: db.connection,

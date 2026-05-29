@@ -104,7 +104,7 @@ test("SqliteLockAdapter integration: force steal transfers lock", () => {
     adapter.acquire({ lockKey: "preemptible", owner: "worker-1", ttlMs: 10000 });
 
     // Admin force-steals
-    const stolen = adapter.forceSteal("preemptible", "admin-worker", "priority_override");
+    const stolen = adapter.forceSteal("preemptible", "admin-worker", "operator_override");
     assert.equal(stolen.owner, "admin-worker");
     assert.ok(stolen.fencingToken > 0);
 

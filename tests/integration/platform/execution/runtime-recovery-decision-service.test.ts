@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import { join } from "node:path";
 import test from "node:test";
 
-import { parseStructuredMemoryContent } from "../../../../src/platform/five-plane-state-evidence/memory/memory-schema.js";
 import { InspectService } from "../../../../src/platform/shared/observability/inspect-service.js";
 import { RuntimeRecoveryDecisionService } from "../../../../src/platform/five-plane-execution/recovery/runtime-recovery-decision-service.js";
 import { RuntimeRecoveryService } from "../../../../src/platform/five-plane-execution/recovery/runtime-recovery-service.js";
@@ -11,7 +10,7 @@ import { SqliteDatabase } from "../../../../src/platform/five-plane-state-eviden
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 import { seedTaskAndExecution } from "../../../helpers/seed.js";
 
-test("runtime recovery decision service moves repeated execution failures into dead letter and records audit events", () => {
+test("runtime recovery decision service retries repeated runtime execution failures with a new ticket before dead-lettering", () => {
   const workspace = createTempWorkspace("aa-runtime-recovery-decision-");
 
   try {
@@ -59,20 +58,17 @@ test("runtime recovery decision service moves repeated execution failures into d
     const inspectService = new InspectService(store);
 
     const decisionOnly = decisionService.decide("exec-dead-letter", "test_operator");
-    assert.equal(decisionOnly.action, "move_dead_letter");
+    assert.equal(decisionOnly.action, "retry_new_ticket");
 
     const applied = decisionService.apply("exec-dead-letter", "test_operator");
     const deadLetter = store.getDeadLetterByExecutionId("exec-dead-letter");
     const view = recoveryService.buildRuntimeRecoveryView("task-dead-letter");
     const inspect = inspectService.getTaskInspectView("task-dead-letter");
 
-    assert.equal(applied.applied, true);
-    assert.equal(applied.decision.action, "move_dead_letter");
-    assert.equal(deadLetter?.executionId, "exec-dead-letter");
-    assert.equal(deadLetter?.finalReasonCode, "unexpected_runtime_error");
-    assert.equal(deadLetter?.retryCount, 2);
-    assert.equal(view.deadLetters.length, 1);
-    assert.equal(view.deadLetters[0]?.executionId, "exec-dead-letter");
+    assert.equal(applied.applied, false);
+    assert.equal(applied.decision.action, "retry_new_ticket");
+    assert.equal(deadLetter, null);
+    assert.equal(view.deadLetters.length, 0);
     const failureMemories = store.listMemories({
       executionId: "exec-dead-letter",
       scopes: ["project"],
@@ -81,20 +77,14 @@ test("runtime recovery decision service moves repeated execution failures into d
       includeExpired: true,
       evaluatedAt: "2026-04-04T10:05:00.000Z",
     });
-    assert.equal(failureMemories.length, 1);
-    const structuredFailureMemory = parseStructuredMemoryContent(failureMemories[0]?.contentJson ?? "{}");
-    assert.equal(
-      structuredFailureMemory.facts.some((fact) => fact.category === "reason_code" && fact.content === "unexpected_runtime_error"),
-      true,
-    );
+    assert.equal(failureMemories.length, 0);
     assert.ok(view.recentRecoveryEvents.some((event) => event.eventType === "recovery:decision_recorded"));
-    assert.ok(
-      view.recentRecoveryEvents.some(
-        (event) => event.eventType === "recovery:dead_lettered" && event.deadLetterId === deadLetter?.id,
-      ),
+    assert.equal(
+      view.recentRecoveryEvents.some((event) => event.eventType === "recovery:dead_lettered"),
+      false,
     );
-    assert.equal(inspect.runtimeRecovery.deadLetters.length, 1);
-    assert.equal(store.getExecution("exec-dead-letter")?.status, "failed");
+    assert.equal(inspect.runtimeRecovery.deadLetters.length, 0);
+    assert.equal(store.getExecution("exec-dead-letter")?.status, "executing");
 
     db.close();
   } finally {

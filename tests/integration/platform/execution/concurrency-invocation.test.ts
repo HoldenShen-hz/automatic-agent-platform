@@ -675,12 +675,12 @@ test("[CONCURRENCY-3] expired lock is automatically evicted on next acquire", as
   try {
     const adapter = new SqliteLockAdapter(db);
 
-    // Acquire with very short TTL
-    const result1 = adapter.acquire({ lockKey: "expired-lock", owner: "owner-1", ttlMs: 10 });
+    const result1 = adapter.acquire({ lockKey: "expired-lock", owner: "owner-1", ttlMs: 1000 });
     assert.equal(result1.acquired, true, "First acquire should succeed");
-
-    // Wait for expiration
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    db.prepare("UPDATE distributed_locks SET acquired_at = ? WHERE lock_key = ?").run(
+      "2000-01-01T00:00:00.000Z",
+      "expired-lock",
+    );
 
     // New owner should steal the lock
     const result2 = adapter.acquire({ lockKey: "expired-lock", owner: "owner-2", ttlMs: 30000 });
@@ -711,7 +711,7 @@ test("[CONCURRENCY-3] lock extend only works for current owner", async () => {
     const adapter = new SqliteLockAdapter(db);
 
     // Acquire lock
-    adapter.acquire({ lockKey: "extend-lock", owner: "owner-1", ttlMs: 100 });
+    adapter.acquire({ lockKey: "extend-lock", owner: "owner-1", ttlMs: 1000 });
 
     // Owner can extend
     const extendResult = adapter.extend("extend-lock", "owner-1", 5000);
@@ -725,7 +725,7 @@ test("[CONCURRENCY-3] lock extend only works for current owner", async () => {
   }
 });
 
-test("[CONCURRENCY-3] force steal allows new owner to take expired lock", async () => {
+test("[CONCURRENCY-3] force steal allows new owner to take lock with approved reason", async () => {
   const db = new (await import("node:sqlite")).DatabaseSync(":memory:");
   db.exec(`
     CREATE TABLE IF NOT EXISTS distributed_locks (
@@ -746,7 +746,7 @@ test("[CONCURRENCY-3] force steal allows new owner to take expired lock", async 
     adapter.acquire({ lockKey: "steal-lock", owner: "owner-1", ttlMs: 30000 });
 
     // Force steal
-    const stealResult = adapter.forceSteal("steal-lock", "owner-2", "emergency takeover");
+    const stealResult = adapter.forceSteal("steal-lock", "owner-2", "operator_override");
     assert.ok(stealResult !== null, "Force steal should succeed");
     assert.equal(stealResult.owner, "owner-2", "New owner should be owner-2");
 
@@ -779,10 +779,11 @@ test("[CONCURRENCY-3] concurrent lock acquisition with timeout contention", asyn
   try {
     const adapter = new SqliteLockAdapter(db);
 
-    // Pre-acquire the lock with a very short TTL so it expires quickly
-    adapter.acquire({ lockKey: "contention-lock", owner: "initial-owner", ttlMs: 1 });
-    // Wait for the TTL to expire (1ms is very short)
-    await new Promise((resolve) => setTimeout(resolve, 10));
+    adapter.acquire({ lockKey: "contention-lock", owner: "initial-owner", ttlMs: 1000 });
+    db.prepare("UPDATE distributed_locks SET acquired_at = ? WHERE lock_key = ?").run(
+      "2000-01-01T00:00:00.000Z",
+      "contention-lock",
+    );
 
     // 10 concurrent workers trying to acquire same lock
     const result = await runConcurrentInvariant(
@@ -967,10 +968,12 @@ test("[CONCURRENCY-4] critical section test for lock adapter mutual exclusion", 
     };
 
     // First, acquire initial lock with short TTL and wait for it to expire
-    const initial = adapter.acquire({ lockKey: "critical-lock", owner: "initial-owner", ttlMs: 1 });
+    const initial = adapter.acquire({ lockKey: "critical-lock", owner: "initial-owner", ttlMs: 1000 });
     assert.equal(initial.acquired, true, "Initial acquire should succeed");
-    // Wait for the TTL to expire so workers can contend
-    await new Promise((resolve) => setTimeout(resolve, 10));
+    db.prepare("UPDATE distributed_locks SET acquired_at = ? WHERE lock_key = ?").run(
+      "2000-01-01T00:00:00.000Z",
+      "critical-lock",
+    );
 
     // Run critical section test - workers will contend after initial lock expires
     const result = await runCriticalSectionTest(acquireLock, releaseLock, { concurrency: 10 });

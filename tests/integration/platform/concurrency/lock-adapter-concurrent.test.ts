@@ -212,7 +212,7 @@ test("concurrent forceSteal: all steal attempts complete", async () => {
 
   const result = await runConcurrentInvariant(
     async (workerId: number) => {
-      return adapter.forceSteal("steal-lock", `stealer-${workerId}`, "concurrent steal");
+      return adapter.forceSteal("steal-lock", `stealer-${workerId}`, "operator_override");
     },
     { concurrency: 5 },
   );
@@ -232,7 +232,7 @@ test("concurrent forceSteal: final state has exactly one owner", async () => {
 
   await runConcurrentInvariant(
     async (workerId: number) => {
-      return adapter.forceSteal("final-owner-lock", `stealer-${workerId}`, "race test");
+      return adapter.forceSteal("final-owner-lock", `stealer-${workerId}`, "operator_override");
     },
     { concurrency: 10 },
   );
@@ -262,7 +262,7 @@ test("mixed concurrent operations: acquire, extend, release, steal", async () =>
   const extendResult = adapter.extend("mixed-ops", "initial-owner", 60000);
   assert.ok(extendResult !== null, "Owner can extend");
 
-  const stealResult = adapter.forceSteal("mixed-ops", "thief", "emergency");
+  const stealResult = adapter.forceSteal("mixed-ops", "thief", "operator_override");
   assert.ok(stealResult !== null, "Can force steal");
 
   // Now new owner can extend

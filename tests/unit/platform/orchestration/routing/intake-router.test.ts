@@ -615,7 +615,7 @@ test("IntakeRouter with weighted balances by priority", () => {
   assert.ok(highCount > 50, "high_priority should get majority of requests");
 });
 
-test("IntakeRouter with random selects randomly", () => {
+test("IntakeRouter with random selects deterministically from the candidate set", () => {
   const div1 = createMockDivision({
     id: "div1",
     priority: 10,
@@ -632,17 +632,14 @@ test("IntakeRouter with random selects randomly", () => {
     loadBalancing: "random",
   });
 
-  // With random selection, we should see both divisions selected over many runs
-  let seenBoth = false;
   const firstResult = router.route(createRouteInput({ title: "Task", request: "do work" }));
-  for (let i = 0; i < 20; i++) {
-    const result = router.route(createRouteInput({ title: "Task", request: "do more work" }));
-    if (result.divisionId !== firstResult.divisionId) {
-      seenBoth = true;
-      break;
-    }
-  }
-  assert.ok(seenBoth, "random should eventually select different divisions");
+  const secondResult = router.route(createRouteInput({ title: "Task", request: "do work" }));
+  const alternateResult = router.route(createRouteInput({ title: "Task", request: "do more work with task context" }));
+
+  assert.equal(secondResult.divisionId, firstResult.divisionId, "same routing material should stay deterministic");
+  assert.ok(["div1", "div2"].includes(firstResult.divisionId));
+  assert.ok(["div1", "div2"].includes(alternateResult.divisionId));
+  assert.ok(firstResult.routeTrace.some((entry) => entry.startsWith("lb_random:index=")));
 });
 
 test("IntakeRouter loadBalancing defaults to round-robin", () => {

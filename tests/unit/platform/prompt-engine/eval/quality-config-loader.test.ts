@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { loadQualityConfig } from "../../../../../src/platform/prompt-engine/eval/quality-config-loader.js";
+import { ValidationError } from "../../../../../src/platform/contracts/errors.js";
 
 function withTempConfigFile(contents: string, callback: (configPath: string) => void): void {
   const dir = join(tmpdir(), `quality-config-loader-${Date.now()}`);
@@ -100,6 +101,11 @@ test("loadQualityConfig throws on schema-invalid config instead of silently defa
       retentionDays: 30,
     },
   }), (configPath) => {
-    assert.throws(() => loadQualityConfig(configPath), /defaultPassThreshold/);
+    assert.throws(
+      () => loadQualityConfig(configPath),
+      (error: unknown) =>
+        error instanceof ValidationError
+        && error.code === "quality_config.invalid",
+    );
   });
 });

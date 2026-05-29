@@ -66,16 +66,6 @@ test("runtime index re-exports RuntimeFactory [runtime-bootstrap]", async () => 
   assert.ok("createRuntimeServices" in runtime, "should export createRuntimeServices");
 });
 
-test("runtime index re-exports StateTransitionMachine [runtime-bootstrap]", async () => {
-  const runtime = await import("../../../src/core/runtime/index.js");
-  assert.ok("StateTransitionMachine" in runtime, "should export StateTransitionMachine");
-});
-
-test("runtime index re-exports TransitionService [runtime-bootstrap]", async () => {
-  const runtime = await import("../../../src/core/runtime/index.js");
-  assert.ok("TransitionService" in runtime, "should export TransitionService");
-});
-
 test("runtime index re-exports WorkerRegistryService [runtime-bootstrap]", async () => {
   const runtime = await import("../../../src/core/runtime/index.js");
   assert.ok("WorkerRegistryService" in runtime, "should export WorkerRegistryService");
@@ -101,9 +91,6 @@ test("runtime index exports are callable functions or classes [runtime-bootstrap
   // Verify key exports are functions or classes
   if ("AdmissionController" in runtime) {
     assert.ok(typeof runtime.AdmissionController === "function", "AdmissionController should be a function");
-  }
-  if ("TransitionService" in runtime) {
-    assert.ok(typeof runtime.TransitionService === "function", "TransitionService should be a function");
   }
   if ("GracefulShutdown" in runtime) {
     assert.ok(typeof runtime.GracefulShutdown === "function", "GracefulShutdown should be a function");

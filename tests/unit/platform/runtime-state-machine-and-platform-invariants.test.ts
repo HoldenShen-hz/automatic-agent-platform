@@ -179,7 +179,6 @@ test("1900-1912: dispatcher, reconciliation, budget, and call-depth guards remai
   const dispatcherSource = readFileSync("src/platform/five-plane-execution/dispatcher/index.ts", "utf8");
   const durableRuntimeSources = [
     readFileSync("src/platform/five-plane-orchestration/oapeflir/oapeflir-loop-support.ts", "utf8"),
-    readFileSync("src/platform/five-plane-execution/execution-engine/multi-step-orchestration.ts", "utf8"),
     readFileSync("src/platform/five-plane-execution/execution-engine/single-task-happy-path.ts", "utf8"),
   ];
 

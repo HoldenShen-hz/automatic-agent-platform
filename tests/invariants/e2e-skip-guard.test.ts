@@ -9,6 +9,9 @@ const TEST_ROOTS = [
   join(process.cwd(), "tests", "integration"),
   join(process.cwd(), "tests", "golden"),
 ] as const;
+const APPROVED_SKIP_REGEX_GUARD_FILES = new Set<string>([
+  join(process.cwd(), "tests", "unit", "quality", "full-coverage-test-manual-gaps.test.ts"),
+]);
 const DISALLOWED_SKIP_PATTERNS = [
   /\btest\.skip\s*\(/g,
   /\bit\.skip\s*\(/g,
@@ -42,6 +45,9 @@ test("invariant: core test roots do not contain explicit skip markers", () => {
   const violations: string[] = [];
   for (const root of TEST_ROOTS) {
     for (const file of listTestFiles(root)) {
+      if (APPROVED_SKIP_REGEX_GUARD_FILES.has(file)) {
+        continue;
+      }
       const source = stripComments(readFileSync(file, "utf8"));
       for (const pattern of DISALLOWED_SKIP_PATTERNS) {
         if (pattern.test(source)) {

@@ -106,7 +106,7 @@ test("ManualBillingPaymentGateway.createCheckoutSession generates correct checko
 
   assert.equal(session.gatewayKind, "manual");
   assert.equal(session.gatewaySessionRef, "manual_inv_manual_test");
-  assert.match(session.checkoutUrl, /billing\.manual\.local\/checkout/);
+  assert.match(session.checkoutUrl, /billing\.manual\.example\/checkout/);
   assert.match(session.checkoutUrl, /inv_manual_test/);
   assert.match(session.checkoutUrl, /acct_manual_test/);
   assert.equal(session.expiresAt, null); // Manual payments don't expire

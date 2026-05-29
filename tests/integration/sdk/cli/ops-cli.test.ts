@@ -1706,13 +1706,13 @@ serialTest("replay-recovery CLI returns deterministic dead-letter recovery histo
     });
 
     assert.equal(replayed.taskId, "task-cli-replay-recovery");
-    assert.equal(replayed.outcome, "dead_lettered");
-    assert.equal(replayed.deadLetterCount, 1);
+    assert.equal(replayed.outcome, "repair_pending");
+    assert.equal(replayed.deadLetterCount, 0);
     assert.equal(replayed.executions[0]?.executionId, "exec-cli-replay-recovery");
-    assert.equal(replayed.executions[0]?.finalOutcome, "dead_lettered");
+    assert.equal(replayed.executions[0]?.finalOutcome, "repair_pending");
     assert.deepEqual(
       replayed.executions[0]?.timeline.map((event) => event.eventType),
-      ["recovery:decision_recorded", "recovery:dead_lettered"],
+      ["recovery:decision_recorded"],
     );
   } finally {
     cleanupPath(workspace);

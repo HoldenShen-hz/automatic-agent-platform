@@ -173,11 +173,11 @@ test("CircuitBreaker.reset aborts in-flight work and keeps the circuit closed", 
 });
 
 test("Reliability CircuitBreaker emits the real previous and next states", async () => {
-  const transitions: Array<[ReliabilityCircuitState, ReliabilityCircuitState, string]> = [];
+  const transitions: Array<[ReliabilityCircuitState, ReliabilityCircuitState]> = [];
   const breaker = new ReliabilityCircuitBreaker({
     failureThreshold: 1,
-    onStateChange: (previousState, newState, reason) => {
-      transitions.push([previousState, newState, reason]);
+    onStateChange: (previousState, newState) => {
+      transitions.push([previousState, newState]);
     },
   });
 
@@ -188,10 +188,10 @@ test("Reliability CircuitBreaker emits the real previous and next states", async
     /boom/,
   );
 
-  assert.deepEqual(transitions, [[ReliabilityCircuitState.CLOSED, ReliabilityCircuitState.OPEN, "failure_threshold_exceeded"]]);
+  assert.deepEqual(transitions, [[ReliabilityCircuitState.CLOSED, ReliabilityCircuitState.OPEN]]);
 });
 
-test("Reliability CircuitBreaker forceState(CLOSED) clears stale stats", async () => {
+test("Reliability CircuitBreaker reset clears stale stats", async () => {
   const breaker = new ReliabilityCircuitBreaker({ failureThreshold: 1 });
 
   await assert.rejects(
@@ -201,7 +201,7 @@ test("Reliability CircuitBreaker forceState(CLOSED) clears stale stats", async (
     /boom/,
   );
 
-  breaker.forceState(ReliabilityCircuitState.CLOSED);
+  breaker.reset();
 
   assert.deepEqual(breaker.getStats(), {
     state: ReliabilityCircuitState.CLOSED,
@@ -209,6 +209,5 @@ test("Reliability CircuitBreaker forceState(CLOSED) clears stale stats", async (
     successes: 0,
     lastFailure: null,
     lastSuccess: null,
-    nextAttemptAt: null,
   });
 });

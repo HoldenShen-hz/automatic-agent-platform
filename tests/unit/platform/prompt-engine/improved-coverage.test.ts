@@ -488,10 +488,10 @@ test("hashPromptPrefix generates consistent hash", () => {
   assert.notEqual(hash1, hash3);
 });
 
-test("hashPromptPrefix returns 16 character hex string", () => {
+test("hashPromptPrefix returns 32 character hex string", () => {
   const hash = hashPromptPrefix("some prefix");
 
-  assert.equal(hash.length, 16);
+  assert.equal(hash.length, 32);
   assert.match(hash, /^[a-f0-9]+$/);
 });
 

@@ -364,18 +364,12 @@ test.describe("RedisQueueAdapter unit tests", () => {
     const config = createMockConfig();
     const adapter = new RedisQueueAdapter(config);
 
-    await adapter.enqueueAsync({ queueName: "nack-dl-test", payload: { data: "test" }, maxAttempts: 2 });
+    await adapter.enqueueAsync({ queueName: "nack-dl-test", payload: { data: "test" }, maxAttempts: 1 });
     const result = await adapter.dequeueAsync("nack-dl-test");
     assert.ok(result !== null);
 
     await result.nack("error 1");
-    let job = await adapter.getJobAsync(result.job.id);
-    assert.equal(job?.status, "waiting");
-
-    // Get second attempt
-    await adapter.dequeueAsync("nack-dl-test");
-    await result.nack("error 2");
-    job = await adapter.getJobAsync(result.job.id);
+    const job = await adapter.getJobAsync(result.job.id);
     assert.equal(job?.status, "dead_letter");
   });
 

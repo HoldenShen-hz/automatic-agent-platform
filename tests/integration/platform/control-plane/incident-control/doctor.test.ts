@@ -159,7 +159,7 @@ test("doctor service summarizes a clean runtime as ok", async () => {
     assert.equal(report.checks.find((check) => check.checkId === "audit_integrity")?.status, "ok");
     assert.equal(report.checks.find((check) => check.checkId === "provider_health")?.status, "ok");
     assert.equal(report.auditIntegrity?.compromisedEvents, 0);
-    assert.equal(report.versionSnapshot.applicationVersion, "0.1.0");
+    assert.equal(report.versionSnapshot.applicationVersion, "0.2.0");
     assert.equal(report.versionSnapshot.schemaVersion.upToDate, true);
     assert.equal(report.versionSnapshot.configVersion.length > 0, true);
     assert.deepEqual(report.versionSnapshot.featureFlags, []);

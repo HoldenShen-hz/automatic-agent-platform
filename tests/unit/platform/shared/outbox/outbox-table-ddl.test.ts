@@ -58,9 +58,9 @@ test("OUTBOX_TABLE_DDL has last_attempt_at as TEXT NULL", () => {
   assert.ok(OUTBOX_TABLE_DDL.includes("last_attempt_at TEXT NULL"));
 });
 
-test("OUTBOX_TABLE_DDL defines 3 indexes", () => {
+test("OUTBOX_TABLE_DDL defines 4 indexes", () => {
   const indexMatches = OUTBOX_TABLE_DDL.match(/CREATE INDEX/g);
-  assert.equal(indexMatches?.length, 3);
+  assert.equal(indexMatches?.length, 4);
 });
 
 test("OUTBOX_TABLE_DDL idx_outbox_pending is partial index on created_at", () => {

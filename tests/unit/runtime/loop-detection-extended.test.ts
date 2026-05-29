@@ -71,9 +71,9 @@ test("normalizeToolInputForHash handles array inputs [loop-detection-extended]",
   assert.notEqual(hash1, hash3);
 });
 
-test("hashToolCall produces 16 character hashes [loop-detection-extended]", () => {
+test("hashToolCall produces 32 character hashes [loop-detection-extended]", () => {
   const hash = hashToolCall("read", { path: "/foo" });
-  assert.equal(hash.length, 16);
+  assert.equal(hash.length, 32);
 });
 
 test("SequenceLoopDetector respects repeatThreshold [loop-detection-extended]", () => {

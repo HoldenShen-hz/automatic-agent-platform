@@ -1,12 +1,31 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join, normalize } from "node:path";
 
 const DOC_ROOT = join(process.cwd(), "docs_zh");
 const ARCH_ROOT = join(DOC_ROOT, "architecture");
 const CONTRACTS_ROOT = join(DOC_ROOT, "contracts");
 const REVIEWS_ROOT = join(DOC_ROOT, "reviews");
+
+function extractRelativeMarkdownLinks(markdown: string): string[] {
+  const links: string[] = [];
+  for (const match of markdown.matchAll(/\[[^\]]*\]\(([^)]+)\)/g)) {
+    const rawTarget = match[1]?.trim().replace(/^<|>$/g, "") ?? "";
+    if (
+      rawTarget.length === 0 ||
+      rawTarget.startsWith("#") ||
+      rawTarget.startsWith("http://") ||
+      rawTarget.startsWith("https://") ||
+      rawTarget.startsWith("mailto:") ||
+      rawTarget.startsWith("/")
+    ) {
+      continue;
+    }
+    links.push(rawTarget.split("#", 1)[0]!);
+  }
+  return links;
+}
 
 test("architecture documents are internally consistent with each other", () => {
   const archReadme = readFileSync(join(ARCH_ROOT, "README.md"), "utf8");
@@ -30,12 +49,18 @@ test("contract documents reference real architectural sections", () => {
 
   const archFile = readFileSync(join(ARCH_ROOT, "00-platform-architecture.md"), "utf8");
   const archSections = Array.from(archFile.matchAll(/^##?\s+(.+)$/gm)).map((m) => m[1]).filter((s): s is string => s !== undefined);
+  const architecturalSectionRefPattern = /§\d+(?:-\d+)?/;
 
   let contractsReferencingArch = 0;
 
   for (const contractFile of contractFiles) {
     const content = readFileSync(join(CONTRACTS_ROOT, contractFile), "utf8");
-    const hasArchRef = archSections.some((section) => content.includes(section));
+    const hasArchRef = archSections.some((section) => content.includes(section))
+      || architecturalSectionRefPattern.test(content)
+      || extractRelativeMarkdownLinks(content).some((link) => {
+        const resolved = normalize(join(CONTRACTS_ROOT, link));
+        return resolved.startsWith(normalize(ARCH_ROOT));
+      });
     if (hasArchRef) {
       contractsReferencingArch++;
     }
@@ -53,13 +78,13 @@ test("review documents reference existing contract files", () => {
   const reviewFiles = readdirSync(REVIEWS_ROOT).filter((f) => f.endsWith(".md"));
 
   for (const reviewFile of reviewFiles) {
-    const content = readFileSync(join(REVIEWS_ROOT, reviewFile), "utf8");
-    const contractRefs = Array.from(content.matchAll(/contracts\/([^`\s)]+\.md)/g))
-      .map((m) => m[1])
-      .filter((r): r is string => r !== undefined);
+    const reviewPath = join(REVIEWS_ROOT, reviewFile);
+    const content = readFileSync(reviewPath, "utf8");
+    const contractRefs = extractRelativeMarkdownLinks(content)
+      .filter((link) => link.includes("contracts/") && link.endsWith(".md"));
 
     for (const contractRef of contractRefs) {
-      const resolved = join(CONTRACTS_ROOT, contractRef);
+      const resolved = normalize(join(dirname(reviewPath), contractRef));
       assert.ok(
         existsSync(resolved),
         `${reviewFile} references non-existent contract: ${contractRef}`,

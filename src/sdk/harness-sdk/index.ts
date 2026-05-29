@@ -46,7 +46,22 @@ import {
   validatePlanGraphBundle,
 } from "./harness-sdk-support.js";
 
-export { HarnessSdkError } from "./harness-sdk-support.js";
+export {
+  HarnessSdkError,
+  buildPlanGraphBundle,
+  validatePlanGraph,
+  validatePlanGraphBundle,
+} from "./harness-sdk-support.js";
+export type {
+  BudgetReservationResult,
+  HarnessSdkAppendStepInput,
+  HarnessSdkCreateRunInput,
+  HarnessSdkInterPlaneSecurityConfig,
+  HarnessSdkLifecycleHooks,
+  HarnessSdkReceiptOptions,
+  InterPlaneTransport,
+  PlanGraphBuildInput,
+} from "./harness-sdk-support.js";
 
 // Lifecycle hook shape remains part of this entry surface:
 // beforeRun?: (input) => void

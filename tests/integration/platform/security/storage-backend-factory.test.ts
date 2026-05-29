@@ -52,7 +52,7 @@ test("single-task runtime routes postgres dual-run sync access through shadow sq
   try {
     createFile(shadowPath, "");
     const source = `
-      import { runSingleTaskExecution } from ${JSON.stringify(distModuleHref("../../../../src/platform/five-plane-execution/execution-engine/single-task-execution.ts"))};
+      import { runSingleTaskExecution } from ${JSON.stringify(distModuleHref("../../../../src/platform/five-plane-execution/execution-engine/single-task-happy-path.ts"))};
       void (async () => {
         await runSingleTaskExecution({
           dbPath: ${JSON.stringify(dbPath)},

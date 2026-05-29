@@ -200,7 +200,7 @@ test("resolveSecret throws StorageError for unregistered secret", async () => {
           grantedTo: "test.worker",
           usagePurpose: "test",
         }),
-      (e: any) => e.code === "secret.registry_not_found:secret://system/unregistered",
+      (e: any) => e.code === "secret.registry_not_found",
     );
   } finally {
     harness.db.close();
@@ -778,7 +778,7 @@ test("buildAuditSummary throws StorageError for unregistered secret", () => {
     const service = createService(harness);
     assert.throws(
       () => service.buildAuditSummary("secret://system/unregistered"),
-      (e: any) => e.code === "secret.registry_not_found:secret://system/unregistered",
+      (e: any) => e.code === "secret.registry_not_found",
     );
   } finally {
     harness.db.close();

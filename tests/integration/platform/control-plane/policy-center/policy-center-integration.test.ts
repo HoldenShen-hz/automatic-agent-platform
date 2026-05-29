@@ -173,11 +173,13 @@ test("policy center: emergency mode requires operator ack for non-system subject
   assert.ok(result.enforcedConstraints.operatorAckRequired === true);
 });
 
-test("policy center: emergency mode allows system subject without approval", () => {
+test("policy center: emergency mode still requires break-glass approval for system subject", () => {
   const policy = new PolicyCenterService();
   const result = policy.evaluate(makeRequest({ subjectType: "system", mode: "emergency" }));
 
-  assert.strictEqual(result.requiresApproval, false);
+  assert.strictEqual(result.requiresApproval, true);
+  assert.ok(result.enforcedConstraints.breakGlass === true);
+  assert.ok(result.enforcedConstraints.operatorAckRequired === true);
 });
 
 test("policy center: budget exceeded denies action when cost exceeds max", () => {

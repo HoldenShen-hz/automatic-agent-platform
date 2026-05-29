@@ -103,7 +103,7 @@ test("Integration: hashPromptPrefix with PromptTemplateRegistryService", () => {
   });
 
   assert.equal(template.fixedPrefixHash, hash);
-  assert.equal(template.fixedPrefixHash.length, 16);
+  assert.equal(template.fixedPrefixHash.length, 32);
 
   // Same prefix produces same hash
   const sameHash = hashPromptPrefix(prefix);

@@ -31,11 +31,11 @@ test("OUTBOX_TABLE_DDL creates table with all required columns", () => {
   assert.ok(OUTBOX_TABLE_DDL.includes("retry_count INTEGER NOT NULL DEFAULT 0"));
 });
 
-test("OUTBOX_TABLE_DDL defines three indexes", () => {
+test("OUTBOX_TABLE_DDL defines four indexes", () => {
   const idxCount = (
     OUTBOX_TABLE_DDL.match(/CREATE INDEX/g) || []
   ).length;
-  assert.equal(idxCount, 3);
+  assert.equal(idxCount, 4);
 });
 
 test("OUTBOX_TABLE_DDL idx_outbox_pending is partial index", () => {

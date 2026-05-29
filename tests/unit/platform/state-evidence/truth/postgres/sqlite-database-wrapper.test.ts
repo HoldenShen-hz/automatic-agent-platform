@@ -87,5 +87,5 @@ test("SqliteDatabaseWrapper nested transaction uses savepoints", () => {
     return undefined;
   });
 
-  assert.deepEqual(statements, ["BEGIN", "SAVEPOINT aa_sp_2", "RELEASE SAVEPOINT aa_sp_2", "COMMIT"]);
+  assert.deepEqual(statements, ["BEGIN", 'SAVEPOINT "aa_sp_2"', 'RELEASE SAVEPOINT "aa_sp_2"', "COMMIT"]);
 });

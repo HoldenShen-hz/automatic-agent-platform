@@ -13,6 +13,7 @@ type PmfValidationStore = ConstructorParameters<typeof PmfValidationService>[1];
 type MockStatement = {
   get: (...params: unknown[]) => Record<string, unknown> | null;
   all: (...params: unknown[]) => Array<Record<string, unknown>>;
+  run: (...params: unknown[]) => unknown;
 };
 
 type MockDb = {
@@ -59,6 +60,7 @@ function createMockDb(): MockDb {
       prepare: () => ({
         get: () => null,
         all: () => [],
+        run: () => ({}),
       }),
     },
   };
@@ -187,6 +189,7 @@ test("PmfValidationService buildReport calculates checks correctly for pass [pmf
       };
     },
     all: () => [],
+    run: () => ({}),
   });
 
   const report = createService(mockDb, createMockStore()).buildReport({});
@@ -201,6 +204,7 @@ test("PmfValidationService buildReport handles null metrics gracefully [pmf-vali
   mockDb.connection.prepare = () => ({
     get: () => null,
     all: () => [],
+    run: () => ({}),
   });
 
   const report = createService(mockDb, createMockStore()).buildReport({});
@@ -215,6 +219,7 @@ test("PmfValidationService exportValidation returns artifacts [pmf-validation-se
   mockDb.connection.prepare = () => ({
     get: () => null,
     all: () => [],
+    run: () => ({}),
   });
 
   const result = createService(mockDb, mockStore).exportValidation({});
@@ -286,6 +291,7 @@ test("PmfValidationService verdict is fail when sample size insufficient [pmf-va
       averageSuccessfulTaskCostUsd: 0.1,
     }),
     all: () => [],
+    run: () => ({}),
   });
 
   const report = createService(mockDb, createMockStore()).buildReport({});

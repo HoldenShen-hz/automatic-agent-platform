@@ -99,7 +99,7 @@ test("planSqliteToPgMigration rejects SQL injection via table name", () => {
       // Verify the validateTableName function rejects any table not in the allowlist
       assert.throws(
         () => validateTableName(maliciousTable),
-        /Invalid table name/,
+        /Invalid table (?:identifier|name)/,
         `Malicious table "${maliciousTable}" should be rejected`,
       );
     }

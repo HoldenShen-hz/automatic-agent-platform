@@ -309,7 +309,7 @@ test("AuthoritativeTaskStore tracks workflow state for execution", () => {
 });
 
 test("Phase1B tool definitions have valid input schemas", () => {
-  const tools = getPhase1BToolDefinitions(["git", "edit_replace", "read", "glob", "grep", "todo_write"]);
+  const tools = getMultiStepToolDefinitions(["git", "edit_replace", "read", "glob", "grep", "todo_write"]);
 
   for (const tool of tools) {
     assert.ok(tool.name);

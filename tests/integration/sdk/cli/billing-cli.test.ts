@@ -241,7 +241,7 @@ test("billing CLI can create invoices, checkout sessions, and settle payment ses
       AA_INVOICE_ID: invoice.invoiceId,
     });
     assert.equal(checkout.status, "pending");
-    assert.match(checkout.checkoutUrl, /billing\.manual\.local\/checkout/);
+    assert.match(checkout.checkoutUrl, /billing\.manual\.example\/checkout/);
 
     const settled = runCli<{ session: { status: string }; invoice: { status: string } }>({
       AA_DB_PATH: dbPath,
