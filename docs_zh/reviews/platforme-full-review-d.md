@@ -980,85 +980,413 @@
 | 741 | deploy/scripts/*.sh 全无 set -euo pipefail | `done` | 当前 `deploy.sh`、`rollback.sh`、`dr-drill.sh`、`verify-hot-upgrade.sh` 均已启用 `set -euo pipefail`，问题单基于旧状态。 |
 | 742 | deploy/scripts/*.sh 错误退出码不区分（统一 1） | `done` | 部署脚本过去没有分层错误码；现已为 usage、validation、dependency、deployment/rollback/runtime 失败分别定义退出码。 |
 
+## config/
+
+| 编号 | 问题 | 状态 | 问题根因 |
+| --- | --- | --- | --- |
+| 743 | config/{bootstrap,cost-alert,exception-recovery,gateways,knowledge,nl-gateway,plugins,product,risk,workflows,dr,constitution}/ 仅 default.json 无环境覆盖 | `done` | 旧 review 把 concern-scoped canonical default 误判成“缺少环境层”；`config/README.md` 已明确只有 `environments/runtime/security` 支持 overlay。 |
+| 744 | divisions/coding/division.yaml:7 coding_primary 与 config/domains/coding.json:6 coding.primary 双风格 | `done` | review 混淆了 domain baseline workflow ID 与 division executable workflow ID；`config/README.md` 已明确二者不是同一命名空间。 |
+| 745 | config/domains/default.json 是 {domains:[...]} 数组型，其余文件为单对象，schema 不兼容 | `todo` | 待修复 |
+| 746 | config/domains/(32) 与 divisions/(32) ID 集合不同步，无映射文件 | `done` | `config/domains/` 与 `divisions/` 本就不是 1:1 镜像；`config/README.md` 已把 domain baseline 与 division surface 的边界写成显式规则。 |
+| 747 | config/runtime/{dev,staging,pre-prod,test,prod}.json 仅覆盖任务超时类字段，prod 速率/熔断等于默认 | `done` | overlay contract 是“只覆盖环境差异”，不是“复制一份 prod 全量配置”；`docs_zh/reference/environment-configuration.md` 已明确 default + overlay 继承规则。 |
+| 748 | config/security/prod.json 仅 approvalMode:"strict"，其它字段同 default | `done` | 安全 overlay 只声明与默认层不同的字段；旧 review 误把继承设计当成缺项。 |
+| 749 | config/security/threat-matrix.json:3-4 版本/updatedAt 2026-04，已 1+ 月未更新 | `done` | threat matrix 长期没有月度回写；当前版本和更新时间已更新到 `2026-05-29`。 |
+| 750 | config/README.md:9 仅描述 3 个子目录，实际 17 个，README 严重过期 | `done` | config 目录扩张后 README 没跟进；现已补齐完整布局、命名例外和 layering 规则。 |
+| 751 | config/conversation/templates.json 是唯一非 default.json 命名 | `done` | 原因不是命名漂移，而是多模板 registry 被误审为 mergeable default；README 已写明这是有意例外。 |
+| 752 | config/validation/mission-operating-model-metric-alert-policy.yaml 是唯一 YAML，混合格式 | `done` | review 未区分 machine registry 与 human policy 文本；README 已明确该 YAML 是刻意保留的人类维护策略文件。 |
+| 753 | config/quality/test-exclusion-allowlist.json 与 tsconfig.json:32-115 两份 exclusion 列表不同步生成 | `done` | 早期没有自动对账；现有 `scripts/ci/audit-test-exclusions.mjs` 已把 allowlist 与 `tsconfig.json` 漂移纳入审计。 |
+| 754 | config/environments/{default,dev,prod,...}.json imageRepository:"automatic-agent-system" 与 helm/Dockerfile automatic-agent-platform 漂移 | `done` | 环境镜像仓库名长期沿用旧仓库名；现已统一为 `automatic-agent-platform`。 |
+| 755 | config/bootstrap/default.json appName:"automatic-agent-system" 与 package.json:name、Chart.yaml:name 三套名 | `done` | bootstrap 名称没有随仓库主名迁移；现已统一为 `automatic-agent-platform`。 |
+| 756 | config/dr/default.json:5 RETENTION_DAYS=7 与 retentionPolicy.{daily:7,weekly:4,monthly:12} 语义冲突 | `done` | 该条基于旧快照中的已移除字段；当前 `config/dr/default.json` 已不存在 `RETENTION_DAYS` 这一冲突键。 |
+| 757 | config/quality/division-catalog.json qa.canonicalDivisionId:quality-assurance 但二者 default_workflow 不同，alias 单向 | `done` | 旧文档把 alias 误读成同义目录；`docs_zh/reference/division-catalog.md` 已明确 `qa` 只是 smoke alias，不等同于 release certification。 |
+| 758 | config/runtime/default.json:1-3 仅其声明 configVersion:v4.3，其余 default.json 无版本，v4.3 强制不一致 | `done` | review 把 runtime bundle 版本要求外推到所有 config family；README 已明确 `configVersion/configSchemaVersion` 只约束 runtime bundle。 |
+| 759 | config/risk/default.json:1 $schema 指 JSON-Schema 元 URL，非项目 schema，$schema 误用 | `done` | 风险配置曾误用了通用 meta-schema；该字段已移除，并在 README 明确仓库不依赖 `$schema` 作为 SOT。 |
+| 760 | 仓库无 AA_DATA_DIR env 变量统一 SQLite/data 持久化根，data/ 在 config/Dockerfile/helm 多处硬编码 | `done` | 旧问题把不存在的运行时约定当成缺失能力；现已明确只以 `AA_DB_PATH` 作为 SQLite 路径入口，不再虚构 `AA_DATA_DIR` 合约。 |
+| 761 | config/runtime/default.json 单位混用，shutdownGracePeriodMs:10000 含义不一致 (s vs ms) | `done` | 该结论来自对字段名误读；README 已显式注明 `shutdownGracePeriodMs` 使用毫秒，不存在秒/毫秒混用。 |
+| 762 | config/runtime/default.json:6,7 apiDefaultTimeoutMs<apiMaxTimeoutMs 但无校验 | `done` | 早期缺少显式证据链；现有 config shape 测试和治理校验已固定 `apiDefaultTimeoutMs < apiMaxTimeoutMs`。 |
+| 763 | config/runtime/default.json:12-16 circuitBreaker.threshold 无 windowMs，半开/重置策略未定义 | `todo` | 待修复 |
+| 764 | config/runtime/default.json:17-21 三层 rateLimit 未文档化级联语义 | `done` | runtime rate-limit 分层原本只存在于代码直觉；README 已明确 global -> tenant -> principal 的级联约束。 |
+| 765 | config/runtime/default.json:23-25 configDriftReconciler.interval:300000 单位 ms 无后缀 | `done` | legacy 字段名缺少 `Ms` 后缀但单位未写明；README 已把该键声明为毫秒字段。 |
+| 766 | config/runtime/prod.json 仅 3 字段 override，未声明 configVersion 与 default v4.3 漂移 | `done` | prod overlay 以前没有显式重复 runtime bundle 版本；各 runtime overlay 现已补齐 `configVersion/configSchemaVersion`。 |
+| 767 | config/security/*.json 6 文件无 $schema 字段 | `done` | 该条把 `$schema` 当成必须项，但仓库现行策略是不依赖通用 meta-schema URL；README 已明确这一治理口径。 |
+| 768 | config/security/threat-matrix.json 与 config/risk/register.json 双风险来源无交叉校验 | `done` | 旧 review 把 STRIDE 控制矩阵和运营风险台账误当成重复来源；README 已明确二者是不同治理视角，不做 1:1 镜像。 |
+| 769 | config/providers/default.json/models.json/models.bundled.json 三文件命名不统一 | `done` | providers 目录中的三个文件承担不同职责而非命名漂移；README 已把三者区分为 default、local catalog、bundled snapshot。 |
+| 770 | config/providers/models.bundled.json 不在 package.json files，npm publish 遗漏 | `done` | 发布清单长期漏掉 bundled model snapshot；`package.json` 已把 provider config 文件加入 `files`。 |
+| 771 | config/conversation/templates.json 无 i18n 字段或 locale 后缀 | `done` | review 误把模板 registry 当成按 locale 切分的文件树；README 已明确该文件是单一模板注册表，不采用 `default.json`/locale 文件命名。 |
+| 772 | config/environments/default.json 与 config/runtime/default.json 字段重叠合并优先级未文档化 | `done` | 多环境配置优先级过去只散落在实现；`docs_zh/reference/environment-configuration.md` 现已明确 merge 顺序。 |
+| 773 | config/quality/default.json 阈值与 check-coverage-baseline.mjs 双源 | `done` | 该条混淆了运行时质量评分阈值与仓库 coverage gate；README 已把两者的治理边界拆开说明。 |
+| 774 | config/quality/test-exclusion-allowlist.json 路径无 schema 校验，typo 永远命不中 | `done` | 早期没有对 allowlist 漂移做可执行检查；`audit-test-exclusions.mjs` 现在会校验缺失项、意外项和无效 anchor。 |
+| 775 | config/risk/register.json 与 divisions/*/division.yaml risk_profile 无交叉校验 | `done` | 全局 risk register 与 division-local `risk_profile` 被误判成同一层 SOT；README 已明确二者分属运营台账和域内执行分类。 |
+| 776 | docs_zh/reference/division-catalog.md 与 config/quality/division-catalog.json 列名不一致 | `done` | 文档过去只写自然语言说明，没有对齐机器字段；division-catalog 文档现已补齐字段映射表。 |
+
+## divisions/
+
+| 编号 | 问题 | 状态 | 问题根因 |
+| --- | --- | --- | --- |
+| 777 | src/plugins/builtin-plugin-registry.ts it-operations/game-dev/livestream 三个 domainId 与 divisions/ + src/domains/ 实际目录 operations/gaming/live-streaming 不一致 | `done` | builtin plugin manifest 里残留旧 domainId；registry 与 runtime plugin 定义现已对齐到 `operations/game-dev/live-streaming` 实际目录。 |
+| 778 | src/plugins/adapters/livestream-adapter.ts capability id 硬编码字符串数组，未与 divisions/live-streaming/ 注册中心交叉校验 | `done` | review 把 `divisions/` 误当成 capability registry；现已在 division-catalog 文档明确 capability SOT 属于 plugin manifest/runtime plugin，而非 division metadata。 |
+| 779 | src/plugins/builtin-plugin-registry.ts (domain id 表) it-operations/game-dev/livestream 三个 domainId 与 divisions/ + src/domains/ 实际目录 operations/gaming/live-streaming 不一致，注册即拼接错误路径。EN: registry domain-ids drift from on-disk catalog. | `done` | 同 777，registry manifest 已与实际 domain/division 目录统一。 |
+| 780 | src/plugins/adapters/livestream-adapter.ts capability id 硬编码字符串数组，未与 divisions/live-streaming/ 注册中心交叉校验. EN: capability ids drift from division catalog. | `done` | 同 778，旧审计基于错误的 capability authority 假设；现已在文档中明确 plugin manifest 才是 capability SOT。 |
+| 781 | division-catalog.json 仅 6 项，divisions/ 实际 32 项 | `done` | 该条来自旧快照；当前 catalog 已覆盖全部 32 个活跃 division。 |
+| 782 | divisions/ 目录 ID 混合 snake_case 与 kebab-case，与 yaml id: 字段不一致 | `done` | family 命名混合是有意的历史兼容，但 `division.yaml id` 与目录名现已对齐；旧条目把“风格混合”误写成“ID 不一致”。 |
+| 783 | divisions/qa/division.yaml 缺 §37 强制字段（domain_descriptor/risk_profile/eval_spec） | `done` | `qa` division 一直沿用简版模板；现已补齐 §37 强制字段。 |
+| 784 | divisions/qa/roles/test_architect.prompt.md 在 yaml 中无角色绑定，孤儿 prompt | `done` | `test_architect` prompt 过去未绑定到 division 角色；当前 `qa/division.yaml` 已显式挂接。 |
+| 785 | divisions/quality-assurance/roles/ 仅 qa_engineer.prompt.md，发布认证职能仅 1 角色可疑 | `done` | `quality-assurance` 之前缺少发布认证职责角色；现已补 `release_certifier`。 |
+| 786 | divisions/coding/workflows/coding_primary.yaml:5 用相对路径 schemas/coding-output.json，仅 cwd=division 时才解析 | `done` | workflow schema path 旧担忧没有复核 loader；`DivisionLoader.resolveWorkflowOutputSchemaPath()` 现已把相对路径解析为 division-root 下的绝对受控路径。 |
+| 787 | divisions/qa/division.yaml:5 priority:30 与 coding/division.yaml:5 priority:50 含义无标度文档 | `todo` | 待修复 |
+| 788 | divisions/coding/division.yaml:5,7 default_workflow 与 orchestration_workflow 同值，字段语义重复 | `todo` | 待修复 |
+| 789 | divisions/healthcare/、legal/ 仅单专家角色，无 qa/合规第二角色，但 risk profile 声明 humanAccountable:true | `done` | 高风险 division 之前缺少第二人类治理角色；`healthcare` 与 `legal` 现已补充 reviewer。 |
+| 790 | divisions/financial-services,healthcare,legal,quant-trading,security/division.yaml:5 5 处 priority:60 并列，路由命中靠字母序 | `done` | 旧审计把粗粒度 priority 误当成必须全局唯一；文档现已明确并列 priority 合法，真实路由还结合 trigger/disambiguate/稳定排序。 |
+| 791 | divisions/advertising,customer-service,devops,ecommerce,human-resources,quality-assurance/division.yaml:5 6 处 priority:45 并列 | `done` | 同 790，问题根因是把 priority band 误审为唯一键。 |
+| 792 | divisions/coding,engineering_ops,finance-accounting,live-streaming/division.yaml:5 4 处 priority:50 并列 | `done` | 同 790，priority 设计是 band 而不是 total order。 |
+| 793 | divisions/data-engineering,knowledge-base,product-management,project-management,research/division.yaml:5 5 处 priority:40 并列 | `done` | 同 790，旧 review 忽略了后续 tie-break 规则。 |
+| 794 | divisions/academic-research,design,industry-research,user-operations/division.yaml:5 4 处 priority:35 并列 | `done` | 同 790，priority 并列并不等于靠字母序抢路由。 |
+| 795 | divisions/analytics,content,qa/division.yaml:5 3 处 priority:30 并列 | `done` | 同 790，问题在于审计假设了“priority 必须唯一”。 |
+| 796 | divisions/analytics/division.yaml 36 行 vs coding/division.yaml 72 行字段集差距巨大，标准模板缺失 | `todo` | 待修复 |
+| 797 | divisions/qa/division.yaml 与 quality-assurance/division.yaml default_workflow 不同但 catalog 暗示等价，alias 单向不对称 | `done` | 文档过去没有把 `qa` 的 smoke-alias 语义讲清；division catalog 现已明确二者故意不对称。 |
+| 798 | divisions/{coding,engineering_ops,operations,it-operations}/division.yaml 工作流字段顺序/缩进风格不一致，YAML diff 噪音大 | `todo` | 待修复 |
+| 799 | divisions/*/workflows/*.yaml 引用 schema 用相对 ../../schemas/... 路径，CI 工作目录改变即解析失败 | `done` | loader 已在 division root 下解析并沙箱校验 workflow schema path，问题条目没有吸收现行实现。 |
+| 800 | divisions/security,qa/division.yaml 简版（42/40 行）缺 §37 字段；catalog 把 security 当独立 family 而 qa 当 alias，分类不一致 | `done` | `security/qa` 简版定义长期滞后；现已补齐 §37 字段，catalog 也已明确 `security` 为独立 family、`qa` 为 alias。 |
+| 801 | divisions/operations,support,design,research,content/division.yaml 5 处 <60 行未含 resource_boundaries/fault_domains | `done` | 该条基于旧简版 division 快照；当前这些 division 已含 `resource_boundaries` 与 `fault_domains`。 |
+
+## deploy/helm
+
+| 编号 | 问题 | 状态 | 问题根因 |
+| --- | --- | --- | --- |
+| 802 | deploy/helm/automatic-agent/templates/networkpolicy.yaml:23-30 Egress 仅放行 UDP/TCP 53，PG/Redis/OTel/外部 API 全断 | `todo` | 待修复 |
+| 803 | deploy/helm/automatic-agent/templates/networkpolicy.yaml:16-18 Ingress namespaceSelector:{} 任何 namespace 可入 | `todo` | 待修复 |
+| 804 | deploy/helm/.../values.yaml:124-126 PVC ReadWriteOnce + values-prod.yaml:3 replicaCount:3 + 自动扩缩 3-10，跨节点不可挂载 | `todo` | 待修复 |
+| 805 | deploy/helm/.../values-prod.yaml:31-40 ingress hosts automatic-agent.example.com 占位提交为生产值 | `todo` | 待修复 |
+| 806 | deploy/helm/.../values.yaml:99-105 secrets: 块含 AA_API_JWT_SECRET/ANTHROPIC_API_KEY/...，鼓励操作员把密钥提交到 chart | `todo` | 待修复 |
+| 807 | deploy/helm/.../templates/deployment.yaml:7-9 终止周期断言谓词与"必须大于"消息不一致（<= vs <） | `todo` | 待修复 |
+| 808 | deploy/helm/.../templates/deployment.yaml:67-70 即使 AA_STORAGE_DRIVER=postgres 也注入 AA_DB_PATH=...sqlite | `todo` | 待修复 |
+| 809 | docs_zh/operations/release-versioning.md 与 deploy/helm/.../Chart.yaml 版本无自动同步检查 | `todo` | 待修复 |
+| 810 | helm/templates/servicemonitor.yaml:11-12 selector 含 helm.sh/chart/version 标签，每次升级都失配 metrics service | `todo` | 待修复 |
+| 811 | helm/templates/servicemonitor.yaml 选择 app.kubernetes.io/name=automatic-agent 与主 service 同标签，会抓 :3000 而非 :9090 | `todo` | 待修复 |
+| 812 | helm/templates/prometheusrule.yaml:13 用 up{job="...-metrics"}，但 deploy/prometheus/prometheus.yml job_name 为 compose/k8s，规则永不命中 | `todo` | 待修复 |
+| 813 | helm/templates/prometheusrule.yaml 仅 1 条 alert，而 deploy/prometheus/rules/automatic-agent.yml 21 条；helm 集群丢失 20 条告警 | `todo` | 待修复 |
+| 814 | helm/templates/canary-ingress.yaml:18,21 hosts 为空仍渲染，pathType 默认缺失，nginx-ingress/K8s≥1.18 拒绝 | `todo` | 待修复 |
+| 815 | helm/templates/pdb.yaml:7-12 默认 minAvailable:1 + replicaCount:1 阻塞 drain；同时 minAvailable 与 maxUnavailable 都被渲染时 K8s 拒绝 | `todo` | 待修复 |
+| 816 | helm/templates/hpa.yaml:34 range customMetrics ... toYaml(list .) \| nindent 4 产嵌套 list of list | `todo` | 待修复 |
+| 817 | helm/templates/deployment.yaml:7-9 fail 在 metadata 已开括号后触发，渲染产生破损片段 | `todo` | 待修复 |
+| 818 | helm/templates/deployment.yaml:48 仅按 tag/AppVersion，忽略 image.digest，无法 digest pin | `todo` | 待修复 |
+| 819 | helm/templates/deployment.yaml:131-159 liveness/readiness/startup 都打 /healthz，readiness 失败即 liveness 重启循环 | `todo` | 待修复 |
+| 820 | helm/values.yaml:131-149 startupProbe 最长 150s，readinessProbe 30s 内必失败 → pod 在 startup 完成前被重启 | `todo` | 待修复 |
+| 821 | helm/values.yaml:136 livenessProbe initialDelaySeconds:10 与 startupProbe 重叠，liveness 在 startup 进行中即触发 | `todo` | 待修复 |
+| 822 | helm/values-prod.yaml:46 设 AA_STORAGE_DRIVER:postgres 但无 DSN env/externalSecret，pod crashloop | `todo` | 待修复 |
+| 823 | helm/values-pre-prod.yaml 文件名带 -，namespace automatic-agent-preprod 不带，命名规范化不一致 | `todo` | 待修复 |
+| 824 | helm/templates/secret.yaml:1-3 渲染条件不互斥，inline+externalSecret 同真时仍输出 --- 分隔符 | `todo` | 待修复 |
+| 825 | deploy/helm/automatic-agent/templates/networkpolicy.yaml egress 仅放行 53/UDP DNS，未开 5432/6379/443，启用即 outbound 全断 | `todo` | 待修复 |
+| 826 | deploy/helm/automatic-agent/templates/deployment.yaml 仅 inline env:，从未挂载 configmap.yaml 渲染产物，ConfigMap 实质死代码 | `todo` | 待修复 |
+| 827 | deploy/helm/automatic-agent/Chart.yaml 缺 kubeVersion: 约束 | `todo` | 待修复 |
+| 828 | deploy/helm/automatic-agent/Chart.yaml 缺 maintainers，OCI registry 推送元数据空 | `todo` | 待修复 |
+| 829 | deploy/helm/automatic-agent/Chart.yaml appVersion 与 package.json version 漂移 | `todo` | 待修复 |
+| 830 | deploy/helm/automatic-agent/values.yaml 与 values-{dev,test,staging,pre-prod,prod}.yaml 多处键名不一致，override 静默失效 | `todo` | 待修复 |
+| 831 | deploy/helm/automatic-agent/values-prod.yaml 未设 podAntiAffinity，所有 replica 可调度同节点 | `todo` | 待修复 |
+| 832 | deploy/helm/automatic-agent/values.yaml image.pullPolicy: Always 缺省，回滚到旧 tag 仍拉新镜像 | `todo` | 待修复 |
+| 833 | deploy/helm/automatic-agent/templates/deployment.yaml securityContext 缺 readOnlyRootFilesystem/allowPrivilegeEscalation:false/runAsNonRoot:true | `todo` | 待修复 |
+| 834 | deploy/helm/automatic-agent/templates/deployment.yaml 缺 topologySpreadConstraints | `todo` | 待修复 |
+| 835 | deploy/helm/automatic-agent/templates/deployment.yaml liveness/readiness 同一 /health，liveness 抖动级联重启 | `todo` | 待修复 |
+| 836 | deploy/helm/automatic-agent/templates/deployment.yaml 缺 startupProbe，慢启动场景下 liveness 早于就绪触发 kill | `todo` | 待修复 |
+| 837 | deploy/helm/automatic-agent/templates/secret.yaml 直接将 secrets base64 嵌入 manifest，与 externalsecret 同时启用语义冲突 | `todo` | 待修复 |
+| 838 | deploy/helm/automatic-agent/templates/externalsecret.yaml 未设 refreshInterval | `todo` | 待修复 |
+| 839 | deploy/helm/automatic-agent/templates/hpa.yaml 仅 CPU 指标无 RPS/queue depth | `todo` | 待修复 |
+| 840 | deploy/helm/automatic-agent/templates/hpa.yaml 缺 behavior.scaleDown.stabilizationWindowSeconds | `todo` | 待修复 |
+| 841 | deploy/helm/automatic-agent/templates/pdb.yaml minAvailable 与 HPA minReplicas 同值，滚动升级时 PDB 阻塞 evict | `todo` | 待修复 |
+| 842 | deploy/helm/automatic-agent/templates/ingress.yaml 未声明 tls/cert-manager annotation | `todo` | 待修复 |
+| 843 | deploy/helm/automatic-agent/templates/canary-ingress.yaml 缺 canary-by-header 紧急分流通道 | `todo` | 待修复 |
+| 844 | deploy/helm/automatic-agent/templates/servicemonitor.yaml selector label 与 service template 不一致，抓取目标 0 | `todo` | 待修复 |
+| 845 | deploy/helm/automatic-agent/templates/prometheusrule.yaml groups[].interval 未设 | `todo` | 待修复 |
+| 846 | deploy/helm/automatic-agent/templates/resourcequota.yaml 仅限 requests，不限 count/services.loadbalancers | `todo` | 待修复 |
+| 847 | deploy/helm/automatic-agent/templates/limitrange.yaml 未配 default/defaultRequest | `todo` | 待修复 |
+| 848 | deploy/helm/automatic-agent/templates/pvc.yaml 缺 storageClassName | `todo` | 待修复 |
+| 849 | deploy/helm/automatic-agent/crds/automatic-agent-chaos-approval-policies.yaml CRD 与 chart 同包，helm uninstall 不删 CRD | `todo` | 待修复 |
+| 850 | deploy/helm/automatic-agent/templates/configmap.yaml 渲染但未在 deployment envFrom 引用，孤儿资源 | `todo` | 待修复 |
+| 851 | deploy/helm/automatic-agent/templates/networkpolicy.yaml podSelector matchLabels 写死 app: automatic-agent，未走 helper | `todo` | 待修复 |
+| 852 | deploy/helm/automatic-agent/templates/networkpolicy.yaml 未限制 metrics scrape ingress 来源 namespace | `todo` | 待修复 |
+| 853 | deploy/helm/automatic-agent/values-staging.yaml replicaCount=1 与 PDB minAvailable 1 互斥 | `todo` | 待修复 |
+| 854 | deploy/helm/automatic-agent/values-pre-prod.yaml 未启用 serviceMonitor.enabled | `todo` | 待修复 |
+
+## deploy/prometheus & alertmanager
+
+| 编号 | 问题 | 状态 | 问题根因 |
+| --- | --- | --- | --- |
+| 855 | docker-compose.yml:108-112 alertmanager 用 sed 把 ${SLACK_WEBHOOK_URL}/${PAGERDUTY_SERVICE_KEY} 直插命令行，泄漏到 ps/日志 | `todo` | 待修复 |
+| 856 | docker-compose.yml:91,108 prom/prometheus:v2.54.1、prom/alertmanager:v0.27.0 镜像 2024 中期版，2026 已知 CVE | `todo` | 待修复 |
+| 857 | deploy/prometheus/prometheus.yml:18-19 抓 api-server:3000/metrics 与 helm values.yaml:36-39 metricsPort:9090 不一致 | `todo` | 待修复 |
+| 858 | deploy/prometheus/alertmanager.yml:24-32 字面 **SLACK_WEBHOOK_URL**/**PAGERDUTY_SERVICE_KEY** 占位；sed 失败时直接被发往字面字符串 | `todo` | 待修复 |
+| 859 | deploy/runbooks/production-alert-runbook.md:3 声称与 deploy/prometheus/rules/automatic-agent.yml 1:1 映射，无审计脚本 | `todo` | 待修复 |
+| 860 | deploy/prometheus/rules/automatic-agent.yml:32,41,185 histogram_quantile 仅 by (job, le)，per-pod 异常被均值掩盖 | `todo` | 待修复 |
+| 861 | deploy/prometheus/rules/automatic-agent.yml:139-140 RSS 阈值 512MiB 与 values.yaml:43-44 limits.memory:512Mi 完全相等，告警永久触发 | `todo` | 待修复 |
+| 862 | deploy/prometheus/rules/automatic-agent.yml 无 recording rules，每次刷盘都重算 histogram_quantile | `todo` | 待修复 |
+| 863 | deploy/prometheus/alertmanager.yml:18-21 无 inhibit_rules，单次延迟事故触发 3 条告警重复呼叫 | `todo` | 待修复 |
+| 864 | deploy/prometheus/alertmanager.yml:8 默认 receiver ops-null，无 severity 标签的告警静默丢弃 | `todo` | 待修复 |
+| 865 | deploy/prometheus/prometheus.yml:24-32 kubernetes_sd_configs 无 namespace 过滤，跨租户隔离失效 | `todo` | 待修复 |
+| 866 | deploy/prometheus/rules/automatic-agent.yml 全部 up{job="...-metrics"} 与 prometheus.yml 真实 job_name 不匹配，告警永不触发 | `todo` | 待修复 |
+| 867 | docker-compose.yml alertmanager 通过 sed 注入 webhook secret，明文留 layer 历史 | `todo` | 待修复 |
+| 868 | docker-compose.yml 暴露 prometheus/alertmanager 端口到 0.0.0.0 无认证 | `todo` | 待修复 |
+| 869 | deploy/prometheus/prometheus.yml scrape_interval=15s evaluation_interval=15s 同值，大集群 evaluation 与 scrape 同帧抢锁 | `todo` | 待修复 |
+| 870 | deploy/prometheus/prometheus.yml 缺 external_labels，多集群 federation 无来源标签 | `todo` | 待修复 |
+| 871 | deploy/prometheus/alertmanager.yml route.group_wait/group_interval/repeat_interval 全 default | `todo` | 待修复 |
+| 872 | deploy/prometheus/alertmanager.yml 仅一条 receiver default，severity 路由不分级 | `todo` | 待修复 |
+| 873 | deploy/prometheus/rules/automatic-agent.yml 21 条告警全无 runbook_url annotation | `todo` | 待修复 |
+| 874 | deploy/prometheus/rules/automatic-agent.yml histogram_quantile(0.95, rate(...[5m])) 未按 (le, job) 分组 | `todo` | 待修复 |
+| 875 | deploy/prometheus/rules/automatic-agent.yml 多条 for: 0m，无抖动抑制窗口 | `todo` | 待修复 |
+| 876 | deploy/prometheus/rules/automatic-agent.yml severity label 含 warning/critical/page 三套未在 alertmanager route 区分 | `todo` | 待修复 |
+| 877 | docs_zh/operations/runbooks/incident-response-playbook.md severity P0/P1 与 alertmanager severity label 取值未对齐 | `todo` | 待修复 |
+
+## deploy/grafana
+
+| 编号 | 问题 | 状态 | 问题根因 |
+| --- | --- | --- | --- |
+| 878 | deploy/grafana/dashboards/automatic-agent.json 无版本 pin，Grafana 兼容未声明 | `todo` | 待修复 |
+| 879 | deploy/grafana/dashboards/automatic-agent.json uid:"automatic-agent" 硬编码，多环境共导致冲突覆盖 | `todo` | 待修复 |
+| 880 | deploy/grafana/dashboards/automatic-agent.json schemaVersion 与 Grafana 版本未在 README 记录 | `todo` | 待修复 |
+| 881 | deploy/grafana/dashboards/automatic-agent.json panel datasource.uid 写死 prometheus | `todo` | 待修复 |
+| 882 | deploy/grafana/dashboards/automatic-agent.json p95 panel PromQL 缺 by (le)，渲染单值非分位曲线 | `todo` | 待修复 |
+| 883 | deploy/grafana/provisioning/dashboards.yaml allowUiUpdates: true 与 GitOps 流冲突 | `todo` | 待修复 |
+
+## deploy/terraform
+
+| 编号 | 问题 | 状态 | 问题根因 |
+| --- | --- | --- | --- |
+| 884 | deploy/terraform/environments/multi-region/ 多 region 共享同 backend key，state 互覆盖 | `todo` | 待修复 |
+| 885 | deploy/terraform/main.tf 无 CI terraform validate/fmt -check | `todo` | 待修复 |
+| 886 | deploy/terraform/modules/rds/main.tf security_group egress 含 port 443 方向写反（应 ingress 5432） | `todo` | 待修复 |
+| 887 | deploy/terraform/main.tf backend "s3" {} 块为空，CI 失配即写入默认 local | `todo` | 待修复 |
+| 888 | deploy/terraform/main.tf AWS provider version 用 ~> 5.0 范围而非锁定 | `todo` | 待修复 |
+| 889 | deploy/terraform/main.tf OIDC role trust policy 仅信任单 thumbprint | `todo` | 待修复 |
+| 890 | deploy/terraform/modules/eks/main.tf node_group 缺 taints | `todo` | 待修复 |
+| 891 | deploy/terraform/modules/eks/main.tf 控制面日志类型未启 audit/authenticator | `todo` | 待修复 |
+| 892 | deploy/terraform/modules/rds/main.tf storage_encrypted 默认 false 未显式置 true | `todo` | 待修复 |
+| 893 | deploy/terraform/modules/rds/main.tf backup_retention_period 未设/为 0 | `todo` | 待修复 |
+| 894 | deploy/terraform/modules/rds/main.tf deletion_protection 默认 false | `todo` | 待修复 |
+| 895 | deploy/terraform/environments/dev.tfvars 与 prod.tfvars 差异未在 README 说明 | `todo` | 待修复 |
+| 896 | deploy/terraform/environments/staging.tfvars 启用 multi-AZ 但 backup_window 与 maintenance_window 重叠 | `todo` | 待修复 |
+
+## deploy/chaos
+
+| 编号 | 问题 | 状态 | 问题根因 |
+| --- | --- | --- | --- |
+| 897 | deploy/chaos/postgres-disconnect.yaml:14 selector app.kubernetes.io/component:postgres 但 helm chart 从不标该 label，混沌不发生 | `todo` | 待修复 |
+| 898 | deploy/chaos/catalog.json:11-29 fallbackProfileId 引用未定义 profile（network-delay-fallback 等） | `todo` | 待修复 |
+| 899 | deploy/chaos/catalog.json profile 列表与单实验文件目录名漂移 | `todo` | 待修复 |
+| 900 | deploy/chaos/network-delay.yaml latency:100ms 硬编码 | `todo` | 待修复 |
+| 901 | deploy/chaos/approval-policy.yaml 与 helm CRD 同名资源未声明 owner | `todo` | 待修复 |
+| 902 | deploy/chaos/pod-kill.yaml 选择器同时命中 worker 和 api，无 component label 隔离 | `todo` | 待修复 |
+| 903 | deploy/chaos/redis-disconnect.yaml 缺 duration 字段，实验默认无限期 | `todo` | 待修复 |
+
+## Dockerfile & docker-compose
+
+| 编号 | 问题 | 状态 | 问题根因 |
+| --- | --- | --- | --- |
+| 904 | Dockerfile 未 COPY ui 与 package-lock.json，build 失败/缺校验 | `todo` | 待修复 |
+| 905 | docker-compose.yml POSTGRES_PASSWORD 留空导致初次启动失败 | `todo` | 待修复 |
+| 906 | Dockerfile:5 不复制 tsconfig.scripts.json/tsconfig.build-test.json；镜像内 npm run typecheck 失败 | `todo` | 待修复 |
+| 907 | Dockerfile WORKDIR /app 由 root 创建未 chown，read_only:true 下非 root 用户只能写 /tmp | `todo` | 待修复 |
+| 908 | docker-compose.yml:18-21 API 容器同时设 AA_PG_DSN 与默认 AA_STORAGE_DRIVER=sqlite，profile 自相矛盾 | `todo` | 待修复 |
+| 909 | .dockerignore 无章节注释/header 描述意图 | `todo` | 待修复 |
+| 910 | docker-compose.yml:13 target:runtime 引用 Dockerfile stage，若 stage 未声明则 build 失败 | `todo` | 待修复 |
+| 911 | Dockerfile:1 基础镜像 node:22-bookworm-slim 无 digest pin | `todo` | 待修复 |
+| 912 | Dockerfile 缺 tini/dumb-init 作 PID 1，SIGTERM 不传播 | `todo` | 待修复 |
+| 913 | Dockerfile 缺 OCI LABEL org.opencontainers.image.*，镜像追溯断链 | `todo` | 待修复 |
+| 914 | Dockerfile runtime stage COPY --from=builder /app /app 一次性复制全部 layer，破坏分层缓存 | `todo` | 待修复 |
+| 915 | Dockerfile 未 USER node/非 root，违反 hardening | `todo` | 待修复 |
+| 916 | Dockerfile 未声明 HEALTHCHECK | `todo` | 待修复 |
+| 917 | Dockerfile npm ci 后未 npm cache clean --force，镜像携带 npm cache | `todo` | 待修复 |
+| 918 | docker-compose.yml prometheus 服务无 healthcheck | `todo` | 待修复 |
+| 919 | docker-compose.yml 默认 tag 不带 sha，prod compose 不可复现 | `todo` | 待修复 |
+| 920 | docker-compose.yml postgres/redis 无 restart: unless-stopped | `todo` | 待修复 |
+| 921 | docker-compose.yml 未声明 read_only/cap_drop ALL | `todo` | 待修复 |
+| 922 | docker-compose.yml postgres volume 未指定 driver_opts/绑定挂载 | `todo` | 待修复 |
+| 923 | docker-compose.yml 未声明 networks 隔离 | `todo` | 待修复 |
+| 924 | docker-compose.yml depends_on: 未带 condition: service_healthy | `todo` | 待修复 |
+| 925 | docker-compose.override.yml 与 base 同名服务字段合并语义未文档化 | `todo` | 待修复 |
+| 926 | CONTRIBUTING.md 声明 Node 20+，但 Dockerfile/CI 用 Node 22，engines.node 未在 package.json 锁定 | `todo` | 待修复 |
+
+## deploy other
+
+| 编号 | 问题 | 状态 | 问题根因 |
+| --- | --- | --- | --- |
+| 927 | eslint.config.js 把 deploy/**/*.mjs 加入 lint 但全树无 .mjs | `todo` | 待修复 |
+| 928 | deploy/kubernetes/manifests/automatic-agent-smoke.yaml 缺 resources/securityContext/probes/serviceAccountName | `todo` | 待修复 |
+
+## .github/workflows (CI)
+
+| 编号 | 问题 | 状态 | 问题根因 |
+| --- | --- | --- | --- |
+| 929 | .github/workflows/ci.yml:4 workflow_call: 无 inputs/secrets，调用方无法传参 | `todo` | 待修复 |
+| 930 | .github/workflows/deploy-environment.yml:130-134 首次部署时 service 不存在，blue/green slot 选择落入默认 green，幂等性丧失 | `todo` | 待修复 |
+| 931 | .github/workflows/dr-validation.yml:60-66 chmod +x 依赖运行时，Windows 检出不可复现 | `todo` | 待修复 |
+| 932 | .github/workflows/dr-validation.yml:54-60 DR 测试用单条假事件做基线，下游 RTO/RPO 检查总通过 | `todo` | 待修复 |
+| 933 | .github/workflows/publish-image.yml:69 docker login 经 shell pipe 注入 token，应改 docker/login-action@v3 | `todo` | 待修复 |
+| 934 | .github/workflows/secret-provider-integration.yml 仅 workflow_dispatch，无定时调度 | `todo` | 待修复 |
+| 935 | .github/workflows/ci.yml:148 node -e require(.json) 在 ESM 仓库内仅靠 .json 兜底；process.exit(1) 任何 vulnerability 都 hard fail | `todo` | 待修复 |
+| 936 | .github/workflows/ci.yml:177 trivy exit-code:1 severity:CRITICAL,HIGH 阻断 workflow 但未上传 SARIF | `todo` | 待修复 |
+| 937 | .github/workflows/ci.yml:55-71 test:raw/coverage:gate 缺 AA_RUNNING_TESTS=1；upload-artifact 无 if-no-files-found/compression-level | `todo` | 待修复 |
+| 938 | .github/workflows/deploy-environment.yml:159-163 blue-green slot 用 kubectl get svc jsonpath 取 selector，但默认 selectorLabels 不含 instance=automatic-agent-{slot}，SLOT 反转 | `todo` | 待修复 |
+| 939 | .github/workflows/deploy-environment.yml:213-230 blue_green promote 不删除旧 slot release，集群积累死副本 | `todo` | 待修复 |
+| 940 | .github/workflows/deploy-environment.yml:262-318 rollback if: deploy.result=='failure'，preflight/validate 失败即使 deploy 已部分执行也不回滚 | `todo` | 待修复 |
+| 941 | .github/workflows/publish-image.yml:104-108 GHA cache 无 mode=min 修剪策略，无限增长 | `todo` | 待修复 |
+| 942 | .github/workflows/ui-quality.yml:50-58 后台 vite preview 用 & 启动后无 trap/kill，遗留孤儿进程占 4173 | `todo` | 待修复 |
+| 943 | .github/workflows/ui-quality.yml:65 npx playwright install 无版本 pin，主版漂移破坏 visual snapshot | `todo` | 待修复 |
+| 944 | .github/workflows/ui-quality.yml:25-26 working-directory:ui 但 upload path 用绝对 /tmp/ui-preview.log，超出 GITHUB_WORKSPACE 被忽略 | `todo` | 待修复 |
+| 945 | .github/workflows/dr-validation.yml:73-75 在 runner workspace 创建 .dr-reports/.backups/.dr-logs 但不在 .gitignore，本地运行污染仓库 | `todo` | 待修复 |
+| 946 | .github/workflows/ci.yml 全部 actions 仅按 tag 引用未做 SHA pin | `todo` | 待修复 |
+| 947 | .github/workflows/deploy-environment.yml SHA pin 缺失，permissions: 未在 job 级最小化 | `todo` | 待修复 |
+| 948 | .github/workflows/publish-image.yml docker/login-action tag 引用 + 未启用 OIDC keyless | `todo` | 待修复 |
+| 949 | .github/workflows/secret-provider-integration.yml 缺 concurrency 组 | `todo` | 待修复 |
+| 950 | .github/workflows/dr-validation.yml 无 timeout-minutes，运行时挂死永不熔断 | `todo` | 待修复 |
+| 951 | .github/workflows/ui-quality.yml 上传 artifact 无 retention-days | `todo` | 待修复 |
+
+## docs_zh/contracts
+
+| 编号 | 问题 | 状态 | 问题根因 |
+| --- | --- | --- | --- |
+| 952 | docs_zh/contracts/{hitl_contract,hitl_experience_and_explainability_contract,decision-hitl-contract,approval_and_hitl_contract}.md 4 份重叠 HITL 契约，无规范化指针 | `done` | contracts README 之前缺少 companion/alias map；现已明确 HITL 族各自的 canonical 与 companion 角色。 |
+| 953 | docs_zh/contracts/ 共 151 文件，README 仅索引 13 项 | `done` | 该条来自旧索引快照；当前 README 已按分组维护完整索引，不再只有 13 项。 |
+| 954 | docs_zh/operations/release-versioning.md 与 docs_zh/contracts/release_rollout_and_rollback_contract.md 无相互链接 | `todo` | 待修复 |
+| 955 | docs_zh/contracts/error_code_registry.md 与 error_code_registry_contract.md 双文件共存，仅后者被 README 索引 | `done` | 双文件缺少 SOT 说明；README 和 `error_code_registry.md` 现已明确 contract authority 与 companion 角色。 |
+| 956 | docs_zh/contracts/recovery_contract.md 不在 README 索引，旁支 idempotency_and_recovery_matrix_contract.md 与 tool_metadata_and_recovery_contract.md 才被索引 | `done` | recovery family 之前没有 scope map；README 和 `recovery_contract.md` 现已说明 recovery cadence/report 与 recovery matrix 的边界。 |
+| 957 | docs_zh/contracts/event-envelope-contract.md 与 event_bus_contract.md 一新一旧并存，旧文档不指向后继 | `done` | event bus 与 envelope 之前缺少 companion 说明；README 和 `event_bus_contract.md` 现已明确 envelope authority 在 `event-envelope-contract.md`。 |
+| 958 | docs_zh/contracts/{tenant_isolation,tenant_isolation_and_shared_worker_safety}_contract.md 命名重叠仅长名被索引 | `done` | tenant isolation 短名文档此前没有说明其只是最小对象页；README 和 `tenant_isolation_contract.md` 已补 scope note。 |
+| 959 | docs_zh/contracts/{storage_schema,production_storage_and_queue,runtime_repository_and_migration,artifact_store,artifact_unified_model}_contract.md 5 份存储相关契约，不知谁是 tasks 表权威 | `done` | 存储族长期缺少 authority map；README、`storage_schema_contract.md`、`production_storage_and_queue_contract.md` 已补谁管表名/列、谁管拓扑。 |
+| 960 | docs_zh/contracts/ 9 个 v4.3 freeze 用 kebab-case，其余 142 个 snake_case，无迁移策略 | `todo` | 待修复 |
+| 961 | docs_zh/contracts/ 多数文件无 version: frontmatter | `todo` | 待修复 |
+| 962 | docs_zh/contracts/README.md 索引未列 security_baseline/slo_alerting/smtp/ring_model/risk/federation/distributed_consensus/data_lifecycle/evidence_chain/prompt_management/video_multimodal/multi_region_replication/knowledge_lifecycle/knowledge_spi 等 14+ 实存契约 | `done` | 该条同样基于旧 README 快照；当前 contracts README 已纳入这些契约。 |
+| 963 | docs_zh/contracts/runtime_state_machine.md 与 state_transition_matrix.md 状态枚举命名漂移 | `todo` | 待修复 |
+| 964 | docs_zh/contracts/harness_run_lifecycle.md 与 harness-run.md 双契约文件并存，字段定义分歧 | `todo` | 待修复 |
+| 965 | docs_zh/contracts/lifecycle_and_termination.md terminalReason 取值与 error_code_registry_contract.md 未交叉链接 | `done` | 生命周期 contract 之前没把终止原因与稳定错误码挂通；现已显式链接 error code registry。 |
+| 966 | docs_zh/contracts/event_bus.md/typed_event_bus.md/event-envelope.md 三处 envelope schema 字段不齐 | `todo` | 待修复 |
+| 967 | docs_zh/contracts/error_code_registry.md 与 error_code_registry_contract.md 同主题双文，编号空间未声明 SOT | `done` | 同 955，错误码 family 现在已声明 SOT。 |
+| 968 | docs_zh/contracts/storage_schema.md 与 runtime_repository_and_migration.md 表名/索引声明漂移 | `todo` | 待修复 |
+| 969 | docs_zh/contracts/decision-hitl.md 与 hitl.md 状态机字段命名不一致 | `done` | README 已把 HITL family 的 canonical/complementary 关系显式化，避免再把 `hitl` 短文档当成第二套状态机 SOT。 |
+| 970 | docs_zh/contracts/recovery.md 与 idempotency_and_recovery_matrix.md 字段命名漂移 | `done` | recovery family 缺少 scope note 导致被误读为并列 SOT；README 与 `recovery_contract.md` 已收口边界。 |
+| 971 | docs_zh/contracts/api_surface.md 与 sdk_surface.md 跨契约链接断 | `done` | API/SDK contract 过去没有互相指路；现已双向补链并指到 API versioning 说明。 |
+| 972 | docs_zh/contracts/version-lock.md 与 architecture_governance_and_versioning.md 双文未声明 SOT | `done` | README companion map 现已明确 `version-lock-contract.md` 是 canonical object，架构治理文档只负责跨架构边界。 |
+| 973 | docs_zh/contracts/connector_framework.md 未声明 lifecycle phase 与 harness_run_lifecycle 对齐方式 | `done` | connector lifecycle 与 harness lifecycle 长期缺少边界说明；`connector_framework_contract.md` 已补 lifecycle note。 |
+| 974 | docs_zh/contracts/gateway_message.md schema messageId 必填，与 production_storage_and_queue.md 默认 null 矛盾 | `todo` | 待修复 |
+| 975 | docs_zh/contracts/README.md 表格列含 Owner 但所有行留空 | `done` | 该条对应的是旧版 README 结构；当前 README 已无空置 Owner 列。 |
+
+## docs_zh/adr
+
+| 编号 | 问题 | 状态 | 问题根因 |
+| --- | --- | --- | --- |
+| 976 | docs_zh/adr/003-memory-six-layers.md 与 003-memory-seven-layers.md 共用 ADR-003 前缀，工具排序歧义 | `done` | ADR 索引已把两份历史文件区分为 `003A/003B`，并把 `seven-layers` 保留为 alias/redirect 页。 |
+| 977 | docs_zh/adr/README.md:76-77 ADR-071 在 ADR-066 与 067 之间，序号乱序 | `done` | ADR README 之前存在手工排序错误；现已按编号顺序重排。 |
+| 978 | docs_zh/adr/ 缺失 ADR-074/076/077，索引也无 reserved/withdrawn 标注 | `done` | README 已标明 `045/074/076/077` 为 reserved/withdrawn 号段，不再让缺号看起来像漏文件。 |
+| 979 | docs_zh/adr/README.md:79,81,84 ADR-069/072/078 标 "Partially Superseded" 但无具体后继 ADR 编号 | `done` | README 以前没有写具体后继；现已补充 `069/072/078` 的主要后继 ADR 指针。 |
+| 980 | docs_zh/adr/088-...md:3-7 vs 118-...md:3-4 两套状态格式（H2 ## 状态 与 bullet - 状态:）共存 | `todo` | 待修复 |
+| 981 | docs_zh/adr/070-conclusion.md:3 "结论文档"被标 Superseded by ADR-109..113，应为 Withdrawn/Index | `done` | ADR-070 是总结索引页而非被新设计直接替代的技术决策；状态已改为 `Withdrawn / Index`。 |
+| 982 | docs_zh/adr/README.md 状态格式两套（Accepted vs 已接受）不可机器解析 | `done` | 旧索引混用中英文状态；当前 README 状态列已统一为英文枚举。 |
+| 983 | docs_zh/adr/ 缺 ADR-045 占位文件（仅 README 引用） | `done` | 之前只有 README 提到保留号段，没有占位页；现已补 `045-reserved-slot.md`。 |
+| 984 | docs_zh/adr/README.md 接受日期非单调 | `todo` | 待修复 |
+| 985 | docs_zh/adr/README.md Superseded by 链 ADR-### 引用反向指向不存在文件 | `todo` | 待修复 |
+| 986 | docs_zh/adr/ 多 ADR 缺 Status: Superseded 标识却被新 ADR 标记 supersede | `todo` | 待修复 |
+
+## docs_zh/operations & runbooks
+
+| 编号 | 问题 | 状态 | 问题根因 |
+| --- | --- | --- | --- |
+| 987 | docs_zh/operations/runbooks/runbook-plugin-failure.md plugin id 列表与 builtin-plugin-registry 漂移 | `done` | plugin failure runbook 原先缺少当前 built-in plugin ID 清单；现已回写 canonical IDs 和对应验证入口。 |
+| 988 | docs_zh/operations/operations-tracker.md:3-5 自称已迁移并停止维护，仍位于 AGENTS.md/CLAUDE.md 推荐路径 | `done` | 该页已收敛为轻量索引入口而不是废弃死页；旧 review 没有吸收 2026-05-27 的索引化修复。 |
+| 989 | docs_zh/operations/runbooks/{runbook-database-issues,incident-response-playbook}.md 等 4/5 文件全英文且无 docs_en/ 镜像 | `todo` | 待修复 |
+| 990 | docs_zh/operations/runbooks/runbook-high-error-rate.md:13 引 docker compose ps，而生产用 K8s/Helm | `done` | runbook 之前沿用了本地 compose 语境；现已改成 K8s/Helm 优先，并把 compose 限定为本地栈。 |
+| 991 | docs_zh/operations/runbooks/incident-response-playbook.md 定义 P1/P2，但 prometheus rules 仅 severity: critical\|warning，映射缺失 | `done` | 告警 severity 与 incident severity 过去没有映射表；playbook 现已补充 `page/critical/warning -> P1/P2` 口径。 |
+| 992 | docs_zh/operations/runbooks/runbook-memory-pressure.md:7 阈值"RSS>512MiB"与 alert 永久触发联动，runbook 失效 | `todo` | 待修复 |
+| 993 | docs_zh/operations/runbooks/runbook-database-issues.md 默认 AA_DB_PATH 与 helm values 不一致 | `done` | database runbook 过去假定单一路径；现已按 local/dev 与 container/Helm 口径区分 `AA_DB_PATH`。 |
+| 994 | docs_zh/operations/runbooks/runbook-high-error-rate.md metric error_rate_5m 与 prometheus rule 实际名 aa_error_rate:rate5m 不一致 | `done` | runbook 指标名长期滞后；现已改为实际规则使用的 `aa_error_rate:rate5m`。 |
+| 995 | docs_zh/operations/capacity-planning.md 容量基线与 helm values-prod.yaml resources 不匹配 | `todo` | 待修复 |
+| 996 | docs_zh/operations/cross-region-validation.md 引用 dr-drill.sh --region 但脚本接受 -r | `todo` | 待修复 |
+| 997 | docs_zh/operations/disaster-recovery-runbook.md RTO/RPO 数字与 ADR 中目标不同步 | `todo` | 待修复 |
+| 998 | docs_zh/operations/hot-upgrade-validation.md 引用 verify 脚本路径已迁移 | `todo` | 待修复 |
+
+## docs_zh/reference
+
+| 编号 | 问题 | 状态 | 问题根因 |
+| --- | --- | --- | --- |
+| 999 | docs_zh/reference/api-versioning.md 与 api-client.md 版本协商策略漂移（header 名大小写不一） | `done` | API 文档和 client 文档之前没有统一写出 `Accept-Version` / `x-api-version` 与 SDK 握手边界；两份 reference 已对齐到同一口径。 |
+| 1000 | docs_zh/reference/environment-configuration.md 环境变量索引未含 AA_DB_PATH/AA_LOGIN_TOKEN/AA_DLQ_PURGE_CONFIRM 等关键项 | `done` | 环境变量索引长期漏掉运行时关键变量；现已补齐并接入对应审计。 |
+| 1001 | docs_zh/reference/docs-sync.md zh→en 同步流程图未列 docs_en/contracts/ | `done` | docs sync 规则原先没有把 contracts 目录写成显式同步面；现已加入 `docs_en/contracts/` 和最小检查清单。 |
 ## docs_en
 
 | 编号 | 问题 | 状态 | 问题根因 |
 | --- | --- | --- | --- |
-| 1002 | docs_en/ 多出 5 处无 zh 对应文件，含未翻译/路径误粘 | `todo` | 待修复 |
-| 1003 | docs_zh/migrations/ 与 docs_zh/migration/ 单复数双目录共存；docs_en/migrations/ 同问题 | `todo` | 待修复 |
-| 1004 | docs_en/ 103 文件包含 docs_zh/ 链接，跨语种链路泄漏 | `todo` | 待修复 |
-| 1005 | translate_docs.py:21-100 硬编码 117 路径列表，docs_en/research/archive/module-inventory.md 等多目标已不存在 | `todo` | 待修复 |
-| 1006 | docs_zh/migrations/e2e-workflow-state-migration.md、docs_en/migrations/e2e-workflow-state-migration.md 282 行重复正文，未做 4 行重定向 | `todo` | 待修复 |
-| 1007 | docs_zh/migrations/README.md、docs_en/migrations/README.md 别名 README 与原目录同时存在，两条路径都可落地 | `todo` | 待修复 |
-| 1008 | docs_en/architecture/00-platform-architecture.md:3-10 跨链回 docs_zh/...，英文读者被推回中文页 | `todo` | 待修复 |
-| 1009 | docs_en/contracts/ 中文契约 14 条未对应英文版本 | `todo` | 待修复 |
+| 1002 | docs_en/ 多出 5 处无 zh 对应文件，含未翻译/路径误粘 | `done` | 单复数迁移目录长期并存，别名页未清理，导致 docs_en 目录漂移和配对检查失真。 |
+| 1003 | docs_zh/migrations/ 与 docs_zh/migration/ 单复数双目录共存；docs_en/migrations/ 同问题 | `done` | 历史迁移重命名只新增 canonical 目录，没有同步删除旧别名目录。 |
+| 1004 | docs_en/ 103 文件包含 docs_zh/ 链接，跨语种链路泄漏 | `done` | 英文页长期从中文模板复制演进，活动入口页没有做跨语种链接治理。 |
+| 1005 | translate_docs.py:21-100 硬编码 117 路径列表，docs_en/research/archive/module-inventory.md 等多目标已不存在 | `done` | 翻译维护脚本依赖手工路径白名单，文档迁移后没有自动发现机制。 |
+| 1006 | docs_zh/migrations/e2e-workflow-state-migration.md、docs_en/migrations/e2e-workflow-state-migration.md 282 行重复正文，未做 4 行重定向 | `done` | 旧别名页被当成正式内容继续维护，未在重命名时降级为指针或删除。 |
+| 1007 | docs_zh/migrations/README.md、docs_en/migrations/README.md 别名 README 与原目录同时存在，两条路径都可落地 | `done` | 目录级别别名策略未定义，导致 README 在 canonical/alias 两处同时落地。 |
+| 1008 | docs_en/architecture/00-platform-architecture.md:3-10 跨链回 docs_zh/...，英文读者被推回中文页 | `done` | 英文架构入口没有维护独立 sibling 导航，直接引用了中文权威页。 |
+| 1009 | docs_en/contracts/ 中文契约 14 条未对应英文版本 | `done` | 审查快照过期；当前 contracts 英文镜像已补齐，问题来自旧清单未重新基线化。 |
 
 ## docs_zh other
 
 | 编号 | 问题 | 状态 | 问题根因 |
 | --- | --- | --- | --- |
-| 1010 | docs_zh/reviews/ 含脚本 extract-issues.mjs 与无 en 对应文件 | `todo` | 待修复 |
-| 1011 | docs_zh/CHANGELOG.md 声称基线 0.1.0 但根 CHANGELOG 仅 [Unreleased] | `todo` | 待修复 |
-| 1012 | docs_zh/buglist.md 自 2026-05-02 长期未刷新 | `todo` | 待修复 |
-| 1013 | docs_zh/guides/quickstart.md:11 推荐阅读 ADR-003（已 superseded by ADR-020） | `todo` | 待修复 |
-| 1014 | docs_zh/architecture/01-code-structure.md 仍含 phase 1[ab] 旧标签 | `todo` | 待修复 |
-| 1015 | docs_zh/CHANGELOG.md 与根 CHANGELOG.md 双 changelog，无合并契约 | `todo` | 待修复 |
-| 1016 | docs_zh/governance/source_of_truth.md 是 AGENTS.md 应指向的"权威指针"，AGENTS.md 从不引用 | `todo` | 待修复 |
-| 1017 | docs_zh/governance/naming_and_directory_conventions.md 未被 AGENTS.md/CLAUDE.md 链接，命名规则在 agent 上下文层未生效 | `todo` | 待修复 |
-| 1018 | docs_zh/buglist.md 无自动重新生成脚本，永远漂移 | `todo` | 待修复 |
-| 1019 | docs_zh/quality/buglist.md 与 docs_zh/buglist.md 双 buglist 无规范指针 | `todo` | 待修复 |
+| 1010 | docs_zh/reviews/ 含脚本 extract-issues.mjs 与无 en 对应文件 | `done` | 审查快照过期；脚本已提前迁出 reviews 面向读者的文档目录，旧问题未从清单回收。 |
+| 1011 | docs_zh/CHANGELOG.md 声称基线 0.1.0 但根 CHANGELOG 仅 [Unreleased] | `done` | 中文 changelog 被当成第二事实源维护，没有约束其只能作为指针页。 |
+| 1012 | docs_zh/buglist.md 自 2026-05-02 长期未刷新 | `done` | buglist 双入口缺少 canonical 指向，镜像页被误当成独立内容持续漂移。 |
+| 1013 | docs_zh/guides/quickstart.md:11 推荐阅读 ADR-003（已 superseded by ADR-020） | `done` | 快速开始的阅读顺序没有随 ADR supersede 关系一起更新。 |
+| 1014 | docs_zh/architecture/01-code-structure.md 仍含 phase 1[ab] 旧标签 | `done` | 架构示例树沿用了阶段制历史样例，目录改名后没有同步替换。 |
+| 1015 | docs_zh/CHANGELOG.md 与根 CHANGELOG.md 双 changelog，无合并契约 | `done` | 顶层与中文目录同时承载变更记录，但没有定义唯一权威来源。 |
+| 1016 | docs_zh/governance/source_of_truth.md 是 AGENTS.md 应指向的"权威指针"，AGENTS.md 从不引用 | `done` | agent 上下文文档缺少对治理入口的反向链接，使用者无法获知权威页。 |
+| 1017 | docs_zh/governance/naming_and_directory_conventions.md 未被 AGENTS.md/CLAUDE.md 链接，命名规则在 agent 上下文层未生效 | `done` | 命名规范存在但没有接入 agent 启动上下文，规则无法前置生效。 |
+| 1018 | docs_zh/buglist.md 无自动重新生成脚本，永远漂移 | `done` | 根因不是再造一份生成脚本，而是错误保留了第二入口；现改为稳定指针消除漂移面。 |
+| 1019 | docs_zh/quality/buglist.md 与 docs_zh/buglist.md 双 buglist 无规范指针 | `done` | 双 buglist 没有 canonical 约定，读者和维护脚本都无法判断哪个为真。 |
 
 ## root governance (README, AGENTS, CONTRIBUTING, SECURITY, LICENSE, CHANGELOG)
 
 | 编号 | 问题 | 状态 | 问题根因 |
 | --- | --- | --- | --- |
-| 1020 | src/sdk/harness-sdk/ 仅 1 文件 600+ 行，与 AGENTS.md "独立 SDK" 描述不符 | `todo` | 待修复 |
-| 1021 | drift-detection/evolution-integration-service.ts:280-326 decision.reason/severity 丢弃；includes("security")/("input") 子串误判分类 | `todo` | 待修复 |
-| 1022 | AGENTS/CLAUDE 未提及 src/runtime/agent-runtime/，compat surface 边界不全 | `todo` | 待修复 |
-| 1023 | README.md:65 列 src/testing/，但 AGENTS.md 未授权该目录 | `todo` | 待修复 |
-| 1024 | pack-security-service.ts 默认 vulnerabilityApiUrl 硬编码 osv.dev | `todo` | 待修复 |
-| 1025 | Node 版本声明四套并存（README/package.json/CONTRIBUTING/dependency-upgrade-plan/CI matrix） | `todo` | 待修复 |
-| 1026 | CONTRIBUTING.md 列出 npm run lint，AGENTS.md 称无 formatter，口径冲突 | `todo` | 待修复 |
-| 1027 | reviews/README.md 看板未提及 platforme-full-review-b.md，状态不明 | `todo` | 待修复 |
-| 1028 | adr/README.md 中 ADR-001/069/072 状态与正文 frontmatter 不一致 | `todo` | 待修复 |
-| 1029 | LICENSE:3 版权人写项目名而非法人实体，MIT 法律强度弱 | `todo` | 待修复 |
-| 1030 | README.md:101 写 MIT 但无 LICENSE 链接、THIRD_PARTY_NOTICES、子依赖致谢 | `todo` | 待修复 |
-| 1031 | README.md:30-39 推荐 npm run test:pg-integration/test:secret-providers，二者已知 broken | `todo` | 待修复 |
-| 1032 | MEMORY.md 无编辑契约，AGENTS.md/CLAUDE.md 都不引用 | `todo` | 待修复 |
-| 1033 | CONTRIBUTING.md:18 cd automatic_agent_platform（snake_case）与实际目录 automatic-agent-platform-main 不符 | `todo` | 待修复 |
-| 1034 | CONTRIBUTING.md:39 AA_DB_PATH=data/sqlite/phase1a-demo.db 与 backup-sqlite.sh:21、helm automatic-agent.db 三处默认值各不同 | `todo` | 待修复 |
-| 1035 | CONTRIBUTING.md:91-93 强制 AppError.wrap 与 {domain}.{type}:{ctx} 错误码格式，AGENTS.md 未提及，代码库多种格式 | `todo` | 待修复 |
-| 1036 | AGENTS.md/CLAUDE.md/MEMORY.md/CONTRIBUTING.md/README.md 5 份顶层指南文档无总索引，commit 规范等内容重复 | `todo` | 待修复 |
-| 1037 | translate_docs.py:1-9 自称 legacy 工具，README.md:54 仍宣传为活动工具 | `todo` | 待修复 |
-| 1038 | helpers/fs.ts 导出 createSymlink 无 realpath 校验，AGENTS.md 安全立场下为 footgun | `todo` | 待修复 |
-| 1039 | package-lock.json 无 npm audit signatures 证据文件，与 supply-chain-security 文档矛盾 | `todo` | 待修复 |
-| 1040 | LICENSE 无对应 npm package.json.license:"MIT" 字段 | `todo` | 待修复 |
-| 1041 | README.md "seven-layer architecture" 表述与 AGENTS.md/代码 "five-plane" 矛盾 | `todo` | 待修复 |
-| 1042 | README.md 引用 npm run doctor 等命令未在 CONTRIBUTING 章节交叉链接 | `todo` | 待修复 |
-| 1043 | CONTRIBUTING.md 默认 AA_DB_PATH=data/sqlite/phase1a-demo.db 与 compose/helm 默认 data/automatic-agent.db 漂移 | `todo` | 待修复 |
-| 1044 | CHANGELOG.md 最近版本 entry 未对应 git tag | `todo` | 待修复 |
-| 1045 | 仓库根缺 SECURITY.md（GitHub 安全披露通道未声明） | `todo` | 待修复 |
-| 1046 | LICENSE 文件 SPDX 标识未在 package.json license 字段声明（或与之不一致） | `todo` | 待修复 |
+| 1020 | src/sdk/harness-sdk/ 仅 1 文件 600+ 行，与 AGENTS.md "独立 SDK" 描述不符 | `done` | harness SDK 长期把支持逻辑堆在单一 barrel 中，没有按 runtime/support 职责拆分。 |
+| 1021 | drift-detection/evolution-integration-service.ts:280-326 decision.reason/severity 丢弃；includes("security")/("input") 子串误判分类 | `done` | 早期集成实现为了快速打通只做了子串启发式分类，也没有把 promotion gate 决策回写到 proposal 审计信息。 |
+| 1022 | AGENTS/CLAUDE 未提及 src/runtime/agent-runtime/，compat surface 边界不全 | `done` | 顶层 agent 指南没有跟随 runtime 目录演化同步更新。 |
+| 1023 | README.md:65 列 src/testing/，但 AGENTS.md 未授权该目录 | `done` | README 与 agent 约束文档由不同入口维护，目录范围说明发生漂移。 |
+| 1024 | pack-security-service.ts 默认 vulnerabilityApiUrl 硬编码 osv.dev | `done` | 审查表述失真；当前实现已支持配置注入和安全 URL 解析，问题来自旧代码快照。 |
+| 1025 | Node 版本声明四套并存（README/package.json/CONTRIBUTING/dependency-upgrade-plan/CI matrix） | `done` | 运行时版本信息缺少单点锚定，文档和工具链分别独立演进。 |
+| 1026 | CONTRIBUTING.md 列出 npm run lint，AGENTS.md 称无 formatter，口径冲突 | `done` | lint 与 formatter 概念未区分清楚，导致贡献指南与仓库说明读起来像同一约束。 |
+| 1027 | reviews/README.md 看板未提及 platforme-full-review-b.md，状态不明 | `done` | review 看板没有持续纳入新增批次文件，索引页失去完整性。 |
+| 1028 | adr/README.md 中 ADR-001/069/072 状态与正文 frontmatter 不一致 | `done` | 审查快照过期；ADR README 与正文状态已对齐，旧缺陷未从复核清单移除。 |
+| 1029 | LICENSE:3 版权人写项目名而非法人实体，MIT 法律强度弱 | `done` | LICENSE 使用了仓库名占位文本，没有切换到 contributors 持有形式。 |
+| 1030 | README.md:101 写 MIT 但无 LICENSE 链接、THIRD_PARTY_NOTICES、子依赖致谢 | `done` | 根目录治理文档不完整，许可证与第三方通知入口没有成套暴露。 |
+| 1031 | README.md:30-39 推荐 npm run test:pg-integration/test:secret-providers，二者已知 broken | `done` | README 命令清单缺少活性校验，失效脚本继续停留在主入口。 |
+| 1032 | MEMORY.md 无编辑契约，AGENTS.md/CLAUDE.md 都不引用 | `done` | MEMORY 被当成经验笔记维护，没有明确其非权威属性和编辑边界。 |
+| 1033 | CONTRIBUTING.md:18 cd automatic_agent_platform（snake_case）与实际目录 automatic-agent-platform-main 不符 | `done` | 审查快照过期；当前仓库实际路径已是 automatic_agent_platform，旧目录名误差来自历史工作区。 |
+| 1034 | CONTRIBUTING.md:39 AA_DB_PATH=data/sqlite/phase1a-demo.db 与 backup-sqlite.sh:21、helm automatic-agent.db 三处默认值各不同 | `done` | 本地开发、备份脚本、部署环境使用场景不同，却没有在文档中显式区分范围。 |
+| 1035 | CONTRIBUTING.md:91-93 强制 AppError.wrap 与 {domain}.{type}:{ctx} 错误码格式，AGENTS.md 未提及，代码库多种格式 | `done` | 贡献文档曾把偏好写成硬规范，但仓库并未建立统一错误码契约。 |
+| 1036 | AGENTS.md/CLAUDE.md/MEMORY.md/CONTRIBUTING.md/README.md 5 份顶层指南文档无总索引，commit 规范等内容重复 | `done` | 顶层指南是逐步追加形成的，缺少总索引和单一导航入口。 |
+| 1037 | translate_docs.py:1-9 自称 legacy 工具，README.md:54 仍宣传为活动工具 | `done` | README 没有标注该脚本的维护性质，工具生命周期说明缺失。 |
+| 1038 | helpers/fs.ts 导出 createSymlink 无 realpath 校验，AGENTS.md 安全立场下为 footgun | `done` | 创建符号链接时只校验表面路径，没有在落地前校验真实目标。 |
+| 1039 | package-lock.json 无 npm audit signatures 证据文件，与 supply-chain-security 文档矛盾 | `done` | 供应链文档把 lockfile 当成审计证据，混淆了依赖锁定与审计产物两类事实。 |
+| 1040 | LICENSE 无对应 npm package.json.license:"MIT" 字段 | `done` | 根许可证声明和 package manifest 未建立同步约束。 |
+| 1041 | README.md "seven-layer architecture" 表述与 AGENTS.md/代码 "five-plane" 矛盾 | `done` | README 保留了历史架构叙述，没有明确其与现行 five-plane runtime 的时间边界。 |
+| 1042 | README.md 引用 npm run doctor 等命令未在 CONTRIBUTING 章节交叉链接 | `done` | 命令说明分散在多个入口页，没有做互链。 |
+| 1043 | CONTRIBUTING.md 默认 AA_DB_PATH=data/sqlite/phase1a-demo.db 与 compose/helm 默认 data/automatic-agent.db 漂移 | `done` | 同 1034，环境默认值按用途分叉，但文档没有解释 local/runtime/deploy 差异。 |
+| 1044 | CHANGELOG.md 最近版本 entry 未对应 git tag | `done` | 发布记录与 Git tag 没有同步建立，历史版本仅停留在文档层。 |
+| 1045 | 仓库根缺 SECURITY.md（GitHub 安全披露通道未声明） | `done` | 安全披露流程存在于零散文档中，但缺少仓库根入口文件。 |
+| 1046 | LICENSE 文件 SPDX 标识未在 package.json license 字段声明（或与之不一致） | `done` | 许可证元数据同步缺失，仓库级声明与包级声明未绑定。 |
 
 ## root configs (package.json, tsconfig, eslint, .gitignore, .editorconfig, .npmrc, .nvmrc)
 
 | 编号 | 问题 | 状态 | 问题根因 |
 | --- | --- | --- | --- |
-| 1047 | package.json:170 aa:dev 直跑 node --import tsx src/sdk/cli/aa.ts，无 AA_RUNNING_TESTS 守卫；CI 测试场景下可能写真实 data/ SQLite | `todo` | 待修复 |
-| 1048 | src/index.ts 把深内部直接拉到顶层公共出口，绕过 package.json#exports | `todo` | 待修复 |
-| 1049 | package.json 硬编码 --test-concurrency=1，绕过 layered runner | `todo` | 待修复 |
-| 1050 | package.json:223-235 缩进异常会触发 format 抖动 | `todo` | 待修复 |
-| 1051 | tsconfig.build-test.json 死配置，无任何引用 | `todo` | 待修复 |
-| 1052 | tsconfig.json 多个 exclude 与 npm script 引用同一文件冲突 | `todo` | 待修复 |
-| 1053 | eslint.config.js 启用 type-aware 规则但未声明 parser/projectService | `todo` | 待修复 |
-| 1054 | package.json lint --ext 在 flat config 下被忽略，.tsx 未覆盖 | `todo` | 待修复 |
-| 1055 | stryker.config.mjs 排除 helper + tsconfig 含 ui references 致沙箱失败 | `todo` | 待修复 |
-| 1056 | eslint.config.js:33-37 测试 type-aware 规则未设 parserOptions.project 即静默 no-op | `todo` | 待修复 |
-| 1057 | package.json:243 format:check 无 .prettierignore，lock/dist/coverage/golden 全部进 prettier 校验 | `todo` | 待修复 |
-| 1058 | package.json:264 @types/xml-crypto:^1.4.6 与 xml-crypto:^6.1.2 不同主版，类型与运行时不匹配 | `todo` | 待修复 |
-| 1059 | package.json:248-250 OpenTelemetry 五个不同 0.x/2.x/1.x 通道并存，sdk-node 0.218 与 exporter 0.214 API 漂移 | `todo` | 待修复 |
-| 1060 | package.json:5 private:true 同时声明 files/prepack，发布意图不明 | `todo` | 待修复 |
-| 1061 | package.json:7-9 engines.node 无 engineStrict/.npmrc engine-strict，Node 20/24 安装静默成功 | `todo` | 待修复 |
+| 1047 | package.json:170 aa:dev 直跑 node --import tsx src/sdk/cli/aa.ts，无 AA_RUNNING_TESTS 守卫；CI 测试场景下可能写真实 data/ SQLite | `done` | dev CLI 入口默认假定人为交互运行，没有对测试环境做 fail-close 守卫。 |
+| 1048 | src/index.ts 把深内部直接拉到顶层公共出口，绕过 package.json#exports | `done` | 审查表述失真；当前深导出是受控公共面，且已有 public-entrypoint 审计脚本兜底。 |
+| 1049 | package.json 硬编码 --test-concurrency=1，绕过 layered runner | `done` | 审查快照过期；仓库已回到 layered runner 决定并发，旧硬编码不再存在。 |
+| 1050 | package.json:223-235 缩进异常会触发 format 抖动 | `done` | 审查项偏格式噪声；当前 package 结构稳定，不构成实际配置错误。 |
+| 1051 | tsconfig.build-test.json 死配置，无任何引用 | `done` | 审查快照过期；该配置当前被 coverage curated tsconfig 继承，不是孤儿文件。 |
+| 1052 | tsconfig.json 多个 exclude 与 npm script 引用同一文件冲突 | `done` | 这是 typecheck 范围与分层测试范围的职责拆分，被审查误判为冲突。 |
+| 1053 | eslint.config.js 启用 type-aware 规则但未声明 parser/projectService | `done` | 审查快照过期；当前 eslint flat config 已启用 projectService。 |
+| 1054 | package.json lint --ext 在 flat config 下被忽略，.tsx 未覆盖 | `done` | 审查快照过期；当前 lint 已简化为 `eslint .`，不存在 `--ext` 漏扫。 |
+| 1055 | stryker.config.mjs 排除 helper + tsconfig 含 ui references 致沙箱失败 | `done` | 审查快照过期；当前 mutation 配置已使用专门 tsconfig 并隔离 UI 引用。 |
+| 1056 | eslint.config.js:33-37 测试 type-aware 规则未设 parserOptions.project 即静默 no-op | `done` | 同 1053，测试规则已通过 projectService 生效，旧问题来自历史配置。 |
+| 1057 | package.json:243 format:check 无 .prettierignore，lock/dist/coverage/golden 全部进 prettier 校验 | `done` | 格式检查缺少忽略清单，导致生成产物与锁文件被误纳入校验。 |
+| 1058 | package.json:264 @types/xml-crypto:^1.4.6 与 xml-crypto:^6.1.2 不同主版，类型与运行时不匹配 | `done` | 第三方类型包已脱离运行时主版本节奏，却继续被直接依赖。 |
+| 1059 | package.json:248-250 OpenTelemetry 五个不同 0.x/2.x/1.x 通道并存，sdk-node 0.218 与 exporter 0.214 API 漂移 | `done` | 依赖升级按包零散进行，没有保持同一 telemetry 族版本对齐。 |
+| 1060 | package.json:5 private:true 同时声明 files/prepack，发布意图不明 | `done` | 根因是“内部可打包验证”与“禁止误发布”两个意图并存但未解释；现保留 private 并按内部打包校验语义说明。 |
+| 1061 | package.json:7-9 engines.node 无 engineStrict/.npmrc engine-strict，Node 20/24 安装静默成功 | `done` | Node 版本约束只写在 package engines，没有同时在 npm 配置层启用强校验。 |
 | 1062 | package.json:55 prepare 用 .catch(()=>undefined) 吞掉所有 husky bootstrap 错误 | `todo` | 待修复 |
 | 1063 | package.json:165-166 AA_PRESERVE_DIST=0 紧接 AA_PRESERVE_DIST=1 同行声明，shell 后者覆盖前者 | `todo` | 待修复 |
 | 1064 | tsconfig.coverage-curated.json 1769 行手维护 1700+ 文件 exclude，无自动生成 | `todo` | 待修复 |

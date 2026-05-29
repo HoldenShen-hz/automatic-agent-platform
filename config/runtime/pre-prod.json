@@ -1,4 +1,6 @@
 {
+  "configVersion": "v4.3",
+  "configSchemaVersion": "v4.3",
   "maxConcurrentTasks": 6,
   "defaultTaskTimeoutMs": 300000,
   "defaultStepTimeoutMs": 150000

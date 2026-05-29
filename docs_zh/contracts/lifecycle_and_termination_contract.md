@@ -9,6 +9,9 @@
 - `runtime_state_machine_contract.md`
 - `state_transition_matrix_contract.md`
 - `transition_service_contract.md`
+- `error_code_registry_contract.md`
+
+`terminalReason` / `reason_code` 若暴露为稳定错误语义，必须优先复用 `error_code_registry_contract.md` 中已登记的 code。
 
 ## 2. 目标
 

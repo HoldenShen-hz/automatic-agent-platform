@@ -31,7 +31,7 @@ export function createLivestreamRetrieverPlugin(): DomainRetrieverPlugin {
   let initialized = false;
   return {
     pluginId: "plugin.livestream.retriever",
-    domainId: "livestream",
+    domainId: "live-streaming",
     spiType: "retriever",
     capabilityIds: ["knowledge.retrieve", "domain.observe", "livestream.obs_search"],
     async initialize() {

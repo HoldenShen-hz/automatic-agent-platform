@@ -1,6 +1,6 @@
 {
-  "version": "2026.04",
-  "updatedAt": "2026-04-23T00:00:00.000Z",
+  "version": "2026.05",
+  "updatedAt": "2026-05-29T00:00:00.000Z",
   "owner": "platform_security",
   "dimensions": {
     "SPOOFING": ["JWT and workspace identity verification", "challenge-based worker registration"],

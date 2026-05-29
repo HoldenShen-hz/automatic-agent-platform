@@ -1,5 +1,9 @@
 # Event Bus Contract
 
+> Companion note:
+> `EventEnvelope` 字段全集与事件命名 authority 在 `event-envelope-contract.md`。
+> 本文只约束 durable bus 的投递、回放和失败语义。
+
 ## 目的
 定义平台 durable event bus 的最小权威约束，覆盖事件追加、消费者回放、超时与失败语义。
 
@@ -26,4 +30,3 @@
 ## 相关实现
 - `src/platform/five-plane-state-evidence/events/event-ops-service.ts`
 - `src/platform/five-plane-state-evidence/events/durable-event-bus.ts`
-

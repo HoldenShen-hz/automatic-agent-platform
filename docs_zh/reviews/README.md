@@ -19,6 +19,8 @@
 
 ## 当前入口
 
+- `platforme-full-review-d.md`：当前主批次问题表
+- `platforme-full-review-c.md`：前一批次问题表
 - `platforme-full-review-b.md`：当前持续收口的大表
 - `platforme-full-review-a.md`：前一批次问题总表
 - `platforme-full-review.md`：历史长表与复核结论归档

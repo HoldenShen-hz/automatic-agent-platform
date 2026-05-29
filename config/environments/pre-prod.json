@@ -1,7 +1,7 @@
 {
   "environment": "pre-prod",
   "registry": "ghcr.io/automatic-agent",
-  "imageRepository": "automatic-agent-system",
+  "imageRepository": "automatic-agent-platform",
   "deploymentNamespace": "automatic-agent-preprod",
   "configPath": "config/runtime/default.json",
   "configBundleRef": "config-bundle://runtime/pre-prod",

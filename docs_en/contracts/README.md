@@ -233,7 +233,22 @@ Notes:
 - [multimodal_gateway_contract.md](./multimodal_gateway_contract.md)
 - [platform_ops_agent_contract.md](./platform_ops_agent_contract.md)
 
-## 5. Relationship with ADR / Analysis
+## 5. Companion / Alias Map
+
+The following file families cover the same theme at different layers; reviews and follow-up maintenance should converge through this mapping instead of treating them as duplicate implementations:
+
+| Theme | Canonical/SOT | Companion / Scope Note |
+| --- | --- | --- |
+| HITL / approval | `decision-hitl-contract.md` + `approval_and_hitl_contract.md` | `hitl_contract.md` and `hitl_experience_and_explainability_contract.md` supplement the minimum HITL surface and the UX/explainability requirements respectively |
+| Error codes | `error_code_registry_contract.md` | `error_code_registry.md` remains the stable registry body and reader entry point; it does not define a second numbering space |
+| Recovery | `idempotency_and_recovery_matrix_contract.md` + `tool_metadata_and_recovery_contract.md` | `recovery_contract.md` only defines the minimum recovery cadence/report objects |
+| Event envelope / bus | `event-envelope-contract.md` | `event_bus_contract.md` / `typed_event_bus_contract.md` constrain delivery, replay, and typed APIs; they do not redefine the full envelope field set |
+| Tenant isolation | `tenant_isolation_and_shared_worker_safety_contract.md` | `tenant_isolation_contract.md` keeps only the minimum isolation object; shared-worker details belong to the long-name contract |
+| Storage | `storage_schema_contract.md` | `runtime_repository_and_migration_contract.md` covers repository/migration, `production_storage_and_queue_contract.md` covers production topology, and `artifact_*` covers artifact semantics |
+| API / SDK | `api_surface_contract.md` + `sdk_surface_contract.md` | API defines the service surface; SDK defines the client/CLI/pack/plugin surface without restating the other side's full responsibility |
+| Versioning | `version-lock-contract.md` | `architecture_governance_and_versioning_contract.md` governs cross-architecture boundaries and does not replace the canonical version-lock objects |
+
+## 6. Relationship with ADR / Analysis
 
 - `adr/` explains why a contract was made.
 - `contracts/` defines authoritative objects and constraints.
@@ -244,9 +259,9 @@ Recommended entry points:
 - ADR index is available at [../adr/README.md](../adr/README.md)
 - Coverage matrix is available at [../analysis/00-architecture-coverage-matrix.md](../analysis/00-architecture-coverage-matrix.md)
 
-## 6. Maintenance Rules
+## 7. Maintenance Rules
 
 - Contracts only specify specifications, not current completion status.
 - Fields, state enums, event names, and protocol semantics, once implemented, must remain authoritative here.
-- If a contract change represents an architectural trade-off, an ADR must be added alongside the contract change.
-- If implementation temporarily differs from the contract, record the gap in `analysis/`, do not write temporary state into the contract.
+- If a contract change represents an architectural trade-off, add an ADR alongside the contract change.
+- If implementation temporarily differs from the contract, record the gap in `analysis/`; do not write temporary state into the contract.

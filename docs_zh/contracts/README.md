@@ -233,7 +233,22 @@ v4.3 的实现入口以 [ADR-109](../adr/109-contract-freeze.md)、[ADR-110](../
 - [multimodal_gateway_contract.md](./multimodal_gateway_contract.md)
 - [platform_ops_agent_contract.md](./platform_ops_agent_contract.md)
 
-## 5. 与 ADR / analysis 的关系
+## 5. Companion / Alias Map
+
+以下文件族是“同主题不同层级”而不是互为重复实现；review 和后续文档维护必须按这个映射收口：
+
+| 主题 | Canonical/SOT | Companion / Scope Note |
+| --- | --- | --- |
+| HITL / approval | `decision-hitl-contract.md` + `approval_and_hitl_contract.md` | `hitl_contract.md` 与 `hitl_experience_and_explainability_contract.md` 分别补充最小 HITL 面与体验/可解释性要求 |
+| Error codes | `error_code_registry_contract.md` | `error_code_registry.md` 保留为稳定注册表正文和读者入口，不再单独定义第二套编号空间 |
+| Recovery | `idempotency_and_recovery_matrix_contract.md` + `tool_metadata_and_recovery_contract.md` | `recovery_contract.md` 仅定义恢复 cadence/report 最小对象 |
+| Event envelope / bus | `event-envelope-contract.md` | `event_bus_contract.md` / `typed_event_bus_contract.md` 约束投递、回放和 typed API，不重复定义 envelope 字段全集 |
+| Tenant isolation | `tenant_isolation_and_shared_worker_safety_contract.md` | `tenant_isolation_contract.md` 仅保留最小隔离对象，shared worker 细则以长名 contract 为准 |
+| Storage | `storage_schema_contract.md` | `runtime_repository_and_migration_contract.md` 负责 repository/migration，`production_storage_and_queue_contract.md` 负责 production topology，`artifact_*` 负责 artifact 语义 |
+| API / SDK | `api_surface_contract.md` + `sdk_surface_contract.md` | API 定义服务面；SDK 定义 client/CLI/pack/plugin surface，不重复声明对方的完整职责 |
+| Versioning | `version-lock-contract.md` | `architecture_governance_and_versioning_contract.md` 负责跨架构治理边界，不取代 version-lock canonical object |
+
+## 6. 与 ADR / analysis 的关系
 
 - `adr/` 解释为什么做这个 contract。
 - `contracts/` 定义 authoritative 对象与约束。
@@ -244,7 +259,7 @@ v4.3 的实现入口以 [ADR-109](../adr/109-contract-freeze.md)、[ADR-110](../
 - ADR 索引见 [../adr/README.md](../adr/README.md)
 - 覆盖矩阵见 [../analysis/00-architecture-coverage-matrix.md](../analysis/00-architecture-coverage-matrix.md)
 
-## 6. 维护规则
+## 7. 维护规则
 
 - contract 只写规范，不写当前完成度。
 - 字段、状态枚举、事件名、协议语义一旦进入实现，必须在这里保持 authoritative。

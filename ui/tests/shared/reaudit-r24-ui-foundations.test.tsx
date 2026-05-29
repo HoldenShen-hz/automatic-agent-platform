@@ -51,7 +51,6 @@ describe("R24 UI foundations", () => {
           }}
         />
         <ThreePaneLayout
-          viewportWidth={700}
           left={<div>Left</div>}
           center={<div>Center</div>}
           right={<div>Right</div>}

@@ -1,12 +1,13 @@
 # Automatic Agent Platform
 
-Enterprise automatic-agent platform baseline built on Node.js 22 + TypeScript ESM. The repository follows a seven-layer architecture documented in `docs_zh/architecture/00-platform-architecture.md` and `docs_en/architecture/00-platform-architecture.md`; inside that architecture, the runtime implementation is organized around five execution planes under `src/platform/five-plane-*`.
+Enterprise automatic-agent platform baseline built on Node.js 22 + TypeScript ESM. The documentation set retains historical seven-layer design material for traceability, while the live runtime implementation is organized around five execution planes under `src/platform/five-plane-*`.
 
 Current release baseline: `0.2.0` (`2026-05-27`). Unreleased changes continue to accumulate in the root `CHANGELOG.md`.
 
 ## Quick Start
 
 ```bash
+nvm use
 npm ci
 npm run build
 npm test
@@ -38,8 +39,7 @@ npm run lint
 npm run typecheck
 npm run coverage:gate
 npm run changelog:check
-npm run test:pg-integration
-npm run test:secret-providers
+npm run test:layers:smoke
 npm run package:stable
 ```
 
@@ -61,9 +61,13 @@ Stable script overview:
 - `docs_zh/adr/` — architectural decisions
 - `docs_zh/contracts/` — authoritative contracts
 - `docs_zh/contracts/oapeflir_loop_contract.md` — OAPEFLIR loop contract and runtime-evidence boundary
+- `docs_zh/governance/repository-guide-index.md` — root guide index for `README` / `CONTRIBUTING` / `AGENTS` / `CLAUDE` / `MEMORY`
+- `docs_zh/governance/source_of_truth.md` — source-of-truth hierarchy
+- `docs_zh/governance/naming_and_directory_conventions.md` — naming and directory constraints
+- `docs_zh/quality/buglist.md` — canonical buglist
 - `docs_zh/reference/docs-sync.md` — zh/en sync rules and delayed-translation policy
 - `docs_zh/reference/division-catalog.md` — division family map, canonical surfaces, and legacy aliases
-- `translate_docs.py` — legacy translation helper with maintenance notes in its module docstring
+- `translate_docs.py` — maintenance-only translation helper that auto-discovers `docs_en/**/*.md` files still containing Chinese text
 - `docs_zh/analysis/00-architecture-coverage-matrix.md` — chapter-to-code coverage matrix
 - `docs_zh/analysis/01-codebase-vs-design-review.md` — current codebase review
 
@@ -95,10 +99,12 @@ tests/
 ## Current Notes
 
 - `src/core/runtime/` remains as a compatibility surface for legacy imports; primary runtime changes should land in the five-plane modules unless a compatibility export is intentionally required.
+- `src/runtime/agent-runtime/` and `src/core/runtime/` are compatibility/runtime-boundary surfaces; document changes there alongside the governance source-of-truth notes.
 - `src/plugins/` contains built-in runtime plugins, `tests/fixtures/packs/` contains pack fixtures only, `src/sdk/harness-sdk/` contains the harness-facing SDK surface, and `src/scale-ecosystem/marketplace/` contains marketplace/runtime registry services.
 - Division families are intentionally scoped, not synonymous: `quality-assurance` is the canonical release-certification division, while `qa` is a lightweight smoke-validation alias; the operations family split is documented in `docs_zh/reference/division-catalog.md` and `config/quality/division-catalog.json`.
 - Root docs, ADR, contracts, and review matrices are expected to stay consistent. If a boundary changes, update the matching contract and tests in the same change.
+- Common operator commands are summarized here; contributor workflow details live in `CONTRIBUTING.md`.
 
 ## License
 
-MIT
+[LICENSE](./LICENSE) (`MIT`). See [SECURITY.md](./SECURITY.md) for disclosure workflow and [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md) for dependency attribution notes.

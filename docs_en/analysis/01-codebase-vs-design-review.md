@@ -4,10 +4,10 @@
 >
 > Review Baseline:
 >
-> - `docs_zh/architecture/00-platform-architecture.md`
-> - `docs_zh/architecture/01-code-structure.md`
-> - `docs_zh/architecture/02-code-architecture-reference.md`
-> - `docs_zh/analysis/00-architecture-coverage-matrix.md`
+> - `../architecture/00-platform-architecture.md`
+> - `../architecture/01-code-structure.md`
+> - `../architecture/02-code-architecture-reference.md`
+> - `./00-architecture-coverage-matrix.md`
 
 ## 1. Conclusions
 
@@ -16,7 +16,7 @@ The current codebase no longer matches the old conclusion that "Layer 3-7 are la
 The more accurate current judgment is:
 
 - The seven-layer directory structure is stably in place, and the upper five capability domains have all formed the main closed loop of ADR -> contract -> src -> tests.
-- `docs_zh/analysis/00-architecture-coverage-matrix.md` has become the authoritative coverage entry point; most v2.7 chapter states are `exists`, with the remaining gaps mainly in `partial`, not `missing` or `skeleton`.
+- `docs_en/analysis/00-architecture-coverage-matrix.md` has become the authoritative coverage entry point; most v2.7 chapter states are `exists`, with the remaining gaps mainly in `partial`, not `missing` or `skeleton`.
 - `src/core/runtime/` has converged to a compatibility shim; the canonical multi-step orchestration implementation is located in `src/platform/five-plane-execution/execution-engine/`.
 
 ## 2. Convergence Items Confirmed This Round

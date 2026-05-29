@@ -9,6 +9,8 @@
 | `quality-assurance` | canonical | 生产发布前的完整回归、缺陷归因、质量认证 |
 | `qa` | legacy alias | 仅用于轻量 smoke validation / 快速回归分诊，不承担 release certification |
 
+说明：`qa` 与 `quality-assurance` 故意使用不同 `default_workflow`。前者是 smoke alias，后者是 release certification canonical division，不能按同义目录处理。
+
 ## 运维家族
 
 | division | 角色定位 | 说明 |
@@ -23,11 +25,32 @@
 - `config/quality/division-catalog.json`
 - `scripts/ci/audit-division-workflows.mjs`
 
+## 机器字段对照
+
+| config/quality/division-catalog.json | 文档含义 |
+| --- | --- |
+| `divisionId` | division 目录与 `division.yaml` 的 canonical ID |
+| `family` | 治理分组，不等同于目录别名 |
+| `scope` | 该 division 在 family 内的作用范围 |
+| `canonicalDivisionId` | 仅用于显式 alias，例如 `qa -> quality-assurance` |
+
 ## 当前覆盖原则
 
 - `divisions/` 目录中的活跃 division 都必须在 catalog 中登记。
 - 只有 `qa -> quality-assurance` 这类显式 alias 才使用 `canonicalDivisionId`。
 - 其余 division 至少要声明 `family` 与 `scope`，用于治理和审计分组。
+
+## 非目标
+
+- 本文档不是 plugin capability registry。
+- plugin 的 `domainIds` / `capabilityIds` 权威来源在 `src/plugins/builtin-plugin-registry.ts` 和对应 runtime plugin 定义。
+- `divisions/` 负责路由、角色、workflow 和风险边界，不负责维护 plugin 能力枚举。
+
+## 优先级说明
+
+- `division.yaml` 中的 `priority` 是粗粒度路由权重，不要求全局唯一。
+- 同档位并列是允许的；真实路由仍需要结合 trigger 命中长度、显式 disambiguate 规则和稳定排序。
+- 新增 division 时，先判断是否需要新的优先级带宽；若只是同一类能力中的并列候选，可以复用现有档位。
 
 ## 维护规则
 

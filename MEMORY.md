@@ -2,6 +2,8 @@
 
 This file is a lightweight engineering memory for the current repository layout.
 
+It is not a source of truth. Use `AGENTS.md`, `CLAUDE.md`, and `docs_zh/governance/repository-guide-index.md` for authoritative repository guidance, and update this file only as a concise working-memory aid.
+
 ## Current Code Topology
 
 - Runtime core: `src/platform/`
@@ -17,6 +19,8 @@ This file is a lightweight engineering memory for the current repository layout.
   - `docs_zh/adr/README.md`
   - `docs_zh/contracts/README.md`
   - `docs_zh/analysis/00-architecture-coverage-matrix.md`
+  - `docs_zh/governance/source_of_truth.md`
+  - `docs_zh/governance/naming_and_directory_conventions.md`
 
 ## Validation Shortcuts
 
@@ -24,3 +28,8 @@ This file is a lightweight engineering memory for the current repository layout.
 - Full regression: `npm test`
 - Docs health: `node --import tsx --test tests/unit/docs/documentation-health.test.ts`
 - Contract integration: `node --import tsx --test tests/integration/platform/contracts/v2-7-extension-contracts.test.ts`
+
+## Edit Contract
+
+- Keep this file short and observational; do not duplicate full process guidance from `README.md` or `CONTRIBUTING.md`.
+- If root documentation guidance changes, update `docs_zh/governance/repository-guide-index.md` first and then adjust this memory summary.

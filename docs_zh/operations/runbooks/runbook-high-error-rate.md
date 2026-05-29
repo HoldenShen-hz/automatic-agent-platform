@@ -8,9 +8,9 @@
 
 ## Diagnosis
 
-1. Check recent `http_requests_total` and `task_executions_total` trends in Prometheus/Grafana.
+1. Check recent `aa_error_rate:rate5m`, request volume, and task execution trends in Prometheus/Grafana.
 2. Review `api-server` logs for the top failing route and error code.
-3. Confirm database and Redis health with `docker compose ps` or the platform health dashboard.
+3. In Kubernetes/Helm environments, confirm database and Redis health with `kubectl get pods`, `kubectl logs`, and the platform health dashboard. `docker compose ps` is only for local stacks.
 4. Inspect whether a recent rollout, policy change, or plugin activation correlates with the spike.
 
 ## Mitigation

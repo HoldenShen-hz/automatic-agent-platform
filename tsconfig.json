@@ -1,8 +1,4 @@
 {
-  "references": [
-    { "path": "./tsconfig.scripts.json" },
-    { "path": "./ui/tsconfig.json" }
-  ],
   "compilerOptions": {
     "composite": true,
     "target": "ES2023",

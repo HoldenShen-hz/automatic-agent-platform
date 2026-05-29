@@ -9,6 +9,8 @@ This directory is used to consolidate the easily confused division families, avo
 | `quality-assurance` | canonical | Complete regression, defect attribution, and quality certification before production release |
 | `qa` | legacy alias | Only used for lightweight smoke validation / rapid regression triage; does not undertake release certification |
 
+Note: `qa` and `quality-assurance` intentionally use different `default_workflow` values. The former is a smoke alias, while the latter is the canonical release-certification division.
+
 ## Operations Family
 
 | division | Role | Description |
@@ -22,6 +24,15 @@ This directory is used to consolidate the easily confused division families, avo
 
 - `config/quality/division-catalog.json`
 - `scripts/ci/audit-division-workflows.mjs`
+
+## Field Mapping
+
+| config/quality/division-catalog.json | Meaning |
+| --- | --- |
+| `divisionId` | Canonical ID used by the directory and `division.yaml` |
+| `family` | Governance grouping; not the same thing as an alias |
+| `scope` | The division's bounded responsibility inside the family |
+| `canonicalDivisionId` | Only used for explicit aliases, for example `qa -> quality-assurance` |
 
 ## Maintenance Rules
 

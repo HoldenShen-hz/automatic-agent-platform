@@ -4,6 +4,12 @@
 
 本 contract 定义 Phase 1a 平台必须持久化的核心实体、最小列集合、关键索引、外键策略和恢复语义。
 
+Companion boundary:
+
+- 表名、最小列、索引与 inventory 以本文为准
+- repository 行为与 migration 路径以 `runtime_repository_and_migration_contract.md` 为准
+- 生产 PG/Redis/Object Store 拓扑以 `production_storage_and_queue_contract.md` 为准
+
 本版重点补齐 v4.3 runtime truth 对应的存储落点，包括：
 
 - `harness_runs`

@@ -198,6 +198,7 @@ export function createOfflineQueueInterceptor(queue: OfflineQueue): RestClientIn
       ) {
         const tenantId = request.headers.get("x-tenant-id") ?? "default-tenant";
         const principalId = request.headers.get("x-principal-id") ?? "ui-operator";
+        const idempotencyKey = request.headers.get("Idempotency-Key") ?? request.headers.get("x-idempotency-key");
         queue.enqueue({
           id: generateStableId("offline_"),
           endpoint: request.path,
@@ -207,7 +208,7 @@ export function createOfflineQueueInterceptor(queue: OfflineQueue): RestClientIn
           tenantId,
           traceId: request.headers.get("x-request-id") ?? generateStableId("trace_"),
           headers: extractReplayHeaders(request.headers),
-          idempotencyKey: request.headers.get("Idempotency-Key") ?? request.headers.get("x-idempotency-key") ?? undefined,
+          ...(idempotencyKey == null ? {} : { idempotencyKey }),
           principal: {
             principalId,
             tenantId,

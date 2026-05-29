@@ -7,9 +7,9 @@ Ensure that the same fact is maintained in only one master copy, avoiding confli
 ## 2. Master Rules
 
 - For field, state, and protocol issues, `contracts/` is the authority.
-- For long-term architectural boundary issues, `docs_zh/architecture/00-*.md` ~ `04-*.md` are the authority.
+- For long-term architectural boundary issues, `architecture/00-*.md` ~ `04-*.md` are the authority.
 - For scheme trade-off issues, `adr/` is the authority.
-- For new platform design and migration boundaries, platform architecture documents under this project's `docs_zh/architecture/` are the authority.
+- For new platform design and migration boundaries, platform architecture documents under this project's `architecture/` directory are the authority.
 - For current推进 actions, `operations/` is the authority.
 
 Supplementary:

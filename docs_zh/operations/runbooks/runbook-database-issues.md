@@ -10,8 +10,14 @@
 
 1. Identify the active storage backend: SQLite or PostgreSQL.
 2. For PostgreSQL, verify connectivity, credentials, and `schema_migrations` freshness.
-3. For SQLite, inspect file ownership, disk space, WAL mode, and lock contention.
+3. For SQLite, inspect `AA_DB_PATH`, file ownership, disk space, WAL mode, and lock contention.
 4. Review recent deployment or migration activity before making schema changes.
+
+SQLite path note:
+
+- local/dev examples often use `./data/sqlite/automatic-agent-demo.db` or `./data/sqlite/automatic-agent-dev.db`
+- container/Helm defaults typically use `data/sqlite/automatic-agent.db`
+- do not assume a single hard-coded path; use the effective `AA_DB_PATH`
 
 ## Mitigation
 

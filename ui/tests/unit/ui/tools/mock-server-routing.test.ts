@@ -49,7 +49,7 @@ describe("resolveMockRequest", () => {
 
   it("rejects listen attempts when the port is already in use", async () => {
     const originalListen = Server.prototype.listen;
-    Server.prototype.listen = function mockedListen() {
+    Server.prototype.listen = function mockedListen(this: Server) {
       queueMicrotask(() => {
         this.emit("error", new Error("listen-failed"));
       });

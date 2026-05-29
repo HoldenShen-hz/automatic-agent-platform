@@ -15,6 +15,7 @@ const mockActions = {
   onDismiss: vi.fn(),
   onEscalate: vi.fn(),
   onSnooze: vi.fn(),
+  setFilters: vi.fn(),
 };
 
 const mockFilters = {

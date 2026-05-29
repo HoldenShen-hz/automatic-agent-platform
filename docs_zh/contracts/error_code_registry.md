@@ -1,5 +1,9 @@
 # Error Code Registry
 
+> Companion note:
+> 稳定错误码编号空间以 `error_code_registry_contract.md` 为 contract authority。
+> 本文保留为面向实现者和读者的注册表正文，不再与其维护第二套 SOT。
+
 ---
 
 ## OAPEFLIR 关联

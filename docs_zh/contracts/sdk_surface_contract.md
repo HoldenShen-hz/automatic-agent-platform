@@ -9,6 +9,7 @@
 - `api_surface_contract.md`
 - `plugin_spi_contract.md`
 - `marketplace_catalog_and_revenue_contract.md`
+- `docs_zh/reference/api-versioning.md`
 
 ## 2. SDK 分层
 

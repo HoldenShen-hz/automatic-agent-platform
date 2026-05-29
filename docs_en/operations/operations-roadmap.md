@@ -215,7 +215,7 @@ Organize current system-level improvement suggestions into formal promotion road
 
 ## 7. Reference Documents
 
-- Platform skeleton: `docs_zh/architecture/00-platform-architecture.md`
-- Migration boundaries: `docs_zh/migration/01-migration-scope.md`
-- Code architecture reference: `docs_zh/architecture/02-code-architecture-reference.md`
-- Coverage matrix: `docs_zh/analysis/00-architecture-coverage-matrix.md`
+- Platform skeleton: `../architecture/00-platform-architecture.md`
+- Migration boundaries: `../migration/01-migration-scope.md`
+- Code architecture reference: `../architecture/02-code-architecture-reference.md`
+- Coverage matrix: `../analysis/00-architecture-coverage-matrix.md`

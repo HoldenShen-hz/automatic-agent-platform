@@ -17,6 +17,12 @@ roles:
     model: precision
     tools: [clause_library, redline_editor, approval_router, matter_tracker, policy_linker]
     max_instances: 2
+  - id: legal_risk_reviewer
+    name: Legal Risk Reviewer
+    prompt: roles/legal_specialist.prompt.md
+    model: reasoning
+    tools: [clause_library, policy_linker, approval_router]
+    max_instances: 1
 # §37: DomainDescriptor
 domain_descriptor:
   domainId: legal

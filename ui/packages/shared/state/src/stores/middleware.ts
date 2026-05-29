@@ -65,10 +65,10 @@ function withDraft<T>(initializer: DraftStateCreator<T>): StateCreator<T, [], []
   };
 }
 
-export function withPersistDevtoolsDraft<T>(
+export function withPersistDevtoolsDraft<T, TPersisted = Partial<T>>(
   name: string,
   initializer: DraftStateCreator<T>,
-  persistOptions: Omit<PersistOptions<T>, "name"> = {},
+  persistOptions: Omit<PersistOptions<T, TPersisted>, "name"> = {},
 ): StateCreator<T, [], []> {
   const version = persistOptions.version ?? 1;
   const migrate = persistOptions.migrate ?? ((persistedState: unknown) => persistedState as T);
@@ -78,7 +78,7 @@ export function withPersistDevtoolsDraft<T>(
       version,
       migrate,
       name,
-    }),
+    } as PersistOptions<T, TPersisted>),
     { name },
   ) as unknown as StateCreator<T, [], []>;
 }

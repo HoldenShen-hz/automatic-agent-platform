@@ -60,3 +60,7 @@ export const StyleSheet = {
     return styles;
   },
 };
+
+export const Platform: { readonly OS: "android" | "ios" | "web" } = {
+  OS: "web",
+};

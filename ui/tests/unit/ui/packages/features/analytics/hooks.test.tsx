@@ -6,8 +6,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@aa/shared-state", () => ({
   useAnalyticsQuery: () => ({
     data: [
-      { label: "tasks_total", value: 12, trend: "up" },
-      { label: "workflows_total", value: 6, trend: "flat" },
+      { id: "tasks_total", label: "tasks_total", value: 12, trend: "up" },
+      { id: "workflows_total", label: "workflows_total", value: 6, trend: "flat" },
     ],
   }),
 }));
@@ -56,7 +56,7 @@ describe("useAnalyticsVm", () => {
   it("rejects oversized analytics exports before creating blobs", () => {
     expect(() => buildAnalyticsExportPayload(
       "json",
-      [{ label: "x".repeat(MAX_ANALYTICS_EXPORT_BYTES), value: 12, trend: "up" }],
+      [{ id: "oversized", label: "x".repeat(MAX_ANALYTICS_EXPORT_BYTES), value: 12, trend: "up" }],
       [{ timestamp: "2026-05-08T00:00:00.000Z", value: 12 }],
       [{
         dimension: "time",

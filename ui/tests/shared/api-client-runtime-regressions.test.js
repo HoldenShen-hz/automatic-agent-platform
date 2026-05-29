@@ -1,0 +1,337 @@
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { BrowserWSClient, DefaultRESTClient, HttpTransport, RestHttpError, createIdempotencyKeyInterceptor, createOfflineQueueInterceptor, fetchTasks, updatePreferences, } from "@aa/shared-api-client";
+function createRequest(path = "/tasks") {
+    return {
+        path,
+        method: "GET",
+        headers: new Headers(),
+    };
+}
+describe("shared api-client runtime regressions", () => {
+    afterEach(() => {
+        vi.useRealTimers();
+        vi.restoreAllMocks();
+    });
+    it("retries retryable HTTP failures and sends Accept-Version on the real transport request", async () => {
+        vi.useFakeTimers();
+        let attempts = 0;
+        let acceptVersion = "";
+        const transport = new HttpTransport({
+            baseUrl: "https://example.test",
+            fetchImplementation: async (_input, init) => {
+                attempts += 1;
+                acceptVersion = new Headers(init?.headers).get("Accept-Version") ?? "";
+                if (attempts < 3) {
+                    return new Response(JSON.stringify({ ok: false }), {
+                        status: 503,
+                        headers: { "content-type": "application/json" },
+                    });
+                }
+                return new Response(JSON.stringify({ requestId: "req_123", data: { ok: true, attempts } }), {
+                    status: 200,
+                    headers: { "content-type": "application/json" },
+                });
+            },
+        });
+        const promise = transport.send(createRequest("/api/v1/health"));
+        await vi.runAllTimersAsync();
+        const response = await promise;
+        expect(attempts).toBe(3);
+        expect(acceptVersion).toBe("2026-04-01,2026-01-01");
+        expect(response.data).toEqual({ ok: true, attempts: 3 });
+    });
+    it("unwraps the platform JSON response envelope before returning data to callers", async () => {
+        const transport = new HttpTransport({
+            baseUrl: "https://example.test",
+            fetchImplementation: async () => new Response(JSON.stringify({
+                requestId: "req_wrapped",
+                data: { ok: true, items: [1, 2, 3] },
+            }), {
+                status: 200,
+                headers: { "content-type": "application/json" },
+            }),
+        });
+        const response = await transport.send(createRequest("/api/v1/tasks"));
+        expect(response.data).toEqual({ ok: true, items: [1, 2, 3] });
+    });
+    it("unwraps ContractEnvelope responses before returning data to callers", async () => {
+        const transport = new HttpTransport({
+            baseUrl: "https://example.test",
+            fetchImplementation: async () => new Response(JSON.stringify({
+                envelopeId: "env_123",
+                schemaVersion: "v4.3",
+                payload: { ok: true, items: [4, 5, 6] },
+            }), {
+                status: 200,
+                headers: { "content-type": "application/json" },
+            }),
+        });
+        const response = await transport.send(createRequest("/api/v1/tasks"));
+        expect(response.data).toEqual({ ok: true, items: [4, 5, 6] });
+    });
+    it("opens the circuit breaker after repeated terminal failures and fail-closes subsequent requests", async () => {
+        vi.useFakeTimers();
+        let attempts = 0;
+        const transport = new HttpTransport({
+            baseUrl: "https://example.test",
+            fetchImplementation: async () => {
+                attempts += 1;
+                return new Response(JSON.stringify({ ok: false }), {
+                    status: 503,
+                    headers: { "content-type": "application/json" },
+                });
+            },
+        });
+        for (let index = 0; index < 5; index += 1) {
+            const settled = transport
+                .send(createRequest("/api/v1/tasks"))
+                .then(() => ({ ok: true }), (error) => ({ ok: false, error }));
+            await vi.runAllTimersAsync();
+            const result = await settled;
+            expect(result.ok).toBe(false);
+            if (result.ok) {
+                throw new Error("expected request to fail");
+            }
+            expect(result.error).toBeInstanceOf(Error);
+            expect(result.error.message).toBe("rest.http_error:503");
+        }
+        const attemptsBeforeOpenCheck = attempts;
+        await expect(transport.send(createRequest("/api/v1/tasks"))).rejects.toThrow("rest.circuit_open:Circuit breaker is open");
+        expect(attempts).toBe(attemptsBeforeOpenCheck);
+    });
+    it("reconnects websocket clients with backoff and never places auth tokens in the URL", async () => {
+        vi.useFakeTimers();
+        vi.spyOn(Math, "random").mockReturnValue(0.5);
+        class FakeSocket {
+            static OPEN = 1;
+            static instances = [];
+            sent = [];
+            url;
+            protocols;
+            readyState = FakeSocket.OPEN;
+            onopen = null;
+            onmessage = null;
+            onclose = null;
+            onerror = null;
+            constructor(url, protocols) {
+                this.url = url;
+                this.protocols = protocols;
+                FakeSocket.instances.push(this);
+                queueMicrotask(() => {
+                    this.onopen?.();
+                });
+            }
+            send(message) {
+                this.sent.push(message);
+            }
+            close() {
+                this.onclose?.();
+            }
+        }
+        const client = new BrowserWSClient(FakeSocket);
+        client.subscribe("dashboard", () => undefined);
+        client.connect("wss://example.test/realtime", "secret-token");
+        await vi.runAllTicks();
+        expect(FakeSocket.instances).toHaveLength(1);
+        expect(FakeSocket.instances[0]?.url).toBe("wss://example.test/realtime");
+        expect(FakeSocket.instances[0]?.url.includes("secret-token")).toBe(false);
+        expect(FakeSocket.instances[0]?.protocols).toBe("v1.auth.token");
+        expect(FakeSocket.instances[0]?.sent[0]).toContain('"token":"secret-token"');
+        FakeSocket.instances[0]?.close();
+        await vi.advanceTimersByTimeAsync(1500);
+        await vi.runAllTicks();
+        expect(FakeSocket.instances).toHaveLength(2);
+        expect(FakeSocket.instances[1]?.url).toBe("wss://example.test/realtime");
+        expect(FakeSocket.instances[1]?.url.includes("secret-token")).toBe(false);
+    });
+    it("adds standardized pagination, sorting, and filtering query params to list endpoints", async () => {
+        let capturedPath = "";
+        const client = new DefaultRESTClient(async (request) => {
+            capturedPath = request.path;
+            return {
+                status: 200,
+                data: [],
+            };
+        });
+        await fetchTasks(client, {
+            page: 2,
+            pageSize: 50,
+            sort: "updatedAt:desc",
+            filter: "status:running",
+        });
+        expect(capturedPath).toBe("/v1/tasks?page=2&pageSize=50&sort=updatedAt%3Adesc&filter=status%3Arunning");
+    });
+    it("maps 401/403/429 HTTP failures to explicit UI actions instead of throwing only a generic Error", async () => {
+        const cases = [
+            { status: 401, expectedAction: "redirect_to_login", retryAfter: null },
+            { status: 403, expectedAction: "access_denied", retryAfter: null },
+            { status: 406, expectedAction: "version_not_supported", retryAfter: null },
+            { status: 429, expectedAction: "backoff_and_retry", retryAfter: 7000 },
+        ];
+        for (const testCase of cases) {
+            const transport = new HttpTransport({
+                baseUrl: "https://example.test",
+                fetchImplementation: async () => new Response(JSON.stringify({ ok: false }), {
+                    status: testCase.status,
+                    headers: {
+                        "content-type": "application/json",
+                        ...(testCase.retryAfter == null ? {} : { "retry-after": String(testCase.retryAfter / 1000) }),
+                    },
+                }),
+            });
+            const result = await transport
+                .send(createRequest("/api/v1/tasks"))
+                .then(() => ({ ok: true }), (error) => ({ ok: false, error }));
+            expect(result.ok).toBe(false);
+            if (result.ok) {
+                throw new Error("expected request to fail");
+            }
+            expect(result.error).toBeInstanceOf(RestHttpError);
+            expect(result.error.status).toBe(testCase.status);
+            expect(result.error.uiAction).toBe(testCase.expectedAction);
+            expect(result.error.retryAfterMs).toBe(testCase.retryAfter);
+        }
+    });
+    it("queues offline writes and short-circuits the request before transport dispatch", async () => {
+        const enqueue = vi.fn();
+        const transport = vi.fn(async () => ({
+            status: 200,
+            data: { ok: true },
+        }));
+        const queue = { enqueue };
+        const client = new DefaultRESTClient(transport, [createOfflineQueueInterceptor(queue)]);
+        const onlineDescriptor = Object.getOwnPropertyDescriptor(window.navigator, "onLine");
+        Object.defineProperty(window.navigator, "onLine", {
+            configurable: true,
+            get: () => false,
+        });
+        await expect(client.post("/tasks", { title: "queued" })).rejects.toThrow("rest.offline:Request queued for offline sync");
+        expect(enqueue).toHaveBeenCalledTimes(1);
+        expect(transport).not.toHaveBeenCalled();
+        if (onlineDescriptor == null) {
+            Reflect.deleteProperty(window.navigator, "onLine");
+        }
+        else {
+            Object.defineProperty(window.navigator, "onLine", onlineDescriptor);
+        }
+    });
+    it("adds Idempotency-Key headers to mutating requests before hitting the transport", async () => {
+        let idempotencyKey = "";
+        let legacyIdempotencyKey = "";
+        let bodyIdempotencyKey = "";
+        const client = new DefaultRESTClient(async (request) => {
+            idempotencyKey = request.headers.get("Idempotency-Key") ?? "";
+            legacyIdempotencyKey = request.headers.get("x-idempotency-key") ?? "";
+            return {
+                status: 200,
+                data: { ok: true },
+            };
+        }, [createIdempotencyKeyInterceptor()]);
+        await client.post("/tasks", { title: "dedupe me" });
+        expect(idempotencyKey).toBeTruthy();
+        expect(legacyIdempotencyKey).toBe(idempotencyKey);
+        const transport = new HttpTransport({
+            baseUrl: "https://example.test",
+            fetchImplementation: async (_input, init) => {
+                bodyIdempotencyKey = JSON.parse(String(init?.body)).idempotencyKey ?? "";
+                return new Response(JSON.stringify({ requestId: "req_1", data: { ok: true } }), {
+                    status: 200,
+                    headers: { "content-type": "application/json" },
+                });
+            },
+        });
+        await transport.send({
+            path: "/api/v1/tasks",
+            method: "POST",
+            headers: new Headers({
+                "Idempotency-Key": idempotencyKey,
+            }),
+            body: { title: "dedupe me" },
+        });
+        expect(bodyIdempotencyKey).toBe(idempotencyKey);
+    });
+    it("forwards If-Match on preference updates so optimistic locking reaches the transport", async () => {
+        let ifMatch = "";
+        const client = new DefaultRESTClient(async (request) => {
+            ifMatch = request.headers.get("If-Match") ?? "";
+            return {
+                status: 200,
+                data: { ok: true },
+            };
+        });
+        await updatePreferences(client, { theme: "light", locale: "en-US" }, "etag-42");
+        expect(ifMatch).toBe("etag-42");
+    });
+    it("does not retry aborted requests or unsafe writes without an idempotency key", async () => {
+        vi.useFakeTimers();
+        let abortAttempts = 0;
+        const abortTransport = new HttpTransport({
+            baseUrl: "https://example.test",
+            timeoutMs: 5,
+            fetchImplementation: async (_input, init) => {
+                abortAttempts += 1;
+                await new Promise((resolve) => setTimeout(resolve, 10));
+                if (init?.signal?.aborted === true) {
+                    throw new DOMException("Aborted", "AbortError");
+                }
+                return new Response(JSON.stringify({ ok: true }), {
+                    status: 200,
+                    headers: { "content-type": "application/json" },
+                });
+            },
+        });
+        const abortPromise = abortTransport.send(createRequest("/api/v1/tasks")).then(() => ({ ok: true }), (error) => ({ ok: false, error }));
+        await vi.runAllTimersAsync();
+        const abortResult = await abortPromise;
+        expect(abortResult.ok).toBe(false);
+        expect(abortAttempts).toBe(1);
+        let writeAttempts = 0;
+        const writeTransport = new HttpTransport({
+            baseUrl: "https://example.test",
+            fetchImplementation: async () => {
+                writeAttempts += 1;
+                return new Response(JSON.stringify({ ok: false }), {
+                    status: 503,
+                    headers: { "content-type": "application/json" },
+                });
+            },
+        });
+        const writePromise = writeTransport.send({
+            path: "/api/v1/preferences",
+            method: "POST",
+            headers: new Headers(),
+            body: { theme: "dark" },
+        }).then(() => ({ ok: true }), (error) => ({ ok: false, error }));
+        await vi.runAllTimersAsync();
+        const writeResult = await writePromise;
+        expect(writeResult.ok).toBe(false);
+        expect(writeAttempts).toBe(1);
+    });
+    it("exposes credentials and mode for cross-origin API requests and tolerates uppercase absolute URLs", async () => {
+        let capturedMode = "";
+        let capturedCredentials = "";
+        let capturedUrl = "";
+        const transport = new HttpTransport({
+            baseUrl: "https://example.test",
+            mode: "cors",
+            credentials: "include",
+            fetchImplementation: async (input, init) => {
+                capturedUrl = String(input);
+                capturedMode = String(init?.mode);
+                capturedCredentials = String(init?.credentials);
+                return new Response(JSON.stringify({ ok: true }), {
+                    status: 200,
+                    headers: { "content-type": "application/json" },
+                });
+            },
+        });
+        await transport.send({
+            path: "HTTPS://api.example.test/tasks",
+            method: "GET",
+            headers: new Headers(),
+        });
+        expect(capturedUrl).toBe("HTTPS://api.example.test/tasks");
+        expect(capturedMode).toBe("cors");
+        expect(capturedCredentials).toBe("include");
+    });
+});

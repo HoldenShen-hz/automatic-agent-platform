@@ -6,6 +6,7 @@
 
 - `package-lock.json` 必须提交，CI 使用 `npm ci`。
 - CI 必须运行 `npm audit --audit-level=high`。
+- 供应链审计证据以 CI 产出的 SARIF / 审计日志为准，不要求在 `package-lock.json` 内嵌额外签名文本。
 - CI 必须运行 CodeQL TypeScript 分析。
 - 容器镜像必须经过 Trivy CRITICAL/HIGH 扫描。
 - 发布镜像必须使用显式 tag，并附带 commit sha tag。

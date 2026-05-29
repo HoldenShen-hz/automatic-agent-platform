@@ -32,9 +32,24 @@ export interface RealtimeStoreState {
   removeActiveIncident(incidentId: string): void;
 }
 
+type PersistedRealtimeStoreState = Pick<
+  RealtimeStoreState,
+  | "wsStatus"
+  | "panicActivated"
+  | "offlineQueueSize"
+  | "syncStatus"
+  | "activeSubscriptions"
+  | "subscriptionLookup"
+  | "pendingApprovalCount"
+  | "activeIncidents"
+  | "activeIncidentLookup"
+  | "incidentCount"
+  | "criticalIncidentCount"
+>;
+
 export function createRealtimeStore() {
   return createStore<RealtimeStoreState>()(
-    withPersistDevtoolsDraft(
+    withPersistDevtoolsDraft<RealtimeStoreState, PersistedRealtimeStoreState>(
       "aa-realtime-store",
       (set) => ({
         wsStatus: "disconnected",

@@ -24,6 +24,42 @@ roles:
     model: reasoning
     tools: [read]
     max_instances: 2
+# §37: DomainDescriptor
+domain_descriptor:
+  domainId: qa
+  ownerOrgNodeId: org.qa.smoke
+  primaryEntities:
+    - smoke_suite
+    - regression_signal
+    - defect
+    - release_candidate
+  recipeArchetype: validation
+  lifecycleState: active
+# §37: DomainRiskProfile
+risk_profile:
+  profileId: qa.risk
+  domainId: qa
+  riskLevel: medium
+  advisoryOnly: true
+  humanAccountable: true
+  deterministicHotPathOnly: true
+  regulatoryClass: unregulated
+# §37: DomainEvalSpec
+eval_spec:
+  domainId: qa
+  evalBaselines:
+    - smoke_pass_rate
+    - regression_detection
+  criticalCases:
+    - release_blocker_missed
+    - flaky_signal_masked
+  acceptanceThresholds:
+    smoke_pass_rate: 90
+    regression_detection: 85
+    turnaround_time: 90
+  adversarialScenarios:
+    - flaky_suite_bias
+    - false_green
 # §37: ResourceBoundaries - Execution limits for the division
 resource_boundaries:
   max_concurrent_executions: 3

@@ -71,7 +71,7 @@ export function readBootstrapAuthToken(doc: Document = document): string | undef
   return normalizeOptionalEnv(metaToken);
 }
 
-function normalizeOptionalEnv(value: string | boolean | undefined): string | undefined {
+function normalizeOptionalEnv(value: string | boolean | null | undefined): string | undefined {
   if (typeof value !== "string") {
     return undefined;
   }

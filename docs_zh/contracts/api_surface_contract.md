@@ -21,6 +21,11 @@
 
 本 contract 定义平台对外 HTTP API 的最小资源模型和接口边界。
 
+相关 companion：
+
+- `sdk_surface_contract.md` 负责 CLI / Client SDK / Pack SDK / Plugin SDK 对外表面
+- `docs_zh/reference/api-versioning.md` 负责人工说明和版本协商口径
+
 ## 2. 资源对象
 
 - `TaskResource`

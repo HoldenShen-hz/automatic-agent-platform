@@ -17,6 +17,12 @@ roles:
     model: precision
     tools: [ehr_reader, guideline_mapper, clinical_summary, care_pathway_router, appointment_sync]
     max_instances: 2
+  - id: care_governance_reviewer
+    name: Care Governance Reviewer
+    prompt: roles/clinical_specialist.prompt.md
+    model: reasoning
+    tools: [guideline_mapper, clinical_summary]
+    max_instances: 1
 # §37: DomainDescriptor
 domain_descriptor:
   domainId: healthcare

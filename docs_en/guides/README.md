@@ -15,9 +15,9 @@ This directory contains operational content, writing guidelines, and implementat
 
 | Type | Responsibility | Location |
 |------|----------------|----------|
-| **Overview** | What the platform is | `docs_zh/architecture/00-*.md` |
-| **ADR** | Why the design is this way | `docs_zh/adr/*.md` |
-| **Guide** | How to do it specifically | `docs_zh/guides/*.md` |
+| **Overview** | What the platform is | `../architecture/00-*.md` |
+| **ADR** | Why the design is this way | `../adr/*.md` |
+| **Guide** | How to do it specifically | `./*.md` |
 
 ## Update Rules
 

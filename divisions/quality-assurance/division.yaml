@@ -17,6 +17,12 @@ roles:
     model: balanced
     tools: [test_manager, regression_runner, defect_tracker, coverage_analyzer, performance_profiler]
     max_instances: 3
+  - id: release_certifier
+    name: Release Certifier
+    prompt: roles/qa_engineer.prompt.md
+    model: reasoning
+    tools: [coverage_analyzer, defect_tracker, performance_profiler]
+    max_instances: 2
 # §37: DomainDescriptor
 domain_descriptor:
   domainId: quality-assurance

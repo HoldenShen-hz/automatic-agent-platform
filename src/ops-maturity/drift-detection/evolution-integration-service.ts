@@ -46,8 +46,32 @@ export const DEFAULT_CONFIG: EvolutionIntegrationConfig = {
   enableAutomaticProposal: true,
 };
 
+type FailureFamily =
+  | "timeout"
+  | "type_error"
+  | "schema_error"
+  | "unit_test_failure"
+  | "lint_error"
+  | "forbidden_path"
+  | "security_policy_violation"
+  | "complex_repair_failure";
+
+interface FailureClassification {
+  readonly taskType: string;
+  readonly failureMode: string;
+  readonly failureCategory: EvidenceRecord["failureCategory"];
+  readonly proposalKind: ProposalKind;
+}
+
 function createEvidenceId(): string {
   return newId("evidence");
+}
+
+function tokenizeReasonCode(reasonCode: string): string[] {
+  return reasonCode
+    .toLowerCase()
+    .split(/[^a-z0-9]+/u)
+    .filter((token) => token.length > 0);
 }
 
 /**
@@ -279,6 +303,7 @@ export class EvolutionIntegrationService {
 
     // Check promotion gate
     const decision = this.promotionGate.decide(proposal, report, false);
+    this.annotateProposalWithGateDecision(proposal, report, decision);
 
     if (decision.allowed) {
       // Submit for approval
@@ -307,38 +332,30 @@ export class EvolutionIntegrationService {
   }
 
   private inferTaskType(reasonCode: string): string {
-    if (reasonCode.includes('timeout')) return 'timeout_task';
-    if (reasonCode.includes('type') || reasonCode.includes('schema')) return 'type_error_task';
-    if (reasonCode.includes('test')) return 'test_failure_task';
-    if (reasonCode.includes('security') || reasonCode.includes('forbidden')) return 'security_task';
-    return 'general_task';
+    return this.classifyReasonCode(reasonCode).taskType;
   }
 
   private classifyFailureMode(reasonCode: string): string {
-    if (reasonCode.includes('timeout')) return 'timeout';
-    if (reasonCode.includes('type')) return 'type_error';
-    if (reasonCode.includes('schema')) return 'schema_error';
-    if (reasonCode.includes('test')) return 'unit_test_failure';
-    if (reasonCode.includes('lint')) return 'lint_error';
-    if (reasonCode.includes('security')) return 'security_policy_violation';
-    if (reasonCode.includes('forbidden')) return 'forbidden_path';
-    return 'complex_repair_failure';
+    return this.classifyReasonCode(reasonCode).failureMode;
   }
 
   private inferFailureCategory(reasonCode: string): EvidenceRecord['failureCategory'] {
-    if (reasonCode.includes('type') || reasonCode.includes('schema')) return 'type_error';
-    if (reasonCode.includes('test')) return 'unit_test_failure';
-    if (reasonCode.includes('lint')) return 'lint_error';
-    if (reasonCode.includes('security') || reasonCode.includes('forbidden')) return 'forbidden_path';
-    if (reasonCode.includes('security_policy')) return 'security_policy_violation';
-    return 'complex_repair_failure';
+    return this.classifyReasonCode(reasonCode).failureCategory;
   }
 
   private inferProposalKind(taskType: string): ProposalKind {
-    if (taskType.includes('type') || taskType.includes('schema')) return 'tool_routing_rule';
-    if (taskType.includes('timeout')) return 'threshold_tuning';
-    if (taskType.includes('test')) return 'prompt_patch';
-    return 'skill_doc';
+    switch (taskType) {
+      case "type_error_task":
+        return "tool_routing_rule";
+      case "timeout_task":
+        return "threshold_tuning";
+      case "test_failure_task":
+        return "prompt_patch";
+      case "security_task":
+        return "prompt_patch";
+      default:
+        return "skill_doc";
+    }
   }
 
   /**
@@ -346,24 +363,127 @@ export class EvolutionIntegrationService {
    * Security-related proposals and significant changes get higher risk assessment.
    */
   private determineRisk(kind: ProposalKind, taskType: string): 'low' | 'medium' | 'high' {
-    const securityKeywords = ['security', 'auth', 'permission', 'access', 'forbidden'];
+    const securityTaskTypes = new Set(["security_task"]);
 
     // High-risk categories always high
-    if (kind === 'prompt_patch' || kind === 'threshold_tuning') {
-      return 'high';
+    if (kind === "prompt_patch" || kind === "threshold_tuning") {
+      return "high";
     }
 
     // Security-related task types always high
-    if (securityKeywords.some(kw => taskType.toLowerCase().includes(kw))) {
-      return 'high';
+    if (securityTaskTypes.has(taskType)) {
+      return "high";
     }
 
     // Workflow template changes are medium risk
-    if (kind === 'workflow_template') {
-      return 'medium';
+    if (kind === "workflow_template") {
+      return "medium";
     }
 
     // Default to low for tool_routing_rule and skill_doc
-    return 'low';
+    return "low";
+  }
+
+  private classifyReasonCode(reasonCode: string): FailureClassification {
+    const tokens = tokenizeReasonCode(reasonCode);
+    const tokenSet = new Set(tokens);
+    const family = this.detectFailureFamily(tokenSet);
+
+    switch (family) {
+      case "timeout":
+        return {
+          taskType: "timeout_task",
+          failureMode: "timeout",
+          failureCategory: "complex_repair_failure",
+          proposalKind: "threshold_tuning",
+        };
+      case "type_error":
+        return {
+          taskType: "type_error_task",
+          failureMode: "type_error",
+          failureCategory: "type_error",
+          proposalKind: "tool_routing_rule",
+        };
+      case "schema_error":
+        return {
+          taskType: "type_error_task",
+          failureMode: "schema_error",
+          failureCategory: "schema_error",
+          proposalKind: "tool_routing_rule",
+        };
+      case "unit_test_failure":
+        return {
+          taskType: "test_failure_task",
+          failureMode: "unit_test_failure",
+          failureCategory: "unit_test_failure",
+          proposalKind: "prompt_patch",
+        };
+      case "lint_error":
+        return {
+          taskType: "quality_task",
+          failureMode: "lint_error",
+          failureCategory: "lint_error",
+          proposalKind: "skill_doc",
+        };
+      case "forbidden_path":
+        return {
+          taskType: "security_task",
+          failureMode: "forbidden_path",
+          failureCategory: "forbidden_path",
+          proposalKind: "prompt_patch",
+        };
+      case "security_policy_violation":
+        return {
+          taskType: "security_task",
+          failureMode: "security_policy_violation",
+          failureCategory: "security_policy_violation",
+          proposalKind: "prompt_patch",
+        };
+      default:
+        return {
+          taskType: "general_task",
+          failureMode: "complex_repair_failure",
+          failureCategory: "complex_repair_failure",
+          proposalKind: "skill_doc",
+        };
+    }
+  }
+
+  private detectFailureFamily(tokens: ReadonlySet<string>): FailureFamily {
+    if (tokens.has("timeout") || tokens.has("deadline")) {
+      return "timeout";
+    }
+    if (tokens.has("forbidden") || tokens.has("readonly") || tokens.has("denied")) {
+      return "forbidden_path";
+    }
+    if (tokens.has("security") || tokens.has("sandbox") || (tokens.has("policy") && tokens.has("violation"))) {
+      return "security_policy_violation";
+    }
+    if (tokens.has("schema")) {
+      return "schema_error";
+    }
+    if (tokens.has("type") || tokens.has("typing")) {
+      return "type_error";
+    }
+    if (tokens.has("test") || tokens.has("spec") || tokens.has("assertion")) {
+      return "unit_test_failure";
+    }
+    if (tokens.has("lint") || (tokens.has("format") && tokens.has("check"))) {
+      return "lint_error";
+    }
+    return "complex_repair_failure";
+  }
+
+  private annotateProposalWithGateDecision(
+    proposal: import("./learning/proposal-engine.js").ImprovementProposal,
+    report: import("./learning/benchmark-runner.js").EvaluationReport,
+    decision: import("./learning/promotion-gate.js").PromotionDecision
+  ): void {
+    const reasonSummary = decision.reasons.length > 0
+      ? decision.reasons.join(" | ")
+      : "passed";
+    const gateSummary = `[promotion_gate] allowed=${decision.allowed}; stage=${decision.stage}; evaluation=${report.decision}; reasons=${reasonSummary}`;
+    proposal.rationale = `${proposal.rationale}\n${gateSummary}`;
+    proposal.updatedAt = new Date().toISOString();
   }
 }

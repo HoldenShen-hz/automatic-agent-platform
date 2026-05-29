@@ -89,13 +89,13 @@ All core contracts, architecture, and main document changes must be formally sub
 |------|-----------------|-------------------|
 | Architect | Approve main architectural boundary changes | §4-§9 Platform infrastructure layer |
 | Tech Lead | Approve contract field changes | All contract files |
-| Ops Lead | Approve operations process changes | `docs_zh/operations/` |
+| Ops Lead | Approve operations process changes | `../operations/` |
 | Security Review | Approve high-risk new capabilities | New features with security impact |
 
 ## 7. Toolchain References
 
 - **Document Tracking**: Managed via GitHub PR / Issues
-- **ADR Management**: [`docs_zh/adr/README.md`](../adr/README.md)
-- **Contract Registry**: [`docs_zh/contracts/README.md`](../contracts/README.md)
-- **Architecture Index**: [`docs_zh/architecture/README.md`](../architecture/README.md)
-- **Status Tracking**: Review documents under [`docs_zh/reviews/`](../reviews/)
+- **ADR Management**: [`../adr/README.md`](../adr/README.md)
+- **Contract Registry**: [`../contracts/README.md`](../contracts/README.md)
+- **Architecture Index**: [`../architecture/README.md`](../architecture/README.md)
+- **Status Tracking**: Review documents under [`../reviews/`](../reviews/)

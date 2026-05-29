@@ -8,7 +8,7 @@
 
 1. 先读 [平台骨架](../architecture/00-platform-architecture.md)，建立全局心智模型。
 2. 再读 [ADR-001](../adr/001-three-layer-architecture.md)、[ADR-004](../adr/004-workflow-routing.md)、[ADR-009](../adr/009-deployment-ops.md)，理解核心主链路。
-3. 如果当前要实现记忆、成本或安全，再分别补读 [ADR-003](../adr/003-memory-six-layers.md)、[ADR-008](../adr/008-cost-model.md)、[ADR-005](../adr/005-security-model.md)。
+3. 如果当前要实现记忆、成本或安全，再分别补读 [ADR-020](../adr/020-memory-six-plane-model.md)、[ADR-008](../adr/008-cost-model.md)、[ADR-005](../adr/005-security-model.md)。
 4. 如果当前要新增业务能力，最后读 [Division Authoring](./division-authoring.md)。
 
 ## 当前建议实现范围
@@ -92,7 +92,7 @@
 **症状**: 点击文档中的链接跳转到 404 页面
 
 **排查步骤**:
-1. 确认目标文件存在于 `docs_zh/` 目录树
+1. 确认目标文件存在于当前语种目录树（中文文档在 `docs_zh/`，英文文档在 `docs_en/`）
 2. 检查相对路径是否正确（上级目录用 `../`）
 3. 确认文档编号与实际文件名匹配
 

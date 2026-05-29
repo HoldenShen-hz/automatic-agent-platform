@@ -73,11 +73,11 @@
 | [064](./064-cost-attribution-and-optimization-engine.md) | 成本归因与优化引擎 | Accepted | 2026-04-20 |
 | [065](./065-workflow-visual-debugger.md) | 工作流可视化调试器架构 | Accepted | 2026-04-20 |
 | [066](./066-compliance-report-auto-generation.md) | 合规报告自动生成引擎 | Accepted | 2026-04-20 |
-| [071](./071-plugin-spi-framework.md) | Plugin SPI 接口体系与生命周期 | Accepted | 2026-04-17 |
 | [067](./067-capacity-planning-and-cost-prediction.md) | 容量规划与成本预测引擎 | Accepted | 2026-04-20 |
 | [068](./068-multimodal-capability-architecture.md) | 多模态能力架构 | Accepted | 2026-04-20 |
 | [069](./069-platform-self-operating-agent.md) | 平台自运维 Agent 架构 | Partially Superseded by v4.3 control-plane and runtime authority ADRs | 2026-04-20 |
 | [070](./070-conclusion.md) | 结论 | Superseded by ADR-109 to ADR-113 | 2026-04-20 |
+| [071](./071-plugin-spi-framework.md) | Plugin SPI 接口体系与生命周期 | Accepted | 2026-04-17 |
 | [072](./072-oapeflir-testing-strategy.md) | OAPEFLIR 测试策略与新模块测试矩阵 | Partially Superseded by current layered test matrix and runtime contract tests | 2026-04-17 |
 | [073](./073-unified-resource-model.md) | ADR-073: Unified Agent Resource Model | Accepted | 2026-04-13 |
 | [075](./075-controlled-rollout-release.md) | 六级受控发布与 Rollout 状态机 | Accepted | 2026-04-17 |
@@ -139,9 +139,13 @@
 
 - 历史目录同时保留 `003-memory-six-layers.md` 与 `003-memory-seven-layers.md`；其中 `seven-layers` 仅保留为历史别名 / 跳转页，规范内容以 `003-memory-six-layers.md` 为准。
 - Plugin SPI ADR 已统一收敛到 `071-plugin-spi-framework.md`；旧的 `066-plugin-spi-framework.md` 重复副本已移除，所有引用统一改到 ADR-071。
+- `045`、`074`、`076`、`077` 目前保留为 reserved / withdrawn 号段，不再回填历史内容。
 - 新增的 `091-108` 用于承接 Harness 八支柱与领域治理补齐项。
 - 新增的 `109-122` 是 v4.3 Contract Freeze 与后续实现澄清入口：冻结 12 个 canonical contract、状态机唯一权威、`platform.*` 与 `oapeflir.view.*` 事件分层、MVP / Hardening / Enterprise 三环边界，以及 tenant scope / auth precedence / self-healing boundary / interface rate-limit / WAL recovery / panic allowlist / pack-domain lifecycle / client transport / timeout hierarchy / evidence boundary 的权威说明。
 - `109-122` 通过 freeze / authority / event namespace / ring boundary / tenant scope / auth precedence / recovery boundary 等规则约束旧 `ExecutionPlan` / `ExecutionReceipt` / `ControlDirective` / `StateCommand` / OAPEFLIR runtime authority / Phase 命名、tenant 解析与跨层边界语义；历史 ADR 正文保留，不直接改写。
+- `069` 的后继重点是 `ADR-109`、`ADR-110`、`ADR-112`。
+- `072` 的后继重点是 `ADR-109`、`ADR-110`、当前 layered test matrix 与 runtime contract tests。
+- `078` 的后继重点是 `ADR-109`、`ADR-111` 以及知识面相关 canonical contracts。
 
 ## 创建新 ADR
 

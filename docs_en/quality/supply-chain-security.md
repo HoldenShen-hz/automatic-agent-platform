@@ -6,6 +6,7 @@ This document records auditable supply chain security entry points in the reposi
 
 - `package-lock.json` must be committed, CI uses `npm ci`.
 - CI must run `npm audit --audit-level=high`.
+- Supply-chain audit evidence is the CI-generated SARIF / audit log output; the repository does not require extra signature text to be embedded inside `package-lock.json`.
 - CI must run CodeQL TypeScript analysis.
 - Container images must be scanned by Trivy CRITICAL/HIGH.
 - Release images must use explicit tags and include commit sha tags.

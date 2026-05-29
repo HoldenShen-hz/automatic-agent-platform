@@ -7,6 +7,12 @@
 | `P1` | 15 min | 1 hour | 24 hours |
 | `P2` | 1 hour | 4 hours | 48 hours |
 
+Prometheus/Alertmanager 映射：
+
+- `severity=page` 或跨区域/核心写路径故障 -> `P1`
+- `severity=critical` -> 默认按 `P1` 处理，若确认无客户影响可降为 `P2`
+- `severity=warning` -> 默认按 `P2` 处理
+
 ## Response Flow
 
 1. **Confirm** alert fidelity and declare incident severity
@@ -64,16 +70,16 @@ Next Update: <HH:MM+30m or sooner if material change>
 
 ```bash
 # Check system health
-npm run healthz
+curl -f http://127.0.0.1:8010/healthz
 
 # View recent errors
 grep -r "ERROR" logs/ | tail -100
 
 # Check pod status
-kubectl get pods -n platform
+kubectl get pods -n automatic-agent
 
 # Check database connections
-sqlite3 data/platform.db "SELECT COUNT(*) FROM sqlite_master"
+sqlite3 "${AA_DB_PATH:-data/sqlite/automatic-agent.db}" "SELECT COUNT(*) FROM sqlite_master"
 
 # View audit trail
 cat logs/audit.json | jq '. | select(.level=="error")'

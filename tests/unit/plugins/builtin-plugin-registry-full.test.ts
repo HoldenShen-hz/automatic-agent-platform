@@ -25,6 +25,12 @@ import {
   removePluginRevocation,
   BundleRevocationSeverity,
 } from "../../../src/plugins/builtin-plugin-registry.js";
+import { createOperationsRetrieverPlugin } from "../../../src/plugins/retrievers/operations-retriever.js";
+import { createOperationsPresenterPlugin } from "../../../src/plugins/presenters/operations-presenter.js";
+import { createGameDevRetrieverPlugin } from "../../../src/plugins/retrievers/game-dev-retriever.js";
+import { createGameDevAdapterPlugin } from "../../../src/plugins/adapters/game-dev-adapter.js";
+import { createLivestreamRetrieverPlugin } from "../../../src/plugins/retrievers/livestream-retriever.js";
+import { createLivestreamAdapterPlugin } from "../../../src/plugins/adapters/livestream-adapter.js";
 
 test("PluginMarketplaceRegistry can be instantiated", () => {
   const registry = new PluginMarketplaceRegistry();
@@ -175,6 +181,28 @@ test("getBuiltinPluginManifest returns manifest for valid plugin", () => {
   assert.equal(manifest!.pluginId, "plugin.coding.retriever");
   assert.equal(manifest!.name, "Coding Retriever");
   assert.equal(manifest!.version, "1.0.0");
+});
+
+test("builtin plugin manifests stay aligned with runtime plugin domain and capability metadata", () => {
+  const plugins = [
+    createOperationsRetrieverPlugin(),
+    createOperationsPresenterPlugin(),
+    createGameDevRetrieverPlugin(),
+    createGameDevAdapterPlugin(),
+    createLivestreamRetrieverPlugin(),
+    createLivestreamAdapterPlugin(),
+  ];
+
+  for (const plugin of plugins) {
+    const manifest = getBuiltinPluginManifest(plugin.pluginId);
+    assert.ok(manifest, `missing manifest for ${plugin.pluginId}`);
+    if ("domainId" in plugin && typeof plugin.domainId === "string") {
+      assert.deepEqual(manifest!.domainIds, [plugin.domainId], `${plugin.pluginId} manifest domainIds drifted`);
+    }
+    if (Array.isArray(plugin.capabilityIds)) {
+      assert.deepEqual(manifest!.capabilityIds, [...plugin.capabilityIds], `${plugin.pluginId} manifest capabilityIds drifted`);
+    }
+  }
 });
 
 test("getBuiltinPluginManifest returns null for unknown plugin", () => {

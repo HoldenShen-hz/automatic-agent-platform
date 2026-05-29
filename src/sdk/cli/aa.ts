@@ -3,6 +3,7 @@ import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
+import { CLI_EXIT_FAILURE, CLI_EXIT_SUCCESS, isCliEntryPoint, runCliMain } from "./cli-exit.js";
 import { CLI_ENTRYPOINTS } from "./index.js";
 
 const COMMAND_ALIASES: Record<string, string> = {
@@ -22,19 +23,25 @@ function printUsage(): void {
   );
 }
 
-async function main(): Promise<void> {
+async function main(): Promise<number> {
   const [, , maybeCommand, ...args] = process.argv;
   if (maybeCommand == null || maybeCommand === "help" || maybeCommand === "--help" || maybeCommand === "-h") {
     printUsage();
-    return;
+    return CLI_EXIT_SUCCESS;
   }
 
   const command = COMMAND_ALIASES[maybeCommand] ?? maybeCommand;
   if (!CLI_ENTRYPOINT_PATTERN.test(command) || !CLI_ENTRYPOINTS.includes(command as never)) {
     process.stderr.write(`Unknown aa command: ${maybeCommand}\n`);
     printUsage();
-    process.exitCode = 1;
-    return;
+    return CLI_EXIT_FAILURE;
+  }
+
+  if (process.env.AA_RUNNING_TESTS === "1") {
+    process.stderr.write(
+      "aa:dev is disabled while AA_RUNNING_TESTS=1 to avoid writing real runtime state during tests.\n",
+    );
+    return CLI_EXIT_FAILURE;
   }
 
   const moduleDir = dirname(fileURLToPath(import.meta.url));
@@ -44,15 +51,17 @@ async function main(): Promise<void> {
   const childEntrypoint = useSourceEntrypoint ? sourceChildEntrypoint : compiledChildEntrypoint;
   if (!existsSync(childEntrypoint)) {
     process.stderr.write(`Invalid aa command target: ${command}\n`);
-    process.exitCode = 1;
-    return;
+    return CLI_EXIT_FAILURE;
   }
   const childArgs = useSourceEntrypoint
     ? ["--import", "tsx", childEntrypoint, ...args]
     : [childEntrypoint, ...args];
   const child = spawn(process.execPath, childArgs, {
     stdio: "inherit",
-    env: process.env,
+    env: {
+      ...process.env,
+      AA_DEV_CLI_ENTRYPOINT: "1",
+    },
   });
 
   await new Promise<void>((resolve, reject) => {
@@ -62,12 +71,14 @@ async function main(): Promise<void> {
         process.kill(process.pid, signal);
         return;
       }
-      process.exitCode = code ?? 1;
+      process.exitCode = code ?? CLI_EXIT_FAILURE;
       resolve();
     });
   });
 
-  process.exit(process.exitCode ?? 1);
+  return typeof process.exitCode === "number" ? process.exitCode : CLI_EXIT_FAILURE;
 }
 
-await main();
+if (isCliEntryPoint(import.meta.url)) {
+  void runCliMain(main);
+}

@@ -1,5 +1,10 @@
 # Connector Framework Contract
 
+> Lifecycle note:
+> connector 的 `registered/configured/verified/enabled/disabled/revoked` 是 connector 自身生命周期，
+> 不替代 `HarnessRun` / `NodeRun` 的 truth lifecycle。运行时阶段对齐以 `harness_run_lifecycle_contract.md`
+> 和 `lifecycle_and_termination_contract.md` 为准。
+
 ## 1. 范围
 
 本 contract 定义 `§57` 的连接器抽象、生命周期、健康检查与 Connector SDK 边界。
@@ -67,4 +72,3 @@
 - unit：manifest validation、binding resolution、health mapping
 - integration：connector runtime and callback path
 - contract：未验证连接器不得接收生产事件
-

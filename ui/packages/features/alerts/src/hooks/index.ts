@@ -135,7 +135,7 @@ export function useAlertsVm(): AlertsVm {
   const [streamStatus, setStreamStatus] = useState<AlertsVm["streamStatus"]>("idle");
   const [pendingOperations, setPendingOperations] = useState(0);
   const incidents = useIncidentsQuery().data ?? [];
-  const scopedIncidents = auth.permissions.includes(ALERTS_REQUIRED_PERMISSION) ? incidents : [];
+  const scopedIncidents = (auth.permissions ?? []).includes(ALERTS_REQUIRED_PERMISSION) ? incidents : [];
 
   const { mutateAsync: acknowledgeMutateAsync } = useMutation({
     client,

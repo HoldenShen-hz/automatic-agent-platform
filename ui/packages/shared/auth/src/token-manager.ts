@@ -22,8 +22,8 @@ export class TokenManager {
   public setSession(session: AuthSession): void {
     this.session = {
       ...session,
-      roles: session.roles == null ? undefined : [...session.roles],
-      permissions: session.permissions == null ? undefined : [...session.permissions],
+      ...(session.roles == null ? {} : { roles: [...session.roles] }),
+      ...(session.permissions == null ? {} : { permissions: [...session.permissions] }),
     };
   }
 

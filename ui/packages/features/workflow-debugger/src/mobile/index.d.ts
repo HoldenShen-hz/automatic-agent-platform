@@ -1,0 +1,1 @@
+export declare function createWorkflowDebuggerMobileCards(): readonly [import("@aa/ui-mobile").MobileFeatureCard, import("@aa/ui-mobile").MobileFeatureCard, import("@aa/ui-mobile").MobileFeatureCard];

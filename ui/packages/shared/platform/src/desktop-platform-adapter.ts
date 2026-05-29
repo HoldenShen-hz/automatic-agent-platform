@@ -10,7 +10,7 @@ export class DesktopPlatformAdapter extends DefaultPlatformAdapter {
     super(platform, {
       screenSecurityDefault: true,
       allowedShellCommands: options.allowedShellCommands ?? ["health", "doctor", "version"],
-      analyticsConsentDefault: options.analyticsConsentDefault,
+      ...(options.analyticsConsentDefault == null ? {} : { analyticsConsentDefault: options.analyticsConsentDefault }),
     });
   }
 }

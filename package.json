@@ -2,6 +2,7 @@
   "name": "automatic-agent-platform",
   "version": "0.2.0",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "bin": {
     "aa": "./dist/src/sdk/cli/aa.js",
@@ -41,11 +42,14 @@
   },
   "files": [
     "dist/",
+    "config/providers/default.json",
+    "config/providers/models.json",
+    "config/providers/models.bundled.json",
     "README.md",
     "LICENSE",
     "package.json"
   ],
-  "description": "Enterprise automatic agent platform baseline with seven-layer architecture docs, durable runtime, AI operations primitives, and operational maturity tooling.",
+  "description": "Enterprise automatic agent platform baseline with historical architecture docs, durable runtime, AI operations primitives, and operational maturity tooling.",
   "repository": {
     "type": "git",
     "url": "https://github.com/HoldenShen-hz/automatic-agent-platform.git"
@@ -55,11 +59,11 @@
     "build:test": "tsc -p tsconfig.build.json",
     "dev:stack": "node scripts/dev/start-local-stack.mjs",
     "dev:stack:stop": "node scripts/dev/stop-local-stack.mjs",
-    "typecheck": "tsc -p tsconfig.build.json --noEmit && tsc -b tsconfig.json --pretty false && npm --prefix ui run typecheck",
-    "typecheck:tests": "tsc -p tsconfig.json --noEmit --pretty false",
+    "typecheck": "tsc -p tsconfig.build.json --noEmit && tsc -p tsconfig.scripts.json --noEmit --pretty false && npm --prefix ui run typecheck",
+    "typecheck:tests": "tsc -p tsconfig.json --noEmit --pretty false && tsc -p tsconfig.scripts.json --noEmit --pretty false",
     "ci:baseline": "npm run typecheck && npm run lint:architecture-boundary && npm run audit:repo-hygiene && npm run test:raw && npm run test:mutation:critical && npm run coverage:gate && AA_VALIDATION_ITERATIONS=2 npm run validate:stable:compiled",
     "start": "node --enable-source-maps dist/src/index.js",
-    "prepare": "node -e \"import('husky').then(({ default: husky }) => husky()).catch(() => undefined)\"",
+    "prepare": "node -e \"import('husky').then(({ default: husky }) => husky()).catch((error) => { console.warn('[prepare] husky bootstrap skipped:', error instanceof Error ? error.message : String(error)); })\"",
     "prepack": "npm run build",
     "doctor": "npm run build && node --enable-source-maps dist/src/sdk/cli/doctor.js",
     "dlq": "npm run build && node --enable-source-maps dist/src/sdk/cli/dlq-manager.js",
@@ -256,11 +260,11 @@
     "format:check": "prettier --check ."
   },
   "dependencies": {
-    "@opentelemetry/exporter-trace-otlp-http": "^0.214.0",
-    "@opentelemetry/instrumentation-http": "^0.214.0",
-    "@opentelemetry/resources": "^2.6.1",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.218.0",
+    "@opentelemetry/instrumentation-http": "^0.218.0",
+    "@opentelemetry/resources": "^2.7.1",
     "@opentelemetry/sdk-node": "^0.218.0",
-    "@opentelemetry/semantic-conventions": "^1.40.0",
+    "@opentelemetry/semantic-conventions": "^1.29.0",
     "ioredis": "^5.10.1",
     "postgres": "^3.4.9",
     "ws": "^8.18.0",
@@ -274,7 +278,6 @@
     "@stryker-mutator/typescript-checker": "^9.6.1",
     "@types/node": "^22.19.15",
     "@types/ws": "^8.18.0",
-    "@types/xml-crypto": "^1.4.6",
     "c8": "^11.0.0",
     "eslint": "^9.25.1",
     "husky": "^9.1.7",

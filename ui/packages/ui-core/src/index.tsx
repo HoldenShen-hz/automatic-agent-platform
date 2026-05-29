@@ -99,14 +99,10 @@ export function createFeatureModule(config: {
     </FeatureScaffold>
   ));
   const RenderFeature = (): ReactElement => renderFeature();
-  const Component = () => createElement(
-    FeatureModuleErrorBoundary,
-    {
-      title: config.title,
-      summary: config.summary,
-      status: config.status,
-    },
-    createElement(RenderFeature),
+  const Component = (): ReactElement => (
+    <FeatureModuleErrorBoundary title={config.title} summary={config.summary} status={config.status}>
+      <RenderFeature />
+    </FeatureModuleErrorBoundary>
   );
 
   return {

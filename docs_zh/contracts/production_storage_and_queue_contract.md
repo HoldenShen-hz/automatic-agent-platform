@@ -30,6 +30,11 @@
 - `execution_plane_contract.md`
 - `event_bus_contract.md`
 
+权威边界：
+
+- 表名、最小列和 inventory 以 `storage_schema_contract.md` 为准
+- 生产拓扑、队列职责和 PG/Redis 边界以本文为准
+
 ## 2. 目标
 
 - 把事务真相、队列派发和缓存职责分清。

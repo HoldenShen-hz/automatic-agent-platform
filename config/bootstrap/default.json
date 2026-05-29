@@ -1,5 +1,5 @@
 {
-  "appName": "automatic-agent-system",
+  "appName": "automatic-agent-platform",
   "phase": "ring_1",
   "stableCoreEnabled": true,
   "dependencyOrder": [

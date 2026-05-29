@@ -1,6 +1,6 @@
 # ADR-070 结论
 
-- 状态：Superseded by ADR-109 to ADR-113
+- 状态：Withdrawn / Index
 - 决策日期：2026-04-20
 
 ## 背景

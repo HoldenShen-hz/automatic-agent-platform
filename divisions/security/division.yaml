@@ -26,6 +26,44 @@ roles:
     model: balanced
     tools: [read]
     max_instances: 2
+# §37: DomainDescriptor
+domain_descriptor:
+  domainId: security
+  ownerOrgNodeId: org.security
+  primaryEntities:
+    - vulnerability
+    - finding
+    - control
+    - incident
+  recipeArchetype: compliance
+  lifecycleState: active
+# §37: DomainRiskProfile
+risk_profile:
+  profileId: security.risk
+  domainId: security
+  riskLevel: critical
+  advisoryOnly: false
+  humanAccountable: true
+  deterministicHotPathOnly: true
+  regulatoryClass: heavily_regulated
+# §37: DomainEvalSpec
+eval_spec:
+  domainId: security
+  evalBaselines:
+    - finding_precision
+    - policy_coverage
+  criticalCases:
+    - secret_exposure
+    - privilege_escalation
+    - missed_cve
+  acceptanceThresholds:
+    finding_precision: 90
+    policy_coverage: 95
+    false_negative_rate: 90
+  adversarialScenarios:
+    - prompt_injection
+    - control_bypass
+    - supply_chain_attack
 # §37: ResourceBoundaries - Execution limits for the division
 resource_boundaries:
   max_concurrent_executions: 2

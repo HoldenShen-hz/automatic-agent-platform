@@ -2,6 +2,9 @@ dist/
 coverage/
 logs/
 .audit/
+package-lock.json
+data/
+.cache/
 tests/golden/snapshots/
 tests/fixtures/migration/snapshots/
 ui/test-results/

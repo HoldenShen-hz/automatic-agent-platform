@@ -1,0 +1,142 @@
+export const defaultMockApiShape = {
+    dashboard: {
+        overallHealth: "healthy",
+        queueDepth: 7,
+        activeExecutions: 12,
+        approvalBacklog: 3,
+        alertSummary: "2 medium alerts",
+        successRate: 98.2,
+        avgDurationMs: 1840,
+        activeAgents: 9,
+        errorRate: 0.7,
+        p50LatencyMs: 420,
+        p99LatencyMs: 1560,
+        budgetUtilizationPercent: 73,
+        uptimePercent: 99.94,
+    },
+    tasks: [
+        { id: "task-1", title: "春季营销活动", status: "running", domainId: "marketing", currentStep: "launch-assets", owner: "growth-ops", evidenceCount: 6, timelineDepth: 5 },
+        { id: "task-2", title: "量化策略检查", status: "blocked", domainId: "quant-trading", currentStep: "approval", owner: "quant-review", evidenceCount: 9, timelineDepth: 5 },
+    ],
+    workflowRunSteps: {
+        "task-1": [
+            { id: "task-1-step-1", title: "Collect demand signals", status: "completed", executor: "growth-ops", startedAt: "2026-04-23T15:00:00Z", completedAt: "2026-04-23T15:04:00Z" },
+            { id: "task-1-step-2", title: "Launch assets", status: "running", executor: "agent-growth-launcher", startedAt: "2026-04-23T15:05:00Z" },
+        ],
+        "task-2": [
+            { id: "task-2-step-1", title: "Evaluate risk envelope", status: "completed", executor: "quant-review", startedAt: "2026-04-23T15:10:00Z", completedAt: "2026-04-23T15:16:00Z" },
+            { id: "task-2-step-2", title: "Prepare approval packet", status: "running", executor: "agent-risk-sentinel", startedAt: "2026-04-23T15:16:30Z" },
+        ],
+        approval: [
+            { id: "approval-step-1", title: "Request operator review", status: "running", executor: "operator-console", startedAt: "2026-04-23T15:20:00Z" },
+        ],
+    },
+    workflows: [
+        {
+            id: "workflow-1",
+            title: "Campaign Launch",
+            status: "running",
+            currentStage: "Execute",
+            owner: "growth-ops",
+            steps: [
+                { id: "s1", title: "Observe demand signals", phase: "Observe", status: "completed" },
+                { id: "s2", title: "Assess constraints", phase: "Assess", status: "completed" },
+                { id: "s3", title: "Plan rollout", phase: "Plan", status: "completed" },
+                { id: "s4", title: "Execute launch", phase: "Execute", status: "running" },
+            ],
+        },
+        {
+            id: "workflow-2",
+            title: "Risk Approval Loop",
+            status: "paused",
+            currentStage: "Feedback",
+            owner: "quant-review",
+            steps: [
+                { id: "r1", title: "Observe trade anomaly", phase: "Observe", status: "completed" },
+                { id: "r2", title: "Assess exposure", phase: "Assess", status: "completed" },
+                { id: "r3", title: "Feedback to approver", phase: "Feedback", status: "running" },
+            ],
+        },
+    ],
+    approvals: [
+        { approvalId: "approval-1", taskId: "task-2", riskLevel: "critical", reasonSummary: "策略需要人工审批" },
+    ],
+    incidents: [
+        { id: "inc-1", severity: "high", title: "Queue lag rising", summary: "dispatch queue lag exceeded target for 8m", createdAt: "2026-04-23T16:00:00Z" },
+        { id: "inc-2", severity: "medium", title: "Approval backlog", summary: "critical approvals waiting longer than 20m", createdAt: "2026-04-23T16:10:00Z" },
+    ],
+    workers: [
+        { id: "worker-1", status: "busy", queue: "dispatch", heartbeatLagMs: 140 },
+        { id: "worker-2", status: "idle", queue: "approval", heartbeatLagMs: 80 },
+        { id: "worker-3", status: "draining", queue: "recovery", heartbeatLagMs: 260 },
+    ],
+    queues: [
+        { id: "dispatch", ready: 42, inFlight: 8, retries: 2, dlq: 1 },
+        { id: "approval", ready: 3, inFlight: 1, retries: 0, dlq: 0 },
+    ],
+    agents: [
+        { id: "agent-1", name: "Growth Strategist", domainId: "marketing", status: "healthy", load: 0.62 },
+        { id: "agent-2", name: "Risk Sentinel", domainId: "quant-trading", status: "degraded", load: 0.88 },
+    ],
+    analytics: [
+        { id: "m1", label: "Task Success Rate", value: "98.2%", trend: "up", changePercent: 1.1, layer: "tasks", description: "Completed tasks that reached success." },
+        { id: "m2", label: "Approval SLA", value: "14m", trend: "flat", changePercent: 0.3, layer: "approvals", description: "Median approval turnaround." },
+        { id: "m3", label: "Queue Throughput", value: "1.8k/h", trend: "up", changePercent: 4.8, layer: "workflows", description: "Processed queue volume per hour." },
+        { id: "m4", label: "Workflow Completion", value: "91%", trend: "up", changePercent: 2.4, layer: "workflows", description: "Workflow runs closed without rollback." },
+        { id: "m5", label: "Agent Utilization", value: "76%", trend: "flat", changePercent: 0.5, layer: "agents", description: "Average agent load across active domains." },
+        { id: "m6", label: "Budget Burn", value: "73%", trend: "up", changePercent: 6.2, layer: "cost", description: "Budget consumed vs monthly guardrail." },
+    ],
+    costs: [
+        { id: "c1", scope: "marketing", amountUsd: 1240, budgetUsd: 1600 },
+        { id: "c2", scope: "quant-trading", amountUsd: 2280, budgetUsd: 2400 },
+    ],
+    marketplace: [
+        { id: "pack-1", name: "Campaign Optimizer", category: "marketing", version: "1.4.0" },
+        { id: "pack-2", name: "Risk Lens", category: "finance", version: "2.1.3" },
+    ],
+    explanations: [
+        { id: "exp-1", title: "Budget Alert Explanation", summary: "Spend increased because approval turnaround improved", evidenceCount: 4 },
+        { id: "exp-2", title: "Workflow Pause Explanation", summary: "Workflow paused waiting for quant approval", evidenceCount: 7 },
+    ],
+    roles: [
+        { id: "role-l1", name: "Operator", scope: "personal", permissionCount: 12, userCount: 150 },
+        { id: "role-l2", name: "Domain Admin", scope: "domain", permissionCount: 28, userCount: 25 },
+        { id: "role-l3", name: "Platform SRE", scope: "platform", permissionCount: 45, userCount: 8 },
+    ],
+    featureFlags: [
+        { id: "analytics", enabled: true, rolloutPercentage: 100, target: "global" },
+        { id: "workflow-builder", enabled: true, rolloutPercentage: 35, target: "pack-developers" },
+        { id: "marketplace", enabled: true, rolloutPercentage: 60, target: "shared" },
+    ],
+    models: [
+        { id: "model-1", provider: "minimax", model: "MiniMax-M2.7", boundDomains: ["marketing", "quant-trading"], budgetUsd: 2400 },
+        { id: "model-2", provider: "minimax", model: "MiniMax-Text-01", boundDomains: ["customer-service", "education"], budgetUsd: 900 },
+    ],
+    domainConfigs: [
+        { id: "marketing", displayName: "Marketing", owner: "growth-ops", defaultDrillDepth: 3, featureVisibilityCount: 12 },
+        { id: "quant-trading", displayName: "Quant Trading", owner: "risk-office", defaultDrillDepth: 5, featureVisibilityCount: 14 },
+    ],
+    tenants: [
+        { id: "tenant-default", name: "Default Tenant", domains: ["marketing", "quant-trading"], status: "active" },
+        { id: "tenant-beta", name: "Beta Sandbox", domains: ["customer-service"], status: "paused" },
+    ],
+    webhooks: [
+        { id: "wh-1", targetUrl: "https://ops.example.com/webhooks/incidents", eventCount: 6, enabled: true },
+        { id: "wh-2", targetUrl: "https://audit.example.com/webhooks/config", eventCount: 3, enabled: true },
+    ],
+    users: [
+        { id: "user-1", displayName: "Ops Lead", roleIds: ["role-l3"], tenantId: "tenant-default", status: "active" },
+        { id: "user-2", displayName: "Quant Reviewer", roleIds: ["role-l2"], tenantId: "tenant-default", status: "invited" },
+    ],
+    systemConfig: {
+        environment: "staging",
+        cspMode: "enforced",
+        csrfEnabled: true,
+        telemetryEndpoint: "https://telemetry.example.com/v1/logs",
+    },
+    preferences: {
+        locale: "zh-CN",
+        theme: "dark",
+        defaultDashboardLayout: ["overview", "tasks", "approvals"],
+    },
+};

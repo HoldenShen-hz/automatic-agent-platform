@@ -166,13 +166,13 @@ test("2024: CAS service supports distributed locking around compare-and-set", ()
 
 test("2087: execution path prewrites cost WAL before work and commits it inside transaction", () => {
   const billingText = source("src/platform/five-plane-state-evidence/truth/sqlite/repositories/billing-repository.ts");
-  const supervisorText = source("src/platform/five-plane-execution/execution-engine/multi-step-supervisor.ts");
+  const successPathText = source("src/platform/five-plane-execution/execution-engine/multi-step-supervisor-success-support.ts");
   assert.match(billingText, /insertCostEventWAL/);
   assert.match(billingText, /commitCostEventWAL/);
 
-  const walIndex = supervisorText.indexOf("insertCostEventWAL");
-  const transactionIndex = supervisorText.indexOf("deps.db.transaction(() => {", walIndex);
-  const commitIndex = supervisorText.indexOf("commitCostEventWAL", transactionIndex);
+  const walIndex = successPathText.indexOf("insertCostEventWAL");
+  const transactionIndex = successPathText.indexOf("deps.db.transaction(() => {", walIndex);
+  const commitIndex = successPathText.indexOf("commitCostEventWAL", transactionIndex);
   assert.ok(walIndex >= 0);
   assert.ok(transactionIndex > walIndex);
   assert.ok(commitIndex > transactionIndex);

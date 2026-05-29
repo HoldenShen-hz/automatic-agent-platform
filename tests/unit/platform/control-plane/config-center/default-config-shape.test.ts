@@ -21,6 +21,10 @@ test("runtime default config includes configVersion for version tracking", () =>
   assert.equal((runtimeConfig["rateLimit"] as Record<string, unknown>)["requestsPerMinute"], 120);
   assert.equal(typeof runtimeConfig["configDriftReconciler"], "object");
   assert.equal((runtimeConfig["configDriftReconciler"] as Record<string, unknown>)["interval"], 300000);
+  assert.ok(
+    Number(runtimeConfig["apiDefaultTimeoutMs"]) < Number(runtimeConfig["apiMaxTimeoutMs"]),
+    "apiDefaultTimeoutMs must stay below apiMaxTimeoutMs",
+  );
 });
 
 test("runtime default config meets complex workflow minimums (issue #2003)", () => {
@@ -68,4 +72,21 @@ test("coding domain default status is active", () => {
     .find((domain) => domain["domainId"] === "coding");
   assert.ok(codingDomain !== undefined);
   assert.equal(codingDomain["status"], "active");
+});
+
+test("runtime environment overlays repeat the active config version contract", () => {
+  const defaultRuntime = readJson(`${repoRoot}/config/runtime/default.json`);
+  for (const env of ["dev", "test", "staging", "pre-prod", "prod"]) {
+    const overlay = readJson(`${repoRoot}/config/runtime/${env}.json`);
+    assert.equal(
+      overlay["configVersion"],
+      defaultRuntime["configVersion"],
+      `${env} runtime overlay must repeat configVersion`,
+    );
+    assert.equal(
+      overlay["configSchemaVersion"],
+      defaultRuntime["configSchemaVersion"],
+      `${env} runtime overlay must repeat configSchemaVersion`,
+    );
+  }
 });

@@ -11,6 +11,8 @@ import test from "node:test";
 import { EvolutionIntegrationService } from "../../../../src/ops-maturity/drift-detection/evolution-integration-service.js";
 import type { AuthoritativeTaskStore } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
 import type { ApprovalService } from "../../../../src/platform/five-plane-control-plane/approval-center/approval-service.js";
+import type { EvidenceRecord } from "../../../../src/ops-maturity/drift-detection/learning/evidence-store.js";
+import type { ImprovementProposal } from "../../../../src/ops-maturity/drift-detection/learning/proposal-engine.js";
 
 /**
  * Creates a mock AuthoritativeTaskStore for testing.
@@ -29,6 +31,24 @@ function createMockApprovalService(): ApprovalService {
   return {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any;
+}
+
+async function getRecentEvidence(service: EvolutionIntegrationService): Promise<EvidenceRecord[]> {
+  const evidenceStore = (service as unknown as {
+    evidenceStore: {
+      getRecent(limit: number): Promise<EvidenceRecord[]>;
+    };
+  }).evidenceStore;
+  return evidenceStore.getRecent(10);
+}
+
+async function getPendingProposals(service: EvolutionIntegrationService): Promise<ImprovementProposal[]> {
+  const proposalEngine = (service as unknown as {
+    proposalEngine: {
+      listPending(): Promise<ImprovementProposal[]>;
+    };
+  }).proposalEngine;
+  return proposalEngine.listPending();
 }
 
 test("EvolutionIntegrationService records failure evidence", async () => {
@@ -174,6 +194,56 @@ test("EvolutionIntegrationService records security-related failures", async () =
   assert.equal(stats.recentFailures, 1, "Should have 1 security failure recorded");
 });
 
+test("EvolutionIntegrationService classifies forbidden-path failures deterministically", async () => {
+  const store = createMockStore();
+  const approvalService = createMockApprovalService();
+  const service = new EvolutionIntegrationService(store, approvalService);
+
+  await service.recordFailure({
+    taskId: "task_forbidden",
+    executionId: "exec_forbidden",
+    agentId: "agent_001",
+    sessionId: "session_001",
+    reasonCode: "security_forbidden_input",
+    errorMessage: "Forbidden path access",
+    costUsd: 0.01,
+    latencyMs: 100,
+    toolCalls: 1,
+    repairRounds: 0,
+  });
+
+  const [record] = await getRecentEvidence(service);
+  assert.ok(record, "Expected recorded evidence");
+  assert.equal(record.taskType, "security_task");
+  assert.equal(record.failureMode, "forbidden_path");
+  assert.equal(record.failureCategory, "forbidden_path");
+});
+
+test("EvolutionIntegrationService distinguishes schema failures from generic type failures", async () => {
+  const store = createMockStore();
+  const approvalService = createMockApprovalService();
+  const service = new EvolutionIntegrationService(store, approvalService);
+
+  await service.recordFailure({
+    taskId: "task_schema",
+    executionId: "exec_schema",
+    agentId: "agent_001",
+    sessionId: "session_001",
+    reasonCode: "schema_validation_failed",
+    errorMessage: "Schema validation failed",
+    costUsd: 0.02,
+    latencyMs: 120,
+    toolCalls: 2,
+    repairRounds: 0,
+  });
+
+  const [record] = await getRecentEvidence(service);
+  assert.ok(record, "Expected recorded evidence");
+  assert.equal(record.taskType, "type_error_task");
+  assert.equal(record.failureMode, "schema_error");
+  assert.equal(record.failureCategory, "schema_error");
+});
+
 test("EvolutionIntegrationService handles multiple success records", async () => {
   const store = createMockStore();
   const approvalService = createMockApprovalService();
@@ -272,4 +342,36 @@ test("EvolutionIntegrationService syncWithLearningPipeline forwards active propo
   await service.syncWithLearningPipeline();
 
   assert.ok(captured.length >= 1, "Expected at least one bridged learning object");
+});
+
+test("EvolutionIntegrationService preserves promotion gate reasons on generated proposals", async () => {
+  const store = createMockStore();
+  const approvalService = createMockApprovalService();
+  const service = new EvolutionIntegrationService(store, approvalService, {
+    reflectionThreshold: 3,
+    proposalConfidenceThreshold: 0.6,
+    enableAutomaticProposal: true,
+  });
+
+  for (let i = 0; i < 3; i++) {
+    await service.recordFailure({
+      taskId: `task_test_${i}`,
+      executionId: `exec_test_${i}`,
+      agentId: "agent_001",
+      sessionId: "session_001",
+      reasonCode: "test_failure",
+      errorMessage: "Test failure",
+      costUsd: 0.01,
+      latencyMs: 250,
+      toolCalls: 2,
+      repairRounds: 0,
+    });
+  }
+
+  const proposals = await getPendingProposals(service);
+  assert.equal(proposals.length, 1, "Expected one pending proposal");
+  assert.match(
+    proposals[0]!.rationale,
+    /\[promotion_gate\] allowed=false; stage=rejected; evaluation=needs_revision; reasons=High-risk proposals require manual approval/,
+  );
 });

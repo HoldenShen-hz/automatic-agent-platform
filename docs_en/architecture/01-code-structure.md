@@ -419,8 +419,8 @@ src/platform/
 │   │   ├── runtime-context.ts
 │   │   ├── single-task-execution.ts
 │   │   ├── single-task-happy-path.ts
-│   │   ├── phase1a-happy-path.ts
-│   │   ├── phase1b-orchestration.ts
+│   │   ├── multi-step-agent-round-loop.ts
+│   │   ├── multi-step-supervisor.ts
 │   │   ├── multi-step-orchestration.ts
 │   │   ├── model-call-provider.ts
 │   │   ├── call-governance.ts
@@ -544,7 +544,7 @@ src/platform/
 │   │   ├── storage-backend-config.ts
 │   │   ├── storage-quota-service.ts
 │   │   ├── session-dual-storage.ts
-│   │   ├── phase1a-store.ts
+│   │   ├── runtime-truth-repository.ts
 │   │   ├── migration-runner.ts
 │   │   ├── async-repository-registry.ts
 │   │   ├── async-query-helper.ts

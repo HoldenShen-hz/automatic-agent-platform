@@ -10,6 +10,7 @@
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
     "allowImportingTsExtensions": true,
+    "noEmit": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,

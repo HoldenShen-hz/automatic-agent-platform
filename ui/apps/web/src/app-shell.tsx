@@ -291,7 +291,7 @@ function AppFrame(
     bannerBackground: withAlpha(designTokens.color.accent, 0.16),
   }), []);
   const groupedFeatures = Object.entries(
-    features.reduce<Record<string, WebFeatureModule[]>>((groups, feature) => {
+    features.reduce<Record<string, FeatureModule[]>>((groups, feature) => {
       const bucket = groups[feature.manifest.group] ?? [];
       bucket.push(feature);
       groups[feature.manifest.group] = bucket;

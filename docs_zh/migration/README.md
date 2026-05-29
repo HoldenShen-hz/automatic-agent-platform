@@ -15,4 +15,4 @@
 
 - 先按 guideline 判断，再按 scope 执行。
 - 与平台骨架冲突时，以 `architecture/00-platform-architecture.md` 为准。
-- `docs_zh/migrations/` 仅保留 legacy alias 页面；migration 单数目录是当前权威入口。
+- `docs_zh/migration/` 是唯一权威入口；复数 `migrations/` 别名页已移除。

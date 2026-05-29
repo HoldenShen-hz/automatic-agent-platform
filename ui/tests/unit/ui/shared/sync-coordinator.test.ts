@@ -56,7 +56,8 @@ describe("SyncCoordinator", () => {
 
     await coordinator.flush("2026-05-01T12:05:00.000Z");
 
-    const requestInit = fetchImplementation.mock.calls[0]?.[1] as RequestInit;
+    expect(fetchImplementation).toHaveBeenCalled();
+    const [, requestInit] = fetchImplementation.mock.calls[0] as unknown as [RequestInfo | URL, RequestInit];
     const headers = new Headers(requestInit.headers);
     expect(headers.get("authorization")).toBe("Bearer token-1");
     expect(headers.get("x-csrf-token")).toBe("csrf-1");

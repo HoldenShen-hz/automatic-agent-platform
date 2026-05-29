@@ -1,5 +1,5 @@
-import type { AuthIdentity, AuthSession as SharedAuthSession } from "@aa/shared-auth";
-import { createStore } from "zustand/vanilla";
+import type { AuthSession as SharedAuthSession } from "@aa/shared-auth";
+import { createStore, type StoreApi } from "zustand/vanilla";
 import { withPersistDevtoolsDraft } from "./middleware";
 
 type AuthStoreDraft = {
@@ -8,7 +8,11 @@ type AuthStoreDraft = {
       : AuthStoreState[K];
 };
 
-export interface AuthSession extends SharedAuthSession, Pick<AuthIdentity, "userId" | "tenantId" | "roles" | "permissions"> {
+export interface AuthSession extends Omit<SharedAuthSession, "userId" | "tenantId" | "roles" | "permissions"> {
+  readonly userId: string;
+  readonly tenantId: string;
+  readonly roles: readonly string[];
+  readonly permissions: readonly string[];
   readonly displayName?: string;
 }
 
@@ -32,6 +36,25 @@ export interface AuthStoreState extends AuthSession {
   setLocale(locale: string): void;
   setDisplayName(displayName: string): void;
 }
+
+type PersistedAuthStoreState = Pick<
+  AuthStoreState,
+  | "authenticated"
+  | "authStatus"
+  | "accessToken"
+  | "refreshToken"
+  | "expiresAt"
+  | "userId"
+  | "tenantId"
+  | "roles"
+  | "permissions"
+  | "locale"
+  | "displayName"
+  | "roleLookup"
+  | "permissionLookup"
+>;
+
+type AuthStoreApi = ReturnType<ReturnType<typeof createStore<AuthStoreState>>>;
 
 const AUTH_STORE_PERSIST_KEY = "aa-auth-store";
 const AUTH_STORE_VERSION = 2;
@@ -58,9 +81,9 @@ function resetAuthDraft(draft: AuthStoreDraft): void {
   Object.assign(draft, createDefaultAuthState());
 }
 
-export function createAuthStore() {
+export function createAuthStore(): AuthStoreApi {
   const store = createStore<AuthStoreState>()(
-    withPersistDevtoolsDraft(
+    withPersistDevtoolsDraft<AuthStoreState, PersistedAuthStoreState>(
       AUTH_STORE_PERSIST_KEY,
       (set) => ({
         ...createDefaultAuthState(),
@@ -86,6 +109,7 @@ export function createAuthStore() {
             draft.roleLookup = roleLookup;
             draft.permissionLookup = permissionLookup;
             draft.displayName = session.displayName ?? draft.displayName;
+            draft.locale = session.locale ?? draft.locale;
           });
         },
         logout() {
@@ -156,7 +180,7 @@ export function createAuthStore() {
           roleLookup: state.roleLookup,
           permissionLookup: state.permissionLookup,
         }),
-        migrate: (persistedState) => {
+        migrate: (persistedState): PersistedAuthStoreState => {
           const persisted = persistedState as Partial<AuthStoreState> | undefined;
           return {
             ...createDefaultAuthState(),
@@ -177,7 +201,7 @@ export function createAuthStore() {
   return store;
 }
 
-function attachCrossTabAuthSync(store: ReturnType<typeof createStore<AuthStoreState>>): void {
+function attachCrossTabAuthSync(store: StoreApi<AuthStoreState>): void {
   if (typeof window === "undefined" || typeof window.addEventListener !== "function") {
     return;
   }

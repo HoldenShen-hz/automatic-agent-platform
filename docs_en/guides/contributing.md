@@ -6,13 +6,13 @@ The split document structure reduces maintenance difficulty. New content should 
 
 ## Document Division
 
-- `docs_zh/architecture/00-platform-architecture.md`
+- `../architecture/00-platform-architecture.md`
   Platform architecture overview, containing objectives, overview, core process, phase plan, and navigation.
-- `docs_zh/adr/`
+- `../adr/`
   Stores stable architecture decisions, emphasizing background, decisions, results, and cross-references.
-- `docs_zh/guides/`
+- `./`
   Stores operational content, writing guidelines, and implementation procedures.
-- `docs_zh/`
+- `docs_en/`
   No longer maintains historical archive directory; only currently valid formal documents are kept.
 
 ## Update Rules

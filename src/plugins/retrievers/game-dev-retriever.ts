@@ -53,7 +53,7 @@ export function createGameDevRetrieverPluginWithOptions(
 ): DomainRetrieverPlugin {
   return {
     pluginId: "plugin.gamedev.retriever",
-    domainId: "gamedev",
+    domainId: "game-dev",
     spiType: "retriever",
     capabilityIds: ["knowledge.retrieve", "domain.observe", "gamedev.unity_search"],
     async initialize() {

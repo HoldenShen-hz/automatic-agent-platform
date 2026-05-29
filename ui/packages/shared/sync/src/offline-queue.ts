@@ -13,7 +13,7 @@ export class OfflineQueue {
   private ready = false;
   private readonly readyPromise: Promise<void>;
   private readonly maxCapacity: number;
-  private readonly onEvict?: (mutation: OfflineMutation) => void;
+  private readonly onEvict: ((mutation: OfflineMutation) => void) | undefined;
 
   public constructor(
     private readonly store: OfflineMutationStore = createMemoryOfflineMutationStore(),

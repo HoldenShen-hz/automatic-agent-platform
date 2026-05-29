@@ -8,7 +8,7 @@ This document helps you quickly find reading paths in the split document system,
 
 1. First read [Platform Skeleton](../architecture/00-platform-architecture.md) to build a global mental model.
 2. Then read [ADR-001](../adr/001-three-layer-architecture.md), [ADR-004](../adr/004-workflow-routing.md), [ADR-009](../adr/009-deployment-ops.md) to understand core main chain.
-3. If currently implementing memory, cost, or security, read [ADR-003](../adr/003-memory-six-layers.md), [ADR-008](../adr/008-cost-model.md), [ADR-005](../adr/005-security-model.md) additionally.
+3. If currently implementing memory, cost, or security, read [ADR-020](../adr/020-memory-six-plane-model.md), [ADR-008](../adr/008-cost-model.md), [ADR-005](../adr/005-security-model.md) additionally.
 4. If currently adding business capabilities, read [Division Authoring](./division-authoring.md) last.
 
 ## Current Suggested Implementation Scope
@@ -92,7 +92,7 @@ Content not to do ahead of time:
 **Symptoms**: Clicking links in documents jumps to 404 page
 
 **Troubleshooting Steps**:
-1. Confirm target file exists in `docs_zh/` directory tree
+1. Confirm the target file exists in the current locale tree (`docs_en/` for English, `docs_zh/` for Chinese)
 2. Check if relative paths are correct (use `../` for parent directory)
 3. Confirm document numbers match actual filenames
 
