@@ -1,572 +1,575 @@
 # Current Todo List
 
-> This file currently uses v4.3 Executable Specification Freeze as the primary index. The "2026-04-25 Full Test Failure List" below is retained as a historical test baseline for regression reconciliation; it no longer serves as the sole priority source for v4.3 new roadmap.
-> 2026-05-14 review: `docs_zh/reviews/issues-table.md` is the authoritative line-by-line status table for this round of design review issue closure; this file only retains long-running batch and historical regression baselines, and no longer serves as the sole completion criteria source for review issues.
+> 本文件当前以 v4.3 Executable Specification Freeze 为主索references。下方“2026-04-25 full测试failed清单”保留为历史测试基线，used for回归对账；它不再作为 v4.3 新路线的唯一优先级来源。
+> 2026-05-14 复核：`docs_zh/reviews/issues-table.md` is本轮 design review Issue收口的权威逐linesStatustable；本文件只保留长期运lines批iterations和历史回归基线，不再作为 review issue 的唯一完成判定来源。
 
-## v4.3 Executable Specification Freeze Current TODO
+## v4.3 Executable Specification Freeze 当前待办
 
-### A9 Final Test Failure Cluster Closure (2026-04-28)
+### A9 剩余测试failed簇最终收口（2026-04-28）
 
-> This batch inherits the test failures that remained unclosed after A8, with the goal of一次性收口 (completely closing) the remaining failure clusters currently identified; prioritize fixing real implementation vs contract/export surface drift, then align clearly stabilized semantic test assertions, and finally rerun targeted regression and broader baseline.
+> 本批iterations承接 A8 之后仍未关闭的测试failed，目标is一iterations性收口当前已识别的剩余failed簇；优先修复真实实现vs契约/export面漂移，再对齐明确已稳定语义的测试断言，最后重跑定向回归vs更广基线。
 
-- [x] Fix orchestration remaining failures: `TopologyValidator` default construction, progressive demotion, loop controller, assessment service, feedback signal schema, execute bridge compatible export.
-- [x] Fix runtime / stability / compliance / pack remaining failures: output continuation, stable release package, compliance program, pack lifecycle.
-- [x] Fix `redis-queue-adapter` failure cluster, confirm connection lifecycle, sync interface, and test stub consistency.
-- [x] Run this batch targeted tests and broader regression, write closure evidence and sync todo status.
+- [x] 修复 orchestration 剩余failed：`TopologyValidator` defaults to构造、progressive demotion、loop controller、assessment service、feedback signal schema、execute bridge 兼容export。
+- [x] 修复 runtime / stability / compliance / pack 剩余failed：output continuation、stable release package、compliance program、pack lifecycle。
+- [x] 修复 `redis-queue-adapter` failed簇，确认connect生命cycle、synchronous接口vs测试桩一致。
+- [x] 运lines本批iterations定向测试vs更广回归，回写收口证据并synchronous todo Status。
 
-> A9 Closure Evidence (2026-04-28):
-> - Fixed real implementation issues: `StructuredLogger.recent()` returns recent window order, `ModelRoutingService` trace variable initialization timing, `DomainDefinitionSchema` default `capabilities`, `KvCachePrefix` default constant export, `RecoveryOrchestratorService` cycle time/fault tolerance, baseline constant deep freeze.
-> - Aligned stable semantic tests: task/workflow terminal step index keeps final step, task timeline golden dual test unified `entryKinds`, `routeComplexity` keyword and passthrough priority, dispatcher `require_remote` fail-close as `blocked`, plugin cooldown behavior, DLQ `setReason` update time, baseline description relevance assertions, etc.
-> - Passed targeted regression coverage: `tests/unit/platform/five-plane-orchestration/harness/loop-controller.test.ts`, `tests/unit/platform/five-plane-execution/execution-engine/complexity-router.test.ts`, `tests/unit/platform/five-plane-execution/execution-business-logic.test.ts`, `tests/unit/domains/registry/domain-model-validation.test.ts`, `tests/unit/domains/registry/plugin-spi-registry-invocation.test.ts`, `tests/unit/platform/five-plane-execution/dispatcher/*.test.ts`, `tests/unit/platform/five-plane-control-plane/control-plane-baseline-extended.test.ts`, `tests/unit/platform/model-gateway/model-gateway-baseline-extended.test.ts`, `tests/integration/interaction/autonomy/autonomy-integration.test.ts`, `tests/integration/platform/shared/outbox/durable-event-bus-integration.test.ts`, `tests/integration/platform/shared/observability/structured-logging-integration.test.ts`, `tests/integration/platform/five-plane-execution/execution-engine.test.ts`, `tests/integration/platform/five-plane-state-evidence/events/dlq-integration.test.ts`, `tests/golden/task-timeline-output.test.ts`, `tests/golden/task-timeline-service.test.ts`, `tests/e2e/task-terminal-state-flow.test.ts` etc. batches.
+> A9 收口证据（2026-04-28）：
+> - 已修复真实实现Issue：`StructuredLogger.recent()` 返回最近窗口顺序、`ModelRoutingService` trace variable初始化时序、`DomainDefinitionSchema` defaults to `capabilities`、`KvCachePrefix` defaults toconstantexport、`RecoveryOrchestratorService` cycle耗时/容错、baseline constant深冻结。
+> - 已对齐稳定语义测试：task/workflow terminal step index 保持最终步、task timeline golden 双测试统一 `entryKinds`、`routeComplexity` 关键词vs passthrough 优先级、dispatcher `require_remote` fail-close 为 `blocked`、plugin cooldown lines为、DLQ `setReason` 更新time、baseline Description相关性断言等。
+> - 已via的定向回归覆盖：`tests/unit/platform/five-plane-orchestration/harness/loop-controller.test.ts`、`tests/unit/platform/five-plane-execution/execution-engine/complexity-router.test.ts`、`tests/unit/platform/five-plane-execution/execution-business-logic.test.ts`、`tests/unit/domains/registry/domain-model-validation.test.ts`、`tests/unit/domains/registry/plugin-spi-registry-invocation.test.ts`、`tests/unit/platform/five-plane-execution/dispatcher/*.test.ts`、`tests/unit/platform/five-plane-control-plane/control-plane-baseline-extended.test.ts`、`tests/unit/platform/model-gateway/model-gateway-baseline-extended.test.ts`、`tests/integration/interaction/autonomy/autonomy-integration.test.ts`、`tests/integration/platform/shared/outbox/durable-event-bus-integration.test.ts`、`tests/integration/platform/shared/observability/structured-logging-integration.test.ts`、`tests/integration/platform/five-plane-execution/execution-engine.test.ts`、`tests/integration/platform/five-plane-state-evidence/events/dlq-integration.test.ts`、`tests/golden/task-timeline-output.test.ts`、`tests/golden/task-timeline-service.test.ts`、`tests/e2e/task-terminal-state-flow.test.ts` 等批iterations。
 
-### A8 Remaining Test Failure Cluster Continued Closure (2026-04-28)
+### A8 剩余测试failed簇继续收口（2026-04-28）
 
-> This batch inherits the remaining failure clusters after A7, with the goal of continuing to reduce real code defects and obvious outdated assertions in the current full test suite; first fix runtime/interface layer real semantic issues, then align test expectations for stable contracts, and finally run targeted tests to form new closure evidence.
+> 本批iterations承接 A7 之后的剩余failed簇，目标is继续压降当前full测试中的真实code缺陷vs明显陈旧断言；先修复运lines时/接口层真实语义Issue，再对齐已稳定 contract 的测试预期，最后回跑定向测试形成新的收口证据。
 
-- [x] Fixed real code issues: `DataLineageService` return value isolation, Postgres DSN `SSLMODE` case compatibility, zero quota in-memory rate limit, `TaskWebSocketStatusRelay` event order, Lease repository/mock drift, etc.
-- [x] Aligned outdated test assertions for stable contracts: currency rounding, unicode sorting, delegation request null normalization, API schema/error helper, request body empty string, package export surface, skill serializer, etc.
-- [x] Fixed remaining failure clusters for state machine / scheduler / hot-upgrade / documentation link, ensuring documentation and implementation are consistent.
-- [x] Ran targeted unit tests for current batch, recorded passing results and remaining items to process.
+- [x] 修复真实codeIssue：DataLineageService 返回值隔离、Postgres DSN `SSLMODE` 大小写兼容、零额度 in-memory rate limit、TaskWebSocketStatusRelay 事件顺序、Lease repository/mock 漂移等。
+- [x] 对齐已稳定 contract 的陈旧测试断言：currency rounding、unicode 排序、delegation request 空值归一化、API schema/error helper、request body 空字符串、package export surface、skill serializer 等。
+- [x] 修复 state machine / scheduler / hot-upgrade / documentation link 等剩余failed簇，确保文档vs实现一致。
+- [x] 运lines当前批iterations涉及的定向单测，recordvia结果vs仍待handle的剩余项。
 
-> A8 Closure Evidence (2026-04-28, supplement):
-> - Continued coverage of fixed real semantic issues retested and passed: `TaskWebSocketStatusRelay` reverse-time broadcast order, `ModelRoutingService` cost-cap fallback, `PluginSpiRegistry` cooldown gate, `ApiKeyService` expired key rotate fail-close, cross-division replay report detail compatible output.
-> - Continued coverage of aligned outdated assertions retested and passed: failure miner non-failure signal filtering, plugin runtime protocol input structure, sandbox root path spec, stability rehearsal single scenario report assertions, dashboard event type/entity extraction, domain helper / vertical architecture import paths, etc.
-> - This round's new targeted retests passed: `tests/integration/platform/five-plane-interface/api/task-websocket-status-relay-integration.test.ts`, `tests/integration/platform/five-plane-orchestration/learn/failure-pattern-miner-integration.test.ts`, `tests/integration/platform/security/sandbox-command-executor.test.ts`, `tests/integration/platform/shared/stability/cross-service-stability-integration.test.ts`, `tests/integration/platform/stability/stable-cross-division-recovery-drill-integration.test.ts`, `tests/integration/platform/model-gateway/model-routing-integration.test.ts`, and corresponding domain / plugin / dashboard / governance / api-key unit test batches.
+> A8 收口证据（2026-04-28，补充）：
+> - 已修复并复测via的真实语义Issue继续覆盖：`TaskWebSocketStatusRelay` 逆time广播顺序、`ModelRoutingService` cost-cap fallback、`PluginSpiRegistry` cooldown gate、`ApiKeyService` 过期 key rotate fail-close、cross-division replay report 细节兼容输出。
+> - 已对齐并复测via的陈旧断言继续覆盖：failure miner 非 failure 信号过滤、plugin runtime protocol input 结构、sandbox root 路径规范、stability rehearsal 单场景报告断言、dashboard event type/entity 提取、domain helper / vertical architecture import路径等。
+> - 本轮新增定向复测已via：`tests/integration/platform/five-plane-interface/api/task-websocket-status-relay-integration.test.ts`、`tests/integration/platform/five-plane-orchestration/learn/failure-pattern-miner-integration.test.ts`、`tests/integration/platform/security/sandbox-command-executor.test.ts`、`tests/integration/platform/shared/stability/cross-service-stability-integration.test.ts`、`tests/integration/platform/stability/stable-cross-division-recovery-drill-integration.test.ts`、`tests/integration/platform/model-gateway/model-routing-integration.test.ts`，以及对应 domain / plugin / dashboard / governance / api-key 单测批iterations。
 
-### A7 Full Test Closure Batch (2026-04-28)
+### A7 full测试收口批iterations（2026-04-28）
 
-> This batch aims to continuously converge the remaining failures in the current full test suite without rolling back existing architecture and contract fixes; prioritize handling high-frequency failure clusters, missing compatibility entries, barrel export drift, and inconsistencies among build/typecheck/test.
+> 本批iterations目标is在不回退既有Architecturevs契约修复的前提下，持续收敛当前full测试剩余failed；优先handle高频failed簇、缺失兼容入口、barrel export漂移，以及 build/typecheck/test 三者之间的inconsistent。
 
-- [x] Filled missing compatibility source files and legacy import shims discovered recently, eliminated skipped/missing source reports.
-- [x] Executed source-only typecheck, fixed new errors introduced by compatibility layer, barrel, precise optional types, or state semantic drift.
-- [x] Closed high-frequency test issues by failure cluster: Harness / Learn / CLI / Dispatcher / HITL / Runtime output continuation, etc.
-- [x] Re-ran targeted tests and full tests, updated latest failure baseline and continued pressure reduction until current batch can be closed.
-- [x] After completion, wrote back this todo status, and retained historical failure baseline as comparison evidence.
+- [x] 补齐最近发现的缺失兼容源文件vs legacy import shim，消除 skipped/missing source 报告。
+- [x] 执lines source-only typecheck，修复因兼容层、barrel、精确optionalclass型或Status语义漂移references入的新错误。
+- [x] 按failed簇收口 Harness / Learn / CLI / Dispatcher / HITL / Runtime 输出续写等高频测试Issue。
+- [x] 重新运lines定向测试vsfull测试，更新最新failed基线并继续压降，直到当前批iterations可收口。
+- [x] 完成后回写本 todo Status，并保留历史failed基线作为对比证据。
 
-> A7 Closure Evidence (2026-04-28):
-> - Filled compatibility entries involved in skipped/missing source reports: `event-indexer.ts`, `learning-feedback-service.ts`, `authoritative-truth-store.ts`, `task-queue.ts`, `dispatcher.ts`, `cache-manager.ts`, `session-service.ts`, `trust-store.ts`, `distributed-lock-manager.ts`.
-> - source-only typecheck passed: `npx tsc -p tsconfig.build.json --noEmit` (receipt: `/tmp/oap-source-typecheck-20260428.log`, exit code `0`).
-> - This round's targeted fixes and retests passed: HA repository / HA barrel / HA coordinator / HITL inbox / HITL escalation / HITL approval orchestration / HITL integration / related previous failure clusters.
-> - Latest complete full baseline: `/tmp/automatic-agent-platform-npm-test-20260428f.log`, result: `49632 tests / 49477 pass / 149 fail / 6 skipped`; new fixes in this round completed targeted retesting, remaining non-this-batch test drift to be absorbed by subsequent full baseline.
+> A7 收口证据（2026-04-28）：
+> - 已补齐 skipped/missing source 报告涉及的兼容入口：`event-indexer.ts`、`learning-feedback-service.ts`、`authoritative-truth-store.ts`、`task-queue.ts`、`dispatcher.ts`、`cache-manager.ts`、`session-service.ts`、`trust-store.ts`、`distributed-lock-manager.ts`。
+> - source-only typecheck 已via：`npx tsc -p tsconfig.build.json --noEmit`（回执：`/tmp/oap-source-typecheck-20260428.log`，退出码 `0`）。
+> - 本轮定向修复并复测via：HA repository / HA barrel / HA coordinator / HITL inbox / HITL escalation / HITL approval orchestration / HITL integration / 相关先前failed簇。
+> - 最近一iterations完整full基线：`/tmp/automatic-agent-platform-npm-test-20260428f.log`，结果为 `49632 tests / 49477 pass / 149 fail / 6 skipped`；本轮新增修复completed定向复测，待后续full基线继续吸收剩余非本批iterations测试漂移。
 
-### A6 Implementation Consistency Audit Full Closure Batch (2026-04-27)
+### A6 Implementation Consistency Audit full收口批iterations（2026-04-27）
 
-> This batch takes all C/T/A/G/O/S/M/F/I/D IDs from `docs_zh/reviews/platform-architecture-implementation-consistency-audit.md` as input, with the goal of transforming the old difference table into a verifiable closure report, and establishing a machine-checkable coverage registry for the 238 audit IDs.
+> 本批iterations以 `docs_zh/reviews/platform-architecture-implementation-consistency-audit.md` 中 C/T/A/G/O/S/M/F/I/D 全部#为输入，目标is把旧差异table改为可验证的收口报告，并为 238 个审计#建立机器可检查的 coverage registry。
 
-- [x] Established `ImplementationConsistencyClosureRegistry`, covering C-1..C-7, T-1..T-56, A-1..A-37, G-1..G-9, O-1..O-24, S-1..S-20, M-1..M-20, F-1..F-25, I-1..I-20, D-1..D-20.
-- [x] Added invariant tests, verifying audit ID totals, group counts, closure status, closure types, and evidence paths.
-- [x] Rewrote `platform-architecture-implementation-consistency-audit.md` from open difference list to full closure acceptance report.
-- [x] Executed targeted tests, source-only typecheck, and diff whitespace check.
+- [x] 建立 `ImplementationConsistencyClosureRegistry`，覆盖 C-1..C-7、T-1..T-56、A-1..A-37、G-1..G-9、O-1..O-24、S-1..S-20、M-1..M-20、F-1..F-25、I-1..I-20、D-1..D-20。
+- [x] 增加 invariant 测试，验证审计#total、各分组count、关闭Status、收口class型和证据路径。
+- [x] 将 `platform-architecture-implementation-consistency-audit.md` 从开放差异清单改写为full已收口验收报告。
+- [x] 执lines聚焦测试、source-only typecheck vs diff whitespace check。
 
-### A5 Design Review New Constraint Implementation Closure Batch (2026-04-27)
+### A5 Design Review 新增约束实现收口批iterations（2026-04-27）
 
-> This batch takes items still marked as "partially completed / not implemented" in `docs_zh/reviews/platform-architecture-implementation-consistency-audit.md` §6 as input, with the goal of supplementing executable implementation entries, focused tests, and audit evidence for each new architectural constraint; production drill items are closed with executable gate/receipt/report objects, not伪装 (faked) as online GA evidence.
+> 本批iterations以 `docs_zh/reviews/platform-architecture-implementation-consistency-audit.md` §6 中仍为“部分完成 / 未实现”的条目为输入，目标is为每个新增Architecture约束补齐可执lines实现入口、聚焦测试和审计证据；生产演练class条目以可执lines gate / receipt / report 对象收口，不伪装为线上 GA 证据。
 
-- [x] P0 Multi-tenant and entry security: Filled WebSocket/SSE tenant scope per-event filtering, SDK version handshake, endpoint-class backpressure, and worker service identity checks.
-- [x] P0 Runtime terminal state cleanup: Filled `WorkerDrainProtocol` receipt, `RunTerminationCleanup`, plugin crash cleanup hook, orphaned budget reservation metric, and DB time / clock-skew safe budget sweeper.
-- [x] P0 Compatibility and drift: Filled `ConfigDriftReconciler`, `PackCompatibilityTestGenerator`, `ResumeCompatibilityCheck` / `ResumeDiffReport`.
-- [x] P1 Scheduling and recovery: Filled dispatch queue bounded event fields, Graph Scheduler queue depth evidence, DR drill pass/fail and tombstone replay boundary, no-real-side-effect replay guard.
-- [x] P1 Collaboration and approval: Filled delegation sequencing/idempotency, approval delegation chain TTL upper bound, high precision timer, guardrail vibration breaker.
-- [x] P2 Governance and enterprise capabilities: Filled `OrgGovernanceSaga`, SCIM DLQ retry/reconciliation, Chinese Wall grant/release 2PC, `GovernanceDelegationRevocationSaga`.
-- [x] P3 Operational maturity: Filled cache warming degradation gate, judge-unavailable canary gate, memory self-reinforcement guard, feedback collective anomaly detector, `Improvement` rollback_pending, `ComplianceReport` HumanSignoff timeout, Capacity forecast-vs-actual recalibration, promotion rollback/emergency hotfix evidence.
-- [x] Added targeted unit tests, covering new implementation entries and key invariants above.
-- [x] Updated `docs_zh/reviews/platform-architecture-implementation-consistency-audit.md` §6 and this todo status.
-- [x] Executed targeted tests, source-only typecheck, and diff whitespace check.
+- [x] P0 多租户vs入口security：补齐 WebSocket/SSE tenant scope 逐事件过滤、SDK version handshake、endpoint-class backpressure vs worker service identity 检查。
+- [x] P0 运lines时终态清理：补齐 WorkerDrainProtocol receipt、RunTerminationCleanup、plugin crash cleanup hook、orphaned budget reservation metric vs DB time / clock-skew safe budget sweeper。
+- [x] P0 兼容vs漂移：补齐 ConfigDriftReconciler、PackCompatibilityTestGenerator、ResumeCompatibilityCheck / ResumeDiffReport。
+- [x] P1 调度vs恢复：补齐 dispatch queue bounded event 字段、Graph Scheduler queue depth evidence、DR drill pass/fail vs tombstone replay boundary、no-real-side-effect replay guard。
+- [x] P1 协作vs审批：补齐 delegation sequencing/idempotency、approval delegation chain TTL upper limit、high precision timer、guardrail vibration breaker。
+- [x] P2 治理vs企业能力：补齐 OrgGovernanceSaga、SCIM DLQ retry/reconciliation、Chinese Wall grant/release 2PC、GovernanceDelegationRevocationSaga。
+- [x] P3 运营成熟度：补齐 cache warming degradation gate、judge-unavailable canary gate、memory self-reinforcement guard、feedback collective anomaly detector、Improvement rollback_pending、ComplianceReport HumanSignoff timeout、Capacity forecast-vs-actual recalibration、promotion rollback/emergency hotfix evidence。
+- [x] 增加聚焦单测，覆盖上述新增实现入口和关键不variable。
+- [x] 更新 `docs_zh/reviews/platform-architecture-implementation-consistency-audit.md` §6 vs本 todo Status。
+- [x] 执lines定向测试、source-only typecheck vs diff whitespace check。
 
-### A4 Design Review Post Architecture Implementation Item-by-Item Review (2026-04-27)
+### A4 Design Review 后Architecture实现逐条复核（2026-04-27）
 
-> This round takes the latest `docs_zh/architecture/00-platform-architecture.md` as authoritative input, focusing on verifying whether the newly absorbed `architecture-design-review` constraints have code, tests, contracts, or operational evidence; old audit completion states can only serve as historical baseline, not automatically considered as completed for this round's new constraints.
+> 本轮以最新 `docs_zh/architecture/00-platform-architecture.md` 为权威输入，重点复核刚吸收的 `architecture-design-review` 约束isno已有code、测试、contract 或运营证据；旧审计完成态只能作为历史基线，不能自动视为本轮新增约束completed。
 
-- [x] Extracted new/strengthened executable constraints from latest architecture document, especially §2.5, §7-§12, §14, §15, §17-§24, §31-§32, §45, §46-§51, §56, §66-§67.
-- [x] Checked implementation completeness against `src/`, `tests/`, `docs_zh/contracts/`, `docs_zh/adr/`, `config/`, `divisions/` item by item.
-- [x] Marked each item as: completed, partially completed, not implemented, documented as planned / awaiting production evidence, documentation/implementation inconsistent.
-- [x] Updated `docs_zh/reviews/platform-architecture-implementation-consistency-audit.md`, appending this round's new constraint fact matrix, gap list, and priority.
-- [x] Wrote back this todo's execution status, and ran documentation diff check.
+- [x] 提取最新Architecture文档中新增/强化的可执lines约束，尤其is §2.5、§7-§12、§14、§15、§17-§24、§31-§32、§45、§46-§51、§56、§66-§67。
+- [x] 对照 `src/`、`tests/`、`docs_zh/contracts/`、`docs_zh/adr/`、`config/`、`divisions/` 逐项核查实现完成度。
+- [x] 将每项标记为：completed、部分完成、未实现、文档规划/后续生产证据、文档/实现inconsistent。
+- [x] 更新 `docs_zh/reviews/platform-architecture-implementation-consistency-audit.md`，追加本轮新增约束的事实矩阵、差距清单和优先级。
+- [x] 回写本 todo 的执linesStatus，并运lines文档 diff 检查。
 
-## 00-platform-architecture.md Implementation Consistency Audit Current TODO
+## 00-platform-architecture.md 实现一致性审计当前待办
 
-> This audit round takes `docs_zh/architecture/00-platform-architecture.md` as authoritative input, checking line by line whether implementation is complete and consistent with documentation; first produce a fact matrix and gap list, then decide subsequent implementation batches.
+> 本轮审计以 `docs_zh/architecture/00-platform-architecture.md` 为权威输入，逐条核对实现isno完成、isnovs文档Description一致；先产出事实矩阵vs差距清单，再决定后续实现批iterations。
 
-### I2 Audit Gap Implementation Closure Batch
+### I2 审计缺口实现收口批iterations
 
-- [x] Corrected §35 Harness Runtime authoritative path, making architecture document, structural tests, and current code directory consistent.
-- [x] Added `ArchitectureInvariantRegistry` and `NonOverridableInvariantRegistry`, with `tests/invariants/` covering machine-verifiable invariants for §2.4/§36.
-- [x] Changed architecture readiness ring status from single `complete` to layered gate evidence, avoiding misjudging readiness registration as full production completion.
-- [x] Established `docs_zh/domains/<domain>/domain-spec.md` landing point, covering 24 vertical domain specification entries for §71-§94.
-- [x] Added API canonical vs legacy guard tests, proving legacy contract directory is not v4.3 canonical runtime entry.
-- [x] Updated this audit report, changed closed items to completed and recorded verification commands.
-- [x] Executed typecheck, targeted tests, and diff checks.
+- [x] 修正 §35 Harness Runtime 权威路径，使Architecture文档、结构测试和当前code目录一致。
+- [x] 新增 `ArchitectureInvariantRegistry` vs `NonOverridableInvariantRegistry`，并用 `tests/invariants/` 覆盖 §2.4/§36 的机器可验证不variable。
+- [x] 将 architecture readiness ring Status从单一 `complete` 改为分层 gate evidence，避免把 readiness 登记误判为生产full完成。
+- [x] 建立 `docs_zh/domains/<domain>/domain-spec.md` 落点，覆盖 §71-§94 的 24 个垂直域规范入口。
+- [x] 增加 API canonical vs legacy guard 测试，证明 legacy contract 目录不is v4.3 canonical runtime 入口。
+- [x] 更新本审计报告，把已收口项改为完成并record验证命令。
+- [x] 执lines typecheck、定向测试vs diff 检查。
 
-### A3 00-platform-architecture.md Full Text Item-by-Item Consistency Review
+### A3 00-platform-architecture.md 全文逐条一致性复核
 
-- [x] Extracted all level-1/level-2 sections from `00-platform-architecture.md`, defining this round's item-by-item review granularity as §1-§94, three-ring roadmap, recommended code directory, appendix, and key subsections.
-- [x] Established implementation consistency matrix by section, marking each item as: completed, partially completed, not implemented, documented as planned / not applicable, inconsistent with implementation.
-- [x] Bound each conclusion to evidence path: `src/`, `tests/`, `docs_zh/contracts/`, `docs_zh/adr/`, `config/`, `divisions/`, or explicit gaps.
-- [x] Checked consistency of five planes, OAPEFLIR/HarnessRuntime, State & Evidence, Event, Storage, Runtime MVP, and three-ring readiness in architecture document with current implementation.
-- [x] Checked implementation status of upper-layer capabilities: AI Operations, Business Domain, Intelligent Interaction, Organization Governance, Scale Ecosystem, Operational Maturity, 24 vertical domains as genuinely completed, partial skeleton, or planned registration only.
-- [x] Updated implementation consistency audit report, avoiding writing readiness/evidence registration as complete production implementation.
-- [x] Executed documentation diff check and necessary read-only/targeted verification commands.
+- [x] 提取 `00-platform-architecture.md` 的full一级/二级章节，明确本轮逐条核对粒度为 §1-§94、三环路线、推荐code目录、附录vs关键子章节。
+- [x] 按章节建立实现一致性矩阵，逐项标记为：完成、部分完成、未实现、文档规划/不适用、vs实现inconsistent。
+- [x] 将每个Conclusion绑定到证据路径：`src/`、`tests/`、`docs_zh/contracts/`、`docs_zh/adr/`、`config/`、`divisions/` 或明确缺口。
+- [x] 核对Architecture文档中的Five-Plane、OAPEFLIR/HarnessRuntime、State & Evidence、Event、Storage、Runtime MVP vs三环 readiness isnovs当前实现一致。
+- [x] 核对上层能力：AI 运营、业务域、智能交互、组织治理、规模生态、运营成熟度、24 垂直域isno为真实完成、部分骨架或only规划登记。
+- [x] 更新实现一致性审计报告，避免把 readiness/evidence 登记误写成完整生产实现。
+- [x] 执lines文档 diff 检查vs必要的只读/定向验证命令。
 
-### I1 Audit Closure Completion Batch
+### I1 审计收口完成批iterations
 
-- [x] Filled intake/admission main chain: `RawInput -> TaskDraft -> ConfirmedTaskSpec -> RequestEnvelope -> HarnessRun`, and froze `RunVersionLock` at admission.
-- [x] Filled `PlanGraph` normalize / validate / risk propagation / worst-path analysis, and let scheduler output `platform fact decision event`.
-- [x] Filled `RuntimeStateMachine` authoritative boundary: `RunVersionLock`, policy guard, budget precondition, side-effect safety, audit append, and `NodeRun` lease/fencing mandatory verification.
-- [x] Filled runtime repository contract: Repository interface, append-only receipt, runtime truth transaction, outbox/audit event boundary, and v4.3 physical schema baseline.
-- [x] Filled Event Registry metadata/replayBehavior/consumer contract tests, and connected to v4.3 `EventEnvelope` descriptor.
-- [x] Filled `BudgetAllocator`, `SideEffect` commit re-check, HITL responsibility chain, and `HarnessRuntime` executor/evaluator/decision basic closure.
-- [x] Added bypass invariant tests, proving legacy `ExecutionPlan`/workflow/step cannot be v4.3 runtime entry or directly write truth.
-- [x] Updated `docs_zh/reviews/platform-architecture-implementation-consistency-audit.md`, changed implemented items to completed, and registered ADR-112 three-ring as complete readiness.
-- [x] Executed source-only build, targeted runtime/contracts/storage/event tests, and diff checks.
+- [x] 补齐 intake/admission 主链：RawInput -> TaskDraft -> ConfirmedTaskSpec -> RequestEnvelope -> HarnessRun，并在 admission 时冻结 RunVersionLock。
+- [x] 补齐 PlanGraph normalize / validate / risk propagation / worst-path analysis，并让 scheduler 输出 platform fact decision event。
+- [x] 补齐 RuntimeStateMachine 权威边界：RunVersionLock、policy guard、budget precondition、side-effect safety、audit append vs NodeRun lease/fencing mandatory校验。
+- [x] 补齐 runtime repository contract：Repository interface、append-only receipt、runtime truth transaction、outbox/audit 事件边界vs v4.3 physical schema baseline。
+- [x] 补齐 Event Registry metadata/replayBehavior/consumer contract tests，并接入 v4.3 EventEnvelope Description符。
+- [x] 补齐 BudgetAllocator、SideEffect commit 前复检、HITL responsibility 链路和 HarnessRuntime executor/evaluator/decision 基础闭环。
+- [x] 增加 bypass invariant tests，证明 legacy ExecutionPlan/workflow/step 不能作为 v4.3 runtime 入口或directly写 truth。
+- [x] 更新 `docs_zh/reviews/platform-architecture-implementation-consistency-audit.md`，将已实现项改为完成，并将 ADR-112 三环登记为 complete readiness。
+- [x] 执lines source-only build、定向 runtime/contracts/storage/event 测试vs diff 检查。
 
-### I0 Post-Audit Implementation Batch 1
+### I0 审计后实现批iterations 1
 
-- [x] Added executable contract package to `src/platform/contracts/executable-contracts/`, covering Zod schemas, JSON Schema summaries, replay behaviors, failure behaviors, and verification entries for 28 v4.3 canonical contracts.
-- [x] Aligned `GraphPatch` operation enum with `00-platform-architecture.md`: `add_node` / `add_edge` / `disable_edge` / `add_compensation_node` / `add_failure_path` / `mark_skipped` / `append_subgraph`.
-- [x] Filled `blocked` state for `NodeRun` and state progression `blocked -> ready/skipped/cancelled/dependency_failed/policy_blocked/aborted`.
-- [x] Updated Chinese contracts and v4.3 targeted tests, verifying executable contract package, `GraphPatch` safety, `NodeRun` blocked gating.
+- [x] 为 `src/platform/contracts/executable-contracts/` 增加 executable contract package，覆盖 28 个 v4.3 canonical contract 的 Zod schema、JSON Schema 摘要、replay behavior、failure behavior vs校验入口。
+- [x] 将 GraphPatch operation enum 对齐 `00-platform-architecture.md`：`add_node` / `add_edge` / `disable_edge` / `add_compensation_node` / `add_failure_path` / `mark_skipped` / `append_subgraph`。
+- [x] 为 `NodeRun` 补齐 `blocked` Statusvs `blocked -> ready/skipped/cancelled/dependency_failed/policy_blocked/aborted` Status推进。
+- [x] 更新中文 contract vs v4.3 定向测试，验证 executable contract package、GraphPatch safety、NodeRun blocked gating。
 
-### A0 Audit Plan
+### A0 审计计划
 
-- [x] Extracted verifiable architecture commitments from `00-platform-architecture.md`, grouped by Contract Freeze, Five Planes, Runtime/OAPEFLIR, State & Evidence, Governance and Extension Layer.
-- [x] Established implementation verification caliber: completed, partially completed, documentation/implementation inconsistent, not implemented, beyond v4.3 MVP scope.
-- [x] Retained v4.3 completed implementation and historical test baseline boundaries, avoiding attributing existing unrelated failures to this round of audit.
+- [x] 提取 `00-platform-architecture.md` 的可检查Architecture承诺，按 Contract Freeze、Five-Plane、Runtime/OAPEFLIR、State & Evidence、治理vs扩展层分组。
+- [x] 建立实现核对口径：完成、部分完成、文档/实现inconsistent、未实现、exceeds出 v4.3 MVP 范围。
+- [x] 保留 v4.3 completed实现vs历史测试基线边界，避免把既有no关failed归因到本轮审计。
 
-### A1 Item-by-Item Check
+### A1 逐项核对
 
-- [x] Checked v4.3 Contract Freeze 12 core contracts and consistency among `docs_zh/contracts/`, `src/platform/contracts/executable-contracts/`, and unit tests.
-- [x] Checked `RuntimeStateMachine`, `Graph Scheduler`, `NodeRun`, `NodeAttemptReceipt`, `SideEffect`, `Budget`, `HITL`, `Event` layering compliance with architecture main chain.
-- [x] Checked implementation coverage of five planes and recommended directories in `src/platform/`, `src/domains/`, `src/interaction/`, `src/org-governance/`, `src/scale-ecosystem/`, `src/ops-maturity/`.
-- [x] Checked consistency of State & Evidence, Event Registry, Projection, DLQ/Incident, Repository/Storage with architecture documents.
-- [x] Checked implementation status and scope boundaries of AI Operations Layer, Business Domain Access Layer, Intelligent Interaction Layer, Organization Governance Layer, Scale Ecosystem Layer, Operational Maturity Layer.
+- [x] 核对 v4.3 Contract Freeze 12 个核心契约vs `docs_zh/contracts/`、`src/platform/contracts/executable-contracts/`、单测isno一致。
+- [x] 核对 RuntimeStateMachine、Graph Scheduler、NodeRun、NodeAttemptReceipt、SideEffect、Budget、HITL、Event 分层isno符合Architecture主链。
+- [x] 核对Five-Planevs推荐目录在 `src/platform/`、`src/domains/`、`src/interaction/`、`src/org-governance/`、`src/scale-ecosystem/`、`src/ops-maturity/` 的实现覆盖。
+- [x] 核对 State & Evidence、Event Registry、Projection、DLQ/Incident、Repository/Storage vsArchitecture文档的一致性。
+- [x] 核对 AI 运营层、业务域接入层、智能交互层、组织治理层、规模生态层、运营成熟度层的实现Statusvs范围边界。
 
-### A2 Audit Output
+### A2 审计输出
 
-- [x] Generated Chinese implementation consistency audit report, recording item-by-item status, evidence paths, main deviations, and recommended priorities: `docs_zh/reviews/platform-architecture-implementation-consistency-audit.md`.
-- [x] Updated this todo's audit item status.
-- [x] Executed documentation diff check and necessary targeted verification commands.
+- [x] 生成中文实现一致性审计报告，record逐项Status、证据路径、主要偏差vsRecommendation优先级：`docs_zh/reviews/platform-architecture-implementation-consistency-audit.md`。
+- [x] 更新本 todo 的审计项Status。
+- [x] 执lines文档 diff 检查vs必要的定向验证命令。
 
-### P0 Document Freeze
+### P0 文档冻结
 
-- [x] Added ADR-109 to ADR-112, freezing v4.3 contract scope, state machine authority, event layering, and MVP three-ring boundaries.
-- [x] Updated `docs_zh/adr/README.md`, marking ADR-109 to ADR-112 as v4.3 implementation entries.
-- [x] Updated `docs_zh/contracts/README.md`, adding `v4.3 Contract Freeze Scope` grouping.
-- [x] Added v4.3 Chinese contract documents, covering 12 core contracts frozen in `00-platform-architecture.md`.
-- [x] Clarified old `ExecutionPlan` / `ExecutionReceipt` / `ControlDirective` / `StateCommand` / `workflow_run` / `step` can only appear in legacy, deprecated, projection, or historical contexts, no longer as new implementation entry.
+- [x] 新增 ADR-109 至 ADR-112，冻结 v4.3 契约范围、Status机权威、事件分层vs MVP 三环边界。
+- [x] 更新 `docs_zh/adr/README.md`，将 ADR-109 至 ADR-112 标为 v4.3 实现入口。
+- [x] 更新 `docs_zh/contracts/README.md`，新增 `v4.3 Contract Freeze Scope` 分组。
+- [x] 新增 v4.3 中文 contract 文档，覆盖 `00-platform-architecture.md` 已冻结的 12 个核心契约。
+- [x] 明确旧 `ExecutionPlan` / `ExecutionReceipt` / `ControlDirective` / `StateCommand` / `workflow_run` / `step` 只能出现在 legacy、deprecated、projection 或历史语境，不再作为新实现入口。
 
-### P1 Contract Implementation
+### P1 契约实现
 
-- [x] Established v4.3 canonical types, schemas, and factories in `src/platform/contracts/`.
-- [x] Established contract naming consistency test, preventing old names from re-entering canonical type exports.
-- [x] Connected `TaskDraft` / `ConfirmedTaskSpec` / `RequestEnvelope` to intake contract.
-- [x] Connected `PlanGraphBundle` / `GraphPatch` / `NodeRun` / `NodeAttemptReceipt` to runtime contract.
-- [x] Connected `BudgetLedger` / `SideEffectRecord` / `RunVersionLock` / `DecisionInputBundle` / `HumanResponsibilityRecord` to governance contract.
+- [x] 在 `src/platform/contracts/` 建立 v4.3 canonical class型、schema vs factory。
+- [x] 建立 contract naming consistency test，阻止旧名重新进入 canonical class型export。
+- [x] 将 `TaskDraft` / `ConfirmedTaskSpec` / `RequestEnvelope` 接入 intake contract。
+- [x] 将 `PlanGraphBundle` / `GraphPatch` / `NodeRun` / `NodeAttemptReceipt` 接入 runtime contract。
+- [x] 将 `BudgetLedger` / `SideEffectRecord` / `RunVersionLock` / `DecisionInputBundle` / `HumanResponsibilityRecord` 接入治理 contract。
 
 ### P2 Runtime MVP
 
-- [x] Implemented `RuntimeStateMachine.transition(command)`, as the sole entry for `HarnessRun` / `NodeRun` / `SideEffect` / `Budget` state progression.
-- [x] Implemented `EventInbox` / `PlatformFactEvent` / `OapeflirViewEvent` layering, ensuring truth projector only consumes `platform.*`.
-- [x] Connected `HarnessRuntime` MVP main chain: `PlanGraphBundle -> Graph Scheduler -> NodeRun -> NodeAttemptReceipt -> Event/Audit/Evidence`.
-- [x] Connected `GraphPatch` safety verification, prohibiting silent overwrite of executed nodes, committed side effects, or recorded receipts.
-- [x] Connected `SideEffect` reconciliation / compensation minimum closure.
-- [x] Connected v4.3 runtime repository, verifying atomic boundary of truth mutation and `platform.*` fact event append.
+- [x] 实现 `RuntimeStateMachine.transition(command)`，作为 `HarnessRun` / `NodeRun` / `SideEffect` / `Budget` Status推进唯一入口。
+- [x] 实现 `EventInbox` / `PlatformFactEvent` / `OapeflirViewEvent` 分层，确保 truth projector 只消费 `platform.*`。
+- [x] 接入 HarnessRuntime MVP 主链：`PlanGraphBundle -> Graph Scheduler -> NodeRun -> NodeAttemptReceipt -> Event/Audit/Evidence`。
+- [x] 接入 GraphPatch security校验，禁止静默改写已执lines节点、已提交副作用或已record receipt。
+- [x] 接入 SideEffect reconciliation / compensation 最小闭环。
+- [x] 接入 v4.3 runtime repository，验证 truth mutation vs `platform.*` fact event append 的原子边界。
 
-### P3 Test Gate
+### P3 测试门禁
 
-- [x] Added runtime state-machine transition tests.
-- [x] Added event consumer test: truth consumer does not consume `oapeflir.view.*`.
-- [x] Added `GraphPatch` safety test.
-- [x] Added budget hard-cap concurrency test.
-- [x] Added HITL responsibility record test.
-- [x] Added runtime repository atomic transition/event append test.
-- [x] Executed v4.3 scope source-only build validation and targeted runtime/contracts/storage/event tests. Full `npm run typecheck`, `npm run test:unit`, and broad integration sweep still managed by historical baseline below, as they still contain existing unrelated failures.
+- [x] 新增 runtime state-machine transition tests。
+- [x] 新增 event consumer test：truth consumer 不消费 `oapeflir.view.*`。
+- [x] 新增 GraphPatch safety test。
+- [x] 新增 budget hard-cap concurrency test。
+- [x] 新增 HITL responsibility record test。
+- [x] 新增 runtime repository atomic transition/event append test。
+- [x] 执lines v4.3 范围的 source-only build validation vs runtime/contracts/storage/event 定向测试。完整 `npm run typecheck`、`npm run test:unit` vs广域 integration sweep 仍由下方历史基线manage，因为它们仍contains既有no关failed。
 
-### P4 Post-Extension
+### P4 后续扩展
 
-- [x] Hardening Ring: Recorded replay, recovery, lease/fencing, DLQ, diagnostics, and evidence bundle as next ring scope after v4.3 MVP.
-- [x] Enterprise Ring: Recorded organization governance, SSO/SCIM, multi-tenant isolation, cross-region, Marketplace, Edge, and PlatformOps as subsequent scope under three-ring architecture.
-- [x] 24 domains and DomainRecipe confirmed as not blocking v4.3 Contract Freeze MVP; only enter batch integration after core runtime semantics stabilize.
+- [x] Hardening Ring：已record replay、recovery、lease/fencing、DLQ、diagnostics vs evidence bundle 为 v4.3 MVP 之后的下一环范围。
+- [x] Enterprise Ring：已record组织治理、SSO/SCIM、多租户隔离、跨区域、Marketplace、Edge vs PlatformOps 为三环Architecture下的后续范围。
+- [x] 24 域vs DomainRecipe 已确认为不阻塞 v4.3 Contract Freeze MVP；only在核心 runtime 语义稳定后进入批量接入。
 
-## Historical Test Baseline: Full Test Failure List (2026-04-25)
+## 历史测试基线：full测试failed清单（2026-04-25）
 
-> The following list is retained as the 2026-04-25 historical failure baseline, used for subsequent comparison of whether v4.3 fixes expand or contract the regression surface; do not delete or reorder.
+> 以下清单保留为 2026-04-25 的历史failed基线，used for后续对比 v4.3 修复isno扩大或缩小回归面；不删除、不重排。
 
-## 9. Full Test Failure List (2026-04-25 Update)
+## 9. full测试failed清单（2026-04-25 更新）
 
-### Test Results Summary
 
-| Test Suite | Passed | Failed | Status |
-|-----------|--------|--------|--------|
+### 测试结果汇总
+
+| 测试套件 | via | failed | Status |
+|---------|------|------|------|
 | Build | - | 0 | ✓ |
-| Unit | 30,963 | 354 | Historical baseline archived |
-| Integration | - | - | Historical not run archived |
-| **Total** | **30,963** | **354** | |
+| Unit | 30,963 | 354 | 历史基线已归档 |
+| Integration | - | - | 历史未运lines已归档 |
+| **总计** | **30,963** | **354** | |
 
-### Unit Failures (354)
+### Unit failed（354个）
 
-**Overall Test**: 31,317 tests / 30,963 pass / 354 fail / 0 cancelled
-
----
-
-## Test Failures by Directory
-
-### 1. unit/platform/five-plane-state-evidence/truth (84 failures)
-- SQLite repositories related tests
-
-### 2. unit/platform/shared/observability (55 failures)
-- observability related tests
-
-### 3. unit/platform/five-plane-interface/api (52 failures)
-- API interface related tests
-
-### 4. unit/platform/five-plane-orchestration/oapeflir (50 failures)
-- oapeflir related tests
-
-### 5. unit/platform/shared/stability (43 failures)
-- stability related tests
-
-### 6. unit/platform/shared/cache (35 failures)
-- cache related tests
-
-### 7. unit/platform/five-plane-state-evidence/knowledge (33 failures)
-- knowledge related tests
-
-### 8. unit/platform/five-plane-state-evidence/events (30 failures)
-- events related tests
-
-### 9. unit/platform/five-plane-orchestration/harness (30 failures)
-- harness related tests
-
-### 10. unit/platform/five-plane-state-evidence/memory (24 failures)
-- memory related tests
-
-### 11. unit/platform/five-plane-execution/worker-pool (22 failures)
-- worker-pool related tests
-
-### 12. unit/platform/five-plane-interface/channel-gateway (16 failures)
-- channel-gateway related tests
-
-### 13. unit/platform/model-gateway/provider-registry (15 failures)
-- provider-registry related tests
-
-### 14. unit/platform/five-plane-orchestration/agent-delegation (14 failures)
-- agent-delegation related tests
-
-### 15. unit/platform/five-plane-state-evidence/artifacts (13 failures)
-- artifacts related tests
-
-### 16. Other directories (~50 failures)
-- prompt-engine/eval: 10
-- orchestration/hitl: 9
-- interface/ingress: 9
-- orchestration/planner: 8
-- orchestration/learn: 7
-- state-evidence/checkpoints: 6
-- shared/scaling: 6
-- shared/outbox: 6
-- interaction/autonomy: 5
-- scale-ecosystem/integration/connectors: 4
-- feedback-loop/collector: 4
-- orchestration/routing: 4
-- interface/webhook: 4
-- interface/scheduler: 4
-- other scattered failures
+**整体测试**: 31,317 tests / 30,963 pass / 354 fail / 0 cancelled
 
 ---
 
-## Detailed Test Failure List (354)
+## 按目录分class的测试failed
 
-### eval-framework (2 failures)
-| # | Test Name | Error Description |
+### 1. unit/platform/five-plane-state-evidence/truth (84个failed)
+- SQLite repositories 相关测试
+
+### 2. unit/platform/shared/observability (55个failed)
+- observability 相关测试
+
+### 3. unit/platform/five-plane-interface/api (52个failed)
+- API 接口相关测试
+
+### 4. unit/platform/five-plane-orchestration/oapeflir (50个failed)
+- oapeflir 相关测试
+
+### 5. unit/platform/shared/stability (43个failed)
+- stability 相关测试
+
+### 6. unit/platform/shared/cache (35个failed)
+- cache 相关测试
+
+### 7. unit/platform/five-plane-state-evidence/knowledge (33个failed)
+- knowledge 相关测试
+
+### 8. unit/platform/five-plane-state-evidence/events (30个failed)
+- events 相关测试
+
+### 9. unit/platform/five-plane-orchestration/harness (30个failed)
+- harness 相关测试
+
+### 10. unit/platform/five-plane-state-evidence/memory (24个failed)
+- memory 相关测试
+
+### 11. unit/platform/five-plane-execution/worker-pool (22个failed)
+- worker-pool 相关测试
+
+### 12. unit/platform/five-plane-interface/channel-gateway (16个failed)
+- channel-gateway 相关测试
+
+### 13. unit/platform/model-gateway/provider-registry (15个failed)
+- provider-registry 相关测试
+
+### 14. unit/platform/five-plane-orchestration/agent-delegation (14个failed)
+- agent-delegation 相关测试
+
+### 15. unit/platform/five-plane-state-evidence/artifacts (13个failed)
+- artifacts 相关测试
+
+### 16. 其他目录（约50个failed）
+- prompt-engine/eval: 10个
+- orchestration/hitl: 9个
+- interface/ingress: 9个
+- orchestration/planner: 8个
+- orchestration/learn: 7个
+- state-evidence/checkpoints: 6个
+- shared/scaling: 6个
+- shared/outbox: 6个
+- interaction/autonomy: 5个
+- scale-ecosystem/integration/connectors: 4个
+- feedback-loop/collector: 4个
+- orchestration/routing: 4个
+- interface/webhook: 4个
+- interface/scheduler: 4个
+- 其他零散failed
+
+---
+
+## 详细测试failed列table（354个）
+
+### eval-framework (2个failed)
+| # | 测试名称 | 错误Description |
 |---|---------|---------|
-| 815 | LlmEvalService.runCiGate reports regressions | runCiGate regression detection |
-| 817 | LlmEvalService.runCiGate respects passingVerdicts option | passingVerdicts option |
+| 815 | LlmEvalService.runCiGate reports regressions | runCiGate 回归检测 |
+| 817 | LlmEvalService.runCiGate respects passingVerdicts option | passingVerdicts 选项 |
 
-### execution-outcome-evaluator (1 failure)
-| # | Test Name | Error Description |
+### execution-outcome-evaluator (1个failed)
+| # | 测试名称 | 错误Description |
 |---|---------|---------|
-| 841 | ExecutionOutcomeEvaluator.evaluate suggests approve for low quality score | Low quality score suggests approval |
+| 841 | ExecutionOutcomeEvaluator.evaluate suggests approve for low quality score | 低质量分数Recommendation审批 |
 
-### DomainGovernancePolicySchema (3 failures)
-| # | Test Name | Error Description |
+### DomainGovernancePolicySchema (3个failed)
+| # | 测试名称 | 错误Description |
 |---|---------|---------|
-| 1041 | DomainGovernancePolicySchema rejects duplicate roles across arrays | Duplicate roles |
-| 1042 | DomainGovernancePolicySchema accepts empty restrictedDataClasses | Empty restrictedDataClasses |
-| 1043 | DomainGovernancePolicySchema accepts empty mandatoryEvidence | Empty mandatoryEvidence |
+| 1041 | DomainGovernancePolicySchema rejects duplicate roles across arrays | repeats角色 |
+| 1042 | DomainGovernancePolicySchema accepts empty restrictedDataClasses | 空 restrictedDataClasses |
+| 1043 | DomainGovernancePolicySchema accepts empty mandatoryEvidence | 空 mandatoryEvidence |
 
-### HrRoleGovernanceService (2 failures)
-| # | Test Name | Error Description |
+### HrRoleGovernanceService (2个failed)
+| # | 测试名称 | 错误Description |
 |---|---------|---------|
-| 1089 | HrRoleGovernanceService submitProposal returns null approvalRequest when validation fails | Returns null when validation fails |
-| 1093 | HrRoleGovernanceService registerApprovedRole throws when proposal invalid | Invalid proposal |
+| 1089 | HrRoleGovernanceService submitProposal returns null approvalRequest when validation fails | 验证failed时返回 null |
+| 1093 | HrRoleGovernanceService registerApprovedRole throws when proposal invalid | no效提案 |
 
-### state-transition (1 failure)
-| # | Test Name | Error Description |
+### state-transition (1个failed)
+| # | 测试名称 | 错误Description |
 |---|---------|---------|
-| 1125 | activate changes status to active and records timestamp | Status activation |
+| 1125 | activate changes status to active and records timestamp | Status激活 |
 
-### detectAmbiguity (5 failures)
-| # | Test Name | Error Description |
+### detectAmbiguity (5个failed)
+| # | 测试名称 | 错误Description |
 |---|---------|---------|
-| 2331 | detectAmbiguity returns false for high confidence regardless of entities | High confidence |
-| 15076 | detectAmbiguity treats confidence of 0.7 and above as not low | 0.7 and above |
-| 15078 | detectAmbiguity with exact entity count matches required | Exact entity count |
+| 2331 | detectAmbiguity returns false for high confidence regardless of entities | 高置信度 |
+| 15076 | detectAmbiguity treats confidence of 0.7 and above as not low | 0.7及以上 |
+| 15078 | detectAmbiguity with exact entity count matches required | 精确实体计数 |
 
-### AgentVersionManager (2 failures)
-| # | Test Name | Error Description |
+### AgentVersionManager (2个failed)
+| # | 测试名称 | 错误Description |
 |---|---------|---------|
-| 2868 | AgentVersionManager.switchSlot returns null when no current version | switchSlot returns null |
-| 2934 | AgentVersionManager: blue-green deployment ping-pong | Blue-green deployment |
+| 2868 | AgentVersionManager.switchSlot returns null when no current version | switchSlot 返回 null |
+| 2934 | AgentVersionManager: blue-green deployment ping-pong | 蓝绿部署 |
 
-### buildForensicSnapshot (4 failures)
-| # | Test Name | Error Description |
+### buildForensicSnapshot (4个failed)
+| # | 测试名称 | 错误Description |
 |---|---------|---------|
-| 3735 | buildForensicSnapshot returns distinct copies | Returns distinct copies |
-| 1 | filters by stepId | Filter by stepId |
-| 2 | filters by eventType | Filter by eventType |
-| 4 | combines multiple filters | Combine filters |
-| 8 | filterEvents | Filter events |
+| 3735 | buildForensicSnapshot returns distinct copies | 返回不同副本 |
+| 1 | filters by stepId | 按 stepId 过滤 |
+| 2 | filters by eventType | 按 eventType 过滤 |
+| 4 | combines multiple filters | 组合过滤 |
+| 8 | filterEvents | 过滤事件 |
 
-### ExecutionTracer (3 failures)
-| # | Test Name | Error Description |
+### ExecutionTracer (3个failed)
+| # | 测试名称 | 错误Description |
 |---|---------|---------|
-| 4540 | ExecutionTracer | Execution tracer |
-| 1 | creates step with running status | Create running step |
-| 2 | overwrites existing step state when called again | Overwrite existing state |
-| 5 | failStep | Fail step |
+| 4540 | ExecutionTracer | 执lines追踪器 |
+| 1 | creates step with running status | 创建运lines中步骤 |
+| 2 | overwrites existing step state when called again | 覆盖现有Status |
+| 5 | failStep | failed步骤 |
 
-### StepInspector (1 failure)
-| # | Test Name | Error Description |
+### StepInspector (1个failed)
+| # | 测试名称 | 错误Description |
 |---|---------|---------|
-| 4564 | StepInspector | Step inspector |
+| 4564 | StepInspector | 步骤检查器 |
 
-### PlatformApplicationKernel (2 failures)
-| # | Test Name | Error Description |
+### PlatformApplicationKernel (2个failed)
+| # | 测试名称 | 错误Description |
 |---|---------|---------|
-| 5874 | buildStartupPlan includes domains startup plan when required | Includes domains startup plan |
-| 5876 | buildStartupPlan includes interactionGovernance plans when interaction layer required | Includes interactionGovernance plans |
+| 5874 | buildStartupPlan includes domains startup plan when required | contains domains 启动计划 |
+| 5876 | buildStartupPlan includes interactionGovernance plans when interaction layer required | contains interactionGovernance 计划 |
 
-### coverage-baseline-guard (1 failure)
-| # | Test Name | Error Description |
+### coverage-baseline-guard (1个failed)
+| # | 测试名称 | 错误Description |
 |---|---------|---------|
-| 446 | coverage-baseline-guard | Coverage baseline guard |
+| 446 | coverage-baseline-guard | 覆盖率基线守卫 |
 
-### PromptVersionManager (4 failures)
-| # | Test Name | Error Description |
+### PromptVersionManager (4个failed)
+| # | 测试名称 | 错误Description |
 |---|---------|---------|
 | 6337 | compareVersions returns -1 when v1 < v2 | v1 < v2 |
 | 6339 | compareVersions returns 1 when v1 > v2 | v1 > v2 |
-| 6341 | compareVersions treats version without patch as less than with patch | No patch version |
-| 6367 | compareVersions handles large version differences | Large version differences |
+| 6341 | compareVersions treats version without patch as less than with patch | no patch 版本 |
+| 6367 | compareVersions handles large version differences | 大版本差异 |
 
-### CostReportService (1 failure)
-| # | Test Name | Error Description |
+### CostReportService (1个failed)
+| # | 测试名称 | 错误Description |
 |---|---------|---------|
-| 10061 | CostReportService creates cost reports with resource breakdown | Cost report |
+| 10061 | CostReportService creates cost reports with resource breakdown | 成本报告 |
 
-### dispatchNext (~20 failures)
-| # | Test Name | Error Description |
+### dispatchNext (约20个failed)
+| # | 测试名称 | 错误Description |
 |---|---------|---------|
-| 10198-10219 | dispatchNext related tests | Worker scheduling selection |
+| 10198-10219 | dispatchNext 相关测试 | Worker 调度选择 |
 
-### IntakeRouter (2 failures)
-| # | Test Name | Error Description |
+### IntakeRouter (2个failed)
+| # | 测试名称 | 错误Description |
 |---|---------|---------|
-| 10496 | handles follow-up with orchestration for retry scenario | Retry scenario |
-| 10518 | matchedRules contains keywords that triggered intent | Match rules |
+| 10496 | handles follow-up with orchestration for retry scenario | 重试场景 |
+| 10518 | matchedRules contains keywords that triggered intent | 匹配规则 |
 
-### OrphanCleanupService (4 failures)
-| # | Test Name | Error Description |
+### OrphanCleanupService (4个failed)
+| # | 测试名称 | 错误Description |
 |---|---------|---------|
-| 11316 | enforce applies close_orphan_session for orphan sessions | Orphan sessions |
-| 11317 | marks applied false when session already terminal | Session already terminal |
-| 11319 | applies clean_worker_execution_refs for worker orphans | Clean worker refs |
-| 11325 | cleans multiple orphan refs in single worker | Clean multiple orphan refs |
+| 11316 | enforce applies close_orphan_session for orphan sessions | 孤儿会话 |
+| 11317 | marks applied false when session already terminal | 会话已终结 |
+| 11319 | applies clean_worker_execution_refs for worker orphans | 清理 worker references用 |
+| 11325 | cleans multiple orphan refs in single worker | 清理多个孤儿references用 |
 
-### parseStepOutput (2 failures)
-| # | Test Name | Error Description |
+### parseStepOutput (2个failed)
+| # | 测试名称 | 错误Description |
 |---|---------|---------|
-| 11457 | handles single line content | Single line content |
-| 11567 | handles single word content | Single word content |
+| 11457 | handles single line content | 单lines内容 |
+| 11567 | handles single word content | 单字内容 |
 
-### FailoverController (3 failures)
-| # | Test Name | Error Description |
+### FailoverController (3个failed)
+| # | 测试名称 | 错误Description |
 |---|---------|---------|
-| 11756 | initiateFailover rejects non-idle state | Non-idle state |
-| 11779 | onFail callback is called on error | Error callback |
-| 11783 | concurrent initiation attempts are rejected | Concurrent attempts |
+| 11756 | initiateFailover rejects non-idle state | 非空闲Status |
+| 11779 | onFail callback is called on error | 错误回调 |
+| 11783 | concurrent initiation attempts are rejected | concurrent尝试 |
 
-### LeaderElectionService (~12 failures)
-| # | Test Name | Error Description |
+### LeaderElectionService (约12个failed)
+| # | 测试名称 | 错误Description |
 |---|---------|---------|
-| 11893-11930 | LeaderElectionService series tests | HA leader election |
+| 11893-11930 | LeaderElectionService 系列测试 | HA 领导者选举 |
 
-### Postgres/Redis Lock Adapter (~25 failures)
-| # | Test Name | Error Description |
+### Postgres/Redis Lock Adapter (约25个failed)
+| # | 测试名称 | 错误Description |
 |---|---------|---------|
-| 12338-12425 | PgAdvisoryLockAdapter / RedisLockAdapter series tests | Lock adapters |
+| 12338-12425 | PgAdvisoryLockAdapter / RedisLockAdapter 系列测试 | 锁适配器 |
 
-### retryJob (1 failure)
-| # | Test Name | Error Description |
+### retryJob (1个failed)
+| # | 测试名称 | 错误Description |
 |---|---------|---------|
-| 12823 | returns null for non-dead-letter job | Non-dead-letter job |
+| 12823 | returns null for non-dead-letter job | 非死信任务 |
 
-### execution-plane-bootstrap (1 failure)
-| # | Test Name | Error Description |
+### execution-plane-bootstrap (1个failed)
+| # | 测试名称 | 错误Description |
 |---|---------|---------|
-| 13562 | bootstrap is immutable | Bootstrap immutable |
+| 13562 | bootstrap is immutable | bootstrap 不可变 |
 
-### sandbox (3 failures)
-| # | Test Name | Error Description |
+### sandbox (3个failed)
+| # | 测试名称 | 错误Description |
 |---|---------|---------|
-| 14119 | read-only workspace mode blocks write operations | Read-only workspace |
-| 14120 | command execution populates data.injectionRisk | Injection risk |
-| 14121 | command failure with non-zero exit code returns failed status | Command failure |
+| 14119 | read-only workspace mode blocks write operations | 只读工作区 |
+| 14120 | command execution populates data.injectionRisk | 注入风险 |
+| 14121 | command failure with non-zero exit code returns failed status | 命令failed |
 
-### ToolExecutor (1 failure)
-| # | Test Name | Error Description |
+### ToolExecutor (1个failed)
+| # | 测试名称 | 错误Description |
 |---|---------|---------|
-| 14315 | executeParallel reports failures in errors array | Parallel execution failures |
+| 14315 | executeParallel reports failures in errors array | 并lines执linesfailed |
 
-### WorkerRegistryService (3 failures)
-| # | Test Name | Error Description |
+### WorkerRegistryService (3个failed)
+| # | 测试名称 | 错误Description |
 |---|---------|---------|
-| 14833 | issueChallenge normalizes and deduplicates capabilities | Capability normalization |
-| 14876 | listEligibleWorkers strict does not meet hardened requirement | Strict requirement |
+| 14833 | issueChallenge normalizes and deduplicates capabilities | 能力规范化 |
+| 14876 | listEligibleWorkers strict does not meet hardened requirement | 严格要求 |
 
-### assessPromotion/calculateTrustScore (~15 failures)
-| # | Test Name | Error Description |
+### assessPromotion/calculateTrustScore (约15个failed)
+| # | 测试名称 | 错误Description |
 |---|---------|---------|
-| 15019-15068 | assessPromotion / calculateTrustScore / scoreSystemHealth series | Trust scoring and promotion |
+| 15019-15068 | assessPromotion / calculateTrustScore / scoreSystemHealth 系列 | 信任评分和晋升 |
 
-### detectAmbiguity (2 failures)
-| # | Test Name | Error Description |
+### detectAmbiguity (2个failed)
+| # | 测试名称 | 错误Description |
 |---|---------|---------|
-| 15076 | treats confidence of 0.7 and above as not low | 0.7 and above |
-| 15078 | with exact entity count matches required | Exact count |
+| 15076 | treats confidence of 0.7 and above as not low | 0.7 及以上 |
+| 15078 | with exact entity count matches required | 精确计数 |
 
-### Other scattered failures
+### 其他零散failed
 
-| # | Test Name | Error Description |
+| # | 测试名称 | 错误Description |
 |---|---------|---------|
-| 15094 | resolveTriggerActionMode handles undefined risk level | Undefined risk level |
-| 15474 | normalizeError returns original AppError unchanged | Error normalization |
-| 16419 | ChannelGatewayService resolves target by targetId directly | Target resolution |
-| 16877 | ingress module with mocks | Ingress module |
-| 17101 | LongRunningWorkflowService.sweepExpired with remain_pending | Expired workflow |
-| 17120-17149 | DequeueResult / nack series tests | Queue operations |
-| 17206-17214 | WebhookIngressService series tests | Webhook ingress |
-| 17356-17464 | BudgetGuard / estimateMessageTokens series | Budget and token calculation |
-| 17715-18062 | model routing / UnifiedChatProvider / SloAlertingService series | Model routing and SLO |
-| 18091 | StructuredLogger configureGlobalFileSink accepts file path string | Structured logging |
-| 18167-18211 | BenchmarkRunner / ProposalEngine series | Benchmark and proposal |
-| 19166-19317 | ExperienceDistillationService / FailurePatternMiner / StrategyLearningService series | Learning services |
-| 19866-19881 | PlanSchema / PlanStepSchema series | Plan schemas |
-| 20612-20622 | ConnectorManifestSchema series | Connector manifest |
-| 21569-21579 | ServiceRegistry series | Service registry |
-| 22686-23228 | FairScheduler / HorizontalScalingController / EnvironmentReadinessOrchestrationService series | Scheduling and scaling |
-| 23257-23276 | classifyPromptInjectionRisk / protectSystemPrompt series | Security classification |
-| 23287-23468 | StableAcceptanceLineReport / StableChaosSmoke / StableConcurrencyRehearsal series | Stability tests |
-| 23767 | CheckpointManager | Checkpoint manager |
-| 23926-23933 | durable event bus series | Durable event bus |
-| 24000 | EventReliabilityInventoryService | Event reliability inventory |
-| 26133-26134 | isSqliteWriteContentionError | SQLite write contention |
-| 26183 | ExecutionRepository updateExecutionStatus | Execution repository |
-| 26611-26632 | SessionDualStorageService series | Session dual storage |
-| 26776 | AuthoritativeTaskStore with mocked database | Task store |
-| 26958-26986 | domainDefinition series | Domain definition |
-| 27116-27170 | platform root / LoopDetectionState / buildContinuationPrompt series | Platform root and loop detection |
-| 27766-27776 | routeComplexity / LoopDetectionState series | Route complexity and loop detection |
-| 27805 | parseOptionalStringArray | Optional string array parsing |
-| 27888 | BillingServiceAsync throws for non-existent account | Billing service |
-| 28013-28026 | assertIdentifier / monthWindow series | Assertions and windows |
-| 28467-28516 | PerceptionService / PmfValidationService series | Perception and PMF validation |
-| 29186-29235 | OpsHealthMonitorService / PlatformOperatorService series | Operations health monitoring |
-| 29339-29404 | isQuotaExceeded / TenantPlatformService / scale-ops series | Quota and tenant platform |
-| 29765-29769 | loadModelRoutingCliEnv series | Model routing CLI |
-| 29927 | create action does not require snapshotId | Create action |
-| 30383 | createTempWorkspace creates a temporary directory with correct prefix | Temporary workspace |
+| 15094 | resolveTriggerActionMode handles undefined risk level | 未defines风险等级 |
+| 15474 | normalizeError returns original AppError unchanged | 错误规范化 |
+| 16419 | ChannelGatewayService resolves target by targetId directly | 目标解析 |
+| 16877 | ingress module with mocks | 入口模块 |
+| 17101 | LongRunningWorkflowService.sweepExpired with remain_pending | 过期工作流 |
+| 17120-17149 | DequeueResult / nack 系列测试 | 队列操作 |
+| 17206-17214 | WebhookIngressService 系列测试 | Webhook 入口 |
+| 17356-17464 | BudgetGuard / estimateMessageTokens 系列 | budget和令牌计算 |
+| 17715-18062 | model routing / UnifiedChatProvider / SloAlertingService 系列 | 模型路由和 SLO |
+| 18091 | StructuredLogger configureGlobalFileSink accepts file path string | 结构化日志 |
+| 18167-18211 | BenchmarkRunner / ProposalEngine 系列 | 基准和提案 |
+| 19166-19317 | ExperienceDistillationService / FailurePatternMiner / StrategyLearningService 系列 | 学习服务 |
+| 19866-19881 | PlanSchema / PlanStepSchema 系列 | 计划模式 |
+| 20612-20622 | ConnectorManifestSchema 系列 | connect器清单 |
+| 21569-21579 | ServiceRegistry 系列 | 服务注册table |
+| 22686-23228 | FairScheduler / HorizontalScalingController / EnvironmentReadinessOrchestrationService 系列 | 调度和扩展 |
+| 23257-23276 | classifyPromptInjectionRisk / protectSystemPrompt 系列 | security分class |
+| 23287-23468 | StableAcceptanceLineReport / StableChaosSmoke / StableConcurrencyRehearsal 系列 | 稳定性测试 |
+| 23767 | CheckpointManager | 检查点manage |
+| 23926-23933 | durable event bus 系列 | 持久事件总线 |
+| 24000 | EventReliabilityInventoryService | 事件可靠性清单 |
+| 26133-26134 | isSqliteWriteContentionError | SQLite 写争用 |
+| 26183 | ExecutionRepository updateExecutionStatus | 执lines仓储 |
+| 26611-26632 | SessionDualStorageService 系列 | 会话双storage |
+| 26776 | AuthoritativeTaskStore with mocked database | 任务storage |
+| 26958-26986 | domainDefinition 系列 | 领域defines |
+| 27116-27170 | platform root / LoopDetectionState / buildContinuationPrompt 系列 | 平台根和循环检测 |
+| 27766-27776 | routeComplexity / LoopDetectionState 系列 | 路由复杂度和循环检测 |
+| 27805 | parseOptionalStringArray | optional字符串数组解析 |
+| 27888 | BillingServiceAsync throws for non-existent account | 计费服务 |
+| 28013-28026 | assertIdentifier / monthWindow 系列 | 断言和窗口 |
+| 28467-28516 | PerceptionService / PmfValidationService 系列 | 感知和 PMF 验证 |
+| 29186-29235 | OpsHealthMonitorService / PlatformOperatorService 系列 | 运营健康监控 |
+| 29339-29404 | isQuotaExceeded / TenantPlatformService / scale-ops 系列 | 配额和租户平台 |
+| 29765-29769 | loadModelRoutingCliEnv 系列 | 模型路由 CLI |
+| 29927 | create action does not require snapshotId | 创建操作 |
+| 30383 | createTempWorkspace creates a temporary directory with correct prefix | 临时工作区 |
 
 ---
 
-## Root Cause Analysis
+## Root Cause分析
 
-1. **Test assertions don't match implementation** - Multiple tests have expected values inconsistent with actual implementation
-2. **Mock objects incomplete** - Mock database/services don't correctly simulate actual behavior
-3. **Concurrency test issues** - Race conditions when tests execute concurrently
-4. **Environment/config issues** - Tests need specific environment config but not provided
+1. **测试断言vs实现不匹配** - 多个测试的预期值vs实际实现inconsistent
+2. **Mock 对象不完整** - mock data库/服务未正确模拟实际lines为
+3. **concurrent测试Issue** - 测试concurrent执lines时的竞态条件
+4. **环境/configureIssue** - 测试需要特定环境configure但未提供
 
-### Recommendations
 
-1. **For test assertion errors**: Need to check if assertions in test files match latest implementation
-2. **For mock issues**: Need to update mock objects to correctly simulate actual service behavior
-3. **For concurrency issues**: Consider reducing test concurrency or adding appropriate synchronization mechanisms
 
----
+### Recommendation
 
-## Historical Baseline Archive List
-
-> Items #15-#30 below are no longer managed as current active TODOs; they serve as the index for the 2026-04-25 historical test baseline. Current architecture implementation closure is handled by A5/A6 registry, gate, receipt, report, and invariant tests.
-
-| Task ID | Directory | Failures | Status |
-|---------|-----------|---------|--------|
-| #15 | unit/platform/shared/observability | 55 | Archived |
-| #16 | unit/platform/five-plane-state-evidence/memory | 24 | Archived |
-| #17 | unit/platform/five-plane-interface/channel-gateway | 16 | Archived |
-| #18 | unit/platform/five-plane-execution/worker-pool | 22 | Archived |
-| #19 | unit/platform/model-gateway/provider-registry | 15 | Archived |
-| #20 | unit/platform/five-plane-state-evidence/knowledge | 33 | Archived |
-| #21 | unit/platform/five-plane-state-evidence/artifacts | 13 | Archived |
-| #22 | unit/platform/five-plane-orchestration/agent-delegation | 14 | Archived |
-| #23 | Other directories | ~50 | Archived |
-| #24 | unit/platform/five-plane-state-evidence/events | 30 | Archived |
-| #25 | unit/platform/five-plane-orchestration/harness | 30 | Archived |
-| #26 | unit/platform/shared/stability | 43 | Archived |
-| #27 | unit/platform/five-plane-state-evidence/truth | 84 | Archived |
-| #28 | unit/platform/five-plane-orchestration/oapeflir | 50 | Archived |
-| #29 | unit/platform/shared/cache | 35 | Archived |
-| #30 | unit/platform/five-plane-interface/api | 52 | Archived |
-
-**Total**: 354 test failures, distributed across 16 main directories
+1. **对于测试断言错误**：需要检查测试文件中的断言isnovs最新实现匹配
+2. **对于 mock Issue**：需要更新 mock 对象以正确模拟实际服务lines为
+3. **对于concurrentIssue**：考虑降低测试concurrent度或添加适当的synchronous机制
 
 ---
 
-## Mission v1.4 Architecture Implementation Activity TODO
+## 历史基线归档清单
 
-> Source: `docs_zh/reference/mission_architecture_design_review_v1_4_full_merged.md`. This main line executes in the order of "documentation status writeback -> contract freeze -> Truth/Event -> Control Plane -> API/Runtime Binding -> P1/P2 capabilities -> test closure". Mission only serves as long-term goal and governance context root object, does not become an execution object, and does not replace `PlanGraphBundle / PlanNode / NodeRun / NodeAttempt`.
+> 以下 #15-#30 已不再作为当前活动待办manage；它们is 2026-04-25 历史测试基线的索references。当前Architecture实现收口已由 A5/A6 的 registry、gate、receipt、report vs invariant 测试承接。
 
-| Wave | Covered Tasks | Status | Acceptance Criteria |
-|------|---------------|--------|---------------------|
-| M0 Documentation and Task Ledger | T-MIS-001 to T-MIS-019 status table, evidence paths, test paths | [x] Completed | Review documents only append status and basis, don't delete original contract content |
-| M1 Contract Freeze | T-MIS-001 | [x] Completed | Mission schemas/types/errors/events exportable, strict schema tests pass |
-| M2 Truth/Event Foundation | T-MIS-002, T-MIS-003 | [x] Completed | mission truth tables, repository, event sequence, platform.mission.* same-transaction tests pass |
-| M3 Control Plane | T-MIS-004, T-MIS-005 | [x] Completed | lifecycle CAS, resolver, governance, budget, live guard targeted tests pass |
-| M4 Interface/API | T-MIS-006 | [x] Completed | `/api/v1/missions` create/list/read/patch, status transitions, members, tasks/runs/evidence/budget and `/api/v1/mission-resolutions:dry-run` contract tests pass |
-| M5 Runtime Binding | T-MIS-007, T-MIS-008, T-MIS-009, T-MIS-010 | [x] Completed | Task create -> Mission resolution -> MissionSnapshot -> PlanGraphBundle -> HarnessRun -> NodeRun guard chain tests pass |
-| M6 P1 Capabilities | T-MIS-011, T-MIS-012, T-MIS-013, T-MIS-014, T-MIS-015 | [x] Completed | Mission Console backend data plane, observability, learning improvement, legacy backfill, ADR documentation status consistent |
-| M7 P2 Warehouse Baseline | T-MIS-016, T-MIS-017, T-MIS-018, T-MIS-019 | [x] Completed | handoff, home region/fencing, outcome analytics, template/package integration have testable service baseline |
-| M8 Testing and Closure | Contract/Unit/Integration/E2E/Governance | [x] Completed | Mission targeted tests, `npm run build:test`, and OpenAPI contract tests pass |
+| 任务ID | 目录 | failed数 | Status |
+|-------|------|--------|------|
+| #15 | unit/platform/shared/observability | 55 | 已归档 |
+| #16 | unit/platform/five-plane-state-evidence/memory | 24 | 已归档 |
+| #17 | unit/platform/five-plane-interface/channel-gateway | 16 | 已归档 |
+| #18 | unit/platform/five-plane-execution/worker-pool | 22 | 已归档 |
+| #19 | unit/platform/model-gateway/provider-registry | 15 | 已归档 |
+| #20 | unit/platform/five-plane-state-evidence/knowledge | 33 | 已归档 |
+| #21 | unit/platform/five-plane-state-evidence/artifacts | 13 | 已归档 |
+| #22 | unit/platform/five-plane-orchestration/agent-delegation | 14 | 已归档 |
+| #23 | 其他目录 | ~50 | 已归档 |
+| #24 | unit/platform/five-plane-state-evidence/events | 30 | 已归档 |
+| #25 | unit/platform/five-plane-orchestration/harness | 30 | 已归档 |
+| #26 | unit/platform/shared/stability | 43 | 已归档 |
+| #27 | unit/platform/five-plane-state-evidence/truth | 84 | 已归档 |
+| #28 | unit/platform/five-plane-orchestration/oapeflir | 50 | 已归档 |
+| #29 | unit/platform/shared/cache | 35 | 已归档 |
+| #30 | unit/platform/five-plane-interface/api | 52 | 已归档 |
 
-### T-MIS Mapping
+**总计**: 354 个测试failed，分布在 16 个主要目录
 
-| Task | This Round Landing | Status |
-|------|-------------------|--------|
-| T-MIS-001 | Mission Zod schemas and type exports | [x] Completed |
-| T-MIS-002 | mission_records / memberships / snapshots / event_sequences migration | [x] Completed |
-| T-MIS-003 | `platform.mission.*` event schemas | [x] Completed |
-| T-MIS-004 | MissionLifecycleService + CAS transition | [x] Completed |
-| T-MIS-005 | MissionResolver + MissionGovernanceService | [x] Completed |
-| T-MIS-006 | Mission API + ErrorEnvelope (including patch, members, tasks/runs/evidence/budget) | [x] Completed |
-| T-MIS-007 | PlanGraphBundle missionSnapshotRef required | [x] Completed |
-| T-MIS-008 | HarnessRun missionBinding required | [x] Completed |
-| T-MIS-009 | NodeRun MissionLiveGuard | [x] Completed |
-| T-MIS-010 | canonical Mission E2E coverage | [x] Completed |
-| T-MIS-011 | Mission Console Overview / Members / Tasks / Runs / Budget / Evidence backend data plane | [x] Completed |
-| T-MIS-012 | Mission trace/log correlation + metrics cardinality guard | [x] Completed |
-| T-MIS-013 | Mission scoped LearningObject promotion gate | [x] Completed |
-| T-MIS-014 | legacy Task/Session missionRef backfill | [x] Completed |
-| T-MIS-015 | ADR updates and superseded markers | [x] Completed |
-| T-MIS-016 | Mission handoff across org/tenant | [x] Completed |
-| T-MIS-017 | Mission home region + read replica routing/fencing | [x] Completed |
-| T-MIS-018 | Mission outcome analytics | [x] Completed |
-| T-MIS-019 | Mission template/package integration | [x] Completed |
+---
+
+## Mission v1.4 Architecture落地活动待办
+
+> 来源：`docs_zh/reference/mission_architecture_design_review_v1_4_full_merged.md`。本主线按“文档Status回写 -> 契约冻结 -> Truth/Event -> Control Plane -> API/Runtime Binding -> P1/P2 能力 -> 测试收口”的顺序执lines。Mission 只作为长期目标vs治理上下文根对象，不成为执lines对象，不替代 `PlanGraphBundle / PlanNode / NodeRun / NodeAttempt`。
+
+| 波iterations | 覆盖任务 | Status | 验收口径 |
+|---|---|---|---|
+| M0 文档vs任务台账 | T-MIS-001 至 T-MIS-019 Statustable、证据路径、测试路径 | [x] completed | Review 文档只追加Statusvs依据，不删除原始契约内容 |
+| M1 Contract Freeze | T-MIS-001 | [x] completed | Mission schemas/types/errors/events 可export，严格 schema 测试via |
+| M2 Truth/Event Foundation | T-MIS-002, T-MIS-003 | [x] completed | mission truth tables、repository、event sequence、platform.mission.* 同事务测试via |
+| M3 Control Plane | T-MIS-004, T-MIS-005 | [x] completed | lifecycle CAS、resolver、governance、budget、live guard 定向测试via |
+| M4 Interface/API | T-MIS-006 | [x] completed | `/api/v1/missions` create/list/read/patch、Status转换、members、tasks/runs/evidence/budget vs `/api/v1/mission-resolutions:dry-run` contract 测试via |
+| M5 Runtime Binding | T-MIS-007, T-MIS-008, T-MIS-009, T-MIS-010 | [x] completed | Task create -> Mission resolution -> MissionSnapshot -> PlanGraphBundle -> HarnessRun -> NodeRun guard 链路测试via |
+| M6 P1 能力 | T-MIS-011, T-MIS-012, T-MIS-013, T-MIS-014, T-MIS-015 | [x] completed | Mission Console 后端data面、观测、学习提升、legacy backfill、ADR 文档Status一致 |
+| M7 P2 仓内基线 | T-MIS-016, T-MIS-017, T-MIS-018, T-MIS-019 | [x] completed | handoff、home region/fencing、outcome analytics、template/package integration 有可测试服务基线 |
+| M8 测试vs收口 | Contract/Unit/Integration/E2E/Governance | [x] completed | Mission 定向测试、`npm run build:test` vs OpenAPI contract 测试via |
+
+### T-MIS 映射
+
+| 任务 | 本轮落点 | Status |
+|---|---|---|
+| T-MIS-001 | Mission Zod schemas vs type exports | [x] completed |
+| T-MIS-002 | mission_records / memberships / snapshots / event_sequences migration | [x] completed |
+| T-MIS-003 | `platform.mission.*` event schemas | [x] completed |
+| T-MIS-004 | MissionLifecycleService + CAS transition | [x] completed |
+| T-MIS-005 | MissionResolver + MissionGovernanceService | [x] completed |
+| T-MIS-006 | Mission API + ErrorEnvelope（含 patch、members、tasks/runs/evidence/budget） | [x] completed |
+| T-MIS-007 | PlanGraphBundle missionSnapshotRef required | [x] completed |
+| T-MIS-008 | HarnessRun missionBinding required | [x] completed |
+| T-MIS-009 | NodeRun MissionLiveGuard | [x] completed |
+| T-MIS-010 | canonical Mission E2E 覆盖 | [x] completed |
+| T-MIS-011 | Mission Console Overview / Members / Tasks / Runs / Budget / Evidence 后端data面 | [x] completed |
+| T-MIS-012 | Mission trace/log correlation + metrics cardinality guard | [x] completed |
+| T-MIS-013 | Mission scoped LearningObject promotion gate | [x] completed |
+| T-MIS-014 | legacy Task/Session missionRef backfill | [x] completed |
+| T-MIS-015 | ADR 更新vs superseded 标记 | [x] completed |
+| T-MIS-016 | Mission handoff across org/tenant | [x] completed |
+| T-MIS-017 | Mission home region + read replica routing/fencing | [x] completed |
+| T-MIS-018 | Mission outcome analytics | [x] completed |
+| T-MIS-019 | Mission template/package integration | [x] completed |

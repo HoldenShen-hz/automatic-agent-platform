@@ -9,17 +9,17 @@
  */
 
 import { newId } from "../../platform/contracts/types/ids.js";
-import type { EvidenceRecord } from './learning/evidence-store.js';
-import type { ReflectionRecord } from './learning/reflection-engine.js';
-import type { ProposalKind } from './learning/proposal-engine.js';
-import { InMemoryEvidenceStore } from './learning/evidence-store.js';
-import { SimpleReflectionEngine } from './learning/reflection-engine.js';
-import { SimpleProposalEngine } from './learning/proposal-engine.js';
-import { SimpleBenchmarkRunner } from './learning/benchmark-runner.js';
-import { PromotionGate, DEFAULT_PROMOTION_GATE_CONFIG } from './learning/promotion-gate.js';
-import type { AuthoritativeTaskStore } from '../../platform/five-plane-state-evidence/truth/authoritative-task-store.js';
-import type { ApprovalService } from '../../platform/five-plane-control-plane/approval-center/approval-service.js';
-import type { LearningObject } from '../../platform/five-plane-orchestration/learn/learning-object-model.js';
+import type { EvidenceRecord } from "./learning/evidence-store.js";
+import type { ReflectionRecord } from "./learning/reflection-engine.js";
+import type { ProposalKind } from "./learning/proposal-engine.js";
+import { InMemoryEvidenceStore } from "./learning/evidence-store.js";
+import { SimpleReflectionEngine } from "./learning/reflection-engine.js";
+import { SimpleProposalEngine } from "./learning/proposal-engine.js";
+import { SimpleBenchmarkRunner } from "./learning/benchmark-runner.js";
+import { PromotionGate, DEFAULT_PROMOTION_GATE_CONFIG } from "./learning/promotion-gate.js";
+import type { AuthoritativeTaskStore } from "../../platform/five-plane-state-evidence/truth/authoritative-task-store.js";
+import type { ApprovalService } from "../../platform/five-plane-control-plane/approval-center/approval-service.js";
+import type { LearningObject } from "../../platform/five-plane-orchestration/learn/learning-object-model.js";
 
 /**
  * R13-06: Bridge interface to the main learning pipeline.
@@ -35,7 +35,7 @@ export interface LearningBridge {
 }
 
 export interface EvolutionIntegrationConfig {
-  reflectionThreshold: number;  // Min failures before triggering reflection
+  reflectionThreshold: number;
   proposalConfidenceThreshold: number;
   enableAutomaticProposal: boolean;
 }
@@ -74,6 +74,10 @@ function tokenizeReasonCode(reasonCode: string): string[] {
     .filter((token) => token.length > 0);
 }
 
+function safeTruncate(value: string, maxCodePoints: number): string {
+  return Array.from(value).slice(0, maxCodePoints).join("");
+}
+
 /**
  * Service that integrates evidence collection, reflection, and proposal
  * generation into the existing runtime flow.
@@ -93,7 +97,7 @@ export class EvolutionIntegrationService {
   constructor(
     private readonly store: AuthoritativeTaskStore,
     private readonly approvalService: ApprovalService,
-    config: Partial<EvolutionIntegrationConfig> = {}
+    config: Partial<EvolutionIntegrationConfig> = {},
   ) {
     this.evidenceStore = new InMemoryEvidenceStore();
     this.reflectionEngine = new SimpleReflectionEngine();
@@ -128,7 +132,7 @@ export class EvolutionIntegrationService {
     }
 
     const learningObjects = activeProposals.map((proposal) =>
-      this.proposalToLearningObject(proposal)
+      this.proposalToLearningObject(proposal),
     );
 
     await this.learningBridge.onLearningObjects(learningObjects);
@@ -138,7 +142,7 @@ export class EvolutionIntegrationService {
    * R13-06: Converts an ImprovementProposal to a LearningObject
    * for integration with the main learning pipeline.
    */
-  private proposalToLearningObject(proposal: import('./learning/proposal-engine.js').ImprovementProposal): LearningObject {
+  private proposalToLearningObject(proposal: import("./learning/proposal-engine.js").ImprovementProposal): LearningObject {
     const now = new Date().toISOString();
     // Map proposal kind to learning type
     const learningType = this.proposalKindToLearningType(proposal.kind);
@@ -157,13 +161,13 @@ export class EvolutionIntegrationService {
         sourceSignalIds: [`proposal:${proposal.id}`],
         recommendation: proposal.rationale,
       },
-      confidence: 0.7, // Proposals have baseline confidence
+      confidence: this.config.proposalConfidenceThreshold,
       evidenceRefs: proposal.evidenceIds,
       sourceSignalIds: [`proposal:${proposal.id}`],
       recommendation: proposal.rationale,
-      validatedBy: 'shadow_execution',
-      promotionStatus: 'validated',
-      status: 'validated',
+      validatedBy: "shadow_execution",
+      promotionStatus: "validated",
+      status: "validated",
       createdAt: now,
     };
   }
@@ -172,18 +176,18 @@ export class EvolutionIntegrationService {
    * R13-06: Maps proposal kind to learning type.
    */
   private proposalKindToLearningType(
-    kind: import('./learning/proposal-engine.js').ProposalKind
-  ): LearningObject['learningType'] {
+    kind: import("./learning/proposal-engine.js").ProposalKind,
+  ): LearningObject["learningType"] {
     switch (kind) {
-      case 'prompt_patch':
-      case 'skill_doc':
-        return 'user_correction';
-      case 'workflow_template':
-        return 'recovery_playbook';
-      case 'tool_routing_rule':
-      case 'threshold_tuning':
+      case "prompt_patch":
+      case "skill_doc":
+        return "user_correction";
+      case "workflow_template":
+        return "recovery_playbook";
+      case "tool_routing_rule":
+      case "threshold_tuning":
       default:
-        return 'failure_pattern';
+        return "failure_pattern";
     }
   }
 
@@ -212,7 +216,7 @@ export class EvolutionIntegrationService {
       traceId: input.executionId,
       success: false,
       failureMode: this.classifyFailureMode(reasonCode),
-      failureCategory: this.inferFailureCategory(reasonCode) ?? 'complex_repair_failure',
+      failureCategory: this.inferFailureCategory(reasonCode) ?? "complex_repair_failure",
       costUsd: input.costUsd,
       latencyMs: input.latencyMs,
       toolCalls: input.toolCalls,
@@ -272,6 +276,9 @@ export class EvolutionIntegrationService {
     }
 
     const reflections = await this.reflectionEngine.reflect(failures);
+    if (!this.config.enableAutomaticProposal) {
+      return;
+    }
 
     for (const reflection of reflections) {
       if (reflection.confidence >= this.config.proposalConfidenceThreshold) {
@@ -289,7 +296,7 @@ export class EvolutionIntegrationService {
     const risk = this.determineRisk(kind, reflection.taskType);
 
     const proposal = await this.proposalEngine.create({
-      title: `Auto-generated: ${reflection.rootCause.slice(0, 50)}`,
+      title: `Auto-generated: ${safeTruncate(reflection.rootCause, 50)}`,
       description: reflection.recommendation,
       kind,
       target: reflection.taskType,

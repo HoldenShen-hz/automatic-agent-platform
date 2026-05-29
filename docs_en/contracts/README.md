@@ -1,37 +1,37 @@
 # Contracts
 
-> `contracts/` is the platform's authoritative specification layer.
-> Here we define canonical objects, minimum fields, state machines, protocol boundaries, and test requirements; current coverage analysis is recorded in `docs_zh/analysis/`, not in the contract body.
+> `contracts/` is平台 authoritative 规范层。
+> 这里defines canonical object、最小字段、Status机、协议边界和测试要求；当前覆盖分析统一record在 `docs_zh/analysis/`，不写在 contract 正文里。
 
-## 1. Usage Order
+## 1. uses顺序
 
-When you need to modify the following content, first look in this directory:
+当你要改以下内容时，先看本目录：
 
 - schema / DTO / event payload
-- state machine, lifecycle, approval, and budget constraints
-- storage model, execution protocol, cross-plane boundaries
-- domain / interaction / org-governance / scale-ecosystem / ops-maturity new capabilities
+- Status机、生命cycle、审批vsbudget约束
+- storage模型、执lines协议、跨平面边界
+- domain / interaction / org-governance / scale-ecosystem / ops-maturity 新能力
 
-Recommended order:
+推荐顺序：
 
-1. First check this README's grouped index
-2. Then look at the corresponding ADR
-3. Finally, dive into the specific contract
+1. 先看本 README 的分组索references
+2. 再看对应 ADR
+3. 最后进入具体 contract
 
-## 1A. Naming and Versioning Strategy
+## 1A. 命名vs版本策略
 
-- Canonical contracts added in the v4.3 freeze may use kebab-case filenames, for example `harness-run-contract.md`, `event-envelope-contract.md`, and `budget-ledger-contract.md`.
-- The large set of contracts retained from before the freeze continues to use snake_case; unless a new freeze or canonical object is involved, do not mass-rename files only for consistency.
-- Short historical filenames seen in older reviews, such as `runtime_state_machine.md`, `event_bus.md`, and `gateway_message.md`, should now map to the real `*_contract.md` / `*-contract.md` files that exist today instead of restoring a second historical file set.
-- Contract versioning defaults to directory-level governance: `ADR-109` freeze, the README authority map, and each document's `updated` / scope notes together form the version source of truth, rather than requiring a separate `version:` frontmatter field in every file.
-- Only introduce an extra machine-readable version field when a specific contract must evolve independently from the directory-level freeze; otherwise keep a single source of truth to avoid drift.
+- v4.3 freeze 新增的 canonical contract 允许uses kebab-case 文件名，例如 `harness-run-contract.md`、`event-envelope-contract.md`、`budget-ledger-contract.md`。
+- freeze 之前保留的大量 contract 继续accesses along用 snake_case；除非进入新的 freeze/canonical object，不主动为了一致性批量改名。
+- 旧 review 中出现的 `runtime_state_machine.md`、`event_bus.md`、`gateway_message.md` 这class短文件名，当前都应映射到实际存在的 `*_contract.md` / `*-contract.md` 文件，而不is再补回第二套历史文件。
+- contract 版本口径defaults to走目录级治理：`ADR-109` freeze、README authority map、以及文内 `更新日期`/scope note 共同组成版本事实来源；不is要求每个文件都额外维护 `version:` frontmatter。
+- 只有当某个 contract 需要脱离目录级 freeze 单独演进时，才额外references入机器可读版本字段；no则保持单一目录级事实源，避免多点漂移。
 
 ## 2. v4.3 Contract Freeze Scope
 
-The v4.3 implementation entry points are based on [ADR-109](../adr/109-contract-freeze.md), [ADR-110](../adr/110-runtime-state-machine-authority.md), [ADR-111](../adr/111-platform-fact-vs-oapeflir-view-events.md), [ADR-112](../adr/112-mvp-ring-implementation-boundary.md), and the contracts in the table below.
+v4.3 的实现入口以 [ADR-109](../adr/109-contract-freeze.md)、[ADR-110](../adr/110-runtime-state-machine-authority.md)、[ADR-111](../adr/111-platform-fact-vs-oapeflir-view-events.md)、[ADR-112](../adr/112-mvp-ring-implementation-boundary.md) 和下table contract 为准。
 
-| Frozen Contract | Contract Entry | Architecture Section |
-| --- | --- | --- |
+| 冻结契约 | contract 入口 | Architecture章节 |
+|---|-------|--------|
 | `TaskDraft` / `ConfirmedTaskSpec` / `RequestEnvelope` | [task-intake-request-contract.md](./task-intake-request-contract.md) | `§5` / `§6` / `§39` |
 | `HarnessRun` | [harness-run-contract.md](./harness-run-contract.md) | `§5` / `§25` / `§45` |
 | `PlanGraphBundle` / `PlanGraph` / `PlanNode` / `PlanEdge` | [plan-graph-patch-contract.md](./plan-graph-patch-contract.md) | `§5` / `§13` / `§45` |
@@ -45,35 +45,35 @@ The v4.3 implementation entry points are based on [ADR-109](../adr/109-contract-
 | `HumanResponsibilityRecord` | [decision-hitl-contract.md](./decision-hitl-contract.md) | `§21` / `§47` / `§58` |
 | `EventEnvelope` / `PlatformFactEvent` / `OapeflirViewEvent` | [event-envelope-contract.md](./event-envelope-contract.md) | `§28` / `§58` |
 
-Compatibility rules:
+兼容规则：
 
-- `ExecutionPlan` is only allowed as a deprecated alias for `PlanGraphBundle` or for migration notes.
-- `ExecutionReceipt` is only allowed as a deprecated alias for `NodeAttemptReceipt`.
-- `ControlDirective` must be split into runtime control semantics and business decision semantics; business decisions use `HarnessDecision` as the entry point.
-- `StateCommand` / `StateMutationCommand` are only allowed as internal compatible wrappers for `RuntimeStateMachine.transition(command)`.
-- `workflow_run`, `WorkflowStep`, `StepOutput`, and legacy `task.*` / `workflow.*` events are only allowed as legacy/deprecated/projection/historical context, not as v4.3 new implementation entry points.
-- `oapeflir.view.*` and `oapeflir.rationale.*` are projection view events; truth consumers only consume `platform.*`.
+- `ExecutionPlan` 只允许作为 `PlanGraphBundle` 的 deprecated alias 或迁移Description。
+- `ExecutionReceipt` 只允许作为 `NodeAttemptReceipt` 的 deprecated alias。
+- `ControlDirective` 必须拆分为运lines控制语义vs业务裁决语义；业务裁决以 `HarnessDecision` 为入口。
+- `StateCommand` / `StateMutationCommand` 只允许作为 `RuntimeStateMachine.transition(command)` 的内部兼容 wrapper。
+- `workflow_run`、`WorkflowStep`、`StepOutput`、旧 `task.*` / `workflow.*` 事件只允许作为 legacy/deprecated/projection/历史语境，不作为 v4.3 新实现入口。
+- `oapeflir.view.*` vs `oapeflir.rationale.*` is投影视图事件；truth consumer 只消费 `platform.*`。
 
-## 3. Architecture Section to Contract Group Mapping
+## 3. Architecture章节到 contract 组映射
 
-| Architecture Section | Main ADR | Contract Group |
-| --- | --- | --- |
-| `§1-§5` | `001`, `019`, `060`, `088` | Architecture governance, plane boundaries, context and result protocol |
-| `§6-§8` | `009`, `013`, `015`, `066`, `088` | API, communication, extensions, and plugin governance |
-| `§9-§12` | `005`, `008`, `009`, `089`, `090` | Stability, risk, security, observability |
-| `§13-§19` | `006`, `016`, `018`, `019`, `072`, `075`, `089`, `090` | OAPEFLIR, runtime, provider, prompt, eval, cost, delegation |
-| `§20-§32` | `009`, `012`, `013`, `017`, `020`, `078`, `079`, `080`, `088`, `089`, `090` | workflow, HITL, SDK, governance, config, data, HA, deployment |
-| `§37-§44` | `081`, `082`, `083`, `084` | domain / interaction extension layer |
-| `§46-§51` | `085` | org-governance extension layer |
-| `§52-§57` | `086` | scale-ecosystem extension layer |
-| `§59-§69` | `087` | ops-maturity extension layer |
+| Architecture章节 | 主要 ADR | contract 组 |
+|---|-------|--------|
+| `§1-§5` | `001`, `019`, `060`, `088` | Architecture治理、平面边界、上下文vs结果协议 |
+| `§6-§8` | `009`, `013`, `015`, `066`, `088` | API、communication、扩展vs插件治理 |
+| `§9-§12` | `005`, `008`, `009`, `089`, `090` | 稳定性、风险、security、可观测性 |
+| `§13-§19` | `006`, `016`, `018`, `019`, `072`, `075`, `089`, `090` | OAPEFLIR、runtime、provider、prompt、eval、成本、委托 |
+| `§20-§32` | `009`, `012`, `013`, `017`, `020`, `078`, `079`, `080`, `088`, `089`, `090` | workflow、HITL、SDK、治理、configure、data、HA、部署 |
+| `§37-§44` | `081`, `082`, `083`, `084` | domain / interaction 扩展层 |
+| `§46-§51` | `085` | org-governance 扩展层 |
+| `§52-§57` | `086` | scale-ecosystem 扩展层 |
+| `§59-§69` | `087` | ops-maturity 扩展层 |
 
-Notes:
+Description：
 
-- The original architecture document does not define `§34`, `§35`, `§45`, `§58`, `§70`.
-- Coverage status is available at [../analysis/00-architecture-coverage-matrix.md](../analysis/00-architecture-coverage-matrix.md).
+- 原始Architecture文档未defines `§34`、`§35`、`§45`、`§58`、`§70`。
+- 覆盖Status见 [../analysis/00-architecture-coverage-matrix.md](../analysis/00-architecture-coverage-matrix.md)。
 
-## 4. Grouped Index
+## 4. 分组索references
 
 ### 4.0 v4.3 Contract Freeze
 
@@ -87,7 +87,7 @@ Notes:
 - [decision-hitl-contract.md](./decision-hitl-contract.md)
 - [event-envelope-contract.md](./event-envelope-contract.md)
 
-### 4.1 Core Execution and Runtime
+### 4.1 核心执linesvs运lines时
 
 - [task_and_workflow_contract.md](./task_and_workflow_contract.md)
 - [executable_unit_contract.md](./executable_unit_contract.md)
@@ -102,7 +102,7 @@ Notes:
 - [execution_plane_contract.md](./execution_plane_contract.md)
 - [supervisor_contract.md](./supervisor_contract.md)
 
-### 4.2 Context, Error, and Inter-Plane Protocol
+### 4.2 上下文、错误vs平面间协议
 
 - [context_propagation_contract.md](./context_propagation_contract.md)
 - [app_error_contract.md](./app_error_contract.md)
@@ -111,7 +111,7 @@ Notes:
 - [architecture_governance_and_versioning_contract.md](./architecture_governance_and_versioning_contract.md)
 - [project_structure_contract.md](./project_structure_contract.md)
 
-### 4.3 Events, Gateway, and Streaming Output
+### 4.3 事件、网关vs流式输出
 
 - [event_bus_contract.md](./event_bus_contract.md)
 - [typed_event_bus_contract.md](./typed_event_bus_contract.md)
@@ -135,7 +135,7 @@ Notes:
 - [plugin_spi_contract.md](./plugin_spi_contract.md)
 - [api_surface_contract.md](./api_surface_contract.md)
 
-### 4.5 Prompt, Quality, Cost, and AI Governance
+### 4.5 Prompt、质量、成本vs AI 治理
 
 - [prompt_engine_spi_contract.md](./prompt_engine_spi_contract.md)
 - [prompt_model_policy_governance_contract.md](./prompt_model_policy_governance_contract.md)
@@ -146,7 +146,7 @@ Notes:
 - [data_classification_and_prompt_handling_contract.md](./data_classification_and_prompt_handling_contract.md)
 - [memory_decay_and_quality_contract.md](./memory_decay_and_quality_contract.md)
 
-### 4.6 Storage, Artifact, Observability, and Recovery
+### 4.6 storage、Artifact、观测vs恢复
 
 - [cache_contract.md](./cache_contract.md)
 - [storage_schema_contract.md](./storage_schema_contract.md)
@@ -167,7 +167,7 @@ Notes:
 - [testing_singleton_reset_contract.md](./testing_singleton_reset_contract.md)
 - [vcr_and_fixture_testing_contract.md](./vcr_and_fixture_testing_contract.md)
 
-### 4.7 Security, Approval, and Enterprise Governance
+### 4.7 security、审批vs企业治理
 
 - [approval_and_hitl_contract.md](./approval_and_hitl_contract.md)
 - [sandbox_and_auth_contract.md](./sandbox_and_auth_contract.md)
@@ -182,7 +182,7 @@ Notes:
 - [governance_control_plane_contract.md](./governance_control_plane_contract.md)
 - [enterprise_operations_plane_contract.md](./enterprise_operations_plane_contract.md)
 
-### 4.8 Configuration, Environment, and Platform Surface
+### 4.8 configure、环境vs平台table面
 
 - [sdk_surface_contract.md](./sdk_surface_contract.md)
 - [configuration_layers_and_defaults_contract.md](./configuration_layers_and_defaults_contract.md)
@@ -198,7 +198,7 @@ Notes:
 - [data_plane_contract.md](./data_plane_contract.md)
 - [ecosystem_extension_plane_contract.md](./ecosystem_extension_plane_contract.md)
 
-### 4.9 Organization and Roles
+### 4.9 组织vs角色
 
 - [agent_contract.md](./agent_contract.md)
 - [division_definition_contract.md](./division_definition_contract.md)
@@ -243,33 +243,33 @@ Notes:
 
 ## 5. Companion / Alias Map
 
-The following file families cover the same theme at different layers; reviews and follow-up maintenance should converge through this mapping instead of treating them as duplicate implementations:
+以下文件族is“同主题不同层级”而不is互为repeats实现；review 和后续文档维护必须按这个映射收口：
 
-| Theme | Canonical/SOT | Companion / Scope Note |
-| --- | --- | --- |
-| HITL / approval | `decision-hitl-contract.md` + `approval_and_hitl_contract.md` | `hitl_contract.md` and `hitl_experience_and_explainability_contract.md` supplement the minimum HITL surface and the UX/explainability requirements respectively |
-| Error codes | `error_code_registry_contract.md` | `error_code_registry.md` remains the stable registry body and reader entry point; it does not define a second numbering space |
-| Recovery | `idempotency_and_recovery_matrix_contract.md` + `tool_metadata_and_recovery_contract.md` | `recovery_contract.md` only defines the minimum recovery cadence/report objects |
-| Event envelope / bus | `event-envelope-contract.md` | `event_bus_contract.md` / `typed_event_bus_contract.md` constrain delivery, replay, and typed APIs; they do not redefine the full envelope field set |
-| Tenant isolation | `tenant_isolation_and_shared_worker_safety_contract.md` | `tenant_isolation_contract.md` keeps only the minimum isolation object; shared-worker details belong to the long-name contract |
-| Storage | `storage_schema_contract.md` | `runtime_repository_and_migration_contract.md` covers repository/migration, `production_storage_and_queue_contract.md` covers production topology, and `artifact_*` covers artifact semantics |
-| API / SDK | `api_surface_contract.md` + `sdk_surface_contract.md` | API defines the service surface; SDK defines the client/CLI/pack/plugin surface without restating the other side's full responsibility |
-| Versioning | `version-lock-contract.md` | `architecture_governance_and_versioning_contract.md` governs cross-architecture boundaries and does not replace the canonical version-lock objects |
+| 主题 | Canonical/SOT | Companion / Scope Note |
+|---|-------|--------|
+| HITL / approval | `decision-hitl-contract.md` + `approval_and_hitl_contract.md` | `hitl_contract.md` vs `hitl_experience_and_explainability_contract.md` 分别补充最小 HITL 面vs体验/可解释性要求 |
+| Error codes | `error_code_registry_contract.md` | `error_code_registry.md` 保留为稳定注册table正文和读者入口，不再单独defines第二套#空间 |
+| Recovery | `idempotency_and_recovery_matrix_contract.md` + `tool_metadata_and_recovery_contract.md` | `recovery_contract.md` onlydefines恢复 cadence/report 最小对象 |
+| Event envelope / bus | `event-envelope-contract.md` | `event_bus_contract.md` / `typed_event_bus_contract.md` 约束投递、回放和 typed API，不repeatsdefines envelope 字段全集 |
+| Tenant isolation | `tenant_isolation_and_shared_worker_safety_contract.md` | `tenant_isolation_contract.md` only保留最小隔离对象，shared worker 细则以长名 contract 为准 |
+| Storage | `storage_schema_contract.md` | `runtime_repository_and_migration_contract.md` 负责 repository/migration，`production_storage_and_queue_contract.md` 负责 production topology，`artifact_*` 负责 artifact 语义 |
+| API / SDK | `api_surface_contract.md` + `sdk_surface_contract.md` | API defines服务面；SDK defines client/CLI/pack/plugin surface，不repeats声明对方的完整职责 |
+| Versioning | `version-lock-contract.md` | `architecture_governance_and_versioning_contract.md` 负责跨Architecture治理边界，不取代 version-lock canonical object |
 
-## 6. Relationship with ADR / Analysis
+## 6. vs ADR / analysis 的关系
 
-- `adr/` explains why a contract was made.
-- `contracts/` defines authoritative objects and constraints.
-- `analysis/` records whether a contract has been implemented and which areas are still weak.
+- `adr/` 解释为什么做这个 contract。
+- `contracts/` defines authoritative 对象vs约束。
+- `analysis/` record contract isno已被实现、哪些地方仍然偏弱。
 
-Recommended entry points:
+推荐入口：
 
-- ADR index is available at [../adr/README.md](../adr/README.md)
-- Coverage matrix is available at [../analysis/00-architecture-coverage-matrix.md](../analysis/00-architecture-coverage-matrix.md)
+- ADR 索references见 [../adr/README.md](../adr/README.md)
+- 覆盖矩阵见 [../analysis/00-architecture-coverage-matrix.md](../analysis/00-architecture-coverage-matrix.md)
 
-## 7. Maintenance Rules
+## 7. 维护规则
 
-- Contracts only specify specifications, not current completion status.
-- Fields, state enums, event names, and protocol semantics, once implemented, must remain authoritative here.
-- If a contract change represents an architectural trade-off, add an ADR alongside the contract change.
-- If implementation temporarily differs from the contract, record the gap in `analysis/`; do not write temporary state into the contract.
+- contract 只写规范，不写当前完成度。
+- 字段、Status枚举、事件名、协议语义一旦进入实现，必须在这里保持 authoritative。
+- 如果 contract 变化代tableArchitecture取舍变化，除修改 contract 外，还要补 ADR。
+- 若实现vs contract 暂时inconsistent，把差距记到 `analysis/`，不要把临时Status写进 contract。

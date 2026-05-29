@@ -1,11 +1,11 @@
 # ADR-046 Organization Hierarchy Model
 
-- Status: Accepted
-- Decision Date: 2026-04-20
+- Status：Accepted
+- Decision Date：2026-04-20
 
-## Context
+## Background
 
-Enterprises have deep organizational hierarchies of business group -> department -> team, and the platform needs to express this hierarchical relationship to support tiered governance.
+Enterprises have deep organizational hierarchies of business group → department → team, and the platform needs to express this hierarchical relationship to support tiered governance.
 
 ## Decision
 
@@ -33,56 +33,56 @@ interface OrgNode {
 interface OrgTreeSaga {
   prepare(): Compensatable[];        // Collect all pending cascade changes
   commit(): void;                     // Atomically commit all changes
-  compensate(operations: Compensatable[]): Compensatable[];  // Reverse rollback on failure, return unrecovered operations
+  compensate(operations: Compensatable[]): Compensatable[];  // On failure, rollback in reverse, return list of operations not recovered
   audit(): void;                      // Record complete change trajectory
 }
 ```
 
-### Tiered Governance Policy (v4.3 OrgNode hierarchy)
+### Tiered Governance Strategy (v4.3 OrgNode hierarchy)
 
 > Note: R5-66 Fix - v4.3 has replaced CEO/VP governance hierarchy with OrgNode hierarchy.
 
 | Level | Governance Autonomy | Approval Chain (OrgNode) |
-|-------|---------------------|-------------------------|
-| Company Level | Platform managed | OrgNode(root)/Governance Committee |
-| Business Group Level | Business group managed | OrgNode(business_group) |
-| Department Level | Department managed | OrgNode(department) |
-| Team Level | Team managed | OrgNode(team) |
-| Individual Level | Individual managed | OrgNode(individual) |
+|------|-----------|-------------------|
+| Company level | Platform management | OrgNode(root)/Governance Committee |
+| Business group level | Business group management | OrgNode(business_group) |
+| Department level | Department management | OrgNode(department) |
+| Team level | Team management | OrgNode(team) |
+| Individual level | Individual management | OrgNode(individual) |
 
 ### Relationship with Tenant
 
-- Tenant is the top-level isolation unit
+- tenant is the top-level isolation unit
 - Organization hierarchy is subdivided within tenant
-- No organizational relationship across tenants
+- No organizational relationships across tenants
 
-### OrgTree Cascade Change Compensating Semantics
+### OrgTree Cascade Change Compensation Semantics
 
-Organization changes (such as department dissolution, team merger, personnel transfer) have cascade effects. OrgTreeSaga guarantees:
+Organizational architecture changes (such as department dissolution, team merger, personnel transfer) have cascade effects. OrgTreeSaga ensures:
 
-1. **Prepare Phase**: Collect all affected nodes, child nodes, associated permissions, associated approval chains
-2. **Commit Phase**: Atomically execute all changes
-3. **Compensate Phase**: When any change fails, reverse rollback all committed changes, return list of unrecovered operations
-4. **Audit Phase**: Record complete change trajectory, including compensation execution results
+1. **Prepare phase**: Collect all affected nodes, child nodes, associated permissions, associated approval chains
+2. **Commit phase**: Atomically execute all changes
+3. **Compensate phase**: If any change fails, rollback all committed changes in reverse, return list of unrecovered operations
+4. **Audit phase**: Record complete change trajectory, including compensation execution results
 
 ## Consequences
 
-Pros:
+Advantages:
 
-- Hierarchical model matches enterprise reality
+- Hierarchy model matches enterprise reality
 - Tiered governance improves management efficiency
-- Clear approval chains
+- Approval chain is clear
 
-Cons:
+Costs:
 
 - Hierarchy maintenance complexity
 - Cross-level collaboration requires additional design
 
-## Cross References
+## Cross-references
 
 - [ADR-002 Division System](./002-division-system.md)
-- [ADR-047 Organization Approval Routing](./047-organization-approval-routing.md)
+- [ADR-047 Organization Architecture Approval Routing](./047-organization-approval-routing.md)
 
-## Source Sections
+## Source Section
 
 - `§46` Organization Hierarchy Model

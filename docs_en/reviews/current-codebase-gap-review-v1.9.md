@@ -1,17 +1,17 @@
 # Current Codebase Gap Review v1.9
 
-| Field | Content |
+| 字段 | 内容 |
 |---|---|
-| Document Version | v1.9 |
-| Scan Date | 2026-05-26 |
-| Scan Method | Automated scan (`scripts/scan-current-codebase-gap.mjs`) |
-| Applicable Document | `docs_zh/reference/automatic_agent_system_harness_improvement_plan_v1_9_architecture_release.md` |
-| Conclusion | No top-level architecture conflicts between current system and v1.9 direction; prioritize reusing, wrapping, and extending existing implementations. Parallel new second subsystem based on target terminology is prohibited. |
-| Current Blocker | `lint:architecture-boundary` has been implemented but not yet connected to CI enforce; real Owner/Reviewer not bound |
+| 文档版本 | v1.9 |
+| 扫描日期 | 2026-05-29 |
+| 扫描方式 | 自动扫描（`scripts/scan-current-codebase-gap.mjs`） |
+| 适用文档 | `docs_zh/reference/automatic_agent_system_harness_improvement_plan_v1_9_architecture_release.md` |
+| Conclusion | 现有系统vs v1.9 方向no顶层Architectureconflicts；应以复用、包装、扩展现有实现为主，禁止按目标名词平lines新建第二套子系统 |
+| 当前阻断项 | `lint:architecture-boundary` 已落地但尚未接入 CI enforce；真实 Owner/Reviewer 未绑定 |
 
 ---
 
-## 1. Scan Scope
+## 1. 扫描范围
 
 1. `src/platform/`
 2. `src/org-governance/`
@@ -24,11 +24,11 @@
 
 ---
 
-## 2. Existing Commands and Workflow Evidence
+## 2. 现有命令vs工作流证据
 
-### 2.1 Existing Aggregate Commands
+### 2.1 已存在的聚合命令
 
-| Command | Current Implementation |
+| 命令 | 当前实现 |
 |---|---|
 | `test:integration` | `AA_RUNNING_TESTS=1 AA_PRESERVE_DIST=1 node scripts/run-layered-tests.mjs integration` |
 | `test:e2e` | `AA_RUNNING_TESTS=1 AA_PRESERVE_DIST=1 node scripts/run-layered-tests.mjs e2e` |
@@ -41,7 +41,7 @@
 | `lint:architecture-boundary` | `node scripts/architecture-boundary-scan.mjs` |
 | `scan:current-codebase-gap` | `node scripts/scan-current-codebase-gap.mjs` |
 
-### 2.2 Existing CI Workflows
+### 2.2 已存在的 CI workflow
 
 1. `.github/workflows/ci.yml`
 2. `.github/workflows/deploy-environment.yml`
@@ -50,49 +50,49 @@
 5. `.github/workflows/secret-provider-integration.yml`
 6. `.github/workflows/ui-quality.yml`
 
-Conclusion: The repository already has reusable test, validation, release, and UI quality workflows; most P0 acceptance commands from the v1.9 document should first be bound to these existing aggregate commands, rather than creating new directories or new command names first.
+Conclusion：仓库已via存在可复用的测试、验证、发布和 UI 质量工作流；v1.9 文档里的多数 P0 验收命令应先绑定到这些现有 aggregate 命令，而不is先造新目录或新命令名。
 
 ---
 
-## 3. Capability Mapping Conclusions
+## 3. 能力映射Conclusion
 
-| Capability | Current Implementation Evidence | Current Status | Recommended Action | Risk | Workload | Conclusion |
+| 能力 | 当前实现证据 | 当前Status | 推荐动作 | 风险 | 工作量 | Conclusion |
 |---|---|---|---|---|---|---|
-| Tool execution / registry boundary | `src/platform/five-plane-execution/tool-executor/、src/platform/five-plane-orchestration/harness/toolbelt/` | partial | wrap | medium | L | Should not build a second execution stack first; add facade/contract in front of existing tool-executor. |
-| Policy / Approval / Risk | `src/platform/five-plane-control-plane/risk-control/、src/platform/five-plane-control-plane/approval-center/、src/org-governance/approval-routing/` | partial | extend | medium | L | Consolidate with existing risk control, approval, and routing. |
-| Event Bus / Outbox / Receipt | `src/platform/five-plane-state-evidence/events/、src/platform/shared/outbox/、src/platform/five-plane-state-evidence/side-effect-ledger/` | partial | extend | medium | L | Should complete unified receipt contract, not build new receipt subsystem first. |
-| Authoritative Task Store / Truth | `src/platform/five-plane-state-evidence/truth/、src/platform/five-plane-state-evidence/truth/authoritative-task-store.ts` | implemented | keep | low | M | Duplicating second task source is not allowed. |
-| Memory governance | `src/platform/five-plane-state-evidence/memory/、src/platform/five-plane-orchestration/harness/memory-manager.ts` | partial | wrap | medium | L | Should add facade/proposal/revoke contract, not build parallel memory package. |
-| Release / Rollout gate | `src/platform/shared/stability/stable-release-gate.ts、src/sdk/cli/release-pipeline.ts、src/platform/five-plane-control-plane/config-center/` | partial | extend | medium | L | Should add release contract on existing stability gate. |
-| Evaluation / Harness grading | `src/platform/five-plane-orchestration/harness/evaluation/、src/platform/five-plane-orchestration/harness/eval-harness/` | implemented | keep | low | M | Do not duplicate independent eval stack. |
-| Observability | `src/platform/shared/observability/` | partial | extend | low | M | Should add agent trace口径, not build second logging/metrics system. |
-| Sandbox / execution guard | `src/platform/five-plane-execution/tool-executor/command-security.ts、src/platform/five-plane-execution/tool-executor/tool-path-scope.ts、src/platform/five-plane-orchestration/harness/sandbox/` | partial | wrap | medium | M | Can extract shared contract; only split directory when existing boundaries are insufficient. |
-| Approval UI / API | `ui/packages/features/approval/、src/platform/five-plane-interface/api/http-server/approval-routes.ts、src/platform/five-plane-interface/console/hitl/` | partial | extend | low | M | Complete capability, no need to rebuild admin console. |
-| Architecture boundary scan automation | `scripts/、.github/workflows/` | partial | new | high | M | Scan script has been implemented; next step is to connect detect-only results to CI workflow and add enforce toggle strategy. |
+| Tool execution / registry boundary | `src/platform/five-plane-execution/tool-executor、src/platform/five-plane-orchestration/harness/toolbelt` | partial | wrap | medium | L | 不应先新建第二套执lines栈；应在现有 tool-executor 前加 facade / contract。 |
+| Policy / Approval / Risk | `src/platform/five-plane-control-plane/risk-control/、src/platform/five-plane-control-plane/approval-center/、src/org-governance/approval-routing/` | partial | extend | medium | L | 以现有风控、审批、路由收敛为主。 |
+| Event Bus / Outbox / Receipt | `src/platform/five-plane-state-evidence/events/、src/platform/shared/outbox/、src/platform/five-plane-state-evidence/side-effect-ledger/` | partial | extend | medium | L | 应补齐统一 receipt contract，不应先拆新 receipt 子系统。 |
+| Authoritative Task Store / Truth | `src/platform/five-plane-state-evidence/truth/、src/platform/five-plane-state-evidence/truth/authoritative-task-store.ts` | implemented | keep | low | M | 不允许复制第二套任务真源。 |
+| Memory governance | `src/platform/five-plane-state-evidence/memory/、src/platform/five-plane-orchestration/harness/memory-manager.ts` | partial | wrap | medium | L | 应补 facade / proposal / revoke contract，而非新建平lines memory 包。 |
+| Release / Rollout gate | `src/platform/shared/stability/stable-release-gate.ts、src/sdk/cli/release-pipeline.ts、src/platform/five-plane-control-plane/config-center/` | partial | extend | medium | L | 应在现有稳定性门禁上补 release contract。 |
+| Evaluation / Harness grading | `src/platform/five-plane-orchestration/harness/evaluation/、src/platform/five-plane-orchestration/harness/eval-harness/` | implemented | keep | low | M | 不要复制独立 eval stack。 |
+| Observability | `src/platform/shared/observability/` | partial | extend | low | M | 应补 agent trace 口径，不应新建第二套日志/指标体系。 |
+| Sandbox / execution guard | `src/platform/five-plane-execution/tool-executor/command-security.ts、src/platform/five-plane-execution/tool-executor/tool-path-scope.ts、src/platform/five-plane-orchestration/harness/sandbox/` | partial | wrap | medium | M | 可以提炼共享 contract；only在现有边界不够时再拆目录。 |
+| Approval UI / API | `ui/packages/features/approval/、src/platform/five-plane-interface/api/http-server/approval-routes.ts、src/platform/five-plane-interface/console/hitl/` | partial | extend | low | M | 补齐能力即可，不必重建 admin console。 |
+| Architecture boundary scan automation | `scripts/、.github/workflows/` | partial | new | high | M | 扫描脚本已落地；下一步应把 detect-only 结果接入 CI workflow，并补 enforce 切换策略。 |
 
 ---
 
-## 4. Summary
+## 4. 汇总
 
 1. implementationStatus: implemented=2, partial=9, missing=0
 2. migrationMode: keep=2, wrap=3, extend=5, new=1
-3. The capabilities that truly need strengthening are mainly automated scan connected to CI and boundary lint enforce, not new business subsystems.
+3. 真正需要补强的能力主要is自动化扫描接入 CI 和边界 lint enforce，而不is新的业务子系统。
 
 ---
 
-## 5. Cross-layer Import Candidates
+## 5. 越层import候选
 
-1. tool executor cross-layer import candidates: 0
-2. memory cross-layer import candidates: 12
-3. stable release gate cross-layer import candidates: 0
+1. tool executor 越层import候选：0
+2. memory 越层import候选：11
+3. stable release gate 越层import候选：0
 
-Note: This is heuristic scan result for initial screening before `lint:architecture-boundary` script implementation, not equivalent to final violation determination.
+Description：这is启发式扫描结果，used for后续 `lint:architecture-boundary` 脚本落地前的初筛，不等同最终违规判定。
 
 ---
 
-## 6. Current Conclusions
+## 6. 当前Conclusion
 
-1. v1.9 document is aligned with current system direction.
-2. Current system already has most implementation foundations.
-3. Risks mainly come from redundant construction, not direction conflicts.
-4. Next step should prioritize implementing `lint:architecture-boundary` and including this scan in CI reproducible artifacts.
+1. v1.9 文档vs当前系统方向一致。
+2. 当前系统已via具备大部分实施基础。
+3. 风险主要来自repeats建设，而不is方向conflicts。
+4. 下一步应优先实现 `lint:architecture-boundary`，并将本扫描纳入 CI 可复现产物。

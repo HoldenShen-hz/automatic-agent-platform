@@ -1,10 +1,15 @@
 # Connector Framework Contract
 
-## 1. Scope
+> Lifecycle note:
+> connector 的 `registered/configured/verified/enabled/disabled/revoked` is connector 自身生命cycle，
+> 不替代 `HarnessRun` / `NodeRun` 的 truth lifecycle。运lines时阶段对齐以 `harness_run_lifecycle_contract.md`
+> 和 `lifecycle_and_termination_contract.md` 为准。
 
-This contract defines the connector abstraction, lifecycle, health checks, and Connector SDK boundaries for `§57`.
+## 1. 范围
 
-## 2. Canonical Objects
+本 contract defines `§57` 的connect器抽象、生命cycle、健康检查vs Connector SDK 边界。
+
+## 2. Canonical 对象
 
 - `ConnectorManifest`
 - `ConnectorBinding`
@@ -12,7 +17,7 @@ This contract defines the connector abstraction, lifecycle, health checks, and C
 - `ConnectorExecutionResult`
 - `ConnectorHealthReport`
 
-## 3. `ConnectorManifest` Minimum Fields
+## 3. `ConnectorManifest` 最小字段
 
 - `connector_id`
 - `provider`
@@ -22,7 +27,7 @@ This contract defines the connector abstraction, lifecycle, health checks, and C
 - `supported_events`
 - `lifecycle_state`
 
-## 4. `ConnectorExecutionRequest` Minimum Fields
+## 4. `ConnectorExecutionRequest` 最小字段
 
 - `connector_id`
 - `binding_id`
@@ -34,7 +39,7 @@ This contract defines the connector abstraction, lifecycle, health checks, and C
 - `timeout_ms`
 - `idempotency_key`
 
-## 5. `ConnectorExecutionResult` Minimum Fields
+## 5. `ConnectorExecutionResult` 最小字段
 
 - `connector_id`
 - `binding_id`
@@ -47,7 +52,7 @@ This contract defines the connector abstraction, lifecycle, health checks, and C
 - `execution_duration_ms`
 - `idempotency_key`
 
-## 6. Lifecycle
+## 6. 生命cycle
 
 - `registered`
 - `configured`
@@ -56,14 +61,14 @@ This contract defines the connector abstraction, lifecycle, health checks, and C
 - `disabled`
 - `revoked`
 
-## 7. Rules
+## 7. 规则
 
-- Connectors must only interact with the platform through the public SDK.
-- Connector secrets, quotas, and network capabilities must be subject to policy / secret management constraints.
-- Connector health check failures must not silently degrade to success.
+- connect器只能via公共 SDK vs平台交互。
+- connect器key、配额vsnetwork能力必须受 policy / secret management 约束。
+- connect器健康检查failed不得静默降级为success。
 
-## 8. Test Requirements
+## 8. 测试要求
 
-- unit: manifest validation, binding resolution, health mapping
-- integration: connector runtime and callback path
-- contract: unverified connectors must not receive production events
+- unit：manifest validation、binding resolution、health mapping
+- integration：connector runtime and callback path
+- contract：未验证connect器不得接收生产事件

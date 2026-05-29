@@ -1,21 +1,21 @@
 # ADR-043 Unified Operations Dashboard
 
-- Status: Accepted
-- Decision Date: 2026-04-20
+- Status：Accepted
+- Decision Date：2026-04-20
 
-## Context
+## Background
 
-Operations personnel need a unified view to understand the overall platform status, rather than being scattered across multiple monitoring systems.
+Operations personnel need a unified view to understand the overall platform status rather than being scattered across multiple monitoring systems.
 
 ## Decision
 
 ### Dashboard Architecture
 
 | Module | Description |
-|--------|-------------|
-| System Overview | Overall platform health status |
+|------|------|
+| System Overview | Platform overall health status |
 | Task Board | Real-time task status and progress |
-| Event Center | Alert and event list |
+| Event Center | Alert and event lists |
 | Cost Report | Resource consumption and cost |
 | Performance Monitoring | P99/latency/error rate |
 | Security Posture | Authentication/authorization/audit |
@@ -26,13 +26,13 @@ Operations personnel need a unified view to understand the overall platform stat
 - DashboardWebSocketServer implementation
 - Real-time status updates
 
-### View Layers
+### View Layering
 
 | Layer | Audience | Content |
-|-------|----------|---------|
-| Management Layer | Executives | Business metrics, health status |
-| Operations Layer | SRE | System metrics, alerts, capacity |
-| Development Layer | Developers | Task details, logs, trace |
+|------|------|------|
+| Management layer | Executives | Business metrics, health status |
+| Operations layer | SRE | System metrics, alerts, capacity |
+| Development layer | Developers | Task details, logs, traces |
 
 ### Alert Aggregation
 
@@ -42,22 +42,22 @@ Operations personnel need a unified view to understand the overall platform stat
 
 ## Consequences
 
-Pros:
+Advantages:
 
 - Unified view improves operational efficiency
 - Real-time push ensures timely response
-- Layered views serve different audiences
+- Layered views satisfy different audiences
 
-Cons:
+Costs:
 
-- Dashboard maintenance cost
+- Dashboard maintenance costs
 - Real-time data pipeline complexity
 
-## Cross References
+## Cross-references
 
 - [ADR-028 Incident and Event Handling Architecture](./028-incident-and-event-handling-architecture.md)
-- [ADR-084 Operator Dashboard and User Experience](./084-operator-dashboard-and-user-experience.md)
+- [ADR-084 Operator Dashboard and Non-technical User Experience](./084-operator-dashboard-and-user-experience.md)
 
-## Source Sections
+## Source Section
 
 - `§43` Unified Operations Dashboard Architecture

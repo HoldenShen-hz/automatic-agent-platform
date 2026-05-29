@@ -1,22 +1,22 @@
 # Admin Console And Human Takeover Contract
 
-## 1. Scope
+## 1. 范围
 
-This contract defines admin console, on-call entry point, and human fallback takeover capabilities.
+本 contract definesmanage员控制台、值班入口和人工兜底接管能力。
 
-Related documents:
+相关文档：
 
 - `debug_inspect_health_backpressure_contract.md`
 - `diagnostics_snapshot_and_repro_bundle_contract.md`
 - `approval_and_hitl_contract.md`
 
-## 2. Goals
+## 2. 目标
 
-- Enable production on-call personnel to understand, take over, and mitigate issues.
-- When a task fails, not only "retry" is available, but also manual repair of the execution chain.
-- Isolate admin capabilities from ordinary user capabilities.
+- 让生产值班人员可以看懂、接管、止损。
+- 让任务failed时不只能“重试”，还能人工修复执lines链。
+- 让manage员能力vs普通user能力隔离。
 
-## 3. Console Minimum Modules
+## 3. 控制台最小模块
 
 - worker management
 - queue management
@@ -29,52 +29,52 @@ Related documents:
 - rollout management
 - feedback / learning management
 
-## 4. Human Takeover Minimum Actions
+## 4. Human Takeover 最小动作
 
-- Take over a task
-- Modify next step input
-- Skip a `NodeRun`
-- Retry a `NodeAttempt`
-- Switch model
-- Switch worker
-- Manually supplement artifact
-- Manually inject feedback signal
-- Manually create improvement candidate
-- Manually advance or rollback rollout
-- End task and record reason
+- 接管任务
+- 修改下一步输入
+- 跳过某个 `NodeRun`
+- 重试某个 `NodeAttempt`
+- 切换模型
+- 切换 worker
+- 手动补充 artifact
+- 手动注入 feedback signal
+- 手动创建 improvement candidate
+- 手动推进或回滚 rollout
+- 结束任务并record原因
 
-## 5. Key Objects
+## 5. 关键对象
 
 - `TakeoverSession`
 - `OperatorAction`
 - `ManualOverride`
 - `IncidentContextBundle`
 
-## 6. Security Boundaries
+## 6. security边界
 
-- Human takeover must be audited.
-- High-risk takeover actions must be re-reviewed through Policy Engine.
-- Regular admins must not have break-glass permissions by default.
-- Takeover actions must be scoped to tenant / workspace / harness run / node run; global fuzzy operations cannot replace this.
-- Actions like manually supplementing artifacts, switching workers, or forcefully ending tasks must preserve before/after state difference evidence.
-- Any takeover action that changes runtime state must go through `RuntimeStateMachine.transition(command)` with budget reservation check; direct state field modification is not allowed.
+- human takeover 必须写审计。
+- 高风险 takeover 动作必须再iterationsvia过 Policy Engine。
+- 普通manage员不得defaults to拥有 break-glass permission。
+- takeover 动作必须带 tenant / workspace / harness run / node run 作用域，不能以globally模糊操作替代。
+- 手动补充 artifact、切换 worker、mandatory结束任务等动作必须保留前后Status差异证据。
+- 任何改变运lines态的 takeover 动作都必须via `RuntimeStateMachine.transition(command)` vsbudget预留检查，不得directly改写Status字段。
 
 ## v4.3 Contract Remediation
 
-- T-70: This document previously described human takeover actions as direct operations on "a step / an execution". Root cause: on-call console contract reused old step/execution operational semantics and did not connect to runtime authority and budget gate. Fix: The text now anchors takeover to `HarnessRun / NodeRun / NodeAttempt`, and mandates that state transitions and budget reservation go through the formal control chain.
+- T-70: 本文原先把人工接管动作table述成“某步/某 execution”的directly操作，Root cause: 值班控制台 contract accesses along用旧 step/execution 运维语义，没有接入 runtime authority 和 budget gate。修复：正文现把 takeover 锚点切到 `HarnessRun / NodeRun / NodeAttempt`，并mandatoryStatus迁移vsbudget预留走正式控制链。
 
-## 7. UI Goals
+## 7. UI 目标
 
-Admin should be able to see:
+manage员应能看到：
 
-- Current task tree
-- Current execution and lease
-- Recent events
-- Current model, prompt, and policy versions
-- Current OAPEFLIR stage / loop iteration / timeline
-- Current alerts and constraint reasons
-- Current tenant / workspace ownership and capability / entitlement limits
+- 当前任务树
+- 当前 execution vs lease
+- 最近事件
+- 当前模型、prompt、policy 版本
+- 当前 OAPEFLIR stage / loop iteration / timeline
+- 当前告警和限制原因
+- 当前 tenant / workspace 归属和 capability / entitlement 限制
 
-## 8. Closure Conclusion
+## 8. 收口Conclusion
 
-Industrial-grade systems must assume "automation will fail" by default, and provide humans with a safe, auditable, and closeable takeover entry point.
+工业级系统必须defaults to考虑“自动化会failed”，并给人class一个security、可审计、可收口的接管入口。

@@ -2,38 +2,38 @@
 
 ---
 
-## OAPEFLIR Association
+## OAPEFLIR 关联
 
-- **Observe**: Read platform, tenant, domain, task four-layer constraints
-- **Assess**: Evaluate budget, risk, and output boundaries
-- **Plan**: Merge ConstraintPack and form execution ceiling
-- **Execute**: Force apply before each run
-- **Feedback**: Record constraint hits and escalation reasons
-- **Learn**: Precipitate high-frequency constraint conflict patterns
-- **Improve**: Iterate risk/output policy
-- **Release**: Include constraint engine in release gate
+- **Observe**: 读取平台、租户、领域、任务四层约束
+- **Assess**: 评估budget、风险vs输出边界
+- **Plan**: 合并 ConstraintPack 并形成执linesupper limit
+- **Execute**: 在每轮运lines前mandatory应用
+- **Feedback**: record命中约束vs升级原因
+- **Learn**: 沉淀高频约束conflicts模式
+- **Improve**: 迭代 risk/output policy
+- **Release**: 将约束references擎纳入上线门禁
 
 ---
 
-- Status: Accepted
-- Decision Date: 2026-04-23
+- Status：Accepted
+- Decision日期：2026-04-23
 
 ## Background
 
-If Harness does not have a unified constraint engine, risk, budget, output governance will be scattered across callers.
+Harness 如果没有统一的约束references擎，就会让风险、budget、输出治理散落在call方。
 
 ## Decision
 
-- Each HarnessRun must carry explicit `ConstraintPack`
-- `ConstraintPack` contains at minimum `risk_policy`, `output_policy`, `budget_envelope`, `sandbox_requirement`, and `approval_requirement`
-- Constraint sources merge by platform -> tenant -> domain -> task
-- When constraints are not satisfied, must fail-close, and write audit and timeline
+- 每个 HarnessRun 必须携带显式 `ConstraintPack`
+- `ConstraintPack` 至少contains `risk_policy`、`output_policy`、`budget_envelope`、`sandbox_requirement` vs `approval_requirement`
+- 约束来源按 平台 -> 租户 -> 领域 -> 任务 合并
+- 不满足约束时必须 fail-close，并writes审计和 timeline
 
 ## Consequences
 
-- High-risk actions do not bypass Harness constraints
-- Runtime and documentation success criteria remain consistent
+- 高风险动作不会bypassing Harness 约束
+- 运lines时vs文档中的 success criteria 保持一致
 
 ## v4.3 ADR Remediation
 
-- A-37: This ADR originally reduced `ConstraintPack` to `risk_policy + output_policy`, root cause being constraint engine ADR drafted only covering risk and output governance, did not include budget, sandbox, and approval requirements in unified constraint package. Fix: Main text now supplements `budget_envelope / sandbox_requirement / approval_requirement` into the minimum set.
+- A-37: 本 ADR 原先把 `ConstraintPack` 缩减为 `risk_policy + output_policy`，Root cause: 约束references擎 ADR 起草时只覆盖风险vs输出治理，没有把budget、沙箱和审批要求一并纳入统一约束包。修复：正文现将 `budget_envelope / sandbox_requirement / approval_requirement` 补入最小集合。

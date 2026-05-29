@@ -16,4 +16,4 @@
 
 ## Acceptance Criteria
 
-- Prior to GA, evidence of source verification, citation checks, report reviews, and quality assessment must be provided.
+- GA must provide source verification, citation check, report review, and quality assessment evidence before release.

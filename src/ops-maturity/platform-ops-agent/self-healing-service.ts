@@ -3,6 +3,7 @@ import type { AuthoritativeTaskStore } from "../../platform/five-plane-state-evi
 
 export interface SelfHealingAction {
   readonly actionId: string;
+  readonly taskId?: string;
   readonly targetComponent: string;
   readonly operation: "restart" | "throttle" | "failover" | "rollback";
   readonly executionId?: string;
@@ -63,6 +64,7 @@ export interface SelfHealingEvent {
   readonly operation: SelfHealingAction["operation"];
   readonly executedAt: string;
   readonly healed: boolean;
+  readonly taskId: string | null;
   readonly executionId: string | null;
   readonly harnessRunId: string | null;
   readonly reasonCode: string | null;
@@ -77,12 +79,9 @@ export function createSelfHealingEventStoreSink(
 ): SelfHealingEventSink {
   return {
     emit(event): void {
-      if (event.executionId == null) {
-        return;
-      }
       store.event.insertEvent({
         id: newId("evt"),
-        taskId: event.harnessRunId ?? event.executionId,
+        taskId: event.taskId ?? event.executionId ?? `ops-self-healing:${event.actionId}`,
         executionId: event.executionId,
         eventType: event.eventType,
         eventTier: "tier_2",
@@ -107,6 +106,15 @@ const DEFAULT_HEALING_POLICY: HealingPolicy = {
   healthCheckTimeoutMs: 5_000,
   enableAutomaticRollback: true,
 };
+
+const OPERATION_BASE_RECOVERY_TIME_MS: Record<SelfHealingAction["operation"], number> = {
+  restart: 1_500,
+  throttle: 800,
+  failover: 3_000,
+  rollback: 2_000,
+};
+
+const MAX_COOLDOWN_MS = 30 * 60 * 1_000;
 
 const OPERATION_PROFILES: Record<SelfHealingAction["operation"], HealingOperationProfile> = {
   restart: {
@@ -141,9 +149,9 @@ function simulateHealthCheck(
   postActionState: ComponentHealthState,
   operationApplied: boolean,
 ): VerificationResult {
-  const checkDelay = 100 + componentId.length * 10 + action.operation.length * 5;
+  const baseDuration = OPERATION_BASE_RECOVERY_TIME_MS[action.operation];
   const profile = OPERATION_PROFILES[action.operation];
-  const recoveryTimeMs = Math.round(checkDelay);
+  const recoveryTimeMs = baseDuration + Math.max(0, postActionState.consecutiveFailures) * 250;
   const reasonPresent = (action.reasonCode ?? "").trim().length > 0;
   const healthCheckPassed = operationApplied
     && postActionState.status === "healthy"
@@ -200,7 +208,7 @@ export class SelfHealingService {
       );
     }
 
-    const lastAttempt = this.healingHistory.find(
+    const lastAttempt = this.healingHistory.findLast(
       (h) => h.targetComponent === action.targetComponent,
     );
     if (lastAttempt) {
@@ -323,8 +331,8 @@ export class SelfHealingService {
     const successCount = this.healingHistory.filter((h) => h.healed).length;
     const failureCount = this.healingHistory.filter((h) => !h.healed).length;
     const recoveryTimes = this.healingHistory
-      .filter((h) => h.verificationResult)
-      .map((h) => h.verificationResult!.recoveryTimeMs);
+      .map((h) => h.verificationResult?.recoveryTimeMs)
+      .filter((recoveryTimeMs): recoveryTimeMs is number => recoveryTimeMs != null);
     const averageRecoveryTimeMs = recoveryTimes.length > 0
       ? Math.round(recoveryTimes.reduce((a, b) => a + b, 0) / recoveryTimes.length)
       : 0;
@@ -417,6 +425,7 @@ export class SelfHealingService {
     this.eventSink?.emit({
       eventType,
       actionId: action.actionId,
+      taskId: action.taskId ?? null,
       targetComponent: action.targetComponent,
       operation: action.operation,
       executedAt,
@@ -429,7 +438,7 @@ export class SelfHealingService {
 
   private computeCooldownMs(consecutiveFailures: number): number {
     const penaltyMultiplier = Math.max(1, consecutiveFailures + 1);
-    return this.policy.cooldownPeriodMs * penaltyMultiplier;
+    return Math.min(this.policy.cooldownPeriodMs * penaltyMultiplier, MAX_COOLDOWN_MS);
   }
 
   private performHealingOperation(

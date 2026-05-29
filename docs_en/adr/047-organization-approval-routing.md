@@ -1,11 +1,11 @@
-# ADR-047 Organization Approval Routing
+# ADR-047 Organization Architecture Approval Routing
 
-- Status: Accepted
-- Decision Date: 2026-04-20
+- Status：Accepted
+- Decision Date：2026-04-20
 
-## Context
+## Background
 
-Approval requests need to be dynamically routed to the correct approver based on organizational structure, rather than hardcoded approval chains.
+Approval requests need to be dynamically routed to the correct approver based on organizational architecture, rather than having hard-coded approval chains.
 
 ## Decision
 
@@ -26,46 +26,46 @@ type ApproverType = 'user' | 'role' | 'team' | 'on_call';
 ### ApprovalFlow Types
 
 | Type | Description |
-|------|-------------|
-| single | Single approver |
-| multi_party | Multi-party countersignature |
+|------|------|
+| single | Single person approval |
+| multi_party | Multi-party countersign |
 | delegated | Delegated approval |
 | sequential_chain | Sequential approval chain |
 
-### ApprovalTimeout Strategies
+### ApprovalTimeout Policy
 
-| Strategy | Description |
-|----------|-------------|
+| Policy | Description |
+|------|------|
 | warn | Warning before timeout |
 | escalate | Escalate after timeout |
 | break_glass | Trigger break-glass process, requires dual approval to continue |
 
-Note: The `auto_action` strategy has been removed. After timeout, must go through break-glass + dual approval process; automatic execution of preset actions is prohibited.
+Note: `auto_action` policy has been removed. After timeout, must go through break-glass + dual approval process, automatic execution of preset actions is prohibited.
 
 ### Routing Rule Engine
 
-- Dynamic routing based on organizational hierarchy, roles, risk level
+- Dynamically routes based on organization hierarchy, role, risk level
 - Supports approval delegation
-- Supports approval expedited handling
+- Supports approval urgency
 
 ## Consequences
 
-Pros:
+Advantages:
 
 - Dynamic routing adapts to organizational changes
-- Multi-type approval flows support complex scenarios
+- Multiple approval flow types support complex scenarios
 - Timeout handling automation
 
-Cons:
+Costs:
 
 - Rule engine complexity
 - Routing performance impact
 
-## Cross References
+## Cross-references
 
 - [ADR-046 Organization Hierarchy Model](./046-organization-hierarchy-model.md)
 - [Approval / HITL Contract](../contracts/approval_and_hitl_contract.md)
 
-## Source Sections
+## Source Section
 
-- `§47` Organization Approval Routing
+- `§47` Organization Architecture Approval Routing

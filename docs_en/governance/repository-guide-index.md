@@ -1,8 +1,8 @@
 # Repository Guide Index
 
-This page provides a unified index of the repository root and governance entry documents, preventing drift between `README.md`, `CONTRIBUTING.md`, `AGENTS.md`, `CLAUDE.md`, and `MEMORY.md`.
+本页统一索references仓库根部和治理入口文档，避免 `README.md`、`CONTRIBUTING.md`、`AGENTS.md`、`CLAUDE.md`、`MEMORY.md` each漂移。
 
-## Authoritative Order
+## 权威顺序
 
 1. [source_of_truth.md](./source_of_truth.md)
 2. [naming_and_directory_conventions.md](./naming_and_directory_conventions.md)
@@ -12,17 +12,17 @@ This page provides a unified index of the repository root and governance entry d
 6. [../../CONTRIBUTING.md](../../CONTRIBUTING.md)
 7. [../../MEMORY.md](../../MEMORY.md)
 
-## Purpose Division
+## 用途分工
 
-| Document | Purpose | When to Update |
-|----------|--------|----------------|
-| [README.md](../../README.md) | Repository entry, common commands, main navigation | When command entry or main index changes |
-| [CONTRIBUTING.md](../../CONTRIBUTING.md) | Contribution process, environment setup, submission process | When development process or getting started commands change |
-| [AGENTS.md](../../AGENTS.md) | Code agent work constraints, directory boundaries | When directory boundaries, test constraints, or contract requirements change |
-| [CLAUDE.md](../../CLAUDE.md) | Code agent quick context | When architecture entry or core boundaries change |
-| [MEMORY.md](../../MEMORY.md) | Lightweight engineering memory, not authoritative source | When supplementing short-term work memory |
+| 文档 | 用途 | 何时更新 |
+|------|------|----------|
+| [README.md](../../README.md) | 仓库入口、常用命令、主导航 | 命令入口或主索references变化时 |
+| [CONTRIBUTING.md](../../CONTRIBUTING.md) | 贡献流程、环境准备、提交流程 | 开发流程或入门命令变化时 |
+| [AGENTS.md](../../AGENTS.md) | code代理工作约束、目录边界 | 目录边界、测试约束、契约要求变化时 |
+| [CLAUDE.md](../../CLAUDE.md) | code代理快速上下文 | Architecture入口或核心边界变化时 |
+| [MEMORY.md](../../MEMORY.md) | 轻量工程记忆，不is权威源 | 需要补充短期工作记忆时 |
 
-## Related Entries
+## 相关入口
 
 - [../quality/buglist.md](../quality/buglist.md)
 - [../adr/README.md](../adr/README.md)

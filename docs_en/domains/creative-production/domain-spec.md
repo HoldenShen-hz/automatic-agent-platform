@@ -11,9 +11,9 @@
 ## Hard Constraints
 
 - AI-generated assets must pass copyright and trademark infringement checks.
-- Outbound assets must be bound to authorization, source, and usage scope.
+- External assets must be bound to authorization, source, and scope of use.
 - Brand safety and content safety checks must not be skipped.
 
 ## Acceptance Criteria
 
-- Before GA, must provide IP check, asset provenance, brand review, and manual sign-off evidence.
+- GA must provide IP check, asset provenance, brand review, and human sign-off evidence before release.

@@ -1,152 +1,143 @@
-# Automatic Agent Platform — Module Framework Diagram Collection
+# Automatic Agent Platform — 模块框架图集
 
-> **Version**: v1.5
-> **Date**: 2026-05-26
-> **Companion Docs**: `00-platform-architecture.md` v2.7 · `01-code-structure.md` · `02-code-architecture-reference.md`
-> **Description**: This document presents system-wide views and internal structure/interaction relationships of each layer and module in ASCII framework diagram format. v1.5 has synchronized recent interface layer, federation governance, Mission/UI contracts, and execution/state evidence facade layer writeback.
+> **版本**: v1.5
+> **日期**: 2026-05-26
+> **配套文档**: `00-platform-architecture.md` v2.7 · `01-code-structure.md` · `02-code-architecture-reference.md`
+> **Description**: 本文档以 ASCII 框架图形式呈现系统全景及各层/各模块的内部结构vs交互关系；v1.5 已synchronous最近接口层、联邦治理、Mission/UI 契约，以及执lines/Status证据 facade 层的回写。
 
-### Diagram Type Conventions
+### 图class型约定
 
-Each diagram in this document is annotated with its type, which readers should use to understand its scope of expression:
+本文档中每张图均标注其class型，读者应据此判断图的table达范围：
 
-| Diagram Type | Meaning | Expresses | Does Not Express |
-|--------------|---------|----------|-----------------|
-| **Structure diagram** | Module ownership and logical boundaries | Which plane/layer a module belongs to | Runtime invocation order |
-| **Data flow diagram** | Runtime data/control signal flow | Signal transmission direction and protocol | Module internal implementation |
-| **Dependency diagram** | Code-level import direction | Who can depend on whom | Runtime sequencing |
-| **Sequence diagram** | Runtime execution order | Step sequence | Module ownership |
-| **Constraint diagram** | Architectural rules and prohibitions | Allowed/prohibited dependency directions | Specific invocation relationships |
+| 图class型 | 含义 | table达 | 不table达 |
+|--------|------|------|--------|
+| **结构图** | 模块归属vs逻辑边界 | 模块belongs to哪个平面/层 | 运lines时call顺序 |
+| **data流图** | 运lines时data/控制信号流向 | 信号传递方向vs协议 | 模块内部实现 |
+| **relies on图** | code级 import 方向 | 谁可以relies on谁 | 运lines时时序 |
+| **时序图** | 运lines时执lines顺序 | 步骤先后 | 模块归属 |
+| **约束图** | Architecture规则vs禁止项 | 允许/禁止的relies on方向 | 具体call关系 |
 
-### Naming Convention Unification
+### 命名口径统一
 
-The following names are used consistently across this document, `01-code-structure.md`, and `02-code-architecture-reference.md`:
+以下名称在本文档、`01-code-structure.md`、`02-code-architecture-reference.md` 三份文档中统一uses：
 
-| Unified Name | Unused Aliases |
-|--------------|----------------|
+| 统一名称 | 不uses的别名 |
+|----------|-------------|
 | `emergency/` | emergency-brake/ |
 | `workflow-debugger/` | debug-ui/ |
 | `platform-ops-agent/` | self-ops-agent/ |
 | `resource-manager/` | resource-scheduler/ |
 | `goal-decomposer/` | goal-decomposition/ |
 
-### Statistics Scope Declaration
+### 统计口径声明
 
-> Historical diagrams in this document still retain some planning-level figures; v1.5 new or rewritten statistics are **2026-05-26 current workspace structure snapshots**. Accurate file counts should follow subsequent structure inventory scripts.
+> 本文档历史图中仍保留部分规划口径；v1.5 新增或改写的统计为 **2026-05-26 当前工作区结构快照**。精确文件数应以后续结构盘点脚本为准。
 
-### This Round Diagram Sync Focus (2026-05-26)
+### 本轮图示synchronous重点（2026-05-26）
 
-1. P1 has continued to converge from "only admin/internal queries" to "public Layer C `/v1/*` query surface + admin/internal management surface coexisting".
-2. `scale-ecosystem/federation/` is now viewed as persistent governance capability, no longer understood as pure in-memory spec diagram.
-3. `ui/` Electron bridge has entered formal compatibility contract, not just shell placeholder.
-4. P3/P4/P5 have been supplemented with actual implemented module authority for `full-trajectory-evaluator`, `tool-gateway`, `sandbox-provider`, `memory-gateway`, `receipts`, `shared/reliability`, etc.
-
----
-
-## Table of Contents
-
-| Section | Diagram Type | Content |
-|---------|--------------|---------|
-| §1 | Structure diagram | System overview framework (seven layers + five planes + cross-layer) |
-| §2 | Data flow diagram | Layer 1-2 `platform/` five-plane backbone protocol flow |
-| §3 | Structure diagram | P1 Interface Plane module ownership diagram |
-| §4 | Structure diagram | P2 Control Plane module ownership diagram |
-| §5 | Structure diagram | P3 Orchestration Plane module ownership diagram |
-| §6 | Structure diagram + Sequence diagram | P4 Execution Plane (BC framework + execution sequence + tool security) |
-| §7 | Structure diagram | P5 State & Evidence Plane (grouped by Bounded Context) |
-| §8 | Structure diagram | AI Runtime Support Stack (Model Gateway · Prompt Engine · Compliance) |
-| §9 | Data flow diagram | Platform protocol diagram (Contracts cross-plane protocol chain + Shared infrastructure) |
-| §10 | Structure diagram | Layer 3 `domains/` business domain access layer |
-| §11 | Structure diagram | Layer 4 `interaction/` intelligent interaction layer |
-| §12 | Structure diagram | Layer 5 `org-governance/` organization governance layer |
-| §13 | Structure diagram | Layer 6 `scale-ecosystem/` scale ecosystem + ecology layer |
-| §14 | Structure diagram | Layer 7 `ops-maturity/` operations maturity layer |
-| §15 | Structure diagram | Cross-layer modules (plugins · sdk · apps) |
-| §16 | Data flow diagram | End-to-end data flow overview diagram |
-| §17 | Constraint diagram | Dependency direction and layering constraints |
-| §18 | Structure diagram | Stability seven-layer model |
-| §19 | Structure diagram | P4 Runtime Bounded Context special diagram |
-| §20 | Structure diagram | P5 Storage Bounded Context special diagram |
-| §21 | Structure diagram | Cross-cutting capability control plane diagram |
-| §22 | Structure diagram | Old system modules → new platform landing diagram |
-| §23 | Sequence diagram | Migration wave roadmap |
-| §24 | Data flow diagram | Interaction · Governance · Platform three-axis collaboration diagram |
-| §25 | Structure diagram + Constraint diagram | Cross-platform UI Monorepo and frontend/backend boundary |
-| §26 | Structure diagram | Mission · Yono · Test/Deployment support incremental diagram |
+1. P1 已从“只有 admin/internal 查询”继续收敛为“公共 Layer C `/v1/*` 查询面 + admin/internal manage面并存”。
+2. `scale-ecosystem/federation/` 已按持久化治理能力看待，不再按纯内存规格图理解。
+3. `ui/` 的 Electron bridge 已进入正式兼容契约，不再只is壳层占位。
+4. P3/P4/P5 已补入 `full-trajectory-evaluator`、`tool-gateway`、`sandbox-provider`、`memory-gateway`、`receipts`、`shared/reliability` 等实装模块口径。
 
 ---
 
-## §1 System Overview Framework Diagram
+## 目录
 
-> **Diagram type: Structure diagram** — Expresses the logical ownership relationship of seven layers + five planes + cross-layer. Does not express runtime invocation order.
+| 章节 | 图class型 | 内容 |
+|------|--------|------|
+| §一 | 结构图 | 系统全景框架图（七层 + Five-Plane + 跨层） |
+| §二 | data流图 | Layer 1-2 `platform/` Five-Plane主干协议流 |
+| §三 | 结构图 | P1 Interface Plane 模块归属图 |
+| §四 | 结构图 | P2 Control Plane 模块归属图 |
+| §五 | 结构图 | P3 Orchestration Plane 模块归属图 |
+| §六 | 结构图 + 时序图 | P4 Execution Plane（BC 框架 + 执lines时序 + 工具security） |
+| §七 | 结构图 | P5 State & Evidence Plane（按 Bounded Context 分组） |
+| §八 | 结构图 | AI Runtime Support Stack（Model Gateway · Prompt Engine · Compliance） |
+| §九 | data流图 | 平台协议图（Contracts 跨平面协议链 + Shared 基础设施） |
+| §十 | 结构图 | Layer 3 `domains/` 业务域接入层 |
+| §十一 | 结构图 | Layer 4 `interaction/` 智能交互层 |
+| §十二 | 结构图 | Layer 5 `org-governance/` 组织治理层 |
+| §十三 | 结构图 | Layer 6 `scale-ecosystem/` 规模化运lines + 生态层 |
+| §十四 | 结构图 | Layer 7 `ops-maturity/` 运营成熟度层 |
+| §十五 | 结构图 | 跨层模块（plugins · sdk · apps） |
+| §十六 | data流图 | 端到端data流全景图 |
+| §十七 | 约束图 | relies on方向vs分层约束 |
+| §十八 | 结构图 | 稳定性七层模型 |
+| §十九 | 结构图 | P4 Runtime Bounded Context 专项图 |
+| §二十 | 结构图 | P5 Storage Bounded Context 专项图 |
+| §二一 | 结构图 | 横切能力Control Plane图 |
+| §二二 | 结构图 | 老系统模块 → 新平台落点图 |
+| §二三 | 时序图 | 迁移波iterations路线图 |
+| §二四 | data流图 | 交互 · 治理 · 平台 三轴协作图 |
+| §二五 | 结构图 + 约束图 | 跨平台 UI Monorepo vs前后端边界 |
+| §二六 | 结构图 | Mission · Yono · 测试/部署支撑增量图 |
+
+---
+
+## §一 系统全景框架图
+
+> **图class型: 结构图** — table达七层 + Five-Plane + 跨层的逻辑归属关系。不table达运lines时call顺序。
 >
-> **Key understanding**: `platform/` is the foundational kernel; `interaction/` · `org-governance/` · `scale-ecosystem/` · `ops-maturity/` are **independent upper-layer systems** (not sub-components of platform); they interact with the kernel through contracts and events.
+> **关键认知**: `platform/` is基础内核，`interaction/` · `org-governance/` · `scale-ecosystem/` · `ops-maturity/` is **独立上层系统**（不is platform 的子组件），它们via契约和事件vs内核交互。
 
 ```text
 ┌─────────────────────────────────────────────────────────────────────────────────┐
 │                          Automatic Agent Platform v2.7                          │
 │                                                                                 │
 │  ╔═══════════════════════════════════════════════════════════════════════════╗  │
-│  ║  Layer 7: Operations Maturity Layer  ops-maturity/      ← Independent    ║  │
-│  ║  upper-layer system                                                        ║  │
-│  ║  Explainability · Emergency Brake · Agent Lifecycle · Edge · Drift ·       ║  │
-│  ║  Cost · Debug · Compliance                                                 ║  │
+│  ║  Layer 7: 运营成熟度层  ops-maturity/         ← 独立上层系统             ║  │
+│  ║  可解释性 · 紧急制动 · Agent 生命cycle · 边缘 · 漂移 · 成本 · 调试 · 合规 ║  │
 │  ╠═══════════════════════════════════════════════════════════════════════════╣  │
-│  ║  Layer 6: Scale Ecosystem  scale-ecosystem/       ← Independent upper-  ║  │
-│  ║  layer system                                                              ║  │
-│  ║  Multi-Region · Resource Competition · SLA · Agent Marketplace ·         ║  │
-│  ║  Feedback & Improvement · External Integration                              ║  │
+│  ║  Layer 6: 规模化运lines + 生态层  scale-ecosystem/ ← 独立上层系统           ║  │
+│  ║  多 Region · 资源竞争 · SLA · Agent 市场 · 反馈改进 · 外部集成           ║  │
 │  ╠═══════════════════════════════════════════════════════════════════════════╣  │
-│  ║  Layer 5: Organization Governance  org-governance/  ← Independent upper- ║  │
-│  ║  layer system                                                              ║  │
-│  ║  Org Hierarchy · Approval Routing · SSO/SCIM · Compliance Engine ·       ║  │
-│  ║  Knowledge Isolation · Governance Delegation                              ║  │
+│  ║  Layer 5: 组织治理层  org-governance/           ← 独立上层系统           ║  │
+│  ║  组织层iterations · 审批路由 · SSO/SCIM · 合规references擎 · 知识隔离 · 治理委托         ║  │
 │  ╠═══════════════════════════════════════════════════════════════════════════╣  │
-│  ║  Layer 4: Intelligent Interaction  interaction/  ← Independent upper-    ║  │
-│  ║  layer system                                                             ║  │
-│  ║  NL Entry · Goal Decomposition · Proactive Agent · Progressive Autonomy · ║  │
-│  ║  Ops Dashboard · UX                                                       ║  │
+│  ║  Layer 4: 智能交互层  interaction/              ← 独立上层系统           ║  │
+│  ║  NL 入口 · 目标分解 · 主动 Agent · 渐进自主权 · 运维看板 · UX            ║  │
 │  ╠═══════════════════════════════════════════════════════════════════════════╣  │
-│  ║  Layer 3: Business Domain Access Layer  domains/  ← Independent upper-  ║  │
-│  ║  layer system                                                             ║  │
-│  ║  Domain Registry · Risk Profile · Knowledge Structure · Eval Framework ·  ║  │
-│  ║  Prompt Library · Recipe · Governance                                      ║  │
+│  ║  Layer 3: 业务域接入层  domains/                ← 独立上层系统           ║  │
+│  ║  域注册中心 · 风险画像 · 知识结构 · 评测框架 · Prompt 库 · Recipe · 治理  ║  │
 │  ╚═══════════════════════════════════════════════════════════════════════════╝  │
 │                                                                                 │
 │  ┌───────────────────────────────────────────────────────────────────────────┐  │
-│  │  Layer 1-2: Infrastructure + AI Operations  platform/  ← Platform kernel │  │
+│  │  Layer 1-2: 基础设施 + AI 运营层  platform/    ← 平台内核                │  │
 │  │                                                                           │  │
-│  │  ┌────── Five-plane main kernel ──────────────────────────────────────┐  │  │
+│  │  ┌────── Five-Plane主核 ──────────────────────────────────────────────────┐  │  │
 │  │  │  P1 Interface │ P2 Control │ P3 Orchestrate │ P4 Execution │ P5 State │ │  │
 │  │  └───────────────────────────────────────────────────────────────────┘  │  │
-│  │  ┌────── AI Operations side car ─────────────────────────────────────┐  │  │
+│  │  ┌────── AI 运营侧车 ────────────────────────────────────────────────┐  │  │
 │  │  │  model-gateway/ · prompt-engine/ · compliance/                     │  │  │
 │  │  └───────────────────────────────────────────────────────────────────┘  │  │
-│  │  ┌────── Cross-cutting foundation ───────────────────────────────────┐  │  │
+│  │  ┌────── 横切基础 ──────────────────────────────────────────────────┐  │  │
 │  │  │  contracts/ · shared/ (utils · lifecycle · cache · obs · stability) │  │  │
 │  │  └───────────────────────────────────────────────────────────────────┘  │  │
 │  └───────────────────────────────────────────────────────────────────────────┘  │
 │                                                                                 │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐                          │
-│  │   plugins/   │  │     sdk/     │  │    apps/     │   ← Cross-layer modules   │
-│  │  Plugin      │  │ SDK & DevEx  │  │ App entry    │                           │
-│  │  ecosystem   │  │              │  │ points       │                           │
+│  │   plugins/   │  │     sdk/     │  │    apps/     │   ← 跨层模块              │
+│  │ 插件生态系统  │  │ SDK & DevEx  │  │ 后端应用入口 │                           │
 │  └──────────────┘  └──────────────┘  └──────────────┘                          │
 │                                                                                 │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐        │
-│  │   tests/     │  │   config/    │  │  divisions/  │  │    doc/      │        │
-│  │ Test images  │  │ Versioned    │  │ Business     │  │ Design &     │        │
-│  │ for src      │  │ config       │  │ division     │  │ contracts    │        │
-│  │              │  │               │  │ definitions  │  │              │        │
+│  │     ui/      │  │   tests/     │  │   config/    │  │   deploy/    │        │
+│  │ 跨平台 UI    │  │ 自动化验收    │  │ 版本化configure   │  │ 部署vs运维   │        │
 │  └──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘        │
+│  ┌──────────────┐  ┌──────────────┐                                          │
+│  │ src/testing/ │  │src/benchmarks│   ← 测试基础设施vs性能基准                │
+│  │ 测试公共设施  │  │ 性能基准入口 │                                          │
+│  └──────────────┘  └──────────────┘                                          │
 └─────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### X1 Reliability & Security Fabric Definition
+### X1 Reliability & Security Fabric defines
 
-X1 is not a separate directory, but rather a **cross-cutting capability band** composed of the following modules, spanning all five planes and seven layers:
+X1 不is单独目录，而is由以下模块共同构成的 **横切能力带**，贯穿全部Five-Plane和七层：
 
-| Capability | Implementation Location |
-|------------|-------------------------|
+| 能力 | 实现位置 |
+|------|---------|
 | AuthN/Z · Sandbox | `platform/five-plane-control-plane/iam/` |
 | Circuit Breaker | `platform/model-gateway/provider-registry/` · `platform/shared/stability/` |
 | Rate Limit · Backpressure | `platform/five-plane-interface/ingress/` · `platform/five-plane-execution/dispatcher/` |
@@ -158,89 +149,90 @@ X1 is not a separate directory, but rather a **cross-cutting capability band** c
 
 ---
 
-## §2 Layer 1-2 `platform/` Five-plane Backbone Protocol Flow
+## §二 Layer 1-2 `platform/` Five-Plane主干协议流
 
-> **Diagram type: Data flow diagram** — Expresses the main protocol transmission direction between the five planes, and the lateral support relationship of AI operations modules. Does not express module internal implementation details.
+> **图class型: data流图** — table达Five-Plane之间的主干协议传递方向，以及 AI 运营模块的侧向支撑关系。不table达模块内部implementation details。
 
 ```text
 platform/
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                                                                             │
 │   ┌──────────────────────────────────────────────────────────────────┐      │
-│   │  P1 Interface Plane                                              │      │
+│   │  P1 Interface Plane  接口平面                                     │      │
 │   │  api/ · webhook/ · channel-gateway/ · scheduler/                 │      │
 │   │  console-backend/ · ingress/                                     │      │
 │   └────────────────────────────────┬─────────────────────────────────┘      │
 │                                    │ request-envelope                       │
 │   ┌────────────────────────────────▼─────────────────────────────────┐      │
-│   │  P2 Control Plane                                                │      │
+│   │  P2 Control Plane  控制平面                                       │      │
 │   │  tenant/ · iam/ · policy-center/ · approval-center/              │      │
-│   │  rollout-controller/ · incident-control/ · replay-repair/       │      │
-│   │  config-center/ · audit-export/                                  │      │
+│   │  rollout-controller/ · incident-control/ · replay-repair/        │      │
+│   │  config-center/ · audit-export/ · mission/ · risk-control/       │      │
 │   └────────────────────────────────┬─────────────────────────────────┘      │
 │                                    │ control-directive                      │
 │   ┌────────────────────────────────▼─────────────────────────────────┐      │
-│   │  P3 Orchestration Plane  ◀╌╌╌╌╌╌┐                              │      │
-│   │  oapeflir/ · planner/ · replan/ · routing/ │ · escalation/ · hitl │      │
+│   │  P3 Orchestration Plane  编排平面 ◀╌╌╌╌╌╌┐                      │      │
+│   │  oapeflir/ · planner/ · replan/ · routing/│ · escalation/ · hitl │      │
 │   └────────────────────────────────┬──────────│──────────────────────┘      │
 │                                    │ exec-plan│                             │
 │   ┌────────────────────────────────▼──────────│──────────────────────┐      │
-│   │  P4 Execution Plane  ◀╌╌╌╌╌╌╌╌╌┘                              │      │
-│   │  dispatcher/ · lease/ · worker-pool/ · execution-engine/        │      │
-│   │  state-transition/ · ha/ · hot-upgrade/ · recovery/             │      │
+│   │  P4 Execution Plane  执lines平面  ◀╌╌╌╌╌╌╌╌╌┘                      │      │
+│   │  dispatcher/ · lease/ · worker-pool/ · execution-engine/         │      │
+│   │  state-transition/ · ha/ · hot-upgrade/ · recovery/              │      │
 │   │  tool-executor/ · plugin-executor/ · distributed-lock/           │      │
-│   │  queue/ · resource/ · startup/                                  │      │
+│   │  queue/ · queue-metrics/ · hibernation/ · resource/ · startup/   │      │
 │   └────────────────────────────────┬─────────────────────────────────┘      │
 │                                    │ state-command / execution-receipt      │
 │   ┌────────────────────────────────▼─────────────────────────────────┐      │
-│   │  P5 State & Evidence Plane                                       │      │
-│   │  truth/ · events/ · projections/ · artifacts/ · memory/         │      │
+│   │  P5 State & Evidence Plane  Statusvs证据平面                        │      │
+│   │  truth/ · events/ · projections/ · artifacts/ · memory/          │      │
 │   │  knowledge/ · audit/ · incident/ · checkpoints/ · dlq/          │      │
+│   │  outbox/ · side-effect-ledger/ · reconciliation/ · compaction/   │      │
 │   └──────────────────────────────────────────────────────────────────┘      │
 │                                                                             │
-│   ┌───── AI Operations (parallel support, non-linear main chain, deeply ──┐ │
-│   │      embedded across planes)                                         │      │
-│   │  model-gateway/       │  prompt-engine/  │  compliance/             │      │
-│   │  Provider·Router·Cost │  Registry·Render │  Erasure·Encrypt         │      │
-│   │  ╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌   │      │
-│   │  Lateral support relationships:                                    │      │
-│   │  P3/P4 ◀╌╌╌▶ model-gateway  (model routing + circuit breaker)    │      │
-│   │  P3    ◀╌╌╌▶ prompt-engine  (Prompt rendering + evaluation)      │      │
-│   │  P2/P5 ◀╌╌╌▶ compliance     (data compliance + audit)            │      │
+│   ┌───── AI 运营（并列支撑，非线性主链，深度插入多平面）─────────────┐      │
+│   │  model-gateway/       │  prompt-engine/  │  compliance/          │      │
+│   │  Provider·Router·Cost │  Registry·Eval   │  Erasure·Encrypt     │      │
+│   │  Fallback·Degradation │  Rollout·Render  │  Residency·Lineage   │      │
+│   │  ╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌   │      │
+│   │  侧向支撑关系:                                                   │      │
+│   │  P3/P4 ◀╌╌╌▶ model-gateway  (模型路由 + 熔断)                   │      │
+│   │  P3    ◀╌╌╌▶ prompt-engine  (Prompt 渲染 + 评估)                │      │
+│   │  P2/P5 ◀╌╌╌▶ compliance     (data合规 + 审计)                   │      │
 │   └──────────────────────────────────────────────────────────────────┘      │
 │                                                                             │
-│   ┌─────────────────────── Cross-plane foundation ─────────────────────────┐ │
-│   │  contracts/ (types · errors · envelopes · directives)             │      │
+│   ┌─────────────────────── 跨平面基础 ───────────────────────────────┐      │
+│   │  contracts/ (types · errors · envelopes · directives)            │      │
 │   │  shared/    (utils · lifecycle · cache · observability · stability)│     │
 │   └──────────────────────────────────────────────────────────────────┘      │
 │                                                                             │
-│   ═══════ X1 Reliability & Security Fabric (crosscuts all layers, see §1) ═══════   │
+│   ═══════ X1 Reliability & Security Fabric (横切全层，defines见 §一) ═══════   │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## §3 P1 Interface Plane Module Ownership Diagram
+## §三 P1 Interface Plane 模块归属图
 
-> **Diagram type: Structure diagram** — Expresses P1 internal module ownership and the division of three responsibility areas. Does not express runtime invocation order or code dependencies.
+> **图class型: 结构图** — table达 P1 内部模块归属及三个职责区域的划分。不table达运lines时call顺序或coderelies on。
 
 ```text
 platform/five-plane-interface/
 ┌─────────────────────────────────────────────────────────────────────┐
 │                       P1 Interface Plane                             │
 │                                                                      │
-│  ┌─────────── A. Ingress & Transport (Protocol Entry) ──────────────┐│
+│  ┌─────────── A. Ingress & Transport (协议入口) ──────────────┐     │
 │  │                                                              │     │
 │  │  ┌───────────────┐  ┌──────────────┐  ┌───────────────┐    │     │
 │  │  │    api/        │  │  webhook/    │  │   ingress/    │    │     │
 │  │  │  http-server   │  │  inbound     │  │  rate-limit   │    │     │
-│  │  │  routes        │  │  parser       │  │  routing      │    │     │
-│  │  │  oidc/oauth    │  │  verify       │  │  canary       │    │     │
-│  │  │  websocket     │  │  dispatch     │  └───────────────┘    │     │
+│  │  │  routes        │  │  parser      │  │  routing      │    │     │
+│  │  │  oidc/oauth    │  │  verify      │  │  canary       │    │     │
+│  │  │  websocket     │  │  dispatch    │  └───────────────┘    │     │
 │  │  └───────────────┘  └──────────────┘                        │     │
 │  └──────────────────────────────────────────────────────────────┘     │
 │                                                                      │
-│  ┌─────────── B. Channel Delivery ───────────────────────────────┐│
+│  ┌─────────── B. Channel Delivery (通道投递) ─────────────────┐     │
 │  │                                                              │     │
 │  │  ┌───────────────────────────┐                              │     │
 │  │  │   channel-gateway/        │                              │     │
@@ -249,7 +241,7 @@ platform/five-plane-interface/
 │  │  └───────────────────────────┘                              │     │
 │  └──────────────────────────────────────────────────────────────┘     │
 │                                                                      │
-│  ┌─────────── C. Operator Backend ──────────────────────────────┐│
+│  ┌─────────── C. Operator Backend (运营后端) ─────────────────┐     │
 │  │                                                              │     │
 │  │  ┌──────────────┐  ┌───────────────────────────┐            │     │
 │  │  │ scheduler/   │  │   console-backend/        │            │     │
@@ -259,88 +251,94 @@ platform/five-plane-interface/
 │  │  └──────────────┘  └───────────────────────────┘            │     │
 │  └──────────────────────────────────────────────────────────────┘     │
 │                                                                      │
-│  Traffic direction:                                                   │
-│  External requests ──▶ ingress ──▶ api/webhook/channel-gateway     │
-│  scheduler ──▶ P3 (scheduled triggers)                               │
-│  console-backend ──▶ P5 (queries) + P2 (control)                    │
+│  流量方向:                                                           │
+│  外部request ──▶ ingress ──▶ api/webhook/channel-gateway               │
+│  scheduler ──▶ P3（定时触发）                                       │
+│  console-backend ──▶ P5（查询）+ P2（管控）                        │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## §4 P2 Control Plane Module Ownership Diagram
+## §四 P2 Control Plane 模块归属图
 
-> **Diagram type: Structure diagram** — Expresses P2 internal module ownership and four responsibility areas. Does not express runtime invocation order.
+> **图class型: 结构图** — table达 P2 内部模块归属及四个职责区域。不table达运lines时call顺序。
 
 ```text
 platform/five-plane-control-plane/
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                            P2 Control Plane                                  │
 │                                                                              │
-│  ┌──────── A. Governance ──────────────────────────────────────────────┐   │
-│  │  ┌──────────────┐  ┌────────────────────┐  ┌──────────────┐        │   │
-│  │  │   tenant/    │  │   policy-center/   │  │approval-ctr/ │        │   │
-│  │  │  Tenant mgmt  │  │   Policy center    │  │  Approval    │        │   │
-│  │  │  CRUD/quota/  │  │  risk-level/        │  │  center      │        │   │
-│  │  │  billing      │  │  security/comply    │  │  flow/route/ │        │   │
-│  │  └──────────────┘  └────────────────────┘  └──────────────┘        │   │
-│  └──────────────────────────────────────────────────────────────────────┘   │
+│  ┌──────── A. Governance (治理) ─────────────────────────────────────┐      │
+│  │  ┌──────────────┐  ┌────────────────────┐  ┌──────────────┐      │      │
+│  │  │   tenant/    │  │   policy-center/   │  │approval-ctr/ │      │      │
+│  │  │  租户manage    │  │   策略中心         │  │  审批中心    │      │      │
+│  │  └──────────────┘  └────────────────────┘  └──────────────┘      │      │
+│  │  ┌─────────────────────────────────────────────────────────┐      │      │
+│  │  │ mission/  长期目标治理                                  │      │      │
+│  │  │ lifecycle · resolver · governance · budget · live-guard │      │      │
+│  │  │ handoff · snapshot · freeze/revoke/budget fail-close    │      │      │
+│  │  └─────────────────────────────────────────────────────────┘      │      │
+│  └──────────────────────────────────────────────────────────────────┘      │
 │                                                                              │
-│  ┌──────── B. Security & Access ───────────────────────────────────────┐   │
-│  │  ┌─────────────────────────────────────────────────────────┐        │   │
-│  │  │                     iam/                                  │        │   │
-│  │  │  sandbox-policy · policy-engine · field-encrypt          │        │   │
-│  │  │  data-classify · audit-event · secret-mgmt               │        │   │
-│  │  │  network-egress · cve-intel · trusted-context-scanner    │        │   │
-│  │  └─────────────────────────────────────────────────────────┘        │   │
-│  └──────────────────────────────────────────────────────────────────────┘   │
+│  ┌──────── B. Security & Access (securityvs访问) ────────────────────────┐      │
+│  │  ┌─────────────────────────────────────────────────────────┐      │      │
+│  │  │                     iam/                                 │      │      │
+│  │  │  sandbox-policy · policy-engine · field-encrypt          │      │      │
+│  │  │  data-classify · audit-event · secret-mgmt               │      │      │
+│  │  │  network-egress · cve-intel · trusted-context-scanner    │      │      │
+│  │  └─────────────────────────────────────────────────────────┘      │      │
+│  └──────────────────────────────────────────────────────────────────┘      │
 │                                                                              │
-│  ┌──────── C. Release & Ops Control ────────────────────────────────────┐   │
-│  │  ┌────────────────────┐  ┌──────────────────────────────────┐       │   │
-│  │  │rollout-controller/ │  │      incident-control/           │       │   │
-│  │  │  traffic-route     │  │  ┌──────────┐ ┌──────────────┐  │       │   │
-│  │  │  canary            │  │  │doctor    │ │deployment    │  │       │   │
-│  │  │  auto-rollback     │  │  │takeover  │ │stop-loss     │  │       │   │
-│  │  └────────────────────┘  │  │ops-gov   │ │release-pipe  │  │       │   │
-│  │  ┌────────────────────┐  │  └──────────┘ └──────────────┘  │       │   │
-│  │  │replay-repair-ctrl/ │  └──────────────────────────────────┘       │   │
-│  │  │  Replay repair     │                                          │       │
-│  │  │  control           │                                          │       │
-│  │  └────────────────────┘                                           │       │
-│  └──────────────────────────────────────────────────────────────────────┘   │
+│  ┌──────── C. Release & Ops Control (发布vs运维管控) ────────────────┐      │
+│  │  ┌────────────────────┐  ┌──────────────────────────────────┐     │      │
+│  │  │rollout-controller/ │  │      incident-control/           │     │      │
+│  │  │  traffic-route     │  │  ┌──────────┐ ┌──────────────┐  │     │      │
+│  │  │  canary            │  │  │doctor    │ │deployment    │  │     │      │
+│  │  │  auto-rollback     │  │  │takeover  │ │stop-loss     │  │     │      │
+│  │  └────────────────────┘  │  │ops-gov   │ │release-pipe  │  │     │      │
+│  │  ┌────────────────────┐  │  └──────────┘ └──────────────┘  │     │      │
+│  │  │replay-repair-ctrl/ │  └──────────────────────────────────┘     │      │
+│  │  │  重放修复控制       │                                          │      │
+│  │  └────────────────────┘                                           │      │
+│  └──────────────────────────────────────────────────────────────────┘      │
 │                                                                              │
-│  ┌──────── D. Config & Audit ───────────────────────────────────────────┐   │
-│  │  ┌──────────────┐  ┌──────────────┐                               │   │
-│  │  │config-center/│  │audit-export/ │                               │   │
-│  │  │  runtime/env  │  │  Audit export │                               │   │
-│  │  │  provider/   │  └──────────────┘                               │   │
-│  │  │  model/billing│                                                │   │
-│  │  └──────────────┘                                                 │   │
-│  └──────────────────────────────────────────────────────────────────────┘   │
+│  ┌──────── D. Config & Audit (configurevs审计) ───────────────────────────┐      │
+│  │  ┌──────────────┐  ┌──────────────┐ ┌──────────────┐              │      │
+│  │  │config-center/│  │audit-export/ │ │ risk-control/│              │      │
+│  │  │  runtime/env │  │  审计export    │                               │      │
+│  │  │  provider/   │  └──────────────┘                               │      │
+│  │  │  model/billing│                                                │      │
+│  │  └──────────────┘                                                 │      │
+│  └──────────────────────────────────────────────────────────────────┘      │
 │                                                                              │
-│  Control flow:                                                           │
-│  P1 ──▶ iam authentication ──▶ policy evaluation ──▶ approval           │
-│  ──▶ generate control-directive ──▶ P3                                   │
-│  incident-ctrl ◀── P5 events (anomaly triggers control)                 │
+│  控制流:                                                                    │
+│  P1 ──▶ iam 鉴权 ──▶ mission 解析/快照 ──▶ policy/risk 评估 ──▶ approval │
+│  ──▶ 生成 control-directive ──▶ P3                                         │
+│  incident-ctrl ◀── P5 事件（异常触发管控）                                 │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## §5 P3 Orchestration Plane Module Ownership Diagram
+## §五 P3 Orchestration Plane 模块归属图
 
-> **Diagram type: Structure diagram** — Expresses P3 internal module ownership and collaboration direction. Does not express runtime invocation order or code dependencies.
+> **图class型: 结构图** — table达 P3 内部模块归属vs协作方向。不table达运lines时call顺序或coderelies on。
 
-### P3 Module Boundary Rules
+### P3 模块边界规则
 
-| Module | Responsibility | Decides What |
-|--------|---------------|--------------|
-| `routing/` | Task routing | "Who does it" (select Agent/Team/Workflow) |
-| `planner/` | Task decomposition | "How to split" (DAG decomposition + strategy selection) |
-| `oapeflir/` | Cognitive loop | "How to loop, execute and learn" (8-phase controlled kernel) |
-| `hitl/` | Human-machine collaboration | "Control nodes requiring human participation" (approval/takeover/explanation) |
-| `replan/` | Re-planning | "How to adjust when context changes" |
-| `escalation/` | Escalation handling | "How to escalate when exceptions exceed current capability" |
+| 模块 | 职责 | 决定什么 |
+|------|------|---------|
+| `routing/` | 任务路由 | "谁来做"（选择 Agent/Team/Workflow） |
+| `planner/` | 任务分解 | "怎么拆"（DAG 分解 + 策略选择） |
+| `oapeflir/` | 认知循环 | "怎么循环执linesvs学习"（8 阶段受控内核） |
+| `harness/` | 可恢复执lines循环 | "如何多迭代、可恢复、可审计地运lines Plan/Work/Eval" |
+| `agent-delegation/` | Agent 协作协议 | "如何委派、接收、接管、汇报证据" |
+| `evaluator/` | 评估vs验收 | "结果isno达标，isno进入反馈/学习"（含 trajectory-level evaluator） |
+| `observer/` | 观测聚合 | "运lines时事实如何进入 timeline/report" |
+| `hitl/` | 人机协作 | "需要人参vs的控制节点"（审批/接管/解释） |
+| `replan/` | 重规划 | "上下文变化后怎么调整" |
+| `escalation/` | 升级handle | "异常exceeds出当前能力后怎么升级" |
 
 ```text
 platform/five-plane-orchestration/
@@ -348,257 +346,285 @@ platform/five-plane-orchestration/
 │                       P3 Orchestration Plane                                 │
 │                                                                              │
 │  ┌──────────────────────────────────────────────────────────────────┐        │
-│  │  oapeflir/  OAPEFLIR Controlled Cognitive Kernel                │        │
+│  │  oapeflir/  OAPEFLIR 受控认知内核                                  │        │
 │  │                                                                    │        │
 │  │  O ──▶ A ──▶ P ──▶ E ──▶ F ──▶ L ──▶ I ──▶ R                    │        │
-│  │  Observe  Analyze  Plan  Execute  Feedback  Learn  Improve  Rollout│     │
+│  │  Observe  Assess  Plan  Execute  Feedback  Learn  Improve  Rollout│        │
 │  │                                                                    │        │
 │  │  ┌──────────┐  ┌────────────────┐  ┌───────────────────┐         │        │
 │  │  │workflow/ │  │    learn/      │  │ improve-rollout/  │         │        │
 │  │  └──────────┘  └────────────────┘  └───────────────────┘         │        │
 │  └──────────────────────────────────────────────────────────────────┘        │
+│  ┌──────────────────────────────────────────────────────────────────┐        │
+│  │  harness/  Durable Harness Runtime                                │        │
+│  │  PlanBundle · WorkProduct · EvaluationReport · ContextSnapshot     │        │
+│  │  resume · recovery · toolbelt · guardrails · feedback · replay     │        │
+│  └──────────────────────────────────────────────────────────────────┘        │
 │                                                                              │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐    │
 │  │   routing/   │  │   planner/   │  │ escalation/  │  │   replan/    │    │
-│  │  "Who does" │  │  "How split" │  │  "How to     │  │  "How to     │    │
-│  │              │  │              │  │  escalate"  │  │  adjust"     │    │
+│  │  "谁来做"    │  │  "怎么拆"    │  │  "怎么升级"  │  │  "怎么调整"  │    │
 │  └──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘    │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────────────┐      │
+│  │ evaluator/   │  │ observer/    │  │ agent-delegation/            │      │
+│  │ 质量评估     │  │ timeline     │  │ ACP message · evidence · audit│      │
+│  │ traj-eval    │  │ report       │  │ takeover · handoff           │      │
+│  └──────────────┘  └──────────────┘  └──────────────────────────────┘      │
 │                                                                              │
-│  ┌──────────────┐                                                         │
-│  │    hitl/     │  Orchestration flow:                                     │
-│  │  "Requires  │  control-directive ──▶ routing ──▶ planner ──▶ oapeflir   │
-│  │  human"     │  ──▶ generate execution-plan ──▶ P4                       │
-│  └──────────────┘  Exception ──▶ escalation / replan                      │
-│                     Requires human ──▶ hitl ──▶ P1 push                   │
+│  ┌──────────────┐                                                           │
+│  │    hitl/     │  编排流:                                                  │
+│  │  "需人参vs"  │  control-directive ──▶ routing ──▶ planner ──▶ harness    │
+│  └──────────────┘  ──▶ oapeflir/evaluator(full-trajectory) ──▶ P4           │
+│                     异常 ──▶ escalation / replan                             │
+│                     需人工 ──▶ hitl ──▶ P1 推送                              │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## §6 P4 Execution Plane Module Framework Diagram
+## §六 P4 Execution Plane 模块框架图
 
-> P4 is the plane with the most modules; the following three different types of diagrams are used to show it.
+> P4 is模块count最多的平面，以下用三种不同class型的图分别展示。
 
-### §6.1 P4 Bounded Context Framework Diagram
+### §六.1 P4 顶层模块分组图
 
-> **Diagram type: Structure diagram** — Expresses the ownership and grouping of 14 BC-level modules within P4. Does not express runtime invocation order.
+> **图class型: 结构图** — table达 P4 当前顶层模块的能力分组。不table达运lines时call顺序。
 
 ```text
 platform/five-plane-execution/
 ┌─────────────────────────────────────────────────────────────────────┐
-│  ┌────── Scheduling & Worker ──────────────────────────────────┐      │
-│  │  dispatcher/  │  lease/  │  worker-pool/                    │      │
-│  └───────────────────────────────────────────────────────────────┘      │
-│  ┌────── Execution Engine ──────────────────────────────────────┐      │
-│  │  execution-engine/  │  state-transition/                     │      │
-│  └───────────────────────────────────────────────────────────────┘      │
-│  ┌────── Reliability ────────────────────────────────────────────┐      │
-│  │  ha/  │  hot-upgrade/  │  recovery/                           │      │
-│  └───────────────────────────────────────────────────────────────┘      │
-│  ┌────── Tools & Plugins ────────────────────────────────────────┐      │
-│  │  tool-executor/  │  plugin-executor/                          │      │
-│  └───────────────────────────────────────────────────────────────┘      │
-│  ┌────── Infrastructure ──────────────────────────────────────────┐      │
-│  │  distributed-lock/  │  queue/  │  resource/  │  startup/     │      │
-│  └───────────────────────────────────────────────────────────────┘      │
+│  ┌────── 调度vs Worker ──────────────────────────────────────┐      │
+│  │  dispatcher/  │  lease/  │  worker-pool/  │ queue-metrics/ │      │
+│  └───────────────────────────────────────────────────────────┘      │
+│  ┌────── 执linesreferences擎 ──────────────────────────────────────────┐      │
+│  │  execution-engine/ │ state-transition/ │ oapeflir/         │      │
+│  │  hibernation/                                             │      │
+│  └───────────────────────────────────────────────────────────┘      │
+│  ┌────── 可靠性vs恢复 ──────────────────────────────────────┐      │
+│  │  ha/  │  hot-upgrade/  │  recovery/                       │      │
+│  └───────────────────────────────────────────────────────────┘      │
+│  ┌────── 工具、security执linesvs插件 ───────────────────────────────┐      │
+│  │  tool-gateway/ │ tool-executor/ │ sandbox-provider/       │      │
+│  │  plugin-executor/                                         │      │
+│  └───────────────────────────────────────────────────────────┘      │
+│  ┌────── 基础设施 ──────────────────────────────────────────┐      │
+│  │  distributed-lock/ │ queue/ │ resource/ │ startup/        │      │
+│  │  shared/                                                  │      │
+│  └───────────────────────────────────────────────────────────┘      │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
-### §6.2 P4 Execution Sequence Diagram
+### §六.2 P4 执lines时序图
 
-> **Diagram type: Sequence diagram** — Expresses the runtime step sequence of a single task execution. Does not express module ownership or code dependencies.
+> **图class型: 时序图** — table达一iterations任务执lines的运lines时步骤先后。不table达模块归属或coderelies on。
 
 ```text
 execution-plan (from P3)
     │
     ▼
-dispatcher ─── Admission control + priority sorting
+dispatcher ─── 准入控制 + 优先级排序
     │
     ▼
-lease ──────── Allocate execution lease
+lease ──────── 分配执lines租约
     │
     ▼
-worker-pool ── Select target Worker + handshake
+worker-pool ── 选择目标 Worker + handshake
     │
     ▼
-execution-engine ── agent-executor → model-call → tool/plugin invocation
+execution-engine ── agent-executor → model-call → tool-gateway
     │                   │
-    │                   ├── loop-detect (infinite loop detection)
-    │                   ├── effect-buffer (side effect buffer)
-    │                   └── context-compact (context compression)
+    │                   ├── loop-detect (死循环检测)
+    │                   ├── effect-buffer (副作用缓冲)
+    │                   ├── context-compact (上下文压缩)
+    │                   └── sandbox-provider → tool/plugin call
     │
     ▼
-state-transition ── State machine drives state changes
+state-transition ── Status机驱动Status变更
     │
     ▼
-P5 ◀── state-command (persistence)
-P3 ◀── execution-receipt (receipt)
+P5 ◀── state-command (持久化)
+P5 ◀── receipt/outbox/side-effect-ledger (耐久副作用证据)
+P3 ◀── execution-receipt (回执)
 
-Exception paths:
+异常路径:
     stalled-detect ──▶ recovery ──▶ replay/repair
     region-fail ──▶ ha ──▶ failover
     version-change ──▶ hot-upgrade ──▶ graceful-migrate
 ```
 
-### §6.3 P4 Tool Invocation Security Diagram
+### §六.3 P4 工具callsecurityvs耐久副作用图
 
-> **Diagram type: Data flow diagram** — Expresses security control points in the tool invocation chain. Does not express module ownership.
+> **图class型: data流图** — table达工具call链路中的security控制点vs耐久副作用writes。不table达模块归属。
 
 ```text
 execution-engine
     │
     ▼
+tool-gateway
+    ├── prepare/verify/commit/compensate ── 工具副作用门面
+    ├── receipt shadow write ────────────── 回执影子writes
+    └── durable outbox ─────────────────── 耐久发布
+
+sandbox-provider
+    ├── sandbox-layer resolve ── local/container/browser/microvm/remote
+    └── capability/session bind ── 工具能力vs会话约束
+
 tool-executor
-    ├── command-security ──── Command security validation
-    ├── tool-contract-validator ── Contract compliance check
-    ├── tool-path-scope ──── Path scope restriction
-    ├── tool-output-sanitizer ── Output sanitization
-    ├── mcp-tool-guard ──── MCP protocol guard
-    └── role-tool-exposure ── Role tool visibility
+    ├── command-security ─────── 命令security校验
+    ├── tool-contract-validator ─ 契约合规检查
+    ├── tool-path-scope ──────── 路径作用域限制
+    ├── tool-output-sanitizer ── 输出消毒
+    ├── mcp-tool-guard ──────── MCP 协议守卫
+    └── role-tool-exposure ──── 角色工具可见性
 
 plugin-executor
-    ├── runtime-sandbox ──── Sandbox isolated execution
-    ├── plugin-host ──── Subprocess host
-    └── plugin-protocol ──── Communication protocol guard
+    ├── runtime-sandbox ─────── 沙箱隔离执lines
+    ├── plugin-host ─────────── 子进程宿主
+    └── plugin-protocol ─────── communication协议守卫
+
+tool-gateway ──▶ P5 receipts/outbox/side-effect-ledger
 ```
 
 ---
 
-## §7 P5 State & Evidence Plane Module Ownership Diagram
+## §七 P5 State & Evidence Plane 模块归属图
 
-> **Diagram type: Structure diagram** — Expresses P5 internal module ownership grouped by 7 Bounded Contexts, and the Truth / Derived / Evidence three-tier data partition. Does not express runtime read/write sequencing or specific table structures.
+> **图class型: 结构图** — table达 P5 内部按 7 个 Bounded Context 分组的模块归属关系，以及 Truth / Derived / Evidence 三层data分区。不table达运lines时读写时序vs具体table结构。
 
-### §7.1 BC Grouping Structure Diagram
+### §七.1 BC 分组结构图
 
 ```text
 platform/five-plane-state-evidence/
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                     P5 State & Evidence Plane                                │
 │                                                                              │
-│  ════════════════════ Zone A: Truth Zone ════════════════════                │
-│  (Transactional consistency; write path: P4 state-command ──▶ truth + event  │
-│  same-transaction commit)                                                     │
+│  ════════════════════ Zone A: Truth 权威真相区 ════════════════════          │
+│  (事务一致; 写路径: P4 state-command ──▶ truth + event 同事务提交)           │
 │                                                                              │
 │  ┌─────────────────────────────────┐  ┌─────────────────────────────────┐  │
-│  │  BC1 Core Task Engine  (~73 methods)│  │  BC2 Worker Infrastructure(~47) │  │
-│  │  task · workflow · execution ·    │  │  worker · dispatch · lease ·     │  │
-│  │  session                        │  │  lock                           │  │
+│  │  BC1 Core Task Engine  (~73 方法)│  │  BC2 Worker Infrastructure(~47) │  │
+│  │  task · workflow · execution ·  │  │  worker · dispatch · lease ·    │  │
+│  │  session                         │  │  lock                           │  │
 │  │  ─────────────────────────────  │  │  ─────────────────────────────  │  │
-│  │  Task lifecycle · Workflow state │  │  Scheduling allocation · Lease  │  │
-│  │  · Execution management ·        │  │  acquire/renewal · Distributed  │  │
-│  │  Session control               │  │  lock · Worker registration     │  │
+│  │  任务生命cycle · 工作流Status ·    │  │  调度分配 · 租约获取/续期 ·    │  │
+│  │  执linesmanage · 会话控制            │  │  分布式锁 · Worker 注册         │  │
 │  └─────────────────────────────────┘  └─────────────────────────────────┘  │
 │                                                                              │
 │  ┌─────────────────────────────────┐  ┌─────────────────────────────────┐  │
-│  │  BC3 Event Infrastructure (~24)  │  │  BC4 Billing & Cost (~29)         │  │
+│  │  BC3 Event Infrastructure (~24) │  │  BC4 Billing & Cost (~29)       │  │
 │  │  event                           │  │  billing                        │  │
 │  │  ─────────────────────────────  │  │  ─────────────────────────────  │  │
-│  │  Event publish · Acknowledge ·   │  │  Account · Invoice · Quota ·     │  │
-│  │  DLQ management · Persistent bus │  │  Usage · Ledger · Entitlements    │  │
-│  │  · Type registration            │  │                                 │  │
+│  │  事件发布 · 确认 · DLQ manage ·  │  │  账户 · 发票 · 配额 ·          │  │
+│  │  持久化总线 · class型注册          │  │  用量 · 账本 · 权益             │  │
 │  └─────────────────────────────────┘  └─────────────────────────────────┘  │
 │                                                                              │
 │  ┌─────────────────────────────────┐  ┌─────────────────────────────────┐  │
-│  │  BC5 Governance & Compliance    │  │  BC6 Platform & Commerce (~47)   │  │
+│  │  BC5 Governance & Compliance    │  │  BC6 Platform & Commerce (~47)  │  │
 │  │  (~50)                           │  │  marketplace · release ·        │  │
-│  │  approval · organization ·       │  │  division · intelligence ·       │  │
-│  │  secret · compliance · ops      │  │  evolution                      │  │
+│  │  approval · organization ·      │  │  division · intelligence ·      │  │
+│  │  secret · compliance · ops      │  │  evolution                       │  │
 │  │  ─────────────────────────────  │  │  ─────────────────────────────  │  │
-│  │  Approval routing · Org         │  │  Marketplace listing · Release   │  │
-│  │  hierarchy · Secret mgmt ·      │  │  lifecycle · Division mgmt ·     │  │
-│  │  Compliance policy · Ops         │  │  Analytics · Evolution proposals │  │
-│  │  governance                     │  │                                 │  │
+│  │  审批路由 · 组织层级 ·          │  │  市场清单 · 发布生命cycle ·      │  │
+│  │  keymanage · 合规策略 ·          │  │  Division manage · 分析 ·         │  │
+│  │  运营治理                        │  │  演进提案                        │  │
 │  └─────────────────────────────────┘  └─────────────────────────────────┘  │
 │                                                                              │
 │  ┌─────────────────────────────────┐                                        │
 │  │  BC7 Memory & Artifacts (~10)   │                                        │
-│  │  memory · artifact               │                                        │
+│  │  memory · artifacts              │                                        │
+│  │  memory-gateway                  │                                        │
 │  │  ─────────────────────────────  │                                        │
-│  │  Memory CRUD + quality mgmt ·   │                                        │
-│  │  Artifact storage · Version mgmt │                                        │
+│  │  记忆 CRUD + 质量manage ·         │                                        │
+│  │  proposal/projection facade ·   │                                        │
+│  │  制品storage · 版本manage             │                                        │
 │  └─────────────────────────────────┘                                        │
 │                                                                              │
-│  ════════════════════ Zone B: Derived Query Zone ═════════════════════       │
-│  (Eventual consistency; derived from Truth event stream; idempotent rebuild; │
-│  does not reflect truth)                                                     │
+│  ════════════════════ Zone B: Derived 派生查询区 ═════════════════════       │
+│  (最终一致; 从 Truth 事件流派生; 可幂等重建; 不反写真相)                     │
 │                                                                              │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐                       │
-│  │projections/  │  │  knowledge/  │  │  incident/   │                       │
-│  │ Query        │  │  Knowledge   │  │  Event       │                       │
-│  │ projection   │  │  retrieval   │  │  aggregation │                       │
-│  │ view         │  │  semantic    │  │  record      │                       │
+│  │projections/  │  │  knowledge/  │  │reconciliation│                       │
+│  │ 查询投影视图 │  │  知识检索    │  │  事件聚合    │                       │
+│  │ query-view   │  │  semantic    │  │  record      │                       │
 │  │ rebuild      │  │  keyword     │  │  timeline    │                       │
-│  │ event-id     │  │  ingest      │  │              │                       │
-│  │ dedup        │  │             │  │              │                       │
+│  │ event-id for deduplication│  │  ingest      │  │              │                       │
 │  └──────────────┘  └──────────────┘  └──────────────┘                       │
+│  ┌──────────────┐                                                           │
+│  │  incident/   │  事故聚合vs运营事件视图                                    │
+│  └──────────────┘                                                           │
 │                                                                              │
-│  ════════════════════ Zone C: Evidence Chain Zone ═════════════════════        │
-│  (Append-only; audit/compliance/recovery purposes; forms tamper-proof         │
-│  evidence chain)                                                             │
+│  ════════════════════ Zone C: Evidence 证据链区 ═════════════════════        │
+│  (只增不改; 审计/合规/恢复用途; 构成不can be tampered证据链)                          │
 │                                                                              │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐    │
 │  │   audit/     │  │  artifacts/  │  │checkpoints/  │  │    dlq/      │    │
-│  │  Audit logs  │  │  Evidence    │  │  Recovery    │  │  Dead letter │    │
-│  │  who-what-   │  │  artifacts   │  │  checkpoints │  │  queue       │    │
-│  │  when        │  │  evidence-   │  │  workflow/   │  │  failed-     │    │
-│  │              │  │  chain       │  │  step-ckpt   │  │  event       │    │
+│  │  审计日志    │  │  证据制品    │  │  恢复检查点  │  │  死信队列    │    │
+│  │  who-what-   │  │  evidence-   │  │  workflow/   │  │  failed-     │    │
+│  │  when        │  │  chain       │  │  step-ckpt   │  │  event       │    │
 │  └──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘    │
+│  ┌──────────────┐  ┌──────────────────┐  ┌──────────────┐                  │
+│  │   outbox/    │  │side-effect-ledger│  │  receipts/   │                  │
+│  │ 可靠发布     │  │ 外部副作用台账    │  │ 标准回执链    │                  │
+│  └──────────────┘  └──────────────────┘  └──────────────┘                  │
+│  ┌──────────────┐                                                           │
+│  │ compaction/  │  历史/上下文压缩                                          │
+│  └──────────────┘                                                           │
 │                                                                              │
-│  ──────────────────── Infrastructure layer ────────────────────             │
-│  storage-backend-factory · migration-runner · async-repo-registry            │
+│  ──────────────────── 基础设施层 ────────────────────                        │
+│  storage-backend-factory · migration-runner · async-repo-registry           │
 │  session-dual-write · storage-quota                                         │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### §7.2 Data Flow Overview Diagram
+### §七.2 data流向简图
 
 ```text
   P4 state-command
         │
         ▼
-  ┌──────────┐    Same transaction     ┌──────────┐
-  │  Truth   │ ════════════════════▶   │  Event   │
-  │  (BC1-7) │                         │  (BC3)   │
-  └──────────┘                         └────┬─────┘
-                                            │  Async projection
-                         ┌──────────────────┼──────────────────┐
-                         ▼                  ▼                   ▼
-                   ┌──────────┐      ┌──────────┐        ┌──────────┐
-                   │ Derived  │      │ Evidence │        │ Upper    │
-                   │projections│     │audit/ckpt│        │ systems  │
-                   │knowledge │      │artifacts │        │L4-L7     │
-                   │          │      │          │        │subscribe │
-                   └──────────┘      └──────────┘        └──────────┘
+  ┌──────────┐    同事务     ┌──────────┐    可靠发布    ┌──────────┐
+  │  Truth   │ ═══════════▶ │  Event   │ ═══════════▶ │ outbox/  │
+  │  (BC1-7) │              │  (BC3)   │              │ publish  │
+  └──────────┘              └────┬─────┘              └──────────┘
+                                 │ 异步投影
+              ┌──────────────────┼──────────────────┐
+              ▼                  ▼                   ▼
+        ┌──────────┐      ┌──────────┐        ┌──────────┐
+        │ Derived  │      │ Evidence │        │ 上层系统 │
+        │projection│      │audit/ckpt│        │L4-L7 订阅│
+        │knowledge │      │artifacts │        │事件消费  │
+        │reconcile │      │receipt   │        │          │
+        │memory-gw │      │side-effect│       │          │
+        └──────────┘      └──────────┘        └──────────┘
 ```
 
-### §7.3 BC Grouping Boundary Rules
+### §七.3 BC 分组边界规则
 
-| Rule | Description |
-|------|-------------|
-| BC inter-communication | Only through Event Bus (BC3); prohibit direct import between BCs |
-| Truth writes | Must go through state-command contract; each BC manages its own tables |
-| Projection rebuild | Any Projection can be idempotently rebuilt from Event Log; rebuild command is standard ops |
-| Evidence immutability | audit / artifact / checkpoint are append-only; used for compliance audit and fault recovery |
-| Migration order | Zone B (Derived) → Zone C (Evidence) → Zone A (Truth); migrate read-heavy, write-light tables first |
+| 规则 | Description |
+|------|------|
+| BC 间communication | onlyvia Event Bus (BC3)；禁止 BC 间directly import |
+| Truth writes | 必须via state-command 契约；BC eachmanage自己的table |
+| Projection 重建 | 任意 Projection 可从 Event Log 幂等重建；rebuild 命令为标准运维操作 |
+| Evidence 不可变 | audit / artifact / checkpoint 只增不改；used for合规审计vs故障恢复 |
+| Outbox/副作用 | 关键Status变化必须via outbox 或 side-effect-ledger 可见，不允许静默外部writes |
+| 迁移顺序 | Zone B (Derived) → Zone C (Evidence) → Zone A (Truth)；先迁读多写少table |
 
 ---
 
-## §8 AI Runtime Support Stack Module Ownership Diagram
+## §八 AI Runtime Support Stack 模块归属图
 
-> **Diagram type: Structure diagram** — Expresses the module ownership and responsibility division of the three AI operations sidecar components (Model Gateway · Prompt Engine · Compliance). Does not express model invocation sequencing or Prompt rendering details.
+> **图class型: 结构图** — table达 AI 运营侧车三大组件（Model Gateway · Prompt Engine · Compliance）的模块归属vs职责分区。不table达模型call时序vs Prompt 渲染细节。
 >
-> **Positioning note**: These three components belong to the "AI Operations sidecar" visual band in the §1 overview diagram, **parallel support** (dashed cross-plane relationship) with the five-plane main kernel, not sub-modules of any single plane. P3/P4 call model-gateway and prompt-engine through contracts, P5 calls compliance through contracts.
+> **定位Description**: 此三组件在 §一 全景图中belongs to"AI 运营侧车"视觉带，vsFive-Plane主核 **并列支撑**（虚线跨平面关系），不is任何单一平面的子模块。P3/P4 via契约call model-gateway 和 prompt-engine，P5 via契约call compliance。
 
 ```text
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                     AI Runtime Support Stack                                 │
-│         (Parallel support, not sub-components of five planes;              │
-│          serves each plane through contracts)                               │
+│               (并列支撑，非Five-Plane子组件; via契约为各平面服务)                │
 │                                                                              │
 │  ┌───────────────────────────────┐  ┌──────────────────────────────────┐    │
-│  │     model-gateway/            │  │      prompt-engine/               │    │
-│  │      Model Gateway            │  │      Prompt Engineering Engine    │    │
-│  │                                │  │                                    │    │
+│  │     model-gateway/ 模型网关    │  │      prompt-engine/              │    │
+│  │                                │  │      Prompt 工程references擎             │    │
 │  │  ┌─────────────┐ ┌──────────┐ │  │  ┌──────────┐ ┌──────────────┐  │    │
 │  │  │provider-    │ │  router/ │ │  │  │registry/ │ │  renderer/   │  │    │
 │  │  │ registry    │ │ cost     │ │  │  │ version  │ │  template    │  │    │
@@ -614,107 +640,107 @@ platform/five-plane-state-evidence/
 │  │  │ budget-guard│ ┌──────────┐ │  └──────────────────────────────────┘    │
 │  │  │ token-meter │ │fallback/ │ │                                          │
 │  │  └─────────────┘ │ provider │ │  ┌──────────────────────────────────┐    │
-│  │  ┌─────────────┐ │ failover │ │  │      compliance/                  │    │
+│  │  ┌─────────────┐ │ failover │ │  │      compliance/ 合规             │    │
 │  │  │  messages/  │ └──────────┘ │  │  ┌──────────┐ ┌──────────────┐  │    │
 │  │  │ token-est   │              │  │  │ erasure/ │ │ encryption/  │  │    │
-│  │  │ message-    │              │  │  │ crypto-   │ │ field-level  │  │    │
+│  │  │ message-    │              │  │  │ crypto-  │ │ field-level  │  │    │
 │  │  │  parts      │              │  │  │  shred   │ │  encrypt     │  │    │
 │  │  └─────────────┘              │  │  └──────────┘ └──────────────┘  │    │
 │  └───────────────────────────────┘  │  ┌──────────┐ ┌──────────────┐  │    │
 │                                      │  │data-     │ │  lineage/    │  │    │
-│  Invocation contracts:               │  │ residency│ │  data-lineage│  │    │
-│  P3 ══model-request══▶ model-gw    │  └──────────┘ └──────────────┘  │    │
-│  P4 ══model-request══▶ model-gw    └──────────────────────────────────┘    │
-│  P3 ══prompt-render══▶ prompt-engine                                       │
-│  P5 ══compliance-cmd══▶ compliance                                        │
+│  call契约:                           │  │ residency│ │  data-lineage│  │    │
+│  P3 ══model-request══▶ model-gw     │  └──────────┘ └──────────────┘  │    │
+│  P4 ══model-request══▶ model-gw     └──────────────────────────────────┘    │
+│  P3 ══prompt-render══▶ prompt-engine                                        │
+│  P5 ══compliance-cmd══▶ compliance                                          │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## §9 Platform Protocol Diagram (Contracts Cross-plane Protocol Chain + Shared Infrastructure)
+## §九 平台协议图（Contracts 跨平面协议链 + Shared 基础设施）
 
-> **Diagram type: Data flow diagram** — Expresses the transmission direction of cross-plane contracts and the service scope of shared infrastructure. Does not express contract internal field definitions or shared module implementation details.
+> **图class型: data流图** — table达跨平面契约的传递方向vs共享基础设施的服务范围。不table达契约内部字段definesvs shared 模块的implementation details。
 >
-> **Protocol chain core path**: The signal transmission of P1→P2→P3→P4→P5 is linked by 7 contract envelopes, each envelope defines the communication protocol between upstream and downstream planes.
+> **协议链核心路径**: P1→P2→P3→P4→P5 的信号传递由 7 个契约信封串联，每个信封defines了上下游平面的communication协议。
 
 ```text
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│               Cross-plane Protocols and Shared Infrastructure                 │
+│                         跨平面协议vs共享基础设施                               │
 │                                                                              │
 │  ┌──────────────────────────────────────────────────────┐                   │
-│  │  contracts/  Cross-plane Protocol Chain              │                   │
+│  │  contracts/  跨平面协议链                              │                   │
 │  │                                                        │                   │
 │  │  ┌────────┐ ┌────────┐ ┌──────────┐ ┌──────────────┐ │                   │
 │  │  │types/  │ │errors  │ │constants/│ │result-       │ │                   │
-│  │  │domain   │ │.ts     │ │time.ts   │ │ envelope/   │ │                   │
-│  │  │ids      │ └────────┘ └──────────┘ └──────────────┘ │                   │
-│  │  │status   │                                            │                   │
+│  │  │domain  │ │.ts     │ │ time.ts  │ │ envelope/    │ │                   │
+│  │  │ids     │ └────────┘ └──────────┘ └──────────────┘ │                   │
+│  │  │status  │                                            │                   │
 │  │  └────────┘ ┌──────────────┐ ┌──────────────────────┐ │                   │
-│  │              │request-     │ │control-directive/     │ │                   │
-│  │              │ envelope/   │ │P2 ══▶ P3 control     │ │                   │
-│  │              │ P1 ══▶ P2   │ │  transmission         │ │                   │
-│  │              └──────────────┘ └──────────────────────┘ │                   │
+│  │              │request-      │ │control-directive/    │ │                   │
+│  │              │ envelope/    │ │ P2 ══▶ P3 传递控制   │ │                   │
+│  │              │ P1 ══▶ P2   │ └──────────────────────┘ │                   │
+│  │              └──────────────┘                          │                   │
 │  │  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐   │                   │
-│  │  │execution-    │ │execution-     │ │state-        │   │                   │
+│  │  │execution-    │ │execution-    │ │state-        │   │                   │
 │  │  │ plan/        │ │ receipt/     │ │ command/     │   │                   │
-│  │  │ P3 ══▶ P4    │ │ P4 ══▶ P3    │ │ P4 ══▶ P5   │   │                   │
+│  │  │ P3 ══▶ P4   │ │ P4 ══▶ P3   │ │ P4 ══▶ P5   │   │                   │
 │  │  └──────────────┘ └──────────────┘ └──────────────┘   │                   │
 │  │  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐   │                   │
-│  │  │delegation-  │ │model-        │ │compliance-   │   │                   │
-│  │  │ request/    │ │ request/     │ │ command/     │   │                   │
-│  │  │ P3 ══▶ HITL  │ │ P3/P4 ══▶ AI│ │ P5 ══▶ Comp   │   │                   │
+│  │  │delegation-   │ │model-        │ │compliance-   │   │                   │
+│  │  │ request/     │ │ request/     │ │ command/     │   │                   │
+│  │  │ P3 ══▶ HITL │ │ P3/P4 ══▶ AI│ │ P5 ══▶ Comp  │   │                   │
 │  │  └──────────────┘ └──────────────┘ └──────────────┘   │                   │
 │  │                                                        │                   │
-│  │  Protocol chain series:                               │                   │
-│  │  request-envelope ──▶ control-directive ──▶           │                   │
-│  │  execution-plan ──▶ execution-receipt ──▶             │                   │
+│  │  协议链串联:                                           │                   │
+│  │  request-envelope ──▶ control-directive ──▶            │                   │
+│  │  execution-plan ──▶ execution-receipt ──▶              │                   │
 │  │  state-command                                         │                   │
 │  └──────────────────────────────────────────────────────┘                   │
 │                                                                              │
 │  ┌──────────────────────────────────────────────────────┐                   │
-│  │  shared/  Cross-plane Shared Infrastructure           │                   │
+│  │  shared/  跨平面共享基础设施                           │                   │
 │  │                                                        │                   │
 │  │  ┌──────────┐ ┌───────────┐ ┌────────────────────┐   │                   │
 │  │  │ utils/   │ │lifecycle/ │ │      cache/        │   │                   │
 │  │  │bounded-  │ │service-   │ │  cache-facade      │   │                   │
 │  │  │ cache    │ │ registry  │ │  cache-bootstrap   │   │                   │
-│  │  └──────────┘ │evolution  │ │  cache-policy       │   │                   │
-│  │                └───────────┘ │  cache-invalidate   │   │                   │
-│  │                               │  cache-key-factory  │   │                   │
-│  │  ┌──────────────────────┐    │  cache-metrics      │   │                   │
+│  │  └──────────┘ │evolution  │ │  cache-policy      │   │                   │
+│  │                └───────────┘ │  cache-invalidate  │   │                   │
+│  │                               │  cache-key-factory│   │                   │
+│  │  ┌──────────────────────┐    │  cache-metrics     │   │                   │
 │  │  │   observability/     │    └────────────────────┘   │                   │
 │  │  │  structured-logger   │                              │                   │
-│  │  │  otel-bootstrap        │    ┌────────────────────┐   │                   │
-│  │  │  metrics-service      │    │    stability/     │   │                   │
-│  │  │  health-service       │    │  golden-task-runner│   │                   │
-│  │  │  diagnostics          │    │  vcr-replay        │   │                   │
-│  │  │  inspect-service      │    │  stable-acceptance │   │                   │
-│  │  │  sli/slo/anomaly       │    │  30+ rehearsal      │   │                   │
-│  │  │  agent-state-view      │    │   scenarios         │   │                   │
+│  │  │  otel-bootstrap      │    ┌────────────────────┐   │                   │
+│  │  │  metrics-service     │    │    stability/       │   │                   │
+│  │  │  health-service      │    │  golden-task-runner │   │                   │
+│  │  │  diagnostics         │    │  vcr-replay         │   │                   │
+│  │  │  inspect-service     │    │  stable-acceptance  │   │                   │
+│  │  │  sli/slo/anomaly     │    │  30+ rehearsal      │   │                   │
+│  │  │  agent-state-view    │    │   scenarios         │   │                   │
 │  │  └──────────────────────┘    └────────────────────┘   │                   │
 │  └──────────────────────────────────────────────────────┘                   │
 │                                                                              │
-│  Contract data flow:                                                        │
-│  P1 ──request-envelope──▶ P2 ──control-directive──▶ P3                    │
-│  P3 ──execution-plan──▶ P4 ──execution-receipt──▶ P3                     │
+│  契约data流向:                                                               │
+│  P1 ──request-envelope──▶ P2 ──control-directive──▶ P3                      │
+│  P3 ──execution-plan──▶ P4 ──execution-receipt──▶ P3                        │
 │  P4 ──state-command──▶ P5                                                   │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## §10 Layer 3 `domains/` Business Domain Access Layer Framework Diagram
+## §十 Layer 3 `domains/` 业务域接入层框架图
 
-> **Diagram type: Structure diagram** — Expresses the ownership and responsibility division of modules under domains/. Does not express the runtime flow of domain registration or Plugin SPI invocation details.
+> **图class型: 结构图** — table达 domains/ 下各模块的归属vs职责分区。不table达域注册的运lines时流程vs Plugin SPI call细节。
 
 ```text
 domains/
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                    Layer 3: Business Domain Access Layer                    │
+│                    Layer 3: 业务域接入层                                      │
 │                                                                              │
 │  ┌──────────────────────────────────────────────────────────┐               │
-│  │  registry/  Domain Registry (Core Hub)                   │               │
+│  │  registry/  域注册中心（核心枢纽）                         │               │
 │  │  ┌────────────┐ ┌──────────────┐ ┌──────────────────┐   │               │
 │  │  │domain-     │ │contract-     │ │workflow-registry │   │               │
 │  │  │ registry   │ │ registry     │ │tool-bundle-      │   │               │
@@ -728,267 +754,239 @@ domains/
 │                                                                              │
 │  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────────┐       │
 │  │risk-profile/ │ │knowledge-    │ │eval-         │ │prompt-       │       │
-│  │ Domain risk  │ │ schema/      │ │ framework/   │ │ library/     │       │
-│  │ profile      │ │ Domain       │ │ Domain eval  │ │ Domain       │       │
-│  │ [NEW §37]    │ │ knowledge    │ │ framework    │ │ Prompt lib  │       │
-│  │              │ │ structure    │ │ [NEW §37]    │ │ [NEW §37]   │       │
-│  │              │ │ [NEW §37]    │ │              │ │              │       │
-│  └──────────────┘ └──────────────┘ └──────────────┘ └──────────────┘       │
+│  │ 域风险画像   │ │ schema/      │ │ framework/   │ │ library/     │       │
+│  │ [NEW §37]    │ │ 域知识结构   │ │ 域评测框架   │ │ 域 Prompt 库 │       │
+│  └──────────────┘ │ [NEW §37]    │ │ [NEW §37]    │ │ [NEW §37]    │       │
+│                    └──────────────┘ └──────────────┘ └──────────────┘       │
 │  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐                        │
 │  │recipes/      │ │interaction-  │ │governance/   │                        │
-│  │ DomainRecipe │ │ policy/      │ │ Domain        │                        │
-│  │ Prototype    │ │ Cross-domain │ │ governance    │                        │
-│  │ templates    │ │ interaction  │ │ division-     │                        │
-│  │ [NEW §38]    │ │ policy       │ │  loader        │                        │
-│  │              │ │ [NEW §37]    │ │ hr-role-gov   │                        │
-│  └──────────────┘ └──────────────┘ └──────────────┘                        │
+│  │ DomainRecipe │ │ policy/      │ │ 域治理       │                        │
+│  │ 原型模板     │ │ 跨域交互策略 │ │ division-    │                        │
+│  │ [NEW §38]    │ │ [NEW §37]    │ │  loader      │                        │
+│  └──────────────┘ └──────────────┘ │ hr-role-gov  │                        │
+│                                     └──────────────┘                        │
 │  ┌──────────────┐ ┌──────────────┐                                         │
-│  │  coding/     │ │ operations/  │  Domain instance examples                │
-│  │  Coding      │ │  Operations   │  (Specific business domains based on    │
-│  │  domain      │ │  domain       │  registry registration)                 │
+│  │  coding/     │ │ operations/  │  域实例示例                              │
+│  │  code开发域  │ │  运维域       │  (based on registry 注册的具体业务域)       │
 │  └──────────────┘ └──────────────┘                                         │
+│  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐                       │
+│  │   yono/      │ │financial-    │ │quant-trading/│  业务域实例            │
+│  │ Yono Business│ │ services/    │ │ 量化交易域   │  不belongs to框架基础设施    │
+│  └──────────────┘ └──────────────┘ └──────────────┘                       │
 │                                                                              │
-│  Access flow: Business side ──▶ registry(register DomainDescriptor) ──▶   │
+│  接入流: 业务方 ──▶ registry(注册 DomainDescriptor) ──▶                     │
 │          risk-profile + knowledge + eval + prompt ──▶                       │
-│          recipes(generate Recipe) ──▶ platform/(P3 orchestration available) │
+│          recipes(生成 Recipe) ──▶ platform/(P3 编排可用)                    │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## §11 Layer 4 `interaction/` Intelligent Interaction Layer Framework Diagram
+## §十一 Layer 4 `interaction/` 智能交互层框架图
 
-> **Diagram type: Structure diagram** — Expresses the ownership and responsibility division of modules under interaction/. Does not express natural language parsing pipeline and autonomy state machine transition details.
+> **图class型: 结构图** — table达 interaction/ 下各模块的归属vs职责分区。不table达自然语言解析流水线vs自主权Status机转换细节。
 >
-> This layer consists entirely of newly built modules (NEW), with no old system migration files.
+> 本层全部为新建模块（NEW），no老系统迁移文件。
 
 ```text
 interaction/
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                 Layer 4: Intelligent Interaction Layer (User-side OS)          │
+│                 Layer 4: 智能交互层（user侧操作系统）                         │
 │                                                                              │
 │  ┌──────────────────────────┐  ┌──────────────────────────┐                 │
 │  │   nl-gateway/ [§39]      │  │  goal-decomposer/ [§40]  │                 │
-│  │   Natural language task   │  │  Goal decomposition      │                 │
-│  │   entry                   │  │  engine                   │                 │
+│  │   自然语言任务入口        │  │  目标分解references擎             │                 │
 │  │  ┌────────────────────┐  │  │  ┌────────────────────┐  │                 │
 │  │  │ intent-parser/     │  │  │  │ planner/           │  │                 │
-│  │  │  Intent parsing    │  │  │  │  template/LLM/      │  │                 │
-│  │  │ slot-resolver/     │  │  │  │  hybrid/human       │  │                 │
-│  │  │  Slot extraction   │  │  │  │ dependency-graph/  │  │                 │
-│  │  │ ambiguity-handler/ │  │  │  │  Task dependency    │  │                 │
-│  │  │  Disambiguation     │  │  │  │  DAG                │  │                 │
-│  │  │  dialog             │  │  │  │ validator/          │  │                 │
-│  │  └────────────────────┘  │  │  │  Decomposition       │  │                 │
-│  └──────────────────────────┘  │  │  result validation  │  │                 │
-│                                 └──────────────────────────┘                 │
-│  ┌──────────────────────────┐  ┌──────────────────────────┐                 │
-│  │  proactive-agent/ [§41]  │  │    autonomy/ [§42]       │                 │
-│  │  Proactive Agent         │  │  Progressive autonomy     │                 │
-│  │  framework               │  │  model                    │                 │
-│  │  ┌────────────────────┐  │  │  ┌────────────────────┐  │                 │
-│  │  │ trigger-engine/    │  │  │  │ trust-scorer/      │  │                 │
-│  │  │  cron/event/thresh │  │  │  │  Trust scoring      │  │                 │
-│  │  │ schedule-manager/  │  │  │  │ level-manager/     │  │                 │
-│  │  │  Scheduling mgmt    │  │  │  │  Autonomy level      │  │                 │
-│  │  │ event-watcher/     │  │  │  │  state machine      │  │                 │
-│  │  │  Event-driven       │  │  │  │ promotion-engine/  │  │                 │
-│  │  │  wake-up           │  │  │  │  Upgrade/downgrade   │  │                 │
-│  │  └────────────────────┘  │  │  │  rule engine        │  │                 │
+│  │  │  意图解析           │  │  │  │  template/LLM/     │  │                 │
+│  │  │ slot-resolver/     │  │  │  │  hybrid/human      │  │                 │
+│  │  │  槽位提取           │  │  │  │ dependency-graph/  │  │                 │
+│  │  │ ambiguity-handler/ │  │  │  │  任务relies on DAG      │  │                 │
+│  │  │  歧义消解对话       │  │  │  │ validator/         │  │                 │
+│  │  └────────────────────┘  │  │  │  分解结果校验      │  │                 │
 │  └──────────────────────────┘  │  └────────────────────┘  │                 │
 │                                 └──────────────────────────┘                 │
 │  ┌──────────────────────────┐  ┌──────────────────────────┐                 │
-│  │   dashboard/ [§43]       │  │      ux/ [§44]           │                 │
-│  │   Unified ops dashboard │  │   Non-technical user     │                 │
-│  │  ┌────────────────────┐  │  │   experience              │                 │
-│  │  │ metric-aggregator/ │  │  │  ┌────────────────────┐  │                 │
-│  │  │  Metric           │  │  │  │ wizard/            │  │                 │
-│  │  │  aggregation       │  │  │  │  Visual domain     │  │                 │
-│  │  │ health-scorer/     │  │  │  │  access wizard     │  │                 │
-│  │  │  Health scoring    │  │  │  │ template-engine/   │  │                 │
-│  │  │ alert-router/      │  │  │  │  Visual workflow   │  │                 │
-│  │  │  Alert routing     │  │  │  │  construction      │  │                 │
-│  │  └────────────────────┘  │  │  │ onboarding/        │  │                 │
-│  └──────────────────────────┘  │  │  First-time use     │  │                 │
-│                                 │  │  guide experience   │  │                 │
-│                                 │  └────────────────────┘  │                 │
-│                                 └──────────────────────────┘                 │
+│  │  proactive-agent/ [§41]  │  │    autonomy/ [§42]       │                 │
+│  │  主动 Agent 框架         │  │  渐进自主权模型           │                 │
+│  │  ┌────────────────────┐  │  │  ┌────────────────────┐  │                 │
+│  │  │ trigger-engine/    │  │  │  │ trust-scorer/      │  │                 │
+│  │  │  cron/event/thresh │  │  │  │  信任评分           │  │                 │
+│  │  │ schedule-manager/  │  │  │  │ level-manager/     │  │                 │
+│  │  │  调度manage           │  │  │  │  自主权级别Status机  │  │                 │
+│  │  │ event-watcher/     │  │  │  │ promotion-engine/  │  │                 │
+│  │  │  事件驱动唤醒       │  │  │  │  升降级规则references擎    │  │                 │
+│  │  └────────────────────┘  │  │  └────────────────────┘  │                 │
+│  └──────────────────────────┘  └──────────────────────────┘                 │
 │                                                                              │
-│  Interaction flow:                                                           │
-│  User NL ──▶ nl-gateway(parse) ──▶ goal-decomposer(decompose)              │
-│  ──▶ platform/P3(orchestrate) ──▶ autonomy(autonomy control)              │
-│  proactive-agent(trigger) ──▶ nl-gateway ──▶ orchestrate                   │
-│  dashboard ◀── P5(aggregate display)   ux ──▶ domains/(guide access)       │
+│  ┌──────────────────────────┐  ┌──────────────────────────┐                 │
+│  │   dashboard/ [§43]       │  │      ux/ [§44]           │                 │
+│  │   统一运维看板           │  │   非技术user体验          │                 │
+│  │  ┌────────────────────┐  │  │  ┌────────────────────┐  │                 │
+│  │  │ metric-aggregator/ │  │  │  │ wizard/            │  │                 │
+│  │  │  指标聚合           │  │  │  │  可视化域接入向导  │  │                 │
+│  │  │ health-scorer/     │  │  │  │ template-engine/   │  │                 │
+│  │  │  健康评分           │  │  │  │  可视化工作流搭建  │  │                 │
+│  │  │ alert-router/      │  │  │  │ onboarding/        │  │                 │
+│  │  │  告警路由           │  │  │  │  首iterationsusesreferences导体验  │  │                 │
+│  │  └────────────────────┘  │  │  └────────────────────┘  │                 │
+│  └──────────────────────────┘  └──────────────────────────┘                 │
+│                                                                              │
+│  交互流:                                                                    │
+│  user自然语言 ──▶ nl-gateway(解析) ──▶ goal-decomposer(分解)               │
+│  ──▶ platform/P3(编排) ──▶ autonomy(自主权控制)                            │
+│  proactive-agent(主动触发) ──▶ nl-gateway ──▶ 编排                         │
+│  dashboard ◀── P5(聚合展示)   ux ──▶ domains/(references导接入)                    │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## §12 Layer 5 `org-governance/` Organization Governance Layer Framework Diagram
+## §十二 Layer 5 `org-governance/` 组织治理层框架图
 
-> **Diagram type: Structure diagram** — Expresses the ownership and responsibility division of modules under org-governance/. Does not express approval routing algorithms or SCIM synchronization protocol details.
+> **图class型: 结构图** — table达 org-governance/ 下各模块的归属vs职责分区。不table达审批路由算法vs SCIM synchronous协议细节。
 
 ```text
 org-governance/
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                      Layer 5: Organization Governance Layer                  │
+│                      Layer 5: 组织治理层                                     │
 │                                                                              │
 │  ┌──────────────────────────┐  ┌──────────────────────────┐                 │
-│  │   org-model/ [§46]       │  │ approval-routing/ [§47] │                 │
-│  │   Organization          │  │  Organization approval   │                 │
-│  │   hierarchy model        │  │  routing                  │                 │
+│  │   org-model/ [§46]       │  │ approval-routing/ [§47]  │                 │
+│  │   组织层iterations模型           │  │  组织审批路由             │                 │
 │  │  ┌────────────────────┐  │  │  ┌────────────────────┐  │                 │
-│  │  │ hierarchy/          │  │  │  │ route-engine/      │  │                 │
-│  │  │  company/division/  │  │  │  │  org-chart/amount/ │  │                 │
-│  │  │  department/team    │  │  │  │  SoD routing       │  │                 │
-│  │  │ org-node/           │  │  │  │ escalation/        │  │                 │
-│  │  │  CRUD + inheritance │  │  │  │  Approval          │  │                 │
-│  │  │ sync/               │  │  │  │  escalation        │  │                 │
-│  │  │  SCIM/HR-API/manual │  │  │  │ delegation/        │  │                 │
-│  │  └────────────────────┘  │  │  │  Leave delegation   │  │                 │
+│  │  │ hierarchy/         │  │  │  │ route-engine/      │  │                 │
+│  │  │  company/division/ │  │  │  │  org-chart/amount/ │  │                 │
+│  │  │  department/team   │  │  │  │  SoD routing       │  │                 │
+│  │  │ org-node/          │  │  │  │ escalation/        │  │                 │
+│  │  │  CRUD + 继承       │  │  │  │  审批升级           │  │                 │
+│  │  │ sync/              │  │  │  │ delegation/        │  │                 │
+│  │  │  SCIM/HR-API/手动  │  │  │  │  请假代理           │  │                 │
+│  │  └────────────────────┘  │  │  └────────────────────┘  │                 │
 │  └──────────────────────────┘  └──────────────────────────┘                 │
 │                                                                              │
 │  ┌──────────────────────────┐  ┌──────────────────────────┐                 │
-│  │   sso-scim/ [§48]       │  │compliance-engine/ [§49]  │                 │
-│  │   SSO/SCIM integration  │  │  Department-level       │                 │
-│  │  ┌────────────────────┐  │  │  compliance policy      │                 │
-│  │  │ saml/              │  │  │  engine                │                 │
-│  │  │  SAML SSO          │  │  │  ┌────────────────────┐  │                 │
-│  │  │ oidc/              │  │  │  │ policy-resolver/   │  │                 │
-│  │  │  OIDC SSO          │  │  │  │  Inheritance +      │  │                 │
-│  │  │ scim-sync/         │  │  │  │  override           │  │                 │
-│  │  │  User/group sync    │  │  │  │ inheritance/        │  │                 │
-│  │  └────────────────────┘  │  │  │  Child levels can    │  │                 │
-│  └──────────────────────────┘  │  │  │  only tighten       │  │                 │
-│                                 │  │  │ audit-enforcer/    │  │                 │
-│                                 │  │  │  Compliance audit  │  │                 │
-│                                 │  │  │  enforcement       │  │                 │
-│                                 │  │  └────────────────────┘  │                 │
-│                                 │  └──────────────────────────┘                 │
+│  │   sso-scim/ [§48]        │  │compliance-engine/ [§49]  │                 │
+│  │   SSO/SCIM 集成          │  │  部门级合规策略references擎       │                 │
+│  │  ┌────────────────────┐  │  │  ┌────────────────────┐  │                 │
+│  │  │ saml/              │  │  │  │ policy-resolver/   │  │                 │
+│  │  │  SAML SSO          │  │  │  │  继承 + override   │  │                 │
+│  │  │ oidc/              │  │  │  │ inheritance/       │  │                 │
+│  │  │  OIDC SSO          │  │  │  │  子级只能收紧      │  │                 │
+│  │  │ scim-sync/         │  │  │  │ audit-enforcer/    │  │                 │
+│  │  │  user/组synchronous        │  │  │  │  合规审计执lines      │  │                 │
+│  │  └────────────────────┘  │  │  └────────────────────┘  │                 │
+│  └──────────────────────────┘  └──────────────────────────┘                 │
 │                                                                              │
 │  ┌──────────────────────────┐  ┌──────────────────────────┐                 │
-│  │knowledge-boundary/ [§50]│  │delegated-governance/[§51]│                 │
-│  │  Knowledge domain       │  │  Hierarchical governance  │                 │
-│  │  isolation and          │  │  delegation               │                 │
-│  │  controlled sharing      │  │                           │                 │
+│  │knowledge-boundary/ [§50] │  │delegated-governance/[§51]│                 │
+│  │  知识域隔离vs受控共享    │  │  层级治理委托             │                 │
 │  │  ┌────────────────────┐  │  │  ┌────────────────────┐  │                 │
-│  │  │ boundary-manager/   │  │  │  │ scope-manager/     │  │                 │
-│  │  │  strict/controlled  │  │  │  │  Delegation scope  │  │                 │
-│  │  │  /open             │  │  │  │  management        │  │                 │
-│  │  │ sharing-gate/       │  │  │  │ delegation-        │  │                 │
-│  │  │  Cross-domain       │  │  │  │  registry/         │  │                 │
-│  │  │  sharing gateway   │  │  │  │  Delegation        │  │                 │
-│  │  │ access-log/        │  │  │  │  registry          │  │                 │
-│  │  │  Access audit      │  │  │  └────────────────────┘  │                 │
-│  │  └────────────────────┘  │  └──────────────────────────┘                 │
+│  │  │ boundary-manager/  │  │  │  │ scope-manager/     │  │                 │
+│  │  │  strict/controlled │  │  │  │  委托范围manage      │  │                 │
+│  │  │  /open             │  │  │  │ delegation-        │  │                 │
+│  │  │ sharing-gate/      │  │  │  │  registry/         │  │                 │
+│  │  │  跨域共享网关      │  │  │  │  委托注册table        │  │                 │
+│  │  │ access-log/        │  │  │  └────────────────────┘  │                 │
+│  │  │  访问审计          │  │  └──────────────────────────┘                 │
+│  │  └────────────────────┘  │                                                │
 │  └──────────────────────────┘                                                │
 │                                                                              │
-│  Governance flow:                                                            │
-│  org-model(org tree) ──▶ approval-routing(approval routing)                │
-│  sso-scim(identity sync) ──▶ platform/P2/iam                                │
+│  治理流:                                                                    │
+│  org-model(组织树) ──▶ approval-routing(审批路由)                           │
+│  sso-scim(身份synchronous) ──▶ platform/P2/iam                                    │
 │  compliance-engine ──▶ platform/P2/policy-center                           │
-│  knowledge-boundary ──▶ platform/P5/knowledge(isolation control)            │
+│  knowledge-boundary ──▶ platform/P5/knowledge(隔离控制)                    │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## §13 Layer 6 `scale-ecosystem/` Scale Ecosystem + Ecology Layer Framework Diagram
+## §十三 Layer 6 `scale-ecosystem/` 规模化运lines + 生态层框架图
 
-> **Diagram type: Structure diagram** — Expresses the ownership and responsibility division of modules under scale-ecosystem/. Does not express cross-Region data synchronization protocol or SLA tiering algorithm details.
+> **图class型: 结构图** — table达 scale-ecosystem/ 下各模块的归属vs职责分区。不table达跨 Region datasynchronous协议vs SLA 分级算法细节。
 
 ```text
 scale-ecosystem/
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                  Layer 6: Scale Ecosystem + Ecology Layer                   │
+│                  Layer 6: 规模化运lines + 生态层                                 │
 │                                                                              │
 │  ┌──────────────────────────┐  ┌──────────────────────────┐                 │
-│  │  multi-region/ [§52]      │  │ resource-manager/ [§53]  │                 │
-│  │  Multi-Region deployment  │  │  Resource competition     │                 │
-│  │  ┌────────────────────┐  │  │  management               │                 │
-│  │  │ region-router/      │  │  │  ┌────────────────────┐  │                 │
-│  │  │  Region routing   │  │  │  │  │ fair-queue/       │  │                 │
-│  │  │  decision         │  │  │  │  │  Weighted fair    │  │                 │
-│  │  │ data-replicator/  │  │  │  │  │  queue            │  │                 │
-│  │  │  Cross-Region     │  │  │  │  │ quota-enforcer/  │  │                 │
-│  │  │  data sync        │  │  │  │  │  Quota           │  │                 │
-│  │  │ failover-ctrl/    │  │  │  │  │  enforcement     │  │                 │
-│  │  │  Region failover   │  │  │  │  │ preemption/     │  │                 │
-│  │  │  control          │  │  │  │  │  Priority         │  │                 │
-│  │  └────────────────────┘  │  │  │  │  preemption      │  │                 │
-│  └──────────────────────────┘  │  └────────────────────┘  │                 │
-│                                 └──────────────────────────┘                 │
-│  ┌──────────────────────────┐  ┌──────────────────────────┐                 │
-│  │   sla-engine/ [§54]      │  │   marketplace/ [§55]    │                 │
-│  │   SLA tiered guarantee   │  │   Agent marketplace and   │                 │
-│  │   engine                 │  │   ecosystem               │                 │
+│  │  multi-region/ [§52]     │  │ resource-manager/ [§53]  │                 │
+│  │  多 Region 部署          │  │  资源竞争manage             │                 │
 │  │  ┌────────────────────┐  │  │  ┌────────────────────┐  │                 │
-│  │  │ tier-resolver/    │  │  │  │  │ catalog/          │  │                 │
-│  │  │  SLA tier        │  │  │  │  │  Marketplace      │  │                 │
-│  │  │  resolution       │  │  │  │  │  catalog          │  │                 │
-│  │  │ resource-allocator/│  │  │  │  │ certification/   │  │                 │
-│  │  │  Resource         │  │  │  │  │  Certification &  │  │                 │
-│  │  │  allocation       │  │  │  │  │  security scan   │  │                 │
-│  │  │ breach-detector/ │  │  │  │  │ publisher/       │  │                 │
-│  │  │  SLA breach       │  │  │  │  │  Publish mgmt    │  │                 │
-│  │  │  detection        │  │  │  │  │ billing-service  │  │                 │
-│  │  └────────────────────┘  │  │  │ marketplace-gov   │  │                 │
+│  │  │ region-router/     │  │  │  │ fair-queue/        │  │                 │
+│  │  │  Region 路由Decision   │  │  │  │  加权公平队列      │  │                 │
+│  │  │ data-replicator/   │  │  │  │ quota-enforcer/    │  │                 │
+│  │  │  跨 Region datasynchronous│  │  │  │  配额执lines          │  │                 │
+│  │  │ failover-ctrl/     │  │  │  │ preemption/        │  │                 │
+│  │  │  Region 故障切换   │  │  │  │  优先级抢占        │  │                 │
+│  │  └────────────────────┘  │  │  └────────────────────┘  │                 │
+│  └──────────────────────────┘  └──────────────────────────┘                 │
+│                                                                              │
+│  ┌──────────────────────────┐  ┌──────────────────────────┐                 │
+│  │   sla-engine/ [§54]      │  │   marketplace/ [§55]     │                 │
+│  │   SLA 分级保障references擎       │  │   Agent 市场vs生态        │                 │
+│  │  ┌────────────────────┐  │  │  ┌────────────────────┐  │                 │
+│  │  │ tier-resolver/     │  │  │  │ catalog/           │  │                 │
+│  │  │  SLA 级别解析      │  │  │  │  市场目录           │  │                 │
+│  │  │ resource-allocator/│  │  │  │ certification/     │  │                 │
+│  │  │  资源分配          │  │  │  │  authenticationvssecurity扫描    │  │                 │
+│  │  │ breach-detector/   │  │  │  │ publisher/         │  │                 │
+│  │  │  SLA 违约检测      │  │  │  │  发布manage          │  │                 │
+│  │  └────────────────────┘  │  │  │ billing-service    │  │                 │
+│  └──────────────────────────┘  │  │ marketplace-gov    │  │                 │
+│                                 │  └────────────────────┘  │                 │
+│  ┌──────────────────────────┐  └──────────────────────────┘                 │
+│  │  feedback-loop/ [§56]    │                                                │
+│  │  反馈驱动持续改进        │  ┌──────────────────────────┐                 │
+│  │  ┌────────────────────┐  │  │  integration/ [§57]      │                 │
+│  │  │ collector/         │  │  │  外部系统集成框架        │                 │
+│  │  │  信号采集           │  │  │  ┌────────────────────┐  │                 │
+│  │  │ analyzer/          │  │  │  │ connector-registry/ │  │                 │
+│  │  │  信号分析           │  │  │  │  connect器注册         │  │                 │
+│  │  │ improvement-       │  │  │  │ connector-runtime/  │  │                 │
+│  │  │  tracker/          │  │  │  │  connect器运lines时       │  │                 │
+│  │  │  改进跟踪          │  │  │  │ health-monitor/     │  │                 │
+│  │  └────────────────────┘  │  │  │  connect器健康监控     │  │                 │
 │  └──────────────────────────┘  │  └────────────────────┘  │                 │
 │                                 └──────────────────────────┘                 │
-│  ┌──────────────────────────┐                                                │
-│  │  feedback-loop/ [§56]    │  ┌──────────────────────────┐                 │
-│  │  Feedback-driven          │  │  integration/ [§57]      │                 │
-│  │  continuous improvement   │  │  External system         │                 │
-│  │  ┌────────────────────┐  │  │  integration framework    │                 │
-│  │  │ collector/         │  │  │  ┌────────────────────┐  │                 │
-│  │  │  Signal collection  │  │  │  │  │ connector-registry/│  │                 │
-│  │  │ analyzer/          │  │  │  │  │  Connector         │  │                 │
-│  │  │  Signal analysis   │  │  │  │  │  registration      │  │                 │
-│  │  │ improvement-       │  │  │  │  │ connector-runtime/ │  │                 │
-│  │  │  tracker/          │  │  │  │  │  Connector runtime  │  │                 │
-│  │  │  Improvement       │  │  │  │  │ health-monitor/   │  │                 │
-│  │  │  tracking          │  │  │  │  │  │  Connector health  │  │                 │
-│  │  └────────────────────┘  │  │  │  │  monitoring       │  │                 │
-│  └──────────────────────────┘  │  └────────────────────┘  │                 │
-│                                 └──────────────────────────┘                 │
-│  Scale flow:                                                                 │
-│  multi-region ──▶ platform/P4/ha(cross-Region coordination)                  │
-│  resource-manager ──▶ platform/P4/dispatcher(quota+preemption)             │
-│  sla-engine ──▶ resource-manager(allocate by SLA)                          │
-│  marketplace ──▶ domains/registry(Agent listing)                            │
-│  feedback-loop ◀── P5/events(signal collection) ──▶ ops-maturity/(improve)  │
-│  integration ──▶ platform/P4/tool-executor(external connectors)              │
+│  规模化流:                                                                  │
+│  multi-region ──▶ platform/P4/ha(跨 Region 协调)                           │
+│  resource-manager ──▶ platform/P4/dispatcher(配额+抢占)                    │
+│  sla-engine ──▶ resource-manager(按 SLA 分配)                              │
+│  marketplace ──▶ domains/registry(Agent 上架)                              │
+│  feedback-loop ◀── P5/events(信号采集) ──▶ ops-maturity/(改进)            │
+│  integration ──▶ platform/P4/tool-executor(外部connect器)                     │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## §14 Layer 7 `ops-maturity/` Operations Maturity Layer Framework Diagram
+## §十四 Layer 7 `ops-maturity/` 运营成熟度层框架图
 
-> **Diagram type: Structure diagram** — Expresses the ownership and responsibility division of 11 modules under ops-maturity/. Does not express evidence chain collection pipeline or drift detection algorithm details.
+> **图class型: 结构图** — table达 ops-maturity/ 下 11 个模块的归属vs职责分区。不table达证据链采集流水线vs漂移检测算法细节。
 >
-> This layer contains 11 modules and is the "top-level encapsulation" of system capabilities, mostly newly built.
+> 本层含 11 个模块，is系统能力的 "顶层封装"，大部分为新建。
 
 ```text
 ops-maturity/
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                     Layer 7: Operations Maturity Layer                      │
+│                     Layer 7: 运营成熟度层                                    │
 │                                                                              │
 │  ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐               │
 │  │explainability/  │ │  emergency/     │ │agent-lifecycle/ │               │
-│  │ Explainability  │ │  Emergency      │ │ Agent lifecycle  │               │
-│  │ [§59]           │ │  brake [§60]    │ │  [§61]          │               │
-│  │ evidence-       │ │  panic-ctrl     │ │ agent-registry  │               │
-│  │  collector      │ │  forensic-      │ │ version-mgr     │               │
-│  │ causal-chain    │ │   snapshot      │ │ canary-ctrl     │               │
-│  │ explanation-    │ │  resume-        │ │ retirement      │               │
-│  │  renderer/cache │ │   protocol      │ │                 │               │
+│  │ 可解释性 [§59]  │ │  紧急制动 [§60] │ │ Agent 生命cycle  │               │
+│  │ evidence-       │ │  panic-ctrl     │ │  [§61]          │               │
+│  │  collector      │ │  forensic-      │ │ agent-registry  │               │
+│  │ causal-chain    │ │   snapshot      │ │ version-mgr     │               │
+│  │ explanation-    │ │  resume-        │ │ canary-ctrl     │               │
+│  │  renderer/cache │ │   protocol      │ │ retirement      │               │
 │  └─────────────────┘ └─────────────────┘ └─────────────────┘               │
 │                                                                              │
 │  ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐               │
-│  │edge-runtime/    │ │drift-detection/ │ │ cost-optimizer/ │               │
-│  │  Offline/edge   │ │  Behavior       │ │ Cost optimization│              │
-│  │  [§62]         │ │  drift [§63]     │ │  [§64]          │               │
+│  │ edge-runtime/   │ │drift-detection/ │ │ cost-optimizer/ │               │
+│  │  离线/边缘 [§62]│ │ lines为漂移 [§63]  │ │ 成本优化 [§64]  │               │
 │  │ edge-orchestratr│ │ fingerprint     │ │ attribution     │               │
 │  │ edge-executor   │ │ changepoint     │ │ recommendation  │               │
 │  │ local-model     │ │ cross-agent     │ │ simulator       │               │
@@ -997,8 +995,7 @@ ops-maturity/
 │                                                                              │
 │  ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐               │
 │  │workflow-debugger│ │compliance-      │ │capacity-planner/│               │
-│  │ Visual debugging│ │ reporter/ [§66] │ │  Capacity       │               │
-│  │ [§65]          │ │                  │ │  planning [§67] │               │
+│  │ 可视化调试[§65] │ │ reporter/ [§66] │ │ 容量规划 [§67]  │               │
 │  │ timeline-render │ │ template-reg    │ │ trend-analyzer  │               │
 │  │ breakpoint-mgr  │ │ evidence-mapper │ │ forecaster      │               │
 │  │ run-comparator  │ │ report-renderer │ │ simulator       │               │
@@ -1006,38 +1003,37 @@ ops-maturity/
 │                                                                              │
 │  ┌─────────────────┐ ┌──────────────────────────────────┐                   │
 │  │  multimodal/    │ │   platform-ops-agent/ [§69]      │                   │
-│  │  Multimodal      │ │   Platform self-ops Agent        │                   │
-│  │  [§68]         │ │                                   │                   │
+│  │  多模态 [§68]   │ │   平台自运维 Agent                │                   │
 │  │ image-processor │ │  ┌─────────────┐ ┌────────────┐  │                   │
 │  │ speech-process  │ │  │incident-    │ │config-     │  │                   │
 │  │ document-parser │ │  │ diagnoser   │ │ optimizer  │  │                   │
 │  │ modality-router │ │  │capacity-    │ │dev-        │  │                   │
-│  └─────────────────┘ │  │ predictor    │ │ assistant  │  │                   │
-│                      │  │health-       │ └────────────┘  │                   │
-│                      │  │ monitor      │                  │                   │
-│                      │  └─────────────┘                  │                   │
-│                      └──────────────────────────────────┘                   │
+│  └─────────────────┘ │  │ predictor   │ │ assistant  │  │                   │
+│                       │  │health-      │ └────────────┘  │                   │
+│                       │  │ monitor     │                  │                   │
+│                       │  └─────────────┘                  │                   │
+│                       └──────────────────────────────────┘                   │
 │                                                                              │
-│  Operations flow:                                                            │
-│  explainability ◀── P5/events+artifacts(collect evidence chain)             │
-│  emergency ──▶ platform/P2/incident-control(global braking)                │
-│  drift-detection ◀── P5/events(behavior fingerprint comparison)           │
-│  platform-ops-agent ──▶ platform/ various planes(self-ops closed loop)             │
+│  运营流:                                                                    │
+│  explainability ◀── P5/events+artifacts(采集证据链)                         │
+│  emergency ──▶ platform/P2/incident-control(globally制动)                       │
+│  drift-detection ◀── P5/events(lines为指纹对比)                               │
+│  platform-ops-agent ──▶ 自身call platform/ 各平面(自运维闭环)              │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## §15 Cross-layer Module Framework Diagram (plugins · sdk · apps)
+## §十五 跨层模块框架图（plugins · sdk · apps）
 
-> **Diagram type: Structure diagram** — Expresses the module ownership of plugins/ · sdk/ · apps/ and cross-layer invocation entry points. Does not express plugin sandbox isolation mechanism or CLI command implementation details.
+> **图class型: 结构图** — table达 plugins/ · sdk/ · apps/ 的模块归属vs跨层call入口。不table达插件沙箱隔离机制vs CLI 命令implementation details。
 
 ```text
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                           Cross-layer Modules                                 │
+│                           跨层模块                                           │
 │                                                                              │
 │  ┌───────────────────────────────────────┐                                  │
-│  │  plugins/  Plugin Ecosystem           │                                  │
+│  │  plugins/  插件生态系统                │                                  │
 │  │                                        │                                  │
 │  │  ┌──────────┐ ┌──────────┐ ┌────────┐ │                                  │
 │  │  │adapters/ │ │planners/ │ │present-│ │                                  │
@@ -1047,84 +1043,82 @@ ops-maturity/
 │  │  │ github   │ ┌──────────┐ │ops     │ │                                  │
 │  │  │ livestrm │ │retriever│ └────────┘ │                                  │
 │  │  └──────────┘ │ asset   │ ┌────────┐ │                                  │
-│  │               │ coding  │ │validat-│ │                                  │
-│  │               │ game    │ │ ors/   │ │                                  │
-│  │               │ growth  │ │basic-  │ │                                  │
-│  │               │ livestrm│ │eval    │ │                                  │
-│  │               │ ops     │ └────────┘ │                                  │
-│  │               └──────────┘            │                                  │
+│  │                │ coding  │ │validat-│ │                                  │
+│  │                │ game    │ │ ors/   │ │                                  │
+│  │                │ growth  │ │basic-  │ │                                  │
+│  │                │ livestrm│ │eval    │ │                                  │
+│  │                │ ops     │ └────────┘ │                                  │
+│  │                └──────────┘            │                                  │
 │  │  builtin-plugin-registry               │                                  │
 │  └───────────────────────────────────────┘                                  │
 │                                                                              │
 │  ┌───────────────────────────────────────┐  ┌──────────────────────────┐    │
-│  │  sdk/  SDK & Developer Experience     │  │  apps/  Application      │    │
-│  │                                        │  │  Entry Points             │    │
-│  │  ┌──────────┐ ┌──────────┐            │  │                          │    │
-│  │  │pack-sdk/ │ │plugin-    │            │  │  ┌────────────────────┐ │    │
-│  │  │ Pack     │ │ sdk/     │            │  │  │  api/              │ │    │
-│  │  │  SDK     │ │ Plugin   │            │  │  │  API Server entry  │ │    │
-│  │  └──────────┘ └──────────┘            │  │  ├────────────────────┤ │    │
-│  │  ┌──────────┐ ┌──────────┐            │  │  │  console/          │ │    │
-│  │  │client-   │ │  cli/    │            │  │  │  Console UI entry  │ │    │
-│  │  │ sdk/     │ │  CLI     │            │  │  ├────────────────────┤ │    │
-│  │  │ REST +   │ │  scripts │            │  │  │  workers/          │ │    │
-│  │  │ WebSocket│ │          │            │  │  │  Worker process    │ │    │
-│  │  │          │ │          │            │  │  │  entry             │ │    │
-│  │  └──────────┘ └──────────┘            │  │  └────────────────────┘ │    │
-│  └───────────────────────────────────────┘  └──────────────────────────┘    │
+│  │  sdk/  SDK vs开发者体验                │  │  apps/  应用入口         │    │
+│  │                                        │  │                          │    │
+│  │  ┌──────────┐ ┌──────────┐            │  │  ┌────────────────────┐ │    │
+│  │  │pack-sdk/ │ │plugin-   │            │  │  │  api/              │ │    │
+│  │  │ Pack 开发│ │ sdk/     │            │  │  │  API Server 入口   │ │    │
+│  │  │  SDK     │ │ Plugin   │            │  │  ├────────────────────┤ │    │
+│  │  └──────────┘ │  开发SDK │            │  │  │  console/          │ │    │
+│  │  ┌──────────┐ └──────────┘            │  │  │  Console UI 入口   │ │    │
+│  │  │client-   │ ┌──────────┐            │  │  ├────────────────────┤ │    │
+│  │  │ sdk/     │ │  cli/    │            │  │  │  workers/          │ │    │
+│  │  │ REST +   │ │  78 CLI  │            │  │  │  Worker 进程入口   │ │    │
+│  │  │ WebSocket│ │  scripts │            │  │  └────────────────────┘ │    │
+│  │  └──────────┘ └──────────┘            │  └──────────────────────────┘    │
+│  └───────────────────────────────────────┘                                  │
 │                                                                              │
-│  Invocation relationships:                                                  │
-│  apps/api ──▶ platform/P1/api(start HTTP service)                          │
-│  apps/workers ──▶ platform/P4/worker-pool(start Worker process)             │
-│  apps/console ──▶ platform/P1/console-backend(start console)                │
-│  sdk/cli ──▶ platform/ various modules(CLI command entry)                   │
-│  plugins/* ──▶ domains/registry(via SPI registration)                      │
-│             ──▶ platform/P4/plugin-executor(sandbox execution)               │
+│  call关系:                                                                  │
+│  apps/api ──▶ platform/P1/api(启动 HTTP 服务)                              │
+│  apps/workers ──▶ platform/P4/worker-pool(启动 Worker 进程)                │
+│  apps/console ──▶ platform/P1/console-backend(启动控制台)                  │
+│  sdk/cli ──▶ platform/ 各模块(CLI 命令入口)                                │
+│  plugins/* ──▶ domains/registry(via SPI 注册)                             │
+│             ──▶ platform/P4/plugin-executor(沙箱执lines)                      │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## §16 End-to-End Data Flow Overview Diagram
+## §十六 端到端data流全景图
 
-> **Diagram type: Data flow diagram** — Expresses the complete signal transmission path from P1 to P5 for user requests, and the event subscription relationship of upper-layer systems. Does not express module internal processing logic or error branches.
+> **图class型: data流图** — table达userrequest从 P1 到 P5 的完整信号传递路径，以及上层系统的事件订阅关系。不table达模块内部handle逻辑vs错误分支。
 
 ```text
                         ┌──────────────┐
-                        │   User/      │
-                        │   External   │
+                        │   user/外部   │
                         └──────┬───────┘
                                │ HTTP / WebSocket / Webhook / Channel
                                ▼
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│ P1 Interface   ingress ──▶ api / webhook / channel-gateway / scheduler        │
+│ P1 Interface   ingress ──▶ api / webhook / channel-gateway / scheduler      │
 └──────────────────────────────┬───────────────────────────────────────────────┘
                                │ request-envelope
                                ▼
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│ P2 Control     iam(authentication) ──▶ policy(evaluation) ──▶ approval      │
-│                config-center(config) · incident-control(anomaly control)      │
+│ P2 Control     iam(鉴权) ──▶ policy(评估) ──▶ approval(审批)                │
+│                config-center(configure) · incident-control(异常管控)              │
 └──────────────────────────────┬───────────────────────────────────────────────┘
                                │ control-directive
                                ▼
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│ P3 Orchestrate routing ──▶ planner ──▶ oapeflir(O-A-P-E-F-L-I-R)            │
-│                hitl(HI-machine collaboration) · escalation · replan         │
-│                prompt-engine(render Prompt) · model-gateway(select model)    │
+│ P3 Orchestrate routing ──▶ planner ──▶ oapeflir(O-A-P-E-F-L-I-R)           │
+│                hitl(人机协作) · escalation(升级) · replan(重规划)            │
+│                prompt-engine(渲染 Prompt) · model-gateway(选择模型)          │
 └──────────────────────────────┬───────────────────────────────────────────────┘
                                │ execution-plan
                                ▼
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│ P4 Execution   dispatcher ──▶ lease ──▶ worker-pool ──▶ execution-engine   │
-│                ──▶ tool-executor / plugin-executor                          │
+│ P4 Execution   dispatcher ──▶ lease ──▶ worker-pool ──▶ execution-engine    │
+│                ──▶ tool-executor / plugin-executor                           │
 │                state-transition · recovery · ha · hot-upgrade                │
 └──────────────────────────────┬───────────────────────────────────────────────┘
                                │ state-command / execution-receipt
                                ▼
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│ P5 State       truth(persist) ──▶ events(event broadcast) ──▶              │
-│                projections(query views) · artifacts(artifacts) · memory      │
-│                knowledge · audit · checkpoints                               │
+│ P5 State       truth(持久化) ──▶ events(事件广播) ──▶                        │
+│                projections(查询视图) · artifacts(制品) · memory(记忆)        │
+│                knowledge(知识) · audit(审计) · checkpoints(检查点)           │
 └──────────────────────────────┬───────────────────────────────────────────────┘
                                │ events / query
                ┌───────────────┼───────────────┐
@@ -1140,123 +1134,131 @@ ops-maturity/
 
 ---
 
-## §17 Dependency Direction and Layering Constraints Diagram
+## §十七 relies on方向vs分层约束图
 
-> **Diagram type: Constraint diagram** — Expresses the allowed and prohibited dependency directions between layers, and same-layer decoupling methods. Does not express specific import paths or runtime invocation chains.
+> **图class型: 约束图** — table达各层之间允许和禁止的relies on方向，以及同层解耦方式。不table达具体的 import 路径vs运lines时call链。
 
 ```text
-Dependency direction rules: Upper layers can depend on lower layers, lower layers cannot depend on upper layers; same-layer decoupling via events/contracts.
+relies on方向规则: 上层可relies on下层，下层不可relies on上层；同层via事件/契约解耦。
 
   ┌─────────────────────────────────────────────────┐
-  │  Layer 7  ops-maturity/                          │  Can depend ──▶ L1-6
-  │  (11 modules)                                    │
+  │  Layer 7  ops-maturity/                          │  可relies on ──▶ L1-6
+  │  (ops maturity modules)                          │
   ├─────────────────────────────────────────────────┤
-  │  Layer 6  scale-ecosystem/                       │  Can depend ──▶ L1-5
-  │  (6 modules)                                     │
+  │  Layer 6  scale-ecosystem/                       │  可relies on ──▶ L1-5
+  │  (scale / ecosystem modules)                     │
   ├─────────────────────────────────────────────────┤
-  │  Layer 5  org-governance/                        │  Can depend ──▶ L1-4
-  │  (6 modules)                                     │
+  │  Layer 5  org-governance/                        │  可relies on ──▶ L1-4
+  │  (org governance modules)                        │
   ├─────────────────────────────────────────────────┤
-  │  Layer 4  interaction/                           │  Can depend ──▶ L1-3
-  │  (6 modules, ALL NEW)                            │
+  │  Layer 4  interaction/                           │  可relies on ──▶ L1-3
+  │  (interaction modules)                           │
   ├─────────────────────────────────────────────────┤
-  │  Layer 3  domains/                               │  Can depend ──▶ L1-2
-  │  (10 modules)                                    │
+  │  Layer 3  domains/                               │  可relies on ──▶ L1-2
+  │  (domain framework + domain instances)           │
   ├─────────────────────────────────────────────────┤
-  │  Layer 1-2  platform/                            │  Only depends on contracts/ shared/
-  │  (P1-P5 + model-gw + prompt + compliance)       │
-  │  (contracts/ + shared/)                        │
+  │  Layer 1-2  platform/                            │  onlyrelies on contracts/ shared/
+  │  (P1-P5 + model-gw + prompt + compliance)        │
+  │  (contracts/ + shared/)                          │
   └─────────────────────────────────────────────────┘
 
-  Cross-layer modules:
+  跨层模块:
   ┌──────────┐ ┌──────────┐ ┌──────────┐
-  │ plugins/ │ │   sdk/   │ │  apps/   │  Can depend on any layer (via interface injection)
+  │ plugins/ │ │   sdk/   │ │  apps/   │  可relies on任意层（via interface 注入）
   └──────────┘ └──────────┘ └──────────┘
 
-  Prohibited directions (✗):
-  ✗  platform/ ──▶ interaction/       (lower cannot depend on upper)
-  ✗  platform/ ──▶ org-governance/    (lower cannot depend on upper)
-  ✗  domains/  ──▶ scale-ecosystem/   (lower cannot depend on upper)
+  前端vs测试支撑:
+  ┌──────────┐ ┌──────────────┐ ┌──────────────┐
+  │   ui/    │ │    tests/    │ │src/testing/  │
+  │ public   │ │ 可扫描源码    │ │src/benchmarks│
+  │ API only │ │ 不进生产relies on  │ │ 测试/基准    │
+  └──────────┘ └──────────────┘ └──────────────┘
 
-  Same-layer decoupling methods:
+  禁止方向 (✗):
+  ✗  platform/ ──▶ interaction/       (下层不可relies on上层)
+  ✗  platform/ ──▶ org-governance/    (下层不可relies on上层)
+  ✗  domains/  ──▶ scale-ecosystem/   (下层不可relies on上层)
+  ✗  ui/       ──▶ src/platform/* private service/truth/worker internals
+  ✗  src/*     ──▶ tests/ 或 ui/        (生产code不得relies on测试或前端)
+
+  同层解耦方式:
   ┌──────────┐  events/contracts   ┌──────────┐
-  │ Module A │ ◀═══════════════▶  │ Module B │  (Same layer communicates via event bus or
-  └──────────┘                     └──────────┘   platform/contracts/)
+  │ Module A │ ◀═══════════════▶  │ Module B │  (同一层内via event bus 或
+  └──────────┘                     └──────────┘   platform/contracts/ communication)
 ```
 
 ---
 
-## §18 Stability Seven-Layer Model Framework Diagram
+## §十八 稳定性七层模型框架图
 
-> **Diagram type: Structure diagram** — Expresses the layer division of the stability seven-layer model and the capability modules contained in each layer. Does not express runtime trigger sequencing between layers or degradation decision logic.
+> **图class型: 结构图** — table达稳定性七层模型的层级划分vs各层contains的能力模块。不table达各层间的运lines时触发顺序vs降级Decision逻辑。
 >
-> The stability seven-layer model crosses all five planes and is the implementation skeleton of X1 Reliability & Security Fabric.
+> 稳定性七层模型横切Five-Plane，is X1 Reliability & Security Fabric 的实现骨架。
 
 ```text
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                       Stability Seven-Layer Model (§9)                        │
+│                       稳定性七层模型 (§9)                                     │
 │                                                                              │
 │  ┌───────────────────────────────────────────────────────────────────┐       │
-│  │  Layer 7: Observability                                           │       │
+│  │  层 7: 可观测性  Observability                                     │       │
 │  │  structured-logger · otel-tracer · metrics · health · diagnostics │       │
 │  │  sli-collection · slo-alerting · anomaly-detection                │       │
 │  │  agent-state-view · task-board · situation-report                  │       │
 │  ├───────────────────────────────────────────────────────────────────┤       │
-│  │  Layer 6: Recovery Capability                                     │       │
+│  │  层 6: 恢复能力  Recovery                                          │       │
 │  │  lease-reclaim · execution-recovery · workflow-recovery            │       │
 │  │  replay · repair · projection-rebuild · stalled-detection          │       │
 │  ├───────────────────────────────────────────────────────────────────┤       │
-│  │  Layer 5: Degradation Mode                                        │       │
+│  │  层 5: 降级模式  Degradation                                       │       │
 │  │  full_auto ──▶ supervised_auto ──▶ read_only ──▶ manual_only     │       │
 │  │  no-write · no-external-call · no-rollout · incident-mode         │       │
 │  ├───────────────────────────────────────────────────────────────────┤       │
-│  │  Layer 4: Circuit Breaker                                          │       │
-│  │  closed ──▶ open ──▶ half-open (for API/Provider/Tool/Plugin)     │       │
+│  │  层 4: 断路器  Circuit Breaker                                     │       │
+│  │  closed ──▶ open ──▶ half-open (对 API/Provider/Tool/Plugin)      │       │
 │  │  per-provider · per-tool · per-external-api                       │       │
 │  ├───────────────────────────────────────────────────────────────────┤       │
-│  │  Layer 3: Timeout & Retry                                         │       │
+│  │  层 3: timeoutvs重试  Timeout & Retry                                 │       │
 │  │  step-timeout · attempt-timeout · tool-timeout                    │       │
 │  │  exponential-backoff + jitter · max-retries                       │       │
 │  ├───────────────────────────────────────────────────────────────────┤       │
-│  │  Layer 2: Rate Limiting & Backpressure                           │       │
+│  │  层 2: 限流vs背压  Rate Limiting & Backpressure                    │       │
 │  │  per-tenant concurrency · per-workflow active                     │       │
-│  │  Level 0(normal) ──▶ Level 1(warning) ──▶ Level 2(throttle) ──▶  │   │
-│  │  Level 3(protect)                                                  │   │
+│  │  Level 0(正常) ──▶ Level 1(预警) ──▶ Level 2(限流) ──▶ Level 3(保护) │   │
 │  ├───────────────────────────────────────────────────────────────────┤       │
-│  │  Layer 1: Isolation                                                │       │
-│  │  tenant · project · domain · worker-pool · executor              │       │
+│  │  层 1: 隔离  Isolation                                             │       │
+│  │  tenant · project · domain · worker-pool · executor               │       │
 │  │  sandbox · process-isolation · network-namespace                   │       │
 │  └───────────────────────────────────────────────────────────────────┘       │
 │                                                                              │
-│  Stability rehearsals (platform/shared/stability/):                         │
-│  30+ rehearsal scenarios:                                                   │
-│  golden-task · vcr-replay · dispatch · worker · lease · concurrency        │
-│  queue · event · chaos · prompt-injection · rolling-upgrade · rollback     │
+│  稳定性演练 (platform/shared/stability/):                                   │
+│  30+ rehearsal scenarios:                                                    │
+│  golden-task · vcr-replay · dispatch · worker · lease · concurrency         │
+│  queue · event · chaos · prompt-injection · rolling-upgrade · rollback       │
 │  backup · maintenance · gray-release · db-writability · db-queue-disconnect │
-│  migration · runtime-soak · cross-division                                 │
+│  migration · runtime-soak · cross-division                                  │
 │                                                                              │
-│  Trigger methods:                                                            │
-│  CI/CD auto ──▶ golden-task-runner ──▶ stable-acceptance-line              │
-│  Manual ──▶ npm run test:golden / npm run *:stable                          │
+│  触发方式:                                                                  │
+│  CI/CD 自动 ──▶ golden-task-runner ──▶ stable-acceptance-line              │
+│  手动 ──▶ npm run test:golden / npm run *:stable                           │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## §19 P4 Runtime Bounded Context Special Diagram
+## §十九 P4 Runtime Bounded Context 专项图
 
-> **Diagram type: Structure diagram** — Expresses the ownership and dependency relationships of the 12 Bounded Contexts resulting from splitting `core/runtime/` within the P4 Execution Plane. Does not express BC internal class/method-level implementation details.
+> **图class型: 结构图** — table达 P4 Execution Plane 内 `core/runtime/` 拆分为 12 个 Bounded Context 的归属vsrelies on关系。不table达各 BC 内部class/方法级implementation details。
 >
-> **Background**: The old system `core/runtime/` is a monolithic module (101 files / 30K lines) that needs to be split into independent BCs to reduce coupling. 6 BCs have zero internal dependencies (can be extracted independently), and 2 are composite roots (remain in runtime/ core).
+> **Background**: 老系统 `core/runtime/` 为单体模块（101 文件 / 30K lines），需拆分为独立 BC 以降低耦合。6 个 BC 零内部relies on（可独立提取），2 个为组合根（保留在 runtime/ 核心）。
 
-### §19.1 BC Ownership and Dependency Diagram
+### §十九.1 BC 归属vsrelies on图
 
 ```text
 platform/five-plane-execution/
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                    P4 Execution Plane — 12 Bounded Contexts                  │
 │                                                                              │
-│  ══════════ Independent Extraction Zone (Zero internal dependencies, Wave 1-2 priority) ══════════ │
+│  ══════════ 独立提取区 (零内部relies on，Wave 1-2 优先提取) ══════════           │
 │                                                                              │
 │  ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐               │
 │  │ BC3 Worker Mgmt │ │ BC5 HA Coord    │ │ BC6 Hot Upgrade │               │
@@ -1273,9 +1275,9 @@ platform/five-plane-execution/
 │  │ transition-svc  │ │ resource-mon    │ │ call-governance │               │
 │  │                 │ │ startup-check   │ │ admission-ctrl  │               │
 │  └────────┬────────┘ │ graceful-shutdn │ └─────────────────┘               │
-│           │          └─────────────────┘                                   │
-│           │ (only dependency target)                                       │
-│  ══════════ Ordered Extraction Zone (Limited dependencies, Wave 2-3) ══════════ │
+│           │          └─────────────────┘                                     │
+│           │ (唯一被relies on)                                                     │
+│  ══════════ 有序提取区 (有限relies on，Wave 2-3) ══════════                      │
 │           │                                                                  │
 │  ┌────────┴────────┐ ┌─────────────────┐                                    │
 │  │ BC9 Agent Exec  │ │ BC2 Lease Mgmt  │                                    │
@@ -1284,143 +1286,132 @@ platform/five-plane-execution/
 │  │ middleware-chain│ │ lease-compete   │                                    │
 │  │ model-call      │ │ lease-repo      │                                    │
 │  │ loop-detection  │ └────────┬────────┘                                    │
-│  └─────────────────┘          │                                             │
-│                                │                                             │
+│  └─────────────────┘          │                                              │
+│                                │                                              │
 │  ┌─────────────────────────────┴───────────────────────────────┐             │
-│  │ BC4 Handshake/Writeback (10 files) — depends on BC1 + BC2  │             │
+│  │ BC4 Handshake/Writeback (10 files) — relies on BC1 + BC2        │             │
 │  │ worker-handshake · capability-negotiate · result-writeback  │             │
 │  └─────────────────────────────────────────────────────────────┘             │
 │                                                                              │
 │  ┌─────────────────────────────────────────────────────────────┐             │
-│  │ BC7 Recovery & Repair (13 files) — depends on BC1+BC2+BC5+BC8 │             │
-│  │ crash-recovery · stall-detection · orphan-cleanup · replay   │             │
-│  │ repair · deviation-detect · escalation                       │             │
+│  │ BC7 Recovery & Repair (13 files) — relies on BC1+BC2+BC5+BC8    │             │
+│  │ crash-recovery · stall-detection · orphan-cleanup · replay  │             │
+│  │ repair · deviation-detect · escalation                      │             │
 │  └─────────────────────────────────────────────────────────────┘             │
 │                                                                              │
-│  ══════════ Composite Roots (Remain in runtime/ core, Wave 4 refinement) ══════════ │
+│  ══════════ 组合根 (保留在 runtime/ 核心，Wave 4 精简) ══════════           │
 │                                                                              │
 │  ┌──────────────────────────────┐ ┌──────────────────────────────┐          │
-│  │ BC1 Execution Dispatch        │ │ BC10 Multi-Step Orchestration │          │
-│  │ (12 files) — composite root  │ │ (13 files) — composite root   │          │
-│  │ dispatch-service · reconcile │ │ phase-mgmt · complexity-route │          │
-│  │ dispatch-async · support     │ │ session-lifecycle · planner   │          │
-│  └──────────────────────────────┘ │ supervisor · checkpoint       │          │
+│  │ BC1 Execution Dispatch       │ │ BC10 Multi-Step Orchestration│          │
+│  │ (12 files) — 组合根          │ │ (13 files) — 组合根           │          │
+│  │ dispatch-service · reconcile │ │ phase-mgmt · complexity-route│          │
+│  │ dispatch-async · support     │ │ session-lifecycle · planner  │          │
+│  └──────────────────────────────┘ │ supervisor · checkpoint      │          │
 │                                    └──────────────────────────────┘          │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### §19.2 Extraction Wave Plan
+### §十九.2 提取波iterations计划
 
 ```text
-Wave 1 (Zero risk)    BC3 + BC5 + BC6 + BC8              6,136 lines  20%
-                       Gate: Each BC unit test passes independently
-                             │
-Wave 2 (Low risk)    BC2 + BC9 + BC12 + BC11             6,461 lines  21%
-                       Gate: Lease/Agent integration tests pass
-                             │
-Wave 3 (Medium risk)  BC4 + BC7                           5,678 lines  19%
-                       Gate: Recovery drill scenarios pass
-                             │
-Wave 4 (Cleanup)      BC1 + BC10 refine as runtime/ core   5,171 lines  17%
-                       Gate: npm test full regression + stable-* pass
+Wave 1 (零风险)    BC3 + BC5 + BC6 + BC8              6,136 lines  20%
+                    验证门: 各 BC 单元测试独立via
+                          │
+Wave 2 (低风险)    BC2 + BC9 + BC12 + BC11             6,461 lines  21%
+                    验证门: Lease/Agent 集成测试via
+                          │
+Wave 3 (中风险)    BC4 + BC7                           5,678 lines  19%
+                    验证门: Recovery 演练场景via
+                          │
+Wave 4 (收尾)      BC1 + BC10 精简为 runtime/ 核心      5,171 lines  17%
+                    验证门: npm test full回归 + stable-* via
 ```
 
 ---
 
-## §20 P5 Storage Bounded Context Special Diagram
+## §二十 P5 Storage Bounded Context 专项图
 
-> **Diagram type: Structure diagram** — Expresses the ownership and communication rules of the 7 Bounded Contexts resulting from splitting `AuthoritativeTaskStore` within the P5 State & Evidence Plane. Does not express BC internal SQL table structure or query details.
+> **图class型: 结构图** — table达 P5 State & Evidence Plane 内 `AuthoritativeTaskStore` 拆分为 7 个 Bounded Context 的归属vscommunication规则。不table达各 BC 内部 SQL table结构vs查询细节。
 >
-> **Background**: The old system `AuthoritativeTaskStore` is a god object (~278 methods + 21 Repository + ~123 consumers) that needs to be split into independent BCs communicating via Event Bus.
+> **Background**: 老系统 `AuthoritativeTaskStore` 为 god object（~278 方法 + 21 Repository + ~123 消费方），需拆分为独立 BC 并via Event Bus communication。
 
-### §20.1 BC Ownership Diagram
+### §二十.1 BC 归属图
 
 ```text
 platform/five-plane-state-evidence/
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│               P5 — AuthoritativeTaskStore 7 BC Split                        │
+│               P5 — AuthoritativeTaskStore 7 BC 拆分                          │
 │                                                                              │
 │  ┌──────────────────────────────────────────────────────────────────────┐   │
-│  │ BC1 Core Task Engine (~73 methods)                                    │   │
-│  │ Repositories: task · workflow · execution · session                     │   │
-│  │ Responsibilities: Task lifecycle · Workflow state · Execution mgmt ·  │   │
-│  │                    Session control                                     │   │
-│  │ Strategy: Keep as core — internal method coupling is too high to split │   │
+│  │ BC1 Core Task Engine (~73 方法)                                      │   │
+│  │ Repositories: task · workflow · execution · session                   │   │
+│  │ 职责: 任务生命cycle · 工作流Status · 执linesmanage · 会话控制                │   │
+│  │ 策略: 保留为核心 — 内部方法耦合度高，不再细拆                        │   │
 │  └──────────────────────────────────────────────────────────────────────┘   │
 │                                                                              │
 │  ┌──────────────────────┐  ┌────────────────────────┐                       │
 │  │ BC2 Worker Infra     │  │ BC3 Event Infra (~24)  │                       │
-│  │ (~47 methods)        │  │ Repo: event             │                       │
-│  │ Repos: worker ·      │  │ Responsibilities: Event │                       │
-│  │  dispatch · lease ·  │  │  publish · Acknowledge │                       │
-│  │  lock               │  │  · DLQ · Persistent bus │                       │
-│  │ Responsibilities:    │  │  · Type registration   │                       │
-│  │  Scheduling alloc · │  │ Strategy: Clear        │                       │
-│  │  Lease · Distributed │  │  boundaries, extract   │                       │
-│  │  lock · Worker reg  │  │  directly              │                       │
-│  │ Strategy: Extract   │  └────────────────────────┘                       │
-│  │  as independent     │                                                  │
+│  │ (~47 方法)            │  │ Repo: event             │                       │
+│  │ Repos: worker ·      │  │ 职责: 事件发布 · 确认 · │                       │
+│  │  dispatch · lease ·  │  │  DLQ · 持久化总线 ·     │                       │
+│  │  lock                │  │  class型注册                │                       │
+│  │ 职责: 调度分配 ·     │  │ 策略: 边界清晰，         │                       │
+│  │  租约 · 分布式锁 ·   │  │  directly提取               │                       │
+│  │  Worker 注册          │  └────────────────────────┘                       │
+│  │ 策略: 独立域提取      │                                                    │
 │  └──────────────────────┘  ┌────────────────────────┐                       │
-│                             │ BC4 Billing & Cost     │                       │
-│  ┌──────────────────────┐  │ (~29 methods)          │                       │
+│                              │ BC4 Billing & Cost     │                       │
+│  ┌──────────────────────┐  │ (~29 方法)              │                       │
 │  │ BC5 Governance &     │  │ Repo: billing            │                       │
-│  │  Compliance (~50)    │  │ Responsibilities:       │                       │
-│  │ Repos: approval ·   │  │  Account · Invoice ·     │                       │
-│  │  organization ·     │  │  Quota · Usage · Ledger │                       │
-│  │  secret · compliance│  │ Strategy: Decouple from │                       │
-│  │  · operations      │  │  core execution         │                       │
-│  │ Responsibilities:    │  └────────────────────────┘                       │
-│  │  Approval routing · │                                                  │
-│  │  Org hierarchy ·    │  ┌────────────────────────┐                       │
-│  │  Secret mgmt ·      │  │ BC6 Platform & Commerce│                       │
-│  │  Compliance policy ·│  │ (~47 methods)          │                       │
-│  │  Ops governance     │  │ Repos: marketplace ·   │                       │
-│  │ Strategy: Align     │  │  release · division ·  │                       │
-│  │  with L5           │  │  intelligence ·        │                       │
-│  └──────────────────────┘  │  evolution              │                       │
-│                             │ Strategy: Align with   │                       │
-│  ┌──────────────────────┐  │  L6-L7                 │                       │
-│  │ BC7 Memory &         │  └────────────────────────┘                       │
-│  │  Artifacts (~10)     │                                                  │
-│  │ Repos: memory ·     │                                                  │
-│  │  artifact            │                                                  │
-│  │ Responsibilities:    │                                                  │
-│  │  Memory CRUD +       │                                                  │
-│  │  quality mgmt ·     │                                                  │
-│  │  Artifact storage ·  │                                                  │
-│  │  Version mgmt        │                                                  │
-│  │ Strategy: Align     │                                                  │
-│  │  with L4            │                                                  │
-│  └──────────────────────┘                                                  │
+│  │  Compliance (~50)    │  │ 职责: 账户 · 发票 ·     │                       │
+│  │ Repos: approval ·   │  │  配额 · 用量 · 账本     │                       │
+│  │  organization ·      │  │ 策略: vs核心执lines解耦     │                       │
+│  │  secret · compliance│  └────────────────────────┘                       │
+│  │  · operations        │                                                    │
+│  │ 职责: 审批路由 ·     │  ┌────────────────────────┐                       │
+│  │  组织层级 · key ·   │  │ BC6 Platform & Commerce│                       │
+│  │  合规 · 运营治理      │  │ (~47 方法)              │                       │
+│  │ 策略: 对齐 L5        │  │ Repos: marketplace ·   │                       │
+│  └──────────────────────┘  │  release · division ·  │                       │
+│                              │  intelligence ·        │                       │
+│  ┌──────────────────────┐  │  evolution              │                       │
+│  │ BC7 Memory &         │  │ 策略: 对齐 L6-L7       │                       │
+│  │  Artifacts (~10)     │  └────────────────────────┘                       │
+│  │ Repos: memory ·     │                                                    │
+│  │  artifact             │                                                    │
+│  │ 职责: 记忆 CRUD ·    │                                                    │
+│  │  质量manage · 制品 ·   │                                                    │
+│  │  版本manage             │                                                    │
+│  │ 策略: 对齐 L4        │                                                    │
+│  └──────────────────────┘                                                    │
 │                                                                              │
-│  ──── BC Inter-communication Rules ────                                      │
-│  BC1 ◀══ Event Bus (BC3) ══▶ BC2/BC4/BC5/BC6/BC7                            │
-│  Prohibit direct import between BCs; only through events + contracts       │
+│  ──── BC 间communication规则 ────                                                     │
+│  BC1 ◀══ Event Bus (BC3) ══▶ BC2/BC4/BC5/BC6/BC7                           │
+│  禁止 BC 间directly import；onlyvia事件 + 契约communication                               │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### §20.2 Split Wave Plan
+### §二十.2 拆分波iterations计划
 
 ```text
-Wave 1 (Low risk)    BC3 Event Infra → BC7 Memory & Artifacts
-                       Gate: All event-related tests pass
-                             │
-Wave 2 (Medium risk)  BC4 Billing & Cost → BC2 Worker Infra
-                       Gate: All dispatch/lease-related tests pass
-                             │
-Wave 3 (High risk)    BC5 Governance & Compliance → BC6 Platform & Commerce
-                       Gate: All organization/approval/marketplace tests pass
-                             │
-Wave 4 (Cleanup)      Remove Facade; BC1 Core Task Engine becomes independent
-                       module
-                       Gate: npm test full pass + stable-* drills pass
+Wave 1 (低风险)    BC3 Event Infra → BC7 Memory & Artifacts
+                    验证门: 所有 event 相关测试via
+                          │
+Wave 2 (中风险)    BC4 Billing & Cost → BC2 Worker Infra
+                    验证门: 所有 dispatch/lease 相关测试via
+                          │
+Wave 3 (高风险)    BC5 Governance & Compliance → BC6 Platform & Commerce
+                    验证门: 所有 organization/approval/marketplace 测试via
+                          │
+Wave 4 (收尾)      移除 Facade；BC1 Core Task Engine 成为独立模块
+                    验证门: npm test fullvia + stable-* 演练via
 ```
 
 ---
 
-## §21 Cross-cutting Capability Control Plane Diagram
+## §二一 横切能力Control Plane图
 
-> **Diagram type: Structure diagram** — Expresses how three types of cross-cutting capabilities (X1 Stability · X2 Observability · X3 Security & Compliance) provide unified services across the five planes. Does not express the internal implementation or configuration parameters of each cross-cutting capability.
+> **图class型: 结构图** — table达三class横切能力（X1 稳定性 · X2 可观测性 · X3 security合规）如何跨越Five-Plane提供统一服务。不table达各横切能力的内部实现vsconfigure参数。
 
 ```text
                     P1 Interface  P2 Control  P3 Orchestr  P4 Execution  P5 State
@@ -1433,66 +1424,66 @@ Wave 4 (Cleanup)      Remove Facade; BC1 Core Task Engine becomes independent
 ├──────────────┤
 │ X2 Observ-   │   access-log   config-     oapeflir-     execution-   event-
 │ ability       │   request-     audit       trace         resource-    audit
-│ Stack         │    trace                                 monitor      projection
+│ Stack         │    trace                                  monitor      projection
 │               │   ingress-     sli/slo     step-trace    worker-      rebuild-
 │               │    metrics                                health       job-log
 ├──────────────┤
 │ X3 Compliance│   data-        approval-   prompt-       tool-        erasure
 │ & Governance  │    residency   sla         injection-    sandbox-     encryption
-│               │   field-       org-policy guard         policy       data-
-│               │    encrypt                                           lineage
+│               │   field-       org-policy  guard         policy       data-
+│               │    encrypt                                            lineage
 └──────────────┘
 
-Cross-cutting capability delivery methods:
-  X1 → platform/shared/stability/ + platform/five-plane-execution/ various BCs embedded
-  X2 → platform/shared/observability/ unified injection (structured-logger · otel · metrics)
+横切能力供给方式:
+  X1 → platform/shared/stability/ + platform/five-plane-execution/ 各 BC 内嵌
+  X2 → platform/shared/observability/ 统一注入 (structured-logger · otel · metrics)
   X3 → platform/compliance/ + org-governance/compliance-engine/
 ```
 
 ---
 
-## §22 Old System Modules → New Platform Landing Diagram
+## §二二 老系统模块 → 新平台落点图
 
-> **Diagram type: Structure diagram** — Expresses the landing mapping of 42 old system `src/core/` modules migrating to the new platform's 7-layer architecture. Does not express migration steps or time sequence (see §23).
+> **图class型: 结构图** — table达老系统 `src/core/` 42 个模块迁移到新平台 7 层Architecture的落点映射。不table达迁移步骤vstime顺序（见 §二三）。
 
 ```text
-Old system src/core/ (42 modules)        New platform src/ (7 layers + cross-layer)
+老系统 src/core/ (42 模块)              新平台 src/ (7 层 + 跨层)
 ═══════════════════════              ═══════════════════════════
 
 types ─────────────────────────────▶ platform/contracts/types
 errors ────────────────────────────▶ platform/contracts/errors
 constants ─────────────────────────▶ platform/contracts/constants
-results ────────────────────────────▶ platform/contracts/result-envelope
+results ───────────────────────────▶ platform/contracts/result-envelope
 utils ─────────────────────────────▶ platform/shared/utils
 lifecycle ─────────────────────────▶ platform/shared/lifecycle
 cache ─────────────────────────────▶ platform/shared/cache
 
 config ────────────────────────────▶ platform/five-plane-control-plane/config-center (P2)
 api ───────────────────────────────▶ platform/five-plane-interface/api (P1)
-storage ────────────────────────────▶ platform/five-plane-state-evidence/ (P5, 7 BC split)
+storage ───────────────────────────▶ platform/five-plane-state-evidence/ (P5, 7 BC 拆分)
 events ────────────────────────────▶ platform/five-plane-state-evidence/events (P5 BC3)
-locking ────────────────────────────▶ platform/five-plane-execution/ (P4)
+locking ───────────────────────────▶ platform/five-plane-execution/ (P4)
 queue ─────────────────────────────▶ platform/five-plane-execution/ (P4)
 resource ──────────────────────────▶ platform/five-plane-execution/ (P4)
 
-runtime ───────────────────────────▶ platform/five-plane-execution/ (P4, 12 BC split)
+runtime ───────────────────────────▶ platform/five-plane-execution/ (P4, 12 BC 拆分)
 agent-loop ────────────────────────▶ platform/five-plane-orchestration/oapeflir (P3)
 planning ──────────────────────────▶ platform/five-plane-orchestration/planner (P3)
 orchestration ─────────────────────▶ platform/five-plane-orchestration/routing (P3)
 providers ─────────────────────────▶ platform/model-gateway/
-tools ─────────────────────────────▶ platform/five-plane-execution/tool-executor/
+tools ─────────────────────────────▶ platform/five-plane-execution/tool-gateway/ + tool-executor/
 workflow ──────────────────────────▶ platform/five-plane-orchestration/oapeflir/workflow/
 artifacts ─────────────────────────▶ platform/five-plane-state-evidence/artifacts (P5 BC7)
 feedback ──────────────────────────▶ scale-ecosystem/feedback-loop (L6)
 learning ──────────────────────────▶ scale-ecosystem/feedback-loop (L6)
-evaluation ────────────────────────▶ platform/prompt-engine/eval/ (L7)
+evaluation ────────────────────────▶ platform/five-plane-orchestration/evaluator/ + prompt-engine/eval/
 
 domain-registry ───────────────────▶ domains/registry (L3)
 divisions ─────────────────────────▶ domains/governance (L3)
-plugins ───────────────────────────▶ plugins/ (cross-layer)
+plugins ───────────────────────────▶ plugins/ (跨层)
 
 memory ────────────────────────────▶ platform/five-plane-state-evidence/memory/ (L5)
-knowledge ─────────────────────────▶ interaction/knowledge (L4, new wrapper)
+knowledge ─────────────────────────▶ interaction/knowledge (L4, 新建 wrapper)
 messages ──────────────────────────▶ interaction/message (L4)
 gateway ───────────────────────────▶ platform/interface (P1) + interaction/nl-gw (L4)
 
@@ -1506,30 +1497,30 @@ deployment ───────────────────────
 improvement ───────────────────────▶ scale-ecosystem/feedback-loop (L6)
 product ───────────────────────────▶ scale-ecosystem/marketplace (L6)
 
-observability ─────────────────────▶ ops-maturity/observability (L7, new wrapper)
+observability ─────────────────────▶ ops-maturity/observability (L7, 新建 wrapper)
 ops ───────────────────────────────▶ ops-maturity/platform-ops-agent (L7)
-stability ─────────────────────────▶ ops-maturity/stability (L7, new wrapper)
+stability ─────────────────────────▶ ops-maturity/stability (L7, 新建 wrapper)
 evolution ─────────────────────────▶ ops-maturity/evolution (L7)
-reliability ───────────────────────▶ ops-maturity/reliability (L7)
+reliability ───────────────────────▶ platform/shared/reliability (L1-2 shared)
 
-cli ───────────────────────────────▶ sdk/cli (cross-layer)
+cli ───────────────────────────────▶ sdk/cli (跨层)
 ```
 
-### §22.1 Migration Type Statistics
+### §二二.1 迁移class型统计
 
-| Mapping Type | Module Count | Description |
-|--------------|--------------|-------------|
-| 1:1 Direct migration | ~8 | types, errors, constants, utils, etc. shared kernel |
-| 1:1 Adaptation | ~16 | config, api, security, etc. need new contract adaptation |
-| 1:N Split | 2 | runtime (→12 BC) · storage (→7 BC) |
-| Semantic redefinition | ~6 | gateway, evaluation, etc. responsibility boundary redefined |
-| Reference only | ~3 | Some module code not migrated, reference only |
+| 映射class型 | 模块数 | Description |
+|----------|--------|------|
+| 1:1 直迁 | ~8 | types, errors, constants, utils 等共享内核 |
+| 1:1 改造 | ~16 | config, api, security 等需适配新契约 |
+| 1:N 拆分 | 2 | runtime (→12 BC) · storage (→7 BC) |
+| 语义重defines | ~6 | gateway, evaluation 等职责边界重划 |
+| only参考 | ~3 | 部分模块code不迁移，only参考设计 |
 
 ---
 
-## §23 Migration Wave Roadmap
+## §二三 迁移波iterations路线图
 
-> **Diagram type: Sequence diagram** — Expresses the sequence and dependency relationships of ten-phase code migration. Does not express internal task decomposition of each phase.
+> **图class型: 时序图** — table达十阶段code迁移的先后顺序vsrelies on关系。不table达各阶段的内部任务分解。
 
 ```text
          P0 Test Helpers (19 files, 0.5 pd)
@@ -1545,14 +1536,14 @@ cli ─────────────────────────�
     ┌─────┴─────┐
     ▼           ▼
    P3 Security   P4 AI Ops Primitives
-   & Governance  providers/tools/workflow/artifacts
-   (141 files,   (163 files, 4.5 pd)
-    3.5 pd)      │
-    │            │
+   & Governance   providers/tools/workflow/artifacts
+   (141 files,    (163 files, 4.5 pd)
+    3.5 pd)       │
+    │             │
     └──────┬──────┘
            ▼
-          P5 Runtime Core (12 BC split, 4 sub-waves)
-           │  (264 files, 10 pd) ← highest risk phase
+          P5 Runtime Core (12 BC 拆分，4 个子波iterations)
+           │  (264 files, 10 pd) ← 最高风险阶段
            │
            ▼
           P6 OAPEFLIR Pipeline
@@ -1561,10 +1552,10 @@ cli ─────────────────────────�
      ┌─────┴─────┐
      ▼           ▼
     P7 Interaction  P8 Business Domain
-    Layer           domain-registry/divisions/plugins
-    (124 files,     (78 files, 2.5 pd)
-     4 pd)         │
-     │             │
+    Layer            domain-registry/divisions/plugins
+    (124 files,      (78 files, 2.5 pd)
+     4 pd)           │
+     │               │
      └───────┬───────┘
              ▼
             P9 Operational Maturity
@@ -1574,186 +1565,142 @@ cli ─────────────────────────�
             P10 CLI + E2E + Golden + Perf
                 (146 files, 4 pd)
 
-Total: ~1,868 files / ~406K lines / 70-100 person-days
-(excluding 24 brand-new module developments)
+总计: ~1,868 files / ~406K lines / 70-100 person-days
+(不含 24 个全新模块开发)
 ```
 
-### §23.1 Dual-track Parallel Strategy
+### §二三.1 双轨并lines策略
 
 ```text
-Lane A (Migration)         Lane B (New Capabilities)
-══════════════           ════════════════════════
-P0-P2 ──────────────────▶ P0-base: 6 basic new modules (stub interfaces first)
-P3-P5 ──────────────────▶ P1-diff: 10 differentiated new modules
-P6-P10 ─────────────────▶ P2-enhance: 8 enhanced new modules
+Lane A (迁移)           Lane B (新能力)
+═══════════           ═══════════════
+P0-P2 ──────────────▶ P0-base: 6 个基础新模块 (stub 接口先lines)
+P3-P5 ──────────────▶ P1-diff: 10 个差异化新模块
+P6-P10 ─────────────▶ P2-enhance: 8 个增强新模块
 
-New modules that can start early (stub interfaces):
-  org-hierarchy (stub single-level org)
-  autonomy (stub minimum autonomy level)
-  nl-gateway (stub direct-through mode)
+可提前启动的新模块 (stub 接口):
+  org-hierarchy (stub 单级组织)
+  autonomy (stub 最低自主权级别)
+  nl-gateway (stub 直通模式)
 
-New modules that must wait for migration completion:
-  agent-lifecycle (depends on P6 OAPEFLIR)
-  multi-region (depends on P5 HA Coordinator)
-  marketplace (depends on P8 domain-registry)
+必须等待迁移完成的新模块:
+  agent-lifecycle (relies on P6 OAPEFLIR)
+  multi-region (relies on P5 HA Coordinator)
+  marketplace (relies on P8 domain-registry)
 ```
 
 ---
 
-## §24 Interaction · Governance · Platform Three-axis Collaboration Diagram
+## §二四 交互 · 治理 · 平台 三轴协作图
 
-> **Diagram type: Data flow diagram** — Expresses the collaboration signal flow between the three main system axes: interaction (L4) · org-governance (L5) · platform (L1-2). Does not express the invocation relationships between modules within each axis.
+> **图class型: data流图** — table达 interaction (L4) · org-governance (L5) · platform (L1-2) 三个主要系统轴之间的协作信号流。不table达各轴内部模块间的call关系。
 
 ```text
                          ┌──────────────────────┐
                          │   interaction/ (L4)   │
-                         │   Intelligent         │
-                         │   Interaction Layer  │
-                         │   nl-gateway          │
-                         │   goal-decomposer     │
-                         │   proactive-agent     │
-                         │   autonomy            │
-                         │   dashboard · ux      │
+                         │   智能交互层           │
+                         │   nl-gateway           │
+                         │   goal-decomposer      │
+                         │   proactive-agent      │
+                         │   autonomy             │
+                         │   dashboard · ux       │
                          └──────────┬─────────────┘
                                     │
-               Task request (via NL parsing) │  ▲  Status push (dashboard subscribes to P5 events)
+               任务request (via NL 解析) │  ▲ Status推送 (dashboard 订阅 P5 事件)
                                     │  │
                                     ▼  │
-┌──────────────────────┐  Contract call  ┌──┴───────────────────────────────────┐
-│  org-governance/ (L5)│ ◀═════════════▶│           platform/ (L1-2)           │
-│  Organization        │                │           Platform kernel              │
-│  Governance Layer    │                │                                      │
-│                      │ SSO identity  │  P1 Interface ──▶ P2 Control         │
-│  org-model           │────────────────┼──────────▶│  P2 ──▶ P3 Orchestration │
-│  approval-routing ───┼────────────────┼──────────▶│  P3 ──▶ P4 Execution     │
-│  sso-scim            │ approval result│                │  P4 ──▶ P5 State & Evidence│
-│  compliance-engine ──┼────────────────┼──────────▶│                            │
-│  knowledge-boundary  │ compliance     │                │                            │
-│  delegated-governance│  policy         │                │                            │
-└──────────────────────┘                │  AI Runtime Support Stack             │
-                                        │  (model-gw · prompt · compliance)    │
-                                        └─────────────────────────────────────┘
+┌──────────────────────┐  契约call  ┌──┴───────────────────────────────────┐
+│  org-governance/ (L5)│ ◀════════▶│           platform/ (L1-2)           │
+│  组织治理层           │           │           平台内核                    │
+│                       │           │                                      │
+│  org-model            │ SSO 身份  │  P1 Interface ──▶ P2 Control        │
+│  approval-routing ────┼──────────▶│  P2 ──▶ P3 Orchestration            │
+│  sso-scim             │ 审批结果  │  P3 ──▶ P4 Execution                │
+│  compliance-engine ───┼──────────▶│  P4 ──▶ P5 State & Evidence         │
+│  knowledge-boundary   │ 合规策略  │                                      │
+│  delegated-governance │           │  AI Runtime Support Stack            │
+└──────────────────────┘           │  (model-gw · prompt · compliance)   │
+                                    └─────────────────────────────────────┘
 
-Signal flow description:
-  interaction/ ══task══▶ platform/P1 (user request entry)
-  interaction/ ◀══events══ platform/P5 (dashboard data source)
-  org-governance/ ══identity══▶ platform/P2/iam (SSO/SCIM sync)
-  org-governance/ ══approval══▶ platform/P3/hitl (approval result write-back)
-  org-governance/ ══policy══▶ platform/P2/policy-center (compliance policy push)
-  platform/ ══query══▶ org-governance/knowledge-boundary (knowledge isolation control)
-
-Three-axis collaboration invariants:
-  1. interaction/ and org-governance/ do not communicate directly; via platform/ relay
-  2. platform/ does not actively call upper-layer systems; only through event notifications
-  3. All cross-axis communication uses envelope format defined by platform/contracts/
+信号流Description:
+  interaction/ ══任务══▶ platform/P1 (userrequest入口)
+  interaction/ ◀══事件══ platform/P5 (dashboard data源)
+  org-governance/ ══身份══▶ platform/P2/iam (SSO/SCIM synchronous)
+  org-governance/ ══审批══▶ platform/P3/hitl (审批结果回写)
+  org-governance/ ══策略══▶ platform/P2/policy-center (合规策略下发)
+  platform/ ══查询══▶ org-governance/knowledge-boundary (知识隔离控制)
+  
+三轴协作不variable:
+  1. interaction/ 和 org-governance/ 不directlycommunication；via platform/ 中转
+  2. platform/ 不主动call上层系统；onlyvia事件通知
+  3. 所有跨轴communicationuses platform/contracts/ defines的信封格式
 ```
 
 ---
 
-## Appendix A: Module Statistics Summary
+## §二五 跨平台 UI Monorepo vs前后端边界图
 
-> Statistics scope: Planning-level figures, not final file counts. Include migration mappings and new placeholder module estimates.
-
-| Top-level Directory | Layer | Secondary Modules | Migrated Files | New Files | Total |
-|----------------------|-------|-------------------|----------------|-----------|-------|
-| `platform/` | Layer 1-2 | 10 (incl. P1-P5 + AI Ops + contracts + shared) | ~608 | ~53 | ~661 |
-| `domains/` | Layer 3 | 10 | ~18 | ~8 | ~26 |
-| `interaction/` | Layer 4 | 6 | 0 | ~24 | ~24 |
-| `org-governance/` | Layer 5 | 6 | ~2 | ~18 | ~20 |
-| `scale-ecosystem/` | Layer 6 | 6 | ~27 | ~18 | ~45 |
-| `ops-maturity/` | Layer 7 | 11 | ~12 | ~44 | ~56 |
-| `plugins/` | Cross-layer | 5 | ~20 | 0 | ~20 |
-| `sdk/` | Cross-layer | 4 | ~78 | ~5 | ~83 |
-| `apps/` | Entry | 3 | 0 | ~3 | ~3 |
-| **src/ Total** | | **61** | **~765** | **~173** | **~938** |
-
-## Appendix B: High-risk Split Statistics
-
-| Split Target | Bounded Contexts | Methods/Files | Estimated Duration |
-|--------------|------------------|---------------|---------------------|
-| P4 `core/runtime/` | 12 BC | 101 files / 30K lines | ~20 person-days |
-| P5 `AuthoritativeTaskStore` | 7 BC | ~278 methods / 21 repos | ~20 person-days |
-
-## Appendix C: Diagram Index
-
-| Section | Diagram Type | v1.5 Change Description |
-|---------|--------------|------------------------|
-| §1 | Structure diagram | Corrected visual weight; divided into three visual bands |
-| §2 | Data flow diagram | Annotated AI operations as parallel support |
-| §3 | Structure diagram | Split into 3 responsibility areas |
-| §4 | Structure diagram | Reorganized into 4 areas |
-| §5 | Structure diagram | Added module boundary rules table |
-| §6 | Structure diagram + Sequence diagram | Split into 3 independent diagrams |
-| §7 | Structure diagram | **Rewritten**: 7 BC grouping + Truth/Derived/Evidence three zones |
-| §8 | Structure diagram | **Rewritten**: Renamed + parallel support positioning note |
-| §9 | Data flow diagram | **Rewritten**: Upgraded to platform protocol diagram + protocol chain series |
-| §10~§15 | Structure diagram | Added "expresses/does not express" declarations |
-| §16 | Data flow diagram | Added "expresses/does not express" declaration |
-| §17 | Constraint diagram | Added "expresses/does not express" declaration |
-| §18 | Structure diagram | Added "expresses/does not express" declaration |
-| §19 | Structure diagram | **New**: P4 Runtime 12 BC special diagram |
-| §20 | Structure diagram | **New**: P5 Storage 7 BC special diagram |
-| §21 | Structure diagram | **New**: Cross-cutting capability control plane diagram |
-| §22 | Structure diagram | **New**: Old system → new platform landing diagram |
-| §23 | Sequence diagram | **New**: Migration wave roadmap |
-| §24 | Data flow diagram | **New**: Three-axis collaboration diagram |
-| §25 | Structure diagram + Constraint diagram | **New**: Cross-platform UI Monorepo and frontend/backend boundary |
-| §26 | Structure diagram | **New**: Mission · Yono · Test/Deployment support incremental diagram |
-| §25 | Structure diagram + Constraint diagram | **New**: Cross-platform UI Monorepo and frontend/backend boundary |
-| §26 | Structure diagram | **New**: Mission · Yono · Test/Deployment support incremental diagram |
-
----
-
-## §25 Cross-platform UI Monorepo and Frontend/Backend Boundary
-
-> **Diagram type: Structure diagram + Constraint diagram** — Expresses the `ui/` monorepo internal structure and the strict boundary between frontend and backend. Does not express runtime communication protocols.
+> **图class型: 结构图 + 约束图** — table达 `ui/` Monorepo 的模块归属、六平台壳层和前后端relies on边界。不table达具体页面布局。
 
 ```text
-ui/ Monorepo Structure
-═══════════════════════════════════════════════════════════════════
-┌─────────────────────────────────────────────────────────────────┐
-│ ui/                                                              │
-│                                                                  │
-│  ┌─────────────┐  ┌──────────────────┐  ┌─────────────────────┐  │
-│  │    apps/    │  │   packages/     │  │       tools/        │  │
-│  │             │  │                  │  │                     │  │
-│  │ web/       │  │ shared/         │  │ codegen/            │  │
-│  │ electron-w │  │   platform/      │  │ mock-server/        │  │
-│  │ electron-m │  │   api-client/    │  │                     │  │
-│  │ tauri-win  │  │   hooks/         │  └─────────────────────┘  │
-│  │ tauri-mac  │  │   utils/         │                          │
-│  │ react-native│  │   ui-kit/        │  ┌─────────────────────┐  │
-│  │            │  │   constants/     │  │       tests/       │  │
-│  │            │  │                  │  │                     │  │
-│  │            │  ├──────────────────┤  │ unit/               │  │
-│  │            │  │   features/      │  │ integration/        │  │
-│  │            │  │                  │  │ e2e/                │  │
-│  │            │  │  dashboard/     │  │ features/           │  │
-│  │            │  │  mission-ctl/   │  │ apps/               │  │
-│  │            │  │  workflow-bldr/ │  │ a11y/               │  │
-│  │            │  │  evaluations/   │  │ playwright/         │  │
-│  │            │  │  settings/      │  │                     │  │
-│  └─────────────┘  │  ...           │  └─────────────────────┘  │
-│                  └──────────────────┘                           │
-└─────────────────────────────────────────────────────────────────┘
-
-Frontend/Backend Boundary Rules:
-  ui/ ──allowed──▶ public API / OpenAPI / generated schemas / typed mock seam
-  ui/ ──forbidden──▶ src/platform/* internal implementation, truth store, worker runtime, private services
-  feature ──allowed──▶ shared/api-client + hooks returning ViewModel
-  feature ──forbidden──▶ directly consuming backend DTOs or directly calling Electron/Tauri/RN APIs
-```
-
----
-
-## §26 Mission · Yono · Test/Deployment Support Incremental Diagram
-
-> **Diagram type: Structure diagram** — Expresses the new authoritative modules discovered during v1.3 code structure review, and their ownership relationship with the original seven layers/five planes.
-
-```text
-v1.3 Incremental Structure
+ui/
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│  Mission Long-term Goal Governance                                          │
+│                         Cross-platform UI Monorepo                           │
+│                                                                              │
+│  ┌────────────────────────── apps/ 六平台壳层 ──────────────────────┐       │
+│  │  web/        electron-win/      tauri-macos/      tauri-linux/   │       │
+│  │  React SPA   Windows shell      macOS shell       Linux shell     │       │
+│  │  mobile/     React Native shell                                  │       │
+│  └──────────────────────────────────────────────────────────────────┘       │
+│                                  │ Provider 注入                              │
+│                                  ▼                                           │
+│  ┌──────────────────────── shared/ 前端核心 ────────────────────────┐       │
+│  │ api-client/ · auth/ · state/ · sync/ · domain/ · platform/        │       │
+│  │ i18n/ · telemetry/ · nl-client/ · types/                          │       │
+│  │                                                                  │       │
+│  │ PlatformAdapter: network · secureStorage · filesystem · clipboard │       │
+│  │ lifecycle · shell · deepLink · screenSecurity · haptics           │       │
+│  └──────────────────────────────────────────────────────────────────┘       │
+│                                  │ DTO → VM → Props                           │
+│                                  ▼                                           │
+│  ┌──────────────────────── packages/features/ ──────────────────────┐       │
+│  │ dashboard · task-cockpit · workflow-cockpit · approval · hitl     │       │
+│  │ settings · domain-wizard · stability · takeover · alerts          │       │
+│  │ dispatch · inspect · health · incidents · conversation            │       │
+│  │ feature-flags · agent-manager · workflow-builder/debugger         │       │
+│  │ explainability · cost-center · marketplace · analytics · governance│      │
+│  │                                                                  │       │
+│  │ 每个 feature: web/ · mobile/ · hooks/ · mapper · route · guard    │       │
+│  └──────────────────────────────────────────────────────────────────┘       │
+│                                  │                                           │
+│  ┌──────────────────────── UI 基础组件 ─────────────────────────────┐       │
+│  │ ui-core/  Web/桌面设计系统 · charts · layout · business widgets   │       │
+│  │ ui-mobile/ 移动端组件 · native-module seam · navigation           │       │
+│  └──────────────────────────────────────────────────────────────────┘       │
+│                                  │                                           │
+│  ┌──────────────────────── tools + tests ───────────────────────────┐       │
+│  │ codegen/ · mock-server/ · e2e/                                    │       │
+│  │ tests/unit · integration · features · apps · a11y · playwright    │       │
+│  └──────────────────────────────────────────────────────────────────┘       │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+前后端边界:
+  ui/ ──允许──▶ public API / OpenAPI / generated schemas / typed mock seam
+  ui/ ──禁止──▶ src/platform/* 内部实现、truth store、worker runtime、私有 service
+  feature ──允许──▶ shared/api-client + hooks 返回 VM
+  feature ──禁止──▶ directly消费后端 DTO 或directlycall Electron/Tauri/RN API
+```
+
+---
+
+## §二六 Mission · Yono · 测试/部署支撑增量图
+
+> **图class型: 结构图** — table达 v1.3 code结构 review 发现的新增权威模块，以及它们vs原七层/Five-Plane的归属关系。
+
+```text
+v1.3 增量结构
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  Mission 长期目标治理                                                        │
 │                                                                              │
 │  platform/contracts/mission/             platform/five-plane-control-plane/mission/
 │  ┌──────────────────────────┐            ┌──────────────────────────────┐  │
@@ -1769,7 +1716,7 @@ v1.3 Incremental Structure
 │      P3 Harness / PlanGraph ───────────────▶ P4 NodeRun / Tool / Provider   │
 │                                                                              │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│  Yono Business Domain Instance                                              │
+│  Yono Business 业务域                                                        │
 │                                                                              │
 │  domains/yono/                                                               │
 │  ┌──────────────────────────┐                                                │
@@ -1779,33 +1726,66 @@ v1.3 Incremental Structure
 │  └──────────────────────────┘                                                │
 │                                                                              │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│  Test and Deployment Support                                                │
+│  测试vs部署支撑                                                              │
 │                                                                              │
 │  src/testing/        tests/invariants/       tests/leaks/                    │
-│  Test Common Fac.   Arch.Invariant Guard   Memory/Handle Leak Detection   │
+│  测试公共设施      Architecture不variable守护       内存/句柄泄漏检测                   │
 │                                                                              │
 │  src/benchmarks/     tests/performance/     deploy/                          │
-│  Performance Entry  Capacity/Benchmark     Helm · Terraform · Prometheus · Chaos │
+│  性能入口          容量/性能基准        Helm · Terraform · Prometheus · Chaos │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Appendix A: Module Statistics Summary
+## 附录 A: 模块统计汇总
 
-> Statistics scope: 2026-05-18 current workspace structure snapshot; detailed figures see `01-code-structure.md` v1.3. Historical planning estimates no longer used as acceptance criteria.
+> 统计口径: 2026-05-18 当前工作区结构快照；详细数字见 `01-code-structure.md` v1.3。历史规划估算不再作为准入依据。
 
-| Top-level Directory | Layer | Current Structure Status | Key Additions/Calibration |
-|---------------------|-------|-------------------------|---------------------------|
-| `platform/` | Layer 1-2 | Authoritative core area | Mission, outbox, side-effect-ledger, reconciliation, degradation |
-| `domains/` | Layer 3 | Expanded | `yono/` as business domain instance |
-| `interaction/` | Layer 4 | Expanded | dashboard/autonomy/goal/nl/proactive/ux |
-| `org-governance/` | Layer 5 | Expanded | approval-routing, SSO/SCIM, delegated governance |
-| `scale-ecosystem/` | Layer 6 | Expanded | marketplace, billing, SLA, multi-region, runtime-services |
-| `ops-maturity/` | Layer 7 | Expanded | chaos, capacity, edge, debugger, explainability |
-| `plugins/` | Cross-layer | Stable | Plugin ecosystem |
-| `sdk/` | Cross-layer | Expanded | CLI, admin/harness/workbench SDK |
-| `apps/` | Entry | Stable | Backend composition startup |
-| `ui/` | Frontend | New authoritative area | Web/Electron/Tauri/Mobile + packages/features/shared |
-| `tests/` | Testing | Expanded | unit/integration/e2e/golden/performance/invariants/leaks |
-| `src/testing/` / `src/benchmarks/` | Support | New/Calibrated | Test infrastructure and performance entry |
+| 顶层目录 | 层级 | 当前结构Status | 关键新增/校准 |
+|----------|------|--------------|----------------|
+| `platform/` | Layer 1-2 | 权威核心区 | Mission、outbox、side-effect-ledger、reconciliation、degradation |
+| `domains/` | Layer 3 | 已扩展 | `yono/` 作为业务域实例 |
+| `interaction/` | Layer 4 | 已扩展 | dashboard/autonomy/goal/nl/proactive/ux |
+| `org-governance/` | Layer 5 | 已扩展 | approval-routing、SSO/SCIM、delegated governance |
+| `scale-ecosystem/` | Layer 6 | 已扩展 | marketplace、billing、SLA、多区域、runtime-services |
+| `ops-maturity/` | Layer 7 | 已扩展 | chaos、capacity、edge、debugger、explainability |
+| `plugins/` | 跨层 | 稳定 | 插件生态 |
+| `sdk/` | 跨层 | 已扩展 | CLI、admin/harness/workbench SDK |
+| `apps/` | 入口 | 稳定 | 后端组合启动 |
+| `ui/` | 前端 | 新增权威区 | Web/Electron/Tauri/Mobile + packages/features/shared |
+| `tests/` | 测试 | 已扩展 | unit/integration/e2e/golden/performance/invariants/leaks |
+| `src/testing/` / `src/benchmarks/` | 支撑 | 新增/校准 | 测试基础设施vs性能入口 |
+
+## 附录 B: 高风险拆分统计
+
+| 拆分目标 | Bounded Contexts | 方法/文件数 | 估算工期 |
+|----------|-----------------|------------|----------|
+| P4 `core/runtime/` | 12 BC | 101 files / 30K lines | ~20 person-days |
+| P5 `AuthoritativeTaskStore` | 7 BC | ~278 methods / 21 repos | ~20 person-days |
+
+## 附录 C: 图集索references
+
+| 章节 | 图class型 | v1.3 变更Description |
+|------|--------|--------------|
+| §一 | 结构图 | 修正视觉权重；分三视觉带 |
+| §二 | data流图 | 标注 AI 运营为并列支撑 |
+| §三 | 结构图 | 拆分 3 个职责区 |
+| §四 | 结构图 | 重组为 4 个区域 |
+| §五 | 结构图 | 增加模块边界规则table |
+| §六 | 结构图 + 时序图 | 拆分为 3 张独立图 |
+| §七 | 结构图 | **重写**: 7 BC 分组 + Truth/Derived/Evidence 三区 |
+| §八 | 结构图 | **重写**: 重命名 + 并列支撑定位Description |
+| §九 | data流图 | **重写**: 升级为平台协议图 + 协议链串联 |
+| §十~§十五 | 结构图 | 增加"table达/不table达"声明 |
+| §十六 | data流图 | 增加"table达/不table达"声明 |
+| §十七 | 约束图 | 增加"table达/不table达"声明 |
+| §十八 | 结构图 | 增加"table达/不table达"声明 |
+| §十九 | 结构图 | **新增**: P4 Runtime 12 BC 专项图 |
+| §二十 | 结构图 | **新增**: P5 Storage 7 BC 专项图 |
+| §二一 | 结构图 | **新增**: 横切能力Control Plane图 |
+| §二二 | 结构图 | **新增**: 老系统→新平台落点图 |
+| §二三 | 时序图 | **新增**: 迁移波iterations路线图 |
+| §二四 | data流图 | **新增**: 三轴协作图 |
+| §二五 | 结构图 + 约束图 | **新增**: 跨平台 UI Monorepo vs前后端边界 |
+| §二六 | 结构图 | **新增**: Mission · Yono · 测试/部署支撑增量图 |

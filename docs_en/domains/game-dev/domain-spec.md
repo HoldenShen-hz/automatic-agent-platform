@@ -12,8 +12,8 @@
 
 - AI-generated art assets must pass known IP similarity detection.
 - Code, resources, and gameplay recommendations must retain source and license evidence.
-- Pre-launch must pass safety and copyright checks.
+- Pre-launch must pass security and copyright checks.
 
 ## Acceptance Criteria
 
-- Before GA, must provide IP similarity, asset authorization, testing, and manual review evidence.
+- GA must provide IP similarity, asset authorization, testing, and human review evidence before release.

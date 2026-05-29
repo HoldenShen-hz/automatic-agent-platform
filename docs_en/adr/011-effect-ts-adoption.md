@@ -1,144 +1,144 @@
-# ADR-011 Effect-TS Adoption as Core Runtime Foundation
+# ADR-011 Effect-TS isno作为核心运lines时基础
 
 ---
 
-## OAPEFLIR Association
+## OAPEFLIR 关联
 
-This document defines the following components in the OAPEFLIR eight-stage cognitive loop:
+本文档defines OAPEFLIR 八阶段认知循环中的以下组件：
 
-- **Observe**: Signal collection and unified DTO
-- **Assess**: Pre/post execution assessment and risk judgment
-- **Plan**: Explicit planning and DAG construction (ADR-060)
-- **Execute**: Step execution and Dual-Channel output
-- **Feedback**: Signal collection, preprocessing and 7 feedback sources (ADR-079)
-- **Learn**: Pattern detection and knowledge extraction (ADR-080)
-- **Improve**: Improvement candidate evaluation and Rollout state machine (ADR-075)
-- **Release**: Six-level controlled release and automatic rollback
+- **Observe**：信号采集vs统一 DTO
+- **Assess**：执lines前/后评估vs风险判断
+- **Plan**：显式规划vs DAG 构建（ADR-060）
+- **Execute**：步骤执linesvs Dual-Channel 输出
+- **Feedback**：信号收集、预handlevs 7 class反馈源（ADR-079）
+- **Learn**：模式检测vs知识提取（ADR-080）
+- **Improve**：改进候选评估vs Rollout Status机（ADR-075）
+- **Release**：六级受控发布vs自动回滚
 
 ---
 
-- Status: Accepted
-- Decision Date: 2026-04-03
+- Status：Accepted
+- Decision日期：2026-04-03
 
 ## Background
 
-The system has clearly identified the need for state machines, unified error models, recovery chains, context propagation, resource lifecycle management, and subsequent execution plane evolution. Effect-TS can provide a relatively complete set of effect, resource, layer, and typed error abstractions, but it would also significantly increase team learning costs and initial implementation burden.
+系统已via明确需要Status机、统一错误模型、恢复链、上下文传播、资源生命cyclemanage和后续 execution plane 演进。Effect-TS 能提供一套较完整的 effect、resource、layer 和 typed error 抽象，但同时也会明显提高团队学习成本和初期实现负担。
 
-The real problem at the current stage is not whether we like Effect-TS, but:
+当前阶段的真实Issue不is“isno喜欢 Effect-TS”，而is：
 
-- Whether Ring 1 is worth introducing a heavier runtime abstraction early for future capabilities.
-- If not introducing it now, when should we re-evaluate.
+- Ring 1 isno值得为未来能力提前references入更重的运lines时抽象。
+- 若当前不references入，后面何时应重新评估。
 
 ## Decision
 
-Do not mandate Effect-TS as the core runtime foundation in Ring 1.
+不在 Ring 1 mandatory采用 Effect-TS 作为核心运lines时基础。
 
-The current phase adopts a lighter strategy:
+当前阶段采用更轻的策略：
 
-- TypeScript native async/await as the primary execution model.
-- Contract-driven error model, state machines, and repository boundaries are frozen first.
-- Leave structural space for possible future Effect-TS adoption, but do not let implementation depend on its programming model prematurely.
+- TypeScript 原生 async/await 作为主执lines模型。
+- contract 驱动的错误模型、Status机和 repository 边界先lines冻结。
+- 为后续可能references入 Effect-TS 预留边界，但不让实现提前relies on其编程模型。
 
-Re-evaluation point placed at Phase 2:
+重新评估时点放在 Phase 2：
 
-- When multi-worker, queue, complex resource lifecycle, and typed effect composition begin to increase significantly, formally evaluate whether to introduce it.
+- 当多 worker、queue、复杂资源生命cycle、typed effect 组合开始明显增多时，再正式评估isnoreferences入。
 
-## Alternatives
+## 备选方案
 
-### Option A: Immediate Full Adoption of Effect-TS in Ring 1
+### 方案 A：Ring 1 立即全面采用 Effect-TS
 
-Pros:
+优点：
 
-- More unified error, dependency, concurrency, and resource management models.
-- Smoother subsequent execution plane evolution.
+- 错误、relies on、concurrent和资源manage模型更统一。
+- 后续 execution plane 可能更平滑。
 
-Costs:
+代价：
 
-- Steep learning curve.
-- Significantly higher initial implementation, testing, debugging, and onboarding costs.
-- The team is still closing platform boundaries. Premature abstraction layer changes would amplify documentation-to-code translation costs.
+- 学习曲线陡峭。
+- 初期实现、测试、调试和 onboarding 成本显著上升。
+- 当前团队仍在收口平台边界，过早换抽象层会放大文档到code的翻译成本。
 
-### Option B: Completely Exclude Effect-TS
+### 方案 B：完全排除 Effect-TS
 
-Pros:
+优点：
 
-- Lowest initial mental burden.
-- Fastest implementation speed.
+- 初期心智负担最低。
+- 实现速度最快。
 
-Costs:
+代价：
 
-- If Phase 2 complexity increases significantly, may lack unified effect/resource model.
-- Higher migration cost if introduced later.
+- 一旦 Phase 2 复杂度显著上升，可能缺少统一的 effect / resource 模型。
+- 后续若再references入，迁移成本更高。
 
-### Option C: Current Decision
+### 方案 C：当前Decision方案
 
-- No mandatory adoption currently.
-- Preserve structural space for future introduction.
-- Use contract and boundary design instead of premature runtime framework lock-in.
+- 当前不mandatory采用
+- 保留后续references入的结构性空间
+- 以 contract 和边界设计替代过早的运lines时框架锁定
 
-## Reasons for This Choice
+## 选择这个方案的原因
 
-- The most important thing now is to tighten the five foundations: state, error, events, recovery, and security.
-- These are primarily boundary and contract issues, not runtime framework issues.
-- Prematurely introducing Effect-TS would push implementation complexity forward to Ring 1, which is not the current primary risk.
-- Preserving space for future re-evaluation is more prudent than locking in now.
+- 当前最重要的is先把Status、错误、事件、恢复、security这五个底座收紧。
+- 这些Issue首先is边界和契约Issue，不is运lines时框架Issue。
+- 过早references入 Effect-TS 会把“实现复杂度”前置到 Ring 1，而这不is当前的主风险。
+- 保留后续重新评估空间，比现在directly锁死更稳妥。
 
-## Key Invariants
+## 关键不variable
 
-- Current code must not assume Effect-TS will definitely be introduced in the future.
-- Current code must also not be written in a form that makes it absolutely impossible to introduce Effect-TS.
-- Error model, repository boundaries, context propagation, and state machine entry points must hold independently of any specific runtime framework.
+- 当前code不得假设未来一定会references入 Effect-TS。
+- 当前也不得把codehardcoded成“绝no可能references入 Effect-TS”的形态。
+- 错误模型、repository 边界、上下文传播和Status推进入口必须独立于具体运lines时框架成立。
 
-## Adoption Triggers
+## 采用触发条件
 
-If any of the following occurs, evaluation should be reopened:
+若出现以下任一情况，应重新开启评估：
 
-- Execution plane enters multi-worker, queue, lease, or handover implementation phase.
-- Resource lifecycle management extensively involves sandbox, provider, gateway, worker registry.
-- Existing async/await plus service organization clearly leads to uncontrolled error propagation, resource cleanup, or dependency injection.
+- execution plane 进入多 worker / queue / lease / handover 实现阶段。
+- 资源生命cyclemanage开始广泛涉及 sandbox、provider、gateway、worker registry。
+- 现有 async/await + service 组织方式明显导致错误传播、资源清理或relies on注入失控。
 
-## Exit Conditions
+## 退出条件
 
-If after Phase 2 evaluation it is still found that:
+若 Phase 2 评估后仍发现：
 
-- Complexity is not sufficient to justify introduction benefits.
-- Team maintenance costs are higher than expected.
-- Contracts and services are sufficient to support evolution.
+- 复杂度尚不足以证明references入收益
+- 团队维护成本高于预期
+- contract 和 service 已足以支撑演进
 
-Then continue to maintain non-adoption and do not treat it as postponement failure.
+则继续维持不references入，不视为“延期failed”。
 
-## Implementation Impact
+## 实施Impact
 
-Requirements for current implementation:
+对当前实现的要求：
 
-- Continue converging core capabilities as service plus repository plus contract.
-- Use AppError, transition service, policy engine, context propagation as contract replacements for framework coupling.
-- Avoid forming hard-to-replace implicit global dependencies in code.
+- 继续把核心能力收敛为 service + repository + contract。
+- 用 `AppError`、transition service、policy engine、context propagation 等 contract 替代框架耦合。
+- 避免在code中形成难以替换的隐式globallyrelies on。
 
-Requirements for future evolution:
+对后续演进的要求：
 
-- If future evaluation decides to introduce, use ADR to document migration scope, benefit justification, and rollback strategy first.
+- 若未来评估references入，应先用 ADR 补齐迁移范围、收益证明和回滚策略。
 
-## Results
+## 结果
 
-Benefits:
+优点：
 
-- Phase 1a/1b implementation speed and comprehension costs are more manageable.
-- Stabilize platform boundaries first, then decide whether to upgrade runtime abstraction.
-- Avoid confusing framework preferences with architectural necessities.
+- Phase 1a / 1b 的落地速度vs理解成本更可控。
+- 先把平台边界做稳，再决定isno升级运lines时抽象。
+- 避免把框架偏好误当成Architecture刚需。
 
-Costs:
+代价：
 
-- Some typed effect and resource safety advantages are temporarily unavailable at this stage.
-- If Phase 2 decides to introduce, a controlled migration is still required.
+- 当前阶段部分 typed effect、resource safety 优势暂时拿不到。
+- Phase 2 若决定references入，仍需要一iterations受控迁移。
 
-## Cross-References
+## 交叉references用
 
-- [ADR-012 SQLite as Phase 1-2 Primary Store](./012-sqlite-phase-1-2-primary-store.md)
-- [ADR-013 EventEmitter Continued Use to Phase 2](./013-eventemitter-phase-2-boundary.md)
-- [ADR-014 Organization Model Direct Mapping to Code Objects](./014-org-model-code-boundary.md)
+- [ADR-012 SQLite isno作为 Phase 1-2 唯一主storage](./012-sqlite-phase-1-2-primary-store.md)
+- [ADR-013 EventEmitter isno继续uses到 Phase 2](./013-eventemitter-phase-2-boundary.md)
+- [ADR-014 组织模型isnodirectly映射到code对象](./014-org-model-code-boundary.md)
 
-## Source Sections
+## 来源章节
 
-- System Improvement Roadmap and P0-10
-- reference/16-competitive-differentiation.md
+- `System Improvement Roadmap / P0-10`
+- `reference/16-competitive-differentiation.md`

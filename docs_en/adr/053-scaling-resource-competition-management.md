@@ -1,17 +1,17 @@
-# ADR-053 Scaling Resource Competition Management
+# ADR-053 规模化资源竞争manage
 
-- Status: Accepted
-- Decision Date: 2026-04-20
+- Status：Accepted
+- Decision日期：2026-04-20
 
-## Context
+## Background
 
-When multiple business lines run concurrently, resource competition occurs, requiring fair and effective resource allocation mechanisms.
+多业务线concurrent运lines时会出现资源竞争，需要公平有效的资源分配机制。
 
 ## Decision
 
-### Resource Pool Model
+### 资源池模型
 
-ResourcePool/ResourceAllocation is deeply integrated with BudgetLedger/BudgetReservation, unified management of resource allocation and budget charging. Together, they constitute the atomic unit of resource allocation:
+ResourcePool/ResourceAllocation vs BudgetLedger/BudgetReservation 深度集成，统一manage资源分配vsbudget扣费，三者共同构成资源分配的原子单元：
 
 ```typescript
 interface ResourcePool {
@@ -26,54 +26,54 @@ interface ResourceAllocation {
   reserved: number;
   used: number;
   priority: number;
-  budgetLedgerEntry: string;  // Associated BudgetLedger record
+  budgetLedgerEntry: string;  // 关联 BudgetLedger record
 }
 ```
 
-### Resource Types
+### 资源class型
 
-| Type | Description |
-|------|-------------|
-| compute | Compute resources |
-| memory | Memory resources |
-| storage | Storage resources |
-| api_quota | API call quota |
-| llm_token | LLM Token quota |
+| class型 | Description |
+|------|------|
+| compute | 计算资源 |
+| memory | 内存资源 |
+| storage | storage资源 |
+| api_quota | API call配额 |
+| llm_token | LLM Token 配额 |
 
-### Scheduling Strategies
+### 调度策略
 
-| Strategy | Description |
-|----------|-------------|
-| priority | Priority first |
-| fair_share | Fair sharing |
-| fifo | First come first served |
-| weighted_fair | Weighted fair queue |
+| 策略 | Description |
+|------|------|
+| priority | 优先级优先 |
+| fair_share | 公平分享 |
+| fifo | 先来先服务 |
+| weighted_fair | 加权公平队列 |
 
-### Resource Quotas
+### 资源配额
 
-- Platform-level quotas
-- Tenant-level quotas
-- Business domain-level quotas
-- Dynamic adjustment
+- 平台级配额
+- 租户级配额
+- 业务域级配额
+- dynamically调整
 
 ## Consequences
 
-Pros:
+优点：
 
-- Fair resource allocation prevents starvation
-- Priority mechanism guarantees critical business
-- Dynamic adjustment adapts to load changes
+- 公平的资源分配防止饿死人
+- 优先级机制保证关键业务
+- dynamically调整适应负载变化
 
-Cons:
+代价：
 
-- Scheduling algorithm complexity
-- Quota calculation overhead
+- 调度算法复杂度
+- 配额计算开销
 
-## Cross References
+## 交叉references用
 
-- [ADR-024 Scalability Architecture](./024-scalability-architecture.md)
-- [ADR-054 SLA Tiered Guarantees](./054-sla-tiered-guarantees.md)
+- [ADR-024 可扩展性Architecture](./024-scalability-architecture.md)
+- [ADR-054 SLA 分级保障](./054-sla-tiered-guarantees.md)
 
-## Source Sections
+## 来源章节
 
-- `§53` Scaling Resource Competition Management
+- `§53` 规模化资源竞争manage

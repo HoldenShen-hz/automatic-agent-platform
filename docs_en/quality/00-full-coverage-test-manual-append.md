@@ -1,13 +1,13 @@
-# Full Coverage Testing Manual Appendix
+# Full Coverage Test Manual Appendix Entry
 
-This file is kept as a stable legacy alias for older review links.
+This file is retained as a stable alias for legacy review links and no longer maintains the full manual body.
 
-## Current source of truth
+## Current Authoritative Source
 
-- Main manual: [00-full-coverage-test-manual.md](./00-full-coverage-test-manual.md)
-- Chinese mirror alias: [../../docs_zh/quality/00-full-coverage-test-manual-append.md](../../docs_zh/quality/00-full-coverage-test-manual-append.md)
+- Main document: [00-full-coverage-test-manual.md](./00-full-coverage-test-manual.md)
+- English mirror alias: [../../docs_en/quality/00-full-coverage-test-manual-append.md](../../docs_en/quality/00-full-coverage-test-manual-append.md)
 
-## Usage rule
+## Usage Rules
 
-- Do not duplicate the full manual here.
-- Put new testing governance changes into the main manual and the matching Chinese mirror.
+- New test governance content is only written to the main document.
+- This file is only used for legacy link fallback and document mirror alignment.

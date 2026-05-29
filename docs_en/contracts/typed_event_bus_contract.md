@@ -1,23 +1,23 @@
 # Typed Event Bus Contract
 
-## 1. Scope
+## 1. 范围
 
-This contract defines upper-layer requirements for the typed event bus, further freezing current event registration and payload schema into strong-type boundaries.
+本 contract definesclass型化事件总线的上层要求，used for把当前事件注册vs payload schema 进一步冻结到强class型边界。
 
-Related Documents:
+相关文档：
 
 - `event_bus_contract.md`
 - `event_registry_and_ops_threshold_contract.md`
 
-## 2. Goals
+## 2. 目标
 
-- Let event type, payload schema, producer, and consumer form one-to-one correspondence.
-- Reduce implementation drift caused by broad unions and manual payload.
-- Provide unified event definition source for code generation, lint, and replay tools.
+- 让 event type、payload schema、producer、consumer 形成一一对应关系。
+- 降低宽泛 union 和手工 payload 带来的实现漂移。
+- 为code生成、lint 和回放工具提供统一事件defines源。
 
-## 3. Type Model
+## 3. class型模型
 
-Each event definition must contain at minimum:
+每个事件defines至少contains：
 
 - `event_type`
 - `tier`
@@ -28,16 +28,16 @@ Each event definition must contain at minimum:
 - `consumers`
 - `compatibility_policy`
 
-Requirements:
+要求：
 
-- All OAPEFLIR hub events must simultaneously have schema ref and stable TypeScript payload type name.
-- If `stage` exists, must come from canonical OAPEFLIR stage enum, not consumer-defined tags.
+- 所有 OAPEFLIR hub 事件必须同时拥有 schema ref 和稳定的 TypeScript payload type name。
+- `stage` 若存在，必须来自 canonical OAPEFLIR stage 枚举，而不is消费方自defines标签。
 
 ## 3A. OAPEFLIR Event Payload Types
 
-Phase 1-4 closed-loop events must provide typed payloads, corresponding to ADR-079 and ADR-080:
+Phase 1-4 闭环事件必须提供class型化 payload，对应 ADR-079 和 ADR-080：
 
-### 3A.1 Observe Hub Events
+### 3A.1 Observe Hub 事件
 
 `ObserveSignalsCollectedPayload`
 
@@ -58,7 +58,7 @@ Phase 1-4 closed-loop events must provide typed payloads, corresponding to ADR-0
 - `trace_id`
 - `derived_from_event_id?`
 
-### 3A.2 Assess Hub Events
+### 3A.2 Assess Hub 事件
 
 `AssessmentCompletedPayload`
 
@@ -70,7 +70,7 @@ Phase 1-4 closed-loop events must provide typed payloads, corresponding to ADR-0
 - `trace_id`
 - `derived_from_event_id?`
 
-### 3A.3 Plan Hub Events
+### 3A.3 Plan Hub 事件
 
 `PlanCreatedPayload`
 
@@ -92,7 +92,7 @@ Phase 1-4 closed-loop events must provide typed payloads, corresponding to ADR-0
 - `trace_id`
 - `derived_from_event_id`
 
-### 3A.4 Execute Hub Events
+### 3A.4 Execute Hub 事件
 
 `ExecutionCompletedPayload`
 
@@ -105,7 +105,7 @@ Phase 1-4 closed-loop events must provide typed payloads, corresponding to ADR-0
 - `trace_id`
 - `derived_from_event_id`
 
-### 3A.5 Feedback Hub Events (ADR-079)
+### 3A.5 Feedback Hub 事件（ADR-079）
 
 `FeedbackCollectedPayload`
 
@@ -127,7 +127,7 @@ Phase 1-4 closed-loop events must provide typed payloads, corresponding to ADR-0
 - `trace_id`
 - `derived_from_event_id?`
 
-### 3A.6 Learn Hub Events (ADR-080)
+### 3A.6 Learn Hub 事件（ADR-080）
 
 `LearningArtifactCreatedPayload`
 
@@ -146,7 +146,7 @@ Phase 1-4 closed-loop events must provide typed payloads, corresponding to ADR-0
 - `trust_level`
 - `trace_id`
 
-### 3A.7 Improve Hub Events (ADR-075)
+### 3A.7 Improve Hub 事件（ADR-075）
 
 `ImprovementCandidateCreatedPayload`
 
@@ -174,7 +174,7 @@ Phase 1-4 closed-loop events must provide typed payloads, corresponding to ADR-0
 - `metrics_snapshot`
 - `trace_id`
 
-### 3A.8 Release Events
+### 3A.8 Release 事件
 
 `ReleaseRolloutStartedPayload`
 
@@ -195,17 +195,17 @@ Phase 1-4 closed-loop events must provide typed payloads, corresponding to ADR-0
 - `final_metrics`
 - `trace_id`
 
-Rules:
+规则：
 
-- Breaking changes to payload schema must be handled through new type name or explicit version upgrade.
-- Tier 1 improvement/rollout events must not degrade to untyped `json` blob.
-- Disabled M2 event types may retain schema reserved slots, must not be fictitiously published in production traffic.
-- OAPEFLIR event types uniformly use `<stage>:<event>` format (e.g., `feedback:collected`, `learning:object_promoted`).
-- Typed payloads derived from preceding facts or events must explicitly carry `derived_from_event_id` to avoid losing causal source in Plan/Execute/Feedback chain.
+- payload schema 的破坏性变更必须via新 type name 或显式版本升级handle。
+- Tier 1 的 improvement / rollout 事件不得退化为noclass型 `json` blob。
+- 未enabled的 M2 事件class型可以保留 schema 预留位，但不得在生产流量中伪造发布。
+- OAPEFLIR 事件class型统一uses `<stage>:<event>` 格式（如 `feedback:collected`、`learning:object_promoted`）。
+- 由前序事实或事件派生出的 typed payload，必须显式携带 `derived_from_event_id`，避免 Plan / Execute / Feedback 链路丢失因果来源。
 
 ## 3B. Extension Plane Event Payload Types
 
-If `Knowledge Plane / Artifact Plane / Plugin SPI / Domain Registry` baseline is enabled, corresponding extension-plane events must also provide typed payloads, covering at minimum:
+若enabled `Knowledge Plane / Artifact Plane / Plugin SPI / Domain Registry` 基线，对应 extension-plane 事件也必须提供class型化 payload，至少覆盖：
 
 `PluginIsolationEventPayload`
 
@@ -227,24 +227,24 @@ If `Knowledge Plane / Artifact Plane / Plugin SPI / Domain Registry` baseline is
 - `duration_ms?`
 - `reason_code?`
 
-Supplementary Rules:
+补充规则：
 
-- `plugin:invocation_started` and `plugin:invocation_completed` must share stable payload type, rather than each drifting into ad-hoc field sets.
-- Extension-plane events may first go to in-process typed bus, but must not therefore disguise as cross-process reliable delivery capability.
-- If `domain:* / plugin:* / knowledge:*` events are consumed by feedback or projection, producer, consumer, and payload schema must be simultaneously traceable in registry.
+- `plugin:invocation_started` vs `plugin:invocation_completed` 必须共享稳定 payload type，而不iseach漂移成 ad-hoc 字段集。
+- extension-plane 事件允许先走进程内 typed bus，但不得因此as跨进程可靠投递能力。
+- `domain:* / plugin:* / knowledge:*` 事件若被 feedback 或 projection 消费，producer、consumer 和 payload schema 必须在 registry 中同时可追踪。
 
-## 4. Compatibility Rules
+## 4. 兼容规则
 
-- Backward-compatible fields may be added, must not be silently deleted or have semantics changed.
-- Breaking changes should open new `event_type` or use explicit version.
-- Consumers should only subscribe to event types they declare support for.
+- 向后兼容字段可新增，不可静默删除或改语义。
+- 破坏性变更应新开 `event_type` 或显式版本。
+- consumer 只应订阅自己声明supported的 event type。
 
-## 5. Relationship with Existing EventBus
+## 5. vs现有 EventBus 的关系
 
-- `event_bus_contract.md` still defines bus semantics and acknowledgment boundaries.
-- This contract defines the type-freezing layer on top of it.
-- Transport upgrades must not break typed event contract.
+- `event_bus_contract.md` 仍defines总线语义vs确认边界。
+- 本 contract defines其上的class型冻结层。
+- transport 升级时，不得破坏 typed event contract。
 
-## 6. Closing Conclusion
+## 6. 收口Conclusion
 
-Typed Event Bus is not another bus, but adds stronger schema and compatibility guarantees to the existing event system.
+Typed Event Bus 不is另一套总线，而is给现有事件体系加上更强的 schema 和兼容保障。

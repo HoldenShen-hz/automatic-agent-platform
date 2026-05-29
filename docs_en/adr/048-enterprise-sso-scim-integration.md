@@ -1,18 +1,18 @@
 # ADR-048 Enterprise SSO/SCIM Integration Architecture
 
-- Status: Accepted
-- Decision Date: 2026-04-20
+- Status：Accepted
+- Decision Date：2026-04-20
 
-## Context
+## Background
 
-Enterprises need to integrate with existing identity providers (IdP) to achieve single sign-on and automated user lifecycle management.
+Enterprises need to integrate with existing Identity Providers (IdP) to achieve single sign-on and automated user lifecycle management.
 
 ## Decision
 
 ### SSO Support
 
 | Protocol | Description |
-|----------|-------------|
+|------|------|
 | SAML 2.0 | Common for enterprise IdP |
 | OIDC | Recommended for modern applications |
 | OAuth 2.0 | Third-party authorization |
@@ -37,15 +37,15 @@ interface SCIMGroup {
 
 ### User Lifecycle (Saga Pattern)
 
-All user lifecycle operations use prepare/commit/compensate semantics with audit logging:
+All user lifecycle operations use prepare/commit/compensate semantics and record audit logs:
 
 | Phase | Onboarding | Transfer | Offboarding |
-|-------|------------|----------|-------------|
-| prepare | Verify IdP credentials, pre-allocate account, check quota | Get current permissions, generate change list | Backup data, generate permission recovery list |
+|------|------|------|------|
+| prepare | Verify IdP credentials, pre-allocate accounts, check quota | Get current permissions, generate change list | Backup data, generate permission recovery list |
 | commit | Create account, join default group, send welcome notification | Update organization info, sync permission changes | Disable account, recover permissions, export data |
-| compensate | Rollback account creation, send exception notification | Rollback organization info, rollback permission changes | Restore account, unfreeze permissions (emergency only) |
+| compensate | Rollback account creation, send exception notification | Rollback organization info, rollback permission changes | Restore account, unfreeze permissions (in emergency) |
 
-Audit logging records: operation type, operator, timestamp, pre/post state changes, compensation action execution results.
+Audit log records: operation type, operator, timestamp, status before/after change, compensation action execution results.
 
 ### Sync Strategies
 
@@ -55,22 +55,22 @@ Audit logging records: operation type, operator, timestamp, pre/post state chang
 
 ## Consequences
 
-Pros:
+Advantages:
 
 - SSO improves user experience and security
 - SCIM automates user management
 - Reduces manual operations
 
-Cons:
+Costs:
 
 - IdP integration complexity
 - Sync delay may cause permission issues
 
-## Cross References
+## Cross-references
 
 - [ADR-046 Organization Hierarchy Model](./046-organization-hierarchy-model.md)
 - [ADR-027 Security and Reliability Architecture](./027-security-architecture.md)
 
-## Source Sections
+## Source Section
 
 - `§48` Enterprise SSO/SCIM Integration Architecture

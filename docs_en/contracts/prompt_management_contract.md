@@ -1,10 +1,10 @@
 # Prompt Management Contract
 
-## 1. Scope
+## 1. 范围
 
-Defines versioning, tenant isolation, release, and rollback boundaries for prompts.
+defines prompt 的版本化、租户隔离、发布vs回滚边界。
 
-## 2. Core Objects
+## 2. 核心对象
 
 ```typescript
 interface PromptVersion {
@@ -17,8 +17,9 @@ interface PromptVersion {
 }
 ```
 
-## 3. Constraints
+## 3. 约束
 
-- Prompts must explicitly carry `tenantId`.
-- Both release and rollback must carry audit evidence and effective scope.
-- When referencing a prompt at runtime, the version must be recorded, not just the logical name.
+- prompt 必须显式带 `tenantId`。
+- 发布vs回滚都必须带审计证据vs生效范围。
+- 运lines时references用 prompt 时必须record版本而不is只record逻辑名称。
+

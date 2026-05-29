@@ -1,10 +1,10 @@
 # Risk Assessment Contract
 
-## 1. Scope
+## 1. 范围
 
-Defines risk assessment objects shared by admission, planning, routing, and side-effect.
+defines admission、planning、routing、side-effect 共享的风险评估对象。
 
-## 2. Core Objects
+## 2. 核心对象
 
 ```typescript
 interface RiskAssessment {
@@ -18,8 +18,9 @@ interface RiskAssessment {
 }
 ```
 
-## 3. Constraints
+## 3. 约束
 
-- Risk assessment must be traceable to ground truth chain at run/node level.
-- high/critical must explicitly have mitigation or HITL constraints.
-- Risk class must not exist only at UI text layer.
+- 风险评估必须能在 run/node 层关联到事实链。
+- high/critical 必须显式有 mitigation 或 HITL 约束。
+- 风险等级不得只存在 UI 文案层。
+

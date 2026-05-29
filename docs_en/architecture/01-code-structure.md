@@ -1,206 +1,206 @@
-# New Platform Code File Structure Design Document
+# 新平台code文件结构设计文档
 
-> **Document Version**: v1.3
-> **Document Status**: Active (calibrated after code structure review)
-> **Related Document**: "Enterprise Agent Platform Overall Technical Architecture Design Document" v2.7 §35 Recommended Code Directory
-> **Related Document**: "Old System → New Platform Migration Assessment Document" v1.1
-> **Design Date**: 2026-04-19
-> **Last Updated**: 2026-05-26 (synced P1 public interface, federation governance persistence, event reliability, and Electron/UI contract fixes)
+> **文档版本**：v1.3
+> **文档Status**：Active（code结构复核后校准）
+> **关联文档**：《企业级 Agent 平台总体技术Architecture设计文档》v2.7 §35 推荐code目录
+> **关联文档**：《老系统→新平台移植评估文档》v1.1
+> **设计日期**：2026-04-19
+> **最后续修**：2026-05-26（synchronous P1 公共接口、联邦治理持久化、事件可靠性vs Electron/UI 契约修复）
 
 ---
 
-## 1. Document Purpose
+## 一、文档目的
 
-This document defines the **complete code file structure** of the new platform and answers three questions:
+本文档defines新平台的**完整code文件结构**，回答三个Issue：
 
-1. How is the new platform's `src/` directory organized? What goes in each directory?
-2. Where does code from the old system (`src/core/` 42 modules) go in the new platform?
-3. Where do the brand-new modules, Mission/Yono, cross-platform UI, and specialty tests of the new platform go?
+1. 新平台的 `src/` 目录如何组织？每个目录放什么？
+2. 老系统（`src/core/` 42 个模块）的code搬到新平台的哪个目录？
+3. 新平台需要全新创建的模块、Mission/Yono、跨平台 UI vs专项测试放在哪里？
 
-### 1.1 Code Structure Review Conclusions (2026-05-18)
+### 1.1 本iterationscode结构 Review Conclusion（2026-05-18）
 
-This review is based on actual directory measurements in the current workspace, focusing on consistency between `src/`, `ui/`, `tests/`, `config/`, `deploy/`, `scripts/` and this document. Conclusions:
+本iterations review based on当前工作区目录实测，重点检查 `src/`、`ui/`、`tests/`、`config/`、`deploy/`、`scripts/` vs本文档的一致性。Conclusion如下：
 
-| Conclusion Item | Current Code Facts | Document Handling |
-|-----------------|-------------------|-------------------|
-| Backend seven-layer main structure | `src/platform`, `domains`, `interaction`, `org-governance`, `scale-ecosystem`, `ops-maturity` all exist as authoritative implementation locations | Keep seven-layer structure, update statistics and new directory descriptions |
-| Five-plane implementation | `five-plane-*` five directories complete, with new subdomains: mission, outbox, side-effect-ledger, reconciliation, degradation | Supplement new subdomains in platform description |
-| Legacy core | `src/core` only has runtime compatibility entry, should not carry new capabilities | Keep compatibility layer positioning, continue to prohibit new business capabilities from entering core |
-| Mission | `src/platform/contracts/mission` and `src/platform/five-plane-control-plane/mission` have become long-term goal governance entry points | Add Mission directory responsibilities and dependency rules |
-| Yono Business | `src/domains/yono` exists as a business domain instance | Mark as business domain instance in domains chapter, not part of domain framework infrastructure |
-| Cross-platform UI | `ui/` Monorepo exists, containing apps, packages, tools, tests | Add UI top-level directory chapter and dependency boundaries |
-| Test structure | `tests/unit`, `integration`, `e2e`, `golden`, `performance`, `invariants`, `leaks` etc. all exist | Update test directory description, supplement invariants/leaks |
-| Runtime configuration and deployment | `config/`, `deploy/` cover environments, domains, risk, security, Helm, Terraform, Prometheus, Chaos, runbooks | Supplement in top-level overview and ops directory descriptions |
-| Documentation risk | Large amount of statistics may become outdated as code changes rapidly | Change statistics table to "structure snapshot", require subsequent script generation |
-
-### 1.2 Recent Structure Sync (2026-05-26)
-
-This round did not change the seven-layer main skeleton, but the latest batch of code closures has affected the formal authority for "how the structure should be understood":
-
-| Sync Topic | Current Code Facts | Documentation Authority |
+| Conclusion项 | 当前code事实 | 文档handle |
 | ------ | ------------ | -------- |
-| P1 Public Query Interface | `dashboard-routes.ts` has supplemented `/v1/workers`, `/v1/queues`, `/v1/agents`, `/v1/dashboard/metrics`, `/v1/explanations`, `/v1/meta/contract-version` | UI/HTTP public queries default to reading Layer C `/v1/*`, no longer treating `/admin/*` as public data plane |
-| P1 Pack / Knowledge / Builder Public Interface | `pack-routes.ts`, `plane-routes.ts`, `task-routes.ts` have supplemented `/v1/marketplace`, `/v1/knowledge`, `/v1/packs/:packId/versions`, `/v1/workflows/builder` | `platform/five-plane-interface/api/http-server/` is the current authoritative public export surface |
-| Federation Governance Persistence | `scale-ecosystem/federation/` under `federation-audit.ts`, `trust-relationship.ts` already have persistence/recovery/archive/strategy enforce | Federation is no longer "pure spec commitment" but a runtime capability with database backing |
-| Event Reliability | `durable-event-bus-async.ts` has fixed async failure swallowing errors | P5 event main chain continues to prioritize reliable delivery and failure visibility |
-| Electron Platform Bridge | `ui/apps/electron-win/src/preload.ts` and `ui/packages/shared/platform/` have unified bridge compatibility layer | `ui/` desktop shell layer has formal bridge compatibility contract, not just smoke shell |
+| 后端七层主干 | `src/platform`、`domains`、`interaction`、`org-governance`、`scale-ecosystem`、`ops-maturity` 均存在且为权威实现位置 | 保持七层结构，更新统计和新增目录Description |
+| Five-Plane实现 | `five-plane-*` 五个目录完整，且新增 mission、outbox、side-effect-ledger、reconciliation、degradation 等子域 | 在 platform Description中补齐新增子域 |
+| Legacy core | `src/core` only剩 runtime 兼容入口，不应承载新增能力 | 保留兼容层定位，继续禁止新增业务能力进入 core |
+| Mission | `src/platform/contracts/mission` vs `src/platform/five-plane-control-plane/mission` 已成为长期目标治理入口 | 新增 Mission 目录职责和relies on规则 |
+| Yono Business | `src/domains/yono` 已作为业务域实例存在 | 在 domains 章节标为业务域实例，不归入域框架基础设施 |
+| 跨平台 UI | `ui/` Monorepo 已存在，contains apps、packages、tools、tests | 新增 UI 顶层目录章节vsrelies on边界 |
+| 测试结构 | `tests/unit`、`integration`、`e2e`、`golden`、`performance`、`invariants`、`leaks` 等均存在 | 更新测试目录Description，补齐 invariants/leaks |
+| 运linesconfigurevs部署 | `config/`、`deploy/` 已覆盖环境、域、风险、security、Helm、Terraform、Prometheus、Chaos、runbooks | 在顶层总览和运维目录Description中补齐 |
+| 文档风险 | 大量统计仍可能随code快速变化而过期 | 统计table改为“结构快照”，要求后续脚本生成 |
+
+### 1.2 最近结构synchronous（2026-05-26）
+
+本轮没有改动七层主骨架，但最近一批code收口已viaImpact“结构应该怎么理解”的正式口径：
+
+| synchronous主题 | 当前code事实 | 文档口径 |
+| ------ | ------------ | -------- |
+| P1 公共查询接口 | `dashboard-routes.ts` 已补齐 `/v1/workers`、`/v1/queues`、`/v1/agents`、`/v1/dashboard/metrics`、`/v1/explanations`、`/v1/meta/contract-version` | UI/HTTP 公共查询defaults to读取 Layer C `/v1/*`，不再把 `/admin/*` 当公共data面 |
+| P1 Pack / Knowledge / Builder 公共接口 | `pack-routes.ts`、`plane-routes.ts`、`task-routes.ts` 已补齐 `/v1/marketplace`、`/v1/knowledge`、`/v1/packs/:packId/versions`、`/v1/workflows/builder` | `platform/five-plane-interface/api/http-server/` is当前公共export面权威 |
+| 联邦治理持久化 | `scale-ecosystem/federation/` 下 `federation-audit.ts`、`trust-relationship.ts` 已具备持久化/恢复/归档/策略 enforce | federation 不再is“纯规格承诺”，而is已落库的运lines时能力 |
+| 事件可靠性 | `durable-event-bus-async.ts` 已修复异步failed吞错 | P5 事件主链继续以可靠投递和failed可见性为准 |
+| Electron 平台桥 | `ui/apps/electron-win/src/preload.ts` vs `ui/packages/shared/platform/` 已统一桥接兼容层 | `ui/` 的桌面壳层已有正式 bridge 兼容契约，不只is smoke shell |
 
 ---
 
-## 2. Design Principles
+## 二、设计principle
 
-| # | Principle | Description |
-|---|-----------|-------------|
-| 1 | **Architecture-Driven Directory** | Top-level directories are organized by seven-layer architecture + five planes, not by technical concerns (controller/service/repository) |
-| 2 | **Bounded Context as Directory** | Each bounded context corresponds to a second-level directory, self-contained with model/service/repository/types inside |
-| 3 | **Contracts Centralized** | Inter-plane communication contracts are centralized in `platform/contracts/`, not scattered across plane directories |
-| 4 | **Domain Instances Separated from Framework** | `domains/` is divided into "framework infrastructure" and "domain instance" layers; adding a new business domain only requires adding a domain instance directory |
-| 5 | **Tests Mirror Source** | The `tests/` directory structure mirrors `src/`, with one-to-one path correspondence |
-| 6 | **kebab-case File Naming** | All filenames use kebab-case, class/type names use PascalCase, function names use camelCase |
-| 7 | **One index.ts per Directory** | Each second-level directory provides `index.ts` as the public API export; third-level directories are internal implementation details |
-| 8 | **Zero Circular Dependencies** | Only upper layers may depend on lower layers (Layer N may depend on Layer N-1); same-layer coupling is resolved through contracts or events |
+| # | principle | Description |
+|---|------|------|
+| 1 | **Architecture驱动目录** | 顶层目录按七层Architecture + Five-Plane划分，不按技术关注点（controller/service/repository）划分 |
+| 2 | **有界上下文即目录** | 每个有界上下文（bounded context）对应一个二级目录，目录内自contains model/service/repository/types |
+| 3 | **契约集中** | 平面间communication契约集中在 `platform/contracts/`，不分散到各平面目录 |
+| 4 | **域实例vs框架分离** | `domains/` 下分"框架基础设施"和"域实例"两层，新增业务域只需添加域实例目录 |
+| 5 | **测试镜像源码** | `tests/` 目录结构镜像 `src/`，路径一一对应 |
+| 6 | **文件命名 kebab-case** | 文件名全部 kebab-case，class名/class型名 PascalCase，function名 camelCase |
+| 7 | **每目录一个 index.ts** | 每个二级目录提供 `index.ts` 作为公共 API 出口，三级目录为内部implementation details |
+| 8 | **零循环relies on** | 只允许上层relies on下层（Layer N 可relies on Layer N-1），同层via契约或事件解耦 |
 
 ---
 
-## 3. Top-Level Directory Overview
+## 三、顶层目录总览
 
-> **Current Implementation Notes (2026-05-14)**: `src/core/` in the new platform is retained only as a Legacy compatibility and migration re-export layer. The authoritative implementation locations for new runtime, contracts, execution, state, and governance capabilities are `src/platform/*`, `src/domains/*`, `src/interaction/*`, `src/org-governance/*`, `src/scale-ecosystem/*`, `src/ops-maturity/*`. New code must not use `src/core/` as a new capability entry point.
+> **当前实现Description（2026-05-14）**：`src/core/` 在新平台中只作为 Legacy 兼容vs迁移重export层保留，新的运lines时、契约、执lines、Status、治理能力以 `src/platform/*`、`src/domains/*`、`src/interaction/*`、`src/org-governance/*`、`src/scale-ecosystem/*`、`src/ops-maturity/*` 为权威实现位置。新增code不得再把 `src/core/` 当作新能力入口。
 
 ```
 new-platform/
 ├── src/
-│   ├── platform/           # Layer 1-2: Infrastructure Layer + AI Operations Layer (five planes + cross-cutting)
-│   ├── domains/            # Layer 3: Business Domain Access Layer
-│   ├── interaction/        # Layer 4: Intelligent Interaction Layer
-│   ├── org-governance/     # Layer 5: Organization Governance Layer
-│   ├── scale-ecosystem/    # Layer 6: Scale Operations Layer + Ecosystem Layer
-│   ├── ops-maturity/       # Layer 7: Operations Maturity Layer
-│   ├── plugins/            # Cross-layer: Plugin Ecosystem
-│   ├── sdk/                # Cross-layer: SDK and Developer Experience
-│   ├── apps/               # Application Entry Points (API server / Console / Workers)
-│   ├── testing/            # Test Infrastructure and Common Test Contracts
-│   ├── benchmarks/         # Benchmark Entry and Performance Samples
-│   ├── core/               # Legacy Compatibility Re-export Layer, prohibited from new business capabilities
-│   └── index.ts            # Platform Entry
-├── ui/                     # Cross-Platform UI Monorepo (Web / Electron / Tauri / Mobile)
-├── tests/                  # Tests (mirrors src/ structure)
-├── config/                 # Versioned Configuration
-├── divisions/              # Division Definitions (adapted after migration to DomainDescriptor)
-├── docs_zh/                # Chinese Documentation
-├── docs_en/                # English Documentation
-├── scripts/                # CI/Build Scripts
-├── deploy/                 # Deployment Manifests
-└── [Top-level config files]  # package.json / tsconfig.json / eslint.config.js / Dockerfile / ...
+│   ├── platform/           # Layer 1-2：基础设施层 + AI 运营层（Five-Plane + 横切）
+│   ├── domains/            # Layer 3：业务域接入层
+│   ├── interaction/        # Layer 4：智能交互层
+│   ├── org-governance/     # Layer 5：组织治理层
+│   ├── scale-ecosystem/    # Layer 6：规模化运lines层 + 生态层
+│   ├── ops-maturity/       # Layer 7：运营成熟度层
+│   ├── plugins/            # 跨层：插件生态
+│   ├── sdk/                # 跨层：SDK vs开发者体验
+│   ├── apps/               # 应用入口（API server / Console / Workers）
+│   ├── testing/            # 测试基础设施vs公共测试契约
+│   ├── benchmarks/         # 基准测试入口vs性能样例
+│   ├── core/               # Legacy 兼容重export层，禁止新增业务能力
+│   └── index.ts            # 平台入口
+├── ui/                     # 跨平台 UI Monorepo（Web / Electron / Tauri / Mobile）
+├── tests/                  # 测试（镜像 src/ 结构）
+├── config/                 # 版本化configure
+├── divisions/              # Division defines（迁移后适配 DomainDescriptor）
+├── docs_zh/                # 中文文档
+├── docs_en/                # 英文文档
+├── scripts/                # CI/构建脚本
+├── deploy/                 # 部署清单
+└── [顶层configure文件]           # package.json / tsconfig.json / eslint.config.js / Dockerfile / ...
 ```
 
-### 3.0.1 Top-Level Directory Responsibility Boundaries (Current Authority)
+### 3.0.1 顶层目录职责边界（当前权威）
 
-| Top-level Directory | Code Facts | Responsibility Boundary | Prohibited Items |
-|---------------------|------------|--------------------------|------------------|
-| `src/platform/` | Backend platform core, current largest code area | Five planes, contracts, shared infrastructure, model gateway, Prompt/Eval, compliance, stability | Must not depend on `interaction/`, `domains/` business instances or UI |
-| `src/domains/` | Domain framework + domain instances | Domain descriptor, risk/eval/workflow/tool configuration, Yono and other business domains | Must not place platform runtime, HTTP API, worker implementation |
-| `src/interaction/` | Intelligent interaction layer | NL gateway, goal decomposer, dashboard, proactive, UX/autonomy | Must not bypass platform contracts to directly write truth store |
-| `src/org-governance/` | Organization governance layer | Organization model, approval routing, SSO/SCIM, compliance boundaries, delegated governance | Must not carry general IAM infrastructure; basic IAM belongs to control-plane |
-| `src/scale-ecosystem/` | Scale and ecosystem layer | Marketplace, billing, SLA, multi-region, feedback, runtime-services | Must not replace P4/P5 fact-writing chain |
-| `src/ops-maturity/` | Operations maturity layer | Chaos, debugger, capacity, compliance report, edge, explainability | Must not become the sole dependency of the main execution chain |
-| `src/plugins/` | Plugin ecosystem | Plugin manifest, runtime adapter, marketplace access | Must not bypass sandbox and capability |
-| `src/sdk/` | Developer experience | CLI, SDK, pack/plugin tools | Must not import internal non-public API |
-| `src/apps/` | Backend application entry | API, console backend, workers bootstrap | Must not precipitate business logic, only do composition and startup |
-| `src/testing/` | Test common facilities | Test helpers, fixtures, invariant support | Must not be depended on by production code |
-| `src/benchmarks/` | Performance sample entry | Performance/capacity benchmark helper code | Must not enter runtime main chain |
-| `ui/` | Frontend monorepo | Web/desktop/mobile UI, shared frontend SDK, feature packages, UI tests | Must not directly import backend `src/*` internal implementations |
-| `tests/` | Backend tests | unit/integration/e2e/golden/performance/invariants/leaks | Must not depend on production environment real credentials |
-| `config/` | Versioned configuration | environments, domains, risk, security, runtime, providers | Must not place secret plaintext |
-| `deploy/` | Deployment and ops assets | Helm, Terraform, Prometheus, Grafana, Chaos, runbooks, scripts | Must not serve as business logic source |
+| 顶层目录 | code事实 | 职责边界 | 禁止事项 |
+| -------- | -------- | -------- | -------- |
+| `src/platform/` | 后端平台核心，当前最大code区 | Five-Plane、契约、共享基础设施、模型网关、Prompt/Eval、合规、稳定性 | 不得relies on `interaction/`、`domains/` 业务实例或 UI |
+| `src/domains/` | 域框架 + 域实例 | 领域 descriptor、risk/eval/workflow/tool configure、Yono 等业务域 | 不得放平台 runtime、HTTP API、worker 实现 |
+| `src/interaction/` | 智能交互层 | NL gateway、goal decomposer、dashboard、proactive、UX/autonomy | 不得bypassing platform contracts directly写 truth store |
+| `src/org-governance/` | 组织治理层 | 组织模型、审批路由、SSO/SCIM、合规边界、委托治理 | 不得承载通用 IAM 基础设施，基础 IAM belongs to control-plane |
+| `src/scale-ecosystem/` | 规模化vs生态层 | Marketplace、billing、SLA、多区域、feedback、runtime-services | 不得替代 P4/P5 的事实writes链路 |
+| `src/ops-maturity/` | 运营成熟度层 | Chaos、debugger、capacity、compliance report、edge、explainability | 不得成为主执lines链路的唯一relies on |
+| `src/plugins/` | 插件生态 | 插件 manifest、运lines时适配、市场接入 | 不得bypassing sandbox vs capability |
+| `src/sdk/` | 开发者体验 | CLI、SDK、pack/plugin 工具 | 不得import内部非 public API |
+| `src/apps/` | 后端应用入口 | API、console backend、workers bootstrap | 不得沉淀业务逻辑，只做组合vs启动 |
+| `src/testing/` | 测试公共设施 | 测试 helper、fixture、invariant 支撑 | 不得被生产coderelies on |
+| `src/benchmarks/` | 性能样例入口 | 性能/容量基准辅助code | 不得进入 runtime 主链 |
+| `ui/` | 前端 monorepo | Web/桌面/移动 UI、共享前端 SDK、feature packages、UI tests | 不得directly import 后端 `src/*` 内部实现 |
+| `tests/` | 后端测试 | unit/integration/e2e/golden/performance/invariants/leaks | 不得relies on生产环境真实凭证 |
+| `config/` | 版本化configure | environments、domains、risk、security、runtime、providers | 不得放 secret 明文 |
+| `deploy/` | 部署vs运维资产 | Helm、Terraform、Prometheus、Grafana、Chaos、runbooks、scripts | 不得作为业务逻辑来源 |
 
-### 3.1 Old System vs. New Platform Top-Level Comparison
+### 3.1 老系统 vs 新平台顶层对比
 
-| Old System | New Platform | Change Description |
-|------------|--------------|-------------------|
-| `src/core/` (42 flat modules) | `src/platform/` + `src/domains/` + `src/interaction/` + `src/org-governance/` + `src/scale-ecosystem/` + `src/ops-maturity/` | Flat core/ split into 6 top-level directories organized by seven-layer architecture |
-| `src/cli/` (78 scripts) | `src/sdk/cli/` | CLI belongs to SDK layer |
-| `src/gateway/` (13 files) | `src/platform/five-plane-interface/` + `src/interaction/nl-gateway/` | API gateway belongs to P1 Interface, NL gateway belongs to Layer 4 |
-| No independent frontend project | `ui/` | New cross-platform UI Monorepo, carrying Web/desktop/mobile |
-| No specialty test infrastructure | `src/testing/` + `tests/invariants/` + `tests/leaks/` | New test infrastructure, invariants and leak tests |
-| No benchmark entry | `src/benchmarks/` + `tests/performance/` | New performance/capacity benchmark entry |
-| `src/plugins/` (20 files) | `src/plugins/` | Remained independent, structure unchanged |
-| `src/index.ts` | `src/index.ts` | Retained |
+| 老系统 | 新平台 | 变化Description |
+|--------|--------|---------|
+| `src/core/` (42 个扁平模块) | `src/platform/` + `src/domains/` + `src/interaction/` + `src/org-governance/` + `src/scale-ecosystem/` + `src/ops-maturity/` | 扁平 core/ 拆分为按七层Architecture组织的 6 个顶层目录 |
+| `src/cli/` (78 个脚本) | `src/sdk/cli/` | CLI 归入 SDK 层 |
+| `src/gateway/` (13 文件) | `src/platform/five-plane-interface/` + `src/interaction/nl-gateway/` | API gateway 归入 P1 Interface，NL gateway 归入 Layer 4 |
+| no独立前端工程 | `ui/` | 新增跨平台 UI Monorepo，承载 Web/桌面/移动端 |
+| no专项测试基础设施 | `src/testing/` + `tests/invariants/` + `tests/leaks/` | 新增测试基础设施、不variablevs泄漏测试 |
+| no基准入口 | `src/benchmarks/` + `tests/performance/` | 新增性能/容量基准入口 |
+| `src/plugins/` (20 文件) | `src/plugins/` | 保持独立，结构不变 |
+| `src/index.ts` | `src/index.ts` | 保持 |
 
-### 3.2 Old System 42 Modules → New Platform Directory Mapping Quick Reference
+### 3.2 老系统 42 模块 → 新平台目录映射速查table
 
-| Old Module | New Directory | Architecture Layer |
-|------------|--------------|-------------------|
-| `core/types/` | `platform/contracts/types/` | Cross-layer Contract |
-| `core/errors.ts` | `platform/contracts/errors.ts` | Cross-layer Contract |
-| `core/constants/` | `platform/contracts/constants/` | Cross-layer Contract |
-| `core/results/` | `platform/contracts/result-envelope/` | Cross-layer Contract |
-| `core/utils/` | `platform/shared/utils/` | Cross-layer Shared |
-| `core/lifecycle/` | `platform/shared/lifecycle/` | Cross-layer Shared |
-| `core/config/` | `platform/five-plane-control-plane/config-center/` | P2 Control Plane |
-| `core/storage/` | `platform/five-plane-state-evidence/truth/` | P5 State & Evidence |
-| `core/events/` | `platform/five-plane-state-evidence/events/` | P5 State & Evidence |
-| `core/locking/` | `platform/five-plane-execution/distributed-lock/` | P4 Execution Plane |
-| `core/queue/` | `platform/five-plane-execution/queue/` | P4 Execution Plane |
-| `core/cache/` | `platform/shared/cache/` | Cross-layer Shared |
-| `core/api/` | `platform/five-plane-interface/api/` | P1 Interface Plane |
-| `core/resource/` | `platform/five-plane-execution/resource/` | P4 Execution Plane |
-| `core/runtime/` → Dispatch | `platform/five-plane-execution/dispatcher/` | P4 Execution Plane |
-| `core/runtime/` → Lease | `platform/five-plane-execution/lease/` | P4 Execution Plane |
-| `core/runtime/` → Worker | `platform/five-plane-execution/worker-pool/` | P4 Execution Plane |
-| `core/runtime/` → HA | `platform/five-plane-execution/ha/` | P4 Execution Plane |
-| `core/runtime/` → Recovery | `platform/five-plane-execution/recovery/` | P4 Execution Plane |
-| `core/runtime/` → HotUpgrade | `platform/five-plane-execution/hot-upgrade/` | P4 Execution Plane |
-| `core/runtime/` → StateMachine | `platform/five-plane-execution/state-transition/` | P4 Execution Plane |
-| `core/runtime/` → AgentExec | `platform/five-plane-execution/execution-engine/` | P4 Execution Plane |
-| `core/runtime/` → HITL | `platform/five-plane-orchestration/hitl/` | P3 Orchestration Plane |
-| `core/runtime/` → Orchestration | `platform/five-plane-orchestration/routing/` | P3 Orchestration Plane |
-| `core/agent-loop/` | `platform/five-plane-orchestration/oapeflir/` | P3 Orchestration Plane |
-| `core/planning/` | `platform/five-plane-orchestration/planner/` | P3 Orchestration Plane |
-| `core/orchestration/` | `platform/five-plane-orchestration/routing/` | P3 Orchestration Plane |
-| `core/providers/` | `platform/model-gateway/provider-registry/` | AI Operations |
-| `core/tools/` | `platform/five-plane-execution/tool-executor/` | P4 Execution Plane |
-| `core/workflow/` | `platform/five-plane-orchestration/oapeflir/workflow/` | P3 Orchestration Plane |
-| `core/artifacts/` | `platform/five-plane-state-evidence/artifacts/` | P5 State & Evidence |
+| 老模块 | 新目录 | Architecture层 |
+|--------|--------|--------|
+| `core/types/` | `platform/contracts/types/` | 跨层契约 |
+| `core/errors.ts` | `platform/contracts/errors.ts` | 跨层契约 |
+| `core/constants/` | `platform/contracts/constants/` | 跨层契约 |
+| `core/results/` | `platform/contracts/result-envelope/` | 跨层契约 |
+| `core/utils/` | `platform/shared/utils/` | 跨层共享 |
+| `core/lifecycle/` | `platform/shared/lifecycle/` | 跨层共享 |
+| `core/config/` | `platform/five-plane-control-plane/config-center/` | P2 控制平面 |
+| `core/storage/` | `platform/five-plane-state-evidence/truth/` | P5 Statusvs证据 |
+| `core/events/` | `platform/five-plane-state-evidence/events/` | P5 Statusvs证据 |
+| `core/locking/` | `platform/five-plane-execution/distributed-lock/` | P4 执lines平面 |
+| `core/queue/` | `platform/five-plane-execution/queue/` | P4 执lines平面 |
+| `core/cache/` | `platform/shared/cache/` | 跨层共享 |
+| `core/api/` | `platform/five-plane-interface/api/` | P1 接口平面 |
+| `core/resource/` | `platform/five-plane-execution/resource/` | P4 执lines平面 |
+| `core/runtime/` → Dispatch | `platform/five-plane-execution/dispatcher/` | P4 执lines平面 |
+| `core/runtime/` → Lease | `platform/five-plane-execution/lease/` | P4 执lines平面 |
+| `core/runtime/` → Worker | `platform/five-plane-execution/worker-pool/` | P4 执lines平面 |
+| `core/runtime/` → HA | `platform/five-plane-execution/ha/` | P4 执lines平面 |
+| `core/runtime/` → Recovery | `platform/five-plane-execution/recovery/` | P4 执lines平面 |
+| `core/runtime/` → HotUpgrade | `platform/five-plane-execution/hot-upgrade/` | P4 执lines平面 |
+| `core/runtime/` → StateMachine | `platform/five-plane-execution/state-transition/` | P4 执lines平面 |
+| `core/runtime/` → AgentExec | `platform/five-plane-execution/execution-engine/` | P4 执lines平面 |
+| `core/runtime/` → HITL | `platform/five-plane-orchestration/hitl/` | P3 编排平面 |
+| `core/runtime/` → Orchestration | `platform/five-plane-orchestration/routing/` | P3 编排平面 |
+| `core/agent-loop/` | `platform/five-plane-orchestration/oapeflir/` | P3 编排平面 |
+| `core/planning/` | `platform/five-plane-orchestration/planner/` | P3 编排平面 |
+| `core/orchestration/` | `platform/five-plane-orchestration/routing/` | P3 编排平面 |
+| `core/providers/` | `platform/model-gateway/provider-registry/` | AI 运营 |
+| `core/tools/` | `platform/five-plane-execution/tool-executor/` | P4 执lines平面 |
+| `core/workflow/` | `platform/five-plane-orchestration/oapeflir/workflow/` | P3 编排平面 |
+| `core/artifacts/` | `platform/five-plane-state-evidence/artifacts/` | P5 Statusvs证据 |
 | `core/feedback/` | `scale-ecosystem/feedback-loop/` | Layer 6 |
-| `core/learning/` | `platform/five-plane-orchestration/oapeflir/learn/` | P3 Orchestration Plane |
-| `core/evaluation/` | `platform/prompt-engine/eval/` | AI Operations |
-| `core/memory/` | `platform/five-plane-state-evidence/memory/` | P5 State & Evidence |
-| `core/knowledge/` | `platform/five-plane-state-evidence/knowledge/` | P5 State & Evidence |
-| `core/messages/` | `platform/model-gateway/messages/` | AI Operations |
+| `core/learning/` | `platform/five-plane-orchestration/oapeflir/learn/` | P3 编排平面 |
+| `core/evaluation/` | `platform/prompt-engine/eval/` | AI 运营 |
+| `core/memory/` | `platform/five-plane-state-evidence/memory/` | P5 Statusvs证据 |
+| `core/knowledge/` | `platform/five-plane-state-evidence/knowledge/` | P5 Statusvs证据 |
+| `core/messages/` | `platform/model-gateway/messages/` | AI 运营 |
 | `core/domain-registry/` | `domains/registry/` | Layer 3 |
 | `core/divisions/` | `domains/governance/` | Layer 3 |
-| `core/security/` | `platform/five-plane-control-plane/iam/` | P2 Control Plane |
-| `core/approvals/` | `platform/five-plane-control-plane/approval-center/` | P2 Control Plane |
-| `core/compliance/` | `platform/compliance/` | AI Operations |
-| `core/cost/` | `platform/model-gateway/cost-tracker/` | AI Operations |
+| `core/security/` | `platform/five-plane-control-plane/iam/` | P2 控制平面 |
+| `core/approvals/` | `platform/five-plane-control-plane/approval-center/` | P2 控制平面 |
+| `core/compliance/` | `platform/compliance/` | AI 运营 |
+| `core/cost/` | `platform/model-gateway/cost-tracker/` | AI 运营 |
 | `core/hr/` | `org-governance/org-model/` | Layer 5 |
-| `core/deployment/` | `platform/five-plane-control-plane/rollout-controller/` | P2 Control Plane |
-| `core/improvement/` | `platform/five-plane-orchestration/oapeflir/improve-rollout/` | P3 Orchestration Plane |
-| `core/observability/` | `platform/shared/observability/` | Cross-layer Shared |
-| `core/ops/` | `platform/five-plane-control-plane/incident-control/` | P2 Control Plane |
-| `core/stability/` | `platform/shared/stability/` | Cross-layer Shared |
+| `core/deployment/` | `platform/five-plane-control-plane/rollout-controller/` | P2 控制平面 |
+| `core/improvement/` | `platform/five-plane-orchestration/oapeflir/improve-rollout/` | P3 编排平面 |
+| `core/observability/` | `platform/shared/observability/` | 跨层共享 |
+| `core/ops/` | `platform/five-plane-control-plane/incident-control/` | P2 控制平面 |
+| `core/stability/` | `platform/shared/stability/` | 跨层共享 |
 | `core/evolution/` | `ops-maturity/drift-detection/` | Layer 7 |
-| `core/reliability/` | `platform/five-plane-execution/recovery/` | P4 Execution Plane |
+| `core/reliability/` | `platform/five-plane-execution/recovery/` | P4 执lines平面 |
 | `core/product/` | `scale-ecosystem/marketplace/` | Layer 6 |
-| `gateway/` | `platform/five-plane-interface/` (split) | P1 Interface Plane |
-| `plugins/` | `plugins/` | Cross-layer |
-| `cli/` | `sdk/cli/` | Cross-layer SDK |
+| `gateway/` | `platform/five-plane-interface/` (拆分) | P1 接口平面 |
+| `plugins/` | `plugins/` | 跨层 |
+| `cli/` | `sdk/cli/` | 跨层 SDK |
 
 ---
 
-## 4. platform/ — Infrastructure Layer + AI Operations Layer
+## 四、platform/ — 基础设施层 + AI 运营层
 
-`platform/` corresponds to architecture Layer 1 (Infrastructure) and Layer 2 (AI Operations), containing five planes + cross-cutting concerns.
+`platform/` 对应Architecture Layer 1（基础设施）和 Layer 2（AI 运营），containsFive-Plane + 横切关注点。
 
-> **Five-Plane Naming Convention**: In actual code, the five planes correspond to `five-plane-interface/`, `five-plane-control-plane/`, `five-plane-orchestration/`, `five-plane-execution/`, `five-plane-state-evidence/` — five directories with `five-plane-` prefix, equivalent to the abbreviated names `interface/`, `control-plane/` etc. in documentation. Both naming styles are valid entry points with no ambiguity in source code or configuration.
+> **Five-Plane命名约定**：实际code中五个平面分别对应 `five-plane-interface/`、`five-plane-control-plane/`、`five-plane-orchestration/`、`five-plane-execution/`、`five-plane-state-evidence/` 五個带 `five-plane-` 前缀的目录，vs文档中简称 `interface/`、`control-plane/` 等等价。两种命名均为有效入口，源码和configure中no歧义。
 
-**Supplementary Notes (2026-05-18 update)**: The following independent modules also belong to platform/ but are not part of the five planes: `agent-delegation/`, `architecture/`, `compliance/`, `contracts/`, `cost-management/`, `model-gateway/`, `ops-maturity/`, `prompt-engine/`, `prompt-registry/`, `remote-coordination/`, `shared/`, `stability/`, `structure/`. Among them, `contracts/` and `shared/` are legitimate landing spots for inter-plane dependencies.
+**补充Description（2026-05-18 续修）**：以下独立模块亦belongs to platform/ 但不belongs toFive-Plane之一：`agent-delegation/`、`architecture/`、`compliance/`、`contracts/`、`cost-management/`、`model-gateway/`、`ops-maturity/`、`prompt-engine/`、`prompt-registry/`、`remote-coordination/`、`shared/`、`stability/`、`structure/`。其中 `contracts/` vs `shared/` is平面间relies on的合法落点。
 
-**Mission Structure Notes (2026-05-18)**: Mission is the root object for long-term goals and governance context. Contracts are located at `platform/contracts/mission/`. Lifecycle, resolution, governance, budget, handoff and other control capabilities are located at `platform/five-plane-control-plane/mission/`. The execution plane can only consume missionRef / missionSnapshotRef, and must not treat Mission as an executable object.
+**Mission 结构Description（2026-05-18）**：Mission is长期目标vs治理上下文根对象，契约位于 `platform/contracts/mission/`，生命cycle、解析、治理、budget、handoff 等控制能力位于 `platform/five-plane-control-plane/mission/`。执lines平面只能消费 missionRef / missionSnapshotRef，不得把 Mission 当作可执lines对象。
 
 ```
 src/platform/
-├── five-plane-interface/              # P1 Interface Plane ── §6 API Contracts
+├── five-plane-interface/              # P1 接口平面 ── §6 API 契约
 │   ├── api/                #   HTTP API server + OIDC/OAuth + WebSocket
 │   │   ├── http-api-server.ts
 │   │   ├── api-auth-service.ts
@@ -209,9 +209,9 @@ src/platform/
 │   │   ├── mission-control-service.ts
 │   │   ├── task-websocket-status-relay.ts
 │   │   └── index.ts
-│   ├── webhook/            #   Webhook Inbound Processing
+│   ├── webhook/            #   Webhook 入站handle
 │   │   └── index.ts
-│   ├── channel-gateway/    #   Channel Gateway (Telegram/Slack/Webhook/SSE)
+│   ├── channel-gateway/    #   渠道网关（Telegram/Slack/Webhook/SSE）
 │   │   ├── channel-gateway-service.ts
 │   │   ├── channel-gateway-delivery-service.ts
 │   │   ├── channel-gateway-delivery-support.ts
@@ -225,24 +225,24 @@ src/platform/
 │   │   ├── helpers.ts
 │   │   ├── types.ts
 │   │   └── index.ts
-│   ├── scheduler/          #   Scheduled Task Entry (§41 Proactive Agent Trigger)
+│   ├── scheduler/          #   定时调度入口（§41 主动式 Agent 触发）
 │   │   └── index.ts
-│   ├── console-backend/    #   Console UI Backend (§43 Dashboard/§44 UX)
+│   ├── console-backend/    #   Console UI 后端（§43 看板/§44 UX）
 │   │   └── index.ts
-│   └── ingress/            #   Ingress Traffic Management (rate limiting/routing/canary)
+│   └── ingress/            #   入口流量治理（限流/路由/灰度）
 │       └── index.ts
 │
-├── five-plane-control-plane/          # P2 Control Plane ── §24 Configuration / §11 Security / §21 Approval
-│   ├── tenant/             #   Tenant Management
+├── five-plane-control-plane/          # P2 控制平面 ── §24 configure / §11 security / §21 审批
+│   ├── tenant/             #   租户manage
 │   │   └── index.ts
-│   ├── mission/            #   Mission Long-term Goal Governance (lifecycle/resolution/budget/LiveGuard/Handoff)
+│   ├── mission/            #   Mission 长期目标治理（生命cycle/解析/budget/LiveGuard/Handoff）
 │   │   ├── mission-lifecycle-service.ts
 │   │   ├── mission-resolver.ts
 │   │   ├── mission-governance-service.ts
 │   │   ├── mission-budget-service.ts
 │   │   ├── mission-live-guard.ts
 │   │   └── index.ts
-│   ├── iam/                #   Identity & Access Management (← core/security/)
+│   ├── iam/                #   身份vs访问manage（← core/security/）
 │   │   ├── sandbox-policy.ts
 │   │   ├── policy-engine.ts
 │   │   ├── field-encryption.ts
@@ -263,16 +263,16 @@ src/platform/
 │   │   ├── outbound-url-policy.ts
 │   │   ├── file-freshness.ts
 │   │   └── index.ts
-│   ├── policy-center/      #   Policy Center (risk level/security policy/compliance policy centralized management)
+│   ├── policy-center/      #   策略中心（风险等级/security策略/合规策略集中manage）
 │   │   └── index.ts
-│   ├── approval-center/    #   Approval Center (← core/approvals/)
+│   ├── approval-center/    #   审批中心（← core/approvals/）
 │   │   ├── approval-service.ts
 │   │   ├── approval-timeout-executor.ts
 │   │   └── index.ts
-│   ├── rollout-controller/  #   Release Controller (← core/deployment/)
+│   ├── rollout-controller/  #   发布控制器（← core/deployment/）
 │   │   ├── traffic-routing-service.ts
 │   │   └── index.ts
-│   ├── incident-control/    #   Incident/Operations Control (← core/ops/)
+│   ├── incident-control/    #   事件/运维控制（← core/ops/）
 │   │   ├── doctor-service.ts
 │   │   ├── deployment-execution-service.ts
 │   │   ├── environment-deployment-service.ts
@@ -292,9 +292,9 @@ src/platform/
 │   │   ├── workflow-dispatch-receipt.ts
 │   │   ├── tenant-execution-isolation-service.ts
 │   │   └── index.ts
-│   ├── replay-repair-control/ #  Replay/Repair Control
+│   ├── replay-repair-control/ #  重放/修复控制
 │   │   └── index.ts
-│   ├── config-center/       #   Configuration Governance Center (← core/config/)
+│   ├── config-center/       #   configure治理中心（← core/config/）
 │   │   ├── runtime-env.ts
 │   │   ├── api-server-env.ts
 │   │   ├── gateway-env.ts
@@ -312,12 +312,12 @@ src/platform/
 │   │   ├── config-override-governance.ts
 │   │   ├── protected-governance-integrity-service.ts
 │   │   └── index.ts
-│   └── audit-export/        #   Audit Export (← core/compliance/)
+│   └── audit-export/        #   审计export（← core/compliance/）
 │       ├── audit-export-service.ts
 │       └── index.ts
 │
-├── five-plane-orchestration/          # P3 Orchestration Plane ── §13 OAPEFLIR
-│   ├── oapeflir/           #   OAPEFLIR Controlled Cognitive Kernel (← core/agent-loop/ + core/workflow/)
+├── five-plane-orchestration/          # P3 编排平面 ── §13 OAPEFLIR
+│   ├── oapeflir/           #   OAPEFLIR 受控认知内核（← core/agent-loop/ + core/workflow/）
 │   │   ├── oapeflir-loop-service.ts
 │   │   ├── execute-bridge.ts
 │   │   ├── runtime-execute-bridge.ts
@@ -331,13 +331,13 @@ src/platform/
 │   │   ├── dto.ts
 │   │   ├── ref-types.ts
 │   │   ├── kv-cache-prefix-config.ts
-│   │   ├── workflow/       #     Workflow Submodule (← core/workflow/)
+│   │   ├── workflow/       #     Workflow 子模块（← core/workflow/）
 │   │   │   ├── minimal-workflow.ts
 │   │   │   ├── workflow-validator.ts
 │   │   │   ├── workflow-step-retry-policy.ts
 │   │   │   ├── output-schema.ts
 │   │   │   └── index.ts
-│   │   ├── learn/          #     Learn Stage (← core/learning/)
+│   │   ├── learn/          #     Learn 阶段（← core/learning/）
 │   │   │   ├── strategy-learning-service.ts
 │   │   │   ├── experience-distillation-service.ts
 │   │   │   ├── failure-pattern-miner.ts
@@ -346,7 +346,7 @@ src/platform/
 │   │   │   ├── learning-object-validator.ts
 │   │   │   ├── learning-artifact-model.ts
 │   │   │   └── index.ts
-│   │   ├── improve-rollout/ #    Improve/Rollout Stage (← core/improvement/)
+│   │   ├── improve-rollout/ #    Improve/Rollout 阶段（← core/improvement/）
 │   │   │   ├── policy-rollout-service.ts
 │   │   │   ├── release-policy.ts
 │   │   │   ├── strategy-versioning.ts
@@ -357,7 +357,7 @@ src/platform/
 │   │   │   ├── improvement-candidate-registry.ts
 │   │   │   └── index.ts
 │   │   └── index.ts
-│   ├── planner/            #   Plan Engine (← core/planning/)
+│   ├── planner/            #   计划references擎（← core/planning/）
 │   │   ├── plan-model.ts
 │   │   ├── plan-builder.ts
 │   │   ├── plan-evaluator.ts
@@ -367,21 +367,21 @@ src/platform/
 │   │   ├── task-decomposition-service.ts
 │   │   ├── replanning-service.ts
 │   │   └── index.ts
-│   ├── replan/             #   Replanning
+│   ├── replan/             #   重规划
 │   │   └── index.ts
-│   ├── routing/            #   Routing & Orchestration (← core/orchestration/)
+│   ├── routing/            #   路由vs编排（← core/orchestration/）
 │   │   ├── intake-router.ts
 │   │   ├── workflow-planner.ts
 │   │   ├── agent-team-service.ts
 │   │   └── index.ts
-│   ├── escalation/         #   Escalation Handling
+│   ├── escalation/         #   升级handle
 │   │   └── index.ts
-│   └── hitl/               #   Human-in-the-Loop (← runtime/HITL BC)
+│   └── hitl/               #   人机协作（← runtime/HITL BC）
 │       ├── hitl-explainability-service.ts
 │       └── index.ts
 │
-├── five-plane-execution/              # P4 Execution Plane ── §14 Runtime
-│   ├── dispatcher/         #   Execution Dispatch (← runtime/BC1 Dispatch)
+├── five-plane-execution/              # P4 执lines平面 ── §14 Runtime
+│   ├── dispatcher/         #   执lines调度（← runtime/BC1 Dispatch）
 │   │   ├── execution-dispatch-service.ts
 │   │   ├── execution-dispatch-service-async.ts
 │   │   ├── execution-dispatch-support.ts
@@ -393,13 +393,13 @@ src/platform/
 │   │   ├── execution-resource-monitor.ts
 │   │   ├── execution-deviation-detector.ts
 │   │   └── index.ts
-│   ├── lease/              #   Lease Management (← runtime/BC2 Lease)
+│   ├── lease/              #   租约manage（← runtime/BC2 Lease）
 │   │   ├── execution-lease-service.ts
 │   │   ├── lease-repository.ts
 │   │   ├── lease-repository-sqlite.ts
 │   │   ├── lease-repository-postgres.ts
 │   │   └── index.ts
-│   ├── worker-pool/        #   Worker Management (← runtime/BC3 Worker)
+│   ├── worker-pool/        #   工作者manage（← runtime/BC3 Worker）
 │   │   ├── worker-registry-service.ts
 │   │   ├── worker-load-balancing.ts
 │   │   ├── worker-scheduling-status.ts
@@ -413,7 +413,7 @@ src/platform/
 │   │   ├── execution-worker-writeback-service-async.ts
 │   │   ├── execution-worker-writeback-support.ts
 │   │   └── index.ts
-│   ├── execution-engine/   #   Agent Execution Engine (← runtime/BC9)
+│   ├── execution-engine/   #   Agent 执linesreferences擎（← runtime/BC9）
 │   │   ├── agent-executor.ts
 │   │   ├── runtime-factory.ts
 │   │   ├── runtime-context.ts
@@ -435,11 +435,11 @@ src/platform/
 │   │   ├── middleware-init.ts
 │   │   ├── agent-middleware-chain.ts
 │   │   └── index.ts
-│   ├── state-transition/   #   State Machine (← runtime/BC8)
+│   ├── state-transition/   #   Status机（← runtime/BC8）
 │   │   ├── state-transition-machine.ts
 │   │   ├── transition-service.ts
 │   │   └── index.ts
-│   ├── ha/                 #   High Availability Coordination (← runtime/BC5 HA)
+│   ├── ha/                 #   高可用协调（← runtime/BC5 HA）
 │   │   ├── ha-coordinator-service.ts
 │   │   ├── ha-repository.ts
 │   │   ├── ha-repository-sqlite.ts
@@ -448,7 +448,7 @@ src/platform/
 │   │   ├── control-plane-load-balancing-schema.ts
 │   │   ├── cross-region-deployment-service.ts
 │   │   └── index.ts
-│   ├── hot-upgrade/        #   Hot Upgrade (← runtime/BC6)
+│   ├── hot-upgrade/        #   热升级（← runtime/BC6）
 │   │   ├── hot-upgrade-service.ts
 │   │   ├── hot-upgrade-service-async.ts
 │   │   ├── hot-upgrade-factory.ts
@@ -456,7 +456,7 @@ src/platform/
 │   │   ├── hot-upgrade-repository-sqlite.ts
 │   │   ├── hot-upgrade-repository-postgres.ts
 │   │   └── index.ts
-│   ├── recovery/           #   Recovery & Repair (← runtime/BC7 + core/reliability/)
+│   ├── recovery/           #   恢复vs修复（← runtime/BC7 + core/reliability/）
 │   │   ├── runtime-recovery-service.ts
 │   │   ├── runtime-recovery-decision-service.ts
 │   │   ├── runtime-recovery-replay-service.ts
@@ -473,7 +473,7 @@ src/platform/
 │   │   ├── release-record.ts
 │   │   ├── patch-bundle.ts
 │   │   └── index.ts
-│   ├── tool-executor/      #   Tool Executor (← core/tools/)
+│   ├── tool-executor/      #   工具执lines器（← core/tools/）
 │   │   ├── command-executor.ts
 │   │   ├── command-security.ts
 │   │   ├── question-tool.ts
@@ -505,9 +505,9 @@ src/platform/
 │   │   ├── code-diagnostics-service.ts
 │   │   ├── mcp-tool-guard.ts
 │   │   └── index.ts
-│   ├── plugin-executor/    #   Plugin Executor (Runtime Sandbox)
+│   ├── plugin-executor/    #   插件执lines器（运lines时沙箱）
 │   │   └── index.ts
-│   ├── distributed-lock/   #   Distributed Lock (← core/locking/)
+│   ├── distributed-lock/   #   分布式锁（← core/locking/）
 │   │   ├── distributed-lock-service.ts
 │   │   ├── distributed-lock-factory.ts
 │   │   ├── distributed-lock-types.ts
@@ -516,27 +516,27 @@ src/platform/
 │   │   ├── pg-advisory-lock-adapter.ts
 │   │   ├── redis-lock-adapter.ts
 │   │   └── index.ts
-│   ├── queue/              #   Message Queue (← core/queue/)
+│   ├── queue/              #   消息队列（← core/queue/）
 │   │   ├── queue-adapter.ts
 │   │   ├── queue-adapter-types.ts
 │   │   ├── queue-adapter-factory.ts
 │   │   ├── sqlite-queue-adapter.ts
 │   │   ├── redis-queue-adapter.ts
 │   │   └── index.ts
-│   ├── resource/           #   Resource Tracking (← core/resource/)
+│   ├── resource/           #   资源追踪（← core/resource/）
 │   │   ├── process-tracker.ts
 │   │   └── index.ts
-│   ├── hibernation/        #   Long-running Workflow Hibernation/Wakeup
-│   ├── queue-metrics/      #   Queue Metrics and Backlog Observation
-│   ├── oapeflir/           #   Execution-side OAPEFLIR Bridge/Execution Record
-│   └── startup/            #   Startup & Preflight
+│   ├── hibernation/        #   长运lines工作流休眠/唤醒
+│   ├── queue-metrics/      #   队列指标vs积压观测
+│   ├── oapeflir/           #   执lines侧 OAPEFLIR 桥接/运linesrecord
+│   └── startup/            #   启动vs预检
 │       ├── startup-preflight.ts
 │       ├── startup-consistency-checker.ts
 │       ├── graceful-shutdown.ts
 │       └── index.ts
 │
-├── five-plane-state-evidence/         # P5 State & Evidence Plane ── §25-§29
-│   ├── truth/              #   Authoritative Data Storage (← core/storage/ after split)
+├── five-plane-state-evidence/         # P5 Statusvs证据平面 ── §25-§29
+│   ├── truth/              #   权威datastorage（← core/storage/ 拆分后）
 │   │   ├── sqlite-database.ts
 │   │   ├── async-sql-database.ts
 │   │   ├── authoritative-sql-database.ts
@@ -548,7 +548,7 @@ src/platform/
 │   │   ├── migration-runner.ts
 │   │   ├── async-repository-registry.ts
 │   │   ├── async-query-helper.ts
-│   │   ├── repositories/   #     Repositories Split by Bounded Context (§9 Split Product)
+│   │   ├── repositories/   #     按有界上下文拆分的 Repository（§九拆分产物）
 │   │   │   ├── task-repository.ts
 │   │   │   ├── workflow-repository.ts
 │   │   │   ├── execution-repository.ts
@@ -572,7 +572,7 @@ src/platform/
 │   │   │   ├── operations-repository.ts
 │   │   │   └── index.ts
 │   │   └── index.ts
-│   ├── events/             #   Event Bus (← core/events/)
+│   ├── events/             #   事件总线（← core/events/）
 │   │   ├── typed-event-bus.ts
 │   │   ├── typed-event-publisher.ts
 │   │   ├── typed-event-payloads.ts
@@ -582,13 +582,13 @@ src/platform/
 │   │   ├── durable-event-bus.ts
 │   │   ├── durable-event-bus-async.ts
 │   │   └── index.ts
-│   ├── projections/        #   Projection Views
+│   ├── projections/        #   投影视图
 │   │   └── index.ts
-│   ├── outbox/             #   Reliable Publish Outbox
-│   ├── side-effect-ledger/ #   External Side Effect Ledger
-│   ├── reconciliation/     #   State/Projection/External Write Reconciliation
-│   ├── compaction/         #   Historical Event/Context Compaction
-│   ├── artifacts/          #   Artifact Management (← core/artifacts/)
+│   ├── outbox/             #   可靠发布 Outbox
+│   ├── side-effect-ledger/ #   外部副作用台账
+│   ├── reconciliation/     #   Status/投影/外部writes对账
+│   ├── compaction/         #   历史事件/上下文压缩
+│   ├── artifacts/          #   Artifact manage（← core/artifacts/）
 │   │   ├── artifact-store.ts
 │   │   ├── artifact-model.ts
 │   │   ├── artifact-resolver.ts
@@ -602,7 +602,7 @@ src/platform/
 │   │   ├── artifact-governance-service.ts
 │   │   ├── sensitive-content-scanner.ts
 │   │   └── index.ts
-│   ├── memory/             #   Memory Management (← core/memory/)
+│   ├── memory/             #   记忆manage（← core/memory/）
 │   │   ├── memory-service.ts
 │   │   ├── memory-provider.ts
 │   │   ├── builtin-memory-provider.ts
@@ -619,7 +619,7 @@ src/platform/
 │   │   ├── session-summary-service.ts
 │   │   ├── experience-cache-service.ts
 │   │   └── index.ts
-│   ├── knowledge/          #   Knowledge Plane (← core/knowledge/)
+│   ├── knowledge/          #   知识平面（← core/knowledge/）
 │   │   ├── knowledge-model.ts
 │   │   ├── knowledge-query-service.ts
 │   │   ├── knowledge-ingestion-pipeline.ts
@@ -630,18 +630,18 @@ src/platform/
 │   │   ├── semantic-vector-validation.ts
 │   │   ├── keyword-index.ts
 │   │   └── index.ts
-│   ├── audit/              #   Audit Logs
+│   ├── audit/              #   审计日志
 │   │   └── index.ts
-│   ├── incident/           #   Incident Records
+│   ├── incident/           #   事故record
 │   │   └── index.ts
-│   ├── checkpoints/        #   Checkpoints
+│   ├── checkpoints/        #   检查点
 │   │   ├── workflow-step-checkpoint.ts
 │   │   └── index.ts
-│   └── dlq/                #   Dead Letter Queue
+│   └── dlq/                #   死信队列
 │       └── index.ts
 │
-├── model-gateway/          # AI Operations: LLM Abstraction Layer ── §15
-│   ├── provider-registry/  #   Provider Registration & Management (← core/providers/)
+├── model-gateway/          # AI 运营：LLM 抽象层 ── §15
+│   ├── provider-registry/  #   Provider 注册vsmanage（← core/providers/）
 │   │   ├── base-chat-provider.ts
 │   │   ├── unified-chat-provider.ts
 │   │   ├── circuit-breaker.ts
@@ -649,29 +649,29 @@ src/platform/
 │   │   ├── provider-credential-pool.ts
 │   │   ├── provider-credential-pool-support.ts
 │   │   └── index.ts
-│   ├── router/             #   Model Routing (cost/latency/capability multi-dimensional routing)
+│   ├── router/             #   模型路由（cost/latency/capability 多维路由）
 │   │   └── index.ts
 │   ├── cache/              #   KV Cache / Prompt Cache
 │   │   └── index.ts
-│   ├── cost-tracker/       #   Token Metering & Cost Tracking (← core/cost/)
+│   ├── cost-tracker/       #   Token 计量vs成本追踪（← core/cost/）
 │   │   ├── budget-guard.ts
 │   │   └── index.ts
-│   ├── fallback/           #   Provider Failover
+│   ├── fallback/           #   Provider 故障切换
 │   │   └── index.ts
-│   ├── degradation/        #   Model/Provider Degradation Strategy
-│   └── messages/           #   Message Model (← core/messages/)
+│   ├── degradation/        #   模型/Provider 降级策略
+│   └── messages/           #   消息模型（← core/messages/）
 │       ├── token-estimator.ts
 │       ├── message-parts.ts
 │       └── index.ts
 │
-├── prompt-engine/          # AI Operations: Prompt Management ── §16-§17
-│   ├── registry/           #   Prompt Version Registry
+├── prompt-engine/          # AI 运营：Prompt manage ── §16-§17
+│   ├── registry/           #   Prompt 版本注册
 │   │   └── index.ts
-│   ├── renderer/           #   Prompt Rendering
+│   ├── renderer/           #   Prompt 渲染
 │   │   └── index.ts
-│   ├── rollout/            #   Prompt Canary Release
+│   ├── rollout/            #   Prompt 灰度发布
 │   │   └── index.ts
-│   └── eval/               #   Model Evaluation (← core/evaluation/)
+│   └── eval/               #   模型评估（← core/evaluation/）
 │       ├── llm-eval-service.ts
 │       ├── execution-outcome-evaluator.ts
 │       ├── post-execution-quality-gate.ts
@@ -679,63 +679,63 @@ src/platform/
 │       ├── prompt-model-policy-governance-schema.ts
 │       └── index.ts
 │
-├── compliance/             # AI Operations: Compliance & Data Governance ── §23
-│   ├── erasure/            #   Data Deletion (crypto-shredding)
+├── compliance/             # AI 运营：合规vsdata治理 ── §23
+│   ├── erasure/            #   data删除（crypto-shredding）
 │   │   └── index.ts
-│   ├── encryption/         #   Field-level Encryption
+│   ├── encryption/         #   字段级encryption
 │   │   └── index.ts
-│   ├── data-residency/     #   Data Residency (cross-border compliance)
+│   ├── data-residency/     #   data驻留（跨境合规）
 │   │   └── index.ts
-│   └── lineage/            #   Data Lineage
+│   └── lineage/            #   data血缘
 │       └── index.ts
 │
-├── contracts/              #   Cross-plane Contracts ── §5
-│   ├── types/              #   Domain Types (← core/types/)
+├── contracts/              # 跨平面契约 ── §5
+│   ├── types/              #   领域class型（← core/types/）
 │   │   ├── domain.ts
 │   │   ├── ids.ts
 │   │   ├── status.ts
 │   │   └── index.ts
-│   ├── errors.ts           #   Error System (← core/errors.ts)
-│   ├── constants/          #   Global Constants (← core/constants/)
+│   ├── errors.ts           #   错误体系（← core/errors.ts）
+│   ├── constants/          #   globallyconstant（← core/constants/）
 │   │   ├── time.ts
 │   │   └── index.ts
-│   ├── result-envelope/    #   Result Pattern (← core/results/)
+│   ├── result-envelope/    #   Result 模式（← core/results/）
 │   │   ├── result-envelope.ts
 │   │   └── index.ts
-│   ├── request-envelope/   #   Request Envelope (§5.3)
+│   ├── request-envelope/   #   request信封（§5.3）
 │   │   └── index.ts
-│   ├── control-directive/  #   Control Directive (§5.4)
+│   ├── control-directive/  #   控制指令（§5.4）
 │   │   └── index.ts
-│   ├── execution-plan/     #   Execution Plan (§5.5)
+│   ├── execution-plan/     #   执lines计划（§5.5）
 │   │   └── index.ts
-│   ├── execution-receipt/  #   Execution Receipt (§5.6)
+│   ├── execution-receipt/  #   执lines回执（§5.6）
 │   │   └── index.ts
-│   ├── mission/            #   Mission Contract (record/membership/snapshot/budget/error/event)
+│   ├── mission/            #   Mission 契约（record/membership/snapshot/budget/error/event）
 │   │   └── index.ts
-│   ├── evidence-record/    #   Evidence Record Contract
+│   ├── evidence-record/    #   证据record契约
 │   │   └── index.ts
-│   ├── executable-contracts/ # Executable Contracts and PlanGraph Binding
+│   ├── executable-contracts/ # 可执lines契约vs PlanGraph 绑定
 │   │   └── index.ts
-│   ├── projection-update/  #   Projection Update Contract
+│   ├── projection-update/  #   投影更新契约
 │   │   └── index.ts
-│   ├── prompt-bundle/      #   Prompt Bundle Contract
+│   ├── prompt-bundle/      #   Prompt Bundle 契约
 │   │   └── index.ts
-│   ├── state-command/      #   State Command (§5.7)
+│   ├── state-command/      #   Status命令（§5.7）
 │   │   └── index.ts
-│   ├── delegation-request/ #   Delegation Request (§19)
+│   ├── delegation-request/ #   委托request（§19）
 │   │   └── index.ts
-│   └── model-request/      #   Model Request (§15)
+│   └── model-request/      #   模型request（§15）
 │       └── index.ts
 │
-└── shared/                 #   Cross-plane Shared Infrastructure
-    ├── utils/              #   Utilities (← core/utils/)
+└── shared/                 # 跨平面共享基础设施
+    ├── utils/              #   工具class（← core/utils/）
     │   ├── bounded-cache.ts
     │   └── index.ts
-    ├── lifecycle/          #   Service Lifecycle (← core/lifecycle/)
+    ├── lifecycle/          #   服务生命cycle（← core/lifecycle/）
     │   ├── service-registry.ts
     │   ├── evolution-mvp-service.ts
     │   └── index.ts
-    ├── cache/              #   Multi-level Cache (← core/cache/)
+    ├── cache/              #   多级cache（← core/cache/）
     │   ├── cache-facade.ts
     │   ├── cache-bootstrap.ts
     │   ├── cache-policy.ts
@@ -748,7 +748,7 @@ src/platform/
     │   ├── cache-types.ts
     │   ├── cache-errors.ts
     │   └── index.ts
-    ├── observability/      #   Observability (← core/observability/)
+    ├── observability/      #   可观测性（← core/observability/）
     │   ├── structured-logger.ts
     │   ├── log-transport.ts
     │   ├── log-transport-bootstrap.ts
@@ -779,7 +779,7 @@ src/platform/
     │   ├── provider-health-tracker.ts
     │   ├── agent-state-view-service.ts
     │   └── index.ts
-    └── stability/          #   Stability Rehearsal (← core/stability/)
+    └── stability/          #   稳定性排练（← core/stability/）
         ├── golden-task-runner.ts
         ├── vcr-replay-fixture.ts
         ├── stable-acceptance-line.ts
@@ -813,35 +813,35 @@ src/platform/
         └── index.ts
 ```
 
-### 4.1 platform/ Statistics Snapshot (2026-05-18)
+### 4.1 platform/ 统计快照（2026-05-18）
 
-| Subdirectory | Architecture Positioning | Current TS Files | Description |
-|--------------|-----------------|---------------|-------------|
-| `five-plane-interface/` | P1 Interface Plane | 90 | API, channel gateway, console, scheduler, webhook |
-| `five-plane-control-plane/` | P2 Control Plane | 140 | IAM, approval, config, incident, mission, risk, rollout |
-| `five-plane-orchestration/` | P3 Orchestration Plane | 188 | Harness, OAPEFLIR, planner, routing, HITL, learn, rollout |
-| `five-plane-execution/` | P4 Execution Plane | 230 | dispatcher, lease, worker, engine, queue, tool, recovery |
-| `five-plane-state-evidence/` | P5 State & Evidence | 250 | truth, events, outbox, dlq, memory, knowledge, audit, ledger |
-| `shared/` | Cross-plane Shared | 130 | cache, observability, events, lifecycle, stability, context |
-| `contracts/` | Cross-plane Contracts | 60 | request, plan, state, mission, evidence, prompt, projection |
-| `model-gateway/` | AI Operations | 28 | provider, router, fallback, degradation, cost, messages |
-| `prompt-engine/` | AI Operations | 26 | registry, renderer, rollout, eval |
-| `compliance/` | AI Operations | 12 | erasure, encryption, data residency, lineage |
-| `stability/` | Stability/Reliability | 48 | reliability and stability rehearsal supplements |
-| Other platform independent modules | Cross-cutting/auxiliary | 22 | architecture, agent-delegation, remote-coordination, structure etc. |
-| **Total** | | **1,224** | Current `src/platform/**/*.ts` snapshot |
+| 子目录 | Architecture定位 | 当前 TS 文件数 | Description |
+|--------|---------|---------------|------|
+| `five-plane-interface/` | P1 接口平面 | 90 | API、channel gateway、console、scheduler、webhook |
+| `five-plane-control-plane/` | P2 控制平面 | 140 | IAM、approval、config、incident、mission、risk、rollout |
+| `five-plane-orchestration/` | P3 编排平面 | 188 | Harness、OAPEFLIR、planner、routing、HITL、learn、rollout |
+| `five-plane-execution/` | P4 执lines平面 | 230 | dispatcher、lease、worker、engine、queue、tool、recovery |
+| `five-plane-state-evidence/` | P5 Statusvs证据 | 250 | truth、events、outbox、dlq、memory、knowledge、audit、ledger |
+| `shared/` | 跨平面共享 | 130 | cache、observability、events、lifecycle、stability、context |
+| `contracts/` | 跨平面契约 | 60 | request、plan、state、mission、evidence、prompt、projection |
+| `model-gateway/` | AI 运营 | 28 | provider、router、fallback、degradation、cost、messages |
+| `prompt-engine/` | AI 运营 | 26 | registry、renderer、rollout、eval |
+| `compliance/` | AI 运营 | 12 | erasure、encryption、data residency、lineage |
+| `stability/` | 稳定性/可靠性 | 48 | reliability vs稳定性演练补充 |
+| 其他 platform 独立模块 | 横切/辅助 | 22 | architecture、agent-delegation、remote-coordination、structure 等 |
+| **合计** | | **1,224** | 当前 `src/platform/**/*.ts` 快照 |
 
 ---
 
-## 5. domains/ — Business Domain Access Layer
+## 五、domains/ — 业务域接入层
 
-`domains/` corresponds to architecture Layer 3 (§37-§38), divided into "domain framework infrastructure" and "domain instance" layers.
+`domains/` 对应Architecture Layer 3（§37-§38），分为"域框架基础设施"和"域实例"两层。
 
-> **Actual Domain Instance Count (2026-05-18 update)**: `src/domains/` currently contains domain framework infrastructure, domain public services, and 30+ vertical domain instances. Framework infrastructure includes `registry`, `risk-profile`, `knowledge-schema`, `eval-framework`, `prompt-library`, `recipes`, `interaction-policy`, `governance`, `business-pack`, `canonical-meta-model`. Vertical domain instances include `academic-research`, `advertising`, `agriculture`, `coding`, `financial-services`, `finance-accounting`, `healthcare`, `legal`, `quant-trading`, `yono`, etc. `yono` is the Yono Business domain instance and cannot be classified as framework infrastructure.
+> **实际域实例count（2026-05-18 续修）**：`src/domains/` 下当前contains域框架基础设施、领域公共服务和 30+ 个垂直域实例。框架基础设施includes `registry`、`risk-profile`、`knowledge-schema`、`eval-framework`、`prompt-library`、`recipes`、`interaction-policy`、`governance`、`business-pack`、`canonical-meta-model`；垂直域实例includes `academic-research`、`advertising`、`agriculture`、`coding`、`financial-services`、`finance-accounting`、`healthcare`、`legal`、`quant-trading`、`yono` 等。`yono` is Yono Business 业务域实例，不能归入框架基础设施。
 
 ```
 src/domains/
-├── registry/               # Domain Registry Center (← core/domain-registry/)
+├── registry/               # 域注册中心（← core/domain-registry/）
 │   ├── domain-registry-service.ts
 │   ├── domain-model.ts
 │   ├── domain-event-payload.ts
@@ -856,199 +856,199 @@ src/domains/
 │   ├── plugin-runtime-child.ts
 │   ├── plugin-runtime-protocol.ts
 │   └── index.ts
-├── risk-profile/           # Domain Risk Profile (NEW §37)
+├── risk-profile/           # 域风险画像（NEW §37）
 │   └── index.ts
-├── knowledge-schema/       # Domain Knowledge Schema (NEW §37)
+├── knowledge-schema/       # 域知识结构（NEW §37）
 │   └── index.ts
-├── eval-framework/         # Domain Evaluation Framework (NEW §37)
+├── eval-framework/         # 域评估框架（NEW §37）
 │   └── index.ts
-├── prompt-library/         # Domain Prompt Library (NEW §37)
+├── prompt-library/         # 域 Prompt 库（NEW §37）
 │   └── index.ts
-├── recipes/                # DomainRecipe Prototype Templates (NEW §38)
+├── recipes/                # DomainRecipe 原型模板（NEW §38）
 │   └── index.ts
-├── interaction-policy/     # Cross-domain Interaction Policy (NEW §37)
+├── interaction-policy/     # 跨域交互策略（NEW §37）
 │   └── index.ts
-├── governance/             # Domain Governance (← core/divisions/)
+├── governance/             # 域治理（← core/divisions/）
 │   ├── division-loader.ts
 │   ├── division-loader-support.ts
 │   ├── safe-load-division-registry.ts
 │   ├── hr-role-governance-service.ts
 │   └── index.ts
-├── business-pack/          # Business Pack Domain Framework
+├── business-pack/          # 业务包域框架
 │   └── index.ts
-├── canonical-meta-model/   # Canonical Meta Model
+├── canonical-meta-model/   # 规范元模型
 │   └── index.ts
-├── coding/                 # Coding Domain Instance
+├── coding/                 # code研发域实例
 │   └── index.ts
-├── operations/             # Operations Domain Instance
+├── operations/             # 运维域实例
 │   └── index.ts
-├── yono/                   # Yono Business Domain Instance
+├── yono/                   # Yono Business 业务域实例
 │   └── index.ts
-├── [30+ vertical domain instances]         # academic-research, advertising, agriculture, content-moderation, creative-production, customer-service, data-engineering, ecommerce, education, executive-assistant, facilities, finance-accounting, financial-services, game-dev, game-publishing, healthcare, human-resources, industry-research, it-operations, knowledge-base, legal, live-streaming, manufacturing, marketing, product-management, project-management, quality-assurance, quant-trading, supply-chain, user-operations, etc.
-└── [framework and public services]         # domain-baseline-catalog.ts, domain-baseline-seeds.ts, domain-descriptor-orchestration-service.ts, domain-eval-framework-service.ts, domain-knowledge-schema-service.ts, domain-module-helper.ts, domain-recipe-service.ts, domain-risk-profile-service.ts, domain-specs.ts, domain-task-design-service.ts, domains-bootstrap.ts
+├── [30+ 垂直域实例]         # academic-research、advertising、agriculture、content-moderation、creative-production、customer-service、data-engineering、ecommerce、education、executive-assistant、facilities、finance-accounting、financial-services、game-dev、game-publishing、healthcare、human-resources、industry-research、it-operations、knowledge-base、legal、live-streaming、manufacturing、marketing、product-management、project-management、quality-assurance、quant-trading、supply-chain、user-operations 等
+└── [框架vs公共服务]         # domain-baseline-catalog.ts、domain-baseline-seeds.ts、domain-descriptor-orchestration-service.ts、domain-eval-framework-service.ts、domain-knowledge-schema-service.ts、domain-module-helper.ts、domain-recipe-service.ts、domain-risk-profile-service.ts、domain-specs.ts、domain-task-design-service.ts、domains-bootstrap.ts
 ```
 
 ---
 
-## 6. interaction/ — Intelligent Interaction Layer
+## 六、interaction/ — 智能交互层
 
-`interaction/` corresponds to architecture Layer 4 (§39-§44), all **newly created modules** (old system completely missing).
+`interaction/` 对应Architecture Layer 4（§39-§44），全部为**新建模块**（老系统完全缺失）。
 
-> **Actual Submodules (2026-05-18 update)**: Document §6 records 6 subdirectories, actual code contains 13 subdirectories with deep submodules (autonomy, dashboard, goal-decomposer, nl-gateway, proactive-agent, ux each have deep submodules), all reflected in the tree below and §13 statistics table.
+> **实际子模块（2026-05-18 续修）**：文档 §6 record 6 个子目录，实际code含 13 个含深层的子目录（autonomy、dashboard、goal-decomposer、nl-gateway、proactive-agent、ux 各有深层子模块），已全部反映在下方树状图和第十三节统计table中。
 
 ```
 src/interaction/
-├── nl-gateway/             # Natural Language Task Entry (NEW §39)
-│   ├── intent-parser/      #   Intent Parsing
+├── nl-gateway/             # 自然语言任务入口（NEW §39）
+│   ├── intent-parser/      #   意图解析
 │   │   └── index.ts
-│   ├── slot-resolver/      #   Slot Extraction
+│   ├── slot-resolver/      #   槽位提取
 │   │   └── index.ts
-│   ├── ambiguity-handler/  #   Ambiguity Handling & Clarification Dialog
-│   │   └── index.ts
-│   └── index.ts
-├── goal-decomposer/        # Goal Decomposition Engine (NEW §40)
-│   ├── planner/            #   Decomposition Strategy (template/LLM/hybrid/human-assisted)
-│   │   └── index.ts
-│   ├── dependency-graph/   #   Task Dependency DAG
-│   │   └── index.ts
-│   ├── validator/          #   Decomposition Result Validation
+│   ├── ambiguity-handler/  #   歧义handlevs澄清对话
 │   │   └── index.ts
 │   └── index.ts
-├── proactive-agent/        # Proactive Agent Framework (NEW §41)
-│   ├── trigger-engine/     #   Trigger Engine (cron/event/threshold)
+├── goal-decomposer/        # 目标分解references擎（NEW §40）
+│   ├── planner/            #   分解策略（模板/LLM/混合/人工辅助）
 │   │   └── index.ts
-│   ├── schedule-manager/   #   Scheduled Task Management
+│   ├── dependency-graph/   #   任务relies on DAG
 │   │   └── index.ts
-│   ├── event-watcher/      #   Event-driven Wake-up
-│   │   └── index.ts
-│   └── index.ts
-├── autonomy/               # Gradual Autonomy Model (NEW §42)
-│   ├── trust-scorer/       #   Trust Scoring
-│   │   └── index.ts
-│   ├── level-manager/      #   Autonomy Level State Machine
-│   │   └── index.ts
-│   ├── promotion-engine/   #   Promotion/Demotion Rules Engine
+│   ├── validator/          #   分解结果验证
 │   │   └── index.ts
 │   └── index.ts
-├── dashboard/              # Unified Operations Dashboard (NEW §43)
-│   ├── metric-aggregator/  #   Metric Aggregation
+├── proactive-agent/        # 主动式 Agent 框架（NEW §41）
+│   ├── trigger-engine/     #   触发器references擎（cron/event/threshold）
 │   │   └── index.ts
-│   ├── health-scorer/      #   Health Scoring
+│   ├── schedule-manager/   #   定时调度manage
 │   │   └── index.ts
-│   ├── alert-router/       #   Alert Routing
+│   ├── event-watcher/      #   事件驱动唤醒
 │   │   └── index.ts
 │   └── index.ts
-└── ux/                     # Non-technical User Experience (NEW §44)
-    ├── wizard/             #   Visual Domain Onboarding Wizard
+├── autonomy/               # 渐进式自主权模型（NEW §42）
+│   ├── trust-scorer/       #   信任评分
+│   │   └── index.ts
+│   ├── level-manager/      #   自主权等级Status机
+│   │   └── index.ts
+│   ├── promotion-engine/   #   提升/降级规则references擎
+│   │   └── index.ts
+│   └── index.ts
+├── dashboard/              # 统一运营看板（NEW §43）
+│   ├── metric-aggregator/  #   指标聚合
+│   │   └── index.ts
+│   ├── health-scorer/      #   健康评分
+│   │   └── index.ts
+│   ├── alert-router/       #   告警路由
+│   │   └── index.ts
+│   └── index.ts
+└── ux/                     # 非技术user体验（NEW §44）
+    ├── wizard/             #   可视化域接入向导
     │   └── index.ts
-    ├── template-engine/    #   Visual Workflow Builder
+    ├── template-engine/    #   可视化工作流构建器
     │   └── index.ts
-    ├── onboarding/         #   Guided First-time User Experience
+    ├── onboarding/         #   references导式user首iterations体验
     │   └── index.ts
     └── index.ts
 ```
 
 ---
 
-## 7. org-governance/ — Organization Governance Layer
+## 七、org-governance/ — 组织治理层
 
-`org-governance/` corresponds to architecture Layer 5 (§46-§51). Except for a small amount of code migrated from `core/hr/` to `org-model/`, the rest are **newly created modules**.
+`org-governance/` 对应Architecture Layer 5（§46-§51），除 `org-model/` 从 `core/hr/` 迁入少量code外，其余为**新建模块**。
 
-> **Actual Submodules (2026-05-18 update)**: Document §7 records 7 subdirectories, actual code contains 24 subdirectories with deep submodules (approval-routing, compliance-engine, delegated-governance, knowledge-boundary, org-model, org-routing, sso-scim each have deep submodules), all reflected in the tree below and §13 statistics table.
+> **实际子模块（2026-05-18 续修）**：文档 §7 record 7 个子目录，实际code含 24 个含深层的子目录（approval-routing、compliance-engine、delegated-governance、knowledge-boundary、org-model、org-routing、sso-scim 各有深层子模块），已全部反映在下方树状图和第十三节统计table中。
 
 ```
 src/org-governance/
-├── org-model/              # Organization Hierarchy Model (NEW §46, partially migrated from core/hr/)
-│   ├── hierarchy/          #   Organization Tree (company/division/department/team)
+├── org-model/              # 组织层iterations模型（NEW §46，← core/hr/ 部分迁入）
+│   ├── hierarchy/          #   组织树（company/division/department/team）
 │   │   └── index.ts
-│   ├── org-node/           #   OrgNode CRUD + Hierarchy Inheritance
+│   ├── org-node/           #   OrgNode CRUD + 层级继承
 │   │   └── index.ts
-│   ├── sync/               #   Organization Change Sync (SCIM/HR API/manual)
+│   ├── sync/               #   组织变更synchronous（SCIM/HR API/手动）
 │   │   └── index.ts
 │   ├── hr-role-governance-service.ts  # ← core/hr/
 │   └── index.ts
-├── approval-routing/       # Organization Architecture Approval Routing (NEW §47)
-│   ├── route-engine/       #   Dynamic Routing Engine (org-chart/amount-based/SoD)
+├── approval-routing/       # 组织Architecture审批路由（NEW §47）
+│   ├── route-engine/       #   dynamically路由references擎（org-chart/amount-based/SoD）
 │   │   └── index.ts
-│   ├── escalation/         #   Approval Escalation
+│   ├── escalation/         #   审批升级
 │   │   └── index.ts
-│   ├── delegation/         #   Approval Delegation (leave proxy)
+│   ├── delegation/         #   审批委托（请假代理）
 │   │   └── index.ts
 │   └── index.ts
-├── sso-scim/               # SSO/SCIM Integration (NEW §48)
+├── sso-scim/               # SSO/SCIM 集成（NEW §48）
 │   ├── saml/               #   SAML SSO
 │   │   └── index.ts
 │   ├── oidc/               #   OIDC SSO
 │   │   └── index.ts
-│   ├── scim-sync/          #   SCIM User/Group Sync
+│   ├── scim-sync/          #   SCIM user/组synchronous
 │   │   └── index.ts
 │   └── index.ts
-├── compliance-engine/      # Department-level Compliance Policy Engine (NEW §49)
-│   ├── policy-resolver/    #   Policy Resolution (inheritance+override)
+├── compliance-engine/      # 分部门合规策略references擎（NEW §49）
+│   ├── policy-resolver/    #   策略解析（继承+覆盖）
 │   │   └── index.ts
-│   ├── inheritance/        #   Policy Inheritance Rules (children can only tighten, not relax)
+│   ├── inheritance/        #   策略继承规则（子只能收紧不能放松）
 │   │   └── index.ts
-│   ├── audit-enforcer/     #   Compliance Audit Enforcement
-│   │   └── index.ts
-│   └── index.ts
-├── knowledge-boundary/     # Knowledge Domain Isolation & Controlled Sharing (NEW §50)
-│   ├── boundary-manager/   #   Boundary Definition (strict/controlled/open)
-│   │   └── index.ts
-│   ├── sharing-gate/       #   Cross-domain Sharing Gateway
-│   │   └── index.ts
-│   ├── access-log/         #   Access Audit Log
+│   ├── audit-enforcer/     #   合规审计执lines
 │   │   └── index.ts
 │   └── index.ts
-└── delegated-governance/   # Hierarchical Governance Delegation (NEW §51)
-    ├── scope-manager/      #   Delegation Scope Management
+├── knowledge-boundary/     # 知识域隔离vs受控共享（NEW §50）
+│   ├── boundary-manager/   #   边界defines（strict/controlled/open）
+│   │   └── index.ts
+│   ├── sharing-gate/       #   跨域共享网关
+│   │   └── index.ts
+│   ├── access-log/         #   访问审计日志
+│   │   └── index.ts
+│   └── index.ts
+└── delegated-governance/   # 分级治理委托（NEW §51）
+    ├── scope-manager/      #   委托范围manage
     │   └── index.ts
-    ├── delegation-registry/ #  Delegation Registry
+    ├── delegation-registry/ #  委托注册
     │   └── index.ts
     └── index.ts
 ```
 
 ---
 
-## 8. scale-ecosystem/ — Scale Operations Layer + Ecosystem Layer
+## 八、scale-ecosystem/ — 规模化运lines层 + 生态层
 
-`scale-ecosystem/` corresponds to architecture Layer 6 (§52-§57). `feedback-loop/` migrated from `core/feedback/`, `marketplace/` partially migrated from `core/product/`, and the rest are **newly created modules**.
+`scale-ecosystem/` 对应Architecture Layer 6（§52-§57）。`feedback-loop/` 从 `core/feedback/` 迁入，`marketplace/` 从 `core/product/` 部分迁入，其余为**新建模块**。
 
-> **Actual Submodules (2026-05-18 update)**: Document §8 records 6 top-level subdirectories, actual code contains 46 subdirectories with deep submodules (billing, capacity-planning, cost-attribution, enterprise, federation, feedback-loop, integration, intelligence, marketplace, multi-region, operations, resource-manager, runtime-services, sla, sla-engine, tenant-platform each have deep submodules), all reflected in the tree below and §13 statistics table.
+> **实际子模块（2026-05-18 续修）**：文档 §8 record 6 个顶层子目录，实际code含 46 个含深层的子目录（billing、capacity-planning、cost-attribution、enterprise、federation、feedback-loop、integration、intelligence、marketplace、multi-region、operations、resource-manager、runtime-services、sla、sla-engine、tenant-platform 各有深层子模块），已全部反映在下方树状图和第十三节统计table中。
 
-> **Additional Submodules (2026-05-18 update)**: Top-level module count expanded from 6 to 16 (billing, capacity-planning, cost-attribution, enterprise, federation, intelligence, operations, runtime-services, sla, tenant-platform etc. 10 new additions), incorporated into §13 statistics table.
+> **额外子模块（2026-05-18 续修）**：顶层模块count已从 6 个扩展到 16 个（billing、capacity-planning、cost-attribution、enterprise、federation、intelligence、operations、runtime-services、sla、tenant-platform 等 10 个新增），已纳入第十三节统计。
 
 ```
 src/scale-ecosystem/
-├── multi-region/           # Multi-Region Deployment (NEW §52)
-│   ├── region-router/      #   Region Routing Decision
+├── multi-region/           # 多 Region 部署（NEW §52）
+│   ├── region-router/      #   Region 路由Decision
 │   │   └── index.ts
-│   ├── data-replicator/    #   Cross-region Data Sync
+│   ├── data-replicator/    #   跨 Region datasynchronous
 │   │   └── index.ts
-│   ├── failover-controller/ #  Region Failover
-│   │   └── index.ts
-│   └── index.ts
-├── resource-manager/       # Resource Competition Management (NEW §53)
-│   ├── fair-queue/         #   Weighted Fair Queue
-│   │   └── index.ts
-│   ├── quota-enforcer/     #   Quota Enforcement
-│   │   └── index.ts
-│   ├── preemption/         #   Priority Preemption
+│   ├── failover-controller/ #  Region 故障切换
 │   │   └── index.ts
 │   └── index.ts
-├── sla-engine/             # SLA Tier Guarantee (NEW §54)
-│   ├── tier-resolver/      #   SLA Tier Resolution
+├── resource-manager/       # 资源竞争manage（NEW §53）
+│   ├── fair-queue/         #   加权公平队列
 │   │   └── index.ts
-│   ├── resource-allocator/ #   Resource Allocation
+│   ├── quota-enforcer/     #   配额执lines
 │   │   └── index.ts
-│   ├── breach-detector/    #   SLA Violation Detection
+│   ├── preemption/         #   优先级抢占
 │   │   └── index.ts
 │   └── index.ts
-├── marketplace/            # Agent Marketplace & Ecosystem (NEW §55, partially migrated from core/product/)
-│   ├── catalog/            #   Marketplace Catalog
+├── sla-engine/             # SLA 分级保障（NEW §54）
+│   ├── tier-resolver/      #   SLA 等级解析
 │   │   └── index.ts
-│   ├── certification/      #   Certification & Security Scan
+│   ├── resource-allocator/ #   资源分配
 │   │   └── index.ts
-│   ├── publisher/          #   Publishing Management
+│   ├── breach-detector/    #   SLA 违约检测
+│   │   └── index.ts
+│   └── index.ts
+├── marketplace/            # Agent 市场vs生态（NEW §55，← core/product/ 部分迁入）
+│   ├── catalog/            #   市场目录
+│   │   └── index.ts
+│   ├── certification/      #   authenticationvssecurity扫描
+│   │   └── index.ts
+│   ├── publisher/          #   发布manage
 │   │   └── index.ts
 │   ├── billing-service.ts
 │   ├── billing-service-async.ts
@@ -1067,41 +1067,41 @@ src/scale-ecosystem/
 │   ├── perception-service.ts
 │   ├── perception-service-async.ts
 │   └── index.ts
-├── feedback-loop/          # Feedback-driven Continuous Improvement (§56, ← core/feedback/)
-│   ├── collector/          #   Signal Collection
+├── feedback-loop/          # 反馈驱动持续改进（§56，← core/feedback/）
+│   ├── collector/          #   信号收集
 │   │   ├── feedback-collector.ts
 │   │   ├── feedback-model.ts
 │   │   ├── signal-preprocessor.ts
 │   │   ├── domain-event-feedback-consumer.ts
 │   │   └── index.ts
-│   ├── analyzer/           #   Signal Analysis (NEW)
+│   ├── analyzer/           #   信号分析（NEW）
 │   │   └── index.ts
-│   ├── improvement-tracker/ #  Improvement Tracking (NEW)
+│   ├── improvement-tracker/ #  改进追踪（NEW）
 │   │   └── index.ts
 │   └── index.ts
-└── integration/            # External System Integration Framework (NEW §57)
-    ├── connector-registry/ #   Connector Registry
+└── integration/            # 外部系统集成框架（NEW §57）
+    ├── connector-registry/ #   connect器注册
     │   └── index.ts
-    ├── connector-runtime/  #   Connector Runtime
+    ├── connector-runtime/  #   connect器运lines时
     │   └── index.ts
-    ├── health-monitor/     #   Connector Health Monitoring
+    ├── health-monitor/     #   connect器健康监控
     │   └── index.ts
     └── index.ts
 ```
 
 ---
 
-## 9. ops-maturity/ — Operations Maturity Layer
+## 九、ops-maturity/ — 运营成熟度层
 
-`ops-maturity/` corresponds to architecture Layer 7 (§59-§70). `drift-detection/` migrated from `core/evolution/`, and the rest are **newly created modules**.
+`ops-maturity/` 对应Architecture Layer 7（§59-§70）。`drift-detection/` 从 `core/evolution/` 迁入，其余为**新建模块**。
 
-> **Actual Submodules (2026-05-18 update)**: Document §9 records 11 top-level subdirectories, actual code contains 66 subdirectories with deep submodules (agent-lifecycle, capacity-planner, chaos, compliance-reporter, cost-optimizer, drift-detection, edge-runtime, emergency, explainability, improvement, learning, monitoring, multimodal, platform-ops-agent, version-management, workflow-debugger each have deep submodules), all reflected in the tree below and §13 statistics table.
+> **实际子模块（2026-05-18 续修）**：文档 §9 record 11 个顶层子目录，实际code含 66 个含深层的子目录（agent-lifecycle、capacity-planner、chaos、compliance-reporter、cost-optimizer、drift-detection、edge-runtime、emergency、explainability、improvement、learning、monitoring、multimodal、platform-ops-agent、version-management、workflow-debugger 各有深层子模块），已全部反映在下方树状图和第十三节统计table中。
 
-> **Additional Submodules (2026-05-18 update)**: Top-level module count expanded from 11 to 16 (learning, monitoring etc. new additions), incorporated into §13 statistics table.
+> **额外子模块（2026-05-18 续修）**：顶层模块count已从 11 个扩展到 16 个（learning、monitoring 等新增），已纳入第十三节统计。
 
 ```
 src/ops-maturity/
-├── explainability/         # Agent Explainability (NEW §59)
+├── explainability/         # Agent 可解释性（NEW §59）
 │   ├── evidence-collector/
 │   │   └── index.ts
 │   ├── causal-chain-builder/
@@ -1111,7 +1111,7 @@ src/ops-maturity/
 │   ├── explanation-cache/
 │   │   └── index.ts
 │   └── index.ts
-├── emergency/              # Emergency Brake (NEW §60)
+├── emergency/              # 紧急制动（NEW §60）
 │   ├── panic-controller/
 │   │   └── index.ts
 │   ├── forensic-snapshot/
@@ -1119,7 +1119,7 @@ src/ops-maturity/
 │   ├── resume-protocol/
 │   │   └── index.ts
 │   └── index.ts
-├── agent-lifecycle/        # Agent Unified Lifecycle (NEW §61)
+├── agent-lifecycle/        # Agent 统一生命cycle（NEW §61）
 │   ├── agent-registry/
 │   │   └── index.ts
 │   ├── version-manager/
@@ -1129,7 +1129,7 @@ src/ops-maturity/
 │   ├── retirement/
 │   │   └── index.ts
 │   └── index.ts
-├── edge-runtime/           # Offline & Edge Deployment (NEW §62)
+├── edge-runtime/           # 离线vs边缘部署（NEW §62）
 │   ├── edge-orchestrator/
 │   │   └── index.ts
 │   ├── edge-executor/
@@ -1139,7 +1139,7 @@ src/ops-maturity/
 │   ├── sync-queue/
 │   │   └── index.ts
 │   └── index.ts
-├── drift-detection/        # Behavior Drift Detection (§63, ← core/evolution/)
+├── drift-detection/        # lines为漂移检测（§63，← core/evolution/）
 │   ├── fingerprint-builder/
 │   │   └── index.ts
 │   ├── changepoint-detector/
@@ -1158,7 +1158,7 @@ src/ops-maturity/
 │   ├── promotion-gate.ts
 │   ├── rollout-manager.ts
 │   └── index.ts
-├── cost-optimizer/         # Cost Attribution & Optimization (NEW §64)
+├── cost-optimizer/         # 成本归因vs优化（NEW §64）
 │   ├── attribution-engine/
 │   │   └── index.ts
 │   ├── recommendation-engine/
@@ -1166,7 +1166,7 @@ src/ops-maturity/
 │   ├── simulator/
 │   │   └── index.ts
 │   └── index.ts
-├── workflow-debugger/      # Visual Debugger (NEW §65)
+├── workflow-debugger/      # 可视化调试器（NEW §65）
 │   ├── timeline-renderer/
 │   │   └── index.ts
 │   ├── breakpoint-manager/
@@ -1174,7 +1174,7 @@ src/ops-maturity/
 │   ├── run-comparator/
 │   │   └── index.ts
 │   └── index.ts
-├── compliance-reporter/    # Compliance Report Engine (NEW §66)
+├── compliance-reporter/    # 合规报告references擎（NEW §66）
 │   ├── template-registry/
 │   │   └── index.ts
 │   ├── evidence-mapper/
@@ -1182,7 +1182,7 @@ src/ops-maturity/
 │   ├── report-renderer/
 │   │   └── index.ts
 │   └── index.ts
-├── capacity-planner/       # Capacity Planning (NEW §67)
+├── capacity-planner/       # 容量规划（NEW §67）
 │   ├── trend-analyzer/
 │   │   └── index.ts
 │   ├── forecaster/
@@ -1190,7 +1190,7 @@ src/ops-maturity/
 │   ├── simulator/
 │   │   └── index.ts
 │   └── index.ts
-├── multimodal/             # Multimodal Capabilities (NEW §68)
+├── multimodal/             # 多模态能力（NEW §68）
 │   ├── image-processor/
 │   │   └── index.ts
 │   ├── speech-processor/
@@ -1200,7 +1200,7 @@ src/ops-maturity/
 │   ├── modality-router/
 │   │   └── index.ts
 │   └── index.ts
-└── platform-ops-agent/     # Platform Self-Ops Agent (NEW §69)
+└── platform-ops-agent/     # 平台自运维 Agent（NEW §69）
     ├── incident-diagnoser/
     │   └── index.ts
     ├── config-optimizer/
@@ -1216,11 +1216,11 @@ src/ops-maturity/
 
 ---
 
-## 10. plugins/ + sdk/ + apps/ + Top-level Files
+## 十、plugins/ + sdk/ + apps/ + 顶层文件
 
-### 10.1 plugins/ — Cross-layer Plugin Ecosystem
+### 10.1 plugins/ — 跨层插件生态
 
-Structure is basically the same as the old system; SPI pattern retained:
+结构vs老系统基本一致，SPI 模式保留：
 
 ```
 src/plugins/
@@ -1228,42 +1228,42 @@ src/plugins/
 ├── builtin-plugin-registry.ts
 ├── growth-config.ts
 ├── operations-config.ts
-├── adapters/               # Domain Adapters
+├── adapters/               # 域适配器
 │   ├── asset-production-adapter.ts
 │   ├── crm-adapter.ts
 │   ├── game-dev-adapter.ts
 │   ├── github-adapter.ts
 │   └── livestream-adapter.ts
-├── planners/               # Planners
+├── planners/               # 规划器
 │   └── basic-planner.ts
-├── presenters/             # Presenters
+├── presenters/             # 展示器
 │   ├── coding-presenter.ts
 │   ├── growth-presenter.ts
 │   └── operations-presenter.ts
-├── retrievers/             # Retrievers
+├── retrievers/             # 检索器
 │   ├── asset-production-retriever.ts
 │   ├── coding-retriever.ts
 │   ├── game-dev-retriever.ts
 │   ├── growth-retriever.ts
 │   ├── livestream-retriever.ts
 │   └── operations-retriever.ts
-└── validators/             # Validators
+└── validators/             # 验证器
     └── basic-evaluator.ts
 ```
 
-### 10.2 sdk/ — SDK & Developer Experience (§22)
+### 10.2 sdk/ — SDK vs开发者体验（§22）
 
-> **Additional Submodules (2026-05-18 update)**: Besides the 4 modules shown in documentation, actual code also contains `admin-sdk/`, `harness-sdk/`, `workbench/` three additional modules, incorporated into §13 statistics.
+> **额外子模块（2026-05-18 续修）**：除文档所示 4 个模块外，实际code还contains `admin-sdk/`、`harness-sdk/`、`workbench/` 三个额外模块，已纳入第十三节统计。
 
 ```
 src/sdk/
-├── pack-sdk/               # Business Pack Development SDK
+├── pack-sdk/               # Business Pack 开发 SDK
 │   └── index.ts
-├── plugin-sdk/             # Plugin Development SDK
+├── plugin-sdk/             # Plugin 开发 SDK
 │   └── index.ts
-├── client-sdk/             # Client SDK (REST/WebSocket)
+├── client-sdk/             # 客户端 SDK（REST/WebSocket）
 │   └── index.ts
-├── cli/                    # CLI Entry Point (← src/cli/ 78 scripts migrated)
+├── cli/                    # CLI 入口（← src/cli/ 78 个脚本迁入）
 │   ├── acceptance-readiness.ts
 │   ├── api-server.ts
 │   ├── billing.ts
@@ -1279,83 +1279,83 @@ src/sdk/
 │   ├── worker-handshake.ts
 │   ├── worker-register.ts
 │   ├── worker-writeback.ts
-│   ├── ... (remaining 63 CLI scripts, structure unchanged)
+│   ├── ... (其余 63 个 CLI 脚本，结构不变)
 │   └── index.ts
-├── admin-sdk/              # Admin SDK
+├── admin-sdk/              # manage员 SDK
 │   └── index.ts
 ├── harness-sdk/           # Harness SDK
 │   └── index.ts
-└── workbench/             # Workbench SDK
+└── workbench/             # 工作台 SDK
     └── index.ts
 ```
 
-### 10.3 apps/ — Application Entry Points
+### 10.3 apps/ — 应用入口
 
 ```
 src/apps/
-├── api/                    # API Server Entry (assembles platform/five-plane-interface/ modules)
+├── api/                    # API Server 入口（组装 platform/five-plane-interface/ 模块）
 │   └── index.ts
-├── console/                # Console UI Backend Entry
+├── console/                # Console UI 后端入口
 │   └── index.ts
-└── workers/                # Worker Process Entry (assembles platform/five-plane-execution/ modules)
+└── workers/                # Worker 进程入口（组装 platform/five-plane-execution/ 模块）
     └── index.ts
 ```
 
-### 10.4 Top-level Files
+### 10.4 顶层文件
 
 ```
 src/
-└── index.ts                # Platform Main Entry (bootstrapping + module registration)
+└── index.ts                # 平台主入口（启动references导 + 模块注册）
 ```
 
-### 10.5 Project Root Files (directly migrated from old system)
+### 10.5 项目根目录文件（从老系统directly迁移）
 
 ```
 new-platform/
-├── package.json            # ← Directly migrated, clean up unnecessary scripts
-├── tsconfig.json           # ← Directly migrated
-├── tsconfig.build.json     # ← Directly migrated
-├── eslint.config.js        # ← Directly migrated
-├── .c8rc.json              # ← Directly migrated
-├── Dockerfile              # ← Directly migrated, add edge deployment variant
-├── docker-compose.yml      # ← Directly migrated, add Redis cluster variant
-├── .env.example            # ← Directly migrated, add Layer 4-7 config items
-├── .github/workflows/      # ← Directly migrated 4 CI workflows
-├── scripts/                # ← Directly migrated CI/build scripts
-├── deploy/                 # ← Directly migrated deployment manifests
-├── config/                 # ← Directly migrated 27 config files
-└── divisions/              # ← Adapted migration (adapted to DomainDescriptor)
+├── package.json            # ← directly迁移，清理不需要的脚本
+├── tsconfig.json           # ← directly迁移
+├── tsconfig.build.json     # ← directly迁移
+├── eslint.config.js        # ← directly迁移
+├── .c8rc.json              # ← directly迁移
+├── Dockerfile              # ← directly迁移，增加边缘部署变体
+├── docker-compose.yml      # ← directly迁移，增加 Redis cluster 变体
+├── .env.example            # ← directly迁移，增加 Layer 4-7 configure项
+├── .github/workflows/      # ← directly迁移 4 个 CI workflow
+├── scripts/                # ← directly迁移 CI/构建脚本
+├── deploy/                 # ← directly迁移部署清单
+├── config/                 # ← directly迁移 27 个configure文件
+└── divisions/              # ← 改造迁移（适配 DomainDescriptor）
 ```
 
 ---
 
-## 11. ui/ — Cross-Platform UI Monorepo
+## 十一、ui/ — 跨平台 UI Monorepo
 
-`ui/` is the frontend sub-project in the current repository, not migrated into backend `src/`. It interacts with the backend through API-first, DTO → VM → Props, PlatformAdapter and feature gate. UI code must not directly import backend `src/platform/*` internal implementations; can only depend on generated contracts, OpenAPI/schema, frontend shared API client, or mock/contract seam.
+`ui/` is当前仓库内的前端子工程，不迁入后端 `src/`。它via API-first、DTO → VM → Props、PlatformAdapter 和 feature gate vs后端交互。UI code不得directly import 后端 `src/platform/*` 内部实现；只能relies on生成的契约、OpenAPI/schema、前端 shared API client 或 mock/contract seam。
 
 ```
 ui/
 ├── apps/
-│   ├── web/                # React + Vite Web SPA, can run main entry
+│   ├── web/                # React + Vite Web SPA，可运lines主入口
 │   ├── electron-win/       # Windows Electron shell
 │   ├── tauri-macos/        # macOS Tauri shell
 │   ├── tauri-linux/        # Linux Tauri shell
 │   └── mobile/             # React Native mobile shell
 ├── packages/
 │   ├── shared/
-│   │   ├── api-client/     # REST/WS client, endpoint binding
+│   │   ├── api-client/     # REST/WS client、endpoint binding
 │   │   ├── auth/           # token/session/auth callback
 │   │   ├── state/          # Query/store/offline persistence
 │   │   ├── sync/           # offline queue/conflict resolver
-│   │   ├── domain/         # DomainUIConfig, permissions, field masking
+│   │   ├── domain/         # DomainUIConfig、permission、字段脱敏
 │   │   ├── platform/       # PlatformAdapter contract + adapters
-│   │   ├── telemetry/      # Frontend telemetry
+│   │   ├── telemetry/      # 前端 telemetry
 │   │   ├── i18n/           # locale/catalog
 │   │   ├── nl-client/      # NL interaction client
-│   │   └── types/          # Frontend common types
-│   ├── ui-core/            # Web/desktop design system, business components, charts, layout, theme
-│   ├── ui-mobile/          # Mobile components, native module seam, navigation
-│   ├── features/           # Business feature packages, unified web/mobile/hooks split
+│   │   └── types/          # 前端公共class型
+│   ├── ui-core/            # Web/桌面设计系统、业务组件、charts、layout、theme
+│   ├── ui-mobile/          # 移动端组件、native module seam、navigation
+│   ├── features/           # 业务 feature packages，统一 web/mobile/hooks 拆分
 │   │   ├── dashboard/
 │   │   ├── task-cockpit/
 │   │   ├── workflow-cockpit/
@@ -1380,9 +1380,9 @@ ui/
 │   │   ├── marketplace/
 │   │   ├── analytics/
 │   │   └── governance-compliance/
-│   └── storybook/          # Component documentation and visual review
+│   └── storybook/          # 组件文档vs visual review
 ├── tools/
-│   ├── codegen/            # Generate frontend types and endpoint binding from backend contracts/OpenAPI/schema
+│   ├── codegen/            # 从后端契约/OpenAPI/schema 生成前端class型和 endpoint binding
 │   ├── mock-server/        # Planned endpoint / WS event typed mock
 │   └── e2e/                # UI E2E tooling
 ├── tests/
@@ -1393,42 +1393,42 @@ ui/
 │   ├── a11y/
 │   ├── playwright/
 │   └── docs/
-└── docs/                   # UI ADR / Storybook documentation
+└── docs/                   # UI ADR / Storybook 文档
 ```
 
-### 11.1 UI Feature Directory Rules
+### 11.1 UI Feature 目录规则
 
-Each `ui/packages/features/<feature>/src/` must maintain the same split:
+每个 `ui/packages/features/<feature>/src/` 必须保持同一拆分：
 
 ```
 src/
-├── web/                    # Web/desktop rendering entry
-├── mobile/                 # Mobile rendering entry
-├── hooks/                  # Query/VM hooks, only return ViewModel
+├── web/                    # Web/desktop 渲染入口
+├── mobile/                 # Mobile 渲染入口
+├── hooks/                  # Query/VM hooks，只返回 ViewModel
 ├── route.ts                # route registration
 ├── permissions.ts          # feature guard / visibility
 ├── mapper.ts               # DTO → VM
 └── index.ts                # public exports
 ```
 
-Rules:
+规则：
 
-- Components must not directly consume backend DTO; must go through mapper to VM.
-- Planned backend capabilities must use feature gate + typed mock + degradation banner.
-- Platform-specific capabilities can only be injected through PlatformAdapter; forbidden to directly call Electron/Tauri/RN API in feature.
-- UI tests belong to `ui/tests/*` or `tests/unit/ui` / `tests/integration/ui`; must not mix into backend runtime tests.
+- 组件不directly消费后端 DTO，必须via过 mapper 转为 VM。
+- Planned 后端能力必须uses feature gate + typed mock + 降级 banner。
+- Platform-specific 能力只能via PlatformAdapter 注入，禁止在 feature 内directlycall Electron/Tauri/RN API。
+- UI tests belongs to `ui/tests/*` 或 `tests/unit/ui` / `tests/integration/ui`，不得混入后端 runtime 测试。
 
 ---
 
-## 12. tests/ — Test Directory Structure
+## 十二、tests/ — 测试目录结构
 
-Tests **mirror `src/` structure**; each source directory has a corresponding test directory under tests/.
+测试目录**镜像 `src/` 结构**，每个源码目录在 tests/ 下有对应的测试目录。
 
-> **Actual Test Subdirectories (2026-05-18 update)**: Actual `tests/` contains `unit/`, `integration/`, `e2e/`, `golden/`, `performance/`, `invariants/`, `leaks/`, `fixtures/`, `helpers/` and other specialty directories; UI also has independent `ui/tests/`. Test directories no longer just simply mirror source, but also bear architectural invariants, memory leak, deployment, documentation and UI acceptance.
+> **实际测试子目录（2026-05-18 续修）**：实际 `tests/` contains `unit/`、`integration/`、`e2e/`、`golden/`、`performance/`、`invariants/`、`leaks/`、`fixtures/`、`helpers/` 等专项目录；UI 也有独立 `ui/tests/`。测试目录不再只is简单镜像源码，还承担Architecture不variable、内存泄漏、部署、文档和 UI 验收。
 
 ```
 tests/
-├── helpers/                # Test Infrastructure (← Directly migrated 19 files)
+├── helpers/                # 测试基础设施（← directly迁移 19 文件）
 │   ├── fs.ts
 │   ├── seed.ts
 │   ├── typed-factories.ts
@@ -1450,7 +1450,7 @@ tests/
 │   ├── cli.ts
 │   └── pg-test-helper.ts
 │
-├── unit/                   # Unit Tests (mirrors src/ structure)
+├── unit/                   # 单元测试（镜像 src/ 结构）
 │   ├── platform/
 │   │   ├── five-plane-interface/
 │   │   │   ├── api/
@@ -1495,14 +1495,14 @@ tests/
 │   ├── domains/
 │   │   ├── registry/
 │   │   └── governance/
-│   ├── interaction/        # All new tests
+│   ├── interaction/        # 全部新建测试
 │   │   ├── nl-gateway/
 │   │   ├── goal-decomposer/
 │   │   ├── proactive-agent/
 │   │   ├── autonomy/
 │   │   ├── dashboard/
 │   │   └── ux/
-│   ├── org-governance/     # All new tests
+│   ├── org-governance/     # 全部新建测试
 │   │   ├── org-model/
 │   │   ├── approval-routing/
 │   │   ├── sso-scim/
@@ -1520,24 +1520,24 @@ tests/
 │   └── sdk/
 │       └── cli/
 │
-├── integration/            # Integration Tests (grouped by concern)
+├── integration/            # 集成测试（按关注点分组）
 │   ├── platform/
-│   │   ├── security/       # 64 security boundary tests
+│   │   ├── security/       # 64 个security边界测试
 │   │   ├── runtime/        # dispatch/lease/worker/recovery
-│   │   ├── storage/        # data integrity
-│   │   ├── contract/       # contract verification
-│   │   ├── reliability/    # reliability invariants
-│   │   ├── concurrency/    # concurrency tests
-│   │   ├── recovery/       # recovery tests
-│   │   └── observability/  # observability
-│   ├── interaction/        # All new
-│   ├── org-governance/     # All new
+│   │   ├── storage/        # data完整性
+│   │   ├── contract/       # 合约验证
+│   │   ├── reliability/    # 可靠性不variable
+│   │   ├── concurrency/    # concurrent测试
+│   │   ├── recovery/       # 恢复测试
+│   │   └── observability/  # 可观测性
+│   ├── interaction/        # 全部新建
+│   ├── org-governance/     # 全部新建
 │   ├── scale-ecosystem/
 │   ├── ops-maturity/
 │   └── sdk/
-│       └── cli/            # 32 CLI integration tests
+│       └── cli/            # 32 个 CLI 集成测试
 │
-├── golden/                 # Golden Snapshot Tests (← Directly migrated)
+├── golden/                 # Golden 快照测试（← directly迁移）
 │   ├── diagnostics-bundle.test.ts
 │   ├── openapi-document.test.ts
 │   ├── release-plan-output.test.ts
@@ -1548,7 +1548,7 @@ tests/
 │   ├── cli-help-text.test.ts
 │   └── snapshots/
 │
-├── e2e/                    # End-to-end Tests
+├── e2e/                    # 端到端测试
 │   ├── task-lifecycle.test.ts
 │   ├── multi-step-workflow.test.ts
 │   ├── lease-recovery.test.ts
@@ -1560,81 +1560,81 @@ tests/
 │   ├── streaming-response.test.ts
 │   └── approval-event-flow.test.ts
 │
-├── performance/            # Performance Tests and Capacity Benchmark
-├── invariants/             # Architectural Invariant Tests
-├── leaks/                  # Memory/Handle Leak Tests
-├── unit/ui/                # UI Unit Test Mirror
-├── integration/ui/         # UI Integration Test Mirror
+├── performance/            # 性能测试vs容量基准
+├── invariants/             # Architecture不variable测试
+├── leaks/                  # 内存/句柄泄漏测试
+├── unit/ui/                # UI 单元测试镜像
+├── integration/ui/         # UI 集成测试镜像
 │
-└── fixtures/               # Test Fixtures (← Adapted migration)
+└── fixtures/               # 测试夹具（← 改造迁移）
     └── migration/
 ```
 
 ---
 
-## 13. Statistics Summary
+## 十三、统计汇总
 
-### 13.1 Directory Statistics Snapshot (2026-05-18 Third Round Structure Review)
+### 13.1 目录统计快照（2026-05-18 第三轮结构 review）
 
-> Note: The following numbers are current workspace snapshots used for structure review, not intended as long-term manually maintained precise indicators. Should be generated by scripts and synced to this document to avoid expiration as code grows.
+> Description：以下数字is当前工作区快照，used for结构 review，不作为长期人工维护的精确指标。后续应由脚本生成并synchronous到本文档，避免随code增长过期。
 
-| Top-level Directory | Architecture Layer | Current TS/TSX Files | Structure Status | Notes |
-|---------------------|-------------------|-------------------|----------|-------|
-| `src/platform/` | Layer 1-2 | 1,224 | Authoritative core area | Five planes + contracts/shared/model-gateway/prompt/compliance |
-| `src/domains/` | Layer 3 | 96 | Expanded | Contains canonical meta-model, business domain instances and `yono/` |
-| `src/interaction/` | Layer 4 | 52 | Expanded | NL, goal, dashboard, autonomy, UX |
-| `src/org-governance/` | Layer 5 | 52 | Expanded | org model, approval routing, SSO/SCIM, compliance |
-| `src/scale-ecosystem/` | Layer 6 | 148 | Expanded | marketplace, billing, SLA, multi-region, runtime-services |
-| `src/ops-maturity/` | Layer 7 | 121 | Expanded | chaos, debugger, capacity, edge, explainability |
-| `src/plugins/` | Cross-layer | 25 | Stable | Plugin ecosystem |
-| `src/sdk/` | Cross-layer | 104 | Expanded | CLI, SDK, pack/plugin, harness/admin/workbench |
-| `src/apps/` | Entry | 4 | Stable | API/console/workers |
-| `src/core/` | Legacy Compatibility | 8 | Compatibility layer | Prohibited from new business capabilities |
-| `src/testing/` | Test Infrastructure | 1 | Stable | Must not be depended on by production code |
-| `src/benchmarks/` | Performance Benchmark | 1 | Stable | Benchmark entry |
-| `ui/` | UI Monorepo | 330 | New authoritative area | apps/packages/tools/tests |
-| `tests/` | Backend Tests | 6,000+ | Expanded | unit/integration/e2e/golden/performance/invariants/leaks |
+| 顶层目录 | Architecture层 | 当前 TS/TSX 文件数 | 结构Status | 备注 |
+|----------|--------|-------------------|----------|------|
+| `src/platform/` | Layer 1-2 | 1,224 | 权威核心区 | Five-Plane + contracts/shared/model-gateway/prompt/compliance |
+| `src/domains/` | Layer 3 | 96 | 已扩展 | 含 canonical meta-model、业务域实例vs `yono/` |
+| `src/interaction/` | Layer 4 | 52 | 已扩展 | NL、goal、dashboard、autonomy、UX |
+| `src/org-governance/` | Layer 5 | 52 | 已扩展 | org model、approval routing、SSO/SCIM、compliance |
+| `src/scale-ecosystem/` | Layer 6 | 148 | 已扩展 | marketplace、billing、SLA、多区域、runtime-services |
+| `src/ops-maturity/` | Layer 7 | 121 | 已扩展 | chaos、debugger、capacity、edge、explainability |
+| `src/plugins/` | 跨层 | 25 | 稳定 | 插件生态 |
+| `src/sdk/` | 跨层 | 104 | 已扩展 | CLI、SDK、pack/plugin、harness/admin/workbench |
+| `src/apps/` | 入口 | 4 | 稳定 | API/console/workers |
+| `src/core/` | Legacy 兼容 | 8 | 兼容层 | 禁止新增业务能力 |
+| `src/testing/` | 测试基础设施 | 1 | 稳定 | 生产code不得relies on |
+| `src/benchmarks/` | 性能基准 | 1 | 稳定 | 基准入口 |
+| `ui/` | UI Monorepo | 330 | 新增权威区 | apps/packages/tools/tests |
+| `tests/` | 后端测试 | 6,000+ | 已扩展 | unit/integration/e2e/golden/performance/invariants/leaks |
 
-> **Five-Plane Submodule Count Notes (2026-05-18 update)**:
-> - `five-plane-control-plane/`: approval-center, audit-export, compliance, config-center, cost-alert, iam, incident-control, mission, policy-center, replay-repair-control, risk-control, rollout-controller, tenant + deep threat-model, runbook-executor etc. → Total 44 directories with deep
-> - `five-plane-execution/`: budget-allocator, compensation-manager, dispatcher, distributed-lock, execution-engine, ha, hibernation, hot-upgrade, lease, oapeflir, plugin-executor, queue, queue-metrics, recovery, reconciliation-worker, resource, runtime-state-machine, side-effect-manager, startup, state-transition, tool-executor, worker-pool → 17 direct subdirectories
-> - `five-plane-interface/`: api, channel-gateway, console, console-backend, ingress, scheduler, webhook etc. → 17 directories with deep
-> - `five-plane-orchestration/`: agent-delegation, escalation, evaluator, harness, hitl, improve-rollout, learn, oapeflir, observer, planner, replan, routing etc. → 29 directories with deep
-> - `five-plane-state-evidence/`: artifacts, audit, checkpoints, compaction, dlq, events, incident, knowledge, memory, outbox, projections, reconciliation, side-effect-ledger, truth etc. → 20 directories with deep
+> **Five-Plane子模块计数Description（2026-05-18 续修）**：
+> - `five-plane-control-plane/`：approval-center, audit-export, compliance, config-center, cost-alert, iam, incident-control, mission, policy-center, replay-repair-control, risk-control, rollout-controller, tenant + 深层 threat-model、runbook-executor 等 → 合计 44 个含深层的目录
+> - `five-plane-execution/`：budget-allocator, compensation-manager, dispatcher, distributed-lock, execution-engine, ha, hibernation, hot-upgrade, lease, oapeflir, plugin-executor, queue, queue-metrics, recovery, reconciliation-worker, resource, runtime-state-machine, side-effect-manager, startup, state-transition, tool-executor, worker-pool → 17 个directly子目录
+> - `five-plane-interface/`：api, channel-gateway, console, console-backend, ingress, scheduler, webhook 等 → 17 个含深层的目录
+> - `five-plane-orchestration/`：agent-delegation, escalation, evaluator, harness, hitl, improve-rollout, learn, oapeflir, observer, planner, replan, routing 等 → 29 个含深层的目录
+> - `five-plane-state-evidence/`：artifacts, audit, checkpoints, compaction, dlq, events, incident, knowledge, memory, outbox, projections, reconciliation, side-effect-ledger, truth 等 → 20 个含深层的目录
 
-### 13.2 Comparison with Old System
+### 13.2 vs老系统对比
 
-| Metric | Old System | New Platform | Change |
-|--------|------------|--------------|--------|
-| Top-level src/ directory count | 4 (core/cli/gateway/plugins) | 12 (platform/domains/interaction/org/scale/ops/plugins/sdk/apps/core/testing/benchmarks) | +8 |
-| Frontend project | No independent monorepo | `ui/` Monorepo | New six-platform UI baseline |
-| Second-level directory count | 43 (flat under core/) | 100+ (distributed across seven layers, five planes, UI packages) | Significant increase but clearer boundaries |
-| Max files in single directory | 101 (core/storage/) | ~40 (split after largest directory) | -60% |
-| Max lines in single module | 30,348 (core/runtime/) | ~5,000 (split into 12 BC) | -83% |
-| Circular dependency risk | High (42 flat modules) | Low (layered dependencies + contract decoupling) | Significantly improved |
+| 指标 | 老系统 | 新平台 | 变化 |
+|------|--------|--------|------|
+| 顶层 src/ 目录数 | 4（core/cli/gateway/plugins） | 12（platform/domains/interaction/org/scale/ops/plugins/sdk/apps/core/testing/benchmarks） | +8 |
+| 前端工程 | no独立 monorepo | `ui/` Monorepo | 新增六平台 UI 基线 |
+| 二级目录数 | 43（core/ 下扁平） | 100+（按七层、Five-Plane、UI packages 分布） | 显著增加但边界更清晰 |
+| 最大单目录文件数 | 101（core/storage/）| ~40（拆分后最大目录） | -60% |
+| 最大单模块lines数 | 30,348（core/runtime/）| ~5,000（拆分为 12 BC） | -83% |
+| 循环relies on风险 | 高（42 模块扁平） | 低（层级relies on + 契约解耦） | 显著改善 |
 
-### 13.3 Dependency Direction Rules
+### 13.3 relies on方向规则
 
 ```
-Layer 7  ops-maturity/     ──→ Can depend on Layer 1-6
-Layer 6  scale-ecosystem/  ──→ Can depend on Layer 1-5
-Layer 5  org-governance/   ──→ Can depend on Layer 1-4
-Layer 4  interaction/      ──→ Can depend on Layer 1-3
-Layer 3  domains/          ──→ Can depend on Layer 1-2
-Layer 1-2 platform/        ──→ Only depends on platform/contracts/ and platform/shared/
-Cross-layer     plugins/sdk/apps/ ──→ Can depend on any layer (through public interface injection)
-Frontend     ui/                ──→ Only depends on public API/OpenAPI/schema/codegen/mock seam
-Testing     tests/             ──→ Can depend on tested public API; architectural guardian tests can scan source code
+Layer 7  ops-maturity/     ──→ 可relies on Layer 1-6
+Layer 6  scale-ecosystem/  ──→ 可relies on Layer 1-5
+Layer 5  org-governance/   ──→ 可relies on Layer 1-4
+Layer 4  interaction/      ──→ 可relies on Layer 1-3
+Layer 3  domains/          ──→ 可relies on Layer 1-2
+Layer 1-2 platform/        ──→ onlyrelies on platform/contracts/ 和 platform/shared/
+跨层     plugins/sdk/apps/ ──→ 可relies on任意层（via public interface 注入）
+前端     ui/                ──→ onlyrelies on public API/OpenAPI/schema/codegen/mock seam
+测试     tests/             ──→ 可relies on被测 public API；Architecture守护测试可扫描源码
 ```
 
-**Forbidden**: Lower layers depending on upper layers (e.g., platform/ must not import interaction/). Same-layer modules decouple through event bus or platform/contracts/.
+**禁止**：下层relies on上层（如 platform/ 不得 import interaction/）。同层模块间via事件总线或 platform/contracts/ 解耦。
 
-### 13.4 Current Structure Risks and Follow-up Items
+### 13.4 当前结构风险vs后续完善项
 
-| Risk | Description | Recommendation |
-| ---- | ---- | ------- |
-| Manual statistics easily expire | Directory and file count growth is fast, manually maintained tables easily become inaccurate | Use `scripts/ci/audit-codebase-inventory.mjs` or new structure inventory script to generate |
-| Dual-entry naming coexistence | `five-plane-*` is authoritative source directory, historical documents still occasionally see interface/control-plane abbreviations | New documents unified to `five-plane-*`, abbreviations only as explanation |
-| UI and backend boundary needs continuous guardianship | UI scale is already large, if directly importing backend internal implementations it will break layering | Add contract test forbidding `ui/**` import `src/**` internal paths |
-| Mission/Yono will continue expanding | Mission and Yono have entered code structure, but business/governance capabilities will continue growing | When adding new subdirectories, simultaneously update corresponding chapter in this file |
-| `src/core/` still exists | Reasonable as compatibility layer, but easily misused | CI guardian prohibits new business code from entering `src/core/` |
+| 风险 | Description | Recommendation |
+| ---- | ---- | ---- |
+| 人工统计易过期 | 目录和文件count增长很快，人工table格容易失真 | 用 `scripts/ci/audit-codebase-inventory.mjs` 或新增结构盘点脚本生成 |
+| 双入口命名并存 | `five-plane-*` is权威源码目录，历史文档仍偶见 interface/control-plane 简称 | 新文档统一写 `five-plane-*`，简称只作为解释 |
+| UI vs后端边界需持续守护 | UI 规模已较大，若directly import 后端内部实现会破坏分层 | 增加 contract test 禁止 `ui/**` import `src/**` 内部路径 |
+| Mission/Yono 后续会继续扩展 | Mission vs Yono 已进入code结构，但业务/治理能力还会增长 | 新增子目录时synchronous更新本文件对应章节 |
+| `src/core/` 仍存在 | 作为兼容层合理，但容易被误用 | CI 守护新增业务code不得进入 `src/core/` |

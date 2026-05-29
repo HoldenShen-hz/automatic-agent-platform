@@ -1,15 +1,15 @@
-# ADR-050 Knowledge Domain Isolation and Controlled Sharing
+# ADR-050 知识域隔离vs受控共享
 
-- Status: Accepted
-- Decision Date: 2026-04-20
+- Status：Accepted
+- Decision日期：2026-04-20
 
-## Context
+## Background
 
-Different department knowledge requires boundary isolation to prevent data leakage while supporting controlled knowledge sharing.
+不同部门知识需要边界隔离，防止data泄漏，同时supported受控的知识共享。
 
 ## Decision
 
-### Knowledge Domain Model
+### 知识域模型
 
 ```typescript
 interface KnowledgeDomain {
@@ -29,40 +29,41 @@ interface SharingPolicy {
 }
 ```
 
-### Isolation Levels
+### 隔离级别
 
-| Level | Description | Cross-domain Retrieval |
-|-------|-------------|------------------------|
-| strict | Complete isolation | Not allowed |
-| moderate | Sharing after approval | Requires approval |
-| open | Visible but requires authorization | Requires authorization |
+| 级别 | Description | 跨域检索 |
+|------|------|----------|
+| strict | 完全隔离 | 不允许 |
+| moderate | 审批后共享 | 需审批 |
+| open | 可见但需authorization | 需authorization |
 
-### Knowledge Sharing Process
+### 知识共享流程
 
-1. Request sharing (specify target domain and purpose)
-2. Source domain approval
-3. Target domain confirmation
-4. Audit log recording
+1. 申请共享（指定目标域和用途）
+2. 源域审批
+3. 目标域确认
+4. 审计日志record
 
-### Trust Model
+### 信任模型
 
-- Inter-department trust relationships
-- Knowledge source verification
-- Sharing history tracking
+- 部门间信任关系
+- 知识来源验证
+- 共享历史追踪
 
 ## Consequences
 
-Pros:
+优点：
 
-- Strict isolation prevents data leakage
-- Controlled sharing supports business collaboration
-- Audit tracking ensures accountability
+- 严格隔离防止data泄漏
+- 受控共享supported业务协作
+- 审计追踪确保责任明确
 
-Cons:
+代价：
 
-- Isolation affects knowledge reuse
-- Sharing process adds latency
+- 隔离Impact知识复用
+- 共享流程增加delay
 
-## Cross References
+## 交叉references用
 
-- [ADR-046 Organization Hierarchy Model](./046-organization-hierarchy-model.md)
+- [ADR-046 组织层iterations模型](./046-organization-hierarchy-model.md)
+-

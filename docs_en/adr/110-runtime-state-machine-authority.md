@@ -1,15 +1,15 @@
 # ADR-110: Runtime State Machine Authority
 
-- Status: Accepted
-- Decision Date: 2026-04-27
+- Status：Accepted
+- Decision日期：2026-04-27
 
 ## Background
 
-v4.3 treats `HarnessRun`, `NodeRun`, `SideEffectRecord`, and `BudgetLedger` as core objects of P5 truth. If P2, P3, P4, Recovery, HITL, or operator tools can directly write truth tables, terminal state closure, CAS, lease, fencing, budget hard cap, side effect reconciliation, and audit events with transactional append cannot be guaranteed.
+v4.3 将 `HarnessRun`、`NodeRun`、`SideEffectRecord` vs `BudgetLedger` 作为 P5 truth 的核心对象。若 P2、P3、P4、Recovery、HITL 或 operator 工具能directly写 truth table，就no法保证终态封闭、CAS、lease、fencing、budget硬upper limit、副作用对账和审计事件同事务追加。
 
 ## Decision
 
-1. `RuntimeStateMachine.transition(command)` is the only formal entry point for state progression of the following objects:
+1. `RuntimeStateMachine.transition(command)` is以下对象Status推进的唯一正式入口：
    - `HarnessRun`
    - `NodeRun`
    - `NodeAttempt`
@@ -18,30 +18,30 @@ v4.3 treats `HarnessRun`, `NodeRun`, `SideEffectRecord`, and `BudgetLedger` as c
    - `CompensationRecord`
    - `BudgetReservation`
    - `BudgetSettlement`
-2. All transitions must complete in the same transaction:
-   - Validate current state, target state, and terminal state closure rules.
-   - Validate CAS version, active lease, fencing token, and `RunVersionLock`.
-   - Validate policy guard, budget precondition, and side-effect safety.
-   - Write truth mutation.
-   - Append `platform.*` fact event.
-   - Write audit / evidence references.
-3. P2/P3/P4/Recovery/HITL can only submit `TransitionCommand`, cannot directly update truth tables.
-4. Old `StateCommand` / `StateMutationCommand` can only serve as internal compatibility wrapper; cannot be exported as public API or new module.
+2. 所有 transition 必须在同一事务中完成：
+   - 校验当前Status、目标Statusvs终态封闭规则。
+   - 校验 CAS version、active lease、fencing token vs `RunVersionLock`。
+   - 校验 policy guard、budget precondition vs side-effect safety。
+   - writes truth mutation。
+   - 追加 `platform.*` fact event。
+   - writes audit / evidence references用。
+3. P2/P3/P4/Recovery/HITL 只能提交 `TransitionCommand`，不得directly更新 truth table。
+4. 旧 `StateCommand` / `StateMutationCommand` 只能作为内部兼容 wrapper；不得作为 public API 或新模块export。
 
-## State Machine Principles
+## Status机principle
 
-- Terminal states cannot transition out; fixes can only be expressed through redrive, compensation, GraphPatch, child run, or new HarnessRun append.
-- `retry_wait`, `awaiting_hitl`, `reconciling` are non-terminal wait states, must carry wake condition or external resolution record.
-- Budget reservation and settlement must obey hard cap, not allowing concurrent overbooking.
-- Side effect commit must re-validate policy, budget, lease, fencing, and human approval.
+- 终态不可迁出；修复只能via redrive、compensation、GraphPatch、child run 或新 HarnessRun 追加table达。
+- `retry_wait`、`awaiting_hitl`、`reconciling` is非终态等待态，必须带 wake condition 或 external resolution record。
+- budget reservation vs settlement 必须遵守硬upper limit，不允许concurrentexceeds订。
+- side effect commit 前必须重校验 policy、budget、lease、fencing vs human approval。
 
 ## Consequences
 
-- Runtime tests must be established around transition matrix, terminal state closure, concurrent CAS, budget hard cap, and side-effect commit gate.
-- Storage repository can provide read/write primitives, but cannot expose truth mutation methods bypassing state machine to business layer.
-- Operator recovery and panic path must also submit transition unless entering read-only forensic mode.
+- 运lines时测试必须围绕 transition 矩阵、终态封闭、concurrent CAS、budget hard cap vs side-effect commit gate 建立。
+- Storage repository 可以提供读写原语，但不能向业务层暴露bypassingStatus机的 truth mutation 方法。
+- operator recovery vs panic path 也必须提交 transition，除非进入只读 forensic 模式。
 
-## Related Documents
+## 关联文档
 
 - [109-contract-freeze.md](./109-contract-freeze.md)
 - [runtime_state_machine_contract.md](../contracts/runtime_state_machine_contract.md)

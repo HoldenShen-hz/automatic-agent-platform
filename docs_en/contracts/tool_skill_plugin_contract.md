@@ -2,28 +2,28 @@
 
 ---
 
-## OAPEFLIR Association
+## OAPEFLIR 关联
 
-This contract participates in the following stages of the OAPEFLIR eight-stage cycle:
+本 contract 参vs OAPEFLIR 八阶段循环中的以下阶段：
 
-- **Observe**: Signal collection and aggregation
-- **Assess**: Pre-execution assessment and risk judgment
-- **Plan**: Task decomposition and DAG construction
-- **Execute**: Step execution and fault tolerance
-- **Feedback**: Signal collection and preprocessing
-- **Learn**: Pattern detection and knowledge extraction
-- **Improve**: Improvement candidate evaluation and rollout
-- **Release**: Controlled release and rollback
+- **Observe**：信号采集vs聚合
+- **Assess**：执lines前评估vs风险判断
+- **Plan**：任务分解vs DAG 构建
+- **Execute**：步骤执linesvs容错
+- **Feedback**：信号收集vs预handle
+- **Learn**：模式检测vs知识提取
+- **Improve**：改进候选评估vs rollout
+- **Release**：受控发布vs回滚
 
 ---
 
-## 1. Scope
+## 1. 范围
 
-This contract defines the registration, permissions, dependencies, lifecycle, and execution boundaries for tools, skills, plugins, and MCP extensions.
+本 contract defines工具、技能、插件vs MCP 扩展的注册、permission、relies on、生命cycle和执lines边界。
 
-The current authoritative scope is phase1-4 landed tools and skill governance; Plugin SPI, Domain Registry, and marketplace platform capabilities belong to the `M2` extension surface, interfaces may be defined in this document, but must not be miswritten as all currently delivered.
+当前 authoritative 范围is phase1-4 已落地的工具vs技能治理；Plugin SPI、Domain Registry 和 marketplace 平台化能力belongs to `M2` 扩展面，允许在本文defines接口，但不得误写为当前全部已交付。
 
-## 2. Canonical Objects
+## 2. Canonical 对象
 
 - `ToolDefinition`
 - `SkillDefinition`
@@ -32,7 +32,7 @@ The current authoritative scope is phase1-4 landed tools and skill governance; P
 - `McpBinding`
 - `DomainToolBundle`
 
-## 3. ToolDefinition Minimum Fields
+## 3. ToolDefinition 最小字段
 
 - `tool_name`
 - `description`
@@ -45,13 +45,13 @@ The current authoritative scope is phase1-4 landed tools and skill governance; P
 - `recovery_policy?`
 - `idempotency_hint?`
 
-Constraints:
+约束：
 
-- The authoritative input definition of a tool comes primarily from the structured schema, then the model-side / API-side schema is uniformly derived.
-- Tool recovery, security, and path semantics follow `tool_metadata_and_recovery_contract.md` as the authoritative drilling document.
-- Native wire-format tool calls always take priority; compatible fallback can only be limited to registered tool whitelist, with explicit audit markers.
+- tool 的 authoritative 输入defines优先来自结构化 schema，再统一派生模型侧 / API 侧 schema。
+- tool 的恢复、security和路径语义以下钻文档 `tool_metadata_and_recovery_contract.md` 为准。
+- 原生 wire-format tool call 永远优先；兼容 fallback 只能限制在已注册工具白名单内，并带显式审计标记。
 
-## 4. SkillDefinition Minimum Fields
+## 4. SkillDefinition 最小字段
 
 - `skill_id`
 - `description`
@@ -65,15 +65,15 @@ Constraints:
 - `cacheable?`
 - `cache_ttl_seconds?`
 
-Constraints:
+约束：
 
-- A skill can only orchestrate authorized tools, and cannot implicitly expand permissions.
-- If a step declares `model_overrides`, the override target tool must also already be in the allowed set.
-- Skills not meeting `activation_conditions` / `activation_paths` can remain in the registry, but are not in the model-visible surface by default.
+- skill 只能编排已authorization工具，不能隐式扩权。
+- 若 step 声明 `model_overrides`，override 目标工具也必须已在允许集合内。
+- 未满足 `activation_conditions` / `activation_paths` 的 skill 可以保留在 registry 中，但defaults to不进入模型可见面。
 
-## 5. Plugin Manifest and SPI Types
+## 5. Plugin Manifest vs SPI class型
 
-### 5.1 `PluginManifest` Minimum Fields
+### 5.1 `PluginManifest` 最小字段
 
 - `plugin_id`
 - `name`
@@ -90,22 +90,22 @@ Constraints:
 - `lifecycle_state?`
 - `public_sdk_surface`
 
-Rules:
+规则：
 
-- All plugin / extension must use manifest as the authoritative registration input.
-- Extension / plugin production code can only interact with core through public SDK surface, and must not directly import core private modules or other extension private implementations.
-- If a plugin needs a new runtime seam, should prioritize adding a clear public SDK subpath or facade, rather than exposing private implementation files.
+- 所有 plugin / extension 必须以 manifest 作为 authoritative 注册输入。
+- extension / plugin 生产code只能via公共 SDK surface vs core 交互，不得directlyimport core 私有模块或其他 extension 私有实现。
+- 若 plugin 需要新的 runtime seam，应优先新增明确 public SDK subpath 或 facade，而不is暴露私有实现文件。
 
-### 5.2 Plugin SPI Four Canonical Interfaces
+### 5.2 Plugin SPI 四class canonical 接口
 
-`§K` requires current document system to unify to four SPI types:
+`§K` 要求当前文档体系统一到四class SPI：
 
 - `DomainRetrieverPlugin`
 - `DomainValidatorPlugin`
 - `DomainPlannerPlugin`
 - `DomainPresenterPlugin`
 
-Minimum interface semantics:
+最小接口语义：
 
 ```ts
 interface PluginLifecycleContext {
@@ -147,34 +147,34 @@ interface DomainPresenterPlugin {
 }
 ```
 
-Constraints:
+约束：
 
-- `onLoad / onActivate / onDeactivate / onUnload` are canonical hooks for plugin lifecycle.
-- Hook failures must not elevate permissions; default to disabling that SPI instance or blocking loading.
-- SPI can only consume capabilities and settings declared in manifest, and must not secretly expand permissions at runtime.
+- `onLoad / onActivate / onDeactivate / onUnload` 为 plugin lifecycle 的 canonical hook。
+- hook failed不得提升permission；defaults to降级为disabled该 SPI 实例或阻断加载。
+- SPI 只能消费 manifest 声明过的 capability vs setting，不得运lines时偷偷扩权。
 
-## 6. Lifecycle and State Machine
+## 6. Lifecycle vsStatus机
 
-Plugin lifecycle must cover at least:
+plugin lifecycle 至少覆盖：
 
 `discovered -> installed -> enabled -> disabled -> reloaded -> removed`
 
-SPI runtime lifecycle must cover at least:
+SPI runtime lifecycle 至少覆盖：
 
 `registered -> loaded -> active -> inactive -> unloaded`
 
-Supplementary rules:
+补充规则：
 
-- `enabled` does not equal `active`; only allowed to enter active after passing compatibility, permission, and trust gates.
-- `reloaded` must preserve before/after version, configuration summary, and error reasons to facilitate audit and rollback.
-- Trust warnings, permission retries, and plugin settings can only serve as experience-layer safety valves, and cannot replace runtime policy, sandbox, and capability boundaries.
-- SPI runtime lifecycle state naming must be consistent with the `PluginSpiRegistry` state machine in §4 of [plugin_spi_contract.md](./plugin_spi_contract.md); the two documents must not each define different SPI lifecycle state names.
+- `enabled` 不等于 `active`；只有via compatibility、permission 和 trust gate 后才允许进入 active。
+- `reloaded` 必须保留前后版本、configure摘要和错误原因，方便审计vs回滚。
+- trust warning、permission retry、plugin settings 只能作为体验层security阀，不能替代 runtime policy、sandbox 和 capability boundary。
+- SPI runtime lifecycle Status命名必须vs [plugin_spi_contract.md](./plugin_spi_contract.md) §4 的 `PluginSpiRegistry` Status机一致；两文档不得eachdefines不同的 SPI lifecycle Status名称。
 
 ## 7. Domain Tool Bundle
 
-As tool / skill / plugin scale increases, the system should organize capabilities by domain bundle, rather than defaulting to stuffing everything into prompts.
+当 tool / skill / plugin 规模增大后，系统应以 domain bundle 组织能力，而不isdefaults tofull塞入 prompt。
 
-`DomainToolBundle` minimum fields:
+`DomainToolBundle` 最小字段：
 
 - `domain_id`
 - `bundle_id`
@@ -184,103 +184,103 @@ As tool / skill / plugin scale increases, the system should organize capabilitie
 - `default_activation_policy`
 - `knowledge_namespaces?`
 
-Rules:
+规则：
 
-- Ownership of capabilities should be clearly attributed to plugin / extension / domain bundle as much as possible.
-- Custom capabilities should not be temporarily assembled through core private reach-in.
-- Domain bundle is the minimum governance unit for recommendation, retrieval, lazy loading, and explainability.
+- capability 的拥有权应尽量明确归属到 plugin / extension / domain bundle。
+- 自defines能力不应via core 私有 reach-in 临时拼接。
+- domain bundle is推荐、检索、delay加载和 explainability 的最小治理单元。
 
-## 8. Skill Execution Semantics
+## 8. Skill 执lines语义
 
-### 8.1 Step Failure Modes
+### 8.1 步骤failed模式
 
-`SkillStepDefinition.onFailure` defines the handling strategy after step failure:
+`SkillStepDefinition.onFailure` defines步骤failed后的handle策略：
 
-| Mode | Meaning |
+| 模式 | 含义 |
 | --- | --- |
-| `fail` | Immediately terminate entire skill execution (default) |
-| `continue` | Skip failed step, continue executing subsequent steps |
-| `retry` | Retry according to `maxAttempts`, degrade to `fail` after exceeding count |
+| `fail` | 立即终止整个 skill 执lines（defaults to） |
+| `continue` | 跳过failed步骤，继续执lines后续步骤 |
+| `retry` | 按 `maxAttempts` 重试，exceeds过iterations数后降级为 `fail` |
 
-Rules:
+规则：
 
-- `retry` does not include backoff; retry immediately.
-- Retry scheduling must emit `skill:retry_scheduled` event.
-- Each retry counts as independent `skill:step_started` / `skill:step_failed` events.
+- `retry` 不带退避，立即重试。
+- 重试调度必须发出 `skill:retry_scheduled` 事件。
+- 每iterations重试计入独立的 `skill:step_started` / `skill:step_failed` 事件。
 
-### 8.2 Model Override Matching
+### 8.2 Model Override 匹配
 
-Skill steps can declare `modelOverrides`:
+skill 步骤可声明 `modelOverrides`：
 
 - `profileNames`
 - `tiers`
 - `requiredCapabilities`
 
-Matching rules:
+匹配规则：
 
-- All non-empty conditions are AND between each other.
-- Multiple values within the same condition are OR.
+- 所有非空条件之间为 AND。
+- 同一条件内多值为 OR。
 
-### 8.3 Skill Caching
+### 8.3 Skill cache
 
-Cache key derivation:
+cache key 派生：
 
-```
+```text
 SHA256(skillId + version + parameters + workingDirectory + gitHead + sourceHash)
 ```
 
-Cache eligibility conditions:
+cache资格条件：
 
-- Skill declares `cacheable: true`
-- And at least one of `gitHead` or `sourceHash` is non-empty
+- skill 声明 `cacheable: true`
+- 且 `gitHead` 或 `sourceHash` 至少有一个非空
 
-Cache lifecycle:
+cache生命cycle：
 
-| Stage | Description |
+| 阶段 | Description |
 | --- | --- |
-| `disabled` | Cache not enabled |
-| `ineligible` | Does not meet eligibility conditions |
-| `miss` | Eligibility passed but no matching cache |
-| `hit` | Cache hit, skip execution and replay result |
-| `stored` | Stored in cache after successful execution |
+| `disabled` | cache未enabled |
+| `ineligible` | 不满足资格条件 |
+| `miss` | 资格via但no匹配cache |
+| `hit` | 命中cache，跳过执lines并回放结果 |
+| `stored` | 执linessuccess后存入cache |
 
-Rules:
+规则：
 
-- Only store when all steps of the skill succeed.
-- When cache hits, insert `StepOutput` and mark `cacheHit: true`.
-- When `cacheMaxEntries` is reached, eliminate by LRU.
-- Cache metadata must record `gitHead`, `sourceHash`, `cacheKey`, and timestamp.
+- only在 skill 全部步骤success时storage。
+- 命中cache时插入 `StepOutput` 并标记 `cacheHit: true`。
+- 达到 `cacheMaxEntries` 时按 LRU 淘汰。
+- cache元data必须record `gitHead`、`sourceHash`、`cacheKey` 和time戳。
 
 ## 9. Skill Creator / Authoring
 
-### 9.1 Skeleton Minimum Structure
+### 9.1 骨架最小结构
 
-Each skill generated through creator must contain at least:
+每个via creator 生成的 skill 至少应contains：
 
 - `<skill_root>/<skill_slug>/SKILL.md`
 
-Optional additional structure:
+optional附加结构：
 
 - `<skill_root>/<skill_slug>/scripts/`
 - `<skill_root>/<skill_slug>/references/`
 - `<skill_root>/<skill_slug>/assets/`
 - `<skill_root>/<skill_slug>/agents/openai.yaml`
 
-### 9.2 Naming and Content Constraints
+### 9.2 命名vs内容约束
 
-- `skill_slug` must use lowercase kebab-case.
-- `skill_id` should be consistent with `skill_slug`, unless explicitly explained for compatibility reasons.
-- `SKILL.md` must contain at least: `name`, `description`, `when to use`, `inputs`, `workflow`, `safety notes`.
-- `SKILL.md` must not declare implicit capabilities beyond `required_tools` / `required_permissions`.
+- `skill_slug` 必须uses lowercase kebab-case。
+- `skill_id` 应vs `skill_slug` 保持一致，除非显式Description兼容原因。
+- `SKILL.md` 至少contains：`name`、`description`、`when to use`、`inputs`、`workflow`、`safety notes`。
+- `SKILL.md` 不得声明exceeds出 `required_tools` / `required_permissions` 的隐式能力。
 
-### 9.3 Creator Security Boundaries
+### 9.3 Creator security边界
 
-- Creator must do `realpath` normalization and allowed-root verification.
-- Default deny writing outside the specified root directory via symlinks.
-- Must not overwrite existing non-empty directories unless explicitly declaring `overwrite_allowed`.
-- Must not write secrets, tokens, private endpoints, or environment-specific credentials.
+- creator 必须做 `realpath` 归一化和 allowed-root 校验。
+- defaults to拒绝via symlink 写出指定根目录。
+- 不得覆盖已存在的非空目录，除非显式声明 `overwrite_allowed`。
+- 不得writes secrets、token、私有 endpoint 或环境专属凭证。
 
-### 9.4 Creator Return Object
+### 9.4 Creator 返回对象
 
 - `skill_id`
 - `skill_slug`
@@ -291,9 +291,9 @@ Optional additional structure:
 - `registered`
 - `warnings`
 
-## 10. Registration, Review, and Validation
+## 10. 注册、审核vs校验
 
-Registry must record at minimum:
+注册table最少record：
 
 - `id`
 - `version`
@@ -303,38 +303,38 @@ Registry must record at minimum:
 - `compatibility`
 - `enabled`
 
-Bundled / built-in extension inventory must execute at least before release:
+bundled / 内置扩展清单在发布前至少执lines：
 
-- Manifest field lint
-- Transport and field matching validation
-- Critical execution field missing interception
-- Inventory baseline / contract suite validation
+- manifest 字段 lint
+- transport vs字段匹配校验
+- 关键执lines字段缺失拦截
+- inventory baseline / contract suite 校验
 
-For example:
+例如：
 
-- `streamable_http` type must provide `uri`
-- `stdio` type must provide `cmd`
+- `streamable_http` class型必须提供 `uri`
+- `stdio` class型必须提供 `cmd`
 
-Validation output must contain at minimum:
+校验输出至少contains：
 
-- Item sequence number
-- Name
+- 条目序号
+- 名称
 - ID
-- Recommended correction fields
+- Recommendation修正字段
 
 ## 11. Phase Boundary
 
-### Current phase1-4 authoritative scope
+### 当前 phase1-4 authoritative 范围
 
-- Tool registry, skill registry, permissions, and risk boundaries
-- Skill activation / cache / authoring contract
-- MCP / plugin / local tool can be unified at presentation layer, but trust levels must be explicitly distinguished at lower layer
+- tool registry、skill registry、permissionvs风险边界
+- skill activation / cache / authoring contract
+- MCP / plugin / local tool 在呈现层可统一，但底层信任等级必须显式区分
 
-### `M2` target-state scope
+### `M2` target-state 范围
 
-- Plugin SPI large-scale production use
-- Domain Registry as unified backend
-- External marketplace publish and revoke system
-- Complete platform control surface for per-domain tool bundle
+- Plugin SPI 大规模生产uses
+- Domain Registry 作为统一后端
+- 外部 marketplace 发布vs撤销体系
+- per-domain tool bundle 的完整平台化Control Plane
 
-These contents can be defined in the contract in advance, but currently only allowed to state as target-state extensions, and must not be used as current completed readiness conclusions.
+这些内容可以在 contract 中提前defines，但当前只允许table述为目标态扩展，不得作为当前completed readiness Conclusion。

@@ -1,39 +1,39 @@
 # Startup Consistency And Recovery Drill Contract
 
-## 1. Scope
+## 1. 范围
 
-This contract defines runtime startup consistency checks and crash recovery scenarios that must be rehearsed regularly.
+本 contract defines runtime 启动一致性巡检项，以及必须定期演练的崩溃恢复场景。
 
-Related documents:
+相关文档：
 
 - `runtime_repository_and_migration_contract.md`
 - `runtime_execution_contract.md`
 - `file_lock_contract.md`
 - `event_reliability_matrix_contract.md`
 
-## 2. Objectives
+## 2. 目标
 
-Before the system writes any code, two things must be frozen:
+系统在真正写code前，要先冻结两件事：
 
-- What consistency issues are checked at startup.
-- Which scenarios the crash recovery drill must cover.
+- 启动时到底检查哪些一致性Issue。
+- 崩溃恢复测试到底必须覆盖哪些场景。
 
-## 3. Startup Consistency Check Matrix
+## 3. 启动一致性巡检矩阵
 
-| Check Item | Decision Rule | Failure Action |
-| --- | --- | --- |
-| Migration version | Schema version matches ledger | fail-closed |
-| Active task aligns with workflow | `in_progress / awaiting_decision` tasks must have corresponding workflow_state or explainable absence | mark recoverable |
-| Invalid step index | `current_step_index` must not be out of bounds | fail-closed or manual repair |
-| Stale execution | `prechecking / executing` with expired heartbeat (note: `retrying` is deprecated; retry is via new execution attempt) | mark recoverable |
-| Orphaned session | session is active but task is in terminal state | auto-close or alert |
-| Expired file lock | `expires_at < now` and holder is inactive | cleanup and record event |
-| Tier 1 ack backlog | Critical events with long-standing unacked | alert and enter resend |
-| Active execution ownership conflict | Multiple active executions for same task | fail-closed or manual repair |
-| OAPEFLIR stage consistency | workflow `current_stage / loop_iteration` consistent with execution / timeline / evidence | fail-closed or mark recoverable |
-| Rollout record consistency | rollout level / status / approval / strategy lineage closes | fail-closed or manual repair |
+| 检查项 | 判定规则 | failed动作 |
+|---|-------|--------|
+| 迁移版本 | schema 版本vs ledger 一致 | fail-closed |
+| 活跃运linesvs投影对齐 | 活跃 `HarnessRun / NodeRun` 必须有可解释的 task/workflow projection；缺失only允许作为兼容投影视图例外 | 标记恢复 |
+| 非法运lines游标 | `PlanGraphBundle` 当前 ready / active node references用不得指向don't exist或终态后继续推进的节点 | fail-closed 或人工修复 |
+| stale execution | `prechecking / executing` 且心跳过期（注：`retrying` 已废弃，重试via新 execution attempt 实现） | 标记 recoverable |
+| 悬挂 session | session occurrences于活跃态但 task 已终态 | 自动收口或告警 |
+| 过期 file lock | `expires_at < now` 且 holder 已失活 | 清理并记事件 |
+| Tier 1 ack 积压 | 存在长期未 ack 的关键事件 | 告警并进入补发 |
+| 活跃 execution 所有权conflicts | 同一 task 同时存在多个活跃 execution | fail-closed 或人工修复 |
+| OAPEFLIR stage 一致性 | workflow `current_stage / loop_iteration` vs execution / timeline / evidence 一致 | fail-closed 或标记 recoverable |
+| rollout record一致性 | rollout level / status / approval / strategy lineage 可闭合 | fail-closed 或人工修复 |
 
-## 4. Startup Flow
+## 4. 启动流程
 
 ```mermaid
 flowchart TD
@@ -46,43 +46,43 @@ flowchart TD
     G --> H["Open For Traffic"]
 ```
 
-## 5. Minimum Recovery Drill Scenarios
+## 5. 恢复演练最小场景
 
-Must cover the following scenarios:
+必须覆盖以下场景：
 
-1. Crash before step completion
-2. DB write succeeded but event emit failed
-3. Tool executed but assistant message not fully saved
-4. Re-entering same step during recovery
-5. File lock not released, residual
-6. Approval granted but execution not yet recovered
-7. Heartbeat stopped but execution still `executing`
-8. SQLite `BUSY` or transaction interruption recovery
-9. Cancel submitted but child process still alive
-10. Feedback written but learn not completed
-11. Improve candidate accepted but release interrupted
-12. Rollout / timeline written but inspect projection not updated
+1. step 完成前崩溃
+2. DB 写success但事件 emit failed
+3. tool 执lines后 assistant message 未完整保存
+4. 恢复时repeats进入同一步
+5. file lock 未释放残留
+6. approval 已批准但 execution 尚未恢复
+7. heartbeat 停止但 execution Status仍为 `executing`
+8. SQLite `BUSY` 或事务中断后恢复
+9. cancel 已提交但子进程仍存活
+10. feedback 已writes但 learn 未完成
+11. improve candidate accepted 后 release 中断
+12. rollout / timeline 已writes但 inspect projection 未更新
 
-## 6. Assertions for Each Drill Scenario
+## 6. 每个演练场景的断言
 
-Each drill must assert at minimum:
+每个 drill 至少断言：
 
-- Completed steps will not be mistaken as unexecuted
-- Side effect steps that cannot be safely replayed will not be re-executed
-- Task master status will not be incorrectly advanced to success
-- Recovery chain ultimately yields `resume / retry / dead-letter / manual-handoff`
-- In cancel propagation scenarios, no residual child process or stale lock continues to advance
+- 不会把completed步骤误当成未执lines
+- 不会repeats执lines不可security重放的副作用步骤
+- 任务主Status不会被错误推进到success
+- 恢复链最终能给出 `resume / retry / dead-letter / manual-handoff`
+- 取消传播场景下不会残留继续推进的 child process 或 stale lock
 
-## 7. Check Output Objects
+## 7. 巡检输出对象
 
-Minimum output:
+最小输出：
 
 - `StartupConsistencyReport`
 - `RecoveryCandidate`
 - `RepairAction`
 - `RecoveryDrillResult`
 
-`RepairAction` suggested enumeration:
+`RepairAction` Recommendation枚举：
 
 - `requeue_execution`
 - `release_stale_lock`
@@ -90,34 +90,33 @@ Minimum output:
 - `close_orphan_session`
 - `manual_intervention_required`
 
-## 8. Operating Rules
+## 8. 运lines规则
 
-- Startup checks are a fail-closed capability; should not continue accepting traffic after discovering P0 inconsistency.
-- Recovery drills should prioritize fixture / replay data over manual verbal verification.
-- After adding critical state, Tier 1 event, or file lock semantics, corresponding drills must be added.
+- 启动巡检belongs to fail-closed 能力，不应在发现 P0 inconsistent后继续默默接流量。
+- 恢复演练应优先relies on fixture / replay data，而不is只靠人工口头验证。
+- 新增关键Status、Tier 1 事件或 file lock 语义后，必须补对应 drill。
 
-## 9. Phase Boundaries
+## 9. Phase 边界
 
-Phase 1a explicitly includes:
+Phase 1a 明确做：
 
-- Single-machine SQLite consistency checks
-- Stale execution / stale lock / pending ack scanning
-- Fixed recovery drill matrix
-- OAPEFLIR stage / rollout consistency scanning
+- 单机 SQLite 一致性巡检
+- stale execution / stale lock / pending ack 扫描
+- 固定恢复演练矩阵
+- OAPEFLIR stage / rollout consistency 扫描
 
-Currently not included:
+当前不做：
 
-- Multi-machine collaborative recovery drills
-- Chaos engineering platform
-- Automated cross-region disaster recovery switching
+- 多机协同恢复演练
+- chaos engineering 平台
+- 自动化跨区域容灾切换
 
-## 10. Closure Conclusion
+## 10. 收口Conclusion
 
-Whether recovery capability truly exists is not determined by how much "supports recovery" is written in documentation, but by whether startup checks and drills have frozen each of the most failure-prone breakpoints.
-
+恢复能力isno真实存在，不看文档里写了多少“supported恢复”，而看启动巡检和 drill isno已via把最容易出事的断点逐项冻结下来。
 
 ## v4.3 Architecture Remediation
 
-The following entries fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If historical sections of this document conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
+以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中record的 contract 偏差。若本文历史段落vs本节conflicts，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
 
-Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events must only use `platform.*`; OAPEFLIR can only be used as `oapeflir.view.*` / rationale projection; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.
+mandatory规则：Status迁移必须via `RuntimeStateMachine.transition(command)`；执lines计划必须uses `PlanGraphBundle`；执lines结果必须uses `NodeAttemptReceipt`；truth event 只能uses `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；budget必须uses `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。

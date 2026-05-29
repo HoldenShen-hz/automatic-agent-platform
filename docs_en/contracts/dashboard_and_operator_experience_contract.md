@@ -1,10 +1,10 @@
 # Dashboard And Operator Experience Contract
 
-## 1. Scope
+## 1. 范围
 
-This contract defines `§43-§44` operational dashboards, attention queues, and non-technical user experience.
+本 contract defines `§43-§44` 的运营看板、注意力队列和非技术user体验。
 
-## 2. Canonical Objects
+## 2. Canonical 对象
 
 - `AttentionItem`
 - `OperatorDashboard`
@@ -15,18 +15,18 @@ This contract defines `§43-§44` operational dashboards, attention queues, and 
 - `GuidedOnboardingSession`
 - `WorkflowBuilderDraft`
 
-## 3. Dashboard Hierarchy
+## 3. 看板层iterations
 
-The platform must support at minimum four view layers:
+平台必须至少supported四层视图：
 
 - `operator`
 - `domain_admin`
 - `platform_ops`
 - `fleet_admin`
 
-Each view layer must be mappable to structured DTOs, not UI-private stitching.
+每层视图都必须可映射为结构化 DTO，而不is UI 私有拼接。
 
-## 4. `AttentionItem` Minimum Fields
+## 4. `AttentionItem` 最小字段
 
 - `item_type`
 - `priority`
@@ -36,14 +36,14 @@ Each view layer must be mappable to structured DTOs, not UI-private stitching.
 - `domain_id`
 - `created_at`
 
-Rules:
+规则：
 
-- All objects requiring human operation enter `AttentionItem` uniformly.
-- AttentionItem must preserve source object references for drill-down.
+- 所有需要人工操作的对象统一进入 `AttentionItem`。
+- AttentionItem 必须保留来源对象references用，便于 drill-down。
 
-## 5. UX Objects
+## 5. UX 对象
 
-`GuidedOnboardingSession` minimum fields:
+`GuidedOnboardingSession` 最小字段：
 
 - `session_id`
 - `user_role`
@@ -51,7 +51,7 @@ Rules:
 - `completed_steps`
 - `recommended_templates`
 
-`WorkflowBuilderDraft` minimum fields:
+`WorkflowBuilderDraft` 最小字段：
 
 - `draft_id`
 - `workflow_id?`
@@ -59,14 +59,15 @@ Rules:
 - `validation_findings`
 - `owner_user_id`
 
-## 6. Runtime Rules
+## 6. 运lines规则
 
-- UX layer is only responsible for guidance and presentation and does not hold final governance authority.
-- Non-technical UX defaults to showing summaries, templates, and wizards, not directly exposing low-level runtime terminology.
-- L1-L4 dashboards share the same evidence plane and consistent time baseline.
+- UX 层只负责references导vs呈现，不持有最终治理permission。
+- 非技术 UX defaults to展示摘要、模板、向导，不directly暴露低层 runtime 术语。
+- L1-L4 看板共享同一Evidence Planevs一致的time基准。
 
-## 7. Test Requirements
+## 7. 测试要求
 
-- unit: dashboard aggregation, attention ranking, wizard step validation
-- integration: console / dashboard data linkage with approval / incident / runtime
-- contract: different roles cannot see out-of-authority views
+- unit：dashboard aggregation、attention ranking、wizard step validation
+- integration：console / dashboard vs approval / incident / runtime data联动
+- contract：不同角色不可见越权视图
+

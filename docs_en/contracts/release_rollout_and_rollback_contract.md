@@ -1,7 +1,7 @@
 # Release Rollout And Rollback Contract
 
-> **OAPEFLIR Related**: This contract defines controlled release and rollback mechanisms for OAPEFLIR Improve Hub. ADR-075 is the implementation authority; ADR-018 is retained only as historical background.
-> **Updated**: 2026-04-17
+> **OAPEFLIR 相关**：本 contract defines OAPEFLIR Improve Hub 的受控发布vs回滚机制。当前执lines依据is ADR-075；ADR-018 只保留为历史Background。
+> **更新日期**：2026-04-17
 
 ## 1. Scope
 
@@ -12,7 +12,8 @@ Related documents:
 - `runtime_repository_and_migration_contract.md`
 - `prompt_model_policy_governance_contract.md`
 - `enterprise_operations_plane_contract.md`
-- [ADR-075 Controlled Rollout Release](../adr/075-controlled-rollout-release.md)
+- [operations/release-versioning.md](../operations/release-versioning.md)
+- [ADR-075 六级受控发布](../adr/075-controlled-rollout-release.md)
 - [ADR-080 Learn Hub](../adr/080-learn-hub-pattern-detection.md)
 
 ## 2. Goals
@@ -31,31 +32,31 @@ Related documents:
 - `role_bundle`
 - `skill_bundle`
 - `schema_migration`
-- `LearningObject` (corresponding to OAPEFLIR secondary chain)
+- `LearningObject`（对应 OAPEFLIR 副链）
 
 ## 4. Release Levels and RolloutStatus
 
-### 4.1 Six-Level Controlled Release (L0-L5)
+### 4.1 六级受控发布（L0-L5）
 
-Corresponds to ADR-075 §1:
+对应 ADR-075 §1：
 
-| Level | Name | Traffic | AI Autonomy | Human Approval |
-| --- | --- | --- | --- | --- |
-| L0 | `off` | 0% | No operation authority, recording only | — |
-| L1 | `evaluate_0` | 0% (recording only) | candidate evaluation / evidence validation | — |
-| L2 | `canary_5` | 5% | parameter adjustment, strategy selection | required for critical/high |
-| L3 | `partial_25` | 25% | configuration change suggestions | required for all |
-| L4 | `stable_75` | 75% | execute configuration changes | required for all |
-| L5 | `stable_100` | 100% | fully autonomous (constrained by guardrails) | exception escalation only |
+| Level | Name | Traffic | AI 自主permission | 人class审批 |
+|---|-------|--------| --- | --- |
+| L0 | `off` | 0% | no操作permission，onlyrecord | — |
+| L1 | `evaluate_0` | 0%（onlyrecord） | candidate evaluation / evidence validation | — |
+| L2 | `canary_5` | 5% | 参数调整、策略选择 | critical/high 需审批 |
+| L3 | `partial_25` | 25% | configureRecommendation | 全部需审批 |
+| L4 | `stable_75` | 75% | 执linesconfigure变更 | 全部必须审批 |
+| L5 | `stable_100` | 100% | 完全自主（受 guardrail 约束） | only异常升级 |
 
-### 4.2 Rollout State Machine
+### 4.2 Rollout Status机
 
-The complete state machine is governed by ADR-075 §2; ADR-018 is referenced only to explain historical naming:
+完整Status机以 ADR-075 §2 为执lines依据；ADR-018 onlyused for解释历史命名来源：
 
 ```
 candidate_created
       ↓
-under_review (human approval)
+under_review （人class审批）
       ↓
 approved / rejected
       ↓
@@ -69,10 +70,10 @@ stable_75 (L4) ←→ auto_rollback
       ↓
 stable_100 (L5)
       ↓
-released (sustained M days without issues)
+released （持续 M 天noIssue）
 ```
 
-### 4.3 Release Modes (supplementary)
+### 4.3 Release Modes（补充）
 
 | Mode | Use Case |
 | --- | --- |
@@ -81,26 +82,26 @@ released (sustained M days without issues)
 | `tenant_gray` | Designated tenant or division phased canary |
 | `feature_flag` | Feature enable/disable and quick damage control |
 
-### 4.4 Auto-Rollback Conditions
+### 4.4 自动回滚条件
 
-Corresponds to ADR-075 §3.2:
+对应 ADR-075 §3.2：
 
-| Metric | Threshold | Window | Trigger Action |
+| 指标 | threshold | 窗口 | 触发动作 |
 |------|------|------|---------|
-| Error rate | > 1% | 5 minutes | L4→L3 |
-| P99 latency | > 500ms | 5 minutes | L4→L3 |
-| Success rate | < 99% | 5 minutes | L4→L3 |
-| Continuous failures | > 10 | 10 minutes | direct rollback L1 |
-| Resource exhaustion | Memory > 90% | 1 minute | direct rollback L1 |
+| 错误率 | > 1% | 5 分钟 | L4→L3 |
+| P99 delay | > 500ms | 5 分钟 | L4→L3 |
+| success率 | < 99% | 5 分钟 | L4→L3 |
+| 连续failed | > 10 iterations | 10 分钟 | directly回滚 L1 |
+| 资源耗尽 | Memory > 90% | 1 分钟 | directly回滚 L1 |
 
-### 4.5 State Constraints
+### 4.5 Status约束
 
-- `evaluate_0` (L1): Candidate evaluation and evidence validation; must not directly overwrite user-visible results.
-- `canary_5` (L2) / `partial_25` (L3) / `stable_75` (L4): Must pass metrics gate to upgrade.
-- `stable_100` (L5): Full traffic, fully autonomous (constrained by guardrails).
-- `auto_rollback`: Automatic or manual rollback.
+- `evaluate_0`（L1）：候选评估和证据验证，不得directly覆盖user可见结果。
+- `canary_5`（L2）/ `partial_25`（L3）/ `stable_75`（L4）：需via metrics gate 方可升级。
+- `stable_100`（L5）：full流量，完全自主（受 guardrail 约束）。
+- `auto_rollback`：自动或手动回滚。
 
-## 5. OAPEFLIR Secondary Chain Integration
+## 5. OAPEFLIR 副链集成
 
 ```
 LearningObject(validated/promoted)
@@ -110,18 +111,17 @@ LearningObject(validated/promoted)
     → RolloutRecord(evaluate_0 → canary → partial → stable → released)
 ```
 
-**Mandatory conditions** (R4-EVIDENCE constraint):
-
+**必须满足的条件**（R4-EVIDENCE 约束）：
 - LearningObject without evidence chain must not enter rollout.
 - Candidate not passing guardrail can only stay in candidate_created state, must not enter `evaluation_enabled`.
 - `evaluation_enabled` runtime should record guardrail reason codes for explainability and audit.
 
-## 6. ImprovementCandidate Interface
+## 6. ImprovementCandidate 接口
 
 ```typescript
 interface ImprovementCandidate {
   candidateId: string;
-  learningObjectId: string;      // Associated LearningObject
+  learningObjectId: string;      // 关联的 LearningObject
   source: 'failure_pattern' | 'user_correction' | 'recovery_playbook';
   targetScope: 'task' | 'workflow' | 'domain' | 'platform';
   priority: 'critical' | 'high' | 'medium' | 'low';
@@ -136,7 +136,7 @@ interface ImprovementCandidate {
 type RolloutLevel = 'L0' | 'L1' | 'L2' | 'L3' | 'L4' | 'L5';
 ```
 
-## 7. RolloutRecord Interface
+## 7. RolloutRecord 接口
 
 ```typescript
 interface RolloutRecord {
@@ -159,7 +159,7 @@ interface RolloutMetrics {
 }
 ```
 
-## 8. Rollback Rules
+## 8. Rollback 规则
 
 - Code rollback must be faster than data repair.
 - prompt / policy / feature flag should support independent rollback.
@@ -203,15 +203,15 @@ Not allowed:
 
 ## 12. Autonomy Boundary
 
-Corresponds to governance/autonomy_boundary_policy.md:
+对应 governance/autonomy_boundary_policy.md：
 
-| Level | AI Autonomy | Human Approval Required |
+| 级别 | AI 自主permission | 人class审批要求 |
 |------|------------|------------|
-| L0-L1 | fully autonomous (recording only) | not required |
-| L2 | parameter adjustment, strategy selection | required for critical/high |
-| L3 | configuration change suggestions | required for all |
-| L4 | execute configuration changes | required for all |
-| L5 | fully autonomous (constrained by guardrails) | exception escalation only |
+| L0-L1 | 完全自主（onlyrecord） | 不需要 |
+| L2 | 参数调整、策略选择 | 需要 for critical/high |
+| L3 | configure变更Recommendation | 需要 for all |
+| L4 | 执linesconfigure变更 | 必须 for all |
+| L5 | 完全自主（受 guardrail 约束） | only异常升级 |
 
 ## 13. Closure Conclusion
 

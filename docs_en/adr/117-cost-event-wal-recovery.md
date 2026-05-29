@@ -1,24 +1,24 @@
 # ADR-117 Cost Event WAL Recovery
 
-- Status: Accepted
+- Status：Accepted
 
 ## Background
-Cost event write-ahead log has introduced pending/committed states, but recovery strategy for orphaned pending entries previously lacked authoritative description.
+成本事件写前日志已viareferences入 pending/committed Status，但 orphaned pending entry 的恢复策略之前没有权威Description。
 
 ## Decision
-- Pending WAL entry must be periodically sweepable.
-- Orphan determination includes at minimum:
-  - Status still `pending`
-  - Exceeded recovery window
-  - No corresponding commit / settle evidence
-- Recovery actions allow two types:
-  - Mark as `orphaned` for human audit
-  - Safely delete and output audit record
-- `unsourcedRecordCount` only serves as observability metric, does not replace WAL recoverer.
+- pending WAL entry 必须可被定期 sweep。
+- orphan 判定至少contains：
+  - Status仍为 `pending`
+  - exceeds过恢复窗口
+  - no对应 commit / settle 证据
+- 恢复动作允许两class：
+  - 标记为 `orphaned` 进入人工审计
+  - security删除并输出审计record
+- `unsourcedRecordCount` only作为观测指标，不替代 WAL 恢复器。
 
-## Result
-- Cost-ledger crash recovery no longer stays only at the comment layer.
+## 结果
+- 成本台账 crash recovery 不再停留在comment层。
 
-## Related Implementation
+## 相关实现
 - `src/platform/five-plane-control-plane/cost-alert/*`
 - `src/ops-maturity/cost-optimizer/*`

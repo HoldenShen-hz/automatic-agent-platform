@@ -2,27 +2,27 @@
 
 ---
 
-## OAPEFLIR Association
+## OAPEFLIR 关联
 
-This document defines the following components in the OAPEFLIR eight-stage cognitive cycle:
+本文档defines OAPEFLIR 八阶段认知循环中的以下组件：
 
-- **Observe**: Organization structure, identity, knowledge boundary, and compliance signal collection
-- **Assess**: Approval chain, knowledge sharing, governance delegation, and compliance matching
-- **Plan**: Organization routing, inheritance / override, controlled sharing strategy
-- **Execute**: SSO, SCIM, approval routing, knowledge isolation, governance console
-- **Feedback**: Approval timeout, access denial, sharing review
-- **Learn**: Organization governance rules and boundary strategy optimization
-- **Improve**: Department-level compliance and governance configuration continuous evolution
-- **Release**: Organization governance changes phased rollout
+- **Observe**：组织结构、身份、知识边界vs合规信号采集
+- **Assess**：审批链路、知识共享、治理委托vs合规匹配
+- **Plan**：组织路由、继承 / 覆写、受控共享策略
+- **Execute**：SSO、SCIM、审批路由、知识隔离、治理操作台
+- **Feedback**：审批timeout、访问拒绝、共享复盘
+- **Learn**：组织治理规则vs边界策略优化
+- **Improve**：部门级合规vs治理configure持续演进
+- **Release**：组织治理变更分级发布
 
 ---
 
-- Status: Accepted
-- Decision Date: 2026-04-20
+- Status：Accepted
+- Decision日期：2026-04-20
 
 ## Background
 
-The current authoritative source corresponds to the organization governance and knowledge boundary chapter in `docs_zh/architecture/00-platform-architecture.md`. The current repository already has:
+当前权威口径对应 `docs_zh/architecture/00-platform-architecture.md` 中组织治理vs知识边界章节。当前仓库已有：
 
 - `src/org-governance/org-model`
 - `src/org-governance/approval-routing`
@@ -30,13 +30,13 @@ The current authoritative source corresponds to the organization governance and 
 - `src/org-governance/knowledge-boundary`
 - `src/org-governance/delegated-governance`
 
-But most directories are still empty barrels, lacking unified decisions.
+但多数目录仍is空壳 barrel，缺统一Decision。
 
 ## Decision
 
-### 1. Organization Node Is the Common Root Object for Governance, Approval, Knowledge, and Compliance
+### 1. 组织节点is治理、审批、知识和合规的共同根对象
 
-Organization model supports at minimum:
+组织模型最少supported：
 
 - enterprise
 - business_unit
@@ -44,29 +44,29 @@ Organization model supports at minimum:
 - team
 - seat / user
 
-### 2. Approval, Compliance, and Knowledge Boundary All Follow "Inheritance First, Explicit Override"
+### 2. 审批、合规和知识边界都遵循“继承优先、显式覆写”
 
-Default rules inherit from parent node;
-Child nodes can only override within authorized scope.
+defaults to规则从上级节点继承；
+下级节点只能在authorization范围内覆写。
 
-### 3. SSO / SCIM Only Handles Identity Sync, Does Not Directly Grant Business Permissions
+### 3. SSO / SCIM 只负责身份synchronous，不directly授予业务permission
 
-Identity access and governance authorization are separated to avoid directory system privilege escalation.
+身份接入vs治理authorization分离，避免目录系统directly越权。
 
-### 4. Knowledge Sharing Must Explicitly Declare Boundary and Audit
+### 4. 知识共享必须显式声明边界vs审计
 
-Cross-department knowledge access must carry:
+跨部门知识访问必须带：
 
 - sharing policy
 - purpose
 - approver / policy source
 - access log
 
-### 5. Governance Delegation Must Be Revocable, Auditable, and Scope-Limited
+### 5. 治理委托必须可回收、可审计、可限定范围
 
-Governance delegation is not permanent transfer, but controlled authorization with scope, TTL, and revoke.
+治理委托不is永久转移，而is带 scope、TTL 和 revoke 的受控authorization。
 
 ## Consequences
 
-- Organization governance layer will become the unified upper boundary for `tenant / division / policy / knowledge`
-- Subsequent implementation prioritizes organization model, approval routing, and knowledge boundary contracts and state machine tests
+- 组织治理层将成为 `tenant / division / policy / knowledge` 的统一上位边界
+- 后续实现优先补组织模型、审批路由和知识边界的 contract vsStatus机测试

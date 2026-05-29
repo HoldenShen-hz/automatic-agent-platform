@@ -316,7 +316,10 @@ function selectSceneKeywords(keywordPool: readonly string[], sceneIndex: number)
   const start = sceneIndex % keywordPool.length;
   const selected: string[] = [];
   for (let offset = 0; offset < 3; offset += 1) {
-    selected.push(keywordPool[(start + offset) % keywordPool.length]!);
+    const keyword = keywordPool[(start + offset) % keywordPool.length];
+    if (keyword != null) {
+      selected.push(keyword);
+    }
   }
   return selected;
 }

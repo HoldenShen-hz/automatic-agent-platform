@@ -2,59 +2,59 @@
 
 ---
 
-## OAPEFLIR Association
+## OAPEFLIR 关联
 
-This contract participates in the following stages of the OAPEFLIR eight-stage cycle:
+本 contract 参vs OAPEFLIR 八阶段循环中的以下阶段：
 
-- **Observe**: Signal collection and aggregation
-- **Assess**: Pre-execution evaluation and risk assessment
-- **Plan**: Task decomposition and DAG construction
-- **Execute**: Step execution and fault tolerance
-- **Feedback**: Signal collection and preprocessing
-- **Learn**: Pattern detection and knowledge extraction
-- **Improve**: Improvement candidate evaluation and rollout
-- **Release**: Controlled release and rollback
+- **Observe**：信号采集vs聚合
+- **Assess**：执lines前评估vs风险判断
+- **Plan**：任务分解vs DAG 构建
+- **Execute**：步骤执linesvs容错
+- **Feedback**：信号收集vs预handle
+- **Learn**：模式检测vs知识提取
+- **Improve**：改进候选评估vs rollout
+- **Release**：受控发布vs回滚
 
 ---
 
-## 1. Scope
+## 1. 范围
 
-This contract defines the platform's lock semantics for industrial-grade deployments, including local locks, database locks, lease locks, and approval mutex locks.
+本 contract defines平台在工业级部署下的锁语义，includes本地锁、data库锁、租约锁和审批互斥锁。
 
-The problem it addresses: which locks are only effective within a single process, which locks must be guaranteed across workers, and which operations can only rely on leases rather than general-purpose locks.
+它解决的Issueis：哪些锁只在单进程内有效，哪些锁必须跨 worker 保证，哪些操作只能relies on lease 而不is通用锁。
 
-Related documents:
+相关文档：
 
 - `file_lock_contract.md`
 - `task_lease_and_fencing_contract.md`
 - `production_storage_and_queue_contract.md`
 
-## 2. Lock Classification
+## 2. 锁分class
 
-| Lock Type | Authoritative Backend | Primary Use Case |
-| --- | --- | --- |
-| `local_mutex` | process memory | Single-process cache refresh, singleton initialization protection |
-| `file_lock` | authoritative store | File read/write mutual exclusion |
-| `execution_lease` | authoritative store | Execution ownership |
-| `approval_lock` | authoritative store | Serialized approval object updates |
-| `advisory_lock` | PostgreSQL | Short transaction mutual exclusion, repair/migration/compaction serialization |
+| 锁class型 | authoritative backend | 主要用途 |
+|---|-------|--------|
+| `local_mutex` | process memory | 单进程cache刷新、singleton初始化保护 |
+| `file_lock` | authoritative store | 文件读写互斥 |
+| `execution_lease` | authoritative store | execution 执lines权 |
+| `approval_lock` | authoritative store | 审批对象串lines更新 |
+| `advisory_lock` | PostgreSQL | 短事务内互斥、repair / migration / compaction 串lines |
 
-## 3. Key Principles
+## 3. 关键principle
 
-- Local locks must not be mistaken for distributed locks.
-- Execution ownership should preferably use lease + fencing, not ordinary mutex as a substitute.
-- Write locks must have TTL, renewal, reclamation, and owner identification.
-- Lock failures must be observable, alertable, and recoverable.
-- Lock state progression that affects truth must be subordinate to the unified state write entry point and cannot be scattered across individual callers.
+- 不得把本地锁误当成分布式锁。
+- execution ownership 优先uses lease + fencing，不用普通 mutex 替代。
+- 写锁必须有 TTL、续约、回收和 owner 识别。
+- 锁的failed必须可观测、可告警、可恢复。
+- 会Impact truth 的锁Status推进必须从belongs to统一Statuswrites口，不能在各call方内部散写。
 
-## 4. Recommended Solutions
+## 4. 推荐方案
 
-- Short transaction mutual exclusion: PostgreSQL advisory lock
-- Long-lifecycle execution ownership: lease + fencing token
-- File mutual exclusion: authoritative file lock repository
-- Redis locks are not the current preferred authoritative source; if Redlock is adopted in the future, an additional ADR must explain the risk boundaries
+- 短事务互斥：PostgreSQL advisory lock
+- 长生命cycle执lines权：lease + fencing token
+- 文件互斥：authoritative file lock repository
+- Redis 锁不is当前首选事实源；若未来采用 Redlock，必须额外 ADR Description风险边界
 
-## 5. Lock State Machine
+## 5. 锁Status机
 
 ```mermaid
 stateDiagram-v2
@@ -69,14 +69,14 @@ stateDiagram-v2
     reclaimed --> [*]
 ```
 
-Description:
+Description：
 
-- The above state machine only describes the resource lifecycle of `LockRecord` / `LeaseRecord`, not a second set of truth mutation entry points independent of the runtime state machine.
-- Any truth changes related to `execution_lease`, `approval_lock`, or system maintenance locks must go through the unified command entry point and append fact events.
+- 上述Status机只Description `LockRecord` / `LeaseRecord` 的资源生命cycle，不is独立于运lines时Status机之外的第二套 truth mutation 入口。
+- 任何vs `execution_lease`、`approval_lock` 或系统维护锁相关的 truth 变更，都必须via统一 command 入口落库并追加事实事件。
 
 ### 5.1 LockTransitionCommand
 
-`LockTransitionCommand` minimum fields:
+`LockTransitionCommand` 最少字段：
 
 - `lock_id`
 - `lock_type`
@@ -89,13 +89,13 @@ Description:
 - `occurred_at`
 - `fencing_token?`
 
-Rules:
+规则：
 
-- Acquisition, renewal, expiration, and reclamation of `execution_lease` must work in coordination with `RuntimeStateMachine.transition(command)`; lease state must not bypass the unified state write entry point for direct modification.
-- For `execution_lease`, lock state progression must maintain the same truth boundary as the lease/fencing validation of `NodeRun` / `NodeAttempt`.
-- `approval_lock`, `file_lock`, and `advisory_lock` must also go through append-only events and audit chain records if they affect audit or system maintenance truth.
+- `execution_lease` 的获取、续约、过期、回收必须vs `RuntimeStateMachine.transition(command)` 协同工作；租约Status不得bypassing统一Statuswrites口directly修改。
+- 对 `execution_lease` 而言，锁Status推进必须vs `NodeRun` / `NodeAttempt` 的 lease / fencing 校验保持同一 truth 边界。
+- `approval_lock`、`file_lock`、`advisory_lock` 若Impact审计或系统维护 truth，也必须via append-only 事件和审计链record。
 
-## 6. Required Fields
+## 6. 必备字段
 
 - `lock_id`
 - `lock_type`
@@ -107,48 +107,49 @@ Rules:
 - `created_at`
 - `updated_at`
 
-## 7. Rules
+## 7. 规则
 
-- Any distributed write lock must support expiration determination.
-- Lock acquisition failure must return a clear `reason_code`, not just `false`.
-- Lock release must verify the owner to avoid accidentally releasing others' locks.
-- Lock reclamation actions must produce logs and audit events.
-- State progression of `execution_lease` must not become a RuntimeStateMachine bypass; if driving `NodeRun` recovery, failure, or takeover is needed, it must be done through the unified state machine command.
+- 任何分布式写锁都必须supported过期判定。
+- 锁获取failed必须返回明确 `reason_code`，不能只返回 `false`。
+- 锁释放必须校验 owner，避免误释放他人锁。
+- 锁回收动作必须产生日志和审计事件。
+- `execution_lease` 的Status推进不得成为 RuntimeStateMachine 旁路；若需要驱动 `NodeRun` 恢复、failed或接管，必须由统一Status机命令完成。
 
-## 8. Applicable Boundaries
+## 8. 适用边界
 
-Scenarios where distributed locks should not be used:
+不应uses分布式锁的场景：
 
-- Side-effect-free deduplication of purely local in-memory objects
-- Read-only tasks with idempotent semantics that can be re-executed repeatedly
+- only本地内存对象的no副作用for deduplication
+- 可repeats执lines、已具幂等语义的只读任务
 
-Scenarios that must use authoritative distributed locks or leases:
+必须uses authoritative 分布式锁或 lease 的场景：
 
-- File writes
-- Execution main write chain
-- Approval final ruling
-- System-level maintenance actions such as migration/repair/reindex
+- 文件writes
+- execution 主writes链
+- 审批最终裁决
+- migration / repair / reindex 等系统级维护动作
 
-## 9. Fault Handling
+## 9. 故障handle
 
-- After lock expiration, the original owner must not continue writing.
-- If a network partition causes the owner to believe it still holds the lock, the authoritative backend still takes the current latest token as authoritative.
-- Lock table bloat or accumulated expired locks should trigger operations alerts.
+- 锁过期后，原 owner 不得继续writes。
+- 如果network分区造成 owner 自认为仍持锁，authoritative backend 仍以当前最新 token 为准。
+- 锁table异常膨胀或过期锁堆积应触发运维告警。
 
-## 10. Conclusion
+## 10. 收口Conclusion
 
-The focus of industrial-grade lock design is not "locking everywhere," but first distinguishing:
+工业级锁设计的重点不is“哪里都加锁”，而is先区分：
 
-- Local mutual exclusion
-- Distributed resource locks
-- Execution lease
+- 本地互斥
+- 分布式资源锁
+- execution lease
 
-Only with clear boundaries can the system be both safe and not dragged down by lock design.
+只有边界明确，系统才能既security又不被锁设计拖垮。
+
 
 ## v4.3 Architecture Remediation
 
-The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If any historical sections of this document conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
+以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中record的 contract 偏差。本文档历史段落如vs本节conflicts，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
 
-- T-31: This document previously described the lock state machine as a self-contained independent lifecycle but failed to explain how it is subordinate to the unified state write entry point. The root cause is that early lock contracts treated lease/lock as infrastructure details, ignoring that once they affect execution ownership they enter the runtime truth boundary. Fix: The main text now incorporates `LockTransitionCommand` and explicitly states that state progression of `execution_lease` must coordinate with `RuntimeStateMachine.transition(command)` and cannot become a bypass state machine.
+- T-31: 本文原先把锁Status机写成一套独立自洽的生命cycle，却没有Description它如何从belongs to统一Statuswrites口，Root cause: 早期锁合同把 lease/lock 当成基础设施细节，忽略了它们一旦Impact执lines权就进入 runtime truth 边界。修复：正文现补入 `LockTransitionCommand`，并明确 `execution_lease` 的Status推进必须vs `RuntimeStateMachine.transition(command)` 协同，不能成为旁路Status机。
 
-Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events can only use `platform.*`; OAPEFLIR can only be used as `oapeflir.view.*` / rationale projection; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.
+mandatory规则：Status迁移必须via `RuntimeStateMachine.transition(command)`；执lines计划必须uses `PlanGraphBundle`；执lines结果必须uses `NodeAttemptReceipt`；truth event 只能uses `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；budget必须uses `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。

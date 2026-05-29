@@ -6,14 +6,14 @@
 | implementation_module | `src/domains/live-streaming/index.ts` |
 | domain_status | spec_ready |
 | risk_level | high |
-| accountable_role | Live Streaming Security Lead |
+| accountable_role | Streaming Safety Lead |
 
 ## Hard Constraints
 
-- Violation content must be taken down or stream must be cut within the target SLA after detection.
-- Hot paths must not depend on general LLM/Harness loops.
-- Appeals, restoration, and false positive handling must be auditable.
+- Violation content must be removed or stream terminated within target SLA after detection.
+- Hot paths must not rely on general LLM/harness loop.
+- Appeals, recovery, and false positive handling must be auditable.
 
 ## Acceptance Criteria
 
-- Prior to GA, evidence of real-time detection, 5s handling, appeal processes, and false positive assessment must be provided.
+- GA must provide real-time detection, 5s disposition, appeal process, and false positive assessment evidence before release.

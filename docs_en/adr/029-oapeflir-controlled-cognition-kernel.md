@@ -1,11 +1,11 @@
 # ADR-029 OAPEFLIR Controlled Cognition Kernel
 
-- Status: Accepted
-- Decision Date: 2026-04-17
+- Status：Accepted
+- Decision Date：2026-04-17
 
-## Context
+## Background
 
-OAPEFLIR is the platform's cognitive loop model, defining an eight-stage cognitive process: Observe → Assess → Plan → Execute → Feedback → Learn → Improve → Release. Each stage requires clearly defined inputs/outputs, quality assurance, and boundaries with HarnessRuntime, but no longer has an independent execution runtime.
+OAPEFLIR is the platform's cognitive loop model, defining the eight-stage cognitive process: Observe→Assess→Plan→Execute→Feedback→Learn→Improve→Release. Each stage needs clear input/output definitions, quality assurance, and boundaries with HarnessRuntime, but no longer owns an independent execution runtime.
 
 ## Decision
 
@@ -20,9 +20,9 @@ Observe → Assess → Plan → Execute → Feedback
 ### Stage Definitions
 
 | Stage | Input | Output | Key Component |
-|-------|-------|--------|---------------|
+|------|------|------|---------|
 | Observe | Raw signals | CognitiveFrameInput / UnifiedObservation | ObserveAdapter |
-| Assess | Observation | UnifiedAssessment (complexity level 5) | AssessmentService |
+| Assess | Observation | UnifiedAssessment (complexity 5 levels) | AssessmentService |
 | Plan | Assessment | PlanRationale + `PlanGraphBundle` reference | PlanBuilder |
 | Execute | `NodeAttemptReceipt` / evidence refs | ExecutionSummaryView | RuntimeExecuteBridge |
 | Feedback | ExecutionSummaryView | StepFeedback (6 types) | FeedbackCollector |
@@ -32,7 +32,7 @@ Observe → Assess → Plan → Execute → Feedback
 
 ### All Input/Output Zod Schema Validation
 
-Each stage's input/output must pass Zod schema validation to ensure type safety.
+Each stage's input/output must be validated via Zod schema to ensure type safety.
 
 ### Per-Stage StageRationale
 
@@ -47,7 +47,7 @@ interface StageRationale {
 Constraints:
 
 - `StageRationale`, `ExecutionSummaryView`, and `ReleaseDecisionView` are only allowed as `oapeflir.view.*` / `oapeflir.rationale.*` projections.
-- Any real state progression, budget changes, or side effect commits must return to `HarnessRuntime` and `RuntimeStateMachine.transition(command)`.
+- Any real state progression, budget change, or side effect commit must return to `HarnessRuntime` and `RuntimeStateMachine.transition(command)`.
 
 ### Timeline Tracking
 
@@ -56,13 +56,13 @@ Constraints:
 
 ## Consequences
 
-Benefits:
+Advantages:
 
 - Standardized stage definitions make the system explainable
 - Zod validation ensures type safety
-- StageRationale facilitates problem tracing
+- StageRationale facilitates issue tracing
 
-Trade-offs:
+Costs:
 
 - Stages add execution latency
 - State management complexity increases
@@ -79,5 +79,5 @@ Trade-offs:
 
 ## v4.3 ADR Remediation
 
-- A-2: This ADR originally described the OAPEFLIR controlled cognition kernel as the execution backbone above HarnessRuntime. The root cause was that the cognitive framework and execution runtime were not clearly layered in early design. Fix: The text now converges OAPEFLIR to a cognitive/interpretation layer above the runtime, with actual execution still governed by `HarnessRuntime`.
-- A-10: This ADR originally continued the `Oapeflir*` style naming. The root cause was that stage DTOs were directly named after the framework. Fix: The text now uses cognitive view objects like `CognitiveFrameInput` / `ExecutionSummaryView` / `ReleaseDecisionView`, avoiding using the framework name as a canonical DTO prefix.
+- A-2: This ADR originally wrote the OAPEFLIR controlled cognition kernel as higher than HarnessRuntime execution backbone, root cause: cognitive framework and execution runtime had no clear layering in early design. Fix: The body now converges OAPEFLIR to a cognitive/explanatory layer above the runtime, with real execution still governed by `HarnessRuntime`.
+- A-10: This ADR originally continued `Oapeflir*` style naming, root cause: stage DTOs were directly named after the framework. Fix: The body now changes to cognitive view objects like `CognitiveFrameInput` / `ExecutionSummaryView` / `ReleaseDecisionView`, and avoids using the framework name as a canonical DTO prefix.

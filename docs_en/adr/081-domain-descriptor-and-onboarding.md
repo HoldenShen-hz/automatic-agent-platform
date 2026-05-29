@@ -2,39 +2,39 @@
 
 ---
 
-## OAPEFLIR Association
+## OAPEFLIR 关联
 
-This document defines the following components in the OAPEFLIR eight-stage cognitive cycle:
+本文档defines OAPEFLIR 八阶段认知循环中的以下组件：
 
-- **Observe**: Domain signals, knowledge structure, and risk profile input
-- **Assess**: Domain risk assessment and onboarding review
-- **Plan**: Domain templates, domain workflow, and onboarding runbook
-- **Execute**: Expose tools/plugins/knowledge according to domain boundaries
-- **Feedback**: Domain-level feedback, effectiveness metrics, and production validation
-- **Learn**: Domain pattern precipitation and domain template refinement
-- **Improve**: Domain bundle, prompt, and recipe improvement candidates
-- **Release**: Domain package rollout, certification, and launch
+- **Observe**：领域信号、知识结构vs风险画像输入
+- **Assess**：领域风险判断vs接入审查
+- **Plan**：领域模板、领域 workflow vs接入 runbook
+- **Execute**：按领域边界暴露 tool / plugin / knowledge
+- **Feedback**：领域级反馈、效果指标vs上线验证
+- **Learn**：领域模式沉淀vs领域模板修正
+- **Improve**：领域 bundle、prompt、recipe 的改进候选
+- **Release**：领域包灰度、authenticationvs上线
 
 ---
 
-- Status: Accepted
-- Decision Date: 2026-04-20
+- Status：Accepted
+- Decision日期：2026-04-20
 
 ## Background
 
-v2.7 `§37-§38` requires the platform to no longer treat business domains as opaque business packages, but instead to use `DomainDescriptor` as a structured governance unit, unifying risk profiles, knowledge structures, evaluation frameworks, Prompt libraries, Recipes, and cross-domain interaction strategies.
+v2.7 `§37-§38` 要求平台不再把业务域视为不透明业务包，而is以 `DomainDescriptor` 作为结构化治理单元，统一风险画像、知识结构、评估框架、Prompt 库、Recipe 和跨域交互策略。
 
-The current repository already has the `src/domains/*` directory and initial implementation of `src/domains/registry/*`, but the authoritative decision is still missing, leading to:
+当前仓库已有 `src/domains/*` 目录和 `src/domains/registry/*` 的初始实现，但 authoritative Decision仍缺失，导致：
 
-- Inconsistent domain definition fields and lifecycle
-- Onboarding runbook relying on oral agreements
-- `src/domains/*` directories still remain as empty shells
+- 领域defines字段vs生命cycle不统一
+- 接入 runbook 只能靠口头约定
+- `src/domains/*` 大量目录仍停留在空壳 barrel
 
 ## Decision
 
-### 1. `DomainDescriptor` As Domain Authoritative Root Object
+### 1. `DomainDescriptor` 作为领域 authoritative 根对象
 
-Each domain must declare at minimum:
+每个领域必须至少声明：
 
 - `domainId`
 - `displayName`
@@ -48,20 +48,20 @@ Each domain must declare at minimum:
 - `governancePolicy`
 - `lifecycleState`
 
-### 2. Domain Onboarding Uses Four-Phase Fixed Runbook
+### 2. 领域接入采用四阶段固定 runbook
 
-Onboarding process is fixed as:
+接入流程固定为：
 
-1. Domain Modeling
-2. Development Verification
-3. Security Certification
-4. Gray Rollout
+1. 领域建模
+2. 开发验证
+3. securityauthentication
+4. 灰度上线
 
-Any new domain must leave structured evidence, not just submit code directories.
+任何新领域必须留下结构化证据，而不is只提交code目录。
 
-### 3. Domain Is the Unified Boundary for Bundle, Knowledge, Evaluation, and Governance
+### 3. 领域is bundle、知识、评估和治理的统一边界
 
-The following capabilities must all attach to the domain:
+以下能力都必须挂靠到领域：
 
 - tool bundle
 - workflow registry
@@ -70,19 +70,20 @@ The following capabilities must all attach to the domain:
 - eval dataset / gate
 - ownership / budget / SLO
 
-### 4. Domain Onboarding Priority: Constraints First, Then Extensions
+### 4. 领域接入优先约束，再允许扩展
 
-When adding a new domain, first supplement:
+新增领域时，先补：
 
 - contract
 - schema
 - registry / validation
 - smoke test
 
-Then supplement business-specific implementation, avoid "write code first, fix boundaries later".
+再补业务专有实现，避免“先写code后补边界”。
 
 ## Consequences
 
-- Subsequent implementation of `src/domains/*` must converge around `DomainDescriptor`
-- Design of `§37-§38` is no longer scattered across multiple parallel documents
-- Domain onboarding upgraded from "conventional integration" to "contract-based onboarding"
+- `src/domains/*` 的后续实现必须围绕 `DomainDescriptor` 收敛
+- `§37-§38` 的设计不再散落在多个平lines文档中
+- 领域接入从“约定式集成”升级为“契约式接入”
+

@@ -1,25 +1,25 @@
-# ADR-068: Multimodal Capability Architecture
+# ADR-068 多模态能力Architecture
 
-- Status: Accepted
-- Decision Date: 2026-04-20
+- Status：Accepted
+- Decision日期：2026-04-20
 
-## Context
+## Background
 
-Users need to process multimodal content such as images, audio, and documents; text-only ModelGateway does not meet requirements.
+user需要handle图片、语音、文档等多模态内容，纯文本的 ModelGateway 不满足需求。
 
 ## Decision
 
-### Supported Modalities
+### supported的模态
 
-| Modality | Input | Output | Use Cases |
-|----------|-------|--------|-----------|
-| text | Text | Text | Conversation, writing |
-| image | Image/video frame | Text | Image understanding |
-| audio | Audio | Text | Voice input |
-| document | PDF/Word | Text | Document understanding |
-| video | Video | Text | Video analysis |
+| 模态 | 输入 | 输出 | 场景 |
+|------|------|------|------|
+| text | 文本 | 文本 | 对话、写作 |
+| image | 图片/视频帧 | 文本 | 看图理解 |
+| audio | 音频 | 文本 | 语音输入 |
+| document | PDF/Word | 文本 | 文档理解 |
+| video | 视频 | 文本 | 视频分析 |
 
-### Multimodal Gateway
+### 多模态网关
 
 ```typescript
 interface MultimodalGateway {
@@ -34,50 +34,50 @@ interface MultimodalInput {
 }
 ```
 
-### Modality Processing Pipeline
+### 模态handle管道
 
 ```
 Input → Preprocessing → Modality Router → Specialized Processor → Fusion → Output
 ```
 
-### Provider Abstraction
+### Provider 抽象
 
-- Each modality supports multiple Providers
-- Automatic failover
-- Cost and latency routing
+- 每个模态supported多个 Provider
+- 自动故障转移
+- 成本和delay路由
 
-### Fusion Strategies
+### 融合策略
 
-| Strategy | Description |
-|----------|-------------|
-| early_fusion | Early feature fusion |
-| late_fusion | Late decision fusion |
-| hierarchical | Hierarchical fusion |
+| 策略 | Description |
+|------|------|
+| early_fusion | 早期特征融合 |
+| late_fusion | 晚期Decision融合 |
+| hierarchical | 分层融合 |
 
-### Content Safety
+### 内容security
 
-- Image content moderation
-- Audio content moderation
-- Document security scanning
+- 图片内容审核
+- 音频内容审核
+- 文档security扫描
 
 ## Consequences
 
-Advantages:
+优点：
 
-- Expands applicable scope
-- Improves user experience
-- Supports more scenarios
+- 扩大适用范围
+- 提升user体验
+- supported更多场景
 
-Disadvantages:
+代价：
 
-- Provider integration complex
-- Multimodal understanding cost high
+- Provider 集成复杂
+- 多模态理解成本高
 
-## Cross References
+## 交叉references用
 
-- [ADR-006 LLM Provider Strategy](./006-llm-provider-strategy.md)
-- [Platform Architecture §16 Prompt Management and Versioning](../architecture/00-platform-architecture.md)
+- [ADR-006 LLM Provider 策略](./006-llm-provider-strategy.md)
+- [平台Architecture §16 Prompt managevs版本化](../architecture/00-platform-architecture.md)
 
-## Source Section
+## 来源章节
 
-- `§68` Multimodal Capability Architecture
+- `§68` 多模态能力Architecture

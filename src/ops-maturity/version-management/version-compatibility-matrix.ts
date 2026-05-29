@@ -221,7 +221,11 @@ export class VersionCompatibilityMatrix {
 
     for (let i = 0; i < packs.length; i++) {
       for (let j = i + 1; j < packs.length; j++) {
-        results.push(this.checkCompatibility(packs[i]!, packs[j]!));
+        const left = packs[i];
+        const right = packs[j];
+        if (left != null && right != null) {
+          results.push(this.checkCompatibility(left, right));
+        }
       }
     }
 

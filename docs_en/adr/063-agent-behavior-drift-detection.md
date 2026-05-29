@@ -1,24 +1,24 @@
-# ADR-063: Agent Behavior Drift Detection Architecture
+# ADR-063 Agent lines为漂移检测Architecture
 
-- Status: Accepted
-- Decision Date: 2026-04-20
+- Status：Accepted
+- Decision日期：2026-04-20
 
-## Context
+## Background
 
-Agent behavior may drift over time, gradually exceeding quality thresholds, requiring continuous monitoring and detection.
+Agent lines为可能随time漂移，逐渐exceeds出质量threshold，需要持续监控和检测。
 
 ## Decision
 
-### Drift Types
+### 漂移class型
 
-| Type | Description | Detection Method |
-|------|-------------|------------------|
-| input_drift | Input distribution changes | Statistical test |
-| output_drift | Output distribution changes | Threshold monitoring |
-| behavioral_drift | Behavior pattern changes | Sequence comparison |
-| quality_drift | Quality metric degradation | Sliding window |
+| class型 | Description | 检测方法 |
+|------|------|----------|
+| input_drift | 输入分布变化 | 统计检验 |
+| output_drift | 输出分布变化 | threshold监控 |
+| behavioral_drift | lines为模式变化 | 序列比对 |
+| quality_drift | 质量指标下降 | 滑动窗口 |
 
-### Detection Algorithm
+### 检测算法
 
 ```typescript
 interface DriftDetectionConfig {
@@ -35,41 +35,41 @@ type DriftMethod =
   | 'sliding_window';
 ```
 
-### Drift Detection Rules
+### 漂移检测规则
 
-| Rule | Window | Threshold | Event |
-|------|--------|-----------|-------|
-| Input distribution | 24h | -10% deviation | SEV3 |
-| Output distribution | 24h | -10% deviation | SEV3 |
-| Error rate | 5 min | > 5% | SEV2 |
-| Latency | 5 min | > 2x baseline | SEV2 |
+| 规则 | 窗口 | threshold | 事件 |
+|------|------|------|------|
+| 输入分布 | 24h | -10% 偏移 | SEV3 |
+| 输出分布 | 24h | -10% 偏移 | SEV3 |
+| 错误率 | 5 分钟 | > 5% | SEV2 |
+| delay | 5 分钟 | > 2x baseline | SEV2 |
 
-### Response Mechanism
+### response机制
 
-1. Drift detected
-2. Trigger alert
-3. Isolate affected Agent
-4. Start root cause analysis
-5. Trigger improvement process
+1. 检测到漂移
+2. 触发告警
+3. 隔离受Impact Agent
+4. 启动Root Cause分析
+5. 触发改进流程
 
 ## Consequences
 
-Advantages:
+优点：
 
-- Early problem detection
-- Prevents quality degradation
-- Automated response
+- 早期发现Issue
+- 防止质量劣化
+- 自动化response
 
-Disadvantages:
+代价：
 
-- False positives may disrupt business
-- Detection algorithm requires tuning
+- 误报可能干扰业务
+- 检测算法需要调优
 
-## Cross References
+## 交叉references用
 
-- [Platform Architecture §17 Model Evaluation and Quality Gate](../architecture/00-platform-architecture.md)
-- [ADR-080 Learn Hub and Four Pattern Detectors](./080-learn-hub-pattern-detection.md)
+- [平台Architecture §17 模型评估vs质量门禁](../architecture/00-platform-architecture.md)
+- [ADR-080 Learn Hub vs四模式检测器](./080-learn-hub-pattern-detection.md)
 
-## Source Section
+## 来源章节
 
-- `§63` Agent Behavior Drift Detection Architecture
+- `§63` Agent lines为漂移检测Architecture

@@ -1,21 +1,28 @@
-# Platform Architecture Index
+# Platform Architecture - Authoritative Entry Point
 
-> **Review Date**: 2026-05-14: The historical 711KB monolithic architecture document has been archived to `./archive/00-platform-architecture-monolith-2026-05-14.md`. This file is retained as a short index to prevent the architecture entry from continuing to carry unauditable oversized content.
->
-> **2026-05-26 Sync**: Interface layer, federation governance, event reliability, and Electron/UI contracts have been written back to the official document based on current code; the latest system-level evidence is in `../reviews/system-review-2026-05-26.md`.
+> **Review Date**: 2026-05-27
+> **Note**: This file is the "Architecture Entry Index", not a placeholder stub for falling back to a monolithic document.
 
-## Current Reading Entry Points
+## 1. Current Authority Matrix
 
-- Architecture directory guide: `./README.md`
-- Design review issues table: `../reviews/issues-table.md`
-- Implementation consistency audit: `../reviews/platform-architecture-implementation-consistency-audit.md`
-- Contract documents: `../contracts/`
-- ADR: `../adr/`
+| Issue to Confirm | Authoritative Entry |
+| --- | --- |
+| Platform overview, reading order | [README.md](./README.md) |
+| Module structure vs. plane boundaries | [01-code-structure.md](./01-code-structure.md), [03-module-diagrams.md](./03-module-diagrams.md) |
+| Runtime sequences | [04-runtime-sequence.md](./04-runtime-sequence.md) |
+| UI / multi-endpoint boundaries | [05-cross-platform-ui-architecture.md](./05-cross-platform-ui-architecture.md) |
+| Specification objects vs. protocol boundaries | [../contracts/README.md](../contracts/README.md) |
+| History vs. decision evolution | [../adr/README.md](../adr/README.md) |
+| Current gaps vs. remediation status | [../reviews/platforme-full-review-b.md](../reviews/platforme-full-review-b.md) |
 
-## Maintenance Rules
+## 2. Current Engineering Naming Baseline
 
-- New architecture content should preferentially fall into thematic documents or ADR, and should not expand this index into a monolithic document.
-- When referencing historical full text, link to the archived file and record the reason in the review table.
-- Architecture implementation closure is based on `issues-table.md` line-level evidence and `scripts/ci/audit-review-batch-resource-contracts.mjs` audit results.
-- Historical `five-plane-*` directory names, old "CEO/VP/Division" narrative, and v2.x layered descriptions are only used as compatible search entry points; current engineering naming uses `P1-P5 + X1`, `DomainDescriptor`, `HarnessRun/NodeRun` as the standard.
-- Current public UI data source uses Layer C `/v1/*` contract as the standard, and `/admin/*` is no longer treated as the default frontend public interface.
+- Platform core: `five-plane-interface`, `five-plane-control-plane`, `five-plane-orchestration`, `five-plane-execution`, `five-plane-state-evidence`
+- Cross-cutting capabilities: `shared`, `contracts`, `model-gateway`, `prompt-engine`, `compliance`
+- Upper-layer capabilities: `domains`, `interaction`, `org-governance`, `scale-ecosystem`, `ops-maturity`
+
+## 3. Usage Rules
+
+- When you need "the big picture", first read this entry point, then jump to topic-specific documents. Do not treat a single file as the complete source of truth.
+- Current implementation closure must return to the review table or contract/ADR; do not repeat line-level issues on this entry page.
+- Historical monolithic architecture documents are retained only in archive, for traceability, and not as the current authoritative entry.

@@ -1,34 +1,34 @@
 # v4.3 Harness Run Contract
 
-> v4.3 canonical contract. Covers `HarnessRun`.
+> v4.3 canonical contract。覆盖 `HarnessRun`。
 
-## 1. Scope
+## 1. 范围
 
-`HarnessRun` is the sole authoritative Run for a complete task execution. OAPEFLIR stages, legacy `workflow_run`, UI timeline, and diagnostics runs can only be projections or views of `HarnessRun`.
+`HarnessRun` is一iterations完整任务运lines的唯一权威 Run。OAPEFLIR 阶段、legacy `workflow_run`、UI timeline 和 diagnostics run 都只能作为 `HarnessRun` 的 projection 或 view。
 
-## 2. Minimum Fields
+## 2. 最小字段
 
-| Field | Type | Description |
-| --- | --- | --- |
-| `harnessRunId` | `string` | Run ID |
-| `tenantId` | `string` | Tenant |
-| `confirmedTaskSpecId` | `string` | Source task specification |
-| `requestEnvelopeId` | `string` | Admission request |
-| `requestHash` | `string` | Idempotent hash |
-| `status` | `HarnessRunStatus` | Run status |
-| `constraintPackRef` | `ConstraintPackRef` | Run constraints |
+| 字段 | class型 | Description |
+|---|-------|--------|
+| `harnessRunId` | `string` | 运lines ID |
+| `tenantId` | `string` | 租户 |
+| `confirmedTaskSpecId` | `string` | 来源任务规格 |
+| `requestEnvelopeId` | `string` | admission request |
+| `requestHash` | `string` | 幂等 hash |
+| `status` | `HarnessRunStatus` | 运linesStatus |
+| `constraintPackRef` | `ConstraintPackRef` | 运lines约束 |
 | `versionLockId` | `string` | `RunVersionLock` |
-| `planGraphBundleId` | `string?` | Current plan graph |
-| `budgetLedgerId` | `string` | Budget ledger |
-| `currentSeq` | `number` | Aggregate seq / CAS version |
-| `createdAt` | `timestamp` | Creation time |
-| `updatedAt` | `timestamp` | Update time |
-| `terminalAt` | `timestamp?` | Terminal time |
-| `terminalReason` | `string?` | Terminal reason |
+| `planGraphBundleId` | `string?` | 当前计划图 |
+| `budgetLedgerId` | `string` | budget账本 |
+| `currentSeq` | `number` | aggregate seq / CAS 版本 |
+| `createdAt` | `timestamp` | 创建time |
+| `updatedAt` | `timestamp` | 更新time |
+| `terminalAt` | `timestamp?` | 终态time |
+| `terminalReason` | `string?` | 终态原因 |
 
-## 3. Status Enum
+## 3. Status枚举
 
-`HarnessRunStatus`:
+`HarnessRunStatus`：
 
 - `created`
 - `admitted`
@@ -45,42 +45,43 @@
 - `cancelled`
 - `aborted`
 
-Terminal states: `completed`, `failed`, `cancelled`, `aborted`. Terminal states cannot transition out.
+终态：`completed`、`failed`、`cancelled`、`aborted`。终态不可迁出。
 
-## 4. State Transition Rules
+## 4. Status推进规则
 
-- All state transitions must go through `RuntimeStateMachine.transition(command)`.
-- Transition must validate CAS, active lease, fencing token, policy guard, budget precondition, and version lock.
-- Each truth mutation must append a `platform.*` fact event within the same transaction.
-- `replanning` can only be expressed via `GraphPatch` append and must not overwrite historical `PlanGraphBundle`.
-- `compensating` does not mean the original run succeeded; compensation facts are written to `CompensationRecord`.
+- 所有Status推进必须via `RuntimeStateMachine.transition(command)`。
+- transition 必须校验 CAS、active lease、fencing token、policy guard、budget precondition vs version lock。
+- 每iterations truth mutation 必须同事务追加 `platform.*` fact event。
+- `replanning` 只能via `GraphPatch` 追加table达，不得覆盖历史 `PlanGraphBundle`。
+- `compensating` 不代table原运linessuccess；补偿事实writes `CompensationRecord`。
 
-## 5. Projection Rules
+## 5. Projection 规则
 
-- `workflow_run` is allowed only as a read model / query projection.
-- OAPEFLIR run lifecycle can only be derived from `HarnessRun` + `OapeflirViewEvent`.
-- UI can display stage state but must not write back to `HarnessRun.status` in reverse.
+- `workflow_run` 只允许作为 read model / query projection。
+- OAPEFLIR run lifecycle 只能由 `HarnessRun` + `OapeflirViewEvent` 派生。
+- UI 可显示阶段Status，但不得反向writes `HarnessRun.status`。
 
-## 6. Legacy / Deprecated Mapping
+## 6. Legacy / Deprecated 映射
 
-| Old Name | v4.3 Semantic |
+| 旧名 | v4.3 语义 |
 | --- | --- |
-| `OapeflirRun` | Semantic projection of `HarnessRun`, not truth |
-| `workflow_run` | Read projection |
+| `OapeflirRun` | `HarnessRun` 的语义投影，不is truth |
+| `workflow_run` | read projection |
 | `RunStatus` | `HarnessRun.status` + OAPEFLIR view |
-| `HarnessStep` | Semantic step; can be expanded into one or more `NodeRun`s |
+| `HarnessStep` | 语义 step；可展开为一个或多个 `NodeRun` |
 
-## 7. Test Requirements
+## 7. 测试要求
 
-- Terminal states cannot transition out.
-- Admission idempotency: duplicate `RequestEnvelope` must not create a second `HarnessRun`.
-- Any direct repository truth mutation must be rejected or restricted to internal primitives.
-- Each state transition must produce a platform fact event and audit evidence.
+- 终态不可迁出。
+- admission 幂等：repeats `RequestEnvelope` 不创建第二个 `HarnessRun`。
+- 任何directly repository truth mutation 必须被测试拒绝或限制为内部原语。
+- 每iterationsStatus推进必须产生 platform fact event vs audit evidence。
+
 
 ## v4.3 Architecture Remediation
 
-The following entries fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If historical sections of this document conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` shall prevail.
+以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中record的 contract 偏差。本文档历史段落如vs本节conflicts，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
 
-- T-7: Contract §45.13 defines 6 states vs architecture §25.8 defines 13 states, and architecture documents are also internally inconsistent (§25.4 lists 7 states vs §25.8 lists 13 states). Fix: This semantic converges to v4.3 canonical contract; old fields, old states, old DTOs, or old terminology are allowed only as legacy/deprecated/projection/migration inputs and must not be used as new implementation entry points.
+- T-7: 合约§45.13defines6Status vs Architecture§25.8defines13Status，Architecture文档内部也inconsistent（§25.4列7态 vs §25.8列13态）。修复：该语义收敛到 v4.3 canonical contract；旧字段、旧Status、旧 DTO 或旧术语only允许作为 legacy/deprecated/projection/migration input，不得作为新实现入口。
 
-Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events must only use `platform.*`; OAPEFLIR can only be `oapeflir.view.*` / rationale projections; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.
+mandatory规则：Status迁移必须via `RuntimeStateMachine.transition(command)`；执lines计划必须uses `PlanGraphBundle`；执lines结果必须uses `NodeAttemptReceipt`；truth event 只能uses `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；budget必须uses `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。

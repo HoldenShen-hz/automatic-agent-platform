@@ -12,8 +12,8 @@
 
 - Daily/hourly budgets must be protected by platform hard limits.
 - Bid and audience changes must record reason, budget impact, and rollback strategy.
-- Low-quality traffic, abnormal spending, and compliance risks must trigger degradation or manual review.
+- Low-quality traffic, abnormal spending, and compliance risks must trigger degradation or human review.
 
 ## Acceptance Criteria
 
-- Before GA, must provide budget hard limits, ROAS evaluation, campaign audit, and abnormal spending alert evidence.
+- GA must provide budget hard limits, ROAS evaluation, delivery audit, and abnormal spending alert evidence before release.

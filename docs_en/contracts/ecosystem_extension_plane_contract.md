@@ -2,35 +2,35 @@
 
 ---
 
-## OAPEFLIR Association
+## OAPEFLIR 关联
 
-This contract participates in the following stages of the OAPEFLIR eight-stage cycle:
+本 contract 参vs OAPEFLIR 八阶段循环中的以下阶段：
 
-- **Observe**: Signal collection and aggregation
-- **Assess**: Pre-execution assessment and risk judgment
-- **Plan**: Task decomposition and DAG construction
-- **Execute**: Step execution and fault tolerance
-- **Feedback**: Signal collection and preprocessing
-- **Learn**: Pattern detection and knowledge extraction
-- **Improve**: Improvement candidate evaluation and rollout
-- **Release**: Controlled release and rollback
+- **Observe**：信号采集vs聚合
+- **Assess**：执lines前评估vs风险判断
+- **Plan**：任务分解vs DAG 构建
+- **Execute**：步骤执linesvs容错
+- **Feedback**：信号收集vs预handle
+- **Learn**：模式检测vs知识提取
+- **Improve**：改进候选评估vs rollout
+- **Release**：受控发布vs回滚
 
 ---
 
-## 1. Scope
+## 1. 范围
 
-This contract defines the extension ecosystem plane, including capability registry, Domain Registry, plugin SPI, domain tool bundle, review pipeline, marketplace, compatibility and revocation mechanisms.
+本 contract defines扩展生态平面，includes capability registry、Domain Registry、plugin SPI、domain tool bundle、review pipeline、marketplace、兼容性vs撤销机制。
 
-It extends [tool_skill_plugin_contract.md](./tool_skill_plugin_contract.md) to answer "how are external extensions securely connected, registered, published, upgraded, disabled and rolled back".
+它扩展 [tool_skill_plugin_contract.md](./tool_skill_plugin_contract.md)，used for回答“外部扩展如何被security接入、注册、发布、升级、disabled和回滚”。
 
-## 2. Goals
+## 2. 目标
 
-- Bring tool / skill / plugin / MCP extensions into a unified ecosystem governance model.
-- Clarify capability declaration, review, version compatibility, revocation and domain binding paths.
-- Prevent third-party extensions from breaching platform security boundaries.
-- Reserve clear contract boundaries for `M2-EXT-01` `Knowledge Plane / Artifact Plane / Plugin SPI / Domain Registry`.
+- 让 tool / skill / plugin / MCP 扩展进入统一生态治理模型。
+- 明确 capability 声明、审核、版本兼容、撤销和 domain 绑定路径。
+- 避免第三方扩展打穿平台security边界。
+- 为 `M2-EXT-01` 的 `Knowledge Plane / Artifact Plane / Plugin SPI / Domain Registry` 留出明确合同边界。
 
-## 3. Canonical Components
+## 3. Canonical 组件
 
 - `CapabilityRegistry`
 - `DomainRegistry`
@@ -41,7 +41,7 @@ It extends [tool_skill_plugin_contract.md](./tool_skill_plugin_contract.md) to a
 - `CompatibilityResolver`
 - `RevocationService`
 
-## 4. Canonical Objects
+## 4. Canonical 对象
 
 - `CapabilityDefinition`
 - `DomainCapabilityRegistryEntry`
@@ -54,7 +54,7 @@ It extends [tool_skill_plugin_contract.md](./tool_skill_plugin_contract.md) to a
 
 ## 5. Domain Capability Registry
 
-### 5.1 `CapabilityDefinition` Minimum Fields
+### 5.1 `CapabilityDefinition` 最小字段
 
 - `capability_id`
 - `provider_type`
@@ -63,7 +63,7 @@ It extends [tool_skill_plugin_contract.md](./tool_skill_plugin_contract.md) to a
 - `version`
 - `owner_ref`
 
-### 5.2 `DomainCapabilityRegistryEntry` Minimum Fields
+### 5.2 `DomainCapabilityRegistryEntry` 最小字段
 
 - `domain_id`
 - `bundle_id`
@@ -75,22 +75,22 @@ It extends [tool_skill_plugin_contract.md](./tool_skill_plugin_contract.md) to a
 - `default_activation_policy`
 - `trust_tier`
 
-Rules:
+规则：
 
-- All extensions must declare capability first before entering execution chain.
-- Domain bundle binding is the authoritative entry for capability exposure to specific domain.
-- Runtime must not load extension packages that fail compatibility, permission and trust gates.
+- 所有扩展都必须先声明 capability，再进入执lines链。
+- domain bundle 绑定is capability 暴露给具体 domain 的权威入口。
+- runtime 不得加载未via compatibility、permission 和 trust gate 的扩展包。
 
-## 6. Plugin SPI Integration
+## 6. Plugin SPI 集成
 
-Extension plane uniformly acknowledges four SPI types:
+extension plane 统一承认四class SPI：
 
 - `DomainRetrieverPlugin`
 - `DomainValidatorPlugin`
 - `DomainPlannerPlugin`
 - `DomainPresenterPlugin`
 
-`PluginSpiRegistration` records at minimum:
+`PluginSpiRegistration` 至少record：
 
 - `plugin_id`
 - `spi_type`
@@ -106,33 +106,33 @@ Extension plane uniformly acknowledges four SPI types:
 - `sdk_surface`
 - `registered_at`
 
-Rules:
+规则：
 
-- Lifecycle covers at minimum `registered -> loaded -> active -> inactive -> unloaded`.
-- Current authoritative runtime isolation allows `shared_process`, `serialized_in_process`, `forked_process`, `sandboxed_process` and `containerized_process`.
-- `forked_process` represents independent subprocess isolation baseline; `sandboxed_process` represents a stronger isolation mode with independent subprocess + dedicated sandbox root + minimal env whitelist + Node permission model.
-- `containerized_process` represents launcher-based external isolation runtime interface, can be carried by `docker` / `podman` / `bwrap` or equivalent independent sandbox launcher; communication between host and child via stdio JSON protocol.
-- Neither `sandboxed_process` nor `containerized_process` should be directly described as completed OCI orchestrator, VM or microVM fleet orchestration; current repository provides auditable isolated runtime host and launcher interface, while real live infra still requires target environment validation.
-- Isolated failure can set plugin to `degraded` or `disabled`, with optional cooldown window; cooldown state must be queryable by inventory, diagnostics or API.
-- If `forked_process`, `sandboxed_process` or `containerized_process` is enabled, runtime process id should be queryable by inventory, diagnostics or API, and host process must be able to reclaim subprocess on unload / shutdown.
-- If `sandboxed_process` or `containerized_process` is enabled, runtime sandbox root should also be queryable by inventory, diagnostics or API, for operator to perform isolation root directory audit.
-- Plugin invocation should publish at minimum `plugin:invocation_started` and `plugin:invocation_completed` typed audit events for audit and feedback projection consumption.
-- SPI registration results must be queryable by inventory, diagnostics and audit system.
-- Plugins must only interact with core via public SDK surface, must not reach into private implementation.
+- lifecycle 至少覆盖 `registered -> loaded -> active -> inactive -> unloaded`。
+- 当前 authoritative runtime isolation 允许 `shared_process`、`serialized_in_process`、`forked_process`、`sandboxed_process` vs `containerized_process`。
+- `forked_process` table示独立子进程隔离基线；`sandboxed_process` table示独立子进程 + 专属 sandbox root + 最小 env 白名单 + Node permission model 的更强隔离模式。
+- `containerized_process` table示 launcher-based 的外部隔离 runtime 接口，可由 `docker` / `podman` / `bwrap` 或等价独立沙箱 launcher 承载；宿主vs child 之间via stdio JSON protocol communication。
+- `sandboxed_process` vs `containerized_process` 都不应被directlytable述为completed的 OCI orchestrator、VM 或 microVM fleet 编排；当前仓库提供的is可审计的 isolated runtime host vs launcher 接口，而真实 live infra 仍需目标环境验证。
+- isolated failure 可把 plugin 置为 `degraded` 或 `disabled`，并可附带 cooldown 窗口；cooldown Status必须可被 inventory、diagnostics 或 API 查询。
+- 若enabled `forked_process`、`sandboxed_process` 或 `containerized_process`，runtime process id 应可被 inventory、diagnostics 或 API 查询，且宿主进程必须能在 unload / shutdown 时回收子进程。
+- 若enabled `sandboxed_process` 或 `containerized_process`，runtime sandbox root 也应可被 inventory、diagnostics 或 API 查询，以便 operator 做隔离根目录审计。
+- plugin invocation 至少应发布 `plugin:invocation_started` vs `plugin:invocation_completed` typed audit 事件，供审计和反馈投影消费。
+- SPI 注册结果必须能被 inventory、diagnostics 和审计系统查询。
+- plugin 只能via public SDK surface vs core 交互，不得 reach-in 私有实现。
 
-## 7. Review and Release Pipeline
+## 7. Review vs发布流水线
 
-Review workflow includes at minimum:
+review workflow 至少contains：
 
-1. Submission
-2. Static validation
-3. Permission review
-4. Compatibility check
-5. Human review
-6. Publish
-7. Revoke or rollback
+1. 提交
+2. 静态校验
+3. permission审查
+4. 兼容性检查
+5. 人工审核
+6. 发布
+7. 撤销或回滚
 
-`ReviewDecision` minimum fields:
+`ReviewDecision` 最小字段：
 
 - `decision_id`
 - `extension_id`
@@ -143,21 +143,21 @@ Review workflow includes at minimum:
 - `signed_off_by`
 - `decided_at`
 
-Supplementary rules:
+补充规则：
 
-- Marketplace publish must go through review decision.
-- Published extensions must support revoke / disable / rollback.
-- Extension package should support signature or equivalent integrity verification.
+- marketplace 发布必须via过 review decision。
+- 已发布扩展必须supported revoke / disable / rollback。
+- extension package 应supported签名或等价完整性校验。
 
 ## 8. Compatibility Matrix
 
-Semantic version compatibility has at least three layers:
+semantic version 兼容性至少分三层：
 
 - `api_contract`
 - `permission_surface`
 - `runtime_capability`
 
-`CompatibilityMatrix` covers at minimum:
+`CompatibilityMatrix` 至少覆盖：
 
 - `plugin_api_range`
 - `built_with_platform_version`
@@ -165,14 +165,14 @@ Semantic version compatibility has at least three layers:
 - `supported_domain_ids`
 - `breaking_changes`
 
-Rules:
+规则：
 
-- `enabled` does not mean compatible; compatibility gate failure must fail-close.
-- Domain bundle upgrade introducing higher permissions or trust tier change requires re-review.
+- `enabled` 不代table兼容；compatibility gate 未via时必须 fail-close。
+- domain bundle 升级若references入更高permission或 trust tier 变化，必须重新 review。
 
-## 9. Revocation and Rollback
+## 9. 撤销vs回滚
 
-`RevocationRecord` contains at minimum:
+`RevocationRecord` 至少contains：
 
 - `revocation_id`
 - `target_type`
@@ -182,33 +182,33 @@ Rules:
 - `rollback_target?`
 - `created_at`
 
-Revocation trigger scenarios include at minimum:
+撤销触发场景至少includes：
 
-- Permission surface exceeding declaration
-- Signature invalid or source untrusted
-- Compatibility regression
-- Sandbox / policy escape
-- Domain bundle misbinding
+- permission面exceeds出声明
+- 签名失效或来源不可信
+- compatibility regression
+- sandbox / policy escape
+- domain bundle 误绑定
 
-## 10. Relationship with Existing Documents
+## 10. vs现有文档的关系
 
-- [tool_skill_plugin_contract.md](./tool_skill_plugin_contract.md) defines internal registration, authoring and SPI baseline.
-- `sandbox_and_auth_contract.md` provides extension execution security boundary.
-- `api_surface_contract.md`, `admin_console_and_human_takeover_contract.md` are responsible for extension plane management entry.
+- [tool_skill_plugin_contract.md](./tool_skill_plugin_contract.md) defines内部注册、authoring 和 SPI 基线。
+- `sandbox_and_auth_contract.md` 提供扩展执lines的security边界。
+- `api_surface_contract.md`、`admin_console_and_human_takeover_contract.md` 负责 extension plane 的manage入口。
 
-## 11. Phased Boundaries
+## 11. 分阶段边界
 
-### Current phase1-4 authoritative scope
+### 当前 phase1-4 authoritative 范围
 
-- Capability declaration must exist
-- Contract boundaries for manifest / compatibility / permission / trust must be clear
-- Domain bundle, plugin SPI, marketplace can exist as design boundaries, but should not be described as fully operational production plane
+- capability 声明必须存在
+- manifest / compatibility / permission / trust 的 contract 边界必须明确
+- domain bundle、plugin SPI、marketplace 可以作为设计边界存在，但当前不应被table述为 fully operational production plane
 
-### `M2` target-state scope
+### `M2` target-state 范围
 
-- Domain Registry as unified registration backend
-- Per-domain tool bundle full control plane
-- Plugin SPI large-scale integration
-- Marketplace publish, review, revoke and rollback automation
+- Domain Registry 作为统一注册后端
+- per-domain tool bundle 完整Control Plane
+- plugin SPI 大规模集成
+- marketplace 发布、审核、撤销和回滚自动化
 
-Therefore, this contract primarily assumes target-state extension plane governance definition; current readiness can only treat it as a boundary document, not a completed delivery proof.
+因此本 contract 主要承担 target-state extension plane 的治理defines；当前 readiness 只能把它视为边界文档，而不iscompleted交付证明。

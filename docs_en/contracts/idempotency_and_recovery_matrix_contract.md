@@ -2,68 +2,68 @@
 
 ---
 
-## OAPEFLIR Association
+## OAPEFLIR 关联
 
-This contract participates in the following phases of the OAPEFLIR eight-stage cycle:
+本 contract 参vs OAPEFLIR 八阶段循环中的以下阶段：
 
-- **Observe**: Signal collection and aggregation
-- **Assess**: Pre-execution assessment and risk judgment
-- **Plan**: Task decomposition and DAG construction
-- **Execute**: Step execution and fault tolerance
-- **Feedback**: Signal collection and preprocessing
-- **Learn**: Pattern detection and knowledge extraction
-- **Improve**: Improvement candidate evaluation and rollout
-- **Release**: Controlled release and rollback
+- **Observe**：信号采集vs聚合
+- **Assess**：执lines前评估vs风险判断
+- **Plan**：任务分解vs DAG 构建
+- **Execute**：步骤执linesvs容错
+- **Feedback**：信号收集vs预handle
+- **Learn**：模式检测vs知识提取
+- **Improve**：改进候选评估vs rollout
+- **Release**：受控发布vs回滚
 
 ---
 
-## 1. Scope
+## 1. 范围
 
-This contract defines the idempotency matrix for tool calls and `NodeRun / NodeAttempt`, as well as handling strategies during crash recovery.
+本 contract defines工具callvs `NodeRun / NodeAttempt` 的幂等性矩阵，以及崩溃恢复时的handle策略。
 
-## 2. Core Principles
+## 2. 核心principle
 
-- Any automatic retry must first pass idempotency judgment.
-- Any recovery skip must have executed evidence.
-- Non-idempotent `NodeAttempt` must not be automatically replayed by default.
+- 任何自动重试都必须先via过幂等性判断。
+- 任何恢复跳过都必须有已执lines证据。
+- 非幂等 `NodeAttempt` defaults to不得自动重放。
 
-## 3. Tool-Level Matrix
+## 3. 工具级矩阵
 
-| Tool Category | Default Idempotent | Executed Check | Crash Recovery Strategy |
-| --- | --- | --- | --- |
-| Read-only query | Yes | Same input + no side effects | Can retry directly |
-| File read | Yes | Path exists and not written | Can retry directly |
-| File write (overwrite) | Implementation-dependent | Content checksum / write marker | Verify then skip or rewrite |
-| File append | No | Append marker / transaction log | Defaults to human confirmation or explicit idempotency key |
-| External API query | Usually yes | Request fingerprint | Can retry with limit |
-| External API write | No | External resource id / idempotency key | Must not auto-retry by default |
-| LLM inference | Yes | Response cache or execution lineage | Can retry, but cost needs recalculation |
-| Artifact write | Policy-dependent | Artifact checksum / path | Can skip if exists and verified |
+| 工具class别 | defaults to幂等性 | 已执lines检查 | 崩溃恢复策略 |
+|---|-------|--------| --- |
+| 只读查询 | is | 输入相同 + no副作用 | 可directly重试 |
+| 文件读取 | is | 路径存在且未writes | 可directly重试 |
+| 文件writes（覆盖型） | 视实现而定 | 内容 checksum / writes标记 | 校验后跳过或重写 |
+| 文件追加 | no | 追加标记 / 事务日志 | defaults to人工确认或显式幂等键 |
+| 外部 API 查询 | 通常is | request fingerprint | 可有限重试 |
+| 外部 API writes | no | 外部资源 id / idempotency key | defaults to不得自动重试 |
+| LLM 推理 | is | response cache 或 execution lineage | 可重试，但成本需重算 |
+| artifact writes | 视策略而定 | artifact checksum / path | 已存在且校验via可跳过 |
 
-## 4. NodeRun / NodeAttempt Level Matrix
+## 4. NodeRun / NodeAttempt 级矩阵
 
-| Node Semantic Type | Idempotent | Recovery Strategy |
-| --- | --- | --- |
-| Pure inference / planning | High | Can rerun |
-| Schema validation | High | Can rerun |
-| Read-only tool node | High | Can rerun |
-| Observe / Assess | High | Can rerun |
-| Feedback / Learn | Medium | Allows reconstruction based on evidence, but must not consume objects that have reached terminal state |
-| File generation node | Medium | Verify artifact then skip or rerun |
-| Improve candidate evaluation | Low | Defaults to block auto-recovery, requires guardrail / lineage verification |
-| Release rollout transition | Low | Defaults to block auto-recovery, prioritizes human confirmation or controlled rollback |
-| External side-effect node | Low | Defaults to block auto-recovery |
-| Approval waiting node | High | Rebuild waiting state |
-| Streaming display node | Medium | Can replay staged results, not rebuild all chunks |
+| Node 语义class型 | 幂等性 | 恢复时策略 |
+|---|-------|--------|
+| 纯推理 / 规划 | 高 | 可重跑 |
+| schema 校验 | 高 | 可重跑 |
+| 只读工具节点 | 高 | 可重跑 |
+| Observe / Assess | 高 | 可重跑 |
+| Feedback / Learn | 中 | 允许based on evidence 重建，但不得repeats消费已终态对象 |
+| 文件生成节点 | 中 | 校验 artifact 后跳过或重跑 |
+| Improve candidate evaluation | 低 | defaults to阻断自动恢复，需 guardrail / lineage 校验 |
+| Release rollout transition | 低 | defaults to阻断自动恢复，优先人工确认或受控 rollback |
+| 外部副作用节点 | 低 | defaults to阻断自动恢复 |
+| 审批等待节点 | 高 | 重建等待态 |
+| 流式展示节点 | 中 | 可回放阶段性结果，不重建全部 chunk |
 
-Rules:
+规则：
 
-- Canonical recovery objects are `NodeRun` and `NodeAttempt`; `step_id`, `workflow step`, `agent step` are allowed only as semantic labels in plan graph or display projections.
-- Before automatic recovery, must first verify the most recent `NodeAttemptReceipt`, and must not determine skip eligibility based solely on "same step name".
+- canonical 恢复对象is `NodeRun` vs `NodeAttempt`；`step_id`、`workflow step`、`agent step` 只允许作为 plan graph 里的语义标签或展示投影。
+- 自动恢复前必须先校验最近一iterations `NodeAttemptReceipt`，不得only凭“步骤名称相同”判断可跳过。
 
-## 5. Tool Metadata Requirements
+## 5. Tool 元data要求
 
-Each tool should ultimately declare at minimum:
+每个工具最终至少应声明：
 
 - `read_only`
 - `idempotent`
@@ -71,38 +71,39 @@ Each tool should ultimately declare at minimum:
 - `requires_confirmation`
 - `recovery_strategy`
 
-More detailed fields, consumers, and versioning rules follow the drilling document `tool_metadata_and_recovery_contract.md`.
+更细的字段、消费方和版本化规则以下钻文档 `tool_metadata_and_recovery_contract.md` 为准。
 
-`recovery_strategy` recommended enum:
+`recovery_strategy` Recommendation枚举：
 
 - `retry_safe`
 - `retry_with_check`
 - `skip_if_verified`
 - `manual_resume_required`
 
-## 6. Phase 1a Minimum Requirements
+## 6. Phase 1a 最小要求
 
-Phase 1a does not pursue complete automatic judgment but must at least achieve:
+Phase 1a 不追求完整自动判断，但至少要做到：
 
-- Distinguish read-only from side-effect tools
-- Distinguish nodes safe for automatic retry from those not safe for automatic retry
-- Retain executed evidence or explicitly block recovery for side-effect nodes
+- 区分只读vs有副作用工具
+- 区分可security自动重试vs不可自动重试节点
+- 对有副作用节点保留已执lines证据或明确阻断恢复
 
-## 7. Related Documents
+## 7. 关联文档
 
 - `runtime_execution_contract.md`
 - `tool_and_provider_execution_contract.md`
 - `task_and_workflow_contract.md`
 - `tool_metadata_and_recovery_contract.md`
 
-## 8. Closure Conclusion
+## 8. 收口Conclusion
 
-The core of recovery capability is not "whether it can be run again", but knowing which `NodeRun / NodeAttempt` can be safely rerun and which must first confirm "whether it has already been done".
+恢复能力的核心不is“能不能再跑一iterations”，而is知道哪些 `NodeRun / NodeAttempt` 可以security再跑，哪些必须先确认“is不is已via做过了”。
+
 
 ## v4.3 Architecture Remediation
 
-The following entries fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If historical sections of this document conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` shall prevail.
+以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中record的 contract 偏差。本文档历史段落如vs本节conflicts，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
 
-- T-37: This document originally built the recovery matrix on `workflow step / step`. The root cause was that early linear workflow documents were directly applied to the recovery contract, and after `NodeRun / NodeAttempt / NodeAttemptReceipt` became runtime truth, the body still remained at the step perspective. Fix: The body now changes the canonical recovery object to `NodeRun / NodeAttempt`, and explicitly states that `step_id` is allowed only as semantic labels or display projections.
+- T-37: 本文原先把恢复矩阵建立在 `workflow step / step` 上，Root cause: 早期线性 workflow 文档directly被accesses along用到恢复合同，`NodeRun / NodeAttempt / NodeAttemptReceipt` 成为 runtime truth 后正文仍停留在 step 视角。修复：正文现把 canonical 恢复对象改为 `NodeRun / NodeAttempt`，并明确 `step_id` 只允许作为语义标签或展示投影。
 
-Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events must only use `platform.*`; OAPEFLIR can only be `oapeflir.view.*` / rationale projections; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.
+mandatory规则：Status迁移必须via `RuntimeStateMachine.transition(command)`；执lines计划必须uses `PlanGraphBundle`；执lines结果必须uses `NodeAttemptReceipt`；truth event 只能uses `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；budget必须uses `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。

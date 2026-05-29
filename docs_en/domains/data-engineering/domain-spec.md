@@ -10,10 +10,10 @@
 
 ## Hard Constraints
 
-- Destructive schema changes must require manual approval.
+- Destructive schema changes must require human approval.
 - Data processing tasks must record input, output, lineage, and rollback strategy.
 - Production data writes must go through RuntimeStateMachine and audit append.
 
 ## Acceptance Criteria
 
-- Before GA, must provide downstream impact analysis, schema migration approval, data lineage, and recovery drill evidence.
+- GA must provide downstream impact analysis, schema migration approval, data lineage, and recovery drill evidence before release.

@@ -2,49 +2,49 @@
 
 ---
 
-## OAPEFLIR Association
+## OAPEFLIR 关联
 
-This contract participates in the following stages of the OAPEFLIR eight-stage loop:
+本 contract 参vs OAPEFLIR 八阶段循环中的以下阶段：
 
-- **Observe**: Signal collection and aggregation
-- **Assess**: Pre-execution assessment and risk judgment
-- **Plan**: Task decomposition and DAG construction
-- **Execute**: Step execution and fault tolerance
-- **Feedback**: Signal collection and preprocessing
-- **Learn**: Pattern detection and knowledge extraction
-- **Improve**: Improvement candidate evaluation and rollout
-- **Release**: Controlled release and rollback
+- **Observe**：信号采集vs聚合
+- **Assess**：执lines前评估vs风险判断
+- **Plan**：任务分解vs DAG 构建
+- **Execute**：步骤执linesvs容错
+- **Feedback**：信号收集vs预handle
+- **Learn**：模式检测vs知识提取
+- **Improve**：改进候选评估vs rollout
+- **Release**：受控发布vs回滚
 
 ---
 
-## 1. Scope
+## 1. 范围
 
-This contract defines the architectural decision process, module boundary governance, and version compatibility strategy required for mature industrial platforms.
+本 contract defines成熟工业平台所需的ArchitectureDecision流程、模块边界治理和版本兼容策略。
 
-Related documents:
+相关文档：
 
 - `project_structure_contract.md`
 - `api_surface_contract.md`
 - `control_vs_intelligence_boundary_contract.md`
 - `workflow_static_analysis_and_compensation_contract.md`
 
-## 2. Objectives
+## 2. 目标
 
-- Ensure new architectural trade-offs enter the formal ADR process, rather than remaining in chat or code comments.
-- Tighten the invocation boundaries between the domain layer, orchestration layer, runtime layer, and infrastructure layer.
-- Establish unified version governance for workflow DSL, role contracts, tool schemas, event schemas, and memory schemas.
+- 让新增Architecture取舍进入正式 ADR 流程，而不is停留在聊天或codecomment里。
+- 收紧领域层、编排层、运lines时层、基础设施层之间的call边界。
+- 为 workflow DSL、role contract、tool schema、event schema、memory schema 建立统一版本治理。
 
-## 3. ADR Governance Requirements
+## 3. ADR 治理要求
 
-The following changes must introduce a new ADR or update an existing ADR:
+以下变化必须新增 ADR，或更新现有 ADR：
 
-- Adding authoritative stores, queues, brokers, or caches.
-- Adding cross-boundary security models, execution models, or tenant isolation models.
-- Changing model selection strategies, fallback strategies, or control/intelligence boundaries.
-- Changing compatibility strategies for workflow DSL, event schemas, or tool schemas.
-- Introducing new production-level dependencies, plugin distribution mechanisms, or cross-region disaster recovery solutions.
+- 新增 authoritative store、queue、broker 或 cache。
+- 新增跨边界security模型、执lines模型或租户隔离模型。
+- 变更模型选择策略、fallback 策略或控制/智能边界。
+- 变更 workflow DSL、event schema、tool schema 的兼容策略。
+- references入新的生产级relies on、插件分发机制或跨区域容灾方案。
 
-Each ADR must include at minimum:
+每份 ADR 至少contains：
 
 - context
 - decision
@@ -54,36 +54,36 @@ Each ADR must include at minimum:
 - rollback / exit criteria
 - migration impact
 
-Additional requirements:
+补充要求：
 
-- If a design explicitly references an external system or external framework, document the "borrowed points" and "points not directly adopted."
-- If deciding not to adopt a seemingly reasonable external solution, retain a minimal rejection reason to avoid the same solution being repeatedly re-proposed.
-- For long-term stable boundaries, allow the introduction of an architecture smell inventory or guard scripts to continuously detect facade pollution, cross-layer dependencies, and runtime service locator bloat.
-- For core modules that change frequently over the long term, continuously review module bloat risks; if a central module persistently absorbs unrelated responsibilities, prioritize splitting boundaries rather than continuing to pile logic onto an "omniscient core."
+- 若某项设计显式参考外部系统或外部框架，应record“借鉴点”和“不directly采用的点”。
+- 若决定不采用某个看似合理的外部方案，应保留最小拒绝理由，避免同一方案反复被重新提案。
+- 对长期稳定边界，允许references入 architecture smell inventory 或 guard script，持续发现 facade 污染、越层relies on和 runtime service locator 膨胀。
+- 对长期高频变更的核心模块，应持续审查模块膨胀风险；若中心模块长期吸纳no关职责，应优先拆分边界，而不is继续向“万能 core”堆积逻辑。
 
-## 4. Module Boundaries
+## 4. 模块边界
 
-Recommended layers:
+推荐层iterations：
 
-| Layer | Responsible For | Forbidden Direct Dependencies |
-| --- | --- | --- |
-| `domain` | task, workflow, decision, result, policy objects | infra details, SDK clients |
-| `orchestration` | planner, orchestrator, transition service, recovery manager | low-level DB drivers, specific web frameworks |
-| `runtime` | execution, lease, worker, queue, sandbox, gateway | product narrative objects, UI components |
-| `infrastructure` | PostgreSQL, Redis, object store, provider adapter, observability adapter | business orchestration rules |
+| 层 | 负责内容 | 禁止directlyrelies on |
+|---|-------|--------|
+| `domain` | task、workflow、decision、result、policy objects | infra 细节、SDK 客户端 |
+| `orchestration` | planner、orchestrator、transition service、recovery manager | 底层 DB driver、具体 web framework |
+| `runtime` | execution、lease、worker、queue、sandbox、gateway | 产品叙事对象、UI 组件 |
+| `infrastructure` | PostgreSQL、Redis、object store、provider adapter、observability adapter | 业务编排规则 |
 
-Boundary rules:
+边界规则：
 
-- Cross-layer capabilities must be exposed through interfaces / ports.
-- "Upper layers are not allowed to directly call lower-layer implementation details."
-- Domain objects must not hold infrastructure clients.
-- Prompt, workflow, and policy files must not replace mandatory system code boundaries.
-- Public facades must not re-export private implementations in reverse, avoiding freezing accidental paths into de facto public contracts.
-- Type layer / contract layer should not directly bind implementation shims; if lazy loading is necessary, it must be handled through explicit runtime boundaries.
+- 跨层能力必须via interface / port 暴露。
+- 不允许“上层directly偷调下层implementation details”。
+- 领域对象不得持有基础设施 client。
+- prompt、workflow、policy 文件不得替代mandatory系统code边界。
+- public facade 不得反向 re-export 私有实现，避免把偶然路径冻结成事实上的公共契约。
+- class型层 / contract 层不应directly绑定实现 shim；若必须 lazy/load，应via明确 runtime boundary 承接。
 
-## 5. Version Governance Objects
+## 5. 版本治理对象
 
-Objects that must be explicitly versioned:
+必须显式版本化的对象：
 
 - `workflow_dsl_version`
 - `role_contract_version`
@@ -94,17 +94,17 @@ Objects that must be explicitly versioned:
 - `policy_bundle_version`
 - `prompt_bundle_version`
 
-## 6. Compatibility Strategy
+## 6. 兼容性策略
 
-| Object | Default Compatibility Strategy |
+| 对象 | defaults to兼容策略 |
 | --- | --- |
-| workflow DSL | minor backward compatible, major allows breaking changes |
-| role contract | minor adds optional fields, major changes required fields or semantics |
-| tool schema | must be compatible with two adjacent minor versions in production |
-| event schema | producer and consumer must be compatible with at least current and previous versions |
-| memory schema | must provide migration or lazy upgrade rules during upgrades |
+| workflow DSL | minor 向后兼容，major 允许 breaking change |
+| role contract | minor 新增optional字段，major 改必填或语义 |
+| tool schema | 生产内必须兼容两个相邻 minor |
+| event schema | producer vs consumer 至少兼容当前版和前一版 |
+| memory schema | 升级时必须提供 migration 或 lazy upgrade 规则 |
 
-## 7. Version Upgrade Process
+## 7. 版本升级流程
 
 ```mermaid
 flowchart TD
@@ -116,30 +116,30 @@ flowchart TD
     E -- "No" --> G["Rollback / Dual-Read Continue"]
 ```
 
-## 7.1 Protocol and Recovery Hints
+## 7.1 协议vs恢复提示
 
-External protocols or control plane handshakes must explicitly define at minimum:
+对外协议或Control Plane握手至少应明确：
 
 - protocol version negotiation
 - role / scope boundary
 - device / client identity shape
 - structured recovery hint on auth or compatibility failure
 
-Rules:
+规则：
 
-- Protocol changes are contract changes and should not silently drift through implementation details alone.
-- On compatibility failure, should return structured recovery suggestions rather than exposing bare error strings.
-- External methods, payloads, and notification naming should follow unified conventions, such as `*Params / *Response / *Notification` or equivalent styles, and should not mix multiple naming systems within the same protocol layer.
-- experimental / unstable surfaces must be explicitly marked, with defined promotion or deletion paths to avoid temporary fields lingering long-term as implicit formal interfaces.
+- 协议变化belongs to contract 变化，不应只靠implementation details悄悄漂移。
+- 兼容failed时应尽量返回结构化恢复Recommendation，而不is只暴露裸错误字符串。
+- 对外方法、payload、notification 命名应遵循统一约定，例如 `*Params / *Response / *Notification` 或等价风格，不应在同一协议层混用多种命名体系。
+- experimental / unstable surface 必须显式标记，并defines升格或删除路径，避免临时字段长期滞留为隐式正式接口。
 
-## 8. Closure Conclusion
+## 8. 收口Conclusion
 
-Mature industrial platforms cannot maintain stability by merely "keeping the current implementation running."
+成熟工业平台不能只靠“当前实现能跑”维持稳定。
 
-Formal architectural governance must simultaneously cover:
+正式的Architecture治理必须同时覆盖：
 
-- decision records
-- layer boundaries
-- schema versions
-- compatibility windows
-- upgrade and rollback conditions
+- Decisionrecord
+- 层级边界
+- schema 版本
+- 兼容窗口
+- 升级vs回滚条件

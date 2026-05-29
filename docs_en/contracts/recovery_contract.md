@@ -1,10 +1,14 @@
 # Recovery Contract
 
-## 1. Scope
+> Scope note:
+> 本文只defines恢复 cadence/report 最小对象。
+> 幂等、补偿矩阵和工具恢复语义以 `idempotency_and_recovery_matrix_contract.md` vs `tool_metadata_and_recovery_contract.md` 为准。
 
-Defines run recovery workers, recovery cadence, and recovery report objects.
+## 1. 范围
 
-## 2. Core Objects
+defines运lines恢复 worker、恢复 cadence vs恢复报告对象。
+
+## 2. 核心对象
 
 ```typescript
 interface RecoveryCadence {
@@ -23,8 +27,8 @@ interface RecoveryReport {
 }
 ```
 
-## 3. Constraints
+## 3. 约束
 
-- Recovery actions must record cadence and reports.
-- Recovery must not implicitly advance terminal run/node state.
-- Reports must carry run/node association keys rather than just legacy execution ID.
+- 恢复动作必须record cadence vs报告。
+- 恢复不得隐式推进终态 run/node。
+- 报告必须带 run/node 关联键而非只带 legacy execution id。

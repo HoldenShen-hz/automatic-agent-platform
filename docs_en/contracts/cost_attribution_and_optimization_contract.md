@@ -1,17 +1,17 @@
 # Cost Attribution And Optimization Contract
 
-## 1. Scope
+## 1. 范围
 
-This contract defines decision-level cost attribution, automatic optimization recommendations, and what-if simulation per `§64`.
+本 contract defines `§64` 的Decision级成本归因、自动优化Recommendation和 what-if 仿真。
 
-## 2. Canonical Objects
+## 2. Canonical 对象
 
 - `CostAttributionRecord`
 - `OptimizationRecommendation`
 - `CostSimulationScenario`
 - `CostDashboardSlice`
 
-## 3. `CostAttributionRecord` Minimum Fields
+## 3. `CostAttributionRecord` 最小字段
 
 - `subject_type`
 - `subject_id`
@@ -24,25 +24,25 @@ This contract defines decision-level cost attribution, automatic optimization re
 - `model_ref?`
 - `captured_at`
 
-## 4. Rules
+## 4. 规则
 
-- Cost attribution granularity must cover at minimum: harness run / node run / agent / model / domain.
-- Optimization recommendations must include benefit estimates, risk explanations, and applicable scope.
-- What-if simulation must not directly modify real budget state.
-- If cost cannot be traced back to `HarnessRun / NodeRun / BudgetSettlement`, it must not enter automatic optimization recommendations.
+- 成本归因粒度至少覆盖 harness run / node run / agent / model / domain。
+- 优化Recommendation必须附带收益估计、风险Description和适用范围。
+- what-if 仿真不得directly修改真实budgetStatus。
+- 若成本no法回链到 `HarnessRun / NodeRun / BudgetSettlement`，不得进入自动优化Recommendation。
 
-## 5. Test Requirements
+## 5. 测试要求
 
-- unit: attribution aggregation, recommendation scoring, simulation
-- integration: cost tracker -> optimizer -> dashboard
-- contract: costs without sources must not be included in optimization recommendations
+- unit：attribution aggregation、recommendation scoring、simulation
+- integration：cost tracker -> optimizer -> dashboard
+- contract：no来源成本不得计入优化Recommendation
 
 
 
 ## v4.3 Architecture Remediation
 
-The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If this document's historical sections conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
+以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中record的 contract 偏差。本文档历史段落如vs本节conflicts，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
 
-- T-53: This document previously left `decision_ref` as a generic string. Root cause: the cost attribution contract long treated "decision source" as a report label and did not model runtime truth and budget settlement traceability as hard constraints. Fix: The main text now converges `CostAttributionRecord` to this set of traceable references: `harness_run_id / node_run_id / budget_settlement_ref / decision_directive_ref`, and prohibits costs without truth traceability from entering automatic optimization.
+- T-53: 本文原先把 `decision_ref` 留成通用字符串，Root cause: 成本归因合同长期把“Decision来源”当作报table标签handle，没有把 runtime truth vsbudget结算回链建模成硬约束。修复：正文现把 `CostAttributionRecord` 收敛到 `harness_run_id / node_run_id / budget_settlement_ref / decision_directive_ref` 这组可追溯references用，并禁止no truth 回链的成本进入自动优化。
 
-Mandatory Rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events can only use `platform.*`; OAPEFLIR can only be used as `oapeflir.view.*` / rationale projection; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.
+mandatory规则：Status迁移必须via `RuntimeStateMachine.transition(command)`；执lines计划必须uses `PlanGraphBundle`；执lines结果必须uses `NodeAttemptReceipt`；truth event 只能uses `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；budget必须uses `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。

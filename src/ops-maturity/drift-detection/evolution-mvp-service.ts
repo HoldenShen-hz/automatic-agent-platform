@@ -1,8 +1,29 @@
 /**
  * Evolution MVP Service
  */
-
-export * from "./evolution-mvp-support.js";
+export {
+  assertEvolutionScope,
+  buildRecommendedBudgetPolicy,
+  clamp,
+  parsePolicyValue,
+  parseProposalPayload,
+  roundCurrency,
+  roundRatio,
+  summarizeBudgetProposal,
+} from "./evolution-mvp-support.js";
+export type {
+  ApplyEvolutionProposalInput,
+  BudgetAdjustmentEvidence,
+  BudgetAdjustmentProposalPayload,
+  EvolutionProposalPayload,
+  EvolutionProposalView,
+  ExperiencePromotionEvidence,
+  ExperiencePromotionProposalPayload,
+  ProposeBudgetAdjustmentInput,
+  ProposeExperiencePromotionInput,
+  RollbackEvolutionProposalInput,
+} from "./evolution-mvp-support.js";
+import { z } from "zod";
 
 import type {
   EvolutionPolicyRecord,
@@ -127,34 +148,9 @@ export class EvolutionMvpService {
         metadataJson: JSON.stringify({ approvalId: approval.approvalId }),
         createdAt,
       });
-      this.store.event.insertEvent({
-        id: newId("evt"),
-        taskId: proposal.taskId,
-        executionId: proposal.executionId,
-        sessionId: null,
-        eventType: "evolution:proposal_created",
-        eventTier: "tier_2",
-        payloadJson: JSON.stringify({
-          proposalId: proposal.id,
-          kind: proposal.kind,
-          scopeType: proposal.scopeType,
-          scopeRef: proposal.scopeRef,
-          approvalId: approval.approvalId,
-        }),
-        traceId: null,
-        createdAt,
-        schemaVersion: "1.0",
-        aggregateId: null,
-        runId: null,
-        sequence: null,
-        causationId: null,
-        correlationId: null,
-        payloadHash: null,
-        idempotencyKey: newId("idem"),
-        replayBehavior: "replay_as_fact",
-        principal: "system",
-        evidenceRefs: [] as readonly string[],
-      });
+      this.insertEvolutionEvent(proposal, "evolution:proposal_created", {
+        approvalId: approval.approvalId,
+      }, createdAt);
     });
 
     return {
@@ -179,7 +175,7 @@ export class EvolutionMvpService {
       taskIntent: input.taskIntent,
       ...(input.queryTools != null ? { toolNames: input.queryTools } : {}),
       outcome: "succeeded",
-      minQualityScore: input.minQualityScore ?? 0.65,
+      minQualityScore: input.minQualityScore ?? DEFAULT_EXPERIENCE_PROMOTION_MIN_QUALITY_SCORE,
       limit: 1,
     });
 
@@ -269,35 +265,10 @@ export class EvolutionMvpService {
         metadataJson: JSON.stringify({ approvalId: approval.approvalId }),
         createdAt,
       });
-      this.store.event.insertEvent({
-        id: newId("evt"),
-        taskId: proposal.taskId,
-        executionId: proposal.executionId,
-        sessionId: null,
-        eventType: "evolution:proposal_created",
-        eventTier: "tier_2",
-        payloadJson: JSON.stringify({
-          proposalId: proposal.id,
-          kind: proposal.kind,
-          scopeType: proposal.scopeType,
-          scopeRef: proposal.scopeRef,
-          approvalId: approval.approvalId,
-          matchedExperienceId: candidate.experience.id,
-        }),
-        traceId: null,
-        createdAt,
-        schemaVersion: "1.0",
-        aggregateId: null,
-        runId: null,
-        sequence: null,
-        causationId: null,
-        correlationId: null,
-        payloadHash: null,
-        idempotencyKey: newId("idem"),
-        replayBehavior: "replay_as_fact",
-        principal: "system",
-        evidenceRefs: [] as readonly string[],
-      });
+      this.insertEvolutionEvent(proposal, "evolution:proposal_created", {
+        approvalId: approval.approvalId,
+        matchedExperienceId: candidate.experience.id,
+      }, createdAt);
     });
 
     return {
@@ -428,7 +399,7 @@ export class EvolutionMvpService {
           facts: payload.matchedKeywords.map((keyword) => ({
             content: keyword,
             category: "matched_keyword",
-            confidence: 0.8,
+            confidence: PROMOTED_MEMORY_FACT_CONFIDENCE,
             provenanceSource: `experience:${payload.sourceExperienceId}`,
           })),
         },
@@ -460,6 +431,7 @@ export class EvolutionMvpService {
       appliedAt,
       updatedAt: appliedAt,
     };
+    this.assertProposalApplicationTimestamp(syncedProposal, appliedAt);
 
     this.db.transaction(() => {
       if (previousPolicy != null) {
@@ -485,34 +457,9 @@ export class EvolutionMvpService {
         metadataJson: JSON.stringify({ appliedBy: input.appliedBy }),
         createdAt: appliedAt,
       });
-      this.store.event.insertEvent({
-        id: newId("evt"),
-        taskId: appliedProposal.taskId,
-        executionId: appliedProposal.executionId,
-        sessionId: null,
-        eventType: "evolution:applied",
-        eventTier: "tier_2",
-        payloadJson: JSON.stringify({
-          proposalId: appliedProposal.id,
-          kind: appliedProposal.kind,
-          scopeType: appliedProposal.scopeType,
-          scopeRef: appliedProposal.scopeRef,
-          appliedBy: input.appliedBy,
-        }),
-        traceId: null,
-        createdAt: appliedAt,
-        schemaVersion: "1.0",
-        aggregateId: null,
-        runId: null,
-        sequence: null,
-        causationId: null,
-        correlationId: null,
-        payloadHash: null,
-        idempotencyKey: newId("idem"),
-        replayBehavior: "replay_as_fact",
-        principal: "system",
-        evidenceRefs: [] as readonly string[],
-      });
+      this.insertEvolutionEvent(appliedProposal, "evolution:applied", {
+        appliedBy: input.appliedBy,
+      }, appliedAt);
     });
 
     return this.getProposalView(appliedProposal.id);
@@ -577,35 +524,10 @@ export class EvolutionMvpService {
         metadataJson: JSON.stringify({ rolledBackBy: input.rolledBackBy }),
         createdAt: rolledBackAt,
       });
-      this.store.event.insertEvent({
-        id: newId("evt"),
-        taskId: proposal.taskId,
-        executionId: proposal.executionId,
-        sessionId: null,
-        eventType: "evolution:rolled_back",
-        eventTier: "tier_2",
-        payloadJson: JSON.stringify({
-          proposalId: proposal.id,
-          kind: proposal.kind,
-          scopeType: proposal.scopeType,
-          scopeRef: proposal.scopeRef,
-          rolledBackBy: input.rolledBackBy,
-          reasonCode: input.reasonCode,
-        }),
-        traceId: null,
-        createdAt: rolledBackAt,
-        schemaVersion: "1.0",
-        aggregateId: null,
-        runId: null,
-        sequence: null,
-        causationId: null,
-        correlationId: null,
-        payloadHash: null,
-        idempotencyKey: newId("idem"),
-        replayBehavior: "replay_as_fact",
-        principal: "system",
-        evidenceRefs: [] as readonly string[],
-      });
+      this.insertEvolutionEvent(proposal, "evolution:rolled_back", {
+        rolledBackBy: input.rolledBackBy,
+        reasonCode: input.reasonCode,
+      }, rolledBackAt);
     });
 
     return this.getProposalView(proposal.id);
@@ -661,7 +583,7 @@ export class EvolutionMvpService {
   private toProposalView(proposal: EvolutionProposalRecord): EvolutionProposalView {
     const approvalRecord = proposal.approvalId == null ? null : this.store.approval.getApproval(proposal.approvalId);
     const approval = approvalRecord?.requestJson
-      ? JSON.parse(approvalRecord.requestJson) as ApprovalRequest
+      ? parseApprovalRequestJson(approvalRecord.requestJson)
       : null;
     return {
       proposal,
@@ -669,6 +591,64 @@ export class EvolutionMvpService {
       activePolicy: this.store.evolution.getEvolutionPolicyByProposal(proposal.id),
       logs: this.store.evolution.listEvolutionLogsByProposal(proposal.id),
     };
+  }
+
+  private assertProposalApplicationTimestamp(proposal: EvolutionProposalRecord, appliedAt: string): void {
+    const appliedAtMs = Date.parse(appliedAt);
+    const approvedAtMs = proposal.approvedAt == null ? null : Date.parse(proposal.approvedAt);
+    const createdAtMs = Date.parse(proposal.createdAt);
+    if (
+      Number.isNaN(appliedAtMs)
+      || Number.isNaN(createdAtMs)
+      || (approvedAtMs != null && Number.isNaN(approvedAtMs))
+    ) {
+      throw new WorkflowStateError("evolution.invalid_application_timestamp", "evolution.invalid_application_timestamp", {
+        retryable: false,
+        details: { proposalId: proposal.id, appliedAt, approvedAt: proposal.approvedAt, createdAt: proposal.createdAt },
+      });
+    }
+    if (appliedAtMs < createdAtMs || (approvedAtMs != null && appliedAtMs < approvedAtMs)) {
+      throw new WorkflowStateError("evolution.non_monotonic_applied_at", "evolution.non_monotonic_applied_at", {
+        retryable: false,
+        details: { proposalId: proposal.id, appliedAt, approvedAt: proposal.approvedAt, createdAt: proposal.createdAt },
+      });
+    }
+  }
+
+  private insertEvolutionEvent(
+    proposal: Pick<EvolutionProposalRecord, "id" | "taskId" | "executionId" | "kind" | "scopeType" | "scopeRef">,
+    eventType: "evolution:proposal_created" | "evolution:applied" | "evolution:rolled_back",
+    metadata: Record<string, unknown>,
+    createdAt: string,
+  ): void {
+    this.store.event.insertEvent({
+      id: newId("evt"),
+      taskId: proposal.taskId,
+      executionId: proposal.executionId,
+      sessionId: null,
+      eventType,
+      eventTier: "tier_2",
+      payloadJson: JSON.stringify({
+        proposalId: proposal.id,
+        kind: proposal.kind,
+        scopeType: proposal.scopeType,
+        scopeRef: proposal.scopeRef,
+        ...metadata,
+      }),
+      traceId: null,
+      createdAt,
+      schemaVersion: "1.0",
+      aggregateId: null,
+      runId: null,
+      sequence: null,
+      causationId: null,
+      correlationId: null,
+      payloadHash: null,
+      idempotencyKey: newId("idem"),
+      replayBehavior: "replay_as_fact",
+      principal: "system",
+      evidenceRefs: [] as readonly string[],
+    });
   }
 
   /**
@@ -685,4 +665,23 @@ export class EvolutionMvpService {
     }
     return proposal;
   }
+}
+
+const DEFAULT_EXPERIENCE_PROMOTION_MIN_QUALITY_SCORE = 0.65;
+const PROMOTED_MEMORY_FACT_CONFIDENCE = 0.8;
+
+const ApprovalRequestSchema = z.object({
+  approvalId: z.string(),
+  taskId: z.string(),
+  sourceAgentId: z.string(),
+  reason: z.string(),
+  riskLevel: z.enum(["low", "medium", "high", "critical"]),
+  options: z.array(z.string()),
+  context: z.record(z.unknown()),
+  timeoutPolicy: z.enum(["reject", "approve", "remain_pending"]),
+  createdAt: z.string(),
+}).passthrough();
+
+function parseApprovalRequestJson(requestJson: string): ApprovalRequest {
+  return ApprovalRequestSchema.parse(JSON.parse(requestJson)) as unknown as ApprovalRequest;
 }

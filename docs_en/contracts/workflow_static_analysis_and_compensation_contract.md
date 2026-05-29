@@ -1,41 +1,41 @@
 # Workflow Static Analysis And Compensation Contract
 
-## 1. Scope
+## 1. 范围
 
-This contract defines static analysis rules for workflows before execution, compensation transaction boundaries, and long-task segmentation with partial commit semantics.
+本 contract defines workflow 在运lines前的静态分析规则、补偿事务边界，以及长任务分片vs partial commit 语义。
 
-Related documents:
+相关文档：
 
 - `task_and_workflow_contract.md`
 - `workflow_io_compatibility_precheck_contract.md`
 - `idempotency_and_recovery_matrix_contract.md`
 - `runtime_execution_contract.md`
 
-## 2. Goals
+## 2. 目标
 
-- Block obvious errors before execution rather than exposing them during execution.
-- Provide formal compensation model for steps with side effects.
-- Provide unified semantics for long tasks, subgraph recovery, and phased commits.
+- 把明显错误在运lines前拦下，而不is运lines中才暴露。
+- 为有副作用步骤提供正式补偿模型。
+- 为长任务、子图恢复、分阶段提交提供统一语义。
 
-## 3. Static Analysis Minimum Checks
+## 3. 静态分析最小检查
 
-Before execution, at minimum check:
+运lines前至少检查：
 
-- Infinite loop detection
-- Unreachable node detection
-- Dependency cycle detection
-- Required input key missing
-- Schema incompatibility
-- Timeout / retry missing or invalid
-- Node type and side effect level mismatch
-- Node ID uniqueness check
-- Output key duplicate check
-- Unknown dependency reference check
-- OAPEFLIR stage order legality
-- Plugin / domain tool bundle reference existence
-- Release rollback declares compensating_action or equivalent compensation strategy
+- 死循环检测
+- 不可达 node 检测
+- dependency 闭环检测
+- required input key 缺失
+- schema 不兼容
+- timeout / retry 缺失或非法
+- node type vs side effect level inconsistent
+- node id 唯一性检查
+- output key repeats检查
+- 未知relies onreferences用检查
+- OAPEFLIR stage 顺序isno合法
+- plugin / domain tool bundle references用isno存在
+- release rollback isno声明 compensating_action 或等价补偿策略
 
-## 4. Analysis Result Objects
+## 4. 分析结果对象
 
 - `WorkflowLintReport`
 - `StaticCompatibilityIssue`
@@ -44,21 +44,21 @@ Before execution, at minimum check:
 - `CheckpointPlan`
 - `WorkflowTemplate`
 
-v4.3 alignment note:
+v4.3 对齐Description：
 
-- Code-side `StaticCompatibilityIssue` is now exported as the canonical compatibility alias of `WorkflowLintIssue`, for direct consumption of issue arrays by contract calling surfaces.
-- Code-side `WorkflowTemplate` is now exported as the compatibility alias of `MinimalWorkflowDefinition`, pointing uniformly to the authoritative workflow definition structure in the warehouse, rather than maintaining a second template entity separately.
+- code侧 `StaticCompatibilityIssue` 现作为 `WorkflowLintIssue` 的 canonical compatibility alias export，供 contract call面directly消费 issue array。
+- code侧 `WorkflowTemplate` 现作为 `MinimalWorkflowDefinition` 的 compatibility alias export，统一指向仓内 authoritative workflow definition 结构，而不is额外维护第二份模板实体。
 
-## 5. Compensation Model
+## 5. 补偿模型
 
-Each node with side effects must declare one of:
+每个有副作用的 node 必须声明下列之一：
 
 - `idempotent_replay`
 - `compare_and_swap_write`
 - `compensating_action`
 - `manual_reconciliation_required`
 
-Compensation action must at least explain:
+补偿动作至少应Description：
 
 - trigger condition
 - compensation owner
@@ -66,25 +66,25 @@ Compensation action must at least explain:
 - compensation idempotency
 - evidence artifact
 
-## 6. Long Task Segmentation
+## 6. 长任务分片
 
-Long tasks must at least support:
+长任务至少supported：
 
-- Checkpoint segmentation
-- Subgraph recovery
-- Phased commits
-- Task-level partial commit
+- checkpoint 分片
+- 子图恢复
+- 分阶段提交
+- 任务级 partial commit
 
-Rules:
+规则：
 
-- Checkpoints can only be established after side effect boundaries.
-- Subgraph recovery must not cross nodes with incomplete compensation.
-- Partial commit must be auditable and traceable to corresponding node group.
-- If an upstream node enters `failed` or `skipped` and dependencies can no longer be satisfied, downstream nodes must not stay in `blocked` indefinitely; the system should have clear cascade failure or cascade skip semantics.
+- checkpoint 只能建立在 side effect 边界之后。
+- 子图恢复不得越过未完成补偿的 node。
+- partial commit 必须可审计并可回溯到对应 node group。
+- upstream node 若进入 `failed` 或 `skipped` 且relies on不可再满足，下游 node 不得no限期停留在 `blocked`；系统应有明确的级联failed或级联跳过语义。
 
-## 6.1 Templated Workflow / Recipe
+## 6.1 模板化 workflow / recipe
 
-If the system supports workflow / recipe templates, the template must at minimum explicitly declare:
+若系统supported workflow / recipe 模板，模板至少应显式声明：
 
 - `version`
 - `title`
@@ -94,15 +94,15 @@ If the system supports workflow / recipe templates, the template must at minimum
 - `required_extensions_or_capabilities`
 - `prompt_or_execution_entry`
 
-Rules:
+规则：
 
-- Templates must not be just free-text prompts; parameters, extension dependencies, and execution entry must be structured.
-- New templates should pass structural validation and minimum security scan before entering shared directory, marketplace, or team distribution.
-- Template author guide should specify: which fields are required, which extensions need trust confirmation, which parameters must be explicitly input.
-- If the system simultaneously has server, web console, desktop, or other editing entry points, template validation rules should be derived as much as possible from a unified authoritative schema artifact, rather than manually maintaining multiple parallel validation logics.
-- `$ref`, composite types, and dependency fields in template schema should be consistently parsed across all entry points, avoiding "server passes but editor fails" or vice versa.
+- 模板不应只is自由文本 prompt；参数、扩展relies on和执lines入口必须结构化。
+- 新模板在进入共享目录、市场或团队分发前，应via结构校验vs最小security扫描。
+- 模板作者指南应明确：哪些字段必填、哪些扩展需要信任确认、哪些参数必须显式输入。
+- 若系统同时存在 server、web console、desktop 或其他编辑入口，模板校验规则应尽量从统一的 authoritative schema artifact 派生，而不is手工维护多份平lines校验逻辑。
+- 模板 schema 中的 `$ref`、复合class型vsrelies on字段应能在各入口被一致解析，避免“服务端能过、编辑器不能过”或反之。
 
-## 7. Pre-Execution Gate
+## 7. 运lines前门禁
 
 ```mermaid
 flowchart TD
@@ -113,31 +113,31 @@ flowchart TD
     E --> F["Create Execution Ticket"]
 ```
 
-## 8. Phase Boundaries
+## 8. Phase 边界
 
-Phase 1a:
+Phase 1a：
 
-- Key existence
-- Dependency cycle
-- Timeout / retry presence
-- Side effect declaration required
+- key existence
+- dependency cycle
+- timeout / retry presence
+- side effect declaration required
 - OAPEFLIR stage order validity
 
-Phase 1b / 2:
+Phase 1b / 2：
 
-- Unreachable node
-- More complete schema compatibility
-- Compensation templates
-- Partial commit orchestration
-- Release rollback orchestration
+- unreachable node
+- more complete schema compatibility
+- compensation templates
+- partial commit orchestration
+- release rollback orchestration
 
-## 9. Closure Conclusion
+## 9. 收口Conclusion
 
-Industrial-grade workflow cannot just "run along".
+工业级 workflow 不能只会“顺着跑”。
 
-It must know before starting:
+它必须在开始前知道：
 
-- Whether structure is valid
-- Which nodes have side effects
-- How to compensate on failure
-- How to segment and recover long tasks
+- 结构isno有效
+- 哪些 node 有副作用
+- failed后如何补偿
+- 长任务如何分片恢复

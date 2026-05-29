@@ -1,61 +1,61 @@
-# ADR-060: Explicit Planning Hub and Plan Hub
+# ADR-060 显式规划层vs Plan Hub
 
-- Status: Accepted
-- Decision Date: 2026-04-17
-- Related: ADR-016 OAPEFLIR Eight-Stage Cognitive Loop Model
+- Status：Accepted
+- Decision日期：2026-04-17
+- 相关：ADR-016 OAPEFLIR 八阶段认知循环模型
 
-## Context
+## Background
 
-In the early Phase 1A/1B architecture, the logic for generating Execution Plans (Plan) was scattered within `AgentExecutor`, implementing task decomposition through an implicit "dispatch mode". This design has three problems:
+早期 Phase 1A/1B Architecture中，执lines计划（Plan）的生成逻辑散落在 `AgentExecutor` 内部，via隐式的"dispatch 模式"实现任务分解。这种设计存在三个Issue：
 
-1. **Not traceable**: No explicit graph plan contract, cannot independently verify plan content.
-2. **Not auditable**: Replanning decisions have no version chain, debugging is difficult.
-3. **Not reusable**: Planning strategies cannot be shared across multiple execution engines.
+1. **不可追踪**：no显式图计划合约，no法对计划内容进lines独立验证。
+2. **不可审计**：重规划（replan）Decisionno版本链，调试困难。
+3. **不可复用**：Planning 策略no法在多个执linesreferences擎间共享。
 
-The OAPEFLIR Loop Model (ADR-016) requires Plan as an independent Hub, forming clear boundaries for Assess→Plan→Execute.
+OAPEFLIR Loop 模型（ADR-016）要求 Plan 作为独立 Hub，形成 Assess→Plan→Execute 的明确边界。
 
 ## Decision
 
-### 1. Establish Independent Plan Hub
+### 1. 建立独立的 Plan Hub
 
-Plan Hub, as the OAPEFLIR Stage 3 (between Assess and Execute), is responsible for:
+Plan Hub 作为 OAPEFLIR 第 3 阶段（介于 Assess 和 Execute 之间），职责为：
 
-- Receiving `UnifiedAssessment` (from Assess Hub)
-- Outputting `Plan` DTO (as the only input to Execute Hub)
-- Supporting multiple planning strategies (linear/dag/conditional/reactive/hierarchical/multi-agent/adaptive/uncertainty-aware)
-- Maintaining Plan version chain (each replan generates version N+1)
+- 接收 `UnifiedAssessment`（来自 Assess Hub）
+- 输出 `Plan` DTO（作为 Execute Hub 的唯一输入）
+- supported多种规划策略（linear/dag/conditional/reactive/hierarchical/multi-agent/adaptive/uncertainty-aware）
+- 维护 Plan 版本链（每iterations replan 生成 version N+1）
 
-### 2. PlanGraphBundle Core Fields
+### 2. PlanGraphBundle 核心字段
 
 ```typescript
 interface PlanGraphBundle {
   planGraphBundleId: string;
   harnessRunId: string;
-  graphVersion: number;      // +1 for each replan
-  strategy: PlanStrategy;    // 8 strategy enums
-  graph: PlanGraph;          // Nodes and edges
-  estimatedCost: number;     // Token estimate
-  estimatedDuration: number; // ms estimate
+  graphVersion: number;      // 每iterations replan +1
+  strategy: PlanStrategy;    // 8 种策略枚举
+  graph: PlanGraph;          // 节点vs边
+  estimatedCost: number;     // token 预估
+  estimatedDuration: number; // ms 预估
   retryPolicy: RetryPolicy;
   replanTriggers?: ReplanningTrigger[];
-  groundingRefs?: string[];  // Knowledge base references
+  groundingRefs?: string[];  // 知识库references用
   contextSnapshot: ContextSnapshot;
   createdAt: string;         // ISO 8601
 }
 ```
 
-### 3. R3 Constraints Enforcement
+### 3. R3 约束mandatory执lines
 
-| Constraint | Description |
-|------------|-------------|
-| **R3-SINGLE** | Execute layer can only receive `PlanGraphBundle`, bypass of raw task direct execution is not allowed |
-| **R3-BUILDER** | `WorkflowPlanner` is demoted to data source for PlanBuilder, does not directly output execution instructions |
-| **R3-VERSION** | Each replan must generate version +1, must not overwrite historical versions |
-| **R3-NOBYPASS** | Execute layer must reject input without valid Plan |
+| 约束 | Description |
+|------|------|
+| **R3-SINGLE** | Execute 层只能接收 `PlanGraphBundle`，不允许旁路 raw task directly执lines |
+| **R3-BUILDER** | `WorkflowPlanner` 降级为 PlanBuilder 的data源，不directly输出执lines指令 |
+| **R3-VERSION** | 每iterations replan 必须生成 version +1，不得覆盖历史版本 |
+| **R3-NOBYPASS** | Execute 层必须拒绝no有效 Plan 的输入 |
 
-### 4. Plan→Execute Bridge
+### 4. Plan→Execute 桥接
 
-Decoupling PlanGraphBundle from execution engine through `RuntimeExecuteBridge` interface:
+via `RuntimeExecuteBridge` 接口实现 PlanGraphBundle 到执linesreferences擎的解耦：
 
 ```typescript
 interface RuntimeExecuteBridge {
@@ -64,64 +64,64 @@ interface RuntimeExecuteBridge {
 }
 ```
 
-Execute layer receives Plan through this interface, bypass is not allowed.
+Execute 层via此接口接收 Plan，不得bypassing。
 
-### 5. 8 Planning Strategies
+### 5. 8 种规划策略
 
-| Strategy | Applicable Scenario | Implementation Status |
-|----------|---------------------|----------------------|
-| `linear` | Single-step or sequential execution tasks | Implemented |
-| `dag` | Multi-step tasks with dependencies | Implemented |
-| `conditional` | Plans with branching decisions | Partially implemented |
-| `reactive` | Plans responding to external event changes | Partially implemented |
-| `hierarchical` | Multi-level abstract plans | Not implemented |
-| `multi-agent` | Multi-Agent collaboration plans | Not implemented |
-| `adaptive` | Plans adjusted based on execution feedback | Implemented (replan) |
-| `uncertainty-aware` | Probabilistic planning for handling uncertainty | Not implemented |
+| 策略 | 适用场景 | 实现Status |
+|------|---------|---------|
+| `linear` | 单步骤或顺序执lines任务 | 已实现 |
+| `dag` | 多步骤有relies on关系的任务 | 已实现 |
+| `conditional` | 含分支判断的计划 | 部分实现 |
+| `reactive` | response外部事件变化的计划 | 部分实现 |
+| `hierarchical` | 多层iterations抽象的计划 | 未实现 |
+| `multi-agent` | 多 Agent 协作计划 | 未实现 |
+| `adaptive` | 根据执lines反馈调整计划 | 已实现（replan） |
+| `uncertainty-aware` | handle不确定性的概率规划 | 未实现 |
 
-### 6. Replanning Triggers and Decisions
+### 6. Replanning 触发vsDecision
 
-| Trigger Type | Condition | Strategy Selection |
-|--------------|-----------|-------------------|
-| `tool_failure` | Tool call failure | `reactive` + retry |
-| `context_drift` | Context deviating from original intent | `adaptive` |
-| `resource_exhaustion` | Resource exhaustion | `linear` degradation |
-| `explicit_request` | User explicit replan request | `dag` |
-| `time_budget_exceeded` | Time budget exceeded | `hierarchical` compression |
-| `quality_below_threshold` | Quality below threshold | `uncertainty-aware` |
+| 触发class型 | 条件 | 策略选择 |
+|---------|------|---------|
+| `tool_failure` | 工具callfailed | `reactive` + 重试 |
+| `context_drift` | 上下文偏离原始意图 | `adaptive` |
+| `resource_exhaustion` | 资源耗尽 | `linear` 降级 |
+| `explicit_request` | user显式重规划request | `dag` |
+| `time_budget_exceeded` | timebudgetexceeds限 | `hierarchical` 压缩 |
+| `quality_below_threshold` | 质量低于threshold | `uncertainty-aware` |
 
-## Alternative Approaches
+## 备选方案
 
-### Approach A: Maintain dispatch implicit planning (current state)
+### 方案 A：维持 dispatch 隐含规划（现状）
 
-Advantages: No need to refactor existing execution engine.
-Disadvantages: Plan is not traceable, not auditable, not reusable.
+优点：no需重构现有执linesreferences擎。
+代价：Plan 不可追踪、不可审计、不可复用。
 
-### Approach B: Plan as independent Hub (chosen)
+### 方案 B：Plan 作为独立 Hub（已选）
 
-Advantages: Clear stage boundaries, complete version chain, scalable multi-strategy.
-Disadvantages: Need to add new planning/ module, approximately 1500 lines of code.
+优点：清晰的阶段边界、完整的版本链、多策略可扩展。
+代价：需要新增 planning/ 模块，约 1500 linescode。
 
 ## Consequences
 
-- New `src/core/planning/` module (approximately 9 files, 2000 lines).
-- `RuntimeExecuteBridge` as `PlanGraphBundle -> NodeAttemptReceipt` decoupling layer.
+- 新增 `src/core/planning/` 模块（约 9 文件，2000 lines）。
+- `RuntimeExecuteBridge` 作为 `PlanGraphBundle -> NodeAttemptReceipt` 解耦层。
 
 ## v4.3 ADR Remediation
 
-- A-61: This ADR originally wrote `Plan DTO` and `RuntimeExecuteBridge.executePlan(plan)` as the P3 -> P4 unique handoff. Root cause was that when the explicit planning ADR took shape, the executable contract had not yet been closed to the graph execution model. Fix: The text now switches authoritative input to `PlanGraphBundle` and authoritative output to `NodeAttemptReceipt`.
-- Zod schema validation added at stage boundaries (PlanSchema).
-- All replanning decisions recorded for audit via `ReplanningDecision` DTO.
+- A-61: 本 ADR 原先把 `Plan DTO` vs `RuntimeExecuteBridge.executePlan(plan)` 写成 P3 -> P4 唯一 handoff，Root cause: 显式规划 ADR 成型时 executable contract 还未收口到图执lines模型。修复：正文现把权威输入切到 `PlanGraphBundle`，权威输出切到 `NodeAttemptReceipt`。
+- 阶段边界occurrences增加 Zod schema 验证（PlanSchema）。
+- 所有重规划Decisionvia `ReplanningDecision` DTO record审计。
 
-## Cross References
+## 交叉references用
 
-- [ADR-016 OAPEFLIR Eight-Stage Cognitive Loop Model](./016-oapeflir-loop-model.md)
-- [ADR-075 Six-Level Controlled Release and Rollout State Machine](./075-controlled-rollout-release.md) (ADR-018 only retained for historical migration background)
-- [ADR-072 Testing Strategy](./072-oapeflir-testing-strategy.md)
+- [ADR-016 OAPEFLIR 八阶段认知循环模型](./016-oapeflir-loop-model.md)
+- [ADR-075 六级受控发布vs Rollout Status机](./075-controlled-rollout-release.md)（ADR-018 only保留历史迁移Background）
+- [ADR-072 测试策略](./072-oapeflir-testing-strategy.md)
 
-## Source Section
+## 来源章节
 
-- `§5` Plan Hub Design
-- `§5.3` PlanGraphBundle Definition
-- `§L.4` R3 Constraint Definition
+- `§5` Plan Hub 设计
+- `§5.3` PlanGraphBundle defines
+- `§L.4` R3 约束defines
 - `§L.5` ReplanningTrigger

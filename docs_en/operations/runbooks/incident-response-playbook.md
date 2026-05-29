@@ -7,14 +7,20 @@
 | `P1` | 15 min | 1 hour | 24 hours |
 | `P2` | 1 hour | 4 hours | 48 hours |
 
-## Response Flow
+Prometheus/Alertmanager mapping:
 
-1. **Confirm** alert fidelity and declare incident severity
-2. **Appoint** incident commander and communications owner
-3. **Stabilize** platform: pause rollouts, reduce blast radius, restore core availability
-4. **Preserve** evidence before destructive recovery actions
-5. **Publish** customer/internal updates on fixed cadence until mitigation completes
-6. **Document** root cause, contributing factors, and concrete follow-up actions
+- `severity=page` or cross-region/core write path failure -> `P1`
+- `severity=critical` -> defaults to `P1` handling; if impact expands to multi-region, core write path or tenant-level large-scale unavailability, escalate to `P0` war room mode
+- `severity=warning` -> defaults to `P2` handling
+
+## Response Process
+
+1. **Confirm** alert authenticity and announce incident severity
+2. **Designate** incident commander and communications owner
+3. **Stabilize** platform: pause rollout, reduce blast radius, restore core availability
+4. **Preserve** evidence, then execute destructive recovery actions
+5. **Publish** internal/external updates until mitigation complete
+6. **Record** root cause, contributing factors and clear follow-up actions
 
 ## Escalation Matrix
 
@@ -23,7 +29,7 @@
 | P2 | No progress in 30 min | P1 |
 | P1 | Multi-region impact or >1hr no mitigation | War room + engineering lead |
 
-## Communication Template
+## Notification Template
 
 ```
 INCIDENT UPDATE [HH:MM UTC]
@@ -34,7 +40,7 @@ Current Actions: <what team is doing now>
 Next Update: <HH:MM+30m or sooner if material change>
 ```
 
-## Post-Incident Review Template
+## Postmortem Template
 
 ```markdown
 ## Incident: <title> (<date>)
@@ -60,20 +66,20 @@ Next Update: <HH:MM+30m or sooner if material change>
 | <action> | <owner> | <date> |
 ```
 
-## CLI Commands
+## Common Commands
 
 ```bash
 # Check system health
-npm run healthz
+curl -f http://127.0.0.1:8010/healthz
 
 # View recent errors
 grep -r "ERROR" logs/ | tail -100
 
-# Check pod status
-kubectl get pods -n platform
+# View Pod status
+kubectl get pods -n automatic-agent
 
-# Check database connections
-sqlite3 data/platform.db "SELECT COUNT(*) FROM sqlite_master"
+# Check database connectivity
+sqlite3 "${AA_DB_PATH:-data/sqlite/automatic-agent.db}" "SELECT COUNT(*) FROM sqlite_master"
 
 # View audit trail
 cat logs/audit.json | jq '. | select(.level=="error")'

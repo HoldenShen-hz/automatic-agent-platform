@@ -1,24 +1,24 @@
-# ADR-062: Offline and Edge Deployment Architecture
+# ADR-062 离线vs边缘部署Architecture
 
-- Status: Accepted
-- Decision Date: 2026-04-20
+- Status：Accepted
+- Decision日期：2026-04-20
 
-## Context
+## Background
 
-Edge scenarios such as factories, stores, and mobile devices cannot access the cloud, requiring offline deployment support.
+工厂、门店、移动设备等边缘场景no法访问云端，需要supported离线部署。
 
 ## Decision
 
-### Deployment Modes
+### 部署模式
 
-| Mode | Description | Use Case |
-|------|-------------|----------|
-| cloud | Full cloud deployment | Data center |
-| hybrid | Cloud + edge collaboration | Branch offices |
-| edge | Pure edge deployment | Factory/store |
-| mobile | Mobile device | On-site operations |
+| 模式 | Description | 适用场景 |
+|------|------|----------|
+| cloud | 云端完整部署 | data中心 |
+| hybrid | 云+边缘协同 | 分支机构 |
+| edge | 纯边缘部署 | 工厂/门店 |
+| mobile | 移动设备 | 现场作业 |
 
-### Edge Runtime
+### 边缘运lines时
 
 ```typescript
 interface EdgeRuntime {
@@ -30,54 +30,54 @@ interface EdgeRuntime {
 }
 ```
 
-### Data Sync Strategies
+### datasynchronous策略
 
-| Sync Mode | Description | Network Requirements |
-|-----------|-------------|---------------------|
-| realtime | Real-time sync | Stable connection |
-| batch | Batch sync | Intermittent connection |
-| delay_tolerant | Delay tolerant | Low bandwidth |
-| store_forward | Store and forward | Fully offline |
+| synchronous模式 | Description | network需求 |
+|----------|------|----------|
+| realtime | 实时synchronous | 稳定connect |
+| batch | 批量synchronous | 间歇connect |
+| delay_tolerant | 容忍delay | 低带宽 |
+| store_forward | storage转发 | 完全离线 |
 
-### Edge Capabilities
+### 边缘能力
 
-- Local task execution
-- Local knowledge base
-- Local state cache
-- Offline task queue
+- 本地任务执lines
+- 本地知识库
+- 本地Statuscache
+- 离线任务队列
 
-### Conflict Resolution
+### conflicts解决
 
-| Strategy | Description |
-|----------|-------------|
-| last_write_wins | Last write wins |
-| server_wins | Server priority |
-| merge | Only for projection / non-critical statistical object merge conflicts |
-| manual | Manual resolution |
+| 策略 | Description |
+|------|------|
+| last_write_wins | 最后writes胜出 |
+| server_wins | 服务端优先 |
+| merge | onlyused for projection / 非关键统计对象的合并conflicts |
+| manual | 人工解决 |
 
 ## Consequences
 
-Advantages:
+优点：
 
-- Supports offline scenarios
-- Reduces network dependency
-- Expands applicable scope
+- supported离线场景
+- 降低networkrelies on
+- 扩大适用范围
 
-Disadvantages:
+代价：
 
-- Sync complexity
-- Conflict handling complexity
+- synchronous复杂性
+- conflictshandle复杂
 
-## Cross References
+## 交叉references用
 
-- [ADR-052 Multi-Region Deployment Architecture](./052-multi-region-deployment-architecture.md)
-- [ADR-031 Disaster Recovery and High Availability Architecture](./031-disaster-recovery-and-high-availability.md)
+- [ADR-052 多 Region 部署Architecture](./052-multi-region-deployment-architecture.md)
+- [ADR-031 容灾vs高可用Architecture](./031-disaster-recovery-and-high-availability.md)
 
-## Source Section
+## 来源章节
 
-- `§62` Offline and Edge Deployment Architecture
+- `§62` 离线vs边缘部署Architecture
 
 ## v4.3 ADR Remediation
 
-- R3-60: This ADR defines `last_write_wins` as one of the conflict resolution strategies, which does not conflict with §25.11 truth data requirements. Root cause is that edge deployment scenarios (factories, stores, etc.) have different constraints for offline data sync versus centralized truth data systems. Fix: The text now clarifies that `last_write_wins` applies only to edge temporary data sync scenarios, not to core state data requiring truth consistency; the latter must use `server_wins` or `merge` strategies.
-- `merge` is also only allowed for projection / cache / non-authoritative statistical objects; `truth / budget / side effect` must still go through centralized authoritative writer and fencing protection.
+- R3-60: 本 ADR defines `last_write_wins` 为conflicts解Decision略之一，vs §25.11 真相data要求不矛盾。Root cause: 边缘部署场景（工厂、门店等）的离线datasynchronousvs中心化真相data系统有不同的约束。修复：正文明确 `last_write_wins` only适used for边缘临时datasynchronous场景，不适used for需要保持真相一致性的核心Statusdata；后者必须uses `server_wins` 或 `merge` 策略。
+- `merge` 同样只允许used for projection / cache / 非权威统计对象；`truth / budget / side effect` 仍必须via过中心化 authoritative writer vs fencing 保护。

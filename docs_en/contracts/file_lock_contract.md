@@ -2,26 +2,26 @@
 
 ---
 
-## OAPEFLIR Association
+## OAPEFLIR 关联
 
-This contract participates in the following stages of the OAPEFLIR eight-stage cycle:
+本 contract 参vs OAPEFLIR 八阶段循环中的以下阶段：
 
-- **Observe**: Signal collection and aggregation
-- **Assess**: Pre-execution assessment and risk judgment
-- **Plan**: Task decomposition and DAG construction
-- **Execute**: Step execution and fault tolerance
-- **Feedback**: Signal collection and preprocessing
-- **Learn**: Pattern detection and knowledge extraction
-- **Improve**: Improvement candidate evaluation and rollout
-- **Release**: Controlled release and rollback
+- **Observe**：信号采集vs聚合
+- **Assess**：执lines前评估vs风险判断
+- **Plan**：任务分解vs DAG 构建
+- **Execute**：步骤执linesvs容错
+- **Feedback**：信号收集vs预handle
+- **Learn**：模式检测vs知识提取
+- **Improve**：改进候选评估vs rollout
+- **Release**：受控发布vs回滚
 
 ---
 
-## 1. Scope
+## 1. 范围
 
-This contract defines read/write semantics, lease rules, crash recovery, and boundaries with tools/sandbox for file locks.
+本 contract defines文件锁的读写语义、租约规则、崩溃回收和vs tool / sandbox 的边界。
 
-Related documents:
+相关文档：
 
 - `tool_and_provider_execution_contract.md`
 - `sandbox_and_auth_contract.md`
@@ -29,30 +29,30 @@ Related documents:
 - `runtime_repository_and_migration_contract.md`
 - `error_code_registry.md`
 
-## 2. Objectives
+## 2. 目标
 
-Phase 1a / 1b must at minimum achieve:
+Phase 1a / 1b 至少要做到：
 
-- The same file will not be modified by two write operations simultaneously.
-- Read/write conflicts are detectable, awaitable, and timeoutable.
-- Post-crash residual locks can be cleaned up by startup inspection and recovery chains.
+- 同一文件不会被两个写操作同时修改。
+- 读写conflicts可检测、可等待、可timeout。
+- 崩溃后遗留锁能被启动巡检和恢复链清理。
 
-## 3. Key Objects
+## 3. 关键对象
 
 ### 3.1 `FileLockRequest`
 
-| Field | Type | Description |
-| --- | --- | --- |
-| `lock_scope` | `file` | Currently fixed to file-level for this stage |
-| `target_path` | `string` | Absolute normalized path |
-| `mode` | `read \| write` | Lock mode |
-| `task_id` | `string?` | Legacy task projection ID |
+| 字段 | class型 | Description |
+|---|-------|--------|
+| `lock_scope` | `file` | 当前阶段固定为文件级 |
+| `target_path` | `string` | 绝对规范化路径 |
+| `mode` | `read \| write` | 锁模式 |
+| `task_id` | `string?` | legacy 任务投影 ID |
 | `harness_run_id` | `string` | HarnessRun ID |
 | `node_run_id` | `string` | NodeRun ID |
-| `agent_id` | `string` | Agent ID |
-| `ttl_seconds` | `number` | Lease TTL |
-| `wait_timeout_ms` | `number` | Wait time for conflict release |
-| `reentrant_token` | `string?` | Same node run reentrant identifier |
+| `agent_id` | `string` | agent ID |
+| `ttl_seconds` | `number` | 租约 TTL |
+| `wait_timeout_ms` | `number` | 等待conflicts释放time |
+| `reentrant_token` | `string?` | 同 node run 重入标识 |
 
 ### 3.2 `FileLockRecord`
 
@@ -68,30 +68,30 @@ Phase 1a / 1b must at minimum achieve:
 - `expires_at`
 - `last_renewed_at`
 
-## 4. Compatibility Matrix
+## 4. 兼容矩阵
 
-| Existing Lock | New Request | Result |
-| --- | --- | --- |
-| `read` | `read` | Shared access allowed |
-| `read` | `write` | Block and wait or fail |
-| `write` | `read` | Block and wait or fail |
-| `write` | `write` | Exclusive conflict |
+| 已有锁 | 新request | 结果 |
+|---|-------|--------|
+| `read` | `read` | 允许共享 |
+| `read` | `write` | 阻塞等待或failed |
+| `write` | `read` | 阻塞等待或failed |
+| `write` | `write` | 排他conflicts |
 
-Supplementary rules:
+补充规则：
 
-- Reentrant requests for the same `node_run_id + normalized_path + mode` may reuse existing locks.
-- When the same node run already holds a `write` lock, requesting a `read` lock for the same file should reuse it directly without downgrading.
-- "Two different node runs but same task" is not allowed to bypass exclusive rules.
+- 同一 `node_run_id + normalized_path + mode` 的重入request可复用已有锁。
+- 同一 node run 已持有 `write` 锁时，再request同文件 `read` 锁应directly复用，不再降级。
+- 不允许“两个不同 node run 但同 task”bypassing排他规则。
 
-## 5. Lease and Renewal
+## 5. 租约vs续约
 
-- Default TTL for Phase 1a is recommended to be `60s`.
-- Active node runs must renew via heartbeat or explicit `renewLock(...)`.
-- After lock expiration, it does not mean the file is automatically safe to write; the recovery chain should first confirm that the holder node run is stale or terminated.
+- Phase 1a defaults to TTL Recommendation为 `60s`。
+- 活跃 node run 必须via heartbeat 或显式 `renewLock(...)` 续约。
+- 锁过期后不代table自动security可写；恢复链应先确认 holder node run 已 stale 或终止。
 
-## 6. Service Entry Points
+## 6. 服务入口
 
-Minimum interface:
+最小接口：
 
 - `acquireLock(request)`
 - `renewLock(lockId, now)`
@@ -113,47 +113,47 @@ flowchart TD
     F --> H["Release Or Renew"]
 ```
 
-## 7. Boundary with Tools and Sandbox
+## 7. vs工具、沙箱的边界
 
-- Read-only tools like `read_file / grep / list` may acquire `read` locks on demand as needed.
-- Write tools like `write_file / edit / patch` must hold a `write` lock first.
-- Tools like `bash` whose write set cannot be statically and precisely inferred must not masquerade as fine-grained file lock safety; they should be guarded by coarser ExecPolicy and approval policies.
-- FileLock does not replace sandbox path allowlists; it only solves same-path concurrent conflicts.
+- `read_file / grep / list` 这class只读工具defaults to可按需获取 `read` 锁。
+- `write_file / edit / patch` 这class写工具必须先持有 `write` 锁。
+- `bash` 这class不可静态精确推断写集的工具，不得as精细文件锁security；应由更粗的 ExecPolicy 和审批策略守卫。
+- FileLock 不替代 sandbox 路径白名单，它只解决同路径concurrentconflicts。
 
-## 8. Storage and Recovery Boundary
+## 8. storagevs恢复边界
 
-- Authoritative lock state must be persisted; it must not exist only in an in-memory Map.
-- Startup inspection should clean up locks where `expires_at < now` and holder execution is inactive.
-- If execution terminates but locks remain, they should be released by the recovery chain or cleanup handler.
+- authoritative 锁Status必须持久化，不得只存在内存 Map。
+- 启动巡检应清理 `expires_at < now` 且 holder execution 已失活的锁。
+- 若 execution 终止但锁仍存在，应由恢复链或清理器释放。
 
-## 9. Error Semantics
+## 9. 错误语义
 
-Recommended stable error codes:
+Recommendation稳定错误码：
 
 - `tool.file_lock_conflict`
 - `tool.file_lock_timeout`
 - `runtime.stale_lock_detected`
 
-Rules:
+规则：
 
-- Timeout waiting should return a conflict-type error, not a generic `tool.execution_failed`.
-- When lock records are corrupted or holder is inconsistent, report a recovery error and enter inspection handling.
+- 等待timeout应返回conflictsclass错误，而不is笼统 `tool.execution_failed`。
+- 发现锁record损坏或 holder inconsistent时，应上报恢复错误并进入巡检handle。
 
-## 10. Phase Boundaries
+## 10. Phase 边界
 
-Phase 1a explicitly does:
+Phase 1a 明确做：
 
-- File-level locks
-- SQLite persistence
-- TTL + heartbeat renewal
-- Startup reclamation and execution termination reclamation
+- 文件级锁
+- SQLite 持久化
+- TTL + heartbeat 续约
+- 启动回收vs execution 终止回收
 
-Currently not doing:
+当前不做：
 
-- Directory-level locks
-- Distributed lock service
-- Git worktree-level isolation replacement
+- 目录级锁
+- 分布式锁服务
+- Git worktree 级隔离替代
 
-## 11. Closure Conclusion
+## 11. 收口Conclusion
 
-The goal of file locks is not "make all IO automatically safe," but to compress the most dangerous concurrent write conflicts into a minimal boundary that is clear, auditable, and recoverable.
+文件锁的目标不is“让所有 IO 都自动security”，而is把最危险的concurrent写conflicts压到一个清楚、可审计、可恢复的最小边界里。

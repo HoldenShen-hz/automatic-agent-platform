@@ -1,15 +1,15 @@
 # Harness Run Lifecycle Contract
 
-## 1. Scope
+## 1. 范围
 
-Defines the lifecycle and recovery semantics of `HarnessRun` from admission to terminal state.
+defines `HarnessRun` 从 admission 到终态的生命cyclevs恢复语义。
 
-## 2. Lifecycle
+## 2. 生命cycle
 
 `created -> admitted -> planning -> ready -> running -> {pausing|paused|replanning|compensating|completed|failed|cancelled|aborted}`
 
-## 3. Constraints
+## 3. 约束
 
-- All state transitions must go through `RuntimeStateMachine`.
-- `HarnessRun` is the sole authoritative run truth; any workflow/session is only a projection.
-- Replanning must preserve historical `PlanGraphBundle`, expressed via patch/new version.
+- 所有Status推进必须via `RuntimeStateMachine`。
+- `HarnessRun` is唯一权威 run truth；任何 workflow/session onlyis projection。
+- replanning 必须保留历史 `PlanGraphBundle`，via patch/新版本table达。

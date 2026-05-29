@@ -1,4 +1,4 @@
-# Marketing and Brand Domain Spec
+# Marketing and Branding Domain Spec
 
 | Field | Value |
 | --- | --- |
@@ -12,8 +12,8 @@
 
 - External content must pass brand tone consistency checks.
 - Advertising law, copyright, and trademark compliance checks must not be skipped.
-- Crisis PR recommendations must be manually reviewed before external distribution.
+- Crisis PR recommendations must receive human review before publication.
 
 ## Acceptance Criteria
 
-- Prior to GA, evidence of brand consistency, advertising law compliance, manual sign-off, and external distribution audits must be provided.
+- GA must provide brand consistency, advertising law compliance, human sign-off, and external audit evidence before release.

@@ -1,10 +1,10 @@
 # Evidence Chain Contract
 
-## 1. Scope
+## 1. 范围
 
-Define the object model for runtime evidence chain, covering artifact, fact event, audit reference and verification hash.
+defines运lines证据链的对象模型，覆盖 artifact、fact event、审计references用vs校验哈希。
 
-## 2. Core Objects
+## 2. 核心对象
 
 ```typescript
 interface EvidenceChainLink {
@@ -18,8 +18,9 @@ interface EvidenceChainLink {
 }
 ```
 
-## 3. Constraints
+## 3. 约束
 
-- Any replayable/auditable conclusion must be traceable to `harnessRunId`.
-- When `nodeRunId` is missing, must explain that this evidence belongs to run level not node level.
-- Evidence chain must not rely only on `taskId` / `executionId`.
+- 任何可回放/可审计Conclusion都必须能追到 `harnessRunId`。
+- `nodeRunId` 缺失时必须Description该证据belongs to run 级而非 node 级。
+- 证据链不得onlyrelies on `taskId` / `executionId`。
+

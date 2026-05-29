@@ -1,27 +1,33 @@
-# API Versioning Strategy
+# API 版本策略
 
-This document defines the versioning scope for API documentation and implementation, to prevent long-term drift between `docs_zh` API documentation and actual routes.
+本文档defines API 文档和实现的版本口径，避免 `docs_zh` API 文档vs实际路由长期漂移。
 
-## Version Layers
+## 版本层级
 
-- Route prefix: Stable public APIs use `/api/v1`.
-- OpenAPI: `openapi.json` serves as the machine-readable source of truth.
-- Documentation: `docs_en/reference/` records human-readable explanations and migration notes.
+- 路由前缀：稳定公共 API 保留 `/api/v1` 路径。
+- OpenAPI：以 `openapi.json` 为机器可读事实来源。
+- 文档：`docs_zh/reference/` record人工Description和迁移注意事项。
+- request协商：UI transport via `Accept-Version` 发送可accepts版本集合。
+- response回显：服务端via `x-api-version` 暴露本iterations选中的版本。
 
-## Change Rules
+## 变更规则
 
-- Backward-compatible changes may retain the current major version, such as adding optional fields or new endpoints.
-- Breaking changes must introduce a new major version or provide a migration compatibility layer.
-- Removing fields, changing error codes, changing authentication semantics, and changing pagination defaults are all considered breaking changes.
+- 兼容变更可以保留当前主版本，例如新增optional字段或新增端点。
+- 破坏性变更必须新增主版本或提供迁移兼容层。
+- 删除字段、改变错误码、改变authentication语义和改变分页defaults to值都视为破坏性变更。
 
-## Release Requirements
+## 发布要求
 
-- API changes must simultaneously update OpenAPI/golden evidence or clearly state that they do not affect the public contract.
-- SDK changes must explain whether server routes, error categories, and authentication behavior have changed synchronously.
-- Documentation updates must include version, effective time, and compatibility notes.
+- API 变更必须同时更新 OpenAPI/golden 证据或明确Description不Impact公共契约。
+- SDK 变更必须Description服务端路由、错误class别和authenticationlines为isnosynchronous变化。
+- 需要区分两class client 协商模型：
+  - UI shared api-client：每iterationsrequest发送 `Accept-Version`
+  - SDK client：发送 `X-Platform-Version` / `X-SDK-Version` / `X-Contract-Version`，并在初始化阶段执lines握手
+- 两class模型的边界以 `docs_zh/adr/120-ui-sdk-client-transport-boundary.md` 为准，不能在文档里混写成同一条协议。
+- 文档更新必须contains版本、生效time和兼容性Description。
 
-## Validation
+## 验证
 
-- Run relevant OpenAPI golden tests by name.
-- Run minimal targeted tests for SDK/API route changes.
-- Do not use full test results as a substitute for API contract evidence.
+- 点名运lines相关 OpenAPI golden 测试。
+- 对 SDK/API 路由变更运lines最小定向测试。
+- 不usesfull测试结果替代 API 契约证据。

@@ -51,14 +51,21 @@ function analyzeTrend(samples: readonly CapacitySample[]): CapacityTrend | null 
   if (samples.length < 2) return null;
 
   const sorted = [...samples].sort((a, b) => a.timestamp.localeCompare(b.timestamp));
-  const earliest = sorted[0]!;
-  const latest = sorted[sorted.length - 1]!;
+  const earliest = sorted[0];
+  const latest = sorted[sorted.length - 1];
+  if (earliest == null || latest == null) {
+    return null;
+  }
 
   const overallGrowthRate = calculateGrowthRate(earliest, latest);
 
   let totalGrowthRate = 0;
   for (let i = 1; i < sorted.length; i++) {
-    totalGrowthRate += calculateGrowthRate(sorted[i - 1]!, sorted[i]!);
+    const previous = sorted[i - 1];
+    const current = sorted[i];
+    if (previous != null && current != null) {
+      totalGrowthRate += calculateGrowthRate(previous, current);
+    }
   }
   const averageGrowthRate = sorted.length > 1 ? totalGrowthRate / (sorted.length - 1) : 0;
 

@@ -1,17 +1,17 @@
 # Platform Ops Agent Contract
 
-## 1. Scope
+## 1. 范围
 
-This contract defines the platform self-ops Agent, catalog, and security guardrails as specified in `§69`.
+本 contract defines `§69` 的平台自运维 Agent、目录和security护栏。
 
-## 2. Canonical Objects
+## 2. Canonical 对象
 
 - `PlatformOpsAgentDefinition`
 - `OpsActionProposal`
 - `OpsGuardrail`
 - `OpsMaturityLevel`
 
-## 3. `PlatformOpsAgentDefinition` Minimum Fields
+## 3. `PlatformOpsAgentDefinition` 最小字段
 
 - `agent_id`
 - `specialty`
@@ -20,24 +20,24 @@ This contract defines the platform self-ops Agent, catalog, and security guardra
 - `max_autonomy_level`
 - `evidence_requirements`
 
-## 4. Maturity Levels
+## 4. 成熟度等级
 
-`OpsMaturityLevel` is fixed as:
+`OpsMaturityLevel` 固定为：
 
 - `observe_only`
 - `suggest_only`
 - `supervised_execution`
 - `guarded_automation`
 
-## 5. Rules
+## 5. 规则
 
-- Self-ops Agent must not bypass panic, budget, policy, and rollout.
-- Self-ops Agent default rollout guard is `no_rollout`; unapproved proposals must not enter release or canary.
-- All ops actions must first form `OpsActionProposal`.
-- High-impact ops actions require human approval by default.
+- 自运维 Agent 不能bypassing panic、budget、policy 和 rollout。
+- 自运维 Agent 的defaults to rollout guard 为 `no_rollout`；未审批的 proposal 不得进入发布或灰度。
+- 所有运维动作必须先形成 `OpsActionProposal`。
+- 高Impact运维动作defaults to需要人工批准。
 
-## 6. Test Requirements
+## 6. 测试要求
 
-- unit: proposal validation, guardrail checks, maturity gating
-- integration: health monitor -> proposal -> approval / execute
-- contract: unapproved high-risk ops actions must not take effect automatically
+- unit：proposal validation、guardrail checks、maturity gating
+- integration：health monitor -> proposal -> approval / execute
+- contract：未批准的高风险运维动作不得自动生效

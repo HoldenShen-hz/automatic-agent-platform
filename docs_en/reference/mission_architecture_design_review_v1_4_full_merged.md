@@ -1,69 +1,69 @@
-# Automatic Agent Platform — Mission Architecture Integration Implementation Contract v1.4
+# Automatic Agent Platform — Mission Architecture加入方案实现契约版 v1.4
 
-> **Document Version**: v1.4
-> **Baseline Document**: `mission_architecture_design_review_v1_3.md`
-> **Review Objective**: On the basis of v1.3 architecture implementation contract, merge Step degradation rules, complete the naming boundaries, interface constraints, testing governance, and migration requirements for Mission and Graph/Node-centric runtime, forming a complete merged version ready for implementation phase.
-> **Final Conclusion**: Mission should be incorporated into the system, but must serve as a **long-term goal and governance context root object**, must not become a new execution object, must not replace PlanGraph, must not resurrect legacy WorkflowState, and must not generate a fourth set of RequestEnvelope / ExecutionPlan / StateCommand; at the same time, the Step concept must be weakened, and the system canonical runtime uniformly adopts `PlanGraphBundle / PlanNode / NodeRun / NodeAttempt`.
+> **文档版本**：v1.4  
+> **基线文档**：`mission_architecture_design_review_v1_3.md`  
+> **审查目标**：在 v1.3 Architecture实现契约版基础上，合并 Step 降级规则，补齐 Mission vs Graph/Node-centric runtime 的命名边界、接口约束、测试治理vs迁移要求，形成可directly进入实现阶段的完整合并版。  
+> **最终Conclusion**：Mission 应加入系统，但必须作为 **长期目标vs治理上下文根对象**，不能成为新的执lines对象、不能替代 PlanGraph、不能复活 legacy WorkflowState，也不能生成第四套 RequestEnvelope / ExecutionPlan / StateCommand；同时必须弱化 Step 概念，系统 canonical runtime 统一采用 `PlanGraphBundle / PlanNode / NodeRun / NodeAttempt`。
 
 ---
 
-## 0. Final Review Conclusion
+## 0. 终审Conclusion
 
-The correct positioning of Mission is:
-
-```text
-Mission = Agent ecosystem-level long-term goal + governance boundary + budget boundary + knowledge boundary + learning attribution boundary + audit attribution boundary
-```
-
-It is NOT:
+Mission 的正确定位is：
 
 ```text
-NOT an Agent Session
-NOT a WorkflowState
-NOT an ExecutionPlan
-NOT a PlanGraphBundle
-NOT a HarnessRun
-NOT a NodeRun
-NOT a UI Project Folder
-NOT a Domain
-NOT an Agent Team
+Mission = Agent 生态系统级长期目标 + 治理边界 + budget边界 + 知识边界 + 学习归因边界 + 审计归因边界
 ```
 
-After the system incorporates Mission, the recommended canonical hierarchy is:
+它不is：
+
+```text
+不is Agent Session
+不is WorkflowState
+不is ExecutionPlan
+不is PlanGraphBundle
+不is HarnessRun
+不is NodeRun
+不is UI Project Folder
+不is Domain
+不is Agent Team
+```
+
+系统加入 Mission 后，推荐形成下面的 canonical 层iterations：
 
 ```text
 Tenant / Org
   └── Mission
-        ├── Session              # Human-machine interaction context, can enter the same Mission multiple times
-        ├── Task                 # A formal work request, must be bound to MissionContext
-        ├── WorkflowTemplate     # Reusable process template, does not belong to execution state
-        ├── PlanGraphBundle      # DAG execution plan for this task
-        ├── HarnessRun           # This execution instance, bound to only one MissionSnapshot
-        ├── NodeRun              # Single graph node execution
-        ├── NodeAttempt          # Single model/tool/human attempt
-        ├── EvidenceBundle       # Evidence and audit chain
-        └── LearningObject       # Can optionally remain within Mission, or be promoted to Domain/Platform upon approval
+        ├── Session              # 人机交互上下文，可多iterations进入同一 Mission
+        ├── Task                 # 一iterations正式工作request，必须绑定 MissionContext
+        ├── WorkflowTemplate     # 可复用流程模板，不belongs to执linesStatus
+        ├── PlanGraphBundle      # 本iterations任务的 DAG 执lines计划
+        ├── HarnessRun           # 本iterations执lines实例，只绑定一个 MissionSnapshot
+        ├── NodeRun              # 单个图节点运lines
+        ├── NodeAttempt          # 单iterations模型/工具/人工尝试
+        ├── EvidenceBundle       # 证据vs审计链
+        └── LearningObject       # optional择留在 Mission 内，或via审批提升到 Domain/Platform
 ```
 
-The most critical invariants:
+最关键的不variable：
 
-| Invariant | Description |
+| 不variable | Description |
 |---|---|
-| INV-MISSION-001 | Every executable Task must resolve a `missionRef` before dispatch, but does not necessarily create a new Mission each time. |
-| INV-MISSION-002 | A HarnessRun can only bind to one MissionContextSnapshot; cross-Mission collaboration must split child tasks or use MissionHandoff. |
-| INV-MISSION-003 | Mission only stores goals, boundaries, strategies, budget, members, knowledge/learning attribution; must not store running node state. |
-| INV-MISSION-004 | RuntimeMode does not do linear ordering; must be converted to RuntimeConstraintSet for constraint intersection. |
-| INV-MISSION-005 | MissionSnapshot guarantees audit reproducibility; live revocation check ensures revocation/freeze/budget exhaustion takes effect in a timely manner. |
-| INV-MISSION-006 | All state changes of Mission must be appended via PlatformFactEvent; direct overwrite of truth is not allowed. |
-| INV-MISSION-007 | MissionId can enter log/trace/event, but should not be used as a metrics label by default, avoiding high cardinality explosion. |
-| INV-MISSION-008 | Mission does not add a fourth set of core contracts; only extends existing canonical contracts. |
-| INV-MISSION-009 | `Step` is not a canonical object; Mission, Task, Plan, Harness, Event, Budget, Evidence, API must not add Step-centric fields, and can only be used as natural language labels in UI/documentation display layer. |
+| INV-MISSION-001 | 每个可执lines Task 在 dispatch 前必须解析出一个 `missionRef`，但不一定每iterations都创建新 Mission。 |
+| INV-MISSION-002 | 一个 HarnessRun 只能绑定一个 MissionContextSnapshot；跨 Mission 协作必须拆分 child task 或 MissionHandoff。 |
+| INV-MISSION-003 | Mission 只保存目标、边界、策略、budget、成员、知识/学习归因；不得保存运lines中的节点Status。 |
+| INV-MISSION-004 | RuntimeMode 不做线性排序，必须转成 RuntimeConstraintSet 后做约束交集。 |
+| INV-MISSION-005 | MissionSnapshot 保证审计可复现；live revocation check 保证撤权/冻结/budget耗尽能及时生效。 |
+| INV-MISSION-006 | Mission 的所有Status变化必须via PlatformFactEvent 追加，不允许directly覆盖 truth。 |
+| INV-MISSION-007 | MissionId 可进入 log/trace/event，但defaults to不能作为 metrics label，避免高基数爆炸。 |
+| INV-MISSION-008 | Mission 不新增第四套核心 contract，只扩展现有 canonical contracts。 |
+| INV-MISSION-009 | `Step` 不is canonical object；Mission、Task、Plan、Harness、Event、Budget、Evidence、API 均不得新增 Step-centric 字段，只能在 UI/文档展示层作为自然语言标签。 |
 
 ---
 
-## 1. Overall Architecture Diagram: Mission Integration with Five Planes
+## 1. 整体Architecture图：Mission 融入Five-Plane
 
-> Mission is not the sixth plane, but a governance context that runs through Control Plane, Orchestration Plane, Execution Plane, and State & Evidence Plane.
+> Mission 不is第六平面，而is贯穿 Control Plane、Orchestration Plane、Execution Plane、State & Evidence Plane 的治理上下文。
 
 ```mermaid
 flowchart TB
@@ -145,19 +145,19 @@ flowchart TB
     Learn --> Evidence
 ```
 
-### 1.1 Architecture Diagram Interpretation
+### 1.1 Architecture图解读
 
-Mission runs through the chain but does not take over execution:
+Mission 贯穿链路，但不接管执lines：
 
-1. **P1 Interface** receives user input, can only provide Mission hints, cannot directly authorize Mission.
-2. **P2 Control** decides whether Mission exists, is available, user has permissions, budget is available, risk is acceptable.
-3. **P3 Orchestration** generates PlanGraphBundle under Mission constraints.
-4. **P4 Execution** each NodeRun executes under MissionSnapshot + live guard.
-5. **P5 State & Evidence** records fact events, evidence, projections and audit chains for Mission/Task/Run/Node/SideEffect.
+1. **P1 Interface** 接收user输入，只能提供 Mission hint，不能directlyauthorization Mission。
+2. **P2 Control** 决定 Mission isno存在、isno可用、userisno有permission、budgetisno可用、风险isno可accepts。
+3. **P3 Orchestration** 在 Mission 约束下生成 PlanGraphBundle。
+4. **P4 Execution** 每个 NodeRun 在 MissionSnapshot + live guard 下执lines。
+5. **P5 State & Evidence** record Mission/Task/Run/Node/SideEffect 的事实事件、证据、投影vs审计链。
 
 ---
 
-## 2. Object Relationship Diagram: Mission and Task / Session / Plan / Run
+## 2. 对象关系图：Mission vs Task / Session / Plan / Run
 
 ```mermaid
 erDiagram
@@ -183,47 +183,47 @@ erDiagram
     MISSION ||--o{ ARTIFACT_RECORD : publishes
 ```
 
-### 2.1 Core Relationships
+### 2.1 核心关系
 
-| Object | Lifecycle Length | Main Responsibility | Is Execution Object | Can Cross Session | Can Cross Task |
+| 对象 | 生命cycle长短 | 主要职责 | isno执lines对象 | isno可跨 Session | isno可跨 Task |
 |---|---:|---|---:|---:|---:|
-| Mission | Long-term | Goals, governance, budget, knowledge, learning, attribution | No | Yes | Yes |
-| Session | Short/medium | Multi-turn conversation context, clarification, preferences, temporary state | No | No | Can produce multiple Tasks |
-| Task | Medium | One formal work request and acceptance goal | No | Can reference Session | No |
-| WorkflowTemplate | Long-term | Reusable process template | No | Yes | Yes |
-| PlanGraphBundle | Single | DAG execution plan for this Task | No | No | No |
-| HarnessRun | Single | This plan run instance | Yes | No | No |
-| NodeRun | Single | Single node execution in DAG | Yes | No | No |
-| NodeAttempt | Very short | Single attempt, model/tool call, error, evidence | Yes | No | No |
-| Agent | Long/medium | Capability provider or execution role | No | Yes | Yes |
-| Runtime | System-level | Scheduling, execution, recovery, isolation | Yes | Yes | Yes |
-| Step | Non-authoritative display term | UI/documentation natural language name for NodeRun; must not be truth/contract/runtime field | No | No | No |
+| Mission | 长期 | 目标、治理、budget、知识、学习、归因 | no | is | is |
+| Session | 短/中 | 多轮对话上下文、澄清、偏好、临时Status | no | no | 可产生多个 Task |
+| Task | 中 | 一iterations正式工作requestvs验收目标 | no | 可references用 Session | no |
+| WorkflowTemplate | 长期 | 可复用流程模板 | no | is | is |
+| PlanGraphBundle | 单iterations | 本iterations Task 的 DAG 执lines计划 | no | no | no |
+| HarnessRun | 单iterations | 本iterations计划运lines实例 | is | no | no |
+| NodeRun | 单iterations | DAG 中单节点运lines | is | no | no |
+| NodeAttempt | 极短 | 单iterations尝试、模型/工具call、错误、证据 | is | no | no |
+| Agent | 长期/中期 | 能力提供者或执lines角色 | no | is | is |
+| Runtime | 系统级 | 调度、执lines、恢复、隔离 | is | is | is |
+| Step | 非权威展示词 | UI/文档里对 NodeRun 的自然语言称呼；不得作为 truth/contract/runtime 字段 | no | no | no |
 
 ---
 
-## 3. When to Create Mission, Task, Session
+## 3. Mission、Task、Session 什么时候创建
 
-### 3.1 When to Create Session
+### 3.1 Session 何时创建
 
-Session is an interaction context, only created when user or external channel starts a context.
+Session is交互上下文，只在user或外部 channel 开始一段上下文时创建。
 
-Scenarios for creating Session:
+创建 Session 的典型场景：
 
-| Scenario | Create Session | Description |
+| 场景 | isno创建 Session | Description |
 |---|---:|---|
-| User opens Web Chat / NL panel | Yes | Save multi-turn context, clarification state, user preferences |
-| Slack/Telegram webhook inbound | Yes or reuse | Reuse by channel thread / conversation id |
-| Backend scheduled task | No | No human-machine conversation context, can be directly driven by Mission/Task |
-| API directly submits Task | Optional | Can skip Session if no multi-turn context |
-| Proactive Agent triggers suggestion | Optional | Create operator session if user interaction needed |
+| user打开 Web Chat / NL 面板 | is | 保存多轮上下文、澄清Status、user偏好 |
+| Slack/Telegram webhook inbound | is或复用 | 按 channel thread / conversation id 复用 |
+| 后台定时任务 | no | 没有人机对话上下文，可directly由 Mission/Task 驱动 |
+| API directly提交 Task | optional | 若no多轮上下文，可不创建 Session |
+| Proactive Agent 触发Recommendation | optional | 需要向user交互时创建 operator session |
 
-Session does not mean task officially starts. Formal execution must enter Task.
+Session 不代table任务正式开始。正式执lines必须进入 Task。
 
-### 3.2 When to Create Task
+### 3.2 Task 何时创建
 
-Task is a formal work request. Only created after intake, clarification, confirmation or risk waiver.
+Task is一iterations正式工作request。只有via过 intake、澄清、确认或风险豁免后才创建。
 
-Task creation conditions:
+创建 Task 的条件：
 
 ```text
 RawInput
@@ -237,49 +237,49 @@ RawInput
   -> Task
 ```
 
-Task must have:
+Task 必须具备：
 
-| Field | Description |
+| 字段 | Description |
 |---|---|
-| tenantId | Tenant isolation |
-| principal | Initiator or agent |
-| missionRef | Bound Mission or AdHocMission |
-| confirmedTaskSpecId | Frozen requirement specification |
-| idempotencyKey | Prevent duplicate submission |
-| riskProfile | Risk preview |
-| runtimeConstraints | Initial runtime constraints |
-| budgetIntent | Budget requirement |
-| traceId / correlationId | Observation chain |
+| tenantId | 租户隔离 |
+| principal | 发起人或 agent |
+| missionRef | 绑定的 Mission 或 AdHocMission |
+| confirmedTaskSpecId | 冻结后的需求规格 |
+| idempotencyKey | 防repeats提交 |
+| riskProfile | 风险预览 |
+| runtimeConstraints | 初始运lines约束 |
+| budgetIntent | budget需求 |
+| traceId / correlationId | 观测链路 |
 
-### 3.3 When to Create Mission
+### 3.3 Mission 何时创建
 
-Not every conversation creates a new Mission, not every Task creates a new Mission.
+不is每iterations对话都创建新 Mission，也不is每个 Task 都创建新 Mission。
 
-Mission creation rules:
+Mission 创建规则：
 
-| Trigger Condition | Create New Mission | Example |
+| 触发条件 | isno创建新 Mission | 示例 |
 |---|---:|---|
-| User explicitly creates long-term goal | Yes | "Establish company-level Agent platform production specialization" |
-| Multiple Tasks share long-term goal, budget, knowledge, approval | Yes | R&D project, continuous operations, compliance audit, investment research topic |
-| Proactive / Scheduled / Autonomous work | Yes | Daily monitoring, auto-repair, continuous evaluation |
-| Cross-team/Agent/Domain collaboration | Yes | Legal + Finance + Engineering joint process |
-| Single low-risk Q&A | No, bind AdHocMission | "Explain what DAG is" |
-| Single high-risk operation | Not necessarily new, but must explicitly select or create Mission | "Deploy production configuration" |
-| API low-risk no-context request | Bind system default Mission | Read-only query API |
+| user明确创建长期目标 | is | “建立公司级 Agent 平台生产化专项” |
+| 多个 Task 共享长期目标、budget、知识、审批 | is | 研发项目、持续运营、合规审计、投研专题 |
+| Proactive / Scheduled / Autonomous 工作 | is | 每日监控、自动修复、持续评估 |
+| 跨团队/跨 Agent/跨 Domain 协作 | is | 法务 + 财务 + 工程联合流程 |
+| 单iterations低风险问答 | no，绑定 AdHocMission | “解释 DAG is什么” |
+| 单iterations高风险操作 | 不一定新建，但必须显式选择或创建 Mission | “部署生产configure” |
+| API 低风险no上下文request | 绑定 system default Mission | 只读查询class API |
 
-### 3.4 Does Every Task Need to Go Through Mission
+### 3.4 isno每个 Task 都要走 Mission
 
-**Execution must bind MissionContext, but not necessarily create new Mission.**
+**执lines前必须绑定 MissionContext，但不一定人工可见，也不一定创建新 Mission。**
 
-Recommended three types of Mission:
+推荐三class Mission：
 
-| Type | Visibility | Use | TTL |
+| class型 | 可见性 | 用途 | TTL |
 |---|---|---|---|
-| ExplicitMission | User/team visible | Long-term goals, projects, automation ecosystem | Long-term |
-| SystemMission | System visible | incident/recovery/maintenance/bootstrap | Medium-long term |
-| AdHocMission | Default collapsed | Governance context for single low-risk tasks | Short-term auto-archive |
+| ExplicitMission | user/团队可见 | 长期目标、项目、自动化生态 | 长期 |
+| SystemMission | 系统可见 | incident/recovery/maintenance/bootstrap | 中长期 |
+| AdHocMission | defaults to折叠 | 单iterations低风险任务的治理上下文 | 短期自动归档 |
 
-Key principle:
+关键principle：
 
 ```text
 Every executable Task must bind to one MissionContext.
@@ -289,7 +289,7 @@ Not every Mission is user-visible.
 
 ---
 
-## 4. Request Flow: From User Input to Mission Binding to Execution
+## 4. request流：从user输入到 Mission 绑定再到执lines
 
 ```mermaid
 sequenceDiagram
@@ -326,23 +326,23 @@ sequenceDiagram
     HR->>EB: node_run / node_attempt events
 ```
 
-### 4.1 MissionResolver Two-Stage Design
+### 4.1 MissionResolver 两阶段设计
 
-To avoid "need Domain to select Mission, but Mission restricts Domain" circular dependency, using two-stage:
+为避免 “需要 Domain 才能选 Mission，但 Mission 又限制 Domain” 的循环relies on，采用两阶段：
 
 ```text
 Stage 1: PreRouteClassifier
-  Input: RawInput / ConfirmedTaskSpec
-  Output: domainHints / riskHints / workflowHints / candidateMissionIds
+  输入 RawInput / ConfirmedTaskSpec
+  输出 domainHints / riskHints / workflowHints / candidateMissionIds
 
 Stage 2: MissionResolver
-  Based on hints + membership + recent missions + explicit selection get MissionContextSnapshot
+  根据 hints + membership + recent missions + explicit selection 得到 MissionContextSnapshot
 
 Stage 3: FinalRouteValidator
-  Do final routing within Mission-allowed domain/tool/workflow/runtimeConstraints
+  在 Mission 允许的 domain/tool/workflow/runtimeConstraints 内做最终路由
 ```
 
-### 4.2 Mission Selection Priority
+### 4.2 Mission 选择优先级
 
 ```text
 explicit missionId from user/API
@@ -353,11 +353,11 @@ explicit missionId from user/API
 > reject and ask user to choose/create mission
 ```
 
-High-risk write operations cannot silently use recent mission, must explicitly confirm.
+高风险写操作不能静默uses recent mission，必须显式确认。
 
 ---
 
-## 5. Mission Contract Design
+## 5. Mission Contract 设计
 
 ### 5.1 MissionRecord
 
@@ -426,7 +426,7 @@ export interface MissionRecord {
 
 ### 5.2 MissionContextSnapshot
 
-Snapshot is used for reproducible execution, cannot be modified in-place during running.
+Snapshot used for执lines可复现，不可在运lines中被原地修改。
 
 ```ts
 export interface MissionContextSnapshot {
@@ -478,7 +478,7 @@ export interface MissionMembership {
 }
 ```
 
-Permission calculation must be intersection:
+permission计算必须is交集：
 
 ```text
 EffectivePermission =
@@ -546,7 +546,7 @@ export interface MissionBudgetEnvelope {
 
 ---
 
-## 6. Mission Lifecycle and Execution Side Effects
+## 6. Mission 生命cyclevs执lines副作用
 
 ```mermaid
 stateDiagram-v2
@@ -564,35 +564,35 @@ stateDiagram-v2
     cancelled --> archived: archive
 ```
 
-### 6.1 State Semantics
+### 6.1 Status语义
 
-| State | Can Accept New Task | Can Continue Running HarnessRun | Can Create LearningObject | Can Promote | Can Archive |
+| Status | 可接新 Task | 可继续运lines中 HarnessRun | 可创建 LearningObject | 可 promotion | 可归档 |
 |---|---:|---:|---:|---:|---:|
-| draft | No | No | No | No | No |
-| reviewing | No | No | No | No | No |
-| active | Yes | Yes | Yes | Restricted by policy | No |
-| paused | No | drain only | Yes | No | No |
-| completing | No | drain only | Yes | Owner approval required | No |
-| completed | No | No | Read-only | Can promote with restriction | Yes |
-| cancelled | No | No | Read-only | No | Yes |
-| archived | No | No | No | No | Already archived |
+| draft | no | no | no | no | no |
+| reviewing | no | no | no | no | no |
+| active | is | is | is | 受策略限制 | no |
+| paused | no | drain only | is | no | no |
+| completing | no | drain only | is | 需 owner 审批 | no |
+| completed | no | no | 只读 | 可受限 promotion | is |
+| cancelled | no | no | 只读 | no | is |
+| archived | no | no | no | no | 已归档 |
 
-### 6.2 Mission State Change Side Effects
+### 6.2 Mission Status变化的副作用
 
-| Transition | Required Side Effects |
+| 转换 | 必须副作用 |
 |---|---|
-| draft → reviewing | Generate MissionReviewRequest; freeze review snapshot |
-| reviewing → active | Emit `platform.mission.activated`; enable budget and member permissions |
-| active → paused | Block new Task; queued task marked blocked; running HarnessRun enters drain/cancel strategy |
-| paused → active | Re-do policy/budget/member live check; do not reuse old snapshot |
-| active → completing | Prohibit new Task; allow completing existing runs; lock new budget |
-| completing → completed | Generate FinalMissionReport; freeze MissionSummaryEvidenceBundle |
-| active/paused → cancelled | Cancel queued tasks; running run terminates per recovery policy; release budget reservation |
-| completed/cancelled → archived | Move to read-only archive; retain audit, evidence, learning object references |
+| draft → reviewing | 生成 MissionReviewRequest；冻结 review snapshot |
+| reviewing → active | 发 `platform.mission.activated`；enabledbudget和成员permission |
+| active → paused | 阻止新 Task；queued task 标记 blocked；running HarnessRun 进入 drain/cancel 策略 |
+| paused → active | 重新做 policy/budget/member live check；不复用旧 snapshot |
+| active → completing | 禁止新 Task；允许完成已有 run；锁定新增budget |
+| completing → completed | 生成 FinalMissionReport；冻结 MissionSummaryEvidenceBundle |
+| active/paused → cancelled | 取消 queued task；running run 按 recovery policy 终止；释放budget reservation |
+| completed/cancelled → archived | 移动到只读归档；保留审计、证据、学习对象references用 |
 
 ---
 
-## 7. Mission and OAPEFLIR / Harness Relationship
+## 7. Mission vs OAPEFLIR / Harness 的关系
 
 ```mermaid
 flowchart LR
@@ -615,20 +615,20 @@ flowchart LR
     Mission -.rollout gate.-> R
 ```
 
-### 7.1 Mission Constraints at Each Stage
+### 7.1 每个阶段的 Mission 约束
 
-| OAPEFLIR Stage | Mission Participation Point |
+| OAPEFLIR 阶段 | Mission 参vs点 |
 |---|---|
-| Observe | Use Mission knowledge boundary and session context to filter input |
-| Assess | Compute risk, budget feasibility, domain eligibility, mission fit |
-| Plan | PlanGraphBuilder can only select Mission-allowed workflow/tool/domain |
-| Execute | NodeRun pre live check: Mission active, budget not exhausted, permissions not revoked |
-| Feedback | Feedback attributed by Mission, enters mission-level evidence |
-| Learn | LearningObject defaults to Mission scope, not auto-promoted |
-| Improve | ImprovementCandidate must carry missionId and evidenceRefs |
-| Release | Release/rollout must satisfy Mission rollout policy and owner/domain gate |
+| Observe | uses Mission knowledge boundary 和 session context 过滤输入 |
+| Assess | 计算 risk、budget feasibility、domain eligibility、mission fit |
+| Plan | PlanGraphBuilder 只能选择 Mission 允许的 workflow/tool/domain |
+| Execute | NodeRun 前 live check：Mission active、budget未耗尽、permission未撤销 |
+| Feedback | 反馈按 Mission 归因，进入 mission-level evidence |
+| Learn | LearningObject defaults to留在 Mission scope，不自动提升 |
+| Improve | ImprovementCandidate 必须带 missionId 和 evidenceRefs |
+| Release | 发布/rollout 需满足 Mission rollout policy vs owner/domain gate |
 
-### 7.2 HarnessRun Binding Rules
+### 7.2 HarnessRun 绑定规则
 
 ```ts
 export interface HarnessRunMissionBinding {
@@ -641,24 +641,24 @@ export interface HarnessRunMissionBinding {
 }
 ```
 
-Not allowed:
+不允许：
 
 ```text
 HarnessRun.missionIds: string[]
-NodeRun changes Mission by itself
-NodeAttempt changes Mission by itself
+NodeRun 自己换 Mission
+NodeAttempt 自己换 Mission
 ```
 
-Allowed:
+允许：
 
 ```text
-Parent Mission creates child Task, child Task binds another Mission.
-Parent Mission and child Mission establish audit relationship through MissionHandoffRequest.
+Parent Mission 创建 child Task，child Task 绑定另一个 Mission。
+Parent Mission vs child Mission 之间via MissionHandoffRequest 建立审计关系。
 ```
 
 ---
 
-## 8. Cross-Mission Collaboration and Handoff
+## 8. 跨 Mission 协作vs Handoff
 
 ```mermaid
 flowchart TD
@@ -693,21 +693,21 @@ export interface MissionHandoffRequest {
 }
 ```
 
-### 8.2 Prohibited Cross-Mission Implicit Behaviors
+### 8.2 禁止跨 Mission 的隐式lines为
 
-| Prohibited Behavior | Reason |
+| 禁止lines为 | 原因 |
 |---|---|
-| One Task simultaneously binding multiple Missions | Budget, approval, evidence attribution chaos |
-| HarnessRun switches Mission during execution | Audit not reproducible |
-| ToolCall crosses Mission knowledge boundary by itself | Data boundary violation |
-| LearningObject auto-promotes from Mission to Platform | Knowledge pollution risk |
-| Proactive Agent auto-executes without Mission | No owner, no budget, no responsibility attribution |
+| 一个 Task 同时绑定多个 Mission | budget、审批、证据归因混乱 |
+| 一个 HarnessRun 执lines中切换 Mission | 审计不可复现 |
+| ToolCall 自lines越过 Mission knowledge boundary | data边界破坏 |
+| LearningObject 从 Mission 自动提升到 Platform | 知识污染风险 |
+| Proactive Agent 在no Mission 下自动执lines | no owner、nobudget、no责任归属 |
 
 ---
 
-## 9. Mission and Budget / Cost / Reservation
+## 9. Mission vs Budget / Cost / Reservation
 
-### 9.1 Hierarchical Budget
+### 9.1 层级budget
 
 ```mermaid
 flowchart TB
@@ -720,9 +720,9 @@ flowchart TB
     NodeRunBudget --> SideEffectReservation["SideEffect Commit Reservation"]
 ```
 
-### 9.2 Budget Execution Sequence
+### 9.2 budget执lines顺序
 
-Before each model/tool/external call:
+每iterations模型/工具/外部call前必须：
 
 ```text
 1. live Mission status check
@@ -736,7 +736,7 @@ Before each model/tool/external call:
 9. release unused reservation
 ```
 
-### 9.3 BudgetReservation Key Fields
+### 9.3 BudgetReservation 关键字段
 
 ```ts
 export interface BudgetReservation {
@@ -761,9 +761,9 @@ export interface BudgetReservation {
 
 ---
 
-## 10. Mission and IAM / Policy / Risk
+## 10. Mission vs IAM / Policy / Risk
 
-### 10.1 Permission Calculation Graph
+### 10.1 permission计算图
 
 ```mermaid
 flowchart LR
@@ -776,34 +776,34 @@ flowchart LR
     Intersect --> Decision["Allow / Deny / Require Approval / Degrade"]
 ```
 
-### 10.2 Mission Role Permission Matrix
+### 10.2 Mission 角色permission矩阵
 
-| Action | viewer | contributor | operator | approver | owner | auditor |
+| 动作 | viewer | contributor | operator | approver | owner | auditor |
 |---|---:|---:|---:|---:|---:|---:|
-| View Mission | Yes | Yes | Yes | Yes | Yes | Yes |
-| Create low-risk Task | No | Yes | Yes | No | Yes | No |
-| Start HarnessRun | No | Restricted | Yes | No | Yes | No |
-| Approve high-risk operation | No | No | No | Yes | Yes | No |
-| Modify Mission Policy | No | No | No | No | Yes | No |
-| View audit chain | Restricted | Restricted | Restricted | Yes | Yes | Yes |
-| Archive Mission | No | No | No | No | Yes | No |
+| 查看 Mission | is | is | is | is | is | is |
+| 创建低风险 Task | no | is | is | no | is | no |
+| 启动 HarnessRun | no | 受限 | is | no | is | no |
+| 批准高风险操作 | no | no | no | is | is | no |
+| 修改 Mission Policy | no | no | no | no | is | no |
+| 查看审计链 | 受限 | 受限 | 受限 | is | is | is |
+| 归档 Mission | no | no | no | no | is | no |
 
-### 10.3 Risk Gate
+### 10.3 风险门控
 
-| Risk Level | Mission Default Behavior |
+| 风险等级 | Mission defaults tolines为 |
 |---|---|
-| low | Can auto-execute per RuntimeConstraintSet |
-| medium | Default suggestion or semi_auto + approval |
-| high | Must HITL approval, no auto side-effect commit |
-| critical | Can only proposal, no auto execution; requires owner + domain owner + platform policy gate |
+| low | 可按 RuntimeConstraintSet 自动执lines |
+| medium | defaults to suggestion 或 semi_auto + approval |
+| high | 必须 HITL 审批，不允许自动 side-effect commit |
+| critical | 只能 proposal，不允许自动执lines；需要 owner + domain owner + platform policy gate |
 
 ---
 
-## 11. Mission and Knowledge / Memory / Learning
+## 11. Mission vs Knowledge / Memory / Learning
 
 ### 11.1 Mission Knowledge Boundary
 
-Mission can limit knowledge retrieval scope:
+Mission 可以限定知识检索范围：
 
 ```ts
 export interface MissionKnowledgeBoundary {
@@ -817,7 +817,7 @@ export interface MissionKnowledgeBoundary {
 }
 ```
 
-### 11.2 LearningObject Defaults to Staying Within Mission
+### 11.2 LearningObject defaults to留在 Mission 内
 
 ```text
 NodeAttempt evidence
@@ -827,28 +827,28 @@ NodeAttempt evidence
   -> optional promotion to domain/platform
 ```
 
-### 11.3 Learning Promotion Gate
+### 11.3 学习提升门禁
 
-| Promotion Path | Requirements |
+| 提升路径 | 要求 |
 |---|---|
 | Mission → Mission official | Mission owner approval + evidence threshold |
 | Mission → Domain | Domain owner approval + no taint + regression eval |
 | Domain → Platform | Platform team approval + cross-domain eval + rollout gate |
 
-Prohibited:
+禁止：
 
 ```text
-Single successful NodeAttempt auto-promotes to Platform knowledge.
-Polluted data in Mission enters global prompt/policy/knowledge.
+单个success NodeAttempt 自动提升到 Platform knowledge。
+Mission 内污染data进入globally prompt/policy/knowledge。
 ```
 
 ---
 
-## 12. Mission and Event / Truth / Evidence
+## 12. Mission vs Event / Truth / Evidence
 
-### 12.1 Mission Event Naming
+### 12.1 Mission 事件命名
 
-Recommended canonical events:
+Recommendation采用 canonical 事件：
 
 ```text
 platform.mission.created
@@ -870,7 +870,7 @@ platform.mission.handoff_requested
 platform.mission.handoff_completed
 ```
 
-### 12.2 EventEnvelope Required Fields
+### 12.2 EventEnvelope 必须字段
 
 ```ts
 export interface PlatformFactEvent<TPayload> {
@@ -891,52 +891,52 @@ export interface PlatformFactEvent<TPayload> {
 }
 ```
 
-### 12.3 Truth and Projection
+### 12.3 Truth vs Projection
 
-| Layer | Stores What | Authoritative |
+| 层 | 存什么 | isno权威 |
 |---|---|---:|
-| Truth Store | append-only Mission/Task/Run fact events | Yes |
-| Projection | Mission dashboard, Task list, budget summary | No |
-| Evidence Bundle | Audit evidence, references, hash chain, signatures | Yes, as evidence |
-| Cache | UI query cache, temporary state | No |
+| Truth Store | append-only Mission/Task/Run fact events | is |
+| Projection | Mission dashboard、Task list、budget summary | no |
+| Evidence Bundle | 审计证据、references用、哈希链、签名 | is，作为证据 |
+| Cache | UI 查询cache、临时Status | no |
 
 ---
 
-## 13. UI Product Form
+## 13. UI 产品形态
 
 ### 13.1 Mission Console
 
-Must provide:
+必须提供：
 
-| Area | Content |
+| 区域 | 内容 |
 |---|---|
-| Mission Overview | Goals, owner, status, risk, budget, watermark |
-| Task Board | All Task status under this Mission |
+| Mission Overview | 目标、owner、Status、风险、budget、水位 |
+| Task Board | 该 Mission 下所有 Task Status |
 | Run Timeline | HarnessRun / NodeRun / NodeAttempt timeline |
 | Budget Panel | cost/token/tool/external-call/duration/concurrency |
-| Evidence Panel | evidence refs, audit chain, final report |
-| Knowledge Panel | Mission memory, LearningObject, promotion requests |
+| Evidence Panel | evidence refs、audit chain、final report |
+| Knowledge Panel | Mission memory、LearningObject、promotion requests |
 | Approval Panel | pending HITL / approval requests |
-| Incident Panel | blocked, degraded, panic, policy violation |
-| Settings | membership, policy, runtime constraints, data boundary |
+| Incident Panel | blocked、degraded、panic、policy violation |
+| Settings | membership、policy、runtime constraints、data boundary |
 
-### 13.2 Things UI Cannot Do
+### 13.2 UI 不能做的事情
 
-| Prohibited | Reason |
+| 禁止 | 原因 |
 |---|---|
-| Frontend directly decides Mission permissions | Must be backend IAM/Policy judgment |
-| Recent Mission automatically used for high-risk write operations | Privilege escalation and misoperation risk |
-| localStorage saves Mission token/secret | XSS leak |
-| UI locally simulates execute | Bypasses P1→P2→P3→P4 chain |
-| MissionId as all frontend metrics label | High cardinality risk |
+| 前端directly决定 Mission permission | 必须后端 IAM/Policy 判断 |
+| 最近 Mission 自动used for高风险写操作 | 越权vs误操作风险 |
+| localStorage 保存 Mission token/secret | XSS 泄漏 |
+| UI 本地模拟 execute | bypassing P1→P2→P3→P4 链路 |
+| MissionId 作为所有前端 metrics label | 高基数风险 |
 
 ---
 
-## 14. Observability Design
+## 14. Observability 设计
 
 ### 14.1 Trace / Log / Event
 
-Trace and log should carry:
+Trace 和 log 应带：
 
 ```text
 tenantId
@@ -952,9 +952,9 @@ riskLevel
 runtimeConstraintHash
 ```
 
-### 14.2 Metrics Label Restrictions
+### 14.2 Metrics 标签限制
 
-Allowed as metrics labels:
+允许作为 metrics label：
 
 ```text
 mission_kind
@@ -965,7 +965,7 @@ runtime_mode_preset
 status
 ```
 
-Not allowed as metrics labels by default:
+defaults to禁止作为 metrics label：
 
 ```text
 missionId
@@ -976,13 +976,13 @@ userId
 promptBundleId
 ```
 
-These can only appear in exemplars, traces, logs or sampled diagnostic events.
+这些只能出现在 exemplars、trace、logs 或 sampled diagnostic event 中。
 
 ---
 
-## 15. Multi-Region / Tenant / Federation Notes
+## 15. Multi-Region / Tenant / Federation 注意事项
 
-### 15.1 Mission Home Region
+### 15.1 Mission home region
 
 ```ts
 export interface MissionRegionPolicy {
@@ -996,19 +996,19 @@ export interface MissionRegionPolicy {
 }
 ```
 
-### 15.2 Multi-Region Principles
+### 15.2 多区域principle
 
-| Rule | Description |
+| 规则 | Description |
 |---|---|
-| Mission truth home region unique | Prevent split-brain |
-| Projection can replicate across regions | Read-only/near-real-time display |
-| Budget reservation atomic in home region | Prevent over-spending |
-| Failover must produce new fencing epoch | Prevent stale leader writes |
-| MissionSnapshot needs region/epoch | Ensure audit and recovery |
+| Mission truth home region 唯一 | 防止 split-brain |
+| Projection 可跨区复制 | 只读/近实时展示 |
+| Budget reservation 在 home region 原子化 | 防exceeds额 |
+| Failover 必须产生 new fencing epoch | 防 stale leader writes |
+| MissionSnapshot 需要 region/epoch | 保证审计和恢复 |
 
 ### 15.3 Federation
 
-Cross-org Mission collaboration cannot share raw data, must through:
+跨组织 Mission 协作不能共享裸data，必须via：
 
 ```text
 FederatedMissionLink
@@ -1020,20 +1020,20 @@ FederatedMissionLink
 
 ---
 
-## 16. Migration Plan
+## 16. 迁移方案
 
-### Phase 0: Contract Freeze First
+### Phase 0：Contract Freeze 先lines
 
-Must complete first:
+必须先完成：
 
-1. Confirm unique RequestEnvelope definition.
-2. Confirm PlanGraphBundle is the only execution plan contract.
-3. Confirm HarnessRun / NodeRun / NodeAttempt are the only runtime objects.
-4. Deprecate legacy ExecutionPlan / WorkflowState / ControlDirective as first-class contracts.
+1. 确认唯一 RequestEnvelope defines。
+2. 确认 PlanGraphBundle is唯一执lines计划契约。
+3. 确认 HarnessRun / NodeRun / NodeAttempt is唯一运lines时对象。
+4. 废弃 legacy ExecutionPlan / WorkflowState / ControlDirective 作为一等 contract。
 
-### Phase 1: Introduce Mission Tables and Events, Do Not Change Execution Path
+### Phase 1：references入 Mission tablevs事件，不改变执lines路径
 
-Add:
+新增：
 
 ```text
 mission_records
@@ -1044,23 +1044,23 @@ mission_events
 mission_projections
 ```
 
-All old Tasks automatically bind:
+所有老 Task 自动绑定：
 
 ```text
 system.ad_hoc.default_mission
 ```
 
-### Phase 2: MissionResolver Connects to Intake
+### Phase 2：MissionResolver 接入 intake
 
 ```text
 ConfirmedTaskSpec -> MissionResolver -> RequestEnvelope.missionRef
 ```
 
-Low-risk tasks can auto-bind AdHocMission; high-risk must explicitly confirm.
+低风险任务可自动绑定 AdHocMission；高风险必须显式确认。
 
-### Phase 3: HarnessRun Binds MissionSnapshot
+### Phase 3：HarnessRun 绑定 MissionSnapshot
 
-HarnessRun creation must have:
+HarnessRun 创建时必须有：
 
 ```text
 missionId
@@ -1069,9 +1069,9 @@ effectiveRuntimeConstraints
 budgetEnvelopeRef
 ```
 
-### Phase 4: NodeRun Live Guard
+### Phase 4：NodeRun live guard
 
-Pre-check each NodeRun:
+每个 NodeRun 前检查：
 
 ```text
 Mission active?
@@ -1081,54 +1081,54 @@ Runtime constraints still allow?
 Incident/Panic state?
 ```
 
-### Phase 5: UI Mission Console + Observability
+### Phase 5：UI Mission Console + Observability
 
-Launch Mission Console, Mission Task Board, Budget Panel, Evidence Panel, Learning Panel.
+上线 Mission Console、Mission Task Board、Budget Panel、Evidence Panel、Learning Panel。
 
-### Phase 6: Learning / Knowledge Promotion
+### Phase 6：Learning / Knowledge promotion
 
-Finally connect Mission-scoped learning, avoid early pollution of platform-level knowledge.
+最后接入 Mission-scoped learning，避免早期污染平台级知识。
 
 ---
 
-## 17. Regression Tests and Acceptance Criteria
+## 17. 回归测试vs验收标准
 
-### 17.1 Required New Tests
+### 17.1 必须新增测试
 
-| Test | Acceptance Points |
+| 测试 | 验收点 |
 |---|---|
-| MissionResolver E2E | explicit missionId, session default, ad hoc, rejection selection all correct |
-| High-risk Task Mission confirmation | High-risk cannot silently bind recent mission |
-| HarnessRun single mission invariant | One run cannot have multiple missions |
-| Mission paused side effect | After paused, no new task, running runs handled per drain strategy |
-| Budget reservation | NodeRun pre must reserve, settle failure must not silently pass |
-| Live revocation | After member revoked, subsequent NodeRun blocked |
-| Snapshot reproducibility | Same snapshot replay gets same policy view |
-| Cross-mission handoff | Must have approval/audit/budget transfer |
-| Learning quarantine | Mission learning not auto-promoted to Domain/Platform |
-| Metrics high-cardinality guard | missionId not entering default metric labels |
-| Multi-region fencing | After failover, old epoch writes rejected |
-| UI no local execute | UI action must go API / Control Plane |
+| MissionResolver E2E | 明确 missionId、session default、ad hoc、拒绝选择均正确 |
+| High-risk Task Mission confirmation | 高风险不能静默绑定 recent mission |
+| HarnessRun single mission invariant | 一个 run 不能有多个 mission |
+| Mission paused side effect | paused 后不接新 task，running run 按 drain 策略handle |
+| Budget reservation | NodeRun 前必须 reserve，settle failed不得静默via |
+| Live revocation | 成员被 revoke 后后续 NodeRun 被阻断 |
+| Snapshot reproducibility | 同一 snapshot replay 得到相同 policy view |
+| Cross-mission handoff | 必须有 approval/audit/budget transfer |
+| Learning quarantine | Mission learning 不自动提升 Domain/Platform |
+| Metrics high-cardinality guard | missionId 不进入defaults to metric labels |
+| Multi-region fencing | failover 后旧 epoch writes被拒绝 |
+| UI no local execute | UI action 必须走 API / Control Plane |
 
-### 17.2 Prohibited Test Patterns
+### 17.2 禁止via的测试模式
 
-From current audit, must prohibit these invalid tests:
+从现有审计看，必须禁止以下no效测试：
 
 ```text
 assert.ok(true) in catch
 allowed === true || allowed === false
 keys.length >= 0
-only test mock shape, don't import production services
-E2E bypasses HarnessRun / PlanGraphBundle / RSM
+只测试 mock shape，不import生产服务
+E2E bypassing HarnessRun / PlanGraphBundle / RSM
 ```
 
 ---
 
-## 18. Remaining Gaps to Fill
+## 18. 还需要补齐的遗漏点
 
-### 18.1 Mission and Agent Team Relationship
+### 18.1 Mission vs Agent Team 的关系
 
-Agent Team is execution collaboration structure, not governance boundary. Mission can define which Agent/AgentTeam participants are allowed, but AgentTeam cannot replace Mission.
+Agent Team is执lines协作结构，不is治理边界。Mission 可以defines允许哪些 Agent/AgentTeam 参vs，但 AgentTeam 不能替代 Mission。
 
 ```text
 Mission owns governance.
@@ -1136,26 +1136,26 @@ AgentTeam owns collaboration topology.
 PlanGraph owns execution topology.
 ```
 
-### 18.2 Mission and Domain Relationship
+### 18.2 Mission vs Domain 的关系
 
-Domain is capability/policy template, Mission is goal instance.
+Domain is能力/策略模板，Mission is目标实例。
 
-Example:
+例：
 
 ```text
 Domain = coding / legal / ops / quant
 Mission = Automatic Agent Platform Production Hardening
 ```
 
-One Mission can use multiple Domains; one Domain can serve multiple Missions.
+一个 Mission 可以uses多个 Domain；一个 Domain 可服务多个 Mission。
 
-### 18.3 Mission and WorkflowTemplate Relationship
+### 18.3 Mission vs WorkflowTemplate 的关系
 
-WorkflowTemplate is reusable process; Mission can restrict which workflows are allowed, but workflow does not own Mission.
+WorkflowTemplate is可复用流程；Mission 可限制允许uses哪些 workflow，但 workflow 不拥有 Mission。
 
-### 18.4 Mission and Release / Rollout Relationship
+### 18.4 Mission vs Release / Rollout 的关系
 
-Mission can initiate rollout, but rollout must still go through release gate:
+Mission 可以发起 rollout，但 rollout 必须仍走 release gate：
 
 ```text
 Mission owner approval
@@ -1166,9 +1166,9 @@ Mission owner approval
 + Budget / risk / incident check
 ```
 
-### 18.5 Mission and Proactive Agent Relationship
+### 18.5 Mission vs Proactive Agent 的关系
 
-Proactive Agent must bind Mission to act.
+Proactive Agent 必须绑定 Mission 才能lines动。
 
 ```text
 No Mission -> suggestion only
@@ -1177,9 +1177,9 @@ Mission active + allowed constraints + approval -> may execute
 medium/high/critical -> never silent auto execute
 ```
 
-### 18.6 Mission and Incident/Panic Relationship
+### 18.6 Mission vs Incident/Panic 的关系
 
-Incident and Panic can create SystemMission:
+Incident 和 Panic 可以创建 SystemMission：
 
 ```text
 incident.mission.<incidentId>
@@ -1187,11 +1187,11 @@ panic.mission.<scopeId>
 recovery.mission.<runId>
 ```
 
-Used to centralize recovery actions, budget, audit and runbook evidence.
+used for集中恢复动作、budget、审计和 runbook evidence。
 
 ---
 
-## 19. Final Recommended Directory Structure
+## 19. 最终推荐目录结构
 
 ```text
 src/platform/five-plane-control-plane/mission/
@@ -1233,39 +1233,39 @@ ui/packages/features/mission-console/
 
 ---
 
-## 20. Final Implementation Principles
+## 20. 最终落地principle
 
-### 20.1 Should Do
+### 20.1 应该做
 
-1. Use Mission as **goal governance root object**.
-2. All executable Tasks bind MissionContext before dispatch.
-3. HarnessRun fixed binds MissionSnapshot.
-4. NodeRun pre live guard.
-5. Budget / IAM / Risk / Policy unified constraint intersection.
-6. Learning defaults to Mission scope.
-7. All Mission state changes evented.
-8. UI only displays and submits requests, no local execution.
-9. Observability carries Mission context, but metrics control high cardinality.
-10. On migration, first compatible legacy, then gradually force missionRef.
+1. 把 Mission 作为 **目标治理根对象**。
+2. 所有可执lines Task 在 dispatch 前绑定 MissionContext。
+3. HarnessRun 固定绑定 MissionSnapshot。
+4. NodeRun 前做 live guard。
+5. Budget / IAM / Risk / Policy 统一做约束交集。
+6. Learning defaults to留在 Mission scope。
+7. Mission Status变化全部事件化。
+8. UI 只展示和提交request，不本地执lines。
+9. Observability 带 Mission 上下文，但 metrics 控制高基数。
+10. 迁移时先兼容 legacy，再逐步mandatory missionRef。
 
-### 20.2 Should NOT Do
+### 20.2 不应该做
 
-1. Don't add `steps[] / currentStep / currentNode / toolCalls` to Mission; Mission progress can only come from Task/HarnessRun/NodeRun/NodeAttempt projections.
-2. Don't let one HarnessRun simultaneously bind multiple Missions.
-3. Don't use RuntimeMode enum ordering for permission judgment.
-4. Don't let UI mission hint become authorization basis.
-5. Don't auto-promote Mission memory to platform knowledge.
-6. Don't add fourth set of RequestEnvelope / ExecutionPlan / WorkflowState.
-7. Don't let Proactive Agent auto-execute without Mission.
-8. Don't put missionId into all metrics labels.
+1. 不要给 Mission 加 `steps[] / currentStep / currentNode / toolCalls`；Mission 进度只能来自 Task/HarnessRun/NodeRun/NodeAttempt 投影。
+2. 不要让一个 HarnessRun 同时绑定多个 Mission。
+3. 不要用 RuntimeMode enum 排序做permission判断。
+4. 不要让 UI mission hint 变成authorization依据。
+5. 不要把 Mission memory 自动提升到平台知识。
+6. 不要新增第四套 RequestEnvelope / ExecutionPlan / WorkflowState。
+7. 不要让 Proactive Agent 在no Mission 下自动执lines。
+8. 不要把 missionId 打进所有 metrics label。
 
 ---
 
-## 21. Final Judgment
+## 21. 最终判断
 
-Mission should be incorporated as a core governance object of Automatic Agent Platform. After incorporation, the system upgrades from "single Agent Session / single Task execution platform" to "long-term goal-driven Agent ecosystem".
+Mission 应作为 Automatic Agent Platform 的核心治理对象加入。加入后，系统从“单iterations Agent Session / 单iterations Task 执lines平台”升级为“长期目标驱动的 Agent 生态系统”。
 
-But Mission implementation must strictly observe three bottom lines:
+但 Mission 的实现必须严格遵守三条底线：
 
 ```text
 1. Mission governs, PlanGraph executes.
@@ -1273,92 +1273,92 @@ But Mission implementation must strictly observe three bottom lines:
 3. Mission extends canonical contracts, never forks them.
 ```
 
-This way the system can gain:
+这样系统可以获得：
 
-| Capability | Improvement |
+| 能力 | 改进 |
 |---|---|
-| Long-term goal management | Multiple Tasks, Agents, Workflows attributed to same goal |
-| Governance consistency | Budget, permissions, knowledge, approval, learning unified boundary |
-| Automation safety | High-risk tasks will not deviate from Mission owner and Mission policy |
-| Observability | All runs, nodes, events, evidence aggregatable by Mission |
-| Learning loop | Experience in Mission can沉淀, but will not pollute platform knowledge |
-| Product experience | Users see goal progress, not scattered task/run/session |
+| 长期目标manage | 多 Task、多 Agent、多 Workflow 归属同一目标 |
+| 治理一致性 | budget、permission、知识、审批、学习统一边界 |
+| 自动化security性 | 高风险任务不会脱离 Mission owner 和 Mission policy |
+| 可观测性 | 所有 run、node、事件、证据可按 Mission 聚合 |
+| 学习闭环 | Mission 内via验可沉淀，但不会污染平台知识 |
+| 产品体验 | user看到的is目标进展，而不is零散 task/run/session |
 
-**Final recommendation: Can enter design freeze and implementation phase, but implementation order must be Contract Freeze → Mission Truth/Event → Resolver → Harness Binding → Runtime Guard → UI Console → Learning Promotion.**
+**最终Recommendation：可以进入设计冻结和实现阶段，但实现顺序必须is Contract Freeze → Mission Truth/Event → Resolver → Harness Binding → Runtime Guard → UI Console → Learning Promotion。**
 
 ---
 
-## 40. Implementation Status and Evidence Append Record
+## 40. 实现Statusvs证据追加record
 
-> Update time: 2026-05-21. The following status only appends implementation evidence, does not delete original contract text. Mission maintains "long-term goal and governance context root object" positioning; execution plane continues with `PlanGraphBundle / PlanNode / NodeRun / NodeAttempt` as canonical runtime.
+> 更新time：2026-05-21。以下Status只追加实现证据，不删除本文原始契约。Mission 仍保持“长期目标vs治理上下文根对象”的定位；Execution Plane继续以 `PlanGraphBundle / PlanNode / NodeRun / NodeAttempt` 为 canonical runtime。
 
-| Task | Status | Implementation Evidence | Test Evidence |
+| 任务 | Status | 实现证据 | 测试证据 |
 |---|---|---|---|
-| T-MIS-001 Mission schemas/types | ✅ Implemented | `src/platform/contracts/mission/index.ts`; `src/platform/contracts/index.ts` exports | `tests/unit/platform/contracts/mission-contracts.test.ts` |
-| T-MIS-002 Mission truth tables/repository | ✅ Implemented | `src/platform/five-plane-state-evidence/truth/runtime-physical-schema.ts`; `src/platform/five-plane-state-evidence/truth/mission-repository.ts` | `tests/unit/platform/control-plane/mission-services.test.ts` |
-| T-MIS-003 `platform.mission.*` event schemas | ✅ Implemented | `MissionEventTypeSchema`, `MissionEventEnvelopeSchema`, repository sequence allocator | `mission-contracts.test.ts`, `mission-services.test.ts` |
-| T-MIS-004 MissionLifecycleService + CAS | ✅ Implemented | `src/platform/five-plane-control-plane/mission/index.ts` | `mission-services.test.ts` |
-| T-MIS-005 MissionResolver + Governance | ✅ Implemented | `MissionResolver`, `MissionGovernanceService` | `mission-services.test.ts` |
-| T-MIS-006 Mission API + ErrorEnvelope | ✅ Implemented | `src/platform/five-plane-interface/api/http-server/mission-routes.ts`; OpenAPI route list; coverage create/list/read/patch, state transitions, members, tasks/runs/evidence/budget, dry-run resolution | `tests/integration/platform/interface/api/mission-routes.test.ts`, `tests/integration/platform/contracts/api-openapi-contract.test.ts` |
-| T-MIS-007 PlanGraphBundle missionSnapshotRef | ✅ Implemented | `PlanGraphBundle` contract/schema/factory extension; `MissionRuntimeBindingService`; `POST /v1/tasks` connects Mission resolution/snapshot binding | `mission-services.test.ts`, `mission-task-binding.test.ts` |
-| T-MIS-008 HarnessRun missionBinding | ✅ Implemented | `HarnessRun` contract/schema/factory extension; single-binding guard | `mission-services.test.ts` |
-| T-MIS-009 NodeRun MissionLiveGuard | ✅ Implemented | `MissionLiveGuard` and `NodeRun.missionSnapshotRef` | `mission-services.test.ts` |
-| T-MIS-010 canonical Mission E2E baseline | ✅ Implemented | API create/activate + task create mission binding + Mission snapshot + freeze live guard + high-risk missionless reject | `tests/e2e/mission-canonical-flow.test.ts`, `mission-routes.test.ts`, `mission-task-binding.test.ts` |
-| T-MIS-011 Mission Console data baseline | ✅ Implemented | Mission API exposes Overview / Members / Tasks / Runs / Budget / Evidence; UI added Mission Console feature, Mission DTO→VM→View wiring and web/mobile seam | `mission-routes.test.ts`; `npm run typecheck` covers `ui/packages/features/mission-console/` |
-| T-MIS-012 Trace/log correlation + metrics cardinality guard | ✅ Implemented | `MissionObservabilityPolicy` allows trace attributes and strips Mission IDs from metric labels | `mission-services.test.ts` |
-| T-MIS-013 Mission scoped LearningObject promotion gate | ✅ Implemented | `MissionLearningPromotionGate` keeps default learning local and requires approval/evidence for promotion | `mission-services.test.ts` |
-| T-MIS-014 legacy Task/Session missionRef backfill | ✅ Implemented | `LegacyMissionBackfillService.backfillTask/backfillSession/backfillBatch`, with unresolved report | `mission-services.test.ts` |
-| T-MIS-015 ADR/superseded marker | ✅ Written back to this document status | This section serves as v1.4 implementation evidence index | Document consistency verified by this round targeted tests and build |
-| T-MIS-016 Mission handoff | ✅ Implemented | `MissionHandoffService.requestFederated()` provides cross-tenant trust-pair guard, approval/audit handoff request | `mission-services.test.ts` |
-| T-MIS-017 home region/fencing | ✅ Implemented | `MissionHomeRegionService` epoch guard, read replica registration and strong/eventual read routing | `mission-services.test.ts` |
-| T-MIS-018 outcome analytics | ✅ Implemented as repo baseline | `MissionOutcomeAnalyticsService` | `mission-services.test.ts` |
-| T-MIS-019 template/package integration | ✅ Implemented as repo baseline | `MissionTemplateIntegrationService` | `mission-services.test.ts` |
+| T-MIS-001 Mission schemas/types | ✅ 已实现 | `src/platform/contracts/mission/index.ts`；`src/platform/contracts/index.ts` export | `tests/unit/platform/contracts/mission-contracts.test.ts` |
+| T-MIS-002 Mission truth tables/repository | ✅ 已实现 | `src/platform/five-plane-state-evidence/truth/runtime-physical-schema.ts`；`src/platform/five-plane-state-evidence/truth/mission-repository.ts` | `tests/unit/platform/control-plane/mission-services.test.ts` |
+| T-MIS-003 `platform.mission.*` event schemas | ✅ 已实现 | `MissionEventTypeSchema`、`MissionEventEnvelopeSchema`、repository sequence allocator | `mission-contracts.test.ts`、`mission-services.test.ts` |
+| T-MIS-004 MissionLifecycleService + CAS | ✅ 已实现 | `src/platform/five-plane-control-plane/mission/index.ts` | `mission-services.test.ts` |
+| T-MIS-005 MissionResolver + Governance | ✅ 已实现 | `MissionResolver`、`MissionGovernanceService` | `mission-services.test.ts` |
+| T-MIS-006 Mission API + ErrorEnvelope | ✅ 已实现 | `src/platform/five-plane-interface/api/http-server/mission-routes.ts`；OpenAPI route list；覆盖 create/list/read/patch、Status转换、members、tasks/runs/evidence/budget、dry-run resolution | `tests/integration/platform/interface/api/mission-routes.test.ts`、`tests/integration/platform/contracts/api-openapi-contract.test.ts` |
+| T-MIS-007 PlanGraphBundle missionSnapshotRef | ✅ 已实现 | `PlanGraphBundle` contract/schema/factory extension；`MissionRuntimeBindingService`；`POST /v1/tasks` 接入 Mission resolution/snapshot binding | `mission-services.test.ts`、`mission-task-binding.test.ts` |
+| T-MIS-008 HarnessRun missionBinding | ✅ 已实现 | `HarnessRun` contract/schema/factory extension；single-binding guard | `mission-services.test.ts` |
+| T-MIS-009 NodeRun MissionLiveGuard | ✅ 已实现 | `MissionLiveGuard` and `NodeRun.missionSnapshotRef` | `mission-services.test.ts` |
+| T-MIS-010 canonical Mission E2E baseline | ✅ 已实现 | API create/activate + task create mission binding + Mission snapshot + freeze live guard + high-risk missionless reject | `tests/e2e/mission-canonical-flow.test.ts`、`mission-routes.test.ts`、`mission-task-binding.test.ts` |
+| T-MIS-011 Mission Console data baseline | ✅ 已实现 | Mission API exposes Overview / Members / Tasks / Runs / Budget / Evidence；UI 新增 Mission Console feature、Mission DTO→VM→View wiring vs web/mobile seam | `mission-routes.test.ts`；`npm run typecheck` 覆盖 `ui/packages/features/mission-console/` |
+| T-MIS-012 Trace/log correlation + metrics cardinality guard | ✅ 已实现 | `MissionObservabilityPolicy` allows trace attributes and strips Mission IDs from metric labels | `mission-services.test.ts` |
+| T-MIS-013 Mission scoped LearningObject promotion gate | ✅ 已实现 | `MissionLearningPromotionGate` keeps default learning local and requires approval/evidence for promotion | `mission-services.test.ts` |
+| T-MIS-014 legacy Task/Session missionRef backfill | ✅ 已实现 | `LegacyMissionBackfillService.backfillTask/backfillSession/backfillBatch`，含 unresolved report | `mission-services.test.ts` |
+| T-MIS-015 ADR/superseded marker | ✅ 已回写本文Status | 本节作为 v1.4 实现证据索references | 文档一致性由本轮定向测试vs build 验证 |
+| T-MIS-016 Mission handoff | ✅ 已实现 | `MissionHandoffService.requestFederated()` 提供跨租户 trust-pair guard、approval/audit handoff request | `mission-services.test.ts` |
+| T-MIS-017 home region/fencing | ✅ 已实现 | `MissionHomeRegionService` epoch guard、read replica registration vs strong/eventual read routing | `mission-services.test.ts` |
+| T-MIS-018 outcome analytics | ✅ 已实现为仓内基线 | `MissionOutcomeAnalyticsService` | `mission-services.test.ts` |
+| T-MIS-019 template/package integration | ✅ 已实现为仓内基线 | `MissionTemplateIntegrationService` | `mission-services.test.ts` |
 
 ### 40.1 Residual Risk
 
-The following belong to external deployment or cross-system wiring evolution items, do not fake as single repo code closure: real multi-region database replication, external cross-enterprise federation trust provisioning, real UI release and permission operations process. Current repo provides testable contracts, Mission Console UI/API seam, federated handoff trust-pair guard, home-region read routing, API routes and runtime binding guards; subsequent external system integration must reuse these common interfaces.
+以下内容belongs to外部部署或跨系统接线演进项，不伪造成单仓code闭环：真实多区域data库复制、外部跨企业 federation trust provisioning、真实 UI 发布vspermission运营流程。当前仓库已提供可测试 contract、Mission Console UI/API seam、federated handoff trust-pair guard、home-region read routing、API route 和 runtime binding guard，后续外部系统接入必须复用这些公共接口。
 
-### 40.2 This Round Verification
+### 40.2 本轮验证
 
-| Verification Item | Result |
+| 验证项 | 结果 |
 |---|---|
-| Mission E2E + contract/unit/integration/invariant tests | ✅ `node --import tsx --test tests/e2e/mission-canonical-flow.test.ts tests/integration/platform/interface/api/mission-routes.test.ts tests/integration/platform/interface/api/mission-task-binding.test.ts tests/unit/platform/contracts/mission-contracts.test.ts tests/unit/platform/control-plane/mission-services.test.ts tests/invariants/mission-step-governance.test.ts tests/integration/platform/contracts/api-openapi-contract.test.ts` |
+| Mission E2E + contract/unit/integration/invariant 测试 | ✅ `node --import tsx --test tests/e2e/mission-canonical-flow.test.ts tests/integration/platform/interface/api/mission-routes.test.ts tests/integration/platform/interface/api/mission-task-binding.test.ts tests/unit/platform/contracts/mission-contracts.test.ts tests/unit/platform/control-plane/mission-services.test.ts tests/invariants/mission-step-governance.test.ts tests/integration/platform/contracts/api-openapi-contract.test.ts` |
 | TypeScript build test | ✅ `npm run build:test` |
-| OpenAPI contract targeted test | ✅ `node --import tsx --test tests/integration/platform/contracts/api-openapi-contract.test.ts` |
+| OpenAPI contract 定向测试 | ✅ `node --import tsx --test tests/integration/platform/contracts/api-openapi-contract.test.ts` |
 
 
 ---
 
-# Part II — v1.3 Implementation Contract Enhancement
+# Part II — v1.3 实现契约补强
 
-> This part is new content compared to v1.2. The goal is not to redefine Mission architecture, but to solidify Mission from "architecture concept" into implementable, testable, migratable, auditable implementation contracts.
+> 本部分is v1.3 相比 v1.2 的新增内容。目标不is重新defines Mission Architecture，而is把 Mission 从“Architecture概念”固化为可编码、可测试、可迁移、可审计的实现契约。
 
-## 22. v1.3 Change Summary
+## 22. v1.3 变更摘要
 
-| Change Domain | v1.2 Status | v1.3 Enhancement |
+| 变更域 | v1.2 Status | v1.3 补强 |
 |---|---|---|
-| Canonical Types | Defined object boundaries | Completed TypeScript/Zod schema, ID rules, field requiredness |
-| State Machine | Given state semantics | Completed legal transition table, guard, side effects |
-| Event Contract | Listed event naming | Completed PlatformFactEvent envelope, payload schema, sequence rules |
-| API Contract | Design description only | Completed REST API, header, error codes, idempotency rules, ETag/If-Match |
-| Storage | Directory recommendation only | Completed Mission truth tables, membership, snapshot, event sequence tables |
-| Runtime Binding | Clarified HarnessRun binding | Completed strict process for Task→MissionContextSnapshot→HarnessRun→NodeRun |
-| Migration | Listed phases | Completed data backfill, compatibility flags, acceptance gates, rollback strategy |
-| Tests | Listed test directions | Completed contract/unit/integration/e2e/chaos/golden level test matrix |
+| Canonical Types | 已defines对象边界 | 补齐 TypeScript/Zod schema、ID 规则、字段必填性 |
+| State Machine | 已给出Status语义 | 补齐合法 transition table、guard、side effects |
+| Event Contract | 已列事件命名 | 补齐 PlatformFactEvent envelope、payload schema、sequence 规则 |
+| API Contract | only有设计Description | 补齐 REST API、header、错误码、幂等规则、ETag/If-Match |
+| Storage | only有目录Recommendation | 补齐 Mission truth tables、membership、snapshot、event sequence table |
+| Runtime Binding | 已明确 HarnessRun 绑定 | 补齐 Task→MissionContextSnapshot→HarnessRun→NodeRun 的严格流程 |
+| Migration | 已列阶段 | 补齐data回填、兼容 flag、验收门、回滚策略 |
+| Tests | 已列测试方向 | 补齐 contract/unit/integration/e2e/chaos/golden 级test matrix |
 
-v1.3 freeze goal:
+v1.3 的冻结目标：
 
 ```text
-Mission's addition only extends canonical runtime graph, does not introduce new execution paths, does not revive legacy WorkflowState, does not produce fourth set of core objects.
+Mission 的加入只扩展 canonical runtime graph，不references入新的执lines路径，不复活 legacy WorkflowState，不产生第四套核心对象。
 ```
 
 ---
 
-## 23. Naming and Coding Convention Freeze
+## 23. 命名vs编码规范冻结
 
-### 23.1 TypeScript and JSON Field Naming
+### 23.1 TypeScript vs JSON 字段命名
 
-Internal TypeScript/Zod/JSON API uses **lowerCamelCase**:
+系统内部 TypeScript/Zod/JSON API uses **lowerCamelCase**：
 
 ```ts
 tenantId
@@ -1369,7 +1369,7 @@ createdAt
 updatedAt
 ```
 
-Database fields use **snake_case**:
+data库字段uses **snake_case**：
 
 ```sql
 tenant_id
@@ -1380,29 +1380,29 @@ created_at
 updated_at
 ```
 
-Forbidden to mix snake_case and camelCase in the same runtime contract. Cross-language exports must explicitly convert through mapper.
+禁止在同一个 runtime contract 中混用 snake_case vs camelCase。跨语言export时必须via mapper 显式转换。
 
-### 23.2 ID Rules
+### 23.2 ID 规则
 
-| ID | Format | Example | Description |
+| ID | 格式 | 示例 | Description |
 |---|---|---|---|
-| MissionId | `mis_[a-zA-Z0-9_-]{16,64}` | `mis_product_launch_2026` | Human-readable but cannot contain `/`, `.`, spaces |
-| MissionSnapshotId | `msnap_[a-zA-Z0-9_-]{16,80}` | `msnap_01H...` | Generated before each HarnessRun binding |
-| MissionEventId | `evt_[a-zA-Z0-9_-]{16,80}` | `evt_01H...` | Globally unique |
-| MembershipId | `mmbr_[a-zA-Z0-9_-]{16,80}` | `mmbr_01H...` | principal and mission binding |
-| MissionHandoffId | `mho_[a-zA-Z0-9_-]{16,80}` | `mho_01H...` | Cross Mission handoff |
+| MissionId | `mis_[a-zA-Z0-9_-]{16,64}` | `mis_product_launch_2026` | 人可读但不可含 `/`、`.`、空格 |
+| MissionSnapshotId | `msnap_[a-zA-Z0-9_-]{16,80}` | `msnap_01H...` | 每iterations绑定 HarnessRun 前生成 |
+| MissionEventId | `evt_[a-zA-Z0-9_-]{16,80}` | `evt_01H...` | globally唯一 |
+| MembershipId | `mmbr_[a-zA-Z0-9_-]{16,80}` | `mmbr_01H...` | principal vs mission 绑定 |
+| MissionHandoffId | `mho_[a-zA-Z0-9_-]{16,80}` | `mho_01H...` | 跨 Mission handoff |
 
-Do not use `Date.now()+Math.random()` to generate ID. Recommend ULID/UUIDv7 or platform unified `IdGenerator`.
+禁止用 `Date.now()+Math.random()` 生成 ID。推荐 ULID/UUIDv7 或平台统一 `IdGenerator`。
 
-### 23.3 Time Rules
+### 23.3 time规则
 
-All contract time fields use UTC ISO-8601 strings:
+所有 contract time字段uses UTC ISO-8601 字符串：
 
 ```ts
 2026-05-13T02:40:00.000Z
 ```
 
-Must parse to epoch milliseconds before comparing times, do not directly compare ISO strings.
+比较time前必须解析为 epoch milliseconds，禁止 ISO 字符串directly比较。
 
 ---
 
@@ -1492,15 +1492,15 @@ export const MissionRecordSchema = z.object({
 export type MissionRecord = z.infer<typeof MissionRecordSchema>;
 ```
 
-#### Field Constraints
+#### 字段约束
 
-| Field | Constraint |
+| 字段 | 约束 |
 |---|---|
-| `status` | Can only be changed by Mission RSM, cannot directly patch |
-| `version` | Must +1 on every truth mutation |
-| `etag` | Generated from `missionId + version + payloadHash` |
-| `metadata` | Not allowed to store token, secret, PII plaintext |
-| `successCriteria` | At least 1; otherwise Mission cannot be active |
+| `status` | 只能由 Mission RSM 改变，不能directly patch |
+| `version` | 每iterations truth mutation 必须 +1 |
+| `etag` | 由 `missionId + version + payloadHash` 生成 |
+| `metadata` | 不允许存 token、secret、PII 明文 |
+| `successCriteria` | 至少 1 条；no则 Mission 不可 active |
 
 ### 24.2 MissionMembership
 
@@ -1559,7 +1559,7 @@ export const MissionMembershipSchema = z.object({
 }).strict();
 ```
 
-Permission calculation rules:
+permission计算规则：
 
 ```text
 effectivePermissions =
@@ -1570,11 +1570,11 @@ effectivePermissions =
   - missionPolicy.deniedPermissions
 ```
 
-Forbidden to directly use caller-provided `permissions` or `capabilities` as effective permissions. All permissions must be obtained from IAM, MissionMembership, PolicyDecision three-way intersection.
+禁止directly concatenates caller 提供的 `permissions` 或 `capabilities` directly作为有效permission。所有permission必须从 IAM、MissionMembership、PolicyDecision 三方交集得到。
 
 ### 24.3 RuntimeConstraintSet
 
-Mission does not directly use `RuntimeMode` enum ordering, but normalizes runtime mode, risk, policy, domain, budget all into constraint set.
+Mission 不directlyuses `RuntimeMode` enum 排序，而is将 runtime mode、risk、policy、domain、budget 全部归一为约束集合。
 
 ```ts
 export const RuntimeConstraintSetSchema = z.object({
@@ -1599,14 +1599,14 @@ export const RuntimeConstraintSetSchema = z.object({
 }).strict();
 ```
 
-Constraint merge rules:
+约束合并规则：
 
 ```text
-boolean allow fields: AND
-boolean require fields: OR
-max fields: MIN
-denied fields: UNION
-allowed list fields: INTERSECTION
+boolean allow class字段：AND
+boolean require class字段：OR
+max class字段：MIN
+denied class字段：UNION
+allowed list class字段：INTERSECTION
 ```
 
 ### 24.4 MissionBudgetEnvelope
@@ -1650,18 +1650,18 @@ export const MissionBudgetEnvelopeSchema = z.object({
 }).strict();
 ```
 
-Budget invariants:
+budget不variable：
 
-| Invariant | Description |
+| 不variable | Description |
 |---|---|
-| INV-BUDGET-MISSION-001 | Must have BudgetReservation before LLM/tool/side-effect execution. |
-| INV-BUDGET-MISSION-002 | reserve / settle / release must CAS + transaction. |
-| INV-BUDGET-MISSION-003 | Mission budget does not replace tenant/domain budget, must do hierarchical deduction. |
-| INV-BUDGET-MISSION-004 | `maxCostUsd` cannot be the only limit, token/node/tool/duration must be independently configurable. |
+| INV-BUDGET-MISSION-001 | LLM/tool/side-effect 执lines前必须有 BudgetReservation。 |
+| INV-BUDGET-MISSION-002 | reserve / settle / release 必须 CAS + transaction。 |
+| INV-BUDGET-MISSION-003 | Mission budget 不替代 tenant/domain budget，必须做层级扣减。 |
+| INV-BUDGET-MISSION-004 | `maxCostUsd` 不得is唯一限制，token/node/tool/duration 必须独立可配。 |
 
 ### 24.5 MissionContextSnapshot
 
-MissionSnapshot is key for audit reproducibility. HarnessRun binds snapshot, not live MissionRecord.
+MissionSnapshot is审计可复现的关键。HarnessRun 绑定的is snapshot，不is live MissionRecord。
 
 ```ts
 export const MissionContextSnapshotSchema = z.object({
@@ -1693,47 +1693,47 @@ export const MissionContextSnapshotSchema = z.object({
 }).strict();
 ```
 
-Snapshot rules:
+Snapshot 规则：
 
 ```text
-1. Generate MissionContextSnapshot before Task dispatch.
-2. HarnessRun can only reference one MissionContextSnapshot.
-3. Snapshot does not change with Mission's subsequent changes.
-4. NodeRun execution pre still needs live guard check whether Mission is frozen/archived, permissions revoked, budget exhausted.
+1. Task dispatch 前生成 MissionContextSnapshot。
+2. HarnessRun 只能references用一个 MissionContextSnapshot。
+3. Snapshot 不随 Mission 后续变化而改变。
+4. NodeRun 执lines前仍需 live guard 检查 Mission isno frozen/archived、permissionisno撤销、budgetisno耗尽。
 ```
 
 ---
 
 ## 25. Mission State Machine
 
-### 25.1 State Definition
+### 25.1 Statusdefines
 
-| State | Meaning | Can Execute Task | Can Create Task | Can Update Config | Can Learn Promote |
+| Status | 含义 | 可执lines Task | 可创建 Task | 可更新configure | 可学习提升 |
 |---|---|---:|---:|---:|---:|
-| draft | Draft, not yet passed activation gate | No | No | Yes | No |
-| active | Normal operation | Yes | Yes | Yes | Yes |
-| paused | Paused new execution, recoverable | No, new dispatch prohibited; running per strategy drain | Can create but cannot dispatch | Yes | No |
-| frozen | Security freeze, usually triggered by incident/panic | No, must stop/drain | No | Owner/admin unfreeze-related only | No |
-| completed | Goal completed, read-only沉淀 | No | No | No | Read, cannot add |
-| archived | Archived, read-only | No | No | No | No |
+| draft | 草稿，尚未via激活门 | no | no | is | no |
+| active | 正常运lines | is | is | is | is |
+| paused | 暂停新执lines，可恢复 | no，新 dispatch 禁止；已运lines按策略 drain | 可创建但不可 dispatch | is | no |
+| frozen | security冻结，通常由 incident/panic 触发 | no，必须 stop/drain | no | 只允许 owner/admin 解冻相关操作 | no |
+| completed | 目标完成，只读沉淀 | no | no | no | 可读，不可新增 |
+| archived | 归档，只读 | no | no | no | no |
 
-### 25.2 Legal Transition Table
+### 25.2 合法转换table
 
-| From | To | Trigger Command | Required Guard | Event |
+| From | To | 触发命令 | 必须 guard | 事件 |
 |---|---|---|---|---|
 | draft | active | ActivateMission | owner/admin + successCriteria + budget/policy valid | `platform.mission.activated` |
-| active | paused | PauseMission | owner/admin or policy | `platform.mission.paused` |
+| active | paused | PauseMission | owner/admin 或 policy | `platform.mission.paused` |
 | paused | active | ResumeMission | owner/admin + policy still valid | `platform.mission.resumed` |
 | active | frozen | FreezeMission | security/panic/owner/admin | `platform.mission.frozen` |
 | paused | frozen | FreezeMission | security/panic/owner/admin | `platform.mission.frozen` |
 | frozen | paused | UnfreezeMission | owner/admin + incident resolved + approval | `platform.mission.unfrozen` |
-| active | completed | CompleteMission | success criteria satisfied or manual approval | `platform.mission.completed` |
+| active | completed | CompleteMission | success criteria satisfied 或 manual approval | `platform.mission.completed` |
 | paused | completed | CompleteMission | manual approval | `platform.mission.completed` |
 | completed | archived | ArchiveMission | retention guard | `platform.mission.archived` |
 | paused | archived | ArchiveMission | no active runs + retention guard | `platform.mission.archived` |
 | frozen | archived | ArchiveMission | incident closure + no active runs | `platform.mission.archived` |
 
-Prohibited transitions:
+禁止转换：
 
 ```text
 completed -> active
@@ -1742,7 +1742,7 @@ frozen -> active
 active -> archived when active HarnessRun exists
 ```
 
-### 25.3 State Transition Commands
+### 25.3 Status转换命令
 
 ```ts
 export const MissionTransitionCommandSchema = z.object({
@@ -1766,7 +1766,7 @@ export const MissionTransitionCommandSchema = z.object({
 }).strict();
 ```
 
-Mission state transition must:
+Mission Status转换必须：
 
 ```text
 CAS(expectedVersion)
@@ -1776,7 +1776,7 @@ CAS(expectedVersion)
 + write audit evidence
 ```
 
-Prohibited to directly `UPDATE missions SET status = ...`.
+禁止directly `UPDATE missions SET status = ...`。
 
 ---
 
@@ -1812,12 +1812,12 @@ export const PlatformFactEventEnvelopeSchema = z.object({
 }).strict();
 ```
 
-### 26.2 Mission Event List
+### 26.2 Mission 事件列table
 
 | Event Type | Tier | Aggregate | Payload Schema | Description |
 |---|---:|---|---|---|
-| `platform.mission.created` | 1 | mission | MissionCreatedPayload | Mission created |
-| `platform.mission.updated` | 1 | mission | MissionUpdatedPayload | Non-status field update |
+| `platform.mission.created` | 1 | mission | MissionCreatedPayload | Mission 创建 |
+| `platform.mission.updated` | 1 | mission | MissionUpdatedPayload | 非Status字段更新 |
 | `platform.mission.activated` | 1 | mission | MissionStatusChangedPayload | draft→active |
 | `platform.mission.paused` | 1 | mission | MissionStatusChangedPayload | active→paused |
 | `platform.mission.resumed` | 1 | mission | MissionStatusChangedPayload | paused→active |
@@ -1825,20 +1825,20 @@ export const PlatformFactEventEnvelopeSchema = z.object({
 | `platform.mission.unfrozen` | 1 | mission | MissionStatusChangedPayload | frozen→paused |
 | `platform.mission.completed` | 1 | mission | MissionStatusChangedPayload | active/paused→completed |
 | `platform.mission.archived` | 1 | mission | MissionStatusChangedPayload | completed/paused/frozen→archived |
-| `platform.mission.member_added` | 1 | membership | MissionMemberChangedPayload | Member joined |
-| `platform.mission.member_removed` | 1 | membership | MissionMemberChangedPayload | Member removed |
-| `platform.mission.member_role_changed` | 1 | membership | MissionMemberChangedPayload | Role changed |
-| `platform.mission.bound_to_task` | 1 | task | MissionTaskBoundPayload | Task bound Mission |
-| `platform.mission.snapshot_created` | 1 | mission | MissionSnapshotCreatedPayload | Snapshot generated |
-| `platform.mission.budget_reserved` | 1 | budget | MissionBudgetReservedPayload | Budget reserved |
-| `platform.mission.budget_settled` | 1 | budget | MissionBudgetSettledPayload | Budget settled |
-| `platform.mission.budget_released` | 1 | budget | MissionBudgetReleasedPayload | Budget released |
-| `platform.mission.budget_exhausted` | 1 | budget | MissionBudgetExhaustedPayload | Budget exhausted |
-| `platform.mission.handoff_requested` | 2 | mission | MissionHandoffRequestedPayload | Cross Mission handoff |
-| `platform.mission.handoff_accepted` | 2 | mission | MissionHandoffDecisionPayload | Accept handoff |
-| `platform.mission.handoff_rejected` | 2 | mission | MissionHandoffDecisionPayload | Reject handoff |
-| `platform.mission.learning_attached` | 2 | mission | MissionLearningAttachedPayload | Learning object retained |
-| `platform.mission.learning_promoted` | 2 | mission | MissionLearningPromotedPayload | Learning promoted |
+| `platform.mission.member_added` | 1 | membership | MissionMemberChangedPayload | 成员加入 |
+| `platform.mission.member_removed` | 1 | membership | MissionMemberChangedPayload | 成员移除 |
+| `platform.mission.member_role_changed` | 1 | membership | MissionMemberChangedPayload | 角色变化 |
+| `platform.mission.bound_to_task` | 1 | task | MissionTaskBoundPayload | Task 绑定 Mission |
+| `platform.mission.snapshot_created` | 1 | mission | MissionSnapshotCreatedPayload | Snapshot 生成 |
+| `platform.mission.budget_reserved` | 1 | budget | MissionBudgetReservedPayload | budget预留 |
+| `platform.mission.budget_settled` | 1 | budget | MissionBudgetSettledPayload | budget结算 |
+| `platform.mission.budget_released` | 1 | budget | MissionBudgetReleasedPayload | budget释放 |
+| `platform.mission.budget_exhausted` | 1 | budget | MissionBudgetExhaustedPayload | budget耗尽 |
+| `platform.mission.handoff_requested` | 2 | mission | MissionHandoffRequestedPayload | 跨 Mission handoff |
+| `platform.mission.handoff_accepted` | 2 | mission | MissionHandoffDecisionPayload | accepts handoff |
+| `platform.mission.handoff_rejected` | 2 | mission | MissionHandoffDecisionPayload | 拒绝 handoff |
+| `platform.mission.learning_attached` | 2 | mission | MissionLearningAttachedPayload | 学习对象留存 |
+| `platform.mission.learning_promoted` | 2 | mission | MissionLearningPromotedPayload | 学习提升 |
 
 ### 26.3 MissionStatusChangedPayload
 
@@ -1857,7 +1857,7 @@ export const MissionStatusChangedPayloadSchema = z.object({
 }).strict();
 ```
 
-### 26.4 Sequence Rules
+### 26.4 Sequence 规则
 
 ```text
 sequence scope = tenantId + aggregateType + aggregateId
@@ -1872,9 +1872,9 @@ out-of-order projection input = buffer or replay, never silently apply
 
 ## 27. API Contract
 
-### 27.1 Common Headers
+### 27.1 通用 Header
 
-All write requests must carry:
+所有写request必须携带：
 
 ```http
 X-Request-Id: req_xxx
@@ -1886,13 +1886,13 @@ Content-Type: application/json
 Authorization: Bearer <token>
 ```
 
-PATCH/status transition must additionally carry:
+PATCH/Status转换必须额外携带：
 
 ```http
 If-Match: <etag>
 ```
 
-Response must return:
+response必须返回：
 
 ```http
 X-Request-Id: req_xxx
@@ -1903,24 +1903,24 @@ X-Contract-Version: v1
 
 ### 27.2 Mission API
 
-| Method | Path | Description | Permission | Idempotent |
+| Method | Path | Description | permission | 幂等 |
 |---|---|---|---|---|
-| POST | `/api/v1/missions` | Create Mission | `mission:update` or tenant create permission | Required |
-| GET | `/api/v1/missions/{missionId}` | Read Mission | `mission:read` | Not required |
-| PATCH | `/api/v1/missions/{missionId}` | Update non-status fields | `mission:update` | Required + If-Match |
-| POST | `/api/v1/missions/{missionId}:activate` | Activate | owner/admin | Required + If-Match |
-| POST | `/api/v1/missions/{missionId}:pause` | Pause | owner/admin | Required + If-Match |
-| POST | `/api/v1/missions/{missionId}:resume` | Resume | owner/admin | Required + If-Match |
-| POST | `/api/v1/missions/{missionId}:freeze` | Freeze | owner/admin/security/panic | Required + If-Match |
-| POST | `/api/v1/missions/{missionId}:unfreeze` | Unfreeze to paused | owner/admin + approval | Required + If-Match |
-| POST | `/api/v1/missions/{missionId}:complete` | Complete | owner/admin | Required + If-Match |
-| POST | `/api/v1/missions/{missionId}:archive` | Archive | owner/admin | Required + If-Match |
-| GET | `/api/v1/missions/{missionId}/tasks` | Tasks under Mission | `mission:read` | Not required |
-| GET | `/api/v1/missions/{missionId}/runs` | HarnessRuns under Mission | `mission:read` | Not required |
-| GET | `/api/v1/missions/{missionId}/evidence` | Evidence | `mission:view_evidence` | Not required |
-| GET | `/api/v1/missions/{missionId}/budget` | Budget | `mission:view_budget` | Not required |
-| POST | `/api/v1/missions/{missionId}/members` | Add member | `mission:manage_members` | Required |
-| DELETE | `/api/v1/missions/{missionId}/members/{membershipId}` | Remove member | `mission:manage_members` | Required |
+| POST | `/api/v1/missions` | 创建 Mission | `mission:update` 或 tenant create permission | 必须 |
+| GET | `/api/v1/missions/{missionId}` | 读取 Mission | `mission:read` | 不需要 |
+| PATCH | `/api/v1/missions/{missionId}` | 更新非Status字段 | `mission:update` | 必须 + If-Match |
+| POST | `/api/v1/missions/{missionId}:activate` | 激活 | owner/admin | 必须 + If-Match |
+| POST | `/api/v1/missions/{missionId}:pause` | 暂停 | owner/admin | 必须 + If-Match |
+| POST | `/api/v1/missions/{missionId}:resume` | 恢复 | owner/admin | 必须 + If-Match |
+| POST | `/api/v1/missions/{missionId}:freeze` | 冻结 | owner/admin/security/panic | 必须 + If-Match |
+| POST | `/api/v1/missions/{missionId}:unfreeze` | 解冻到 paused | owner/admin + approval | 必须 + If-Match |
+| POST | `/api/v1/missions/{missionId}:complete` | 完成 | owner/admin | 必须 + If-Match |
+| POST | `/api/v1/missions/{missionId}:archive` | 归档 | owner/admin | 必须 + If-Match |
+| GET | `/api/v1/missions/{missionId}/tasks` | Mission 下 Task | `mission:read` | 不需要 |
+| GET | `/api/v1/missions/{missionId}/runs` | Mission 下 HarnessRun | `mission:read` | 不需要 |
+| GET | `/api/v1/missions/{missionId}/evidence` | 证据 | `mission:view_evidence` | 不需要 |
+| GET | `/api/v1/missions/{missionId}/budget` | budget | `mission:view_budget` | 不需要 |
+| POST | `/api/v1/missions/{missionId}/members` | 添加成员 | `mission:manage_members` | 必须 |
+| DELETE | `/api/v1/missions/{missionId}/members/{membershipId}` | 移除成员 | `mission:manage_members` | 必须 |
 
 ### 27.3 Mission Resolution API
 
@@ -1928,7 +1928,7 @@ X-Contract-Version: v1
 POST /api/v1/mission-resolutions:dry-run
 ```
 
-Request:
+request：
 
 ```json
 {
@@ -1940,7 +1940,7 @@ Request:
 }
 ```
 
-Response:
+response：
 
 ```json
 {
@@ -1971,13 +1971,13 @@ Response:
 }
 ```
 
-### 27.4 How Task Creation Binds Mission
+### 27.4 Task 创建如何绑定 Mission
 
 ```http
 POST /api/v1/tasks
 ```
 
-Request must include one of:
+request必须contains以下二选一：
 
 ```json
 {
@@ -1988,7 +1988,7 @@ Request must include one of:
 }
 ```
 
-Or:
+或：
 
 ```json
 {
@@ -2000,7 +2000,7 @@ Or:
 }
 ```
 
-High-risk, write operations, cross-system side effects, long-term goals, multi-Agent collaborative tasks prohibited from missionless dispatch.
+高风险、写操作、跨系统副作用、长期目标、多 Agent 协作任务禁止no Mission dispatch。
 
 ### 27.5 ErrorEnvelope
 
@@ -2022,7 +2022,7 @@ export const MissionErrorCodeSchema = z.enum([
 ]);
 ```
 
-Error response:
+错误response：
 
 ```json
 {
@@ -2149,9 +2149,9 @@ CREATE TABLE mission_event_sequences (
 );
 ```
 
-### 28.5 Transaction Boundaries
+### 28.5 事务边界
 
-Mission truth update and event append must be in same transaction:
+Mission truth update vs event append 必须同事务：
 
 ```text
 BEGIN
@@ -2165,7 +2165,7 @@ BEGIN
 COMMIT
 ```
 
-Prohibited:
+禁止：
 
 ```text
 update mission table first, then publish event asynchronously
@@ -2176,7 +2176,7 @@ publish event first, then update mission table asynchronously
 
 ## 29. Runtime Binding Flow
 
-### 29.1 Mandatory Chain from Task to HarnessRun
+### 29.1 从 Task 到 HarnessRun 的mandatory链路
 
 ```mermaid
 sequenceDiagram
@@ -2203,9 +2203,9 @@ sequenceDiagram
     HR->>HR: NodeRun live guard before each node
 ```
 
-### 29.2 NodeRun Live Guard
+### 29.2 NodeRun live guard
 
-Pre-check each NodeRun:
+每个 NodeRun 执lines前必须检查：
 
 ```text
 Mission status not frozen/archived/completed
@@ -2217,18 +2217,18 @@ Knowledge boundary still valid
 Panic directive not active for scope
 ```
 
-Failure handling:
+failedhandle：
 
-| Failure Reason | NodeRun Behavior | Mission Behavior |
+| failed原因 | NodeRun lines为 | Mission lines为 |
 |---|---|---|
-| Mission frozen | block + emit blocker | unchanged |
-| Mission archived/completed | safe terminate | unchanged |
-| Permission revoked | await HITL or fail closed | unchanged |
+| Mission frozen | block + emit blocker | 不变 |
+| Mission archived/completed | safe terminate | 不变 |
+| Permission revoked | await HITL 或 fail closed | 不变 |
 | Budget exhausted | safe terminate | emit budget_exhausted |
-| Policy denied | block | can trigger incident |
-| Panic active | abort/drain | Mission can become frozen |
+| Policy denied | block | 可触发 incident |
+| Panic active | abort/drain | Mission 可转 frozen |
 
-### 29.3 MissionResolver Priority
+### 29.3 MissionResolver 优先级
 
 ```text
 1. explicit missionRef from API/user selection
@@ -2242,11 +2242,11 @@ Failure handling:
 
 ---
 
-## 30. Contract and Existing Object Integration Points
+## 30. Contract vs现有对象的接入点
 
-### 30.1 RequestEnvelope Extension
+### 30.1 RequestEnvelope 扩展
 
-Do not create fourth set of RequestEnvelope. Only add to canonical RequestEnvelope:
+不新建第四套 RequestEnvelope。只在 canonical RequestEnvelope 中加入：
 
 ```ts
 missionRef?: {
@@ -2256,7 +2256,7 @@ missionRef?: {
 };
 ```
 
-### 30.2 ConfirmedTaskSpec Extension
+### 30.2 ConfirmedTaskSpec 扩展
 
 ```ts
 missionIntent?: {
@@ -2267,7 +2267,7 @@ missionIntent?: {
 };
 ```
 
-### 30.3 PlanGraphBundle Extension
+### 30.3 PlanGraphBundle 扩展
 
 ```ts
 missionContextSnapshotRef: {
@@ -2277,9 +2277,9 @@ missionContextSnapshotRef: {
 };
 ```
 
-PlanGraphBundle is still the only plan object. Mission cannot add `steps[] / currentStep / stepOutputs`, cannot re-wrap PlanNode/NodeRun as MissionStep.
+PlanGraphBundle 仍is唯一计划对象。Mission 不能新增 `steps[] / currentStep / stepOutputs`，也不能把 PlanNode/NodeRun 重新包装成 MissionStep。
 
-### 30.4 HarnessRun Extension
+### 30.4 HarnessRun 扩展
 
 ```ts
 missionBinding: {
@@ -2290,7 +2290,7 @@ missionBinding: {
 };
 ```
 
-### 30.5 NodeRun Extension
+### 30.5 NodeRun 扩展
 
 ```ts
 missionRuntimeGuard: {
@@ -2304,9 +2304,9 @@ missionRuntimeGuard: {
 
 ---
 
-## 31. UI Mission Console Implementation Specification
+## 31. UI Mission Console 实现规格
 
-### 31.1 Page Structure
+### 31.1 页面结构
 
 ```text
 Mission Console
@@ -2349,16 +2349,16 @@ Mission Console
         └── Archive / freeze / complete actions
 ```
 
-### 31.2 UI Prohibited Items
+### 31.2 UI 禁止事项
 
-| Prohibited | Reason |
+| 禁止事项 | 原因 |
 |---|---|
-| UI locally generates effective permissions | Permissions must come from service MissionGovernance |
-| UI locally executes task/run | Violates P1→P2→P3→P4 control chain |
-| UI uses mission hint as authorization | hint is only candidate, not decision |
-| UI stores token in localStorage | XSS readable |
-| UI has no confirmation for freeze/complete/archive | High-risk operations need second confirmation and audit |
-| UI uses missionId as high-cardinality metrics label | cardinality explosion |
+| UI 本地生成 effective permissions | permission必须来自服务端 MissionGovernance |
+| UI 本地执lines task/run | 违反 P1→P2→P3→P4 控制链 |
+| UI 把 mission hint 当authorization | hint 只is候选，非Decision |
+| UI 在 localStorage 存 token | XSS 可读 |
+| UI 对 freeze/complete/archive no确认 | 高风险操作需二iterations确认vs审计 |
+| UI 用 missionId 作为高基数 metrics label | cardinality 爆炸 |
 
 ---
 
@@ -2366,17 +2366,17 @@ Mission Console
 
 ### Phase 0 — Contract Freeze Gate
 
-Goal: Freeze Mission types, events, API, no parallel definitions allowed.
+目标：冻结 Mission class型、事件、API，不允许并linesdefines。
 
-Must complete:
+必须完成：
 
 ```text
-- Delete/deprecate duplicate RequestEnvelope / ExecutionPlan / StateCommand active exports
+- 删除/废弃repeats RequestEnvelope / ExecutionPlan / StateCommand active exports
 - canonical types/index.ts re-export Mission schemas
-- golden tests lock MissionRecord/MissionSnapshot/EventEnvelope shape
+- golden tests 锁定 MissionRecord/MissionSnapshot/EventEnvelope shape
 ```
 
-Acceptance:
+验收：
 
 ```bash
 npm run test:contracts -- mission
@@ -2385,9 +2385,9 @@ npm run test:golden -- mission
 
 ### Phase 1 — Storage + Event Foundation
 
-Goal: Create Mission truth tables and event projections, do not connect to execution path.
+目标：创建 Mission truth tables vs事件投影，不接入执lines路径。
 
-Must complete:
+必须完成：
 
 ```text
 - mission_records
@@ -2398,19 +2398,19 @@ Must complete:
 - platform.mission.* event schema registry
 ```
 
-Acceptance:
+验收：
 
 ```text
-create/update/status transition can write truth + event in same transaction
-replay event can rebuild Mission projection
-sequence missing/duplicate startup checker P0 fail-closed
+create/update/status transition 能同事务写 truth + event
+replay event 能重建 Mission projection
+sequence 缺失/repeats时 startup checker P0 fail-closed
 ```
 
-### Phase 2 — MissionResolver Connects to Intake
+### Phase 2 — MissionResolver 接入 Intake
 
-Goal: Force resolve Mission before Task creation, but allow compatibility flag.
+目标：Task 创建前mandatory解析 Mission，但允许 compatibility flag。
 
-Feature flags:
+Feature flags：
 
 ```json
 {
@@ -2421,31 +2421,31 @@ Feature flags:
 }
 ```
 
-Acceptance:
+验收：
 
 ```text
-high-risk task no missionRef -> 409 MISSION_REQUIRED
-low-risk task no missionRef -> auto ad_hoc mission
-explicit missionRef no permission -> 403 MISSION_PERMISSION_DENIED
+高风险 task no missionRef -> 409 MISSION_REQUIRED
+低风险 task no missionRef -> 自动 ad_hoc mission
+explicit missionRef nopermission -> 403 MISSION_PERMISSION_DENIED
 ```
 
-### Phase 3 — HarnessRun Binds MissionSnapshot
+### Phase 3 — HarnessRun 绑定 MissionSnapshot
 
-Goal: All new HarnessRun must have missionSnapshotId.
+目标：所有新 HarnessRun 必须有 missionSnapshotId。
 
-Acceptance:
+验收：
 
 ```text
-HarnessRuntime.start(planGraphBundle) without missionSnapshotId directly rejected
-MissionSnapshot payloadHash can be recalculated
-Task / PlanGraph / HarnessRun three traceId/correlationId consistent
+HarnessRuntime.start(planGraphBundle) no missionSnapshotId directly拒绝
+MissionSnapshot payloadHash 可复算
+Task / PlanGraph / HarnessRun 三者 traceId/correlationId 一致
 ```
 
 ### Phase 4 — NodeRun Live Guard
 
-Goal: Force check live Mission status before each NodeRun execution.
+目标：每个 NodeRun 执lines前mandatory检查 live Mission Status。
 
-Acceptance:
+验收：
 
 ```text
 Mission active -> node allowed
@@ -2456,9 +2456,9 @@ Budget exhausted before model call -> no provider call issued
 
 ### Phase 5 — Full Enforcement
 
-Goal: All dispatch must bind Mission.
+目标：所有 dispatch 必须绑定 Mission。
 
-Feature flags:
+Feature flags：
 
 ```json
 {
@@ -2467,36 +2467,36 @@ Feature flags:
 }
 ```
 
-Acceptance:
+验收：
 
 ```text
-legacy task direct dispatch path all fail
-/api/v1/tasks creation all produce mission.bound_to_task event
-HarnessRun without missionSnapshot cannot enter running
+legacy task direct dispatch path 全部failed
+/api/v1/tasks 创建均产生 mission.bound_to_task event
+no missionSnapshot 的 HarnessRun no法进入 running
 ```
 
 ### Phase 6 — UI Console + Observability
 
-Goal: Mission Console launches, dashboard can aggregate by Mission.
+目标：Mission Console 上线，dashboard 可按 Mission 聚合。
 
-Acceptance:
+验收：
 
 ```text
-Mission overview data comes from projection, not directly scanning truth
-Budget/evidence/runs/tasks all support cursor pagination
-Trace/log can search missionId, but metrics do not use missionId as default label
+Mission overview data来自 projection，不directly扫 truth
+Budget/evidence/runs/tasks 均supported cursor pagination
+Trace/log 可检索 missionId，但 metrics 不把 missionId 当defaults to label
 ```
 
 ### Phase 7 — Learning Promotion
 
-Goal: LearningObject defaults to mission scoped, approved promotion to domain/platform.
+目标：LearningObject defaults to mission scoped，via审批提升到 domain/platform。
 
-Acceptance:
+验收：
 
 ```text
-LearningObject without evidenceRefs -> quarantine
-mission scoped learning does not enter platform knowledge search
-promotion needs trust gate + approval + rollout evidence
+LearningObject no evidenceRefs -> quarantine
+mission scoped learning 不进入 platform knowledge search
+promotion 需 trust gate + approval + rollout evidence
 ```
 
 ---
@@ -2505,116 +2505,116 @@ promotion needs trust gate + approval + rollout evidence
 
 ### 33.1 Contract Tests
 
-| Test | Must Cover |
+| 测试 | 必须覆盖 |
 |---|---|
-| MissionRecord strict schema | extra field rejection, required field missing rejection |
-| MissionStatus transition | illegal transition rejection |
-| MissionSnapshot hash | payloadHash can be recalculated |
-| EventEnvelope sequence | sequence monotonically increasing |
-| ErrorEnvelope | traceId/correlationId required |
+| MissionRecord strict schema | 额外字段拒绝、必填字段缺失拒绝 |
+| MissionStatus transition | 非法转换拒绝 |
+| MissionSnapshot hash | payloadHash 可复算 |
+| EventEnvelope sequence | sequence 单调递增 |
+| ErrorEnvelope | traceId/correlationId 必填 |
 
 ### 33.2 Unit Tests
 
-| Module | Use Cases |
+| 模块 | 用例 |
 |---|---|
 | MissionResolver | explicit/session/auto/ad_hoc/fail-closed |
-| MissionGovernance | permission intersection, policy deny, risk approval |
-| MissionBudgetService | reserve/settle/release CAS and concurrent over-limit protection |
-| MissionLifecycleService | version conflict, If-Match, idempotency replay |
-| RuntimeConstraintSet | AND/OR/MIN/UNION/INTERSECTION merge rules |
+| MissionGovernance | permission交集、policy deny、risk approval |
+| MissionBudgetService | reserve/settle/release CAS vsconcurrentexceeds额保护 |
+| MissionLifecycleService | version conflict、If-Match、idempotency replay |
+| RuntimeConstraintSet | AND/OR/MIN/UNION/INTERSECTION 合并规则 |
 
 ### 33.3 Integration Tests
 
-| Chain | Use Cases |
+| 链路 | 用例 |
 |---|---|
 | Create Mission | API → service → truth → event → projection |
 | Bind Task | Task create → mission resolution → snapshot |
 | Dispatch | PlanGraphBundle → HarnessRun with missionSnapshot |
-| Live Guard | freeze/revoke/budget-exhausted block NodeRun |
-| Replay | mission events replay after projection exactly consistent |
+| Live Guard | freeze/revoke/budget-exhausted 阻断 NodeRun |
+| Replay | mission events replay 后 projection 完全一致 |
 
 ### 33.4 E2E Tests
 
-| Scenario | Acceptance |
+| 场景 | 验收 |
 |---|---|
-| Low-risk one-shot | Auto create ad_hoc Mission and complete Task |
-| High-risk write action | No Mission rejected; has Mission but no approval enters HITL |
-| Mission freeze mid-run | Subsequent NodeRun blocked, existing side-effect enters reconciliation |
-| Membership revoked mid-run | Next node refuses execution |
-| Budget exhausted | provider/tool call not issued, run safe terminate |
-| Mission complete | Subsequent new task dispatch rejected |
+| Low-risk one-shot | 自动创建 ad_hoc Mission 并完成 Task |
+| High-risk write action | no Mission 拒绝；有 Mission 但no审批进入 HITL |
+| Mission freeze mid-run | 后续 NodeRun 阻断，已有 side-effect 进入 reconciliation |
+| Membership revoked mid-run | 下一节点拒绝执lines |
+| Budget exhausted | provider/tool call 不发出，run safe terminate |
+| Mission complete | 后续新 task dispatch 拒绝 |
 
 ### 33.5 Chaos / Concurrency Tests
 
-| Scenario | Acceptance |
+| 场景 | 验收 |
 |---|---|
-| Concurrent activate/pause | only one CAS succeeds |
-| Concurrent budget reserve | does not exceed hard cap |
-| crash between truth/event | not allowed; same transaction verification |
+| concurrent activate/pause | 只有一个 CAS success |
+| concurrent budget reserve | 不exceeds过 hard cap |
+| crash between truth/event | 不允许出现；同事务验证 |
 | projection rebuild | shadow rebuild + compare + cutover |
-| event duplicate delivery | projection idempotent |
+| event duplicate delivery | projection 幂等 |
 
-### 33.6 Prohibited Test Writing
+### 33.6 禁止的测试写法
 
 ```text
 assert.ok(true) in catch
 assert.ok(x === true || x === false)
-directly operate legacy WorkflowState to prove canonical path correct
-only mock service not import production code but name integration
-test illegal shape but production code does not schema parse
+directly操作 legacy WorkflowState 证明 canonical path 正确
+只 mock service 不import生产code却命名 integration
+测试 illegal shape 但生产code不 schema parse
 ```
 
 ---
 
 ## 34. Implementation Task Breakdown
 
-### 34.1 P0 Implementation Tasks
+### 34.1 P0 实现任务
 
-| Task | Owner Module | Description | Current Conclusion |
+| Task | Owner 模块 | Description | 当前Conclusion |
 |---|---|---|---|
-| T-MIS-001 | contracts | Add Mission Zod schemas and type exports | ✅ Implemented |
-| T-MIS-002 | state-evidence | mission_records/memberships/snapshots/event_sequences migration | ✅ Implemented |
-| T-MIS-003 | events | Register platform.mission.* event schemas | ✅ Implemented |
-| T-MIS-004 | control-plane | MissionLifecycleService + CAS transition | ✅ Implemented |
-| T-MIS-005 | control-plane | MissionResolver + MissionGovernanceService | ✅ Implemented |
-| T-MIS-006 | interface | /api/v1/missions API + ErrorEnvelope | ✅ Implemented, includes Mission Console backend sub-resource API |
-| T-MIS-007 | orchestration | PlanGraphBundle missionSnapshotRef required | ✅ Implemented as compatible contract extension, binding guard and Task create Mission snapshot binding |
-| T-MIS-008 | execution | HarnessRun missionBinding required | ✅ Implemented as compatible contract extension and single-binding guard |
-| T-MIS-009 | execution | NodeRun MissionLiveGuard | ✅ Implemented as testable guard service |
-| T-MIS-010 | tests | canonical Mission E2E coverage | ✅ Implemented, includes API/task binding/live guard freeze/high-risk reject E2E |
+| T-MIS-001 | contracts | 添加 Mission Zod schemas vs type exports | ✅ 已实现 |
+| T-MIS-002 | state-evidence | mission_records/memberships/snapshots/event_sequences migration | ✅ 已实现 |
+| T-MIS-003 | events | 注册 platform.mission.* event schemas | ✅ 已实现 |
+| T-MIS-004 | control-plane | MissionLifecycleService + CAS transition | ✅ 已实现 |
+| T-MIS-005 | control-plane | MissionResolver + MissionGovernanceService | ✅ 已实现 |
+| T-MIS-006 | interface | /api/v1/missions API + ErrorEnvelope | ✅ 已实现，含 Mission Console 后端子资源 API |
+| T-MIS-007 | orchestration | PlanGraphBundle missionSnapshotRef required | ✅ 已实现为兼容契约扩展、binding guard vs Task create Mission snapshot binding |
+| T-MIS-008 | execution | HarnessRun missionBinding required | ✅ 已实现为兼容契约扩展vs single-binding guard |
+| T-MIS-009 | execution | NodeRun MissionLiveGuard | ✅ 已实现为可测试 guard service |
+| T-MIS-010 | tests | canonical Mission E2E 覆盖 | ✅ 已实现，含 API/task binding/live guard freeze/high-risk reject E2E |
 
-### 34.2 P1 Implementation Tasks
+### 34.2 P1 实现任务
 
-| Task | Owner Module | Description | Current Conclusion |
+| Task | Owner 模块 | Description | 当前Conclusion |
 |---|---|---|---|
-| T-MIS-011 | ui | Mission Console Overview/Tasks/Runs/Budget/Evidence | ✅ Implemented Mission Console UI feature and backend data surface; real independent frontend release belongs to external integration evolution |
-| T-MIS-012 | observability | Mission trace/log correlation + metrics cardinality guard | ✅ Implemented as policy/service baseline |
-| T-MIS-013 | learning | Mission scoped LearningObject promotion gate | ✅ Implemented as promotion gate baseline |
-| T-MIS-014 | migration | legacy Task/Session missionRef backfill | ✅ Implemented batch backfill with unresolved report |
-| T-MIS-015 | docs | ADR update and superseded marker | ✅ Written back to this document status and evidence |
+| T-MIS-011 | ui | Mission Console Overview/Tasks/Runs/Budget/Evidence | ✅ 已实现 Mission Console UI feature vs后端data面；真实独立前端发布belongs to外部集成演进 |
+| T-MIS-012 | observability | Mission trace/log correlation + metrics cardinality guard | ✅ 已实现为 policy/service baseline |
+| T-MIS-013 | learning | Mission scoped LearningObject promotion gate | ✅ 已实现为 promotion gate baseline |
+| T-MIS-014 | migration | legacy Task/Session missionRef backfill | ✅ 已实现 batch backfill vs unresolved report |
+| T-MIS-015 | docs | ADR 更新vs superseded 标记 | ✅ 已回写本文Statusvs证据 |
 
-### 34.3 P2 Implementation Tasks
+### 34.3 P2 实现任务
 
-| Task | Owner Module | Description | Current Conclusion |
+| Task | Owner 模块 | Description | 当前Conclusion |
 |---|---|---|---|
-| T-MIS-016 | federation | Mission handoff across org/tenant | ✅ Implemented federated handoff trust-pair guard, approval/audit request; real external trust provisioning is external evolution |
-| T-MIS-017 | multi-region | Mission home region + read replica routing | ✅ Implemented home-region/fencing/read-routing decision; real multi-region replication is deployment evolution |
-| T-MIS-018 | analytics | Mission outcome analytics | ✅ Repo outcome analytics service baseline implemented |
-| T-MIS-019 | marketplace | Mission template/package integration | ✅ Repo template/package integration baseline implemented |
+| T-MIS-016 | federation | Mission handoff across org/tenant | ✅ 已实现 federated handoff trust-pair guard、approval/audit request；真实外部 trust provisioning 为外部演进 |
+| T-MIS-017 | multi-region | Mission home region + read replica routing | ✅ 已实现 home-region/fencing/read-routing Decision；真实多区域复制为部署演进 |
+| T-MIS-018 | analytics | Mission outcome analytics | ✅ 仓内 outcome analytics service baseline 已实现 |
+| T-MIS-019 | marketplace | Mission template/package integration | ✅ 仓内 template/package integration baseline 已实现 |
 
 ---
 
 ## 35. Backward Compatibility and Deprecation
 
-### 35.1 Legacy Object Handling
+### 35.1 Legacy 对象handle
 
-| Legacy Object | Handling |
+| Legacy 对象 | handle方式 |
 |---|---|
-| WorkflowState | Only as projection/compat view, cannot be used as execution truth |
-| TaskRecord | Can keep, but must add missionRef projection field |
-| ExecutionPlan | deprecated alias, prohibited new call sites |
-| ControlDirective | deprecated alias, migrate to OperationalDirective/DecisionDirective |
-| StateCommand | deprecated alias, migrate to RuntimeTransitionCommand |
+| WorkflowState | 只作为 projection/compat view，不可作为执lines truth |
+| TaskRecord | 可保留，但必须增加 missionRef projection 字段 |
+| ExecutionPlan | deprecated alias，禁止新增call点 |
+| ControlDirective | deprecated alias，迁移到 OperationalDirective/DecisionDirective |
+| StateCommand | deprecated alias，迁移到 RuntimeTransitionCommand |
 
 ### 35.2 Compatibility Flags
 
@@ -2628,7 +2628,7 @@ test illegal shape but production code does not schema parse
 }
 ```
 
-Final production state:
+最终生产态：
 
 ```json
 {
@@ -2644,35 +2644,35 @@ Final production state:
 
 ## 36. Risk Review After v1.3
 
-| Risk | v1.3 Mitigation |
+| 风险 | v1.3 缓解 |
 |---|---|
-| Mission becomes another Workflow | Clearly prohibited `steps[] / currentStep / currentNode / toolCalls`; Mission only stores goals, boundaries, budget, policies, members, evidence and projections |
-| Mission and Session redundancy | Session only handles interaction context, Mission handles long-term governance goals |
-| Mission and Domain redundancy | Domain is capability/policy classification, Mission is specific goal instance |
-| Mission and Project Folder confusion | Folder is UI organization, Mission is governance truth |
-| Mission permission bypass | effectivePermissions can only be calculated by service intersection |
-| MissionSnapshot staleness causing revocation ineffective | Snapshot guarantees reproducibility, NodeRun live guard guarantees safety |
-| Event and truth inconsistency | Same transaction append truth + event |
-| metrics cardinality explosion | missionId not as default label |
-| Low-risk task cost too high | ad_hoc Mission auto-created, imperceptible to user |
+| Mission 变成另一个 Workflow | 明确禁止 `steps[] / currentStep / currentNode / toolCalls`；Mission 只保存目标、边界、budget、策略、成员、证据和投影 |
+| Mission vs Session 冗余 | Session 只负责交互上下文，Mission 负责长期治理目标 |
+| Mission vs Domain 冗余 | Domain is能力/政策分class，Mission is具体目标实例 |
+| Mission vs Project Folder 混淆 | Folder is UI 组织，Mission is治理 truth |
+| Mission permissionbypassing | effectivePermissions 只能由服务端交集计算 |
+| MissionSnapshot 过时导致撤权不生效 | Snapshot 保证复现，NodeRun live guard 保证security |
+| 事件和 truth inconsistent | 同事务 append truth + event |
+| metrics cardinality 爆炸 | missionId 不作为defaults to label |
+| 低风险任务成本过高 | ad_hoc Mission 自动创建，userno感 |
 
 ---
 
-## 37. v1.4 Final Freeze Conclusion
+## 37. v1.4 最终冻结Conclusion
 
-Mission can officially enter implementation phase, but must be implemented in the following order:
+Mission 可以正式进入实现阶段，但必须按以下顺序落地：
 
 ```text
 1. Contract + Schema Freeze
 2. Storage + Event Foundation
-3. MissionResolver Connects to Task Intake
-4. HarnessRun Mandatory MissionSnapshot Binding
+3. MissionResolver 接入 Task Intake
+4. HarnessRun mandatory MissionSnapshot 绑定
 5. NodeRun Live Guard
-6. API/UI/Observability Full Integration
-7. Learning Promotion and Federation Extension
+6. API/UI/Observability 完整接入
+7. Learning Promotion 和 Federation 扩展
 ```
 
-Final architecture principles remain unchanged:
+最终Architectureprinciple保持不变：
 
 ```text
 Mission governs.
@@ -2683,53 +2683,52 @@ Event/Truth proves.
 Projection/UI observes.
 ```
 
-This design can upgrade the system from "single Agent Task execution platform" to "long-term goal-driven, governable, auditable, recoverable, learnable Agent ecosystem", while not breaking existing five-plane architecture and canonical runtime object model.
+这套设计可以把系统从“单iterations Agent Task 执lines平台”升级为“长期目标驱动、可治理、可审计、可恢复、可学习的 Agent 生态系统”，同时不破坏现有Five-PlaneArchitecture和 canonical runtime object model。
 
----
 
-## 38. v1.4 Change Summary
+## 38. v1.4 变更摘要
 
-Core changes from v1.3 to v1.4:
+v1.4 相比 v1.3 的核心变化：
 
-| Change Item | Content |
+| 变更项 | 内容 |
 |---|---|
-| Step Degradation | Demoted Step from potentially misused execution concept to UI/documentation display term |
-| Graph/Node Unification | Clarified `PlanGraphBundle / PlanNode / NodeRun / NodeAttempt` as only canonical execution chain |
-| Mission Boundary Reinforcement | Mission prohibited from storing `steps[] / currentStep / stepOutputs / toolCalls / nodeRuntimeState` |
-| API Constraints | API response prohibited from adding Step-centric shape, uniformly return graph/node/run/attempt refs |
-| Event Constraints | Prohibited from adding `step.started / step.completed` events, use `node_run.* / node_attempt.*` |
-| Budget Constraints | Prohibited `max_steps / stepCost`, use `maxNodeRuns / maxNodeAttempts / nodeBudget / attemptCost` |
-| Testing Governance | Contract/E2E/Golden increase Step-centric field scanning and canonical runtime path coverage |
-| Migration Path | Clarified legacy `PlanStep / WorkflowStep / HarnessStep` only usable for migration adapter, not as new implementation dependency |
+| Step 降级 | 将 Step 从可能被误用的执lines概念降级为 UI/文档展示词 |
+| Graph/Node 统一 | 明确 `PlanGraphBundle / PlanNode / NodeRun / NodeAttempt` is唯一 canonical 执lines链 |
+| Mission 边界加固 | Mission 禁止保存 `steps[] / currentStep / stepOutputs / toolCalls / nodeRuntimeState` |
+| API 约束 | API response 禁止新增 Step-centric shape，统一返回 graph/node/run/attempt refs |
+| Event 约束 | 禁止新增 `step.started / step.completed` 等事件，改用 `node_run.* / node_attempt.*` |
+| Budget 约束 | 禁止 `max_steps / stepCost`，改用 `maxNodeRuns / maxNodeAttempts / nodeBudget / attemptCost` |
+| 测试治理 | Contract/E2E/Golden 增加 Step-centric 字段扫描和 canonical runtime path 覆盖 |
+| 迁移路径 | 明确 legacy `PlanStep / WorkflowStep / HarnessStep` 只能used for migration adapter，不得作为新实现relies on |
 
-## 39. v1.4 Merge Supplement: Step Degradation and Graph/Node-centric Unification Rules
+## 39. v1.4 合并补充：Step 降级vs Graph/Node-centric 统一规则
 
-> **Scope**: Automatic Agent Platform / Mission Architecture Integration Plan
-> **Update Objective**: Demote `Step` from platform-level canonical object to UI/documentation display term, avoid Mission introduction reactivating legacy `WorkflowState / PlanStep / HarnessStep` system.
-> **Core Conclusion**: After Mission introduction, system must further migrate from Step-centric to Graph/Node-centric. `Step` can only be used as user-readable display term or legacy migration terminology; all canonical contracts, runtime state, events, budget, evidence, API must use `PlanGraphBundle / PlanNode / NodeRun / NodeAttempt`.
-
----
-
-### 1. Why Step Must Be Demoted
-
-Past systems simultaneously appeared `WorkflowStep`, `PlanStep`, `HarnessStep`, `stepId`, `currentStep`, `max_steps` concepts, causing three structural problems:
-
-1. **Execution model degrades to linear process**
-   `steps[]` inherently implies sequential execution, difficult to express DAG, parallel branches, conditional jumps, retry, compensation and replan.
-
-2. **Evidence chain cannot precisely bind**
-   Step granularity too coarse, cannot distinguish multiple attempts of one Node, failure retry, partial side effect, HITL modification and final receipt.
-
-3. **Mission / Task / Workflow / Harness boundaries easily confused**
-   If Mission also stores steps, system will return to legacy WorkflowState mode, breaking PlanGraphBundle as only execution plan contract principle.
-
-Therefore, `Step` is no longer platform-level authoritative object, can only be non-authoritative display term.
+> **适用范围**：Automatic Agent Platform / Mission Architecture集成方案  
+> **更新目标**：将 `Step` 从平台级 canonical object 降级为 UI/文档展示词，避免 Mission references入后重新激活 legacy `WorkflowState / PlanStep / HarnessStep` 体系。  
+> **核心Conclusion**：Mission references入后，系统必须进一步从 Step-centric 迁移到 Graph/Node-centric。`Step` 只能作为user可读展示词或 legacy migration 术语；所有 canonical contract、runtime state、event、budget、evidence、API 均必须uses `PlanGraphBundle / PlanNode / NodeRun / NodeAttempt`。
 
 ---
 
-### 2. Canonical Hierarchy
+### 1. 为什么必须弱化 Step
 
-System execution hierarchy unified to:
+过去系统中同时出现了 `WorkflowStep`、`PlanStep`、`HarnessStep`、`stepId`、`currentStep`、`max_steps` 等概念，导致三个结构性Issue：
+
+1. **执lines模型退化为线性流程**  
+   `steps[]` 天然暗示顺序执lines，难以table达 DAG、并lines分支、条件跳转、重试、补偿和 replan。
+
+2. **证据链no法精确绑定**  
+   Step 粒度太粗，不能区分一iterations Node 的多iterations attempt、failed重试、部分 side effect、HITL 修改和最终 receipt。
+
+3. **Mission / Task / Workflow / Harness 边界容易混淆**  
+   如果 Mission 也保存 steps，系统会重新回到 legacy WorkflowState 模式，破坏 PlanGraphBundle 作为唯一执lines计划契约的principle。
+
+因此，`Step` 不再作为平台级权威对象，只能作为非权威展示词。
+
+---
+
+### 2. Canonical 层级关系
+
+系统中的执lines层级统一为：
 
 ```text
 Mission
@@ -2741,53 +2740,53 @@ Mission
                                 └── NodeAttemptReceipt / EvidenceRef / SideEffectRecord
 ```
 
-| Object | Canonical | Role | Allowed to Contain Step |
+| 对象 | isno canonical | 作用 | isno允许contains Step |
 |---|---:|---|---:|
-| Mission | Yes | Long-cycle goals, task combination, policy context, cross-task governance | No |
-| Task | Yes | Single executable request after user confirmation | No |
-| PlanGraphBundle | Yes | Only plan contract, carries DAG, budget, risk, constraints, version lock | No |
-| PlanNode | Yes | Planned node in DAG, does not represent actual execution attempt | No |
-| HarnessRun | Yes | One controlled execution run, binds Task and PlanGraphBundle | No |
-| NodeRun | Yes | Running instance of single PlanNode | No |
-| NodeAttempt | Yes | Single execution attempt, carries retry, tool call, latency, cost, error | No |
-| Step | No | Only natural language display term in UI/documentation; cannot be truth/contract/runtime field | Only display layer usable |
+| Mission | is | 长cycle目标、任务组合、策略上下文、跨任务治理 | no |
+| Task | is | user确认后的单个可执linesrequest | no |
+| PlanGraphBundle | is | 唯一计划契约，承载 DAG、budget、风险、约束、版本锁 | no |
+| PlanNode | is | DAG 中的计划节点，不代table实际执lines尝试 | no |
+| HarnessRun | is | 一iterations受控执lines运lines，绑定 Task vs PlanGraphBundle | no |
+| NodeRun | is | 单个 PlanNode 的运lines实例 | no |
+| NodeAttempt | is | 单iterations执lines尝试，承载 retry、tool call、latency、cost、error | no |
+| Step | no | only UI/文档中的自然语言展示词 | only展示层可用 |
 
 ---
 
-### 3. Allowed Places to Use Step
+### 3. 允许uses Step 的位置
 
-| Scenario | Allowed | Constraint |
+| 场景 | isno允许 | 约束 |
 |---|---:|---|
-| UI copy | Carefully allowed | Can display "step", but underlying must map to `PlanNode / NodeRun / NodeAttempt` |
-| User help documentation | Allowed | Can only be natural language explanation, cannot define interface fields |
-| Legacy migration | Temporarily allowed | Only for old `WorkflowState / PlanStep / HarnessStep` migration |
-| Test fixture | Temporarily allowed | Only for legacy tests, cannot enter canonical E2E |
-| Operations report display | Carefully allowed | Display field can be called step, but data source must be NodeRun aggregation |
+| UI 文案 | 谨慎允许 | 可显示“步骤”，但底层必须映射到 `PlanNode / NodeRun / NodeAttempt` |
+| user帮助文档 | 允许 | 只能作为自然语言解释，不得defines接口字段 |
+| Legacy migration | 临时允许 | onlyused for旧 `WorkflowState / PlanStep / HarnessStep` 迁移 |
+| 测试 fixture | 临时允许 | 只能used for legacy 测试，不得进入 canonical E2E |
+| 运维报table展示 | 谨慎允许 | 展示字段可叫 step，但data源必须is NodeRun 聚合 |
 
 ---
 
-### 4. Prohibited Places to Use Step
+### 4. 禁止uses Step 的位置
 
-| Location | Prohibited | Alternative |
+| 位置 | 禁止项 | 替代方案 |
 |---|---|---|
-| Contract | `steps[]`, `currentStep`, `stepId` | `PlanGraphBundle.nodes/edges`, `nodeId` |
-| Runtime | Step as execution scheduling unit | `NodeRun` |
+| Contract | `steps[]`、`currentStep`、`stepId` | `PlanGraphBundle.nodes/edges`、`nodeId` |
+| Runtime | 以 Step 作为执lines调度单元 | `NodeRun` |
 | Retry | `stepRetry` | `NodeAttempt` |
-| Budget | `max_steps`, `stepCost` | `maxNodeRuns`, `maxNodeAttempts`, `nodeBudget` |
-| Evidence | `stepEvidence`, `stepOutput` | `evidenceRefs`, `NodeAttemptReceipt` |
-| Event | `step_started`, `step_completed` | `node_run.started`, `node_attempt.completed` |
+| Budget | `max_steps`、`stepCost` | `maxNodeRuns`、`maxNodeAttempts`、`nodeBudget` |
+| Evidence | `stepEvidence`、`stepOutput` | `evidenceRefs`、`NodeAttemptReceipt` |
+| Event | `step_started`、`step_completed` | `node_run.started`、`node_attempt.completed` |
 | API | Step-centric response shape | Graph/Node-centric response shape |
 | State Machine | `StepStatus` | `NodeRunStatus / NodeAttemptStatus` |
-| Mission | `mission.steps`, `mission.currentStep` | `mission.taskRefs`, `mission.progressSummary` |
+| Mission | `mission.steps`、`mission.currentStep` | `mission.taskRefs`、`mission.progressSummary` |
 | Task | `task.steps` | `task.planGraphBundleRef` |
 
 ---
 
-### 5. Recommended Terminology Replacement
+### 5. 推荐术语替换table
 
-| Legacy Term | Canonical Term |
+| Legacy 术语 | Canonical 术语 |
 |---|---|
-| Step | Node / NodeRun; can translate as "step" in display layer |
+| Step | Node / NodeRun；展示层可译为“步骤” |
 | PlanStep | PlanNode |
 | WorkflowStep | PlanNode / NodeRun |
 | HarnessStep | NodeRun / NodeAttempt |
@@ -2803,11 +2802,11 @@ Mission
 
 ---
 
-### 6. Boundary Rules After Mission Introduction
+### 6. Mission references入后的边界规则
 
-Mission is Agent ecosystem-level object, not Agent Session, nor a large Workflow.
+Mission is Agent 生态系统级对象，不is Agent Session，也不is一个大号 Workflow。
 
-#### 6.1 Mission Allowed to Store
+#### 6.1 Mission 允许保存
 
 - `missionId`
 - `tenantId / orgId / ownerRef`
@@ -2823,7 +2822,7 @@ Mission is Agent ecosystem-level object, not Agent Session, nor a large Workflow
 - `versionLockRefs`
 - `auditRefs`
 
-#### 6.2 Mission Prohibited from Storing
+#### 6.2 Mission 禁止保存
 
 - `steps[]`
 - `currentStep`
@@ -2834,9 +2833,9 @@ Mission is Agent ecosystem-level object, not Agent Session, nor a large Workflow
 - `sideEffectState`
 - `checkpointPayload`
 
-#### 6.3 Mission Progress Source
+#### 6.3 Mission 进度来源
 
-Mission progress can only come from lower-layer fact aggregation:
+Mission 的进度只能从下层事实聚合而来：
 
 ```text
 Mission progress = aggregate(
@@ -2849,15 +2848,15 @@ Mission progress = aggregate(
 )
 ```
 
-Mission does not directly drive tool calls, does not directly hold worker lease, does not directly write side effect.
+Mission 不directly驱动工具call，不directly持有 worker lease，不directly写 side effect。
 
 ---
 
-### 7. API Design Rules
+### 7. API 设计规则
 
-External API should avoid returning Step-centric structure.
+对外 API 应避免返回 Step-centric 结构。
 
-#### 7.1 Error Example
+#### 7.1 错误示例
 
 ```json
 {
@@ -2869,7 +2868,7 @@ External API should avoid returning Step-centric structure.
 }
 ```
 
-#### 7.2 Recommended Example
+#### 7.2 推荐示例
 
 ```json
 {
@@ -2885,13 +2884,13 @@ External API should avoid returning Step-centric structure.
 }
 ```
 
-UI can display `NodeRun` as "Step", but API field names must remain canonical.
+UI 可以把 `NodeRun` 显示成“Step”，但 API 字段名必须保持 canonical。
 
 ---
 
-### 8. Event Naming Rules
+### 8. Event 命名规则
 
-#### 8.1 Prohibited from Adding
+#### 8.1 禁止新增
 
 ```text
 step.started
@@ -2900,7 +2899,7 @@ workflow.step.failed
 mission.step.updated
 ```
 
-#### 8.2 Recommended to Use
+#### 8.2 推荐uses
 
 ```text
 platform.plan_graph.created
@@ -2913,95 +2912,95 @@ platform.harness_run.completed
 platform.mission.progress_projected
 ```
 
-Mission events must be facts or projections, cannot carry alternative status of underlying execution details.
+Mission 事件必须is事实或投影，不得携带底层执lines细节的替代Status。
 
 ---
 
-### 9. Testing Governance Rules
+### 9. 测试治理规则
 
-| Test Type | Requirement |
+| 测试class型 | 要求 |
 |---|---|
-| Contract tests | Prohibited from appearing `steps[]` as canonical field |
-| E2E tests | Must cover `Task → PlanGraphBundle → HarnessRun → NodeRun → NodeAttempt` |
-| Golden tests | Response snapshots must not include `currentStep / stepId / steps` |
-| Migration tests | Can appear Step, but must mark legacy |
-| UI tests | Can assert display copy "step", but data source must be NodeRun fixture |
+| Contract tests | 禁止出现 `steps[]` 作为 canonical 字段 |
+| E2E tests | 必须覆盖 `Task → PlanGraphBundle → HarnessRun → NodeRun → NodeAttempt` |
+| Golden tests | response快照不得contains `currentStep / stepId / steps` |
+| Migration tests | 可以出现 Step，但必须标注 legacy |
+| UI tests | 可以断言展示文案“步骤”，但data源必须is NodeRun fixture |
 
-Recommended adding static scanning rules:
+Recommendation加入静态扫描规则：
 
 ```text
-Prohibited in src/platform/contracts/** new stepId / currentStep / steps[]
-Prohibited in src/platform/five-plane-execution/** new StepStatus / WorkflowStep
-Prohibited in src/platform/five-plane-orchestration/** output PlanStep[] as plan contract
-Prohibited in src/platform/five-plane-interface/api/** expose Step-centric response
+禁止在 src/platform/contracts/** 新增 stepId / currentStep / steps[]
+禁止在 src/platform/five-plane-execution/** 新增 StepStatus / WorkflowStep
+禁止在 src/platform/five-plane-orchestration/** 输出 PlanStep[] 作为计划契约
+禁止在 src/platform/five-plane-interface/api/** 暴露 Step-centric response
 ```
 
 ---
 
-### 10. Migration Path
+### 10. 迁移路径
 
-#### Phase 1: Freeze Step Addition
+#### Phase 1：冻结 Step 新增
 
-- Prohibited adding `Step` as contract/runtime/event field.
-- Mark old `PlanStep / WorkflowStep / HarnessStep` as deprecated.
-- Add Step-centric field scanning in lint or contract test.
+- 禁止新增 `Step` 作为 contract/runtime/event 字段。
+- 标记旧 `PlanStep / WorkflowStep / HarnessStep` 为 deprecated。
+- 在 lint 或 contract test 中加入 Step-centric 字段扫描。
 
-#### Phase 2: Adapt Legacy to Node
+#### Phase 2：适配 Legacy 到 Node
 
-- `PlanStep` migrate to `PlanNode`.
-- `HarnessStep` split to `NodeRun + NodeAttempt`.
-- `WorkflowState.currentStep` change to projection field, no longer as truth.
+- `PlanStep` 迁移为 `PlanNode`。
+- `HarnessStep` 拆分为 `NodeRun + NodeAttempt`。
+- `WorkflowState.currentStep` 改为 projection 字段，不再作为 truth。
 
-#### Phase 3: API Output Switch
+#### Phase 3：API 输出切换
 
-- API returns `planGraphBundleRef / activeNodeRunRefs / evidenceRefs`.
-- UI uses adapter to aggregate NodeRun display as "step".
-- Old `steps[]` response enters compatibility endpoint.
+- API 返回 `planGraphBundleRef / activeNodeRunRefs / evidenceRefs`。
+- UI via adapter 把 NodeRun 聚合展示为“步骤”。
+- 旧 `steps[]` response 进入 compatibility endpoint。
 
-#### Phase 4: Delete Legacy Step Truth
+#### Phase 4：删除 Legacy Step Truth
 
-- Delete or isolate legacy `WorkflowState / PlanStep / HarnessStep` write path.
-- All E2E change to canonical runtime path.
-- Step only retained in UI label, user documentation and legacy migration adapter.
-
----
-
-### 11. Acceptance Criteria
-
-After completing Step degradation, should satisfy:
-
-- `PlanGraphBundle` is the only plan contract.
-- `NodeRun / NodeAttempt` is the only execution granularity.
-- `Step` no longer appears in canonical contract, runtime state, budget, event, evidence, API response.
-- Mission does not contain `steps[] / currentStep / stepOutputs`.
-- UI can display "step", but must be obtained from `NodeRun` aggregation.
-- All new E2E no longer go `WorkflowState / PlanStep / HarnessStep` legacy path.
-- All budget limits use `maxNodeRuns / maxNodeAttempts / maxToolCalls / maxDurationMs / maxModelTokens`.
-- All evidence, audit, side effect bind `nodeRunId / nodeAttemptId / evidenceRefs`.
+- 删除或隔离 legacy `WorkflowState / PlanStep / HarnessStep` 写路径。
+- 所有 E2E 改为 canonical runtime path。
+- Step 只保留在 UI label、user文档和 legacy migration adapter 中。
 
 ---
 
-### 12. Final Consistency Constraints with Mission Plan
+### 11. 验收标准
 
-After Mission introduction, cannot form new execution hierarchy bloat.
+完成 Step 降级后，应满足以下条件：
 
-Correct relationship:
+- `PlanGraphBundle` is唯一计划契约。
+- `NodeRun / NodeAttempt` is唯一执lines粒度。
+- `Step` 不再出现在 canonical contract、runtime state、budget、event、evidence、API response 中。
+- Mission 不contains `steps[] / currentStep / stepOutputs`。
+- UI 可显示“步骤”，但必须由 `NodeRun` 聚合得到。
+- 所有新 E2E 不再走 `WorkflowState / PlanStep / HarnessStep` legacy 路径。
+- 所有budget限制uses `maxNodeRuns / maxNodeAttempts / maxToolCalls / maxDurationMs / maxModelTokens`。
+- 所有证据、审计、side effect 都绑定 `nodeRunId / nodeAttemptId / evidenceRefs`。
+
+---
+
+### 12. vs Mission 方案的最终一致性约束
+
+Mission references入后，不能形成新的执lines层级膨胀。
+
+正确关系is：
 
 ```text
-Mission = Long-term goal and task combination governance layer
-Task = Single executable request after user confirmation
-Session = Interaction context and continuous conversation context
-PlanGraphBundle = Only plan graph
-HarnessRun = One controlled run
-NodeRun = Graph node running instance
-NodeAttempt = Single execution attempt
-Runtime = Execution environment and scheduling system
-Agent = Capability subject, not state container
-Workflow = Reusable process template or UI projection, not truth
-Step = Non-authoritative display term
+Mission = 长期目标vs任务组合治理层
+Task = user确认后的单个可执linesrequest
+Session = 交互上下文vs连续对话上下文
+PlanGraphBundle = 唯一计划图
+HarnessRun = 一iterations受控运lines
+NodeRun = 图节点运lines实例
+NodeAttempt = 单iterations执lines尝试
+Runtime = 执lines环境vs调度系统
+Agent = 能力主体，不isStatus容器
+Workflow = 可复用流程模板或 UI 投影，不is truth
+Step = 非权威展示词
 ```
 
-Therefore, Mission should not introduce `MissionStep`, Task should not save `TaskStep`, Workflow should not become execution truth again. Canonical authority chain must remain:
+因此，Mission 不应该references入 `MissionStep`，Task 不应该保存 `TaskStep`，Workflow 不应该重新成为执lines truth。系统运lines的权威链路必须保持：
 
 ```text
 ConfirmedTaskSpec

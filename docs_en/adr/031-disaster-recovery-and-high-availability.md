@@ -1,28 +1,28 @@
-# ADR-031 Disaster Recovery and High Availability
+# ADR-031 Disaster Recovery and High Availability Architecture
 
-- Status: Accepted
-- Decision Date: 2026-04-03
+- Status：Accepted
+- Decision Date：2026-04-03
 
-## Context
+## Background
 
-Enterprise-class platforms must have disaster recovery capabilities to ensure rapid service restoration when data center failures occur. RTO and RPO are key metrics.
+Enterprise-class platforms must have disaster recovery capabilities to ensure rapid service recovery when data center failures occur. RTO and RPO are key metrics.
 
 ## Decision
 
 ### HA-1 Goals
 
 | Metric | Target Value |
-|--------|--------------|
+|------|--------|
 | RTO (Recovery Time Objective) | < 1 hour |
 | RPO (Recovery Point Objective) | < 15 minutes |
-| Backup Retention | 90 days |
-| Drill Frequency | Monthly (15th, 3am) |
+| Backup Retention Period | 90 days |
+| Drill Frequency | Monthly (15th of month, 3am) |
 
 ### Backup Strategy
 
 - Daily 2am automatic backup
 - Backup stored in independent storage area
-- Supports full and incremental backup
+- Supports full backup and incremental backup
 
 ### DR Drill
 
@@ -37,13 +37,13 @@ Enterprise-class platforms must have disaster recovery capabilities to ensure ra
 
 ## Consequences
 
-Benefits:
+Advantages:
 
-- Clear RTO/RPO targets guide architectural decisions
+- Clear RTO/RPO goals guide architecture decisions
 - Regular drills ensure recovery capability is available
-- Backup retention strategy meets compliance requirements
+- Backup retention policy meets compliance requirements
 
-Trade-offs:
+Costs:
 
 - Backup storage costs
 - Drills consume production resources
@@ -55,4 +55,4 @@ Trade-offs:
 
 ## Source Section
 
-- `§31` Disaster Recovery and High Availability
+- `§31` Disaster Recovery and High Availability Architecture

@@ -1,94 +1,94 @@
-# System-Level Manual Review (2026-05-26)
+# 系统级人工复核审查（2026-05-26）
 
-| Field | Content |
+| 字段 | 内容 |
 |---|---|
-| Review Date | 2026-05-26 |
-| Review Scope | `src/`, `ui/`, `.github/workflows/`, `docs_zh/reference/` |
-| Review Method | Manual sampling of high-risk chains: event delivery, execution identity, federation governance, UI shell bridging, CI architecture gates |
-| Current Conclusion | System backbone is largely complete, but there remain 6 priority issues to address: 1 directly breaks Tier-1 event reliability, 3 are "governance/audit state not persisted", 1 is missing CI gate, 1 is Electron shell bridging failure. |
+| 审查日期 | 2026-05-26 |
+| 审查范围 | `src/`、`ui/`、`.github/workflows/`、`docs_zh/reference/` |
+| 审查方式 | 人工抽样复核高风险链路：事件投递、执lines身份、联邦治理、UI 壳层桥接、CI Architecture门禁 |
+| 当前Conclusion | 系统主干已via较完整，但仍存在 6 个需要优先handle的真实缺口，其中 1 个会directly破坏 Tier-1 事件可靠性，3 个belongs to“治理/审计Status不持久”，1 个belongs to CI 门禁缺失，1 个belongs to Electron 壳层桥接失效。 |
 
 ---
 
-## Issue List
+## Issue清单
 
-| ID | Severity | Issue | Review Conclusion | Root Cause Classification | Evidence |
+| ID | 严重级别 | Issue | ReviewConclusion | Root Cause归class | 证据 |
 |---|---|---|---|---|---|
-| SYS-001 | P0 | `DurableEventBusAsync` swallows async handler rejections, causing events to be incorrectly acked | Not resolved. The async facade converts consumer failures to success returns; `DurableEventBus` then calls `markEventAck`, bypassing Tier-1 retry/DLQ semantics. | Reliability defect / async contract violation | `src/platform/five-plane-state-evidence/events/durable-event-bus-async.ts:44-52`; `src/platform/five-plane-state-evidence/events/durable-event-bus.ts:575-595` |
-| SYS-002 | P1 | Worker identity registration returns success on persistence failure, and preferentially uses in-memory auth | Not resolved. Registration path writes to `memoryStore` first; persistence failure is silently swallowed; claims continue to pass in same process, but identity is lost after restart, creating split behavior ("accept in current process, reject after restart"). | State consistency / silent failure | `src/platform/five-plane-execution/worker-pool/worker-service-identity.ts:49-82`; `src/platform/five-plane-execution/worker-pool/worker-service-identity.ts:109-163` |
-| SYS-003 | P1 | Federation audit claims 7-year retention, but implementation only stores in-process memory | Not resolved. `FederationAudit` only has `Map`/`Set` indexes and memory records; no disk persistence, replay, or external storage injection; all audit traces are lost after process restart, inconsistent with compliance retention claims. | Governance capability not persisted | `src/scale-ecosystem/federation/federation-audit.ts:75-112`; `src/scale-ecosystem/federation/federation-audit.ts:142-190` |
-| SYS-004 | P1 | Federation trust relationship is purely in-memory model; revocation/degradation/revocation state cannot survive restarts | Not resolved. `TrustRelationshipManager` uses in-memory `Map` for trust/policy/event/index; create, revoke, degrade all write no source of truth; governance state for multi-org collaboration resets after process restart. | Governance capability not persisted | `src/scale-ecosystem/federation/trust-relationship.ts:94-148`; `src/scale-ecosystem/federation/trust-relationship.ts:179-240` |
-| SYS-005 | P1 | Architecture boundary lint not integrated into main CI, but reference docs mark `CI-001` as completed | Not resolved. Repo already has `lint:architecture-boundary` command, but `ci.yml`'s `validate` job doesn't execute it; also reference doc `automatic_agent_system_harness_improvement_plan_v1_9_architecture_release.md` already marks `CI-001` as `completed`, so documentation and pipeline actual state are inconsistent. | Engineering governance / documentation state drift | `package.json:222`; `.github/workflows/ci.yml:24-59`; `docs_zh/reference/automatic_agent_system_harness_improvement_plan_v1_9_architecture_release.md:1391-1396` |
-| SYS-006 | P1 | Electron preload exposes bridge name that doesn't match runtime adapter's reading name; desktop bridge effectively broken | Not resolved. Preload exposes bridge via `contextBridge.exposeInMainWorld("AA_ELECTRON", bridge)`, but `ElectronPlatformAdapter` reads `window.__AA_ELECTRON__`; this causes secure storage, deep link, shell and other capabilities to fall back to default adapter indefinitely. | Interface contract inconsistency | `ui/apps/electron-win/src/preload.ts:27-35`; `ui/packages/shared/platform/src/desktop-platform-adapter.ts:11-25` |
+| SYS-001 | P0 | `DurableEventBusAsync` 会吞掉异步 handler 的 reject，导致事件被错误 ack | 未解决。当前 async facade 会把 consumer 的failed转换为success返回，`DurableEventBus` 随后执lines `markEventAck`，Tier-1 重试/DLQ 语义被bypassing。 | 可靠性缺陷 / 异步契约破坏 | `src/platform/five-plane-state-evidence/events/durable-event-bus-async.ts:44-52`；`src/platform/five-plane-state-evidence/events/durable-event-bus.ts:575-595` |
+| SYS-002 | P1 | Worker 身份注册在持久化failed时仍然返回success，且优先uses内存态鉴权 | 未解决。注册路径先写 `memoryStore`，持久化failed被静默吞掉；同进程内 claim 继续via，但重启后身份会丢失，形成“当前进程accepts、重启后拒绝”的分裂lines为。 | Status一致性 / 静默failed | `src/platform/five-plane-execution/worker-pool/worker-service-identity.ts:49-82`；`src/platform/five-plane-execution/worker-pool/worker-service-identity.ts:109-163` |
+| SYS-003 | P1 | 联邦审计宣称 7 年保留，但实现only保存在进程内内存 | 未解决。`FederationAudit` 只有 `Map`/`Set` 索references和内存record，没有任何落盘、回放或外部仓储注入；进程重启后审计轨迹全部丢失，和合规保留口径不符。 | 治理能力未持久化 | `src/scale-ecosystem/federation/federation-audit.ts:75-112`；`src/scale-ecosystem/federation/federation-audit.ts:142-190` |
+| SYS-004 | P1 | 联邦信任关系is纯内存模型，撤权/降级/吊销Status不能跨重启保留 | 未解决。`TrustRelationshipManager` 用内存 `Map` 保存 trust/policy/event/index，创建、吊销、降级都不写真源；多组织协作的治理Status在进程重启后会被重置。 | 治理能力未持久化 | `src/scale-ecosystem/federation/trust-relationship.ts:94-148`；`src/scale-ecosystem/federation/trust-relationship.ts:179-240` |
+| SYS-005 | P1 | Architecture边界 lint 没有接入主 CI，但参考文档把 `CI-001` 标成 completed | 未解决。仓库已存在 `lint:architecture-boundary` 命令，但 `ci.yml` 的 `validate` job 没有执lines它；同时参考文档 `automatic_agent_system_harness_improvement_plan_v1_9_architecture_release.md` 已把 `CI-001` 标为 `completed`，文档vs流水线实际Statusinconsistent。 | 工程治理 / 文档Status漂移 | `package.json:222`；`.github/workflows/ci.yml:24-59`；`docs_zh/reference/automatic_agent_system_harness_improvement_plan_v1_9_architecture_release.md:1391-1396` |
+| SYS-006 | P1 | Electron preload 暴露的 bridge 名称vs运lines时 adapter 读取名称inconsistent，桌面桥接实际失效 | 未解决。preload 用 `contextBridge.exposeInMainWorld("AA_ELECTRON", bridge)` 暴露桥，而 `ElectronPlatformAdapter` 读取的is `window.__AA_ELECTRON__`；这会让 secure storage、deep link、shell 等能力长期回退到defaults to adapter。 | 接口契约inconsistent | `ui/apps/electron-win/src/preload.ts:27-35`；`ui/packages/shared/platform/src/desktop-platform-adapter.ts:11-25` |
 
 ---
 
-## Root Cause Summary
+## Root Cause归class汇总
 
-1. Async facade destroys main chain success/failure semantics in the name of "avoiding unhandled rejections".
-2. Multiple governance subsystems still use in-process state, lacking authoritative store or recovery mechanism.
-3. Documentation closure claims precede actual CI implementation, creating drift between "documentation complete, pipeline not enforced".
-4. UI shell has bridge name inconsistency contract bug, causing platform capabilities to appear present but not actually function.
-
----
-
-## Recommended Priority
-
-1. Fix `SYS-001` first - this is the most direct reliability breach, causing Tier-1 event failures to be incorrectly recorded as success.
-2. Second batch: handle `SYS-002`, `SYS-003`, `SYS-004` - converge worker identity, federation audit, and trust relationship to recoverable source of truth.
-3. Third batch: handle `SYS-005`, `SYS-006` - tighten CI governance and fix Electron real bridge respectively.
+1. 异步 facade 为了“避免未handle reject”而破坏了主链success/failed语义。
+2. 多个治理子系统仍uses进程内Status，缺少 authoritative store 或恢复机制。
+3. 文档结项口径先于 CI 真正落地，形成“文档完成、流水线未 enforce”的漂移。
+4. UI 壳层存在 bridge 名称inconsistent的 contract bug，导致平台能力table面存在、实际不生效。
 
 ---
 
-## Notes
+## Recommendation优先级
 
-1. This document only records manually confirmed real issues from this round; it does not delete existing review document content.
-2. This round did not perform full testing, nor code fixes for the above issues; current output is only review conclusion and evidence archival.
+1. 先修 `SYS-001`，这is当前最directly的可靠性破口，会让 Tier-1 事件failed被误记为success。
+2. 第二批handle `SYS-002`、`SYS-003`、`SYS-004`，把 worker identity、federation audit、trust relationship 收敛到可恢复真源。
+3. 第三批handle `SYS-005`、`SYS-006`，分别收紧 CI 治理和修复 Electron 真桥接。
 
 ---
 
-## Second Round Deep Cross-Review Addendum (2026-05-26)
+## Description
 
-This round additionally checked federation governance, UI API contracts, frontend/backend path systems, and cross-consistency between documentation and implementation. The following issues are added to the same system review ledger.
+1. 本文档只record本轮人工确认的真实Issue，不删除既有 review 文档内容。
+2. 本轮没有进linesfull测试，也没有对上述Issue做code修复；当前输出only为审查Conclusionvs证据归档。
 
-| ID | Severity | Issue | Review Conclusion | Root Cause Classification | Evidence |
+---
+
+## 第二轮深入交叉复核追加（2026-05-26）
+
+本轮额外检查了联邦治理、UI API 契约、前后端路径体系，以及文档vs实现之间的交叉一致性。以下Issue追加到同一份系统审查台账中。
+
+| ID | 严重级别 | Issue | ReviewConclusion | Root Cause归class | 证据 |
 |---|---|---|---|---|---|
-| SYS-007 | P1 | `FederationAudit.query()` only uses the first index to narrow candidate set, but doesn't continue to validate other filter conditions like `actor/action/correlationId/orgId` | Not resolved. Multi-condition queries exhibit "filter by first condition only, subsequent conditions ignored" incorrect results; audit retrieval results are unreliable. | Query semantics defect / audit inconsistency | `src/scale-ecosystem/federation/federation-audit.ts:152-191` |
-| SYS-008 | P1 | Federation audit retention claims to support archive-before-delete, but actually only increments `archived` count with no actual archive destination | Not resolved. `applyRetentionPolicy()` with `archiveBeforeDelete=true` only performs comment placeholder logic; eventually returns "archived" but has no real archive evidence. | Governance capability not closed / fake archiving | `src/scale-ecosystem/federation/federation-audit.ts:276-298` |
-| SYS-009 | P1 | Trust policy `expiresAt`, `requirePeriodicReauth`, `reauthIntervalDays` only participate in scoring, not in admission blocking | Not resolved. `getTrustBetweenOrgs()` only checks `status === "active"`, does not reject due to expiration or reauth window exceeded; `calculateTrustFactors()` only reduces score without triggering `expired/suspended` state migration. | Governance policy not enforced | `src/scale-ecosystem/federation/trust-relationship.ts:163-176`; `src/scale-ecosystem/federation/trust-relationship.ts:404-413`; `src/scale-ecosystem/federation/trust-relationship.ts:477-481` |
-| SYS-010 | P1 | UI default API prefix, endpoint catalog path, and real paths in tests/documentation are inconsistent; frontend/backend integration defaults to wrong address | Not resolved. Web runtime defaults `baseUrl=/api`, endpoint catalog uses `/tasks`, `/workflows` unversioned paths; after concatenation gets `/api/tasks`; but tests and architecture docs use `/api/v1/tasks`, `/api/v1/dashboard/*` as standard. | Interface contract drift / version prefix inconsistency | `ui/apps/web/src/runtime.ts:143-149`; `ui/packages/shared/api-client/src/rest-client.ts:334-335`; `ui/packages/shared/api-client/src/endpoints.ts:177-190`; `docs_zh/architecture/05-cross-platform-ui-architecture.md:2482-2487`; `ui/tests/tools/tooling.test.ts:11-12` |
-| SYS-011 | P1 | UI endpoint catalog marks several interfaces as `planned: false` / directly consumable, but corresponding backend routes and OpenAPI don't exist | Not resolved. Current at least the following drift examples exist: `/dashboard/metrics`, `/marketplace`, `/workflows/builder`, `/knowledge`, `/packs/:packId/versions`, `/explanations`. Frontend calls them as implemented interfaces; backend route table and OpenAPI don't have corresponding capabilities. | Frontend/backend contract mismatch / status labeling error | `ui/packages/shared/api-client/src/endpoints.ts:205-221`; `src/platform/five-plane-interface/api/openapi-document.ts:1-120`; `src/platform/five-plane-interface/api/http-server/pack-routes.ts:1-146`; route scan of `src/platform/five-plane-interface/api/http-server/` found no corresponding implementations for `/v1/marketplace`, `/v1/workflows/builder`, `/v1/explanations`, `/v1/dashboard/metrics` |
-| SYS-012 | P2 | Shared Mission Control query layer directly consumes Layer B's `/admin/workers`, `/admin/queues`, conflicting with UI architecture "frontend only consumes Layer C" requirement | Not resolved. Endpoint catalog already marks `workers`, `queues` as `apiLayer: "B"`, but shared query layer still exposes them as general mission-control data sources; this solidifies internal admin-plane contracts into the public frontend layer long-term. | Architecture layer violation | `ui/packages/shared/api-client/src/endpoints.ts:202-203`; `ui/packages/shared/state/src/queries/mission-control-queries.ts:23-29`; `docs_zh/architecture/05-cross-platform-ui-architecture.md:2518-2548` |
+| SYS-007 | P1 | `FederationAudit.query()` 只用首个索references缩小候选集，但不会继续校验 `actor/action/correlationId/orgId` 等其他筛选条件 | 未解决。多条件查询会出现“只按第一条件过滤，后续条件被忽略”的错误结果，审计检索结果不可靠。 | 查询语义缺陷 / 审计inconsistent | `src/scale-ecosystem/federation/federation-audit.ts:152-191` |
+| SYS-008 | P1 | 联邦审计 retention 声称supported archive-before-delete，但实际只递增 `archived` 计数，没有任何归档落点 | 未解决。`applyRetentionPolicy()` 在 `archiveBeforeDelete=true` 时only执linescomment占位逻辑，最终会返回“已归档”但没有真实归档证据。 | 治理能力未闭环 / 假归档 | `src/scale-ecosystem/federation/federation-audit.ts:276-298` |
+| SYS-009 | P1 | Trust policy 中的 `expiresAt`、`requirePeriodicReauth`、`reauthIntervalDays` 只参vs评分，不参vs准入阻断 | 未解决。`getTrustBetweenOrgs()` 只检查 `status === "active"`，不会因为过期或exceeds出 reauth 窗口而拒绝；`calculateTrustFactors()` 只降低分数，没有触发 `expired/suspended` Status迁移。 | 治理策略未 enforce | `src/scale-ecosystem/federation/trust-relationship.ts:163-176`；`src/scale-ecosystem/federation/trust-relationship.ts:404-413`；`src/scale-ecosystem/federation/trust-relationship.ts:477-481` |
+| SYS-010 | P1 | UI defaults to API 前缀、endpoint catalog 路径、测试/文档里的真实路径inconsistent，前后端联调defaults to会打到错误address | 未解决。Web runtime defaults to `baseUrl=/api`，endpoint catalog 用 `/tasks`、`/workflows` 这classno版本路径，拼接后得到 `/api/tasks`；但测试vsArchitecture文档都以 `/api/v1/tasks`、`/api/v1/dashboard/*` 为准。 | 接口契约漂移 / 版本前缀inconsistent | `ui/apps/web/src/runtime.ts:143-149`；`ui/packages/shared/api-client/src/rest-client.ts:334-335`；`ui/packages/shared/api-client/src/endpoints.ts:177-190`；`docs_zh/architecture/05-cross-platform-ui-architecture.md:2482-2487`；`ui/tests/tools/tooling.test.ts:11-12` |
+| SYS-011 | P1 | UI endpoint catalog 把多条接口标成 `planned: false` / 可directly消费，但后端路由和 OpenAPI 并don't exist对应入口 | 未解决。当前至少存在以下漂移样例：`/dashboard/metrics`、`/marketplace`、`/workflows/builder`、`/knowledge`、`/packs/:packId/versions`、`/explanations`。前端会按已实现接口call，后端路由table和 OpenAPI 没有对应能力。 | 前后端契约失配 / Status标注错误 | `ui/packages/shared/api-client/src/endpoints.ts:205-221`；`src/platform/five-plane-interface/api/openapi-document.ts:1-120`；`src/platform/five-plane-interface/api/http-server/pack-routes.ts:1-146`；对 `src/platform/five-plane-interface/api/http-server/` 的路由扫描未发现 `/v1/marketplace`、`/v1/workflows/builder`、`/v1/explanations`、`/v1/dashboard/metrics` 对应实现 |
+| SYS-012 | P2 | 共享 Mission Control 查询层directly消费 Layer B 的 `/admin/workers`、`/admin/queues`，和 UI Architecture“前端只消费 Layer C”要求conflicts | 未解决。endpoint catalog 已把 `workers`、`queues` 标为 `apiLayer: "B"`，但共享查询层仍把它们作为通用 mission-control data源directly暴露；这会把内部manage面契约长期固化到公共前端层。 | Architecture分层违例 | `ui/packages/shared/api-client/src/endpoints.ts:202-203`；`ui/packages/shared/state/src/queries/mission-control-queries.ts:23-29`；`docs_zh/architecture/05-cross-platform-ui-architecture.md:2518-2548` |
 
-### Second Round Supplementary Conclusions
+### 第二轮补充Conclusion
 
-1. The main problem with the federation governance module has shifted from "whether capability exists" to "whether query, retention, and policy enforcement are truly closed-loop".
-2. The biggest risk of the UI subsystem is not whether features exist, but "path prefix, Layer marker, and interface completion status" three sets of metrics haven't converged to one authoritative contract.
-3. The area most likely to cause integration misjudgment in the current system is the shared api client: it appears quite complete on the surface, but some endpoints still outpace the backend's actual routes and OpenAPI.
+1. 联邦治理模块的主要Issue已via从“isno存在能力”转成了“查询、保留、策略 enforce isno真实闭环”。
+2. UI 子系统的最大风险不只is feature isno存在，而is“路径前缀、Layer 标记、接口完成Status”三套口径没有收敛到一套 authoritative contract。
+3. 当前系统最容易造成联调误判的区域is shared api client：它table面上已via很完整，但其中一部分 endpoint 仍然exceeds前于后端真实路由vs OpenAPI。
 
 ---
 
-## Fix Result Writeback (2026-05-26)
+## 修复结果回写（2026-05-26）
 
-The following writeback does not delete previous review records; it only supplements the latest status of "whether currently closed", root cause, and evidence.
+以下回写不删除前文审查record，只补充“当前isno已收口”的最新Status、Root Causevs证据。
 
-| ID | Current Conclusion | Root Cause | Fix Basis | Targeted Testing |
+| ID | 当前Conclusion | Root Cause | 修复依据 | 定向测试 |
 |---|---|---|---|---|
-| SYS-001 | Fixed. `DurableEventBusAsync` no longer swallows async consumer rejections; failures propagate back through original chain to durable bus, avoiding incorrect `ack` of Tier-1 events. | Async facade converts failures to success to avoid unhandled rejections, breaking success/failure contract. | `src/platform/five-plane-state-evidence/events/durable-event-bus-async.ts` | `tests/unit/platform/state-evidence/events/durable-event-bus-async.test.ts` |
-| SYS-002 | Fixed. Worker identity registration changed to persist first, then enter in-memory state; persistence failure fails closed, bad-format durable payload also rejects auth. | Original implementation wrote memory first then tried to persist, and swallowed persistence exceptions, causing same-process accept / post-restart reject. | `src/platform/five-plane-execution/worker-pool/worker-service-identity.ts` | `tests/unit/platform/execution/worker-pool/worker-service-identity.test.ts`; `tests/unit/platform/execution/worker-pool/worker-service-identity-r13.test.ts` |
-| SYS-003 | Fixed. Federation audit changed to default to persistent snapshots + archive files; records recoverable after restart, no longer only in-process memory. | Audit implementation only had `Map/Set` indexes, no authoritative persistence. | `src/scale-ecosystem/federation/federation-audit.ts` | `tests/unit/scale-ecosystem/federation-audit.test.ts` |
-| SYS-004 | Fixed. Trust relationship / policy / event now all write to persistent snapshots; revocation, degradation, and suspension survive restarts. | Trust governance state only existed in in-memory `Map`, lacking recovery path. | `src/scale-ecosystem/federation/trust-relationship.ts` | `tests/unit/scale-ecosystem/trust-relationship.test.ts` |
-| SYS-005 | Fixed. Main CI `validate` job now includes `lint:architecture-boundary`; documentation "completed" and pipeline enforcement realigned. | Engineering governance claim preceded pipeline rollout, creating documentation-complete / CI-not-enforced drift. | `.github/workflows/ci.yml` | `npm run typecheck`; CI workflow contract passes repo validation |
-| SYS-006 | Fixed. Electron preload now exposes both `AA_ELECTRON` and `__AA_ELECTRON__`; desktop adapter also compatible with dual name reading; desktop bridge reconnected. | Preload and runtime adapter used two different bridge names. | `ui/apps/electron-win/src/preload.ts`; `ui/packages/shared/platform/src/bridge-types.ts`; `ui/packages/shared/platform/src/desktop-platform-adapter.ts` | `ui/tests/unit/ui/apps/electron-win/preload.test.ts`; `ui/tests/shared/platform.test.ts` |
-| SYS-007 | Fixed. Federation audit query now continues to intersect-validate all filter conditions after index narrows candidate set; no longer just uses first condition. | Query implementation only used first index condition for filtering; subsequent conditions weren't actually executed. | `src/scale-ecosystem/federation/federation-audit.ts` | `tests/unit/scale-ecosystem/federation-audit.test.ts` |
-| SYS-008 | Fixed. Retention's archive-before-delete now truly writes NDJSON archive, then deletes from active set; no longer fake archive count. | Original implementation only incremented `archived` number, no real archive sink. | `src/scale-ecosystem/federation/federation-audit.ts` | `tests/unit/scale-ecosystem/federation-audit.test.ts` |
-| SYS-009 | Fixed. `expiresAt` and periodic reauth now enter trust admission blocking; expiration or reauth window exceeded migrates out of active usable state. | Policy fields only participated in scoring, not in active trust's usability determination. | `src/scale-ecosystem/federation/trust-relationship.ts` | `tests/unit/scale-ecosystem/trust-relationship.test.ts` |
-| SYS-010 | Fixed. Shared endpoint catalog unified to `/v1/*` path system; combined with Web default `/api` prefix gives correct `/api/v1/*`. | UI runtime, endpoint catalog, docs/tests used different version prefixes. | `ui/packages/shared/api-client/src/endpoints.ts` | `ui/tests/shared/api-client.test.ts`; `ui/tests/shared/endpoint-type-contracts.test.ts` |
-| SYS-011 | Fixed. Interfaces previously marked as consumable now have backend routes and OpenAPI added: `/v1/dashboard/metrics`, `/v1/workers`, `/v1/queues`, `/v1/agents`, `/v1/explanations`, `/v1/meta/contract-version`, `/v1/knowledge`, `/v1/marketplace`, `/v1/packs/:packId/versions`, `/v1/workflows/builder`. | Frontend endpoint catalog was ahead of backend's actual export surface, causing "frontend implemented, backend doesn't exist" contract drift. | `src/platform/five-plane-interface/api/http-server/dashboard-routes.ts`; `src/platform/five-plane-interface/api/http-server/plane-routes.ts`; `src/platform/five-plane-interface/api/http-server/pack-routes.ts`; `src/platform/five-plane-interface/api/http-server/task-routes.ts`; `src/platform/five-plane-interface/api/openapi-document.ts` | `tests/unit/platform/interface/api/http-server/dashboard-routes.test.ts`; `tests/unit/platform/interface/api/http-server/plane-routes.test.ts`; `tests/unit/platform/interface/api/http-server/pack-routes.test.ts`; `tests/unit/platform/interface/api/http-server/task-routes.test.ts`; `tests/unit/platform/interface/api/openapi-document.test.ts` |
-| SYS-012 | Fixed. `workers`, `queues` promoted to Layer C public interfaces; frontend query layer no longer depends on Layer B admin-plane paths `/admin/*`. | Shared Mission Control query directly consumed internal admin contract, violating UI architecture layering. | `ui/packages/shared/api-client/src/endpoints.ts`; `src/platform/five-plane-interface/api/http-server/dashboard-routes.ts` | `ui/tests/shared/endpoint-type-contracts.test.ts`; `tests/unit/platform/interface/api/http-server/dashboard-routes.test.ts` |
+| SYS-001 | 已修复。`DurableEventBusAsync` 不再吞掉异步 consumer 的 reject，failed会accesses along原链路回传给 durable bus，避免错误 `ack` Tier-1 事件。 | async facade 为了避免未handle拒绝，把failed转换成了success完成，破坏了success/failed契约。 | `src/platform/five-plane-state-evidence/events/durable-event-bus-async.ts` | `tests/unit/platform/state-evidence/events/durable-event-bus-async.test.ts` |
+| SYS-002 | 已修复。worker identity 注册改为先持久化、后进入内存态；持久化faileddirectly fail-closed，坏格式 durable payload 也会拒绝鉴权。 | 原实现先写内存再尝试持久化，而且吞掉持久化异常，导致同进程accepts、重启后拒绝。 | `src/platform/five-plane-execution/worker-pool/worker-service-identity.ts` | `tests/unit/platform/execution/worker-pool/worker-service-identity.test.ts`；`tests/unit/platform/execution/worker-pool/worker-service-identity-r13.test.ts` |
+| SYS-003 | 已修复。联邦审计改为defaults to持久化快照 + 归档文件，重启后可恢复record，不再只有进程内内存。 | 审计实现只有 `Map/Set` 索references，没有 authoritative persistence。 | `src/scale-ecosystem/federation/federation-audit.ts` | `tests/unit/scale-ecosystem/federation-audit.test.ts` |
+| SYS-004 | 已修复。trust relationship / policy / event 现在都会writes持久化快照，撤权、降级、吊销能跨重启保留。 | 信任治理Status只存在于内存 `Map`，缺少恢复路径。 | `src/scale-ecosystem/federation/trust-relationship.ts` | `tests/unit/scale-ecosystem/trust-relationship.test.ts` |
+| SYS-005 | 已修复。主 CI `validate` job 已纳入 `lint:architecture-boundary`，文档“completed”vs流水线 enforce 重新对齐。 | 工程治理口径先于流水线落地，形成文档完成、CI 未执lines的漂移。 | `.github/workflows/ci.yml` | `npm run typecheck`；CI workflow contract via仓库校验读取 |
+| SYS-006 | 已修复。Electron preload 同时暴露 `AA_ELECTRON` vs `__AA_ELECTRON__`，desktop adapter 也兼容双名称读取，桌面桥重新连通。 | preload vs runtime adapter uses了两套不同的 bridge 名称。 | `ui/apps/electron-win/src/preload.ts`；`ui/packages/shared/platform/src/bridge-types.ts`；`ui/packages/shared/platform/src/desktop-platform-adapter.ts` | `ui/tests/unit/ui/apps/electron-win/preload.test.ts`；`ui/tests/shared/platform.test.ts` |
+| SYS-007 | 已修复。联邦审计查询在索references缩小候选集后，仍会继续对全部过滤条件做交集校验，不再只吃首个条件。 | 查询实现只uses第一个索references条件做过滤，后续条件没有真正执lines。 | `src/scale-ecosystem/federation/federation-audit.ts` | `tests/unit/scale-ecosystem/federation-audit.test.ts` |
+| SYS-008 | 已修复。retention 的 archive-before-delete 现在会真实writes NDJSON 归档，再从活动集删除，不再is假归档计数。 | 原实现只增加 `archived` 数字，没有真实 archive sink。 | `src/scale-ecosystem/federation/federation-audit.ts` | `tests/unit/scale-ecosystem/federation-audit.test.ts` |
+| SYS-009 | 已修复。`expiresAt` vs periodic reauth 已进入 trust 准入阻断，过期或复验exceeds窗会迁移出 active 可用态。 | 策略字段只参vs评分，不参vs active trust 的可用性判定。 | `src/scale-ecosystem/federation/trust-relationship.ts` | `tests/unit/scale-ecosystem/trust-relationship.test.ts` |
+| SYS-010 | 已修复。shared endpoint catalog 已统一到 `/v1/*` 路径体系，和 Web defaults to `/api` 前缀拼接后得到正确的 `/api/v1/*`。 | UI runtime、endpoint catalog、文档/测试uses了不同版本前缀。 | `ui/packages/shared/api-client/src/endpoints.ts` | `ui/tests/shared/api-client.test.ts`；`ui/tests/shared/endpoint-type-contracts.test.ts` |
+| SYS-011 | 已修复。原先标记为可消费的公共接口已补齐后端路由vs OpenAPI：`/v1/dashboard/metrics`、`/v1/workers`、`/v1/queues`、`/v1/agents`、`/v1/explanations`、`/v1/meta/contract-version`、`/v1/knowledge`、`/v1/marketplace`、`/v1/packs/:packId/versions`、`/v1/workflows/builder`。 | 前端 endpoint catalog exceeds前于后端真实export面，导致“前端已实现、后端don't exist”的契约漂移。 | `src/platform/five-plane-interface/api/http-server/dashboard-routes.ts`；`src/platform/five-plane-interface/api/http-server/plane-routes.ts`；`src/platform/five-plane-interface/api/http-server/pack-routes.ts`；`src/platform/five-plane-interface/api/http-server/task-routes.ts`；`src/platform/five-plane-interface/api/openapi-document.ts` | `tests/unit/platform/interface/api/http-server/dashboard-routes.test.ts`；`tests/unit/platform/interface/api/http-server/plane-routes.test.ts`；`tests/unit/platform/interface/api/http-server/pack-routes.test.ts`；`tests/unit/platform/interface/api/http-server/task-routes.test.ts`；`tests/unit/platform/interface/api/openapi-document.test.ts` |
+| SYS-012 | 已修复。`workers`、`queues` 已提升为 Layer C 公共接口，前端查询层不再relies on `/admin/*` 的 Layer B manage面路径。 | 共享 Mission Control 查询directly消费内部 admin contract，违反 UI Architecture分层。 | `ui/packages/shared/api-client/src/endpoints.ts`；`src/platform/five-plane-interface/api/http-server/dashboard-routes.ts` | `ui/tests/shared/endpoint-type-contracts.test.ts`；`tests/unit/platform/interface/api/http-server/dashboard-routes.test.ts` |
 
-### This Round Verification Scope
+### 本轮验证范围
 
-1. Root repo targeted regression:
+1. 根仓定向回归：
    - `tests/unit/platform/state-evidence/events/durable-event-bus-async.test.ts`
    - `tests/unit/platform/execution/worker-pool/worker-service-identity.test.ts`
    - `tests/unit/platform/execution/worker-pool/worker-service-identity-r13.test.ts`
@@ -99,10 +99,10 @@ The following writeback does not delete previous review records; it only supplem
    - `tests/unit/platform/interface/api/http-server/pack-routes.test.ts`
    - `tests/unit/platform/interface/api/http-server/task-routes.test.ts`
    - `tests/unit/platform/interface/api/openapi-document.test.ts`
-2. UI targeted regression:
+2. UI 定向回归：
    - `ui/tests/unit/ui/apps/electron-win/preload.test.ts`
    - `ui/tests/shared/platform.test.ts`
    - `ui/tests/shared/api-client.test.ts`
    - `ui/tests/shared/endpoint-type-contracts.test.ts`
-3. Type checking:
+3. class型检查：
    - `npm run typecheck`

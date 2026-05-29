@@ -1,11 +1,11 @@
-# ADR-027 Security Architecture
+# ADR-027 Security and Reliability Architecture
 
-- Status: Accepted
-- Decision Date: 2026-04-03
+- Status：Accepted
+- Decision Date：2026-04-03
 
-## Context
+## Background
 
-Enterprise-class Agent platforms handle sensitive data and critical business processes, requiring comprehensive security mechanisms: identity authentication, authorization, secret management, data classification, and sandbox isolation.
+Enterprise-class Agent platforms handle sensitive data and critical business processes, requiring comprehensive security mechanisms: identity authentication, authorization, key management, data classification, and sandbox isolation.
 
 ## Decision
 
@@ -24,8 +24,8 @@ type Principal =
 ### 3-Layer Authorization Model
 
 1. RBAC (Role-Based Access Control)
-2. Capability (capability list)
-3. Context Policy (based on environment, time, risk factors, etc.)
+2. Capability (Capability list)
+3. Context Policy (Based on environment, time, risk and other factors)
 
 ### Secret Management
 
@@ -36,21 +36,21 @@ type Principal =
 ### 4-Layer Sandbox
 
 | Level | Mode | Description |
-|-------|------|-------------|
+|------|------|------|
 | L1 | read_only | Read-only filesystem, no write permission |
 | L2 | workspace_write | Only allows writing to controlled workspace |
-| L3 | scoped_external_access | Allows controlled external access, still constrained by scope |
+| L3 | scoped_external_access | Allows controlled external access, still subject to scope constraints |
 | L4 | restricted_exec | Most strict execution mode, explicitly restricts command capabilities |
 
 Rules:
 
 - There is no `SANDBOX_NONE` default-allow mode; platform defaults to deny.
-- Sandbox levels are governed by "writability / external access / execution capability", not by abstract "isolation strength" custom naming.
+- Sandbox levels are governed by "writability / external access / execution capability", not abstract "isolation strength" naming.
 
 ### Data Classification
 
 | Level | Description |
-|-------|-------------|
+|------|------|
 | public | Public data |
 | internal | Internal data |
 | confidential | Confidential data |
@@ -64,13 +64,13 @@ Rules:
 
 ## Consequences
 
-Benefits:
+Advantages:
 
 - Multi-layer security coverage protects major attack surfaces
 - Short-lived secrets reduce leakage risk
-- Sandbox isolation protects host systems
+- Sandbox isolation protects host system
 
-Trade-offs:
+Costs:
 
 - Security checks add performance overhead
 - Key management increases operational complexity
@@ -82,9 +82,9 @@ Trade-offs:
 
 ## Source Section
 
-- `§11` Security Architecture
+- `§11` Security and Reliability Architecture
 
 ## v4.3 ADR Remediation
 
-- A-16: This ADR originally treated `pack / tenant` as principal types. The root cause was that security modeling mixed resource ownership objects and active calling principals into one identity taxonomy. Fix: The text now converges the canonical principal to `user / service / agent / worker / plugin / system`.
-- A-17: This ADR originally used `SANDBOX_NONE / SANDBOX_READonly / SANDBOX_NETWORK_ISOLATED / SANDBOX_FULL`. The root cause was that the early sandbox model was named by abstract strength and did not switch to a capability matrix with default-deny as the main architecture evolved. Fix: The text now uses `read_only / workspace_write / scoped_external_access / restricted_exec` and removes `SANDBOX_NONE`.
+- A-16: This ADR originally treated `pack / tenant` as principal types, root cause: security modeling mixed resource ownership objects and active call principals into one identity taxonomy. Fix: The body now converges canonical principal to `user / service / agent / worker / plugin / system`.
+- A-17: This ADR originally used `SANDBOX_NONE / SANDBOX_READonly / SANDBOX_NETWORK_ISOLATED / SANDBOX_FULL`, root cause: the early sandbox model was named by abstract strength and did not switch to the default-deny capability matrix with the main architecture. Fix: The body now changes to `read_only / workspace_write / scoped_external_access / restricted_exec`, and removes `SANDBOX_NONE`.

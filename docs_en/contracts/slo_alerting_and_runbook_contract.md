@@ -1,28 +1,28 @@
 # SLO Alerting And Runbook Contract
 
-## 1. Scope
+## 1. 范围
 
-This contract defines industrial-grade SLI/SLO/SLA, alert classification, and runbook directory.
+本 contract defines工业级运lines的 SLI/SLO/SLA、告警分级和 runbook 目录。
 
-It answers the questions: what counts as "production ready", when to alert, and what on-call personnel should see, do, and how to mitigate when something happens.
+它回答的Issueis：什么才算“生产可用”，什么时候需要告警，值班人员出事时该看什么、做什么、如何止损。
 
-Related documents:
+相关文档：
 
 - `observability_contract.md`
 - `debug_inspect_health_backpressure_contract.md`
 - `enterprise_operations_plane_contract.md`
 
-## 2. SLI Layers
+## 2. SLI 分层
 
-| Layer | SLI Examples |
+| 层 | SLI 示例 |
 | --- | --- |
-| OAPEFLIR layer | loop convergence rate, feedback positive rate, rollout success rate |
-| System layer | API availability, event loop latency, DB writability |
-| Platform layer | task success rate, startup latency, recovery success rate |
-| Interaction layer | approval availability, streaming first-packet latency |
-| Cost layer | budget estimation error, token metering latency |
+| OAPEFLIR 层 | loop 收敛率、feedback 正向率、rollout success率 |
+| 系统层 | API 可用性、事件循环delay、DB 可写性 |
+| 平台层 | 任务success率、启动delay、恢复success率 |
+| 交互层 | approval 可用性、streaming 首包delay |
+| 成本层 | budget估算误差、token 计量delay |
 
-## 3. Minimum SLO Set
+## 3. 最小 SLO 集
 
 - `task_success_rate`
 - `task_start_latency`
@@ -34,31 +34,31 @@ Related documents:
 - `feedback_positive_rate`
 - `rollout_success_rate`
 
-Rules:
+规则：
 
-- Before any production declaration, each SLO must have calculation formula, data source, and alert threshold.
-- Targets without observable calculation formula must not be written as external SLA.
+- 生产声明前，每个 SLO 必须有计算口径、取数来源和告警threshold。
+- 没有可观测口径的目标不得写成对外 SLA。
 
-## 4. Alert Classification
+## 4. 告警分级
 
-| Level | Description | Typical Examples |
-| --- | --- | --- |
-| `P0` | Platform core unavailable | New tasks cannot execute, authoritative DB not writable |
-| `P1` | Critical tenant or critical path failure | Critical tenant cannot dispatch tasks, approval chain largely ineffective |
-| `P2` | Single division or local capability significantly degraded | Some division failure rate spiked |
-| `P3` | Local anomaly or capacity warning | Queue latency rising, cost drift elevated |
+| 级别 | Description | 典型例子 |
+|---|-------|--------|
+| `P0` | 平台核心不可用 | 新任务no法执lines、authoritative DB 不可写 |
+| `P1` | 关键租户或关键链路失效 | 关键租户no法下发任务、审批链大面积失效 |
+| `P2` | 单事业部或局部能力显著退化 | 某 division failed率暴涨 |
+| `P3` | 局部异常或容量预警 | 队列delay上涨、cost drift 偏高 |
 
-## 5. Alerts Must Include
+## 5. 告警必须contains
 
-- Triggering metric and threshold
-- Impact scope
-- First discovery time
-- Recommended runbook
-- Whether auto-mitigation action has been executed
+- 触发指标和threshold
+- Impact范围
+- 首iterations发现time
+- Recommendation runbook
+- 自动止损动作isno已执lines
 
-## 6. Runbook Directory
+## 6. Runbook 目录
 
-Must have at minimum the following runbooks:
+至少应有以下 runbook：
 
 - `worker_mass_disconnect`
 - `provider_429_or_5xx_spike`
@@ -71,7 +71,7 @@ Must have at minimum the following runbooks:
 - `oapeflir_loop_stalled`
 - `rollout_blocked_or_rollback`
 
-## 7. Alert Flowchart
+## 7. 告警流程图
 
 ```mermaid
 flowchart TD
@@ -84,40 +84,40 @@ flowchart TD
     G --> H["Page Oncall / Create Incident"]
 ```
 
-## 8. Auto-Mitigation Boundaries
+## 8. 自动止损边界
 
-Allowed to auto-execute:
+允许自动执lines：
 
-- admission control tightening
-- provider traffic switching
-- queue rate limiting
-- some tenant / division throttling
+- admission control 收紧
+- provider 切流
+- queue rate 限制
+- 某 tenant / division 限流
 
-Prohibited from auto-execute:
+禁止自动执lines：
 
-- Unauthorized large-scale destructive rollback
-- Cross-tenant data-level operations
-- Directly ignoring approval chain
+- 未viaauthorization的大范围 destructive rollback
+- 跨租户data级操作
+- directly忽略审批链
 
-## 9. Phase Boundaries
+## 9. Phase 边界
 
-Phase 1a / 1b must freeze at minimum:
+Phase 1a / 1b 至少要冻结：
 
-- SLI name and calculation formula
-- P0-P3 classification
-- Basic runbook checklist
+- SLI 名称vs口径
+- P0-P3 分级
+- 基础 runbook 清单
 
-Must complete before entering production:
+进入生产前必须完成：
 
-- Threshold finalization
-- On-call contact and escalation path
-- Drill records
+- threshold定稿
+- 值班联系人和升级路径
+- 演练record
 
-## 10. Closure Conclusion
+## 10. 收口Conclusion
 
-Industrial-grade operations is not "lots of logs", but rather:
+工业级运lines不is“日志很多”，而is：
 
-- Clear SLO
-- Actionable alerts
-- Runbooks
-- Auto-mitigation boundaries
+- 有明确 SLO
+- 有可执lines告警
+- 有 runbook
+- 有自动止损边界

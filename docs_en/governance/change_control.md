@@ -2,100 +2,100 @@
 
 ---
 
-## OAPEFLIR Association
+## OAPEFLIR 关联
 
-This governance document standardizes the following content within the OAPEFLIR eight-stage cognitive loop:
+本治理文档规范 OAPEFLIR 八阶段认知循环中的以下内容：
 
-- **Observe**: Signal collection and governance boundaries
-- **Assess**: Execution assessment and permission governance
-- **Plan**: Planning constraints and R3 hard constraints
-- **Execute**: Execution permissions and security boundaries
-- **Feedback**: Feedback signal governance and classification
-- **Learn**: Learning content validation and promotion boundaries
-- **Improve**: Improvement candidate approval and Rollout governance
-- **Release**: Release permissions and automatic rollback rules
+- **Observe**：信号采集vs治理边界
+- **Assess**：执lines评估vspermission治理
+- **Plan**：规划约束vs R3 硬约束
+- **Execute**：执linespermissionvssecurity边界
+- **Feedback**：反馈信号治理vs分class
+- **Learn**：学习内容验证vs推广边界
+- **Improve**：改进候选审批vs Rollout 治理
+- **Release**：发布permissionvs自动回滚规则
 
 ---
 
-## 1. Objective
+## 1. 目标
 
-Define the minimum governance process for document and design changes to avoid starting coding before draft completion.
+defines文档和设计变更的最小治理流程，避免未定稿就开始编码。
 
-## 2. Scope
+## 2. 适用范围
 
-Applies to:
+适used for：
 
-- New core contracts.
-- Modifying main architectural boundaries.
-- Adjusting phase scope.
-- Introducing high-risk new capabilities.
+- 新增核心 contract。
+- 修改主Architecture边界。
+- 调整 phase 范围。
+- references入高风险新能力。
 
-## 3. Minimum Process
+## 3. 最小流程
 
-1. Update main documents or contracts first.
-2. Add ADR if trade-offs are involved.
-3. Update operations if affecting current implementation order.
-4. Update reviews if affecting current judgments.
+1. 先更新主干文档或 contract。
+2. 如涉及取舍，补 ADR。
+3. 如Impact当前实现顺序，更新 operations。
+4. 如Impact当前判断，更新 reviews。
 
-## 4. Pre-Coding Requirements
+## 4. 编码前要求
 
-- If a contract is not stable, corresponding core code should not be written directly.
-- If P0 document gaps still clearly exist in reviews, documentation should be prioritized.
+- 若 contract 未稳定，不应directly写对应核心code。
+- 若 reviews 中仍明确存在 P0 文档缺口，应优先补文档。
 
-## 5. Change Request Template
+## 5. 变更request模板
 
-All core contracts, architecture, and main document changes must be formally submitted using the following template:
+所有核心 contract、Architecture、主干文档的变更必须via以下模板正式提交：
 
 ```markdown
-## Change Title
-[Short description of change intent]
+## 变更标题
+[简短Description变更意图]
 
-## Change Type
-- [ ] New contract
-- [ ] Modify contract
-- [ ] Main architectural boundary adjustment
-- [ ] Phase scope adjustment
-- [ ] High-risk new capability introduction
+## 变更class型
+- [ ] 新增 contract
+- [ ] 修改 contract
+- [ ] 主Architecture边界调整
+- [ ] Phase 范围调整
+- [ ] 高风险新能力references入
 
-## Impact Scope
-- Affected files/modules:
-- Affected systems:
-- Rollback complexity (Low/Medium/High):
+## Impact范围
+- Impact文件/模块：
+- Impact系统：
+- 回滚复杂度（低/中/高）：
 
-## Change Rationale
-[Why this change is being made]
+## 变更理由
+[为什么要做这个变更]
 
-## Alternatives
-[If any, list at least one alternative and reason for not selecting it]
+## 备选方案
+[如有，列出至少一个替代方案及未选原因]
 
-## Approval Process
-| Step | Approver | Status |
-|------|----------|--------|
-| 1. Document draft | TBD | [ ] |
-| 2. ADR review (if applicable) | TBD | [ ] |
-| 3. Code review | TBD | [ ] |
-| 4. Integration test | CI | [ ] |
-| 5. Approver sign-off | TBD | [ ] |
+## 审批流程
+| 步骤 | 审批人 | Status |
+|------|--------|------|
+| 1. 文档草案 | TBD | [ ] |
+| 2. ADR 评审（如适用）| TBD | [ ] |
+| 3. code审查 | TBD | [ ] |
+| 4. 集成测试 | CI | [ ] |
+| 5. 审批人签字 | TBD | [ ] |
 
-## Related Links
-- Related ADRs:
-- Related contracts:
-- Related issues/PRs:
+## 相关链接
+- 相关 ADR：
+- 相关 contract：
+- 相关 issue/PR：
 ```
 
-## 6. Approval Role Definitions
+## 6. 审批角色defines
 
-| Role | Responsibilities | Applicable Changes |
-|------|-----------------|-------------------|
-| Architect | Approve main architectural boundary changes | §4-§9 Platform infrastructure layer |
-| Tech Lead | Approve contract field changes | All contract files |
-| Ops Lead | Approve operations process changes | `../operations/` |
-| Security Review | Approve high-risk new capabilities | New features with security impact |
+| 角色 | 职责 | 适用变更 |
+|------|------|---------|
+| Architecture师 | 审批主Architecture边界变更 | §4-§9 平台基础设施层 |
+| 技术负责人 | 审批 contract 字段变更 | 所有 contract 文件 |
+| 运维负责人 | 审批 operations 流程变更 | `docs_zh/operations/` |
+| security评审 | 审批高风险新能力 | 含securityImpact的新功能 |
 
-## 7. Toolchain References
+## 7. 工具链references用
 
-- **Document Tracking**: Managed via GitHub PR / Issues
-- **ADR Management**: [`../adr/README.md`](../adr/README.md)
-- **Contract Registry**: [`../contracts/README.md`](../contracts/README.md)
-- **Architecture Index**: [`../architecture/README.md`](../architecture/README.md)
-- **Status Tracking**: Review documents under [`../reviews/`](../reviews/)
+- **文档追踪**：via GitHub PR / Issues manage变更request
+- **ADR manage**：[`docs_zh/adr/README.md`](../adr/README.md)
+- **Contract 注册**：[`docs_zh/contracts/README.md`](../contracts/README.md)
+- **Architecture索references**：[`docs_zh/architecture/README.md`](../architecture/README.md)
+- **现状追踪**：[`docs_zh/reviews/`](../reviews/) 下各 review 文档

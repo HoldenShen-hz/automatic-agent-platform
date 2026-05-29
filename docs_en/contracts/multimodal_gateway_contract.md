@@ -1,10 +1,10 @@
 # Multimodal Gateway Contract
 
-## 1. Scope
+## 1. 范围
 
-This contract defines the multimodal `ModelGateway` extension, request structure, and security boundaries as specified in `§68`.
+本 contract defines `§68` 的多模态 `ModelGateway` 扩展、request结构和security边界。
 
-## 2. Canonical Objects
+## 2. Canonical 对象
 
 - `MultimodalRequest`
 - `MultimodalInputPart`
@@ -15,7 +15,7 @@ This contract defines the multimodal `ModelGateway` extension, request structure
 - `VideoTimeline`
 - `VideoFrame`
 
-## 3. `MultimodalRequest` Minimum Fields
+## 3. `MultimodalRequest` 最小字段
 
 - `request_id`
 - `harness_run_id`
@@ -28,7 +28,7 @@ This contract defines the multimodal `ModelGateway` extension, request structure
 - `safety_policy_ref`
 - `cost_budget`
 
-`input_parts.type` must support at minimum:
+`input_parts.type` 至少supported：
 
 - `text`
 - `image`
@@ -36,16 +36,16 @@ This contract defines the multimodal `ModelGateway` extension, request structure
 - `document`
 - `video`
 
-## 4. Rules
+## 4. 规则
 
-- Multimodal requests must follow unified trace, budget, and policy constraints.
-- `ModalityRouter` must explicitly select provider/processor.
-- Modality inputs that fail safety checks must not enter model invocation.
-- `video` input must be standardized through a structured video pipeline, producing at minimum metadata, scene timeline, keyframe, and quality/readiness assessment; if transcript segment is unavailable, it must be exposed as a conditional safety finding, not silently ignored.
-- The scene timeline / keyframe / transcript segment structure of the video pipeline is authoritative per `video_multimodal_pipeline_contract.md`; the gateway must not compress these fields into untrackable free-text summaries.
+- 多模态request必须accesses along用统一 trace、budget 和 policy 约束。
+- `ModalityRouter` 必须显式选择 provider / processor。
+- 未viasecurity检查的模态输入不得进入模型call。
+- `video` 输入必须via结构化 video pipeline 标准化，至少产出 metadata、scene timeline、keyframe、quality/readiness assessment；若 transcript segment 不可得，必须以 conditional safety finding 暴露，而不is静默忽略。
+- video pipeline 的 scene timeline / keyframe / transcript segment 结构以 `video_multimodal_pipeline_contract.md` 为准，gateway 不得把这些字段压缩成不可追踪的自由文本摘要。
 
-## 5. Test Requirements
+## 5. 测试要求
 
-- unit: request validation, route decision, safety findings
-- integration: multimodal request -> gateway -> output, with `video` path covering transcript segment, scene timeline, keyframe, and gateway summary
-- contract: illegal modality types must not silently degrade to text execution
+- unit：request validation、route decision、safety findings
+- integration：multimodal request -> gateway -> output，且 `video` 路径需覆盖 transcript segment、scene timeline、keyframe vs gateway summary
+- contract：非法模态class型不得静默降级为文本执lines

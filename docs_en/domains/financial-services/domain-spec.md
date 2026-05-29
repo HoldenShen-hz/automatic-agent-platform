@@ -10,10 +10,10 @@
 
 ## Hard Constraints
 
-- Adverse credit decisions must be explainable and subject to manual review.
+- Adverse credit decisions must be explainable and subject to human review.
 - AML/SAR/STR related judgments must retain audit evidence.
-- Agents must not act as the final credit-granting entity.
+- Agent must not act as the final credit-granting entity.
 
 ## Acceptance Criteria
 
-- Before GA, must provide fair lending explanation, manual review, AML detection, and compliance reporting evidence.
+- GA must provide fair lending explanation, human review, AML detection, and compliance report evidence before release.

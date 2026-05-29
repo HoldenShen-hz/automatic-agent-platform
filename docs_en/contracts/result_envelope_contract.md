@@ -1,14 +1,14 @@
 # Result Envelope Contract
 
-> **OAPEFLIR Related**: This contract defines result encapsulation for OAPEFLIR Execute Hub, corresponding to ADR-016.
-> **Updated**: 2026-04-17
+> **OAPEFLIR 相关**：本 contract defines OAPEFLIR Execute Hub 的结果封装，对应 ADR-016。
+> **更新日期**：2026-04-17
 
 ## 1. Scope
 
 This contract defines unified result envelope across tools, steps, divisions, and task layers.
 
-Related documents:
-- [ADR-016 OAPEFLIR Eight-Stage Model](../adr/016-oapeflir-loop-model.md)
+相关文档：
+- [ADR-016 OAPEFLIR 八阶段模型](../adr/016-oapeflir-loop-model.md)
 
 Related documents:
 
@@ -30,7 +30,7 @@ Reduce lateral proliferation of result objects through unified result envelope:
 ## 3. `ResultEnvelope`
 
 | Field | Type | Description |
-| --- | --- | --- |
+|---|-------|--------|
 | `result_id` | `string` | Result ID |
 | `status` | `success \| partial \| error` | Result status |
 | `stage` | `observe \| assess \| plan \| execute \| feedback \| learn \| improve \| release?` | Closed-loop stage |

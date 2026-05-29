@@ -11,6 +11,10 @@ import { SqliteDatabase } from "../../../../src/platform/five-plane-state-eviden
 import { cleanupPath, createTempWorkspace } from "../../../helpers/fs.js";
 import { seedTaskAndExecution } from "../../../helpers/seed.js";
 
+function addMinutes(iso: string, minutes: number): string {
+  return new Date(Date.parse(iso) + minutes * 60 * 1000).toISOString();
+}
+
 test("EvolutionMvpService applies approved budget adjustment proposals and resolves effective policy", () => {
   const workspace = createTempWorkspace("aa-evolution-budget-");
   const dbPath = join(workspace, "evolution-budget.db");
@@ -49,19 +53,21 @@ test("EvolutionMvpService applies approved budget adjustment proposals and resol
 
     assert.equal(proposed.proposal.status, "pending_approval");
     assert.ok(proposed.approval != null);
+    const respondedAt = addMinutes(proposed.proposal.createdAt, 1);
+    const appliedAt = addMinutes(proposed.proposal.createdAt, 2);
 
     approvalService.applyDecision({
       approvalId: proposed.approval!.approvalId,
       decisionType: "confirmed",
       confirmed: true,
       respondedBy: "operator-1",
-      respondedAt: "2026-04-08T14:00:00.000Z",
+      respondedAt,
     });
 
     const applied = evolution.applyProposal({
       proposalId: proposed.proposal.id,
       appliedBy: "operator-1",
-      appliedAt: "2026-04-08T14:01:00.000Z",
+      appliedAt,
     });
 
     assert.equal(applied.proposal.status, "applied");
@@ -133,19 +139,24 @@ test("EvolutionMvpService promotes experience into memory and supports rollback"
       taskIntent: "prepare rollback evidence package",
       queryTools: ["read", "question"],
     });
+    const respondedAt = addMinutes(proposed.proposal.createdAt, 1);
+    const appliedAt = addMinutes(proposed.proposal.createdAt, 2);
+    const recallAt = addMinutes(proposed.proposal.createdAt, 3);
+    const rollbackAt = addMinutes(proposed.proposal.createdAt, 4);
+    const recallAfterRollbackAt = addMinutes(proposed.proposal.createdAt, 5);
 
     approvalService.applyDecision({
       approvalId: proposed.approval!.approvalId,
       decisionType: "option_selected",
       selectedOptionId: "approve",
       respondedBy: "operator-2",
-      respondedAt: "2026-04-08T15:00:00.000Z",
+      respondedAt,
     });
 
     const applied = evolution.applyProposal({
       proposalId: proposed.proposal.id,
       appliedBy: "operator-2",
-      appliedAt: "2026-04-08T15:01:00.000Z",
+      appliedAt,
     });
 
     const policyValue = JSON.parse(applied.activePolicy!.valueJson) as { memoryId?: string };
@@ -155,7 +166,7 @@ test("EvolutionMvpService promotes experience into memory and supports rollback"
       scopes: ["project"],
       classifications: ["experience"],
       memoryLayers: ["layer_5"],
-      evaluatedAt: "2026-04-08T15:02:00.000Z",
+      evaluatedAt: recallAt,
     });
     assert.equal(recalled.length, 1);
 
@@ -163,7 +174,7 @@ test("EvolutionMvpService promotes experience into memory and supports rollback"
       proposalId: proposed.proposal.id,
       rolledBackBy: "operator-2",
       reasonCode: "operator.undo",
-      rolledBackAt: "2026-04-08T15:03:00.000Z",
+      rolledBackAt: rollbackAt,
     });
 
     assert.equal(rolledBack.proposal.status, "rolled_back");
@@ -172,7 +183,7 @@ test("EvolutionMvpService promotes experience into memory and supports rollback"
       scopes: ["project"],
       classifications: ["experience"],
       memoryLayers: ["layer_5"],
-      evaluatedAt: "2026-04-08T15:04:00.000Z",
+      evaluatedAt: recallAfterRollbackAt,
     });
     assert.equal(recalledAfterRollback.length, 0);
 

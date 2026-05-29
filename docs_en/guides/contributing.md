@@ -1,48 +1,48 @@
 # Contributing
 
-## Objective
+## Goal
 
-The split document structure reduces maintenance difficulty. New content should be written to corresponding small files first, rather than continuing to pile into a single long document.
+The split document structure is designed to reduce maintenance difficulty. New content should first be written to the corresponding small files, rather than continuing to pile into a single overly long document.
 
 ## Document Division
 
-- `../architecture/00-platform-architecture.md`
-  Platform architecture overview, containing objectives, overview, core process, phase plan, and navigation.
-- `../adr/`
-  Stores stable architecture decisions, emphasizing background, decisions, results, and cross-references.
-- `./`
-  Stores operational content, writing guidelines, and implementation procedures.
-- `docs_en/`
-  No longer maintains historical archive directory; only currently valid formal documents are kept.
+- `docs_zh/architecture/00-platform-architecture.md`
+  Platform architecture overview, containing goals, overview, core flows, phase plans, and navigation.
+- `docs_zh/adr/`
+  Contains stable architectural decisions, emphasizing background, decisions, outcomes, and cross-references.
+- `docs_zh/guides/`
+  Contains operational content, writing standards, and implementation procedures.
+- `docs_zh/`
+  No longer maintaining historical archive directory, only keeping currently active formal documents.
 
 ## Update Rules
 
-- New architecture decisions go into corresponding ADR.
-- Changes affecting global cognition, synchronize updates to overview summary and navigation.
-- Division writing, development process, maintenance constraints go into guides.
-- When tracing source is needed, supplement "source chapter" at file bottom.
-- When original large document conflicts with split documents, split documents are the subsequent maintenance target.
+- New architectural decisions go into the corresponding ADR.
+- Changes affecting overall understanding should synchronously update the overview's summary and navigation.
+- Division authoring, development processes, and maintenance constraints belong in guides.
+- When source tracing is needed, add a "Source Section" at the bottom of the file.
+- When the original large document conflicts with split documents, the split documents become the maintenance target.
 
 ## Writing Rules
 
-- A decision is explained in only one ADR as main explanation; other files only link, do not copy long passages.
-- Try to use stable titles to reduce future link breakage.
-- Each modification should supplement at least one cross-link to avoid orphaned documents.
-- Design, implementation order, risk, and boundaries should be expressed separately as much as possible; avoid mixing into a流水账 (chronological listing).
+- A decision should only have a primary explanation in one ADR; other files should only link, not repeat long passages.
+- Use stable titles as much as possible to reduce future link breakage.
+- Each modification should include at least one cross-link to avoid orphaned documents.
+- Design, implementation order, risks, and boundaries should be expressed separately to avoid becoming a stream of mixed content.
 
 ## Migration Rules
 
-When migrating old document content:
+When migrating content from old documents:
 
-1. First determine whether content belongs to overview, ADR, or Guide.
-2. Then determine whether it is "design decision" or "operational method".
-3. If just historical context, put summary and links; do not copy entire paragraphs.
-4. If original content has duplication, use the first complete occurrence as the standard.
+1. First determine whether the content belongs to Overview, ADR, or Guide.
+2. Then determine whether it is a "design decision" or an "operation method".
+3. If it is only historical context, put a summary and link, do not copy entire sections.
+4. If the original content has duplication, use the first complete occurrence as the standard.
 
 ## Recommended Submission Process
 
-1. First locate which category the change belongs to: overview, ADR, or Guide.
-2. Modify corresponding small file.
-3. Check if cross-links need to be supplemented.
-4. If change affects phase scope or milestones, synchronize update to overview.
-5. If just historical archive change, should not reverse-cover main document.
+1. First locate whether the change belongs to Overview, ADR, or Guide.
+2. Modify the corresponding small file.
+3. Check if cross-links need to be added.
+4. If the change affects phase scope or milestones, synchronously update the overview.
+5. If it is only historical archive change, do not overwrite the main document in reverse.

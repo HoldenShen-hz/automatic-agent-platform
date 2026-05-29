@@ -1,7 +1,7 @@
 # Sandbox And Auth Contract
 
-> **OAPEFLIR Related**: This contract defines the security boundary of the OAPEFLIR Execute Hub, corresponding to ADR-016.
-> **Updated**: 2026-04-17
+> **OAPEFLIR 相关**：本 contract defines OAPEFLIR Execute Hub 的security边界，对应 ADR-016。
+> **更新日期**：2026-04-17
 
 ## 1. Scope
 
@@ -49,9 +49,9 @@ This contract defines execution sandbox, filesystem/network permissions, user au
 Rules:
 
 - `read_only` only allows read-only mounts and no external egress.
-- `workspace_write` only allows writes inside explicit workspace/tmpfs scope, still no external egress.
+- `workspace_write` only allows writes inside explicit workspace / tmpfs scope, still no external egress.
 - `scoped_external_access` only allows allowlisted egress targets and explicit writable scratch space.
-- `restricted_exec` is the highest-risk execution profile; it must run with explicit approval/policy justification and the strongest isolation profile.
+- `restricted_exec` is the highest-risk execution profile; it must run with explicit approval / policy justification and the strongest isolation profile.
 - `standard / hardened / strict` only survive as deprecated migration aliases; new schema and new APIs must use the four canonical modes above.
 
 ## 4. AuthSession Minimum Fields
@@ -70,7 +70,7 @@ Rules:
 - User authentication and agent execution permission cannot be mixed into one layer.
 - Authentication provider should be pluggable, but upper layer permission semantics remain consistent.
 - FileLock is responsible for concurrent write conflicts, does not replace sandbox path whitelist.
-- Unified policy entry is defined by `policy_engine_contract.md`; sandbox/auth is just one type of constraint source.
+- Unified policy entry is defined by `policy_engine_contract.md`; sandbox / auth is just one type of constraint source.
 - Path judgment must be based on `realpath`, cannot just look at original string path.
 - Default deny follows symlinks not explicitly allowed.
 - `AuthSession` only solves identity, does not automatically grant execution permission; execution capability still needs joint decision through Policy Engine and sandbox.
@@ -112,8 +112,8 @@ Remote session guard checks during dispatch phase whether remote worker has exec
 
 ### 5B.2 Blocking Conditions
 
-| Block Reason | Trigger Condition | Meaning |
-| --- | --- | --- |
+| block reason | Trigger Condition | Meaning |
+|---|-------|--------|
 | `viewer_only` | Worker remote session status is `viewer_only` | Worker has read-only permission, cannot execute write operations |
 | `consistency_mismatch` | `consistencyCheckStatus == 'mismatch'` | Worker inconsistent with control plane status |
 | `resume_offset_missing` | Remote session status is not `connecting / failed` and `lastAcknowledgedStreamOffset` is empty | Worker cannot confirm which message it has processed up to |
@@ -132,31 +132,31 @@ Remote session guard checks during dispatch phase whether remote worker has exec
 - Warm pool can only reuse base image or controlled sandbox, must not reuse execution environment with task residual state.
 - Different tasks must not reuse sandbox instance with residual files, residual environment variables, residual secrets, or residual sockets.
 - Authentication tokens, temporary credentials, and worker-level credentials must not enter artifact, memory, event payload, or debug dump.
-- Minimum command execution sandbox and browser/GUI automation sandbox should be managed in layers, not recommended to share same heavyweight image.
+- Minimum command execution sandbox and browser / GUI automation sandbox should be managed in layers, not recommended to share same heavyweight image.
 - If browser sandbox needs Chromium, Xvfb or equivalent graphics dependencies, should be treated as independent capability profile, and enter separate readiness and cost evaluation.
-- If standalone command execution surface exists, should be modeled separately from task/workflow main chain, but still reuse same `SandboxPolicy` shape, avoiding second sandbox protocol.
-- PTY, stdin streaming, stdout/stderr streaming, output cap, timeout and similar execution control items belong to command execution sub-protocol, should not be put into prompt or free-text tool description.
+- If standalone command execution surface exists, should be modeled separately from task / workflow main chain, but still reuse same `SandboxPolicy` shape, avoiding second sandbox protocol.
+- PTY, stdin streaming, stdout/stderr streaming, output cap, timeout这class execution control items belong to command execution sub-protocol, should not be put into prompt or free-text tool description.
 
 ### 6A. Canonical Sandbox Mode Matrix
 
-| Mode | Filesystem | Network | Execution Profile | Typical Use |
-| --- | --- | --- | --- | --- |
+| mode | filesystem | network | execution profile | typical use |
+|---|-------|--------| --- | --- |
 | `read_only` | read-only mounts only | denied | subprocess + seccomp | inspect, search, parse |
 | `workspace_write` | tmpfs + explicit workspace write roots | denied | subprocess + seccomp | code edit, local artifact generation |
-| `scoped_external_access` | tmpfs + scoped writable roots | allowlist only | isolated multi-process/container optional | verified fetch, registry/API calls |
-| `restricted_exec` | overlay/isolated fs | allowlist only | strongest isolated exec profile | privileged but tightly governed execution |
+| `scoped_external_access` | tmpfs + scoped writable roots | allowlist only | isolated multi-process / container optional | verified fetch, registry / API calls |
+| `restricted_exec` | overlay / isolated fs | allowlist only | strongest isolated exec profile | privileged but tightly governed execution |
 
 Rules:
 
 - Sandbox mode must be decided before execution ticket dispatch and written into the execution constraint pack.
-- Tool/provider/worker runtime must consume the resolved canonical mode, not reinterpret deprecated aliases locally.
+- Tool / provider / worker runtime must consume the resolved canonical mode, not reinterpret deprecated aliases locally.
 - `AuthSession` does not upgrade sandbox mode; identity proof and sandbox authority are orthogonal.
 
 
 ## v4.3 Architecture Remediation
 
-The following entries fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If this document's historical paragraphs conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
+以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中record的 contract 偏差。本文档历史段落如vs本节conflicts，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
 
-- T-16: This document previously followed `standard / hardened / strict` three-tier isolation levels. The root cause was early security design was layered by "implementation strength", later main architecture changed to defining four-tier canonical sandbox mode by "writability + egress + exec governance surface", but old worker registration and execution contract did not migrate together. Fix: The main text now converges `SandboxPolicy.mode` to `read_only / workspace_write / scoped_external_access / restricted_exec`, old three tiers only retained as deprecated alias.
+- T-16: 本文原先accesses along用 `standard / hardened / strict` 三档隔离级别，Root cause: 早期security设计按“实现强度”分层，后来主Architecture改为按“可写性 + egress + exec 治理面”defines四档 canonical sandbox mode 后，旧 worker 注册vs执lines合同没有一起迁移。修复：正文现把 `SandboxPolicy.mode` 收敛到 `read_only / workspace_write / scoped_external_access / restricted_exec`，旧三档only保留为 deprecated alias。
 
-Mandatory Rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events must only use `platform.*`; OAPEFLIR must only be used as `oapeflir.view.*` / rationale projection; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.
+mandatory规则：Status迁移必须via `RuntimeStateMachine.transition(command)`；执lines计划必须uses `PlanGraphBundle`；执lines结果必须uses `NodeAttemptReceipt`；truth event 只能uses `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；budget必须uses `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。

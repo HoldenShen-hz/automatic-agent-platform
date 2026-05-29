@@ -1,19 +1,19 @@
 # ADR-032 Deployment Architecture
 
-- Status: Accepted
-- Decision Date: 2026-04-03
+- Status：Accepted
+- Decision Date：2026-04-03
 
-## Context
+## Background
 
-The platform needs to support multi-environment deployment (dev/test/staging/pre-prod/prod) and support different deployment scales.
+The platform needs to support multi-environment deployment (dev/test/staging/pre-prod/prod) and different scales of deployment形态.
 
 ## Decision
 
 ### Deployment Stages
 
 | Stage | Description |
-|-------|-------------|
-| D1 Monolithic | ≤10 concurrent, current default config |
+|------|------|
+| D1 Single | ≤10 concurrent, current default configuration |
 | D2 Multi-process | 10-100 concurrent |
 | D3 Distributed | 100-1000 concurrent |
 | D4 K8s Cluster | 5000+ concurrent |
@@ -21,9 +21,9 @@ The platform needs to support multi-environment deployment (dev/test/staging/pre
 ### 5 Environments
 
 | Environment | Purpose |
-|-------------|---------|
+|------|------|
 | dev | Development environment |
-| test | Unit/Integration testing |
+| test | Unit/integration testing |
 | staging | Pre-release testing |
 | pre-prod | Pre-production validation |
 | prod | Production environment |
@@ -41,16 +41,16 @@ The platform needs to support multi-environment deployment (dev/test/staging/pre
 
 ## Consequences
 
-Benefits:
+Advantages:
 
 - Multi-environment separation facilitates testing and release
 - Worker pool isolation improves stability
 - IaC approach facilitates environment consistency
 
-Trade-offs:
+Costs:
 
 - Multi-environment increases operational complexity
-- Deployment process requires standardization
+- Deployment process needs standardization
 
 ## Cross-references
 

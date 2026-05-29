@@ -1,17 +1,17 @@
 # Architecture Decision Records (ADR)
 
-> This directory contains the project's Architecture Decision Records (ADR). Each ADR records the background, considerations, and conclusions of important technical decisions.
-> `docs_zh/adr/README.md` and `docs_en/adr/README.md` must keep numbers, status, and dates synchronized; if body translation is delayed, record according to `docs_zh/reference/docs-sync.md`.
-> ADR indexes are sorted by number rather than by decision date, so the date column does not need to increase monotonically.
+> This directory contains the project's Architecture Decision Records (ADRs). Each ADR documents the background, considerations, and conclusions of significant technical decisions.
+> The numbering, status, and dates of `docs_zh/adr/README.md` and `docs_en/adr/README.md` must be kept synchronized; if the body translation is delayed, follow the records in `docs_zh/reference/docs-sync.md`.
+> ADR index is sorted by number, not by decision date, so the date column is not required to be monotonically increasing.
 
 ## ADR Index
 
 | Number | Title | Status | Decision Date |
-|------|------|------|----------|
-| [001](./001-three-layer-architecture.md) | Three-Layer Separation Architecture | Partially Superseded by v4.3 Five-Plane Baseline | 2026-04-02 |
+|--------|-------|--------|---------------|
+| [001](./001-three-layer-architecture.md) | Three-Layer Separation of Powers Architecture | Partially Superseded by v4.3 Five-Plane Baseline | 2026-04-02 |
 | [002](./002-division-system.md) | Division System | Accepted | 2026-04-02 |
-| [003A](./003-memory-six-layers.md) | Six-Layer Memory Model and KV Cache Fixed Prefix | Superseded by ADR-020 | 2026-04-02 |
-| [003B](./003-memory-seven-layers.md) | Seven-Layer Memory Model (Historical Alias / Jump Page) | Superseded by ADR-020 | 2026-04-02 |
+| [003A](./003-memory-six-layers.md) | Six-Layer Memory Model with KV Cache Fixed Prefix | Superseded by ADR-020 | 2026-04-02 |
+| [003B](./003-memory-seven-layers.md) | Seven-Layer Memory Model (Historical Alias / Redirect Page) | Superseded by ADR-020 | 2026-04-02 |
 | [004](./004-workflow-routing.md) | Workflow and Routing | Accepted | 2026-04-02 |
 | [005](./005-security-model.md) | Security Model | Accepted | 2026-04-02 |
 | [006](./006-llm-provider-strategy.md) | LLM Provider Strategy | Accepted | 2026-04-02 |
@@ -19,16 +19,16 @@
 | [008](./008-cost-model.md) | Cost Model | Accepted | 2026-04-02 |
 | [009](./009-deployment-ops.md) | Deployment and Operations | Accepted | 2026-04-02 |
 | [010](./010-commercial-model.md) | Commercial Model | Accepted | 2026-04-02 |
-| [011](./011-effect-ts-adoption.md) | Whether Effect-TS as Core Runtime Foundation | Accepted | 2026-04-03 |
-| [012](./012-sqlite-phase-1-2-primary-store.md) | Whether SQLite as Phase 1-2 Sole Primary Store | Accepted | 2026-04-03 |
-| [013](./013-eventemitter-phase-2-boundary.md) | Whether EventEmitter Continues to Phase 2 | Accepted | 2026-04-03 |
-| [014](./014-org-model-code-boundary.md) | Whether Organization Model Directly Maps to Code Objects | Accepted | 2026-04-03 |
-| [015](./015-unified-extension-marketplace.md) | Whether Skill and Plugin Converge to Single Marketplace | Accepted | 2026-04-03 |
-| [016](./016-oapeflir-loop-model.md) | OAPEFLIR Eight-Stage Cognitive Cycle Model | Accepted | 2026-04-17 |
+| [011](./011-effect-ts-adoption.md) | Effect-TS as Core Runtime Foundation | Accepted | 2026-04-03 |
+| [012](./012-sqlite-phase-1-2-primary-store.md) | SQLite as Phase 1-2 Sole Primary Storage | Accepted | 2026-04-03 |
+| [013](./013-eventemitter-phase-2-boundary.md) | EventEmitter Continued Use Through Phase 2 | Accepted | 2026-04-03 |
+| [014](./014-org-model-code-boundary.md) | Organization Model Directly Mapped to Code Objects | Accepted | 2026-04-03 |
+| [015](./015-unified-extension-marketplace.md) | Skill and Plugin Convergence to Single Marketplace | Accepted | 2026-04-03 |
+| [016](./016-oapeflir-loop-model.md) | OAPEFLIR Eight-Stage Cognitive Loop Model | Accepted | 2026-04-17 |
 | [017](./017-knowledge-architecture-refactor.md) | Knowledge Three-Index Architecture Refactor | Accepted | 2026-04-17 |
-| [018](./018-rollout-eleven-state-machine.md) | Rollout Eleven-State State Machine and Six-Stage Release | Superseded by ADR-075 | 2026-04-17 |
+| [018](./018-rollout-eleven-state-machine.md) | Rollout Eleven-State Machine and Six-Stage Release | Superseded by ADR-075 | 2026-04-17 |
 | [019](./019-agent-handoff-four-layer-protocol.md) | Agent Handoff Four-Layer Serialization Protocol | Accepted | 2026-04-17 |
-| [020](./020-memory-six-plane-model.md) | Memory Six-Plane Model and Auto-Promotion Rules | Accepted | 2026-04-17 |
+| [020](./020-memory-six-plane-model.md) | Memory Six-Plane Model with Auto-Promotion Rules | Accepted | 2026-04-17 |
 | [021](./021-inter-plane-communication-contract.md) | Inter-Plane Communication Contract | Accepted | 2026-04-03 |
 | [022](./022-api-contract-and-versioning.md) | API Contract and Versioning Architecture | Accepted | 2026-04-03 |
 | [023](./023-service-communication-architecture.md) | Service Communication Architecture | Accepted | 2026-04-03 |
@@ -36,14 +36,14 @@
 | [025](./025-stability-architecture-seven-layers.md) | Stability Architecture | Accepted | 2026-04-03 |
 | [026](./026-risk-control-architecture.md) | Risk Control Architecture | Accepted | 2026-04-03 |
 | [027](./027-security-architecture.md) | Security and Reliability Architecture | Accepted | 2026-04-03 |
-| [028](./028-incident-and-event-handling-architecture.md) | Exception Event Handling Architecture | Accepted | 2026-04-03 |
+| [028](./028-incident-and-event-handling-architecture.md) | Incident and Event Handling Architecture | Accepted | 2026-04-03 |
 | [029](./029-oapeflir-controlled-cognition-kernel.md) | OAPEFLIR Controlled Cognition Kernel | Accepted | 2026-04-17 |
 | [030](./030-runtime-execution-plane.md) | Runtime Execution Plane | Accepted | 2026-04-03 |
 | [031](./031-disaster-recovery-and-high-availability.md) | Disaster Recovery and High Availability Architecture | Accepted | 2026-04-03 |
 | [032](./032-deployment-architecture.md) | Deployment Architecture | Accepted | 2026-04-03 |
-| [033](./033-phased-roadmap.md) | Phased Roadmap | Superseded by ADR-112 | 2026-04-17 |
+| [033](./033-phased-roadmap.md) | Phased Implementation Roadmap | Superseded by ADR-112 | 2026-04-17 |
 | [034](./034-adr-freeze-recommendation.md) | ADR Freeze Recommendation | Historical Context | 2026-04-17 |
-| [035](./035-recommended-code-directory-structure.md) | Recommended Code Directory | Accepted | 2026-04-17 |
+| [035](./035-recommended-code-directory-structure.md) | Recommended Code Directory Structure | Accepted | 2026-04-17 |
 | [036](./036-risk-constraints-and-success-criteria.md) | Risk, Constraints, and Success Criteria | Accepted | 2026-04-17 |
 | [037](./037-domain-modeling-and-onboarding.md) | Business Domain Modeling and Onboarding Architecture | Accepted | 2026-04-20 |
 | [038](./038-business-domain-onboarding-runbook.md) | Business Domain Onboarding Runbook | Accepted | 2026-04-20 |
@@ -68,23 +68,23 @@
 | [057](./057-external-system-integration-framework.md) | External System Integration Framework | Accepted | 2026-04-20 |
 | [058](./058-emergency-stop-and-global-circuit-breaker.md) | Emergency Stop and Global Circuit Breaker Architecture | Accepted | 2026-04-20 |
 | [059](./059-agent-explainability-and-decision-transparency.md) | Agent Explainability and Decision Transparency | Accepted | 2026-04-20 |
-| [060](./060-explicit-planning-hub.md) | Explicit Planning Hub | Accepted | 2026-04-17 |
+| [060](./060-explicit-planning-hub.md) | Explicit Planning Layer and Plan Hub | Accepted | 2026-04-17 |
 | [061](./061-agent-unified-lifecycle-management.md) | Agent Unified Lifecycle Management Architecture | Accepted | 2026-04-20 |
 | [062](./062-offline-and-edge-deployment-architecture.md) | Offline and Edge Deployment Architecture | Accepted | 2026-04-20 |
 | [063](./063-agent-behavior-drift-detection.md) | Agent Behavior Drift Detection Architecture | Accepted | 2026-04-20 |
 | [064](./064-cost-attribution-and-optimization-engine.md) | Cost Attribution and Optimization Engine | Accepted | 2026-04-20 |
 | [065](./065-workflow-visual-debugger.md) | Workflow Visual Debugger Architecture | Accepted | 2026-04-20 |
 | [066](./066-compliance-report-auto-generation.md) | Compliance Report Auto-Generation Engine | Accepted | 2026-04-20 |
-| [071](./071-plugin-spi-framework.md) | Plugin SPI Interface System and Lifecycle | Accepted | 2026-04-17 |
 | [067](./067-capacity-planning-and-cost-prediction.md) | Capacity Planning and Cost Prediction Engine | Accepted | 2026-04-20 |
 | [068](./068-multimodal-capability-architecture.md) | Multimodal Capability Architecture | Accepted | 2026-04-20 |
-| [069](./069-platform-self-operating-agent.md) | Platform Self-Ops Agent Architecture | Partially Superseded by v4.3 control-plane and runtime authority ADRs | 2026-04-20 |
+| [069](./069-platform-self-operating-agent.md) | Platform Self-Operating Agent Architecture | Partially Superseded by v4.3 control-plane and runtime authority ADRs | 2026-04-20 |
 | [070](./070-conclusion.md) | Conclusion | Withdrawn / Index | 2026-04-20 |
-| [072](./072-oapeflir-testing-strategy.md) | OAPEFLIR Testing Strategy and New Module Test Matrix | Partially Superseded by current layered test matrix and runtime contract tests | 2026-04-17 |
+| [071](./071-plugin-spi-framework.md) | Plugin SPI Interface System and Lifecycle | Accepted | 2026-04-17 |
+| [072](./072-oapeflir-testing-strategy.md) | OAPEFLIR Testing Strategy and New Module Testing Matrix | Partially Superseded by current layered test matrix and runtime contract tests | 2026-04-17 |
 | [073](./073-unified-resource-model.md) | ADR-073: Unified Agent Resource Model | Accepted | 2026-04-13 |
 | [075](./075-controlled-rollout-release.md) | Six-Level Controlled Release and Rollout State Machine | Accepted | 2026-04-17 |
 | [078](./078-knowledge-plane-architecture.md) | Knowledge Plane Architecture and Trust Model | Partially Superseded by current knowledge-plane contract baseline | 2026-04-17 |
-| [079](./079-feedback-hub-signals.md) | Feedback Hub and Seven Signal Preprocessing | Accepted | 2026-04-17 |
+| [079](./079-feedback-hub-signals.md) | Feedback Hub and Seven Signal Preprocessing Categories | Accepted | 2026-04-17 |
 | [080](./080-learn-hub-pattern-detection.md) | Learn Hub and Four Pattern Detectors | Accepted | 2026-04-17 |
 | [081](./081-domain-descriptor-and-onboarding.md) | Domain Descriptor And Onboarding | Accepted | 2026-04-20 |
 | [082](./082-natural-language-entry-and-goal-decomposition.md) | Natural Language Entry And Goal Decomposition | Accepted | 2026-04-20 |
@@ -129,26 +129,26 @@
 | [121](./121-timeout-and-worker-liveness-hierarchy.md) | Timeout And Worker Liveness Hierarchy | Accepted | 2026-05-25 |
 | [122](./122-domain-evidence-and-session-boundary.md) | Domain Evidence And Session Replay Boundary | Accepted | 2026-05-25 |
 
-## Status Description
+## Status Definitions
 
 - **Draft**: Under discussion, decision not yet made
-- **Proposed**: Proposed, awaiting approval
+- **Proposed**: Submitted, awaiting approval
 - **Accepted**: Accepted and implemented
-- **Superseded**: Superseded by new ADR
-- **Deprecated**: Deprecated
+- **Superseded**: Replaced by a newer ADR
+- **Deprecated**: Retired
 
 ## Notes
 
-- Historical directory simultaneously retains `003-memory-six-layers.md` and `003-memory-seven-layers.md`; where `seven-layers` only preserved as historical alias / jump page, canonical content uses `003-memory-six-layers.md` as standard.
-- Plugin SPI ADR has been uniformly converged to `071-plugin-spi-framework.md`; old `066-plugin-spi-framework.md` duplicate copy has been removed, all references uniformly changed to ADR-071.
-- `045`, `074`, `076`, `077` currently remain reserved / withdrawn number slots and are not backfilled with historical content.
-- New `091-108` are used to carry the Harness eight-pillar and domain-governance supplement set.
-- New `109-122` are the v4.3 Contract Freeze and subsequent implementation clarification entry points: they freeze 12 canonical contracts, establish state-machine sole authority, separate `platform.*` and `oapeflir.view.*` event layers, define the MVP / Hardening / Enterprise ring boundary, and document the authoritative tenant-scope / auth-precedence / self-healing boundary / interface rate-limit / WAL recovery / panic allowlist / pack-domain lifecycle / client transport / timeout hierarchy / evidence boundary rules.
-- `109-122` constrain legacy `ExecutionPlan` / `ExecutionReceipt` / `ControlDirective` / `StateCommand` names, OAPEFLIR runtime authority, phase naming, tenant resolution, and cross-layer boundary semantics through freeze / authority / event-namespace / ring-boundary / tenant-scope / auth-precedence / recovery-boundary rules; historical ADR bodies remain preserved rather than being rewritten.
-- `069` is primarily followed by `ADR-109`, `ADR-110`, and `ADR-112`.
-- `072` is primarily followed by `ADR-109`, `ADR-110`, the current layered test matrix, and runtime contract tests.
-- `078` is primarily followed by `ADR-109`, `ADR-111`, and the knowledge-plane canonical contracts.
+- The historical directory retains both `003-memory-six-layers.md` and `003-memory-seven-layers.md`; `seven-layers` is kept only as a historical alias/redirect page. The canonical content follows `003-memory-six-layers.md`.
+- Plugin SPI ADR has been consolidated into `071-plugin-spi-framework.md`; the old duplicate `066-plugin-spi-framework.md` has been removed, and all references unified to ADR-071.
+- `045`, `074`, `076`, `077` are currently reserved/withdrawn slots and will not be backfilled with historical content.
+- `091-108` are new entries to cover the Harness Eight Pillars and domain governance additions.
+- `109-122` are v4.3 Contract Freeze and subsequent implementation clarification entries: 12 canonical contracts frozen, state machine sole authority, `platform.*` and `oapeflir.view.*` event hierarchy, MVP/Hardening/Enterprise three-ring boundary, and authoritative explanations for tenant scope, auth precedence, self-healing boundary, interface rate-limit, WAL recovery, panic allowlist, pack-domain lifecycle, client transport, timeout hierarchy, and evidence boundary.
+- `109-122` constrain old `ExecutionPlan`/`ExecutionReceipt`/`ControlDirective`/`StateCommand`/OAPEFLIR runtime authority/Phase naming, tenant resolution, and cross-layer boundary semantics through rules on freeze/authority/event namespace/ring boundary/tenant scope/auth precedence/recovery boundary. Historical ADR bodies are preserved and not directly rewritten.
+- Follow-up focus for `069` is ADR-109, ADR-110, and ADR-112.
+- Follow-up focus for `072` is ADR-109, ADR-110, current layered test matrix, and runtime contract tests.
+- Follow-up focus for `078` is ADR-109, ADR-111, and knowledge-plane related canonical contracts.
 
-## Creating New ADR
+## Creating a New ADR
 
-New ADR should follow the standard template; numbering keeps reserved ranges by batch and evolution stage and does not require backfilling historical gaps. For details, refer to [../governance/source_of_truth.md](../governance/source_of_truth.md).
+New ADRs should follow the standard template; numbering preserves slot ranges by batch and evolution stage, with no mandatory backfilling of historical gaps. For details, refer to [../governance/source_of_truth.md](../governance/source_of_truth.md).

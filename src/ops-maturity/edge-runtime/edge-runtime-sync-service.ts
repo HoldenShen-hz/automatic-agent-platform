@@ -117,7 +117,8 @@ export class EdgeRuntimeSyncService {
     if (missingRequiredFields.length > 0) {
       throw new Error(`edge_runtime.missing_required_profile_fields:${missingRequiredFields.join(",")}`);
     }
-    if (profile.keyLease!.trim().length === 0) {
+    const keyLease = profile.keyLease;
+    if (keyLease == null || keyLease.trim().length === 0) {
       throw new Error("edge_runtime.key_lease_required");
     }
     if (profile.deviceAttestation == null || profile.deviceAttestation.status !== "valid") {
@@ -135,14 +136,18 @@ export class EdgeRuntimeSyncService {
     const riskGate = new EdgeRiskGate();
     const riskResult = riskGate.check(request);
     if (!riskResult.allowed) {
-      throw new Error(riskResult.reason!);
+      throw new Error(riskResult.reason ?? "edge_runtime.risk_gate_denied");
     }
     const createdAt = request.createdAt ?? nowIso();
     const createdAtMillis = Date.parse(createdAt);
     if (Number.isNaN(createdAtMillis)) {
       throw new Error("edge_runtime.invalid_created_at");
     }
-    if (Date.now() - createdAtMillis > normalizeEdgeDurationMs(profile.offlineMaxDuration!, profile.offlineMaxDurationUnit)) {
+    const offlineMaxDuration = profile.offlineMaxDuration;
+    if (offlineMaxDuration == null) {
+      throw new Error("edge_runtime.offline_duration_required");
+    }
+    if (Date.now() - createdAtMillis > normalizeEdgeDurationMs(offlineMaxDuration, profile.offlineMaxDurationUnit)) {
       throw new Error("edge_runtime.offline_window_exceeded");
     }
     if (request.edgeNodeId !== profile.edgeNodeId) {

@@ -1,37 +1,37 @@
-# ADR-080: Learn Hub and Four Pattern Detectors
+# ADR-080 Learn Hub vs四模式检测器
 
-- Status: Accepted
-- Decision Date: 2026-04-17
-- Related: ADR-016 OAPEFLIR Eight-Stage Cognitive Loop Model, ADR-078 Knowledge Plane Architecture
+- Status：Accepted
+- Decision日期：2026-04-17
+- 相关：ADR-016 OAPEFLIR 八阶段认知循环模型，ADR-078 Knowledge Plane Architecture
 
-## Context
+## Background
 
-The LearningSignal produced by the OAPEFLIR Feedback Hub needs to be processed by the Learn Hub, extracting structured LearningObjects. The Learn Hub is the first ring of the secondary chain (F→L→I→R), responsible for identifying patterns, anomalies, corrections, and recovery playbooks from signals.
+OAPEFLIR Feedback Hub 产出的 LearningSignal 需要被 Learn Hub handle，提取为结构化的 LearningObject。Learn Hub is副链（F→L→I→R）的第一环，负责从信号中识别模式、异常、纠正和恢复 playbook。
 
-The design requires supporting 3 learning types (R4-TYPES constraint): failure_pattern / user_correction / recovery_playbook, implemented through 4 initial pattern detectors.
+设计要求supported 3 class学习class型（R4-TYPES 约束）：failure_pattern / user_correction / recovery_playbook，via 4 个初始模式检测器实现。
 
 ## Decision
 
-### 1. Three Learning Content Types (R4-TYPES Constraint)
+### 1. 3 class学习内容（R4-TYPES 约束）
 
-| Learning Type | Description | Detector |
-|--------------|-------------|----------|
-| `failure_pattern` | Failure pattern recognition | `FailurePatternMiner` |
-| `user_correction` | User correction records | `UserCorrectionDetector` |
-| `recovery_playbook` | Recovery operation playbook | `RecoveryPlaybookMiner` |
+| 学习class型 | Description | 检测器 |
+|---------|------|-------|
+| `failure_pattern` | failed模式识别 | `FailurePatternMiner` |
+| `user_correction` | user纠正record | `UserCorrectionDetector` |
+| `recovery_playbook` | 恢复操作手册 | `RecoveryPlaybookMiner` |
 
-**Constraint**: Ring 1 only supports these 3 types, no expansion allowed until R4-TYPES constraint is lifted.
+**约束**：Ring 1 onlysupported这 3 class，不得扩展直到 R4-TYPES 约束解除。
 
-### 2. Four Initial Pattern Detectors
+### 2. 4 个初始模式检测器
 
-| Detector | Detection Pattern | Implementation File |
-|----------|-------------------|-------------------|
-| `TruncationPatternDetector` | Output truncation pattern | `pattern-detectors/truncation-detector.ts` |
-| `PermissionPatternDetector` | Permission denial pattern | `pattern-detectors/permission-detector.ts` |
-| `HallucinationPatternDetector` | Hallucination/fabrication content pattern | `pattern-detectors/hallucination-detector.ts` |
-| `SchemaLoopPatternDetector` | Schema circular dependency pattern | `pattern-detectors/schema-loop-detector.ts` |
+| 检测器 | 检测模式 | 实现文件 |
+|--------|---------|---------|
+| `TruncationPatternDetector` | 输出被截断的模式 | `pattern-detectors/truncation-detector.ts` |
+| `PermissionPatternDetector` | permission拒绝模式 | `pattern-detectors/permission-detector.ts` |
+| `HallucinationPatternDetector` | 幻觉/虚假内容模式 | `pattern-detectors/hallucination-detector.ts` |
+| `SchemaLoopPatternDetector` | Schema 循环relies on模式 | `pattern-detectors/schema-loop-detector.ts` |
 
-### 3. FailurePattern Interface
+### 3. FailurePattern 接口
 
 ```typescript
 interface FailurePattern {
@@ -39,11 +39,11 @@ interface FailurePattern {
   taskType: string;
   failureMode: FailureMode;
   rootCause: string;
-  symptoms: string[];           // Observed symptoms
-  frequency: number;           // Occurrence count
+  symptoms: string[];           // 观测到的症状
+  frequency: number;           // 出现iterations数
   firstSeenAt: string;
   lastSeenAt: string;
-  evidence: EvidenceRef[];     // Evidence links (R4-EVIDENCE constraint)
+  evidence: EvidenceRef[];     // 证据链接（R4-EVIDENCE 约束）
   recommendations: string[];
 }
 
@@ -62,7 +62,7 @@ interface EvidenceRef {
 }
 ```
 
-### 4. LearningObject Interface
+### 4. LearningObject 接口
 
 ```typescript
 interface LearningObject {
@@ -72,7 +72,7 @@ interface LearningObject {
   confidence: number;           // 0-1
   status: LearningObjectStatus;
   validatedAt?: string;
-  promotedAt?: string;          // Time injected into Knowledge Plane
+  promotedAt?: string;          // 注入 Knowledge Plane 的time
   createdAt: string;
 }
 
@@ -90,13 +90,13 @@ type LearningObjectStatus =
 
 ```typescript
 interface LearningObjectValidator {
-  // Must include EvidenceRef (R4-EVIDENCE constraint)
+  // 必须contains EvidenceRef（R4-EVIDENCE 约束）
   validate(learningObject: LearningObject): ValidationResult;
 
-  // Evidence validation: must have valid FeedbackSignal links
+  // Evidence 校验：必须存在有效的 FeedbackSignal 链接
   validateEvidence(evidence: EvidenceRef[]): boolean;
 
-  // Confidence threshold validation
+  // 置信度threshold校验
   validateConfidence(confidence: number): boolean;
 }
 ```
@@ -105,17 +105,17 @@ interface LearningObjectValidator {
 
 ```typescript
 interface ExperienceDistillation {
-  // Extract common patterns from multiple similar FailurePatterns
+  // 从多个相似 FailurePattern 提取通用模式
   distill(patterns: FailurePattern[]): DistilledPattern;
 
-  // Extract best practices from successful executions
+  // 从success执lines中提取最佳实践
   extractBestPractice(execution: DualChannelStepOutput): BestPractice;
 }
 
 interface DistilledPattern {
   pattern: FailurePattern;
-  similarCount: number;         // Number of aggregated patterns
-  confidenceBoost: number;      // Confidence improvement
+  similarCount: number;         // 聚合的模式count
+  confidenceBoost: number;      // 置信度提升
 }
 ```
 
@@ -123,14 +123,14 @@ interface DistilledPattern {
 
 ```typescript
 interface StrategyLearning {
-  // Learn strategy effectiveness from historical executions
+  // 从历史执lines中学习策略选择
   learnStrategyEffectiveness(
     taskType: string,
     strategy: PlanStrategy,
     outcome: ExecutionOutcome
   ): StrategyEffectiveness;
 
-  // Recommend best strategy
+  // 推荐最佳策略
   recommendStrategy(taskType: string, context: AssessmentContext): PlanStrategy;
 }
 
@@ -142,59 +142,59 @@ interface StrategyEffectiveness {
 }
 ```
 
-### 8. Learn→Improve Integration
+### 8. Learn→Improve 集成
 
 ```
 Feedback.signal_preprocessed
     → Learn Hub
-        → 4 Pattern Detectors each fulfill their role
-        → LearningObject creation
+        → 4 Pattern Detector 各司其职
+        → LearningObject 创建
         → LearningObjectValidator.validate()
-        → validated = true → ImprovementCandidate creation
+        → validated = true → ImprovementCandidate 创建
         → ImprovementGuardrail.evaluates()
-        → AutonomyBoundaryPolicy decides autonomous permissions
-        → RolloutScheduler schedules release
+        → AutonomyBoundaryPolicy 决定自主permission
+        → RolloutScheduler 调度发布
 ```
 
-## Alternative Approaches
+## 备选方案
 
-### Approach A: No Learn Hub, feedback directly sent to Improve
+### 方案 A：no Learn Hub，反馈directly送 Improve
 
-Advantages: Simple architecture.
-Disadvantages: Cannot extract patterns, knowledge cannot accumulate.
+优点：Architecture简单。
+代价：no法提取模式，知识no法积累。
 
-### Approach B: Complete Learn Hub + 4 Detectors (selected)
+### 方案 B：完整 Learn Hub + 4 检测器（已选）
 
-Advantages: Pattern recognition + knowledge accumulation + complete evidence chain.
-Disadvantages: Higher implementation complexity (~1500 lines of code).
+优点：模式识别 + 知识积累 + 证据链完整。
+代价：实现复杂度较高（约 1500 linescode）。
 
 ## Consequences
 
-- `failure-pattern-miner.ts` serves as the core detector aggregator.
-- 4 `*-detector.ts` files each implement their detection logic.
-- `learning-object-validator.ts` (65 lines) enforces R4-EVIDENCE constraint.
-- `experience-distillation.ts` (24 lines) extracts best practices.
-- `strategy-learning.ts` (19 lines) learns strategy effectiveness.
-- `learning-object-model.ts` (21 lines) defines LearningObject.
-- Events: `learning:artifact_created`, `learning:object_promoted`
+- `failure-pattern-miner.ts` 作为核心检测器聚合。
+- 4 个 `*-detector.ts` 文件each实现检测逻辑。
+- `learning-object-validator.ts`（65 lines）mandatory R4-EVIDENCE 约束。
+- `experience-distillation.ts`（24 lines）提取最佳实践。
+- `strategy-learning.ts`（19 lines）学习策略有效性。
+- `learning-object-model.ts`（21 lines）defines LearningObject。
+- 事件：`learning:artifact_created`、`learning:object_promoted`
 
-## Cross References
+## 交叉references用
 
-- [ADR-016 OAPEFLIR Eight-Stage Cognitive Loop Model](./016-oapeflir-loop-model.md)
+- [ADR-016 OAPEFLIR 八阶段认知循环模型](./016-oapeflir-loop-model.md)
 - [ADR-075 Controlled Rollout](./075-controlled-rollout-release.md)
 - [ADR-078 Knowledge Plane](./078-knowledge-plane-architecture.md)
-- `src/core/learning/` module
+- `src/core/learning/` 模块
 
-## Source Sections
+## 来源章节
 
-- `§8` Learn Hub Design
-- `§8.1` 6 Learning Content Types (Ring 1 simplified to 3 types)
-- `§8.2-8.4` LearningArtifact / LearningObject / FailurePattern interfaces
-- `§8.5` 4 initial failure patterns
-- `§8.6-8.7` ExperienceDistillation / StrategyLearning
-- `§L.7` R4-TYPES constraint
-- `§L.9` R4-EVIDENCE constraint
+- `§8` Learn Hub 设计
+- `§8.1` 6 class学习内容（Ring 1 简化为 3 class）
 
 ## v4.3 ADR Remediation
 
-- A-65: This ADR originally wrote `Phase 1` and `EvidenceRef.executionId` as canonical constraints. Root cause was that the learn hub ADR did not synchronize the evidence chain primary key after runtime truth renaming. Fix: The text now uses ring terminology and the evidence chain anchor switched to `harnessRunId / nodeRunId`.
+- A-65: 本 ADR 原先把 `Phase 1` vs `EvidenceRef.executionId` 写成 canonical 约束，Root cause:  learn hub ADR 在 runtime truth 重命名之后没有synchronous更新证据链主键。修复：正文现改为 ring 口径，并把证据链锚点切到 `harnessRunId / nodeRunId`。
+- `§8.2-8.4` LearningArtifact / LearningObject / FailurePattern 接口
+- `§8.5` 4 初始failed模式
+- `§8.6-8.7` ExperienceDistillation / StrategyLearning
+- `§L.7` R4-TYPES 约束
+- `§L.9` R4-EVIDENCE 约束

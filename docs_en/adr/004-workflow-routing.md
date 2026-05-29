@@ -9,8 +9,8 @@ This document defines the following components in the OAPEFLIR eight-stage cogni
 - **Observe**: Signal collection and unified DTO
 - **Assess**: Pre/post execution assessment and risk judgment
 - **Plan**: Explicit planning and DAG construction (ADR-060)
-- **Execute**: Step execution and Dual-Channel output
-- **Feedback**: Signal collection, preprocessing and 7 feedback sources (ADR-079)
+- **Execute**: Step execution and dual-channel output
+- **Feedback**: Signal collection, preprocessing, and 7 feedback sources (ADR-079)
 - **Learn**: Pattern detection and knowledge extraction (ADR-080)
 - **Improve**: Improvement candidate evaluation and Rollout state machine (ADR-075)
 - **Release**: Six-level controlled release and automatic rollback
@@ -22,126 +22,126 @@ This document defines the following components in the OAPEFLIR eight-stage cogni
 
 ## Background
 
-The platform needs to simultaneously support simple single tasks, standard workflows, multi-role collaboration, and cross-division composite tasks. If all tasks go through the same heavy-weight process, it will significantly slow down performance and increase costs, while also imposing unnecessary coordination overhead on simple scenarios.
+The platform needs to simultaneously support simple single tasks, standard workflows, multi-role collaboration, and cross-domain composite tasks. If all tasks go through the same heavy process, it will significantly slow things down and amplify costs, while also making simple scenarios bear unnecessary coordination overhead.
 
 ## Decision
 
-Adopt a five-plane-driven routing with multi-path execution:
+Adopt five-plane-driven routing and multi-path execution:
 
 - P1 Interface Plane is responsible for receiving messages, triage, and entry normalization.
-- P2 Control Plane is responsible for policy evaluation, routing decisions, and governance constraint injection.
-- P3 Orchestration Plane is responsible for cross-domain decomposition, dependency management, and PlanGraphBundle generation.
-- HarnessRuntime serves as the sole execution runtime handling P3-to-P4 handoff.
-- Domain agents and workers only execute local responsibilities within the NodeRun boundaries assigned by HarnessRuntime.
+- P2 Control Plane is responsible for policy matching, risk assessment, and routing decisions.
+- P3 Orchestration Plane is responsible for cross-domain decomposition, dependency management, and `PlanGraphBundle` generation.
+- `HarnessRuntime` serves as the unique execution runtime accepting P3→P4 handoff.
+- Domain agent/worker only executes local responsibilities within `HarnessRuntime`-assigned `NodeRun` boundaries.
 
-The system defines four execution paths:
+System defines four execution paths:
 
-- passthrough: Shortest path, suitable for low-complexity tasks.
-- fast: Emphasizes low latency and low cost.
-- standard: Introduces testing, validation, or lightweight review.
-- full: Full role collaboration and stronger quality assurance.
+- `passthrough`: Shortest path, suitable for low-complexity tasks.
+- `fast`: Emphasizes low latency and low cost.
+- `standard`: Introduces testing, validation, or lightweight review.
+- `full`: Full role collaboration and stronger quality assurance.
 
 ## Task Lifecycle
 
-A typical flow is as follows:
+Typical path:
 
-1. P1 receives messages and filters out non-task conversations.
-2. P2 completes rule matching, risk assessment, and routing decisions.
-3. Single-domain tasks directly generate a minimal PlanGraphBundle.
+1. P1 receives message and filters non-task conversations.
+2. P2 completes rule matching, risk assessment, and routing decision.
+3. Single-domain tasks directly generate minimal `PlanGraphBundle`.
 4. Cross-domain tasks are handed to P3 for decomposition, dependency graph management, and graph patch.
-5. HarnessRuntime executes NodeRun, NodeAttempt and returns NodeAttemptReceipt.
-6. P1/P2 consume projected results and return to the original channel.
+5. `HarnessRuntime` executes `NodeRun/NodeAttempt` and returns `NodeAttemptReceipt`.
+6. P1/P2 consume projected results and return to original channel.
 
-## Workflow Data Passing (Section 5.5 deprecates WorkflowState/StepOutput)
+## Workflow Data Passing (§5.5 deprecates WorkflowState/StepOutput)
 
-> Note: Section 5.5 has deprecated WorkflowState and StepOutput. Please use PlanGraphBundle/NodeAttemptReceipt instead.
+> Note: §5.5 has deprecated `WorkflowState` and `StepOutput`. Please use PlanGraphBundle/NodeAttemptReceipt instead.
 
 Workflow data passing (v4.3 canonical):
 
-- PlanGraphBundle preserves node outputs and the current execution index.
-- Each node produces a structured NodeAttemptReceipt upon completion.
-- Downstream nodes read upstream results via output keys.
-- Large results enter the artifact store, with only references stored in state.
+- `PlanGraphBundle` saves node outputs and current execution index.
+- Each node completion produces structured `NodeAttemptReceipt`.
+- Downstream nodes read upstream results via output key.
+- Large results enter artifact store, with only references saved in state.
 
 Key requirements:
 
 - Outputs must pass schema validation before writing.
-- Limited retries are allowed when critical fields are missing.
-- Partial success must be explicitly recorded, leaving the decision to proceed to the precondition.
+- Limited retry allowed when key fields are missing.
+- Partial success should be explicitly recorded, with precondition deciding whether to continue.
 
 ## Routing Principles
 
 P2 Control Plane routing rules:
 
-- Rules take priority; LLM fallback is secondary.
-- Simple tasks should first match passthrough or fast.
-- Only enter P3 orchestration flow when explicit cross-domain dependencies exist.
+- Rules first, LLM fallback second.
+- Simple tasks prioritize hitting `passthrough` or `fast`.
+- Only enter P3 orchestration path when cross-domain dependencies are explicitly identified.
 
 P3 Orchestration responsibilities:
 
 - Decompose composite tasks.
-- Build dependency graphs.
-- Perform schema compatibility pre-checks.
-- After upstream nodes complete, inject results into downstream context via PlanGraphBundle or GraphPatch.
+- Establish dependency graph.
+- Perform schema compatibility pre-check.
+- After upstream node completion, inject results into downstream context via `PlanGraphBundle`/`GraphPatch`.
 
 ## Self-Healing and Escalation
 
-After workflow failure, do not exit directly. Instead, handle in the following order:
+After workflow failure, do not exit directly. Handle in this order:
 
-- Limited retry attempts.
-- Loop detection to avoid repeatedly executing the same failed action.
-- When necessary, fall back to upstream steps or mark partial success.
-- After exceeding the threshold, escalate to P2 Control Plane for human takeover or higher-level governance actions.
+- Limited retries.
+- Loop detection to avoid repeatedly executing same failed action.
+- When needed, fall back to upstream steps or mark partial success.
+- After exceeding threshold, escalate to P2 Control Plane for human takeover or higher governance action.
 
 HITL trigger scenarios include:
 
-- Cost approaching or exceeding thresholds.
+- Cost approaching or exceeding threshold.
 - Security-sensitive operations.
-- Ambiguity in the task itself.
-- Self-healing exceeding maximum attempts.
-- Organizational changes or high-risk workflow recommendations.
+- Task itself has ambiguity.
+- Self-healing exceeded maximum attempts.
+- Organizational changes or high-risk workflow suggestions.
 
-## Relationship with Contracts and HR
+## Relationship Between Contract and HR
 
-Workflows should not evolve separately from the contract system:
+Workflow should not evolve separately from the contract system:
 
-- Each role should have clear input/output schemas.
-- Preconditions are parent-level Agent's pre-validation of child-level Agents.
-- New roles generated by HR Agents must comply with the same contracts.
-- Workflow changes suggested by HR can only serve as recommendations and cannot be automatically deployed.
+- Each role should have explicit input/output schema.
+- Preconditions are parent Agent's pre-validation of child Agent.
+- HR Agent-generated new roles must adhere to same contracts.
+- HR-provided workflow changes can only be suggestions, not auto-deployed.
 
 ## Results
 
 Benefits:
 
-- Simple tasks are not slowed down by heavy-weight orchestration.
-- Complex tasks can gain cross-division collaboration capabilities.
-- Workflow state can be persisted, naturally supporting recovery and auditing.
+- Simple tasks are not slowed by heavy orchestration.
+- Complex tasks can get cross-domain collaboration capability.
+- Workflow state can be persisted, naturally supporting recovery and audit.
 
 Constraints:
 
-- Requires a unified task, step, and event model.
-- Workflow DSL needs strict complexity control to avoid premature support for excessive branching syntax.
-- Routing, cost, and recovery logic need to be designed collaboratively, not scattered throughout.
+- Requires unified task, step, and event models.
+- Workflow DSL needs strict complexity control to avoid premature support for too many branching syntaxes.
+- Routing, cost, and recovery logic need collaborative design, cannot be scattered everywhere.
 
 ## Cross-References
 
-- [ADR-001 Three-Layer Separation of Powers Architecture](./001-three-layer-architecture.md)
+- [ADR-001 Three-Layer Separation Architecture](./001-three-layer-architecture.md)
 - [ADR-002 Division System](./002-division-system.md)
 - [ADR-008 Cost Model](./008-cost-model.md)
 
 ## Source Sections
 
-- Section 4.1
-- Section 4.1.1
-- Section 4.1.2
-- Section 4.1.3
-- Section 4.2
-- Section 4.3
-- Section 4.4
-- Section 4.5
-- Section 4.6
+- `§4.1`
+- `§4.1.1`
+- `§4.1.2`
+- `§4.1.3`
+- `§4.2`
+- `§4.3`
+- `§4.4`
+- `§4.5`
+- `§4.6`
 
 ## v4.3 ADR Remediation
 
-- A-21: This ADR originally continued using the v3 agent hierarchy of VP Operations, VP Orchestration, Division, Lead Agent, CEO. The root cause was that the Workflow and Routing ADR had long served as the organizational narrative and was not rewritten alongside the v4.3 five-plane and HarnessRuntime becoming the runtime backbone. Fix: The main text now uses the P1/P2/P3 and HarnessRuntime-driven routing and execution model.
+- A-21: This ADR originally continued using the v3 agent hierarchy (`VP Operations/VP Orchestration/Division/Lead Agent/CEO`). Root cause was that the Workflow and Routing ADR long assumed organizational narrative without rewriting alongside v4.3 five-plane and `HarnessRuntime` becoming the runtime backbone. Fix: Body now changed to P1/P2/P3 and `HarnessRuntime`-driven routing and execution model.

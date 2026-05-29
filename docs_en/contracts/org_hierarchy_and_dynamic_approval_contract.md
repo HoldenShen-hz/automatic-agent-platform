@@ -1,10 +1,10 @@
 # Org Hierarchy And Dynamic Approval Contract
 
-## 1. Scope
+## 1. 范围
 
-This contract defines the organization model, dynamic approval, and department-level compliance inheritance as specified in `§46-§47` and `§49`.
+本 contract defines `§46-§47` vs `§49` 的组织模型、dynamically审批vs部门级合规继承。
 
-## 2. Canonical Objects
+## 2. Canonical 对象
 
 - `OrgNode`
 - `OrgHierarchySnapshot`
@@ -13,7 +13,7 @@ This contract defines the organization model, dynamic approval, and department-l
 - `ApprovalLimitMatrix`
 - `CompliancePolicyBinding`
 
-## 3. `OrgNode` Minimum Fields
+## 3. `OrgNode` 最小字段
 
 - `org_node_id`
 - `node_type`: `enterprise | business_unit | department | team | seat`
@@ -22,14 +22,14 @@ This contract defines the organization model, dynamic approval, and department-l
 - `effective_policies`
 - `status`
 
-Rules:
+规则：
 
-- Organization tree must be acyclic.
-- Seat / user nodes may only be attached under team or department.
+- 组织树必须no环。
+- seat / user 节点只能挂在 team 或 department 下。
 
-## 4. Dynamic Approval Routing
+## 4. dynamically审批路由
 
-`ApprovalRouteDecision` minimum fields:
+`ApprovalRouteDecision` 最小字段：
 
 - `route_id`
 - `matched_org_node_id`
@@ -38,7 +38,7 @@ Rules:
 - `escalation_rule_id?`
 - `delegation_applied`
 
-Routing input must include at minimum:
+路由输入至少includes：
 
 - requester
 - org node
@@ -46,14 +46,15 @@ Routing input must include at minimum:
 - amount / impact
 - resource scope
 
-## 5. Inheritance And Override
+## 5. 继承vs覆写
 
-- Approval limits and compliance policies inherit downward by default.
-- Lower levels may only tighten or partially override within boundaries allowed by upper level.
-- Relaxing restrictions requires upper-level authorization.
+- 审批额度vs合规策略defaults to向下继承。
+- 只有在上级允许的边界内，下级才能收紧或局部覆写。
+- 放宽限制必须via过上级authorization。
 
-## 6. Test Requirements
+## 6. 测试要求
 
-- unit: organization tree, route matching, limit matrix
-- integration: approval request cross-organization routing and escalation
-- contract: high-risk requests without organization affiliation must not auto-route to approved
+- unit：组织树、路由匹配、限额矩阵
+- integration：审批request跨组织路由vs升级
+- contract：no组织归属的高风险request不得自动路由为via
+

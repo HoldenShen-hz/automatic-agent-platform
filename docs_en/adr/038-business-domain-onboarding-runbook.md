@@ -1,51 +1,51 @@
-# ADR-038 Business Domain Onboarding Runbook
+# ADR-038 业务域接入 Runbook
 
-- Status: Accepted
-- Decision Date: 2026-04-20
+- Status：Accepted
+- Decision日期：2026-04-20
 
 ## Background
 
-New business domain onboarding to the platform requires standardized processes and checklists to ensure onboarding quality.
+新业务域接入平台需要标准化的流程和检查清单，确保接入质量。
 
 ## Decision
 
-### 4-Phase Onboarding Process
+### 4 阶段接入流程
 
-| Phase | Description | Gate |
-|-------|-------------|------|
-| Gate 0 | Preparation | - |
-| Gate 1 | Development Complete | ≥5 few-shot + eval ≥20 items |
-| Gate 2 | Tests Passed | Coverage ≥80% |
-| Gate 3 | Certification Passed | Prompt Injection 100% |
-| Gate 4 | Canary Release | canary_5 → partial_25 → stable_75 → stable_100 |
+| 阶段 | Description | Gate |
+|------|------|------|
+| Gate 0 | 准备阶段 | - |
+| Gate 1 | 开发完成 | ≥5 few-shot + eval ≥20 条 |
+| Gate 2 | 测试via | 覆盖率 ≥80% |
+| Gate 3 | authenticationvia | Prompt Injection 100% |
+| Gate 4 | 金丝雀发布 | canary_5 → partial_25 → stable_75 → stable_100 |
 
-### Gate 1 Detailed Requirements
+### Gate 1 详细要求
 
-- `minFewShotCount: 5` - At least 5 few-shot examples
-- `minRegressionCaseCount: 20` - At least 20 regression test cases
-- `DomainEvaluationGateService` implements gate checks
+- `minFewShotCount: 5` - 至少 5 条 few-shot 示例
+- `minRegressionCaseCount: 20` - 至少 20 条回归测试用例
+- `DomainEvaluationGateService` 实现门禁检查
 
-### Gate 2 Detailed Requirements
+### Gate 2 详细要求
 
-- `coveragePercent >= 80` - Test coverage ≥80%
-- Dual checks by pack-lifecycle and pack-test-local
+- `coveragePercent >= 80` - 测试覆盖率 ≥80%
+- pack-lifecycle 和 pack-test-local 双重检查
 
-### Gate 3 Detailed Requirements
+### Gate 3 详细要求
 
-- `requirePromptInjectionCoverage: true` - Prompt Injection coverage 100%
-- Regression set failing to fully pass directly blocks release
+- `requirePromptInjectionCoverage: true` - Prompt Injection 覆盖率 100%
+- 回归集未fullvia时directly阻断发布
 
-### Canary Release Configuration
+### Canary 发布configure
 
 ```typescript
-const CANARY_STAGES = [5, 25, 75, 100];  // Percentages
-const DEFAULT_CANARY_PERCENT = 5;        // Default 5%
+const CANARY_STAGES = [5, 25, 75, 100];  // 百分比
+const DEFAULT_CANARY_PERCENT = 5;          // defaults to 5%
 ```
 
 ### Drift Detection Rollout
 
-| Phase | Traffic |
-|-------|---------|
+| 阶段 | 流量 |
+|------|------|
 | shadow | 0% |
 | canary | 5% |
 | partial | 25% |
@@ -53,22 +53,22 @@ const DEFAULT_CANARY_PERCENT = 5;        // Default 5%
 
 ## Consequences
 
-Benefits:
+优点：
 
-- Standardized onboarding process ensures quality
-- Gate mechanism prevents inferior domains from onboarding
-- Progressive release reduces risk
+- 标准化接入流程确保质量
+- 门禁机制防止劣质域接入
+- 渐进式发布降低风险
 
-Trade-offs:
+代价：
 
-- Onboarding process is heavy
-- Gate checks require tool support
+- 接入流程较重
+- Gate 检查需要工具supported
 
-## Cross-References
+## 交叉references用
 
-- [ADR-037 Business Domain Modeling and Onboarding Architecture](./037-domain-modeling-and-onboarding.md)
-- [ADR-075 Six-Level Controlled Release and Rollout State Machine](./075-controlled-rollout-release.md)
+- [ADR-037 业务域建模vs接入Architecture](./037-domain-modeling-and-onboarding.md)
+- [ADR-075 六级受控发布vs Rollout Status机](./075-controlled-rollout-release.md)
 
-## Source Sections
+## 来源章节
 
-- Section 38
+- `§38` 业务域接入 Runbook

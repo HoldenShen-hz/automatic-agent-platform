@@ -11,10 +11,10 @@
 ## Hard Constraints
 
 - All order candidates must pass pre-trading risk checks.
-- Position, loss limits, and trading hot paths must not be overridden by agents.
-- Ultra-low-latency order paths must not depend on general LLM/Harness loops.
+- Position, loss limits, and trading hot paths must not be overwritten by Agent.
+- Ultra-low-latency order paths must not rely on general LLM/harness loop.
 
 ## Acceptance Criteria
 
-- DomainDescriptor, DomainRiskProfile, and DomainEvalFramework must first pass the §38 four-stage gate.
-- Prior to GA, evidence of trading risk control, backtesting, human approval, audits, and kill-switch must be provided.
+- DomainDescriptor, DomainRiskProfile, DomainEvalFramework must first pass §38 four-stage gate.
+- GA must provide trading risk control, backtesting, human approval, audit, and kill-switch evidence before release.

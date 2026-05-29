@@ -1,5 +1,5 @@
 # ADR-045 Reserved Slot
 
-- Status: Withdrawn
-- Note: This identifier is reserved as a historical slot and will not be backfilled with a full ADR body.
-- Migration: If a real decision is needed later, use a currently available new identifier and register it in `README.md`.
+- Status：Withdrawn
+- Description：该#保留为历史号段占位，不再回填正文。
+- 迁移：需要实际Decision时，请uses当前可用的新#并在 `README.md` 中登记。

@@ -1,48 +1,48 @@
-# ADR-039 Natural Language Task Entry Architecture
+# ADR-039 自然语言任务入口Architecture
 
-- Status: Accepted
-- Decision Date: 2026-04-20
+- Status：Accepted
+- Decision日期：2026-04-20
 
 ## Background
 
-Non-technical users need to interact with the platform through natural language, and the platform needs to convert NL input into structured tasks.
+非技术user需要via自然语言vs平台交互，平台需要将 NL 输入转换为结构化任务。
 
 ## Decision
 
-### Core Components
+### 核心组件
 
-| Component | Description |
-|-----------|-------------|
-| IntentParser | Intent parsing |
-| DomainRouter | Domain routing |
-| TaskBuilder | Task building |
-| AmbiguityDetector | Ambiguity detection |
+| 组件 | Description |
+|------|------|
+| IntentParser | 意图解析 |
+| DomainRouter | 领域路由 |
+| TaskBuilder | 任务构建 |
+| AmbiguityDetector | 歧义检测 |
 
 ### IntentParseResult / DetectedIntent
 
 ```typescript
 interface DetectedIntent {
-  intent_type: IntentType;  // 6 types
+  intent_type: IntentType;  // 6 种class型
   confidence: number;
   entities: Entity[];
   fallback_domain?: string;
 }
 ```
 
-### 6 intent_types (Section 6.3 reconciliation)
+### 6 种 intent_type（§6.3 reconciliation）
 
-> Note: `cancel_task` was removed in Section 6.3. Please use `abort_task` (abort in-progress task), `pause_task` (pause task), or `panic_kill` (emergency termination) instead.
+> 注意：`cancel_task` 已于 §6.3 中移除，请uses `abort_task`（中止进lines中的任务）、`pause_task`（暂停任务）或 `panic_kill`（紧急终止）替代。
 
-| Type | Description |
-|------|-------------|
-| create_task | Create task |
-| query_status | Query status |
-| modify_task | Modify task |
-| abort_task | Abort in-progress task (replacement for removed cancel_task) |
-| pause_task | Pause task |
-| create_goal | Create goal |
-| decompress_goal | Decompress goal |
-| panic_kill | Emergency termination (highest level, for safety-critical scenarios) |
+| class型 | Description |
+|------|------|
+| create_task | 创建任务 |
+| query_status | 查询Status |
+| modify_task | 修改任务 |
+| abort_task | 中止进lines中的任务（替代已移除的 cancel_task） |
+| pause_task | 暂停任务 |
+| create_goal | 创建目标 |
+| decompress_goal | 分解目标 |
+| panic_kill | 紧急终止（最高级别，used forsecuritycritical场景） |
 
 ### RiskPreview
 
@@ -53,44 +53,44 @@ interface RiskPreview {
 }
 ```
 
-### Multi-Turn Conversation State Machine
+### 多轮对话Status机
 
-- Maintains conversation context
-- Supports follow-up questions and clarifications
+- 维护对话上下文
+- supported追问和澄清
 
-### High-Risk Intent Handling
+### 高风险 intent handle
 
-- High-risk intents must be explicitly confirmed
-- User confirmation required before execution
+- 高风险 intent 必须显式确认
+- user确认后才能执lines
 
 ### LocaleConfig
 
-| Language | Description |
-|----------|-------------|
-| zh-CN | Simplified Chinese |
-| en-US | English |
-| ja-JP | Japanese |
-| de-DE | German |
+| 语言 | Description |
+|------|------|
+| zh-CN | 简体中文 |
+| en-US | 英语 |
+| ja-JP | 日语 |
+| de-DE | 德语 |
 
-- Falls back to en-US
+- fallback 到 en-US
 
 ## Consequences
 
-Benefits:
+优点：
 
-- NL entry lowers usage barrier
-- Ambiguity detection improves accuracy
-- Multi-language support expands scope
+- NL 入口降低uses门槛
+- 歧义检测提高准确性
+- 多语言supported扩大适用范围
 
-Trade-offs:
+代价：
 
-- NLU model requires training and maintenance
-- Ambiguity detection may delay simple tasks
+- NLU 模型
+- 歧义澄清可能delay简单任务
 
-## Cross-References
+## 交叉references用
 
-- [ADR-040 Goal Decomposition Engine Architecture](./040-goal-decomposition-engine.md)
+- [ADR-040 目标分解references擎Architecture](./040-goal-decomposition-engine.md)
 
-## Source Sections
+## 来源章节
 
 - Section 39

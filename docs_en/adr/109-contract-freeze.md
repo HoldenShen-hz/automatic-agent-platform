@@ -1,16 +1,16 @@
 # ADR-109: v4.3 Contract Freeze
 
-- Status: Accepted
-- Decision Date: 2026-04-27
+- Status：Accepted
+- Decision日期：2026-04-27
 
 ## Background
 
-`docs_zh/architecture/00-platform-architecture.md` has converged v4.1 deep review, v4.2 pre-freeze correction, and OAPEFLIR v4.4 executable spec into v4.3 executable specification freeze. Past ADRs and contracts still contain multiple sets of historical naming, including `ExecutionPlan`, `ExecutionReceipt`, `ControlDirective`, `StateCommand`, `workflow_run`, and linear `step` semantics. If these names continue to serve as implementation entry points, runtime will form a second truth source.
+`docs_zh/architecture/00-platform-architecture.md` 已将 v4.1 深度评审、v4.2 pre-freeze 修正vs OAPEFLIR v4.4 executable spec 收敛为 v4.3 可执lines规格冻结口径。此前 ADR vs contract 中仍存在多套历史命名，includes `ExecutionPlan`、`ExecutionReceipt`、`ControlDirective`、`StateCommand`、`workflow_run` vs线性 `step` 语义。若继续让这些名称作为实现入口，运lines时会形成第二套 truth source。
 
 ## Decision
 
-1. v4.3 uses `00-platform-architecture.md` `§1.5 v4.3 Contract Freeze Scope` as freeze scope.
-2. First batch implementation uses only the following 12 groups of contracts as canonical entry points:
+1. v4.3 以 `00-platform-architecture.md` 的 `§1.5 v4.3 Contract Freeze Scope` 为冻结范围。
+2. 首批实现只以以下 12 组契约作为 canonical 入口：
    - `TaskDraft` / `ConfirmedTaskSpec` / `RequestEnvelope`
    - `HarnessRun`
    - `PlanGraphBundle` / `PlanGraph` / `PlanNode` / `PlanEdge`
@@ -23,23 +23,23 @@
    - `DecisionInputBundle` / `HarnessDecision`
    - `HumanResponsibilityRecord`
    - `EventEnvelope` / `PlatformFactEvent` / `OapeflirViewEvent`
-3. Historical names such as `ExecutionPlan`, `ExecutionReceipt`, `ControlDirective`, `StateCommand` are only allowed to appear as legacy adapter, deprecated alias, projection, or migration explanation, cannot serve as public contract for new modules.
-4. Chinese documents freeze first: first update `docs_zh/operations/current_todo_list.md`, then update `docs_zh/adr/` and `docs_zh/contracts/`, finally enter code implementation.
-5. Historical ADRs that have been Accepted will not rewrite main text; this ADR converges historical semantics through supersede relationship.
+3. `ExecutionPlan`、`ExecutionReceipt`、`ControlDirective`、`StateCommand` 等旧名只允许作为 legacy adapter、deprecated alias、projection 或迁移Description出现，不得作为新模块的 public contract。
+4. 中文文档优先冻结：先更新 `docs_zh/operations/current_todo_list.md`，再更新 `docs_zh/adr/` vs `docs_zh/contracts/`，最后进入code实现。
+5. 已 Accepted 的历史 ADR 不改写正文；本 ADR via supersede 关系收束历史语义。
 
-## Superseded or Constrained Historical Semantics
+## 被取代或约束的历史语义
 
-- ADR-021 inter-plane communication semantics continue, but cross-plane execution objects must use v4.3 canonical contract.
-- ADR-029 OAPEFLIR semantics continue, but OAPEFLIR does not own independent execution rights.
-- ADR-030 runtime execution plane continues, but state progression entry is defined by ADR-110 as `RuntimeStateMachine.transition(command)`.
+- ADR-021 的平面间communication语义继续保留，但跨平面执lines对象必须uses v4.3 canonical contract。
+- ADR-029 的 OAPEFLIR 语义继续保留，但 OAPEFLIR 不拥有独立执lines权。
+- ADR-030 的 runtime execution plane 继续保留，但Status推进入口由 ADR-110 defines为 `RuntimeStateMachine.transition(command)`。
 
 ## Consequences
 
-- New implementation can establish contract naming consistency test, directly preventing old names from becoming canonical types.
-- Contract documents become pre-implementation gate for code implementation; runtime objects without contract cannot enter MVP main chain.
-- Old APIs and old query tables can retain compatibility layer, but must clearly label projection / deprecated / legacy.
+- 新实现可以建立 contract naming consistency test，directly阻止旧名重新成为 canonical class型。
+- contract 文档成为code实现前置门禁；没有 contract 的 runtime 对象不得进入 MVP 主链。
+- 旧 API vs旧查询table可以保留兼容层，但必须清楚标注 projection / deprecated / legacy。
 
-## Related Documents
+## 关联文档
 
 - [00-platform-architecture.md](../architecture/00-platform-architecture.md)
 - [contracts/README.md](../contracts/README.md)

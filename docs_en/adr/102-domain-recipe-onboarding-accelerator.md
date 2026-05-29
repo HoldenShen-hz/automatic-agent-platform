@@ -2,31 +2,31 @@
 
 ---
 
-## OAPEFLIR Association
+## OAPEFLIR 关联
 
-- **Observe**: Collect domain patterns and onboarding requirements
-- **Assess**: Select most suitable recipe archetype
-- **Plan**: Initialize domain workflow and prompt with recipe
-- **Execute**: Rapidly generate baseline implementation
-- **Feedback**: Collect recipe adaptation effects
-- **Learn**: Iterate archetype template
-- **Improve**: Shorten new domain onboarding cycle
-- **Release**: Recipe becomes onboarding baseline
+- **Observe**: 收集领域模式vs接入需求
+- **Assess**: 选择最合适的 recipe archetype
+- **Plan**: 以 recipe 初始化领域 workflow vs prompt
+- **Execute**: 快速生成 baseline 实现
+- **Feedback**: 收集 recipe 适配效果
+- **Learn**: 迭代 archetype 模板
+- **Improve**: 缩短新域接入cycle
+- **Release**: recipe 成为 onboarding baseline
 
 ---
 
-- Status: Accepted
-- Decision Date: 2026-04-23
+- Status：Accepted
+- Decision日期：2026-04-23
 
 ## Background
 
-Blank slate onboarding causes new domains to repeatedly invent workflows, prompts, and governance structures.
+空白接入会让新领域repeats发明工作流、提示词和治理结构。
 
 ## Decision
 
-- New domains must start from standard `DomainRecipe` prototype
-- Recipe serves as workflow/tool/prompt/eval baseline generator
+- 新领域必须从标准 `DomainRecipe` 原型开始
+- recipe 作为 workflow/tool/prompt/eval baseline 生成器
 
 ## Consequences
 
-- 24 domain baseline can quickly land according to unified model
+- 24 域 baseline 可以按统一模型快速落地

@@ -10,10 +10,10 @@
 
 ## Hard Constraints
 
-- Agents only provide legal information and do not provide final legal opinions.
-- All outputs sent externally or acted upon must be reviewed by a licensed attorney.
-- Contract red lines, FTO, and dispute recommendations must retain evidence.
+- Agent only provides legal information, not final legal opinions.
+- All outputs that are published or acted upon must be reviewed by a licensed attorney.
+- Contract red lines, FTO, and dispute recommendations must retain basis.
 
 ## Acceptance Criteria
 
-- Prior to GA, evidence of attorney review, output sign-off, citation evidence, and responsibility boundary records must be provided.
+- GA must provide attorney review, output sign-off, citation evidence, and responsibility boundary records before release.

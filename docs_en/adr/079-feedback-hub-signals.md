@@ -1,30 +1,30 @@
-# ADR-079: Feedback Hub and Seven Signal Preprocessing Types
+# ADR-079 Feedback Hub vs七class信号预handle
 
-- Status: Accepted
-- Decision Date: 2026-04-17
-- Related: ADR-016 OAPEFLIR Eight-Stage Cognitive Loop Model
+- Status：Accepted
+- Decision日期：2026-04-17
+- 相关：ADR-016 OAPEFLIR 八阶段认知循环模型
 
-## Context
+## Background
 
-The `DualChannelStepOutput` from the OAPEFLIR Execute stage needs to be collected by the Feedback Hub, processed, and converted into LearningSignal. The Feedback Hub is the critical bridge between the main chain (O→A→P→E) and the secondary chain (F→L→I→R).
+OAPEFLIR Execute 阶段输出的 `DualChannelStepOutput` 需要被 Feedback Hub 收集、handle并转化为 LearningSignal。Feedback Hub is主链（O→A→P→E）和副链（F→L→I→R）之间的关键桥梁。
 
-The design requires supporting 7 feedback source types, implementing signal deduplication, correlation, and filtering preprocessing, with decoupled integration to the Learn Hub via DurableEventBus.
+设计要求supported 7 class反馈源，实现信号for deduplication、关联和过滤的预handle，并via DurableEventBus vs Learn Hub 解耦。
 
 ## Decision
 
-### 1. Seven Feedback Sources
+### 1. 7 class反馈源
 
-| Feedback Source | Description | Signal Types |
-|----------------|-------------|---------------|
-| `execution_outcome` | Execution result (success/failure/partial) | `execution_success` / `execution_failure` |
-| `tool_call` | Tool call result | `tool_success` / `tool_failure` |
-| `resource_usage` | Resource consumption (token/time/memory) | `resource_high` / `resource_normal` |
-| `context_drift` | Context drift detection | `drift_detected` / `drift_corrected` |
-| `user_feedback` | User explicit feedback | `user_correction` / `user_rejection` |
-| `system_signal` | System-level signals (health check, circuit breaker) | `system_degraded` / `system_recovered` |
-| `time_budget` | Time budget consumption | `time_warning` / `time_exceeded` |
+| 反馈源 | Description | 信号class型 |
+|--------|------|---------|
+| `execution_outcome` | 执lines结果（success/failed/部分success） | `execution_success` / `execution_failure` |
+| `tool_call` | 工具call结果 | `tool_success` / `tool_failure` |
+| `resource_usage` | 资源消耗（token/time/memory） | `resource_high` / `resource_normal` |
+| `context_drift` | 上下文偏离检测 | `drift_detected` / `drift_corrected` |
+| `user_feedback` | user显式反馈 | `user_correction` / `user_rejection` |
+| `system_signal` | 系统级信号（健康检查、熔断） | `system_degraded` / `system_recovered` |
+| `time_budget` | timebudget消耗 | `time_warning` / `time_exceeded` |
 
-### 2. FeedbackSignal Interface
+### 2. FeedbackSignal 接口
 
 ```typescript
 interface FeedbackSignal {
@@ -33,9 +33,9 @@ interface FeedbackSignal {
   harnessRunId: string;
   nodeRunId?: string;
   receiptId?: string;
-  kind: FeedbackSignalKind;        // 20+ enum values
+  kind: FeedbackSignalKind;        // 20+ enum 值
   source: FeedbackSourceType;
-  payload: unknown;                // Source-specific data
+  payload: unknown;                // 源特定data
   confidence: number;               // 0-1
   timestamp: string;               // ISO 8601
   metadata: Record<string, unknown>;
@@ -62,7 +62,7 @@ type FeedbackSignalKind =
   | 'unknown_error';
 ```
 
-### 3. Feedback Interface
+### 3. Feedback 接口
 
 ```typescript
 interface Feedback {
@@ -70,7 +70,7 @@ interface Feedback {
   taskId: string;
   harnessRunId: string;
   nodeRunId?: string;
-  signals: FeedbackSignal[];       // Associated signal list
+  signals: FeedbackSignal[];       // 关联的信号列table
   aggregated: boolean;
   processedAt?: string;
   learningSignals?: LearningSignal[];
@@ -79,40 +79,40 @@ interface Feedback {
 
 ## v4.3 ADR Remediation
 
-- A-67: This ADR originally used `executionId` as the Feedback/Signal primary chain key. Root cause was that the feedback hub was modeled under old execution semantics and the signal chain was not updated to `NodeAttemptReceipt`. Fix: The text now anchors the signal to `harnessRunId / nodeRunId / receiptId`.
+- A-67: 本 ADR 原先把 `executionId` 作为 Feedback/Signal 主链键，Root cause:  feedback hub 在旧 execution 语义下建模，后续没有把信号链更新到 `NodeAttemptReceipt`。修复：正文现把信号锚点切到 `harnessRunId / nodeRunId / receiptId`。
 
-### 4. SignalPreprocessor
+### 4. 信号预handle器（SignalPreprocessor）
 
 ```typescript
 interface SignalPreprocessor {
-  // Deduplication: keep only the first occurrence of each signalId
+  // for deduplication：同一 signalId only保留第一个
   dedup(signals: FeedbackSignal[]): FeedbackSignal[];
 
-  // Correlation: aggregate related signals (e.g., tool_failure + resource_high → context_overflow)
+  // 关联：将相关信号聚合（如 tool_failure + resource_high → context_overflow）
   correlate(signals: FeedbackSignal[]): FeedbackSignal[];
 
-  // Filtering: remove low-confidence or already-processed signals
+  // 过滤：移除低置信度或已handle的信号
   filter(signals: FeedbackSignal[]): FeedbackSignal[];
 
-  // Main preprocessing method
+  // 预handle主方法
   preprocess(signals: FeedbackSignal[]): ProcessedSignals;
 }
 
 interface ProcessedSignals {
-  highPriority: FeedbackSignal[];    // Forward directly to Learn
-  mediumPriority: FeedbackSignal[];  // Accumulate then forward
-  lowPriority: FeedbackSignal[];    // Log only
+  highPriority: FeedbackSignal[];    // directly转发 Learn
+  mediumPriority: FeedbackSignal[];  // 累积后转发
+  lowPriority: FeedbackSignal[];    // onlyrecord
   learningSignals: LearningSignal[];
 }
 ```
 
-### 5. LearningSignal Interface
+### 5. LearningSignal 接口
 
 ```typescript
 interface LearningSignal {
   signalId: string;
   type: 'pattern' | 'anomaly' | 'correction' | 'recovery';
-  sourceSignals: string[];          // Associated FeedbackSignal IDs
+  sourceSignals: string[];          // 关联的 FeedbackSignal IDs
   confidence: number;
   extractedKnowledge: {
     pattern?: FailurePattern;
@@ -128,30 +128,30 @@ interface LearningSignal {
 
 ```typescript
 interface FeedbackCollector {
-  // Collect signals from Execute output
+  // 从 Execute 输出收集信号
   collectFromExecution(
     output: DualChannelStepOutput,
     context: ExecutionContext
   ): FeedbackSignal[];
 
-  // Collect signals from external systems (webhook/polling)
+  // 从外部系统收集信号（webhook/polling）
   collectFromExternal(source: FeedbackSourceType): Promise<FeedbackSignal[]>;
 
-  // Aggregate signals from multiple sources
+  // 聚合多个来源的信号
   aggregate(taskId: string): Promise<Feedback>;
 }
 ```
 
-### 7. DurableEventBus Integration
+### 7. DurableEventBus 集成
 
-| Event | Tier | Description |
-|-------|------|-------------|
-| `feedback:collected` | Tier 1 | Feedback collected (requires ack) |
-| `feedback:learning_signal` | Tier 1 | LearningSignal generated (requires ack) |
-| `feedback:processed` | Tier 2 | Signals processed (ack optional) |
+| 事件 | Tier | Description |
+|------|------|------|
+| `feedback:collected` | Tier 1 | Feedback 已收集（需要 ack） |
+| `feedback:learning_signal` | Tier 1 | LearningSignal 已生成（需要 ack） |
+| `feedback:processed` | Tier 2 | 信号已handle（ack optional） |
 
 ```typescript
-// domain-event-feedback-consumer.ts subscription flow
+// domain-event-feedback-consumer.ts 订阅流程
 eventBus.subscribe('execution:completed', async (event) => {
   const signals = await feedbackCollector.collectFromExecution(event.output);
   const processed = await signalPreprocessor.preprocess(signals);
@@ -159,37 +159,37 @@ eventBus.subscribe('execution:completed', async (event) => {
 });
 ```
 
-## Alternative Approaches
+## 备选方案
 
-### Approach A: Polling-based signal collection
+### 方案 A：轮询收集信号
 
-Advantages: Simple implementation.
-Disadvantages: High latency, high resource consumption.
+优点：实现简单。
+代价：delay高，资源消耗大。
 
-### Approach B: Event-driven + active collection (selected)
+### 方案 B：事件驱动 + 主动收集（已选）
 
-Advantages: Low latency, strong signal correlation capability.
-Disadvantages: Requires DurableEventBus support.
+优点：低delay，信号关联能力强。
+代价：需要 DurableEventBus supported。
 
 ## Consequences
 
-- `feedback-collector.ts` (41 lines) handles signal collection.
-- `signal-preprocessor.ts` (239 lines) handles deduplication/correlation/filtering.
-- `domain-event-feedback-consumer.ts` (206 lines) subscribes to execution events.
-- `feedback-model.ts` (42 lines) defines Feedback interface.
-- `types/feedback-signal.ts` (25 lines) defines FeedbackSignal.
-- Event subscription requires DurableEventBus support (Tier 1 reliable delivery).
+- `feedback-collector.ts`（41 lines）负责信号收集。
+- `signal-preprocessor.ts`（239 lines）负责for deduplication/关联/过滤。
+- `domain-event-feedback-consumer.ts`（206 lines）订阅执lines事件。
+- `feedback-model.ts`（42 lines）defines Feedback 接口。
+- `types/feedback-signal.ts`（25 lines）defines FeedbackSignal。
+- 事件订阅需要 DurableEventBus supported（Tier 1 可靠传递）。
 
-## Cross References
+## 交叉references用
 
-- [ADR-016 OAPEFLIR Eight-Stage Cognitive Loop Model](./016-oapeflir-loop-model.md)
+- [ADR-016 OAPEFLIR 八阶段认知循环模型](./016-oapeflir-loop-model.md)
 - [ADR-080 Learn Hub](./080-learn-hub-pattern-detection.md)
-- `src/core/feedback/` module
+- `src/core/feedback/` 模块
 
-## Source Sections
+## 来源章节
 
-- `§7` Feedback Hub Design
-- `§7.1` Seven Feedback Sources
-- `§7.2-7.4` FeedbackSignal / LearningSignal Interfaces
-- `§7.5` Signal Preprocessing
-- `§7.7-7.8` Event Definition and DurableEventBus Integration
+- `§7` Feedback Hub 设计
+- `§7.1` 7 class反馈源
+- `§7.2-7.4` FeedbackSignal / LearningSignal 接口
+- `§7.5` 信号预handle
+- `§7.7-7.8` 事件definesvs DurableEventBus 集成

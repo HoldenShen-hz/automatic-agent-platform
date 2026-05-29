@@ -1,11 +1,11 @@
 # ADR-041 Proactive Agent Framework
 
-- Status: Accepted
-- Decision Date: 2026-04-20
+- Status：Accepted
+- Decision Date：2026-04-20
 
-## Context
+## Background
 
-Agents cannot only passively respond to requests; they must also proactively perceive environmental changes and take actions.
+Agents cannot only passively respond to requests; they also need to proactively sense environmental changes and take action.
 
 ## Decision
 
@@ -28,16 +28,16 @@ type TriggerType = 'schedule' | 'event' | 'threshold' | 'webhook_inbound';
 ### TriggerAction
 
 | Action Type | Description |
-|-------------|-------------|
+|-------------|------|
 | create_task | Create task (must go through intake pipeline) |
 | create_goal | Create goal |
 | suggest_to_user | Suggest to user |
 | update_dashboard | Update dashboard |
 
-### Trigger Storm Protection (4 Layers)
+### Trigger Storm Protection (4 layers)
 
 | Layer | Mechanism |
-|-------|-----------|
+|------|------|
 | Per-trigger rate limit | Default 10 times/hour |
 | Cooldown period | Default 5 minutes |
 | Circuit breaker | 3 consecutive failures = disabled |
@@ -46,28 +46,28 @@ type TriggerType = 'schedule' | 'event' | 'threshold' | 'webhook_inbound';
 ### TriggerEngine
 
 - `proactive-agent/` (5 files, 694 lines)
-- Evaluate trigger conditions
-- Execute trigger actions
-- Record trigger history
+- Evaluates trigger conditions
+- Executes trigger actions
+- Records trigger history
 
 ## Consequences
 
-Pros:
+Advantages:
 
-- Proactive perception improves platform intelligence
+- Proactive sensing improves platform intelligence
 - Multi-layer protection prevents trigger storms
 - Multiple trigger types cover common scenarios
 
-Cons:
+Costs:
 
 - Proactive behavior may disturb users
 - Trigger logic complexity is high
 
-## Cross References
+## Cross-references
 
 - [ADR-039 Natural Language Task Entry Architecture](./039-natural-language-task-entry.md)
 - [ADR-083 Proactive Agent and Progressive Autonomy](./083-proactive-agent-and-progressive-autonomy.md)
 
-## Source Sections
+## Source Section
 
 - `§41` Proactive Agent Framework

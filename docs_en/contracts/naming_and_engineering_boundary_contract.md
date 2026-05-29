@@ -1,54 +1,43 @@
 # Naming And Engineering Boundary Contract
 
-## 1. Scope
+## 1. 范围
 
-This contract supplements naming boundaries between product narrative and engineering implementation, and closes the unified abstraction direction for audit subjects, channel capabilities, and runtime environment capabilities.
+本 contract 补充产品叙事vs工程实现的命名边界，并收口审计主体、渠道能力和运lines环境能力的统一抽象方向。
 
-Related documents:
+相关文档：
 
 - `014-org-model-code-boundary.md`
 - `gateway_message_contract.md`
 - `execution_plane_contract.md`
 
-## 2. Naming Boundaries
+## 2. 命名边界
 
-- External product narrative may use CEO / VP / Lead
-- Internal code prioritizes neutral engineering objects:
+- 对外产品叙事可uses CEO / VP / Lead
+- 对内code优先uses中性工程对象：
   - `Router`
   - `Planner`
   - `DivisionCoordinator`
-  - `WorkflowExecutor`
+  - `HarnessRuntime`
   - `DecisionManager`
 
-### 2.1 Document Canonical Form
+### 2.1 文档 canonical 写法
 
-In main documents, contracts, ADRs, and guides, control layer objects are uniformly written as:
+在主干文档、contract、ADR 和 guide 中，控制层对象统一写作：
 
-- `strategic_governor` (business alias: CEO)
-- `intake_router` (business alias: VP Operations)
-- `workflow_planner` (business alias: VP Orchestration)
-- `division_lead` (business alias: Lead Agent)
+- `strategic_governor`（业务别名：CEO）
+- `intake_router`（业务别名：VP 运营）
+- `workflow_planner`（业务别名：VP 编排）
+- `division_lead`（业务别名：Lead Agent）
 
-Rules:
+规则：
 
-- Protocols, schemas, state machines, and event registries use canonical id.
-- Narrative aliases are only for product expression, diagrams, and external documentation.
-- `CEO / VP / Lead` must not be used directly as scheduling primary keys, schema enums, or permission object ids.
+- 协议、schema、Status机、事件注册table中uses canonical id。
+- 叙事 alias onlyused for产品table达、示意图和对外Description。
+- 不允许把 `CEO / VP / Lead` directly写成调度主键、schema enum 或permission对象 id。
 
-### 2.2 Naming Format
+### 2.3 OAPEFLIR vs扩展对象 canonical 写法
 
-- role / agent id: `snake_case`
-- event type: `<domain>.<action>`
-- DB table: plural `snake_case`
-- config key: namespaced stable key
-- env var: `UPPER_SNAKE_CASE`
-- stage id: `snake_case`
-- memory layer: `L1` ~ `L6`
-- typed ref: `PascalCaseRef`
-
-### 2.3 OAPEFLIR And Extended Object Canonical Form
-
-The following objects should use canonical engineering naming in contracts / schema / API / events:
+以下对象在 contract / schema / API / event 中应uses canonical 工程命名：
 
 - `observe_hub`
 - `assess_hub`
@@ -62,9 +51,20 @@ The following objects should use canonical engineering naming in contracts / sch
 - `plugin_spi_registry`
 - `domain_registry`
 
+### 2.2 命名格式
+
+- role / agent id: `snake_case`
+- event type: `<domain>.<action>`
+- DB table: plural `snake_case`
+- config key: namespaced stable key
+- env var: `UPPER_SNAKE_CASE`
+- stage id: `snake_case`
+- memory layer: `L1` ~ `L6`
+- typed ref: `PascalCaseRef`
+
 ## 3. `ActorModel`
 
-Unified audit subjects must include at minimum:
+统一审计主体至少includes：
 
 - `user`
 - `agent`
@@ -75,7 +75,7 @@ Unified audit subjects must include at minimum:
 
 ## 4. `ChannelCapabilityMatrix`
 
-Minimum channel capability abstraction:
+渠道能力最少抽象：
 
 - `text`
 - `button`
@@ -86,7 +86,7 @@ Minimum channel capability abstraction:
 
 ## 5. `RuntimeEnvironmentCapabilityProfile`
 
-Minimum runtime environment capability abstraction:
+运lines环境能力最少抽象：
 
 - `local`
 - `docker`
@@ -96,7 +96,7 @@ Minimum runtime environment capability abstraction:
 
 ## 6. `ResourceLease`
 
-Future unified resource abstraction direction must include at minimum:
+未来统一资源抽象的方向至少includes：
 
 - token budget
 - file lock
@@ -105,6 +105,6 @@ Future unified resource abstraction direction must include at minimum:
 - sandbox instance
 - provider quota
 
-## 7. Closure Conclusion
+## 7. 收口Conclusion
 
-After tightening naming boundaries, product narrative and engineering implementation will not hold each other hostage; and actor, channel, environment, and resource abstractions are the true common foundation for future extensibility.
+命名边界收紧后，产品叙事和工程实现就不会互相绑架；而 actor、channel、environment、resource 这几组抽象，is后续扩展性真正的共用基础。

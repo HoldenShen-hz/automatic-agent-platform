@@ -1,48 +1,48 @@
 # Control Vs Intelligence Boundary Contract
 
-## 1. Scope
+## 1. 范围
 
-This contract defines the hard boundary between the intelligence layer and the control layer.
+本 contract defines智能层vs控制层之间的硬边界。
 
-Core principle: `LLM is responsible for suggestions, system code is responsible for decisions.`
+核心principle：`LLM 负责Recommendation，系统code负责裁决。`
 
-Related documents:
+相关文档：
 
 - `policy_engine_contract.md`
 - `runtime_execution_contract.md`
 - `approval_and_hitl_contract.md`
 
-## 2. Goals
+## 2. 目标
 
-- Prevent model output from directly over-authorizing control systems.
-- Bring high-risk decisions back to deterministic system code.
-- Clarify which fields can be proposed by LLM and which fields must be generated or overridden by the system.
+- 防止模型输出directly越权控制系统。
+- 把高风险Decision收回到 deterministic system code。
+- 明确哪些字段可以由 LLM 提议，哪些字段必须由系统生成或覆盖。
 
-## 3. Things LLM Can Do
+## 3. LLM 可以做的事
 
-- Propose division / role / plan
-- Generate intermediate content
-- Provide risk explanations
-- Generate candidate operations
-- Generate user-readable explanations
-- Generate `FeedbackSignal` / `LearningObject` / `ImprovementCandidate` drafts
-- Generate knowledge summaries and assess suggestions
+- 提议 division / role / plan
+- 生成中间内容
+- 给出风险Description
+- 生成候选操作
+- 生成user可读解释
+- 生成 `FeedbackSignal` / `LearningObject` / `ImprovementCandidate` 草案
+- 生成 knowledge 摘要vs assess Recommendation
 
-## 4. Things LLM Cannot Directly Do
+## 4. LLM 不可以directly做的事
 
-- Directly release destructive actions
-- Directly decide `timeout_behavior`
-- Directly bypass preconditions
-- Directly write final authoritative state
-- Directly elevate its own permissions
-- Directly issue approval passing results
-- Directly mark `LearningObject` as `validated/promoted`
-- Directly advance `ImprovementCandidate` to `accepted/deployed/rolled_back`
-- Directly modify `StrategyVersion` status
-- Directly advance `RolloutRecord` stage / status
-- Directly modify trust tier, L5/L6 memory promotion, or feedback handling results
+- directly放lines destructive action
+- directly决定 `timeout_behavior`
+- directlybypassing precondition
+- directly写最终 authoritative Status
+- directly提升自身permission
+- directly签发 approval via结果
+- directly把 `LearningObject` 标记为 `validated/promoted`
+- directly把 `ImprovementCandidate` 推进到 `accepted/deployed/rolled_back`
+- directly修改 `StrategyVersion` Status
+- directly推进 `RolloutRecord` 的 stage / status
+- directly修改 trust tier、L5/L6 memory promotion 或 feedback occurrences置结果
 
-## 5. Boundary Diagram
+## 5. 边界图
 
 ```mermaid
 flowchart LR
@@ -51,7 +51,7 @@ flowchart LR
     C --> D["Authoritative State Write"]
 ```
 
-## 5A. OAPEFLIR Boundary Diagram
+## 5A. OAPEFLIR 边界图
 
 ```mermaid
 flowchart LR
@@ -60,9 +60,9 @@ flowchart LR
     C --> D["Authoritative State"]
 ```
 
-## 6. Fields System Must Override
+## 6. 系统必须覆盖的字段
 
-The following fields, if appearing in model output, can only be treated as suggestions and must not be directly trusted:
+以下字段若出现在模型输出中，也只可视为Recommendation，不得directly信任：
 
 - `timeout_behavior`
 - `approval_required`
@@ -78,16 +78,16 @@ The following fields, if appearing in model output, can only be treated as sugge
 - `rollout_status`
 - `guardrail_reason_codes`
 
-## 7. Engineering Requirements
+## 7. 工程要求
 
-- Agent output schema must distinguish between `suggested_*` and authoritative fields.
-- Repository / transition service only accepts structures after system layer validation.
-- Audit should be able to see the difference between "model suggestion" and "system final decision."
-- UI / inspect / explainability views should simultaneously display suggested values, final values, and override reasons.
-- In OAPEFLIR closed loop, `Observe/Assess/Plan` can be assisted by models, but `Learn.validate`, `Improve.guardrail`, `Release.transition` must be executed by deterministic code.
+- agent 输出 schema 要区分 `suggested_*` 和 authoritative 字段。
+- repository / transition service 只acceptsvia过系统层验证后的结构。
+- audit 中应能看出“模型Recommendation”和“系统最终裁决”的差异。
+- UI / inspect / explainability 视图应能同时展示Recommendation值、最终值和覆盖原因。
+- OAPEFLIR 闭环中，`Observe/Assess/Plan` 可由模型辅助，但 `Learn.validate`、`Improve.guardrail`、`Release.transition` 必须由 deterministic code 执lines。
 
-## 8. Closure Conclusion
+## 8. 收口Conclusion
 
-Industrial-grade systems, if let models both suggest and decide, make it difficult to be auditable, predictable, and reliable.
+工业级系统如果让模型既提议又裁决，就很难做到可审计、可预测、可托底。
 
-Therefore, this boundary must be an architecture-level hard rule, not an unspoken understanding at coding time.
+因此这条边界必须is architecture-level hard rule，而不is编码时的默契。

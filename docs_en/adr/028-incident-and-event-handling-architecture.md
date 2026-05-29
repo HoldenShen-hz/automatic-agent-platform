@@ -1,9 +1,9 @@
 # ADR-028 Incident and Event Handling Architecture
 
-- Status: Accepted
-- Decision Date: 2026-04-03
+- Status：Accepted
+- Decision Date：2026-04-03
 
-## Context
+## Background
 
 The platform runtime generates a large number of events and alerts, requiring unified event classification, severity levels, detection rules, and alert routing mechanisms.
 
@@ -12,7 +12,7 @@ The platform runtime generates a large number of events and alerts, requiring un
 ### E1-E6 Event Classification
 
 | Type | Description |
-|------|-------------|
+|------|------|
 | E1 | System-level failure |
 | E2 | Application-level exception |
 | E3 | Business-level event |
@@ -23,7 +23,7 @@ The platform runtime generates a large number of events and alerts, requiring un
 ### SEV1-SEV4 Severity Levels
 
 | Level | Description | SLA Response Time |
-|-------|-------------|-------------------|
+|------|------|-------------|
 | SEV1 | Platform unavailable | 15 minutes |
 | SEV2 | Core functionality impaired | 30 minutes |
 | SEV3 | Non-core functionality abnormal | 2 hours |
@@ -44,10 +44,10 @@ interface DetectionRule {
 ### 5 Built-in Detection Rules
 
 1. Heartbeat absence detection
-2. Timeout spike detection
-3. Projection latency detection
+2. Timeout surge detection
+3. Projection delay detection
 4. Security violation detection
-5. Platform-wide failure detection
+5. Full platform failure detection
 
 ### 10 Core Metrics
 
@@ -66,24 +66,24 @@ interface StructuredLog {
 }
 ```
 
-### Trace Span Hierarchy (step deprecated fix)
+### Trace Span Hierarchy（Fixing step deprecated issue）
 
-> Note: R5-64 fix - `step` term is deprecated in v4.3, use `node_run`/`node_attempt` instead.
+> Note: R5-64 Fix - `step` terminology has been deprecated in v4.3, please use `node_run`/`node_attempt` instead.
 
-- Span semantics should be organized as `service -> operation -> node_run -> node_attempt`, with the old `step` term only allowed in compatibility projection views.
+- Span semantics should be organized by `service -> operation -> node_run -> node_attempt`, old `step` terminology is only allowed in compatibility projection views.
 
 - OTel SDK implements distributed tracing
-- Span hierarchy: service → operation → node_run → node_attempt (step deprecated)
+- Span hierarchy: service → operation → node_run → node_attempt (deprecated `step`)
 
 ## Consequences
 
-Benefits:
+Advantages:
 
 - Unified event classification facilitates analysis and response
-- Tiered alerting ensures critical issues are prioritized
+- Tiered alerting ensures critical issues are handled first
 - StructuredLog facilitates log search and analysis
 
-Trade-offs:
+Costs:
 
 - Event collection adds system overhead
 - Requires supporting alert routing system

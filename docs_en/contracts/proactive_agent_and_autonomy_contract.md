@@ -1,10 +1,10 @@
 # Proactive Agent And Autonomy Contract
 
-## 1. Scope
+## 1. 范围
 
-This contract defines the proactive triggers, suggestion pipeline, and progressive autonomy boundaries as specified in `§41-§42`.
+本 contract defines `§41-§42` 的主动式触发器、Recommendation管线和渐进式自主权。
 
-## 2. Canonical Objects
+## 2. Canonical 对象
 
 - `TriggerDefinition`
 - `TriggerEvaluationInput`
@@ -15,7 +15,7 @@ This contract defines the proactive triggers, suggestion pipeline, and progressi
 - `TrustScore`
 - `AutonomyTransitionRecord`
 
-## 3. `TriggerDefinition` Minimum Fields
+## 3. `TriggerDefinition` 最小字段
 
 - `trigger_id`
 - `domain_id`
@@ -27,12 +27,12 @@ This contract defines the proactive triggers, suggestion pipeline, and progressi
 - `max_fire_rate`
 - `cooldown`
 
-Rules:
+规则：
 
-- All proactive behaviors must register trigger first.
-- Proactive execution without declared trigger must be rejected and audited.
+- 所有主动lines为必须先注册 trigger。
+- 未声明 trigger 的主动执lines必须被拒绝并审计。
 
-## 4. Runtime Mode And Autonomy Boundaries
+## 4. 运lines模式vs自主权边界
 
 `RuntimeModeEnvelope.mode` canonical enum:
 
@@ -45,7 +45,7 @@ Rules:
 - `manual_only`
 - `incident-mode`
 
-`AutonomyProfile` minimum fields:
+`AutonomyProfile` 最少字段：
 
 - `profile_id`
 - `domain_id`
@@ -57,15 +57,15 @@ Rules:
 - `degrade_path`
 - `freeze_conditions`
 
-Rules:
+规则：
 
-- Autonomy contract must directly reference canonical `runtime_mode` and must not use independent enums like `trusted_auto_execute`.
-- `manual_only`, `read_only`, `no-write`, `no-external-call`, `no-rollout`, `incident-mode` are all triggerable real governance modes, not descriptive labels.
-- If product or UI still needs to display narrative-level like `suggest_only / supervised_execute`, they may only serve as view mapping and must not be used as runtime truth.
+- 自主权 contract 必须directlyreferences用 canonical `runtime_mode`，不得再以 `trusted_auto_execute` 等独立枚举替代。
+- `manual_only`、`read_only`、`no-write`、`no-external-call`、`no-rollout`、`incident-mode` 都is可触发的真实治理模式，不isDescription性标签。
+- 若产品或 UI 仍需展示 `suggest_only / supervised_execute` 一class叙事级别，只能作为 view 映射，不得作为运lines时 truth。
 
-## 5. Trust Score And Change Audit
+## 5. 信任积分vs变更审计
 
-`TrustScore` minimum fields:
+`TrustScore` 最小字段：
 
 - `subject_id`
 - `score`
@@ -73,7 +73,7 @@ Rules:
 - `inputs`
 - `updated_at`
 
-`AutonomyTransitionRecord` minimum fields:
+`AutonomyTransitionRecord` 最小字段：
 
 - `subject_id`
 - `from_level`
@@ -83,29 +83,30 @@ Rules:
 - `actor`
 - `occurred_at`
 
-## 6. Runtime Rules
+## 6. 运lines规则
 
-- Trigger firing does not mean automatic execution; final mode depends on `AutonomyProfile.runtime_mode`.
-- Continuous failures, risk escalation, or human veto must support degrade or freeze.
-- Proactive suggestions must be trackable for acceptance rate and false positive rate.
+- trigger 触发不代table可自动执lines，最终模式取决于 `AutonomyProfile.runtime_mode`。
+- 连续failed、风险升级或人工no决必须supported降级或冻结。
+- 主动Recommendation必须可追踪accepts率vs误报率。
 
-Supplementary rules:
+补充规则：
 
-- High-risk domains default to not enter `full_auto`; should start from `supervised_auto` or more conservative modes.
-- Degrade must monotonically tighten along `degrade_path`, e.g., `full_auto -> supervised_auto -> no-write -> manual_only -> incident-mode`.
-- If proactive trigger hits `no-rollout` or `manual_only`, may only form `ProactiveSuggestion` and must not directly dispatch execution.
+- 高风险域defaults to不得进入 `full_auto`；至少应从 `supervised_auto` 或更保守模式起步。
+- 降级必须accesses along `degrade_path` 单调收紧，例如 `full_auto -> supervised_auto -> no-write -> manual_only -> incident-mode`。
+- 自主触发器若命中 `no-rollout` 或 `manual_only`，只能形成 `ProactiveSuggestion`，不得directly下发执lines。
 
-## 7. Test Requirements
+## 7. 测试要求
 
-- unit: trigger evaluation, rate limit, cooldown, autonomy transitions
-- integration: trigger -> suggestion / execution
-- contract: high-risk trigger must be blocked under low autonomy level
+- unit：trigger evaluation、rate limit、cooldown、autonomy transitions
+- integration：trigger -> suggestion / execution
+- contract：高风险 trigger 在低 autonomy 等级下必须被阻断
+
 
 
 ## v4.3 Architecture Remediation
 
-The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If any historical section of this document conflicts with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
+以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中record的 contract 偏差。本文档历史段落如vs本节conflicts，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
 
-- T-25: This document originally used `manual_only / suggest_only / supervised_execute / trusted_auto_execute` four-level autonomy ladder. Root cause: early product design wanted to express user-perceived automation strength but did not bind one-to-one with canonical runtime modes in the control plane. Fix: The body now directly converges autonomy boundaries to 8 canonical runtime modes: `full_auto / supervised_auto / read_only / no-write / no-external-call / no-rollout / manual_only / incident-mode`.
+- T-25: 本文原先uses `manual_only / suggest_only / supervised_execute / trusted_auto_execute` 四级自主权梯子，Root cause: 早期产品设计想table达user感知的自动化强弱，却没有vs控制平面的规范运lines模式做一一绑定。修复：正文现把自主权边界directly收敛到 `full_auto / supervised_auto / read_only / no-write / no-external-call / no-rollout / manual_only / incident-mode` 八种 canonical runtime mode。
 
-Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plan must use `PlanGraphBundle`; execution result must use `NodeAttemptReceipt`; truth events must only use `platform.*`; OAPEFLIR must only be `oapeflir.view.*` / rationale projection; budget must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.
+mandatory规则：Status迁移必须via `RuntimeStateMachine.transition(command)`；执lines计划必须uses `PlanGraphBundle`；执lines结果必须uses `NodeAttemptReceipt`；truth event 只能uses `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；budget必须uses `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。

@@ -2,33 +2,33 @@
 
 ---
 
-## OAPEFLIR Association
+## OAPEFLIR 关联
 
-This contract participates in the following stages of the OAPEFLIR 8-stage loop:
+本 contract 参vs OAPEFLIR 八阶段循环中的以下阶段：
 
-- **Observe**: Signal collection and aggregation
-- **Assess**: Pre-execution assessment and risk judgment
-- **Plan**: Task decomposition and DAG construction
-- **Execute**: Step execution and fault tolerance
-- **Feedback**: Signal collection and preprocessing
-- **Learn**: Pattern detection and knowledge extraction
-- **Improve**: Improvement candidate evaluation and rollout
-- **Release**: Controlled release and rollback
+- **Observe**：信号采集vs聚合
+- **Assess**：执lines前评估vs风险判断
+- **Plan**：任务分解vs DAG 构建
+- **Execute**：步骤执linesvs容错
+- **Feedback**：信号收集vs预handle
+- **Learn**：模式检测vs知识提取
+- **Improve**：改进候选评估vs rollout
+- **Release**：受控发布vs回滚
 
 ---
 
-## 1. Scope
+## 1. 范围
 
-This contract defines configuration layering, override priority, prompt / config / policy / flag decoupling rules, and the default value registry.
+本 contract definesconfigure分层、覆盖优先级、prompt / config / policy / flag 解耦规则，以及defaults to值注册中心。
 
-Related documents:
+相关文档：
 
 - `project_structure_contract.md`
 - `policy_engine_contract.md`
 - `division_definition_contract.md`
 - `adr/006-llm-provider-strategy.md`
 
-## 2. Configuration Five Layers
+## 2. configure五层
 
 - `system config`
 - `domain config`
@@ -36,100 +36,100 @@ Related documents:
 - `role config`
 - `runtime override`
 
-Priority chain:
+优先级链：
 
 `runtime override > role config > division config > domain config > system config > default registry`
 
-## 3. Four-Types Responsibility Separation
+## 3. 四class职责分离
 
-- prompt: Behavioral tendency and expression
-- config: Structure and organizational relationships
-- policy: Strong constraints
-- feature flag: Enable/disable control
+- prompt：lines为倾向vstable达
+- config：结构vs组织关系
+- policy：强约束
+- feature flag：启停控制
 
-Rules:
+规则：
 
-- Runtime strong constraints must not be written only into prompts.
-- Feature flags do not replace permissions and policies.
-- Config cannot be used to covertly override policy decisions.
+- 运lines时强约束不得只写进 prompt。
+- feature flag 不替代permissionvs策略。
+- config 不能用来偷偷覆盖 policy Decision。
 
-## 3A. Configuration Governance Bundle
+## 3A. configure治理 Bundle
 
-The configuration governance layer uniformly loads and validates all configuration layers through `ConfigBundle`. The current phase must include the following 10 layers:
+configure治理层via `ConfigBundle` 统一加载和校验所有configure层。当前阶段必须contains以下 6 个层：
 
-| Layer Name | File Path | Responsibility |
-| --- | --- | --- |
-| `bootstrap` | `config/bootstrap/default.json` | Application identifier, phase declaration, feature flags |
-| `gateways` | `config/gateways/default.json` | API gateway and channel adapter configuration |
-| `domains` | `config/domains/default.json` | domain/tool bundle/plugin/namespace default configuration |
-| `knowledge` | `config/knowledge/default.json` | knowledge namespace, trust, freshness configuration |
-| `memory` | `config/memory/default.json` | memory layer, promotion, decay configuration |
-| `kvcache` | `config/kvcache/default.json` | fixed prefix / domain block / variable suffix budget strategy |
-| `providers` | `config/providers/default.json` | LLM provider connection and profile selection |
-| `runtime` | `config/runtime/default.json` | Runtime parameters: timeout, concurrency, agent rounds, tool calls |
-| `security` | `config/security/default.json` | Sandbox mode, approval mode, remote worker registration strategy |
-| `workflows` | `config/workflows/default.json` | Workflow definitions and default step templates |
+| 层名 | 文件路径 | 职责 |
+|---|-------|--------|
+| `bootstrap` | `config/bootstrap/default.json` | 应用标识、phase 阶段声明、特性开关 |
+| `gateways` | `config/gateways/default.json` | API 网关vs渠道适配configure |
+| `domains` | `config/domains/default.json` | domain/tool bundle/plugin/namespace defaults toconfigure |
+| `knowledge` | `config/knowledge/default.json` | knowledge namespace、trust、freshness configure |
+| `memory` | `config/memory/default.json` | memory layer、promotion、decay configure |
+| `kvcache` | `config/kvcache/default.json` | fixed prefix / domain block / variable suffix budget策略 |
+| `providers` | `config/providers/default.json` | LLM provider connectvs profile 选择 |
+| `runtime` | `config/runtime/default.json` | 运lines时参数：timeout、concurrent、agent rounds、tool calls |
+| `security` | `config/security/default.json` | 沙箱模式、审批模式、远程 worker 注册策略 |
+| `workflows` | `config/workflows/default.json` | 工作流definesvsdefaults to步骤模板 |
 
-### 3A.1 Configuration Version
+### 3A.1 configure版本
 
-- System generates `configVersion` by taking the first 16 characters of SHA256 after deterministic JSON serialization of the bundle.
-- `configVersion` is used for tampering detection: if the runtime bundle's recalculated version does not match the recorded version, doctor should report `config.version_tampered`.
+- 系统via对 bundle 做确定性 JSON 序列化后取 SHA256 前 16 位生成 `configVersion`。
+- `configVersion` used for篡改检测：若运lines时 bundle 重新计算的版本vs已record版本inconsistent，doctor 应报告 `config.version_tampered`。
 
-### 3A.2 Validation Rules
+### 3A.2 验证规则
 
-| Layer | Validation Item | Rule |
-| --- | --- | --- |
-| All layers | Existence | Report `config.missing_layer:{layerName}` when any required layer is missing |
-| `runtime` | `defaultTaskTimeoutMs` | Must be a positive number |
-| `runtime` | `defaultStepTimeoutMs` | Must be a positive number |
-| `runtime` | `maxConcurrentTasks` | Must be a positive integer |
-| `runtime` | `apiDefaultTimeoutMs` | Must be a positive integer |
-| `runtime` | `apiMaxTimeoutMs` | Must be a positive integer |
-| `runtime` | `maxAgentRounds` | If declared, must be a positive integer |
-| `runtime` | `maxToolCalls` | If declared, must be a positive integer |
-| `runtime` | `retryMax` | Must be a positive integer |
-| `runtime` | `circuitBreaker.enabled` | Must be a boolean |
-| `runtime` | `circuitBreaker.threshold` | Must be a positive integer |
-| `runtime` | `rateLimit.enabled` | Must be a boolean |
-| `runtime` | `rateLimit.requestsPerMinute` | Must be a positive integer |
-| `runtime` | `configDriftReconciler.interval` | Must be a positive integer |
-| `security` | `sandboxMode` | Must be one of `read_only | workspace_write | scoped_external_access | restricted_exec` |
-| `security` | `remoteWorkerRegistration.challengeTtlMs` | Must be a positive number |
-| `security` | `remoteWorkerRegistration.allowedCapabilities` | Must be a non-empty string array |
-| `providers` | provider / profile references | Must exist matching items in model metadata registry |
-| `domains` | domain/tool bundle/plugin refs | Must be consistent with registry |
-| `knowledge` | namespace / trust tier | Must satisfy enum and boundary constraints |
-| `kvcache` | budget partition | fixed/domain/variable three-segment budget sum must be interpretable |
-| Production environment | `allowDestructiveActions` | Must not be `true` (fail-closed) |
+| 层 | 验证项 | 规则 |
+|---|-------|--------|
+| 所有层 | 存在性 | 缺失任一必须层时报 `config.missing_layer:{layerName}` |
+| `runtime` | `defaultTaskTimeoutMs` | 必须为正数 |
+| `runtime` | `defaultStepTimeoutMs` | 必须为正数 |
+| `runtime` | `maxConcurrentTasks` | 必须为正整数 |
+| `runtime` | `apiDefaultTimeoutMs` | 必须为正整数 |
+| `runtime` | `apiMaxTimeoutMs` | 必须为正整数 |
+| `runtime` | `maxAgentRounds` | 若声明则必须为正整数 |
+| `runtime` | `maxToolCalls` | 若声明则必须为正整数 |
+| `runtime` | `retryMax` | 必须为正整数 |
+| `runtime` | `circuitBreaker.enabled` | 必须为布尔值 |
+| `runtime` | `circuitBreaker.threshold` | 必须为正整数 |
+| `runtime` | `rateLimit.enabled` | 必须为布尔值 |
+| `runtime` | `rateLimit.requestsPerMinute` | 必须为正整数 |
+| `runtime` | `configDriftReconciler.interval` | 必须为正整数 |
+| `security` | `sandboxMode` | 必须为 `read_only \| workspace_write \| scoped_external_access \| restricted_exec` 之一 |
+| `security` | `remoteWorkerRegistration.challengeTtlMs` | 必须为正数 |
+| `security` | `remoteWorkerRegistration.allowedCapabilities` | 必须为非空字符串数组 |
+| `providers` | provider / profile references用 | 必须在 model metadata registry 中存在匹配项 |
+| `domains` | domain/tool bundle/plugin refs | 必须vs注册table一致 |
+| `knowledge` | namespace / trust tier | 必须满足枚举vs边界约束 |
+| `kvcache` | budget partition | fixed/domain/variable 三段budget之和必须可解释 |
+| 生产环境 | `allowDestructiveActions` | 不得为 `true`（fail-closed） |
 
-### 3A.3 JSONC Support
+### 3A.3 JSONC supported
 
-Configuration files support `//` line comments, `/* */` block comments, and trailing commas. Parse by stripping comments first, then JSON parse.
+configure文件supported `//` linescomment、`/* */` 块comment和尾逗号。解析时先剥离comment再做 JSON parse。
 
-### 3A.3A Schema Carrier
+### 3A.3A Schema 载体
 
-- "versioned schema" refers to an authoritative and versioned configuration structure constraint; it does not mandate that it must be delivered as inline `$schema` or independent `*.schema.json` files.
-- Code-based authoritative executable schema / validator is allowed, as long as it is version-managed together with `configSchemaVersion`, and strongly validated at bundle load time.
+- “versioned schema” 指存在权威且带版本的configure结构约束，不mandatory必须以内联 `$schema` 或独立 `*.schema.json` 文件形态交付。
+- 允许usescode内的权威 executable schema / validator，只要其vs `configSchemaVersion` 一起受版本manage，并在 bundle 加载时强校验。
 
-### 3A.4 Sandbox Path Constraints
+### 3A.4 Sandbox 路径约束
 
-Configuration file loading paths must be within the config root directory; traversing to read files outside the config directory via `../` is prohibited.
+configure文件加载路径必须位于 config 根目录内，禁止via `../` 等路径遍历读取 config 目录外的文件。
 
-## 4. Default Value Registry
+## 4. defaults to值注册中心
 
-At minimum uniformly manage:
+至少统一manage：
 
-- timeout defaults
-- retry defaults
-- queue limit defaults
-- cost guard defaults
-- heartbeat defaults
+- timeout defaults to值
+- retry defaults to值
+- queue limit defaults to值
+- cost guard defaults to值
+- heartbeat defaults to值
 
-## 5. Provider / Model Metadata Registry
+## 5. Provider / Model 元data注册table
 
-Metadata involving model selection, budget, context limits, modalities, and provider authentication methods must not be scattered in call sites as hard-coded.
+涉及模型选择、budget、上下文限制、modalities、provider authentication方式的元data，不得散落在call点hardcodes。
 
-At minimum, unified registry should manage:
+最少应有统一 registry manage：
 
 - `provider_id`
 - `model_id`
@@ -144,28 +144,28 @@ At minimum, unified registry should manage:
 - `tier` (`reasoning | coding | balanced | fast`)
 - `kv_cache_support` (`none | prefix_only | segmented`)
 
-### 5.1 Model Tier Semantics
+### 5.1 Model Tier 语义
 
-| tier | Applicable Scenarios |
+| tier | 适用场景 |
 | --- | --- |
-| `reasoning` | Complex tasks requiring deep reasoning |
-| `coding` | Code generation and editing tasks |
-| `balanced` | General tasks, balancing capability and cost |
-| `fast` | Lightweight tasks prioritizing low latency response |
+| `reasoning` | 需要深度推理的复杂任务 |
+| `coding` | code生成vs编辑任务 |
+| `balanced` | 通用任务，能力vs成本平衡 |
+| `fast` | 低delayresponse优先的轻量任务 |
 
-### 5.2 Metadata Source Priority
+### 5.2 Metadata Source 优先级
 
-- System built-in `bundled_snapshot` (with snapshot date, e.g., `2026-04-05.bundled`) as offline baseline.
-- When local `config/providers/models.json` exists, it overrides built-in snapshot (`local_override`).
-- Remote refresh is reserved for future expansion (`remote_refresh`).
-- When local file does not exist, silently fall back to built-in snapshot without error.
+- 系统内置 `bundled_snapshot`（带快照日期，如 `2026-04-05.bundled`）作为离线基线。
+- 本地 `config/providers/models.json` 存在时覆盖内置快照（`local_override`）。
+- 远端刷新为未来扩展预留（`remote_refresh`）。
+- 本地文件don't exist时静默回退到内置快照，不报错。
 
-Rules:
+规则：
 
-- Registry can support local snapshots, offline use, and remote refresh, but authoritative field shapes must be stable.
-- Runtime must not use string contains checks to replace formal capability metadata, unless it belongs to a short-term compatibility layer.
-- UI, CLI, server, policy, budget, and provider routing should preferentially consume unified registry, rather than each maintaining their own model list.
+- registry 可supported本地快照、离线uses、远端刷新，但 authoritative 字段形状必须稳定。
+- 运lines时不得via字符串 contains 判断替代正式 capability metadata，除非belongs to短期兼容层。
+- UI、CLI、server、policy、budget 和 provider routing 应优先消费统一 registry，而不iseach维护模型清单。
 
-## 6. Closure Conclusion
+## 6. 收口Conclusion
 
-The biggest risk in configuration system is not "too many configuration items", but default values, prompts, YAML, and policies vying for power with each other; this contract locks down their hierarchy.
+configure体系最大的风险不is“configure项太多”，而isdefaults to值、提示词、YAML 和策略互相抢权；这份 contract 就is把它们的层级hardcoded。

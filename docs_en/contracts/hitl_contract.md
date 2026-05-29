@@ -1,10 +1,10 @@
 # HITL Contract
 
-## 1. Scope
+## 1. 范围
 
-Defines Human-in-the-Loop requests, decisions, and recovery closed loop.
+defines Human-in-the-Loop request、Decisionvs恢复闭环。
 
-## 2. Core Objects
+## 2. 核心对象
 
 ```typescript
 interface HitlDecisionRequest {
@@ -17,8 +17,9 @@ interface HitlDecisionRequest {
 }
 ```
 
-## 3. Constraints
+## 3. 约束
 
-- High/critical risk actions must be traceable to HITL decisions or explicit policy exemptions.
-- All HITL results must write back fact events and audit references.
-- After takeover ends, canonical runtime state must be explicitly restored.
+- high/critical 风险动作必须可追溯到 HITL Decision或显式政策豁免。
+- 所有 HITL 结果都必须回写事实事件vs审计references用。
+- takeover 结束后必须显式恢复到 canonical runtime Status。
+

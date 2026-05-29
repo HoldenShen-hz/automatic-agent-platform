@@ -1,82 +1,82 @@
-# ADR-022 API Contract and Versioning Architecture
+# ADR-022 API 契约vs版本化Architecture
 
-- Status: Accepted
-- Decision Date: 2026-04-03
+- Status：Accepted
+- Decision日期：2026-04-03
 
-## Context
+## Background
 
-The platform exposes REST/WebSocket APIs externally and needs unified versioning strategy, error format, pagination specifications, and idempotency guarantees to avoid API fragmentation.
+平台对外暴露 REST/WebSocket API，需统一版本化策略、错误格式、分页规范和幂等性保证，避免 API 碎片化。
 
 ## Decision
 
-### API Endpoint Specifications
+### API 端点规范
 
-| Method | Path | Description |
-|--------|------|-------------|
-| POST/GET | /api/v1/tasks | Task CRUD |
-| GET/DELETE | /api/v1/tasks/{id} | Single task operations |
-| GET | /api/v1/harness-runs | Harness run list (canonical) |
-| GET | /api/v1/node-runs | Node run list (canonical) |
-| GET | /api/v1/workflow-runs | **Deprecated**, only for migration compatibility; canonical model is harness-runs + node-runs |
-| GET/POST | /api/v1/approvals | Approval management |
-| GET | /api/v1/incidents | Incident viewing |
-| GET/POST | /api/v1/knowledge | Knowledge management |
-| GET/POST | /api/v1/packs | Pack management |
-| GET/POST | /api/v1/plugins | Plugin management |
-| GET | /api/v1/prompts | Prompt version management |
-| GET | /api/v1/cost-reports | Cost reports |
-| GET/POST/DELETE | /api/v1/webhooks | Webhook configuration |
-| GET | /api/v1/admin/workers | Worker management |
-| GET/PUT | /api/v1/admin/config | Configuration management |
-| GET/POST/PUT | /api/v1/admin/tenants | Tenant management |
-| GET/PUT | /api/v1/admin/budgets | Budget management |
-| GET/POST | /api/v1/admin/rollouts | Release management |
-| WebSocket | /ws/v1/stream | Real-time streaming |
+| 方法 | 路径 | Description |
+|------|------|------|
+| POST/GET | /api/v1/tasks | 任务 CRUD |
+| GET/DELETE | /api/v1/tasks/{id} | 单任务操作 |
+| GET | /api/v1/harness-runs | Harness 运lines列table（canonical） |
+| GET | /api/v1/node-runs | Node 运lines列table（canonical） |
+| GET | /api/v1/workflow-runs | **已废弃**，onlyused for迁移兼容；canonical 模型为 harness-runs + node-runs |
+| GET/POST | /api/v1/approvals | 审批manage |
+| GET | /api/v1/incidents | 事件查看 |
+| GET/POST | /api/v1/knowledge | 知识manage |
+| GET/POST | /api/v1/packs | Pack manage |
+| GET/POST | /api/v1/plugins | Plugin manage |
+| GET | /api/v1/prompts | Prompt 版本manage |
+| GET | /api/v1/cost-reports | 成本报table |
+| GET/POST/DELETE | /api/v1/webhooks | Webhook configure |
+| GET | /api/v1/admin/workers | Worker manage |
+| GET/PUT | /api/v1/admin/config | configuremanage |
+| GET/POST/PUT | /api/v1/admin/tenants | 租户manage |
+| GET/PUT | /api/v1/admin/budgets | budgetmanage |
+| GET/POST | /api/v1/admin/rollouts | 发布manage |
+| WebSocket | /ws/v1/stream | 实时流 |
 
-### ApiError Format
+### ApiError 格式
 
 ```typescript
 interface ApiError {
-  code: string;           // Error code
-  message: string;        // Error message
-  trace_id: string;       // Tracing ID
-  retry_after_ms?: number; // Retry suggestion
+  code: string;           // 错误码
+  message: string;        // 错误信息
+  trace_id: string;       // 追踪 ID
+  retry_after_ms?: number; // 重试Recommendation
 }
 ```
 
-### Idempotency Guarantee
+### 幂等性保证
 
-- Supports Idempotency-Key header
-- Duplicate requests with the same key return the original response
+- supported Idempotency-Key header
+- 相同 key 的repeatsrequest返回原始response
 
-### Pagination Specification
+### 分页规范
 
-- Cursor pagination, max 100 items/page
+- 游标分页（cursor），max 100 条/页
 
-### Webhook Delivery Guarantee
+### Webhook 投递保证
 
-- Retry mechanism: up to 50 times
-- Automatically disable webhook after 50 consecutive failures
-- Failure count can be reset
+- 重试机制：最多 50 iterations
+- 连续 50 iterationsfailed自动disabled Webhook
+- failed计数可重置
 
 ## Consequences
 
-Benefits:
+优点：
 
-- Unified API contract improves developer experience
-- Idempotency guarantee makes retries safe
-- Automatic webhook disable prevents invalid deliveries
+- 统一的 API 契约提升开发者体验
+- 幂等性保证使重试security
+- Webhook 自动disabled防止no效投递
 
-Trade-offs:
+代价：
 
-- Routing layer needs unified error handling and pagination logic
-- Idempotency-Key storage requires additional resources
+- 路由层需实现统一错误handle和分页逻辑
+- Idempotency-Key storage需要额外资源
 
-## Cross-references
+## 交叉references用
 
-- [ADR-006 LLM Provider Strategy](./006-llm-provider-strategy.md)
-- [ADR-009 Deployment and Operations](./009-deployment-ops.md)
+- [ADR-006 LLM Provider 策略](./006-llm-provider-strategy.md)
+- [ADR-009 部署vs运维](./009-deployment-ops.md)
 
-## Source Section
+## 来源章节
 
-- `§6` API Contract and Versioning Architecture
+- `§6` API 契约vs版本化Architecture

@@ -1,22 +1,22 @@
 # ADR-116 Interface Rate Limit Key Design
 
-- Status: Accepted
+- Status：Accepted
 
 ## Background
-Different entry points previously used different rate-limit keys, causing ops side unable to predict whether rate limits share buckets.
+不同入口曾uses不同 rate-limit key，导致运营侧no法预测限流isno共享桶。
 
 ## Decision
-- Rate-limit key design must explicitly define dimensions:
+- rate-limit key 设计必须明确维度：
   - entryPoint
-  - tenantId (if obtainable)
-  - clientIp or service identity
+  - tenantId（如可得）
+  - clientIp 或 service identity
   - endpoint / route id
-- Whether different entry points share buckets must be explicitly defined, cannot rely on implementation coincidence.
-- Any fallback key must be documented, avoid "one entry point by IP, another by inject prefix" implicit difference.
+- 不同入口isno共享桶必须显式defines，不能依靠实现偶然一致。
+- 任何 fallback key 都必须文档化，避免“一个入口按 IP，另一个入口按 inject 前缀”的隐式差异。
 
-## Result
-- Rate limit strategy becomes explicit ops interface, not implementation detail.
+## 结果
+- 限流策略成为显式运维接口，而不isimplementation details。
 
-## Related Implementation
+## 相关实现
 - `src/platform/five-plane-interface/api/http-api-server.ts`
 - `src/platform/five-plane-interface/api/http-server/*`

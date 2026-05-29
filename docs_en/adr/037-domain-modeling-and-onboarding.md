@@ -1,22 +1,22 @@
-# ADR-037 Business Domain Modeling and Onboarding Architecture
+# ADR-037 业务域建模vs接入Architecture
 
-- Status: Accepted
-- Decision Date: 2026-04-20
+- Status：Accepted
+- Decision日期：2026-04-20
 
 ## Background
 
-Different business domains (finance, HR, customer service, code development, etc.) have huge differences in risk levels, knowledge structures, tool ecosystems, and evaluation standards. The platform needs a structured domain modeling framework.
+不同业务域（财务、HR、客服、code研发等）在风险等级、知识结构、工具生态、评估标准上差异巨大。平台需要结构化的领域建模框架。
 
 ## Decision
 
-### DomainDescriptor Interface (14 fields)
+### DomainDescriptor 接口（14 字段）
 
 ```typescript
 interface DomainDescriptor {
   domain_id: string;
   name: string;
   description: string;
-  domain_class: DomainClass;      // 24 vertical domain types
+  domain_class: DomainClass;      // 24 种垂直域class型
   risk_profile: DomainRiskProfile;
   knowledge_schema: DomainKnowledgeSchema;
   eval_framework: DomainEvalFramework;
@@ -30,83 +30,82 @@ interface DomainDescriptor {
 }
 ```
 
-### DomainClass 24 Types
+### DomainClass 24 种class型
 
-| Type | Description |
-|------|-------------|
-| quant_trading | Quantitative Trading |
-| ecommerce | E-commerce |
-| ad_promotion | Advertising Promotion |
-| financial_services | Financial Services |
-| data_processing | Data Processing |
-| code_development | Code Development |
-| user_operations | User Operations |
-| industry_research | Industry Research |
-| academic_research | Academic Research |
-| enterprise_knowledge | Enterprise Knowledge Base |
-| finance | Finance |
-| legal | Legal |
-| live_streaming | Live Streaming |
-| ad_creative_production | Ad Creative Production |
-| game_development | Game Development |
-| game_publishing | Game Publishing |
-| human_resources | Human Resources |
-| supply_chain_logistics | Supply Chain and Logistics |
-| healthcare | Healthcare |
-| education_training | Education and Training |
-| customer_service | Customer Service |
-| content_moderation_safety | Content Moderation and Safety |
-| it_ops_sre_devops | IT Operations SRE/DevOps |
-| marketing_brand | Marketing and Brand |
+| class型 | Description |
+|------|------|
+| quant_trading | 量化交易 |
+| ecommerce | 电商 |
+| ad_promotion | 广告推广 |
+| financial_services | 金融服务 |
+| data_processing | datahandle |
+| code_development | code开发 |
+| user_operations | user运营 |
+| industry_research | lines业调研 |
+| academic_research | 学术调研 |
+| enterprise_knowledge | 企业知识库 |
+| finance | 财务 |
+| legal | 法务 |
+| live_streaming | 在线直播 |
+| ad_creative_production | 广告素材制作 |
+| game_development | 游戏开发 |
+| game_publishing | 游戏上架 |
+| human_resources | 人力资源 |
+| supply_chain_logistics | 供应链vs物流 |
+| healthcare | 医疗健康 |
+| education_training | 教育培训 |
+| customer_service | 客户服务 |
+| content_moderation_safety | 内容审核vssecurity |
+| it_ops_sre_devops | IT 运维 SRE/DevOps |
+| marketing_brand | 市场营销vs品牌 |
 
-### Domain Risk Profile
+### 领域风险画像
 
 - `domains/risk-profile/`
-- Can override platform-level risk_matrix
+- 可覆写平台级 risk_matrix
 
-### Domain Knowledge Schema
+### 领域知识 Schema
 
 - `domains/knowledge-schema/`
-- Defines domain knowledge retrieval strategy and timeliness
+- defines领域知识检索策略和时效性
 
-### Domain Evaluation Framework
+### 领域评估框架
 
 - `domains/eval-framework/`
-- Defines domain-specific evaluation metrics
+- defines领域特定的评估指标
 
-### DomainRecipe Template
+### DomainRecipe 模板
 
 - `domain-recipe-service.ts` (271 lines)
-- 4 archetypes: prototype_analysis/prototype_implementation/prototype_review/prototype_release
+- 4 个 archetype：prototype_analysis/prototype_implementation/prototype_review/prototype_release
 
-### CLI Commands
+### CLI 命令
 
-- `domain init` - Initialize
-- `domain validate` - Validate
+- `domain init` 初始化
+- `domain validate` 验证
 
 ## Consequences
 
-Benefits:
+优点：
 
-- Structured modeling enables platform to understand domain differences
-- Override mechanism supports customization
-- CLI tools simplify onboarding
+- 结构化建模使平台能理解领域差异
+- 可覆写机制supported定制化
+- CLI 工具简化接入
 
-Trade-offs:
+代价：
 
-- DomainDescriptor complexity is high
-- Domain modeling requires domain expert involvement
+- DomainDescriptor 复杂度较高
+- 领域建模需要领域专家参vs
 
 ## v4.3 ADR Remediation
 
-- A-32: This ADR originally compressed `DomainClass` into 7 broad categories. The root cause was that when the domain modeling ADR was formed, it still leaned towards product-market groupings and did not expand as the main architecture took the 24 vertical domains as the unified metamodel instantiation entry. Fix: The main text now converges `DomainClass` to 24 vertical domain types and aligns with the domain directory in main architecture sections 71-94.
+- A-32: 本 ADR 原先把 `DomainClass` 压缩成 7 种宽泛分class，Root cause: 领域建模 ADR 形成时仍偏向产品市场分组，没有随着主Architecture把 24 个垂直域作为统一元模型实例化入口而扩展。修复：正文现把 `DomainClass` 收敛到 24 个垂直域class型，并vs主Architecture `§71-§94` 的域目录对齐。
 
-## Cross-References
+## 交叉references用
 
 - [ADR-030 Runtime Execution Plane](./030-runtime-execution-plane.md)
-- [ADR-038 Business Domain Onboarding Runbook](./038-business-domain-onboarding-runbook.md)
+- [ADR-038 业务域接入 Runbook](./038-business-domain-onboarding-runbook.md)
 
-## Source Sections
+## 来源章节
 
-- Section 37
-- Section 71-94
+- `§37` 业务域建模vs接入Architecture

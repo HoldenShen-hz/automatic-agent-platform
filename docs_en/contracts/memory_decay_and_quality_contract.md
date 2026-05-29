@@ -2,78 +2,78 @@
 
 ---
 
-## OAPEFLIR Association
+## OAPEFLIR 关联
 
-This contract participates in the following phases of the OAPEFLIR eight-stage cycle:
+本 contract 参vs OAPEFLIR 八阶段循环中的以下阶段：
 
-- **Observe**: Signal collection and aggregation
-- **Assess**: Pre-execution assessment and risk judgment
-- **Plan**: Task decomposition and DAG construction
-- **Execute**: Step execution and fault tolerance
-- **Feedback**: Signal collection and preprocessing
-- **Learn**: Pattern detection and knowledge extraction
-- **Improve**: Improvement candidate evaluation and rollout
-- **Release**: Controlled release and rollback
+- **Observe**：信号采集vs聚合
+- **Assess**：执lines前评估vs风险判断
+- **Plan**：任务分解vs DAG 构建
+- **Execute**：步骤执linesvs容错
+- **Feedback**：信号收集vs预handle
+- **Learn**：模式检测vs知识提取
+- **Improve**：改进候选评估vs rollout
+- **Release**：受控发布vs回滚
 
 ---
 
-## 1. Scope
+## 1. 范围
 
-This contract defines the hierarchical model, token budget, promotion, decay, revocation, freshness, and permission linkage rules for the memory system.
+本 contract defines记忆系统的层级模型、token budget、晋升、衰减、撤销、freshness vspermission联动规则。
 
-Related Documents:
+相关文档：
 
-- `perception_contract.md` (Observe compatible file)
-- `perception_intelligence_plane_contract.md` (Observe/Assess compatible file)
+- `perception_contract.md`（Observe 兼容文件）
+- `perception_intelligence_plane_contract.md`（Observe/Assess 兼容文件）
 - `context_compaction_and_overflow_contract.md`
 - `data_classification_and_prompt_handling_contract.md`
 - `tenant_and_organization_contract.md`
 
-## 2. Goals
+## 2. 目标
 
-- Make the memory system not only store, but also govern by hierarchy, expire, demote, revoke, and isolate.
-- Make memory quality evaluable, rather than just looking at hit rate.
-- Prevent cross-tenant, cross-project, and cross-role memory contamination.
+- 让记忆系统不only会存，还会按层级治理、过期、降权、撤销和隔离。
+- 让记忆质量可评估，而不is只看命中率。
+- 防止跨租户、跨项目、跨角色的记忆污染。
 
-## 3. Six-Layer Memory Model
+## 3. 六层记忆模型
 
-Memory canonical is divided into `L1-L6` six layers:
+记忆 canonical 分为 `L1-L6` 六层：
 
-| Layer | Scope | Typical Content | Budget Characteristics |
-| --- | --- | --- | --- |
-| `L1` | turn / transient | Current turn temporary context, tool return summaries | Smallest and highest frequency replacement |
-| `L2` | task | Current task working memory, short-term plan clues | Small budget, can expire quickly |
-| `L3` | session | Session-level stable facts, local preferences | Small to medium budget |
-| `L4` | project | Project conventions, repository structure, long-term work patterns | Medium budget |
-| `L5` | org / curated | Reviewed organizational experience, best practices | Governed, higher retention priority |
-| `L6` | evolution | Long-term knowledge absorbed via learn/improve/promote | No fixed capacity ceiling, but must be auditable |
+| 层级 | 作用域 | 典型内容 | budget特征 |
+|---|-------|--------| --- |
+| `L1` | turn / transient | 当前轮临时上下文、工具返回摘要 | 最小且高频替换 |
+| `L2` | task | 当前任务工作记忆、短期计划线索 | 小budget、可快速过期 |
+| `L3` | session | 会话级稳定事实、局部偏好 | 中小budget |
+| `L4` | project | 项目约定、仓库结构、长期工作模式 | 中budget |
+| `L5` | org / curated | via审核的组织via验、最佳实践 | 受治理、较高保留优先级 |
+| `L6` | evolution | 被 learn/improve/promote 吸收的长期知识 | no固定容量upper limit，但必须可审计 |
 
-Rules:
+规则：
 
-- `L1-L4` allow more aggressive decay and pruning.
-- `L5-L6` have higher entry thresholds and must go through classification, trust, and promotion rules.
-- `L6` has no fixed capacity ceiling but cannot exempt from freshness, revocation, and lineage constraints.
+- `L1-L4` 允许较积极衰减和裁剪。
+- `L5-L6` 进入门槛更高，必须via过分class、trust 和 promotion 规则。
+- `L6` 没有固定容量upper limit，但不能免除 freshness、revocation 和 lineage 约束。
 
-## 4. Token Budget and Injection Boundaries
+## 4. Token Budget vs注入边界
 
-Each layer declares at minimum:
+每层至少声明：
 
 - `token_budget`
 - `eviction_threshold`
 - `retrieval_priority`
 - `promotion_eligibility`
 
-Constraints:
+约束：
 
-- Memory must not be directly and blindly injected into the model by "recency" alone; must first go through relevance retrieval.
-- `L5-L6` default to not directly inject in full quantity; can only be injected on-demand via retrieval and explainability results.
-- During compaction, memory directly related to current task / workflow / feedback / learning should be preferentially preserved.
+- 记忆不能按“最近”directlyno脑入模，必须先via过相关性检索。
+- `L5-L6` defaults to不directlyfull注入，只能via检索vs explainability 结果按需注入。
+- compaction 时应优先保留vs当前 task / workflow / feedback / learning directly相关的记忆。
 
-## 5. Freshness and Decay
+## 5. Freshness vs衰减
 
-### 5.1 Freshness State
+### 5.1 Freshness Status
 
-Each memory entry has at least one of the following freshness states:
+每条记忆至少有以下 freshness Status之一：
 
 - `fresh`
 - `aging`
@@ -81,49 +81,49 @@ Each memory entry has at least one of the following freshness states:
 - `revoked`
 - `archived`
 
-### 5.2 Decay Strategies
+### 5.2 衰减策略
 
-At minimum support:
+至少supported：
 
-- TTL or time window expiration
-- Confidence degradation
-- Conflicting memory merge
-- Erroneous memory revocation
-- External source isolation
-- Freshness demotion
+- TTL 或time窗过期
+- 置信度下降
+- conflicts记忆合并
+- 错误记忆撤销
+- 外部来源隔离
+- freshness 降级
 
-Rules:
+规则：
 
-- `stale` does not equal immediate deletion; can be demoted and retained with lineage.
-- `revoked` memory must not enter model context.
-- If external source memory trust tier decreases, retrieval priority should be lowered at minimum.
+- `stale` 不等于立即删除；可降权保留 lineage。
+- `revoked` 记忆不得再进入模型上下文。
+- 外部来源记忆若 trust tier 下降，至少应synchronous降低检索优先级。
 
-## 6. Promotion Rules
+## 6. 晋升规则
 
 ### 6.1 Canonical Promotion Path
 
-Default promotion path:
+defaults to晋升路径：
 
 `L1 -> L2 -> L3 -> L4 -> L5 -> L6`
 
-Constraints:
+约束：
 
-- Bypassing `L5` to write ungoverned content to `L6` is not allowed.
-- `L5-L6` promotion must retain source `ArtifactRef / EvidenceRef / MemoryRef / KnowledgeRef`.
-- `FeedbackSignal / LearningObject / ImprovementCandidate` can be used as promotion basis but must not replace governance checks.
+- 不允许bypassing `L5` directly把未治理内容writes `L6`。
+- `L5-L6` 晋升必须保留来源 `ArtifactRef / EvidenceRef / MemoryRef / KnowledgeRef`。
+- `FeedbackSignal / LearningObject / ImprovementCandidate` 可以作为晋升依据，但不能替代治理检查。
 
-### 6.2 Pre-Promotion Checks
+### 6.2 晋升前检查
 
-Before entering `L5-L6`, check at minimum:
+进入 `L5-L6` 前至少检查：
 
 - tenant / workspace / role scope
 - data classification
 - source trust level
 - freshness
 - conflict / duplication
-- whether upstream evidence exists
+- isno已有上游 evidence
 
-## 7. Core Objects
+## 7. 核心对象
 
 - `MemoryEntry`
 - `MemoryLayerPolicy`
@@ -135,7 +135,7 @@ Before entering `L5-L6`, check at minimum:
 - `MemoryRetrievalRecord`
 - `ExperienceRecord`
 
-Recommended minimum fields:
+Recommendation最小字段：
 
 ```ts
 interface MemoryEntry {
@@ -148,16 +148,16 @@ interface MemoryEntry {
 }
 ```
 
-## 8. Retrieval and Experience Reuse
+## 8. 检索vsvia验复用
 
-- Long-term memory and experience cache must not be directly injected into the model by "recency"; must first go through relevance retrieval.
-- Current phase allows using `FTS5 / keyword recall`; `embedding / rerank` can be added later.
-- `MemoryRetrievalRecord` records at minimum: query, matched entries, reason, injected / not_injected, quality outcome, target layer.
-- `ExperienceRecord` supports at minimum: perfect match cache, similar experience retrieval, few-shot injection provenance.
+- 长期记忆和via验cache不应directly按“最近”注入模型，必须先via过相关性检索。
+- 当前阶段允许uses `FTS5 / keyword recall`，后续可补 `embedding / rerank`。
+- `MemoryRetrievalRecord` 至少record：query、matched entries、reason、injected / not_injected、quality outcome、target layer。
+- `ExperienceRecord` 至少supported：perfect match cache、similar experience retrieval、few-shot injection provenance。
 
-## 9. Quality Metrics
+## 9. 质量指标
 
-Must be recordable and analyzable:
+必须可record和分析：
 
 - `hit_rate`
 - `post_hit_usefulness`
@@ -167,9 +167,9 @@ Must be recordable and analyzable:
 - `promotion_success_rate`
 - `memory_injection_accept_rate`
 
-## 10. Permission Linkage
+## 10. permission联动
 
-Memory access must simultaneously be constrained by the following boundaries:
+记忆访问必须同时受以下边界约束：
 
 - tenant
 - workspace / project
@@ -177,15 +177,15 @@ Memory access must simultaneously be constrained by the following boundaries:
 - data classification
 - source trust level
 
-Supplementary rules:
+补充规则：
 
-- `restricted` data defaults to not entering `L5-L6`.
-- Learning objects or high-layer memory containing confidential information must be de-identified before entering the governance chain.
-- Providers can only provide memory content and retrieval results and must not bypass permission boundaries.
+- `restricted` datadefaults to不得进入 `L5-L6`。
+- 含 confidential 信息的学习对象或高层记忆必须先脱敏再进入治理链。
+- provider 只能提供记忆内容vs检索结果，不能bypassingpermission边界。
 
-## 11. Memory Provider Lifecycle Interface
+## 11. Memory Provider 生命cycle接口
 
-If the system supports pluggable memory backend, the provider seam defines at minimum:
+若系统supported可插拔 memory backend，则 provider seam 至少defines：
 
 - `initialize`
 - `system_prompt_block`
@@ -194,21 +194,21 @@ If the system supports pluggable memory backend, the provider seam defines at mi
 - `sync_turn`
 - `shutdown`
 
-Rules:
+规则：
 
-- `prefetch` should prioritize serving the next round injection, recommended to form an async recall closed loop with `queue_prefetch`.
-- The authoritative / additive relationship between built-in memory and external memory backend must be clear and auditable.
-- If a provider hook fails, should default to "not injecting additional memory" and must not disrupt primary task execution.
+- `prefetch` 应优先服务下一轮注入，推荐vs `queue_prefetch` 形成异步 recall 闭环。
+- built-in memory vs external memory backend 的 authoritative / additive 关系必须清楚并可审计。
+- provider hook 若failed，应defaults to降级为“不注入额外记忆”，不得破坏主任务执lines。
 
-## 12. Closure Conclusion
+## 12. 收口Conclusion
 
-Industrial-grade memory system cannot default to "once stored, always trusted".
+工业级记忆系统不能defaults to“存进去就一直可信”。
 
-It must have:
+它必须具备：
 
-- Six-layer memory and token budget governance
-- Freshness tracking and decay
-- Cross-layer promotion and revocation
-- Quality evaluation
-- Scope isolation
-- Pre-injection permission check
+- 六层记忆vs token budget治理
+- freshness tracking vs衰减
+- 层间晋升vs撤销
+- 质量评估
+- 作用域隔离
+- 入模前permission检查

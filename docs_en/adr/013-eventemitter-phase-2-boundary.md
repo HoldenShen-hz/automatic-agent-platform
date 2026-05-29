@@ -1,131 +1,131 @@
-# ADR-013 EventEmitter Continued Use to Phase 2
+# ADR-013 EventEmitter isno继续uses到 Phase 2
 
-- Status: Accepted
-- Decision Date: 2026-04-03
+- Status：Accepted
+- Decision日期：2026-04-03
 
 ## Background
 
-Current platform needs event-driven state projection, gateway streaming feedback, recovery scanning, and operations observation. But Phase 1a/1b still primarily uses single-machine, single-process, and minimal multi-Agent orchestration.
+当前平台需要事件驱动的Status投影、gateway 流式反馈、恢复扫描和运维观测。但 Ring 1 仍以单机、单进程和最小多 Agent 编排为主。
 
-The problem is:
+Issue在于：
 
-- Whether to continue using in-memory event distribution mechanism currently.
-- How to avoid using EventEmitter then mistakenly treating it as reliable event bus.
+- 当前isno继续uses内存事件分发机制。
+- 怎样避免“用了 EventEmitter 就把它误当成可靠事件总线”。
 
 ## Decision
 
-Phase 1a/1b allows continuing to use in-memory event distribution mechanism as intra-process distribution tool.
+Ring 1 允许继续uses内存事件分发机制作为本进程内分发工具。
 
-But simultaneously freeze the following boundaries:
+但同时冻结以下边界：
 
-- Tier 1 event authoritative source must be persistent event table and per-consumer ack.
-- EventEmitter only responsible for intra-process fan-out, does not bear reliable delivery semantics.
-- Whether to replace with more formal queue or bus in Phase 2 will be decided separately at that time.
-- Feedback, Learn, Improve, Release events introduced by OAPEFLIR similarly comply with the above boundaries. They can first go through intra-process fan-out but must not cross the persistence layer to define themselves as authoritative source.
+- Tier 1 事件的事实源必须is持久化事件tablevs per-consumer ack。
+- EventEmitter 只负责进程内 fan-out，不承担可靠性交付语义。
+- isno在 Phase 2 替换为更正式的 queue / bus，届时再单独Decision。
+- OAPEFLIR references入的 Feedback / Learn / Improve / Release 事件同样遵守上述边界；它们可以先走进程内 fan-out，但不得越过持久化事实层defines自己成为 authoritative source。
 
-## Alternatives
+## 备选方案
 
-### Option A: Immediately Replace with Redis, Postgres, or BullMQ Queue
+### 方案 A：立即替换为 Redis / Postgres / BullMQ 队列
 
-Benefits:
+优点：
 
-- Stronger reliability and cross-process scaling space.
+- 可靠性和跨进程扩展空间更强。
 
-Costs:
+代价：
 
-- Current stage will significantly raise deployment and debugging complexity.
-- Reliability problems first need tightening through contract, ack, and replay mechanism, not just changing technical names.
+- 当前阶段会显著抬高部署和调试复杂度。
+- 可靠性Issue真正需要先靠 contract、ack 和 replay 机制收紧，而不is先换技术名词。
 
-### Option B: Completely Rely on In-Memory EventEmitter with No Persistent Events
+### 方案 B：完全relies on内存 EventEmitter，不做持久化事件
 
-Benefits:
+优点：
 
-- Simplest implementation.
+- 实现最简单。
 
-Costs:
+代价：
 
-- Crash recovery, event replay, per-consumer ack all become distorted.
-- Cannot satisfy Tier 1 event semantics already clarified for current system.
+- 崩溃恢复、事件重放、per-consumer ack 全部失真。
+- no法满足当前系统已via明确的 Tier 1 事件语义。
 
-### Option C: Current Decision
+### 方案 C：当前Decision方案
 
-- In-memory EventEmitter continues for intra-process distribution.
-- Persistent event table and ack bear reliable event authoritative source.
-- Phase 2 re-evaluates whether to upgrade to heavier queue system.
+- 内存 EventEmitter 继续used for进程内分发
+- 持久化事件table和 ack 承担可靠事件事实源
+- Phase 2 再评估isno升级为更重的队列系统
 
-## Reasons for This Approach
+## 选择这个方案的原因
 
-- Current stage intra-process event distribution needs objectively exist, EventEmitter is light enough.
-- But key risk is not in-memory distribution tool not advanced enough but whether reliability semantics are placed in persistence layer.
-- Current approach can support main chain with lowest complexity while not obscuring its boundaries.
+- 当前阶段进程内事件分发需求客观存在，EventEmitter 足够轻量。
+- 但关键风险不在“内存分发工具不够高级”，而在于有没有把可靠性语义放在持久化层。
+- 当前方案能以最低复杂度supported主链，又不掩盖其边界。
 
-## Key Invariants
+## 关键不variable
 
-- Tier 1 factual events must first write to DB, then register consumer ack, then attempt distribution.
-- EventEmitter failure must not become factual state rollback basis.
-- Recovery scanning and event replay only based on events plus event_consumer_acks.
-- Tier 3 streaming chunks must not impersonate recoverable factual source.
-- If events like feedback.signal_received, learning.object_promoted, release.rollout_* are defined as high-value factual events, must prioritize satisfy persistence and ack constraints rather than relying on pure memory subscription success.
+- Tier 1 事实事件必须先写 DB，再注册 consumer ack，再尝试分发。
+- EventEmitter failed不得成为事实Status回滚依据。
+- 恢复扫描和事件重放只以 `events + event_consumer_acks` 为依据。
+- Tier 3 流式 chunk 不得as可恢复事实源。
+- `feedback.signal_received`、`learning.object_promoted`、`release.rollout_*` 这class事件若被defines为高价值事实事件，必须优先满足持久化vs ack 约束，而不isrelies on纯内存订阅success。
 
-## Adoption Triggers
+## 采用触发条件
 
-As long as system still:
+只要系统仍以：
 
-- Primarily single-machine.
-- Primarily intra-process distribution.
-- Phase 1a/1b orchestration primarily.
+- 单机为主
+- 进程内分发为主
+- Phase 1a / 1b orchestration 为主
 
-Continue to maintain this decision.
+就继续维持该Decision。
 
-## Exit Conditions
+## 退出条件
 
-If any of the following occur, should re-evaluate and possibly upgrade:
+若出现以下任一情况，应重新评估并可能升级：
 
-- Multi-process or multi-worker becomes formal implementation topic.
-- Out-of-process consumers significantly increase.
-- Event throughput and backpressure clearly exceed single-process fan-out applicable boundary.
-- queue or lease or execution plane has entered core path.
+- 多进程 / 多 worker 成为正式实现主题
+- 进程外消费者显著增多
+- 事件吞吐和背压已明显exceeds出单进程 fan-out 适用边界
+- queue / lease / execution plane 已进入核心路径
 
-## Implementation Impact
+## 实施Impact
 
-Current implementation must be done:
+当前实现必须做到：
 
-- Clearly distinguish reliable event factual source and memory distribution channel.
-- Event registry, ack threshold, recovery scanning, and replay tools established concurrently.
-- Keep EventEmitter usage within intra-process adapter and projection scope.
-- OAPEFLIR closed-loop related services even if first implemented with memory or lightweight registry should guarantee future migratability to more formal queue or bus through typed payload, reason code, and state machine constraints.
+- 明确区分“可靠事件事实源”和“内存分发通道”
+- 事件注册table、ack threshold、恢复扫描和重放工具synchronous建立
+- 对 EventEmitter 的uses保持在进程内 adapter / projection 范围内
+- OAPEFLIR 闭环相关服务即使先以内存/轻量注册table实现，也应via typed payload、reason code 和Status机约束保证未来可迁移到更正式的 queue/bus。
 
-## Results
+## 结果
 
-Benefits:
+优点：
 
-- Current stage implementation is lightest.
-- Won't prematurely raise infrastructure complexity for possible future multi-process.
-- Consistent with existing Tier 1, Tier 2, Tier 3 event tiering documentation.
-- Allows OAPEFLIR main and secondary chain to first form closed loop in single process, then consolidate reliability issues to contract and persistence layer.
+- 当前阶段实现最轻。
+- 不会为了未来可能的多进程而过早拉高基础设施复杂度。
+- vs现有 Tier 1 / Tier 2 / Tier 3 事件分级文档一致。
+- 允许 OAPEFLIR 主链/副链先在单进程中形成闭环，再把可靠性Issue收束到 contract 和持久化层。
 
-Costs:
+代价：
 
-- Requires team to continuously remember EventEmitter is not a reliable messaging system.
-- Once entering multi-worker stage, must actively upgrade, cannot continue defaulting.
+- 需要团队持续记住 EventEmitter 不is可靠消息系统。
+- 一旦进入多 worker 阶段，必须主动升级，而不能继续defaults toaccesses along用。
 
-## Current Implementation Alignment
+## 当前实现对齐
 
-As of current phase1-4 delivery, aligned parts include:
+截至当前 phase1-4 交付，已对齐部分includes：
 
-- Feedback preprocessing, LearningObject validation, Rollout guardrail have first closed through type and service boundary.
-- OAPEFLIR stage timeline can already provide main and secondary chain sequence perspective, but it itself is not reliable event bus substitute.
-- If event layer upgrades in the future, should only replace transport or fan-out, should not destroy already defined closed-loop state machine and authoritative semantics.
+- Feedback 预handle、LearningObject 校验、Rollout guardrail 已先viaclass型vs服务边界收口。
+- OAPEFLIR 阶段time线已via能提供主链/副链顺序视角，但它本身不is可靠事件总线替代物。
+- 事件层后续若升级，只应替换 transport/fan-out，不应破坏已defines的闭环Status机vs authoritative 语义。
 
-## Cross-References
+## 交叉references用
 
-- [ADR-012 SQLite as Phase 1-2 Primary Store](./012-sqlite-phase-1-2-primary-store.md)
-- [ADR-009 Deployment and Operations](./009-deployment-ops.md)
-- [ADR-011 Effect-TS as Core Runtime Foundation](./011-effect-ts-adoption.md)
+- [ADR-012 SQLite isno作为 Phase 1-2 唯一主storage](./012-sqlite-phase-1-2-primary-store.md)
+- [ADR-009 部署vs运维](./009-deployment-ops.md)
+- [ADR-011 Effect-TS isno作为核心运lines时基础](./011-effect-ts-adoption.md)
 
-## Source Sections
+## 来源章节
 
-- event_bus_contract.md
-- event_reliability_matrix_contract.md
-- event_registry_and_ops_threshold_contract.md
-- typed_event_bus_contract.md
+- `event_bus_contract.md`
+- `event_reliability_matrix_contract.md`
+- `event_registry_and_ops_threshold_contract.md`
+- `typed_event_bus_contract.md`

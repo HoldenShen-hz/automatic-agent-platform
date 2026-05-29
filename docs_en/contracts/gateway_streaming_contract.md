@@ -2,26 +2,26 @@
 
 ---
 
-## OAPEFLIR Association
+## OAPEFLIR 关联
 
-This contract participates in the following phases of the OAPEFLIR eight-stage cycle:
+本 contract 参vs OAPEFLIR 八阶段循环中的以下阶段：
 
-- **Observe**: Signal collection and aggregation
-- **Assess**: Pre-execution assessment and risk judgment
-- **Plan**: Task decomposition and DAG construction
-- **Execute**: Step execution and fault tolerance
-- **Feedback**: Signal collection and preprocessing
-- **Learn**: Pattern detection and knowledge extraction
-- **Improve**: Improvement candidate evaluation and rollout
-- **Release**: Controlled release and rollback
+- **Observe**：信号采集vs聚合
+- **Assess**：执lines前评估vs风险判断
+- **Plan**：任务分解vs DAG 构建
+- **Execute**：步骤执linesvs容错
+- **Feedback**：信号收集vs预handle
+- **Learn**：模式检测vs知识提取
+- **Improve**：改进候选评估vs rollout
+- **Release**：受控发布vs回滚
 
 ---
 
-## 1. Scope
+## 1. 范围
 
-This contract defines streaming output, event distribution, frame format, and progress update specifications for CLI, Web, Telegram, and other channels.
+本 contract defines CLI、Web、Telegram 等渠道的流式输出、事件分发、帧格式vs进度更新规范。
 
-## 2. Key Objects
+## 2. 关键对象
 
 - `StreamChannel`
 - `StreamEvent`
@@ -29,13 +29,13 @@ This contract defines streaming output, event distribution, frame format, and pr
 - `FinalChunk`
 - `ErrorChunk`
 
-v4.3 Alignment Notes:
+v4.3 对齐Description：
 
-- The code-side authoritative streaming frame object is `StreamEventFrame`; `StreamEvent` is exported as its alias.
-- For contract naming compatibility, the code-side also exports type aliases `StreamChannel`, `ProgressChunk`, `FinalChunk`, `ErrorChunk`; these aliases all converge to the same `StreamEventFrame` primary chain, rather than maintaining parallel DTOs.
-- `stream_gap` as a client-facing gap frame when the replay window has evicted fallen items belongs within the `ErrorChunk` semantic domain as a recoverable streaming error.
+- code侧 authoritative 流式帧对象为 `StreamEventFrame`；`StreamEvent` 作为其别名export。
+- 为兼容 contract 命名，code侧同时export `StreamChannel`、`ProgressChunk`、`FinalChunk`、`ErrorChunk` class型别名；这些别名都收敛到同一条 `StreamEventFrame` 主链，而不is再维护平lines DTO。
+- `stream_gap` 作为 replay window 已驱逐时的 client-facing gap frame，belongs to `ErrorChunk` 语义域内的可恢复流错误。
 
-## 3. StreamEvent Minimum Fields
+## 3. StreamEvent 最小字段
 
 - `stream_id`
 - `harness_run_id`
@@ -47,7 +47,7 @@ v4.3 Alignment Notes:
 - `payload`
 - `created_at`
 
-## 4. event_type Enum
+## 4. event_type 枚举
 
 - `status_changed`
 - `progress`
@@ -57,60 +57,60 @@ v4.3 Alignment Notes:
 - `completed`
 - `failed`
 
-## 5. SSE Frame Format
+## 5. SSE 帧格式
 
-Ring 1 baseline unified format:
+Ring 1 基线统一uses：
 
 - `id`: `<stream_id>:<sequence>`
 - `event`: `event_type`
-- `data`: JSON, must include at least `stream_id`, `harness_run_id`, `sequence`, `payload`
+- `data`: JSON，至少contains `stream_id`、`harness_run_id`、`sequence`、`payload`
 
-Rules:
+规则：
 
-- SSE clients should support checkpoint resumption or minimal recovery based on `id`.
-- `completed` and `failed` are terminal frames.
-- `sequence` must be monotonically increasing and must not roll back.
+- SSE 客户端按 `id` supported断点续传或最小恢复。
+- `completed` 和 `failed` 为终态帧。
+- `sequence` 必须单调递增且不回退。
 
-Recommended execution rules:
+推荐运lines规则：
 
-- Reconnect should use exponential backoff to avoid amplifying traffic jitter during disconnections.
-- Permanent rejections like `401 / 403 / 404` should not retry indefinitely by default.
-- Should maintain a liveness timeout; when receiving only keepalive/frame without any data for a long time, should proactively disconnect and enter recovery.
-- For recoverable scenarios like "session temporarily not found / compaction paused streaming / generation switched", a finite retry budget should be set, rather than infinite retry or immediate death judgment.
-- If supporting `Last-Event-ID` or equivalent continuation mechanism, a replay buffer window should be defined; when the client lags too far behind and required events have been evicted, the server must return a clear error, rather than silently dropping frames and continuing.
+- reconnect 应uses指数退避，避免断连时放大流量抖动。
+- `401 / 403 / 404` 这class永久拒绝defaults to不得no限重试。
+- 应维护 liveness timeout；长time只收不到 keepalive / frame 时，应主动断开并进入恢复。
+- 对“会话暂时未找到 / compaction 暂停发流 / generation 切换”这class可恢复场景，应设置有限重试budget，而不isno限重试或立即判死。
+- 若supported `Last-Event-ID` 或等价续流机制，应defines replay buffer 窗口；客户端落后过多且所需事件已被驱逐时，服务端必须返回明确错误，而不is静默丢帧后继续。
 
 ## v4.3 Contract Remediation
 
-- T-66: This document originally defined `task_id` as the primary anchor for streaming events and used "Phase 1a" terminology. The root cause was that the streaming contract followed the task-level gateway model, without synchronizing to `HarnessRun / NodeRun` and ring terminology. Fix: The body now uses `harness_run_id / node_run_id` as the primary chain, with `task_id` retained only for aggregate view purposes.
+- T-66: 本文原先把 `task_id` defines为流式事件主锚点并uses `Phase 1a` 口径，Root cause:  streaming contract accesses along用了任务级 gateway 模型，没有synchronous到 `HarnessRun / NodeRun` vs ring 口径。修复：正文现改为 `harness_run_id / node_run_id` 主链，`task_id` only保留聚合视图用途。
 
-## 6. WebSocket Compatibility Strategy
+## 6. WebSocket 兼容策略
 
-- WebSocket payload maintains the same JSON structure as SSE `data`.
-- WebSocket can multiplex multiple `stream_id`s, but each `stream_id` still increments independently.
-- If the client does not support incremental consumption, the server may aggregate and send `progress` / `completed` frames.
+- WebSocket payload vs SSE `data` 保持同一 JSON 结构。
+- WebSocket 可以多路复用多个 `stream_id`，但每个 `stream_id` 仍独立递增。
+- 若客户端不supported增量消费，允许服务端聚合后发送 `progress` / `completed` 帧。
 
-## 7. Telegram and Non-Streaming Fallback Strategy
+## 7. Telegram vs非流式回退策略
 
-- Telegram does not require true token-by-token streaming output by default.
-- Phase 1a allows using staged `progress` messages plus final result messages instead of complete streams.
-- If `approval_requested` occurs, interaction reachability must be prioritized, rather than continuing to output incremental text.
+- Telegram defaults to不要求真正逐 token 流式输出。
+- Phase 1a 允许用阶段性 `progress` 消息 + 最终结果消息替代完整流。
+- 若出现 `approval_requested`，必须优先保证交互可达，而不is继续输出增量文本。
 
-## 8. Behavioral Constraints
+## 8. lines为约束
 
-- Within the same `stream_id`, `sequence` must be monotonically increasing.
-- `completed` and `failed` are terminal chunks.
-- Streaming output can only express display semantics and must not bypass task state facts source.
-- After channel disconnection, recovery, replay, or staged fallback must be possible based on `stream_id`.
-- Session / channel state can only express interaction progress and must not replace authoritative state for task, workflow, or execution.
-- After transport reconstruction, should continue streaming using `last_sequence` or equivalent high-water mark, rather than replaying from 0 in full.
+- 同一 `stream_id` 内 `sequence` 必须单调递增。
+- `completed` 和 `failed` 为终态 chunk。
+- 流式输出只能table达展示语义，不得bypassing任务Status事实源。
+- 渠道断连后必须可based on `stream_id` 进lines恢复、重放或阶段性回退。
+- session / channel Status只能table达交互进度，不得替代 task、workflow 或 execution 的 authoritative Status。
+- transport 重建后，应accesses along用 `last_sequence` 或等价 high-water mark 继续续流，而不is从 0 full重放。
 
-## 9. Supplementary Rules
+## 9. 补充规则
 
-- When multiple windows subscribe to the same `stream_id`, deduplicate by `stream_id + sequence`; duplicate frames are allowed to be safely ignored.
-- Both CLI TTY and Web SSE backpressure should preferentially drop rebuildable intermediate `progress`, and must not drop terminal frames.
-- keepalive / comment frames can be used only for liveness and should not enter the business event primary chain.
-- Transport layer state should at least distinguish `connected / reconnecting / failed`; observer subscriptions and subscriptions with execution rights must not be confused.
-- If read-only observer mode is supported, `viewer_only` or equivalent interaction state may be added, but this state can only express permission-limited observation and must not be misused as a business failure.
-- If the client has a display-layer commit tick / catch-up mechanism, should work based only on queue state such as backlog depth and oldest message age, rather than reordering or changing business semantics due to different upstream sources.
-- When connecting replay/live dual channels, should first establish the live subscription, then snapshot the replay buffer, and deduplicate using `replay_max_sequence` or equivalent high-water mark, to avoid gaps or duplicate advancement between replay and live.
-- For interactive session/channel, it is recommended to limit concurrent active request count for the same interaction context; if an active request guard exists, its semantics can only constrain interaction submission and must not replace task/execution ownership control.
+- 多窗口订阅同一 `stream_id` 时，以 `stream_id + sequence` for deduplication，repeats帧允许security忽略。
+- CLI TTY vs Web SSE 的背压都应优先丢弃可重建的中间 `progress`，不得丢弃终态帧。
+- keepalive / comment 帧可以只used for liveness，不应进入业务事件主链。
+- transport 层Status至少区分 `connected / reconnecting / failed`；观察者订阅vs拥有执lines权的订阅不得混淆。
+- 如supported只读观察者模式，可增加 `viewer_only` 或等价交互态，但该Status只能table达permission受限观察，不得被误用为业务failed。
+- 若客户端存在显示层 commit tick / catch-up 机制，应只依据 backlog 深度、最老消息年龄等队列Status工作，不得因上游来源不同而重排或改变业务语义。
+- replay/live 双通道衔接时，应先建立 live 订阅再快照 replay buffer，并以 `replay_max_sequence` 或等价高水位for deduplication，避免在 replay vs live 之间出现丢缝或repeats推进。
+- 对交互型 session/channel，Recommendation限制同一交互上下文的concurrent活跃request数；若存在 active request guard，其语义只能约束交互提交，不得替代 task/execution 所有权控制。

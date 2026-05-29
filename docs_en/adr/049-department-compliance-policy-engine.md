@@ -1,15 +1,15 @@
-# ADR-049 Department Compliance Policy Engine
+# ADR-049 分部门合规策略references擎
 
-- Status: Accepted
-- Decision Date: 2026-04-20
+- Status：Accepted
+- Decision日期：2026-04-20
 
-## Context
+## Background
 
-Different departments (finance, R&D, marketing) have different compliance requirements, and the platform needs to support department-level compliance policy customization.
+不同部门（金融、研发、市场）有不同合规要求，平台需要supported部门级合规策略定制。
 
 ## Decision
 
-### CompliancePolicy Structure
+### CompliancePolicy 结构
 
 ```typescript
 interface CompliancePolicy {
@@ -30,47 +30,47 @@ interface ComplianceRule {
 }
 ```
 
-### Rule Types
+### 规则class型
 
-| Type | Description |
-|------|-------------|
-| data_retention | Data retention period |
-| access_control | Access control |
-| audit_logging | Audit logging |
-| encryption | Encryption requirements |
-| data_classification | Data classification |
+| class型 | Description |
+|------|------|
+| data_retention | data保留期 |
+| access_control | 访问控制 |
+| audit_logging | 审计日志 |
+| encryption | encryption要求 |
+| data_classification | data分class |
 
-### Policy Inheritance and Override
+### 策略继承vs覆盖
 
-- Child departments inherit parent department policies
-- Child departments can override parent department policies (more strict)
-- Platform-level policies cannot be overridden
-- `org_node_id` must point to `OrgNodeType.department` node; `department_id` naming branch is no longer introduced separately
+- 子部门继承父部门策略
+- 子部门可覆盖父部门策略（更严格）
+- 平台级策略不可覆盖
+- `org_node_id` 必须指向 `OrgNodeType.department` 节点，不再单独references入 `department_id` 命名分支
 
-### Compliance Checkpoints
+### 合规检查点
 
-- Pre-task execution check
-- Post-task execution check
-- Periodic scanning check
+- 任务执lines前检查
+- 任务执lines后检查
+- 定期扫描检查
 
 ## Consequences
 
-Pros:
+优点：
 
-- Differentiated compliance supports business needs
-- Inheritance mechanism reduces duplicate configuration
-- Checkpoint mechanism ensures compliance implementation
+- 差异化合规supported业务需求
+- 继承机制减少repeatsconfigure
+- 检查点机制确保合规落地
 
-Cons:
+代价：
 
-- Policy management complexity
-- Override rules may cause confusion
+- 策略manage复杂度
+- 覆盖规则可能造成混乱
 
-## Cross References
+## 交叉references用
 
-- [ADR-046 Organization Hierarchy Model](./046-organization-hierarchy-model.md)
-- [Platform Architecture §23 Compliance and Data Governance](../architecture/00-platform-architecture.md)
+- [ADR-046 组织层iterations模型](./046-organization-hierarchy-model.md)
+- [平台Architecture §23 合规vsdata治理](../architecture/00-platform-architecture.md)
 
-## Source Sections
+## 来源章节
 
-- `§49` Department Compliance Policy Engine
+- `§49` 分部门合规策略references擎

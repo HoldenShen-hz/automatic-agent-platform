@@ -2,61 +2,66 @@
 
 ---
 
-## OAPEFLIR Association
+## OAPEFLIR 关联
 
-This contract participates in the following OAPEFLIR eight-stage loop stages:
+本 contract 参vs OAPEFLIR 八阶段循环中的以下阶段：
 
-- **Observe**: Signal collection and aggregation
-- **Assess**: Pre-execution assessment and risk judgment
-- **Plan**: Task decomposition and DAG construction
-- **Execute**: Step execution and fault tolerance
-- **Feedback**: Signal collection and preprocessing
-- **Learn**: Pattern detection and knowledge extraction
-- **Improve**: Improvement candidate evaluation and rollout
-- **Release**: Controlled release and rollback
+- **Observe**：信号采集vs聚合
+- **Assess**：执lines前评估vs风险判断
+- **Plan**：任务分解vs DAG 构建
+- **Execute**：步骤执linesvs容错
+- **Feedback**：信号收集vs预handle
+- **Learn**：模式检测vs知识提取
+- **Improve**：改进候选评估vs rollout
+- **Release**：受控发布vs回滚
 
 ---
 
-## 1. Scope
+## 1. 范围
 
-This contract defines the formal path from current transactional storage baseline to industrial-grade PostgreSQL + Redis/BullMQ queue.
+本 contract defines从当前事务storage基线演进到工业级 PostgreSQL + Redis/BullMQ 队列的正式路线。
 
-It answers the question: when the platform enters production, which data must go into the authoritative relational store, which responsibilities go into queue/broker, and which designs must from now on follow PG semantic constraints.
+它回答的Issueis：平台进入生产后，哪些data必须放进 authoritative relational store，哪些职责进入 queue/broker，哪些设计从现在起就必须按 PG 语义约束。
 
-Related documents:
+相关文档：
 
 - `storage_schema_contract.md`
 - `runtime_repository_and_migration_contract.md`
 - `execution_plane_contract.md`
 - `event_bus_contract.md`
 
-## 2. Objectives
+权威边界：
 
-- Clarify transaction truth, queue dispatch, and cache responsibilities.
-- Avoid implementation over-binding to SQLite features.
-- Freeze PG semantics-first repository / migration rules in advance.
-- Provide clear boundaries for Redis/BullMQ as execution queue.
+- table名、最小列和 inventory 以 `storage_schema_contract.md` 为准
+- 生产拓扑、队列职责和 PG/Redis 边界以本文为准
 
-## 3. Production Data Layering
+## 2. 目标
 
-| Layer | Primary Backend | Responsibilities |
-| --- | --- | --- |
-| `transaction store` | PostgreSQL | task, workflow, execution, approval, lease, audit, quota authoritative truth |
-| `queue / dispatch` | Redis + BullMQ | execution ticket, delayed queue, retry queue, dead-letter routing |
-| `artifact store` | object storage / file store | large files, reports, attachments, export packages |
-| `knowledge / rollout store` | PostgreSQL + pgvector | knowledge namespace metadata, semantic vector index, rollout record, strategy lineage |
-| `analytics / replay` | PG secondary or downstream analytics store | usage, cost, evaluation, ops aggregation |
+- 把事务真相、队列派发和cache职责分清。
+- 避免实现过度绑定 SQLite 特性。
+- 提前冻结 PG 语义优先的 repository / migration 规则。
+- 为 Redis/BullMQ 作为 execution queue 提供清晰边界。
 
-## 4. Key Invariants
+## 3. 生产data分层
 
-- Authoritative task / execution state must not exist only in queue.
-- After queue message loss, must be reconstructable from transaction store.
-- Dispatch queue is responsible for "delivery and retry", not "final truth state".
-- PG schema design takes priority over SQLite convenience features.
-- rollout / strategy / knowledge namespace metadata must not be retained only in cache or artifact.
-- If knowledge semantic embedding enables external vector retrieval, authoritative vector index must be reconstructable by PG/pgvector and must not exist only in process-level cache.
+| 层 | 主要后端 | 负责内容 |
+|---|-------|--------|
+| `transaction store` | PostgreSQL | task、workflow、execution、approval、lease、audit、quota authoritative truth |
+| `queue / dispatch` | Redis + BullMQ | execution ticket、delayed queue、retry queue、dead-letter routing |
+| `artifact store` | object storage / file store | 大文件、报table、附件、export包 |
+| `knowledge / rollout store` | PostgreSQL + pgvector | knowledge namespace 元data、semantic vector index、rollout record、strategy lineage |
+| `analytics / replay` | PG 副table或后续分析storage | usage、cost、evaluation、ops aggregation |
 
-## 5. Production Recommended Topology
+## 4. 关键不variable
+
+- authoritative task / execution state 不得只存在于 queue。
+- queue 消息丢失后，必须能从 transaction store 重建。
+- dispatch queue 负责“投递vs重试”，不负责“最终真相Status”。
+- PG schema 设计优先于 SQLite 便捷特性。
+- rollout / strategy / knowledge namespace 元data不得只保留在cache或 artifact 中。
+- knowledge semantic embedding 若enabled外部向量检索，authoritative vector index 必须可由 PG/pgvector 重建，不得只存在于进程内cache。
+
+## 5. 生产推荐拓扑
 
 ```mermaid
 flowchart LR
@@ -69,72 +74,72 @@ flowchart LR
     C --> G["Audit / Reporting"]
 ```
 
-## 6. PostgreSQL Semantic Requirements
+## 6. PostgreSQL 语义要求
 
-- All repository designs must be compatible with row-level locks, transactions, unique constraints, foreign keys, and JSONB.
-- SQLite-specific implementation must not be written as contract truth.
-- Migration must from the start support verification on PG.
-- Any "only valid under SQLite" shortcut must be registered as technical debt.
-- Knowledge semantic infra target backend is `pgvector`; schema should include `knowledge_semantic_vectors` or equivalent table, use `knowledge_ref` as stable key, and retain `chunk_id`, `document_id`, `namespace`, `embedding_id`, `embedding_model`, `embedding vector(32)`, `updated_at`.
-- When pgvector extension is missing, migration may fail-soft and preserve notice, but runtime with explicit `AA_KNOWLEDGE_VECTOR_BACKEND=pgvector` must fail-close.
-- Semantic query should sort through `embedding <=> query_vector` or equivalent cosine distance semantics and must not disguise keyword score as vector similarity.
-- Repository must provide executable pgvector readiness / roundtrip check entry; currently `knowledge-semantic-readiness` CLI performs extension/table/ivfflat/roundtrip validation for `AA_STORAGE_DRIVER=postgres` + `AA_KNOWLEDGE_VECTOR_BACKEND=pgvector` and fails-close on failure.
+- 所有 repository 设计必须兼容lines级锁、事务、唯一约束、外键和 JSONB。
+- 不得把 SQLite 特有实现方式写成 contract 真相。
+- migration 必须从一开始就supported在 PG 上验证。
+- 任何“只在 SQLite 下能成立”的 shortcut 都必须登记为技术债。
+- knowledge semantic infra 的 target 后端is `pgvector`；schema 应contains `knowledge_semantic_vectors` 或等价table，用 `knowledge_ref` 作为稳定键，并保留 `chunk_id`、`document_id`、`namespace`、`embedding_id`、`embedding_model`、`embedding vector(32)`、`updated_at`。
+- pgvector extension 缺失时 migration 可以 fail-soft 并保留 notice，但显式选择 `AA_KNOWLEDGE_VECTOR_BACKEND=pgvector` 的 runtime 必须 fail-close。
+- semantic query 应via `embedding <=> query_vector` 或等价 cosine distance 语义排序，不能把 keyword score as向量相似度。
+- 仓库内必须提供可执lines的 pgvector readiness / roundtrip 检查入口；当前以 `knowledge-semantic-readiness` CLI 对 `AA_STORAGE_DRIVER=postgres` + `AA_KNOWLEDGE_VECTOR_BACKEND=pgvector` 执lines extension/table/ivfflat/roundtrip 校验，并在failed时 fail-close。
 
-## 7. Queue Semantic Requirements
+## 7. Queue 语义要求
 
-- Dispatch at-least-once delivery.
-- Queue consumption success does not equal business success and must wait for authoritative writeback.
-- Delay, retry, and dead-letter are managed by queue, but decision source still comes from control plane.
-- Duplicate delivery must rely on idempotency key + fencing token protection.
+- dispatch 至少一iterations投递。
+- queue 消费success不等于业务success，必须等待 authoritative writeback。
+- delay、retry、dead-letter 由 queue manage，但 decision source 仍来自 control plane。
+- repeats投递必须relies on idempotency key + fencing token 防护。
 
-## 8. Dual-Run And Migration Recommendations
+## 8. 双跑vs迁移Recommendation
 
-Industrial-grade progression order:
+工业级推进顺序：
 
-1. Repository first implements interface by PG semantics.
-2. Migration performs compatibility validation on both SQLite and PG sides.
-3. Queue first validates in single-instance mode, then goes to Redis/BullMQ.
-4. Complete PG + queue drill before production; do not delay the switch to Phase 4.
+1. repository 先按 PG 语义实现接口。
+2. migration 在 SQLite 和 PG 两侧都进lines兼容校验。
+3. queue 先在单实例模式验证，再上 Redis/BullMQ。
+4. 生产前完成 PG + queue 演练，不把切换拖到 Phase 4 以后。
 
-Knowledge semantic infra migration path:
+Knowledge semantic infra 迁移路线：
 
-1. `Current`: local hash embedding + archive scan / in-memory vector store usable for development and non-PG environments.
-2. `Transition`: `SemanticVectorStore` abstraction supports both `local_hash` and `pgvector`; API query path uses async retrieval and can wait for vector index write.
-3. `Target`: Production enables PostgreSQL + pgvector, `knowledge_semantic_vectors` written by ingestion pipeline, semantic query goes through pgvector distance sorting; snapshot restore must also be able to backfill semantic vector index. Repository readiness CLI and roundtrip validation are complete, but real PG environment must still complete live validation evidence.
+1. `Current`：本地 hash embedding + archive scan / in-memory vector store 可used for开发和no PG 环境。
+2. `Transition`：`SemanticVectorStore` 抽象同时supported `local_hash` vs `pgvector`；API 查询路径uses async retrieval，可等待向量索referenceswrites。
+3. `Target`：生产enabled PostgreSQL + pgvector，`knowledge_semantic_vectors` 由 ingestion pipeline writes，semantic query 走 pgvector distance 排序；snapshot restore 后也必须能回填 semantic vector index。仓库内 readiness CLI vs roundtrip 校验completed，但真实 PG 环境仍必须完成 live validation 证据。
 
-## 9. Consistency Model
+## 9. 一致性模型
 
-| Object | Consistency |
+| 对象 | 一致性 |
 | --- | --- |
-| task / execution / lease | Strong consistency |
-| approval decision | Strong consistency |
-| queue delivery | At-least-once |
-| UI progress | Eventual consistency |
-| analytics aggregation | Delayed consistency |
+| task / execution / lease | 强一致 |
+| approval decision | 强一致 |
+| queue delivery | 至少一iterations |
+| UI progress | 最终一致 |
+| analytics aggregation | delay一致 |
 
-## 10. Failure And Fallback
+## 10. failedvs回退
 
-- When Redis/BullMQ is unavailable, system should enter admission control or degrade and must not silently drop tasks.
-- When PG is unwritable, must not continue accepting tasks requiring authoritative state.
-- When `AA_STORAGE_DRIVER=postgres`, startup preflight / doctor must first complete fail-close validation on DSN, SSL, pool sizing, dual-run switch, and shadow SQLite path; cannot enable postgres driver if validation fails.
-- When queue and DB write are inconsistent, DB truth should be trusted first and repair job triggered.
+- Redis/BullMQ 不可用时，系统应进入 admission control 或降级，不得默默丢任务。
+- PG 不可写时，不得继续accepts需要 authoritative state 的任务。
+- 当 `AA_STORAGE_DRIVER=postgres` 时，startup preflight / doctor 必须先对 DSN、SSL、pool sizing、dual-run 开关vs shadow SQLite 路径完成 fail-close 校验，未via不得enabled postgres driver。
+- queue vs DB writesinconsistent时，应优先相信 DB 真相并触发 repair job。
 
-## 11. Phase Boundaries
+## 11. Phase 边界
 
-Current:
+当前：
 
-- Documents and repository first design by PG/queue semantics
-- Implementation allowed to start from single-machine baseline
+- 文档和 repository 先按 PG/queue 语义设计
+- 允许实现仍从单机基线起步
 
-Must complete before entering production:
+进入生产前必须完成：
 
 - PG migration compatibility test
-- Queue replay / duplicate delivery drill
-- DB/queue disconnect fault drill
+- queue replay / duplicate delivery drill
+- DB/queue 断连故障演练
 - rollout / strategy lineage consistency drill
 
-## 12. Closure Conclusion
+## 12. 收口Conclusion
 
-Industrial production cannot treat PostgreSQL and queue as "future replacement items".
+工业级生产不能把 PostgreSQL 和 queue 只当“未来替换件”。
 
-From documents and contracts, must design by the structure of "transaction truth in PG, scheduling delivery in queue, duplicate delivery guaranteed by idempotency and fencing".
+从文档和 contract 起，就必须按“事务真相在 PG、调度投递在 queue、repeats投递由幂等vs fencing 兜底”的结构设计。

@@ -1,30 +1,30 @@
-# Security Access Lifecycle
+# security入职vs离职流程
 
-This document defines the access lifecycle for personnel, service accounts, and automated credentials, covering onboarding authorization, permission changes, offboarding revocation, and audit evidence.
+本文档defines人员、服务账号和自动化凭据的访问生命cycle，覆盖入职authorization、permission变更、离职回收和审计留痕。
 
-## Onboarding
+## 入职
 
-- Submit access request by direct supervisor, explaining role, business scope, required environment, and validity period.
-- Production permissions are denied by default; operation scenarios must be explained and approver bound.
-- Initial permissions are granted per least privilege, prioritizing groups and roles, not directly binding individuals to long-term privileges.
-- All secrets are injected via approved secret manager or deployment environment; writing to `.env`, script parameters, logs, or fixtures is prohibited.
+- 由直属负责人提交访问申请，Description角色、业务范围、所需环境和有效期。
+- 生产permissiondefaults to拒绝，必须Description操作场景并绑定审批人。
+- 初始permission按最小permission授予，优先uses组和角色，不directly给个人绑定长期特权。
+- 所有 secret via批准的 secret manager 或部署环境注入，禁止writes `.env`、脚本参数、日志和 fixture。
 
-## Permission Changes
+## permission变更
 
-- Permission upgrades must record reason, duration, and rollback plan.
-- Temporary permissions are automatically reclaimed upon expiration; when automatic reclamation is not possible, calendar reminders and audit records must be established.
-- Cross-team access requires dual confirmation from resource owner and security owner.
+- permission升级必须record原因、期限和回滚计划。
+- 临时permission到期自动回收；no法自动回收时必须建立日历提醒和审计record。
+- 跨团队访问需要资源 owner 和security owner 双重确认。
 
-## Offboarding and Transfer
+## 离职和转岗
 
-- On the day of departure, revoke SSO, VPN, code repository, CI/CD, cloud account, database, and observability backend access.
-- Rotate shared tokens, bot tokens, and long-term API keys that the individual had access to.
-- Review audit logs from the last 30 days to confirm no abnormal exports, privilege escalations, or burst of failed logins.
+- 离职当天撤销 SSO、VPN、code仓库、CI/CD、云账号、data库和 observability 后台访问。
+- 轮换个人曾接触的共享 token、机器人 token 和长期 API key。
+- 检查最近 30 天审计日志，确认no异常export、permission提升或failed登录爆发。
 
-## Evidence
+## 证据
 
-- Access request form.
-- Approval records.
-- Permission change diff.
-- Secret rotation records.
-- Offboarding revocation checklist.
+- 访问申请单。
+- 审批record。
+- permission变更 diff。
+- secret 轮换record。
+- 离职回收清单。

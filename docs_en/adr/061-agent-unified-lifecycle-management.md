@@ -1,15 +1,15 @@
-# ADR-061: Agent Unified Lifecycle Management Architecture
+# ADR-061 Agent 统一生命cyclemanageArchitecture
 
-- Status: Accepted
-- Decision Date: 2026-04-20
+- Status：Accepted
+- Decision日期：2026-04-20
 
-## Context
+## Background
 
-Agents are composed of multiple loosely coupled components, lacking unified version and lifecycle management.
+Agent 由多个松散组件组合而成，缺乏统一的版本和生命cyclemanage。
 
 ## Decision
 
-### Agent Entity Model
+### Agent 实体模型
 
 ```typescript
 interface AgentEntity {
@@ -31,64 +31,64 @@ interface AgentComponent {
 }
 ```
 
-### Lifecycle States (§61.3 reconciliation)
+### 生命cycleStatus（§61.3 reconciliation）
 
-| State | Description |
-|-------|-------------|
-| draft | Draft |
-| testing | Testing |
-| staging | Staging |
-| canary | Canary rollout in progress |
-| active | Current active version |
-| paused | Paused promotion |
-| deprecated | Deprecated |
-| archived | Archived |
-| removed | Removed (terminal state) |
+| Status | Description |
+|------|------|
+| draft | 草稿 |
+| testing | 测试中 |
+| staging | 预发布 |
+| canary | 金丝雀放量中 |
+| active | 当前活跃版本 |
+| paused | 暂停推进 |
+| deprecated | 已废弃 |
+| archived | 归档 |
+| removed | 已移除（终态） |
 
-Constraints:
-- State transition order: draft → testing → staging → canary → active → paused → deprecated → archived → removed
-- `canary` and `active` respectively correspond to controlled rollout and default active version, no longer using `production / retired / superseded` mixed expressions.
-- archived state retains audit history, cannot be reverted to active state.
-- removed is terminal state, indicating both runtime surface and projection have completed cleanup.
+约束：
+- Status流转顺序：draft → testing → staging → canary → active → paused → deprecated → archived → removed
+- `canary` vs `active` 分别对应受控放量和defaults to活跃版本，不再uses `production / retired / superseded` 混合table达。
+- archived Status保留审计历史，不可逆回活跃态。
+- removed 为终态，table示运lines面vs投影面都completed清理。
 
 ## v4.3 ADR Remediation
 
-- R3-52: This ADR previously used the historical terms `requirements_locked / production / retired / superseded`, which were not aligned with §61.3 rollout lifecycle. Fix: The text now unifies to `draft / testing / staging / canary / active / paused / deprecated / archived / removed` nine-state lifecycle.
+- R3-52: 本 ADR 曾accesses along用 `requirements_locked / production / retired / superseded` 这组历史词汇，未vs §61.3 的 rollout lifecycle 对齐。修复：正文现统一到 `draft / testing / staging / canary / active / paused / deprecated / archived / removed` 九态生命cycle。
 
 - Semantic versioning (major.minor.patch)
-- Version compatibility checking
-- Rollback support
+- 版本兼容性检查
+- 降级supported
 
-### Deployment Management
+### 部署manage
 
-- Blue-green deployment
-- Canary release
-- Rollback capability
+- 蓝绿部署
+- 金丝雀发布
+- 回滚能力
 
-### Component Dependencies
+### 组件relies on
 
-- Dependency graph
-- Version compatibility matrix
-- Upgrade impact analysis
+- relies on关系图
+- 版本兼容性矩阵
+- 升级Impact分析
 
 ## Consequences
 
-Advantages:
+优点：
 
-- Unified management improves maintainability
-- Versioning supports rollback
-- Dependency management prevents conflicts
+- 统一manage提高可维护性
+- 版本化supported回滚
+- relies onmanage防止conflicts
 
-Disadvantages:
+代价：
 
-- Component version coordination is complex
-- Lifecycle state machine maintenance cost
+- 组件版本协调复杂
+- 生命cycleStatus机维护成本
 
-## Cross References
+## 交叉references用
 
-- [ADR-075 Six-Level Controlled Release and Rollout State Machine](./075-controlled-rollout-release.md)
-- [ADR-029 OAPEFLIR Controlled Cognition Kernel](./029-oapeflir-controlled-cognition-kernel.md)
+- [ADR-075 六级受控发布vs Rollout Status机](./075-controlled-rollout-release.md)
+- [ADR-029 OAPEFLIR 受控认知内核](./029-oapeflir-controlled-cognition-kernel.md)
 
-## Source Section
+## 来源章节
 
-- `§61` Agent Unified Lifecycle Management Architecture
+- `§61` Agent 统一生命cyclemanageArchitecture

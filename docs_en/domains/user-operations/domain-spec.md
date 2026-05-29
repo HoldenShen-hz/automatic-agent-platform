@@ -10,10 +10,10 @@
 
 ## Hard Constraints
 
-- All user touchpoints must enforce frequency limits.
+- All user outreach must enforce frequency limits.
 - Profiling, segmentation, and message content must comply with data classification policies.
-- High-risk touchpoints must support pause, recall, and audit.
+- High-risk outreach must support pause, recall, and audit.
 
 ## Acceptance Criteria
 
-- Prior to GA, evidence of frequency control, unsubscribe, user segmentation audit, and experiment evaluation must be provided.
+- GA must provide frequency control, unsubscribe, user segmentation audit, and experiment evaluation evidence before release.

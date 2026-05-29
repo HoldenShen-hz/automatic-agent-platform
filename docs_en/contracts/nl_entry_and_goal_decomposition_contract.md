@@ -1,10 +1,10 @@
 # NL Entry And Goal Decomposition Contract
 
-## 1. Scope
+## 1. 范围
 
-This contract defines the natural language entry, multi-turn clarification, and goal decomposition boundaries as specified in `§39-§40`.
+本 contract defines `§39-§40` 的自然语言入口、多轮澄清和目标分解边界。
 
-## 2. Canonical Objects
+## 2. Canonical 对象
 
 - `NlEntryRequest`
 - `IntentParseResult`
@@ -16,7 +16,7 @@ This contract defines the natural language entry, multi-turn clarification, and 
 - `PlannedTask`
 - `TaskDependency`
 
-## 3. `IntentParseResult` Minimum Fields
+## 3. `IntentParseResult` 最小字段
 
 - `raw_input`
 - `locale`
@@ -26,14 +26,15 @@ This contract defines the natural language entry, multi-turn clarification, and 
 - `clarification_questions?`
 - `continuation`
 - `suggested_division_id`
-- `suggested_workflow_id`
+- `suggested_business_pack_id?`
+- `suggested_recipe_id?`
 
-Rules:
+规则：
 
-- Low confidence, high risk, and missing entity must allow `requires_clarification=true`.
-- `suggested_division_id` is only a suggestion and does not equal final execution authorization.
+- 低置信度、高风险、实体缺失三class情况必须允许 `requires_clarification=true`。
+- `suggested_division_id`、`suggested_business_pack_id`、`suggested_recipe_id` only为Recommendation，不等于最终执linesauthorization。
 
-## 4. `GoalDecomposition` Minimum Fields
+## 4. `GoalDecomposition` 最小字段
 
 - `goal_id`
 - `tasks`
@@ -44,7 +45,7 @@ Rules:
 - `decomposition_confidence`
 - `requires_human_review`
 
-`PlannedTask` minimum fields:
+`PlannedTask` 最小字段：
 
 - `task_id`
 - `domain_id`
@@ -53,16 +54,16 @@ Rules:
 - `expected_outputs`
 - `delegation_mode`
 
-## 5. State Machine
+## 5. Status机
 
-`ClarificationState.status`:
+`ClarificationState.status`：
 
 - `open`
 - `answered`
 - `expired`
 - `cancelled`
 
-`GoalLifecycle.status`:
+`GoalLifecycle.status`：
 
 - `draft`
 - `decomposed`
@@ -72,14 +73,14 @@ Rules:
 - `failed`
 - `cancelled`
 
-## 6. Boundary Rules
+## 6. 边界规则
 
-- NL entry must not directly execute runtime side effects.
-- GoalDecomposer must not bypass approval, budget, and risk gates.
-- The only controlled output from NL to runtime is structured envelope / decomposition.
+- NL 入口不得directly执lines runtime side effects。
+- GoalDecomposer 不得bypassing审批、budget和风险门禁。
+- 从 NL 到 runtime 的唯一受控输出is结构化 envelope / decomposition。
 
-## 7. Test Requirements
+## 7. 测试要求
 
-- unit: intent, entity, clarification, decomposition graph
-- integration: NL -> decomposition -> orchestration handoff
-- contract: ambiguous requests must not directly enter automatic execution
+- unit：intent、entity、clarification、decomposition graph
+- integration：NL -> decomposition -> orchestration handoff
+- contract：模糊request不得directly进入自动执lines

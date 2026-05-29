@@ -1,20 +1,20 @@
-# ADR-044 Non-Technical User Experience Architecture
+# ADR-044 Non-technical User Experience Architecture
 
-- Status: Accepted
-- Decision Date: 2026-04-20
+- Status：Accepted
+- Decision Date：2026-04-20
 
-## Context
+## Background
 
-Non-technical users (business operators, operations personnel) need simplified interaction methods without understanding underlying APIs and technical details.
+Non-technical users (business operators, operations personnel) need simplified interaction methods without needing to understand underlying APIs and technical details.
 
 ## Decision
 
 ### User Roles
 
 | Role | Description | Interface |
-|------|-------------|-----------|
+|------|------|------|
 | business_operator | Business operator | Simplified interface |
-| org_node_owner(team) | Team leader for `OrgNodeType.team` | Management view |
+| org_node_owner(team) | Team leader of `OrgNodeType.team` | Management view |
 | executive | Executive | Report view |
 | admin | Administrator | Full-featured interface |
 
@@ -29,36 +29,36 @@ Non-technical users (business operators, operations personnel) need simplified i
 
 - Push notifications
 - Email notifications
-- In-app messages
+- In-system messages
 - Real-time status updates
 
-### Auxiliary Features
+### Assistive Features
 
 | Feature | Description |
-|---------|-------------|
-| Task Templates | Predefined templates for common tasks |
-| Quick Actions | One-click execution for common operations |
-| History | Traceable operation history |
-| Export Reports | Data export support |
+|------|------|
+| Task templates | Common task pre-defined templates |
+| Quick actions | One-click common operations |
+| History records | Operation history traceable |
+| Export reports | Data export supported |
 
 ## Consequences
 
-Pros:
+Advantages:
 
-- Lower barrier for non-technical users
+- Reduces non-technical user usage threshold
 - Templating improves efficiency
 - Real-time feedback enhances experience
 
-Cons:
+Costs:
 
 - Multi-role interface increases complexity
-- Template maintenance requires ongoing investment
+- Template maintenance requires continuous investment
 
-## Cross References
+## Cross-references
 
 - [ADR-039 Natural Language Task Entry Architecture](./039-natural-language-task-entry.md)
 - [ADR-043 Unified Operations Dashboard](./043-unified-operations-dashboard.md)
 
-## Source Sections
+## Source Section
 
-- `§44` Non-Technical User Experience Architecture
+- `§44` Non-technical User Experience Architecture

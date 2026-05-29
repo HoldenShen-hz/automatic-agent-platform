@@ -1,158 +1,158 @@
 # Diagnostics Snapshot And Repro Bundle Contract
 
-## 1. Scope
+## 1. 范围
 
-This contract defines diagnostic snapshots on failure, minimal reproduction bundles, and explanation modes.
+本 contract definesfailed时的诊断快照、最小复现包和解释模式。
 
-Related Documents:
+相关文档：
 
 - `debug_inspect_health_backpressure_contract.md`
 - `result_envelope_contract.md`
 - `tool_output_sanitization_contract.md`
 
-## 2. Goals
+## 2. 目标
 
-Improve failure location efficiency:
+提升failed定位效率：
 
-- Automatically generate diagnostic snapshots
-- Export minimal reproduction bundles
-- Support explanation modes and decision chain views
+- 自动生成诊断快照
+- export最小复现包
+- supported解释模式vsDecision链视图
 
-## 3. DiagnosticSnapshot
+## 3. `DiagnosticSnapshot`
 
-Contains at least:
+至少contains：
 
-- Current state
-- Recent events
-- Recent tool calls
-- Current context summary
-- OAPEFLIR current phase and loop iteration summary
-- File lock status
-- Configuration version
-- Provider status
-- Basic system information (OS, version, architecture, execution mode)
-- Enabled extensions / plugins summary
-- Prompt bundle / prompt template version summary
-- Scheduling and planned task related summary (if system supports schedule / automation / scheduled workflow)
+- 当前Status
+- 最近事件
+- 最近工具call
+- 当前上下文摘要
+- OAPEFLIR 当前阶段vs loop iteration 摘要
+- 文件锁Status
+- configure版本
+- provider Status
+- 基本系统信息（OS、版本、Architecture、运lines模式）
+- enabled extensions / plugins 摘要
+- prompt bundle / prompt template 版本摘要
+- 调度vs计划任务相关摘要（若系统supported schedule / automation / scheduled workflow）
 
-## 4. MinimalReproBundle
+## 4. `MinimalReproBundle`
 
-Contains at least:
+至少contains：
 
-- Task input
-- Workflow state
-- Oapeflir timeline
-- Relevant messages
-- Tool usage
-- Feedback signals / learning objects / rollout refs (if related)
-- Sanitized artifacts
-- Config subset
-- Session / interaction export (if interaction layer exists)
-- Prompt bundle or minimal prompt overlay snapshot
-- Scheduled recipe / automation definition subset (if related to failure)
+- task input
+- workflow state
+- oapeflir timeline
+- relevant messages
+- tool usage
+- feedback signals / learning objects / rollout refs（若相关）
+- sanitized artifacts
+- config subset
+- session / interaction export（若存在交互层）
+- prompt bundle 或最小 prompt overlay 快照
+- scheduled recipe / automation defines子集（若vs故障相关）
 
-Supplementary rules:
+补充规则：
 
-- Diagnostics / repro bundle should support exporting as a single compressed package or equivalent shareable artifact for support and troubleshooting.
-- Must clearly remind users before export: bundle may contain session messages, logs, configuration, and other sensitive information.
-- Diagnostics export should not default to including secret plaintext, unsanitized tokens, or sensitive fields in crash dumps.
-- If system supports issue / incident creation assistance, should prioritize generating "pre-filled system information report entry", rather than requiring users to manually collect environment information.
-- If system supports multiple prompt templates, planned tasks, or enabled extensions, bundle should carry "actually effective version/list" as much as possible, rather than only exporting general configuration.
+- diagnostics / repro bundle 应supportedexport为单一压缩包或等价可共享工件，便于supportedvs排障。
+- export前必须明确提醒user：bundle 可能contains session messages、日志、configure和其他敏感信息。
+- diagnostics export不应defaults tocontains secret 原文、not sanitized token 或 crash dump 中的敏感字段。
+- 若系统supported issue / incident 创建辅助，应优先生成“预填系统信息的报告入口”，而不is要求user手工收集环境信息。
+- 若系统supported多种 prompt template、计划任务或enabled扩展，bundle 应尽量同时携带“实际生效的版本/清单”，而不is只export通用configure。
 
-## 5. IncidentTimelineReport
+## 5. `IncidentTimelineReport`
 
-When tasks fail or post-mortem troubleshooting is needed, system should be able to automatically generate incident timeline report.
+当任务failed或需要事后排障时，系统应能自动生成事故time线报告。
 
-### 5.1 Minimum Fields
+### 5.1 最小字段
 
 - `taskId`
-- `traceSummary` (traceId / correlationId / spanIds)
-- `window` (startedAt / endedAt / durationMs)
-- `summary` (including counts from various sources: event / dispatch / step_output / approval / artifact / log / remote_log / message / compaction)
+- `traceSummary`（traceId / correlationId / spanIds）
+- `window`（startedAt / endedAt / durationMs）
+- `summary`（含各class来源计数：event / dispatch / step_output / approval / artifact / log / remote_log / message / compaction）
 - `highestSeverity`
-- `warnings` (structured warning summary)
-- `candidateRootCauses` (automatically inferred possible root causes)
-- `entries` (incident entries sorted by time)
+- `warnings`（结构化警告摘要）
+- `candidateRootCauses`（自动推断的可能Root Cause）
+- `entries`（按time排序的事故条目）
 
 ### 5.2 IncidentTimelineEntry
 
-Each timeline entry contains at least:
+每条time线条目至少contains：
 
-| Field | Type | Description |
-| --- | --- | --- |
-| `id` | `string` | Entry ID |
-| `source` | `string` | Source: `event` / `dispatch` / `step_output` / `approval` / `artifact` / `log` / `remote_log` / `message` / `compaction` |
-| `occurredAt` | `timestamp` | Occurrence time |
-| `title` | `string` | Entry title |
-| `summary` | `string` | Entry summary |
+| 字段 | class型 | Description |
+|---|-------|--------|
+| `id` | `string` | 条目 ID |
+| `source` | `string` | 来源：`event` / `dispatch` / `step_output` / `approval` / `artifact` / `log` / `remote_log` / `message` / `compaction` |
+| `occurredAt` | `timestamp` | 发生time |
+| `title` | `string` | 条目标题 |
+| `summary` | `string` | 条目摘要 |
 | `severity` | `string` | `info` / `warning` / `critical` |
-| `traceId?` | `string` | Associated trace |
-| `spanId?` | `string` | Associated span |
-| `data` | `json` | Entry payload |
+| `traceId?` | `string` | 关联 trace |
+| `spanId?` | `string` | 关联 span |
+| `data` | `json` | 条目载荷 |
 
 ### 5.3 RemoteTimelineReport
 
-When tasks involve remote workers, should be able to generate remote execution timeline sub-view:
+当任务涉及远程 worker 时，应能生成远程执linestime线子视图：
 
-- `taskId`, `traceSummary`
-- `totalEntries`, `totalRemoteLogs`, `latestRemoteLogAt`
+- `taskId`、`traceSummary`
+- `totalEntries`、`totalRemoteLogs`、`latestRemoteLogAt`
 - `remoteWorkerIds`
 - `entries`
 
-## 5A. Diagnostic Warning Classification System
+## 5A. 诊断警告分class体系
 
-### 5A.1 Warning Categories
+### 5A.1 警告class别
 
-| category | Meaning |
+| category | 含义 |
 | --- | --- |
-| `health` | Health check abnormality (DB unwritable, provider failure, etc.) |
-| `runtime` | Runtime abnormality (execution stalled, workflow failed, etc.) |
-| `approval` | Approval abnormality (long-time pending, cascade rejection, etc.) |
-| `takeover` | Human takeover related |
-| `provider` | LLM provider degradation or unavailability |
-| `dispatch` | Dispatch abnormality (worker unavailable, isolation not met, etc.) |
-| `remote_authority` | Remote worker permission violation or consistency abnormality |
-| `other` | Unclassified |
+| `health` | 健康检查异常（DB 不可写、provider failed等） |
+| `runtime` | 运lines时异常（execution stalled、workflow failed等） |
+| `approval` | 审批异常（长time pending、级联拒绝等） |
+| `takeover` | 人工接管相关 |
+| `provider` | LLM provider 降级或不可用 |
+| `dispatch` | 调度异常（worker 不可用、隔离不满足等） |
+| `remote_authority` | 远程 worker permission违规或一致性异常 |
+| `other` | 未分class |
 
-### 5A.2 Warning Severity
+### 5A.2 警告严重性
 
-| severity | Meaning |
+| severity | 含义 |
 | --- | --- |
-| `info` | For reference only, no immediate action required |
-| `warning` | Needs attention, may need follow-up action |
-| `critical` | Requires immediate response |
+| `info` | only供了解，不需立即lines动 |
+| `warning` | 需要关注，可能需要后续lines动 |
+| `critical` | 需要立即response |
 
-### 5A.3 Escalation Targets
+### 5A.3 升级目标
 
-| escalation | Meaning |
+| escalation | 含义 |
 | --- | --- |
-| `none` | No escalation |
-| `task` | Escalate to task-level handling |
-| `operator` | Escalate to operations personnel |
+| `none` | no需升级 |
+| `task` | 升级到任务级别handle |
+| `operator` | 升级到运维人员 |
 
-### 5A.4 DiagnosticWarningSummary
+### 5A.4 `DiagnosticWarningSummary`
 
-Aggregated warning summary contains at least:
+聚合警告摘要至少contains：
 
 - `totalEvents`
 - `totalUniqueWarnings`
-- `suppressedDuplicateCount` (count of similar dedup suppressed)
+- `suppressedDuplicateCount`（同classfor deduplication被抑制的iterations数）
 - `highestSeverity`
 - `escalationTargets`
-- `entries` (each containing code / category / severity / escalation / count / suppressedCount)
+- `entries`（每条含 code / category / severity / escalation / count / suppressedCount）
 
-## 6. ExplanationRecord
+## 6. `ExplanationRecord`
 
-Used to answer:
+used for回答：
 
-- Why this division was selected
-- Why HITL was escalated
-- Why command was rejected
-- Why retry was triggered
-- Why fallback provider was switched
-- Why improvement candidate was accepted or rejected
-- Why rollout was advanced or blocked
+- 为什么选这个 division
+- 为什么升级 HITL
+- 为什么拒绝命令
+- 为什么触发重试
+- 为什么切 fallback provider
+- 为什么accepts或拒绝 improvement candidate
+- 为什么推进或阻断 rollout
 
-## 6. Closure Conclusion
+## 6. 收口Conclusion
 
-Diagnostic snapshots, minimal reproduction bundles, and explanation modes are key capabilities to change "when system has problems can only guess" to "system can explain its context by itself".
+诊断快照、最小复现包和解释模式，is把“系统出了Issue只能猜”变成“系统能自己交代上下文”的关键能力。

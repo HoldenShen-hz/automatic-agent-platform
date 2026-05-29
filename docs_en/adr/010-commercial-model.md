@@ -1,111 +1,111 @@
-# ADR-010 Commercial Model
+# ADR-010 商业模型
 
 ---
 
-## OAPEFLIR Association
+## OAPEFLIR 关联
 
-This document defines the following components in the OAPEFLIR eight-stage cognitive loop:
+本文档defines OAPEFLIR 八阶段认知循环中的以下组件：
 
-- **Observe**: Signal collection and unified DTO
-- **Assess**: Pre/post execution assessment and risk judgment
-- **Plan**: Explicit planning and DAG construction (ADR-060)
-- **Execute**: Step execution and Dual-Channel output
-- **Feedback**: Signal collection, preprocessing and 7 feedback sources (ADR-079)
-- **Learn**: Pattern detection and knowledge extraction (ADR-080)
-- **Improve**: Improvement candidate evaluation and Rollout state machine (ADR-075)
-- **Release**: Six-level controlled release and automatic rollback
+- **Observe**：信号采集vs统一 DTO
+- **Assess**：执lines前/后评估vs风险判断
+- **Plan**：显式规划vs DAG 构建（ADR-060）
+- **Execute**：步骤执linesvs Dual-Channel 输出
+- **Feedback**：信号收集、预handlevs 7 class反馈源（ADR-079）
+- **Learn**：模式检测vs知识提取（ADR-080）
+- **Improve**：改进候选评估vs Rollout Status机（ADR-075）
+- **Release**：六级受控发布vs自动回滚
 
 ---
 
-- Status: Accepted
-- Decision Date: 2026-04-02
+- Status：Accepted
+- Decision日期：2026-04-02
 
 ## Background
 
-The platform's overarching goal includes profitable operations, but if we only design the technical architecture without defining the commercialization path in advance, subsequent billing, permissions, marketplace, and tenant capabilities will be difficult to integrate.
+平台的总体目标contains“盈利良好”，但如果只设计技术Architecture，不提前defines商业化路径，后续计费、permission、市场和租户能力很难补进来。
 
 ## Decision
 
-Incorporate commercial design into the target architecture, but with a clear implementation cadence:
+将商业设计纳入目标Architecture，但明确实施节奏：
 
-- Phase 1-2: No charging. Infrastructure maturity and user feedback are the primary goals.
-- Phase 3: Validate PMF and launch Pro commercialization.
-- Phase 4: Enter Enterprise, Marketplace, ecosystem, and industry solutions stages.
+- Phase 1-2：不开收费，以基建成熟和user反馈为第一目标。
+- Phase 3：验证 PMF，启动 Pro 商业化。
+- Phase 4：进入 Enterprise、Marketplace、生态和lines业解决方案阶段。
 
-## Commercial Positioning
+## 商业定位
 
-The core positioning is not an AI programming tool, but rather:
+核心定位不is“AI 编程工具”，而is：
 
-- An AI-driven general-purpose automation company runtime.
-- Programming is only one business unit.
-- Any business that can be workflow-ized should have the opportunity to connect to this platform.
+- AI 驱动的通用自动化公司运lines时。
+- 编程只is其中一个事业部。
+- 任何可被工作流化的业务都应有机会接入这个平台。
 
-## Commercial Units
+## 商业单位
 
-Commercialization revolves around several types of units:
+商业化围绕几class单元展开：
 
-- Business Unit: Revenue unit.
-- Usage: Billing metering unit.
-- Skill and Plugin: Ecosystem distribution unit.
-- Deployment Mode: Community, Professional, and Enterprise editions as differentiated units.
+- 事业部：收入单元。
+- 用量：计量计费单元。
+- Skill / Plugin：生态分发单元。
+- 部署模式：社区版、专业版、企业版的差异化单元。
 
-## Pricing and Cadence
+## 定价vs节奏
 
-The principle is to adopt a three-tier structure:
+principle上采用三层结构：
 
-- Community: Low-barrier trial or BYOK.
-- Pro: Small and medium teams and individual entrepreneurs.
-- Enterprise: Private deployment, compliance, SSO, audit, and stronger quota control.
+- Community：低门槛试用或 BYOK。
+- Pro：中小团队和个人创业者。
+- Enterprise：私有化、合规、SSO、审计和更强配额控制。
 
-But constraints are important:
+但约束很重要：
 
-- Charging should not be introduced prematurely before infrastructure is mature.
-- Pricing figures should not be locked in before market validation.
-- Commercialization capabilities must be implemented in tandem with cost models, tenant isolation, security, and usage tracking.
+- 基建不成熟时不应提前收费。
+- 定价数字在市场验证前不应锁死。
+- 商业化能力必须和成本模型、租户隔离、securityvs用量追踪synchronous落地。
 
-## Pre-commercialization Capabilities
+## 商业化前置能力
 
-At minimum, these technical prerequisites are required:
+至少需要这些技术前提：
 
-- UsageMeter.
-- QuotaManager.
-- BillingEngine or equivalent billing infrastructure.
-- Multi-tenant isolation.
-- User experience observability and error friendliness.
-- Compliance roadmap and enterprise security enhancement provisions.
+- UsageMeter。
+- QuotaManager。
+- BillingEngine 或等价账单基础设施。
+- 多租户隔离。
+- user体验可观测和错误友好性。
+- 合规路线图vs企业security增强预留。
 
-## Results
+## 结果
 
-Benefits:
+优点：
 
-- Commercialization is not an add-on layer, but is planned in sync with cost, tenant, security, and channels.
-- Ability to identify earlier which technical capabilities are prerequisites for commercialization.
-- Architecture space is reserved for Marketplace, industry solutions, and Enterprise capabilities.
+- 商业化不is附加层，而isvs成本、租户、security、渠道synchronous规划。
+- 能更早识别哪些技术能力is商业化前置条件。
+- 为 Marketplace、lines业解决方案和 Enterprise 能力预留了Architecture空间。
 
-Constraints:
+约束：
 
-- Phase 1-2 must not be held hostage by commercialization requirements.
-- Pricing, compliance, and market strategy must all retain flexibility for adjustment before real market validation.
-- Any charging design must be closed-loop with a real cost model.
+- Phase 1-2 不能被商业化需求反向绑架。
+- 定价、合规和市场策略都必须在真实市场验证前保留调整空间。
+- 任何收费设计都必须vs真实成本模型闭环。
 
-## Cross-References
+## 交叉references用
 
-- [ADR-008 Cost Model](./008-cost-model.md)
-- [ADR-009 Deployment and Operations](./009-deployment-ops.md)
+- [ADR-008 成本模型](./008-cost-model.md)
+- [ADR-009 部署vs运维](./009-deployment-ops.md)
 - [Quickstart](../guides/quickstart.md)
 
-## Source Sections
+## 来源章节
 
-- Section 11
-- Section 11.1
-- Section 11.2
-- Section 11.3
-- Section 11.4
-- Section 11.5
-- Section 11.6
-- Section 11.7
-- Section 11.8
-- Section 11.9
-- Section 11.10
-- Section 11.11
-- Section 11.12
+- `§11`
+- `§11.1`
+- `§11.2`
+- `§11.3`
+- `§11.4`
+- `§11.5`
+- `§11.6`
+- `§11.7`
+- `§11.8`
+- `§11.9`
+- `§11.10`
+- `§11.11`
+- `§11.12`

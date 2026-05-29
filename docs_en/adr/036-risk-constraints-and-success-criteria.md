@@ -1,56 +1,56 @@
-# ADR-036 Risk, Constraints, and Success Criteria
+# ADR-036 风险、约束vssuccess标准
 
-- Status: Accepted
-- Decision Date: 2026-04-17
+- Status：Accepted
+- Decision日期：2026-04-17
 
-## Context
+## Background
 
-The platform requires a clear risk register, constraint enforcement mechanism, and success criteria to ensure project objectives are trackable.
+平台需要有明确的风险登记册、约束mandatory机制和success标准，确保项目目标可追踪。
 
 ## Decision
 
-### 28 Risk Register Items
+### 28 项风险登记册
 
-- `config/risk/register.json` registers 28 design risks
-- Coexists with runtime risk scores in `config/risk/default.json`
-- Regularly reviewed and updated
+- `config/risk/register.json` 登记 28 项设计风险
+- vs `config/risk/default.json` 的执lines期风险评分并存
+- 定期评审和更新
 
-### 32 Hard Constraints
+### 32 项硬约束
 
-| Constraint Type | Constraint Count | Code Enforcement Ratio |
-|-----------------|------------------|-----------------------|
-| High-risk approval | ~10 | ~60% |
-| CAS optimistic lock | All | 100% |
-| Sandbox | All | 100% |
-| Delegation depth ≤3 | All | 100% |
-| Others | ~10 | ~30% |
+| 约束class型 | 约束count | codemandatory比例 |
+|----------|----------|--------------|
+| 高风险审批 | ~10 | ~60% |
+| CAS 乐观锁 | 全部 | 100% |
+| Sandbox | 全部 | 100% |
+| Delegation depth ≤3 | 全部 | 100% |
+| 其他 | ~10 | ~30% |
 
-### Success Criteria Metrics
+### success标准度量
 
 - `domains/roadmap/success-criteria-service.ts`
-- Supports criterion registration
-- Metrics collection
-- Phase success evaluation
-- Gate decision-making
+- supported criterion 注册
+- 指标采集
+- phase success 评估
+- 门禁Decision
 
 ## Consequences
 
-Benefits:
+优点：
 
-- Risk register improves risk visibility
-- Code-level constraint enforcement improves compliance
-- Success criteria metrics make delivery assessable
+- 风险登记册提高风险可见性
+- code级约束mandatory提高合规性
+- success标准度量使交付可评估
 
-Trade-offs:
+代价：
 
-- Maintaining risk register requires ongoing investment
-- Some constraints are difficult to codify
+- 维护风险登记册需要持续投入
+- 部分约束难以code化
 
-## Cross-references
+## 交叉references用
 
-- [ADR-026 Risk Control Architecture](./026-risk-control-architecture.md)
-- [ADR-033 Phased Roadmap](./033-phased-roadmap.md)
+- [ADR-026 风险控制Architecture](./026-risk-control-architecture.md)
+- [ADR-033 分阶段落地路线](./033-phased-roadmap.md)
 
-## Source Section
+## 来源章节
 
-- `§36` Risk, Constraints, and Success Criteria
+- `§36` 风险、约束vssuccess标准

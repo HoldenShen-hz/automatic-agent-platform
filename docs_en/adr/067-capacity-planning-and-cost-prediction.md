@@ -1,30 +1,30 @@
-# ADR-067: Capacity Planning and Cost Prediction Engine
+# ADR-067 容量规划vs成本预测references擎
 
-- Status: Accepted
-- Decision Date: 2026-04-20
+- Status：Accepted
+- Decision日期：2026-04-20
 
-## Context
+## Background
 
-The platform needs to predict capacity requirements and cost trends, supporting proactive scaling decisions.
+平台需要预测容量需求和成本趋势，supported前瞻性扩容Decision。
 
-Current scope:
+当前口径下：
 
-- Ring 1 only requires stable collection of capacity signals and formation of auditable prediction inputs.
-- Ring 3 enters cross-region, cross-ecosystem automated capacity planning and strategy coordination.
+- Ring 1 只要求稳定采集容量信号并形成可审计预测输入。
+- Ring 3 才进入跨区域、跨生态的自动容量规划vs策略联动。
 
 ## Decision
 
-### Capacity Metrics
+### 容量指标
 
-| Metric | Description | Collection Frequency |
-|--------|-------------|----------------------|
-| cpu_usage | CPU utilization | 1 minute |
-| memory_usage | Memory utilization | 1 minute |
-| queue_depth | Queue depth | 1 minute |
-| active_tasks | Active task count | 1 minute |
-| throughput | Throughput | 5 minutes |
+| 指标 | Description | 采集频率 |
+|------|------|----------|
+| cpu_usage | CPU 利用率 | 1 分钟 |
+| memory_usage | 内存利用率 | 1 分钟 |
+| queue_depth | 队列深度 | 1 分钟 |
+| active_tasks | 活跃任务数 | 1 分钟 |
+| throughput | 吞吐量 | 5 分钟 |
 
-### Prediction Model
+### 预测模型
 
 ```typescript
 interface CapacityForecast {
@@ -60,58 +60,58 @@ interface MetricPrediction {
 }
 ```
 
-### Prediction Algorithms
+### 预测算法
 
-| Algorithm | Use Cases |
-|-----------|-----------|
-| ARIMA | Trend prediction |
-| Holt-Winters | Seasonal prediction |
-| Prophet | Multiple seasonality |
-| LSTM | Complex patterns |
+| 算法 | 适用场景 |
+|------|----------|
+| ARIMA | 趋势预测 |
+| Holt-Winters | 季节性预测 |
+| Prophet | 多季节性 |
+| LSTM | 复杂模式 |
 
-### Scaling Recommendations
+### 扩容Recommendation
 
-| Scenario | Recommendation |
-|----------|----------------|
-| Capacity insufficient | Add Workers |
-| Resource waste | Reduce resources |
-| Performance bottleneck | Optimize configuration |
-| Cost too high | Downgrade/optimize |
+| 场景 | Recommendation |
+|------|------|
+| 容量不足 | 增加 Worker |
+| 资源浪费 | 缩减资源 |
+| 性能瓶颈 | 优化configure |
+| 成本过高 | 降级/优化 |
 
-### Cost Prediction
+### 成本预测
 
-| Dimension | Prediction Factors |
-|-----------|-------------------|
-| LLM cost | Token consumption x unit price |
-| Compute cost | Instances x unit price x duration |
-| Storage cost | Storage volume x unit price |
-| Network cost | Traffic x unit price |
+| 维度 | 预测要素 |
+|------|----------|
+| LLM 成本 | Token 消耗 × 单价 |
+| 计算成本 | 实例 × 单价 × 时长 |
+| storage成本 | storage量 × 单价 |
+| network成本 | 流量 × 单价 |
 
-### Capacity Planning Reports
+### 容量规划报告
 
-- Weekly capacity report
-- Scaling recommendations
-- Cost prediction
-- Risk warnings
+- 周度容量报告
+- 扩容Recommendation
+- 成本预测
+- 风险提示
 
 ## Consequences
 
-Advantages:
+优点：
 
-- Proactive planning avoids emergency scaling
-- Cost prediction supports budget planning
-- Optimization recommendations reduce cost
+- 前瞻性规划避免紧急扩容
+- 成本预测supportedbudget制定
+- 优化Recommendation降低成本
 
-Disadvantages:
+代价：
 
-- Prediction models require data accumulation
-- Prediction accuracy depends on model quality
+- 预测模型需要data积累
+- 预测准确性relies on模型质量
 
-## Cross References
+## 交叉references用
 
-- [ADR-024 Scalability Architecture](./024-scalability-architecture.md)
-- [ADR-064 Cost Attribution and Optimization Engine](./064-cost-attribution-and-optimization-engine.md)
+- [ADR-024 可扩展性Architecture](./024-scalability-architecture.md)
+- [ADR-064 成本归因vs优化references擎](./064-cost-attribution-and-optimization-engine.md)
 
-## Source Section
+## 来源章节
 
-- `§67` Capacity Planning and Cost Prediction Engine
+- `§67` 容量规划vs成本预测references擎

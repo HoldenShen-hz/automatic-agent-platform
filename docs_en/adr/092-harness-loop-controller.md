@@ -2,38 +2,38 @@
 
 ---
 
-## OAPEFLIR Association
+## OAPEFLIR 关联
 
-- **Observe**: Read current run, context, budget, and phase input
-- **Assess**: Determine whether to continue, retry, re-plan, or escalate to human
-- **Plan**: Arrange next iteration and phase sequence
-- **Execute**: Drive planner -> generator -> evaluator
-- **Feedback**: Write each round decision and timeline
-- **Learn**: Precipitate loop failure patterns
-- **Improve**: Support loop strategy evolution
-- **Release**: Incorporate loop behavior into regression and drills
+- **Observe**: 读取当前 run、上下文、budgetvs阶段输入
+- **Assess**: 判断isno继续、重试、重规划或转人工
+- **Plan**: 安排下一轮 iteration vs阶段顺序
+- **Execute**: 驱动 planner -> generator -> evaluator
+- **Feedback**: writes每轮 decision vs timeline
+- **Learn**: 沉淀循环failed模式
+- **Improve**: supported循环策略演化
+- **Release**: 将 loop lines为纳入回归vs演练
 
 ---
 
-- Status: Accepted
-- Decision Date: 2026-04-23
+- Status：Accepted
+- Decision日期：2026-04-23
 
 ## Background
 
-Harness needs to upgrade from single-round `runLoop()` to iterative, interruptible, recoverable main control loop, otherwise cannot support long-running tasks, retry, and async suspension.
+Harness 需要从单轮 `runLoop()` 升级为可迭代、可中断、可恢复的主控循环，no则no法支撑长时任务、重试vs异步挂起。
 
 ## Decision
 
-- Loop Controller serves as Harness's formal controller
-- Each iteration must record `NodeRun / NodeAttempt`, decision, context snapshot, and timeline
-- Loop exit is only allowed through six types of HarnessDecision or budget upper limit trigger
-- Loop controller must be able to handle sleep / recover / HITL / resume
+- Loop Controller 作为 Harness 的正式控制器
+- 每轮 iteration 都必须record `NodeRun / NodeAttempt`、decision、context snapshot vs timeline
+- 循环退出只允许via六class HarnessDecision 或budgetupper limit触发
+- loop controller 必须能handle sleep / recover / HITL / resume
 
 ## Consequences
 
-- Iterative control no longer scattered in individual helpers
-- Harness behavior is replayable, recoverable, auditable
+- 迭代控制不再散落在单个 helper 中
+- Harness lines为可重放、可恢复、可审计
 
 ## v4.3 ADR Remediation
 
-- A-33: This ADR originally used `step / decision` to record main timeline, root cause being loop controller ADR inherited semantic step narrative, did not rewrite as `NodeRun / NodeAttempt` became execution truth object. Fix: Main text now converges timeline subject to `NodeRun / NodeAttempt`, step only retained as semantic projection.
+- A-33: 本 ADR 原先用 `step / decision` record主time线，Root cause:  loop controller ADR 继承了语义 step 叙事，没有随着 `NodeRun / NodeAttempt` 成为执lines真相对象而改写。修复：正文现将time线主语收敛到 `NodeRun / NodeAttempt`，step 只保留为语义投影。

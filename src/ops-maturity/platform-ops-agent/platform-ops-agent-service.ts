@@ -98,6 +98,7 @@ function canExecuteAtLevel(
 }
 
 export class PlatformOpsAgentService {
+  private static readonly MAX_STORED_PROPOSALS = 256;
   private readonly definition: OpsAgentDefinition;
   private readonly proposals = new Map<string, OpsProposal>();
   private readonly capacityPredictor = new OpsCapacityPredictorService();
@@ -146,6 +147,7 @@ export class PlatformOpsAgentService {
     };
 
     this.proposals.set(proposal.proposalId, proposal);
+    this.evictOldProposals();
     return proposal;
   }
 
@@ -286,5 +288,15 @@ export class PlatformOpsAgentService {
       blockedBy.push("ops_agent.autonomy_limit_reached");
     }
     return blockedBy;
+  }
+
+  private evictOldProposals(): void {
+    while (this.proposals.size > PlatformOpsAgentService.MAX_STORED_PROPOSALS) {
+      const oldestProposalId = this.proposals.keys().next().value;
+      if (typeof oldestProposalId !== "string") {
+        break;
+      }
+      this.proposals.delete(oldestProposalId);
+    }
   }
 }

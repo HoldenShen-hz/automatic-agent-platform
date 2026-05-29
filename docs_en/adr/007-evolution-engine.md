@@ -1,114 +1,114 @@
-# ADR-007 Evolution Engine
+# ADR-007 进化references擎
 
-- Status: Partially Superseded by ADR-075
-- Decision Date: 2026-04-02
-- Partially superseded: ADR-075's six-level release model has replaced the description that Release only allows off, suggest, shadow three tiers.
+- Status：Partially Superseded by ADR-075
+- Decision日期：2026-04-02
+- 部分取代：ADR-075 的六级发布模型已取代其中"Release only允许 off/suggest/shadow 三档"的Description
 
 ## Background
 
-Static prompts, static models, and static policies gradually become ineffective as task distributions change. The platform aims to form a closed loop of Execute, Evaluate, Optimize, Rollback, but the system must remain controllable and not become unpredictable through self-modification.
+静态 Prompt、静态模型和静态策略会随着任务分布变化逐渐失效。平台希望形成“执lines、评估、优化、回滚”的闭环，但不能让系统因为自我修改而变得不可控。
 
 ## Decision
 
-Evolution is driven by the OAPEFLIR side chain Feedback, Learn, Improve, Release, with deterministic guardrails controlling entry to production:
+via OAPEFLIR 副链 `Feedback → Learn → Improve → Release` 驱动进化，并由 deterministic guardrail 控制进入生产：
 
-- Supervisor and observability continue to be responsible for lifecycle management, real-time monitoring, health checks, and metric collection.
-- Feedback Hub is responsible for normalizing execution signals into structured FeedbackSignal.
-- Learn Hub only allows evidence-backed learning objects to enter subsequent stages, and explicitly maintains promotionStatus.
-- Improve Hub only accepts validated and promoted LearningObjects.
-- Release, in the current phase 1-4, only allows three tiers: off, suggest, shadow, and does not directly expose canary or staged.
-- Any change must be roll-backable, auditable, gradual, and pausable.
+- Supervisor / observability 继续负责生命cyclemanage、实时监控、健康检查vs指标采集。
+- Feedback Hub 负责把执lines信号归一为结构化 `FeedbackSignal`。
+- Learn Hub 只允许 evidence-backed 学习对象进入后续阶段，并显式维护 `promotionStatus`。
+- Improve Hub 只接收 `validated/promoted` 的 LearningObject。
+- Release 在当前 phase1-4 only允许 `off / suggest / shadow` 三档，不directly开放 canary/staged。
+- 任何变更都必须可回滚、可审计、可灰度、可暂停。
 
-## Supervisor Role
+## Supervisor 角色
 
-The Supervisor is not just a monitor. It also carries governance responsibilities:
+Supervisor 不只is监控器，还承担治理职责：
 
-- Manages Agent lifecycle.
-- Tracks heartbeats, context usage, tool invocations, and resource consumption.
-- Evaluates success rate, cost, latency, and quality signals.
-- When necessary, restarts, pauses, upgrades, or terminates anomalous Agents.
+- manage Agent 生命cycle。
+- 跟踪心跳、上下文占用、工具call和资源uses。
+- 评估success率、成本、时延和质量信号。
+- 在必要时重启、暂停、升级或终止异常 Agent。
 
-## Evolution Dimensions
+## 进化维度
 
-The 8 dimensions can be summarized as:
+8 个维度可概括为：
 
-1. Prompt optimization.
-2. Compute budget adaptation.
-3. Tool call optimization and Skill precipitation.
-4. Capability profiling and reflection memory.
-5. Pre-check failure analysis.
-6. Reflexion, Self-Refine, experience replay.
-7. Adaptive reasoning strategy selection.
-8. Multi-Agent collaboration optimization and evaluation function evolution.
+1. Prompt 优化。
+2. 计算budget自适应。
+3. 工具call优化vs Skill 沉淀。
+4. 能力画像vs反思记忆。
+5. 预检查failed分析。
+6. Reflexion / Self-Refine / via验回放。
+7. 推理策略自适应选择。
+8. 多 Agent 协作优化vs评估function进化。
 
-## MVP Scope
+## MVP 范围
 
-The actual MVP scope for current phase 1-4 is limited to:
+当前 phase1-4 的实际 MVP 收口为：
 
-- Feedback: Deduplication, correlation, and recovery path identification.
-- Learn: Only supports three types of learning objects: failure_pattern, user_correction, recovery_playbook.
-- Improve: Only allows evidence-backed and validated LearningObjects into candidates.
-- Release: Only supports off, suggest, shadow.
+- Feedback：for deduplication、关联、恢复路径识别。
+- Learn：onlysupported `failure_pattern`、`user_correction`、`recovery_playbook` 三class学习对象。
+- Improve：只允许 evidence-backed 且 validated 的 LearningObject 进入候选。
+- Release：onlysupported `off / suggest / shadow`。
 
-Other more intensive evolution capabilities, such as multi-stage canary, auto-rollback, and more learning types, continue to be deferred.
+其他更重的进化能力，如多阶段 canary、auto-rollback、更多学习class型，继续延后。
 
-## Safety Principles
+## security总则
 
-Evolution must adhere to several iron rules:
+进化必须遵守几条铁律：
 
-- No degradation: New strategies must prove they are no worse than the current state before going online.
-- Reversible: Every change must have snapshots and rollback points.
-- Controllable: Must be one-click pausable.
-- Auditable: All changes are written to the evolution log.
-- Gradual: First validate on small traffic, then gradually scale up.
-- No privilege escalation: Models can only propose LearningObjects or Candidates, and cannot directly advance promotionStatus, candidate.status, or rollout.status.
+- 不可降级：新策略上线前必须证明不劣于现状。
+- 可逆：每iterations变更都要有快照和回滚点。
+- 可控：必须可以一键暂停。
+- 可审计：所有变化都writes evolution log。
+- 可灰度：先在小流量上验证，再逐步放量。
+- 不可越权：模型只能提议 LearningObject / Candidate，不能directly推进 `promotionStatus`、`candidate.status` 或 `rollout.status`。
 
-## Alerting and Observability
+## 告警vs观测
 
-Supervisor and observability should raise alerts or notifications for the following events:
+Supervisor / observability 应对以下事件给出告警或通知：
 
-- Context approaching threshold.
-- Agent suspected of being stuck.
-- Agent terminated abnormally.
-- Evolution event succeeded or rolled back.
-- Cost alert.
-- OAPEFLIR stage timeline anomaly.
-- Learn validation failure or rollout guardrail blocked.
+- 上下文逼近threshold。
+- Agent 疑似卡死。
+- Agent 异常终止。
+- 进化事件success或回滚。
+- 成本告警。
+- OAPEFLIR 阶段time线异常。
+- Learn validation failed或 rollout guardrail 阻断。
 
-## Results
+## 结果
 
-Benefits:
+优点：
 
-- The platform can iterate based on real runtime data, rather than relying solely on manual experience-based tuning.
-- Brings the optimization process under unified governance and auditing.
-- Transforms evolution from mysterious parameter tuning into a constrained engineering process.
-- Clarifies the boundary between main chain and side chain, reducing the risk of stealthy self-modification within execution logic.
+- 平台能够based on真实运linesdata迭代，而不is只靠人工凭via验调参。
+- 将优化过程纳入统一治理和审计。
+- 让进化从“神秘调参”变成受约束的工程流程。
+- 让主链和副链之间的边界更清晰，减少“执lines逻辑里偷偷自我修改”的风险。
 
-Costs:
+代价：
 
-- Metric quality directly determines optimization quality.
-- Without offline backtesting, gradual rollout, and rollback, evolution becomes a new source of instability.
-- Introducing all 8 dimensions prematurely will significantly increase system complexity.
+- 指标质量directly决定优化质量。
+- 如果没有离线回测、灰度和回滚，进化会成为新的不稳定源。
+- 过早references入全部 8 个维度会显著增加系统复杂度。
 
-## Current Implementation Alignment
+## 当前实现对齐
 
-As of current phase 1-4 delivery, parts aligned with this ADR include:
+截至当前 phase1-4 交付，已对齐部分includes：
 
-- FeedbackCollector plus SignalPreprocessor have formed structured learning input.
-- LearningObjectValidator has made evidence and promotionStatus a hard boundary.
-- PolicyRolloutService plus GuardrailEvaluator have pulled rollout approval back from model suggestions to system code.
-- OapeflirLoopService has persisted the stage timeline perspective, facilitating auditing of main chain and side chain closed loop.
+- `FeedbackCollector` + `SignalPreprocessor` 已形成结构化 learning input。
+- `LearningObjectValidator` 已把 evidence vs `promotionStatus` 变成硬边界。
+- `PolicyRolloutService` + `GuardrailEvaluator` 已把 rollout 放lines从模型Recommendation收回到系统code。
+- `OapeflirLoopService` 已持久化阶段time线视角，便于审计主链/副链闭环。
 
-## Cross-References
+## 交叉references用
 
-- [ADR-003 Six-Layer Memory and KV Cache Fixed Prefix](./003-memory-six-layers.md)
-- [ADR-006 LLM Provider Strategy](./006-llm-provider-strategy.md)
-- [ADR-008 Cost Model](./008-cost-model.md)
+- [ADR-003 六层记忆vs KV Cache 固定前缀](./003-memory-six-layers.md)
+- [ADR-006 LLM Provider 策略](./006-llm-provider-strategy.md)
+- [ADR-008 成本模型](./008-cost-model.md)
 
-## Source Sections
+## 来源章节
 
-- OAPEFLIR Section 7
-- OAPEFLIR Section 8
-- OAPEFLIR Section 9
-- OAPEFLIR Section E.1
-- OAPEFLIR Section L.3.2
+- `OAPEFLIR §7`
+- `OAPEFLIR §8`
+- `OAPEFLIR §9`
+- `OAPEFLIR §E.1`
+- `OAPEFLIR §L.3.2`

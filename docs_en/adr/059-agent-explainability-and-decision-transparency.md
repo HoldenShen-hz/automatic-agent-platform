@@ -1,15 +1,15 @@
-# ADR-059: Agent Explainability and Decision Transparency
+# ADR-059 Agent 可解释性vsDecision透明度
 
-- Status: Accepted
-- Decision Date: 2026-04-20
+- Status：Accepted
+- Decision日期：2026-04-20
 
-## Context
+## Background
 
-EU AI Act and other regulations require AI decisions to be explainable. The platform needs to provide decision transparency mechanisms.
+EU AI Act 等法规要求 AI Decision可解释，平台需要提供Decision透明度机制。
 
 ## Decision
 
-### Decision Traceability
+### Decision追溯
 
 ```typescript
 interface DecisionRecord {
@@ -25,54 +25,54 @@ interface DecisionRecord {
 }
 ```
 
-### Explainability Levels
+### 可解释性层iterations
 
-| Level | Description | Audience |
-|-------|-------------|----------|
-| what | What was done | Operators |
-| why | Why it was done | Analysts |
-| how | How it was done | Developers |
-| full | Complete reasoning chain | Auditors |
+| 层iterations | Description | 受众 |
+|------|------|------|
+| what | 做了什么 | 操作员 |
+| why | 为什么做 | 分析师 |
+| how | 如何做 | 开发者 |
+| full | 完整推理链 | 审计员 |
 
-### Explanation Generation
+### 解释生成
 
-| Technique | Description |
-|-----------|-------------|
-| Decision tree extraction | Extract rules from neural networks |
-| Attention visualization | Show key inputs |
-| Counterfactual analysis | "What if..." scenarios |
-| Case-based reasoning | Similar decision references |
+| 技术 | Description |
+|------|------|
+| Decision树提取 | 从神vianetwork提取规则 |
+|注意力可视化 | 显示关键输入 |
+| 反事实分析 | "如果...会怎样" |
+| 案例推理 | class似Decision参考 |
 
-### Audit Logs
+### 审计日志
 
-- All high-risk decisions recorded
-- Tamper-proof storage
-- Support querying and exporting
+- 所有高风险Decisionrecord
+- 不can be tamperedstorage
+- supported查询和export
 
-### Compliance Reports
+### 合规报告
 
-- Automatically generated compliance reports
-- Support regulatory agency review
-- Regularly publish transparency reports
+- 自动生成合规报告
+- supported监管机构审查
+- 定期发布透明度报告
 
 ## Consequences
 
-Advantages:
+优点：
 
-- Meets EU AI Act and other regulatory requirements
-- Improves user trust
-- Facilitates problem identification and resolution
+- 满足 EU AI Act 等法规要求
+- 提高user信任
+- 便于Issue定位和修复
 
-Disadvantages:
+代价：
 
-- Explanation generation adds latency
-- Storage costs increase
+- 解释生成增加delay
+- storage成本增加
 
-## Cross References
+## 交叉references用
 
-- [ADR-029 OAPEFLIR Controlled Cognition Kernel](./029-oapeflir-controlled-cognition-kernel.md)
-- [ADR-066 Compliance Report Auto-generation Engine](./066-compliance-report-auto-generation.md)
+- [ADR-029 OAPEFLIR 受控认知内核](./029-oapeflir-controlled-cognition-kernel.md)
+- [ADR-066 合规报告自动生成references擎](./066-compliance-report-auto-generation.md)
 
-## Source Section
+## 来源章节
 
-- `§59` Agent Explainability and Decision Transparency Architecture
+- `§59` Agent 可解释性vsDecision透明度Architecture

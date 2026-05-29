@@ -220,7 +220,11 @@ export class SemverValidator {
     const errors: string[] = [];
 
     for (let i = 0; i < versions.length; i++) {
-      const version = versions[i]!;
+      const version = versions[i];
+      if (version == null) {
+        errors.push(`Missing semver at index ${i}`);
+        continue;
+      }
       if (!this.isValid(version)) {
         errors.push(`Invalid semver at index ${i}: "${version}"`);
       }
@@ -231,9 +235,15 @@ export class SemverValidator {
     }
 
     for (let i = 0; i < versions.length - 1; i++) {
-      const compareResult = this.compare(versions[i]!, versions[i + 1]!);
+      const current = versions[i];
+      const next = versions[i + 1];
+      if (current == null || next == null) {
+        errors.push(`Missing semver ordering pair at indexes ${i}/${i + 1}`);
+        continue;
+      }
+      const compareResult = this.compare(current, next);
       if (compareResult > 0) {
-        errors.push(`Versions not in valid order: ${versions[i]} should not be less than ${versions[i + 1]}`);
+        errors.push(`Versions not in valid order: ${current} should not be less than ${next}`);
       }
     }
 

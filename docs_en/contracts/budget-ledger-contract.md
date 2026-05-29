@@ -1,52 +1,52 @@
 # v4.3 Budget Ledger Contract
 
-> v4.3 canonical contract. Covers `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.
+> v4.3 canonical contract。覆盖 `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。
 
-## 1. Scope
+## 1. 范围
 
-Budget is runtime truth, not observability statistics. All token, tool, external API, human, compute, and side effect costs must be expressed through ledger reservation / settlement, and hard caps do not allow concurrent over-subscription.
+budgetis runtime truth，不is观测统计。所有 token、tool、外部 API、人工、算力和副作用成本必须via ledger reservation / settlement table达，且 hard cap 不允许concurrentexceeds订。
 
 ## 2. BudgetLedger
 
-Minimum fields:
+最小字段：
 
-| Field | Type | Description |
-| --- | --- | --- |
-| `budgetLedgerId` | `string` | Ledger ID |
-| `tenantId` | `string` | Tenant |
-| `harnessRunId` | `string` | Associated run |
-| `currency` | `string` | Billing currency |
-| `hardCap` | `number` | Hard cap |
-| `softCap` | `number?` | Soft cap |
-| `reservedAmount` | `number` | Already reserved |
-| `settledAmount` | `number` | Already settled |
-| `releasedAmount` | `number` | Already released |
+| 字段 | class型 | Description |
+|---|-------|--------|
+| `budgetLedgerId` | `string` | 账本 ID |
+| `tenantId` | `string` | 租户 |
+| `harnessRunId` | `string` | 所属 run |
+| `currency` | `string` | 计价货币 |
+| `hardCap` | `number` | 硬upper limit |
+| `softCap` | `number?` | 软upper limit |
+| `reservedAmount` | `number` | 已预留 |
+| `settledAmount` | `number` | 已结算 |
+| `releasedAmount` | `number` | 已释放 |
 | `status` | `open \| soft_cap_reached \| hard_cap_reached \| closed` | Status |
-| `version` | `number` | CAS version |
+| `version` | `number` | CAS 版本 |
 
 ## 3. BudgetReservation
 
-Minimum fields:
+最小字段：
 
 - `budgetReservationId`
 - `budgetLedgerId`
 - `harnessRunId`
 - `nodeRunId?`
 - `amount`
-- `resourceKind` (`token | tool | api | compute | human | side_effect | other`)
+- `resourceKind` (`token | tool_call | api | compute | storage | bandwidth | memory | human | side_effect | other`)
 - `status` (`reserved | settled | released | expired | rejected`)
 - `expiresAt`
 - `createdAt`
 
-Rules:
+规则：
 
-- Reservation must atomically check `settledAmount + activeReservedAmount + requestedAmount <= hardCap`.
-- Expired reservations must be released and must not continue participating in commit.
-- After hard cap is reached, new reservations must be rejected or manual capacity expansion / degradation entered; implicit overdraft is not allowed.
+- reservation 必须原子检查 `settledAmount + activeReservedAmount + requestedAmount <= hardCap`。
+- 过期 reservation 必须释放，不得继续参vs commit。
+- hard cap 达到后只能拒绝新 reservation 或进入人工扩容/降级，不得隐式透支。
 
 ## 4. BudgetSettlement
 
-Minimum fields:
+最小字段：
 
 - `budgetSettlementId`
 - `budgetReservationId`
@@ -55,35 +55,36 @@ Minimum fields:
 - `evidenceRefs`
 - `createdAt`
 
-Rules:
+规则：
 
-- Settlement cannot exceed the reservation unless there is explicit `correction` that still satisfies the hard cap.
-- Release unused must append settlement / release records and must not directly overwrite historical reservations.
+- settlement 不能exceeds过 reservation，除非有显式 `correction` 且仍满足 hard cap。
+- release unused 必须追加 settlement / release record，不得directly改写历史 reservation。
 
-## 5. State Transitions
+## 5. Status推进
 
-- Truth mutations of `BudgetReservation` / `BudgetSettlement` must go through `RuntimeStateMachine.transition(command)` or its budget sub-commands.
-- Soft cap can trigger policy warnings; hard cap must block execution.
-- Budget events must write `platform.*` fact events.
+- `BudgetReservation` / `BudgetSettlement` 的 truth mutation 必须via `RuntimeStateMachine.transition(command)` 或其budget子命令。
+- soft cap 可以触发 policy warning；hard cap 必须阻止执lines。
+- budget事件必须writes `platform.*` fact event。
 
-## 6. Legacy / Deprecated Mapping
+## 6. Legacy / Deprecated 映射
 
-| Old Name | v4.3 Semantics |
+| 旧名 | v4.3 语义 |
 | --- | --- |
-| `actual_cost_usd` | projection / report field |
-| token cost counter | ledger-derived statistics |
-| cost report | read model, not budget truth |
+| `actual_cost_usd` | projection / report 字段 |
+| token cost counter | ledger 派生统计 |
+| cost report | read model，不isbudget truth |
 
-## 7. Test Requirements
+## 7. 测试要求
 
-- Budget hard-cap concurrency test must cover concurrent reservations.
-- Settlement exceeding reservation must be rejected or go through correction gate.
-- After hard cap is triggered, NodeRun must not get new budget.
+- budget hard-cap concurrency test 必须覆盖concurrent reservation。
+- settlement exceeds reservation 必须拒绝或走 correction gate。
+- hard cap 触发后 NodeRun 不得继续拿到新budget。
+
 
 ## v4.3 Architecture Remediation
 
-The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If this document's historical sections conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
+以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中record的 contract 偏差。本文档历史段落如vs本节conflicts，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
 
-- T-3: Used "settle" verb to describe budget consumption, but architecture §18 uniformly uses "consume"; resourceKind enum only has token/api_call/compute, while architecture additionally defines storage/bandwidth/memory. Fix: This semantics converges to v4.3 canonical contract; old fields, old states, old DTOs, or old terminology are only allowed as legacy/deprecated/projection/migration input and must not be used as new implementation entry points.
+- T-3: 用 "settle" 动词Descriptionbudget消费，Architecture§18统一用 "consume"；resourceKind 枚举only token/api_call/compute，Architecture额外defines storage/bandwidth/memory。修复：该语义收敛到 v4.3 canonical contract；旧字段、旧Status、旧 DTO 或旧术语only允许作为 legacy/deprecated/projection/migration input，不得作为新实现入口。
 
-Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events must only use `platform.*`; OAPEFLIR may only be used as `oapeflir.view.*` / rationale projection; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.
+mandatory规则：Status迁移必须via `RuntimeStateMachine.transition(command)`；执lines计划必须uses `PlanGraphBundle`；执lines结果必须uses `NodeAttemptReceipt`；truth event 只能uses `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；budget必须uses `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。

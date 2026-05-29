@@ -10,10 +10,10 @@
 
 ## Hard Constraints
 
-- Segregation of duties must be enforced: creator must not equal approver.
+- Separation of duties must be enforced: creator must not equal approver.
 - Accounting entries, reports, and payment actions must be auditable.
-- Agents must not bypass SOX internal controls and manual approval.
+- Agent must not bypass SOX internal controls and human approval.
 
 ## Acceptance Criteria
 
-- Before GA, must provide SoD, audit sampling, payment approval, and financial statement consistency evidence.
+- GA must provide SoD, audit sampling, payment approval, and financial report consistency evidence before release.

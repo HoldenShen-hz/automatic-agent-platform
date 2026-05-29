@@ -1,10 +1,10 @@
 # Knowledge Lifecycle Contract
 
-## 1. Scope
+## 1. 范围
 
-Defines the boundaries of knowledge entry collection, validation, publication, retirement, and retraining.
+defines知识条目的采集、验证、发布、退役vs再训练边界。
 
-## 2. Core Objects
+## 2. 核心对象
 
 ```typescript
 interface KnowledgeLifecycleRecord {
@@ -17,8 +17,9 @@ interface KnowledgeLifecycleRecord {
 }
 ```
 
-## 3. Constraints
+## 3. 约束
 
-- Must have validation and source evidence before entering `published`.
-- Knowledge promotion must be associated with the `HarnessRun` or evidence chain that produced it.
-- Retirement must not delete historical lineage.
+- 进入 `published` 前必须有验证vs来源证据。
+- 知识 promotion 必须关联产生它的 `HarnessRun` 或 evidence chain。
+- retirement 不得删除历史 lineage。
+

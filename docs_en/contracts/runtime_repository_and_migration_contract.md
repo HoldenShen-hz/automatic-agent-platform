@@ -2,18 +2,18 @@
 
 ---
 
-## OAPEFLIR Association
+## OAPEFLIR 关联
 
-This contract participates in the following phases of the OAPEFLIR eight-stage loop:
+本 contract 参vs OAPEFLIR 八阶段循环中的以下阶段：
 
-- **Observe**: Signal collection and aggregation
-- **Assess**: Pre-execution assessment and risk judgment
-- **Plan**: Task decomposition and DAG construction
-- **Execute**: Step execution and fault tolerance
-- **Feedback**: Signal collection and preprocessing
-- **Learn**: Pattern detection and knowledge extraction
-- **Improve**: Improvement candidate evaluation and rollout
-- **Release**: Controlled release and rollback
+- **Observe**：信号采集vs聚合
+- **Assess**：执lines前评估vs风险判断
+- **Plan**：任务分解vs DAG 构建
+- **Execute**：步骤执linesvs容错
+- **Feedback**：信号收集vs预handle
+- **Learn**：模式检测vs知识提取
+- **Improve**：改进候选评估vs rollout
+- **Release**：受控发布vs回滚
 
 ---
 
@@ -285,8 +285,8 @@ At minimum should cover the following verification:
 
 ## v4.3 Architecture Remediation
 
-The following entries fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If historical paragraphs of this document conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` shall prevail.
+以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中record的 contract 偏差。本文档历史段落如vs本节conflicts，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
 
-- T-56: This document originally wrote repository methods like `markExecutionStarted / markExecutionBlocked / markExecutionSucceeded` as direct operations on `executions` table canonical interface. Root cause: runtime persistence contract stayed at old execution-centric repository model, did not migrate along with v4.3 truth state machine boundary to transition-backed writes. Fix: Body now changed to `TransitionRepositoryAdapter` driven, clarifying all truth state changes must first go through `RuntimeStateMachine.transition(command)`, old `markExecution*` only allowed inside legacy compatibility adapter.
+- T-56: 本文原先把 `markExecutionStarted / markExecutionBlocked / markExecutionSucceeded` 这class repository 方法写成directly操作 `executions` table的 canonical 接口，Root cause: 运lines时持久化合同停留在旧 execution-centric repository 模型，没有随着 v4.3 的 truth Status机边界迁移到 transition-backed writes。修复：正文现改为 `TransitionRepositoryAdapter` 驱动，明确所有 truth Status变化都必须先via过 `RuntimeStateMachine.transition(command)`，旧 `markExecution*` 只允许存在于 legacy compatibility adapter 内部。
 
-Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events must only use `platform.*`; OAPEFLIR can only be used as `oapeflir.view.*` / rationale projection; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.
+mandatory规则：Status迁移必须via `RuntimeStateMachine.transition(command)`；执lines计划必须uses `PlanGraphBundle`；执lines结果必须uses `NodeAttemptReceipt`；truth event 只能uses `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；budget必须uses `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。

@@ -1,94 +1,94 @@
-# ADR-071: Plugin SPI Interface System and Lifecycle
+# ADR-071 Plugin SPI 接口体系vs生命cycle
 
-- Status: Accepted
-- Decision Date: 2026-04-17
-- Related: ADR-015 Unified Extension Marketplace
+- Status：Accepted
+- Decision日期：2026-04-17
+- 相关：ADR-015 统一扩展市场
 
-## Context
+## Background
 
-OAPEFLIR's eight-stage architecture needs to provide differentiated retrieval, validation, planning, and presentation capabilities for different business domains (coding/operations/growth/game-dev/asset-production/livestream). At the same time, external systems (Jira/GitHub/Notion/Figma/OBS/Ad/CRM) need unified interface access.
+OAPEFLIR 八阶段Architecture需要对不同业务域（coding/operations/growth/game-dev/asset-production/livestream）提供差异化的检索、验证、规划和展示能力。同时，外部系统（Jira/GitHub/Notion/Figma/OBS/Ad/CRM）需要via统一接口接入。
 
-The existing `PluginSPIRegistry` (`plugin-spi-registry.ts`, 829 lines) has already implemented a complete lifecycle state machine. This ADR formally establishes Plugin SPI as the formal extension boundary for the platform domain registry; OAPEFLIR only consumes its projection views and results, and does not own plugin execution rights.
+现有 `PluginSPIRegistry`（`plugin-spi-registry.ts`，829 lines）已实现完整的生命cycleStatus机，本 ADR 正式确立 Plugin SPI 作为平台 domain registry 的正式扩展边界；OAPEFLIR 只消费其投影视图vs结果，不拥有插件执lines权。
 
 ## Decision
 
-### 1. Plugin SPI 4 Core Interfaces
+### 1. Plugin SPI 4 大核心接口
 
-| Interface | Responsibility | Method Signature |
-|-----------|---------------|------------------|
-| `DomainRetrieverPlugin` | Retrieve relevant content from knowledge base/memory/context | `retrieve(query: RetrievalQuery): Promise<RetrievalResult[]>` |
-| `DomainValidatorPlugin` | Validate whether execution input/output complies with domain specifications | `validate(input: unknown, context: ValidationContext): Promise<ValidationResult>` |
-| `DomainPlannerPlugin` | Generate customized execution plans for specific domains | `plan(assessment: UnifiedAssessment, domain: DomainId): Promise<PlanGraphBundle>` |
-| `DomainPresenterPlugin` | Format execution results into domain-specific output | `present(receipt: NodeAttemptReceipt, format: OutputFormat): Promise<PresentedOutput>` |
+| 接口 | 职责 | 方法签名 |
+|------|------|---------|
+| `DomainRetrieverPlugin` | 从知识库/内存/上下文中检索相关内容 | `retrieve(query: RetrievalQuery): Promise<RetrievalResult[]>` |
+| `DomainValidatorPlugin` | 验证执lines输入/输出isno符合 domain 规范 | `validate(input: unknown, context: ValidationContext): Promise<ValidationResult>` |
+| `DomainPlannerPlugin` | 为特定 domain 生成定制化执lines计划 | `plan(assessment: UnifiedAssessment, domain: DomainId): Promise<PlanGraphBundle>` |
+| `DomainPresenterPlugin` | 将执lines结果格式化为 domain 特定输出 | `present(receipt: NodeAttemptReceipt, format: OutputFormat): Promise<PresentedOutput>` |
 
-### 2. Plugin Lifecycle State Machine
+### 2. Plugin 生命cycleStatus机
 
 ```
 unregistered → loading → registered → initialized → active ↔ suspended → inactive → unloaded
                                       ↓
-                                  error (recoverable)
+                                  error (可恢复)
 ```
 
-| State | Description | Allowed Operations |
-|-------|-------------|-------------------|
-| `unregistered` | Plugin not registered | `register()` |
-| `loading` | Currently loading | — |
-| `registered` | Registered, pending initialization | `initialize()` |
-| `initialized` | Initialized, pending activation | `activate()` |
-| `active` | Normal operation | `invoke()`, `suspend()` |
-| `suspended` | Temporarily suspended | `resume()`, `deactivate()` |
-| `inactive` | Fully deactivated | `unload()` |
-| `unloaded` | Unloaded | — |
-| `error` | Error state (recoverable) | `reset()` |
+| Status | Description | 允许的操作 |
+|------|------|----------|
+| `unregistered` | 插件未注册 | `register()` |
+| `loading` | 正在加载 | — |
+| `registered` | 已注册，待初始化 | `initialize()` |
+| `initialized` | 已初始化，待激活 | `activate()` |
+| `active` | 正常运lines | `invoke()`, `suspend()` |
+| `suspended` | 临时挂起 | `resume()`, `deactivate()` |
+| `inactive` | 完全停用 | `unload()` |
+| `unloaded` | 已卸载 | — |
+| `error` | 错误Status（可恢复） | `reset()` |
 
-### 3. ExternalAdapterPlugin 8 Adapter Types
+### 3. ExternalAdapterPlugin 8 种适配class型
 
-| Adapter | Purpose | Implementation Status |
-|---------|---------|----------------------|
-| `github` | GitHub API integration (issues/PRs/code search) | Implemented (`github-adapter.ts`, 120 lines) |
-| `jira` | Jira ticket management | Not implemented |
-| `notion` | Notion document/database integration | Not implemented |
-| `figma` | Figma design file preview | Not implemented |
-| `unity` | Unity Cloud Build integration | Not implemented |
-| `obs` | OBS live streaming control | Not implemented |
-| `ad-platforms` | Ad platform data integration | Not implemented |
-| `crm` | CRM system customer/interaction data | Not implemented |
+| 适配器 | 用途 | 实现Status |
+|--------|------|---------|
+| `github` | GitHub API 集成（issues/PRs/code search） | 已实现（`github-adapter.ts`，120 lines） |
+| `jira` | Jira ticket manage | 未实现 |
+| `notion` | Notion 文档/data库集成 | 未实现 |
+| `figma` | Figma 设计文件预览 | 未实现 |
+| `unity` | Unity Cloud Build 集成 | 未实现 |
+| `obs` | OBS 直播控制 | 未实现 |
+| `ad-platforms` | 广告平台data集成 | 未实现 |
+| `crm` | CRM 系统客户/交互data | 未实现 |
 
-### 4. Plugin Isolation and Security
+### 4. Plugin 隔离vssecurity
 
-- **Process Isolation**: Untrusted plugins must run in separate processes, managed through IPC boundaries in `plugin-runtime-host.ts`; Worker threads must not serve as the final isolation boundary for untrusted plugins
-- **Permission Boundary**: Plugins can only access the permission set declared in `PluginBinding`
-- **Resource Limits**: Single plugin execution timeout 30s, memory limit 512MB
-- **Configuration Injection Prevention**: `domain-config.json` must be validated by `PluginConfigValidator`
+- **进程隔离**：不可信 Plugin 必须运lines在独立进程，via `plugin-runtime-host.ts` 的 IPC 边界manage；Worker 线程不得作为不可信插件的最终隔离边界。
+- **permission边界**：Plugin 只能访问 `PluginBinding` 中声明的permission集合。
+- **资源限制**：单个 Plugin 执linestimeout 30s，内存upper limit 512MB。
+- **configure注入防护**：`domain-config.json` 必须via过 `PluginConfigValidator` 校验。
 
-### 4.1 Version Negotiation
+### 4.1 版本协商
 
-- `manifest.version` only represents the plugin's own semantic version
-- Runtime compatibility must also declare the SPI surface, host platform lower/upper bounds, and pack or marketplace compatibility metadata
-- `PluginSPIRegistry` must not infer compatibility implicitly from a `version` string alone; missing compatibility metadata must fail closed
+- `manifest.version` 只table示插件自身语义版本。
+- 运lines时兼容性必须同时声明 SPI surface、宿主平台下界/上界、以及 pack/marketplace 所需的 compatibility metadata。
+- `PluginSPIRegistry` 不允许only凭 `version` 字符串做隐式兼容推断；缺少 compatibility metadata 时必须 fail-closed。
 
-### 4.2 Sandbox Tiering
+### 4.2 Sandbox 分层
 
-- `allowFilesystemWrite`, `allowNetworkEgress`, `allowedKnowledgeNamespaces`, and `runtimeIsolation` jointly define the effective sandbox tier
-- The canonical `runtimeIsolation` tiers are:
+- `allowFilesystemWrite`、`allowNetworkEgress`、`allowedKnowledgeNamespaces`、`runtimeIsolation` 共同defines实际 sandbox tier。
+- `runtimeIsolation` 的 canonical 分层为：
   - `serialized_in_process`
   - `isolated_process`
   - `sandboxed_process`
-- Broad manifest permissions must not override stricter host-side runtime policy; effective privileges are the intersection
+- Manifest 中的宽permission声明不能bypassing host 侧更严格的 runtime policy；最终生效permission取交集。
 
 ### 4.3 Taint Tracking
 
-- Plugin output must carry pluginId or label lineage into the unified taint tracker
-- Taint labels are part of the runtime contract, not optional diagnostic metadata
-- Revoked or downgraded plugins must keep their historical taint lineage traceable during replay and export
+- 插件输出必须携带来源 pluginId / label lineage，进入统一 taint tracker。
+- taint label belongs to运lines时契约的一部分，而不isoptional诊断字段。
+- 被撤销或降权的插件，其已有 taint lineage 必须仍可追溯，不允许在 replay/export 时丢失。
 
-### 4.4 Container and Subprocess Launch Format
+### 4.4 容器/子进程启动格式
 
-- Launcher input for untrusted plugins must use a structured schema instead of concatenated command strings
-- The host must validate pluginId, sandboxRoot, argv, env allowlist, resource limits, and stdio or IPC channels
-- Container or subprocess launch argument validity is part of the SPI framework contract and must be verified before startup
+- 不可信插件的 launcher 输入必须is结构化 schema，而不is拼接命令字符串。
+- host 负责校验：pluginId、sandboxRoot、argv、env allowlist、资源upper limit、stdio/IPC 通道。
+- 容器或子进程启动参数的合法性belongs to SPI framework 契约的一部分，必须在启动前完成验证。
 
-### 5. Plugin Loading and Registration
+### 5. Plugin 加载vs注册
 
 ```typescript
 interface PluginRegistryService {
@@ -102,44 +102,44 @@ interface PluginRegistryService {
 }
 ```
 
-## Alternative Approaches
+## 备选方案
 
-### Approach A: Hardcoded Domain Logic
+### 方案 A：hardcodes Domain 逻辑
 
-Advantages: Best performance, no plugin overhead.
-Disadvantages: Each new domain requires modifying core code, cannot be dynamically loaded.
+优点：性能最优，no插件开销。
+代价：每个新 Domain 需要修改核心code，no法dynamically加载。
 
-### Approach B: Plugin SPI Dynamic Loading (selected)
+### 方案 B：Plugin SPI dynamically加载（已选）
 
-Advantages: Domain logic decoupled, supports hot updates, parallel multi-team development.
-Disadvantages: Adds runtime overhead (~5-10ms per invoke), requires isolation mechanism.
+优点：Domain 逻辑解耦，supported热更新，多团队并lines开发。
+代价：增加运lines时开销（~5-10ms per invoke），需要隔离机制。
 
 ## Consequences
 
-- `plugin-spi-registry.ts` (829 lines) as core registry
-- `plugin-runtime-host.ts` provides separate process + IPC isolation
-- Each domain needs to implement 4 Plugin interfaces
-- `PluginConfigValidator` prevents malicious configuration injection
-- Ring 2 prioritizes implementing Operations Domain (reusing GitHub adapter)
+- `plugin-spi-registry.ts`（829 lines）作为核心注册table。
+- `plugin-runtime-host.ts` 提供独立进程 + IPC 隔离。
+- 每个 Domain 需要实现 4 个 Plugin 接口。
+- `PluginConfigValidator` 防止恶意configure注入。
+- Ring 2 优先实现 Operations Domain（复用 GitHub adapter）。
 
-## Cross References
+## 交叉references用
 
-- [ADR-015 Unified Extension Marketplace](./015-unified-extension-marketplace.md)
-- [ADR-016 OAPEFLIR Eight-Stage Cognitive Loop Model](./016-oapeflir-loop-model.md)
+- [ADR-015 统一扩展市场](./015-unified-extension-marketplace.md)
+- [ADR-016 OAPEFLIR 八阶段认知循环模型](./016-oapeflir-loop-model.md)
 - [ADR-080 Learn Hub](./080-learn-hub-pattern-detection.md)
 
-## Source Section
+## 来源章节
 
-Note: After v4.3 migration, the original §B/§G appendices have been restructured into modular contract documents. This ADR's related content is now distributed across the following contract documents:
+注：v4.3 迁移后，原 §B/§G 附录已重构为模块化 contract 文档。本 ADR 相关内容现分布于以下 contract 文档：
 
-v4.3 valid references:
-- `docs_en/contracts/plugin_spi_contract.md` Plugin SPI core interfaces
-- `docs_en/contracts/plugin_spi_contract.md §2.4` 4 core interfaces
-- `docs_en/contracts/plugin_spi_contract.md §2.7` ExternalAdapterPlugin
-- `docs_en/contracts/plugin_spi_contract.md §2.11` Plugin lifecycle state machine
-- `docs_en/contracts/marketplace_catalog_and_revenue_contract.md §2` Per-domain tool bundles
+v4.3 有效references用：
+- `docs_zh/contracts/plugin_spi_contract.md` Plugin SPI 核心接口
+- `docs_zh/contracts/plugin_spi_contract.md §2.4` 4 大核心接口
+- `docs_zh/contracts/plugin_spi_contract.md §2.7` ExternalAdapterPlugin
+- `docs_zh/contracts/plugin_spi_contract.md §2.11` Plugin 生命cycleStatus机
+- `docs_zh/contracts/marketplace_contract.md §2` Per-domain tool bundles
 
 ## v4.3 ADR Remediation
 
-- A-27: This ADR originally had `DomainPlannerPlugin.plan()` return `Promise<Plan>`. Root cause was that the Plugin SPI ADR followed an early linear plan interface draft and did not upgrade with the graph handoff contract. Fix: The text now converges planner output to `Promise<PlanGraphBundle>`.
-- A-36: This ADR originally described untrusted plugin isolation as Worker threads. Root cause was that the implementation early on first delivered a same-process concurrency prototype, but the documentation never upgraded to the main architecture's requirement for separate process + IPC boundaries. Fix: The text now explicitly states that untrusted plugins must go through separate process isolation.
+- A-27: 本 ADR 原先让 `DomainPlannerPlugin.plan()` 返回 `Promise<Plan>`，Root cause:  Plugin SPI ADR accesses along用了早期线性计划接口草案，没有随着 graph handoff contract 升级。修复：正文现把 planner 输出收敛到 `Promise<PlanGraphBundle>`。
+- A-36: 本 ADR 原先把不可信插件隔离Description成 Worker 线程，Root cause: 实现早期先落了同进程concurrent原型，文档却没有再升级到主Architecture要求的独立进程 + IPC 边界。修复：正文现明确不可信插件必须走独立进程隔离。

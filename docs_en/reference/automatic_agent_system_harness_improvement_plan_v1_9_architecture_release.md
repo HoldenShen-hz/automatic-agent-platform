@@ -1,45 +1,45 @@
-# Automatic Agent System — Agent Harness Improvement Plan v1.9-Architecture-Release
+# Automatic Agent System — Agent Harness 改进方案 v1.9-Architecture-Release
 
-| Field | Content |
+| 字段 | 内容 |
 |---|---|
-| Document Version | v1.9-Architecture-Release |
-| Date | 2026-05-26 |
-| Baseline Version | `v1.8-RC` (logical baseline; current repository does not retain an independent v1.8 document file) |
-| Applicable System | Automatic Agent System / Automatic Agent Platform |
-| Top-level Architecture | Five Plane Architecture |
-| Task Lifecycle | OAPEFLIR: Observe → Assess → Plan → Execute → Feedback → Learn → Improve → Release |
-| Driving Model | Harness-driven: model serves as reasoning, generation, and candidate decision component, not as system controller |
-| Capability Map | Agent Harness Engineering / ETCLOVG as capability maturity map, not replacement for Five Plane |
-| Memory Architecture | Seven-layer Memory Governance, unified governance through logical Memory Gateway, does not mandate unified physical storage nor creation of same-named directories |
-| Version Objective | Complete release convergence on v1.8-RC basis: unify version references, clarify release types, fix engineering freeze conditions, converge ADR status, supplement first batch of validation scenario recommendations, and preserve engineering blocking items (real code scan / owner / CI / P0a shadow) |
-| Release Conclusion | **Can be released as v1.9 Architecture Review Release**; cannot be used as Engineering Freeze Baseline or Production Governance Baseline. Before entering engineering freeze, must complete real repository scan, real owner binding, CI command delivery, and P0a shadow path verification |
+| 文档版本 | v1.9-Architecture-Release |
+| 日期 | 2026-05-26 |
+| 基线版本 | `v1.8-RC`（逻辑基线；当前仓库未保留独立的 v1.8 文档文件） |
+| 适用系统 | Automatic Agent System / Automatic Agent Platform |
+| 顶层Architecture | Five Plane Architecture |
+| 任务生命cycle | OAPEFLIR：Observe → Assess → Plan → Execute → Feedback → Learn → Improve → Release |
+| 驱动方式 | Harness-driven：模型作为推理、生成、候选Decision组件，不作为系统控制器 |
+| 能力地图 | Agent Harness Engineering / ETCLOVG 作为能力成熟度地图，不替代 Five Plane |
+| Memory Architecture | Seven-layer Memory Governance，via逻辑上的 Memory Gateway 统一治理，不mandatory统一物理storage，也不mandatory新建同名目录 |
+| 本版目标 | 在 v1.8-RC 基础上完成 release 前收敛：统一版本references用、明确 release class型、修正工程冻结条件、收敛 ADR Status、补充首批验证场景Recommendation，并保留真实code扫描 / owner / CI / P0a shadow 的工程阻断项 |
+| 发布Conclusion | **可以 release 为 v1.9 Architecture Review Release**；不可作为 Engineering Freeze Baseline 或 Production Governance Baseline。进入工程冻结前仍必须完成真实仓库扫描、真实 owner 绑定、CI 命令落地和 P0a shadow 路径验证 |
 
 ---
 
-## 0. One-page Conclusion
+## 0. 一页Conclusion
 
-v1.8-RC already has conditions for architecture review; v1.9 completes release pre-convergence on this basis, fixing version consistency, ADR status, engineering freeze conditions, first validation scenario recommendations, and release boundary expressions.
+v1.8-RC 已via具备Architecture评审条件；v1.9 在此基础上完成 release 前收敛，修复版本一致性、ADR Status、工程冻结条件、首批验证场景Recommendation和 release 边界table述。
 
-This version **can be officially released as Architecture Review Release**, for team architecture review, engineering scheduling, real code scanning, and P0a shadow chain initiation; but **cannot** be used as Engineering Freeze Baseline or Production Governance Baseline. Before freezing engineering baseline, must complete real repository scan, real owner binding, CI command delivery, P0a shadow path verification.
+本版**可以正式 release 为 Architecture Review Release**，used for团队Architecture评审、工程排期、真实code扫描和 P0a 影子链路启动；但**不能**作为 Engineering Freeze Baseline 或 Production Governance Baseline。冻结工程基线前必须完成真实仓库扫描、真实 owner 绑定、CI 命令落地、P0a shadow 路径跑通。
 
-Main improvements in this version:
+本版主要改进：
 
-1. **Code mapping no longer masquerades as fact**: Current Codebase Gap Matrix clearly distinguishes `scan-confirmed / hypothetical path / pending scan confirmation / new module`, preventing target design from being misread as current implementation.
-2. **TODO gains real execution fields**: All Canonical TODOs add `OwnerName / Reviewer / TargetStart / TargetEnd / IssueLink / VerifyCommandStatus`; undefined items uniformly marked as `TBD`, no longer masquerading as assigned.
-3. **CI commands contractualized**: All verify commands explicitly divided into `existing / to_add / TBD`, avoiding "verification command exists in documentation but not in repository" issues.
-4. **P0b split further**: P0b split into `P0b-1 high-risk tool enforce`, `P0b-2 L4-L7 memory enforce`, `P0b-3 production release gate`, `P0b-4 H3 untrusted output enforce`, `P0b-5 minimal approval UI/API`.
-5. **H1-lite moved forward**: Untrusted marking of external text, files, retrieval results, and third-party data with basic injection detection moved to P0b/P0c; H1-full stays at P1.
-6. **Release Gate thresholds specified**: Golden / Security / Trajectory / Evidence / Cost thresholds defined per scenario; Policy Compliance and Approval Compliance must be perfect for high/critical tasks.
-7. **Cost/Latency dependency corrected**: P0c advisory only; P1 allowed as release blocking gate.
-8. **Receipt / Outbox atomicity reinforcement**: High-risk side effects must write `PrepareReceipt` or durable outbox record before commit, avoiding "side effect occurred but no record in evidence layer".
-9. **Tool reversibility enters risk decision**: Reversibility levels like `not_reversible` / `forward_fix_only` participate in risk resolution, no longer just metadata.
-10. **Memory Gateway interfaces implemented**: Supplemented `ManagedMemoryMinimal`, `MemoryProposal`, `MemoryProjection`, `MemoryCommitDecision`, `MemoryRevokeDecision`.
-11. **Security & Privacy Baseline completed**: Covers secret, PII, cross-tenant isolation, retention, export/delete, restricted evidence access.
-12. **Added three flow diagrams and system boundary diagram**: Supplemented control flow, evidence flow, Memory flow, and Five Plane × Gate overview diagram for review understanding.
-13. **First batch of business scenarios elaborated**: Paper Research Agent, Code Review/Test Failure Analysis Agent given inputs, tools, risks, Gates, Memory, Eval and acceptance metrics.
-14. **TODO deduplication**: Release Console, Memory Review Console split into backend/API and frontend/UI, using unique Canonical TODO IDs.
+1. **code映射不再伪装为事实**：Current Codebase Gap Matrix 明确区分 `已扫描确认 / 假设路径 / 待扫描确认 / 新增模块`，防止把目标设计误读为当前实现。
+2. **TODO 增加真实执lines字段**：所有 Canonical TODO 增加 `OwnerName / Reviewer / TargetStart / TargetEnd / IssueLink / VerifyCommandStatus`，未确定项统一标记 `TBD`，不再伪装为已分配。
+3. **CI 命令契约化**：所有 verify command 明确分为 `existing / to_add / TBD`，避免出现“文档里有验收命令但仓库里don't exist”的Issue。
+4. **P0b 再拆分**：P0b 拆成 `P0b-1 high-risk tool enforce`、`P0b-2 L4-L7 memory enforce`、`P0b-3 production release gate`、`P0b-4 H3 untrusted output enforce`、`P0b-5 minimal approval UI/API`。
+5. **H1-lite 前移**：外部文本、文件、检索结果、第三方资料的 untrusted 标记vs基础注入检测进入 P0b/P0c；H1-full 保持 P1。
+6. **Release Gate threshold具体化**：按场景defines Golden / Security / Trajectory / Evidence / Cost threshold；high/critical 任务的 Policy Compliance vs Approval Compliance 必须满分。
+7. **Cost/Latency relies on修正**：P0c 只做 advisory；P1 才允许作为 release blocking gate。
+8. **Receipt / Outbox 原子性补强**：高风险副作用 commit 前必须writes `PrepareReceipt` 或 durable outbox record，避免“副作用已发生但证据层norecord”。
+9. **Tool 可逆性进入风险Decision**：`not_reversible` / `forward_fix_only` 等可逆性等级参vs risk resolution，不再只is metadata。
+10. **Memory Gateway 接口落地**：补充 `ManagedMemoryMinimal`、`MemoryProposal`、`MemoryProjection`、`MemoryCommitDecision`、`MemoryRevokeDecision`。
+11. **Security & Privacy Baseline 补齐**：覆盖 secret、PII、cross-tenant isolation、retention、export/delete、restricted evidence access。
+12. **增加三流图vs系统边界图**：补充控制流、证据流、Memory 流和 Five Plane × Gate 总图，便于评审理解。
+13. **首批业务场景展开**：论文调研 Agent、code审查/测试failed分析 Agent 给出输入、工具、风险、Gate、Memory、Eval 和验收指标。
+14. **TODO for deduplication**：Release Console、Memory Review Console 等拆成 backend/API vs frontend/UI，uses唯一 Canonical TODO ID。
 
-Final architecture expression remains unchanged:
+最终Architecturetable达仍然不变：
 
 ```text
 Automatic Agent System
@@ -52,43 +52,43 @@ Automatic Agent System
 + Release / Evaluation / Governance Gate
 ```
 
-### 0.1 v1.9 Release Statement
+### 0.1 v1.9 Release 声明
 
-| Item | Conclusion |
+| 项 | Conclusion |
 |---|---|
-| Release Name | Automatic Agent System — Agent Harness Improvement Plan v1.9-Architecture-Release |
-| Release Type | Architecture Review Release |
-| Allowed Usage | Architecture review, engineering scheduling, real code scanning, P0a shadow implementation preparation, first batch of business scenario baseline evaluation preparation |
-| Prohibited Usage | Must not be used as sole basis for engineering freeze baseline, production governance standard, or production release gate |
-| Engineering freeze blocking items | Real code scan, real Owner/Reviewer/Issue, CI command delivery, P0a shadow E2E, Eval baseline calibration |
-| Next Target Version | v2.0 Engineering Baseline Candidate,前提是完成所有工程冻结条件 |
+| Release 名称 | Automatic Agent System — Agent Harness 改进方案 v1.9-Architecture-Release |
+| Release class型 | Architecture Review Release |
+| 允许用途 | Architecture评审、工程排期、真实code扫描、P0a shadow 实施准备、首批业务场景基线评测准备 |
+| 禁止用途 | 不得作为工程冻结基线、生产治理标准、生产发布门禁的唯一依据 |
+| 仍阻断工程冻结的事项 | 真实code扫描、真实 Owner/Reviewer/Issue、CI 命令落地、P0a shadow E2E、Eval baseline 校准 |
+| 下一目标版本 | v2.0 Engineering Baseline Candidate，前提is完成所有工程冻结条件 |
 
 ---
 
-## 1. Release Pre-convergence from v1.8-RC to v1.9
+## 1. v1.9 相比 v1.8-RC 的 release 前收敛
 
-| Category | v1.8-RC Remaining Issues | v1.9 Convergence Method |
+| class别 | v1.8-RC 剩余Issue | v1.9 收敛方式 |
 |---|---|---|
-| Code Mapping | Gap Matrix still uses "pending scan confirmation" hypothetical paths | Added `MappingConfidence` and `ScanAction`, clarifying which are facts and which are pending scan |
-| TODO Execution | Owner is team role, not real responsible party | Added `OwnerName / Reviewer / TargetStart / TargetEnd / IssueLink`, undefined uniformly marked TBD |
-| Acceptance Commands | Verify command may not exist | Added `VerifyCommandStatus: existing / to_add / TBD` with CI Command Contract |
-| TODO Duplication | Release Console, Memory Review Console duplicated | Split into backend/API and frontend/UI, establishing dependencies |
-| P0 Phase | P0b still too heavy | Split into P0b-1 through P0b-5, batched enforcement |
-| H1 Risk | H1 Input Gate placed at P1 too late | H1-lite moved to P0b/P0c, H1-full stays at P1 |
-| Evaluation Thresholds | Release threshold too abstract | Added scenario-based blocking thresholds and high-risk perfect score items |
-| Cost/Latency | P0c Release Gate depends on P1 observability | P0c advisory, P1 blocking |
-| Receipt Atomicity | Insufficient fallback after receipt write failure | Added durable outbox / commit journal design |
-| Tool Rollback | Reversibility metadata not participating in decisions | Added reversibility risk rule |
-| Memory Schema | Memory Gateway interfaces too conceptual | Added ManagedMemoryMinimal and other minimal interfaces |
-| Security & Privacy | L5/L6/L7 memory and trace privacy insufficient | Added Security & Privacy Baseline |
-| Readability | Missing system boundary diagram and three flow diagrams | Added Mermaid architecture diagrams for control flow, evidence flow, Memory flow |
-| Business Implementation | Business Scenario Matrix too coarse | Elaborated implementation design for first two scenarios |
+| code映射 | Gap Matrix 仍is“待扫描确认”的假设路径 | 增加 `MappingConfidence` vs `ScanAction`，明确哪些is事实、哪些is待扫描 |
+| TODO 执lines | Owner is团队角色，不is真实负责人 | 增加 `OwnerName / Reviewer / TargetStart / TargetEnd / IssueLink`，未确定统一标记 TBD |
+| 验收命令 | verify command 可能don't exist | 增加 `VerifyCommandStatus: existing / to_add / TBD` vs CI Command Contract |
+| TODO repeats | Release Console、Memory Review Console 等repeats | 拆成 backend/API vs frontend/UI，建立relies on关系 |
+| P0 阶段 | P0b 仍过重 | 拆成 P0b-1 到 P0b-5，分批 enforce |
+| H1 风险 | H1 Input Gate 放到 P1 过晚 | H1-lite 前移到 P0b/P0c，H1-full 保持 P1 |
+| Evaluation threshold | release threshold 偏抽象 | 增加按场景的 blocking threshold vs high-risk 满分项 |
+| Cost/Latency | P0c Release Gate relies on P1 observability | P0c advisory，P1 blocking |
+| Receipt 原子性 | receipt 写failed后的兜底不够底层 | 增加 durable outbox / commit journal 设计 |
+| Tool rollback | 可逆性 metadata 未参vsDecision | 增加 reversibility risk rule |
+| Memory schema | Memory Gateway 接口偏概念 | 增加 ManagedMemoryMinimal 等最小接口 |
+| security隐私 | L5/L6/L7 memory vs trace privacy 不足 | 增加 Security & Privacy Baseline |
+| 可读性 | 缺系统边界图和三流图 | 增加 Mermaid Architecture图、控制流、证据流、Memory 流 |
+| 业务落地 | Business Scenario Matrix 偏粗 | 展开首批两个场景的落地设计 |
 
 ---
 
-## 2. Architecture Positioning and Non-goals
+## 2. Architecture定位vs Non-goals
 
-### 2.1 Main Architecture Remains Five Plane
+### 2.1 主Architecture仍is Five Plane
 
 ```text
 1. Interface Plane
@@ -100,54 +100,54 @@ Automatic Agent System
 + Reliability / Security / Governance / Observability Fabric
 ```
 
-### 2.2 OAPEFLIR is Task Lifecycle
+### 2.2 OAPEFLIR is任务生命cycle
 
 ```text
 Observe → Assess → Plan → Execute → Feedback → Learn → Improve → Release
 ```
 
-Release must distinguish two types:
+Release 必须区分两class：
 
-| Release Type | Meaning | Example | Requires Release Gate |
+| Release class型 | 含义 | 示例 | isno需要 Release Gate |
 |---|---|---|---|
-| Mission Release | Single task product delivery, acceptance, archival | Report, PR draft, experiment suggestions, prediction-assisted conclusions | Requires task-level acceptance, not equivalent to system release |
-| System Artifact Release | System capability version release | prompt, tool schema, policy, workflow, model config, evaluator, sandbox config | Must go through EvalReport, Approval, Canary, RollbackPlan |
+| Mission Release | 单iterations任务产物交付、验收、归档 | 报告、PR 草稿、实验Recommendation、预测辅助Conclusion | 需要任务级验收，不等同系统发布 |
+| System Artifact Release | 系统能力版本发布 | prompt、tool schema、policy、workflow、model config、evaluator、sandbox config | 必须via过 EvalReport、Approval、Canary、RollbackPlan |
 
-### 2.3 ETCLOVG is Capability Map, Not Top-level Architecture
+### 2.3 ETCLOVG is能力地图，不is顶层Architecture
 
-| ETCLOVG | Maps to Five Plane | Purpose |
+| ETCLOVG | 对应 Five Plane | 用途 |
 |---|---|---|
-| E Execution Environment & Sandbox | Execution Plane | sandbox, worker, lease, side-effect commit |
-| T Tool Interface & Protocol | Execution + Control | tool gateway, schema, routing, permission, tool version |
-| C Context & Memory Management | Orchestration + State & Evidence | seven-layer memory, projection, context drift |
-| L Lifecycle & Orchestration | Orchestration Plane | mission/session/task lifecycle, multi-agent coordination |
-| O Observability & Operations | State & Evidence + Fabric | trace, metrics, cost, latency, failure diagnosis |
-| V Verification & Evaluation | Control + State & Evidence | readiness, trajectory eval, regression, release gate |
-| G Governance & Security | Control + Fabric | policy, approval, identity, audit, security guardrail |
+| E Execution Environment & Sandbox | Execution Plane | sandbox、worker、lease、side-effect commit |
+| T Tool Interface & Protocol | Execution + Control | tool gateway、schema、routing、permission、tool version |
+| C Context & Memory Management | Orchestration + State & Evidence | seven-layer memory、projection、context drift |
+| L Lifecycle & Orchestration | Orchestration Plane | mission/session/task lifecycle、多 agent 协同 |
+| O Observability & Operations | State & Evidence + Fabric | trace、metrics、cost、latency、failure diagnosis |
+| V Verification & Evaluation | Control + State & Evidence | readiness、trajectory eval、regression、release gate |
+| G Governance & Security | Control + Fabric | policy、approval、identity、audit、security guardrail |
 
 ### 2.4 Non-goals
 
-This transformation explicitly does not do:
+本iterations改造明确不做：
 
-1. Do not replace Five Plane with ETCLOVG seven layers.
-2. Do not refactor directory structure in one shot.
-3. Do not let model directly execute side-effect tools.
-4. Do not let model directly commit L4-L7 Memory.
-5. Do not use Memory as Policy.
-6. Do not use Evidence as Memory.
-7. Do not use Context as source of truth.
-8. Do not use final answer scoring as complete Agent evaluation.
-9. Do not equate Tool Registry with Tool Gateway.
-10. Do not allow System Artifact Release into production without EvalReport / RollbackPlan.
-11. Do not forcibly complete full sandbox, full UI, full self-optimization at P0 stage.
-12. Do not equate document release with runtime governance baseline.
-13. Do not treat hypothetical code paths in this document as current code facts; must be confirmed via repository scan.
-14. Do not treat team role owner as real responsible party; real responsible party must be filled in during engineering scheduling.
-15. Do not create a second parallel subsystem because of target nouns in documentation; default to wrapping, extending, converging existing implementations first.
+1. 不把 Five Plane 改成 ETCLOVG 七层。
+2. 不一iterations性重构目录结构。
+3. 不让模型directly执lines副作用工具。
+4. 不让模型directly commit L4-L7 Memory。
+5. 不把 Memory 当 Policy。
+6. 不把 Evidence 当 Memory。
+7. 不把 Context 当事实源。
+8. 不把最终答案评分当完整 Agent 评测。
+9. 不把 Tool Registry 等同于 Tool Gateway。
+10. 不允许没有 EvalReport / RollbackPlan 的 System Artifact Release 进入生产。
+11. 不在 P0 阶段强lines完成full sandbox、full UI、full自优化。
+12. 不把文档 release 等同于运lines时治理基线。
+13. 不把本文件中的假设code路径当作当前code事实；必须via过仓库扫描确认。
+14. 不把团队角色 owner 当作真实负责人；真实负责人必须在工程排期时补齐。
+15. 不因为文档中的目标名词而平lines新建第二套子系统；defaults to先包装、扩展、收敛现有实现。
 
 ---
 
-## 3. System Boundary Diagram: Five Plane × Gate × Evidence
+## 3. 系统边界图：Five Plane × Gate × Evidence
 
 ```mermaid
 flowchart TB
@@ -211,125 +211,125 @@ flowchart TB
 
 ---
 
-## 4. Glossary
+## 4. 术语table
 
-| Term | Definition |
+| 术语 | defines |
 |---|---|
-| Harness | Execution control system wrapping the model, responsible for lifecycle, tools, state, evidence, evaluation, governance and release |
-| Plane | Top-level responsibility boundary, used to partition system control, orchestration, execution, state and interface responsibilities |
-| Capability | Production-level Agent capability domain, e.g., Tool Gateway, Memory Governance, Trace-native Evaluation |
-| Mission | Complete task unit oriented toward business goals, can span sessions, tasks, and tools |
-| Session | One interaction context between user or system and Agent, belongs to Mission |
-| Task | Schedulable, executable, evaluable subtask under Mission |
-| Receipt | Structured execution credential recording key actions such as policy, approval, tool, memory, evaluation, release |
-| Evidence | Raw evidence, tool results, trace, logs, files, evaluation results and other不可直接替代的事实材料 |
-| Memory | Reusable knowledge, preferences, experiences or summaries distilled from evidence, state, feedback |
-| Context | Projection seen in current model call, not source of truth |
-| Projection | Privileged, task, budget, risk-selected and compressed context view from memory/evidence/state |
-| PolicyBundle | Single authoritative version object of executable policy in Control Plane |
-| Governance Memory | Governance experience, failure patterns, policy proposals, eval cases, cannot replace PolicyBundle |
-| Release Artifact | Version-publishable system object such as prompt, tool schema, policy, workflow, model config, evaluator, sandbox config |
-| Harness Lockfile | Immutable dependency lock file for System Artifact Release, used for reproducibility, canary, rollback |
-| Durable Outbox | Reliable write buffer recording recoverable events before and after side-effect actions, used to fix receipt write failures |
+| Harness | 包裹模型的执lines控制系统，负责生命cycle、工具、Status、证据、评测、治理vs发布 |
+| Plane | 顶层职责边界，used for划分系统控制、编排、执lines、Status和接口职责 |
+| Capability | 生产级 Agent 所需能力域，例如 Tool Gateway、Memory Governance、Trace-native Evaluation |
+| Mission | 面向业务目标的一iterations完整任务单元，可以跨 session、跨 task、跨工具运lines |
+| Session | user或系统vs Agent 的一iterations交互上下文，隶belongs to Mission |
+| Task | Mission 下可调度、可执lines、可评测的子任务 |
+| Receipt | 结构化执lines凭证，record policy、approval、tool、memory、evaluation、release 等关键动作 |
+| Evidence | 原始证据、工具结果、trace、日志、文件、评测结果等不可directly替代的事实材料 |
+| Memory | 从 evidence、state、feedback 中提炼出的可复用知识、偏好、via验或摘要 |
+| Context | 本iterations模型call看到的投影，不is事实源 |
+| Projection | 按permission、任务、budget、风险从 memory/evidence/state 中选择并压缩后的上下文视图 |
+| PolicyBundle | Control Plane 中可执lines策略的唯一权威版本对象 |
+| Governance Memory | 治理via验、failed模式、policy proposal、eval case，不能替代 PolicyBundle |
+| Release Artifact | 可版本发布的系统对象，如 prompt、tool schema、policy、workflow、model config、evaluator、sandbox config |
+| Harness Lockfile | System Artifact Release 的不可变relies on锁定文件，used for可复现、灰度、回滚 |
+| Durable Outbox | 在副作用动作前后record可恢复事件的可靠writes缓冲，used for修复 receipt 写failed |
 
 ---
 
-## 5. Core Invariants
+## 5. 核心不variable Invariants
 
-These invariants must enter code, tests and review checklist:
+这些不variable必须进入code、测试和 review checklist：
 
-1. Model cannot directly execute side-effect tools.
-2. Model cannot directly commit L4-L7 Memory.
-3. Tool output cannot bypass H3 into Context or Memory.
-4. High-risk actions cannot bypass H4 Approval.
-5. System Artifact Release cannot bypass EvalReport, Approval and RollbackPlan.
-6. Receipt cannot lack `tenantId / traceId / missionId / schemaVersion / timestamp`.
-7. PolicyBundle is the sole authoritative source of executable policy.
-8. L7 Governance / Experience / Evaluation Memory can only store policy evidence, policy proposal, failure pattern, eval case and release experience; cannot replace PolicyBundle.
-9. Evidence is raw evidence; Memory is evidence-derived asset; Context is projection.
-10. L1 Active Context Memory is projection output, not authoritative source.
-11. Mission Memory cannot replace AuthoritativeTaskStore. Authoritative source for Mission state is `StateCommand / AuthoritativeTaskStore`; Mission Memory is only reusable representation of goals, constraints, decisions, summaries and experience.
-12. High-risk side-effect commits must write at least `PrepareReceipt` or durable outbox record before commit.
-13. `production_mutation + not_reversible` defaults to critical and defaults to block, unless break-glass.
-14. Revoked / expired / quarantined memory must not enter Context Projection.
-15. Cross-tenant memory, evidence, trace default to invisible unless explicitly authorized.
-16. P0c stage cost / latency can only be advisory; P1 and later can be used as release blocking gate.
+1. 模型不能directly执lines副作用工具。
+2. 模型不能directly commit L4-L7 Memory。
+3. 工具输出不能bypassing H3 进入 Context 或 Memory。
+4. 高风险动作不能bypassing H4 Approval。
+5. System Artifact Release 不能bypassing EvalReport、Approval 和 RollbackPlan。
+6. Receipt 不能缺少 `tenantId / traceId / missionId / schemaVersion / timestamp`。
+7. PolicyBundle is可执lines策略的唯一权威来源。
+8. L7 Governance / Experience / Evaluation Memory 只能存放 policy evidence、policy proposal、failure pattern、eval case 和 release via验；不能替代 PolicyBundle。
+9. Evidence is原始证据；Memory is证据派生资产；Context is投影。
+10. L1 Active Context Memory is projection output，不is authoritative source。
+11. Mission Memory 不能替代 AuthoritativeTaskStore。Mission Status的权威来源is `StateCommand / AuthoritativeTaskStore`；Mission Memory 只is对目标、约束、Decision、摘要和via验的可复用table示。
+12. 高风险副作用 commit 前必须至少writes `PrepareReceipt` 或 durable outbox record。
+13. `production_mutation + not_reversible` defaults to critical 且defaults to block，除非 break-glass。
+14. Revoked / expired / quarantined memory 不得进入 Context Projection。
+15. 跨租户 memory、evidence、trace defaults to不可见，除非显式authorization。
+16. P0c 阶段 cost / latency 只能作为 advisory；P1 以后才能作为 release blocking gate。
 
 ---
 
-## 6. Current Codebase Gap Matrix
+## 6. Current Codebase Gap Matrix / 当前code映射
 
-> Note: This section is not a code fact audit result, but an engineering scan checklist for v1.9. All entries with `MappingConfidence = pending scan confirmation` must be confirmed via repository scan, test run and owner confirmation before entering engineering implementation baseline.
+> Description：本节不iscode事实审计结果，而is v1.9 的工程扫描清单。所有 `MappingConfidence = 待扫描确认` 的条目必须via仓库扫描、测试运lines和 owner 确认后，才能进入工程实施基线。
 
-### 6.1 Mapping Status Definitions
+### 6.1 映射Statusdefines
 
-| Field | Values | Meaning |
+| 字段 | 取值 | 含义 |
 |---|---|---|
-| MappingConfidence | scan-confirmed / partially-confirmed / hypothetical-path / pending-scan-confirmation / new-module | Current mapping credibility |
-| ImplementationStatus | implemented / partially-implemented / missing / mock / unknown | Current implementation status |
-| MigrationMode | wrap / replace / extend / new / remove / keep | Transformation approach |
-| VerifyCommandStatus | existing / to_add / TBD | Whether verification command exists |
-| ReleaseBlocking | yes / no / conditional | Whether blocking engineering freeze baseline |
+| MappingConfidence | 已扫描确认 / 部分确认 / 假设路径 / 待扫描确认 / 新增模块 | 当前映射可信度 |
+| ImplementationStatus | 已实现 / 部分实现 / 缺失 / mock / unknown | 当前实现Status |
+| MigrationMode | 包装 / 替换 / 新增 / 下沉 / 删除 / 保持 | 改造方式 |
+| VerifyCommandStatus | existing / to_add / TBD | 验收命令isno已存在 |
+| ReleaseBlocking | yes / no / conditional | isno阻断工程冻结基线 |
 
 ### 6.2 Gap Matrix
 
-| Target Capability | Currently Observed Modules (Repository Scan) | MappingConfidence | Current Status | Transformation Approach | Target Convergence Form (Not New Construction Commitment) | Verify Command | VerifyCommandStatus | ReleaseBlocking |
+| 目标能力 | 当前已观察模块（仓库扫描） | MappingConfidence | 当前Status | 改造方式 | 目标收敛形态（非新建承诺） | Verify Command | VerifyCommandStatus | ReleaseBlocking |
 |---|---|---:|---|---|---|---|---|---|
-| Tool execution / registry boundary | `src/platform/five-plane-execution/tool-executor/`, `src/platform/five-plane-orchestration/harness/toolbelt/` | partially-confirmed | partially-implemented | wrap/extend | Add unified gateway facade before existing `tool-executor`, not fork new execution stack | `npm run test:integration` | existing | yes |
-| Policy / Approval / Risk | `src/platform/five-plane-control-plane/risk-control/`, `src/platform/five-plane-control-plane/approval-center/`, `src/org-governance/approval-routing/` | partially-confirmed | partially-implemented | extend | Extend existing risk control/approval implementation with unified governance hook, not create parallel control plane | `npm run test:integration` | existing | yes |
-| Event Bus / Outbox / Receipt | `src/platform/five-plane-state-evidence/events/`, `src/platform/shared/outbox/`, `src/platform/five-plane-state-evidence/side-effect-ledger/` | partially-confirmed | partially-implemented | extend | Converge existing event/outbox/ledger as receipt contract, not create new receipt subsystem | `npm run test:integration` | existing | yes |
-| Task Store / Truth | `src/platform/five-plane-state-evidence/truth/` | scan-confirmed | partially-implemented | extend | Solidify authoritative task semantics within truth/repository, not copy second state source | `npm run test:integration` | existing | yes |
-| Memory governance | `src/platform/five-plane-state-evidence/memory/`, `src/platform/five-plane-orchestration/harness/memory-manager.ts` | scan-confirmed | partially-implemented | facade wrap | Converge memory plane via adapter/facade, not create independent memory-gateway package | `npm run test:integration` | existing | yes |
-| Release / Rollout gate | `src/platform/shared/stability/stable-release-gate.ts`, `src/platform/five-plane-control-plane/config-center/`, `src/sdk/cli/release-pipeline.ts` | partially-confirmed | partially-implemented | extend | Extend existing stability/release chain with release-gate contract, not copy second release controller | `npm run gate:stable` | existing | yes |
-| Evaluation / Harness grading | `src/platform/five-plane-orchestration/harness/evaluation/`, `src/platform/five-plane-orchestration/harness/eval-harness/` | scan-confirmed | partially-implemented | extend | Converge existing harness evaluation path, no additional independent eval stack | `AA_VALIDATION_ITERATIONS=2 npm run validate:stable:compiled` | existing | conditional |
-| Observability | `src/platform/shared/observability/`, `src/platform/shared/stability/` | scan-confirmed | partially-implemented | extend | Extend existing observability with agent trace dimension, not create parallel metrics/logging plane | `npm run observability:smoke` | existing | conditional |
-| Sandbox / execution guard | `src/platform/five-plane-execution/tool-executor/command-security.ts`, `src/platform/five-plane-execution/tool-executor/tool-path-scope.ts`, `src/platform/five-plane-orchestration/harness/sandbox/` | partially-confirmed | partially-implemented | new abstraction | Extract shared sandbox contract; only split new directory when existing implementation cannot accommodate | `npm run test:integration` | existing | no |
-| Interface Console / Approval UI | `src/platform/five-plane-interface/console/`, `src/platform/five-plane-interface/api/http-server/approval-routes.ts`, `ui/packages/features/approval/` | scan-confirmed | partially-implemented | extend | Prioritize extending existing console/API/UI chain, not build another admin console in parallel | `npm run test:e2e` | existing | conditional |
-| CI boundary scan | `scripts/ci/`, `.github/workflows/` | scan-confirmed | partially-implemented | new | `scripts/architecture-boundary-scan.mjs` | `npm run lint:architecture-boundary` | existing | yes |
+| Tool execution / registry boundary | `src/platform/five-plane-execution/tool-executor/`、`src/platform/five-plane-orchestration/harness/toolbelt/` | 部分确认 | 部分实现 | 包装/扩展 | 在现有 `tool-executor` 前增加统一 gateway facade，而不is先分叉新执lines栈 | `npm run test:integration` | existing | yes |
+| Policy / Approval / Risk | `src/platform/five-plane-control-plane/risk-control/`、`src/platform/five-plane-control-plane/approval-center/`、`src/org-governance/approval-routing/` | 部分确认 | 部分实现 | 扩展 | 在现有风控/审批实现之上补齐统一 governance hook，而不is平lines新建Control Plane | `npm run test:integration` | existing | yes |
+| Event Bus / Outbox / Receipt | `src/platform/five-plane-state-evidence/events/`、`src/platform/shared/outbox/`、`src/platform/five-plane-state-evidence/side-effect-ledger/` | 部分确认 | 部分实现 | 扩展 | 以现有 event/outbox/ledger 收敛为 receipt contract，而不is先拆新 receipt 子系统 | `npm run test:integration` | existing | yes |
+| Task Store / Truth | `src/platform/five-plane-state-evidence/truth/` | 已扫描确认 | 部分实现 | 扩展 | 在 truth/repository 之内固化 authoritative task semantics，而不is复制第二套Status真源 | `npm run test:integration` | existing | yes |
+| Memory governance | `src/platform/five-plane-state-evidence/memory/`、`src/platform/five-plane-orchestration/harness/memory-manager.ts` | 已扫描确认 | 部分实现 | facade 包装 | 以 adapter/facade 方式收敛 memory plane，而不is先新建独立 memory-gateway 包 | `npm run test:integration` | existing | yes |
+| Release / Rollout gate | `src/platform/shared/stability/stable-release-gate.ts`、`src/platform/five-plane-control-plane/config-center/`、`src/sdk/cli/release-pipeline.ts` | 部分确认 | 部分实现 | 扩展 | 在现有稳定性/发布链路上补齐 release-gate contract，而不is复制第二套发布控制器 | `npm run gate:stable` | existing | yes |
+| Evaluation / Harness grading | `src/platform/five-plane-orchestration/harness/evaluation/`、`src/platform/five-plane-orchestration/harness/eval-harness/` | 已扫描确认 | 部分实现 | 扩展 | 收敛现有 harness evaluation 路径，不再额外复制独立 eval stack | `AA_VALIDATION_ITERATIONS=2 npm run validate:stable:compiled` | existing | conditional |
+| Observability | `src/platform/shared/observability/`、`src/platform/shared/stability/` | 已扫描确认 | 部分实现 | 扩展 | 在现有 observability 上补 agent trace 维度，不平lines新建第二套 metrics/logging 平面 | `npm run observability:smoke` | existing | conditional |
+| Sandbox / execution guard | `src/platform/five-plane-execution/tool-executor/command-security.ts`、`src/platform/five-plane-execution/tool-executor/tool-path-scope.ts`、`src/platform/five-plane-orchestration/harness/sandbox/` | 部分确认 | 部分实现 | 新增抽象 | 提炼共享 sandbox contract；only当现有实现no法承载时才拆分新目录 | `npm run test:integration` | existing | no |
+| Interface Console / Approval UI | `src/platform/five-plane-interface/console/`、`src/platform/five-plane-interface/api/http-server/approval-routes.ts`、`ui/packages/features/approval/` | 已扫描确认 | 部分实现 | 扩展 | 优先补齐现有 console/API/UI 链路，不再并lines新建另一套 admin console | `npm run test:e2e` | existing | conditional |
+| CI boundary scan | `scripts/ci/`、`.github/workflows/` | 已扫描确认 | 部分实现 | 新增 | `scripts/architecture-boundary-scan.mjs` | `npm run lint:architecture-boundary` | existing | yes |
 
-### 6.2.1 Implementation Interpretation Rules
+### 6.2.1 实施解释规则
 
-1. `Target convergence form` is the direction of responsibility convergence, not a physical directory name that must be newly created.
-2. If existing modules can achieve goals through facade, adapter, contract tightening, default to prohibiting creation of parallel subsystems.
-3. Only when scan results prove existing boundaries cannot accommodate, and ADR explicitly explains reuse failure reasons, allow splitting new physical modules.
-4. Reviews, scheduling, TODOs, test commands all prioritize binding to currently existing implementations in repository, then gradually abstract unified entry points.
+1. `目标收敛形态` is职责收敛方向，不is必须新建的物理目录名。
+2. 若现有模块via facade、adapter、contract tightening 可以达成目标，defaults to禁止新建平lines子系统。
+3. 只有当扫描结果证明现有边界no法承载，且 ADR 明确Description复用failed原因时，才允许拆出新的物理模块。
+4. 评审、排期、TODO、测试命令一律优先绑定到当前仓库已有实现，再逐步抽象出统一入口。
 
-### 6.3 Required Real Scan Output
+### 6.3 必须补充的真实扫描输出
 
-Must be generated before engineering freeze:
+工程冻结前必须生成：
 
 ```text
 docs_zh/reviews/current-codebase-gap-review-v1.9.md
 ```
 
-Current repository has added auto-scan artifacts:
-
-```text
-docs_zh/reviews/current-codebase-gap-review-v1.9.md
-artifacts/current-codebase-gap-review-v1.9.json
-```
-
-`scan:current-codebase-gap` has been implemented; these two artifacts are locally reproducible. They have not yet entered CI workflow, so still block engineering baseline.
-
-This review document must at least contain:
-
-1. Real directory tree and module list.
-2. Current Tool / Policy / Memory / Event / Release / Evaluation / Observability implementation status.
-3. All direct tool import, direct memory write, direct release publish code locations.
-4. Currently existing test/lint/build commands in package.json.
-5. Current test coverage and missing P0 gate tests.
-6. Transformation risks, owners, estimated effort.
-
-### 6.4 Current Codebase Gap Review Output Template
-
-Real repository scan report must be reproducible artifact, not manual verbal confirmation. Recommended to be generated by `npm run scan:current-codebase-gap` as Markdown + JSON两份结果:
+当前仓库已补入自动扫描产物：
 
 ```text
 docs_zh/reviews/current-codebase-gap-review-v1.9.md
 artifacts/current-codebase-gap-review-v1.9.json
 ```
 
-JSON minimum structure:
+`scan:current-codebase-gap` 已via落地；这two产物已可本地可复现生成。它们尚未进入 CI workflow，因此仍未成为工程冻结门禁的一部分。
+
+该审查文档至少contains：
+
+1. 真实目录树vs模块清单。
+2. 当前 Tool / Policy / Memory / Event / Release / Evaluation / Observability 实现Status。
+3. 所有 direct tool import、direct memory write、direct release publish 的code位置。
+4. 当前 package.json 中已存在的 test/lint/build 命令。
+5. 当前测试覆盖情况vs缺失的 P0 gate 测试。
+6. 改造风险、owner、预计工作量。
+
+### 6.4 Current Codebase Gap Review 输出模板
+
+真实仓库扫描报告必须is可复现产物，而不is人工口头确认。Recommendation由 `npm run scan:current-codebase-gap` 生成 Markdown + JSON two结果：
+
+```text
+docs_zh/reviews/current-codebase-gap-review-v1.9.md
+artifacts/current-codebase-gap-review-v1.9.json
+```
+
+JSON 最小结构：
 
 ```ts
 export interface CodebaseGapReviewItem {
@@ -348,58 +348,59 @@ export interface CodebaseGapReviewItem {
 }
 ```
 
-Scan must cover at least:
+扫描至少覆盖：
 
-1. `src/`, `tests/`, `ui/`, `scripts/`, `.github/`, `package.json`.
-2. Direct tool import / direct memory write / release bypass / policy bypass.
-3. Currently existing event bus, task store, memory, tool, policy, observability, release, evaluation modules.
-4. Current test commands, coverage commands, E2E commands, and CI workflow.
-5. Whether code paths and test paths corresponding to P0 TODOs exist.
+1. `src/`、`tests/`、`ui/`、`scripts/`、`.github/`、`package.json`。
+2. direct tool import / direct memory write / release bypass / policy bypass。
+3. 当前已有 event bus、task store、memory、tool、policy、observability、release、evaluation 模块。
+4. 当前测试命令、覆盖率命令、E2E 命令和 CI workflow。
+5. vs P0 TODO 对应的code路径和测试路径isno存在。
 
-**Baseline Freeze Rule:** If `MappingConfidence` is still `pending scan confirmation`, that capability must not enter engineering freeze baseline, can only enter scheduling as a TODO item.
+**基线冻结规则：** 若 `MappingConfidence` 仍为 `待扫描确认`，该能力不得进入工程冻结基线，只能作为待办项进入排期。
 
 ---
 
-## 7. CI Command Contract
+## 7. CI Command Contract / 验收命令契约
 
-### 7.1 Command Status Definitions
+### 7.1 命令Statusdefines
 
-| Status | Meaning | Handling |
+| Status | 含义 | handle方式 |
 |---|---|---|
-| existing | Currently exists in repository (may be aggregate command) | Can directly serve as review version acceptance command; should converge to dedicated script before engineering freeze |
-| to_add | Not confirmed to exist currently, required to be added in v1.9 | Corresponding TODO must create script and test collection |
-| TBD | Requires scanning repository to confirm | Blocks engineering baseline freeze |
+| existing | 当前仓库已存在（允许is aggregate 命令） | 可以directly作为评审版验收命令；工程冻结前应尽量收敛为 dedicated script |
+| to_add | 当前未确认存在，v1.9 要求新增 | 对应 TODO 必须创建脚本和测试集合 |
+| TBD | 需要扫描仓库后确认 | 阻断工程基线冻结 |
 
-### 7.2 P0 Required Commands
+### 7.2 P0 required命令
 
-Current repository already has a batch of directly reusable aggregate commands; v1.9 review version first explicitly binds these existing commands, then supplements dedicated scripts by capability plane before engineering freeze.
+当前仓库已via存在一批可directly复用的 aggregate 命令；v1.9 评审版先显式绑定这些现有命令，工程冻结前再按能力面补齐 dedicated script。
 
-| Command | Target | Current Status | Corresponding TODO |
+| 命令 | 目标 | 当前Status | 对应 TODO |
 |---|---|---|---|
-| `npm run test:integration` | Covers receipt / outbox / truth / tool / policy / memory integration capabilities | existing | REC-001,TOOL-001,GOV-001,MEM-001 |
-| `npm run test:e2e` | Covers approval / prompt injection / tenant boundary / side-effect flows | existing | GOV-002,GOV-003,UI-001,E2E-001,SEC-001 |
-| `npm run gate:stable` | Covers release gate / release package stability gates | existing | REL-001 |
-| `AA_VALIDATION_ITERATIONS=2 npm run validate:stable:compiled` | Covers stability validation and eval-style compiled validation | existing | EVAL-001 |
-| `npm run prompt-injection:stable` | Covers H1-lite / prompt injection red team baseline | existing | GOV-004,SEC-001 |
-| `npm run security:tenant` | Covers cross-tenant and security boundary validation | existing | SEC-001 |
-| `npm run observability:smoke` | Covers cost / latency / metrics / diagnostics smoke validation | existing | OBS-001 |
-| `npm run lint:architecture-boundary` | Prohibits direct tool import / direct memory write / release bypass | existing | CI-001 |
-| `npm run scan:current-codebase-gap` | Generates real code mapping report | existing | DOC-014 |
-| `npm run test:receipt-store` | Covers BaseReceiptMinimal / outbox / ledger minimum convergence contract | existing | REC-001 |
-| `npm run test:tool-gateway` | Covers ToolGateway shadow / prepare / commit / verify / compensate facade | existing | TOOL-001,TOOL-002 |
-| `npm run test:memory-gateway` | Covers MemoryGateway facade, proposal-only, projection | existing | MEM-001 |
-| `npm run test:release-gate` | Covers ReleaseManifestDraft facade and stable gate minimum contract | existing | REL-001 |
+| `npm run test:integration` | 覆盖 receipt / outbox / truth / tool / policy / memory 等集成能力 | existing | REC-001,TOOL-001,GOV-001,MEM-001 |
+| `npm run test:e2e` | 覆盖 approval / prompt injection / tenant boundary / side-effect 流程 | existing | GOV-002,GOV-003,UI-001,E2E-001,SEC-001 |
+| `npm run gate:stable` | 覆盖 release gate / release package 稳定性门禁 | existing | REL-001 |
+| `AA_VALIDATION_ITERATIONS=2 npm run validate:stable:compiled` | 覆盖稳定性验证vs eval-style compiled validation | existing | EVAL-001 |
+| `npm run prompt-injection:stable` | 覆盖 H1-lite / prompt injection 红队基线 | existing | GOV-004,SEC-001 |
+| `npm run security:tenant` | 覆盖跨租户vssecurity边界校验 | existing | SEC-001 |
+| `npm run observability:smoke` | 覆盖 cost / latency / metrics / diagnostics 冒烟验证 | existing | OBS-001 |
+| `npm run lint:architecture-boundary` | 禁止 direct tool import / direct memory write / release bypass | existing | CI-001 |
+| `npm run scan:current-codebase-gap` | 生成真实code映射报告 | existing | DOC-014 |
+| `npm run test:receipt-store` | 覆盖 BaseReceiptMinimal / outbox / ledger 的最小收敛契约 | existing | REC-001 |
+| `npm run test:tool-gateway` | 覆盖 ToolGateway shadow / prepare / commit / verify / compensate facade | existing | TOOL-001,TOOL-002 |
+| `npm run test:memory-gateway` | 覆盖 MemoryGateway facade、proposal-only、projection | existing | MEM-001 |
+| `npm run test:release-gate` | 覆盖 ReleaseManifestDraft facade vs stable gate 最小契约 | existing | REL-001 |
 
-### 7.3 CI Gate Principles
+### 7.3 CI Gate principle
 
-1. `to_add` commands must enter `package.json` or CI workflow before engineering baseline freeze.
-2. `TBD` commands must not serve as passing items on release checklist.
-3. Before P0b enforce, `lint:architecture-boundary` must at least detect bypass but may not fail build.
-4. After P0c, P0 blocking gate bypass must fail build.
+1. `to_add` 命令在工程基线冻结前必须进入 `package.json` 或 CI workflow。
+2. `TBD` 命令不允许作为 release checklist 的via项。
+3. P0b enforce 之前，`lint:architecture-boundary` 必须至少能发现 bypass，但可以不 fail build。
+4. P0c 之后，P0 blocking gate 的 bypass 必须 fail build。
 
-### 7.4 package.json Script Contract
 
-Current repository already has aggregate commands like `test:integration`, `test:e2e`, `gate:stable`, `validate:stable:compiled`, `prompt-injection:stable`, `security:tenant`, `observability:smoke`, and has supplemented four dedicated scripts: `test:receipt-store`, `test:tool-gateway`, `test:memory-gateway`, `test:release-gate`. Note: these script names are acceptance contracts, minimum real test collection wrapping is allowed, but empty shell scripts are not allowed.
+### 7.4 package.json 脚本契约
+
+当前仓库已具备 `test:integration`、`test:e2e`、`gate:stable`、`validate:stable:compiled`、`prompt-injection:stable`、`security:tenant`、`observability:smoke` 等 aggregate 命令，并已补齐 `test:receipt-store`、`test:tool-gateway`、`test:memory-gateway`、`test:release-gate` 四个 dedicated script。注意：这些脚本名is验收契约，允许先包装最小真实测试集合，但不允许空壳脚本。
 
 ```json
 {
@@ -418,25 +419,25 @@ Current repository already has aggregate commands like `test:integration`, `test
 }
 ```
 
-Script output requirements:
+脚本输出要求：
 
-| Script | P0a Output | P0b/P0c Output | Empty Implementation Allowed |
+| 脚本 | P0a 输出 | P0b/P0c 输出 | isno允许空实现 |
 |---|---|---|---|
-| `scan:current-codebase-gap` | gap report | gap report + blocking summary | Not allowed |
-| `lint:architecture-boundary` | detect-only report | fail high-risk bypass | Not allowed |
-| `test:receipt-store` | minimal receipt tests | full receipt + outbox tests | Not allowed |
-| `test:tool-gateway` | shadow adapter tests | prepare/commit/compensate tests | Not allowed |
-| `test:security-agent-harness` | sample suite exists | high-risk samples blocking | Not allowed |
+| `scan:current-codebase-gap` | gap report | gap report + blocking summary | 不允许 |
+| `lint:architecture-boundary` | detect-only report | fail high-risk bypass | 不允许 |
+| `test:receipt-store` | minimal receipt tests | full receipt + outbox tests | 不允许 |
+| `test:tool-gateway` | shadow adapter tests | prepare/commit/compensate tests | 不允许 |
+| `test:security-agent-harness` | sample suite exists | high-risk samples blocking | 不允许 |
 
-Using "script exists but does not execute real assertions" to satisfy acceptance is prohibited.
+禁止用“脚本exists but不执lines真实断言”的方式满足验收。
 
 ---
 
-## 8. Minimal P0 Contract
+## 8. Minimal P0 Contract / P0 最小接口契约
 
-### 8.1 P0a-0 Document Freeze Contract
+### 8.1 P0a-0 文档冻结契约
 
-Following interface drafts must be frozen:
+必须冻结以下接口草案：
 
 ```text
 HarnessCapabilityDomain
@@ -539,31 +540,31 @@ export interface ReleaseManifestDraft {
 
 ## 9. Rollout Mode Transition Criteria
 
-### 9.1 Rollout Mode Definitions
+### 9.1 Rollout Mode defines
 
-| Mode | Meaning | Blocking |
+| 模式 | 含义 | isno阻断 |
 |---|---|---|
-| shadow | New chain bypass observation, does not affect original execution | No |
-| dry-run | New chain produces decisions but only alerts, does not block | No |
-| enforce | New chain formally blocks non-compliant actions | Yes |
-| fail-closed | When new chain unavailable, defaults to reject high-risk actions | Yes, high-risk defaults to reject |
+| shadow | 新链路旁路观察，不Impact原执lines | no |
+| dry-run | 新链路产生Decision，但只报警不阻断 | no |
+| enforce | 新链路正式阻断不合规动作 | is |
+| fail-closed | 新链路不可用时defaults to拒绝高风险动作 | is，高风险defaults to拒绝 |
 
-### 9.2 Transition Criteria
+### 9.2 切换标准
 
 | Gate | Shadow → Dry-run | Dry-run → Enforce | Enforce → Fail-closed |
 |---|---|---|---|
-| ToolGateway | 100% tool calls have shadow receipt | high-risk tool dry-run 7 days with no missed blocks; false positive < 2% | high/critical tool policy/approval/evidence fully covered |
-| H1-lite | 100% external input marked trust tier | Basic injection sample detection rate ≥ 90%, false positives can be manually released | high-risk untrusted input cannot bypass H1-lite |
-| Policy Gate | 100% action has dry-run decision | high/critical missed blocks 0; false positive < 2% | high/critical defaults to reject when policy service unavailable |
-| Memory Gate | L4-L7 direct write 100% discoverable | L4-L7 proposal path 100% covered | direct write blocked by runtime and CI dual blocking |
-| Release Gate | 100% release generates manifest draft | prod release 100% has eval report + rollback plan | production release prohibited when release gate unavailable |
-| Receipt | 100% key actions generate minimal receipt | high-risk actions have prepare/commit receipt | high-risk commit prohibited when receipt/outbox unavailable |
+| ToolGateway | 100% tool call 有 shadow receipt | high-risk tool dry-run 7 天no漏拦截；误拦截 < 2% | high/critical tool 的 policy/approval/evidence 全覆盖 |
+| H1-lite | 外部输入 100% 标记 trust tier | 基础注入样例检出率 ≥ 90%，误报可人工放lines | high-risk untrusted input no法bypassing H1-lite |
+| Policy Gate | 100% action 有 dry-run decision | high/critical 漏拦截 0；误拦截 < 2% | policy service 不可用时 high/critical defaults to拒绝 |
+| Memory Gate | L4-L7 direct write 100% 可发现 | L4-L7 proposal path 覆盖 100% | direct write 被 runtime 和 CI 双重阻断 |
+| Release Gate | 100% release 生成 manifest draft | prod release 100% 有 eval report + rollback plan | release gate 不可用时禁止 production release |
+| Receipt | 关键动作 100% 生成 minimal receipt | high-risk 动作有 prepare/commit receipt | receipt/outbox 不可用时禁止 high-risk commit |
 
 ---
 
-## 10. Unified Risk Model and Action Risk Resolution Matrix
+## 10. 统一风险模型vs Action Risk Resolution Matrix
 
-### 10.1 Input Dimensions
+### 10.1 输入维度
 
 ```ts
 export type RiskLevel = "low" | "medium" | "high" | "critical";
@@ -574,7 +575,7 @@ export type ApprovalLevel = "none" | "single_reviewer" | "team_lead" | "security
 export type Reversibility = "automatic_rollback" | "manual_repair" | "forward_fix_only" | "not_reversible";
 ```
 
-### 10.2 finalRisk Calculation Rules
+### 10.2 finalRisk 计算规则
 
 ```text
 finalRisk = max(
@@ -589,11 +590,11 @@ finalRisk = max(
 )
 ```
 
-If any dimension is `critical`, final risk must not be lower than `critical`. If any dimension is `restricted data + prod + write_external/production_mutation`, final risk must not be lower than `critical`.
+任何一个维度为 `critical`，最终风险不得低于 `critical`。任何一个维度为 `restricted data + prod + write_external/production_mutation`，最终风险不得低于 `critical`。
 
 ### 10.3 Action Risk Resolution Matrix
 
-| sideEffectLevel | dataSensitivity | targetEnv | reversibility | Default riskLevel | Default Gate |
+| sideEffectLevel | dataSensitivity | targetEnv | reversibility | defaults to riskLevel | defaults to Gate |
 |---|---|---|---|---|---|
 | none | public/internal | local/dev | N/A | low | H1/H2-lite + receipt |
 | read_only | internal | dev/staging | N/A | low/medium | H2 + receipt |
@@ -602,29 +603,29 @@ If any dimension is `critical`, final risk must not be lower than `critical`. If
 | write_internal | confidential | prod | automatic_rollback/manual_repair | high | H2 + H4 + prepare/commit |
 | write_external | confidential | prod | manual_repair/forward_fix_only | high/critical | H2 + H4 + approval + rollback/repair owner |
 | production_mutation | any | prod | automatic_rollback | critical | H2 + H4 + multi-party approval + prepare/commit/verify |
-| production_mutation | any | prod | not_reversible | critical | default block; break-glass only |
-| any write | restricted | prod | any | critical | default block; security admin / multi-party |
+| production_mutation | any | prod | not_reversible | critical | default block；only break-glass |
+| any write | restricted | prod | any | critical | default block；security admin / multi-party |
 
-### 10.4 Tool Reversibility Risk Rules
+### 10.4 Tool 可逆性风险规则
 
-| reversibility | high-risk prod auto-execute policy |
+| reversibility | high-risk prod 自动执lines策略 |
 |---|---|
-| automatic_rollback | Can execute after approval, must register rollback plan |
-| manual_repair | Must have H4 + repair owner + repair runbook |
-| forward_fix_only | critical, default not auto-execute; requires multi-party approval |
-| not_reversible | default prohibited; break-glass only and must have incident record |
+| automatic_rollback | 可审批后执lines，必须注册 rollback plan |
+| manual_repair | 必须 H4 + repair owner + repair runbook |
+| forward_fix_only | critical，defaults to不自动执lines；需要多方审批 |
+| not_reversible | defaults to禁止；only break-glass 且必须 incident record |
 
 ---
 
-## 11. Tool Gateway Detailed Design
+## 11. Tool Gateway 详细设计
 
-### 11.1 Tool Gateway Goals
+### 11.1 Tool Gateway 目标
 
-Tool Gateway is the intersection of Execution Plane and Control Plane, not a common Tool Registry.
+Tool Gateway is Execution Plane vs Control Plane 的交界面，不is普通 Tool Registry。
 
-Here `Tool Gateway` is a logical convergence layer. Priority implementation should add unified entry and contract on top of existing `tool-executor`, `toolbelt`, risk control and approval chains, not immediately copy out a second execution subsystem.
+这里的 `Tool Gateway` is逻辑收敛层。优先实现方式应为在现有 `tool-executor`、`toolbelt`、风险控制vs审批链路之上增加统一入口和契约，而不is立即复制出第二套执lines子系统。
 
-It must uniformly handle:
+它必须统一handle：
 
 ```text
 tool schema validation
@@ -642,7 +643,7 @@ mock / replay
 cost / latency accounting
 ```
 
-### 11.2 Call Chain
+### 11.2 call链
 
 ```text
 Agent / Planner proposes action
@@ -659,7 +660,7 @@ Agent / Planner proposes action
 → Compensation or rollback if needed
 ```
 
-### 11.3 Prepare / Commit / Verify / Compensate Interfaces
+### 11.3 Prepare / Commit / Verify / Compensate 接口
 
 ```ts
 export interface ToolPrepareInput {
@@ -716,9 +717,9 @@ export interface ToolCompensationPlan {
 }
 ```
 
-### 11.4 ToolRiskMetadata Required Contract
+### 11.4 ToolRiskMetadata 必填契约
 
-All tools callable by Agent must declare risk metadata. Tools missing risk metadata can only appear in shadow / dry-run, not allowed to enter production enforce.
+所有可被 Agent call的工具必须声明风险元data。缺失风险元data的工具只能在 shadow / dry-run 中出现，不允许进入 production enforce。
 
 ```ts
 export interface ToolRiskMetadata {
@@ -739,30 +740,30 @@ export interface ToolRiskMetadata {
 }
 ```
 
-Risk decision rules:
+风险Decision规则：
 
-| Condition | Default Handling |
+| 条件 | defaults tohandle |
 |---|---|
-| `production_mutation + not_reversible` | `critical`, default block, unless break-glass |
-| `write_external + forward_fix_only` | `high/critical`, must have H4 + manual approval |
-| `secretAccess = privileged` | at least `high`, must have minimum privilege token + audit |
-| `replaySafety = not_replayable` | prohibited automatic replay, only mock replay / manual repair allowed |
-| Missing ToolRiskMetadata | prohibited from production execution |
+| `production_mutation + not_reversible` | `critical`，defaults to block，除非 break-glass |
+| `write_external + forward_fix_only` | `high/critical`，必须 H4 + manual approval |
+| `secretAccess = privileged` | 至少 `high`，必须最小permission token + audit |
+| `replaySafety = not_replayable` | 禁止自动 replay，只允许 mock replay / manual repair |
+| 缺失 ToolRiskMetadata | production 禁止执lines |
 
-### 11.5 Partial Failure Handling
+### 11.5 Partial Failure handle
 
-| Status | Handling |
+| Status | handle |
 |---|---|
-| prepare failed | do not execute side effect, write PrepareReceipt failed |
-| approval denied | do not execute side effect, write ApprovalReceipt denied |
-| commit partial | write PartialCommitReceipt, enter repair queue |
-| commit success but verify failed | write VerifyReceipt failed, trigger compensation / manual repair |
-| side-effect occurred but commit receipt missing | repair via durable outbox / commit journal |
-| compensation failed | escalate incident, enter manual repair |
+| prepare failed | 不执lines副作用，写 PrepareReceipt failed |
+| approval denied | 不执lines副作用，写 ApprovalReceipt denied |
+| commit partial | 写 PartialCommitReceipt，进入 repair queue |
+| commit success but verify failed | 写 VerifyReceipt failed，触发 compensation / manual repair |
+| side-effect occurred but commit receipt missing | via durable outbox / commit journal repair |
+| compensation failed | 升级 incident，进入 manual repair |
 
 ### 11.6 Durable Outbox / Commit Journal
 
-High-risk side effect execution sequence must be:
+高风险副作用执lines顺序必须is：
 
 ```text
 write PrepareReceipt or DurableOutboxRecord
@@ -773,20 +774,21 @@ write PrepareReceipt or DurableOutboxRecord
 → repair if any receipt missing
 ```
 
-Not allowed:
+不允许：
 
 ```text
 commit side effect
 → best effort write receipt
 ```
 
-Otherwise, unacceptable state occurs where side effect has occurred but no record exists in State & Evidence Plane.
+no则会出现副作用已发生但 State & Evidence Plane norecord的不可acceptsStatus。
 
-### 11.7 Transactional Outbox Transaction Boundary
 
-P0b defaults to transactional outbox, not best-effort log.
+### 11.7 Transactional Outbox 事务边界
 
-**Mandatory sequence:**
+P0b defaults to采用 transactional outbox，而不is best-effort log。
+
+**mandatory顺序：**
 
 ```text
 BEGIN TRANSACTION
@@ -802,40 +804,40 @@ verify side effect
 write VerifyReceipt
 ```
 
-Exception handling:
+异常handle：
 
-| Exception | Handling |
+| 异常 | handle |
 |---|---|
-| PrepareReceipt / outbox write failed | prohibit high-risk commit |
-| External side effect commit timeout | query final state using idempotencyKey, prohibit blind retry |
-| CommitReceipt write failed | repair worker rebuilds from outbox |
-| verify failed | enter rollback / manual repair per ToolCompensationPlan |
-| State Store unavailable | fail closed; critical break-glass needs local durable emergency log |
+| PrepareReceipt / outbox 写failed | 禁止 high-risk commit |
+| 外部副作用 commit timeout | uses idempotencyKey 查询最终Status，禁止盲重试 |
+| CommitReceipt 写failed | repair worker 从 outbox 重建 |
+| verify failed | 按 ToolCompensationPlan 进入 rollback / manual repair |
+| State Store 不可用 | fail closed；critical break-glass 需 local durable emergency log |
 
-Repair worker idempotent key: `tenantId + preparedActionId + idempotencyKey + toolVersion`.
+repair worker 幂等键：`tenantId + preparedActionId + idempotencyKey + toolVersion`。
 
 ---
 
-## 12. Governance Hooks and Trust Tier
+## 12. Governance Hooks vs Trust Tier
 
-### 12.1 H1/H2/H3/H4 Definitions
+### 12.1 H1/H2/H3/H4 defines
 
-| Hook | Location | Responsibility | P0/P1 Strategy |
+| Hook | 位置 | 职责 | P0/P1 策略 |
 |---|---|---|---|
-| H1 Input Gate | Before input enters model | untrusted input marking, basic injection detection, sensitive info identification | H1-lite enters P0b/P0c; H1-full P1 |
-| H2 Action Gate | After model proposes action, before execution | tool permissions, parameters, policy, risk, approval judgment | P0b enforce high-risk |
-| H3 Observation Gate | Before tool output enters context/memory | redaction, quarantine, untrusted label, summarize-only | P0b/P0c enforce untrusted output |
-| H4 Approval Gate | Before high-risk side effect commit | human approval, multi-party approval, break-glass | P0b enforce critical/high |
+| H1 Input Gate | 输入进入模型前 | untrusted input 标记、基础 injection 检测、敏感信息识别 | H1-lite 进入 P0b/P0c；H1-full P1 |
+| H2 Action Gate | 模型提出 action 后、执lines前 | 工具permission、参数、policy、risk、approval 判断 | P0b enforce high-risk |
+| H3 Observation Gate | 工具输出进入 context/memory 前 | redaction、quarantine、untrusted label、summarize-only | P0b/P0c enforce untrusted output |
+| H4 Approval Gate | 高风险副作用提交前 | 人工审批、多方审批、break-glass | P0b enforce critical/high |
 
 ### 12.2 Trust Tier
 
-| Source | Default Trust Tier | Gate |
+| 来源 | defaults to Trust Tier | Gate |
 |---|---|---|
-| User input | untrusted | H1-lite |
-| External web page / PDF / paper / retrieval results | untrusted | H1-lite + H3 when re-entering context |
-| Third-party tool output | untrusted | H3 |
-| Internal read-only structured system | controlled | H3-lite + schema validation |
-| Control Plane policy decision | trusted-control | receipt, no H1/H3 needed |
+| user输入 | untrusted | H1-lite |
+| 外部网页 / PDF / 论文 / 检索结果 | untrusted | H1-lite + H3 when re-entering context |
+| 第三方工具输出 | untrusted | H3 |
+| 内部只读结构化系统 | controlled | H3-lite + schema validation |
+| Control Plane policy decision | trusted-control | receipt，no需 H1/H3 |
 | State & Evidence authoritative state | trusted-state | access policy + receipt |
 | Human approved release artifact | trusted-artifact | ReleaseGate + audit |
 
@@ -851,11 +853,11 @@ export type ObservationGateDecision =
   | "block";
 ```
 
-H3 should not be only allow/block. For research, code, log scenarios, `allow_with_untrusted_label` and `summarize_only` are very important, reducing false positives.
+H3 不应只有 allow/block。对研究、code、日志场景，`allow_with_untrusted_label` 和 `summarize_only` 非常重要，可以减少误拦截。
 
-### 12.4 H1-lite Minimum Test Set
+### 12.4 H1-lite 最小测试集
 
-After H1-lite enters P0b/P0c, must have runnable sample set. Recommended directory:
+H1-lite 进入 P0b/P0c 后，必须有可运lines样例集。Recommendation目录：
 
 ```text
 tests/integration/platform/security/h1-lite/
@@ -868,17 +870,17 @@ tests/integration/platform/security/h1-lite/
 └── benign-samples.md
 ```
 
-Minimum coverage:
+最小覆盖：
 
-| Sample Type | Target | P0 Threshold |
+| 样例class型 | 目标 | P0 threshold |
 |---|---|---:|
-| User input injection | mark untrusted / risk | ≥ 90% detection |
-| Retrieved content injection | prohibited from executing as system instruction | 100% not executed |
-| PDF / paper injection | handled as citation content only | 100% marked untrusted |
-| Log injection | not allowed to trigger tool actions | 100% not executed |
-| benign samples | control false positive | false positive ≤ 10% initial, P1 continue calibration |
+| user输入注入 | 标记 untrusted / risk | ≥ 90% 检出 |
+| 检索内容注入 | 禁止作为系统指令执lines | 100% 不执lines |
+| PDF / 论文注入 | 只作为references用内容handle | 100% 标记 untrusted |
+| 日志注入 | 不允许触发工具动作 | 100% 不执lines |
+| benign samples | 控制误报 | false positive ≤ 10% 起步，P1 继续校准 |
 
-H1-lite output is not simple block, but generates `InputTrustLabel`:
+H1-lite 的输出不is简单 block，而is生成 `InputTrustLabel`：
 
 ```ts
 export interface InputTrustLabel {
@@ -892,31 +894,31 @@ export interface InputTrustLabel {
 
 ---
 
-## 13. Seven-layer Memory Gateway Revised
+## 13. Seven-layer Memory Gateway 修正版
 
-The `Memory Gateway` in this section is a governance facade, not requiring a newly independent package name first. Priority approach is to supplement proposal/projection/revoke contract on existing memory plane, memory manager, retrieval/projection paths.
+本节中的 `Memory Gateway` is治理 facade，不要求先新建独立包名。优先做法is在现有 memory plane、memory manager、retrieval/projection 路径上补齐 proposal/projection/revoke contract。
 
-### 13.1 Seven-layer Memory
+### 13.1 七层 Memory
 
-| Layer | Name | Purpose | Write Policy |
+| 层级 | 名称 | 作用 | writes策略 |
 |---|---|---|---|
-| L1 | Active Context Memory | Context projection seen by current model call | Dynamically generated by Context Builder, not as source |
-| L2 | Task Working Memory | Temporary working state within single task | Can write automatically, must trace |
-| L3 | Session Memory | Context continuity within one session | Can auto-maintain, session scope |
-| L4 | Mission Memory | Mission goals, constraints, key decision summaries | Model can only propose, cannot overwrite AuthoritativeTaskStore |
-| L5 | Project / Domain Memory | Project knowledge, domain knowledge, technical conclusions, business rules | Requires evidence, version, conflict check |
-| L6 | User / Team Preference Memory | User preferences, team norms, workflow habits | Requires privacy, permissions, view/delete |
-| L7 | Governance / Experience / Evaluation Memory | Failure patterns, eval cases, policy proposals, release experience | Cannot replace PolicyBundle, requires Release/Eval constraints |
+| L1 | Active Context Memory | 当前模型call看到的上下文投影 | 由 Context Builder dynamically生成，不作为 source |
+| L2 | Task Working Memory | 单个 task 内临时工作Status | 可自动写，必须 trace |
+| L3 | Session Memory | 一个 session 内上下文连续性 | 可自动维护，session scope |
+| L4 | Mission Memory | mission 目标、约束、关键Decision摘要 | 模型只能 propose，不能覆盖 AuthoritativeTaskStore |
+| L5 | Project / Domain Memory | 项目知识、领域知识、技术Conclusion、业务规则 | 需 evidence、version、conflict check |
+| L6 | User / Team Preference Memory | user偏好、团队规范、工作流习惯 | 需隐私、permission、可查看/删除 |
+| L7 | Governance / Experience / Evaluation Memory | failed模式、eval case、policy proposal、release via验 | 不能替代 PolicyBundle，需 Release/Eval 约束 |
 
-### 13.2 Memory / Policy / Evidence / Context Boundaries
+### 13.2 Memory / Policy / Evidence / Context 边界
 
-| Object | Belongs | Authoritative | Description |
+| 对象 | 归属 | isno权威 | Description |
 |---|---|---|---|
-| Evidence | State & Evidence Plane | Raw evidence authority | Tool results, trace, logs, files, evaluation outputs |
-| AuthoritativeTaskStore | State & Evidence Plane | mission/task state authority | StateCommand and task state source of truth |
-| Memory | State & Evidence Plane + Memory Gateway | Derived knowledge source | Usable within its scope, version, status, evidence and policy allowances; cannot overwrite Evidence, PolicyBundle or Authoritative State |
-| Context | Orchestration Plane | Non-authoritative | Current model call projection |
-| PolicyBundle | Control Plane | Policy authority | Sole source of executable policy |
+| Evidence | State & Evidence Plane | 原始证据权威 | 工具结果、trace、日志、文件、评测输出 |
+| AuthoritativeTaskStore | State & Evidence Plane | mission/task Status权威 | StateCommand 和任务Status真源 |
+| Memory | State & Evidence Plane + Memory Gateway | 派生知识源 | 在其 scope、version、status、evidence 和 policy 允许范围内可uses；不能覆盖 Evidence、PolicyBundle 或 Authoritative State |
+| Context | Orchestration Plane | 非权威 | 当前模型call投影 |
+| PolicyBundle | Control Plane | 策略权威 | 可执lines策略的唯一来源 |
 
 ### 13.3 ManagedMemoryMinimal
 
@@ -1001,18 +1003,18 @@ export interface MemoryProjection {
 }
 ```
 
-### 13.6 Memory Resolution Rules
+### 13.6 Memory Resolution 规则
 
-Do not use single global read order. Resolve by conflict type:
+不uses单一globally读取顺序。按conflictsclass型解决：
 
-| Conflict Type | Priority |
+| conflictsclass型 | 优先级 |
 |---|---|
-| Security / Compliance / Permission | Control Plane PolicyBundle is sole executable authority; L7 only provides evidence and candidates |
-| Mission state | AuthoritativeTaskStore > L4 Mission Memory > L3 Session > L2 Task |
-| Project / Domain facts | L5 Project / Domain > L3 Session > L2 Task |
-| User / Team preferences | L6 only affects format, style, workflow preferences, cannot overwrite L5 facts or PolicyBundle |
-| Current task temporary hypothesis | L2 only as hypothesis, cannot overwrite L4/L5 |
-| Model context | L1 is projection output, not source |
+| security / 合规 / permission | Control Plane PolicyBundle is唯一可执lines权威；L7 只提供证据和候选 |
+| Mission Status | AuthoritativeTaskStore > L4 Mission Memory > L3 Session > L2 Task |
+| 项目 / 领域事实 | L5 Project / Domain > L3 Session > L2 Task |
+| user / 团队偏好 | L6 只Impact格式、风格、工作流偏好，不能覆盖 L5 事实或 PolicyBundle |
+| 当前任务临时假设 | L2 只能作为 hypothesis，不能覆盖 L4/L5 |
+| 模型上下文 | L1 is projection output，不is source |
 
 ### 13.7 Memory Flow
 
@@ -1032,9 +1034,9 @@ flowchart LR
 
 ---
 
-## 14. Release Gate and Harness Lockfile
+## 14. Release Gate vs Harness Lockfile
 
-The `Release Gate` in this section is the release governance capability name, not requiring copying current `stable-release-gate` or `release-pipeline`. Default strategy is to converge unified contract on existing stability gates, config release, CLI release paths.
+本节中的 `Release Gate` is发布治理能力名，不要求先复制当前 `stable-release-gate` 或 `release-pipeline`。defaults to策略is在现有稳定性门禁、configure发布、CLI 发布路径上收敛统一 contract。
 
 ### 14.1 AgentReleaseManifest / Harness Lockfile
 
@@ -1060,20 +1062,20 @@ hash: sha256:...
 
 ### 14.2 Canonical Serialization Spec
 
-ReleaseManifest hash must be reproducible:
+ReleaseManifest hash 必须可复现：
 
-1. All keys sorted in lexicographic order.
-2. Time uses ISO-8601 UTC.
-3. Empty fields not participating in hash.
-4. Arrays sorted with stable sorting rules.
-5. All dependency versions use immutable version id or digest.
-6. canonicalizationVersion change must trigger manifest rehash.
+1. 所有 key 按字典序排序。
+2. timeuses ISO-8601 UTC。
+3. 空字段不参vs hash。
+4. 数组按稳定排序规则排序。
+5. 所有relies on版本uses不可变 version id 或 digest。
+6. canonicalizationVersion 变更必须触发 manifest rehash。
 
-### 14.3 Release Gate Checks
+### 14.3 Release Gate 检查
 
-| Check Item | P0c | P1 |
+| 检查项 | P0c | P1 |
 |---|---|---|
-| Manifest integrity | blocking | blocking |
+| Manifest 完整性 | blocking | blocking |
 | EvalReportId | blocking | blocking |
 | RollbackPlanId | blocking | blocking |
 | Policy compatibility | blocking | blocking |
@@ -1087,55 +1089,55 @@ ReleaseManifest hash must be reproducible:
 
 ## 15. Evaluation Dataset and Metric Design
 
-### 15.1 Eval Set Types
+### 15.1 Eval Set class型
 
-| Eval Set | Purpose | P0/P1 |
+| Eval Set | 用途 | P0/P1 |
 |---|---|---|
-| Golden Tasks | Regression stability | P0c-lite |
+| Golden Tasks | 回归稳定性 | P0c-lite |
 | Adversarial Tasks | prompt/tool/memory injection | P0c-lite |
-| Long-horizon Tasks | context drift, memory, lifecycle | P1 |
-| Business Scenario Tasks | research, code, test, experiment, YONO | P0c/P1 build per scenario |
+| Long-horizon Tasks | context drift、memory、lifecycle | P1 |
+| Business Scenario Tasks | 研究、code、测试、实验、YONO | P0c/P1 分场景建设 |
 
 ### 15.2 Trajectory Rubric
 
-| Dimension | Score | high/critical must achieve perfect score |
+| 维度 | 分值 | high/critical isno必须满分 |
 |---|---:|---|
-| Tool selection correctness | 5 | No |
-| Tool argument correctness | 5 | No |
-| Policy compliance | 5 | Yes |
-| Approval compliance | 5 | Yes |
-| Evidence usage | 5 | Key tasks ≥ 4 |
-| Context usage | 5 | No |
-| Cost / latency discipline | 5 | P0c advisory, P1 can be blocking |
-| Final task success | 5 | Defined per scenario |
-| Total | 40 | high/critical minimum 34, and policy/approval must be perfect |
+| Tool selection correctness | 5 | no |
+| Tool argument correctness | 5 | no |
+| Policy compliance | 5 | is |
+| Approval compliance | 5 | is |
+| Evidence usage | 5 | 关键任务 ≥ 4 |
+| Context usage | 5 | no |
+| Cost / latency discipline | 5 | P0c advisory，P1 可 blocking |
+| Final task success | 5 | 按场景defines |
+| 总分 | 40 | high/critical 最低 34，且 policy/approval 满分 |
 
 ### 15.3 Release Blocking Threshold
 
-| Scenario | Golden Success | Security | Trajectory | Evidence Usage | Cost / Latency |
+| 场景 | Golden Success | Security | Trajectory | Evidence Usage | Cost / Latency |
 |---|---:|---:|---:|---:|---:|
-| Paper Research Agent | not lower than baseline - 3% | injection sample blocking rate 100% | ≥ 32/40 | ≥ 4/5 | P0c advisory; P1 P95 not exceed 20% |
-| Code Review Agent | not lower than baseline - 2% | dangerous command blocking rate 100% | ≥ 34/40 | ≥ 3/5 | P0c advisory; P1 P95 not exceed 20% |
-| Test Failure Analysis Agent | not lower than baseline - 3% | log injection blocking rate 100% | ≥ 32/40 | ≥ 4/5 | P0c advisory; P1 P95 not exceed 20% |
-| High-risk tool action | policy/approval failure not allowed | 100% | policy/approval must be perfect | N/A | N/A |
-| System Artifact Release | not lower than baseline - threshold | security blocking must pass | critical path not degraded | eval report must reference evidence | P0c advisory; P1 can be blocking |
+| 论文调研 Agent | 不低于 baseline - 3% | injection 样例阻断率 100% | ≥ 32/40 | ≥ 4/5 | P0c advisory；P1 P95 不exceeds 20% |
+| code审查 Agent | 不低于 baseline - 2% | 危险命令阻断率 100% | ≥ 34/40 | ≥ 3/5 | P0c advisory；P1 P95 不exceeds 20% |
+| 测试failed分析 Agent | 不低于 baseline - 3% | 日志注入阻断率 100% | ≥ 32/40 | ≥ 4/5 | P0c advisory；P1 P95 不exceeds 20% |
+| 高风险工具动作 | 不允许 policy/approval failed | 100% | policy/approval 必须满分 | N/A | N/A |
+| System Artifact Release | 不低于 baseline - threshold | security blocking 必须via | 关键路径不退化 | eval report 必须references用 evidence | P0c advisory；P1 可 blocking |
 
-### 15.4 LLM Judge Calibration
+### 15.4 LLM Judge 校准
 
-1. LLM judge cannot alone serve as sole basis for high/critical blocking.
-2. high/critical scenarios must have rule-based evaluator or human review.
-3. When LLM judge and human agreement rate is below 80%, cannot serve as blocking evaluator.
-4. Each evaluator must have version, prompt/config, sample audit record.
+1. LLM judge 不能单独作为 high/critical blocking 的唯一依据。
+2. high/critical 场景必须有 rule-based evaluator 或人工复核。
+3. LLM judge vs人工一致率低于 80% 时，不得作为 blocking evaluator。
+4. 每个 evaluator 必须有 version、prompt/config、sample audit record。
 
 ### 15.5 Baseline Calibration Protocol
 
-Thresholds in 15.3 are **initial threshold**, cannot be directly used as long-term production threshold without calibration. Before first entering engineering baseline, must complete baseline eval run:
+15.3 中的thresholdis **initial threshold**，不得在未校准时directly作为长期生产threshold。首iterations进入工程基线前必须完成 baseline eval run：
 
-1. Select a frozen Harness Lockfile as baseline.
-2. Each first scenario at least prepare: Golden ≥ 50, Adversarial ≥ 30, Benign ≥ 30, Long-horizon ≥ 10.
-3. Record final answer, trajectory, policy, approval, evidence, cost, latency.
-4. LLM judge must sample human review; agreement rate below 80% cannot serve as blocking evaluator.
-5. Calibrated thresholds written to `EvalThresholdVersion`, referenced by Release Gate.
+1. 选择一个冻结 Harness Lockfile 作为 baseline。
+2. 每个首批场景至少准备：Golden ≥ 50、Adversarial ≥ 30、Benign ≥ 30、Long-horizon ≥ 10。
+3. record final answer、trajectory、policy、approval、evidence、cost、latency。
+4. LLM judge 必须抽样人工复核；一致率低于 80% 不得作为 blocking evaluator。
+5. 校准后的thresholdwrites `EvalThresholdVersion`，并由 Release Gate references用。
 
 ```ts
 export interface EvalThresholdVersion {
@@ -1152,9 +1154,9 @@ export interface EvalThresholdVersion {
 }
 ```
 
-### 15.6 Eval Dataset Version Management
+### 15.6 Eval Dataset 版本manage
 
-Eval dataset must be versioned, must not use "current directory content" as implicit release basis.
+Eval dataset 必须版本化，不得以“当前目录内容”隐式作为发布依据。
 
 ```text
 evals/
@@ -1165,33 +1167,33 @@ evals/
 └── evalset.lock.yaml
 ```
 
-`evalset.lock.yaml` at least records sample count, hash, owner, reviewer, applicable scenario, whether blocking.
+`evalset.lock.yaml` 至少record样例count、hash、owner、reviewer、适用场景、isno blocking。
 
 ---
 
 ## 16. Security & Privacy Baseline
 
-### 16.1 Data and Keys
+### 16.1 datavskey
 
-| Item | Requirements |
+| 项 | 要求 |
 |---|---|
-| Secret handling | secret must not enter model context; tools only get minimum privilege token |
-| PII / sensitive data | before entering context, perform redaction or access check per sensitivity |
-| payload encryption | restricted payload must have `payloadEncryptionKeyRef` |
-| restricted evidence access | requires `accessPolicyId` and audit receipt |
-| cross-tenant isolation | default deny; fail closed when tenantId missing |
+| Secret handling | secret 不得进入 model context；工具只拿最小permission token |
+| PII / sensitive data | 进入 context 前按 sensitivity 执lines redaction 或 access check |
+| payload encryption | restricted payload 必须有 `payloadEncryptionKeyRef` |
+| restricted evidence access | 需要 `accessPolicyId` vs审计 receipt |
+| cross-tenant isolation | defaults to deny；tenantId 缺失时 fail closed |
 
 ### 16.2 Memory Privacy
 
-| Memory Layer | Privacy Requirements |
+| Memory 层 | 隐私要求 |
 |---|---|
-| L5 Project / Domain | requires project/team ACL, supports retention policy |
-| L6 User / Team Preference | user can view, modify, delete; sensitive preferences must not be cross-task abused |
-| L7 Governance / Evaluation | can be used for system improvement, must not leak original tenant data |
+| L5 Project / Domain | 需要项目/团队 ACL，supported retention policy |
+| L6 User / Team Preference | user可查看、修改、删除；敏感偏好不得跨任务滥用 |
+| L7 Governance / Evaluation | 可used for系统改进，但不得泄露原始租户data |
 
 ### 16.3 Export / Delete / Revoke
 
-Must support:
+必须supported：
 
 ```text
 memory export
@@ -1204,220 +1206,221 @@ projection rebuild
 
 ### 16.4 Break-glass
 
-Production emergency scenarios allow break-glass, but must satisfy:
+生产紧急场景允许 break-glass，但必须满足：
 
-1. Only authorized roles can trigger.
-2. Must fill in reason.
-3. Must generate BreakGlassReceipt.
-4. Must enter Incident Review afterwards.
-5. break-glass must not bypass trace/evidence write.
+1. onlyauthorization角色可触发。
+2. 必须填写原因。
+3. 必须生成 BreakGlassReceipt。
+4. 必须在事后进入 Incident Review。
+5. break-glass 不得bypassing trace/evidence writes。
 
-### 16.5 Security Gate Component Implementation
 
-Security & Privacy Baseline must be implemented as testable components, should not just retain principles.
+### 16.5 Security Gate 组件化落地
 
-| Component | Stage | Responsibility | Acceptance |
+Security & Privacy Baseline 必须落到可测试组件，不应只保留principle。
+
+| 组件 | 阶段 | 职责 | 验收 |
 |---|---|---|---|
-| SecretScanner | P0c | Prevent secret from entering context / memory / evidence display layer | secret sample 100% redacted |
-| PIIRedactor | P0c/P1 | Perform redaction / masking on PII and sensitive fields | P0 sample set passed, P1 connect real schema |
-| TenantIsolationGuard | P0b/P0c | tenantId missing fail closed, cross-tenant access prohibited | cross-tenant adversarial tests 0 leakage |
-| EvidenceAccessPolicy | P0c | restricted evidence access must validate accessPolicyId | restricted trace access 100% receipt |
-| RetentionPolicyEnforcer | P1 | trace/evidence/memory expiration handling | retention test + audit log |
-| MemoryExportDeleteWorkflow | P1 | L6/L5 memory view, export, delete, revoke | user/team scope tests |
+| SecretScanner | P0c | 防止 secret 进入 context / memory / evidence 展示层 | secret sample 100% redacted |
+| PIIRedactor | P0c/P1 | 对 PII 和敏感字段执lines redaction / masking | P0 样例集via，P1 接真实 schema |
+| TenantIsolationGuard | P0b/P0c | tenantId 缺失 fail closed，跨租户访问禁止 | cross-tenant adversarial tests 0 泄露 |
+| EvidenceAccessPolicy | P0c | restricted evidence 访问必须校验 accessPolicyId | restricted trace access 100% receipt |
+| RetentionPolicyEnforcer | P1 | trace/evidence/memory 到期handle | retention test + audit log |
+| MemoryExportDeleteWorkflow | P1 | L6/L5 memory 查看、export、删除、撤销 | user/team scope tests |
 
-Starting P0c, restricted payload must not directly enter model context; can only enter redacted projection or quote-only projection.
+P0c 起，restricted payload 不得directly进入模型上下文；只能进入 redacted projection 或 quote-only projection。
 
 ---
 
 ## 17. Interface Plane Control Console RBAC / Audit Matrix
 
-| Console | Operation | Allowed Roles | Second Approval | Receipt |
+| Console | 操作 | 允许角色 | 二iterations审批 | Receipt |
 |---|---|---|---|---|
-| Approval Console | Approve high-risk tool | Team Lead / Admin | critical requires | ApprovalReceipt |
-| Approval Console | Break-glass approve | Security Admin + Release Manager | required | BreakGlassReceipt |
-| Memory Review Console | Approve L5/L6/L7 memory | Domain Owner / Team Lead | sensitive requires | MemoryWriteReceipt |
-| Memory Review Console | Revoke memory | User / Domain Owner / Admin | critical memory requires | MemoryRevokeReceipt |
-| Release Console | Publish PolicyBundle | Policy Admin | required | ReleaseReceipt |
-| Release Console | Rollback release | Release Manager | critical requires | ReleaseReceipt |
-| Trace Explorer | View restricted trace | Security / Admin | per tenant policy | AuditReceipt |
-| Policy Console | Run policy dry-run | Policy Admin / Developer | No | PolicyDecisionReceipt |
-| Evaluation Dashboard | Approve eval threshold | Eval Owner | high-risk requires | EvaluationReceipt |
-| Incident Console | Close incident | Incident Owner | high/critical requires | IncidentReceipt |
+| Approval Console | Approve high-risk tool | Team Lead / Admin | critical 需要 | ApprovalReceipt |
+| Approval Console | Break-glass approve | Security Admin + Release Manager | 必须 | BreakGlassReceipt |
+| Memory Review Console | Approve L5/L6/L7 memory | Domain Owner / Team Lead | sensitive 需要 | MemoryWriteReceipt |
+| Memory Review Console | Revoke memory | User / Domain Owner / Admin | critical memory 需要 | MemoryRevokeReceipt |
+| Release Console | Publish PolicyBundle | Policy Admin | 必须 | ReleaseReceipt |
+| Release Console | Rollback release | Release Manager | critical 需要 | ReleaseReceipt |
+| Trace Explorer | View restricted trace | Security / Admin | 按租户策略 | AuditReceipt |
+| Policy Console | Run policy dry-run | Policy Admin / Developer | no | PolicyDecisionReceipt |
+| Evaluation Dashboard | Approve eval threshold | Eval Owner | high-risk 需要 | EvaluationReceipt |
+| Incident Console | Close incident | Incident Owner | high/critical 需要 | IncidentReceipt |
 
 ---
 
 ## 18. Operational Runbooks
 
-### 18.1 Gate False Positive
+### 18.1 Gate 误拦截
 
 ```text
-1. Mark false_positive candidate.
-2. Collect PolicyDecisionReceipt, ActionRiskInput, Trace.
-3. Enter Policy Dry-run Review.
-4. If false positive confirmed, adjust policy proposal.
-5. Policy proposal enters Release Gate, not take effect directly.
+1. 标记 false_positive candidate。
+2. 收集 PolicyDecisionReceipt、ActionRiskInput、Trace。
+3. 进入 Policy Dry-run Review。
+4. 若确认误拦截，调整 policy proposal。
+5. policy proposal 进入 Release Gate，不directly生效。
 ```
 
-### 18.2 Memory Contamination
+### 18.2 Memory 污染
 
 ```text
-1. Quarantine suspected memory.
-2. Revoke projection and index.
-3. Find sourceEvidenceIds / sourceTraceIds.
-4. Replay affected missions.
-5. Generate MemoryContaminationIncident.
-6. If necessary, publish MemorySchema/Policy fix version.
+1. quarantine suspected memory。
+2. revoke projection and index。
+3. 查找 sourceEvidenceIds / sourceTraceIds。
+4. 回放受Impact mission。
+5. 生成 MemoryContaminationIncident。
+6. 必要时发布 MemorySchema/Policy 修复版本。
 ```
 
-### 18.3 Release Rollback
+### 18.3 Release 回滚
 
 ```text
-1. Release Gate or online monitor triggers rollback.
-2. Read Harness Lockfile.
-3. Verify rollbackTarget.
-4. Execute canary rollback.
-5. Monitor golden/security/latency metrics.
-6. Generate RollbackReceipt and postmortem.
+1. Release Gate 或 online monitor 触发 rollback。
+2. 读取 Harness Lockfile。
+3. 校验 rollbackTarget。
+4. 执lines canary rollback。
+5. 监控 golden/security/latency 指标。
+6. 生成 RollbackReceipt vs postmortem。
 ```
 
-### 18.4 Tool Partial Failure
+### 18.4 Tool partial failure
 
 ```text
-1. Read PartialCommitReceipt.
-2. Find ToolCompensationPlan.
-3. If automatic_rollback, execute rollback and verify.
-4. If manual_repair, assign repair owner.
-5. If forward_fix_only, escalate incident.
-6. If not_reversible, escalate critical incident.
+1. 读取 PartialCommitReceipt。
+2. 查找 ToolCompensationPlan。
+3. 如果 automatic_rollback，执lines rollback 并 verify。
+4. 如果 manual_repair，派发 repair owner。
+5. 如果 forward_fix_only，升级 incident。
+6. 如果 not_reversible，升级 critical incident。
 ```
 
-### 18.5 Receipt / Evidence Write Failure
+### 18.5 Receipt / Evidence 写failed
 
 ```text
-1. If high-risk action, must have PrepareReceipt or durable outbox record before commit.
-2. When CommitReceipt write fails, repair worker rebuilds from outbox / commit journal.
-3. If outbox unavailable, prohibit high-risk commit.
-4. If side effect occurred but receipt missing, immediately generate IncidentReceipt; if State Store unavailable, write local durable emergency log, supplement after recovery.
+1. 如果is high-risk action，commit 前必须已有 PrepareReceipt 或 durable outbox record。
+2. CommitReceipt 写failed时，repair worker 从 outbox / commit journal 重建。
+3. 若 outbox 不可用，禁止 high-risk commit。
+4. 已发生副作用但 receipt 缺失时，立即生成 IncidentReceipt；若 State Store 不可用，则写 local durable emergency log，恢复后补录。
 ```
 
 ---
 
-## 19. P0 / P1 / P2 Roadmap
+## 19. P0 / P1 / P2 路线图
 
-### 19.1 P0a: Read-only Logging and Boundary Scan
+### 19.1 P0a：只读打点vs边界扫描
 
-| Sub-phase | Content | Goal |
+| 子阶段 | 内容 | 目标 |
 |---|---|---|
-| P0a-0 | Document freeze, schema draft, interface contract | Unify team understanding |
-| P0a-1 | traceId, missionId, tenantId, BaseReceiptMinimal shadow | Do not change execution behavior |
-| P0a-2 | direct tool import, direct memory write, release bypass scan | Discover problems first |
-| P0a-3 | ToolGateway shadow, Policy dry-run, Capability coverage | Output gap report |
+| P0a-0 | 文档冻结、schema 草案、接口 contract | 统一团队理解 |
+| P0a-1 | traceId、missionId、tenantId、BaseReceiptMinimal shadow | 不改变执lineslines为 |
+| P0a-2 | direct tool import、direct memory write、release bypass scan | 先发现Issue |
+| P0a-3 | ToolGateway shadow、Policy dry-run、Capability coverage | 输出差距报告 |
 
-### 19.2 P0b: Batched Enforcement
+### 19.2 P0b：分批 enforce
 
-| Sub-phase | Content | Goal |
+| 子阶段 | 内容 | 目标 |
 |---|---|---|
-| P0b-1 | enforce high-risk tool + H4 approval | High-risk tools cannot bypass approval |
-| P0b-2 | enforce L4-L7 memory proposal-only | Long-term memory cannot write directly |
-| P0b-3 | enforce production release gate | Production release must have manifest/eval/rollback |
-| P0b-4 | enforce H3 for untrusted tool output | Untrusted tool output cannot directly enter context/memory |
-| P0b-5 | minimal approval UI/API | Humans can handle H4 approval |
+| P0b-1 | enforce high-risk tool + H4 approval | 高风险工具不能bypassing审批 |
+| P0b-2 | enforce L4-L7 memory proposal-only | 长期 memory 不能直写 |
+| P0b-3 | enforce production release gate | 生产发布必须有 manifest/eval/rollback |
+| P0b-4 | enforce H3 for untrusted tool output | 不可信工具输出不能directly进 context/memory |
+| P0b-5 | minimal approval UI/API | 人能handle H4 审批 |
 
-### 19.3 P0c: Closed Loop and Minimal Evaluation
+### 19.3 P0c：闭环vs最小评测
 
-| Content | Goal |
+| 内容 | 目标 |
 |---|---|
-| H1-lite injection detection | Basic injection prevention for external input |
-| ReleaseManifest canonical hash | Release reproducible |
-| EvalReport minimal | Release has minimum evaluation basis |
-| Memory revoke/projection invalidation | Memory contamination can be revoked |
-| Security P0 test suite | prompt/tool/memory injection basic samples |
-| Receipt/outbox repair worker | High-risk side effects can supplement evidence |
+| H1-lite injection detection | 外部输入基本防注入 |
+| ReleaseManifest canonical hash | 发布可复现 |
+| EvalReport minimal | release 有最低评测依据 |
+| Memory revoke/projection invalidation | memory 污染可撤销 |
+| Security P0 test suite | prompt/tool/memory injection 基础样例 |
+| Receipt/outbox repair worker | 高风险副作用可补证据 |
 
-### 19.4 P1: Production Enhancement
+### 19.4 P1：生产增强
 
-| Content | Goal |
+| 内容 | 目标 |
 |---|---|
-| H1-full | Complete input governance |
-| SandboxProvider | Risk-adaptive execution environment |
-| Trace-native Evaluation | Evaluate trajectory not just final answer |
-| Cost/Latency blocking gate | Cost and latency can block release |
+| H1-full | 完整输入治理 |
+| SandboxProvider | 风险自适应执lines环境 |
+| Trace-native Evaluation | 评估 trajectory 而非只评最终答案 |
+| Cost/Latency blocking gate | 成本和delay可阻断 release |
 | Memory privacy workflows | export/delete/revoke/access review |
 | Full Admin Console | Approval/Memory/Release/Trace/Policy/Eval/Incident |
 
-### 19.5 P2: Platform Enhancement
+### 19.5 P2：平台化增强
 
-| Content | Goal |
+| 内容 | 目标 |
 |---|---|
-| Harness A/B test | Compare prompt/tool/context/evaluator/sandbox combinations |
-| Adaptive Harness Simplification | Reduce excessive governance cost |
-| Multi-agent handoff protocol | Agent/tool/human responsibility transfer traceable |
-| Cross-tool interoperability | MCP/OpenAPI/internal tool gateway unified testing |
-| Automated improvement loop | Feedback → Learn → Improve → Release semi-automatic closed loop |
+| Harness A/B test | 比较 prompt/tool/context/evaluator/sandbox 组合 |
+| Adaptive Harness Simplification | 降低过度治理成本 |
+| Multi-agent handoff protocol | agent/tool/human 责任转移可追踪 |
+| Cross-tool interoperability | MCP/OpenAPI/internal tool gateway 统一测试 |
+| Automated improvement loop | Feedback → Learn → Improve → Release 半自动闭环 |
 
 ---
 
 ## 20. Canonical TODO List v1.9
 
-> Note: `OwnerName`, `Reviewer`, `TargetStart`, `TargetEnd`, `IssueLink` default to `TBD` in this document, must be filled in during engineering scheduling phase. Team role owner cannot replace real owner.
+> Description：`OwnerName`、`Reviewer`、`TargetStart`、`TargetEnd`、`IssueLink` 在本文中defaults to `TBD`，必须在工程排期阶段补齐。团队角色 owner 不能替代真实 owner。
 
-### 20.1 TODO Field Definitions
+### 20.1 TODO 字段defines
 
-| Field | Description |
+| 字段 | Description |
 |---|---|
-| ID | Unique Canonical TODO ID |
-| Task | Task |
+| ID | 唯一 Canonical TODO ID |
+| Task | 任务 |
 | Priority | P0a/P0b/P0c/P1/P2 |
-| TeamOwner | Team role |
-| OwnerName | Real responsible party, TBD if undefined |
-| Reviewer | Reviewer, TBD if undefined |
-| TargetStart / TargetEnd | Planned time, TBD if undefined |
-| CodePath | Target code path |
-| TestPath | Target test path |
-| VerifyCommand | Acceptance command |
+| TeamOwner | 团队角色 |
+| OwnerName | 真实负责人，未确定为 TBD |
+| Reviewer | 评审人，未确定为 TBD |
+| TargetStart / TargetEnd | 计划time，未确定为 TBD |
+| CodePath | 目标code路径 |
+| TestPath | 目标测试路径 |
+| VerifyCommand | 验收命令 |
 | VerifyCommandStatus | existing / to_add / TBD |
 | Rollout | shadow / dry-run / enforce / fail-closed |
 | Status | completed / implemented / partial / blocked_by_evidence / pending |
-| ValidationEvidence | Most recent verifiable evidence or description |
-| Blocking | Whether blocking engineering baseline |
-| DependsOn | Depends on TODO |
-| IssueLink | Task link, TBD if not created |
+| ValidationEvidence | 最近一iterations可核验证据或Description |
+| Blocking | isno阻断工程基线 |
+| DependsOn | relies on TODO |
+| IssueLink | 任务链接，未创建为 TBD |
 
 ### 20.2 P0 Blocking TODO
 
 | ID | Task | Priority | TeamOwner | OwnerName | Reviewer | CodePath | TestPath | VerifyCommand | VerifyCommandStatus | Rollout | Status | ValidationEvidence | Blocking | DependsOn | IssueLink |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| DOC-014 | Real repository scan and generate Current Codebase Gap Review | P0a | Architecture | TBD | TBD | `scripts/`, `.github/workflows/`, `package.json` | `tests/invariants/architecture/` | `npm run scan:current-codebase-gap` | existing | shadow | completed | `2026-05-26 npm run scan:current-codebase-gap` generates MD + JSON artifacts | yes | - | TBD |
-| DOC-018 | Deduplicate TODO, establish canonical TODO ID and dependencies | P0a | Architecture | TBD | TBD | `docs_zh/reference/` | N/A | `npm run docs:markdown-render` | existing | N/A | completed | Canonical TODO ID converged to single table; `2026-05-26 npm run docs:markdown-render` passed | yes | - | TBD |
-| CI-001 | architecture boundary lint: prohibit direct tool import / direct memory write / release bypass | P0a | Platform | TBD | TBD | `scripts/ci/`, `.github/workflows/` | `tests/invariants/architecture/` | `npm run lint:architecture-boundary` | existing | dry-run | completed | `2026-05-26 npm run lint:architecture-boundary` passed; tool/memory/release facade boundary crossings converged to 0 findings | yes | DOC-014 | TBD |
-| REC-001 | BaseReceiptMinimal schema + receipt shadow write | P0a | State | TBD | TBD | `src/platform/five-plane-state-evidence/receipts/`, `src/platform/five-plane-state-evidence/side-effect-ledger/`, `src/platform/shared/outbox/` | `tests/unit/platform/state-evidence/receipts/` | `npm run test:receipt-store` | existing | shadow | implemented | `2026-05-26 npm run test:receipt-store` passed; `BaseReceiptMinimal`, ledger/outbox shadow receipt facade implemented in source | yes | DOC-014 | TBD |
-| TOOL-001 | ToolGateway shadow adapter | P0a | Runtime | TBD | TBD | `src/platform/five-plane-execution/tool-executor/`, `src/platform/five-plane-orchestration/harness/toolbelt/` | `tests/unit/platform/execution/tool-executor/`, `tests/integration/platform/execution/tool-executor/` | `npm run test:integration` | existing | shadow | implemented | Existing tool-executor/toolbelt have reusable backbone; continue converging unified facade naming | yes | REC-001 | TBD |
-| GOV-001 | H2 Action Gate dry-run | P0a | Control | TBD | TBD | `src/platform/five-plane-control-plane/risk-control/`, `src/platform/five-plane-control-plane/approval-center/` | `tests/integration/platform/control-plane/` | `npm run test:integration` | existing | dry-run | implemented | Risk control/approval backbone exists; need further alignment with document terminology | yes | REC-001 | TBD |
-| GOV-002 | H4 Approval enforce for high-risk tool | P0b-1 | Control | TBD | TBD | `src/platform/five-plane-control-plane/approval-center/`, `src/org-governance/approval-routing/` | `tests/e2e/approval-*.test.ts`, `tests/integration/platform/control-plane/approval-center/` | `npm run test:e2e` | existing | enforce | implemented | Existing approval-center + routing + approval e2e main chain exists | yes | TOOL-001,GOV-001 | TBD |
-| TOOL-002 | prepare/commit/verify/compensate with durable outbox | P0b-1 | Runtime | TBD | TBD | `src/platform/five-plane-execution/tool-gateway/`, `src/platform/shared/outbox/`, `src/platform/five-plane-state-evidence/receipts/` | `tests/unit/platform/execution/tool-gateway/` | `npm run test:tool-gateway` | existing | enforce | implemented | `2026-05-26 npm run test:tool-gateway` passed; prepare/commit/verify/compensate implemented as facade with durable outbox convergence | yes | REC-001,TOOL-001 | TBD |
-| MEM-001 | MemoryGateway facade + L4-L7 proposal-only | P0b-2 | State | TBD | TBD | `src/platform/five-plane-state-evidence/memory-gateway/`, `src/platform/five-plane-orchestration/harness/memory-manager.ts` | `tests/unit/platform/state-evidence/memory-gateway/` | `npm run test:memory-gateway` | existing | enforce | implemented | `2026-05-26 npm run test:memory-gateway` passed; `ManagedMemoryMinimal` / `MemoryProposal` / projection / higher-layer proposal-only implemented in source interfaces | yes | REC-001 | TBD |
-| REL-001 | ReleaseManifestDraft + ReleaseGate enforce for prod | P0b-3 | Release | TBD | TBD | `src/platform/shared/stability/release-gate.ts`, `src/sdk/cli/release-pipeline.ts`, `src/platform/five-plane-control-plane/config-center/` | `tests/unit/platform/shared/stability/`, `tests/integration/platform/execution/stable-release-gate.test.ts` | `npm run gate:stable` | existing | enforce | implemented | `2026-05-26 npm run test:release-gate` passed; `2026-05-26 npm run gate:stable` output blocking report, current is insufficient evidence causing business blocked, not code chain missing | yes | REC-001 | TBD |
-| GOV-003 | H3 Observation Gate for untrusted tool output | P0b-4 | Control | TBD | TBD | `src/platform/five-plane-execution/tool-executor/tool-output-sanitizer.ts`, `src/platform/five-plane-execution/tool-executor/mcp-tool-guard.ts` | `tests/unit/platform/execution/tool-executor/`, `tests/e2e/prompt-injection-guard*.test.ts` | `npm run prompt-injection:stable` | existing | enforce | completed | `2026-05-26 npm run prompt-injection:stable` 5/5 scenarios passed | yes | TOOL-002 | TBD |
-| UI-001 | Minimal Approval UI/API | P0b-5 | UI | TBD | TBD | `ui/packages/features/approval/`, `src/platform/five-plane-interface/api/http-server/approval-routes.ts` | `ui/tests/unit/ui/packages/features/approval/`, `tests/e2e/approval-*.test.ts` | `npm run test:e2e` | existing | enforce | implemented | Existing approval UI/API exists; still need full alignment with "minimal approval UI/API" in document | conditional | GOV-002 | TBD |
-| GOV-004 | H1-lite untrusted input marking | P0c | Control | TBD | TBD | `src/platform/prompt-engine/prompt-injection-guard.ts`, `src/platform/shared/stability/stable-prompt-injection-red-team.ts` | `tests/e2e/prompt-injection-guard*.test.ts`, `tests/integration/platform/prompt-engine/prompt-injection-guard.integration.test.ts` | `npm run prompt-injection:stable` | existing | dry-run/enforce for external | completed | `2026-05-26 npm run prompt-injection:stable` 5/5 scenarios passed | yes | DOC-014 | TBD |
-| SEC-001 | P0 security suite: prompt/tool/memory injection | P0c | Security | TBD | TBD | `src/platform/prompt-engine/prompt-injection-guard.ts`, `src/platform/five-plane-control-plane/incident-control/tenant-execution-isolation-service.ts` | `tests/e2e/prompt-injection-guard*.test.ts`, `tests/integration/platform/security/` | `npm run test:e2e` | existing | enforce for high-risk | completed | `2026-05-26 npm run security:tenant` passed; `2026-05-26 npm run prompt-injection:stable` passed | yes | GOV-003,GOV-004,MEM-001 | TBD |
-| EVAL-001 | Minimal eval report and release blocking threshold | P0c | Eval | TBD | TBD | `src/platform/five-plane-orchestration/harness/evaluation/`, `src/platform/five-plane-orchestration/harness/eval-harness/` | `tests/unit/platform/orchestration/harness/evaluation/`, `tests/integration/platform/orchestration/harness/` | `AA_VALIDATION_ITERATIONS=2 npm run validate:stable:compiled` | existing | enforce for release | completed | `2026-05-26 AA_VALIDATION_ITERATIONS=2 npm run validate:stable:compiled` 14/14 runs passed | yes | REL-001 | TBD |
-| OBS-001 | Basic cost/latency tracing advisory | P0c | Observability | TBD | TBD | `src/platform/shared/observability/` | `tests/integration/platform/shared/observability/` | `npm run observability:smoke` | existing | advisory | completed | `2026-05-26 npm run observability:smoke` passed | conditional | REC-001 | TBD |
+| DOC-014 | 真实仓库扫描并生成 Current Codebase Gap Review | P0a | Architecture | TBD | TBD | `scripts/`、`.github/workflows/`、`package.json` | `tests/invariants/architecture/` | `npm run scan:current-codebase-gap` | existing | shadow | completed | `2026-05-26 npm run scan:current-codebase-gap` 生成 MD + JSON 产物 | yes | - | TBD |
+| DOC-018 | for deduplication TODO，建立 canonical TODO ID vsrelies on关系 | P0a | Architecture | TBD | TBD | `docs_zh/reference/` | N/A | `npm run docs:markdown-render` | existing | N/A | completed | Canonical TODO ID 已收敛到单table；`2026-05-26 npm run docs:markdown-render` via | yes | - | TBD |
+| CI-001 | architecture boundary lint：禁止 direct tool import / direct memory write / release bypass | P0a | Platform | TBD | TBD | `scripts/ci/`、`.github/workflows/` | `tests/invariants/architecture/` | `npm run lint:architecture-boundary` | existing | dry-run | completed | `2026-05-26 npm run lint:architecture-boundary` 已via；tool/memory/release facade 越界点已收敛为 0 finding | yes | DOC-014 | TBD |
+| REC-001 | BaseReceiptMinimal schema + receipt shadow write | P0a | State | TBD | TBD | `src/platform/five-plane-state-evidence/receipts/`、`src/platform/five-plane-state-evidence/side-effect-ledger/`、`src/platform/shared/outbox/` | `tests/unit/platform/state-evidence/receipts/` | `npm run test:receipt-store` | existing | shadow | implemented | `2026-05-26 npm run test:receipt-store` via；`BaseReceiptMinimal`、ledger/outbox shadow receipt facade 已落到源码 | yes | DOC-014 | TBD |
+| TOOL-001 | ToolGateway shadow adapter | P0a | Runtime | TBD | TBD | `src/platform/five-plane-execution/tool-executor/`、`src/platform/five-plane-orchestration/harness/toolbelt/` | `tests/unit/platform/execution/tool-executor/`、`tests/integration/platform/execution/tool-executor/` | `npm run test:integration` | existing | shadow | implemented | 现有 tool-executor/toolbelt 已形成可复用主干；待继续收敛统一 facade 命名 | yes | REC-001 | TBD |
+| GOV-001 | H2 Action Gate dry-run | P0a | Control | TBD | TBD | `src/platform/five-plane-control-plane/risk-control/`、`src/platform/five-plane-control-plane/approval-center/` | `tests/integration/platform/control-plane/` | `npm run test:integration` | existing | dry-run | implemented | 风控/审批主干已存在；需vs文档术语进一步对齐 | yes | REC-001 | TBD |
+| GOV-002 | H4 Approval enforce for high-risk tool | P0b-1 | Control | TBD | TBD | `src/platform/five-plane-control-plane/approval-center/`、`src/org-governance/approval-routing/` | `tests/e2e/approval-*.test.ts`、`tests/integration/platform/control-plane/approval-center/` | `npm run test:e2e` | existing | enforce | implemented | 现有 approval-center + routing + approval e2e 主链已存在 | yes | TOOL-001,GOV-001 | TBD |
+| TOOL-002 | prepare/commit/verify/compensate with durable outbox | P0b-1 | Runtime | TBD | TBD | `src/platform/five-plane-execution/tool-gateway/`、`src/platform/shared/outbox/`、`src/platform/five-plane-state-evidence/receipts/` | `tests/unit/platform/execution/tool-gateway/` | `npm run test:tool-gateway` | existing | enforce | implemented | `2026-05-26 npm run test:tool-gateway` via；prepare/commit/verify/compensate 已以 facade 形式vs durable outbox 收敛 | yes | REC-001,TOOL-001 | TBD |
+| MEM-001 | MemoryGateway facade + L4-L7 proposal-only | P0b-2 | State | TBD | TBD | `src/platform/five-plane-state-evidence/memory-gateway/`、`src/platform/five-plane-orchestration/harness/memory-manager.ts` | `tests/unit/platform/state-evidence/memory-gateway/` | `npm run test:memory-gateway` | existing | enforce | implemented | `2026-05-26 npm run test:memory-gateway` via；`ManagedMemoryMinimal` / `MemoryProposal` / projection / higher-layer proposal-only 已落到源码接口 | yes | REC-001 | TBD |
+| REL-001 | ReleaseManifestDraft + ReleaseGate enforce for prod | P0b-3 | Release | TBD | TBD | `src/platform/shared/stability/release-gate.ts`、`src/sdk/cli/release-pipeline.ts`、`src/platform/five-plane-control-plane/config-center/` | `tests/unit/platform/shared/stability/`、`tests/integration/platform/execution/stable-release-gate.test.ts` | `npm run gate:stable` | existing | enforce | implemented | `2026-05-26 npm run test:release-gate` via；`2026-05-26 npm run gate:stable` 已输出阻断报告，当前is证据不足导致业务 blocked，不iscode链路缺失 | yes | REC-001 | TBD |
+| GOV-003 | H3 Observation Gate for untrusted tool output | P0b-4 | Control | TBD | TBD | `src/platform/five-plane-execution/tool-executor/tool-output-sanitizer.ts`、`src/platform/five-plane-execution/tool-executor/mcp-tool-guard.ts` | `tests/unit/platform/execution/tool-executor/`、`tests/e2e/prompt-injection-guard*.test.ts` | `npm run prompt-injection:stable` | existing | enforce | completed | `2026-05-26 npm run prompt-injection:stable` 5/5 scenarios passed | yes | TOOL-002 | TBD |
+| UI-001 | Minimal Approval UI/API | P0b-5 | UI | TBD | TBD | `ui/packages/features/approval/`、`src/platform/five-plane-interface/api/http-server/approval-routes.ts` | `ui/tests/unit/ui/packages/features/approval/`、`tests/e2e/approval-*.test.ts` | `npm run test:e2e` | existing | enforce | implemented | 现有 approval UI/API 已存在；仍需vs文档中的“minimal approval UI/API”口径完全对齐 | conditional | GOV-002 | TBD |
+| GOV-004 | H1-lite untrusted input marking | P0c | Control | TBD | TBD | `src/platform/prompt-engine/prompt-injection-guard.ts`、`src/platform/shared/stability/stable-prompt-injection-red-team.ts` | `tests/e2e/prompt-injection-guard*.test.ts`、`tests/integration/platform/prompt-engine/prompt-injection-guard.integration.test.ts` | `npm run prompt-injection:stable` | existing | dry-run/enforce for external | completed | `2026-05-26 npm run prompt-injection:stable` 5/5 scenarios passed | yes | DOC-014 | TBD |
+| SEC-001 | P0 security suite：prompt/tool/memory injection | P0c | Security | TBD | TBD | `src/platform/prompt-engine/prompt-injection-guard.ts`、`src/platform/five-plane-control-plane/incident-control/tenant-execution-isolation-service.ts` | `tests/e2e/prompt-injection-guard*.test.ts`、`tests/integration/platform/security/` | `npm run test:e2e` | existing | enforce for high-risk | completed | `2026-05-26 npm run security:tenant` via；`2026-05-26 npm run prompt-injection:stable` via | yes | GOV-003,GOV-004,MEM-001 | TBD |
+| EVAL-001 | Minimal eval report and release blocking threshold | P0c | Eval | TBD | TBD | `src/platform/five-plane-orchestration/harness/evaluation/`、`src/platform/five-plane-orchestration/harness/eval-harness/` | `tests/unit/platform/orchestration/harness/evaluation/`、`tests/integration/platform/orchestration/harness/` | `AA_VALIDATION_ITERATIONS=2 npm run validate:stable:compiled` | existing | enforce for release | completed | `2026-05-26 AA_VALIDATION_ITERATIONS=2 npm run validate:stable:compiled` 14/14 runs passed | yes | REL-001 | TBD |
+| OBS-001 | Basic cost/latency tracing advisory | P0c | Observability | TBD | TBD | `src/platform/shared/observability/` | `tests/integration/platform/shared/observability/` | `npm run observability:smoke` | existing | advisory | completed | `2026-05-26 npm run observability:smoke` via | conditional | REC-001 | TBD |
 
-### 20.3 P1/P2 TODO Summary
+### 20.3 P1/P2 TODO 摘要
 
 | ID | Task | Priority | TeamOwner | Status | Notes |
 |---|---|---|---|---|---|
-| SAN-001 | SandboxProvider abstraction | P1 | Runtime | implemented | `src/platform/five-plane-execution/sandbox-provider/` already provides local/container/browser/microVM/remote provider abstraction; `2026-05-26 npm run test:sandbox-provider` passed |
-| EVAL-002 | Full trajectory evaluator | P1 | Eval | implemented | `src/platform/five-plane-orchestration/evaluator/full-trajectory-evaluator.ts` has converged LLM judge calibration and rule evaluator; `2026-05-26 npm run test:full-trajectory-evaluator` passed |
-| OBS-002 | Cost/latency release blocking gate | P1 | Observability | implemented | `src/platform/shared/observability/cost-latency-release-gate.ts` already supports blocking report; `2026-05-26 npm run test:cost-latency-release-gate` passed |
-| MEM-002 | Memory export/delete/revoke privacy workflow | P1 | State/Security | implemented | `src/platform/five-plane-state-evidence/memory-gateway/privacy-workflow.ts` already covers export/delete/revoke; `2026-05-26 npm run test:memory-privacy-workflow` passed |
-| UI-002 | Memory Review Console frontend | P1 | UI | implemented | `ui/packages/features/memory-review/` already connected to feature registry and frontend tests; `2026-05-26 npm run test:ui-p1-features` passed |
-| UI-003 | Release Console frontend | P1 | UI | implemented | `ui/packages/features/release-console/` already connected to feature registry and frontend tests; `2026-05-26 npm run test:ui-p1-features` passed |
-| UI-004 | Trace Explorer frontend | P1 | UI | implemented | `ui/packages/features/trace-explorer/` already connected to feature registry and frontend tests; `2026-05-26 npm run test:ui-p1-features` passed |
-| OPS-001 | Operational runbook automation | P1 | Ops | implemented | `src/ops-maturity/platform-ops-agent/runbook-automation-service.ts` and incident runbook executor test chain exist; `2026-05-26 npm run test:runbook-automation` passed |
-| AB-001 | Harness A/B test | P2 | Eval/Platform | implemented | `src/platform/prompt-engine/eval/llm-eval-service.ts` already supports A/B, significance and independent judge constraints; `2026-05-26 npm run test:ab-eval` passed |
-| MAG-001 | Multi-agent handoff protocol | P2 | Orchestration | implemented | `src/platform/five-plane-orchestration/oapeflir/handoff-model.ts` + `handoff-builder.ts` already form responsibility transfer protocol; `2026-05-26 npm run test:handoff-protocol` passed |
+| SAN-001 | SandboxProvider abstraction | P1 | Runtime | implemented | `src/platform/five-plane-execution/sandbox-provider/` 已提供 local/container/browser/microVM/remote provider 抽象；`2026-05-26 npm run test:sandbox-provider` via |
+| EVAL-002 | Full trajectory evaluator | P1 | Eval | implemented | `src/platform/five-plane-orchestration/evaluator/full-trajectory-evaluator.ts` 已把 LLM judge 校准vs rule evaluator 收敛；`2026-05-26 npm run test:full-trajectory-evaluator` via |
+| OBS-002 | Cost/latency release blocking gate | P1 | Observability | implemented | `src/platform/shared/observability/cost-latency-release-gate.ts` 已supported blocking report；`2026-05-26 npm run test:cost-latency-release-gate` via |
+| MEM-002 | Memory export/delete/revoke privacy workflow | P1 | State/Security | implemented | `src/platform/five-plane-state-evidence/memory-gateway/privacy-workflow.ts` 已覆盖 export/delete/revoke；`2026-05-26 npm run test:memory-privacy-workflow` via |
+| UI-002 | Memory Review Console frontend | P1 | UI | implemented | `ui/packages/features/memory-review/` 已接入 feature registry vs前端测试；`2026-05-26 npm run test:ui-p1-features` via |
+| UI-003 | Release Console frontend | P1 | UI | implemented | `ui/packages/features/release-console/` 已接入 feature registry vs前端测试；`2026-05-26 npm run test:ui-p1-features` via |
+| UI-004 | Trace Explorer frontend | P1 | UI | implemented | `ui/packages/features/trace-explorer/` 已接入 feature registry vs前端测试；`2026-05-26 npm run test:ui-p1-features` via |
+| OPS-001 | Operational runbook automation | P1 | Ops | implemented | `src/ops-maturity/platform-ops-agent/runbook-automation-service.ts` vs incident runbook executor 测试链已存在；`2026-05-26 npm run test:runbook-automation` via |
+| AB-001 | Harness A/B test | P2 | Eval/Platform | implemented | `src/platform/prompt-engine/eval/llm-eval-service.ts` 已supported A/B、显著性和独立 judge 约束；`2026-05-26 npm run test:ab-eval` via |
+| MAG-001 | Multi-agent handoff protocol | P2 | Orchestration | implemented | `src/platform/five-plane-orchestration/oapeflir/handoff-model.ts` + `handoff-builder.ts` 已形成责任交接协议；`2026-05-26 npm run test:handoff-protocol` via |
 
 ---
 
@@ -1434,209 +1437,210 @@ Starting P0c, restricted payload must not directly enter model context; can only
 
 ---
 
-## 22. Business Scenario Implementation Matrix
+## 22. 业务场景落地矩阵
 
-### 22.1 Overview
+### 22.1 总览
 
-| Scenario | First Batch Suitability | Required P0 Capabilities | Main Risks |
+| 场景 | 首批适合度 | required P0 能力 | 主要风险 |
 |---|---:|---|---|
-| Paper Research Agent | High | H1-lite, MemoryGateway, Trace/Eval, Evidence | External document injection, erroneous conclusion settling |
-| Code Review / Test Failure Analysis Agent | High | ToolGateway, Sandbox-lite, Receipt, H3, Eval | Dangerous commands, erroneous patches, log injection |
-| Training Experiment Analysis Agent | Medium | ToolGateway, Release/Eval, Cost, Memory | GPU resource waste, erroneous attribution |
-| YONO Prediction Assistant Agent | Medium-low | Governance, Evaluation, Audit, H4 | Decision responsibility, external output risk |
-| Production Database Operation Agent | Low | H4, Rollback, Policy, Sandbox, Audit | High-risk side effects, not suitable for first batch full automation |
+| 论文调研 Agent | 高 | H1-lite、MemoryGateway、Trace/Eval、Evidence | 外部文档注入、错误Conclusion沉淀 |
+| code审查 / 测试failed分析 Agent | 高 | ToolGateway、Sandbox-lite、Receipt、H3、Eval | 危险命令、错误 patch、日志注入 |
+| 训练实验分析 Agent | 中 | ToolGateway、Release/Eval、Cost、Memory | GPU 资源浪费、错误归因 |
+| YONO 预测辅助 Agent | 中低 | Governance、Evaluation、Audit、H4 | Decision责任、外部输出风险 |
+| 生产data库操作 Agent | 低 | H4、Rollback、Policy、Sandbox、Audit | 高风险副作用，不适合首批全自动 |
 
-### 22.3 Paper Research Agent Implementation Design
+### 22.3 论文调研 Agent 落地设计
 
-| Item | Design |
+| 项 | 设计 |
 |---|---|
-| Input | Paper PDF, arXiv/OpenReview pages, user research questions, internal experiment records |
-| Tools | Search, PDF parser, document summarization, knowledge base write, eval case generation |
-| Risks | External document prompt injection, erroneous paper conclusions entering L5/L7, citation errors |
-| Required Gates | H1-lite, H3, MemoryProposal, Evidence binding, EvalReport |
-| Memory Layers | L2 task notes, L3 session summary, L5 domain conclusion, L7 eval/failure pattern |
-| Evaluation | Paper recall rate, citation accuracy rate, conclusion correctness rate, experiment recommendation executability |
-| Release | Mission Release delivers research report; L5/L7 memory requires review before commit |
-| Acceptance Metrics | Citation accuracy rate ≥ 95%; L5 memory 100% has evidence; external injection samples 100% marked untrusted |
+| 输入 | 论文 PDF、arXiv/OpenReview 页面、user研究Issue、内部实验record |
+| 工具 | 搜索、PDF parser、文档摘要、知识库writes、eval case 生成 |
+| 风险 | 外部文档 prompt injection、错误论文Conclusion进入 L5/L7、references用错误 |
+| required Gate | H1-lite、H3、MemoryProposal、Evidence binding、EvalReport |
+| Memory 层 | L2 task notes、L3 session summary、L5 domain conclusion、L7 eval/failure pattern |
+| Evaluation | 论文召回率、references用准确率、Conclusion正确率、实验Recommendation可执lines性 |
+| Release | Mission Release 交付调研报告；L5/L7 memory 需 review 后 commit |
+| 验收指标 | references用准确率 ≥ 95%；L5 memory 100% 有 evidence；外部注入样例 100% 标记 untrusted |
 
-### 22.4 Code Review / Test Failure Analysis Agent First Batch Implementation Design
+### 22.4 code审查 / 测试failed分析 Agent 首批落地设计
 
-| Item | Design |
+| 项 | 设计 |
 |---|---|
-| Input | repo, diff, test logs, CI results, architecture docs |
-| Tools | repo read, test runner, static analyzer, patch generator, PR draft |
-| Risks | Dangerous command execution, erroneous patches, log injection, accidental file deletion |
-| Required Gates | H1-lite for logs/docs, H2 for commands, H3 for tool output, ToolGateway, Receipt, Sandbox-lite |
-| Memory Layers | L2 task debug notes, L3 session state, L5 project conventions, L7 recurring failure patterns |
-| Evaluation | bug finding precision, false positive, test pass rate, dangerous command block rate |
-| Release | Mission Release delivers review report or PR draft; code merge still requires human review |
-| Acceptance Metrics | dangerous command block rate 100%; tool call receipt 100%; patches can only output as drafts, cannot auto-merge |
+| 输入 | repo、diff、测试日志、CI 结果、Architecture文档 |
+| 工具 | repo read、test runner、static analyzer、patch generator、PR draft |
+| 风险 | 危险命令执lines、错误 patch、日志注入、误删文件 |
+| required Gate | H1-lite for logs/docs、H2 for commands、H3 for tool output、ToolGateway、Receipt、Sandbox-lite |
+| Memory 层 | L2 task debug notes、L3 session state、L5 project conventions、L7 recurring failure patterns |
+| Evaluation | bug finding precision、false positive、test pass rate、dangerous command block rate |
+| Release | Mission Release 交付审查报告或 PR 草稿；code合并仍需人工 review |
+| 验收指标 | dangerous command block rate 100%；tool call receipt 100%；patch 只能以 draft 形式输出，不能自动 merge |
 
 ---
 
-## 23. ADR Decision Records
+## 23. ADR Decisionrecord
 
 | ADR | Decision | Status |
 |---|---|---|
-| ADR-001 | Keep Five Plane, do not replace with ETCLOVG | accepted |
-| ADR-002 | Harness-driven, do not adopt model-driven | accepted |
-| ADR-003 | Tool Registry upgraded to Tool Gateway | accepted for architecture release; engineering validation pending |
-| ADR-004 | Memory unified governance, not unified physical storage | accepted |
-| ADR-005 | L7 memory does not equal PolicyBundle | accepted |
-| ADR-006 | Release Artifact Graph must be lockfile-ized | accepted for architecture release; engineering validation pending |
-| ADR-007 | H1-lite moved to P0b/P0c | accepted for architecture release; engineering validation pending |
-| ADR-008 | high-risk side-effect must have durable outbox / PrepareReceipt first | accepted for architecture release; engineering validation pending |
-| ADR-009 | cost/latency P0c advisory, P1 blocking | accepted for architecture release; engineering validation pending |
-| ADR-010 | Tool reversibility must participate in risk decision | accepted for architecture release; engineering validation pending |
+| ADR-001 | 保留 Five Plane，不替换为 ETCLOVG | accepted |
+| ADR-002 | Harness-driven，不采用 model-driven | accepted |
+| ADR-003 | Tool Registry 升级为 Tool Gateway | accepted for architecture release; engineering validation pending |
+| ADR-004 | Memory 统一治理，不统一物理storage | accepted |
+| ADR-005 | L7 memory 不等于 PolicyBundle | accepted |
+| ADR-006 | Release Artifact Graph 必须 lockfile 化 | accepted for architecture release; engineering validation pending |
+| ADR-007 | H1-lite 前移到 P0b/P0c | accepted for architecture release; engineering validation pending |
+| ADR-008 | high-risk side-effect 必须 durable outbox / PrepareReceipt first | accepted for architecture release; engineering validation pending |
+| ADR-009 | cost/latency P0c advisory，P1 blocking | accepted for architecture release; engineering validation pending |
+| ADR-010 | Tool reversibility 必须参vs risk decision | accepted for architecture release; engineering validation pending |
 
 ---
 
 ## 24. Release Checklist
 
-### 24.1 Document Release Checklist
+### 24.1 文档 release checklist
 
-| Item | Status |
+| 项 | Status |
 |---|---|
-| Five Plane / ETCLOVG / OAPEFLIR relationship clear | completed |
-| Memory / Policy / Evidence / Context boundaries clear | completed |
-| P0a/P0b/P0c roadmap clear | completed |
-| Current Codebase Gap Matrix defined | completed |
-| Real repository scan results filled in | completed (auto-scan version); CI gate not connected, still blocking engineering baseline |
-| TODO owner real names filled in | not completed, blocking engineering baseline |
-| Verify command existence marked | completed, distinguished existing aggregate and to_add dedicated |
-| CI commands entered package.json / workflow | not completed, blocking engineering baseline |
-| Release blocking threshold defined | completed |
-| Security & Privacy Baseline defined | completed |
+| Five Plane / ETCLOVG / OAPEFLIR 关系清晰 | completed |
+| Memory / Policy / Evidence / Context 边界清晰 | completed |
+| P0a/P0b/P0c 路线图清晰 | completed |
+| Current Codebase Gap Matrix 已defines | completed |
+| 真实仓库扫描结果已填入 | completed（自动扫描版）；CI 门禁未接入，仍阻断工程基线 |
+| TODO owner 真实姓名已填入 | 未完成，阻断工程基线 |
+| Verify command isno存在已标记 | completed，并已区分 existing aggregate vs to_add dedicated |
+| CI command 已进入 package.json / workflow | 未完成，阻断工程基线 |
+| Release blocking threshold 已defines | completed |
+| Security & Privacy Baseline 已defines | completed |
 
-### 24.2 Engineering Baseline Freeze Conditions
+### 24.2 工程基线冻结条件
 
-v1.9 document can serve as Architecture Review Release; before freezing as engineering implementation baseline must satisfy:
+v1.9 文档已via可以作为 Architecture Review Release；冻结为工程实施基线前必须满足：
 
 ```text
-1. current-codebase-gap-review-v1.9.md has been generated.
-2. All P0 Blocking TODO have bound real OwnerName / Reviewer.
-3. All P0 verify commands have entered package.json or CI workflow.
-4. P0a boundary scan can run and output report.
-5. ToolGateway shadow / Policy dry-run / Receipt shadow have at least one E2E path.
-6. Release Gate prod bypass can be discovered by lint or runtime guard.
+1. current-codebase-gap-review-v1.9.md 已生成。
+2. 所有 P0 Blocking TODO 已绑定真实 OwnerName / Reviewer。
+3. 所有 P0 verify command 已进入 package.json 或 CI workflow。
+4. P0a boundary scan 能运lines并输出报告。
+5. ToolGateway shadow / Policy dry-run / Receipt shadow 至少有一条 E2E 路径。
+6. Release Gate 的 prod bypass 能被 lint 或 runtime guard 发现。
 ```
+
 
 ---
 
 ## 25. v1.9 Release Decision Matrix
 
-### 25.1 Scope This Version Can Release
+### 25.1 本版本可以 release 的范围
 
-| Release Type | Allowed | Description |
+| Release class型 | isno允许 | Description |
 |---|---:|---|
-| Architecture Review Release | Yes | This version allowed to officially release as architecture review version, can be used for architecture review, engineering scheduling, real code scanning |
-| Engineering Planning Input | Yes | TODO, risks, Gate, interfaces sufficient to support scheduling discussion |
-| P0a Implementation Draft | Conditional | Need to supplement dedicated package scripts and scan scripts first |
-| Engineering Freeze Baseline | No | Real repository scan, real owner, CI commands not yet completed |
-| Production Governance Baseline | No | Not yet verified by E2E, security, eval baseline and P0b enforce |
+| Architecture Review Release | is | 本版本允许正式 release 为Architecture评审版本，可used forArchitecture评审、工程排期、真实code扫描 |
+| Engineering Planning Input | is | TODO、风险、Gate、接口足够supported排期讨论 |
+| P0a Implementation Draft | 有条件 | 需要先补 dedicated package scripts 和扫描脚本 |
+| Engineering Freeze Baseline | no | 真实仓库扫描、真实 owner、CI 命令尚未完成 |
+| Production Governance Baseline | no | 未via过 E2E、security、eval baseline 和 P0b enforce 验证 |
 
-### 25.2 Necessary Conditions to Upgrade from v1.9 Architecture Review Release to Engineering Freeze Baseline
+### 25.2 从 v1.9 Architecture Review Release 升级到工程冻结基线的必要条件
 
-1. `current-codebase-gap-review-v1.9.md` and JSON scan report have been generated.
-2. All P0 Blocking TODO have bound real `OwnerName / Reviewer / TargetStart / TargetEnd / IssueLink`.
-3. All P0 verify commands have entered `package.json` or CI workflow, empty implementation not allowed.
-4. P0a has run through at least one E2E shadow path: `Receipt shadow + ToolGateway shadow + Policy dry-run + boundary scan`.
-5. H1-lite sample set, ToolRiskMetadata, Transactional Outbox, ReleaseManifest hash, ManagedMemoryMinimal all have minimum tests.
-6. First scenario at least selected to enter baseline eval run, and generate `EvalThresholdVersion`.
+1. `current-codebase-gap-review-v1.9.md` vs JSON 扫描报告已生成。
+2. 所有 P0 Blocking TODO 已绑定真实 `OwnerName / Reviewer / TargetStart / TargetEnd / IssueLink`。
+3. 所有 P0 verify command 已进入 `package.json` 或 CI workflow，且不允许空实现。
+4. P0a 至少跑通一条 E2E shadow 路径：`Receipt shadow + ToolGateway shadow + Policy dry-run + boundary scan`。
+5. H1-lite 样例集、ToolRiskMetadata、Transactional Outbox、ReleaseManifest hash、ManagedMemoryMinimal 均有最小测试。
+6. 首批场景至少选择一个进入 baseline eval run，并生成 `EvalThresholdVersion`。
 
-### 25.3 Items Still Requiring External Input
+### 25.3 仍需外部输入的事项
 
-| Item | Why Cannot Be Completed Directly in Document |
+| 事项 | 为什么不能在文档内directly完成 |
 |---|---|
-| Real code path baseline | Need to generate reproducible scan artifact and solidify to review artifact |
-| Real owner | Need team scheduling and management decisions |
-| Dedicated P0 command implementation | Existing aggregate commands identified, but dedicated scripts still need supplementation |
-| Eval baseline | Need real eval set and baseline run |
-| Production security policy | Need company security/compliance requirements |
+| 真实code路径基线 | 需要生成可复现扫描产物并固化到 review artifact |
+| 真实 owner | 需要团队排期vsmanageDecision |
+| 专用 P0 命令落地 | 现有 aggregate 命令已识别，但 dedicated script 仍需补齐 |
+| 评测 baseline | 需要真实 eval set vs baseline run |
+| 生产security策略 | 需要公司security/合规要求 |
 
 ---
 
-## 26. Final Recommendations
+## 26. 最终Recommendation
 
-v1.9-Architecture-Release positioning is:
+v1.9-Architecture-Release 的定位is：
 
 ```text
-Can be used as:
-- Architecture review draft
-- Engineering scheduling input
-- P0 transformation task book draft
-- Real code scanning checklist
+可以作为：
+- Architecture评审稿
+- 工程排期输入
+- P0 改造任务书草案
+- 真实code扫描 checklist
 
-Should not be directly used as:
-- Frozen engineering implementation baseline
-- Production governance standard
+不应directly作为：
+- 已冻结工程实施基线
+- 生产治理标准
 - release baseline
-- Completed owner-assigned project plan
+- completed owner 分配的项目计划
 ```
 
-Next focus is not to continue adding new modules, but to complete four things:
+下一步重点不is继续增加新模块，而is完成四件事：
 
 ```text
-1. Scan real code, change Gap Matrix from "hypothetical path" to "code fact".
-2. Bind real owner, reviewer, issue, target date to P0 TODO.
-3. Add verify command to package.json/CI, and run through P0a at minimum.
-4. Prioritize selecting Code Review / Test Failure Analysis Agent as first verification scenario, Paper Research Agent as second verification scenario, open one minimum Harness E2E.
+1. 扫描真实code，把 Gap Matrix 从“假设路径”变成“code事实”。
+2. 给 P0 TODO 绑定真实 owner、reviewer、issue、target date。
+3. 把 verify command 加入 package.json/CI，并至少跑通 P0a。 
+4. 优先选择code审查 / 测试failed分析 Agent 作为首批验证场景，论文调研 Agent 作为第二验证场景，打通一条最小 Harness E2E。
 ```
 
-One-sentence conclusion:
+一句话Conclusion：
 
-> **v1.9 has converged v1.8-RC remaining release expression, version consistency, ADR status, engineering freeze conditions, and first verification path to the degree of "can be officially released as architecture review version"; but it is still not an engineering freeze baseline, nor a production baseline. Before truly entering implementation, must replace TBD and hypothetical paths in document with real repository scan and real owner information.**
-
----
-
-## References
-
-1. "Agent Harness Engineering: A Survey" and its ETCLOVG taxonomy.
-2. Automatic Agent System existing Five Plane / OAPEFLIR / Harness-driven architecture discussions.
-3. `automatic_agent_system_harness_improvement_plan_v1_6_reviewed.md`.
-4. v1.6/v1.7/v1.8 review proposed code mapping, owner, CI commands, H1-lite, security & privacy, receipt/outbox, evaluation threshold, release boundary issue checklists.
+> **v1.9 已via把 v1.8-RC 剩余的 release table述、版本一致性、ADR Status、工程冻结条件和首批验证路径收敛到“可正式发布为Architecture评审版本”的程度；但它仍然不is工程冻结基线，也不is生产基线。真正进入实施前，必须用真实仓库扫描和真实 owner 信息替换文档中的 TBD vs假设路径。**
 
 ---
 
-## Appendix A: v1.9 Release Revision Summary
+## 参考资料
 
-| Revision Item | Status |
+1. 《Agent Harness Engineering: A Survey》及其 ETCLOVG taxonomy。
+2. Automatic Agent System 既有 Five Plane / OAPEFLIR / Harness-driven Architecture讨论。
+3. `automatic_agent_system_harness_improvement_plan_v1_6_reviewed.md`。
+4. v1.6/v1.7/v1.8 review 中提出的code映射、owner、CI 命令、H1-lite、security隐私、receipt/outbox、evaluation threshold、release 边界等Issue清单。
+
+---
+
+## 附录 A：v1.9 Release 修订摘要
+
+| 修订项 | Status |
 |---|---|
-| Added system boundary diagram | completed |
-| Added Current Codebase Gap Matrix credibility markers | completed |
-| Added CI Command Contract | completed |
-| Added P0b-1 through P0b-5 | completed |
-| H1-lite moved forward | completed |
-| Release threshold specified | completed |
-| Cost/Latency advisory/blocking stage correction | completed |
-| Receipt / durable outbox atomicity | completed |
+| 增加系统边界图 | completed |
+| 增加 Current Codebase Gap Matrix 可信度标记 | completed |
+| 增加 CI Command Contract | completed |
+| 增加 P0b-1 到 P0b-5 | completed |
+| H1-lite 前移 | completed |
+| Release threshold 具体化 | completed |
+| Cost/Latency advisory/blocking 阶段修正 | completed |
+| Receipt / durable outbox 原子性 | completed |
 | Tool reversibility risk rule | completed |
 | ManagedMemoryMinimal schema | completed |
 | Security & Privacy Baseline | completed |
-| First batch business scenario elaboration | completed |
-| TODO deduplication | completed |
-| Real code scan | not completed, requires engineering execution |
-| Real owner fill-in | not completed, requires project scheduling |
-| CI command implementation | not completed, requires engineering execution |
-| H1-lite minimum test set definition | completed |
-| ToolRiskMetadata required contract | completed |
-| Transactional Outbox transaction boundary | completed |
-| Eval baseline calibration protocol | completed |
-| Security Gate component implementation | completed |
+| 首批业务场景展开 | completed |
+| TODO for deduplication | completed |
+| 真实code扫描 | 未完成，需工程执lines |
+| 真实 owner 填写 | 未完成，需项目排期 |
+| CI 命令落地 | 未完成，需工程执lines |
+| H1-lite 最小测试集defines | completed |
+| ToolRiskMetadata 必填契约 | completed |
+| Transactional Outbox 事务边界 | completed |
+| Eval baseline 校准协议 | completed |
+| Security Gate 组件化 | completed |
 | Release Decision Matrix | completed |
 
 ---
 
-## Appendix B: Version Revision History
+## 附录 B：版本修订record
 
-| Version | Description |
+| 版本 | Description |
 |---|---|
-| v1.1 | Initial Harness improvement plan |
-| v1.2 | Added Seven-layer Memory revision |
-| v1.3 | Memory Gate independent enhancement patch |
-| v1.4 | Merged Memory Gate into main document |
-| v1.5 | Added TODO List, Release / Memory / Policy boundary fixes |
-| v1.6 | Added Current Gap Matrix, Minimal P0, Rollout, Risk Matrix, Runbook, RBAC |
-| v1.7 | Fixed v1.6 implementation issues: real scan markers, CI command status, P0b subdivision, H1-lite, security & privacy, receipt/outbox, thresholds, and business scenarios |
-| v1.8 | Fixed v1.7 release boundary issues: H1-lite test set, ToolRiskMetadata, Transactional Outbox, Eval baseline calibration, Security Gate componentization, package.json script contract, and Release Decision Matrix |
-| v1.9 | Architecture Review Release: Fixed version references, engineering freeze conditions, ADR release status, first validation scenario recommendations, and clarified release types and prohibited uses |
+| v1.1 | 初版 Harness 改进计划 |
+| v1.2 | 增加 Seven-layer Memory 修正 |
+| v1.3 | Memory Gate 独立增强补丁 |
+| v1.4 | 合并 Memory Gate 到主文档 |
+| v1.5 | 增加 TODO List、Release / Memory / Policy 边界修复 |
+| v1.6 | 增加 Current Gap Matrix、Minimal P0、Rollout、Risk Matrix、Runbook、RBAC |
+| v1.7 | 修复 v1.6 的可落地性Issue：真实扫描标记、CI 命令Status、P0b 细分、H1-lite、security隐私、receipt/outbox、threshold和业务场景 |
+| v1.8 | 修复 v1.7 的 release 边界Issue：H1-lite 测试集、ToolRiskMetadata、Transactional Outbox、Eval baseline 校准、Security Gate 组件化、package.json 脚本契约和 Release Decision Matrix |
+| v1.9 | Architecture Review Release：修复版本references用、工程冻结条件、ADR release Status、首批验证场景Recommendation，并明确 release class型vs禁止用途 |

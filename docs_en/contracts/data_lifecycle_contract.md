@@ -1,10 +1,10 @@
 # Data Lifecycle Contract
 
-## 1. Scope
+## 1. 范围
 
-Defines the lifecycle boundaries for platform data from creation, hot storage, archiving, retention to deletion.
+defines平台data从创建、热storage、归档、保留到删除的生命cycle边界。
 
-## 2. Core Objects
+## 2. 核心对象
 
 ```typescript
 interface DataLifecyclePolicy {
@@ -17,8 +17,9 @@ interface DataLifecyclePolicy {
 }
 ```
 
-## 3. Constraints
+## 3. 约束
 
-- truth, event, and audit retention must be explicitly modeled and must not rely on implicit database defaults.
-- Data with `legalHoldSupported=true` must not be automatically deleted during a hold period.
-- Both archiving and deletion must leave auditable records.
+- truth、event、audit retention 必须显式建模，不得relies on隐式data库defaults to值。
+- `legalHoldSupported=true` 的data在 hold 期间不得自动删除。
+- 归档vs删除都必须留下可审计record。
+

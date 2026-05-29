@@ -1,64 +1,64 @@
-# ADR-035 Recommended Code Directory Structure
+# ADR-035 推荐code目录
 
-- Status: Accepted
-- Decision Date: 2026-04-17
+- Status：Accepted
+- Decision日期：2026-04-17
 
-## Context
+## Background
 
-The code directory structure must align with the five-plane architecture to facilitate developers in locating and understanding code.
+code目录结构需要vsFive-PlaneArchitecture对应，便于开发者定位和理解code。
 
 ## Decision
 
-### 9 Top-Level Modules
+### 9 大顶层模块
 
 ```
 src/
-  platform/       # Five-plane runtime core
-  domains/        # Domain descriptors, onboarding, governance
-  interaction/    # NL entry, goal decomposition, dashboard
-  org-governance/ # Organization hierarchy, approval routing, SSO
-  scale-ecosystem/# Multi-region, marketplace, integrations
-  ops-maturity/   # Explainability, emergency stop, drift detection
-  plugins/        # Plugin SDK
-  sdk/            # Developer toolchain
-  apps/           # Application examples
+  platform/       # Five-Plane运lines时核心
+  domains/        # 领域Description符、接入、治理
+  interaction/    # NL 入口、目标分解、看板
+  org-governance/ # 组织层iterations、审批路由、SSO
+  scale-ecosystem/# 多 Region、市场、集成
+  ops-maturity/   # 可解释性、紧急制动、漂移检测
+  plugins/        # 插件 SDK
+  sdk/            # 开发者工具链
+  apps/           # 应用示例
 ```
 
-### platform/ Subdirectories
+### platform/ 子目录
 
 ```
 platform/
-  interface/      # API, Webhook, Scheduler, Console, Ingress
-  control-plane/  # IAM, Config-Center, Approval, Incident, Rollout
-  orchestration/  # OAPEFLIR, Workflow, Planner, Routing
-  execution/      # Dispatcher, Execution-Engine, Recovery, Worker-Pool
-  state-evidence/ # Truth, Events, Artifacts, Memory, Knowledge
-  shared/         # Cross-cutting services
+  interface/      # API、Webhook、Scheduler、Console、Ingress
+  control-plane/  # IAM、Config-Center、Approval、Incident、Rollout
+  orchestration/  # OAPEFLIR、Workflow、Planner、Routing
+  execution/      # Dispatcher、Execution-Engine、Recovery、Worker-Pool
+  state-evidence/ # Truth、Events、Artifacts、Memory、Knowledge
+  shared/         # 横切服务
 ```
 
-### Additional Directories
+### 额外目录
 
-- `core/` Compatibility layer (do not add new canonical runtime logic here)
-- `benchmarks/` Performance testing
-- `testing/` Testing utilities
+- `core/` 兼容性层（不新增canonical runtime逻辑）
+- `benchmarks/` 性能测试
+- `testing/` 测试工具
 
 ## Consequences
 
-Benefits:
+优点：
 
-- Clear mapping between directory structure and architecture
-- Easier for developers to locate code
-- Supports large-scale team parallel development
+- 目录结构vsArchitecture映射清晰
+- 便于开发者定位code
+- supported大规模团队并lines开发
 
-Trade-offs:
+代价：
 
-- Refactoring existing code requires significant effort
-- Must keep in sync with documentation
+- 重构现有code需要较大成本
+- 需要保持vs文档synchronous
 
-## Cross-references
+## 交叉references用
 
-- [ADR-001 Three-Layer Architecture](./001-three-layer-architecture.md)
+- [ADR-001 三层分权Architecture](./001-three-layer-architecture.md)
 
-## Source Section
+## 来源章节
 
-- `§35` Recommended Code Directory Structure
+- `§35` 推荐code目录

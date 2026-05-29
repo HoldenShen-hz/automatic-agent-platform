@@ -1,49 +1,49 @@
-# Postmortem Template
+# 故障复盘模板
 
-Used for post-incident reviews after production failures, drill failures, SLO violations, and security incidents. Goal is to restore facts, clarify improvements, and avoid blame.
+used for生产故障、演练failed、SLO 违约和security事件后的复盘。目标is还原事实、明确改进项，不追责个人。
 
-## Summary
+## 摘要
 
-- Incident ID:
-- Occurrence time:
-- Discovery method:
-- Impact scope:
-- Current status:
-- Owner:
+- 事件#：
+- 发生time：
+- 发现方式：
+- Impact范围：
+- 当前Status：
+- 负责人：
 
-## Timeline
+## time线
 
-| Time | Event | Evidence |
+| time | 事件 | 证据 |
 |---|---|---|
 | | | |
 
 ## Impact
 
-- User impact:
-- Data impact:
-- Financial or compliance impact:
-- Internal system impact:
+- userImpact：
+- dataImpact：
+- 财务或合规Impact：
+- 内部系统Impact：
 
 ## Root Cause
 
-- Direct trigger:
-- Deep system cause:
-- Why monitoring or testing did not catch it earlier:
+- directly触发因素：
+- 深层系统原因：
+- 为什么监控或测试没有提前发现：
 
-## Handling
+## occurrences置
 
-- Mitigation already executed:
-- Rollback already executed:
-- Options considered but not executed:
+- 已执lines缓解：
+- 已执lines回滚：
+- 未执lines但考虑过的方案：
 
-## Follow-up Actions
+## 后续lines动
 
-| Action Item | Owner | Due Date | Acceptance Evidence |
+| lines动项 | Owner | 截止time | 验收证据 |
 |---|---|---|---|
 | | | | |
 
-## Postmortem Close Criteria
+## 复盘关闭条件
 
-- Action items have owner and date.
-- Monitoring, testing, or runbook has at least one recurrence prevention measure added.
-- Evidence links have been archived.
+- lines动项已有 owner 和日期。
+- 监控、测试或 runbook 至少补齐一项防复发措施。
+- 证据链接已归档。

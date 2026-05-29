@@ -1,25 +1,25 @@
-# ADR-069: Platform Self-Operating Agent Architecture
+# ADR-069 平台自运维 Agent Architecture
 
-- Status: Partially Superseded by v4.3 control-plane and runtime authority ADRs
-- Decision Date: 2026-04-20
+- Status：Partially Superseded by v4.3 control-plane and runtime authority ADRs
+- Decision日期：2026-04-20
 
-## Context
+## Background
 
-One-person companies have no dedicated SRE; the platform needs to self-operate, reducing manual intervention.
+一人公司没有专职 SRE，平台需要能自我运维，减少人工干预。
 
 ## Decision
 
-### Self-Operation Capabilities
+### 自运维能力
 
-| Capability | Description |
-|------------|-------------|
-| auto_monitoring | Metric collection and alerting |
-| auto_diagnosis | Root cause analysis |
-| auto_repair | Common issue repair |
-| auto_scaling | Load-responsive scaling |
-| auto_recovery | Fault self-healing |
+| 能力 | Description |
+|------|------|
+| 自动监控 | 指标采集和告警 |
+| 自动诊断 | Root Cause分析 |
+| 自动修复 | 常见Issue修复 |
+| 自动扩缩容 | 负载response式伸缩 |
+| 自动恢复 | 故障自愈 |
 
-### Self-Op Agent Design
+### 自运维 Agent 设计
 
 ```typescript
 interface SelfOpsAgent {
@@ -32,50 +32,50 @@ interface SelfOpsAgent {
 
 ### OpsCapability
 
-| Capability | Trigger | Action |
-|------------|---------|--------|
-| restart_service | Service unresponsive | Restart service |
-| clear_cache | Low cache hit rate | Clear cache |
-| scale_up | High load | Add Workers |
-| scale_down | Low load | Reduce Workers |
-| rotate_secrets | Key expiring soon | Rotate secrets |
+| 能力 | 触发条件 | 执lines操作 |
+|------|----------|----------|
+| restart_service | 服务noresponse | 重启服务 |
+| clear_cache | cache命中率低 | 清理cache |
+| scale_up | 负载高 | 增加 Worker |
+| scale_down | 负载低 | 减少 Worker |
+| rotate_secrets | key即将过期 | 轮换key |
 
-### Permission Boundaries
+### permission边界
 
-| Operation | Requires Approval | Auto Execute |
-|-----------|-------------------|--------------|
-| View logs | No | Yes |
-| Restart service | Yes | No |
-| Scaling | Yes | Configurable range |
-| Modify config | Yes | No |
-| Data operation | Yes | No |
+| 操作 | 需审批 | 自动执lines |
+|------|--------|----------|
+| 查看日志 | no | is |
+| 重启服务 | is | no |
+| 扩缩容 | is | configure范围内可自动 |
+| 修改configure | is | no |
+| data操作 | is | no |
 
-- Any action that modifies runtime truth objects must ultimately be sunk as `OperationalDirective` and landed via `RuntimeStateMachine.transition(command)`. SelfOpsAgent cannot directly write truth state.
+- 任何会修改运lines时真相对象的动作，最终都必须下沉为 `OperationalDirective` 并via `RuntimeStateMachine.transition(command)` 落地，SelfOpsAgent 不能directly写 truth state。
 
-### Manual Intervention
+### 人工干预
 
-- Complex issues escalate to human
-- Key decisions require human confirmation
-- Regular human review
+- 复杂Issue升级到人工
+- 关键Decision需人工确认
+- 定期人工评审
 
 ## Consequences
 
-Advantages:
+优点：
 
-- Reduces SRE dependency
-- Improves availability
-- Fast fault response
+- 减少 SRE relies on
+- 提高可用性
+- 快速response故障
 
-Disadvantages:
+代价：
 
-- Self-ops logic is complex
-- Permission boundaries require careful design
+- 自运维逻辑复杂
+- permission边界需要谨慎设计
 
-## Cross References
+## 交叉references用
 
-- [ADR-025 Stability Architecture](./025-stability-architecture-seven-layers.md)
-- [ADR-058 Emergency Stop and Global Circuit Breaker](./058-emergency-stop-and-global-circuit-breaker.md)
+- [ADR-025 稳定性Architecture](./025-stability-architecture-seven-layers.md)
+- [ADR-058 紧急制动vsglobally熔断](./058-emergency-stop-and-global-circuit-breaker.md)
 
-## Source Section
+## 来源章节
 
-- `§69` Platform Self-Operating Agent Architecture
+- `§69` 平台自运维 Agent Architecture

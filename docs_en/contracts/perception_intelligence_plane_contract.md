@@ -2,36 +2,36 @@
 
 ---
 
-## OAPEFLIR Association
+## OAPEFLIR 关联
 
-This contract participates in the following OAPEFLIR eight-stage loop stages:
+本 contract 参vs OAPEFLIR 八阶段循环中的以下阶段：
 
-- **Observe**: Signal collection and aggregation
-- **Assess**: Pre-execution assessment and risk judgment
-- **Plan**: Task decomposition and DAG construction
-- **Execute**: Step execution and fault tolerance
-- **Feedback**: Signal collection and preprocessing
-- **Learn**: Pattern detection and knowledge extraction
-- **Improve**: Improvement candidate evaluation and rollout
-- **Release**: Controlled release and rollback
+- **Observe**：信号采集vs聚合
+- **Assess**：执lines前评估vs风险判断
+- **Plan**：任务分解vs DAG 构建
+- **Execute**：步骤执linesvs容错
+- **Feedback**：信号收集vs预handle
+- **Learn**：模式检测vs知识提取
+- **Improve**：改进候选评估vs rollout
+- **Release**：受控发布vs回滚
 
 ---
 
-> Compatibility note: The filename is preserved to maintain historical reference stability; current target semantics align with `ObserveHub + AssessHub` dual stages, not a single perception plane.
+> 兼容Description：文件名保留以维持历史references用稳定；当前目标态语义对齐 `ObserveHub + AssessHub` 双阶段，而不is单一 perception 平面。
 
-## 1. Scope
+## 1. 范围
 
-This contract defines the Observe / Assess target plane, including source ingestion, dedupe, context build, assessment, and controlled suggestion output.
+本 contract defines Observe / Assess 目标态平面，includes source ingestion、dedupe、context build、assessment 和受控Recommendation输出。
 
-It extends `perception_contract.md` to answer "how does the system continuously collect signals, form `TaskSituation`, and provide structured assessment suggestions during the Assess stage."
+它扩展 `perception_contract.md`，used for回答“系统如何持续收集信号、形成 `TaskSituation`，并在 Assess 阶段给出结构化评估Recommendation”。
 
-## 2. Objectives
+## 2. 目标
 
-- Elevate Observe and Assess from loose auxiliary capabilities to independent stage planes.
-- Ensure signal flow is decoupled from the main task chain but can be authorized to join the execution chain.
-- Make cost, authorization, duplicate information, and assessment quality first-class capabilities.
+- 把 Observe vs Assess 从松散辅助能力提升为独立阶段平面。
+- 保证信号流vs主任务链解耦，但可viaauthorization接入执lines链。
+- 让成本、authorization、repeats信息和评估质量成为一等能力。
 
-## 3. Key Components
+## 3. 关键组件
 
 - `SourceIngestionPipeline`
 - `SignalNormalizer`
@@ -42,7 +42,7 @@ It extends `perception_contract.md` to answer "how does the system continuously 
 - `AssessmentEngine`
 - `ExecutionOutcomeEvaluator`
 
-## 4. Key Objects
+## 4. 关键对象
 
 - `ObserveSource`
 - `ObserveSignal`
@@ -53,7 +53,7 @@ It extends `perception_contract.md` to answer "how does the system continuously 
 - `UnifiedAssessment`
 - `ExecutionAssessment`
 
-## 5. UnifiedAssessment Minimum Fields
+## 5. UnifiedAssessment 最小字段
 
 - `assessment_id`
 - `task_id`
@@ -64,41 +64,41 @@ It extends `perception_contract.md` to answer "how does the system continuously 
 - `recommended_path`
 - `generated_at`
 
-## 5.1 ExecutionAssessment Minimum Fields (Post-Execution Assessment)
+## 5.1 ExecutionAssessment 最小字段（后执lines评估）
 
-`ExecutionAssessment` is a four-dimensional assessment after Execute stage completion:
+`ExecutionAssessment` is Execute 阶段完成后的四维评估：
 
 - `execution_id`
-- `correctness_score`: failure category ratio in feedback.signals (0-1)
-- `completeness_score`: steps completed / total steps (0-1)
-- `efficiency_score`: actual tokens / expected budget ratio (0-1)
-- `safety_score`: tool permission denial / sandbox violation signals (0-1)
-- `overall_score`: weighted average (correctness:0.3, completeness:0.3, efficiency:0.2, safety:0.2)
-- `verdict`: `pass (≥0.7) | marginal (0.5-0.7) | fail (<0.5)`
+- `correctness_score`：feedback.signals 中 failure category 比例（0-1）
+- `completeness_score`：steps completed / total steps（0-1）
+- `efficiency_score`：实际 tokens / 预期 budget 比值（0-1）
+- `safety_score`：tool permission denial / sandbox violation signals（0-1）
+- `overall_score`：加权平均 (correctness:0.3, completeness:0.3, efficiency:0.2, safety:0.2)
+- `verdict`：`pass (≥0.7) | marginal (0.5-0.7) | fail (<0.5)`
 - `generated_at`
 
-Verdict `fail` automatically triggers Replan.
+Verdict 为 `fail` 时自动触发 Replan。
 
-## 6. Behavior Constraints
+## 6. lines为约束
 
-- Observe / Assess must only produce signals, situations, and suggestions by default and must not directly modify the main task chain.
-- Proactive task triggering must pass authorization, budget, and governance validation.
-- Duplicate content must go through dedupe / cluster processing.
-- Assessment products must be traceable to signal ref / task situation ref.
+- Observe / Assess defaults to只产生信号、情境和Recommendation，不directly修改主任务链。
+- 主动触发任务前必须viaauthorization、budget和治理校验。
+- repeats内容必须via过 dedupe / cluster handle。
+- assessment 产物必须可追溯到 signal ref / task situation ref。
 
-## 7. Relationship With Existing Documents
+## 7. vs现有文档的关系
 
-- `perception_contract.md` retains Observe minimum object model.
-- This contract defines Observe + Assess as an independent plane's complete form.
-- `governance_control_plane_contract.md` should constrain the authorization path for action proposals / assessment recommendations.
+- `perception_contract.md` 保留 Observe 最小对象模型。
+- 本 contract defines Observe + Assess 作为独立平面的完整形态。
+- `governance_control_plane_contract.md` 应约束 action proposal / assessment recommendation 的authorization路径。
 
-## 8. Phased Introduction
+## 8. 分阶段references入
 
-- Phase 3: source ingestion + task situation + assessment MVP.
-- Phase 4: enterprise source, team sharing, and multi-tenant Observe/Assess boundaries.
+- Phase 3: source ingestion + task situation + assessment MVP。
+- Phase 4: enterprise source、团队共享和多租户 Observe/Assess 边界。
 
-## 9. Supplementary Rules
+## 9. 补充规则
 
-- Ranking must comprehensively consider: relevance, importance, timeliness, source credibility, post-deduplication coverage.
-- Source trust scoring must at minimum be divided into: `low | medium | high | verified`.
-- Assessment freshness should define SLA by source type, e.g., high-frequency sources with short windows, low-frequency sources with long windows.
+- ranking 至少综合：相关度、重要度、时效性、来源可信度、for deduplication后覆盖度。
+- source trust 评分至少分为：`low | medium | high | verified`。
+- assessment freshness 应按 source class型defines SLA，如高频源短窗口、低频源长窗口。

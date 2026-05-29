@@ -1,20 +1,20 @@
 # ADR-113 Session Tenant Resolution And Principal Scope
 
-- Status: Accepted
+- Status：Accepted
 
 ## Background
-HTTP user sessions, service principal, and tenant isolation have been converged to unified scope judgment in implementation, but there was previously no authoritative document explaining how tenant is parsed and propagated.
+HTTP user会话、service principal 和租户隔离在实现上已via收口到统一 scope 判断，但之前没有一份权威文档解释 tenant is如何解析和传播的。
 
 ## Decision
-- User session object must directly carry `tenantId`, as input for downstream `TenantScopeFilter`.
-- Service principal does not inherit arbitrary tenant permissions by default; when tenant context is missing it must fail closed first, then combine namespace / platform permissions for additional judgment.
-- Session tenant switching must explicitly create or refresh a new authentication context and cannot drift implicitly inside the same token.
+- user会话对象必须directly携带 `tenantId`，作为下游 `TenantScopeFilter` 的输入。
+- service principal 不defaults to继承任意 tenant permission；缺少 tenant 上下文时按 fail-closed handle，再结合 namespace / platform permission做额外判定。
+- 会话切租户必须显式创建或刷新新的authentication上下文，不允许在同一 token 内隐式漂移。
 
-## Result
-- Tenant boundary resolution path changes from "implicit guessing" to "session field + scope filter".
-- Review findings about missing authoritative session-tenant resolution documentation are cleared.
+## 结果
+- 租户边界解析路径从“隐式猜测”变成“会话字段 + scope filter”。
+- review 中关于 session tenant 解析缺少权威Description的Issue归零。
 
-## Related Implementation
+## 相关实现
 - `src/platform/five-plane-interface/api/session-management.ts`
 - `src/platform/five-plane-interface/api/http-api-server.ts`
 - `src/platform/five-plane-control-plane/incident-control/tenant-scope-filter.ts`

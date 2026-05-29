@@ -1,34 +1,33 @@
 # Knowledge SPI Contract
 
-> **OAPEFLIR Related**: This contract defines the SPI interface for the OAPEFLIR Knowledge Plane, corresponding to ADR-078.
-> **Update Date**: 2026-04-17
+> **OAPEFLIR 相关**：本 contract defines OAPEFLIR Knowledge Plane 的 SPI 接口，对应 ADR-078。
+> **更新日期**：2026-04-17
 
-## 1. Scope
+## 1. 范围
 
-This contract defines the Service Provider Interface (SPI) for the Knowledge Plane, including the KIP 5-stage pipeline, three indexing types, and three-level query normalized interfaces.
+本 contract defines Knowledge Plane 的 Service Provider Interface（SPI），includes KIP 5 阶段管线、三种索references和三级查询的规范化接口。
 
-Related Documents:
-- `artifact_store_contract.md`: Boundary between Knowledge and Artifact.
+相关文档：
+- `artifact_store_contract.md`：Knowledge vs Artifact 的边界。
 - [ADR-078 Knowledge Plane Architecture](../adr/078-knowledge-plane-architecture.md)
 
-## 2. KIP 5-Stage Pipeline
+## 2. KIP 5 阶段管线
 
 ```
 Intake → Extraction → Archive → Index → Query
   ↓        ↓           ↓         ↓       ↓
-Raw Doc  Semantic   Cold Store  3 Index  3-Level
-         Extraction            Types    Query
+原始文档  语义抽取   冷storage    三种索references  三级查询
 ```
 
-| Stage | Component | Responsibility |
+| 阶段 | 组件 | 职责 |
 |------|------|------|
-| Intake | `KnowledgeIngestionPipeline` | Receives raw documents, format validation |
-| Extraction | `KnowledgeExtractor` | Semantic extraction, chunking, summarization |
-| Archive | `KnowledgeArchive` | Cold data persistence (SQLite) |
-| Index | `KeywordIndexer` / `SemanticVectorStore` / `ASTIndexer` | Three index maintenance |
-| Query | `KnowledgeQueryService` | Quick/Standard/Deep three-level query |
+| Intake | `KnowledgeIngestionPipeline` | 接收原始文档，格式校验 |
+| Extraction | `KnowledgeExtractor` | 语义抽取、分块、摘要 |
+| Archive | `KnowledgeArchive` | 冷data持久化（SQLite） |
+| Index | `KeywordIndexer` / `SemanticVectorStore` / `ASTIndexer` | 三种索references维护 |
+| Query | `KnowledgeQueryService` | Quick/Standard/Deep 三级查询 |
 
-## 3. Core Interfaces
+## 3. 核心接口
 
 ### 3.1 KnowledgeSource
 
@@ -62,7 +61,7 @@ interface KnowledgeDocument {
 interface KnowledgeChunk {
   chunkId: string;
   content: string;
-  embedding?: number[];  // Vector representation
+  embedding?: number[];  // 向量table示
   metadata: Record<string, unknown>;
 }
 ```
@@ -79,15 +78,15 @@ interface KnowledgeNamespace {
 }
 
 interface RetentionPolicy {
-  maxAgeDays: number;           // 0 = permanent
+  maxAgeDays: number;           // 0 = 永久
   maxSizeMB: number;
   archiveAfterDays: number;
 }
 ```
 
-## 4. Three Index SPIs
+## 4. 三种索references SPI
 
-### 4.1 KeywordIndex (BM25)
+### 4.1 KeywordIndex（BM25）
 
 ```typescript
 interface KeywordIndex {
@@ -118,30 +117,30 @@ interface SemanticVectorStore {
 }
 ```
 
-**Current Status**: Using SHA-256 hash pseudo-vectors (`local-hash-v1:` prefix).
+**当前Status**：uses SHA-256 hash 伪向量（`local-hash-v1:` 前缀）。
 
 ### 4.3 ASTIndex
 
 ```typescript
 interface ASTIndex {
-  // Parse and index TypeScript source files
+  // 解析并索references TypeScript 源文件
   indexSource(source: string, filePath: string): Promise<void>;
-  // Find symbol definition location
+  // 查找符号defines位置
   findDefinition(symbolName: string, filePath: string): SymbolLocation | null;
-  // Find symbol references
+  // 查找符号references用
   findReferences(symbolName: string): SymbolLocation[];
-  // Find structurally related chunks
+  // 查找结构相关 chunk
   findStructurallyRelated(chunkId: string): KnowledgeRef[];
 }
 ```
 
-## 5. KnowledgeQueryService Three-Level Query SPI
+## 5. KnowledgeQueryService 三级查询 SPI
 
-| Level | Response Time Target | Retrieval Scope |
+| 级别 | responsetime目标 | 检索范围 |
 |------|------------|---------|
-| `quick` | <100ms P99 | Keywords only (L1 cache) |
-| `standard` | <500ms P99 | Keywords + semantic vector hybrid |
-| `deep` | <2000ms | All indexes + cross namespace |
+| `quick` | <100ms P99 | only关键词索references（L1 cache） |
+| `standard` | <500ms P99 | 关键词 + 语义向量混合 |
+| `deep` | <2000ms | 全部索references + 跨 namespace |
 
 ```typescript
 enum QueryLevel {
@@ -151,32 +150,32 @@ enum QueryLevel {
 }
 
 interface KnowledgeQueryService {
-  // Default Standard level
+  // defaults to Standard 级别
   query(keyword: string, options?: KnowledgeQueryOptions): RetrievalHit[];
 
-  // Explicit level
+  // 显式级别
   queryAsync(
     keyword: string,
     options?: KnowledgeQueryOptions,
     level?: QueryLevel
   ): Promise<RetrievalHit[]>;
 
-  // Adaptive query (based on previous round confidence)
+  // 自适应查询（根据上轮 confidence）
   queryAdaptive(keyword: string, options?: KnowledgeQueryOptions): RetrievalHit[];
 
-  // Select query level
+  // 选择查询级别
   selectQueryLevel(confidence: number): QueryLevel;
 
-  // Confidence
+  // 置信度
   getLastConfidence(): number;
 }
 
 interface KnowledgeQueryOptions {
   namespace?: string;
   domainId?: string | null;
-  trustLevel?: TrustLevel;  // Filter minimum trust level
+  trustLevel?: TrustLevel;  // 过滤最低信任级别
   includeUnverified?: boolean;
-  limit?: number;          // Default 10
+  limit?: number;          // defaults to 10
 }
 
 interface RetrievalHit {
@@ -189,25 +188,25 @@ interface RetrievalHit {
 }
 ```
 
-## 6. 4-Level Trust Model
+## 6. 4 级信任模型
 
-| Trust Level | Source | Purpose |
+| 信任级别 | 来源 | 用途 |
 |---------|------|------|
-| `verified` | Manually reviewed content | Production decisions |
-| `reviewed` | LearningObjectValidator verification | Improvement candidates |
-| `inferred` | System inference | Suggestions/reference |
-| `untrusted` | Unverified source | Display only |
+| `verified` | 人工审核过的内容 | 生产Decision |
+| `reviewed` | LearningObjectValidator 验证 | 改进候选 |
+| `inferred` | 系统推断 | Recommendation/参考 |
+| `untrusted` | 未验证来源 | only展示 |
 
-## 7. Learn→Knowledge Integration
+## 7. Learn→Knowledge 集成
 
-LearningObject injects into the knowledge plane via `KnowledgePromotionService`:
+LearningObject via `KnowledgePromotionService` 注入知识平面：
 
 ```typescript
 interface KnowledgePromotionService {
-  // Convert LearningObject to KnowledgeDocument and inject
+  // 将 LearningObject 转换为 KnowledgeDocument 并注入
   promote(learningObject: LearningObject): Promise<KnowledgeDocument>;
 
-  // Get promotion history
+  // 获取 promotion 历史
   getPromotionHistory(objectId: string): PromotionRecord[];
 }
 
@@ -220,7 +219,7 @@ interface PromotionRecord {
 }
 ```
 
-**Data Flow**:
+**data流**：
 ```
 FailurePatternMiner.mine()
     → LearningObject { kind: "failure_pattern", evidence: [...] }
@@ -231,14 +230,14 @@ FailurePatternMiner.mine()
             namespace: "system/learned-patterns",
             trustLevel: "reviewed"
           })
-    → Subsequent Observe phase can retrieve learned patterns
+    → 后续 Observe 阶段可检索到已学习的模式
 ```
 
-## 8. Constraints
+## 8. 约束
 
-- **Quick Mode**: Must not access SemanticVectorStore or KeywordIndex, only query L1 cache.
-- **Standard Mode**: Must not execute graph traversal or AST queries.
-- **Deep Mode**: Must include semantic similarity ranking topK=30, optional graph expansion.
-- **Namespace Isolation**: Cross-namespace queries must be authorized through KnowledgeAccessControl.
-- **R4-EVIDENCE**: Content injected from Learn→Knowledge must include EvidenceRef link.
-- **Trust Level Propagation**: trustLevel must be determined at intake and must not be demoted.
+- **Quick 模式**：不得访问 SemanticVectorStore 或 KeywordIndex，只查 L1 cache。
+- **Standard 模式**：不得执lines graph traversal 或 AST 查询。
+- **Deep 模式**：必须contains semantic similarity 排序 topK=30，optional graph expansion。
+- **命名空间隔离**：跨 namespace 查询必须via KnowledgeAccessControl authorization。
+- **R4-EVIDENCE**：Learn→Knowledge 注入的内容必须contains EvidenceRef 链接。
+- **信任级别传播**：trustLevel 必须在 intake 时确定，不得降级。

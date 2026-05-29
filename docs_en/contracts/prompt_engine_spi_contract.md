@@ -1,16 +1,16 @@
 # Prompt Engine SPI Contract
 
-## 1. Scope
+## 1. 范围
 
-This contract defines the registry, renderer, version, rollout, and evaluation boundaries of `src/platform/prompt-engine/`.
+本 contract defines `src/platform/prompt-engine/` 的 registry、renderer、version、rollout vs评测侧边界。
 
-Related documents:
+相关文档：
 
 - `prompt_model_policy_governance_contract.md`
 - `quality_engineering_and_chaos_testing_contract.md`
 - `domain_descriptor_and_onboarding_contract.md`
 
-## 2. Prompt Definition Objects
+## 2. Prompt defines对象
 
 ```typescript
 interface PromptDefinition {
@@ -36,11 +36,11 @@ interface PromptRegistry {
 }
 ```
 
-Rules:
+规则：
 
-- `promptId + version` forms a stable primary key.
-- Any change to `fixedPrefix`, `domainBlock`, or `variableTemplate` must go through a new version or explicit rollout.
-- Versions with `reviewStatus !== approved` must not enter production `stable` routing.
+- `promptId + version` 组成稳定主键。
+- `fixedPrefix`、`domainBlock`、`variableTemplate` 任一变化都必须走新版本或明确 rollout。
+- `reviewStatus !== approved` 的版本不得进入生产 `stable` 路由。
 
 ## 4. Renderer SPI
 
@@ -62,13 +62,13 @@ interface PromptRenderResult {
 }
 ```
 
-Rules:
+规则：
 
-- Renderer must return `resolvedVersion` and must not only return the final string.
-- `fixedPrefixHash` change must trigger cache invalidation and regression evaluation.
-- `preview` must not write to production rollout or evidence state.
+- renderer 必须返回 `resolvedVersion`，禁止只返回最终字符串。
+- `fixedPrefixHash` 变化必须触发 cache invalidation vs regression 评估。
+- `preview` 不得writes生产 rollout 或 evidence Status。
 
-## 5. Rollout And Evaluation
+## 5. Rollout vs评测
 
 ```typescript
 interface PromptReleaseDecision {
@@ -81,14 +81,14 @@ interface PromptReleaseDecision {
 }
 ```
 
-Rules:
+规则：
 
-- Prompt rollout must be accompanied by evaluation evidence or explicit exemption reason.
-- Domain-specific prompts must align with the compatible version of `domain descriptor`.
-- Rollback must reference the last stable version instead of a temporary string patch.
+- prompt rollout 必须附带评测证据或显式豁免原因。
+- domain 专属 prompt 必须vs `domain descriptor` 的兼容版本对齐。
+- 回滚必须references用上一个稳定版本，而不is临时字符串 patch。
 
-## 6. Test Requirements
+## 6. 测试要求
 
-- unit: prompt registration, version resolution, render output, and hash stability.
-- integration: prompt rollout drives cache invalidation, eval evidence, and domain compatibility checks.
-- contract: registry / renderer / rollout output object fields are stable and do not drift due to different callers.
+- unit：prompt 注册、版本解析、render 输出vs hash 稳定性。
+- integration：prompt rollout 驱动cache失效、eval 证据、domain 兼容检查。
+- contract：registry / renderer / rollout 输出对象字段稳定，不因call端不同而漂移。

@@ -1,35 +1,39 @@
 # Release and Version Strategy
 
-This document defines the minimal release version scope for the current repository.
+This document defines the minimum release version scope for the current repository.
 
 ## NPM / Source Code Version
 
-- `version` in `package.json` is the source package version authoritative source.
-- `CHANGELOG.md` must maintain both `Unreleased` and the latest published version, so unpublished commits are never rewritten as if they were already released.
-- The repository is still in the `0.x` pre-GA phase: frequent contract and documentation changes do not require bumping `package.json` on every commit, but every package or image release must write back to the changelog.
-- Version changes must be accompanied by a changelog gate.
-- Node/npm support range is declared by the `engines` field in `package.json`.
+- `version` in `package.json` is the source of truth for source package version.
+- Current release baseline version: `0.2.0`
+- `CHANGELOG.md` must simultaneously maintain `Unreleased` and the most recent released version to avoid accidentally writing unreleased commits as released facts.
+- Current repository is still in `0.x` pre-GA stage: frequent contract/docs changes do not require bumping `package.json` on every commit, but once publishing a package or image, must write back to changelog.
+- Version changes must include changelog gate.
+- Node/npm support range is declared by `engines` field in `package.json`.
+- `deploy/helm/automatic-agent/Chart.yaml`'s `version/appVersion` must stay consistent with `package.json version`; `audit:ci-supply-chain` is responsible for preventing drift.
 
 ## Image Version
 
-- Release workflow must use the `image_tag` passed by the caller.
-- Image release also generates a `sha-<commit>` tag for rollback and traceability.
-- Deploy workflow only deploys explicitly passed image tags; no floating latest.
-- The hard pre-release gate is defined by the `Pre-Launch Top 20 Hard Checklist` in [operations-checklist.md](./operations-checklist.md).
+- Release workflow must use caller-passed `image_tag`.
+- `Dockerfile` base image must use explicit version + digest (e.g., `node:22.21.1-bookworm-slim@sha256:...`) to avoid tag drift.
+- Image release simultaneously generates `sha-<commit>` tag for rollback and traceability.
+- Deployment workflow only deploys explicitly passed image tag, does not use floating latest.
+- Hard gate checks before version release see Pre-Launch Top 20 Hard Checklist in [operations-checklist.md](./operations-checklist.md).
 
 ## Branch Strategy
 
-- `main` is the only releasable branch; release, deploy, and rollback evidence are all based on commits on `main`.
-- `codex/*`, `fix/*`, `feature/*` branches are only allowed as short-term working branches; before merging, targeted verification for the corresponding issue/table row must be completed.
-- Long-unmerged branches must not serve as authoritative sources; if history needs to be preserved, corresponding evidence should be recorded in the review table or operations documents, not relying on remote branch names.
+- `main` is the only releasable branch; release, deployment and rollback evidence are all based on commits on `main`.
+- `codex/*`, `fix/*`, `feature/*` branches are only allowed as short-term working branches; must complete corresponding issue/table row targeted verification before merging.
+- Long-unmerged branches cannot be used as source of truth; if historical preservation needed, should record corresponding evidence in review table or operations document, not rely on remote branch name.
 
 ## Commit Messages
 
 - Commit titles use short imperative mood, describing specific behavioral changes, e.g., `Add worker handshake lifecycle`.
-- Semanticless titles are prohibited as final commit descriptions, e.g., `chore: sync`, `update`, `fix`.
-- Each commit covers only one issue cluster; if runtime code and documentation are modified simultaneously, the commit description must name the verification command or evidence file.
+- Prohibited from using semantically empty titles as final commit descriptions, e.g., `chore: sync`, `update`, `fix`.
+- One commit only covers one issue cluster; if simultaneously modifying runtime code and docs, commit description must name verification commands or evidence files.
 
 ## Related Documents
 
 - Pre-release checklist: [operations-checklist.md](./operations-checklist.md)
-- Authoritative version history: [../../CHANGELOG.md](../../CHANGELOG.md)
+- Authoritative version record: [../../CHANGELOG.md](../../CHANGELOG.md)
+- Release/rollback execution contract: [../contracts/release_rollout_and_rollback_contract.md](../contracts/release_rollout_and_rollback_contract.md)

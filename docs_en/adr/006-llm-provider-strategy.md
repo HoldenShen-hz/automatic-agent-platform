@@ -1,143 +1,143 @@
-# ADR-006 LLM Provider Strategy
+# ADR-006 LLM Provider 策略
 
 ---
 
-## OAPEFLIR Association
+## OAPEFLIR 关联
 
-This document defines the following components in the OAPEFLIR eight-stage cognitive loop:
+本文档defines OAPEFLIR 八阶段认知循环中的以下组件：
 
-- **Observe**: Signal collection and unified DTO
-- **Assess**: Pre/post execution assessment and risk judgment
-- **Plan**: Explicit planning and DAG construction (ADR-060)
-- **Execute**: Step execution and Dual-Channel output
-- **Feedback**: Signal collection, preprocessing and 7 feedback sources (ADR-079)
-- **Learn**: Pattern detection and knowledge extraction (ADR-080)
-- **Improve**: Improvement candidate evaluation and Rollout state machine (ADR-075)
-- **Release**: Six-level controlled release and automatic rollback
+- **Observe**：信号采集vs统一 DTO
+- **Assess**：执lines前/后评估vs风险判断
+- **Plan**：显式规划vs DAG 构建（ADR-060）
+- **Execute**：步骤执linesvs Dual-Channel 输出
+- **Feedback**：信号收集、预handlevs 7 class反馈源（ADR-079）
+- **Learn**：模式检测vs知识提取（ADR-080）
+- **Improve**：改进候选评估vs Rollout Status机（ADR-075）
+- **Release**：六级受控发布vs自动回滚
 
 ---
 
-- Status: Accepted
-- Decision Date: 2026-04-02
+- Status：Accepted
+- Decision日期：2026-04-02
 
 ## Background
 
-The platform includes headquarters roles, execution roles, review roles, and backend tasks, with vastly different quality, speed, and cost requirements across roles. If the LLM decides which model to use on-the-fly each time, it introduces uncontrollable costs and unexplainable behavior.
+平台contains总部角色、执lines角色、审查角色和后台任务，不同角色的质量、速度和成本要求差异很大。若每iterations都由 LLM 临时决定用哪个模型，会带来不可控成本和不可解释lines为。
 
 ## Decision
 
-Adopt a combined strategy of model tiers plus Provider abstraction plus rule-based selection:
+采用“模型层级 + Provider 抽象 + 规则选择”的组合策略：
 
-- Use four tiers: reasoning, coding, balanced, fast, to describe capability stratification.
-- Role-to-tier mappings are declared at the configuration layer, not re-evaluated at runtime by the LLM.
-- Unify Provider interfaces to mask underlying vendor differences.
-- Handle retries, backoff, failover, caching, and rate limiting uniformly at the Provider layer.
-- Further distinguish intra-provider auth profile rotation from inter-provider model fallback.
+- 用 `reasoning`、`coding`、`balanced`、`fast` 四个 tier Description能力分层。
+- 角色到 tier 的映射在configure层声明，不在运lines时由 LLM 重新判断。
+- via统一 Provider 接口屏蔽底层供应商差异。
+- 在 Provider 层统一handle重试、退避、failover、cache和限速。
+- 并进一步区分 provider 内 auth profile rotation vs provider 间 model fallback。
 
-## Model Tiering Principles
+## 模型分级principle
 
-Typical mappings:
+典型映射：
 
-- reasoning: High-quality judgment scenarios such as CEO, architects, Reviewers.
-- coding: Execution-intensive scenarios such as Developers, data engineers.
-- balanced: Comprehensive balanced scenarios such as PM, Testers, researchers, VP orchestration.
-- fast: Low-cost scenarios such as VP operations fallback classification, proofreading, QA, compression.
+- `reasoning`：CEO、Architecture师、Reviewer 等高质量判断场景。
+- `coding`：Developer、data工程师等执lines密集场景。
+- `balanced`：PM、Tester、研究员、VP 编排等综合平衡场景。
+- `fast`：VP 运营回退分class、校对、QA、压缩等低成本场景。
 
-Key constraints:
+关键约束：
 
-- Role-to-tier mappings must be configurable and auditable.
-- The same named tier may switch to different underlying models across versions, but behavior should have regression verification.
+- 角色vs tier 的映射必须可configure、可审计。
+- 同名 tier 在不同版本中可以切换到底层不同模型，但lines为应有回归验证。
 
-## Provider Layer Responsibilities
+## Provider 层职责
 
-The Provider layer is not just sending requests. It must also uniformly handle:
+Provider 层不只is“发request”，还需要统一handle：
 
-- Credential loading.
-- Auth profile selection and rotation.
-- Request and response adaptation.
-- Retry with exponential backoff.
-- Provider failover.
-- Token counting and billing instrumentation.
-- Prompt caching and response caching.
+- 凭据加载。
+- auth profile 选择vs轮转。
+- request / response 适配。
+- 重试vs指数退避。
+- Provider failover。
+- token 计数vs计费埋点。
+- prompt cache和responsecache。
 
-It is also recommended to maintain a unified provider and model metadata registry to carry:
+同时Recommendation维护统一的 provider / model metadata registry，used for承载：
 
 - capability labels
-- context and output limits
+- context / output limits
 - pricing
 - modalities
 - auth methods
-- status (active, degraded, disabled, deprecated)
-- metadata source (bundled_snapshot, local_override, remote_refresh)
+- status (`active | degraded | disabled | deprecated`)
+- metadata source (`bundled_snapshot | local_override | remote_refresh`)
 
-This registry should try to avoid scattering model capabilities across call sites via string-matching hardcoding.
+该 registry 应尽量避免把模型能力散落在call点via字符串匹配hardcodes。
 
-## Cost and Reliability
+## 成本vs可靠性
 
-Provider strategy must coordinate with the cost model:
+Provider 策略必须vs成本模型协同：
 
-- High-value roles use stronger models, but unlimited upgrades are not allowed.
-- Compression, fallback classification, and backend organization prioritize cheaper models.
-- Rate limit strategy and daily budget strategy must be clearly defined.
+- 高价值角色uses更强模型，但不允许no限升级。
+- 压缩、回退分class和后台整理优先用便宜模型。
+- 需要明确 rate limit 策略和 daily budget 策略。
 
-When LLM is unavailable:
+当 LLM 不可用时：
 
-- Failover to backup provider is allowed.
-- If completely unavailable, suspend the task and notify the user instead of blindly retrying.
-- When the system enters degraded mode, only safe capabilities that do not depend on LLM are allowed to execute.
+- 允许 failover 到备选 provider。
+- 若全面不可用，应暂停任务并通知user，而不is盲目重试。
+- 系统进入降级模式时，只允许执lines不relies on LLM 的security能力。
 
-Intra-provider recommended rules:
+Provider 内Recommendation规则：
 
-- Multiple auth profiles within the same provider should support rotation order, cooldown, and temporary disabled state.
-- Auto-selected profiles can maintain stickiness per session to reduce cache churn.
-- User-explicitly pinned profiles have higher priority than auto-rotation, but failures should still provide an auditable recovery path.
+- 同一 provider 的多个 auth profile 应supported rotation order、cooldown 和临时 disabled Status。
+- 自动选择的 profile 可以按 session 保持 stickiness，降低cache抖动。
+- user显式 pin 的 profile 优先级高于自动轮转，但failed时仍应给出可审计的恢复路径。
 
-## Caching Strategy
+## cache策略
 
-Caching is divided into at least three categories:
+cache分为至少三class：
 
-- Layer 1 prompt static cache.
-- Prompt caching.
-- LLM response caching.
+- Layer 1 prompt 静态cache。
+- prompt caching。
+- LLM responsecache。
 
-Goals:
+目标：
 
-- Reduce token waste from repetitive contexts.
-- Improve reuse rate for multi-agent homogeneous tasks.
-- Provide a more stable foundation for cost prediction.
+- 降低repeats上下文的 token 浪费。
+- 提高多 Agent 同构任务的复用率。
+- 为成本预测提供更稳定的基础。
 
-## Results
+## 结果
 
-Benefits:
+优点：
 
-- Explainable, controllable, and auditable.
-- Facilitates independent evolution of tier selection for specific role categories.
-- Does not lock into a single vendor, benefiting future failover and enterprise deployment.
+- 可解释、可控、可审计。
+- 便于针对某一class角色单独演化 tier 选择。
+- 不锁定单一厂商，利于后续 failover 和企业化部署。
 
-Constraints:
+约束：
 
-- Tier design must be maintained together with cost model, workflow paths, and role responsibilities.
-- New model onboarding requires running regression tests; string replacement alone is insufficient.
-- Provider abstraction must avoid only abstracting the least common denominator, otherwise high-value features will be lost.
+- tier 设计必须vs成本模型、工作流路径和角色职责一起维护。
+- 新模型接入需要跑回归，不应只替换字符串。
+- provider 抽象要避免只抽象“最小公分母”，no则会损失高价值特性。
 
-## Cross-References
+## 交叉references用
 
-- [ADR-005 Security Model](./005-security-model.md)
-- [ADR-007 Evolution Engine](./007-evolution-engine.md)
-- [ADR-008 Cost Model](./008-cost-model.md)
+- [ADR-005 security模型](./005-security-model.md)
+- [ADR-007 进化references擎](./007-evolution-engine.md)（其中 rollout / release 相关语义已由 ADR-075 部分替代）
+- [ADR-008 成本模型](./008-cost-model.md)
 
-## Source Sections
+## 来源章节
 
-- Section 7.1
-- Section 7.3
-- Section 7.3.1
-- Section 7.3.2
-- Section 7.3.3
-- Section 7.4
-- Section 7.4.1
-- Section 7.5
-- Section 7.6
+- `§7.1`
+- `§7.3`
+- `§7.3.1`
+- `§7.3.2`
+- `§7.3.3`
+- `§7.4`
+- `§7.4.1`
+- `§7.5`
+- `§7.6`
 
 ## v4.3 ADR Remediation
 
-- R5-63: This ADR originally referenced old section numbers (such as Section 7.1 and 7.3 etc.), which have been updated to the correct section mappings in the actual architecture doc.
+- R5-63: 本 ADR 原先references用旧版章节号（如 `§7.1`/`§7.3` 等），现已更新为实际 architecture doc 中的正确章节映射。

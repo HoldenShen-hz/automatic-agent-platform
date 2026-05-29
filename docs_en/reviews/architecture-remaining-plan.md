@@ -1,114 +1,43 @@
-# Architecture Design Implementation Remaining Work Plan
+# Architecture Design vs Implementation Remaining Work Plan
 
 **Version**: v1.0
 **Date**: 2026-04-22
-**Based on**: docs_zh/reviews/architecture-design-vs-implementation-review.md v4.2
+**Basis**: `docs_zh/reviews/architecture-design-vs-implementation-review.md`
 
----
+## Closed Items
 
-## 1. Closed Items Confirmed (No Further Action Needed)
+- P0: Dockerfile entry, Redis error logs, DLQ persistence, queue.catch cleanup
+- P1: CAS status migration, Outbox integration, SLO alerts, StructuredLogger async, session fdatasync
+- P2: Prometheus rules, OTEL default enable, KEYS→SCAN, spawnSync removal, Map TTL, startup validation, path traversal, docker-compose credentials, deploy script guardrail, Helm domain configuration, Fluentd backoff
+- P3: Route deduplication, Outbox batch, ServiceRegistry migration, PagerDuty URL configuration
 
-| Category | Items | Status |
-|----------|-------|--------|
-| P0 | Dockerfile entry, Redis error logs, DLQ persistence, queue.catch cleanup | ✅ Completed |
-| P1 | CAS state transitions, Outbox integration, SLO alerts, StructuredLogger async, session fdatasync | ✅ Completed |
-| P2 | Prometheus rules (16), OTEL enabled by default, KEYS→SCAN, spawnSync removal, Map TTL, startup validation, path traversal, docker-compose credentials, deployment script guardrails, Helm domain, Fluentd backoff | ✅ Completed |
-| P3 | Route deduplication, Outbox batch, ServiceRegistry migration, PagerDuty URL configurable | ✅ Completed |
+## Long-term Evolution Items
 
----
+### 1. Large Class Splitting
 
-## 2. Remaining Long-Term Evolution Items (ℹ️ Non-Urgent)
+- Continue evaluating high-risk files with `>800 LOC`.
+- Split into clearly Responsibility-defined subclasses while maintaining original interface compatibility.
 
-### 2.1 P3.26 Giant Class Consolidation (5 person-days)
+### 2. `Record<string, unknown>` Convergence
 
-**Current state**: 10 files >800 lines, but significant improvement achieved
+- Prioritize constraining tool input/output, event payload, delegation schema.
+- Progressively replace via high-value entry points, no one-time full repository rewrite.
 
-**Target files**:
-1. `HumanTakeoverServiceAsync` - Already split out TakeoverQueueManager/TakeoverEscalationManager
-2. Other large files pending evaluation
+### 3. Zod Runtime Validation Completion
 
-**Approach**: Extract cohesive method groups into smaller classes, maintain original interface compatibility
+- Prioritize coverage for API handler, tool executor, config loader.
+- Goal is to explicitly call `z.parse()` at key external input boundaries.
 
----
+### 4. ops-maturity Leaf Tool Enhancement
 
-### 2.2 P3.28 Record<string,unknown> Type Improvement (5-8 person-days)
+- Supplement real behavior for leaf modules that currently only retain thin entry points.
+- First judge whether continued productization is worthwhile based on interface definitions and call chains.
 
-**Current state**: 822 occurrences, but mainly for open JSON envelope modeling
+### 5. limit-only Query Optimization
 
-**High-value improvement points**:
-1. `delegation-types.ts` - Constrain schema types (partially done)
-2. Tool input/output types
-3. Event payload types
+- Deep pagination queries like task list, DLQ, worker list prioritize adding cursor/pagination semantics.
 
-**Approach**: Incremental replacement, prioritize high-value points
+## Description
 
----
-
-### 2.3 P3.29 Zod Schema Validation Balance (3 person-days)
-
-**Current state**: Declaration/validation 3:1 imbalance
-
-**Improvement points**:
-1. API handlers receiving external data
-2. Tool executor input validation
-3. Config loaders runtime validation
-
-**Approach**: Add z.parse() calls at key entry points
-
----
-
-### 2.4 P3.31 ops-maturity Leaf Tool Enhancement (5-10 person-days)
-
-**Current state**: Some files <50 lines but functionality is complete
-
-**To enhance**:
-1. `incident-diagnoser/index.ts` (9 lines)
-2. `config-optimizer/index.ts` (7 lines)
-3. `dev-assistant/index.ts` (7 lines)
-
-**Approach**: Expand functionality based on interface definitions
-
----
-
-### 2.5 P3.32 limit-only Query Optimization (2 person-days)
-
-**Current state**: Internal queries use LIMIT without cursors
-
-**Improvement points**:
-1. Task list deep pagination
-2. DLQ queries
-3. Worker list
-
-**Approach**: Add cursor parameter
-
----
-
-## 3. Execution Plan
-
-### Phase 1: Closure Verification (1 hour)
-- Confirm all ✅ items are actually implemented
-- Verify build passes
-
-### Phase 2: Quick Fixes (2-3 hours)
-1. P3.32 limit-only query - cursor pagination
-2. P3.29 Zod validation - add validation to high-risk entry points
-
-### Phase 3: Long-term Evolution (as needed)
-- P3.26 giant classes - refactor gradually by priority
-- P3.28 types - incremental replacement
-- P3.31 leaf tools - functionality enhancement
-
----
-
-## 4. Verification Checklist
-
-```
-[ ] npm run build passes
-[ ] npm run test passes
-[ ] No new TypeScript errors
-[ ] All section statuses match documentation
-```
-
----
-
-**Document End**
+- This file is the Chinese mirror of `docs_en/reviews/architecture-remaining-plan.md`.
+- This only tracks "remaining evolution items", does not replace current active review/todo list.

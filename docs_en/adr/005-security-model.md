@@ -9,8 +9,8 @@ This document defines the following components in the OAPEFLIR eight-stage cogni
 - **Observe**: Signal collection and unified DTO
 - **Assess**: Pre/post execution assessment and risk judgment
 - **Plan**: Explicit planning and DAG construction (ADR-060)
-- **Execute**: Step execution and Dual-Channel output
-- **Feedback**: Signal collection, preprocessing and 7 feedback sources (ADR-079)
+- **Execute**: Step execution and dual-channel output
+- **Feedback**: Signal collection, preprocessing, and 7 feedback sources (ADR-079)
 - **Learn**: Pattern detection and knowledge extraction (ADR-080)
 - **Improve**: Improvement candidate evaluation and Rollout state machine (ADR-075)
 - **Release**: Six-level controlled release and automatic rollback
@@ -22,106 +22,106 @@ This document defines the following components in the OAPEFLIR eight-stage cogni
 
 ## Background
 
-Automatic Agent allows agents to access tools, execute commands, invoke external systems, and ultimately operate in multi-tenant and commercial scenarios. Therefore, enforced security boundaries must be established beyond the model layer.
+Automatic Agent allows Agents to access tools, execute commands, call external systems, and ultimately run in multi-tenant and commercial scenarios. Therefore, mandatory enforcement security boundaries must be established outside the model layer.
 
 ## Decision
 
-Adopt a multi-layer security model:
+Adopt multi-layer security model:
 
 - Role permission layer: Each role can only access authorized tools and capabilities.
-- Policy judgment layer: Rule system or policy provider makes allow, deny, ask judgments on commands and operations.
-- Approval layer: High-risk commands, external network access, destructive operations must be escalated for confirmation.
-- Execution layer: Enforced constraints via sandbox, path mapping, network isolation, and runtime auditing.
-- Plugin runtime layer: High-trust built-in plugins can enter independent subprocess runtimes, with exclusive sandbox root, minimal env whitelist, and Node permission model enabled in enhanced mode.
+- Policy judgment layer: Rule system or policy provider makes `allow`, `deny`, `ask` judgments on commands and operations.
+- Approval layer: High-risk commands, external network access, destructive operations must escalate for confirmation.
+- Execution layer: Mandatory constraints via sandbox, path mapping, network isolation, and runtime audit.
+- Plugin runtime layer: High-trust built-in plugins can enter independent subprocess runtime, enabling stronger mode with exclusive sandbox root, minimum env whitelist, and Node permission model.
 
-## Four-Layer Defense Approach
+## Four-Layer Protection Approach
 
 Core principles:
 
-- deny wins: Any layer rejecting terminates execution.
-- Default to least privilege.
-- Prompt injection cannot cross tool boundaries or sandbox boundaries.
-- When cost limits, policy violations, or LLM complete unavailability occur, the system enters read-only, paused, or terminated state.
+- `deny wins`, any layer rejection terminates execution.
+- Default to minimum privilege.
+- Prompt injection cannot bypass tool boundaries and sandbox boundaries.
+- When cost exceeds limit, policy violation, or LLM completely unavailable, enter read-only, pause, or terminate state.
 
 Security chain:
 
-1. Role tool permissions are filtered first.
-2. Policy rules or provider make a second judgment.
-3. Approval is invoked when needed.
-4. Sandbox and executor enforce the final execution.
+1. Role tool permissions filtered first.
+2. Policy rules or provider judged second.
+3. When needed, go through approval.
+4. Finally, sandbox and executor enforce constraints.
 
-## Running Modes
+## Runtime Modes
 
-The platform's running mode affects approval and automation boundaries:
+Platform runtime mode affects approval and automation boundaries:
 
-- full_auto: Only enabled under stricter budget, security, and rollback conditions.
-- supervised_auto: Allows automatic execution, but high-risk behaviors still require supervision.
-- read_only: Prohibits writes and side effects.
-- no-write: Allows reading and analysis, but prohibits any write operations.
-- no-external-call: Prohibits external network and third-party system calls.
-- no-rollout: Prohibits release, rollout, and external impact amplification actions.
-- manual_only: All sensitive actions require explicit human confirmation.
-- incident-mode: Incident handling mode, prioritizing system and evidence chain protection.
+- `full_auto`: Only opened under stricter budget, security, and rollback conditions.
+- `supervised_auto`: Allows automatic execution, but high-risk behavior still requires supervision.
+- `read_only`: Prohibits writes and side effects.
+- `no-write`: Allows reading and analysis, but no write operations.
+- `no-external-call`: Prohibits external network and third-party system calls.
+- `no-rollout`: Prohibits release, promotion, and external impact amplification actions.
+- `manual_only`: All sensitive actions require human explicit confirmation.
+- `incident-mode`: Incident handling mode, priority to protect system and evidence chain.
 
 Notes:
 
-- supervised, auto, and full-auto are only permitted as legacy product terminology or UI projections, no longer serving as canonical runtime mode enumerations.
+- `supervised/auto/full-auto` are only allowed as legacy product terminology or UI projection, no longer as canonical runtime mode enumeration.
 
-## Sandbox and Execution Strategy
+## Sandbox and Execution Policy
 
-The execution side must cover at minimum:
+Execution side must at minimum cover:
 
 - File system access restrictions.
-- Network access policy.
+- Network access policies.
 - Command parsing and risk classification.
 - Timeout, output limits, and exception handling.
 - Platform detection and different host environment adaptation.
-- Plugin SPI isolated runtime must distinguish between shared_process, forked_process, sandboxed_process, and containerized_process. Where sandboxed_process must be an independently restricted subprocess, and containerized_process must enter an external independent sandbox via an explicit launcher interface, not relying solely on logical constraints.
+- Plugin SPI isolated runtime distinguishes at least `shared_process`, `forked_process`, `sandboxed_process`, and `containerized_process`. `sandboxed_process` must be an independent restricted subprocess, while `containerized_process` must enter external independent sandbox via explicit launcher interface, not just relying on logical constraints.
 
 Enhanced capabilities include:
 
 - Virtual path mapping.
-- Sandbox warm-up pool.
-- Sandbox-level file locks.
+- Sandbox pre-warming pool.
+- Sandbox-level file locking.
 - Remote kill switch.
-- Plugin runtime should retain evolution space toward container or microVM. Current implementation besides sandboxed_process with Node permission model plus sandbox root, also provides containerized_process launcher host, which can integrate with external isolators such as docker, podman, or bwrap, but this still does not equal completed live orchestrator orchestration.
+- Plugin runtime should retain path to container/microVM evolution. Current implementation besides Node permission model + sandbox root's `sandboxed_process`, also provides `containerized_process` launcher host, can connect to external isolators like `docker`/`podman`/`bwrap`, but this still does not equal having completed live orchestrator orchestration.
 
 ## Pluggable Policy Providers
 
-The policy layer should not support only one implementation:
+Policy layer should not only support one implementation:
 
 - Phase 1a: Rule-driven provider.
 - Phase 3: AI classifier provider.
-- Phase 4: Integration with enterprise policy engines such as OPA.
+- Phase 4: Integrate with enterprise policy engines like OPA.
 
 Unified constraints:
 
-- All provider results enter the same decision chain.
-- When multiple providers coexist, deny wins is applied.
+- All provider results enter same decision chain.
+- When multiple providers coexist, use `deny wins`.
 
 ## Authentication and Tenant Isolation
 
-Commercial security capabilities also include:
+Security capabilities for commercialization also include:
 
 - PKCE OAuth.
-- Token management for Web UI and CLI.
+- Token management for Web UI/CLI.
 - Multi-tenant data isolation.
 - RBAC role permissions.
-- Costs and deliverables isolated by user_id or tenant.
+- Costs and outputs isolated by `user_id` or tenant.
 
 ## Results
 
 Benefits:
 
-- Security boundaries do not rely on model self-awareness.
+- Security boundaries do not depend on model self-awareness.
 - Future enterprise policy providers can seamlessly integrate.
-- Maintains consistency with permissions, auditing, recovery, and commercialization capabilities.
+- Consistent with permissions, audit, recovery, and commercialization capabilities.
 
 Costs:
 
-- Tool design and role design must explicitly express boundaries.
-- Sandbox, auditing, and approval increase implementation and testing costs.
-- Must prove through tests that the policy chain can truly block dangerous paths.
+- Tool and role design must explicitly express boundaries.
+- Sandbox, audit, and approval increase implementation and testing costs.
+- Must prove with tests that policy chain can truly block dangerous paths.
 
 ## Cross-References
 
@@ -131,15 +131,15 @@ Costs:
 
 ## Source Sections
 
-- Section 8.1
-- Section 8.1.1
-- Section 8.1.2
-- Section 8.2
-- Section 8.3
-- Section 8.4
-- Section 8.5
-- Section 8.6
+- `§8.1`
+- `§8.1.1`
+- `§8.1.2`
+- `§8.2`
+- `§8.3`
+- `§8.4`
+- `§8.5`
+- `§8.6`
 
 ## v4.3 ADR Remediation
 
-- A-22: This ADR originally only kept three running modes supervised, auto, and full-auto. Root cause being that the early security model treated automation level as the only control dimension and did not build runtime protection modes like read-only, no-write, no-external-call, no-rollout, manual-only, incident-mode as canonical enumerations. Fix: The main text now converges running modes to the 8 runtime modes specified in the main architecture, and degrades the old three tiers to UI and product projection terminology.
+- A-22: This ADR originally only retained `supervised/auto/full-auto` three-mode runtime. Root cause was that early security model treated automation level as the only control axis, not building runtime protection modes as canonical enum. Fix: Body now converges runtime mode to the 8 kinds specified in main architecture, and demotes old three-mode to UI/product projection terminology.

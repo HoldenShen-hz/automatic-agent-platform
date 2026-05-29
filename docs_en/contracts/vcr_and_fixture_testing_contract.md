@@ -2,151 +2,151 @@
 
 ---
 
-## OAPEFLIR Association
+## OAPEFLIR 关联
 
-This contract participates in the following stages of the OAPEFLIR eight-stage cycle:
+本 contract 参vs OAPEFLIR 八阶段循环中的以下阶段：
 
-- **Observe**: Signal collection and aggregation
-- **Assess**: Pre-execution evaluation and risk assessment
-- **Plan**: Task decomposition and DAG construction
-- **Execute**: Step execution and fault tolerance
-- **Feedback**: Signal collection and preprocessing
-- **Learn**: Pattern detection and knowledge extraction
-- **Improve**: Improvement candidate evaluation and rollout
-- **Release**: Controlled release and rollback
+- **Observe**：信号采集vs聚合
+- **Assess**：执lines前评估vs风险判断
+- **Plan**：任务分解vs DAG 构建
+- **Execute**：步骤执linesvs容错
+- **Feedback**：信号收集vs预handle
+- **Learn**：模式检测vs知识提取
+- **Improve**：改进候选评估vs rollout
+- **Release**：受控发布vs回滚
 
 ---
 
-## 1. Scope
+## 1. 范围
 
-This contract defines record/replay and fixture rules for providers, LLMs, streaming outputs, and external APIs in testing.
+本 contract defines provider、LLM、流式输出和外部 API 在测试中的 record / replay vs fixture 规则。
 
-Related documents:
+相关文档：
 
 - `testing_singleton_reset_contract.md`
 - `tool_and_provider_execution_contract.md`
 - `gateway_streaming_contract.md`
 - `cost_and_budget_contract.md`
 
-## 2. Goals
+## 2. 目标
 
-The VCR / fixture testing system must at least achieve:
+VCR / fixture 测试体系至少要做到：
 
-- CI does not depend on real providers to run the main test suite.
-- Regression test results are stable and replayable.
-- Clear boundaries between real request recording and offline replay.
+- CI 不relies on真实 provider 才能跑主测试集。
+- 回归测试结果稳定、可重放。
+- 真实request录制vs离线回放边界清楚。
 
-## 3. Test Modes
+## 3. 测试模式
 
 ### 3.1 `fixture_only`
 
-- Uses only static fixtures
-- Default CI primary mode
+- 只uses静态 fixture
+- defaults to CI 主模式
 
 ### 3.2 `vcr_replay`
 
-- Replays existing recorded results based on request fingerprint
-- Fails if recording is missing
+- 根据request指纹回放既有录制结果
+- 若缺少录制则failed
 
 ### 3.3 `vcr_record`
 
-- Allows real calls to providers during local development
-- Records request/response as fixture
+- 本地开发时允许真实call provider
+- 将request/response录制为 fixture
 
 ## 4. `RecordedInteraction`
 
-| Field | Type | Description |
-| --- | --- | --- |
-| `interaction_id` | `string` | Recording ID |
-| `provider` | `string` | Provider identifier |
-| `model` | `string` | Model name |
-| `request_fingerprint` | `string` | Normalized request fingerprint |
-| `request_summary` | `json` | Sanitized request summary |
-| `response_payload` | `json` | Response body |
-| `stream_chunks` | `json[]?` | Streaming chunks |
-| `usage_snapshot` | `json?` | Token / cost information |
-| `recorded_at` | `timestamp` | Recording time |
+| 字段 | class型 | Description |
+|---|-------|--------|
+| `interaction_id` | `string` | 录制 ID |
+| `provider` | `string` | provider 标识 |
+| `model` | `string` | 模型名 |
+| `request_fingerprint` | `string` | 规范化request指纹 |
+| `request_summary` | `json` | 脱敏后的request摘要 |
+| `response_payload` | `json` | response体 |
+| `stream_chunks` | `json[]?` | 流式块 |
+| `usage_snapshot` | `json?` | token / cost 信息 |
+| `recorded_at` | `timestamp` | 录制time |
 
-## 5. Request Fingerprint Rules
+## 5. request指纹规则
 
-Request fingerprint must at least include:
+request指纹至少应contains：
 
 - provider
 - model
-- System / user prompt normalized text
-- Tool list signature
-- Key parameters (temperature, reasoning level, etc.)
+- system / user prompt 规范化文本
+- tool 列table签名
+- 关键参数（temperature、reasoning level 等）
 
-Rules:
+规则：
 
-- Fields that are volatile but have no semantic value must not be directly included in the fingerprint.
-- Credential sanitization must be completed before fingerprint generation.
+- 不得把易波动但no语义价值的字段directly纳入指纹。
+- 指纹生成前必须完成凭据脱敏。
 
-## 6. Fixture Directory Rules
+## 6. Fixture 目录规则
 
-Recommended directories:
+Recommendation目录：
 
 - `tests/__fixtures__/llm/`
 - `tests/__fixtures__/vcr/`
 - `tests/__fixtures__/gateway/`
 
-Rules:
+规则：
 
-- Fixtures should be named by scenario, not just by timestamp.
-- Similar fixtures should show corresponding tasks, roles, or failure scenarios.
+- fixture 应按场景命名，而不is只按time戳命名。
+- 同class fixture 应能看出对应任务、角色或failed场景。
 
-## 7. Streaming Response Rules
+## 7. 流式response规则
 
-- Streaming responses can be recorded as chunk lists
-- During replay, order, end signal, and finish reason must be maintained
-- Exact token-by-token consistency is not required, but must satisfy upper-layer protocol assertions
+- 流式response可录制为 chunk 列table
+- replay 时必须保持顺序、结束信号和 finish reason 一致
+- 不要求逐 token 完全一致，但必须满足上层协议断言
 
-## 8. Security and Sanitization
+## 8. securityvs脱敏
 
-- API keys, cookies, tokens, and Authorization headers must be removed before recording
-- Raw sensitive requests must not directly enter repository fixtures
-- If safe sanitization is not possible, recording must be prohibited and manual mock required
+- 录制前必须去除 API key、cookie、token、Authorization header
+- 原始敏感request不得directly进入仓库 fixture
+- 若no法security脱敏，应禁止录制并要求手工 mock
 
-## 9. Failure Semantics
+## 9. failed语义
 
-- In `vcr_replay` mode, when matching fixture is missing, the test must fail
-- When fixture schema is invalid, the test must fail
-- When replay result is incompatible with current protocol, should prompt re-recording or upgrading fixture version
+- `vcr_replay` 模式缺少匹配 fixture 时，测试必须failed
+- fixture schema 不合法时，测试必须failed
+- 回放结果vs当前协议不兼容时，应提示重新录制或升级 fixture 版本
 
-## 10. Layering with Real Tests
+## 10. vs真实测试分层
 
-Recommended layering:
+Recommendation分层：
 
-- unit / integration: default `fixture_only`
-- e2e: prefer `vcr_replay`
-- nightly / manual eval: may allow real providers
+- unit / integration：defaults to `fixture_only`
+- e2e：优先 `vcr_replay`
+- nightly / manual eval：可允许真实 provider
 
-## 11. Cost and Governance
+## 11. 成本vs治理
 
-- Cost of recording real providers must be trackable
-- `vcr_record` should not be enabled by default in CI
-- Re-recording must have clear trigger conditions, such as model upgrade, protocol change, or core prompt change
+- 录制真实 provider 的成本必须可追踪
+- `vcr_record` 不应在 CI defaults to开启
+- 重新录制必须有明确触发条件，例如模型升级、协议变更、核心 prompt 变化
 
-## 12. Phase Boundaries
+## 12. Phase 边界
 
-Phase 1a does:
+Phase 1a 做：
 
 - `fixture_only`
-- Non-streaming provider replay
-- Missing fixture causes failure
+- 非流式 provider replay
+- 缺 fixture 即 fail
 
-Phase 1b does:
+Phase 1b 做：
 
 - `vcr_replay`
-- Streaming chunk replay
-- More complete request fingerprint and recording governance
+- 流式 chunk replay
+- 更完整的request指纹vs录制治理
 
-Currently not doing:
+当前不做：
 
-- Large-scale fixture auto-update service
-- Cross-provider difference normalization auto-fix
-- Enterprise-level dataset evaluation platform
+- 大规模 fixture 自动更新服务
+- 跨 provider 差异归一自动修复
+- 企业级data集评估平台
 
-## 13. Closure Conclusion
+## 13. 收口Conclusion
 
-The core of VCR / fixture is not "storing one call", but converting external unstable dependencies into a controllable, replayable, auditable test input set.
+VCR / fixture 的核心不is“把一iterationscall存下来”，而is把外部不稳定relies on变成一套可控、可回放、可审计的测试输入。

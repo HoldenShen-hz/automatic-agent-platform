@@ -14,19 +14,20 @@ This document addresses long-term source code governance items that cannot be sa
 
 ## Closure Rules
 
-- Specific bugs, test failures, and security defects must be closed with code fixes and targeted tests.
-- Large-scale governance items must first record boundaries, owners, admission rules, and follow-up splitting strategies.
-- It is not allowed to write "registered governance items" as "code has been fully refactored".
+- Specific bugs, test failures, and security defects must be closed through code fixes and targeted tests.
+- Scale governance items must first record boundaries, owner, admission rules, and follow-up splitting strategy.
+- It is not allowed to write "governance item registered" as "all code refactoring completed".
 
 ## New Code Admission
 
 - New files should have single responsibility.
-- New public APIs should be exposed from explicit barrels or package exports.
-- New TODOs must include owner or tracking notes.
-- New `any` and `@ts-ignore` must explain the reason.
+- New public APIs should be exposed through explicit barrel or package exports.
+- New TODOs must include owner or tracking description.
+- New `any` and `@ts-ignore` must include reason explanation.
+- New or legacy super-large source files must use `1000` lines as default warning threshold, with audit or splitting plan added.
 
 ## Executable Audits
 
-- `scripts/ci/audit-codebase-inventory.mjs` is responsible for outputting current statistics on large files, `process.env`, `any`, `@ts-ignore`, double casting, and temporary files in the root directory.
-- `scripts/ci/audit-review-batch-resource-contracts.mjs` is responsible for verifying that code, UI, security, and documentation contracts from this round of review have been implemented.
-- Duplicate code and circular dependencies are not allowed to be concluded by manual verification alone; new governance items must include script statistics or targeted test evidence.
+- `scripts/ci/audit-codebase-inventory.mjs` outputs current large files, `process.env`, `any`, `@ts-ignore`, dual type casting, and root directory temp file statistics.
+- `scripts/ci/audit-review-batch-resource-contracts.mjs` verifies that code, UI, security, and documentation contracts have been implemented in this round of review.
+- Duplicate code and circular dependencies are not allowed to have only manual conclusions; new governance items must include script statistics or named targeted test evidence.

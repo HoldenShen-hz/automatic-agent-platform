@@ -1,12 +1,12 @@
 # Supervisor Contract
 
-## 1. Scope
+## 1. 范围
 
-This contract defines the minimum supervisory boundaries for the Agent Supervisor with respect to runtime instances, health status, heartbeats, alerts, recovery actions, performance reviews, and OAPEFLIR closed-loop proposals.
+本 contract defines Agent Supervisor 对运lines实例、健康Status、心跳、告警、恢复动作、绩效vs OAPEFLIR 闭环提案的最小监管边界。
 
-It is not responsible for directly executing tasks, but rather for observing, judging, escalating, and auditing.
+它不负责directly执lines任务，而负责观察、判断、升级和审计。
 
-## 2. Key Objects
+## 2. 关键对象
 
 - `AgentRuntimeInstance`
 - `HealthSnapshot`
@@ -19,7 +19,7 @@ It is not responsible for directly executing tasks, but rather for observing, ju
 - `StageStallAlert`
 - `FeedbackAccumulator`
 
-## 3. AgentRuntimeInstance Minimum Fields
+## 3. AgentRuntimeInstance 最小字段
 
 - `instance_id`
 - `agent_id`
@@ -32,102 +32,102 @@ It is not responsible for directly executing tasks, but rather for observing, ju
 - `last_heartbeat_at`
 - `current_node_view_ref?`
 
-Rules:
+规则：
 
-- `current_node_view_ref` may only express semantic projections; it must not reintroduce `HarnessStep` / `current_step_id` as the runtime truth primary key.
-- Any supervisor recovery, alert, or takeover actions must be traceable back to `harness_run_id / node_run_id / attempt_id`.
+- `current_node_view_ref` 只能table达语义投影，不得把 `HarnessStep` / `current_step_id` 重新references入为 runtime truth 主键。
+- 任何 supervisor 恢复、告警或接管动作都必须能回链到 `harness_run_id / node_run_id / attempt_id`。
 
-## 4. HealthSnapshot Minimum Fields
+## 4. HealthSnapshot 最小字段
 
 - `instance_id`
-- `health` (`healthy | degraded | stalled | failed`)
+- `health` (`healthy \| degraded \| stalled \| failed`)
 - `current_stage_view?`
 - `loop_iteration_view?`
 - `negative_feedback_ratio?`
 - `reason?`
 - `sampled_at`
 
-## 5. HeartbeatPolicy Minimum Fields
+## 5. HeartbeatPolicy 最小字段
 
 - `expected_interval_sec`
 - `stale_after_sec`
-- `sample_strategy` (`latest_only | sampled | all_persisted`)
+- `sample_strategy` (`latest_only \| sampled \| all_persisted`)
 
-Phase 1a Rules:
+Phase 1a 规则：
 
-- Default to `latest_only` or `sampled` to avoid high-frequency heartbeats from flooding the database.
-- When no heartbeat is seen for longer than `stale_after_sec`, the Supervisor should mark the instance as `degraded` or `stalled`, not silently ignore it.
+- defaults to采用 `latest_only` 或 `sampled`，避免高频 heartbeat directly灌满data库。
+- exceeds过 `stale_after_sec` 未见心跳时，Supervisor 应把实例标为 `degraded` 或 `stalled`，而不is静默忽略。
 
-## 6. AlertRecord Minimum Fields
+## 6. AlertRecord 最小字段
 
 - `alert_id`
 - `instance_id`
-- `severity` (`SEV1 | SEV2 | SEV3 | SEV4`)
+- `severity` (`SEV1 \| SEV2 \| SEV3 \| SEV4`)
 - `code`
 - `message`
 - `created_at`
 - `resolved_at?`
 
-Alert Severity Guidelines:
+告警分级Recommendation：
 
-- `SEV4`: Localized minor issue, auto-recoverable, primarily for observability hints.
-- `SEV3`: Single workflow / single worker impact, such as stale heartbeat, high retry count, abnormal runtime.
-- `SEV2`: Single business domain / single tenant significantly affected, such as security policy anomaly, batch failure, budget anomaly spread.
-- `SEV1`: Platform-level impact / security incident / production serious risk.
+- `SEV4`: 局部轻微、可自动恢复、主要used for观测提示。
+- `SEV3`: 单 workflow / 单 worker Impact，例如心跳陈旧、重试iterations数偏高、运linestime异常。
+- `SEV2`: 单业务域 / 单租户明显受Impact，例如security策略异常、批量failed、budget异常扩散。
+- `SEV1`: 平台级Impact / security事件 / 生产严重风险。
 
-Recommended Alert Code Baseline:
+推荐告警 code 基线：
 
 - `supervisor.stage_stalled`
 - `supervisor.loop_diverging`
 - `feedback.negative_spike`
 
-## 7. RecoveryAction Minimum Fields
+## 7. RecoveryAction 最小字段
 
 - `action_id`
 - `instance_id`
-- `action_type` (`mark_stalled | request_retry | request_cancel | escalate_to_human | skip_stage | force_loop_exit | rollback_improvement`)
+- `action_type` (`mark_stalled \| request_retry \| request_cancel \| escalate_to_human \| skip_stage \| force_loop_exit \| rollback_improvement`)
 - `reason`
 - `created_at`
 - `actor`
 
-Rules:
+规则：
 
-- The Supervisor may suggest or trigger controlled recovery actions, but must not silently overwrite business outputs.
-- Auto-recovery, cancellation, and escalation must all leave audit records.
-- High-risk actions must still comply with approval and security contracts.
+- Supervisor 可以Recommendation或触发受控恢复动作，但不得静默改写业务输出。
+- 自动恢复、取消、升级都必须留下审计record。
+- 高风险动作仍需服从审批和security contract。
 
-## 8. Behavioral Constraints
+## 8. lines为约束
 
-- The Supervisor is responsible for monitoring and escalation, not for directly tampering with business results.
-- Any auto-recovery or termination actions must leave audit records.
-- Evolution-related suggestions may only form proposals and cannot take effect directly.
-- The Supervisor's judgments on heartbeats, alerts, and recovery must be consistent with the runtime execution contract.
+- Supervisor 负责监控和升级，不directly篡改业务结果。
+- 任何自动恢复或终止动作都必须留下审计record。
+- vs进化相关的Recommendation只能形成 proposal，不能directly生效。
+- Supervisor 对 heartbeat、alert、recovery 的判断应vs runtime execution contract 一致。
 
-## 9. Relationship with Runtime
+## 9. vs runtime 的关系
 
-- `runtime_execution_contract.md` defines how a single run performs precheck, execution, retry, and termination.
-- This contract defines who detects run anomalies and how alerts and recovery actions are formed.
-- `event_bus_contract.md` is responsible for how these signals propagate, not for rewriting supervisory semantics.
+- `runtime_execution_contract.md` defines单iterations run 如何 precheck、执lines、重试和终止。
+- 本 contract defines谁来发现 run 异常，以及如何形成告警和恢复动作。
+- `event_bus_contract.md` 负责这些信号如何传播，不负责改写监管语义。
 
-## 10. Supplementary Rules
+## 10. 补充规则
 
-- In Phase 1b multi-worker topology, the supervisor should at least distinguish between node-local monitor and control-plane supervisor.
-- Performance scores may only form proposals and must not directly drive prompt / role hot updates; formal activation still requires governance chain approval.
+- Phase 1b 多 worker 拓扑下，supervisor 应至少区分 node-local monitor vs control-plane supervisor。
+- 绩效评分只能形成 proposal，不得directly驱动 prompt / role 热更新；正式生效仍需治理链路批准。
 
-## 10A. OAPEFLIR Loop Monitoring
+## 10A. OAPEFLIR 循环监控
 
-`LoopHealthSnapshot` Minimum Fields:
+`LoopHealthSnapshot` 最小字段：
 
 - `harness_run_id`
 - `task_id?`
 - `loop_iteration_view`
 - `current_stage_view`
-- `loop_health` (`healthy | drifting | stalled | terminated`)
+- `loop_health` (`healthy \| drifting \| stalled \| terminated`)
 - `stage_duration_ms?`
 - `negative_feedback_count`
 - `last_transition_at`
 
-`StageStallAlert` Minimum Fields:
+`StageStallAlert` 最小字段：
 
 - `harness_run_id`
 - `task_id?`
@@ -136,7 +136,7 @@ Rules:
 - `stall_reason`
 - `created_at`
 
-`FeedbackAccumulator` Minimum Fields:
+`FeedbackAccumulator` 最小字段：
 
 - `harness_run_id`
 - `task_id?`
@@ -146,17 +146,17 @@ Rules:
 - `negative_count`
 - `correction_count`
 
-Rules:
+规则：
 
-- The Supervisor may only suggest `skip_stage`, `force_loop_exit`, `rollback_improvement`; execution still requires passing through the control-plane / policy boundary.
-- `feedback.negative_spike` may only serve as governance and recovery signals and cannot be directly equated with candidate rejection or rollout rollback.
-- If the loop has entered `release`, the Supervisor's recovery actions must prioritize protecting rollout audit and evidence integrity.
+- Supervisor 只能Recommendation `skip_stage`、`force_loop_exit`、`rollback_improvement`，isno执lines仍需走 control-plane / policy 边界。
+- `feedback.negative_spike` 只能作为治理和恢复信号，不能directly等同于候选拒绝或 rollout 回滚。
+- 若 loop 已进入 `release`，Supervisor 的恢复动作必须优先保护 rollout audit 和 evidence 完整性。
 
 
 ## v4.3 Architecture Remediation
 
-The following entries fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If historical sections of this document conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
+以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中record的 contract 偏差。本文档历史段落如vs本节conflicts，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
 
-- T-23: This document originally included `current_step_id` and three severity levels (`info / warning / critical`) in the supervisor main object. The root cause was that the early single-process agent supervision model used business steps as the execution primary key while also adopting generic log levels instead of platform event classification. Fix: The main text now converges instance association keys to `harness_run_id / node_run_id / attempt_id` and changes alert severity to `SEV1-4`.
+- T-23: 本文原先把 `current_step_id` 和 `info / warning / critical` 三档严重度写进 supervisor 主对象，Root cause: 早期单进程 agent 监管模型既把业务步骤当执lines主键，又accesses along用通用日志级别代替平台事件分级。修复：正文现把实例关联键收敛到 `harness_run_id / node_run_id / attempt_id`，并把告警严重度改为 `SEV1-4`。
 
-Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events must only use `platform.*`; OAPEFLIR may only be used as `oapeflir.view.*` / rationale projections; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.
+mandatory规则：Status迁移必须via `RuntimeStateMachine.transition(command)`；执lines计划必须uses `PlanGraphBundle`；执lines结果必须uses `NodeAttemptReceipt`；truth event 只能uses `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；budget必须uses `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。
