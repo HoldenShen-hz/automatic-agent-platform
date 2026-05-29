@@ -1,7 +1,6 @@
 # ADR-114 HTTP Auth Precedence And Service Delegation
 
-## 状态
-Accepted
+- 状态：Accepted
 
 ## 背景
 HTTP 入口可能同时携带用户认证头和服务认证头，之前缺少优先级与审计归因说明。
@@ -22,4 +21,3 @@ HTTP 入口可能同时携带用户认证头和服务认证头，之前缺少优
 ## 相关实现
 - `src/platform/five-plane-interface/api/http-api-server.ts`
 - `src/platform/five-plane-interface/api/service-auth.ts`
-

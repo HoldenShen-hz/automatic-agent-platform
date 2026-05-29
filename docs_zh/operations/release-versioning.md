@@ -15,6 +15,7 @@
 ## 镜像版本
 
 - 发布工作流必须使用调用方传入的 `image_tag`。
+- `Dockerfile` 基镜像必须使用显式版本 + digest（例如 `node:22.21.1-bookworm-slim@sha256:...`），避免 tag 漂移。
 - 镜像发布同时生成 `sha-<commit>` 标签，便于回滚和追踪。
 - 部署工作流只部署显式传入的镜像 tag，不使用 floating latest。
 - 版本发布前的硬门禁检查见 [operations-checklist.md](./operations-checklist.md) 的 `Pre-Launch Top 20 Hard Checklist`。
@@ -35,3 +36,4 @@
 
 - 发布前检查清单：[operations-checklist.md](./operations-checklist.md)
 - 权威版本记录：[../../CHANGELOG.md](../../CHANGELOG.md)
+- 发布/回滚执行契约：[../contracts/release_rollout_and_rollback_contract.md](../contracts/release_rollout_and_rollback_contract.md)

@@ -15,6 +15,7 @@ const tsconfig = JSON.parse(readFileSync(join(root, "tsconfig.json"), "utf8")) a
   compilerOptions?: { tsBuildInfoFile?: string };
 };
 const scriptsTsconfig = JSON.parse(readFileSync(join(root, "tsconfig.scripts.json"), "utf8")) as {
+  compilerOptions?: { allowImportingTsExtensions?: boolean };
   include?: string[];
 };
 const rootEslintSource = readFileSync(join(root, "eslint.config.js"), "utf8");
@@ -52,6 +53,7 @@ test("login and secret command CLIs fail closed on home, encryption, and secret 
   assert.match(loginSource, /AA_CREDENTIALS_ENCRYPTION_KEY/);
   assert.match(loginSource, /oauth\.credentials_encryption_key_required/);
   assert.match(loginSource, /oauth\.invalid_login_state/);
+  assert.match(loginSource, /delete env\.AA_LOGIN_TOKEN/);
   assert.doesNotMatch(loginSource, /HOME\s*\?\?\s*"\/tmp"/);
 
   assert.match(secretCommandsSource, /function resolveSecureCliHome/);
@@ -79,6 +81,7 @@ test("api server startup uses managed cleanup and workspace-aware data roots", (
   assert.match(apiServerSource, /const dataRoot = join\(resolveConfigWorkspaceRoot\(\), "data"\);/);
   assert.match(apiServerSource, /knowledge-plane\.snapshot\.json/);
   assert.match(apiServerSource, /join\(dataRoot, "artifacts", "publish-ledger\.jsonl"\)/);
+  assert.match(apiServerSource, /shutdown\.registerSignalHandlers\(\)/);
   assert.match(apiServerSource, /startupCleanup\.slice\(\)\.reverse\(\)/);
 });
 
@@ -111,8 +114,16 @@ test("CLI and repo scripts expose fast paths and avoid stale layered-test coupli
 
 test("lint and config metadata cover repo scripts, generated outputs, and schema consistency", () => {
   assert.equal(tsconfig.compilerOptions?.tsBuildInfoFile, ".cache/tsconfig.tsbuildinfo");
-  assert.deepEqual(scriptsTsconfig.include, ["scripts/**/*.mjs", "scripts/**/*.ts", "eslint.config.js"]);
+  assert.deepEqual(scriptsTsconfig.include, [
+    "scripts/**/*.mjs",
+    "scripts/**/*.ts",
+    "*.config.js",
+    "*.config.cjs",
+    "*.config.mjs",
+  ]);
+  assert.equal(scriptsTsconfig.compilerOptions?.allowImportingTsExtensions, false);
   assert.equal(packageJson.scripts["typecheck"]!.includes("tsconfig.scripts.json"), true);
+  assert.equal(packageJson.scripts["build"], "node scripts/build-if-needed.mjs");
   assert.equal(packageJson.scripts["lint"], "eslint .");
   assert.match(rootEslintSource, /"src\/\*\*\/\*\.ts"/);
   assert.match(rootEslintSource, /"scripts\/\*\*\/\*\.mjs"/);

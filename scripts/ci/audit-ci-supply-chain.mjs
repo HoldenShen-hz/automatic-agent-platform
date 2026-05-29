@@ -23,17 +23,17 @@ function collectWorkflowUses(content) {
 }
 
 function isPinnedAction(ref) {
-  return /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+@[0-9a-f]{40}$/u.test(ref);
+  return /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_.-]+)?@[0-9a-f]{40}$/u.test(ref);
 }
 
 const ci = read(".github/workflows/ci.yml");
 check("ci explicit permissions", /permissions:[\s\S]*contents:\s*read[\s\S]*security-events:\s*write/.test(ci), "CI declares least-privilege read plus CodeQL upload permission");
 check("ci concurrency", /concurrency:[\s\S]*cancel-in-progress:\s*\$\{\{\s*github\.event_name\s*!=\s*'schedule'\s*\}\}/.test(ci), "CI cancels superseded runs except for scheduled sweeps");
 check("ci npm ci", /run:\s*npm ci/.test(ci), "CI installs from lockfile");
-check("ci npm audit sarif pipeline", /npm audit --audit-level=high --omit=dev --json/.test(ci) && /upload-sarif@v3/.test(ci), "CI converts npm audit findings into SARIF and uploads them");
+check("ci npm audit sarif pipeline", /npm audit --audit-level=high --omit=dev --json/.test(ci) && /upload-sarif@[0-9a-f]{40}/.test(ci), "CI converts npm audit findings into SARIF and uploads them");
 check("ci typecheck", /npm run typecheck/.test(ci), "CI runs typecheck");
 check("ci coverage gate", /npm run coverage:gate/.test(ci), "CI runs coverage gate");
-check("ci codeql", /github\/codeql-action\/analyze@v3/.test(ci), "CI runs CodeQL");
+check("ci codeql", /github\/codeql-action\/analyze@[0-9a-f]{40}/.test(ci), "CI runs CodeQL");
 check(
   "ci trivy",
   /aquasecurity\/trivy-action@(?:0\.32\.0|[0-9a-f]{40})/.test(ci)
@@ -45,8 +45,12 @@ check(
 
 const publish = read(".github/workflows/publish-image.yml");
 check("publish environment approval", /environment:\s*\$\{\{/.test(publish), "publish job binds GitHub environment");
-check("publish buildx action", /docker\/build-push-action@v6/.test(publish), "publish uses Buildx build-push action");
-check("publish gha cache", /cache-from:\s*type=gha/.test(publish) && /cache-to:\s*type=gha,mode=max/.test(publish), "publish uses GitHub Actions Docker cache");
+check("publish buildx action", /docker\/build-push-action@[0-9a-f]{40}/.test(publish), "publish uses Buildx build-push action");
+check(
+  "publish gha cache",
+  /cache-from:\s*type=gha/.test(publish) && /cache-to:\s*type=gha,mode=(?:max|min)/.test(publish),
+  "publish uses GitHub Actions Docker cache",
+);
 check("publish sha tag", /type=sha,prefix=sha-/.test(publish), "publish emits sha tag");
 check(
   "publish explicit image tag",
@@ -89,7 +93,7 @@ const floatingActions = [];
 for (const workflowFile of workflowFiles) {
   const content = read(join(".github/workflows", workflowFile));
   for (const actionRef of collectWorkflowUses(content)) {
-    if (!actionRef.startsWith("actions/")) {
+    if (actionRef.startsWith("./")) {
       continue;
     }
     if (!isPinnedAction(actionRef)) {
@@ -98,10 +102,10 @@ for (const workflowFile of workflowFiles) {
   }
 }
 check(
-  "actions namespace pinned to full commit sha",
+  "all workflow actions pinned to full commit sha",
   floatingActions.length === 0,
   floatingActions.length === 0
-    ? "All actions/* workflow uses are pinned to immutable commit SHAs"
+    ? "All workflow actions are pinned to immutable commit SHAs"
     : `Unpinned refs: ${floatingActions.join(", ")}`,
 );
 

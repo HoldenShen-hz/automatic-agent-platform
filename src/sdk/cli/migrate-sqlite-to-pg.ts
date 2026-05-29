@@ -141,6 +141,8 @@ export interface MigrateSqliteToPgOptions {
   dryRun: boolean;
 }
 
+const SQLITE_MIGRATION_BATCH_SIZE = 500;
+
 const MIGRATE_SQLITE_TO_PG_USAGE = "usage: migrate-sqlite-to-pg --sqlite <path>|--sqlite-path <path> --pg-dsn <dsn> [--dry-run] [--help]";
 
 export function buildMigrateSqliteToPgUsage(): string {
@@ -219,6 +221,15 @@ export function planSqliteToPgMigration(sqlite: SqliteDatabase): Array<{ table: 
   });
 }
 
+function readTableBatch(
+  sqlite: SqliteDatabase,
+  table: string,
+  batchSize: number,
+  offset: number,
+): Array<Record<string, unknown>> {
+  return sqlite.connection.prepare(`SELECT * FROM ${table} LIMIT ? OFFSET ?`).all(batchSize, offset) as Array<Record<string, unknown>>;
+}
+
 export async function migrateSqliteToPg(options: MigrateSqliteToPgOptions): Promise<Array<{ table: string; migrated: number }>> {
   const sqlite = new SqliteDatabase(options.sqlitePath);
   const plan = planSqliteToPgMigration(sqlite);
@@ -237,21 +248,26 @@ export async function migrateSqliteToPg(options: MigrateSqliteToPgOptions): Prom
         migrated.push({ table, migrated: 0 });
         continue;
       }
-      const rows = sqlite.connection.prepare(`SELECT * FROM ${table}`).all() as Array<Record<string, unknown>>;
-      if (rows.length === 0) {
+      const firstBatch = readTableBatch(sqlite, table, SQLITE_MIGRATION_BATCH_SIZE, 0);
+      if (firstBatch.length === 0) {
         migrated.push({ table, migrated: 0 });
         continue;
       }
-      const columns = [...new Set(rows.flatMap((row) => Object.keys(row)))]
+      const columns = [...new Set(firstBatch.flatMap((row) => Object.keys(row)))]
         .map((column) => validateSqlIdentifier(column, "column"))
         .sort();
       const placeholders = columns.map((_, index) => `$${index + 1}`).join(", ");
       const sql = `INSERT INTO ${table} (${columns.join(", ")}) VALUES (${placeholders}) ON CONFLICT DO NOTHING`;
       let count = 0;
       await pg.transaction(async (conn) => {
-        for (const row of rows) {
-          await conn.execute(sql, ...columns.map((column) => row[column]));
-          count += 1;
+        for (let offset = 0; offset < rowCount; offset += SQLITE_MIGRATION_BATCH_SIZE) {
+          const rows = offset === 0
+            ? firstBatch
+            : readTableBatch(sqlite, table, SQLITE_MIGRATION_BATCH_SIZE, offset);
+          for (const row of rows) {
+            await conn.execute(sql, ...columns.map((column) => row[column]));
+            count += 1;
+          }
         }
       });
       migrated.push({ table, migrated: count });

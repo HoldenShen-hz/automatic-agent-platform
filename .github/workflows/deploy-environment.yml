@@ -32,7 +32,6 @@ on:
 
 permissions:
   contents: read
-  id-token: write
 
 concurrency:
   group: deploy-${{ inputs.environment }}-${{ inputs.rollout_strategy }}
@@ -40,6 +39,8 @@ concurrency:
 
 jobs:
   validate:
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -84,6 +85,8 @@ jobs:
           exit 1
 
   deployment-preflight:
+    permissions:
+      contents: read
     needs: validate
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -117,6 +120,9 @@ jobs:
           fi
 
   deploy:
+    permissions:
+      contents: read
+      id-token: write
     needs: deployment-preflight
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -136,13 +142,13 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@ff717079ee2060e4bcee96c4779b553acc87447c
         with:
           role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Setup kubectl
-        uses: azure/setup-kubectl@v4
+        uses: azure/setup-kubectl@c0c8b32d33a5244f1e5947304550403b63930415
         with:
           version: '1.31.8'
 
@@ -153,7 +159,7 @@ jobs:
         run: kubectl config get-contexts
 
       - name: Setup Helm
-        uses: azure/setup-helm@v4
+        uses: azure/setup-helm@bf6a7d304bc2fdb57e0331155b7ebf2c504acf0a
         with:
           version: '3.16.3'
 
@@ -180,15 +186,18 @@ jobs:
             echo "rollout_strategy=canary" >> "$GITHUB_OUTPUT"
           elif [ "$STRATEGY" = "blue_green" ]; then
             CURRENT_SELECTOR=$(kubectl get svc automatic-agent -n "${{ steps.namespace.outputs.namespace }}" -o jsonpath='{.spec.selector.app\.kubernetes\.io/instance}' 2>/dev/null || echo "")
-            SLOT="green"
+            SLOT="blue"
             if [ "$CURRENT_SELECTOR" = "automatic-agent-green" ]; then
               SLOT="blue"
+            elif [ "$CURRENT_SELECTOR" = "automatic-agent-blue" ]; then
+              SLOT="green"
             fi
             echo "release_name=automatic-agent-${SLOT}" >> "$GITHUB_OUTPUT"
             echo "fullname_override=automatic-agent-${SLOT}" >> "$GITHUB_OUTPUT"
             echo "replica_count=2" >> "$GITHUB_OUTPUT"
             echo "rollout_strategy=blue_green" >> "$GITHUB_OUTPUT"
             echo "slot=${SLOT}" >> "$GITHUB_OUTPUT"
+            echo "inactive_slot=$([ "$SLOT" = "blue" ] && echo "green" || echo "blue")" >> "$GITHUB_OUTPUT"
           else
             echo "release_name=automatic-agent" >> "$GITHUB_OUTPUT"
             echo "fullname_override=" >> "$GITHUB_OUTPUT"
@@ -253,6 +262,7 @@ jobs:
           elif [ "$STRATEGY" = "blue_green" ]; then
             kubectl patch svc automatic-agent -n "$NAMESPACE" --type merge \
               -p "{\"spec\":{\"selector\":{\"app.kubernetes.io/name\":\"automatic-agent\",\"app.kubernetes.io/instance\":\"automatic-agent-${{ steps.rollout.outputs.slot }}\"}}}"
+            helm uninstall "automatic-agent-${{ steps.rollout.outputs.inactive_slot }}" --namespace "$NAMESPACE" || true
           fi
 
       - name: Health check
@@ -302,6 +312,9 @@ jobs:
           echo "Build timestamp: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
   rollback:
+    permissions:
+      contents: read
+      id-token: write
     needs: deploy
     if: ${{ always() && needs.deploy.result == 'failure' }}
     runs-on: ubuntu-latest
@@ -315,20 +328,20 @@ jobs:
       AWS_REGION: ${{ secrets.AWS_REGION }}
       EKS_CLUSTER_NAME: ${{ secrets.EKS_CLUSTER_NAME }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@ff717079ee2060e4bcee96c4779b553acc87447c
         with:
           role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
       - name: Setup kubectl
-        uses: azure/setup-kubectl@v4
+        uses: azure/setup-kubectl@c0c8b32d33a5244f1e5947304550403b63930415
         with:
           version: '1.31.8'
       - name: Configure kubeconfig
         run: aws eks update-kubeconfig --name "$EKS_CLUSTER_NAME" --region "$AWS_REGION"
       - name: Setup Helm
-        uses: azure/setup-helm@v4
+        uses: azure/setup-helm@bf6a7d304bc2fdb57e0331155b7ebf2c504acf0a
         with:
           version: '3.16.3'
       - name: Set namespace

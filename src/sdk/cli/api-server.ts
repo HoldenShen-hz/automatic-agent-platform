@@ -26,6 +26,7 @@
 import { join } from "node:path";
 
 import { resolveCliDbPath, withPersistentCliStorageAsync } from "./authoritative-storage.js";
+import { isCliEntryPoint } from "./cli-exit.js";
 import { ChannelGatewayService } from "../../platform/five-plane-interface/channel-gateway/channel-gateway-service.js";
 import { ChannelGatewayDeliveryService } from "../../platform/five-plane-interface/channel-gateway/channel-gateway-delivery-service.js";
 import { CHANNEL_DELIVERY_DDL } from "../../platform/five-plane-interface/channel-gateway/channel-gateway-delivery-support.js";
@@ -101,6 +102,7 @@ async function main(): Promise<void> {
     datadog: envConfig.logDatadog,
   });
   const shutdown = getGlobalGracefulShutdown();
+  shutdown.registerSignalHandlers();
   registerProcessErrorHandlers(shutdown);
   const startupCleanup: Array<() => Promise<void>> = [];
   let startupComplete = false;
@@ -323,7 +325,7 @@ async function main(): Promise<void> {
   }
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (isCliEntryPoint(import.meta.url)) {
   try {
     await main();
   } catch (error) {

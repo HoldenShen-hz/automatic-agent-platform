@@ -21,6 +21,8 @@ dist-test/
 .tmp/
 .runtime/
 .dr-reports/
+.backups/
+.dr-logs/
 .vitest-temp/
 coverage-report/
 dist-types/

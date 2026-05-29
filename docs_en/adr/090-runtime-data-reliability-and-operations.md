@@ -1,12 +1,7 @@
 # ADR 090: Runtime, Data Reliability, and Operations
 
-## Status
-
-Accepted
-
-## Date
-
-2026-04-20
+- Status: Accepted
+- Decision Date: 2026-04-20
 
 ## Background
 

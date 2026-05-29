@@ -2,6 +2,11 @@
 
 本文档补充 ADR-031 的执行步骤，用于区域不可用、数据库不可写、队列不可用和关键运行时恢复。
 
+当前执行口径与 `config/dr/default.json` 保持一致：
+
+- `RTO <= 1 小时`
+- `RPO <= 5 分钟`
+
 ## 触发条件
 
 - 主区域 API、worker 或数据库连续不可用超过 RTO 门限。
@@ -14,6 +19,7 @@
 2. 冻结非必要部署。
 3. 导出当前健康检查、队列深度、数据库复制状态和最近事件证据。
 4. 确认备份快照、恢复点和目标区域容量。
+5. 使用 `bash deploy/scripts/dr-drill.sh --mode verify --component all --output-dir .dr-reports/manual-verify` 先验证现有备份可读。
 
 ## 恢复步骤
 

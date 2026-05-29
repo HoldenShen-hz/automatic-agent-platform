@@ -2,6 +2,7 @@
 
 > This directory contains the project's Architecture Decision Records (ADR). Each ADR records the background, considerations, and conclusions of important technical decisions.
 > `docs_zh/adr/README.md` and `docs_en/adr/README.md` must keep numbers, status, and dates synchronized; if body translation is delayed, record according to `docs_zh/reference/docs-sync.md`.
+> ADR indexes are sorted by number rather than by decision date, so the date column does not need to increase monotonically.
 
 ## ADR Index
 
@@ -78,11 +79,11 @@
 | [067](./067-capacity-planning-and-cost-prediction.md) | Capacity Planning and Cost Prediction Engine | Accepted | 2026-04-20 |
 | [068](./068-multimodal-capability-architecture.md) | Multimodal Capability Architecture | Accepted | 2026-04-20 |
 | [069](./069-platform-self-operating-agent.md) | Platform Self-Ops Agent Architecture | Partially Superseded by v4.3 control-plane and runtime authority ADRs | 2026-04-20 |
-| [070](./070-conclusion.md) | Conclusion | Superseded by ADR-109 to ADR-113 | 2026-04-20 |
+| [070](./070-conclusion.md) | Conclusion | Withdrawn / Index | 2026-04-20 |
 | [072](./072-oapeflir-testing-strategy.md) | OAPEFLIR Testing Strategy and New Module Test Matrix | Partially Superseded by current layered test matrix and runtime contract tests | 2026-04-17 |
 | [073](./073-unified-resource-model.md) | ADR-073: Unified Agent Resource Model | Accepted | 2026-04-13 |
 | [075](./075-controlled-rollout-release.md) | Six-Level Controlled Release and Rollout State Machine | Accepted | 2026-04-17 |
-| [078](./078-knowledge-plane-architecture.md) | Knowledge Plane Architecture and Trust Model | Partially Superseded | 2026-04-17 |
+| [078](./078-knowledge-plane-architecture.md) | Knowledge Plane Architecture and Trust Model | Partially Superseded by current knowledge-plane contract baseline | 2026-04-17 |
 | [079](./079-feedback-hub-signals.md) | Feedback Hub and Seven Signal Preprocessing | Accepted | 2026-04-17 |
 | [080](./080-learn-hub-pattern-detection.md) | Learn Hub and Four Pattern Detectors | Accepted | 2026-04-17 |
 | [081](./081-domain-descriptor-and-onboarding.md) | Domain Descriptor And Onboarding | Accepted | 2026-04-20 |
@@ -140,10 +141,14 @@
 
 - Historical directory simultaneously retains `003-memory-six-layers.md` and `003-memory-seven-layers.md`; where `seven-layers` only preserved as historical alias / jump page, canonical content uses `003-memory-six-layers.md` as standard.
 - Plugin SPI ADR has been uniformly converged to `071-plugin-spi-framework.md`; old `066-plugin-spi-framework.md` duplicate copy has been removed, all references uniformly changed to ADR-071.
-- New `091-108` are used to承接Harness eight pillars and domain governance supplements.
-- New `109-122` are v4.3 Contract Freeze and subsequent implementation clarification entries: freezing 12 canonical contracts, state machine sole authority, `platform.*` and `oapeflir.view.*` event layering, MVP / Hardening / Enterprise three-ring boundary, and authoritative explanations for tenant scope / auth precedence / self-healing boundary / interface rate-limit / WAL recovery / panic allowlist / pack-domain lifecycle / client transport / timeout hierarchy / evidence boundary.
-- `109-122` constrain old `ExecutionPlan` / `ExecutionReceipt` / `ControlDirective` / `StateCommand` / OAPEFLIR runtime authority / Phase naming, tenant resolution, and cross-layer boundary semantics through freeze / authority / event namespace / ring boundary / tenant scope / auth precedence / recovery boundary rules; historical ADR main text preserved, not directly rewritten.
+- `045`, `074`, `076`, `077` currently remain reserved / withdrawn number slots and are not backfilled with historical content.
+- New `091-108` are used to carry the Harness eight-pillar and domain-governance supplement set.
+- New `109-122` are the v4.3 Contract Freeze and subsequent implementation clarification entry points: they freeze 12 canonical contracts, establish state-machine sole authority, separate `platform.*` and `oapeflir.view.*` event layers, define the MVP / Hardening / Enterprise ring boundary, and document the authoritative tenant-scope / auth-precedence / self-healing boundary / interface rate-limit / WAL recovery / panic allowlist / pack-domain lifecycle / client transport / timeout hierarchy / evidence boundary rules.
+- `109-122` constrain legacy `ExecutionPlan` / `ExecutionReceipt` / `ControlDirective` / `StateCommand` names, OAPEFLIR runtime authority, phase naming, tenant resolution, and cross-layer boundary semantics through freeze / authority / event-namespace / ring-boundary / tenant-scope / auth-precedence / recovery-boundary rules; historical ADR bodies remain preserved rather than being rewritten.
+- `069` is primarily followed by `ADR-109`, `ADR-110`, and `ADR-112`.
+- `072` is primarily followed by `ADR-109`, `ADR-110`, the current layered test matrix, and runtime contract tests.
+- `078` is primarily followed by `ADR-109`, `ADR-111`, and the knowledge-plane canonical contracts.
 
 ## Creating New ADR
 
-New ADR should follow standard template; numbers retain number ranges by batch and evolution stage, not强制补齐historical gaps. For details, refer to [../governance/source_of_truth.md](../governance/source_of_truth.md).
+New ADR should follow the standard template; numbering keeps reserved ranges by batch and evolution stage and does not require backfilling historical gaps. For details, refer to [../governance/source_of_truth.md](../governance/source_of_truth.md).

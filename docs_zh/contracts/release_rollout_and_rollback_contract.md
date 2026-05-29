@@ -12,6 +12,7 @@ Related documents:
 - `runtime_repository_and_migration_contract.md`
 - `prompt_model_policy_governance_contract.md`
 - `enterprise_operations_plane_contract.md`
+- [operations/release-versioning.md](../operations/release-versioning.md)
 - [ADR-075 六级受控发布](../adr/075-controlled-rollout-release.md)
 - [ADR-080 Learn Hub](../adr/080-learn-hub-pattern-detection.md)
 

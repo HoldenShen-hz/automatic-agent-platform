@@ -1,7 +1,6 @@
 # ADR-119 Pack Domain Lifecycle Coordination
 
-## 状态
-Accepted
+- 状态：Accepted
 
 ## 背景
 Business Pack 生命周期、领域 onboarding 四阶段、pack-domain 关联，以及 `trustTier` / `sandboxTier` 约束此前分别存在于不同模块中，缺少统一权威规则，容易出现：

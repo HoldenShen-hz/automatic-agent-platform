@@ -8,4 +8,5 @@ spec:
   selector:
     labelSelectors:
       app.kubernetes.io/name: automatic-agent
+      app.kubernetes.io/component: api
   duration: "30s"

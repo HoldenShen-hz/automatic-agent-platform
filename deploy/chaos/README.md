@@ -4,6 +4,12 @@ Chaos manifests in this directory are controlled rehearsal inputs. They must sta
 
 The authoritative scenario inventory is `deploy/chaos/catalog.json`. Scheduler-side fallback profiles are exported from `src/ops-maturity/chaos/chaos-experiment-types.ts` as `DEFAULT_CHAOS_SCENARIO_CATALOG` and `DEFAULT_CHAOS_FALLBACK_PROFILES`.
 
+Catalog hygiene:
+
+- `catalog.json` must keep `scenarios[*].manifestPath` aligned with the real manifest filenames in this directory.
+- `catalog.json.fallbackProfiles[*].profileId` must stay in sync with every `scenarios[*].fallbackProfileId`.
+- Database and Redis disconnect experiments target operator-managed dependencies, not the Helm chart itself. Target pods must expose `app.kubernetes.io/name=postgres` or `app.kubernetes.io/name=redis`.
+
 ## Current Scenarios
 
 - `pod-kill.yaml`: workload restart resilience.

@@ -1,6 +1,45 @@
 {
   "apiVersion": "automatic-agent.io/v1",
   "kind": "ChaosScenarioCatalog",
+  "fallbackProfiles": [
+    {
+      "profileId": "network-delay-fallback",
+      "faultType": "latency",
+      "intensity": 0.5,
+      "durationMs": 120000,
+      "parameters": {
+        "latencyMs": 500,
+        "jitterMs": 100
+      }
+    },
+    {
+      "profileId": "pod-kill-fallback",
+      "faultType": "error",
+      "intensity": 1,
+      "durationMs": 30000,
+      "parameters": {
+        "mode": "one"
+      }
+    },
+    {
+      "profileId": "postgres-disconnect-fallback",
+      "faultType": "timeout",
+      "intensity": 1,
+      "durationMs": 60000,
+      "parameters": {
+        "target": "postgres"
+      }
+    },
+    {
+      "profileId": "redis-disconnect-fallback",
+      "faultType": "timeout",
+      "intensity": 1,
+      "durationMs": 60000,
+      "parameters": {
+        "target": "redis"
+      }
+    }
+  ],
   "scenarios": [
     {
       "scenarioId": "network-delay",

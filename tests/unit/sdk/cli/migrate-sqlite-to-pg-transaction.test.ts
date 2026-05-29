@@ -10,4 +10,6 @@ const source = readFileSync(
 
 test("2288: migrateSqliteToPg wraps cross-table writeback in one PostgreSQL transaction", () => {
   assert.match(source, /await pg\.transaction\(async \(conn\) => \{/);
+  assert.match(source, /SELECT \* FROM \$\{table\} LIMIT \? OFFSET \?/);
+  assert.doesNotMatch(source, /SELECT \* FROM \$\{table\}`\)\.all\(\)/);
 });

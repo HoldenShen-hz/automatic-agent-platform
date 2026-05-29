@@ -43,6 +43,16 @@ variable "instance_types" {
   default     = ["t3.medium"]
 }
 
+variable "node_taints" {
+  description = "Optional taints applied to the managed node group"
+  type = list(object({
+    key    = string
+    value  = string
+    effect = string
+  }))
+  default = []
+}
+
 variable "endpoint_public_access" {
   description = "Whether to expose the cluster endpoint publicly"
   type        = bool
@@ -128,10 +138,18 @@ data "tls_certificate" "cluster_oidc" {
   url = aws_eks_cluster.main.identity[0].oidc[0].issuer
 }
 
+locals {
+  oidc_thumbprints = distinct([
+    for certificate in data.tls_certificate.cluster_oidc.certificates :
+    certificate.sha1_fingerprint
+    if try(length(certificate.sha1_fingerprint), 0) > 0
+  ])
+}
+
 resource "aws_iam_openid_connect_provider" "cluster" {
   url             = aws_eks_cluster.main.identity[0].oidc[0].issuer
   client_id_list  = ["sts.amazonaws.com"]
-  thumbprint_list = [data.tls_certificate.cluster_oidc.certificates[0].sha1_fingerprint]
+  thumbprint_list = slice(local.oidc_thumbprints, 0, min(length(local.oidc_thumbprints), 5))
 
   tags = local.tags
 }
@@ -230,6 +248,15 @@ resource "aws_eks_node_group" "main" {
   }
 
   instance_types = var.instance_types
+
+  dynamic "taint" {
+    for_each = var.node_taints
+    content {
+      key    = taint.value.key
+      value  = taint.value.value
+      effect = taint.value.effect
+    }
+  }
 
   launch_template {
     id      = aws_launch_template.nodes.id

@@ -1,12 +1,7 @@
 # ADR-109: v4.3 Contract Freeze
 
-## Status
-
-Accepted
-
-## Decision Date
-
-2026-04-27
+- Status: Accepted
+- Decision Date: 2026-04-27
 
 ## Background
 

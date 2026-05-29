@@ -2,6 +2,10 @@ apiVersion: automatic-agent.io/v1
 kind: ChaosApprovalPolicy
 metadata:
   name: default-chaos-approval
+  labels:
+    app.kubernetes.io/managed-by: gitops
+  annotations:
+    automatic-agent.io/owner: platform-sre
 spec:
   requiredApprovers: 2
   allowedWindows:

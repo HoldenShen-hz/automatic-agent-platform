@@ -1,16 +1,11 @@
 # ADR 089: AI Operations Governance and Quality
 
-## Status
-
-Accepted
-
-## Date
-
-2026-04-20
+- Status: Accepted
+- Decision Date: 2026-04-20
 
 ## Background
 
-`§15`-`§18`, `§21`, `§23`, `§27` define LLM Provider, Prompt, Eval, Cost, HITL, Compliance, SLO, etc. AI operations capabilities. Previously these capabilities were scattered across provider, prompt governance, quality, budget, approval contracts, but lacked a unified ADR explaining why AI layer must be treated as a governable runtime, not a ordinary dependency.
+`§15`-`§18`, `§21`, `§23`, `§27` define AI operations capabilities such as LLM Provider, Prompt, Eval, Cost, HITL, Compliance, and SLO. Previously these capabilities were scattered across provider, prompt governance, quality, budget, and approval contracts, but lacked a unified ADR explaining why the AI layer must be treated as a governable runtime rather than an ordinary dependency.
 
 ## Decision
 
@@ -18,7 +13,7 @@ AI operations layer uses unified governance model:
 
 - LLM Provider must connect through ModelGateway abstraction, with routing, failover, observability, and degradation capabilities.
 - Prompt / model / policy must all be versioned, canary-deployable, rollbackable, auditable.
-- Eval and quality gate are part of release pipeline, cannot be附属能力 as offline reports.
+- Eval and the quality gate are part of the release pipeline and cannot be treated as an offline-report side capability.
 - Token / model cost must enter budget, metering, chargeback, optimization closed loop.
 - HITL is a formal control path, not a UI interaction exception.
 - Compliance, data classification, prompt handling, SLO / error budget together determine whether AI action can execute.

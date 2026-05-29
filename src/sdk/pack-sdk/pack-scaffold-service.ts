@@ -46,7 +46,7 @@ const MINIMAL_INDEX_TS = `export async function handleQuery(input: { query: stri
   return { result: \`Processed: \${input.query}\` };
 }`;
 
-const MINIMAL_QUERY_TOOL = `import { defineTool } from "@platform/plugin-sdk";
+const MINIMAL_QUERY_TOOL = `import { defineTool } from "automatic-agent-platform/sdk/plugin-sdk";
 
 export const queryTool = defineTool({
   toolId: "{{PACK_ID}}.query",
@@ -68,7 +68,7 @@ describe("{{PACK_NAME}}", () => {
   });
 });`;
 
-const STANDARD_TRANSFORM_TOOL = `import { defineTool } from "@platform/plugin-sdk";
+const STANDARD_TRANSFORM_TOOL = `import { defineTool } from "automatic-agent-platform/sdk/plugin-sdk";
 
 export const transformTool = defineTool({
   toolId: "{{PACK_ID}}.transform",
@@ -79,7 +79,7 @@ export const transformTool = defineTool({
   },
 });`;
 
-const STANDARD_HTTP_ADAPTER = `import { defineAdapter } from "@platform/plugin-sdk";
+const STANDARD_HTTP_ADAPTER = `import { defineAdapter } from "automatic-agent-platform/sdk/plugin-sdk";
 
 export const httpAdapter = defineAdapter({
   adapterId: "{{PACK_ID}}.http",
@@ -89,7 +89,7 @@ export const httpAdapter = defineAdapter({
   },
 });`;
 
-const STANDARD_RESULT_EVALUATOR = `import { defineEvaluator } from "@platform/plugin-sdk";
+const STANDARD_RESULT_EVALUATOR = `import { defineEvaluator } from "automatic-agent-platform/sdk/plugin-sdk";
 
 export const resultEvaluator = defineEvaluator({
   evaluatorId: "{{PACK_ID}}.result",
@@ -113,7 +113,7 @@ const STANDARD_UNIT_TEST = MINIMAL_UNIT_TEST;
 const STANDARD_INDEX_TS = MINIMAL_INDEX_TS;
 const STANDARD_PACKAGE_JSON = MINIMAL_PACKAGE_JSON;
 
-const FULL_SEARCH_TOOL = `import { defineTool } from "@platform/plugin-sdk";
+const FULL_SEARCH_TOOL = `import { defineTool } from "automatic-agent-platform/sdk/plugin-sdk";
 
 export const searchTool = defineTool({
   toolId: "{{PACK_ID}}.search",
@@ -124,7 +124,7 @@ export const searchTool = defineTool({
   },
 });`;
 
-const FULL_DB_ADAPTER = `import { defineAdapter } from "@platform/plugin-sdk";
+const FULL_DB_ADAPTER = `import { defineAdapter } from "automatic-agent-platform/sdk/plugin-sdk";
 
 export const dbAdapter = defineAdapter({
   adapterId: "{{PACK_ID}}.db",
@@ -134,7 +134,7 @@ export const dbAdapter = defineAdapter({
   },
 });`;
 
-const FULL_CONTEXT_RETRIEVER = `import { defineRetriever } from "@platform/plugin-sdk";
+const FULL_CONTEXT_RETRIEVER = `import { defineRetriever } from "automatic-agent-platform/sdk/plugin-sdk";
 
 export const contextRetriever = defineRetriever({
   retrieverId: "{{PACK_ID}}.context",
@@ -144,7 +144,7 @@ export const contextRetriever = defineRetriever({
   },
 });`;
 
-const FULL_SAFETY_EVALUATOR = `import { defineEvaluator } from "@platform/plugin-sdk";
+const FULL_SAFETY_EVALUATOR = `import { defineEvaluator } from "automatic-agent-platform/sdk/plugin-sdk";
 
 export const safetyEvaluator = defineEvaluator({
   evaluatorId: "{{PACK_ID}}.safety",

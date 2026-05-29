@@ -169,6 +169,10 @@ export interface LoginFinishResult {
   expiresIn: number;
 }
 
+export function clearLegacyLoginTokenEnv(env: NodeJS.ProcessEnv = process.env): void {
+  delete env.AA_LOGIN_TOKEN;
+}
+
 function resolveAuthorizationCode(env: NodeJS.ProcessEnv = process.env): string {
   const codeFile = readTrimmedEnv(env, "AA_OAUTH_AUTH_CODE_FILE");
   if (codeFile != null) {
@@ -311,6 +315,7 @@ export async function finishOAuthLogin(
 
 export async function main(): Promise<void> {
   const env = process.env;
+  clearLegacyLoginTokenEnv(env);
   const result = !hasAuthorizationCodeInput(env)
     ? startOAuthLogin(env)
     : await finishOAuthLogin(env);

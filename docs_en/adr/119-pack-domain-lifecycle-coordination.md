@@ -1,7 +1,6 @@
 # ADR-119 Pack Domain Lifecycle Coordination
 
-## Status
-Accepted
+- Status: Accepted
 
 ## Background
 Business Pack lifecycle, domain onboarding four phases, pack-domain association, and `trustTier` / `sandboxTier` constraints previously existed in different modules, lacking unified authoritative rules, easily leading to:
@@ -37,7 +36,7 @@ Business Pack lifecycle, domain onboarding four phases, pack-domain association,
 ## Result
 - Pack lifecycle, domain onboarding, association governance adopt same set of phase mappings
 - Rollout, certification, decommissioning no longer rely on implicit agreements
-- `trustTier` / `sandboxTier` have clear authoritative matrix, subsequent registration and binding logic按此fail-closed
+- `trustTier` / `sandboxTier` now have a clear authoritative matrix, and subsequent registration and binding logic follows it in a fail-closed manner.
 
 ## Related Implementation
 - `src/domains/operations/domain-onboarding-service.ts`

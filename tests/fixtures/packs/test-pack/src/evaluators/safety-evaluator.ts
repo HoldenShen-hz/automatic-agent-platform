@@ -1,4 +1,4 @@
-import { defineEvaluator } from "@platform/plugin-sdk";
+import { defineEvaluator } from "automatic-agent-platform/sdk/plugin-sdk";
 
 export const safetyEvaluator = defineEvaluator({
   pluginId: "test-pack.safety",

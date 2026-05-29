@@ -2,6 +2,7 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "allowJs": true,
+    "allowImportingTsExtensions": false,
     "checkJs": false,
     "composite": false,
     "declaration": false,
@@ -9,6 +10,12 @@
     "noEmit": true,
     "incremental": false
   },
-  "include": ["scripts/**/*.mjs", "scripts/**/*.ts", "eslint.config.js"],
+  "include": [
+    "scripts/**/*.mjs",
+    "scripts/**/*.ts",
+    "*.config.js",
+    "*.config.cjs",
+    "*.config.mjs"
+  ],
   "exclude": []
 }

@@ -18,6 +18,14 @@ Recommended order:
 2. Then look at the corresponding ADR
 3. Finally, dive into the specific contract
 
+## 1A. Naming and Versioning Strategy
+
+- Canonical contracts added in the v4.3 freeze may use kebab-case filenames, for example `harness-run-contract.md`, `event-envelope-contract.md`, and `budget-ledger-contract.md`.
+- The large set of contracts retained from before the freeze continues to use snake_case; unless a new freeze or canonical object is involved, do not mass-rename files only for consistency.
+- Short historical filenames seen in older reviews, such as `runtime_state_machine.md`, `event_bus.md`, and `gateway_message.md`, should now map to the real `*_contract.md` / `*-contract.md` files that exist today instead of restoring a second historical file set.
+- Contract versioning defaults to directory-level governance: `ADR-109` freeze, the README authority map, and each document's `updated` / scope notes together form the version source of truth, rather than requiring a separate `version:` frontmatter field in every file.
+- Only introduce an extra machine-readable version field when a specific contract must evolve independently from the directory-level freeze; otherwise keep a single source of truth to avoid drift.
+
 ## 2. v4.3 Contract Freeze Scope
 
 The v4.3 implementation entry points are based on [ADR-109](../adr/109-contract-freeze.md), [ADR-110](../adr/110-runtime-state-machine-authority.md), [ADR-111](../adr/111-platform-fact-vs-oapeflir-view-events.md), [ADR-112](../adr/112-mvp-ring-implementation-boundary.md), and the contracts in the table below.

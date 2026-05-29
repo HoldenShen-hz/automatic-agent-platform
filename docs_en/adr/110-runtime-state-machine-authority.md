@@ -1,12 +1,7 @@
 # ADR-110: Runtime State Machine Authority
 
-## Status
-
-Accepted
-
-## Decision Date
-
-2026-04-27
+- Status: Accepted
+- Decision Date: 2026-04-27
 
 ## Background
 

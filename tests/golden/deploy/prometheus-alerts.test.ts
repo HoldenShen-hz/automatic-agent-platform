@@ -122,3 +122,30 @@ test("[SYS-OBS-5.2] prometheus alert queries use exporter metric units and curre
   assert.match(content, /outbox_pending/);
   assert.doesNotMatch(content, /outbox_pending_total/);
 });
+
+test("[SYS-OBS-5.2] helm PrometheusRule keeps full alert surface in sync with deploy rules", () => {
+  const deployRules = readFileSync(
+    "deploy/prometheus/rules/automatic-agent.yml",
+    "utf8",
+  );
+  const helmTemplate = readFileSync(
+    "deploy/helm/automatic-agent/templates/prometheusrule.yaml",
+    "utf8",
+  );
+
+  const deployAlerts = Array.from(
+    deployRules.matchAll(/^\s*- alert:\s+([A-Za-z0-9]+)/gm),
+    (match) => match[1],
+  );
+  const helmAlerts = Array.from(
+    helmTemplate.matchAll(/^\s*- alert:\s+([A-Za-z0-9]+)/gm),
+    (match) => match[1],
+  );
+
+  assert.equal(
+    helmAlerts.length,
+    deployAlerts.length,
+    "Helm PrometheusRule should expose the same alert count as deploy/prometheus rules",
+  );
+  assert.deepEqual(helmAlerts, deployAlerts);
+});

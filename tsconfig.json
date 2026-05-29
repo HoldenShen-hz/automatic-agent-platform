@@ -4,7 +4,7 @@
     "target": "ES2023",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
-    "lib": ["ES2023", "DOM", "DOM.Iterable", "WebWorker"],
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
     "strict": true,
     "noImplicitOverride": true,
     "noUncheckedIndexedAccess": true,
@@ -16,7 +16,7 @@
     "rootDir": ".",
     "baseUrl": ".",
     "paths": {
-      "@platform/plugin-sdk": ["src/sdk/plugin-sdk/index.ts"]
+      "automatic-agent-platform/sdk/plugin-sdk": ["src/sdk/plugin-sdk/index.ts"]
     },
     "outDir": "dist",
     "incremental": true,

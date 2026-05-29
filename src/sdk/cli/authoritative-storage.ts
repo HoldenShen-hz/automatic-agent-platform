@@ -98,10 +98,14 @@ function registerCliShutdownHandler<T extends { close(): void | Promise<void>; d
     registeredCliShutdownHandlers.add(handlerName);
   }
 
-  return {
-    ...storage,
-    close: closeOnce,
-  };
+  Object.defineProperty(storage, "close", {
+    configurable: true,
+    enumerable: true,
+    writable: true,
+    value: closeOnce,
+  });
+
+  return storage;
 }
 
 /**

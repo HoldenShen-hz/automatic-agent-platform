@@ -1,12 +1,7 @@
 # ADR 088: Platform Surface, Communication, and Extensibility
 
-## Status
-
-Accepted
-
-## Date
-
-2026-04-20
+- Status: Accepted
+- Decision Date: 2026-04-20
 
 ## Background
 
@@ -17,7 +12,7 @@ Accepted
 Platform surface capabilities are governed by the following boundaries:
 
 - External requests must first enter Interface Plane such as API / Gateway / Webhook / Scheduler, cannot directly enter execution layer.
-- Inter-plane communication must prioritize contracted envelope, typed event, outbox / DLQ mechanisms,不允许隐式共享状态.
+- Inter-plane communication must prioritize contracted envelope, typed event, outbox / DLQ mechanisms, and cannot rely on implicit shared state.
 - Extension capabilities must enter platform through Plugin SPI, Tool / Skill / Plugin contracts, Business Pack lifecycle.
 - SDK / DX only provides controlled access capabilities, does not provide shortcuts bypassing policy, approval, sandbox, budget.
 - Business Pack must declare domain, capability, risk, tool bundle, API compatibility, and is subject to same extension governance constraints.

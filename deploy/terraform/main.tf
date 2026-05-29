@@ -4,7 +4,7 @@ terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = "~> 5.0"
+      version = "= 5.0.0"
     }
     random = {
       source  = "hashicorp/random"
@@ -73,6 +73,16 @@ variable "eks_node_instance_types" {
   description = "EKS node instance types"
   type        = list(string)
   default     = ["t3.medium"]
+}
+
+variable "eks_node_taints" {
+  description = "Optional taints applied to the managed EKS node group"
+  type = list(object({
+    key    = string
+    value  = string
+    effect = string
+  }))
+  default = []
 }
 
 variable "eks_desired_nodes" {
@@ -239,6 +249,7 @@ module "eks" {
   max_nodes                = var.eks_max_nodes
   desired_nodes            = var.eks_desired_nodes
   instance_types           = var.eks_node_instance_types
+  node_taints              = var.eks_node_taints
   endpoint_public_access   = var.eks_endpoint_public_access
   public_access_cidrs      = var.eks_public_access_cidrs
   cluster_kms_key_arn      = var.cluster_kms_key_arn

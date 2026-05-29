@@ -1,12 +1,7 @@
 # ADR 089: AI Operations Governance and Quality
 
-## 状态
-
-Accepted
-
-## 日期
-
-2026-04-20
+- 状态：Accepted
+- 决策日期：2026-04-20
 
 ## 背景
 

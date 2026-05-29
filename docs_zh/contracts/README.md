@@ -18,6 +18,14 @@
 2. 再看对应 ADR
 3. 最后进入具体 contract
 
+## 1A. 命名与版本策略
+
+- v4.3 freeze 新增的 canonical contract 允许使用 kebab-case 文件名，例如 `harness-run-contract.md`、`event-envelope-contract.md`、`budget-ledger-contract.md`。
+- freeze 之前保留的大量 contract 继续沿用 snake_case；除非进入新的 freeze/canonical object，不主动为了一致性批量改名。
+- 旧 review 中出现的 `runtime_state_machine.md`、`event_bus.md`、`gateway_message.md` 这类短文件名，当前都应映射到实际存在的 `*_contract.md` / `*-contract.md` 文件，而不是再补回第二套历史文件。
+- contract 版本口径默认走目录级治理：`ADR-109` freeze、README authority map、以及文内 `更新日期`/scope note 共同组成版本事实来源；不是要求每个文件都额外维护 `version:` frontmatter。
+- 只有当某个 contract 需要脱离目录级 freeze 单独演进时，才额外引入机器可读版本字段；否则保持单一目录级事实源，避免多点漂移。
+
 ## 2. v4.3 Contract Freeze Scope
 
 v4.3 的实现入口以 [ADR-109](../adr/109-contract-freeze.md)、[ADR-110](../adr/110-runtime-state-machine-authority.md)、[ADR-111](../adr/111-platform-fact-vs-oapeflir-view-events.md)、[ADR-112](../adr/112-mvp-ring-implementation-boundary.md) 和下表 contract 为准。

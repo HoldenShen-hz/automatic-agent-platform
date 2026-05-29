@@ -35,7 +35,13 @@
     "./scale-ecosystem/runtime-services": "./dist/src/scale-ecosystem/runtime-services/index.js",
     "./scale-ecosystem/tenant-platform": "./dist/src/scale-ecosystem/tenant-platform/index.js",
     "./sdk": "./dist/src/sdk/index.js",
+    "./sdk/admin-sdk": "./dist/src/sdk/admin-sdk/index.js",
     "./sdk/cli": "./dist/src/sdk/cli/index.js",
+    "./sdk/client-sdk": "./dist/src/sdk/client-sdk/index.js",
+    "./sdk/harness-sdk": "./dist/src/sdk/harness-sdk/index.js",
+    "./sdk/pack-sdk": "./dist/src/sdk/pack-sdk/index.js",
+    "./sdk/plugin-sdk": "./dist/src/sdk/plugin-sdk/index.js",
+    "./sdk/workbench": "./dist/src/sdk/workbench/index.js",
     "./cli": "./dist/src/sdk/cli/index.js",
     "./operator": "./dist/src/sdk/cli/platform-operator.js",
     "./package.json": "./package.json"
@@ -55,7 +61,7 @@
     "url": "https://github.com/HoldenShen-hz/automatic-agent-platform.git"
   },
   "scripts": {
-    "build": "node --enable-source-maps scripts/clean-dist.mjs && tsc -p tsconfig.build.json",
+    "build": "node scripts/build-if-needed.mjs",
     "build:test": "tsc -p tsconfig.build.json",
     "dev:stack": "node scripts/dev/start-local-stack.mjs",
     "dev:stack:stop": "node scripts/dev/stop-local-stack.mjs",
@@ -164,6 +170,7 @@
     "audit:docs-charset": "node scripts/ci/audit-docs-charset.mjs",
     "audit:repo-hygiene": "npm run audit:test-exclusions && npm run audit:test-portability && npm run audit:golden-snapshots && npm run audit:docs-sync && npm run scan:current-codebase-gap && npm run audit:public-error-codes && npm run audit:oapeflir-terminology && npm run audit:runtime-service-events && npm run audit:sync-async-service-pairs && npm run audit:lint-guardrails && npm run audit:type-suppressions && npm run audit:outbound-urls && npm run audit:public-entrypoints && npm run audit:duplicate-test-titles && npm run audit:review-large-sources && npm run audit:ci-supply-chain && npm run audit:division-workflows && npm run audit:docs-charset",
     "test:raw": "AA_RUNNING_TESTS=1 AA_PRESERVE_DIST=1 node scripts/run-layered-tests.mjs full",
+    "coverage:curated:sync": "node scripts/ci/generate-coverage-curated-tsconfig.mjs",
     "coverage:report": "node scripts/ci/generate-coverage-report.mjs",
     "coverage:gate": "npm run coverage:report && node scripts/ci/check-coverage-baseline.mjs",
     "coverage:baseline:update": "npm run coverage:report && node scripts/ci/update-coverage-baseline.mjs",
@@ -273,7 +280,6 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.25.1",
-    "@prettier/plugin-xml": "^3.4.2",
     "@stryker-mutator/core": "^9.6.1",
     "@stryker-mutator/typescript-checker": "^9.6.1",
     "@types/node": "^22.19.15",

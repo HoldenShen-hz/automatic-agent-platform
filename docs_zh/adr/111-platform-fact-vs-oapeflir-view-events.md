@@ -1,12 +1,7 @@
 # ADR-111: Platform Fact vs OAPEFLIR View Events
 
-## 状态
-
-Accepted
-
-## 决策日期
-
-2026-04-27
+- 状态：Accepted
+- 决策日期：2026-04-27
 
 ## 背景
 

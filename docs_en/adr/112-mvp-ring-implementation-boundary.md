@@ -1,12 +1,7 @@
 # ADR-112: MVP Ring Implementation Boundary
 
-## Status
-
-Accepted
-
-## Decision Date
-
-2026-04-27
+- Status: Accepted
+- Decision Date: 2026-04-27
 
 ## Background
 
@@ -36,7 +31,7 @@ The platform target state includes enterprise governance, 24 domains, multi-regi
 
 - Current development plan prioritizes updating `docs_zh/operations/current_todo_list.md`, ADRs, and contracts.
 - Code implementation takes `src/platform/contracts/` and runtime MVP as first batch landing points.
-- `docs_en/` is not modified in this round.
+- `docs_en/` should stay structurally aligned in this round even if translation depth still trails the Chinese source.
 
 ## Related Documents
 

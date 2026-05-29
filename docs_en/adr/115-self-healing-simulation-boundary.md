@@ -1,10 +1,9 @@
 # ADR-115 Self Healing Simulation Boundary
 
-## Status
-Accepted
+- Status: Accepted
 
 ## Background
-Current self-healing service provides a deterministic simulation baseline testable in warehouse, not an external real infrastructure orchestrator.
+The current self-healing service provides a deterministic simulation baseline that is testable inside the repository rather than an external real infrastructure orchestrator.
 
 ## Decision
 - Self-healing execution results may use deterministic outcome model, but must:
@@ -20,4 +19,3 @@ Current self-healing service provides a deterministic simulation baseline testab
 
 ## Related Implementation
 - `src/ops-maturity/platform-ops-agent/self-healing-service.ts`
-

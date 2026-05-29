@@ -1,7 +1,6 @@
 # ADR-116 Interface Rate Limit Key Design
 
-## 状态
-Accepted
+- 状态：Accepted
 
 ## 背景
 不同入口曾使用不同 rate-limit key，导致运营侧无法预测限流是否共享桶。
@@ -21,4 +20,3 @@ Accepted
 ## 相关实现
 - `src/platform/five-plane-interface/api/http-api-server.ts`
 - `src/platform/five-plane-interface/api/http-server/*`
-

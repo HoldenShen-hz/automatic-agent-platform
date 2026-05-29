@@ -1,7 +1,6 @@
 # ADR-118 Panic Allowlist Governance
 
-## 状态
-Accepted
+- 状态：Accepted
 
 ## 背景
 panic mode 的 allowList 具有强 break-glass 性质，但之前没有权威治理说明。
@@ -17,4 +16,3 @@ panic mode 的 allowList 具有强 break-glass 性质，但之前没有权威治
 
 ## 相关实现
 - `src/ops-maturity/emergency/platform-panic-service.ts`
-

@@ -1,4 +1,4 @@
-import { defineAdapter } from "@platform/plugin-sdk";
+import { defineAdapter } from "automatic-agent-platform/sdk/plugin-sdk";
 
 export const dbAdapter = defineAdapter({
   pluginId: "test-pack.db",

@@ -2,6 +2,8 @@ apiVersion: chaos-mesh.org/v1alpha1
 kind: NetworkChaos
 metadata:
   name: automatic-agent-postgres-disconnect
+  annotations:
+    automatic-agent.io/target-contract: "operator-managed postgres pods must expose app.kubernetes.io/name=postgres"
 spec:
   action: partition
   mode: all
@@ -12,6 +14,6 @@ spec:
   target:
     selector:
       labelSelectors:
-        app.kubernetes.io/component: postgres
+        app.kubernetes.io/name: postgres
     mode: all
   duration: "60s"

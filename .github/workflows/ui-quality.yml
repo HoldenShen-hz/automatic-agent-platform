@@ -45,31 +45,41 @@ jobs:
       - run: npm run perf:budget
       - name: Start preview server
         run: |
-          npm --workspace @aa/web run preview -- --host 127.0.0.1 --port 4173 > /tmp/ui-preview.log 2>&1 &
+          mkdir -p test-results
+          nohup npm --workspace @aa/web run preview -- --host 127.0.0.1 --port 4173 > test-results/ui-preview.log 2>&1 &
+          PREVIEW_PID=$!
+          echo "$PREVIEW_PID" > test-results/ui-preview.pid
           for attempt in $(seq 1 30); do
             if curl -fsS http://127.0.0.1:4173 >/dev/null 2>&1; then
               exit 0
             fi
             sleep 2
           done
-          cat /tmp/ui-preview.log
+          cat test-results/ui-preview.log
           exit 1
       - name: Lighthouse
-        uses: treosh/lighthouse-ci-action@v12
+        uses: treosh/lighthouse-ci-action@512cc908a55bfb0ad231facca52adf3d3a651df4
         with:
           urls: |
             http://127.0.0.1:4173/
           uploadArtifacts: true
           temporaryPublicStorage: false
-      - run: npx playwright install --with-deps chromium firefox webkit
+      - run: npm exec playwright install --with-deps chromium firefox webkit
       - run: npm run test:a11y
       - run: npm run test:visual
+      - name: Stop preview server
+        if: always()
+        run: |
+          if [ -f test-results/ui-preview.pid ]; then
+            kill "$(cat test-results/ui-preview.pid)" 2>/dev/null || true
+          fi
       - name: Upload UI test artifacts
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: ui-quality-artifacts
+          retention-days: 14
           path: |
             ui/playwright-report/
             ui/test-results/
-            /tmp/ui-preview.log
+            ui/test-results/ui-preview.log

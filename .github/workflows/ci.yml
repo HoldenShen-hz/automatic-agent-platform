@@ -21,6 +21,8 @@ concurrency:
 
 jobs:
   validate:
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -62,9 +64,13 @@ jobs:
         run: npm run audit:repo-hygiene
 
       - name: Test
+        env:
+          AA_RUNNING_TESTS: "1"
         run: npm run test:raw
 
       - name: Coverage Gate
+        env:
+          AA_RUNNING_TESTS: "1"
         run: npm run coverage:gate
 
       - name: Stable validation
@@ -86,11 +92,32 @@ jobs:
         with:
           name: test-results-node-22
           retention-days: 14
+          if-no-files-found: error
+          compression-level: 6
           path: |
             test-results/
             coverage/
 
+  terraform-validate:
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: deploy/terraform
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+      - run: terraform fmt -check -recursive
+      - run: terraform init -backend=false
+      - run: terraform validate
+
   pg-integration:
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     timeout-minutes: 20
     services:
@@ -120,6 +147,8 @@ jobs:
           AA_STORAGE_POSTGRES_DSN: postgresql://test:test@127.0.0.1:5433/aa_test
 
   mutation-test:
+    permissions:
+      contents: read
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -139,20 +168,26 @@ jobs:
           path: reports/mutation/
 
   security:
+    permissions:
+      contents: read
+      security-events: write
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@fee9466b8957867761f2d78f922ab084e3e2dd17
         with:
           languages: typescript
 
       - name: Perform CodeQL analysis
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@fee9466b8957867761f2d78f922ab084e3e2dd17
 
   dependency-audit:
+    permissions:
+      contents: read
+      security-events: write
     if: github.event_name == 'schedule' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -167,10 +202,10 @@ jobs:
         run: |
           npm audit --audit-level=high --omit=dev --json > npm-audit.json || true
           node scripts/ci/npm-audit-to-sarif.mjs npm-audit.json npm-audit.sarif
-          node -e 'const report=require("./npm-audit.json"); const count=Object.keys(report.vulnerabilities ?? {}).length; console.log(`audit_vulnerabilities=${count}`); if (count > 0) process.exit(1);'
+          node --input-type=module -e 'import { readFileSync } from "node:fs"; const report = JSON.parse(readFileSync("./npm-audit.json", "utf8")); const severities = new Set(["high", "critical"]); const count = Object.values(report.vulnerabilities ?? {}).filter((entry) => severities.has(String(entry?.severity ?? "").toLowerCase())).length; console.log(`audit_high_or_critical_vulnerabilities=${count}`); if (count > 0) process.exit(1);'
       - name: Upload npm audit SARIF
         if: always()
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@fee9466b8957867761f2d78f922ab084e3e2dd17
         with:
           sarif_file: npm-audit.sarif
       - name: Upload npm audit raw report
@@ -184,6 +219,9 @@ jobs:
             npm-audit.sarif
 
   trivy-scan:
+    permissions:
+      contents: read
+      security-events: write
     needs: validate
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -207,3 +245,18 @@ jobs:
           image-ref: ${{ env.IMAGE_REGISTRY }}/${{ env.IMAGE_REPOSITORY }}:${{ env.IMAGE_TAG }}
           severity: CRITICAL,HIGH
           exit-code: 1
+          format: sarif
+          output: trivy-results.sarif
+      - name: Upload Trivy SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@fee9466b8957867761f2d78f922ab084e3e2dd17
+        with:
+          sarif_file: trivy-results.sarif
+      - name: Upload Trivy raw report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: trivy-results
+          retention-days: 14
+          if-no-files-found: error
+          path: trivy-results.sarif

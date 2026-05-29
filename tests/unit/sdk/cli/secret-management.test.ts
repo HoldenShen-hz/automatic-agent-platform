@@ -228,12 +228,12 @@ test("loadSecretManagementCliEnv throws for invalid action", () => {
 // ---------------------------------------------------------------------------
 
 test("SECRET_ACTIONS contains all expected actions", () => {
-  const expected = ["register", "resolve", "rotate", "issue", "revoke", "leases", "due", "request_due", "refresh", "summary"];
+  const expected = ["register", "resolve", "rotate", "issue", "revoke", "leases", "due", "request_due", "refresh", "summary", "generate-token"];
   assert.deepEqual(SECRET_ACTIONS, expected);
 });
 
-test("SECRET_ACTIONS has exactly 10 actions", () => {
-  assert.equal(SECRET_ACTIONS.length, 10);
+test("SECRET_ACTIONS has exactly 11 actions", () => {
+  assert.equal(SECRET_ACTIONS.length, 11);
 });
 
 // ---------------------------------------------------------------------------

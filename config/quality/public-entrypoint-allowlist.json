@@ -13,13 +13,7 @@
       "./prompt-engine/registry/index.js"
     ],
     "src/sdk/index.ts": [
-      "./pack-sdk/pack-scaffold-service.js",
-      "./pack-sdk/pack-manifest.js",
-      "./pack-sdk/pack-lifecycle-orchestration-service.js",
-      "./pack-sdk/pack-plugin-compatibility-service.js",
-      "./plugin-sdk/plugin-test-harness.js",
-      "./plugin-sdk/plugin-definition.js",
-      "./plugin-sdk/plugin-context.js"
+      "./client-sdk/api-client.js"
     ]
   }
 }

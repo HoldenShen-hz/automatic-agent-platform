@@ -1,34 +1,104 @@
-// CLI exports
-export * from "./cli/index.js";
+export { CLI_ENTRYPOINTS } from "./cli/index.js";
+export type { CliEntrypoint } from "./cli/index.js";
 
-// Client SDK exports
-export * from "./client-sdk/index.js";
-export * from "./harness-sdk/index.js";
-export * from "./admin-sdk/index.js";
-
-// Pack SDK exports
-export { PackScaffoldService } from "./pack-sdk/pack-scaffold-service.js";
-export { validateBusinessPackManifest, summarizeCapabilityMatrix } from "./pack-sdk/pack-manifest.js";
-export { PackLifecycleOrchestrationService } from "./pack-sdk/pack-lifecycle-orchestration-service.js";
-export { PackPluginCompatibilityService } from "./pack-sdk/pack-plugin-compatibility-service.js";
-export type { BusinessPackManifest, BusinessPackCapability, SdkReleaseDescriptor } from "./pack-sdk/pack-manifest.js";
-
-// Plugin SDK exports
-export { PluginTestHarness } from "./plugin-sdk/plugin-test-harness.js";
-export { definePlugin, defineTool, defineAdapter, defineRetriever, defineEvaluator, validatePluginDefinition } from "./plugin-sdk/plugin-definition.js";
+export {
+  ApiError,
+  RetryableApiClient,
+  buildApiUrl,
+  buildAuthHeaders,
+  classifyApiError,
+  createApiClient,
+  createContractEnvelope,
+  createEventSubscriber,
+  encodeCursor,
+  parseCursor,
+  parseRetryAfterDelayMs,
+  unwrapContractEnvelope,
+  wrapInContractEnvelope,
+} from "./client-sdk/api-client.js";
 export type {
-  PluginType,
-  PluginRole,
-  PluginCapability,
-  PluginResourceLimits,
-  PluginSecurityConfig,
-  PluginDefinition,
-  DefinePluginOptions,
-} from "./plugin-sdk/plugin-definition.js";
-export { PluginContext } from "./plugin-sdk/plugin-context.js";
+  ApiClientConfig,
+  ApiRequestOptions,
+  ApiRequestSpec,
+  ApiResponse,
+  EventSubscriberBackend,
+  EventSubscription,
+  EventSubscriptionCallback,
+  EventSubscriptionHandle,
+  PaginatedResponse,
+  PaginationSpec,
+  RetryConfig,
+  VersionHandshakeResult,
+} from "./client-sdk/api-client.js";
 
-// Fixture redaction for test fixtures per §22.3
+export {
+  HarnessSdk,
+  HarnessSdkError,
+  buildPlanGraphBundle,
+  validatePlanGraph,
+  validatePlanGraphBundle,
+} from "./harness-sdk/index.js";
+export type {
+  BudgetReservationResult,
+  HarnessSdkAppendStepInput,
+  HarnessSdkCreateRunInput,
+  HarnessSdkInterPlaneSecurityConfig,
+  HarnessSdkLifecycleHooks,
+  HarnessSdkReceiptOptions,
+  InterPlaneTransport,
+  PlanGraphBuildInput,
+} from "./harness-sdk/index.js";
+
+export { AdminSdk } from "./admin-sdk/index.js";
+export type {
+  AdminSdkConfig,
+  DecisionDirective,
+  DecisionDirectiveScope,
+  DecisionDirectiveType,
+  OperationalDirective,
+  OperationalDirectiveScope,
+  OperationalDirectiveType,
+} from "./admin-sdk/index.js";
+
+export {
+  PackLifecycleOrchestrationService,
+  PackPluginCompatibilityService,
+  PackScaffoldService,
+  validateBusinessPackManifest,
+  summarizeCapabilityMatrix,
+} from "./pack-sdk/index.js";
+export type {
+  BusinessPackCapability,
+  BusinessPackManifest,
+  SdkReleaseDescriptor,
+} from "./pack-sdk/index.js";
+
+export {
+  PluginContext,
+  PluginTestHarness,
+  defineAdapter,
+  defineEvaluator,
+  definePlugin,
+  defineRetriever,
+  defineTool,
+  validatePluginDefinition,
+} from "./plugin-sdk/index.js";
+export type {
+  DefinePluginOptions,
+  PluginCapability,
+  PluginDefinition,
+  PluginResourceLimits,
+  PluginRole,
+  PluginSecurityConfig,
+  PluginType,
+} from "./plugin-sdk/index.js";
+
 export { FixtureRedactor, generateTestId } from "./fixture-redact.js";
 
-// Workbench exports
-export * from "./workbench/index.js";
+export { SdkWorkbenchService } from "./workbench/index.js";
+export type {
+  PublishReadinessReport,
+  SdkWorkbenchShortcut,
+  SdkWorkbenchSnapshot,
+  WorkbenchInstallPlan,
+} from "./workbench/index.js";

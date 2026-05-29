@@ -16,10 +16,11 @@
  *   - All secret access is audit-logged
  */
 
-import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { createHash, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
+import { chmodSync, closeSync as closeFileSync, lstatSync, mkdirSync, openSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
+import { constants as fsConstants } from "node:fs";
 import { homedir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 
 import { withCliStorageAsync } from "./authoritative-storage.js";
 import { CLI_EXIT_FAILURE, CLI_EXIT_SUCCESS, isCliEntryPoint, runCliMain } from "./cli-exit.js";
@@ -49,24 +50,84 @@ function resolveSecureCliHome(env: NodeJS.ProcessEnv = process.env): string {
   return home;
 }
 
-function resolveAuthTokenPath(env: NodeJS.ProcessEnv = process.env): string {
-  return env.AA_SECRET_AUTH_TOKEN_PATH ?? join(resolveSecureCliHome(env), ".automatic-agent", "secret-auth-token");
+export function resolveAuthTokenPath(env: NodeJS.ProcessEnv = process.env): string {
+  return resolve(env.AA_SECRET_AUTH_TOKEN_PATH ?? join(resolveSecureCliHome(env), ".automatic-agent", "secret-auth-token"));
+}
+
+function assertPathIsNotSymlink(path: string): void {
+  try {
+    if (lstatSync(path).isSymbolicLink()) {
+      throw new PolicyDeniedError("secret.symlink_path_denied", "secret.symlink_path_denied", {
+        details: { path },
+      });
+    }
+  } catch (error) {
+    if (error instanceof PolicyDeniedError) {
+      throw error;
+    }
+  }
+}
+
+function ensureSecureParentDirectory(path: string): string {
+  const parent = dirname(path);
+  mkdirSync(parent, { recursive: true, mode: 0o700 });
+  chmodSync(parent, 0o700);
+  return realpathSync(parent);
+}
+
+function writeSecureFile(path: string, contents: string): void {
+  const targetPath = resolve(path);
+  ensureSecureParentDirectory(targetPath);
+  assertPathIsNotSymlink(targetPath);
+  const fd = openSync(targetPath, fsConstants.O_WRONLY | fsConstants.O_CREAT | fsConstants.O_TRUNC | fsConstants.O_NOFOLLOW, 0o600);
+  try {
+    writeFileSync(fd, contents, { encoding: "utf8" });
+  } finally {
+    closeFileSync(fd);
+  }
+  chmodSync(targetPath, 0o600);
+}
+
+function buildStoredTokenHash(token: string): string {
+  const salt = randomBytes(16);
+  const digest = scryptSync(token, salt, 32);
+  return `${salt.toString("hex")}:${digest.toString("hex")}`;
+}
+
+function parseStoredTokenHash(storedTokenHash: string): { salt: Buffer; digest: Buffer } | null {
+  const [saltHex, digestHex] = storedTokenHash.split(":");
+  if (
+    saltHex == null
+    || digestHex == null
+    || saltHex.length !== 32
+    || digestHex.length !== 64
+    || !/^[0-9a-f]+$/iu.test(saltHex)
+    || !/^[0-9a-f]+$/iu.test(digestHex)
+  ) {
+    return null;
+  }
+  return {
+    salt: Buffer.from(saltHex, "hex"),
+    digest: Buffer.from(digestHex, "hex"),
+  };
 }
 
 /**
  * Load or generate the secret auth token for CLI operations.
  * The token is stored as a hash for security.
  */
-function loadAuthTokenConfig(env: NodeJS.ProcessEnv = process.env): AuthGateConfig {
+export function loadAuthTokenConfig(env: NodeJS.ProcessEnv = process.env): AuthGateConfig {
   const tokenPath = resolveAuthTokenPath(env);
   const rawToken = env[AUTH_TOKEN_ENV]?.trim() ?? null;
 
-  // Try to load existing token hash from file
   try {
+    assertPathIsNotSymlink(tokenPath);
     const tokenFile = readFileSync(tokenPath, "utf8").trim();
     return { authTokenPath: tokenPath, storedTokenHash: tokenFile, providedToken: rawToken };
-  } catch {
-    // No token available - operations requiring auth will fail
+  } catch (error) {
+    if (error instanceof PolicyDeniedError) {
+      throw error;
+    }
     return { authTokenPath: tokenPath, storedTokenHash: null, providedToken: rawToken };
   }
 }
@@ -106,27 +167,27 @@ function requireAuthToken(config: AuthGateConfig, action: string): void {
 /**
  * Verify the provided token matches the stored hash.
  */
-function verifyAuthToken(config: AuthGateConfig, providedToken: string): boolean {
+export function verifyAuthToken(config: AuthGateConfig, providedToken: string): boolean {
   if (config.storedTokenHash == null) {
     return false;
   }
-  const providedHash = createHash("sha256").update(providedToken).digest("hex");
-  const left = Buffer.from(providedHash, "utf8");
-  const right = Buffer.from(config.storedTokenHash, "utf8");
-  return left.length === right.length && timingSafeEqual(left, right);
+  const parsed = parseStoredTokenHash(config.storedTokenHash);
+  const expected = parsed?.digest ?? Buffer.alloc(32);
+  const actual = parsed == null
+    ? Buffer.alloc(32)
+    : Buffer.from(scryptSync(providedToken, parsed.salt, 32));
+  return timingSafeEqual(actual, expected);
 }
 
 /**
  * Generate a new auth token and return it (only shown once at generation).
  * Token is stored as hash; the raw token is only available at generation time.
  */
-function generateAuthToken(): { token: string; tokenPath: string } {
+export function generateAuthToken(): { token: string; tokenPath: string } {
   const token = randomBytes(32).toString("hex");
   const tokenPath = resolveAuthTokenPath(process.env);
-  const tokenHash = createHash("sha256").update(token).digest("hex");
-
-  mkdirSync(dirname(tokenPath), { recursive: true, mode: 0o700 });
-  writeFileSync(tokenPath, tokenHash, { encoding: "utf8", mode: 0o600 });
+  const tokenHash = buildStoredTokenHash(token);
+  writeSecureFile(tokenPath, tokenHash);
 
   return { token, tokenPath };
 }
@@ -153,21 +214,26 @@ interface SecretCommandResult {
 /**
  * Execute secret command with authentication gate.
  */
-async function executeSecretCommand(
+export async function executeSecretCommand(
   action: string,
   envConfig: ReturnType<typeof loadSecretManagementCliEnv>,
   authConfig: AuthGateConfig,
 ): Promise<SecretCommandResult> {
   try {
     if (action === "generate-token") {
+      if (authConfig.storedTokenHash != null) {
+        requireAuthToken(authConfig, action);
+      }
       const { token, tokenPath } = generateAuthToken();
+      const outputPath = resolveSecretOutputPath(process.env);
+      writeSecureFile(outputPath, `${token}\n`);
       return {
         success: true,
         action: "generate-token",
         data: {
-          token,
           tokenPath,
-          hint: "Store this token securely. The raw token cannot be recovered.",
+          outputPath,
+          hint: "Raw token was written to AA_SECRET_OUTPUT_PATH and is not echoed to stdout.",
         },
       };
     }
@@ -215,8 +281,7 @@ async function executeSecretCommand(
             authContext,
           );
           const outputPath = resolveSecretOutputPath(process.env);
-          mkdirSync(dirname(outputPath), { recursive: true, mode: 0o700 });
-          writeFileSync(outputPath, secretValue.value, { encoding: "utf8", mode: 0o600 });
+          writeSecureFile(outputPath, secretValue.value);
           return {
             success: true,
             action: "require",
@@ -230,6 +295,7 @@ async function executeSecretCommand(
         }
 
         case "describe": {
+          requireAuthToken(authConfig, action);
           const description = await service.describeSecret(envConfig.secretRef ?? "");
           return {
             success: true,
@@ -242,6 +308,7 @@ async function executeSecretCommand(
         }
 
         case "leases": {
+          requireAuthToken(authConfig, action);
           const leases = service.listSecretLeases(envConfig.secretRef ?? "", envConfig.asOf ?? undefined);
           return {
             success: true,
@@ -254,6 +321,7 @@ async function executeSecretCommand(
         }
 
         case "summary": {
+          requireAuthToken(authConfig, action);
           const summary = service.buildAuditSummary(envConfig.secretRef ?? "", envConfig.asOf ?? undefined);
           return {
             success: true,
@@ -302,7 +370,7 @@ if (isCliEntryPoint(import.meta.url)) {
         success: false,
         action: "unknown",
         error: error instanceof Error ? error.message : String(error),
-        errorCode: error instanceof Error ? error.constructor.name : "UnknownError",
+        errorCode: "secret.command_failed",
       };
       process.stdout.write(`${JSON.stringify(errorResult, null, 2)}\n`);
     },

@@ -13,6 +13,9 @@ import { validateBusinessPackManifest, type BusinessPackManifest } from "../pack
 import { createApiClient, type ApiClientConfig } from "../client-sdk/api-client.js";
 import { CLI_EXIT_FAILURE, CLI_EXIT_SUCCESS, runCliMain } from "./cli-exit.js";
 
+const PACK_PUBLISH_MAX_ATTEMPTS = 4;
+const PACK_PUBLISH_INITIAL_BACKOFF_MS = 250;
+
 interface PackPublishOptions {
   manifest: string;
   registryUrl?: string;
@@ -53,6 +56,37 @@ interface PublishResult {
   artifactId?: string;
   errors: string[];
   dryRun: boolean;
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
+function shouldRetryPublishStatus(status: number): boolean {
+  return status === 429 || status >= 500;
+}
+
+function shouldRetryPublishError(error: unknown): boolean {
+  if (error != null && typeof error === "object") {
+    const retryable = Reflect.get(error, "retryable");
+    const statusCode = Reflect.get(error, "statusCode");
+    if (retryable === true) {
+      return true;
+    }
+    if (typeof statusCode === "number" && shouldRetryPublishStatus(statusCode)) {
+      return true;
+    }
+  }
+  if (!(error instanceof Error)) {
+    return false;
+  }
+  const message = error.message.toLowerCase();
+  return message.includes("fetch failed")
+    || message.includes("network")
+    || message.includes("timeout")
+    || message.includes("socket");
 }
 
 function resolveRegistryUrl(opts: PackPublishOptions): string {
@@ -117,18 +151,40 @@ export async function publishPack(args = process.argv.slice(2)): Promise<Publish
       baseUrl: registryUrl,
       apiVersion,
       bearerToken,
+      principal: {
+        subject: "pack-publish-cli",
+      },
     };
 
     const client = createApiClient(config);
-    const response = await client.post<{ artifactId: string }>("/packs", validated);
-
-    if (response.status >= 200 && response.status < 300) {
-      result.published = true;
-      result.artifactId = response.data.artifactId;
-    } else {
-      result.errors.push(`http_error:status=${response.status}`);
+    let lastStatus: number | null = null;
+    for (let attempt = 1; attempt <= PACK_PUBLISH_MAX_ATTEMPTS; attempt += 1) {
+      try {
+        const response = await client.post<{ artifactId: string }>("/packs", validated);
+        if (response.status >= 200 && response.status < 300) {
+          result.published = true;
+          result.artifactId = response.data.artifactId;
+          return result;
+        }
+        lastStatus = response.status;
+        if (!shouldRetryPublishStatus(response.status) || attempt === PACK_PUBLISH_MAX_ATTEMPTS) {
+          result.errors.push(`http_error:status=${response.status}`);
+          return result;
+        }
+      } catch (error) {
+        if (!shouldRetryPublishError(error) || attempt === PACK_PUBLISH_MAX_ATTEMPTS) {
+          throw error;
+        }
+      }
+      const backoffMs = Math.min(
+        PACK_PUBLISH_INITIAL_BACKOFF_MS * (2 ** (attempt - 1)),
+        4_000,
+      );
+      await delay(backoffMs);
     }
-
+    if (lastStatus != null) {
+      result.errors.push(`http_error:status=${lastStatus}`);
+    }
   } catch (err) {
     result.errors.push(`publish_failed:${err instanceof Error ? err.message : String(err)}`);
   }

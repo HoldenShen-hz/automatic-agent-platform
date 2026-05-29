@@ -35,6 +35,77 @@ import {
   type WorkflowInspectQuery,
 } from "../../platform/shared/observability/inspect-service.js";
 
+const MAX_INSPECT_OUTPUT_BYTES = 1024 * 1024;
+const MAX_INSPECT_DEPTH = 8;
+const MAX_INSPECT_ARRAY_ITEMS = 200;
+const MAX_INSPECT_OBJECT_KEYS = 200;
+const MAX_INSPECT_STRING_LENGTH = 16_384;
+const STDOUT_CHUNK_BYTES = 16 * 1024;
+
+function truncateString(value: string): string {
+  if (Buffer.byteLength(value, "utf8") <= MAX_INSPECT_STRING_LENGTH) {
+    return value;
+  }
+  return `${value.slice(0, MAX_INSPECT_STRING_LENGTH)}... [truncated]`;
+}
+
+function buildInspectPreview(value: unknown, depth = 0): unknown {
+  if (value == null || typeof value === "number" || typeof value === "boolean") {
+    return value;
+  }
+  if (typeof value === "string") {
+    return truncateString(value);
+  }
+  if (depth >= MAX_INSPECT_DEPTH) {
+    return "[truncated-depth]";
+  }
+  if (Array.isArray(value)) {
+    const preview = value
+      .slice(0, MAX_INSPECT_ARRAY_ITEMS)
+      .map((entry) => buildInspectPreview(entry, depth + 1));
+    if (value.length > MAX_INSPECT_ARRAY_ITEMS) {
+      preview.push(`[truncated ${value.length - MAX_INSPECT_ARRAY_ITEMS} items]`);
+    }
+    return preview;
+  }
+  if (typeof value === "object") {
+    const entries = Object.entries(value as Record<string, unknown>);
+    const previewEntries = entries.slice(0, MAX_INSPECT_OBJECT_KEYS)
+      .map(([key, entryValue]) => [key, buildInspectPreview(entryValue, depth + 1)]);
+    if (entries.length > MAX_INSPECT_OBJECT_KEYS) {
+      previewEntries.push(["__truncated_keys__", entries.length - MAX_INSPECT_OBJECT_KEYS]);
+    }
+    return Object.fromEntries(previewEntries);
+  }
+  return String(value);
+}
+
+export function serializeInspectOutput(value: unknown): string {
+  const json = JSON.stringify(buildInspectPreview(value), null, 2);
+  const bytes = Buffer.byteLength(json, "utf8");
+  if (bytes <= MAX_INSPECT_OUTPUT_BYTES) {
+    return `${json}\n`;
+  }
+  const truncated = JSON.stringify({
+    output: buildInspectPreview(value),
+    __truncated_bytes__: bytes - MAX_INSPECT_OUTPUT_BYTES,
+  }, null, 2);
+  return `${truncated}\n`;
+}
+
+async function writeJsonOutput(value: unknown): Promise<void> {
+  const output = serializeInspectOutput(value);
+  for (let start = 0; start < output.length; start += STDOUT_CHUNK_BYTES) {
+    const chunk = output.slice(start, start + STDOUT_CHUNK_BYTES);
+    if (process.stdout.write(chunk)) {
+      continue;
+    }
+    await new Promise<void>((resolve) => {
+      process.stdout.once("drain", resolve);
+    });
+  }
+}
+
 /**
  * Main entry point for the inspect CLI tool.
  *
@@ -45,7 +116,7 @@ import {
  *
  * @throws Error if AA_INSPECT_KIND is not one of the supported types
  */
-function main(): number {
+async function main(): Promise<number> {
   const envConfig = loadInspectCliEnv();
   const output = withCliStorage((storage) => {
     const inspect = new InspectService(storage.store);
@@ -149,7 +220,7 @@ function main(): number {
     }
   }, envConfig.dbPath != null ? { dbPath: envConfig.dbPath } : {});
 
-  process.stdout.write(`${JSON.stringify(output, null, 2)}\n`);
+  await writeJsonOutput(output);
   return CLI_EXIT_SUCCESS;
 }
 

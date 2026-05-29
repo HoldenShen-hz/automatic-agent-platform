@@ -3,6 +3,10 @@
 # runs cannot hide unbounded CPU, memory, pid, or writable-root behavior.
 # Production secrets must be supplied via environment/secret managers; do
 # not commit concrete AA_API_JWT_SECRET or POSTGRES_PASSWORD values here.
+# This repository intentionally does not carry a `docker-compose.override.yml`;
+# compose merge semantics stay out of the baseline so local runs remain
+# deterministic. Override locally with explicit `-f` arguments when needed.
+# For immutable image promotion, pass a digest-qualified `AA_IMAGE_REF`.
 
 services:
   api-server:
@@ -11,7 +15,7 @@ services:
       context: .
       target: runtime
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     environment:
       NODE_ENV: production
       AA_DB_PATH: /app/data/automatic-agent.db
@@ -53,7 +57,7 @@ services:
       POSTGRES_USER: automatic_agent
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?required}
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - automatic-agent-postgres:/var/lib/postgresql/data
     healthcheck:
@@ -65,13 +69,15 @@ services:
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
+    cap_drop:
+      - ALL
     networks:
       - automatic-agent-network
 
   redis:
     image: redis:7-alpine
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     command: ["redis-server", "--appendonly", "no", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
@@ -82,6 +88,8 @@ services:
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
+    cap_drop:
+      - ALL
     networks:
       - automatic-agent-network
 
@@ -101,6 +109,14 @@ services:
       - /tmp:size=32m,mode=1777
     security_opt:
       - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:9090/-/healthy"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     networks:
       - automatic-agent-network
 
@@ -123,6 +139,8 @@ services:
       - /tmp:size=32m,mode=1777
     security_opt:
       - no-new-privileges:true
+    cap_drop:
+      - ALL
     networks:
       - automatic-agent-network
 
@@ -131,6 +149,10 @@ volumes:
     driver: local
   automatic-agent-postgres:
     driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${PWD}/data/docker/postgres
 
 networks:
   automatic-agent-network:

@@ -1,4 +1,40 @@
 {
+  "__inputs": [
+    {
+      "name": "datasource",
+      "label": "Prometheus datasource",
+      "description": "Provisioned Prometheus datasource uid",
+      "type": "datasource",
+      "pluginId": "prometheus",
+      "pluginName": "Prometheus"
+    }
+  ],
+  "__requires": [
+    {
+      "type": "grafana",
+      "id": "grafana",
+      "name": "Grafana",
+      "version": "10.4.0"
+    },
+    {
+      "type": "panel",
+      "id": "timeseries",
+      "name": "Time series",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "gauge",
+      "name": "Gauge",
+      "version": ""
+    },
+    {
+      "type": "datasource",
+      "id": "prometheus",
+      "name": "Prometheus",
+      "version": "2.50.0"
+    }
+  ],
   "annotations": {
     "list": []
   },
@@ -119,17 +155,17 @@
       },
       "targets": [
         {
-          "expr": "histogram_quantile(0.50, rate(http_request_duration_ms_bucket[5m]))",
+          "expr": "histogram_quantile(0.50, sum by (job, instance, le) (rate(http_request_duration_ms_bucket[5m])))",
           "legendFormat": "P50",
           "refId": "A"
         },
         {
-          "expr": "histogram_quantile(0.95, rate(http_request_duration_ms_bucket[5m]))",
+          "expr": "histogram_quantile(0.95, sum by (job, instance, le) (rate(http_request_duration_ms_bucket[5m])))",
           "legendFormat": "P95",
           "refId": "B"
         },
         {
-          "expr": "histogram_quantile(0.99, rate(http_request_duration_ms_bucket[5m]))",
+          "expr": "histogram_quantile(0.99, sum by (job, instance, le) (rate(http_request_duration_ms_bucket[5m])))",
           "legendFormat": "P99",
           "refId": "C"
         }
@@ -766,7 +802,6 @@
   "timepicker": {},
   "timezone": "browser",
   "title": "Automatic Agent Platform",
-  "uid": "automatic-agent",
   "version": 1,
   "weekStart": ""
 }

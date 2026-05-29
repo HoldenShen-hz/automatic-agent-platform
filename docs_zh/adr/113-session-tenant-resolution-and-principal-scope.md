@@ -1,7 +1,6 @@
 # ADR-113 Session Tenant Resolution And Principal Scope
 
-## 状态
-Accepted
+- 状态：Accepted
 
 ## 背景
 HTTP 用户会话、service principal 和租户隔离在实现上已经收口到统一 scope 判断，但之前没有一份权威文档解释 tenant 是如何解析和传播的。
@@ -19,4 +18,3 @@ HTTP 用户会话、service principal 和租户隔离在实现上已经收口到
 - `src/platform/five-plane-interface/api/session-management.ts`
 - `src/platform/five-plane-interface/api/http-api-server.ts`
 - `src/platform/five-plane-control-plane/incident-control/tenant-scope-filter.ts`
-

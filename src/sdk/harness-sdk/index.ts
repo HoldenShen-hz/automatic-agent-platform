@@ -425,10 +425,20 @@ export class HarnessSdk {
             timeoutMs,
             run == null ? undefined : toHarnessRunFacade(run),
           );
-        } catch {
+        } catch (error) {
+          this.lifecycleHooks?.onError?.(
+            error instanceof Error
+              ? error
+              : new HarnessSdkError(
+                "harness_sdk.timeout_lookup_failed",
+                "HarnessSdk.execute failed to load run state for onTimeout hook.",
+                { cause: String(error) },
+              ),
+          );
           this.lifecycleHooks?.onTimeout?.(timeoutMs);
         }
       }, timeoutMs);
+      timeoutHandle.unref?.();
     }
 
     try {

@@ -1,4 +1,4 @@
-import { defineAdapter } from "@platform/plugin-sdk";
+import { defineAdapter } from "automatic-agent-platform/sdk/plugin-sdk";
 
 export const httpAdapter = defineAdapter({
   pluginId: "test-pack.http",

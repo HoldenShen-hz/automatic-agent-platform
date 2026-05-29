@@ -1,7 +1,6 @@
 # ADR-117 Cost Event WAL Recovery
 
-## 状态
-Accepted
+- 状态：Accepted
 
 ## 背景
 成本事件写前日志已经引入 pending/committed 状态，但 orphaned pending entry 的恢复策略之前没有权威描述。
@@ -23,4 +22,3 @@ Accepted
 ## 相关实现
 - `src/platform/five-plane-control-plane/cost-alert/*`
 - `src/ops-maturity/cost-optimizer/*`
-

@@ -1,6 +1,9 @@
+# Git and workspace metadata
 .git
 .github
 .claude
+
+# Dependency and build outputs
 node_modules
 dist
 dist_*
@@ -19,6 +22,8 @@ coverage
 .test-db
 .tmp
 .runtime
+
+# Local databases and runtime state
 :memory:*
 *.db
 *.db-backup

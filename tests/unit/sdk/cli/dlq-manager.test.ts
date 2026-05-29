@@ -7,6 +7,7 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
+import { parseArguments as parseDlqArguments } from "../../../../src/sdk/cli/dlq-manager.js";
 
 // ---------------------------------------------------------------------------
 // Tests for DLQ argument parsing logic
@@ -304,6 +305,23 @@ test("events queue retry outputs informational message", () => {
   const count = 5;
   const message = `Event dead letters (${count}) cannot be directly retried. Consider re-publishing or purging.`;
   assert.ok(message.includes("cannot be directly retried"));
+});
+
+test("source parseArguments rejects non-numeric limit instead of propagating NaN", () => {
+  assert.throws(
+    () => parseDlqArguments({ action: "list", queue: "gateway", limit: "abc" }),
+    /Invalid limit/,
+  );
+});
+
+test("source parseArguments keeps retry-limit available for retry action", () => {
+  const result = parseDlqArguments({ action: "retry", queue: "jobs", "retry-limit": "25" });
+  assert.equal(result.retryLimit, 25);
+});
+
+test("source parseArguments accepts case-insensitive purge env in runtime helper contract", () => {
+  const result = parseDlqArguments({ action: "purge", queue: "events", yes: true });
+  assert.equal(result.confirmed, true);
 });
 
 // ---------------------------------------------------------------------------

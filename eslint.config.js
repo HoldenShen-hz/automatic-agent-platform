@@ -12,7 +12,7 @@ const typedFiles = [
 
 export default tseslint.config(
   {
-    ignores: ["dist/**", "node_modules/**", "ui/**"],
+    ignores: ["dist/**", "dist-types/**", "node_modules/**", "ui/**", "coverage-report/**", ".dr-reports/**"],
   },
   js.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,
@@ -23,6 +23,7 @@ export default tseslint.config(
       "scripts/**/*.mjs",
       "scripts/**/*.ts",
       "tests/**/*.ts",
+      "tests/**/*.tsx",
       "helpers/**/*.ts",
     ],
     languageOptions: {
@@ -43,7 +44,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ["src/**/*.ts", "tests/**/*.ts", "helpers/**/*.ts", "scripts/**/*.mjs", "scripts/**/*.ts"],
+    files: ["src/**/*.ts", "src/**/*.tsx", "tests/**/*.ts", "tests/**/*.tsx", "helpers/**/*.ts", "scripts/**/*.mjs", "scripts/**/*.ts"],
     linterOptions: {
       reportUnusedDisableDirectives: "error",
     },

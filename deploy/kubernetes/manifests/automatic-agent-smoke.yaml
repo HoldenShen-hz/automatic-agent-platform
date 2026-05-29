@@ -17,6 +17,12 @@ spec:
         app.kubernetes.io/name: automatic-agent-platform
         app.kubernetes.io/component: smoke
     spec:
+      serviceAccountName: default
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: api
           image: ghcr.io/automatic-agent/automatic-agent-platform:latest
@@ -27,6 +33,31 @@ spec:
               value: production
             - name: AA_STORAGE_DRIVER
               value: sqlite
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 3000
+            initialDelaySeconds: 15
+            periodSeconds: 30
 ---
 apiVersion: v1
 kind: Service

@@ -18,11 +18,11 @@
  */
 
 import { parseArgs } from "node:util";
-import { pathToFileURL } from "node:url";
 import { ValidationError } from "../../platform/contracts/errors.js";
 import { QUEUE_JOBS_DDL } from "../../platform/five-plane-execution/queue/queue-adapter-types.js";
 import { CHANNEL_DELIVERY_DDL } from "../../platform/five-plane-interface/channel-gateway/channel-gateway-delivery-support.js";
 import { openCliAuthoritativeStorageContext } from "./authoritative-storage.js";
+import { isCliEntryPoint } from "./cli-exit.js";
 
 interface DlqAction {
   action: "list" | "count" | "retry" | "purge";
@@ -59,6 +59,22 @@ function writeLine(message: string): void {
 
 function writeJson(value: unknown): void {
   process.stdout.write(`${JSON.stringify(value, null, 2)}\n`);
+}
+
+function parsePositiveIntegerOption(
+  rawValue: string | boolean | undefined,
+  optionName: string,
+  defaultValue: number,
+  maxValue: number,
+): number {
+  if (rawValue == null) {
+    return defaultValue;
+  }
+  const parsed = Number.parseInt(String(rawValue), 10);
+  if (!Number.isFinite(parsed) || !Number.isInteger(parsed) || parsed <= 0) {
+    throw new ValidationError(`dlq.invalid_${optionName}`, `Invalid ${optionName}. Use a positive integer.`);
+  }
+  return Math.max(1, Math.min(maxValue, parsed));
 }
 
 function ensureDlqSchemas(db: ReturnType<typeof openCliAuthoritativeStorageContext>): void {
@@ -100,16 +116,14 @@ export function parseArguments(overrides?: Record<string, string | boolean | und
     throw new ValidationError("dlq.invalid_queue", `Invalid queue. Use: gateway, jobs, events\n\n${buildUsageText()}`);
   }
 
-  const retryLimitRaw = values["retry-limit"];
-  const retryLimit = retryLimitRaw == null ? undefined : Number.parseInt(String(retryLimitRaw), 10);
-  if (retryLimitRaw != null && (retryLimit == null || !Number.isInteger(retryLimit) || retryLimit <= 0)) {
-    throw new ValidationError("dlq.invalid_retry_limit", "Invalid retry-limit. Use a positive integer.");
-  }
+  const retryLimit = values["retry-limit"] == null
+    ? undefined
+    : parsePositiveIntegerOption(values["retry-limit"], "retry_limit", 100, 500);
 
   return {
     action,
     queue,
-    limit: Math.max(1, Math.min(500, parseInt(String(values.limit ?? "50"), 10))),
+    limit: parsePositiveIntegerOption(values.limit, "limit", 50, 500),
     channel: typeof values.channel === "string" ? values.channel : undefined,
     ...(retryLimit == null ? {} : { retryLimit }),
     confirmed: values.yes === true,
@@ -197,41 +211,48 @@ function countDeadLetters(db: ReturnType<typeof openCliAuthoritativeStorageConte
   });
 }
 
-function retryDeadLetters(db: ReturnType<typeof openCliAuthoritativeStorageContext>, queue: "gateway" | "jobs" | "events"): void {
+function retryDeadLetters(
+  db: ReturnType<typeof openCliAuthoritativeStorageContext>,
+  queue: "gateway" | "jobs" | "events",
+  batchLimit: number,
+): void {
   const sql = db.sql.connection;
 
   if (queue === "jobs") {
-    // R31-40 FIX: Add batch limit to retry - reset attempts but limit to 100 records at a time
+    const rows = sql.prepare(`
+      SELECT id
+      FROM queue_jobs
+      WHERE status = 'dead_letter'
+      ORDER BY updated_at ASC
+      LIMIT ?
+    `).all(batchLimit) as Array<{ id: string }>;
+    if (rows.length === 0) {
+      writeLine("No dead-lettered jobs found.");
+      return;
+    }
+    const placeholders = rows.map(() => "?").join(", ");
+    const ids = rows.map((row) => row.id);
     const result = sql.prepare(`
       UPDATE queue_jobs
       SET status = 'waiting', attempts = 0, last_error = NULL, updated_at = datetime('now')
-      WHERE status = 'dead_letter'
-      ORDER BY updated_at ASC
-      LIMIT 100
-    `).run();
-    writeLine(`Retried up to ${result.changes} dead-lettered jobs (batch limit: 100).`);
+      WHERE id IN (${placeholders})
+    `).run(...ids);
+    writeLine(`Retried ${result.changes} dead-lettered jobs (batch limit: ${batchLimit}).`);
   } else if (queue === "gateway") {
-    // Gateway DLQ doesn't have a simple retry - messages need to be re-enqueued
     const count = (sql.prepare(`SELECT COUNT(*) as c FROM gateway_dead_letters`).get() as { c: number })?.c ?? 0;
     writeLine(`Gateway dead letters (${count}) cannot be directly retried. Consider re-processing or purging.`);
   } else if (queue === "events") {
-    // Event DLQ retry would require re-publishing events
     const count = (sql.prepare(`SELECT COUNT(*) as c FROM event_dead_letters`).get() as { c: number })?.c ?? 0;
     writeLine(`Event dead letters (${count}) cannot be directly retried. Consider re-publishing or purging.`);
   }
 }
 
+function hasPurgeConfirmationEnv(env: NodeJS.ProcessEnv = process.env): boolean {
+  return (env["AA_DLQ_PURGE_CONFIRM"] ?? "").trim().toLowerCase() === "yes";
+}
+
 function purgeDeadLetters(db: ReturnType<typeof openCliAuthoritativeStorageContext>, queue: "gateway" | "jobs" | "events"): void {
   const sql = db.sql.connection;
-
-  // R31-34 FIX: Require --confirm flag for purge operations to prevent accidental deletion
-  const confirmFlag = process.env["AA_DLQ_PURGE_CONFIRM"] ?? "";
-  if (confirmFlag !== "yes") {
-    writeLine("Purge operation requires AA_DLQ_PURGE_CONFIRM=yes environment variable.");
-    writeLine(`Dry-run: Would delete all ${queue} dead letter records.`);
-    writeLine("Set AA_DLQ_PURGE_CONFIRM=yes to proceed with actual deletion.");
-    return;
-  }
 
   if (queue === "gateway") {
     const result = sql.prepare(`DELETE FROM gateway_dead_letters`).run();
@@ -271,12 +292,17 @@ function main(): void {
         countDeadLetters(storage);
         break;
       case "retry":
-        retryDeadLetters(storage, args.queue);
+        retryDeadLetters(storage, args.queue, args.retryLimit ?? 100);
         break;
       case "purge":
         if (args.confirmed !== true) {
-          writeLine("Purge operation requires --yes in addition to AA_DLQ_PURGE_CONFIRM=yes.");
-          writeLine(`Dry-run: Would delete all ${args.queue} dead letter records.`);
+          writeLine("Purge operation requires the --yes flag.");
+          writeLine(`Dry-run: Would delete all ${args.queue} dead letter records if --yes is provided.`);
+          return;
+        }
+        if (!hasPurgeConfirmationEnv()) {
+          writeLine("Purge operation requires AA_DLQ_PURGE_CONFIRM=yes.");
+          writeLine(`Dry-run: Would delete all ${args.queue} dead letter records if AA_DLQ_PURGE_CONFIRM=yes is set.`);
           return;
         }
         purgeDeadLetters(storage, args.queue);
@@ -287,6 +313,6 @@ function main(): void {
   }
 }
 
-if (process.argv[1] != null && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (isCliEntryPoint(import.meta.url)) {
   main();
 }

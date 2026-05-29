@@ -1,4 +1,4 @@
-import { defineRetriever } from "@platform/plugin-sdk";
+import { defineRetriever } from "automatic-agent-platform/sdk/plugin-sdk";
 
 export const contextRetriever = defineRetriever({
   pluginId: "test-pack.context",

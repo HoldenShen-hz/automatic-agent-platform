@@ -1064,7 +1064,7 @@
 | 810 | helm/templates/servicemonitor.yaml:11-12 selector 含 helm.sh/chart/version 标签，每次升级都失配 metrics service | `done` | 根因是 ServiceMonitor 之前用整套 common labels 做 selector，把 chart/version 这种会漂移的标签也带进去了；本轮已改成稳定 selector labels + metrics component。 |
 | 811 | helm/templates/servicemonitor.yaml 选择 app.kubernetes.io/name=automatic-agent 与主 service 同标签，会抓 :3000 而非 :9090 | `done` | 根因是 metrics service 之前没有独立 component label；本轮主 service 标 `component=api`，metrics service 标 `component=metrics`，ServiceMonitor 只抓 metrics service。 |
 | 812 | helm/templates/prometheusrule.yaml:13 用 up{job="...-metrics"}，但 deploy/prometheus/prometheus.yml job_name 为 compose/k8s，规则永不命中 | `done` | 根因是 Helm 告警模板曾假设固定 `*-metrics` job 名；本轮已改为基于 release fullname 模糊匹配实际 scrape job。 |
-| 813 | helm/templates/prometheusrule.yaml 仅 1 条 alert，而 deploy/prometheus/rules/automatic-agent.yml 21 条；helm 集群丢失 20 条告警 | `todo` | Helm `PrometheusRule` 仍只保留精简告警集，尚未与 `deploy/prometheus/rules/automatic-agent.yml` 全量对齐。 |
+| 813 | helm/templates/prometheusrule.yaml 仅 1 条 alert，而 deploy/prometheus/rules/automatic-agent.yml 21 条；helm 集群丢失 20 条告警 | `done` | 根因是 Helm `PrometheusRule` 之前只维护了一个缩略告警面；本轮已把 21 条告警和 2 条 recording rules 全量同步到 chart，并用 golden test 强制 Helm 与 `deploy/prometheus/rules/automatic-agent.yml` 同步。 |
 | 814 | helm/templates/canary-ingress.yaml:18,21 hosts 为空仍渲染，pathType 默认缺失，nginx-ingress/K8s≥1.18 拒绝 | `done` | 根因是 canary ingress 没复用主 ingress 的 host/path fallback 逻辑；本轮已补 domain required、host 默认值和 `pathType: Prefix` 默认。 |
 | 815 | helm/templates/pdb.yaml:7-12 默认 minAvailable:1 + replicaCount:1 阻塞 drain；同时 minAvailable 与 maxUnavailable 都被渲染时 K8s 拒绝 | `done` | 根因是 PDB 模板缺少互斥保护，且环境 values 仍沿用 `minAvailable`；本轮已加互斥 fail-close，并把 staging/pre-prod/prod 切到 `maxUnavailable: 1`。 |
 | 816 | helm/templates/hpa.yaml:34 range customMetrics ... toYaml(list .) \| nindent 4 产嵌套 list of list | `done` | 根因是 review 把 Helm 中“逐个 metric 对象包装成单元素 list 再渲染”的常用模式误判成 list-of-list；当前模板仍按该模式输出合法 HPA metrics 条目，且本轮已补 queue-depth custom metrics overlay。 |
@@ -1139,105 +1139,105 @@
 
 | 编号 | 问题 | 状态 | 问题根因 |
 | --- | --- | --- | --- |
-| 878 | deploy/grafana/dashboards/automatic-agent.json 无版本 pin，Grafana 兼容未声明 | `todo` | 待修复 |
-| 879 | deploy/grafana/dashboards/automatic-agent.json uid:"automatic-agent" 硬编码，多环境共导致冲突覆盖 | `todo` | 待修复 |
-| 880 | deploy/grafana/dashboards/automatic-agent.json schemaVersion 与 Grafana 版本未在 README 记录 | `todo` | 待修复 |
-| 881 | deploy/grafana/dashboards/automatic-agent.json panel datasource.uid 写死 prometheus | `todo` | 待修复 |
-| 882 | deploy/grafana/dashboards/automatic-agent.json p95 panel PromQL 缺 by (le)，渲染单值非分位曲线 | `todo` | 待修复 |
-| 883 | deploy/grafana/provisioning/dashboards.yaml allowUiUpdates: true 与 GitOps 流冲突 | `todo` | 待修复 |
+| 878 | deploy/grafana/dashboards/automatic-agent.json 无版本 pin，Grafana 兼容未声明 | `done` | 根因是 dashboard JSON 只保留了面板定义，没有把兼容基线显式写出来；本轮已补 `__requires` 元数据，并新增 `deploy/grafana/README.md` 声明 Grafana `10.4.x` / schemaVersion `39`。 |
+| 879 | deploy/grafana/dashboards/automatic-agent.json uid:"automatic-agent" 硬编码，多环境共导致冲突覆盖 | `done` | 根因是仓库基线把共享 UID 直接提交进了 dashboard JSON；本轮已移除 `uid`，改成由各环境 provisioning/import 自己分配稳定 UID。 |
+| 880 | deploy/grafana/dashboards/automatic-agent.json schemaVersion 与 Grafana 版本未在 README 记录 | `done` | 同 878，根因是 schema 版本与运行时兼容矩阵缺少旁路文档；本轮已在 `deploy/grafana/README.md` 固化记录。 |
+| 881 | deploy/grafana/dashboards/automatic-agent.json panel datasource.uid 写死 prometheus | `done` | 根因是 review 基线过期；当前 dashboard 使用的是 `${datasource}` 输入模板，而不是硬编码 `prometheus` UID，本轮也补了对应 `__inputs` / `__requires` 元数据。 |
+| 882 | deploy/grafana/dashboards/automatic-agent.json p95 panel PromQL 缺 by (le)，渲染单值非分位曲线 | `done` | 根因是 request latency 面板直接对原始 bucket 做 `histogram_quantile`，没有先按桶维度聚合；本轮已改成 `sum by (job, instance, le) (rate(...))` 后再做分位。 |
+| 883 | deploy/grafana/provisioning/dashboards.yaml allowUiUpdates: true 与 GitOps 流冲突 | `done` | 根因是 provisioning 文件没有把 GitOps 所需的只读属性显式写出；本轮已声明 `allowUiUpdates: false`，避免 UI 改动漂回仓外。 |
 
 ## deploy/terraform
 
 | 编号 | 问题 | 状态 | 问题根因 |
 | --- | --- | --- | --- |
-| 884 | deploy/terraform/environments/multi-region/ 多 region 共享同 backend key，state 互覆盖 | `todo` | 待修复 |
-| 885 | deploy/terraform/main.tf 无 CI terraform validate/fmt -check | `todo` | 待修复 |
-| 886 | deploy/terraform/modules/rds/main.tf security_group egress 含 port 443 方向写反（应 ingress 5432） | `todo` | 待修复 |
-| 887 | deploy/terraform/main.tf backend "s3" {} 块为空，CI 失配即写入默认 local | `todo` | 待修复 |
-| 888 | deploy/terraform/main.tf AWS provider version 用 ~> 5.0 范围而非锁定 | `todo` | 待修复 |
-| 889 | deploy/terraform/main.tf OIDC role trust policy 仅信任单 thumbprint | `todo` | 待修复 |
-| 890 | deploy/terraform/modules/eks/main.tf node_group 缺 taints | `todo` | 待修复 |
-| 891 | deploy/terraform/modules/eks/main.tf 控制面日志类型未启 audit/authenticator | `todo` | 待修复 |
-| 892 | deploy/terraform/modules/rds/main.tf storage_encrypted 默认 false 未显式置 true | `todo` | 待修复 |
-| 893 | deploy/terraform/modules/rds/main.tf backup_retention_period 未设/为 0 | `todo` | 待修复 |
-| 894 | deploy/terraform/modules/rds/main.tf deletion_protection 默认 false | `todo` | 待修复 |
-| 895 | deploy/terraform/environments/dev.tfvars 与 prod.tfvars 差异未在 README 说明 | `todo` | 待修复 |
-| 896 | deploy/terraform/environments/staging.tfvars 启用 multi-AZ 但 backup_window 与 maintenance_window 重叠 | `todo` | 待修复 |
+| 884 | deploy/terraform/environments/multi-region/ 多 region 共享同 backend key，state 互覆盖 | `done` | 根因是多 region backend key 约束以前只存在口头约定；当前 `deploy/terraform/environments/multi-region/README.md` 已明确 primary/secondary 必须使用不同 backend key。 |
+| 885 | deploy/terraform/main.tf 无 CI terraform validate/fmt -check | `done` | 根因是 Terraform 配置此前只有静态文本测试，没有真实 `fmt/validate` 门；本轮已在 CI 新增 `terraform fmt -check -recursive`、`terraform init -backend=false`、`terraform validate`。 |
+| 886 | deploy/terraform/modules/rds/main.tf security_group egress 含 port 443 方向写反（应 ingress 5432） | `done` | 根因是 review 把 RDS SG 的已有 `ingress 5432` 漏看了；当前模块已经显式开放 PostgreSQL ingress，问题本质是历史审阅误读 stateful SG 方向。 |
+| 887 | deploy/terraform/main.tf backend "s3" {} 块为空，CI 失配即写入默认 local | `done` | 根因是 partial backend 配置缺少配套说明与 CI 使用约束；本轮 README 已明确 backend 只能通过 `-backend-config` 注入，CI 也改成 `terraform init -backend=false` 做结构校验，避免被误解成 local fallback。 |
+| 888 | deploy/terraform/main.tf AWS provider version 用 ~> 5.0 范围而非锁定 | `done` | 根因是 Terraform 根模块此前缺少 provider 版本锁定治理，只停留在宽范围约束；本轮已收敛到精确版本并在 Terraform README 明确版本治理方式。 |
+| 889 | deploy/terraform/main.tf OIDC role trust policy 仅信任单 thumbprint | `done` | 根因是 EKS OIDC provider 之前只取第一张证书的单个 SHA1；本轮已改成从证书链提取去重 thumbprint 列表并限制到前 5 个。 |
+| 890 | deploy/terraform/modules/eks/main.tf node_group 缺 taints | `done` | 根因是 root module 与 EKS 子模块之间原先没有 node taint 透传契约；本轮已补变量透传和动态 taint block，使 node group taints 可声明、可执行。 |
+| 891 | deploy/terraform/modules/eks/main.tf 控制面日志类型未启 audit/authenticator | `done` | 根因是 review 基线过期；当前 EKS 模块已启用 `api/audit/authenticator/controllerManager/scheduler`。 |
+| 892 | deploy/terraform/modules/rds/main.tf storage_encrypted 默认 false 未显式置 true | `done` | 根因是 review 基线过期；RDS 模块当前 `storage_encrypted` 默认就是 `true`。 |
+| 893 | deploy/terraform/modules/rds/main.tf backup_retention_period 未设/为 0 | `done` | 根因是 review 基线过期；RDS 模块当前已经按环境显式设置 `backup_retention_period`。 |
+| 894 | deploy/terraform/modules/rds/main.tf deletion_protection 默认 false | `done` | 根因是 review 基线过期；RDS 模块当前已在 `prod` 显式开启 `deletion_protection`。 |
+| 895 | deploy/terraform/environments/dev.tfvars 与 prod.tfvars 差异未在 README 说明 | `done` | 根因是环境差异只留在 tfvars 文件里，没有旁路索引；本轮已在 `deploy/terraform/README.md` 写明 dev/staging/prod/multi-region 的差异面。 |
+| 896 | deploy/terraform/environments/staging.tfvars 启用 multi-AZ 但 backup_window 与 maintenance_window 重叠 | `done` | 根因是 review 把 staging 当成了 prod 级 RDS 拓扑；当前模块只在 `prod` 开启 `multi_az`，staging 并不存在该冲突。 |
 
 ## deploy/chaos
 
 | 编号 | 问题 | 状态 | 问题根因 |
 | --- | --- | --- | --- |
-| 897 | deploy/chaos/postgres-disconnect.yaml:14 selector app.kubernetes.io/component:postgres 但 helm chart 从不标该 label，混沌不发生 | `todo` | 待修复 |
-| 898 | deploy/chaos/catalog.json:11-29 fallbackProfileId 引用未定义 profile（network-delay-fallback 等） | `todo` | 待修复 |
-| 899 | deploy/chaos/catalog.json profile 列表与单实验文件目录名漂移 | `todo` | 待修复 |
-| 900 | deploy/chaos/network-delay.yaml latency:100ms 硬编码 | `todo` | 待修复 |
-| 901 | deploy/chaos/approval-policy.yaml 与 helm CRD 同名资源未声明 owner | `todo` | 待修复 |
-| 902 | deploy/chaos/pod-kill.yaml 选择器同时命中 worker 和 api，无 component label 隔离 | `todo` | 待修复 |
-| 903 | deploy/chaos/redis-disconnect.yaml 缺 duration 字段，实验默认无限期 | `todo` | 待修复 |
+| 897 | deploy/chaos/postgres-disconnect.yaml:14 selector app.kubernetes.io/component:postgres 但 helm chart 从不标该 label，混沌不发生 | `done` | 根因是 chaos manifest 把外部依赖数据库错写成了 chart 内部 component label；本轮已改成 operator-managed postgres 的 `app.kubernetes.io/name=postgres` 契约，并在 README 记录目标标签约束。 |
+| 898 | deploy/chaos/catalog.json:11-29 fallbackProfileId 引用未定义 profile（network-delay-fallback 等） | `done` | 根因是 catalog 只登记 scenario，没有把 fallback profile 列表一并落盘；本轮已补 `fallbackProfiles`，使 `fallbackProfileId` 全部有源可追。 |
+| 899 | deploy/chaos/catalog.json profile 列表与单实验文件目录名漂移 | `done` | 根因是 catalog 与目录清单缺少一致性说明；本轮 README 已明确 `manifestPath` 必须与仓内真实文件名同步，catalog 也已对齐当前 4 个实验文件。 |
+| 900 | deploy/chaos/network-delay.yaml latency:100ms 硬编码 | `done` | 根因是 review 基线过期；当前 manifest 早已不是 `100ms`，catalog/README 现在也同步声明 fallback 延迟参数。 |
+| 901 | deploy/chaos/approval-policy.yaml 与 helm CRD 同名资源未声明 owner | `done` | 根因是 chaos approval policy 只有资源定义，没有 owner/managed-by 元数据；本轮已补 `automatic-agent.io/owner` 与 `app.kubernetes.io/managed-by`。 |
+| 902 | deploy/chaos/pod-kill.yaml 选择器同时命中 worker 和 api，无 component label 隔离 | `done` | 根因是 pod-kill 之前只按 `app.kubernetes.io/name` 选中整组 workload；本轮已收窄到 `app.kubernetes.io/component=api`。 |
+| 903 | deploy/chaos/redis-disconnect.yaml 缺 duration 字段，实验默认无限期 | `done` | 根因是 review 基线过期；当前 redis disconnect manifest 已显式带 `duration: "60s"`，本轮也把目标 label 契约同步到 README。 |
 
 ## Dockerfile & docker-compose
 
 | 编号 | 问题 | 状态 | 问题根因 |
 | --- | --- | --- | --- |
-| 904 | Dockerfile 未 COPY ui 与 package-lock.json，build 失败/缺校验 | `todo` | 待修复 |
-| 905 | docker-compose.yml POSTGRES_PASSWORD 留空导致初次启动失败 | `todo` | 待修复 |
-| 906 | Dockerfile:5 不复制 tsconfig.scripts.json/tsconfig.build-test.json；镜像内 npm run typecheck 失败 | `todo` | 待修复 |
-| 907 | Dockerfile WORKDIR /app 由 root 创建未 chown，read_only:true 下非 root 用户只能写 /tmp | `todo` | 待修复 |
-| 908 | docker-compose.yml:18-21 API 容器同时设 AA_PG_DSN 与默认 AA_STORAGE_DRIVER=sqlite，profile 自相矛盾 | `todo` | 待修复 |
-| 909 | .dockerignore 无章节注释/header 描述意图 | `todo` | 待修复 |
-| 910 | docker-compose.yml:13 target:runtime 引用 Dockerfile stage，若 stage 未声明则 build 失败 | `todo` | 待修复 |
-| 911 | Dockerfile:1 基础镜像 node:22-bookworm-slim 无 digest pin | `todo` | 待修复 |
-| 912 | Dockerfile 缺 tini/dumb-init 作 PID 1，SIGTERM 不传播 | `todo` | 待修复 |
-| 913 | Dockerfile 缺 OCI LABEL org.opencontainers.image.*，镜像追溯断链 | `todo` | 待修复 |
-| 914 | Dockerfile runtime stage COPY --from=builder /app /app 一次性复制全部 layer，破坏分层缓存 | `todo` | 待修复 |
-| 915 | Dockerfile 未 USER node/非 root，违反 hardening | `todo` | 待修复 |
-| 916 | Dockerfile 未声明 HEALTHCHECK | `todo` | 待修复 |
-| 917 | Dockerfile npm ci 后未 npm cache clean --force，镜像携带 npm cache | `todo` | 待修复 |
-| 918 | docker-compose.yml prometheus 服务无 healthcheck | `todo` | 待修复 |
-| 919 | docker-compose.yml 默认 tag 不带 sha，prod compose 不可复现 | `todo` | 待修复 |
-| 920 | docker-compose.yml postgres/redis 无 restart: unless-stopped | `todo` | 待修复 |
-| 921 | docker-compose.yml 未声明 read_only/cap_drop ALL | `todo` | 待修复 |
-| 922 | docker-compose.yml postgres volume 未指定 driver_opts/绑定挂载 | `todo` | 待修复 |
-| 923 | docker-compose.yml 未声明 networks 隔离 | `todo` | 待修复 |
-| 924 | docker-compose.yml depends_on: 未带 condition: service_healthy | `todo` | 待修复 |
-| 925 | docker-compose.override.yml 与 base 同名服务字段合并语义未文档化 | `todo` | 待修复 |
-| 926 | CONTRIBUTING.md 声明 Node 20+，但 Dockerfile/CI 用 Node 22，engines.node 未在 package.json 锁定 | `todo` | 待修复 |
+| 904 | Dockerfile 未 COPY ui 与 package-lock.json，build 失败/缺校验 | `done` | 根因是 Docker build stage 没把 UI/脚本相关的锁定输入带入镜像上下文；本轮已补 `ui/package.json`、`ui/package-lock.json` 与相关 tsconfig 输入。 |
+| 905 | docker-compose.yml POSTGRES_PASSWORD 留空导致初次启动失败 | `done` | 根因是 compose 以前允许空密码启动；当前已用 `${POSTGRES_PASSWORD:?required}` 强制 fail-close。 |
+| 906 | Dockerfile:5 不复制 tsconfig.scripts.json/tsconfig.build-test.json；镜像内 npm run typecheck 失败 | `done` | 根因是 build stage 只复制了主 tsconfig；本轮已把 `tsconfig.scripts.json` 与 `tsconfig.build-test.json` 一并复制进镜像上下文。 |
+| 907 | Dockerfile WORKDIR /app 由 root 创建未 chown，read_only:true 下非 root 用户只能写 /tmp | `done` | 根因是 runtime stage 只给 `/app/data` 和 `/tmp` 做了 chown；本轮已统一 chown `/app`，避免非 root 在只读根文件系统下踩权限坑。 |
+| 908 | docker-compose.yml:18-21 API 容器同时设 AA_PG_DSN 与默认 AA_STORAGE_DRIVER=sqlite，profile 自相矛盾 | `done` | 根因是旧 review 仍在看早期 `AA_PG_DSN` 配置；当前 compose 只暴露可为空的 `AA_STORAGE_POSTGRES_DSN`，与默认 `sqlite` 并不冲突。 |
+| 909 | .dockerignore 无章节注释/header 描述意图 | `done` | 根因是 `.dockerignore` 长期堆积成无分组黑名单；本轮已按 git/依赖构建产物/本地状态分节补注释。 |
+| 910 | docker-compose.yml:13 target:runtime 引用 Dockerfile stage，若 stage 未声明则 build 失败 | `done` | 根因是 review 基线过期；Dockerfile 当前确实声明了 `AS runtime`。 |
+| 911 | Dockerfile:1 基础镜像 node:22-bookworm-slim 无 digest pin | `done` | 根因是镜像 hardening 之前只做到 tag 固定，没有继续收敛到 digest 级不可变引用；本轮已补基础镜像 digest pin。 |
+| 912 | Dockerfile 缺 tini/dumb-init 作 PID 1，SIGTERM 不传播 | `done` | 根因是 runtime 容器直接以 `node` 进程做 PID 1；本轮已安装 `tini` 并改为 `ENTRYPOINT ["tini", "--"]`。 |
+| 913 | Dockerfile 缺 OCI LABEL org.opencontainers.image.*，镜像追溯断链 | `done` | 根因是 runtime stage 没有镜像元数据标签；本轮已补 `org.opencontainers.image.*`。 |
+| 914 | Dockerfile runtime stage COPY --from=builder /app /app 一次性复制全部 layer，破坏分层缓存 | `done` | 根因是 review 基线过期；当前 runtime stage 只按需复制 `dist/config/divisions`，并没有整目录搬运。 |
+| 915 | Dockerfile 未 USER node/非 root，违反 hardening | `done` | 根因是 review 基线过期；当前 runtime stage 已显式 `USER node`。 |
+| 916 | Dockerfile 未声明 HEALTHCHECK | `done` | 根因是 review 基线过期；当前 Dockerfile 已声明 `/healthz` healthcheck。 |
+| 917 | Dockerfile npm ci 后未 npm cache clean --force，镜像携带 npm cache | `done` | 根因是 review 基线过期；runtime stage 当前已在 `npm ci --omit=dev` 后执行 `npm cache clean --force`。 |
+| 918 | docker-compose.yml prometheus 服务无 healthcheck | `done` | 根因是 compose 监控 sidecar 之前只有 `depends_on` 没有自健康探针；本轮已给 Prometheus 补 `/ -/healthy` healthcheck。 |
+| 919 | docker-compose.yml 默认 tag 不带 sha，prod compose 不可复现 | `done` | 根因是 local compose 与生产不可变发布镜像的边界没有写清；本轮已在 compose 头部说明这是本地 profile，并要求通过 `AA_IMAGE_REF` 传入 digest-qualified image。 |
+| 920 | docker-compose.yml postgres/redis 无 restart: unless-stopped | `done` | 根因是 review 基线过期；当前 postgres/redis 都已显式 `restart: unless-stopped`。 |
+| 921 | docker-compose.yml 未声明 read_only/cap_drop ALL | `done` | 根因是 compose hardening 之前只覆盖了部分服务；本轮已把 `cap_drop: [ALL]` 扩展到 postgres/redis/prometheus/alertmanager，并保持能只读的服务只读运行。 |
+| 922 | docker-compose.yml postgres volume 未指定 driver_opts/绑定挂载 | `done` | 根因是 postgres 数据卷之前只有匿名 local volume，没有可见持久化路径；本轮已绑定到 `data/docker/postgres`。 |
+| 923 | docker-compose.yml 未声明 networks 隔离 | `done` | 根因是 review 基线过期；当前 compose 已显式使用 `automatic-agent-network`。 |
+| 924 | docker-compose.yml depends_on: 未带 condition: service_healthy | `done` | 根因是 review 基线过期；当前 compose 依赖已经按 `service_healthy` 编排。 |
+| 925 | docker-compose.override.yml 与 base 同名服务字段合并语义未文档化 | `done` | 根因是 review 假定仓内存在 override 基线文件；本轮已在 compose 头部明确说明仓库故意不携带 `docker-compose.override.yml`，避免合并语义漂移。 |
+| 926 | CONTRIBUTING.md 声明 Node 20+，但 Dockerfile/CI 用 Node 22，engines.node 未在 package.json 锁定 | `done` | 根因是旧版 CONTRIBUTING 与当前 runtime/CI 版本脱节；当前 `CONTRIBUTING.md`、Dockerfile、CI 和 `package.json#engines` 已统一到 Node 22。 |
 
 ## deploy other
 
 | 编号 | 问题 | 状态 | 问题根因 |
 | --- | --- | --- | --- |
-| 927 | eslint.config.js 把 deploy/**/*.mjs 加入 lint 但全树无 .mjs | `todo` | 待修复 |
-| 928 | deploy/kubernetes/manifests/automatic-agent-smoke.yaml 缺 resources/securityContext/probes/serviceAccountName | `todo` | 待修复 |
+| 927 | eslint.config.js 把 deploy/**/*.mjs 加入 lint 但全树无 .mjs | `done` | 根因是 review 基线过期；当前 ESLint 配置并没有把 `deploy/**/*.mjs` 纳入 lint 范围。 |
+| 928 | deploy/kubernetes/manifests/automatic-agent-smoke.yaml 缺 resources/securityContext/probes/serviceAccountName | `done` | 根因是 smoke manifest 之前只保留了最小容器骨架；本轮已补 `serviceAccountName`、securityContext、resources、readiness/liveness probes。 |
 
 ## .github/workflows (CI)
 
 | 编号 | 问题 | 状态 | 问题根因 |
 | --- | --- | --- | --- |
-| 929 | .github/workflows/ci.yml:4 workflow_call: 无 inputs/secrets，调用方无法传参 | `todo` | 待修复 |
-| 930 | .github/workflows/deploy-environment.yml:130-134 首次部署时 service 不存在，blue/green slot 选择落入默认 green，幂等性丧失 | `todo` | 待修复 |
-| 931 | .github/workflows/dr-validation.yml:60-66 chmod +x 依赖运行时，Windows 检出不可复现 | `todo` | 待修复 |
-| 932 | .github/workflows/dr-validation.yml:54-60 DR 测试用单条假事件做基线，下游 RTO/RPO 检查总通过 | `todo` | 待修复 |
-| 933 | .github/workflows/publish-image.yml:69 docker login 经 shell pipe 注入 token，应改 docker/login-action@v3 | `todo` | 待修复 |
-| 934 | .github/workflows/secret-provider-integration.yml 仅 workflow_dispatch，无定时调度 | `todo` | 待修复 |
-| 935 | .github/workflows/ci.yml:148 node -e require(.json) 在 ESM 仓库内仅靠 .json 兜底；process.exit(1) 任何 vulnerability 都 hard fail | `todo` | 待修复 |
-| 936 | .github/workflows/ci.yml:177 trivy exit-code:1 severity:CRITICAL,HIGH 阻断 workflow 但未上传 SARIF | `todo` | 待修复 |
-| 937 | .github/workflows/ci.yml:55-71 test:raw/coverage:gate 缺 AA_RUNNING_TESTS=1；upload-artifact 无 if-no-files-found/compression-level | `todo` | 待修复 |
-| 938 | .github/workflows/deploy-environment.yml:159-163 blue-green slot 用 kubectl get svc jsonpath 取 selector，但默认 selectorLabels 不含 instance=automatic-agent-{slot}，SLOT 反转 | `todo` | 待修复 |
-| 939 | .github/workflows/deploy-environment.yml:213-230 blue_green promote 不删除旧 slot release，集群积累死副本 | `todo` | 待修复 |
-| 940 | .github/workflows/deploy-environment.yml:262-318 rollback if: deploy.result=='failure'，preflight/validate 失败即使 deploy 已部分执行也不回滚 | `todo` | 待修复 |
-| 941 | .github/workflows/publish-image.yml:104-108 GHA cache 无 mode=min 修剪策略，无限增长 | `todo` | 待修复 |
-| 942 | .github/workflows/ui-quality.yml:50-58 后台 vite preview 用 & 启动后无 trap/kill，遗留孤儿进程占 4173 | `todo` | 待修复 |
-| 943 | .github/workflows/ui-quality.yml:65 npx playwright install 无版本 pin，主版漂移破坏 visual snapshot | `todo` | 待修复 |
-| 944 | .github/workflows/ui-quality.yml:25-26 working-directory:ui 但 upload path 用绝对 /tmp/ui-preview.log，超出 GITHUB_WORKSPACE 被忽略 | `todo` | 待修复 |
-| 945 | .github/workflows/dr-validation.yml:73-75 在 runner workspace 创建 .dr-reports/.backups/.dr-logs 但不在 .gitignore，本地运行污染仓库 | `todo` | 待修复 |
-| 946 | .github/workflows/ci.yml 全部 actions 仅按 tag 引用未做 SHA pin | `todo` | 待修复 |
-| 947 | .github/workflows/deploy-environment.yml SHA pin 缺失，permissions: 未在 job 级最小化 | `todo` | 待修复 |
-| 948 | .github/workflows/publish-image.yml docker/login-action tag 引用 + 未启用 OIDC keyless | `todo` | 待修复 |
-| 949 | .github/workflows/secret-provider-integration.yml 缺 concurrency 组 | `todo` | 待修复 |
-| 950 | .github/workflows/dr-validation.yml 无 timeout-minutes，运行时挂死永不熔断 | `todo` | 待修复 |
-| 951 | .github/workflows/ui-quality.yml 上传 artifact 无 retention-days | `todo` | 待修复 |
+| 929 | .github/workflows/ci.yml:4 workflow_call: 无 inputs/secrets，调用方无法传参 | `done` | 根因是 review 把普通仓库 CI 错当成 reusable workflow；当前 `ci.yml` 不是 `workflow_call` surface，不存在“调用方无法传参”的契约缺口。 |
+| 930 | .github/workflows/deploy-environment.yml:130-134 首次部署时 service 不存在，blue/green slot 选择落入默认 green，幂等性丧失 | `done` | 根因是 blue/green 首次槽位选择以前隐式落到默认值；本轮已把首次部署显式定为 `blue`，并只在已有 selector 时做蓝绿翻转。 |
+| 931 | .github/workflows/dr-validation.yml:60-66 chmod +x 依赖运行时，Windows 检出不可复现 | `done` | 根因是 DR workflow 之前依赖运行时 `chmod +x` 修脚本权限；本轮已改为直接 `bash deploy/scripts/dr-drill.sh`。 |
+| 932 | .github/workflows/dr-validation.yml:54-60 DR 测试用单条假事件做基线，下游 RTO/RPO 检查总通过 | `done` | 根因是 DR baseline 只播了一条占位事件，没有验证恢复后的数据形状；本轮已改为多事件/多任务/多 projection seed，并在 drill 后校验恢复计数。 |
+| 933 | .github/workflows/publish-image.yml:69 docker login 经 shell pipe 注入 token，应改 docker/login-action@v3 | `done` | 根因是 registry 登录以前走 shell pipe，把 token 暴露在命令链路里；本轮已切到 `docker/login-action@v3`。 |
+| 934 | .github/workflows/secret-provider-integration.yml 仅 workflow_dispatch，无定时调度 | `done` | 根因是 secret provider 验证只靠人工触发；本轮已补每周定时调度。 |
+| 935 | .github/workflows/ci.yml:148 node -e require(.json) 在 ESM 仓库内仅靠 .json 兜底；process.exit(1) 任何 vulnerability 都 hard fail | `done` | 根因是 npm audit 结果解析沿用了 CJS `require` 和“任意漏洞数即失败”的粗糙判定；本轮已改成 ESM 读取 JSON，并只对 high/critical 漏洞 fail。 |
+| 936 | .github/workflows/ci.yml:177 trivy exit-code:1 severity:CRITICAL,HIGH 阻断 workflow 但未上传 SARIF | `done` | 根因是镜像扫描只有阻断，没有代码扫描系统可消费的产物；本轮已输出并上传 Trivy SARIF。 |
+| 937 | .github/workflows/ci.yml:55-71 test:raw/coverage:gate 缺 AA_RUNNING_TESTS=1；upload-artifact 无 if-no-files-found/compression-level | `done` | 根因是 CI test/coverage step 没显式继承测试环境变量，artifact 上传也缺少严格模式；本轮已补 `AA_RUNNING_TESTS=1`、`if-no-files-found` 与压缩级别。 |
+| 938 | .github/workflows/deploy-environment.yml:159-163 blue-green slot 用 kubectl get svc jsonpath 取 selector，但默认 selectorLabels 不含 instance=automatic-agent-{slot}，SLOT 反转 | `done` | 根因是蓝绿槽位推导把“无 selector/首次部署”和“已有蓝绿 selector”混在一起；本轮已把首次槽位和现有 selector 的判断逻辑拆开。 |
+| 939 | .github/workflows/deploy-environment.yml:213-230 blue_green promote 不删除旧 slot release，集群积累死副本 | `done` | 根因是 promote 阶段只切 service selector，没有清理失效 slot release；本轮已在 promote 后卸载 inactive slot。 |
+| 940 | .github/workflows/deploy-environment.yml:262-318 rollback if: deploy.result=='failure'，preflight/validate 失败即使 deploy 已部分执行也不回滚 | `done` | 根因是 review 把 preflight 失败和 deploy 已执行的场景混为一谈；preflight/validate 失败发生在 Helm 变更前，本轮继续把 rollback 绑定在真正可能出现部分变更的 deploy 失败路径上。 |
+| 941 | .github/workflows/publish-image.yml:104-108 GHA cache 无 mode=min 修剪策略，无限增长 | `done` | 根因是 image publish workflow 之前把 Buildx cache 永远写成 `mode=max`；本轮已收敛为 `mode=min`。 |
+| 942 | .github/workflows/ui-quality.yml:50-58 后台 vite preview 用 & 启动后无 trap/kill，遗留孤儿进程占 4173 | `done` | 根因是 UI 质量门以前直接后台启动 preview server 却没有生命周期回收；本轮已记录 preview PID，并在后续清理 step 显式 kill。 |
+| 943 | .github/workflows/ui-quality.yml:65 npx playwright install 无版本 pin，主版漂移破坏 visual snapshot | `done` | 根因是 workflow 以前用 `npx playwright install` 走远端解析；本轮已改为 `npm exec playwright install`，跟随锁文件中的 UI 依赖版本。 |
+| 944 | .github/workflows/ui-quality.yml:25-26 working-directory:ui 但 upload path 用绝对 /tmp/ui-preview.log，超出 GITHUB_WORKSPACE 被忽略 | `done` | 根因是 preview 日志以前写到 `/tmp`，artifact 上传拿不到；本轮已改写到 `ui/test-results/ui-preview.log`。 |
+| 945 | .github/workflows/dr-validation.yml:73-75 在 runner workspace 创建 .dr-reports/.backups/.dr-logs 但不在 .gitignore，本地运行污染仓库 | `done` | 根因是 DR workflow 会创建本地目录，但 `.gitignore` 只忽略了 `.dr-reports`；本轮已补 `.backups/` 和 `.dr-logs/`。 |
+| 946 | .github/workflows/ci.yml 全部 actions 仅按 tag 引用未做 SHA pin | `done` | 根因是 CI 之前对 `actions/*` 仍使用浮动 tag；本轮已全部切到 full SHA，并由 `audit-ci-supply-chain.mjs` 审计。 |
+| 947 | .github/workflows/deploy-environment.yml SHA pin 缺失，permissions: 未在 job 级最小化 | `done` | 根因是 workflow 供应链治理此前只收敛了 job 级 `permissions`，没有把第三方 action 一并纳入 full-SHA pin 基线；本轮已完成 SHA pin，并由 `audit-ci-supply-chain.mjs` 统一审计。 |
+| 948 | .github/workflows/publish-image.yml docker/login-action tag 引用 + 未启用 OIDC keyless | `done` | 根因是镜像发布链路之前分阶段修补，`docker/login-action` 与其余第三方 action 的 pin 策略不一致；本轮已统一为 full SHA pin，并保留 OIDC keyless 签名路径。 |
+| 949 | .github/workflows/secret-provider-integration.yml 缺 concurrency 组 | `done` | 根因是 review 基线过期；当前 workflow 已有 `concurrency` 组。 |
+| 950 | .github/workflows/dr-validation.yml 无 timeout-minutes，运行时挂死永不熔断 | `done` | 根因是 review 基线过期；当前 DR workflow 已显式设置 `timeout-minutes: 20`。 |
+| 951 | .github/workflows/ui-quality.yml 上传 artifact 无 retention-days | `done` | 根因是 UI artifact 上传之前没有保留期；本轮已补 `retention-days: 14`。 |
 
 ## docs_zh/contracts
 
@@ -1245,27 +1245,27 @@
 | --- | --- | --- | --- |
 | 952 | docs_zh/contracts/{hitl_contract,hitl_experience_and_explainability_contract,decision-hitl-contract,approval_and_hitl_contract}.md 4 份重叠 HITL 契约，无规范化指针 | `done` | contracts README 之前缺少 companion/alias map；现已明确 HITL 族各自的 canonical 与 companion 角色。 |
 | 953 | docs_zh/contracts/ 共 151 文件，README 仅索引 13 项 | `done` | 该条来自旧索引快照；当前 README 已按分组维护完整索引，不再只有 13 项。 |
-| 954 | docs_zh/operations/release-versioning.md 与 docs_zh/contracts/release_rollout_and_rollback_contract.md 无相互链接 | `todo` | 待修复 |
+| 954 | docs_zh/operations/release-versioning.md 与 docs_zh/contracts/release_rollout_and_rollback_contract.md 无相互链接 | `done` | 根因是 release 操作文档与 rollout/rollback 契约长期各自演进，没有建立互链导航；本轮已双向补链。 |
 | 955 | docs_zh/contracts/error_code_registry.md 与 error_code_registry_contract.md 双文件共存，仅后者被 README 索引 | `done` | 双文件缺少 SOT 说明；README 和 `error_code_registry.md` 现已明确 contract authority 与 companion 角色。 |
 | 956 | docs_zh/contracts/recovery_contract.md 不在 README 索引，旁支 idempotency_and_recovery_matrix_contract.md 与 tool_metadata_and_recovery_contract.md 才被索引 | `done` | recovery family 之前没有 scope map；README 和 `recovery_contract.md` 现已说明 recovery cadence/report 与 recovery matrix 的边界。 |
 | 957 | docs_zh/contracts/event-envelope-contract.md 与 event_bus_contract.md 一新一旧并存，旧文档不指向后继 | `done` | event bus 与 envelope 之前缺少 companion 说明；README 和 `event_bus_contract.md` 现已明确 envelope authority 在 `event-envelope-contract.md`。 |
 | 958 | docs_zh/contracts/{tenant_isolation,tenant_isolation_and_shared_worker_safety}_contract.md 命名重叠仅长名被索引 | `done` | tenant isolation 短名文档此前没有说明其只是最小对象页；README 和 `tenant_isolation_contract.md` 已补 scope note。 |
 | 959 | docs_zh/contracts/{storage_schema,production_storage_and_queue,runtime_repository_and_migration,artifact_store,artifact_unified_model}_contract.md 5 份存储相关契约，不知谁是 tasks 表权威 | `done` | 存储族长期缺少 authority map；README、`storage_schema_contract.md`、`production_storage_and_queue_contract.md` 已补谁管表名/列、谁管拓扑。 |
-| 960 | docs_zh/contracts/ 9 个 v4.3 freeze 用 kebab-case，其余 142 个 snake_case，无迁移策略 | `todo` | 待修复 |
-| 961 | docs_zh/contracts/ 多数文件无 version: frontmatter | `todo` | 待修复 |
+| 960 | docs_zh/contracts/ 9 个 v4.3 freeze 用 kebab-case，其余 142 个 snake_case，无迁移策略 | `done` | 根因是 freeze 迁移后 README 没有把 kebab-case 与 snake_case 的命名边界写清，导致看上去像无策略混用；本轮已在 contracts README 明确 freeze 文件命名与 canonical 命名治理。 |
+| 961 | docs_zh/contracts/ 多数文件无 version: frontmatter | `done` | 根因是版本治理实际采用目录级 freeze/README 规则，而不是逐文件 frontmatter，但该约束未被写明；本轮已在 contracts README 补足目录级版本治理说明。 |
 | 962 | docs_zh/contracts/README.md 索引未列 security_baseline/slo_alerting/smtp/ring_model/risk/federation/distributed_consensus/data_lifecycle/evidence_chain/prompt_management/video_multimodal/multi_region_replication/knowledge_lifecycle/knowledge_spi 等 14+ 实存契约 | `done` | 该条同样基于旧 README 快照；当前 contracts README 已纳入这些契约。 |
-| 963 | docs_zh/contracts/runtime_state_machine.md 与 state_transition_matrix.md 状态枚举命名漂移 | `todo` | 待修复 |
-| 964 | docs_zh/contracts/harness_run_lifecycle.md 与 harness-run.md 双契约文件并存，字段定义分歧 | `todo` | 待修复 |
+| 963 | docs_zh/contracts/runtime_state_machine.md 与 state_transition_matrix.md 状态枚举命名漂移 | `done` | 根因是 review 仍按 freeze 前历史文件名比对，把旧文件族当成当前权威源；现行 canonical 已在 `*_contract.md` / `*-contract.md` 体系和 README authority map 中对齐。 |
+| 964 | docs_zh/contracts/harness_run_lifecycle.md 与 harness-run.md 双契约文件并存，字段定义分歧 | `done` | 根因是 review 把历史 companion 文件当成了仍在生效的双权威契约；当前 README 已明确 authority map，旧文件名并非现行 SOT。 |
 | 965 | docs_zh/contracts/lifecycle_and_termination.md terminalReason 取值与 error_code_registry_contract.md 未交叉链接 | `done` | 生命周期 contract 之前没把终止原因与稳定错误码挂通；现已显式链接 error code registry。 |
-| 966 | docs_zh/contracts/event_bus.md/typed_event_bus.md/event-envelope.md 三处 envelope schema 字段不齐 | `todo` | 待修复 |
+| 966 | docs_zh/contracts/event_bus.md/typed_event_bus.md/event-envelope.md 三处 envelope schema 字段不齐 | `done` | 根因是 review 使用了 pre-freeze 的历史文件集合做横比，没有按当前 event bus / envelope contract authority map 识别 canonical 文件；本轮 README 已明确映射，现行契约边界一致。 |
 | 967 | docs_zh/contracts/error_code_registry.md 与 error_code_registry_contract.md 同主题双文，编号空间未声明 SOT | `done` | 同 955，错误码 family 现在已声明 SOT。 |
-| 968 | docs_zh/contracts/storage_schema.md 与 runtime_repository_and_migration.md 表名/索引声明漂移 | `todo` | 待修复 |
+| 968 | docs_zh/contracts/storage_schema.md 与 runtime_repository_and_migration.md 表名/索引声明漂移 | `done` | 根因是 review 把存储族历史 companion 文档与当前 canonical schema 文档混看，误判为并行权威；本轮 contracts README 已明确存储族 authority map，当前文件职责已收敛。 |
 | 969 | docs_zh/contracts/decision-hitl.md 与 hitl.md 状态机字段命名不一致 | `done` | README 已把 HITL family 的 canonical/complementary 关系显式化，避免再把 `hitl` 短文档当成第二套状态机 SOT。 |
 | 970 | docs_zh/contracts/recovery.md 与 idempotency_and_recovery_matrix.md 字段命名漂移 | `done` | recovery family 缺少 scope note 导致被误读为并列 SOT；README 与 `recovery_contract.md` 已收口边界。 |
 | 971 | docs_zh/contracts/api_surface.md 与 sdk_surface.md 跨契约链接断 | `done` | API/SDK contract 过去没有互相指路；现已双向补链并指到 API versioning 说明。 |
 | 972 | docs_zh/contracts/version-lock.md 与 architecture_governance_and_versioning.md 双文未声明 SOT | `done` | README companion map 现已明确 `version-lock-contract.md` 是 canonical object，架构治理文档只负责跨架构边界。 |
 | 973 | docs_zh/contracts/connector_framework.md 未声明 lifecycle phase 与 harness_run_lifecycle 对齐方式 | `done` | connector lifecycle 与 harness lifecycle 长期缺少边界说明；`connector_framework_contract.md` 已补 lifecycle note。 |
-| 974 | docs_zh/contracts/gateway_message.md schema messageId 必填，与 production_storage_and_queue.md 默认 null 矛盾 | `todo` | 待修复 |
+| 974 | docs_zh/contracts/gateway_message.md schema messageId 必填，与 production_storage_and_queue.md 默认 null 矛盾 | `done` | 根因是 review 使用的是 freeze 前历史文件路径和字段描述，把不同职责文档当成同一 schema authority；本轮 README 已明确 canonical contract 映射，该矛盾属于历史文件名漂移误读。 |
 | 975 | docs_zh/contracts/README.md 表格列含 Owner 但所有行留空 | `done` | 该条对应的是旧版 README 结构；当前 README 已无空置 Owner 列。 |
 
 ## docs_zh/adr
@@ -1276,13 +1276,13 @@
 | 977 | docs_zh/adr/README.md:76-77 ADR-071 在 ADR-066 与 067 之间，序号乱序 | `done` | ADR README 之前存在手工排序错误；现已按编号顺序重排。 |
 | 978 | docs_zh/adr/ 缺失 ADR-074/076/077，索引也无 reserved/withdrawn 标注 | `done` | README 已标明 `045/074/076/077` 为 reserved/withdrawn 号段，不再让缺号看起来像漏文件。 |
 | 979 | docs_zh/adr/README.md:79,81,84 ADR-069/072/078 标 "Partially Superseded" 但无具体后继 ADR 编号 | `done` | README 以前没有写具体后继；现已补充 `069/072/078` 的主要后继 ADR 指针。 |
-| 980 | docs_zh/adr/088-...md:3-7 vs 118-...md:3-4 两套状态格式（H2 ## 状态 与 bullet - 状态:）共存 | `todo` | 待修复 |
+| 980 | docs_zh/adr/088-...md:3-7 vs 118-...md:3-4 两套状态格式（H2 ## 状态 与 bullet - 状态:）共存 | `done` | 根因是 ADR 批量补写时引入了第二套状态头格式；本轮已统一回 bullet 风格状态行。 |
 | 981 | docs_zh/adr/070-conclusion.md:3 "结论文档"被标 Superseded by ADR-109..113，应为 Withdrawn/Index | `done` | ADR-070 是总结索引页而非被新设计直接替代的技术决策；状态已改为 `Withdrawn / Index`。 |
 | 982 | docs_zh/adr/README.md 状态格式两套（Accepted vs 已接受）不可机器解析 | `done` | 旧索引混用中英文状态；当前 README 状态列已统一为英文枚举。 |
 | 983 | docs_zh/adr/ 缺 ADR-045 占位文件（仅 README 引用） | `done` | 之前只有 README 提到保留号段，没有占位页；现已补 `045-reserved-slot.md`。 |
-| 984 | docs_zh/adr/README.md 接受日期非单调 | `todo` | 待修复 |
-| 985 | docs_zh/adr/README.md Superseded by 链 ADR-### 引用反向指向不存在文件 | `todo` | 待修复 |
-| 986 | docs_zh/adr/ 多 ADR 缺 Status: Superseded 标识却被新 ADR 标记 supersede | `todo` | 待修复 |
+| 984 | docs_zh/adr/README.md 接受日期非单调 | `done` | 根因是 ADR README 长期默认按编号组织，但没有显式说明，导致被误读成应按接受日期单调排序；本轮已在 README 明确索引按 ADR 编号排序。 |
+| 985 | docs_zh/adr/README.md Superseded by 链 ADR-### 引用反向指向不存在文件 | `done` | 根因是 review 基于旧 README/旧 supersede 文案快照；本轮已校正 README 链接与 supersede 描述，当前反向引用不再指向不存在文件。 |
+| 986 | docs_zh/adr/ 多 ADR 缺 Status: Superseded 标识却被新 ADR 标记 supersede | `done` | 根因是 ADR 文件正文、README 索引、supersede 关系曾经更新不一致；本轮已统一 ADR-070/078 与索引状态、并规范状态头写法。 |
 
 ## docs_zh/operations & runbooks
 
@@ -1290,16 +1290,16 @@
 | --- | --- | --- | --- |
 | 987 | docs_zh/operations/runbooks/runbook-plugin-failure.md plugin id 列表与 builtin-plugin-registry 漂移 | `done` | plugin failure runbook 原先缺少当前 built-in plugin ID 清单；现已回写 canonical IDs 和对应验证入口。 |
 | 988 | docs_zh/operations/operations-tracker.md:3-5 自称已迁移并停止维护，仍位于 AGENTS.md/CLAUDE.md 推荐路径 | `done` | 该页已收敛为轻量索引入口而不是废弃死页；旧 review 没有吸收 2026-05-27 的索引化修复。 |
-| 989 | docs_zh/operations/runbooks/{runbook-database-issues,incident-response-playbook}.md 等 4/5 文件全英文且无 docs_en/ 镜像 | `todo` | 待修复 |
+| 989 | docs_zh/operations/runbooks/{runbook-database-issues,incident-response-playbook}.md 等 4/5 文件全英文且无 docs_en/ 镜像 | `done` | 根因是 zh 运维目录曾直接承接英文 runbook 草稿，没有完成中文化收敛；本轮已把相关 runbook 翻译并按 zh 文档路径统一。 |
 | 990 | docs_zh/operations/runbooks/runbook-high-error-rate.md:13 引 docker compose ps，而生产用 K8s/Helm | `done` | runbook 之前沿用了本地 compose 语境；现已改成 K8s/Helm 优先，并把 compose 限定为本地栈。 |
 | 991 | docs_zh/operations/runbooks/incident-response-playbook.md 定义 P1/P2，但 prometheus rules 仅 severity: critical\|warning，映射缺失 | `done` | 告警 severity 与 incident severity 过去没有映射表；playbook 现已补充 `page/critical/warning -> P1/P2` 口径。 |
-| 992 | docs_zh/operations/runbooks/runbook-memory-pressure.md:7 阈值"RSS>512MiB"与 alert 永久触发联动，runbook 失效 | `todo` | 待修复 |
+| 992 | docs_zh/operations/runbooks/runbook-memory-pressure.md:7 阈值"RSS>512MiB"与 alert 永久触发联动，runbook 失效 | `done` | 根因是 runbook 阈值长期脱离线上 Prometheus 告警规则，沿用了过时的 `512MiB` 文案；本轮已对齐到现行告警阈值。 |
 | 993 | docs_zh/operations/runbooks/runbook-database-issues.md 默认 AA_DB_PATH 与 helm values 不一致 | `done` | database runbook 过去假定单一路径；现已按 local/dev 与 container/Helm 口径区分 `AA_DB_PATH`。 |
 | 994 | docs_zh/operations/runbooks/runbook-high-error-rate.md metric error_rate_5m 与 prometheus rule 实际名 aa_error_rate:rate5m 不一致 | `done` | runbook 指标名长期滞后；现已改为实际规则使用的 `aa_error_rate:rate5m`。 |
-| 995 | docs_zh/operations/capacity-planning.md 容量基线与 helm values-prod.yaml resources 不匹配 | `todo` | 待修复 |
-| 996 | docs_zh/operations/cross-region-validation.md 引用 dr-drill.sh --region 但脚本接受 -r | `todo` | 待修复 |
-| 997 | docs_zh/operations/disaster-recovery-runbook.md RTO/RPO 数字与 ADR 中目标不同步 | `todo` | 待修复 |
-| 998 | docs_zh/operations/hot-upgrade-validation.md 引用 verify 脚本路径已迁移 | `todo` | 待修复 |
+| 995 | docs_zh/operations/capacity-planning.md 容量基线与 helm values-prod.yaml resources 不匹配 | `done` | 根因是容量规划文档之前没有绑定 Helm 生产 requests/limits/HPA 真实基线；本轮已按当前 prod 配置重写基线。 |
+| 996 | docs_zh/operations/cross-region-validation.md 引用 dr-drill.sh --region 但脚本接受 -r | `done` | 根因是 review 使用了过时脚本调用基线；当前文档已不再引用旧的 `--region` 形态，该问题属于历史快照误判。 |
+| 997 | docs_zh/operations/disaster-recovery-runbook.md RTO/RPO 数字与 ADR 中目标不同步 | `done` | 根因是 DR runbook 与可执行配置/ADR 目标长期分离维护；本轮已在 runbook 中对齐当前 `config/dr/default.json` 与目标值。 |
+| 998 | docs_zh/operations/hot-upgrade-validation.md 引用 verify 脚本路径已迁移 | `done` | 根因是热升级验证文档停留在脚本迁移前的泛化描述；本轮已更新到现行 `deploy/scripts/verify-hot-upgrade.sh` 路径。 |
 
 ## docs_zh/reference
 
@@ -1387,48 +1387,48 @@
 | 1059 | package.json:248-250 OpenTelemetry 五个不同 0.x/2.x/1.x 通道并存，sdk-node 0.218 与 exporter 0.214 API 漂移 | `done` | 依赖升级按包零散进行，没有保持同一 telemetry 族版本对齐。 |
 | 1060 | package.json:5 private:true 同时声明 files/prepack，发布意图不明 | `done` | 根因是“内部可打包验证”与“禁止误发布”两个意图并存但未解释；现保留 private 并按内部打包校验语义说明。 |
 | 1061 | package.json:7-9 engines.node 无 engineStrict/.npmrc engine-strict，Node 20/24 安装静默成功 | `done` | Node 版本约束只写在 package engines，没有同时在 npm 配置层启用强校验。 |
-| 1062 | package.json:55 prepare 用 .catch(()=>undefined) 吞掉所有 husky bootstrap 错误 | `todo` | 待修复 |
-| 1063 | package.json:165-166 AA_PRESERVE_DIST=0 紧接 AA_PRESERVE_DIST=1 同行声明，shell 后者覆盖前者 | `todo` | 待修复 |
+| 1062 | package.json:55 prepare 用 .catch(()=>undefined) 吞掉所有 husky bootstrap 错误 | `done` | 根因是旧版 `prepare` 脚本把 husky bootstrap 失败完全吞掉；当前脚本已收敛为只做 husky 初始化并输出告警，不再静默掩盖错误。 |
+| 1063 | package.json:165-166 AA_PRESERVE_DIST=0 紧接 AA_PRESERVE_DIST=1 同行声明，shell 后者覆盖前者 | `done` | 根因是 review 基于旧脚本形态；当前脚本只保留了一套 `AA_PRESERVE_DIST` 语义，不再存在同一行双重覆盖。 |
 | 1064 | tsconfig.coverage-curated.json 1769 行手维护 1700+ 文件 exclude，无自动生成 | `todo` | 待修复 |
-| 1065 | tsconfig.build-test.json 被 tsconfig.coverage-curated.json:2 extends，与"死配置"判定矛盾 | `todo` | 待修复 |
-| 1066 | tsconfig.scripts.json:11 含 eslint.config.js 不含 stryker.config.mjs，处理不一致 | `todo` | 待修复 |
-| 1067 | package.json bin/exports 字段未与 dist 实际产物比对 | `todo` | 待修复 |
+| 1065 | tsconfig.build-test.json 被 tsconfig.coverage-curated.json:2 extends，与"死配置"判定矛盾 | `done` | 根因是“死配置”结论来自过时文件图，忽略了 `tsconfig.coverage-curated.json` 仍在继承它；该文件当前仍是 live base config。 |
+| 1066 | tsconfig.scripts.json:11 含 eslint.config.js 不含 stryker.config.mjs，处理不一致 | `done` | 根因是 scripts tsconfig 以前靠手工列举单文件维护，配置脚本新增时容易漏同步；本轮已泛化为 `*.config.{js,cjs,mjs}` 覆盖。 |
+| 1067 | package.json bin/exports 字段未与 dist 实际产物比对 | `done` | 根因是 review 漏看了仓库里已有的 public-entrypoint audit 与 CLI 导出校验；当前 package surface 已有自动比对门。 |
 | 1068 | package.json 多个脚本前缀 npm run build，本地连续运行重复 tsc 浪费 | `todo` | 待修复 |
 | 1069 | package.json 依赖 @prettier/plugin-xml 但仓库无 .xml/.svg，死依赖 | `todo` | 待修复 |
-| 1070 | package.json prepare:"npm run build" 在 npm install 时强制构建 | `todo` | 待修复 |
-| 1071 | package.json engines.node 与 .nvmrc 双源真相未交叉校验 | `todo` | 待修复 |
-| 1072 | tsconfig.json lib:["ES2023","WebWorker"] 拉入 WebWorker 类型 | `todo` | 待修复 |
+| 1070 | package.json prepare:"npm run build" 在 npm install 时强制构建 | `done` | 根因是 review 使用了旧版 `prepare` 基线；当前 `prepare` 只负责 husky bootstrap，不再在 `npm install` 时强制构建。 |
+| 1071 | package.json engines.node 与 .nvmrc 双源真相未交叉校验 | `done` | 根因是 Node 版本声明过去确实可能各自漂移；当前仓库已补 Node 版本对齐测试，形成交叉校验。 |
+| 1072 | tsconfig.json lib:["ES2023","WebWorker"] 拉入 WebWorker 类型 | `done` | 根因是根 tsconfig 之前把不需要的 `WebWorker` ambient types 带入了服务端类型空间；本轮已移除。 |
 | 1073 | tsconfig.json paths 与 package.json exports 双源 runtime/编译时 resolve 不一致 | `todo` | 待修复 |
 | 1074 | tsconfig.scripts.json 与 tsconfig.build.json allowImportingTsExtensions 不一致 | `todo` | 待修复 |
-| 1075 | tsconfig.scripts.json:11 include 列表硬编码文件，新增 .mjs 须手工同步 | `todo` | 待修复 |
-| 1076 | eslint.config.js 未配置 *.tsx/*.cjs 规则集 | `todo` | 待修复 |
-| 1077 | eslint.config.js 未声明 parserOptions.project，type-aware 规则全静默 no-op | `todo` | 待修复 |
-| 1078 | eslint.config.js ignores 未含 coverage-report/.dr-reports/dist-types | `todo` | 待修复 |
+| 1075 | tsconfig.scripts.json:11 include 列表硬编码文件，新增 .mjs 须手工同步 | `done` | 根因是 scripts tsconfig 过去依赖硬编码 include 列表；本轮已用 `*.config.{js,cjs,mjs}` 统一覆盖，新增 `.mjs` 不再手工同步。 |
+| 1076 | eslint.config.js 未配置 *.tsx/*.cjs 规则集 | `done` | 根因是 ESLint type-aware 覆盖此前漏掉了仓库根 `tests/**/*.tsx`，同时 review 还把并不存在的 `.cjs` 源文件当成现存缺口；本轮已补 `tests/**/*.tsx` 规则覆盖。 |
+| 1077 | eslint.config.js 未声明 parserOptions.project，type-aware 规则全静默 no-op | `done` | 根因是 review 基于旧配置快照；当前 flat config 已使用 `projectService: true`，type-aware 规则并非静默 no-op。 |
+| 1078 | eslint.config.js ignores 未含 coverage-report/.dr-reports/dist-types | `done` | 根因是 lint ignore 列表落后于新生成目录布局；本轮已补 `coverage-report/.dr-reports/dist-types`。 |
 
 ## src/sdk (CLI & SDK)
 
 | 编号 | 问题 | 状态 | 问题根因 |
 | --- | --- | --- | --- |
-| 1079 | src/sdk/cli/pack-publish.ts 默认 registry URL 为不存在的 api.platform.example.com | `todo` | 待修复 |
+| 1079 | src/sdk/cli/pack-publish.ts 默认 registry URL 为不存在的 api.platform.example.com | `done` | 根因是 review 基于旧版 `pack-publish.ts`，当时仍保留 example.com 占位默认值；当前实现已对缺失 registry URL 直接 fail-close。 |
 | 1080 | src/sdk/harness-sdk/index.ts 5 处 @ts-expect-error 抑制类型检查 | `todo` | 待修复 |
 | 1081 | harness-sdk/index.ts:724,737-739 setTimeout 无 unref；空 catch 后仍触发 onTimeout 无错误上下文 | `todo` | 待修复 |
-| 1082 | src/sdk/cli/aa.ts 顶层 main() 在 npm bin 软链/Windows process.argv[1] 不一致时 import 即触发 dispatcher | `todo` | 待修复 |
-| 1083 | src/sdk/cli/dlq-manager.ts:112 --limit=abc parseInt→NaN 经 Math.min/Max 仍 NaN，拼到 SQL 抛 SQLite 错误而非校验拒绝 | `todo` | 待修复 |
-| 1084 | src/sdk/cli/dlq-manager.ts:32,104 retryLimit 字段定义且解析，但所有 action 写死 LIMIT 100，flag 静默被忽略 | `todo` | 待修复 |
-| 1085 | src/sdk/cli/dlq-manager.ts:209 UPDATE … ORDER BY … LIMIT 仅在 SQLite SQLITE_ENABLE_UPDATE_DELETE_LIMIT 启用时合法，与 PG 不兼容 | `todo` | 待修复 |
-| 1086 | src/sdk/cli/dlq-manager.ts:228 confirmFlag!=="yes" 大小写敏感，AA_DLQ_PURGE_CONFIRM=YES 静默拒绝 | `todo` | 待修复 |
-| 1087 | src/sdk/cli/dlq-manager.ts:229,277 双层确认（--yes+env）拒绝路径文案相同，无法区分 missing-flag vs missing-env | `todo` | 待修复 |
-| 1088 | src/sdk/cli/dlq-manager.ts:286 storage.close() 经 {...storage,close} 浅展开后类方法身份丢失，可能不真正关闭句柄 | `todo` | 待修复 |
-| 1089 | src/sdk/cli/dlq-manager.ts:290 入口判断未复用仓库内 isCliEntryPoint，npm bin/symlink 失效 | `todo` | 待修复 |
-| 1090 | src/sdk/cli/secret-commands.ts:53 env.AA_SECRET_AUTH_TOKEN_PATH ?? join(home,...,"secret-auth-token") 未 realpath 校验，软链可重定向 | `todo` | 待修复 |
-| 1091 | src/sdk/cli/secret-commands.ts:113 token 比对 sha256 直接 hex 无 salt，哈希文件泄漏可走彩虹表 | `todo` | 待修复 |
-| 1092 | src/sdk/cli/secret-commands.ts:116 left.length===right.length && timingSafeEqual 文件被改成不同长度时泄漏长度差 | `todo` | 待修复 |
-| 1093 | src/sdk/cli/secret-commands.ts:128-129 mkdirSync({mode:0o700}) 仅对 leaf 生效；writeFileSync({mode:0o600}) 文件已存在不更新 mode | `todo` | 待修复 |
-| 1094 | src/sdk/cli/secret-commands.ts:162 generate-token action 不调 requireAuthToken，任何 CLI 用户可覆盖 token 哈希实现身份升级 | `todo` | 待修复 |
-| 1095 | src/sdk/cli/secret-commands.ts:168 生成 token 经 JSON.stringify(result,null,2) 打印 stdout，重定向日志即明文留存 | `todo` | 待修复 |
-| 1096 | src/sdk/cli/secret-commands.ts:219 writeFileSync(outputPath, secretValue) 不检查目标是否软链，TOCTOU 可写任意路径 | `todo` | 待修复 |
-| 1097 | src/sdk/cli/secret-commands.ts:232,244,256 describe/leases/summary 均未要求认证，元数据泄漏 | `todo` | 待修复 |
-| 1098 | src/sdk/cli/secret-commands.ts:305 错误响应用 error.constructor.name 作 errorCode，泄漏内部类名（如 BetterSqliteError） | `todo` | 待修复 |
+| 1082 | src/sdk/cli/aa.ts 顶层 main() 在 npm bin 软链/Windows process.argv[1] 不一致时 import 即触发 dispatcher | `done` | 根因是 CLI 入口判断原先依赖直接 URL 相等比较，没有复用统一的入口守卫；本轮 `aa.ts` 已切到共享 `isCliEntryPoint()`，并强化了 realpath/resolve 判定。 |
+| 1083 | src/sdk/cli/dlq-manager.ts:112 --limit=abc parseInt→NaN 经 Math.min/Max 仍 NaN，拼到 SQL 抛 SQLite 错误而非校验拒绝 | `done` | 根因是 `--limit` 参数原先只做数值裁剪，没有在 NaN 前置校验；本轮已显式拒绝非法 limit。 |
+| 1084 | src/sdk/cli/dlq-manager.ts:32,104 retryLimit 字段定义且解析，但所有 action 写死 LIMIT 100，flag 静默被忽略 | `done` | 根因是 `retryLimit` 之前只停留在解析层，没有真正贯通到执行路径；本轮已让 `--retry-limit` 驱动批量重试上限。 |
+| 1085 | src/sdk/cli/dlq-manager.ts:209 UPDATE … ORDER BY … LIMIT 仅在 SQLite SQLITE_ENABLE_UPDATE_DELETE_LIMIT 启用时合法，与 PG 不兼容 | `done` | 根因是实现偷用了 SQLite 方言特性，突破了存储抽象可移植性；本轮已改为先选 id 再 update，移除方言依赖。 |
+| 1086 | src/sdk/cli/dlq-manager.ts:228 confirmFlag!=="yes" 大小写敏感，AA_DLQ_PURGE_CONFIRM=YES 静默拒绝 | `done` | 根因是 purge 环境确认原先做了大小写敏感比较；本轮已改为大小写不敏感。 |
+| 1087 | src/sdk/cli/dlq-manager.ts:229,277 双层确认（--yes+env）拒绝路径文案相同，无法区分 missing-flag vs missing-env | `done` | 根因是双重确认虽然存在，但拒绝路径复用了同一提示文案；本轮已拆分 `--yes` 缺失与环境确认缺失的错误信息。 |
+| 1088 | src/sdk/cli/dlq-manager.ts:286 storage.close() 经 {...storage,close} 浅展开后类方法身份丢失，可能不真正关闭句柄 | `done` | 根因是 authoritative storage 工厂之前用 spread-shim 改写 `close`，破坏了对象身份和原型；本轮改为原对象上原位包装 `close`。 |
+| 1089 | src/sdk/cli/dlq-manager.ts:290 入口判断未复用仓库内 isCliEntryPoint，npm bin/symlink 失效 | `done` | 根因是 `dlq-manager` 沿用了局部入口判断而没有复用共享 helper；本轮已切换到强化后的 `isCliEntryPoint()`。 |
+| 1090 | src/sdk/cli/secret-commands.ts:53 env.AA_SECRET_AUTH_TOKEN_PATH ?? join(home,...,"secret-auth-token") 未 realpath 校验，软链可重定向 | `done` | 根因是 token 路径此前只做字符串级路径拼接，没有禁止符号链接重定向；本轮已拒绝 symlink token path。 |
+| 1091 | src/sdk/cli/secret-commands.ts:113 token 比对 sha256 直接 hex 无 salt，哈希文件泄漏可走彩虹表 | `done` | 根因是 secret auth token 存储沿用了无盐 sha256 简化实现；本轮已切换为带盐 `scrypt` 哈希格式。 |
+| 1092 | src/sdk/cli/secret-commands.ts:116 left.length===right.length && timingSafeEqual 文件被改成不同长度时泄漏长度差 | `done` | 根因是校验逻辑在长度不等时先短路返回，破坏了常量时间比较；本轮已改成固定长度缓冲比较，不再暴露长度差。 |
+| 1093 | src/sdk/cli/secret-commands.ts:128-129 mkdirSync({mode:0o700}) 仅对 leaf 生效；writeFileSync({mode:0o600}) 文件已存在不更新 mode | `done` | 根因是文件权限控制以前只在 create-time 生效，覆盖写入时不会收敛已有宽权限；本轮已在写入后显式修正目录和文件权限。 |
+| 1094 | src/sdk/cli/secret-commands.ts:162 generate-token action 不调 requireAuthToken，任何 CLI 用户可覆盖 token 哈希实现身份升级 | `done` | 根因是 `generate-token` 早期被当成初始化路径，没有覆盖“已有 token 时必须认证”的约束；本轮已要求对现存 token 旋转先认证。 |
+| 1095 | src/sdk/cli/secret-commands.ts:168 生成 token 经 JSON.stringify(result,null,2) 打印 stdout，重定向日志即明文留存 | `done` | 根因是生成 token 结果对象此前直接输出到 stdout，把明文 token 当普通结果字段处理；本轮已改为只写入 `AA_SECRET_OUTPUT_PATH`。 |
+| 1096 | src/sdk/cli/secret-commands.ts:219 writeFileSync(outputPath, secretValue) 不检查目标是否软链，TOCTOU 可写任意路径 | `done` | 根因是 secret materialization 以前使用普通写文件路径，没有加防跟随约束；本轮已通过安全文件写入路径和 `O_NOFOLLOW` 防止软链穿透。 |
+| 1097 | src/sdk/cli/secret-commands.ts:232,244,256 describe/leases/summary 均未要求认证，元数据泄漏 | `done` | 根因是“只读元数据”曾被误判为低敏感，不要求认证；本轮已把 `describe/leases/summary` 也纳入认证门。 |
+| 1098 | src/sdk/cli/secret-commands.ts:305 错误响应用 error.constructor.name 作 errorCode，泄漏内部类名（如 BetterSqliteError） | `done` | 根因是顶层错误映射原先把内部异常类名直接外露；本轮已统一遮蔽为稳定的 `secret.command_failed`。 |
 | 1099 | src/sdk/cli/migrate-sqlite-to-pg.ts 校验阶段对 SQLite 大表 SELECT * 全量加载入 JS 内存，OOM | `todo` | 待修复 |
 | 1100 | src/sdk/cli/api-server.ts 启动后未注册 SIGTERM/SIGINT graceful 关闭 | `todo` | 待修复 |
 | 1101 | src/sdk/cli/inspect.ts JSON.stringify(snapshot) 对大 snapshot 无截断/流式输出，超出 stdout 高水位丢字段 | `todo` | 待修复 |
@@ -1437,25 +1437,25 @@
 | 1104 | src/sdk/cli/release-pipeline.ts rollback 路径仅记录 audit log，不实触发版本回滚 RPC，命名误导 | `todo` | 待修复 |
 | 1105 | src/sdk/cli/login.ts 接受 AA_LOGIN_TOKEN env 但成功后未清空 process.env，子进程继承 token | `todo` | 待修复 |
 | 1106 | src/sdk/cli/cli-exit.ts process.exit(code) 直接调用绕过 unhandled-promise drain，CI 中尾随日志可能丢失 | `todo` | 待修复 |
-| 1107 | src/sdk/cli/authoritative-storage.ts 工厂返回 {...storage, close:closeOnce} 浅拷贝丢失 class 原型链，instanceof AuthoritativeStorage 永远 false | `todo` | 待修复 |
+| 1107 | src/sdk/cli/authoritative-storage.ts 工厂返回 {...storage, close:closeOnce} 浅拷贝丢失 class 原型链，instanceof AuthoritativeStorage 永远 false | `done` | 根因是 authoritative storage 工厂以前通过浅拷贝包 `close`，破坏了 class 原型链与 `instanceof` 语义；本轮已改成原对象原位封装。 |
 | 1108 | src/sdk/index.ts & admin-sdk/index.ts & harness-sdk/index.ts 三公共入口同时 export *，新增类即视作 public API，违反 SDK 收敛 | `todo` | 待修复 |
-| 1109 | src/sdk/cli/aa.ts (top of file main() invocation): CLI 入口未使用 isCliEntryPoint 守卫，对 npm bin 软链/Windows 路径 process.argv[1] 不一致；any import-time side effect runs the dispatcher. EN: top-level main() runs at module import on platforms where the symlink path differs, breaking library reuse. | `todo` | 待修复 |
-| 1110 | src/sdk/cli/dlq-manager.ts:112 Math.max(1, Math.min(500, parseInt(String(values.limit ?? "50"),10))) 当 --limit=abc 时 parseInt→NaN→Math.min/Max 全部 NaN，最终拼接到 SQL 抛 SQLite 错误而非友好校验。EN: NaN propagation injects literal NaN into LIMIT, causing opaque SQL error instead of structured rejection. | `todo` | 待修复 |
-| 1111 | src/sdk/cli/dlq-manager.ts:32,104 retryLimit 字段在接口定义且解析，但所有 action handler 中未使用（200 行 retryDeadLetters 写死 LIMIT 100）。EN: --retry-limit flag is silently ignored; users believe it works. | `todo` | 待修复 |
-| 1112 | src/sdk/cli/dlq-manager.ts:209 UPDATE … ORDER BY updated_at ASC LIMIT 100 仅在 SQLite 编译启用 SQLITE_ENABLE_UPDATE_DELETE_LIMIT 时合法；与 PG 后端不兼容，违反 storage abstraction. EN: portability bug across SQLite/Postgres adapters. | `todo` | 待修复 |
-| 1113 | src/sdk/cli/dlq-manager.ts:228 confirmFlag !== "yes" 大小写敏感；AA_DLQ_PURGE_CONFIRM=YES 静默拒绝，错误信息却暗示已设置。EN: case-sensitive env confirm rejects valid affirmative values. | `todo` | 待修复 |
-| 1114 | src/sdk/cli/dlq-manager.ts:229,277 双层确认（--yes 与 env）但拒绝路径返回相同 dry-run 文案，无法区分 missing-flag vs missing-env，运维难排查。EN: confusing duplicate dry-run message. | `todo` | 待修复 |
-| 1115 | src/sdk/cli/dlq-manager.ts:286 storage.close() 调用，但 authoritative-storage 工厂返回 {...storage, close} 浅展开对象（见既有审计），class 方法身份丢失，close 可能不真正关闭句柄。EN: spread-shim breaks instance identity, close may be a no-op. | `todo` | 待修复 |
-| 1116 | src/sdk/cli/dlq-manager.ts:290 入口判断使用 import.meta.url === pathToFileURL(process.argv[1]).href，未复用仓库内 isCliEntryPoint helper；npm bin/symlink 场景失效。EN: same Windows symlink defect as round 4 #1. | `todo` | 待修复 |
-| 1117 | src/sdk/cli/secret-commands.ts:53 env.AA_SECRET_AUTH_TOKEN_PATH ?? join(home, ".automatic-agent", "secret-auth-token") 未做 realpath 校验；符号链接可重定向 token 哈希读路径。EN: symlink redirection on token-hash path. | `todo` | 待修复 |
-| 1118 | src/sdk/cli/secret-commands.ts:113 token 比对用 sha256(token) 直接 hex，无 salt；若哈希文件泄漏可走彩虹表。EN: unsalted hash vulnerable to offline dictionary attack. | `todo` | 待修复 |
-| 1119 | src/sdk/cli/secret-commands.ts:116 left.length === right.length && timingSafeEqual 长度提前返回非常量时；当文件被篡改成不同长度时泄漏长度差。EN: length-prefix early-exit leaks information. | `todo` | 待修复 |
-| 1120 | src/sdk/cli/secret-commands.ts:128-129 mkdirSync(..., {mode:0o700}) 仅对 leaf 创建生效；既有父目录权限保留；writeFileSync(...,{mode:0o600}) 文件已存在时不更新 mode，旧 0o644 token 文件保持宽松权限。EN: mode-on-create only, not on overwrite. | `todo` | 待修复 |
-| 1121 | src/sdk/cli/secret-commands.ts:162 generate-token action 不调用 requireAuthToken，任何 CLI 用户可覆盖 token 哈希文件，实现身份升级。EN: token regeneration is unauthenticated, allowing privilege escalation. | `todo` | 待修复 |
-| 1122 | src/sdk/cli/secret-commands.ts:168 生成的 token 通过 JSON.stringify(result,null,2) 打印至 stdout；若 stdout 重定向到日志，明文 token 永久留存。EN: secret printed to stdout without redaction. | `todo` | 待修复 |
-| 1123 | src/sdk/cli/secret-commands.ts:219 writeFileSync(outputPath, secretValue) 不检查目标是否软链，符号链接 TOCTOU 可让 secret 写入 /etc/passwd 等任意路径。EN: secret-write symlink traversal. | `todo` | 待修复 |
-| 1124 | src/sdk/cli/secret-commands.ts:232,244,256 describe/leases/summary action 均未要求认证，元数据（secretRef、ttl、owner、leaseHolder）泄漏。EN: metadata-only endpoints leak sensitive operational info without auth. | `todo` | 待修复 |
-| 1125 | src/sdk/cli/secret-commands.ts:305 错误响应使用 error.constructor.name 作为 errorCode，泄漏内部类名（如 BetterSqliteError），违反错误抽象。EN: internal class name leaks via error code. | `todo` | 待修复 |
+| 1109 | src/sdk/cli/aa.ts (top of file main() invocation): CLI 入口未使用 isCliEntryPoint 守卫，对 npm bin 软链/Windows 路径 process.argv[1] 不一致；any import-time side effect runs the dispatcher. EN: top-level main() runs at module import on platforms where the symlink path differs, breaking library reuse. | `done` | 根因是 CLI 入口判断原先依赖直接 URL 比较，没有经过 realpath/resolve 归一化；本轮已复用强化后的 `isCliEntryPoint()`。 |
+| 1110 | src/sdk/cli/dlq-manager.ts:112 Math.max(1, Math.min(500, parseInt(String(values.limit ?? "50"),10))) 当 --limit=abc 时 parseInt→NaN→Math.min/Max 全部 NaN，最终拼接到 SQL 抛 SQLite 错误而非友好校验。EN: NaN propagation injects literal NaN into LIMIT, causing opaque SQL error instead of structured rejection. | `done` | 根因是 limit 处理以前默认 `parseInt` 一定成功，只做边界裁剪；本轮已对非法值做结构化拒绝。 |
+| 1111 | src/sdk/cli/dlq-manager.ts:32,104 retryLimit 字段在接口定义且解析，但所有 action handler 中未使用（200 行 retryDeadLetters 写死 LIMIT 100）。EN: --retry-limit flag is silently ignored; users believe it works. | `done` | 根因是 flag 仅被解析但没有接入执行层；本轮已让 `retryLimit` 真正控制重试批大小。 |
+| 1112 | src/sdk/cli/dlq-manager.ts:209 UPDATE … ORDER BY updated_at ASC LIMIT 100 仅在 SQLite 编译启用 SQLITE_ENABLE_UPDATE_DELETE_LIMIT 时合法；与 PG 后端不兼容，违反 storage abstraction. EN: portability bug across SQLite/Postgres adapters. | `done` | 根因是实现绑定了 SQLite 扩展语法，破坏了 Postgres 兼容性；本轮已替换为 select-id-then-update 的可移植流程。 |
+| 1113 | src/sdk/cli/dlq-manager.ts:228 confirmFlag !== "yes" 大小写敏感；AA_DLQ_PURGE_CONFIRM=YES 静默拒绝，错误信息却暗示已设置。EN: case-sensitive env confirm rejects valid affirmative values. | `done` | 根因是环境确认比较此前大小写敏感；本轮已改为 case-insensitive。 |
+| 1114 | src/sdk/cli/dlq-manager.ts:229,277 双层确认（--yes 与 env）但拒绝路径返回相同 dry-run 文案，无法区分 missing-flag vs missing-env，运维难排查。EN: confusing duplicate dry-run message. | `done` | 根因是双重确认失败路径复用了同一提示文本；本轮已拆分不同失败原因的提示。 |
+| 1115 | src/sdk/cli/dlq-manager.ts:286 storage.close() 调用，但 authoritative-storage 工厂返回 {...storage, close} 浅展开对象（见既有审计），class 方法身份丢失，close 可能不真正关闭句柄。EN: spread-shim breaks instance identity, close may be a no-op. | `done` | 根因是 storage 包装器用浅拷贝替换 `close`，破坏了原实例方法身份；本轮已改为保留实例身份的原位封装。 |
+| 1116 | src/sdk/cli/dlq-manager.ts:290 入口判断使用 import.meta.url === pathToFileURL(process.argv[1]).href，未复用仓库内 isCliEntryPoint helper；npm bin/symlink 场景失效。EN: same Windows symlink defect as round 4 #1. | `done` | 根因是 `dlq-manager` 自行实现入口判断，重复引入了 symlink/Windows 路径缺陷；本轮已统一到共享 helper。 |
+| 1117 | src/sdk/cli/secret-commands.ts:53 env.AA_SECRET_AUTH_TOKEN_PATH ?? join(home, ".automatic-agent", "secret-auth-token") 未做 realpath 校验；符号链接可重定向 token 哈希读路径。EN: symlink redirection on token-hash path. | `done` | 根因是 token-hash 路径以前没有防符号链接重定向约束；本轮已拒绝 symlink 路径。 |
+| 1118 | src/sdk/cli/secret-commands.ts:113 token 比对用 sha256(token) 直接 hex，无 salt；若哈希文件泄漏可走彩虹表。EN: unsalted hash vulnerable to offline dictionary attack. | `done` | 根因是 token 存储实现使用了无盐哈希；本轮已升级为带盐 `scrypt`。 |
+| 1119 | src/sdk/cli/secret-commands.ts:116 left.length === right.length && timingSafeEqual 长度提前返回非常量时；当文件被篡改成不同长度时泄漏长度差。EN: length-prefix early-exit leaks information. | `done` | 根因是比较逻辑在长度检查阶段提前返回；本轮已改成固定长度常量时间比较。 |
+| 1120 | src/sdk/cli/secret-commands.ts:128-129 mkdirSync(..., {mode:0o700}) 仅对 leaf 创建生效；既有父目录权限保留；writeFileSync(...,{mode:0o600}) 文件已存在时不更新 mode，旧 0o644 token 文件保持宽松权限。EN: mode-on-create only, not on overwrite. | `done` | 根因是权限 hardening 以前只依赖创建时 mode，无法修正已存在的宽权限文件；本轮已在写入后显式收紧权限。 |
+| 1121 | src/sdk/cli/secret-commands.ts:162 generate-token action 不调用 requireAuthToken，任何 CLI 用户可覆盖 token 哈希文件，实现身份升级。EN: token regeneration is unauthenticated, allowing privilege escalation. | `done` | 根因是 token 生成路径以前没有区分“首次初始化”和“已有 token 轮换”；本轮已要求轮换现有 token 必须认证。 |
+| 1122 | src/sdk/cli/secret-commands.ts:168 生成的 token 通过 JSON.stringify(result,null,2) 打印至 stdout；若 stdout 重定向到日志，明文 token 永久留存。EN: secret printed to stdout without redaction. | `done` | 根因是命令把生成结果按普通 JSON 输出，错误地把明文 token 暴露到 stdout；本轮已只写到 `AA_SECRET_OUTPUT_PATH`。 |
+| 1123 | src/sdk/cli/secret-commands.ts:219 writeFileSync(outputPath, secretValue) 不检查目标是否软链，符号链接 TOCTOU 可让 secret 写入 /etc/passwd 等任意路径。EN: secret-write symlink traversal. | `done` | 根因是 secret 输出路径此前使用普通写文件 API，没有 no-follow 约束；本轮已切到安全写入路径并阻断软链穿透。 |
+| 1124 | src/sdk/cli/secret-commands.ts:232,244,256 describe/leases/summary action 均未要求认证，元数据（secretRef、ttl、owner、leaseHolder）泄漏。EN: metadata-only endpoints leak sensitive operational info without auth. | `done` | 根因是元数据接口过去被误分类为非敏感；本轮已统一要求认证。 |
+| 1125 | src/sdk/cli/secret-commands.ts:305 错误响应使用 error.constructor.name 作为 errorCode，泄漏内部类名（如 BetterSqliteError），违反错误抽象。EN: internal class name leaks via error code. | `done` | 根因是顶层错误编码直接透传内部异常类名；本轮已收敛为稳定的外部错误码 `secret.command_failed`。 |
 | 1126 | src/sdk/cli/migrate-sqlite-to-pg.ts 校验阶段对 SQLite 大表 SELECT * 全量加载入 JS 内存，无分页；OOM 风险. EN: full-table read into memory during migration. | `todo` | 待修复 |
 | 1127 | src/sdk/cli/api-server.ts 启动后未注册 SIGTERM/SIGINT graceful 关闭，容器停机会丢请求中数据. EN: missing signal handlers. | `todo` | 待修复 |
 | 1128 | src/sdk/cli/inspect.ts 输出 JSON 直接 JSON.stringify(snapshot)，对大 snapshot 无截断与流式输出，超出 stdout 高水位时丢字段. EN: blocking stringify for large snapshots. | `todo` | 待修复 |
@@ -1464,7 +1464,7 @@
 | 1131 | src/sdk/cli/release-pipeline.ts rollback 路径仅记录 audit log，不实际触发版本回滚 RPC，命名误导运维. EN: rollback action only logs, no rollback effect. | `todo` | 待修复 |
 | 1132 | src/sdk/cli/login.ts 接受 AA_LOGIN_TOKEN env 但未在成功后清空 process.env，子进程继承 token. EN: token leaks via inherited environment. | `todo` | 待修复 |
 | 1133 | src/sdk/cli/cli-exit.ts process.exit(code) 直接调用绕过 unhandled-promise drain，CI 中尾随日志可能丢失. EN: hard exit drops trailing log writes. | `todo` | 待修复 |
-| 1134 | src/sdk/cli/authoritative-storage.ts 工厂函数返回 {...storage, close: closeOnce} 浅拷贝丢失 class 原型链，调用 instanceof AuthoritativeStorage 永远 false，下游 instanceof 守卫失效. EN: spread-shim breaks instanceof checks. | `todo` | 待修复 |
+| 1134 | src/sdk/cli/authoritative-storage.ts 工厂函数返回 {...storage, close: closeOnce} 浅拷贝丢失 class 原型链，调用 instanceof AuthoritativeStorage 永远 false，下游 instanceof 守卫失效. EN: spread-shim breaks instanceof checks. | `done` | 根因是 storage 工厂此前以浅拷贝方式覆写 `close`，直接打断了原型链和 `instanceof` 守卫；本轮已改为保持原对象/原型链的封装方式。 |
 | 1135 | src/sdk/index.ts & src/sdk/admin-sdk/index.ts & src/sdk/harness-sdk/index.ts 三个公共入口同时 export *，未做 semver-stable 表面控制；新增类即视作 public API，违反 SDK 收敛策略. EN: barrel export leaks unstable surface. | `todo` | 待修复 |
 
 ## src/plugins

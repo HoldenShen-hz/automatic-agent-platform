@@ -1,4 +1,5 @@
 {{- if .Values.monitoring.prometheusRule.enabled -}}
+{{- $jobSelector := printf ".*%s.*" (include "automatic-agent.fullname" .) -}}
 apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
 metadata:
@@ -11,14 +12,14 @@ spec:
       interval: {{ .Values.monitoring.prometheusRule.interval | quote }}
       rules:
         - record: automatic_agent:http_request_duration_ms_bucket:rate5m
-          expr: sum by (job, instance, le) (rate(http_request_duration_ms_bucket{job=~".*{{ include "automatic-agent.fullname" . }}.*"}[5m]))
+          expr: sum by (job, instance, le) (rate(http_request_duration_ms_bucket{job=~{{ $jobSelector | quote }}}[5m]))
         - record: automatic_agent:oapeflir_stage_duration_ms_bucket:rate5m
-          expr: sum by (job, instance, le) (rate(oapeflir_stage_duration_ms_bucket{job=~".*{{ include "automatic-agent.fullname" . }}.*"}[5m]))
+          expr: sum by (job, instance, le) (rate(oapeflir_stage_duration_ms_bucket{job=~{{ $jobSelector | quote }}}[5m]))
     - name: automatic-agent
       interval: {{ .Values.monitoring.prometheusRule.interval | quote }}
       rules:
         - alert: AutomaticAgentMetricsEndpointDown
-          expr: min by (job, instance) (up{job=~".*{{ include "automatic-agent.fullname" . }}.*"}) == 0
+          expr: min by (job, instance) (up{job=~{{ $jobSelector | quote }}}) == 0
           for: 2m
           labels:
             severity: critical
@@ -26,8 +27,17 @@ spec:
             summary: automatic-agent metrics endpoint is unreachable
             description: "Prometheus could not scrape {{`{{`}} $labels.job {{`}}`}} on {{`{{`}} $labels.instance {{`}}`}} for 2 minutes."
             runbook_url: https://github.com/automatic-agent/automatic-agent-platform/blob/main/deploy/runbooks/production-alert-runbook.md#1-automaticagentmetricsendpointdown
+        - alert: AutomaticAgentNoTraffic
+          expr: sum by (job) (rate(http_requests_total{job=~{{ $jobSelector | quote }}}[10m])) == 0
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: automatic-agent request traffic dropped to zero
+            description: "{{`{{`}} $labels.job {{`}}`}} has reported no HTTP request traffic for 15 minutes."
+            runbook_url: https://github.com/automatic-agent/automatic-agent-platform/blob/main/deploy/runbooks/production-alert-runbook.md#2-automaticagentnotraffic
         - alert: AutomaticAgentHighErrorRate
-          expr: (sum by (job) (rate(http_requests_total{job=~".*{{ include "automatic-agent.fullname" . }}.*",status=~"5.."}[5m])) / sum by (job) (rate(http_requests_total{job=~".*{{ include "automatic-agent.fullname" . }}.*"}[5m]))) > 0.01 and sum by (job) (rate(http_requests_total{job=~".*{{ include "automatic-agent.fullname" . }}.*"}[5m])) > 0
+          expr: (sum by (job) (rate(http_requests_total{job=~{{ $jobSelector | quote }},status=~"5.."}[5m])) / sum by (job) (rate(http_requests_total{job=~{{ $jobSelector | quote }}}[5m]))) > 0.01 and sum by (job) (rate(http_requests_total{job=~{{ $jobSelector | quote }}}[5m])) > 0
           for: 5m
           labels:
             severity: critical
@@ -44,8 +54,26 @@ spec:
             summary: automatic-agent p95 latency exceeds 1s SLO
             description: "{{`{{`}} $labels.job {{`}}`}} / {{`{{`}} $labels.instance {{`}}`}} p95 request latency has exceeded 1 second for 5 minutes."
             runbook_url: https://github.com/automatic-agent/automatic-agent-platform/blob/main/deploy/runbooks/production-alert-runbook.md#4-automaticagenthighlatency
+        - alert: AutomaticAgentCriticalLatency
+          expr: histogram_quantile(0.95, automatic_agent:http_request_duration_ms_bucket:rate5m) > 3000
+          for: 3m
+          labels:
+            severity: critical
+          annotations:
+            summary: automatic-agent p95 latency exceeds 3s
+            description: "{{`{{`}} $labels.job {{`}}`}} p95 request latency has exceeded 3 seconds."
+            runbook_url: https://github.com/automatic-agent/automatic-agent-platform/blob/main/deploy/runbooks/production-alert-runbook.md#5-automaticagentcriticallatency
+        - alert: AutomaticAgentQueueDepthHigh
+          expr: sum by (job) (queued_tasks{job=~{{ $jobSelector | quote }}}) > 100
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: automatic-agent queue depth exceeds 100
+            description: "{{`{{`}} $labels.job {{`}}`}} queue depth has exceeded 100 entries for 10 minutes."
+            runbook_url: https://github.com/automatic-agent/automatic-agent-platform/blob/main/deploy/runbooks/production-alert-runbook.md#6-automaticagentqueuedepthhigh
         - alert: AutomaticAgentQueueBacklog
-          expr: sum by (job) (queued_tasks{job=~".*{{ include "automatic-agent.fullname" . }}.*"}) > 500
+          expr: sum by (job) (queued_tasks{job=~{{ $jobSelector | quote }}}) > 500
           for: 5m
           labels:
             severity: critical
@@ -53,4 +81,130 @@ spec:
             summary: automatic-agent queue backlog critical
             description: "{{`{{`}} $labels.job {{`}}`}} queue depth has exceeded 500 entries."
             runbook_url: https://github.com/automatic-agent/automatic-agent-platform/blob/main/deploy/runbooks/production-alert-runbook.md#7-automaticagentqueuebacklog
+        - alert: AutomaticAgentWorkerPoolExhaustion
+          expr: (sum by (job) (active_executions{job=~{{ $jobSelector | quote }}}) / sum by (job) (total_workers{job=~{{ $jobSelector | quote }}})) > 0.9 and sum by (job) (total_workers{job=~{{ $jobSelector | quote }}}) > 0
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: automatic-agent worker pool above 90% utilization
+            description: "{{`{{`}} $labels.job {{`}}`}} worker pool utilization has exceeded 90% for 5 minutes."
+            runbook_url: https://github.com/automatic-agent/automatic-agent-platform/blob/main/deploy/runbooks/production-alert-runbook.md#8-automaticagentworkerpoolexhaustion
+        - alert: AutomaticAgentWorkerPoolCritical
+          expr: (sum by (job) (active_executions{job=~{{ $jobSelector | quote }}}) / sum by (job) (total_workers{job=~{{ $jobSelector | quote }}})) > 0.95 and sum by (job) (total_workers{job=~{{ $jobSelector | quote }}}) > 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: automatic-agent worker pool above 95% utilization
+            description: "{{`{{`}} $labels.job {{`}}`}} worker pool utilization has exceeded 95%."
+            runbook_url: https://github.com/automatic-agent/automatic-agent-platform/blob/main/deploy/runbooks/production-alert-runbook.md#9-automaticagentworkerpoolcritical
+        - alert: AutomaticAgentTaskTimeoutRate
+          expr: (sum by (job) (rate(task_executions_total{job=~{{ $jobSelector | quote }},status="timeout"}[10m])) / sum by (job) (rate(task_executions_total{job=~{{ $jobSelector | quote }}}[10m]))) > 0.05 and sum by (job) (rate(task_executions_total{job=~{{ $jobSelector | quote }}}[10m])) > 0
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: automatic-agent task timeout rate exceeds 5%
+            description: "{{`{{`}} $labels.job {{`}}`}} task timeouts have exceeded 5% over 10 minutes."
+            runbook_url: https://github.com/automatic-agent/automatic-agent-platform/blob/main/deploy/runbooks/production-alert-runbook.md#10-automaticagenttasktimeoutrate
+        - alert: AutomaticAgentOutboxGrowing
+          expr: outbox_pending{job=~{{ $jobSelector | quote }}} > 100
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: automatic-agent outbox entries growing
+            description: Outbox pending entries have increased above 100.
+            runbook_url: https://github.com/automatic-agent/automatic-agent-platform/blob/main/deploy/runbooks/production-alert-runbook.md#11-automaticagentoutboxgrowing
+        - alert: AutomaticAgentOutboxBacklog
+          expr: outbox_pending{job=~{{ $jobSelector | quote }}} > 1000
+          for: 15m
+          labels:
+            severity: critical
+          annotations:
+            summary: automatic-agent outbox backlog critical
+            description: Outbox has over 1000 pending entries.
+            runbook_url: https://github.com/automatic-agent/automatic-agent-platform/blob/main/deploy/runbooks/production-alert-runbook.md#12-automaticagentoutboxbacklog
+        - alert: AutomaticAgentDLQAccumulating
+          expr: dead_letter_count{job=~{{ $jobSelector | quote }}} > 10
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: automatic-agent DLQ entries accumulating
+            description: Dead letter queue has received more than 10 entries in the evaluation window.
+            runbook_url: https://github.com/automatic-agent/automatic-agent-platform/blob/main/deploy/runbooks/production-alert-runbook.md#13-automaticagentdlqaccumulating
+        - alert: AutomaticAgentDLQCritical
+          expr: dead_letter_count{job=~{{ $jobSelector | quote }}} > 100
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: automatic-agent DLQ backlog critical
+            description: Dead letter queue has over 100 entries.
+            runbook_url: https://github.com/automatic-agent/automatic-agent-platform/blob/main/deploy/runbooks/production-alert-runbook.md#14-automaticagentdlqcritical
+        - alert: AutomaticAgentTaskFailureRate
+          expr: (sum by (job) (rate(task_executions_total{job=~{{ $jobSelector | quote }},status="failed"}[10m])) / sum by (job) (rate(task_executions_total{job=~{{ $jobSelector | quote }}}[10m]))) > 0.10 and sum by (job) (rate(task_executions_total{job=~{{ $jobSelector | quote }}}[10m])) > 0
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: task failure rate is above 10%
+            description: Task executions are failing above the warning threshold.
+            runbook_url: https://github.com/automatic-agent/automatic-agent-platform/blob/main/deploy/runbooks/production-alert-runbook.md#15-automaticagenttaskfailurerate
+        - alert: AutomaticAgentMemoryPressure
+          expr: process_meminfo_bytes{job=~{{ $jobSelector | quote }},type="rss"} > 471859200
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: automatic-agent RSS exceeds 450MiB
+            description: Resident memory has stayed above the configured pressure threshold.
+            runbook_url: https://github.com/automatic-agent/automatic-agent-platform/blob/main/deploy/runbooks/production-alert-runbook.md#16-automaticagentmemorypressure
+        - alert: AutomaticAgentRedisDisconnected
+          expr: sum by (job) (redis_connection_errors{job=~{{ $jobSelector | quote }}}) > 0
+          for: 2m
+          labels:
+            severity: warning
+          annotations:
+            summary: automatic-agent observed Redis connection errors
+            description: Redis-backed subsystems have reported connection errors in the last evaluation window.
+            runbook_url: https://github.com/automatic-agent/automatic-agent-platform/blob/main/deploy/runbooks/production-alert-runbook.md#17-automaticagentredisdisconnected
+        - alert: AutomaticAgentEventLoopLag
+          expr: event_loop_lag_ms{job=~{{ $jobSelector | quote }}} > 250
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: automatic-agent event loop lag exceeds 250ms
+            description: Event loop lag remained above 250ms for 5 minutes.
+            runbook_url: https://github.com/automatic-agent/automatic-agent-platform/blob/main/deploy/runbooks/production-alert-runbook.md#18-automaticagenteventlooplag
+        - alert: AutomaticAgentDiskUsageHigh
+          expr: disk_used_ratio{job=~{{ $jobSelector | quote }}} > 0.85
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: automatic-agent disk usage exceeds 85%
+            description: Workspace filesystem usage is above 85% and may impact runtime stability.
+            runbook_url: https://github.com/automatic-agent/automatic-agent-platform/blob/main/deploy/runbooks/production-alert-runbook.md#19-automaticagentdiskusagehigh
+        - alert: AutomaticAgentWorkerHeartbeatTimeout
+          expr: sum by (job) (total_workers{job=~{{ $jobSelector | quote }}}) > 0 and sum by (job) (healthy_workers{job=~{{ $jobSelector | quote }}}) < sum by (job) (total_workers{job=~{{ $jobSelector | quote }}})
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: automatic-agent has unhealthy workers
+            description: At least one worker has stopped heartbeating or is marked unhealthy.
+            runbook_url: https://github.com/automatic-agent/automatic-agent-platform/blob/main/deploy/runbooks/production-alert-runbook.md#20-automaticagentworkerheartbeattimeout
+        - alert: AutomaticAgentOrchestrationLatency
+          expr: histogram_quantile(0.95, automatic_agent:oapeflir_stage_duration_ms_bucket:rate5m) > 2000
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: automatic-agent orchestration step p95 exceeds 2s
+            description: Multi-step orchestration p95 latency has exceeded 2 seconds.
+            runbook_url: https://github.com/automatic-agent/automatic-agent-platform/blob/main/deploy/runbooks/production-alert-runbook.md#21-automaticagentorchestrationlatency
 {{- end }}

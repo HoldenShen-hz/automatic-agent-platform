@@ -1,12 +1,7 @@
 # ADR-111: Platform Fact vs OAPEFLIR View Events
 
-## Status
-
-Accepted
-
-## Decision Date
-
-2026-04-27
+- Status: Accepted
+- Decision Date: 2026-04-27
 
 ## Background
 

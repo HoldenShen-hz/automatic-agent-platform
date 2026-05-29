@@ -22,6 +22,7 @@ test("api-server main function is async", () => {
 test("api-server uses requireValidStartupEnv validation", () => {
   const source = readFileSync(join(process.cwd(), "src", "sdk", "cli", "api-server.ts"), "utf8");
   assert.match(source, /requireValidStartupEnv\(\);/);
+  assert.match(source, /shutdown\.registerSignalHandlers\(\);/);
 });
 
 test("api-server config includes otel settings", () => {

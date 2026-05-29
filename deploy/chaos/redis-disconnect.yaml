@@ -12,6 +12,6 @@ spec:
   target:
     selector:
       labelSelectors:
-        app.kubernetes.io/component: redis
+        app.kubernetes.io/name: redis
     mode: all
   duration: "60s"

@@ -1,4 +1,4 @@
-import { defineTool } from "@platform/plugin-sdk";
+import { defineTool } from "automatic-agent-platform/sdk/plugin-sdk";
 
 export const searchTool = defineTool({
   pluginId: "test-pack.search",

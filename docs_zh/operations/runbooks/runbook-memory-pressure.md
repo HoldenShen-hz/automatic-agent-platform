@@ -1,27 +1,27 @@
-# Memory Pressure Runbook
+# 内存压力 Runbook
 
-## Symptoms
+## 症状
 
-- `AutomaticAgentMemoryPressure` alert firing
-- RSS remains above 512MiB
-- runtime latency and GC pause time increase
+- `AutomaticAgentMemoryPressure` 告警持续触发
+- RSS 持续高于当前告警阈值 `450MiB`（见 Prometheus rule）
+- runtime 延迟与 GC pause time 同步升高
 
-## Diagnosis
+## 诊断
 
-1. Check memory growth over time to distinguish leak vs load spike.
-2. Identify whether growth is in RSS, heap, or external memory.
-3. Correlate memory growth with recent plugin activations, large artifact bundles, or replay jobs.
-4. Inspect queue backlog and active execution counts to see if the system is overloaded rather than leaking.
+1. 先看内存曲线是否持续单调上升，区分泄漏与短时负载尖峰。
+2. 区分增长发生在 RSS、heap 还是 external memory。
+3. 把增长窗口与近期 plugin 激活、大 artifact bundle、replay job、批量导入等事件做关联。
+4. 同时检查队列 backlog 和 active execution 数，判断是容量不足还是对象未释放。
 
-## Mitigation
+## 处置
 
-1. Pause non-critical or batch workloads first.
-2. Disable the offending plugin, workflow, or ingestion path if memory growth is isolated.
-3. Restart the service only after preserving enough evidence to diagnose the cause.
-4. If capacity is legitimately too low, scale memory limits and replica count together.
+1. 先暂停非关键或批处理 workload，降低继续放大的压力面。
+2. 如果增长已定位到单一 plugin、workflow 或 ingestion path，先局部摘除该路径。
+3. 只有在证据已保留后才允许重启服务，避免把泄漏线索一起清空。
+4. 若确认是容量基线不足，而非泄漏，则同步上调内存 limit 与 replica 数，不要只加单 Pod 内存。
 
-## Verification
+## 验证
 
-1. Confirm RSS drops below the alert threshold and remains stable.
-2. Verify health status returns to `ok` or `degraded` without repeated oscillation.
-3. Open follow-up work if a leak signature or unsafe workload pattern is confirmed.
+1. 确认 RSS 回落到 `450MiB` 阈值以下，并在 10 分钟告警窗口内保持稳定。
+2. 验证健康状态回到 `ok` 或稳定的 `degraded`，不能反复震荡。
+3. 若已确认泄漏特征或危险 workload 模式，必须补后续整改项，而不是只做一次重启。

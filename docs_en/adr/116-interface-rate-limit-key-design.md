@@ -1,7 +1,6 @@
 # ADR-116 Interface Rate Limit Key Design
 
-## Status
-Accepted
+- Status: Accepted
 
 ## Background
 Different entry points previously used different rate-limit keys, causing ops side unable to predict whether rate limits share buckets.
@@ -21,4 +20,3 @@ Different entry points previously used different rate-limit keys, causing ops si
 ## Related Implementation
 - `src/platform/five-plane-interface/api/http-api-server.ts`
 - `src/platform/five-plane-interface/api/http-server/*`
-

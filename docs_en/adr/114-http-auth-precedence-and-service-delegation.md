@@ -1,7 +1,6 @@
 # ADR-114 HTTP Auth Precedence And Service Delegation
 
-## Status
-Accepted
+- Status: Accepted
 
 ## Background
 HTTP entry may simultaneously carry user authentication header and service authentication header, previously lacked priority and audit attribution explanation.
@@ -9,7 +8,7 @@ HTTP entry may simultaneously carry user authentication header and service authe
 ## Decision
 - External HTTP API defaults to user authentication chain as primary.
 - Service-to-service authentication handles through internal service auth channel, not mixed with ordinary user header.
-- If user and service authentication information simultaneously appear in the same request, default to reject or go through explicit proxy/delegation process,不做隐式优先级猜测.
+- If user and service authentication information simultaneously appear in the same request, default to reject or require an explicit proxy / delegation process rather than guessing precedence implicitly.
 - When service represents user execution, must simultaneously retain:
   - Original user principal
   - Delegated service principal
@@ -22,4 +21,3 @@ HTTP entry may simultaneously carry user authentication header and service authe
 ## Related Implementation
 - `src/platform/five-plane-interface/api/http-api-server.ts`
 - `src/platform/five-plane-interface/api/service-auth.ts`
-

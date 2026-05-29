@@ -1,7 +1,6 @@
 # ADR-115 Self Healing Simulation Boundary
 
-## 状态
-Accepted
+- 状态：Accepted
 
 ## 背景
 当前 self-healing 服务提供的是仓内可测试的 deterministic simulation baseline，不是外部真实基础设施编排器。
@@ -20,4 +19,3 @@ Accepted
 
 ## 相关实现
 - `src/ops-maturity/platform-ops-agent/self-healing-service.ts`
-

@@ -69,3 +69,26 @@ test("skill creator validate reports missing sections [skill-creator-service]", 
     cleanupPath(workspace);
   }
 });
+
+test("skill creator slugifies hostile names and writes inert scaffold content [skill-creator-service]", () => {
+  const workspace = createTempWorkspace("aa-skill-creator-sanitize-");
+  try {
+    const service = new SkillCreatorService();
+    const result = service.createSkill({
+      skillRoot: workspace,
+      name: "`${process.exit(1)}` ${danger}",
+      description: "Skill description with `${still-plain-text}` content.",
+      includeOpenAiAgent: true,
+    });
+
+    assert.equal(result.skillSlug, "process-exit-1-danger");
+    const skillMarkdown = readFileSync(join(result.skillPath, "SKILL.md"), "utf8");
+    const openAiYaml = readFileSync(join(result.skillPath, "agents", "openai.yaml"), "utf8");
+
+    assert.match(skillMarkdown, /# `\$\{process\.exit\(1\)\}` \$\{danger\}/);
+    assert.match(openAiYaml, /name: process-exit-1-danger/);
+    assert.match(openAiYaml, /description: "Skill description with `\$\{still-plain-text\}` content\."/);
+  } finally {
+    cleanupPath(workspace);
+  }
+});

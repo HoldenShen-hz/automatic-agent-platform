@@ -1,12 +1,7 @@
 # ADR-110: Runtime State Machine Authority
 
-## 状态
-
-Accepted
-
-## 决策日期
-
-2026-04-27
+- 状态：Accepted
+- 决策日期：2026-04-27
 
 ## 背景
 

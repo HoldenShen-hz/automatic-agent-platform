@@ -43,7 +43,7 @@ export const CONTROL_PLANE_ACTIONS = ["summary", "heartbeat", "select"] as const
 // Valid ops governance actions
 export const OPS_GOVERNANCE_ACTIONS = ["summary", "export", "check", "report", "audit"] as const;
 // Valid secret management actions
-export const SECRET_ACTIONS = ["register", "resolve", "rotate", "issue", "revoke", "leases", "due", "request_due", "refresh", "summary"] as const;
+export const SECRET_ACTIONS = ["register", "resolve", "rotate", "issue", "revoke", "leases", "due", "request_due", "refresh", "summary", "generate-token"] as const;
 // Valid worker register actions
 export const WORKER_REGISTER_ACTIONS = ["issue", "complete"] as const;
 export const GATEWAY_TARGET_ACTIONS = ["upsert", "list", "resolve"] as const;

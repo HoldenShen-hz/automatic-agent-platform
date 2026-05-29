@@ -56,18 +56,30 @@ jobs:
           mkdir -p .dr-reports
           mkdir -p .backups
           mkdir -p .dr-logs
+          mkdir -p data/projections
 
       - name: Initialize test databases
         run: |
-          # Create minimal test databases for DR validation
+          # Seed a non-trivial dataset so restore validation proves more than
+          # a single placeholder row.
           if ! command -v sqlite3 >/dev/null 2>&1; then
             echo "sqlite3 is required for DR validation"
             exit 1
           fi
           sqlite3 data/events.db "CREATE TABLE IF NOT EXISTS events (id TEXT PRIMARY KEY, eventType TEXT, taskId TEXT, payloadJson TEXT, createdAt TEXT);"
           sqlite3 data/truth.db "CREATE TABLE IF NOT EXISTS tasks (taskId TEXT PRIMARY KEY, status TEXT, createdAt TEXT);"
-          sqlite3 data/events.db "INSERT INTO events VALUES ('evt_test_1', 'task:created', 'task_1', '{}', '$(date -Iseconds)');"
-          sqlite3 data/truth.db "INSERT INTO tasks VALUES ('task_1', 'created', '$(date -Iseconds)');"
+          sqlite3 data/events.db "DELETE FROM events;"
+          sqlite3 data/truth.db "DELETE FROM tasks;"
+          sqlite3 data/events.db "INSERT INTO events VALUES
+            ('evt_test_1', 'task:created', 'task_1', '{\"stage\":\"created\"}', '$(date -Iseconds)'),
+            ('evt_test_2', 'task:queued', 'task_1', '{\"stage\":\"queued\"}', '$(date -Iseconds)'),
+            ('evt_test_3', 'task:completed', 'task_2', '{\"stage\":\"completed\"}', '$(date -Iseconds)');"
+          sqlite3 data/truth.db "INSERT INTO tasks VALUES
+            ('task_1', 'queued', '$(date -Iseconds)'),
+            ('task_2', 'completed', '$(date -Iseconds)'),
+            ('task_3', 'running', '$(date -Iseconds)');"
+          printf '{"taskId":"task_1","status":"queued"}\n' > data/projections/task-1.json
+          printf '{"taskId":"task_2","status":"completed"}\n' > data/projections/task-2.json
 
       - name: Run DR Drill
         id: drill
@@ -77,11 +89,21 @@ jobs:
           NODE_ENV: test
         run: |
           OUTPUT_DIR=".dr-reports/drill_$(date +%Y%m%d_%H%M%S)"
-          chmod +x deploy/scripts/dr-drill.sh
-          ./deploy/scripts/dr-drill.sh \
+          echo "output_dir=$OUTPUT_DIR" >> "$GITHUB_OUTPUT"
+          bash deploy/scripts/dr-drill.sh \
             --mode "$DR_MODE" \
             --component "$DR_COMPONENT" \
             --output-dir "$OUTPUT_DIR"
+
+      - name: Verify restored dataset shape
+        run: |
+          RESTORE_ROOT="${{ steps.drill.outputs.output_dir }}/restore/data"
+          EVENT_COUNT=$(sqlite3 "${RESTORE_ROOT}/events.db" "SELECT COUNT(*) FROM events;")
+          TASK_COUNT=$(sqlite3 "${RESTORE_ROOT}/truth.db" "SELECT COUNT(*) FROM tasks;")
+          PROJECTION_COUNT=$(find "${RESTORE_ROOT}/projections" -type f | wc -l | tr -d ' ')
+          [ "$EVENT_COUNT" -ge 3 ] || { echo "Expected >=3 restored events, got $EVENT_COUNT"; exit 1; }
+          [ "$TASK_COUNT" -ge 3 ] || { echo "Expected >=3 restored tasks, got $TASK_COUNT"; exit 1; }
+          [ "$PROJECTION_COUNT" -ge 2 ] || { echo "Expected >=2 restored projection files, got $PROJECTION_COUNT"; exit 1; }
 
       - name: Verify DR Report Generated
         run: |

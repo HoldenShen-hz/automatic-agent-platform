@@ -1,12 +1,31 @@
-import { pathToFileURL } from "node:url";
+import { existsSync, realpathSync } from "node:fs";
+import { resolve } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 export const CLI_EXIT_SUCCESS = 0;
 export const CLI_EXIT_FAILURE = 1;
 
 export type CliMainResult = number | boolean | void | null | undefined | Promise<number | boolean | void | null | undefined>;
 
+function normalizeEntrypointPath(path: string): string {
+  const resolved = resolve(path);
+  if (!existsSync(resolved)) {
+    return resolved;
+  }
+  try {
+    return realpathSync.native(resolved);
+  } catch {
+    return resolved;
+  }
+}
+
 export function isCliEntryPoint(importMetaUrl: string): boolean {
-  return process.argv[1] != null && importMetaUrl === pathToFileURL(process.argv[1]).href;
+  if (process.argv[1] == null) {
+    return false;
+  }
+  const cliPath = normalizeEntrypointPath(process.argv[1]);
+  const modulePath = normalizeEntrypointPath(fileURLToPath(importMetaUrl));
+  return pathToFileURL(cliPath).href === pathToFileURL(modulePath).href;
 }
 
 export function normalizeCliExitCode(result: number | boolean): number {
