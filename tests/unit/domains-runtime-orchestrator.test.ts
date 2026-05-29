@@ -98,7 +98,7 @@ test("DomainsRuntimeOrchestrator.startup first step has no dependencies", async 
   assert.deepEqual(firstStep.initializedDependencyServiceIds, [], "first step should have no dependency service ids");
 });
 
-test("DomainsRuntimeOrchestrator.startup later steps depend on earlier rings", async () => {
+test("DomainsRuntimeOrchestrator.startup keeps later rings independently startable", async () => {
   const registry = ServiceRegistry.getInstance();
 
   const orchestrator = new DomainsRuntimeOrchestrator(registry);
@@ -106,7 +106,7 @@ test("DomainsRuntimeOrchestrator.startup later steps depend on earlier rings", a
 
   const ring2 = result.steps.find((s) => s.stepId === "ring2");
   assert.ok(ring2 !== undefined, "ring2 step should exist");
-  assert.deepEqual(ring2.initializedDependencyServiceIds, ["w5.domains.ring.ring1.bootstrap"]);
+  assert.deepEqual(ring2.initializedDependencyServiceIds, []);
 });
 
 test("DomainsRuntimeOrchestrator.startup result ready flag is true after full startup", async () => {
@@ -214,12 +214,12 @@ test("registerDomainsRuntimeOrchestrator startup first step has empty dependency
   assert.equal(result.steps[0]?.initializedDependencyServiceIds.length, 0);
 });
 
-test("registerDomainsRuntimeOrchestrator startup second step depends on first ring", async () => {
+test("registerDomainsRuntimeOrchestrator startup second step keeps empty dependency ids", async () => {
   const registry = ServiceRegistry.getInstance();
   await registry.reset();
 
   const orchestrator = registerDomainsRuntimeOrchestrator(registry);
   const result = orchestrator.startup();
 
-  assert.deepEqual(result.steps[1]?.initializedDependencyServiceIds, ["w5.domains.ring.ring1.bootstrap"]);
+  assert.deepEqual(result.steps[1]?.initializedDependencyServiceIds, []);
 });

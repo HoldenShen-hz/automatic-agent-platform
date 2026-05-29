@@ -15,9 +15,17 @@ import { createCodingPresenterPlugin } from "../../../src/plugins/presenters/cod
 import { createBasicEvaluatorPlugin } from "../../../src/plugins/validators/basic-evaluator.js";
 import type { PluginManifest } from "../../../src/domains/registry/plugin-spi.js";
 
+function createMockFetch(payload: Record<string, unknown> = { ok: true }): typeof fetch {
+  return async () => new Response(JSON.stringify(payload), {
+    status: 200,
+    headers: { "content-type": "application/json" },
+  });
+}
+
 function createHealthyGithubAdapterPlugin() {
   return createGithubAdapterPlugin({
     healthProbe: () => true,
+    fetchImplementation: createMockFetch({ id: 1, state: "ok" }),
   });
 }
 

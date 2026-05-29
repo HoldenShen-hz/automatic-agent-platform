@@ -1546,62 +1546,62 @@
 
 | 编号 | 问题 | 状态 | 问题根因 |
 | --- | --- | --- | --- |
-| 1201 | locking-support.ts:12、postgres/pg-database.ts:353、redis-queue-adapter.ts:266、rule-engine.ts:399、human-takeover-service-async.ts:320、evolution-mvp-service-async.ts 等 ESM 模块内裸 require()，加载即抛 ReferenceError | `todo` | 待修复 |
-| 1202 | evolution-mvp-service-async.ts 用 undefined as unknown as ApprovalService/MemoryService 构造，首次调用即 NPE | `todo` | 待修复 |
-| 1203 | edge-runtime-sync-service.ts:120,138,203、video-processor/index.ts:319、self-healing-service.ts:327、semver-validator.ts:234、version-compatibility-matrix.ts:224、capacity-predictor/index.ts:61 数组/字段非空断言无前置守卫 | `todo` | 待修复 |
-| 1204 | drift-detection/{benchmark-runner,evidence-store,promotion-gate,proposal-engine,reflection-engine,rollout-manager,rollout-repository}.ts 7 份单行 export * shim 重复 | `todo` | 待修复 |
-| 1205 | drift-detection/index.ts:12-28 同时 re-export sibling 与 shim，barrel 重复符号导出 NodeNext 冲突 | `todo` | 待修复 |
-| 1206 | drift-detection/evolution-mvp-service.ts:5 服务文件顶部 export * from "./evolution-mvp-support.js" 把内部 helper 全部公开 | `todo` | 待修复 |
-| 1207 | drift-detection/evolution-mvp-service.ts:97-114 EvolutionProposalRecord.id 与幂等键都用 newId()，无 caller 幂等 token，双击双提案 | `todo` | 待修复 |
-| 1208 | drift-detection/evolution-mvp-service.ts:130-608 4 个近相同 ~28 行 event.insertEvent(...) 块，schema 改动需 4 处同步 | `todo` | 待修复 |
-| 1209 | drift-detection/evolution-mvp-service.ts:182,431 minQualityScore:0.65、confidence:0.8 魔术阈值 | `todo` | 待修复 |
-| 1210 | drift-detection/evolution-mvp-service.ts:464-516 applyProposal 不校验 appliedAt 单调，乱序时间戳污染审计 | `todo` | 待修复 |
-| 1211 | drift-detection/evolution-mvp-service.ts:662-665 JSON.parse(approvalRecord.requestJson) as ApprovalRequest 无 schema | `todo` | 待修复 |
-| 1212 | drift-detection/evolution-integration-service.ts:74 默认 new InMemoryEvidenceStore()，重启即丢失证据 | `todo` | 待修复 |
-| 1213 | drift-detection/evolution-integration-service.ts:46,136 enableAutomaticProposal:true 死配置；confidence:0.7 忽略上层 proposalConfidenceThreshold | `todo` | 待修复 |
-| 1214 | drift-detection/evolution-integration-service.ts:268 rootCause.slice(0,50) 截断可能切坏多字节字符 | `todo` | 待修复 |
-| 1215 | drift-detection/drift-detector-service.ts:48-87 16 个魔术阈值无 contract 链接 | `todo` | 待修复 |
-| 1216 | drift-detection/drift-detector-service.ts:80-87 fingerprintWindowToDriftWindow 把 30d/90d 折叠为 7d，alert 路由错位 | `todo` | 待修复 |
-| 1217 | drift-detection/drift-detector-service.ts:164-273,298-323 多处 split(":")[index] + includes("input/output/cusum/bayesian") 启发式分类 | `todo` | 待修复 |
-| 1218 | drift-detection/drift-detector-service.ts:363-407 Jaccard 相似度无长度归一/权重；safeHashEquals 双 Buffer 分配无收益 | `todo` | 待修复 |
-| 1219 | platform-ops-agent/platform-ops-agent-service.ts:102 proposals = new Map 无持久化/驱逐/上限 | `todo` | 待修复 |
-| 1220 | platform-ops-agent/platform-ops-agent-service.ts:174-193,200-260 execute() 实为 receipt 占位；approval 可绕过 autonomy_limit_reached；>=0.05/0.2/200 魔术阈值无 config | `todo` | 待修复 |
-| 1221 | platform-ops-agent/self-healing-service.ts:138-167 simulateHealthCheck 用字符串长度推算 recoveryTimeMs | `todo` | 待修复 |
-| 1222 | platform-ops-agent/self-healing-service.ts:174-220 冷却查询 find(...) 返回最旧记录；computeCooldownMs 无上限可被拉至天级阻塞合法操作 | `todo` | 待修复 |
-| 1223 | platform-ops-agent/self-healing-service.ts:75-95 executionId==null 事件被静默丢弃，冷却阻塞类事件审计断链 | `todo` | 待修复 |
-| 1224 | platform-ops-agent/self-healing-service.ts:85 taskId: harnessRunId ?? executionId 把 harness id 写入 task_id 列，跨表 join 别名 | `todo` | 待修复 |
-| 1225 | src/ops-maturity/explainability/explanation-pipeline-service.ts 解释结果缓存 string key (subjectId+timestamp) 未截断颗粒度，命中率近 0 | `todo` | 待修复 |
-| 1226 | src/ops-maturity/drift-detection/changepoint-detector/index.ts:196 lastAlertSampleIndex 实例可变状态，detect() 并发产生 race | `todo` | 待修复 |
-| 1227 | src/ops-maturity/drift-detection/changepoint-detector/index.ts:218 detectAll 默认 windowTypes 仅 1h/6h/24h/7d，遗 30d/90d | `todo` | 待修复 |
-| 1228 | src/ops-maturity/drift-detection/changepoint-detector/index.ts:240 Math.floor(baselineWindowOrWindows as number) 接受负数后 Math.max(1,…) 静默修正 | `todo` | 待修复 |
-| 1229 | src/ops-maturity/drift-detection/changepoint-detector/index.ts:244-245 baseline/recent 切片可重叠（短样本），baseline 含未来值污染统计 | `todo` | 待修复 |
-| 1230 | src/ops-maturity/drift-detection/changepoint-detector/index.ts:261-265 lastAlertSampleIndex 仅检测时刷新且不衰减，超长运行后抑制窗口失真 | `todo` | 待修复 |
-| 1231 | src/ops-maturity/drift-detection/changepoint-detector/index.ts:436,455,471,486 四算法均要求 recentMean<baselineMean，对 cost_spike/override_rate/incident_count 等"高于即恶化"指标无法触发 | `todo` | 待修复 |
-| 1232 | src/ops-maturity/drift-detection/changepoint-detector/index.ts:404,502 relativeShift=absoluteShift/baselineMean，baseline=0 永远 0，零基线指标无法检测漂移 | `todo` | 待修复 |
-| 1233 | src/ops-maturity/drift-detection/changepoint-detector/index.ts:469 贝叶斯后验魔术常数 0.05 无注释/文档 | `todo` | 待修复 |
-| 1234 | src/ops-maturity/drift-detection/changepoint-detector/index.ts:631 平坦分布 (max==min) 时 bucketize 返 [1,0,0,…]，两侧不同常数值的平坦分布 JS divergence=0 漏检 step shift | `todo` | 待修复 |
-| 1235 | src/ops-maturity/drift-detection/changepoint-detector/index.ts:638 bucketize 各自用本组 min/max，KL/JS 比较无几何意义 | `todo` | 待修复 |
-| 1236 | src/ops-maturity/drift-detection/changepoint-detector/index.ts:280,552 severityToAction low→observe，但 ops 文档要求 low→require_review，两套响应映射并存 | `todo` | 待修复 |
-| 1237 | src/ops-maturity/drift-detection/changepoint-detector/index.ts:350-352 aggregateResults ...selected 后覆盖 reasonCode，原 window reason 被丢失 | `todo` | 待修复 |
-| 1238 | src/ops-maturity/drift-detection/changepoint-detector/index.ts:313-314 planId=drift_plan:${type}:${id}:${ISOtimestamp} 含冒号，下游以 : 分段解析器错位 | `todo` | 待修复 |
-| 1239 | src/ops-maturity/drift-detection/changepoint-detector/index.ts 整文件无 import；与同目录 drift-detector-service.ts/drift-detector.ts 各有独立 DriftWindowType 等定义，类型未单源 | `todo` | 待修复 |
-| 1240 | src/ops-maturity/explainability/explanation-pipeline-service.ts 解释结果缓存使用 string key（subjectId+timestamp），未截断 timestamp 颗粒度，缓存命中率近 0. EN: cache key over-specified, defeats caching. | `todo` | 待修复 |
-| 1241 | src/ops-maturity/drift-detection/changepoint-detector/index.ts:196 lastAlertSampleIndex 实例可变状态，detect() 并发调用产生 race，suppression 决策不一致. EN: detector is not concurrency-safe. | `todo` | 待修复 |
-| 1242 | src/ops-maturity/drift-detection/changepoint-detector/index.ts:218 detectAll 默认 windowTypes 仅含 1h/6h/24h/7d，遗漏架构中规范化的 30d/90d. EN: defaults miss canonical long windows. | `todo` | 待修复 |
-| 1243 | src/ops-maturity/drift-detection/changepoint-detector/index.ts:240 Math.floor(baselineWindowOrWindows as number) 接受负数后被 Math.max(1,…) 静默修正，掩盖参数错误. EN: silent coercion of invalid baseline window. | `todo` | 待修复 |
-| 1244 | src/ops-maturity/drift-detection/changepoint-detector/index.ts:244-245 baseline 与 recent 切片可重叠（短样本时），baseline 含未来值污染统计. EN: overlapping baseline/recent slices. | `todo` | 待修复 |
-| 1245 | src/ops-maturity/drift-detection/changepoint-detector/index.ts:261-265 lastAlertSampleIndex 仅在检测时刷新且不衰减，超长运行后抑制窗口比较失真. EN: monotonic counter never decays, breaks suppression long-term. | `todo` | 待修复 |
-| 1246 | src/ops-maturity/drift-detection/changepoint-detector/index.ts:436,455,471,486 四种算法均要求 recentMean < baselineMean，对 cost_spike/override_rate/incident_count 等“高于即恶化”的指标无法触发. EN: one-direction-only detection misses upward-degradation metrics. | `todo` | 待修复 |
-| 1247 | src/ops-maturity/drift-detection/changepoint-detector/index.ts:404,502 relativeShift = absoluteShift / baselineMean，baseline 为 0 时永远 0，零基线指标无法检测漂移. EN: zero-baseline never triggers relative threshold. | `todo` | 待修复 |
-| 1248 | src/ops-maturity/drift-detection/changepoint-detector/index.ts:469 贝叶斯后验中魔术常数 0.05 无注释/文档；调参依据缺失. EN: undocumented magic constant in posterior. | `todo` | 待修复 |
-| 1249 | src/ops-maturity/drift-detection/changepoint-detector/index.ts:631 平坦分布 (max==min) 时 bucketize 返回 [1,0,0,…]，两侧不同常数值的平坦分布得 JS divergence=0，漏检 step shift. EN: degenerate flat-distribution handling masks shifts. | `todo` | 待修复 |
-| 1250 | src/ops-maturity/drift-detection/changepoint-detector/index.ts:638 bucketize 各自用本组 min/max 划桶，baseline 与 recent 不同 bin 边界，KL/JS 比较无几何意义. EN: histograms not on common support invalidates divergence. | `todo` | 待修复 |
-| 1251 | src/ops-maturity/drift-detection/changepoint-detector/index.ts:280,552 severityToAction 把 low → observe，但 ops 文档要求 low → require_review，两套响应映射并存. EN: severity→action mapping inconsistent with response policy. | `todo` | 待修复 |
-| 1252 | src/ops-maturity/drift-detection/changepoint-detector/index.ts:350-352 aggregateResults 用 ...selected 后覆盖 reasonCode，原 window 的 reason 被丢失，归因可观测性下降. EN: aggregation loses originating reason code. | `todo` | 待修复 |
-| 1253 | src/ops-maturity/drift-detection/changepoint-detector/index.ts:313-314 planId = drift_plan:${type}:${id}:${ISOtimestamp} 含冒号，下游期望以 : 分段的解析器会错位. EN: planId delimiter collision with timestamp colons. | `todo` | 待修复 |
-| 1254 | src/ops-maturity/drift-detection/changepoint-detector/index.ts 整文件无任何 import；与同目录 drift-detector-service.ts/drift-detector.ts 各有独立类型 DriftWindowType 等定义，类型未单源；外部使用易写错引用. EN: duplicated types across sibling drift modules. | `todo` | 待修复 |
-| 1255 | explanation-pipeline-service.ts:153 用 @ts-expect-error 绕过 exactOptionalPropertyTypes | `todo` | 待修复 |
-| 1256 | noisy-neighbor-protection.ts:227 类型与运行时数据形状不一致 | `todo` | 待修复 |
+| 1201 | locking-support.ts:12、postgres/pg-database.ts:353、redis-queue-adapter.ts:266、rule-engine.ts:399、human-takeover-service-async.ts:320、evolution-mvp-service-async.ts 等 ESM 模块内裸 require()，加载即抛 ReferenceError | `done` | 根因是多处模块在 CJS→ESM 迁移后仍残留裸 `require()`/空壳 async stub；本轮已改为 ESM 兼容实现，并把 async 占位收口成显式 fail-fast。 |
+| 1202 | evolution-mvp-service-async.ts 用 undefined as unknown as ApprovalService/MemoryService 构造，首次调用即 NPE | `done` | 根因是 async façade 为了先占位直接塞了假的依赖对象；本轮已改成显式抛错的受控 stub，不再把空对象伪装成真实服务。 |
+| 1203 | edge-runtime-sync-service.ts:120,138,203、video-processor/index.ts:319、self-healing-service.ts:327、semver-validator.ts:234、version-compatibility-matrix.ts:224、capacity-predictor/index.ts:61 数组/字段非空断言无前置守卫 | `done` | 根因是多个 ops-maturity 子模块把“理应存在”的输入交给非空断言兜底；本轮已补齐前置守卫并删除对应 `!`。 |
+| 1204 | drift-detection/{benchmark-runner,evidence-store,promotion-gate,proposal-engine,reflection-engine,rollout-manager,rollout-repository}.ts 7 份单行 export * shim 重复 | `done` | 根因是 drift-detection 历史上同时维护 sibling 实现和 shim 出口；本轮已把公共出口统一收口到单一路径。 |
+| 1205 | drift-detection/index.ts:12-28 同时 re-export sibling 与 shim，barrel 重复符号导出 NodeNext 冲突 | `done` | 根因是根 barrel 一边导 sibling，一边再导 shim，导致公共面重复；本轮已改为通过同级 wrapper 统一转发。 |
+| 1206 | drift-detection/evolution-mvp-service.ts:5 服务文件顶部 export * from "./evolution-mvp-support.js" 把内部 helper 全部公开 | `done` | 根因是服务文件偷用了 `export *` 复用 helper，导致内部支撑函数泄漏为公共 API；本轮已改成受控导出清单。 |
+| 1207 | drift-detection/evolution-mvp-service.ts:97-114 EvolutionProposalRecord.id 与幂等键都用 newId()，无 caller 幂等 token，双击双提案 | `done` | 根因是 evolution proposal 创建链路以前把 proposal/approval/event 都当成一次性写入，没有稳定请求指纹；本轮已补 caller/派生幂等键并复用同一待审批提案。 |
+| 1208 | drift-detection/evolution-mvp-service.ts:130-608 4 个近相同 ~28 行 event.insertEvent(...) 块，schema 改动需 4 处同步 | `done` | 根因是演进事件写入最初逐处手写，没有抽成统一 helper；本轮已提炼公共插入路径。 |
+| 1209 | drift-detection/evolution-mvp-service.ts:182,431 minQualityScore:0.65、confidence:0.8 魔术阈值 | `done` | 根因是体验演进服务把默认质量/置信阈值散落在流程里；本轮已抽成命名常量。 |
+| 1210 | drift-detection/evolution-mvp-service.ts:464-516 applyProposal 不校验 appliedAt 单调，乱序时间戳污染审计 | `done` | 根因是 proposal apply 流程默认信任调用方时间；本轮已强制 `appliedAt` 单调推进。 |
+| 1211 | drift-detection/evolution-mvp-service.ts:662-665 JSON.parse(approvalRecord.requestJson) as ApprovalRequest 无 schema | `done` | 根因是审批 JSON 在持久化边界后又被当作可信对象直接 cast；本轮已接入 zod schema 解析。 |
+| 1212 | drift-detection/evolution-integration-service.ts:74 默认 new InMemoryEvidenceStore()，重启即丢失证据 | `done` | 根因是集成层默认构造了纯进程内 evidence store，没有把 task store 的持久化边界贯通进去；本轮已改成基于 task-store 路径的文件快照持久化，并保留可注入 store。 |
+| 1213 | drift-detection/evolution-integration-service.ts:46,136 enableAutomaticProposal:true 死配置；confidence:0.7 忽略上层 proposalConfidenceThreshold | `done` | 根因是集成层把自动提案开关和置信阈值重新硬编码，绕过了上层配置；本轮已按 config gating 和阈值执行。 |
+| 1214 | drift-detection/evolution-integration-service.ts:268 rootCause.slice(0,50) 截断可能切坏多字节字符 | `done` | 根因是字符串裁剪按 UTF-16 下标截断；本轮已改成按 code point 安全截断。 |
+| 1215 | drift-detection/drift-detector-service.ts:48-87 16 个魔术阈值无 contract 链接 | `done` | 根因是 drift detector 默认配置长期内嵌在服务类里；本轮已集中到共享 drift 类型/默认值源。 |
+| 1216 | drift-detection/drift-detector-service.ts:80-87 fingerprintWindowToDriftWindow 把 30d/90d 折叠为 7d，alert 路由错位 | `done` | 根因是 fingerprint window 到 drift window 的映射表偷懒复用了短窗；本轮已把 `30d/90d` 映回自身。 |
+| 1217 | drift-detection/drift-detector-service.ts:164-273,298-323 多处 split(":")[index] + includes("input/output/cusum/bayesian") 启发式分类 | `done` | 根因是服务层长期用字符串启发式反推漂移维度和窗口；本轮已优先消费结构化 metadata。 |
+| 1218 | drift-detection/drift-detector-service.ts:363-407 Jaccard 相似度无长度归一/权重；safeHashEquals 双 Buffer 分配无收益 | `done` | 根因是 feature drift 评分起步于简单集合差分；本轮已改成带权重的特征评分，并删掉无收益的双 Buffer 比较。 |
+| 1219 | platform-ops-agent/platform-ops-agent-service.ts:102 proposals = new Map 无持久化/驱逐/上限 | `done` | 根因是平台运维 agent 先前仅把 proposal 放进无界进程内 Map；本轮已增加容量上限和逐出策略。 |
+| 1220 | platform-ops-agent/platform-ops-agent-service.ts:174-193,200-260 execute() 实为 receipt 占位；approval 可绕过 autonomy_limit_reached；>=0.05/0.2/200 魔术阈值无 config | `done` | 根因是 platform-ops-agent 早期只产 proposal/receipt，没有真正动作分派层，且把 incident 阈值散落在服务内；本轮已增加可配置阈值、显式执行结果、以及不会被审批错误清除的 autonomy/approval 门禁。 |
+| 1221 | platform-ops-agent/self-healing-service.ts:138-167 simulateHealthCheck 用字符串长度推算 recoveryTimeMs | `done` | 根因是自愈演练最初用占位公式估算恢复时长；本轮已改为基于健康检查结果的显式恢复时间。 |
+| 1222 | platform-ops-agent/self-healing-service.ts:174-220 冷却查询 find(...) 返回最旧记录；computeCooldownMs 无上限可被拉至天级阻塞合法操作 | `done` | 根因是冷却逻辑用 `find()` 拿到最旧尝试，并且指数退避无封顶；本轮已改为 `findLast()` 且增加上限。 |
+| 1223 | platform-ops-agent/self-healing-service.ts:75-95 executionId==null 事件被静默丢弃，冷却阻塞类事件审计断链 | `done` | 根因是事件落库路径把 `executionId` 误当成必填；本轮已允许无 executionId 事件继续审计。 |
+| 1224 | platform-ops-agent/self-healing-service.ts:85 taskId: harnessRunId ?? executionId 把 harness id 写入 task_id 列，跨表 join 别名 | `done` | 根因是 taskId/harnessRunId 映射边界不清，直接拿 harness id 回填 task_id；本轮已加独立 `taskId` plumbing。 |
+| 1225 | src/ops-maturity/explainability/explanation-pipeline-service.ts 解释结果缓存 string key (subjectId+timestamp) 未截断颗粒度，命中率近 0 | `done` | 根因是该条 review 基于旧缓存键快照；当前缓存键已是 `taskId:stageId:depth`，问题已失效。 |
+| 1226 | src/ops-maturity/drift-detection/changepoint-detector/index.ts:196 lastAlertSampleIndex 实例可变状态，detect() 并发产生 race | `done` | 根因是 detector 把 suppression 状态放在实例级可变字段；本轮已改成按窗口的局部 series 状态。 |
+| 1227 | src/ops-maturity/drift-detection/changepoint-detector/index.ts:218 detectAll 默认 windowTypes 仅 1h/6h/24h/7d，遗 30d/90d | `done` | 根因是默认窗口集停留在短窗版本；本轮已补齐 `30d/90d`。 |
+| 1228 | src/ops-maturity/drift-detection/changepoint-detector/index.ts:240 Math.floor(baselineWindowOrWindows as number) 接受负数后 Math.max(1,…) 静默修正 | `done` | 根因是 baseline window 参数校验用静默纠偏代替 fail-fast；本轮已对负值直接抛错。 |
+| 1229 | src/ops-maturity/drift-detection/changepoint-detector/index.ts:244-245 baseline/recent 切片可重叠（短样本），baseline 含未来值污染统计 | `done` | 根因是短样本切片逻辑没有强制 baseline/recent 分段互斥；本轮已去掉重叠。 |
+| 1230 | src/ops-maturity/drift-detection/changepoint-detector/index.ts:261-265 lastAlertSampleIndex 仅检测时刷新且不衰减，超长运行后抑制窗口失真 | `done` | 根因是 suppression 依赖单个单调计数器长期累积；本轮已改成按窗口 series 状态，不再全局漂移。 |
+| 1231 | src/ops-maturity/drift-detection/changepoint-detector/index.ts:436,455,471,486 四算法均要求 recentMean<baselineMean，对 cost_spike/override_rate/incident_count 等"高于即恶化"指标无法触发 | `done` | 根因是 detector 默认把“下降”硬编码成唯一恶化方向；本轮已支持按指标推断/配置 degradation direction。 |
+| 1232 | src/ops-maturity/drift-detection/changepoint-detector/index.ts:404,502 relativeShift=absoluteShift/baselineMean，baseline=0 永远 0，零基线指标无法检测漂移 | `done` | 根因是相对漂移直接除以 baseline mean，零基线被压成 0；本轮已改成零基线可触发的分支。 |
+| 1233 | src/ops-maturity/drift-detection/changepoint-detector/index.ts:469 贝叶斯后验魔术常数 0.05 无注释/文档 | `done` | 根因是贝叶斯算法里遗留未命名常量；本轮已提炼成命名常量。 |
+| 1234 | src/ops-maturity/drift-detection/changepoint-detector/index.ts:631 平坦分布 (max==min) 时 bucketize 返 [1,0,0,…]，两侧不同常数值的平坦分布 JS divergence=0 漏检 step shift | `done` | 根因是平坦分布分桶把所有常数都压到同一退化桶；本轮已修正平坦分布处理。 |
+| 1235 | src/ops-maturity/drift-detection/changepoint-detector/index.ts:638 bucketize 各自用本组 min/max，KL/JS 比较无几何意义 | `done` | 根因是 baseline/recent 各自单独建桶，直方图不在共同支撑上；本轮已统一 common support。 |
+| 1236 | src/ops-maturity/drift-detection/changepoint-detector/index.ts:280,552 severityToAction low→observe，但 ops 文档要求 low→require_review，两套响应映射并存 | `done` | 根因是 detector 内部 severity→action 映射没有跟 ops policy 对齐；本轮已把 `low` 映到 `require_review`。 |
+| 1237 | src/ops-maturity/drift-detection/changepoint-detector/index.ts:350-352 aggregateResults ...selected 后覆盖 reasonCode，原 window reason 被丢失 | `done` | 根因是聚合结果用对象展开覆盖了源 reasonCode；本轮已保留原始归因。 |
+| 1238 | src/ops-maturity/drift-detection/changepoint-detector/index.ts:313-314 planId=drift_plan:${type}:${id}:${ISOtimestamp} 含冒号，下游以 : 分段解析器错位 | `done` | 根因是 planId 把 ISO 时间戳原样塞进 `:` 分隔协议；本轮已清洗时间戳分隔符。 |
+| 1239 | src/ops-maturity/drift-detection/changepoint-detector/index.ts 整文件无 import；与同目录 drift-detector-service.ts/drift-detector.ts 各有独立 DriftWindowType 等定义，类型未单源 | `done` | 根因是 drift 子模块各自复制类型定义；本轮已抽出共享 `drift-types.ts`。 |
+| 1240 | src/ops-maturity/explainability/explanation-pipeline-service.ts 解释结果缓存使用 string key（subjectId+timestamp），未截断 timestamp 颗粒度，缓存命中率近 0. EN: cache key over-specified, defeats caching. | `done` | 根因是该条英文重复项同样对应旧缓存实现；现行 explanation cache key 已不含时间戳。 |
+| 1241 | src/ops-maturity/drift-detection/changepoint-detector/index.ts:196 lastAlertSampleIndex 实例可变状态，detect() 并发调用产生 race，suppression 决策不一致. EN: detector is not concurrency-safe. | `done` | 根因是同 1226，suppression 状态曾放在实例级字段；现已按窗口局部化。 |
+| 1242 | src/ops-maturity/drift-detection/changepoint-detector/index.ts:218 detectAll 默认 windowTypes 仅含 1h/6h/24h/7d，遗漏架构中规范化的 30d/90d. EN: defaults miss canonical long windows. | `done` | 根因是同 1227，默认窗口集过短；现已补齐长窗。 |
+| 1243 | src/ops-maturity/drift-detection/changepoint-detector/index.ts:240 Math.floor(baselineWindowOrWindows as number) 接受负数后被 Math.max(1,…) 静默修正，掩盖参数错误. EN: silent coercion of invalid baseline window. | `done` | 根因是同 1228，参数错误被静默吞成 1；现已 fail-fast。 |
+| 1244 | src/ops-maturity/drift-detection/changepoint-detector/index.ts:244-245 baseline 与 recent 切片可重叠（短样本时），baseline 含未来值污染统计. EN: overlapping baseline/recent slices. | `done` | 根因是同 1229，切片重叠污染统计；现已拆开。 |
+| 1245 | src/ops-maturity/drift-detection/changepoint-detector/index.ts:261-265 lastAlertSampleIndex 仅在检测时刷新且不衰减，超长运行后抑制窗口比较失真. EN: monotonic counter never decays, breaks suppression long-term. | `done` | 根因是同 1230，单调计数器长期漂移；现已改为按窗口 series 状态。 |
+| 1246 | src/ops-maturity/drift-detection/changepoint-detector/index.ts:436,455,471,486 四种算法均要求 recentMean < baselineMean，对 cost_spike/override_rate/incident_count 等“高于即恶化”的指标无法触发. EN: one-direction-only detection misses upward-degradation metrics. | `done` | 根因是同 1231，恶化方向硬编码为向下；现已支持 upward degradation。 |
+| 1247 | src/ops-maturity/drift-detection/changepoint-detector/index.ts:404,502 relativeShift = absoluteShift / baselineMean，baseline 为 0 时永远 0，零基线指标无法检测漂移. EN: zero-baseline never triggers relative threshold. | `done` | 根因是同 1232，零基线被算成 0；现已单独处理。 |
+| 1248 | src/ops-maturity/drift-detection/changepoint-detector/index.ts:469 贝叶斯后验中魔术常数 0.05 无注释/文档；调参依据缺失. EN: undocumented magic constant in posterior. | `done` | 根因是同 1233，未命名常量缺乏语义；现已常量化。 |
+| 1249 | src/ops-maturity/drift-detection/changepoint-detector/index.ts:631 平坦分布 (max==min) 时 bucketize 返回 [1,0,0,…]，两侧不同常数值的平坦分布得 JS divergence=0，漏检 step shift. EN: degenerate flat-distribution handling masks shifts. | `done` | 根因是同 1234，平坦分布退化桶掩盖 step shift；现已修正。 |
+| 1250 | src/ops-maturity/drift-detection/changepoint-detector/index.ts:638 bucketize 各自用本组 min/max 划桶，baseline 与 recent 不同 bin 边界，KL/JS 比较无几何意义. EN: histograms not on common support invalidates divergence. | `done` | 根因是同 1235，桶边界不共享；现已统一 common support。 |
+| 1251 | src/ops-maturity/drift-detection/changepoint-detector/index.ts:280,552 severityToAction 把 low → observe，但 ops 文档要求 low → require_review，两套响应映射并存. EN: severity→action mapping inconsistent with response policy. | `done` | 根因是同 1236，内部映射与文档策略漂移；现已对齐。 |
+| 1252 | src/ops-maturity/drift-detection/changepoint-detector/index.ts:350-352 aggregateResults 用 ...selected 后覆盖 reasonCode，原 window 的 reason 被丢失，归因可观测性下降. EN: aggregation loses originating reason code. | `done` | 根因是同 1237，聚合展开覆盖源 reasonCode；现已保留。 |
+| 1253 | src/ops-maturity/drift-detection/changepoint-detector/index.ts:313-314 planId = drift_plan:${type}:${id}:${ISOtimestamp} 含冒号，下游期望以 : 分段的解析器会错位. EN: planId delimiter collision with timestamp colons. | `done` | 根因是同 1238，时间戳与协议分隔符冲突；现已清洗。 |
+| 1254 | src/ops-maturity/drift-detection/changepoint-detector/index.ts 整文件无任何 import；与同目录 drift-detector-service.ts/drift-detector.ts 各有独立类型 DriftWindowType 等定义，类型未单源；外部使用易写错引用. EN: duplicated types across sibling drift modules. | `done` | 根因是同 1239，类型复制散落；现已单源化。 |
+| 1255 | explanation-pipeline-service.ts:153 用 @ts-expect-error 绕过 exactOptionalPropertyTypes | `done` | 根因是该条 review 也已过期；当前服务源码不存在这处 `@ts-expect-error`，仅测试代码保留必要断言。 |
+| 1256 | noisy-neighbor-protection.ts:227 类型与运行时数据形状不一致 | `done` | 根因是 noisy-neighbor 内部 UsageRecord 只存了半套字段，读取时再按当前 quota 重新拼 ResourceUsage，导致类型声明与运行时形状漂移；本轮已把记录结构扩成完整 usage 快照。 |
 
 ## src/domains & runtime catalog
 
@@ -1611,33 +1611,33 @@
 | 1258 | plugin-runtime-host.ts:741-742 JSON.parse(env.AA_PLUGIN_RUNTIME_CONTAINER_COMMAND_JSON) 无 schema 即 spread 入 spawn，env 控制命令构造 | `done` | 根因是 container launcher 模板之前只做 JSON 语法校验，没有结构约束；本轮已加入数组长度与元素类型 schema 校验。 |
 | 1259 | plugin-runtime-host.ts:364 把整个 process.env 传给 spawn 后再 filter，应改为显式白名单 | `done` | 根因是这条 review 基于旧实现；当前 runtime host 已在 `buildPluginRuntimeEnvironment()` 中按白名单转发环境变量。 |
 | 1260 | plugin-runtime-child.ts:14、plugin-runtime-host.ts:26、plugin-spi-registry.ts:21、safe-load-division-registry.ts:7、division-loader.ts:51、recipe-executor.ts:6、dashboard-websocket-server.ts:64、stores/index.ts:8、chinese-wall-access-saga.ts:39、evidence-collector.ts:62 模块顶层 new StructuredLogger(...) 创建单例，测试/生命周期隐患 | `todo` | 待修复 |
-| 1261 | domains/index.ts:7-9 re-export ../domains-runtime-*.js 跨出 domains 树（边界倒置） | `todo` | 待修复 |
+| 1261 | domains/index.ts:7-9 re-export ../domains-runtime-*.js 跨出 domains 树（边界倒置） | `done` | 根因是 domains barrel 直接越过目录边界导出顶层 runtime 模块；本轮已新增 `src/domains/runtime/index.ts` 作为域内出口。 |
 | 1262 | src/domains-runtime-catalog.ts WeakMap 缓存 keying registry，resetForTests() 不清 WeakMap，旧 registry 仍持 stale 编排 | `done` | 根因是 runtime catalog 以前只有 WeakMap 缓存，没有显式 reset 钩子；本轮已补 `resetDomainsRuntimeCatalogForTests()`。 |
 | 1263 | src/domains-runtime-catalog.ts 调用 registerDomainsBootstrap() 未传 registry 参数，永远用全局 registry，scoped registry 被忽略 | `done` | 根因是 `buildDomainsRuntimeCatalog()` 早期偷用了默认全局 registry；本轮已显式透传调用方 registry。 |
 | 1264 | src/domains-runtime-catalog.ts 顶部 import { DomainReadinessRing } 仅类型注释提及，运行时未用，死 import | `done` | 根因是 catalog 文件保留了未使用的类型导入；本轮已清理。 |
 | 1265 | src/domains-runtime-orchestrator.ts 默认构造内 ServiceRegistry.createScoped() 每实例新建作用域，跨实例共享状态丢失 | `done` | 根因是 orchestrator 默认构造路径之前偏向测试隔离，导致运行时实例默认不共享 registry；本轮已改回 `ServiceRegistry.getInstance()`。 |
 | 1266 | src/domains-runtime-orchestrator.ts this.startupPlan 在构造与 initialize 中重复赋值，第二次写入覆盖测试期 plan stub | `done` | 根因是 startup 流程重复回写 `startupPlan`；本轮已去掉冗余二次赋值。 |
 | 1267 | src/domains-runtime-orchestrator.ts registry.get(SVC_ID) 返回值丢弃但调用为求副作用，依赖 registry 内部 lazy init | `done` | 根因是 orchestrator 注册后用裸 `get()` 触发初始化，意图不清；本轮已改成显式 `ensureOrchestratorRegistered()`。 |
-| 1268 | src/domains-startup-plan.ts rings 强制串行，与设计文档中并行 ring 启动表述矛盾 | `todo` | 待修复 |
+| 1268 | src/domains-startup-plan.ts rings 强制串行，与设计文档中并行 ring 启动表述矛盾 | `done` | 根因是 startup plan 用 `dependsOnStepIds` 把 ring 顺序编码成硬依赖；本轮已移除串行依赖，恢复 ring 独立可启动语义。 |
 | 1269 | src/domains/registry/domain-registry-service.ts register(domainId, manifest) 同 id 二次注册仅 warn-and-replace，无 idempotency token，并发竞态后写覆盖前写 | `done` | 根因是这条 review 基于旧实现；当前 `DomainRegistryService.register()` 已对重复 domainId 直接抛出验证错误。 |
 | 1270 | src/domains/registry/plugin-spi-registry.ts SPI 表用 plain object 而非 Map，**proto**/constructor 注入风险 | `done` | 根因是 SPI registry 更早版本使用对象字面量存表；当前实现已经是 `Map<string, RegisteredPluginRecord>`。 |
-| 1271 | src/domains/registry/plugin-runtime-host.ts 主机进程未对 plugin unhandledRejection 隔离，单 plugin 故障污染主进程 | `todo` | 待修复 |
+| 1271 | src/domains/registry/plugin-runtime-host.ts 主机进程未对 plugin unhandledRejection 隔离，单 plugin 故障污染主进程 | `done` | 根因是 plugin runtime child 缺少进程级 fatal error 隔离，未处理 rejection/exception 时会把故障悬空到宿主监督链；本轮已在 child 安装显式隔离钩子并回传结构化失败。 |
 | 1272 | src/domains-runtime-catalog.ts WeakMap 缓存对 registry 实例 keying，但 resetForTests() 不清理 WeakMap，回收前的旧 registry 仍持有 stale 编排. EN: WeakMap cache survives test reset. | `done` | 根因是 runtime catalog 缓存缺少 reset 钩子；本轮已补显式清理入口。 |
 | 1273 | src/domains-runtime-catalog.ts 调用 registerDomainsBootstrap() 时未传 registry 参数，永远使用全局 registry，scoped registry 被忽略. EN: registry-scope arg missing. | `done` | 根因是 build 路径没有把 scoped registry 贯通到 bootstrap；本轮已修正为显式透传。 |
 | 1274 | src/domains-runtime-catalog.ts 顶部 import { DomainReadinessRing } 仅在类型注释中提及，运行时未使用，构成死 import 增加冷启动. EN: dead import. | `done` | 根因是未清理的死类型导入；本轮已删除。 |
 | 1275 | src/domains-runtime-orchestrator.ts 默认构造内 ServiceRegistry.createScoped() 每实例新建作用域，跨实例共享状态丢失. EN: per-instance scope breaks shared registry. | `done` | 根因是 orchestrator 默认构造使用 scoped registry；本轮已改为共享全局 registry。 |
 | 1276 | src/domains-runtime-orchestrator.ts this.startupPlan 在构造与 initialize 中重复赋值，第二次写入覆盖测试期 plan stub. EN: redundant reassignment overwrites injected stub. | `done` | 根因是重复回写 startup plan；本轮已移除冗余赋值。 |
 | 1277 | src/domains-runtime-orchestrator.ts registry.get(SVC_ID) 返回值被丢弃但调用为求副作用，依赖 registry 内部 lazy init；让阅读者误以为是 noop. EN: side-effect-only get(); intent unclear. | `done` | 根因是依赖 lazy init 的裸 `get()` 调用语义不清；本轮已封装成显式 ensure 方法。 |
-| 1278 | src/domains-startup-plan.ts rings 强制串行执行，与文档中并行 ring 启动表述矛盾. EN: serial rings contradict design doc. | `todo` | 待修复 |
+| 1278 | src/domains-startup-plan.ts rings 强制串行执行，与文档中并行 ring 启动表述矛盾. EN: serial rings contradict design doc. | `done` | 根因是同 1268，ring 依赖被硬编码为链式顺序；现已改成独立步骤。 |
 | 1279 | src/domains/registry/plugin-spi-registry.ts SPI 表使用 plain object 而非 Map，原型链字段 **proto**/constructor 注入风险（若 domainId 来自配置文件）. EN: prototype-pollution via untrusted key. | `done` | 根因是旧 SPI registry 曾经使用 plain object；当前实现已经改成 `Map`。 |
-| 1280 | src/domains/registry/plugin-runtime-host.ts 主机进程未对 plugin 抛出的 unhandledRejection 做隔离，单 plugin 故障污染主进程. EN: missing per-plugin rejection isolation. | `todo` | 待修复 |
+| 1280 | src/domains/registry/plugin-runtime-host.ts 主机进程未对 plugin 抛出的 unhandledRejection 做隔离，单 plugin 故障污染主进程. EN: missing per-plugin rejection isolation. | `done` | 根因是同 1271，runtime child 没有 fatal rejection/exception 隔离；现已显式安装隔离和失败回传。 |
 
 ## src/interaction (NL gateway)
 
 | 编号 | 问题 | 状态 | 问题根因 |
 | --- | --- | --- | --- |
-| 1281 | nl-gateway/index.ts:290 IntentParserPort 与 ModelIntentParserPort 不一致，未做适配 | `todo` | 待修复 |
-| 1282 | proactive-agent/index.ts:167-168、conversation-history-service.ts:323-324,358-359、workflow-builder-service.ts:110-111,792-793、onboarding/index.ts:183-184、intent-parser/index.ts:206,291,301 多处空 catch 静默吞错并返回 null/false | `todo` | 待修复 |
+| 1281 | nl-gateway/index.ts:290 IntentParserPort 与 ModelIntentParserPort 不一致，未做适配 | `done` | 根因是 NL gateway 模型端口和通用 intent parser 端口各自演进，输入契约分裂；本轮已通过显式 adapter 和对齐后的 model-port 输入统一衔接。 |
+| 1282 | proactive-agent/index.ts:167-168、conversation-history-service.ts:323-324,358-359、workflow-builder-service.ts:110-111,792-793、onboarding/index.ts:183-184、intent-parser/index.ts:206,291,301 多处空 catch 静默吞错并返回 null/false | `done` | 根因是 interaction 侧多条恢复路径走“最佳努力 fallback”但没有任何可观测性；本轮已去掉空 catch，统一改成显式 warning/fallback。 |
 | 1283 | src/interaction/nl-gateway/intent-parser/index.ts:66 关键词正则含 通行，匹配 通行证/通行规则 等非审批语境 | `done` | 根因是审批关键词过去把“通过/通行”类子串直接并入正则；本轮已收紧审批模式并补反例测试。 |
 | 1284 | src/interaction/nl-gateway/intent-parser/index.ts:70 delete\|remove\|drop 无单词边界，dropdown/removed once 触发 task_modify | `done` | 根因是英文删除动词正则以前没有边界；本轮已补 `\b` 限制。 |
 | 1285 | src/interaction/nl-gateway/intent-parser/index.ts:126-135 语种检测顺序使含 kanji 但无 kana 日文混排被识别 zh-CN，德语正则误命中 ä/ö 的瑞典语/芬兰语 | `done` | 根因是语言检测以前只用粗粒度字符集启发式；本轮已补日文业务词信号并收紧德语触发条件。 |
@@ -1657,9 +1657,9 @@
 
 | 编号 | 问题 | 状态 | 问题根因 |
 | --- | --- | --- | --- |
-| 1297 | src/org-governance/approval-routing/approval-routing-service.ts 状态机允许 approved → withdrawn 直接转换，跳过审计 revoked 中间态 | `todo` | 待修复 |
+| 1297 | src/org-governance/approval-routing/approval-routing-service.ts 状态机允许 approved → withdrawn 直接转换，跳过审计 revoked 中间态 | `done` | 根因是 review 把 approval route 服务和真正承载审批状态机的 compliance workflow 混看了；当前 `approval-routing-service.ts` 不承载该转换，而实际状态机仅允许 `approved -> revoked`。 |
 | 1298 | src/apps/api/index.ts:10 vs src/apps/workers/index.ts:10 requiredLayers 未覆盖 interaction/org-governance，但 worker dispatch 调 approval-routing | `done` | 根因是 worker manifest 声明层没有跟上真实依赖面；本轮已把 `interaction` 与 `org-governance` 补回 requiredLayers。 |
-| 1299 | src/org-governance/approval-routing/approval-routing-service.ts 状态机允许 approved → withdrawn 直接转换，跳过审计 revoked 中间态，与契约文档不符. EN: missing intermediate state in approval FSM. | `todo` | 待修复 |
+| 1299 | src/org-governance/approval-routing/approval-routing-service.ts 状态机允许 approved → withdrawn 直接转换，跳过审计 revoked 中间态，与契约文档不符. EN: missing intermediate state in approval FSM. | `done` | 根因是同 1297，问题来源于 review 指向了错误模块；现行审批状态机并不在该服务内，且真实 workflow 已保持 `approved -> revoked` 审计链。 |
 | 1300 | src/apps/api/index.ts:10 vs src/apps/workers/index.ts:10 requiredLayers 列表未覆盖 interaction/org-governance，但 worker 在 dispatch 中调 approval-routing，声明与运行时依赖不一致. EN: declared layers diverge from runtime imports. | `done` | 根因是 worker app manifest 的层声明滞后于运行时导入；本轮已补齐。 |
 | 1301 | org-governance/index.ts:1-9 barrel 缺 org-routing/ | `done` | 根因是 org-governance 顶层 barrel 漏掉 `org-routing` 公共面；本轮已补导出。 |
 

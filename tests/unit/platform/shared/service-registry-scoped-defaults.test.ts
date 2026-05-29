@@ -17,23 +17,23 @@ import { ServiceRegistry } from "../../../../src/platform/shared/lifecycle/servi
 const REPO_ROOT = process.cwd();
 
 const TOP_LEVEL_SCOPE_FILES = [
-  "src/platform/five-plane-runtime-bootstrap.ts",
-  "src/platform/five-plane-runtime-orchestrator.ts",
-  "src/platform/ai-operations-runtime-catalog.ts",
-  "src/platform/ai-operations-startup-plan.ts",
-  "src/platform/ai-operations-runtime-orchestrator.ts",
-  "src/domains-runtime-catalog.ts",
-  "src/domains-startup-plan.ts",
-  "src/domains-runtime-orchestrator.ts",
-  "src/interaction-governance-runtime-catalog.ts",
-  "src/interaction-governance-startup-plan.ts",
-  "src/interaction-governance-runtime-orchestrator.ts",
-  "src/scale-ops-runtime-catalog.ts",
-  "src/scale-ops-startup-plan.ts",
-  "src/scale-ops-runtime-orchestrator.ts",
-  "src/platform-architecture-bootstrap.ts",
-  "src/platform-application-kernel.ts",
-  "src/index.ts",
+  { path: "src/platform/five-plane-runtime-bootstrap.ts", defaultFactory: "createScoped" },
+  { path: "src/platform/five-plane-runtime-orchestrator.ts", defaultFactory: "createScoped" },
+  { path: "src/platform/ai-operations-runtime-catalog.ts", defaultFactory: "createScoped" },
+  { path: "src/platform/ai-operations-startup-plan.ts", defaultFactory: "createScoped" },
+  { path: "src/platform/ai-operations-runtime-orchestrator.ts", defaultFactory: "createScoped" },
+  { path: "src/domains-runtime-catalog.ts", defaultFactory: "getInstance" },
+  { path: "src/domains-startup-plan.ts", defaultFactory: "createScoped" },
+  { path: "src/domains-runtime-orchestrator.ts", defaultFactory: "getInstance" },
+  { path: "src/interaction-governance-runtime-catalog.ts", defaultFactory: "createScoped" },
+  { path: "src/interaction-governance-startup-plan.ts", defaultFactory: "createScoped" },
+  { path: "src/interaction-governance-runtime-orchestrator.ts", defaultFactory: "createScoped" },
+  { path: "src/scale-ops-runtime-catalog.ts", defaultFactory: "createScoped" },
+  { path: "src/scale-ops-startup-plan.ts", defaultFactory: "createScoped" },
+  { path: "src/scale-ops-runtime-orchestrator.ts", defaultFactory: "createScoped" },
+  { path: "src/platform-architecture-bootstrap.ts", defaultFactory: "createScoped" },
+  { path: "src/platform-application-kernel.ts", defaultFactory: "createScoped" },
+  { path: "src/index.ts", defaultFactory: "createScoped" },
 ] as const;
 
 test("registerFivePlaneRuntimeCatalog uses a scoped registry by default", async () => {
@@ -84,18 +84,20 @@ test("buildPlatformRootSummary defaults to a scoped registry", async () => {
   }
 });
 
-test("top-level runtime assembly entrypoints default to ServiceRegistry.createScoped", () => {
-  for (const relativePath of TOP_LEVEL_SCOPE_FILES) {
-    const source = readFileSync(path.join(REPO_ROOT, relativePath), "utf8");
+test("top-level runtime assembly entrypoints use the expected registry scope defaults", () => {
+  for (const entry of TOP_LEVEL_SCOPE_FILES) {
+    const source = readFileSync(path.join(REPO_ROOT, entry.path), "utf8");
+    const expectedFactory = entry.defaultFactory;
+    const unexpectedFactory = expectedFactory === "createScoped" ? "getInstance" : "createScoped";
     assert.equal(
-      source.includes("ServiceRegistry = ServiceRegistry.getInstance()"),
+      source.includes(`ServiceRegistry = ServiceRegistry.${unexpectedFactory}()`),
       false,
-      `${relativePath} should not default runtime assembly to ServiceRegistry.getInstance()`,
+      `${entry.path} should not default runtime assembly to ServiceRegistry.${unexpectedFactory}()`,
     );
     assert.equal(
-      source.includes("ServiceRegistry = ServiceRegistry.createScoped()"),
+      source.includes(`ServiceRegistry = ServiceRegistry.${expectedFactory}()`),
       true,
-      `${relativePath} should default runtime assembly to ServiceRegistry.createScoped()`,
+      `${entry.path} should default runtime assembly to ServiceRegistry.${expectedFactory}()`,
     );
   }
 });

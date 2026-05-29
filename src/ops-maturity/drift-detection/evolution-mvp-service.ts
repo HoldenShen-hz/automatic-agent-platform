@@ -1,6 +1,8 @@
 /**
  * Evolution MVP Service
  */
+import { createHash } from "node:crypto";
+
 export {
   assertEvolutionScope,
   buildRecommendedBudgetPolicy,
@@ -97,6 +99,22 @@ export class EvolutionMvpService {
       proposalReason: input.proposalReason.trim(),
     };
     const summary = summarizeBudgetProposal(input.scopeType, input.scopeRef, evidence);
+    const proposalIdempotencyKey = buildProposalIdempotencyKey(
+      input.idempotencyKey,
+      "budget_adjustment",
+      {
+        taskId: input.taskId,
+        executionId: input.executionId ?? null,
+        sourceAgentId: input.sourceAgentId,
+        scopeType: input.scopeType,
+        scopeRef: input.scopeRef,
+        payload,
+      },
+    );
+    const existingPendingProposal = this.findReusableProposal(proposalIdempotencyKey);
+    if (existingPendingProposal != null) {
+      return this.toProposalView(existingPendingProposal);
+    }
 
     const approval = this.approvalService.createRequest({
       taskId: input.taskId,
@@ -110,6 +128,7 @@ export class EvolutionMvpService {
         evolutionScopeType: input.scopeType,
         evolutionScopeRef: input.scopeRef,
         proposalSummary: summary,
+        evolutionProposalIdempotencyKey: proposalIdempotencyKey,
       },
       timeoutPolicy: "reject",
     });
@@ -150,6 +169,7 @@ export class EvolutionMvpService {
       });
       this.insertEvolutionEvent(proposal, "evolution:proposal_created", {
         approvalId: approval.approvalId,
+        idempotencyKey: proposalIdempotencyKey,
       }, createdAt);
     });
 
@@ -213,6 +233,22 @@ export class EvolutionMvpService {
       proposedSummary: promotedSummary,
     };
     const summary = `Promote experience ${candidate.experience.id} into structured memory scope ${input.targetScope}.`;
+    const proposalIdempotencyKey = buildProposalIdempotencyKey(
+      input.idempotencyKey,
+      "experience_promotion",
+      {
+        taskId: input.taskId,
+        executionId: input.executionId ?? null,
+        sourceAgentId: input.sourceAgentId,
+        scopeType: input.scopeType,
+        scopeRef: input.scopeRef,
+        payload,
+      },
+    );
+    const existingPendingProposal = this.findReusableProposal(proposalIdempotencyKey);
+    if (existingPendingProposal != null) {
+      return this.toProposalView(existingPendingProposal);
+    }
 
     const approval = this.approvalService.createRequest({
       taskId: input.taskId,
@@ -227,6 +263,7 @@ export class EvolutionMvpService {
         evolutionScopeRef: input.scopeRef,
         matchedExperienceId: candidate.experience.id,
         targetScope: input.targetScope,
+        evolutionProposalIdempotencyKey: proposalIdempotencyKey,
       },
       timeoutPolicy: "reject",
     });
@@ -268,6 +305,7 @@ export class EvolutionMvpService {
       this.insertEvolutionEvent(proposal, "evolution:proposal_created", {
         approvalId: approval.approvalId,
         matchedExperienceId: candidate.experience.id,
+        idempotencyKey: proposalIdempotencyKey,
       }, createdAt);
     });
 
@@ -644,11 +682,31 @@ export class EvolutionMvpService {
       causationId: null,
       correlationId: null,
       payloadHash: null,
-      idempotencyKey: newId("idem"),
+      idempotencyKey: `evolution:${proposal.id}:${eventType}`,
       replayBehavior: "replay_as_fact",
       principal: "system",
       evidenceRefs: [] as readonly string[],
     });
+  }
+
+  private findReusableProposal(idempotencyKey: string): EvolutionProposalRecord | null {
+    return this.store.evolution
+      .listEvolutionProposals()
+      .find((proposal) => {
+        if (proposal.status !== "pending_approval" && proposal.status !== "approved") {
+          return false;
+        }
+        const approvalRecord = proposal.approvalId == null ? null : this.store.approval.getApproval(proposal.approvalId);
+        if (approvalRecord?.requestJson == null) {
+          return false;
+        }
+        try {
+          const approval = parseApprovalRequestJson(approvalRecord.requestJson);
+          return approval.context.evolutionProposalIdempotencyKey === idempotencyKey;
+        } catch {
+          return false;
+        }
+      }) ?? null;
   }
 
   /**
@@ -684,4 +742,19 @@ const ApprovalRequestSchema = z.object({
 
 function parseApprovalRequestJson(requestJson: string): ApprovalRequest {
   return ApprovalRequestSchema.parse(JSON.parse(requestJson)) as unknown as ApprovalRequest;
+}
+
+function buildProposalIdempotencyKey(
+  callerProvidedKey: string | undefined,
+  kind: "budget_adjustment" | "experience_promotion",
+  fingerprint: Record<string, unknown>,
+): string {
+  if (typeof callerProvidedKey === "string" && callerProvidedKey.trim().length > 0) {
+    return callerProvidedKey.trim();
+  }
+  const digest = createHash("sha256")
+    .update(JSON.stringify({ kind, fingerprint }))
+    .digest("hex")
+    .slice(0, 24);
+  return `evolution:${kind}:${digest}`;
 }

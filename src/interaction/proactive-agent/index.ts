@@ -161,6 +161,9 @@ function parseRateWindow(raw: string): { max: number; windowMs: number } {
 }
 
 function isValidTimezone(value: string): boolean {
+  if (value === "UTC" || value === "Etc/UTC") {
+    return true;
+  }
   if (typeof Intl.supportedValuesOf === "function") {
     return Intl.supportedValuesOf("timeZone").includes(value);
   }

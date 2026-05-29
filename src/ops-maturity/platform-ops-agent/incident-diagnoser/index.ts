@@ -1,11 +1,33 @@
-export function classifyOpsIncident(errorRate: number, backlog: number): "warning" | "incident" | "critical_incident" {
-  if (errorRate >= 0.2 || backlog >= 1000) return "critical_incident";
-  if (errorRate >= 0.05 || backlog >= 200) return "incident";
+export interface IncidentThresholds {
+  readonly incidentErrorRate: number;
+  readonly criticalErrorRate: number;
+  readonly incidentBacklog: number;
+  readonly criticalBacklog: number;
+}
+
+export const DEFAULT_INCIDENT_THRESHOLDS: IncidentThresholds = {
+  incidentErrorRate: 0.05,
+  criticalErrorRate: 0.2,
+  incidentBacklog: 200,
+  criticalBacklog: 1000,
+};
+
+export function classifyOpsIncident(
+  errorRate: number,
+  backlog: number,
+  thresholds: IncidentThresholds = DEFAULT_INCIDENT_THRESHOLDS,
+): "warning" | "incident" | "critical_incident" {
+  if (errorRate >= thresholds.criticalErrorRate || backlog >= thresholds.criticalBacklog) return "critical_incident";
+  if (errorRate >= thresholds.incidentErrorRate || backlog >= thresholds.incidentBacklog) return "incident";
   return "warning";
 }
 
-export function summarizeIncidentDiagnosis(errorRate: number, backlog: number): string {
-  return `${classifyOpsIncident(errorRate, backlog)}: errorRate=${errorRate}, backlog=${backlog}`;
+export function summarizeIncidentDiagnosis(
+  errorRate: number,
+  backlog: number,
+  thresholds: IncidentThresholds = DEFAULT_INCIDENT_THRESHOLDS,
+): string {
+  return `${classifyOpsIncident(errorRate, backlog, thresholds)}: errorRate=${errorRate}, backlog=${backlog}`;
 }
 
 export interface IncidentDiagnosis {
@@ -16,23 +38,25 @@ export interface IncidentDiagnosis {
 }
 
 export class IncidentDiagnoserService {
+  public constructor(private readonly thresholds: IncidentThresholds = DEFAULT_INCIDENT_THRESHOLDS) {}
+
   public diagnose(
     errorRate: number,
     backlog: number,
     healthStatus: "healthy" | "degraded" | "failed" = "healthy",
   ): IncidentDiagnosis {
-    const level = classifyOpsIncident(errorRate, backlog);
+    const level = classifyOpsIncident(errorRate, backlog, this.thresholds);
     const suspectedCauses: string[] = [];
 
-    if (errorRate >= 0.2) {
+    if (errorRate >= this.thresholds.criticalErrorRate) {
       suspectedCauses.push("ops.incident.error_rate_spike");
-    } else if (errorRate >= 0.05) {
+    } else if (errorRate >= this.thresholds.incidentErrorRate) {
       suspectedCauses.push("ops.incident.error_rate_regression");
     }
 
-    if (backlog >= 1000) {
+    if (backlog >= this.thresholds.criticalBacklog) {
       suspectedCauses.push("ops.incident.backlog_saturation");
-    } else if (backlog >= 200) {
+    } else if (backlog >= this.thresholds.incidentBacklog) {
       suspectedCauses.push("ops.incident.backlog_growth");
     }
 
@@ -42,7 +66,7 @@ export class IncidentDiagnoserService {
 
     return {
       level,
-      summary: summarizeIncidentDiagnosis(errorRate, backlog),
+      summary: summarizeIncidentDiagnosis(errorRate, backlog, this.thresholds),
       suspectedCauses,
       recommendedAction: level === "critical_incident"
         ? "escalate"

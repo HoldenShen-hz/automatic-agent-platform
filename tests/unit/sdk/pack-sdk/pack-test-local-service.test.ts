@@ -224,3 +224,51 @@ test("PackTestLocalService.test records artifacts when enabled", async () => {
   assert.ok(report.artifacts.length > 0);
   assert.ok(report.artifacts[0]!.includes("artifact://test-reports/"));
 });
+
+test("PackTestLocalService integration mode does not arbitrarily degrade passing fixtures when mock LLM is disabled", async () => {
+  const service = new PackTestLocalService();
+  service.loadFixtures({
+    "integration:fixture-1": {
+      mode: "integration",
+      packId: "test-pack",
+      passed: true,
+      fixtureId: "integration:fixture-1",
+    },
+  });
+
+  const report = await service.test({
+    packId: "test-pack",
+    version: "1.0.0",
+    mode: "integration",
+    mockLlm: false,
+    recordArtifacts: false,
+  });
+
+  assert.equal(report.casesPassed, 1);
+  assert.equal(report.casesFailed, 0);
+  assert.equal(report.coveragePercent, 100);
+});
+
+test("PackTestLocalService simulation mode preserves fixture-derived coverage when eval dataset is optional", async () => {
+  const service = new PackTestLocalService();
+  service.loadFixtures({
+    "simulation:fixture-1": {
+      mode: "simulation",
+      packId: "test-pack",
+      passed: true,
+      coverageWeight: 2,
+    },
+  });
+
+  const report = await service.test({
+    packId: "test-pack",
+    version: "1.0.0",
+    mode: "simulation",
+    mockLlm: false,
+    recordArtifacts: true,
+  });
+
+  assert.equal(report.casesPassed, 1);
+  assert.equal(report.casesFailed, 0);
+  assert.equal(report.coveragePercent, 100);
+});

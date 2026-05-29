@@ -77,12 +77,16 @@ interface TokenBucket {
  * Usage record for tracking
  */
 interface UsageRecord {
+  readonly usageId: string;
   readonly tenantId: string;
   readonly resourceType: ResourceType;
   readonly used: number;
   readonly quotaId: string;
+  readonly limit: number;
+  readonly windowSeconds: number;
   readonly windowStart: string;
   readonly windowEnd: string;
+  readonly percentUsed: number;
 }
 
 /**
@@ -215,6 +219,8 @@ export class NoisyNeighborProtectionService {
 
     let used = cost;
     let record: UsageRecord;
+    const limit = quota?.limit ?? Infinity;
+    const windowSeconds = quota?.windowSeconds ?? 60;
 
     if (existing && new Date(existing.windowEnd).getTime() > now) {
       // Within same window, accumulate
@@ -222,30 +228,35 @@ export class NoisyNeighborProtectionService {
       record = {
         ...existing,
         used,
+        percentUsed: Number.isFinite(existing.limit) && existing.limit > 0 ? (used / existing.limit) * 100 : 0,
       };
     } else {
       record = {
+        usageId: newId("usage"),
         tenantId,
         resourceType,
         used,
         quotaId: quota?.quotaId ?? "",
+        limit,
+        windowSeconds,
         windowStart: new Date(windowStart).toISOString(),
         windowEnd: new Date(windowEnd).toISOString(),
+        percentUsed: Number.isFinite(limit) && limit > 0 ? (used / limit) * 100 : 0,
       };
     }
 
     this.usageRecords.set(key, record);
 
     return {
-      usageId: newId("usage"),
-      tenantId,
-      resourceType,
+      usageId: record.usageId,
+      tenantId: record.tenantId,
+      resourceType: record.resourceType,
       used: record.used,
-      limit: quota?.limit ?? Infinity,
-      windowSeconds: quota?.windowSeconds ?? 0,
-      windowStart: record.windowStart as string,
-      windowEnd: record.windowEnd as string,
-      percentUsed: quota ? (record.used / quota.limit) * 100 : 0,
+      limit: record.limit,
+      windowSeconds: record.windowSeconds,
+      windowStart: record.windowStart,
+      windowEnd: record.windowEnd,
+      percentUsed: record.percentUsed,
     };
   }
 
@@ -265,15 +276,15 @@ export class NoisyNeighborProtectionService {
     }
 
     return {
-      usageId: newId("usage"),
-      tenantId,
-      resourceType,
+      usageId: record.usageId,
+      tenantId: record.tenantId,
+      resourceType: record.resourceType,
       used: record.used,
-      limit: quota?.limit ?? Infinity,
-      windowSeconds: quota?.windowSeconds ?? 0,
-      windowStart: record.windowStart as string,
-      windowEnd: record.windowEnd as string,
-      percentUsed: quota ? (record.used / quota.limit) * 100 : 0,
+      limit: record.limit,
+      windowSeconds: record.windowSeconds,
+      windowStart: record.windowStart,
+      windowEnd: record.windowEnd,
+      percentUsed: record.percentUsed,
     };
   }
 

@@ -80,6 +80,11 @@ test("resolvePlatformAppManifest matches by partial appId prefix", () => {
   assert.equal(manifest, null);
 });
 
+test("resolvePlatformAppManifest rejects startup target selectors that are not app kinds", () => {
+  assert.throws(() => resolvePlatformAppManifest("summary"), /resolvePlatformStartupTarget/);
+  assert.throws(() => resolvePlatformAppManifest("demo"), /resolvePlatformStartupTarget/);
+});
+
 test("all startup targets have valid targetKind", () => {
   const targets = buildPlatformStartupTargets();
 
@@ -130,5 +135,18 @@ test("each startup target has rootEntryModule set to src/index.ts", () => {
 
   for (const target of targets) {
     assert.equal(target.rootEntryModule, "src/index.ts");
+  }
+});
+
+test("platform app manifests freeze nested array fields", () => {
+  for (const app of listPlatformApps()) {
+    assert.ok(Object.isFrozen(app.capabilities));
+    assert.ok(Object.isFrozen(app.requiredLayers));
+  }
+});
+
+test("platform startup targets freeze nested requiredLayers fields", () => {
+  for (const target of buildPlatformStartupTargets()) {
+    assert.ok(Object.isFrozen(target.requiredLayers));
   }
 });

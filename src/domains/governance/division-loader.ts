@@ -29,7 +29,7 @@ import { resolveConfigEnvironment } from "../../platform/five-plane-control-plan
 import type { MinimalWorkflowDefinition, MinimalWorkflowStep } from "../../platform/five-plane-orchestration/oapeflir/workflow/minimal-workflow.js";
 import { parseWorkflowOutputSchema } from "../../platform/five-plane-orchestration/oapeflir/workflow/output-schema.js";
 import { WorkflowValidator } from "../../platform/five-plane-orchestration/oapeflir/workflow/workflow-validator.js";
-import { StructuredLogger } from "../../platform/shared/observability/structured-logger.js";
+import { createLazyStructuredLogger } from "../../platform/shared/observability/lazy-structured-logger.js";
 import { SandboxError, ValidationError } from "../../platform/contracts/errors.js";
 import {
   DEFAULT_DIVISIONS_ROOT,
@@ -48,7 +48,7 @@ import {
   type RawWorkflowStepConfig,
 } from "./division-loader-support.js";
 
-const logger = new StructuredLogger({ retentionLimit: 100 });
+const getLogger = createLazyStructuredLogger({ retentionLimit: 100, service: "division-loader" });
 
 function toRawDivisionRoleConfig(entry: Record<string, unknown>): RawDivisionRoleConfig {
   return {
@@ -294,7 +294,7 @@ export class DivisionLoader {
 
       const divisionRootPath = join(rootCheck.normalizedPath, entry.name);
       if (!existsSync(join(divisionRootPath, "division.yaml"))) {
-        logger.debug("Skipping non-division directory without division.yaml", {
+        getLogger().debug("Skipping non-division directory without division.yaml", {
           divisionRootPath,
         });
         continue;
@@ -810,7 +810,7 @@ function resolveConfiguredCrossDivisionDagFlag(options: ConfiguredDivisionRegist
     const allowCrossDivisionDag = bundle.layers.workflows?.allowCrossDivisionDag;
     return typeof allowCrossDivisionDag === "boolean" ? allowCrossDivisionDag : false;
   } catch (err) {
-    logger.warn("getAllowCrossDivisionDag failed", { error: err });
+    getLogger().warn("getAllowCrossDivisionDag failed", { error: err });
     return false;
   }
 }
@@ -835,7 +835,7 @@ export function getDefaultDivisionRegistry(): DivisionRegistry | null {
     defaultRegistryCache = loadConfiguredDivisionRegistry();
     return defaultRegistryCache;
   } catch (err) {
-    logger.warn("getDefaultDivisionRegistry failed", { error: err });
+    getLogger().warn("getDefaultDivisionRegistry failed", { error: err });
     // Cache null to indicate loading failed (don't retry)
     defaultRegistryCache = null;
     return defaultRegistryCache;

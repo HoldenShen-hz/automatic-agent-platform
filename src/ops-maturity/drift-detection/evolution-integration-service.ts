@@ -8,8 +8,10 @@
  * - Proposals are created (to feed into the approval workflow)
  */
 
+import { dirname, join } from "node:path";
+
 import { newId } from "../../platform/contracts/types/ids.js";
-import type { EvidenceRecord } from "./learning/evidence-store.js";
+import type { EvidenceRecord, EvidenceStore } from "./learning/evidence-store.js";
 import type { ReflectionRecord } from "./learning/reflection-engine.js";
 import type { ProposalKind } from "./learning/proposal-engine.js";
 import { InMemoryEvidenceStore } from "./learning/evidence-store.js";
@@ -38,6 +40,10 @@ export interface EvolutionIntegrationConfig {
   reflectionThreshold: number;
   proposalConfidenceThreshold: number;
   enableAutomaticProposal: boolean;
+}
+
+export interface EvolutionIntegrationDependencies {
+  evidenceStore?: EvidenceStore;
 }
 
 export const DEFAULT_CONFIG: EvolutionIntegrationConfig = {
@@ -86,7 +92,7 @@ function safeTruncate(value: string, maxCodePoints: number): string {
  * via the LearningBridge interface to unify the two parallel learning pipelines.
  */
 export class EvolutionIntegrationService {
-  private readonly evidenceStore: InMemoryEvidenceStore;
+  private readonly evidenceStore: EvidenceStore;
   private readonly reflectionEngine: SimpleReflectionEngine;
   private readonly proposalEngine: SimpleProposalEngine;
   private readonly benchmarkRunner: SimpleBenchmarkRunner;
@@ -98,8 +104,9 @@ export class EvolutionIntegrationService {
     private readonly store: AuthoritativeTaskStore,
     private readonly approvalService: ApprovalService,
     config: Partial<EvolutionIntegrationConfig> = {},
+    dependencies: EvolutionIntegrationDependencies = {},
   ) {
-    this.evidenceStore = new InMemoryEvidenceStore();
+    this.evidenceStore = dependencies.evidenceStore ?? createDefaultEvidenceStore(store);
     this.reflectionEngine = new SimpleReflectionEngine();
     this.proposalEngine = new SimpleProposalEngine();
     this.benchmarkRunner = new SimpleBenchmarkRunner();
@@ -493,4 +500,22 @@ export class EvolutionIntegrationService {
     proposal.rationale = `${proposal.rationale}\n${gateSummary}`;
     proposal.updatedAt = new Date().toISOString();
   }
+}
+
+function createDefaultEvidenceStore(store: AuthoritativeTaskStore): EvidenceStore {
+  return new InMemoryEvidenceStore({
+    snapshotFilePath: resolveEvidenceSnapshotPath(readTaskStoreFilePath(store)),
+  });
+}
+
+function readTaskStoreFilePath(store: AuthoritativeTaskStore): string | null {
+  const candidate = (store as { filePath?: unknown }).filePath;
+  return typeof candidate === "string" ? candidate : null;
+}
+
+function resolveEvidenceSnapshotPath(taskStorePath: string | null): string | null {
+  if (taskStorePath == null || taskStorePath.trim().length === 0 || taskStorePath === ":memory:") {
+    return null;
+  }
+  return join(dirname(taskStorePath), ".evolution-evidence-store.json");
 }

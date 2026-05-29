@@ -220,7 +220,7 @@ Rules:
 
 Phase 1a recommends:
 
-- Directory: `src/core/storage/migrations/`
+- Directory: `src/platform/five-plane-state-evidence/truth/migrations/`
 - Filename: `0001_initial_runtime_schema.sql`, `0002_add_runtime_indexes.sql`
 
 Rules:

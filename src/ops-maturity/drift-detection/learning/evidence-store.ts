@@ -5,6 +5,9 @@
  * Serves as the input source for the Reflection Engine.
  */
 
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname } from "node:path";
+
 export interface EvidenceRecord {
   id: string;
   taskType: string;
@@ -42,11 +45,22 @@ export interface EvidenceStatistics {
   byTaskType: Record<string, { count: number; successCount: number; successRate: number }>;
 }
 
+export interface InMemoryEvidenceStoreOptions {
+  snapshotFilePath?: string | null;
+}
+
 export class InMemoryEvidenceStore implements EvidenceStore {
-  private records: EvidenceRecord[] = [];
+  private records: EvidenceRecord[];
+  private readonly snapshotFilePath: string | null;
+
+  public constructor(options: InMemoryEvidenceStoreOptions = {}) {
+    this.snapshotFilePath = normalizeSnapshotPath(options.snapshotFilePath);
+    this.records = this.snapshotFilePath == null ? [] : loadSnapshotRecords(this.snapshotFilePath);
+  }
 
   async append(record: EvidenceRecord): Promise<void> {
     this.records.push(cloneEvidenceRecord(record));
+    this.persistSnapshot();
   }
 
   async getById(id: string): Promise<EvidenceRecord | null> {
@@ -115,6 +129,18 @@ export class InMemoryEvidenceStore implements EvidenceStore {
       byTaskType,
     };
   }
+
+  private persistSnapshot(): void {
+    if (this.snapshotFilePath == null) {
+      return;
+    }
+    mkdirSync(dirname(this.snapshotFilePath), { recursive: true });
+    writeFileSync(
+      this.snapshotFilePath,
+      JSON.stringify(this.records, null, 2),
+      "utf8",
+    );
+  }
 }
 
 function cloneEvidenceRecord(record: EvidenceRecord): EvidenceRecord {
@@ -125,4 +151,50 @@ function cloneEvidenceRecord(record: EvidenceRecord): EvidenceRecord {
     ...record,
     ...(record.metadata != null ? { metadata: JSON.parse(JSON.stringify(record.metadata)) as Record<string, unknown> } : {}),
   };
+}
+
+function normalizeSnapshotPath(snapshotFilePath: string | null | undefined): string | null {
+  if (typeof snapshotFilePath !== "string") {
+    return null;
+  }
+  const trimmed = snapshotFilePath.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function loadSnapshotRecords(snapshotFilePath: string): EvidenceRecord[] {
+  if (!existsSync(snapshotFilePath)) {
+    return [];
+  }
+  const payload = readFileSync(snapshotFilePath, "utf8").trim();
+  if (payload.length === 0) {
+    return [];
+  }
+  const parsed = JSON.parse(payload) as unknown;
+  if (!Array.isArray(parsed)) {
+    throw new Error(`evidence_store.invalid_snapshot:${snapshotFilePath}`);
+  }
+  return parsed.map((record) => cloneEvidenceRecord(assertEvidenceRecord(record, snapshotFilePath)));
+}
+
+function assertEvidenceRecord(record: unknown, snapshotFilePath: string): EvidenceRecord {
+  if (typeof record !== "object" || record == null) {
+    throw new Error(`evidence_store.invalid_snapshot_record:${snapshotFilePath}`);
+  }
+  const candidate = record as Partial<EvidenceRecord>;
+  if (
+    typeof candidate.id !== "string"
+    || typeof candidate.taskType !== "string"
+    || typeof candidate.sessionId !== "string"
+    || typeof candidate.traceId !== "string"
+    || typeof candidate.success !== "boolean"
+    || typeof candidate.costUsd !== "number"
+    || typeof candidate.latencyMs !== "number"
+    || typeof candidate.toolCalls !== "number"
+    || typeof candidate.repairRounds !== "number"
+    || typeof candidate.rollback !== "boolean"
+    || typeof candidate.createdAt !== "string"
+  ) {
+    throw new Error(`evidence_store.invalid_snapshot_record:${snapshotFilePath}`);
+  }
+  return candidate as EvidenceRecord;
 }

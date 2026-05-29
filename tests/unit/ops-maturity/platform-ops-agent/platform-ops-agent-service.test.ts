@@ -214,6 +214,27 @@ test("PlatformOpsAgentService.execute returns receipt for any proposal", () => {
 
   assert.equal(typeof receipt.executed, "boolean");
   assert.equal(receipt.actionType, proposal.actionType);
+  assert.equal(typeof receipt.summary, "string");
+});
+
+test("PlatformOpsAgentService.execute returns action-specific execution details for executable proposals", () => {
+  const service = new PlatformOpsAgentService(makeAgentDefinition({
+    maxAutonomyLevel: "trusted_automation",
+    allowedActionTypes: ["developer_assist", "tune_config", "investigate_incident", "scale_capacity", "restart_service", "failover"],
+  }));
+  const proposal = service.createProposal(makeProposalInput({
+    errorRate: 0.01,
+    backlog: 12,
+    currentLoad: 30,
+    projectedLoad: 34,
+    probes: [makeProbe("healthy")],
+  }));
+
+  const receipt = service.execute(proposal.proposalId);
+
+  assert.equal(receipt.executed, true);
+  assert.ok(receipt.summary.length > 0);
+  assert.ok(receipt.details != null);
 });
 
 test("PlatformOpsAgentService handles panic active flag", () => {
@@ -263,6 +284,55 @@ test("PlatformOpsAgentService.canExecuteAtLevel observe_only cannot execute", ()
 
   assert.equal(proposal.executable, false);
   assert.ok(proposal.blockedBy.includes("ops_agent.autonomy_limit_reached"));
+});
+
+test("PlatformOpsAgentService.recordApproval does not bypass observe_only autonomy limits", () => {
+  const service = new PlatformOpsAgentService(makeAgentDefinition({
+    maxAutonomyLevel: "observe_only",
+    requiredApprovals: ["approver_1"],
+    allowedActionTypes: ["restart_service", "failover", "investigate_incident", "developer_assist", "scale_capacity", "tune_config"],
+  }));
+  const proposal = service.createProposal(makeProposalInput({
+    errorRate: 0.5,
+    backlog: 500,
+    currentLoad: 80,
+    projectedLoad: 200,
+    probes: [makeProbe("failed")],
+  }));
+
+  const approved = service.recordApproval(proposal.proposalId, "approver_1");
+
+  assert.equal(approved.approvalStatus, "approved");
+  assert.equal(approved.executable, false);
+  assert.ok(approved.blockedBy.includes("ops_agent.autonomy_limit_reached"));
+});
+
+test("PlatformOpsAgentService uses configurable incident thresholds for proposal reasoning", () => {
+  const service = new PlatformOpsAgentService(
+    makeAgentDefinition({
+      maxAutonomyLevel: "trusted_automation",
+      allowedActionTypes: ["developer_assist", "tune_config", "investigate_incident", "scale_capacity", "restart_service", "failover"],
+    }),
+    {
+      signalThresholds: {
+        incidentErrorRate: 0.1,
+        criticalErrorRate: 0.4,
+        incidentBacklog: 500,
+        criticalBacklog: 1500,
+      },
+    },
+  );
+
+  const proposal = service.createProposal(makeProposalInput({
+    errorRate: 0.08,
+    backlog: 300,
+    currentLoad: 50,
+    projectedLoad: 60,
+    probes: [makeProbe("healthy")],
+  }));
+
+  assert.ok(!proposal.reasonCodes.includes("ops_agent.signal.error_rate_elevated"));
+  assert.ok(!proposal.reasonCodes.includes("ops_agent.signal.backlog_elevated"));
 });
 
 test("PlatformOpsAgentService.canExecuteAtLevel supervised_execution allows low risk without approval", () => {

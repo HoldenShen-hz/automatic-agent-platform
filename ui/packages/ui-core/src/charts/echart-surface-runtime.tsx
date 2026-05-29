@@ -100,7 +100,8 @@ function createResizeObserver(handler: () => void): ResizeObserver | null {
     return new ResizeObserver(handler);
   } catch (error) {
     if (error instanceof TypeError && error.message.includes("is not a constructor")) {
-      return (ResizeObserver as unknown as (callback: ResizeObserverCallback) => ResizeObserver)(handler as ResizeObserverCallback);
+      const legacyResizeObserverFactory = ResizeObserver as typeof ResizeObserver & ((callback: ResizeObserverCallback) => ResizeObserver);
+      return legacyResizeObserverFactory(handler as ResizeObserverCallback);
     }
     throw error;
   }

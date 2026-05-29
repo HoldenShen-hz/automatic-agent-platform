@@ -148,7 +148,7 @@ export class ChangepointDetectorService {
     const metrics = this.buildSharedMetrics(samples, baseline, recent, windowType);
 
     if (baseline.length === 0 || recent.length === 0) {
-      return this.buildUndetectedResult(metrics, "drift.insufficient_data");
+      return this.buildUndetectedResult(metrics, "drift.insufficient_data", windowType);
     }
 
     if (
@@ -156,7 +156,7 @@ export class ChangepointDetectorService {
       || recent.length < requestedRecentWindow
       || samples.length < Math.max(this.config.minSampleSize, requestedRecentWindow + 1)
     ) {
-      return this.buildUndetectedResult(metrics, "drift.insufficient_data");
+      return this.buildUndetectedResult(metrics, "drift.insufficient_data", windowType);
     }
 
     const algorithmEvaluation = this.evaluateWindowAlgorithm(windowType, baseline, recent, threshold, metrics);

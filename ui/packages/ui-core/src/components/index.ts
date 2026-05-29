@@ -257,7 +257,7 @@ export function FeatureWorkbench(
           background: action.tone === "danger" ? designTokens.color.danger : action.tone === "accent" ? designTokens.color.accent : designTokens.color.surfaceElevated,
           border: `1px solid ${action.tone === "neutral" ? designTokens.color.border : "transparent"}`,
           borderRadius: designTokens.radius.sm,
-          color: action.tone === "neutral" ? designTokens.color.text : "#04130a",
+          color: action.tone === "neutral" ? designTokens.color.text : designTokens.primitive.color.ink950,
           cursor: "pointer",
           fontWeight: designTokens.typography.fontWeight.semibold,
           padding: "8px 12px",

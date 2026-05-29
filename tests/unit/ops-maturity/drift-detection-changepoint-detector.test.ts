@@ -54,6 +54,6 @@ test("ChangepointDetectorService detectAll keeps canonical and legacy windows av
 
   const results = service.detectAll(samples);
 
-  assert.deepEqual(results.map((result) => result.windowType), ["1h", "6h", "24h", "7d"]);
+  assert.deepEqual(results.map((result) => result.windowType), ["1h", "6h", "24h", "7d", "30d", "90d"]);
   assert.ok(results.every((result) => typeof result.algorithm === "string"));
 });

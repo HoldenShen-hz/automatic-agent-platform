@@ -38,10 +38,11 @@ import {
 } from "./five-plane-state-evidence/state-evidence-plane-bootstrap.js";
 
 export const FIVE_PLANE_STARTUP_PLAN_SERVICE_ID = "plane.runtime.startup-plan";
+export const X1_FABRIC_STARTUP_STEP_ID = "x1-fabric";
 
 export type FivePlaneStartupStepId =
   | "interface"
-  | "x1-fabric"
+  | typeof X1_FABRIC_STARTUP_STEP_ID
   | "control-plane"
   | "orchestration"
   | "execution"
@@ -85,8 +86,8 @@ export function buildFivePlaneStartupPlan(): FivePlaneStartupPlan {
       dependsOnStepIds: [],
     },
     {
-      stepId: "x1-fabric",
-      surfaceId: "x1-fabric",
+      stepId: X1_FABRIC_STARTUP_STEP_ID,
+      surfaceId: X1_FABRIC_STARTUP_STEP_ID,
       entryModule: x1Surface.entryModule,
       bootstrapServiceId: X1_FABRIC_BOOTSTRAP_SERVICE_ID,
       capabilityCount: x1CapabilityCount,
@@ -98,7 +99,7 @@ export function buildFivePlaneStartupPlan(): FivePlaneStartupPlan {
       entryModule: controlSurface.entryModule,
       bootstrapServiceId: CONTROL_PLANE_BOOTSTRAP_SERVICE_ID,
       capabilityCount: buildControlPlaneBootstrap().catalog.length,
-      dependsOnStepIds: ["x1-fabric"],
+      dependsOnStepIds: [X1_FABRIC_STARTUP_STEP_ID],
     },
     {
       stepId: "orchestration",

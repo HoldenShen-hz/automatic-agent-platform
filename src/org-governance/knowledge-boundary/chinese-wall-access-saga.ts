@@ -1,4 +1,4 @@
-import { StructuredLogger } from "../../platform/shared/observability/structured-logger.js";
+import { createLazyStructuredLogger } from "../../platform/shared/observability/lazy-structured-logger.js";
 
 export interface ChineseWallAccessStep {
   readonly stepId: string;
@@ -36,7 +36,10 @@ export interface ChineseWallAccessSagaReceipt {
   }[];
 }
 
-const chineseWallAccessSagaLogger = new StructuredLogger({ retentionLimit: 100 });
+const getChineseWallAccessSagaLogger = createLazyStructuredLogger({
+  retentionLimit: 100,
+  service: "chinese-wall-access-saga",
+});
 
 export class ChineseWallAccessSaga {
   public constructor(private readonly handlers: ChineseWallAccessSagaHandlers = {}) {}
@@ -111,7 +114,7 @@ export class ChineseWallAccessSaga {
             break;
         }
       } catch (error) {
-        chineseWallAccessSagaLogger.warn("chinese_wall_access_saga.step_failed", {
+        getChineseWallAccessSagaLogger().warn("chinese_wall_access_saga.step_failed", {
           accessId,
           stepId: normalizedStep.stepId,
           action: normalizedStep.action,

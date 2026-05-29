@@ -2781,7 +2781,7 @@ deploy/
   - mutation testing只contains: 
     - `src/core/api/http-server/` (8个file)
     - `src/core/api/middleware/` (2个file)
-    - `src/core/agent-loop/oapeflir-loop-service.ts`
+    - `src/platform/five-plane-orchestration/oapeflir/oapeflir-loop-service.ts`
     - `src/core/runtime/redis-client-options.ts`
   - misses了关键的 five-plane-* module: 
     - `five-plane-execution/` (budget-allocator, runtime-state-machine)
@@ -4013,12 +4013,12 @@ if [[ "${CONFIRM}" != "yes" ]]; then
 - **问题描述**:
   - data库迁移目录onlycontains一个 `0001_phase1a_init.sql` file (261字节) 
   - 迁移脚本只contains PRAGMA 设置comment, 没有实际的 schema 创建语句
-  - 实际的 schema 定义被comment说明"duplicate在 `src/core/storage/sql/phase1a-schema.ts`"
+  - 实际的 schema 定义被comment说明"duplicate在 `src/platform/five-plane-state-evidence/truth/sql/phase1a-schema.ts`"
   - 没有版本化的迁移path, 难以追踪 schema 演变
   - SQLite 和 PostgreSQL 的 migration runner exists但迁移plan不完整
 - **建议修复**:
   1. 创建完整的版本化迁移脚本序列 (0010, 0020, 0030...) 
-  2. 将 `src/core/storage/sql/phase1a-schema.ts` 的content转为正式迁移
+  2. 将 `src/platform/five-plane-state-evidence/truth/sql/phase1a-schema.ts` 的content转为正式迁移
   3. 为 SQLite 和 PG 分别maintained迁移plan (`sqlite-migration-plan.ts`, `pg-migrations-runtime.ts`) 
   4. 添加迁移rollback脚本 (down migrations) 
   5. 建立迁移 checksum 验证机制
@@ -5398,7 +5398,7 @@ if [[ "${CONFIRM}" != "yes" ]]; then
   - mutation testing只contains:
     - `src/core/api/http-server/` (8个file)
     - `src/core/api/middleware/` (2个file)
-    - `src/core/agent-loop/oapeflir-loop-service.ts`
+    - `src/platform/five-plane-orchestration/oapeflir/oapeflir-loop-service.ts`
     - `src/core/runtime/redis-client-options.ts`
   - misses了关键的 five-plane-* module
   - coverage不足导致无法发现关键module的回归问题

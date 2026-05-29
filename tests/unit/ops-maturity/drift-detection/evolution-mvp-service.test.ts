@@ -192,3 +192,70 @@ test("EvolutionMvpService promotes experience into memory and supports rollback"
     cleanupPath(workspace);
   }
 });
+
+test("EvolutionMvpService reuses a pending proposal when the same idempotency key is submitted twice", () => {
+  const workspace = createTempWorkspace("aa-evolution-idempotency-");
+  const dbPath = join(workspace, "evolution-idempotency.db");
+
+  try {
+    const db = new SqliteDatabase(dbPath);
+    db.migrate();
+    const store = new AuthoritativeTaskStore(db);
+    const approvalService = new ApprovalService(db, store);
+    const memoryService = new MemoryService(store);
+    const evolution = new EvolutionMvpService(db, store, approvalService, memoryService);
+
+    seedTaskAndExecution(db, store, {
+      taskId: "task-evo-idem",
+      executionId: "exec-evo-idem",
+    });
+
+    const first = evolution.proposeBudgetAdjustment({
+      taskId: "task-evo-idem",
+      executionId: "exec-evo-idem",
+      sourceAgentId: "supervisor-1",
+      idempotencyKey: "idem-budget-adjustment-1",
+      scopeType: "role",
+      scopeRef: "general_ops.general_executor",
+      currentPolicy: {
+        maxTaskCostUsd: 5,
+        maxDailyCostUsd: 50,
+        maxMonthlyCostUsd: 500,
+        warnAtRatio: 0.8,
+        mode: "supervised",
+      },
+      observedAverageCostUsd: 6.2,
+      sampleSize: 6,
+      successRate: 0.83,
+      proposalReason: "same request should reuse pending proposal",
+    });
+
+    const second = evolution.proposeBudgetAdjustment({
+      taskId: "task-evo-idem",
+      executionId: "exec-evo-idem",
+      sourceAgentId: "supervisor-1",
+      idempotencyKey: "idem-budget-adjustment-1",
+      scopeType: "role",
+      scopeRef: "general_ops.general_executor",
+      currentPolicy: {
+        maxTaskCostUsd: 5,
+        maxDailyCostUsd: 50,
+        maxMonthlyCostUsd: 500,
+        warnAtRatio: 0.8,
+        mode: "supervised",
+      },
+      observedAverageCostUsd: 6.2,
+      sampleSize: 6,
+      successRate: 0.83,
+      proposalReason: "same request should reuse pending proposal",
+    });
+
+    assert.equal(second.proposal.id, first.proposal.id);
+    assert.equal(second.approval?.approvalId, first.approval?.approvalId);
+    assert.equal(evolution.listProposalViews().length, 1);
+
+    db.close();
+  } finally {
+    cleanupPath(workspace);
+  }
+});

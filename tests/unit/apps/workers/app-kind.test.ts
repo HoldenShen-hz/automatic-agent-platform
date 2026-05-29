@@ -82,8 +82,8 @@ test("WORKER_APP_MANIFEST requiredLayers includes apps", () => {
   assert.ok(WORKER_APP_MANIFEST.requiredLayers.includes("apps"));
 });
 
-test("WORKER_APP_MANIFEST requiredLayers count is 5", () => {
-  assert.equal(WORKER_APP_MANIFEST.requiredLayers.length, 5);
+test("WORKER_APP_MANIFEST requiredLayers count is 7", () => {
+  assert.equal(WORKER_APP_MANIFEST.requiredLayers.length, 7);
 });
 
 test("WORKER_APP_MANIFEST capabilities count is 3", () => {

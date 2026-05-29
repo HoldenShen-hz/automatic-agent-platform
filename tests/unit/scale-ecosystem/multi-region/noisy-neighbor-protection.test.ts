@@ -260,6 +260,37 @@ test("NoisyNeighborProtectionService: returns current usage for tenant and resou
   assert.equal(usage!.used, 50);
 });
 
+test("NoisyNeighborProtectionService: preserves recorded usage shape even if quota changes later [noisy-neighbor-protection]", () => {
+  const service = new NoisyNeighborProtectionService();
+  service.registerQuota({
+    quotaId: "quota-1",
+    tenantId: "tenant-1",
+    resourceType: "api_requests",
+    limit: 100,
+    windowSeconds: 60,
+    burstLimit: null,
+    priority: 1,
+  });
+
+  const recorded = service.recordUsage("tenant-1", "api_requests", 50);
+  service.registerQuota({
+    quotaId: "quota-2",
+    tenantId: "tenant-1",
+    resourceType: "api_requests",
+    limit: 200,
+    windowSeconds: 120,
+    burstLimit: null,
+    priority: 2,
+  });
+
+  const current = service.getCurrentUsage("tenant-1", "api_requests");
+  assert.ok(current);
+  assert.equal(current!.usageId, recorded.usageId);
+  assert.equal(current!.limit, 100);
+  assert.equal(current!.windowSeconds, 60);
+  assert.equal(current!.percentUsed, 50);
+});
+
 test("NoisyNeighborProtectionService: returns percent used [noisy-neighbor-protection]", () => {
   const service = new NoisyNeighborProtectionService();
   const quota: TenantQuota = {

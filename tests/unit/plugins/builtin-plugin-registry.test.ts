@@ -6,6 +6,13 @@ import test from "node:test";
 
 import { createBuiltinPlugin, hasBuiltinPlugin, listBuiltinPluginIds } from "../../../src/plugins/builtin-plugin-registry.js";
 
+function createMockFetch(payload: Record<string, unknown> = { ok: true }): typeof fetch {
+  return async () => new Response(JSON.stringify(payload), {
+    status: 200,
+    headers: { "content-type": "application/json" },
+  });
+}
+
 test("builtin plugin registry exposes builtin factories and presence checks", () => {
   const pluginIds = listBuiltinPluginIds();
   assert.ok(pluginIds.includes("plugin.coding.retriever"));
@@ -114,34 +121,40 @@ test("builtin coding retriever searches repository structure", async () => {
 });
 
 test("builtin coding presenter and github adapter expose production-shaped behavior", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = createMockFetch({ issueId: 1, number: 1 });
   const presenter = createBuiltinPlugin("plugin.coding.presenter");
   const github = createBuiltinPlugin("plugin.shared.github_adapter");
-  assert.equal(presenter?.spiType, "presenter");
-  assert.equal(github?.spiType, "adapter");
+  try {
+    assert.equal(presenter?.spiType, "presenter");
+    assert.equal(github?.spiType, "adapter");
 
-  if (presenter?.spiType === "presenter") {
-    const output = await presenter.formatOutput({
-      machineOutputs: [{
-        stepId: "patch_code",
-        outputRef: "artifact:patch",
-        payload: { files: ["src/index.ts"], status: "ok" },
-      }],
-      artifacts: ["artifact:patch", "artifact:test-report"],
-      audience: "developer",
-    });
-    assert.match(output.summary, /patch_code/);
-    assert.ok(output.sections.some((section) => section.includes("```json")));
-    assert.deepEqual(output.citations, ["artifact:patch", "artifact:test-report"]);
-  }
+    if (presenter?.spiType === "presenter") {
+      const output = await presenter.formatOutput({
+        machineOutputs: [{
+          stepId: "patch_code",
+          outputRef: "artifact:patch",
+          payload: { files: ["src/index.ts"], status: "ok" },
+        }],
+        artifacts: ["artifact:patch", "artifact:test-report"],
+        audience: "developer",
+      });
+      assert.match(output.summary, /patch_code/);
+      assert.ok(output.sections.some((section) => section.includes("```json")));
+      assert.deepEqual(output.citations, ["artifact:patch", "artifact:test-report"]);
+    }
 
-  if (github?.spiType === "adapter") {
-    await github.authenticate({ token: "ghp_example_token" });
-    const result = await github.execute("create_issue", {
-      repository: "openai/example",
-      title: "Bug report",
-      body: "details",
-      labels: ["bug"],
-    });
-    assert.equal(result["endpoint"], "https://api.github.com/repos/openai/example/issues");
+    if (github?.spiType === "adapter") {
+      await github.authenticate({ token: "ghp_example_token" });
+      const result = await github.execute("create_issue", {
+        repository: "openai/example",
+        title: "Bug report",
+        body: "details",
+        labels: ["bug"],
+      });
+      assert.equal(result["endpoint"], "https://api.github.com/repos/openai/example/issues");
+    }
+  } finally {
+    globalThis.fetch = originalFetch;
   }
 });

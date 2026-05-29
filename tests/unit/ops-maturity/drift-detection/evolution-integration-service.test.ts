@@ -6,7 +6,10 @@
  */
 
 import assert from "node:assert/strict";
+import { mkdtempSync, rmSync } from "node:fs";
+import { join } from "node:path";
 import test from "node:test";
+import { tmpdir } from "node:os";
 
 import { EvolutionIntegrationService } from "../../../../src/ops-maturity/drift-detection/evolution-integration-service.js";
 import type { AuthoritativeTaskStore } from "../../../../src/platform/five-plane-state-evidence/truth/authoritative-task-store.js";
@@ -72,6 +75,38 @@ test("EvolutionIntegrationService records failure evidence", async () => {
   const stats = await service.getStatistics();
   assert.equal(stats.totalEvidence, 1, "Should have 1 evidence record");
   assert.equal(stats.recentFailures, 1, "Should have 1 recent failure");
+});
+
+test("EvolutionIntegrationService persists evidence across service recreation when task store is file-backed", async () => {
+  const workspace = mkdtempSync(join(tmpdir(), "aa-evolution-evidence-"));
+  const store = {
+    filePath: join(workspace, "authoritative-task-store.db"),
+  } as AuthoritativeTaskStore;
+  const approvalService = createMockApprovalService();
+
+  try {
+    const first = new EvolutionIntegrationService(store, approvalService);
+    await first.recordFailure({
+      taskId: "task_persisted",
+      executionId: "exec_persisted",
+      agentId: "agent_001",
+      sessionId: "session_persisted",
+      reasonCode: "timeout",
+      errorMessage: "persist me",
+      costUsd: 0.01,
+      latencyMs: 100,
+      toolCalls: 1,
+      repairRounds: 0,
+    });
+
+    const second = new EvolutionIntegrationService(store, approvalService);
+    const stats = await second.getStatistics();
+
+    assert.equal(stats.totalEvidence, 1);
+    assert.equal(stats.recentFailures, 1);
+  } finally {
+    rmSync(workspace, { force: true, recursive: true });
+  }
 });
 
 test("EvolutionIntegrationService records success evidence", async () => {

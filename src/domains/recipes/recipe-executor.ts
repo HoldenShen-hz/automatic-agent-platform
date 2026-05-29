@@ -1,9 +1,9 @@
 import { DomainRecipeSchema, type DomainRecipe } from "./index.js";
 import type { WorkflowRegistry } from "../registry/workflow-registry.js";
 import { getWorkflowDefinition } from "../../platform/five-plane-orchestration/oapeflir/workflow/minimal-workflow.js";
-import { StructuredLogger } from "../../platform/shared/observability/structured-logger.js";
+import { createLazyStructuredLogger } from "../../platform/shared/observability/lazy-structured-logger.js";
 
-const logger = new StructuredLogger({ retentionLimit: 100 });
+const getLogger = createLazyStructuredLogger({ retentionLimit: 100, service: "recipe-executor" });
 
 export interface RecipeExecutionContext {
   executionId: string;
@@ -112,7 +112,7 @@ export class RecipeExecutor {
       };
       return result;
     } catch (error) {
-      logger.error("recipe_executor.execution_failed", {
+      getLogger().error("recipe_executor.execution_failed", {
         executionId: context.executionId,
         taskId: context.taskId,
         tenantId: context.tenantId,

@@ -5,13 +5,14 @@ import { fileURLToPath } from "node:url";
 import { format } from "node:util";
 
 import { createBuiltinPlugin } from "../../plugins/builtin-plugin-registry.js";
+import { createLazyStructuredLogger } from "../../platform/shared/observability/lazy-structured-logger.js";
 import { StructuredLogger } from "../../platform/shared/observability/structured-logger.js";
 import type { RegisteredPlugin } from "./plugin-spi.js";
 import type { PluginRuntimeChildMessage, PluginRuntimeRequest } from "./plugin-runtime-protocol.js";
 import { parsePluginRuntimeChildMessage } from "./plugin-runtime-protocol.js";
 
 const require = createRequire(import.meta.url);
-const logger = new StructuredLogger({ retentionLimit: 100, service: "plugin-runtime-child" });
+const getLogger = createLazyStructuredLogger({ retentionLimit: 100, service: "plugin-runtime-child" });
 const runtimeChildEntryPath = fileURLToPath(import.meta.url);
 const bootCorrelationId = `boot:${process.pid}:${Date.now()}`;
 
@@ -144,7 +145,7 @@ function withStructuredConsoleForCurrentRequest<T>(run: () => Promise<T>): Promi
   const writeStructuredLine = (level: "debug" | "info" | "warn" | "error", ...args: unknown[]): void => {
     const message = format(...args);
     const requestId = currentRequest?.requestId;
-    const entry = logger.log({
+    const entry = getLogger().log({
       level,
       message,
       ...(requestId == null
@@ -187,7 +188,7 @@ function withStructuredConsoleForCurrentRequest<T>(run: () => Promise<T>): Promi
 }
 
 function logProtocolError(message: string, error: unknown): void {
-  const entry = logger.log({
+  const entry = getLogger().log({
     level: "error",
     message: `${message}: ${error instanceof Error ? error.message : String(error)}`,
     traceId: bootCorrelationId,

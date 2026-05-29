@@ -199,20 +199,11 @@ export class PackTestLocalService {
     casesFailed: number;
     coveragePercent: number;
   }> {
-    const result = await this.runModeWithTimeout(timeoutMs, async () =>
+    return this.runModeWithTimeout(timeoutMs, async () =>
       this.evaluateFixtureCases(packId, "integration", {
         requireMockLlm: mockLlm,
         requireFixtures: true,
       }));
-    if (!mockLlm && result.casesPassed > 0) {
-      return {
-        ...result,
-        casesPassed: Math.max(0, result.casesPassed - 1),
-        casesFailed: result.casesFailed + 1,
-        coveragePercent: Math.max(0, result.coveragePercent - 10),
-      };
-    }
-    return result;
   }
 
   private async runSimulationTests(packId: string, evalDatasetId: string | undefined, recordArtifacts: boolean, timeoutMs: number): Promise<{
@@ -220,17 +211,11 @@ export class PackTestLocalService {
     casesFailed: number;
     coveragePercent: number;
   }> {
-    const result = await this.runModeWithTimeout(timeoutMs, async () =>
+    return this.runModeWithTimeout(timeoutMs, async () =>
       this.evaluateFixtureCases(packId, "simulation", {
         requireEvalDataset: evalDatasetId != null,
         requireFixtures: true,
       }));
-    return evalDatasetId == null
-      ? {
-          ...result,
-          coveragePercent: Math.max(0, result.coveragePercent - (recordArtifacts ? 15 : 20)),
-        }
-      : result;
   }
 
   private evaluateFixtureCases(

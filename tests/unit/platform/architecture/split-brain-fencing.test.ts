@@ -260,7 +260,7 @@ test("R21-12, R21-13, and R21-14 ops-maturity analyzers use multi-window detecti
   const defaultWindows = detector.detectAll(samples);
   const advancedWindows = detector.detectAll(samples, ["7d", "30d", "90d"]);
 
-  assert.deepEqual(defaultWindows.map((result) => result.windowType), ["1h", "6h", "24h", "7d"]);
+  assert.deepEqual(defaultWindows.map((result) => result.windowType), ["1h", "6h", "24h", "7d", "30d", "90d"]);
   assert.deepEqual(advancedWindows.map((result) => result.algorithm), ["cusum", "bayesian_online", "kl_js_divergence"]);
 
   const analyzer = new CrossAgentAnalyzerService();

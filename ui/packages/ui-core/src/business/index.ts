@@ -5,7 +5,15 @@ import { designTokens } from "../design-tokens";
 function StatusChip({ label, value, accent }: { label: string; value: string; accent?: string }): ReactElement {
   return createElement(
     "div",
-    { style: { border: `1px solid ${designTokens.color.border}`, borderRadius: 999, padding: "6px 10px", color: designTokens.color.text, background: "#0b1325" } },
+    {
+      style: {
+        border: `1px solid ${designTokens.color.border}`,
+        borderRadius: 999,
+        padding: "6px 10px",
+        color: designTokens.color.text,
+        background: designTokens.color.surfaceElevated,
+      },
+    },
     createElement("span", { style: { color: designTokens.color.subtle, marginRight: 8 } }, label),
     createElement("strong", { style: { color: accent ?? designTokens.color.text } }, value),
   );

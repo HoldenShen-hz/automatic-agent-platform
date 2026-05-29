@@ -1,16 +1,16 @@
-import { StructuredLogger } from "../../platform/shared/observability/structured-logger.js";
+import { createLazyStructuredLogger } from "../../platform/shared/observability/lazy-structured-logger.js";
 import {
   loadDivisionRegistry,
   type DivisionRegistry,
 } from "./division-loader.js";
 
-const logger = new StructuredLogger({ retentionLimit: 100 });
+const getLogger = createLazyStructuredLogger({ retentionLimit: 100, service: "safe-load-division-registry" });
 
 export function safeLoadDivisionRegistry(): DivisionRegistry | null {
   try {
     return loadDivisionRegistry();
   } catch (err) {
-    logger.warn("safeLoadDivisionRegistry failed", { error: err });
+    getLogger().warn("safeLoadDivisionRegistry failed", { error: err });
     return null;
   }
 }

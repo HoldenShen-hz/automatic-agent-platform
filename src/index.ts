@@ -1,6 +1,5 @@
 import { mkdirSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { pathToFileURL } from "node:url";
 
 import { buildDomainsRuntimeCatalog } from "./domains-runtime-catalog.js";
 import { buildDomainsStartupPlan } from "./domains-startup-plan.js";
@@ -21,12 +20,15 @@ import { getPlatformApplicationKernel } from "./platform-application-kernel.js";
 import type { PlatformAppKind, PlatformStartupTargetKind } from "./platform-architecture-types.js";
 import { buildScaleOpsRuntimeCatalog } from "./scale-ops-runtime-catalog.js";
 import { buildScaleOpsStartupPlan } from "./scale-ops-startup-plan.js";
+import { isCliEntryPoint } from "./sdk/cli/cli-exit.js";
 import type {
   PlatformRootDemoLegacySnapshot,
   PlatformRootDemoSummary,
   PlatformRootSummary,
   PlatformRootSummaryBuilderDeps,
 } from "./platform-root-types.js";
+import { X1_FABRIC_STARTUP_STEP_ID } from "./platform/five-plane-startup-plan.js";
+import { createLazyStructuredLogger } from "./platform/shared/observability/lazy-structured-logger.js";
 
 export * as apps from "./apps/index.js";
 export * as domains from "./domains/index.js";
@@ -83,7 +85,7 @@ export {
   SlackConnector,
 } from "./scale-ecosystem/index.js";
 
-const logger = new StructuredLogger({ retentionLimit: 100 });
+const getLogger = createLazyStructuredLogger({ retentionLimit: 100, service: "platform-root-entry" });
 
 function writeJsonToStdout(payload: unknown): void {
   // Intentional CLI contract: structured command output is written to stdout,
@@ -97,7 +99,12 @@ function writeJsonToStderr(payload: unknown): void {
 
 function redactStartupErrorMessage(message: string): string {
   return message
+    .replace(/(Authorization\s*:\s*Basic\s+)[A-Za-z0-9._~+/=-]+/gi, "$1[REDACTED]")
+    .replace(/(Authorization\s*:\s*Bearer\s+)[A-Za-z0-9._~+/=-]+/gi, "$1[REDACTED]")
     .replace(/Bearer\s+[A-Za-z0-9._~+/=-]+/g, "Bearer [REDACTED]")
+    .replace(/Basic\s+[A-Za-z0-9._~+/=-]+/g, "Basic [REDACTED]")
+    .replace(/("(?:token|accessToken|refreshToken|apiKey|authorization)"\s*:\s*")[^"]+(")/gi, "$1[REDACTED]$2")
+    .replace(/\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/g, "[REDACTED_JWT]")
     .replace(/([A-Za-z0-9_-]*token[A-Za-z0-9_-]*=)[^&\s]+/gi, "$1[REDACTED]")
     .replace(/([A-Za-z0-9_-]*(?:password|secret|api[_-]?key)[A-Za-z0-9_-]*=)[^&\s]+/gi, "$1[REDACTED]");
 }
@@ -112,11 +119,7 @@ function resolveDbPath(): string {
 }
 
 function isDirectExecution(): boolean {
-  const scriptPath = process.argv[1];
-  if (scriptPath == null || scriptPath.length === 0) {
-    return false;
-  }
-  return import.meta.url === pathToFileURL(resolve(scriptPath)).href;
+  return isCliEntryPoint(import.meta.url);
 }
 
 function resolveRootEntryMode(): PlatformStartupTargetKind {
@@ -140,7 +143,7 @@ function parseTaskOutput(outputJson: string | null): unknown {
   try {
     return JSON.parse(outputJson);
   } catch (error) {
-    logger.warn("platform_root_demo.output_parse_failed", {
+    getLogger().warn("platform_root_demo.output_parse_failed", {
       error: error instanceof Error ? error.message : String(error),
     });
     return outputJson;
@@ -195,7 +198,7 @@ function safeBuildSection<T>(section: string, build: () => T, fallback: T): T {
   try {
     return build();
   } catch (error) {
-    logger.warn("Platform root summary section failed; using fallback", {
+    getLogger().warn("Platform root summary section failed; using fallback", {
       section,
       error: error instanceof Error ? error.message : String(error),
     });
@@ -298,7 +301,7 @@ export function buildPlatformRootSummary(
       totalCapabilityCount: startupPlan.totalCapabilityCount,
       capabilityCounts: {
         interface: runtimeCatalog.interfacePlane.length,
-        x1Fabric: startupPlan.steps.find((step) => step.stepId === "x1-fabric")?.capabilityCount ?? 0,
+        x1Fabric: startupPlan.steps.find((step) => step.stepId === X1_FABRIC_STARTUP_STEP_ID)?.capabilityCount ?? 0,
         controlPlane: runtimeCatalog.controlPlane.length,
         orchestration: runtimeCatalog.orchestrationPlane.length,
         execution: runtimeCatalog.executionPlane.length,
@@ -361,7 +364,8 @@ if (isDirectExecution()) {
     const normalized = error instanceof Error
       ? { name: error.name, message: redactStartupErrorMessage(error.message) }
       : { message: redactStartupErrorMessage(String(error)) };
-    writeJsonToStderr({ mode: resolveRootEntryMode(), error: normalized });
-    process.exitCode = 1;
+    process.stderr.write(`${JSON.stringify({ mode: resolveRootEntryMode(), error: normalized }, null, 2)}\n`, () => {
+      process.exit(1);
+    });
   });
 }

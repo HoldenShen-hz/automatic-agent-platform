@@ -1,7 +1,7 @@
 import { newId, nowIso } from "../../platform/contracts/types/ids.js";
 import { ValidationError } from "../../platform/contracts/errors.js";
 import type { ArtifactRef } from "../../platform/five-plane-orchestration/oapeflir/ref-types.js";
-import { StructuredLogger } from "../../platform/shared/observability/structured-logger.js";
+import { createLazyStructuredLogger } from "../../platform/shared/observability/lazy-structured-logger.js";
 import { getBuiltinPluginManifest, hasBuiltinPlugin } from "../../plugins/builtin-plugin-registry.js";
 import type {
   HumanOutput,
@@ -18,7 +18,7 @@ import { PluginLifecycleStateSchema, PluginManifestSchema } from "./plugin-spi.j
 import type { TypedEventPublisher } from "../../platform/five-plane-state-evidence/events/typed-event-publisher.js";
 import { ContainerizedPluginRuntimeHost, ForkedPluginRuntimeHost } from "./plugin-runtime-host.js";
 
-const logger = new StructuredLogger({ retentionLimit: 100 });
+const getLogger = createLazyStructuredLogger({ retentionLimit: 100, service: "plugin-spi-registry" });
 
 export interface RegisteredPluginRecord<TPlugin extends RegisteredPlugin = RegisteredPlugin> {
   manifest: PluginManifest;
@@ -543,7 +543,7 @@ export class PluginSpiRegistry {
       this.runtimeHosts.delete(record.manifest.pluginId);
       record.runtimeProcessId = null;
       record.runtimeSandboxRoot = null;
-      logger.error("plugin_spi.runtime_host_start_failed", {
+      getLogger().error("plugin_spi.runtime_host_start_failed", {
         pluginId: record.manifest.pluginId,
         runtimeIsolation: record.manifest.sandbox.runtimeIsolation,
         error: error instanceof Error ? error.stack ?? error.message : String(error),
@@ -622,7 +622,7 @@ export class PluginSpiRegistry {
       try {
         return await Promise.race([promise, timeoutPromise]);
       } catch (error) {
-        logger.error("plugin_spi.sandbox_runner_failed", {
+        getLogger().error("plugin_spi.sandbox_runner_failed", {
           pluginId: record.manifest.pluginId,
           phase,
           domainId: context.domainId,
@@ -697,7 +697,7 @@ export class PluginSpiRegistry {
       if (this.isProcessIsolatedRuntime(record)) {
         await this.disposeRuntimeHost(record);
       }
-      logger.error("plugin_spi.activation_catch", {
+      getLogger().error("plugin_spi.activation_catch", {
         pluginId: record.manifest.pluginId,
         phase: "activation",
         domainId: context.domainId,
@@ -807,7 +807,7 @@ export class PluginSpiRegistry {
     record.failureCount += 1;
     record.lastErrorAt = nowIso();
     record.lastErrorMessage = extractPluginErrorMessage(error);
-    logger.error("plugin_spi.operation_failed", {
+    getLogger().error("plugin_spi.operation_failed", {
       pluginId: record.manifest.pluginId,
       phase,
       domainId: context.domainId,
@@ -862,7 +862,7 @@ export class PluginSpiRegistry {
       });
       return result;
     } catch (error) {
-      logger.error("plugin_spi.invocation_catch", {
+      getLogger().error("plugin_spi.invocation_catch", {
         pluginId: record.manifest.pluginId,
         phase,
         domainId: context.domainId,

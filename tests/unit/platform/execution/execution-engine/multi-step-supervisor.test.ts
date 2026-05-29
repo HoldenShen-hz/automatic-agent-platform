@@ -90,6 +90,7 @@ function createMockTaskStore(): AuthoritativeTaskStore {
     execution: {
       insertExecution: (_execution: ExecutionRecord) => {},
       getExecution: (_executionId: string) => null,
+      listExecutionsByTask: (_taskId: string) => [],
       insertExecutionPrecheck: (_precheck: ExecutionPrecheckRecord) => {},
       updateExecutionFailure: (_updates: Record<string, unknown>) => {},
     },

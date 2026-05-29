@@ -95,6 +95,7 @@ export interface ProposeBudgetAdjustmentInput {
   taskId: string;
   executionId?: string | null;
   sourceAgentId: string;
+  idempotencyKey?: string;
   scopeType: EvolutionScopeType;
   scopeRef: string;
   currentPolicy: BudgetPolicy;
@@ -111,6 +112,7 @@ export interface ProposeExperiencePromotionInput {
   taskId: string;
   executionId?: string | null;
   sourceAgentId: string;
+  idempotencyKey?: string;
   scopeType: EvolutionScopeType;
   scopeRef: string;
   targetScope: string;

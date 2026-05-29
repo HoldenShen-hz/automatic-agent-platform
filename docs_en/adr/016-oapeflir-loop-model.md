@@ -5,7 +5,7 @@
 
 ## Background
 
-Early system architecture was organized based on "three-layer separation architecture" (control/runtime/learning/data). As HarnessRuntime became the sole execution entry, the platform needed a controlled cognitive framework to explain and constrain the cognitive loop, rather than introducing a second execution runtime. OAPEFLIR (Observe → Assess → Plan → Execute → Feedback → Learn → Improve → Release) was therefore retained as the cognitive/governance semantic framework.
+Early system architecture was organized based on "three-layer separation architecture" (control/runtime/learning/data). As HarnessRuntime became the sole execution entry point, the platform needed a controlled cognitive framework to explain and constrain the cognitive loop, rather than introducing a second execution runtime. OAPEFLIR (Observe → Assess → Plan → Execute → Feedback → Learn → Improve → Release) was therefore retained as the cognitive/governance semantic framework.
 
 Associated contract: `docs_zh/contracts/oapeflir_loop_contract.md`
 
@@ -24,7 +24,7 @@ Observe → Assess → Plan → Execute → Feedback → Learn → Improve → R
 
 Constraints:
 
-- `HarnessRuntime` is the sole execution entry.
+- `HarnessRuntime` is the sole execution entry point.
 - `OapeflirLoopService` can actively drive stage progression of Observe/Assess/Plan/Feedback/Learn/Improve/Release, and write results back to execution constraints, planning graphs, and improvement candidates.
 - OAPEFLIR only produces `oapeflir.view.*` and `oapeflir.rationale.*` projections, does not own run status, budget, lease, side effect commit, or error code namespaces.
 
@@ -72,5 +72,5 @@ Costs: Two mental models cause confusion.
 
 ## v4.3 ADR Remediation
 
-- A-1: This ADR originally wrote OAPEFLIR as an independent execution orchestrator. Root cause was that the cognitive loop model in early drafts simultaneously assumed runtime and interpretation layer responsibilities. Fix: Body now clarifies `HarnessRuntime` is the sole execution entry, OAPEFLIR retained only as cognitive/governance semantic framework.
+- A-1: This ADR originally wrote OAPEFLIR as an independent execution orchestrator. Root cause was that the cognitive loop model in early drafts simultaneously assumed runtime and interpretation layer responsibilities. Fix: Body now clarifies `HarnessRuntime` is the sole execution entry point, OAPEFLIR retained only as cognitive/governance semantic framework.
 - A-10: This ADR originally continued `Oapeflir*` style DTO naming context. Root cause was early documents directly named input/output objects by framework name. Fix: Body now converges stage objects to `PlanRationale`, `ExecutionSummaryView` and other cognitive view objects, aligned with `CognitiveFrameInput/CognitiveFrameOutput` system.
