@@ -1,21 +1,21 @@
-# 实施计划
+# Implementation Plan
 
-> 本文件record当前整改工作的阶段边界vs执lines约束。
+> This document records the current phase boundaries and execution constraints for remediation work.
 
-## 1. 当前阶段
+## 1. Current Phase
 
-- 当前以 `architecture-design-vs-implementation-review.md` 为整改真相。
-- 当前活跃执lines入口为 [current_todo_list.md](./current_todo_list.md)。
-- 当前开发顺序由 [operations-roadmap.md](./operations-roadmap.md) 补充Description。
+- The current source of truth for remediation is `architecture-design-vs-implementation-review.md`.
+- The current active execution entry point is [current_todo_list.md](./current_todo_list.md).
+- The current development sequence is supplemented by [operations-roadmap.md](./operations-roadmap.md).
 
-## 2. 执linesprinciple
+## 2. Execution Principles
 
-- 只做仓内可落地、可测试、可回写文档的事项。
-- 每iterations整改必须同时落code、测试和文档。
-- 外部基础设施class事项只保留Description，不伪造成仓内已闭环。
+- Only implement items that can be落地 (implemented), tested, and documented within the repository.
+- Each remediation iteration must simultaneously cover code, tests, and documentation.
+- External infrastructure-class items only retain descriptions; do not falsely claim they are closed within the repository.
 
-## 3. 本阶段完成判定
+## 3. Phase Completion Criteria
 
-- `review / coverage-matrix / current_todo_list` 口径一致。
-- 对应波iterations的code、测试和文档全部落地。
-- no已知定向红灯残留。
+- `review / coverage-matrix / current_todo_list` are aligned.
+- Code, tests, and documentation for the corresponding batch are all delivered.
+- No known targeted blockers remain.

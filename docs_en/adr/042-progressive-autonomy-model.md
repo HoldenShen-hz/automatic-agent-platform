@@ -1,7 +1,7 @@
 # ADR-042 Progressive Autonomy Model
 
-- Status：Accepted
-- Decision Date：2026-04-20
+- Status: Accepted
+- Decision Date: 2026-04-20
 
 ## Background
 
@@ -12,7 +12,7 @@ Agents of different maturity levels need different autonomy permissions, and new
 ### Autonomy Levels
 
 | Level | Name | Permissions |
-|------|------|------|
+|-------|------|-------------|
 | L1 | suggestion | Only generates suggestions, does not execute automatically |
 | L2 | supervised | Allows controlled execution, but requires human confirmation or strong supervision |
 | L3 | semi_auto | Allows low-risk automatic execution, high-risk still requires escalation |
@@ -31,11 +31,11 @@ Rules:
 - Based on execution success rate
 - Based on risk assessment results
 - Based on human feedback
-- Progressive promotion, avoiding leaps
+- Progressive promotion, avoid leaps
 
 ### Demotion Rules
 
-- Consecutive failures trigger demotion
+- Continuous failures trigger demotion
 - Risk events trigger demotion
 - Users can manually demote
 
@@ -53,12 +53,12 @@ Advantages:
 - Incentivizes agents to continuously improve
 - Clear permission boundaries facilitate management
 
-Costs:
+Trade-offs:
 
 - Promotion/demotion logic is complex
-- Requires comprehensive monitoring and evaluation mechanisms
+- Requires robust monitoring and evaluation mechanisms
 
-## Cross-references
+## Cross References
 
 - [ADR-041 Proactive Agent Framework](./041-proactive-agent-framework.md)
 - [ADR-083 Proactive Agent and Progressive Autonomy](./083-proactive-agent-and-progressive-autonomy.md)
@@ -69,5 +69,5 @@ Costs:
 
 ## v4.3 ADR Remediation
 
-- A-34: This ADR originally wrote level 4 `full_auto` as "complete automation", root cause: progressive autonomy ADR mistakenly wrote autonomy levels as an unlimited authorization ladder and did not bind with high-risk domain risk override rules. Fix: The body now clarifies that high-risk domains default to cannot `full_auto` unless explicit `DomainRiskSpec / DomainRiskProfile` allowance exists.
-- R3-54: This ADR previously retained both 6-level autonomy experiment naming and §42.1's 4-level external delivery model, causing conflicts between contract and product expression. Fix: The body now unifies to `suggestion / supervised / semi_auto / full_auto` four-level interaction autonomy; more granular runtime constraints continue to be carried by `RuntimeModeEnvelope`.
+- A-34: This ADR originally wrote level 4 `full_auto` as "full automation", root cause being the progressive autonomy ADR incorrectly wrote the autonomy level as an unlimited ladder, not binding to high-risk domain risk override rules. Fix: Body now explicitly states high-risk domains default cannot enter `full_auto` unless there is explicit `DomainRiskSpec / DomainRiskProfile` allowance.
+- R3-54: This ADR previously retained both 6-level autonomy experimental naming and §42.1's 4-level external delivery model, causing contract vs product expression conflict. Fix: Body now unified to `suggestion / supervised / semi_auto / full_auto` four-level interaction autonomy; finer-grained runtime limits continue to be carried by `RuntimeModeEnvelope`.

@@ -1,32 +1,32 @@
-# ADR-034 ADR 冻结Recommendation
+# ADR-034 ADR Freeze Recommendation
 
-- Status：Historical Context（ADR governance policy carried by current ADR index + docs sync guard）
-- Decision日期：2026-04-17
+- Status: Historical Context (ADR governance policy carried by current ADR index + docs sync guard)
+- Decision Date: 2026-04-17
 
 ## Background
 
-随着平台Architecture演进，ADR count持续增长。为避免 ADR 文档vs实际实现脱节，需要建立 ADR 冻结机制，确保已冻结的 ADR 不再随意变更，保障ArchitectureDecision的稳定性和可追溯性。
+As platform architecture evolves, ADR count continues to grow. To prevent ADR documentation from diverging from actual implementation, an ADR freezing mechanism needs to be established to ensure frozen ADRs are not arbitrarily changed, ensuring stability and traceability of architectural decisions.
 
 ## Decision
 
-### ADR 版本号分配策略
+### ADR Version Number Allocation Strategy
 
-ADR #按版本批iterations分配，不mandatory补齐历史间隙：
+ADR numbers are allocated by version batch, not forced to fill historical gaps:
 
-| 版本 | ADR #范围 | Description |
-|------|-------------|------|
-| v1.2 | 001-019 | 初始ArchitectureDecision |
-| v2.0 | 021-024 | 平台分层vsstorageArchitecture |
-| v2.1 | 025-033 | security、LLM、委托相关 |
-| v2.2 | 037-040 | 业务域建模 |
-| v2.3 | 041-046 | 智能交互vs组织治理 |
-| v2.4 | 047-052 | 组织治理vs规模化 |
-| v2.5 | 053-058 | 规模化生态vs集成 |
-| v2.6 | 059-069 | 运维成熟度vs自运维 |
+| Version | ADR Number Range | Description |
+|---------|-----------------|-------------|
+| v1.2 | 001-019 | Initial architectural decisions |
+| v2.0 | 021-024 | Platform layering and storage architecture |
+| v2.1 | 025-033 | Security, LLM, delegation related |
+| v2.2 | 037-040 | Business domain modeling |
+| v2.3 | 041-046 | Intelligent interaction and organizational governance |
+| v2.4 | 047-052 | Organizational governance and scaling |
+| v2.5 | 053-058 | Scaled ecosystem and integration |
+| v2.6 | 059-069 | Operations maturity and self-operations |
 
-#间隙（如 020、034、045、071、074、076-077）保留used for特殊用途或后续补充。
+Number gaps (like 020, 034, 045, 071, 074, 076-077) reserved for special purposes or subsequent supplements.
 
-### ADR Status流转
+### ADR Status Flow
 
 ```
 Proposed → Accepted → Superseded
@@ -34,70 +34,70 @@ Proposed → Accepted → Superseded
            Deprecated
 ```
 
-- **Draft**: 正在讨论中，尚未做出决定
-- **Proposed**: 已提出，等待审批
-- **Accepted**: 已accepts并实施
-- **Superseded**: 已被新的 ADR 取代
-- **Deprecated**: 已废弃
+- **Draft**: Under discussion, decision not yet made
+- **Proposed**: Proposed, waiting for approval
+- **Accepted**: Accepted and implemented
+- **Superseded**: Superseded by new ADR
+- **Deprecated**: Deprecated
 
-### ADR 冻结规则
+### ADR Freeze Rules
 
-1. **Accepted Status的 ADR 不可删除**，只能标记为 Superseded 或 Deprecated
-2. **ADR 变更必须创建新版本或新 ADR**，不允许directly修改已冻结内容
-3. **Superseded ADR 必须contains交叉references用**，指向取代它的 ADR
-4. **每个 ADR 必须contains来源章节**，关联到 platform-architecture.md 的具体节号
+1. **ADRs in Accepted status cannot be deleted**, can only be marked as Superseded or Deprecated
+2. **ADR changes must create new version or new ADR**, direct modification of frozen content not allowed
+3. **Superseded ADRs must contain cross-references** pointing to the ADR that supersedes it
+4. **Each ADR must contain source sections** linking to specific section numbers in platform-architecture.md
 
-### v4.3 Remediation 例外条款
+### v4.3 Remediation Exception Clause
 
-> 注意：v4.3 Architecture升级需要对 30+ ADR 进linesdirectly修改以保持文档vs实现synchronous。via权威决定，以下 remediation 场景享有例外许可，no需遵循"no direct modification"规则：
+> Note: v4.3 architecture upgrade requires direct modifications to 30+ ADRs to keep documentation synchronized with implementation. By authoritative decision, the following remediation scenarios are granted exception permits, not needing to follow "no direct modification" rules:
 
-**例外场景**：
-- v4.3 主Architecture版本升级时的跨 ADR synchronous修改
-- 因Five-Plane X1 Architecturereferences入导致的 ADR 术语统一修正
-- 因 HarnessRuntime 成为唯一执lines运lines时导致的路由/执lines ADR 更新
+**Exception Scenarios**:
+- Cross-ADR synchronized modifications during v4.3 main architecture version upgrades
+- ADR terminology unified corrections due to Five-Plane X1 Architecture introduction
+- Routing/execution ADR updates due to HarnessRuntime becoming the sole execution runtime
 
-**许可条件**：
-- 必须附带 `## v4.3 ADR Remediation` 章节
-- 必须recordRoot Cause（root cause）和修复Description
-- 必须明确列出所有被修改的原始 ADR 条目（如 A-18、A-21 等）
-- 同一批iterations内的多 ADR 修改可共享一个 remediation 章节
+**Permit Conditions**:
+- Must include `## v4.3 ADR Remediation` section
+- Must record root cause and fix description
+- Must explicitly list all modified original ADR entries (like A-18, A-21, etc.)
+- Multiple ADR modifications within the same batch can share one remediation section
 
-**流程要求**：
-- Remediation 修改仍需 review 但可走 fast-track approval
-- 所有 remediation 修改必须合入 main branch
-- 文档manage员每季度审计 remediation 合规性
+**Process Requirements**:
+- Remediation modifications still need review but can use fast-track approval
+- All remediation modifications must be merged into main branch
+- Documentation administrator quarterly audits remediation compliance
 
-### ADR required字段
+### ADR Required Fields
 
-每个 ADR 必须contains：
+Each ADR must contain:
 
-- 标题（Title）
-- Status（Status）
-- Decision日期（Decision Date）
-- Background（Context）
-- Decision（Decision）
-- Consequences（Consequences）
-- 交叉references用（Cross-references，optional）
-- 来源章节（Source Section，optional）
+- Title
+- Status
+- Decision Date
+- Background (Context)
+- Decision
+- Consequences
+- Cross-references (optional)
+- Source Section (optional)
 
 ## Consequences
 
-优点：
+Benefits:
 
-- ADR #有清晰的历史脉络，便于追溯ArchitectureDecision演变
-- 冻结机制防止已验证Decision被随意推翻
-- Status流转清晰，区分"正在讨论"和"已确定"
+- ADR numbers have clear historical脉络 for tracing architectural decision evolution
+- Freeze mechanism prevents validated decisions from being arbitrarily overturned
+- Status flow is clear, distinguishing "under discussion" from "decided"
 
-代价：
+Costs:
 
-- ADR #可能跳跃，不连续
-- Superseded ADR 仍需保留，增加文档维护成本
+- ADR numbers may be discontinuous
+- Superseded ADRs still need retention, increasing documentation maintenance cost
 
-## 交叉references用
+## Cross-References
 
-- [ADR-033 分阶段路线图](./033-phased-roadmap.md)
-- [ADR-035 推荐code目录结构](./035-recommended-code-directory-structure.md)
+- [ADR-033 Phased Roadmap](./033-phased-roadmap.md)
+- [ADR-035 Recommended Code Directory Structure](./035-recommended-code-directory-structure.md)
 
-## 来源章节
+## Source Sections
 
-- `§34` ADR 冻结Recommendation
+- `§34` ADR Freeze Recommendation

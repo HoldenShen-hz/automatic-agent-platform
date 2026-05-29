@@ -1,11 +1,11 @@
 # ADR-051 Tiered Governance Delegation
 
-- Status：Accepted
-- Decision Date：2026-04-20
+- Status: Accepted
+- Decision Date: 2026-04-20
 
 ## Background
 
-Platform administrators cannot manage all affairs, so governance authority needs to be delegated to subordinate organizations.
+Platform administrators cannot manage all affairs, and governance authority needs to be delegated to subordinate organizations.
 
 ## Decision
 
@@ -15,7 +15,7 @@ Platform administrators cannot manage all affairs, so governance authority needs
 interface GovernanceDelegation {
   delegation_id: string;
   delegator_id: string;       // Delegator
-  delegate_id: string;         // Delegate
+  delegate_id: string;         // Delegatee
   scope: DelegationScope;
   permissions: Permission[];
   constraints: DelegationConstraint[];
@@ -33,21 +33,21 @@ interface DelegationScope {
 
 ### Delegation Tiers
 
-| Level | Delegatable Permissions | Constraints |
-|------|-----------|------|
-| Platform level | Only permissions beyond NonOverridableInvariant | Must comply with non-overridable constraints such as security boundaries, audit requirements |
-| Business group level | Permissions within business group | Subject to upper-level delegation constraints |
-| Department level | Permissions within department | Subject to upper-level delegation constraints |
-| Team level | Limited permissions | Subject to upper-level delegation constraints |
+| Tier | Delegable Permissions | Constraints |
+|------|----------------------|-------------|
+| Platform-level | Only permissions outside NonOverridableInvariant | Must comply with non-overridable constraints such as security boundaries, audit requirements |
+| Business Group-level | Permissions within business group | Subject to upper-level delegation constraints |
+| Department-level | Permissions within department | Subject to upper-level delegation constraints |
+| Team-level | Limited permissions | Subject to upper-level delegation constraints |
 
-Note: NonOverridableInvariant is a platform-level security invariant that no delegation can override (such as security boundaries, audit requirements, etc.). Platform-level delegation is not "all permissions" but rather limited all permissions after excluding NonOverridableInvariant.
+Note: NonOverridableInvariant is a platform-level security invariant, no delegation can override this type of constraint (such as security boundaries, audit requirements, etc.). Platform-level delegation is not "all permissions", but rather restricted all permissions after excluding NonOverridableInvariant.
 
 ### Constraint Types
 
 | Constraint Type | Description |
-|----------|------|
-| budget_limit | Budget upper limit |
-| risk_threshold | Risk upper limit |
+|----------------|-------------|
+| budget_limit | Budget cap |
+| risk_threshold | Risk cap |
 | approval_required | Requires upper-level approval |
 | time_window | Valid time window |
 
@@ -55,7 +55,7 @@ Note: NonOverridableInvariant is a platform-level security invariant that no del
 
 - All delegation operations record audit logs
 - Delegation relationship changes notify both parties
-- Regular review of delegation validity
+- Periodically review delegation validity
 
 ## Consequences
 
@@ -63,17 +63,17 @@ Advantages:
 
 - Distributed governance improves efficiency
 - Constraint mechanism prevents permission abuse
-- Audit trail ensures compliance
+- Audit tracking ensures compliance
 
-Costs:
+Trade-offs:
 
 - Delegation relationships are complex
 - Permission recovery requires complete process
 
-## Cross-references
+## Cross References
 
 - [ADR-046 Organization Hierarchy Model](./046-organization-hierarchy-model.md)
-- [ADR-027 Security and Reliability Architecture](./027-security-architecture.md)
+- [ADR-027 Security Architecture](./027-security-architecture.md)
 
 ## Source Section
 

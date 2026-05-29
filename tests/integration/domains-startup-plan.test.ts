@@ -38,22 +38,22 @@ test("ring1 has no dependencies", () => {
   assert.deepEqual(ring1.dependsOnStepIds, []);
 });
 
-test("ring2 depends on ring1", () => {
+test("ring2 is independently startable", () => {
   const plan = buildDomainsStartupPlan();
   const ring2 = plan.steps[1];
   if (!ring2) return;
 
   assert.equal(ring2.stepId, "ring2");
-  assert.deepEqual(ring2.dependsOnStepIds, ["ring1"]);
+  assert.deepEqual(ring2.dependsOnStepIds, []);
 });
 
-test("ring3 depends on ring2", () => {
+test("ring3 is independently startable", () => {
   const plan = buildDomainsStartupPlan();
   const ring3 = plan.steps[2];
   if (!ring3) return;
 
   assert.equal(ring3.stepId, "ring3");
-  assert.deepEqual(ring3.dependsOnStepIds, ["ring2"]);
+  assert.deepEqual(ring3.dependsOnStepIds, []);
 });
 
 test("totalCapabilityCount equals sum of step capabilityCounts", () => {

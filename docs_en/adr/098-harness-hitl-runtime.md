@@ -2,36 +2,36 @@
 
 ---
 
-## OAPEFLIR 关联
+## OAPEFLIR Association
 
-- **Observe**: 识别人工介入触发条件vs证据
-- **Assess**: 选择 approve / reject / continue / abort
-- **Plan**: 形成 HITL request vs resume boundary
-- **Execute**: 暂停 run 并等待人工输入
-- **Feedback**: record人工Decision和责任链
-- **Learn**: 汇总高频 HITL 触发原因
-- **Improve**: 优化自动化边界
-- **Release**: HITL is runtime primitive，不is旁路机制
+- **Observe**: Identify human intervention trigger conditions and evidence
+- **Assess**: Choose approve / reject / continue / abort
+- **Plan**: Form HITL request and resume boundary
+- **Execute**: Pause run and wait for human input
+- **Feedback**: Record human decision and responsibility chain
+- **Learn**: Summarize high-frequency HITL trigger reasons
+- **Improve**: Optimize automation boundary
+- **Release**: HITL is runtime primitive, not a bypass mechanism
 
 ---
 
-- Status：Accepted
-- Decision日期：2026-04-23
+- Status: Accepted
+- Decision Date: 2026-04-23
 
 ## Background
 
-Architecture文档要求 HITL 成为 Harness 原生步骤class型，而不is只在异常场景里临时升级。
+Architecture documents require HITL to become a Harness native step type, not just temporarily upgraded in exception scenarios.
 
 ## Decision
 
-- HITL 作为 Harness 原生 runtime step
-- `NodeRun` 进入 `awaiting_hitl` 时必须有正式 request vs evidence refs
-- 任何人工 resolution 都必须写审计和 timeline
+- HITL serves as Harness native runtime step
+- When `NodeRun` enters `awaiting_hitl`, must have formal request and evidence refs
+- Any human resolution must write audit and timeline
 
 ## Consequences
 
-- 人工协作从外围审批升级为主链能力
+- Human collaboration upgraded from peripheral approval to main chain capability
 
 ## v4.3 ADR Remediation
 
-- A-26: 本 ADR 原先uses `waiting_hitl`，Root cause: 早期命名accesses along用了旧 harness 草案，没有随着 canonical `NodeRun.status` 枚举统一到 `awaiting_hitl`。修复：正文现改为 `NodeRun -> awaiting_hitl`。
+- A-26: This ADR originally used `waiting_hitl`. Root cause: Early naming沿用旧 harness draft, did not unify to canonical `NodeRun.status` enumeration `awaiting_hitl`. Fix: Body now changed to `NodeRun -> awaiting_hitl`.

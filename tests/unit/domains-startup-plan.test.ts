@@ -22,7 +22,7 @@ test("domains startup plan registers after W5 bootstraps are available", async (
     registerDomainsBootstrap(registry);
     const plan = registerDomainsStartupPlan(registry);
     assert.equal(plan.steps[0]?.entryModule, "src/domains/index.ts");
-    assert.equal(plan.steps[1]?.dependsOnStepIds.includes("ring1"), true);
+    assert.deepEqual(plan.steps[1]?.dependsOnStepIds, []);
     assert.equal(registry.isInitialized(DOMAINS_STARTUP_PLAN_SERVICE_ID), true);
   } finally {
     await registry.reset();

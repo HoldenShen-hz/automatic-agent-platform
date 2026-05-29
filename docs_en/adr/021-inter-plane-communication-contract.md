@@ -1,32 +1,32 @@
-# ADR-021 平面间communication契约
+# ADR-021 Inter-Plane Communication Contract
 
-- Status：Accepted
-- Decision日期：2026-04-03
+- Status: Accepted
+- Decision Date: 2026-04-03
 
 ## Background
 
-平台Five-Plane（P1 Interface Plane、P2 Control Plane、P3 Orchestration Plane、P4 Execution Plane、P5 StatusvsEvidence Plane）之间需要标准化communication协议。若各平面自linesdefines契约，会导致集成脆弱、边界模糊、审计困难。
+The platform's five planes (P1 Interface Plane, P2 Control Plane, P3 Orchestration Plane, P4 Execution Plane, P5 State and Evidence Plane) need a standardized communication protocol. If each plane independently defines contracts, it will lead to fragile integration, blurred boundaries, and auditing difficulties.
 
 ## Decision
 
-### RequestEnvelope 契约（8 字段）
+### RequestEnvelope Contract (8 Fields)
 
-所有跨平面call必须包装在 RequestEnvelope 中：
+All cross-plane calls must be wrapped in RequestEnvelope:
 
 ```typescript
 interface RequestEnvelope {
-  trace_id: string;           // 全链路追踪 ID
-  idempotency_key?: string;    // 幂等键，防止repeatscall
-  principal: Principal;        // call方身份
-  source_plane: PlaneId;       // 来源平面
-  target_plane: PlaneId;       // 目标平面
+  trace_id: string;           // Full-chain trace ID
+  idempotency_key?: string;    // Idempotency key to prevent duplicate calls
+  principal: Principal;        // Caller identity
+  source_plane: PlaneId;       // Source plane
+  target_plane: PlaneId;       // Target plane
   directives: Array<OperationalDirective | DecisionDirective>;
-  payload: unknown;            // 业务负载
+  payload: unknown;            // Business payload
   metadata?: Record<string, unknown>;
 }
 ```
 
-### `OperationalDirective` / `DecisionDirective` 契约
+### `OperationalDirective` / `DecisionDirective` Contract
 
 ```typescript
 type OperationalDirective =
@@ -43,7 +43,7 @@ type DecisionDirective =
   | { type: 'request_manual_takeover'; harnessRunId: string; nodeRunId?: string };
 ```
 
-### `PlanGraphBundle` vs `NodeAttemptReceipt`
+### `PlanGraphBundle` and `NodeAttemptReceipt`
 
 ```typescript
 interface PlanGraphBundle {
@@ -71,37 +71,37 @@ interface NodeAttemptReceipt {
 }
 ```
 
-### 平面隔离规则
+### Plane Isolation Rules
 
-- P1 不得bypassing P2 直调 P4：所有 P1 request必须via PolicyCenterService.evaluate() 审批
-- P5 不得向 P4 发出指令：state-evidence 层为只读，不对 execution/ writes
-- 全部契约对象含 principal + trace_id：via factory functionmandatory
-- `ControlDirective`、`ExecutionPlan`、`ExecutionReceipt` 只允许作为 legacy 名词出现在迁移或历史兼容层，不再作为 canonical P2→P3/P4 契约。
+- P1 must not bypass P2 to directly call P4: All P1 requests must go through PolicyCenterService.evaluate() for approval
+- P5 must not issue directives to P4: State-evidence layer is read-only, does not write to execution/
+- All contract objects contain principal + trace_id: Enforced via factory functions
+- `ControlDirective`, `ExecutionPlan`, `ExecutionReceipt` are only allowed as legacy names appearing in migration or historical compatibility layers, no longer as canonical P2→P3/P4 contracts.
 
 ## Consequences
 
-优点：
+Benefits:
 
-- 统一契约使跨平面call可追踪、可审计
-- trace_id 使全链路排查成为可能
-- 平面隔离规则防止越权call
+- Unified contracts make cross-plane calls traceable and auditable
+- trace_id enables full-chain troubleshooting
+- Plane isolation rules prevent unauthorized calls
 
-代价：
+Costs:
 
-- 所有跨平面call增加 envelope 包装开销
-- contract 变更需要协调所有平面
+- All cross-plane calls add envelope wrapping overhead
+- Contract changes need coordination across all planes
 
-## 交叉references用
+## Cross-References
 
-- [ADR-001 三层分权Architecture](./001-three-layer-architecture.md)
-- [ADR-004 工作流vs路由](./004-workflow-routing.md)
+- [ADR-001 Three-Layer Separation Architecture](./001-three-layer-architecture.md)
+- [ADR-004 Workflow and Routing](./004-workflow-routing.md)
 
-## 来源章节
+## Source Sections
 
-- `§5` 平面间communication契约
+- `§5` Inter-Plane Communication Contract
 
 ## v4.3 ADR Remediation
 
-- A-13: 本 ADR 原先把 P2→P3 控制对象收敛成单一 `ControlDirective`，Root cause: 早期设计把“操作性控制”和“审批/Decision结果”混成一种跨平面消息。修复：正文现拆分为 `OperationalDirective` vs `DecisionDirective`。
-- A-14: 本 ADR 原先把 P3→P4 handoff 写成线性 `ExecutionPlan.steps[]`，Root cause:  ADR 形成时执lines模型仍停留在线性 workflow 语义，没有随 v4.3 graph handoff 升级。修复：正文现改为 `PlanGraphBundle`。
-- A-15: 本 ADR 原先把 P4→P3 结果写成聚合 `ExecutionReceipt`，Root cause: 当时尚未把 node attempt 和回执 append-only 模型提炼为独立真相对象。修复：正文现改为 `NodeAttemptReceipt`，并带 `nodeAttemptId + nodeRunId`。
+- A-13: This ADR originally converged P2→P3 control objects into single `ControlDirective`. Root cause was early design mixed "operational control" and "approval/decision results" into one cross-plane message type. Fix: Body now splits into `OperationalDirective` and `DecisionDirective`.
+- A-14: This ADR originally wrote P3→P4 handoff as linear `ExecutionPlan.steps[]`. Root cause was execution model still停留在 linear workflow semantics when ADR formed, not upgraded with v4.3 graph handoff. Fix: Body now changed to `PlanGraphBundle`.
+- A-15: This ADR originally wrote P4→P3 results as aggregated `ExecutionReceipt`. Root cause was node attempt and receipt append-only model had not yet been refined as independent truth objects. Fix: Body now changed to `NodeAttemptReceipt`, with `nodeAttemptId + nodeRunId`.

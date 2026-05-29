@@ -188,7 +188,12 @@ export interface ModelIntentParserPort {
   parseWithLlm(input: {
     readonly message: string;
     readonly locale: string;
+    readonly priorConversationContext?: unknown;
   }): Promise<ParsedIntentToken | readonly ParsedIntentToken[] | null>;
+}
+
+function emitIntentParserWarning(code: string, message: string): void {
+  process.emitWarning(message, { code });
 }
 
 export async function parseIntentTokensWithModel(
@@ -224,7 +229,11 @@ export async function parseIntentTokensWithModel(
     if (primary.confidence >= Math.max(minimumConfidence, heuristic[0]?.confidence ?? 0)) {
       return normalized;
     }
-  } catch {
+  } catch (error) {
+    emitIntentParserWarning(
+      "interaction.intent_parser.model_fallback",
+      `Intent parser model fallback activated: ${error instanceof Error ? error.message : String(error)}`,
+    );
     return heuristic;
   }
 
@@ -311,19 +320,15 @@ export class LlmIntentParser {
         `Input envelope: ${JSON.stringify({ locale: localeLabel, message })}`,
       ].join("\n");
       const response = await this.modelGateway.complete(prompt);
-      try {
-        const parsed = JSON.parse(response) as Partial<LlmIntentParseResult>;
-        if (isIntentType(parsed.intentType) && typeof parsed.confidence === "number") {
-          return {
-            intentType: parsed.intentType,
-            confidence: clampConfidence(parsed.confidence),
-            reasoning: normalizeOptionalText(parsed.reasoning, MAX_LLM_REASONING_CODE_POINTS)
-              ?? truncateCodePoints(response, MAX_LLM_REASONING_CODE_POINTS),
-            language: normalizeOptionalText(parsed.language, MAX_LLM_LANGUAGE_CODE_POINTS) ?? resolvedLocale,
-          };
-        }
-      } catch {
-        // Fall through to keyword extraction from the model response body.
+      const parsed = safeParseLlmIntentResponse(response);
+      if (parsed != null) {
+        return {
+          intentType: parsed.intentType,
+          confidence: clampConfidence(parsed.confidence),
+          reasoning: normalizeOptionalText(parsed.reasoning, MAX_LLM_REASONING_CODE_POINTS)
+            ?? truncateCodePoints(response, MAX_LLM_REASONING_CODE_POINTS),
+          language: normalizeOptionalText(parsed.language, MAX_LLM_LANGUAGE_CODE_POINTS) ?? resolvedLocale,
+        };
       }
 
       return {
@@ -332,7 +337,11 @@ export class LlmIntentParser {
         reasoning: truncateCodePoints(response, MAX_LLM_REASONING_CODE_POINTS),
         language: resolvedLocale,
       };
-    } catch {
+    } catch (error) {
+      emitIntentParserWarning(
+        "interaction.intent_parser.gateway_fallback",
+        `Intent parser gateway fallback activated: ${error instanceof Error ? error.message : String(error)}`,
+      );
       if (this.fallbackToRegex) {
         const fallback = parseIntentTokens(message)[0] ?? {
           intentType: "task_query" as const,
@@ -353,5 +362,28 @@ export class LlmIntentParser {
         language: resolvedLocale,
       };
     }
+  }
+}
+
+function safeParseLlmIntentResponse(
+  response: string,
+): { readonly intentType: IntentType; readonly confidence: number; readonly reasoning?: string; readonly language?: string } | null {
+  try {
+    const parsed = JSON.parse(response) as Partial<LlmIntentParseResult>;
+    if (!isIntentType(parsed.intentType) || typeof parsed.confidence !== "number") {
+      return null;
+    }
+    return {
+      intentType: parsed.intentType,
+      confidence: parsed.confidence,
+      ...(typeof parsed.reasoning === "string" ? { reasoning: parsed.reasoning } : {}),
+      ...(typeof parsed.language === "string" ? { language: parsed.language } : {}),
+    };
+  } catch (error) {
+    emitIntentParserWarning(
+      "interaction.intent_parser.invalid_model_json",
+      `Intent parser model returned invalid JSON: ${error instanceof Error ? error.message : String(error)}`,
+    );
+    return null;
   }
 }

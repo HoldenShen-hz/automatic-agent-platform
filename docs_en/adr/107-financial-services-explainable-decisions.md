@@ -2,31 +2,31 @@
 
 ---
 
-## OAPEFLIR 关联
+## OAPEFLIR Association
 
-- **Observe**: 收集客户、规则、特征vs证据
-- **Assess**: 形成金融Decisionvs拒绝原因
-- **Plan**: 生成 explanation payload
-- **Execute**: 输出可解释结果
-- **Feedback**: 接收公平性vs合规反馈
-- **Learn**: 识别不良Decision模式
-- **Improve**: 调整评分和 explanation 模板
-- **Release**: 金融域解释义务纳入验收门
+- **Observe**: Collect customer, rules, features, and evidence
+- **Assess**: Form financial decision and rejection reasons
+- **Plan**: Generate explanation payload
+- **Execute**: Output explainable results
+- **Feedback**: Receive fairness and compliance feedback
+- **Learn**: Identify bad decision patterns
+- **Improve**: Adjust scoring and explanation templates
+- **Release**: Financial domain explainability obligations included in acceptance gate
 
 ---
 
-- Status：Accepted
-- Decision日期：2026-04-23
+- Status: Accepted
+- Decision Date: 2026-04-23
 
 ## Background
 
-金融服务域的自动化Decision必须满足可解释和公平借贷要求。
+Automated decisions in financial services domain must satisfy explainability and fair lending requirements.
 
 ## Decision
 
-- 不利Decision必须附带结构化 explanation
-- explanation 必须可追溯到 evidence 和规则
+- Adverse decisions must be accompanied by structured explanation
+- Explanation must be traceable to evidence and rules
 
 ## Consequences
 
-- `financial-services` 域的输出不再只is结果，还必须携带理由
+- `financial-services` domain output is no longer just results, but must also carry reasoning

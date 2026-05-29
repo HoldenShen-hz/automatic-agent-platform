@@ -1,36 +1,37 @@
-# ADR-078 Knowledge Plane Architecturevs信任模型
+# ADR-078 Knowledge Plane Architecture and Trust Model
 
-- Status：Partially Superseded by current knowledge-plane contract baseline
-- Decision日期：2026-04-17
-- 相关：ADR-016 OAPEFLIR 八阶段认知循环模型，ADR-017 Knowledge Architecture重构
+- Status: Partially Superseded by current knowledge-plane contract baseline
+- Decision Date: 2026-04-17
+- Related: ADR-016 OAPEFLIR Eight-Stage Cognitive Loop Model, ADR-017 Knowledge Architecture Refactor
 
 ## Background
 
-OAPEFLIR Learn Hub 产出的学习结果需要持久化storage并供后续任务检索。Knowledge Plane（知识平面）is P5 State&Evidence 平面内的子域，提供统一的知识摄取、索references、检索和治理能力，supported BM25 关键词索references、语义向量索references和 AST 结构索references三种检索方式。
+OAPEFLIR Learn Hub learning results need persistent storage and retrieval for subsequent tasks. Knowledge Plane is a sub-domain within P5 State&Evidence plane, providing unified knowledge ingestion, indexing, retrieval and governance capabilities, supporting BM25 keyword indexing, semantic vector indexing, and AST structure indexing three retrieval methods.
 
-> 注意：Knowledge Plane is P5 State&Evidence 的子域，不is独立Architecture平面。所有 Knowledge 操作最终回链到 P5 的 truth/events 体系。
+> Note: Knowledge Plane is a sub-domain of P5 State&Evidence, not an independent architectural plane. All Knowledge operations ultimately chain back to P5's truth/events system.
 
-现有 `knowledge/` 模块（23 文件）已实现完整管线，本 ADR 正式确立 Knowledge Plane 的治理Architecture和信任模型。
+The existing `knowledge/` module (23 files) has already implemented a complete pipeline. This ADR formally establishes the Knowledge Plane governance architecture and trust model.
 
 ## Decision
 
-### 1. KIP 5 阶段管线
+### 1. KIP 5-Stage Pipeline
 
 ```
 Intake → Extraction → Archive → Index → Query
    ↓         ↓           ↓         ↓       ↓
- 原始文档  语义抽取   冷storage    三种索references  三级查询
+ Raw doc  Semantic    Cold      Three    Three
+        extraction  storage    indexes  query levels
 ```
 
-| 阶段 | 组件 | 职责 |
-|------|------|------|
-| Intake | `KnowledgeIngestionPipeline` | 接收原始文档，格式校验 |
-| Extraction | `KnowledgeExtractor` | 语义抽取、分块、摘要 |
-| Archive | `KnowledgeArchive` | 冷data持久化（SQLite） |
-| Index | `KeywordIndexer` / `SemanticVectorStore` / `ASTIndexer` | 三种索references维护 |
-| Query | `KnowledgeQueryService` | Quick/Standard/Deep 三级查询 |
+| Stage | Component | Responsibility |
+|-------|------------|----------------|
+| Intake | `KnowledgeIngestionPipeline` | Receive raw documents, format validation |
+| Extraction | `KnowledgeExtractor` | Semantic extraction, chunking, summarization |
+| Archive | `KnowledgeArchive` | Cold data persistence (SQLite) |
+| Index | `KeywordIndexer` / `SemanticVectorStore` / `ASTIndexer` | Three index types maintenance |
+| Query | `KnowledgeQueryService` | Quick/Standard/Deep three-level query |
 
-### 2. 核心接口
+### 2. Core Interfaces
 
 ```typescript
 interface KnowledgeSource {
@@ -56,7 +57,7 @@ interface KnowledgeDocument {
 interface KnowledgeChunk {
   chunkId: string;
   content: string;
-  embedding?: number[];      // 向量table示
+  embedding?: number[];      // Vector representation
   metadata: Record<string, unknown>;
 }
 
@@ -70,32 +71,32 @@ interface RetrievalHit {
 }
 ```
 
-### 3. 3 种索references策略
+### 3. 3 Index Strategies
 
-| 索references | 适用场景 | 实现 |
-|------|---------|------|
-| `KeywordIndexer` (BM25) | 精确关键词匹配 | `keyword-index.ts` |
-| `SemanticVectorStore` | 语义相似性检索 | `semantic-vector-store.ts` |
-| `ASTIndexer` | code结构检索 | `ast-index.ts` |
+| Index | Applicable Scenario | Implementation |
+|-------|---------------------|----------------|
+| `KeywordIndexer` (BM25) | Precise keyword matching | `keyword-index.ts` |
+| `SemanticVectorStore` | Semantic similarity retrieval | `semantic-vector-store.ts` |
+| `ASTIndexer` | Code structure retrieval | `ast-index.ts` |
 
-### 4. 3 级查询
+### 4. 3 Query Levels
 
-| 级别 | responsetime目标 | 检索范围 |
-|------|------------|---------|
-| `quick` | <100ms P99 | only关键词索references |
-| `standard` | <500ms P99 | 关键词 + 语义向量混合 |
-| `deep` | <2000ms | 全部索references + 跨 namespace |
+| Level | Response Time Target | Retrieval Scope |
+|-------|---------------------|-----------------|
+| `quick` | <100ms P99 | Keyword index only |
+| `standard` | <500ms P99 | Keyword + semantic vector mixed |
+| `deep` | <2000ms | All indexes + cross namespace |
 
-### 5. 4 级信任模型
+### 5. 4-Level Trust Model
 
-| 信任级别 | 来源 | 用途 |
-|---------|------|------|
-| `verified` | 人工审核过的内容 | 生产Decision |
-| `reviewed` | LearningObjectValidator 验证 | 改进候选 |
-| `inferred` | 系统推断 | Recommendation/参考 |
-| `untrusted` | 未验证来源 | only展示 |
+| Trust Level | Source | Purpose |
+|-------------|--------|---------|
+| `verified` | Manually reviewed content | Production decisions |
+| `reviewed` | Validated by LearningObjectValidator | Improvement candidates |
+| `inferred` | System inferred | Suggestions/references |
+| `untrusted` | Unverified sources | Display only |
 
-### 6. KnowledgeNamespace 治理
+### 6. KnowledgeNamespace Governance
 
 ```typescript
 interface KnowledgeNamespace {
@@ -107,15 +108,15 @@ interface KnowledgeNamespace {
 }
 
 interface RetentionPolicy {
-  maxAgeDays: number;           // 0 = 永久
+  maxAgeDays: number;           // 0 = permanent
   maxSizeMB: number;
   archiveAfterDays: number;
 }
 ```
 
-### 7. Learn→Knowledge 集成
+### 7. Learn→Knowledge Integration
 
-LearningObject via `KnowledgePromotionService` 注入知识平面：
+LearningObject injects into knowledge plane through `KnowledgePromotionService`:
 
 ```
 FailurePatternMiner.mine()
@@ -128,7 +129,7 @@ FailurePatternMiner.mine()
             namespace: "system/learned-patterns",
             trustLevel: "reviewed"
           })
-    → 后续 Observe 阶段可检索到已学习的模式
+    → Subsequent Observe stage can retrieve learned patterns
 ```
 
 ### 8. Citation Builder
@@ -143,39 +144,39 @@ interface Citation {
 }
 ```
 
-## 备选方案
+## Alternative Solutions
 
-### 方案 A：外部向量data库（Pinecone/Milvus）
+### Option A: External Vector Database (Pinecone/Milvus)
 
-优点：向量检索性能最优。
-代价：增加外部relies on，不符合 §L R1-NO-EXTERNAL-RUNTIME。
+Advantages: Best vector retrieval performance.
+Trade-offs: Adds external dependency, does not comply with §L R1-NO-EXTERNAL-RUNTIME.
 
-### 方案 B：本地 SQLite + 向量扩展（已选）
+### Option B: Local SQLite + Vector Extension (selected)
 
-优点：no外部relies on，符合 SQLite-first principle。
-代价：向量检索性能低于专用向量data库。
+Advantages: No external dependencies, complies with SQLite-first principle.
+Trade-offs: Vector retrieval performance lower than dedicated vector databases.
 
 ## Consequences
 
-- `knowledge-plane-service.ts` 作为 Knowledge Plane 入口。
-- `knowledge-ingestion-pipeline.ts` handle文档摄取。
-- `knowledge-query-service.ts`（374 lines）提供三级查询。
-- `knowledge-promotion-service.ts` 实现 Learn→Knowledge 集成。
-- `governance/namespace-policy.ts` manage namespace 治理。
-- `governance/source-trust-policy.ts` 实现 4 级信任模型。
-- 新事件：`learning:knowledge_promoted`（Tier 2）
+- `knowledge-plane-service.ts` as Knowledge Plane entry point.
+- `knowledge-ingestion-pipeline.ts` handles document ingestion.
+- `knowledge-query-service.ts` (374 lines) provides three-level query.
+- `knowledge-promotion-service.ts` implements Learn→Knowledge integration.
+- `governance/namespace-policy.ts` manages namespace governance.
+- `governance/source-trust-policy.ts` implements 4-level trust model.
+- New event: `learning:knowledge_promoted` (Tier 2)
 
-## 交叉references用
+## Cross References
 
-- [ADR-016 OAPEFLIR 八阶段认知循环模型](./016-oapeflir-loop-model.md)
-- [ADR-017 Knowledge Architecture重构](./017-knowledge-architecture-refactor.md)
+- [ADR-016 OAPEFLIR Eight-Stage Cognitive Loop Model](./016-oapeflir-loop-model.md)
+- [ADR-017 Knowledge Architecture Refactor](./017-knowledge-architecture-refactor.md)
 - [ADR-080 Learn Hub](./080-learn-hub-pattern-detection.md)
-- `src/platform/five-plane-state-evidence/knowledge/` 模块
+- `src/platform/five-plane-state-evidence/knowledge/` module
 
-## 来源章节
+## Source Section
 
-- `§10` Knowledge Plane 设计
-- `§10.2` KIP 5 阶段管线
-- `§C.1-C.7` 治理层设计
-- `§8.7` Learn→Knowledge 集成
-- `§L.9` R4-EVIDENCE 约束
+- `§10` Knowledge Plane Design
+- `§10.2` KIP 5-stage pipeline
+- `§C.1-C.7` Governance layer design
+- `§8.7` Learn→Knowledge integration
+- `§L.9` R4-EVIDENCE constraint

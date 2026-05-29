@@ -1,35 +1,35 @@
 # Review Closure Board
 
-## Statusdefines
+## Status Definitions
 
-| Status | 含义 |
+| Status | Meaning |
 | --- | --- |
-| `已解决（本轮落地）` | 已有code或权威文档修复，并附定向验证 |
-| `已复核关闭` | via过复核后确认belongs to边界澄清、风险accepts或历史兼容，不宣称code已改 |
-| `治理项` | 需要后续拆分的大型治理，不在当前补丁中伪装关闭 |
+| `已解决（本轮落地）` | Has code or authoritative documentation fix, with targeted verification |
+| `已复核关闭` | Confirmed after review to be boundary clarification, risk acceptance, or historical compatibility; does not claim code was changed |
+| `治理项` | Large governance requiring subsequent拆分; not falsely closed in current patch |
 
-## 当前看板入口
+## Current Board Entry Points
 
-| 文档 | 用途 |
+| Document | Purpose |
 | --- | --- |
-| `docs_zh/reviews/platforme-full-review-b.md` | 当前持续收口的大tablevsIssueStatus入口 |
-| `docs_zh/operations/review-prevention-plan.md` | review 高频Issue的预防方案vs门禁落地顺序 |
-| `docs_zh/reviews/platforme-full-review-a.md` | 当前批iterationsIssue总table |
-| `docs_zh/reviews/platforme-full-review.md` | 历史大table，现已补充“已复核关闭”Status轴 |
-| `docs_zh/operations/operations-tracker.md` | 运维/交付入口索references |
+| `docs_zh/reviews/platforme-full-review-b.md` | Current continuous closure big table and issue status entry |
+| `docs_zh/operations/review-prevention-plan.md` | Review high-frequency issue prevention plan and gate implementation order |
+| `docs_zh/reviews/platforme-full-review-a.md` | Current batch issue total table |
+| `docs_zh/reviews/platforme-full-review.md` | Historical big table, now supplemented with "已复核关闭" status axis |
+| `docs_zh/operations/operations-tracker.md` | Operations/delivery entry index |
 
-## 已门禁化
+## Gated Items
 
-| class别 | Status | Description |
-|---|-------|--------|
-| class型压制回升 | `已解决（本轮落地）` | `audit-type-suppressions.mjs` 已接入 `audit:repo-hygiene`，按基线阻止回升 |
-| 裸 URL 回升 | `已解决（本轮落地）` | `audit-outbound-urls.mjs` 已接入 `audit:repo-hygiene`，新例外必须显式 allowlist |
-| 公共入口 deep import 漂移 | `已解决（本轮落地）` | `audit-public-entrypoints.mjs` 已接入 `audit:repo-hygiene`，`src/index.ts` 已回收至公开 barrel |
-| repeats测试标题回升 | `已解决（本轮落地）` | `audit-duplicate-test-titles.mjs` 已接入 `audit:repo-hygiene`，按存量基线阻止继续恶化 |
+| Category | Status | Description |
+| --- | --- | --- |
+| Type suppression regression | `已解决（本轮落地）` | `audit-type-suppressions.mjs` integrated into `audit:repo-hygiene`, prevents regression based on baseline |
+| Bare URL regression | `已解决（本轮落地）` | `audit-outbound-urls.mjs` integrated into `audit:repo-hygiene`, new exceptions must be explicitly allowlisted |
+| Public entry deep import drift | `已解决（本轮落地）` | `audit-public-entrypoints.mjs` integrated into `audit:repo-hygiene`, `src/index.ts` recovered to public barrel |
+| Duplicate test title regression | `已解决（本轮落地）` | `audit-duplicate-test-titles.mjs` integrated into `audit:repo-hygiene`, prevents further deterioration based on existing baseline |
 
-## 维护规则
+## Maintenance Rules
 
-- 不能再把“复核收口”“设计取舍”“未来演进”写成 `已解决`。
-- 每个 review 关闭动作都要给出Root Cause和验证/复核依据。
-- review 文件vs operations 索references必须互相references用，避免孤岛式Conclusion。
-- 每关闭一class高频Issue，都应回写 `review-prevention-plan.md`，明确isno已via门禁化。
+- Can no longer write "复核收口", "设计取舍", "未来演进" as `已解决`.
+- Each review closure action must provide root cause and verification/review basis.
+- Review files and operations indexes must cross-reference each other, avoiding silo conclusions.
+- Each time a high-frequency issue category is closed, should write back to `review-prevention-plan.md`, clarifying whether it has been gated.

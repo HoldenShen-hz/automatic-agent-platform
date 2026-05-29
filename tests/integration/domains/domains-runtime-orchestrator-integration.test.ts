@@ -116,10 +116,10 @@ test("integration: DomainsRuntimeOrchestrator startup steps reflect correct depe
   assert.deepEqual(ring1.initializedDependencyServiceIds, [], "ring1 should have no dependencies");
 
   const ring2 = result.steps.find((s) => s.stepId === "ring2")!;
-  assert.deepEqual(ring2.initializedDependencyServiceIds, ["w5.domains.ring.ring1.bootstrap"]);
+  assert.deepEqual(ring2.initializedDependencyServiceIds, []);
 
   const ring3 = result.steps.find((s) => s.stepId === "ring3")!;
-  assert.deepEqual(ring3.initializedDependencyServiceIds, ["w5.domains.ring.ring2.bootstrap"]);
+  assert.deepEqual(ring3.initializedDependencyServiceIds, []);
 });
 
 test("integration: DomainsRuntimeOrchestrator snapshotReadiness captures all rings", async () => {

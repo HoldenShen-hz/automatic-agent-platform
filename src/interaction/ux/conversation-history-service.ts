@@ -65,6 +65,10 @@ export interface ConversationHistoryOptions {
   readonly isRestricted?: boolean;
 }
 
+function emitConversationHistoryWarning(code: string, message: string): void {
+  process.emitWarning(message, { code });
+}
+
 function isConversationTurnRecord(value: unknown): value is ConversationTurnRecord {
   if (typeof value !== "object" || value == null) {
     return false;
@@ -320,7 +324,11 @@ export class ConversationHistoryService {
         return typeof sessionId === "string" ? sessionId : null;
       }
       return null;
-    } catch {
+    } catch (error) {
+      emitConversationHistoryWarning(
+        "interaction.conversation_history.invalid_session_id_payload",
+        `Failed to extract conversation session id: ${error instanceof Error ? error.message : String(error)}`,
+      );
       return null;
     }
   }
@@ -355,7 +363,11 @@ export class ConversationHistoryService {
   private tryDeserializeSession(content: unknown): ConversationSessionRecord | null {
     try {
       return this.deserializeSession(content);
-    } catch {
+    } catch (error) {
+      emitConversationHistoryWarning(
+        "interaction.conversation_history.invalid_session_payload",
+        `Failed to deserialize conversation session: ${error instanceof Error ? error.message : String(error)}`,
+      );
       return null;
     }
   }

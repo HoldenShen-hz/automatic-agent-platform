@@ -1,97 +1,97 @@
 # Naming And Directory Conventions
 
-## 1. 目标
+##1. Objective
 
-统一平台术语、目录命名和文件命名，避免在文档、configure和code之间出现多套叫法。
+Unify platform terminology, directory naming, and file naming, avoiding multiple sets of terminology across documents, configurations, and code.
 
-## 2. 核心术语
+##2. Core Terminology
 
-统一uses以下术语：
+Use the following terms uniformly:
 
-- `HQ`: 总部层能力
-- `division`: 事业部
-- `role`: 事业部内角色
-- `task`: 任务
-- `workflow`: 工作流
-- `artifact`: 产出物references用
-- `approval`: 审批
-- `gateway`: 渠道接入层
-- `provider`: 模型供应层
+- `HQ`: Headquarters layer capability
+- `division`: Business division
+- `role`: Role within division
+- `task`: Task
+- `workflow`: Workflow
+- `artifact`: Artifact reference
+- `approval`: Approval
+- `gateway`: Channel access layer
+- `provider`: Model provider layer
 
-### 2.2 OAPEFLIR 八阶段术语（2026-04-17 新增）
+###2.2 OAPEFLIR Eight-Stage Terminology (Added2026-04-17)
 
-统一uses以下 OAPEFLIR 术语：
+Use the following OAPEFLIR terms uniformly:
 
-| 阶段 | 术语 | Description |
+| Stage | Term | Description |
 |------|------|------|
-| O | Observe / Observe Hub | 收集任务/上下文/系统Status |
-| A | Assess / Assess Hub | 预执lines风险/复杂度/资源评估 |
-| P | Plan / Plan Hub | based on评估生成执lines计划 |
-| E | Execute / Execute Hub | call runtime 执lines计划 |
-| F | Feedback / Feedback Hub | 收集执lines结果反馈信号 |
-| L | Learn / Learn Hub | 从信号中提取模式/知识 |
-| I | Improve / Improve Hub | 评估改进候选 + guardrail |
-| R | Rollout / Rollout | 受控发布改进到生产 |
+| O | Observe / Observe Hub | Collect task/context/system state |
+| A | Assess / Assess Hub | Pre-execution risk/complexity/resource evaluation |
+| P | Plan / Plan Hub | Generate execution plan based on evaluation |
+| E | Execute / Execute Hub | Call runtime to execute plan |
+| F | Feedback / Feedback Hub | Collect execution result feedback signals |
+| L | Learn / Learn Hub | Extract patterns/knowledge from signals |
+| I | Improve / Improve Hub | Evaluate improvement candidates + guardrail |
+| R | Rollout / Rollout | Controlled release of improvements to production |
 
-双链拓扑术语：
-- `主链`：O→A→P→E→F（实时执lines链路）
-- `副链`：F→L→I→R（异步改进链路）
+Dual-chain topology terms:
+- `Main chain`: O→A→P→E→F (real-time execution chain)
+- `Sub chain`: F→L→I→R (asynchronous improvement chain)
 
-避免混用：
+Avoid mixing:
 
-- 不把 `division` 写成 `department` 或 `business-unit`。
-- 不把 `role`、`agent`、`worker` 在同一语义层混用。
-- 不把 `session` vs `task` 当作同义词。
-- 不把 `tenant`、`workspace`、`organization` 当作同义词。
+- Do not write `division` as `department` or `business-unit`.
+- Do not mix `role`, `agent`, `worker` at the same semantic layer.
+- Do not use `session` and `task` as synonyms.
+- Do not use `tenant`, `workspace`, `organization` as synonyms.
 
-### 2.1 Canonical ID 写法
+###2.1 Canonical ID Format
 
-文档中涉及控制层对象时，统一采用：
+When referring to control layer objects in documents, uniformly use:
 
-- `canonical_id`（业务别名：叙事名称）
+- `canonical_id` (Business alias: narrative name)
 
-例如：
+For example:
 
-- `strategic_governor`（业务别名：CEO）
-- `intake_router`（业务别名：VP 运营）
-- `workflow_planner`（业务别名：VP 编排）
-- `division_lead`（业务别名：Lead Agent）
+- `strategic_governor` (Business alias: CEO)
+- `intake_router` (Business alias: VP Operations)
+- `workflow_planner` (Business alias: VP Orchestration)
+- `division_lead` (Business alias: Lead Agent)
 
-## 3. 文件命名规则
+##3. File Naming Rules
 
-- 主干文档采用 `NN_topic.md`。
-- ADR 采用 `NNN-topic.md`。
-- contract 采用 `snake_case_contract.md`。
-- guide 采用 `kebab-case.md`。
-- governance / reviews / operations 文档采用 `snake_case.md`。
+- Mainline documents use `NN_topic.md`.
+- ADRs use `NNN-topic.md`.
+- Contracts use `snake_case_contract.md`.
+- Guides use `kebab-case.md`.
+- Governance / reviews / operations documents use `snake_case.md`.
 
-## 4. 目录命名规则
+##4. Directory Naming Rules
 
-- 目录统一uses小写字母vs连字符或下划线，不uses空格。
-- `divisions/<division-id>/` 中 `<division-id>` 必须稳定、可程序references用。
-- `roles/` 下的文件名应vs `role_id` 对齐。
-- `workflows/` 下的文件名应table达业务动作，而不is作者偏好。
+- Directories uniformly use lowercase letters and hyphens or underscores, no spaces.
+- In `divisions/<division-id>/`, `<division-id>` must be stable and programmatically referenceable.
+- File names under `roles/` should align with `role_id`.
+- File names under `workflows/` should express business actions rather than author preferences.
 
-## 5. ID 约定
+##5. ID Conventions
 
-- `task_id`、`approval_id`、`session_id`、`event_id` 为平台级唯一标识。
-- `division_id`、`role_id`、`tool_name` 为稳定可读标识，不relies on显示名称。
-- 对外消息 ID vs平台内部 ID 必须分开。
+- `task_id`, `approval_id`, `session_id`, `event_id` are platform-level unique identifiers.
+- `division_id`, `role_id`, `tool_name` are stable readable identifiers, not depending on display names.
+- External message IDs and platform internal IDs must be separated.
 
-### 5.1 其他命名约定
+###5.1 Other Naming Conventions
 
-- 事件class型统一uses `<domain>.<action>`，如 `workflow.step_completed`。
-- OAPEFLIR 事件class型统一uses `<stage>:<event>`，如 `feedback:collected`、`learning:object_promoted`、`improvement:auto_rollback`。
-- data库table统一uses复数 `snake_case`。
-- 环境variable统一uses `UPPER_SNAKE_CASE`。
-- configure key 推荐uses稳定命名空间，如 `runtime.max_concurrency`。
-- feature flag 推荐uses `domain.feature_name` 风格，如 `gateway.enable_stream_bridge`。
+- Event types uniformly use `<domain>.<action>`, such as `workflow.step_completed`.
+- OAPEFLIR event types uniformly use `<stage>:<event>`, such as `feedback:collected`, `learning:object_promoted`, `improvement:auto_rollback`.
+- Database tables uniformly use plural `snake_case`.
+- Environment variables uniformly use `UPPER_SNAKE_CASE`.
+- Config keys recommend using stable namespaces, such as `runtime.max_concurrency`.
+- Feature flags recommend using `domain.feature_name` style, such as `gateway.enable_stream_bridge`.
 
-### 5.2 OAPEFLIR 模块目录命名
+###5.2 OAPEFLIR Module Directory Naming
 
-新增模块目录命名遵循以下规则：
+New module directory naming follows these rules:
 
-| 目录 | 命名 | Description |
+| Directory | Naming | Description |
 |------|------|------|
 | agent-loop | `agent-loop/` | OapeflirLoopService + Assess + Handoff |
 | planning | `planning/` | PlanBuilder + DAG + Replanning |
@@ -102,14 +102,14 @@
 | domain-registry | `domain-registry/` | PluginSPI + DomainRegistry |
 | plugins | `plugins/` | Domain Plugins + Adapters |
 
-## 6. 文档vscodesynchronous规则
+##6. Document and Code Synchronization Rules
 
-- 新增核心对象时，优先补 contract，再写class型defines。
-- 若code命名vs文档命名conflicts，先修正文档事实源，再统一code。
-- 禁止为了局部实现方便在code中发明平lines术语。
+- When adding new core objects, prioritize completing the contract before writing type definitions.
+- If code naming conflicts with document naming, fix the document source of truth first, then unify the code.
+- It is prohibited to invent parallel terminology in code for local implementation convenience.
 
-## 7. 文档写法规则
+##7. Document Writing Rules
 
-- 同一章节首iterations出现叙事名和工程名时，必须同时给出映射。
-- table格、协议、schema、事件注册table优先uses canonical id。
-- 历史层、研究层保留外部项目原名时，应显式标注“非本项目事实源”。
+- When narrative names and engineering names first appear in the same section, both mappings must be provided simultaneously.
+- Tables, protocols, schemas, and event registries prefer canonical ids.
+- When historical layer or research layer retains external project original names, it should be explicitly marked as "not the source of truth for this project".

@@ -1,24 +1,24 @@
-# ADR-066 合规报告自动生成references擎
+# ADR-066 Compliance Report Auto-generation Engine
 
-- Status：Accepted
-- Decision日期：2026-04-20
+- Status: Accepted
+- Decision Date: 2026-04-20
 
 ## Background
 
-合规审计需要大量证据材料，人工整理效率低且容易出错。
+Compliance audits require a lot of evidence materials, manual organization is inefficient and error-prone.
 
 ## Decision
 
-### 报告class型
+### Report Types
 
-| class型 | cycle | 受众 |
-|------|------|------|
-| 审计日志报告 | 实时 | 审计员 |
-| 合规摘要 | 月度 | 合规团队 |
-| 风险评估报告 | 季度 | manage层 |
-| 事件报告 | 事件驱动 | 监管机构 |
+| Type | Frequency | Audience |
+|------|-----------|---------|
+| Audit log report | Real-time | Auditor |
+| Compliance summary | Monthly | Compliance team |
+| Risk assessment report | Quarterly | Management |
+| Incident report | Event-driven | Regulatory authority |
 
-### 证据采集
+### Evidence Collection
 
 ```typescript
 interface ComplianceEvidence {
@@ -38,56 +38,56 @@ type EvidenceType =
   | 'breach_notification';
 ```
 
-### 报告生成流程
+### Report Generation Process
 
-1. 触发条件满足
-2. 证据采集
-3. data验证
-4. 模板填充
-5. 签名和盖章
-6. 分发和存档
+1. Trigger condition met
+2. Evidence collection
+3. Data validation
+4. Template filling
+5. Signature and seal
+6. Distribution and archiving
 
-### 报告内容
+### Report Content
 
-| 内容 | Description |
-|------|------|
-| 执lines摘要 | 关键发现 |
-| 证据清单 | 详细证据 |
-| 符合性评估 | 各条款评估 |
-| 异常record | 偏差和补救 |
-| 签名 | 责任人签署 |
+| Content | Description |
+|---------|-------------|
+| Executive summary | Key findings |
+| Evidence list | Detailed evidence |
+| Compliance assessment | Each clause evaluation |
+| Exception records | Deviations and remediation |
+| Signatures | Responsible person signatures |
 
-### 合规框架映射
+### Compliance Framework Mapping
 
-| 框架 | 要求 |
-|------|------|
+| Framework | Requirements |
+|-----------|--------------|
 | EU AI Act | Art. 12, 13, 14 |
 | GDPR | Art. 5, 30, 35 |
 | SOC 2 | CC1, CC2, CC6 |
 
 ## Consequences
 
-优点：
+Advantages:
 
-- 自动化提高效率
-- 减少人工错误
-- 满足法规要求
+- Automation improves efficiency
+- Reduces manual errors
+- Meets regulatory requirements
 
-代价：
+Trade-offs:
 
-- 证据采集增加系统开销
-- 报告模板需要维护
+- Evidence collection adds system overhead
+- Report templates require maintenance
 
-## 交叉references用
+## Cross References
 
-- [ADR-059 Agent 可解释性](./059-agent-explainability-and-decision-transparency.md)
-- [ADR-085 组织治理vs知识边界](./085-organization-governance-and-knowledge-boundary.md)
-- [平台Architecture §23 合规vsdata治理](../architecture/00-platform-architecture.md)
+- [ADR-059 Agent Explainability](./059-agent-explainability-and-decision-transparency.md)
+- [ADR-085 Organization Governance and Knowledge Boundary](./085-organization-governance-and-knowledge-boundary.md)
+- [Platform Architecture §23 Compliance and Data Governance](../architecture/00-platform-architecture.md)
 
-## 来源章节
+## Source Section
 
-- `§66` 合规报告自动生成references擎
+- `§66` Compliance Report Auto-generation Engine
 
 ## v4.3 ADR Remediation
 
-- R5-65: 本 ADR 原先references用non-existent `§B`/`§G` 附录，已移除。合规框架映射内容保留，但references用路径已更正为实际存在的文档。
+- R5-65: This ADR originally referenced non-existent `§B`/`§G` appendices, removed. Compliance framework mapping content retained, but reference paths corrected to actually existing documents.

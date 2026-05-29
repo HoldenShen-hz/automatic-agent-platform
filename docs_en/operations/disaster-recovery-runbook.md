@@ -1,44 +1,44 @@
-# 灾难恢复操作手册
+# Disaster Recovery Runbook
 
-本文档补充 ADR-031 的执lines步骤，used for区域不可用、data库不可写、队列不可用和关键运lines时恢复。
+This document supplements ADR-031's execution steps, for regional unavailability, database unwritable, queue unavailable, and critical runtime recovery.
 
-当前执lines口径vs `config/dr/default.json` 保持一致：
+Current execution baseline aligned with `config/dr/default.json`:
 
-- `RTO <= 1 小时`
-- `RPO <= 5 分钟`
+- `RTO <= 1 hour`
+- `RPO <= 5 minutes`
 
-## 触发条件
+## Triggers
 
-- 主区域 API、worker 或data库连续不可用exceeds过 RTO 门限。
-- datawritesfailed且no法via局部重试恢复。
-- 队列或事件证据链出现不可accepts的delay或丢失风险。
+- Primary region API, worker or database continuously unavailable exceeds RTO threshold.
+- Data writes fail and cannot be recovered through partial retry.
+- Queue or event evidence chain shows unacceptable delay or loss risk.
 
-## 准备检查
+## Preparation Checks
 
-1. 确认 incident commander 和审批人。
-2. 冻结非必要部署。
-3. export当前健康检查、队列深度、data库复制Status和最近事件证据。
-4. 确认备份快照、恢复点和目标区域容量。
-5. uses `bash deploy/scripts/dr-drill.sh --mode verify --component all --output-dir .dr-reports/manual-verify` 先验证现有备份可读。
+1. Confirm incident commander and approvers.
+2. Freeze non-essential deployments.
+3. Export current health check, queue depth, database replication status, and recent event evidence.
+4. Confirm backup snapshots, recovery points, and target region capacity.
+5. Use `bash deploy/scripts/dr-drill.sh --mode verify --component all --output-dir .dr-reports/manual-verify` to first verify existing backups are readable.
 
-## 恢复步骤
+## Recovery Steps
 
-1. 切换入口流量到备用区域或降级入口。
-2. 启动备用 worker 和Control Plane服务。
-3. 恢复data库到目标恢复点，并执lines只读校验。
-4. 恢复队列消费，先enabled低concurrent，再逐步恢复正常concurrent。
-5. 执lines runtime recovery 定向检查，确认 stale、blocked、dead-letter 视图可用。
-6. record恢复窗口、data缺口和人工审批动作。
+1. Switch entry traffic to standby region or degraded entry.
+2. Start standby workers and control plane services.
+3. Restore database to target recovery point, and execute read-only verification.
+4. Restore queue consumption; first enable low concurrency, then gradually restore normal concurrency.
+5. Execute runtime recovery targeted checks; confirm stale, blocked, dead-letter views are available.
+6. Record recovery window, data gap, and manual approval actions.
 
-## 回滚
+## Rollback
 
-- 若备用区域恢复failed，停止新增writes并保持只读Status。
-- 回退流量前必须确认主区域writes路径和事件证据链一致。
+- If standby region recovery fails, stop new writes and maintain read-only status.
+- Before rolling back traffic, must confirm primary region write path and event evidence chain are consistent.
 
-## 证据
+## Evidence
 
-- 健康检查输出。
-- data库恢复日志。
-- 队列深度和消费恢复record。
-- runtime recovery 报告。
-- 事后 postmortem。
+- Health check output.
+- Database recovery logs.
+- Queue depth and consumption recovery records.
+- Runtime recovery report.
+- Postmortem.

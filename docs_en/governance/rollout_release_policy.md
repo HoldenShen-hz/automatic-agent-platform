@@ -2,137 +2,137 @@
 
 ---
 
-## OAPEFLIR 关联
+## OAPEFLIR Relevance
 
-本治理文档规范 OAPEFLIR 八阶段认知循环中的以下内容：
+This governance document regulates the following aspects of the OAPEFLIR eight-stage cognitive loop:
 
-- **Observe**：信号采集vs治理边界
-- **Assess**：执lines评估vspermission治理
-- **Plan**：规划约束vs R3 硬约束
-- **Execute**：执linespermissionvssecurity边界
-- **Feedback**：反馈信号治理vs分class
-- **Learn**：学习内容验证vs推广边界
-- **Improve**：改进候选审批vs Rollout 治理
-- **Release**：发布permissionvs自动回滚规则
+- **Observe**: Signal collection vs governance boundary
+- **Assess**: Execution evaluation vs permission governance
+- **Plan**: Planning constraints vs R3 hard constraints
+- **Execute**: Execution permissions vs security boundary
+- **Feedback**: Feedback signal governance vs classification
+- **Learn**: Learning content validation vs promotion boundary
+- **Improve**: Improvement candidate approval vs Rollout governance
+- **Release**: Release permissions vs auto-rollback rules
 
 ---
 
-> **治理层级**：Improve Hub / Rollout
-> **生效日期**：2026-04-17
-> **相关 ADR**：[ADR-075 六级受控发布](../adr/075-controlled-rollout-release.md)，[ADR-080 Learn Hub](../adr/080-learn-hub-pattern-detection.md)
+> **Governance Layer**: Improve Hub / Rollout
+> **Effective Date**:2026-04-17
+> **Related ADRs**: [ADR-075 Six-Level Controlled Release](../adr/075-controlled-rollout-release.md), [ADR-080 Learn Hub](../adr/080-learn-hub-pattern-detection.md)
 
-## 1. 目标
+##1. Objective
 
-defines ImprovementCandidate 从创建到生产发布的完整生命cycle治理规则，确保：
-- 渐进式发布有明确的阶段门槛
-- 自动回滚有可度量的触发条件
-- Rollout Status转换有完整的审计日志
-- 人class审批在关键节点介入
+Define complete lifecycle governance rules for ImprovementCandidate from creation to production release, ensuring:
+- Progressive release has clear stage thresholds
+- Auto-rollback has measurable trigger conditions
+- Rollout state transitions have complete audit logs
+- Human approval intervenes at key points
 
-## 2. 6 级发布defines
+##2. Six-Level Release Definitions
 
-详见 [ADR-075 六级受控发布](../adr/075-controlled-rollout-release.md)。
+See [ADR-075 Six-Level Controlled Release](../adr/075-controlled-rollout-release.md) for details.
 
-| 级别 | 流量 | 自主permission | 审批要求 |
+| Level | Traffic | Autonomy Permissions | Approval Requirements |
 |------|------|---------|---------|
-| L0 | 0% | no | — |
-| L1 | 0%（record） | shadow | — |
-| L2 | 5% | 参数调整 | critical/high 需审批 |
-| L3 | 25% | configureRecommendation | 全部需审批 |
-| L4 | 75% | configure变更 | 全部必须审批 |
-| L5 | 100% | 完全自主 | only异常升级 |
+| L0 |0% | None | — |
+| L1 |0% (logging) | shadow | — |
+| L2 |5% | Parameter adjustments | critical/high require approval |
+| L3 |25% | Configuration suggestions | All require approval |
+| L4 |75% | Configuration changes | All mandatory approval |
+| L5 |100% | Fully autonomous | Only anomaly escalation |
 
-## 3. 阶段转换规则
+##3. Stage Transition Rules
 
-### 3.1 升级条件
+###3.1 Promotion Conditions
 
-| 从 | 到 | 必要条件 | 最少持续time |
+| From | To | Required Conditions | Minimum Duration |
 |----|-----|---------|------------|
-| L1 | L2 | 指标达标 | 10 分钟 |
-| L2 | L3 | no回滚触发 | 30 分钟 |
-| L3 | L4 | success率 > 99% | 60 分钟 |
-| L4 | L5 | 稳定运lines | 24 小时 |
+| L1 | L2 | Metrics meet standard |10 minutes |
+| L2 | L3 | No rollback triggers |30 minutes |
+| L3 | L4 | Success rate >99% |60 minutes |
+| L4 | L5 | Stable operation |24 hours |
 
-### 3.2 自动回滚条件
+###3.2 Auto-Rollback Conditions
 
-| 指标 | threshold | 窗口 | 触发动作 |
+| Metric | Threshold | Window | Trigger Action |
 |------|------|------|---------|
-| 错误率 | > 1% | 5 分钟 | L4→L3 |
-| P99 delay | > 500ms | 5 分钟 | L4→L3 |
-| success率 | < 99% | 5 分钟 | L4→L3 |
-| 连续failed | > 10 iterations | 10 分钟 | directly回滚 L1 |
-| 资源耗尽 | Memory > 90% | 1 分钟 | directly回滚 L1 |
+| Error rate | >1% |5 minutes | L4→L3 |
+| P99 latency | >500ms |5 minutes | L4→L3 |
+| Success rate | <99% |5 minutes | L4→L3 |
+| Consecutive failures | >10 |10 minutes | Direct rollback to L1 |
+| Resource exhaustion | Memory >90% |1 minute | Direct rollback to L1 |
 
-## 4. ImprovementCandidate 生命cycle
+##4. ImprovementCandidate Lifecycle
 
 ```
 candidate_created
-      ↓
-under_review （人class审批）
-      ↓
+ ↓
+under_review (human approval)
+ ↓
 approved / rejected
-      ↓
+ ↓
 shadow_enabled (L1)
-      ↓
+ ↓
 canary_5 (L2) ←→ auto_rollback
-      ↓
+ ↓
 partial_25 (L3) ←→ auto_rollback
-      ↓
+ ↓
 stable_75 (L4) ←→ auto_rollback
-      ↓
+ ↓
 stable_100 (L5)
-      ↓
-released （持续 M 天noIssue）
+ ↓
+released (continuously M days without issues)
 ```
 
-### 4.1 StatusDescription
+###4.1 Status Description
 
-| Status | Description | 可执lines操作 |
+| Status | Description | Executable Operations |
 |------|------|----------|
-| `candidate_created` | 新建候选 | submit_for_review |
-| `under_review` | 等待人class审批 | approve / reject |
-| `approved` | 审批via | enable_shadow |
-| `rejected` | 审批拒绝 | — |
-| `shadow_enabled` | Shadow 模式运lines | promote |
-| `canary_5` | 5% 流量验证 | promote / rollback |
-| `partial_25` | 25% 流量验证 | promote / rollback |
-| `stable_75` | 75% 流量验证 | promote / rollback |
-| `stable_100` | full发布 | release |
-| `released` | 正式发布完成 | — |
-| `auto_rollback` | 自动回滚中 | — |
-| `rolled_back` | 已回滚 | resubmit |
+| `candidate_created` | Newly created candidate | submit_for_review |
+| `under_review` | Awaiting human approval | approve / reject |
+| `approved` | Approval passed | enable_shadow |
+| `rejected` | Approval rejected | — |
+| `shadow_enabled` | Shadow mode running | promote |
+| `canary_5` |5% traffic validation | promote / rollback |
+| `partial_25` |25% traffic validation | promote / rollback |
+| `stable_75` |75% traffic validation | promote / rollback |
+| `stable_100` | Full release | release |
+| `released` | Official release completed | — |
+| `auto_rollback` | Auto-rolling back | — |
+| `rolled_back` | Rolled back | resubmit |
 
-## 5. RolloutScheduler 治理
+##5. RolloutScheduler Governance
 
 ```typescript
 interface RolloutScheduler {
-  // 调度升级（满足time条件后自动触发）
-  schedulePromotion(
-    candidateId: string,
-    targetLevel: RolloutLevel,
-    scheduledAt: string
-  ): void;
+ // Schedule promotion (auto-triggered after time conditions are met)
+ schedulePromotion(
+ candidateId: string,
+ targetLevel: RolloutLevel,
+ scheduledAt: string
+ ): void;
 
-  // 调度回滚
-  scheduleRollback(
-    candidateId: string,
-    reason: RollbackReason,
-    targetLevel: RolloutLevel
-  ): void;
+ // Schedule rollback
+ scheduleRollback(
+ candidateId: string,
+ reason: RollbackReason,
+ targetLevel: RolloutLevel
+ ): void;
 
-  // 获取活跃的 Rollout
-  getActiveRollouts(): RolloutRecord[];
+ // Get active rollouts
+ getActiveRollouts(): RolloutRecord[];
 
-  // 获取 Rollout 历史
-  getRolloutHistory(candidateId: string): RolloutRecord[];
+ // Get rollout history
+ getRolloutHistory(candidateId: string): RolloutRecord[];
 }
 ```
 
-## 6. 审计要求
+##6. Audit Requirements
 
-### 6.1 必须record的 Rollout 事件
+###6.1 Rollout Events That Must Be Recorded
 
-| 事件 | record内容 |
+| Event | Recorded Content |
 |------|---------|
 | `improvement:candidate_created` | candidateId, learningObjectId, priority |
 | `improvement:under_review` | candidateId, submittedBy |
@@ -142,63 +142,63 @@ interface RolloutScheduler {
 | `improvement:auto_rollback` | candidateId, trigger, fromLevel, toLevel |
 | `improvement:released` | candidateId, totalDuration, finalMetrics |
 
-### 6.2 RolloutRecord 必填字段
+###6.2 RolloutRecord Required Fields
 
 ```typescript
 interface RolloutRecord {
-  recordId: string;
-  candidateId: string;
-  fromLevel: RolloutLevel;
-  toLevel: RolloutLevel;
-  triggeredBy: 'scheduler' | 'human' | 'auto_rollback';
-  triggerReason?: string;
-  metrics: RolloutMetrics;
-  auditContext: AuditContext;
-  createdAt: string;
+ recordId: string;
+ candidateId: string;
+ fromLevel: RolloutLevel;
+ toLevel: RolloutLevel;
+ triggeredBy: 'scheduler' | 'human' | 'auto_rollback';
+ triggerReason?: string;
+ metrics: RolloutMetrics;
+ auditContext: AuditContext;
+ createdAt: string;
 }
 ```
 
-## 7. 回滚治理
+##7. Rollback Governance
 
-### 7.1 自动回滚流程
+###7.1 Auto-Rollback Process
 
 ```
-指标exceeds标检测
-    ↓
+Metric threshold exceeded detection
+ ↓
 RolloutScheduler.scheduleRollback()
-    ↓
-发送 notification 事件
-    ↓
-执lines回滚到上一稳定级别
-    ↓
-record auto_rollback 事件
-    ↓
-等待人class审查（48 小时内确认）
+ ↓
+Send notification event
+ ↓
+Execute rollback to last stable level
+ ↓
+Record auto_rollback event
+ ↓
+Wait for human review (confirm within48 hours)
 ```
 
-### 7.2 人class介入条件
+###7.2 Human Intervention Conditions
 
-| 场景 | isno需要人class确认 |
+| Scenario | Human Confirmation Required |
 |------|----------------|
-| 自动回滚 L2→L1 | optional（自动恢复） |
-| 自动回滚 L3→L2 | Recommendation审查 |
-| 自动回滚 L4→L3 | 必须审查 |
-| 自动回滚 L5→L4 | 必须审查 + 批准后才能重新升级 |
-| 连续 3 iterations回滚同一候选 | 禁止自动升级，必须人工审批 |
+| Auto-rollback L2→L1 | Optional (auto-recovery) |
+| Auto-rollback L3→L2 | Review recommended |
+| Auto-rollback L4→L3 | Review mandatory |
+| Auto-rollback L5→L4 | Review mandatory + approval required before re-promotion |
+|3 consecutive rollbacks of same candidate | Auto-promotion prohibited, manual approval required |
 
-## 8. 容量vs资源限制
+##8. Capacity and Resource Limits
 
-| 指标 | 限制 |
+| Metric | Limit |
 |------|------|
-| 同一time活跃的 Rollout | ≤ 10 |
-| 单个候选最大回滚iterations数 | 3 |
-| 回滚后重新升级等待time | 24 小时 |
-| L4 持续timeupper limit | 7 天 |
-| 每日新增候选upper limit | 50 |
+| Active rollouts at the same time | ≤10 |
+| Maximum rollback count for single candidate |3 |
+| Wait time for re-promotion after rollback |24 hours |
+| L4 maximum duration |7 days |
+| Daily new candidate limit |50 |
 
-## 9. 相关文档
+##9. Related Documents
 
-- [ADR-075 六级受控发布vs Rollout Status机](../adr/075-controlled-rollout-release.md)
+- [ADR-075 Six-Level Controlled Release and Rollout State Machine](../adr/075-controlled-rollout-release.md)
 - [ADR-080 Learn Hub](../adr/080-learn-hub-pattern-detection.md)
 - [autonomy_boundary_policy.md](./autonomy_boundary_policy.md)
 - [rollout-state-machine.ts](../../src/platform/five-plane-orchestration/oapeflir/improve-rollout/rollout/rollout-state-machine.ts)

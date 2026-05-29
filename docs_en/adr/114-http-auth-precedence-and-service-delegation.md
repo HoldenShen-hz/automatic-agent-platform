@@ -1,23 +1,27 @@
 # ADR-114 HTTP Auth Precedence And Service Delegation
 
-- Status：Accepted
+- Status: Accepted
 
 ## Background
-HTTP 入口可能同时携带userauthentication头和服务authentication头，之前缺少优先级vs审计归因Description。
+
+HTTP entry may simultaneously carry user authentication header and service authentication header; previously there was lack of priority and audit attribution description.
 
 ## Decision
-- 对外 HTTP API defaults to以userauthentication链为主。
-- service-to-service authenticationvia内部 service auth 通道handle，不vs普通user header 混用。
-- 若同一request同时出现uservs服务authentication信息，defaults to拒绝或走显式代理/委托流程，不做隐式优先级猜测。
-- 服务代tableuser执lines时，必须同时保留：
-  - 原user主体
-  - 代理服务主体
-  - 审计归因链
 
-## 结果
-- 消除“同一request双authentication头到底谁生效”的歧义。
-- 后续若增加 on-behalf-of 模式，必须在同一 ADR 族中扩展。
+- External HTTP API defaults to user authentication chain as primary.
+- Service-to-service authentication is handled via internal service auth channel, not mixed with ordinary user headers.
+- If user and service authentication information both appear in the same request, default to reject or go through explicit proxy/delegation process; do not make implicit priority guesses.
+- When service executes on behalf of user, must simultaneously retain:
+  - Original user principal
+  - Delegating service principal
+  - Audit attribution chain
 
-## 相关实现
+## Results
+
+- Eliminates ambiguity about "which of the dual authentication headers in the same request takes effect".
+- If on-behalf-of mode is added later, it must be expanded in the same ADR family.
+
+## Related Implementation
+
 - `src/platform/five-plane-interface/api/http-api-server.ts`
 - `src/platform/five-plane-interface/api/service-auth.ts`

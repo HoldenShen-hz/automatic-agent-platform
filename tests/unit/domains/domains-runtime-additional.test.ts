@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import { ServiceRegistry } from "../../../src/platform/shared/lifecycle/service-registry.js";
@@ -121,14 +122,21 @@ test("buildDomainsStartupPlan first step has no dependencies", async () => {
   assert.equal(firstStep.stepId, "ring1");
 });
 
-test("buildDomainsStartupPlan later steps depend on previous rings", async () => {
+test("buildDomainsStartupPlan keeps later rings independently startable", async () => {
   const plan = buildDomainsStartupPlan();
 
   const ring2 = plan.steps.find((s) => s.stepId === "ring2")!;
-  assert.deepEqual(ring2.dependsOnStepIds, ["ring1"]);
+  assert.deepEqual(ring2.dependsOnStepIds, []);
 
   const ring3 = plan.steps.find((s) => s.stepId === "ring3")!;
-  assert.deepEqual(ring3.dependsOnStepIds, ["ring2"]);
+  assert.deepEqual(ring3.dependsOnStepIds, []);
+});
+
+test("domains barrel re-exports runtime helpers through in-tree runtime entrypoint", () => {
+  const source = readFileSync("src/domains/index.ts", "utf8");
+
+  assert.match(source, /export \* from "\.\/runtime\/index\.js";/);
+  assert.doesNotMatch(source, /\.\.\/domains-runtime-/);
 });
 
 test("buildDomainsStartupPlan step capability counts match ring domain counts", async () => {
@@ -374,15 +382,15 @@ test("startup result steps have correct dependency chain", async () => {
     const orchestrator = registerDomainsRuntimeOrchestrator(registry);
     const result = orchestrator.startup();
 
-    // Verify dependency chain
+    // All rings are independently startable in the current runtime plan.
     const ring1 = result.steps.find((s) => s.stepId === "ring1")!;
     assert.deepEqual(ring1.initializedDependencyServiceIds, []);
 
     const ring2 = result.steps.find((s) => s.stepId === "ring2")!;
-    assert.deepEqual(ring2.initializedDependencyServiceIds, ["w5.domains.ring.ring1.bootstrap"]);
+    assert.deepEqual(ring2.initializedDependencyServiceIds, []);
 
     const ring3 = result.steps.find((s) => s.stepId === "ring3")!;
-    assert.deepEqual(ring3.initializedDependencyServiceIds, ["w5.domains.ring.ring2.bootstrap"]);
+    assert.deepEqual(ring3.initializedDependencyServiceIds, []);
   } finally {
     await registry.reset();
   }

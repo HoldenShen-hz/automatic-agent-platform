@@ -1,7 +1,7 @@
 # ADR-048 Enterprise SSO/SCIM Integration Architecture
 
-- Status：Accepted
-- Decision Date：2026-04-20
+- Status: Accepted
+- Decision Date: 2026-04-20
 
 ## Background
 
@@ -12,7 +12,7 @@ Enterprises need to integrate with existing Identity Providers (IdP) to achieve 
 ### SSO Support
 
 | Protocol | Description |
-|------|------|
+|----------|-------------|
 | SAML 2.0 | Common for enterprise IdP |
 | OIDC | Recommended for modern applications |
 | OAuth 2.0 | Third-party authorization |
@@ -40,14 +40,14 @@ interface SCIMGroup {
 All user lifecycle operations use prepare/commit/compensate semantics and record audit logs:
 
 | Phase | Onboarding | Transfer | Offboarding |
-|------|------|------|------|
-| prepare | Verify IdP credentials, pre-allocate accounts, check quota | Get current permissions, generate change list | Backup data, generate permission recovery list |
+|-------|------------|----------|--------------|
+| prepare | Validate IdP credentials, pre-allocate account, check quota | Get current permissions, generate change list | Backup data, generate permission recovery list |
 | commit | Create account, join default group, send welcome notification | Update organization info, sync permission changes | Disable account, recover permissions, export data |
-| compensate | Rollback account creation, send exception notification | Rollback organization info, rollback permission changes | Restore account, unfreeze permissions (in emergency) |
+| compensate | Rollback account creation, send exception notification | Rollback organization info, rollback permission changes | Restore account, unfreeze permissions (emergency) |
 
-Audit log records: operation type, operator, timestamp, status before/after change, compensation action execution results.
+Audit log records: operation type, operator, timestamp, before/after state, compensate action execution results.
 
-### Sync Strategies
+### Sync Strategy
 
 - Real-time sync: SCIM webhook
 - Periodic sync: Incremental sync job
@@ -61,15 +61,15 @@ Advantages:
 - SCIM automates user management
 - Reduces manual operations
 
-Costs:
+Trade-offs:
 
 - IdP integration complexity
 - Sync delay may cause permission issues
 
-## Cross-references
+## Cross References
 
 - [ADR-046 Organization Hierarchy Model](./046-organization-hierarchy-model.md)
-- [ADR-027 Security and Reliability Architecture](./027-security-architecture.md)
+- [ADR-027 Security Architecture](./027-security-architecture.md)
 
 ## Source Section
 

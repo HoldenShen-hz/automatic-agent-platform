@@ -117,6 +117,14 @@ test("ContainerizedPluginRuntimeHost logs non-protocol stdout lines", () => {
   assert.match(source, /pluginRuntimeHostLogger\.warn\("plugin_runtime_host\.non_protocol_stdout"/);
 });
 
+test("plugin runtime child installs fatal rejection isolation hooks", () => {
+  const source = readFileSync("src/domains/registry/plugin-runtime-child.ts", "utf8");
+
+  assert.match(source, /process\.on\("unhandledRejection"/);
+  assert.match(source, /process\.on\("uncaughtException"/);
+  assert.match(source, /handleFatalRuntimeError/);
+});
+
 test("ForkedPluginRuntimeHost executes presenter plugin through a sandboxed child runtime", async () => {
   const host = new ForkedPluginRuntimeHost({
     pluginId: "plugin.coding.presenter",

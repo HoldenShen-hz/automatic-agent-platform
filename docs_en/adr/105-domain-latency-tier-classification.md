@@ -2,33 +2,33 @@
 
 ---
 
-## OAPEFLIR 关联
+## OAPEFLIR Association
 
-- **Observe**: 采集领域 latency / SLA 需求
-- **Assess**: 分class为exceeds低delay、实时、准实时、批handle
-- **Plan**: 分配资源vs调度策略
-- **Execute**: 按 latency tier 运lines
-- **Feedback**: 监控 breach vs拥塞
-- **Learn**: 优化资源池分配
-- **Improve**: 调整域级 SLA
-- **Release**: latency tier 进入域上线门
+- **Observe**: Collect domain latency / SLA requirements
+- **Assess**: Classify as ultra-low latency, real-time, near-real-time, batch processing
+- **Plan**: Allocate resources and scheduling strategy
+- **Execute**: Run by latency tier
+- **Feedback**: Monitor breach and congestion
+- **Learn**: Optimize resource pool allocation
+- **Improve**: Adjust domain-level SLA
+- **Release**: Latency tier enters domain release gate
 
 ---
 
-- Status：Accepted
-- Decision日期：2026-04-23
+- Status: Accepted
+- Decision Date: 2026-04-23
 
 ## Background
 
-不同领域的时延要求差异很大，统一调度策略会导致资源浪费或 SLA 失效。
+Different domains have vastly different latency requirements; unified scheduling strategy leads to resource waste or SLA failure.
 
 ## Decision
 
-- 每个域都必须声明 latency tier
-- 平台据此分配队列优先级、资源池和恢复顺序
-- `deterministic_hot_path_only` 域不得把 latency tier 解释为允许进入自由 LLM loop；LLM 参vs必须保持受控边界
-- 本 ADR 只defines域级 latency tier，不作为 v4.3 非目标边界之外的“自动开放式 LLM loop”authorization来源
+- Each domain must declare latency tier
+- Platform allocates queue priority, resource pool, and recovery order accordingly
+- `deterministic_hot_path_only` domain must not interpret latency tier as allowing entry into free LLM loop; LLM participation must maintain controlled boundary
+- This ADR only defines domain-level latency tier, does not serve as source of authorization for "auto-open LLM loop" beyond v4.3 non-target boundary
 
 ## Consequences
 
-- 领域configure不再缺失 SLA / latency 维度
+- Domain configuration no longer missing SLA / latency dimension

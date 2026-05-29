@@ -2,38 +2,38 @@
 
 ---
 
-## OAPEFLIR 关联
+## OAPEFLIR Association
 
-本文档defines OAPEFLIR 八阶段认知循环中的以下组件：
+This document defines the following components in the OAPEFLIR eight-stage cognitive cycle:
 
-- **Observe**：事件、threshold、定时器vs外部信号监听
-- **Assess**：触发条件评估、信任积分vs风险门禁
-- **Plan**：触发动作选择、Recommendation模式或自动模式Decision
-- **Execute**：主动触发任务、Recommendation、看板更新
-- **Feedback**：主动Recommendationaccepts率、误报率、failed率
-- **Learn**：触发器vs自治等级的持续校准
-- **Improve**：自治晋升 / 降级策略优化
-- **Release**：主动式能力vs自治规则灰度发布
+- **Observe**: Event, threshold, timer, and external signal monitoring
+- **Assess**: Trigger condition evaluation, trust score, and risk gate
+- **Plan**: Trigger action selection, suggestion mode or automatic mode decision
+- **Execute**: Proactively trigger tasks, suggestions, kanban updates
+- **Feedback**: Proactive suggestion acceptance rate, false positive rate, failure rate
+- **Learn**: Continuous calibration of triggers and autonomy levels
+- **Improve**: Autonomy promotion / demotion strategy optimization
+- **Release**: Proactive capability and autonomy rules canary release
 
 ---
 
-- Status：Accepted
-- Decision日期：2026-04-20
+- Status: Accepted
+- Decision Date: 2026-04-20
 
 ## Background
 
-v2.7 `§41-§42` 要求平台supported主动式 Agent vs渐进式自主权。当前仓库已有：
+v2.7 `§41-§42` requires the platform to support proactive agents and progressive autonomy. The repository already has:
 
 - `src/interaction/proactive-agent`
 - `src/interaction/autonomy`
 
-但两者尚未被一个统一Decision串起来。
+But they have not yet been tied together by a unified decision.
 
 ## Decision
 
-### 1. 主动式 Agent 只能via声明式 TriggerDefinition 工作
+### 1. Proactive Agent Can Only Work Through Declarative TriggerDefinition
 
-主动式lines为必须via过显式 trigger 声明，最少contains：
+Proactive behavior must go through explicit trigger declaration, containing at minimum:
 
 - trigger source
 - trigger condition
@@ -42,32 +42,32 @@ v2.7 `§41-§42` 要求平台supported主动式 Agent vs渐进式自主权。当
 - action template
 - risk level
 
-### 2. 自主权不is布尔开关，而is等级Status机
+### 2. Autonomy Is Not a Boolean Switch, But a Level State Machine
 
-实现层必须显式区分 `InteractionAutonomyLevel` vs `UnifiedRuntimeMode`：前者决定Recommendation/人审/自动交互边界，后者决定运lines时降级、暂停和 `incident_mode`。
+Implementation layer must explicitly distinguish `InteractionAutonomyLevel` and `UnifiedRuntimeMode`: the former determines suggestion / human review / automatic interaction boundaries, the latter determines runtime degradation, pause, and `incident_mode`.
 
-自主权采用 ADR-042 defines的 4 级交互自治命名体系（vs ADR-042 保持一致）：
+Autonomy adopts the 4-level interaction autonomy naming system defined in ADR-042 (consistent with ADR-042):
 
-| 等级 | 名称 | Description |
-|------|------|------|
-| **L1** | `suggestion` | 只生成Recommendation |
-| **L2** | `supervised` | 人工确认后执lines |
-| **L3** | `semi_auto` | 低风险自动执lines，高风险升级 |
-| **L4** | `full_auto` | 在显式治理边界内自动执lines |
+| Level | Name | Description |
+|-------|------|-------------|
+| **L1** | `suggestion` | Only generates suggestions |
+| **L2** | `supervised` | Execute after human confirmation |
+| **L3** | `semi_auto` | Low-risk auto-execute, high-risk escalate |
+| **L4** | `full_auto` | Auto-execute within explicit governance boundary |
 
-约束：
-- 高危域defaults to不得进入 `full_auto`，除非存在显式 `DomainRiskSpec` / `DomainRiskProfile` 允许并附带人工责任边界
-- 任何等级均可被人工降级或冻结
-- 等级晋升必须via过评估期验证
+Constraints:
+- High-risk domains default to cannot enter `full_auto` unless explicit `DomainRiskSpec` / `DomainRiskProfile` allows it with human accountability boundary
+- Any level can be manually demoted or frozen
+- Level promotion must go through evaluation period validation
 
-### 3. 主动触发vs自治等级解耦
+### 3. Proactive Trigger and Autonomy Level Are Decoupled
 
-isno触发由 trigger 决定；
-触发后采取“Recommendation / 人审 / 自动执lines”由 autonomy level 决定。
+Whether to trigger is determined by trigger;
+After triggering, "suggestion / human review / automatic execution" is determined by autonomy level.
 
-### 4. 自治等级变更必须可审计
+### 4. Autonomy Level Changes Must Be Auditable
 
-每iterations自治等级变化必须record：
+Each autonomy level change must record:
 
 - old level
 - new level
@@ -77,10 +77,10 @@ isno触发由 trigger 决定；
 
 ## Consequences
 
-- 主动式能力不会bypassing审批、budgetvs风险references擎
-- 自治升级不再is静态configure，而is持续治理Issue
-- `src/interaction/proactive-agent` vs `src/interaction/autonomy` 将共享统一 contract
+- Proactive capabilities will not bypass approval, budget, and risk engine
+- Autonomy upgrade is no longer static configuration, but continuous governance issue
+- `src/interaction/proactive-agent` and `src/interaction/autonomy` will share unified contract
 
 ## v4.3 ADR Remediation
 
-- R3-55: 本 ADR 原先defines第三套自治命名体系，vs ADR-042 互不兼容。修复：正文现明确声明采用 ADR-042 的 `suggestion / supervised / semi_auto / full_auto` 四级体系，两者保持一致。
+- R3-55: This ADR originally defined a third autonomy naming system, incompatible with ADR-042. Fix: Body now explicitly declares adoption of ADR-042's `suggestion / supervised / semi_auto / full_auto` four-level system, keeping them consistent.

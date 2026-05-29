@@ -1,43 +1,43 @@
-# NPM Scripts 维护规范
+# NPM Scripts Maintenance Specification
 
-`package.json` 中contains构建、测试、运lines时、CI 辅助和稳定性相关脚本。本文件used for约束脚本增长方式，避免脚本区演化成不可审计的命令堆。
+`package.json` contains build, test, runtime, CI auxiliary, and stability-related scripts. This document is used to constrain script growth, avoiding the script area evolving into an unauditable command heap.
 
-## 分class
+## Categories
 
-- 构建class：`build`、`build:*`
-- 测试class：`test`、`test:*`、各class `tsx --test` 定向命令
-- 运lines时class：`doctor`、`inspect`、`dispatch-*`、worker/runtime 命令
-- 本地联调class：`dev:stack`、`dev:stack:stop`
-- 稳定性vs证据class：`*:stable`、rehearsal、evidence report
-- CI 辅助class：包装 `scripts/ci/*` 的脚本
+- Build class: `build`, `build:*`
+- Test class: `test`, `test:*`, various `tsx --test` targeted commands
+- Runtime class: `doctor`, `inspect`, `dispatch-*`, worker/runtime commands
+- Local debugging class: `dev:stack`, `dev:stack:stop`
+- Stability and evidence class: `*:stable`, rehearsal, evidence report
+- CI auxiliary class: scripts wrapping `scripts/ci/*`
 
-## 维护规则
+## Maintenance Rules
 
-- 只有在人、CI 或文档会repeatsuses时，才新增 `package.json` 脚本。
-- 一iterations性逻辑优先放到 `scripts/`，并在文档中登记入口，不把长命令directly塞进 `package.json`。
-- 会修改环境或产生副作用的脚本，名称必须显式table达风险。
-- 新增稳定性、发布或运维脚本时，必须synchronous更新对应 operations 文档。
-- 本地联调脚本必须固定defaults toport，并显式输出日志位置，避免“port被旧进程占用但看不出来”。
+- Only add `package.json` scripts when they will be repeatedly used by people, CI, or documentation.
+- One-time logic goes into `scripts/` first, and register entry point in documentation; do not stuff long commands directly into `package.json`.
+- Scripts that modify environment or produce side effects must have names explicitly expressing risk.
+- When adding stability, release, or operations scripts, must synchronously update corresponding operations documents.
+- Local debugging scripts must fix default ports and explicitly output log locations, avoiding "port occupied by old process but not visible".
 
-## 验证要求
+## Verification Requirements
 
-- only改脚本时，至少运lines对应脚本或 dry-run/inspection 命令。
-- 只有脚本本身覆盖full测试时，才要求把 `npm test` 当作唯一验证方式。
+- When only changing scripts, run corresponding scripts or dry-run/inspection commands at minimum.
+- Only require `npm test` as the sole verification method when the script itself covers full tests.
 
-## 常用入口
+## Common Entry Points
 
 - `npm run dev:stack`
-  作用：一键启动本地 API、metrics 和 Web UI，并自动清理当前仓库残留的旧进程。
+  Purpose: One-click start local API, metrics, and Web UI, and automatically clean up old processes leftover in current repository.
 - `npm run dev:stack:stop`
-  作用：停止 `dev:stack` 拉起的本地服务。
+  Purpose: Stop local services raised by `dev:stack`.
 
-defaults toaddress：
+Default addresses:
 
-- UI：`http://localhost:5173`
-- API：`http://127.0.0.1:4000`
-- Metrics：`http://127.0.0.1:4001/metrics`
+- UI: `http://localhost:5173`
+- API: `http://127.0.0.1:4000`
+- Metrics: `http://127.0.0.1:4001/metrics`
 
-## 关联文档
+## Related Documents
 
 - [operations-checklist.md](./operations-checklist.md)
 - [test_coverage_baseline_gate.md](./test_coverage_baseline_gate.md)

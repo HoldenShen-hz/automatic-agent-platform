@@ -77,3 +77,39 @@ test("NlEntryService parseDetailed does not report stale Building state when no 
   assert.equal(result.requiresClarification, false);
   assert.equal(result.conversationState, "Executing");
 });
+
+test("NlEntryService adapts IntentParserPort output to model intent tokens", async () => {
+  const service = new NlEntryService({
+    intakeRouter: {
+      route: () => ({
+        classification: {
+          intent: "query" as const,
+          continuation: "new_task" as const,
+          confidence: 0.2,
+          matchedRules: [],
+        },
+        divisionId: "engineering_ops",
+        workflowId: "single_agent_minimal",
+      }),
+    } as never,
+    intentParser: {
+      parseWithLlm: async ({ message, locale }) => {
+        assert.equal(message, "请创建新的发布计划");
+        assert.equal(locale, "zh-CN");
+        return {
+          intentType: "create_goal",
+          confidence: 0.99,
+        };
+      },
+    },
+  });
+
+  const result = await service.parseDetailed({
+    tenantId: "tenant_1",
+    userId: "user_1",
+    message: "请创建新的发布计划",
+  });
+
+  assert.equal(result.detectedIntents[0]?.intentType, "task_create");
+  assert.equal(result.confidence, 0.99);
+});

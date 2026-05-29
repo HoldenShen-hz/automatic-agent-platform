@@ -27,12 +27,12 @@ export interface DomainsStartupPlan {
 const DOMAIN_RINGS = ["ring1", "ring2", "ring3"] as const satisfies readonly DomainsStartupStepId[];
 
 export function buildDomainsStartupPlan(): DomainsStartupPlan {
-  const steps = DOMAIN_RINGS.map((ringId, index) => ({
+  const steps = DOMAIN_RINGS.map((ringId) => ({
     stepId: ringId,
     entryModule: "src/domains/index.ts",
     bootstrapServiceId: DOMAIN_RING_BOOTSTRAP_SERVICE_IDS[ringId],
     capabilityCount: buildDomainRingBootstrap(ringId).baselines.length,
-    dependsOnStepIds: index === 0 ? [] : [DOMAIN_RINGS[index - 1]!],
+    dependsOnStepIds: [],
   })) as readonly DomainsStartupStep[];
 
   return {

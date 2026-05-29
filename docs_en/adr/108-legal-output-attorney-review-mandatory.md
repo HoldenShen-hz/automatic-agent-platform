@@ -2,31 +2,31 @@
 
 ---
 
-## OAPEFLIR 关联
+## OAPEFLIR Association
 
-- **Observe**: 收集法律Issue、证据vs草稿输出
-- **Assess**: 判断isno达到律师审核门槛
-- **Plan**: 形成 review request vs审批路径
-- **Execute**: 将外发前输出转入人工审核
-- **Feedback**: record律师审核Conclusion
-- **Learn**: 归档高风险法律场景
-- **Improve**: 优化 legal 域护栏vs模板
-- **Release**: legal 域必须保留律师审核闭环
+- **Observe**: Collect legal issues, evidence, and draft outputs
+- **Assess**: Determine if attorney review threshold is reached
+- **Plan**: Form review request and approval path
+- **Execute**: Transfer pre-distribution output to human review
+- **Feedback**: Record attorney review conclusions
+- **Learn**: Archive high-risk legal scenarios
+- **Improve**: Optimize legal domain guardrails and templates
+- **Release**: Legal domain must retain attorney review闭环
 
 ---
 
-- Status：Accepted
-- Decision日期：2026-04-23
+- Status: Accepted
+- Decision Date: 2026-04-23
 
 ## Background
 
-法务域输出具有高风险，Agent 只能提供法律信息，不能directly形成未via审核的法律意见。
+Legal domain output has high risk; Agent can only provide legal information, cannot directly form unreviewed legal opinions.
 
 ## Decision
 
-- `legal` 域所有外发或可执lines输出必须via执业律师审核
-- Agent 输出必须保留为草稿和信息supported材料
+- All outgoing or executable output from `legal` domain must be reviewed by practicing attorney
+- Agent output must be retained as draft and information support material
 
 ## Consequences
 
-- legal 域的人机协作边界被正式writesArchitecture治理
+- Human-machine collaboration boundary for legal domain is formally written into architecture governance

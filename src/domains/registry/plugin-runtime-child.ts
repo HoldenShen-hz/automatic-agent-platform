@@ -20,6 +20,7 @@ let currentPlugin: RegisteredPlugin | null = null;
 let currentRequest: PluginRuntimeRequest | null = null;
 let stdinBuffer = "";
 let bootstrapInstalled = false;
+let fatalRuntimeErrorHandled = false;
 
 function getPlugin(pluginId: string): RegisteredPlugin {
   if (currentPluginId === pluginId && currentPlugin) {
@@ -200,6 +201,31 @@ function logProtocolError(message: string, error: unknown): void {
   process.stderr.write(`${JSON.stringify(entry)}\n`);
 }
 
+function handleFatalRuntimeError(kind: "unhandledRejection" | "uncaughtException", error: unknown): void {
+  if (fatalRuntimeErrorHandled) {
+    return;
+  }
+  fatalRuntimeErrorHandled = true;
+  logProtocolError(`plugin-runtime-child ${kind}`, error);
+  const activeRequest = currentRequest;
+  if (activeRequest != null) {
+    sendRuntimeMessage({
+      type: "response",
+      requestId: activeRequest.requestId,
+      ok: false,
+      pid: process.pid,
+      error: {
+        name: error instanceof Error ? error.name : "Error",
+        message: error instanceof Error ? error.message : String(error),
+      },
+    });
+  }
+  process.exitCode = 1;
+  setImmediate(() => {
+    process.exit(1);
+  });
+}
+
 export function bootstrapPluginRuntimeChild(): void {
   if (bootstrapInstalled) {
     return;
@@ -207,6 +233,12 @@ export function bootstrapPluginRuntimeChild(): void {
   bootstrapInstalled = true;
   installRuntimeGuards();
   installStdioProtocolConsoleRedirection();
+  process.on("unhandledRejection", (error) => {
+    handleFatalRuntimeError("unhandledRejection", error);
+  });
+  process.on("uncaughtException", (error) => {
+    handleFatalRuntimeError("uncaughtException", error);
+  });
 
   process.on("message", (message: unknown) => {
     handleRuntimeMessage(message);

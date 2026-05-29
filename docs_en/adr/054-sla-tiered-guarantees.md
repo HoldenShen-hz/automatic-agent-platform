@@ -1,73 +1,73 @@
-# ADR-054 SLA 分级保障
+# ADR-054 SLA Tiered Guarantees
 
-- Status：Accepted
-- Decision日期：2026-04-20
+- Status: Accepted
+- Decision Date: 2026-04-20
 
 ## Background
 
-不同业务对 SLA 有不同需求，平台需要supported SLA 分级保障。
+Different businesses have different SLA requirements, and the platform needs to support SLA tiered guarantees.
 
 ## Decision
 
-### SLA 等级
+### SLA Tiers
 
-| 等级 | 名称 | 可用性 | responsetime | concurrent | 前置条件 |
-|------|------|--------|----------|------|----------|
-| platinum | 铂金 | 99.95% | < 100ms | 1000+ | 必须：自动 failover + quorum + 容量预留 + 演练证据 |
-| gold | 金 | 99.9% | < 500ms | 500 | - |
-| silver | 银 | 99.5% | < 1s | 100 | - |
-| bronze | 铜 | 99% | < 5s | 50 | - |
+| Tier | Name | Availability | Response Time | Concurrency | Prerequisites |
+|------|------|--------------|---------------|-------------|---------------|
+| platinum | Platinum | 99.95% | < 100ms | 1000+ | Required: Auto failover + quorum + capacity reservation + drill evidence |
+| gold | Gold | 99.9% | < 500ms | 500 | - |
+| silver | Silver | 99.5% | < 1s | 100 | - |
+| bronze | Bronze | 99% | < 5s | 50 | - |
 
-### SLA 指标
+### SLA Metrics
 
 ```typescript
 interface SLARequirement {
   tier: SLATier;
-  availability: number;      // 百分比
+  availability: number;      // Percentage
   latency_p99_ms: number;
   throughput_rpm: number;
   error_rate_max: number;
 }
 ```
 
-### SLA 监控
+### SLA Monitoring
 
-- 实时 SLA 指标采集
-- SLA 违规预警
-- SLA 报告生成
+- Real-time SLA metrics collection
+- SLA violation warnings
+- SLA report generation
 
-### SLA 补偿
+### SLA Compensation
 
-| 违规class型 | 补偿方式 |
-|----------|----------|
-| 可用性不达标 | 服务延长 |
-| delayexceeds标 | 部分退款 |
-| 错误率exceeds标 | 积分补偿 |
+| Violation Type | Compensation Method |
+|----------------|-------------------|
+| Availability not met | Service extension |
+| Latency exceeded | Partial refund |
+| Error rate exceeded | Credit compensation |
 
-所有 SLA 承诺都必须可回链到 `HarnessRun / NodeRun / NodeAttemptReceipt` 证据。
+All SLA commitments must be traceable to `HarnessRun / NodeRun / NodeAttemptReceipt` evidence.
 
-补充Description：
+Supplementary notes:
 
-- `99.99%` 只允许在专用部署或专属合同中单独承诺，不应作为平台defaults to platinum 层级writes通用 ADR。
+- `99.99%` is only allowed in dedicated deployments or exclusive contracts, should not be written as platform default platinum tier in general ADR.
 
 ## Consequences
 
-优点：
+Advantages:
 
-- 分级服务满足不同业务需求
-- SLA 补偿增强user信任
-- 监控指标便于Issue定位
+- Tiered service meets different business needs
+- SLA compensation enhances user trust
+- Monitoring metrics facilitate problem identification
 
-代价：
+Trade-offs:
 
-- 多级 SLA 增加运维复杂度
-- 补偿计算需要精确
+- Multi-tier SLA increases operations complexity
+- Compensation calculation requires precision
 
-## 交叉references用
+## Cross References
 
-- [ADR-053 规模化资源竞争manage](./053-scaling-resource-competition-management.md)
-- [平台Architecture §27 性能Architecturevs SLO](../architecture/00-platform-architecture.md)
+- [ADR-053 Scaling Resource Competition Management](./053-scaling-resource-competition-management.md)
+- [Platform Architecture §27 Performance Architecture and SLO](../architecture/00-platform-architecture.md)
 
-## 来源章节
+## Source Section
 
-- `§54` SLA 分级保障
+- `§54` SLA Tiered Guarantees

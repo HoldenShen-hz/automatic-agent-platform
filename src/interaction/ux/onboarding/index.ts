@@ -1,6 +1,10 @@
 import { newId, nowIso } from "../../../platform/contracts/types/ids.js";
 import type { RuntimeLifecycleRepository } from "../../../platform/five-plane-state-evidence/truth/repositories/runtime-lifecycle-repository.js";
 
+function emitOnboardingWarning(code: string, message: string): void {
+  process.emitWarning(message, { code });
+}
+
 export interface UserPortalSession {
   readonly userId: string;
   readonly tenantId: string;
@@ -180,7 +184,11 @@ export class DurableUserPortalSessionRepository implements UserPortalSessionRepo
         mode: parsed.mode,
         context: parsed.context,
       };
-    } catch {
+    } catch (error) {
+      emitOnboardingWarning(
+        "interaction.onboarding.invalid_portal_session",
+        `Failed to parse portal session ${sessionId}: ${error instanceof Error ? error.message : String(error)}`,
+      );
       return null;
     }
   }

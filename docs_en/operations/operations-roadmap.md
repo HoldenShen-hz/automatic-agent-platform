@@ -21,7 +21,7 @@ Transform all stabilization backlogs from "issue lists" into "development sequen
 
 ### 1.2 Usage Principles
 
-- High priority does not mean can do immediately, must follow dependency order
+- High priority does not mean can do immediately; must follow dependency order
 - First do foundation that reduces system instability, then do capability enhancements
 - If a batch's exit criteria not met, should not enter the next batch
 - Before Stable Core is stable, do not expand to remote workers, marketplace, multi-tenant or complex evolution
@@ -86,7 +86,7 @@ Define the advancement path from "runnable framework" to "industrial-grade produ
 Supplementary notes:
 
 - This section describes industrial-grade target state roadmap, not current phase1-4 authoritative release level.
-- Items involving `blue-green / canary / staged / auto rollback` should be viewed as industrial-grade or `M2` expansion goals in current repository口径; must not be inversely interpreted as current `off / suggest / shadow` release level completion.
+- Items involving `blue-green / canary / staged / auto rollback` should be viewed as industrial-grade or `M2` expansion goals in current repository context; must not be inversely interpreted as current `off / suggest / shadow` release level completion.
 
 ### 3.2 Core Principles
 
@@ -128,19 +128,19 @@ Supplementary notes:
 - trace / RCA / business-technical dual dashboard
 - Workflow static analysis and compensation closed-loop
 
-### 3.5 P2 Roadmap (Scale and HA Enhancement)
+### 3.6 P2 Roadmap (Scale and HA Enhancement)
 
 - HA coordinator
 - Hot-upgrade and lossless migration
 - Anomaly detection
-- Automatic止损
+- Automatic stop-loss
 - Cross-region deployment
 - Remote coordination and remote disaster recovery
 - Memory quality and decay governance
 - License / capability engineering layering
 - More mature HITL experience and explainability
 
-### 3.6 Roadmap
+### 3.7 Roadmap
 
 ```
 Phase 1a/1b: Runnable Foundation

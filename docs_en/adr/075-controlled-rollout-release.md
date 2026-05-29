@@ -1,29 +1,29 @@
-# ADR-075 六级受控发布vs Rollout Status机
+# ADR-075 Six-level Controlled Release and Rollout State Machine
 
-- Status：Accepted
-- Decision日期：2026-04-17
-- 相关：ADR-016 OAPEFLIR 八阶段认知循环模型，ADR-018 Rollout 11 Status机
+- Status: Accepted
+- Decision Date: 2026-04-17
+- Related: ADR-016 OAPEFLIR Eight-Stage Cognitive Loop Model, ADR-018 Rollout 11 State Machine
 
 ## Background
 
-OAPEFLIR Improve Hub 负责从 LearningObject 生成 ImprovementCandidate，并via受控发布流程将改进推广到生产环境。设计要求supported 6 级受控发布（L0-L5），实现 canary/staged/stable 多阶段升级，并在指标不达标时自动回滚。
+OAPEFLIR Improve Hub is responsible for generating ImprovementCandidate from LearningObject and promoting improvements to production environment through controlled release process. Design requires supporting 6-level controlled release (L0-L5), implementing canary/staged/stable multi-stage upgrade, and auto-rollback when metrics are not met.
 
-现有 `rollout-state-machine.ts`（119 lines）已实现 canary→partial→stable 的Status转换，本 ADR 正式确立完整的 Rollout Architecture。
+The existing `rollout-state-machine.ts` (119 lines) has already implemented state transitions from canary→partial→stable. This ADR formally establishes the complete Rollout architecture.
 
 ## Decision
 
-### 1. 6 级受控发布（L0-L5）
+### 1. 6-level Controlled Release (L0-L5)
 
-| 级别 | 名称 | 流量比例 | 适用场景 |
-|------|------|---------|---------|
-| **L0** | `off` | 0% | 改进已disabled |
-| **L1** | `evaluate_0` | 0%（onlyrecord） | 候选评估vs证据验证，不Impact生产 |
-| **L2** | `canary_5` | 5% | 小规模验证，最初级 |
-| **L3** | `partial_25` | 25% | 扩大验证，中级 |
-| **L4** | `stable_75` | 75% | 接近full，高级 |
-| **L5** | `stable_100` | 100% | 完全发布 |
+| Level | Name | Traffic Ratio | Applicable Scenario |
+|-------|------|---------------|---------------------|
+| **L0** | `off` | 0% | Improvement disabled |
+| **L1** | `evaluate_0` | 0% (record only) | Candidate evaluation and evidence validation, does not affect production |
+| **L2** | `canary_5` | 5% | Small-scale validation, most初级 |
+| **L3** | `partial_25` | 25% | Expanded validation, intermediate |
+| **L4** | `stable_75` | 75% | Near full volume, advanced |
+| **L5** | `stable_100` | 100% | Complete release |
 
-### 2. Rollout Status机
+### 2. Rollout State Machine
 
 ```
 candidate_created
@@ -31,24 +31,24 @@ candidate_created
 evaluation_enabled (L1)
       ↓ (metrics meet threshold)
 canary_5 (L2)
-      ↓ (持续 N 分钟no回滚触发)
+      ↓ (continuous N minutes without rollback trigger)
 partial_25 (L3)
-      ↓ (持续 N 分钟no回滚触发)
+      ↓ (continuous N minutes without rollback trigger)
 stable_75 (L4)
-      ↓ (持续 N 分钟no回滚触发)
-stable_100 (L5) ←→ auto_rollback ←→ (触发回滚条件)
+      ↓ (continuous N minutes without rollback trigger)
+stable_100 (L5) ←→ auto_rollback ←→ (rollback trigger conditions)
       ↓
-released (已稳定运lines M 天)
+released (stable operation for M days)
 ```
 
-### 3. Status转换规则
+### 3. State Transition Rules
 
 ```typescript
 interface RolloutStateTransition {
   from: RolloutState;
   to: RolloutState;
   condition: RolloutCondition;
-  duration: number;      // 最少持续time（分钟）
+  duration: number;      // Minimum duration (minutes)
   autorollback?: AutoRollbackCondition;
 }
 
@@ -59,22 +59,22 @@ interface RolloutCondition {
 }
 ```
 
-### 4. AutoRollback 触发条件
+### 4. AutoRollback Trigger Conditions
 
-| 条件 | threshold | 窗口 |
-|------|------|------|
-| 错误率exceeds标 | > 1% | 5 分钟 |
-| P99 delayexceeds标 | > 500ms | 5 分钟 |
-| success率不达标 | < 99% | 5 分钟 |
-| 连续failediterations数 | > 10 | 10 分钟 |
-| 资源耗尽 | Memory > 90% | 1 分钟 |
+| Condition | Threshold | Window |
+|-----------|-----------|--------|
+| Error rate exceeded | > 1% | 5 minutes |
+| P99 latency exceeded | > 500ms | 5 minutes |
+| Success rate not met | < 99% | 5 minutes |
+| Continuous failure count | > 10 | 10 minutes |
+| Resource exhausted | Memory > 90% | 1 minute |
 
-### 5. ImprovementCandidate 生命cycle
+### 5. ImprovementCandidate Lifecycle
 
 ```typescript
 interface ImprovementCandidate {
   candidateId: string;
-  learningObjectId: string;      // 关联的 LearningObject
+  learningObjectId: string;      // Associated LearningObject
   source: 'failure_pattern' | 'user_correction' | 'recovery_playbook';
   targetScope: 'task' | 'workflow' | 'domain' | 'platform';
   priority: 'critical' | 'high' | 'medium' | 'low';
@@ -102,13 +102,13 @@ type ImprovementCandidateStatus =
   | 'rolled_back';
 ```
 
-#### ImprovementCandidate Status机转换图
+#### ImprovementCandidate State Machine Transition Diagram
 
 ```
-                   人工拒绝
+                   Manual rejection
 candidate_created ──→ rejected
       ↑
-      │ 自动评估触发 / quarantine 解除
+      │ Auto evaluation trigger / quarantine release
       │
 under_review ──→ approved
       │
@@ -117,39 +117,39 @@ under_review ──→ approved
       │                  ↓
       │            evaluation_enabled (L1)
       │                  │
-      │                  ↓ (指标达标)
+      │                  ↓ (metrics met)
       │              canary_5 (L2)
       │                  │
-      │                  ↓ (持续 N 分钟no回滚)
+      │                  ↓ (continuous N minutes without rollback)
       │              partial_25 (L3)
       │                  │
-      │                  ↓ (持续 N 分钟no回滚)
+      │                  ↓ (continuous N minutes without rollback)
       │              stable_75 (L4)
       │                  │
-      │                  ↓ (持续 N 分钟no回滚)
+      │                  ↓ (continuous N minutes without rollback)
       │              stable_100 (L5)
       │                  │
-      │                  ↓ (稳定运lines M 天)
+      │                  ↓ (stable operation for M days)
       │              released
       │
-      │ 任何阶段指标exceeds标
+      │ Any stage metrics exceeded
       ↓              ←── auto_rollback
 auto_rollback → rolled_back
 
-约束：
-- `candidate_created` 为初态，`rejected` / `rolled_back` 为终态
-- `quarantined` table示候选因 guardrail、evidence 缺口或回归风险被临时冻结，解除前不得进入 rollout 级别。
-- `auto_rollback` 触发后只允许流转到 `rolled_back`，不允许directly恢复
-- `released` 后若发现严重Issue，需走变更委员会流程方可回退
+Constraints:
+- `candidate_created` is initial state, `rejected` / `rolled_back` are terminal states
+- `quarantined` indicates candidate temporarily frozen due to guardrail, evidence gap or regression risk, cannot enter rollout levels before release
+- `auto_rollback` after trigger only allows transition to `rolled_back`, not directly resume
+- After `released`, if serious problem found, must go through change committee process to rollback
 ```
 
-### 6. Autonomy Boundary（自主边界）
+### 6. Autonomy Boundary
 
-| 级别 | AI 自主permission | 人class审批 |
-|------|------------|---------|
-| L0-L1 | 完全自主（onlyrecord） | 不需要 |
-| L2-L3 | 参数调整、策略选择 | 需要 for critical/high |
-| L4-L5 | configure变更 | 必须 for all |
+| Level | AI Autonomous Permission | Human Approval |
+|-------|-------------------------|----------------|
+| L0-L1 | Fully autonomous (record only) | Not needed |
+| L2-L3 | Parameter adjustment, strategy selection | Needed for critical/high |
+| L4-L5 | Configuration changes | Required for all |
 
 ### 7. RolloutScheduler
 
@@ -162,42 +162,42 @@ interface RolloutScheduler {
 }
 ```
 
-## 备选方案
+## Alternative Solutions
 
-### 方案 A：only off/suggest/shadow（Ring 1 简化版）
+### Option A: Only off/suggest/shadow (Ring 1 simplified version)
 
-优点：实现简单，风险低。
-代价：no法实现渐进式发布，收益有限。
+Advantages: Simple implementation, low risk.
+Trade-offs: Cannot implement progressive release, limited benefit.
 
-### 方案 B：6 级受控发布（已选）
+### Option B: 6-level Controlled Release (selected)
 
-优点：完整的渐进式发布能力，supported自动回滚。
-代价：实现复杂度较高（~500 linescode + 监控集成）。
+Advantages: Complete progressive release capability, supports auto-rollback.
+Trade-offs: Higher implementation complexity (~500 lines of code + monitoring integration).
 
 ## Consequences
 
-- `rollout-state-machine.ts` 作为Status转换核心。
-- `rollout-scheduler.ts` 负责调度 Promotion/Rollback 事件。
-- `auto-rollback-service.ts` 监控指标并触发回滚。
-- `guardrail-evaluator.ts` 评估改进候选isno符合security边界。
-- `autonomy-boundary-policy.ts` 决定 AI 自主permission。
-- 事件：`improvement:candidate_created`、`improvement:promoted`、`improvement:auto_rollback`
+- `rollout-state-machine.ts` as core state transition.
+- `rollout-scheduler.ts` responsible for scheduling Promotion/Rollback events.
+- `auto-rollback-service.ts` monitors metrics and triggers rollback.
+- `guardrail-evaluator.ts` evaluates whether improvement candidates comply with safety boundaries.
+- `autonomy-boundary-policy.ts` decides AI autonomous permissions.
+- Events: `improvement:candidate_created`, `improvement:promoted`, `improvement:auto_rollback`
 
-## 交叉references用
+## Cross References
 
-- [ADR-016 OAPEFLIR 八阶段认知循环模型](./016-oapeflir-loop-model.md)
-- [ADR-018 Rollout 11 Status机](./018-rollout-eleven-state-machine.md)
+- [ADR-016 OAPEFLIR Eight-Stage Cognitive Loop Model](./016-oapeflir-loop-model.md)
+- [ADR-018 Rollout 11 State Machine](./018-rollout-eleven-state-machine.md)
 - [ADR-080 Learn Hub](./080-learn-hub-pattern-detection.md)
-- `src/core/improvement/` 模块
+- `src/core/improvement/` module
 
-## 来源章节
+## Source Section
 
-- `§9` Improve Hub 设计
-- `§9.1` 6 级 controlled release
-- `§9.2-9.9` ImprovementCandidate 各接口
-- `§L.8` R4-RELEASE 约束
+- `§9` Improve Hub Design
+- `§9.1` 6-level controlled release
+- `§9.2-9.9` ImprovementCandidate interfaces
+- `§L.8` R4-RELEASE constraint
 
 ## v4.3 ADR Remediation
 
-- A-35: 本 ADR 原先把 `L1` 级别directly命名为 `shadow`，并把 `shadow_enabled` 同时当作 rollout status uses，Root cause:  release level vs rollout status 两个维度被混成一个命名体系，继续继承了 ADR-018 的历史 shadow 话语。修复：正文现把 `L1` 级别改为 `evaluate_0`，Status改为 `evaluation_enabled`，从而把 level 和 status 清晰拆开，避免级别#vs旧 shadow semantic conflict。
-- R3-63: 本 ADR 原先defines `ImprovementCandidateStatus` 为 12 态，Root cause: Status机设计时未收敛到 canonical 简化模型。修复：正文现将Status机简化为 4 态核心（candidate_created/under_review/released/rolled_back），其余中间Status归入 rollout level 维度。
+- A-35: This ADR originally directly named `L1` level as `shadow`, and used `shadow_enabled` as rollout status, root cause being release level and rollout status two dimensions were mixed into one naming system, continuing to inherit historical shadow language from ADR-018. Fix: Body now changes `L1` level to `evaluate_0`, status to `evaluation_enabled`, clearly separating level and status, avoiding level number conflict with old shadow semantics.
+- R3-63: This ADR originally defined `ImprovementCandidateStatus` as 12 states, root cause being state machine design not converged to canonical simplified model. Fix: Body now simplifies state machine to 4-state core (candidate_created/under_review/released/rolled_back), remaining intermediate states belong to rollout level dimension.

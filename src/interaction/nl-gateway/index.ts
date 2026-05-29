@@ -185,6 +185,10 @@ function adaptModelIntentParser(
   };
 }
 
+function emitNlGatewayWarning(code: string, message: string): void {
+  process.emitWarning(message, { code });
+}
+
 export class ContextEnricher {
   public enrich(
     message: string,
@@ -781,7 +785,11 @@ export class NlEntryService implements NlEntryPort {
             timestamp: parsed.timestamp,
           });
         }
-      } catch {
+      } catch (error) {
+        emitNlGatewayWarning(
+          "interaction.nl_gateway.invalid_memory_turn",
+          `Failed to rehydrate conversation turn: ${error instanceof Error ? error.message : String(error)}`,
+        );
         continue;
       }
     }

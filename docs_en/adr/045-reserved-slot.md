@@ -1,5 +1,5 @@
 # ADR-045 Reserved Slot
 
-- Status：Withdrawn
-- Description：该#保留为历史号段占位，不再回填正文。
-- 迁移：需要实际Decision时，请uses当前可用的新#并在 `README.md` 中登记。
+- Status: Withdrawn
+- Description: This number is reserved as a historical number slot and will not be filled with content.
+- Migration: When an actual decision is needed, please use a currently available new number and register it in `README.md`.

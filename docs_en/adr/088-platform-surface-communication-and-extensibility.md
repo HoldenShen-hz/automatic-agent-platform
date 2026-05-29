@@ -1,31 +1,31 @@
 # ADR 088: Platform Surface, Communication, and Extensibility
 
-- Status：Accepted
-- Decision日期：2026-04-20
+- Status: Accepted
+- Decision Date: 2026-04-20
 
 ## Background
 
-[`../architecture/00-platform-architecture.md`](../architecture/00-platform-architecture.md) 的 `§6`、`§7`、`§8`、`§22`、`§30` defines了 API、服务communication、可扩展性、SDK/DX、Business Pack / Plugin 治理。这些章节以前分散映射到 API、event bus、plugin SPI、tool/skill/plugin contract，但缺少一个统一 ADR 解释为什么这些边界必须作为平台table面能力统一治理。
+`§6`, `§7`, `§8`, `§22`, `§30` of [`../architecture/00-platform-architecture.md`](../architecture/00-platform-architecture.md) define API, service communication, extensibility, SDK/DX, Business Pack/Plugin governance. These sections previously mapped分散到 API, event bus, plugin SPI, tool/skill/plugin contract, but lacked a unified ADR explaining why these boundaries must be governed as unified platform surface capabilities.
 
 ## Decision
 
-平台table面能力统一按以下边界治理：
+Platform surface capabilities are governed unified by the following boundaries:
 
-- 外部request必须先进入 API / Gateway / Webhook / Scheduler 等 Interface Plane，不得directly进入执lines层。
-- 平面间communication必须优先uses契约化 envelope、typed event、outbox / DLQ 机制，不允许隐式共享Status。
-- 扩展能力必须via Plugin SPI、Tool / Skill / Plugin contract、Business Pack 生命cycle进入平台。
-- SDK / DX 只提供受控接入能力，不提供bypassing policy、approval、sandbox、budget 的捷径。
-- Business Pack 必须声明 domain、capability、risk、tool bundle、API compatibility，且受同一 extension governance 约束。
+- External requests must first enter Interface Plane such as API / Gateway / Webhook / Scheduler, not directly enter execution layer.
+- Inter-plane communication must prioritize contractual envelope, typed event, outbox/DLQ mechanism, not allow implicit shared state.
+- Extension capabilities must enter platform via Plugin SPI, Tool/Skill/Plugin contract, Business Pack lifecycle.
+- SDK/DX only provides controlled access capability, does not provide shortcuts bypassing policy, approval, sandbox, budget.
+- Business Pack must declare domain, capability, risk, tool bundle, API compatibility, and be constrained by same extension governance.
 
-## 取舍
+## Trade-offs
 
-- 不为每种 API 或 SDK 动作单独创建 ADR，避免ArchitectureDecision碎片化。
-- 不把 extension runtime 的implementation detailswrites ADR；字段、Status、failed语义放入 contracts。
-- 不允许“内部 SDK 特权路径”，所有扩展都必须via过统一authorization、审计和发布边界。
+- Do not create separate ADR for each API or SDK action to avoid architecture decision fragmentation.
+- Do not write extension runtime implementation details into ADR; fields, state, failure semantics go into contracts.
+- Do not allow "internal SDK privileged path"; all extensions must pass through unified authorization, audit, and release boundary.
 
 ## Impact
 
-对应 authoritative contracts：
+Corresponding authoritative contracts:
 
 - `api_surface_contract.md`
 - `gateway_message_contract.md`
@@ -38,7 +38,7 @@
 - `ecosystem_extension_plane_contract.md`
 - `license_and_capability_boundary_contract.md`
 
-对应实现边界：
+Corresponding implementation boundaries:
 
 - `src/gateway/*`
 - `src/platform/five-plane-state-evidence/events/*`
@@ -46,25 +46,25 @@
 - `src/plugins/*`
 - `src/scale-ecosystem/marketplace/*`
 
-## 测试要求
+## Testing Requirements
 
-- contract tests：API / event / gateway envelope 不得bypassing contract。
-- integration tests：event bus、plugin lifecycle、marketplace install / publish 流必须能跨边界运lines。
-- denial tests：未authentication、未authorization、未验证、未声明 capability 的扩展不得进入生产执lines链。
+- contract tests: API / event / gateway envelope must not bypass contract.
+- integration tests: event bus, plugin lifecycle, marketplace install / publish flow must run cross-boundary.
+- denial tests: extensions without authentication, authorization, verification, declared capability must not enter production execution chain.
 
-## 备选方案
+## Alternatives
 
-1. **为每种 API/SDK 动作单独创建 ADR**：避免ArchitectureDecision碎片化，但导致 ADR count膨胀，难以维护一致性。
-2. **将 extension runtime implementation detailswrites ADR**：信息更全面，但 ADR 变得臃肿，且实现变更需要更新 ADR。
-3. **允许"内部 SDK 特权路径"**：降低开发门槛，但破坏平台边界，增加security风险。
-4. **采用本Decision**：统一治理平台table面，平衡扩展性vssecurity性。
+1. **Create separate ADR for each API/SDK action**: Avoids architecture decision fragmentation, but causes ADR count bloat and is difficult to maintain consistency.
+2. **Write extension runtime implementation details into ADR**: More comprehensive information, but ADR becomes bloated and implementation changes require updating ADR.
+3. **Allow "internal SDK privileged path"**: Reduces development barrier, but breaks platform boundaries and increases security risk.
+4. **Adopt this decision**: Unified platform surface governance, balancing extensibility and security.
 
-## 交叉references用
+## Cross References
 
-- [ADR-071 Plugin SPI 框架](./071-plugin-spi-framework.md)
-- [ADR-089 AI Operations 治理vs质量](./089-ai-operations-governance-and-quality.md)
+- [ADR-071 Plugin SPI Framework](./071-plugin-spi-framework.md)
+- [ADR-089 AI Operations Governance and Quality](./089-ai-operations-governance-and-quality.md)
 
-## 来源章节
+## Source Sections
 
 - `§6 Interface Plane`
 - `§7 Platform Contracts`

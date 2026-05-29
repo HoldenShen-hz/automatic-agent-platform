@@ -1,140 +1,140 @@
-# ADR-012 SQLite isno作为 Ring 1-2 defaults to主storage
+# ADR-012 Whether SQLite as Ring 1-2 Default Primary Storage
 
-- Status：Accepted
-- Decision日期：2026-04-03
+- Status: Accepted
+- Decision Date: 2026-04-03
 
 ## Background
 
-平台当前还occurrences于 Phase 1a / 1b 的基础闭环阶段，优先目标is把任务、workflow、execution、approval、event、session、recovery 路径跑稳，而不is一开始就上分层data平面或多租户事务基础设施。
+The platform is currently still in Phase 1a/1b basic closed-loop stage. Priority is to get tasks, workflow, execution, approval, event, session, and recovery paths running stably, not layering data planes or multi-tenant transaction infrastructure from the start.
 
-需要Decision的Issueis：
+Questions to decide:
 
-- Ring 1 isno继续以 SQLite 作为defaults to主事务storage。
-- 何时必须退出这一Decision。
+- Whether Ring 1 continues to use SQLite as default primary transaction storage.
+- When must exit this decision.
 
 ## Decision
 
-Ring 1 vs Ring 2 早期继续以 SQLite 作为defaults to / 首选主事务storage。
+Ring 1 and early Ring 2 continue to use SQLite as default/preferred primary transaction storage.
 
-同时明确边界：
+Also clarify boundaries:
 
-- SQLite 继续承担当前阶段最主要的单机 authoritative 事务storage。
-- PostgreSQL 后端可以作为受控替代实现存在，used for双写演练、concurrent验证和后续迁移准备，但不得bypassing既有 storage contract。
-- artifact 主体仍可存文件系统或对象storage，但索references和事实Status以 SQLite 为准。
-- 进入更复杂的data平面后，再按 `data_plane_contract.md` 演进为分层storage。
-- OAPEFLIR 新增的 `TaskSituation / Assessment / PlanRationale / Feedback / Learning / Improvement / ReleaseDecisionView` 等认知投影对象，在当前阶段仍必须能映射回 `harness_runs / node_runs / node_attempt_receipts` 这组 SQLite authoritative truth 边界。
+- SQLite continues to bear the current stage's most important single-machine authoritative transaction storage.
+- PostgreSQL backend can exist as a controlled alternative implementation, used for dual-write drills, concurrency verification, and subsequent migration preparation, but must not bypass existing storage contract.
+- Artifact body can still be stored in file system or object storage, but index and factual state based on SQLite.
+- When entering more complex data planes, evolve to layered storage per `data_plane_contract.md`.
+- OAPEFLIR新增的认知 projection objects like `TaskSituation/Assessment/PlanRationale/Feedback/Learning/Improvement/ReleaseDecisionView` must still be mappable to this set of SQLite authoritative truth boundaries `harness_runs/node_runs/node_attempt_receipts` at current stage.
 
-## 备选方案
+## Alternative Options
 
-### 方案 A：当前阶段directly采用 PostgreSQL
+### Option A: Directly Adopt PostgreSQL at Current Stage
 
-优点：
+Benefits:
 
-- concurrent能力更强。
-- 更接近未来多租户 / 多 worker 形态。
+- Stronger concurrency.
+- Closer to future multi-tenant/multi-worker form.
 
-代价：
+Costs:
 
-- 本地开发、测试、发布和运维复杂度显著增加。
-- 现在的主风险不is DB upper limit，而is contract 尚未完全映射到code。
-- 早期会把大量精力耗在基础设施而不is产品闭环上。
+- Local development, testing, release, and operations complexity significantly increased.
+- Current main risk is not DB ceiling, but contract not yet fully mapped to code.
+- Early stage would exhaust大量精力 on infrastructure rather than product closed loop.
 
-### 方案 B：SQLite + 其他cache/队列混合方案
+### Option B: SQLite + Other Cache/Queue Hybrid Solution
 
-优点：
+Benefits:
 
-- 可局部缓解writes压力。
+- Can partially relieve write pressure.
 
-代价：
+Costs:
 
-- 系统复杂度上升，但真正的Issue边界可能仍未收紧。
-- 会过早references入多种 authoritative 来源。
+- System complexity rises, but real problem boundaries may still not be tightened.
+- Prematurely introduces multiple authoritative sources.
 
-### 方案 C：当前Decision方案
+### Option C: Current Decision
 
-- SQLite 继续作为唯一主事务storage
-- 明确concurrent、背压和 Phase 边界
-- 后续再via ADR 和 contract 正式升级
+- SQLite continues as only primary transaction storage
+- Explicitly acknowledge concurrency, backpressure, and phase boundaries
+- Subsequently upgrade via ADR and contract
 
-## 选择这个方案的原因
+## Reasons for This Choice
 
-- 当前阶段最需要的is低运维成本、高可复制性和本地可调试性。
-- SQLite 足以支撑 Phase 1a / 1b 的单机闭环。
-- 现在先把Status、事件、审批、恢复和storage schema 收紧，比提前上更重data库更关键。
-- 项目已via有清晰的data平面演进文档，不会因为当前选择 SQLite 就丢掉后续升级路径。
+- Current stage most needs low operations cost, high reproducibility, and local debuggability.
+- SQLite sufficient to support Phase 1a/1b single-machine closed loop.
+- First tightening state, events, approval, recovery, and storage schema is more critical than prematurely deploying heavier databases.
+- Project already has clear data plane evolution documentation, will not lose subsequent upgrade path due to current SQLite choice.
 
-## 关键不variable
+## Key Invariants
 
-- SQLite is当前defaults to authoritative 事务源。
-- 若enabled PostgreSQL，必须via受控 storage adapter / migration / dual-run 方案接入，不能形成未受治理的第二套业务语义。
-- `foreign_keys = ON` is正式运lines要求，不isoptional优化。
-- 高价值事实Status不得只存在内存。
-- 不允许把“SQLite 未来会迁移”当成当前可忽略一致性的借口。
-- OAPEFLIR 演化实体即使暂时由轻量服务或内存注册table托管，也必须能映射回 `HarnessRun / NodeRun / NodeAttemptReceipt` 的 SQLite authoritative 事实边界，不能形成不受治理的第二真相源。
+- SQLite is current default authoritative transaction source.
+- If enabling PostgreSQL, must接入 via controlled storage adapter/migration/dual-run scheme, cannot form second set of ungoverned business semantics.
+- `foreign_keys = ON` is a formal operation requirement, not an optional optimization.
+- High-value factual state must not exist only in memory.
+- Must not use "SQLite will migrate in future" as excuse for currently ignoring consistency.
+- OAPEFLIR evolutionary entities even if temporarily hosted by lightweight services or in-memory registry, must be mappable to SQLite authoritative fact boundaries of `HarnessRun/NodeRun/NodeAttemptReceipt`, cannot form ungoverned second source of truth.
 
-## 采用触发条件
+## Adoption Triggers
 
-只要系统仍满足以下条件，就继续维持本Decision：
+Continue this decision as long as system still satisfies:
 
-- 单机为主
-- Phase 1a / 1b 主链为主
-- concurrent规模仍受控
-- 多租户、远程 worker、分析平面尚未进入正式实现
+- Single-machine primarily
+- Phase 1a/1b main chain primarily
+- Concurrency scale still controlled
+- Multi-tenant, remote worker, analytics plane not yet in formal implementation
 
-## 退出条件
+## Exit Conditions
 
-出现以下任一情况，应重新Decision：
+If any of the following occur, should re-decide:
 
-- execution plane 进入多 worker / queue / lease 主体实现
-- 单机writes瓶颈成为持续Issue，且背压/异步批量已不足以缓解
-- 多租户或 enterprise 事务隔离正式进入实现范围
-- analytics / archive / replay 需要独立data平面
+- Execution plane enters multi-worker/queue/lease main implementation
+- Single-machine write bottleneck becomes persistent issue and backpressure/async batch insufficient to relieve
+- Multi-tenant or enterprise transaction isolation formally enters implementation scope
+- Analytics/archive/replay need independent data plane
 
-## 实施Impact
+## Implementation Impact
 
-当前必须配套做到：
+Current must accompany:
 
-- schema、migration、repository 和恢复巡检都按 SQLite 边界设计
-- FileLock、event ack、execution、approval 都落到 SQLite authoritative table
-- via背压和运lines约束控制exceeds阶段concurrent
-- 当 phase1-4 references入 `learning_objects`、`improvement_candidates`、`rollout_records` 等新事实对象时，contract 和Status机必须先defines清楚 authoritative 责任，再扩展持久化实现。
+- Schema, migration, repository, and recovery inspection all designed per SQLite boundaries
+- FileLock, event ack, execution, approval all fall to SQLite authoritative tables
+- Control over-phase concurrency via backpressure and operational constraints
+- When phase1-4 introduces new factual objects like `learning_objects`, `improvement_candidates`, `rollout_records`, contract and state machine must first clearly define authoritative responsibilities before extending persistence implementation.
 
-后续升级要求：
+Subsequent upgrade requirements:
 
-- 若迁移 PostgreSQL，不得让业务 contract 漂移；应优先替换 storage adapter / migration / queue 层，而不is重写业务主链
+- If migrating to PostgreSQL, must not let business contract drift; should prioritize replacing storage adapter/migration/queue layer, not rewriting business main chain
 
-## 结果
+## Results
 
-优点：
+Benefits:
 
-- 本地开发和测试成本最低。
-- 最适合当前阶段快速建立可恢复、可审计的最小平台闭环。
-- vs当前单机 contract 体系天然对齐。
+- Lowest local development and testing cost.
+- Most suitable for quickly establishing recoverable, auditable minimum platform closed loop at current stage.
+- Naturally aligned with current single-machine contract system.
 
-代价：
+Costs:
 
-- concurrent和扩展性有明确upper limit。
-- Phase 2 以后若能力继续扩张，必须认真规划迁移，不可no限拖延。
+- Concurrency and scalability have explicit ceilings.
+- If capabilities continue expanding after Phase 2, must seriously plan migration, cannot indefinitely postpone.
 
-## 当前实现对齐
+## Current Implementation Alignment
 
-截至当前 phase1-4 交付，本 ADR 的现实含义变为：
+As of current phase1-4 delivery, practical implications of this ADR have changed:
 
-- `harness_runs / node_runs / node_attempt_receipts / approvals / events / diagnostics` 等事实仍然由 SQLite 边界托底。
-- OAPEFLIR 认知 DTO、LearningObject、ReleaseDecisionView 等新对象已via先在class型、测试和 contract 层收口，再逐步往持久化扩展。
-- 这意味着“先defines authoritative 语义，再补storage形态”，而不is先references入第二套data平面。
+- Factual like `harness_runs/node_runs/node_attempt_receipts/approvals/events/diagnostics` still backed by SQLite boundaries.
+- New objects like OAPEFLIR cognitive DTOs, LearningObject, ReleaseDecisionView have first closed at type, test, and contract layer, then gradually extended to persistence.
+- This means "first define authoritative semantics, then supplement storage form", not first introducing second set of data planes.
 
 ## v4.3 ADR Remediation
 
-- A-4: 本 ADR 原先延续 task/workflow/execution-centric storage叙事，Root cause:  SQLite Decision形成时 runtime truth 仍以旧对象命名为主，后续没有随着 `NodeRun` / `NodeAttemptReceipt` 主链完成统一迁移。修复：正文现明确 SQLite authoritative truth 主语为 `harness_runs / node_runs / node_attempt_receipts`，旧 task/workflow/execution 只保留为兼容叙事。
+- A-4: This ADR originally continued task/workflow/execution-centric storage narrative. Root cause was that SQLite decision formed when runtime truth still used old object naming, not subsequently unified with `NodeRun`/`NodeAttemptReceipt` main chain. Fix: Body now explicitly states SQLite authoritative truth subject as `harness_runs/node_runs/node_attempt_receipts`, old task/workflow/execution only retained as compatible narrative.
 
-## 交叉references用
+## Cross-References
 
-- [ADR-009 部署vs运维](./009-deployment-ops.md)
-- [ADR-013 EventEmitter isno继续uses到 Phase 2](./013-eventemitter-phase-2-boundary.md)
-- [ADR-011 Effect-TS isno作为核心运lines时基础](./011-effect-ts-adoption.md)
+- [ADR-009 Deployment and Operations](./009-deployment-ops.md)
+- [ADR-013 Whether EventEmitter Continues to Phase 2](./013-eventemitter-phase-2-boundary.md)
+- [ADR-011 Effect-TS Whether as Core Runtime Foundation](./011-effect-ts-adoption.md)
 
-## 来源章节
+## Source Sections
 
 - `storage_schema_contract.md`
 - `runtime_repository_and_migration_contract.md`

@@ -107,7 +107,11 @@ export class DurableWorkflowBuilderRepository implements WorkflowBuilderReposito
     }
     try {
       return parseStoredWorkflowBuilderRecord(workflowState);
-    } catch {
+    } catch (error) {
+      emitWorkflowBuilderWarning(
+        "interaction.workflow_builder.invalid_repository_record",
+        `Failed to parse stored workflow builder record ${draftId}: ${error instanceof Error ? error.message : String(error)}`,
+      );
       return null;
     }
   }
@@ -175,6 +179,10 @@ export interface WorkflowBuilderSaveReview {
     readonly estimatedBudgetAmount: number;
     readonly timeoutMs: number;
   };
+}
+
+function emitWorkflowBuilderWarning(code: string, message: string): void {
+  process.emitWarning(message, { code });
 }
 
 function isStringArray(value: unknown): value is readonly string[] {
@@ -304,7 +312,11 @@ function safeParseObject(raw: string): Record<string, unknown> | null {
   try {
     const parsed = JSON.parse(raw) as unknown;
     return typeof parsed === "object" && parsed != null ? parsed as Record<string, unknown> : null;
-  } catch {
+  } catch (error) {
+    emitWorkflowBuilderWarning(
+      "interaction.workflow_builder.invalid_json",
+      `Failed to parse workflow builder JSON payload: ${error instanceof Error ? error.message : String(error)}`,
+    );
     return null;
   }
 }
@@ -801,7 +813,11 @@ export class WorkflowBuilderService {
     try {
       const parsed = JSON.parse(record.builderJson) as unknown;
       return isVisualWorkflowBuilder(parsed) ? parsed : null;
-    } catch {
+    } catch (error) {
+      emitWorkflowBuilderWarning(
+        "interaction.workflow_builder.invalid_builder_json",
+        `Failed to parse workflow draft ${draftId}: ${error instanceof Error ? error.message : String(error)}`,
+      );
       return null;
     }
   }

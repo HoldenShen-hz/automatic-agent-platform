@@ -1,56 +1,56 @@
-# ADR-023 服务communicationArchitecture
+# ADR-023 Service Communication Architecture
 
-- Status：Accepted
-- Decision日期：2026-04-03
+- Status: Accepted
+- Decision Date: 2026-04-03
 
 ## Background
 
-平面内服务和跨平面服务call需要统一的timeout、重连和事件投递机制，避免单点故障和信息丢失。
+Intra-plane and cross-plane service calls need unified timeout, reconnection, and event delivery mechanisms to avoid single points of failure and information loss.
 
 ## Decision
 
-### timeout策略
+### Timeout Strategy
 
-- synchronouscalldefaults totimeout：5s
-- 最大timeout：30s
-- supported header 覆盖，但不exceeds过 max clamp
-- configure统一在 `config/runtime/default.json`
+- Synchronous call default timeout: 5s
+- Maximum timeout: 30s
+- Supports header override, but not exceeding max clamp
+- Configuration unified in `config/runtime/default.json`
 
-### 流重连机制
+### Stream Reconnection Mechanism
 
-- DurableEventBus supported last_event_id 恢复
-- 断连后自动从最后一个确认事件继续
+- DurableEventBus supports last_event_id recovery
+- After disconnection, automatically resumes from last acknowledged event
 
-### Outbox 模式
+### Outbox Pattern
 
-- 同事务写事件：业务操作和事件投递必须在同一data库事务中
-- OutboxService (219 lines) 实现可靠事件投递
-- 确保事件不丢失
+- Same-transaction write events: Business operations and event delivery must be in same database transaction
+- OutboxService (219 lines) implements reliable event delivery
+- Ensures events are not lost
 
 ### Phase 1 Architecture
 
-- Phase 1 为单体Architecture
-- 进程内call走directlyfunctioncall
-- 跨进程call走 HTTP
+- Phase 1 is monolithic architecture
+- Intra-process calls go through direct function calls
+- Cross-process calls go through HTTP
 
 ## Consequences
 
-优点：
+Benefits:
 
-- 统一timeoutconfigure避免requestno限等待
-- Outbox 模式保证事件可靠性
-- last_event_id 使流重连成为可能
+- Unified timeout configuration avoids requests waiting indefinitely
+- Outbox pattern ensures event reliability
+- last_event_id enables stream reconnection
 
-代价：
+Costs:
 
-- Outbox 模式增加事务复杂度
-- timeoutconfigure需要globally协调
+- Outbox pattern increases transaction complexity
+- Timeout configuration needs global coordination
 
-## 交叉references用
+## Cross-References
 
-- [ADR-021 平面间communication契约](./021-inter-plane-communication-contract.md)
-- [ADR-012 SQLite isno作为 Phase 1-2 唯一主storage](./012-sqlite-phase-1-2-primary-store.md)
+- [ADR-021 Inter-Plane Communication Contract](./021-inter-plane-communication-contract.md)
+- [ADR-012 SQLite Whether as Phase 1-2 Only Primary Storage](./012-sqlite-phase-1-2-primary-store.md)
 
-## 来源章节
+## Source Sections
 
-- `§7` 服务communicationArchitecture
+- `§7` Service Communication Architecture

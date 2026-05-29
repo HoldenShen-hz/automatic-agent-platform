@@ -1,134 +1,134 @@
-# ADR-015 Skill vs Plugin isno收敛为单市场
+# ADR-015 Whether Skill and Plugin Converge to Single Marketplace
 
 ---
 
-## OAPEFLIR 关联
+## OAPEFLIR Association
 
-本文档defines OAPEFLIR 八阶段认知循环中的以下组件：
+This document defines the following components in the OAPEFLIR eight-stage cognitive loop:
 
-- **Observe**：信号采集vs统一 DTO
-- **Assess**：执lines前/后评估vs风险判断
-- **Plan**：显式规划vs DAG 构建（ADR-060）
-- **Execute**：步骤执linesvs Dual-Channel 输出
-- **Feedback**：信号收集、预handlevs 7 class反馈源（ADR-079）
-- **Learn**：模式检测vs知识提取（ADR-080）
-- **Improve**：改进候选评估vs Rollout Status机（ADR-075）
-- **Release**：六级受控发布vs自动回滚
+- **Observe**: Signal collection and unified DTO
+- **Assess**: Pre/post execution assessment and risk judgment
+- **Plan**: Explicit planning and DAG construction (ADR-060)
+- **Execute**: Step execution and dual-channel output
+- **Feedback**: Signal collection, preprocessing, and 7 feedback sources (ADR-079)
+- **Learn**: Pattern detection and knowledge extraction (ADR-080)
+- **Improve**: Improvement candidate evaluation and Rollout state machine (ADR-075)
+- **Release**: Six-level controlled release and automatic rollback
 
 ---
 
-- Status：Accepted
-- Decision日期：2026-04-03
+- Status: Accepted
+- Decision Date: 2026-04-03
 
 ## Background
 
-系统历史材料里曾分别出现 Skill Marketplace、Plugin Marketplace、模板市场等多个扩展入口。如果这些概念长期并存，会导致：
+Historical system materials have separately appeared Skill Marketplace, Plugin Marketplace, template marketplace and other extension entry points. If these concepts coexist long-term, will cause:
 
-- 安装vspermission治理入口分散
-- 审核、签名、版本兼容vsdisabled策略repeats建设
-- user难以理解“到底去哪里找扩展”
+- Installation and permission governance entry points scattered
+- Review, signature, version compatibility, and deprecation strategies built repeatedly
+- Users difficult to understand "where to actually find extensions"
 
-当前阶段并不会真正实现 marketplace，但需要先冻结方向，避免后面文档继续accesses along不同市场模型发散。
+Current stage will not truly implement marketplace, but need to freeze direction first, avoid subsequent documents continuing to diverge along different market models.
 
 ## Decision
 
-Phase 1a / 1b 不实现 marketplace。
+Phase 1a/1b does not implement marketplace.
 
-长期方向上，Skill、Plugin、模板等扩展能力收敛为统一治理入口，而不is维护多个市场模型。
+Long-term direction, Skill, Plugin, template and other extension capabilities converge to unified governance entry point, rather than maintaining multiple market models.
 
-这意味着：
+This means:
 
-- 当前只保留扩展对象模型和治理 contract
-- 真正进入 Phase 4 时，优先建设统一 extension marketplace
+- Currently only retain extension object model and governance contract
+- When truly entering Phase 4, prioritize building unified extension marketplace
 
-## 备选方案
+## Alternative Options
 
-### 方案 A：长期维持多个市场
+### Option A: Long-Term Maintain Multiple Markets
 
-优点：
+Benefits:
 
-- 每class扩展看起来更“贴合自身语义”。
+- Each extension type appears more "tailored to its own semantics".
 
-代价：
+Costs:
 
-- user心智负担重。
-- 审核、permission、签名、兼容、下架、计费能力高度repeats。
-- 平台治理复杂度明显上升。
+- Heavy user mental burden.
+- Review, permissions, signature, compatibility, deprecation capabilities highly duplicated.
+- Platform governance complexity significantly rises.
 
-### 方案 B：当前就实现统一市场
+### Option B: Implement Unified Market Now
 
-优点：
+Benefits:
 
-- 路径最directly。
+- Most direct path.
 
-代价：
+Costs:
 
-- 明显exceeds阶段。
-- 当前连内部扩展治理都尚未进入实现，提前做市场只会把平台拉重。
+- Clearly over-stage.
+- Currently even internal extension governance not yet in implementation, doing marketplace prematurely只会把平台拉重.
 
-### 方案 C：当前Decision方案
+### Option C: Current Decision
 
-- 当前不实现 marketplace
-- 长期方向收敛为统一入口
-- 先在 contract 层统一 extension object、permission 和 lifecycle
+- Currently not implementing marketplace
+- Long-term direction converges to unified entry
+- First unify extension object, permission, and lifecycle at contract layer
 
-## 选择这个方案的原因
+## Reasons for This Choice
 
-- 当前阶段最重要的is内部扩展边界，不is市场产品形态。
-- 统一治理入口更符合permission、审批、签名、兼容性和计费的长期需要。
-- 先冻结方向，可以阻止文档继续出现多个并列市场概念。
+- Current stage most important is internal extension boundaries, not market product form.
+- Unified governance entry more aligned with long-term needs of permissions, approval, signature, compatibility, and billing.
+- Freezing direction first can prevent documents from continuing to show multiple parallel market concepts.
 
-## 关键不variable
+## Key Invariants
 
-- Skill、Plugin、模板未来都应via过统一治理链。
-- 安装单元不得bypassing ToolRegistry、Policy Engine 和permission审查。
-- 即使前端展示分栏，也不代table后端要维护多个市场内核。
+- Skill, Plugin, template future should all pass through unified governance chain.
+- Installation units must not bypass ToolRegistry, Policy Engine, and permission review.
+- Even if front-end displays in separate columns, does not mean backend needs to maintain multiple market cores.
 
-## 采用触发条件
+## Adoption Triggers
 
-在正式进入以下主题前，应继续遵守该方向：
+Before formally entering the following topics, continue to abide by this direction:
 
 - ecosystem extension plane
 - monetization metering plane
 - enterprise operations plane
 
-## 退出条件
+## Exit Conditions
 
-若未来证明：
+If future proves:
 
-- Skill vs Plugin 的生命cycle、风险模型、商业模式完全不同
-- 统一治理带来的复杂度反而更高
+- Skill and Plugin lifecycle, risk model, business models completely different
+- Unified governance complexity反而更高
 
-则可重新开 ADR 讨论拆分，但不能在没有新Decision的情况下回到“多个市场并lines演化”。
+Then may reopen ADR to discuss splitting, but cannot return to "multiple markets evolving in parallel" without new decision.
 
-## 实施Impact
+## Implementation Impact
 
-当前文档vs后续实现要求：
+Current documentation and subsequent implementation requirements:
 
-- contract 和文档中尽量uses统一的 extension / installable / capability registry 语言
-- Phase 1a / 1b 只做 registry、permission、安装边界，不做市场 UI 或商业化分发
-- Phase 4 若开始做 marketplace，应directly从统一治理入口设计，而不is先做多套市场再合并
+- Use unified extension/installable/capability registry language in contracts and documentation
+- Phase 1a/1b only does registry, permission, installation boundaries, not market UI or commercial distribution
+- If Phase 4 starts marketplace, should directly design from unified governance entry, not first do multiple sets of markets then merge
 
-## 结果
+## Results
 
-优点：
+Benefits:
 
-- 长期治理更一致。
-- user心智更简单。
-- permission、签名、版本兼容和计费更容易统一。
+- More consistent long-term governance.
+- Simpler user mental model.
+- Permissions, signature, version compatibility, and billing easier to unify.
 
-代价：
+Costs:
 
-- 需要在未来真正实现时，把不同扩展class型抽象到同一治理模型中。
-- 某些class型特有能力可能需要额外的 subtype 规则，而不is完全平铺handle。
+- When truly implementing in future, need to abstract different extension types into same governance model.
+- Some type-specific capabilities may need additional subtype rules, not completely flat processing.
 
-## 交叉references用
+## Cross-References
 
-- [ADR-014 组织模型isnodirectly映射到code对象](./014-org-model-code-boundary.md)
-- [ADR-005 security模型](./005-security-model.md)
-- [ADR-010 商业模式](./010-commercial-model.md)
+- [ADR-014 Whether Organization Model Directly Maps to Code Objects](./014-org-model-code-boundary.md)
+- [ADR-005 Security Model](./005-security-model.md)
+- [ADR-010 Commercial Model](./010-commercial-model.md)
 
-## 来源章节
+## Source Sections
 
 - `tool_skill_plugin_contract.md`
 - `ecosystem_extension_plane_contract.md`

@@ -1,66 +1,66 @@
 # ADR-070 Conclusion
 
-- Status：Withdrawn / Index
-- Decision日期：2026-04-20
+- Status: Withdrawn / Index
+- Decision Date: 2026-04-20
 
 ## Background
 
-本 ADR 总结平台总体Architecture的关键Decision和设计principle。
+This ADR summarizes the key decisions and design principles of the platform's overall architecture.
 
-## 核心ArchitectureDecision
+## Core Architecture Decisions
 
-### Five-Plane + 一横切
+### Five Planes + One Crosscut
 
 ```
-P1 Interface Plane → P2 Control Plane → P3 Orchestration Plane → P4 Execution Plane → P5 StatusvsEvidence Plane
+P1 Interface Plane → P2 Control Plane → P3 Orchestration Plane → P4 Execution Plane → P5 State and Evidence Plane
                         ↑
-                   X1 横切控制织网
+                   X1 Crosscut Control Fabric
 ```
 
-### 设计principle
+### Design Principles
 
-| principle | Description |
-|------|------|
-| defaults to不可信 | 模型、插件、外部relies on均不可信 |
-| defaults to会failed | 远程call、Worker、发布都可能failed |
-| defaults to收敛 | configure变更、lines为漂移需要治理 |
-| 先可恢复，再自动化 | 恢复机制先于自动化部署 |
+| Principle | Description |
+|-----------|-------------|
+| Default distrust | Models, plugins, external dependencies are all untrusted |
+| Default will fail | Remote calls, Workers, releases can all fail |
+| Default converge | Configuration changes, behavior drift need governance |
+| Recoverable first, then automate | Recovery mechanism precedes automated deployment |
 
-### OAPEFLIR 认知循环
+### OAPEFLIR Cognitive Loop
 
 ```
 Observe → Assess → Plan → Execute → Feedback → Learn → Improve → Release
 ```
 
-### 演进路线
+### Evolution Roadmap
 
-| 阶段 | 重点 |
-|------|------|
-| Ring 1 | 核心Execution Plane + 稳定性基线 |
-| Ring 2 | 治理、恢复、耐久vs高可信运维 |
-| Ring 3 | 业务域、生态vs高级智能能力 |
+| Phase | Focus |
+|-------|-------|
+| Ring 1 | Core execution plane + stability baseline |
+| Ring 2 | Governance, recovery, durability, and high-trust operations |
+| Ring 3 | Business domains, ecosystem, and advanced intelligence capabilities |
 
-## ADR 覆盖范围
+## ADR Coverage
 
-本 ADR 系列覆盖了从基础设施到运营成熟度的完整Architecture，共 70 个 ADR。
+This ADR series covers the complete architecture from infrastructure to operational maturity, a total of 70 ADRs.
 
-## 关键不variable
+## Key Invariants
 
-- Five-Plane隔离不变
-- `HarnessRuntime + RuntimeStateMachine` truth authority 不变
-- OAPEFLIR 只作为认知投影不变
-- 宪法principle不变
+- Five-plane isolation unchanged
+- `HarnessRuntime + RuntimeStateMachine` truth authority unchanged
+- OAPEFLIR as cognitive projection only unchanged
+- Constitutional principles unchanged
 
 ## v4.3 ADR Remediation
 
-- A-63: 本 ADR 原先把 `Phase 1-7` vs “OAPEFLIR 循环不变”写成主Architecture不variable，Root cause: 总结 ADR 汇总了历史路线图vs认知模型，但没有区分 roadmap 和 runtime authority。修复：正文现改为 ring 口径，并把运lines时不variable明确收口到 `HarnessRuntime + RuntimeStateMachine`。
+- A-63: This ADR originally wrote `Phase 1-7` and "OAPEFLIR loop invariant" as main architecture invariants, root cause being summary ADR aggregated historical roadmap and cognitive model without distinguishing roadmap from runtime authority. Fix: Body now changed to ring口径, and runtime invariants explicitly closed to `HarnessRuntime + RuntimeStateMachine`.
 
-## 后续工作
+## Follow-up Work
 
-- 持续完善 ADR 索references
-- 补充缺失的场景
-- 根据实现via验优化Decision
+- Continuously improve ADR index
+- Supplement missing scenarios
+- Optimize decisions based on implementation experience
 
-## 来源章节
+## Source Section
 
 - `§70` Conclusion

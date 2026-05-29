@@ -1,76 +1,76 @@
-# ADR-016 OAPEFLIR 八阶段认知循环模型
+# ADR-016 OAPEFLIR Eight-Stage Cognitive Loop Model
 
-- Status：Accepted
-- Decision日期：2026-04-17
+- Status: Accepted
+- Decision Date: 2026-04-17
 
 ## Background
 
-系统早期Architecturebased on"三层分权Architecture"（控制 / 运lines时 / 学习 / data）组织。随着 HarnessRuntime 成为唯一执lines入口，平台需要一套受控认知框架来解释和约束认知循环，而不is再references入第二个执lines运lines时。OAPEFLIR（Observe → Assess → Plan → Execute → Feedback → Learn → Improve → Release）因此被保留为认知/治理语义框架。
+Early system architecture was organized based on "three-layer separation architecture" (control/runtime/learning/data). As HarnessRuntime became the sole execution entry, the platform needed a controlled cognitive framework to explain and constrain the cognitive loop, rather than introducing a second execution runtime. OAPEFLIR (Observe → Assess → Plan → Execute → Feedback → Learn → Improve → Release) was therefore retained as the cognitive/governance semantic framework.
 
-关联 contract：`docs_zh/contracts/oapeflir_loop_contract.md`
+Associated contract: `docs_zh/contracts/oapeflir_loop_contract.md`
 
 ## Decision
 
-### OAPEFLIR 八阶段模型
+### OAPEFLIR Eight-Stage Model
 
-系统采用八阶段认知循环。它is平台中的主动编排/治理控制环，但不is第二套独立执linesreferences擎：
+The system adopts an eight-stage cognitive loop. It is the active orchestration/governance control loop in the platform, but not a second independent execution engine:
 
 ```
 Observe → Assess → Plan → Execute → Feedback → Learn → Improve → Release
    ↓                    ↓           ↓           ↓            ↓
    └────────────────────┴───────────┴───────────┴────────────┘
-                    （双链拓扑：主链 O→A→P→E→F，副链 F→L→I→R）
+                    (Dual-chain topology: Main chain O→A→P→E→F, Secondary chain F→L→I→R)
 ```
 
-约束：
+Constraints:
 
-- `HarnessRuntime` is唯一执lines入口。
-- `OapeflirLoopService` 可以主动驱动 Observe/Assess/Plan/Feedback/Learn/Improve/Release 的阶段推进，并把结果回写到执lines约束、规划图和改进候选。
-- OAPEFLIR 只产出 `oapeflir.view.*` vs `oapeflir.rationale.*` 投影，不拥有 run status、budget、lease、side effect commit 或错误码命名空间。
+- `HarnessRuntime` is the sole execution entry.
+- `OapeflirLoopService` can actively drive stage progression of Observe/Assess/Plan/Feedback/Learn/Improve/Release, and write results back to execution constraints, planning graphs, and improvement candidates.
+- OAPEFLIR only produces `oapeflir.view.*` and `oapeflir.rationale.*` projections, does not own run status, budget, lease, side effect commit, or error code namespaces.
 
-### 各阶段职责
+### Stage Responsibilities
 
-| 阶段 | 核心职责 | 关键输出 |
-|------|---------|---------|
-| **O**bserve | 收集任务/上下文/系统Status | UnifiedObservation (TaskSituation + SystemSituation) |
-| **A**ssess | 预执lines风险/复杂度/资源评估 | UnifiedAssessment (六维评分) |
-| **P**lan | 形成规划理由并约束执lines交接 | PlanRationale + `PlanGraphBundle` references用 |
-| **E**xecute | 读取 Harness 执lines结果并生成认知视图 | `NodeAttemptReceipt` references用 + ExecutionSummaryView |
-| **F**eedback | 收集执lines结果反馈信号 | LearningSignal[] |
-| **L**earn | 从信号中提取模式/知识 | LearningObject[] |
-| **I**mprove | 评估改进候选 + guardrail | ImprovementCandidate |
-| **R**elease | 受控发布改进到生产 | ReleaseDecisionView / RolloutRecord |
+| Stage | Core Responsibility | Key Output |
+|-------|---------------------|------------|
+| **O**bserve | Collect task/context/system state | UnifiedObservation (TaskSituation + SystemSituation) |
+| **A**ssess | Pre-execution risk/complexity/resource evaluation | UnifiedAssessment (six-dimensional scoring) |
+| **P**lan | Form reasoning and constrain execution handoff | PlanRationale + `PlanGraphBundle` reference |
+| **E**xecute | Read Harness execution results and generate cognitive view | `NodeAttemptReceipt` reference + ExecutionSummaryView |
+| **F**eedback | Collect execution result feedback signals | LearningSignal[] |
+| **L**earn | Extract patterns/knowledge from signals | LearningObject[] |
+| **I**mprove | Evaluate improvement candidates + guardrail | ImprovementCandidate |
+| **R**elease | Controlled release of improvements to production | ReleaseDecisionView / RolloutRecord |
 
-### vs Phase 1A/1B 执lines模型的映射
+### Mapping with Phase 1A/1B Execution Model
 
-- `HarnessRuntime` 承接真实的 `PlanGraphBundle -> NodeRun -> NodeAttemptReceipt` 执lines主链。
-- OAPEFLIR 在 Harness 主链之上生成阶段性 view / rationale，同时主动决定何时进入 Assess/Plan、isno要求 orchestration、如何把 release / guardrail Conclusion写回Control Plane。
-- 因此 OAPEFLIR is active orchestration loop，但它把真实命令执lines委托给 HarnessRuntime，而不is自带第二套 executor。
-- 不再存在以 `OapeflirLoopService` 作为独立 runtime 入口的 canonical 叙述。
+- `HarnessRuntime` undertakes the real `PlanGraphBundle -> NodeRun -> NodeAttemptReceipt` execution main chain.
+- OAPEFLIR generates stage views/rationale above the Harness main chain, while actively deciding when to enter Assess/Plan, whether orchestration is required, and how to write release/guardrail conclusions back to the Control Plane.
+- Therefore OAPEFLIR is the active orchestration loop, but delegates real command execution to HarnessRuntime, not bringing its own second executor.
+- The canonical narrative of `OapeflirLoopService` as an independent runtime entry no longer exists.
 
-### Execute 层集成要求
+### Execute Layer Integration Requirements
 
-Execute 阶段只能消费真实 runtime 已产出的 `NodeAttemptReceipt` / evidence refs，不得自lines驱动第二套执linesreferences擎。任何真实Status变化仍由 `RuntimeStateMachine.transition(command)` 和 Harness 主链负责。
+Execute stage can only consume real runtime-produced `NodeAttemptReceipt`/evidence refs, must not drive a second execution engine on its own. Any real state changes remain the responsibility of `RuntimeStateMachine.transition(command)` and the Harness main chain.
 
-## 备选方案
+## Alternative Options
 
-### 方案 A：维持三层分权Architecture，不references入 OAPEFLIR
+### Option A: Maintain Three-Layer Separation Architecture, Don't Introduce OAPEFLIR
 
-优点：Architecture简单，no需重构现有模块。
-代价：no法清晰table达认知闭环vs渐进改进路径。
+Benefits: Simple architecture, no need to refactor existing modules.
+Costs: Cannot clearly express cognitive closed loop and progressive improvement path.
 
-### 方案 B：OAPEFLIR vs三层Architecture并列
+### Option B: OAPEFLIR Coexists with Three-Layer Architecture
 
-优点：兼容现有模块。
-代价：两套心智模型造成混淆。
+Benefits: Compatible with existing modules.
+Costs: Two mental models cause confusion.
 
 ## Consequences
 
-- OAPEFLIR is系统的认知vs治理编排环；`HarnessRuntime` 仍然is唯一执lines运lines时。
-- 所有新模块（Observe builders、Assess evaluators、Plan strategies 等）必须能在八阶段认知框架中找到自己的位置，但不得bypassing Harness 主链。
-- 本 ADR is后续所有 OAPEFLIR 相关 GAP（V2-01 ~ V2-12）的Architecture基础。
+- OAPEFLIR is the system's cognitive and governance orchestration loop; `HarnessRuntime` remains the sole execution runtime.
+- All new modules (Observe builders, Assess evaluators, Plan strategies, etc.) must be able to find their place in the eight-stage cognitive framework, but must not bypass the Harness main chain.
+- This ADR is the architectural foundation for all subsequent OAPEFLIR-related GAPs (V2-01 ~ V2-12).
 
 ## v4.3 ADR Remediation
 
-- A-1: 本 ADR 原先把 OAPEFLIR 写成独立执lines编排器，Root cause: 认知循环模型在早期草案中同时承担了运lines时和解释层职责。修复：正文现明确 `HarnessRuntime` 才is唯一执lines入口，OAPEFLIR only保留为认知/治理语义框架。
-- A-10: 本 ADR 原先延续 `Oapeflir*` 风格 DTO 命名语境，Root cause: 早期文档directly以框架名命名输入输出对象。修复：正文现把阶段对象收敛到 `PlanRationale`、`ExecutionSummaryView` 等认知视图对象，并vs `CognitiveFrameInput/CognitiveFrameOutput` 体系对齐。
+- A-1: This ADR originally wrote OAPEFLIR as an independent execution orchestrator. Root cause was that the cognitive loop model in early drafts simultaneously assumed runtime and interpretation layer responsibilities. Fix: Body now clarifies `HarnessRuntime` is the sole execution entry, OAPEFLIR retained only as cognitive/governance semantic framework.
+- A-10: This ADR originally continued `Oapeflir*` style DTO naming context. Root cause was early documents directly named input/output objects by framework name. Fix: Body now converges stage objects to `PlanRationale`, `ExecutionSummaryView` and other cognitive view objects, aligned with `CognitiveFrameInput/CognitiveFrameOutput` system.

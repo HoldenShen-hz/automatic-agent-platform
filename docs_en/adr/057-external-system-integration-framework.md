@@ -1,24 +1,24 @@
-# ADR-057 外部系统集成框架
+# ADR-057 External System Integration Framework
 
-- Status：Accepted
-- Decision日期：2026-04-20
+- Status: Accepted
+- Decision Date: 2026-04-20
 
 ## Background
 
-平台需要vs外部系统（CRM、ERP、项目manage工具等）集成，需要统一的集成框架。
+The platform needs to integrate with external systems (CRM, ERP, project management tools, etc.), requiring a unified integration framework.
 
 ## Decision
 
-### 集成模式
+### Integration Patterns
 
-| 模式 | Description | 适用场景 |
-|------|------|----------|
-| webhook | 事件推送 | 实时性要求高 |
-| polling | 轮询拉取 | 外部系统no webhook |
-| api_proxy | API 代理 | 需要authentication和转换 |
-| file_transfer | 文件传输 | 批量data交换 |
+| Pattern | Description | Applicable Scenario |
+|---------|-------------|-------------------|
+| webhook | Event push | High real-time requirements |
+| polling | Polling pull | External system has no webhook |
+| api_proxy | API proxy | Requires authentication and transformation |
+| file_transfer | File transfer | Batch data exchange |
 
-### Adapter 框架
+### Adapter Framework
 
 ```typescript
 interface ExternalAdapter {
@@ -31,52 +31,52 @@ interface ExternalAdapter {
 }
 ```
 
-### authenticationclass型
+### Authentication Types
 
-| class型 | Description |
-|------|------|
+| Type | Description |
+|------|-------------|
 | api_key | API Key |
 | oauth2 | OAuth 2.0 |
-| basic_auth | user名密码 |
+| basic_auth | Username/password |
 | jwt | JWT Token |
 
-### 错误handle
+### Error Handling
 
-| 策略 | Description |
-|------|------|
-| retry | 重试 |
-| circuit_break | 熔断 |
-| fallback | 降级 |
-| dead_letter | 死信队列 |
+| Strategy | Description |
+|----------|-------------|
+| retry | Retry |
+| circuit_break | Circuit breaker |
+| fallback | Fallback |
+| dead_letter | Dead letter queue |
 
-### 集成治理
+### Integration Governance
 
-- connect器注册vs发现
-- authentication凭证manage
-- 流量控制
-- 审计日志
-- 所有外部副作用必须声明 `side_effect_policy`
-- 高风险writes必须生成 `SideEffectRecord`
-- 会改变运lines时真相的补偿/重试，必须via `RuntimeStateMachine` vs X1 Reliability 边界协调
+- Connector registration and discovery
+- Authentication credential management
+- Traffic control
+- Audit logs
+- All external side effects must declare `side_effect_policy`
+- High-risk writes must generate `SideEffectRecord`
+- Compensation/retry that changes runtime truth must be coordinated through `RuntimeStateMachine` and X1 Reliability boundary
 
 ## Consequences
 
-优点：
+Advantages:
 
-- 统一框架降低集成成本
-- 标准化handle错误
-- 治理能力保障security
+- Unified framework reduces integration cost
+- Standardized error handling
+- Governance capabilities ensure security
 
-代价：
+Trade-offs:
 
-- 适配器开发需要time
-- 维护多个集成增加复杂度
+- Adapter development takes time
+- Maintaining multiple integrations increases complexity
 
-## 交叉references用
+## Cross References
 
-- [ADR-027 security可靠Architecture](./027-security-architecture.md)
-- [ADR-021 平面间communication契约](./021-inter-plane-communication-contract.md)
+- [ADR-027 Security Architecture](./027-security-architecture.md)
+- [ADR-021 Inter-plane Communication Contract](./021-inter-plane-communication-contract.md)
 
-## 来源章节
+## Source Section
 
-- `§57` 外部系统集成框架
+- `§57` External System Integration Framework

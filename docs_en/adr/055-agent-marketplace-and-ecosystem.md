@@ -1,15 +1,15 @@
-# ADR-055 Agent 市场vs生态
+# ADR-055 Agent Marketplace and Ecosystem
 
-- Status：Accepted
-- Decision日期：2026-04-20
+- Status: Accepted
+- Decision Date: 2026-04-20
 
 ## Background
 
-平台需要开放的 Agent 市场，让合作伙伴和社区能贡献和分享 Agent Pack。
+The platform needs an open Agent marketplace where partners and community can contribute and share Agent Packs.
 
 ## Decision
 
-### Marketplace 结构
+### Marketplace Structure
 
 ```typescript
 interface MarketplaceListing {
@@ -33,48 +33,48 @@ type ListingCategory =
   | 'custom';
 ```
 
-### 发布流程
+### Publishing Process
 
-1. 开发者开发 Pack
-2. 本地测试（覆盖率 ≥80%）
-3. 提交审核
-4. authentication评估（Prompt Injection 检查、code签名验证、SBOM 审查、漏洞扫描）
-5. 上架市场
+1. Developer develops Pack
+2. Local testing (coverage >= 80%)
+3. Submit for review
+4. Certification evaluation (Prompt Injection check, code signature verification, SBOM review, vulnerability scan)
+5. List on marketplace
 
-### 定价模型
+### Pricing Models
 
-| 模型 | Description |
-|------|------|
-| free | 免费 |
-| one_time | 一iterations性购买 |
-| subscription | 订阅制 |
-| usage_based | 按uses量计费 |
+| Model | Description |
+|-------|-------------|
+| free | Free |
+| one_time | One-time purchase |
+| subscription | Subscription |
+| usage_based | Usage-based billing |
 
-### 评价vs排lines
+### Ratings and Rankings
 
-- user评价（1-5 星）
-- 下载量排lines
-- 趋势榜
-- 编辑推荐
+- User ratings (1-5 stars)
+- Download volume ranking
+- Trending ranking
+- Editor picks
 
 ## Consequences
 
-优点：
+Advantages:
 
-- 生态开放吸references合作伙伴
-- 市场机制激励高质量 Pack
-- authentication流程保证质量
+- Open ecosystem attracts partners
+- Market mechanism incentivizes high-quality Packs
+- Certification process ensures quality
 
-代价：
+Trade-offs:
 
-- 平台治理复杂性
-- 质量参差不齐风险
+- Platform governance complexity
+- Quality inconsistency risk
 
-## 交叉references用
+## Cross References
 
-- [平台Architecture §22 SDK vs开发者体验](../architecture/00-platform-architecture.md)
-- [平台Architecture §30 Business Pack 模型](../architecture/00-platform-architecture.md)
+- [Platform Architecture §22 SDK and Developer Experience](../architecture/00-platform-architecture.md)
+- [Platform Architecture §30 Business Pack Model](../architecture/00-platform-architecture.md)
 
-## 来源章节
+## Source Section
 
-- `§55` Agent 市场vs生态
+- `§55` Agent Marketplace and Ecosystem

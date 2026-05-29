@@ -1,27 +1,27 @@
-# ADR-025 稳定性Architecture
+# ADR-025 Stability Architecture
 
-- Status：Accepted
-- Decision日期：2026-04-03
+- Status: Accepted
+- Decision Date: 2026-04-03
 
 ## Background
 
-企业级 Agent 平台必须具备完善的稳定性机制，应对各种故障场景：network分区、relies ontimeout、资源耗尽等。
+Enterprise-class Agent platform must have comprehensive stability mechanisms to handle various failure scenarios: network partitions, dependency timeouts, resource exhaustion, etc.
 
 ## Decision
 
-### 七层稳定性Architecture
+### Seven-Layer Stability Architecture
 
-| 层级 | 机制 | threshold/策略 |
-|------|------|----------|
-| L1 隔离 | 租户failed率 >30% 自动隔离 | AutoStopLossService |
-| L2 限流背压 | 4 级 queue_lag threshold | 背压控制在 dispatcher |
-| L3 timeout重试 | 指数退避 base=1s max=60s | ExecutionStrategy |
-| L4 熔断器 | 50% failed率/60s → open → 30s half-open | CircuitBreaker |
-| L5 降级模式 | 8 种运lines模式 | PolicyMode enum |
-| L6 恢复 | 6 种恢复 worker | RuntimeRecoveryService 等 |
-| L7 可观测 | metrics/logs/traces/audit | shared/observability/ |
+| Layer | Mechanism | Threshold/Strategy |
+|-------|-----------|---------------------|
+| L1 Isolation | Tenant failure rate >30% auto isolation | AutoStopLossService |
+| L2 Rate Limiting Backpressure | 4-level queue_lag threshold | Backpressure controlled at dispatcher |
+| L3 Timeout Retry | Exponential backoff base=1s max=60s | ExecutionStrategy |
+| L4 Circuit Breaker | 50% failure rate/60s → open → 30s half-open | CircuitBreaker |
+| L5 Degraded Mode | 8 runtime modes | PolicyMode enum |
+| L6 Recovery | 6 recovery workers | RuntimeRecoveryService etc. |
+| L7 Observability | metrics/logs/traces/audit | shared/observability/ |
 
-### PolicyMode 8 种运lines模式
+### PolicyMode 8 Runtime Modes
 
 ```typescript
 enum PolicyMode {
@@ -36,7 +36,7 @@ enum PolicyMode {
 }
 ```
 
-### 6 种恢复 Worker
+### 6 Recovery Workers
 
 1. RuntimeRecoveryService (622 lines)
 2. RuntimeRepairService (595 lines)
@@ -45,38 +45,38 @@ enum PolicyMode {
 5. StalledExecutionEscalationService (130 lines)
 6. ExecutionDbQueueDisconnectRepairService (346 lines)
 
-### 自动回滚条件
+### Automatic Rollback Conditions
 
-| 条件 | threshold | 窗口 |
-|------|------|------|
-| 错误率exceeds标 | > 1% | 5 分钟 |
-| P99 delayexceeds标 | > 500ms | 5 分钟 |
-| success率不达标 | < 99% | 5 分钟 |
-| 连续failediterations数 | > 10 | 10 分钟 |
-| 资源耗尽 | Memory > 90% | 1 分钟 |
+| Condition | Threshold | Window |
+|-----------|-----------|--------|
+| Error rate exceeded | > 1% | 5 minutes |
+| P99 latency exceeded | > 500ms | 5 minutes |
+| Success rate below target | < 99% | 5 minutes |
+| Consecutive failures | > 10 | 10 minutes |
+| Resource exhaustion | Memory > 90% | 1 minute |
 
 ## Consequences
 
-优点：
+Benefits:
 
-- 七层防御覆盖常见故障场景
-- 自动降级保证核心服务可用
-- 6 种恢复 worker 实现自愈能力
+- Seven-layer defense covers common failure scenarios
+- Automatic degradation ensures core service availability
+- 6 recovery workers implement self-healing capability
 
-代价：
+Costs:
 
-- 多层机制增加系统复杂度
-- 需要完善的监控告警配套
+- Multi-layer mechanism increases system complexity
+- Requires complete monitoring and alerting support
 
-## 交叉references用
+## Cross-References
 
-- [ADR-004 工作流vs路由](./004-workflow-routing.md)
-- [ADR-075 六级受控发布vs Rollout Status机](./075-controlled-rollout-release.md)
+- [ADR-004 Workflow and Routing](./004-workflow-routing.md)
+- [ADR-075 Six-Level Controlled Release and Rollout State Machine](./075-controlled-rollout-release.md)
 
-## 来源章节
+## Source Sections
 
-- `§9` 稳定性Architecture（7 层）
+- `§9` Stability Architecture (7 layers)
 
 ## v4.3 ADR Remediation
 
-- A-19: 本 ADR 原先把 `supervised / degraded / maintenance / emergency` 混入 canonical `PolicyMode`，Root cause: 稳定性 ADR 把告警/运营语义和运lines时强约束模式合并成一套枚举。修复：正文现把模式枚举收敛到主Architecture规定的 8 种 runtime mode：`full_auto / supervised_auto / read_only / no-write / no-external-call / no-rollout / manual_only / incident-mode`。
+- A-19: This ADR originally mixed `supervised/degraded/maintenance/emergency` into canonical `PolicyMode`. Root cause was stability ADR mixed alerting/operations semantics and runtime strong constraint modes into one enum. Fix: Body now converges mode enum to the 8 runtime modes specified in main architecture: `full_auto/supervised_auto/read_only/no-write/no-external-call/no-rollout/manual_only/incident-mode`.

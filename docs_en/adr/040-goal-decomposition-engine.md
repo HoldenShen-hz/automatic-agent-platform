@@ -1,7 +1,7 @@
 # ADR-040 Goal Decomposition Engine Architecture
 
-- Status：Accepted
-- Decision Date：2026-04-20
+- Status: Accepted
+- Decision Date: 2026-04-20
 
 ## Background
 
@@ -107,7 +107,7 @@ Rules:
 
 ## Consequences
 
-Advantages:
+Benefits:
 
 - Automated decomposition improves efficiency
 - Confidence mechanism balances automation and human involvement
@@ -116,17 +116,17 @@ Advantages:
 Costs:
 
 - Complex goal decomposition may be inaccurate
-- Dependency analysis
+- Dependency analysis complexity
 
 ## v4.3 ADR Remediation
 
-- A-28: This ADR originally defined a separate 9-state goal lifecycle, root cause: goal decomposition ADR mixed "decomposition product state" and "runtime truth state" into one lifecycle and did not converge as `HarnessRun` became the sole execution main state machine. Fix: The body now demotes goal state to `GoalProjection`, with execution stage unified to `HarnessRun.status`.
+- A-28: This ADR originally defined a separate 9-state goal lifecycle. Root cause: goal decomposition ADR mixed "decomposition product state" and "runtime truth state" into one lifecycle and did not converge as `HarnessRun` became the sole execution main state machine. Fix: Body now demotes goal state to `GoalProjection`, with execution stage unified to `HarnessRun.status`.
 
-## Cross-references
+## Cross-References
 
 - [ADR-039 Natural Language Task Entry Architecture](./039-natural-language-task-entry.md)
 - [ADR-060 Explicit Planning Hub](./060-explicit-planning-hub.md)
 
-## Source Section
+## Source Sections
 
 - Section 40

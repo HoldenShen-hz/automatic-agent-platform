@@ -1,15 +1,15 @@
-# ADR-050 知识域隔离vs受控共享
+# ADR-050 Knowledge Domain Isolation vs Controlled Sharing
 
-- Status：Accepted
-- Decision日期：2026-04-20
+- Status: Accepted
+- Decision Date: 2026-04-20
 
 ## Background
 
-不同部门知识需要边界隔离，防止data泄漏，同时supported受控的知识共享。
+Different department knowledge needs boundary isolation to prevent data leakage, while supporting controlled knowledge sharing.
 
 ## Decision
 
-### 知识域模型
+### Knowledge Domain Model
 
 ```typescript
 interface KnowledgeDomain {
@@ -29,41 +29,45 @@ interface SharingPolicy {
 }
 ```
 
-### 隔离级别
+### Isolation Levels
 
-| 级别 | Description | 跨域检索 |
-|------|------|----------|
-| strict | 完全隔离 | 不允许 |
-| moderate | 审批后共享 | 需审批 |
-| open | 可见但需authorization | 需authorization |
+| Level | Description | Cross-domain Retrieval |
+|-------|-------------|----------------------|
+| strict | Complete isolation | Not allowed |
+| moderate | Shared after approval | Requires approval |
+| open | Visible but requires authorization | Requires authorization |
 
-### 知识共享流程
+### Knowledge Sharing Process
 
-1. 申请共享（指定目标域和用途）
-2. 源域审批
-3. 目标域确认
-4. 审计日志record
+1. Apply for sharing (specify target domain and purpose)
+2. Source domain approval
+3. Target domain confirmation
+4. Audit log record
 
-### 信任模型
+### Trust Model
 
-- 部门间信任关系
-- 知识来源验证
-- 共享历史追踪
+- Inter-department trust relationships
+- Knowledge source verification
+- Sharing history tracking
 
 ## Consequences
 
-优点：
+Advantages:
 
-- 严格隔离防止data泄漏
-- 受控共享supported业务协作
-- 审计追踪确保责任明确
+- Strict isolation prevents data leakage
+- Controlled sharing supports business collaboration
+- Audit tracking ensures clear accountability
 
-代价：
+Trade-offs:
 
-- 隔离Impact知识复用
-- 共享流程增加delay
+- Isolation affects knowledge reuse
+- Sharing process adds latency
 
-## 交叉references用
+## Cross References
 
-- [ADR-046 组织层iterations模型](./046-organization-hierarchy-model.md)
--
+- [ADR-046 Organization Hierarchy Model](./046-organization-hierarchy-model.md)
+- [ADR-085 Organization Governance and Knowledge Boundary](./085-organization-governance-and-knowledge-boundary.md)
+
+## Source Section
+
+- `§50` Knowledge Domain Isolation

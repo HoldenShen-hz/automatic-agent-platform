@@ -1,61 +1,61 @@
-# ADR-033 分阶段落地路线
+# ADR-033 Phased Roadmap
 
-- Status：Superseded by ADR-112
-- Decision日期：2026-04-17
+- Status: Superseded by ADR-112
+- Decision Date: 2026-04-17
 
 ## Background
 
-平台建设is一个渐进过程，需要明确的阶段划分和阶段门禁，确保每个阶段交付可用功能。
+Platform construction is a gradual process requiring clear phase divisions and stage gates to ensure each phase delivers usable functionality.
 
 ## Decision
 
-### 3 Ring 路线图
+### 3 Ring Roadmap
 
-| 阶段 | 目标 | 关键交付物 |
-|------|------|-----------|
-| Ring 1 | 核心Execution Plane | HarnessRuntime、PlanGraphBundle、Statusmanage |
-| Ring 2 | 稳定性增强 | 恢复机制、监控告警、治理vs耐久 |
-| Ring 3 | 业务域vs生态 | DomainDescriptor、Pack SDK、Marketplace、多 Region |
+| Phase | Goal | Key Deliverables |
+|-------|------|------------------|
+| Ring 1 | Core Execution Plane | HarnessRuntime, PlanGraphBundle, state management |
+| Ring 2 | Enhanced Stability | Recovery mechanisms, monitoring alerting, governance and durability |
+| Ring 3 | Business Domain and Ecosystem | DomainDescriptor, Pack SDK, Marketplace, multi-Region |
 
-### 路线图服务
+### Roadmap Service
 
 - `domains/roadmap/roadmap-service.ts` (124 lines)
-- 阶段追踪和Statusmanage
-- 完成record
+- Phase tracking and state management
+- Completion records
 
-### 阶段门禁
+### Stage Gates
 
-- SuccessCriteriaService supported ring gate 注册
-- 指标记分
-- `evaluatePhaseAdvance()` 拦截
+- SuccessCriteriaService supports ring gate registration
+- Metric scoring
+- `evaluatePhaseAdvance()` interception
 
-### 特性开关
+### Feature Flags
 
-- feature flag 治理在 config-override-governance
-- gray-release-rehearsal supported金丝雀发布
+- Feature flag governance in config-override-governance
+- gray-release-rehearsal supports canary release
 
 ## Consequences
 
-优点：
+Benefits:
 
-- 阶段化降低交付风险
-- 阶段门禁确保质量
-- 特性开关supported渐进式发布
+- Phasing reduces delivery risk
+- Stage gates ensure quality
+- Feature flags support progressive release
 
-代价：
+Costs:
 
-- 路线图维护需要持续投入
-- 阶段边界可能需要调整
+- Roadmap maintenance requires continuous investment
+- Phase boundaries may need adjustment
 
-## 交叉references用
+## Cross-References
 
-- [ADR-075 六级受控发布vs Rollout Status机](./075-controlled-rollout-release.md)
-- [ADR-090 Runtime、data可靠性vs运维治理](./090-runtime-data-reliability-and-operations.md)
+- [ADR-075 Six-Level Controlled Release and Rollout State Machine](./075-controlled-rollout-release.md)
+- [ADR-090 Runtime, Data Reliability and Operations Governance](./090-runtime-data-reliability-and-operations.md)
 
 ## v4.3 ADR Remediation
 
-- A-64: 本 ADR 原先把 `Phase 1-7` 作为 canonical 路线图，Root cause: 落地路线 ADR 形成时主Architecture尚未统一到 ring 口径。修复：正文现改为 `Ring 1/2/3`，历史 phase only允许作为旧里程碑映射。
+- A-64: This ADR originally treated `Phase 1-7` as the canonical roadmap. Root cause: when the roadmap ADR was formed, the main architecture had not yet unified to the ring口径. Fix: Body now changed to `Ring 1/2/3`, historical phase only allowed as old milestone mapping.
 
-## 来源章节
+## Source Sections
 
-- `§33` 分阶段落地路线
+- `§33` Phased Roadmap

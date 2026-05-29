@@ -1,25 +1,25 @@
-# ADR-065 工作流可视化调试器Architecture
+# ADR-065 Workflow Visual Debugger Architecture
 
-- Status：Accepted
-- Decision日期：2026-04-20
+- Status: Accepted
+- Decision Date: 2026-04-20
 
 ## Background
 
-Workflow failed时开发者需要可视化工具来理解执lines过程、定位Issue。
+When Workflow fails, developers need visual tools to understand the execution process and locate problems.
 
 ## Decision
 
-### 调试器Architecture
+### Debugger Architecture
 
-| 组件 | Description |
-|------|------|
-| Visualizer | DAG 可视化 |
-| NodeInspector | 节点详情查看 |
-| StateExplorer | Status浏览器 |
-| TraceViewer | 链路追踪 |
-| BreakpointManager | 断点manage |
+| Component | Description |
+|-----------|-------------|
+| Visualizer | DAG visualization |
+| NodeInspector | Node detail view |
+| StateExplorer | State browser |
+| TraceViewer |链路追踪 |
+| BreakpointManager | Breakpoint management |
 
-### DAG 可视化
+### DAG Visualization
 
 ```typescript
 interface WorkflowDAGView {
@@ -35,62 +35,62 @@ interface WorkflowDAGView {
 
 ## v4.3 ADR Remediation
 
-- A-62: 本 ADR 原先把调试器锚定在 `workflow_id / current_step / StepInspector`，Root cause: 文档承接了旧 workflow debugger 原型，没有切换到 `HarnessRun / NodeRun` 调试模型。修复：正文现把调试锚点改为 harness/node 语义。
+- A-62: This ADR originally anchored debugger to `workflow_id / current_step / StepInspector`, root cause being document inherited old workflow debugger prototype, not switched to `HarnessRun / NodeRun` debugging model. Fix: Body now changes debugging anchor to harness/node semantics.
 
-### 调试功能
+### Debugging Features
 
-> **已废弃 step 概念**：调试模型based on `HarnessRun / NodeRun`，不supported `step_over/step_into/step_out` 等线性步骤调试操作。
+> **Deprecated step concept**: Debugging model based on `HarnessRun / NodeRun`, does not support `step_over/step_into/step_out` linear step debugging operations.
 
-| 功能 | Description |
-|------|------|
-| node_over | 节点跳过 |
-| node_into | 节点进入 |
-| node_out | 节点退出 |
-| resume | 继续执lines |
-| pause | 暂停 |
-| stop | 停止 |
+| Feature | Description |
+|---------|-------------|
+| node_over | Node skip |
+| node_into | Node enter |
+| node_out | Node exit |
+| resume | Continue execution |
+| pause | Pause |
+| stop | Stop |
 
-### Status查看
+### State Viewing
 
-- WorkflowState 完整Status
-- 步骤输入输出
-- 中间variable
-- 错误信息
+- WorkflowState complete state
+- Step input/output
+- Intermediate variables
+- Error messages
 
-### 断点条件
+### Breakpoint Conditions
 
-| class型 | Description |
-|------|------|
-| node_start | 节点开始 |
-| node_complete | 节点完成 |
-| error | 错误发生 |
-| condition | 条件满足 |
+| Type | Description |
+|------|-------------|
+| node_start | Node start |
+| node_complete | Node complete |
+| error | Error occurred |
+| condition | Condition satisfied |
 
-### Trace 集成
+### Trace Integration
 
-- 全链路 trace
-- Span 详情
-- 性能剖析
-- 错误链路
+- Full链路 trace
+- Span details
+- Performance profiling
+- Error链路
 
 ## Consequences
 
-优点：
+Advantages:
 
-- 可视化调试提高效率
-- 完整Status便于Issue定位
-- 断点supported细粒度调试
+- Visual debugging improves efficiency
+- Complete state facilitates problem location
+- Breakpoint supports fine-grained debugging
 
-代价：
+Trade-offs:
 
-- 调试器开发成本
-- 运lines时开销
+- Debugger development cost
+- Runtime overhead
 
-## 交叉references用
+## Cross References
 
-- [ADR-004 工作流vs路由](./004-workflow-routing.md)
-- [ADR-090 Runtime、data可靠性vs运维治理](./090-runtime-data-reliability-and-operations.md)
+- [ADR-004 Workflow and Routing](./004-workflow-routing.md)
+- [ADR-090 Runtime, Data Reliability and Operations Governance](./090-runtime-data-reliability-and-operations.md)
 
-## 来源章节
+## Source Section
 
-- `§65` 工作流可视化调试器Architecture
+- `§65` Workflow Visual Debugger Architecture

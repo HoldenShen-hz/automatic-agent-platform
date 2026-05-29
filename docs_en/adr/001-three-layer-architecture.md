@@ -1,137 +1,127 @@
-# ADR-001 Three-Layer Separation Architecture
+# ADR-001 Three-Layer Separation of Powers Architecture
 
 - Status: Partially Superseded by v4.3 Five-Plane Baseline
 - Decision Date: 2026-04-02
 
 ## Background
 
-In the early design, the CEO nearly承担了所有中枢职责：接收任务、分类、路由、拆分、编排、聚合和升级判断。This would create a logical single point when concurrent tasks appear, blurring responsibility boundaries, recovery boundaries, and cost boundaries.
+In the early design, the CEO bore nearly all central responsibilities: receiving tasks, classification, routing, decomposition, orchestration, aggregation, and escalation judgment. This created a logical single point when concurrent tasks appeared, blurring responsibility boundaries, recovery boundaries, and cost boundaries.
 
 ## Decision
 
-Adopt the Five-Plane Architecture (v4.3 canonical, replacing old CEO/VP three-layer separation):
+Adopt the Five-Plane Architecture (v4.3 canonical, replacing the old CEO/VP three-layer separation):
 
 - **P1 Interface Plane**: User message ingress, message triage, entry normalization, NL parsing.
 - **P2 Control Plane**: Policy judgment, routing decisions, risk assessment, governance constraint injection.
 - **P3 Orchestration Plane**: Cross-domain decomposition, dependency graph construction, PlanGraphBundle generation, result aggregation.
-- **P4 Execution Plane** (HarnessRuntime): Unique execution runtime,承接 P3→P4 handoff.
+- **P4 Execution Plane** (HarnessRuntime): The sole execution runtime, handling P3→P4 handoff.
 - **P5 Evidence Plane**: State persistence, event recording, checkpoints, artifact storage.
-- **X1 Extension Plane**: Perception intelligence, HR approval escalation (triggered on demand).
+- **X1 Extension Plane**: Perception intelligence, HR approval escalation (on-demand trigger).
 
 Notes:
 - If legacy narrative names like CEO/VP Operations/VP Orchestration must be retained in documentation, canonical plane IDs must also be provided. Code, directories, events, and contract layers all use canonical IDs as the standard.
-- CEO is not a常驻进程, but generated on demand: only triggered in escalation events, perception intelligence, and HR approval scenarios, retains context across escalations via persistent memory, while only one CEO session executes at a time, other escalation events queue by priority.
-
-Notes:
-
-- If legacy narrative names like CEO/VP Operations/VP Orchestration must be retained, canonical IDs must also be provided. Code, directories, events, and contract layers all use canonical IDs as the standard.
-
-CEO is not a常驻进程, but generated on demand:
-
-- Only triggered in escalation events, perception intelligence, and HR approval scenarios.
-- Retains context across escalations via persistent memory.
-- Only one CEO session executes at a time, other escalation events queue by priority.
+- CEO is not a resident process but generated on-demand: triggered only in escalation events, perception intelligence, and HR approval scenarios. Context is preserved across escalations through persistent memory, while only one CEO session executes at a time. Other escalation events queue by priority.
 
 ## Role Boundaries (v4.3 Five-Plane Mapping)
 
 Headquarters role division (mapped to P1/P2/P3):
 
-- P1 Interface Plane only handles entry processing, does not participate in日常路由和常规编排.
-- P2 Control Plane focuses on task triage and resource allocation, does not do complex cross-domain reasoning.
-- P3 Orchestration Plane only handles cross-domain coordination and exception intervention, does not接管 domain 内部细节.
-- X1 Perception Module exists as a service module, does not participate in Agent lifecycle, but serves as external input source for CEO.
+- P1 Interface Plane handles only entry processing, not daily routing and routine orchestration.
+- P2 Control Plane focuses on task triage and resource allocation, not complex cross-domain reasoning.
+- P3 Orchestration Plane handles only cross-domain coordination and exception intervention, not domain internal details.
+- X1 Perception module exists as a service module, does not participate in Agent lifecycle, but serves as external input source for CEO.
 
 Domain role division:
 
-- Each domain has at least one domain agent承担本地自治编排.
-- Roles below domain agent only responsible for各自的契约内输入输出, do not directly承担总部协调职责.
+- Each domain has at least one domain agent that handles local autonomous orchestration.
+- Roles below domain agent only responsible for inputs/outputs within their own contracts, not directly bearing headquarters coordination responsibilities.
 
 ## Reasons for This Choice
 
-- Removes CEO performance bottleneck from main path.
-- Completely separates "judgment" from "execution", reducing system occasional complexity.
-- Allows each domain to evolve autonomously without打扰总部.
-- Provides clearer boundaries for recovery, audit, and cost accounting.
+- Removes CEO performance bottleneck from the main execution path.
+- Completely separates "judgment" from "execution," reducing system incidental complexity.
+- Allows each domain to evolve autonomously without disturbing headquarters.
+- Provides clearer boundaries for recovery, audit, and cost statistics.
 
 ## Key Invariants
 
 - CEO should not appear in normal happy path.
-- VP Operations must be able to complete绝大多数任务接入 without calling CEO.
-- VP Orchestration only介入 in cross-domain or exception scenarios.
-- Lead Agent has autonomy over domain internal workflows, but cannot越平台级权限和安全边界.
+- VP Operations must be able to complete the vast majority of task intake without calling CEO.
+- VP Orchestration intervenes only in cross-domain or exception scenarios.
+- Lead Agent has autonomy over domain internal workflows but cannot override platform-level permissions and security boundaries.
 
 ## Implementation Impact
 
-Storage and communication requirements:
+Requirements for storage and communication:
 
-- Task board must be persisted.
-- VP Operations and VP Orchestration must collaborate via reliable events and状态表.
-- CEO queue must be recoverable, avoid losing escalation requests after crash.
+- Task board must be persistent.
+- VP Operations and VP Orchestration must collaborate through reliable events and status tables.
+- CEO queue must be recoverable to avoid losing escalation requests after crashes.
 
-Cost and monitoring requirements:
+Requirements for cost and monitoring:
 
-- Headquarters layer and domain layer costs must be separately tracked.
-- Independent observability needed for CEO, VP Operations, VP Orchestration, and Lead Agent latency and failure patterns.
+- Costs at headquarters layer and domain layer must be tracked separately.
+- Independent observability of latency and failure patterns for CEO, VP Operations, VP Orchestration, and Lead Agent is needed.
 
 ## Results
 
 Benefits:
 
-- CEO exits daily path, system throughput more stable.
-- Headquarters responsibilities clearer, recovery and audit easier to achieve.
-- Domains can evolve independently,不需要每一步都回到总部.
+- CEO exits the daily execution path, system throughput is more stable.
+- Headquarters responsibilities are clearer, recovery and audit are easier to implement.
+- Domains can evolve independently without returning to headquarters at every step.
 
 Costs:
 
-- Must establish reliable state synchronization mechanism between VP Operations and VP Orchestration.
+- A reliable state synchronization mechanism must be established between VP Operations and VP Orchestration.
 - Task board, message bus, and escalation queue become new critical infrastructure.
 
 ## OAPEFLIR Role Clarification (§13/§45 reconciliation)
 
-According to §13/§45, OAPEFLIR eight-stage cognitive loop positioning in the platform is as follows:
+According to §13/§45, the OAPEFLIR eight-stage cognitive loop positioning in the platform is as follows:
 
 ### Official Position
 
-- OAPEFLIR **is not** active orchestration loop (that role is undertaken by HarnessRuntime)
-- OAPEFLIR positioning is **StageRationale** and **Audit View**
-- OapeflirLoopService is only used for phase transition reasoning records and audit traceability, does not participate in real-time execution scheduling
+- OAPEFLIR **is not** the active orchestration loop (that role is borne by HarnessRuntime)
+- OAPEFLIR's positioning is **StageRationale (stage reasoning)** and **Audit View**
+- OapeflirLoopService is used only for reasoning records and audit tracing during stage transitions, not involved in real-time execution scheduling
 
-### Dual-Chain Topology (Revised)
+### Dual Chain Topology (revised)
 
 ```
-Main Chain (Real-time Execution):
+Main Chain (real-time execution):
   Observe → Assess → Plan → Execute → Feedback
                                       ↓
-Secondary Chain (Async Improvement):  Feedback → Learn → Improve → Rollout
+Secondary Chain (async improvement):  Feedback → Learn → Improve → Rollout
 ```
 
-- **Main Chain**: User request-driven real-time execution path, emphasizes low latency and determinism, driven by HarnessRuntime.
-- **Secondary Chain**: Event-driven async improvement path, emphasizes learning and accumulation.
-- Two chains couple via `Feedback→Learn`, main chain does not wait for secondary chain completion.
+- **Main Chain**: User request-driven real-time execution path, emphasizing low latency and determinism, driven by HarnessRuntime.
+- **Secondary Chain**: Event-driven async improvement path, emphasizing learning and accumulation.
+- The two chains are coupled through `Feedback→Learn`; the main chain does not wait for the secondary chain to complete.
 
-### Three Cross-Cutting Planes
+### Three Cross-Cutting Concerns
 
-| Plane | Covered Stages | Description |
-|-------|---------------|-------------|
-| **Knowledge Plane** | Observe/Assess/Plan | Knowledge retrieval supports each stage context |
-| **Artifact Plane** | Plan/Execute | Execution artifacts (code/documents) storage and publishing |
+| Concern | Covered Stages | Description |
+|---------|---------------|-------------|
+| **Knowledge Plane** | Observe/Assess/Plan | Knowledge retrieval supports contextual context at each stage |
+| **Artifact Plane** | Plan/Execute | Execution artifacts (code/documents) storage and publication |
 | **Memory Layer** | All 8 stages | L1-L6 memory supports context continuity |
 
 ### Stage to Five-Plane Architecture Mapping
 
 | Five-Plane | Corresponding OAPEFLIR Components |
-|------------|----------------------------------|
+|-----------|----------------------------------|
 | P1 Interface Plane | StageRationale entry, Audit View |
 | P2 Control Plane | Policy judgment, risk assessment (Assess) |
 | P3 Orchestration Plane | Plan DTO generation, GraphBundle |
-| HarnessRuntime | Execute execution (OAPEFLIR does not participate) |
+| HarnessRuntime | Execute execution (OAPEFLIR not involved) |
 
 ### Key Architecture Constraints
 
-- **R1-SCOPE**: Phase 1 limited to 4 new directories: agent-loop/planning/feedback/improvement (other M2 early implementation)
-- **R2-WHITELIST**: Observe output limited to raw_signals/normalized_snapshot/refs/metrics
-- **R2-BLACKLIST**: Observe prohibited from outputting recommendedWorkflow/riskLevel/approvalRequired/modelClass/recommendedActions
-- **R3-SINGLE**: Execute layer can only receive Plan DTO, cannot bypass
+- **R1-SCOPE**: Phase 1 limited to 4 new directories: agent-loop/planning/feedback/improvement (others M2 early implementation)
+- **R2-WHITELIST**: Observe output limited to raw_signals/normalized_snapshot/refs/metrics only
+- **R2-BLACKLIST**: Observe prohibits output of recommendedWorkflow/riskLevel/approvalRequired/modelClass/recommendedActions
+- **R3-SINGLE**: Execute layer can only receive Plan DTO, no bypassing allowed
 - **R4-TYPES**: Phase 1 only 3 learning types: failure_pattern/user_correction/recovery_playbook
 - **R4-EVIDENCE**: Learning objects must have FeedbackSignal evidence links
 

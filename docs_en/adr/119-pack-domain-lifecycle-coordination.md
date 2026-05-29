@@ -1,44 +1,48 @@
 # ADR-119 Pack Domain Lifecycle Coordination
 
-- Status：Accepted
+- Status: Accepted
 
 ## Background
-Business Pack 生命cycle、领域 onboarding 四阶段、pack-domain 关联，以及 `trustTier` / `sandboxTier` 约束此前分别存在于不同模块中，缺少统一权威规则，容易出现：
 
-- domain 已进入 `gray_rollout` 或 `active`，pack 仍停留在过早阶段
-- pack 已 `published` / `running`，但 domain authentication或灰度尚未完成
-- domain / pack 退役后，关联关系vsdefaults to主 pack 语义inconsistent
-- `trustTier` vs `sandboxTier` 没有统一兼容矩阵
+Business Pack lifecycle, domain onboarding four phases, pack-domain association, and `trustTier` / `sandboxTier` constraints previously existed in different modules, lacking unified authoritative rules, easily leading to:
+
+- Domain has entered `gray_rollout` or `active`, but pack still停留在 too early phase
+- Pack is already `published` / `running`, but domain certification or canary is not yet complete
+- After domain / pack deprecation, association relationship and default primary pack semantics are inconsistent
+- `trustTier` and `sandboxTier` have no unified compatibility matrix
 
 ## Decision
-- `domain_modeling` 对应 pack `development`
-- `pack_development` 对应 pack `testing`
-- `security_certification` 对应 pack `certified`
-- `gray_rollout` 对应 pack `published` 或 `running`
 
-- domain 不得在关联 pack 仍早于对应阶段时推进到下一 onboarding phase
-- domain 完成 `gray_rollout` 并进入 `active` 前，关联主 pack 必须至少 `published`
-- pack 从 `certified` 进入 `published` / `running` 前，关联 domain 必须已via完成 `security_certification`
+- `domain_modeling` corresponds to pack `development`
+- `pack_development` corresponds to pack `testing`
+- `security_certification` corresponds to pack `certified`
+- `gray_rollout` corresponds to pack `published` or `running`
 
-- domain `deprecated` / `archived` 时：
-  - 不再允许新增 pack 关联
-  - 已关联且occurrences于对外发布态的 pack 必须先进入 `deprecated`，再允许 domain 最终归档
-- pack `deprecated` / `archived` 时：
-  - 允许保留审计关联
-  - 但不得继续作为 primary pack 参vs新 onboarding / routing Decision
+- Domain must not advance to next onboarding phase when associated pack is still earlier than corresponding phase
+- Before domain completes `gray_rollout` and enters `active`, associated primary pack must be at least `published`
+- Before pack enters `published` / `running` from `certified`, associated domain must have completed `security_certification`
 
-- `trustTier` vs `sandboxTier` 采用 fail-closed 兼容矩阵：
-  - `internal` 可uses `read_only` / `workspace_write` / `scoped_external_access` / `restricted_exec`
-  - `trusted` 最低要求 `workspace_write`
-  - `community` 最低要求 `scoped_external_access`
-  - `external` 最低要求 `restricted_exec`
+- When domain is `deprecated` / `archived`:
+  - No new pack associations allowed
+  - Packs already associated and in对外发布 state must first enter `deprecated` before domain is finally archived
+- When pack is `deprecated` / `archived`:
+  - Audit association may be retained
+  - But must not continue as primary pack participating in new onboarding / routing decisions
 
-## 结果
-- pack lifecycle、domain onboarding、association governance 采用同一套阶段映射
-- 灰度、authentication、退役不再relies on隐含约定
-- `trustTier` / `sandboxTier` 有了明确权威矩阵，后续注册vs绑定逻辑按此 fail-closed
+- `trustTier` and `sandboxTier` use fail-closed compatibility matrix:
+  - `internal` can use `read_only` / `workspace_write` / `scoped_external_access` / `restricted_exec`
+  - `trusted` requires minimum `workspace_write`
+  - `community` requires minimum `scoped_external_access`
+  - `external` requires minimum `restricted_exec`
 
-## 相关实现
+## Results
+
+- Pack lifecycle, domain onboarding, association governance use the same set of phase mappings
+- Canary, certification, deprecation no longer rely on implicit agreements
+- `trustTier` / `sandboxTier` have clear authoritative matrix; subsequent registration and binding logic按此 fail-closed
+
+## Related Implementation
+
 - `src/domains/operations/domain-onboarding-service.ts`
 - `src/domains/business-pack/pack-domain-association.ts`
 - `src/sdk/pack-sdk/pack-lifecycle-orchestration-service.ts`

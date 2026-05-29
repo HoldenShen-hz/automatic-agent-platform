@@ -1,36 +1,36 @@
-# ADR-121 Timeout vs Worker Liveness Hierarchy
+# ADR-121 Timeout and Worker Liveness Hierarchy
 
-- Status：Accepted
-- Decision日期：2026-05-25
+- Status: Accepted
+- Decision Date: 2026-05-25
 
 ## Background
 
-接口层、网关层、执lines层都已via有timeout/心跳参数，但此前没有统一Description它们的层级关系，导致 review 把多个不同目标的threshold混为一谈。
+Interface layer, gateway layer, and execution layer all have timeout/heartbeat parameters, but previously there was no unified description of their hierarchical relationship, causing reviews to mix multiple thresholds with different targets.
 
 ## Decision
 
-### 1. HTTP timeout层级
+### 1. HTTP Timeout Hierarchy
 
-- server socket timeout 必须大于等于 request handler timeout。
-- request handler timeout 必须大于等于下游 channel gateway/request adapter timeout。
-- defaults to语义：
-  - socket timeout 负责connect生命cycle上界
-  - handler timeout 负责单iterations API handle上界
-  - gateway timeout 负责单iterations外呼上界
+- Server socket timeout must be greater than or equal to request handler timeout.
+- Request handler timeout must be greater than or equal to downstream channel gateway/request adapter timeout.
+- Default semantics:
+  - Socket timeout is responsible for connection lifecycle upper bound
+  - Handler timeout is responsible for single API handling upper bound
+  - Gateway timeout is responsible for single external call upper bound
 
-### 2. Worker 心跳threshold
+### 2. Worker Heartbeat Threshold
 
-- `DEFAULT_WORKER_HEARTBEAT_STALENESS_MS` is本地 dispatch/handshake 的 worker liveness gate。
-- 它used for快速判断“此 worker 当前isno可被调度”，不is跨 region failover 的 RTO SLA。
-- cross-region RTO 仍由 failover / health-check / reconciliation 体系负责。
+- `DEFAULT_WORKER_HEARTBEAT_STALENESS_MS` is the local dispatch/handshake worker liveness gate.
+- It is用于快速判断 "whether this worker is currently schedulable", not cross-region failover RTO SLA.
+- Cross-region RTO is still负责 by failover / health-check / reconciliation system.
 
-### 3. principle
+### 3. Principles
 
-- 本地 liveness gate 可以比跨区域 RTO 严格得多。
-- 不允许把 “worker stale” directly解释为 “应立即触发 region failover”。
-- 调度thresholdvs failover threshold必须分别调优、分别观测。
+- Local liveness gate can be much stricter than cross-region RTO.
+- Do not allow directly interpreting "worker stale" as "should immediately trigger region failover".
+- Scheduling threshold and failover threshold must be tuned and observed separately.
 
-## 结果
+## Results
 
-- `30s` worker heartbeat stale threshold vs `minutes` 级 region RTO 目标不再被视为semantic conflict。
-- timeoutconfigure的设计意图从“数值凑巧相等”改为“明确分层、各司其职”。
+- `30s` worker heartbeat stale threshold and `minutes`-level region RTO target are no longer viewed as semantic conflict.
+- Timeout configuration design intent changes from "numerical coincidence equal" to "clear layering, each with its own responsibility".

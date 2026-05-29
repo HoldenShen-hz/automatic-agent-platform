@@ -1,130 +1,130 @@
-# ADR-009 部署vs运维
+# ADR-009 Deployment and Operations
 
 ---
 
-## OAPEFLIR 关联
+## OAPEFLIR Association
 
-本文档defines OAPEFLIR 八阶段认知循环中的以下组件：
+This document defines the following components in the OAPEFLIR eight-stage cognitive loop:
 
-- **Observe**：信号采集vs统一 DTO
-- **Assess**：执lines前/后评估vs风险判断
-- **Plan**：显式规划vs DAG 构建（ADR-060）
-- **Execute**：步骤执linesvs Dual-Channel 输出
-- **Feedback**：信号收集、预handlevs 7 class反馈源（ADR-079）
-- **Learn**：模式检测vs知识提取（ADR-080）
-- **Improve**：改进候选评估vs Rollout Status机（ADR-075）
-- **Release**：六级受控发布vs自动回滚
+- **Observe**: Signal collection and unified DTO
+- **Assess**: Pre/post execution assessment and risk judgment
+- **Plan**: Explicit planning and DAG construction (ADR-060)
+- **Execute**: Step execution and dual-channel output
+- **Feedback**: Signal collection, preprocessing, and 7 feedback sources (ADR-079)
+- **Learn**: Pattern detection and knowledge extraction (ADR-080)
+- **Improve**: Improvement candidate evaluation and Rollout state machine (ADR-075)
+- **Release**: Six-level controlled release and automatic rollback
 
 ---
 
-- Status：Historical Context（see v4.3 runtime / operations baseline）
-- Decision日期：2026-04-02
+- Status: Historical Context (see v4.3 runtime/operations baseline)
+- Decision Date: 2026-04-02
 
 ## Background
 
-平台既要supported本地 CLI / TUI，也要supported服务端 HTTP / Telegram / Web 模式，还要满足崩溃恢复、可观测性、configure热重载和后续多租户扩展。因此部署vs运维不能只考虑单机 happy path。
+The platform needs to support both local CLI/TUI and server-side HTTP/Telegram/Web modes, while also meeting crash recovery, observability, config hot reload, and subsequent multi-tenant expansion. Therefore, deployment and operations cannot only consider single-machine happy path.
 
 ## Decision
 
-采用 TypeScript 全栈 + 分阶段基础设施演进路线：
+Adopt TypeScript full stack + phased infrastructure evolution path:
 
-- 核心服务层统一放在 `src/core/`。
-- 接入层includes CLI、TUI、HTTP Server、Gateway 和 Embedded Client。
-- 早期持久化uses SQLite + WAL。
-- via结构化事件、工作流Status、产出物storage和恢复算法supported crash recovery。
-- uses Feature Flag 控制阶段性功能enabled，避免未成熟能力提前耦合到主路径。
+- Core service layer unified in `src/core/`.
+- Access layer includes CLI, TUI, HTTP Server, Gateway, and Embedded Client.
+- Early persistence uses SQLite + WAL.
+- Supports crash recovery via structured events, workflow state, artifact storage, and recovery algorithms.
+- Use Feature Flag to control phased feature enablement, avoiding immature capabilities prematurely coupling to main path.
 
-## 项目结构principle
+## Project Structure Principles
 
-code结构应围绕职责边界展开：
+Code structure should revolve around responsibility boundaries:
 
-- `core/`：运lines时、工具、provider、session、storage、security、supervisor、memory。
-- `divisions/`：事业部definesvs角色 prompt。
-- `tools/`：内置工具、协作工具和专用工具。
-- `gateway/`：多渠道接入。
-- `server/`：HTTP API。
-- `cli/`：CLI vs TUI。
-- `perception/`：主动感知模块。
+- `core/`: Runtime, tools, provider, session, storage, security, supervisor, memory.
+- `divisions/`: Division definitions and role prompts.
+- `tools/`: Built-in tools, collaboration tools, and specialized tools.
+- `gateway/`: Multi-channel access.
+- `server/`: HTTP API.
+- `cli/`: CLI and TUI.
+- `perception/`: Proactive perception module.
 
-## storagevs恢复
+## Storage and Recovery
 
-Phase 1-2 采用 SQLite，但必须承认其边界：
+Phase 1-2 uses SQLite, but must acknowledge its boundaries:
 
-- via WAL 提升读写concurrent。
-- 避免让 heartbeat 等高频datadirectly写库。
-- 事件和 tool usage 采用批量或异步writes。
-- 明确concurrent活跃 Agent upper limit。
+- Use WAL to improve read/write concurrency.
+- Avoid letting high-frequency data like heartbeat directly write to database.
+- Events and tool usage use batch or async writes.
+- Explicitly cap concurrent active Agents.
 
-为了支撑恢复，至少需要：
+To support recovery, at minimum need:
 
-- 任务table。
-- workflow_state。
-- workflow_step_outputs。
-- sessions / messages。
-- events。
-- artifacts 索references。
+- Tasks table.
+- workflow_state.
+- workflow_step_outputs.
+- sessions/messages.
+- events.
+- artifacts index.
 
-## 接入vs API
+## Access and API
 
-平台接入层至少includes：
+Platform access layer includes at minimum:
 
-- CLI vs TUI。
-- HTTP API。
-- SSE 流式事件。
-- Embedded Client。
-- Gateway 桥接 Telegram，后续扩展 Slack / 飞书。
+- CLI and TUI.
+- HTTP API.
+- SSE streaming events.
+- Embedded Client.
+- Gateway bridging Telegram, subsequent expansion to Slack/Feishu.
 
-这些入口应共享同一服务层，而不is复制业务逻辑。
+These entry points should share the same service layer, not copy business logic.
 
-## configurevs功能开关
+## Configuration and Feature Flags
 
-configure系统应supported：
+Configuration system should support:
 
-- YAML configure。
-- 环境variable插值。
-- configure版本迁移。
-- configure热重载。
-- Feature Flag 控制阶段性能力。
+- YAML configuration.
+- Environment variable interpolation.
+- Configuration version migration.
+- Config hot reload.
+- Feature Flag controlling phased capabilities.
 
-生产构建中，可进一步利用 Feature Flag 做编译期 DCE，减少未enabled功能体积。
+In production builds, Feature Flag can further be used for compile-time DCE to reduce unused feature size.
 
-## 测试vs可观测性
+## Testing and Observability
 
-运维设计必须contains测试vs观测：
+Operations design must include testing and observability:
 
-- 测试金字塔vs LLM mock。
-- VCR / record-replay 测试。
-- 结构化日志。
-- 核心 KPI vs调试日志基建。
-- 边界测试，验证Architecture层和permission层没有被bypassing。
+- Testing pyramid and LLM mock.
+- VCR/record-replay testing.
+- Structured logging.
+- Core KPI and debugging log infrastructure.
+- Boundary testing to verify architecture and permission layers are not bypassed.
 
-## 演进路线
+## Evolution Path
 
-- Phase 1-2：SQLite 单机Architecture，明确concurrentupper limit。
-- Phase 3：增强渠道、authentication、Web 和商业化基础设施。
-- Phase 4：迁移到 PostgreSQL、多租户、队列系统和更强企业能力。
+- Phase 1-2: SQLite single-machine architecture, explicitly acknowledge concurrency cap.
+- Phase 3: Enhanced channels, authentication, Web, and commercialization infrastructure.
+- Phase 4: Migrate to PostgreSQL, multi-tenant, queue system, and stronger enterprise capabilities.
 
-## 结果
+## Results
 
-优点：
+Benefits:
 
-- 开发速度快，适合早期单人 + AI 团队推进。
-- via统一服务层复用 CLI、HTTP、Embedded Client。
-- 迁移路径明确，避免早期过度设计。
+- Fast development speed, suitable for early single-person + AI team progression.
+- Reuse CLI, HTTP, Embedded Client through unified service layer.
+- Clear migration path, avoiding early over-engineering.
 
-代价：
+Costs:
 
-- SQLite concurrentupper limit必须在文档和运lines时中被硬性承认。
-- Phase 迁移需要强测试vs兼容约束，no则后续升级代价会很高。
-- 若过早加入 Web、多租户和商业化能力，会显著拖慢基建成熟速度。
+- SQLite concurrency cap must be hard-acknowledged in documentation and runtime.
+- Phase migration needs strong testing and compatibility constraints, otherwise subsequent upgrade cost will be high.
+- Prematurely adding Web, multi-tenant, and commercialization capabilities will significantly drag infrastructure maturity speed.
 
-## 交叉references用
+## Cross-References
 
-- [ADR-001 三层分权Architecture](./001-three-layer-architecture.md)
-- [ADR-005 security模型](./005-security-model.md)
-- [ADR-008 成本模型](./008-cost-model.md)
+- [ADR-001 Three-Layer Separation Architecture](./001-three-layer-architecture.md)
+- [ADR-005 Security Model](./005-security-model.md)
+- [ADR-008 Cost Model](./008-cost-model.md)
 
-## 来源章节
+## Source Sections
 
 - `§3`
 - `§3.2`

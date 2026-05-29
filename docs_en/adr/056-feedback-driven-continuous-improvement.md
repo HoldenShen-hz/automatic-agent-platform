@@ -1,36 +1,36 @@
-# ADR-056 反馈驱动持续改进管线
+# ADR-056 Feedback-Driven Continuous Improvement Pipeline
 
-- Status：Accepted
-- Decision日期：2026-04-20
+- Status: Accepted
+- Decision Date: 2026-04-20
 
 ## Background
 
-平台需要从user反馈中持续学习和改进，形成闭环的改进机制。
+The platform needs to continuously learn and improve from user feedback, forming a closed-loop improvement mechanism.
 
 ## Decision
 
-### 反馈class型
+### Feedback Types
 
-| class型 | 来源 | handle方式 |
-|------|------|----------|
-| explicit | user评分/评论 | 人工审核 |
-| implicit | useslines为分析 | 自动学习 |
-| corrective | user纠正 | 模式提取 |
-| failure | 执linesfailed | Root Cause分析 |
+| Type | Source | Processing Method |
+|------|--------|-------------------|
+| explicit | User ratings/reviews | Manual review |
+| implicit | Usage behavior analysis | Automatic learning |
+| corrective | User corrections | Pattern extraction |
+| failure | Execution failures | Root cause analysis |
 
-### 反馈handle流程
+### Feedback Processing Flow
 
 ```
-反馈采集 → 预handle → 分class → 模式识别 → 学习对象生成 → 改进候选评估 → Rollout
+Feedback Collection → Preprocessing → Classification → Pattern Recognition → Learning Object Generation → Improvement Candidate Evaluation → Rollout
 ```
 
 ### FeedbackHub
 
-- `FeedbackHub` 收集 7 class信号
-- `FeedbackCollector` 预handle
-- `StrategyLearningService` 模式检测
+- `FeedbackHub` collects 7 types of signals
+- `FeedbackCollector` preprocesses
+- `StrategyLearningService` pattern detection
 
-### 学习对象
+### Learning Objects
 
 ```typescript
 interface LearningObject {
@@ -42,38 +42,38 @@ interface LearningObject {
 }
 ```
 
-### 改进管线
+### Improvement Pipeline
 
 ```
-LearnHub → ImproveHub → P2 Release Governance 门禁 → 六级 Release
+LearnHub → ImproveHub → P2 Release Governance Gate → Six-level Release
      ↓           ↓                ↓                  ↓
- LearningObject  Improvement   门禁审核          Rollout
-                 Candidate     (必须via)
+ LearningObject  Improvement   Gate Review       Rollout
+                 Candidate     (Must pass)
 ```
 
-- LearnHub 生成 LearningObject
-- ImproveHub 评估 ImprovementCandidate
-- P2 Release Governance 门禁审核（必须via才能进入 Release）
-- Release 六级发布（alpha/beta/stable/ga/lts/archived）
+- LearnHub generates LearningObject
+- ImproveHub evaluates ImprovementCandidate
+- P2 Release Governance gate reviews (must pass to enter Release)
+- Release six-level release (alpha/beta/stable/ga/lts/archived)
 
 ## Consequences
 
-优点：
+Advantages:
 
-- 闭环改进机制
-- data驱动的优化
-- user参vs提升体验
+- Closed-loop improvement mechanism
+- Data-driven optimization
+- User participation improves experience
 
-代价：
+Trade-offs:
 
-- 反馈handle需要资源
-- 模式识别准确性relies ondata量
+- Feedback processing requires resources
+- Pattern recognition accuracy depends on data volume
 
-## 交叉references用
+## Cross References
 
-- [ADR-079 Feedback Hub vs七class信号预handle](./079-feedback-hub-signals.md)
-- [ADR-080 Learn Hub vs四模式检测器](./080-learn-hub-pattern-detection.md)
+- [ADR-079 Feedback Hub and Seven-class Signal Preprocessing](./079-feedback-hub-signals.md)
+- [ADR-080 Learn Hub and Four-pattern Detector](./080-learn-hub-pattern-detection.md)
 
-## 来源章节
+## Source Section
 
-- `§56` 反馈驱动持续改进管线
+- `§56` Feedback-Driven Continuous Improvement Pipeline

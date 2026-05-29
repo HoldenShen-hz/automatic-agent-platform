@@ -1,17 +1,17 @@
-# ADR-053 规模化资源竞争manage
+# ADR-053 Scaling Resource Competition Management
 
-- Status：Accepted
-- Decision日期：2026-04-20
+- Status: Accepted
+- Decision Date: 2026-04-20
 
 ## Background
 
-多业务线concurrent运lines时会出现资源竞争，需要公平有效的资源分配机制。
+When multiple business lines run concurrently, resource competition arises, requiring fair and effective resource allocation mechanisms.
 
 ## Decision
 
-### 资源池模型
+### Resource Pool Model
 
-ResourcePool/ResourceAllocation vs BudgetLedger/BudgetReservation 深度集成，统一manage资源分配vsbudget扣费，三者共同构成资源分配的原子单元：
+ResourcePool/ResourceAllocation is deeply integrated with BudgetLedger/BudgetReservation to uniformly manage resource allocation and budget deduction; together they constitute the atomic unit of resource allocation:
 
 ```typescript
 interface ResourcePool {
@@ -26,54 +26,54 @@ interface ResourceAllocation {
   reserved: number;
   used: number;
   priority: number;
-  budgetLedgerEntry: string;  // 关联 BudgetLedger record
+  budgetLedgerEntry: string;  // Reference to BudgetLedger record
 }
 ```
 
-### 资源class型
+### Resource Types
 
-| class型 | Description |
-|------|------|
-| compute | 计算资源 |
-| memory | 内存资源 |
-| storage | storage资源 |
-| api_quota | API call配额 |
-| llm_token | LLM Token 配额 |
+| Type | Description |
+|------|-------------|
+| compute | Compute resources |
+| memory | Memory resources |
+| storage | Storage resources |
+| api_quota | API call quota |
+| llm_token | LLM Token quota |
 
-### 调度策略
+### Scheduling Strategies
 
-| 策略 | Description |
-|------|------|
-| priority | 优先级优先 |
-| fair_share | 公平分享 |
-| fifo | 先来先服务 |
-| weighted_fair | 加权公平队列 |
+| Strategy | Description |
+|----------|-------------|
+| priority | Priority first |
+| fair_share | Fair sharing |
+| fifo | First come first served |
+| weighted_fair | Weighted fair queue |
 
-### 资源配额
+### Resource Quotas
 
-- 平台级配额
-- 租户级配额
-- 业务域级配额
-- dynamically调整
+- Platform-level quotas
+- Tenant-level quotas
+- Business domain-level quotas
+- Dynamic adjustment
 
 ## Consequences
 
-优点：
+Advantages:
 
-- 公平的资源分配防止饿死人
-- 优先级机制保证关键业务
-- dynamically调整适应负载变化
+- Fair resource allocation prevents starvation
+- Priority mechanism guarantees critical business
+- Dynamic adjustment adapts to load changes
 
-代价：
+Trade-offs:
 
-- 调度算法复杂度
-- 配额计算开销
+- Scheduling algorithm complexity
+- Quota calculation overhead
 
-## 交叉references用
+## Cross References
 
-- [ADR-024 可扩展性Architecture](./024-scalability-architecture.md)
-- [ADR-054 SLA 分级保障](./054-sla-tiered-guarantees.md)
+- [ADR-024 Scalability Architecture](./024-scalability-architecture.md)
+- [ADR-054 SLA Tiered Guarantees](./054-sla-tiered-guarantees.md)
 
-## 来源章节
+## Source Section
 
-- `§53` 规模化资源竞争manage
+- `§53` Scaling Resource Competition Management

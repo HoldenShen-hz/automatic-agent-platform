@@ -1,74 +1,74 @@
-# ADR-020 Memory 六层平面vs自动晋升规则
+# ADR-020 Memory Six-Plane Model and Automatic Promotion Rules
 
 ---
 
-## OAPEFLIR 关联
+## OAPEFLIR Association
 
-本文档defines OAPEFLIR 八阶段认知循环中的以下组件：
+This document defines the following components in the OAPEFLIR eight-stage cognitive loop:
 
-- **Observe**：信号采集vs统一 DTO
-- **Assess**：执lines前/后评估vs风险判断
-- **Plan**：显式规划vs DAG 构建（ADR-060）
-- **Execute**：步骤执linesvs Dual-Channel 输出
-- **Feedback**：信号收集、预handlevs 7 class反馈源（ADR-079）
-- **Learn**：模式检测vs知识提取（ADR-080）
-- **Improve**：改进候选评估vs Rollout Status机（ADR-075）
-- **Release**：六级受控发布vs自动回滚
+- **Observe**: Signal collection and unified DTO
+- **Assess**: Pre/post execution assessment and risk judgment
+- **Plan**: Explicit planning and DAG construction (ADR-060)
+- **Execute**: Step execution and dual-channel output
+- **Feedback**: Signal collection, preprocessing, and 7 feedback sources (ADR-079)
+- **Learn**: Pattern detection and knowledge extraction (ADR-080)
+- **Improve**: Improvement candidate evaluation and Rollout state machine (ADR-075)
+- **Release**: Six-level controlled release and automatic rollback
 
 ---
 
-- Status：Accepted
-- Decision日期：2026-04-17
+- Status: Accepted
+- Decision Date: 2026-04-17
 
 ## Background
 
-§F 设计文档defines了六层 Memory 平面（L1-L6）和层间晋升规则。当前 `memory/` 实现了 L1-L3（RuntimeCache / Session / Agent），L4-L6（Project / User / Evolution）缺失，且no自动晋升references擎。
+The §F design document defined six-layer Memory planes (L1-L6) and inter-layer promotion rules. Current `memory/` implements L1-L3 (RuntimeCache/Session/Agent), L4-L6 (Project/User/Evolution) are missing, and there is no automatic promotion engine.
 
 ## Decision
 
-### 六层 Memory 平面
+### Six-Layer Memory Planes
 
-| 层级 | 名称 | 粒度 | TTL | storage位置 |
-|------|------|------|-----|---------|
-| **L1** | RuntimeCache | task 级别 | 执lines期间 | 内存 |
-| **L2** | Session | session 级别 | session 结束后 24h | SQLite |
-| **L3** | Agent | agent 级别 | 7 天no访问 | SQLite |
-| **L4** | Project | project 级别 | 30 天no访问 | SQLite |
-| **L5** | User | user 级别 | 90 天no访问 | SQLite |
-| **L6** | Evolution | globally | 手动删除 | SQLite |
+| Layer | Name | Granularity | TTL | Storage Location |
+|-------|------|-------------|-----|------------------|
+| **L1** | RuntimeCache | task level | During execution | Memory |
+| **L2** | Session | session level | 24h after session ends | SQLite |
+| **L3** | Agent | agent level | 7 days no access | SQLite |
+| **L4** | Project | project level | 30 days no access | SQLite |
+| **L5** | User | user level | 90 days no access | SQLite |
+| **L6** | Evolution | global | Manual deletion | SQLite |
 
-### 层间晋升规则
+### Inter-Layer Promotion Rules
 
-| 晋升路径 | 触发条件 | 检查频率 |
-|---------|---------|---------|
-| L2 → L3 | accessCount ≥ 3 **且** qualityScore ≥ 0.6 | 每小时批量 |
-| L3 → L4 | accessCount ≥ 10 **且** qualityScore ≥ 0.8 | 每小时批量 |
-| L4 → L5 | accessCount ≥ 20 **且** qualityScore ≥ 0.85 | 每日批量 |
+| Promotion Path | Trigger Condition | Check Frequency |
+|----------------|------------------|------------------|
+| L2 → L3 | accessCount >= 3 **and** qualityScore >= 0.6 | Hourly batch |
+| L3 → L4 | accessCount >= 10 **and** qualityScore >= 0.8 | Hourly batch |
+| L4 → L5 | accessCount >= 20 **and** qualityScore >= 0.85 | Daily batch |
 | L5 → L6 | manual promotion only | — |
 
-### MemoryPromotionEngine 接口
+### MemoryPromotionEngine Interface
 
 ```typescript
 interface MemoryPromotionEngine {
-  // 评估单条recordisno满足晋升条件
+  // Evaluate whether a single record meets promotion conditions
   evaluatePromotion(entry: MemoryRecord): PromotionDecision;
-  // 批量扫描并执lines晋升
+  // Batch scan and execute promotion
   runPromotionCycle(): Promise<PromotionResult>;
-  // 降级规则（反向）
+  // Demotion rules (reverse)
   evaluateDemotion(entry: MemoryRecord): DemotionDecision;
 }
 ```
 
-### 当前实现Status
+### Current Implementation Status
 
-- `src/platform/five-plane-state-evidence/memory/memory-service.ts`：L1-L3 已实现。
-- `src/platform/five-plane-state-evidence/memory/memory-layer-model.ts`：待创建（层级defines）。
-- `src/platform/five-plane-state-evidence/memory/memory-promotion-engine.ts`：待创建（晋升references擎）。
-- `src/platform/five-plane-state-evidence/memory/project-memory-store.ts`：待创建（L4）。
-- `src/platform/five-plane-state-evidence/memory/user-memory-store.ts`：待创建（L5）。
+- `src/platform/five-plane-state-evidence/memory/memory-service.ts`: L1-L3 implemented.
+- `src/platform/five-plane-state-evidence/memory/memory-layer-model.ts`: To create (layer definitions).
+- `src/platform/five-plane-state-evidence/memory/memory-promotion-engine.ts`: To create (promotion engine).
+- `src/platform/five-plane-state-evidence/memory/project-memory-store.ts`: To create (L4).
+- `src/platform/five-plane-state-evidence/memory/user-memory-store.ts`: To create (L5).
 
 ## Consequences
 
-- 六层 Memory 模型使系统具备从"执lines时cache"到"长期知识沉淀"的完整生命cycle。
-- L4-L6 is实现"项目记忆"和"user偏好学习"的基础设施。
-- 晋升规则确保高频高质记忆自动进入更持久层，低价值记忆自然衰减。
+- The six-layer Memory model gives the system a complete lifecycle from "execution-time cache" to "long-term knowledge precipitation".
+- L4-L6 is the infrastructure for implementing "project memory" and "user preference learning".
+- Promotion rules ensure high-frequency, high-quality memories automatically enter more persistent layers, low-value memories naturally decay.

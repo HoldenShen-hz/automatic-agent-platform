@@ -2,31 +2,31 @@
 
 ---
 
-## OAPEFLIR 关联
+## OAPEFLIR Association
 
-- **Observe**: 读取订单、仓位vs风控threshold
-- **Assess**: 做盘前风险评估
-- **Plan**: 决定isno允许下单
-- **Execute**: only在风控via后进入执lines链
-- **Feedback**: record阻断原因vs风控证据
-- **Learn**: 复盘异常订单模式
-- **Improve**: 调整风控参数
-- **Release**: trading 域必须via专属风险门
+- **Observe**: Read orders, positions, and risk control thresholds
+- **Assess**: Perform pre-trade risk assessment
+- **Plan**: Decide whether to allow order placement
+- **Execute**: Only enter execution chain after risk control passes
+- **Feedback**: Record blocking reasons and risk control evidence
+- **Learn**: Review abnormal order patterns
+- **Improve**: Adjust risk control parameters
+- **Release**: Trading domain must pass exclusive risk gate
 
 ---
 
-- Status：Accepted
-- Decision日期：2026-04-23
+- Status: Accepted
+- Decision Date: 2026-04-23
 
 ## Background
 
-量化交易域的错误执lines成本极高，必须有独立于平台通用风险的前置风控。
+Quant trading domain has extremely high cost of erroneous execution, must have pre-trade risk control independent of platform general risk.
 
 ## Decision
 
-- 所有交易动作必须先via pre-trade risk
-- 硬性仓位和损失限额不得由 Agent 覆盖
+- All trading actions must first pass pre-trade risk
+- Hard position and loss limits cannot be overridden by Agent
 
 ## Consequences
 
-- `quant-trading` 域有不可bypassing的前置风控边界
+- `quant-trading` domain has non-bypassable pre-trade risk boundary

@@ -1,32 +1,32 @@
 # ADR 090: Runtime, Data Reliability, and Operations
 
-- Status：Accepted
-- Decision日期：2026-04-20
+- Status: Accepted
+- Decision Date: 2026-04-20
 
 ## Background
 
-`§20`、`§24`-`§32`、`§33`、`§36` defines了长时任务、configure治理、data一致性、storage、性能 SLO、event / projection / DLQ、knowledge / memory / artifact、HA、部署和路线图。这些章节共同构成生产运lines基础，但过去 ADR 多按单点技术选型record，缺少一个面向长期运lines的统一Decision。
+`§20`, `§24`-`§32`, `§33`, `§36` define long-running tasks, configuration governance, data consistency, storage, performance SLO, event / projection / DLQ, knowledge / memory / artifact, HA, deployment, and roadmap. These sections together constitute production operation foundation, but past ADRs mostly recorded single-point technical selections, lacking a unified decision面向长期运行.
 
 ## Decision
 
-平台 runtime vsdata可靠性采用以下统一principle：
+Platform runtime and data reliability adopt the following unified principles:
 
-- 长时任务必须具备休眠、唤醒、TTL、lease / fencing、恢复和人工接管能力。
-- configure必须分层、版本化、可灰度、可审计，不允许运lines时散落configure。
-- Truth table、event log、projection、artifact、audit is同一 State & Evidence Plane 的不同投影。
-- Projection 必须可重建；DLQ 必须可诊断、可重放、可升级 incident。
-- HA、backup、restore、deployment promotion 必须vs readiness / promote criteria contract 对齐。
-- 路线图和success标准is architecture governance 的一部分，不能作为临时 TODO 混入 contract。
+- Long-running tasks must have hibernation, wake-up, TTL, lease/fencing, recovery, and manual takeover capabilities.
+- Configuration must be layered, versioned, canary-deployable, auditable, runtime configuration not allowed to scatter.
+- Truth table, event log, projection, artifact, audit are different projections of the same State & Evidence Plane.
+- Projection must be rebuildable; DLQ must be diagnosable, replayable, incident-upgradeable.
+- HA, backup, restore, deployment promotion must align with readiness / promote criteria contract.
+- Roadmap and success criteria are part of architecture governance, cannot be mixed into contract as temporary TODO.
 
-## 取舍
+## Trade-offs
 
-- 不把 projection 当 authoritative state。
-- 不允许只靠日志恢复关键 workflow。
-- 不允许部署和configure变化bypassing release / readiness / promote criteria。
+- Do not treat projection as authoritative state.
+- Do not allow critical workflow recovery relying solely on logs.
+- Do not allow deployment and configuration changes to bypass release / readiness / promote criteria.
 
 ## Impact
 
-对应 authoritative contracts：
+Corresponding authoritative contracts:
 
 - `lifecycle_and_termination_contract.md`
 - `task_lease_and_fencing_contract.md`
@@ -44,7 +44,7 @@
 - `environment_readiness_registry_contract.md`
 - `platform_promote_criteria_contract.md`
 
-对应实现边界：
+Corresponding implementation boundaries:
 
 - `src/platform/five-plane-execution/*`
 - `src/platform/five-plane-state-evidence/*`
@@ -52,8 +52,8 @@
 - `src/platform/five-plane-control-plane/config-center/*`
 - `config/*`
 
-## 测试要求
+## Testing Requirements
 
-- unit tests：state transition、lease/fencing、config resolution、projection rebuild。
-- integration tests：long-running workflow、DLQ replay、startup recovery、release readiness。
-- contract tests：no lease、no evidence、no readiness 的执lines或部署不得进入生产链。
+- unit tests: state transition, lease/fencing, config resolution, projection rebuild.
+- integration tests: long-running workflow, DLQ replay, startup recovery, release readiness.
+- contract tests: execution or deployment without lease, without evidence, without readiness must not enter production chain.

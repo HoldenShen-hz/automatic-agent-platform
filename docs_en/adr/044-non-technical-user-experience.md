@@ -1,18 +1,18 @@
 # ADR-044 Non-technical User Experience Architecture
 
-- Status：Accepted
-- Decision Date：2026-04-20
+- Status: Accepted
+- Decision Date: 2026-04-20
 
 ## Background
 
-Non-technical users (business operators, operations personnel) need simplified interaction methods without needing to understand underlying APIs and technical details.
+Non-technical users (business operators, operations personnel) need simplified interaction methods, without needing to understand underlying APIs and technical details.
 
 ## Decision
 
 ### User Roles
 
 | Role | Description | Interface |
-|------|------|------|
+|------|-------------|-----------|
 | business_operator | Business operator | Simplified interface |
 | org_node_owner(team) | Team leader of `OrgNodeType.team` | Management view |
 | executive | Executive | Report view |
@@ -29,32 +29,32 @@ Non-technical users (business operators, operations personnel) need simplified i
 
 - Push notifications
 - Email notifications
-- In-system messages
+- In-app messages
 - Real-time status updates
 
-### Assistive Features
+### Auxiliary Features
 
 | Feature | Description |
-|------|------|
-| Task templates | Common task pre-defined templates |
-| Quick actions | One-click common operations |
-| History records | Operation history traceable |
-| Export reports | Data export supported |
+|---------|-------------|
+| Task Templates | Pre-defined templates for common tasks |
+| Quick Actions | One-click execution for common operations |
+| History | Operable history traceable |
+| Export Reports | Data export support |
 
 ## Consequences
 
 Advantages:
 
-- Reduces non-technical user usage threshold
+- Lower barrier to entry for non-technical users
 - Templating improves efficiency
 - Real-time feedback enhances experience
 
-Costs:
+Trade-offs:
 
 - Multi-role interface increases complexity
-- Template maintenance requires continuous investment
+- Template maintenance requires ongoing investment
 
-## Cross-references
+## Cross References
 
 - [ADR-039 Natural Language Task Entry Architecture](./039-natural-language-task-entry.md)
 - [ADR-043 Unified Operations Dashboard](./043-unified-operations-dashboard.md)

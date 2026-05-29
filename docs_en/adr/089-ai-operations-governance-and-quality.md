@@ -1,32 +1,32 @@
 # ADR 089: AI Operations Governance and Quality
 
-- Status：Accepted
-- Decision日期：2026-04-20
+- Status: Accepted
+- Decision Date: 2026-04-20
 
 ## Background
 
-`§15`-`§18`、`§21`、`§23`、`§27` defines了 LLM Provider、Prompt、Eval、Cost、HITL、Compliance、SLO 等 AI 运营能力。过去这些能力分别落在 provider、prompt governance、quality、budget、approval contract 中，但缺少统一 ADR Description AI 层为什么必须被当成可治理运lines时，而不is普通relies on。
+`§15`-`§18`, `§21`, `§23`, `§27` define AI operational capabilities such as LLM Provider, Prompt, Eval, Cost, HITL, Compliance, SLO. Previously these capabilities landed separately in provider, prompt governance, quality, budget, approval contract, but lacked unified ADR explaining why AI layer must be treated as a governable runtime, not a common dependency.
 
 ## Decision
 
-AI 运营层采用统一治理模型：
+AI operations layer adopts unified governance model:
 
-- LLM Provider 必须via ModelGateway 抽象接入，具备路由、故障切换、观测和降级能力。
-- Prompt / model / policy 都必须版本化、可灰度、可回滚、可审计。
-- Eval vs质量门禁is上线链路的一部分，不能作为离线报告附属能力。
-- Token / model 成本必须进入 budget、metering、chargeback、optimization 闭环。
-- HITL is正式控制路径，不is UI 交互特例。
-- 合规、data分级、prompt handling、SLO / error budget 共同决定 AI 动作能no执lines。
+- LLM Provider must connect via ModelGateway abstraction with routing, failover, observability, and degradation capabilities.
+- Prompt / model / policy must all be versioned, canary-deployable, rollback-able, auditable.
+- Eval and quality gate are part of release pipeline, not an offline report附属capability.
+- Token / model cost must enter budget, metering, chargeback, optimization闭环.
+- HITL is a formal control path, not a UI interaction特例.
+- Compliance, data classification, prompt handling, SLO / error budget together determine whether AI action can execute.
 
-## 取舍
+## Trade-offs
 
-- 不把模型供应商 API 作为平台主 contract，避免供应商锁定。
-- 不允许 prompt directly进入生产而不via过 governance。
-- 不允许成本只做报table展示；成本必须可以参vs执lines前budget守卫和执lines后优化。
+- Do not treat model vendor API as platform primary contract to avoid vendor lock-in.
+- Do not allow prompt to directly enter production without governance.
+- Do not allow cost to only be a report display; cost must be able to participate in pre-execution budget guard and post-execution optimization.
 
 ## Impact
 
-对应 authoritative contracts：
+Corresponding authoritative contracts:
 
 - `tool_and_provider_execution_contract.md`
 - `prompt_model_policy_governance_contract.md`
@@ -38,7 +38,7 @@ AI 运营层采用统一治理模型：
 - `data_classification_and_prompt_handling_contract.md`
 - `slo_alerting_and_runbook_contract.md`
 
-对应实现边界：
+Corresponding implementation boundaries:
 
 - `src/platform/model-gateway/*`
 - `src/platform/prompt-engine/*`
@@ -46,25 +46,25 @@ AI 运营层采用统一治理模型：
 - `src/domains/eval-framework/*`
 - `src/ops-maturity/cost-optimizer/*`
 
-## 测试要求
+## Testing Requirements
 
-- unit tests：provider selection、prompt version policy、budget guard、quality gate。
-- integration tests：prompt/model release、HITL approval、cost attribution。
-- contract tests：未via质量门禁、budget或data分级的 AI 动作不得执lines。
+- unit tests: provider selection, prompt version policy, budget guard, quality gate.
+- integration tests: prompt/model release, HITL approval, cost attribution.
+- contract tests: AI actions not passing quality gate, budget, or data classification must not execute.
 
-## 备选方案
+## Alternatives
 
-1. **将模型供应商 API 作为平台主 contract**：信息明确，但增加供应商锁定风险。
-2. **允许 prompt directly进入生产**：降低治理成本，但no法保证质量、合规和security。
-3. **成本only作为报table展示**：实现简单，但成本no法参vs执lines前守卫和执lines后优化。
-4. **采用本Decision**：统一治理 AI 运营层，确保质量、security、合规和成本可控。
+1. **Treat model vendor API as platform primary contract**: Clear information, but increases vendor lock-in risk.
+2. **Allow prompt to directly enter production**: Reduces governance cost, but cannot guarantee quality, compliance, and security.
+3. **Cost only as report display**: Simple implementation, but cost cannot participate in pre-execution guard and post-execution optimization.
+4. **Adopt this decision**: Unified governance of AI operations layer, ensuring quality, security, compliance, and cost control.
 
-## 交叉references用
+## Cross References
 
-- [ADR-006 LLM Provider 策略](./006-llm-provider-strategy.md)
-- [ADR-088 平台table面、communicationvs扩展性](./088-platform-surface-communication-and-extensibility.md)
+- [ADR-006 LLM Provider Strategy](./006-llm-provider-strategy.md)
+- [ADR-088 Platform Surface, Communication, and Extensibility](./088-platform-surface-communication-and-extensibility.md)
 
-## 来源章节
+## Source Sections
 
 - `§15 LLM Provider`
 - `§16 Prompt`

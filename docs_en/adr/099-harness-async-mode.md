@@ -2,36 +2,36 @@
 
 ---
 
-## OAPEFLIR 关联
+## OAPEFLIR Association
 
-- **Observe**: 接收异步队列、sleep lease vs外部事件
-- **Assess**: 判断isno可继续执lines
-- **Plan**: 规划异步恢复vs重新调度
-- **Execute**: via async harness handle长时任务
-- **Feedback**: record异步delay、timeoutvs恢复结果
-- **Learn**: 汇总异步failed模式
-- **Improve**: 优化异步策略vs backlog
-- **Release**: Async Harness 作为 Ring 2 async-readiness 验收项
+- **Observe**: Receive async queue, sleep lease, and external events
+- **Assess**: Determine if execution can continue
+- **Plan**: Plan async recovery and re-scheduling
+- **Execute**: Handle long-running tasks via async harness
+- **Feedback**: Record async delay, timeout, and recovery results
+- **Learn**: Summarize async failure patterns
+- **Improve**: Optimize async strategy and backlog
+- **Release**: Async Harness as Ring 2 async-readiness acceptance item
 
 ---
 
-- Status：Accepted
-- Decision日期：2026-04-23
+- Status: Accepted
+- Decision Date: 2026-04-23
 
 ## Background
 
-长时任务、外部等待和人工审批都要求 Harness 拥有正式异步模式。
+Long-running tasks, external waits, and human approval all require Harness to have a formal async mode.
 
 ## Decision
 
-- `AsyncHarnessService` 作为 Harness 的正式子系统
-- async run 需要 queue / checkpoint / resume 能力
-- sleep / wake / timeout 必须is同一生命cycle模型的一部分
+- `AsyncHarnessService` serves as Harness's formal subsystem
+- Async run needs queue / checkpoint / resume capability
+- sleep / wake / timeout must be part of the same lifecycle model
 
 ## Consequences
 
-- Harness 可承载真正的异步工作流
+- Harness can carry true async workflows
 
 ## v4.3 ADR Remediation
 
-- A-31: 本 ADR 原先uses `phase 8c` 作为交付门禁术语，Root cause:  async mode ADR accesses along用了历史阶段排期，没有切换到主Architecture统一的 ring 口径。修复：正文现改为 `Ring 2 async-readiness`。
+- A-31: This ADR originally used `phase 8c` as delivery gate terminology. Root cause: Async mode ADR沿用 historical stage scheduling, did not switch to main architecture's unified ring terminology. Fix: Body now changed to `Ring 2 async-readiness`.

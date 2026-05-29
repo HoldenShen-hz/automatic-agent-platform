@@ -1,100 +1,100 @@
-# ADR-008 成本模型
+# ADR-008 Cost Model
 
 ---
 
-## OAPEFLIR 关联
+## OAPEFLIR Association
 
-本文档defines OAPEFLIR 八阶段认知循环中的以下组件：
+This document defines the following components in the OAPEFLIR eight-stage cognitive loop:
 
-- **Observe**：信号采集vs统一 DTO
-- **Assess**：执lines前/后评估vs风险判断
-- **Plan**：显式规划vs DAG 构建（ADR-060）
-- **Execute**：步骤执linesvs Dual-Channel 输出
-- **Feedback**：信号收集、预handlevs 7 class反馈源（ADR-079）
-- **Learn**：模式检测vs知识提取（ADR-080）
-- **Improve**：改进候选评估vs Rollout Status机（ADR-075）
-- **Release**：六级受控发布vs自动回滚
+- **Observe**: Signal collection and unified DTO
+- **Assess**: Pre/post execution assessment and risk judgment
+- **Plan**: Explicit planning and DAG construction (ADR-060)
+- **Execute**: Step execution and dual-channel output
+- **Feedback**: Signal collection, preprocessing, and 7 feedback sources (ADR-079)
+- **Learn**: Pattern detection and knowledge extraction (ADR-080)
+- **Improve**: Improvement candidate evaluation and Rollout state machine (ADR-075)
+- **Release**: Six-level controlled release and automatic rollback
 
 ---
 
-- Status：Accepted
-- Decision日期：2026-04-02
+- Status: Accepted
+- Decision Date: 2026-04-02
 
 ## Background
 
-多 Agent、多层协调、上下文压缩和后台任务会带来大量隐性成本。只统计事业部内部执lines成本，会系统性低估真实开销，也会误导路由、budget和商业化判断。
+Multi-Agent, multi-layer coordination, context compression, and background tasks bring large amounts of hidden costs. Only counting in-division execution costs systematically underestimates true spending, and misleads routing, budget, and commercialization judgments.
 
 ## Decision
 
-将成本控制设计为平台级能力，而不is单个角色的局部优化：
+Design cost control as a platform-level capability, not a local optimization of individual roles:
 
-- 所有路径都用统一成本模型估算：`passthrough`、`fast`、`standard`、`full`。
-- 估算时必须contains VP 运营、VP 编排、Lead、压缩、cache失效、自愈和恢复等隐性成本。
-- 系统维护单任务、单日和单月的硬upper limit。
-- 达到threshold时，触发暂停、升级、只读或熔断。
+- All paths use unified cost model estimation: `passthrough`, `fast`, `standard`, `full`.
+- Estimation must include hidden costs of VP Operations, VP Orchestration, Lead, compression, cache invalidation, self-healing, and recovery.
+- System maintains hard limits per task, per day, and per month.
+- When threshold is reached, trigger pause, escalation, read-only, or circuit break.
 
-## 成本构成
+## Cost Composition
 
-至少分为以下几class：
+At minimum divided into the following categories:
 
-- 总部层开销：分class、拆分、聚合、升级。
-- 事业部执lines开销：角色call、测试、审查、构建。
-- 自愈开销：重试、返工、循环检测后的补救。
-- Background开销：压缩、cache失效、记忆提取、恢复。
+- Headquarters layer overhead: Classification, decomposition, aggregation, escalation.
+- Division execution overhead: Role calls, testing, review, building.
+- Self-healing overhead: Retry, rework, remediation after loop detection.
+- Background overhead: Compression, cache invalidation, memory extraction, recovery.
 
-关键Conclusion：
+Key conclusions:
 
-- 真正的全链路成本通常高于“事业部内部成本”的直觉估算。
-- 跨事业部 full 路径的隐性成本不可忽略。
+- True full-chain cost is usually higher than "in-division cost" intuition estimate.
+- Hidden costs of cross-division full path cannot be ignored.
 
-## 控制手段
+## Control Methods
 
-核心控制方法：
+Core control methods:
 
-- 角色分级选模。
-- prompt / response cache。
-- Repo Map vs工具替代大上下文读取。
-- 路由分级，优先命中 `passthrough` 或更轻的执lines链。
-- budget守卫和成本 kill switch。
+- Role-tiered model selection.
+- Prompt/response caching.
+- Repo Map and tool substitution for large context reading.
+- Route classification, prioritize hitting `passthrough` or lighter execution chain.
+- Budget guard and cost kill switch.
 
-检查点：
+Checkpoints:
 
-- 单任务isno符合预估。
-- 协调层开销isno过高。
-- 自愈成本isno可控。
-- prompt cache命中率isno达标。
-- `passthrough` 命中率isno足够高。
+- Does single task match estimate.
+- Is coordination layer overhead too high.
+- Is self-healing cost controllable.
+- Is prompt cache hit rate up to standard.
+- Is `passthrough` hit rate high enough.
 
-## 商业化关联
+## Commercialization Association
 
-成本模型不only服务运lines期，也服务商业化：
+Cost model serves not only runtime but also commercialization:
 
-- 用来决定免费版、专业版和企业版边界。
-- 用来支撑 usage metering vs quota。
-- 用来约束 full-auto 等高风险模式。
-- 用来判断哪些路径可defaults to平台代付，哪些必须 BYOK。
+- Used to determine free, professional, and enterprise boundaries.
+- Used to support usage metering and quota.
+- Used to constrain high-risk modes like full-auto.
+- Used to judge which paths can be platform-paid by default, which must be BYOK.
 
-## 结果
+## Results
 
-优点：
+Benefits:
 
-- 成本成为一等运lines信号，而不is事后统计。
-- 商业化前就能建立user预期和内部budget模型。
-- 为未来的计量计费和套餐定价提供基础。
+- Cost becomes a first-class runtime signal, not post-hoc statistics.
+- Can establish user expectations and internal budget model before commercialization.
+- Provides foundation for future metering billing and package pricing.
 
-约束：
+Constraints:
 
-- budget控制会Impactuser体验，需要和 HITL、通知vs商业策略一起设计。
-- 每新增一class后台能力，都要synchronous更新成本瀑布。
-- 估算模型必须via真实任务持续校正。
+- Budget control affects user experience, needs to be designed together with HITL, notifications, and commercial strategy.
+- Every new background capability added needs to synchronously update cost waterfall.
+- Estimation model must be continuously calibrated through real tasks.
 
-## 交叉references用
+## Cross-References
 
-- [ADR-004 工作流vs路由](./004-workflow-routing.md)
-- [ADR-006 LLM Provider 策略](./006-llm-provider-strategy.md)
-- [ADR-010 商业模型](./010-commercial-model.md)
+- [ADR-004 Workflow and Routing](./004-workflow-routing.md)
+- [ADR-006 LLM Provider Strategy](./006-llm-provider-strategy.md)
+- [ADR-010 Commercial Model](./010-commercial-model.md)
 
-## 来源章节
+## Source Sections
 
 - `§7.2`
 - `§7.2.1`
@@ -104,4 +104,4 @@
 
 ## v4.3 ADR Remediation
 
-- R5-63: 本 ADR 原先references用旧版章节号（如 `§7.2`/`§7.3`/`§11.3.1` 等），现已更新为实际 architecture doc 中的正确章节映射。
+- R5-63: This ADR originally referenced old section numbers (e.g., `§7.2`/`§7.3`/`§11.3.1`). It has now been updated with correct section mappings from the actual architecture document.

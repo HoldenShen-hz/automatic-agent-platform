@@ -1,58 +1,58 @@
-# ADR-024 可扩展性Architecture
+# ADR-024 Scalability Architecture
 
-- Status：Accepted
-- Decision日期：2026-04-03
+- Status: Accepted
+- Decision Date: 2026-04-03
 
 ## Background
 
-平台需要supported从单机到集群的平滑扩展，同时保持data一致性和性能。不同规模阶段需要不同的Architecture策略。
+The platform needs to support smooth scaling from single-machine to cluster while maintaining data consistency and performance. Different scale stages require different architectural strategies.
 
 ## Decision
 
-### 分层扩展策略
+### Tiered Scaling Strategy
 
-| 阶段 | Architecture | concurrent能力 | storage | Workers |
-|------|------|---------|------|---------|
-| S1 | 单机 | ≤10 | SQLite | 5 |
-| S2 | 多进程 | 10-100 | SQLite + Redis | 20 |
-| S3 | 分布式 | 100-1000 | PostgreSQL | 100 |
-| S4 | K8s 集群 | 5000+ | PG sharded | 500+ |
+| Stage | Architecture | Concurrency | Storage | Workers |
+|-------|-------------|-------------|---------|---------|
+| S1 | Single-machine | <=10 | SQLite | 5 |
+| S2 | Multi-process | 10-100 | SQLite + Redis | 20 |
+| S3 | Distributed | 100-1000 | PostgreSQL | 100 |
+| S4 | K8s Cluster | 5000+ | PG sharded | 500+ |
 
-### 队列分片策略
+### Queue Sharding Strategy
 
-- dispatch queue 按 tenant_id hash 分片
-- 保证租户间隔离
+- Dispatch queue sharded by tenant_id hash
+- Ensures inter-tenant isolation
 
 ### HorizontalScalingController
 
-- `shared/scaling/` 实现水平扩展控制器
-- supportedbased on负载的自动扩缩容
+- `shared/scaling/` implements horizontal scaling controller
+- Supports load-based auto scaling
 
-### S3 特殊Description
+### S3 Special Notes
 
-- uses PostgreSQL + SQLite 双运lines模式
-- SQLite 作为本地cache
-- PG 作为主storage
-- no异步镜像（synchronous复制）
+- Uses PostgreSQL + SQLite dual runtime mode
+- SQLite as local cache
+- PG as primary storage
+- No async mirroring (synchronous replication)
 
 ## Consequences
 
-优点：
+Benefits:
 
-- 分层扩展策略匹配不同业务阶段
-- 队列分片防止单租户阻塞
-- 水平扩展控制器supported自动伸缩
+- Tiered scaling strategy matches different business stages
+- Queue sharding prevents single tenant blocking
+- Horizontal scaling controller supports auto scaling
 
-代价：
+Costs:
 
-- 多阶段Architecture增加运维复杂度
-- S3/S4 需要更多基础设施投入
+- Multi-stage architecture increases operations complexity
+- S3/S4 requires more infrastructure investment
 
-## 交叉references用
+## Cross-References
 
-- [ADR-012 SQLite isno作为 Phase 1-2 唯一主storage](./012-sqlite-phase-1-2-primary-store.md)
-- [ADR-031 容灾vs高可用Architecture](./031-disaster-recovery-and-high-availability.md)
+- [ADR-012 SQLite Whether as Phase 1-2 Only Primary Storage](./012-sqlite-phase-1-2-primary-store.md)
+- [ADR-031 Disaster Recovery and High Availability Architecture](./031-disaster-recovery-and-high-availability.md)
 
-## 来源章节
+## Source Sections
 
-- `§8` 可扩展性Architecture
+- `§8` Scalability Architecture

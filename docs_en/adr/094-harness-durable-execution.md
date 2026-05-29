@@ -2,38 +2,38 @@
 
 ---
 
-## OAPEFLIR 关联
+## OAPEFLIR Association
 
-- **Observe**: 读取 run、checkpoint、sleep lease vs恢复Status
-- **Assess**: 判断isno需要恢复或重放
-- **Plan**: 规划 persist/checkpoint/resume 边界
-- **Execute**: 落盘 HarnessRun、NodeRun、NodeAttempt、decision vs上下文
-- **Feedback**: 标记恢复结果vs未决风险
-- **Learn**: 分析故障恢复模式
-- **Improve**: 优化 durable boundary
-- **Release**: Durable 能力作为 Ring 2 durable-readiness 验收门
+- **Observe**: Read run, checkpoint, sleep lease, and recovery status
+- **Assess**: Determine if recovery or replay is needed
+- **Plan**: Plan persist/checkpoint/resume boundary
+- **Execute**: Persist HarnessRun, NodeRun, NodeAttempt, decision, and context
+- **Feedback**: Mark recovery results and pending risks
+- **Learn**: Analyze failure recovery patterns
+- **Improve**: Optimize durable boundary
+- **Release**: Durable capability as Ring 2 durable-readiness acceptance gate
 
 ---
 
-- Status：Accepted
-- Decision日期：2026-04-23
+- Status: Accepted
+- Decision Date: 2026-04-23
 
 ## Background
 
-没有持久化的 Harness 只能做短时计算，no法supported异步、恢复、重放和长期运lines。
+Harness without persistence can only do short-term computation, cannot support async, recovery, replay, and long-running.
 
 ## Decision
 
-- Durable Harness 负责 run persistence、checkpoint、restore、resume
-- `NodeAttempt` vs其 receipt / compensation lineage belongs to durable replay 边界的一部分
-- async run 必须supported pause / resume
-- checkpoint is恢复和 replay 的 authoritative 入口
+- Durable Harness is responsible for run persistence, checkpoint, restore, resume
+- `NodeAttempt` and its receipt/compensation lineage belong to durable replay boundary
+- Async run must support pause / resume
+- Checkpoint is the authoritative entry point for recovery and replay
 
 ## Consequences
 
-- Harness 不再relies on单进程内存才能继续运lines
-- 崩溃恢复vs长时任务有统一技术基线
+- Harness no longer relies on single-process memory to continue running
+- Crash recovery and long-running tasks have unified technical baseline
 
 ## v4.3 ADR Remediation
 
-- A-30: 本 ADR 原先uses `phase 8b` 作为交付门禁术语，Root cause:  durable execution ADR accesses along用了历史阶段排期，没有切换到主Architecture统一的 ring 口径。修复：正文现改为 `Ring 2 durable-readiness`。
+- A-30: This ADR originally used `phase 8b` as delivery gate terminology. Root cause: Durable execution ADR沿用 historical stage scheduling, did not switch to main architecture's unified ring terminology. Fix: Body now changed to `Ring 2 durable-readiness`.

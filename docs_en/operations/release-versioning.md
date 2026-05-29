@@ -4,7 +4,7 @@ This document defines the minimum release version scope for the current reposito
 
 ## NPM / Source Code Version
 
-- `version` in `package.json` is the source of truth for source package version.
+- `package.json` 中的 `version` is the source of truth for source package version.
 - Current release baseline version: `0.2.0`
 - `CHANGELOG.md` must simultaneously maintain `Unreleased` and the most recent released version to avoid accidentally writing unreleased commits as released facts.
 - Current repository is still in `0.x` pre-GA stage: frequent contract/docs changes do not require bumping `package.json` on every commit, but once publishing a package or image, must write back to changelog.

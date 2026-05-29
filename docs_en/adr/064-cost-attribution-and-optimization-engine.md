@@ -1,15 +1,15 @@
-# ADR-064 成本归因vs优化references擎
+# ADR-064 Cost Attribution and Optimization Engine
 
-- Status：Accepted
-- Decision日期：2026-04-20
+- Status: Accepted
+- Decision Date: 2026-04-20
 
 ## Background
 
-LLM 成本is OPEX 的主要组成部分，需要精确的成本归因和优化指导。
+LLM cost is the major component of OPEX, requiring precise cost attribution and optimization guidance.
 
 ## Decision
 
-### 成本归因模型
+### Cost Attribution Model
 
 ```typescript
 interface CostAttribution {
@@ -30,52 +30,52 @@ interface CostDimension {
 }
 ```
 
-### 成本class型
+### Cost Types
 
-| class型 | Description |
-|------|------|
-| llm_token | LLM Token 消耗 |
-| compute | 计算资源 |
-| storage | storage资源 |
-| network | network带宽 |
-| api_call | 外部 API |
+| Type | Description |
+|------|-------------|
+| llm_token | LLM Token consumption |
+| compute | Compute resources |
+| storage | Storage resources |
+| network | Network bandwidth |
+| api_call | External API |
 
-### 优化Recommendation
+### Optimization Recommendations
 
-| Recommendationclass型 | Description | 预期节省 |
-|----------|------|----------|
-| prompt压缩 | 减少 Token 消耗 | 20-40% |
-| 模型降级 | uses更便宜模型 | 30-60% |
-| cache复用 | cache相似request | 50-80% |
-| 批handle | 批量request合并 | 20-30% |
+| Recommendation Type | Description | Expected Savings |
+|--------------------|-------------|------------------|
+| prompt_compression | Reduce Token consumption | 20-40% |
+| model_downgrade | Use cheaper model | 30-60% |
+| cache_reuse | Cache similar requests | 50-80% |
+| batch_processing | Batch request merging | 20-30% |
 
-### budget控制
+### Budget Control
 
-- 4 级budget：platform/tenant/harness_run/node_run
-- 实时budget监控
-- budgetexceeds支告警
-- 自动降级
+- 4-level budget: platform/tenant/harness_run/node_run
+- Real-time budget monitoring
+- Budget overage alerts
+- Automatic degradation
 
-### 成本报table
+### Cost Reports
 
-- 实时成本看板
-- 历史趋势分析
-- budget执lines报告
-- 优化效果追踪
+- Real-time cost dashboard
+- Historical trend analysis
+- Budget execution report
+- Optimization effect tracking
 
 ## Consequences
 
-优点：
+Advantages:
 
-- 精确归因指导优化
-- budget控制防止exceeds支
-- 报table便于manage层Decision
+- Precise attribution guides optimization
+- Budget control prevents overage
+- Reports facilitate management decisions
 
-代价：
+Trade-offs:
 
-- 计量增加开销
-- 优化Recommendation
+- Metering adds overhead
+- Optimization recommendations
 
 ## v4.3 ADR Remediation
 
-- A-23: 本 ADR 原先继续用 `workflow_id / step_id` 做成本维度，Root cause: 成本references擎 ADR accesses along用了线性 workflow 粒度，没有随着 v4.3 执lines真相对象切换到 `HarnessRun / NodeRun / BudgetSettlement`。修复：正文现把 `CostDimension` 收敛到 `harness_run_id / node_run_id / budget_settlement_ref`。
+- A-23: This ADR originally continued using `workflow_id / step_id` for cost dimension, root cause being cost engine ADR followed linear workflow granularity, not updated with v4.3 execution truth objects switching to `HarnessRun / NodeRun / BudgetSettlement`. Fix: Body now converges `CostDimension` to `harness_run_id / node_run_id / budget_settlement_ref`.

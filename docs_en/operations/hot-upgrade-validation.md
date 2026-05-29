@@ -6,7 +6,7 @@
 
 ## Steps
 
-1. Deploy baseline version using `bash deploy/scripts/deploy.sh <env> <tag> rolling`.
+1. Use `bash deploy/scripts/deploy.sh <env> <tag> rolling` to deploy baseline version.
 2. Apply sustained synthetic traffic to `/healthz`, `/v1/tasks` and websocket subscriptions.
 3. Execute rolling upgrade with new image tag.
 4. Run `bash deploy/scripts/verify-hot-upgrade.sh <base-url>` for post-upgrade verification.

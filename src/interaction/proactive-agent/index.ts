@@ -161,10 +161,17 @@ function parseRateWindow(raw: string): { max: number; windowMs: number } {
 }
 
 function isValidTimezone(value: string): boolean {
+  if (typeof Intl.supportedValuesOf === "function") {
+    return Intl.supportedValuesOf("timeZone").includes(value);
+  }
   try {
     new Intl.DateTimeFormat("en-US", { timeZone: value }).format(new Date());
     return true;
-  } catch {
+  } catch (error) {
+    process.emitWarning(
+      `Failed to validate timezone ${value}: ${error instanceof Error ? error.message : String(error)}`,
+      { code: "interaction.proactive_agent.invalid_timezone_probe" },
+    );
     return false;
   }
 }

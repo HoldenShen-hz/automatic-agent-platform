@@ -1,21 +1,25 @@
 # ADR-115 Self Healing Simulation Boundary
 
-- Status：Accepted
+- Status: Accepted
 
 ## Background
-当前 self-healing 服务提供的is仓内可测试的 deterministic simulation baseline，不is外部真实基础设施编排器。
+
+Current self-healing service provides an in-repository testable deterministic simulation baseline, not an external real infrastructure orchestrator.
 
 ## Decision
-- 自愈执lines结果允许采用 deterministic outcome model，但必须：
-  - lines为可解释
-  - 受 policy 约束
-  - vs组件健康Status、重试budget、冷却期联动
-- 当组件已exceeds过最大failediterations数时，自动进入 fail-closed / cooldown，而不is持续盲目重试。
-- 文档必须明确这is一层 simulation baseline，真实执lines器可在后续替换。
 
-## 结果
-- 自愈逻辑不再is“黑盒success率”。
-- 运维和测试都能based on统一规则判断期望lines为。
+- Self-healing execution results are allowed to use deterministic outcome model, but must:
+  - Have explainable behavior
+  - Be constrained by policy
+  - Link with component health status, retry budget, cooldown period
+- When component has exceeded maximum failure count, automatically enter fail-closed / cooldown, not continuously blind retry.
+- Documentation must clarify this is a simulation baseline layer; real executor can be replaced later.
 
-## 相关实现
+## Results
+
+- Self-healing logic is no longer a "black box success rate".
+- Both operations and testing can judge expected behavior based on unified rules.
+
+## Related Implementation
+
 - `src/ops-maturity/platform-ops-agent/self-healing-service.ts`
