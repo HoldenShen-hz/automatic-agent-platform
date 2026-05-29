@@ -10,7 +10,7 @@
 Prometheus/Alertmanager 映射：
 
 - `severity=page` 或跨区域/核心写路径故障 -> `P1`
-- `severity=critical` -> 默认按 `P1` 处理，若确认无客户影响可降为 `P2`
+- `severity=critical` -> 默认按 `P1` 处理；若影响扩展到多区域、核心写路径或租户级大面积不可用，则提升为 `P0` 战情模式
 - `severity=warning` -> 默认按 `P2` 处理
 
 ## Response Flow

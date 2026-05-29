@@ -5,8 +5,9 @@ replicaCount: 1
 image:
   registry: ghcr.io
   repository: automatic-agent-platform
-  pullPolicy: Always
+  pullPolicy: IfNotPresent
   tag: ""
+  digest: ""
 
 resources:
   limits:

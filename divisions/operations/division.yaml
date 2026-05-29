@@ -3,6 +3,8 @@ version: 1
 name: Operations
 description: Runbook execution, incident response, and monitoring review for SRE and DevOps tasks.
 priority: 20
+default_plan_blueprint_ref: plan://divisions/operations/default
+orchestration_plan_blueprint_ref: plan://divisions/operations/incident-orchestration
 default_workflow: ops_orchestration
 orchestration_workflow: ops_orchestration
 disambiguate:
@@ -39,6 +41,42 @@ roles:
     model: reasoning
     tools: [read, bash, diagnose, fetch_logs, execute, patch, knowledge_retrieve]
     max_instances: 3
+# §37: DomainDescriptor
+domain_descriptor:
+  domainId: operations
+  ownerOrgNodeId: org.operations
+  primaryEntities:
+    - incident
+    - runbook
+    - alert
+    - service
+  recipeArchetype: incident_ops
+  lifecycleState: active
+# §37: DomainRiskProfile
+risk_profile:
+  profileId: operations.risk
+  domainId: operations
+  riskLevel: high
+  advisoryOnly: false
+  humanAccountable: true
+  deterministicHotPathOnly: false
+  regulatoryClass: unregulated
+# §37: DomainEvalSpec
+eval_spec:
+  domainId: operations
+  evalBaselines:
+    - containment_speed
+    - runbook_compliance
+  criticalCases:
+    - production_outage
+    - unsafe_mitigation
+  acceptanceThresholds:
+    containment_speed: 90
+    runbook_compliance: 95
+    evidence_capture: 90
+  adversarialScenarios:
+    - alert_storm
+    - partial_visibility
 # §37: ResourceBoundaries - Execution limits for the division
 resource_boundaries:
   max_concurrent_executions: 5

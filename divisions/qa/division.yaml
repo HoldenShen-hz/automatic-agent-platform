@@ -3,6 +3,8 @@ version: 1
 name: QA Smoke Validation Division
 description: Legacy QA alias reserved for lightweight smoke validation and quick regression triage; full release certification belongs to quality-assurance.
 priority: 30
+default_plan_blueprint_ref: plan://divisions/qa/default
+orchestration_plan_blueprint_ref: plan://divisions/qa/smoke-orchestration
 default_workflow: qa_smoke_validation
 orchestration_workflow: qa_smoke_validation
 triggers:

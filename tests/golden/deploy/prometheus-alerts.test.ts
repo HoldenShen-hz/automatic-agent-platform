@@ -89,6 +89,24 @@ test("[SYS-OBS-5.2] prometheus rules have at least 3 alerting rules", () => {
   );
 });
 
+test("[SYS-OBS-5.2] prometheus rules ship recording rules and runbook links", () => {
+  const content = readFileSync(
+    "deploy/prometheus/rules/automatic-agent.yml",
+    "utf8",
+  );
+  const config = parseYaml(content) as {
+    groups?: Array<{ rules?: Array<{ alert?: string; record?: string; annotations?: { runbook_url?: string } }> }>;
+  };
+
+  const records = config.groups?.flatMap((group) => group.rules?.filter((rule) => rule.record) ?? []) ?? [];
+  const alerts = config.groups?.flatMap((group) => group.rules?.filter((rule) => rule.alert) ?? []) ?? [];
+
+  assert.ok(records.length >= 2, "Expected recording rules for expensive histogram queries");
+  for (const alert of alerts) {
+    assert.match(alert.annotations?.runbook_url ?? "", /production-alert-runbook\.md#/);
+  }
+});
+
 test("[SYS-OBS-5.2] prometheus alert queries use exporter metric units and current backlog names", () => {
   const content = readFileSync(
     "deploy/prometheus/rules/automatic-agent.yml",

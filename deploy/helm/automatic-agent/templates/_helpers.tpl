@@ -58,3 +58,16 @@ Create the name of the service account to use.
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
 {{- end }}
+
+{{/*
+Whether a secret-backed env source will exist for the release.
+*/}}
+{{- define "automatic-agent.hasSecretEnv" -}}
+{{- if .Values.externalSecret.enabled -}}
+true
+{{- else if or .Values.secrets.AA_API_JWT_SECRET .Values.secrets.ANTHROPIC_API_KEY .Values.secrets.OPENAI_API_KEY .Values.secrets.MINIMAX_API_KEY .Values.secrets.AA_STORAGE_POSTGRES_DSN -}}
+true
+{{- else -}}
+false
+{{- end -}}
+{{- end }}

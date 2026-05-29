@@ -7,6 +7,7 @@ image:
   repository: automatic-agent-platform
   pullPolicy: IfNotPresent
   tag: dev
+  digest: ""
 
 resources:
   limits:

@@ -4,6 +4,7 @@ metadata:
   name: {{ include "automatic-agent.fullname" . }}
   labels:
     {{- include "automatic-agent.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api
 spec:
   type: {{ .Values.service.type }}
   ports:

@@ -5,8 +5,9 @@ replicaCount: 3
 image:
   registry: ghcr.io
   repository: automatic-agent-platform
-  pullPolicy: Always
+  pullPolicy: IfNotPresent
   tag: ""  # Set by CI from image_tag
+  digest: ""
 
 resources:
   limits:
@@ -21,6 +22,14 @@ autoscaling:
   minReplicas: 3
   maxReplicas: 10
   targetCPUUtilizationPercentage: 70
+  customMetrics:
+    - type: Pods
+      pods:
+        metric:
+          name: queued_tasks
+        target:
+          type: AverageValue
+          averageValue: "50"
 
 ingress:
   enabled: true
@@ -38,6 +47,7 @@ ingress:
     - secretName: automatic-agent-prod-tls
       hosts:
         - automatic-agent.example.com
+  requireTls: true
 
 env:
   AA_API_HOST: "0.0.0.0"
@@ -68,12 +78,36 @@ externalSecret:
       remoteRef:
         key: automatic-agent/prod/providers
         property: anthropic_api_key
+    - secretKey: AA_STORAGE_POSTGRES_DSN
+      remoteRef:
+        key: automatic-agent/prod/storage
+        property: postgres_dsn
 
 persistence:
-  enabled: true
-  storageClass: gp3
-  size: 50Gi
+  enabled: false
 
 podDisruptionBudget:
   enabled: true
-  minAvailable: 2
+  maxUnavailable: 1
+
+monitoring:
+  serviceMonitor:
+    enabled: true
+  prometheusRule:
+    enabled: true
+
+affinity:
+  podAntiAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchLabels:
+            app.kubernetes.io/name: automatic-agent
+        topologyKey: kubernetes.io/hostname
+
+topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: topology.kubernetes.io/zone
+    whenUnsatisfiable: ScheduleAnyway
+    labelSelector:
+      matchLabels:
+        app.kubernetes.io/name: automatic-agent

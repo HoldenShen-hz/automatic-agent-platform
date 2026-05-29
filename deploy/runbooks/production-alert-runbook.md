@@ -1,6 +1,7 @@
 # Production Alert Runbook
 
-This runbook maps 1:1 to the alert names defined in `deploy/prometheus/rules/automatic-agent.yml`.
+This runbook is the canonical remediation target for the alert names defined in `deploy/prometheus/rules/automatic-agent.yml`.
+Every production alert rule must carry a `runbook_url` annotation pointing back to the matching section in this file.
 
 ## 1. AutomaticAgentMetricsEndpointDown
 - Confirm `/metrics` is reachable from Prometheus and the service endpoint is still registered.

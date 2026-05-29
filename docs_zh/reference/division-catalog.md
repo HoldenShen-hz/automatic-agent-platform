@@ -52,6 +52,25 @@
 - 同档位并列是允许的；真实路由仍需要结合 trigger 命中长度、显式 disambiguate 规则和稳定排序。
 - 新增 division 时，先判断是否需要新的优先级带宽；若只是同一类能力中的并列候选，可以复用现有档位。
 
+## 优先级档位
+
+| priority | 语义 |
+| --- | --- |
+| `20` | 通用运行/值守兜底 |
+| `30` | 轻量分析 / smoke / 内容类低侵入任务 |
+| `35` | 研究 / 设计类中低优先入口 |
+| `40` | 通用项目 / 数据 / 产品执行 |
+| `45` | 高频业务执行面 |
+| `50` | 工程交付主干 |
+| `55` | IT 运维专属入口 |
+| `60` | 高风险强治理域 |
+
+## Workflow / Blueprint 语义
+
+- `default_plan_blueprint_ref` / `orchestration_plan_blueprint_ref` 是当前的语义权威字段，用来区分“默认单任务计划”与“多步编排计划”。
+- `default_workflow` / `orchestration_workflow` 只保留给 legacy loader；对于单 workflow division，两者可以暂时指向同一个 workflow id。
+- 新增或补齐 division 定义时，应优先补 blueprint ref，而不是继续把语义塞进 legacy workflow alias。
+
 ## 维护规则
 
 - 新增名称相近的 division 前，必须先补 family map。

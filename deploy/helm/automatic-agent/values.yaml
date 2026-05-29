@@ -1,5 +1,7 @@
 # Default values for automatic-agent.
 
+nameOverride: automatic-agent
+
 replicaCount: 1
 
 image:
@@ -7,6 +9,7 @@ image:
   repository: automatic-agent-platform
   pullPolicy: IfNotPresent
   tag: ""  # Overridden by CI
+  digest: ""
 
 imagePullSecrets: []
 
@@ -29,6 +32,8 @@ rolloutStrategy: rolling
 
 canary:
   weight: 10
+  byHeader: ""
+  byHeaderValue: ""
 
 ingress:
   enabled: false
@@ -37,6 +42,7 @@ ingress:
   domain: localhost
   hosts: []
   tls: []
+  requireTls: false
 
 resources:
   limits:
@@ -53,13 +59,17 @@ autoscaling:
   targetCPUUtilizationPercentage: 70
   targetMemoryUtilizationPercentage: 80
   customMetrics: []
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Percent
+          value: 50
+          periodSeconds: 60
 
 podDisruptionBudget:
   enabled: false
   minAvailable: 1
-
-networkPolicy:
-  enabled: true
 
 monitoring:
   serviceMonitor:
@@ -68,10 +78,14 @@ monitoring:
     scrapeTimeout: 10s
   prometheusRule:
     enabled: true
+    interval: 30s
 
 resourceQuota:
   enabled: true
   pods: "10"
+  persistentVolumeClaims: "10"
+  servicesLoadBalancers: "2"
+  servicesNodePorts: "4"
   requestsCpu: "4"
   requestsMemory: 4Gi
   limitsCpu: "8"
@@ -102,6 +116,7 @@ secrets:
   ANTHROPIC_API_KEY: ""
   OPENAI_API_KEY: ""
   MINIMAX_API_KEY: ""
+  AA_STORAGE_POSTGRES_DSN: ""
 
 externalSecret:
   enabled: false
@@ -118,6 +133,10 @@ externalSecret:
       remoteRef:
         key: automatic-agent/providers
         property: openai_api_key
+    - secretKey: AA_STORAGE_POSTGRES_DSN
+      remoteRef:
+        key: automatic-agent/storage
+        property: postgres_dsn
 
 persistence:
   enabled: true
@@ -130,10 +149,9 @@ persistence:
 
 livenessProbe:
   enabled: true
-  httpGet:
-    path: /healthz
+  tcpSocket:
     port: 3000
-  initialDelaySeconds: 10
+  initialDelaySeconds: 0
   periodSeconds: 30
   timeoutSeconds: 5
   failureThreshold: 3
@@ -155,7 +173,7 @@ startupProbe:
     port: 3000
   initialDelaySeconds: 5
   periodSeconds: 5
-  failureThreshold: 30
+  failureThreshold: 60
 
 terminationGracePeriodSeconds: 30
 
@@ -167,3 +185,13 @@ nodeSelector: {}
 tolerations: []
 
 affinity: {}
+
+topologySpreadConstraints: []
+
+networkPolicy:
+  enabled: true
+  metricsIngressNamespaceSelectors:
+    - kubernetes.io/metadata.name: monitoring
+
+crds:
+  enabled: true

@@ -11,7 +11,9 @@
   "retryMax": 3,
   "circuitBreaker": {
     "enabled": true,
-    "threshold": 5
+    "threshold": 5,
+    "resetMs": 60000,
+    "halfOpenMaxAttempts": 1
   },
   "rateLimit": {
     "enabled": true,

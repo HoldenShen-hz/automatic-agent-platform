@@ -1,4 +1,7 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { join } from "node:path";
+
+import { parse as parseYaml } from "yaml";
 
 const checks = [];
 
@@ -8,6 +11,19 @@ function read(path) {
 
 function check(name, ok, detail) {
   checks.push({ name, ok, detail });
+}
+
+function collectWorkflowUses(content) {
+  const matches = [];
+  const usesPattern = /^\s*uses:\s*([^\s#]+)\s*$/gm;
+  for (const match of content.matchAll(usesPattern)) {
+    matches.push(match[1]);
+  }
+  return matches;
+}
+
+function isPinnedAction(ref) {
+  return /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+@[0-9a-f]{40}$/u.test(ref);
 }
 
 const ci = read(".github/workflows/ci.yml");
@@ -49,9 +65,45 @@ const alertmanager = read("deploy/prometheus/alertmanager.yml");
 check("alertmanager critical route", /pagerduty-critical/.test(alertmanager) && /slack-warning/.test(alertmanager), "Alertmanager routes critical and warning alerts");
 
 const packageJson = read("package.json");
+const packageVersion = JSON.parse(packageJson).version;
 check("package engines", /"engines":\s*{[\s\S]*"node":\s*">=22 <23"/.test(packageJson), "package declares Node 22 support");
 check("package lock present", existsSync("package-lock.json"), "package-lock.json exists");
 check("license present", existsSync("LICENSE") && /MIT License/.test(read("LICENSE")), "MIT LICENSE exists");
+
+const chart = parseYaml(read("deploy/helm/automatic-agent/Chart.yaml"));
+check(
+  "chart versions align with package version",
+  chart?.version === packageVersion && chart?.appVersion === packageVersion,
+  `Chart.yaml version/appVersion must both equal package.json version (${packageVersion})`,
+);
+
+const releaseVersioning = read("docs_zh/operations/release-versioning.md");
+check(
+  "release docs track chart/package version",
+  releaseVersioning.includes(`当前发布基线版本：\`${packageVersion}\``),
+  "release-versioning.md records the current published baseline version",
+);
+
+const workflowFiles = readdirSync(".github/workflows").filter((name) => name.endsWith(".yml") || name.endsWith(".yaml"));
+const floatingActions = [];
+for (const workflowFile of workflowFiles) {
+  const content = read(join(".github/workflows", workflowFile));
+  for (const actionRef of collectWorkflowUses(content)) {
+    if (!actionRef.startsWith("actions/")) {
+      continue;
+    }
+    if (!isPinnedAction(actionRef)) {
+      floatingActions.push(`${workflowFile}:${actionRef}`);
+    }
+  }
+}
+check(
+  "actions namespace pinned to full commit sha",
+  floatingActions.length === 0,
+  floatingActions.length === 0
+    ? "All actions/* workflow uses are pinned to immutable commit SHAs"
+    : `Unpinned refs: ${floatingActions.join(", ")}`,
+);
 
 check("supply chain docs", existsSync("docs_zh/quality/supply-chain-security.md"), "supply chain document exists");
 check("license docs", existsSync("docs_zh/quality/license-compliance.md"), "license compliance document exists");

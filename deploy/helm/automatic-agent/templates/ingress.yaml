@@ -16,6 +16,9 @@ metadata:
   {{- end }}
 spec:
   ingressClassName: {{ .Values.ingress.className }}
+  {{- if and .Values.ingress.requireTls (eq (len (.Values.ingress.tls | default (list))) 0) }}
+  {{- fail "ingress.tls must be configured when ingress.requireTls=true" }}
+  {{- end }}
   {{- if .Values.ingress.tls }}
   tls:
     {{- range .Values.ingress.tls }}

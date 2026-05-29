@@ -14,6 +14,23 @@ test("[SYS-DEP-6.4] production values pin explicit ingress hosts for prod", () =
   assert.deepEqual(values.ingress?.tls?.[0]?.hosts ?? [], ["automatic-agent.example.com"]);
 });
 
+test("[SYS-DEP-6.4] staging, pre-prod, and prod postgres overlays disable sqlite pvc fan-out", () => {
+  for (const file of [
+    "deploy/helm/automatic-agent/values-staging.yaml",
+    "deploy/helm/automatic-agent/values-pre-prod.yaml",
+    "deploy/helm/automatic-agent/values-prod.yaml",
+  ]) {
+    const values = parseYaml(readFileSync(resolveRepoPath(file), "utf8")) as {
+      env?: Record<string, string>;
+      persistence?: { enabled?: boolean };
+      externalSecret?: { data?: Array<{ secretKey?: string }> };
+    };
+    assert.equal(values.env?.AA_STORAGE_DRIVER, "postgres", `${file} should use postgres for multi-replica deploys`);
+    assert.equal(values.persistence?.enabled, false, `${file} should not keep sqlite pvc enabled`);
+    assert.ok(values.externalSecret?.data?.some((entry) => entry.secretKey === "AA_STORAGE_POSTGRES_DSN"), `${file} should source AA_STORAGE_POSTGRES_DSN from secret manager`);
+  }
+});
+
 test("[SYS-OBS-5.2] production values enable OTEL by default", () => {
   const values = parseYaml(
     readFileSync(resolveRepoPath("deploy", "helm", "automatic-agent", "values-prod.yaml"), "utf8"),
@@ -55,4 +72,17 @@ test("[SYS-DEP-6.2] deploy script enforces prod domain guardrail and supports pr
   assert.match(script, /\^\(dev\|test\|staging\|pre-prod\|prod\)\$/);
   assert.match(script, /AA_DEPLOY_DOMAIN must be set for production deployments/);
   assert.match(script, /"--set" "ingress\.domain=\$\{DEPLOY_DOMAIN\}"/);
+});
+
+test("[SYS-DEP-6.4] deployment template wires configmap, conditional secret env, digest pinning, and spread guardrails", () => {
+  const template = readFileSync(
+    resolveRepoPath("deploy", "helm", "automatic-agent", "templates", "deployment.yaml"),
+    "utf8",
+  );
+
+  assert.match(template, /configMapRef:/);
+  assert.match(template, /automatic-agent\.hasSecretEnv/);
+  assert.match(template, /sqlite persistence requires replicaCount=1/);
+  assert.match(template, /printf "%s@%s"/);
+  assert.match(template, /topologySpreadConstraints:/);
 });

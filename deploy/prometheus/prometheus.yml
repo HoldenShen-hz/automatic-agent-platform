@@ -1,6 +1,9 @@
 global:
   scrape_interval: 15s
-  evaluation_interval: 15s
+  evaluation_interval: 30s
+  external_labels:
+    system: automatic-agent
+    deployment_mode: mixed
 
 alerting:
   alertmanagers:
@@ -24,10 +27,20 @@ scrape_configs:
     metrics_path: /metrics
     kubernetes_sd_configs:
       - role: endpoints
+        namespaces:
+          names:
+            - automatic-agent-dev
+            - automatic-agent-test
+            - automatic-agent-staging
+            - automatic-agent-pre-prod
+            - automatic-agent-prod
     relabel_configs:
       - source_labels: [__meta_kubernetes_service_label_app_kubernetes_io_name]
         regex: automatic-agent
         action: keep
       - source_labels: [__meta_kubernetes_service_label_app_kubernetes_io_component]
+        regex: metrics
+        action: keep
+      - source_labels: [__meta_kubernetes_endpoint_port_name]
         regex: metrics
         action: keep

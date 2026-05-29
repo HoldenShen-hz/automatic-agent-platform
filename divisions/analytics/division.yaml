@@ -3,6 +3,8 @@ version: 1
 name: Analytics Division
 description: Business intelligence, metrics analysis, KPI tracking, reporting.
 priority: 30
+default_plan_blueprint_ref: plan://divisions/analytics/default
+orchestration_plan_blueprint_ref: plan://divisions/analytics/orchestration
 default_workflow: analytics_single_step
 orchestration_workflow: analytics_single_step
 triggers:
@@ -20,6 +22,42 @@ roles:
     model: balanced
     tools: [read, bash]
     max_instances: 3
+# §37: DomainDescriptor
+domain_descriptor:
+  domainId: analytics
+  ownerOrgNodeId: org.analytics
+  primaryEntities:
+    - dashboard
+    - report
+    - metric
+    - kpi
+  recipeArchetype: analytics
+  lifecycleState: active
+# §37: DomainRiskProfile
+risk_profile:
+  profileId: analytics.risk
+  domainId: analytics
+  riskLevel: medium
+  advisoryOnly: true
+  humanAccountable: true
+  deterministicHotPathOnly: true
+  regulatoryClass: unregulated
+# §37: DomainEvalSpec
+eval_spec:
+  domainId: analytics
+  evalBaselines:
+    - kpi_accuracy
+    - dashboard_freshness
+  criticalCases:
+    - incorrect_exec_summary
+    - stale_decision_signal
+  acceptanceThresholds:
+    kpi_accuracy: 92
+    dashboard_freshness: 90
+    trend_consistency: 88
+  adversarialScenarios:
+    - sparse_data_bias
+    - stale_snapshot_reuse
 # §37: ResourceBoundaries - Execution limits for the division
 resource_boundaries:
   max_concurrent_executions: 3

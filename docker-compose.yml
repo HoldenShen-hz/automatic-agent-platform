@@ -86,9 +86,9 @@ services:
       - automatic-agent-network
 
   prometheus:
-    image: prom/prometheus:v2.54.1
+    image: prom/prometheus:v3.5.3
     ports:
-      - "9090:9090"
+      - "127.0.0.1:9090:9090"
     volumes:
       - ./deploy/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./deploy/prometheus/rules:/etc/prometheus/rules:ro
@@ -105,15 +105,15 @@ services:
       - automatic-agent-network
 
   alertmanager:
-    image: prom/alertmanager:v0.27.0
+    image: prom/alertmanager:v0.32.1
     command:
       - /bin/sh
-      - -ec
-      - sed -e "s|__SLACK_WEBHOOK_URL__|${SLACK_WEBHOOK_URL}|g" -e "s|__PAGERDUTY_SERVICE_KEY__|${PAGERDUTY_SERVICE_KEY}|g" /etc/alertmanager/alertmanager.yml.tmpl > /tmp/alertmanager.yml && /bin/alertmanager --config.file=/tmp/alertmanager.yml
+      - /etc/alertmanager/render-alertmanager-config.sh
     ports:
-      - "9093:9093"
+      - "127.0.0.1:9093:9093"
     volumes:
       - ./deploy/prometheus/alertmanager.yml:/etc/alertmanager/alertmanager.yml.tmpl:ro
+      - ./deploy/prometheus/render-alertmanager-config.sh:/etc/alertmanager/render-alertmanager-config.sh:ro
     depends_on:
       api-server:
         condition: service_healthy

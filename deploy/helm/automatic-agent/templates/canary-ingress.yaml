@@ -1,4 +1,9 @@
 {{- if and .Values.ingress.enabled (eq .Values.rolloutStrategy "canary") }}
+{{- $domain := required "ingress.domain must be set when canary ingress is enabled" .Values.ingress.domain -}}
+{{- $hosts := .Values.ingress.hosts | default (list) -}}
+{{- if eq (len $hosts) 0 -}}
+{{- $hosts = list (dict "host" $domain "paths" (list (dict "path" "/" "pathType" "Prefix"))) -}}
+{{- end -}}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -8,16 +13,22 @@ metadata:
   annotations:
     nginx.ingress.kubernetes.io/canary: "true"
     nginx.ingress.kubernetes.io/canary-weight: {{ .Values.canary.weight | quote }}
+    {{- if .Values.canary.byHeader }}
+    nginx.ingress.kubernetes.io/canary-by-header: {{ .Values.canary.byHeader | quote }}
+    {{- end }}
+    {{- if .Values.canary.byHeaderValue }}
+    nginx.ingress.kubernetes.io/canary-by-header-value: {{ .Values.canary.byHeaderValue | quote }}
+    {{- end }}
 spec:
   ingressClassName: {{ .Values.ingress.className }}
   rules:
-    {{- range .Values.ingress.hosts }}
+    {{- range $hosts }}
     - host: {{ .host | quote }}
       http:
         paths:
           {{- range .paths }}
           - path: {{ .path }}
-            pathType: {{ .pathType }}
+            pathType: {{ .pathType | default "Prefix" }}
             backend:
               service:
                 name: {{ include "automatic-agent.fullname" $ }}

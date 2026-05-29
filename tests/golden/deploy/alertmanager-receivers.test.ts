@@ -27,6 +27,7 @@ test("[SYS-OBS-5.3] alertmanager keeps an explicit null/default receiver", () =>
   const receivers = loadReceivers();
   assert.equal(receivers.has("ops-null"), true);
   assert.equal(receivers.get("ops-null")?.webhook_configs?.length ?? 0, 0);
+  assert.equal(receivers.has("slack-default"), true);
 });
 
 test("[SYS-OBS-5.3] alertmanager slack and pagerduty routes have external transports", () => {
@@ -37,5 +38,21 @@ test("[SYS-OBS-5.3] alertmanager slack and pagerduty routes have external transp
 
 test("[SYS-OBS-5.3] alertmanager receiver names remain unique", () => {
   const receivers = loadReceivers();
-  assert.equal(receivers.size, 3);
+  assert.equal(receivers.size, 4);
+});
+
+test("[SYS-OBS-5.3] alertmanager defines inhibit rules and severity-aware routing", () => {
+  const config = parseYaml(
+    readFileSync(resolveRepoPath("deploy", "prometheus", "alertmanager.yml"), "utf8"),
+  ) as {
+    inhibit_rules?: unknown[];
+    route?: { receiver?: string; routes?: Array<{ receiver?: string }> };
+  };
+
+  assert.ok((config.inhibit_rules?.length ?? 0) >= 1, "Alertmanager should suppress duplicate warning noise beneath critical alerts");
+  assert.equal(config.route?.receiver, "slack-default");
+  assert.deepEqual(
+    config.route?.routes?.map((route) => route.receiver),
+    ["pagerduty-critical", "slack-warning", "pagerduty-critical"],
+  );
 });

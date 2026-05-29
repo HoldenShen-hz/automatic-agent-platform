@@ -14,18 +14,36 @@ spec:
     - Egress
   ingress:
     - from:
-        - namespaceSelector: {}
+        - podSelector: {}
       ports:
         - protocol: TCP
           port: {{ .Values.service.port }}
+    - from:
+        {{- range .Values.networkPolicy.metricsIngressNamespaceSelectors }}
+        - namespaceSelector:
+            matchLabels:
+              {{- toYaml . | nindent 14 }}
+        {{- end }}
+      ports:
         - protocol: TCP
           port: {{ .Values.service.metricsPort }}
   egress:
     - to:
-        - namespaceSelector: {}
+        - ipBlock:
+            cidr: 0.0.0.0/0
       ports:
         - protocol: UDP
           port: 53
         - protocol: TCP
           port: 53
+        - protocol: TCP
+          port: 443
+        - protocol: TCP
+          port: 5432
+        - protocol: TCP
+          port: 6379
+        - protocol: TCP
+          port: 4317
+        - protocol: TCP
+          port: 4318
 {{- end }}

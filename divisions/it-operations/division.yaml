@@ -3,7 +3,10 @@ version: 1
 name: IT Operations Division
 description: IT operations, incident handling, and runbook execution.
 priority: 55
+default_plan_blueprint_ref: plan://divisions/it-operations/default
+orchestration_plan_blueprint_ref: plan://divisions/it-operations/incident-orchestration
 default_workflow: it_operations_primary
+orchestration_workflow: it_operations_primary
 triggers:
   - IT operations
   - itops

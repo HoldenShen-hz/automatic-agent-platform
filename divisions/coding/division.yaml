@@ -3,6 +3,8 @@ version: 1
 name: Coding Division
 description: Software change delivery and code lifecycle execution.
 priority: 50
+default_plan_blueprint_ref: plan://divisions/coding/default
+orchestration_plan_blueprint_ref: plan://divisions/coding/oapeflir-delivery
 default_workflow: coding_primary
 orchestration_workflow: coding_primary
 triggers:

@@ -5,8 +5,9 @@ replicaCount: 2
 image:
   registry: ghcr.io
   repository: automatic-agent-platform
-  pullPolicy: Always
+  pullPolicy: IfNotPresent
   tag: ""
+  digest: ""
 
 resources:
   limits:
@@ -21,6 +22,14 @@ autoscaling:
   minReplicas: 2
   maxReplicas: 6
   targetCPUUtilizationPercentage: 70
+  customMetrics:
+    - type: Pods
+      pods:
+        metric:
+          name: queued_tasks
+        target:
+          type: AverageValue
+          averageValue: "75"
 
 ingress:
   enabled: true
@@ -38,6 +47,7 @@ ingress:
     - secretName: automatic-agent-preprod-tls
       hosts:
         - preprod.automatic-agent.example.com
+  requireTls: true
 
 env:
   AA_API_HOST: "0.0.0.0"
@@ -66,12 +76,28 @@ externalSecret:
       remoteRef:
         key: automatic-agent/pre-prod/providers
         property: anthropic_api_key
+    - secretKey: AA_STORAGE_POSTGRES_DSN
+      remoteRef:
+        key: automatic-agent/pre-prod/storage
+        property: postgres_dsn
 
 persistence:
-  enabled: true
-  storageClass: gp3
-  size: 50Gi
+  enabled: false
 
 podDisruptionBudget:
   enabled: true
-  minAvailable: 1
+  maxUnavailable: 1
+
+monitoring:
+  serviceMonitor:
+    enabled: true
+  prometheusRule:
+    enabled: true
+
+affinity:
+  podAntiAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      - labelSelector:
+          matchLabels:
+            app.kubernetes.io/name: automatic-agent
+        topologyKey: kubernetes.io/hostname

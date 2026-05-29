@@ -8,6 +8,9 @@ metadata:
 spec:
   hard:
     pods: {{ .Values.resourceQuota.pods | quote }}
+    persistentvolumeclaims: {{ .Values.resourceQuota.persistentVolumeClaims | quote }}
+    services.loadbalancers: {{ .Values.resourceQuota.servicesLoadBalancers | quote }}
+    services.nodeports: {{ .Values.resourceQuota.servicesNodePorts | quote }}
     requests.cpu: {{ .Values.resourceQuota.requestsCpu | quote }}
     requests.memory: {{ .Values.resourceQuota.requestsMemory | quote }}
     limits.cpu: {{ .Values.resourceQuota.limitsCpu | quote }}

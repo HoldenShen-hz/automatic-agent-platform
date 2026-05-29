@@ -7,14 +7,50 @@ metadata:
     {{- include "automatic-agent.labels" . | nindent 4 }}
 spec:
   groups:
-    - name: automatic-agent
+    - name: automatic-agent-recording
+      interval: {{ .Values.monitoring.prometheusRule.interval | quote }}
       rules:
-        - alert: AutomaticAgentPodUnavailable
-          expr: absent(up{job="{{ include "automatic-agent.fullname" . }}-metrics"})
+        - record: automatic_agent:http_request_duration_ms_bucket:rate5m
+          expr: sum by (job, instance, le) (rate(http_request_duration_ms_bucket{job=~".*{{ include "automatic-agent.fullname" . }}.*"}[5m]))
+        - record: automatic_agent:oapeflir_stage_duration_ms_bucket:rate5m
+          expr: sum by (job, instance, le) (rate(oapeflir_stage_duration_ms_bucket{job=~".*{{ include "automatic-agent.fullname" . }}.*"}[5m]))
+    - name: automatic-agent
+      interval: {{ .Values.monitoring.prometheusRule.interval | quote }}
+      rules:
+        - alert: AutomaticAgentMetricsEndpointDown
+          expr: min by (job, instance) (up{job=~".*{{ include "automatic-agent.fullname" . }}.*"}) == 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: automatic-agent metrics endpoint is unreachable
+            description: "Prometheus could not scrape {{`{{`}} $labels.job {{`}}`}} on {{`{{`}} $labels.instance {{`}}`}} for 2 minutes."
+            runbook_url: https://github.com/automatic-agent/automatic-agent-platform/blob/main/deploy/runbooks/production-alert-runbook.md#1-automaticagentmetricsendpointdown
+        - alert: AutomaticAgentHighErrorRate
+          expr: (sum by (job) (rate(http_requests_total{job=~".*{{ include "automatic-agent.fullname" . }}.*",status=~"5.."}[5m])) / sum by (job) (rate(http_requests_total{job=~".*{{ include "automatic-agent.fullname" . }}.*"}[5m]))) > 0.01 and sum by (job) (rate(http_requests_total{job=~".*{{ include "automatic-agent.fullname" . }}.*"}[5m])) > 0
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: automatic-agent 5xx error rate exceeds 1% SLO
+            description: "{{`{{`}} $labels.job {{`}}`}} has exceeded a 1% HTTP 5xx ratio for 5 minutes."
+            runbook_url: https://github.com/automatic-agent/automatic-agent-platform/blob/main/deploy/runbooks/production-alert-runbook.md#3-automaticagenthigherrorrate
+        - alert: AutomaticAgentHighLatency
+          expr: histogram_quantile(0.95, automatic_agent:http_request_duration_ms_bucket:rate5m) > 1000
           for: 5m
           labels:
             severity: warning
           annotations:
-            summary: automatic-agent metrics target is absent
-            description: The metrics service target has disappeared for 5 minutes.
+            summary: automatic-agent p95 latency exceeds 1s SLO
+            description: "{{`{{`}} $labels.job {{`}}`}} / {{`{{`}} $labels.instance {{`}}`}} p95 request latency has exceeded 1 second for 5 minutes."
+            runbook_url: https://github.com/automatic-agent/automatic-agent-platform/blob/main/deploy/runbooks/production-alert-runbook.md#4-automaticagenthighlatency
+        - alert: AutomaticAgentQueueBacklog
+          expr: sum by (job) (queued_tasks{job=~".*{{ include "automatic-agent.fullname" . }}.*"}) > 500
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: automatic-agent queue backlog critical
+            description: "{{`{{`}} $labels.job {{`}}`}} queue depth has exceeded 500 entries."
+            runbook_url: https://github.com/automatic-agent/automatic-agent-platform/blob/main/deploy/runbooks/production-alert-runbook.md#7-automaticagentqueuebacklog
 {{- end }}

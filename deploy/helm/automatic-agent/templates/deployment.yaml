@@ -1,12 +1,17 @@
+{{- if le (int .Values.terminationGracePeriodSeconds) (int .Values.lifecycle.preStopSleepSeconds) }}
+{{- fail "terminationGracePeriodSeconds must be greater than lifecycle.preStopSleepSeconds" }}
+{{- end }}
+{{- if and .Values.persistence.enabled (eq (.Values.env.AA_STORAGE_DRIVER | default "sqlite") "sqlite") (or (gt (int .Values.replicaCount) 1) (and .Values.autoscaling.enabled (gt (int .Values.autoscaling.maxReplicas) 1))) }}
+{{- if not (has "ReadWriteMany" .Values.persistence.accessModes) }}
+{{- fail "sqlite persistence requires replicaCount=1 and autoscaling.maxReplicas=1 unless ReadWriteMany storage is explicitly configured" }}
+{{- end }}
+{{- end }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ include "automatic-agent.fullname" . }}
   labels:
     {{- include "automatic-agent.labels" . | nindent 4 }}
-{{- if le (int .Values.terminationGracePeriodSeconds) (int .Values.lifecycle.preStopSleepSeconds) }}
-{{- fail "terminationGracePeriodSeconds must be greater than lifecycle.preStopSleepSeconds" }}
-{{- end }}
 spec:
   {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}
@@ -23,6 +28,7 @@ spec:
     metadata:
       labels:
         {{- include "automatic-agent.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: api
     spec:
       serviceAccountName: {{ include "automatic-agent.serviceAccountName" . }}
       automountServiceAccountToken: {{ .Values.serviceAccount.automountServiceAccountToken }}
@@ -43,13 +49,18 @@ spec:
       {{- if ne $imageRegistry "" }}
       {{- $resolvedImage = printf "%s/%s" $imageRegistry $imageRepository }}
       {{- end }}
+      {{- $imageRef := printf "%s:%s" $resolvedImage (.Values.image.tag | default .Chart.AppVersion) }}
+      {{- if .Values.image.digest }}
+      {{- $imageRef = printf "%s@%s" $resolvedImage .Values.image.digest }}
+      {{- end }}
       containers:
         - name: {{ .Chart.Name }}
-          image: "{{ $resolvedImage }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          image: "{{ $imageRef }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
+            runAsNonRoot: true
             capabilities:
               drop:
                 - ALL
@@ -65,11 +76,17 @@ spec:
             - name: {{ $key }}
               value: {{ $value | quote }}
             {{- end }}
+            {{- if and .Values.persistence.enabled (eq (.Values.env.AA_STORAGE_DRIVER | default "sqlite") "sqlite") }}
             - name: AA_DB_PATH
               value: "{{ .Values.persistence.mountPath }}/automatic-agent.db"
+            {{- end }}
           envFrom:
+            - configMapRef:
+                name: {{ include "automatic-agent.fullname" . }}-config
+            {{- if eq (include "automatic-agent.hasSecretEnv" .) "true" }}
             - secretRef:
                 name: {{ include "automatic-agent.fullname" . }}-secrets
+            {{- end }}
           {{- if .Values.livenessProbe.enabled }}
           livenessProbe:
             {{- toYaml (omit .Values.livenessProbe "enabled") | nindent 12 }}
@@ -109,6 +126,10 @@ spec:
       {{- end }}
       {{- with .Values.affinity }}
       affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.topologySpreadConstraints }}
+      topologySpreadConstraints:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       {{- with .Values.tolerations }}

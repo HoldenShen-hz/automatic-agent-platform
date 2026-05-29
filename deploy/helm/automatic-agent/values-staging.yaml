@@ -5,8 +5,9 @@ replicaCount: 2
 image:
   registry: ghcr.io
   repository: automatic-agent-platform
-  pullPolicy: Always
+  pullPolicy: IfNotPresent
   tag: ""  # Set by CI from image_tag
+  digest: ""
 
 resources:
   limits:
@@ -21,6 +22,14 @@ autoscaling:
   minReplicas: 2
   maxReplicas: 5
   targetCPUUtilizationPercentage: 70
+  customMetrics:
+    - type: Pods
+      pods:
+        metric:
+          name: queued_tasks
+        target:
+          type: AverageValue
+          averageValue: "75"
 
 ingress:
   enabled: true
@@ -38,19 +47,49 @@ ingress:
     - secretName: automatic-agent-staging-tls
       hosts:
         - staging.automatic-agent.example.com
+  requireTls: true
 
 env:
   AA_API_HOST: "0.0.0.0"
   AA_API_PORT: "3000"
+  AA_METRICS_PORT: "9090"
   AA_LOG_LEVEL: "info"
-  AA_STORAGE_DRIVER: "sqlite"
+  AA_STORAGE_DRIVER: "postgres"
   AA_OTEL_ENDPOINT: "http://otel-collector.observability.svc.cluster.local:4318/v1/traces"
   NODE_ENV: "staging"
 
-persistence:
+externalSecret:
   enabled: true
-  size: 20Gi
+  secretStoreRef:
+    name: aws-secrets-manager
+    kind: ClusterSecretStore
+  data:
+    - secretKey: AA_API_JWT_SECRET
+      remoteRef:
+        key: automatic-agent/staging/api
+        property: jwt_secret
+    - secretKey: OPENAI_API_KEY
+      remoteRef:
+        key: automatic-agent/staging/providers
+        property: openai_api_key
+    - secretKey: ANTHROPIC_API_KEY
+      remoteRef:
+        key: automatic-agent/staging/providers
+        property: anthropic_api_key
+    - secretKey: AA_STORAGE_POSTGRES_DSN
+      remoteRef:
+        key: automatic-agent/staging/storage
+        property: postgres_dsn
+
+persistence:
+  enabled: false
 
 podDisruptionBudget:
   enabled: true
-  minAvailable: 1
+  maxUnavailable: 1
+
+monitoring:
+  serviceMonitor:
+    enabled: true
+  prometheusRule:
+    enabled: true

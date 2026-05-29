@@ -4,6 +4,7 @@ description: AI Agent Task Execution Platform
 type: application
 version: 0.2.0
 appVersion: "0.2.0"
+kubeVersion: ">=1.28.0-0"
 keywords:
   - ai-agent
   - task-execution
@@ -11,3 +12,6 @@ keywords:
 home: https://github.com/automatic-agent/automatic-agent-platform
 sources:
   - https://github.com/automatic-agent/automatic-agent-platform
+maintainers:
+  - name: Automatic Agent Platform Maintainers
+    email: oss@automatic-agent.dev

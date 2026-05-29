@@ -8,6 +8,10 @@ on:
         required: true
         type: choice
         options: [dev, test, staging, pre-prod, prod]
+      public_domain:
+        description: 'Ingress public domain override for ingress-enabled environments'
+        required: false
+        type: string
       image_tag:
         description: 'Image tag to deploy'
         required: true
@@ -39,12 +43,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - name: Validate workflow inputs
         env:
           IMAGE_TAG: ${{ inputs.image_tag }}
           DEPLOYMENT_SECRET_REF: ${{ inputs.deployment_secret_ref }}
           CONFIG_BUNDLE_REF: ${{ inputs.config_bundle_ref }}
+          PUBLIC_DOMAIN: ${{ inputs.public_domain }}
         run: |
           set -euo pipefail
           [[ "${IMAGE_TAG}" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$ ]] || {
@@ -56,6 +61,10 @@ jobs:
           [[ "${CONFIG_BUNDLE_REF}" =~ ^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$ ]] || {
             echo "::error::Invalid config_bundle_ref"; exit 1;
           }
+          if [[ -n "${PUBLIC_DOMAIN}" ]] && [[ ! "${PUBLIC_DOMAIN}" =~ ^[A-Za-z0-9.-]+$ ]]; then
+            echo "::error::Invalid public_domain"
+            exit 1
+          fi
       - name: Wait for image to become available
         env:
           IMAGE_TAG: ${{ inputs.image_tag }}
@@ -85,6 +94,10 @@ jobs:
           AWS_DEPLOY_ROLE_ARN: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
           AWS_REGION: ${{ secrets.AWS_REGION }}
           EKS_CLUSTER_NAME: ${{ secrets.EKS_CLUSTER_NAME }}
+          PUBLIC_DOMAIN_SECRET: ${{ secrets.PUBLIC_DOMAIN }}
+          PUBLIC_DOMAIN_VAR: ${{ vars.PUBLIC_DOMAIN }}
+          PUBLIC_DOMAIN_INPUT: ${{ inputs.public_domain }}
+          DEPLOY_ENV: ${{ inputs.environment }}
         run: |
           missing=()
           for name in AWS_DEPLOY_ROLE_ARN AWS_REGION EKS_CLUSTER_NAME; do
@@ -95,6 +108,11 @@ jobs:
           if [ "${#missing[@]}" -gt 0 ]; then
             echo "::error::Missing GitHub environment secrets for deployment: ${missing[*]}"
             echo "::error::Deployment binding is not complete for environment=${{ inputs.environment }}"
+            exit 1
+          fi
+          PUBLIC_DOMAIN="${PUBLIC_DOMAIN_INPUT:-${PUBLIC_DOMAIN_SECRET:-${PUBLIC_DOMAIN_VAR:-}}}"
+          if [[ "$DEPLOY_ENV" =~ ^(staging|pre-prod|prod)$ ]] && [ -z "${PUBLIC_DOMAIN}" ]; then
+            echo "::error::Missing PUBLIC_DOMAIN input/secret/variable for ingress-enabled environment=${DEPLOY_ENV}"
             exit 1
           fi
 
@@ -113,8 +131,9 @@ jobs:
       AWS_REGION: ${{ secrets.AWS_REGION }}
       EKS_CLUSTER_NAME: ${{ secrets.EKS_CLUSTER_NAME }}
       IMAGE_TAG: ${{ inputs.image_tag }}
+      PUBLIC_DOMAIN: ${{ inputs.public_domain != '' && inputs.public_domain || secrets.PUBLIC_DOMAIN != '' && secrets.PUBLIC_DOMAIN || vars.PUBLIC_DOMAIN }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -143,7 +162,7 @@ jobs:
         run: |
           case "$DEPLOY_ENV" in
             pre-prod)
-              echo "namespace=automatic-agent-preprod" >> "$GITHUB_OUTPUT"
+              echo "namespace=automatic-agent-pre-prod" >> "$GITHUB_OUTPUT"
               ;;
             *)
               echo "namespace=automatic-agent-$DEPLOY_ENV" >> "$GITHUB_OUTPUT"
@@ -199,6 +218,9 @@ jobs:
             --timeout 10m
             --debug
           )
+          if [ -n "${PUBLIC_DOMAIN}" ]; then
+            HELM_ARGS+=(--set-string "ingress.domain=${PUBLIC_DOMAIN}")
+          fi
           if [ -n "${{ steps.rollout.outputs.fullname_override }}" ]; then
             HELM_ARGS+=(--set-string "fullnameOverride=${{ steps.rollout.outputs.fullname_override }}")
           fi
@@ -314,7 +336,7 @@ jobs:
         run: |
           case "$DEPLOY_ENV" in
             pre-prod)
-              echo "namespace=automatic-agent-preprod" >> "$GITHUB_OUTPUT"
+              echo "namespace=automatic-agent-pre-prod" >> "$GITHUB_OUTPUT"
               ;;
             *)
               echo "namespace=automatic-agent-$DEPLOY_ENV" >> "$GITHUB_OUTPUT"

@@ -895,7 +895,7 @@
 | 666 | scripts/ci/audit-docs-charset.mjs 无法识别 docs_en/architecture/00-platform-architecture.md 的 us-ascii 与 zh sibling utf-8 漂移 | `done` | 该问题把 ASCII 作为 UTF-8 子集的编码标签差异误报成损坏；现审计改为检测真实乱码信号并覆盖更多文档根，而不是追逐无害的 charset 标签差异。 |
 | 667 | scripts/ci/mutation-critical-tests.sh:11-16 列表文件不存在性检查，CI 重命名即 noisy fail | `done` | 关键测试列表之前默认文件都存在；现已在执行前逐个校验测试文件是否存在并给出明确失败信息。 |
 | 668 | scripts/ci/audit-test-portability.mjs 不扫描 scripts/src 下 /tmp//process.env.HOME 直读 | `done` | 该问题单基于旧目录布局扩展了审计职责；当前仓库无 `scripts/src` 根，现行 portability 审计聚焦受跟踪测试资产，不再沿用陈旧路径假设。 |
-| 669 | scripts/ci/audit-ci-supply-chain.mjs 不强制 actions/*@<sha> 钉版，@v4 浮动通过 | `todo` | 当前工作流仍存在 `actions/*@v4` 等浮动引用，`audit-ci-supply-chain.mjs` 也尚未把“必须钉到 commit SHA”升级为强制规则；这条还未闭环。 |
+| 669 | scripts/ci/audit-ci-supply-chain.mjs 不强制 actions/*@<sha> 钉版，@v4 浮动通过 | `done` | 根因是供应链审计此前只检查“是否有安全流程”，没有把 `actions/*` 的不可变 SHA pinning 当成硬门禁；本轮已把所有 `actions/*` workflow 引用改为 commit SHA，并在 `audit-ci-supply-chain.mjs` 中强制校验。 |
 | 670 | scripts/ci/audit-test-exclusions.mjs 仅验形式，不交叉对照实际测试文件 | `done` | 旧实现只对 allowlist 做集合比对；现已新增 `missingAnchors` 校验，能识别指向已不存在测试路径的排除项。 |
 | 671 | scripts/ci/audit-docs-charset.mjs 仅校验 docs，遗漏 divisions roles prompt.md、AGENTS.md | `done` | 文档字符审计原先只扫 contracts 子树；现已扩大到 `docs_zh`、`docs_en`、`divisions` 与 `AGENTS.md`。 |
 | 672 | scripts/ci/check-coverage-baseline.mjs 阈值与 config/quality/default.json 双源真相 | `done` | 当前覆盖率阈值只由 `coverage-lib.mjs`/baseline 体系维护，`config/quality/default.json` 已不承载同一套阈值；问题单引用旧双源设计。 |
@@ -986,7 +986,7 @@
 | --- | --- | --- | --- |
 | 743 | config/{bootstrap,cost-alert,exception-recovery,gateways,knowledge,nl-gateway,plugins,product,risk,workflows,dr,constitution}/ 仅 default.json 无环境覆盖 | `done` | 旧 review 把 concern-scoped canonical default 误判成“缺少环境层”；`config/README.md` 已明确只有 `environments/runtime/security` 支持 overlay。 |
 | 744 | divisions/coding/division.yaml:7 coding_primary 与 config/domains/coding.json:6 coding.primary 双风格 | `done` | review 混淆了 domain baseline workflow ID 与 division executable workflow ID；`config/README.md` 已明确二者不是同一命名空间。 |
-| 745 | config/domains/default.json 是 {domains:[...]} 数组型，其余文件为单对象，schema 不兼容 | `todo` | 待修复 |
+| 745 | config/domains/default.json 是 {domains:[...]} 数组型，其余文件为单对象，schema 不兼容 | `done` | 根因是把 `config/domains/default.json` 的“默认域目录聚合层”误当成单个 domain leaf schema；现行 contract 已明确它是 `domains` 默认集合层，而其余 `config/domains/*.json` 才是单 domain 定义。 |
 | 746 | config/domains/(32) 与 divisions/(32) ID 集合不同步，无映射文件 | `done` | `config/domains/` 与 `divisions/` 本就不是 1:1 镜像；`config/README.md` 已把 domain baseline 与 division surface 的边界写成显式规则。 |
 | 747 | config/runtime/{dev,staging,pre-prod,test,prod}.json 仅覆盖任务超时类字段，prod 速率/熔断等于默认 | `done` | overlay contract 是“只覆盖环境差异”，不是“复制一份 prod 全量配置”；`docs_zh/reference/environment-configuration.md` 已明确 default + overlay 继承规则。 |
 | 748 | config/security/prod.json 仅 approvalMode:"strict"，其它字段同 default | `done` | 安全 overlay 只声明与默认层不同的字段；旧 review 误把继承设计当成缺项。 |
@@ -1004,7 +1004,7 @@
 | 760 | 仓库无 AA_DATA_DIR env 变量统一 SQLite/data 持久化根，data/ 在 config/Dockerfile/helm 多处硬编码 | `done` | 旧问题把不存在的运行时约定当成缺失能力；现已明确只以 `AA_DB_PATH` 作为 SQLite 路径入口，不再虚构 `AA_DATA_DIR` 合约。 |
 | 761 | config/runtime/default.json 单位混用，shutdownGracePeriodMs:10000 含义不一致 (s vs ms) | `done` | 该结论来自对字段名误读；README 已显式注明 `shutdownGracePeriodMs` 使用毫秒，不存在秒/毫秒混用。 |
 | 762 | config/runtime/default.json:6,7 apiDefaultTimeoutMs<apiMaxTimeoutMs 但无校验 | `done` | 早期缺少显式证据链；现有 config shape 测试和治理校验已固定 `apiDefaultTimeoutMs < apiMaxTimeoutMs`。 |
-| 763 | config/runtime/default.json:12-16 circuitBreaker.threshold 无 windowMs，半开/重置策略未定义 | `todo` | 待修复 |
+| 763 | config/runtime/default.json:12-16 circuitBreaker.threshold 无 windowMs，半开/重置策略未定义 | `done` | 根因是运行时默认配置只保留了阈值，没有把 reset/half-open 语义显式写回配置层；本轮已补 `resetMs` 与 `halfOpenMaxAttempts`。 |
 | 764 | config/runtime/default.json:17-21 三层 rateLimit 未文档化级联语义 | `done` | runtime rate-limit 分层原本只存在于代码直觉；README 已明确 global -> tenant -> principal 的级联约束。 |
 | 765 | config/runtime/default.json:23-25 configDriftReconciler.interval:300000 单位 ms 无后缀 | `done` | legacy 字段名缺少 `Ms` 后缀但单位未写明；README 已把该键声明为毫秒字段。 |
 | 766 | config/runtime/prod.json 仅 3 字段 override，未声明 configVersion 与 default v4.3 漂移 | `done` | prod overlay 以前没有显式重复 runtime bundle 版本；各 runtime overlay 现已补齐 `configVersion/configSchemaVersion`。 |
@@ -1033,8 +1033,8 @@
 | 784 | divisions/qa/roles/test_architect.prompt.md 在 yaml 中无角色绑定，孤儿 prompt | `done` | `test_architect` prompt 过去未绑定到 division 角色；当前 `qa/division.yaml` 已显式挂接。 |
 | 785 | divisions/quality-assurance/roles/ 仅 qa_engineer.prompt.md，发布认证职能仅 1 角色可疑 | `done` | `quality-assurance` 之前缺少发布认证职责角色；现已补 `release_certifier`。 |
 | 786 | divisions/coding/workflows/coding_primary.yaml:5 用相对路径 schemas/coding-output.json，仅 cwd=division 时才解析 | `done` | workflow schema path 旧担忧没有复核 loader；`DivisionLoader.resolveWorkflowOutputSchemaPath()` 现已把相对路径解析为 division-root 下的绝对受控路径。 |
-| 787 | divisions/qa/division.yaml:5 priority:30 与 coding/division.yaml:5 priority:50 含义无标度文档 | `todo` | 待修复 |
-| 788 | divisions/coding/division.yaml:5,7 default_workflow 与 orchestration_workflow 同值，字段语义重复 | `todo` | 待修复 |
+| 787 | divisions/qa/division.yaml:5 priority:30 与 coding/division.yaml:5 priority:50 含义无标度文档 | `done` | 根因是 division catalog 只有“可并列”说明，没有把 priority band 的语义档位写明；本轮已在 `docs_zh/reference/division-catalog.md` 补 priority band 标度表。 |
+| 788 | divisions/coding/division.yaml:5,7 default_workflow 与 orchestration_workflow 同值，字段语义重复 | `done` | 根因是 legacy workflow alias 一直没有被 blueprint 语义字段取代；本轮已补 `default_plan_blueprint_ref` / `orchestration_plan_blueprint_ref`，把“默认计划”与“多步编排计划”的语义拆开，legacy workflow 键仅保留 loader 兼容。 |
 | 789 | divisions/healthcare/、legal/ 仅单专家角色，无 qa/合规第二角色，但 risk profile 声明 humanAccountable:true | `done` | 高风险 division 之前缺少第二人类治理角色；`healthcare` 与 `legal` 现已补充 reviewer。 |
 | 790 | divisions/financial-services,healthcare,legal,quant-trading,security/division.yaml:5 5 处 priority:60 并列，路由命中靠字母序 | `done` | 旧审计把粗粒度 priority 误当成必须全局唯一；文档现已明确并列 priority 合法，真实路由还结合 trigger/disambiguate/稳定排序。 |
 | 791 | divisions/advertising,customer-service,devops,ecommerce,human-resources,quality-assurance/division.yaml:5 6 处 priority:45 并列 | `done` | 同 790，问题根因是把 priority band 误审为唯一键。 |
@@ -1042,9 +1042,9 @@
 | 793 | divisions/data-engineering,knowledge-base,product-management,project-management,research/division.yaml:5 5 处 priority:40 并列 | `done` | 同 790，旧 review 忽略了后续 tie-break 规则。 |
 | 794 | divisions/academic-research,design,industry-research,user-operations/division.yaml:5 4 处 priority:35 并列 | `done` | 同 790，priority 并列并不等于靠字母序抢路由。 |
 | 795 | divisions/analytics,content,qa/division.yaml:5 3 处 priority:30 并列 | `done` | 同 790，问题在于审计假设了“priority 必须唯一”。 |
-| 796 | divisions/analytics/division.yaml 36 行 vs coding/division.yaml 72 行字段集差距巨大，标准模板缺失 | `todo` | 待修复 |
+| 796 | divisions/analytics/division.yaml 36 行 vs coding/division.yaml 72 行字段集差距巨大，标准模板缺失 | `done` | 根因是 analytics 仍停留在早期瘦身模板，缺少和主干 division 一致的 descriptor/risk/eval/blueprint 结构；本轮已补齐标准字段集。 |
 | 797 | divisions/qa/division.yaml 与 quality-assurance/division.yaml default_workflow 不同但 catalog 暗示等价，alias 单向不对称 | `done` | 文档过去没有把 `qa` 的 smoke-alias 语义讲清；division catalog 现已明确二者故意不对称。 |
-| 798 | divisions/{coding,engineering_ops,operations,it-operations}/division.yaml 工作流字段顺序/缩进风格不一致，YAML diff 噪音大 | `todo` | 待修复 |
+| 798 | divisions/{coding,engineering_ops,operations,it-operations}/division.yaml 工作流字段顺序/缩进风格不一致，YAML diff 噪音大 | `done` | 根因是多轮手工补字段时没有统一 authoring order；本轮已把 blueprint/workflow/descriptor/risk/eval 段顺序对齐。 |
 | 799 | divisions/*/workflows/*.yaml 引用 schema 用相对 ../../schemas/... 路径，CI 工作目录改变即解析失败 | `done` | loader 已在 division root 下解析并沙箱校验 workflow schema path，问题条目没有吸收现行实现。 |
 | 800 | divisions/security,qa/division.yaml 简版（42/40 行）缺 §37 字段；catalog 把 security 当独立 family 而 qa 当 alias，分类不一致 | `done` | `security/qa` 简版定义长期滞后；现已补齐 §37 字段，catalog 也已明确 `security` 为独立 family、`qa` 为 alias。 |
 | 801 | divisions/operations,support,design,research,content/division.yaml 5 处 <60 行未含 resource_boundaries/fault_domains | `done` | 该条基于旧简版 division 快照；当前这些 division 已含 `resource_boundaries` 与 `fault_domains`。 |
@@ -1053,87 +1053,87 @@
 
 | 编号 | 问题 | 状态 | 问题根因 |
 | --- | --- | --- | --- |
-| 802 | deploy/helm/automatic-agent/templates/networkpolicy.yaml:23-30 Egress 仅放行 UDP/TCP 53，PG/Redis/OTel/外部 API 全断 | `todo` | 待修复 |
-| 803 | deploy/helm/automatic-agent/templates/networkpolicy.yaml:16-18 Ingress namespaceSelector:{} 任何 namespace 可入 | `todo` | 待修复 |
-| 804 | deploy/helm/.../values.yaml:124-126 PVC ReadWriteOnce + values-prod.yaml:3 replicaCount:3 + 自动扩缩 3-10，跨节点不可挂载 | `todo` | 待修复 |
-| 805 | deploy/helm/.../values-prod.yaml:31-40 ingress hosts automatic-agent.example.com 占位提交为生产值 | `todo` | 待修复 |
-| 806 | deploy/helm/.../values.yaml:99-105 secrets: 块含 AA_API_JWT_SECRET/ANTHROPIC_API_KEY/...，鼓励操作员把密钥提交到 chart | `todo` | 待修复 |
-| 807 | deploy/helm/.../templates/deployment.yaml:7-9 终止周期断言谓词与"必须大于"消息不一致（<= vs <） | `todo` | 待修复 |
-| 808 | deploy/helm/.../templates/deployment.yaml:67-70 即使 AA_STORAGE_DRIVER=postgres 也注入 AA_DB_PATH=...sqlite | `todo` | 待修复 |
-| 809 | docs_zh/operations/release-versioning.md 与 deploy/helm/.../Chart.yaml 版本无自动同步检查 | `todo` | 待修复 |
-| 810 | helm/templates/servicemonitor.yaml:11-12 selector 含 helm.sh/chart/version 标签，每次升级都失配 metrics service | `todo` | 待修复 |
-| 811 | helm/templates/servicemonitor.yaml 选择 app.kubernetes.io/name=automatic-agent 与主 service 同标签，会抓 :3000 而非 :9090 | `todo` | 待修复 |
-| 812 | helm/templates/prometheusrule.yaml:13 用 up{job="...-metrics"}，但 deploy/prometheus/prometheus.yml job_name 为 compose/k8s，规则永不命中 | `todo` | 待修复 |
-| 813 | helm/templates/prometheusrule.yaml 仅 1 条 alert，而 deploy/prometheus/rules/automatic-agent.yml 21 条；helm 集群丢失 20 条告警 | `todo` | 待修复 |
-| 814 | helm/templates/canary-ingress.yaml:18,21 hosts 为空仍渲染，pathType 默认缺失，nginx-ingress/K8s≥1.18 拒绝 | `todo` | 待修复 |
-| 815 | helm/templates/pdb.yaml:7-12 默认 minAvailable:1 + replicaCount:1 阻塞 drain；同时 minAvailable 与 maxUnavailable 都被渲染时 K8s 拒绝 | `todo` | 待修复 |
-| 816 | helm/templates/hpa.yaml:34 range customMetrics ... toYaml(list .) \| nindent 4 产嵌套 list of list | `todo` | 待修复 |
-| 817 | helm/templates/deployment.yaml:7-9 fail 在 metadata 已开括号后触发，渲染产生破损片段 | `todo` | 待修复 |
-| 818 | helm/templates/deployment.yaml:48 仅按 tag/AppVersion，忽略 image.digest，无法 digest pin | `todo` | 待修复 |
-| 819 | helm/templates/deployment.yaml:131-159 liveness/readiness/startup 都打 /healthz，readiness 失败即 liveness 重启循环 | `todo` | 待修复 |
-| 820 | helm/values.yaml:131-149 startupProbe 最长 150s，readinessProbe 30s 内必失败 → pod 在 startup 完成前被重启 | `todo` | 待修复 |
-| 821 | helm/values.yaml:136 livenessProbe initialDelaySeconds:10 与 startupProbe 重叠，liveness 在 startup 进行中即触发 | `todo` | 待修复 |
-| 822 | helm/values-prod.yaml:46 设 AA_STORAGE_DRIVER:postgres 但无 DSN env/externalSecret，pod crashloop | `todo` | 待修复 |
-| 823 | helm/values-pre-prod.yaml 文件名带 -，namespace automatic-agent-preprod 不带，命名规范化不一致 | `todo` | 待修复 |
-| 824 | helm/templates/secret.yaml:1-3 渲染条件不互斥，inline+externalSecret 同真时仍输出 --- 分隔符 | `todo` | 待修复 |
-| 825 | deploy/helm/automatic-agent/templates/networkpolicy.yaml egress 仅放行 53/UDP DNS，未开 5432/6379/443，启用即 outbound 全断 | `todo` | 待修复 |
-| 826 | deploy/helm/automatic-agent/templates/deployment.yaml 仅 inline env:，从未挂载 configmap.yaml 渲染产物，ConfigMap 实质死代码 | `todo` | 待修复 |
-| 827 | deploy/helm/automatic-agent/Chart.yaml 缺 kubeVersion: 约束 | `todo` | 待修复 |
-| 828 | deploy/helm/automatic-agent/Chart.yaml 缺 maintainers，OCI registry 推送元数据空 | `todo` | 待修复 |
-| 829 | deploy/helm/automatic-agent/Chart.yaml appVersion 与 package.json version 漂移 | `todo` | 待修复 |
-| 830 | deploy/helm/automatic-agent/values.yaml 与 values-{dev,test,staging,pre-prod,prod}.yaml 多处键名不一致，override 静默失效 | `todo` | 待修复 |
-| 831 | deploy/helm/automatic-agent/values-prod.yaml 未设 podAntiAffinity，所有 replica 可调度同节点 | `todo` | 待修复 |
-| 832 | deploy/helm/automatic-agent/values.yaml image.pullPolicy: Always 缺省，回滚到旧 tag 仍拉新镜像 | `todo` | 待修复 |
-| 833 | deploy/helm/automatic-agent/templates/deployment.yaml securityContext 缺 readOnlyRootFilesystem/allowPrivilegeEscalation:false/runAsNonRoot:true | `todo` | 待修复 |
-| 834 | deploy/helm/automatic-agent/templates/deployment.yaml 缺 topologySpreadConstraints | `todo` | 待修复 |
-| 835 | deploy/helm/automatic-agent/templates/deployment.yaml liveness/readiness 同一 /health，liveness 抖动级联重启 | `todo` | 待修复 |
-| 836 | deploy/helm/automatic-agent/templates/deployment.yaml 缺 startupProbe，慢启动场景下 liveness 早于就绪触发 kill | `todo` | 待修复 |
-| 837 | deploy/helm/automatic-agent/templates/secret.yaml 直接将 secrets base64 嵌入 manifest，与 externalsecret 同时启用语义冲突 | `todo` | 待修复 |
-| 838 | deploy/helm/automatic-agent/templates/externalsecret.yaml 未设 refreshInterval | `todo` | 待修复 |
-| 839 | deploy/helm/automatic-agent/templates/hpa.yaml 仅 CPU 指标无 RPS/queue depth | `todo` | 待修复 |
-| 840 | deploy/helm/automatic-agent/templates/hpa.yaml 缺 behavior.scaleDown.stabilizationWindowSeconds | `todo` | 待修复 |
-| 841 | deploy/helm/automatic-agent/templates/pdb.yaml minAvailable 与 HPA minReplicas 同值，滚动升级时 PDB 阻塞 evict | `todo` | 待修复 |
-| 842 | deploy/helm/automatic-agent/templates/ingress.yaml 未声明 tls/cert-manager annotation | `todo` | 待修复 |
-| 843 | deploy/helm/automatic-agent/templates/canary-ingress.yaml 缺 canary-by-header 紧急分流通道 | `todo` | 待修复 |
-| 844 | deploy/helm/automatic-agent/templates/servicemonitor.yaml selector label 与 service template 不一致，抓取目标 0 | `todo` | 待修复 |
-| 845 | deploy/helm/automatic-agent/templates/prometheusrule.yaml groups[].interval 未设 | `todo` | 待修复 |
-| 846 | deploy/helm/automatic-agent/templates/resourcequota.yaml 仅限 requests，不限 count/services.loadbalancers | `todo` | 待修复 |
-| 847 | deploy/helm/automatic-agent/templates/limitrange.yaml 未配 default/defaultRequest | `todo` | 待修复 |
-| 848 | deploy/helm/automatic-agent/templates/pvc.yaml 缺 storageClassName | `todo` | 待修复 |
-| 849 | deploy/helm/automatic-agent/crds/automatic-agent-chaos-approval-policies.yaml CRD 与 chart 同包，helm uninstall 不删 CRD | `todo` | 待修复 |
-| 850 | deploy/helm/automatic-agent/templates/configmap.yaml 渲染但未在 deployment envFrom 引用，孤儿资源 | `todo` | 待修复 |
-| 851 | deploy/helm/automatic-agent/templates/networkpolicy.yaml podSelector matchLabels 写死 app: automatic-agent，未走 helper | `todo` | 待修复 |
-| 852 | deploy/helm/automatic-agent/templates/networkpolicy.yaml 未限制 metrics scrape ingress 来源 namespace | `todo` | 待修复 |
-| 853 | deploy/helm/automatic-agent/values-staging.yaml replicaCount=1 与 PDB minAvailable 1 互斥 | `todo` | 待修复 |
-| 854 | deploy/helm/automatic-agent/values-pre-prod.yaml 未启用 serviceMonitor.enabled | `todo` | 待修复 |
+| 802 | deploy/helm/automatic-agent/templates/networkpolicy.yaml:23-30 Egress 仅放行 UDP/TCP 53，PG/Redis/OTel/外部 API 全断 | `done` | 根因是初版 NetworkPolicy 只按 DNS 最小集写入，没有覆盖 PostgreSQL/Redis/HTTPS/OTLP 等真实出站依赖；本轮已补齐 443/5432/6379/4317/4318。 |
+| 803 | deploy/helm/automatic-agent/templates/networkpolicy.yaml:16-18 Ingress namespaceSelector:{} 任何 namespace 可入 | `done` | 根因是 ingress 白名单之前图省事用全 namespace 放通；本轮已改成业务端口仅同 namespace、metrics 端口只允许显式监控 namespace selector。 |
+| 804 | deploy/helm/.../values.yaml:124-126 PVC ReadWriteOnce + values-prod.yaml:3 replicaCount:3 + 自动扩缩 3-10，跨节点不可挂载 | `done` | 根因是多副本生产 overlay 仍沿用 sqlite PVC 方案；本轮已把 staging/pre-prod/prod 的多副本场景切到 postgres + external secret，并关闭 sqlite persistence。 |
+| 805 | deploy/helm/.../values-prod.yaml:31-40 ingress hosts automatic-agent.example.com 占位提交为生产值 | `done` | 根因是生产域名以前只能依赖 repo 内 values；本轮部署 workflow 已强制从 `PUBLIC_DOMAIN` 输入/环境绑定覆写 ingress.domain，不再依赖仓库中的示例 host。 |
+| 806 | deploy/helm/.../values.yaml:99-105 secrets: 块含 AA_API_JWT_SECRET/ANTHROPIC_API_KEY/...，鼓励操作员把密钥提交到 chart | `done` | 根因是 chart 同时暴露 inline secret 路径却没有 fail-close 语义；当前默认 `allowInlineSecrets=false`，externalSecret 与 inline values 也已做互斥校验。 |
+| 807 | deploy/helm/.../templates/deployment.yaml:7-9 终止周期断言谓词与"必须大于"消息不一致（<= vs <） | `done` | 根因是 review 把 `<=` 误读成与“必须大于”矛盾；实际上 `terminationGracePeriodSeconds <= preStopSleepSeconds` 正是需要 fail 的条件。 |
+| 808 | deploy/helm/.../templates/deployment.yaml:67-70 即使 AA_STORAGE_DRIVER=postgres 也注入 AA_DB_PATH=...sqlite | `done` | 根因是 deployment 模板把 sqlite 路径无条件注入；本轮已改为仅在 sqlite persistence 场景下注入 `AA_DB_PATH`。 |
+| 809 | docs_zh/operations/release-versioning.md 与 deploy/helm/.../Chart.yaml 版本无自动同步检查 | `done` | 根因是发布文档与 Chart/package 版本只靠人工同步；本轮已在文档声明当前基线版本，并由 `audit-ci-supply-chain.mjs` 强制 `package.json` 与 `Chart.yaml` 对齐。 |
+| 810 | helm/templates/servicemonitor.yaml:11-12 selector 含 helm.sh/chart/version 标签，每次升级都失配 metrics service | `done` | 根因是 ServiceMonitor 之前用整套 common labels 做 selector，把 chart/version 这种会漂移的标签也带进去了；本轮已改成稳定 selector labels + metrics component。 |
+| 811 | helm/templates/servicemonitor.yaml 选择 app.kubernetes.io/name=automatic-agent 与主 service 同标签，会抓 :3000 而非 :9090 | `done` | 根因是 metrics service 之前没有独立 component label；本轮主 service 标 `component=api`，metrics service 标 `component=metrics`，ServiceMonitor 只抓 metrics service。 |
+| 812 | helm/templates/prometheusrule.yaml:13 用 up{job="...-metrics"}，但 deploy/prometheus/prometheus.yml job_name 为 compose/k8s，规则永不命中 | `done` | 根因是 Helm 告警模板曾假设固定 `*-metrics` job 名；本轮已改为基于 release fullname 模糊匹配实际 scrape job。 |
+| 813 | helm/templates/prometheusrule.yaml 仅 1 条 alert，而 deploy/prometheus/rules/automatic-agent.yml 21 条；helm 集群丢失 20 条告警 | `todo` | Helm `PrometheusRule` 仍只保留精简告警集，尚未与 `deploy/prometheus/rules/automatic-agent.yml` 全量对齐。 |
+| 814 | helm/templates/canary-ingress.yaml:18,21 hosts 为空仍渲染，pathType 默认缺失，nginx-ingress/K8s≥1.18 拒绝 | `done` | 根因是 canary ingress 没复用主 ingress 的 host/path fallback 逻辑；本轮已补 domain required、host 默认值和 `pathType: Prefix` 默认。 |
+| 815 | helm/templates/pdb.yaml:7-12 默认 minAvailable:1 + replicaCount:1 阻塞 drain；同时 minAvailable 与 maxUnavailable 都被渲染时 K8s 拒绝 | `done` | 根因是 PDB 模板缺少互斥保护，且环境 values 仍沿用 `minAvailable`；本轮已加互斥 fail-close，并把 staging/pre-prod/prod 切到 `maxUnavailable: 1`。 |
+| 816 | helm/templates/hpa.yaml:34 range customMetrics ... toYaml(list .) \| nindent 4 产嵌套 list of list | `done` | 根因是 review 把 Helm 中“逐个 metric 对象包装成单元素 list 再渲染”的常用模式误判成 list-of-list；当前模板仍按该模式输出合法 HPA metrics 条目，且本轮已补 queue-depth custom metrics overlay。 |
+| 817 | helm/templates/deployment.yaml:7-9 fail 在 metadata 已开括号后触发，渲染产生破损片段 | `done` | 根因是 fail guard 之前放在 YAML 头部对象已经开始之后；本轮已把 guard 移到 manifest 起始处。 |
+| 818 | helm/templates/deployment.yaml:48 仅按 tag/AppVersion，忽略 image.digest，无法 digest pin | `done` | 根因是 deployment 只支持 tag 拼镜像引用；本轮已支持 `image.digest` 优先生成 `repo@sha256:...`。 |
+| 819 | helm/templates/deployment.yaml:131-159 liveness/readiness/startup 都打 /healthz，readiness 失败即 liveness 重启循环 | `done` | 根因是 liveness/readiness 以前共用同一个 HTTP 健康端点；本轮已改成 liveness 用 TCP，readiness/startup 用 HTTP healthz，避免就绪抖动直接触发重启。 |
+| 820 | helm/values.yaml:131-149 startupProbe 最长 150s，readinessProbe 30s 内必失败 → pod 在 startup 完成前被重启 | `done` | 根因是 probe 时间窗配置过短；本轮已拉长 startupProbe 到 300s，并让 liveness 不再与 startup 重叠。 |
+| 821 | helm/values.yaml:136 livenessProbe initialDelaySeconds:10 与 startupProbe 重叠，liveness 在 startup 进行中即触发 | `done` | 根因是 probe 设计没有区分“进程活着”与“服务就绪”；本轮已把 liveness 改成 TCP 且由 startupProbe 接管启动阶段。 |
+| 822 | helm/values-prod.yaml:46 设 AA_STORAGE_DRIVER:postgres 但无 DSN env/externalSecret，pod crashloop | `done` | 根因是 prod/pre-prod overlay 切到 postgres 时没把 DSN 也接入 secret manager；本轮已补 `AA_STORAGE_POSTGRES_DSN` externalSecret 条目。 |
+| 823 | helm/values-pre-prod.yaml 文件名带 -，namespace automatic-agent-preprod 不带，命名规范化不一致 | `done` | 根因是 deploy workflow 手工 special-case 写成了 `automatic-agent-preprod`；本轮已统一成 `automatic-agent-pre-prod`。 |
+| 824 | helm/templates/secret.yaml:1-3 渲染条件不互斥，inline+externalSecret 同真时仍输出 --- 分隔符 | `done` | 根因是 secret 模板此前允许“值层面同时给 inline 与 externalSecret”而没有显式拒绝；本轮已去掉孤立分隔符，并对两种模式做互斥 fail-close。 |
+| 825 | deploy/helm/automatic-agent/templates/networkpolicy.yaml egress 仅放行 53/UDP DNS，未开 5432/6379/443，启用即 outbound 全断 | `done` | 同 802，根因是 NetworkPolicy 没按真实依赖面展开端口。 |
+| 826 | deploy/helm/automatic-agent/templates/deployment.yaml 仅 inline env:，从未挂载 configmap.yaml 渲染产物，ConfigMap 实质死代码 | `done` | 根因是 deployment 只做 inline env 展开，没有消费 chart 渲染出的 ConfigMap；本轮已加 `envFrom.configMapRef`。 |
+| 827 | deploy/helm/automatic-agent/Chart.yaml 缺 kubeVersion: 约束 | `done` | 根因是 Chart 元数据之前只写了 version/appVersion；本轮已补 `kubeVersion: >=1.28.0-0`。 |
+| 828 | deploy/helm/automatic-agent/Chart.yaml 缺 maintainers，OCI registry 推送元数据空 | `done` | 根因是 Chart 元数据不完整；本轮已补 maintainers。 |
+| 829 | deploy/helm/automatic-agent/Chart.yaml appVersion 与 package.json version 漂移 | `done` | 根因是版本同步此前靠人工检查；当前 `package.json`、`Chart.yaml version/appVersion` 已对齐为 `0.2.0`，并纳入 `audit-ci-supply-chain`。 |
+| 830 | deploy/helm/automatic-agent/values.yaml 与 values-{dev,test,staging,pre-prod,prod}.yaml 多处键名不一致，override 静默失效 | `done` | 根因是 sparse overlay 被误审为“必须复制完整键集”；本轮已把关键 deploy/monitoring/storage/hpa 键在环境 overlay 上显式补齐，其余继续按 base+overlay 继承契约工作。 |
+| 831 | deploy/helm/automatic-agent/values-prod.yaml 未设 podAntiAffinity，所有 replica 可调度同节点 | `done` | 根因是 prod overlay 没有明确反亲和；本轮已补 `podAntiAffinity.requiredDuringSchedulingIgnoredDuringExecution`。 |
+| 832 | deploy/helm/automatic-agent/values.yaml image.pullPolicy: Always 缺省，回滚到旧 tag 仍拉新镜像 | `done` | 根因是环境 overlay 曾默认 `Always`；本轮已把 env overlays 收敛到 `IfNotPresent`，并支持 digest pin。 |
+| 833 | deploy/helm/automatic-agent/templates/deployment.yaml securityContext 缺 readOnlyRootFilesystem/allowPrivilegeEscalation:false/runAsNonRoot:true | `done` | 根因是容器级 securityContext 不完整；当前已显式声明这三项并继续 drop ALL capabilities。 |
+| 834 | deploy/helm/automatic-agent/templates/deployment.yaml 缺 topologySpreadConstraints | `done` | 根因是多副本调度只靠 affinity；本轮 deployment 已支持 `topologySpreadConstraints`，prod overlay 也已启用。 |
+| 835 | deploy/helm/automatic-agent/templates/deployment.yaml liveness/readiness 同一 /health，liveness 抖动级联重启 | `done` | 同 819，根因是 probe 语义未拆分。 |
+| 836 | deploy/helm/automatic-agent/templates/deployment.yaml 缺 startupProbe，慢启动场景下 liveness 早于就绪触发 kill | `done` | 根因是 review 基线过期；模板本来就有 startupProbe，本轮还把时间窗拉长并与 liveness 解耦。 |
+| 837 | deploy/helm/automatic-agent/templates/secret.yaml 直接将 secrets base64 嵌入 manifest，与 externalsecret 同时启用语义冲突 | `done` | 根因是 secret 模式缺少互斥门禁；当前 externalSecret 与 inline secrets 已显式互斥，且默认禁止 inline secret。 |
+| 838 | deploy/helm/automatic-agent/templates/externalsecret.yaml 未设 refreshInterval | `done` | 根因是 review 基线过期；模板此前已经渲染 `refreshInterval`，本轮沿用并保留默认 `1h`。 |
+| 839 | deploy/helm/automatic-agent/templates/hpa.yaml 仅 CPU 指标无 RPS/queue depth | `done` | 根因是 HPA 模板虽支持 custom metrics，但环境 overlay 没有实际配置；本轮在 staging/pre-prod/prod 增补 `queued_tasks` custom metrics。 |
+| 840 | deploy/helm/automatic-agent/templates/hpa.yaml 缺 behavior.scaleDown.stabilizationWindowSeconds | `done` | 根因是 autoscaling 默认行为未显式声明；本轮已补 scaleDown stabilization。 |
+| 841 | deploy/helm/automatic-agent/templates/pdb.yaml minAvailable 与 HPA minReplicas 同值，滚动升级时 PDB 阻塞 evict | `done` | 根因是生产类 overlay 用 `minAvailable` 锁死了 eviction；本轮已切换到 `maxUnavailable: 1`。 |
+| 842 | deploy/helm/automatic-agent/templates/ingress.yaml 未声明 tls/cert-manager annotation | `done` | 根因是 ingress 模板对 TLS 依赖没有 fail-close，而环境 overlay 也没被契约化；本轮 ingress 启用时可要求 TLS，staging/pre-prod/prod overlay 都显式携带 cert-manager annotation。 |
+| 843 | deploy/helm/automatic-agent/templates/canary-ingress.yaml 缺 canary-by-header 紧急分流通道 | `done` | 根因是 canary ingress 只支持按权重；本轮已支持 `canary.byHeader` / `byHeaderValue`。 |
+| 844 | deploy/helm/automatic-agent/templates/servicemonitor.yaml selector label 与 service template 不一致，抓取目标 0 | `done` | 根因是 selector 用 common labels、service 又没有 metrics 专属标签；本轮已统一为 selector labels + `component=metrics`。 |
+| 845 | deploy/helm/automatic-agent/templates/prometheusrule.yaml groups[].interval 未设 | `done` | 根因是 Helm PrometheusRule 没把 rule group interval 参数化；本轮已补 `monitoring.prometheusRule.interval`。 |
+| 846 | deploy/helm/automatic-agent/templates/resourcequota.yaml 仅限 requests，不限 count/services.loadbalancers | `done` | 根因是 ResourceQuota 模板只覆盖 CPU/内存；本轮已补 PVC、LB、NodePort 数量限制。 |
+| 847 | deploy/helm/automatic-agent/templates/limitrange.yaml 未配 default/defaultRequest | `done` | 根因是 review 基线过期；当前 LimitRange 模板一直有 `default` 与 `defaultRequest`。 |
+| 848 | deploy/helm/automatic-agent/templates/pvc.yaml 缺 storageClassName | `done` | 根因是 review 基线过期；PVC 模板已显式渲染 `storageClassName`。 |
+| 849 | deploy/helm/automatic-agent/crds/automatic-agent-chaos-approval-policies.yaml CRD 与 chart 同包，helm uninstall 不删 CRD | `done` | 根因是 CRD 放在 Helm `crds/` 目录，生命周期脱离 release；本轮已移动到 `templates/` 并受 `crds.enabled` 控制。 |
+| 850 | deploy/helm/automatic-agent/templates/configmap.yaml 渲染但未在 deployment envFrom 引用，孤儿资源 | `done` | 同 826，根因是 deployment 没消费 ConfigMap。 |
+| 851 | deploy/helm/automatic-agent/templates/networkpolicy.yaml podSelector matchLabels 写死 app: automatic-agent，未走 helper | `done` | 根因是 review 基线过期；当前 NetworkPolicy 早已使用 `automatic-agent.selectorLabels` helper。 |
+| 852 | deploy/helm/automatic-agent/templates/networkpolicy.yaml 未限制 metrics scrape ingress 来源 namespace | `done` | 根因是 metrics ingress 之前与业务流量同样放通；本轮已加 `metricsIngressNamespaceSelectors`。 |
+| 853 | deploy/helm/automatic-agent/values-staging.yaml replicaCount=1 与 PDB minAvailable 1 互斥 | `done` | 根因是 review 基线过期；staging 已不是 `replicaCount=1`，且本轮改成 `maxUnavailable: 1`。 |
+| 854 | deploy/helm/automatic-agent/values-pre-prod.yaml 未启用 serviceMonitor.enabled | `done` | 根因是 pre-prod 之前只依赖 base values 隐式继承；本轮在 overlay 上显式开启 `monitoring.serviceMonitor.enabled`。 |
 
 ## deploy/prometheus & alertmanager
 
 | 编号 | 问题 | 状态 | 问题根因 |
 | --- | --- | --- | --- |
-| 855 | docker-compose.yml:108-112 alertmanager 用 sed 把 ${SLACK_WEBHOOK_URL}/${PAGERDUTY_SERVICE_KEY} 直插命令行，泄漏到 ps/日志 | `todo` | 待修复 |
-| 856 | docker-compose.yml:91,108 prom/prometheus:v2.54.1、prom/alertmanager:v0.27.0 镜像 2024 中期版，2026 已知 CVE | `todo` | 待修复 |
-| 857 | deploy/prometheus/prometheus.yml:18-19 抓 api-server:3000/metrics 与 helm values.yaml:36-39 metricsPort:9090 不一致 | `todo` | 待修复 |
-| 858 | deploy/prometheus/alertmanager.yml:24-32 字面 **SLACK_WEBHOOK_URL**/**PAGERDUTY_SERVICE_KEY** 占位；sed 失败时直接被发往字面字符串 | `todo` | 待修复 |
-| 859 | deploy/runbooks/production-alert-runbook.md:3 声称与 deploy/prometheus/rules/automatic-agent.yml 1:1 映射，无审计脚本 | `todo` | 待修复 |
-| 860 | deploy/prometheus/rules/automatic-agent.yml:32,41,185 histogram_quantile 仅 by (job, le)，per-pod 异常被均值掩盖 | `todo` | 待修复 |
-| 861 | deploy/prometheus/rules/automatic-agent.yml:139-140 RSS 阈值 512MiB 与 values.yaml:43-44 limits.memory:512Mi 完全相等，告警永久触发 | `todo` | 待修复 |
-| 862 | deploy/prometheus/rules/automatic-agent.yml 无 recording rules，每次刷盘都重算 histogram_quantile | `todo` | 待修复 |
-| 863 | deploy/prometheus/alertmanager.yml:18-21 无 inhibit_rules，单次延迟事故触发 3 条告警重复呼叫 | `todo` | 待修复 |
-| 864 | deploy/prometheus/alertmanager.yml:8 默认 receiver ops-null，无 severity 标签的告警静默丢弃 | `todo` | 待修复 |
-| 865 | deploy/prometheus/prometheus.yml:24-32 kubernetes_sd_configs 无 namespace 过滤，跨租户隔离失效 | `todo` | 待修复 |
-| 866 | deploy/prometheus/rules/automatic-agent.yml 全部 up{job="...-metrics"} 与 prometheus.yml 真实 job_name 不匹配，告警永不触发 | `todo` | 待修复 |
-| 867 | docker-compose.yml alertmanager 通过 sed 注入 webhook secret，明文留 layer 历史 | `todo` | 待修复 |
-| 868 | docker-compose.yml 暴露 prometheus/alertmanager 端口到 0.0.0.0 无认证 | `todo` | 待修复 |
-| 869 | deploy/prometheus/prometheus.yml scrape_interval=15s evaluation_interval=15s 同值，大集群 evaluation 与 scrape 同帧抢锁 | `todo` | 待修复 |
-| 870 | deploy/prometheus/prometheus.yml 缺 external_labels，多集群 federation 无来源标签 | `todo` | 待修复 |
-| 871 | deploy/prometheus/alertmanager.yml route.group_wait/group_interval/repeat_interval 全 default | `todo` | 待修复 |
-| 872 | deploy/prometheus/alertmanager.yml 仅一条 receiver default，severity 路由不分级 | `todo` | 待修复 |
-| 873 | deploy/prometheus/rules/automatic-agent.yml 21 条告警全无 runbook_url annotation | `todo` | 待修复 |
-| 874 | deploy/prometheus/rules/automatic-agent.yml histogram_quantile(0.95, rate(...[5m])) 未按 (le, job) 分组 | `todo` | 待修复 |
-| 875 | deploy/prometheus/rules/automatic-agent.yml 多条 for: 0m，无抖动抑制窗口 | `todo` | 待修复 |
-| 876 | deploy/prometheus/rules/automatic-agent.yml severity label 含 warning/critical/page 三套未在 alertmanager route 区分 | `todo` | 待修复 |
-| 877 | docs_zh/operations/runbooks/incident-response-playbook.md severity P0/P1 与 alertmanager severity label 取值未对齐 | `todo` | 待修复 |
+| 855 | docker-compose.yml:108-112 alertmanager 用 sed 把 ${SLACK_WEBHOOK_URL}/${PAGERDUTY_SERVICE_KEY} 直插命令行，泄漏到 ps/日志 | `done` | 根因是 compose 直接把 secret 替换逻辑写在 argv；本轮已改成独立渲染脚本，由容器内环境变量生成配置，不再把 secret 展开到命令行。 |
+| 856 | docker-compose.yml:91,108 prom/prometheus:v2.54.1、prom/alertmanager:v0.27.0 镜像 2024 中期版，2026 已知 CVE | `done` | 根因是 compose 监控镜像长期未升级；本轮已把 Prometheus/Alertmanager 升到较新的稳定版。 |
+| 857 | deploy/prometheus/prometheus.yml:18-19 抓 api-server:3000/metrics 与 helm values.yaml:36-39 metricsPort:9090 不一致 | `done` | 根因是 compose 与 k8s 两套 scrape 面被混读成同一环境；本轮已把 k8s job 明确收窄到 metrics 端口与命名空间，compose 仍保留 API `:3000/metrics`。 |
+| 858 | deploy/prometheus/alertmanager.yml:24-32 字面 **SLACK_WEBHOOK_URL**/**PAGERDUTY_SERVICE_KEY** 占位；sed 失败时直接被发往字面字符串 | `done` | 根因是 Alertmanager 配置没有 fail-fast 渲染步骤；本轮渲染脚本会在缺少 `SLACK_WEBHOOK_URL` / `PAGERDUTY_SERVICE_KEY` 时直接退出。 |
+| 859 | deploy/runbooks/production-alert-runbook.md:3 声称与 deploy/prometheus/rules/automatic-agent.yml 1:1 映射，无审计脚本 | `done` | 根因是 runbook 口径写成“1:1 映射”但没有可执行约束；本轮已把 runbook 改成 canonical remediation target，并加 golden test 强制每条告警携带 `runbook_url`。 |
+| 860 | deploy/prometheus/rules/automatic-agent.yml:32,41,185 histogram_quantile 仅 by (job, le)，per-pod 异常被均值掩盖 | `done` | 根因是直方图聚合只保留 job 粒度；本轮 recording rules 改为 `sum by (job, instance, le)`，保留 per-pod 信号。 |
+| 861 | deploy/prometheus/rules/automatic-agent.yml:139-140 RSS 阈值 512MiB 与 values.yaml:43-44 limits.memory:512Mi 完全相等，告警永久触发 | `done` | 根因是 memory pressure 告警阈值直接贴着容器 limit；本轮已下调到 450MiB。 |
+| 862 | deploy/prometheus/rules/automatic-agent.yml 无 recording rules，每次刷盘都重算 histogram_quantile | `done` | 根因是高成本直方图查询直接写在 alert expr；本轮已补 recording rules。 |
+| 863 | deploy/prometheus/alertmanager.yml:18-21 无 inhibit_rules，单次延迟事故触发 3 条告警重复呼叫 | `done` | 根因是 Alertmanager 路由只有 fan-out，没有抑制规则；本轮已加 critical 抑制 warning 的 inhibit rule。 |
+| 864 | deploy/prometheus/alertmanager.yml:8 默认 receiver ops-null，无 severity 标签的告警静默丢弃 | `done` | 根因是 default route 指向空 receiver；本轮已改成 `slack-default`。 |
+| 865 | deploy/prometheus/prometheus.yml:24-32 kubernetes_sd_configs 无 namespace 过滤，跨租户隔离失效 | `done` | 根因是 Kubernetes SD 没限定 automatic-agent 命名空间集合；本轮已显式列出受控 namespaces。 |
+| 866 | deploy/prometheus/rules/automatic-agent.yml 全部 up{job="...-metrics"} 与 prometheus.yml 真实 job_name 不匹配，告警永不触发 | `done` | 根因是旧版规则曾写死 `*-metrics` job；现行规则已统一到 `automatic-agent-(compose|kubernetes)`。 |
+| 867 | docker-compose.yml alertmanager 通过 sed 注入 webhook secret，明文留 layer 历史 | `done` | 同 855，根因是 secret 渲染逻辑放在运行命令里。 |
+| 868 | docker-compose.yml 暴露 prometheus/alertmanager 端口到 0.0.0.0 无认证 | `done` | 根因是本地 compose 默认把监控端口直接绑到所有网卡；本轮已改成 `127.0.0.1` 绑定。 |
+| 869 | deploy/prometheus/prometheus.yml scrape_interval=15s evaluation_interval=15s 同值，大集群 evaluation 与 scrape 同帧抢锁 | `done` | 根因是 scrape/evaluation 频率同帧；本轮已将 evaluation 调整为 30s。 |
+| 870 | deploy/prometheus/prometheus.yml 缺 external_labels，多集群 federation 无来源标签 | `done` | 根因是 Prometheus 顶层 metadata 不完整；本轮已补 `external_labels`。 |
+| 871 | deploy/prometheus/alertmanager.yml route.group_wait/group_interval/repeat_interval 全 default | `done` | 根因是 Alertmanager 路由节流参数没有显式治理；本轮已设置 `group_wait/group_interval/repeat_interval`。 |
+| 872 | deploy/prometheus/alertmanager.yml 仅一条 receiver default，severity 路由不分级 | `done` | 根因是 default route 与 severity route 没分层；本轮已拆成 `slack-default` / `slack-warning` / `pagerduty-critical`。 |
+| 873 | deploy/prometheus/rules/automatic-agent.yml 21 条告警全无 runbook_url annotation | `done` | 根因是告警与 runbook 只靠人工约定；本轮已为告警补 `runbook_url`，并由 golden test 审计。 |
+| 874 | deploy/prometheus/rules/automatic-agent.yml histogram_quantile(0.95, rate(...[5m])) 未按 (le, job) 分组 | `done` | 根因是 histogram 聚合粒度过粗；本轮 recording rules 已按 `(job, instance, le)` 保留正确桶维度。 |
+| 875 | deploy/prometheus/rules/automatic-agent.yml 多条 for: 0m，无抖动抑制窗口 | `done` | 根因是 review 基线过期；现行规则没有 `for: 0m`，本轮也继续保持最短 2m 以上抑制窗。 |
+| 876 | deploy/prometheus/rules/automatic-agent.yml severity label 含 warning/critical/page 三套未在 alertmanager route 区分 | `done` | 根因是 severity taxonomy 与 Alertmanager 路由表没有统一；本轮 route 已按 `critical`/`warning`/`page` 分流。 |
+| 877 | docs_zh/operations/runbooks/incident-response-playbook.md severity P0/P1 与 alertmanager severity label 取值未对齐 | `done` | 根因是 incident playbook 只写了 `page/critical/warning -> P1/P2`，没有说明何时升级到 `P0`；本轮已补 `critical -> P0` 的升级条件。 |
 
 ## deploy/grafana
 
