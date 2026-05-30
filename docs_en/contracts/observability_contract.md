@@ -1,14 +1,14 @@
 # Observability Contract
 
-> **OAPEFLIR 相关**：本 contract defines OAPEFLIR 8 阶段的可观测性，对应 ADR-016。
-> **更新日期**：2026-04-17
+> **OAPEFLIR Related**: This contract defines observability for OAPEFLIR 8 stages, corresponding to ADR-016.
+> **Last Updated**: 2026-04-17
 
-## 1. 范围
+## 1. Scope
 
-本 contract defines日志、指标、trace、调试信息和 PII 保护的最小规范。
-更细的 inspect、healthz 和 backpressure 规则以下钻文档 `debug_inspect_health_backpressure_contract.md` 为准。
+This contract defines minimum specifications for logs, metrics, traces, debugging information, and PII protection.
+For detailed inspect, healthz, and backpressure rules, refer to the drilling document `debug_inspect_health_backpressure_contract.md`.
 
-## 2. 关键对象
+## 2. Key Objects
 
 - `LogEvent`
 - `MetricSample`
@@ -18,7 +18,7 @@
 - `LoopIterationTrace`
 - `FeedbackMetricSample`
 
-## 3. LogEvent 最小字段
+## 3. LogEvent Minimum Fields
 
 - `timestamp`
 - `level`
@@ -32,13 +32,13 @@
 - `trace_id?`
 - `payload?`
 
-## 4. 核心指标
+## 4. Core Metrics
 
 ### 4.1 `RuntimeMetricsSummary`
 
-系统应supported生成运lines时指标摘要，覆盖以下维度：
+System should support generating runtime metrics summary covering the following dimensions:
 
-| 维度 | 关键指标 |
+| Dimension | Key Metrics |
 | --- | --- |
 | `harnessRunMetrics` | total / completedCount / failedCount / abortedCount / activeCount / successRate |
 | `nodeRunMetrics` | total / readyCount / runningCount / succeededCount / failedCount / retryCount / blockedCount |
@@ -49,106 +49,105 @@
 | `eventMetrics` | total / tier1Count / tier2Count / tier3Count / pendingTier1AckCount / failedTier1AckCount |
 | `runtimeMetrics` | status / degradationMode / queueGovernance / workerHealth / findings |
 | `oapeflirViewMetrics` | loopCount / completedLoopCount / failedLoopCount / averageLoopDurationMs / convergenceRate |
-| `stageViewMetrics` | observe / assess / plan / execute / feedback / learn / improve / release 的 count / duration / failure / timeout |
+| `stageViewMetrics` | observe / assess / plan / execute / feedback / learn / improve / release count / duration / failure / timeout |
 | `feedbackMetrics` | receivedCount / classifiedCount / consumedCount / positiveCount / negativeCount / correctionCount |
 | `learningMetrics` | objectCreatedCount / validatedCount / promotedCount / rejectedCount |
 | `improvementMetrics` | candidateProposedCount / acceptedCount / rejectedCount / guardrailBlockedCount |
 | `releaseMetrics` | startedCount / advancedCount / completedCount / rolledBackCount / currentLevel |
 
-规则：
+Rules:
 
-- attempt duration 指标必须supported百分位计算（至少 p95）。
-- cost 指标必须区分full任务平均和success任务平均。
-- recovery 指标必须覆盖从恢复事件（`recovery:*`）到最终 HarnessRun success率的完整链路。
-- 数值精度统一四舍五入到四位小数。
-- `oapeflirViewMetrics` vs `stageViewMetrics` 只能作为 view / trace / rationale 指标，不得被当作 runtime truth 主健康指标或Status机门禁输入。
+- Attempt duration metrics must support percentile calculation (at least p95).
+- Cost metrics must differentiate between all-tasks average and successful-tasks average.
+- Recovery metrics must cover the complete chain from recovery events (`recovery:*`) to final HarnessRun success rate.
+- Numeric precision uniformly rounded to four decimal places.
+- `oapeflirViewMetrics` and `stageViewMetrics` can only serve as view / trace / rationale metrics, must not be treated as runtime truth primary health metrics or state machine gate inputs.
 
-### 4.2 传统核心指标（概括）
+### 4.2 Traditional Core Metrics (Summary)
 
-以下概括性指标名仍然有效，作为 `RuntimeMetricsSummary` 各维度的 projection 简化视图：
+The following summary metric names remain valid as simplified projection views for each dimension of `RuntimeMetricsSummary`:
 
-- 任务success率（taskMetrics.successRate）
-- 工作流恢复率（projection 自 `recoveryMetrics.successRate`）
-- token uses量（projection 自 `attemptMetrics` vs `costMetrics`）
-- 成本偏差（costMetrics.averageActualCostUsdPerTask）
-- 审批触发频率（approvalMetrics.taskTriggerRate）
-- 错误分布（taskMetrics.failedCount + executionMetrics.retryRate）
+- Task success rate (taskMetrics.successRate)
+- Workflow recovery rate (projection from `recoveryMetrics.successRate`)
+- Token usage (projection from `attemptMetrics` and `costMetrics`)
+- Cost deviation (costMetrics.averageActualCostUsdPerTask)
+- Approval trigger frequency (approvalMetrics.taskTriggerRate)
+- Error distribution (taskMetrics.failedCount + executionMetrics.retryRate)
 
 ### 4.3 OAPEFLIR Loop Observability
 
-Phase 1-4 的 OAPEFLIR 闭环必须能按 loop iteration 和 stage 还原最小观测链：
+Phase 1-4 OAPEFLIR loop must be able to restore minimum observability chain by loop iteration and stage:
 
 `observe -> assess -> plan -> execute -> feedback -> learn -> improve -> release`
 
-`StageMetricSample` 最小字段：
+`StageMetricSample` minimum fields:
 
-| 字段 | class型 | Description |
-|---|-------|--------|
-| `harness_run_id` | `string` | 关联运lines truth |
-| `loop_iteration` | `integer` | OAPEFLIR 第几轮，从 1 开始 |
-| `stage` | `observe \| assess \| plan \| execute \| feedback \| learn \| improve \| release` | 当前阶段 |
-| `status` | `pending \| active \| completed \| skipped \| failed \| timed_out` | 阶段Status |
-| `duration_ms` | `number?` | 阶段耗时 |
-| `token_cost` | `number?` | 阶段 token 成本 |
-| `error_code` | `string?` | failed原因 |
-| `sampled_at` | `timestamp` | 采样time |
+| Field | Type | Description |
+| --- | --- | --- |
+| `harness_run_id` | `string` | Associated run truth |
+| `loop_iteration` | `integer` | OAPEFLIR iteration number, starting from 1 |
+| `stage` | `observe \| assess \| plan \| execute \| feedback \| learn \| improve \| release` | Current stage |
+| `status` | `pending \| active \| completed \| skipped \| failed \| timed_out` | Stage status |
+| `duration_ms` | `number?` | Stage duration |
+| `token_cost` | `number?` | Stage token cost |
+| `error_code` | `string?` | Failure reason |
+| `sampled_at` | `timestamp` | Sample time |
 
-`LoopIterationTrace` 最小字段：
+`LoopIterationTrace` minimum fields:
 
-| 字段 | class型 | Description |
-|---|-------|--------|
-| `harness_run_id` | `string` | 关联运lines truth |
-| `loop_iteration` | `integer` | OAPEFLIR 第几轮 |
-| `trace_id` | `string` | 主 trace |
-| `started_at` | `timestamp` | 本轮开始time |
-| `completed_at` | `timestamp?` | 本轮结束time |
-| `current_stage` | `string?` | 当前或最后阶段 |
-| `stage_refs` | `string[]` | 阶段 evidence / artifact references用 |
-| `feedback_signal_refs` | `string[]` | 反馈信号references用 |
-| `learning_object_refs` | `string[]` | 学习对象references用 |
-| `improvement_candidate_refs` | `string[]` | 改进候选references用 |
-| `release_record_refs` | `string[]` | release recordreferences用 |
+| Field | Type | Description |
+| --- | --- | --- |
+| `harness_run_id` | `string` | Associated run truth |
+| `loop_iteration` | `integer` | OAPEFLIR iteration |
+| `trace_id` | `string` | Primary trace |
+| `started_at` | `timestamp` | This iteration start time |
+| `completed_at` | `timestamp?` | This iteration end time |
+| `current_stage` | `string?` | Current or final stage |
+| `stage_refs` | `string[]` | Stage evidence / artifact references |
+| `feedback_signal_refs` | `string[]` | Feedback signal references |
+| `learning_object_refs` | `string[]` | Learning object references |
+| `improvement_candidate_refs` | `string[]` | Improvement candidate references |
+| `release_record_refs` | `string[]` | Release record references |
 
-`FeedbackMetricSample` 最小字段：
+`FeedbackMetricSample` minimum fields:
 
-| 字段 | class型 | Description |
-|---|-------|--------|
-| `harness_run_id` | `string?` | 关联运lines truth |
-| `task_id?` | `string?` | 关联任务投影 |
-| `signal_id` | `string?` | 反馈信号 |
-| `kind` | `satisfaction \| correction \| quality_metric \| failure_signal` | 反馈class型 |
-| `sentiment` | `positive \| neutral \| negative` | 情绪/质量倾向 |
-| `stage` | `string?` | 触发阶段 |
-| `consumed_by` | `feedback \| learn \| improve \| release` | 消费方 |
-| `sampled_at` | `timestamp` | 采样time |
+| Field | Type | Description |
+| --- | --- | --- |
+| `harness_run_id` | `string?` | Associated run truth |
+| `task_id?` | `string?` | Associated task projection |
+| `signal_id` | `string?` | Feedback signal |
+| `kind` | `satisfaction \| correction \| quality_metric \| failure_signal` | Feedback type |
+| `sentiment` | `positive \| neutral \| negative` | Sentiment/quality tendency |
+| `stage` | `string?` | Triggering stage |
+| `consumed_by` | `feedback \| learn \| improve \| release` | Consumer |
+| `sampled_at` | `timestamp` | Sample time |
 
-规则：
+Rules:
 
-- 指标命名统一uses `oapeflir_<stage>_<metric>_<unit?>` 风格；未实现的示例指标不得提前写成 frozen contract。
-- `stage` 字段必须来自 canonical OAPEFLIR stage，不得由各模块自造同义词。
-- Improve / Release 指标必须能关联到 guardrail、approval 和 release 证据，不能只record最终success或failed。
-- Knowledge / Memory 相关指标belongs to M2 扩展维度；若当前部署未enabled，必须显式返回 not_enabled / zero，而不is伪造采样。
+- Metric naming uses unified `oapeflir_<stage>_<metric>_<unit?>` style; unimplemented example metrics must not be written as frozen contract prematurely.
+- `stage` field must come from canonical OAPEFLIR stage, must not be synonymized by individual modules.
+- Improve / Release metrics must be traceable to guardrail, approval, and release evidence, cannot only record final success or failure.
+- Knowledge / Memory related metrics belong to M2 extension dimension; if current deployment does not enable them, must explicitly return not_enabled / zero, not falsify samples.
 
-## 5. lines为约束
+## 5. Behavioral Constraints
 
-- Tier 1 事件和关键Status变更必须可追踪。
-- 日志defaults to结构化。
-- 涉及user敏感信息时必须supported脱敏或裁剪。
-- debug 开关不得defaults to泄露高敏感内容。
-- health / inspect / backpressure 的Status语义应统一，不得在不同入口eachdefines。
+- Tier 1 events and key status changes must be traceable.
+- Logs are structured by default.
+- When user-sensitive information is involved, must support masking or redacting.
+- Debug switches must not leak high-sensitivity content by default.
+- health / inspect / backpressure status semantics should be unified, not defined separately at different entry points.
 
-## 6. 补充规则
+## 6. Supplementary Rules
 
-- 指标命名统一uses `<domain>_<metric>_<unit?>` 风格。
-- trace defaults tosupported head-based sampling，关键failed路径mandatory保留。
-- 日志保留至少区分：运lines日志、审计日志、调试日志，不同class别保留cycle不同。
-
+- Metric naming uses unified `<domain>_<metric>_<unit?>` style.
+- Trace supports head-based sampling by default, critical failure paths are forcibly preserved.
+- Log retention differentiates at minimum: runtime logs, audit logs, debug logs, with different retention periods for different categories.
 
 ## v4.3 Architecture Remediation
 
-以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中record的 contract 偏差。本文档历史段落如vs本节conflicts，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
+The following entries fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If this document's historical sections conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
 
-- T-47: 本文原先把 `oapeflirMetrics.convergenceRate` directly放在 `RuntimeMetricsSummary` 的顶层 canonical 维度里，Root cause: 观测合同混淆了 runtime truth 健康指标vs认知/解释视图指标。修复：正文现把主维度收敛到 `harnessRunMetrics / nodeRunMetrics / attemptMetrics`，并把 OAPEFLIR 指标显式降为 `oapeflirViewMetrics / stageViewMetrics` 这class view-only 指标。
-- T-22（observability）: LogEvent 现以 `harness_run_id / node_run_id / attempt_id` 作为 canonical 主关联键，`task_id` only保留为 legacy 查询投影。
+- T-47: This document originally placed `oapeflirMetrics.convergenceRate` directly in `RuntimeMetricsSummary` top-level canonical dimension. Root cause: observability contract confused runtime truth health metrics with cognitive/explanation view metrics. Fix: the text now converges primary dimensions to `harnessRunMetrics / nodeRunMetrics / attemptMetrics`, and explicitly demotes OAPEFLIR metrics to `oapeflirViewMetrics / stageViewMetrics` as view-only metrics.
+- T-22 (observability): LogEvent now uses `harness_run_id / node_run_id / attempt_id` as canonical primary correlation keys, with `task_id` retained only as legacy query projection.
 
-mandatory规则：Status迁移必须via `RuntimeStateMachine.transition(command)`；执lines计划必须uses `PlanGraphBundle`；执lines结果必须uses `NodeAttemptReceipt`；truth event 只能uses `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；budget必须uses `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。
+Mandatory rules: status transitions must go through `RuntimeStateMachine.transition(command)`; execution plan must use `PlanGraphBundle`; execution result must use `NodeAttemptReceipt`; truth event must only use `platform.*`; OAPEFLIR can only act as `oapeflir.view.*` / rationale projection; budget must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.

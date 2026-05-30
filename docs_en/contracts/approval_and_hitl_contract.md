@@ -1,12 +1,12 @@
 # Approval And HITL Contract
 
-> **v4.3 兼容Description**：本文件保留为历史审批vs HITL Description。v4.3 裁决和人工责任以 [decision-hitl-contract.md](./decision-hitl-contract.md) 为准；旧 approval status 不能单独作为 `HarnessDecision` 或 `HumanResponsibilityRecord` 的替代。
+> **v4.3 Compatibility Note**: This file is preserved as historical approval and HITL documentation. v4.3 decisions and human responsibility are governed by [decision-hitl-contract.md](./decision-hitl-contract.md); old approval status alone cannot serve as a substitute for `HarnessDecision` or `HumanResponsibilityRecord`.
 
-## 1. 范围
+## 1. Scope
 
-本 contract defines人工Decision升级、审批request、审批结果回传和运lines模式下的lines为差异。
+This contract defines human decision escalation, approval requests, approval result callbacks, and behavioral differences under execution modes.
 
-## 2. 关键对象
+## 2. Key Objects
 
 - `ApprovalRequest`
 - `ApprovalDecision`
@@ -15,34 +15,34 @@
 - `ApprovalTimeoutPolicy`
 - `ApprovalFeedbackLink`
 
-## 3. ApprovalRequest 最小字段
+## 3. ApprovalRequest Minimum Fields
 
-| 字段 | class型 | Description |
-|---|-------|--------|
-| `approval_id` | `string` | 审批 ID |
-| `harness_run_id` | `string` | 关联 `HarnessRun` |
-| `node_run_id` | `string?` | 关联 `NodeRun`；针对节点级审批必填 |
-| `source_agent_id` | `string` | 发起 Agent |
-| `reason` | `string` | 升级原因 |
-| `risk_level` | `low \| medium \| high \| critical` | 风险等级 |
-| `stage_view_ref` | `OapeflirStage?` | only解释/time线视图references用；不得作为 truth 主键或Status推进依据 |
-| `ref_id` | `EvidenceRef \| ArtifactRef \| StrategyVersionRef \| RolloutRecordRef?` | 关联证据或发布对象 |
-| `options` | `string[]` | optionalDecision |
-| `context` | `json` | 相关上下文 |
-| `timeout_policy` | `reject \| approve \| remain_pending` | timeout策略 |
-| `timeout_auto_action` | `reject \| escalate \| remain_pending \| continue_readonly` | timeout后系统自动执lines的治理动作 |
-| `escalation_chain` | `ApprovalEscalationHop[]` | 明确的逐级升级链vs每级时限/责任人 |
-| `created_at` | `timestamp` | 发起time |
+| Field | Type | Description |
+| --- | --- | --- |
+| `approval_id` | `string` | Approval ID |
+| `harness_run_id` | `string` | Associated `HarnessRun` |
+| `node_run_id` | `string?` | Associated `NodeRun`; required for node-level approval |
+| `source_agent_id` | `string` | Initiating Agent |
+| `reason` | `string` | Escalation reason |
+| `risk_level` | `low \| medium \| high \| critical` | Risk level |
+| `stage_view_ref` | `OapeflirStage?` | Only for explanation/timeline view reference; must not be used as truth primary key or state progression basis |
+| `ref_id` | `EvidenceRef \| ArtifactRef \| StrategyVersionRef \| RolloutRecordRef?` | Associated evidence or release object |
+| `options` | `string[]` | Available decisions |
+| `context` | `json` | Relevant context |
+| `timeout_policy` | `reject \| approve \| remain_pending` | Timeout policy |
+| `timeout_auto_action` | `reject \| escalate \| remain_pending \| continue_readonly` | Governance action automatically executed by system after timeout |
+| `escalation_chain` | `ApprovalEscalationHop[]` | Explicit step-by-step escalation chain with per-level time limit/responsible person |
+| `created_at` | `timestamp` | Initiation time |
 
-规则：
+Rules:
 
-- `timeout_policy` is治理request的一部分，但最终只能被系统code收紧，不能被下游 Agent 任意放宽。
-- `timeout_auto_action` is控制平面执lines语义，不得由 UI 渲染层或下游 Agent 自lines推断。
-- Agent 输出不得越权覆盖已via冻结的timeout策略。
-- `critical` 风险defaults to不得uses `approve` 作为timeout策略，除非有显式 break-glass 规则vs额外审计。
-- 审批的权威关联键is `harness_run_id` / `node_run_id`；`stage_view_ref` 只能used for解释视图，不得作为 truth source。
+- `timeout_policy` is part of the governance request, but can only be tightened by system code, not arbitrarily relaxed by downstream Agents.
+- `timeout_auto_action` is control plane execution semantics; it must not be inferred by UI rendering layer or downstream Agents.
+- Agent output must not override already-frozen timeout policy without authorization.
+- `critical` risk defaults must not use `approve` as timeout policy unless there is explicit break-glass rule and additional audit.
+- The authoritative association key for approval is `harness_run_id` / `node_run_id`; `stage_view_ref` can only be used for explanation view, not as truth source.
 
-`ApprovalEscalationHop` 最小字段：
+`ApprovalEscalationHop` minimum fields:
 
 - `level`
 - `reviewer_type`
@@ -50,7 +50,7 @@
 - `timeout_ms`
 - `on_timeout`
 
-## 4. ApprovalDecision 最小字段
+## 4. ApprovalDecision Minimum Fields
 
 - `approval_id`
 - `decision_type` (`option_selected | confirmed | text_input | rejected | expired`)
@@ -60,62 +60,62 @@
 - `responded_by`
 - `responded_at`
 
-判别约束：
+Discrimination constraints:
 
-- `option_selected` 时必须提供 `selected_option_id`，不得同时携带 `confirmed`。
-- `confirmed` 时必须提供 `confirmed=true`，不得同时携带 `selected_option_id`。
-- `text_input` 时必须提供 `input_text`。
-- `rejected` vs `expired` 不得携带前述三class交互字段。
-- 同一 `approval_id` 的 decision 只能success应用一iterations；repeats提交必须视为幂等 no-op 或conflicts，而不is再iterations推进业务Status。
+- When `option_selected`, `selected_option_id` must be provided; `confirmed` must not be present simultaneously.
+- When `confirmed`, `confirmed=true` must be provided; `selected_option_id` must not be present simultaneously.
+- When `text_input`, `input_text` must be provided.
+- `rejected` and `expired` must not carry any of the three interaction fields above.
+- The same `approval_id`'s decision can only be successfully applied once; repeated submission must be treated as idempotent no-op or conflict, rather than advancing business state again.
 
-## 5. 触发场景
+## 5. Trigger Scenarios
 
-至少includes：
+At least includes:
 
-- 成本exceedsthreshold或接近threshold。
-- security敏感命令。
-- 任务歧义。
-- 自愈exceeds出最大尝试iterations数。
-- 组织变更。
-- 高风险 workflow Recommendation。
-- PlanHub 产出高风险计划或不可逆执lines路径。
-- FeedbackHub 收到持续负面信号、user纠正或质量异常，需要人工确认occurrences置。
-- ImproveHub 尝试accepts策略升级、prompt/policy 变更或候选改进。
-- ReleaseHub 尝试推进 rollout level、完成发布或触发 rollback。
+- Cost exceeds threshold or approaches threshold.
+- Security-sensitive commands.
+- Task ambiguity.
+- Self-healing exceeds maximum retry attempts.
+- Organization changes.
+- High-risk workflow suggestions.
+- PlanHub produces high-risk plan or irreversible execution path.
+- FeedbackHub receives sustained negative signals, user corrections, or quality anomalies requiring human confirmation.
+- ImproveHub attempts to accept strategy upgrade, prompt/policy change, or candidate improvement.
+- ReleaseHub attempts to advance rollout level, complete release, or trigger rollback.
 
-## 6. 运lines模式差异
+## 6. Execution Mode Differences
 
-- `supervised`: 高风险lines为defaults to要求审批。
-- `auto`: 中低风险可自动放lines，高风险仍审批。
-- `full-auto`: only在硬性禁止项之外允许更强自动化，但仍要record升级vsdefaults to策略。
+- `supervised`: High-risk behaviors require approval by default.
+- `auto`: Medium and low risk can be automatically released; high risk still requires approval.
+- `full-auto`: Only allows stronger automation outside hard prohibitions, but still records escalations and default policies.
 
-补充规则：
+Supplementary rules:
 
-- `full-auto` 不能bypassing硬拒策略、break-glass 策略和双审批要求。
-- 运lines模式只Impact“isno允许自动放lines”，不Impact“硬性禁止项isno被拒绝”。
+- `full-auto` cannot bypass hard rejection policies, break-glass policies, and dual-approval requirements.
+- Execution mode only affects "whether automatic release is allowed", not "whether hard prohibitions are rejected".
 
-补充Recommendation：
+Supplementary suggestions:
 
-- approval policy 应supported从粗粒度模式逐步演进到细粒度 capability / risk class 级别的结构化configure，而不is只保留单一布尔开关。
-- reviewer routing 应显式建模，例如defaults to `user`，后续可references入受限 guardian / reviewer subagent，但该 reviewer 只能给出审批Recommendation或代办handle，不得bypassing最终策略复核。
+- Approval policy should support gradual evolution from coarse-grained mode to fine-grained capability / risk class structured configuration, rather than only keeping a single boolean switch.
+- Reviewer routing should be explicitly modeled, e.g., default `user`, later introducing limited guardian / reviewer subagent, but that reviewer can only give approval suggestions or handle代办, and must not bypass final policy review.
 
-## 7. lines为约束
+## 7. Behavioral Constraints
 
-- 每个审批request必须可追踪。
-- 同一审批结果不得repeats应用。
-- timeouthandle必须明确：defaults to拒绝、defaults tovia或暂停等待，不能含糊。
-- 同一 `approval_id` 的 decision payload 必须满足判别约束，不能出现互相conflicts字段并存。
-- 审批结果落地后，最终动作执lines前必须再iterationsvia过 Policy Engine 复核，防止环境变化后仍accesses along用旧批准。
-- `critical` 风险动作应supported双审批或 break-glass 流程，不能只靠单iterations普通确认。
-- 带 `stage_view_ref` 的审批必须能回写到对应 OAPEFLIR timeline，不能只存在于审批table或消息渠道中。
-- vs Improve / Release 相关的审批结果只能改变候选或 rollout 的受控Status，不得directly改写已发布策略内容。
-- user文本输入型审批若table达纠正、偏好或负面反馈，应转成 `FeedbackSignal`，供 FeedbackHub / LearnHub 消费。
+- Each approval request must be traceable.
+- The same approval result must not be applied repeatedly.
+- Timeout handling must be explicit: default reject, default approve, or pause and wait; ambiguity is not allowed.
+- The same `approval_id`'s decision payload must satisfy discrimination constraints; conflicting fields must not coexist.
+- After approval result is persisted, Policy Engine must review again before final action execution to prevent environment changes from still using old approval.
+- `critical` risk actions should support dual approval or break-glass process; single ordinary confirmation is not sufficient.
+- Approval with `stage_view_ref` must be able to write back to corresponding OAPEFLIR timeline; it must not only exist in approval table or message channel.
+- Approval results related to Improve / Release can only change the controlled state of candidate or rollout, and must not directly overwrite already-released strategy content.
+- If user text input approval expresses correction, preference, or negative feedback, it should be converted to `FeedbackSignal` for FeedbackHub / LearnHub consumption.
 
-## 8. 补充规则
+## 8. Supplementary Rules
 
-### 8.1 审批包 schema
+### 8.1 Approval Packet Schema
 
-`ApprovalPacket` 至少contains：
+`ApprovalPacket` contains at least:
 
 - `approval_id`
 - `harness_run_id`
@@ -128,73 +128,72 @@
 - `deadline_at?`
 - `timeout_policy`
 
-### 8.2 渠道交互按钮
+### 8.2 Channel Interaction Buttons
 
-- 按钮模型统一为 `option_id + label + style + requires_confirm?`。
-- 非按钮渠道必须降级为同等语义的#选项或文本输入。
-- 渠道适配层不得改变审批语义，只改变呈现方式。
+- Button model uniformly is `option_id + label + style + requires_confirm?`.
+- Non-button channels must degrade to equivalent semantic numbered options or text input.
+- Channel adaptation layer must not change approval semantics, only presentation.
 
-### 8.3 组织职责边界
+### 8.3 Organizational Responsibility Boundaries
 
-- HQ 负责defines审批升级principle和defaults to timeout policy。
-- division / planner / orchestrator 只负责提出需要审批的上下文，不directly批准自身高风险动作。
-- CEO/VP 等产品叙事名称不Impact最终审批 authority 的工程边界。
-- 高风险动作的批准 authority 必须和发起执lines主体解耦，防止“自己申请、自己批准”的伪审批链。
+- HQ is responsible for defining approval escalation principles and default timeout policy.
+- Division / planner / orchestrator are only responsible for proposing contexts that need approval, and must not directly approve their own high-risk actions.
+- CEO/VP and other product narrative names do not affect the engineering boundary of final approval authority.
+- The approving authority for high-risk actions must be decoupled from the initiating execution subject to prevent "self-application, self-approval" pseudo-approval chains.
 
-### 8.4 级联拒绝语义
+### 8.4 Cascading Rejection Semantics
 
-当一个审批request被拒绝或过期时，系统必须handle所有relies on该审批结果的下游Status：
+When an approval request is rejected or expired, the system must handle all downstream states dependent on that approval result:
 
-| 场景 | lines为 |
+| Scenario | Behavior |
 | --- | --- |
-| 单任务单审批被 `rejected` | 关联 execution 进入 `blocked` 或 `failed`（取决于isno可重试），任务进入 `awaiting_decision` 或 `failed` |
-| 单任务单审批 `expired` | 按 `timeout_policy` 执lines：`reject` 走拒绝链、`approve` 走放lines链、`remain_pending` 保持等待 |
-| 同一 execution 存在多个待决审批 | 任一审批被拒绝时，其他同 execution 的 `requested` 审批必须进入 `superseded`，不得留为悬挂态 |
-| 父任务审批被拒绝 | 若子任务的执linesrelies on父审批结果，子任务应进入 `cancelled`，关联 execution 进入 `cancelled`，原因码 `parent_approval_rejected` |
-| 审批拒绝后重新提交 | 必须创建新的 `approval_id`，不得复用已终态的审批record；新request应references用原 `approval_id` 作为 `supersedes_ref` |
+| Single task single approval rejected | Associated execution enters `blocked` or `failed` (depends on whether retryable), task enters `awaiting_decision` or `failed` |
+| Single task single approval expired | Execute according to `timeout_policy`: `reject` goes rejection chain, `approve` goes release chain, `remain_pending` keeps waiting |
+| Multiple pending approvals exist for same execution | When any approval is rejected, other `requested` approvals for the same execution must enter `superseded`; they must not remain hanging |
+| Parent task approval rejected | If child task execution depends on parent approval result, child task should enter `cancelled`, associated execution enters `cancelled`, reason code `parent_approval_rejected` |
+| Re-submit after approval rejection | New `approval_id` must be created; previously terminal approval record must not be reused; new request should reference original `approval_id` as `supersedes_ref` |
 
-规则：
+Rules:
 
-- 级联拒绝必须在同一事务或可恢复的事件链中完成，不得relies on异步轮询发现悬挂审批。
-- 级联 `superseded` 的审批必须record `superseded_by` references用，指向触发级联的源审批。
-- 级联拒绝产生的所有Status变更必须writes审计链。
+- Cascading rejection must be completed in the same transaction or recoverable event chain, and must not rely on async polling to discover hanging approvals.
+- Cascading `superseded` approvals must record `superseded_by` reference pointing to the source approval that triggered the cascade.
+- All state changes generated by cascading rejection must be written to audit chain.
 
-### 8.5 审批 reviewer 路由
+### 8.5 Approval Reviewer Routing
 
-- reviewer routing 必须is显式字段，而不is UI 层隐含lines为。
-- `user` reviewer 仍isdefaults to基线。
-- 若references入 guardian / review-subagent，only能在受控 prompt、受控工具、受控permission边界下工作。
-- guardian reviewer 的Conclusion必须再iterations进入 Policy Engine 复核，不得directly落为 authoritative allow。
+- Reviewer routing must be explicit fields, not UI-layer implicit behavior.
+- `user` reviewer is still the default baseline.
+- If guardian / review-subagent is introduced, it can only work under controlled prompt, controlled tools, and controlled permission boundaries.
+- Guardian reviewer's conclusion must again enter Policy Engine for review, and must not directly become authoritative allow.
 
-### 8.6 OAPEFLIR Stage 审批联动
+### 8.6 OAPEFLIR Stage Approval Linkage
 
-`ApprovalFeedbackLink` used for把人工Decisionvs OAPEFLIR 闭环证据绑定，最小字段：
+`ApprovalFeedbackLink` is used to bind human decisions to OAPEFLIR closed-loop evidence:
 
-| 字段 | class型 | Description |
-|---|-------|--------|
-| `approval_id` | `string` | 审批 ID |
-| `harness_run_id` | `string` | 关联 `HarnessRun` |
-| `node_run_id` | `string?` | 关联 `NodeRun` |
-| `stage_view_ref` | `observe \| assess \| plan \| execute \| feedback \| learn \| improve \| release` | OAPEFLIR 视图阶段references用，不得作为 truth 主键 |
-| `loop_iteration` | `integer?` | 触发轮iterations |
-| `ref_id` | `EvidenceRef \| ArtifactRef \| StrategyVersionRef \| RolloutRecordRef?` | 关联对象 |
-| `feedback_signal_id` | `string?` | 审批产生或消费的反馈信号 |
-| `decision_effect` | `continue \| revise_plan \| block_candidate \| approve_candidate \| advance_rollout \| rollback_rollout` | 对闭环的Impact |
+| Field | Type | Description |
+| --- | --- | --- |
+| `approval_id` | `string` | Approval ID |
+| `harness_run_id` | `string` | Associated `HarnessRun` |
+| `node_run_id` | `string?` | Associated `NodeRun` |
+| `stage_view_ref` | `observe \| assess \| plan \| execute \| feedback \| learn \| improve \| release` | OAPEFLIR view stage reference; must not be used as truth primary key |
+| `loop_iteration` | `integer?` | Triggered iteration |
+| `ref_id` | `EvidenceRef \| ArtifactRef \| StrategyVersionRef \| RolloutRecordRef?` | Associated object |
+| `feedback_signal_id` | `string?` | Feedback signal produced or consumed by approval |
+| `decision_effect` | `continue \| revise_plan \| block_candidate \| approve_candidate \| advance_rollout \| rollback_rollout` | Impact on closed loop |
 
-规则：
+Rules:
 
-- PlanHub 审批via后只能允许计划进入 execute；仍需 runtime precheck 和 Policy Engine 复核。
-- FeedbackHub 审批不is对user情绪的覆盖，而is对后续 learn/improve isno采纳的人工治理信号。
-- ImproveHub 的 `approve_candidate` 只能推进候选Status，不能跳过 guardrail 或directly发布。
-- ReleaseHub 的 `advance_rollout` / `rollback_rollout` 必须references用 rollout record，并writes release audit。
-- OAPEFLIR 审批timeout必须进入 stage timeline，且按 `timeout_policy` 转换成明确的 stage blocked / failed / remain_pending 语义。
-
+- After PlanHub approval passes, plan can only be allowed to enter execute; runtime precheck and Policy Engine review are still required.
+- FeedbackHub approval is not an override of user sentiment, but a human governance signal for subsequent learn/improve adoption.
+- ImproveHub's `approve_candidate` can only advance candidate state, and must not skip guardrail or directly publish.
+- ReleaseHub's `advance_rollout` / `rollback_rollout` must reference rollout record and write to release audit.
+- OAPEFLIR approval timeout must enter stage timeline, and be converted into explicit stage blocked / failed / remain_pending semantics according to `timeout_policy`.
 
 ## v4.3 Architecture Remediation
 
-以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中record的 contract 偏差。本文档历史段落如vs本节conflicts，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
+The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If this document's historical sections conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 to ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
 
-- T-9: 缺少Architecture§31要求的 escalation_chain 和 timeout_auto_action 字段。Root Cause：旧审批 contract 把“timeout策略”压缩成了单值 UI 语义，没有把控制平面的自动动作和逐级升级链建模出来。修复：`ApprovalRequest` 已补入 `timeout_auto_action` vs `escalation_chain`，并defines `ApprovalEscalationHop` 最小字段。
-- T-54: 仍用OapeflirStage作为一等stage_ref字段，Architecture§5.5不variable"oapeflir.\*事件不得作为truth source"。Root Cause：历史审批流把 OAPEFLIR 阶段既当解释视图又当权威关联键，混淆了 projection vs runtime truth。修复：正文已改为 `harness_run_id` / `node_run_id` 为权威关联键，`stage_view_ref` 只保留视图语义。
+- T-9: Missing escalation_chain and timeout_auto_action fields required by architecture §31. Root cause: Old approval contract compressed "timeout policy" into single-value UI semantics, and did not model the control plane's automatic actions and step-by-step escalation chain. Fix: `ApprovalRequest` has added `timeout_auto_action` and `escalation_chain`, and `ApprovalEscalationHop` minimum fields are defined.
+- T-54: Still using OapeflirStage as a first-class stage_ref field, architecture §5.5 invariant "oapeflir.* events must not be used as truth source". Root cause: Historical approval flow used OAPEFLIR stage as both explanation view and authoritative association key, confusing projection with runtime truth. Fix: The main text has changed to using `harness_run_id` / `node_run_id` as authoritative association keys, with `stage_view_ref` only retaining view semantics.
 
-mandatory规则：Status迁移必须via `RuntimeStateMachine.transition(command)`；执lines计划必须uses `PlanGraphBundle`；执lines结果必须uses `NodeAttemptReceipt`；truth event 只能uses `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；budget必须uses `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。
+Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events must only use `platform.*`; OAPEFLIR can only be used as `oapeflir.view.*` / rationale projection; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.

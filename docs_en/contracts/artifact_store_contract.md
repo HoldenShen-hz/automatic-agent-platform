@@ -1,13 +1,13 @@
 # Artifact Store Contract
 
-> **OAPEFLIR 相关**：本 contract defines OAPEFLIR Artifact Plane 的storage机制，对应 ADR-016 §11 和设计文档 §D。
-> **更新日期**：2026-04-17
+> **OAPEFLIR Relationship**: This contract defines the storage mechanism for OAPEFLIR Artifact Plane, corresponding to ADR-016 §11 and design document §D.
+> **Update Date**: 2026-04-17
 
-## 1. 范围
+## 1. Scope
 
-本 contract defines文件型产出物的storage布局、元data索references、生命cycle和references用语义。
+This contract defines the storage layout, metadata index, lifecycle, and reference semantics for file-based outputs.
 
-## 2. 关键对象
+## 2. Key Objects
 
 - `ArtifactRecord`
 - `ArtifactLink`
@@ -17,7 +17,7 @@
 - `ArtifactPublishService`
 - `ArtifactPreviewService`
 
-## 3. ArtifactRecord 最小字段
+## 3. ArtifactRecord Minimum Fields
 
 - `artifact_id`
 - `harness_run_id`
@@ -32,37 +32,37 @@
 - `checksum?`
 - `created_at`
 
-## 4. lines为约束
+## 4. Behavioral Constraints
 
-- DB 中只保存索references和references用，不保存大体积 BLOB 主体。
-- artifact 路径必须稳定且可重建。
-- 删除策略不得破坏completed任务的审计性。
-- 对外暴露 artifact 时必须via过permission检查。
+- Only index and reference are saved in DB; large BLOB body is not stored directly.
+- Artifact path must be stable and reconstructible.
+- Deletion policy must not break auditability of completed tasks.
+- Permission check must be performed when externally exposing artifacts.
 
-## 5. 补充规则
+## 5. Supplementary Rules
 
-### 5.1 本地布局
+### 5.1 Local Layout
 
-本地开发defaults to布局：
+Default local development layout:
 
 - `data/artifacts/<task_id>/<artifact_id>/`
-- 元data以 DB authoritative 索references为准
+- Metadata follows DB authoritative index
 
-### 5.2 对象storage边界
+### 5.2 Object Storage Boundaries
 
-- 对象storage负责 artifact 主体，不负责任务真相Status。
-- `artifact_id`、`storage_key`、`checksum` 必须能相互映射。
-- 迁移到对象storage后，读取接口语义不变。
+- Object storage is responsible for artifact body, not task truth state.
+- `artifact_id`, `storage_key`, `checksum` must be mappable to each other.
+- After migrating to object storage, read interface semantics remain unchanged.
 
-### 5.3 GC vs冷storage
+### 5.3 GC and Cold Storage
 
-- completed任务的核心 artifact 不得在审计窗口内被directly删除。
-- 可重建或低价值 artifact 可进入冷storage或过期删除。
-- GC 必须按 retention policy 执lines，并产生日志vs审计record。
+- Core artifacts of completed tasks must not be directly deleted within the audit window.
+- Rebuildable or low-value artifacts can enter cold storage or expire deletion.
+- GC must execute according to retention policy and produce logs and audit records.
 
 ### 5.4 ArtifactLink / ArtifactBundle
 
-`ArtifactLink` 最小字段：
+`ArtifactLink` minimum fields:
 
 - `artifact_id`
 - `link_type`
@@ -70,25 +70,25 @@
 - `publish_status?`
 - `ref_id?`
 
-`ArtifactBundle` 最小字段：
+`ArtifactBundle` minimum fields:
 
 - `bundle_id`
 - `bundle_type`
 - `artifact_ids`
 - `created_at`
 
-规则：
+Rules:
 
-- artifact 必须能via `ref_id` 回链到 feedback / learning / improvement / rollout / diagnostics 等闭环对象。
-- publish / preview / governance 相关 artifact 不得只存在文件系统路径，必须有结构化索references。
+- Artifacts must be traceable back to feedback / learning / improvement / rollout / diagnostics and other closed-loop objects via `ref_id`.
+- Publish / preview / governance related artifacts must not only exist in filesystem path; structured index is required.
 
 ## v4.3 Contract Remediation
 
-- T-64: 本文原先只要求 `task_id`，Root cause:  artifact store contract 早于 v4.3 executable contract 成型，导致 artifact 索references缺少运lines时 lineage。修复：正文现要求 `harness_run_id / node_run_id / plan_graph_bundle_id` 作为最小运lines链主键，`task_id` only作为聚合查询入口。
+- T-64: This document originally only required `task_id`. Root cause: Artifact store contract preceded v4.3 executable contract maturity, causing artifact index to lack runtime lineage. Fix: The main text now requires `harness_run_id / node_run_id / plan_graph_bundle_id` as minimum execution chain primary keys; `task_id` is only used as aggregate query entry.
 
 ### 5.5 ArtifactPublishService
 
-`ArtifactPublishService` 负责将 artifact 发布到外部系统：
+`ArtifactPublishService` is responsible for publishing artifacts to external systems:
 
 ```typescript
 interface ArtifactPublishService {
@@ -100,7 +100,7 @@ interface ArtifactPublishService {
 
 ### 5.6 ArtifactPreviewService
 
-`ArtifactPreviewService` 负责生成 artifact 预览：
+`ArtifactPreviewService` is responsible for generating artifact previews:
 
 ```typescript
 interface ArtifactPreviewService {

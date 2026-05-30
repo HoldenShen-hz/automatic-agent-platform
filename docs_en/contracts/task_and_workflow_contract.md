@@ -1,20 +1,20 @@
 # Task And Workflow Contract
 
-> **v4.3 兼容Description**：本文件保留为历史 task / workflow 语义Description。v4.3 新实现入口以 [task-intake-request-contract.md](./task-intake-request-contract.md)、[harness-run-contract.md](./harness-run-contract.md)、[plan-graph-patch-contract.md](./plan-graph-patch-contract.md) 和 [node-run-attempt-receipt-contract.md](./node-run-attempt-receipt-contract.md) 为准；`WorkflowStep` / `StepOutput` 只作为 legacy / projection 语义。
+> **v4.3 Compatibility Note**: This file is preserved as historical task / workflow semantics documentation. v4.3 new implementation entry points are [task-intake-request-contract.md](./task-intake-request-contract.md), [harness-run-contract.md](./harness-run-contract.md), [plan-graph-patch-contract.md](./plan-graph-patch-contract.md) and [node-run-attempt-receipt-contract.md](./node-run-attempt-receipt-contract.md); `WorkflowStep` / `StepOutput` only serve as legacy / projection semantics.
 
-> **OAPEFLIR 相关**：本 contract defines OAPEFLIR 主链任务vs workflow，对应 ADR-016。
-> **更新日期**：2026-04-17
+> **OAPEFLIR Association**: This contract defines OAPEFLIR main-chain tasks and workflows, corresponding to ADR-016.
+> **Updated**: 2026-04-17
 
-## 1. 范围
+## 1. Scope
 
-本 contract defines任务、子任务、工作流Status、步骤输出、artifact references用，以及 Phase 1a 需要稳定的运lines时约束。
+This contract defines tasks, subtasks, workflow status, step outputs, artifact references, and Phase 1a runtime constraints that need to be stabilized.
 
-对 OAPEFLIR Phase 1-4 范围，本 contract 只defines task/workflow 读模型如何投影闭环阶段、loop iteration 和反馈对象；真实执lines边界由 `HarnessRun`、`PlanGraphBundle`、`NodeRun` vs `NodeAttemptReceipt` 持有。
+For OAPEFLIR Phase 1-4 scope, this contract only defines how task/workflow read models project closed-loop stages, loop iterations, and feedback objects; the actual execution boundaries are held by `HarnessRun`, `PlanGraphBundle`, `NodeRun` and `NodeAttemptReceipt`.
 
-相关文档：
-- [ADR-016 OAPEFLIR 八阶段模型](../adr/016-oapeflir-loop-model.md)
+Related documents:
+- [ADR-016 OAPEFLIR Eight-Stage Model](../adr/016-oapeflir-loop-model.md)
 
-## 2. 关键对象
+## 2. Key Objects
 
 - `Task`
 - `WorkflowState`
@@ -25,72 +25,72 @@
 - `ExecutableUnit`
 - `ResultEnvelope`
 
-## 3. Task authoritative 字段
+## 3. Task Authoritative Fields
 
-| 字段 | class型 | Description |
-|---|-------|--------|
-| `id` | `string` | 任务唯一标识 |
-| `parent_id` | `string?` | 父任务 ID，跨事业部拆分时uses |
-| `root_id` | `string` | 根任务 ID |
-| `division_id` | `string?` | 目标事业部 |
-| `title` | `string` | 任务标题 |
-| `status` | `TaskStatus` | 任务Status |
-| `source` | `user \| observe \| system` | 任务来源 |
-| `priority` | `low \| normal \| high \| urgent` | 优先级 |
-| `input` | `json` | 原始输入 |
-| `normalized_input` | `json?` | 规范化输入 |
-| `output` | `json?` | 最终输出摘要 |
-| `artifacts` | `ArtifactRef[]` | 产出物references用 |
-| `estimated_cost_usd` | `number?` | 预估成本 |
-| `actual_cost_usd` | `number` | 实际成本 |
-| `error_code` | `string?` | failed原因码 |
-| `created_at` | `timestamp` | 创建time |
-| `updated_at` | `timestamp` | 更新time |
-| `completed_at` | `timestamp?` | 完成time |
+| Field | Type | Description |
+| --- | --- | --- |
+| `id` | `string` | Task unique identifier |
+| `parent_id` | `string?` | Parent task ID, used when splitting across divisions |
+| `root_id` | `string` | Root task ID |
+| `division_id` | `string?` | Target division |
+| `title` | `string` | Task title |
+| `status` | `TaskStatus` | Task status |
+| `source` | `user \| observe \| system` | Task source |
+| `priority` | `low \| normal \| high \| urgent` | Priority |
+| `input` | `json` | Raw input |
+| `normalized_input` | `json?` | Normalized input |
+| `output` | `json?` | Final output summary |
+| `artifacts` | `ArtifactRef[]` | Artifact references |
+| `estimated_cost_usd` | `number?` | Estimated cost |
+| `actual_cost_usd` | `number` | Actual cost |
+| `error_code` | `string?` | Failure reason code |
+| `created_at` | `timestamp` | Creation time |
+| `updated_at` | `timestamp` | Update time |
+| `completed_at` | `timestamp?` | Completion time |
 
-`TaskStatus` 以 [runtime_state_machine_contract.md](./runtime_state_machine_contract.md) 为准。
+`TaskStatus` follows [runtime_state_machine_contract.md](./runtime_state_machine_contract.md).
 
-## 4. Task 运lines约束
+## 4. Task Runtime Constraints
 
-- `root_id` 在整棵任务树内保持稳定。
-- `parent_id` 为空table示根任务；非空时必须指向已存在任务。
-- `division_id` 在 HQ 分诊前可为空，但进入 division 执lines前必须确定。
-- `actual_cost_usd` 初始为 `0`，only允许累加更新。
-- 进入终态时必须synchronouswrites `completed_at` 或failed终结time。
+- `root_id` remains stable throughout the entire task tree.
+- Empty `parent_id` indicates root task; when non-empty, must point to an existing task.
+- `division_id` can be empty before HQ triage, but must be determined before entering division execution.
+- `actual_cost_usd` starts at `0` and only allows cumulative updates.
+- When entering terminal state, `completed_at` or failure termination time must be written synchronously.
 
-## 5. WorkflowState 投影字段
+## 5. WorkflowState Projection Fields
 
-| 字段 | class型 | Description |
-|---|-------|--------|
-| `task_id` | `string` | 关联任务 |
-| `division_id` | `string` | 归属事业部 |
-| `workflow_id` | `string` | workflow defines标识 |
-| `harness_run_id` | `string` | 对应 HarnessRun |
-| `plan_graph_bundle_id` | `string?` | 当前执lines图 bundle |
-| `graph_version` | `number?` | 当前图版本 |
-| `current_step_index` | `number` | 当前步骤索references投影 |
-| `status` | `WorkflowStatus` | 工作流读模型Status |
-| `current_stage_view` | `observe \| assess \| plan \| execute \| feedback \| learn \| improve \| release` | 当前 OAPEFLIR 阶段视图 |
-| `loop_iteration_view` | `number` | 当前闭环轮iterations视图，从 1 开始 |
-| `outputs` | `Record<string, StepOutput>` | 步骤输出映射 |
-| `feedback_signals` | `string[]?` | 关联 feedback signal ID 列table |
-| `learning_objects` | `string[]?` | 关联 learning object ID 列table |
-| `improvement_candidates` | `string[]?` | 关联 improvement candidate ID 列table |
-| `release_records` | `string[]?` | 关联 release record ID 列table |
-| `last_error_code` | `string?` | 最近错误码 |
-| `retry_count` | `number` | 当前累计重试iterations数 |
-| `started_at` | `timestamp` | 开始time |
-| `updated_at` | `timestamp` | 更新time |
-| `resumable_from_step` | `string?` | 可恢复步骤标识 |
+| Field | Type | Description |
+| --- | --- | --- |
+| `task_id` | `string` | Associated task |
+| `division_id` | `string` | Owning division |
+| `workflow_id` | `string` | Workflow definition identifier |
+| `harness_run_id` | `string` | Corresponding HarnessRun |
+| `plan_graph_bundle_id` | `string?` | Current execution graph bundle |
+| `graph_version` | `number?` | Current graph version |
+| `current_step_index` | `number` | Current step index projection |
+| `status` | `WorkflowStatus` | Workflow read model status |
+| `current_stage_view` | `observe \| assess \| plan \| execute \| feedback \| learn \| improve \| release` | Current OAPEFLIR stage view |
+| `loop_iteration_view` | `number` | Current closed-loop iteration view, starting from 1 |
+| `outputs` | `Record<string, StepOutput>` | Step output mapping |
+| `feedback_signals` | `string[]?` | Associated feedback signal ID list |
+| `learning_objects` | `string[]?` | Associated learning object ID list |
+| `improvement_candidates` | `string[]?` | Associated improvement candidate ID list |
+| `release_records` | `string[]?` | Associated release record ID list |
+| `last_error_code` | `string?` | Most recent error code |
+| `retry_count` | `number` | Current cumulative retry count |
+| `started_at` | `timestamp` | Start time |
+| `updated_at` | `timestamp` | Update time |
+| `resumable_from_step` | `string?` | Resumable step identifier |
 
-规则：
+Rules:
 
-- `WorkflowState` is从 `HarnessRun`、`PlanGraphBundle`、`NodeRun` vs `NodeAttemptReceipt` 派生的读模型，不is runtime truth。
-- `status`、`current_stage_view`、`loop_iteration_view` 若vs truth conflicts，必须重建投影，不得反向改写执lines主链。
+- `WorkflowState` is a read model derived from `HarnessRun`, `PlanGraphBundle`, `NodeRun` and `NodeAttemptReceipt`, not runtime truth.
+- If `status`, `current_stage_view`, `loop_iteration_view` conflict with truth, projections must be rebuilt and must not rewrite the execution main chain in reverse.
 
-## 6. WorkflowStep authoritative 字段
+## 6. WorkflowStep Authoritative Fields
 
-每个步骤至少contains：
+Each step contains at minimum:
 
 - `node_run_id`
 - `harness_run_id`
@@ -104,16 +104,16 @@
 - `precondition_check?`
 - `approval_policy?`
 
-规则：
+Rules:
 
-- `node_run_id` is步骤的唯一主键，关联到 `NodeRun` truth。
-- `input_binding` 必须可解析为上游输出、任务输入或系统上下文。
-- `output_key` 在同一 workflow 内唯一。
-- `approval_policy` onlydefinesisno需要升级，不承载渠道交互细节。
+- `node_run_id` is the unique primary key of the step, associated with `NodeRun` truth.
+- `input_binding` must be resolvable to upstream output, task input, or system context.
+- `output_key` is unique within the same workflow.
+- `approval_policy` only defines whether escalation is needed and does not carry channel interaction details.
 
-## 6A. OAPEFLIR Workflow 附加对象
+## 6A. OAPEFLIR Workflow Additional Objects
 
-`PlanGraphBundle` is plan 阶段到 execute 阶段的唯一权威交接对象，最小字段：
+`PlanGraphBundle` is the unique authoritative handover object from plan phase to execute phase, minimum fields:
 
 - `planGraphBundleId`
 - `harnessRunId`
@@ -123,9 +123,9 @@
 - `budget`
 - `riskProfile`
 
-`PlanDTO` only允许作为 legacy 调试视图或import输入；执lines前必须归一化为 `PlanGraphBundle`。
+`PlanDTO` is only allowed as a legacy debug view or import input; before execution, it must be normalized to `PlanGraphBundle`.
 
-`FeedbackSignal` 在 workflow 中is一等对象，最小字段：
+`FeedbackSignal` is a first-class object in workflow, minimum fields:
 
 - `signal_id`
 - `kind` (`satisfaction | correction | quality_metric | failure_signal`)
@@ -134,31 +134,31 @@
 - `evidence_ref?`
 - `recorded_at`
 
-规则：
+Rules:
 
-- `current_stage_view` 和 `loop_iteration_view` is workflow 投影字段，不得替代 runtime truth。
-- `FeedbackSignal` 可以由 execute 后置收集、user纠正、解释链或审批回写产生，但必须回链到 workflow。
-- `PlanGraphBundle` is plan 阶段到 execute 阶段的 authoritative 交接对象，不能用 `PlanDTO` 或临时 prompt 文本替代。
+- `current_stage_view` and `loop_iteration_view` are workflow projection fields and must not replace runtime truth.
+- `FeedbackSignal` can be collected by execute post-processing, user correction, explanation chain, or approval writeback, but must be traceable back to workflow.
+- `PlanGraphBundle` is the authoritative handover object from plan phase to execute phase and cannot be replaced by `PlanDTO` or temporary prompt text.
 
-## 7. StepOutput authoritative 字段
+## 7. StepOutput Authoritative Fields
 
-| 字段 | class型 | Description |
-|---|-------|--------|
-| `node_run_id` | `string` | 关联 NodeRun ID |
-| `harness_run_id` | `string` | 关联 HarnessRun ID |
-| `attempt_id` | `string` | 关联 NodeAttempt ID |
-| `role_id` | `string` | 执lines角色 |
-| `status` | `succeeded \| failed \| partial_success \| skipped` | 步骤结果 |
-| `data` | `json` | 主输出data |
-| `summary` | `string?` | 输出摘要 |
-| `artifacts` | `ArtifactRef[]?` | 附件references用 |
-| `token_cost` | `number` | token 成本 |
-| `duration_ms` | `number` | 耗时 |
-| `validation` | `json?` | schema 校验结果 |
-| `stage` | `observe \| assess \| plan \| execute \| feedback \| learn \| improve \| release?` | 产出所属阶段 |
-| `produced_at` | `timestamp` | 产出time |
+| Field | Type | Description |
+| --- | --- | --- |
+| `node_run_id` | `string` | Associated NodeRun ID |
+| `harness_run_id` | `string` | Associated HarnessRun ID |
+| `attempt_id` | `string` | Associated NodeAttempt ID |
+| `role_id` | `string` | Execution role |
+| `status` | `succeeded \| failed \| partial_success \| skipped` | Step result |
+| `data` | `json` | Main output data |
+| `summary` | `string?` | Output summary |
+| `artifacts` | `ArtifactRef[]?` | Attachment references |
+| `token_cost` | `number` | Token cost |
+| `duration_ms` | `number` | Duration |
+| `validation` | `json?` | Schema validation result |
+| `stage` | `observe \| assess \| plan \| execute \| feedback \| learn \| improve \| release?` | Output stage |
+| `produced_at` | `timestamp` | Production time |
 
-## 8. ArtifactRef authoritative 字段
+## 8. ArtifactRef Authoritative Fields
 
 - `artifact_id`
 - `kind`
@@ -168,75 +168,75 @@
 - `checksum?`
 - `created_at`
 
-规则：
+Rules:
 
-- 大文本、文件、图片和日志优先via artifact references用table达。
-- artifact 删除或迁移时，不得破坏completed任务的可审计性。
+- Large text, files, images, and logs are preferably expressed through artifact references.
+- When artifacts are deleted or migrated, the auditability of completed tasks must not be destroyed.
 
 ## 9. TaskDependency
 
-Phase 1a 允许最小relies ontable达：
+Phase 1a allows minimal dependency expression:
 
 - `upstream_task_id`
 - `downstream_task_id`
-- `dependency_type`，取值 `hard \| soft`
+- `dependency_type`, values `hard | soft`
 - `created_at`
 
-Phase 1a 中只要求能table达跨任务等待关系，不要求完整 DAG 查询能力。
+Phase 1a only requires expressing cross-task wait relationships, not complete DAG query capability.
 
-## 10. lines为约束
+## 10. Behavioral Constraints
 
-- 工作流输入绑定应在运lines时解析，不能靠字符串替换模拟。
-- 输出writesStatus前必须via过 schema 验证。
-- `partial_success` 必须显式record，不能assuccess。
-- 任务终态vs workflow 终态必须在恢复逻辑中保持一致。
-- workflow 的 `current_stage_view` 必须vs [runtime_state_machine_contract.md](./runtime_state_machine_contract.md) 的 OAPEFLIR stage lifecycle 投影一致。
-- `feedback_signals / learning_objects / improvement_candidates / release_records` 至少要能在 inspect vs audit 中被稳定追踪，不能只留在日志文本里。
+- Workflow input bindings should be resolved at runtime and cannot be simulated by string replacement.
+- Output must be validated against schema before writing status.
+- `partial_success` must be explicitly recorded and cannot be伪装成 success.
+- Task terminal state and workflow terminal state must remain consistent in recovery logic.
+- Workflow's `current_stage_view` must be consistent with OAPEFLIR stage lifecycle projection in [runtime_state_machine_contract.md](./runtime_state_machine_contract.md).
+- `feedback_signals / learning_objects / improvement_candidates / release_records` must be stably traceable in inspect and audit at minimum, and must not remain only in log text.
 
-## 11. failed语义
+## 11. Failure Semantics
 
-- 步骤failed先走有限重试。
-- 重试exceeds限后交由工作流自愈、升级或任务failedhandle。
-- `cancelled` vs `failed` 必须区分。
-- 非法输入导致的failed应标记为不可重试。
+- Step failure first goes through limited retry.
+- After retry limit exceeded, handover to workflow self-healing, escalation, or task failure handling.
+- `cancelled` and `failed` must be distinguished.
+- Failures caused by illegal input should be marked as non-retryable.
 
-### 11.1 步骤relies on级联failed
+### 11.1 Step Dependency Cascading Failure
 
-当 workflow 步骤存在relies on关系（via `input_binding` references用上游 `output_key`）时，上游步骤failed或跳过会触发级联handle：
+When workflow steps have dependency relationships (upstream `output_key` referenced via `input_binding`), upstream step failure or skip triggers cascading handling:
 
-| 上游步骤Status | relies onclass型 | 下游步骤handle |
-|---|-------|--------|
-| `failed` | `hard`（defaults to） | 下游步骤标记为 `skipped`，reason_code `upstream_dependency_failed` |
-| `failed` | `soft` | 下游步骤仍可执lines，缺失输入以 `null` 或defaults to值填充 |
-| `skipped` | `hard` | 下游步骤级联 `skipped` |
-| `skipped` | `soft` | 下游步骤仍可执lines |
+| Upstream Step Status | Dependency Type | Downstream Step Handling |
+| --- | --- | --- |
+| `failed` | `hard` (default) | Downstream step marked as `skipped`, reason_code `upstream_dependency_failed` |
+| `failed` | `soft` | Downstream step can still execute, missing input filled with `null` or default value |
+| `skipped` | `hard` | Downstream step cascaded `skipped` |
+| `skipped` | `soft` | Downstream step can still execute |
 
-规则：
+Rules:
 
-- 级联 `skipped` 必须accesses along DAG 传播，不得在中间步骤中断后让更下游步骤no限期停留在 `blocked`。
-- 级联判定应在步骤调度前完成，不得等到步骤实际开始执lines时才发现输入不可用。
-- 所有被级联跳过的步骤必须record `StepOutput`（status=`skipped`），保证 workflow 输出映射完整。
-- 若级联导致所有关键步骤被跳过，workflow 应进入 `failed`，不得进入 `completed`。
-- 步骤relies on级联vs `workflow_static_analysis_and_compensation_contract.md` §6 的静态分析规则保持一致。
+- Cascaded `skipped` must propagate along the DAG and must not leave downstream steps indefinitely in `blocked` after intermediate steps are interrupted.
+- Cascading determination should be completed before step scheduling, not discovered when step actually starts executing and input is unavailable.
+- All cascaded-skipped steps must record `StepOutput` (status=`skipped`) to ensure workflow output mapping completeness.
+- If cascading causes all critical steps to be skipped, workflow should enter `failed`, not `completed`.
+- Step dependency cascading remains consistent with static analysis rules in `workflow_static_analysis_and_compensation_contract.md` §6.
 
-## 12. 补充规则
+## 12. Supplementary Rules
 
-- 条件分支 DSL 至少supported：`equals`、`exists`、`not_exists`、`greater_than`、`all_of`、`any_of`。
-- 子任务聚合输出至少contains：`summary`、`successful_children`、`failed_children`、`artifacts`、`warnings`。
-- artifact 生命cycle应绑定 task retention policy，GC 不得先于审计窗口执lines。
+- Conditional branch DSL supports at minimum: `equals`, `exists`, `not_exists`, `greater_than`, `all_of`, `any_of`.
+- Subtask aggregated output includes at minimum: `summary`, `successful_children`, `failed_children`, `artifacts`, `warnings`.
+- Artifact lifecycle should be bound to task retention policy; GC must not execute before audit window.
 
-补充Description：
+Supplementary notes:
 
-- 统一执lines单元抽象以下钻文档 `executable_unit_contract.md` 为准。
-- 统一结果封装以下钻文档 `result_envelope_contract.md` 为准。
-- 闭环阶段vsStatus转换以下钻文档 `runtime_state_machine_contract.md` 为准。
+- Unified execution unit abstraction follows `executable_unit_contract.md`.
+- Unified result envelope follows `result_envelope_contract.md`.
+- Closed-loop stages and state transitions follow `runtime_state_machine_contract.md`.
 
 
 ## v4.3 Architecture Remediation
 
-以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中record的 contract 偏差。本文档历史段落如vs本节conflicts，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
+The following entries fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If historical paragraphs in this document conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
 
-- T-22: 本文原先把 `PlanDTO` 和 `WorkflowState.current_stage` 写成执lines主链的权威交接/权威Status，Root cause: 早期 workflow contract 试图同时承载编排 truth vs UI/认知视图，导致 plan handoff 和 stage view 混在一个对象里。修复：正文现把权威交接收敛到 `PlanGraphBundle`，并把 `WorkflowState.current_stage_view` 明确降为投影字段。
-- T-18: 原 `WorkflowStep` / `StepOutput` 以 `step_id` 为语义主键（legacy workflow step 遗留），但 v4.3 执lines truth 以 `node_run_id` 为准。修复：§6 明确 `node_run_id` is步骤唯一主键，关联到 `NodeRun` truth；§7 `StepOutput` 关联字段已收敛到 `node_run_id / harness_run_id / attempt_id`。旧 `step_id` only作为 legacy projection 追溯字段。
+- T-22: This document previously wrote `PlanDTO` and `WorkflowState.current_stage` as the authoritative handover/authoritative state of the execution main chain. Root cause: Early workflow contract tried to simultaneously carry orchestration truth and UI/cognitive view, causing plan handoff and stage view to be mixed in one object. Fix: The main text now converges authoritative handover to `PlanGraphBundle`, and explicitly demotes `WorkflowState.current_stage_view` to a projection field.
+- T-18: Original `WorkflowStep` / `StepOutput` used `step_id` as the semantic primary key (legacy workflow step remnant), but v4.3 execution truth uses `node_run_id` as the standard. Fix: §6 clarifies `node_run_id` as the unique primary key of the step, associated with `NodeRun` truth; §7 `StepOutput` associated fields have converged to `node_run_id / harness_run_id / attempt_id`. Old `step_id` only serves as legacy projection trace field.
 
-mandatory规则：Status迁移必须via `RuntimeStateMachine.transition(command)`；执lines计划必须uses `PlanGraphBundle`；执lines结果必须uses `NodeAttemptReceipt`；truth event 只能uses `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；budget必须uses `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。
+Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events must only use `platform.*`; OAPEFLIR can only be used as `oapeflir.view.*` / rationale projection; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.

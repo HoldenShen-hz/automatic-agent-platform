@@ -1,10 +1,10 @@
 # Proactive Agent And Autonomy Contract
 
-## 1. 范围
+## 1. Scope
 
-本 contract defines `§41-§42` 的主动式触发器、Recommendation管线和渐进式自主权。
+This contract defines the proactive triggers, suggestion pipeline, and progressive autonomy for `§41-§42`.
 
-## 2. Canonical 对象
+## 2. Canonical Objects
 
 - `TriggerDefinition`
 - `TriggerEvaluationInput`
@@ -15,7 +15,7 @@
 - `TrustScore`
 - `AutonomyTransitionRecord`
 
-## 3. `TriggerDefinition` 最小字段
+## 3. `TriggerDefinition` Minimum Fields
 
 - `trigger_id`
 - `domain_id`
@@ -27,12 +27,12 @@
 - `max_fire_rate`
 - `cooldown`
 
-规则：
+Rules:
 
-- 所有主动lines为必须先注册 trigger。
-- 未声明 trigger 的主动执lines必须被拒绝并审计。
+- All proactive behavior must first register a trigger.
+- Proactive execution without a declared trigger must be denied and audited.
 
-## 4. 运lines模式vs自主权边界
+## 4. Execution Mode and Autonomy Boundaries
 
 `RuntimeModeEnvelope.mode` canonical enum:
 
@@ -45,7 +45,7 @@
 - `manual_only`
 - `incident-mode`
 
-`AutonomyProfile` 最少字段：
+`AutonomyProfile` minimum fields:
 
 - `profile_id`
 - `domain_id`
@@ -57,15 +57,15 @@
 - `degrade_path`
 - `freeze_conditions`
 
-规则：
+Rules:
 
-- 自主权 contract 必须directlyreferences用 canonical `runtime_mode`，不得再以 `trusted_auto_execute` 等独立枚举替代。
-- `manual_only`、`read_only`、`no-write`、`no-external-call`、`no-rollout`、`incident-mode` 都is可触发的真实治理模式，不isDescription性标签。
-- 若产品或 UI 仍需展示 `suggest_only / supervised_execute` 一class叙事级别，只能作为 view 映射，不得作为运lines时 truth。
+- Autonomy contract must directly reference canonical `runtime_mode` and must not substitute with independent enums like `trusted_auto_execute`.
+- `manual_only`, `read_only`, `no-write`, `no-external-call`, `no-rollout`, `incident-mode` are all triggerable real governance modes, not descriptive labels.
+- If product or UI still needs to display narrative-level concepts like `suggest_only / supervised_execute`, they can only be view mappings, not runtime truth.
 
-## 5. 信任积分vs变更审计
+## 5. Trust Score and Change Audit
 
-`TrustScore` 最小字段：
+`TrustScore` minimum fields:
 
 - `subject_id`
 - `score`
@@ -73,7 +73,7 @@
 - `inputs`
 - `updated_at`
 
-`AutonomyTransitionRecord` 最小字段：
+`AutonomyTransitionRecord` minimum fields:
 
 - `subject_id`
 - `from_level`
@@ -83,30 +83,29 @@
 - `actor`
 - `occurred_at`
 
-## 6. 运lines规则
+## 6. Execution Rules
 
-- trigger 触发不代table可自动执lines，最终模式取决于 `AutonomyProfile.runtime_mode`。
-- 连续failed、风险升级或人工no决必须supported降级或冻结。
-- 主动Recommendation必须可追踪accepts率vs误报率。
+- Trigger firing does not mean automatic execution; the final mode depends on `AutonomyProfile.runtime_mode`.
+- Consecutive failures, risk escalation, or human否决 must support degradation or freezing.
+- Proactive suggestions must be traceable for acceptance rate and false positive rate.
 
-补充规则：
+Supplementary rules:
 
-- 高风险域defaults to不得进入 `full_auto`；至少应从 `supervised_auto` 或更保守模式起步。
-- 降级必须accesses along `degrade_path` 单调收紧，例如 `full_auto -> supervised_auto -> no-write -> manual_only -> incident-mode`。
-- 自主触发器若命中 `no-rollout` 或 `manual_only`，只能形成 `ProactiveSuggestion`，不得directly下发执lines。
+- High-risk domains default to not entering `full_auto`; should start from `supervised_auto` or more conservative modes.
+- Degradation must monotonically tighten along `degrade_path`, e.g., `full_auto -> supervised_auto -> no-write -> manual_only -> incident-mode`.
+- Proactive triggers hitting `no-rollout` or `manual_only` can only form `ProactiveSuggestion` and must not directly dispatch execution.
 
-## 7. 测试要求
+## 7. Test Requirements
 
-- unit：trigger evaluation、rate limit、cooldown、autonomy transitions
-- integration：trigger -> suggestion / execution
-- contract：高风险 trigger 在低 autonomy 等级下必须被阻断
-
+- unit: trigger evaluation, rate limit, cooldown, autonomy transitions
+- integration: trigger -> suggestion / execution
+- contract: high-risk triggers must be blocked at low autonomy levels
 
 
 ## v4.3 Architecture Remediation
 
-以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中record的 contract 偏差。本文档历史段落如vs本节conflicts，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
+The following entries fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If historical sections of this document conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
 
-- T-25: 本文原先uses `manual_only / suggest_only / supervised_execute / trusted_auto_execute` 四级自主权梯子，Root cause: 早期产品设计想table达user感知的自动化强弱，却没有vs控制平面的规范运lines模式做一一绑定。修复：正文现把自主权边界directly收敛到 `full_auto / supervised_auto / read_only / no-write / no-external-call / no-rollout / manual_only / incident-mode` 八种 canonical runtime mode。
+- T-25: This document originally used `manual_only / suggest_only / supervised_execute / trusted_auto_execute` four-level autonomy ladder; root cause was early product design wanted to express user-perceived automation strength without one-to-one binding with the control plane's canonical execution modes. Fix: The main text now directly converges the autonomy boundary to eight canonical runtime modes: `full_auto / supervised_auto / read_only / no-write / no-external-call / no-rollout / manual_only / incident-mode`.
 
-mandatory规则：Status迁移必须via `RuntimeStateMachine.transition(command)`；执lines计划必须uses `PlanGraphBundle`；执lines结果必须uses `NodeAttemptReceipt`；truth event 只能uses `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；budget必须uses `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。
+Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events must only use `platform.*`; OAPEFLIR can only be used as `oapeflir.view.*` / rationale projection; budget must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.

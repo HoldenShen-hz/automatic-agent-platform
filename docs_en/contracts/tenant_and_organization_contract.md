@@ -2,49 +2,49 @@
 
 ---
 
-## OAPEFLIR 关联
+## OAPEFLIR Association
 
-本 contract 参vs OAPEFLIR 八阶段循环中的以下阶段：
+This contract participates in the following stages of the OAPEFLIR eight-stage cycle:
 
-- **Observe**：信号采集vs聚合
-- **Assess**：执lines前评估vs风险判断
-- **Plan**：任务分解vs DAG 构建
-- **Execute**：步骤执linesvs容错
-- **Feedback**：信号收集vs预handle
-- **Learn**：模式检测vs知识提取
-- **Improve**：改进候选评估vs rollout
-- **Release**：受控发布vs回滚
+- **Observe**: Signal collection and aggregation
+- **Assess**: Pre-execution assessment and risk judgment
+- **Plan**: Task decomposition and DAG construction
+- **Execute**: Step execution and fault tolerance
+- **Feedback**: Signal collection and preprocessing
+- **Learn**: Pattern detection and knowledge extraction
+- **Improve**: Improvement candidate evaluation and rollout
+- **Release**: Controlled release and rollback
 
 ---
 
-## 1. 范围
+## 1. Scope
 
-本 contract defines最终平台的user、workspace、organization、tenant vs enterprise 私有化边界。
+This contract defines the user, workspace, organization, tenant, and enterprise privatization boundaries of the final platform.
 
-它扩展 `billing_and_tenant_contract.md`，used for回答“谁belongs to谁、哪些datavspermission需要隔离、哪些资源在什么层被拥有”。
+It extends `billing_and_tenant_contract.md` to answer "who belongs to whom, which data and permissions need isolation, and which resources are owned at what layer."
 
-## 2. 目标
+## 2. Objectives
 
-- 明确 `user / workspace / organization / tenant` 的层级关系。
-- 明确storage、身份、策略、artifact 和审计的 tenant-aware 边界。
-- 为 enterprise 私有化、组织级运营和账务归集打基础。
+- Clarify the hierarchy of `user / workspace / organization / tenant`.
+- Clarify tenant-aware boundaries for storage, identity, policy, artifacts, and audit.
+- Lay the foundation for enterprise privatization, organization-level operations, and billing aggregation.
 
-## 3. 非目标
+## 3. Non-Objectives
 
-- 本 contract 不directlydefines payment provider 或发票流程。
-- 本 contract 不替代 auth provider 的技术implementation details。
-- 本 contract 不要求 Phase 1a 就实现完整 enterprise 组织树。
+- This contract does not directly define payment providers or invoice processes.
+- This contract does not replace auth provider technical implementation details.
+- This contract does not require Phase 1a to implement a complete enterprise organization tree.
 
-## 4. 层级模型
+## 4. Hierarchy Model
 
 `UserAccount -> Workspace -> Organization -> Tenant`
 
-解释：
+Explanation:
 
-- `UserAccount` is身份主体。
-- `Workspace` isdefaults to的产品uses边界和协作边界。
-- `Organization` is多 workspace 的via营vs治理归属。
-- `Tenant` is最终storage、策略、部署和审计的隔离边界。
+- `UserAccount` is the identity principal.
+- `Workspace` is the default product usage boundary and collaboration boundary.
+- `Organization` is the management and governance affiliation of multiple workspaces.
+- `Tenant` is the isolation boundary for final storage, policy, deployment, and audit.
 
 ```mermaid
 flowchart TD
@@ -57,13 +57,13 @@ flowchart TD
     D --> H["Deployment Binding"]
 ```
 
-## 5. 分阶段落地策略
+## 5. Phased Implementation Strategy
 
-- Phase 3 可先enabled `UserAccount + Workspace`。
-- Phase 4 再补 `Organization + Tenant` 的正式治理模型。
-- Enterprise 私有化必须以 `Tenant` 为最终隔离单位。
+- Phase 3 can first enable `UserAccount + Workspace`.
+- Phase 4 will add the formal governance model for `Organization + Tenant`.
+- Enterprise privatization must use `Tenant` as the final isolation unit.
 
-## 6. 关键对象
+## 6. Key Objects
 
 - `UserAccount`
 - `Workspace`
@@ -74,19 +74,19 @@ flowchart TD
 - `TenantIsolationMode`
 - `DeploymentBinding`
 
-## 7. `Workspace` 最小字段
+## 7. `Workspace` Minimum Fields
 
-| 字段 | class型 | Description |
-|---|-------|--------|
+| Field | Type | Description |
+| --- | --- | --- |
 | `workspace_id` | `string` | workspace ID |
 | `owner_id` | `string` | workspace owner |
-| `display_name` | `string` | 展示名 |
-| `plan_id` | `string` | 当前套餐 |
-| `default_policy_set` | `string` | defaults to治理集 |
-| `organization_id?` | `string` | 所属组织 |
-| `created_at` | `timestamp` | 创建time |
+| `display_name` | `string` | display name |
+| `plan_id` | `string` | current plan |
+| `default_policy_set` | `string` | default governance set |
+| `organization_id?` | `string` | parent organization |
+| `created_at` | `timestamp` | creation time |
 
-## 8. `Organization` 最小字段
+## 8. `Organization` Minimum Fields
 
 - `organization_id`
 - `display_name`
@@ -94,7 +94,7 @@ flowchart TD
 - `default_tenant_id`
 - `created_at`
 
-## 9. `Tenant` 最小字段
+## 9. `Tenant` Minimum Fields
 
 - `tenant_id`
 - `organization_id`
@@ -107,45 +107,45 @@ flowchart TD
 
 ## 10. `TenantIsolationMode`
 
-Recommendation枚举：
+Recommended enum:
 
 - `shared_logical`
 - `shared_hard_scoped`
 - `dedicated_runtime`
 - `dedicated_environment`
 
-Description：
+Description:
 
-- `shared_logical`: 适合早期 Pro / 小团队。
-- `shared_hard_scoped`: 共享基础设施但在datavspermission层硬隔离。
-- `dedicated_runtime`: 运lines资源独立。
-- `dedicated_environment`: 私有化或企业专属环境。
+- `shared_logical`: Suitable for early Pro / small teams.
+- `shared_hard_scoped`: Shared infrastructure but hard-isolated at data and permission layers.
+- `dedicated_runtime`: Execution resources are independent.
+- `dedicated_environment`: Privatized or enterprise-exclusive environment.
 
-## 11. Membership 规则
+## 11. Membership Rules
 
-`WorkspaceMembership` 至少includes：
+`WorkspaceMembership` must include at least:
 
 - `workspace_id`
 - `user_id`
 - `role`
 - `joined_at`
 
-`OrganizationMembership` 至少includes：
+`OrganizationMembership` must include at least:
 
 - `organization_id`
 - `user_id`
 - `role`
 - `joined_at`
 
-规则：
+Rules:
 
-- user可belongs to多个 workspace。
-- workspace 可belongs to一个 organization。
-- organization 负责集中治理、账务和 tenant 分配。
+- A user can belong to multiple workspaces.
+- A workspace can belong to one organization.
+- An organization is responsible for centralized governance, billing, and tenant allocation.
 
-## 12. 隔离边界
+## 12. Isolation Boundaries
 
-必须显式按 tenant 隔离的域includes：
+Domains that must be explicitly isolated by tenant include:
 
 - transaction data
 - artifact/object
@@ -154,15 +154,15 @@ Description：
 - audit / observability
 - billing / entitlement
 
-规则：
+Rules:
 
-- Pro vs Enterprise 的差异不能只靠 UI 或configure约定table达。
-- 跨 tenant 的references用、搜索和 artifact 访问必须defaults to拒绝。
-- tenant scope 必须能贯穿 execution、artifact、analytics 和审计链。
-- tenant scope 必须能贯穿 cache key、debug dump、inspect API 和人工接管动作。
-- tenant / organization 迁移不得静默改写历史归属；必须保留映射变更审计vs可追溯 lineage。
+- The difference between Pro and Enterprise cannot be expressed solely through UI or configuration conventions.
+- Cross-tenant references, searches, and artifact access must default to denial.
+- Tenant scope must run through execution, artifact, analytics, and audit chains.
+- Tenant scope must run through cache keys, debug dumps, inspect APIs, and manual takeover actions.
+- Tenant / organization migration must not silently rewrite historical attribution; mapping change audit and traceable lineage must be preserved.
 
-### 12.1 隔离边界图
+### 12.1 Isolation Boundary Diagram
 
 ```mermaid
 flowchart LR
@@ -183,7 +183,7 @@ flowchart LR
     A3 -. "default deny" .-> B2
 ```
 
-### 12.2 组织vs部署绑定图
+### 12.2 Organization and Deployment Binding Diagram
 
 ```mermaid
 flowchart TD
@@ -193,9 +193,9 @@ flowchart TD
     B --> E["Region / Network Boundary"]
 ```
 
-## 13. Deployment 绑定
+## 13. Deployment Binding
 
-`DeploymentBinding` 最小字段：
+`DeploymentBinding` minimum fields:
 
 - `binding_id`
 - `tenant_id`
@@ -205,49 +205,49 @@ flowchart TD
 - `network_boundary`
 - `created_at`
 
-用途：
+Purpose:
 
-- Description某 tenant 对应哪套运lines环境。
-- 支撑 enterprise 私有化、region 限制和合规要求。
+- Specifies which runtime environment a tenant corresponds to.
+- Supports enterprise privatization, region restrictions, and compliance requirements.
 
-## 14. Cross-Tenant 规则
+## 14. Cross-Tenant Rules
 
-defaults to规则：
+Default rules:
 
-- 跨 tenant data访问defaults to拒绝。
-- 跨 tenant 搜索defaults to拒绝。
-- 跨 tenant artifact 分享必须走显式authorization或脱敏export。
-- 跨 tenant replay / analytics 聚合必须is治理允许的特例。
-- 任何跨 tenant 特例都必须显式record policy、审批或治理依据，defaults to不得relies oncode内置豁免。
+- Cross-tenant data access defaults to denial.
+- Cross-tenant search defaults to denial.
+- Cross-tenant artifact sharing must go through explicit authorization or sanitized export.
+- Cross-tenant replay / analytics aggregation must be an allowed exception under governance.
+- Any cross-tenant exception must explicitly record policy, approval, or governance basis, and must not rely on code-built-in exemptions by default.
 
-## 15. vs计量和治理的关系
+## 15. Relationship with Metering and Governance
 
-- `monetization_metering_plane_contract.md` 负责 usage / entitlement / ledger。
-- tenant / organization contract 负责这些账务对象的归属边界。
-- `governance_control_plane_contract.md` 负责跨 tenant manage动作的治理入口。
+- `monetization_metering_plane_contract.md` is responsible for usage / entitlement / ledger.
+- The tenant / organization contract is responsible for the attribution boundaries of these billing objects.
+- `governance_control_plane_contract.md` is responsible for the governance entry point for cross-tenant management actions.
 
 ## 16. Failure Mode
 
-需要重点防范：
+Key protections needed:
 
-- identity scope 正确，但 artifact scope 泄漏。
-- workspace 迁移 organization 后遗留旧 tenant references用。
-- enterprise 私有化环境vs tenant 映射inconsistent。
-- 跨 tenant analytics 聚合反向暴露敏感信息。
+- Identity scope is correct, but artifact scope leaks.
+- Old tenant references remain after workspace migration to organization.
+- Enterprise privatization environment has inconsistent tenant mapping.
+- Cross-tenant analytics aggregation inversely exposes sensitive information.
 
-handleprinciple：
+Handling principles:
 
-- 隔离错误优先 fail-closed。
-- tenant boundary 相关变更必须带审计vs迁移计划。
-- 若 tenant / deployment binding inconsistent，应优先阻断执lines，而不is继续在错误隔离面上运lines。
+- Isolation errors prefer fail-closed.
+- Tenant boundary-related changes must include audit and migration plans.
+- If tenant / deployment binding is inconsistent, execution should be blocked first, rather than continuing to run on the wrong isolation plane.
 
-## 17. 分阶段references入
+## 17. Phased Introduction
 
-- Phase 3: workspace / Pro 边界vs基础成员关系。
-- Phase 4: organization / tenant / private deployment / enterprise isolation。
+- Phase 3: workspace / Pro boundary and basic membership.
+- Phase 4: organization / tenant / private deployment / enterprise isolation.
 
-## 18. 收口Conclusion
+## 18. Conclusion
 
-Tenant and organization plane 的核心不is“多一个 tenant_id 字段”，而is把产品层协作、平台层隔离、企业层部署绑定到同一套层级模型中。
+The core of the tenant and organization plane is not "one more tenant_id field", but binding product-layer collaboration, platform-layer isolation, and enterprise-layer deployment into the same hierarchical model.
 
-后续所有 enterprise、billing、policy 和 deployment 设计，都应先回到这份 contract 的层级defines上。
+All subsequent enterprise, billing, policy, and deployment designs should first return to this contract's hierarchy definition.

@@ -2,58 +2,58 @@
 
 ---
 
-## OAPEFLIR 关联
+## OAPEFLIR Association
 
-本 contract 参vs OAPEFLIR 八阶段循环中的以下阶段：
+This contract participates in the following stages of the OAPEFLIR eight-stage cycle:
 
-- **Observe**：信号采集vs聚合
-- **Assess**：执lines前评估vs风险判断
-- **Plan**：任务分解vs DAG 构建
-- **Execute**：步骤执linesvs容错
-- **Feedback**：信号收集vs预handle
-- **Learn**：模式检测vs知识提取
-- **Improve**：改进候选评估vs rollout
-- **Release**：受控发布vs回滚
+- **Observe**: Signal collection and aggregation
+- **Assess**: Pre-execution assessment and risk judgment
+- **Plan**: Task decomposition and DAG construction
+- **Execute**: Step execution and fault tolerance
+- **Feedback**: Signal collection and preprocessing
+- **Learn**: Pattern detection and knowledge extraction
+- **Improve**: Improvement candidate evaluation and rollout
+- **Release**: Controlled release and rollback
 
 ---
 
-## 1. 范围
+## 1. Scope
 
-本 contract defines `edit / patch / replace` class工具在定位旧内容并应用替换时的多级匹配链。
+This contract defines the multi-level matching chain for `edit / patch / replace` tools when locating old content and applying replacements.
 
-相关文档：
+Related documents:
 
 - `tool_and_provider_execution_contract.md`
 - `file_lock_contract.md`
 - `tool_output_sanitization_contract.md`
 - `idempotency_and_recovery_matrix_contract.md`
 
-## 2. 目标
+## 2. Goals
 
-多级匹配链要同时解决两classIssue：
+Multi-level matching chain must simultaneously solve two types of problems:
 
-- LLM 生成的 `old_string` vs真实文件存在轻微空白、缩进、换lines偏差。
-- 为了提高success率，不能directly把模糊替换放大成静默误改风险。
+- LLM-generated `old_string` has slight whitespace, indentation, or newline deviations from the actual file.
+- To improve success rate, fuzzy replacement cannot be amplified into silent mis modification risk.
 
-## 3. 核心principle
+## 3. Core Principles
 
-- 匹配链必须按固定顺序尝试，首iterationssuccess即停。
-- 越模糊的匹配等级，security约束必须越严格。
-- 任一非精确替换都必须留下 warning 和审计record。
-- no法唯一定位时必须failed，而不is“猜一个差不多的地方”。
+- Matching chain must try in fixed order, stopping at first success.
+- The more fuzzy the matching level, the stricter the security constraints must be.
+- Any non-exact replacement must leave a warning and audit record.
+- When unable to locate uniquely, must fail rather than "guess a similar location".
 
 ## 4. `EditReplacementAttempt`
 
-| 字段 | class型 | Description |
-|---|-------|--------|
-| `attempt_level` | `exact \| whitespace_normalized \| indentation_normalized \| fuzzy \| context_anchored` | 匹配等级 |
-| `matched` | `boolean` | isnosuccess定位 |
-| `candidate_count` | `number` | 候选count |
-| `similarity_score` | `number?` | 模糊匹配得分 |
-| `warning_codes` | `string[]` | 风险提示 |
-| `applied_range` | `string?` | 变更位置 |
+| Field | Type | Description |
+| --- | --- | --- |
+| `attempt_level` | `exact \| whitespace_normalized \| indentation_normalized \| fuzzy \| context_anchored` | Matching level |
+| `matched` | `boolean` | Whether successfully located |
+| `candidate_count` | `number` | Candidate count |
+| `similarity_score` | `number?` | Fuzzy match score |
+| `warning_codes` | `string[]` | Risk warnings |
+| `applied_range` | `string?` | Change location |
 
-## 5. 多级匹配链
+## 5. Multi-Level Matching Chain
 
 ```mermaid
 flowchart TD
@@ -72,85 +72,85 @@ flowchart TD
 
 ### 5.1 Level 1 `exact`
 
-- 精确字符串匹配
-- 不做任何归一化
-- 若唯一命中则directly应用
+- Exact string match
+- No normalization performed
+- If uniquely matched, apply directly
 
 ### 5.2 Level 2 `whitespace_normalized`
 
-- 归一化连续空白
-- 去除尾随空白差异
-- 不改变语义字符顺序
+- Normalize consecutive whitespace
+- Remove trailing whitespace differences
+- Do not change semantic character order
 
 ### 5.3 Level 3 `indentation_normalized`
 
-- 剥离公共缩进后再匹配
-- 适used forcode块整体缩进变化
-- 应保留替换后目标文件的当前缩进风格
+- Match after stripping common indentation
+- Applicable for entire code block indentation changes
+- Should preserve current indentation style of target file after replacement
 
 ### 5.4 Level 4 `fuzzy`
 
-- only在前 3 级全部failed后尝试
-- 需要 `similarity_score >= 0.85`
-- 必须只有唯一候选
-- success时必须record warning：`fuzzy_edit_applied`
+- Only attempted after levels 1-3 all fail
+- Requires `similarity_score >= 0.85`
+- Must have only one unique candidate
+- On success, must record warning: `fuzzy_edit_applied`
 
 ### 5.5 Level 5 `context_anchored`
 
-- 用前后锚点先缩小候选区域，再做模糊匹配
-- only允许在唯一锚点窗口中生效
-- success时必须record更强 warning：`anchored_fuzzy_edit_applied`
+- Use before/after anchors to narrow candidate region first, then do fuzzy match
+- Only effective within unique anchor window
+- On success, must record stronger warning: `anchored_fuzzy_edit_applied`
 
-## 6. 当前明确不做
+## 6. Currently Explicitly Not Done
 
-Phase 1a / 1b 不做：
+Phase 1a / 1b does not do:
 
-- AST 感知替换
-- tree-sitter 级结构化节点定位
-- 跨文件语义重写
+- AST-aware replacement
+- Tree-sitter-level structured node location
+- Cross-file semantic rewriting
 
-这些能力若要references入，应进入 Phase 2 并单独补 ADR 或 contract。
+If these capabilities need to be introduced, they should go into Phase 2 with separate ADR or contract.
 
-## 7. security约束
+## 7. Security Constraints
 
-- 同一request若出现多个候选，必须failed并返回conflicts信息。
-- 任何 fuzzy success结果都应返回 warning，供上层 message 或日志提示人工复核。
-- 不允许在 binary / 非文本文件上enabled多级匹配链。
-- 应用替换前必须先持有 `write` 锁。
+- If multiple candidates appear for the same request, must fail and return conflict information.
+- Any fuzzy success result should return warning for upper layer message or log to prompt human review.
+- Multi-level matching chain not allowed on binary / non-text files.
+- Must hold `write` lock before applying replacement.
 
-## 8. 错误语义
+## 8. Error Semantics
 
-Recommendation稳定错误码：
+Recommended stable error codes:
 
 - `tool.edit_target_not_found`
 - `tool.edit_multiple_candidates`
 - `tool.edit_similarity_too_low`
 - `tool.execution_failed`
 
-规则：
+Rules:
 
-- 找不到目标vs“找到多个目标”必须分开报错。
-- similarity 不达threshold应显式failed，不得偷偷降级应用。
+- Target not found and "multiple targets found" must be reported as separate errors.
+- Similarity below threshold should explicitly fail, must not silently downgrade and apply.
 
-## 9. 幂等vs恢复
+## 9. Idempotency and Recovery
 
-- 若替换后文件内容已等于期望结果，可视为幂等success。
-- 恢复重试前应先重新读取目标文件，而不isdirectly复用旧候选范围。
-- fuzzy / anchored 级别的重试不得在文件已变化后继续accesses along用旧得分。
+- If file content after replacement already equals expected result, can be considered idempotent success.
+- Before recovery retry, should re-read target file rather than directly reuse old candidate range.
+- Fuzzy / anchored level retry must not continue using old scores after file has changed.
 
-## 10. Phase 边界
+## 10. Phase Boundaries
 
-Phase 1a 做：
+Phase 1a does:
 
 - `exact`
 - `whitespace_normalized`
 - `indentation_normalized`
 
-Phase 1b 才做：
+Phase 1b does:
 
 - `fuzzy`
 - `context_anchored`
 
-## 11. 收口Conclusion
+## 11. Conclusion
 
-Edit success率的提升不能靠“更敢改”，而要靠一条收紧顺序、明示风险、failed可解释的匹配链。
+Improvement in Edit success rate cannot rely on "being bolder", but on a matching chain that tightens order, shows risk explicitly, and fails explainably.

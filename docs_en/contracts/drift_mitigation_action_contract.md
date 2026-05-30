@@ -1,45 +1,45 @@
 # DriftMitigationAction Contract
 
-## 1. 范围
+## 1. Scope
 
-本 contract defines `§63` 的漂移缓解措施和执lines规范。
+This contract defines drift mitigation measures and execution specifications for `§63`.
 
-## 2. Canonical 对象
+## 2. Canonical Objects
 
 - `DriftMitigationAction`
 - `MitigationResult`
 - `MitigationPolicy`
 
-## 3. `DriftMitigationAction` 最小字段
+## 3. `DriftMitigationAction` Minimum Fields
 
 - `action_id`
-- `alert_id` — 关联的 DriftAlert
+- `alert_id` — associated DriftAlert
 - `action_type` — observe_only | throttle | downgrade | rollback | freeze
-- `target_subject_id` — 施动对象
+- `target_subject_id` — acting target
 - `target_subject_type` — agent | workflow | task
-- `parameters` — lines动参数
+- `parameters` — action parameters
 - `status` — proposed | approved | executing | completed | failed
-- `executed_by` — 执lines者
-- `executed_at` — 执linestime
+- `executed_by` — executor
+- `executed_at` — execution timestamp
 
-## 4. `MitigationPolicy` 规则
+## 4. `MitigationPolicy` Rules
 
-| 漂移class型 | defaults toresponse |
+| Drift Type | Default Response |
 |----------|----------|
 | input_drift | observe_only (24h) |
 | output_drift | throttle |
 | behavioral_drift | downgrade |
 | quality_drift | rollback |
 
-## 5. 规则
+## 5. Rules
 
-- MitigationAction 必须关联 DriftAlert
-- action_type 必须符合 MitigationPolicy
-- 执linesStatus必须追踪：proposed -> approved -> executing -> completed/failed
-- rollback 操作必须保留回滚点
+- MitigationAction must be associated with DriftAlert
+- action_type must comply with MitigationPolicy
+- Execution status must be tracked: proposed -> approved -> executing -> completed/failed
+- Rollback operations must preserve rollback points
 
-## 6. 测试要求
+## 6. Test Requirements
 
-- unit：各class缓解 action 执lines
-- integration：drift detection -> mitigation -> 效果验证
-- contract：action Status机完整性校验
+- unit: execution of various mitigation actions
+- integration: drift detection -> mitigation -> effect validation
+- contract: action state machine integrity validation

@@ -1,16 +1,16 @@
 # Storage Schema Contract
 
-## 1. 范围
+## 1. Scope
 
-本 contract defines Phase 1a 平台必须持久化的核心实体、最小列集合、关键索references、外键策略和恢复语义。
+This contract defines the core entities that Phase 1a platform must persist, minimum column sets, key indexes, foreign key strategies, and recovery semantics.
 
 Companion boundary:
 
-- table名、最小列、索referencesvs inventory 以本文为准
-- repository lines为vs migration 路径以 `runtime_repository_and_migration_contract.md` 为准
-- 生产 PG/Redis/Object Store 拓扑以 `production_storage_and_queue_contract.md` 为准
+- Table names, minimum columns, indexes and inventory follow this document
+- Repository behavior and migration paths follow `runtime_repository_and_migration_contract.md`
+- Production PG/Redis/Object Store topology follows `production_storage_and_queue_contract.md`
 
-本版重点补齐 v4.3 runtime truth 对应的storage落点，includes：
+This version focuses on supplementing storage landing points corresponding to v4.3 runtime truth, including:
 
 - `harness_runs`
 - `plan_graph_bundles`
@@ -20,24 +20,24 @@ Companion boundary:
 - `budget_ledgers`
 - `budget_reservations`
 
-同时defines OAPEFLIR 闭环在storage层的分阶段边界：
+Also defines OAPEFLIR closed-loop phased boundaries at the storage layer:
 
-- phase1-4 authoritative：当前必须稳定存在并能支撑恢复、审批、事件审计、artifact / memory 最小落盘的核心table。
-- transition / target-state extension：反馈、学习、改进、发布、知识vs高阶记忆治理所需的扩展table族vs列语义；允许按阶段演进，不得误写为当前全部已落库。
+- phase1-4 authoritative: Core tables that must currently exist stably and can support recovery, approval, event audit, and artifact / memory minimum landing.
+- transition / target-state extension: Extension table families and column semantics required for feedback, learning, improvement, release, knowledge and high-order memory governance; allowed to evolve by phase, must not be mistakenly written as all currently landed.
 
-## 2. storageprinciple
+## 2. Storage Principles
 
-- Phase 1a defaults touses SQLite 作为单机 authoritative store。
-- table结构优先服务任务恢复、审批追踪、事件审计和 runtime run 重建。
-- 大体积data优先落 artifact，再在 DB 中保留索references和references用。
-- Phase 1a 明确enabled `PRAGMA foreign_keys = ON`。
-- Phase 1a defaults toenabled `WAL`、`busy_timeout` 和显式事务边界控制。
-- 高频 heartbeat 和展示class流量不要求逐条重型持久化，应以采样快照或最新Status为主。
-- migration、备份、恢复、`integrity_check` vs损坏检测belongs to Stable Core 的data库托底要求。
+- Phase 1a defaults to using SQLite as single-machine authoritative store.
+- Table structure prioritizes task recovery, approval tracking, event audit, and runtime run reconstruction.
+- Large-volume data prioritizes landing to artifact, then retaining indexes and references in DB.
+- Phase 1a explicitly enables `PRAGMA foreign_keys = ON`.
+- Phase 1a defaults to enabling `WAL`, `busy_timeout`, and explicit transaction boundary control.
+- High-frequency heartbeat and display-class traffic do not require heavy persistence row-by-row; should prioritize sampled snapshots or latest status.
+- Migration, backup, recovery, `integrity_check` and corruption detection belong to Stable Core database backing requirements.
 
-## 3. 核心tablevs扩展table
+## 3. Core Tables vs Extension Tables
 
-authoritative schema 至少contains以下核心table：
+Authoritative schema includes at minimum the following core tables:
 
 - `harness_runs`
 - `plan_graph_bundles`
@@ -59,39 +59,39 @@ authoritative schema 至少contains以下核心table：
 - `memories`
 - `tool_result_files`
 
-Description：
+Description:
 
-- 上tabledefines的is v4.3 canonical truth + projection 最小核心table集合，不is实现可拥有的全部table。
-- `tasks`、`workflow_state`、`workflow_step_outputs`、`sessions`、`messages` 保留为 projection / interaction table，不再单独承载 runtime truth。
-- 当前实现还允许并实际contains多class扩展table，例如：
-  - 组织vs租户域：`organizations`、`workspaces`、`tenants`、`deployment_bindings`
-  - 供应链vs治理域：`skill_registry`、`skill_execution_policies`、`extension_packages`、`marketplace_*`
-  - securityvskey域：`secret_registry`、`secret_leases`、`secret_usage_audits`、`secret_rotation_events`
-  - 计费vsdata域：`billing_accounts`、`usage_events`、`quota_counters`、`analytics_facts`、`archive_bundles`
-  - 进化vs Observe-compatible 域：`evolution_*`、`perception_sources`、`intel_items`、`intel_briefs`（保留 legacy table名，语义已按 Observe 收口）
-- 因此 contract 对核心tableuses“最小集合”约束；扩展table可在不破坏核心约束的前提下继续增加。
+- The above defines the v4.3 canonical truth + projection minimum core table set, not all tables that an implementation may have.
+- `tasks`, `workflow_state`, `workflow_step_outputs`, `sessions`, `messages` are retained as projection / interaction tables and no longer individually carry runtime truth.
+- Current implementation also allows and actually contains multiple types of extension tables, for example:
+  - Organization and tenant domain: `organizations`, `workspaces`, `tenants`, `deployment_bindings`
+  - Supply chain and governance domain: `skill_registry`, `skill_execution_policies`, `extension_packages`, `marketplace_*`
+  - Security and key domain: `secret_registry`, `secret_leases`, `secret_usage_audits`, `secret_rotation_events`
+  - Billing and data domain: `billing_accounts`, `usage_events`, `quota_counters`, `analytics_facts`, `archive_bundles`
+  - Evolution and Observe-compatible domain: `evolution_*`, `perception_sources`, `intel_items`, `intel_briefs` (legacy table names retained, semantics already closed per Observe)
+- Therefore, the contract uses "minimum set" constraint on core tables; extension tables can continue to increase without breaking core constraints.
 
 ### 3B. Authoritative Schema Inventory
 
-当前仓内不再用Architecture文档中的静态“总table数”directly做验收口径，而is以 authoritative inventory 为准：
+The current repository no longer uses the static "total table count" in architecture documents as acceptance criteria, but follows the authoritative inventory:
 
-- authoritative service：`src/platform/five-plane-state-evidence/truth/schema-inventory-service.ts`
-- authoritative API surface：`GET /v1/admin/inventories/schema`
-- 当前 inventory 对账口径：`86` 张唯一逻辑table
-- 分class汇总：
+- Authoritative service: `src/platform/five-plane-state-evidence/truth/schema-inventory-service.ts`
+- Authoritative API surface: `GET /v1/admin/inventories/schema`
+- Current inventory reconciliation count: `86` unique logical tables
+- Category summary:
   - `core_truth`: `55`
   - `runtime_extension`: `18`
   - `governance_extension`: `9`
   - `reliability_extension`: `4`
 
-约束：
+Constraints:
 
-- 后续 schema 演进必须synchronous更新 inventory service vs对应测试，不再只在 review 中手工维护数字。
-- review / coverage-matrix / contract 中出现的tablecount，应以 inventory service export的数字为 authoritative source。
+- Subsequent schema evolution must synchronously update inventory service and corresponding tests, no longer just manually maintaining numbers in review.
+- Table counts appearing in review / coverage-matrix / contracts should use the number exported by inventory service as authoritative source.
 
-### 3A. OAPEFLIR 扩展table族
+### 3A. OAPEFLIR Extension Table Families
 
-以下table族belongs to `§K` 对 storage schema 的 canonical 扩展方向：
+The following table families belong to storage schema's canonical extension direction per `§K`:
 
 - `feedback_signals`
 - `learning_objects`
@@ -101,74 +101,74 @@ Description：
 - `knowledge_entries`
 - `knowledge_semantic_vectors`
 
-约束：
+Constraints:
 
-- 这些table族可以以 `Current -> Transition -> Target` 方式落地，不要求当前仓库一iterations性全部变成 authoritative 运linesrelies on。
-- 但 contract、migration 规划、diagnostics 和 lineage 文档必须为这些对象预留统一命名vs最小字段语义。
+- These table families can land in `Current -> Transition -> Target` manner and are not required to all become authoritative runtime dependencies of the current repository at once.
+- But contracts, migration planning, diagnostics, and lineage documents must reserve unified naming and minimum field semantics for these objects.
 
-Recommendation最小字段：
+Recommended minimum fields:
 
-| table | 最小字段 |
+| Table | Minimum Fields |
 | --- | --- |
-| `feedback_signals` | `id`、`task_id?`、`workflow_id?`、`kind`、`sentiment?`、`source`、`evidence_ref?`、`created_at` |
-| `learning_objects` | `id`、`source_refs_json`、`promotion_status`、`quality_score?`、`created_at` |
-| `improvement_candidates` | `id`、`change_scope`、`strategy_version?`、`status`、`created_at` |
-| `strategy_versions` | `id`、`version`、`diff_ref?`、`status`、`created_at` |
-| `rollout_records` | `id`、`strategy_version`、`stage`、`status`、`metrics_json?`、`created_at` |
-| `knowledge_entries` | `id`、`namespace`、`trust_tier`、`freshness_state`、`source_ref?`、`created_at` |
-| `knowledge_semantic_vectors` | `knowledge_ref`、`chunk_id`、`document_id`、`namespace`、`embedding_id?`、`embedding_model`、`embedding`、`updated_at` |
+| `feedback_signals` | `id`, `task_id?`, `workflow_id?`, `kind`, `sentiment?`, `source`, `evidence_ref?`, `created_at` |
+| `learning_objects` | `id`, `source_refs_json`, `promotion_status`, `quality_score?`, `created_at` |
+| `improvement_candidates` | `id`, `change_scope`, `strategy_version?`, `status`, `created_at` |
+| `strategy_versions` | `id`, `version`, `diff_ref?`, `status`, `created_at` |
+| `rollout_records` | `id`, `strategy_version`, `stage`, `status`, `metrics_json?`, `created_at` |
+| `knowledge_entries` | `id`, `namespace`, `trust_tier`, `freshness_state`, `source_ref?`, `created_at` |
+| `knowledge_semantic_vectors` | `knowledge_ref`, `chunk_id`, `document_id`, `namespace`, `embedding_id?`, `embedding_model`, `embedding`, `updated_at` |
 
-## 4. `tasks` table最小列
+## 4. `tasks` Table Minimum Columns
 
-| 列名 | class型 | Description |
-|---|-------|--------|
-| `id` | `TEXT PRIMARY KEY` | 任务 ID |
-| `parent_id` | `TEXT NULL` | 父任务 |
-| `root_id` | `TEXT NOT NULL` | 根任务 |
-| `division_id` | `TEXT NULL` | 目标事业部 |
-| `title` | `TEXT NOT NULL` | 标题 |
-| `status` | `TEXT NOT NULL` | 任务Status枚举 |
-| `source` | `TEXT NOT NULL` | 来源 |
-| `priority` | `TEXT NOT NULL` | 优先级 |
-| `input_json` | `TEXT NOT NULL` | 原始输入 JSON |
-| `normalized_input_json` | `TEXT NULL` | 规范化输入 |
-| `output_json` | `TEXT NULL` | 输出摘要 |
-| `estimated_cost_usd` | `REAL NULL` | 预估成本 |
-| `actual_cost_usd` | `REAL NOT NULL DEFAULT 0` | 实际成本 |
-| `error_code` | `TEXT NULL` | 最近错误码 |
-| `created_at` | `TEXT NOT NULL` | 创建time |
-| `updated_at` | `TEXT NOT NULL` | 更新time |
-| `completed_at` | `TEXT NULL` | 完成time |
+| Column | Type | Description |
+| --- | --- | --- |
+| `id` | `TEXT PRIMARY KEY` | Task ID |
+| `parent_id` | `TEXT NULL` | Parent task |
+| `root_id` | `TEXT NOT NULL` | Root task |
+| `division_id` | `TEXT NULL` | Target division |
+| `title` | `TEXT NOT NULL` | Title |
+| `status` | `TEXT NOT NULL` | Task status enum |
+| `source` | `TEXT NOT NULL` | Source |
+| `priority` | `TEXT NOT NULL` | Priority |
+| `input_json` | `TEXT NOT NULL` | Raw input JSON |
+| `normalized_input_json` | `TEXT NULL` | Normalized input |
+| `output_json` | `TEXT NULL` | Output summary |
+| `estimated_cost_usd` | `REAL NULL` | Estimated cost |
+| `actual_cost_usd` | `REAL NOT NULL DEFAULT 0` | Actual cost |
+| `error_code` | `TEXT NULL` | Most recent error code |
+| `created_at` | `TEXT NOT NULL` | Creation time |
+| `updated_at` | `TEXT NOT NULL` | Update time |
+| `completed_at` | `TEXT NULL` | Completion time |
 
-索references要求：
+Index requirements:
 
 - `idx_tasks_root_id`
 - `idx_tasks_parent_id`
 - `idx_tasks_status_created_at`
 - `idx_tasks_division_status`
 
-## 5. `workflow_state` table最小列
+## 5. `workflow_state` Table Minimum Columns
 
-| 列名 | class型 | Description |
-|---|-------|--------|
-| `task_id` | `TEXT PRIMARY KEY` | 关联任务 |
-| `division_id` | `TEXT NOT NULL` | 归属事业部 |
-| `workflow_id` | `TEXT NOT NULL` | workflow ID |
-| `current_step_index` | `INTEGER NOT NULL` | 当前步骤索references |
-| `status` | `TEXT NOT NULL` | workflow Status |
-| `outputs_json` | `TEXT NOT NULL` | 输出快照 |
-| `last_error_code` | `TEXT NULL` | 最近错误码 |
-| `retry_count` | `INTEGER NOT NULL DEFAULT 0` | 重试iterations数 |
-| `resumable_from_step` | `TEXT NULL` | 可恢复步骤 |
-| `started_at` | `TEXT NOT NULL` | 开始time |
-| `updated_at` | `TEXT NOT NULL` | 更新time |
+| Column | Type | Description |
+| --- | --- | --- |
+| `task_id` | `TEXT PRIMARY KEY` | Associated task |
+| `division_id` | `TEXT NOT NULL` | Owning division |
+| `workflow_id` | `TEXT NOT NULL` | Workflow ID |
+| `current_step_index` | `INTEGER NOT NULL` | Current step index |
+| `status` | `TEXT NOT NULL` | Workflow status |
+| `outputs_json` | `TEXT NOT NULL` | Output snapshot |
+| `last_error_code` | `TEXT NULL` | Most recent error code |
+| `retry_count` | `INTEGER NOT NULL DEFAULT 0` | Retry count |
+| `resumable_from_step` | `TEXT NULL` | Resumable step |
+| `started_at` | `TEXT NOT NULL` | Start time |
+| `updated_at` | `TEXT NOT NULL` | Update time |
 
-索references要求：
+Index requirements:
 
 - `idx_workflow_state_division_status`
 - `idx_workflow_state_updated_at`
 
-## 6. `workflow_step_outputs` table最小列
+## 6. `workflow_step_outputs` Table Minimum Columns
 
 - `id TEXT PRIMARY KEY`
 - `task_id TEXT NOT NULL`
@@ -183,16 +183,16 @@ Recommendation最小字段：
 - `validation_json TEXT NULL`
 - `produced_at TEXT NOT NULL`
 
-索references要求：
+Index requirements:
 
 - `idx_step_outputs_task_id`
 - `idx_step_outputs_task_step UNIQUE(task_id, step_id)`
 
 ## 7. `harness_runs` / `plan_graph_bundles` / `node_runs` / `node_attempts` / `node_attempt_receipts`
 
-这些table承接 v4.3 canonical runtime truth。
+These tables carry v4.3 canonical runtime truth.
 
-`harness_runs` 最小列：
+`harness_runs` minimum columns:
 
 - `harness_run_id TEXT PRIMARY KEY`
 - `tenant_id TEXT NOT NULL`
@@ -210,7 +210,7 @@ Recommendation最小字段：
 - `terminal_at TEXT NULL`
 - `terminal_reason TEXT NULL`
 
-`plan_graph_bundles` 最小列：
+`plan_graph_bundles` minimum columns:
 
 - `plan_graph_bundle_id TEXT PRIMARY KEY`
 - `harness_run_id TEXT NOT NULL`
@@ -223,7 +223,7 @@ Recommendation最小字段：
 - `artifact_refs_json TEXT NULL`
 - `created_at TEXT NOT NULL`
 
-`node_runs` 最小列：
+`node_runs` minimum columns:
 
 - `node_run_id TEXT PRIMARY KEY`
 - `harness_run_id TEXT NOT NULL`
@@ -239,7 +239,7 @@ Recommendation最小字段：
 - `updated_at TEXT NOT NULL`
 - `terminal_reason TEXT NULL`
 
-`node_attempts` 最小列：
+`node_attempts` minimum columns:
 
 - `node_attempt_id TEXT PRIMARY KEY`
 - `node_run_id TEXT NOT NULL`
@@ -251,7 +251,7 @@ Recommendation最小字段：
 - `completed_at TEXT NULL`
 - `receipt_id TEXT NULL`
 
-`node_attempt_receipts` 最小列：
+`node_attempt_receipts` minimum columns:
 
 - `node_attempt_receipt_id TEXT PRIMARY KEY`
 - `node_attempt_id TEXT NOT NULL`
@@ -265,7 +265,7 @@ Recommendation最小字段：
 - `evidence_refs_json TEXT NULL`
 - `produced_at TEXT NOT NULL`
 
-索references要求：
+Index requirements:
 
 - `idx_harness_runs_request_hash UNIQUE(request_hash)`
 - `idx_harness_runs_tenant_status`
@@ -275,9 +275,9 @@ Recommendation最小字段：
 - `idx_node_attempts_node_run_attempt UNIQUE(node_run_id, attempt_no)`
 - `idx_node_attempt_receipts_attempt UNIQUE(node_attempt_id)`
 
-## 8. `budget_ledgers` vs `budget_reservations`
+## 8. `budget_ledgers` and `budget_reservations`
 
-`budget_ledgers`：
+`budget_ledgers`:
 
 - `budget_ledger_id TEXT PRIMARY KEY`
 - `tenant_id TEXT NOT NULL`
@@ -291,7 +291,7 @@ Recommendation最小字段：
 - `status TEXT NOT NULL`
 - `version INTEGER NOT NULL`
 
-`budget_reservations`：
+`budget_reservations`:
 
 - `budget_reservation_id TEXT PRIMARY KEY`
 - `budget_ledger_id TEXT NOT NULL`
@@ -303,15 +303,15 @@ Recommendation最小字段：
 - `expires_at TEXT NOT NULL`
 - `created_at TEXT NOT NULL`
 
-索references要求：
+Index requirements:
 
 - `idx_budget_ledgers_harness_run UNIQUE(harness_run_id)`
 - `idx_budget_reservations_ledger_status`
 - `idx_budget_reservations_node_run`
 
-## 10. `sessions` vs `messages` table最小列
+## 10. `sessions` and `messages` Table Minimum Columns
 
-`sessions`：
+`sessions`:
 
 - `id TEXT PRIMARY KEY`
 - `task_id TEXT NOT NULL`
@@ -321,7 +321,7 @@ Recommendation最小字段：
 - `created_at TEXT NOT NULL`
 - `updated_at TEXT NOT NULL`
 
-`messages`：
+`messages`:
 
 - `id TEXT PRIMARY KEY`
 - `session_id TEXT NOT NULL`
@@ -331,12 +331,12 @@ Recommendation最小字段：
 - `attachments_json TEXT NULL`
 - `created_at TEXT NOT NULL`
 
-索references要求：
+Index requirements:
 
 - `idx_sessions_task_id`
 - `idx_messages_session_created_at`
 
-`session_logs`（append-only 审计/回放层，Phase 2c / 3 演进目标）：
+`session_logs` (append-only audit/replay layer, Phase 2c/3 evolution goal):
 
 - `id TEXT PRIMARY KEY`
 - `session_id TEXT NOT NULL`
@@ -345,13 +345,13 @@ Recommendation最小字段：
 - `payload_json TEXT NOT NULL`
 - `created_at TEXT NOT NULL`
 
-索references要求：
+Index requirements:
 
 - `idx_session_logs_session_sequence UNIQUE(session_id, sequence)`
 
-## 11. `events` vs `approvals` table最小列
+## 11. `events` and `approvals` Table Minimum Columns
 
-`events`：
+`events`:
 
 - `id TEXT PRIMARY KEY`
 - `task_id TEXT NULL`
@@ -362,7 +362,7 @@ Recommendation最小字段：
 - `trace_id TEXT NULL`
 - `created_at TEXT NOT NULL`
 
-`event_consumer_acks`：
+`event_consumer_acks`:
 
 - `id TEXT PRIMARY KEY`
 - `event_id TEXT NOT NULL`
@@ -373,7 +373,7 @@ Recommendation最小字段：
 - `error_code TEXT NULL`
 - `attempt_count INTEGER NOT NULL DEFAULT 0`
 
-`approvals`：
+`approvals`:
 
 - `id TEXT PRIMARY KEY`
 - `task_id TEXT NOT NULL`
@@ -385,7 +385,7 @@ Recommendation最小字段：
 - `created_at TEXT NOT NULL`
 - `responded_at TEXT NULL`
 
-索references要求：
+Index requirements:
 
 - `idx_events_task_created_at`
 - `idx_events_execution_created_at`
@@ -393,7 +393,7 @@ Recommendation最小字段：
 - `idx_event_consumer_event_consumer UNIQUE(event_id, consumer_id)`
 - `idx_approvals_task_status`
 
-## 12. `file_locks` table最小列
+## 12. `file_locks` Table Minimum Columns
 
 - `id TEXT PRIMARY KEY`
 - `task_id TEXT NULL`
@@ -406,14 +406,14 @@ Recommendation最小字段：
 - `created_at TEXT NOT NULL`
 - `updated_at TEXT NOT NULL`
 
-索references要求：
+Index requirements:
 
 - `idx_file_locks_owner`
 - `idx_file_locks_resource`
 
-## 13. `memories` vs `tool_result_files` table最小列
+## 13. `memories` and `tool_result_files` Table Minimum Columns
 
-`memories`：
+`memories`:
 
 - `id TEXT PRIMARY KEY`
 - `task_id TEXT NULL`
@@ -429,13 +429,13 @@ Recommendation最小字段：
 - `source_refs_json TEXT NULL`
 - `created_at TEXT NOT NULL`
 
-补充约束：
+Supplementary constraints:
 
-- `memory_layer` 必须可映射到 `L1-L6`。
-- `layer_level` Recommendationvs `L1-L6` 一一对应为 `1-6`，方便排序vs迁移。
-- `source_refs_json` 应优先storage `ArtifactRef / EvidenceRef / MemoryRef / KnowledgeRef`。
+- `memory_layer` must be mappable to `L1-L6`.
+- `layer_level` is recommended to correspond one-to-one with `L1-L6` as `1-6` for easier sorting and migration.
+- `source_refs_json` should preferentially store `ArtifactRef / EvidenceRef / MemoryRef / KnowledgeRef`.
 
-`tool_result_files`：
+`tool_result_files`:
 
 - `id TEXT PRIMARY KEY`
 - `task_id TEXT NOT NULL`
@@ -447,9 +447,9 @@ Recommendation最小字段：
 - `size_bytes INTEGER NULL`
 - `created_at TEXT NOT NULL`
 
-## 14. 外键策略
+## 14. Foreign Key Strategy
 
-Phase 1a 明确采用以下策略：
+Phase 1a explicitly adopts the following strategy:
 
 - `workflow_state.task_id -> tasks.id`
 - `workflow_step_outputs.task_id -> tasks.id`
@@ -471,26 +471,26 @@ Phase 1a 明确采用以下策略：
 - `file_locks.node_run_id -> node_runs.node_run_id`
 - `tool_result_files.node_run_id -> node_runs.node_run_id`
 
-Description：
+Description:
 
-- `events.task_id` vs `events.execution_id` 允许为空，因此不mandatory所有事件都绑定任务或执lines。
-- `memories` supported跨 task/session/agent/execution 的多来源writes，Phase 1a 不mandatory单一外键。
-- 所有必须绑定任务主线或 runtime run 的data，都应由 SQLite 外键directly约束，而不is只靠应用层自觉维护。
+- `events.task_id` and `events.execution_id` are nullable, so not all events are required to be bound to tasks or executions.
+- `memories` supports multi-source writes across task/session/agent/execution, and Phase 1a does not mandate a single foreign key.
+- All data that must be bound to task main line or runtime run should be directly constrained by SQLite foreign keys, not relying solely on application-layer self-discipline.
 
-## 14A. Transition / Target-State 补充Description
+## 14A. Transition / Target-State Supplementary Description
 
-为vs `runtime_repository_and_migration_contract.md` 保持一致，storage层采用三态迁移语义：
+To remain consistent with `runtime_repository_and_migration_contract.md`, the storage layer adopts three-state migration semantics:
 
-- `Current`：`harness_runs / plan_graph_bundles / node_runs / node_attempts / node_attempt_receipts / budget_ledgers / budget_reservations` 为 runtime truth；`tasks / workflow / approvals / events / artifacts / memories` 等为混合 projection/evidence table。
-- `Transition`：扩展table族可先以 append-only、shadow write、reporting-only 或 evidence-only 方式接入。
-- `Target`：`feedback / learning / improvement / rollout / knowledge / high-order memory` 成为稳定治理对象并vs typed ref / lineage 全面对齐。
+- `Current`: `harness_runs / plan_graph_bundles / node_runs / node_attempts / node_attempt_receipts / budget_ledgers / budget_reservations` are runtime truth; `tasks / workflow / approvals / events / artifacts / memories` etc. are mixed projection/evidence tables.
+- `Transition`: Extension table families can first be connected via append-only, shadow write, reporting-only, or evidence-only approaches.
+- `Target`: `feedback / learning / improvement / rollout / knowledge / high-order memory` become stable governance objects and fully align with typed ref / lineage.
 
-因此：
+Therefore:
 
-- 本 contract 允许当前实现仍以最小核心table为主。
-- 但新增 schema、migration、inspection 或 audit 设计时，不得再references入vs上述table族平linesconflicts的命名。
+- This contract allows current implementation to still focus on minimum core tables.
+- However, when adding new schema, migration, inspection, or audit design, naming that conflicts in parallel with the above table families must not be introduced.
 
-## 15. SQLite 初版 DDL 附录
+## 15. SQLite Initial Version DDL Appendix
 
 ```sql
 PRAGMA foreign_keys = ON;
@@ -776,41 +776,40 @@ CREATE TABLE IF NOT EXISTS tool_result_files (
 );
 ```
 
-## 16. Runtime storage边界
+## 16. Runtime Storage Boundaries
 
-- `harness_runs / node_runs / node_attempts / node_attempt_receipts / budget_*` is v4.3 runtime truth 主table族。
-- `runtime_repository_and_migration_contract.md` defines这些table如何被 repository 消费以及 migration 如何演进。
-- `events` 负责事实事件vs恢复链，`event_consumer_acks` 负责按消费者确认，存活观测只is派生观测层，两者不要混用。
-- `file_locks` isconcurrent写保护的 authoritative storage，不得只保留在进程内存中。
+- `harness_runs / node_runs / node_attempts / node_attempt_receipts / budget_*` are the v4.3 runtime truth main table families.
+- `runtime_repository_and_migration_contract.md` defines how these tables are consumed by repositories and how migrations evolve.
+- `events` is responsible for fact events and recovery chains; `event_consumer_acks` is responsible for consumer acknowledgment; liveness observation is only a derived observation layer; the two must not be mixed.
+- `file_locks` is the authoritative storage for concurrent write protection and must not be retained only in process memory.
 
-## 17. Artifact 索references边界
+## 17. Artifact Index Boundaries
 
-- artifact 主体存文件系统或对象storage。
-- `tool_result_files` 负责 Phase 1a 的最小索references。
-- 未来若 artifact class型扩大，应新增独立 `artifacts` 索referencestable，而不is把 BLOB 回灌到核心任务table。
+- Artifact main body is stored in filesystem or object storage.
+- `tool_result_files` is responsible for Phase 1a minimum indexes.
+- If artifact types expand in the future, a separate `artifacts` index table should be added, not flowing BLOB back into core task tables.
 
-## 18. 恢复vs事务要求
+## 18. Recovery and Transaction Requirements
 
-- `harness_runs.status`、`node_runs.status` vs相关 projection 的关键更新应尽量在同一事务内完成。
-- 新建 `HarnessRun` / `NodeRun` / `NodeAttempt` 时，应同时writes初始 truth record，不能先跑后补账。
-- run 进入 `awaiting_hitl` 或 `policy_blocked` 时，审批recordvs等待态持久化必须可靠。
-- run 进入终态时，应保证最后错误码、尝试iterations数、budget结算和终态time可恢复。
-- Tier 1 事件writes不能被optional优化路径bypassing。
-- 过期 file lock 的回收必须能based on `file_locks` vs `node_runs` 联合判定。
-- 恢复流程至少能based on `harness_runs`、`plan_graph_bundles`、`node_runs`、`node_attempts`、`node_attempt_receipts`、`budget_reservations`、`events`、`file_locks` 重建执lines上下文。
+- Key updates to `harness_runs.status`, `node_runs.status` and related projections should be completed within the same transaction as much as possible.
+- When creating new `HarnessRun` / `NodeRun` / `NodeAttempt`, initial truth records must be written simultaneously; cannot run first then fill accounts later.
+- When run enters `awaiting_hitl` or `policy_blocked`, approval records and wait-state persistence must be reliable.
+- When run enters terminal state, final error code, attempt count, budget settlement, and terminal time must be recoverable.
+- Tier 1 event writes cannot be bypassed by optional optimization paths.
+- Expired file lock recovery must be based on joint determination of `file_locks` and `node_runs`.
+- Recovery process must be able to reconstruct execution context based on at least `harness_runs`, `plan_graph_bundles`, `node_runs`, `node_attempts`, `node_attempt_receipts`, `budget_reservations`, `events`, `file_locks`.
 
-## 19. 补充规则
+## 19. Supplementary Rules
 
-- PostgreSQL 迁移时，主键、唯一约束、外键vstime戳语义必须保持一致，SQLite shortcut 不得带入 PG 事实源。
-- 完整 artifact 索referencestable至少拆分出：artifact 主record、artifact version、artifact access log。
-- heartbeat 快照可按窗口压缩保留，但最新快照和vs incident 相关的窗口不得被压缩掉。
-
+- During PostgreSQL migration, primary key, unique constraint, foreign key, and timestamp semantics must remain consistent; SQLite shortcuts must not be introduced into PG facts source.
+- Complete artifact index table is split at minimum into: artifact main record, artifact version, artifact access log.
+- Heartbeat snapshots can be retained compressed by window, but latest snapshots and windows related to incidents must not be compressed.
 
 ## v4.3 Architecture Remediation
 
-以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中record的 contract 偏差。本文档历史段落如vs本节conflicts，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
+The following entries fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If historical paragraphs in this document conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
 
-- T-33: 本文原先把 `tasks / workflow_state / executions` 写成 storage truth 主链，Root cause: storage合同directly复用了 v3 单机table模型，没有随着 `HarnessRun / PlanGraphBundle / NodeRun / NodeAttemptReceipt / BudgetLedger` 成为 canonical runtime truth 一起迁移。修复：正文现把核心 truth table族改为 `harness_runs / plan_graph_bundles / node_runs / node_attempts / node_attempt_receipts / budget_ledgers / budget_reservations`，并把旧table降为 projection / compatibility 层。
-- T-34: 本文在 §13 的 `memories` 最小列里声明了 `layer_level / token_budget / freshness_state / source_refs_json`，但 SQLite DDL 附录仍缺这些列，Root cause: 正文 schema 和附录 DDL 在一iterations memory contract 扩展后没有synchronous维护。修复：正文vs DDL 现已对齐，`memories` table的最小列和 DDL synchronouscontains这四个字段。
+- T-33: This document previously wrote `tasks / workflow_state / executions` as storage truth main chain. Root cause: Storage contract directly reused v3 single-machine table model and did not migrate together as `HarnessRun / PlanGraphBundle / NodeRun / NodeAttemptReceipt / BudgetLedger` became canonical runtime truth. Fix: The main text now changes core truth table families to `harness_runs / plan_graph_bundles / node_runs / node_attempts / node_attempt_receipts / budget_ledgers / budget_reservations`, and demotes old tables to projection / compatibility layer.
+- T-34: This document declared `layer_level / token_budget / freshness_state / source_refs_json` in the `memories` minimum columns in §13, but SQLite DDL appendix still lacked these columns. Root cause: Main text schema and appendix DDL were not synchronously maintained after a memory contract extension. Fix: Main text and DDL are now aligned; `memories` table minimum columns and DDL synchronously contain these four fields.
 
-mandatory规则：Status迁移必须via `RuntimeStateMachine.transition(command)`；执lines计划必须uses `PlanGraphBundle`；执lines结果必须uses `NodeAttemptReceipt`；truth event 只能uses `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；budget必须uses `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。
+Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events must only use `platform.*`; OAPEFLIR can only be used as `oapeflir.view.*` / rationale projection; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.

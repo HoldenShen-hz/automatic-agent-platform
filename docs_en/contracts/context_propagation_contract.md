@@ -1,68 +1,68 @@
 # Context Propagation Contract
 
-> **OAPEFLIR 相关**：本 contract defines OAPEFLIR 8 阶段的上下文传播，对应 ADR-016。
-> **更新日期**：2026-04-17
+> **OAPEFLIR Related**: This contract defines context propagation for OAPEFLIR's 8 phases, corresponding to ADR-016.
+> **Last Updated**: 2026-04-17
 
-## 1. 范围
+## 1. Scope
 
-本 contract definesbased on `AsyncLocalStorage` 的运lines时上下文传播规则，避免 `taskId / sessionId / agentId / traceId / workdir` 在深层call链中层层透传。
+This contract defines runtime context propagation rules based on `AsyncLocalStorage`, avoiding `taskId / sessionId / agentId / traceId / workdir` being passed through deep call chains.
 
-相关文档：
+Related Documents:
 
 - `runtime_execution_contract.md`
 - `app_error_contract.md`
 - `observability_contract.md`
 - `tool_and_provider_execution_contract.md`
-- [ADR-016 OAPEFLIR 八阶段模型](../adr/016-oapeflir-loop-model.md)
+- [ADR-016 OAPEFLIR 8-Phase Model](../adr/016-oapeflir-loop-model.md)
 
-## 2. 目标
+## 2. Goals
 
-Phase 1a 的上下文传播至少要保证：
+Phase 1a context propagation must at least ensure:
 
-- 日志、DB、工具执lines能自动拿到当前 run / node / attempt / trace。
-- 取消、timeout和恢复链能读取同一份上下文快照。
-- 显式参数只保留工具特有configure，不继续承载globally运lines身份。
+- Logs, DB, and tool execution can automatically obtain current run / node / attempt / trace.
+- Cancellation, timeout, and recovery chains can read the same context snapshot.
+- Explicit parameters only retain tool-specific configuration and no longer carry global runtime identity.
 
 ## 3. `RuntimeContextSnapshot`
 
-| 字段 | class型 | Description |
+| Field | Type | Description |
 |---|-------|--------|
-| `trace_id` | `string` | 链路追踪主键 |
-| `span_id` | `string?` | 当前 span（对齐 `trace_and_root_cause_observability_contract.md` §3） |
-| `parent_span_id` | `string?` | 父 span |
-| `harness_run_id` | `string` | 当前 HarnessRun |
-| `node_run_id` | `string?` | 当前 NodeRun |
-| `attempt_id` | `string?` | 当前 NodeAttempt |
-| `plan_graph_id` | `string?` | 当前执lines图 ID |
-| `graph_version` | `integer?` | 当前执lines图版本 |
-| `task_id` | `string?` | legacy 任务查询入口 |
-| `execution_id` | `string?` | legacy execution 查询入口 |
-| `workflow_id` | `string?` | legacy workflow 查询入口 |
-| `session_id` | `string?` | 当前会话 |
-| `agent_id` | `string?` | 当前 agent |
-| `division_id` | `string?` | 当前事业部 |
-| `stage_view_ref` | `string?` | 当前闭环阶段 view references用 |
-| `loop_iteration_view` | `integer?` | 当前闭环轮iterations投影 |
-| `knowledge_namespace` | `string?` | 当前 knowledge namespace |
-| `memory_layer` | `string?` | 当前 memory layer |
-| `domain_id` | `string?` | 当前 domain |
-| `ref_id` | `string?` | 当前 typed ref |
-| `workdir` | `string?` | 当前工作目录 |
-| `request_id` | `string?` | 当前外部request |
-| `approval_id` | `string?` | 当前审批上下文 |
-| `abort_signal_ref` | `string?` | 取消信号references用 |
-| `budget_scope_id` | `string?` | budget聚合范围 |
+| `trace_id` | `string` | Trace tracking primary key |
+| `span_id` | `string?` | Current span (aligned with `trace_and_root_cause_observability_contract.md` §3) |
+| `parent_span_id` | `string?` | Parent span |
+| `harness_run_id` | `string` | Current HarnessRun |
+| `node_run_id` | `string?` | Current NodeRun |
+| `attempt_id` | `string?` | Current NodeAttempt |
+| `plan_graph_id` | `string?` | Current execution graph ID |
+| `graph_version` | `integer?` | Current execution graph version |
+| `task_id` | `string?` | Legacy task query entry |
+| `execution_id` | `string?` | Legacy execution query entry |
+| `workflow_id` | `string?` | Legacy workflow query entry |
+| `session_id` | `string?` | Current session |
+| `agent_id` | `string?` | Current agent |
+| `division_id` | `string?` | Current division |
+| `stage_view_ref` | `string?` | Current closed-loop stage view reference |
+| `loop_iteration_view` | `integer?` | Current closed-loop iteration projection |
+| `knowledge_namespace` | `string?` | Current knowledge namespace |
+| `memory_layer` | `string?` | Current memory layer |
+| `domain_id` | `string?` | Current domain |
+| `ref_id` | `string?` | Current typed ref |
+| `workdir` | `string?` | Current working directory |
+| `request_id` | `string?` | Current external request |
+| `approval_id` | `string?` | Current approval context |
+| `abort_signal_ref` | `string?` | Cancellation signal reference |
+| `budget_scope_id` | `string?` | Budget aggregation scope |
 
-Description：`span_id` 和 `parent_span_id` used for在 trace 树中定位当前执lines位置。每进入一个新 `NodeAttempt`、tool call 或 LLM call 时，应via `withContextPatch` 更新 `span_id` 并将旧 `span_id` 推入 `parent_span_id`。Phase 1a 可不实现完整 span 树，但字段位应保留以避免后续破坏性变更。
+Note: `span_id` and `parent_span_id` are used to locate current execution position in the trace tree. Each time entering a new `NodeAttempt`, tool call, or LLM call, should update `span_id` via `withContextPatch` and push old `span_id` into `parent_span_id`. Phase 1a may not implement a complete span tree, but field positions should be reserved to avoid future breaking changes.
 
-## 4. 传播入口
+## 4. Propagation Entry Points
 
-必须由以下入口之一显式 `provideContext(...)`：
+Must explicitly `provideContext(...)` from one of the following entry points:
 
-- gateway 收到userrequest
-- scheduler / runtime 创建 execution
-- 恢复链重新接管 stale run
-- approval resume 恢复执lines
+- Gateway receives user request
+- Scheduler / runtime creates execution
+- Recovery chain re-takes over stale run
+- Approval resume recovers execution
 
 ```mermaid
 flowchart TD
@@ -74,9 +74,9 @@ flowchart TD
     E --> F
 ```
 
-## 5. API 约束
+## 5. API Constraints
 
-最小运lines接口Recommendation为：
+Minimum runtime interface recommended:
 
 - `provideContext(snapshot, fn)`
 - `getContext()`
@@ -84,15 +84,15 @@ flowchart TD
 - `withContextPatch(partial, fn)`
 - `assertContext(requiredKeys)`
 
-规则：
+Rules:
 
-- `getContext()` 在no上下文时必须explicitly throws错，不得返回伪defaults to值。
-- `withContextPatch` 只能覆盖局部字段，不得静默丢失已有标识。
-- 后台 detached 任务必须显式复制或重建上下文，不能relies on隐式继承。
+- `getContext()` must explicitly throw on missing context and must not return pseudo-default values.
+- `withContextPatch` can only overwrite local fields and must not silently lose existing identifiers.
+- Background detached tasks must explicitly copy or rebuild context and must not rely on implicit inheritance.
 
-## 6. vs显式参数的边界
+## 6. Boundary with Explicit Parameters
 
-保留显式参数的内容：
+Content that should be retained in explicit parameters:
 
 - `timeout_ms`
 - `tool arguments`
@@ -100,7 +100,7 @@ flowchart TD
 - `sandbox options`
 - `output destination`
 
-不应再由显式参数层层透传的内容：
+Content that should no longer be passed through layers via explicit parameters:
 
 - `harness_run_id`
 - `node_run_id`
@@ -119,15 +119,15 @@ flowchart TD
 - `domain_id`
 - `ref_id`
 
-## 7. 取消vs恢复语义
+## 7. Cancellation and Recovery Semantics
 
-- 同一上下文快照应关联一个可查询的取消信号references用。
-- 恢复新 attempt 时，必须创建新的 `attempt_id`；若发生节点级恢复，还必须刷新 `node_run_id` 或其 attempt lineage，同时保留 `harness_run_id / trace_id` 连续性。
-- 旧 attempt 的 ALS 上下文不得在恢复后继续复用。
+- The same context snapshot should be associated with a queryable cancellation signal reference.
+- When recovering a new attempt, a new `attempt_id` must be created; if node-level recovery occurs, `node_run_id` or its attempt lineage must also be refreshed, while maintaining `harness_run_id / trace_id` continuity.
+- Old attempt's ALS context must not be reused after recovery.
 
-## 8. 观测vs审计要求
+## 8. Observability and Audit Requirements
 
-所有结构化日志、事件和 DB writes至少要能从上下文中拿到：
+All structured logs, events, and DB writes must be able to obtain from context at minimum:
 
 - `trace_id`
 - `harness_run_id`
@@ -135,43 +135,43 @@ flowchart TD
 - `attempt_id?`
 - `agent_id?`
 
-规则：
+Rules:
 
-- 若当前操作缺少这些关键字段，应尽早failed，而不is写出no法关联的record。
-- 审计日志中的 `actor` vs runtime 上下文字段不得互相conflicts。
-- 兼容层若仍读取 `task_id / execution_id`，也必须能从同一快照回链到 `harness_run_id / node_run_id / attempt_id`。
+- If current operation lacks these key fields, should fail early rather than write unlinkable records.
+- `actor` in audit logs must not conflict with runtime context fields.
+- If compatibility layer still reads `task_id / execution_id`, must also be able to trace back to `harness_run_id / node_run_id / attempt_id` from the same snapshot.
 
-## 9. Phase 边界
+## 9. Phase Boundaries
 
-Phase 1a 明确做：
+Phase 1a explicitly does:
 
-- 单进程 `AsyncLocalStorage`
-- runtime、tool、provider、logging、DB 的统一读取入口
+- Single-process `AsyncLocalStorage`
+- Unified read entry for runtime, tool, provider, logging, DB
 
-当前不做：
+Currently does not do:
 
-- 跨进程自动上下文传播
-- OpenTelemetry 全链路自动注入
-- 远程 worker 的 context federation
+- Cross-process automatic context propagation
+- OpenTelemetry full链路 automatic injection
+- Remote worker context federation
 
-## 10. 测试要求
+## 10. Testing Requirements
 
-至少覆盖：
+Must cover at minimum:
 
-- 嵌套 async call下上下文不丢失
-- concurrent任务之间上下文不串线
-- detached 任务若未显式提供上下文会directlyfailed
-- 恢复 attempt 后 `attempt_id` 已刷新但 `harness_run_id / trace_id` 保持 lineage 连续
+- Context not lost under nested async calls
+- Context not crossed between concurrent tasks
+- Detached task fails directly if context not explicitly provided
+- After recovery attempt, `attempt_id` refreshed but `harness_run_id / trace_id` maintains lineage continuity
 
-## 11. 收口Conclusion
+## 11. Closure Conclusion
 
-上下文传播的重点不is少传几个参数，而is把“当前到底is谁在执lines什么”变成运lines时任何一层都能可靠读取的事实。
+The focus of context propagation is not about passing fewer parameters, but making "who is currently executing what" a fact that any runtime layer can reliably read.
 
 
 ## v4.3 Architecture Remediation
 
-以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中record的 contract 偏差。本文档历史段落如vs本节conflicts，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
+The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If historical paragraphs of this document conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
 
-- T-18: 本文原先把 `task_id / execution_id / workflow_id` 作为 ALS 主身份，Root cause: 上下文 contract directly复用了旧 gateway/runtime 参数透传模型，没有随 `HarnessRun / NodeRun / PlanGraphBundle / NodeAttempt` 的真相模型升级。修复：正文现把 `harness_run_id / node_run_id / attempt_id / plan_graph_id / graph_version` 提升为快照主键，旧字段只保留为兼容查询入口。
+- T-18: This document originally used `task_id / execution_id / workflow_id` as ALS primary identity. Root cause: Context contract directly reused the old gateway/runtime parameter passing model and did not upgrade with the `HarnessRun / NodeRun / PlanGraphBundle / NodeAttempt` truth model. Fix: The body now elevates `harness_run_id / node_run_id / attempt_id / plan_graph_id / graph_version` to snapshot primary keys, with old fields retained only as compatibility query entries.
 
-mandatory规则：Status迁移必须via `RuntimeStateMachine.transition(command)`；执lines计划必须uses `PlanGraphBundle`；执lines结果必须uses `NodeAttemptReceipt`；truth event 只能uses `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；budget必须uses `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。
+Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events must use `platform.*`; OAPEFLIR can only be used as `oapeflir.view.*` / rationale projection; budget must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.

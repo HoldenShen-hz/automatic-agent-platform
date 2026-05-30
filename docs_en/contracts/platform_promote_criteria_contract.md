@@ -1,12 +1,12 @@
 # Platform Promote Criteria Contract
 
-## 1. 范围
+## 1. Scope
 
-本 contract defines模块从“已有设计或局部实现”提升为“正式平台能力”时必须满足的 promote criteria。
+This contract defines the promote criteria that a module must satisfy when being elevated from "existing design or partial implementation" to "formal platform capability".
 
-它回答的Issueis：一个模块不能只因为“有服务、有code、有 contract”就被判断为完成，还必须满足哪些冻结、测试、观测、runbook、回滚和 ownership 条件。
+It answers the question: A module cannot be judged complete just because it "has service, has code, has contract"; what freeze, test, observability, runbook, rollback, and ownership conditions must also be satisfied?
 
-相关文档：
+Related documents:
 
 - `docs_zh/operations/operations-checklist.md`
 - `docs_zh/quality/01-release-checklist.md`
@@ -14,15 +14,15 @@
 - `docs_zh/contracts/slo_alerting_and_runbook_contract.md`
 - `docs_zh/contracts/quality_engineering_and_chaos_testing_contract.md`
 
-## 2. 目标
+## 2. Objectives
 
-- 统一“从 partial 到 platform-ready”的判断标准。
-- 避免以“服务存在”“测试占位”“有 dashboard 但没有 alert”这class假完成判断模块成熟度。
-- 让 promote 和 rollback 有正式证据链。
+- Unify criteria for judging "from partial to platform-ready".
+- Avoid false completion judgments of module maturity such as "service exists", "tests are placeholders", "has dashboard but no alert".
+- Give promote and rollback formal evidence chains.
 
 ## 3. Promote Criteria
 
-`PromoteCriteria` 最小字段：
+`PromoteCriteria` minimal fields:
 
 - `component_id`
 - `current_status`
@@ -32,7 +32,7 @@
 - `overall_verdict`
 - `blockers?`
 
-`current_status` 推荐枚举：
+`current_status` recommended enum:
 
 - `draft`
 - `partial`
@@ -40,52 +40,52 @@
 - `canary`
 - `production_ready`
 
-`overall_verdict` 推荐枚举：
+`overall_verdict` recommended enum:
 
 - `promote_approved`
 - `promote_blocked`
 - `conditional`
 
-## 4. required criteria
+## 4. Required Criteria
 
-| criteria | 最低要求 |
-| --- | --- |
-| `contracts_frozen` | 相关主干文档、contract、ADR 已冻结且互不conflicts |
-| `conformance_tests` | 对应 conformance / integration / recovery 测试已via |
-| `telemetry_instrumented` | metrics、trace、alerts 至少到位到当前阶段要求 |
-| `runbooks_documented` | deployment、rollback、incident runbook 存在 |
-| `rollback_tested` | 至少有一iterationssuccess的 rollback rehearsal 或 drill |
-| `ownership_defined` | owner、backup、incident contact 清楚 |
-| `oapeflir_loop_tested` | OAPEFLIR loop vs stage timeline 已有覆盖 |
-| `knowledge_plane_tested` | 若enabled knowledge，namespace / trust / freshness 已验证 |
-| `memory_promotion_tested` | 若enabled memory promotion，晋升/降级/撤销已验证 |
-| `plugin_spi_conformance` | 若enabled plugin SPI，共享 contract suite 已via |
-| `rollout_rehearsed` | release / rollback 演练已via |
+| criteria | Minimum Requirement |
+|---|---|
+| `contracts_frozen` | Related main documents, contracts, ADRs are frozen and mutually non-conflicting |
+| `conformance_tests` | Corresponding conformance / integration / recovery tests have passed |
+| `telemetry_instrumented` | Metrics, trace, alerts are at least in place for current stage requirements |
+| `runbooks_documented` | Deployment, rollback, incident runbook exists |
+| `rollback_tested` | At least one successful rollback rehearsal or drill |
+| `ownership_defined` | Owner, backup, incident contact are clear |
+| `oapeflir_loop_tested` | OAPEFLIR loop and stage timeline have coverage |
+| `knowledge_plane_tested` | If knowledge is enabled, namespace / trust / freshness have been verified |
+| `memory_promotion_tested` | If memory promotion is enabled, promotion/demotion/revocation have been verified |
+| `plugin_spi_conformance` | If plugin SPI is enabled, shared contract suite has passed |
+| `rollout_rehearsed` | Release / rollback drill has passed |
 
-## 5. optional criteria
+## 5. Optional Criteria
 
 - `performance_benchmarks`
 - `load_test_results`
 - `security_review`
 - `chaos_drill_results`
 
-规则：
+Rules:
 
-- optional项不能替代required项。
-- 若目标Status为 `production_ready`，Recommendation至少补齐 `performance_benchmarks` vs `security_review`。
+- Optional items cannot replace required items.
+- If target status is `production_ready`, it is recommended to at least add `performance_benchmarks` and `security_review`.
 
-## 6. Promote 阶段要求
+## 6. Promote Stage Requirements
 
-| 路径 | 最低要求 |
-| --- | --- |
-| `draft -> partial` | contract 初版、happy path tests、最小 owner 明确 |
-| `partial -> contract_frozen` | 所有当前阶段 contract 冻结、测试via、边界清楚 |
-| `contract_frozen -> canary` | telemetry、runbook、ownership、rollback path 到位 |
-| `canary -> production_ready` | rollback rehearse、alerting、benchmarks、security review 到位 |
+| Path | Minimum Requirement |
+|---|---|
+| `draft -> partial` | Contract draft, happy path tests, minimal owner clear |
+| `partial -> contract_frozen` | All current stage contracts frozen, tests passed, boundaries clear |
+| `contract_frozen -> canary` | Telemetry, runbook, ownership, rollback path in place |
+| `canary -> production_ready` | Rollback rehearsal, alerting, benchmarks, security review in place |
 
-## 7. 反模式
+## 7. Anti-Patterns
 
-以下情况不得作为 promote 依据：
+The following must not be used as promote basis:
 
 - `service_exists_only`
 - `tests_without_assertions`
@@ -96,7 +96,7 @@
 
 ## 8. Evidence Package
 
-`PromoteEvidencePackage` 最小字段：
+`PromoteEvidencePackage` minimal fields:
 
 - `package_id`
 - `component_id`
@@ -110,8 +110,8 @@
 - `rollout_refs?`
 - `created_at`
 
-## 9. 收口Conclusion
+## 9. Closure Conclusion
 
-平台成熟度不能只靠“看起来做完了”判断。
+Platform maturity cannot be judged simply by "looks done".
 
-只有当 contract、测试、观测、runbook、回滚和 owner 一起闭合时，模块才有资格从“局部能力”被提升为“正式平台能力”。
+Only when contracts, tests, observability, runbooks, rollback, and owner close together can a module qualify for elevation from "partial capability" to "formal platform capability".

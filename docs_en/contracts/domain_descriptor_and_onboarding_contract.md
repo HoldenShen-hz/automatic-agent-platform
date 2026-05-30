@@ -1,10 +1,10 @@
 # Domain Descriptor And Onboarding Contract
 
-## 1. 范围
+## 1. Scope
 
-本 contract defines `§37-§38` 的领域建模vs四阶段接入 runbook，作为 `src/domains/*` 的 authoritative 边界。
+This contract defines domain modeling for `§37-§38` and the four-phase onboarding runbook, serving as the authoritative boundary for `src/domains/*`.
 
-## 2. Canonical 对象
+## 2. Canonical Objects
 
 - `DomainDescriptor`
 - `DomainRiskProfile`
@@ -16,7 +16,7 @@
 - `DomainGovernancePolicy`
 - `DomainOnboardingRecord`
 
-## 3. `DomainDescriptor` 最小字段
+## 3. `DomainDescriptor` Minimum Fields
 
 - `domain_id`
 - `display_name`
@@ -35,21 +35,21 @@
 - `default_knowledge_namespaces`
 - `version`
 
-规则：
+Rules:
 
-- 每个领域必须能独立解释自己的风险、知识、评估、Prompt、Recipe 和治理边界。
-- 领域不得directlyreferences用未注册的 workflow、tool bundle、plugin 或 namespace。
+- Each domain must be able to independently explain its own risk, knowledge, evaluation, prompts, recipes, and governance boundaries.
+- Domains must not directly reference unregistered workflows, tool bundles, plugins, or namespaces.
 
-## 4. 接入四阶段
+## 4. Four-Phase Onboarding
 
-`DomainOnboardingRecord.phase` 固定为：
+`DomainOnboardingRecord.phase` is fixed as:
 
 1. `modeling`
 2. `development_validation`
 3. `security_certification`
 4. `canary_launch`
 
-每个阶段最少record：
+Each phase records at minimum:
 
 - `phase`
 - `status`
@@ -60,7 +60,7 @@
 - `blocking_findings`
 - `approver?`
 
-## 5. `DomainRiskProfile` 最小字段
+## 5. `DomainRiskProfile` Minimum Fields
 
 - `risk_profile_id`
 - `risk_level`
@@ -71,12 +71,12 @@
 - `required_approval_policies`
 - `evidence_requirements`
 
-规则：
+Rules:
 
-- `high` / `critical` 风险域必须显式声明 `advisory_only`、`human_accountable`、`deterministic_hot_path_only`，三者不得省略。
-- `risk_profile_ref` 不is装饰字段；缺少 profile 的领域不得进入 onboarding `security_certification` 之后的阶段。
+- `high` / `critical` risk domains must explicitly declare `advisory_only`, `human_accountable`, `deterministic_hot_path_only`; these three must not be omitted.
+- `risk_profile_ref` is not a decorative field; domains missing a profile must not enter phases after onboarding `security_certification`.
 
-## 6. `DomainRecipe` 最小字段
+## 6. `DomainRecipe` Minimum Fields
 
 - `recipe_id`
 - `display_name`
@@ -87,36 +87,34 @@
 - `default_prompt_bundle_ref`
 - `acceptance_checklist_ref`
 
-规则：
+Rules:
 
-- `risk_profile_ref` 必须指向已注册 `DomainRiskProfile`，不得以内联自由文本替代。
-- `guardrail_overlay` 必须明确声明在平台基线之上附加或收紧的领域约束，不得为空对象。
+- `risk_profile_ref` must reference a registered `DomainRiskProfile` and must not be replaced with inline free text.
+- `guardrail_overlay` must explicitly declare domain constraints that are added or tightened over the platform baseline, and must not be an empty object.
 
-## 7. 生命cycle约束
+## 7. Lifecycle Constraints
 
 - `draft -> validating -> certified -> canary -> active -> deprecated -> retired`
-- 跳级进入 `active` 被视为 contract 违规。
-- 高风险领域defaults to必须在 `canary` 停留，且具备人工审批证据。
+- Skipping levels to enter `active` is considered a contract violation.
+- High-risk domains must by default stay in `canary` and have human approval evidence.
 
-## 8. 运lines时规则
+## 8. Runtime Rules
 
-- runtime 只能激活 `active` 或受控 `canary` 的领域。
-- 领域下沉到 prompt、tool、workflow 前，必须先via registry schema 校验。
-- 领域变更必须携带版本vs兼容策略。
+- Runtime can only activate `active` or controlled `canary` domains.
+- Before domains sink to prompts, tools, or workflows, they must first pass registry schema validation.
+- Domain changes must carry version and compatibility strategy.
 
-## 9. 测试要求
+## 9. Test Requirements
 
-- unit：descriptor schema、lifecycle transition、runbook evidence 校验
-- integration：领域注册、领域加载、领域升级 / 下线
-- contract：未authentication领域禁止进入 runtime
-
-
+- unit: descriptor schema, lifecycle transitions, runbook evidence validation
+- integration: domain registration, domain loading, domain upgrade/deprecation
+- contract: uncertified domains are prohibited from entering runtime
 
 ## v4.3 Architecture Remediation
 
-以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中record的 contract 偏差。本文档历史段落如vs本节conflicts，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
+The following entries fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If earlier sections of this document conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 to ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
 
-- T-11: recipe 结构缺少Architecture§38要求的 risk_profile_ref 和 guardrail_overlay references用。Root Cause：早期文档只把 recipe 当作 onboarding 便利模板，没有把风险绑定和 guardrail 叠加层视作一等 contract。修复：正文已defines `DomainRecipe` 最小字段，并将 `risk_profile_ref` vs `guardrail_overlay` 设为必填。
-- T-28: DomainRiskProfile 被references用但未definesrequired字段，Architecture§3.2要求高危域声明 advisory_only/human_accountable/deterministic_hot_path_only。Root Cause：`DomainRiskProfile` 在历史版本里被当作外部references用名词uses，没有展开成可校验 schema。修复：正文已defines `DomainRiskProfile` 最小字段，并要求高危域显式声明三项硬约束。
+- T-11: Recipe structure was missing risk_profile_ref and guardrail_overlay references required by architecture §38. Root cause: Early documents only treated recipe as an onboarding convenience template and did not treat risk binding and guardrail overlay as first-class contracts. Fix: The main text now defines `DomainRecipe` minimum fields, and sets `risk_profile_ref` and `guardrail_overlay` as required.
+- T-28: DomainRiskProfile was referenced but its required fields were not defined; architecture §3.2 requires high-risk domains to declare advisory_only/human_accountable/deterministic_hot_path_only. Root cause: `DomainRiskProfile` was used as an external reference noun in historical versions and was not expanded into a validatable schema. Fix: The main text now defines `DomainRiskProfile` minimum fields and requires high-risk domains to explicitly declare the three hard constraints.
 
-mandatory规则：Status迁移必须via `RuntimeStateMachine.transition(command)`；执lines计划必须uses `PlanGraphBundle`；执lines结果必须uses `NodeAttemptReceipt`；truth event 只能uses `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；budget必须uses `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。
+Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events must only use `platform.*`; OAPEFLIR can only be used as `oapeflir.view.*` / rationale projection; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.

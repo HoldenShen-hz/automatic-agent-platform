@@ -1,18 +1,18 @@
 # Agent Contract
 
-> **OAPEFLIR 相关**：本 contract defines OAPEFLIR 8 阶段的 Agent 边界，对应 ADR-016、ADR-080 和 ADR-075。
-> **更新日期**：2026-04-17
+> **OAPEFLIR Relationship**: This contract defines the Agent boundaries for OAPEFLIR 8 stages, corresponding to ADR-016, ADR-080, and ADR-075.
+> **Update Date**: 2026-04-17
 
-## 1. 范围
+## 1. Scope
 
-本 contract defines平台内 Agent 的身份、职责边界、输入输出 schema、前置检查和permission约束。
+This contract defines the identity, responsibility boundaries, input/output schemas, precondition checks, and permission constraints for Agents within the platform.
 
-相关文档：
-- [ADR-016 OAPEFLIR 八阶段模型](../adr/016-oapeflir-loop-model.md)
-- [ADR-075 六级受控发布](../adr/075-controlled-rollout-release.md)
+Related documents:
+- [ADR-016 OAPEFLIR Eight-Stage Model](../adr/016-oapeflir-loop-model.md)
+- [ADR-075 Six-Level Controlled Release](../adr/075-controlled-rollout-release.md)
 - [ADR-080 Learn Hub](../adr/080-learn-hub-pattern-detection.md)
 
-## 2. 关键对象
+## 2. Key Objects
 
 - `AgentDefinition`
 - `AgentScope`
@@ -23,35 +23,35 @@
 - `AgentMiddlewareHook`
 - `DomainBinding`
 
-## 3. AgentDefinition 最小字段
+## 3. AgentDefinition Minimum Fields
 
-| 字段 | class型 | Description |
-|---|-------|--------|
-| `id` | `string` | Agent/角色标识 |
-| `name` | `string` | 展示名称 |
-| `model_tier` | `reasoning \| coding \| balanced \| fast` | 模型分级 |
-| `tools` | `string[]` | 可用工具列table |
-| `scope` | `AgentScope` | 职责vs边界 |
-| `domain_binding` | `DomainBinding` | 域绑定vs领域约束 |
-| `input_schema` | `schema` | 输入要求 |
-| `output_schema` | `schema` | 输出要求 |
-| `preconditions` | `PreconditionCheck[]` | 执lines前检查 |
-| `prompt_template` | `string` | 系统提示模板 |
-| `business_alias?` | `string` | 叙事化别名，例如 `VP 编排` |
+| Field | Type | Description |
+| --- | --- | --- |
+| `id` | `string` | Agent/role identifier |
+| `name` | `string` | Display name |
+| `model_tier` | `reasoning \| coding \| balanced \| fast` | Model tier |
+| `tools` | `string[]` | Available tools list |
+| `scope` | `AgentScope` | Responsibilities and boundaries |
+| `domain_binding` | `DomainBinding` | Domain binding and domain constraints |
+| `input_schema` | `schema` | Input requirements |
+| `output_schema` | `schema` | Output requirements |
+| `preconditions` | `PreconditionCheck[]` | Pre-execution checks |
+| `prompt_template` | `string` | System prompt template |
+| `business_alias?` | `string` | Narrative alias, e.g., `VP Orchestration` |
 
-命名规则：
+Naming rules:
 
-- 工程实现应优先uses稳定的 canonical role / component id。
-- `business_alias` 只used for产品叙事、文档Description或 UI 展示，不应成为底层调度主键。
+- Engineering implementations should prioritize stable canonical role / component id.
+- `business_alias` is only used for product narrative, documentation, or UI display, and should not become the underlying scheduling primary key.
 
-## 4. Scope 约束
+## 4. Scope Constraints
 
-`scope` 至少contains：
+`scope` must include at least:
 
 - `responsibilities`
 - `boundaries`
 
-`DomainBinding` 至少contains：
+`DomainBinding` must include at least:
 
 - `domain_id`
 - `domain_descriptor_ref`
@@ -59,97 +59,97 @@
 - `tool_bundle_ids?`
 - `knowledge_namespaces?`
 
-规则：
+Rules:
 
-- responsibilities Description能做什么。
-- boundaries Description明确不能做什么。
-- 角色间不得出现高overlaps核心职责而没有裁决边界。
-- `domain_id` 必须指向已注册 `DomainDescriptor`；Agent 的工具、知识和治理边界应从 domain binding 派生，而不is从组织叙事单元反推。
+- `responsibilities` describe what can be done.
+- `boundaries` describe what explicitly cannot be done.
+- Roles must not have highly overlapping core responsibilities without decisive boundaries.
+- `domain_id` must point to a registered `DomainDescriptor`; Agent tools, knowledge, and governance boundaries should be derived from domain binding, rather than reverse-engineered from organizational narrative units.
 
 ## 5. Preconditions
 
-每个 precondition 至少contains：
+Each precondition must include at least:
 
 - `check`
 - `description`
 - `severity`
 
-语义：
+Semantics:
 
-- 父级 Agent 在真正执lines前进lines检查。
-- 不via时进入补救、回退或升级，而不isdirectly让子 Agent 自己猜。
+- Parent-level Agent performs checks before actual execution.
+- On failure, enter remediation, fallback, or escalation, rather than letting the child Agent guess on its own.
 
-Phase 边界：
+Phase boundaries:
 
-- Phase 1a 的 precondition 以确定性检查为主，例如输入完整性、permission、budget、relies onisno存在。
-- 语义型或模型驱动的 precondition belongs to后续增强，不应defaults to假设在 Phase 1a 已普遍生效。
+- Phase 1a preconditions are primarily deterministic checks, such as input completeness, permissions, budget, and dependency existence.
+- Semantic or model-driven preconditions belong to subsequent enhancements and should not be assumed to be universally effective in Phase 1a by default.
 
-## 6. permission规则
+## 6. Permission Rules
 
-- Agent 只能call已authorization工具。
-- 高风险工具必须vs边界Description一起出现。
-- 新角色工具集不得no约束膨胀。
-- `spawn_agent`、`send_message` 等协作工具应受更严格角色限制。
+- Agents can only call authorized tools.
+- High-risk tools must appear together with boundary descriptions.
+- New role tool sets must not expand without constraints.
+- Collaboration tools such as `spawn_agent` and `send_message` should be subject to stricter role restrictions.
 
-## 6.1 Dispatch 抽象边界
+## 6.1 Dispatch Abstraction Boundary
 
-`DispatchMode` 至少区分三class：
+`DispatchMode` must distinguish at least three types:
 
-- `workflow_delegation`: 父级工作流把步骤委派给角色，这is业务编排语义。
-- `sub_agent_spawn`: 在同一逻辑运lines面内拉起协作子 Agent，这is协作执lines策略。
-- `worker_dispatch`: execution plane via `PlanGraphDispatch (PlanGraphBundle)` 把执lines票据派给 worker，这is基础设施调度语义。
+- `workflow_delegation`: Parent workflow delegates steps to a role; this is business orchestration semantics.
+- `sub_agent_spawn`: Pull up a collaborative child Agent within the same logical execution surface; this is collaborative execution strategy.
+- `worker_dispatch`: Execution plane dispatches execution tickets to workers via `PlanGraphDispatch (PlanGraphBundle)`; this is infrastructure scheduling semantics.
 
-规则：
+Rules:
 
-- 三者不能混用为同一个抽象词“派发”。
-- 业务文档谈角色委派时，不应defaults to等同于 worker 调度。
-- execution plane 的 queue / lease / worker 语义由 `execution_plane_contract.md` 负责，且 canonical handoff 必须is `PlanGraphDispatch (PlanGraphBundle)`。
+- The three cannot be used interchangeably as the same abstract word "dispatch".
+- When business documents talk about role delegation, they should not default to being equivalent to worker scheduling.
+- Execution plane queue / lease / worker semantics are governed by `execution_plane_contract.md`, and the canonical handoff must be `PlanGraphDispatch (PlanGraphBundle)`.
 
-## 7. failed语义
+## 7. Failure Semantics
 
-- 输入不满足 schema：不得directly执lines。
-- precondition failed：进入父级handle逻辑。
-- 输出缺字段：允许有限补全重试。
+- Input does not satisfy schema: Must not execute directly.
+- Precondition failure: Enter parent-level handling logic.
+- Output missing fields: Allow limited completion retry.
 
-## 7A. OAPEFLIR Executor 边界
+## 7A. OAPEFLIR Executor Boundaries
 
-Agent executor 在 phase1-4 范围内应按 OAPEFLIR 阶段消费或产出结果（对应 ADR-016）：
+Agent executors within phase 1-4 scope should consume or produce results according to OAPEFLIR stages (corresponding to ADR-016):
 
-| OAPEFLIR 阶段 | Agent 角色 | 约束 |
+| OAPEFLIR Stage | Agent Role | Constraint |
 |--------------|-----------|------|
-| Observe | 收集信号 | 不得做评估Decision |
-| Assess | 评估风险/复杂度 | 不得bypassing Plan directly执lines |
-| Plan | 生成执lines计划 | 必须符合 R3-SINGLE 约束 |
-| Execute | 执lines计划 | 不得bypassing `PlanGraphBundle`（R3-NOBYPASS） |
-| Feedback | 收集信号 | 不得directlyImpact执lines |
-| Learn | 提取模式 | 不得directly写受控Status |
-| Improve | 评估候选 | 必须via过 guardrail + approval |
-| Release | 受控发布 | 必须遵守 autonomy boundary |
+| Observe | Collect signals | Must not make assessment decisions |
+| Assess | Assess risk/complexity | Must not bypass Plan to execute directly |
+| Plan | Generate execution plan | Must comply with R3-SINGLE constraint |
+| Execute | Execute plan | Must not bypass `PlanGraphBundle` (R3-NOBYPASS) |
+| Feedback | Collect signals | Must not directly affect execution |
+| Learn | Extract patterns | Must not directly write controlled state |
+| Improve | Evaluate candidates | Must pass through guardrail + approval |
+| Release | Controlled release | Must obey autonomy boundary |
 
-**规则**：
+**Rules**:
 
-- Agent 可以辅助 Observe / Assess / Plan / Feedback / Learn 的内容生成，但不能directly越过 deterministic guardrail 写最终受控Status。
-- Agent 输出若used for Improve / Release，必须进入 policy / guardrail / approval 链后才能生效（R4-EVIDENCE 约束）。
+- Agents can assist with content generation for Observe / Assess / Plan / Feedback / Learn, but cannot directly bypass deterministic guardrails to write final controlled state.
+- If Agent output is used for Improve / Release, it must take effect after passing through policy / guardrail / approval chain (R4-EVIDENCE constraint).
 
 ## 7B. Middleware Hooks
 
-`AgentMiddlewareHook` 当前至少应允许：
+`AgentMiddlewareHook` must currently at least allow:
 
 - `observe_pre`
 - `assess_post`
 - `feedback_collect`
 - `learn_extract`
 
-规则：
+Rules:
 
-- middleware hook is runtime seam，不isbypassing policy 的后门。
-- hook 产出若进入 feedback / learning / improvement 链，必须具备可审计 provenance。
+- Middleware hooks are runtime seams, not backdoors to bypass policy.
+- Hook output that enters feedback / learning / improvement chain must have auditable provenance.
 
-## 8. 补充规则
+## 8. Supplementary Rules
 
-### 8.1 统一角色 schema
+### 8.1 Unified Role Schema
 
-所有角色至少统一contains：
+All roles must uniformly include at least:
 
 - `role_id`
 - `role_kind` (`platform | domain`)
@@ -161,36 +161,35 @@ Agent executor 在 phase1-4 范围内应按 OAPEFLIR 阶段消费或产出结果
 - `output_contract_ref`
 - `version`
 
-规则：
+Rules:
 
-- 平台角色vs领域角色只is在 `role_kind`、`domain_binding` 和permission范围上不同，不应演化为两套对象模型。
-- 任何新角色都必须声明输出 contract 和工具边界。
+- Platform roles and domain roles only differ in `role_kind`, `domain_binding`, and permission scope; they should not evolve into two sets of object models.
+- Any new role must declare output contract and tool boundaries.
 
-### 8.2 Prompt 模板variable
+### 8.2 Prompt Template Variables
 
-prompt 模板variable最少分为：
+Prompt template variables are minimally divided into:
 
 - `system_vars`
 - `task_vars`
 - `domain_vars`
 - `runtime_vars`
 
-规则：
+Rules:
 
-- 未声明variabledefaults to视为 lint error，不允许静默忽略。
-- 高风险运lines时约束不得只存在于 prompt variable里，必须有系统层强约束。
+- Undeclared variables default to lint error; silent ignoring is not allowed.
+- High-risk runtime constraints must not only exist in prompt variables; they must have system-level strong constraints.
 
-### 8.3 角色版本化
+### 8.3 Role Versioning
 
-- 角色版本uses单调递增语义版本或整数版本。
-- 破坏性 prompt / output contract 变更必须升级主版本。
-- 运lines中的 execution 继续绑定其启动时的角色版本，不得被热替换污染。
-
+- Role versioning uses monotonically increasing semantic versioning or integer versioning.
+- Breaking prompt / output contract changes must upgrade the major version.
+- Running executions continue to bind to the role version at startup and must not be contaminated by hot replacement.
 
 ## v4.3 Architecture Remediation
 
-以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中record的 contract 偏差。本文档历史段落如vs本节conflicts，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
+The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If the historical paragraphs of this document conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 to ADR-113, and `src/platform/contracts/executable-contracts/` prevail.
 
-- T-27: 本文原先accesses along用 `division` 叙事作为 Agent 的主要组织边界，并把 `worker_dispatch` 写成不带 `PlanGraphDispatch` 的泛化派发语义，Root cause: 角色合同继承了 v3 组织编排模型，没有随 v4.3 的域中心模型和 graph dispatch handoff synchronous重写。修复：正文现把 Agent 绑定收敛到 `domain_id / DomainDescriptor`，并把 `worker_dispatch` 明确绑定到 `PlanGraphDispatch (PlanGraphBundle)`。
+- T-27: This document originally used `division` narrative as the primary organizational boundary for Agents, and wrote `worker_dispatch` as generalized dispatch without `PlanGraphDispatch`. Root cause: The role contract inherited the v3 organizational orchestration model and was not rewritten with v4.3's domain-centered model and graph dispatch handoff. Fix: The main text now converges Agent binding to `domain_id / DomainDescriptor`, and explicitly binds `worker_dispatch` to `PlanGraphDispatch (PlanGraphBundle)`.
 
-mandatory规则：Status迁移必须via `RuntimeStateMachine.transition(command)`；执lines计划必须uses `PlanGraphBundle`；执lines结果必须uses `NodeAttemptReceipt`；truth event 只能uses `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；budget必须uses `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。
+Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events can only use `platform.*`; OAPEFLIR can only be used as `oapeflir.view.*` / rationale projection; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.

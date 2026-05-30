@@ -2,52 +2,52 @@
 
 ---
 
-## OAPEFLIR 关联
+## OAPEFLIR Association
 
-本 contract 参vs OAPEFLIR 八阶段循环中的以下阶段：
+This contract participates in the following stages of the OAPEFLIR eight-stage cycle:
 
-- **Observe**：信号采集vs聚合
-- **Assess**：执lines前评估vs风险判断
-- **Plan**：任务分解vs DAG 构建
-- **Execute**：步骤执linesvs容错
-- **Feedback**：信号收集vs预handle
-- **Learn**：模式检测vs知识提取
-- **Improve**：改进候选评估vs rollout
-- **Release**：受控发布vs回滚
+- **Observe**: Signal collection and aggregation
+- **Assess**: Pre-execution assessment and risk judgment
+- **Plan**: Task decomposition and DAG construction
+- **Execute**: Step execution and fault tolerance
+- **Feedback**: Signal collection and preprocessing
+- **Learn**: Pattern detection and knowledge extraction
+- **Improve**: Improvement candidate evaluation and rollout
+- **Release**: Controlled release and rollback
 
 ---
 
-## 1. 范围
+## 1. Scope
 
-本 contract defines事业部的声明式configure结构，以及角色、workflow、触发器和重试策略的最小要求。
+This contract defines the declarative configuration structure for divisions, along with minimum requirements for roles, workflows, triggers, and retry policies.
 
-## 2. Division 最小字段
+## 2. Division Minimum Fields
 
-| 字段 | class型 | Description |
-|---|-------|--------|
-| `id` | `string` | 事业部唯一标识 |
-| `version` | `string \| number` | division defines版本 |
-| `name` | `string` | 展示名称 |
-| `description` | `string` | 事业部Description |
-| `priority` | `number?` | 路由优先级，值越大优先级越高 |
-| `triggers` | `string[]` | 路由触发规则 |
-| `domain` | `string?` | division 绑定的 domain |
-| `tool_bundle_ref` | `string?` | 绑定的 domain tool bundle |
-| `plugin_refs` | `string[]?` | 允许加载的 plugin references用 |
-| `knowledge_namespace` | `string?` | 该 division 的知识命名空间 |
-| `roles` | `RoleRef[]` | 角色defines列table |
-| `default_plan_blueprint_ref` | `string` | defaults to PlanGraph/blueprint references用 |
-| `orchestration_plan_blueprint_ref` | `string?` | 多步编排 blueprint references用 |
-| `default_workflow` | `string?` | legacy loader alias |
-| `orchestration_workflow` | `string?` | legacy loader alias |
+| Field | Type | Description |
+| --- | --- | --- |
+| `id` | `string` | Division unique identifier |
+| `version` | `string \| number` | Division definition version |
+| `name` | `string` | Display name |
+| `description` | `string` | Division description |
+| `priority` | `number?` | Routing priority, higher value means higher priority |
+| `triggers` | `string[]` | Routing trigger rules |
+| `domain` | `string?` | Domain bound to this division |
+| `tool_bundle_ref` | `string?` | Bound domain tool bundle |
+| `plugin_refs` | `string[]?` | Allowed plugin references |
+| `knowledge_namespace` | `string?` | Knowledge namespace for this division |
+| `roles` | `RoleRef[]` | Role definition list |
+| `default_plan_blueprint_ref` | `string` | Default PlanGraph/blueprint reference |
+| `orchestration_plan_blueprint_ref` | `string?` | Multi-step orchestration blueprint reference |
+| `default_workflow` | `string?` | Legacy loader alias |
+| `orchestration_workflow` | `string?` | Legacy loader alias |
 
-## 3. Trigger 规则
+## 3. Trigger Rules
 
-- trigger used for VP 运营的首轮规则匹配。
-- 应优先table达高频user语言。
-- 不应过宽，避免多个事业部大面积overlaps命中。
+- Triggers are used for first-round rule matching in VP operations.
+- Should prioritize expressing high-frequency user language.
+- Should not be too broad to avoid multiple divisions broadly overlapping matches.
 
-## 4. RoleRef 最小字段
+## 4. RoleRef Minimum Fields
 
 - `id`
 - `name`
@@ -57,49 +57,49 @@
 - `domain_id?`
 - `max_instances?`
 
-## 5. Workflow 规则
+## 5. Workflow Rules
 
-- `division.yaml` 应优先via `default_plan_blueprint_ref` / `orchestration_plan_blueprint_ref` references用编排蓝图；`default_workflow` / `orchestration_workflow` 只保留兼容别名。
-- workflow defines可以内联于加载器supported的最小defines中，也可以位于 `workflows/` 目录并由 loader 统一装载。
-- 步骤间via output key 传递data；若存在返工或回退，应显式table达，不relies on隐式约定。
-- division 若声明 `domain`，workflow 中的 tool / plugin references用必须vs该 domain 匹配。
+- `division.yaml` should preferentially reference orchestration blueprints via `default_plan_blueprint_ref` / `orchestration_plan_blueprint_ref`; `default_workflow` / `orchestration_workflow` only retain compatibility aliases.
+- Workflow definitions can be inline within the minimum definition supported by the loader, or located in the `workflows/` directory and loaded by the loader uniformly.
+- Data is passed between steps via output keys; if rework or rollback exists, it should be explicitly expressed, not relying on implicit conventions.
+- If a division declares a `domain`, tool/plugin references in the workflow must match that domain.
 
 ## v4.3 Contract Remediation
 
-- T-72: 本文原先把 `default_workflow / orchestration_workflow` 写成 canonical references用，Root cause:  division contract 成型时平台仍以 workflow loader 为中心，没有切换到计划蓝图vs图执lines语义。修复：正文现把 `*_plan_blueprint_ref` 提升为权威字段，旧 workflow 键only保留 loader 兼容作用。
+- T-72: This document originally wrote `default_workflow / orchestration_workflow` as canonical references. Root cause: when the division contract was formed, the platform was still centered on workflow loader and had not switched to plan blueprint and graph execution semantics. Fix: The main text now promotes `*_plan_blueprint_ref` to the authoritative field, and the old workflow keys only retain loader compatibility.
 
-## 6. vs HR Agent 的边界
+## 6. Boundary with HR Agent
 
-- HR Agent 可在现有事业部内Recommendation新增角色。
-- HR Agent 的 workflow patch defaults to不is自动生效configure。
-- 新事业部必须人工创建。
+- HR Agent may recommend new roles within existing divisions.
+- HR Agent's workflow patch is not automatically effective configuration by default.
+- New divisions must be created manually.
 
-## 7. 补充规则
+## 7. Supplementary Rules
 
-### 7.0 `resource_boundaries` budget字段
+### 7.0 `resource_boundaries` Budget Fields
 
-- `resource_boundaries.budget_limit_per_task` 若存在，单位固定为 `USD`。
-- 该字段必须is正数，table示单任务budgetupper limit，而不is抽象分值。
-- loader 可以在运lines时补入 `budget_limit_per_task_unit: "usd"` 作为规范化视图。
+- If `resource_boundaries.budget_limit_per_task` exists, the unit is fixed as `USD`.
+- This field must be a positive number, representing the single-task budget upper limit, not an abstract score.
+- The loader may supplement `budget_limit_per_task_unit: "usd"` at runtime as a normalized view.
 
-### 7.1 `AGENT.md` 加载
+### 7.1 `AGENT.md` Loading
 
-- division 级 `AGENT.md` only补充该 division 的lines为Description，不覆盖平台硬规则。
-- 加载顺序应为：platform base -> division -> role。
+- Division-level `AGENT.md` only supplements the behavioral description for that division and does not override platform hard rules.
+- Loading order should be: platform base -> division -> role.
 
-### 7.2 Trigger conflicts裁决
+### 7.2 Trigger Conflict Resolution
 
-- 先看显式优先级，再看更具体匹配，再看人工defaults to路由。
-- conflicts裁决结果必须可解释、可审计。
+- First look at explicit priority, then more specific matches, then manual default routing.
+- Conflict resolution results must be explainable and auditable.
 
-### 7.3 版本vs迁移
+### 7.3 Version and Migration
 
-- `division.yaml` 必须携带版本。
-- 破坏性 workflow / role 变更必须提供 migration note。
-- 运lines中的任务继续绑定启动时解析出的 division 版本。
+- `division.yaml` must carry a version.
+- Breaking workflow/role changes must provide migration notes.
+- Tasks in progress continue to bind to the division version resolved at startup.
 
-### 7.4 Domain Registry 集成
+### 7.4 Domain Registry Integration
 
-- 每个 division 最多绑定一个 authoritative `domain`。
-- `tool_bundle_ref`、`plugin_refs`、`knowledge_namespace` 应vs Domain Registry / Plugin Registry 的注册Status一致。
-- 未声明 `domain` 的 division 允许uses通用工具集，但不得as domain-specialized division。
+- Each division can bind at most one authoritative `domain`.
+- `tool_bundle_ref`, `plugin_refs`, `knowledge_namespace` should be consistent with the registration status in Domain Registry / Plugin Registry.
+- Divisions that do not declare a `domain` may use general-purpose tool sets, but must not impersonate domain-specialized divisions.

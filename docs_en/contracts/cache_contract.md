@@ -1,16 +1,16 @@
 # Cache Contract
 
-## 1. 范围
+## 1. Scope
 
-本 contract defines `src/platform/shared/cache/` 的 authoritative cache对象、分层storage、失效广播vs测试要求。
+This contract defines the authoritative cache objects, layered storage, invalidation broadcast, and testing requirements for `src/platform/shared/cache/`.
 
-相关文档：
+Related documents:
 
 - `configuration_layers_and_defaults_contract.md`
 - `observability_contract.md`
 - `model_gateway_routing_contract.md`
 
-## 2. 核心对象
+## 2. Core Objects
 
 ```typescript
 type CacheTier = "l1_memory" | "l2_sqlite" | "l3_redis";
@@ -33,7 +33,7 @@ interface CacheEntry<T = unknown> {
 }
 ```
 
-## 3. storage SPI
+## 3. Storage SPI
 
 ```typescript
 interface CacheStore {
@@ -44,13 +44,13 @@ interface CacheStore {
 }
 ```
 
-规则：
+Rules:
 
-- `stableHash` 必须由规范化输入生成，不允许把未via排序的对象directly拼进 key。
-- `tags` used for按 domain / prompt / workflow / tenant 批量失效。
-- `versionToken` 存在时，消费者必须把其视为强一致边界的一部分。
+- `stableHash` must be generated from normalized input; unsorted objects must not be directly concatenated into key.
+- `tags` are used for batch invalidation by domain / prompt / workflow / tenant.
+- When `versionToken` exists, consumers must treat it as part of the strong consistency boundary.
 
-## 4. 生命cyclevs失效
+## 4. Lifecycle and Invalidation
 
 ```typescript
 type InvalidationReason =
@@ -61,21 +61,21 @@ type InvalidationReason =
   | "version_rolled";
 ```
 
-规则：
+Rules:
 
-- `expiresAt` 到期后不得继续命中。
-- `staleAt` 到达后可进入 stale-while-revalidate，但call方必须显式允许。
-- prompt、model、policy、domain descriptor、workflow version 变化必须触发 tag 级失效。
-- 不得跨 `tenant` / `workspace` 共享携带敏感data的cache对象。
+- After `expiresAt` expires, it must not continue to hit.
+- When `staleAt` is reached, it can enter stale-while-revalidate, but callers must explicitly allow it.
+- Changes in prompt, model, policy, domain descriptor, or workflow version must trigger tag-level invalidation.
+- Cache objects carrying sensitive data must not be shared across `tenant` / `workspace`.
 
-## 5. 观测vs约束
+## 5. Observability and Constraints
 
-- 必须record至少 `hit`、`miss`、`stale_hit`、`write`、`eviction` 五class指标。
-- L1/L2/L3 之间的回填顺序必须稳定，禁止“低层命中但高层不回填”的静默漂移。
-- cache miss 不得改变业务结果语义，只允许Impactdelayvs成本。
+- At least `hit`, `miss`, `stale_hit`, `write`, `eviction` five types of metrics must be recorded.
+- Fill order between L1/L2/L3 must be stable; "low layer hits but high layer does not refill" silent drift is prohibited.
+- Cache miss must not change business result semantics; it can only affect latency and cost.
 
-## 6. 测试要求
+## 6. Testing Requirements
 
-- unit：key 规范化、TTL/stale 语义、tag 失效、multi-level 回填。
-- integration：prompt/model/workflow 变更后触发跨层失效广播。
-- contract：不同 tier 对 `CacheStore` SPI 的lines为一致，尤其is空值、过期和值回填约束。
+- unit: key normalization, TTL/stale semantics, tag invalidation, multi-level fill.
+- integration: prompt/model/workflow change triggers cross-layer invalidation broadcast.
+- contract: different tiers' behavior on `CacheStore` SPI must be consistent, especially for null values, expiration, and value fill constraints.

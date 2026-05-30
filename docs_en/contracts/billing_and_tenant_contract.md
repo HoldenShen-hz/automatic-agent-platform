@@ -2,26 +2,26 @@
 
 ---
 
-## OAPEFLIR 关联
+## OAPEFLIR Relationship
 
-本 contract 参vs OAPEFLIR 八阶段循环中的以下阶段：
+This contract participates in the following stages of the OAPEFLIR eight-stage cycle:
 
-- **Observe**：信号采集vs聚合
-- **Assess**：执lines前评估vs风险判断
-- **Plan**：任务分解vs DAG 构建
-- **Execute**：步骤执linesvs容错
-- **Feedback**：信号收集vs预handle
-- **Learn**：模式检测vs知识提取
-- **Improve**：改进候选评估vs rollout
-- **Release**：受控发布vs回滚
+- **Observe**: Signal collection and aggregation
+- **Assess**: Pre-execution assessment and risk judgment
+- **Plan**: Task decomposition and DAG construction
+- **Execute**: Step execution and fault tolerance
+- **Feedback**: Signal collection and preprocessing
+- **Learn**: Pattern detection and knowledge extraction
+- **Improve**: Improvement candidate assessment and rollout
+- **Release**: Controlled release and rollback
 
 ---
 
-## 1. 范围
+## 1. Scope
 
-本 contract defines计量、配额、账单、套餐边界和未来多租户隔离的最小对象模型。
+This contract defines the minimum object model for metering, quota, billing, plan boundaries, and future multi-tenant isolation.
 
-## 2. 关键对象
+## 2. Key Objects
 
 - `UsageRecord`
 - `QuotaPolicy`
@@ -31,12 +31,12 @@
 - `PlanDefinition`
 - `TenantBoundary`
 
-Description：
+Note:
 
-- `UsageRecord` is计量事实对象。
-- `BudgetLedger / BudgetReservation` 的 truth defines冻结在 `budget-ledger-contract.md`，本文只defines它们vs tenant / billing subject 的关系，不repeats发明第二套budget账本。
+- `UsageRecord` is the metering fact object.
+- The truth definition of `BudgetLedger / BudgetReservation` is frozen in `budget-ledger-contract.md`; this document only defines their relationship with tenant / billing subject, and does not reinvent a second budget ledger.
 
-## 3. UsageRecord 最小字段
+## 3. UsageRecord Minimum Fields
 
 - `usage_id`
 - `subject_id`
@@ -50,7 +50,7 @@ Description：
 - `cost_source?`
 - `captured_at`
 
-## 4. BillingAccount 最小字段
+## 4. BillingAccount Minimum Fields
 
 - `account_id`
 - `owner_id`
@@ -59,7 +59,7 @@ Description：
 - `balance_snapshot?`
 - `created_at`
 
-## 5. TenantBoundary 最小字段
+## 5. TenantBoundary Minimum Fields
 
 - `tenant_id`
 - `storage_scope`
@@ -67,19 +67,19 @@ Description：
 - `identity_scope`
 - `policy_scope`
 
-## 6. lines为约束
+## 6. Behavioral Constraints
 
-- 计量、配额和账单必须可追溯到 `tenant / subject / harness_run / node_run`。
-- Pro vs Enterprise 的隔离策略不能只靠 UI 区分。
-- 多租户设计进入实现前，必须先明确租户级storage边界和permission边界。
-- 退款、冲正、欠费冻结和能力降级必须以独立账务事实table达，不得directly重写历史 usage。
-- 账单聚合不得bypassing `BudgetLedger / BudgetReservation / BudgetSettlement` truth；usage vs budget 只能向 billing projection 单向派生。
+- Metering, quota, and billing must be traceable to `tenant / subject / harness_run / node_run`.
+- Pro vs Enterprise isolation strategy cannot be distinguished by UI alone.
+- Before multi-tenant design enters implementation, tenant-level storage boundaries and permission boundaries must be clarified first.
+- Refunds, reversals, overdue freezes, and capability degradation must be expressed as independent accounting facts; rewriting historical usage directly is not allowed.
+- Bill aggregation must not bypass `BudgetLedger / BudgetReservation / BudgetSettlement` truth; usage and budget can only be derived one-way to billing projection.
 
-## 7. 补充规则
+## 7. Supplementary Rules
 
-### 7.1 支付提供者接口
+### 7.1 Payment Provider Interface
 
-支付提供者最少应supported：
+Payment providers should support at least:
 
 - `create_subscription`
 - `update_plan`
@@ -87,22 +87,21 @@ Description：
 - `mark_payment_failed`
 - `cancel_subscription`
 
-### 7.2 发票vs退款
+### 7.2 Invoices and Refunds
 
-- 发票、退款和冲正必须可追溯到 `billing_account` vstime窗。
-- 退款不得静默改写 `UsageRecord` 或 `BudgetLedger` 历史，应以独立 adjustment recordtable达。
+- Invoices, refunds, and reversals must be traceable to `billing_account` and time window.
+- Refunds must not silently rewrite `UsageRecord` or `BudgetLedger` history; they should be expressed as independent adjustment records.
 
-### 7.3 Enterprise 账户模型
+### 7.3 Enterprise Account Model
 
-- `organization_account` is Enterprise 计费vs策略归属主体。
-- workspace / project 的资源消耗最终归集到 organization 级账务边界。
-- organization 级 billing projection 必须能回链到租户下的 `UsageRecord` vs `BudgetLedger`。
-
+- `organization_account` is the Enterprise billing and strategy ownership subject.
+- Resource consumption of workspace / project is ultimately aggregated to the organization-level billing boundary.
+- Organization-level billing projection must be able to trace back to `UsageRecord` and `BudgetLedger` under the tenant.
 
 ## v4.3 Architecture Remediation
 
-以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中record的 contract 偏差。本文档历史段落如vs本节conflicts，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
+The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If this document's historical sections conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 to ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
 
-- T-40: 本文原先继续uses `UsageMeter`，且完全没有把 tenant 账单vs冻结的 `BudgetLedger / BudgetReservation` 关系写进正文，Root cause: 计费合同长期停留在产品套餐/账单视角，没有随着 v4.3 的 usage fact vsbudget truth 模型synchronous升级。修复：正文现把计量事实收敛为 `UsageRecord`，并显式references用 `BudgetLedger / BudgetReservation` 作为budget真相主链，只允许向 billing projection 派生。
+- T-40: This document originally continued using `UsageMeter` and had absolutely no relationship between tenant billing and frozen `BudgetLedger / BudgetReservation` written into the main text. Root cause: The billing contract stayed in product plan/billing perspective for a long time and did not synchronize with v4.3's usage fact and budget truth model upgrade. Fix: The main text now converges metering facts to `UsageRecord` and explicitly references `BudgetLedger / BudgetReservation` as the budget truth main chain, only allowing derivation to billing projection.
 
-mandatory规则：Status迁移必须via `RuntimeStateMachine.transition(command)`；执lines计划必须uses `PlanGraphBundle`；执lines结果必须uses `NodeAttemptReceipt`；truth event 只能uses `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；budget必须uses `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。
+Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events must only use `platform.*`; OAPEFLIR can only be used as `oapeflir.view.*` / rationale projection; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.

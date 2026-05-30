@@ -1,17 +1,17 @@
 # Perception Contract
 
-> **OAPEFLIR 相关**：本 contract defines OAPEFLIR Observe Hub，对应 ADR-016 §3 和 G6 解决方案。
-> **更新日期**：2026-04-17
+> **OAPEFLIR Related**: This contract defines the OAPEFLIR Observe Hub, corresponding to ADR-016 §3 and G6 solution.
+> **Updated**: 2026-04-17
 
-> 兼容Description：文件名保留 `perception_contract.md` 以维持历史链接稳定性；当前 authoritative 语义已收口到 OAPEFLIR 的 `Observe` 阶段。
+> Compatibility Note: Filename `perception_contract.md` is retained to maintain historical link stability; the current authoritative semantics have been closed into the OAPEFLIR `Observe` stage.
 
-## 1. 范围
+## 1. Scope
 
-本 contract defines `Observe` 阶段的最小规范，includes多源信号采集、上下文快照构建和风险/领域提示整理。
+This contract defines the minimal specification for the `Observe` stage, including multi-source signal collection, context snapshot building, and risk/domain hint organization.
 
-当前不再把 “perception” 视为独立业务面；它is历史命名兼容壳，实际语义对齐 `ObserveHub`。
+"Perception" is no longer considered an independent business plane; it is a historical naming compatibility shell, with actual semantics aligned to `ObserveHub`.
 
-## 2. 关键对象
+## 2. Key Objects
 
 - `ObserveSource`
 - `ObserveSignal`
@@ -22,10 +22,10 @@
 - `ObservationAggregator`
 - `ObserveSchedule`
 
-## 3. ObserveSource 最小字段
+## 3. ObserveSource Minimal Fields
 
 - `source_id`
-- `type`，取值 `rss | web | github | api | custom`
+- `type`, values: `rss | web | github | api | custom`
 - `name`
 - `enabled`
 - `schedule`
@@ -33,7 +33,7 @@
 - `priority`
 - `trust_tier?`
 
-## 4. ObserveSignal 最小字段
+## 4. ObserveSignal Minimal Fields
 
 - `signal_id`
 - `source_id`
@@ -45,7 +45,7 @@
 - `domain_hints?`
 - `captured_at`
 
-## 5. TaskSituation 最小字段
+## 5. TaskSituation Minimal Fields
 
 - `task_id`
 - `context_snapshot`
@@ -54,17 +54,17 @@
 - `source_refs`
 - `generated_at`
 
-## 5.1 SystemSituation 最小字段
+## 5.1 SystemSituation Minimal Fields
 
-- `health_status`：`ok | degraded | overloaded | unhealthy`
-- `provider_health`：Map<providerId, { available, latencyP99 }>
-- `resource_utilization`：{ memoryMB, cpuPercent, activeProcesses }
-- `event_bus_backlog`：pending event count
+- `health_status`: `ok | degraded | overloaded | unhealthy`
+- `provider_health`: Map<providerId, { available, latencyP99 }>
+- `resource_utilization`: { memoryMB, cpuPercent, activeProcesses }
+- `event_bus_backlog`: pending event count
 - `generated_at`
 
 ## 5.2 ObservationAggregator
 
-`ObservationAggregator` is Observe 阶段的唯一出口，聚合 `TaskSituation` + `SystemSituation` 为 `UnifiedObservation`：
+`ObservationAggregator` is the sole exit point for the Observe stage, aggregating `TaskSituation` + `SystemSituation` into `UnifiedObservation`:
 
 ```typescript
 interface UnifiedObservation {
@@ -74,16 +74,16 @@ interface UnifiedObservation {
 }
 ```
 
-## 6. lines为约束
+## 6. Behavioral Constraints
 
-- Observe defaults to不改变主任务链，只能产出信号和 `TaskSituation`。
-- Observe 阶段输出进入 `Assess / Plan` 前必须可追溯到 source ref 或 signal ref。
-- repeats信息必须supportedfor deduplicationvs TTL。
-- Observe 分析成本必须可追踪并受budget控制。
+- Observe does not modify the main task chain by default; it can only produce signals and `TaskSituation`.
+- Observe stage outputs entering `Assess / Plan` must be traceable to source ref or signal ref.
+- Duplicate information must support deduplication and TTL.
+- Observe analysis costs must be trackable and subject to budget control.
 
-## 8. 补充规则
+## 8. Supplementary Rules
 
-- 信息源能力矩阵至少record：拉取方式、频率、可信度、成本等级、可触发动作范围。
-- `TaskSituationBuilder` 至少产出：`context_snapshot`、`risk_signals`、`domain_hints`。
-- `SystemSituationBuilder` 至少产出：`health_status`、`provider_health`、`resource_utilization`、`event_bus_backlog`。
-- 主动创建任务或触发动作defaults to走 HQ/system policy，不得由 Observe 自己directly签发。
+- Information source capability matrix must record at minimum: pull method, frequency, trustworthiness, cost tier, and actionable scope.
+- `TaskSituationBuilder` must produce at minimum: `context_snapshot`, `risk_signals`, `domain_hints`.
+- `SystemSituationBuilder` must produce at minimum: `health_status`, `provider_health`, `resource_utilization`, `event_bus_backlog`.
+- Active task creation or action triggering defaults to going through HQ/system policy and must not be directly issued by Observe itself.

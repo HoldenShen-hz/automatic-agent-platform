@@ -2,78 +2,78 @@
 
 ---
 
-## OAPEFLIR 关联
+## OAPEFLIR Relationship
 
-本 contract 参vs OAPEFLIR 八阶段循环中的以下阶段：
+This contract participates in the following stages of the OAPEFLIR eight-stage cycle:
 
-- **Observe**：信号采集vs聚合
-- **Assess**：执lines前评估vs风险判断
-- **Plan**：任务分解vs DAG 构建
-- **Execute**：步骤执linesvs容错
-- **Feedback**：信号收集vs预handle
-- **Learn**：模式检测vs知识提取
-- **Improve**：改进候选评估vs rollout
-- **Release**：受控发布vs回滚
+- **Observe**: Signal collection and aggregation
+- **Assess**: Pre-execution assessment and risk judgment
+- **Plan**: Task decomposition and DAG construction
+- **Execute**: Step execution and fault tolerance
+- **Feedback**: Signal collection and preprocessing
+- **Learn**: Pattern detection and knowledge extraction
+- **Improve**: Improvement candidate assessment and rollout
+- **Release**: Controlled release and rollback
 
 ---
 
-## 1. 范围
+## 1. Scope
 
-本 contract defines平台统一错误模型。
+This contract defines the platform's unified error model.
 
-它要求所有传播到 runtime、gateway、审批、恢复、观测层的错误，都必须先收敛到 `AppError`。
+It requires that all errors propagated to runtime, gateway, approval, recovery, and observation layers must first converge to `AppError`.
 
-## 2. `AppError` 最小字段
+## 2. `AppError` Minimum Fields
 
-| 字段 | class型 | Description |
-|---|-------|--------|
-| `code` | `string` | 稳定错误码 |
-| `category` | `validation \| policy \| auth \| budget \| provider \| tool \| sandbox \| storage \| workflow \| runtime \| tenant \| monetization \| external \| internal` | 错误分class |
-| `retryable` | `boolean` | isno允许自动重试 |
-| `user_message` | `string` | 面向user的security提示 |
-| `internal_details` | `json?` | 面向内部排障的细节 |
-| `source` | `gateway \| runtime \| workflow \| provider \| tool \| storage \| policy` | 主要来源 |
-| `trace_id` | `string?` | 链路追踪 |
-| `task_id?` | `string` | 关联任务（兼容投影） |
-| `harness_run_id?` | `string` | 关联 HarnessRun |
-| `node_run_id?` | `string` | 关联 NodeRun |
-| `execution_id?` | `string` | legacy execution 投影键 |
-| `caused_by?` | `string` | 上游错误码或异常references用 |
-| `occurred_at` | `timestamp` | 发生time |
+| Field | Type | Description |
+| --- | --- | --- |
+| `code` | `string` | Stable error code |
+| `category` | `validation \| policy \| auth \| budget \| provider \| tool \| sandbox \| storage \| workflow \| runtime \| tenant \| monetization \| external \| internal` | Error classification |
+| `retryable` | `boolean` | Whether automatic retry is allowed |
+| `user_message` | `string` | User-facing safe hint |
+| `internal_details` | `json?` | Internal troubleshooting details |
+| `source` | `gateway \| runtime \| workflow \| provider \| tool \| storage \| policy` | Primary source |
+| `trace_id` | `string?` | Trace ID |
+| `task_id?` | `string` | Associated task (compat projection) |
+| `harness_run_id?` | `string` | Associated HarnessRun |
+| `node_run_id?` | `string` | Associated NodeRun |
+| `execution_id?` | `string` | Legacy execution projection key |
+| `caused_by?` | `string` | Upstream error code or exception reference |
+| `occurred_at` | `timestamp` | Occurrence time |
 
-## 3. 统一规则
+## 3. Unified Rules
 
-- 所有错误必须拥有稳定 `code`，不得只抛自由文本。
-- 所有错误必须显式标记 `retryable`。
-- `user_message` vs `internal_details` 必须分离。
-- provider / tool 原生错误必须先适配为 `AppError` 再进入上层。
+- All errors must have a stable `code`; free-form text throwing is not allowed.
+- All errors must explicitly mark `retryable`.
+- `user_message` and `internal_details` must be separated.
+- Provider / tool native errors must first be adapted to `AppError` before entering upper layers.
 
-## 4. 分class语义
+## 4. Classification Semantics
 
-| 分class | 含义 | defaults to重试Recommendation |
-|---|-------|--------|
-| `validation` | 输入、schema、configure非法 | no |
-| `policy` | 策略、审批、敏感动作拒绝 | no |
-| `auth` | 身份或permission不足 | no |
-| `budget` | budget、配额、成本exceeds限 | no |
-| `provider` | LLM provider failed | 视错误码而定 |
-| `tool` | 工具执linesfailed | 视工具和幂等性而定 |
-| `sandbox` | 路径、network、隔离拒绝 | 通常no |
-| `storage` | data库、文件、索referencesfailed | 视错误码而定 |
-| `workflow` | 编排、relies on、步骤inconsistent | 通常no |
-| `runtime` | 运lines时、沙箱、timeout、恢复failed | 视错误码而定 |
-| `tenant` | 租户归属、隔离、组织边界错误 | 通常no |
-| `monetization` | entitlement、quota、ledger、billing 错误 | 视错误码而定 |
-| `external` | 外部系统波动 | 视错误码而定 |
-| `internal` | 未分class内部错误 | defaults tono |
+| Classification | Meaning | Default Retry Recommendation |
+| --- | --- | --- |
+| `validation` | Input, schema, or configuration invalid | No |
+| `policy` | Strategy, approval, or sensitive action denied | No |
+| `auth` | Insufficient identity or permissions | No |
+| `budget` | Budget, quota, or cost exceeded | No |
+| `provider` | LLM provider failure | Depends on error code |
+| `tool` | Tool execution failure | Depends on tool and idempotency |
+| `sandbox` | Path, network, or isolation denied | Usually no |
+| `storage` | Database, file, or index failure | Depends on error code |
+| `workflow` | Orchestration, dependency, or step inconsistency | Usually no |
+| `runtime` | Runtime, sandbox, timeout, or recovery failure | Depends on error code |
+| `tenant` | Tenant ownership, isolation, or organization boundary error | Usually no |
+| `monetization` | Entitlement, quota, ledger, or billing error | Depends on error code |
+| `external` | External system fluctuation | Depends on error code |
+| `internal` | Uncategorized internal error | No by default |
 
-## 5. vs重试vs恢复的关系
+## 5. Relationship with Retry and Recovery
 
-- `retryable=true` 只table示允许进入重试策略，不等于一定重试。
-- 重试仍需结合 `RetryPolicy`、budget剩余、工具幂等性和运lines模式。
-- 不可重试错误进入 dead-letter 或人工升级时，必须保留 `AppError.code`。
+- `retryable=true` only indicates entering retry policy is allowed; it does not guarantee retry will occur.
+- Retry still needs to consider `RetryPolicy`, remaining budget, tool idempotency, and execution mode.
+- Non-retryable errors entering dead-letter or human escalation must preserve `AppError.code`.
 
-## 6. 标准派生class型
+## 6. Standard Derived Types
 
 - `ValidationError`
 - `PolicyDeniedError`
@@ -89,13 +89,13 @@
 - `MonetizationError`
 - `InternalAppError`
 
-## 7. 关联文档
+## 7. Related Documents
 
 - `error_code_registry.md`
 - `runtime_execution_contract.md`
 - `approval_and_hitl_contract.md`
 - `tool_and_provider_execution_contract.md`
 
-## 8. 收口Conclusion
+## 8. Closure Conclusion
 
-错误模型的核心不is“多defines几个异常class”，而is确保系统任何一层的failed都能被统一分class、统一呈现、统一恢复。
+The core of the error model is not "defining more exception classes", but ensuring that failures at any layer of the system can be uniformly classified, uniformly presented, and uniformly recovered.

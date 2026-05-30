@@ -2,26 +2,26 @@
 
 ---
 
-## OAPEFLIR 关联
+## OAPEFLIR Association
 
-本 contract 参vs OAPEFLIR 八阶段循环中的以下阶段：
+This contract participates in the following stages of the OAPEFLIR eight-stage cycle:
 
-- **Observe**：信号采集vs聚合
-- **Assess**：执lines前评估vs风险判断
-- **Plan**：任务分解vs DAG 构建
-- **Execute**：步骤执linesvs容错
-- **Feedback**：信号收集vs预handle
-- **Learn**：模式检测vs知识提取
-- **Improve**：改进候选评估vs rollout
-- **Release**：受控发布vs回滚
+- **Observe**: Signal collection and aggregation
+- **Assess**: Pre-execution assessment and risk judgment
+- **Plan**: Task decomposition and DAG construction
+- **Execute**: Step execution and fault tolerance
+- **Feedback**: Signal collection and preprocessing
+- **Learn**: Pattern detection and knowledge extraction
+- **Improve**: Improvement candidate evaluation and rollout
+- **Release**: Controlled release and rollback
 
 ---
 
-## 1. 范围
+## 1. Scope
 
-本 contract defines CLI、Web、Telegram 等渠道vs平台之间交换的统一消息结构。
+This contract defines the unified message structure exchanged between channels such as CLI, Web, Telegram and the platform.
 
-## 2. 关键对象
+## 2. Key Objects
 
 - `GatewayMessage`
 - `GatewayReply`
@@ -29,19 +29,19 @@
 - `DecisionResponse`
 - `ProgressEvent`
 
-## 3. GatewayMessage 最小字段
+## 3. GatewayMessage Minimum Fields
 
-| 字段 | class型 | Description |
-|---|-------|--------|
-| `channel` | `string` | 渠道标识 |
-| `external_user_id` | `string` | 渠道user标识 |
-| `external_session_id` | `string?` | 渠道会话标识 |
-| `message_id` | `string` | 外部消息 ID |
-| `content` | `string` | 文本内容 |
-| `attachments` | `Attachment[]?` | 附件 |
-| `created_at` | `timestamp` | 接收time |
+| Field | Type | Description |
+| --- | --- | --- |
+| `channel` | `string` | Channel identifier |
+| `external_user_id` | `string` | Channel user identifier |
+| `external_session_id` | `string?` | Channel session identifier |
+| `message_id` | `string` | External message ID |
+| `content` | `string` | Text content |
+| `attachments` | `Attachment[]?` | Attachments |
+| `created_at` | `timestamp` | Reception time |
 
-## 4. GatewayReply 最小字段
+## 4. GatewayReply Minimum Fields
 
 - `channel`
 - `target_user_id`
@@ -50,9 +50,9 @@
 - `artifacts?`
 - `buttons?`
 
-## 5. Decision交互
+## 5. Decision Interaction
 
-DecisionRequest 至少需要：
+DecisionRequest requires at minimum:
 
 - `decision_id`
 - `harness_run_id`
@@ -62,57 +62,57 @@ DecisionRequest 至少需要：
 - `options`
 - `deadline?`
 
-DecisionResponse 至少需要：
+DecisionResponse requires at minimum:
 
 - `decision_id`
 - `selected_option`
 - `comment?`
 - `responded_at`
 
-## 6. lines为约束
+## 6. Behavioral Constraints
 
-- 网关层只做适配，不改平台语义。
-- 渠道差异应via formatter / adapter 解决。
-- Decisionrequest必须可追踪回具体任务和升级原因。
+- The gateway layer only adapts, it does not modify platform semantics.
+- Channel differences should be resolved through formatter/adapter.
+- Decision requests must be traceable back to specific tasks and escalation reasons.
 
 ## v4.3 Contract Remediation
 
-- T-65: 本文原先把 `task_id` 写成Decision交互唯一关联键，Root cause: 网关消息 contract 仍按任务级 UI 模型defines审批，而没有下沉到实际运lines实例。修复：正文现把 `harness_run_id / node_run_id` 提升为Decision链权威关联键，`task_id` 只保留渠道聚合语义。
+- T-65: This document previously defined `task_id` as the sole correlation key for decision interaction. Root cause: the gateway message contract still defined approvals according to the task-level UI model and had not sunk to actual runtime instances. Fix: The main text now promotes `harness_run_id / node_run_id` as the authoritative correlation key for the decision chain, with `task_id` retaining only channel aggregation semantics.
 
-## 7. 补充规则
+## 7. Supplementary Rules
 
-- 附件统一模型至少contains：`artifact_id`、`display_name`、`mime_type`、`size_bytes`、`download_ref`。
-- 渠道能力矩阵至少覆盖：`text`、`buttons`、`attachments`、`stream`、`notifications`。
-- 富文本vs按钮若不被渠道supported，必须退化为纯文本 + #选项。
-- gateway 可以维护 `ChannelDirectory` 或等价 target registry，used for把平台can enumerate目标vs历史会话来源统一成只读目标目录。
-- 发送前若accepts人class可读目标名，应先解析成 canonical target id；只允许精确匹配或唯一前缀匹配，歧义时必须 fail-close。
-- 新平台接入不应只改 adapter 文件；至少应synchronous更新 platform enum、adapter factory、auth map、session source、tool delivery、cron delivery vs target directory 入口。
+- The unified attachment model must include at minimum: `artifact_id`, `display_name`, `mime_type`, `size_bytes`, `download_ref`.
+- The channel capability matrix must cover at minimum: `text`, `buttons`, `attachments`, `stream`, `notifications`.
+- Rich text and buttons that are not supported by the channel must degrade to plain text + numbered options.
+- Gateway may maintain `ChannelDirectory` or an equivalent target registry, used to unify platform enumerable targets with historical session sources into a read-only target directory.
+- If human-readable target names are accepted before sending, they should first be resolved to canonical target id; only exact match or unique prefix match is allowed, ambiguity must fail-close.
+- New platform onboarding should not only modify adapter files; it must at least synchronously update platform enum, adapter factory, auth map, session source, tool delivery, cron delivery and target directory entries.
 
-### 7.1 vs MessageParts 的衔接
+### 7.1 Integration with MessageParts
 
-`GatewayMessage` is渠道侧入站消息，进入平台后必须投影为 `message_parts_contract.md` defines的结构化 `MessagePart` 序列：
+`GatewayMessage` is an inbound message from the channel side. After entering the platform, it must be projected to a structured `MessagePart` sequence as defined in `message_parts_contract.md`:
 
-| GatewayMessage 字段 | 投影目标 MessagePart class型 | Description |
-|---|-------|--------|
-| `content`（纯文本） | `text` | user消息主体 |
-| `attachments` | `artifact_ref` | 每个附件生成独立 artifact，MessagePart 持有references用 |
-| DecisionResponse（审批回传） | `decision_prompt` | 审批结果作为结构化 part，不混入纯文本 |
+| GatewayMessage Field | Projected MessagePart Type | Description |
+| --- | --- | --- |
+| `content` (plain text) | `text` | User message body |
+| `attachments` | `artifact_ref` | Each attachment generates an independent artifact, MessagePart holds reference |
+| DecisionResponse (approval callback) | `decision_prompt` | Approval result as a structured part, not mixed into plain text |
 
-`GatewayReply` is平台出站消息，由内部 `MessagePart` 序列反向投影生成：
+`GatewayReply` is a platform outbound message, generated by reverse projection from internal `MessagePart` sequence:
 
-| MessagePart class型 | 投影目标 GatewayReply 字段 | Description |
-|---|-------|--------|
-| `text` | `content` | 拼接为渠道展示文本 |
-| `artifact_ref` | `artifacts` | 转换为渠道附件 |
-| `decision_prompt` | `buttons` | 转换为渠道按钮或#选项 |
-| `tool_use` / `tool_result` / `reasoning` 等运lines证据 | defaults to不投影到渠道 | only在 debug 模式或user显式request时降级为文本展示 |
+| MessagePart Type | Projected GatewayReply Field | Description |
+| --- | --- | --- |
+| `text` | `content` | Concatenated as channel display text |
+| `artifact_ref` | `artifacts` | Converted to channel attachments |
+| `decision_prompt` | `buttons` | Converted to channel buttons or numbered options |
+| `tool_use` / `tool_result` / `reasoning` and other runtime evidence | Not projected to channel by default | Only degraded to text display in debug mode or when explicitly requested by user |
 
-规则：
+Rules:
 
-- 投影过程不得丢失结构化语义；`GatewayMessage.content` 进入平台后必须作为 `text` part storage，不得只保留原始字符串。
-- 渠道不supported的 part class型必须有明确的降级策略（隐藏或转为纯文本），不得静默丢弃。
-- 投影关系由 gateway adapter 层负责，不得散落在 runtime 或 workflow 层。
+- The projection process must not lose structured semantics; `GatewayMessage.content` must be stored as a `text` part after entering the platform, not just retain the original string.
+- Part types not supported by the channel must have a clear degradation strategy (hide or convert to plain text), must not be silently dropped.
+- Projection relationship is the responsibility of the gateway adapter layer, must not be scattered in runtime or workflow layers.
 
-补充Description：
+Supplementary notes:
 
-- 渠道能力矩阵vs命名边界以下钻文档 `naming_and_engineering_boundary_contract.md` 为准。
+- Channel capability matrix and naming boundaries are governed by the drilling document `naming_and_engineering_boundary_contract.md`.

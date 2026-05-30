@@ -1,10 +1,10 @@
 # Delegated Governance Contract
 
-## 1. 范围
+## 1. Scope
 
-本 contract defines `§49-§51` 的治理委托、继承vs自助治理操作台。
+This contract defines governance delegation, inheritance, and self-service governance console for `§49-§51`.
 
-## 2. Canonical 对象
+## 2. Canonical Objects
 
 - `GovernanceDelegation`
 - `DelegationScope`
@@ -12,7 +12,7 @@
 - `GovernanceConsoleAction`
 - `DelegationRevocation`
 
-## 3. `GovernanceDelegation` 最小字段
+## 3. `GovernanceDelegation` Minimum Fields
 
 - `delegation_id`
 - `grantor`
@@ -23,22 +23,22 @@
 - `revocable`
 - `status`
 
-`DelegationScope` 最少contains：
+`DelegationScope` minimum contains:
 
 - `org_node_ids`
 - `domain_ids`
 - `policy_types`
 - `action_limits`
 
-## 4. 规则
+## 4. Rules
 
-- 委托必须最小化authorization范围。
-- 被委托者不得再iterationsexceeds范围转委托。
-- 委托必须supported即时撤销、到期失效和审计追踪。
+- Delegation must minimize authorization scope.
+- The delegatee must not further delegate beyond scope.
+- Delegation must support immediate revocation, expiration, and audit tracking.
 
-## 5. Console lines为
+## 5. Console Actions
 
-`GovernanceConsoleAction` 至少覆盖：
+`GovernanceConsoleAction` covers at minimum:
 
 - `delegate`
 - `override`
@@ -46,9 +46,8 @@
 - `review`
 - `export_audit`
 
-## 6. 测试要求
+## 6. Test Requirements
 
-- unit：scope match、override precedence、revocation
-- integration：delegation -> governance action -> audit trail
-- contract：exceeds scope 治理操作必须failed
-
+- unit: scope match, override precedence, revocation
+- integration: delegation -> governance action -> audit trail
+- contract: governance operations exceeding scope must fail

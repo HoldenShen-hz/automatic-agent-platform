@@ -1,17 +1,17 @@
 # OAPEFLIR Loop Contract
 
-## 1. 范围
+## 1. Scope
 
-本 contract defines OAPEFLIR 八阶段认知循环（`OapeflirLoopService`）的认知、治理、解释vs release Decision边界。
+This contract defines the OAPEFLIR eight-stage cognitive loop (`OapeflirLoopService`) cognition, governance, explanation, and release decision boundary.
 
-OAPEFLIR 不is执linesreferences擎，不创建独立 run，不directly驱动 `HarnessRun` / `NodeRun` Status迁移；它只读取运lines时事实、生成认知Conclusion、产出 view / rationale / release proposal，并把真正的执lines交给 `HarnessRuntime`。
+OAPEFLIR is not an execution engine, does not create independent runs, and does not directly drive `HarnessRun` / `NodeRun` status transitions; it only reads runtime facts, generates cognitive conclusions, produces view / rationale / release proposal, and delegates actual execution to `HarnessRuntime`.
 
-相关文档：
-- `runtime_execution_contract.md`：Execute 层 runtime 集成。
-- `task_and_workflow_contract.md`：任务主链。
-- `perception_contract.md`：Observe/Assess 阶段 DTO。
+Related documents:
+- `runtime_execution_contract.md`: Execute layer runtime integration.
+- `task_and_workflow_contract.md`: Task main chain.
+- `perception_contract.md`: Observe/Assess stage DTO.
 
-## 2. 核心接口
+## 2. Core Interface
 
 ### 2.1 OapeflirLoopService
 
@@ -43,10 +43,10 @@ interface OapeflirLoopOutput {
 }
 
 class OapeflirLoopService {
-  // 主入口：运lines完整八阶段认知/治理闭环
+  // Main entry: run complete eight-stage cognitive/governance loop
   async run(input: OapeflirLoopInput): Promise<OapeflirLoopOutput>;
 
-  // 单阶段认知求值（used for调试）
+  // Single-stage cognitive evaluation (for debugging)
   async runStage(
     stage: OapeflirStage,
     context: LoopContext
@@ -54,17 +54,17 @@ class OapeflirLoopService {
 }
 ```
 
-规则：
+Rules:
 
-- `OapeflirLoopOutput` 不得承载 `finalOutcome`、budget state、lease state 或任何 runtime truth。
-- OAPEFLIR 输出的 release Decision只is一种 proposal；真正放lines必须via控制平面、审批vs `RuntimeStateMachine.transition(command)`。
-- 若需要追加执lines计划，只能产出 `GraphPatchProposal` / `PlanGraphBundle` references用，不能在 loop 中directly执lines。
+- `OapeflirLoopOutput` must not carry `finalOutcome`, budget state, lease state, or any runtime truth.
+- OAPEFLIR output release decision is only a proposal; actual release must go through control plane, approval, and `RuntimeStateMachine.transition(command)`.
+- If execution plan needs to be appended, only `GraphPatchProposal` / `PlanGraphBundle` reference may be produced, not directly executed in loop.
 
-### 2.2 八阶段 DTO 输入输出
+### 2.2 Eight-Stage DTO Input/Output
 
-| 阶段 | 输入 DTO | 输出 DTO |
-|------|---------|---------|
-| Observe | `LoopContext`（继承上轮 view/rationale） | `UnifiedObservation` |
+| Stage | Input DTO | Output DTO |
+|------|---------|---------| 
+| Observe | `LoopContext` (inherits prior view/rationale) | `UnifiedObservation` |
 | Assess | `UnifiedObservation + RuntimeEvidenceView[]` | `UnifiedAssessment` |
 | Plan | `UnifiedAssessment` | `GraphPatchProposal \| PlanAdjustmentProposal` |
 | Execute | `NodeAttemptReceipt[] + RuntimeEvidenceView[]` | `ExecutionStageView` |
@@ -73,14 +73,14 @@ class OapeflirLoopService {
 | Improve | `LearningObject[]` | `ImprovementCandidate[]` |
 | Release | `ImprovementCandidate[] + GovernanceDecision[]` | `ReleaseProposal[]` |
 
-Description：
+Note:
 
-- `Plan` / `DualChannelStepOutput` / `Rollout` only能作为 legacy 视图输入，不再is canonical DTO。
-- Execute 阶段在 OAPEFLIR 里只消费运lines时回执视图，不拥有 worker、lease、retry 或 side effect commit。
+- `Plan` / `DualChannelStepOutput` / `Rollout` can only serve as legacy view input, not canonical DTO.
+- Execute stage in OAPEFLIR only consumes runtime receipt view, does not own worker, lease, retry, or side effect commit.
 
-## 3. RuntimeEvidenceBridge 接口
+## 3. RuntimeEvidenceBridge Interface
 
-OAPEFLIR via只读 bridge 消费真实 runtime 事实：
+OAPEFLIR consumes real runtime facts through a read-only bridge:
 
 ```typescript
 interface RuntimeEvidenceBridge {
@@ -95,12 +95,12 @@ interface RuntimeEvidenceBridge {
 }
 ```
 
-**约束**：
-- OAPEFLIR 不得via bridge directlycall真实 `AgentExecutor` / `CommandExecutor` 执lines副作用。
-- bridge 只允许读取 `PlanGraphBundle`、`NodeAttemptReceipt`、release evidence vs相关投影。
-- 若某阶段需要触发重新规划或 release，必须生成 proposal 并交给控制平面handle。
+**Constraints**:
+- OAPEFLIR must not directly call real `AgentExecutor` / `CommandExecutor` to execute side effects through bridge.
+- Bridge only allows reading `PlanGraphBundle`, `NodeAttemptReceipt`, release evidence, and related projections.
+- If a stage needs to trigger re-planning or release, must generate proposal and hand to control plane.
 
-## 4. Stage View 格式
+## 4. Stage View Format
 
 ```typescript
 interface ExecutionStageView {
@@ -121,47 +121,46 @@ interface ExecutionStageView {
 }
 ```
 
-规则：
+Rules:
 
-- `ExecutionStageView` is `NodeAttemptReceipt` 的派生 view，不替代回执本身。
-- user摘要、认知解释和运lines时事实必须分层存放，避免把认知 view 重新写回 truth。
+- `ExecutionStageView` is a derived view of `NodeAttemptReceipt`, not a replacement for the receipt itself.
+- User summary, cognitive explanation, and runtime facts must be stored in separate layers to avoid writing cognitive view back to truth.
 
-## 5. 事件契约
+## 5. Event Contract
 
-| 事件 | 触发时机 | 订阅者 |
+| Event | Trigger | Subscribers |
 |------|---------|-------|
-| `oapeflir.view.stage.started` | 每阶段开始 | OTel, diagnostics |
-| `oapeflir.view.stage.completed` | 每阶段完成 | Feedback, Learn |
-| `oapeflir.view.stage.failed` | 阶段异常 | Alerting, diagnostics |
-| `oapeflir.view.feedback.collected` | Feedback 阶段完成 | Learn, Improve |
-| `oapeflir.view.release.proposed` | Release proposal 形成 | Governance, release control plane |
+| `oapeflir.view.stage.started` | Each stage start | OTel, diagnostics |
+| `oapeflir.view.stage.completed` | Each stage completion | Feedback, Learn |
+| `oapeflir.view.stage.failed` | Stage exception | Alerting, diagnostics |
+| `oapeflir.view.feedback.collected` | Feedback stage completion | Learn, Improve |
+| `oapeflir.view.release.proposed` | Release proposal formed | Governance, release control plane |
 
-规则：
+Rules:
 
-- OAPEFLIR 事件只允许belongs to `oapeflir.view.*` 或 rationale/proposal 命名空间。
-- 真相事件、Status推进事件和 writeback 事实仍然必须uses `platform.*`。
+- OAPEFLIR events must only belong to `oapeflir.view.*` or rationale/proposal namespaces.
+- Truth events, status progression events, and writeback facts must still use `platform.*`.
 
-## 6. LoopContext 传播规则
+## 6. LoopContext Propagation Rules
 
-- `traceId`：贯穿全循环，used for关联日志和 trace。
-- `harnessRunId`：关联被解释/被治理的唯一 run。
-- `sessionId`：标识同一user会话中的多iterations loop。
-- `layer`：当前 loop 所在的 Memory 层级（L1-L6）。
-- `priorSummaries`：前轮 loop 的关键摘要（未来迁移到 Handoff 四层协议）。
-- `stageViewRef`：当前阶段 view references用，used for串联认知输出vs runtime 事实。
+- `traceId`: runs through entire loop, used for correlating logs and trace.
+- `harnessRunId`: correlates to the single run being explained/governed.
+- `sessionId`: identifies multiple loops in the same user session.
+- `layer`: current loop's Memory layer (L1-L6).
+- `priorSummaries`: key summaries from prior loop (future migration to Handoff four-layer protocol).
+- `stageViewRef`: current stage view reference, used for linking cognitive output with runtime facts.
 
-## 7. 约束
+## 7. Constraints
 
-- Loop timeout：`loopTimeoutMs` defaults to 300000ms（5 分钟），可configure。
-- 死循环检测：连续 3 轮 plan drift → 中止并告警。
-- 优雅降级：副链（F→L→I→R）异常不Impact主链（O→A→P→Execute view）结果返回。
-- OAPEFLIR 不得把自己的阶段结果写成 runtime 终态；所有 truth change 只能委托控制平面和 `HarnessRuntime`。
-
+- Loop timeout: `loopTimeoutMs` defaults to 300000ms (5 minutes), configurable.
+- Infinite loop detection: 3 consecutive plan drifts -> abort and alert.
+- Graceful degradation: secondary chain (F->L->I->R) exceptions do not impact primary chain (O->A->P->Execute view) result return.
+- OAPEFLIR must not write its stage results as runtime terminal state; all truth changes must be delegated to control plane and `HarnessRuntime`.
 
 ## v4.3 Architecture Remediation
 
-以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中record的 contract 偏差。本文档历史段落如vs本节conflicts，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
+The following entries fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If this document's historical sections conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
 
-- T-13: 本文原先把 `OapeflirLoopService.run()` 写成“执lines整条主链并返回 `finalOutcome`”的 runtime 入口，Root cause: 早期 ADR-016/029 把认知循环和执linesreferences擎混成同一服务，导致 `Execute`/`Rollout` 的旧 runtime DTO 被directly抄进 contract。修复：正文现明确 OAPEFLIR 只消费 `PlanGraphBundle` / `NodeAttemptReceipt` 等运lines时事实，产出 `oapeflir.view.*`、rationale vs `ReleaseProposal`，不再拥有独立执lines权。
+- T-13: This document originally wrote `OapeflirLoopService.run()` as "execute entire main chain and return `finalOutcome`" runtime entry. Root cause: early ADR-016/029 mixed cognitive loop and execution engine as the same service, causing old runtime DTOs for `Execute`/`Rollout` to be directly copied into contract. Fix: the text now explicitly states OAPEFLIR only consumes runtime facts like `PlanGraphBundle` / `NodeAttemptReceipt`, produces `oapeflir.view.*`, rationale and `ReleaseProposal`, and no longer has independent execution authority.
 
-mandatory规则：Status迁移必须via `RuntimeStateMachine.transition(command)`；执lines计划必须uses `PlanGraphBundle`；执lines结果必须uses `NodeAttemptReceipt`；truth event 只能uses `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；budget必须uses `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。
+Mandatory rules: status transitions must go through `RuntimeStateMachine.transition(command)`; execution plan must use `PlanGraphBundle`; execution result must use `NodeAttemptReceipt`; truth event must only use `platform.*`; OAPEFLIR can only act as `oapeflir.view.*` / rationale projection; budget must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.

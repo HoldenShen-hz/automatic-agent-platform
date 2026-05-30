@@ -1,65 +1,65 @@
 # Event Reliability Matrix Contract
 
-> **OAPEFLIR 相关**：本 contract defines OAPEFLIR 双链拓扑的事件可靠性要求，对应 ADR-016。
-> **更新日期**：2026-04-17
+> **OAPEFLIR Related**: This contract defines event reliability requirements for OAPEFLIR dual-chain topology, corresponding to ADR-016.
+> **Update Date**: 2026-04-17
 
-## 1. 范围
+## 1. Scope
 
-本 contract defines事件分级、可靠性要求、持久化策略、ack 策略和运维边界。
+This contract defines event tiering, reliability requirements, persistence strategies, ack strategies, and operational boundaries.
 
-它补充 `event_bus_contract.md`，把 Tier 1 / 2 / 3 从principle下钻到矩阵。
-更细的事件注册table、消费者关系和运维threshold以下钻文档 `event_registry_and_ops_threshold_contract.md` 为准。
+It supplements `event_bus_contract.md` by drilling down Tier 1/2/3 from principles to matrix.
+For finer event registry, consumer relationships, and ops thresholds, refer to the drilling document `event_registry_and_ops_threshold_contract.md`.
 
-## 2. 分级矩阵
+## 2. Tiering Matrix
 
-| Tier | 保证级别 | 持久化 | ack | 重放 | 适用场景 |
-|---|-------|--------| --- | --- | --- |
-| `tier1` | 必达 / 可恢复 | 必须先写 DB | 必须按消费者确认 | 必须supported | 任务、审批、Status、恢复链 |
-| `tier2` | 尽力送达 | optional持久化 | optional | Recommendationsupported | 重要进度、工具阶段、观测事件 |
-| `tier3` | 可丢失 | 可不持久化 | 不要求 | 不要求 | 流式 chunk、heartbeat、transient进度 |
+| Tier | Guarantee Level | Persistence | Ack | Replay | Applicable Scenarios |
+| --- | --- | --- | --- | --- | --- |
+| `tier1` | Must deliver / recoverable | Must write DB first | Must acknowledge per consumer | Must support | Tasks, approvals, status, recovery chain |
+| `tier2` | Best effort delivery | Optional persistence | Optional | Recommended to support | Important progress, tool stages, observability events |
+| `tier3` | Can be lost | May skip persistence | Not required | Not required | Streaming chunks, heartbeats, transient progress |
 
-## 3. Ring 1 基线事件
+## 3. Ring 1 Baseline Events
 
-| 事件class型 | Tier | 原因 |
-|---|-------|--------|
-| `platform.task.created` | `tier1` | 主链事实事件 |
-| `platform.task.status_changed` | `tier1` | user主Status |
-| `platform.harness.started` | `tier1` | Harness 生命cycle起点 |
-| `platform.node.completed` | `tier1` | 下一节点推进relies on |
-| `platform.harness.failed` | `tier1` | 恢复vsfailed归因 |
-| `approval.requested` | `tier1` | HITL 主链 |
-| `approval.resolved` | `tier1` | 恢复执lines前提 |
-| `improve.candidate_accepted` | `tier1` | 候选accepts会改变后续策略和 rollout 轨迹 |
-| `release.rollout_started` | `tier1` | 发布链起点，需要审计和恢复 |
-| `release.rollout_completed` | `tier1` | 发布链终态，需要稳定留痕 |
-| `release.rollback_triggered` | `tier1` | 回滚会改写 release 轨迹，必须可恢复 |
-| `gateway.message_received` | `tier2` | 渠道输入较重要，但不directly驱动恢复 |
-| `feedback.signal_received` | `tier2` | Impact learn / improve，但允许via evidence 补偿恢复 |
-| `loop.iteration_completed` | `tier2` | 闭环观测关键事件，但不单独作为 authoritative 业务Status |
-| `stream.chunk_emitted` | `tier3` | 展示classtransient流量 |
+| Event Type | Tier | Reason |
+| --- | --- | --- |
+| `platform.task.created` | `tier1` | Main chain fact event |
+| `platform.task.status_changed` | `tier1` | User primary status |
+| `platform.harness.started` | `tier1` | Harness lifecycle start point |
+| `platform.node.completed` | `tier1` | Next node advancement depends on this |
+| `platform.harness.failed` | `tier1` | Recovery and failure attribution |
+| `approval.requested` | `tier1` | HITL main chain |
+| `approval.resolved` | `tier1` | Prerequisite for recovery execution |
+| `improve.candidate_accepted` | `tier1` | Candidate acceptance changes subsequent strategy and rollout trajectory |
+| `release.rollout_started` | `tier1` | Release chain start point, requires audit and recovery |
+| `release.rollout_completed` | `tier1` | Release chain terminal state, requires stable footprint |
+| `release.rollback_triggered` | `tier1` | Rollback rewrites release trajectory, must be recoverable |
+| `gateway.message_received` | `tier2` | Channel input is important but does not directly drive recovery |
+| `feedback.signal_received` | `tier2` | Affects learn/improve, but recovery through evidence compensation is acceptable |
+| `loop.iteration_completed` | `tier2` | Key event for closed-loop observability, but not independently authoritative business status |
+| `stream.chunk_emitted` | `tier3` | Display-class transient traffic |
 
-## 4. writes规则
+## 4. Write Rules
 
-- Tier 1：先写 `events`，再注册 `event_consumer_acks`，再尝试分发。
-- Tier 2：可先 emit 再补持久化。
-- Tier 3：defaults to走内存或展示层通道，不要求逐条持久化。
+- Tier 1: First write `events`, then register `event_consumer_acks`, then attempt distribution.
+- Tier 2: May emit first then backfill persistence.
+- Tier 3: Defaults to in-memory or display layer channels, does not require per-event persistence.
 
-## 5. 运维规则
+## 5. Ops Rules
 
-| 项目 | Tier 1 | Tier 2 | Tier 3 |
-|---|-------|--------| --- |
-| 丢失告警 | 必须 | optional | 不要求 |
-| ack 积压告警 | 必须 | optional | 不要求 |
-| 重放工具 | 必须 | optional | 不要求 |
-| 消费者幂等要求 | 必须 | Recommendation | Recommendation |
+| Item | Tier 1 | Tier 2 | Tier 3 |
+| --- | --- | --- | --- |
+| Loss alert | Must | Optional | Not required |
+| Ack backlog alert | Must | Optional | Not required |
+| Replay tool | Must | Optional | Not required |
+| Consumer idempotency requirement | Must | Recommended | Recommended |
 
-## 6. 关联文档
+## 6. Related Documents
 
 - `event_bus_contract.md`
 - `storage_schema_contract.md`
 - `gateway_streaming_contract.md`
 - `event_registry_and_ops_threshold_contract.md`
 
-## 7. 收口Conclusion
+## 7. Closure Conclusion
 
-事件分级的核心不is“给事件贴标签”，而is为每class事件明确可accepts的丢失代价和恢复成本。
+The core of event tiering is not "labeling events", but defining acceptable loss cost and recovery cost for each class of event.

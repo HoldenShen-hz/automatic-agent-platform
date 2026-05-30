@@ -1,10 +1,10 @@
 # Multi Region Replication Contract
 
-## 1. 范围
+## 1. Scope
 
-defines多区域 truth/event/artifact 复制的拓扑vsfailedlines为。
+Defines the topology and failure behavior of multi-region truth/event/artifact replication.
 
-## 2. 核心对象
+## 2. Core Objects
 
 ```typescript
 interface MultiRegionReplicationPolicy {
@@ -17,9 +17,8 @@ interface MultiRegionReplicationPolicy {
 }
 ```
 
-## 3. 约束
+## 3. Constraints
 
-- 写路径必须声明issynchronous仲裁还is异步最终一致。
-- 发生 failover 时必须record切换 epoch vs未完成复制窗口。
-- 驻留受限data不得复制到未authorization区域。
-
+- Write paths must declare whether they are synchronous quorum or asynchronous eventual consistent.
+- When failover occurs, the switching epoch and incomplete replication window must be recorded.
+- Residency-restricted data must not be replicated to unauthorized regions.

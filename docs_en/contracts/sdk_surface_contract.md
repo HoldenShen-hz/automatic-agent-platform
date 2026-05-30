@@ -1,36 +1,36 @@
 # SDK Surface Contract
 
-## 1. 范围
+## 1. Scope
 
-本 contract defines `src/sdk/` 下 CLI、Client SDK、Pack SDK、Plugin SDK 的对外table面vs兼容principle。
+This contract defines external surface and compatibility principles for CLI, Client SDK, Pack SDK, and Plugin SDK under `src/sdk/`.
 
-相关文档：
+Related documents:
 
 - `api_surface_contract.md`
 - `plugin_spi_contract.md`
 - `marketplace_catalog_and_revenue_contract.md`
 - `docs_zh/reference/api-versioning.md`
 
-## 2. SDK 分层
+## 2. SDK Layering
 
-| 子域 | 目录 | 目标 |
-|---|-------|--------|
-| CLI | `src/sdk/cli/` | 运维、开发、验证入口 |
-| Client SDK | `src/sdk/client-sdk/` | class型化 API call |
-| Pack SDK | `src/sdk/pack-sdk/` | pack scaffold / lifecycle / compatibility |
-| Plugin SDK | `src/sdk/plugin-sdk/` | plugin defines、上下文、测试 harness |
+| Subdomain | Directory | Purpose |
+| --- | --- | --- |
+| CLI | `src/sdk/cli/` | Operations, development, and verification entry point |
+| Client SDK | `src/sdk/client-sdk/` | Typed API calls |
+| Pack SDK | `src/sdk/pack-sdk/` | Pack scaffold / lifecycle / compatibility |
+| Plugin SDK | `src/sdk/plugin-sdk/` | Plugin definitions, context, test harness |
 
-## 2.1 包exportvs稳定性边界
+## 2.1 Package Export and Stability Boundaries
 
-根 `package.json` 当前额外export `./apps`、`./domains`、`./interaction`、`./ops-maturity`、`./org-governance`、`./platform`、`./platform/*`、`./plugins`、`./scale-ecosystem/*` 等入口。
+Root `package.json` currently additionally exports `./apps`, `./domains`, `./interaction`, `./ops-maturity`, `./org-governance`, `./platform`, `./platform/*`, `./plugins`, `./scale-ecosystem/*` and other entry points.
 
-稳定性规则：
+Stability rules:
 
-- `./sdk`、`./sdk/cli`、`./cli`、`./operator` belongs to**版本化稳定table面**，必须遵守本 contract。
-- `./apps`、`./domains`、`./interaction`、`./platform*`、`./plugins`、`./scale-ecosystem*` belongs to**code级兼容export**，used for monorepo / 集成测试 / 渐进迁移，不单独承诺 semver 稳定；若对外开放，必须先补充对应 contract vsclass型面文档。
-- 对外文档若未单列某个 export family，defaults to按“内部兼容export”handle，不得被 marketplace / 第三方 SDK 当作稳定公共 API。
+- `./sdk`, `./sdk/cli`, `./cli`, `./operator` belong to **versioned stable surface** and must comply with this contract.
+- `./apps`, `./domains`, `./interaction`, `./platform*`, `./plugins`, `./scale-ecosystem*` belong to **code-level compatible exports**, used for monorepo/integration testing/progressive migration; they do not individually promise semver stability; if opened externally, must first supplement corresponding contract and type surface documentation.
+- If external documentation does not separately list an export family, it defaults to "internal compatible export" handling and must not be treated as stable public API by marketplace/third-party SDKs.
 
-## 3. 核心对象
+## 3. Core Objects
 
 ```typescript
 interface SdkReleaseDescriptor {
@@ -43,9 +43,9 @@ interface SdkReleaseDescriptor {
 
 ## 4. CLI Surface
 
-- 每个 CLI 入口必须对应一个稳定命令语义vs帮助文本。
-- CLI 输出若used for脚本消费，必须提供结构化 JSON 模式或稳定字段格式。
-- CLI 不得bypassing API / contract directly篡改 authoritative Status。
+- Each CLI entry must correspond to a stable command semantics and help text.
+- If CLI output is used for script consumption, must provide structured JSON mode or stable field format.
+- CLI must not bypass API/contract to directly tamper with authoritative state.
 
 ## 5. Client SDK Surface
 
@@ -60,28 +60,28 @@ interface ApiClient {
 }
 ```
 
-规则：
+Rules:
 
-- Client SDK 应从同一 API schema / contract 派生，不维护私有字段分叉。
-- network错误、鉴权错误、业务拒绝必须保留可区分错误class型。
+- Client SDK should be derived from the same API schema/contract and must not maintain private field forks.
+- Network errors, authentication errors, and business rejections must preserve distinguishable error types.
 
 ## 6. Pack / Plugin SDK Surface
 
-- Pack SDK 必须暴露 manifest、compatibility、local test、scaffold 能力。
-- Plugin SDK 必须暴露 plugin definition、runtime context、test harness。
-- Pack/Plugin SDK 的版本声明必须vs marketplace 兼容矩阵可交叉验证。
+- Pack SDK must expose manifest, compatibility, local test, and scaffold capabilities.
+- Plugin SDK must expose plugin definition, runtime context, and test harness.
+- Pack/Plugin SDK version declarations must be cross-verifiable with marketplace compatibility matrix.
 
-## 7. 兼容性vs弃用
+## 7. Compatibility and Deprecation
 
-- 破坏性变更必须在 release descriptor 中显式列出。
-- `SdkReleaseDescriptor` 以 Pack manifest 的 `sdk_semver / platform_min_version / platform_max_version / deprecation_policy` 为 canonical 形态。
-- 当前 SDK 发布基线为 `0.1.0`，并在根 `CHANGELOG.md` vs `docs_zh/CHANGELOG.md` 中synchronousrecord。
-- `ApiClient` 的基础读写接口必须返回统一 `ApiResponse<T>` envelope。
-- SDK 可弃用旧table面，但必须提供迁移窗口或替代命令/接口。
-- CLI、Pack SDK、Plugin SDK 不得对同一 canonical 对象uses不同字段命名。
+- Breaking changes must be explicitly listed in release descriptor.
+- `SdkReleaseDescriptor` takes Pack manifest's `sdk_semver/platform_min_version/platform_max_version/deprecation_policy` as canonical form.
+- Current SDK release baseline is `0.1.0`, recorded synchronously in root `CHANGELOG.md` and `docs_zh/CHANGELOG.md`.
+- `ApiClient` basic read/write interface must return unified `ApiResponse<T>` envelope.
+- SDK may deprecate old surface but must provide migration window or alternative command/interface.
+- CLI, Pack SDK, and Plugin SDK must not use different field naming for the same canonical object.
 
-## 8. 测试要求
+## 8. Testing Requirements
 
-- unit：每个 SDK table面的 schema、class型vs错误语义。
-- integration：CLI/Client/Pack/Plugin vs平台 contract 的联动。
-- contract：version、compatibility vs breaking change 元data稳定可解析。
+- Unit: schema, types, and error semantics for each SDK surface.
+- Integration: CLI/Client/Pack/Plugin with platform contract linkage.
+- Contract: version, compatibility, and breaking change metadata are stably parseable.

@@ -2,91 +2,91 @@
 
 ---
 
-## OAPEFLIR 关联
+## OAPEFLIR Association
 
-本 contract 参vs OAPEFLIR 八阶段循环中的以下阶段：
+This contract participates in the following stages of the OAPEFLIR eight-stage cycle:
 
-- **Observe**：信号采集vs聚合
-- **Assess**：执lines前评估vs风险判断
-- **Plan**：任务分解vs DAG 构建
-- **Execute**：步骤执linesvs容错
-- **Feedback**：信号收集vs预handle
-- **Learn**：模式检测vs知识提取
-- **Improve**：改进候选评估vs rollout
-- **Release**：受控发布vs回滚
+- **Observe**: Signal collection and aggregation
+- **Assess**: Pre-execution assessment and risk judgment
+- **Plan**: Task decomposition and DAG construction
+- **Execute**: Step execution and fault tolerance
+- **Feedback**: Signal collection and preprocessing
+- **Learn**: Pattern detection and knowledge extraction
+- **Improve**: Improvement candidate evaluation and rollout
+- **Release**: Controlled release and rollback
 
 ---
 
-## 1. 范围
+## 1. Scope
 
-本 contract defines当前仓库的顶层目录、源码分层、configure分层和事业部目录约定。
+This contract defines the top-level directory, source code layers, configuration layers, and business division directory conventions for the current repository.
 
-## 2. 顶层目录
+## 2. Top-Level Directory
 
-当前 authoritative 顶层目录：
+Current authoritative top-level directories:
 
-- `docs_zh/` / `docs_en/`: 文档体系vs规范
-- `src/`: 平台源码
-- `config/`: 运lines时vs平台级configure
-- `divisions/`: 事业部definesvs角色素材
-- `tests/`: 测试codevs fixture
-- `scripts/`: 开发、迁移、运维辅助脚本
-- `data/`: 本地开发期 SQLite、artifact、临时持久化目录
+- `docs_zh/` / `docs_en/`: Documentation system and standards
+- `src/`: Platform source code
+- `config/`: Runtime and platform-level configuration
+- `divisions/`: Business division definitions and role materials
+- `tests/`: Test code and fixtures
+- `scripts/`: Development, migration, and operations auxiliary scripts
+- `data/`: Local development period SQLite, artifacts, temporary persistence directory
 
-禁止事项：
+Prohibited items:
 
-- 不在 `src/` 下混入 `.venv`、`node_modules`、cache和运lines产物。
-- 不把平台级 YAML/JSON configure散落到 `src/` 内。
-- 不把事业部 prompt directlyhardcoded在 runtime code中。
+- Must not mix `.venv`, `node_modules`, cache, and runtime artifacts under `src/`.
+- Must not scatter platform-level YAML/JSON configuration inside `src/`.
+- Must not hardcode business division prompts directly in runtime code.
 
-## 3. `src/` authoritative 结构
+## 3. `src/` Authoritative Structure
 
-当前实现结构：
+Current implementation structure:
 
 ```text
 src/
-  core/                          # 兼容性运lines时（only保留旧code迁移路径）
+  core/                          # Compatibility runtime (only preserves old code migration paths)
     runtime/
-  platform/                      # 权威平台核心code
-    control-plane/               # IAM, configure中心, 审批中心, 事件控制
-    execution/                   # 调度器, 执linesreferences擎, 恢复, Worker池
-    orchestration/               # OAPEFLIR, 路由,  planner, HITL
-    state-evidence/              # Truth, Events, Checkpoints, Artifacts, Knowledge, Memory
-    interface/                   # API, Channel Gateway, Ingress, Scheduler
-    shared/                      # 可观测性, 稳定性, cache, 通用基础设施
-    model-gateway/               # 模型网关, 成本追踪
-    prompt-engine/               # Prompt 渲染、版本、评测、发布
-    compliance/                  # 合规案例编排vsdata治理
-    agent-delegation/            # 代理委托
-    cost-management/             # 成本manage
-    prompt-registry/             # Prompt 注册table
-  interaction/                   # NL入口, 目标分解, 主动Agent, 仪table盘, UX
-  org-governance/                # 组织层级, SSO/SCIM, 合规
-  ops-maturity/                  # 可解释性, 漂移检测, 边缘计算, 成本, 混沌工程
-  scale-ecosystem/               # 多区域, 公平调度, SLA, connect器, 市场
-  sdk/                           # CLI, Pack SDK, Plugin SDK, Client SDK
-  domains/                       # 领域Description符, 接入, 注册table
-  plugins/                       # 插件系统
-  testing/                       # 测试工具
-  benchmarks/                    # 性能基准测试
-  apps/                         # 应用入口
+  platform/                      # Authoritative platform core code
+    control-plane/               # IAM, config center, approval center, event control
+    execution/                   # Scheduler, execution engine, recovery, worker pool
+    orchestration/               # OAPEFLIR, routing, planner, HITL
+    state-evidence/              # Truth, events, checkpoints, artifacts, knowledge, memory
+    interface/                   # API, channel gateway, ingress, scheduler
+    shared/                      # Observability, stability, cache, common infrastructure
+    model-gateway/               # Model gateway, cost tracking
+    prompt-engine/               # Prompt rendering, versioning, evaluation, release
+    compliance/                  # Compliance case orchestration and data governance
+    agent-delegation/            # Agent delegation
+    cost-management/             # Cost management
+    prompt-registry/             # Prompt registry
+  interaction/                   # NL entry, goal decomposition, proactive agent, dashboard, UX
+  org-governance/                # Organization hierarchy, SSO/SCIM, compliance
+  ops-maturity/                  # Explainability, drift detection, edge computing, cost, chaos engineering
+  scale-ecosystem/               # Multi-region, fair scheduling, SLA, connectors, marketplace
+  sdk/                           # CLI, pack SDK, plugin SDK, client SDK
+  domains/                       # Domain descriptors, onboarding, registry
+  plugins/                       # Plugin system
+  testing/                       # Testing utilities
+  benchmarks/                    # Performance benchmarks
+  apps/                         # Application entry points
 ```
 
-规则：
+Rules:
 
-- `src/platform/` is权威code目录，contains所有核心运lines时逻辑
-- `src/core/` onlyused for向后兼容，不新增canonical运lines时逻辑
-- `src/platform/` 内部按Five-PlaneArchitecture组织：control-plane, execution, orchestration, state-evidence, interface
-- 上层业务能力在对应上层目录（interaction, org-governance, ops-maturity等）
+- `src/platform/` is the authoritative code directory containing all core runtime logic
+- `src/core/` is only for backward compatibility; do not add new canonical runtime logic here
+- Inside `src/platform/`, organization follows five-plane architecture: control-plane, execution, orchestration, state-evidence, interface
+- Upper-layer business capabilities are in corresponding upper directories (interaction, org-governance, ops-maturity, etc.)
 
-Description：
+Notes:
 
-- `src/platform/` is权威平台核心目录。
-- `src/core/` only保留兼容vs迁移收口，不新增 canonical 平台能力。
-- `src/domains/`、`src/interaction/`、`src/org-governance/`、`src/scale-ecosystem/`、`src/ops-maturity/` 为Architecture v2.7 上层能力域。
-- 若未来需要references入新的顶层域目录，必须先更新本 contract，再做迁移。
+- `src/platform/` is the authoritative platform core directory.
+- `src/core/` only preserves compatibility and migration interfaces; do not add new canonical platform capabilities.
+- `src/domains/`, `src/interaction/`, `src/org-governance/`, `src/scale-ecosystem/`, `src/ops-maturity/` are architecture v2.7 upper-layer capability domains.
+- If a new top-level domain directory needs to be introduced in the future, must first update this contract, then proceed with migration.
 
-## 4. `config/` authoritative 结构
+## 4. `config/` Authoritative Structure
 
 ```text
 config/
@@ -110,32 +110,32 @@ config/
   workflows/
 ```
 
-含义：
+Meanings:
 
-- `bootstrap/`: 平台启动时必须加载的基础configure。
-- `conversation/`: 对话模板、线程vs UX 相关configure。
-- `cost-alert/`: 成本thresholdvs告警策略。
-- `domains/`: 领域Description符、接入vsdefaults to治理configure。
-- `dr/`: 跨 region / 故障恢复参数。
-- `environments/`: 环境级开关vs promote 门槛。
-- `exception-recovery/`: panic / resume / replay / repair 相关策略。
-- `runtime/`: concurrent、timeout、重试、队列等运lines参数。
-- `security/`: permission、审批threshold、危险操作策略。
-- `providers/`: LLM provider、模型路由、降级策略。
-- `gateways/`: CLI/Web/Telegram 等渠道configure。
-- `knowledge/`: knowledge / semantic backend / retention configure。
-- `nl-gateway/`: 自然语言入口、歧义澄清vs分解门禁。
-- `plugins/`: 插件、pack、connect器defaults toconfigure。
-- `product/`: 计费、市场、租户产品面configure。
-- `quality/`: eval、quality gate vs回归基线。
-- `risk/`: 风控评估vs deny/approve configure。
-- `workflows/`: HQ 级共享 workflow 模板。
+- `bootstrap/`: Base configuration that must be loaded at platform startup.
+- `conversation/`: Conversation templates, threads, and UX-related configuration.
+- `cost-alert/`: Cost thresholds and alerting strategies.
+- `domains/`: Domain descriptors, onboarding, and default governance configuration.
+- `dr/`: Cross-region / fault recovery parameters.
+- `environments/`: Environment-level switches and promotion thresholds.
+- `exception-recovery/`: panic / resume / replay / repair related strategies.
+- `runtime/`: Concurrency, timeout, retry, queue, and other runtime parameters.
+- `security/`: Permissions, approval thresholds, dangerous operation policies.
+- `providers/`: LLM provider, model routing, fallback strategies.
+- `gateways/`: CLI/Web/Telegram and other channel configurations.
+- `knowledge/`: knowledge / semantic backend / retention configuration.
+- `nl-gateway/`: Natural language entry, disambiguation, and decomposition gates.
+- `plugins/`: Plugin, pack, connector default configurations.
+- `product/`: Billing, marketplace, tenant product surface configuration.
+- `quality/`: eval, quality gate, and regression baselines.
+- `risk/`: Risk assessment and deny/approve configuration.
+- `workflows/`: HQ-level shared workflow templates.
 
-补充Description：
+Supplementary notes:
 
-- configure四层优先级、prompt / config / policy / flag 解耦、defaults to值注册中心以下钻文档 `configuration_layers_and_defaults_contract.md` 为准。
+- Configuration four-layer priority, prompt / config / policy / flag decoupling, and default value registry are based on the drilling document `configuration_layers_and_defaults_contract.md`.
 
-## 5. `divisions/` authoritative 结构
+## 5. `divisions/` Authoritative Structure
 
 ```text
 divisions/
@@ -149,16 +149,16 @@ divisions/
       *.json
 ```
 
-规则：
+Rules:
 
-- 每个事业部必须有唯一 `division.yaml` 作为入口。
-- `roles/` 只保存角色提示vs角色Description，不保存运lines时Status。
-- `workflows/` 只保存声明式流程defines。
-- `schemas/` 保存该事业部输入输出、artifact 或table单的结构约束。
+- Each business division must have a unique `division.yaml` as the entry point.
+- `roles/` only stores role prompts and role descriptions, not runtime state.
+- `workflows/` only stores declarative process definitions.
+- `schemas/` stores structural constraints for that division's input/output, artifacts, or forms.
 
-## 6. `data/` 结构约束
+## 6. `data/` Structure Constraints
 
-本地开发环境可采用：
+Local development environment may use:
 
 ```text
 data/
@@ -167,19 +167,19 @@ data/
   logs/
 ```
 
-规则：
+Rules:
 
-- SQLite 文件、artifact 和日志物理隔离。
-- `data/` onlyused for本地或单机开发环境，不作为长期生产设计事实源。
+- SQLite files, artifacts, and logs are physically isolated.
+- `data/` is only for local or single-machine development environments and is not designed as a long-term production source of truth.
 
-## 7. 所有权vs变更约束
+## 7. Ownership and Change Constraints
 
-- 目录结构变更应先改本 contract，再改 `docs_zh/architecture/00-04`、`operations/` vs对应实现。
-- 若需要references入 `apps/` 多进程结构，应新增 ADR，并更新本 contract。
-- 当前阶段不references入过早的微服务拆分。
+- Directory structure changes should first modify this contract, then modify `docs_zh/architecture/00-04`, `operations/`, and corresponding implementations.
+- If `apps/` multi-process structure needs to be introduced, should add an ADR and update this contract.
+- Current stage does not introduce premature microservice splitting.
 
-## 8. 补充规则
+## 8. Supplementary Rules
 
-- `src/platform/five-plane-interface/api/http-server/` 下的 route 模块应按资源命名，如 `task-routes.ts`、`approval-routes.ts`、`health-routes.ts`，避免按 HTTP 动词拆分。
-- `tests/` 最少分为 `unit/`、`integration/`、`e2e/` 三层，fixture vs replay 资源单独放在共享目录。
-- 生产环境不relies on本地 `data/`，应替换为data库、对象storage和集中日志/审计后端。
+- Route modules under `src/platform/five-plane-interface/api/http-server/` should be named by resource, such as `task-routes.ts`, `approval-routes.ts`, `health-routes.ts`, avoiding splitting by HTTP verbs.
+- `tests/` should be divided into at least three layers: `unit/`, `integration/`, `e2e/`, with fixtures and replay resources placed separately in a shared directory.
+- Production environment does not depend on local `data/`; should be replaced with database, object storage, and centralized logging/audit backend.

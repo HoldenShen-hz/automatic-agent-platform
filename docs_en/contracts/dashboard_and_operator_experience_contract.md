@@ -1,10 +1,10 @@
 # Dashboard And Operator Experience Contract
 
-## 1. 范围
+## 1. Scope
 
-本 contract defines `§43-§44` 的运营看板、注意力队列和非技术user体验。
+This contract defines operations dashboards, attention queues, and non-technical user experience for `§43-§44`.
 
-## 2. Canonical 对象
+## 2. Canonical Objects
 
 - `AttentionItem`
 - `OperatorDashboard`
@@ -15,18 +15,18 @@
 - `GuidedOnboardingSession`
 - `WorkflowBuilderDraft`
 
-## 3. 看板层iterations
+## 3. Dashboard Layers
 
-平台必须至少supported四层视图：
+The platform must support at least four layers of views:
 
 - `operator`
 - `domain_admin`
 - `platform_ops`
 - `fleet_admin`
 
-每层视图都必须可映射为结构化 DTO，而不is UI 私有拼接。
+Each layer view must be mappable to structured DTOs and must not be UI-private拼接.
 
-## 4. `AttentionItem` 最小字段
+## 4. `AttentionItem` Minimum Fields
 
 - `item_type`
 - `priority`
@@ -36,14 +36,14 @@
 - `domain_id`
 - `created_at`
 
-规则：
+Rules:
 
-- 所有需要人工操作的对象统一进入 `AttentionItem`。
-- AttentionItem 必须保留来源对象references用，便于 drill-down。
+- All objects requiring human operation enter `AttentionItem` uniformly.
+- AttentionItem must retain source object reference for drill-down.
 
-## 5. UX 对象
+## 5. UX Objects
 
-`GuidedOnboardingSession` 最小字段：
+`GuidedOnboardingSession` minimum fields:
 
 - `session_id`
 - `user_role`
@@ -51,7 +51,7 @@
 - `completed_steps`
 - `recommended_templates`
 
-`WorkflowBuilderDraft` 最小字段：
+`WorkflowBuilderDraft` minimum fields:
 
 - `draft_id`
 - `workflow_id?`
@@ -59,15 +59,14 @@
 - `validation_findings`
 - `owner_user_id`
 
-## 6. 运lines规则
+## 6. Runtime Rules
 
-- UX 层只负责references导vs呈现，不持有最终治理permission。
-- 非技术 UX defaults to展示摘要、模板、向导，不directly暴露低层 runtime 术语。
-- L1-L4 看板共享同一Evidence Planevs一致的time基准。
+- UX layer is only responsible for guidance and presentation and does not hold final governance authority.
+- Non-technical UX defaults to displaying summaries, templates, and wizards, and does not directly expose low-level runtime terms.
+- L1-L4 dashboards share the same evidence plane and consistent time基准.
 
-## 7. 测试要求
+## 7. Testing Requirements
 
-- unit：dashboard aggregation、attention ranking、wizard step validation
-- integration：console / dashboard vs approval / incident / runtime data联动
-- contract：不同角色不可见越权视图
-
+- unit: dashboard aggregation, attention ranking, wizard step validation
+- integration: console / dashboard with approval / incident / runtime data linkage
+- contract: different roles cannot see unauthorized views

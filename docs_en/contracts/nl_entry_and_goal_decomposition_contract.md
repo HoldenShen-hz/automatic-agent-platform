@@ -1,10 +1,10 @@
 # NL Entry And Goal Decomposition Contract
 
-## 1. 范围
+## 1. Scope
 
-本 contract defines `§39-§40` 的自然语言入口、多轮澄清和目标分解边界。
+This contract defines the natural language entry, multi-turn clarification, and goal decomposition boundary for `§39-§40`.
 
-## 2. Canonical 对象
+## 2. Canonical Objects
 
 - `NlEntryRequest`
 - `IntentParseResult`
@@ -16,7 +16,7 @@
 - `PlannedTask`
 - `TaskDependency`
 
-## 3. `IntentParseResult` 最小字段
+## 3. `IntentParseResult` Minimum Fields
 
 - `raw_input`
 - `locale`
@@ -29,12 +29,12 @@
 - `suggested_business_pack_id?`
 - `suggested_recipe_id?`
 
-规则：
+Rules:
 
-- 低置信度、高风险、实体缺失三class情况必须允许 `requires_clarification=true`。
-- `suggested_division_id`、`suggested_business_pack_id`、`suggested_recipe_id` only为Recommendation，不等于最终执linesauthorization。
+- Low confidence, high risk, and missing entities must allow `requires_clarification=true`.
+- `suggested_division_id`, `suggested_business_pack_id`, and `suggested_recipe_id` are only recommendations, not equal to final execution authorization.
 
-## 4. `GoalDecomposition` 最小字段
+## 4. `GoalDecomposition` Minimum Fields
 
 - `goal_id`
 - `tasks`
@@ -45,7 +45,7 @@
 - `decomposition_confidence`
 - `requires_human_review`
 
-`PlannedTask` 最小字段：
+`PlannedTask` minimum fields:
 
 - `task_id`
 - `domain_id`
@@ -54,16 +54,16 @@
 - `expected_outputs`
 - `delegation_mode`
 
-## 5. Status机
+## 5. State Machine
 
-`ClarificationState.status`：
+`ClarificationState.status`:
 
 - `open`
 - `answered`
 - `expired`
 - `cancelled`
 
-`GoalLifecycle.status`：
+`GoalLifecycle.status`:
 
 - `draft`
 - `decomposed`
@@ -73,14 +73,14 @@
 - `failed`
 - `cancelled`
 
-## 6. 边界规则
+## 6. Boundary Rules
 
-- NL 入口不得directly执lines runtime side effects。
-- GoalDecomposer 不得bypassing审批、budget和风险门禁。
-- 从 NL 到 runtime 的唯一受控输出is结构化 envelope / decomposition。
+- NL entry must not directly execute runtime side effects.
+- GoalDecomposer must not bypass approval, budget, and risk gates.
+- The only controlled output from NL to runtime is structured envelope / decomposition.
 
-## 7. 测试要求
+## 7. Test Requirements
 
-- unit：intent、entity、clarification、decomposition graph
-- integration：NL -> decomposition -> orchestration handoff
-- contract：模糊request不得directly进入自动执lines
+- unit: intent, entity, clarification, decomposition graph
+- integration: NL -> decomposition -> orchestration handoff
+- contract: ambiguous requests must not directly enter automatic execution

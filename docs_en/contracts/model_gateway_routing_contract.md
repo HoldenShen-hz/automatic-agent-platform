@@ -1,16 +1,16 @@
 # Model Gateway Routing Contract
 
-## 1. 范围
+## 1. Scope
 
-本 contract defines `src/platform/model-gateway/` 的request路由、provider fallback、auth profile 选择vs会话粘性边界。
+This contract defines request routing, provider fallback, auth profile selection, and session sticky boundaries for `src/platform/model-gateway/`.
 
-相关文档：
+Related documents:
 
 - `prompt_model_policy_governance_contract.md`
 - `cost_and_budget_contract.md`
 - `supply_chain_and_dependency_security_contract.md`
 
-## 2. 路由request对象
+## 2. Route Request Object
 
 ```typescript
 interface ModelRouteRequest {
@@ -35,7 +35,7 @@ interface ModelRouteRequest {
 }
 ```
 
-## 3. 路由结果对象
+## 3. Route Decision Object
 
 ```typescript
 interface ModelRouteDecision {
@@ -48,24 +48,24 @@ interface ModelRouteDecision {
 }
 ```
 
-规则：
+Rules:
 
-- `harnessRunId` 为必填，used forbudget追踪（INV-BUDGET-001）；`nodeRunId` / `attemptId` 在节点未调度时可为空。
-- `harnessRunId / nodeRunId / attemptId` 为权威关联键，used for追踪路由Decision上下文。
-- `preferredModel` only代table偏好，不代tablemandatory pin；若call方显式 pin，必须单独建模。
-- `requiredCapabilities` 不满足时必须 fail-close，不得静默降级到不兼容模型。
-- `decisionReason` 必须contains至少一个可审计原因，如 `policy_allow`、`cost_guard`、`latency_guard`、`provider_cooldown`。
-- `compliance_constrained` 必须优先满足 residency、policy、allowlist vs provider trust boundary，再考虑成本或delay。
-- `hybrid` 必须显式声明其主目标vsiterations目标，不得作为”任意自由裁量”兜底模式。
+- `harnessRunId` is required for budget tracking (INV-BUDGET-001); `nodeRunId` / `attemptId` may be empty when the node has not yet been scheduled.
+- `harnessRunId / nodeRunId / attemptId` are the authoritative association keys for tracking routing decision context.
+- `preferredModel` only represents a preference, not a mandatory pin; if the caller explicitly pins, it must be modeled separately.
+- When `requiredCapabilities` are not satisfied, must fail-close and must not silently degrade to an incompatible model.
+- `decisionReason` must include at least one auditable reason such as `policy_allow`, `cost_guard`, `latency_guard`, `provider_cooldown`.
+- `compliance_constrained` must prioritize satisfying residency, policy, allowlist, and provider trust boundaries before considering cost or latency.
+- `hybrid` must explicitly declare its primary and secondary objectives and must not serve as an "any discretionary" fallback mode.
 
-## 4. Fallback vs粘性
+## 4. Fallback and Stickiness
 
-- 同一会话defaults to优先保持 `providerId + modelId + authProfileId` 粘性。
-- provider 熔断或 profile 冷却时，可切换到 fallback chain 中下一个可用候选。
-- fallback 发生时必须产生日志和审计事件，且不得丢失原始 route request。
-- user显式 pin 的 model/profile 未via允许不得被自动替换。
+- By default, the same session prioritizes maintaining `providerId + modelId + authProfileId` stickiness.
+- When a provider trips the circuit breaker or a profile is in cooldown, it may switch to the next available candidate in the fallback chain.
+- When fallback occurs, it must produce logs and audit events, and must not lose the original route request.
+- Model/profile explicitly pinned by the user must not be automatically replaced without permission.
 
-## 5. failed语义
+## 5. Failure Semantics
 
 ```typescript
 type RouteFailureCode =
@@ -76,23 +76,22 @@ type RouteFailureCode =
   | "route.capability_mismatch";
 ```
 
-规则：
+Rules:
 
-- `route.no_candidate` vs `route.policy_denied` 必须可区分，避免把治理拒绝as资源不足。
-- provider 暂时failed进入 cooldown 时，不得污染长期 allowlist。
+- `route.no_candidate` and `route.policy_denied` must be distinguishable to prevent governance rejections from being disguised as resource insufficiency.
+- When a provider temporarily fails and enters cooldown, it must not pollute the long-term allowlist.
 
-## 6. 测试要求
+## 6. Test Requirements
 
-- unit：优选模型、fallback、cooldown、sticky session、cost guard。
-- integration：同一会话跨多iterationsrequest的粘性vs故障切换。
-- contract：`ModelRouteDecision` 字段稳定，failed码vs审计事件一一对应。
-
+- unit: preferred model, fallback, cooldown, sticky session, cost guard.
+- integration: stickiness and fault switching across multiple requests in the same session.
+- contract: `ModelRouteDecision` fields are stable; failure codes and audit events correspond one-to-one.
 
 ## v4.3 Architecture Remediation
 
-以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中record的 contract 偏差。本文档历史段落如vs本节conflicts，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
+The following entries fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If this document's historical sections conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
 
-- T-10: 路由策略枚举 cost_optimized/latency_optimized/quality_optimized 3种，Architecture§19defines5种含 compliance_constrained/hybrid。Root Cause：旧路由文档只覆盖性能/成本三目标，没有把合规约束vs多目标折中策略写进 canonical request。修复：`ModelRouteRequest.routingStrategy` 已补齐 5 种规范枚举，并增加 `compliance_constrained` vs `hybrid` 的治理约束。
-- T-21: 原 `ModelRouteRequest.harnessRunId` 为optional，no法满足 INV-BUDGET-001 budget追踪要求。修复：`harnessRunId` 改为必填，`nodeRunId` / `attemptId` 在节点未调度时可为空；路由Decision上下文以 `harnessRunId` 为budget主体关联键。
+- T-10: The routing strategy enumeration had only 3 types—cost_optimized/latency_optimized/quality_optimized—while architecture §19 defines 5 including compliance_constrained/hybrid. The root cause was that the old routing documentation covered only performance/cost three objectives and did not include compliance constraints and multi-objective trade-off strategies in the canonical request. Fix: `ModelRouteRequest.routingStrategy` has been supplemented with all 5 canonical enumerations, and governance constraints for `compliance_constrained` and `hybrid` have been added.
+- T-21: The original `ModelRouteRequest.harnessRunId` was optional, unable to satisfy INV-BUDGET-001 budget tracking requirements. Fix: `harnessRunId` is now required; `nodeRunId` / `attemptId` may be empty when the node has not been scheduled; routing decision context uses `harnessRunId` as the primary budget association key.
 
-mandatory规则：Status迁移必须via `RuntimeStateMachine.transition(command)`；执lines计划必须uses `PlanGraphBundle`；执lines结果必须uses `NodeAttemptReceipt`；truth event 只能uses `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；budget必须uses `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。
+Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events must only use `platform.*`; OAPEFLIR must only appear as `oapeflir.view.*` / rationale projections; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.

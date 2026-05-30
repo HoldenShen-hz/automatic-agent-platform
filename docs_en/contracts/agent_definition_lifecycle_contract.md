@@ -1,17 +1,17 @@
 # Agent Definition Lifecycle Contract
 
-## 1. 范围
+## 1. Scope
 
-本 contract defines `§61` 的 `AgentDefinition`、`AgentVersion` 和复合灰度发布。
+This contract defines `§61`'s `AgentDefinition`, `AgentVersion`, and compound canary release.
 
-## 2. Canonical 对象
+## 2. Canonical Objects
 
 - `AgentDefinition`
 - `AgentVersion`
 - `AgentRolloutBinding`
 - `AgentRetirementPlan`
 
-## 3. `AgentDefinition` 最小字段
+## 3. `AgentDefinition` Minimum Fields
 
 - `agent_id`
 - `display_name`
@@ -21,7 +21,7 @@
 - `lifecycle_state`
 - `current_version_id`
 
-`lifecycle_state`：
+`lifecycle_state`:
 
 - `draft`
 - `validated`
@@ -30,12 +30,12 @@
 - `deprecated`
 - `retired`
 
-规则：
+Rules:
 
-- `lifecycle_state` 变更必须via显式 transition service 执lines，禁止directly覆写Status字段。
-- `active -> deprecated -> retired` 迁移必须绑定 rollout / evidence / retirement 审计record。
+- `lifecycle_state` changes must be executed through explicit transition service; direct field overwrite is prohibited.
+- `active -> deprecated -> retired` migration must be bound to rollout / evidence / retirement audit records.
 
-## 4. `AgentVersion` 最小字段
+## 4. `AgentVersion` Minimum Fields
 
 - `version_id`
 - `agent_id`
@@ -45,12 +45,12 @@
 - `model_profile_refs`
 - `created_at`
 
-## 5. 测试要求
+## 5. Testing Requirements
 
-- unit：agent lifecycle、version snapshot integrity
-- integration：agent rollout / rollback / retirement
-- contract：已退役 agent 不得被新任务绑定
+- unit: agent lifecycle, version snapshot integrity
+- integration: agent rollout / rollback / retirement
+- contract: retired agents must not be bound to new tasks
 
 ## v4.3 Contract Remediation
 
-- T-71: 本文原先只给出了Status枚举，没有defines受控迁移路径，Root cause:  agent lifecycle contract 先冻结了data形状，后补治理链，导致实现侧容易directly写字段。修复：正文现明确 lifecycle 只能via受控 transition service 推进，并要求绑定 rollout vs retirement 审计证据。
+- T-71: This document originally only provided state enums without defining controlled migration paths. Root cause: The agent lifecycle contract froze the data shape first and added the governance chain later, causing implementation side to easily write fields directly. Fix: The main text now explicitly states that lifecycle can only advance through controlled transition service, and requires binding rollout and retirement audit evidence.

@@ -1,170 +1,170 @@
 # Review Prevention Plan
 
-> 目标：把 `docs_zh/reviews/` 中反复出现的Issue，从“review 时人工发现”转成“提交前和 CI 中自动阻止”。
+> Goal: Convert issues that repeatedly appear in `docs_zh/reviews/` from "manually discovered during review" to "automatically blocked before submission and in CI".
 > Last updated: 2026-05-27
 
-## 1. Issuedefines
+## 1. Issue Definition
 
-当前 review 能一iterations性扫出大量Issue，不代table review 本身有效率高；更准确地说，is很多约束仍停留在“人知道”，没有被产品化为持续门禁。
+The fact that current reviews can一次性 scan out a large number of issues does not mean the review itself is efficient; more accurately, many constraints are still停留在"people know" and have not been productized as continuous gates.
 
-高频Issue集中在以下几class：
+High-frequency issues cluster in these categories:
 
-- Architecturevsexport边界：deep import、compat shim 漂移、公共出口绕路。
-- class型治理：`@ts-expect-error`、`@ts-ignore`、`as any`、双重断言。
-- 外部 URL / security基线：hardcodes第三方 URL、未走 outbound policy、错误测试分层。
-- 文档vscode漂移：旧路径、旧脚本、旧仓库 URL、版本/Node 基线inconsistent。
-- 测试治理：重名测试标题、spawn 误放 unit、历史平lines目录残留。
-- UI 声明漂移：`Implemented/*` vs实际未接后端inconsistent、按钮no真实动作。
+- Architecture and export boundary: deep import, compat shim drift, public export circumvention.
+- Type governance: `@ts-expect-error`, `@ts-ignore`, `as any`, double assertions.
+- External URL / security baseline: hardcoded third-party URLs, not going through outbound policy, incorrect test layering.
+- Documentation vs code drift: old paths, old scripts, old repository URLs, version/Node baseline inconsistency.
+- Test governance: duplicate test titles, spawn misplaced in unit, historical parallel directory remnants.
+- UI status drift: `Implemented/*` inconsistent with actual backend not connected, buttons with no real actions.
 
-## 2. 为什么Issue会在 review 才暴露
+## 2. Why Issues Are Only Exposed During Review
 
-Root Cause不is“review 太晚”，而is“约束没有前移”。
+The root cause is not "review is too late", but "constraints have not been shifted left".
 
-- 现有测试更偏功能正确性，缺少结构正确性门禁。
-- TypeScript 只能保证class型正确，不能自动约束Architecture边界、export语义、文档时效性。
-- 文档、脚本、测试、UI manifest、运lines时出口分散演进，缺少统一对账。
-- 历史兼容层和旧目录长期累积，没有持续清账机制。
-- 很多Issuebelongs to横切面Issue，单文件/单 PR review 不容易看全。
+- Existing tests focus more on functional correctness, lacking structural correctness gates.
+- TypeScript can only ensure type correctness, cannot automatically constrain architecture boundaries, export semantics, documentation timeliness.
+- Documentation, scripts, tests, UI manifests, and runtime exits evolve separately, lacking unified reconciliation.
+- Historical compatibility layers and old directories accumulate long-term, lacking continuous clearing mechanism.
+- Many issues are cross-cutting concerns, difficult to see fully in single file/single PR review.
 
-Conclusion：
+Conclusion:
 
-- review 应负责设计取舍、风险判断、需求偏差。
-- review 不应继续承担机械扫描工作，例如找hardcodes URL、找 `@ts-expect-error`、找repeats测试标题。
+- Reviews should be responsible for design trade-offs, risk judgment, and requirements deviation.
+- Reviews should no longer承担 mechanical scanning work, such as finding hardcoded URLs, finding `@ts-expect-error`, finding duplicate test titles.
 
-## 3. 预防principle
+## 3. Prevention Principles
 
-### 3.1 左移
+### 3.1 Shift Left
 
-- 新Issue必须在本地提交前或 CI 首轮failed。
-- 不允许relies on“大table review 收口”作为常规发现手段。
+- New issues must fail at local pre-commit or first CI round.
+- Not allowed to rely on "big table review closure" as a常规 discovery method.
 
-### 3.2 机器优先
+### 3.2 Machine First
 
-- 凡is能写成脚本的约束，不继续relies on人工记忆。
-- 每关闭一class review Issue，都要新增对应 guardrail。
+- Any constraint that can be written as a script should no longer rely on人工 memory.
+- Each time a category of review issue is closed, add corresponding guardrail.
 
-### 3.3 权威源唯一
+### 3.3 Single Authoritative Source
 
-- Architecture边界看 `docs_zh/contracts/`、`architecture/` vs `AGENTS.md`。
-- 测试执lines约定看 `package.json` 和 `scripts/run-layered-tests.mjs`。
-- Statusclass UI 声明看 feature manifest，不允许 view 层各说各话。
+- Architecture boundaries: see `docs_zh/contracts/`, `architecture/` vs `AGENTS.md`.
+- Test execution conventions: see `package.json` and `scripts/run-layered-tests.mjs`.
+- State-class UI declarations: see feature manifest, not allowing view layer each does its own thing.
 
-## 4. 必须落地的持续门禁
+## 4. Continuous Gates That Must Be Implemented
 
-### 4.1 P0：一周内补齐
+### 4.1 P0: Complete Within One Week
 
-- 已落地（2026-05-27）：
+- Already implemented (2026-05-27):
   - `scripts/ci/audit-type-suppressions.mjs`
   - `scripts/ci/audit-outbound-urls.mjs`
   - `scripts/ci/audit-public-entrypoints.mjs`
   - `scripts/ci/audit-duplicate-test-titles.mjs`
-  - 已接入 `npm run audit:repo-hygiene`
-  - 当前采用“存量基线 + 禁止回升”策略；后续治理目标不is放宽基线，而is持续下压并回写基线
-- class型抑制审计：
-  - 扫描新增 `@ts-expect-error`、`@ts-ignore`、`as any`、`as unknown as`。
-  - defaults to新增即failed；存量必须白名单化并逐步归零。
-- 外部 URL 审计：
-  - 扫描 `http://` / `https://` 字面量。
-  - only允许 contract fixture、README 示例和明确白名单目录。
-  - 运lines时code必须via outbound policy / helper 注册。
-- 顶层出口审计：
-  - 禁止 `src/index.ts` directly拉深层内部模块。
-  - 只允许via `src/platform/index.ts`、`src/sdk/index.ts` 等公开入口聚合。
-- repeats测试标题审计：
-  - 扫描同名 `test("...")`，跨文件repeatsexceeds过threshold即failed。
-- 文档 URL / 路径审计：
-  - 扫描旧仓库 URL、个人绝对路径、失效脚本名、失效目录references用。
+  - Integrated into `npm run audit:repo-hygiene`
+  - Currently adopting "existing baseline + prohibit regression" strategy; future governance goal is not to relax baseline but to continuously reduce and write back baseline
+- Type suppression audit:
+  - Scan new `@ts-expect-error`, `@ts-ignore`, `as any`, `as unknown as`.
+  - Default to new = fail; existing must be allowlisted and gradually reduced to zero.
+- External URL audit:
+  - Scan `http://` / `https://` literals.
+  - Only allow contract fixture, README examples, and explicit allowlist directories.
+  - Runtime code must register through outbound policy / helper.
+- Top-level export audit:
+  - Prohibit `src/index.ts` from directly pulling deep internal modules.
+  - Only allow through public entry aggregation like `src/platform/index.ts`, `src/sdk/index.ts`.
+- Duplicate test title audit:
+  - Scan same-name `test("...")`, cross-file repeats exceeding threshold = fail.
+- Document URL / path audit:
+  - Scan old repository URLs, personal absolute paths, invalid script names, invalid directory references.
 
-### 4.2 P1：两周内补齐
+### 4.2 P1: Complete Within Two Weeks
 
-- 测试分层审计：
-  - 扫描 `execFileSync` / `spawn` / `fork` 等进程call。
-  - 出现在 `tests/unit/` defaults tofailed，除非显式白名单。
-- UI manifest 一致性审计：
-  - `Implemented/Contracted` 或 `Implemented/Internal` 的特性必须满足：
-    - 不为纯静态 hook；
-    - workbench action 至少有一个真实 `onTrigger`；
-    - 不得用占位文案伪装已接线。
-- 大文件治理审计：
-  - 接入lines数threshold扫描。
-  - exceedsthreshold不一定directlyfailed，但必须出审计报告并要求 owner。
-- compat shim 审计：
-  - 新增 compat 入口必须有消费者证据和关闭计划。
+- Test layering audit:
+  - Scan `execFileSync` / `spawn` / `fork` and other process calls.
+  - Appearing in `tests/unit/` = fail by default unless explicitly allowlisted.
+- UI manifest consistency audit:
+  - Features marked `Implemented/Contracted` or `Implemented/Internal` must satisfy:
+    - Not pure static hook;
+    - Workbench action has at least one real `onTrigger`;
+    - Cannot use placeholder text to pretend is wired.
+- Large file governance audit:
+  - Integrate line count threshold scanning.
+  - Exceeding threshold does not necessarily fail directly, but must produce audit report and require owner.
+- Compat shim audit:
+  - New compat entries must have consumer evidence and closure plan.
 
-### 4.3 P2：一个月内补齐
+### 4.3 P2: Complete Within One Month
 
-- review Root Cause标签化：
-  - 每个 review Issue必须打标签，例如 `boundary`、`typing`、`docs-drift`、`test-hygiene`、`ui-status-drift`。
-  - 每周统计新增量和复发量。
-- PR 模板治理：
-  - 新增“isnoreferences入新 deep import / 新外部 URL / 新class型压制 / 新 compat shim”检查项。
-- CODEOWNERS / owner 归属：
-  - Architecture边界、文档索references、测试基础设施、UI manifest 需明确 owner。
+- Review root cause labeling:
+  - Each review issue must be tagged, e.g., `boundary`, `typing`, `docs-drift`, `test-hygiene`, `ui-status-drift`.
+  - Weekly statistics on new and recurring counts.
+- PR template governance:
+  - Add check items for "introducing new deep import / new external URL / new type suppression / new compat shim".
+- CODEOWNERS / owner attribution:
+  - Architecture boundaries, document index, test infrastructure, UI manifest need explicit owners.
 
-## 5. Recommendation新增的脚本vs门禁位
+## 5. Recommended New Scripts and Gate Positions
 
-Recommendation新增或扩展以下脚本，并接入 `npm run audit:repo-hygiene` 或 `npm test`：
+Recommend adding or extending these scripts and integrating into `npm run audit:repo-hygiene` or `npm test`:
 
-| 脚本 | 作用 | 推荐接入 |
-|---|-------|--------|
-| `scripts/ci/audit-type-suppressions.mjs` | 扫描class型压制vs双重断言 | `audit:repo-hygiene` |
-| `scripts/ci/audit-outbound-urls.mjs` | 扫描运lines时code中的裸 URL | `audit:repo-hygiene` |
-| `scripts/ci/audit-public-entrypoints.mjs` | 扫描顶层出口 deep import | `audit:repo-hygiene` |
-| `scripts/ci/audit-duplicate-test-titles.mjs` | 扫描repeats测试标题 | `audit:test-exclusions` 或 `audit:repo-hygiene` |
-| `scripts/ci/audit-test-layering.mjs` | 检查 spawn/network/文件系统重操作isno误放 unit | `audit:repo-hygiene` |
-| `scripts/ci/audit-ui-feature-contracts.mjs` | 校验 UI feature status/action/hook 一致性 | UI test baseline |
-| `scripts/ci/audit-doc-links-and-sources.mjs` | 扫描旧 URL、绝对路径、失效脚本references用 | `audit:docs-sync` |
+| Script | Purpose | Recommended Integration |
+| --- | --- | --- |
+| `scripts/ci/audit-type-suppressions.mjs` | Scan type suppression vs double assertions | `audit:repo-hygiene` |
+| `scripts/ci/audit-outbound-urls.mjs` | Scan bare URLs in runtime code | `audit:repo-hygiene` |
+| `scripts/ci/audit-public-entrypoints.mjs` | Scan top-level export deep imports | `audit:repo-hygiene` |
+| `scripts/ci/audit-duplicate-test-titles.mjs` | Scan duplicate test titles | `audit:test-exclusions` or `audit:repo-hygiene` |
+| `scripts/ci/audit-test-layering.mjs` | Check spawn/network/filesystem operations misplaced in unit | `audit:repo-hygiene` |
+| `scripts/ci/audit-ui-feature-contracts.mjs` | Verify UI feature status/action/hook consistency | UI test baseline |
+| `scripts/ci/audit-doc-links-and-sources.mjs` | Scan old URLs, absolute paths, invalid script references | `audit:docs-sync` |
 
-## 6. Definition of Done 更新
+## 6. Definition of Done Update
 
-以后一个Issue只有在同时满足下面条件时，才算真正解决：
+Hereafter an issue is only considered truly resolved when all of the following conditions are met simultaneously:
 
-1. 当前code/文档/测试已修复。
-2. 有定向验证命令或证据。
-3. 同classIssue已补 guardrail，能防止复发。
+1. Current code/documentation/tests are fixed.
+2. Have targeted verification commands or evidence.
+3. Same category of issue has guardrail to prevent recurrence.
 
-不满足第 3 条时，只能算“本iterations修掉了”，不能算“体系已收口”。
+When condition 3 is not met, can only be considered "fixed this round", cannot be considered "system is closed".
 
-## 7. review 后的标准动作
+## 7. Standard Actions After Review
 
-每iterations review 结束后，必须按下面顺序handle：
+After each review ends, must handle in this order:
 
-1. 修复本轮发现的Issue。
-2. 归class前 10 个高频Issue。
-3. 选出其中能自动化的项补脚本。
-4. 把脚本接到 CI。
-5. 在 `review-closure-board.md` record该classIssueisno已门禁化。
+1. Fix issues discovered this round.
+2. Classify top 10 high-frequency issues.
+3. Select automatable ones and add scripts.
+4. Integrate scripts into CI.
+5. Record in `review-closure-board.md` whether this category of issue has been gated.
 
-禁止只更新 review 文档，不补防回归机制。
+Prohibited: only updating review documents without adding regression prevention mechanisms.
 
-## 8. 指标
+## 8. Metrics
 
-Recommendation按周跟踪以下指标：
+Recommend tracking these metrics weekly:
 
-- review 新增Issue数
-- 同classIssue复发数
-- 需要人工才能发现的Issue占比
-- 已门禁化Issue占比
-- `@ts-expect-error` / `as any` 存量
-- 裸 URL 存量
-- repeats测试标题存量
+- Review new issue count
+- Same category issue recurrence count
+- Percentage of issues requiring manual discovery
+- Percentage of issues that have been gated
+- `@ts-expect-error` / `as any` inventory
+- Bare URL inventory
+- Duplicate test title inventory
 
-目标口径：
+Target scope:
 
-- 高频机械Issue的人工发现比例逐步下降。
-- review 逐步只剩设计和Architecture判断Issue。
+- Manual discovery proportion of high-frequency mechanical issues gradually decreases.
+- Reviews gradually only have design and architecture judgment issues.
 
-## 9. 本仓库下一步执lines顺序
+## 9. Next Steps for This Repository
 
-Recommendationdirectly按这个顺序落地：
+Recommend directly implementing in this order:
 
-1. 先做class型压制、裸 URL、repeats测试标题、deep import 四个 P0 脚本。
-2. 再做测试分层和 UI manifest 一致性两个 P1 脚本。
-3. 最后把 review 标签化和 owner 机制接到流程里。
+1. First do type suppression, bare URL, duplicate test title, deep import four P0 scripts.
+2. Then do test layering and UI manifest consistency two P1 scripts.
+3. Finally integrate review labeling and owner mechanism into the process.
 
-## 10. 相关入口
+## 10. Related Entry Points
 
-- 当前 review 收口table：`docs_zh/reviews/platforme-full-review-b.md`
-- review Status口径：`docs_zh/operations/review-closure-board.md`
-- 运维总索references：`docs_zh/operations/README.md`
-- 轻量追踪入口：`docs_zh/operations/operations-tracker.md`
+- Current review closure table: `docs_zh/reviews/platforme-full-review-b.md`
+- Review status scope: `docs_zh/operations/review-closure-board.md`
+- Operations main index: `docs_zh/operations/README.md`
+- Lightweight tracking entry: `docs_zh/operations/operations-tracker.md`

@@ -1,17 +1,17 @@
 # Platform Panic And Resume Contract
 
-## 1. 范围
+## 1. Scope
 
-本 contract defines `§60` 的globally熔断、传播机制、恢复协议和演练要求。
+This contract defines the global circuit breaker, propagation mechanism, recovery protocol, and drill requirements for §60.
 
-## 2. Canonical 对象
+## 2. Canonical Objects
 
 - `PlatformPanicDirective`
 - `PanicPropagationRecord`
 - `ResumePlan`
 - `PanicDrillRecord`
 
-## 3. `PlatformPanicDirective` 最小字段
+## 3. `PlatformPanicDirective` Minimal Fields
 
 - `directive_id`
 - `scope`
@@ -32,7 +32,7 @@
 - `run`
 - `node`
 
-`ResumePlan` 最小字段：
+`ResumePlan` minimal fields:
 
 - `resume_plan_id`
 - `scope`
@@ -44,31 +44,31 @@
 - `resume_mode`
 - `created_at`
 
-规则：
+Rules:
 
 - `approved_by` must contain at least two human approvers for `platform` / `region` / high-risk `tenant` panic resume.
 - `ResumePlan` must reference an explicit compatibility / revalidation check before execution resumes.
 - `workflow` is only a legacy projection scope; new panic directives must scope to `run` or `node`.
 
-## 4. 规则
+## 4. Rules
 
-- panic 必须可作used for `platform / region / tenant / domain / run / node` 多层级。
-- panic 生效后，新的高风险执lines必须被阻断。
-- 恢复必须via显式 `ResumePlan`，不得靠隐式重启解除。
-- 高风险 scope 的 resume 不得由单人、no角色校验或no再验证的计划directly解除。
+- Panic must be applicable to multi-levels: `platform / region / tenant / domain / run / node`.
+- After panic takes effect, new high-risk executions must be blocked.
+- Recovery must go through explicit `ResumePlan`; must not be lifted by implicit restart.
+- High-risk scope resume must not be lifted by single-person, no-role-verification, or no-revalidation plans.
 
-## 5. 测试要求
+## 5. Test Requirements
 
-- unit：scope match、propagation、resume validation
-- integration：panic -> execution block -> resume
-- contract：panic 期间不得出现未审计的自动恢复
+- unit: scope match, propagation, resume validation
+- integration: panic -> execution block -> resume
+- contract: No unaudited automatic recovery during panic period
 
 
 
 ## v4.3 Architecture Remediation
 
-以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中record的 contract 偏差。本文档历史段落如vs本节conflicts，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
+The following items fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If historical sections of this document conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
 
-- T-26: 本文原先把 panic scope 停留在 `platform / tenant / org / domain / workflow`，并把 `ResumePlan` 写成nomandatory人工确认的空壳，Root cause: 早期熔断合同从业务工作流视角出发，没有随运lines时 scope 和 emergency governance 机制升级。修复：正文现把 scope 收敛到 `platform / region / tenant / domain / run / node`，并要求 `ResumePlan` 明确双人审批vs兼容性复核references用。
+- T-26: The original text kept panic scope at `platform / tenant / org / domain / workflow` and wrote `ResumePlan` as a shell without mandatory human confirmation. Root cause: Early circuit breaker contracts were viewed from business workflow perspective and did not upgrade with runtime scope and emergency governance mechanisms. Fix: The main text now converges scope to `platform / region / tenant / domain / run / node` and requires `ResumePlan` to explicitly specify dual-person approval and compatibility review references.
 
-mandatory规则：Status迁移必须via `RuntimeStateMachine.transition(command)`；执lines计划必须uses `PlanGraphBundle`；执lines结果必须uses `NodeAttemptReceipt`；truth event 只能uses `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；budget必须uses `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。
+Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events must only use `platform.*`; OAPEFLIR can only act as `oapeflir.view.*` / rationale projection; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.

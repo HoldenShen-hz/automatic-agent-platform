@@ -1,20 +1,20 @@
 # Token Budget Allocation Contract
 
-## 1. 范围
+## 1. Scope
 
-本 contract defines token budget在角色、节点、重试和Decision链上的细粒度分配规则。
+This contract defines fine-grained allocation rules for token budgets across roles, nodes, retries, and decision chains.
 
-相关文档：
+Related documents:
 
 - `cost_and_budget_contract.md`
 - `runtime_execution_contract.md`
 - `monetization_metering_plane_contract.md`
 
-## 2. 目标
+## 2. Objectives
 
-避免单个角色或单iterations重试吞掉整个 run budget。
+Prevent a single role or single retry from consuming the entire run budget.
 
-## 3. 分配维度
+## 3. Allocation Dimensions
 
 - `per_harness_run_budget`
 - `per_role_budget`
@@ -27,51 +27,50 @@
 - `kv_cache_domain_block_budget`
 - `kv_cache_variable_suffix_budget`
 
-## 4. 规则
+## 4. Rules
 
-- 任务总budget仍is最终upper limit。
-- 角色budget只is一层 guardrail，不替代任务总budget。
-- 重试应有独立 token cap。
-- context compaction 和 summary 也必须计入budget。
-- OAPEFLIR 各 stage 的 budget 必须可单独观测，至少覆盖 `observe / assess / plan / execute / feedback / learn / improve / release`。
-- knowledge retrieval 若enabled，必须单独受 `per_knowledge_retrieval_budget` 限制，不能隐式吞掉 execute 或 feedback budget。
-- KV cache 的 fixed prefix / domain block / variable suffix 必须拆分budget，不能把全部上下文当成一个可任意挤压的桶。
-- Improve / Release 阶段若需要额外评估或 rollout 试跑，必须从独立 stage budget 扣减，而不is回写 execute 阶段成本。
+- The task total budget remains the final upper limit.
+- Role budget is only a guardrail layer, not a replacement for the task total budget.
+- Retries should have an independent token cap.
+- Context compaction and summary must also be charged against the budget.
+- OAPEFLIR stage budgets must be individually observable, covering at minimum `observe / assess / plan / execute / feedback / learn / improve / release`.
+- If knowledge retrieval is enabled, it must be separately constrained by `per_knowledge_retrieval_budget`, not silently consuming execute or feedback budgets.
+- KV cache fixed prefix / domain block / variable suffix must have separate budgets; the entire context cannot be treated as an arbitrarily compressible bucket.
+- If Improve/Release stages need additional evaluation or rollout dry runs, they must be deducted from independent stage budgets, not written back as execute stage costs.
 
-## 4A. vs `BudgetReservation` Status机的绑定
+## 4A. Binding with `BudgetReservation` State Machine
 
-细粒度 token budget只is reservation 切片规则，不能替代budget truth。
+Fine-grained token budgets are only reservation slicing rules and cannot replace budget truth.
 
-- token budget的实际占用必须via `BudgetReservation` table达。
-- reservation 生命cycle必须遵守 `reserved -> settled -> released`（或 `expired / rejected`）Status推进。
-- `per_harness_run_budget / per_node_budget / per_retry_budget_cap / per_stage_budget` 只is决定“申请多少 reservation”的分配策略，不得directly跳过 reservation 写最终成本。
-- 若一iterations `NodeAttempt` 提前结束或发生 compaction / cache 命中，未消费的 token budget必须释放回 `BudgetReservation`，不得静默吞掉。
+- Actual token budget consumption must be expressed through `BudgetReservation`.
+- Reservation lifecycle must follow `reserved -> settled -> released` (or `expired / rejected`) state progression.
+- `per_harness_run_budget / per_node_budget / per_retry_budget_cap / per_stage_budget` only determine the allocation strategy of "how much reservation to apply", and must not skip reservation to write final costs directly.
+- If a `NodeAttempt` ends early or experiences compaction/cache hit, unconsumed token budgets must be released back to `BudgetReservation`, not silently consumed.
 
-## 5A. KV Cache Token 分区
+## 5A. KV Cache Token Partitioning
 
-KV cache 分区最小模型：
+KV cache partition minimum model:
 
-| 分区 | 语义 | budget规则 |
-|---|-------|--------|
-| `fixed_prefix` | 稳定系统前缀、治理约束、长期不变指令 | budget固定保留，不参vs普通 compaction |
-| `domain_block` | domain 绑定知识块、术语块、策略块 | budgetupper limit固定，可按 domain 调整 |
-| `variable_suffix` | 当前任务上下文、即时反馈、临时工具结果 | uses剩余budget，优先被裁剪 |
+| Partition | Semantics | Budget Rules |
+| --- | --- | --- |
+| `fixed_prefix` | Stable system prefix, governance constraints, long-term invariant instructions | Budget fixed and reserved, not participating in normal compaction |
+| `domain_block` | Domain-bound knowledge blocks, terminology blocks, policy blocks | Budget upper limit fixed, adjustable per domain |
+| `variable_suffix` | Current task context, immediate feedback, temporary tool results | Uses remaining budget, priority for trimming |
 
-规则：
+Rules:
 
-- `fixed_prefix` vs `domain_block` 的保留budget应先于 `variable_suffix` 计算。
-- budget分配必须vs `prompt_model_policy_governance_contract.md` 的 KV cache 分区策略保持一致。
-- 若运lines环境不supported KV cache，仍应按相同逻辑做 token 配额模拟，避免 prompt 构建和成本归因漂移。
+- Reserved budgets for `fixed_prefix` and `domain_block` should be calculated before `variable_suffix`.
+- Budget allocation must remain consistent with the KV cache partitioning strategy in `prompt_model_policy_governance_contract.md`.
+- If the runtime environment does not support KV cache, token quota simulation should still follow the same logic to avoid prompt construction and cost attribution drift.
 
-## 5. 收口Conclusion
+## 5. Conclusion
 
-成本治理若只停在任务总额，很容易在长任务里失控；细粒度 token budget 只有vs `BudgetReservation` 生命cycle绑定，系统才真正可控。
-
+Cost governance that only stops at the task total easily goes out of control in long tasks; only when fine-grained token budgets are bound to the `BudgetReservation` lifecycle does the system become truly controllable.
 
 ## v4.3 Architecture Remediation
 
-以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中record的 contract 偏差。本文档历史段落如vs本节conflicts，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
+The following entries fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If historical sections of this document conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
 
-- T-48: 本文原先把 token budget 写成纯分配维度列table，Root cause: 文案只覆盖 prompt/token 规划侧，没有把这些budget切片如何落到冻结的 `BudgetReservation` truth Status机写进合同。修复：正文现新增vs `BudgetReservation` 的绑定规则，明确细粒度 token budget只is reservation 切片策略，实际占用必须遵守 `reserved -> settled -> released` 生命cycle。
+- T-48: This document previously wrote token budget as a pure allocation dimension list. Root cause: the copy only covered the prompt/token planning side, without writing how these budget slices land on the frozen `BudgetReservation` truth state machine into the contract. Fix: The main text now adds binding rules with `BudgetReservation`, clarifying that fine-grained token budgets are only reservation slicing strategies, and actual consumption must follow the `reserved -> settled -> released` lifecycle.
 
-mandatory规则：Status迁移必须via `RuntimeStateMachine.transition(command)`；执lines计划必须uses `PlanGraphBundle`；执lines结果必须uses `NodeAttemptReceipt`；truth event 只能uses `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；budget必须uses `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。
+Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events must only use `platform.*`; OAPEFLIR may only be used as `oapeflir.view.*` / rationale projections; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.

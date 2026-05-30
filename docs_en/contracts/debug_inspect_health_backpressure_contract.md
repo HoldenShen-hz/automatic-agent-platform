@@ -1,18 +1,22 @@
 # Debug Inspect Health Backpressure Contract
 
-## 目的
-defines调试、巡检、健康、背压相关的最小契约基线，约束日志、健康信号、检查结果vs背压告警的输出口径。
+## Purpose
 
-## 权威实现
+Define the minimum contract baseline for debugging, inspection, health, and backpressure, constraining the output specifications for logs, health signals, inspection results, and backpressure alerts.
+
+## Authoritative Implementations
+
 - `src/platform/shared/observability/`
 - `src/platform/five-plane-control-plane/incident-control/`
 - `src/platform/five-plane-interface/channel-gateway/`
 
-## 核心约束
-- 健康vs背压信号应输出可观测事件、结构化日志或显式Status结果，不能静默吞错。
-- inspect/debug 输出belongs to运维视图，不得as业务 truth。
-- 告警threshold可以configure，但缺省情况下必须 fail-closed，而不is把缺失指标当作健康。
+## Core Constraints
+
+- Health and backpressure signals should output observable events, structured logs, or explicit status results, and must not silently swallow errors.
+- inspect/debug output belongs to the operations view and must not be disguised as business truth.
+- Alert thresholds can be configured, but in default cases must be fail-closed, rather than treating missing metrics as healthy.
 
 ## Description
-- 该文档defines的is contract baseline，不冻结所有 Prometheus 指标名。
-- 具体指标、日志字段、事件名以对应实现中的 schema vs exporter 为准。
+
+- This document defines a contract baseline and does not freeze all Prometheus metric names.
+- Specific metrics, log fields, and event names are subject to the schema and exporter in the corresponding implementation.

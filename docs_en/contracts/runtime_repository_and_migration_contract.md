@@ -2,18 +2,18 @@
 
 ---
 
-## OAPEFLIR 关联
+## OAPEFLIR Association
 
-本 contract 参vs OAPEFLIR 八阶段循环中的以下阶段：
+This contract participates in the following stages of the OAPEFLIR eight-stage loop:
 
-- **Observe**：信号采集vs聚合
-- **Assess**：执lines前评估vs风险判断
-- **Plan**：任务分解vs DAG 构建
-- **Execute**：步骤执linesvs容错
-- **Feedback**：信号收集vs预handle
-- **Learn**：模式检测vs知识提取
-- **Improve**：改进候选评估vs rollout
-- **Release**：受控发布vs回滚
+- **Observe**: Signal collection and aggregation
+- **Assess**: Pre-execution assessment and risk judgment
+- **Plan**: Task decomposition and DAG construction
+- **Execute**: Step execution and fault tolerance
+- **Feedback**: Signal collection and preprocessing
+- **Learn**: Pattern detection and knowledge extraction
+- **Improve**: Improvement candidate evaluation and rollout
+- **Release**: Controlled release and rollback
 
 ---
 
@@ -80,9 +80,9 @@ Minimum method set:
 Behavioral constraints:
 
 - `transition(command)` must be the only canonical entry for truth status progression.
-- Retry should append new `NodeAttempt`, not directly mutate old attempt / receipt into a retry state.
+- Retry should append new `NodeAttempt`, not directly mutate old attempt/receipt into a retry state.
 - Terminal truth methods must not overwrite existing terminal state, unless a new recovery-driven attempt or graph patch has been created.
-- Historical methods such as `markExecutionStarted` / `markExecutionBlocked` / `markExecutionSucceeded` are only allowed inside legacy compatibility adapters that normalize into `RuntimeStateMachine.transition(command)` before any write happens.
+- Historical methods such as `markExecutionStarted`/`markExecutionBlocked`/`markExecutionSucceeded` are only allowed inside legacy compatibility adapters that normalize into `RuntimeStateMachine.transition(command)` before any write happens.
 
 ## 5. `ExecutionPrecheckRepository` Contract
 
@@ -95,7 +95,7 @@ Minimum method set:
 Rules:
 
 - Phase 1a defaults to keeping only one authoritative precheck result per execution.
-- Precheck result must be queryable before execution enters `executing / blocked / failed`.
+- Precheck result must be queryable before execution enters `executing/blocked/failed`.
 - Not allowed to only log precheck, with no record in database.
 
 ## 6. `DeadLetterRepository` Contract
@@ -152,7 +152,7 @@ Return result at minimum should contain:
 Rules:
 
 - This repository can compose reading multiple tables, but exposes unified recovery view to upper layer.
-- Its output must be sufficient for runtime to decide "resume / retry / manual takeover / dead-letter".
+- Its output must be sufficient for runtime to decide "resume/retry/manual takeover/dead-letter".
 
 ## 9. `SessionRepository` and `EventAckRepository` Contract
 
@@ -168,7 +168,7 @@ Rules:
 
 Rules:
 
-- Session status can only express channel interaction progress, must not override task / workflow / execution truth state.
+- Session status can only express channel interaction progress, must not override task/workflow/execution truth state.
 - Session terminal state closure must be consistent with or explainable from task terminal state.
 
 `EventAckRepository` minimum method set:
@@ -225,8 +225,8 @@ Phase 1a recommends:
 
 Rules:
 
-- Migration number must be monotonically increasing, not allowed to reorder historical numbers.
-- Migration already executed in shared environment must not be directly rewritten, only subsequent migration can be added.
+- Migration number must be monotonically increasing; not allowed to reorder historical numbers.
+- Migration already executed in shared environment must not be directly rewritten; only subsequent migration can be added.
 - Initial schema and subsequent incremental migration must be distinguishable.
 
 ## 12. Migration Content Rules
@@ -255,7 +255,7 @@ System should maintain migration ledger, minimum fields:
 Rules:
 
 - Runtime start should be able to determine whether current database schema is lagging.
-- If missing critical migration is found, default fail-closed, should not run quietly with incomplete schema.
+- If missing critical migration is found, default fail-closed; should not run quietly with incomplete schema.
 
 ## 14. Rollback and Compatibility Rules
 
@@ -269,12 +269,12 @@ At minimum should cover the following verification:
 
 - Migration initializes successfully from empty database.
 - Migration repeated execution does not destroy schema.
-- Transition-backed repositories can correctly persist harness run / node run / attempt lifecycle.
-- Recovery / heartbeat / receipt query interface can support supervisor and recovery process.
-- Session state progression does not conflict with harness run / node run truth state.
+- Transition-backed repositories can correctly persist harness run/node run/attempt lifecycle.
+- Recovery/heartbeat/receipt query interface can support supervisor and recovery process.
+- Session state progression does not conflict with harness run/node run truth state.
 - Event ack query can identify "a consumer has not acknowledged" rather than just identify "event not consumed".
 - File lock query can identify shared read lock, exclusive write lock, reentrant lock, and expired lock.
-- Under crash recovery scenario, `RuntimeRecoveryRepository` can identify stale / blocked / recoverable run.
+- Under crash recovery scenario, `RuntimeRecoveryRepository` can identify stale/blocked/recoverable run.
 
 ## 16. Supplementary Rules
 
@@ -282,11 +282,10 @@ At minimum should cover the following verification:
 - Migration checksum must be stably recalculable; if introducing signature, signature only enhances release credibility, does not replace checksum.
 - Multi-worker scenario should add `LeaseRepository`, and maintain explainable transaction boundary with `TransitionRepositoryAdapter`.
 
-
 ## v4.3 Architecture Remediation
 
-以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中record的 contract 偏差。本文档历史段落如vs本节conflicts，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
+The following entries fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If historical sections of this document conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
 
-- T-56: 本文原先把 `markExecutionStarted / markExecutionBlocked / markExecutionSucceeded` 这class repository 方法写成directly操作 `executions` table的 canonical 接口，Root cause: 运lines时持久化合同停留在旧 execution-centric repository 模型，没有随着 v4.3 的 truth Status机边界迁移到 transition-backed writes。修复：正文现改为 `TransitionRepositoryAdapter` 驱动，明确所有 truth Status变化都必须先via过 `RuntimeStateMachine.transition(command)`，旧 `markExecution*` 只允许存在于 legacy compatibility adapter 内部。
+- T-56: This document originally wrote `markExecutionStarted/markExecutionBlocked/markExecutionSucceeded` as direct canonical interfaces operating on the `executions` table. Root cause: the runtime persistence contract stayed at the old execution-centric repository model and did not migrate along with v4.3's truth state machine boundary to transition-backed writes. Fix: The main text now uses `TransitionRepositoryAdapter` as driver, clarifying that all truth state changes must first go through `RuntimeStateMachine.transition(command)`, and old `markExecution*` methods are only permitted inside legacy compatibility adapters.
 
-mandatory规则：Status迁移必须via `RuntimeStateMachine.transition(command)`；执lines计划必须uses `PlanGraphBundle`；执lines结果必须uses `NodeAttemptReceipt`；truth event 只能uses `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；budget必须uses `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。
+Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events must only use `platform.*`; OAPEFLIR can only be used as `oapeflir.view.*`/rationale projection; budgets must use `BudgetLedger`/`BudgetReservation`/`BudgetSettlement`.

@@ -1,109 +1,109 @@
 # v4.3 Task Intake And Request Contract
 
-> v4.3 canonical contract。覆盖 `TaskDraft` / `ConfirmedTaskSpec` / `RequestEnvelope`。
+> v4.3 canonical contract. Covers `TaskDraft` / `ConfirmedTaskSpec` / `RequestEnvelope`.
 
-## 1. 范围
+## 1. Scope
 
-本 contract defines从原始输入进入 HarnessRuntime 前的唯一 intake 链路：
+This contract defines the unique intake chain before raw input enters HarnessRuntime:
 
 ```text
 RawInput -> TaskDraft -> ClarificationSession -> ConfirmedTaskSpec -> RequestEnvelope
 ```
 
-自然语言、Webhook、UI、CLI、定时触发器或外部事件不得directly生成可执linesrequest；只有 `ConfirmedTaskSpec` 可以生成 `RequestEnvelope`。
+Natural language, webhooks, UI, CLI, scheduled triggers, or external events must not directly generate executable requests; only `ConfirmedTaskSpec` can generate `RequestEnvelope`.
 
 ## 2. TaskDraft
 
-`TaskDraft` is pre-admission 草稿，只能used for澄清、风险预览、保存user意图和形成确认材料，不得进入 P4 执lines。
+`TaskDraft` is a pre-admission draft and can only be used for clarification, risk preview, preserving user intent, and forming confirmation materials. It must not enter P4 execution.
 
-最小字段：
+Minimum fields:
 
-| 字段 | class型 | Description |
-|---|-------|--------|
-| `taskDraftId` | `string` | 草稿 ID |
-| `tenantId` | `string` | 租户 |
-| `principal` | `PrincipalRef` | 发起主体 |
-| `source` | `nl \| webhook \| ui \| cli \| scheduler \| external_event` | 输入来源 |
-| `rawInputRef` | `ArtifactRef?` | 原始输入references用；大文本必须 artifact 化 |
-| `normalizedIntent` | `json` | 结构化意图 |
-| `missingFields` | `string[]` | 仍需澄清字段 |
-| `riskPreview` | `RiskPreview` | 初步风险判断 |
-| `ambiguityPolicy` | `safe_default \| require_confirmation \| reject` | 歧义handle策略 |
-| `createdAt` | `timestamp` | 创建time |
-| `expiresAt` | `timestamp?` | 草稿过期time |
+| Field | Type | Description |
+| --- | --- | --- |
+| `taskDraftId` | `string` | Draft ID |
+| `tenantId` | `string` | Tenant |
+| `principal` | `PrincipalRef` | Initiating principal |
+| `source` | `nl \| webhook \| ui \| cli \| scheduler \| external_event` | Input source |
+| `rawInputRef` | `ArtifactRef?` | Raw input reference; large text must be artifact-ized |
+| `normalizedIntent` | `json` | Structured intent |
+| `missingFields` | `string[]` | Fields still needing clarification |
+| `riskPreview` | `RiskPreview` | Preliminary risk assessment |
+| `ambiguityPolicy` | `safe_default \| require_confirmation \| reject` | Ambiguity handling policy |
+| `createdAt` | `timestamp` | Creation time |
+| `expiresAt` | `timestamp?` | Draft expiration time |
 
-约束：
+Constraints:
 
-- `TaskDraft` 不分配 worker、不创建 `HarnessRun`、不占用执linesbudget。
-- high / critical 风险草稿必须形成显式确认材料。
-- 草稿过期后不得复用生成 `RequestEnvelope`，必须重新确认。
+- `TaskDraft` does not allocate workers, does not create `HarnessRun`, and does not occupy execution budget.
+- High / critical risk drafts must form explicit confirmation materials.
+- After draft expiration, it must not be reused to generate `RequestEnvelope`; must reconfirm.
 
 ## 3. ConfirmedTaskSpec
 
-`ConfirmedTaskSpec` is唯一可转换为 `RequestEnvelope` 的前置对象。
+`ConfirmedTaskSpec` is the only object that can be converted to `RequestEnvelope`.
 
-最小字段：
+Minimum fields:
 
-| 字段 | class型 | Description |
-|---|-------|--------|
-| `confirmedTaskSpecId` | `string` | 已确认任务规格 ID |
-| `taskDraftId` | `string` | 来源草稿 |
-| `tenantId` | `string` | 租户 |
-| `principal` | `PrincipalRef` | 发起主体 |
-| `goal` | `string` | user确认后的目标 |
-| `inputs` | `json` | 已确认输入 |
-| `constraints` | `ConstraintPackRef` | 任务级约束包 |
-| `riskClass` | `low \| medium \| high \| critical` | 风险级别 |
-| `confirmationReceipt` | `UserConfirmationReceipt?` | high / critical 必填 |
-| `idempotencyKey` | `string` | 幂等键 |
-| `traceId` | `string` | 全链路 trace |
-| `createdAt` | `timestamp` | 创建time |
+| Field | Type | Description |
+| --- | --- | --- |
+| `confirmedTaskSpecId` | `string` | Confirmed task spec ID |
+| `taskDraftId` | `string` | Source draft |
+| `tenantId` | `string` | Tenant |
+| `principal` | `PrincipalRef` | Initiating principal |
+| `goal` | `string` | Goal after user confirmation |
+| `inputs` | `json` | Confirmed inputs |
+| `constraints` | `ConstraintPackRef` | Task-level constraint pack |
+| `riskClass` | `low \| medium \| high \| critical` | Risk class |
+| `confirmationReceipt` | `UserConfirmationReceipt?` | Required for high / critical |
+| `idempotencyKey` | `string` | Idempotency key |
+| `traceId` | `string` | End-to-end trace ID |
+| `createdAt` | `timestamp` | Creation time |
 
-约束：
+Constraints:
 
-- `riskClass=high|critical` 时，`confirmationReceipt` 必须存在且未过期。
-- `idempotencyKey` 在同一 tenant 下必须稳定；repeats提交返回同一 admission 结果。
-- `constraints` 必须来自平台、租户、域和任务约束合并后的不可变references用。
+- When `riskClass=high|critical`, `confirmationReceipt` must exist and not be expired.
+- `idempotencyKey` must be stable under the same tenant; repeated submissions return the same admission result.
+- `constraints` must be an immutable reference from the merged platform, tenant, domain, and task constraints.
 
 ## 4. RequestEnvelope
 
-`RequestEnvelope` is P1/P2 向 HarnessRuntime admission 传递的 canonical request。
+`RequestEnvelope` is the canonical request passed from P1/P2 to HarnessRuntime admission.
 
-最小字段：
+Minimum fields:
 
-| 字段 | class型 | Description |
-|---|-------|--------|
-| `requestId` | `string` | request ID |
-| `confirmedTaskSpecId` | `string` | 已确认任务规格 |
-| `tenantId` | `string` | 租户 |
-| `principal` | `PrincipalRef` | 发起主体 |
-| `traceId` | `string` | trace |
-| `idempotencyKey` | `string` | 幂等键 |
-| `requestHash` | `string` | admission 幂等校验 hash |
-| `constraintPackRef` | `ConstraintPackRef` | 约束包 |
-| `budgetIntent` | `BudgetIntent` | budget意图，不is reservation |
-| `policyContext` | `PolicyContext` | 策略上下文 |
-| `artifactRefs` | `ArtifactRef[]` | 输入 artifact |
-| `submittedAt` | `timestamp` | 提交time |
+| Field | Type | Description |
+| --- | --- | --- |
+| `requestId` | `string` | Request ID |
+| `confirmedTaskSpecId` | `string` | Confirmed task spec |
+| `tenantId` | `string` | Tenant |
+| `principal` | `PrincipalRef` | Initiating principal |
+| `traceId` | `string` | Trace ID |
+| `idempotencyKey` | `string` | Idempotency key |
+| `requestHash` | `string` | Admission idempotency check hash |
+| `constraintPackRef` | `ConstraintPackRef` | Constraint pack |
+| `budgetIntent` | `BudgetIntent` | Budget intent, not reservation |
+| `policyContext` | `PolicyContext` | Policy context |
+| `artifactRefs` | `ArtifactRef[]` | Input artifacts |
+| `submittedAt` | `timestamp` | Submission time |
 
-约束：
+Constraints:
 
-- `RequestEnvelope` 不得contains未确认的自然语言原文作为唯一任务defines。
-- `budgetIntent` 只能进入budget预检；实际扣留必须via `BudgetReservation`。
-- admission success后创建 `HarnessRun`；failed必须record platform fact event vs可解释拒绝原因。
+- `RequestEnvelope` must not contain unconfirmed natural language original text as the sole task definition.
+- `budgetIntent` can only enter budget pre-check; actual hold must go through `BudgetReservation`.
+- After admission success, `HarnessRun` is created; failure must record platform fact event and explainable rejection reason.
 
-## 5. Legacy / Deprecated 映射
+## 5. Legacy / Deprecated Mapping
 
-| 旧名 | v4.3 语义 |
+| Legacy Name | v4.3 Semantics |
 | --- | --- |
-| `Task` | 查询兼容层；新执lines入口必须先形成 `TaskDraft` 或 `ConfirmedTaskSpec` |
-| `TaskSpec` | 若no确认 receipt，不等价于 `ConfirmedTaskSpec` |
-| `task.created` | legacy event；新事实事件uses `platform.harness_run.*` 或 intake 相关 `platform.*` |
-| 原始 prompt / raw text | 只能作为 `rawInputRef` 或 audit evidence，不得直达执lines |
+| `Task` | Query compatibility layer; new execution entry must first form `TaskDraft` or `ConfirmedTaskSpec` |
+| `TaskSpec` | Without confirmation receipt, not equivalent to `ConfirmedTaskSpec` |
+| `task.created` | Legacy event; new fact events use `platform.harness_run.*` or intake-related `platform.*` |
+| Raw prompt / raw text | Can only be `rawInputRef` or audit evidence, must not reach execution directly |
 
-## 6. 测试要求
+## 6. Test Requirements
 
-- high / critical 风险no确认时拒绝生成 `RequestEnvelope`。
-- 同一 `idempotencyKey + requestHash` repeats提交不得创建多个 `HarnessRun`。
-- `TaskDraft` 不得被 P4 dispatch 消费。
-- 旧 `/api/v1/tasks` 兼容入口必须投影到 v4.3 intake 链路。
+- Reject generating `RequestEnvelope` when high / critical risk has no confirmation.
+- Repeated submission of the same `idempotencyKey + requestHash` must not create multiple `HarnessRun`s.
+- `TaskDraft` must not be consumed by P4 dispatch.
+- Old `/api/v1/tasks` compatibility entry must project to v4.3 intake chain.

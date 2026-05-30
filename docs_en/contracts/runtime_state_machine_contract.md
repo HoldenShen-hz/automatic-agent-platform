@@ -1,33 +1,33 @@
 # Runtime State Machine Contract
 
-> **v4.3 兼容Description**：本文件保留为历史 task / workflow / OAPEFLIR 视图StatusDescription。v4.3 Status推进权威以 [ADR-110](../adr/110-runtime-state-machine-authority.md)、[harness-run-contract.md](./harness-run-contract.md)、[node-run-attempt-receipt-contract.md](./node-run-attempt-receipt-contract.md)、[side-effect-reconciliation-contract.md](./side-effect-reconciliation-contract.md) 和 [budget-ledger-contract.md](./budget-ledger-contract.md) 为准；新模块必须via `RuntimeStateMachine.transition(command)` 推进 truth。
+> **v4.3 Compatibility Note**: This document is preserved as historical task/workflow/OAPEFLIR view state descriptions. v4.3 state progression authority is defined in [ADR-110](../adr/110-runtime-state-machine-authority.md), [harness-run-contract.md](./harness-run-contract.md), [node-run-attempt-receipt-contract.md](./node-run-attempt-receipt-contract.md), [side-effect-reconciliation-contract.md](./side-effect-reconciliation-contract.md), and [budget-ledger-contract.md](./budget-ledger-contract.md); new modules must advance truth through `RuntimeStateMachine.transition(command)`.
 
-> **OAPEFLIR 相关**：本文件中的 OAPEFLIR 段落只table达 stage projection 顺序，不defines任何 truth-grade run / node Status机。
-> **更新日期**：2026-04-17
+> **OAPEFLIR Note**: OAPEFLIR paragraphs in this document only express stage projection order, and do not define any truth-grade run/node state machine.
+> **Updated**: 2026-04-17
 
-## 1. 范围
+## 1. Scope
 
-本 contract record Ring 1 之后仍需兼容的历史任务、workflow vs OAPEFLIR 投影视图Status，以及它们vs v4.3 truth Status机之间的映射约束。
+This contract records historical task, workflow, and OAPEFLIR projection view states that remain compatible after Ring 1, and the mapping constraints between them and the v4.3 truth state machine.
 
-补充Description：
+Supplementary notes:
 
-- 本文件回答”Status可以如何变化”。
-- `runtime_execution_contract.md` 回答”runtime run 如何被检查、执lines、重试和终止”。
+- This document answers "how states can change".
+- `runtime_execution_contract.md` answers "how runtime runs are inspected, executed, retried, and terminated".
 
-## 1A. OAPEFLIR 顶层阶段投影视图
+## 1A. OAPEFLIR Top-Level Stage Projection View
 
-OAPEFLIR 的八阶段只used for解释闭环语义视图，推荐按以下顺序展示：
+OAPEFLIR's eight stages are used only for explaining closed-loop semantic views, recommended to display in the following order:
 
 ```text
 observe -> assess -> plan -> execute -> feedback -> learn -> improve -> release
 ```
 
-循环语义：
+Loop semantics:
 
-- `release` 完成后，可进入下一轮 `observe`，并把 `loop_iteration + 1`。
-- 若任务已via满足退出条件，可directly进入 terminal，不要求开启下一轮。
+- After `release` completes, may enter next round of `observe`, with `loop_iteration + 1`.
+- If task already satisfies exit conditions, may go directly to terminal without starting a new round.
 
-`OapeflirStage` 枚举：
+`OapeflirStage` enum:
 
 - `observe`
 - `assess`
@@ -38,7 +38,7 @@ observe -> assess -> plan -> execute -> feedback -> learn -> improve -> release
 - `improve`
 - `release`
 
-`StageStatus` 枚举：
+`StageStatus` enum:
 
 - `pending`
 - `active`
@@ -47,11 +47,11 @@ observe -> assess -> plan -> execute -> feedback -> learn -> improve -> release
 - `failed`
 - `timed_out`
 
-约束：
+Constraints:
 
-- `stage` 的 canonical 写法必须is上述枚举，不得uses `perceive`、`analyze`、`deploy` 等同义词替代。
-- `skipped` 只能used for明确受控跳过，不得用作failed降级别名。
-- `release` is当前闭环阶段，不等同于一定发生真实外部发布；真正发布动作仍由 HarnessRuntime / Release Gate 受控推进。
+- `stage` canonical写法 must be the above enum; synonyms like `perceive`, `analyze`, `deploy` are not permitted.
+- `skipped` may only be used for explicit controlled skipping; must not be used as a failure demotion alias.
+- `release` is the current closed-loop stage; it does not equal that an actual external release must occur; true release actions are still controlled by HarnessRuntime/Release Gate.
 
 ## 2. TaskStatus
 
@@ -62,7 +62,7 @@ queued -> pending -> in_progress -> done
                     -> cancelled
 ```
 
-枚举：
+Enums:
 
 - `queued`
 - `pending`
@@ -72,17 +72,17 @@ queued -> pending -> in_progress -> done
 - `failed`
 - `cancelled`
 
-约束：
+Constraints:
 
-- 新任务创建后defaults to进入 `queued` 或 `pending`，不能directlywrites `in_progress` 而没有创建record。
-- `awaiting_decision` 只used for等待外部审批/人工输入，不替代普通 pause。
-- `done`、`failed`、`cancelled` 为终态，终态后只能via新建恢复任务进入新生命cycle。
+- New tasks default to `queued` or `pending` after creation; cannot directly write `in_progress` without a creation record.
+- `awaiting_decision` is only used for waiting on external approval/human input; does not replace ordinary pause.
+- `done`, `failed`, `cancelled` are terminal states; after a terminal state, can only enter a new lifecycle through creating a recovery task.
 
-## 3. HarnessRunStatus（v4.3 canonical run status, 14态）
+## 3. HarnessRunStatus (v4.3 canonical run status, 14 states)
 
-> 注意：本文档原用 `WorkflowStatus` 作为 run Status枚举。v4.3 canonical run Status以 `HarnessRun.status`（14态）为准。`WorkflowStatus` only保留为旧 workflow 投影视图，不应再作为 authoritative run Status。
+> Note: This document originally used `WorkflowStatus` as the run status enum. v4.3 canonical run status follows `HarnessRun.status` (14 states). `WorkflowStatus` is only retained as legacy workflow projection view and should not be used as authoritative run status.
 
-`HarnessRunStatus` 枚举（14态）：
+`HarnessRunStatus` enum (14 states):
 
 - `created`
 - `admitted`
@@ -99,9 +99,9 @@ queued -> pending -> in_progress -> done
 - `cancelled`
 - `aborted`
 
-终态：`completed`、`failed`、`cancelled`、`aborted`。终态不可迁出。
+Terminal states: `completed`, `failed`, `cancelled`, `aborted`. Terminal states cannot transition out.
 
-允许跃迁：
+Allowed transitions:
 
 - `created -> admitted`
 - `created -> failed`
@@ -153,17 +153,17 @@ queued -> pending -> in_progress -> done
 - `compensating -> cancelled`
 - `compensating -> aborted`
 
-约束：
+Constraints:
 
-- `paused` 必须伴随可恢复原因，例如审批等待、人工输入等待、外部relies on等待。
-- `resuming` only作为短暂中间态，used for恢复前的Status修复和 preflight 检查。
-- `replanning` / `compensating` 为 OAPEFLIR 期间的活跃运lines态，不is独立终态。
-- `HarnessRunStatus` is v4.3 truth run Status；旧 `WorkflowStatus` / `TaskStatus` 只作为 legacy projection。
-- 具体闭环阶段进度由 `current_stage + StageStatus` table达，不得把二者混成一个字段。
+- `paused` must have a recoverable reason, such as awaiting approval, awaiting human input, or awaiting external dependency.
+- `resuming` only serves as a brief intermediate state for state repair and preflight checks before recovery.
+- `replanning`/`compensating` are active running states during OAPEFLIR; they are not independent terminal states.
+- `HarnessRunStatus` is the v4.3 truth run status; old `WorkflowStatus`/`TaskStatus` only serve as legacy projection.
+- Specific closed-loop stage progress is expressed by `current_stage + StageStatus`; these two must not be combined into one field.
 
-### 3A. Legacy WorkflowStatus（deprecated projection）
+### 3A. Legacy WorkflowStatus (deprecated projection)
 
-以下枚举only保留为历史 workflow 读模型投影，不应used for新实现入口：
+The following enum is only retained as historical workflow read model projection and should not be used as new implementation entry points:
 
 - `created`
 - `admitted`
@@ -183,16 +183,16 @@ queued -> pending -> in_progress -> done
 - `timed_out`
 - `aborted`
 
-规则：
+Rules:
 
-- `completing / cancelling / timed_out` is旧 workflow 特有Status，在 v4.3 HarnessRun 中don't exist对应Status。
-- 所有 legacy Statusonly作为 read model / migration input，不得作为新实现的 authoritative Status。
+- `completing/cancelling/timed_out` are states unique to old workflows and have no corresponding state in v4.3 HarnessRun.
+- All legacy states only serve as read model/migration input and must not be used as authoritative state for new implementations.
 
 ## 4. SessionStatus
 
-会话Status只Description“渠道交互Status”，不is任务真相源。
+Session status only describes "channel interaction state", not the task source of truth.
 
-枚举：
+Enums:
 
 - `open`
 - `streaming`
@@ -202,7 +202,7 @@ queued -> pending -> in_progress -> done
 - `failed`
 - `cancelled`
 
-允许跃迁：
+Allowed transitions:
 
 - `open -> streaming`
 - `open -> awaiting_user`
@@ -215,15 +215,15 @@ queued -> pending -> in_progress -> done
 - `paused -> streaming`
 - `paused -> cancelled`
 
-约束：
+Constraints:
 
-- `SessionStatus` 只能table达渠道侧交互，不得替代任务或 workflow 的 authoritative Status。
-- `awaiting_user` 只table示会话层等待userresponse，不能directly推出任务failed或完成。
-- `completed`、`failed`、`cancelled` 为会话终态。
+- `SessionStatus` can only express channel-side interaction and must not replace authoritative state of task or workflow.
+- `awaiting_user` only indicates the session layer is waiting for user response; it cannot directly conclude task failure or completion.
+- `completed`, `failed`, `cancelled` are session terminal states.
 
 ## 5. ApprovalStatus
 
-枚举：
+Enums:
 
 - `requested`
 - `approved`
@@ -231,24 +231,24 @@ queued -> pending -> in_progress -> done
 - `expired`
 - `superseded`
 
-允许跃迁：
+Allowed transitions:
 
 - `requested -> approved`
 - `requested -> rejected`
 - `requested -> expired`
 - `requested -> superseded`
 
-约束：
+Constraints:
 
-- 同一个 `approval_id` 只能有一个终态。
-- `approved` / `rejected` Decision只允许生效一iterations。
-- 新request替代旧request时，旧request必须写成 `superseded`，不能静默覆盖。
+- Same `approval_id` can only have one terminal state.
+- `approved`/`rejected` decisions are only permitted to take effect once.
+- When new request supersedes old request, old request must be marked as `superseded`; silent overwrite is not permitted.
 
-## 6. NodeRunStatus（canonical execution truth per v4.3）
+## 6. NodeRunStatus (canonical execution truth per v4.3)
 
-> 注意：本文档原先uses `ExecutionStatus` 作为执linesStatus枚举。v4.3 canonical 执linesStatus以 `NodeRun.status`（14态）为准。`ExecutionStatus` only保留为旧 `executions` 投影视图vs迁移Description；新实现不得再把它作为权威执linesStatus枚举。
+> Note: This document originally used `ExecutionStatus` as the execution status enum. v4.3 canonical execution status follows `NodeRun.status` (14 states). `ExecutionStatus` is only retained for old `executions` projection view and migration descriptions; new implementations must not use it as authoritative execution status enum.
 
-`NodeRunStatus` 枚举（14态）：
+`NodeRunStatus` enum (14 states):
 
 - `created`
 - `blocked`
@@ -265,9 +265,9 @@ queued -> pending -> in_progress -> done
 - `cancelled`
 - `aborted`
 
-终态：`succeeded`、`failed`、`skipped`、`cancelled`、`aborted`。
+Terminal states: `succeeded`, `failed`, `skipped`, `cancelled`, `aborted`. Terminal states cannot transition out.
 
-允许跃迁：
+Allowed transitions:
 
 - `created -> queued`
 - `queued -> ready`
@@ -287,50 +287,49 @@ queued -> pending -> in_progress -> done
 - `awaiting_hitl -> failed`
 - `reconciling -> succeeded`
 - `reconciling -> failed`
-- `blocked -> ready`（relies on满足时）
+- `blocked -> ready` (when dependency satisfied)
 - `skipped -> aborted`
 - `cancelled -> aborted`
 
-约束：
+Constraints:
 
-- `retry_wait` is正式运lines态的一部分，used for重试等待期，必须record `wakeAt`、`retryPolicyRef`、`attemptId` 和 backoff reason。
-- `awaiting_hitl` 必须伴随明确原因，例如 `approval_required`、`human_input_required`。
-- `reconciling` used for协调 side effect 和补偿逻辑。
-- `blocked` table示因上游relies on未满足而不可执lines，不得as `queued` 或 `ready`。
-- `queued` table示已进入调度队列等待调度器挑选，区别于 `blocked`（relies on未满足）。
-- 重试语义via创建新的 `NodeAttempt`（递增 `attemptNo` 字段）实现，不得更新旧 `NodeRun` Status。
-- `succeeded`、`failed`、`skipped`、`cancelled`、`aborted` 为终态，终态不可迁出。
-- v4.3 truth 执linesStatus以 `NodeRunStatus` 和 `NodeAttemptReceipt` append-only 回执为准，旧 `ExecutionStatus` 不得反向驱动运lines时合法性判断。
+- `retry_wait` is part of formal running state, used for retry wait period; must record `wakeAt`, `retryPolicyRef`, `attemptId`, and backoff reason.
+- `awaiting_hitl` must have explicit cause, such as `approval_required` or `human_input_required`.
+- `reconciling` is used for coordinating side effects and compensation logic.
+- `blocked` indicates it is not executable due to upstream dependency not being satisfied; must not be disguised as `queued` or `ready`.
+- `queued` indicates it has entered the scheduling queue and is waiting for scheduler selection; distinguished from `blocked` (dependency not satisfied).
+- Retry semantics are achieved by creating new `NodeAttempt` (incrementing `attemptNo` field); must not update old `NodeRun` state.
+- `succeeded`, `failed`, `skipped`, `cancelled`, `aborted` are terminal states; terminal states cannot transition out.
+- v4.3 truth execution status follows `NodeRunStatus` and `NodeAttemptReceipt` append-only receipt; old `ExecutionStatus` must not reversely drive runtime legitimacy judgment.
 
-## 7. 跨Status一致性约束
+## 7. Cross-State Consistency Constraints
 
-- 任务进入 `awaiting_decision` 时，相关 workflow 应occurrences于 `paused` 或可证明的等待态。
-- workflow `completed` 时，任务必须在短事务或同一恢复逻辑内进入 `done`。
-- approval `approved` 不自动等于任务success，只table示可继续执lines。
-- 任一终态必须recordtime戳、触发原因和 trace id。
-- run 若进入 `blocked` 且原因is审批等待，任务vs workflow Status必须synchronous进入等待语义。
-- session 进入 `awaiting_user` 时，任务应occurrences于 `awaiting_decision`、workflow occurrences于 `paused`，或有明确的渠道侧等待理由。
-- session 的 `completed / failed / cancelled` 应跟随任务终态收口，但 session 终态不得反向决定任务终态。
-- 当 `current_stage=feedback|learn|improve|release` 时，workflow 仍可保持 `running`；不得因为 execute 已结束就提前把 workflow 标为 `completed`。
-- stage 从 `release` 回到下一轮 `observe` 时，workflow 仍保持同一生命cycle，只递增 `loop_iteration`。
+- When task enters `awaiting_decision`, related workflow should be in `paused` or provable waiting state.
+- When workflow `completed`, task must enter `done` within a short transaction or same recovery logic.
+- Approval `approved` does not automatically equal task success; it only indicates execution may continue.
+- Each terminal state must record timestamp, trigger cause, and trace id.
+- When run enters `blocked` with approval-waiting as reason, task and workflow status must synchronously enter waiting semantics.
+- When session enters `awaiting_user`, task should be in `awaiting_decision`, workflow in `paused`, or there should be explicit channel-side waiting reason.
+- Session `completed/failed/cancelled` should follow task terminal state closure, but session terminal state must not reversely determine task terminal state.
+- When `current_stage=feedback|learn|improve|release`, workflow may still remain `running`; must not prematurely mark workflow as `completed` just because execute has ended.
+- When stage returns from `release` to next round of `observe`, workflow remains in same lifecycle, only incrementing `loop_iteration`.
 
-## 8. failed语义
+## 8. Failure Semantics
 
-- 非终态恢复只能via显式Status迁移完成，禁止directly覆盖字段修复。
-- `failed` 需区分可重试vs不可重试原因码。
-- `cancelled` 必须保留取消发起者和取消原因。
-- precheck failed不得as执linessuccess后failed，必须保留真实failed阶段。
+- Non-terminal state recovery can only be completed through explicit state transition; direct field overwrite repair is prohibited.
+- `failed` must distinguish between retryable and non-retryable error codes.
+- `cancelled` must preserve the initiator and reason for cancellation.
+- Precheck failure must not be disguised as execution success followed by failure; must preserve the real failure stage.
 
-## 9. 补充规则
+## 9. Supplementary Rules
 
-- 多子任务聚合时，若至少一个success且至少一个failed，任务总体可进入 `partial_success`，但必须附带聚合摘要vs未完成原因。
-- 事件总线中的Status快照压缩只允许压缩可重建的中间态，不得压缩终态或关键审计节点。
-
+- When aggregating multiple sub-tasks, if at least one succeeds and at least one fails, the task overall may enter `partial_success`, but must attach aggregation summary and incomplete reasons.
+- State snapshot compression in event bus only allows compressing reconstructible intermediate states; terminal states or key audit nodes must not be compressed.
 
 ## v4.3 Architecture Remediation
 
-以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中record的 contract 偏差。本文档历史段落如vs本节conflicts，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
+The following entries fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If historical sections of this document conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
 
-- T-1: 原 ExecutionStatus 用 13态但缺 `blocked/queued`，且以旧名称 `ExecutionStatus` 替代 `NodeRun.status`；WorkflowStatus 17态（含 `completing/cancelling/timed_out`）vs HarnessRun 13态。修复：§6 重命名 ExecutionStatus → NodeRunStatus，补齐 14 态（`created/blocked/ready/queued/leased/running/retry_wait/awaiting_hitl/reconciling/succeeded/failed/skipped/cancelled/aborted`）；§3 明确 HarnessRunStatus 为 v4.3 canonical 13态 run Status，原 WorkflowStatus 降为 legacy projection。
+- T-1: Original ExecutionStatus used 13 states but lacked `blocked/queued`, and used old name `ExecutionStatus` to replace `NodeRun.status`; WorkflowStatus 17 states (including `completing/cancelling/timed_out`) vs HarnessRun 13 states. Fix: Section 6 renames ExecutionStatus to NodeRunStatus, completing 14 states (`created/blocked/ready/queued/leased/running/retry_wait/awaiting_hitl/reconciling/succeeded/failed/skipped/cancelled/aborted`); Section 3 clarifies HarnessRunStatus as v4.3 canonical 13-state run status, original WorkflowStatus demoted to legacy projection.
 
-mandatory规则：Status迁移必须via `RuntimeStateMachine.transition(command)`；执lines计划必须uses `PlanGraphBundle`；执lines结果必须uses `NodeAttemptReceipt`；truth event 只能uses `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；budget必须uses `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。
+Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events must only use `platform.*`; OAPEFLIR can only be used as `oapeflir.view.*`/rationale projection; budgets must use `BudgetLedger`/`BudgetReservation`/`BudgetSettlement`.

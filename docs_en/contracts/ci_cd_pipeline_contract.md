@@ -1,109 +1,109 @@
 # CI/CD Pipeline Contract
 
-> **OAPEFLIR 相关**：本 contract defines OAPEFLIR Improve Hub 的 CI/CD pipeline 机制，对应 ADR-075 §13 pre-release 和设计文档 §9.1。
-> **更新日期**：2026-04-29
+> **OAPEFLIR Relationship**: This contract defines the CI/CD pipeline mechanism for OAPEFLIR Improve Hub, corresponding to ADR-075 §13 pre-release and design document §9.1.
+> **Update Date**: 2026-04-29
 
 ## 1. Scope
 
-本 contract defines build、test、package、publish 和 artifact promotion 的完整 CI/CD pipeline 机制。
+This contract defines the complete CI/CD pipeline mechanism for build, test, package, publish, and artifact promotion.
 
 Related documents:
 
 - `release_rollout_and_rollback_contract.md`
 - `ring_model_contract.md`
 - `artifact_store_contract.md`
-- [ADR-075 六级受控发布](../adr/075-controlled-rollout-release.md)
+- [ADR-075 Six-Level Controlled Release](../adr/075-controlled-rollout-release.md)
 
 ## 2. Pipeline Overview
 
-CI/CD Pipeline 负责将code、configure、prompt 等工件从开发环境 promotion 到生产环境，确保每个阶段的 quality gate 都满足要求。
+CI/CD Pipeline is responsible for promoting code, configuration, prompt, and other artifacts from development environment to production environment, ensuring each stage's quality gate meets requirements.
 
 ### 2.1 Pipeline Stages
 
 ```
 build → test → package → publish → artifact_promotion → staging → production
   ↓        ↓        ↓         ↓              ↓              ↓          ↓
-[验证]  [验证]   [验证]    [验证]        [验证]         [验证]     [release]
+[verify] [verify] [verify] [verify]        [verify]         [verify]    [release]
 ```
 
 ## 3. Pipeline Stages
 
 ### 3.1 Build Stage
 
-**职责**：将源code编译/打包成可部署的 artifact
+**Responsibility**: Compile/package source code into deployable artifact
 
-**输入**：
+**Input**:
 - Source code (Git commit)
 - Dependencies
 - Build configuration
 
-**输出**：
+**Output**:
 - Build artifact (binary, container image, etc.)
 - Build metadata (version, checksum, build time)
 
-**Quality Gates**：
-- 编译success，no错误
-- 静态分析via
-- relies onsecurity扫描via
+**Quality Gates**:
+- Compilation succeeds with no errors
+- Static analysis passes
+- Dependency security scan passes
 
 ### 3.2 Test Stage
 
-**职责**：执lines各class测试确保质量
+**Responsibility**: Execute various tests to ensure quality
 
-**测试class型**：
+**Test Types**:
 - Unit tests
 - Integration tests
 - Contract tests
 - E2E tests (optional)
 
-**Quality Gates**：
+**Quality Gates**:
 - Unit test pass rate >= 95%
 - Integration test pass rate >= 90%
 - Contract test pass rate >= 100%
-- no high/critical security性Issue
+- No high/critical security issues
 
 ### 3.3 Package Stage
 
-**职责**：将 build artifact 打包成可分发的格式
+**Responsibility**: Package build artifact into distributable format
 
-**输出**：
+**Output**:
 - Package manifest
 - Signed artifacts
 - Package metadata
 
-**Quality Gates**：
-- Package 签名验证via
-- Package size 在限额内
-- relies on版本锁定
+**Quality Gates**:
+- Package signature verification passes
+- Package size within limit
+- Dependency versions locked
 
 ### 3.4 Publish Stage
 
-**职责**：将 package 发布到 artifact registry
+**Responsibility**: Publish package to artifact registry
 
-**输出**：
+**Output**:
 - Published artifact with registry location
 - Publication timestamp
 - Publisher identity
 
-**Quality Gates**：
-- Registry authentication via
-- Artifact 唯一性验证
-- repeats artifact 检测
+**Quality Gates**:
+- Registry authentication passes
+- Artifact uniqueness verification
+- Duplicate artifact detection
 
 ### 3.5 Artifact Promotion Stage
 
-**职责**：在 ring model 中 promotion artifact
+**Responsibility**: Promote artifact in ring model
 
-**Promotion 规则**（对应 §13 pre-release）：
-- Ring 0 (off): no promotion
-- Ring 1 (evaluate_0): onlyrecord，不Impact生产
-- Ring 2-5: 按 ring_model_contract.md 规则 promotion
-- Release: full发布
+**Promotion Rules** (corresponding to §13 pre-release):
+- Ring 0 (off): No promotion
+- Ring 1 (evaluate_0): Record only, no production impact
+- Ring 2-5: Promote according to ring_model_contract.md rules
+- Release: Full release
 
-**Quality Gates**：
-- 满足 ring promotion criteria
-- 人class审批（若 required）
-- Rollback plan 已创建
+**Quality Gates**:
+- Meet ring promotion criteria
+- Human approval (if required)
+- Rollback plan already created
 
 ## 4. Pipeline Interface
 
@@ -189,16 +189,16 @@ interface PromotionRequest {
 
 ### 5.1 Build Gate
 
-| 指标 | threshold | 验证方式 |
-|------|------|---------|
-| 编译success | 100% | 退出码 = 0 |
-| 静态分析 | 0 errors | linter output |
-| relies on扫描 | 0 high/critical | security scan |
+| Metric | Threshold | Verification Method |
+|--------|-----------|---------------------|
+| Compilation success | 100% | Exit code = 0 |
+| Static analysis | 0 errors | linter output |
+| Dependency scan | 0 high/critical | security scan |
 
 ### 5.2 Test Gate
 
-| 指标 | threshold | 验证方式 |
-|------|------|---------|
+| Metric | Threshold | Verification Method |
+|--------|-----------|---------------------|
 | Unit test | >= 95% pass | test report |
 | Integration test | >= 90% pass | test report |
 | Contract test | 100% pass | contract suite |
@@ -206,24 +206,24 @@ interface PromotionRequest {
 
 ### 5.3 Package Gate
 
-| 指标 | threshold | 验证方式 |
-|------|------|---------|
-| 签名验证 | pass | gpg/sig verification |
+| Metric | Threshold | Verification Method |
+|--------|-----------|---------------------|
+| Signature verification | pass | gpg/sig verification |
 | Size | < 100MB | manifest check |
-| relies on锁定 | 100% | lock file validation |
+| Dependency lock | 100% | lock file validation |
 
 ### 5.4 Publish Gate
 
-| 指标 | threshold | 验证方式 |
-|------|------|---------|
+| Metric | Threshold | Verification Method |
+|--------|-----------|---------------------|
 | Registry auth | pass | 200 OK |
-| 唯一性 | pass | checksum check |
-| 元data完整 | pass | schema validation |
+| Uniqueness | pass | checksum check |
+| Metadata complete | pass | schema validation |
 
 ### 5.5 Promotion Gate
 
-| 指标 | threshold | 验证方式 |
-|------|------|---------|
+| Metric | Threshold | Verification Method |
+|--------|-----------|---------------------|
 | Ring criteria | 100% meet | metrics evaluation |
 | Rollback plan | exists | plan check |
 | Approval | approved (if required) | approval record |
@@ -232,9 +232,9 @@ interface PromotionRequest {
 
 ```typescript
 type Environment =
-  | "development"   // 本地开发
-  | "staging"       // 预发布
-  | "production";   // 生产环境
+  | "development"   // local development
+  | "staging"       // pre-release
+  | "production";   // production environment
 ```
 
 ## 7. Artifact Promotion Workflow
@@ -242,47 +242,47 @@ type Environment =
 ### 7.1 Normal Promotion Flow
 
 ```
-1. Artifact 被 build 并via test
-2. Artifact 被 package 并签名
-3. Artifact 被 publish 到 registry
-4. Promotion request 被创建
-5. Quality gates 被验证
-6. 如果 approvalRequired，等待人class审批
-7. Artifact 被 promotion 到目标 environment/ring
-8. Monitoring 被enabled
+1. Artifact is built and passes test
+2. Artifact is packaged and signed
+3. Artifact is published to registry
+4. Promotion request is created
+5. Quality gates are verified
+6. If approvalRequired, wait for human approval
+7. Artifact is promoted to target environment/ring
+8. Monitoring is enabled
 ```
 
 ### 7.2 Rollback Flow
 
 ```
-1. Monitoring 检测到Issue
-2. Rollback criteria 被满足
-3. Rollback request 被创建
-4. Rollback plan 被执lines
-5. Previous artifact 被 restore
-6. Rollback 被record到 audit log
+1. Monitoring detects issue
+2. Rollback criteria is met
+3. Rollback request is created
+4. Rollback plan is executed
+5. Previous artifact is restored
+6. Rollback is recorded to audit log
 ```
 
 ## 8. Pipeline Service Interface
 
 ```typescript
 interface CiCdPipelineService {
-  // 执lines完整 pipeline
+  // Execute full pipeline
   executePipeline(execution: PipelineExecution): Promise<PipelineExecution>;
 
-  // 执lines单个 stage
+  // Execute single stage
   executeStage(stage: StageExecution): Promise<StageExecution>;
 
-  // request artifact promotion
+  // Request artifact promotion
   requestPromotion(request: PromotionRequest): Promise<PromotionDecision>;
 
-  // 执lines rollback
+  // Execute rollback
   executeRollback(artifactId: string, targetEnvironment: Environment): Promise<void>;
 
-  // 获取 pipeline Status
+  // Get pipeline status
   getPipelineStatus(executionId: string): Promise<PipelineExecution>;
 
-  // 获取 artifact 历史
+  // Get artifact history
   getArtifactHistory(artifactId: string): Promise<ArtifactRef[]>;
 }
 ```
@@ -303,10 +303,10 @@ interface CiCdPipelineService {
 
 ### 9.3 Contract Tests
 
-- 所有 quality gates 必须按 §13 defines验证
-- Artifact 必须可追溯
-- Rollback plan 必须存在
+- All quality gates must be verified according to §13
+- Artifacts must be traceable
+- Rollback plan must exist
 
 ## 10. Closure Conclusion
 
-CI/CD Pipeline 不is简单的 build-test-deploy 流程，而iscontains严格 quality gates、artifact promotion 和 rollback 能力的完整机制。每个 stage 都必须viadefines的 quality gate 才能进入下一 stage，确保发布风险可控。
+CI/CD Pipeline is not a simple build-test-deploy process, but a complete mechanism containing strict quality gates, artifact promotion, and rollback capability. Each stage must pass the defined quality gate before entering the next stage, ensuring release risk is controllable.

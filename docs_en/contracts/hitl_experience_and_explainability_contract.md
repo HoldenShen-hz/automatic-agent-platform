@@ -2,74 +2,74 @@
 
 ---
 
-## OAPEFLIR 关联
+## OAPEFLIR Association
 
-本 contract 参vs OAPEFLIR 八阶段循环中的以下阶段：
+This contract participates in the following stages of the OAPEFLIR eight-stage cycle:
 
-- **Observe**：信号采集vs聚合
-- **Assess**：执lines前评估vs风险判断
-- **Plan**：任务分解vs DAG 构建
-- **Execute**：步骤执linesvs容错
-- **Feedback**：信号收集vs预handle
-- **Learn**：模式检测vs知识提取
-- **Improve**：改进候选评估vs rollout
-- **Release**：受控发布vs回滚
+- **Observe**: Signal collection and aggregation
+- **Assess**: Pre-execution assessment and risk judgment
+- **Plan**: Task decomposition and DAG construction
+- **Execute**: Step execution and fault tolerance
+- **Feedback**: Signal collection and preprocessing
+- **Learn**: Pattern detection and knowledge extraction
+- **Improve**: Improvement candidate evaluation and rollout
+- **Release**: Controlled release and rollback
 
 ---
 
-## 1. 范围
+## 1. Scope
 
-本 contract defines审批体验、人工接管体验和关键Decision可解释性边界。
+This contract defines approval experience, human takeover experience, and explainability boundaries for critical decisions.
 
-相关文档：
+Related documents:
 
 - `approval_and_hitl_contract.md`
 - `admin_console_and_human_takeover_contract.md`
 - `policy_engine_contract.md`
 - `control_vs_intelligence_boundary_contract.md`
 
-## 2. 目标
+## 2. Goals
 
-- 降低审批噪声，提升人工协作效率。
-- 让人工接管不只is“暂停后等回复”，而is正式操作面。
-- 让企业user能理解关键路由、风险和降级Decision。
+- Reduce approval noise and improve human collaboration efficiency.
+- Make human takeover not just "pause and wait for response," but a formal operation surface.
+- Enable enterprise users to understand key routing, risk, and fallback decisions.
 
-## 3. 审批体验
+## 3. Approval Experience
 
-审批系统至少supported：
+The approval system must at least support:
 
-- 同class审批合并
-- 批量审批
-- 风险分层展示
-- defaults to推荐解释
-- 审批策略cache
+- Same-type approval consolidation
+- Batch approvals
+- Risk-tiered display
+- Default recommended explanations
+- Approval strategy caching
 
-Decision 呈现最小结构：
+Decision presentation minimum structure:
 
-- 发生了什么
-- 为什么需要你决定
-- 有哪些选项
-- 推荐哪个
-- 不回复会怎样
+- What happened
+- Why it requires your decision
+- What options are available
+- Which is recommended
+- What happens if no response
 
-输入收集Recommendation：
+Input collection recommendations:
 
-- 选项Issue应supported单选结构，而不is把所有交互都退化为自由文本。
-- 备注 / notes 应作为附属字段，而不is覆盖选项本身。
-- 若user未提供回答，应显式record为 `skipped` 或等价语义，而不is静默缺失。
-- 在交互式 UI 中，应把选项选择、备注输入、提交 / 取消焦点Status分开治理，减少误触。
+- Option questions should support single-choice structure rather than degrading all interactions to free text.
+- Notes should be treated as auxiliary fields, not overwriting the options themselves.
+- If the user does not provide an answer, it should be explicitly recorded as `skipped` or equivalent semantics, not silently missing.
+- In interactive UI, option selection, note input, and submit/cancel focus states should be governed separately to reduce accidental triggers.
 
-## 4. 人工接管动作
+## 4. Human Takeover Actions
 
-- 手动改上下文
-- 手动替换 `NodeAttempt` 输出
-- 手动重试指定 `NodeRun` / `NodeAttempt`
-- 手动指定 worker
-- 手动降级运lines模式
-- 结束任务并归档原因
-- 标记任务不可恢复
+- Manually modify context
+- Manually replace `NodeAttempt` output
+- Manually retry specified `NodeRun` / `NodeAttempt`
+- Manually assign worker
+- Manually downgrade execution mode
+- End task and archive reason
+- Mark task as unrecoverable
 
-## 5. 可解释性对象
+## 5. Explainability Objects
 
 - `DecisionExplanation`
 - `RoutingExplanation`
@@ -77,47 +77,47 @@ Decision 呈现最小结构：
 - `FallbackExplanation`
 - `TakeoverJustification`
 
-## 6. 可解释性要求
+## 6. Explainability Requirements
 
-系统至少能解释：
+The system must at least explain:
 
-- 为什么选择这个 division
-- 为什么升级 HITL
-- 为什么拒绝某命令
-- 为什么判定重试
-- 为什么切换模型 / worker / provider
-- 为什么批准、拒绝或要求双审批
-- 为什么某个 feedback signal 被采纳或忽略
-- 为什么某个 improvement candidate 被accepts或拒绝
-- 为什么 rollout 被推进、暂停或回滚
+- Why this division was selected
+- Why HITL was escalated
+- Why a certain command was rejected
+- Why retry was determined
+- Why model / worker / provider was switched
+- Why something was approved, rejected, or required for dual approval
+- Why a certain feedback signal was adopted or ignored
+- Why an improvement candidate was accepted or rejected
+- Why rollout was promoted, paused, or rolled back
 
-permission / 策略解释最少应contains：
+Permission / policy explanation must at least include:
 
 - `reason_summary`
 - `matched_rule_or_policy`
 - `reason_source`
 - `remediation_hint?`
 
-Description：
+Notes:
 
-- `reason_source` 至少区分 `policy bundle / project settings / local settings / runtime guard / manual override`。
-- 当解释来自规则遮蔽、未知命令保守拒绝或 hook mandatory升级时，应明确告诉user“is什么规则导致了当前结果”以及“应该去哪里修正”。
+- `reason_source` must at least distinguish between `policy bundle / project settings / local settings / runtime guard / manual override`.
+- When the explanation comes from rule masking, conservative rejection of unknown commands, or hook mandatory escalation, the user should be clearly told "what rule caused the current result" and "where to go to fix it".
 
-## 7. 审批vs接管边界
+## 7. Approval vs. Takeover Boundary
 
-- explainability 不应改变 authoritative policy 结果，它只解释结果。
-- 人工接管动作必须写审计，不得成为“bypassing策略”的no痕后门。
-- 高风险接管动作应再iterationsvia过 Policy Engine 或 break-glass 流程。
-- 只读观察或 viewer 模式可以展示解释，但不得获得接管、批准或mandatory执lines权。
+- Explainability should not change authoritative policy results; it only explains the results.
+- Human takeover actions must be written to audit and must not become "stealth backdoors" for bypassing policies.
+- High-risk takeover actions should again go through the Policy Engine or break-glass process.
+- Read-only observation or viewer mode can display explanations but must not obtain takeover, approval, or mandatory execution rights.
 
-## 8. 收口Conclusion
+## 8. Conclusion
 
-工业级人机协作不能只提供一个审批按钮。
+Industrial-grade human-machine collaboration cannot just provide an approval button.
 
-它必须同时提供：
+It must simultaneously provide:
 
-- 降噪后的审批体验
-- 正式的人class接管入口
-- 可审计、可读懂的关键Decision解释
+- Noise-reduced approval experience
+- Formal human takeover entry point
+- Auditable and understandable critical decision explanations
 
-Canonical runtime reference: HITL 操作必须绑定 `NodeRun` vs `NodeAttempt`，不得以旧的 step 级标识作为权威执linesreferences用。
+Canonical runtime reference: HITL operations must bind `NodeRun` and `NodeAttempt`, and must not use old step-level identifiers as authoritative execution references.

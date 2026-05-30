@@ -1,16 +1,16 @@
 # DriftDetector Contract
 
-## 1. 范围
+## 1. Scope
 
-本 contract defines `§63` 的漂移检测器接口和lines为规范。
+This contract defines drift detector interface and behavior specifications for `§63`.
 
-## 2. Canonical 对象
+## 2. Canonical Objects
 
 - `DriftDetector`
 - `DriftDetectorConfig`
 - `DriftDetectionResult`
 
-## 3. `DriftDetector` 接口
+## 3. `DriftDetector` Interface
 
 ```typescript
 interface DriftDetector {
@@ -27,30 +27,30 @@ type DriftDetectorType =
   | "sliding_window";
 ```
 
-## 4. `DriftDetectorConfig` 最小字段
+## 4. `DriftDetectorConfig` Minimum Fields
 
-- `window_size` — 统计窗口大小（采样数）
-- `threshold` — 漂移判定threshold
-- `sensitivity` — 检测灵敏度 (0-1)
-- `method` — 检测方法
+- `window_size` — statistical window size (sample count)
+- `threshold` — drift determination threshold
+- `sensitivity` — detection sensitivity (0-1)
+- `method` — detection method
 
-## 5. `DriftDetectionResult` 最小字段
+## 5. `DriftDetectionResult` Minimum Fields
 
 - `detector_id`
 - `drift_detected` — boolean
 - `drift_type` — input_drift | output_drift | behavioral_drift | quality_drift
-- `confidence` — 置信度 (0-1)
+- `confidence` — confidence level (0-1)
 - `severity` — SEV2 | SEV3 | SEV4
-- `details` — 具体漂移信息
+- `details` — specific drift information
 
-## 6. 规则
+## 6. Rules
 
-- DriftDetector 必须对每种漂移class型提供独立检测能力
-- 检测结果必须contains severity 和 confidence
-- configure变更必须触发重新校准
+- DriftDetector must provide independent detection capability for each drift type
+- Detection results must include severity and confidence
+- Configuration changes must trigger recalibration
 
-## 7. 测试要求
+## 7. Test Requirements
 
-- unit：各class漂移检测算法覆盖
-- integration：检测器 -> 告警 -> response链路
-- contract：检测器class型vsconfigure完整性校验
+- unit: coverage for all drift detection algorithms
+- integration: detector -> alert -> response chain
+- contract: detector type vs. configuration completeness validation

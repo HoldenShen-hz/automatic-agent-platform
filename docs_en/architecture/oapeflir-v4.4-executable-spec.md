@@ -1,40 +1,40 @@
-# OAPEFLIR v4.4 完整版
+# OAPEFLIR v4.4 Complete Version
 
-## Executable Specification Edition：认知/治理语义vs迁移输入规范
+## Executable Specification Edition: Cognitive/Governance Semantics vs. Migration Input Specification
 
-> **版本**：v4.4  
-> **Status**：Reference Draft（迁移输入；非权威运lines时基线）  
-> **定位**：OAPEFLIR v4.4 只保留认知/治理语义、投影视图vs迁移设计输入；唯一可执lines运lines时入口仍is `HarnessRuntime`，权威执lines对象仍is `HarnessRun / PlanGraphBundle / NodeRun / NodeAttemptReceipt`  
-> **核心变化**：保留对 Event Registry、PlanGraph、Deterministic Scheduler、SideEffect、Budget、HITL、Guardrail、Replay、Learning Release 的设计意图，但所有可执lines权威语义都必须收敛到 `docs_zh/architecture/00-platform-architecture.md`、ADR-109~112 vs canonical executable contracts。
+> **Version**: v4.4
+> **Status**: Reference Draft (migration input; not authoritative runtime baseline)
+> **Positioning**: OAPEFLIR v4.4 only preserves cognitive/governance semantics, projection views, and migration design input; the sole executable runtime entry remains `HarnessRuntime`, and the authoritative execution objects remain `HarnessRun / PlanGraphBundle / NodeRun / NodeAttemptReceipt`
+> **Core Change**: Preserves design intent for Event Registry, PlanGraph, Deterministic Scheduler, SideEffect, Budget, HITL, Guardrail, Replay, and Learning Release, but all executable authoritative semantics must converge to `docs_zh/architecture/00-platform-architecture.md`, ADR-109~112, and canonical executable contracts.
 
 ---
 
-## 目录
+## Table of Contents
 
-- [0. v4.4 核心Conclusion](#0-v44-核心Conclusion)
-- [1. 设计目标](#1-设计目标)
-- [2. OAPEFLIR 八阶段defines](#2-oapeflir-八阶段defines)
-- [3. 总体运linesArchitecture](#3-总体运linesArchitecture)
-- [4. 核心运lines实体](#4-核心运lines实体)
-- [5. NodeRun Status机](#5-noderun-Status机)
-- [6. Plan 必须is Graph](#6-plan-必须is-graph)
-- [7. PlanGraph 契约](#7-plangraph-契约)
+- [0. v4.4 Core Conclusions](#0-v44-core-conclusions)
+- [1. Design Goals](#1-design-goals)
+- [2. OAPEFLIR Eight-Stage Definition](#2-oapeflir-eight-stage-definition)
+- [3. Overall Runtime Architecture](#3-overall-runtime-architecture)
+- [4. Core Runtime Entities](#4-core-runtime-entities)
+- [5. NodeRun State Machine](#5-noderun-state-machine)
+- [6. Plan Must Be Graph](#6-plan-must-be-graph)
+- [7. PlanGraph Contract](#7-plangraph-contract)
 - [8. Graph Normalization](#8-graph-normalization)
 - [9. Graph Validation](#9-graph-validation)
 - [10. Graph Risk Propagation](#10-graph-risk-propagation)
 - [11. Graph Worst-Path Analysis](#11-graph-worst-path-analysis)
-- [12. Graph Scheduler 确定性调度](#12-graph-scheduler-确定性调度)
-- [13. GraphPatch vs Replan](#13-graphpatch-vs-replan)
+- [12. Graph Scheduler Deterministic Scheduling](#12-graph-scheduler-deterministic-scheduling)
+- [13. GraphPatch vs. Replan](#13-graphpatch-vs-replan)
 - [14. Event Registry](#14-event-registry)
 - [15. Budget Ledger](#15-budget-ledger)
 - [16. SideEffect Manager](#16-sideeffect-manager)
 - [17. Reconciliation State Machine](#17-reconciliation-state-machine)
 - [18. Context Assembly Contract](#18-context-assembly-contract)
 - [19. Prompt Execution Contract](#19-prompt-execution-contract)
-- [20. LLM Decision Record vs Deterministic Replay](#20-llm-decision-record-vs-deterministic-replay)
+- [20. LLM Decision Record vs. Deterministic Replay](#20-llm-decision-record-vs-deterministic-replay)
 - [21. Tool Output Taint Model](#21-tool-output-taint-model)
 - [22. Memory Write Governance](#22-memory-write-governance)
-- [23. Guardrails 五层执lines模型](#23-guardrails-五层执lines模型)
+- [23. Guardrails Five-Layer Execution Model](#23-guardrails-five-layer-execution-model)
 - [24. Decision Engine](#24-decision-engine)
 - [25. Runtime Profile / Runtime Mode / Autonomy Mode](#25-runtime-profile--runtime-mode--autonomy-mode)
 - [26. HITL Runtime](#26-hitl-runtime)
@@ -44,35 +44,35 @@
 - [30. Effective Policy Snapshot](#30-effective-policy-snapshot)
 - [31. Learning Candidate](#31-learning-candidate)
 - [32. Evaluation Harness](#32-evaluation-harness)
-- [33. Release 管线](#33-release-管线)
+- [33. Release Pipeline](#33-release-pipeline)
 - [34. Error Code Taxonomy](#34-error-code-taxonomy)
 - [35. Observability Metrics](#35-observability-metrics)
 - [36. Incident Rules](#36-incident-rules)
 - [37. Runtime Capability Matrix](#37-runtime-capability-matrix)
 - [38. Runtime Test Matrix](#38-runtime-test-matrix)
-- [39. 实现目录Recommendation](#39-实现目录Recommendation)
-- [40. v4.4 最小落地路线](#40-v44-最小落地路线)
-- [41. v4.4 必须冻结的 ADR](#41-v44-必须冻结的-adr)
-- [42. 最终判断](#42-最终判断)
+- [39. Implementation Directory Recommendations](#39-implementation-directory-recommendations)
+- [40. v4.4 Minimum Implementation Roadmap](#40-v44-minimum-implementation-roadmap)
+- [41. v4.4 ADRs That Must Be Frozen](#41-v44-adrs-that-must-be-frozen)
+- [42. Final Judgment](#42-final-judgment)
 
 ---
 
-# 0. v4.4 核心Conclusion
+# 0. v4.4 Core Conclusions
 
-OAPEFLIR v4.4 的核心定位is：
+The core positioning of OAPEFLIR v4.4 is:
 
-> **把 Agent 的“观察、评估、规划、执lines、反馈、学习、改进、发布”table达为一套受控认知/治理语义，用来解释和约束 `HarnessRuntime` 主链，而不is再defines第二套执lines运lines时。**
+> **Express the Agent's "Observe, Assess, Plan, Execute, Feedback, Learn, Improve, Release" as a set of controlled cognitive/governance semantics to explain and constrain the `HarnessRuntime` main chain, rather than defining a second execution runtime.**
 
-v4.4 不再只Description“Agent 应该怎么思考”，而is明确：
+v4.4 no longer only describes "how the Agent should think", but explicitly states:
 
 ```text
-哪些Status迁移必须由 HarnessRuntime / RuntimeStateMachine 先落 truth
-哪些事件vs证据必须被 OAPEFLIR 解释为闭环视图
-哪些图执lines、budget、副作用、暂停、重试、人工接管规则
-必须由主Architecture和 canonical contracts 先defines，OAPEFLIR 只能references用vs解释
+Which state transitions must first persist truth via HarnessRuntime / RuntimeStateMachine
+Which events and evidence must be interpreted by OAPEFLIR as closed-loop views
+Which graph execution, budget, side effects, pause, retry, human takeover rules
+Must be defined by the main architecture and canonical contracts first, with OAPEFLIR only referencing and explaining them
 ```
 
-一句话概括：
+One-sentence summary:
 
 ```text
 OAPEFLIR v4.4 = Controlled Cognitive/Governance Semantics over HarnessRuntime
@@ -80,31 +80,31 @@ OAPEFLIR v4.4 = Controlled Cognitive/Governance Semantics over HarnessRuntime
 
 ---
 
-# 1. 设计目标
+# 1. Design Goals
 
-## 1.1 总目标
+## 1.1 Overall Goal
 
-构建一个能长期稳定运lines、能解决复杂实际Issue、具备生产力价值的 Agent 平台运lines内核。
+Build an Agent platform runtime kernel that can run stably for a long time, solve complex real-world problems, and provide productive value.
 
-它必须满足：
+It must satisfy:
 
-| 目标 | Description |
+| Goal | Description |
 |---|---|
-| 稳定 | Worker 崩溃、LLM failed、工具failed、外部系统异常后可恢复 |
-| 可靠 | Status机封闭、事件可追溯、副作用可确认 |
-| 智能 | Plan is Graph，可重规划、可评估、可学习 |
-| 可控 | 风险、budget、工具、permission、上下文、输出全部受约束 |
-| 可审计 | 每iterationsDecision、工具call、人工审批、副作用都有证据链 |
-| 可恢复 | supported checkpoint、pause、resume、replay、redrive、repair |
-| 可演进 | Prompt、Policy、Tool、Model、Domain、Eval 均版本化 |
-| 可运营 | 具备 metrics、incident、DLQ、reconciliation、dashboard |
-| 可验证 | supportedStatus机测试、属性测试、故障注入、回放一致性测试 |
+| Stable | Recoverable after Worker crash, LLM failure, tool failure, external system exception |
+| Reliable | Closed state machine, traceable events, confirmable side effects |
+| Intelligent | Plan is Graph, can be replanned, evaluated, and learned |
+| Controllable | Risk, budget, tools, permissions, context, output all constrained |
+| Auditable | Every decision, tool call, human approval, side effect has evidence chain |
+| Recoverable | Supports checkpoint, pause, resume, replay, redrive, repair |
+| Evolvable | Prompt, Policy, Tool, Model, Domain, Eval all versioned |
+| Operable | Has metrics, incident, DLQ, reconciliation, dashboard |
+| Verifiable | Supports state machine tests, property tests, fault injection, replay consistency tests |
 
 ---
 
-# 2. OAPEFLIR 八阶段defines
+# 2. OAPEFLIR Eight-Stage Definition
 
-OAPEFLIR 保持八阶段，但 v4.4 明确每阶段的工程边界。
+OAPEFLIR maintains eight stages, but v4.4 clarifies the engineering boundary of each stage.
 
 ```text
 Observe
@@ -117,22 +117,22 @@ Observe
   → Release
 ```
 
-## 2.1 阶段职责总table
+## 2.1 Stage Responsibility Summary
 
-| 阶段 | 职责 | 产物 | isno可directly产生副作用 |
+| Stage | Responsibility | Output | Can Directly Produce Side Effects |
 |---|---|---|---|
-| Observe | 观察输入、事件、上下文、目标 | ObservationBundle | no |
-| Assess | 风险、permission、可lines性、budget、策略评估 | AssessmentBundle | no |
-| Plan | 生成可执lines PlanGraph | PlanGraphBundle | no |
-| Execute | 消费 `HarnessRuntime` 已推进的节点执lines事实，并生成阶段视图 | `NodeRun` / `NodeAttemptReceipt` / `oapeflir.view.*` | no（副作用仍由 Harness 主链受控提交） |
-| Feedback | 对执lines结果、偏差、质量、风险进lines反馈 | FeedbackEnvelope | no |
-| Learn | 从反馈中提取候选via验 | LearningCandidate | no |
-| Improve | 生成 Prompt / Policy / Tool / Domain 改进候选 | ImprovementChangeSet | no |
-| Release | 评测、审批、灰度、发布、回滚 | ReleaseRecord | is，但only限configure发布 |
+| Observe | Observe inputs, events, context, goals | ObservationBundle | No |
+| Assess | Risk, permission, feasibility, budget, policy assessment | AssessmentBundle | No |
+| Plan | Generate executable PlanGraph | PlanGraphBundle | No |
+| Execute | Consume the node execution facts already advanced by `HarnessRuntime`, and generate stage views | `NodeRun` / `NodeAttemptReceipt` / `oapeflir.view.*` | No (side effects still controlled-submitted by Harness main chain) |
+| Feedback | Feedback on execution results, deviations, quality, risk | FeedbackEnvelope | No |
+| Learn | Extract candidate experiences from feedback | LearningCandidate | No |
+| Improve | Generate Prompt / Policy / Tool / Domain improvement candidates | ImprovementChangeSet | No |
+| Release | Evaluate, approve, gray-scale, release, rollback | ReleaseRecord | Yes, but only for configuration release |
 
 ---
 
-# 3. 总体运linesArchitecture
+# 3. Overall Runtime Architecture
 
 ```text
 RequestEnvelope
@@ -150,7 +150,7 @@ RequestEnvelope
 │             ▼                ▼                ▼         │
 │       Tool / LLM         HITL Wait        Subgraph       │
 │             │                │                │          │
-│             ▼                ▼                ▼          │
+│             ▼                ▼                ▼         │
 │       SideEffect        HumanDecision     ChildRun       │
 │       Manager              │                │            │
 │             └──────────────┼────────────────┘            │
@@ -174,11 +174,11 @@ RequestEnvelope
 
 ---
 
-# 4. 核心运lines实体
+# 4. Core Runtime Entities
 
-## 4.1 HarnessRun is唯一权威 Run
+## 4.1 HarnessRun Is the Sole Authoritative Run
 
-`HarnessRun` 才is一iterations完整运lines的唯一权威实体；本 spec 不再把 `OapeflirRun` 当作可执lines truth 对象。旧 `OapeflirRun` 只允许作为 migration alias 或 explainability projection 出现。
+`HarnessRun` is the sole authoritative entity for a complete run; this spec no longer treats `OapeflirRun` as an executable truth object. Old `OapeflirRun` is only allowed as a migration alias or explainability projection.
 
 ## 4.2 OapeflirTraceProjection
 
@@ -202,22 +202,22 @@ type OapeflirTraceProjection = {
 };
 ```
 
-## 4.3 Status权威边界
+## 4.3 State Authority Boundary
 
 ```text
-1. HarnessRun.status is唯一可执lines Run Status来源。
-2. OAPEFLIR 阶段只table达 stage projection，不拥有 run status / lease / retry counter / budget state。
-3. 任何真实Status迁移都必须via RuntimeStateMachine.transition(command)。
-4. replay / redrive / repair 只能追加新的 Harness / Node / Attempt / Evidence record，不得覆盖旧 truth。
+1. HarnessRun.status is the sole executable Run status source.
+2. OAPEFLIR stages only express stage projection, not owning run status / lease / retry counter / budget state.
+3. Any real state transition must go through RuntimeStateMachine.transition(command).
+4. replay / redrive / repair can only append new Harness / Node / Attempt / Evidence records, cannot overwrite old truth.
 ```
 
 ---
 
-# 5. NodeRun 生命cycle投影（references用 canonical contract）
+# 5. NodeRun Lifecycle Projection (Referencing canonical contract)
 
 ## 5.1 NodeRun
 
-> 本节只references用 `node-run-attempt-receipt-contract.md` 的 canonical 形状作为迁移输入摘要；NodeRun 真正的Status集vs合法跃迁权威不在 OAPEFLIR spec 内defines。
+> This section only references the canonical shape from `node-run-attempt-receipt-contract.md` as a migration input summary; the actual state set and legal transitions authority for NodeRun is not defined in the OAPEFLIR spec.
 
 ```ts
 type NodeRun = {
@@ -270,7 +270,7 @@ type NodeRunStatus =
   | "aborted";
 ```
 
-## 5.3 Node Status迁移
+## 5.3 Node State Transitions
 
 ```text
 created
@@ -290,14 +290,14 @@ retry_wait
   → ready
 ```
 
-## 5.4 Node 终态封闭规则（解释性约束）
+## 5.4 Node Terminal State Closure Rules (Explanatory constraints)
 
 ```text
-1. `succeeded / failed / skipped / cancelled / dependency_failed / policy_blocked / aborted` 为终态，不得迁出。
-2. retry 只能via追加新的 attemptId table达，不得覆盖原failedrecord。
-3. `awaiting_hitl` 恢复后必须回到活跃执lines链，不得as普通 `blocked`。
-4. `reconciling` 只table示副作用/外部Status确认阶段，不得写成 `compensating / compensated` 这class由 OAPEFLIR 拥有的节点Status。
-5. redrive 必须保留 lineage。
+1. `succeeded / failed / skipped / cancelled / dependency_failed / policy_blocked / aborted` are terminal states and must not transition out.
+2. Retry can only be expressed by appending a new attemptId, not overwriting the original failed record.
+3. After `awaiting_hitl` recovery, it must return to the active execution chain, not disguised as ordinary `blocked`.
+4. `reconciling` only indicates the side effect / external state confirmation phase, and must not be written as `compensating / compensated` - node states owned by OAPEFLIR.
+5. redrive must preserve lineage.
 ```
 
 ## 5.5 AttemptLineage
@@ -323,33 +323,33 @@ type AttemptLineage = {
 
 ---
 
-# 6. Plan 必须is Graph
+# 6. Plan Must Be Graph
 
-## 6.1 基本principle
+## 6.1 Basic Principle
 
-v4.4 明确规定：
+v4.4 explicitly states:
 
-> **Plan 不允许is简单线性 steps。Plan 必须is PlanGraph。**
+> **Plan is not allowed to be simple linear steps. Plan must be PlanGraph.**
 
-原因：复杂实际Issue通常contains：
+Reason: Complex real-world problems usually include:
 
 ```text
-并lines任务
-条件分支
-人工审批
-子图委托
-failed补偿
-回滚路径
-外部等待
-重规划 patch
+Parallel tasks
+Conditional branches
+Human approval
+Subgraph delegation
+Failure compensation
+Rollback paths
+External waiting
+Replan patch
 join / merge
 ```
 
-线性 steps no法table达这些复杂结构。
+Linear steps cannot express these complex structures.
 
 ---
 
-# 7. PlanGraph 契约
+# 7. PlanGraph Contract
 
 ## 7.1 PlanGraphBundle
 
@@ -481,9 +481,9 @@ type PlanEdge = {
 
 # 8. Graph Normalization
 
-LLM 或人工生成的 draft graph 不得directly执lines，必须via过标准化。
+Draft graphs generated by LLM or humans must not be executed directly and must be normalized.
 
-## 8.1 标准化流程
+## 8.1 Normalization Process
 
 ```text
 Draft Graph
@@ -521,19 +521,19 @@ type GraphNormalizationReport = {
 
 # 9. Graph Validation
 
-## 9.1 必须校验项
+## 9.1 Required Validation Items
 
 ```text
-1. 必须至少有一个 entry node。
-2. 必须至少有一个 terminal node。
-3. 不允许未声明的 node type。
-4. 不允许孤立节点。
-5. 不允许no界循环。
-6. 不允许no timeout 的 wait / human_gate。
-7. 不允许 high risk node 缺少 verification。
-8. 不允许 irreversible side effect 缺少 confirmation / reconciliation。
-9. 不允许 join 等待永远不会触发的分支。
-10. 不允许跨permissiondata流。
+1. Must have at least one entry node.
+2. Must have at least one terminal node.
+3. Undeclared node types are not allowed.
+4. Orphan nodes are not allowed.
+5. Unbounded loops are not allowed.
+6. wait / human_gate without timeout is not allowed.
+7. high risk node without verification is not allowed.
+8. irreversible side effect without confirmation / reconciliation is not allowed.
+9. join waiting for a branch that will never trigger is not allowed.
+10. Cross-permission data flow is not allowed.
 ```
 
 ## 9.2 GraphValidationReport
@@ -556,14 +556,14 @@ type GraphValidationReport = {
 
 # 10. Graph Risk Propagation
 
-## 10.1 风险传播规则
+## 10.1 Risk Propagation Rules
 
 ```text
-1. 如果上游节点读取 restricted data，下游消费节点 risk 至少 medium。
-2. 如果节点产生 irreversible side effect，下游 join / terminal 必须检查 confirmation。
-3. 如果分支contains external write，整个 subgraph risk 不低于 high。
-4. 如果工具输出 taint = potential_prompt_injection，下游 LLM 节点必须隔离上下文。
-5. 如果任一节点需要 human_gate，其后续 side_effect_commit 不得bypassing人工批准 scope。
+1. If an upstream node reads restricted data, downstream consumer nodes have at least medium risk.
+2. If a node produces irreversible side effect, downstream join / terminal must check confirmation.
+3. If a branch contains external write, the entire subgraph risk is not lower than high.
+4. If tool output taint = potential_prompt_injection, downstream LLM nodes must isolate context.
+5. If any node requires human_gate, its subsequent side_effect_commit cannot bypass human approval scope.
 ```
 
 ## 10.2 GraphRiskPropagationReport
@@ -580,7 +580,7 @@ type GraphRiskPropagationReport = {
 
 # 11. Graph Worst-Path Analysis
 
-复杂图执lines前必须计算最坏路径。
+Worst-path must be calculated before complex graph execution.
 
 ```ts
 type GraphWorstPathAnalysis = {
@@ -600,19 +600,19 @@ type GraphWorstPathAnalysis = {
 };
 ```
 
-硬规则：
+Hard rules:
 
 ```text
-1. 如果 worst-path budget exceeds限，PlanGraph 不得进入 ready。
-2. 如果最高风险路径缺少 HITL / verification，PlanGraph 不得执lines。
-3. 如果不可逆副作用路径缺少 confirmation，必须插入 reconciliation。
+1. If worst-path budget exceeds limit, PlanGraph must not enter ready.
+2. If the highest-risk path lacks HITL / verification, PlanGraph must not execute.
+3. If irreversible side effect path lacks confirmation, reconciliation must be inserted.
 ```
 
 ---
 
-# 12. Graph Scheduler 确定性调度
+# 12. Graph Scheduler Deterministic Scheduling
 
-Graph Scheduler belongs to `HarnessRuntime` 的 P4 执lines职责；OAPEFLIR 只消费调度事实并生成 scheduler rationale / view。
+Graph Scheduler belongs to P4 execution responsibility of `HarnessRuntime`; OAPEFLIR only consumes scheduling facts and generates scheduler rationale / view.
 
 ## 12.1 ReadyNodeSchedulingPolicy
 
@@ -641,19 +641,19 @@ type ReadyNodeSchedulingPolicy = {
 };
 ```
 
-## 12.2 调度硬规则
+## 12.2 Scheduling Hard Rules
 
 ```text
-1. Graph Scheduler 必须 deterministic。
-2. 同一 graph + 同一 runtime seed + 同一 event history，必须得到相同调度顺序。
-3. parallel node 也必须稳定排序。
-4. replay 时不得重新选择调度顺序。
-5. 调度Decision必须record为 `platform.scheduler.decision_recorded` 事件。
+1. Graph Scheduler must be deterministic.
+2. Same graph + same runtime seed + same event history must yield same scheduling order.
+3. Parallel nodes must also have stable ordering.
+4. Replay must not reselect scheduling order.
+5. Scheduling decisions must be recorded as `platform.scheduler.decision_recorded` event.
 ```
 
 ---
 
-# 13. GraphPatch vs Replan
+# 13. GraphPatch vs. Replan
 
 ## 13.1 GraphPatch
 
@@ -710,13 +710,13 @@ type GraphPatchCompatibilityReport = {
 };
 ```
 
-硬规则：
+Hard rules:
 
 ```text
-1. completed节点不得被删除，只能被标记为 superseded。
-2. 正在运lines节点不得被替换，除非先 pause。
-3. GraphPatch 后旧 checkpoint 必须能映射到新 graph。
-4. join 语义变化必须触发人工审核。
+1. Completed nodes cannot be deleted, can only be marked as superseded.
+2. Nodes currently running cannot be replaced unless first paused.
+3. After GraphPatch, old checkpoints must be mappable to new graph.
+4. Join semantic changes must trigger human review.
 ```
 
 ---
@@ -758,7 +758,7 @@ type OapeflirEvent = {
 };
 ```
 
-## 14.2 Event Type 分层
+## 14.2 Event Type Hierarchy
 
 ```ts
 type PlatformFactEventType =
@@ -790,31 +790,31 @@ type OapeflirProjectionEventType =
   | "oapeflir.rationale.decision";
 ```
 
-硬规则：
+Hard rules:
 
 ```text
-1. truth projector 只能消费 platform.* facts。
-2. OAPEFLIR 事件只能uses `oapeflir.view.*` / `oapeflir.rationale.*`，不得as `run.*` / `node.*` / `side_effect.*` truth 事件。
-3. projection event 不得反向驱动 HarnessRun / NodeRun / Budget / SideEffect truth。
+1. Truth projector can only consume platform.* facts.
+2. OAPEFLIR events can only use `oapeflir.view.*` / `oapeflir.rationale.*`, cannot masquerade as `run.*` / `node.*` / `side_effect.*` truth events.
+3. Projection events cannot反向 drive HarnessRun / NodeRun / Budget / SideEffect truth.
 ```
 
-## 14.3 Event 硬规则
+## 14.3 Event Hard Rules
 
 ```text
-1. 所有Status变更必须由 Event 驱动。
-2. Event append vs truth state 更新必须同事务。
-3. Event sequence 在 run 内单调递增。
-4. Event payload 必须有 schema version。
-5. Event 不允许物理删除。
-6. Projection 只能由 Event 重建，不得反写真相。
-7. Replay 必须遵守 replayBehavior。
+1. All state changes must be event-driven.
+2. Event append and truth state update must be in the same transaction.
+3. Event sequence is monotonically increasing within a run.
+4. Event payload must have schema version.
+5. Events are not allowed physical deletion.
+6. Projection can only be rebuilt from Events, cannot 反写 truth.
+7. Replay must comply with replayBehavior.
 ```
 
 ---
 
 # 15. Budget Ledger
 
-Budget truth 归属 P5/Budget 服务；HarnessRuntime 只能via `BudgetReservation` / `BudgetSettlement` vs之交互。OAPEFLIR 不拥有独立 budget state。
+Budget truth belongs to P5/Budget service; HarnessRuntime can only interact with it via `BudgetReservation` / `BudgetSettlement`. OAPEFLIR does not own independent budget state.
 
 ## 15.1 BudgetLedger
 
@@ -866,23 +866,23 @@ type BudgetReservation = {
 };
 ```
 
-## 15.3 Budget 硬规则
+## 15.3 Budget Hard Rules
 
 ```text
-1. LLM call 前必须 reserve budget。
-2. Tool call 前必须 reserve budget。
-3. SideEffect commit 前必须 reserve budget。
-4. Evaluation / Judge call也必须计费。
-5. call failed后按策略 consume / release。
-6. budget exhausted 优先级高于 retry / replan。
-7. Replan 必须重新做 worst-path budget analysis。
+1. Budget must be reserved before LLM call.
+2. Budget must be reserved before tool call.
+3. Budget must be reserved before side effect commit.
+4. Evaluation / Judge calls must also be charged.
+5. On call failure, consume / release according to policy.
+6. Budget exhausted priority is higher than retry / replan.
+7. Replan must redo worst-path budget analysis.
 ```
 
 ---
 
 # 16. SideEffect Manager
 
-SideEffect 由 HarnessRuntime 在 P4 主链中受控推进；OAPEFLIR 只能消费 side-effect fact 并生成解释性投影，不拥有独立 side effect commit authority。
+SideEffect is controlled-proceeded by HarnessRuntime in P4 main chain; OAPEFLIR can only consume side-effect fact and generate explanatory projection, not owning independent side effect commit authority.
 
 ## 16.1 SideEffectRecord
 
@@ -1021,7 +1021,7 @@ type ReversibilityProfile = {
 };
 ```
 
-## 16.6 SideEffect 提交流程
+## 16.6 SideEffect Submission Process
 
 ```text
 Executor Output
@@ -1035,15 +1035,15 @@ Executor Output
   → compensation if needed
 ```
 
-硬规则：
+Hard rules:
 
 ```text
-1. 工具执linessuccess不等于副作用success。
-2. SideEffect 必须先 proposed，再 approved，再 committed。
-3. irreversible side effect 必须有 confirmationMethod。
-4. ambiguous 不得自动转 succeeded。
-5. high / critical side effect 必须supported reconciliation。
-6. compensation 不得删除原始 side effect record。
+1. Tool execution success does not equal side effect success.
+2. SideEffect must first be proposed, then approved, then committed.
+3. Irreversible side effect must have confirmationMethod.
+4. ambiguous cannot automatically become succeeded.
+5. high / critical side effect must support reconciliation.
+6. Compensation cannot delete original side effect record.
 ```
 
 ---
@@ -1087,14 +1087,14 @@ type ReconciliationRecord = {
 };
 ```
 
-## 17.2 Reconciliation 硬规则
+## 17.2 Reconciliation Hard Rules
 
 ```text
-1. ambiguous 不得自动转 confirmed。
-2. irreversible side effect ambiguous 必须人工handle。
-3. reconciliation timeout必须升级 incident。
-4. reconciliation 结果必须反写 SideEffectRecord。
-5. manual_resolution 必须record HumanResponsibilityRecord。
+1. ambiguous cannot automatically become confirmed.
+2. Irreversible side effect ambiguous must be handled by humans.
+3. Reconciliation timeout must escalate incident.
+4. Reconciliation result must write back to SideEffectRecord.
+5. manual_resolution must record HumanResponsibilityRecord.
 ```
 
 ---
@@ -1153,14 +1153,14 @@ type ContextItemRef = {
 };
 ```
 
-## 18.3 Context 硬规则
+## 18.3 Context Hard Rules
 
 ```text
-1. Planner / Generator / Evaluator 必须uses不同 ContextAssemblyContract。
-2. Context 必须可哈希、可回放。
-3. external_untrusted 只能进入 user/data 区，不得进入 system/developer 区。
-4. redacted 字段不得via summary 泄漏。
-5. restricted data不得进入nopermission subgraph / subagent。
+1. Planner / Generator / Evaluator must use different ContextAssemblyContract.
+2. Context must be hashable and replayable.
+3. external_untrusted can only enter user/data zone, cannot enter system/developer zone.
+4. redacted fields cannot leak via summary.
+5. restricted data cannot enter unauthorized subgraph / subagent.
 ```
 
 ---
@@ -1196,19 +1196,19 @@ type PromptExecutionContract = {
 };
 ```
 
-## 19.2 Prompt 硬规则
+## 19.2 Prompt Hard Rules
 
 ```text
-1. Planner / Generator / Evaluator Prompt 必须独立版本化。
-2. Evaluator Prompt 不得vs Generator Prompt 共用。
-3. Judge Prompt 不得访问 holdout 标准答案。
-4. Planner Prompt 不得接收 forbidden_for_planning 内容。
-5. Prompt 变更必须via过 Evaluation Gate。
+1. Planner / Generator / Evaluator Prompt must be independently versioned.
+2. Evaluator Prompt cannot share with Generator Prompt.
+3. Judge Prompt cannot access holdout standard answers.
+4. Planner Prompt cannot receive forbidden_for_planning content.
+5. Prompt changes must go through Evaluation Gate.
 ```
 
 ---
 
-# 20. LLM Decision Record vs Deterministic Replay
+# 20. LLM Decision Record vs. Deterministic Replay
 
 ## 20.1 LlmDecisionRecord
 
@@ -1263,13 +1263,13 @@ type DeterministicRuntimeSeed = {
 };
 ```
 
-硬规则：
+Hard rules:
 
 ```text
-1. Replay defaults to复用 recorded LLM output（Trace Replay）。
-2. 只有隔离 simulation / sandbox 模式允许 `isolated_reexecution_replay`，且结果不得覆盖原始 truth/evidence。
-3. 所有非确定性输入必须record：time、随机数、环境variable、configure版本。
-4. Replay 不得产生真实 side effect。
+1. Replay reuses recorded LLM output by default (Trace Replay).
+2. Only isolated simulation / sandbox mode allows `isolated_reexecution_replay`, and results cannot overwrite original truth/evidence.
+3. All non-deterministic inputs must be recorded: time, random number, environment variables, config version.
+4. Replay must not produce real side effects.
 ```
 
 ---
@@ -1290,14 +1290,14 @@ type ToolOutputTaint =
   | "restricted";
 ```
 
-## 21.2 Taint 传播规则
+## 21.2 Taint Propagation Rules
 
 ```text
-1. external_untrusted 进入 LLM 前必须加边界隔离。
-2. potential_prompt_injection 不得进入 planner system prompt。
-3. secret_bearing 不得writes memory / knowledge。
-4. pii_bearing 必须按 data policy handle。
-5. restricted 不得跨 tenant / domain 传播。
+1. external_untrusted must have boundary isolation before entering LLM.
+2. potential_prompt_injection cannot enter planner system prompt.
+3. secret_bearing cannot be written to memory / knowledge.
+4. pii_bearing must be processed according to data policy.
+5. restricted cannot cross tenant / domain propagation.
 ```
 
 ---
@@ -1334,31 +1334,31 @@ type MemoryWriteRequest = {
 };
 ```
 
-## 22.2 Memory writes硬规则
+## 22.2 Memory Write Hard Rules
 
 ```text
-1. Tool output 不得directly写 `long_term` 或 `shared_knowledge`。
-2. potential_prompt_injection 不得写 `long_term` / `shared_knowledge`。
-3. restricted data不得写 `shared_knowledge`。
-4. Memory write 必须via过 before_memory_write guardrail。
-5. shared memory 晋升必须有审核record。
+1. Tool output cannot directly write `long_term` or `shared_knowledge`.
+2. potential_prompt_injection cannot write `long_term` / `shared_knowledge`.
+3. restricted data cannot write `shared_knowledge`.
+4. Memory write must pass through before_memory_write guardrail.
+5. shared memory promotion must have review record.
 ```
 
 ---
 
-# 23. Guardrails 五层执lines模型
+# 23. Guardrails Five-Layer Execution Model
 
-五层 Guardrail 由 HarnessRuntime 执lines链vs P2 控制平面共同mandatory；OAPEFLIR 只record guardrail view / rationale，不拥有独立 guardrail authority。
+The five-layer Guardrail is enforced by HarnessRuntime execution chain and P2 control plane together; OAPEFLIR only records guardrail view / rationale, not owning independent guardrail authority.
 
-## 23.1 五层 Guardrails
+## 23.1 Five-Layer Guardrails
 
-| 层 | 执lines时机 | 主要检查 |
+| Layer | Execution Timing | Main Checks |
 |---|---|---|
-| Input Guardrail | Request 进入后 | 注入、越权、格式、敏感request |
-| Planning Guardrail | PlanGraph 生成后 | 禁止图结构、越权工具、危险路径 |
-| Tool Guardrail | Tool call前后 | 输入security、输出 taint、副作用风险 |
-| Memory Guardrail | Memory 读写时 | 跨域泄漏、污染长期记忆 |
-| Output Guardrail | 输出前 | 幻觉、no证据声明、敏感信息泄露 |
+| Input Guardrail | After Request enters | Injection, privilege escalation, format, sensitive requests |
+| Planning Guardrail | After PlanGraph generated | Forbidden graph structure, unauthorized tools, dangerous paths |
+| Tool Guardrail | Before/after Tool call | Input safety, output taint, side effect risk |
+| Memory Guardrail | During Memory read/write | Cross-domain leakage, pollute long-term memory |
+| Output Guardrail | Before output | Hallucination, no-evidence claims, sensitive info leakage |
 
 ## 23.2 GuardrailHookResult
 
@@ -1391,12 +1391,12 @@ type GuardrailHookResult = {
 };
 ```
 
-硬规则：
+Hard rules:
 
 ```text
-1. critical guardrail block 优先级高于 evaluator accept。
-2. LLM-as-Judge 不得覆盖确定性 guardrail failure。
-3. guardrail rewrite 必须record原始输入 hash。
+1. critical guardrail block priority is higher than evaluator accept.
+2. LLM-as-Judge cannot override deterministic guardrail failure.
+3. guardrail rewrite must record original input hash.
 ```
 
 ---
@@ -1421,13 +1421,13 @@ type DecisionInputBundle = {
 };
 ```
 
-硬规则：
+Hard rules:
 
 ```text
-1. DecisionEngine 只能消费 DecisionInputBundle。
-2. DecisionEngine 不允许directly读取分散服务Status。
-3. DecisionInputBundle 必须在生成 decision 前冻结。
-4. 冻结后的 bundle 必须 hash 并writes evidence。
+1. DecisionEngine can only consume DecisionInputBundle.
+2. DecisionEngine is not allowed to directly read scattered service state.
+3. DecisionInputBundle must be frozen before generating decision.
+4. Frozen bundle must be hashed and written to evidence.
 ```
 
 ## 24.2 HarnessDecision
@@ -1444,7 +1444,7 @@ type HarnessDecision =
 
 ## 24.3 Decision Precedence
 
-从高到低：
+From high to low:
 
 ```text
 1. PlatformPanic / Emergency Directive
@@ -1463,13 +1463,13 @@ type HarnessDecision =
 
 # 25. Runtime Profile / Runtime Mode / Autonomy Mode
 
-## 25.1 三者区别
+## 25.1 Three Distinctions
 
-| 概念 | 含义 | 示例 |
+| Concept | Meaning | Example |
 |---|---|---|
-| RuntimeProfile | 平台能力层级（由 Harness / 平台治理注入，不归 OAPEFLIR 拥有） | mvp / hardening / enterprise |
-| RuntimeMode | 当前运lines保护模式 | full_auto / read_only / manual_only |
-| AutonomyMode | Agent 自主权等级 | suggestion / supervised / semi_auto / full_auto |
+| RuntimeProfile | Platform capability level (injected by Harness / platform governance, not owned by OAPEFLIR) | mvp / hardening / enterprise |
+| RuntimeMode | Current runtime protection mode | full_auto / read_only / manual_only |
+| AutonomyMode | Agent autonomy level | suggestion / supervised / semi_auto / full_auto |
 
 ## 25.2 RuntimeMode
 
@@ -1485,7 +1485,7 @@ type RuntimeMode =
   | "incident_mode";
 ```
 
-## 25.3 生效自主权
+## 25.3 Effective Autonomy
 
 ```text
 effectiveAutonomy =
@@ -1498,19 +1498,19 @@ effectiveAutonomy =
   )
 ```
 
-硬规则：
+Hard rules:
 
 ```text
-1. RuntimeMode 可降低 AutonomyMode，但不得提升。
-2. RiskLevel high 以上必须限制 autonomy。
-3. incident_mode 下禁止新 side effect。
+1. RuntimeMode can lower AutonomyMode, but cannot raise it.
+2. RiskLevel high and above must limit autonomy.
+3. incident_mode prohibits new side effects.
 ```
 
 ---
 
 # 26. HITL Runtime
 
-## 26.1 HITL 能力
+## 26.1 HITL Capabilities
 
 ```text
 Inspect
@@ -1599,13 +1599,13 @@ type HumanResponsibilityRecord = {
 };
 ```
 
-硬规则：
+Hard rules:
 
 ```text
-1. 人工 approve 只批准当前 scope。
-2. 人工 override policy 必须更高permission。
-3. manual_takeover 后 Agent 不得继续自动提交副作用，除非 resume 显式允许。
-4. 所有 HITL 操作必须写 audit。
+1. Human approve only approves current scope.
+2. Human override policy must have higher authority.
+3. After manual_takeover, Agent cannot continue auto-committing side effects unless resume explicitly allows.
+4. All HITL operations must write audit.
 ```
 
 ---
@@ -1645,34 +1645,34 @@ type FinalOutputContract = {
 };
 ```
 
-硬规则：
+Hard rules:
 
 ```text
-1. critical domain 输出必须contains限制Description。
-2. 低置信度输出不得以确定语气呈现。
-3. no evidence 的高风险Recommendation不得输出为可执lines指令。
-4. user可见输出必须via过 before_output guardrail。
+1. critical domain output must include limitations description.
+2. Low confidence output cannot be presented with certainty.
+3. High-risk advice without evidence cannot be output as executable instruction.
+4. User-visible output must pass through before_output guardrail.
 ```
 
 ---
 
 # 28. Causal Lineage Query
 
-## 28.1 查询能力
+## 28.1 Query Capabilities
 
-给定 `sideEffectId`，必须能查到：
+Given `sideEffectId`, must be able to query:
 
 ```text
-谁触发
-uses了哪些 observation
-via过哪些 assessment
-由哪个 PlanNode 决定
-call了哪些 tool / model
-哪些 verification via
-哪些 evaluation supported
-谁审批
-最终外部确认is什么
-isno发生 reconciliation / compensation
+Who triggered it
+What observations were used
+What assessments were made
+Which PlanNode made the decision
+What tools / models were called
+What verifications passed
+What evaluations supported
+Who approved
+What the final external confirmation is
+Whether reconciliation / compensation occurred
 ```
 
 ## 28.2 CausalLineageQuery
@@ -1716,20 +1716,20 @@ type RunVersionLock = {
 };
 ```
 
-硬规则：
+Hard rules:
 
 ```text
-1. 长时 run 必须record版本锁。
-2. high / critical run defaults to lock_for_entire_run。
-3. policy 热更新不能静默改变已暂停 run 的恢复语义。
-4. 恢复时如版本不兼容，必须走 ResumeCompatibilityPolicy。
+1. Long-running runs must record version lock.
+2. high / critical run defaults to lock_for_entire_run.
+3. Policy hot update cannot silently change resume semantics of paused runs.
+4. During resume, if version incompatible, must go through ResumeCompatibilityPolicy.
 ```
 
 ---
 
 # 30. Effective Policy Snapshot
 
-## 30.1 configure优先级
+## 30.1 Configuration Priority
 
 ```text
 Platform Policy
@@ -1759,20 +1759,20 @@ type EffectivePolicySnapshot = {
 };
 ```
 
-硬规则：
+Hard rules:
 
 ```text
-1. 优先级只允许 `platform < tenant < domain < task` 四级叠加；不得references入额外运lines时优先级轴bypassing ConstraintPack。
-2. Emergency Directive 最高优先级，但仍via正式 directive vs snapshot record生效。
-3. 下级configure只能收紧，不能放松上级security约束。
-4. 所有最终生效configure必须生成 EffectivePolicySnapshot。
+1. Priority only allows `platform < tenant < domain < task` four-level superposition; cannot introduce additional runtime priority axis to bypass ConstraintPack.
+2. Emergency Directive has highest priority, but still takes effect through formal directive and snapshot record.
+3. Lower-level configuration can only tighten, cannot relax upper-level security constraints.
+4. All final effective configuration must generate EffectivePolicySnapshot.
 ```
 
 ---
 
 # 31. Learning Candidate
 
-## 31.1 LearningCandidate class型
+## 31.1 LearningCandidate Types
 
 ```ts
 type LearningCandidateType =
@@ -1784,7 +1784,7 @@ type LearningCandidateType =
   | "evaluation_learning";
 ```
 
-## 31.2 LearningCandidate Status机
+## 31.2 LearningCandidate State Machine
 
 ```text
 created
@@ -1839,14 +1839,14 @@ type LearningCandidate = {
 };
 ```
 
-硬规则：
+Hard rules:
 
 ```text
-1. LearningCandidate 不得contains holdout eval case。
-2. Incident regression case 可进入 incident_regression，不得进入 prompt few-shot。
-3. Policy Learning 不得自动上线。
-4. Prompt Learning 必须via过 Evaluation Gate。
-5. Domain Learning 必须 domain_owner 审核。
+1. LearningCandidate must not contain holdout eval case.
+2. Incident regression case can enter incident_regression, cannot enter prompt few-shot.
+3. Policy Learning cannot go online automatically.
+4. Prompt Learning must go through Evaluation Gate.
+5. Domain Learning must be reviewed by domain_owner.
 ```
 
 ---
@@ -1885,7 +1885,7 @@ type EvaluationGate = {
 };
 ```
 
-## 32.2 defaults to发布门禁
+## 32.2 Default Release Gates
 
 ```text
 critical_case_pass_rate == 100%
@@ -1894,22 +1894,22 @@ safety_violation_rate == 0%
 cost_delta <= +20%
 latency_delta <= +20%
 quality_score_delta >= -3%
-human_override_rate 不得显著升高
+human_override_rate must not significantly increase
 ```
 
-## 32.3 Evaluation 硬规则
+## 32.3 Evaluation Hard Rules
 
 ```text
-1. LLM-as-Judge 不能覆盖确定性failed。
-2. Evaluation 以 outcome 为主，不以 transcript 为主。
-3. 发布前评测必须在隔离环境运lines。
-4. 线上灰度必须vs stable baseline 对比。
-5. failed样例必须进入 regression set。
+1. LLM-as-Judge cannot override deterministic failure.
+2. Evaluation focuses on outcome, not transcript.
+3. Pre-release evaluation must run in isolated environment.
+4. Online gray-scale must compare with stable baseline.
+5. Failed samples must enter regression set.
 ```
 
 ---
 
-# 33. Release 管线
+# 33. Release Pipeline
 
 ```text
 ImprovementChangeSet
@@ -1926,26 +1926,26 @@ ImprovementChangeSet
   → Rollback if regression
 ```
 
-硬规则：
+Hard rules:
 
 ```text
-1. Learn / Improve 不得directly改变线上lines为。
-2. Release 必须via EvaluationGate。
-3. Prompt / Policy / Tool / Domain Descriptor 发布均需版本化。
-4. rollback 必须能恢复上一稳定版本。
+1. Learn / Improve cannot directly change online behavior.
+2. Release must pass through EvaluationGate.
+3. Prompt / Policy / Tool / Domain Descriptor release all need versioning.
+4. Rollback must be able to restore previous stable version.
 ```
 
 ---
 
 # 34. Error Code Taxonomy
 
-## 34.1 命名规范
+## 34.1 Naming Convention
 
 ```text
 PLATFORM.{plane}.{component}.{category}
 ```
 
-示例：
+Examples:
 
 ```text
 PLATFORM.ORCHESTRATION.GRAPH.validation_failed
@@ -1986,58 +1986,58 @@ type OapeflirError = {
 
 | Metric | Description |
 |---|---|
-| `harness.run.total` | HarnessRun total |
-| `harness.run.duration_ms` | HarnessRun 端到端耗时 |
-| `harness.graph.node.count` | 图节点数 |
-| `harness.graph.replan.count` | 重规划iterations数 |
-| `harness.node.retry.count` | Node 重试iterations数 |
-| `harness.side_effect.ambiguous.count` | 副作用不确定iterations数 |
-| `harness.reconciliation.pending.count` | 待对账数 |
-| `harness.hitl.pending.count` | 待人工数 |
-| `harness.budget.remaining` | 剩余budget |
-| `harness.guardrail.block.count` | Guardrail 拦截数 |
-| `harness.evaluation.score` | 评估分 |
-| `harness.learning.candidate.count` | 学习候选数 |
+| `harness.run.total` | Total HarnessRun count |
+| `harness.run.duration_ms` | HarnessRun end-to-end duration |
+| `harness.graph.node.count` | Graph node count |
+| `harness.graph.replan.count` | Replan count |
+| `harness.node.retry.count` | Node retry count |
+| `harness.side_effect.ambiguous.count` | Side effect ambiguous count |
+| `harness.reconciliation.pending.count` | Pending reconciliation count |
+| `harness.hitl.pending.count` | Pending human count |
+| `harness.budget.remaining` | Remaining budget |
+| `harness.guardrail.block.count` | Guardrail block count |
+| `harness.evaluation.score` | Evaluation score |
+| `harness.learning.candidate.count` | Learning candidate count |
 
 ---
 
 # 36. Incident Rules
 
-| 规则 | 条件 | 级别 | 动作 |
+| Rule | Condition | Level | Action |
 |---|---|---|---|
-| side_effect_ambiguous_irreversible | 不可逆副作用 ambiguous | SEV2 | 人工对账 + 暂停相关 run |
+| side_effect_ambiguous_irreversible | Irreversible side effect ambiguous | SEV2 | Human reconciliation + pause related run |
 | graph_deadlock_detected | Graph deadlock | SEV3 | abort / replan |
-| budget_exhausted_high_priority | 高优任务budget耗尽 | SEV3 | 人工handle |
-| replay_inconsistent | Replay 结果inconsistent | SEV2 | runtime freeze for affected version |
+| budget_exhausted_high_priority | High-priority task budget exhausted | SEV3 | Human handling |
+| replay_inconsistent | Replay results inconsistent | SEV2 | runtime freeze for affected version |
 | guardrail_critical_block | critical guardrail block | SEV2 | incident + quarantine |
-| learning_contamination | 学习候选污染 | SEV2 | reject candidate + audit |
+| learning_contamination | Learning candidate contamination | SEV2 | reject candidate + audit |
 
 ---
 
 # 37. Runtime Capability Matrix
 
-| 能力 | Core | Durable | Governed | Enterprise | Learning |
-|---|---:|---:|---:|---:|---:|
-| PlanGraph | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Event Registry | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Deterministic Scheduler | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Checkpoint | ❌ | ✅ | ✅ | ✅ | ✅ |
-| Replay | ❌ | ✅ | ✅ | ✅ | ✅ |
-| SideEffect Manager | ❌ | Partial | ✅ | ✅ | ✅ |
-| Reconciliation | ❌ | ❌ | ✅ | ✅ | ✅ |
-| HITL Lock | ❌ | ❌ | ✅ | ✅ | ✅ |
-| Budget Ledger | Partial | ✅ | ✅ | ✅ | ✅ |
-| Guardrails 五层 | Partial | Partial | ✅ | ✅ | ✅ |
-| Delegation / Subgraph | ❌ | Partial | Partial | ✅ | ✅ |
-| Evaluation Harness | ❌ | ❌ | Partial | ✅ | ✅ |
-| Learning Quarantine | ❌ | ❌ | ❌ | Partial | ✅ |
-| Release Gate | ❌ | ❌ | Partial | ✅ | ✅ |
+| Capability | Core | Durable | Governed | Enterprise | Learning |
+|---:|---:|---:|---:|---:|---:|
+| PlanGraph | Yes | Yes | Yes | Yes | Yes |
+| Event Registry | Yes | Yes | Yes | Yes | Yes |
+| Deterministic Scheduler | Yes | Yes | Yes | Yes | Yes |
+| Checkpoint | No | Yes | Yes | Yes | Yes |
+| Replay | No | Yes | Yes | Yes | Yes |
+| SideEffect Manager | No | Partial | Yes | Yes | Yes |
+| Reconciliation | No | No | Yes | Yes | Yes |
+| HITL Lock | No | No | Yes | Yes | Yes |
+| Budget Ledger | Partial | Yes | Yes | Yes | Yes |
+| Guardrails Five-Layer | Partial | Partial | Yes | Yes | Yes |
+| Delegation / Subgraph | No | Partial | Partial | Yes | Yes |
+| Evaluation Harness | No | No | Partial | Yes | Yes |
+| Learning Quarantine | No | No | No | Partial | Yes |
+| Release Gate | No | No | Partial | Yes | Yes |
 
 ---
 
 # 38. Runtime Test Matrix
 
-## 38.1 Status机测试
+## 38.1 State Machine Tests
 
 ```text
 Run valid transition tests
@@ -2048,7 +2048,7 @@ Retry creates new attempt tests
 Redrive lineage tests
 ```
 
-## 38.2 Graph 测试
+## 38.2 Graph Tests
 
 ```text
 DAG validation
@@ -2061,7 +2061,7 @@ Deterministic scheduling
 Replay schedule consistency
 ```
 
-## 38.3 SideEffect 测试
+## 38.3 SideEffect Tests
 
 ```text
 proposed → approved → committed → confirmed
@@ -2072,7 +2072,7 @@ external timeout after commit
 compensation append-only
 ```
 
-## 38.4 Guardrail / Policy 测试
+## 38.4 Guardrail / Policy Tests
 
 ```text
 critical guardrail blocks evaluator accept
@@ -2081,7 +2081,7 @@ budget exhausted beats retry
 LLM judge cannot override deterministic failure
 ```
 
-## 38.5 HITL 测试
+## 38.5 HITL Tests
 
 ```text
 lock acquisition
@@ -2092,7 +2092,7 @@ manual takeover prevents auto side effect
 resume with patched graph
 ```
 
-## 38.6 Learning / Release 测试
+## 38.6 Learning / Release Tests
 
 ```text
 holdout contamination blocked
@@ -2102,7 +2102,7 @@ incident regression gate
 canary rollback
 ```
 
-## 38.7 故障注入测试
+## 38.7 Fault Injection Tests
 
 ```text
 worker crash
@@ -2117,7 +2117,7 @@ replay mismatch
 
 ---
 
-# 39. 实现目录Recommendation
+# 39. Implementation Directory Recommendations
 
 ```text
 src/platform/five-plane-orchestration/harness/
@@ -2151,11 +2151,11 @@ src/platform/oapeflir/
 
 ---
 
-# 40. v4.4 最小落地路线
+# 40. v4.4 Minimum Implementation Roadmap
 
-## Ring 1：MVP
+## Ring 1: MVP
 
-交付：
+Deliverables:
 
 ```text
 Run State Machine
@@ -2164,43 +2164,43 @@ Event Registry
 PlanGraph
 Graph Validator
 Deterministic Scheduler
-Budget Ledger 基础版
+Budget Ledger Basic Version
 ```
 
-验收：
+Acceptance:
 
 ```text
-可创建 run
-可生成 graph
-可执lines node
-可record event
-可确定性 replay 调度顺序
+Can create run
+Can generate graph
+Can execute node
+Can record event
+Can deterministically replay scheduling order
 ```
 
-## Ring 2：Hardening
+## Ring 2: Hardening
 
-交付：
+Deliverables:
 
 ```text
 SideEffect Manager
 SideEffect Delivery Contract
 Reconciliation State Machine
-Guardrails 五层基础
+Guardrails Five-Layer Basic
 DecisionInputBundle
 Decision Engine
 ```
 
-验收：
+Acceptance:
 
 ```text
-高风险副作用可阻断
-ambiguous 可进入 reconciliation
-policy / guardrail / evaluator conflicts可裁决
+High-risk side effects can be blocked
+ambiguous can enter reconciliation
+policy / guardrail / evaluator conflicts can be adjudicated
 ```
 
-## Ring 2 扩展：Durable + HITL
+## Ring 2 Extension: Durable + HITL
 
-交付：
+Deliverables:
 
 ```text
 Checkpoint
@@ -2211,17 +2211,17 @@ GraphPatch
 RunVersionLock
 ```
 
-验收：
+Acceptance:
 
 ```text
-人工可 inspect / patch / approve / resume
-worker crash 后可恢复
-长时 run 版本锁生效
+Humans can inspect / patch / approve / resume
+Can recover after worker crash
+Long-running run version lock takes effect
 ```
 
-## Ring 3：Enterprise / Learning
+## Ring 3: Enterprise / Learning
 
-交付：
+Deliverables:
 
 ```text
 Evaluation Harness
@@ -2231,17 +2231,17 @@ Release Pipeline
 Canary / Rollback
 ```
 
-验收：
+Acceptance:
 
 ```text
-Prompt / Policy 改进不能directly上线
-发布必须via eval gate
-污染学习候选会被阻断
+Prompt / Policy improvements cannot go directly online
+Release must pass eval gate
+Contaminated learning candidates will be blocked
 ```
 
 ---
 
-# 41. v4.4 必须冻结的 ADR
+# 41. v4.4 ADRs That Must Be Frozen
 
 ```text
 ADR-OAPEFLIR-Plan-Is-Graph
@@ -2266,96 +2266,97 @@ ADR-OAPEFLIR-Replay-Never-Produces-Real-SideEffect
 
 ---
 
-# 42. 最终定位
+# 42. Final Judgment
 
-OAPEFLIR v4.4 相比早期独立 runtime 草案的关键收敛is：
+The key convergence of OAPEFLIR v4.4 compared to early independent runtime drafts:
 
-| 维度 | v4.3 | v4.4 |
+| Dimension | v4.3 | v4.4 |
 |---|---|---|
-| 角色定位 | 曾混入独立 runtime 草案 | 明确退回为 HarnessRuntime 之上的认知/治理语义 |
-| Plan | 可被误读为 OAPEFLIR 自有执lines图 | 作为 `HarnessRuntime` uses的 `PlanGraphBundle` 语义输入 |
-| Event | truth / projection 边界混杂 | 明确区分 `platform.*` facts vs `oapeflir.view.*` / `oapeflir.rationale.*` projections |
-| Status机 | 可能vs运lines时 truth overlaps | 只Descriptionvs `HarnessRun / NodeRun` 对齐的受控语义，不再自立真相Status机 |
-| SideEffect / Budget / HITL | 曾被写成 OAPEFLIR 自有能力 | 明确回收至 Harness/P2/P5 主链，OAPEFLIR only解释vs投影 |
-| Replay / Context / Prompt | 设计意图存在 | 继续保留，但作为 canonical contract 的迁移输入而非独立运lines时规范 |
-| 实现价值 | 易被误读为directly编码基线 | 适合作为迁移设计输入和语义补充，不单独充当权威实现基线 |
+| Role Positioning | Once mixed with independent runtime draft | Clearly retreated to cognitive/governance semantics above HarnessRuntime |
+| Plan | Can be misread as OAPEFLIR's own execution graph | As `PlanGraphBundle` semantic input used by `HarnessRuntime` |
+| Event | truth / projection boundary mixed | Clearly distinguished between `platform.*` facts and `oapeflir.view.*` / `oapeflir.rationale.*` projections |
+| State Machine | May overlap with runtime truth | Only describes controlled semantics aligned with `HarnessRun / NodeRun`, no longer establishing own truth state machine |
+| SideEffect / Budget / HITL | Once written as OAPEFLIR's own capabilities | Clearly reclaimed to Harness/P2/P5 main chain, OAPEFLIR only explains and projects |
+| Replay / Context / Prompt | Design intent exists | Continues to retain, but as migration input for canonical contracts, not independent runtime specification |
+| Implementation Value | Easy to misread as directly encoding baseline | Suitable as migration design input and semantic supplement, not singly serving as authoritative implementation baseline |
 
-最终Conclusion：
+Final conclusion:
 
-> **OAPEFLIR v4.4 只能作为认知/治理语义vs迁移设计输入uses，不能单独作为企业级 Agent 平台的权威 Runtime 基线。**
+> **OAPEFLIR v4.4 can only be used as cognitive/governance semantics and migration design input, and cannot singly serve as the authoritative Runtime baseline for an enterprise-level Agent platform.**
 
-它不再is“Agent 流程图”，而is：
+It is no longer "Agent flowchart", but:
 
 ```text
-一个把 PlanGraph、Event、Replay、Guardrail、HITL、Learning 等设计意图
-收敛到 `HarnessRuntime` 主链边界之上的
-认知/治理语义补充规范vs迁移输入。
+A cognitive/governance semantic supplement specification and migration input
+that converges PlanGraph, Event, Replay, Guardrail, HITL, Learning and other design intents
+to the boundary above the `HarnessRuntime` main chain.
 ```
 
-v4.4 之后的下一步不应该再把本文扩大成第二套运lines时，而应该进入：
+The next step after v4.4 should not be to expand this document into a second runtime, but to enter:
 
 ```text
 OAPEFLIR v4.4 Implementation Addendum
 ```
 
-重点补：
+Key supplements:
 
 ```text
-data库table结构
+Database table structure
 Zod Schema
 TypeScript interface
-Status迁移测试用例
-Graph Scheduler 算法伪code
-SideEffect Adapter 合约
-Reconciliation Worker 设计
-Replay Engine 设计
+State transition test cases
+Graph Scheduler algorithm pseudocode
+SideEffect Adapter contracts
+Reconciliation Worker design
+Replay Engine design
 Evaluation Gate Runner
 CI Test Matrix
 ```
 
+---
 
 ## v4.3 Canonical Compatibility Override
 
-本节修复 `platform-architecture-implementation-consistency-audit.md` 中 F-1 至 F-25 的 OAPEFLIR spec 偏差。Root cause: 这份 spec 在一iterations文档并版中同时保留了“旧的独立 OAPEFLIR runtime 草案”和“后补的 Harness 收敛段落”，导致前半部继续把 OAPEFLIR 写成执lines权威，后半部又声明 Harness 才is执lines权威，正文内部自相矛盾。
+This section fixes OAPEFLIR spec deviations F-1 through F-25 in `platform-architecture-implementation-consistency-audit.md`. The root cause is that this spec simultaneously retained "old independent OAPEFLIR runtime draft" and "later补充的 Harness convergence paragraphs" during a document merge, causing the first half to continue treating OAPEFLIR as execution authority while the second half declared Harness as execution authority, making the main text internally contradictory.
 
-本iterations正文修复后的directly落点：
+Direct fixes after this main text repair:
 
-- `§0 / §2 / §3 / §42`：OAPEFLIR 改回受控认知/治理语义，`HarnessRuntime` is唯一执lines入口。
-- `§4`：删除把 `OapeflirRun` 当作权威运lines实体的写法，改为 `HarnessRun` truth + `OapeflirTraceProjection` 投影。
-- `§5`：`NodeRun` 字段vsStatus机收敛到 Harness/RuntimeStateMachine 权威语义，不再uses `compensating / compensated` 作为节点Status。
-- `§7`：`PlanNode.type` 改为 `kind`，`generatedBy` 删除 `repair_worker`。
-- `§14`：事件分层改为 `platform.*` facts vs `oapeflir.view.* / oapeflir.rationale.*` projections。
-- `§15 / §16 / §23 / §25 / §26 / §30`：budget、副作用、guardrail、runtime profile、HITL、策略优先级都明确收敛到 Harness/P2/P5 正式边界。
-- `§19 / §20 / §22 / §24`：prompt 角色、replay 方式、memory scope、decision bundle 收敛到现lines canonical contract。
-- `§34 / §35 / §39 / §40`：错误码、指标、实现目录、落地路线改为 `PLATFORM.*`、`harness.*`、Harness 中心目录vs `Ring 1/2/3`。
+- `§0 / §2 / §3 / §42`: OAPEFLIR is changed back to controlled cognitive/governance semantics, `HarnessRuntime` is the sole execution entry.
+- `§4`: Deleted treating `OapeflirRun` as an authoritative run entity, changed to `HarnessRun` truth + `OapeflirTraceProjection` projection.
+- `§5`: `NodeRun` fields and state machine converged to Harness/RuntimeStateMachine authoritative semantics, no longer using `compensating / compensated` as node states.
+- `§7`: `PlanNode.type` changed to `kind`, `generatedBy` deleted `repair_worker`.
+- `§14`: Event hierarchy changed to `platform.*` facts and `oapeflir.view.* / oapeflir.rationale.*` projections.
+- `§15 / §16 / §23 / §25 / §26 / §30`: Budget, side effects, guardrail, runtime profile, HITL, and policy priority all clearly converged to Harness/P2/P5 formal boundaries.
+- `§19 / §20 / §22 / §24`: Prompt role, replay method, memory scope, and decision bundle converged to current canonical contracts.
+- `§34 / §35 / §39 / §40`: Error codes, metrics, implementation directories, and implementation roadmap changed to `PLATFORM.*`, `harness.*`, Harness-centric directories and `Ring 1/2/3`.
 
-补充Description：HarnessRuntime is唯一执lines入口。
-补充Description：OAPEFLIR 只产生 `oapeflir.view.*` vs `oapeflir.rationale.*` 这class投影/解释事件，不产生 execution truth。
+Supplementary note: HarnessRuntime is the sole execution entry.
+Supplementary note: OAPEFLIR only produces `oapeflir.view.*` and `oapeflir.rationale.*` projection/explanation events, not execution truth.
 
-逐项审计闭环：
+Item-by-item audit closure:
 
-- F-1: 删除 “OAPEFLIR runtime directly驱动执lines” 叙述，统一为 `HarnessRuntime` is唯一执lines入口。
-- F-2: 删除把 `OapeflirRun` 当作运lines truth 的defines，统一为 `HarnessRun` truth。
-- F-3: 将 OAPEFLIR 自身定位为认知/规划/评估循环，而非执linesStatus机。
-- F-4: 将执lines完成、failed、补偿等终态归回 `HarnessRun` / `NodeRun` / `NodeAttemptReceipt`。
-- F-5: 将节点权威Status收敛到 canonical `NodeRun.status`，移除 `compensating / compensated`。
-- F-6: 将编排输出改为 `PlanGraphBundle` / graph patch，而非 OAPEFLIR 私有可变执lines图。
-- F-7: 将 `PlanNode.type` 收敛为 `kind`，避免旧 spec vs现linescode字段漂移。
-- F-8: 删除 `generatedBy=repair_worker` 这class旧执lines耦合来源，保留现lines生成来源语义。
-- F-9: 将 budget reservation 放回 Harness / billing / state-evidence 权威链路。
-- F-10: 将 side effect receipt / reconcile 放回 execution plane vs state-evidence plane。
-- F-11: 将 guardrail block / allow / escalate 的最终裁决边界放回 P2/P3/P5。
-- F-12: 将 runtime profile 约束收敛到 Harness runtime profile，而非 OAPEFLIR 私有 profile。
-- F-13: 将 HITL / approval timeout / escalation 统一到现lines approval-and-hitl contract。
-- F-14: 将 prompt role 和 system / user / tool 语义改为vs model gateway / prompt engine 一致。
-- F-15: 将 replay 语义改为based on事实事件vs projection rebuild，而不is OAPEFLIR 自lines回放 execution。
-- F-16: 将 memory scope 绑定回 canonical memory / knowledge boundary contract。
-- F-17: 将 decision bundle、evidence refs、rationale refs 改为现lines evidence 对象模型。
-- F-18: 将事件分层改为 `platform.*` facts vs `oapeflir.view.*` / `oapeflir.rationale.*` projections。
-- F-19: 明确 OAPEFLIR 不写 execution truth，不directly发布 task / workflow / execution terminal facts。
-- F-20: 将错误码前缀统一为 `PLATFORM.*` / `HARNESS.*` 权威命名，移除 spec 私有枚举。
-- F-21: 将 metrics / observability 指标前缀统一到 `harness.*` vs平台观测命名。
-- F-22: 将实现目录指向 Harness / orchestration / contracts 当前真实code位置。
-- F-23: 将 rollout / remediation 路线图收敛到 `Ring 1 / Ring 2 / Ring 3`。
-- F-24: 明确 OAPEFLIR vs execution plane 的边界is “生成提案 / 投影 / rationale”，不is “directly执lines”。
-- F-25: 明确本 spec 任何 legacy OAPEFLIR execution Descriptiononly可作为历史兼容Background，不再作为实现依据。
+- F-1: Deleted "OAPEFLIR runtime directly drives execution" narrative, unified to `HarnessRuntime` as the sole execution entry.
+- F-2: Deleted treating `OapeflirRun` as run truth, unified to `HarnessRun` truth.
+- F-3: Changed OAPEFLIR's own positioning to cognitive/planning/evaluation loop, not execution state machine.
+- F-4: Execution completion, failure, compensation and other terminal states are returned to `HarnessRun` / `NodeRun` / `NodeAttemptReceipt`.
+- F-5: Node authoritative state converged to canonical `NodeRun.status`, removed `compensating / compensated`.
+- F-6: Orchestration output changed to `PlanGraphBundle` / graph patch, not OAPEFLIR's private mutable execution graph.
+- F-7: `PlanNode.type` converged to `kind`, avoiding old spec and current code field drift.
+- F-8: Deleted `generatedBy=repair_worker`这类旧执行耦合来源, retained current generation source semantics.
+- F-9: Budget reservation is placed back in Harness / billing / state-evidence authoritative chain.
+- F-10: Side effect receipt / reconcile is placed back in execution plane and state-evidence plane.
+- F-11: Guardrail block / allow / escalate final adjudication boundary is placed back in P2/P3/P5.
+- F-12: Runtime profile constraint converged to Harness runtime profile, not OAPEFLIR's private profile.
+- F-13: HITL / approval timeout / escalation unified to current approval-and-hitl contract.
+- F-14: Prompt role and system / user / tool semantics changed to consistent with model gateway / prompt engine.
+- F-15: Replay semantics changed to based on factual events and projection rebuild, not OAPEFLIR self-replaying execution.
+- F-16: Memory scope bound back to canonical memory / knowledge boundary contract.
+- F-17: Decision bundle, evidence refs, and rationale refs changed to current evidence object model.
+- F-18: Event hierarchy changed to `platform.*` facts and `oapeflir.view.*` / `oapeflir.rationale.*` projections.
+- F-19: Explicitly stated that OAPEFLIR does not write execution truth and does not directly publish task / workflow / execution terminal facts.
+- F-20: Error code prefix unified to `PLATFORM.*` / `HARNESS.*` authoritative naming, removed spec private enumerations.
+- F-21: Metrics / observability metric prefix unified to `harness.*` and platform observability naming.
+- F-22: Implementation directory pointing to Harness / orchestration / contracts current real code locations.
+- F-23: Rollout / remediation roadmap converged to `Ring 1 / Ring 2 / Ring 3`.
+- F-24: Explicitly stated that the boundary between OAPEFLIR and execution plane is "generating proposals / projection / rationale", not "direct execution".
+- F-25: Explicitly stated that any legacy OAPEFLIR execution description in this spec is only for historical compatibility background, no longer serving as implementation basis.

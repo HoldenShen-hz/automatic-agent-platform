@@ -1,44 +1,44 @@
 # DriftAlert Contract
 
-## 1. 范围
+## 1. Scope
 
-本 contract defines `§63` 的漂移告警结构和路由规范。
+This contract defines drift alert structure and routing specifications for `§63`.
 
-## 2. Canonical 对象
+## 2. Canonical Objects
 
 - `DriftAlert`
 - `DriftAlertRouting`
 - `DriftAlertSeverity`
 
-## 3. `DriftAlert` 最小字段
+## 3. `DriftAlert` Minimum Fields
 
 - `alert_id`
 - `detector_id`
 - `drift_type` — input_drift | output_drift | behavioral_drift | quality_drift
 - `severity` — SEV2 | SEV3 | SEV4
-- `confidence` — 置信度 (0-1)
-- `subject_id` — 被检测对象 ID
+- `confidence` — confidence level (0-1)
+- `subject_id` — ID of the detected object
 - `subject_type` — agent | workflow | task
-- `details` — 漂移详情
-- `recommended_actions` — Recommendation操作列table
-- `triggered_at` — 触发time
+- `details` — drift details
+- `recommended_actions` — list of recommended actions
+- `triggered_at` — trigger timestamp
 
-## 4. `DriftAlertRouting` 规则
+## 4. `DriftAlertRouting` Rules
 
-| Severity | 路由目标 | handle时限 |
+| Severity | Routing Target | Handling Time Limit |
 |----------|----------|----------|
-| SEV2 | on-call + 自动response | 5 分钟 |
-| SEV3 | dashboard + 日志 | 30 分钟 |
-| SEV4 | 日志record | 24 小时 |
+| SEV2 | on-call + automatic response | 5 minutes |
+| SEV3 | dashboard + logs | 30 minutes |
+| SEV4 | log recording | 24 hours |
 
-## 5. 规则
+## 5. Rules
 
-- Alert 必须携带 recommended_actions
-- SEV2 及以上必须触发自动response流程
-- Alert for deduplicationbased on subject_id + drift_type + time窗口
+- Alerts must carry recommended_actions
+- SEV2 and above must trigger automatic response flow
+- Alert deduplication is based on subject_id + drift_type + time window
 
-## 6. 测试要求
+## 6. Test Requirements
 
-- unit：告警生成、for deduplication、路由
-- integration：告警 -> response -> 闭环
-- contract：severity vs routing 映射校验
+- unit: alert generation, deduplication, routing
+- integration: alert -> response -> closure
+- contract: severity vs. routing mapping validation

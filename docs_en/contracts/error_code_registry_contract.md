@@ -1,86 +1,116 @@
-# Error Code Registry
+# Error Code Registry Contract
+
+> Companion note:
+> The stable error code number space uses `error_code_registry_contract.md` as the contract authority.
+> This document is retained as the registry body for implementers and readers, and no second SOT is maintained with it.
 
 ---
 
-## OAPEFLIR 关联
+## OAPEFLIR Association
 
-本 contract 参vs OAPEFLIR 八阶段循环中的以下阶段：
+This contract participates in the following stages of the OAPEFLIR eight-stage cycle:
 
-- **Observe**：信号采集vs聚合
-- **Assess**：执lines前评估vs风险判断
-- **Plan**：任务分解vs DAG 构建
-- **Execute**：步骤执linesvs容错
-- **Feedback**：信号收集vs预handle
-- **Learn**：模式检测vs知识提取
-- **Improve**：改进候选评估vs rollout
-- **Release**：受控发布vs回滚
+- **Observe**: Signal collection and aggregation
+- **Assess**: Pre-execution assessment and risk judgment
+- **Plan**: Task decomposition and DAG construction
+- **Execute**: Step execution and fault tolerance
+- **Feedback**: Signal collection and preprocessing
+- **Learn**: Pattern detection and knowledge extraction
+- **Improve**: Improvement candidate evaluation and rollout
+- **Release**: Controlled release and rollback
 
 ---
 
-## 1. 范围
+## 1. Scope
 
-本文件defines当前阶段允许uses的稳定错误码注册table。
+This file defines the stable `AppError.code` registry permitted for use in the current phase.
 
-规则：
+Rules:
 
-- 新错误码进入实现前，必须先登记到这里。
-- 错误码一旦进入实现，不得随意改名。
+- New external `AppError.code` must be registered here before entering implementation.
+- External error codes that have entered implementation must not be freely renamed.
+- Startup inspection, internal assertions, and one-time migration diagnostics may retain local snake_case/colon style, but must not impersonate external stable API/SDK/runtime contract error codes.
 
-## 2. 命名规则
+## 2. Naming Convention
 
-统一格式：
+External stable error codes use unified format:
 
 - `<category>.<reason>`
 
-示例：
+Examples:
 
 - `validation.invalid_input`
 - `provider.rate_limited`
+- `runtime.recovery_required`
 
-## 3. 基线错误码
+## 3. Baseline Error Codes
 
-| code | category | retryable | Description |
-|---|-------|--------| --- |
-| `validation.invalid_input` | `validation` | `false` | 输入不合法或缺字段 |
-| `validation.schema_mismatch` | `validation` | `false` | workflow 输入输出不兼容 |
-| `policy.approval_required` | `policy` | `false` | 必须人工审批 |
-| `policy.action_denied` | `policy` | `false` | 策略显式拒绝 |
-| `auth.permission_denied` | `auth` | `false` | permission不足 |
-| `budget.budget_exceeded` | `budget` | `false` | budgetexceeds限 |
-| `budget.quota_exceeded` | `budget` | `false` | 配额exceeds限 |
-| `provider.rate_limited` | `provider` | `true` | provider 429 或等价限流 |
-| `provider.temporary_unavailable` | `provider` | `true` | provider 暂时不可用 |
-| `provider.compaction_unavailable` | `provider` | `true` | compaction / summarize provider 临时不可用 |
-| `tool.execution_failed` | `tool` | `false` | 工具执linesfailed且不可自动重试 |
-| `tool.temporary_io_error` | `tool` | `true` | 工具遇到临时 IO Issue |
-| `tool.edit_target_not_found` | `tool` | `false` | edit / patch 未找到目标 |
-| `tool.edit_multiple_candidates` | `tool` | `false` | edit / patch 命中多个候选 |
-| `tool.edit_similarity_too_low` | `tool` | `false` | edit / patch 模糊匹配相似度不足 |
-| `tool.file_lock_conflict` | `tool` | `true` | 文件锁conflicts，可等待后重试 |
-| `tool.file_lock_timeout` | `tool` | `true` | 文件锁等待timeout |
-| `sandbox.path_denied` | `sandbox` | `false` | 访问路径exceeds出白名单 |
-| `sandbox.network_denied` | `sandbox` | `false` | network访问被策略拒绝 |
-| `sandbox.exec_denied` | `sandbox` | `false` | 进程执lines被沙箱或策略拒绝 |
-| `sandbox.isolation_broken` | `sandbox` | `false` | 隔离约束no法保证 |
-| `storage.write_failed` | `storage` | `true` | 写storagefailed |
-| `workflow.dependency_unavailable` | `workflow` | `true` | 上游relies on暂不可用 |
-| `runtime.recovery_required` | `runtime` | `true` | 需要恢复流程 |
-| `runtime.stale_lock_detected` | `runtime` | `true` | 检测到过期锁或陈旧运lines |
-| `runtime.context_overflow` | `runtime` | `true` | 上下文exceeds限需裁剪或压缩 |
-| `tenant.not_found` | `tenant` | `false` | 找不到租户或工作区归属 |
-| `tenant.boundary_violation` | `tenant` | `false` | 访问跨租户边界 |
-| `tenant.workspace_mismatch` | `tenant` | `false` | workspace vs tenant / org 归属inconsistent |
-| `external.service_unavailable` | `external` | `true` | 外部系统暂不可用 |
-| `internal.unexpected_error` | `internal` | `false` | 未分class内部错误 |
+| code | category | retryable | description |
+| --- | --- | --- | --- |
+| `validation.invalid_input` | `validation` | `false` | Input is invalid or missing required fields |
+| `validation.schema_mismatch` | `validation` | `false` | Workflow input/output incompatible |
+| `policy.approval_required` | `policy` | `false` | Human approval required |
+| `policy.action_denied` | `policy` | `false` | Policy explicitly denied |
+| `auth.permission_denied` | `auth` | `false` | Insufficient permissions |
+| `mission.not_found` | `mission` | `false` | Mission does not exist |
+| `mission.member_not_found` | `mission` | `false` | Mission member does not exist |
+| `mission.if_match_required` | `mission` | `false` | Mission write operation missing `If-Match` |
+| `mission.version_conflict` | `mission` | `false` | Mission version conflict |
+| `budget.budget_exceeded` | `budget` | `false` | Budget exceeded |
+| `budget.quota_exceeded` | `budget` | `false` | Quota exceeded |
+| `api.not_found` | `api` | `false` | API route does not exist |
+| `api.invalid_message` | `api` | `false` | WebSocket/channel message is invalid |
+| `api.unknown_message` | `api` | `false` | WebSocket/channel message type unknown |
+| `api.payload_too_large` | `api` | `false` | API request body too large |
+| `api.origin_forbidden` | `api` | `false` | API origin not in whitelist |
+| `api.prompt_bundle_not_found` | `api` | `false` | Prompt bundle does not exist |
+| `api.rate_limit_exceeded` | `api` | `true` | API rate limit triggered |
+| `api.server_shutting_down` | `api` | `true` | Service is shutting down |
+| `api.duplicate_request` | `api` | `false` | API detected duplicate request body or request ID |
+| `api.idempotency_key_required` | `api` | `false` | Idempotency key missing |
+| `api.idempotency_key_conflict` | `api` | `false` | Idempotency key conflicts with historical request |
+| `api.idempotency_request_in_flight` | `api` | `true` | Request with same idempotency key still being processed |
+| `api.idempotency_cached_response_too_large` | `api` | `true` | Idempotency cached response too large for safe replay |
+| `api.idempotency_cached_response_corrupt` | `api` | `true` | Idempotency cache corrupted |
+| `api.openapi_auth_required` | `api` | `false` | OpenAPI documentation access requires authentication |
+| `api.unsupported_media_type` | `api` | `false` | Request media type not supported |
+| `provider.rate_limited` | `provider` | `true` | Provider 429 or equivalent rate limit |
+| `provider.temporary_unavailable` | `provider` | `true` | Provider temporarily unavailable |
+| `provider.compaction_unavailable` | `provider` | `true` | Compaction/summarize provider temporarily unavailable |
+| `tool.execution_failed` | `tool` | `false` | Tool execution failed and cannot be automatically retried |
+| `tool.temporary_io_error` | `tool` | `true` | Tool encountered temporary IO issue |
+| `tool.edit_target_not_found` | `tool` | `false` | Edit/patch target not found |
+| `tool.edit_multiple_candidates` | `tool` | `false` | Edit/patch matched multiple candidates |
+| `tool.edit_similarity_too_low` | `tool` | `false` | Edit/patch fuzzy match similarity insufficient |
+| `tool.file_lock_conflict` | `tool` | `true` | File lock conflict, can wait and retry |
+| `tool.file_lock_timeout` | `tool` | `true` | File lock wait timeout |
+| `sandbox.path_denied` | `sandbox` | `false` | Access path outside whitelist |
+| `sandbox.network_denied` | `sandbox` | `false` | Network access denied by policy |
+| `sandbox.exec_denied` | `sandbox` | `false` | Process execution denied by sandbox or policy |
+| `sandbox.isolation_broken` | `sandbox` | `false` | Isolation constraint cannot be guaranteed |
+| `storage.write_failed` | `storage` | `true` | Storage write failed |
+| `workflow.dependency_unavailable` | `workflow` | `true` | Upstream dependency temporarily unavailable |
+| `runtime.recovery_required` | `runtime` | `true` | Recovery process required |
+| `runtime.stale_lock_detected` | `runtime` | `true` | Stale lock or stale execution detected |
+| `runtime.context_overflow` | `runtime` | `true` | Context overflow, requires trimming or compression |
+| `contract.legacy_surface_used` | `contract` | `false` | Accessed legacy contract surface retained for compatibility only |
+| `contract.deprecated_surface_used` | `contract` | `false` | Accessed deprecated contract surface, migration to canonical surface required |
+| `tenant.not_found` | `tenant` | `false` | Tenant or workspace归属 not found |
+| `tenant.boundary_violation` | `tenant` | `false` | Access across tenant boundary |
+| `tenant.workspace_mismatch` | `tenant` | `false` | Workspace归属 inconsistent with tenant/org |
+| `external.service_unavailable` | `external` | `true` | External system temporarily unavailable |
+| `internal.unexpected_error` | `internal` | `false` | Uncategorized internal error |
 
-## 4. 特殊映射规则
+## 4. Special Mapping Rules
 
-- provider 的 `429` 映射到 `provider.rate_limited`
-- provider 的 `5xx` 映射到 `provider.temporary_unavailable`
-- 文件锁获取conflicts映射到 `tool.file_lock_conflict`
-- 文件锁等待timeout映射到 `tool.file_lock_timeout`
+- Provider `429` maps to `provider.rate_limited`
+- Provider `5xx` maps to `provider.temporary_unavailable`
+- File lock acquisition conflict maps to `tool.file_lock_conflict`
+- File lock wait timeout maps to `tool.file_lock_timeout`
+- Historical compatibility alert `AA_LEGACY_CONTRACT` maps to `contract.legacy_surface_used`
+- Historical compatibility alert `AA_DEPRECATED_CONTRACT` maps to `contract.deprecated_surface_used`
+- WebSocket/channel message validation failure maps to `api.invalid_message`
 
-## 5. 补充规则
+## 5. Supplementary Rules
 
-- provider 子码至少细分：`provider.context_window_exceeded`、`provider.model_not_available`、`provider.output_truncated`、`provider.capability_unsupported`。
-- enterprise 专项错误码至少预留：`enterprise.environment_unhealthy`、`enterprise.release_guard_failed`、`enterprise.audit_export_denied`。
+- Extended sub-codes for provider, tool, and enterprise may be appended to the registry after implementation; unimplemented entries must not be marked as canonical in advance.

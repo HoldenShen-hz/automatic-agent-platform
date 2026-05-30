@@ -2,45 +2,45 @@
 
 ---
 
-## OAPEFLIR 关联
+## OAPEFLIR Association
 
-本 contract 参vs OAPEFLIR 八阶段循环中的以下阶段：
+This contract participates in the following stages of the OAPEFLIR eight-stage cycle:
 
-- **Observe**：信号采集vs聚合
-- **Assess**：执lines前评估vs风险判断
-- **Plan**：任务分解vs DAG 构建
-- **Execute**：步骤执linesvs容错
-- **Feedback**：信号收集vs预handle
-- **Learn**：模式检测vs知识提取
-- **Improve**：改进候选评估vs rollout
-- **Release**：受控发布vs回滚
+- **Observe**: Signal collection and aggregation
+- **Assess**: Pre-execution assessment and risk judgment
+- **Plan**: Task decomposition and DAG construction
+- **Execute**: Step execution and fault tolerance
+- **Feedback**: Signal collection and preprocessing
+- **Learn**: Pattern detection and knowledge extraction
+- **Improve**: Improvement candidate evaluation and rollout
+- **Release**: Controlled release and rollback
 
 ---
 
-## 1. 范围
+## 1. Scope
 
-本 contract defines测试环境下globallysingleton、cache、注册table和长生命cycle运lines对象的 reset 规则。
+This contract defines reset rules for global singletons, caches, registries, and long-lifecycle runtime objects in test environments.
 
-相关文档：
+Related documents:
 
 - `project_structure_contract.md`
 - `context_propagation_contract.md`
 - `runtime_repository_and_migration_contract.md`
 
-## 2. 目标
+## 2. Objectives
 
-测试 reset 体系至少要保证：
+The test reset system must at minimum guarantee:
 
-- 单元测试、集成测试之间不会互相污染globallyStatus。
-- 每个测试运lines前都能回到可预测的最小干净环境。
-- reset 能力is正式 API，而不is零散私有 hack。
+- Unit tests and integration tests do not pollute each other's global state.
+- Each test run starts from a predictable minimal clean environment.
+- Reset capability is a formal API, not scattered private hacks.
 
-## 3. 必须supported reset 的对象
+## 3. Objects That Must Support Reset
 
-Phase 1a 最少includes：
+Phase 1a minimum includes:
 
 - runtime registry / active execution map
-- SQLite connectvs内存cache
+- SQLite connections and in-memory cache
 - provider client cache / health cache
 - tool registry / plugin registry
 - event bus listeners / in-memory queues
@@ -48,9 +48,9 @@ Phase 1a 最少includes：
 - cost tracker / quota counters
 - AsyncLocalStorage test harness
 
-## 4. 命名vs暴露规则
+## 4. Naming and Exposure Rules
 
-Recommendation命名：
+Recommended naming:
 
 - `_resetRuntimeForTesting()`
 - `_resetStorageForTesting()`
@@ -59,22 +59,22 @@ Recommendation命名：
 - `_resetToolRegistryForTesting()`
 - `_resetConfigForTesting()`
 
-规则：
+Rules:
 
-- reset API 必须显式带 `ForTesting` 后缀。
-- defaults toonly允许在 `NODE_ENV=test` 下call。
-- reset lines为必须幂等，多iterationscall结果一致。
+- Reset APIs must explicitly carry the `ForTesting` suffix.
+- By default, only allowed to be called under `NODE_ENV=test`.
+- Reset behavior must be idempotent; multiple calls produce consistent results.
 
 ## 5. `TestResetReport`
 
-| 字段 | class型 | Description |
-|---|-------|--------|
-| `component` | `string` | 被 reset 的组件 |
-| `reset_applied` | `boolean` | isnosuccess |
-| `cleared_items` | `number?` | 清理count |
-| `warnings` | `string[]` | 异常告警 |
+| Field | Type | Description |
+| --- | --- | --- |
+| `component` | `string` | Component being reset |
+| `reset_applied` | `boolean` | Whether reset succeeded |
+| `cleared_items` | `number?` | Number of items cleared |
+| `warnings` | `string[]` | Anomaly warnings |
 
-## 6. globally测试入口
+## 6. Global Test Entry
 
 ```mermaid
 flowchart TD
@@ -86,35 +86,35 @@ flowchart TD
     F --> G["run test"]
 ```
 
-规则：
+Rules:
 
-- 测试 setup 应统一call总入口，而不is每个测试文件each拼凑 reset 顺序。
-- reset failed应directly让测试failed，而不is静默忽略。
+- Test setup should uniformly call the main entry point, not each test file assembling reset order independently.
+- Reset failures should directly fail the test, not silently ignore them.
 
-## 7. 临时资源规则
+## 7. Temporary Resource Rules
 
-- 临时 SQLite data库每个 test file 或 test case 应可隔离创建。
-- 临时 artifact 目录应在 teardown 清理。
-- 临时 network mock / fake gateway state 也应纳入 reset 流程。
+- Temporary SQLite databases should be isolatable per test file or test case.
+- Temporary artifact directories should be cleaned up in teardown.
+- Temporary network mocks / fake gateway states should also be included in the reset flow.
 
-## 8. vs实现code的边界
+## 8. Boundary with Production Code
 
-- reset 只服务测试，不得成为生产恢复机制的替代。
-- 生产code中的 shutdown / cleanup vs测试 reset 可共享底层逻辑，但对外入口应分开。
+- Reset serves testing only, and must not become a replacement for production recovery mechanisms.
+- Shutdown/cleanup in production code and test reset may share underlying logic, but external entry points should be separate.
 
-## 9. Phase 边界
+## 9. Phase Boundaries
 
-Phase 1a 做：
+Phase 1a does:
 
-- 关键singleton reset API
-- 测试 setup 统一call
-- `NODE_ENV=test` 守卫
+- Key singleton reset APIs
+- Uniform test setup calls
+- `NODE_ENV=test` guard
 
-Phase 1b 做：
+Phase 1b does:
 
-- 更多 integration / e2e 共享 harness
-- gateway / orchestration 测试的额外 reset 入口
+- More integration/e2e shared harnesses
+- Additional reset entry points for gateway/orchestration testing
 
-## 10. 收口Conclusion
+## 10. Conclusion
 
-没有统一 reset 体系的测试，很快就会从“回归保护”退化成“偶尔via的随机脚本”；这份 contract 就is把测试隔离边界正式冻结下来。
+Tests without a unified reset system will quickly degrade from "regression protection" to "random scripts that occasionally pass"; this contract formally freezes the test isolation boundary.

@@ -1,15 +1,15 @@
 # Connector Framework Contract
 
 > Lifecycle note:
-> connector 的 `registered/configured/verified/enabled/disabled/revoked` is connector 自身生命cycle，
-> 不替代 `HarnessRun` / `NodeRun` 的 truth lifecycle。运lines时阶段对齐以 `harness_run_lifecycle_contract.md`
-> 和 `lifecycle_and_termination_contract.md` 为准。
+> Connector's `registered/configured/verified/enabled/disabled/revoked` is the connector's own lifecycle,
+> and does not replace `HarnessRun` / `NodeRun` truth lifecycle. Runtime stage alignment follows `harness_run_lifecycle_contract.md`
+> and `lifecycle_and_termination_contract.md`.
 
-## 1. 范围
+## 1. Scope
 
-本 contract defines `§57` 的connect器抽象、生命cycle、健康检查vs Connector SDK 边界。
+This contract defines `§57`'s connector abstraction, lifecycle, health check, and Connector SDK boundaries.
 
-## 2. Canonical 对象
+## 2. Canonical Objects
 
 - `ConnectorManifest`
 - `ConnectorBinding`
@@ -17,7 +17,7 @@
 - `ConnectorExecutionResult`
 - `ConnectorHealthReport`
 
-## 3. `ConnectorManifest` 最小字段
+## 3. `ConnectorManifest` Minimum Fields
 
 - `connector_id`
 - `provider`
@@ -27,7 +27,7 @@
 - `supported_events`
 - `lifecycle_state`
 
-## 4. `ConnectorExecutionRequest` 最小字段
+## 4. `ConnectorExecutionRequest` Minimum Fields
 
 - `connector_id`
 - `binding_id`
@@ -39,7 +39,7 @@
 - `timeout_ms`
 - `idempotency_key`
 
-## 5. `ConnectorExecutionResult` 最小字段
+## 5. `ConnectorExecutionResult` Minimum Fields
 
 - `connector_id`
 - `binding_id`
@@ -52,7 +52,7 @@
 - `execution_duration_ms`
 - `idempotency_key`
 
-## 6. 生命cycle
+## 6. Lifecycle
 
 - `registered`
 - `configured`
@@ -61,14 +61,14 @@
 - `disabled`
 - `revoked`
 
-## 7. 规则
+## 7. Rules
 
-- connect器只能via公共 SDK vs平台交互。
-- connect器key、配额vsnetwork能力必须受 policy / secret management 约束。
-- connect器健康检查failed不得静默降级为success。
+- Connectors can only interact with the platform through public SDK.
+- Connector keys, quotas, and network capabilities must be constrained by policy / secret management.
+- Connector health check failures must not silently degrade to success.
 
-## 8. 测试要求
+## 8. Testing Requirements
 
-- unit：manifest validation、binding resolution、health mapping
-- integration：connector runtime and callback path
-- contract：未验证connect器不得接收生产事件
+- unit: manifest validation, binding resolution, health mapping
+- integration: connector runtime and callback path
+- contract: unverified connectors must not receive production events

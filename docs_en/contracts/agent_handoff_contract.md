@@ -1,12 +1,12 @@
 # Agent Handoff And Delegation Contract
 
-> v4.3 canonical contract。覆盖 `DelegationRequest` / `DelegationReceipt` / `ACPMessage` / `AgentHandoff`。
+> v4.3 canonical contract. Covers `DelegationRequest` / `DelegationReceipt` / `ACPMessage` / `AgentHandoff`.
 
-## 1. 范围
+## 1. Scope
 
-本 contract defines多 Agent 委托、协作消息和 handoff payload 的权威边界。它补齐 architecture §19、ADR-019 vs当前 runtime 实现之间缺失的专属 contract。
+This contract defines the authoritative boundaries for multi-Agent delegation, collaboration messages, and handoff payloads. It fills the missing dedicated contract between architecture §19, ADR-019, and current runtime implementation.
 
-相关实现：
+Related implementations:
 
 - `src/platform/contracts/delegation-request/index.ts`
 - `src/platform/five-plane-orchestration/agent-delegation/delegation-types.ts`
@@ -16,139 +16,139 @@
 
 ## 2. DelegationRequest
 
-最小字段：
+Minimum fields:
 
-| 字段 | class型 | Description |
-|---|-------|--------|
-| `requestId` | `string` | 委托request ID |
-| `taskId` | `string` | 父任务或父运lines上下文中的任务锚点 |
-| `fromAgentId` | `string` | 父 agent |
-| `toAgentId` | `string?` | 目标 agent；若为空则必须uses capability 路由 |
-| `capabilityRef` | `string?` | 能力目标references用 |
-| `priority` | `low \| normal \| high \| critical` | 委托优先级 |
-| `reason` | `string` | 委托原因 |
-| `contextRef` | `string?` | 上下文references用 |
-| `tenantId` | `string?` | 租户 |
-| `createdAt` | `timestamp` | 创建time |
+| Field | Type | Description |
+| --- | --- | --- |
+| `requestId` | `string` | Delegation request ID |
+| `taskId` | `string` | Parent task or task anchor in parent run context |
+| `fromAgentId` | `string` | Parent agent |
+| `toAgentId` | `string?` | Target agent; if empty, capability routing must be used |
+| `capabilityRef` | `string?` | Capability target reference |
+| `priority` | `low \| normal \| high \| critical` | Delegation priority |
+| `reason` | `string` | Delegation reason |
+| `contextRef` | `string?` | Context reference |
+| `tenantId` | `string?` | Tenant |
+| `createdAt` | `timestamp` | Creation time |
 
-规则：
+Rules:
 
-- `toAgentId` vs `capabilityRef` 至少一者存在。
-- `DelegationRequest` 只Description父级意图，不table示permission已授予。
-- 新委托不得directly复制父级全部permission，必须via过子集收窄。
+- `toAgentId` and `capabilityRef` must have at least one present.
+- `DelegationRequest` only describes parent intent; it does not indicate permissions have been granted.
+- New delegation must not directly copy all parent permissions; it must go through subset narrowing.
 
 ## 3. DelegationReceipt
 
-`DelegationReceipt` 对齐当前 runtime `DelegationResult` / `DelegationHandle`。
+`DelegationReceipt` aligns with current runtime `DelegationResult` / `DelegationHandle`.
 
-最小字段：
+Minimum fields:
 
-| 字段 | class型 | Description |
-|---|-------|--------|
-| `delegationId` | `string` | 委托 ID |
-| `parentAgentId` | `string` | 父 agent |
-| `childAgentId` | `string` | 子 agent |
-| `depth` | `number` | 当前委托深度 |
-| `status` | `pending \| pending_approval \| discovery \| bid \| awarded \| active \| completed \| failed \| cancelled \| expired \| timed_out` | 委托Status |
-| `correlationId` | `string` | 关联链 |
-| `createdAt` | `timestamp` | 创建time |
-| `expiresAt` | `timestamp` | 过期time |
-| `summary` | `string` | 委托摘要 |
-| `artifactRefs` | `string[]` | 产出references用 |
-| `evidenceRefs` | `string[]` | 证据references用 |
-| `trustLevel` | `number` | 结果信任分 |
-| `taintLabels` | `string[]` | data污染标签 |
-| `policyOutcome` | `string` | permission/策略收窄结果 |
-| `dataClass` | `string` | 跨委托data分class |
+| Field | Type | Description |
+| --- | --- | --- |
+| `delegationId` | `string` | Delegation ID |
+| `parentAgentId` | `string` | Parent agent |
+| `childAgentId` | `string` | Child agent |
+| `depth` | `number` | Current delegation depth |
+| `status` | `pending \| pending_approval \| discovery \| bid \| awarded \| active \| completed \| failed \| cancelled \| expired \| timed_out` | Delegation status |
+| `correlationId` | `string` | Correlation chain |
+| `createdAt` | `timestamp` | Creation time |
+| `expiresAt` | `timestamp` | Expiration time |
+| `summary` | `string` | Delegation summary |
+| `artifactRefs` | `string[]` | Output references |
+| `evidenceRefs` | `string[]` | Evidence references |
+| `trustLevel` | `number` | Result trust score |
+| `taintLabels` | `string[]` | Data taint labels |
+| `policyOutcome` | `string` | Permission/policy narrowing result |
+| `dataClass` | `string` | Cross-delegation data classification |
 
-规则：
+Rules:
 
-- `DelegationReceipt` is委托主链的权威回执；不得只返回自然语言结果而缺少 `delegationId/status/evidenceRefs`。
-- `completed/failed/cancelled/expired/timed_out` 为终态；终态后若要继续，必须新建委托。
+- `DelegationReceipt` is the authoritative receipt for the delegation main chain; natural language results alone without `delegationId/status/evidenceRefs` are not acceptable.
+- `completed/failed/cancelled/expired/timed_out` are terminal states; to continue after a terminal state, a new delegation must be created.
 
 ## 4. ACPMessage
 
-协作协议消息最小字段：
+Collaboration protocol message minimum fields:
 
-| 字段 | class型 | Description |
-|---|-------|--------|
-| `messageId` | `string` | 消息 ID |
-| `messageType` | `task_request \| task_offer \| task_accept \| task_reject \| partial_result \| escalation_request \| completion_report \| takeover_notice` | 消息class型 |
-| `correlationId` | `string` | 关联链 |
-| `parentRunId` | `string` | 父运lines锚点 |
-| `delegationId` | `string` | 委托 ID |
-| `childRunId` | `string` | 子运lines锚点 |
-| `capabilityIntersection` | `string[]` | 父子permission交集 |
-| `budgetCap` | `number` | 子运linesbudgetupper limit |
-| `dataBoundary` | `string` | data边界 |
-| `deadline` | `timestamp` | 截止time |
-| `depth` | `number` | 当前深度 |
-| `senderAgentId` | `string` | 发送方 |
-| `receiverAgentId` | `string` | 接收方 |
-| `domainId` | `string` | 域绑定 |
-| `traceId` | `string` | trace |
-| `payload` | `json` | 消息体 |
-| `timestamp` | `timestamp` | 发送time |
+| Field | Type | Description |
+| --- | --- | --- |
+| `messageId` | `string` | Message ID |
+| `messageType` | `task_request \| task_offer \| task_accept \| task_reject \| partial_result \| escalation_request \| completion_report \| takeover_notice` | Message type |
+| `correlationId` | `string` | Correlation chain |
+| `parentRunId` | `string` | Parent run anchor |
+| `delegationId` | `string` | Delegation ID |
+| `childRunId` | `string` | Child run anchor |
+| `capabilityIntersection` | `string[]` | Parent-child permission intersection |
+| `budgetCap` | `number` | Child run budget cap |
+| `dataBoundary` | `string` | Data boundary |
+| `deadline` | `timestamp` | Deadline |
+| `depth` | `number` | Current depth |
+| `senderAgentId` | `string` | Sender |
+| `receiverAgentId` | `string` | Receiver |
+| `domainId` | `string` | Domain binding |
+| `traceId` | `string` | Trace |
+| `payload` | `json` | Message body |
+| `timestamp` | `timestamp` | Send time |
 
-规则：
+Rules:
 
-- `ACPMessage` 的 canonical 运lines链锚点is `parentRunId / childRunId / delegationId`，不得回退到 `workflow_id`、`execution_id` 或其他 legacy 运lines键。
-- `completion_report` 至少应携带 `evidence`、`result_summary`、`artifacts`。
-- `capabilityIntersection`、`budgetCap`、`dataBoundary`、`deadline` ismandatory字段，不得只在comment里存在。
+- `ACPMessage`'s canonical execution chain anchor is `parentRunId / childRunId / delegationId`; regression to `workflow_id`, `execution_id`, or other legacy run keys is not allowed.
+- `completion_report` must carry at least `evidence`, `result_summary`, `artifacts`.
+- `capabilityIntersection`, `budgetCap`, `dataBoundary`, `deadline` are mandatory fields; they must not exist only in comments.
 
 ## 5. AgentHandoff
 
-`AgentHandoff` is运lines时 handoff payload；当前实现uses三层对象并按 token budget 裁剪。
+`AgentHandoff` is the runtime handoff payload; current implementation uses three-layer objects and truncates by token budget.
 
-最小字段：
+Minimum fields:
 
-| 字段 | class型 | Description |
-|---|-------|--------|
-| `handoffId` | `string` | handoff ID |
-| `taskId` | `string` | 任务锚点 |
-| `fromAgentId` | `string` | 发送方 |
-| `toAgentId` | `string` | 接收方 |
-| `createdAt` | `timestamp` | 创建time |
-| `fact.artifactRefs` | `string[]` | 事实层 artifact references用 |
-| `fact.toolCallRecords` | `ToolCallRecord[]` | 工具callrecord |
-| `state.currentPhase` | `string` | 当前阶段 |
-| `state.blockers` | `string[]` | blocker |
-| `state.remainingBudgetUsd` | `number?` | 剩余budget |
-| `state.latestSummary` | `string` | 最新摘要 |
-| `planDelta.addedSteps` | `string[]` | 新增步骤 |
-| `planDelta.removedSteps` | `string[]` | 删除步骤 |
-| `planDelta.changedSteps` | `Array<{ stepId: string; reason: string }>` | 变化步骤 |
-| `primaryRefs` | `string[]` | 主references用集合 |
+| Field | Type | Description |
+| --- | --- | --- |
+| `handoffId` | `string` | Handoff ID |
+| `taskId` | `string` | Task anchor |
+| `fromAgentId` | `string` | Sender |
+| `toAgentId` | `string` | Receiver |
+| `createdAt` | `timestamp` | Creation time |
+| `fact.artifactRefs` | `string[]` | Fact layer artifact references |
+| `fact.toolCallRecords` | `ToolCallRecord[]` | Tool call records |
+| `state.currentPhase` | `string` | Current phase |
+| `state.blockers` | `string[]` | Blockers |
+| `state.remainingBudgetUsd` | `number?` | Remaining budget |
+| `state.latestSummary` | `string` | Latest summary |
+| `planDelta.addedSteps` | `string[]` | Added steps |
+| `planDelta.removedSteps` | `string[]` | Removed steps |
+| `planDelta.changedSteps` | `Array<{ stepId: string; reason: string }>` | Changed steps |
+| `primaryRefs` | `string[]` | Primary reference set |
 
-规则：
+Rules:
 
-- 当前 runtime canonical handoff uses `AgentHandoff` 三层对象；ADR-019 的 L4 full context 仍belongs to扩展层，不得在文档里假装已成为 runtime defaults to payload。
-- handoff 的事实回链应优先references用 `NodeAttemptReceipt`、artifact 和 tool call record，而不is裸 `StepResult`。
-- serializer 的裁剪优先级必须保持 `planDelta -> state.summary/blockers -> fact.toolCallRecords -> fact.artifactRefs`。
+- Current runtime canonical handoff uses `AgentHandoff` three-layer object; ADR-019's L4 full context still belongs to the extension layer and must not bepretended to have become the runtime default payload in documentation.
+- Handoff fact lineage should prioritize referencing `NodeAttemptReceipt`, artifacts, and tool call records, rather than bare `StepResult`.
+- Serializer truncation priority must remain `planDelta -> state.summary/blockers -> fact.toolCallRecords -> fact.artifactRefs`.
 
-## 6. Depth Governance（C1-C7）
+## 6. Depth Governance (C1-C7)
 
-`§19` 的深度治理在当前 contract 中冻结为以下约束：
+Depth governance from §19 is frozen as the following constraints in this contract:
 
-- `C1 child_subset_of_parent`: 子委托permission必须is父permission子集。
-- `C2 bounded_depth`: `depth` 必须单调递增且受globally深度upper limit约束。
-- `C3 bounded_budget`: 每个子运lines必须显式声明 `budgetCap`。
-- `C4 bounded_time`: 每个子运lines必须显式声明 `deadline` / `expiresAt`。
-- `C5 bounded_data_boundary`: `dataBoundary` vs `dataClass` 必须随链条传播。
-- `C6 evidence_on_completion`: 完成回执必须contains `evidenceRefs` 或 completion payload `evidence`。
-- `C7 traceable_lineage`: `delegationId / correlationId / parentRunId / childRunId` 必须能串起整条 lineage。
+- `C1 child_subset_of_parent`: Child delegation permissions must be a subset of parent permissions.
+- `C2 bounded_depth`: `depth` must monotonically increase and be constrained by global depth limit.
+- `C3 bounded_budget`: Each child run must explicitly declare `budgetCap`.
+- `C4 bounded_time`: Each child run must explicitly declare `deadline` / `expiresAt`.
+- `C5 bounded_data_boundary`: `dataBoundary` and `dataClass` must propagate along the chain.
+- `C6 evidence_on_completion`: Completion receipt must include `evidenceRefs` or completion payload `evidence`.
+- `C7 traceable_lineage`: `delegationId / correlationId / parentRunId / childRunId` must be able to trace the entire lineage.
 
-## 7. Legacy / Deprecated 映射
+## 7. Legacy / Deprecated Mapping
 
-| 旧名 | v4.3 语义 |
+| Old Name | v4.3 Semantics |
 | --- | --- |
-| `StepResult` handoff 输入 | 只能作为 compatibility builder 输入；canonical 回链应收敛到 `NodeAttemptReceipt` / artifact / tool call record |
-| `workflow_id` / `execution_id` | legacy 运lines键；新委托/协作消息必须uses `harnessRunId/nodeRunId` 或 `parentRunId/childRunId` |
-| 自然语言 prior summary | 可以作为 `state.latestSummary` 的投影来源，但不得替代结构化 handoff / receipt |
+| `StepResult` handoff input | Can only be used as compatibility builder input; canonical lineage must converge to `NodeAttemptReceipt` / artifact / tool call record |
+| `workflow_id` / `execution_id` | Legacy run keys; new delegation/collaboration messages must use `harnessRunId/nodeRunId` or `parentRunId/childRunId` |
+| Natural language prior summary | Can be used as projection source for `state.latestSummary`, but must not replace structured handoff / receipt |
 
-## 8. 测试要求
+## 8. Testing Requirements
 
-- `DelegationRequest` 缺目标 agent vs capabilityRef 时必须拒绝。
-- `ACPMessage` 必须拒绝缺失 `delegationId/childRunId/capabilityIntersection/budgetCap/dataBoundary/deadline` 的消息。
-- handoff serializer 必须在budget受限时先裁剪 `planDelta`，而不is先丢事实层。
-- 委托完成回执必须能回链 `delegationId -> evidenceRefs / artifactRefs -> childRunId`。
+- `DelegationRequest` must reject when target agent and capabilityRef are both missing.
+- `ACPMessage` must reject messages missing `delegationId/childRunId/capabilityIntersection/budgetCap/dataBoundary/deadline`.
+- Handoff serializer must truncate `planDelta` first when budget is limited, rather than discarding fact layer first.
+- Delegation completion receipt must be able to trace lineage `delegationId -> evidenceRefs / artifactRefs -> childRunId`.

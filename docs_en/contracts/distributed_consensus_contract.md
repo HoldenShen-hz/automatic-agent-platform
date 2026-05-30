@@ -1,10 +1,10 @@
 # Distributed Consensus Contract
 
-## 1. 范围
+## 1. Scope
 
-defines跨节点一致性Decision的 canonical 对象、投票约束vsfailed语义，覆盖 leader 选举、写门禁、仲裁vs只读降级。
+Defines canonical objects, voting constraints, and failure semantics for cross-node consistent decision-making, covering leader election, write quorum, arbitration, and read-only degradation.
 
-## 2. 核心对象
+## 2. Core Objects
 
 ```typescript
 interface ConsensusEpoch {
@@ -27,9 +27,8 @@ interface ConsensusVote {
 }
 ```
 
-## 3. 约束
+## 3. Constraints
 
-- 任何权威写必须由当前 `ConsensusEpoch.leaderNodeId` 发起。
-- quorum 未满足时只能进入只读或暂停，不得双主writes。
-- `term` 单调递增；旧 term 的写request必须 fail-close。
-
+- All authoritative writes must be initiated by the current `ConsensusEpoch.leaderNodeId`.
+- When quorum is not satisfied, the system may only enter read-only or paused state; dual-master writes are prohibited.
+- `term` must monotonically increase; write requests from old terms must fail-close.

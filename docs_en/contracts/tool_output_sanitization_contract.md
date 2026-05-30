@@ -2,57 +2,57 @@
 
 ---
 
-## OAPEFLIR 关联
+## OAPEFLIR Association
 
-本 contract 参vs OAPEFLIR 八阶段循环中的以下阶段：
+This contract participates in the following stages of the OAPEFLIR eight-stage cycle:
 
-- **Observe**：信号采集vs聚合
-- **Assess**：执lines前评估vs风险判断
-- **Plan**：任务分解vs DAG 构建
-- **Execute**：步骤执linesvs容错
-- **Feedback**：信号收集vs预handle
-- **Learn**：模式检测vs知识提取
-- **Improve**：改进候选评估vs rollout
-- **Release**：受控发布vs回滚
+- **Observe**: Signal collection and aggregation
+- **Assess**: Pre-execution assessment and risk judgment
+- **Plan**: Task decomposition and DAG construction
+- **Execute**: Step execution and fault tolerance
+- **Feedback**: Signal collection and preprocessing
+- **Learn**: Pattern detection and knowledge extraction
+- **Improve**: Improvement candidate evaluation and rollout
+- **Release**: Controlled release and rollback
 
 ---
 
-## 1. 范围
+## 1. Scope
 
-本 contract defines所有外部工具输出在进入消息、日志、事件、artifact 索references前必须via过的统一净化管线。
+This contract defines the unified sanitization pipeline that all external tool outputs must pass through before entering messages, logs, events, or artifact indexes.
 
-相关文档：
+Related documents:
 
 - `tool_and_provider_execution_contract.md`
 - `gateway_streaming_contract.md`
 - `observability_contract.md`
 - `policy_engine_contract.md`
 
-## 2. 目标
+## 2. Objectives
 
-统一净化管线至少要解决：
+The unified sanitization pipeline must at minimum address:
 
-- ANSI / 控制字符污染输出
-- exceeds长输出拖垮上下文窗口
-- 凭据、token、cookie 等敏感信息泄漏
-- prompt injection 片段未标记directly流入上游总结
+- ANSI / control character contamination of output
+- Over-length output overwhelming context windows
+- Sensitive information leakage such as credentials, tokens, cookies
+- Unmarked prompt injection fragments directly flowing into upstream summaries
 
 ## 3. `SanitizedToolOutput`
 
-| 字段 | class型 | Description |
-|---|-------|--------|
-| `raw_ref` | `string?` | 原始输出references用 |
-| `sanitized_text` | `string` | 净化后的文本主体 |
-| `truncated` | `boolean` | isno截断 |
-| `redaction_count` | `number` | 脱敏iterations数 |
-| `control_chars_removed` | `number` | 清理控制字符数 |
-| `ansi_removed` | `boolean` | isno去除 ANSI |
-| `injection_risk` | `none \| low \| medium \| high` | 注入风险评级 |
-| `warnings` | `string[]` | 净化告警 |
-| `knowledge_ref` | `string?` | 若输出进入知识链，对应知识references用 |
-| `memory_ref` | `string?` | 若输出进入记忆链，对应记忆references用 |
+| Field | Type | Description |
+| --- | --- | --- |
+| `raw_ref` | `string?` | Raw output reference |
+| `sanitized_text` | `string` | Sanitized text body |
+| `truncated` | `boolean` | Whether truncated |
+| `redaction_count` | `number` | Redaction count |
+| `control_chars_removed` | `number` | Number of control characters removed |
+| `ansi_removed` | `boolean` | Whether ANSI removed |
+| `injection_risk` | `none \| low \| medium \| high` | Injection risk rating |
+| `warnings` | `string[]` | Sanitization warnings |
+| `knowledge_ref` | `string?` | If output enters knowledge chain, corresponding knowledge reference |
+| `memory_ref` | `string?` | If output enters memory chain, corresponding memory reference |
 
-## 4. 管线顺序
+## 4. Pipeline Order
 
 ```mermaid
 flowchart LR
@@ -65,81 +65,80 @@ flowchart LR
     G --> H["Persist + Return Sanitized Output"]
 ```
 
-规则：
+Rules:
 
-- 顺序不得颠倒；先脱敏再截断可避免敏感信息恰好落在保留窗口中。
-- 原始大输出可归档为 artifact，但上层 message / summary defaults to只读取净化版本。
-- 原始输出若contains高风险敏感信息，artifact 保留也必须via过访问控制vs作用域标记。
+- Order must not be reversed; redaction before truncation avoids sensitive information happening to fall in the preserved window.
+- Large raw outputs may be archived as artifacts, but upper-layer messages/summaries default to reading the sanitized version.
+- If raw output contains high-risk sensitive information, artifact retention must also go through access control and scope marking.
 
-## 5. 最小净化动作
+## 5. Minimum Sanitization Actions
 
-- 去除 ANSI 颜色码
-- 去除非法控制字符
-- 统一换lines和结尾空白
-- 针对常见凭据模式做脱敏
-- exceeds过threshold时截断并保留首尾摘要
-- 标记明显的 prompt injection 片段
+- Remove ANSI color codes
+- Remove illegal control characters
+- Normalize newlines and trailing whitespace
+- Redact common credential patterns
+- Truncate and preserve head/tail summary when exceeding threshold
+- Mark obvious prompt injection fragments
 
-## 6. 长度策略
+## 6. Length Strategy
 
-Recommendation同时维护两classthreshold：
+Recommended to maintain two threshold types simultaneously:
 
 - `stream_preview_limit_chars`
 - `persisted_message_limit_chars`
 
-规则：
+Rules:
 
-- streaming 预览可以更短，持久化摘要可以略长。
-- 被截断的正文应附带 `raw_ref` 或 artifact references用，供后续人工审查。
+- Streaming previews can be shorter; persisted summaries can be slightly longer.
+- Truncated body should be accompanied by `raw_ref` or artifact reference for subsequent manual review.
 
-## 7. 注入风险标记
+## 7. Injection Risk Marking
 
-至少识别以下模式：
+Must recognize at minimum the following patterns:
 
-- 要求忽略系统指令
-- 要求泄漏凭据
-- 要求执lines越权动作
-- 明显as系统消息或工具协议
+- Requests to ignore system instructions
+- Requests to leak credentials
+- Requests to perform unauthorized actions
+- Clearly disguised as system messages or tool protocols
 
-规则：
+Rules:
 
-- 风险标记不等于自动拒绝；它会交给 Policy Engine vs上层总结逻辑进一步handle。
-- `high` 风险输出不得directly作为后续 LLM 的唯一输入片段。
-- 被判为 `high` 风险的输出，defaults to不应directly进入 memory。
+- Risk marking does not equal automatic rejection; it is handed to the Policy Engine and upper-layer summary logic for further processing.
+- `high` risk output must not be used as the sole input fragment for subsequent LLMs.
+- Output judged as `high` risk should not by default directly enter memory.
 
-## 8. storagevs展示边界
+## 8. Storage and Display Boundaries
 
-- `messages.content` 存净化结果，不defaults to存原始污染文本。
-- 原始输出若需要保留，应落 artifact 并标记访问控制。
-- 事件、日志、summary defaults to只record净化结果或其摘要。
-- debug dump defaults to读取净化版本；若确需查看原始输出，应受更高permission和额外审计保护。
-- 若输出后续进入 knowledge / memory / feedback 链，必须保留 provenance 标记，不得把净化后的文本as“原生内部文本”。
+- `messages.content` stores sanitization results, not raw contaminated text by default.
+- If raw output needs to be retained, it should land in artifacts with access control marking.
+- Events, logs, and summaries default to recording only sanitization results or their summaries.
+- Debug dumps default to reading sanitized versions; if raw output确实 needs to be viewed, it should be protected by higher permissions and additional audit.
+- If output subsequently enters knowledge/memory/feedback chains, provenance marking must be retained, and sanitized text must not be masqueraded as "native internal text".
 
-## 9. Current / Transition 边界
+## 9. Current / Transition Boundaries
 
-当前 canonical 基线明确做：
+Current canonical baseline explicitly does:
 
-- ANSI 清理
-- 控制字符清理
-- 凭据脱敏
-- 长度截断
-- 注入风险分级
+- ANSI cleanup
+- Control character cleanup
+- Credential redaction
+- Length truncation
+- Injection risk classification
 
-Transition / target-state 扩展当前不做：
+Transition/target-state extensions currently do not do:
 
-- 完整 DLP references擎
-- 多语言深度语义敏感信息检测
-- 企业级内容审查工作流
+- Full DLP engine
+- Multi-language deep semantic sensitive information detection
+- Enterprise content review workflow
 
-## 10. 收口Conclusion
+## 10. Conclusion
 
-工具输出不is“拿到就能directly喂回模型”的security对象；净化管线is把外部文本变成平台内部可信输入的第一道门。
-
+Tool output is not a security object that can be "directly fed back to the model once obtained"; the sanitization pipeline is the first gate that transforms external text into trusted platform internal input.
 
 ## v4.3 Architecture Remediation
 
-以下条目修复 `platform-architecture-implementation-consistency-audit.md` 中record的 contract 偏差。本文档历史段落如vs本节conflicts，以本节、`docs_zh/architecture/00-platform-architecture.md`、ADR-109 至 ADR-113、以及 `src/platform/contracts/executable-contracts/` 为准。
+The following entries fix contract deviations recorded in `platform-architecture-implementation-consistency-audit.md`. If historical sections of this document conflict with this section, this section, `docs_zh/architecture/00-platform-architecture.md`, ADR-109 through ADR-113, and `src/platform/contracts/executable-contracts/` take precedence.
 
-- T-52: 本文原先继续用 `Phase 1a` 作为当前能力边界术语，Root cause: 净化合同accesses along用了旧排期文案，没有随着主Architecture把 `Phase 1-9` 降为历史映射而改成 `Current / Transition / Target` table达。修复：正文现改为 `Current / Transition` 边界语义，旧 phase 名称不再作为 canonical 能力口径。
+- T-52: This document previously continued using `Phase 1a` as the current capability boundary term. Root cause: the sanitization contract followed old scheduling copy and did not change to `Current / Transition / Target` expression as the main architecture reduced `Phase 1-9` to historical mapping. Fix: The main text now changes to `Current / Transition` boundary semantics, and old phase names no longer serve as canonical capability口径.
 
-mandatory规则：Status迁移必须via `RuntimeStateMachine.transition(command)`；执lines计划必须uses `PlanGraphBundle`；执lines结果必须uses `NodeAttemptReceipt`；truth event 只能uses `platform.*`；OAPEFLIR 只能作为 `oapeflir.view.*` / rationale 投影；budget必须uses `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`。
+Mandatory rules: State transitions must go through `RuntimeStateMachine.transition(command)`; execution plans must use `PlanGraphBundle`; execution results must use `NodeAttemptReceipt`; truth events must only use `platform.*`; OAPEFLIR may only be used as `oapeflir.view.*` / rationale projections; budgets must use `BudgetLedger` / `BudgetReservation` / `BudgetSettlement`.

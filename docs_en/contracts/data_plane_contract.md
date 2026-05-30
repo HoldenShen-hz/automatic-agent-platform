@@ -2,41 +2,41 @@
 
 ---
 
-## OAPEFLIR 关联
+## OAPEFLIR Association
 
-本 contract 参vs OAPEFLIR 八阶段循环中的以下阶段：
+This contract participates in the following stages of the OAPEFLIR eight-stage loop:
 
-- **Observe**：信号采集vs聚合
-- **Assess**：执lines前评估vs风险判断
-- **Plan**：任务分解vs DAG 构建
-- **Execute**：步骤执linesvs容错
-- **Feedback**：信号收集vs预handle
-- **Learn**：模式检测vs知识提取
-- **Improve**：改进候选评估vs rollout
-- **Release**：受控发布vs回滚
+- **Observe**: Signal collection and aggregation
+- **Assess**: Pre-execution evaluation and risk assessment
+- **Plan**: Task decomposition and DAG construction
+- **Execute**: Step execution and fault tolerance
+- **Feedback**: Signal collection and preprocessing
+- **Learn**: Pattern detection and knowledge extraction
+- **Improve**: Improvement candidate evaluation and rollout
+- **Release**: Controlled release and rollback
 
 ---
 
-## 1. 范围
+## 1. Scope
 
-本 contract defines最终平台的data平面分层，includes事务data、artifact/object、analytics、knowledge、memory/archive 和 replay data。
+This contract defines the data plane layering of the final platform, including transactional data, artifact/object, analytics, knowledge, memory/archive, and replay data.
 
-它is `storage_schema_contract.md` 的上位扩展，used for回答“不同data应该存在哪里、由谁负责、如何流动、保留多久、谁is事实源”。
+It is a superordinate extension of `storage_schema_contract.md`, used to answer "where should different data be stored, who is responsible for it, how it flows, how long it is retained, and who is the source of truth".
 
-## 2. 目标
+## 2. Objectives
 
-- 明确 authoritative transaction store。
-- 明确 object / artifact 的命名空间、生命cycle和references用语义。
-- 明确 analytics、memory、archive、replay 的分层职责。
-- 明确不同data平面之间的synchronous和回写边界。
+- Clarify the authoritative transaction store.
+- Clarify the namespace, lifecycle, and reference semantics for objects/artifacts.
+- Clarify the layered responsibilities for analytics, memory, archive, and replay.
+- Clarify synchronization and write-back boundaries between different data planes.
 
-## 3. 非目标
+## 3. Non-Objectives
 
-- 本 contract 不规定具体data库或对象storage产品选型。
-- 本 contract 不替代 Phase 1a 的事务table字段defines。
-- 本 contract 不要求所有data平面在同一阶段一iterations性上线。
+- This contract does not specify specific database or object storage product selection.
+- This contract does not replace Phase 1a transactional table field definitions.
+- This contract does not require all data planes to launch in the same phase.
 
-## 4. data平面分层
+## 4. Data Plane Layers
 
 - `TransactionalStore`
 - `ArtifactObjectStore`
@@ -52,45 +52,45 @@ flowchart TD
     A --> D["MemoryArchiveStore"]
     A --> E["ReplayDatasetStore"]
     D --> E
-    C -. "不能反向覆盖 truth" .-> A
-    E -. "只used for验证/回放" .-> A
+    C -. "Cannot overwrite truth backwards" .-> A
+    E -. "Only used for verification/replay" .-> A
 ```
 
-## 5. 分层职责
+## 5. Layer Responsibilities
 
 `TransactionalStore`
-: 保存任务、execution、approval、event、billing ledger ref 等事务事实。它is运lines时 authoritative truth 的第一来源。
+: Stores transactional facts such as tasks, executions, approvals, events, and billing ledger refs. It is the primary source of runtime authoritative truth.
 
 `ArtifactObjectStore`
-: 保存大体积文件、报告、附件、模型输出、证据包、二进制工件。事务层只保留 ref，不directly存 BLOB。
+: Stores large files, reports, attachments, model outputs, evidence bundles, and binary artifacts. The transactional layer only retains refs and does not directly store BLOBs.
 
 `AnalyticsStore`
-: 保存聚合指标、成本分析、转化、留存、usage 聚合、via营看板data。它消费事实层，但不反向充当事实源。
+: Stores aggregated metrics, cost analysis, conversions, retention, usage aggregation, and business dashboard data. It consumes the truth layer but does not serve as a truth source in reverse.
 
 `KnowledgePlane`
-: 保存知识条目、检索索references、trust/freshness 元data和 namespace 边界。它不is在线事务真相源。
+: Stores knowledge entries, retrieval indexes, trust/freshness metadata, and namespace boundaries. It is not the online transactional source of truth.
 
 `MemoryArchiveStore`
-: 保存长期记忆、压缩摘要、演化归档、handover bundle 和 memory promotion 材料。必须保留 provenance。
+: Stores long-term memories, compressed summaries, evolutionary archives, handover bundles, and memory promotion materials. Provenance must be preserved.
 
 `ReplayDatasetStore`
-: 保存回放、评测、对比、regression vs golden dataset。used for验证和学习，不作为在线事务源。
+: Stores replays, evaluations, comparisons, regression, and golden datasets. Used for verification and learning, not as an online transactional source.
 
-## 6. data拥有权principle
+## 6. Data Ownership Principles
 
-- 任务、execution、approval、event 的 authoritative owner is `TransactionalStore`。
-- artifact 内容本体的 authoritative owner is `ArtifactObjectStore`。
-- 指标vs趋势分析的 authoritative owner is `AnalyticsStore`。
-- 知识条目vs namespace 元data的 authoritative owner is `KnowledgePlane`。
-- 记忆vs归档材料的 authoritative owner is `MemoryArchiveStore`。
-- 评测和回放样本的 authoritative owner is `ReplayDatasetStore`。
+- The authoritative owner of tasks, executions, approvals, and events is `TransactionalStore`.
+- The authoritative owner of artifact content body is `ArtifactObjectStore`.
+- The authoritative owner of metrics and trend analysis is `AnalyticsStore`.
+- The authoritative owner of knowledge entries and namespace metadata is `KnowledgePlane`.
+- The authoritative owner of memories and archive materials is `MemoryArchiveStore`.
+- The authoritative owner of evaluation and replay samples is `ReplayDatasetStore`.
 
-规则：
+Rules:
 
-- 任一 plane 读取其他 plane data时，应via ref、snapshot 或 pipeline，而不is私自复制语义。
-- analytics vs replay 不得反向覆盖 transaction truth。
+- When any plane reads data from other planes, it should be through refs, snapshots, or pipelines, not by私自 copying semantics.
+- Analytics and replay must not overwrite transaction truth in reverse.
 
-## 7. 关键对象
+## 7. Key Objects
 
 - `DataNamespace`
 - `ArtifactRef`
@@ -101,18 +101,18 @@ flowchart TD
 - `KnowledgeRef`
 - `MemoryRef`
 
-## 8. `DataNamespace` 最小字段
+## 8. `DataNamespace` Minimum Fields
 
-| 字段 | class型 | Description |
-|---|-------|--------|
-| `namespace_id` | `string` | 命名空间 ID |
-| `plane` | `transactional \| artifact \| analytics \| knowledge \| memory_archive \| replay` | 所属平面 |
-| `tenant_scope` | `string?` | 所属 tenant / org 边界 |
-| `retention_policy` | `string` | 保留策略 |
-| `encryption_policy` | `string` | encryption策略 |
-| `residency_policy?` | `string` | data驻留要求 |
+| Field | Type | Description |
+| --- | --- | --- |
+| `namespace_id` | `string` | Namespace ID |
+| `plane` | `transactional \| artifact \| analytics \| knowledge \| memory_archive \| replay` | Plane |
+| `tenant_scope` | `string?` | Tenant/org boundary |
+| `retention_policy` | `string` | Retention policy |
+| `encryption_policy` | `string` | Encryption policy |
+| `residency_policy?` | `string` | Data residency requirements |
 
-## 9. `ArtifactRef` 最小字段
+## 9. `ArtifactRef` Minimum Fields
 
 - `artifact_id`
 - `namespace_id`
@@ -123,12 +123,12 @@ flowchart TD
 - `created_at`
 - `source_execution_id?`
 
-规则：
+Rules:
 
-- transaction 层只能保存 `ArtifactRef`，不能回灌 artifact 本体。
-- artifact ref 必须稳定、可校验、可追溯。
+- The transactional layer can only store `ArtifactRef` and cannot backfill artifact bodies.
+- Artifact refs must be stable, verifiable, and traceable.
 
-## 10. `AnalyticsFact` 最小字段
+## 10. `AnalyticsFact` Minimum Fields
 
 - `fact_id`
 - `metric_name`
@@ -139,14 +139,14 @@ flowchart TD
 - `source_ref`
 - `captured_at`
 
-规则：
+Rules:
 
-- analytics fact 必须可以追溯到 transaction truth 或明确的 snapshot。
-- 同一指标不得混用实时事实和人工估算而不做区分。
+- Analytics facts must be traceable to transaction truth or explicit snapshots.
+- The same metric must not mix real-time facts and manual estimates without distinction.
 
-## 11. `ArchiveBundle` vs `ReplayDataset`
+## 11. `ArchiveBundle` and `ReplayDataset`
 
-`ArchiveBundle` 最小字段：
+`ArchiveBundle` minimum fields:
 
 - `bundle_id`
 - `bundle_type`
@@ -154,7 +154,7 @@ flowchart TD
 - `summary_ref`
 - `created_at`
 
-`ReplayDataset` 最小字段：
+`ReplayDataset` minimum fields:
 
 - `dataset_id`
 - `dataset_type`
@@ -163,9 +163,9 @@ flowchart TD
 - `version`
 - `created_at`
 
-## 12. data流动规则
+## 12. Data Flow Rules
 
-允许的主路径：
+Allowed primary paths:
 
 - transaction -> artifact ref
 - transaction -> analytics
@@ -173,14 +173,14 @@ flowchart TD
 - transaction -> memory/archive
 - transaction + archive -> replay
 
-限制：
+Restrictions:
 
-- analytics -> transaction：only允许via显式Decision回写，不允许directly覆写事实。
-- knowledge -> transaction：only允许via受控检索、人工确认或显式治理回写。
-- replay -> transaction：禁止directly成为在线真相源。
-- archive -> transaction：只能via人工确认或显式恢复流程回写。
+- analytics -> transaction: Only allowed via explicit decision write-back, not direct fact overwrite.
+- knowledge -> transaction: Only allowed via controlled retrieval, manual confirmation, or explicit governance write-back.
+- replay -> transaction: Explicitly prohibited from being an online source of truth.
+- archive -> transaction: Can only write back via manual confirmation or explicit recovery process.
 
-### 12.1 data流动流程图
+### 12.1 Data Flow Diagram
 
 ```mermaid
 flowchart LR
@@ -197,13 +197,13 @@ flowchart LR
     H --> I
     I --> J["ReplayDatasetStore"]
 
-    F -. "显式治理后才能回写" .-> B
-    L -. "受控检索/治理后才能回写" .-> B
-    H -. "恢复流程下回写" .-> B
-    J -. "禁止directly回写" .-> B
+    F -. "Write-back only after explicit governance" .-> B
+    L -. "Write-back only after controlled retrieval/governance" .-> B
+    H -. "Write-back under recovery process" .-> B
+    J -. "Direct write-back prohibited" .-> B
 ```
 
-## 12.2 平面归属图
+### 12.2 Plane Ownership Diagram
 
 ```mermaid
 flowchart TD
@@ -230,25 +230,25 @@ flowchart TD
     P1 --> P3
 ```
 
-## 13. Retention vs Lifecycle
+## 13. Retention and Lifecycle
 
-- transaction record按运linesvs审计要求保留。
-- artifact 按class型、租户和合规要求保留。
-- analytics 可做 rollup、downsample、ttl。
-- knowledge 应supported namespace、trust tier、freshness 衰减vs过期策略。
-- memory/archive 应supported compaction，但 compaction 不得破坏 provenance。
-- replay data集应supported版本化vs过期策略。
+- Transaction records are retained according to runtime and audit requirements.
+- Artifacts are retained by type, tenant, and compliance requirements.
+- Analytics can undergo rollup, downsample, and TTL.
+- Knowledge should support namespace, trust tier, freshness decay, and expiration policies.
+- Memory/archive should support compaction, but compaction must not destroy provenance.
+- Replay datasets should support versioning and expiration policies.
 
-## 14. Tenant / Security 约束
+## 14. Tenant / Security Constraints
 
-- 所有平面都必须具备 tenant-aware namespace。
-- artifact/object vs analytics 不能bypassing tenant scope directly共享。
-- archive vs replay data集在跨 tenant 共享前必须有显式authorization。
-- residency / encryption 要在 namespace 层而不is UI 层table达。
+- All planes must have tenant-aware namespaces.
+- Artifacts/objects and analytics must not bypass tenant scope for direct sharing.
+- Archive and replay datasets must have explicit authorization before cross-tenant sharing.
+- Residency / encryption must be expressed at the namespace layer, not the UI layer.
 
 ## 15. Data Movement Job
 
-`DataMovementJob` 最小字段：
+`DataMovementJob` minimum fields:
 
 - `job_id`
 - `source_plane`
@@ -258,7 +258,7 @@ flowchart TD
 - `started_at`
 - `finished_at?`
 
-用途：
+Use cases:
 
 - archive compaction
 - analytics ETL
@@ -266,21 +266,21 @@ flowchart TD
 - replay dataset build
 - artifact lifecycle move
 
-## 16. vs现有文档的关系
+## 16. Relationship with Existing Documents
 
-- `storage_schema_contract.md` is Phase 1a 事务基线。
-- `artifact_store_contract.md` is object / artifact 的最小边界。
-- `monetization_metering_plane_contract.md` 会消费 analytics / transaction data。
-- 本 contract 负责最终平台的data平面分层演进模型。
+- `storage_schema_contract.md` is the Phase 1a transactional baseline.
+- `artifact_store_contract.md` is the minimum boundary for objects/artifacts.
+- `monetization_metering_plane_contract.md` consumes analytics / transaction data.
+- This contract is responsible for the final platform data plane layered evolution model.
 
-## 17. 分阶段references入
+## 17. Phased Introduction
 
-- Phase 2: memory / archive 分层。
-- Phase 3: analytics / PMF data层。
-- Phase 4: enterprise data治理、跨平面迁移vs residency 控制。
+- Phase 2: memory / archive layer.
+- Phase 3: analytics / PMF data layer.
+- Phase 4: enterprise data governance, cross-plane migration, and residency control.
 
-## 18. 收口Conclusion
+## 18. Closure Conclusion
 
-Data plane 的关键不is“再加几个库”，而is为每种data明确 owner、retention、security 和回写边界。
+The key to the data plane is not "adding a few more databases", but clarifying owner, retention, security, and write-back boundaries for each type of data.
 
-后续任何storage扩展，都应先判断它belongs to哪个 plane，再决定落地位置vs事实源优先级。
+Any subsequent storage expansion should first determine which plane it belongs to, then decide the落地 location and source-of-truth priority.

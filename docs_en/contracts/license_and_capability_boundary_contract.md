@@ -2,41 +2,41 @@
 
 ---
 
-## OAPEFLIR 关联
+## OAPEFLIR Association
 
-本 contract 参vs OAPEFLIR 八阶段循环中的以下阶段：
+This contract participates in the following stages of the OAPEFLIR eight-stage cycle:
 
-- **Observe**：信号采集vs聚合
-- **Assess**：执lines前评估vs风险判断
-- **Plan**：任务分解vs DAG 构建
-- **Execute**：步骤执linesvs容错
-- **Feedback**：信号收集vs预handle
-- **Learn**：模式检测vs知识提取
-- **Improve**：改进候选评估vs rollout
-- **Release**：受控发布vs回滚
+- **Observe**: Signal collection and aggregation
+- **Assess**: Pre-execution assessment and risk judgment
+- **Plan**: Task decomposition and DAG construction
+- **Execute**: Step execution and fault tolerance
+- **Feedback**: Signal collection and preprocessing
+- **Learn**: Pattern detection and knowledge extraction
+- **Improve**: Improvement candidate evaluation and rollout
+- **Release**: Controlled release and rollback
 
 ---
 
-## 1. 范围
+## 1. Scope
 
-本 contract defines社区版、专业版、企业版等未来产品形态下的能力边界工程化方式。
+This contract defines how capability boundary engineering works under future product forms such as Community, Professional, and Enterprise editions.
 
-相关文档：
+Related documents:
 
 - `billing_and_tenant_contract.md`
 - `monetization_metering_plane_contract.md`
 - `tenant_and_organization_contract.md`
 - `feature` flags in `environment_and_configuration_governance_contract.md`
 
-## 2. 目标
+## 2. Goals
 
-- 提前把功能、配额、concurrent、审计、多租户能力做成可控开关。
-- 避免商业化后再硬切code路径。
-- 让 entitlement 判断进入正式 policy / metering 闭环。
+- Make features, quotas, concurrency, audit, and multi-tenant capabilities controllable switches in advance.
+- Avoid hard-cutting code paths after commercialization.
+- Bring entitlement judgment into the formal policy / metering closed loop.
 
-## 3. 能力边界
+## 3. Capability Boundaries
 
-未来至少可按以下维度开关：
+In the future, switches can be controlled at least by the following dimensions:
 
 - feature gate
 - quota gate
@@ -46,7 +46,7 @@
 - remote worker gate
 - enterprise security gate
 
-## 4. 核心对象
+## 4. Core Objects
 
 - `LicenseTier`
 - `CapabilityBundle`
@@ -54,30 +54,30 @@
 - `QuotaProfile`
 - `CommercialFeatureFlag`
 
-## 5. 规则
+## 5. Rules
 
-- 所有商业化能力都应via capability check，而不is散落在 UI 或路由里。
-- capability check 结果必须可审计。
-- 试用、降级、欠费、冻结都必须有明确系统lines为。
-- 产品分层不得破坏同一套 contract 真相。
-- capability check 不得只在前端或网关层生效；runtime、API、admin console 也必须复用同一判断结果。
-- 欠费、冻结、降级不应静默放宽现有隔离vs审计边界。
+- All commercial capabilities should go through capability checks, not scattered in UI or routes.
+- Capability check results must be auditable.
+- Trial, downgrade, arrears, and freeze must all have clear system behaviors.
+- Product tiering must not break the unified contract truth.
+- Capability checks must not take effect only at the frontend or gateway layer; runtime, API, and admin console must also reuse the same judgment results.
+- Arrears, freeze, and downgrade should not silently relax existing isolation and audit boundaries.
 
-## 6. 典型层级
+## 6. Typical Tiers
 
-| 层级 | 典型能力 |
+| Tier | Typical Capabilities |
 | --- | --- |
-| `community` | 单租户、本地能力、基础工具 |
-| `professional` | 更多concurrent、更多配额、基础审计 |
-| `enterprise` | 多租户、SSO、审计export、私有模型、私网部署 |
+| `community` | Single tenant, local capabilities, basic tools |
+| `professional` | More concurrency, more quotas, basic audit |
+| `enterprise` | Multi-tenant, SSO, audit export, private models, private network deployment |
 
-## 7. 收口Conclusion
+## 7. Conclusion
 
-商业化能力边界必须尽早工程化。
+Commercial capability boundaries must be engineered as early as possible.
 
-no则后续会出现：
+Otherwise, the following will appear later:
 
-- code分叉
-- permission漂移
-- 配额规则散落
-- 企业能力难以security上线
+- Code forking
+- Permission drift
+- Scattered quota rules
+- Enterprise capabilities difficult to deploy securely

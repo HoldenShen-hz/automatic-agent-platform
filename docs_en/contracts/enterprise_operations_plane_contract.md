@@ -2,34 +2,34 @@
 
 ---
 
-## OAPEFLIR 关联
+## OAPEFLIR Association
 
-本 contract 参vs OAPEFLIR 八阶段循环中的以下阶段：
+This contract participates in the following stages of the OAPEFLIR eight-stage cycle:
 
-- **Observe**：信号采集vs聚合
-- **Assess**：执lines前评估vs风险判断
-- **Plan**：任务分解vs DAG 构建
-- **Execute**：步骤执linesvs容错
-- **Feedback**：信号收集vs预handle
-- **Learn**：模式检测vs知识提取
-- **Improve**：改进候选评估vs rollout
-- **Release**：受控发布vs回滚
+- **Observe**: Signal collection and aggregation
+- **Assess**: Pre-execution assessment and risk judgment
+- **Plan**: Task decomposition and DAG construction
+- **Execute**: Step execution and fault tolerance
+- **Feedback**: Signal collection and preprocessing
+- **Learn**: Pattern detection and knowledge extraction
+- **Improve**: Improvement candidate evaluation and rollout
+- **Release**: Controlled release and rollback
 
 ---
 
-## 1. 范围
+## 1. Scope
 
-本 contract defines最终平台的企业运维平面，includes环境注册、升级、回滚、SLA、supported和事件response。
+This contract defines the enterprise operations plane of the final platform, including environment registry, upgrade, rollback, SLA, support, and incident response.
 
-它used for回答“平台如何在企业环境中被交付、升级、审计和值守”。
+It is used to answer "how the platform is delivered, upgraded, audited, and monitored in enterprise environments".
 
-## 2. 目标
+## 2. Goals
 
-- 让环境、版本、升级和运维动作进入正式 control plane。
-- 让 enterprise 能力具备可审计、可恢复和可supported的交付模式。
-- 把运维从 checklist 提升为平台层。
+- Bring environment, version, upgrade, and operations actions into formal control plane.
+- Give enterprise capabilities auditable, recoverable, and supportable delivery patterns.
+- Elevate operations from checklist to platform layer.
 
-## 3. 关键组件
+## 3. Key Components
 
 - `EnvironmentRegistry`
 - `UpgradeOrchestrator`
@@ -37,7 +37,7 @@
 - `IncidentConsole`
 - `SlaGovernanceService`
 
-## 4. 关键对象
+## 4. Key Objects
 
 - `EnvironmentRecord`
 - `ReleaseBundle`
@@ -45,7 +45,7 @@
 - `RollbackReceipt`
 - `IncidentRecord`
 
-## 5. EnvironmentRecord 最小字段
+## 5. EnvironmentRecord Minimum Fields
 
 - `environment_id`
 - `tenant_id?`
@@ -55,28 +55,28 @@
 - `health_status`
 - `managed_by`
 
-## 6. lines为约束
+## 6. Behavioral Constraints
 
-- 所有升级和回滚都必须生成 receipt。
-- enterprise 环境必须有明确 topology、版本和 owner 信息。
-- support / incident 入口必须能关联 task、execution、release 和 policy 证据。
-- SLA 判断不得relies on人工口径，必须有统一健康和事件defines。
-- environment registry、release bundle、upgrade plan vs rollback receipt 必须可相互追溯，不能只保留最后Status。
-- private cloud / on-prem 环境若缺少某些托管能力，必须显式声明降级矩阵，而不is隐式少功能。
+- All upgrades and rollbacks must generate receipts.
+- Enterprise environments must have explicit topology, version, and owner information.
+- Support / incident entry must be able to correlate task, execution, release, and policy evidence.
+- SLA determination must not rely on manual statements, must have unified health and event definitions.
+- Environment registry, release bundle, upgrade plan, and rollback receipt must be mutually traceable; cannot only keep the last state.
+- Private cloud / on-prem environments that lack certain hosting capabilities must explicitly declare degradation matrix, not implicitly reduce functionality.
 
-## 7. vs现有文档的关系
+## 7. Relationship with Existing Documents
 
-- `doc/operations/operations-checklist.md` 和阶段文档defines当前基线。
-- 本 contract defines最终 enterprise ops 作为平台层的目标形态。
-- `tenant_and_organization_contract.md` 提供环境归属边界。
+- `doc/operations/operations-checklist.md` and phase documents define current baseline.
+- This contract defines the target state of enterprise ops as platform layer.
+- `tenant_and_organization_contract.md` provides environment ownership boundaries.
 
-## 8. 分阶段references入
+## 8. Phased Introduction
 
-- Phase 4: environment registry、upgrade control、SLA governance。
+- Phase 4: environment registry, upgrade control, SLA governance.
 
-## 9. 补充规则
+## 9. Supplementary Rules
 
-- support routing 至少区分：产品Issue、平台事故、security事件、账务Issue。
-- on-call policy 至少contains：主值班、备值班、升级路径、交接要求。
-- private cloud / on-prem 部署必须明确哪些能力可用、哪些relies on云服务降级。
-- 任何升级failed进入回滚时，必须能给出环境级Impact范围和 tenant 级Impact清单。
+- Support routing distinguishes at minimum: product issues, platform incidents, security incidents, billing issues.
+- On-call policy contains at minimum: primary on-call, backup on-call, escalation path, handover requirements.
+- Private cloud / on-prem deployments must specify which capabilities are available and which depend on cloud service degradation.
+- Any upgrade failure entering rollback must be able to provide environment-level impact scope and tenant-level impact list.

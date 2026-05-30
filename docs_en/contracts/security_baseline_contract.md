@@ -1,13 +1,12 @@
 # Security Baseline Contract
 
-## 1. 范围
+## 1. Scope
 
-definesdefaults tosecurity基线：身份、network、key、日志脱敏vsrelies on约束。
+Defines default security baseline: identity, network, keys, log sanitization, and dependency constraints.
 
-## 2. 基线规则
+## 2. Baseline Rules
 
-- 所有写request必须具备身份、幂等和审计上下文。
-- secrets 只允许via secret provider/bridge uses，不得明文落盘。
-- defaults to deny 外部network、外部命令和高危 side effect。
-- 日志vs指标必须区分user面vs内部面敏感字段。
-
+- All write requests must carry identity, idempotency, and audit context.
+- Secrets are only permitted to be used via secret provider/bridge; must not be written to disk in plaintext.
+- Defaults to deny external network, external commands, and high-risk side effects.
+- Logs and metrics must differentiate user-facing vs internal-facing sensitive fields.

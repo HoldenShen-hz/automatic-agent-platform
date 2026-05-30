@@ -1,14 +1,14 @@
 # Tenant Isolation Contract
 
 > Scope note:
-> shared worker security、租户边界vs组织级隔离的完整规范以 `tenant_isolation_and_shared_worker_safety_contract.md` 为准。
-> 本文only保留最小隔离对象defines。
+> The complete specification for shared worker security, tenant boundaries, and organization-level isolation is in `tenant_isolation_and_shared_worker_safety_contract.md`.
+> This document only retains the minimal isolation object definitions.
 
-## 1. 范围
+## 1. Scope
 
-defines多租户 truth、cache、队列、worker vs prompt/knowledge 资源的隔离边界。
+Define isolation boundaries for multi-tenant truth, cache, queues, workers, and prompt/knowledge resources.
 
-## 2. 核心对象
+## 2. Core Objects
 
 ```typescript
 interface TenantIsolationScope {
@@ -19,8 +19,8 @@ interface TenantIsolationScope {
 }
 ```
 
-## 3. 约束
+## 3. Constraints
 
-- 任何共享 worker 场景都必须携带 tenant fence / policy proof。
-- truth/event/audit 关联键必须显式带 tenant 语义。
-- 不允许via session、cache 或 prompt fallback 发生cross-tenant leak。
+- Any shared worker scenario must carry a tenant fence/policy proof.
+- Truth/event/audit association keys must explicitly include tenant semantics.
+- Cross-tenant leakage must not occur via session, cache, or prompt fallback.
